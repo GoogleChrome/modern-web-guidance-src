@@ -1,0 +1,972 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..6de439b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++data/
++public/app.js
++.env
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..68fd34b
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,41 @@
++# The Daily Grind
++
++A coffee shop account application with real WebAuthn passkeys for account registration, passwordless sign-in, management, and reauthentication.
++
++## Run
++
++Use Node.js 24 or later and pnpm.
++
++```sh
++pnpm install
++pnpm start
++```
++
++The app listens on port `11222` (or `PORT`). `pnpm start` builds the local browser bundle before starting the Express server. Visit `http://localhost:11222` for local passkey development. WebAuthn needs localhost or HTTPS, and a compatible browser and authenticator. Opening the HTML file directly will not provide authentication.
++
++For deployment, set `PUBLIC_ORIGIN` to the exact externally accessible origin, such as `https://coffee.example.com`, without a trailing slash. The relying party ID is that origin’s hostname. The server trusts one reverse proxy hop; configure that proxy to supply the correct Host and X-Forwarded-Proto headers. Use HTTPS and persistent storage. Passkeys created for one domain cannot be used on a different domain.
++
++Account records, credential public keys, signature counters, and sessions persist in `data/accounts.sqlite`. Override this location with `DATABASE_PATH`. Back up this database; mount the data directory on a persistent volume in a container. Never commit account data. This implementation uses one SQLite-backed server instance.
++
++## Account flows
++
++- **Registration:** Create a profile and passkey using a face, fingerprint, screen-lock PIN, or security key. The account is only stored after server-side WebAuthn verification succeeds. Resident credentials and user verification are required.
++- **Authentication:** Sign in with a discoverable passkey, including a nearby phone or security key. The server checks the challenge, origin, relying party ID, signature, and user verification; updates the signature counter; and rotates the session cookie.
++- **Management:** List, add, rename, and remove your own passkeys. Sensitive changes require verification from the previous five minutes. Up to ten passkeys are allowed. The last passkey cannot be deleted. Removing a key ends other sessions.
++- **Reauthentication:** Verify using one of your account’s registered passkeys before sensitive actions. You can also explicitly verify from the Active sessions tab and revoke other sessions.
++
++Challenges expire after five minutes and are consumed once, even on verification failure. Sessions expire after seven days. Cookies are HTTP-only, SameSite=Lax, and Secure on HTTPS. API writes enforce the same origin; requests are rate limited. Biometric data and private keys remain with the authenticator.
++
++The email is an **unverified account identifier**, not an email recovery method. No password or email fallback is implemented. Add a second passkey or retain access to your synced passkey provider to avoid losing access. Café menu, orders, rewards, and location pages provide informational content; no ordering backend is included.
++
++## Automated verification
++
++```sh
++pnpm test
++pnpm check
++pnpm build
++```
++
++Integration tests use cryptographically signed synthetic authenticator responses against the real server and verifier, without a browser. They exercise registration, login, reauthentication, rename, additional keys, removal, logout, session revocation, ownership checks, last-key protection, single-use and expired challenges, invalid origins, signatures, signature counters, and missing user verification. Physical authenticator prompts depend on the browser, device, HTTPS origin, and provider; manual browser verification was intentionally omitted.
++
++WebAuthn implementation follows the [SimpleWebAuthn server documentation](https://simplewebauthn.dev/docs/packages/server/) and [passkey guidance](https://simplewebauthn.dev/docs/advanced/passkeys).
+diff --git a/client.js b/client.js
+new file mode 100644
+index 0000000..6534701
+--- /dev/null
++++ b/client.js
+@@ -0,0 +1,231 @@
++import { startRegistration, startAuthentication, browserSupportsWebAuthn, WebAuthnAbortService } from '@simplewebauthn/browser';
++import { createIcons, House, Coffee, ShoppingBag, Gift, MapPin, ShieldCheck, ArrowUpRight, Sprout, CircleHelp, UserRound, LogIn, LogOut, LockKeyhole, Sparkles, Plus, ArrowRight, Check, Fingerprint, KeyRound, Info, LaptopMinimal, MessagesSquare, X, Pencil, Trash2, Smartphone, Monitor } from 'lucide';
++
++const iconSet = { House, Coffee, ShoppingBag, Gift, MapPin, ShieldCheck, ArrowUpRight, Sprout, CircleHelp, UserRound, LogIn, LogOut, LockKeyhole, Sparkles, Plus, ArrowRight, Check, Fingerprint, KeyRound, Info, LaptopMinimal, MessagesSquare, X, Pencil, Trash2, Smartphone, Monitor };
++const icons = () => createIcons({ icons: iconSet });
++const $ = selector => document.querySelector(selector);
++const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
++const securityHTML = $('#settings-panel').innerHTML;
++const accountHTML = $('#main-content').innerHTML;
++const modal = $('#modal');
++let state = { user: null, passkeys: [], verifiedUntil: 0 };
++let currentTab = 'security';
++let currentPage = 'account';
++let toastTimer;
++let ceremony = 0;
++let accountLoaded = false;
++
++async function api(path, options = {}) {
++  const response = await fetch(`/api${path}`, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...options });
++  const data = await response.json();
++  if (!response.ok) throw Object.assign(new Error(data.error || 'Something went wrong. Please try again.'), { code: data.code, status: response.status });
++  return data;
++}
++const post = (path, body = {}) => api(path, { method: 'POST', body: JSON.stringify(body) });
++function toast(message) {
++  clearTimeout(toastTimer);
++  $('#toast').textContent = message;
++  $('#toast').classList.add('visible');
++  toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 5000);
++}
++function errorMessage(error) {
++  if (error.name === 'NotAllowedError' || error.code === 'ERROR_CEREMONY_ABORTED') return 'The passkey prompt was cancelled or timed out. You can try again when you’re ready.';
++  if (error.name === 'InvalidStateError') return 'This device already has a passkey for your account. Try another device or security key.';
++  if (error.name === 'SecurityError') return 'Passkeys need a secure HTTPS connection or localhost. Please check the address and try again.';
++  if (error instanceof TypeError) return 'We couldn’t connect. Check your connection and try again.';
++  return error.message || 'Your device couldn’t complete this request. Please try again.';
++}
++function supported() {
++  if (!window.isSecureContext) throw new Error('Passkeys need a secure HTTPS connection or localhost. Open this site using HTTPS to continue.');
++  if (!browserSupportsWebAuthn()) throw new Error('This browser doesn’t support passkeys. Try a current version of Chrome, Safari, Edge, or Firefox.');
++}
++async function refresh() {
++  state = await api('/me');
++  accountLoaded = true;
++  updateIdentity();
++  if (currentPage === 'account') renderTab(currentTab);
++}
++function updateIdentity() {
++  $('#side-name').textContent = state.user ? state.user.name : 'Your account';
++  $('#side-description').textContent = state.user ? state.user.email : 'Make yourself at home';
++  $('#side-avatar').innerHTML = state.user ? escape(state.user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()) : '<i data-lucide="user-round"></i>';
++  $('#side-auth').dataset.action = state.user ? 'logout' : 'signin';
++  $('#side-auth').setAttribute('aria-label', state.user ? 'Sign out' : 'Sign in');
++  $('#side-auth').innerHTML = `<i data-lucide="${state.user ? 'log-out' : 'log-in'}"></i>`;
++  $('#header-auth').dataset.action = state.user ? 'logout' : 'signin';
++  $('#header-auth').innerHTML = `${state.user ? 'Sign out' : 'Sign in'}<i data-lucide="${state.user ? 'log-out' : 'arrow-up-right'}"></i>`;
++  icons();
++}
++function date(value) { return value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not used yet'; }
++function renderKeys() {
++  if (!$('#passkey-count')) return;
++  $('#passkey-count').textContent = state.passkeys.length;
++  if (!state.passkeys.length) return;
++  $('#passkey-list').innerHTML = state.passkeys.map(key => `<div class="key-row"><span class="empty-icon"><i data-lucide="${key.device_type === 'multiDevice' ? 'smartphone' : 'key-round'}"></i></span><div class="key-description"><h4>${escape(key.name)}</h4><p>Added ${date(key.created_at)} · ${key.last_used ? `Last used ${date(key.last_used)}` : 'Not used yet'}</p><span class="key-status">${key.backed_up ? 'Synced with your passkey provider' : 'Saved on your authenticator'}</span></div><button class="icon-button" data-action="rename" data-key="${escape(key.id)}" aria-label="Rename ${escape(key.name)}"><i data-lucide="pencil"></i></button><button class="icon-button" data-action="remove" data-key="${escape(key.id)}" aria-label="Remove ${escape(key.name)}"><i data-lucide="trash-2"></i></button></div>`).join('');
++  icons();
++}
++function renderTab(tab) {
++  currentTab = tab;
++  if (!$('#settings-panel')) return;
++  document.querySelectorAll('[data-tab]').forEach(button => { const selected = button.dataset.tab === tab; button.classList.toggle('selected', selected); button.setAttribute('aria-selected', selected); button.tabIndex = selected ? 0 : -1; });
++  $('#settings-panel').setAttribute('aria-labelledby', `tab-${tab}`);
++  const panel = $('#settings-panel');
++  if (tab === 'security') { panel.innerHTML = securityHTML; renderKeys(); }
++  if (tab === 'profile') panel.innerHTML = `<section class="settings-card"><span class="hero-label"><i data-lucide="user-round"></i>YOUR LITTLE CORNER</span><h2 class="profile-title">Make yourself at home.</h2><p>${state.user ? 'Your account, made a little more personal.' : 'Create an account with a passkey to start your daily ritual.'}</p>${state.user ? `<div class="details-grid"><div class="detail-item"><span>Name</span><strong>${escape(state.user.name)}</strong></div><div class="detail-item"><span>Email · account identifier</span><strong>${escape(state.user.email)}</strong></div><div class="detail-item"><span>Member since</span><strong>${date(state.user.created_at)}</strong></div><div class="detail-item"><span>Sign-in method</span><strong>Passkey · ${state.passkeys.length} registered</strong></div></div><p class="form-note">Your email is an account identifier and has not been verified. Keep a second passkey so you can sign in if you lose a device.</p>` : '<button class="button primary" data-action="add"><i data-lucide="plus"></i>Create your account</button>'}</section>`;
++  if (tab === 'sessions') panel.innerHTML = `<section class="settings-card"><span class="hero-label"><i data-lucide="shield-check"></i>A LITTLE PEACE OF MIND</span><h2 class="profile-title">Your active sessions.</h2><p>${state.user ? 'Stay in control of where you’re signed in.' : 'Sign in to see and manage your account sessions.'}</p>${state.user ? `<div class="session-device"><i data-lucide="monitor"></i><div><h4>This browser</h4><p>Current session · Signed in securely with a passkey</p></div></div><button class="button secondary" data-action="revoke"><i data-lucide="log-out"></i>Sign out other sessions</button><p class="form-note">This browser will stay signed in. You’ll confirm with a passkey before making changes.</p><button class="text-link" data-action="reauth"><i data-lucide="fingerprint"></i>Verify it’s you</button>` : '<button class="button primary" data-action="signin"><i data-lucide="key-round"></i>Sign in with a passkey</button>'}</section>`;
++  icons();
++}
++function openModal(html) {
++  WebAuthnAbortService.cancelCeremony();
++  ceremony++;
++  $('#modal-body').innerHTML = html;
++  icons();
++  if (!modal.open) modal.showModal();
++  $('#modal-body input, #modal-body button')?.focus();
++}
++function closeModal() { WebAuthnAbortService.cancelCeremony(); ceremony++; modal.close(); }
++function formError(message) { const node = $('#form-error'); if (node) node.textContent = message; else toast(message); }
++function bindForm(handler, label) {
++  $('#modal-form').addEventListener('submit', async event => {
++    event.preventDefault();
++    const activeCeremony = ceremony;
++    const button = $('#modal-submit');
++    const form = event.currentTarget;
++    button.disabled = true;
++    button.textContent = 'Waiting for your device…';
++    formError('');
++    try { await handler(new FormData(form), activeCeremony); }
++    catch (error) { if (activeCeremony === ceremony) { if (error.code === 'REAUTH_REQUIRED') showReauth(showAdd); else formError(errorMessage(error)); } }
++    finally { if (activeCeremony === ceremony) { button.disabled = false; button.textContent = label; } }
++  });
++}
++const formFooter = '<div id="form-error" class="form-error" role="alert"></div>';
++function deviceName() { const ua = navigator.userAgent; return /iPhone|iPad/.test(ua) ? 'My iPhone / iPad' : /Android/.test(ua) ? 'My Android' : /Mac/.test(ua) ? 'My Mac' : /Windows/.test(ua) ? 'My Windows PC' : 'My device'; }
++async function showAdd() {
++  if (!accountLoaded) { try { await refresh(); } catch { toast('We couldn’t load your account. Please try again.'); return; } }
++  if (state.user && state.verifiedUntil < Date.now()) return showReauth(showAdd);
++  const signedIn = Boolean(state.user);
++  openModal(`<h2>${signedIn ? 'A new key to your account.' : 'Your daily ritual starts here.'}</h2><p class="modal-intro">${signedIn ? 'Add a passkey on a device you trust. Your device will guide you through the next step.' : 'Create your account and your first passkey. A simple, secure start to better mornings.'}</p><form id="modal-form">${signedIn ? '' : '<label class="form-label" for="register-name">Your name</label><input class="form-input" id="register-name" name="name" autocomplete="name" placeholder="Alex Morgan" required maxlength="60"><label class="form-label" for="register-email">Email address</label><input class="form-input" id="register-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">'}<label class="form-label" for="passkey-name">Passkey name</label><input class="form-input" id="passkey-name" name="passkeyName" value="${escape(deviceName())}" required maxlength="60"><p class="form-note">Your device will ask for your face, fingerprint, or PIN. We never see or store your biometric data.</p><button class="button primary full-width" id="modal-submit" type="submit"><i data-lucide="key-round"></i>${signedIn ? 'Create passkey' : 'Create account & passkey'}</button>${formFooter}</form>${signedIn ? '' : '<div class="modal-bottom">Already part of the daily grind?<button data-action="signin">Sign in</button></div>'}`);
++  bindForm(async (data, active) => {
++    supported();
++    const optionsJSON = await post('/registration/options', Object.fromEntries(data));
++    if (active !== ceremony) return;
++    const credential = await startRegistration({ optionsJSON });
++    if (active !== ceremony) return;
++    await post('/registration/verify', credential);
++    await refresh();
++    if (active !== ceremony) return;
++    closeModal();
++    navigate('account');
++    toast(signedIn ? 'Your new passkey is ready. Make yourself at home.' : 'Welcome to the daily grind. Your account and passkey are ready.');
++  }, signedIn ? 'Create passkey' : 'Create account & passkey');
++}
++function showSignin() {
++  if (state.user) { navigate('account'); return; }
++  openModal(`<h2>Good to see you again.</h2><p class="modal-intro">Your favorite ritual is just a touch away. Use a saved passkey to sign in securely.</p><form id="modal-form"><button class="button primary full-width" id="modal-submit" type="submit"><i data-lucide="fingerprint"></i>Sign in with a passkey</button>${formFooter}</form><p class="form-note">Your browser can use a passkey on this device, a nearby phone, or a security key.</p><div class="modal-bottom">New around here?<button data-action="add">Create an account</button></div>`);
++  bindForm(async (_, active) => {
++    supported();
++    const optionsJSON = await post('/authentication/options');
++    if (active !== ceremony) return;
++    const credential = await startAuthentication({ optionsJSON });
++    if (active !== ceremony) return;
++    await post('/authentication/verify', { credential, purpose: 'login' });
++    await refresh();
++    if (active !== ceremony) return;
++    closeModal();
++    navigate('account');
++    toast(`Welcome back, ${state.user.name.split(' ')[0]}.`);
++  }, 'Sign in with a passkey');
++}
++function showReauth(after = () => toast('Verified. You’re all set for the next five minutes.')) {
++  if (!state.user) return showSignin();
++  openModal(`<h2>Just checking it’s you.</h2><p class="modal-intro">Keep your account in good hands. Confirm with one of your passkeys to continue.</p><form id="modal-form"><button class="button primary full-width" id="modal-submit" type="submit"><i data-lucide="fingerprint"></i>Verify with a passkey</button>${formFooter}</form><p class="form-note">This check keeps sensitive account changes secure. Your confirmation lasts for five minutes.</p>`);
++  bindForm(async (_, active) => {
++    supported();
++    const optionsJSON = await post('/authentication/options', { purpose: 'reauth' });
++    if (active !== ceremony) return;
++    const credential = await startAuthentication({ optionsJSON });
++    if (active !== ceremony) return;
++    await post('/authentication/verify', { credential, purpose: 'reauth' });
++    await refresh();
++    if (active !== ceremony) return;
++    closeModal();
++    try { await after(); } catch (error) { toast(errorMessage(error)); }
++  }, 'Verify with a passkey');
++}
++async function sensitive(task) {
++  try { await task(); }
++  catch (error) { if (error.code === 'REAUTH_REQUIRED') showReauth(task); else if (error.status === 401) { await refresh(); showSignin(); } else throw error; }
++}
++function showRename(id) {
++  const key = state.passkeys.find(k => k.id === id); if (!key) return;
++  openModal(`<h2>Give your key a name.</h2><p class="modal-intro">Choose something you’ll recognize, like “Personal laptop” or “Backup security key”.</p><form id="modal-form"><label class="form-label" for="rename-key">Passkey name</label><input class="form-input" name="name" id="rename-key" value="${escape(key.name)}" maxlength="60" required><button class="button primary full-width" type="submit" id="modal-submit">Save name</button>${formFooter}</form>`);
++  bindForm(async data => sensitive(async () => { await api(`/passkeys/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name: data.get('name') }) }); await refresh(); closeModal(); toast('Passkey name updated.'); }), 'Save name');
++}
++function showRemove(id) {
++  const key = state.passkeys.find(k => k.id === id); if (!key) return;
++  if (state.passkeys.length === 1) { openModal(`<h2>Keep a key to your account.</h2><p class="modal-intro">This is your only passkey. Add another one before removing it, so you can still sign in.</p><button class="button primary full-width" data-action="add"><i data-lucide="plus"></i>Add another passkey</button>`); return; }
++  openModal(`<h2>Remove this passkey?</h2><p class="modal-intro">“${escape(key.name)}” will no longer be able to sign in. Your other passkeys will keep working, and other signed-in sessions will end.</p><form id="modal-form"><button class="button primary full-width" type="submit" id="modal-submit">Remove passkey</button>${formFooter}</form>`);
++  bindForm(async () => sensitive(async () => { await api(`/passkeys/${encodeURIComponent(id)}`, { method: 'DELETE' }); await refresh(); closeModal(); toast('Passkey removed. Your other sessions have been signed out.'); }), 'Remove passkey');
++}
++function article(title, body) { openModal(`<h2>${title}</h2><div class="modal-article">${body}</div>`); }
++function navigate(page) {
++  currentPage = page;
++  document.querySelectorAll('[data-nav]').forEach(link => { const active = link.dataset.nav === page; link.classList.toggle('active', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
++  if (page === 'account') { $('#main-content').innerHTML = accountHTML; $('#breadcrumb-current').textContent = 'Account & security'; renderTab(currentTab); }
++  else {
++    const names = { home: 'Overview', menu: 'Our menu', orders: 'My orders', rewards: 'Rewards', locations: 'Find a café' };
++    $('#breadcrumb-current').textContent = names[page];
++    let content;
++    if (page === 'menu') content = `<div class="eyebrow">SOMETHING GOOD IS BREWING</div><h1 class="feature-heading">Find your next favorite.</h1><p class="modal-intro">Ethically sourced. Locally roasted. Made for your daily ritual.</p><div class="products">${[
++      ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', 'photo-1461023058943-07fcbe16d735', '$5.50'],
++      ['Dark Roast Espresso', 'Bold, smooth, and the perfect little morning boost.', 'photo-1510707577719-ae7c14805e3a', '$3.50'],
++      ['Slow-steeped Cold Brew', 'Steeped for 18 hours for a refreshingly smooth finish.', 'photo-1517701604599-bb29b565090c', '$4.75'],
++    ].map(([name, desc, photo, price]) => `<article class="product"><img src="https://images.unsplash.com/${photo}?auto=format&fit=crop&w=600&q=80" alt="${name}"><div class="product-copy"><h3>${name}</h3><p>${desc}</p><div class="price">${price}</div></div></article>`).join('')}</div>`;
++    else if (page === 'home') content = `<section class="simple-page"><span class="eyebrow">GOOD COFFEE. GOOD DAYS.</span><h1 class="feature-heading">${state.user ? `Hey, ${escape(state.user.name.split(' ')[0])}.` : 'A little ritual. A better day.'}</h1><p>Welcome to your little corner of The Daily Grind. Discover something delicious, find your neighborhood café, and make yourself at home.</p><button class="button primary" data-nav="menu">Explore our menu<i data-lucide="arrow-right"></i></button></section>`;
++    else if (page === 'orders') content = `<section class="simple-page"><span class="eyebrow">YOUR DAILY ROUTINE</span><h1 class="feature-heading">A fresh start.</h1><p>${state.user ? 'No orders here yet. Stop by your local café and find your next favorite.' : 'Sign in to make yourself at home, then discover what’s brewing at your local café.'}</p><button class="button primary" data-nav="menu">Discover the menu<i data-lucide="arrow-right"></i></button></section>`;
++    else if (page === 'rewards') content = `<section class="simple-page"><span class="eyebrow">A LITTLE SOMETHING EXTRA</span><h1 class="feature-heading">Good days are worth repeating.</h1><p>Our new rewards program is brewing. Create your Daily Grind account so you’re ready when it arrives.</p><button class="button primary" data-action="${state.user ? 'learn' : 'add'}">${state.user ? 'Get to know your passkeys' : 'Create your account'}<i data-lucide="arrow-right"></i></button></section>`;
++    else content = `<section class="simple-page"><span class="eyebrow">YOUR NEIGHBORHOOD RITUAL</span><h1 class="feature-heading">A good cup is always close.</h1><p>We’re getting our café directory ready. Get in touch with our team for opening hours and your nearest Daily Grind.</p><button class="button primary" data-action="help">Get in touch<i data-lucide="arrow-up-right"></i></button></section>`;
++    $('#main-content').innerHTML = content;
++  }
++  icons();
++}
++const actions = {
++  add: showAdd,
++  signin: showSignin,
++  logout: async () => { await post('/logout'); await refresh(); closeModal(); navigate('account'); toast('You’re signed out. See you for the next cup.'); },
++  rename: button => showRename(button.dataset.key),
++  remove: button => showRemove(button.dataset.key),
++  reauth: () => showReauth(),
++  revoke: () => showReauth(async () => { const data = await post('/sessions/revoke'); toast(data.revoked ? 'Your other sessions have been signed out.' : 'You’re only signed in on this browser.'); }),
++  learn: () => article('A key that’s uniquely yours.', '<h3>What is a passkey?</h3><p>A passkey replaces a password with a secure key pair. Your device keeps the private key; we store only the public key.</p><h3>How do I use one?</h3><p>Create a passkey, then sign in with your device’s fingerprint, face recognition, or screen-lock PIN. You can also use a nearby phone or a physical security key.</p><h3>What if I lose my device?</h3><p>A synced passkey may be available on other devices connected to your passkey provider. We recommend adding a second passkey on another device or security key. Email recovery is not available, so keep access to at least one passkey.</p><h3>Before changing your passkeys</h3><p>We may ask you to verify with a passkey again. Your last passkey can’t be removed until you add another one.</p>'),
++  help: () => article('A little help, with care.', '<p class="modal-intro">Having trouble with a passkey? We’re here to help.</p><h3>The prompt didn’t appear?</h3><p>Use a browser that supports passkeys and make sure your device has a screen-lock PIN, fingerprint, or face recognition set up. Passkeys require HTTPS or localhost.</p><h3>Can’t find your passkey?</h3><p>Choose a different device in your browser’s prompt, or try the device or passkey provider where you saved your key.</p><p>For café and account questions, contact <a class="text-link" href="mailto:hello@dailygrind.coffee">hello@dailygrind.coffee</a>.</p>'),
++  privacy: () => article('Your privacy, thoughtfully.', '<p class="modal-intro">We store your name, email identifier, passkey public keys, and sign-in session details to manage your account.</p><p>Your device keeps your private key and biometric data. We don’t receive your fingerprint, face scan, or device PIN.</p><p>Session cookies keep you signed in for up to seven days. Passkey changes require a verification from the last five minutes. Removing a passkey also ends other sessions.</p>'),
++  terms: () => article('A good place to start.', '<p class="modal-intro">Use your Daily Grind account to manage your passkeys and sign in securely.</p><p>Only register devices and passkeys you control. Keep a second passkey for access if you lose a device. Passkeys are tied to this website’s domain.</p><p>Menu prices are indicative. Contact your café for current availability and pricing.</p>'),
++};
++document.addEventListener('click', async event => {
++  const button = event.target.closest('[data-action], [data-tab], [data-nav], .modal-close');
++  if (!button) return;
++  if (button.matches('a')) event.preventDefault();
++  try {
++    if (button.matches('.modal-close')) closeModal();
++    else if (button.dataset.action) await actions[button.dataset.action]?.(button);
++    else if (button.dataset.tab) renderTab(button.dataset.tab);
++    else if (button.dataset.nav) { navigate(button.dataset.nav); history.replaceState(null, '', `#${button.dataset.nav}`); }
++  } catch (error) { toast(errorMessage(error)); }
++});
++modal.addEventListener('cancel', () => { WebAuthnAbortService.cancelCeremony(); ceremony++; });
++modal.addEventListener('click', event => { if (event.target === modal) { const box = modal.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeModal(); } });
++document.addEventListener('keydown', event => {
++  if (!event.target.closest('[role="tablist"]') || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++  event.preventDefault();
++  const tabs = [...document.querySelectorAll('[data-tab]')];
++  const index = tabs.indexOf(event.target);
++  const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++  renderTab(tabs[next].dataset.tab); tabs[next].focus();
++});
++window.addEventListener('hashchange', () => { const page = location.hash.slice(1); if (['account', 'home', 'menu', 'orders', 'rewards', 'locations'].includes(page)) navigate(page); });
++icons();
++const initialPage = location.hash.slice(1);
++if (['home', 'menu', 'orders', 'rewards', 'locations'].includes(initialPage)) navigate(initialPage);
++refresh().catch(() => toast('We couldn’t load your account. Please check your connection and try again.'));
+diff --git a/index.html b/index.html
+index 66c9173..5056ffc 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,62 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f7f8f5">
++  <title>Account & Security · The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="/styles.css">
++  <script type="module" src="/app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <aside class="sidebar" aria-label="Main navigation">
++    <a class="brand" href="/" aria-label="The Daily Grind home"><span class="brand-mark"><i data-lucide="coffee"></i></span><span>THE DAILY<br>GRIND<span class="brand-small">GOOD COFFEE. GOOD DAYS.</span></span></a>
++    <div class="nav-label">YOUR DAILY ROUTINE</div>
++    <nav class="main-nav">
++      <a href="#home" data-nav="home"><i data-lucide="house"></i>Overview</a>
++      <a href="#menu" data-nav="menu"><i data-lucide="coffee"></i>Our menu</a>
++      <a href="#orders" data-nav="orders"><i data-lucide="shopping-bag"></i>My orders</a>
++      <a href="#rewards" data-nav="rewards"><i data-lucide="gift"></i>Rewards<span class="new-badge">NEW</span></a>
++      <a href="#locations" data-nav="locations"><i data-lucide="map-pin"></i>Find a café</a>
++    </nav>
++    <div class="nav-label account-label">YOUR SPACE</div>
++    <nav class="main-nav">
++      <a href="#account" class="active" data-nav="account" aria-current="page"><i data-lucide="shield-check"></i>Account & security<span class="active-dot"></span></a>
++    </nav>
++    <div class="sidebar-bottom">
++      <div class="little-note"><i data-lucide="sprout"></i><p>A little ritual.<br>A better every day.</p></div>
++      <button class="help-link" data-action="help"><i data-lucide="circle-help"></i>Need a hand?<i data-lucide="arrow-up-right"></i></button>
++      <div class="sidebar-user"><span class="avatar" id="side-avatar"><i data-lucide="user-round"></i></span><span class="user-copy"><strong id="side-name">Your account</strong><small id="side-description">Make yourself at home</small></span><button class="icon-button" id="side-auth" aria-label="Sign in" data-action="signin"><i data-lucide="log-in"></i></button></div>
++    </div>
++  </aside>
++  <div class="workspace">
++    <header class="topbar"><div class="breadcrumb"><i data-lucide="house"></i><span>/</span><span>My account</span><span>/</span><strong id="breadcrumb-current">Account & security</strong></div><div class="topbar-right"><span class="secure-site"><i data-lucide="lock-keyhole"></i>A little peace of mind</span><button class="top-signin" data-action="signin" id="header-auth">Sign in<i data-lucide="arrow-up-right"></i></button></div></header>
++    <main id="main-content">
++      <div class="page-heading"><div><div class="eyebrow">FEEL RIGHT AT HOME</div><h1>Account & security<span>.</span></h1><p>Your daily ritual, with a little extra peace of mind.</p></div><span class="security-pill"><span></span>Made for your peace of mind</span></div>
++      <div class="tabs" role="tablist" aria-label="Account settings"><button role="tab" aria-selected="false" data-tab="profile" id="tab-profile">Account details</button><button role="tab" aria-selected="true" class="selected" data-tab="security" id="tab-security">Sign-in & security<span class="tab-dot"></span></button><button role="tab" aria-selected="false" data-tab="sessions" id="tab-sessions">Active sessions</button></div>
++      <div class="content-grid">
++        <div class="main-column" id="settings-panel" role="tabpanel" aria-labelledby="tab-security">
++          <section class="passkey-hero">
++            <div class="hero-copy"><span class="hero-label"><i data-lucide="sparkles"></i>LESS FRICTION. MORE COFFEE.</span><h2>A better way<br>to sign in.</h2><p>Meet passkeys. A simple, secure way to access<br class="desktop-break"> your account with a face, fingerprint, or PIN.<br class="desktop-break"> No passwords to remember.</p><button class="button primary" data-action="add"><i data-lucide="plus"></i>Create a passkey<i data-lucide="arrow-right"></i></button><span class="hero-footnote"><i data-lucide="shield-check"></i>Just you. Just your device.</span></div>
++            <div class="key-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-dot dot-one"></div><div class="art-dot dot-two"></div><div class="art-dot dot-three"></div><div class="key-card"><div class="key-card-top"><span></span><span></span><span></span></div><div class="key-icon"><svg viewBox="0 0 100 130" fill="none"><circle cx="50" cy="35" r="24" stroke="currentColor" stroke-width="14"/><path d="M50 60v57m0-13h20m-20-18h14" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="key-card-line"></div><div class="key-card-short"></div></div><span class="art-check"><i data-lucide="check"></i></span><span class="art-spark spark-one">✳</span><span class="art-spark spark-two">✦</span><div class="art-caption"><i data-lucide="fingerprint"></i>Uniquely yours.</div></div>
++          </section>
++          <section class="passkeys-section"><div class="section-heading"><div><h3>Your passkeys <span class="count" id="passkey-count">0</span></h3><p>The keys to your daily grind. You’re in control.</p></div><button class="button secondary small" data-action="add"><i data-lucide="plus"></i>Add a passkey</button></div><div id="passkey-list" class="passkey-list"><div class="empty-keys"><span class="empty-icon"><i data-lucide="key-round"></i></span><div><h4>Your first passkey is a fresh start</h4><p>Add one to make your next sign-in a little easier.</p></div><span class="empty-badge">READY WHEN YOU ARE</span></div></div><div class="list-note"><i data-lucide="info"></i>You can add multiple passkeys. We recommend one on a second device.</div></section>
++          <section class="why-section"><div class="section-heading"><h3>A small change. A better experience.</h3></div><div class="benefit-grid"><div class="benefit"><span class="benefit-icon"><i data-lucide="shield-check"></i></span><h4>Secure by nature</h4><p>Passkeys help protect you from phishing and stolen passwords.</p></div><div class="benefit"><span class="benefit-icon"><i data-lucide="fingerprint"></i></span><h4>Effortlessly you</h4><p>Use the same face, fingerprint, or PIN that unlocks your device.</p></div><div class="benefit"><span class="benefit-icon"><i data-lucide="laptop-minimal"></i></span><h4>At home on your devices</h4><p>Use your phone, computer, or a physical security key.</p></div></div></section>
++          <div class="security-bottom"><i data-lucide="lock-keyhole"></i>Your biometric data stays on your device. Always.<span><i data-lucide="sprout"></i>Thoughtfully secure.</span></div>
+         </div>
++        <aside class="right-column">
++          <section class="guide-card"><span class="card-eyebrow">GOOD TO KNOW</span><h3>A passkey?<br>Think of it as your<br>digital house key.</h3><p>Only you can use it. And unlike a password, it can’t be guessed or accidentally shared.</p><div class="guide-divider"></div><div class="guide-item"><span>01</span><div><h4>Create your key</h4><p>A few seconds is all it takes.</p></div></div><div class="guide-item"><span>02</span><div><h4>Make it yours</h4><p>Save it on a device you trust.</p></div></div><div class="guide-item"><span>03</span><div><h4>You’re good to go</h4><p>Sign in with just a touch.</p></div></div><button class="text-link" data-action="learn">A little more about passkeys<i data-lucide="arrow-up-right"></i></button></section>
++          <section class="coffee-card"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=700&q=85" alt="A warm cup of coffee on a café table"><div class="coffee-overlay"><span>THE GOOD STUFF AWAITS</span><h3>Less time signing in.<br>More time sipping.</h3><a href="#menu" data-nav="menu">Find your next favorite<i data-lucide="arrow-up-right"></i></a></div></section>
++          <div class="help-card"><i data-lucide="messages-square"></i><div><h4>We’re here for you.</h4><button class="text-link" data-action="help">Let’s talk<i data-lucide="arrow-right"></i></button></div></div>
++        </aside>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++      <div class="page-footer"><span>© 2026 The Daily Grind. Brewed with care.</span><div><button data-action="privacy">Privacy</button><span>·</span><button data-action="terms">Terms</button><span>·</span><button data-action="help">Get in touch<i data-lucide="arrow-up-right"></i></button></div></div>
++    </main>
++  </div>
++  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-content"><button class="modal-close icon-button" aria-label="Close dialog"><i data-lucide="x"></i></button><span class="modal-icon"><i data-lucide="key-round"></i></span><div id="modal-body"></div></div></dialog>
++  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..4061ad7 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,22 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm build && node server.js",
++    "build": "esbuild client.js --bundle --format=esm --minify --outfile=public/app.js",
++    "test": "node --test",
++    "check": "node --check server.js && node --check client.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "dependencies": {
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
++    "express": "^5.3.0",
++    "lucide": "^1.57.0"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
++  },
++  "type": "module"
+ }
+diff --git a/public/styles.css b/public/styles.css
+new file mode 100644
+index 0000000..2cd52a3
+--- /dev/null
++++ b/public/styles.css
+@@ -0,0 +1 @@
++:root{--green:#244f3d;--green-dark:#1f4434;--text:#293c32;--muted:#7a807a;--line:#e6e8e1;--cream:#f8f9f6;--font:'DM Sans',sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--text);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}button,a,input{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button{color:inherit}a{color:inherit;text-decoration:none}button{border:0}button:disabled{opacity:.6;cursor:wait}button:focus-visible,a:focus-visible{outline:3px solid #98b29d;outline-offset:4px}svg{width:20px;height:20px;stroke-width:1.65;flex-shrink:0}h1,h2,h3,h4,p{margin:0}h1,h2,h3,h4{font-family:'Manrope',sans-serif}.sidebar{width:232px;position:fixed;inset:0 auto 0 0;background:#fff;border-right:1px solid var(--line);padding:36px 22px 0;display:flex;flex-direction:column;z-index:10}.brand{display:flex;gap:11px;align-items:center;font-family:'Manrope',sans-serif;font-size:17px;line-height:1.22;font-weight:800;letter-spacing:1.7px}.brand-mark{background:var(--green);border-radius:50%;height:45px;width:45px;display:grid;place-items:center;color:#fff;flex-shrink:0}.brand-mark svg{width:25px;height:25px;stroke-width:1.4}.brand-small{display:block;font:500 7px var(--font);letter-spacing:1.1px;margin-top:7px;color:#7b837c;white-space:nowrap}.nav-label{font-size:9px;font-weight:600;letter-spacing:1.6px;color:#99a097;margin:51px 12px 15px}.main-nav{display:flex;flex-direction:column;gap:8px}.main-nav a{display:flex;align-items:center;gap:12px;border-radius:6px;padding:12px 11px;color:#70776f;font-size:12px;font-weight:500;white-space:nowrap}.main-nav a:hover{background:#f3f5ef;color:var(--green)}.main-nav a.active{background:#ebf0e8;color:var(--green);font-weight:650}.main-nav svg{width:18px;height:18px}.new-badge{font-size:8px;letter-spacing:.6px;background:#f5efde;padding:3px 6px;color:#8b7b4e;border-radius:3px;margin-left:auto}.active-dot{width:5px;height:5px;background:var(--green);border-radius:50%;margin-left:auto}.account-label{margin-top:36px}.sidebar-bottom{margin-top:auto;padding-top:40px}.little-note{padding:28px 15px 30px;color:#788772;display:flex;gap:12px;align-items:center}.little-note svg{width:27px;height:32px;transform:rotate(-12deg);stroke-width:1.2}.little-note p{font-size:12px;line-height:1.8}.help-link{display:flex;align-items:center;gap:10px;background:transparent;font-size:11px;color:#778074;padding:12px;width:100%}.help-link svg{width:16px;height:16px}.help-link svg:last-child{margin-left:auto;width:13px}.sidebar-user{margin:20px -22px 0;padding:21px 19px;display:flex;align-items:center;gap:9px;border-top:1px solid var(--line)}.avatar{height:34px;width:34px;flex-shrink:0;display:grid;place-items:center;background:#eaf0e5;color:var(--green);border-radius:50%;font-size:12px;font-weight:600}.avatar svg{width:17px}.user-copy{display:flex;flex-direction:column;gap:4px;min-width:0}.user-copy strong{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}.user-copy small{font-size:9px;color:#8b9288;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.icon-button{background:transparent;display:grid;place-items:center;padding:7px;border-radius:5px}.icon-button:hover{background:#eef1e9}.sidebar-user .icon-button{margin-left:auto}.sidebar-user .icon-button svg{width:16px;height:16px}.workspace{margin-left:232px}.topbar{height:77px;background:#fff;border-bottom:1px solid var(--line);padding:0 42px;display:flex;align-items:center;justify-content:space-between}.breadcrumb{display:flex;align-items:center;gap:14px;font-size:11px;color:#91968e}.breadcrumb svg{width:15px;height:15px}.breadcrumb strong{font-weight:500;color:#48554a}.topbar-right{display:flex;align-items:center;gap:25px}.secure-site{font-size:10px;color:#8b9288;display:flex;gap:7px;align-items:center}.secure-site svg{height:12px;width:12px}.top-signin{font-size:11px;font-weight:600;display:flex;gap:12px;align-items:center;background:transparent}.top-signin svg{width:14px;height:14px}main{padding:40px 42px 0;max-width:1500px;margin:0 auto}.page-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}.eyebrow{font-size:9px;letter-spacing:1.8px;color:#858e7b;font-weight:600;margin-bottom:13px}h1{font-weight:650;letter-spacing:-1.3px;font-size:32px;line-height:1.3}h1>span{color:#77966a}.page-heading p{color:var(--muted);font-size:12px;margin-top:10px}.security-pill{border:1px solid #dee4d8;background:#f0f3eb;border-radius:20px;display:flex;align-items:center;gap:7px;font-size:9px;padding:9px 11px;color:#64715b;white-space:nowrap;margin-top:12px}.security-pill>span{width:5px;height:5px;background:#7e9b6a;border-radius:50%}.tabs{display:flex;gap:29px;border-bottom:1px solid var(--line);margin-top:32px;margin-bottom:28px}.tabs button{background:transparent;padding:0 0 15px;font-size:11px;color:#888f84;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:9px}.tabs button.selected{color:var(--green);font-weight:650;border-color:var(--green)}.tab-dot{width:5px;height:5px;border-radius:50%;background:#6e8f61}.content-grid{display:grid;grid-template-columns:minmax(0,1fr) 264px;gap:26px}.main-column{min-width:0}.passkey-hero{background:#edf1e7;border:1px solid #e4e9dd;border-radius:10px;min-height:323px;display:flex;position:relative;overflow:hidden;padding:31px 30px}.hero-copy{position:relative;z-index:2;flex-shrink:0}.hero-label{font-size:8px;letter-spacing:1.3px;font-weight:650;color:#687b5b;display:flex;gap:7px;align-items:center}.hero-label svg{width:12px;height:12px}.hero-copy h2{font-size:37px;letter-spacing:-1.5px;line-height:1.19;font-weight:650;margin:17px 0 13px;color:#284d37}.hero-copy p{font-size:11px;line-height:1.9;color:#7b8574}.button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:5px;font-size:11px;padding:12px 15px;font-weight:550;transition:background .2s,transform .2s}.button svg{width:15px;height:15px}.button:hover{transform:translateY(-1px)}.primary{background:var(--green);color:white}.primary:hover{background:#183d2c}.hero-copy .button{margin-top:21px}.hero-copy .button svg:last-child{margin-left:15px;width:14px}.hero-footnote{font-size:9px;color:#8b9382;display:flex;align-items:center;gap:5px;margin-top:13px}.hero-footnote svg{width:12px;height:12px}.key-art{position:absolute;width:264px;height:290px;right:0;top:17px}.art-orbit{position:absolute;border:1px solid #d9e1d0;border-radius:50%;top:27px;left:12px;width:230px;height:230px}.orbit-two{width:175px;height:175px;top:55px;left:40px}.key-card{position:absolute;top:57px;left:65px;width:131px;height:170px;background:#fbfcf7;border:1px solid #d5dfca;border-radius:15px;transform:rotate(11deg);box-shadow:9px 12px 0 #d8e2cd,10px 20px 30px #586d4520}.key-card-top{display:flex;gap:4px;padding:14px 13px;border-bottom:1px solid #edf0e7}.key-card-top span{height:3px;width:3px;background:#c4ceb8;border-radius:50%}.key-icon{height:100px;display:flex;justify-content:center;align-items:center}.key-icon svg{height:84px;width:64px;color:#355b3d;filter:drop-shadow(2px 3px 0 #b8c9a7)}.key-card-line{width:47px;height:4px;border-radius:5px;background:#d6dfcd;margin:1px auto 8px}.key-card-short{width:30px;height:3px;border-radius:5px;background:#e0e6d9;margin:auto}.art-check{position:absolute;top:188px;left:170px;background:#35573c;color:#fff;border:5px solid #edf1e7;border-radius:50%;width:39px;height:39px;display:grid;place-items:center;transform:rotate(-9deg)}.art-check svg{height:16px;width:16px;stroke-width:2.5}.art-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#b3c4a0}.dot-one{top:32px;left:61px}.dot-two{top:171px;left:26px;width:4px;height:4px}.dot-three{top:250px;left:168px;width:4px;height:4px}.art-spark{position:absolute;color:#789164;font-size:28px}.spark-one{top:45px;right:35px;font-size:31px}.spark-two{top:204px;left:37px;font-size:22px}.art-caption{position:absolute;bottom:7px;left:73px;transform:rotate(-5deg);border:1px solid #d4ddca;border-radius:6px;background:#f9fbf5;color:#657857;display:flex;align-items:center;gap:7px;padding:8px 11px;font-size:9px;box-shadow:1px 3px 4px #364d3b05}.art-caption svg{height:15px;width:15px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.section-heading h3{font-size:14px;font-weight:650;letter-spacing:-.25px}.section-heading p{font-size:10px;color:#8b9185;margin-top:7px}.passkeys-section{margin-top:29px}.count{display:inline-flex;align-items:center;justify-content:center;background:#e9ede3;border-radius:5px;color:#728169;min-width:20px;height:18px;font-size:9px;margin-left:6px;vertical-align:middle}.secondary{border:1px solid #d8ded0;background:#fff;color:#4d6546}.secondary:hover{background:#f0f3ea}.small{font-size:10px;padding:9px 12px;gap:6px}.small svg{width:13px;height:13px}.passkey-list{margin-top:18px}.empty-keys{display:flex;align-items:center;gap:14px;background:white;border:1px solid var(--line);padding:22px 18px;border-radius:7px}.empty-icon{width:40px;height:40px;border:1px solid #e5e9df;background:#f5f7f0;display:grid;place-items:center;border-radius:9px;color:#7d8e70;flex-shrink:0}.empty-icon svg{width:19px;height:19px}.empty-keys h4{font:550 11px var(--font);margin-bottom:6px}.empty-keys p{font-size:10px;color:#959a90}.empty-badge{margin-left:auto;font-size:7px;letter-spacing:.7px;color:#99a08e;white-space:nowrap}.list-note{display:flex;align-items:center;gap:6px;font-size:9px;color:#8b9184;line-height:1.6;margin-top:12px}.list-note svg{width:12px;height:12px;flex-shrink:0}.why-section{margin-top:29px;border-top:1px solid var(--line);padding-top:23px}.why-section h3{font-size:13px}.benefit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:22px}.benefit-icon{width:30px;height:30px;background:#edf1e7;display:grid;place-items:center;border-radius:7px;color:#5f7752;margin-bottom:11px}.benefit-icon svg{width:17px;height:17px}.benefit h4{font-size:10px;font-weight:650;margin-bottom:7px;letter-spacing:-.1px}.benefit p{font-size:10px;color:#909588;line-height:1.8;max-width:180px}.security-bottom{border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;margin-top:26px;padding-top:17px;font-size:8px;color:#969c8f}.security-bottom>svg{width:11px;height:11px}.security-bottom>span{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:8px}.security-bottom span svg{height:14px;width:14px}.guide-card{border:1px solid var(--line);background:#fff;border-radius:9px;padding:24px 23px 21px}.card-eyebrow{font-size:8px;letter-spacing:1.4px;font-weight:600;color:#909b81}.guide-card h3{font-size:20px;letter-spacing:-.6px;font-weight:600;line-height:1.5;margin-top:13px}.guide-card>p{font-size:10px;line-height:1.9;color:#92988b;margin-top:12px}.guide-divider{height:1px;background:var(--line);margin:20px 0}.guide-item{display:flex;gap:12px;align-items:center;margin-bottom:18px}.guide-item>span{background:#f1f4eb;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-size:9px;color:#7d8e6a;font-weight:500;flex-shrink:0}.guide-item h4{font-size:10px;font-weight:650;margin-bottom:4px}.guide-item p{font-size:9px;color:#999e90}.text-link{display:inline-flex;gap:8px;align-items:center;background:transparent;padding:0;font-size:10px;color:var(--green);font-weight:500}.text-link svg{height:12px;width:12px}.guide-card>.text-link{margin-top:3px;font-size:9px}.coffee-card{height:208px;border-radius:8px;overflow:hidden;position:relative;margin-top:20px;background:#243e31}.coffee-card>img{width:100%;height:100%;object-fit:cover;object-position:center 55%;opacity:.65}.coffee-card:after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#112a20ee,transparent 95%)}.coffee-overlay{position:absolute;inset:auto 21px 21px;z-index:1;color:#fff}.coffee-overlay>span{font-size:7px;letter-spacing:1.3px;color:#d1d8c8}.coffee-overlay h3{font-size:19px;letter-spacing:-.4px;font-weight:500;line-height:1.45;margin-top:9px}.coffee-overlay a{display:flex;align-items:center;gap:19px;color:#d1d9c9;font-size:9px;margin-top:15px}.coffee-overlay svg{width:13px;height:13px}.help-card{display:flex;gap:12px;align-items:center;margin:22px 9px}.help-card>svg{color:#879378;width:24px;height:24px;stroke-width:1.3}.help-card h4{font-size:10px;font-weight:550;margin-bottom:5px}.help-card .text-link{font-size:9px;color:#929989}.help-card svg:last-child{height:11px;width:11px}.page-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:23px 0;margin-top:30px;color:#a0a595;font-size:8px}.page-footer>div{display:flex;align-items:center;gap:13px}.page-footer button{background:transparent;padding:0;font-size:8px;color:#969e8d;display:flex;align-items:center;gap:5px}.page-footer svg{height:10px;width:10px}.toast{position:fixed;bottom:24px;left:calc(50% + 100px);transform:translate(-50%,15px);background:var(--green);color:white;padding:14px 22px;border-radius:8px;box-shadow:0 6px 30px #19362226;opacity:0;pointer-events:none;transition:.25s;font-size:12px;z-index:50;max-width:calc(100% - 40px)}.toast.visible{opacity:1;transform:translate(-50%,0)}dialog{border:1px solid #dce3d5;border-radius:14px;width:440px;max-width:calc(100% - 32px);padding:0;color:var(--text);background:#fcfdf9;box-shadow:0 25px 100px #12281f25}dialog::backdrop{background:#15281f65;backdrop-filter:blur(3px)}.modal-content{padding:32px;position:relative}.modal-close{position:absolute;right:13px;top:13px;color:#829078}.modal-icon{width:44px;height:44px;border-radius:12px;background:#eaf0e4;color:var(--green);display:grid;place-items:center;margin-bottom:20px}.modal-icon svg{height:23px;width:23px}.modal-content h2{font-size:24px;font-weight:650;letter-spacing:-.8px;line-height:1.4}.modal-intro{font-size:12px;line-height:1.8;color:#839078;margin-top:10px;margin-bottom:23px}.form-label{display:block;font-size:11px;font-weight:600;margin-top:16px;margin-bottom:7px}.form-input{width:100%;border:1px solid #d8e0cf;border-radius:6px;padding:12px;background:white;color:var(--text);font-size:12px;outline:none}.form-input:focus{border-color:#68865b;box-shadow:0 0 0 3px #e9eee2}.form-note{font-size:10px;color:#8a9581;line-height:1.7;margin:13px 0 18px}.full-width{width:100%;margin-top:10px}.modal-bottom{margin-top:19px;display:flex;gap:5px;align-items:center;justify-content:center;color:#8b9681;font-size:11px}.modal-bottom button{font-size:11px;font-weight:600;background:transparent;color:var(--green);padding:3px}.form-error{color:#a25343;background:#fff2eb;border-radius:5px;line-height:1.6;padding:10px 12px;font-size:11px;margin-top:15px}.form-error:empty{display:none}.modal-article{font-size:12px;color:#78846f;line-height:1.9}.modal-article h3{font-size:13px;color:var(--text);margin:20px 0 6px}.modal-article p{margin-bottom:12px}.key-row{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:17px;margin-top:10px}.key-row .key-description{flex:1;min-width:0}.key-description h4{font:600 12px var(--font);overflow-wrap:anywhere}.key-description p{font-size:9px;color:#8d9684;margin-top:6px;line-height:1.6}.key-description .key-status{font-size:8px;color:#769366;margin-top:5px;display:block}.key-row .icon-button{color:#829277}.key-row .icon-button svg{height:15px;width:15px}.settings-card{border:1px solid var(--line);border-radius:9px;padding:30px;background:#fff;min-height:320px}.settings-card .profile-title{margin-top:18px}.settings-card h2{font-size:24px;letter-spacing:-.7px;margin-bottom:12px}.settings-card>p{color:#8a9281;font-size:12px;line-height:1.8}.details-grid{margin-top:28px}.detail-item{padding:16px 0;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;font-size:12px}.detail-item>span{color:#88927c}.session-device{display:flex;gap:15px;align-items:center;margin-top:30px;padding:20px;background:#f3f6ed;border:1px solid #e4eadb;border-radius:6px}.session-device h4{font-size:12px;margin-bottom:6px}.session-device p{font-size:11px;color:#859278}.session-device>svg{width:28px;height:28px;color:#6a815b}.settings-card .button{margin-top:25px}.standalone-panel{grid-column:1/-1}.feature-heading{font-size:32px;font-weight:600;margin-bottom:14px}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:24px}.product{background:#fff;border:1px solid var(--line);border-radius:9px;overflow:hidden}.product img{width:100%;height:190px;object-fit:cover}.product-copy{padding:20px}.product h3{font-size:17px;margin-bottom:10px}.product p{font-size:12px;line-height:1.8;color:#84907b}.product .price{font-size:14px;color:var(--green);margin-top:14px}.simple-page{padding:35px;background:#edf1e7;border:1px solid #e3e9d9;border-radius:10px;min-height:350px}.simple-page p{color:#79876e;line-height:1.9;font-size:13px;max-width:480px}.simple-page .button{margin-top:25px}.location-list{margin-top:25px;display:flex;gap:20px}.location-list article{background:#fff;padding:23px;border-radius:8px;flex:1}.location-list h3{font-size:17px;margin-bottom:10px}.location-list p{font-size:12px}.notice{margin-bottom:18px;font-size:11px;padding:12px 16px;background:#f3ede1;color:#8b7651;border:1px solid #e7ddc6;border-radius:6px}.hidden{display:none!important}@media(min-width:1500px){.content-grid{grid-template-columns:minmax(0,1fr) 300px;gap:32px}.passkey-hero{min-height:350px;padding:35px}.hero-copy h2{font-size:42px}.hero-copy p{font-size:12px}.key-art{right:35px;top:30px}.guide-card{padding:28px}.guide-card h3{font-size:23px}.coffee-card{height:235px}}@media(max-width:1190px){.sidebar{width:210px;padding-inline:17px}.workspace{margin-left:210px}.sidebar-user{margin-inline:-17px;padding-inline:13px}.topbar{padding-inline:28px}main{padding:32px 28px 0}.content-grid{grid-template-columns:minmax(0,1fr) 230px;gap:20px}.passkey-hero{padding:27px 24px}.hero-copy h2{font-size:34px}.key-art{right:-26px;transform:scale(.83);transform-origin:right center}.hero-copy p{font-size:10px}.empty-badge{display:none}.guide-card{padding:21px 19px}.guide-card h3{font-size:18px}.security-pill{font-size:8px}.security-bottom>span{display:none}.benefit-grid{gap:15px}}@media(max-width:1030px){.sidebar{width:192px;padding-inline:13px}.workspace{margin-left:192px}.brand{font-size:15px;gap:8px}.brand-mark{width:38px;height:38px}.brand-small{font-size:6px}.main-nav a{gap:9px;font-size:11px;padding-inline:9px}.sidebar-user{margin-inline:-13px}.user-copy small{font-size:8px}.content-grid{grid-template-columns:minmax(0,1fr) 214px;gap:18px}main{padding-inline:24px}.key-art{opacity:.9;right:-33px;transform:scale(.7)}.hero-copy h2{font-size:32px}.hero-copy p{max-width:200px}.desktop-break{display:none}.hero-copy{width:60%}.passkey-hero{min-height:328px}.security-pill{display:none}.topbar{padding-inline:24px}.secure-site{display:none}.guide-card h3{font-size:17px}.empty-keys{padding:19px 14px}.empty-keys p{line-height:1.7}.benefit h4{font-size:9px}.section-heading h3{font-size:13px}.hero-label{font-size:6.5px;letter-spacing:1px}}@media(max-width:850px){.sidebar{width:76px;padding:25px 13px}.workspace{margin-left:76px}.brand{justify-content:center}.brand>span:last-child,.nav-label,.main-nav a .new-badge,.active-dot,.sidebar-bottom .little-note,.help-link,.user-copy,.sidebar-user .icon-button{display:none}.brand-mark{height:40px;width:40px}.main-nav{margin-top:35px;gap:15px}.main-nav+.nav-label+.main-nav{margin-top:22px}.main-nav a{font-size:0;justify-content:center;padding:13px 0;gap:0}.main-nav a svg{height:20px;width:20px}.sidebar-user{margin:0;padding:15px 0;border:0;justify-content:center}.sidebar-bottom{padding:20px 0 0}.content-grid{grid-template-columns:minmax(0,1fr) 225px}.key-art{transform:scale(.72);right:-28px}h1{font-size:28px}.empty-keys h4{font-size:10px}.hero-copy p{font-size:10px}.section-heading .small{font-size:9px;padding:8px}.benefit-grid{gap:12px}.page-footer{font-size:7px}.page-footer>div{gap:8px}.toast{left:50%}}@media(max-width:720px){.topbar{height:66px;padding:0 20px}.breadcrumb{font-size:10px;gap:9px}.breadcrumb>span:nth-child(2),.breadcrumb>span:nth-child(3){display:none}main{padding:28px 20px 0}.content-grid{grid-template-columns:minmax(0,1fr)}.right-column{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:5px}.guide-card{grid-row:span 2}.coffee-card{margin:0;height:230px}.help-card{margin:0 8px}.guide-card h3{font-size:20px}.guide-item{margin-bottom:20px}.key-art{transform:scale(.9);right:4px}.hero-copy{width:65%}.passkey-hero{padding:28px;min-height:323px}.hero-copy h2{font-size:37px}.hero-copy p{max-width:250px;font-size:11px}.hero-label{font-size:8px}.benefit h4{font-size:10px}.benefit p{font-size:10px}.benefit-grid{gap:25px}.empty-keys h4{font-size:11px}.products{grid-template-columns:1fr}.product{display:flex}.product img{width:40%;height:200px}.location-list{flex-direction:column}}@media(max-width:500px){.sidebar{width:59px;padding:24px 8px}.workspace{margin-left:59px}.brand-mark{height:35px;width:35px}.brand-mark svg{width:21px}.main-nav{margin-top:28px}.main-nav a{padding:11px 0}.main-nav a svg{height:18px;width:18px}.avatar{height:30px;width:30px}.topbar{padding-inline:15px}.breadcrumb{font-size:9px;gap:7px}.breadcrumb>svg{display:none}.top-signin{font-size:10px;gap:4px}.top-signin svg{width:12px}main{padding:27px 16px 0}.eyebrow{font-size:7px;margin-bottom:10px}h1{font-size:25px;letter-spacing:-1px}.page-heading p{font-size:10px;line-height:1.7;max-width:230px}.tabs{gap:21px;margin-top:26px;margin-bottom:22px}.tabs button{font-size:9px;gap:5px;padding-bottom:13px}.passkey-hero{padding:24px 21px;min-height:335px}.hero-copy{width:100%}.hero-copy h2{font-size:34px}.hero-label{font-size:6px;letter-spacing:.8px}.hero-copy p{max-width:180px;font-size:10px;line-height:1.8}.key-art{transform:scale(.55);right:-24px;top:58px}.hero-copy .button{margin-top:23px;font-size:10px;padding:11px 13px}.hero-copy .button svg:last-child{margin-left:4px}.hero-footnote{font-size:8px}.section-heading{gap:7px}.section-heading h3{font-size:12px}.section-heading p{font-size:9px;max-width:175px;line-height:1.6}.section-heading .small{font-size:8px;white-space:nowrap;padding:8px}.section-heading .small svg{width:11px;height:11px}.count{height:16px;min-width:16px;font-size:8px;margin-left:3px}.empty-keys{gap:10px;padding:18px 12px}.empty-icon{height:32px;width:32px;border-radius:7px}.empty-keys h4{font-size:10px}.empty-keys p{font-size:9px}.list-note{font-size:8px;align-items:flex-start}.list-note svg{margin-top:1px}.why-section h3{font-size:11px}.benefit-grid{gap:15px;grid-template-columns:1fr}.benefit{display:grid;grid-template-columns:30px 1fr;column-gap:12px}.benefit-icon{grid-row:span 2;margin-bottom:0}.benefit h4{font-size:11px;margin-bottom:4px}.benefit p{max-width:none;font-size:10px}.security-bottom{font-size:7px;line-height:1.7;margin-top:22px}.right-column{grid-template-columns:1fr;margin-top:12px}.guide-card{grid-row:auto;padding:23px}.guide-card h3 br{display:none}.guide-card h3{font-size:19px}.guide-card p{font-size:11px}.guide-item{margin-bottom:15px}.guide-item h4{font-size:11px}.guide-item p{font-size:10px}.coffee-card{height:240px}.coffee-overlay h3{font-size:24px}.coffee-overlay a{font-size:11px}.help-card{margin:8px 4px}.help-card h4{font-size:12px}.help-card .text-link{font-size:10px}.page-footer{display:flex;flex-direction:column;gap:15px;align-items:flex-start;font-size:8px;margin-top:22px}.page-footer button{font-size:9px}.page-footer>div{gap:15px}.modal-content{padding:26px}.modal-content h2{font-size:23px}.settings-card{padding:22px}.settings-card h2{font-size:22px}.detail-item{display:block}.detail-item>span{display:block;margin-bottom:8px}.key-row{gap:9px;padding:13px 10px}.key-description h4{font-size:11px}.key-row .icon-button{padding:5px}.simple-page{padding:25px}.feature-heading{font-size:25px}.product{display:block}.product img{width:100%;height:200px}}@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..575d1af
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,204 @@
++import express from 'express';
++import { DatabaseSync } from 'node:sqlite';
++import { randomBytes, createHash } from 'node:crypto';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
++import { mkdirSync } from 'node:fs';
++import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++
++const root = dirname(fileURLToPath(import.meta.url));
++const FIVE_MINUTES = 300000;
++const WEEK = 7 * 86400000;
++const hash = value => createHash('sha256').update(value).digest('hex');
++const token = () => randomBytes(32).toString('base64url');
++const problem = (status, message, code) => Object.assign(new Error(message), { status, code });
++
++export function createApp({ databasePath = process.env.DATABASE_PATH || join(root, 'data', 'accounts.sqlite'), publicOrigin = process.env.PUBLIC_ORIGIN } = {}) {
++  if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true });
++  const db = new DatabaseSync(databasePath);
++  db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
++    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS credentials (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), name TEXT NOT NULL, public_key BLOB NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL, device_type TEXT NOT NULL, backed_up INTEGER NOT NULL, created_at INTEGER NOT NULL, last_used INTEGER);
++    CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id), expires_at INTEGER NOT NULL, verified_at INTEGER NOT NULL DEFAULT 0, pending TEXT);
++  `);
++  const app = express();
++  app.disable('x-powered-by');
++  app.set('trust proxy', 1);
++  app.use(express.json({ limit: '32kb' }));
++  app.use((req, res, next) => {
++    res.set('X-Content-Type-Options', 'nosniff');
++    res.set('Referrer-Policy', 'same-origin');
++    res.set('Permissions-Policy', 'publickey-credentials-create=(self), publickey-credentials-get=(self)');
++    res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://images.unsplash.com data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
++    next();
++  });
++  const attempts = new Map();
++  app.use('/api', (req, res, next) => {
++    res.set('Cache-Control', 'no-store');
++    req.siteOrigin = publicOrigin || `${req.protocol}://${req.get('host')}`;
++    req.rpID = new URL(req.siteOrigin).hostname;
++    if (req.method !== 'GET') {
++      if (req.get('origin') !== req.siteOrigin) return next(problem(403, 'This request must come from this website.'));
++      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return next(problem(400, 'Please send a JSON object.'));
++      const now = Date.now();
++      for (const [key, value] of attempts) if (value.until < now) attempts.delete(key);
++      const bucket = attempts.get(req.ip) || { count: 0, until: now + 900000 };
++      bucket.count++; attempts.set(req.ip, bucket);
++      if (bucket.count > 100) return next(problem(429, 'Too many attempts. Please try again in 15 minutes.'));
++    }
++    const cookie = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('dg_session='))?.slice(11);
++    req.session = cookie && /^[\w-]{43}$/.test(cookie) ? db.prepare('SELECT * FROM sessions WHERE id=? AND expires_at>?').get(hash(cookie), Date.now()) : null;
++    if (!req.session) {
++      db.prepare('DELETE FROM sessions WHERE expires_at<?').run(Date.now());
++      const raw = token();
++      req.session = { id: hash(raw), user_id: null, verified_at: 0, expires_at: Date.now() + WEEK };
++      db.prepare('INSERT INTO sessions(id, expires_at) VALUES (?,?)').run(req.session.id, req.session.expires_at);
++      setCookie(req, res, raw);
++    }
++    next();
++  });
++  function setCookie(req, res, value, maxAge = WEEK) {
++    res.cookie('dg_session', value, { httpOnly: true, secure: req.siteOrigin.startsWith('https:'), sameSite: 'lax', path: '/', maxAge });
++  }
++  function rotate(req, res, userID) {
++    const raw = token();
++    db.prepare('DELETE FROM sessions WHERE id=?').run(req.session.id);
++    db.prepare('INSERT INTO sessions(id,user_id,expires_at,verified_at) VALUES (?,?,?,?)').run(hash(raw), userID, Date.now() + WEEK, Date.now());
++    setCookie(req, res, raw);
++  }
++  function requireUser(req) {
++    if (!req.session.user_id) throw problem(401, 'Sign in to manage your account.');
++    return db.prepare('SELECT * FROM users WHERE id=?').get(req.session.user_id);
++  }
++  function requireRecent(req) {
++    const user = requireUser(req);
++    if (Date.now() - req.session.verified_at > FIVE_MINUTES) throw problem(403, 'Confirm it’s you with your passkey to continue.', 'REAUTH_REQUIRED');
++    return user;
++  }
++  function remember(req, pending) {
++    db.prepare('UPDATE sessions SET pending=? WHERE id=?').run(JSON.stringify({ ...pending, expires: Date.now() + FIVE_MINUTES }), req.session.id);
++  }
++  function consume(req, purpose) {
++    const value = db.prepare('SELECT pending FROM sessions WHERE id=?').get(req.session.id)?.pending;
++    db.prepare('UPDATE sessions SET pending=NULL WHERE id=?').run(req.session.id);
++    const pending = value ? JSON.parse(value) : null;
++    if (!pending || pending.purpose !== purpose || pending.expires < Date.now()) throw problem(400, 'This request has expired. Please try again.');
++    return pending;
++  }
++  const nameValue = value => {
++    if (typeof value !== 'string' || !value.trim() || value.trim().length > 60) throw problem(400, 'Please enter a name between 1 and 60 characters.');
++    return value.trim();
++  };
++  const keys = userID => db.prepare('SELECT id,name,device_type,backed_up,created_at,last_used FROM credentials WHERE user_id=? ORDER BY created_at').all(userID);
++
++  app.get('/api/me', (req, res) => {
++    const user = req.session.user_id ? requireUser(req) : null;
++    res.json({ user, passkeys: user ? keys(user.id) : [], verifiedUntil: req.session.verified_at ? req.session.verified_at + FIVE_MINUTES : 0 });
++  });
++  app.post('/api/registration/options', async (req, res) => {
++    let user;
++    if (req.session.user_id) user = requireRecent(req);
++    else {
++      const name = nameValue(req.body.name);
++      const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
++      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw problem(400, 'Please enter a valid email address.');
++      if (db.prepare('SELECT id FROM users WHERE email=?').get(email)) throw problem(409, 'An account with this email already exists. Sign in with your passkey.');
++      user = { id: token(), name, email };
++    }
++    const keyName = nameValue(req.body.passkeyName || 'My passkey');
++    const existing = db.prepare('SELECT id,transports FROM credentials WHERE user_id=?').all(user.id);
++    if (existing.length >= 10) throw problem(400, 'You can have up to 10 passkeys. Remove an unused one first.');
++    const options = await generateRegistrationOptions({
++      rpName: 'The Daily Grind', rpID: req.rpID, userID: Buffer.from(user.id, 'base64url'), userName: user.email, userDisplayName: user.name,
++      attestationType: 'none', authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
++      supportedAlgorithmIDs: [-7, -257], excludeCredentials: existing.map(k => ({ id: k.id, transports: JSON.parse(k.transports) })),
++    });
++    remember(req, { purpose: 'register', challenge: options.challenge, user, keyName, newAccount: !req.session.user_id });
++    res.json(options);
++  });
++  app.post('/api/registration/verify', async (req, res) => {
++    const pending = consume(req, 'register');
++    if (!pending.newAccount) {
++      const user = requireRecent(req);
++      if (user.id !== pending.user.id) throw problem(403, 'Account changed. Please try again.');
++    }
++    let result;
++    try { result = await verifyRegistrationResponse({ response: req.body, expectedChallenge: pending.challenge, expectedOrigin: req.siteOrigin, expectedRPID: req.rpID, requireUserVerification: true, supportedAlgorithmIDs: [-7, -257] }); }
++    catch { throw problem(400, 'Your passkey could not be verified. Please try again.'); }
++    if (!result.verified) throw problem(400, 'Your passkey could not be verified.');
++    const info = result.registrationInfo;
++    db.exec('BEGIN');
++    try {
++      if (db.prepare('SELECT COUNT(*) AS count FROM credentials WHERE user_id=?').get(pending.user.id).count >= 10) throw problem(400, 'You can have up to 10 passkeys. Remove an unused one first.');
++      if (pending.newAccount) db.prepare('INSERT INTO users(id,name,email,created_at) VALUES (?,?,?,?)').run(pending.user.id, pending.user.name, pending.user.email, Date.now());
++      db.prepare('INSERT INTO credentials VALUES (?,?,?,?,?,?,?,?,?,?)').run(info.credential.id, pending.user.id, pending.keyName, Buffer.from(info.credential.publicKey), info.credential.counter, JSON.stringify(info.credential.transports || []), info.credentialDeviceType, Number(info.credentialBackedUp), Date.now(), null);
++      db.exec('COMMIT');
++    } catch (error) { db.exec('ROLLBACK'); if (error.status) throw error; throw problem(409, 'This account or passkey is already registered. Please sign in.'); }
++    if (pending.newAccount) rotate(req, res, pending.user.id);
++    res.json({ verified: true });
++  });
++  app.post('/api/authentication/options', async (req, res) => {
++    const reauth = req.body.purpose === 'reauth';
++    const user = reauth ? requireUser(req) : null;
++    const credentials = user ? db.prepare('SELECT id,transports FROM credentials WHERE user_id=?').all(user.id) : null;
++    const options = await generateAuthenticationOptions({ rpID: req.rpID, userVerification: 'required', ...(credentials ? { allowCredentials: credentials.map(k => ({ id: k.id, transports: JSON.parse(k.transports) })) } : {}) });
++    remember(req, { purpose: reauth ? 'reauth' : 'login', challenge: options.challenge, userID: user?.id });
++    res.json(options);
++  });
++  app.post('/api/authentication/verify', async (req, res) => {
++    const purpose = req.body.purpose === 'reauth' ? 'reauth' : 'login';
++    const pending = consume(req, purpose);
++    const response = req.body.credential;
++    if (!response || typeof response.id !== 'string') throw problem(400, 'No passkey response was received.');
++    const credential = db.prepare('SELECT * FROM credentials WHERE id=?').get(response.id);
++    if (!credential || (purpose === 'reauth' && (credential.user_id !== pending.userID || credential.user_id !== req.session.user_id))) throw problem(400, 'This passkey does not belong to this account.');
++    if (response.response?.userHandle && response.response.userHandle !== credential.user_id) throw problem(400, 'This passkey does not belong to this account.');
++    let result;
++    try { result = await verifyAuthenticationResponse({ response, expectedChallenge: pending.challenge, expectedOrigin: req.siteOrigin, expectedRPID: req.rpID, requireUserVerification: true, credential: { id: credential.id, publicKey: new Uint8Array(credential.public_key), counter: credential.counter, transports: JSON.parse(credential.transports) } }); }
++    catch { throw problem(400, 'Your passkey could not be verified. Please try again.'); }
++    if (!result.verified) throw problem(400, 'Your passkey could not be verified.');
++    const updated = db.prepare('UPDATE credentials SET counter=?,last_used=?,backed_up=? WHERE id=? AND counter=?').run(result.authenticationInfo.newCounter, Date.now(), Number(result.authenticationInfo.credentialBackedUp), credential.id, credential.counter);
++    if (!updated.changes) throw problem(400, 'This passkey changed during verification. Please try again.');
++    if (purpose === 'reauth') db.prepare('UPDATE sessions SET verified_at=? WHERE id=?').run(Date.now(), req.session.id);
++    else rotate(req, res, credential.user_id);
++    res.json({ verified: true });
++  });
++  app.patch('/api/passkeys/:id', (req, res) => {
++    const user = requireRecent(req);
++    const name = nameValue(req.body.name);
++    const result = db.prepare('UPDATE credentials SET name=? WHERE id=? AND user_id=?').run(name, req.params.id, user.id);
++    if (!result.changes) throw problem(404, 'Passkey not found.');
++    res.json({ updated: true });
++  });
++  app.delete('/api/passkeys/:id', (req, res) => {
++    const user = requireRecent(req);
++    if (!db.prepare('SELECT id FROM credentials WHERE id=? AND user_id=?').get(req.params.id, user.id)) throw problem(404, 'Passkey not found.');
++    if (keys(user.id).length < 2) throw problem(400, 'Add another passkey before removing your last one, so you can still sign in.');
++    db.prepare('DELETE FROM credentials WHERE id=? AND user_id=?').run(req.params.id, user.id);
++    // Removing a credential also ends all other sessions.
++    db.prepare('DELETE FROM sessions WHERE user_id=? AND id!=?').run(user.id, req.session.id);
++    res.json({ removed: true });
++  });
++  app.post('/api/sessions/revoke', (req, res) => {
++    const user = requireRecent(req);
++    const result = db.prepare('DELETE FROM sessions WHERE user_id=? AND id!=?').run(user.id, req.session.id);
++    res.json({ revoked: result.changes });
++  });
++  app.post('/api/logout', (req, res) => {
++    db.prepare('DELETE FROM sessions WHERE id=?').run(req.session.id);
++    setCookie(req, res, '', 0);
++    res.json({ signedOut: true });
++  });
++  app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
++  app.use(express.static(join(root, 'public')));
++  app.get('/', (req, res) => res.sendFile(join(root, 'index.html')));
++  app.use((error, req, res, next) => {
++    if (!error.status) console.error(error);
++    res.status(error.status || 500).json({ error: error.status ? error.message : 'Something went wrong. Please try again.', code: error.code });
++  });
++  app.locals.db = db;
++  return app;
++}
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  createApp().listen(Number(process.env.PORT) || 11222, '0.0.0.0', () => console.log('The Daily Grind is ready'));
++}
+diff --git a/test/passkeys.test.js b/test/passkeys.test.js
+new file mode 100644
+index 0000000..174f7a0
+--- /dev/null
++++ b/test/passkeys.test.js
+@@ -0,0 +1,156 @@
++import { test, before, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
++import { isoCBOR } from '@simplewebauthn/server/helpers';
++import { createApp } from '../server.js';
++
++let app, server, origin;
++before(async () => {
++  app = createApp({ databasePath: ':memory:' });
++  server = app.listen(0, '127.0.0.1');
++  await new Promise(resolve => server.on('listening', resolve));
++  origin = `http://127.0.0.1:${server.address().port}`;
++});
++after(() => { server.close(); app.locals.db.close(); });
++function client() {
++  let cookie = '';
++  return async (path, body, method = body ? 'POST' : 'GET', requestOrigin = origin) => {
++    const response = await fetch(`${origin}/api${path}`, { method, headers: { 'Content-Type': 'application/json', Origin: requestOrigin, Cookie: cookie }, ...(body ? { body: JSON.stringify(body) } : {}) });
++    const setCookie = response.headers.get('set-cookie');
++    if (setCookie) cookie = setCookie.split(';')[0];
++    return { status: response.status, body: await response.json(), headers: response.headers };
++  };
++}
++const sha = value => createHash('sha256').update(value).digest();
++function authenticator() {
++  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
++  const jwk = publicKey.export({ format: 'jwk' });
++  const id = randomBytes(32);
++  const cose = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x, 'base64url')], [-3, Buffer.from(jwk.y, 'base64url')]]));
++  let counter = 0;
++  let userHandle;
++  function clientData(type, challenge, override = {}) { return Buffer.from(JSON.stringify({ type, challenge, origin, crossOrigin: false, ...override })); }
++  function authData(flags, count) {
++    const buffer = Buffer.alloc(37);
++    sha('127.0.0.1').copy(buffer); buffer[32] = flags; buffer.writeUInt32BE(count, 33); return buffer;
++  }
++  return {
++    id: id.toString('base64url'),
++    register(options, override = {}) {
++      userHandle = options.user.id;
++      const size = Buffer.alloc(2); size.writeUInt16BE(id.length);
++      const data = Buffer.concat([authData(0x45, 0), Buffer.alloc(16), size, id, Buffer.from(cose)]);
++      const attestation = isoCBOR.encode(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', data]]));
++      return { id: id.toString('base64url'), rawId: id.toString('base64url'), type: 'public-key', response: { clientDataJSON: clientData('webauthn.create', options.challenge, override).toString('base64url'), attestationObject: Buffer.from(attestation).toString('base64url'), transports: ['internal'] }, clientExtensionResults: {}, authenticatorAttachment: 'platform' };
++    },
++    authenticate(options, { flags = 5, counterValue = ++counter, ...override } = {}) {
++      const data = authData(flags, counterValue);
++      const client = clientData('webauthn.get', options.challenge, override);
++      const signature = sign('sha256', Buffer.concat([data, sha(client)]), privateKey);
++      return { id: id.toString('base64url'), rawId: id.toString('base64url'), type: 'public-key', response: { authenticatorData: data.toString('base64url'), clientDataJSON: client.toString('base64url'), signature: signature.toString('base64url'), userHandle }, clientExtensionResults: {} };
++    },
++  };
++}
++async function register(request, auth, email, name = 'First key') {
++  const options = await request('/registration/options', { name: 'Alex Morgan', email, passkeyName: name });
++  assert.equal(options.status, 200);
++  const verification = await request('/registration/verify', auth.register(options.body));
++  assert.equal(verification.status, 200, JSON.stringify(verification.body));
++  return (await request('/me')).body;
++}
++
++test('registration, authentication, reauthentication and passkey management work with real signed WebAuthn responses', async () => {
++  const browser = client(), key = authenticator();
++  const guest = await browser('/me');
++  assert.equal(guest.body.user, null);
++  assert.match(guest.headers.get('set-cookie'), /HttpOnly/);
++  const registered = await register(browser, key, 'alex@example.com');
++  assert.equal(registered.user.name, 'Alex Morgan');
++  assert.equal(registered.passkeys.length, 1);
++  assert.equal(registered.passkeys[0].name, 'First key');
++  const firstSession = app.locals.db.prepare('SELECT id FROM sessions WHERE user_id=?').get(registered.user.id).id;
++  const noDelete = await browser(`/passkeys/${key.id}`, {}, 'DELETE');
++  assert.equal(noDelete.status, 400);
++
++  const loginBrowser = client();
++  const options = (await loginBrowser('/authentication/options', {})).body;
++  assert.equal(options.userVerification, 'required');
++  const login = await loginBrowser('/authentication/verify', { credential: key.authenticate(options), purpose: 'login' });
++  assert.equal(login.status, 200, JSON.stringify(login.body));
++  assert.equal((await loginBrowser('/me')).body.user.id, registered.user.id);
++  assert.equal((await loginBrowser('/authentication/verify', { credential: key.authenticate(options), purpose: 'login' })).status, 400, 'Challenge cannot be replayed');
++
++  app.locals.db.prepare('UPDATE sessions SET verified_at=0 WHERE user_id=?').run(registered.user.id);
++  const denied = await browser(`/passkeys/${key.id}`, { name: 'Laptop' }, 'PATCH');
++  assert.equal(denied.body.code, 'REAUTH_REQUIRED');
++  const reauthOptions = (await browser('/authentication/options', { purpose: 'reauth' })).body;
++  assert.equal(reauthOptions.allowCredentials[0].id, key.id);
++  assert.equal((await browser('/authentication/verify', { purpose: 'reauth', credential: key.authenticate(reauthOptions) })).status, 200);
++  assert.equal((await browser(`/passkeys/${key.id}`, { name: 'Laptop' }, 'PATCH')).status, 200);
++
++  const backup = authenticator();
++  const options2 = (await browser('/registration/options', { passkeyName: 'Backup key' })).body;
++  assert.equal(options2.excludeCredentials[0].id, key.id);
++  assert.equal((await browser('/registration/verify', backup.register(options2))).status, 200);
++  assert.equal((await browser('/me')).body.passkeys.length, 2);
++  assert.equal((await browser(`/passkeys/${backup.id}`, {}, 'DELETE')).status, 200);
++  assert.equal((await loginBrowser('/me')).body.user, null, 'Removing a key revokes other sessions');
++  assert.ok(app.locals.db.prepare('SELECT id FROM sessions WHERE id=?').get(firstSession));
++  assert.equal((await browser('/logout', {})).status, 200);
++  assert.equal((await browser('/me')).body.user, null);
++});
++
++test('rejects cross-origin writes, unauthenticated management, expired and mismatched ceremonies', async () => {
++  const request = client();
++  assert.equal((await request('/registration/options', { name: 'Bad', email: 'bad@example.com' }, 'POST', 'https://evil.example')).status, 403);
++  assert.equal((await request('/authentication/options', { purpose: 'reauth' })).status, 401);
++  assert.equal((await request('/sessions/revoke', {})).status, 401);
++  assert.equal((await request('/passkeys/unknown', { name: 'No' }, 'PATCH')).status, 401);
++  assert.equal((await request('/registration/options', { name: 'Valid', email: 'invalid' })).status, 400);
++  const key = authenticator();
++  const options = (await request('/registration/options', { name: 'Bad Origin', email: 'origin@example.com' })).body;
++  assert.equal((await request('/registration/verify', key.register(options, { origin: 'https://evil.example' }))).status, 400);
++  assert.equal((await request('/registration/verify', key.register(options))).status, 400, 'Failed challenge is consumed');
++  const moreOptions = (await request('/registration/options', { name: 'Expired', email: 'expired@example.com' })).body;
++  app.locals.db.exec("UPDATE sessions SET pending=json_set(pending, '$.expires', 0) WHERE user_id IS NULL AND pending IS NOT NULL");
++  assert.equal((await request('/registration/verify', key.register(moreOptions))).status, 400);
++  assert.equal(app.locals.db.prepare('SELECT COUNT(*) AS count FROM users').get().count, 1, 'Failed registrations never create accounts');
++});
++
++test('enforces ownership, valid signatures, user verification, counters, and session revocation', async () => {
++  const alice = client(), bob = client();
++  const aliceKey = authenticator(), bobKey = authenticator();
++  const aliceAccount = await register(alice, aliceKey, 'alice@example.com');
++  await register(bob, bobKey, 'bob@example.com');
++  assert.equal((await bob(`/passkeys/${aliceKey.id}`, { name: 'Hacked' }, 'PATCH')).status, 404);
++  const bobOptions = (await bob('/authentication/options', { purpose: 'reauth' })).body;
++  assert.equal((await bob('/authentication/verify', { purpose: 'reauth', credential: aliceKey.authenticate(bobOptions) })).status, 400);
++  const attacker = client();
++  const options = (await attacker('/authentication/options', {})).body;
++  const bad = aliceKey.authenticate(options);
++  bad.response.signature = randomBytes(70).toString('base64url');
++  assert.equal((await attacker('/authentication/verify', { credential: bad })).status, 400);
++  const noUVOptions = (await attacker('/authentication/options', {})).body;
++  assert.equal((await attacker('/authentication/verify', { credential: aliceKey.authenticate(noUVOptions, { flags: 1 }) })).status, 400);
++  const validOptions = (await attacker('/authentication/options', {})).body;
++  assert.equal((await attacker('/authentication/verify', { credential: aliceKey.authenticate(validOptions, { counterValue: 20 }) })).status, 200);
++  const replayOptions = (await attacker('/authentication/options', {})).body;
++  assert.equal((await attacker('/authentication/verify', { credential: aliceKey.authenticate(replayOptions, { counterValue: 19 }) })).status, 400);
++  const revoked = await alice('/sessions/revoke', {});
++  assert.equal(revoked.body.revoked, 1);
++  assert.equal((await attacker('/me')).body.user, null);
++  assert.equal((await alice('/me')).body.user.id, aliceAccount.user.id);
++});
++
++test('serves the account interface and stylesheet with security headers', async () => {
++  const page = await fetch(origin);
++  assert.equal(page.status, 200);
++  assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
++  const html = await page.text();
++  assert.match(html, /Sign-in &amp; security|Sign-in & security/);
++  assert.match(html, /Create a passkey/);
++  assert.match(html, /role="tablist"/);
++  const styles = await fetch(`${origin}/styles.css`);
++  assert.equal(styles.status, 200);
++  assert.match(styles.headers.get('content-type'), /text\/css/);
++});

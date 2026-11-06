@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #feature.tour-active {
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --rewards-link;
++      position-area: bottom;
++      position-try-fallbacks: bottom span-left, bottom span-right;
++      inset: auto;
++      margin: 14px 0 0;
++      width: max-content;
++      max-width: min(280px, calc(100vw - 24px));
++      padding: 16px 18px;
++      border: none;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      font-size: 0.9rem;
++      overflow: visible;
++    }
++
++    #tour-step::before {
++      content: "";
++      position: absolute;
++      top: -7px;
++      left: calc(50% - 7px);
++      width: 14px;
++      height: 14px;
++      background: white;
++      transform: rotate(45deg);
++    }
++
++    #tour-step h4 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    #tour-step button {
++      margin-top: 12px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 6px 14px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,14 +222,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-step-title">
++    <h4 id="tour-step-title">New: Daily Grind Rewards</h4>
++    <p>Earn points on every purchase and redeem them for free drinks and treats.</p>
++    <button type="button" id="tour-step-close">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +273,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var link = document.getElementById('feature');
++      var step = document.getElementById('tour-step');
++      var closeBtn = document.getElementById('tour-step-close');
++      var supportsAnchor = window.CSS && CSS.supports('anchor-name: --a');
++      var supportsPopover = typeof step.showPopover === 'function';
++      var open = false;
++      var frame = null;
++
++      // Fallback for browsers without CSS anchor positioning: follow the link every frame.
++      function track() {
++        var r = link.getBoundingClientRect();
++        var w = step.offsetWidth;
++        var left = Math.min(Math.max(r.left + r.width / 2 - w / 2, 12), window.innerWidth - w - 12);
++        step.style.top = r.bottom + 'px';
++        step.style.left = left + 'px';
++        frame = requestAnimationFrame(track);
++      }
++
++      function show() {
++        open = true;
++        link.classList.add('tour-active');
++        if (supportsPopover) {
++          step.showPopover();
++        } else {
++          step.style.display = 'block';
++          step.style.zIndex = '2000';
++        }
++        if (!supportsAnchor) track();
++      }
++
++      function hide() {
++        open = false;
++        link.classList.remove('tour-active');
++        if (supportsPopover) {
++          step.hidePopover();
++        } else {
++          step.style.display = 'none';
++        }
++        if (frame) cancelAnimationFrame(frame);
++        frame = null;
++      }
++
++      // Keep the user on the page while the tour is showing.
++      link.addEventListener('click', function (e) {
++        if (open) e.preventDefault();
++      });
++
++      closeBtn.addEventListener('click', hide);
++
++      show();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,130 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert: dismiss button toggles a hidden popover used as a CSS-only
++       state flag; the alert collapses via a 1fr -> 0fr grid-row transition. */
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, opacity 0.3s ease, visibility 0s;
++    }
++
++    #promo-alert .alert-inner {
++      min-height: 0;
++      overflow: hidden;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      padding: 0.6rem 5%;
++      transition: padding 0.4s ease;
++    }
++
++    #alert-dismiss {
++      background: none;
++      border: 0;
++      font-size: 1.5rem;
++      line-height: 1;
++      color: inherit;
++      cursor: pointer;
++    }
++
++    #alert-state {
++      display: none;
++    }
++
++    body:has(#alert-state:popover-open) #promo-alert {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      transition: grid-template-rows 0.4s ease, opacity 0.3s ease, visibility 0s 0.4s;
++    }
++
++    body:has(#alert-state:popover-open) #promo-alert .alert-inner {
++      padding-block: 0;
++    }
++
++    /* FAQ accordion (native <details>, animated with ::details-content) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    .faq {
++      max-width: 700px;
++      margin: 40px auto 0;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+";
++      font-size: 1.4rem;
++      transition: transform 0.35s ease;
++    }
++
++    .faq[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    .faq::details-content {
++      block-size: 0;
++      overflow: clip;
++      opacity: 0;
++      transition: block-size 0.35s ease, opacity 0.35s ease, content-visibility 0.35s allow-discrete;
++    }
++
++    .faq[open]::details-content {
++      block-size: auto;
++      opacity: 1;
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #promo-alert .alert-inner,
++      #faq-trigger::after,
++      .faq::details-content {
++        transition-duration: 0s !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="alert-state" popover="manual"></div>
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="alert-inner">
++      <span>Free pastry with any large drink this week!</span>
++      <button id="alert-dismiss" type="button" popovertarget="alert-state" popovertargetaction="show"
++        aria-label="Dismiss promotion">&times;</button>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +311,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">FAQ</h2>
++      <details class="faq">
++        <summary id="faq-trigger">Do you offer plant-based milk?</summary>
++        <div id="faq-content">
++          <p>Yes! Oat, almond, and soy milk are available for every drink at no extra charge.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

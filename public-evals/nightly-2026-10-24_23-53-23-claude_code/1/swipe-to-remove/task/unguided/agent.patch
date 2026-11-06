@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shopping Cart */
++    .cart {
++      margin-top: 60px;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 600px;
++      margin: 20px auto 0;
++    }
++
++    .SwipeableList-item {
++      position: relative;
++      overflow: hidden;
++      background: #c62828;
++      border-radius: 8px;
++      margin-bottom: 10px;
++      transition: height 0.3s ease, margin 0.3s ease, opacity 0.3s ease;
++    }
++
++    .SwipeableList-item.is-armed {
++      background: #b71c1c;
++    }
++
++    .SwipeableList-item::after {
++      content: 'Remove';
++      position: absolute;
++      top: 50%;
++      right: 20px;
++      transform: translateY(-50%);
++      color: white;
++      font-weight: bold;
++      opacity: 0;
++      transition: opacity 0.2s;
++      pointer-events: none;
++    }
++
++    .SwipeableList-item.is-swiping::after {
++      opacity: 1;
++    }
++
++    .SwipeableList-item.is-removing {
++      height: 0;
++      margin-bottom: 0;
++      opacity: 0;
++    }
++
++    .SwipeableList-track {
++      position: relative;
++      z-index: 1;
++      touch-action: pan-y;
++      user-select: none;
++      cursor: grab;
++      transition: transform 0.25s ease;
++    }
++
++    .SwipeableList-track.is-dragging {
++      transition: none;
++      cursor: grabbing;
++    }
++
++    .SwipeableList-content {
++      background: white;
++      padding: 16px 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .SwipeableList-content span {
++      font-size: 0.85rem;
++      color: #8d6e63;
++    }
++
++    .cart-empty {
++      text-align: center;
++      color: #8d6e63;
++      margin-top: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +275,105 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart">
++      <h2 style="text-align: center;">Shopping Cart</h2>
++      <ul class="SwipeableList">
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">Maple Oat Latte <span>Swipe to remove</span></div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">Dark Roast Espresso <span>Swipe to remove</span></div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">Cold Brew <span>Swipe to remove</span></div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-empty" hidden>Your cart is empty.</p>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      var THRESHOLD = 0.4; // fraction of item width that triggers removal
++      var list = document.querySelector('.SwipeableList');
++      var empty = document.querySelector('.cart-empty');
++
++      function collapse(item) {
++        item.style.height = item.offsetHeight + 'px';
++        item.offsetHeight; // force reflow so the height transition starts from here
++        item.classList.add('is-removing');
++        var done = false;
++        function finish() {
++          if (done) return;
++          done = true;
++          item.remove();
++          empty.hidden = list.children.length > 0;
++        }
++        item.addEventListener('transitionend', function (e) {
++          if (e.propertyName === 'height') finish();
++        });
++        setTimeout(finish, 600); // fallback if transitionend never fires
++      }
++
++      function setup(item) {
++        var track = item.querySelector('.SwipeableList-track');
++        var startX = 0, startY = 0, dx = 0, pointerId = null, dragging = false;
++
++        track.addEventListener('pointerdown', function (e) {
++          if (pointerId !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
++          pointerId = e.pointerId;
++          startX = e.clientX;
++          startY = e.clientY;
++          dx = 0;
++          dragging = false;
++        });
++
++        track.addEventListener('pointermove', function (e) {
++          if (e.pointerId !== pointerId) return;
++          var mx = e.clientX - startX;
++          if (!dragging) {
++            if (Math.abs(mx) < 6 || Math.abs(mx) < Math.abs(e.clientY - startY)) return;
++            dragging = true;
++            track.setPointerCapture(pointerId);
++            track.classList.add('is-dragging');
++            item.classList.add('is-swiping');
++          }
++          dx = mx;
++          track.style.transform = 'translateX(' + dx + 'px)';
++          item.classList.toggle('is-armed', Math.abs(dx) > item.offsetWidth * THRESHOLD);
++        });
++
++        function end(e) {
++          if (e.pointerId !== pointerId) return;
++          pointerId = null;
++          if (!dragging) return;
++          dragging = false;
++          track.classList.remove('is-dragging');
++          if (e.type !== 'pointercancel' && Math.abs(dx) > item.offsetWidth * THRESHOLD) {
++            track.style.transform = 'translateX(' + (dx < 0 ? '-100%' : '100%') + ')';
++            collapse(item);
++          } else {
++            track.style.transform = '';
++            item.classList.remove('is-swiping', 'is-armed');
++          }
++        }
++        track.addEventListener('pointerup', end);
++        track.addEventListener('pointercancel', end);
++      }
++
++      list.querySelectorAll('.SwipeableList-item').forEach(setup);
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

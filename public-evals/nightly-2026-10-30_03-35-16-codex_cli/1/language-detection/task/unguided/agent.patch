@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 40px;
++      padding: 28px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .feedback label {
++      display: block;
++      margin: 20px 0 8px;
++      font-weight: 600;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      min-height: 130px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++      background: var(--light);
++      font: inherit;
++      resize: vertical;
++    }
++
++    .feedback textarea:focus-visible,
++    .feedback button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .feedback button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .feedback button:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .feedback-status {
++      margin-top: 16px;
++    }
++
++    .feedback progress {
++      width: 100%;
++      margin-top: 8px;
++      accent-color: var(--primary);
++    }
++
++    .feedback-result {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-left: 3px solid var(--accent);
++      background: var(--light);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +260,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Share your feedback</h2>
++      <p>Tell us what's on your mind, in any language. Detect the language of your message with your browser's built-in AI.</p>
++      <form id="feedback-form">
++        <label for="feedback-message">Your message</label>
++        <textarea id="feedback-message" name="message" placeholder="How was your Daily Grind experience?" required></textarea>
++        <button class="btn" id="detect-button" type="submit" disabled>Detect</button>
++      </form>
++      <p class="feedback-status" id="detection-status" role="status">Checking language detection availability…</p>
++      <progress id="model-progress" max="100" value="0" aria-label="Language model download" hidden></progress>
++      <p class="feedback-result" id="detection-result" role="status" hidden></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +285,109 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.querySelector('#feedback-form');
++    const message = document.querySelector('#feedback-message');
++    const button = document.querySelector('#detect-button');
++    const status = document.querySelector('#detection-status');
++    const progress = document.querySelector('#model-progress');
++    const result = document.querySelector('#detection-result');
++    let detector;
++    let availability;
++
++    async function checkAvailability() {
++      if (!('LanguageDetector' in window)) {
++        status.textContent = 'Language detection is not supported in this browser. Try a browser with built-in language detection enabled.';
++        return;
++      }
++
++      try {
++        availability = await LanguageDetector.availability();
++        if (availability === 'unavailable') {
++          status.textContent = 'Language detection is unavailable on this device or is blocked by your browser settings.';
++          return;
++        }
++        status.textContent = availability === 'available'
++          ? 'Ready to detect. Your message is processed on your device.'
++          : 'The language model needs to download. Click Detect to continue.';
++        button.disabled = false;
++      } catch (error) {
++        status.textContent = 'Unable to check language detection availability. Reload the page to try again.';
++      }
++    }
++
++    message.addEventListener('input', () => {
++      message.setCustomValidity('');
++      result.hidden = true;
++    });
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const text = message.value.trim();
++      if (!text) {
++        message.setCustomValidity('Please enter a message to detect its language.');
++        message.reportValidity();
++        return;
++      }
++
++      button.disabled = true;
++      form.setAttribute('aria-busy', 'true');
++      result.hidden = true;
++      progress.hidden = true;
++      try {
++        if (!detector) {
++          if (availability === 'downloadable' || availability === 'downloading') {
++            progress.value = 0;
++            progress.hidden = false;
++            status.textContent = 'Downloading language model: 0%';
++          } else {
++            status.textContent = 'Preparing language detection…';
++          }
++          // Create from the user's click so the browser can authorize a download.
++          detector = await LanguageDetector.create({
++            monitor(monitor) {
++              monitor.addEventListener('downloadprogress', (event) => {
++                const percentage = Math.round(Math.min(1, Math.max(0, event.loaded)) * 100);
++                progress.hidden = false;
++                progress.value = percentage;
++                status.textContent = `Downloading language model: ${percentage}%`;
++              });
++            },
++          });
++        }
++        progress.hidden = true;
++        status.textContent = 'Detecting language…';
++        const languages = await detector.detect(text);
++        const best = [...languages].sort((a, b) => b.confidence - a.confidence)[0];
++        if (!best || best.detectedLanguage === 'und') {
++          status.textContent = 'The language could not be identified. Try a longer message in one language.';
++          return;
++        }
++
++        let languageName = best.detectedLanguage;
++        try {
++          languageName = new Intl.DisplayNames(['en'], { type: 'language' }).of(best.detectedLanguage);
++        } catch {
++          // Keep the language code if display names are not supported.
++        }
++        const confidence = new Intl.NumberFormat('en', {
++          style: 'percent', maximumFractionDigits: 1,
++        }).format(best.confidence);
++        result.textContent = `Language: ${languageName} · AI confidence: ${confidence}`;
++        result.hidden = false;
++        status.textContent = 'Detection complete. Short or mixed-language messages may be less reliable.';
++      } catch (error) {
++        status.textContent = 'Language detection failed. Please try again. If a download was needed, check your connection and browser settings.';
++      } finally {
++        progress.hidden = true;
++        button.disabled = false;
++        form.removeAttribute('aria-busy');
++      }
++    });
++
++    checkAvailability();
++  </script>
+ </body>
+ 
+ </html>

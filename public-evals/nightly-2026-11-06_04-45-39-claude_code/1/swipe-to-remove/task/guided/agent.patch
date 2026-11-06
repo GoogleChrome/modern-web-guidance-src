@@ -1,0 +1,426 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,17 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,8 +160,177 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shopping Cart: swipe-to-remove list */
++    .cart {
++      margin-top: 50px;
++    }
++
++    .cart h2 {
++      text-align: center;
++    }
++
++    .cart-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .cart-empty {
++      text-align: center;
++      padding: 20px;
++      color: #6d4c41;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 600px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .SwipeableList-item {
++      /* Containing block for the action icons + clips during collapse. */
++      contain: content;
++    }
++
++    /* The track only becomes a snap container once JS adds .is-initialized. */
++    .SwipeableList-item.is-initialized .SwipeableList-track {
++      display: grid;
++      grid-template-columns: 100% 100% 100%;
++      overflow: scroll clip;
++      overscroll-behavior-x: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-track::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Spacers: snap targets that carry the action (delete) color. */
++    .SwipeableList-item.is-initialized .SwipeableList-track::before,
++    .SwipeableList-item.is-initialized .SwipeableList-track::after {
++      content: '';
++      scroll-snap-align: start;
++      background-color: #c62828;
++    }
++
++    .SwipeableList-content {
++      position: relative;
++      z-index: 2;
++      scroll-snap-align: start;
++      background: white;
++      border-bottom: 1px solid #eee;
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      padding: 14px 20px;
++    }
++
++    .SwipeableList-item:last-child .SwipeableList-content {
++      border-bottom: none;
++    }
++
++    .SwipeableList-item.is-initialized .SwipeableList-content {
++      scroll-initial-target: nearest;
++    }
++
++    .SwipeableList-track:focus-visible .SwipeableList-content {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .cart-item-thumb {
++      width: 56px;
++      height: 56px;
++      border-radius: 6px;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    .cart-item-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .cart-item-info h3 {
++      font-size: 1rem;
++      color: var(--primary);
++    }
++
++    .cart-item-info p {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .cart-item-price {
++      font-weight: bold;
++    }
++
++    .cart-item-remove {
++      background: none;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      color: var(--primary);
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.8rem;
++      padding: 4px 10px;
++    }
++
++    .cart-item-remove:hover,
++    .cart-item-remove:focus-visible {
++      background: #c62828;
++      border-color: #c62828;
++      color: white;
++    }
++
++    /* Trash icons painted on the list item, behind the content. */
++    .SwipeableList-item.is-initialized::before,
++    .SwipeableList-item.is-initialized::after {
++      content: '';
++      position: absolute;
++      z-index: 1;
++      width: 1.5em;
++      aspect-ratio: 1;
++      top: 50%;
++      translate: 0 -50%;
++      transition: scale 0.2s ease, opacity 0.2s ease;
++      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9zm0 5h2v9H9V8zm4 0h2v9h-2V8z'/></svg>") center / contain no-repeat;
++    }
++
++    .SwipeableList-item.is-initialized::before { left: 1.5em; }
++    .SwipeableList-item.is-initialized::after { right: 1.5em; }
++
++    .SwipeableList-item.is-activating::before,
++    .SwipeableList-item.is-activating::after {
++      scale: 1.333;
++    }
++
++    .SwipeableList-item.is-removing::before,
++    .SwipeableList-item.is-removing::after {
++      scale: 0.5;
++      opacity: 0;
++    }
++
++    .SwipeableList-item.is-activating[data-swipe-direction="left"]::after,
++    .SwipeableList-item.is-activating[data-swipe-direction="right"]::before {
++      visibility: hidden;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .SwipeableList-item.is-initialized::before,
++      .SwipeableList-item.is-initialized::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +372,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart" aria-labelledby="cart-heading">
++      <h2 id="cart-heading" tabindex="-1">Your Cart</h2>
++      <p class="cart-hint">Swipe an item left or right to remove it.</p>
++      <ul class="SwipeableList" id="cart-list">
++        <li id="cart-maple-oat-latte" class="SwipeableList-item" data-price="5.25">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Maple Oat Latte. Swipe left or right to remove.">
++            <div class="SwipeableList-content">
++              <img class="cart-item-thumb" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=120&h=120&q=70" alt="" width="56" height="56" loading="lazy">
++              <div class="cart-item-info">
++                <h3>Maple Oat Latte</h3>
++                <p>Oat milk, Vermont maple · 12 oz</p>
++              </div>
++              <span class="cart-item-price">$5.25</span>
++              <button type="button" class="cart-item-remove" aria-label="Remove Maple Oat Latte from cart">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li id="cart-dark-roast-espresso" class="SwipeableList-item" data-price="3.50">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Dark Roast Espresso. Swipe left or right to remove.">
++            <div class="SwipeableList-content">
++              <img class="cart-item-thumb" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=120&h=120&q=70" alt="" width="56" height="56" loading="lazy">
++              <div class="cart-item-info">
++                <h3>Dark Roast Espresso</h3>
++                <p>Double shot</p>
++              </div>
++              <span class="cart-item-price">$3.50</span>
++              <button type="button" class="cart-item-remove" aria-label="Remove Dark Roast Espresso from cart">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li id="cart-cold-brew" class="SwipeableList-item" data-price="4.75">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Cold Brew. Swipe left or right to remove.">
++            <div class="SwipeableList-content">
++              <img class="cart-item-thumb" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=120&h=120&q=70" alt="" width="56" height="56" loading="lazy">
++              <div class="cart-item-info">
++                <h3>Cold Brew</h3>
++                <p>18-hour steep · 16 oz</p>
++              </div>
++              <span class="cart-item-price">$4.75</span>
++              <button type="button" class="cart-item-remove" aria-label="Remove Cold Brew from cart">Remove</button>
++            </div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-empty" id="cart-empty" hidden>Your cart is empty.</p>
++      <p class="sr-only" id="cart-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +432,169 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++      const needsScrollWorkaround = !CSS.supports('scroll-initial-target', 'nearest');
++      const statusEl = document.getElementById('cart-status');
++      const emptyEl = document.getElementById('cart-empty');
++
++      const swipeObservers = new WeakMap();
++
++      // Keeps the track scrolled to the content column in browsers without
++      // scroll-initial-target (Safari resets snap position on resize).
++      const trackResizeObserver = needsScrollWorkaround
++        ? new ResizeObserver((entries) => {
++            for (const entry of entries) {
++              entry.target.scrollLeft = entry.target.clientWidth;
++            }
++          })
++        : null;
++
++      // Lazily wire up items as they enter the viewport; pause offscreen ones.
++      const viewportObserver = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          const item = entry.target;
++          if (entry.isIntersecting) {
++            const handle = swipeObservers.get(item) ?? setupItem(item);
++            handle.observer.observe(handle.content);
++          } else {
++            const handle = swipeObservers.get(item);
++            if (handle) handle.observer.unobserve(handle.content);
++          }
++        }
++      });
++
++      function detach(item) {
++        const handle = swipeObservers.get(item);
++        viewportObserver.unobserve(item);
++        if (handle) {
++          handle.observer.disconnect();
++          if (needsScrollWorkaround) trackResizeObserver.unobserve(handle.track);
++        }
++      }
++
++      function setupItem(item) {
++        const track = item.querySelector('.SwipeableList-track');
++        const content = track.querySelector('.SwipeableList-content');
++
++        item.classList.add('is-initialized');
++
++        // Must run after .is-initialized and before the inner observer attaches,
++        // otherwise the initial scroll would register as a swipe.
++        if (needsScrollWorkaround) {
++          track.scrollLeft = track.clientWidth;
++          trackResizeObserver.observe(track);
++        }
++
++        const activateThreshold = 0.8;
++        const commitThreshold = 0.2;
++
++        const observer = new IntersectionObserver((entries) => {
++          const entry = entries.at(-1);
++          const ratio = entry.intersectionRatio;
++          const direction = (entry.boundingClientRect.x - entry.rootBounds.x) > 0
++            ? 'left'
++            : 'right';
++
++          if (ratio < commitThreshold) {
++            detach(item);
++            removeItem(item, content, direction, entry.boundingClientRect, entry.rootBounds);
++            return;
++          }
++
++          item.classList.toggle('is-activating', ratio < activateThreshold);
++
++          if (entry.boundingClientRect.x !== entry.rootBounds.x) {
++            item.dataset.swipeDirection = direction;
++          }
++        }, {
++          root: track,
++          threshold: [commitThreshold, activateThreshold],
++        });
++
++        const handle = { observer, content, track };
++        swipeObservers.set(item, handle);
++        return handle;
++      }
++
++      async function removeItem(item, content, direction, rect, rootBounds) {
++        if (item.classList.contains('is-removing')) return;
++
++        const opts = {
++          duration: reducedMotion.matches ? 0 : 300,
++          easing: 'ease',
++          fill: 'forwards',
++        };
++        const x = rect.x - rootBounds.x;
++        const translate = direction === 'left' ? rect.width - x : -(x + rect.width);
++
++        // Show the action color while the row collapses.
++        item.dataset.swipeDirection = direction;
++        item.classList.add('is-activating', 'is-removing');
++        item.animate([{ height: `${rect.height}px` }, { height: '0px' }], opts);
++        content.animate([{ translate: `${translate}px` }], opts);
++        await Promise.allSettled(
++          item.getAnimations({ subtree: true }).map((a) => a.finished),
++        );
++
++        const name = item.querySelector('h3')?.textContent ?? 'Item';
++        const list = item.parentElement;
++
++        // Safari scroll-latching bug: defer DOM removal until momentum settles.
++        if (globalThis.GestureEvent) {
++          item.inert = true;
++          setTimeout(() => { item.remove(); updateEmptyState(list); }, 5000);
++        } else {
++          item.remove();
++        }
++
++        statusEl.textContent = `${name} removed from cart.`;
++        updateEmptyState(list);
++      }
++
++      function updateEmptyState(list) {
++        const remaining = list.querySelectorAll('.SwipeableList-item:not(.is-removing)').length;
++        emptyEl.hidden = remaining > 0;
++      }
++
++      function setupList(list) {
++        for (const item of list.children) {
++          if (item.matches('.SwipeableList-item')) viewportObserver.observe(item);
++        }
++
++        new MutationObserver((mutations) => {
++          for (const mutation of mutations) {
++            for (const node of mutation.addedNodes) {
++              if (node.nodeType === Node.ELEMENT_NODE && node.matches('.SwipeableList-item')) {
++                viewportObserver.observe(node);
++              }
++            }
++          }
++        }).observe(list, { childList: true });
++
++        // Accessible alternative to the swipe gesture.
++        list.addEventListener('click', (event) => {
++          const button = event.target.closest('.cart-item-remove');
++          if (!button) return;
++          const item = button.closest('.SwipeableList-item');
++          const track = item.querySelector('.SwipeableList-track');
++          const content = item.querySelector('.SwipeableList-content');
++
++          // Move focus to a sensible neighbour before the row disappears.
++          const next = item.nextElementSibling ?? item.previousElementSibling;
++          (next?.querySelector('.SwipeableList-track') ?? document.getElementById('cart-heading')).focus();
++
++          detach(item);
++          removeItem(item, content, 'right', content.getBoundingClientRect(), track.getBoundingClientRect());
++        });
++      }
++
++      document.querySelectorAll('.SwipeableList').forEach(setupList);
++    })();
++  </script>
+ </body>
+ 
+ </html>

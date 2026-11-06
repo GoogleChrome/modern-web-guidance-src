@@ -1,0 +1,639 @@
+diff --git a/package.json b/package.json
+index 2e1f2e8..61b4f58 100644
+--- a/package.json
++++ b/package.json
+@@ -5,6 +5,7 @@
+   "scripts": {
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
++    "build:wasm": "em++ -O3 -ffast-math src/wasm/smallpt.cpp -o public/smallpt.wasm --no-entry -s STANDALONE_WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=33554432 -s EXPORTED_FUNCTIONS='[\"_reset_scene_colors\",\"_randomize_scene_colors\",\"_set_sphere_color\",\"_get_sphere_color_channel\",\"_init_renderer\",\"_render_pass\",\"_render_smallpt\",\"_get_rgba_buffer\",\"_get_total_spp\"]'",
+     "build": "astro build",
+     "preview": "astro preview",
+     "astro": "astro"
+diff --git a/public/smallpt.wasm b/public/smallpt.wasm
+new file mode 100755
+index 0000000..6dbf450
+Binary files /dev/null and b/public/smallpt.wasm differ
+diff --git a/src/components/SmallptPathTracer.tsx b/src/components/SmallptPathTracer.tsx
+new file mode 100644
+index 0000000..5000124
+--- /dev/null
++++ b/src/components/SmallptPathTracer.tsx
+@@ -0,0 +1,340 @@
++import React, { useEffect, useRef, useState, useCallback } from 'react';
++
++interface SphereColorInfo {
++  index: number;
++  name: string;
++  role: string;
++  rgb: [number, number, number];
++}
++
++interface SmallptWasmExports {
++  memory: WebAssembly.Memory;
++  _initialize?: () => void;
++  reset_scene_colors: () => void;
++  randomize_scene_colors: (seed: number) => void;
++  set_sphere_color: (index: number, r: number, g: number, b: number) => void;
++  get_sphere_color_channel: (index: number, channel: number) => number;
++  init_renderer: (w: number, h: number, seed: number) => void;
++  render_pass: (sampsPerSubpixel: number) => number;
++  render_smallpt: (w: number, h: number, totalSpp: number, seed: number) => number;
++  get_rgba_buffer: () => number;
++  get_total_spp: () => number;
++}
++
++const SPHERE_METADATA: { index: number; name: string; role: string }[] = [
++  { index: 0, name: 'Left Wall Sphere', role: 'Diffuse (1e5 rad)' },
++  { index: 1, name: 'Right Wall Sphere', role: 'Diffuse (1e5 rad)' },
++  { index: 2, name: 'Back Wall Sphere', role: 'Diffuse (1e5 rad)' },
++  { index: 4, name: 'Floor Sphere', role: 'Diffuse (1e5 rad)' },
++  { index: 6, name: 'Mirror Sphere', role: 'Specular (16.5 rad)' },
++  { index: 7, name: 'Glass Sphere', role: 'Refractive (16.5 rad)' },
++];
++
++const RENDER_WIDTH = 320;
++const RENDER_HEIGHT = 240;
++const TARGET_PASSES = 6; // 6 passes * 4 subpixel samples = 24 spp progressive convergence
++
++const toHex = (r: number, g: number, b: number) => {
++  const clampByte = (v: number) => Math.max(0, Math.min(255, Math.round(Math.pow(Math.max(0, Math.min(1, v)), 1 / 2.2) * 255)));
++  return (
++    '#' +
++    [clampByte(r), clampByte(g), clampByte(b)]
++      .map((x) => x.toString(16).padStart(2, '0'))
++      .join('')
++  );
++};
++
++interface Props {
++  wasmUrl?: string;
++}
++
++export const SmallptPathTracer: React.FC<Props> = ({ wasmUrl }) => {
++  const canvasRef = useRef<HTMLCanvasElement | null>(null);
++  const wasmRef = useRef<SmallptWasmExports | null>(null);
++  const animFrameRef = useRef<number | null>(null);
++  const passCountRef = useRef<number>(0);
++
++  const [status, setStatus] = useState<'loading' | 'rendering' | 'ready' | 'error'>('loading');
++  const [errorMsg, setErrorMsg] = useState<string | null>(null);
++  const [currentSpp, setCurrentSpp] = useState<number>(0);
++  const [renderTimeMs, setRenderTimeMs] = useState<number>(0);
++  const [sphereColors, setSphereColors] = useState<SphereColorInfo[]>([]);
++  const [renderRunId, setRenderRunId] = useState<number>(0);
++
++  const readSphereColorsFromWasm = useCallback((exports: SmallptWasmExports): SphereColorInfo[] => {
++    return SPHERE_METADATA.map((meta) => ({
++      ...meta,
++      rgb: [
++        exports.get_sphere_color_channel(meta.index, 0),
++        exports.get_sphere_color_channel(meta.index, 1),
++        exports.get_sphere_color_channel(meta.index, 2),
++      ],
++    }));
++  }, []);
++
++  const drawPassToCanvas = useCallback((exports: SmallptWasmExports, ptr: number) => {
++    const canvas = canvasRef.current;
++    if (!canvas) return;
++    const ctx = canvas.getContext('2d');
++    if (!ctx) return;
++
++    const byteLength = RENDER_WIDTH * RENDER_HEIGHT * 4;
++    const pixelView = new Uint8ClampedArray(exports.memory.buffer, ptr, byteLength);
++    const imageData = new ImageData(new Uint8ClampedArray(pixelView), RENDER_WIDTH, RENDER_HEIGHT);
++    ctx.putImageData(imageData, 0, 0);
++  }, []);
++
++  const startProgressiveRender = useCallback(
++    (seed: number) => {
++      const exports = wasmRef.current;
++      if (!exports) return;
++
++      if (animFrameRef.current !== null) {
++        cancelAnimationFrame(animFrameRef.current);
++        animFrameRef.current = null;
++      }
++
++      exports.init_renderer(RENDER_WIDTH, RENDER_HEIGHT, seed);
++      setSphereColors(readSphereColorsFromWasm(exports));
++      passCountRef.current = 0;
++
++      const t0 = performance.now();
++      // Immediately execute the first pass synchronously so the canvas has output right away
++      const firstPtr = exports.render_pass(1);
++      drawPassToCanvas(exports, firstPtr);
++      passCountRef.current = 1;
++      const firstElapsed = Math.round(performance.now() - t0);
++      setCurrentSpp(exports.get_total_spp());
++      setRenderTimeMs(firstElapsed);
++      setStatus('rendering');
++
++      let totalElapsed = firstElapsed;
++
++      const step = () => {
++        if (!wasmRef.current) return;
++        if (passCountRef.current >= TARGET_PASSES) {
++          setStatus('ready');
++          return;
++        }
++        const passStart = performance.now();
++        const ptr = wasmRef.current.render_pass(1);
++        drawPassToCanvas(wasmRef.current, ptr);
++        passCountRef.current += 1;
++        totalElapsed += Math.round(performance.now() - passStart);
++        setCurrentSpp(wasmRef.current.get_total_spp());
++        setRenderTimeMs(totalElapsed);
++
++        if (passCountRef.current < TARGET_PASSES) {
++          animFrameRef.current = requestAnimationFrame(step);
++        } else {
++          setStatus('ready');
++          animFrameRef.current = null;
++        }
++      };
++
++      animFrameRef.current = requestAnimationFrame(step);
++    },
++    [drawPassToCanvas, readSphereColorsFromWasm]
++  );
++
++  useEffect(() => {
++    let cancelled = false;
++
++    async function loadWasm() {
++      try {
++        const resolvedUrl =
++          wasmUrl ||
++          `${import.meta.env.BASE_URL || '/'}smallpt.wasm`.replace(/\/+/g, '/');
++
++        const response = await fetch(resolvedUrl);
++        if (!response.ok) {
++          throw new Error(`Failed to fetch smallpt.wasm (${response.status})`);
++        }
++        const wasmBytes = await response.arrayBuffer();
++        const imports = {
++          env: {
++            emscripten_notify_memory_growth: () => {},
++          },
++          wasi_snapshot_preview1: {
++            proc_exit: () => {},
++            fd_close: () => 0,
++            fd_write: () => 0,
++            fd_seek: () => 0,
++          },
++        };
++
++        const { instance } = await WebAssembly.instantiate(wasmBytes, imports);
++        if (cancelled) return;
++
++        const exports = instance.exports as unknown as SmallptWasmExports;
++        if (typeof exports._initialize === 'function') {
++          exports._initialize();
++        }
++        exports.reset_scene_colors();
++        wasmRef.current = exports;
++
++        startProgressiveRender(1337);
++      } catch (err: any) {
++        if (!cancelled) {
++          console.error('Error initializing smallpt WebAssembly module:', err);
++          setErrorMsg(err?.message || 'Failed to initialize WebAssembly path tracer.');
++          setStatus('error');
++        }
++      }
++    }
++
++    loadWasm();
++
++    return () => {
++      cancelled = true;
++      if (animFrameRef.current !== null) {
++        cancelAnimationFrame(animFrameRef.current);
++      }
++    };
++  }, [wasmUrl, startProgressiveRender]);
++
++  const handleRandomizeSphereColors = () => {
++    const exports = wasmRef.current;
++    if (!exports) return;
++
++    const randomSeed = Math.floor(Math.random() * 0x7fffffff) + 1;
++    exports.randomize_scene_colors(randomSeed);
++
++    // Also allow fine-tuned vibrant RGB randomization from JS using set_sphere_color
++    const randomChannel = (min: number, max: number) => min + Math.random() * (max - min);
++    // Left & Right walls: rich saturated contrasting colors
++    exports.set_sphere_color(0, randomChannel(0.15, 0.95), randomChannel(0.15, 0.95), randomChannel(0.15, 0.95));
++    exports.set_sphere_color(1, randomChannel(0.15, 0.95), randomChannel(0.15, 0.95), randomChannel(0.15, 0.95));
++    // Back & Floor walls: subtle tinted surfaces
++    exports.set_sphere_color(2, randomChannel(0.35, 0.9), randomChannel(0.35, 0.9), randomChannel(0.35, 0.9));
++    exports.set_sphere_color(4, randomChannel(0.45, 0.9), randomChannel(0.45, 0.9), randomChannel(0.45, 0.9));
++    // Mirror & Glass spheres: vivid metallic & dielectric tints
++    exports.set_sphere_color(6, randomChannel(0.45, 0.999), randomChannel(0.45, 0.999), randomChannel(0.45, 0.999));
++    exports.set_sphere_color(7, randomChannel(0.45, 0.999), randomChannel(0.45, 0.999), randomChannel(0.45, 0.999));
++
++    setRenderRunId((prev) => prev + 1);
++    startProgressiveRender(randomSeed);
++  };
++
++  const handleResetDefaultColors = () => {
++    const exports = wasmRef.current;
++    if (!exports) return;
++    exports.reset_scene_colors();
++    setRenderRunId((prev) => prev + 1);
++    startProgressiveRender(1337);
++  };
++
++  return (
++    <section
++      id="smallpt-wasm-section"
++      className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 md:p-6 my-6"
++    >
++      <div className="flex flex-col lg:flex-row gap-6 items-start">
++        {/* Left column: Rendered Canvas */}
++        <div className="w-full lg:w-7/12 flex flex-col items-center">
++          <div className="relative w-full overflow-hidden rounded-md border border-gray-900 bg-black aspect-[4/3] shadow-inner">
++            <canvas
++              ref={canvasRef}
++              id="smallpt-canvas"
++              width={RENDER_WIDTH}
++              height={RENDER_HEIGHT}
++              data-status={status}
++              data-spp={currentSpp}
++              data-run-id={renderRunId}
++              className="w-full h-full object-contain block"
++            />
++            {status === 'loading' && (
++              <div className="absolute inset-0 flex items-center justify-center bg-black/75 text-white text-sm font-medium">
++                Compiling &amp; running smallpt.wasm...
++              </div>
++            )}
++            {status === 'error' && (
++              <div className="absolute inset-0 flex items-center justify-center bg-red-950/90 text-red-200 p-4 text-center text-sm">
++                {errorMsg}
++              </div>
++            )}
++            <div className="absolute bottom-2 right-2 bg-black/75 text-white text-xs font-mono px-2.5 py-1 rounded">
++              {RENDER_WIDTH}&times;{RENDER_HEIGHT} &bull; {currentSpp} spp &bull; {renderTimeMs} ms
++              {status === 'rendering' ? ' (refining...)' : ''}
++            </div>
++          </div>
++        </div>
++
++        {/* Right column: Description, Controls, and Active Sphere Palette */}
++        <div className="w-full lg:w-5/12 flex flex-col justify-between space-y-4">
++          <div>
++            <div className="flex items-center space-x-2">
++              <span className="inline-block bg-amber-100 text-amber-900 text-xs font-semibold px-2.5 py-0.5 rounded uppercase tracking-wider">
++                WebAssembly Graphics Lab
++              </span>
++              <span className="text-xs font-mono text-gray-500">smallpt.wasm</span>
++            </div>
++
++            <h2 className="mt-2 text-2xl md:text-3xl font-brand text-gray-900 leading-tight">
++              Interactive C++ Path Tracer (smallpt)
++            </h2>
++
++            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
++              Kevin Beason&apos;s 99-line C++ global illumination renderer compiled to WebAssembly.
++              Simulates Monte Carlo path tracing, diffuse Cornell box walls, a specular mirror
++              sphere, and a refractive dielectric glass sphere directly in your browser.
++            </p>
++          </div>
++
++          {/* Sphere Color Swatches */}
++          <div className="border-t border-b border-gray-100 py-3">
++            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
++              Current Scene Sphere Colors
++            </h3>
++            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
++              {sphereColors.map((sphere) => {
++                const hex = toHex(sphere.rgb[0], sphere.rgb[1], sphere.rgb[2]);
++                return (
++                  <div
++                    key={sphere.index}
++                    className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded px-2 py-1.5"
++                  >
++                    <span
++                      className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
++                      style={{ backgroundColor: hex }}
++                      title={`RGB(${sphere.rgb.map((n) => n.toFixed(2)).join(', ')})`}
++                    />
++                    <div className="min-w-0">
++                      <p className="text-xs font-medium text-gray-800 truncate">{sphere.name}</p>
++                      <p className="text-[10px] font-mono text-gray-500">{hex}</p>
++                    </div>
++                  </div>
++                );
++              })}
++            </div>
++          </div>
++
++          {/* Action Buttons */}
++          <div className="flex flex-wrap items-center gap-3 pt-1">
++            <button
++              type="button"
++              id="randomize-spheres-btn"
++              onClick={handleRandomizeSphereColors}
++              disabled={status === 'loading'}
++              className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:opacity-50 text-gray-950 font-semibold text-sm px-4 py-2.5 rounded shadow-sm transition-colors cursor-pointer"
++            >
++              Randomize Sphere Colors
++            </button>
++
++            <button
++              type="button"
++              id="reset-spheres-btn"
++              onClick={handleResetDefaultColors}
++              disabled={status === 'loading'}
++              className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium text-sm px-3.5 py-2.5 rounded border border-gray-300 transition-colors cursor-pointer"
++            >
++              Reset Classic Scene
++            </button>
++          </div>
++        </div>
++      </div>
++    </section>
++  );
++};
++
++export default SmallptPathTracer;
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..821cdb3 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
++import SmallptPathTracer from '../components/SmallptPathTracer';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+@@ -56,6 +57,7 @@ politicsArticles[2] = {
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <SmallptPathTracer client:load wasmUrl={`${import.meta.env.BASE_URL}smallpt.wasm`} />
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/wasm/smallpt.cpp b/src/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..ff62dca
+--- /dev/null
++++ b/src/wasm/smallpt.cpp
+@@ -0,0 +1,251 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// Compiled to WebAssembly via Emscripten for real-time interactive client-side rendering.
++#include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <stdint.h>
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten/emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left (0)
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght (1)
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back (2)
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt (3)
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm (4)
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top  (5)
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr (6)
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas (7)
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite (8)
++};
++
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) {
++    if (depth>12) return obj.e; // prevent stack overflow in deeply nested dielectric bounces
++    if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  }
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// Persistent accumulation buffers for progressive & one-shot rendering
++static int g_width = 0;
++static int g_height = 0;
++static int g_total_samples = 0; // total subpixel samples accumulated (in units of 4x subpixels)
++static Vec *g_accum = nullptr;
++static uint8_t *g_rgba = nullptr;
++static unsigned int g_seed_offset = 0;
++
++extern "C" {
++
++static double rand_range(unsigned int *state, double min_val, double max_val) {
++  *state = *state * 1664525u + 1013904223u;
++  double t = (double)(*state & 0xFFFFFF) / (double)0x1000000;
++  return min_val + t * (max_val - min_val);
++}
++
++EMSCRIPTEN_KEEPALIVE
++void reset_scene_colors() {
++  spheres[0].c = Vec(.75, .25, .25);      // Left wall
++  spheres[1].c = Vec(.25, .25, .75);      // Right wall
++  spheres[2].c = Vec(.75, .75, .75);      // Back wall
++  spheres[3].c = Vec(0, 0, 0);            // Front wall
++  spheres[4].c = Vec(.75, .75, .75);      // Bottom wall
++  spheres[5].c = Vec(.75, .75, .75);      // Top wall
++  spheres[6].c = Vec(1, 1, 1) * .999;     // Mirror sphere
++  spheres[7].c = Vec(1, 1, 1) * .999;     // Glass sphere
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_scene_colors(unsigned int seed) {
++  unsigned int st = seed ? seed : 1337u;
++  // Left wall (sphere 0) - vibrant color
++  spheres[0].c = Vec(rand_range(&st, 0.15, 0.90), rand_range(&st, 0.15, 0.90), rand_range(&st, 0.15, 0.90));
++  // Right wall (sphere 1) - vibrant color
++  spheres[1].c = Vec(rand_range(&st, 0.15, 0.90), rand_range(&st, 0.15, 0.90), rand_range(&st, 0.15, 0.90));
++  // Back wall (sphere 2) - tinted pastel/vivid surface
++  spheres[2].c = Vec(rand_range(&st, 0.35, 0.90), rand_range(&st, 0.35, 0.90), rand_range(&st, 0.35, 0.90));
++  // Bottom floor (sphere 4) - softly tinted
++  spheres[4].c = Vec(rand_range(&st, 0.45, 0.85), rand_range(&st, 0.45, 0.85), rand_range(&st, 0.45, 0.85));
++  // Top ceiling (sphere 5) - bright neutral/pastel
++  spheres[5].c = Vec(rand_range(&st, 0.65, 0.92), rand_range(&st, 0.65, 0.92), rand_range(&st, 0.65, 0.92));
++  // Mirror sphere (sphere 6) - colored metallic tint
++  spheres[6].c = Vec(rand_range(&st, 0.45, 0.999), rand_range(&st, 0.45, 0.999), rand_range(&st, 0.45, 0.999));
++  // Glass sphere (sphere 7) - colored refractive glass tint
++  spheres[7].c = Vec(rand_range(&st, 0.50, 0.999), rand_range(&st, 0.50, 0.999), rand_range(&st, 0.50, 0.999));
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int index, double r, double g, double b) {
++  if (index >= 0 && index < 9) {
++    spheres[index].c = Vec(clamp(r), clamp(g), clamp(b));
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_channel(int index, int channel) {
++  if (index < 0 || index >= 9) return 0.0;
++  if (channel == 0) return spheres[index].c.x;
++  if (channel == 1) return spheres[index].c.y;
++  if (channel == 2) return spheres[index].c.z;
++  return 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void init_renderer(int w, int h, unsigned int seed) {
++  if (g_width != w || g_height != h || !g_accum || !g_rgba) {
++    delete[] g_accum;
++    delete[] g_rgba;
++    g_width = w;
++    g_height = h;
++    g_accum = new Vec[w * h];
++    g_rgba = new uint8_t[w * h * 4];
++  }
++  for (int i = 0; i < w * h; i++) {
++    g_accum[i] = Vec(0, 0, 0);
++    g_rgba[i * 4 + 0] = 0;
++    g_rgba[i * 4 + 1] = 0;
++    g_rgba[i * 4 + 2] = 0;
++    g_rgba[i * 4 + 3] = 255;
++  }
++  g_total_samples = 0;
++  g_seed_offset = seed;
++}
++
++// Render one progressive pass of `samps_per_subpixel` (1 pass = 4 spp because of 2x2 subpixels)
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_pass(int samps_per_subpixel) {
++  if (!g_accum || !g_rgba || g_width <= 0 || g_height <= 0) return nullptr;
++  int w = g_width;
++  int h = g_height;
++  int samps = samps_per_subpixel < 1 ? 1 : samps_per_subpixel;
++
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm());
++  Vec cx = Vec(w * .5135 / h);
++  Vec cy = (cx % cam.d).norm() * .5135;
++  Vec r;
++
++  unsigned int pass_seed = g_seed_offset + (unsigned int)(g_total_samples * 7919);
++
++  for (int y = 0; y < h; y++) {
++    unsigned short Xi[3] = {
++      (unsigned short)((y + pass_seed) & 0xFFFF),
++      (unsigned short)((y * 31 + pass_seed * 17) & 0xFFFF),
++      (unsigned short)((y * y * y + pass_seed * 131) & 0xFFFF)
++    };
++    for (unsigned short x = 0; x < w; x++) {
++      int i = (h - y - 1) * w + x;
++      Vec pixel_sample(0, 0, 0);
++      for (int sy = 0; sy < 2; sy++) {
++        for (int sx = 0; sx < 2; sx++, r = Vec()) {
++          for (int s = 0; s < samps; s++) {
++            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / samps);
++          }
++          pixel_sample = pixel_sample + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      g_accum[i] = g_accum[i] + pixel_sample;
++    }
++  }
++
++  g_total_samples += 1;
++  double inv_passes = 1.0 / (double)g_total_samples;
++
++  for (int i = 0; i < w * h; i++) {
++    Vec avg = g_accum[i] * inv_passes;
++    g_rgba[i * 4 + 0] = (uint8_t)toInt(avg.x);
++    g_rgba[i * 4 + 1] = (uint8_t)toInt(avg.y);
++    g_rgba[i * 4 + 2] = (uint8_t)toInt(avg.z);
++    g_rgba[i * 4 + 3] = 255;
++  }
++
++  return g_rgba;
++}
++
++// Convenience single-call render for N total samples per pixel
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_smallpt(int w, int h, int total_spp, unsigned int seed) {
++  init_renderer(w, h, seed);
++  int samps = total_spp / 4;
++  if (samps < 1) samps = 1;
++  return render_pass(samps);
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* get_rgba_buffer() {
++  return g_rgba;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int get_total_spp() {
++  return g_total_samples * 4;
++}
++
++} // extern "C"

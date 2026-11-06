@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,115 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase-section {
++      margin-bottom: 48px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    /**
++     * Standard block layout container with outer corner radii and custom padding.
++     * Keeps base level 1 fallback clipping roughly at the inner padding box.
++     */
++    .nested-curve-parent {
++      background: white;
++      padding: 20px;
++      border-radius: 24px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      /* Level 1 Fallback: clips child roughly at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-body {
++      padding: 16px 4px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: #fff;
++      padding: 14px 16px;
++      font-weight: 600;
++      text-align: center;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        /* MANDATORY: overflow: clip is required on non-replaced elements */
++        overflow: clip;
++        /* Automatically curves clipping edge to match inner content-box radius */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /**
++     * Promos block container clipping inner content.
++     * Base fallback uses overflow: hidden, which abruptly slices child element shadows.
++     */
++    .safety-zone-parent {
++      background: white;
++      padding: 24px 24px 8px;
++      border-radius: 16px;
++      border: 1px solid var(--secondary);
++      /* Level 1 Fallback: clips overflowing content but truncates child shadows */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent .promo-overflow-text {
++      white-space: nowrap;
++      margin-bottom: 18px;
++      color: var(--text);
++    }
++
++    /* Child button element positioned inside with an expanded glowing shadow */
++    .demo-glowing-btn {
++      display: block;
++      width: 100%;
++      padding: 12px 20px;
++      background: #e52e71;
++      color: #fff;
++      font-size: 1rem;
++      font-weight: 600;
++      border: none;
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 8px 15px rgba(229, 46, 113, 0.75);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        /* MANDATORY: overflow: clip is required on non-replaced elements */
++        overflow: clip;
++        /* Establishes a 15px safety zone allowing child element shadows to render safely outside */
++        overflow-clip-margin: 15px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +281,32 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase-section">
++      <h2 style="text-align: center;">Featured Showcase &amp; Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++            alt="Artisanal Pour-Over Coffee">
++          <div class="nested-curve-body">
++            <h3>Single-Origin Ethiopian Roast</h3>
++            <p>Bright floral aromatics with notes of bergamot, jasmine, and sun-ripened stone fruit.</p>
++          </div>
++          <div class="nested-curve-footer">Small-Batch Reserve &bull; Roasted Daily</div>
++        </div>
++
++        <div class="safety-zone-parent">
++          <h3>Morning Perks Member Promo</h3>
++          <p class="promo-overflow-text">
++            Unlock double bean rewards on every handcrafted espresso, cold brew, and seasonal pour-over order all week long!
++          </p>
++          <button type="button" class="demo-glowing-btn">Claim 2x Rewards Pass</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

@@ -1,0 +1,55 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,34 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* An alpha mask fades the preview itself into any page background. */
++    .paywall-container {
++      margin-top: 48px;
++      padding: 28px 24px 40px;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++    }
++
++    .paywall-container .exclusive-label {
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin: 6px 0 16px;
++      color: var(--primary);
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +220,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="exclusive-label">Exclusive preview</p>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>Great coffee starts long before the first sip. Step inside our roastery for the small details that bring every bean to life, from the first fragrant crack to the final roast.</p>
++      <p><strong>Let the beans rest.</strong> Freshly roasted coffee needs a little time to settle. As the beans release gas, their sweetness and character become easier to taste. Our roasters follow each batch as it rests to find its perfect brewing window.</p>
++      <p><strong>Follow the flavor.</strong> A touch of caramel, a hint of citrus, a lingering cocoa finish: each cup tells a story. In our exclusive roaster's notes, we share the tasting rituals and brewing adjustments that help you discover yours.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

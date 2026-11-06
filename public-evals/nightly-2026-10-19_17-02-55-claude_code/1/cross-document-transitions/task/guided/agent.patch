@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    /* Page transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      :active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation: 0.4s ease-in both slide-out-next;
++        }
++
++        &::view-transition-new(root) {
++          animation: 0.4s ease-out both slide-in-next;
++        }
++      }
++
++      :active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation: 0.4s ease-in both slide-out-previous;
++        }
++
++        &::view-transition-new(root) {
++          animation: 0.4s ease-out both slide-in-previous;
++        }
++      }
++    }
++
++    @keyframes slide-out-next {
++      to { transform: translateX(-20%); opacity: 0; }
++    }
++
++    @keyframes slide-in-next {
++      from { transform: translateX(20%); opacity: 0; }
++    }
++
++    @keyframes slide-out-previous {
++      to { transform: translateX(20%); opacity: 0; }
++    }
++
++    @keyframes slide-in-previous {
++      from { transform: translateX(-20%); opacity: 0; }
++    }
+   </style>
++  <link rel="expect" href="#main-content" blocking="render">
++  <script blocking="render">
++    // Only set up transition types if the user doesn't prefer reduced motion.
++    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const pageNumber = (url) => Number(new URL(url).searchParams.get('page')) || 1;
++
++      window.addEventListener('pagereveal', (e) => {
++        const activation = window.navigation?.activation;
++        if (!e.viewTransition || !activation?.from) return;
++
++        const from = pageNumber(activation.from.url);
++        const to = pageNumber(activation.entry.url);
++        if (to > from) e.viewTransition.types.add('next');
++        else if (to < from) e.viewTransition.types.add('previous');
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -173,9 +243,9 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -193,8 +263,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination">
++        <a id="previous" href="?page=1" class="btn">&larr; Previous</a>
++        <a id="next" href="?page=2" class="btn">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,50 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal preview: each "View Details" link uses interestfor to open its
++       popover="hint" element (hover or focus). The popovers are restyled to sit
++       inline inside the box; with none open, the default text shows. */
++    #seasonal-preview {
++      margin-top: 20px;
++      padding: 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      background: white;
++      text-align: center;
++      font-size: 1.25rem;
++    }
++
++    #seasonal-preview .preview-default {
++      color: #6d4c41;
++    }
++
++    #seasonal-preview:has(:popover-open) .preview-default {
++      display: none;
++    }
++
++    #seasonal-preview .preview-item {
++      position: static;
++      inset: auto;
++      width: auto;
++      height: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: none;
++      overflow: visible;
++      font-weight: bold;
++    }
++
++    #seasonal-preview .preview-item:not(:popover-open) {
++      display: none;
++    }
++
++    #seasonal-preview .preview-item:popover-open {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,21 +222,27 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="preview-maple">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="preview-espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="preview-cold-brew">View Details</a>
+         </div>
+       </div>
++      <div id="seasonal-preview">
++        <p class="preview-default">Select a drink to preview</p>
++        <p id="preview-maple" class="preview-item" popover="hint" style="color: #bf6f00;">Maple Oat Latte</p>
++        <p id="preview-espresso" class="preview-item" popover="hint" style="color: #3e2723;">Dark Roast Espresso</p>
++        <p id="preview-cold-brew" class="preview-item" popover="hint" style="color: #00695c;">Cold Brew</p>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

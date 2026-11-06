@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,44 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card.spring {
++      transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
++    }
++
++    .card.spring:is(:hover, :focus-within) {
++      transform: scale(1.04);
++    }
++
++    .card.bounce {
++      /* The first curve provides a fallback for browsers without linear(). */
++      transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
++      transition-timing-function: linear(
++        0, 0.06 9%, 0.25 18%, 0.56 27%, 1 36%,
++        0.81 45%, 0.75 54%, 0.81 63%, 1 72%,
++        0.94 81%, 1 90%, 0.98 95%, 1
++      );
++    }
++
++    .card.bounce:is(:hover, :focus-within) {
++      transform: translateY(-8px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce,
++      .card.spring .btn,
++      .card.bounce .btn {
++        transition: none;
++      }
++
++      .card.spring:is(:hover, :focus-within),
++      .card.bounce:is(:hover, :focus-within) {
++        transform: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +213,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

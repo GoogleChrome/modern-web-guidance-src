@@ -1,0 +1,277 @@
+diff --git a/index.html b/index.html
+index 66c9173..3774ae9 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,81 @@
+       background: #3e2723;
+     }
+ 
++    /* Signed receipts */
++    .signing {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 20px;
++    }
++
++    .signing label {
++      display: block;
++      font-weight: 600;
++      margin-top: 14px;
++    }
++
++    .signing textarea,
++    .signing input {
++      width: 100%;
++      font: inherit;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .signing textarea.mono {
++      font-family: ui-monospace, Menlo, Consolas, monospace;
++      font-size: 0.75rem;
++      word-break: break-all;
++    }
++
++    .signing-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++    }
++
++    .signing button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 5px;
++    }
++
++    .signing button:hover {
++      background: #3e2723;
++    }
++
++    .signing button.secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .signing-result {
++      margin-top: 16px;
++      padding: 10px 14px;
++      border-radius: 4px;
++      border-left: 4px solid var(--secondary);
++      background: var(--light);
++    }
++
++    .signing-result.valid {
++      border-color: #2e7d32;
++      color: #1b5e20;
++    }
++
++    .signing-result.invalid {
++      border-color: #c62828;
++      color: #b71c1c;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +270,34 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="signed-receipts">
++      <h2 style="text-align: center; margin-top: 40px;">Signed Receipts</h2>
++      <p style="text-align: center;">Sign your order receipt in the browser, then verify it hasn't been altered.
++        Keys are generated locally and the private key never leaves your device.</p>
++      <form class="signing" id="signing-form">
++        <p>Algorithm: <strong id="suite">detecting…</strong></p>
++
++        <label for="message">Receipt</label>
++        <textarea id="message" rows="3">{"order":"1042","item":"Maple Oat Latte","total":"5.25"}</textarea>
++
++        <label for="context">Context (domain separation, max 255 bytes)</label>
++        <input id="context" value="daily-grind-receipt-v1">
++
++        <label for="public-key">Public key (hex)</label>
++        <textarea id="public-key" class="mono" rows="2" readonly></textarea>
++
++        <label for="signature">Signature (hex)</label>
++        <textarea id="signature" class="mono" rows="3"></textarea>
++
++        <div class="signing-actions">
++          <button type="button" id="sign-btn" disabled>Sign receipt</button>
++          <button type="button" id="verify-btn" disabled>Verify signature</button>
++          <button type="button" id="tamper-btn" class="secondary" disabled>Tamper with receipt</button>
++        </div>
++        <p class="signing-result" id="result" role="status">Sign the receipt to begin.</p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +310,59 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { generateSigningKeyPair, signPayload, verifyPayload, toHex, fromHex } from './signing.js';
++
++    const $ = (id) => document.getElementById(id);
++    const enc = new TextEncoder();
++    const result = $('result');
++    const buttons = ['sign-btn', 'verify-btn', 'tamper-btn'].map($);
++
++    function show(text, state = '') {
++      result.textContent = text;
++      result.className = `signing-result ${state}`.trim();
++    }
++
++    try {
++      const { suite, keyPair, publicKeyBytes } = await generateSigningKeyPair();
++      $('suite').textContent = suite === 'ML-DSA-65'
++        ? 'ML-DSA-65 (post-quantum)'
++        : 'Ed25519 (classical fallback)';
++      $('public-key').value = toHex(publicKeyBytes);
++      buttons.forEach((b) => (b.disabled = false));
++
++      $('sign-btn').addEventListener('click', async () => {
++        try {
++          const sig = await signPayload(
++            keyPair.privateKey, enc.encode($('message').value), enc.encode($('context').value));
++          $('signature').value = toHex(sig);
++          show(`Signed (${sig.byteLength} byte signature).`);
++        } catch (e) {
++          show(`Signing failed: ${e.message}`, 'invalid');
++        }
++      });
++
++      $('verify-btn').addEventListener('click', async () => {
++        try {
++          const ok = await verifyPayload(
++            fromHex($('public-key').value), fromHex($('signature').value),
++            enc.encode($('message').value), enc.encode($('context').value));
++          show(ok ? 'Valid: receipt is authentic and unmodified.'
++                  : 'Invalid: receipt or signature was altered.', ok ? 'valid' : 'invalid');
++        } catch (e) {
++          show(`Could not verify: ${e.message}`, 'invalid');
++        }
++      });
++
++      $('tamper-btn').addEventListener('click', () => {
++        $('message').value = $('message').value.replace('5.25', '0.25');
++        show('Receipt modified. Verify again to see it fail.');
++      });
++    } catch (e) {
++      $('suite').textContent = 'unsupported in this browser';
++      show(`WebCrypto signing is unavailable: ${e.message}`, 'invalid');
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/signing.js b/signing.js
+new file mode 100644
+index 0000000..509dcd3
+--- /dev/null
++++ b/signing.js
+@@ -0,0 +1,90 @@
++// Sign/verify helpers on WebCrypto: ML-DSA-65 (post-quantum) with Ed25519 fallback.
++const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
++  1312: 'ML-DSA-44',
++  1952: 'ML-DSA-65',
++  2592: 'ML-DSA-87',
++};
++
++export function supportsPostQuantumSignatures() {
++  return (
++    typeof globalThis.SubtleCrypto?.supports === 'function' &&
++    SubtleCrypto.supports('sign', 'ML-DSA-65')
++  );
++}
++
++export async function generateSigningKeyPair() {
++  if (supportsPostQuantumSignatures()) {
++    const keyPair = await crypto.subtle.generateKey('ML-DSA-65', false, ['sign', 'verify']);
++    const publicKeyBytes = new Uint8Array(
++      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++    );
++    return { suite: 'ML-DSA-65', keyPair, publicKeyBytes };
++  }
++
++  // Classical fallback: Ed25519
++  const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
++  const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
++  return { suite: 'Ed25519', keyPair, publicKeyBytes };
++}
++
++// Ed25519 ignores `context`, so prepend a length-prefixed header for domain separation.
++function frameFallbackInput(payloadBytes, contextBytes) {
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++  const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++  framed[0] = contextBytes.byteLength;
++  framed.set(contextBytes, 1);
++  framed.set(payloadBytes, 1 + contextBytes.byteLength);
++  return framed;
++}
++
++export async function signPayload(privateKey, payloadBytes, contextBytes = new Uint8Array(0)) {
++  if (privateKey.algorithm.name.startsWith('ML-DSA')) {
++    const sig = await crypto.subtle.sign(
++      { name: privateKey.algorithm.name, context: contextBytes },
++      privateKey,
++      payloadBytes,
++    );
++    return new Uint8Array(sig);
++  }
++  const framed = frameFallbackInput(payloadBytes, contextBytes);
++  return new Uint8Array(await crypto.subtle.sign('Ed25519', privateKey, framed));
++}
++
++// Accepts a CryptoKey or raw public key bytes; the algorithm is inferred from key length.
++export async function verifyPayload(
++  publicKeyOrBytes,
++  signatureBytes,
++  payloadBytes,
++  contextBytes = new Uint8Array(0),
++) {
++  let publicKey = publicKeyOrBytes;
++  if (!(publicKey instanceof CryptoKey)) {
++    const bytes = new Uint8Array(publicKeyOrBytes);
++    const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++    publicKey = mlDsaName
++      ? await crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
++      : await crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
++  }
++
++  if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++    return crypto.subtle.verify(
++      { name: publicKey.algorithm.name, context: contextBytes },
++      publicKey,
++      signatureBytes,
++      payloadBytes,
++    );
++  }
++  const framed = frameFallbackInput(payloadBytes, contextBytes);
++  return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
++}
++
++export const toHex = (bytes) =>
++  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
++
++export function fromHex(hex) {
++  const clean = hex.replace(/\s+/g, '');
++  if (clean.length % 2 || /[^0-9a-f]/i.test(clean)) throw new Error('Not valid hex');
++  return Uint8Array.from(clean.match(/../g) ?? [], (h) => parseInt(h, 16));
++}

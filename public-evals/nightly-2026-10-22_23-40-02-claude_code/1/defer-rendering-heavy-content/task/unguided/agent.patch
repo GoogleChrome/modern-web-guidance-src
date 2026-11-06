@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,29 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    /* Skip rendering work for cards until they approach the viewport */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 420px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -207,8 +228,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +241,27 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel" hidden>
++    <div>Cards: <span id="debug-cards">0</span></div>
++    <div>Initial render: <span id="debug-timer">0ms</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    const debugBtn = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +294,10 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          document.getElementById('debug-timer').textContent = `${duration}ms${suffix}`;
++          document.getElementById('debug-cards').textContent = feed.querySelectorAll('.card').length;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -298,9 +329,17 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    // Only flips the `hidden` attribute on a small panel after the feed, so it never touches the cards
++    debugBtn.addEventListener('click', () => {
++      const show = debugPanel.hidden;
++      debugPanel.hidden = !show;
++      debugBtn.classList.toggle('off', !show);
++      debugBtn.setAttribute('aria-expanded', show);
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

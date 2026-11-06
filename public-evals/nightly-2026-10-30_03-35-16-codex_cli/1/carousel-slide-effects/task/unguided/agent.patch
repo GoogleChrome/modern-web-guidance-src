@@ -1,0 +1,390 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,192 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f7f4ed">
++  <meta name="description" content="Good coffee, a slower moment. Explore seasonal favorites from The Daily Grind.">
++  <title>The Daily Grind | A little ritual. A better day.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++    :root { color-scheme: light; --paper: #f7f4ed; --ink: #292d25; --muted: #6c6c60; --orange: #aa461f; --line: #deded2; }
++    * { box-sizing: border-box; }
++    html { scroll-behavior: smooth; }
++    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 'DM Sans', sans-serif; }
++    a { color: inherit; }
++    a:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--orange); outline-offset: 6px; }
++    .skip-link { position: absolute; top: -70px; left: 20px; z-index: 10; padding: 12px 20px; background: white; }
++    .skip-link:focus { top: 12px; }
++    .shell { width: min(1200px, calc(100% - 96px)); margin-inline: auto; }
++    .site-header { border-bottom: 1px solid var(--line); }
++    nav { min-height: 100px; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
++    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
++    .logo svg { width: 37px; height: 44px; color: var(--orange); }
++    .wordmark { font-size: 16px; line-height: 1.15; font-weight: 700; letter-spacing: 1.5px; }
++    .wordmark small { display: block; font-size: 9px; letter-spacing: 3.4px; margin-top: 7px; font-weight: 500; }
++    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; margin: 0; padding: 0; font-size: 13px; }
++    .nav-links a { text-decoration: none; }
++    .nav-links a:hover { color: var(--orange); }
++    .nav-links .account { display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--line); padding-left: 29px; }
++    .account svg { width: 17px; height: 17px; }
++    .nav-links .logout { font-size: 11px; color: var(--muted); }
++    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: center; padding-block: 58px 65px; }
++    .eyebrow { color: var(--orange); font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 10px; }
++    .eyebrow::before { content: ''; width: 23px; height: 1px; background: currentColor; }
++    h1, h2, h3, p { margin: 0; }
++    h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; font-weight: 500; }
++    h1 { font-size: clamp(44px, 4.8vw, 68px); line-height: 1.13; letter-spacing: -2.7px; margin: 23px 0; }
++    h1 em { color: var(--orange); font-weight: 500; }
++    .hero-description { color: var(--muted); max-width: 350px; font-size: 14px; line-height: 1.9; }
++    .button { display: inline-flex; gap: 35px; align-items: center; background: var(--orange); color: white; padding: 14px 23px; text-decoration: none; font-size: 12px; font-weight: 500; margin-top: 27px; border: 1px solid var(--orange); }
++    .button:hover { background: #863617; }
++    .button span { font-size: 20px; line-height: 1; }
++    .hero-note { font-size: 10px; color: var(--muted); margin-top: 24px; display: flex; align-items: center; gap: 8px; }
++    .hero-note svg { width: 14px; height: 14px; color: #66705a; }
++    .hero-visual { position: relative; }
++    .hero-photo { width: 100%; height: 370px; object-fit: cover; display: block; border-radius: 140px 0 0 0; }
++    .photo-label { position: absolute; right: -16px; bottom: 24px; background: var(--paper); padding: 14px 21px; border: 1px solid var(--line); display: flex; align-items: center; gap: 13px; }
++    .photo-label .sun { color: var(--orange); font-size: 31px; line-height: 1; }
++    .photo-label strong { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: 500; }
++    .photo-label small { display: block; font-size: 9px; color: var(--muted); letter-spacing: .3px; }
++    .favorites { background: #eeeee5; border-block: 1px solid var(--line); padding-block: 42px 24px; }
++    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
++    .section-heading .eyebrow { font-size: 9px; letter-spacing: 2px; margin-bottom: 8px; }
++    h2 { font-size: 36px; line-height: 1.25; letter-spacing: -1px; }
++    .section-subtitle { color: var(--muted); margin-top: 10px; font-size: 12px; }
++    .menu-link { display: inline-flex; align-items: center; gap: 28px; font-size: 11px; text-decoration: none; padding-bottom: 6px; border-bottom: 1px solid #8c8f7e; white-space: nowrap; }
++    .menu-link span { font-size: 19px; }
++    /* The full-width scrollport makes the view-timeline midpoint the viewport center. */
++    .scroller { --card-width: 334px; display: flex; gap: 28px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: max(24px, calc((100% - 1200px) / 2)); padding: 34px max(24px, calc((100% - 1200px) / 2)) 29px; margin: 0; list-style: none; scrollbar-width: thin; scrollbar-color: #898e79 #dddfd1; }
++    .scroller:focus-visible { outline-offset: -4px; }
++    .scroller::-webkit-scrollbar { height: 6px; }
++    .scroller::-webkit-scrollbar-track { background: #dddfd1; }
++    .scroller::-webkit-scrollbar-thumb { background: #898e79; border-radius: 4px; }
++    .product { flex: 0 0 var(--card-width); min-width: 0; scroll-snap-align: center; view-timeline: --product inline; scroll-margin-block: 30px; }
++    .card { display: block; background: #faf9f4; border: 1px solid #dedfd3; transform-origin: center; }
++    .product-image { height: 242px; position: relative; overflow: hidden; background: #d5c5b3; }
++    .product-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
++    .tag { position: absolute; left: 15px; top: 15px; padding: 5px 10px; background: #f7f4ed; color: #514c3e; text-transform: uppercase; font-size: 8px; letter-spacing: 1.2px; font-weight: 600; }
++    .tag.green { background: #e4e8d9; color: #434c36; }
++    .card-body { padding: 21px 22px 19px; }
++    .product-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
++    .product-meta .price { color: var(--ink); font-size: 12px; letter-spacing: 0; }
++    h3 { font-size: 23px; line-height: 1.3; letter-spacing: -.5px; margin-bottom: 8px; }
++    .card-body p { color: var(--muted); font-size: 11px; min-height: 36px; line-height: 1.7; }
++    .details { display: flex; align-items: center; justify-content: space-between; text-decoration: none; border-top: 1px solid var(--line); margin-top: 19px; padding-top: 12px; font-size: 10px; font-weight: 600; }
++    .details span { font-size: 19px; color: var(--orange); }
++    .details:hover { color: var(--orange); }
++    /* Animate a child so transforms never change the timeline subject's geometry. */
++    @supports (animation-timeline: view(inline)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .card { animation: center-emphasis linear both; animation-timeline: --product; animation-range: cover 0% cover 100%; }
++        @keyframes center-emphasis { 0%, 100% { transform: scale(.86); } 50% { transform: scale(1.04); } }
++      }
+     }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    .scroll-hint { display: flex; align-items: center; justify-content: center; gap: 10px; color: #686d5d; font-size: 9px; letter-spacing: .4px; padding-top: 17px; }
++    .scroll-hint span { font-size: 17px; }
++    .values { display: flex; align-items: center; justify-content: center; gap: 55px; padding-block: 27px; border-bottom: 1px solid var(--line); }
++    .value { display: flex; align-items: center; gap: 10px; font-size: 10px; color: #606453; }
++    .value svg { width: 20px; height: 20px; stroke: #6b7659; fill: none; stroke-width: 1.4; }
++    footer { display: flex; justify-content: space-between; gap: 24px; padding-block: 24px; color: var(--muted); font-size: 9px; }
++    .footer-links { display: flex; gap: 24px; }
++    .footer-links a { text-decoration: none; }
++    .footer-links a:hover { text-decoration: underline; }
++    @media (min-width: 800px) { .scroller::after { content: ''; flex: 0 0 max(0px, calc((100vw - var(--card-width)) / 2 - max(24px, (100vw - 1200px) / 2))); } }
++    @media (max-width: 900px) {
++      .shell { width: calc(100% - 48px); }
++      .nav-links { gap: 18px; }
++      .nav-links .account { padding-left: 18px; }
++      .hero { gap: 35px; }
++      .hero-photo { height: 340px; }
++      h1 { font-size: 48px; }
++      .values { gap: 30px; }
+     }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++    @media (max-width: 620px) {
++      nav { min-height: 86px; flex-wrap: wrap; justify-content: center; gap: 16px; padding-block: 20px; }
++      .nav-links { width: 100%; justify-content: center; gap: 18px; font-size: 11px; flex-wrap: wrap; }
++      .nav-links .account { padding-left: 0; border: 0; }
++      .hero { grid-template-columns: 1fr; padding-block: 35px 40px; gap: 30px; }
++      h1 { font-size: 49px; letter-spacing: -2px; }
++      .hero-photo { height: 280px; border-top-left-radius: 100px; }
++      .photo-label { right: -8px; bottom: 18px; }
++      .section-heading { align-items: start; }
++      h2 { font-size: 29px; }
++      .section-subtitle { max-width: 230px; }
++      .menu-link { gap: 10px; margin-top: 28px; font-size: 10px; }
++      .scroller { --card-width: min(310px, 80vw); gap: 14px; padding-inline: calc((100% - var(--card-width)) / 2); scroll-padding-inline: calc((100% - var(--card-width)) / 2); }
++      .values { flex-direction: column; gap: 14px; align-items: start; padding-left: 24px; }
++      footer { flex-direction: column; gap: 12px; }
++      .footer-links { flex-wrap: wrap; gap: 20px; }
+     }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .scroller { scroll-snap-type: none; } }
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <a class="skip-link" href="#main">Skip to content</a>
++  <header class="site-header">
++    <nav class="shell" aria-label="Main navigation">
++      <a class="logo" href="/" aria-label="The Daily Grind home">
++        <svg viewBox="0 0 40 48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 22h23v10c0 8-5 12-11.5 12S7 40 7 32V22ZM30 25h3a5 5 0 0 1 0 10h-3M3 47h33M13 16c-5-5 5-7 0-12M21 16c-5-5 5-7 0-12"/></svg>
++        <span class="wordmark">THE DAILY GRIND<small>GOOD COFFEE. EVERY DAY.</small></span>
++      </a>
++      <ul class="nav-links">
++        <li><a href="/menu">Our menu</a></li><li><a href="/locations">Find a café</a></li><li><a href="/rewards">Rewards</a></li>
++        <li><a class="account" href="/account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></svg>My account</a></li>
++        <li><a class="logout" href="/logout">Log out ↗</a></li>
++      </ul>
++    </nav>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main id="main">
++    <section class="hero shell" aria-labelledby="hero-title">
++      <div>
++        <p class="eyebrow">Your daily moment of good</p>
++        <h1 id="hero-title">A little ritual.<br>A <em>better day.</em></h1>
++        <p class="hero-description">Thoughtfully sourced. Locally roasted. Made with care.<br>Good coffee, for whatever the day brings.</p>
++        <a class="button" href="/order-online">Find your favorite <span aria-hidden="true">↗</span></a>
++        <p class="hero-note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M16 3C5 1 1 9 6 14s13 1 10-11ZM4 17 13 7"/></svg>Responsibly sourced. Always.</p>
+       </div>
++      <div class="hero-visual">
++        <img class="hero-photo" src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=85" alt="A warm cup of freshly brewed coffee on a rustic wooden table" width="1100" height="740" fetchpriority="high">
++        <div class="photo-label"><span class="sun" aria-hidden="true">☼</span><div><strong>Slow mornings. Good coffee.</strong><small>A little pause, made just for you.</small></div></div>
++      </div>
+     </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++    <section class="favorites" aria-labelledby="favorites-title">
++      <div class="section-heading shell">
++        <div><p class="eyebrow">Fresh from our coffee bar</p><h2 id="favorites-title">Seasonal favorites</h2><p class="section-subtitle">Familiar comforts. A few new things to fall for.</p></div>
++        <a class="menu-link" href="/menu">Explore the menu <span aria-hidden="true">↗</span></a>
++      </div>
++      <div class="scroller" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Seasonal coffee favorites" aria-describedby="scroll-help">
++        <div class="product"><article class="card" aria-labelledby="maple-title">
++          <div class="product-image"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=85" alt="Creamy iced latte in a tall glass" width="700" height="510" loading="lazy"><span class="tag">A seasonal little joy</span></div>
++          <div class="card-body"><div class="product-meta"><span>Smooth & subtly sweet</span><span class="price">$5.50</span></div><h3 id="maple-title">Maple Oat Latte</h3><p>Velvety oat milk, rich espresso, and a little<br>Vermont maple magic.</p><a class="details" href="/menu/seasonal" aria-label="View Maple Oat Latte details">Meet your new ritual <span aria-hidden="true">↗</span></a></div>
++        </article></div>
++        <div class="product"><article class="card" aria-labelledby="espresso-title">
++          <div class="product-image"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=700&q=85" alt="Fresh espresso with golden crema in a ceramic cup" width="700" height="510" loading="lazy"><span class="tag green">The everyday essential</span></div>
++          <div class="card-body"><div class="product-meta"><span>Bold & beautifully balanced</span><span class="price">$3.50</span></div><h3 id="espresso-title">Dark Roast Espresso</h3><p>Deep chocolate notes. A smoky finish.<br>A small cup with a lot to say.</p><a class="details" href="/menu/espresso" aria-label="View Dark Roast Espresso details">Meet your new ritual <span aria-hidden="true">↗</span></a></div>
++        </article></div>
++        <div class="product"><article class="card" aria-labelledby="cold-title">
++          <div class="product-image"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=700&q=85" alt="Cold brew coffee served over ice in a glass" width="700" height="510" loading="lazy"><span class="tag">Worth the wait</span></div>
++          <div class="card-body"><div class="product-meta"><span>Slow steeped. Easy sipping.</span><span class="price">$4.75</span></div><h3 id="cold-title">Signature Cold Brew</h3><p>Steeped for 18 hours for a mellow, smooth<br>sip. Good things take their time.</p><a class="details" href="/menu/cold-brew" aria-label="View Signature Cold Brew details">Meet your new ritual <span aria-hidden="true">↗</span></a></div>
++        </article></div>
++        <div class="product"><article class="card" aria-labelledby="cappuccino-title">
++          <div class="product-image"><img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=700&q=85" alt="Cappuccino topped with delicate latte art" width="700" height="510" loading="lazy"><span class="tag green">A café classic</span></div>
++          <div class="card-body"><div class="product-meta"><span>Rich & perfectly frothy</span><span class="price">$4.50</span></div><h3 id="cappuccino-title">Classic Cappuccino</h3><p>Our signature espresso under a cloud of<br>silky milk. Simple, and just right.</p><a class="details" href="/menu/cappuccino" aria-label="View Classic Cappuccino details">Meet your new ritual <span aria-hidden="true">↗</span></a></div>
++        </article></div>
++        <div class="product"><article class="card" aria-labelledby="mocha-title">
++          <div class="product-image"><img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=700&q=85" alt="A comforting cup of coffee with steamed milk" width="700" height="510" loading="lazy"><span class="tag">A little indulgence</span></div>
++          <div class="card-body"><div class="product-meta"><span>Chocolate meets coffee</span><span class="price">$5.25</span></div><h3 id="mocha-title">Chocolate Mocha</h3><p>Bittersweet chocolate, bold espresso,<br>and a generous moment of comfort.</p><a class="details" href="/menu/mocha" aria-label="View Chocolate Mocha details">Meet your new ritual <span aria-hidden="true">↗</span></a></div>
++        </article></div>
++      </div>
++      <p class="scroll-hint" id="scroll-help"><span aria-hidden="true">↔</span> Focus the carousel and use arrow keys, or swipe and scroll to explore.</p>
++    </section>
++    <div class="values shell" aria-label="Our coffee values">
++      <div class="value"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C7 1 1 10 7 17S23 16 20 3ZM4 21 16 8"/></svg>Ethically sourced, thoughtfully chosen</div>
++      <div class="value"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10h11v5a5.5 5.5 0 0 1-11 0v-5ZM18 11h2a3 3 0 0 1 0 6h-2M4 22h17M10 7c-3-3 3-3 0-6M15 7c-3-3 3-3 0-6"/></svg>Roasted locally, brewed with care</div>
++      <div class="value"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20S2 14 2 8a5 5 0 0 1 10-1 5 5 0 0 1 10 1c0 6-10 12-10 12Z"/></svg>Your neighborhood. Your daily ritual.</div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  </main>
++  <footer class="shell"><p>© 2026 The Daily Grind Coffee Co. Made for your everyday.</p><div class="footer-links"><a href="/about">Our story</a><a href="/careers">Join the team</a><a href="/contact">Say hello</a><a href="/privacy-policy">Privacy</a></div></footer>
+ </body>
+-
+ </html>

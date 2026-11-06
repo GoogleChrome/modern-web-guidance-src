@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,88 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Payment Form */
++    .payment {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .payment fieldset {
++      border: none;
++    }
++
++    .payment legend {
++      font-weight: bold;
++      margin-bottom: 15px;
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.25rem;
++    }
++
++    .form-group .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-block-end: 0.25rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .form-group input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-group input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .form-group .error {
++      display: none;
++      font-size: 0.85rem;
++      color: #c62828;
++      margin-block-start: 0.25rem;
++    }
++
++    .form-group input:user-invalid ~ .error {
++      display: block;
++    }
++
++    .payment button {
++      width: 100%;
++      min-height: 48px;
++      border: none;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +274,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment" aria-labelledby="payment-heading">
++      <h2 id="payment-heading">Payment Details</h2>
++      <form action="/checkout/payment" method="post">
++        <fieldset>
++          <legend>Card information (all fields required)</legend>
++
++          <div class="form-group">
++            <label for="cc-number">Card number</label>
++            <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric"
++              maxlength="23" pattern="[0-9 ]{13,23}" enterkeyhint="next" required>
++            <span class="error">⚠ Enter a valid card number (13–19 digits).</span>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-name">Name on card</label>
++            <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50"
++              pattern="[\p{L} '\-\.]+" spellcheck="false" enterkeyhint="next" required>
++            <span class="error">⚠ Enter the name exactly as it appears on the card.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-exp">Expiry date</label>
++            <span id="cc-exp-hint" class="hint">Format: MM/YY</span>
++            <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" inputmode="numeric" maxlength="5"
++              pattern="(0[1-9]|1[0-2])/[0-9]{2}" aria-describedby="cc-exp-hint" enterkeyhint="next" required>
++            <span class="error">⚠ Enter the expiry date as MM/YY.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-csc">Security code</label>
++            <span id="cc-csc-hint" class="hint">3 or 4 digits, usually on the back of the card</span>
++            <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric" maxlength="4"
++              pattern="[0-9]{3,4}" aria-describedby="cc-csc-hint" enterkeyhint="done" required>
++            <span class="error">⚠ Enter the 3 or 4 digit security code.</span>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn">Complete Payment</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

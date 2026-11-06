@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+index 66c9173..3974177 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
+     }
+ 
+     * {
+@@ -27,6 +31,31 @@
+       background-color: var(--light);
+     }
+ 
++    ::selection {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    /* Native scrollbar fallback for browsers without scrollbar-color. */
++    ::-webkit-scrollbar {
++      width: 12px;
++      height: 12px;
++    }
++
++    ::-webkit-scrollbar-track { background: var(--secondary); }
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 10px;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    nav :focus-visible, .hero :focus-visible { outline-color: var(--accent); }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -95,7 +124,7 @@
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1280px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+@@ -107,6 +136,94 @@
+       margin-top: 20px;
+     }
+ 
++    .coffee-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
++      gap: 32px;
++      align-items: start;
++    }
++
++    .favorites .grid {
++      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
++    }
++
++    .customization {
++      padding: 24px;
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++    }
++
++    .customization h2 { color: var(--primary); }
++    .form-intro, .field-hint { font-size: 0.875rem; }
++    .form-intro { margin: 4px 0 20px; }
++    .field { margin-bottom: 16px; }
++    .field > label, legend { font-weight: 600; }
++    .field > label { display: block; margin-bottom: 5px; }
++    fieldset { border: 0; min-width: 0; }
++    legend { margin-bottom: 6px; }
++
++    input, select, button { font: inherit; }
++    input, select { accent-color: var(--primary); }
++
++    input:is([type="text"], [type="date"], [type="time"]), select {
++      width: 100%;
++      min-height: 44px;
++      padding: 8px 10px;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    input::placeholder { color: #795548; opacity: 1; }
++    select option { color: var(--text); background: var(--light); }
++
++    /* Enhance the browser's own select and picker where supported. */
++    @supports (appearance: base-select) {
++      select, select::picker(select) { appearance: base-select; }
++      select::picker(select) {
++        color: var(--text);
++        background: var(--light);
++        border: 1px solid var(--primary);
++        border-radius: 5px;
++      }
++      select option:checked { background: var(--secondary); }
++      select option:hover, select option:focus { background: var(--accent); }
++      select::picker-icon { color: var(--primary); }
++    }
++
++    .choices { display: flex; flex-wrap: wrap; gap: 10px 18px; }
++    .choices label, .check-label { display: inline-flex; align-items: center; gap: 7px; }
++    input:is([type="radio"], [type="checkbox"]) { width: 18px; height: 18px; }
++    input[type="range"] { width: 100%; margin-top: 8px; }
++    .range-labels { display: flex; justify-content: space-between; font-size: 0.8rem; }
++    .pickup-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
++    input[type="color"] {
++      display: block;
++      width: 64px;
++      height: 44px;
++      padding: 3px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: var(--light);
++      cursor: pointer;
++    }
++    button.btn { border: 0; cursor: pointer; width: 100%; margin-top: 4px; }
++    #order-summary { display: block; margin-top: 12px; font-size: 0.875rem; }
++
++    @media (max-width: 900px) {
++      .coffee-layout { grid-template-columns: 1fr; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++    }
++
++    @media (max-width: 400px) {
++      .pickup-fields { grid-template-columns: 1fr; }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -174,9 +291,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container coffee-layout">
++    <section class="favorites" aria-labelledby="favorites-title">
++      <h2 id="favorites-title" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +312,72 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customization" aria-labelledby="customization-title">
++      <h2 id="customization-title">Make it your daily cup</h2>
++      <p class="form-intro">A little extra maple? Oat milk? Find your favorite combination.</p>
++      <form id="coffee-order">
++        <div class="field">
++          <label for="drink">Your coffee</label>
++          <select id="drink" name="drink">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++          </select>
++        </div>
++        <fieldset class="field">
++          <legend>Cup size</legend>
++          <div class="choices">
++            <label><input type="radio" name="size" value="Small" checked> Small</label>
++            <label><input type="radio" name="size" value="Medium"> Medium</label>
++            <label><input type="radio" name="size" value="Large"> Large</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="milk">Milk</label>
++          <select id="milk" name="milk">
++            <option>Oat milk</option>
++            <option>Whole milk</option>
++            <option>Almond milk</option>
++            <option>No milk</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input id="sweetness" name="sweetness" type="range" min="0" max="4" step="1" value="2" aria-describedby="sweetness-hint">
++          <div class="range-labels" aria-hidden="true"><span>Unsweetened</span><span>Extra sweet</span></div>
++          <p id="sweetness-hint" class="field-hint">Choose a level from 0 (none) to 4 (extra sweet).</p>
++        </div>
++        <fieldset class="field">
++          <legend>A little extra</legend>
++          <div class="choices">
++            <label><input type="checkbox" name="extras" value="Extra shot"> Extra shot</label>
++            <label><input type="checkbox" name="extras" value="Cinnamon"> Cinnamon</label>
++          </div>
++        </fieldset>
++        <div class="pickup-fields">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input id="pickup-date" name="pickup-date" type="date">
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input id="pickup-time" name="pickup-time" type="time">
++          </div>
++        </div>
++        <div class="field">
++          <label for="sleeve-color">Reusable cup color</label>
++          <input id="sleeve-color" name="cup-color" type="color" value="#4e342e" aria-describedby="color-hint">
++          <p id="color-hint" class="field-hint">Pick a color to help identify your reusable cup.</p>
++        </div>
++        <div class="field">
++          <label for="order-name">Name on your cup</label>
++          <input id="order-name" name="order-name" type="text" placeholder="Your first name" autocomplete="given-name" maxlength="40" required>
++        </div>
++        <button type="submit" class="btn">Review my coffee</button>
++        <output id="order-summary" for="drink milk sweetness pickup-date pickup-time sleeve-color order-name" aria-live="polite">Preview your combination here. No order will be placed.</output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +390,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('coffee-order').addEventListener('submit', function (event) {
++      event.preventDefault();
++      const order = new FormData(this);
++      const extras = order.getAll('extras');
++      const pickup = [order.get('pickup-date'), order.get('pickup-time')].filter(Boolean).join(' at ');
++      document.getElementById('order-summary').textContent =
++        `${order.get('order-name')}, your combination is a ${order.get('size').toLowerCase()} ${order.get('drink')} with ${order.get('milk').toLowerCase()}, sweetness ${order.get('sweetness')}/4` +
++        (extras.length ? `, plus ${extras.join(' and ').toLowerCase()}` : '') +
++        `. Cup color: ${order.get('cup-color')}.` +
++        (pickup ? ` Requested pickup: ${pickup}.` : '') +
++        ' This is a preview; no order has been placed.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,241 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <meta name="description" content="Next-generation cloud infrastructure and developer platform built for modern engineering teams. Ship faster, scale effortlessly, and observe everything." />
++  <title>Veloce Cloud — Ship Faster, Scale Effortlessly</title>
++
++  <!-- Preconnect to font servers and experiment CDN -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
++
++  <!-- Anti-flicker snippet: hides experiment-targeted content until the A/B variant is applied or timeout elapses -->
++  <style id="ab-anti-flicker-style">
++    html.async-hide .ab-experiment-ready,
++    html.ab-loading body {
++      opacity: 0 !important;
++      pointer-events: none !important;
++    }
++    body {
++      transition: opacity 0.15s ease-in-out;
++    }
++  </style>
++  <script>
++    (function (doc, timeoutMs) {
++      var root = doc.documentElement;
++      root.classList.add('ab-loading', 'async-hide');
++
++      var revealed = false;
++      function revealPage() {
++        if (revealed) return;
++        revealed = true;
++        root.classList.remove('ab-loading', 'async-hide');
++      }
++
++      // Expose global callback hook for the experiment SDK
++      window.onExperimentReady = revealPage;
++      window.revealExperimentContent = revealPage;
++      window.addEventListener('experiment:ready', revealPage);
++
++      // Fail-safe timeout so the page never stays blank if the CDN is unreachable
++      var timer = setTimeout(revealPage, timeoutMs);
++
++      window.__abRevealWithCleanup = function () {
++        clearTimeout(timer);
++        revealPage();
++      };
++    })(document, 2500);
++  </script>
++
++  <!-- Synchronous A/B testing SDK in <head> so variants are applied before first paint -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    onload="window.__abRevealWithCleanup && window.__abRevealWithCleanup()"
++    onerror="window.__abRevealWithCleanup && window.__abRevealWithCleanup()"
++  ></script>
++
++  <link rel="stylesheet" href="styles.css" />
++</head>
++<body>
++  <header class="site-header">
++    <div class="container nav-container">
++      <a href="#top" class="brand" aria-label="Veloce Cloud Home">
++        <span class="brand-mark" aria-hidden="true">◆</span>
++        <span class="brand-name">VeloceCloud</span>
++      </a>
++      <nav class="primary-nav" aria-label="Primary Navigation">
++        <ul class="nav-list">
++          <li><a href="#features">Features</a></li>
++          <li><a href="#metrics">Benchmarks</a></li>
++          <li><a href="#pricing">Pricing</a></li>
++          <li><a href="#faq">FAQ</a></li>
++        </ul>
++      </nav>
++      <div class="nav-actions">
++        <a href="#login" class="nav-link-secondary">Sign In</a>
++        <a href="#signup" class="btn btn-sm btn-outline" data-experiment-id="nav-cta">Start Free</a>
++      </div>
++    </div>
++  </header>
++
++  <main id="top">
++    <!-- Hero Section -->
++    <section class="hero ab-experiment-ready" aria-labelledby="hero-heading" data-experiment-section="hero">
++      <div class="container hero-grid">
++        <div class="hero-content">
++          <div class="badge" data-experiment-id="hero-badge">
++            <span class="badge-dot" aria-hidden="true"></span>
++            <span>New: Global Edge Compute Engine v3.2</span>
++          </div>
++          <h1 id="hero-heading" class="hero-title" data-experiment-id="hero-headline">
++            Deploy globally in seconds, scale without limits.
++          </h1>
++          <p class="hero-subtitle" data-experiment-id="hero-subheadline">
++            Veloce Cloud unifies zero-config deployments, instant serverless Postgres, and real-time observability into one workflow built for high-velocity engineering teams.
++          </p>
++          <div class="hero-cta-group">
++            <a
++              href="#signup"
++              id="hero-cta-btn"
++              class="btn btn-primary btn-lg"
++              data-experiment-id="hero-cta"
++            >
++              Start Building for Free
++            </a>
++            <a
++              href="#demo"
++              id="hero-secondary-cta"
++              class="btn btn-secondary btn-lg"
++              data-experiment-id="hero-secondary-cta"
++            >
++              Book Interactive Demo
++            </a>
++          </div>
++          <p class="hero-trust-note">
++            No credit card required · 100 GB free edge bandwidth · SOC 2 Type II certified
++          </p>
++        </div>
++
++        <div class="hero-visual">
++          <div class="visual-card">
++            <img
++              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=960&q=80"
++              alt="Real-time cloud analytics and deployment latency dashboard"
++              width="640"
++              height="426"
++              fetchpriority="high"
++              class="hero-image"
++              data-experiment-id="hero-image"
++            />
++            <div class="status-pill">
++              <span class="status-indicator" aria-hidden="true"></span>
++              <span>99.99% Uptime · 38 Edge Regions Active</span>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Metrics Section -->
++    <section id="metrics" class="metrics-section" aria-label="Platform performance metrics">
++      <div class="container metrics-grid">
++        <div class="metric-item">
++          <span class="metric-value">&lt; 15ms</span>
++          <span class="metric-label">Global median P95 cold start</span>
++        </div>
++        <div class="metric-item">
++          <span class="metric-value">38+</span>
++          <span class="metric-label">Anycast edge network locations</span>
++        </div>
++        <div class="metric-item">
++          <span class="metric-value">10x</span>
++          <span class="metric-label">Faster CI/CD preview rollouts</span>
++        </div>
++        <div class="metric-item">
++          <span class="metric-value">99.99%</span>
++          <span class="metric-label">Guaranteed enterprise SLA</span>
++        </div>
++      </div>
++    </section>
++
++    <!-- Features Section -->
++    <section id="features" class="features-section" aria-labelledby="features-heading">
++      <div class="container">
++        <div class="section-header">
++          <h2 id="features-heading" class="section-title">Everything you need to run production workloads</h2>
++          <p class="section-subtitle">
++            Eliminate infrastructure boilerplate and focus on shipping features that delight your users.
++          </p>
++        </div>
++
++        <div class="features-grid">
++          <article class="feature-card">
++            <div class="feature-icon" aria-hidden="true">⚡</div>
++            <h3 class="feature-title">Instant Git Previews</h3>
++            <p class="feature-description">
++              Every pull request gets an isolated production-grade environment complete with branched databases and edge routing.
++            </p>
++          </article>
++
++          <article class="feature-card">
++            <div class="feature-icon" aria-hidden="true">🛡️</div>
++            <h3 class="feature-title">Automated DDoS Protection</h3>
++            <p class="feature-description">
++              Built-in L3/L4/L7 mitigation and intelligent WAF rules keep your services resilient against traffic spikes and attacks.
++            </p>
++          </article>
++
++          <article class="feature-card">
++            <div class="feature-icon" aria-hidden="true">📊</div>
++            <h3 class="feature-title">Unified Telemetry</h3>
++            <p class="feature-description">
++              Correlate distributed traces, structured logs, and real-user Web Vitals without configuring third-party agents.
++            </p>
++          </article>
++        </div>
++      </div>
++    </section>
++
++    <!-- Bottom Call to Action -->
++    <section id="signup" class="cta-banner-section" aria-labelledby="cta-banner-heading">
++      <div class="container">
++        <div class="cta-banner">
++          <h2 id="cta-banner-heading" class="cta-banner-title">Ready to accelerate your release cycle?</h2>
++          <p class="cta-banner-text">
++            Join over 25,000 developers deploying resilient applications on Veloce Cloud today.
++          </p>
++          <form class="signup-form" action="#signup" method="get" onsubmit="event.preventDefault(); this.dataset.submitted = 'true';">
++            <label for="work-email" class="sr-only">Work email address</label>
++            <input
++              type="email"
++              id="work-email"
++              name="email"
++              placeholder="you@company.com"
++              required
++              autocomplete="email"
++              class="email-input"
++            />
++            <button type="submit" class="btn btn-primary btn-lg" data-experiment-id="bottom-cta">
++              Get Started Now
++            </button>
++          </form>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <div class="container footer-content">
++      <p class="copyright">&copy; 2026 Veloce Cloud Inc. All rights reserved.</p>
++      <ul class="footer-links">
++        <li><a href="#privacy">Privacy Policy</a></li>
++        <li><a href="#terms">Terms of Service</a></li>
++        <li><a href="#security">Security</a></li>
++      </ul>
++    </div>
++  </footer>
++</body>
++</html>

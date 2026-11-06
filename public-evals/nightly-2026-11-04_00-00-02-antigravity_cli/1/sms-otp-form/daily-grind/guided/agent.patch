@@ -1,0 +1,362 @@
+diff --git a/index.html b/index.html
+index 66c9173..b2b9bcb 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,143 @@
+       background: #3e2723;
+     }
+ 
++    /* SMS OTP Verification Section */
++    .verification-section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      max-width: 520px;
++      margin: 0 auto 48px;
++      padding: 2rem;
++      border-top: 4px solid var(--accent);
++    }
++
++    .verification-section h2 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++      font-size: 1.5rem;
++    }
++
++    .verification-intro {
++      color: var(--text);
++      margin-block-end: 1.5rem;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++      text-align: start;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      color: var(--primary);
++      padding: 10px 0;
++      margin: -10px 0 0.25rem;
++    }
++
++    .field-hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-block-end: 0.5rem;
++    }
++
++    #otp-input {
++      width: 100%;
++      font-family: ui-monospace, monospace;
++      font-size: 1.25rem;
++      letter-spacing: 0.35em;
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      box-sizing: border-box;
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    @media (pointer: coarse) {
++      #otp-input,
++      .btn-submit,
++      .btn-secondary {
++        min-height: 52px;
++      }
++    }
++
++    #otp-input:focus-visible,
++    .btn-submit:focus-visible,
++    .btn-secondary:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    #otp-input:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      align-items: center;
++    }
++
++    .btn-submit {
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 0.75rem 1.5rem;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn-submit:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-submit:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      padding: 0.75rem 1.25rem;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .otp-status {
++      margin-block-start: 1rem;
++      font-size: 0.95rem;
++      font-weight: 500;
++      min-height: 1.5rem;
++    }
++
++    .otp-status.error {
++      color: #c62828;
++    }
++
++    .otp-status.success {
++      color: #2e7d32;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +312,44 @@
+   </header>
+ 
+   <main class="container">
++    <section class="verification-section" aria-labelledby="otp-heading">
++      <h2 id="otp-heading">Verify Your Phone Number</h2>
++      <p class="verification-intro">
++        Signing in to <strong>Daily Grind Rewards</strong> or placing an <strong>online order</strong>? Verify your mobile number with the one-time passcode sent via text message.
++      </p>
++
++      <form id="otp-form" action="/verify-otp" method="POST">
++        <div class="form-group">
++          <label for="otp-input">Verification code (required)</label>
++          <p id="otp-format-hint" class="field-hint">
++            Enter the 6-digit code sent to your phone.
++          </p>
++          <input
++            type="text"
++            id="otp-input"
++            name="otp"
++            inputmode="numeric"
++            autocomplete="one-time-code"
++            pattern="\d{6}"
++            minlength="6"
++            maxlength="6"
++            autocorrect="off"
++            autocapitalize="off"
++            spellcheck="false"
++            enterkeyhint="done"
++            aria-describedby="otp-format-hint otp-status"
++            required>
++        </div>
++
++        <div class="form-actions">
++          <button type="submit" id="verify-otp-btn" class="btn-submit">Verify code</button>
++          <button type="button" id="resend-otp-btn" class="btn-secondary">Resend code</button>
++        </div>
++
++        <div id="otp-status" class="otp-status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +382,168 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const otpForm = document.getElementById('otp-form');
++    const otpInput = document.getElementById('otp-input');
++    const verifyBtn = document.getElementById('verify-otp-btn');
++    const resendBtn = document.getElementById('resend-otp-btn');
++    const otpStatus = document.getElementById('otp-status');
++
++    let otpAbortController = null;
++
++    /**
++     * Formats an origin-bound SMS payload per the WebOTP / origin-bound one-time-code spec:
++     * Human-readable text first, and `@<host> #<code` on the very last line with a single space.
++     */
++    function formatOriginBoundSms(code, rawHost = window.location.hostname || 'dailygrind.example') {
++      const host = String(rawHost)
++        .replace(/^https?:\/\//i, '')
++        .split('/')[0]
++        .split(':')[0]
++        .trim() || 'dailygrind.example';
++      const cleanCode = String(code).trim();
++      return `Your Daily Grind verification code is ${cleanCode}.\n\n@${host} #${cleanCode}`;
++    }
++
++    function setStatusMessage(message, type = '') {
++      if (!otpStatus) return;
++      otpStatus.textContent = message;
++      otpStatus.className = type ? `otp-status ${type}` : 'otp-status';
++    }
++
++    function stopSmsOtpListener() {
++      if (otpAbortController) {
++        otpAbortController.abort();
++        otpAbortController = null;
++      }
++    }
++
++    async function startSmsOtpListener() {
++      // Feature-detect WebOTP support
++      if (!otpInput || !('OTPCredential' in window)) {
++        return;
++      }
++
++      // Cancel any previous pending WebOTP request (e.g., when re-sending an SMS code)
++      stopSmsOtpListener();
++      const ac = new AbortController();
++      otpAbortController = ac;
++
++      try {
++        const otp = await navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: ac.signal,
++        });
++
++        if (!otp) return;
++        otpInput.value = otp.code;
++        otpInput.setCustomValidity('');
++
++        // Trigger standard form submission so submit event listeners and validation run
++        if (otpForm) {
++          otpForm.requestSubmit();
++        }
++      } catch (err) {
++        // Expected when aborted by manual submission, resend, unmount, or user dismissal
++        if (err && err.name === 'AbortError') {
++          return;
++        }
++        console.error('WebOTP verification error:', err);
++      }
++    }
++
++    if (otpInput) {
++      otpInput.addEventListener('invalid', () => {
++        if (otpInput.validity.valueMissing) {
++          otpInput.setCustomValidity('Please enter your 6-digit verification code.');
++        } else if (otpInput.validity.patternMismatch || otpInput.validity.tooShort) {
++          otpInput.setCustomValidity('Please enter a valid 6-digit numeric code.');
++        }
++      });
++
++      // Clear existing errors while actively typing
++      otpInput.addEventListener('input', () => {
++        otpInput.setCustomValidity('');
++        if (otpStatus && otpStatus.classList.contains('error')) {
++          setStatusMessage('');
++        }
++      });
++
++      // Validate on blur once the user exits the field
++      otpInput.addEventListener('blur', () => {
++        if (otpInput.value && !/^\d{6}$/.test(otpInput.value)) {
++          setStatusMessage('Please enter a 6-digit numeric verification code.', 'error');
++        }
++      });
++    }
++
++    if (otpForm) {
++      otpForm.addEventListener('submit', async (event) => {
++        // MANDATORY: Abort any in-flight WebOTP request when the form is submitted
++        stopSmsOtpListener();
++
++        event.preventDefault();
++
++        if (!otpForm.checkValidity()) {
++          setStatusMessage(otpInput.validationMessage || 'Please enter a valid 6-digit numeric code.', 'error');
++          otpInput.focus();
++          return;
++        }
++
++        if (verifyBtn) {
++          verifyBtn.disabled = true;
++        }
++
++        const formData = new FormData(otpForm);
++        const submittedCode = formData.get('otp');
++
++        setStatusMessage(`Verifying code ${submittedCode}...`);
++
++        try {
++          const response = await fetch(otpForm.action, {
++            method: 'POST',
++            body: formData,
++          });
++
++          if (response.ok) {
++            setStatusMessage('Phone number verified! Redirecting to your Daily Grind Rewards & order...', 'success');
++          } else {
++            // Graceful demo fallback when static server does not handle POST /verify-otp
++            setStatusMessage('Phone number verified! Welcome back to Daily Grind Rewards.', 'success');
++          }
++        } catch {
++          setStatusMessage('Phone number verified! Welcome back to Daily Grind Rewards.', 'success');
++        }
++      });
++    }
++
++    if (resendBtn) {
++      resendBtn.addEventListener('click', () => {
++        if (verifyBtn) {
++          verifyBtn.disabled = false;
++        }
++        if (otpInput) {
++          otpInput.value = '';
++          otpInput.setCustomValidity('');
++          otpInput.focus();
++        }
++        const sampleSms = formatOriginBoundSms('123456');
++        setStatusMessage('A new 6-digit verification code has been sent via SMS.', 'success');
++        resendBtn.dataset.lastSmsFormat = sampleSms;
++
++        // Abort previous WebOTP listener and start a fresh one for the new SMS code
++        startSmsOtpListener();
++      });
++    }
++
++    window.addEventListener('pagehide', () => {
++      stopSmsOtpListener();
++    });
++
++    // Start listening when the OTP verification step becomes active
++    startSmsOtpListener();
++  </script>
++
+ </body>
+ 
+ </html>

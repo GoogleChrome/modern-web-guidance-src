@@ -1,0 +1,700 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..9934840 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,5 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..28433ce 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,58 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++## Account settings and passkeys
++
++After signing in, readers are sent to `/devtools-times/account/settings` and can
++also reach it through the header. Sign-in verifies the password with the existing
++Times login service and creates a server-side Astro session lasting 24 hours.
++Passwords and upstream tokens are not saved. Settings and account API responses
++are private (`Cache-Control: no-store`); mutations check the request origin and
++derive account ownership from the session.
++
++The passkey section lists provider, custom display name, registration date and
++last-used date. Readers can rename or confirm removal of each passkey. Successful
++list loads and removals notify supported authenticators using
++`PublicKeyCredential.signalAllAcceptedCredentials`, with the server's complete
++remaining list and Base64URL IDs. Nicknames only change the website's label.
++Unsupported browsers and synchronization failures show manual password-manager
++instructions without undoing a successful server change.
++
++### Storage and registration integration
++
++This starter has **no passkey registration or passkey authentication flow**, and
++the existing remote password-login service has no credential management API.
++No sample credentials are created. New accounts therefore show the empty state.
++To manage previously registered credentials, integrate the verified registration
++and authentication backend with `src/server/accounts.ts` before deployment:
++
++- Use the canonical username returned by the login service as the account lookup
++  key. If your identity provider supports aliases, resolve them to the same
++  canonical username before creating a session.
++- During registration, use `updateAccount` to obtain the account's `userId` for
++  WebAuthn's user handle. After server verification, persist the credential in
++  `account.passkeys`: `id` (Base64URL), `publicKey` (Base64URL), `counter`, `name`,
++  `aaguid`, `registeredAt` (epoch milliseconds), and optional `lastUsedAt` (epoch
++  milliseconds). Keep private keys in the authenticator. When migrating existing
++  credentials, preserve their original Base64URL user handle in `account.userId`.
++- Authentication must read credentials from this same repository, reject missing
++  IDs and persist the verified counter and `lastUsedAt`. This makes deletion
++  revoke the credential, rather than merely hide a metadata entry. Do not
++  maintain a separate authentication store unless deletion updates it as well.
++- Set `PASSKEY_RP_ID` to the registration RP ID when it differs from the current
++  hostname. The default is the request hostname. Serve over HTTPS in production.
++
++Account records are atomically written to `.data/accounts` (excluded from Git),
++or `ACCOUNT_DATA_DIR`. Mount this directory on durable storage. The file
++repository serializes updates within one Node process; replace it with a shared
++transactional database for multiple instances. Astro's Node adapter also uses
++filesystem sessions by default; configure a shared session driver when scaling.
++
++Provider hints are a small local subset of the
++[passkey-authenticator-aaguids registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids).
++Unknown or zero AAGUIDs use a generic key icon. Provider metadata is only a
++display hint, never an authentication or authorization decision.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..8b3cb4a 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,9 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import { signedInUsername } from '../server/account-http';
++
++const username = await signedInUsername(Astro);
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -25,6 +28,9 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {username ? (
++          <a href={`${baseUrl}account/settings`} class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-700">Account settings</a>
++        ) : <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +45,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/PasskeySettings.tsx b/src/components/PasskeySettings.tsx
+new file mode 100644
+index 0000000..27f0839
+--- /dev/null
++++ b/src/components/PasskeySettings.tsx
+@@ -0,0 +1,194 @@
++import { useEffect, useRef, useState } from 'react';
++import { KeyIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
++import { syncPasskeys, type PasskeyAccount, type PasskeySummary } from '../utils/passkey-sync';
++import providers from '../utils/passkey-providers.json';
++
++const endpoint = `${import.meta.env.BASE_URL}api/account/passkeys`;
++const button = 'rounded border border-gray-300 px-3 py-2 text-sm font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-wait';
++const primary = `${button} bg-gray-900 text-white hover:bg-gray-700`;
++
++function date(timestamp?: number) {
++  return timestamp && Number.isFinite(timestamp)
++    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(timestamp)
++    : 'Not available';
++}
++
++function PasskeyRow({ passkey, busy, lastKey, onChange }: {
++  passkey: PasskeySummary;
++  busy: boolean;
++  lastKey: boolean;
++  onChange: (method: 'PUT' | 'DELETE', id: string, name?: string) => Promise<boolean>;
++}) {
++  const [mode, setMode] = useState<'view' | 'rename' | 'remove'>('view');
++  const [name, setName] = useState(passkey.name);
++  const renameButton = useRef<HTMLButtonElement>(null);
++  const removeButton = useRef<HTMLButtonElement>(null);
++  const returnFocus = useRef<'rename' | 'remove' | null>(null);
++  useEffect(() => {
++    if (mode === 'view' && returnFocus.current) {
++      (returnFocus.current === 'rename' ? renameButton : removeButton).current?.focus();
++      returnFocus.current = null;
++    }
++  }, [mode]);
++  const provider = passkey.aaguid && passkey.aaguid !== '00000000-0000-0000-0000-000000000000'
++    ? (providers as Record<string, { name: string; icon?: string }>)[passkey.aaguid.toLowerCase()] : undefined;
++  const label = passkey.name || provider?.name || 'Passkey';
++
++  function cancel() {
++    returnFocus.current = mode === 'rename' ? 'rename' : 'remove';
++    setMode('view');
++  }
++
++  return (
++    <li className="py-6">
++      <div className="flex gap-4">
++        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-100">
++          {provider?.icon ? <img src={provider.icon} alt="" className="size-6" /> : <KeyIcon className="size-6 text-gray-600" aria-hidden="true" />}
++        </div>
++        <div className="min-w-0 flex-1">
++          <div className="flex flex-wrap items-start justify-between gap-3">
++            <div>
++              <h3 className="break-words font-semibold text-gray-900">{label}</h3>
++              <p className="mt-1 text-sm text-gray-500">{provider?.name || 'Unknown passkey provider'}</p>
++            </div>
++            <div className="flex gap-2">
++              <button ref={renameButton} className={button} disabled={busy || mode !== 'view'} aria-label={`Rename ${label}`} onClick={() => { setName(passkey.name); setMode('rename'); }}>
++                <PencilSquareIcon className="mr-1.5 inline size-4" aria-hidden="true" />Rename
++              </button>
++              <button ref={removeButton} className={`${button} text-red-700`} disabled={busy || mode !== 'view'} aria-label={`Remove ${label}`} onClick={() => setMode('remove')}>
++                <TrashIcon className="mr-1.5 inline size-4" aria-hidden="true" />Remove
++              </button>
++            </div>
++          </div>
++          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
++            <div><dt className="inline">Added </dt><dd className="inline">{date(passkey.registeredAt)}</dd></div>
++            <div><dt className="inline">Last used </dt><dd className="inline">{passkey.lastUsedAt ? date(passkey.lastUsedAt) : 'Never'}</dd></div>
++          </dl>
++          {mode === 'rename' && (
++            <form className="mt-4 rounded-lg bg-gray-50 p-4" onSubmit={async event => {
++              event.preventDefault();
++              if (await onChange('PUT', passkey.id, name.trim())) cancel();
++            }}>
++              <label className="block text-sm font-medium">Passkey display name
++                <input autoFocus required maxLength={80} value={name} disabled={busy} onChange={event => setName(event.target.value)} className="mt-2 block w-full rounded border border-gray-300 bg-white px-3 py-2 focus-visible:outline-2 focus-visible:outline-gray-900" />
++              </label>
++              <p className="mt-2 text-xs text-gray-500">This name helps you identify the passkey here. It does not rename your account or the entry in your password manager.</p>
++              <div className="mt-3 flex gap-2">
++                <button type="submit" className={primary} disabled={busy || !name.trim()}>{busy ? 'Saving…' : 'Save name'}</button>
++                <button type="button" className={button} disabled={busy} onClick={cancel}>Cancel</button>
++              </div>
++            </form>
++          )}
++          {mode === 'remove' && (
++            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
++              <p className="text-sm font-semibold text-gray-900">Remove “{label}”?</p>
++              <p className="mt-2 text-sm text-gray-700">You won’t be able to use this passkey to sign in again.{lastKey ? ' This is your last passkey. You can still sign in with your username and password.' : ''}</p>
++              <div className="mt-3 flex flex-wrap gap-2">
++                <button className={`${button} border-red-700 bg-red-700 text-white hover:bg-red-800`} disabled={busy} onClick={() => void onChange('DELETE', passkey.id)}>{busy ? 'Removing…' : 'Remove passkey'}</button>
++                <button autoFocus className={button} disabled={busy} onClick={cancel}>Keep passkey</button>
++              </div>
++            </div>
++          )}
++        </div>
++      </div>
++    </li>
++  );
++}
++
++export default function PasskeySettings() {
++  const [account, setAccount] = useState<PasskeyAccount | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [message, setMessage] = useState('');
++  const [syncMessage, setSyncMessage] = useState('');
++  const [signedOut, setSignedOut] = useState(false);
++  const heading = useRef<HTMLHeadingElement>(null);
++
++  async function readResponse(response: Response): Promise<PasskeyAccount> {
++    if (response.status === 401) {
++      setSignedOut(true);
++      setAccount(null);
++      throw new Error('Your session has expired. Sign in again to manage your passkeys.');
++    }
++    const data = await response.json();
++    if (!response.ok) throw new Error(data.error || 'Unable to save changes. Try again.');
++    if (!Array.isArray(data.passkeys) || !data.userId || !data.rpId) throw new Error('Unable to load your passkeys. Try again.');
++    return data;
++  }
++
++  async function load(signal?: AbortSignal) {
++    setLoading(true);
++    setError('');
++    setMessage('');
++    setSyncMessage('');
++    try {
++      const data = await readResponse(await fetch(endpoint, { cache: 'no-store', signal }));
++      if (signal?.aborted) return;
++      setAccount(data);
++      setSignedOut(false);
++      setSyncMessage(await syncPasskeys(data));
++    } catch (error) {
++      if (!signal?.aborted) setError(error instanceof Error ? error.message : 'Unable to load passkeys. Please try again.');
++    } finally {
++      if (!signal?.aborted) setLoading(false);
++    }
++  }
++
++  useEffect(() => {
++    const controller = new AbortController();
++    void load(controller.signal);
++    return () => controller.abort();
++  }, []);
++
++  async function change(method: 'PUT' | 'DELETE', id: string, name?: string) {
++    setBusy(true);
++    setError('');
++    setMessage('');
++    try {
++      const data = await readResponse(await fetch(endpoint, {
++        method,
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ id, name }),
++      }));
++      setAccount(data);
++      setMessage(method === 'DELETE' ? 'Passkey removed.' : 'Passkey name updated.');
++      if (method === 'DELETE') {
++        heading.current?.focus();
++        setSyncMessage(await syncPasskeys(data));
++      }
++      return true;
++    } catch (error) {
++      setError(error instanceof Error ? error.message : 'Unable to save changes. Please try again.');
++      return false;
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return (
++    <section aria-labelledby="passkeys-heading" aria-busy={loading || busy}>
++      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
++        <div className="flex items-center gap-3">
++          <KeyIcon className="size-6 text-gray-700" aria-hidden="true" />
++          <h2 id="passkeys-heading" ref={heading} tabIndex={-1} className="text-xl font-bold focus-visible:outline-2">Your passkeys{account ? ` (${account.passkeys.length})` : ''}</h2>
++        </div>
++        <button className={button} disabled={loading || busy || signedOut} onClick={() => void load()}>Refresh list</button>
++      </div>
++      <p className="mt-5 text-sm leading-6 text-gray-600">Passkeys let you sign in with your fingerprint, face, or device lock. Give each one a recognizable name and remove any you no longer use.</p>
++      {error && <p role="alert" className="mt-5 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error} {signedOut && <a href={`${import.meta.env.BASE_URL}signin`} className="font-semibold underline">Sign in</a>}</p>}
++      <p role="status" className="mt-4 text-sm text-green-800">{message}</p>
++      {loading ? <p role="status" className="py-8 text-sm text-gray-500">Loading your passkeys…</p> : account && (
++        account.passkeys.length ? <ul className="divide-y divide-gray-200">{account.passkeys.map(passkey => <PasskeyRow key={passkey.id} passkey={passkey} busy={busy} lastKey={account.passkeys.length === 1} onChange={change} />)}</ul> : (
++          <div className="my-6 rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center">
++            <KeyIcon className="mx-auto mb-3 size-8 text-gray-400" aria-hidden="true" />
++            <h3 className="font-semibold">No passkeys registered</h3>
++            <p className="mt-2 text-sm text-gray-500">You can continue signing in with your username and password.</p>
++          </div>
++        )
++      )}
++      {syncMessage && <p role="status" className="mt-4 rounded-lg bg-gray-50 p-4 text-xs leading-5 text-gray-600">{syncMessage}</p>}
++      <p className="mt-6 border-t border-gray-200 pt-5 text-xs leading-5 text-gray-500">Removing a passkey revokes its access to The DevTools Times. Your browser will be notified when supported; other devices or password managers may need a manual update.</p>
++    </section>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..819ff53 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -14,7 +14,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/account/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -25,12 +25,9 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError(data.error || 'Unable to sign in. Please try again.');
+       } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        window.location.assign(`${import.meta.env.BASE_URL}account/settings`);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -63,6 +60,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +75,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..7179b43 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // The header now includes account navigation for authenticated readers.
++  // Prevent shared caches from serving that personalized HTML to anyone else.
++  if (await context.session?.get('reader')) {
++    response.headers.set('Cache-Control', 'no-store');
++  }
++  return response;
+ });
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..49b2a1b
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,33 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeySettings from '../../components/PasskeySettings';
++import { signedInUsername } from '../../server/account-http';
++
++Astro.response.headers.set('Cache-Control', 'no-store');
++const username = await signedInUsername(Astro);
++if (!username) return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="px-5 py-10 sm:px-10 sm:py-14">
++    <a href={import.meta.env.BASE_URL} class="text-xs font-semibold text-gray-500 hover:underline">← Back to the Times</a>
++    <h1 class="font-brand mt-5 text-4xl text-gray-900">Account settings</h1>
++    <p class="mt-2 text-sm text-gray-500">Manage your account and how you sign in.</p>
++    <div class="mt-8 grid gap-8 border-t border-gray-300 pt-8 md:grid-cols-[200px_minmax(0,1fr)]">
++      <aside>
++        <p class="text-xs font-semibold uppercase tracking-widest text-gray-400">Your account</p>
++        <p class="mt-2 break-words text-sm font-semibold text-gray-800">{username}</p>
++        <nav aria-label="Account settings" class="mt-6">
++          <a href="#passkeys-heading" aria-current="page" class="block rounded border-l-2 border-gray-900 bg-gray-100 px-4 py-3 text-sm font-semibold">Passkeys</a>
++        </nav>
++        <form method="POST" action={`${import.meta.env.BASE_URL}api/account/logout`} class="mt-6">
++          <button class="px-4 py-2 text-sm text-gray-500 hover:underline">Sign out</button>
++        </form>
++      </aside>
++      <div class="min-w-0 rounded-lg border border-gray-200 p-5 sm:p-7">
++        <PasskeySettings client:load />
++        <noscript><p class="mt-4 text-sm">Enable JavaScript to view and manage your passkeys.</p></noscript>
++      </div>
++    </div>
++  </div>
++</Layout>
+diff --git a/src/pages/api/account/login.ts b/src/pages/api/account/login.ts
+new file mode 100644
+index 0000000..78d9185
+--- /dev/null
++++ b/src/pages/api/account/login.ts
+@@ -0,0 +1,31 @@
++import type { APIRoute } from 'astro';
++import { json, sameOrigin } from '../../../server/account-http';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request)) return json({ error: 'Invalid request origin.' }, 403);
++  if (!session) return json({ error: 'Sign-in is temporarily unavailable.' }, 503);
++  try {
++    const { username, password } = await request.json();
++    if (typeof username !== 'string' || !username.trim() || username.length > 200 ||
++        typeof password !== 'string' || !password || password.length > 1024) {
++      return json({ error: 'Enter your username and password.' }, 400);
++    }
++    const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ username, password }),
++      signal: AbortSignal.timeout(15000),
++    });
++    if (!response.ok) return json({ error: 'Unable to sign in. Check your username and password.' }, 401);
++    // Do not persist the reader's password or expose upstream tokens to scripts.
++    const result = await response.json();
++    if (result.error || result.success === false) return json({ error: 'Unable to sign in.' }, 401);
++    const canonicalUsername = result.user?.username || result.username || username;
++    if (typeof canonicalUsername !== 'string') return json({ error: 'Invalid sign-in response.' }, 502);
++    await session.regenerate();
++    session.set('reader', { username: canonicalUsername, expiresAt: Date.now() + 86400000 }, { ttl: 86400 });
++    return json({ success: true });
++  } catch {
++    return json({ error: 'Unable to sign in right now. Please try again.' }, 502);
++  }
++};
+diff --git a/src/pages/api/account/logout.ts b/src/pages/api/account/logout.ts
+new file mode 100644
+index 0000000..d22ac9d
+--- /dev/null
++++ b/src/pages/api/account/logout.ts
+@@ -0,0 +1,8 @@
++import type { APIRoute } from 'astro';
++import { json, sameOrigin } from '../../../server/account-http';
++
++export const POST: APIRoute = async ({ request, session, redirect }) => {
++  if (!sameOrigin(request)) return json({ error: 'Invalid request origin.' }, 403);
++  await session?.destroy();
++  return redirect(`${import.meta.env.BASE_URL}signin`, 303);
++};
+diff --git a/src/pages/api/account/passkeys.ts b/src/pages/api/account/passkeys.ts
+new file mode 100644
+index 0000000..32af3db
+--- /dev/null
++++ b/src/pages/api/account/passkeys.ts
+@@ -0,0 +1,50 @@
++import type { APIRoute } from 'astro';
++import { isCredentialId, publicAccount, relyingPartyId, updateAccount } from '../../../server/accounts';
++import { json, sameOrigin, signedInUsername } from '../../../server/account-http';
++
++export const GET: APIRoute = async (context) => {
++  const username = await signedInUsername(context);
++  if (!username) return json({ error: 'Please sign in to manage your passkeys.' }, 401);
++  try {
++    return json(await updateAccount(username, account => publicAccount(account, relyingPartyId(context.url))));
++  } catch {
++    return json({ error: 'Unable to load passkeys. Please try again.' }, 500);
++  }
++};
++
++const mutate: APIRoute = async (context) => {
++  if (!sameOrigin(context.request)) return json({ error: 'Invalid request origin.' }, 403);
++  const username = await signedInUsername(context);
++  if (!username) return json({ error: 'Please sign in to manage your passkeys.' }, 401);
++  let input;
++  try {
++    input = await context.request.json();
++  } catch {
++    return json({ error: 'Invalid request.' }, 400);
++  }
++  if (!input || !isCredentialId(input.id)) return json({ error: 'Invalid passkey ID.' }, 400);
++  const name = typeof input.name === 'string' ? input.name.trim() : '';
++  if (context.request.method === 'PUT' && (!name || name.length > 80)) {
++    return json({ error: 'Use a name between 1 and 80 characters.' }, 400);
++  }
++  try {
++    const result = await updateAccount(username, account => {
++      const key = account.passkeys.find(key => key.id === input.id);
++      if (!key) return null;
++      if (context.request.method === 'DELETE') {
++        account.passkeys = account.passkeys.filter(key => key.id !== input.id);
++      } else {
++        key.name = name;
++      }
++      // Return the complete authoritative list, including when the last key is
++      // removed. The client must never signal a filtered or stale local list.
++      return publicAccount(account, relyingPartyId(context.url));
++    });
++    return result ? json(result) : json({ error: 'Passkey not found. Refresh the list and try again.' }, 404);
++  } catch {
++    return json({ error: 'Unable to save changes. Please try again.' }, 500);
++  }
++};
++
++export const PUT = mutate;
++export const DELETE = mutate;
+diff --git a/src/server/account-http.ts b/src/server/account-http.ts
+new file mode 100644
+index 0000000..9b2a2df
+--- /dev/null
++++ b/src/server/account-http.ts
+@@ -0,0 +1,17 @@
++import type { APIContext } from 'astro';
++
++export function json(body: unknown, status = 200) {
++  return new Response(JSON.stringify(body), {
++    status,
++    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++  });
++}
++
++export function sameOrigin(request: Request) {
++  return request.headers.get('Origin') === new URL(request.url).origin;
++}
++
++export async function signedInUsername(context: Pick<APIContext, 'session'>): Promise<string | undefined> {
++  const reader = await context.session?.get('reader') as { username: string; expiresAt: number } | undefined;
++  return reader && reader.expiresAt > Date.now() ? reader.username : undefined;
++}
+diff --git a/src/server/accounts.ts b/src/server/accounts.ts
+new file mode 100644
+index 0000000..0136548
+--- /dev/null
++++ b/src/server/accounts.ts
+@@ -0,0 +1,69 @@
++import { createHash, randomBytes } from 'node:crypto';
++import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
++import { join } from 'node:path';
++
++export interface Passkey {
++  id: string;
++  name: string;
++  aaguid?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++// Registration and authentication must use this same record, so deleting a key
++// revokes it as well as removing it from the management list.
++export interface StoredPasskey extends Passkey {
++  publicKey: string;
++  counter: number;
++}
++
++export interface Account {
++  userId: string;
++  username: string;
++  passkeys: StoredPasskey[];
++}
++
++const directory = process.env.ACCOUNT_DATA_DIR || join(process.cwd(), '.data', 'accounts');
++const pending = new Map<string, Promise<unknown>>();
++export const relyingPartyId = (url: URL) => process.env.PASSKEY_RP_ID || url.hostname;
++export const isCredentialId = (value: unknown): value is string =>
++  typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value) && value.length % 4 !== 1;
++
++// Serialize writes per account and atomically replace files. This repository is
++// intended for a single Node instance with a persistent volume (see README).
++export async function updateAccount<T>(username: string, operation: (account: Account) => T): Promise<T> {
++  const key = createHash('sha256').update(username).digest('hex');
++  const previous = pending.get(key) || Promise.resolve();
++  const task = previous.catch(() => {}).then(async () => {
++    await mkdir(directory, { recursive: true, mode: 0o700 });
++    const path = join(directory, `${key}.json`);
++    let account: Account;
++    try {
++      account = JSON.parse(await readFile(path, 'utf8'));
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
++      account = { username, userId: randomBytes(32).toString('base64url'), passkeys: [] };
++    }
++    const result = operation(account);
++    const temporary = `${path}.${randomBytes(8).toString('hex')}.tmp`;
++    await writeFile(temporary, JSON.stringify(account), { mode: 0o600 });
++    await rename(temporary, path);
++    return result;
++  });
++  pending.set(key, task);
++  try {
++    return await task;
++  } finally {
++    if (pending.get(key) === task) pending.delete(key);
++  }
++}
++
++export function publicAccount(account: Account, rpId: string) {
++  return {
++    userId: account.userId,
++    username: account.username,
++    rpId,
++    passkeys: account.passkeys.map(({ id, name, aaguid, registeredAt, lastUsedAt }) =>
++      ({ id, name, aaguid, registeredAt, lastUsedAt })),
++  };
++}
+diff --git a/src/utils/passkey-providers.json b/src/utils/passkey-providers.json
+new file mode 100644
+index 0000000..38fff93
+--- /dev/null
++++ b/src/utils/passkey-providers.json
+@@ -0,0 +1,30 @@
++{
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="
++  }
++}
+diff --git a/src/utils/passkey-sync.ts b/src/utils/passkey-sync.ts
+new file mode 100644
+index 0000000..d4b2645
+--- /dev/null
++++ b/src/utils/passkey-sync.ts
+@@ -0,0 +1,46 @@
++export interface PasskeySummary {
++  id: string;
++  name: string;
++  aaguid?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++export interface PasskeyAccount {
++  username: string;
++  userId: string;
++  rpId: string;
++  passkeys: PasskeySummary[];
++}
++
++type SignalAPI = {
++  signalAllAcceptedCredentials?: (options: {
++    rpId: string;
++    userId: string;
++    allAcceptedCredentialIds: string[];
++  }) => Promise<void>;
++};
++
++export async function syncPasskeys(account: PasskeyAccount): Promise<string> {
++  const api = typeof window.PublicKeyCredential === 'undefined'
++    ? undefined : window.PublicKeyCredential as typeof PublicKeyCredential & SignalAPI;
++  if (!window.isSecureContext || !api?.signalAllAcceptedCredentials) {
++    return 'Your browser cannot update your password manager automatically. Remove deleted passkeys from your password manager manually.';
++  }
++  // IDs come from the server's complete list and are already Base64URL. Never
++  // encode them again or signal an empty list as a fallback for a failed fetch.
++  const validId = (id: string) => /^[A-Za-z0-9_-]+$/.test(id) && id.length % 4 !== 1;
++  if (!validId(account.userId) || account.passkeys.some(key => !validId(key.id))) {
++    return 'Your changes are saved, but the browser could not be notified. Update your password manager manually.';
++  }
++  try {
++    await api.signalAllAcceptedCredentials({
++      rpId: account.rpId,
++      userId: account.userId,
++      allAcceptedCredentialIds: account.passkeys.map(key => key.id),
++    });
++    return 'Your browser has been notified of your current passkeys. Your password manager controls when it applies updates.';
++  } catch {
++    return 'Your changes are saved, but your password manager could not be updated. Try refreshing the list, or remove deleted passkeys from your password manager manually.';
++  }
++}

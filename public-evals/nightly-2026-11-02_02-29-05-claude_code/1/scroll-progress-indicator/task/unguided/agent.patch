@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,46 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Scroll Progress Indicator */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 4px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: 0 50%;
++      z-index: 1001;
++      pointer-events: none;
++    }
++
++    /* Browsers with scroll-driven animations need no JavaScript */
++    @supports (animation-timeline: scroll()) {
++      .scroll-progress {
++        animation: scroll-progress linear both;
++        animation-timeline: scroll(root block);
++      }
++    }
++
++    @keyframes scroll-progress {
++      from {
++        transform: scaleX(0);
++      }
++
++      to {
++        transform: scaleX(1);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroll-progress" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +239,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()')) return;
++
++      var bar = document.querySelector('.scroll-progress');
++      if (!bar) return;
++
++      var ticking = false;
++
++      function update() {
++        var root = document.documentElement;
++        var scrollTop = window.pageYOffset || root.scrollTop || document.body.scrollTop || 0;
++        var max = root.scrollHeight - root.clientHeight;
++        var progress = max > 0 ? Math.min(Math.max(scrollTop / max, 0), 1) : 0;
++        bar.style.transform = 'scaleX(' + progress + ')';
++        ticking = false;
++      }
++
++      function requestUpdate() {
++        if (ticking) return;
++        ticking = true;
++        (window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(update);
++      }
++
++      window.addEventListener('scroll', requestUpdate, { passive: true });
++      window.addEventListener('resize', requestUpdate);
++      window.addEventListener('load', requestUpdate);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,80 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Script performance profiler: logs which scripts are slow to load or block the main thread.
++       Open the browser console and look for "[script-profiler]". Remove when done. -->
++  <script>
++    (function () {
++      var LOAD_MS = 200;  // flag scripts whose download takes longer than this
++      var BLOCK_MS = 50;  // flag script execution longer than this (long task threshold)
++      var tag = '[script-profiler]';
++
++      function supported(type) {
++        return window.PerformanceObserver &&
++          (PerformanceObserver.supportedEntryTypes || []).indexOf(type) !== -1;
++      }
++
++      // 1. Load cost: download time and size of every script resource.
++      function reportResources(entries) {
++        var rows = entries
++          .filter(function (e) { return e.initiatorType === 'script' || /\.m?js(\?|$)/.test(e.name); })
++          .map(function (e) {
++            return {
++              script: e.name,
++              'download (ms)': Math.round(e.duration),
++              'size (KB)': e.transferSize ? +(e.transferSize / 1024).toFixed(1) : 'cached/unknown',
++              'render-blocking': e.renderBlockingStatus || 'n/a',
++              party: new URL(e.name, location.href).origin === location.origin ? 'first' : 'third'
++            };
++          })
++          .filter(function (r) { return r['download (ms)'] >= LOAD_MS; })
++          .sort(function (a, b) { return b['download (ms)'] - a['download (ms)']; });
++        if (rows.length) {
++          console.warn(tag, 'Slow-loading scripts (>' + LOAD_MS + 'ms):');
++          console.table(rows);
++        }
++      }
++
++      if (supported('resource')) {
++        new PerformanceObserver(function (list) { reportResources(list.getEntries()); })
++          .observe({ type: 'resource', buffered: true });
++      }
++
++      // 2. Execution cost: Long Animation Frames attribute blocking time to specific scripts.
++      if (supported('long-animation-frame')) {
++        new PerformanceObserver(function (list) {
++          list.getEntries().forEach(function (frame) {
++            var scripts = (frame.scripts || [])
++              .filter(function (s) { return s.duration >= BLOCK_MS; })
++              .map(function (s) {
++                return {
++                  source: s.sourceURL || '(inline)',
++                  function: s.sourceFunctionName || s.invoker || '',
++                  trigger: s.invokerType,
++                  'duration (ms)': Math.round(s.duration)
++                };
++              });
++            if (scripts.length) {
++              console.warn(tag, 'Slow script execution in a ' + Math.round(frame.duration) + 'ms frame:');
++              console.table(scripts);
++            }
++          });
++        }).observe({ type: 'long-animation-frame', buffered: true });
++      } else if (supported('longtask')) {
++        // Fallback (Safari/Firefox): long tasks only give coarse attribution.
++        new PerformanceObserver(function (list) {
++          list.getEntries().forEach(function (t) {
++            var a = t.attribution && t.attribution[0];
++            console.warn(tag, 'Long task ' + Math.round(t.duration) + 'ms',
++              a ? (a.containerSrc || a.containerName || a.containerType) : '');
++          });
++        }).observe({ type: 'longtask', buffered: true });
++      }
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

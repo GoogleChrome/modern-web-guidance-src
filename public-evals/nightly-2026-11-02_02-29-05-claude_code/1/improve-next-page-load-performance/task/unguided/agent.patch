@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,58 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!--
++    Link prefetching. Same-origin links are prefetched when the user signals
++    intent (hover / pointerdown / touch). Never prefetch anything with side
++    effects: /logout is excluded by URL, and any link can opt out with
++    data-no-prefetch or rel="nofollow".
++  -->
++  <script type="speculationrules">
++    {
++      "prefetch": [{
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout" } },
++            { "not": { "href_matches": "/logout/*" } },
++            { "not": { "selector_matches": "[data-no-prefetch], [rel~=nofollow], a[href*='logout' i]" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
++  <script>
++    // Fallback for browsers without Speculation Rules support (Firefox, Safari).
++    (function () {
++      if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) return;
++      var conn = navigator.connection;
++      if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
++
++      var done = new Set();
++      var EXCLUDED_PATH = /^\/logout(\/|$)/;
++
++      function prefetch(event) {
++        var a = event.target.closest && event.target.closest('a[href]');
++        if (!a || a.matches('[data-no-prefetch], [rel~=nofollow], [download]')) return;
++        var url = new URL(a.href, location.href);
++        if (url.origin !== location.origin || EXCLUDED_PATH.test(url.pathname)) return;
++        url.hash = '';
++        if (url.href === location.href.split('#')[0] || done.has(url.href)) return;
++        done.add(url.href);
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = url.href;
++        document.head.appendChild(link);
++      }
++
++      document.addEventListener('mouseover', prefetch, { passive: true });
++      document.addEventListener('touchstart', prefetch, { passive: true });
++      document.addEventListener('focusin', prefetch);
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -163,9 +213,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">

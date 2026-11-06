@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,48 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Video */
++    .video-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .video-slot {
++      position: relative;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      margin-top: 20px;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    .video-slot iframe {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .hero .video-slot {
++      max-width: 960px;
++      margin-bottom: 20px;
++    }
++
++    .hero .video-slot:empty,
++    .video-slot:empty {
++      display: none;
++    }
++
++    button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -171,8 +211,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="video-slot" id="hero-video-slot"></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +235,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section">
++      <h2>From Green Bean to Perfect Roast</h2>
++      <div class="video-slot" id="main-video-slot">
++        <iframe id="roast-video"
++          src="https://www.youtube.com/embed/VIDEO_ID?enablejsapi=1&rel=0"
++          title="Coffee roasting video"
++          allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen"
++          allowfullscreen></iframe>
++      </div>
++      <button type="button" class="btn" id="theater-toggle" aria-pressed="false">Theater mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +259,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var iframe = document.getElementById('roast-video');
++      var mainSlot = document.getElementById('main-video-slot');
++      var heroSlot = document.getElementById('hero-video-slot');
++      var button = document.getElementById('theater-toggle');
++      var theater = false;
++
++      // Fallback state: last known playback info reported by the YouTube player.
++      var lastTime = 0;
++      var playing = false;
++      var restore = null;
++
++      function post(func, args) {
++        iframe.contentWindow.postMessage(
++          JSON.stringify({ event: 'command', func: func, args: args || [] }),
++          'https://www.youtube.com'
++        );
++      }
++
++      function listen() {
++        iframe.contentWindow.postMessage(
++          JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
++          'https://www.youtube.com'
++        );
++      }
++
++      window.addEventListener('message', function (e) {
++        if (e.origin !== 'https://www.youtube.com' || e.source !== iframe.contentWindow) return;
++        var data;
++        try { data = JSON.parse(e.data); } catch (err) { return; }
++        if (data.event === 'onReady') listen();
++        var info = data.info;
++        if (!info) return;
++        if (typeof info.currentTime === 'number') lastTime = info.currentTime;
++        if (typeof info.playerState === 'number') playing = info.playerState === 1;
++      });
++
++      iframe.addEventListener('load', function () {
++        listen();
++        if (restore) {
++          var r = restore;
++          restore = null;
++          post('seekTo', [r.time, true]);
++          post(r.playing ? 'playVideo' : 'pauseVideo');
++        }
++      });
++
++      function move(target) {
++        // moveBefore() relocates the node atomically, keeping the iframe's
++        // browsing context alive (no reload, playback continues).
++        if (typeof target.moveBefore === 'function') {
++          try {
++            target.moveBefore(iframe, null);
++            return;
++          } catch (err) { /* fall through to the legacy path */ }
++        }
++        // Legacy browsers: reparenting reloads the iframe, so remember the
++        // playback position and restore it once the new load finishes.
++        restore = { time: lastTime, playing: playing };
++        target.appendChild(iframe);
++      }
++
++      button.addEventListener('click', function () {
++        theater = !theater;
++        move(theater ? heroSlot : mainSlot);
++        button.textContent = theater ? 'Exit theater mode' : 'Theater mode';
++        button.setAttribute('aria-pressed', String(theater));
++        if (theater) heroSlot.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

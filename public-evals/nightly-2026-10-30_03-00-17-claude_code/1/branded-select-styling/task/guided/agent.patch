@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,98 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-picker {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin-top: 1.5rem;
++    }
++
++    .roast-picker label {
++      font-weight: bold;
++    }
++
++    /* Fallback: closed select styled with palette + orange arrow */
++    .roast-select {
++      appearance: none;
++      min-width: 11rem;
++      font: inherit;
++      color: white;
++      background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ffab40' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      padding: 8px 36px 8px 14px;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .roast-select option {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Customizable select: style the picker, arrow, and checkmark */
++    @supports (appearance: base-select) {
++
++      .roast-select,
++      .roast-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-select {
++        background-image: none;
++        padding-right: 14px;
++        text-align: left;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--accent);
++        transition: rotate 0.2s;
++      }
++
++      .roast-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .roast-select::picker(select) {
++        background: var(--primary);
++        border: 2px solid var(--accent);
++        border-radius: 5px;
++        margin-top: 4px;
++        padding: 4px;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++      }
++
++      .roast-select option {
++        padding: 8px 12px;
++        border-radius: 4px;
++        color: white;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: #3e2723;
++        color: var(--accent);
++        outline: none;
++      }
++
++      .roast-select option:checked {
++        color: var(--accent);
++        font-weight: bold;
++      }
++
++      .roast-select option::checkmark {
++        color: var(--accent);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +260,19 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast:</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">Light</option>
++        <option value="medium" selected>Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

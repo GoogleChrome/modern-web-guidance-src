@@ -1,0 +1,48 @@
+diff --git a/index.html b/index.html
+index 66c9173..5bcb87b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,32 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <!-- Wait for the complete initial page to be parsed before taking its snapshot. -->
++  <link rel="expect" href="#page-ready" blocking="render">
++  <!-- Keep critical styles render-blocking. Any future critical async/module
++       scripts must also use blocking="render" in this head. -->
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation-duration: 240ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -207,6 +232,9 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Keep this marker after all initial visible content. -->
++  <span id="page-ready" hidden></span>
++
+ </body>
+ 
+ </html>

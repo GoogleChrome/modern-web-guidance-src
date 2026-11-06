@@ -1,0 +1,280 @@
+diff --git a/public/lingua.svg b/public/lingua.svg
+new file mode 100644
+index 0000000..e9bb080
+--- /dev/null
++++ b/public/lingua.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="#7361d8"/><path d="M10 12h13M16 9v4m-4 2c2 6 5 8 10 10m-2-12c-1 6-4 10-10 13m13-7 6 12m-6-12-6 12m2-4h8" stroke="white" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+diff --git a/src/components/translator/Translator.tsx b/src/components/translator/Translator.tsx
+new file mode 100644
+index 0000000..929767d
+--- /dev/null
++++ b/src/components/translator/Translator.tsx
+@@ -0,0 +1,85 @@
++import { useEffect, useRef, useState } from 'react';
++import { languages, languageName } from './languages';
++
++type IconName = 'translate' | 'history' | 'star' | 'settings' | 'help' | 'arrow' | 'swap' | 'chevron' | 'volume' | 'copy' | 'close' | 'file' | 'text' | 'globe' | 'check' | 'spark' | 'trash';
++function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
++  const paths: Record<IconName, React.ReactNode> = {
++    translate: <><path d="M3 5h12M9 2v3M5 8c2 5 5 7 9 9M13 5c-1 6-4 10-10 13M14 21l4-10 4 10M15.5 18h5" /></>,
++    history: <><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6M12 7v5l3 2" /></>,
++    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z" />,
++    settings: <><path d="m10 3-1 3-3 1-3 3v4l3 3 3 1 1 3h4l1-3 3-1 3-3v-4l-3-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></>,
++    help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .5-1.5 1-1.5 2M12 17h.01"/></>,
++    arrow: <path d="M5 12h14m-5-5 5 5-5 5"/>, swap: <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/>,
++    chevron: <path d="m8 10 4 4 4-4"/>, volume: <><path d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></>,
++    copy: <><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></>,
++    close: <path d="m6 6 12 12M6 18 18 6"/>, file: <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9ZM14 3v6h6M8 13h8M8 17h5"/></>,
++    text: <path d="M4 5h16M12 5v15M8 20h8M4 5v3m16-3v3"/>, globe: <><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 7h14M5 17h14"/></>,
++    check: <path d="m5 12 4 4L19 6"/>, spark: <><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></>, trash: <><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></>,
++  };
++  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
++}
++type Entry = { id: string; text: string; translation: string; source: string; target: string; date: string; saved: boolean };
++export default function Translator({ baseUrl }: { baseUrl: string }) {
++  const [text, setText] = useState(''); const [result, setResult] = useState('');
++  const [source, setSource] = useState('en'); const [target, setTarget] = useState('es');
++  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
++  const [entries, setEntries] = useState<Entry[]>([]); const [ready, setReady] = useState(false);
++  const [view, setView] = useState('Translate'); const [modal, setModal] = useState('');
++  const [toast, setToast] = useState(''); const [activeId, setActiveId] = useState('');
++  const upload = useRef<HTMLInputElement>(null); const version = useRef(0);
++  useEffect(() => { try { const stored = JSON.parse(localStorage.getItem('lingua-history') || '[]'); if (Array.isArray(stored)) setEntries(stored.filter(e => typeof e.text === 'string' && typeof e.translation === 'string' && typeof e.id === 'string').slice(0, 50)); } catch {} setReady(true); }, []);
++  useEffect(() => { if (ready) { try { localStorage.setItem('lingua-history', JSON.stringify(entries)); } catch {} } }, [entries, ready]);
++  useEffect(() => { if (toast) { const timer = setTimeout(() => setToast(''), 3000); return () => clearTimeout(timer); } }, [toast]);
++  useEffect(() => { const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setModal(''); }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler); }, []);
++  function invalidate() { version.current++; setBusy(false); setResult(''); setError(''); setActiveId(''); }
++  async function translate() {
++    if (!text.trim() || busy) return;
++    const requestVersion = ++version.current; setBusy(true); setError('');
++    try {
++      const response = await fetch(`${baseUrl}api/translate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, source, target }) });
++      const data = await response.json();
++      if (requestVersion !== version.current) return;
++      if (!response.ok) throw new Error(data.error || 'Translation failed. Please try again.');
++      const decoder = document.createElement('textarea'); decoder.innerHTML = data.translation;
++      const translation = decoder.value; setResult(translation);
++      const entry = { id: crypto.randomUUID(), text, translation, source, target, date: new Date().toISOString(), saved: false };
++      setEntries(old => [entry, ...old].slice(0, 50)); setActiveId(entry.id);
++    } catch (e) { if (requestVersion === version.current) setError(e instanceof Error ? e.message : 'Unable to connect. Please try again.'); }
++    finally { if (requestVersion === version.current) setBusy(false); }
++  }
++  function speak(value: string, lang: string) { if (!('speechSynthesis' in window)) { setToast('Read aloud is not supported by this browser.'); return; } window.speechSynthesis.cancel(); const speech = new SpeechSynthesisUtterance(value); speech.lang = lang; window.speechSynthesis.speak(speech); }
++  function restore(entry: Entry) { invalidate(); setText(entry.text); setResult(entry.translation); setSource(entry.source); setTarget(entry.target); setActiveId(entry.id); setView('Translate'); }
++  function star(id: string) { setEntries(old => old.map(e => e.id === id ? { ...e, saved: !e.saved } : e)); }
++  const visibleEntries = view === 'Saved translations' ? entries.filter(e => e.saved) : entries;
++  return <div className="lingua-app">
++    <aside className="sidebar">
++      <a className="brand" href={baseUrl}><span className="brand-symbol"><Icon name="translate" size={25}/></span>lingua<span className="brand-dot">.</span></a>
++      <div className="workspace-label">YOUR WORKSPACE</div>
++      <nav aria-label="Main navigation">{(['Translate', 'History', 'Saved translations'] as const).map((item, i) => <button key={item} className={`nav-item ${view === item ? 'active' : ''}`} onClick={() => setView(item)}><Icon name={(['translate', 'history', 'star'] as const)[i]}/><span>{item}</span>{item === 'History' && entries.length > 0 && <small>{entries.length}</small>}</button>)}</nav>
++      <div className="sidebar-bottom"><div className="little-note"><span className="note-spark">✧</span><strong>A world of possibilities.</strong><p>One conversation at a time.</p><div className="note-line"/></div><button className="nav-item" onClick={() => setModal('Settings')}><Icon name="settings"/>Settings</button><button className="nav-item" onClick={() => setModal('Help & feedback')}><Icon name="help"/>Help & feedback<Icon name="arrow" size={16}/></button><div className="sidebar-footer">Made for a more connected world <span>↗</span></div></div>
++    </aside>
++    <div className="app-body">
++      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>{view}</strong></div><div className="topbar-right"><span className="free-badge">Personal workspace</span><span className="topbar-separator"/><button className="avatar" title="Workspace settings" onClick={() => setModal('Settings')}>JD</button></div></header>
++      <main className="workspace">
++        <div className="page-heading"><div><div className="eyebrow"><span/> A LITTLE LESS LOST IN TRANSLATION</div><h1>{view === 'Translate' ? 'Your words, without borders.' : view}</h1><p>{view === 'Translate' ? 'Connect with the world. Translate a thought, start a conversation.' : 'Your words are right here, whenever you need them.'}</p></div><div className="language-badge"><Icon name="globe" size={16}/>16 languages. Endless possibilities.</div></div>
++        {view === 'Translate' && <>
++          <div className="mode-row"><div className="mode-tabs"><button className="mode-tab selected"><Icon name="text" size={18}/>Text translation</button><button className="mode-tab" onClick={() => upload.current?.click()}><Icon name="file" size={18}/>Import text <span className="new-badge">.TXT</span></button><input ref={upload} type="file" accept=".txt,text/plain" hidden onChange={async e => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 25000) { setError('Please choose a text file under 25 KB.'); return; } const value = await file.text(); invalidate(); setText(value.slice(0, 5000)); if (value.length > 5000) setToast('Imported the first 5,000 characters.'); e.target.value = ''; }}/></div><span className="auto-save"><span/>History saved on this device</span></div>
++          <section className="translator-card" aria-label="Text translator">
++            <div className="language-row"><div className="language-options"><span className="small-label">FROM</span>{['en','fr','de'].map(code => <button key={code} className={source === code ? 'language-tab active' : 'language-tab'} onClick={() => { invalidate(); setSource(code); }}>{languageName(code)}</button>)}<label className="language-select"><span>{['en', 'fr', 'de'].includes(source) ? 'More' : languageName(source)}</span><select aria-label="Source language" value={source} onChange={e => { invalidate(); setSource(e.target.value); }}>{languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}</select><Icon name="chevron" size={16}/></label></div><button className="swap-button" aria-label="Swap languages" onClick={() => { const previous = text; const translated = result; invalidate(); setSource(target); setTarget(source); setText(translated || previous); setResult(translated ? previous : ''); }}><Icon name="swap" size={19}/></button><div className="language-options target-options"><span className="small-label">TO</span>{['es','fr','ja'].map(code => <button key={code} className={target === code ? 'language-tab active' : 'language-tab'} onClick={() => { invalidate(); setTarget(code); }}>{languageName(code)}</button>)}<label className="language-select"><span>{['es', 'fr', 'ja'].includes(target) ? 'More' : languageName(target)}</span><select aria-label="Target language" value={target} onChange={e => { invalidate(); setTarget(e.target.value); }}>{languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}</select><Icon name="chevron" size={16}/></label></div></div>
++            <div className="translation-panels"><div className="source-panel"><div className="text-area-wrap"><textarea aria-label="Text to translate" placeholder="Type or paste your text here…" maxLength={5000} value={text} dir={source === 'ar' ? 'rtl' : 'auto'} onChange={e => { invalidate(); setText(e.target.value); }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') translate(); }}/>{text && <button className="clear-text icon-button" aria-label="Clear text" onClick={() => { invalidate(); setText(''); }}><Icon name="close" size={17}/></button>}{!text && <button className="paste-button" onClick={async () => { try { const value = await navigator.clipboard.readText(); invalidate(); setText(value.slice(0, 5000)); } catch { setToast('Use Ctrl+V or ⌘V to paste your text.'); } }}><Icon name="copy" size={15}/>Paste text</button>}</div><div className="panel-footer"><button className="icon-button" disabled={!text} aria-label="Listen to original text" onClick={() => speak(text, source)}><Icon name="volume"/></button><span className="character-count">{text.length.toLocaleString()} <span>/ 5,000</span></span></div></div>
++            <div className="result-panel" aria-busy={busy}><div className={`result-text ${result ? 'has-result' : ''}`} dir={target === 'ar' ? 'rtl' : 'auto'} aria-live="polite">{busy ? <span className="translating"><span className="spinner"/>Finding the right words…</span> : result || 'Your translation will appear here…'}</div><div className="panel-footer"><button className="icon-button" disabled={!result || busy} aria-label="Listen to translation" onClick={() => speak(result, target)}><Icon name="volume"/></button><div className="result-actions"><button className={`icon-button ${entries.find(e => e.id === activeId)?.saved ? 'is-saved' : ''}`} disabled={!activeId || busy} aria-label="Save translation" onClick={() => star(activeId)}><Icon name="star"/></button><button className="icon-button" disabled={!result || busy} aria-label="Copy translation" onClick={async () => { try { await navigator.clipboard.writeText(result); setToast('Translation copied to clipboard.'); } catch { setToast('Copy is unavailable. Select the translated text to copy it.'); } }}><Icon name="copy"/></button></div></div></div></div>
++            <div className="translate-action-row"><span><Icon name="spark" size={15}/>A new language. The same you.</span><div><span className="keyboard-hint">Ctrl / ⌘ + Enter</span><button className="primary-button" onClick={translate} disabled={!text.trim() || busy}>{busy ? 'Translating…' : 'Translate'}<Icon name="arrow" size={17}/></button></div></div>
++          </section>
++          {error && <div className="error-message" role="alert">{error}</div>}
++          <div className="provider-note"><Icon name="help" size={13}/>Translations powered by MyMemory. Text is sent to their service when you translate.</div>
++        </>}
++        <div className={`lower-grid ${view !== 'Translate' ? 'full-history' : ''}`}><section className="recent-section"><div className="section-heading"><h2>{view === 'Saved translations' ? 'Saved translations' : view === 'History' ? 'Translation history' : 'Recent translations'}<span>{visibleEntries.length}</span></h2>{view === 'Translate' && <button className="text-button" onClick={() => setView('History')}>View all<Icon name="arrow" size={15}/></button>}{view === 'History' && entries.length > 0 && <button className="text-button" onClick={() => setModal('Clear history')}>Clear history<Icon name="trash" size={15}/></button>}</div>
++          <div className="history-list">{visibleEntries.length ? visibleEntries.slice(0, view === 'Translate' ? 3 : 50).map(entry => <div className="history-entry" key={entry.id}><span className="history-icon"><Icon name="translate" size={19}/></span><button className="history-content" onClick={() => restore(entry)}><span className="history-languages">{languageName(entry.source)}<Icon name="arrow" size={12}/>{languageName(entry.target)}</span><strong>{entry.text}</strong><span className="history-preview">{entry.translation}</span></button><div className="history-meta"><span>{new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span><button className={`icon-button ${entry.saved ? 'is-saved' : ''}`} aria-label={entry.saved ? 'Unsave translation' : 'Save translation'} onClick={() => star(entry.id)}><Icon name="star" size={17}/></button></div></div>) : <div className="empty-history"><span className="empty-icon"><Icon name={view === 'Saved translations' ? 'star' : 'history'} size={24}/></span><h3>{view === 'Saved translations' ? 'Keep your favorite words close' : 'Every conversation starts somewhere'}</h3><p>{view === 'Saved translations' ? 'Tap the star on a translation to save it here.' : 'Your translations will show up here. Let’s make the first one.'}</p>{view !== 'Saved translations' && <button className="text-button" onClick={() => { setView('Translate'); invalidate(); setText('Hello! It’s nice to meet you.'); }}>Try a little hello<Icon name="arrow" size={15}/></button>}</div>}</div>
++        </section>{view === 'Translate' && <aside className="tip-card"><div className="tip-heading"><Icon name="spark" size={16}/><span>SMALL TIP, BIG CONNECTION</span></div><div className="speech-art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="speech-bubble bubble-one">Hello<span>✦</span></div><div className="speech-bubble bubble-two">Hola!</div><span className="art-star star-one">✦</span><span className="art-star star-two">✧</span><span className="art-dot"/></div><h3>A simple “hello” goes a long way.</h3><p>Whether it’s a new friend or a new place,<br/>a few words can open a whole world.</p><button onClick={() => { invalidate(); setSource('en'); setTarget('fr'); setText('Hello! It’s nice to meet you.'); }} className="tip-link">Say hello in another language<Icon name="arrow" size={15}/></button></aside>}</div>
++        <footer className="workspace-footer"><span><span className="footer-logo">✳</span>Less language barriers. More human connection.</span><span>One world. Many words.<Icon name="globe" size={14}/></span></footer>
++      </main>
++    </div>
++    {toast && <div className="toast" role="status"><Icon name="check" size={18}/>{toast}</div>}
++    {modal && <div className="modal-backdrop" onClick={() => setModal('')}><section className="modal" role="dialog" aria-modal="true" aria-label={modal} onClick={e => e.stopPropagation()}><div className="section-heading"><h2>{modal}</h2><button autoFocus className="icon-button" aria-label="Close dialog" onClick={() => setModal('')}><Icon name="close"/></button></div>{modal === 'Help & feedback' ? <><p>Choose your source and target languages, enter your text, and press Translate. You can also use Ctrl or ⌘ + Enter.</p><p>Listen with the speaker, copy your result, or star a translation to keep it in Saved translations. Import text accepts .txt files.</p><p>Translations use MyMemory and may be subject to daily service limits. History is stored only in this browser.</p></> : modal === 'Clear history' ? <><p>Delete all translations from this device, including saved translations? This cannot be undone.</p><button className="primary-button" onClick={() => { setEntries([]); setActiveId(''); setModal(''); setToast('Translation history cleared.'); }}>Delete all translations</button></> : <><p>This is your personal workspace. Your last 50 translations are stored in this browser, including your saved translations.</p><div className="settings-row"><span>Translation provider</span><strong>MyMemory</strong></div><div className="settings-row"><span>History storage</span><strong>This device</strong></div><button className="text-button danger" onClick={() => setModal('Clear history')}>Clear translation history<Icon name="trash" size={16}/></button></>}</section></div>}
++  </div>;
++}
+diff --git a/src/components/translator/languages.ts b/src/components/translator/languages.ts
+new file mode 100644
+index 0000000..ae89d4d
+--- /dev/null
++++ b/src/components/translator/languages.ts
+@@ -0,0 +1,11 @@
++export const languages = [
++  { code: 'en', name: 'English' }, { code: 'es', name: 'Spanish' },
++  { code: 'fr', name: 'French' }, { code: 'de', name: 'German' },
++  { code: 'it', name: 'Italian' }, { code: 'pt', name: 'Portuguese' },
++  { code: 'ja', name: 'Japanese' }, { code: 'ko', name: 'Korean' },
++  { code: 'zh-CN', name: 'Chinese' }, { code: 'ar', name: 'Arabic' },
++  { code: 'hi', name: 'Hindi' }, { code: 'ru', name: 'Russian' },
++  { code: 'nl', name: 'Dutch' }, { code: 'tr', name: 'Turkish' },
++  { code: 'uk', name: 'Ukrainian' }, { code: 'vi', name: 'Vietnamese' },
++];
++export const languageName = (code: string) => languages.find(l => l.code === code)?.name || code;
+diff --git a/src/pages/api/translate.ts b/src/pages/api/translate.ts
+new file mode 100644
+index 0000000..665c74e
+--- /dev/null
++++ b/src/pages/api/translate.ts
+@@ -0,0 +1,37 @@
++import type { APIRoute } from 'astro';
++import { languages } from '../../components/translator/languages';
++const json = (data: object, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
++export const POST: APIRoute = async ({ request }) => {
++  let input;
++  try { input = await request.json(); } catch { return json({ error: 'Please send valid text.' }, 400); }
++  const { text, source, target } = input ?? {};
++  if (typeof text !== 'string' || !text.trim() || text.length > 5000) return json({ error: 'Enter between 1 and 5,000 characters.' }, 400);
++  if (![source, target].every(code => languages.some(l => l.code === code))) return json({ error: 'Choose a supported language.' }, 400);
++  if (source === target) return json({ translation: text });
++  // MyMemory accepts a maximum of 500 UTF-8 bytes per segment.
++  const chunks: string[] = []; let chunk = '';
++  for (const char of text) {
++    if (new TextEncoder().encode(chunk + char).length > 480) {
++      const boundary = chunk.search(/\s+\S*$/u);
++      if (boundary > 0) {
++        chunks.push(chunk.slice(0, boundary));
++        chunk = chunk.slice(boundary).trimStart();
++      } else { chunks.push(chunk); chunk = ''; }
++    }
++    chunk += char;
++  }
++  if (chunk) chunks.push(chunk);
++  try {
++    const translated: string[] = [];
++    for (const q of chunks) {
++      const params = new URLSearchParams({ q, langpair: `${source}|${target}` });
++      const response = await fetch(`https://api.mymemory.translated.net/get?${params}`, { signal: AbortSignal.timeout(15000) });
++      if (!response.ok) throw new Error('unavailable');
++      const data = await response.json();
++      if (Number(data.responseStatus) === 429) return json({ error: 'The translation service has reached its daily limit. Please try again later.' }, 429);
++      if (Number(data.responseStatus) !== 200 || typeof data.responseData?.translatedText !== 'string') throw new Error('unavailable');
++      translated.push(data.responseData.translatedText);
++    }
++    return json({ translation: translated.join(' ') });
++  } catch { return json({ error: 'Translation is unavailable right now. Please try again in a moment.' }, 502); }
++};
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..abd8120 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,18 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import Translator from '../components/translator/Translator';
++import '../styles/translator.css';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="description" content="A little less lost in translation. Translate, listen, and save your words with Lingua." />
++    <title>Lingua — Your words, without borders</title>
++    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}lingua.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet" />
++  </head>
++  <body><Translator client:load baseUrl={import.meta.env.BASE_URL} /></body>
++</html>
+diff --git a/src/styles/translator.css b/src/styles/translator.css
+new file mode 100644
+index 0000000..89c2ae8
+--- /dev/null
++++ b/src/styles/translator.css
+@@ -0,0 +1,10 @@
++:root{font-family:'DM Sans',sans-serif;color:#292832;background:#fafafb;font-synthesis:none;font-weight:400;--purple:#7760ce;--muted:#98969f;--border:#eae9ef}*{box-sizing:border-box}body{margin:0}button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}button,textarea,select{font:inherit}button,a,select{outline-offset:4px}button{cursor:pointer}button{color:inherit}button:disabled{cursor:default;opacity:.42}button{border:0;background:none}a{color:inherit;text-decoration:none}button svg{flex-shrink:0}button:hover:not(:disabled){filter:brightness(.94)}.lingua-app{min-height:100vh;display:flex}.sidebar{width:230px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);padding:37px 20px 0;display:flex;flex-direction:column;position:fixed;height:100vh;z-index:3}.brand{display:flex;align-items:center;font-size:32px;font-weight:700;letter-spacing:-1.8px;padding:0 13px;line-height:1}.brand-symbol{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;color:white;background:var(--purple);margin-right:10px}.brand-dot{color:var(--purple)}.workspace-label{font-size:10px;font-weight:600;letter-spacing:1.5px;color:#a3a0ac;margin:53px 14px 17px}.nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;font-size:13px;color:#777480;border-radius:7px;margin:4px 0;text-align:left;font-weight:500;white-space:nowrap}.nav-item.active{background:#f0ebfb;color:#7960ca}.nav-item.active:before{content:'';position:absolute;left:0;height:23px;background:var(--purple);width:3px;border-radius:0 3px 3px 0}.nav-item small{margin-left:auto;font-size:10px;background:#e8e4f2;border-radius:5px;padding:2px 5px}.nav-item>svg:last-child:not(:first-child){margin-left:auto}.sidebar-bottom{margin-top:auto}.little-note{background:#f9f8fc;border:1px solid #eeebf6;border-radius:9px;margin:50px 4px 26px;padding:16px 13px;color:#716382;position:relative;overflow:hidden}.note-spark{display:block;font-size:28px;color:#9b82d6;margin-bottom:10px}.little-note strong{font-size:11px;font-weight:600}.little-note p{font-size:10px;color:#9c92aa;margin:6px 0 15px}.note-line{width:100%;height:3px;background:linear-gradient(90deg,#c4b4e8 32%,#eae4f5 32%);border-radius:3px}.sidebar-footer{border-top:1px solid var(--border);font-size:9px;color:#aaa7b1;margin-top:19px;padding:22px 4px}.sidebar-footer span{float:right}.app-body{margin-left:230px;width:calc(100% - 230px)}.topbar{height:85px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.8);padding:0 42px;display:flex;align-items:center;justify-content:space-between}.breadcrumb{font-size:12px;color:#92909a;display:flex;gap:19px}.breadcrumb span{color:#d4d1da}.breadcrumb strong{color:#5e5a68;font-weight:500}.topbar-right{display:flex;align-items:center;gap:22px}.free-badge{font-size:11px;color:#8b8795}.topbar-separator{height:22px;background:var(--border);width:1px}.avatar{background:#eee7f6;border:3px solid #fff;box-shadow:0 0 0 1px #eeeaf2;width:34px;height:34px;border-radius:50%;font-size:10px;color:#8867a3;font-weight:650}.workspace{max-width:1430px;margin:0 auto;padding:45px 42px 0}.page-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:35px}.eyebrow{font-size:9px;letter-spacing:1.8px;color:#8e80a6;font-weight:600;display:flex;align-items:center;gap:7px}.eyebrow>span{width:5px;height:5px;background:#a08cce;border-radius:50%}h1{font-size:30px;letter-spacing:-1.1px;line-height:1.3;margin:13px 0 9px;font-weight:550}.page-heading p{font-size:12px;color:#8c8895;margin:0;line-height:1.7}.language-badge{font-size:10px;color:#928b9e;display:flex;align-items:center;gap:7px;margin-top:27px;white-space:nowrap}.language-badge svg{color:#a08eaf}.mode-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.mode-tabs{display:flex;gap:10px}.mode-tab{display:flex;align-items:center;gap:8px;padding:10px 13px;font-size:11px;color:#918b99;border-radius:6px}.mode-tab.selected{color:#8065cb;background:#eee8f9;font-weight:550}.new-badge{font-size:7px;font-weight:600;letter-spacing:.5px;background:#eeedf0;padding:3px 4px;border-radius:3px;color:#8c8797;margin-left:1px}.auto-save{font-size:9px;color:#a29daa;display:flex;align-items:center;gap:6px}.auto-save>span{width:5px;height:5px;background:#9cbaa8;border-radius:100%}.translator-card{border:1px solid #dfdce7;border-radius:11px;background:#fff;box-shadow:0 4px 12px #30294f03;overflow:hidden}.language-row{display:grid;grid-template-columns:1fr 1fr;position:relative;border-bottom:1px solid var(--border);height:66px}.language-options{display:flex;align-items:center;gap:18px;padding:0 23px;min-width:0}.target-options{border-left:1px solid var(--border);padding-left:29px}.small-label{font-size:8px;letter-spacing:1px;color:#b2adba;font-weight:500;margin-right:0}.language-tab{font-size:11px;height:100%;position:relative;padding:0 1px;color:#97909f;white-space:nowrap}.language-tab.active{color:#8062c9;font-weight:600}.language-tab.active:after{position:absolute;content:'';bottom:0;left:0;right:0;background:#8a71d2;height:2px;border-radius:2px}.language-select{margin-left:auto;position:relative;display:flex;align-items:center;justify-content:flex-end;color:#918a9d;min-width:22px}.language-select select{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}.language-select svg{pointer-events:none}.swap-button{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:white;border:1px solid #e9e5ee;border-radius:6px;width:30px;height:29px;display:grid;place-items:center;color:#8c829d;z-index:1}.translation-panels{display:grid;grid-template-columns:1fr 1fr}.source-panel,.result-panel{display:flex;flex-direction:column;min-height:287px;padding:24px 24px 17px}.result-panel{border-left:1px solid var(--border);background:#fcfbfe}.text-area-wrap{position:relative;flex:1;display:flex;flex-direction:column}textarea{resize:none;border:0;background:transparent;outline:none;width:100%;height:183px;font-size:17px;font-weight:400;line-height:1.7;color:#484052;padding:0 20px 0 0}textarea::placeholder{color:#aaa4b2;font-weight:400}.clear-text{position:absolute;right:-8px;top:-5px}.paste-button{position:absolute;top:44px;left:0;display:flex;align-items:center;gap:7px;border:1px solid #e9e4f1;border-radius:5px;padding:7px 10px;color:#9a8aac;font-size:10px;background:white}.panel-footer{display:flex;align-items:center;justify-content:space-between;margin-top:18px}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;color:#a29aaa;border-radius:4px;padding:4px}.icon-button:hover:not(:disabled){background:#eee9f6;color:var(--purple)}.character-count{color:#a7a1ad;font-size:9px}.character-count>span{color:#c2bdc8;margin-left:3px}.result-text{flex:1;font-size:17px;line-height:1.7;color:#b5afbf;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:400}.result-text.has-result{color:#50405f}.result-actions{display:flex;gap:13px}.is-saved{color:#9c78c7}.is-saved svg{fill:#e5d9f4}.translate-action-row{padding:17px 22px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.translate-action-row>span{display:flex;align-items:center;gap:7px;font-size:10px;color:#aba1b8}.translate-action-row>span svg{color:#b49bd2}.translate-action-row>div{display:flex;align-items:center;gap:16px}.keyboard-hint{font-size:9px;color:#b5afbf}.primary-button{background:#7b62ce;color:white;display:flex;align-items:center;justify-content:center;gap:19px;padding:11px 20px;border-radius:6px;font-size:11px;font-weight:500;box-shadow:0 2px 3px #6b4cc21a}.primary-button:disabled{opacity:.68}.provider-note{display:flex;align-items:center;justify-content:center;gap:5px;color:#aaa4b4;font-size:8px;margin:12px 0 32px}.lower-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr);gap:27px;margin-top:8px}.section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px}h2{font-size:14px;font-weight:550;letter-spacing:-.2px;margin:0;display:flex;align-items:center;gap:9px}h2>span{font-size:9px;font-weight:400;color:#a29aa9;background:#eeebf2;padding:2px 5px;border-radius:4px}.text-button{font-size:10px;color:#9684b1;display:flex;align-items:center;gap:7px;padding:0}.history-list{border:1px solid var(--border);background:white;border-radius:8px;overflow:hidden;min-height:235px}.empty-history{text-align:center;padding:27px 14px 23px;display:flex;flex-direction:column;align-items:center}.empty-icon{width:42px;height:42px;display:grid;place-items:center;border:1px solid #eee9f5;border-radius:12px;color:#b3a0d1;background:#faf8fd;margin-bottom:6px}.empty-history h3{font-weight:500;font-size:12px;color:#77707f;margin:12px 0 7px}.empty-history p{font-size:10px;color:#aba4b2;margin:0 0 18px;line-height:1.6}.empty-history .text-button{font-size:10px;color:#957abd}.tip-card{background:#f2eef9;border:1px solid #ebe5f4;border-radius:9px;text-align:center;padding:16px 15px 18px;position:relative;overflow:hidden}.tip-heading{display:flex;align-items:center;gap:6px;font-size:8px;color:#a08cb6;letter-spacing:1.15px}.speech-art{height:101px;position:relative;width:230px;margin:0 auto}.speech-bubble{position:absolute;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:500;box-shadow:0 6px 15px #8d64b212}.speech-bubble:after{content:'';position:absolute;bottom:-6px;width:13px;height:13px;transform:skewY(-35deg);border-radius:2px}.bubble-one{background:#fff;color:#987eb6;width:83px;height:44px;left:41px;top:19px;font-size:20px;transform:rotate(-9deg);z-index:2;border:1px solid #e8dff0}.bubble-one:after{background:white;left:13px;border-left:1px solid #e8dff0}.bubble-one>span{position:absolute;right:9px;top:5px;font-size:8px;color:#d0bbdf}.bubble-two{background:#af95cf;color:white;width:79px;height:42px;left:108px;top:43px;font-size:21px;transform:rotate(8deg);z-index:2}.bubble-two:after{background:#af95cf;right:13px;transform:skewY(35deg)}.art-star{position:absolute;color:#b89ed0}.star-one{left:20px;top:48px;font-size:20px}.star-two{right:20px;top:20px;font-size:21px}.art-dot{position:absolute;right:28px;bottom:12px;width:4px;height:4px;border-radius:50%;background:#c2add6}.orbit{position:absolute;border:1px solid #e1d7ee;width:191px;height:63px;left:18px;top:27px;border-radius:50%;transform:rotate(-20deg)}.orbit-two{width:150px;height:77px;left:38px;top:18px;transform:rotate(20deg);border-style:dashed;border-color:#e5dcef}.tip-card h3{font-size:12px;font-weight:550;color:#7e6796;margin:8px 0}.tip-card p{color:#a18ead;font-size:10px;line-height:1.8;margin:0}.tip-link{display:flex;align-items:center;justify-content:center;gap:8px;font-size:9px;color:#9271b1;margin:16px auto 0}.workspace-footer{display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:38px;padding:22px 0 25px;color:#b4aebc;font-size:9px}.workspace-footer>span{display:flex;gap:7px;align-items:center}.footer-logo{font-size:17px;color:#bbaaca}.history-entry{display:flex;align-items:center;gap:12px;padding:15px;border-bottom:1px solid var(--border)}.history-entry:last-child{border-bottom:0}.history-icon{width:34px;height:36px;border-radius:8px;display:grid;place-items:center;background:#f4f0fa;color:#b19dc7;flex-shrink:0}.history-content{display:flex;flex-direction:column;gap:5px;text-align:left;overflow:hidden;flex:1;padding:0}.history-languages{display:flex;align-items:center;gap:6px;font-size:8px;color:#a59aaa}.history-content strong{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:#73697e}.history-preview{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:#a59aaf}.history-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:8px;color:#b4aaba}.full-history{display:block}.full-history .history-list{min-height:300px}.full-history .empty-history{padding:60px 20px}.error-message{padding:12px 15px;background:#fff0ee;color:#a54c51;font-size:12px;border-radius:6px;margin-top:12px}.toast{position:fixed;bottom:28px;left:calc(50% + 115px);transform:translateX(-50%);background:#42364f;color:#fff;display:flex;align-items:center;gap:10px;border-radius:9px;padding:14px 20px;font-size:12px;box-shadow:0 5px 30px #26113922;z-index:20}.modal-backdrop{position:fixed;inset:0;background:#2e203c55;backdrop-filter:blur(3px);display:grid;place-items:center;padding:20px;z-index:30}.modal{width:440px;max-width:100%;background:white;border:1px solid var(--border);border-radius:15px;padding:25px;box-shadow:0 15px 70px #241b3a22}.modal h2{font-size:18px}.modal p{font-size:13px;line-height:1.8;color:#8f829a}.modal .primary-button{margin-top:20px}.settings-row{padding:14px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;color:#988c9f}.settings-row strong{font-weight:500;color:#665472}.danger{color:#ad6472;margin-top:24px}.translating{font-size:13px;display:flex;gap:10px;align-items:center}.spinner{width:15px;height:15px;border:2px solid #e3daef;border-top-color:#9a80bd;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
++@media(min-width:1450px){.workspace{padding-top:55px}.source-panel,.result-panel{min-height:330px}.lower-grid{margin-top:20px}.workspace-footer{margin-top:50px}.tip-card{padding-bottom:25px}.speech-art{height:116px}}
++@media(max-width:1200px){.sidebar{width:205px;padding-left:14px;padding-right:14px}.app-body{margin-left:205px;width:calc(100% - 205px)}.workspace{padding:36px 28px 0}.topbar{padding:0 28px}.language-badge{display:none}.language-options{gap:14px;padding:0 18px}.target-options{padding-left:23px}.language-tab{font-size:10px}.toast{left:calc(50% + 102px)}.lower-grid{gap:20px}.auto-save{font-size:8px}.mode-tab{font-size:10px}}
++@media(max-width:1000px){.language-options .language-tab:nth-of-type(3){display:none}.language-options{gap:15px}.language-options .language-select{min-width:20px}.auto-save{display:none}.sidebar{width:183px}.app-body{margin-left:183px;width:calc(100% - 183px)}.brand{font-size:29px;padding:0 7px}.brand-symbol{width:32px;height:33px}.nav-item{font-size:11px;gap:9px;padding:12px 10px}.workspace{padding:32px 24px 0}h1{font-size:27px}.page-heading p{font-size:11px}.lower-grid{grid-template-columns:minmax(0,1fr) 260px;gap:17px}.empty-history p{font-size:9px}.empty-history h3{font-size:11px}.workspace-footer{font-size:8px}.translate-action-row>span{font-size:8px}.keyboard-hint{display:none}.language-row{height:62px}.source-panel,.result-panel{padding:21px 18px 14px}textarea,.result-text{font-size:15px}}
++@media(max-width:800px){.sidebar{width:73px;padding:25px 10px 0}.brand{font-size:0;letter-spacing:0;padding:0 8px}.brand-symbol{flex-shrink:0;width:36px;height:36px;margin:0}.workspace-label{font-size:0;margin:37px 0 10px}.nav-item{justify-content:center;padding:13px 0}.nav-item span,.nav-item small{display:none}.nav-item{font-size:0;gap:0}.nav-item>svg:last-child:not(:first-child){display:none}.little-note,.sidebar-footer{display:none}.sidebar-bottom{padding-bottom:20px}.app-body{margin-left:73px;width:calc(100% - 73px)}.topbar{height:73px;padding:0 24px}.lower-grid{grid-template-columns:1fr 1fr}.toast{left:calc(50% + 36px)}.language-options{gap:13px}.source-panel,.result-panel{min-height:265px}.workspace-footer>span:last-child{display:none}.free-badge{font-size:10px}}
++@media(max-width:620px){.sidebar{width:58px;padding-left:4px;padding-right:4px}.brand{padding:0 7px}.brand-symbol{width:35px;height:35px}.app-body{margin-left:58px;width:calc(100% - 58px)}.topbar{height:65px;padding:0 18px}.breadcrumb{font-size:10px;gap:11px}.free-badge,.topbar-separator{display:none}.workspace{padding:30px 17px 0}.eyebrow{font-size:7px;letter-spacing:1.1px}h1{font-size:25px;max-width:240px;line-height:1.35}.page-heading{margin-bottom:25px}.page-heading p{font-size:10px;max-width:255px}.mode-tabs{gap:0}.mode-tab{padding:9px 10px;font-size:9px;gap:5px}.mode-tab svg{width:15px}.new-badge{font-size:6px}.translation-panels{grid-template-columns:1fr}.source-panel,.result-panel{min-height:194px;padding:18px}.result-panel{border-left:0;border-top:1px solid var(--border)}textarea{height:110px}.result-text{min-height:110px}.panel-footer{margin-top:8px}.language-row{height:55px}.language-tab{display:none!important}.language-select{opacity:1;margin-left:0;flex:1;min-width:0!important}.language-select select{position:static;opacity:1;width:100%;font-size:11px;border:0;background:transparent;appearance:none;color:#8062c9;padding:8px 0;outline-offset:0}.language-select svg{width:12px;flex-shrink:0}.small-label{font-size:7px}.language-options{padding:0 14px;gap:9px}.target-options{padding-left:23px}.swap-button{width:25px;height:25px}.translate-action-row{padding:13px 14px}.translate-action-row>span{font-size:8px;max-width:105px;line-height:1.6}.translate-action-row>span svg{display:none}.primary-button{padding:10px 14px;gap:14px;font-size:10px}.provider-note{font-size:7px;line-height:1.7;align-items:flex-start;margin-bottom:28px;text-align:center}.provider-note svg{flex-shrink:0}.lower-grid{grid-template-columns:1fr;gap:25px}.tip-card{padding-bottom:23px}.workspace-footer{font-size:7px;line-height:1.8;margin-top:27px;padding-top:18px}.toast{left:calc(50% + 29px);width:calc(100% - 95px);font-size:11px;padding:12px}.empty-history{padding:25px 10px}.text-area-wrap .paste-button{top:40px}h2{font-size:13px}}
++@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
++.language-select>span{font-size:10px;margin-right:4px;white-space:nowrap}.language-select:focus-within{outline:2px solid #b7a2dd;outline-offset:4px;border-radius:2px}
++@media(max-width:1000px) and (min-width:621px){.language-select>span{font-size:9px;max-width:52px;overflow:hidden;text-overflow:ellipsis}}
++@media(max-width:620px){.language-select>span{display:none}}

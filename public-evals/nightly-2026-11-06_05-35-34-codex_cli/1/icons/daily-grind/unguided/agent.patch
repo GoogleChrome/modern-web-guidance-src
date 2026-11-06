@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+index 66c9173..3b545d6 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,111 @@
+       background-color: var(--light);
+     }
+ 
++    /* SVG masks are embedded to avoid font downloads and extra requests.
++       Assign a shape with --icon; override --icon-size and --icon-color
++       on an icon or its parent. Keep redundant icons aria-hidden in HTML. */
++    .icon {
++      display: inline-block;
++      width: var(--icon-size, 1.15em);
++      height: var(--icon-size, 1.15em);
++      flex: 0 0 auto;
++      background-color: var(--icon-color, currentColor);
++      -webkit-mask: var(--icon) center / contain no-repeat;
++      mask: var(--icon) center / contain no-repeat;
++    }
++
++    .icon--cup {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M4 8h12v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Zm12 1h2a3 3 0 1 1 0 6h-2M7 3v2m5-2v2M2 22h18"/%3E%3C/svg%3E');
++    }
++
++    .icon--pin {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/%3E%3Ccircle cx="12" cy="10" r="3"/%3E%3C/svg%3E');
++    }
++
++    .icon--gift {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M3 8h18v4H3zM5 12v9h14v-9M12 8v13"/%3E%3Cpath d="M12 8H8a3 3 0 1 1 3-3l1 3Zm0 0h4a3 3 0 1 0-3-3l-1 3Z"/%3E%3C/svg%3E');
++    }
++
++    .icon--user {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Ccircle cx="12" cy="7" r="4"/%3E%3Cpath d="M4 21v-2a8 8 0 0 1 16 0v2"/%3E%3C/svg%3E');
++    }
++
++    .icon--logout {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M9 3H4v18h5m5-14 5 5-5 5M8 12h12"/%3E%3C/svg%3E');
++    }
++
++    .icon--bag {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M5 7h14l2 14H3L5 7Zm3 0V6a4 4 0 0 1 8 0v1"/%3E%3C/svg%3E');
++    }
++
++    .icon--arrow {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M4 12h16m-6-6 6 6-6 6"/%3E%3C/svg%3E');
++    }
++
++    .icon--leaf {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M20 3C10 2 3 6 3 13a7 7 0 0 0 7 7c7 0 11-7 10-17ZM3 21 15 9"/%3E%3C/svg%3E');
++    }
++
++    .icon--bolt {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="m13 2-9 12h7l-1 8 10-12h-8l1-8Z"/%3E%3C/svg%3E');
++    }
++
++    .icon--snow {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M7 19l1-4-4-1M20 10l-4-1 1-4"/%3E%3C/svg%3E');
++    }
++
++    .icon--book {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M12 5v16M12 5C9 3 5 3 2 4v15c4-1 7-1 10 2 3-3 6-3 10-2V4c-3-1-7-1-10 1Z"/%3E%3C/svg%3E');
++    }
++
++    .icon--team {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Ccircle cx="9" cy="7" r="3"/%3E%3Cpath d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6m2 4a6 6 0 0 1 3 5v2"/%3E%3C/svg%3E');
++    }
++
++    .icon--mail {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Crect x="3" y="5" width="18" height="14" rx="2"/%3E%3Cpath d="m3 6 9 7 9-7"/%3E%3C/svg%3E');
++    }
++
++    .icon--shield {
++      --icon: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="m12 2 9 4v6c0 5-5 8-9 10-4-2-9-5-9-10V6l9-4Z"/%3E%3Cpath d="m8 12 3 3 5-6"/%3E%3C/svg%3E');
++    }
++
++    nav a,
++    .btn,
++    .footer-links a {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.45em;
++    }
++
++    .card-icon {
++      --icon-size: 2.5rem;
++      --icon-color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 720px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px 20px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -121,7 +226,7 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -160,18 +265,18 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="icon icon--cup" aria-hidden="true"></span> Menu</a></li>
++      <li><a href="/locations"><span class="icon icon--pin" aria-hidden="true"></span> Locations</a></li>
++      <li><a href="/rewards"><span class="icon icon--gift" aria-hidden="true"></span> Rewards</a></li>
++      <li><a href="/account"><span class="icon icon--user" aria-hidden="true"></span> My Account</a></li>
++      <li><a href="/logout" class="logout-link"><span class="icon icon--logout" aria-hidden="true"></span> Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="icon icon--bag" aria-hidden="true"></span> Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +284,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="icon icon--leaf card-icon" aria-hidden="true"></span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details <span class="icon icon--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <span class="icon icon--bolt card-icon" aria-hidden="true"></span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details <span class="icon icon--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <span class="icon icon--snow card-icon" aria-hidden="true"></span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details <span class="icon icon--arrow" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>
+@@ -199,10 +307,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about"><span class="icon icon--book" aria-hidden="true"></span> Our Story</a> |
++      <a href="/careers"><span class="icon icon--team" aria-hidden="true"></span> Join the Team</a> |
++      <a href="/contact"><span class="icon icon--mail" aria-hidden="true"></span> Contact Us</a> |
++      <a href="/privacy-policy"><span class="icon icon--shield" aria-hidden="true"></span> Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

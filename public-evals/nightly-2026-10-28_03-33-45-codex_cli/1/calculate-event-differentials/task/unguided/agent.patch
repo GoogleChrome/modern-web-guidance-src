@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,27 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promotion-timer {
++      margin-top: 16px;
++      padding: 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fff8ee;
++    }
++
++    .promotion-timer strong {
++      display: block;
++      font-size: 1.15rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .promotion-timer p {
++      margin-top: 6px;
++      font-size: 0.85rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +199,15 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Set data-promotion-start to the confirmed local start, e.g. YYYY-MM-DDTHH:mm:ss. -->
++          <div class="promotion-timer" id="maple-promotion" data-promotion-start="">
++            <strong id="promotion-countdown" role="status">Offer ends March 1, 2026</strong>
++            <p>Ends <time datetime="2026-03-01T00:00:00">March 1, 2026 at 12:00 AM</time>, in your local time zone.</p>
++            <p id="promotion-elapsed">Elapsed time unavailable: promotion start date not specified.</p>
++            <noscript><p>Enable JavaScript to see the time remaining and elapsed time.</p></noscript>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +232,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const promotion = document.getElementById('maple-promotion');
++      const countdown = document.getElementById('promotion-countdown');
++      const elapsed = document.getElementById('promotion-elapsed');
++      const hourInMilliseconds = 60 * 60 * 1000;
++
++      function formatDuration(milliseconds) {
++        const totalHours = Math.floor(milliseconds / hourInMilliseconds);
++        const days = Math.floor(totalHours / 24);
++        const hours = totalHours % 24;
++        return `${days} ${days === 1 ? 'day' : 'days'} ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
++      }
++
++      function updatePromotion() {
++        const now = Date.now();
++        // Numeric components construct midnight in the visitor's local zone, not UTC.
++        const end = new Date(2026, 2, 1, 0, 0, 0).getTime();
++        const remaining = Math.max(0, end - now);
++        countdown.textContent = remaining > 0
++          ? `${formatDuration(remaining)} left`
++          : 'Offer ended · 0 days 0 hours left';
++
++        // A local ISO date-time (without Z or an offset) uses the visitor's zone.
++        const start = new Date(promotion.dataset.promotionStart).getTime();
++        if (!Number.isFinite(start) || start >= end) {
++          elapsed.textContent = 'Elapsed time unavailable: promotion start date not specified.';
++        } else if (now < start) {
++          countdown.textContent = 'Promotion has not started';
++          elapsed.textContent = '0 days 0 hours since the promotion started.';
++        } else {
++          elapsed.textContent = `${formatDuration(now - start)} since the promotion started.`;
++        }
++      }
++
++      updatePromotion();
++      window.addEventListener('pageshow', updatePromotion);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

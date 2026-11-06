@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,162 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Showcase */
++    .showcase {
++      margin-bottom: 56px;
++    }
++
++    .showcase-heading {
++      margin-bottom: 24px;
++    }
++
++    .eyebrow {
++      color: #876044;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .showcase-heading h2 {
++      margin-top: 4px;
++      font-size: clamp(1.7rem, 3vw, 2.2rem);
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: 1.35fr 1fr;
++      align-items: center;
++      gap: 32px;
++    }
++
++    .nested-curve-parent {
++      min-width: 0;
++      padding: 18px 22px 24px;
++      border: 1px solid #e0d2c5;
++      border-radius: 38px;
++      background: #eee5db;
++      /* The browser derives the concentric content-edge curves from the
++         parent's radius, border, and padding, including for nested footers. */
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .showcase-photo {
++      display: block;
++      width: 100%;
++      height: 230px;
++      object-fit: cover;
++      object-position: center 55%;
++    }
++
++    .showcase-copy {
++      padding: 24px;
++      background: #fffaf4;
++    }
++
++    .showcase-copy h3 {
++      margin: 6px 0 8px;
++      font-size: 1.5rem;
++    }
++
++    .showcase-copy p:last-child {
++      color: #755e52;
++    }
++
++    .showcase-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 16px 24px;
++      background: var(--primary);
++      color: #fffaf4;
++      font-size: 0.85rem;
++    }
++
++    .showcase-footer a {
++      color: #ffd49c;
++      text-underline-offset: 4px;
++      white-space: nowrap;
++    }
++
++    .safety-zone-parent {
++      min-width: 0;
++      padding: 30px 26px 0;
++      border-radius: 24px;
++      background: #f1e3d2;
++      overflow: clip;
++      /* Permit descendant ink to paint 15px beyond the padding edge. */
++      overflow-clip-margin: 15px;
++    }
++
++    .promo-copy {
++      /* Text has its own strict boundary; the button is a sibling so its
++         shadow can use the parent's expanded overflow clip edge. */
++      overflow: clip;
++      overflow-wrap: anywhere;
++    }
++
++    .promo-copy h3 {
++      margin: 10px 0 12px;
++      font-size: clamp(1.8rem, 3vw, 2.4rem);
++      line-height: 1.15;
++    }
++
++    .promo-copy p:last-child {
++      color: #755e52;
++    }
++
++    .promo-form {
++      margin-top: 28px;
++    }
++
++    .promo-button {
++      display: block;
++      width: 100%;
++      padding: 16px 20px;
++      border: 0;
++      border-radius: 12px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 0 28px 9px rgba(255, 171, 64, 0.65);
++    }
++
++    .promo-button:hover {
++      background: #3e2723;
++    }
++
++    .promo-button:focus-visible {
++      outline: 3px solid #9e5a10;
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 700px) {
++      .showcase-grid {
++        grid-template-columns: 1fr;
++      }
++
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -134,9 +288,9 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+-    footer {
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -174,8 +328,41 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-title">
++      <div class="showcase-heading">
++        <p class="eyebrow">A little more to savor</p>
++        <h2 id="showcase-title">Good coffee. Better moments.</h2>
++      </div>
++      <div class="showcase-grid">
++        <article class="nested-curve-parent" aria-labelledby="roast-title">
++          <img class="showcase-photo"
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1000&q=80"
++            alt="Freshly roasted coffee beans in warm light" width="1000" height="650" loading="lazy">
++          <div class="showcase-copy">
++            <p class="eyebrow">From our roastery</p>
++            <h3 id="roast-title">Your daily ritual, freshly roasted.</h3>
++            <p>Thoughtfully sourced beans, small-batch roasting, and a little care in every cup. Find your next favorite.</p>
++          </div>
++          <footer class="showcase-footer">
++            <span>Whole bean · Roasted locally</span>
++            <a href="/menu">Explore our coffee &rarr;</a>
++          </footer>
++        </article>
++        <aside class="safety-zone-parent" aria-labelledby="promo-title">
++          <div class="promo-copy">
++            <p class="eyebrow">The Daily Grind rewards</p>
++            <h3 id="promo-title">Make every coffee count.</h3>
++            <p>Turn your daily pick-me-up into something extra. Join our rewards community for member perks and more moments to savor.</p>
++          </div>
++          <form class="promo-form" action="/rewards" method="get">
++            <button class="promo-button" type="submit">Discover the perks &rarr;</button>
++          </form>
++        </aside>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

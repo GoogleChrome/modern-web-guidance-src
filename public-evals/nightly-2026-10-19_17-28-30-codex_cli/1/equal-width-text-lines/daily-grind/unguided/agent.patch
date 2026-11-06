@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+index 66c9173..fc4f995 100644
+--- a/index.html
++++ b/index.html
+@@ -75,6 +75,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
++      min-height: 400px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -89,8 +90,24 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(100%, 600px);
++      margin-bottom: 1.5rem;
++      font-size: clamp(2rem, 7vw, 5rem);
++      font-weight: 900;
++      line-height: 0.95;
++      letter-spacing: normal;
++      text-transform: uppercase;
++    }
++
++    .hero h1 .heading-line {
++      display: block;
++      width: max-content;
++      margin-inline: auto;
++      white-space: nowrap;
++    }
++
++    .hero h1 .heading-line + .heading-line {
++      margin-top: 0.08em;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +186,10 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span class="heading-line" aria-hidden="true">Wake Up</span>
++      <span class="heading-line" aria-hidden="true">Your Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +227,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const heroHeading = document.querySelector('.hero h1');
++    const headingLines = heroHeading.querySelectorAll('.heading-line');
++
++    // Measure each line at a common size, then fit by changing font size only.
++    function fitHeroHeading() {
++      const availableWidth = heroHeading.getBoundingClientRect().width;
++      if (!availableWidth) return;
++
++      headingLines.forEach((line) => {
++        line.style.fontSize = '100px';
++        const naturalWidth = line.getBoundingClientRect().width;
++        if (naturalWidth) {
++          line.style.fontSize = `${100 * availableWidth / naturalWidth}px`;
++        }
++      });
++    }
++
++    fitHeroHeading();
++    document.fonts.ready.then(fitHeroHeading);
++    let lastHeadingWidth = heroHeading.getBoundingClientRect().width;
++    new ResizeObserver(([entry]) => {
++      const width = entry.contentRect.width;
++      if (width !== lastHeadingWidth) {
++        lastHeadingWidth = width;
++        fitHeroHeading();
++      }
++    }).observe(heroHeading);
++  </script>
+ </body>
+ 
+ </html>

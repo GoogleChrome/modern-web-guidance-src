@@ -1,0 +1,712 @@
+diff --git a/index.html b/index.html
+index 66c9173..ae59750 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,198 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Section */
++    .feedback {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      align-items: stretch;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .feedback-photo {
++      display: block;
++      inline-size: 100%;
++      block-size: 100%;
++      min-block-size: 260px;
++      object-fit: cover;
++    }
++
++    .feedback-form {
++      padding: 32px 32px 32px 0;
++    }
++
++    @media (max-width: 680px) {
++      .feedback-form {
++        padding: 0 24px 24px;
++      }
++    }
++
++    .feedback h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .feedback-intro {
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .feedback fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px 20px 20px;
++      margin: 0 0 16px;
++      transition: opacity 0.3s;
++    }
++
++    .feedback fieldset:disabled {
++      opacity: 0.6;
++    }
++
++    .feedback legend {
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 6px;
++    }
++
++    .field {
++      margin-block-end: 18px;
++    }
++
++    .field:last-child {
++      margin-block-end: 0;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.95rem;
++      margin-block-end: 6px;
++    }
++
++    .field .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-block-end: 6px;
++    }
++
++    .required-mark {
++      color: #b23c17;
++    }
++
++    .field select,
++    .field textarea,
++    .field input {
++      font: inherit;
++      font-size: 1rem;
++      inline-size: 100%;
++      min-block-size: 48px;
++      padding: 0.75rem;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .field textarea {
++      min-block-size: 110px;
++      resize: vertical;
++    }
++
++    .field :is(select, textarea, input):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    star-rating {
++      --star-filled: var(--accent);
++      --star-empty: var(--secondary);
++      --star-focus: var(--primary);
++      border-radius: 8px;
++    }
++
++    .field-error {
++      display: none;
++      color: #b23c17;
++      font-size: 0.9rem;
++      margin-block-start: 6px;
++    }
++
++    /* Error states only after the user has interacted or tried to submit. */
++    .field :is(select, textarea, input):user-invalid {
++      border-color: #b23c17;
++      background-color: #fdeeea;
++    }
++
++    .field:has(:is(select, textarea, input):user-invalid) .field-error {
++      display: block;
++    }
++
++    /* :user-invalid isn't reliable for custom elements; the component exposes
++       :state(user-invalid) plus a data attribute fallback instead. */
++    star-rating:is(:state(user-invalid), [data-user-invalid]) {
++      box-shadow: 0 0 0 2px #b23c17;
++    }
++
++    .field:has(star-rating:is(:state(user-invalid), [data-user-invalid])) .field-error {
++      display: block;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++    }
++
++    .btn-form {
++      font: inherit;
++      font-size: 1rem;
++      border: 0;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .btn-form:disabled {
++      cursor: not-allowed;
++      opacity: 0.7;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .form-status {
++      margin-top: 14px;
++      padding: 12px 14px;
++      border-radius: 6px;
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .form-status:empty {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .feedback fieldset {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +387,69 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <img class="feedback-photo"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="A latte with heart-shaped latte art on a wooden table" width="900" height="1200" loading="lazy"
++        decoding="async">
++
++      <form class="feedback-form" id="coffee-feedback" action="/feedback" method="post">
++        <h2 id="feedback-heading">How was your last cup?</h2>
++        <p class="feedback-intro">Tell us what you loved and what we can do better. It takes under a minute.</p>
++
++        <fieldset id="feedback-fields">
++          <legend>Rate your coffee</legend>
++
++          <div class="field">
++            <label for="coffee-rating">Overall rating <span class="required-mark" aria-hidden="true">*</span></label>
++            <span class="hint" id="rating-hint">Required. Use arrow keys or click a star, 1 (poor) to 5 (excellent).</span>
++            <star-rating id="coffee-rating" name="rating" required label="Overall rating" aria-describedby="rating-hint"></star-rating>
++            <p class="field-error" id="rating-error" aria-live="polite">
++              <span aria-hidden="true">&#10060;</span> Please choose a star rating.
++            </p>
++          </div>
++
++          <div class="field">
++            <label for="coffee-drink">Which drink did you have? <span class="required-mark" aria-hidden="true">*</span></label>
++            <select id="coffee-drink" name="drink" required>
++              <option value="">Choose a drink…</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="other">Something else</option>
++            </select>
++            <p class="field-error" aria-live="polite">
++              <span aria-hidden="true">&#10060;</span> Please tell us which drink you had.
++            </p>
++          </div>
++
++          <div class="field">
++            <label for="coffee-comments">Comments</label>
++            <span class="hint">Optional. Up to 500 characters.</span>
++            <textarea id="coffee-comments" name="comments" maxlength="500" rows="4"
++              placeholder="Loved the crema, but it could have been a touch hotter…"></textarea>
++          </div>
++
++          <div class="field">
++            <label for="coffee-email">Email</label>
++            <span class="hint">Optional. Only if you'd like us to follow up.</span>
++            <input type="email" id="coffee-email" name="email" autocomplete="email" autocorrect="off"
++              autocapitalize="off" spellcheck="false" inputmode="email" placeholder="you@example.com">
++            <p class="field-error" aria-live="polite">
++              <span aria-hidden="true">&#10060;</span> Please enter a valid email address.
++            </p>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="submit" class="btn btn-form">Send feedback</button>
++          <button type="reset" class="btn btn-form btn-secondary">Clear form</button>
++        </div>
++
++        <p class="form-status" id="feedback-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +462,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./star-rating.js"></script>
++  <script type="module">
++    // Progressive enhancement: without JS the form still posts to /feedback.
++    const form = document.getElementById('coffee-feedback');
++    const fields = document.getElementById('feedback-fields');
++    const status = document.getElementById('feedback-status');
++    const submitBtn = form.querySelector('button[type="submit"]');
++
++    const drinkNames = {
++      'maple-oat-latte': 'Maple Oat Latte',
++      'dark-roast-espresso': 'Dark Roast Espresso',
++      'cold-brew': 'Cold Brew',
++      'other': 'your drink',
++    };
++
++    form.addEventListener('submit', async (event) => {
++      // `submit` only fires once native constraint validation passes, which
++      // includes the <star-rating>'s required state via ElementInternals.
++      event.preventDefault();
++
++      const data = new FormData(form);
++      const rating = Number(data.get('rating'));
++      const drink = drinkNames[data.get('drink')] ?? 'your drink';
++
++      // Disabling the fieldset disables every control inside it, including the
++      // custom element (via formDisabledCallback), preventing double submits.
++      fields.disabled = true;
++      submitBtn.disabled = true;
++      status.textContent = 'Sending your feedback…';
++
++      try {
++        // Replace with a real request when the backend is available:
++        // await fetch(form.action, { method: form.method, body: data });
++        await new Promise((resolve) => setTimeout(resolve, 900));
++        status.textContent =
++          `Thanks! You rated the ${drink} ${rating} ${rating === 1 ? 'star' : 'stars'}. We appreciate it.`;
++        form.reset(); // triggers formResetCallback on <star-rating>
++      } catch {
++        status.textContent = 'Sorry, something went wrong. Please try again.';
++      } finally {
++        fields.disabled = false; // re-enables the custom element too
++        submitBtn.disabled = false;
++      }
++    });
++
++    form.addEventListener('reset', () => {
++      status.textContent = '';
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..a8edb26
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,376 @@
++/**
++ * <star-rating> — a form-associated custom element.
++ *
++ * Usage:
++ *   <label for="rating">Overall rating</label>
++ *   <star-rating id="rating" name="rating" required label="Overall rating"></star-rating>
++ *
++ * Attributes: name, value (1–5), required, disabled, max (default 5), label
++ * Events: input (bubbles, composed), change (bubbles)
++ * Form integration: submits its own value, supports required constraint
++ * validation, reset, <fieldset disabled>, and browser state restoration.
++ */
++
++const STAR_PATH =
++  'M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: inline-block;
++      --_filled: var(--star-filled, #ffab40);
++      --_empty: var(--star-empty, #c9bdb8);
++      --_size: var(--star-size, 2.25rem);
++    }
++    :host([hidden]) { display: none; }
++
++    .group {
++      display: inline-flex;
++      gap: 0.125rem;
++      border-radius: 0.5rem;
++    }
++
++    button {
++      all: unset;
++      box-sizing: border-box;
++      display: inline-grid;
++      place-items: center;
++      inline-size: var(--_size);
++      block-size: var(--_size);
++      min-inline-size: 44px;
++      min-block-size: 44px;
++      border-radius: 0.375rem;
++      color: var(--_empty);
++      cursor: pointer;
++      transition: color 120ms ease, transform 120ms ease;
++    }
++    svg {
++      inline-size: 85%;
++      block-size: 85%;
++      fill: currentColor;
++      pointer-events: none;
++    }
++    button[data-filled] { color: var(--_filled); }
++
++    /* Hover preview: fill up to the hovered star, empty the rest. */
++    @media (hover: hover) {
++      .group:not([aria-disabled="true"]):hover button { color: var(--_filled); }
++      .group:not([aria-disabled="true"]):hover button:hover ~ button { color: var(--_empty); }
++      .group:not([aria-disabled="true"]) button:hover { transform: scale(1.12); }
++    }
++
++    button:focus-visible {
++      outline: 3px solid var(--star-focus, #4e342e);
++      outline-offset: 2px;
++    }
++
++    /* The host matches :disabled automatically when form-associated. */
++    :host(:disabled) button {
++      cursor: not-allowed;
++      opacity: 0.45;
++      transform: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      button { transition: none; }
++    }
++  </style>
++  <div class="group" part="group" role="radiogroup"></div>
++`;
++
++const supportsFACE =
++  'attachInternals' in HTMLElement.prototype &&
++  typeof ElementInternals !== 'undefined' &&
++  'setFormValue' in ElementInternals.prototype;
++
++export class StarRating extends HTMLElement {
++  // MANDATORY: opts the element into form participation.
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required', 'max', 'label', 'name'];
++
++  #internals = null;
++  #group;
++  #buttons = [];
++  #value = '';
++  #touched = false;
++  #fallbackInput = null; // only used where FACE is unsupported
++
++  constructor() {
++    super();
++    if (supportsFACE) this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++    this.#group = root.querySelector('.group');
++
++    this.#group.addEventListener('click', this.#onClick);
++    this.#group.addEventListener('keydown', this.#onKeydown);
++    // A failed form submit / reportValidity() dispatches `invalid` on the host.
++    this.addEventListener('invalid', () => {
++      this.#touched = true;
++      this.#reflectUserInvalid();
++    });
++  }
++
++  connectedCallback() {
++    this.#renderStars();
++    if (!supportsFACE) this.#ensureFallbackInput();
++    // Attributes such as `required`/`value` are available now.
++    if (this.hasAttribute('value') && !this.#value) {
++      this.#setValue(this.getAttribute('value'), { silent: true });
++    } else {
++      this.#syncFormValue();
++      this.#validate();
++    }
++    this.#reflectUserInvalid();
++    this.#wireDescription();
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    switch (name) {
++      case 'value':
++        // The attribute is the *default* value; only adopt it before user interaction.
++        if (!this.#touched) this.#setValue(newValue ?? '', { silent: true });
++        break;
++      case 'required':
++        this.#validate();
++        this.#group.setAttribute('aria-required', String(this.required));
++        break;
++      case 'max':
++        if (this.isConnected) this.#renderStars();
++        break;
++      case 'label':
++        this.#group.setAttribute('aria-label', newValue || 'Rating');
++        break;
++      case 'name':
++        if (this.#fallbackInput) this.#fallbackInput.name = newValue ?? '';
++        break;
++    }
++  }
++
++  /* ---------- Public API (mirrors native controls) ---------- */
++
++  get value() { return this.#value; }
++  set value(v) { this.#setValue(v, { silent: true }); }
++
++  get valueAsNumber() { return this.#value === '' ? NaN : Number(this.#value); }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(v) { this.setAttribute('name', v); }
++
++  get required() { return this.hasAttribute('required'); }
++  set required(v) { this.toggleAttribute('required', Boolean(v)); }
++
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(v) { this.toggleAttribute('disabled', Boolean(v)); }
++
++  get max() {
++    const n = Number.parseInt(this.getAttribute('max') ?? '5', 10);
++    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 5;
++  }
++
++  get type() { return 'star-rating'; }
++  get form() { return this.#internals?.form ?? this.closest('form'); }
++  get labels() { return this.#internals?.labels ?? []; }
++  get validity() { return this.#internals?.validity; }
++  get validationMessage() { return this.#internals?.validationMessage ?? ''; }
++  get willValidate() { return this.#internals?.willValidate ?? false; }
++  checkValidity() { return this.#internals?.checkValidity() ?? true; }
++  reportValidity() { return this.#internals?.reportValidity() ?? true; }
++
++  /* ---------- Form-associated lifecycle callbacks ---------- */
++
++  formResetCallback() {
++    this.#touched = false;
++    this.#setValue(this.getAttribute('value') ?? '', { silent: true });
++    this.#reflectUserInvalid();
++  }
++
++  formDisabledCallback(disabled) {
++    // Disable the internal controls only. Do NOT toggle `disabled` on the host:
++    // that would leave it stuck disabled after a <fieldset> is re-enabled.
++    this.#group.setAttribute('aria-disabled', String(disabled));
++    for (const btn of this.#buttons) btn.disabled = disabled;
++    if (!disabled) this.#updateTabStops();
++  }
++
++  formStateRestoreCallback(state /*, mode: 'restore' | 'autocomplete' */) {
++    if (typeof state === 'string') this.#setValue(state, { silent: true });
++  }
++
++  /* ---------- Internals ---------- */
++
++  #renderStars() {
++    const max = this.max;
++    this.#group.replaceChildren();
++    this.#buttons = [];
++    for (let i = 1; i <= max; i++) {
++      const btn = document.createElement('button');
++      btn.type = 'button';
++      btn.setAttribute('role', 'radio');
++      btn.setAttribute('aria-checked', 'false');
++      btn.setAttribute('aria-label', i === 1 ? '1 star' : `${i} stars`);
++      btn.dataset.value = String(i);
++      btn.tabIndex = -1;
++      btn.setAttribute('part', 'star');
++      btn.innerHTML =
++        `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${STAR_PATH}"/></svg>`;
++      this.#buttons.push(btn);
++    }
++    this.#group.append(...this.#buttons);
++    this.#group.setAttribute('aria-label', this.getAttribute('label') || 'Rating');
++    this.#group.setAttribute('aria-required', String(this.required));
++    if (this.matches(':disabled')) this.formDisabledCallback(true);
++    this.#paint();
++    this.#validate(); // re-anchor the validation message to the new first star
++  }
++
++  #onClick = (event) => {
++    const btn = event.target.closest('button');
++    if (!btn || btn.disabled) return;
++    this.#commit(btn.dataset.value);
++  };
++
++  #onKeydown = (event) => {
++    const btn = event.target.closest('button');
++    if (!btn || btn.disabled) return;
++    const current = this.#value ? Number(this.#value) : 0;
++    let next = null;
++    switch (event.key) {
++      case 'ArrowRight':
++      case 'ArrowUp':
++        next = Math.min(this.max, current + 1);
++        break;
++      case 'ArrowLeft':
++      case 'ArrowDown':
++        next = Math.max(1, current - 1);
++        break;
++      case 'Home':
++        next = 1;
++        break;
++      case 'End':
++        next = this.max;
++        break;
++      case ' ':
++      case 'Enter':
++        event.preventDefault();
++        this.#commit(btn.dataset.value);
++        return;
++      default:
++        return;
++    }
++    event.preventDefault();
++    this.#commit(String(next));
++    this.#buttons[next - 1]?.focus();
++  };
++
++  /** Called for user-driven changes: updates value and fires input/change. */
++  #commit(next) {
++    this.#touched = true;
++    if (next === this.#value) {
++      this.#reflectUserInvalid();
++      return;
++    }
++    this.#setValue(next, { silent: false });
++  }
++
++  #setValue(raw, { silent }) {
++    const n = Number.parseInt(raw, 10);
++    const normalized = Number.isFinite(n) && n >= 1 && n <= this.max ? String(n) : '';
++    const changed = normalized !== this.#value;
++    this.#value = normalized;
++    this.#syncFormValue();
++    this.#validate();
++    this.#paint();
++    this.#reflectUserInvalid();
++    if (!silent && changed) {
++      this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++      this.dispatchEvent(new Event('change', { bubbles: true }));
++    }
++  }
++
++  #syncFormValue() {
++    if (this.#internals) {
++      // Second argument is the state handed back to formStateRestoreCallback.
++      this.#internals.setFormValue(this.#value === '' ? null : this.#value, this.#value);
++    } else if (this.#fallbackInput) {
++      this.#fallbackInput.value = this.#value;
++    }
++  }
++
++  #validate() {
++    if (!this.#internals) return;
++    if (this.required && !this.#value) {
++      this.#internals.setValidity(
++        { valueMissing: true },
++        'Please choose a star rating.',
++        this.#buttons[0] ?? this.#group,
++      );
++    } else {
++      this.#internals.setValidity({});
++    }
++  }
++
++  #paint() {
++    const current = this.#value ? Number(this.#value) : 0;
++    this.#buttons.forEach((btn, idx) => {
++      const n = idx + 1;
++      btn.toggleAttribute('data-filled', n <= current);
++      btn.setAttribute('aria-checked', String(n === current));
++    });
++    this.#updateTabStops();
++  }
++
++  /** Roving tabindex: only the selected star (or the first) is in the tab order. */
++  #updateTabStops() {
++    const current = this.#value ? Number(this.#value) : 1;
++    this.#buttons.forEach((btn, idx) => {
++      btn.tabIndex = idx + 1 === current ? 0 : -1;
++    });
++  }
++
++  /**
++   * :user-invalid isn't reliably applied to form-associated custom elements,
++   * so expose an equivalent custom state (with an attribute fallback).
++   */
++  #reflectUserInvalid() {
++    // Read `validity.valid` rather than calling checkValidity(), which would
++    // dispatch another `invalid` event and recurse through our listener.
++    const invalid = this.#touched && this.#internals?.validity.valid === false;
++    const states = this.#internals?.states;
++    if (states) {
++      states[invalid ? 'add' : 'delete']('user-invalid');
++    }
++    this.toggleAttribute('data-user-invalid', invalid);
++    this.#group.setAttribute('aria-invalid', String(invalid));
++  }
++
++  /**
++   * An id in the host's `aria-describedby` can't be resolved from inside the
++   * shadow tree, so hand the inner radiogroup direct element references
++   * (reflected ARIA element properties resolve outward across the boundary).
++   */
++  #wireDescription() {
++    const ids = this.getAttribute('aria-describedby');
++    if (!ids || !('ariaDescribedByElements' in this.#group)) return;
++    const root = this.getRootNode();
++    const els = ids.split(/\s+/).map((id) => root.getElementById?.(id)).filter(Boolean);
++    if (els.length) this.#group.ariaDescribedByElements = els;
++  }
++
++  /** Legacy path: browsers without FACE still get a submitted value. */
++  #ensureFallbackInput() {
++    if (this.#fallbackInput || !this.name) return;
++    const input = document.createElement('input');
++    input.type = 'hidden';
++    input.name = this.name;
++    input.value = this.#value;
++    this.append(input);
++    this.#fallbackInput = input;
++  }
++}
++
++if (!customElements.get('star-rating')) {
++  customElements.define('star-rating', StarRating);
++}

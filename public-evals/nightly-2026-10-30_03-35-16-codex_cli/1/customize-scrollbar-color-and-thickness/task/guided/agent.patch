@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,66 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++      max-height: 300px;
++      overflow-y: auto;
++      padding: 0 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .feedback-log blockquote {
++      padding: 20px 0;
++    }
++
++    .feedback-log blockquote + blockquote {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .feedback-log cite {
++      display: block;
++      margin-top: 8px;
++      font-style: normal;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 6px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 3px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -194,8 +252,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <blockquote>
++          <p>“The Maple Oat Latte is my new fall favorite. Just the right amount of sweetness!”</p>
++          <cite>— Jamie R.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“Rich espresso and a warm welcome every morning. The best way to start my day.”</p>
++          <cite>— Alex M.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“The cold brew is so smooth. I always stop by for one on my afternoon walk.”</p>
++          <cite>— Taylor S.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“Friendly baristas, a cozy atmosphere, and consistently delicious coffee.”</p>
++          <cite>— Morgan L.</cite>
++        </blockquote>
++        <blockquote>
++          <p>“I love the seasonal drinks. There’s always something new to look forward to.”</p>
++          <cite>— Casey D.</cite>
++        </blockquote>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,171 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling */
++    .story {
++      margin-top: 80px;
++    }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++    }
++
++    #tracked section {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      min-height: 80vh;
++    }
++
++    #tracked .step {
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.75rem;
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      display: grid;
++      gap: 20px;
++      align-content: start;
++    }
++
++    #animated section {
++      aspect-ratio: 4 / 5;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    @keyframes story-in {
++      from {
++        opacity: 0;
++        scale: 0.9;
++        translate: 0 40px;
++      }
++    }
++
++    @keyframes story-out {
++      to {
++        opacity: 0;
++        scale: 1.05;
++      }
++    }
++
++    @keyframes story-fade-in {
++      from {
++        opacity: 0;
++      }
++    }
++
++    @keyframes story-fade-out {
++      to {
++        opacity: 0;
++      }
++    }
++
++    /* Progressive enhancement: without scroll-driven animation support,
++       the images simply render in normal flow beside the text. */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      /* Hoist the timeline names so the sibling #animated branch can use them */
++      .story-layout {
++        timeline-scope: --story-1, --story-2, --story-3, --story-4;
++      }
++
++      #tracked section {
++        /* Collapse the tracking area to a line across the middle of the
++           viewport, so each timeline covers exactly the time its text
++           section crosses the center and timelines hand off seamlessly. */
++        view-timeline-inset: 50% 50%;
++      }
++
++      #tracked section:nth-child(1) { view-timeline-name: --story-1; }
++      #tracked section:nth-child(2) { view-timeline-name: --story-2; }
++      #tracked section:nth-child(3) { view-timeline-name: --story-3; }
++      #tracked section:nth-child(4) { view-timeline-name: --story-4; }
++
++      #animated {
++        position: sticky;
++        top: 90px;
++        align-self: start;
++        height: min(70vh, calc(100vh - 120px));
++        grid-template-rows: 100%;
++      }
++
++      #animated section {
++        grid-area: 1 / 1;
++        aspect-ratio: auto;
++        animation: story-in auto linear both, story-out auto linear both;
++        animation-range: cover 0% cover 15%, cover 85% cover 100%;
++        backface-visibility: hidden;
++
++        /* Crossfade only, no movement */
++        @media (prefers-reduced-motion: reduce) {
++          animation-name: story-fade-in, story-fade-out;
++        }
++      }
++
++      /* Keep the first image visible before the story starts,
++         and the last one visible after it ends */
++      #animated section:first-child { animation-name: none, story-out; }
++      #animated section:last-child { animation-name: story-in, none; }
++
++      @media (prefers-reduced-motion: reduce) {
++        #animated section:first-child { animation-name: none, story-fade-out; }
++        #animated section:last-child { animation-name: story-fade-in, none; }
++      }
++
++      /* Declared after the animation shorthand so it isn't reset */
++      #animated section:nth-child(1) { animation-timeline: --story-1; }
++      #animated section:nth-child(2) { animation-timeline: --story-2; }
++      #animated section:nth-child(3) { animation-timeline: --story-3; }
++      #animated section:nth-child(4) { animation-timeline: --story-4; }
++    }
++
++    @media (max-width: 700px) {
++      .story-layout {
++        grid-template-columns: 1fr;
++      }
++
++      #animated {
++        grid-row: 1;
++      }
++
++      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        #animated {
++          top: 70px;
++          height: 35vh;
++          z-index: 1;
++        }
++
++        #tracked section {
++          /* Track a line below the sticky image instead of the center */
++          view-timeline-inset: 65% 35%;
++          min-height: 50vh;
++          justify-content: flex-start;
++          padding-top: 5vh;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +357,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" aria-labelledby="story-title">
++      <h2 id="story-title" style="text-align: center;">From Bean to Cup</h2>
++      <div class="story-layout">
++        <div id="tracked">
++          <section>
++            <p class="step">Step 1</p>
++            <h3>Sourced with Care</h3>
++            <p>We partner directly with small farms in Colombia, Ethiopia, and Guatemala, paying fair prices for
++              beans grown at high altitude and picked at peak ripeness.</p>
++          </section>
++          <section>
++            <p class="step">Step 2</p>
++            <h3>Roasted Locally</h3>
++            <p>Every batch is small-roasted in our shop each week, coaxing out notes of chocolate, caramel, and
++              stone fruit before being ground fresh to order.</p>
++          </section>
++          <section>
++            <p class="step">Step 3</p>
++            <h3>Brewed by Hand</h3>
++            <p>Our baristas dial in each brew, from slow pour-overs to precise espresso shots, so every cup tastes
++              exactly the way it should.</p>
++          </section>
++          <section>
++            <p class="step">Step 4</p>
++            <h3>Served to You</h3>
++            <p>Finished with velvety steamed milk and a little latte art, your coffee is ready to enjoy here or
++              on the go.</p>
++          </section>
++        </div>
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&h=1000&q=80"
++              alt="A pile of freshly roasted coffee beans" width="800" height="1000" loading="lazy" decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=800&h=1000&q=80"
++              alt="Coffee beans, fresh grounds, and a latte on wooden boards" width="800" height="1000"
++              loading="lazy" decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&h=1000&q=80"
++              alt="A barista pouring water into a pour-over coffee maker" width="800" height="1000" loading="lazy"
++              decoding="async">
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&h=1000&q=80"
++              alt="Lattes with heart-shaped latte art on a wooden table" width="800" height="1000" loading="lazy"
++              decoding="async">
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

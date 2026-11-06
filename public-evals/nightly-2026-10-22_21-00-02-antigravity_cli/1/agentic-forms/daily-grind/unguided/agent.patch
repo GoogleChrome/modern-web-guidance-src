@@ -1,0 +1,963 @@
+diff --git a/index.html b/index.html
+index 66c9173..9bf6eed 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,189 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Form & Interactive Section Styles */
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++      font-size: 0.95rem;
++    }
++
++    .section-block {
++      margin-top: 50px;
++    }
++
++    .form-card {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      text-align: left;
++    }
++
++    .form-card h3 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++    }
++
++    label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 5px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    input[type="text"],
++    input[type="email"],
++    input[type="tel"],
++    input[type="number"],
++    input[type="search"],
++    select,
++    textarea {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    input:focus,
++    select:focus,
++    textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 10px 15px;
++      margin-bottom: 15px;
++    }
++
++    legend {
++      font-weight: 600;
++      font-size: 0.9rem;
++      padding: 0 6px;
++      color: var(--text);
++    }
++
++    .radio-group,
++    .checkbox-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-top: 5px;
++    }
++
++    .radio-group label,
++    .checkbox-group label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: normal;
++      margin-bottom: 0;
++      cursor: pointer;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++    }
++
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .inline-form {
++      display: inline-block;
++      margin: 0;
++    }
++
++    .logout-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++      transition: color 0.3s, background 0.3s;
++    }
++
++    .logout-btn:hover {
++      color: var(--primary);
++      background: var(--accent);
++    }
++
++    .status-banner {
++      margin-top: 15px;
++      padding: 12px 15px;
++      border-radius: 5px;
++      background-color: #efebe9;
++      border-left: 4px solid var(--primary);
++      font-size: 0.9rem;
++      display: none;
++    }
++
++    .status-banner.visible {
++      display: block;
++    }
++
++    .menu-item-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 6px;
++      font-weight: 600;
++    }
++
++    /* WebMCP Declarative API active state indicators */
++    form:tool-form-active {
++      outline: light-dark(#ffab40, #ffd180) dashed 2px;
++      outline-offset: 3px;
++    }
++
++    button:tool-submit-active,
++    input:tool-submit-active {
++      outline: light-dark(#d84315, #ff8a65) dashed 2px;
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -160,38 +343,370 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#order-online">Order Online</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li>
++        <form id="logout-form" class="inline-form" action="/logout" method="POST"
++          toolname="logout_user"
++          tooldescription="Log out of the current user account session at The Daily Grind.">
++          <input type="hidden" name="confirm_logout" value="true"
++            toolparamdescription="Confirmation flag to log out of the current session (set to 'true').">
++          <button type="submit" class="logout-btn logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <!-- Global Notification / Tool Execution Feedback -->
++    <div id="global-status" class="status-banner" role="status" aria-live="polite"></div>
++
++    <!-- Seasonal Favorites & Menu Catalog Section -->
++    <section id="menu">
++      <h2 class="section-title">Seasonal Favorites &amp; Menu</h2>
++      <p class="section-subtitle">Explore our handcrafted beverages or filter the menu below.</p>
++
++      <div class="form-card" style="margin-bottom: 25px;">
++        <h3>Search &amp; Filter Menu</h3>
++        <form id="menu-search-form" action="/menu" method="GET"
++          toolname="search_menu"
++          tooldescription="Search and filter The Daily Grind coffee menu by beverage category, dietary preference, or keyword."
++          toolautosubmit>
++          <div class="form-row">
++            <div class="form-group">
++              <label for="menu-query">Keyword</label>
++              <input type="search" id="menu-query" name="query" placeholder="e.g., Maple, Espresso, Cold Brew"
++                toolparamtitle="Search Keyword"
++                toolparamdescription="Drink name, flavor, or keyword to search for in the menu (e.g., 'Maple Oat Latte', 'Espresso', 'Cold Brew').">
++            </div>
++            <div class="form-group">
++              <label for="menu-category">Category</label>
++              <select id="menu-category" name="category"
++                toolparamtitle="Menu Category"
++                toolparamdescription="Filter menu items by drink category.">
++                <option value="all">All Categories</option>
++                <option value="seasonal">Seasonal Favorites</option>
++                <option value="espresso">Espresso &amp; Hot Coffee</option>
++                <option value="cold-brew">Cold Brew &amp; Iced Drinks</option>
++                <option value="bakery">Artisanal Bakery</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="menu-dietary">Dietary Filter</label>
++              <select id="menu-dietary" name="dietary"
++                toolparamtitle="Dietary Preference"
++                toolparamdescription="Filter drinks by milk or dietary option.">
++                <option value="any">Any</option>
++                <option value="dairy-free">Dairy-Free / Vegan</option>
++                <option value="low-sugar">Unsweetened / Low Sugar</option>
++                <option value="decaf-available">Decaf Available</option>
++              </select>
++            </div>
++          </div>
++          <button type="submit" class="btn">Filter Menu</button>
++        </form>
++        <div id="menu-search-status" class="status-banner" role="status" aria-live="polite"></div>
++      </div>
++
++      <div class="grid" id="menu-grid">
++        <div class="card" data-item-id="maple-oat-latte" data-category="seasonal" data-dietary="dairy-free decaf-available">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="menu-item-meta">$5.75 &bull; Seasonal &bull; Dairy-Free</p>
++          <form class="quick-detail-form" action="/menu/seasonal" method="GET"
++            toolname="view_maple_oat_latte"
++            tooldescription="View nutritional details, ingredients, and customization options for the Maple Oat Latte."
++            toolautosubmit>
++            <input type="hidden" name="drink" value="Maple Oat Latte"
++              toolparamdescription="Name of the seasonal beverage ('Maple Oat Latte').">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+-        <div class="card">
++
++        <div class="card" data-item-id="dark-roast-espresso" data-category="espresso" data-dietary="dairy-free low-sugar decaf-available">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="menu-item-meta">$3.50 &bull; Espresso &bull; Unsweetened</p>
++          <form class="quick-detail-form" action="/menu/espresso" method="GET"
++            toolname="view_dark_roast_espresso"
++            tooldescription="View roast profile, caffeine content, and tasting notes for the Dark Roast Espresso."
++            toolautosubmit>
++            <input type="hidden" name="drink" value="Dark Roast Espresso"
++              toolparamdescription="Name of the espresso beverage ('Dark Roast Espresso').">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+-        <div class="card">
++
++        <div class="card" data-item-id="cold-brew" data-category="cold-brew" data-dietary="dairy-free low-sugar">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="menu-item-meta">$4.75 &bull; Cold Brew &bull; Smooth</p>
++          <form class="quick-detail-form" action="/menu/cold-brew" method="GET"
++            toolname="view_cold_brew"
++            tooldescription="View brewing process, nutrition facts, and serving options for the 18-hour Cold Brew."
++            toolautosubmit>
++            <input type="hidden" name="drink" value="Cold Brew"
++              toolparamdescription="Name of the cold brew beverage ('Cold Brew').">
++            <button type="submit" class="btn">View Details</button>
++          </form>
++        </div>
++      </div>
++
++      <div id="drink-details-panel" class="status-banner" role="region" aria-live="polite"></div>
++    </section>
++
++    <!-- Order Online Section -->
++    <section id="order-online" class="section-block">
++      <h2 class="section-title">Order Online</h2>
++      <p class="section-subtitle">Customize your coffee and place a pickup or delivery order.</p>
++      <div class="form-card">
++        <h3>Place a Coffee Order</h3>
++        <form id="order-form" action="/order-online" method="POST"
++          toolname="place_coffee_order"
++          tooldescription="Order a customized coffee drink from The Daily Grind with choice of beverage, size, milk, temperature, quantity, and pickup location.">
++          <div class="form-row">
++            <div class="form-group">
++              <label for="order-drink">Beverage</label>
++              <select id="order-drink" name="drink" required
++                toolparamtitle="Beverage"
++                toolparamdescription="Select the coffee beverage to order from The Daily Grind menu.">
++                <option value="Maple Oat Latte">Maple Oat Latte ($5.75)</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso ($3.50)</option>
++                <option value="Cold Brew">Cold Brew ($4.75)</option>
++                <option value="Artisanal Pour Over">Artisanal Pour Over ($4.50)</option>
++                <option value="Cappuccino">Cappuccino ($4.75)</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="order-size">Size</label>
++              <select id="order-size" name="size" required
++                toolparamtitle="Cup Size"
++                toolparamdescription="Choose the drink size: Small (8 oz), Medium (12 oz), or Large (16 oz).">
++                <option value="Small">Small (8 oz)</option>
++                <option value="Medium" selected>Medium (12 oz)</option>
++                <option value="Large">Large (16 oz)</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="order-milk">Milk Option</label>
++              <select id="order-milk" name="milk" required
++                toolparamtitle="Milk Choice"
++                toolparamdescription="Choose the type of milk or dairy alternative for the drink.">
++                <option value="Oat Milk">Oat Milk</option>
++                <option value="Whole Milk">Whole Milk</option>
++                <option value="Almond Milk">Almond Milk</option>
++                <option value="Skim Milk">Skim Milk</option>
++                <option value="None">None (Black)</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="form-row">
++            <fieldset>
++              <legend>Temperature</legend>
++              <div class="radio-group">
++                <label>
++                  <input type="radio" name="temperature" value="Hot" checked
++                    toolparamdescription="Choose whether the drink should be prepared Hot or Iced.">
++                  Hot
++                </label>
++                <label>
++                  <input type="radio" name="temperature" value="Iced">
++                  Iced
++                </label>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label for="order-quantity">Quantity</label>
++              <input type="number" id="order-quantity" name="quantity" min="1" max="20" value="1" required
++                toolparamtitle="Quantity"
++                toolparamdescription="Number of cups to order (between 1 and 20).">
++            </div>
++
++            <div class="form-group">
++              <label for="order-location">Pickup Location</label>
++              <select id="order-location" name="location" required
++                toolparamtitle="Pickup Cafe Location"
++                toolparamdescription="Select The Daily Grind cafe location for order pickup.">
++                <option value="Downtown Roastery">Downtown Roastery (101 Main St)</option>
++                <option value="Riverside Cafe">Riverside Cafe (240 River Rd)</option>
++                <option value="University Corner">University Corner (88 College Ave)</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="order-customer-name">Name for Cup</label>
++              <input type="text" id="order-customer-name" name="customerName" placeholder="Alex Rivera" required
++                toolparamtitle="Customer Name"
++                toolparamdescription="Name of the customer for the pickup order.">
++            </div>
++            <div class="form-group">
++              <label for="order-notes">Special Instructions (Optional)</label>
++              <input type="text" id="order-notes" name="specialInstructions" placeholder="Extra shot, light ice, etc."
++                toolparamtitle="Special Instructions"
++                toolparamdescription="Optional customization notes such as extra espresso shot, light ice, or extra maple syrup.">
++            </div>
++          </div>
++
++          <button type="submit" class="btn">Submit Order</button>
++        </form>
++        <div id="order-status" class="status-banner" role="status" aria-live="polite"></div>
++      </div>
++    </section>
++
++    <!-- Locations & Rewards Grid -->
++    <section class="section-block">
++      <div class="grid">
++        <!-- Locations Finder -->
++        <div class="form-card" id="locations">
++          <h3>Find a Cafe Location</h3>
++          <form id="locations-form" action="/locations" method="GET"
++            toolname="find_cafe_locations"
++            tooldescription="Find nearby The Daily Grind coffee shop locations by city, neighborhood, or ZIP code and amenity filter."
++            toolautosubmit>
++            <div class="form-group">
++              <label for="location-search">City, Neighborhood, or ZIP Code</label>
++              <input type="text" id="location-search" name="locationQuery" placeholder="e.g., Downtown, Riverside, 05401" required
++                toolparamtitle="Location Query"
++                toolparamdescription="City, neighborhood name, or ZIP code to search for nearby cafe locations.">
++            </div>
++            <div class="form-group">
++              <label for="location-amenity">Required Amenity</label>
++              <select id="location-amenity" name="amenity"
++                toolparamtitle="Cafe Amenity"
++                toolparamdescription="Optional filter for cafe features such as Wi-Fi, outdoor patio, or drive-thru.">
++                <option value="all">All Amenities</option>
++                <option value="wifi">High-Speed Wi-Fi &amp; Study Seating</option>
++                <option value="patio">Outdoor Heated Patio</option>
++                <option value="drive-thru">Express Drive-Thru</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Find Locations</button>
++          </form>
++          <div id="locations-status" class="status-banner" role="status" aria-live="polite"></div>
++        </div>
++
++        <!-- Rewards Lookup & Redemption -->
++        <div class="form-card" id="rewards">
++          <h3>Daily Grind Rewards</h3>
++          <form id="rewards-form" action="/rewards" method="POST"
++            toolname="manage_rewards"
++            tooldescription="Check loyalty points balance or redeem rewards perks for a Daily Grind member account.">
++            <div class="form-group">
++              <label for="rewards-email">Member Email</label>
++              <input type="email" id="rewards-email" name="memberEmail" placeholder="member@example.com" required
++                toolparamtitle="Member Email"
++                toolparamdescription="Email address associated with the customer's Daily Grind Rewards account.">
++            </div>
++            <div class="form-group">
++              <label for="rewards-action">Reward Action</label>
++              <select id="rewards-action" name="rewardAction" required
++                toolparamtitle="Reward Action"
++                toolparamdescription="Choose whether to check current points balance or redeem points for a reward.">
++                <option value="check_balance">Check Points Balance</option>
++                <option value="redeem_free_drink">Redeem Free Handcrafted Drink (100 pts)</option>
++                <option value="redeem_pastry">Redeem Artisanal Pastry (50 pts)</option>
++                <option value="redeem_beans">Redeem Whole Bean Coffee Bag (200 pts)</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Apply Rewards Action</button>
++          </form>
++          <div id="rewards-status" class="status-banner" role="status" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
++
++    <!-- My Account & Contact Us Grid -->
++    <section class="section-block">
++      <div class="grid">
++        <!-- My Account Preferences -->
++        <div class="form-card" id="account">
++          <h3>My Account Preferences</h3>
++          <form id="account-form" action="/account" method="POST"
++            toolname="update_account_preferences"
++            tooldescription="Update the user's Daily Grind account profile, default milk preference, favorite store, and notification settings.">
++            <div class="form-group">
++              <label for="account-name">Full Name</label>
++              <input type="text" id="account-name" name="fullName" value="Alex Rivera" required
++                toolparamtitle="Full Name"
++                toolparamdescription="The account holder's full name.">
++            </div>
++            <div class="form-group">
++              <label for="account-email">Email Address</label>
++              <input type="email" id="account-email" name="email" value="alex.rivera@example.com" required
++                toolparamtitle="Email Address"
++                toolparamdescription="The account holder's email address.">
++            </div>
++            <div class="form-group">
++              <label for="account-default-milk">Default Milk Preference</label>
++              <select id="account-default-milk" name="defaultMilk"
++                toolparamtitle="Default Milk"
++                toolparamdescription="Preferred default milk option saved to the user's coffee profile.">
++                <option value="Oat Milk" selected>Oat Milk</option>
++                <option value="Whole Milk">Whole Milk</option>
++                <option value="Almond Milk">Almond Milk</option>
++                <option value="Skim Milk">Skim Milk</option>
++                <option value="None">None (Black)</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Save Account Settings</button>
++          </form>
++          <div id="account-status" class="status-banner" role="status" aria-live="polite"></div>
++        </div>
++
++        <!-- Contact Us & Careers Inquiry -->
++        <div class="form-card" id="contact">
++          <h3>Contact Us &amp; Inquiries</h3>
++          <form id="contact-form" action="/contact" method="POST"
++            toolname="submit_contact_inquiry"
++            tooldescription="Send a message or inquiry to The Daily Grind team regarding customer support, catering, careers, or privacy questions.">
++            <div class="form-group">
++              <label for="contact-name">Your Name</label>
++              <input type="text" id="contact-name" name="senderName" placeholder="Your full name" required
++                toolparamtitle="Sender Name"
++                toolparamdescription="Full name of the person submitting the inquiry.">
++            </div>
++            <div class="form-group">
++              <label for="contact-email">Your Email</label>
++              <input type="email" id="contact-email" name="senderEmail" placeholder="you@example.com" required
++                toolparamtitle="Sender Email"
++                toolparamdescription="Email address for our team to reply to.">
++            </div>
++            <div class="form-group">
++              <label for="contact-topic">Topic</label>
++              <select id="contact-topic" name="topic" required
++                toolparamtitle="Inquiry Topic"
++                toolparamdescription="The subject area of the inquiry (General Feedback, Order Support, Join the Team / Careers, Our Story / Press, or Privacy Policy).">
++                <option value="General Feedback">General Feedback</option>
++                <option value="Order Support">Order Support</option>
++                <option value="Join the Team / Careers">Join the Team / Careers</option>
++                <option value="Our Story / Sourcing">Our Story &amp; Ethical Sourcing</option>
++                <option value="Privacy Policy">Privacy &amp; Data Request</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="contact-message">Message</label>
++              <textarea id="contact-message" name="message" rows="3" placeholder="How can we help you today?" required
++                toolparamtitle="Message"
++                toolparamdescription="Detailed message or question for The Daily Grind team."></textarea>
++            </div>
++            <button type="submit" class="btn">Send Message</button>
++          </form>
++          <div id="contact-status" class="status-banner" role="status" aria-live="polite"></div>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +714,378 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu">Our Story</a> |
++      <a href="#contact">Join the Team</a> |
++      <a href="#contact">Contact Us</a> |
++      <a href="#contact">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DRINK_CATALOG = {
++        "Maple Oat Latte": {
++          name: "Maple Oat Latte",
++          category: "seasonal",
++          price: 5.75,
++          calories: 190,
++          caffeineMg: 150,
++          description: "Creamy steamed oat milk paired with our signature double espresso and pure Vermont Grade-A maple syrup.",
++          dietary: ["Dairy-Free", "Vegan", "Decaf Available"]
++        },
++        "Dark Roast Espresso": {
++          name: "Dark Roast Espresso",
++          category: "espresso",
++          price: 3.50,
++          calories: 10,
++          caffeineMg: 185,
++          description: "Bold, smokey single-origin dark roast pulled as a rich double shot with velvety crema.",
++          dietary: ["Dairy-Free", "Unsweetened", "Decaf Available"]
++        },
++        "Cold Brew": {
++          name: "Cold Brew",
++          category: "cold-brew",
++          price: 4.75,
++          calories: 15,
++          caffeineMg: 210,
++          description: "Coarse-ground artisanal beans steeped in cold filtered water for 18 hours for maximum smoothness and low acidity.",
++          dietary: ["Dairy-Free", "Unsweetened"]
++        },
++        "Artisanal Pour Over": {
++          name: "Artisanal Pour Over",
++          category: "espresso",
++          price: 4.50,
++          calories: 5,
++          caffeineMg: 160,
++          description: "Hand-poured single-origin light roast highlighting bright citrus and floral notes.",
++          dietary: ["Dairy-Free", "Unsweetened"]
++        },
++        "Cappuccino": {
++          name: "Cappuccino",
++          category: "espresso",
++          price: 4.75,
++          calories: 120,
++          caffeineMg: 150,
++          description: "Equal parts rich espresso, steamed milk, and airy micro-foam.",
++          dietary: ["Decaf Available"]
++        }
++      };
++
++      const CAFE_LOCATIONS = [
++        {
++          name: "Downtown Roastery",
++          address: "101 Main St, Burlington, VT 05401",
++          hours: "6:00 AM – 7:00 PM",
++          amenities: ["wifi", "patio"]
++        },
++        {
++          name: "Riverside Cafe",
++          address: "240 River Rd, Burlington, VT 05402",
++          hours: "6:30 AM – 6:00 PM",
++          amenities: ["wifi", "drive-thru", "patio"]
++        },
++        {
++          name: "University Corner",
++          address: "88 College Ave, Burlington, VT 05405",
++          hours: "7:00 AM – 9:00 PM",
++          amenities: ["wifi"]
++        }
++      ];
++
++      function showBanner(elementId, message) {
++        const el = document.getElementById(elementId);
++        if (el) {
++          el.textContent = message;
++          el.classList.add("visible");
++        }
++        const globalEl = document.getElementById("global-status");
++        if (globalEl && elementId !== "global-status") {
++          globalEl.textContent = message;
++          globalEl.classList.add("visible");
++        }
++      }
++
++      function replyToAgentIfInvoked(event, payload) {
++        if (event.agentInvoked && typeof event.respondWith === "function") {
++          event.respondWith(Promise.resolve(payload));
++        }
++      }
++
++      // 1. Menu Search & Filter Form
++      const menuSearchForm = document.getElementById("menu-search-form");
++      if (menuSearchForm) {
++        menuSearchForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(menuSearchForm);
++          const query = (formData.get("query") || "").toString().trim().toLowerCase();
++          const category = (formData.get("category") || "all").toString();
++          const dietary = (formData.get("dietary") || "any").toString();
++
++          const cards = document.querySelectorAll("#menu-grid .card");
++          const matchedItems = [];
++
++          cards.forEach(function (card) {
++            const title = card.querySelector("h3").textContent;
++            const text = card.textContent.toLowerCase();
++            const cardCategory = card.getAttribute("data-category") || "";
++            const cardDietary = card.getAttribute("data-dietary") || "";
++
++            const matchesQuery = !query || text.includes(query);
++            const matchesCategory = category === "all" || cardCategory === category;
++            const matchesDietary = dietary === "any" || cardDietary.includes(dietary);
++
++            if (matchesQuery && matchesCategory && matchesDietary) {
++              card.style.display = "";
++              matchedItems.push(DRINK_CATALOG[title] || { name: title });
++            } else {
++              card.style.display = "none";
++            }
++          });
++
++          const summary = matchedItems.length > 0
++            ? "Found " + matchedItems.length + " menu item(s): " + matchedItems.map(function (i) { return i.name; }).join(", ") + "."
++            : "No menu items matched your filter criteria.";
++          showBanner("menu-search-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "search_menu",
++            filters: { query: query, category: category, dietary: dietary },
++            count: matchedItems.length,
++            items: matchedItems,
++            message: summary
++          });
++        });
++      }
++
++      // 2. Quick Drink Details Forms on Cards
++      const detailForms = document.querySelectorAll(".quick-detail-form");
++      detailForms.forEach(function (form) {
++        form.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(form);
++          const drinkName = (formData.get("drink") || "").toString();
++          const details = DRINK_CATALOG[drinkName] || {
++            name: drinkName,
++            description: "Artisanal coffee crafted to order."
++          };
++
++          const message = details.name + " ($" + (details.price ? details.price.toFixed(2) : "4.50") + "): " +
++            details.description + " [" + (details.calories || 0) + " cal, " + (details.caffeineMg || 0) + "mg caffeine]";
++          showBanner("drink-details-panel", message);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            drink: details,
++            message: message
++          });
++        });
++      });
++
++      // 3. Place Coffee Order Form
++      const orderForm = document.getElementById("order-form");
++      if (orderForm) {
++        orderForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(orderForm);
++          const drink = (formData.get("drink") || "Maple Oat Latte").toString();
++          const size = (formData.get("size") || "Medium").toString();
++          const milk = (formData.get("milk") || "Oat Milk").toString();
++          const temperature = (formData.get("temperature") || "Hot").toString();
++          const quantity = Math.max(1, parseInt(formData.get("quantity") || "1", 10) || 1);
++          const location = (formData.get("location") || "Downtown Roastery").toString();
++          const customerName = (formData.get("customerName") || "Guest").toString().trim();
++          const specialInstructions = (formData.get("specialInstructions") || "").toString().trim();
++
++          const basePrice = (DRINK_CATALOG[drink] && DRINK_CATALOG[drink].price) || 4.75;
++          const sizeAdjustment = size === "Large" ? 0.75 : (size === "Small" ? -0.50 : 0);
++          const unitPrice = basePrice + sizeAdjustment;
++          const totalPrice = +(unitPrice * quantity).toFixed(2);
++          const orderId = "DG-" + Math.floor(100000 + Math.random() * 900000);
++
++          const summary = "Order " + orderId + " confirmed for " + customerName + ": " +
++            quantity + "x " + size + " " + temperature + " " + drink + " (" + milk + ") for pickup at " +
++            location + ". Total: $" + totalPrice.toFixed(2) + ".";
++          showBanner("order-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "place_coffee_order",
++            orderId: orderId,
++            order: {
++              drink: drink,
++              size: size,
++              milk: milk,
++              temperature: temperature,
++              quantity: quantity,
++              location: location,
++              customerName: customerName,
++              specialInstructions: specialInstructions,
++              totalPrice: totalPrice
++            },
++            message: summary
++          });
++        });
++      }
++
++      // 4. Find Cafe Locations Form
++      const locationsForm = document.getElementById("locations-form");
++      if (locationsForm) {
++        locationsForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(locationsForm);
++          const query = (formData.get("locationQuery") || "").toString().trim().toLowerCase();
++          const amenity = (formData.get("amenity") || "all").toString();
++
++          const matches = CAFE_LOCATIONS.filter(function (loc) {
++            const matchesAmenity = amenity === "all" || loc.amenities.includes(amenity);
++            const matchesText = !query ||
++              loc.name.toLowerCase().includes(query) ||
++              loc.address.toLowerCase().includes(query) ||
++              query === "burlington" ||
++              query === "vt" ||
++              query === "nearby" ||
++              query === "all";
++            return matchesAmenity && matchesText;
++          });
++
++          const results = matches.length > 0 ? matches : CAFE_LOCATIONS;
++          const summary = "Available locations (" + results.length + "): " +
++            results.map(function (l) { return l.name + " at " + l.address + " (" + l.hours + ")"; }).join("; ");
++          showBanner("locations-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "find_cafe_locations",
++            locations: results,
++            message: summary
++          });
++        });
++      }
++
++      // 5. Daily Grind Rewards Form
++      const rewardsForm = document.getElementById("rewards-form");
++      if (rewardsForm) {
++        rewardsForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(rewardsForm);
++          const memberEmail = (formData.get("memberEmail") || "").toString().trim();
++          const rewardAction = (formData.get("rewardAction") || "check_balance").toString();
++
++          const currentPoints = 240;
++          let remainingPoints = currentPoints;
++          let summary = "";
++
++          if (rewardAction === "check_balance") {
++            summary = "Rewards member " + memberEmail + " currently has " + currentPoints + " points (Gold Bean Tier).";
++          } else if (rewardAction === "redeem_free_drink") {
++            remainingPoints = currentPoints - 100;
++            summary = "Redeemed Free Handcrafted Drink (100 pts) for " + memberEmail + ". Remaining balance: " + remainingPoints + " pts.";
++          } else if (rewardAction === "redeem_pastry") {
++            remainingPoints = currentPoints - 50;
++            summary = "Redeemed Artisanal Pastry (50 pts) for " + memberEmail + ". Remaining balance: " + remainingPoints + " pts.";
++          } else if (rewardAction === "redeem_beans") {
++            remainingPoints = currentPoints - 200;
++            summary = "Redeemed Whole Bean Coffee Bag (200 pts) for " + memberEmail + ". Remaining balance: " + remainingPoints + " pts.";
++          }
++
++          showBanner("rewards-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "manage_rewards",
++            memberEmail: memberEmail,
++            action: rewardAction,
++            pointsBalance: remainingPoints,
++            message: summary
++          });
++        });
++      }
++
++      // 6. My Account Preferences Form
++      const accountForm = document.getElementById("account-form");
++      if (accountForm) {
++        accountForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(accountForm);
++          const fullName = (formData.get("fullName") || "").toString().trim();
++          const email = (formData.get("email") || "").toString().trim();
++          const defaultMilk = (formData.get("defaultMilk") || "Oat Milk").toString();
++
++          const summary = "Updated account settings for " + fullName + " (" + email + "). Default milk set to " + defaultMilk + ".";
++          showBanner("account-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "update_account_preferences",
++            profile: {
++              fullName: fullName,
++              email: email,
++              defaultMilk: defaultMilk
++            },
++            message: summary
++          });
++        });
++      }
++
++      // 7. Contact Us & Inquiries Form
++      const contactForm = document.getElementById("contact-form");
++      if (contactForm) {
++        contactForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const formData = new FormData(contactForm);
++          const senderName = (formData.get("senderName") || "").toString().trim();
++          const senderEmail = (formData.get("senderEmail") || "").toString().trim();
++          const topic = (formData.get("topic") || "General Feedback").toString();
++          const message = (formData.get("message") || "").toString().trim();
++
++          const summary = "Thank you, " + senderName + "! Your inquiry regarding '" + topic + "' has been received. We will reply to " + senderEmail + " shortly.";
++          showBanner("contact-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "submit_contact_inquiry",
++            inquiry: {
++              senderName: senderName,
++              senderEmail: senderEmail,
++              topic: topic,
++              message: message
++            },
++            message: summary
++          });
++        });
++      }
++
++      // 8. Logout Form
++      const logoutForm = document.getElementById("logout-form");
++      if (logoutForm) {
++        logoutForm.addEventListener("submit", function (event) {
++          event.preventDefault();
++          const summary = "You have been logged out of your Daily Grind account.";
++          showBanner("global-status", summary);
++
++          replyToAgentIfInvoked(event, {
++            status: "success",
++            tool: "logout_user",
++            loggedOut: true,
++            message: summary
++          });
++        });
++      }
++
++      // Listen for WebMCP lifecycle events when supported by the browser
++      const modelCtx = document.modelContext || navigator.modelContext;
++      if (modelCtx && typeof modelCtx.addEventListener === "function") {
++        modelCtx.addEventListener("toolactivated", function (event) {
++          showBanner("global-status", "AI Agent activated tool: " + event.toolName);
++        });
++        modelCtx.addEventListener("toolcancel", function (event) {
++          showBanner("global-status", "AI Agent cancelled tool: " + event.toolName);
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

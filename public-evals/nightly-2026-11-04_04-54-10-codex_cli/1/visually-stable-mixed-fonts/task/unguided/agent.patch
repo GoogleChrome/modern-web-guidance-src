@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,102 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Typeform — Font harmony playground</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
++  <style>
++    :root{font-family:'DM Sans',sans-serif;color:#29282d;background:#f8f8fa;font-synthesis:none;--purple:#7460c7;--line:#e7e6eb;--muted:#939199}
++    *{box-sizing:border-box}body{margin:0}button,a,input,select{font:inherit}button,a,select{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #ab97ed;outline-offset:4px}button{color:inherit}a{color:inherit;text-decoration:none}
++    .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}.sidebar{background:#fff;border-right:1px solid var(--line);padding:36px 23px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}.logo{font-size:25px;font-weight:700;letter-spacing:-1.2px;display:flex;align-items:center;gap:9px}.logo-mark{background:#7460c7;color:white;border-radius:9px;padding:2px 7px;font-family:Georgia,serif;font-size:27px;letter-spacing:-5px;width:31px;height:33px}.workspace{font-size:10px;letter-spacing:1.8px;color:#a6a2ad;margin:51px 13px 15px;font-weight:600}.nav-item{display:flex;gap:12px;align-items:center;font-size:13px;padding:13px;border-radius:7px;margin-bottom:5px;color:#77737e}.nav-item.active{background:#f0edf9;color:#7059bc;font-weight:600}.nav-icon{width:18px;text-align:center;font-size:17px}.sidebar-bottom{margin-top:auto}.note{padding:16px 13px;border:1px solid var(--line);border-radius:9px;font-size:11px;color:#96919e;line-height:1.7}.note strong{display:block;font-size:12px;color:#625d6b;margin-bottom:6px}.version{margin:22px 11px 0;display:flex;align-items:center;gap:7px;font-size:10px;color:#aaa6af}.dot{width:6px;height:6px;background:#96b69e;border-radius:50%}
++    .topbar{height:82px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 49px;background:#fff;font-size:12px;color:#a09ba7}.crumb span{color:#57515f;margin-left:11px}.slash{margin-left:13px;color:#ccc}.top-actions{display:flex;align-items:center;gap:22px}.github{display:flex;align-items:center;gap:7px;color:#77717e}.avatar{background:#ebe6f6;border:3px solid #f5f2fa;border-radius:50%;width:31px;height:31px;display:grid;place-items:center;font-size:10px;color:#78659f;font-weight:600}
++    main{max-width:1190px;margin:auto;padding:44px 49px 26px}.eyebrow{font-size:10px;letter-spacing:1.8px;color:#9b91b2;font-weight:600;text-transform:uppercase}.heading{display:flex;align-items:center;gap:13px}h1{font-size:31px;letter-spacing:-1.2px;font-weight:550;margin:12px 0}.badge{font-size:9px;color:#82709e;padding:4px 7px;border:1px solid #e4deef;border-radius:5px;background:#f3eff9;letter-spacing:.5px}.intro{font-size:13px;color:#8a8591;margin:0;line-height:1.8}.intro code{font-size:11px;color:#6f5b9c;background:#eeebf4;padding:2px 5px;border-radius:4px}.toolbar{margin-top:31px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.tabs{display:flex;gap:25px}.tab{background:none;border:0;font-size:12px;padding:0 0 15px;color:#9a94a1;position:relative}.tab.selected{color:#7560b5;font-weight:600}.tab.selected:after{content:'';height:2px;background:#8067c6;position:absolute;bottom:-1px;left:0;right:0}.live{font-size:10px;color:#9b95a2;display:flex;align-items:center;gap:6px;padding-bottom:14px}.live .dot{background:#9fb7a6;width:5px;height:5px}
++    .panel{background:white;border:1px solid var(--line);border-radius:11px;overflow:hidden}.mixed{margin-top:26px}.panel-top{padding:20px 23px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #efedf2}.panel-label{display:flex;align-items:center;gap:10px}.number{font:10px 'DM Mono',monospace;color:#aaa3b3;border:1px solid #e9e5ee;border-radius:4px;padding:4px 5px}.panel-title{font-size:12px;font-weight:600}.sub{font-size:10px;color:#a59eac;margin-top:4px}.chip{font:10px 'DM Mono',monospace;color:#8b7ba7;background:#f4f1f8;padding:6px 8px;border-radius:5px}.specimen{padding:37px 29px 31px;background-image:linear-gradient(#f9f8fb 1px,transparent 1px);background-size:100% 37px;background-position:0 8px;min-height:190px;position:relative}#mixed-fonts-container{font-family:'DM Sans',sans-serif;font-size:28px;line-height:1.8;letter-spacing:-.65px;font-size-adjust:from-font;margin:0;max-width:730px}code{font-family:'DM Mono',monospace}#mixed-fonts-container code{color:#7761ae;background:#f0ebfa;border:1px solid #e7def6;padding:3px 7px;border-radius:5px;font-size:1em;letter-spacing:-1.2px}.specimen-note{font-size:9px;letter-spacing:.6px;color:#b2a8bf;display:flex;align-items:center;gap:6px;margin-top:19px}.specimen-note:before{content:'';width:12px;height:1px;background:#ae9bc5}.controls{padding:16px 23px;background:#fdfcfe;border-top:1px solid var(--line);display:flex;gap:23px;align-items:center;font-size:10px;color:#8a8294}.font-tag{border:1px solid #e7e2ed;padding:5px 8px;border-radius:5px;color:#79717f;background:#fff;margin-left:7px;font-size:10px}.switch-label{margin-left:auto;display:flex;align-items:center;gap:9px;cursor:pointer}.switch{appearance:none;width:27px;height:16px;background:#d5cfdf;border-radius:20px;position:relative;cursor:pointer;margin:0}.switch:checked{background:#8270bb}.switch:before{content:'';position:absolute;top:3px;left:3px;width:10px;height:10px;background:white;border-radius:50%;transition:transform .2s}.switch:checked:before{transform:translateX(11px)}
++    .lower{display:grid;grid-template-columns:1.1fr 1fr;gap:22px;margin-top:23px}.theme-body{padding:20px;background:#fdfcfe}#independent-theme-container{font-size-adjust:0.52;aspect-ratio:4 / 3;background:#f0ebfa;border:1px solid #e4dbf3;border-radius:7px;padding:25px 26px;display:flex;flex-direction:column;justify-content:space-between;transition:background .2s,border-color .2s}.theme-kicker{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#9a84b7}.theme-sample{font-family:Georgia,serif;font-size:32px;line-height:1.25;letter-spacing:-1px;color:#675180;margin:15px 0 10px}.theme-copy{font-size:11px;color:#9d8bac;line-height:1.8;max-width:260px}.theme-copy code{background:#e6def1;border-radius:3px;padding:2px 4px;color:#7b6594}.theme-bottom{display:flex;justify-content:space-between;font:9px 'DM Mono',monospace;color:#9e8db2;margin-top:20px}.theme-footer{display:flex;justify-content:space-between;align-items:center;padding:0 21px 18px;color:#9d95a6;font-size:10px}.swatches{display:flex;gap:6px}.swatch{width:15px;height:15px;border-radius:50%;border:2px solid white;outline:1px solid transparent;padding:0}.swatch.active{outline-color:#a390ba}.lavender{background:#d8c8ef}.sage{background:#cddbcf}.peach{background:#edcebe}
++    .code-head{display:flex;justify-content:space-between;align-items:center;padding:15px 19px;border-bottom:1px solid var(--line);font-size:11px;color:#7c7487}.file{display:flex;align-items:center;gap:7px}.file-icon{color:#9c8abd}.copy{background:none;border:0;color:#aaa2b4;font-size:10px;display:flex;gap:6px;align-items:center;padding:4px}.code-block{padding:17px 18px;margin:0;font:10px/2.1 'DM Mono',monospace;color:#8b8199;white-space:pre-wrap}.selector{color:#7f66a6}.property{color:#7b829a}.value{color:#a17e6d}.comment{color:#b1aaba}.code-info{margin:0 19px;padding:13px 0 15px;border-top:1px solid #f0edf4;color:#a39aaf;font-size:10px;display:flex;gap:8px;line-height:1.7}.info-icon{border:1px solid #b8accb;border-radius:50%;width:13px;height:13px;display:inline-grid;place-items:center;font-size:9px;flex-shrink:0;margin-top:2px}.footer{margin-top:26px;display:flex;justify-content:space-between;font-size:10px;color:#aaa3b2}.footer a{color:#8b7ca2;display:flex;gap:6px}.hidden{display:none!important}.reference{margin-top:26px;padding:28px;font-size:13px;line-height:1.9;color:#82788f}.reference h2{font-size:20px;color:#53485e;margin-top:0}.reference code{color:#7f66a6;font-size:12px}.status{color:#87769f}
++    @media(min-width:1450px){main{padding-top:58px}.specimen{padding-top:45px;padding-bottom:40px}}@media(max-width:1050px){.sidebar{width:190px;padding:30px 16px}.app{grid-template-columns:190px 1fr}main{padding:35px 28px}.topbar{padding:0 28px}.lower{grid-template-columns:1fr 1fr}.controls{gap:10px;flex-wrap:wrap}.switch-label{margin-left:0}.theme-sample{font-size:27px}.code-block{font-size:9px}}@media(max-width:760px){.app{display:block}.sidebar{position:static;width:auto;height:auto;padding:18px 22px;border-right:0;border-bottom:1px solid var(--line)}.sidebar nav,.sidebar-bottom,.workspace{display:none}.logo{font-size:22px}.topbar{height:55px;padding:0 22px}.top-actions .github{display:none}main{padding:30px 20px}.lower{grid-template-columns:1fr}h1{font-size:27px}.intro{font-size:12px}#mixed-fonts-container{font-size:24px}.specimen{padding:26px 21px}.panel-top{padding:17px}.chip{font-size:8px}.controls{padding:14px 17px}.footer{gap:20px;line-height:1.8}.theme-sample{font-size:34px}.code-block{font-size:11px}.theme-body{padding:20px}.heading{gap:9px}.tabs{gap:20px}}
++  </style>
++</head>
++<body>
++<div class="app">
++  <aside class="sidebar">
++    <a class="logo" href="./" aria-label="Typeform home"><span class="logo-mark">tf</span>typeform<span style="color:#a899c3">.</span></a>
++    <div class="workspace">WORKSPACE</div>
++    <nav aria-label="Main navigation">
++      <a href="#playground" class="nav-item active" data-nav="playground"><span class="nav-icon">▦</span> Playground</a>
++      <a href="#properties" class="nav-item" data-nav="properties"><span class="nav-icon">≡</span> CSS properties</a>
++      <a href="#guide" class="nav-item" data-nav="guide"><span class="nav-icon">▤</span> Quick guide <span style="margin-left:auto;font-size:11px">↗</span></a>
++    </nav>
++    <div class="sidebar-bottom"><div class="note"><strong>A little type. A lot of harmony.</strong>Small CSS details that make<br>your typography feel just right.<span style="display:block;color:#a38dc3;font-size:17px;margin-top:9px">✳</span></div><div class="version"><span class="dot"></span> CSS, moving forward. <span style="margin-left:auto">v1.0</span></div></div>
++  </aside>
++  <div class="content">
++    <header class="topbar"><div class="crumb">Workspace <b class="slash">/</b><span id="breadcrumb">Playground</span></div><div class="top-actions"><a class="github" href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noreferrer">CSS reference <span>↗</span></a><div class="avatar" aria-label="Personal workspace">JD</div></div></header>
++    <main>
++      <div class="eyebrow">THE TYPOGRAPHY PLAYGROUND</div>
++      <div class="heading"><h1>Different fonts. Same rhythm.</h1><span class="badge">CSS LAB</span></div>
++      <p class="intro">Bring mixed fonts into balance with <code>font-size-adjust</code>.<br>A little consistency goes a long way.</p>
++      <div class="toolbar"><div class="tabs" role="tablist" aria-label="Playground view"><button class="tab selected" role="tab" aria-selected="true" data-tab="preview">Preview</button><button class="tab" role="tab" aria-selected="false" data-tab="code">Code</button></div><div class="live"><span class="dot"></span> Live playground</div></div>
++      <section id="playground-view">
++        <section class="panel mixed" aria-label="Mixed font preview">
++          <div class="panel-top"><div class="panel-label"><span class="number">01</span><div><div class="panel-title">A little mix, a perfect match</div><div class="sub">Two font families. One visual height.</div></div></div><span class="chip">from-font</span></div>
++          <div class="specimen"><p id="mixed-fonts-container">Good typography makes <code>great code</code><br>feel right at home.</p><div class="specimen-note" id="alignment-note">X-HEIGHT, ALL ALIGNED</div></div>
++          <div class="controls"><span>Text <span class="font-tag">DM Sans</span></span><span>Code <span class="font-tag">DM Mono</span></span><label class="switch-label"><input type="checkbox" class="switch" id="normalize" checked> Normalize font height</label></div>
++        </section>
++        <div class="lower">
++          <section class="panel"><div class="panel-top"><div class="panel-label"><span class="number">02</span><div><div class="panel-title">A theme of its own</div><div class="sub">Independent by design.</div></div></div><span class="chip">0.52</span></div><div class="theme-body"><div id="independent-theme-container"><span class="theme-kicker">THE INDEPENDENT THEME</span><div><p class="theme-sample">Room to be<br>different.</p><div class="theme-copy">Its own character. Its own proportions.<br>Even when a little <code>code</code> joins in.</div></div><div class="theme-bottom"><span>font-size-adjust: 0.52</span><span>4 : 3 ↗</span></div></div></div><div class="theme-footer"><span>A fixed ratio. A flexible personality.</span><div class="swatches" aria-label="Theme colors"><button class="swatch lavender active" data-theme="lavender" aria-label="Lavender theme" aria-pressed="true"></button><button class="swatch sage" data-theme="sage" aria-label="Sage theme" aria-pressed="false"></button><button class="swatch peach" data-theme="peach" aria-label="Peach theme" aria-pressed="false"></button></div></div></section>
++          <section class="panel code-panel" id="code-panel"><div class="code-head"><span class="file"><span class="file-icon">{ }</span> styles.css</span><button class="copy" id="copy-code" aria-label="Copy CSS"><span>▢</span><span id="copy-label">Copy</span></button></div><pre class="code-block"><code><span class="comment">/* Make different fonts feel equal */</span>
++<span class="selector">#mixed-fonts-container</span> {
++  <span class="property">font-size-adjust</span>: <span class="value">from-font</span>;
++}
++
++<span class="comment">/* Give this theme its own rules */</span>
++<span class="selector">#independent-theme-container</span> {
++  <span class="property">font-size-adjust</span>: <span class="value">0.52</span>;
++  <span class="property">aspect-ratio</span>: <span class="value">4 / 3</span>;
++}</code></pre><div class="code-info"><span class="info-icon">i</span><span>Less tweaking. More harmony.<br>Let the browser do the measuring.</span></div></section>
++        </div>
++      </section>
++      <section id="reference-view" class="panel reference hidden"></section>
++      <footer class="footer"><span>Made for the details. Built with modern CSS.</span><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noreferrer">Explore font-size-adjust <span>↗</span></a></footer>
++    </main>
++  </div>
++</div>
++<script>
++ const mixed = document.getElementById('mixed-fonts-container');
++ document.getElementById('normalize').addEventListener('change', event => {
++   mixed.style.fontSizeAdjust = event.target.checked ? 'from-font' : 'none';
++   document.getElementById('alignment-note').textContent = event.target.checked ? 'X-HEIGHT, ALL ALIGNED' : 'ORIGINAL FONT PROPORTIONS';
++ });
++ const colors = {lavender:['#f0ebfa','#e4dbf3','#675180'],sage:['#eaf0eb','#d8e4da','#506d59'],peach:['#faf0e9','#efdfd3','#8b6650']};
++ document.querySelectorAll('.swatch').forEach(button => button.addEventListener('click', () => {
++   document.querySelectorAll('.swatch').forEach(item => {item.classList.remove('active');item.setAttribute('aria-pressed','false')});
++   button.classList.add('active');button.setAttribute('aria-pressed','true');
++   const theme = document.getElementById('independent-theme-container');const color = colors[button.dataset.theme];
++   theme.style.background = color[0];theme.style.borderColor = color[1];theme.querySelector('.theme-sample').style.color = color[2];
++ }));
++ const cssText = '#mixed-fonts-container {\n  font-size-adjust: from-font;\n}\n\n#independent-theme-container {\n  font-size-adjust: 0.52;\n  aspect-ratio: 4 / 3;\n}';
++ document.getElementById('copy-code').addEventListener('click', async () => {
++   try {await navigator.clipboard.writeText(cssText);document.getElementById('copy-label').textContent='Copied!';setTimeout(()=>document.getElementById('copy-label').textContent='Copy',2000)}
++   catch {document.getElementById('copy-label').textContent='Select to copy';const range=document.createRange();range.selectNodeContents(document.querySelector('.code-block'));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range)}
++ });
++ const reference = document.getElementById('reference-view');const preview = document.getElementById('playground-view');
++ function showView(view) {
++   document.querySelectorAll('.nav-item').forEach(item=>item.classList.toggle('active',item.dataset.nav===view));
++   document.getElementById('breadcrumb').textContent = view==='playground'?'Playground':view==='properties'?'CSS properties':'Quick guide';
++   preview.classList.toggle('hidden',view!=='playground');reference.classList.toggle('hidden',view==='playground');
++   if(view==='properties') reference.innerHTML='<h2>Small properties. Thoughtful typography.</h2><p><code>font-size-adjust: from-font</code> uses the first font’s aspect value to maintain a consistent perceived size when mixing font families.</p><p><code>font-size-adjust: 0.52</code> sets an independent x-height to font-size ratio for the theme.</p><p><code>aspect-ratio: 4 / 3</code> sets the theme container’s preferred width-to-height ratio.</p>';
++   if(view==='guide') reference.innerHTML='<h2>Find your font harmony.</h2><p>1. Compare regular text with inline code in the preview.</p><p>2. Toggle “Normalize font height” to compare original and adjusted proportions.</p><p>3. Try a theme color, then copy the CSS into your project.</p>';
++ }
++ document.querySelectorAll('[data-nav]').forEach(link=>link.addEventListener('click',()=>showView(link.dataset.nav)));
++ document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
++   showView('playground');
++   document.querySelectorAll('[data-tab]').forEach(tab=>{tab.classList.toggle('selected',tab===button);tab.setAttribute('aria-selected',String(tab===button))});
++   document.querySelector('.mixed').classList.toggle('hidden',button.dataset.tab==='code');
++   document.querySelector('.lower > section:first-child').classList.toggle('hidden',button.dataset.tab==='code');
++   document.querySelector('.lower').style.gridTemplateColumns=button.dataset.tab==='code'?'1fr':'';
++ }));
++</script>
++</body>
++</html>

@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -30,9 +30,15 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      --nav-pad-start: 1rem;
++      --nav-pad-end: 0.4rem;
++      --nav-logo-start: 1.5rem;
++      --nav-logo-end: 1.1rem;
++      --nav-shrink-distance: 100px;
++      --nav-progress: 0;
++      padding: var(--nav-pad-start) 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -40,13 +46,69 @@
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: var(--nav-logo-start);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    /* Shrink on scroll: native scroll-driven animation */
++    @keyframes shrink-nav {
++      to {
++        padding-block: var(--nav-pad-end);
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    @keyframes shrink-logo {
++      to {
++        font-size: var(--nav-logo-end);
++      }
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      nav {
++        animation: shrink-nav linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 100px;
++      }
++
++      .logo {
++        animation: shrink-logo linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 100px;
++      }
++    }
++
++    /* Fallback: script sets --nav-progress (0 to 1) from the scroll position */
++    @supports not ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      nav {
++        padding-block: calc(var(--nav-pad-start) + (var(--nav-pad-end) - var(--nav-pad-start)) * var(--nav-progress));
++        box-shadow: 0 2px 10px rgba(0, 0, 0, calc(0.3 * var(--nav-progress)));
++      }
++
++      .logo {
++        font-size: calc(var(--nav-logo-start) + (var(--nav-logo-end) - var(--nav-logo-start)) * var(--nav-progress));
++      }
++    }
++
++    /* No scroll-linked motion: keep the compact nav at all times */
++    @media (prefers-reduced-motion: reduce) {
++      nav,
++      .logo {
++        animation: none;
++      }
++
++      nav {
++        padding-block: var(--nav-pad-end);
++      }
++
++      .logo {
++        font-size: var(--nav-logo-end);
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +268,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations
++    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)') &&
++      !matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const nav = document.querySelector('nav');
++      const distance = 100;
++      let ticking = false;
++
++      const update = () => {
++        const progress = Math.min(1, Math.max(0, window.scrollY / distance));
++        nav.style.setProperty('--nav-progress', progress);
++        ticking = false;
++      };
++
++      window.addEventListener('scroll', () => {
++        if (!ticking) {
++          ticking = true;
++          requestAnimationFrame(update);
++        }
++      }, { passive: true });
++      update();
++    }
++  </script>
+ </body>
+ 
+ </html>

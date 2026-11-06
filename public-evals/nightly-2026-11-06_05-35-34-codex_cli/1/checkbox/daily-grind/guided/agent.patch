@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+index 66c9173..2dc39b0 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,151 @@
+       color: var(--primary);
+     }
+ 
++    /* Seasonal customizations keep the native input as the interactive control. */
++    .seasonal-card {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .customizations {
++      min-inline-size: 0;
++      margin-block: auto 0;
++      padding-block-start: 20px;
++      border: 0;
++      text-align: start;
++    }
++
++    .customizations legend {
++      float: inline-start;
++      inline-size: 100%;
++      margin-block-end: 8px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.06em;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .customization {
++      clear: both;
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 48px;
++      padding: 10px;
++      margin-block-start: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #faf7f4;
++      cursor: pointer;
++      line-height: 1.4;
++      overflow-wrap: anywhere;
++    }
++
++    .customization:has(input:checked) {
++      border-color: var(--primary);
++      background: #fff1dc;
++    }
++
++    .customization:hover {
++      border-color: var(--primary);
++    }
++
++    .customization input {
++      appearance: none;
++      display: inline-grid;
++      place-content: center;
++      flex: 0 0 auto;
++      inline-size: 1.35em;
++      block-size: 1.35em;
++      margin: 0;
++      border: 2px solid var(--primary);
++      border-radius: 0.3em;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .customization input::before {
++      content: "";
++      inline-size: 0.85em;
++      block-size: 0.85em;
++      background: currentColor;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E") center / contain no-repeat;
++      opacity: 0;
++      transform: scale(0.4) rotate(-15deg);
++    }
++
++    .customization input:checked,
++    .customization input:indeterminate {
++      background: var(--accent);
++    }
++
++    .customization input:checked::before,
++    .customization input:indeterminate::before {
++      opacity: 1;
++      transform: scale(1) rotate(0deg);
++    }
++
++    .customization input:indeterminate::before {
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
++    }
++
++    .customization input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .customization:has(input:disabled) {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .customization input:disabled {
++      cursor: not-allowed;
++    }
++
++    .customization-icon {
++      flex: 0 0 auto;
++      inline-size: 1.2em;
++      block-size: 1.2em;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.7;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .customization,
++      .customization input {
++        transition: background-color 180ms ease, border-color 180ms ease;
++      }
++
++      .customization input::before {
++        transition: transform 180ms ease, opacity 180ms ease;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization input {
++        appearance: auto;
++      }
++
++      .customization input::before {
++        content: none;
++      }
++
++      .customization input:focus-visible {
++        outline-color: Highlight;
++      }
++
++      .customization:has(input:checked) {
++        border-color: Highlight;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,19 +323,58 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card seasonal-card">
++          <h3 id="maple-title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations" aria-labelledby="maple-title maple-customize">
++            <legend id="maple-customize">Customize your cup</legend>
++            <label class="customization" for="maple-extra-shot">
++              <input type="checkbox" id="maple-extra-shot" name="maple-customizations" value="extra-shot">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM16 9h2a3 3 0 0 1 0 6h-2M7 3v2M12 3v2"/></svg>
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="maple-less-sweet">
++              <input type="checkbox" id="maple-less-sweet" name="maple-customizations" value="less-sweet">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11ZM9 15a3 3 0 0 0 3 3"/></svg>
++              <span>Less maple syrup</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card seasonal-card">
++          <h3 id="espresso-title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations" aria-labelledby="espresso-title espresso-customize">
++            <legend id="espresso-customize">Customize your cup</legend>
++            <label class="customization" for="espresso-extra-shot">
++              <input type="checkbox" id="espresso-extra-shot" name="espresso-customizations" value="extra-shot">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM16 9h2a3 3 0 0 1 0 6h-2M7 3v2M12 3v2"/></svg>
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="espresso-oat-milk">
++              <input type="checkbox" id="espresso-oat-milk" name="espresso-customizations" value="oat-milk">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20 17 8M5 15C2 5 10 3 21 3c0 11-2 19-12 16M10 15v-5M10 15h5"/></svg>
++              <span>Splash of oat milk</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card seasonal-card">
++          <h3 id="cold-brew-title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations" aria-labelledby="cold-brew-title cold-brew-customize">
++            <legend id="cold-brew-customize">Customize your cup</legend>
++            <label class="customization" for="cold-brew-oat-milk">
++              <input type="checkbox" id="cold-brew-oat-milk" name="cold-brew-customizations" value="oat-milk">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20 17 8M5 15C2 5 10 3 21 3c0 11-2 19-12 16M10 15v-5M10 15h5"/></svg>
++              <span>Splash of oat milk</span>
++            </label>
++            <label class="customization" for="cold-brew-vanilla">
++              <input type="checkbox" id="cold-brew-vanilla" name="cold-brew-customizations" value="vanilla">
++              <svg class="customization-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11ZM9 15a3 3 0 0 0 3 3"/></svg>
++              <span>Add vanilla syrup</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

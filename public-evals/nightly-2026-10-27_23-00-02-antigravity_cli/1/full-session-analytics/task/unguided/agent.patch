@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,34 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const queue = new Set();
++
++    function addToQueue(metric) {
++      queue.add(metric);
++    }
++
++    function flushQueue() {
++      if (queue.size > 0) {
++        const body = JSON.stringify([...queue]);
++        navigator.sendBeacon('/path/to/analytics/endpoint', body);
++        queue.clear();
++      }
++    }
++
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        flushQueue();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

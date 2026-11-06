@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,157 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Choose Your Roast - Customizable Select */
++    .roast-selector-wrapper {
++      margin: 1.5rem 0 1rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      width: 100%;
++      max-width: 380px;
++    }
++
++    .roast-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    select.roast-select,
++    select.roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    select.roast-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 10px 14px;
++      background-color: rgba(30, 20, 16, 0.9);
++      backdrop-filter: blur(8px);
++      border: 1px solid rgba(255, 171, 64, 0.5);
++      border-radius: 8px;
++      color: #fafafa;
++      cursor: pointer;
++      font-family: inherit;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    select.roast-select:focus-visible,
++    select.roast-select:hover {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.4);
++      outline: none;
++    }
++
++    select.roast-select button {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: transparent;
++      border: none;
++      color: inherit;
++      font: inherit;
++      padding: 0;
++      width: 100%;
++      cursor: pointer;
++      text-align: left;
++    }
++
++    select.roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex: 1;
++    }
++
++    select.roast-select selectedcontent .option-desc {
++      font-size: 0.8rem;
++      opacity: 0.85;
++      display: block;
++    }
++
++    select.roast-select::picker(select) {
++      background-color: #241612;
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      border-radius: 8px;
++      padding: 8px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
++      width: anchor-size(width);
++      margin-top: 4px;
++    }
++
++    select.roast-select::picker-icon {
++      color: var(--accent);
++    }
++
++    select.roast-select option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 12px;
++      border-radius: 6px;
++      cursor: pointer;
++      color: #fafafa;
++      transition: background-color 0.15s;
++    }
++
++    select.roast-select option:hover {
++      background-color: rgba(255, 171, 64, 0.15);
++    }
++
++    select.roast-select option::before {
++      display: none;
++    }
++
++    select.roast-select option:checked {
++      background-color: #4e342e;
++      color: #ffffff;
++    }
++
++    select.roast-select option:checked .option-title {
++      font-weight: 700;
++      color: var(--accent);
++    }
++
++    .roast-icon {
++      flex-shrink: 0;
++      color: var(--accent);
++    }
++
++    .option-text {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .option-title {
++      font-weight: 600;
++      font-size: 0.95rem;
++      color: #fafafa;
++    }
++
++    .option-desc {
++      font-size: 0.8rem;
++      color: #d7ccc8;
++      line-height: 1.3;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +311,71 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector-wrapper">
++      <label for="roast-select" class="roast-label">Choose your roast</label>
++      <select class="roast-select" id="roast-select" name="roast">
++        <button type="button">
++          <selectedcontent></selectedcontent>
++        </button>
++
++        <option value="light-roast" aria-label="Light Roast">
++          <svg class="roast-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <circle cx="12" cy="12" r="5"></circle>
++            <line x1="12" y1="1" x2="12" y2="3"></line>
++            <line x1="12" y1="21" x2="12" y2="23"></line>
++            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
++            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
++            <line x1="1" y1="12" x2="3" y2="12"></line>
++            <line x1="21" y1="12" x2="23" y2="12"></line>
++            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
++            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Light Roast</span>
++            <span class="option-desc">Bright, citrusy notes with a crisp floral finish</span>
++          </div>
++        </option>
++
++        <option value="medium-roast" aria-label="Medium Roast">
++          <svg class="roast-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
++            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
++            <line x1="6" y1="1" x2="6" y2="4"></line>
++            <line x1="10" y1="1" x2="10" y2="4"></line>
++            <line x1="14" y1="1" x2="14" y2="4"></line>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Medium Roast</span>
++            <span class="option-desc">Smooth balance of milk chocolate and toasted nuts</span>
++          </div>
++        </option>
++
++        <option value="dark-roast" aria-label="Dark Roast" selected>
++          <svg class="roast-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Dark Roast</span>
++            <span class="option-desc">Bold, smoky finish with deep bittersweet cocoa</span>
++          </div>
++        </option>
++
++        <option value="cold-brew" aria-label="Cold Brew">
++          <svg class="roast-icon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>
++            <line x1="12" y1="7" x2="12" y2="13"></line>
++            <line x1="9" y1="10" x2="15" y2="10"></line>
++            <circle cx="12" cy="16" r="1"></circle>
++          </svg>
++          <div class="option-text">
++            <span class="option-title">Cold Brew</span>
++            <span class="option-desc">Steeped 18 hours for an ultra-smooth, refreshing sip</span>
++          </div>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

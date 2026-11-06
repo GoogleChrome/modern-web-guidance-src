@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,100 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Scrollbar tokens (thumb vs. track ≈ 7.4:1 contrast) */
++      --scrollbar-size: 14px;
++      --scrollbar-track: var(--secondary);
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-thumb-hover: #3e2723;
++      --scrollbar-thumb-active: #1b0f0c;
++      --scrollbar-thumb-border: var(--secondary);
++      --scrollbar-thumb-border-width: 3px;
+     }
+ 
++    /* High-contrast preference: maximum contrast, thicker bar, defined edges */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-size: 18px;
++        --scrollbar-track: #ffffff;
++        --scrollbar-thumb: #000000;
++        --scrollbar-thumb-hover: #000000;
++        --scrollbar-thumb-active: #000000;
++        --scrollbar-thumb-border: #ffffff;
++        --scrollbar-thumb-border-width: 2px;
++      }
++    }
++
++    /* Scrollbars: Chromium / Safari (allows width, borders, hover states) */
++    ::-webkit-scrollbar {
++      width: var(--scrollbar-size);
++      height: var(--scrollbar-size);
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--scrollbar-track);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background-color: var(--scrollbar-thumb);
++      border: var(--scrollbar-thumb-border-width) solid var(--scrollbar-thumb-border);
++      border-radius: var(--scrollbar-size);
++      min-height: 40px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background-color: var(--scrollbar-thumb-hover);
++    }
++
++    ::-webkit-scrollbar-thumb:active {
++      background-color: var(--scrollbar-thumb-active);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--scrollbar-track);
++    }
++
++    @media (prefers-contrast: more) {
++      ::-webkit-scrollbar-track {
++        box-shadow: inset 1px 0 0 #000000, inset 0 1px 0 #000000;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        border-radius: 0;
++        outline: 1px solid #000000;
++      }
++    }
++
++    /* Scrollbars: standard properties (Firefox). Applied only where the
++       WebKit pseudo-elements are unsupported, because Chromium ignores
++       ::-webkit-scrollbar once scrollbar-color is set. */
++    @supports not selector(::-webkit-scrollbar) {
++      html {
++        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++        scrollbar-width: auto;
++      }
++    }
++
++    /* Windows High Contrast / forced colors: defer to the user's system palette */
++    @media (forced-colors: active) {
++      ::-webkit-scrollbar-track,
++      ::-webkit-scrollbar-corner {
++        background: Canvas;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: CanvasText;
++        border-color: Canvas;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background-color: Highlight;
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;

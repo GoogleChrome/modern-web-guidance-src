@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,23 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .deadline-tracker {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .deadline-tracker p {
++      margin-top: 8px;
++    }
++
++    .deadline-tracker button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +209,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="deadline-tracker">
++      <h2>Event Deadline</h2>
++      <p>Deadline: <strong id="temporal-value"></strong></p>
++      <button type="button" id="extend-temporal-btn" class="btn">Extend by 1 day</button>
++      <p>Reference changed: <span id="temporal-ref-changed">No</span></p>
++      <p>Render count: <span id="temporal-render-count">0</span></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +229,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (typeof Temporal === "undefined") {
++      try {
++        const module = await import("https://esm.sh/@js-temporal/polyfill");
++        globalThis.Temporal = module.Temporal;
++      } catch (e) {
++        console.error("Failed to load Temporal polyfill:", e);
++      }
++    }
++
++    if (typeof Temporal !== "undefined") {
++      const valueEl = document.getElementById("temporal-value");
++      const changedEl = document.getElementById("temporal-ref-changed");
++      const countEl = document.getElementById("temporal-render-count");
++      const extendBtn = document.getElementById("extend-temporal-btn");
++
++      let state = { deadline: Temporal.Now.plainDateISO().add({ days: 7 }) };
++      let renderCount = 0;
++
++      function render(refChanged) {
++        renderCount++;
++        valueEl.textContent = state.deadline.toString();
++        changedEl.textContent = refChanged ? "Yes" : "No";
++        countEl.textContent = renderCount;
++      }
++
++      extendBtn.addEventListener("click", () => {
++        const prev = state.deadline;
++        // add() returns a new instance; the old one is never mutated
++        state = { deadline: prev.add({ days: 1 }) };
++        render(state.deadline !== prev);
++      });
++
++      render(false);
++    }
++  </script>
+ </body>
+ 
+ </html>

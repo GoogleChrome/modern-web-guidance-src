@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -26,8 +27,169 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Promo Alert */
++    #promo-alert {
++      background-color: var(--accent);
++      color: var(--text);
++      block-size: auto;
++      overflow: hidden;
++      transition: block-size 0.5s ease-in-out, opacity 0.5s ease;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      padding: 10px 5%;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      min-block-size: 28px;
++      min-inline-size: 28px;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: rgba(62, 39, 35, 0.12);
++      color: var(--text);
++      border: 1px solid rgba(62, 39, 35, 0.3);
++      font-size: 0.85rem;
++      font-weight: 700;
++      transition: background-color 0.2s;
++      user-select: none;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.22);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    #promo-alert:where(:has(#alert-dismiss:checked, #alert-dismiss :checked), .is-dismissed) {
++      block-size: 0;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    @supports not selector(:has(*)) {
++      #promo-alert.is-dismissed {
++        block-size: 0;
++        opacity: 0;
++        pointer-events: none;
++      }
++    }
++
++    /* FAQ Accordion */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-accordion {
++      max-width: 800px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 18px 24px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 1.1rem;
++      color: var(--primary);
++      background: white;
++      list-style: none;
++      transition: background-color 0.2s;
++      user-select: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+";
++      font-size: 1.4rem;
++      line-height: 1;
++      color: var(--primary);
++      transition: rotate 0.3s ease;
++    }
++
++    details[open] #faq-trigger::after {
++      rotate: 45deg;
++    }
++
++    #faq-trigger:hover {
++      background-color: var(--light);
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -3px;
++    }
++
++    details::details-content,
++    #faq-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.4s ease-out, content-visibility 0.4s ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    details[open]::details-content,
++    details[open] #faq-content,
++    #faq-content.is-expanded {
++      block-size: auto;
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px;
++      color: var(--text);
++      border-top: 1px solid var(--secondary);
++      padding-top: 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      details::details-content,
++      #faq-content,
++      #faq-trigger::after {
++        transition: none !important;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +318,18 @@
+ </head>
+ 
+ <body>
+ 
++  <aside id="promo-alert" aria-label="Promotional Offer">
++    <div class="promo-alert-inner">
++      <span><strong>Special Offer:</strong> Get 20% off your first bag of single-origin beans with code <code>FRESHROAST</code>!</span>
++      <label id="alert-dismiss">
++        <input type="checkbox" class="visually-hidden" aria-label="Dismiss promotional alert">
++        <span aria-hidden="true">&times;</span>
++      </label>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +366,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section">
++      <h2>Frequently Asked Questions</h2>
++      <details class="faq-accordion" name="faq">
++        <summary id="faq-trigger">How fresh are your roasted coffee beans?</summary>
++        <div id="faq-content">
++          <div class="faq-content-inner">
++            <p>All of our beans are roasted in small batches daily at our local roastery and shipped within 24 hours of roasting to ensure peak flavor and aroma in every cup.</p>
++          </div>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +390,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const promoAlert = document.getElementById('promo-alert');
++    const alertDismiss = document.getElementById('alert-dismiss');
++
++    if (!CSS.supports('selector(:has(*))') && alertDismiss && promoAlert) {
++      alertDismiss.addEventListener('change', (e) => {
++        promoAlert.classList.toggle('is-dismissed', e.target.checked);
++      });
++    }
++
++    promoAlert?.addEventListener('transitionend', (e) => {
++      if (e.propertyName === 'block-size' && (promoAlert.matches(':has(:checked)') || promoAlert.classList.contains('is-dismissed'))) {
++        promoAlert.hidden = true;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,123 @@
++<!doctype html>
++<html lang="en" class="experiment-pending">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <meta name="theme-color" content="#f5f4ed" />
++  <title>gather — A better place to work</title>
++  <style>html.experiment-pending [data-experiment]{visibility:hidden}html{background:#f5f4ed}</style>
++  <script>
++    // Install the guard before any experiment content can be painted.
++    (() => {
++      let variant = 'a';
++      try {
++        variant = localStorage.getItem('gather-variant') || (Math.random() < .5 ? 'a' : 'b');
++        localStorage.setItem('gather-variant', variant);
++      } catch (_) { variant = Math.random() < .5 ? 'a' : 'b'; }
++      document.documentElement.dataset.variant = variant;
++      let finished = false, timer;
++      const fallback = () => {
++        if (finished) return;
++        const title = document.querySelector('[data-hero-title]');
++        const cta = document.querySelector('[data-hero-cta]');
++        if (!title || !cta) return;
++        title.innerHTML = variant === 'b' ? 'Your next chapter.<br><em>Starts here.</em>' : 'Good work.<br><em>Great company.</em>';
++        cta.firstElementChild.textContent = variant === 'b' ? 'Discover your space' : 'Find your space';
++        reveal();
++      };
++      const reveal = () => {
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', reveal, { once: true });
++          return;
++        }
++        if (finished) return;
++        finished = true;
++        clearTimeout(timer);
++        document.documentElement.classList.remove('experiment-pending');
++      };
++      // SDK integrations dispatch this after their final DOM changes.
++      window.addEventListener('experiment:ready', reveal, { once: true });
++      const loaded = () => {
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', loaded, { once: true });
++          return;
++        }
++        // Synchronous SDKs may finish their DOM changes before the load event.
++        const title = document.querySelector('[data-hero-title]');
++        const cta = document.querySelector('[data-hero-cta] span');
++        if (title && cta && (title.textContent !== 'Good work.Great company.' || cta.textContent !== 'Find your space')) reveal();
++      };
++      window.gatherExperiment = { ready: reveal, fallback, loaded };
++      document.addEventListener('DOMContentLoaded', () => { if (!finished) timer = setTimeout(fallback, 1400); });
++    })();
++  </script>
++  <script async src="https://cdn.example.com/experiment-sdk.js" onload="window.gatherExperiment.loaded()" onerror="document.addEventListener('DOMContentLoaded',window.gatherExperiment.fallback,{once:true});if(document.readyState!=='loading')window.gatherExperiment.fallback()"></script>
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
++  <style>
++    :root{--paper:#f5f4ed;--ink:#243d32;--muted:#6a7268;--lime:#d5ef87;--line:#dedfd4}*{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}button,a,input,select{font:inherit}a{color:inherit;text-decoration:none}button{cursor:pointer}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #769f48;outline-offset:5px}header{height:112px;max-width:1440px;margin:auto;padding:0 5.55%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.logo{font-family:'Manrope',sans-serif;font-size:37px;font-weight:800;letter-spacing:-2.5px;display:flex;align-items:center;gap:10px}.logo-mark{width:28px;height:33px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px;transform:rotate(-9deg)}.logo-mark i{background:var(--ink);border-radius:12px 12px 3px 12px}.logo-mark i:nth-child(2){transform:rotate(90deg)}.logo-mark i:nth-child(3){transform:rotate(-90deg)}.logo-mark i:nth-child(4){transform:rotate(180deg)}nav{display:flex;align-items:center;gap:34px;font-size:13px;font-weight:550}nav a:hover{opacity:.6}.nav-cta{background:var(--ink);color:white;padding:14px 20px;border:0;border-radius:6px;font-size:13px;display:flex;gap:25px;align-items:center}.arrow{font-size:21px;line-height:1;font-weight:400}.menu-toggle{display:none}.page{max-width:1440px;margin:auto;padding:0 5.55%}.hero{padding:53px 0 58px;display:grid;grid-template-columns:1fr 1.04fr;gap:40px;align-items:center}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:700;display:flex;align-items:center;gap:8px}.eyebrow:before{content:'';width:7px;height:7px;background:#6e8a4c;border-radius:50%}h1{font-family:'Manrope',sans-serif;font-size:clamp(43px,4.65vw,68px);line-height:1.12;letter-spacing:-3.2px;font-weight:500;margin:25px 0 24px;white-space:nowrap}h1 em{font-style:normal;color:#80966c}.intro{font-size:15px;line-height:1.8;max-width:340px;color:#73766c;margin:0 0 29px}.primary{display:inline-flex;align-items:center;justify-content:space-between;gap:44px;padding:17px 22px;background:var(--lime);border:1px solid #c9e37e;border-radius:5px;color:var(--ink);font-weight:650;font-size:13px;transition:background .2s,transform .2s}.primary:hover{background:#c8e76e;transform:translateY(-2px)}.hero-note{font-size:11px;color:#7b8075;display:flex;gap:6px;align-items:center;margin-top:12px}.hero-note svg{width:13px;height:13px}.social-proof{display:flex;align-items:center;gap:12px;margin-top:39px}.avatars{display:flex;padding-left:0}.avatars img{width:31px;height:31px;border:2px solid var(--paper);object-fit:cover;border-radius:50%;margin-left:-8px}.avatars img:first-child{margin-left:0}.stars{letter-spacing:1px;font-size:11px;color:#607846}.proof-copy{font-size:10px;color:#74796e;margin-top:3px}.proof-copy strong{color:var(--ink);font-weight:600}.hero-visual{height:470px;position:relative}.hero-image{width:100%;height:100%;object-fit:cover;object-position:45% 50%;border-radius:110px 8px 8px 8px;display:block}.photo-tag{position:absolute;left:23px;top:25px;border:1px solid #ffffff90;background:#f5f4ede8;border-radius:20px;padding:8px 11px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:550}.photo-tag svg{width:11px;height:11px}.image-caption{position:absolute;bottom:21px;right:20px;display:flex;align-items:center;gap:8px;color:white;font-size:10px;text-shadow:0 1px 6px #0008}.image-caption:before{content:'';width:5px;height:5px;background:var(--lime);border-radius:50%}.floating-card{position:absolute;left:-30px;bottom:38px;background:#fffefa;border-radius:8px;padding:16px 20px;box-shadow:0 10px 40px #17291f15;display:flex;gap:14px;align-items:center;transform:rotate(-4deg)}.card-icon{height:39px;width:39px;background:#edf2df;display:grid;place-items:center;border-radius:50%;font-size:23px;color:#739355}.floating-card strong{font-size:13px;display:block;font-weight:600}.floating-card p{font-size:10px;color:#8a8c7f;margin:5px 0 0}.trusted{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 0 28px;gap:34px}.trusted-label{font-size:10px;line-height:1.7;max-width:125px;color:#808476}.brands{flex:1;display:flex;justify-content:space-between;align-items:center;color:#7d8376;gap:20px}.brands span{font-family:'Manrope',sans-serif;font-size:22px;font-weight:700;letter-spacing:-1px}.brands .notion{font-family:Georgia,serif;font-size:24px;letter-spacing:-.7px}.brands .linear{font-weight:600;font-size:21px}.linear b{font-size:24px}.brands .headspace{font-weight:600;letter-spacing:-1px;font-size:21px}.headspace i{display:inline-block;width:18px;height:18px;background:#858a7a;border-radius:45%;vertical-align:-2px;margin-right:6px}.benefits{padding:49px 0 50px}.section-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:29px}.section-top h2{font-family:'Manrope',sans-serif;font-size:27px;letter-spacing:-1px;font-weight:500;margin:0}.section-top p{color:#7e8277;font-size:11px}.benefit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}.benefit{display:flex;gap:15px;padding-right:20px}.benefit+.benefit{border-left:1px solid var(--line);padding-left:26px}.benefit svg{width:25px;height:25px;flex-shrink:0;margin-top:1px;stroke:#768668}.benefit h3{font-size:13px;font-weight:600;margin:0 0 8px}.benefit p{font-size:11px;line-height:1.8;margin:0;color:#7d8176;max-width:245px}.spaces{border-top:1px solid var(--line);padding:45px 0}.space-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.space-card{background:#edeee5;border-radius:8px;overflow:hidden}.space-card img{width:100%;height:210px;object-fit:cover}.space-card div{padding:20px}.space-card h3{margin:0 0 6px;font-size:17px}.space-card p{color:var(--muted);font-size:12px;line-height:1.7;margin:0 0 16px}.text-button{border:0;padding:0;background:none;font-size:12px;font-weight:600;color:var(--ink)}footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;padding:25px 0;color:#7d8176;font-size:11px}dialog{border:0;padding:35px;border-radius:14px;background:var(--paper);color:var(--ink);width:min(440px,calc(100% - 32px));box-shadow:0 20px 100px #0003}dialog::backdrop{background:#1a2c2377;backdrop-filter:blur(5px)}dialog h2{font-size:28px;letter-spacing:-1px;margin:10px 0}dialog p{font-size:13px;line-height:1.7;color:var(--muted)}.close-modal{position:absolute;right:15px;top:12px;background:none;border:0;font-size:25px;color:var(--ink)}label{display:block;font-size:12px;margin:18px 0 7px}input,select{width:100%;padding:12px;border:1px solid #d4d9c9;background:#fffefa;border-radius:5px;color:var(--ink)}form .primary{width:100%;margin-top:23px}.success{padding:25px 0}.success svg{width:45px;height:45px;stroke:#708f4a}.mobile-only{display:none}
++    @media(min-width:1450px){.hero{gap:65px}.hero-visual{height:520px}}@media(max-width:1000px){header{padding:0 5%;height:94px}nav{gap:21px}.page{padding:0 5%}.hero{gap:24px}.hero-visual{height:440px}h1{font-size:48px;letter-spacing:-2.5px}.intro{font-size:14px}.brands span,.brands .notion,.brands .linear,.brands .headspace{font-size:18px}.floating-card{left:-15px;padding:14px}.trusted{gap:25px}.section-top h2{font-size:25px}}
++    @media(max-width:700px){header{height:84px}.logo{font-size:32px}.logo-mark{width:24px;height:28px}.menu-toggle{display:block;border:1px solid var(--line);background:none;padding:8px 11px;border-radius:5px;color:var(--ink);font-size:20px}nav{display:none;position:absolute;top:83px;left:0;right:0;background:var(--paper);z-index:5;padding:25px 5%;border-bottom:1px solid var(--line);box-shadow:0 10px 20px #0001}nav.open{display:flex;flex-wrap:wrap;gap:22px}nav .nav-cta{margin-left:auto}.hero{grid-template-columns:1fr;padding:34px 0 37px;gap:33px}.eyebrow{font-size:9px}h1{font-size:clamp(39px,8.5vw,57px);margin:20px 0;letter-spacing:-2.3px}.intro{max-width:330px}.hero-visual{height:390px;margin-left:12px}.hero-image{border-top-left-radius:85px}.social-proof{margin-top:25px}.floating-card{left:-12px;bottom:28px}.trusted{padding:23px 0;display:block}.trusted-label{max-width:none;margin-bottom:20px}.trusted-label br{display:none}.brands{gap:20px;flex-wrap:wrap;justify-content:space-between}.brands span,.brands .notion,.brands .linear,.brands .headspace{font-size:16px}.headspace i{width:13px;height:13px}.benefits{padding:34px 0}.section-top{display:block;margin-bottom:25px}.section-top h2{font-size:25px}.section-top p{line-height:1.7}.benefit-grid{grid-template-columns:1fr;gap:24px}.benefit+.benefit{padding:0;border:0}.benefit p{max-width:none}.space-grid{grid-template-columns:1fr}.space-card img{height:240px}footer{gap:20px;line-height:1.7}}
++    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}html{scroll-behavior:smooth}
++  </style>
++  <noscript><style>html.experiment-pending [data-experiment]{visibility:visible}</style></noscript>
++</head>
++<body>
++  <header>
++    <a class="logo" href="#" aria-label="Gather home"><span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>gather.</a>
++    <button class="menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="navigation">☰</button>
++    <nav id="navigation" aria-label="Main navigation"><a href="#spaces">Our spaces</a><a href="#membership">Membership</a><a href="#about">Why gather</a><button class="nav-cta" data-book>Book a visit <span class="arrow">↗</span></button></nav>
++  </header>
++  <main class="page">
++    <section class="hero" aria-label="Welcome to Gather">
++      <div class="hero-copy">
++        <div class="eyebrow">A LITTLE SPACE. A LOT OF POSSIBILITY.</div>
++        <div data-experiment>
++          <h1 data-hero-title>Good work.<br><em>Great company.</em></h1>
++          <p class="intro">Thoughtfully designed workspaces for people who believe where you work changes everything.</p>
++          <button class="primary" data-book data-hero-cta><span>Find your space</span><span class="arrow" aria-hidden="true">↗</span></button>
++        </div>
++        <div class="hero-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 12 4 4 8-8"/></svg> Your first coffee is on us.</div>
++        <div class="social-proof"><div class="avatars"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=faces" alt="" /><img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=64&h=64&fit=crop&crop=faces" alt="" /></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><div class="proof-copy">A work home for <strong>1,200+ good people</strong></div></div></div>
++      </div>
++      <div class="hero-visual">
++        <img class="hero-image" src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=90" alt="A sunlit communal workspace with leafy plants, shared tables and comfortable seating" fetchpriority="high" />
++        <div class="photo-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></svg> Your new favorite place to work</div>
++        <div class="floating-card"><span class="card-icon" aria-hidden="true">✳</span><div><strong>Room to do your thing.</strong><p>And people to do it with.</p></div></div>
++        <span class="image-caption">The good kind of Monday.</span>
++      </div>
++    </section>
++    <section class="trusted" aria-label="Companies in our community"><div class="trusted-label">GOOD COMPANY,<br>IN EVERY SENSE.</div><div class="brands"><span>◉ allbirds</span><span class="notion">▣ Notion</span><span class="linear"><b>◒</b> Linear</span><span class="headspace"><i></i>headspace</span><span>Oatly!</span></div></section>
++    <section class="benefits" id="about"><div class="section-top"><h2>More than a desk. A better day.</h2><p>We take care of the little things. You do the big things.</p></div><div class="benefit-grid">
++      <article class="benefit"><svg viewBox="0 0 28 28" fill="none" stroke-width="1.3"><path d="M5 23V9l9-5 9 5v14H5Z"/><path d="M10 23v-8h8v8M10 10h.01M18 10h.01M14 8v3"/></svg><div><h3>Spaces that feel like you</h3><p>Natural light, considered design, and a spot you'll actually look forward to.</p></div></article>
++      <article class="benefit"><svg viewBox="0 0 28 28" fill="none" stroke-width="1.3"><circle cx="11" cy="9" r="4"/><path d="M3 24v-3a8 8 0 0 1 16 0v3M19 5a4 4 0 0 1 0 8M22 17a6 6 0 0 1 3 5v2"/></svg><div><h3>Your kind of people</h3><p>Fresh perspectives, familiar faces, and connections that happen naturally.</p></div></article>
++      <article class="benefit"><svg viewBox="0 0 28 28" fill="none" stroke-width="1.3"><rect x="4" y="6" width="20" height="18" rx="3"/><path d="M9 3v6M19 3v6M4 12h20m-16 5 4 4 7-7"/></svg><div><h3>A little more flexible</h3><p>A day, a month, or your next big chapter. A membership that moves with you.</p></div></article>
++    </div></section>
++    <section class="spaces" id="spaces"><div class="section-top"><h2>A place for every way of working.</h2><p id="membership">Find a rhythm that works for you.</p></div><div class="space-grid">
++      <article class="space-card"><img loading="lazy" src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=80" alt="Open workspace with shared desks and abundant natural light"/><div><h3>Drop in. Settle in.</h3><p>A fresh setting for your day. Grab an open desk and make yourself at home.</p><button class="text-button" data-book data-interest="Day pass">Explore day passes ↗</button></div></article>
++      <article class="space-card"><img loading="lazy" src="https://images.unsplash.com/photo-1497366858526-0766cadbe8fa?auto=format&fit=crop&w=700&q=80" alt="Comfortable meeting space with a wooden table"/><div><h3>Your everyday place.</h3><p>All the freedom of a shared space, with a community that knows your name.</p><button class="text-button" data-book data-interest="Membership">Explore memberships ↗</button></div></article>
++      <article class="space-card"><img loading="lazy" src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=700&q=80" alt="Bright private office with thoughtfully arranged workstations"/><div><h3>Room to grow together.</h3><p>A space to call your team's own. Close the door, open up new possibilities.</p><button class="text-button" data-book data-interest="Private office">Explore private offices ↗</button></div></article>
++    </div></section>
++    <footer><span>© 2026 gather. Good things happen here.</span><span>Made for people. Built for possibility.</span></footer>
++  </main>
++  <dialog id="booking" aria-labelledby="booking-title"><button class="close-modal" aria-label="Close booking form">×</button><div id="booking-content"><div class="eyebrow">COME SAY HELLO</div><h2 id="booking-title">Meet your next workspace.</h2><p>Leave your details to plan a visit. We'll have the coffee ready.</p><form id="visit-form"><label for="name">Your name</label><input id="name" name="name" autocomplete="name" placeholder="Alex Taylor" required /><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="alex@company.com" required /><label for="interest">What brings you here?</label><select id="interest" name="interest"><option>Just exploring</option><option>Day pass</option><option>Membership</option><option>Private office</option></select><button class="primary" type="submit"><span>Plan my visit</span><span class="arrow">↗</span></button><p style="font-size:10px;margin-bottom:0">This is a demo. Your details stay in this browser.</p></form></div></dialog>
++  <script>
++    const dialog = document.getElementById('booking');
++    document.querySelectorAll('[data-book]').forEach(button => button.addEventListener('click', () => {
++      const form = document.getElementById('visit-form');
++      if (form && button.dataset.interest) form.elements.interest.value = button.dataset.interest;
++      dialog.showModal();
++    }));
++    document.querySelector('.close-modal').addEventListener('click', () => dialog.close());
++    dialog.addEventListener('click', e => { if (e.target === dialog) { const r = dialog.getBoundingClientRect(); if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dialog.close(); } });
++    document.getElementById('visit-form').addEventListener('submit', e => {
++      e.preventDefault();
++      document.getElementById('booking-content').innerHTML = '<div class="success"><svg viewBox="0 0 48 48" fill="none" stroke-width="2"><circle cx="24" cy="24" r="20"/><path d="m14 24 7 7 13-14"/></svg><h2 id="booking-title">A fresh start looks good on you.</h2><p>Your visit preferences have been captured for this demo. Come back anytime to explore your next workspace.</p><button class="primary" type="button" onclick="document.getElementById(\'booking\').close()">Keep exploring <span class="arrow">↗</span></button></div>';
++    });
++    const menu = document.querySelector('.menu-toggle');
++    menu.addEventListener('click', () => { const open = document.getElementById('navigation').classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); menu.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation'); });
++    document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', () => { document.getElementById('navigation').classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); }));
++  </script>
++</body>
++</html>

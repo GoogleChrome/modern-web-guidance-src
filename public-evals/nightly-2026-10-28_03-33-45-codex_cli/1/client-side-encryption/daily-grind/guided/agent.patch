@@ -1,0 +1,2107 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/assets/notes.js b/assets/notes.js
+new file mode 100644
+index 0000000..74bcd36
+--- /dev/null
++++ b/assets/notes.js
+@@ -0,0 +1,17 @@
++function ut(t){return t instanceof Uint8Array||ArrayBuffer.isView(t)&&t.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in t&&t.BYTES_PER_ELEMENT===1}var Ut=t=>t?`"${t}" `:"";function D(t,e=""){if(typeof t!="number")throw new TypeError(Ut(e)+"expected number, got "+typeof t);if(!Number.isSafeInteger(t)||t<0)throw new RangeError(Ut(e)+"expected integer >= 0, got "+t);return t}function tn(t,e=""){if(typeof t!="boolean")throw new TypeError(Ut(e)+"expected boolean, got type="+typeof t);return t}function N(t,e,n=""){if(ut(t)&&(e===void 0||t.length===e))return t;e!==void 0&&D(e,"length");let o=ut(t),r=e!==void 0?` of length ${e}`:"",s=o?`length=${t.length}`:`type=${typeof t}`,i=Ut(n)+"expected Uint8Array"+r+", got "+s;throw o?new RangeError(i):new TypeError(i)}var gr=(t,e)=>{if(t===null||typeof t!="object"||Array.isArray(t))throw new TypeError((e==="object"?"":`"${e}" `)+"expected object, got type="+typeof t)},Qe=(t,e)=>{gr(t,e);let n=Object.getPrototypeOf(t);if(n!==Object.prototype&&n!==null)throw new TypeError(`"${e}" expected plain object`);if(Object.hasOwn(t,"__proto__"))throw new TypeError(`"${e}.__proto__" is not allowed`)};function xe(t,e=!0){if(t.destroyed)throw new Error("hash was destroyed");if(e&&t.finished)throw new Error("digest() was already called")}function en(t,e){N(t,void 0,"output");let n=e.outputLen;if(!(t.length>=n))throw new RangeError('"output" expected length >= '+n)}function _t(t){return new Uint32Array(t.buffer,t.byteOffset,Math.floor(t.byteLength/4))}function Ee(...t){for(let e=0;e<t.length;e++)t[e].fill(0)}var nn=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68;function mr(t){return t<<24&4278190080|t<<8&16711680|t>>>8&65280|t>>>24&255}function wr(t){for(let e=0;e<t.length;e++)t[e]=mr(t[e]);return t}var wt=nn?t=>t:wr,rn=typeof Uint8Array.from([]).toHex=="function"&&typeof Uint8Array.fromHex=="function",br=Array.from({length:256},(t,e)=>e.toString(16).padStart(2,"0"));function vt(t){if(N(t),rn)return t.toHex();let e="";for(let n=0;n<t.length;n++)e+=br[t[n]];return e}function Je(t){return t>=48&&t<=57?t-48:t>=65&&t<=70?t-55:t>=97&&t<=102?t-87:void 0}function Be(t){if(typeof t!="string")throw new TypeError("hex string expected, got "+typeof t);if(rn)try{return Uint8Array.fromHex(t)}catch(r){throw r instanceof SyntaxError?new RangeError(r.message):r}let e=t.length,n=e/2;if(e%2)throw new RangeError("hex string expected, got unpadded hex of length "+e);let o=new Uint8Array(n);for(let r=0,s=0;r<n;r++,s+=2){let i=Je(t.charCodeAt(s)),c=Je(t.charCodeAt(s+1));if(i===void 0||c===void 0){let u=t[s]+t[s+1];throw new RangeError('hex string expected, got non-hex character "'+u+'" at index '+s)}o[r]=i*16+c}return o}function Te(...t){let e=0;for(let o=0;o<t.length;o++){let r=t[o];N(r),e+=r.length}let n=new Uint8Array(e);for(let o=0,r=0;o<t.length;o++){let s=t[o];n.set(s,r),r+=s.length}return n}function Se(t,e,n="opts"){return Qe(t,"defaults"),e!==void 0&&Qe(e,n),Object.assign(Object.create(null),t,e)}function Oe(t,e={}){if(typeof t!="function")throw new TypeError('"hashCons" expected function, got type='+typeof t);e=Se({},e,"info");let n=(r,s)=>t(s).update(r).digest(),o=t(void 0);return n.outputLen=o.outputLen,n.blockLen=o.blockLen,n.canXOF=o.canXOF,n.create=r=>t(r),Object.assign(n,e),Object.freeze(n)}function Pt(t=32){D(t,"bytesLength");let e=typeof globalThis=="object"?globalThis.crypto:null;if(typeof e?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined");if(t>65536)throw new RangeError(`"bytesLength" expected <= 65536, got ${t}`);return e.getRandomValues(new Uint8Array(t))}var Rt=t=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,t])});function At(t,e,n=()=>{}){if(!Array.isArray(t))throw new TypeError(`"${e}" expected array, got type=${typeof t}`);for(let o=0;o<t.length;o++)n(t[o],`${e}[${o}]`);return t}var et=(t,e,n)=>N(t,e,n),_e=D;function it(t,e="object"){if(t===null||typeof t!="object"||Array.isArray(t))throw new TypeError(e==="object"?"expected valid options object":`"${e}" expected object, got type=${typeof t}`);return t}function P(t,e){if(typeof t!="function")throw new TypeError(`"${e}" is invalid: expected function, got ${typeof t}`);return t}var sn=vt,ve=(...t)=>Te(...t),cn=t=>Be(t),$t=ut,zt=t=>Pt(t),Ht=BigInt(0),on=BigInt(1),xr=t=>t?`"${t}" `:"";function nt(t,e=""){if(typeof t!="boolean")throw new TypeError(xr(e)+"expected boolean, got type="+typeof t);return t}function Er(t){if(typeof t=="bigint"){if(!ct(t))throw new RangeError("positive bigint expected, got "+t)}else _e(t);return t}function kt(t,e=""){if(typeof t!="number"){let n=e&&`"${e}" `;throw new TypeError(n+"expected number, got type="+typeof t)}if(!Number.isSafeInteger(t)){let n=e&&`"${e}" `;throw new RangeError(n+"expected safe integer, got "+t)}}function fn(t){if(typeof t!="string")throw new TypeError("hex string expected, got "+typeof t);return t===""?Ht:BigInt("0x"+t)}function bt(t){return fn(vt(t))}function rt(t){return fn(vt(at(N(t)).reverse()))}function Zt(t,e){if(D(e),e===0)throw new Error("zero output length is invalid");t=Er(t);let n=e*2,o=t.toString(16);if(o.length>n)throw new RangeError("number is too large");return Be(o.padStart(n,"0"))}function Xt(t,e){return Zt(t,e).reverse()}function at(t){return Uint8Array.from(et(t))}function un(t){if(typeof t!="string")throw new TypeError("ascii string expected, got "+typeof t);return Uint8Array.from(t,(e,n)=>{let o=e.charCodeAt(0);if(e.length!==1||o>127)throw new RangeError(`string contains non-ASCII character "${t[n]}" with code ${o} at position ${n}`);return o})}function ct(t){return typeof t=="bigint"&&Ht<=t}function Re(t,e,n){return ct(t)&&ct(e)&&ct(n)&&e<=t&&t<n}function lt(t,e,n,o){if(!Re(e,n,o))throw new RangeError("expected valid "+t+": "+n+" <= n < "+o+", got "+e)}function Ae(t){if(t<Ht)throw new Error("expected non-negative bigint, got "+t);return t===Ht?0:t.toString(2).length}var an=t=>(kt(t,"n"),(on<<BigInt(t))-on);function ot(t,e={},n={},o="object"){it(t,o),it(e,"fields"),it(n,"optFields");function r(i,c,u){let a=o==="object"?`param "${String(i)}"`:`"${o}.${String(i)}"`,d=t[i];if(!Object.hasOwn(t,i)&&(u?d!==void 0:c!=="function"))throw new TypeError(`${a} is invalid: expected own property`);if(u&&d===void 0)return;let h=typeof d;if(h!==c||d===null)throw new TypeError(`${a} is invalid: expected ${c}, got ${h}`)}let s=(i,c)=>Object.entries(i).forEach(([u,a])=>r(u,a,c));s(e,!1),s(n,!0)}var C=BigInt(0),K=BigInt(1),dt=BigInt(2),pn=BigInt(3),ke=BigInt(4),yn=BigInt(5),Br=BigInt(7),hn=BigInt(8),Tr=BigInt(9),Sr=BigInt(15),gn=BigInt(16),Or=BigInt("0x10000000000000000");function L(t,e){if(e<=C)throw new Error("mod: expected positive modulus, got "+e);let n=t%e;return n>=C?n:e+n}function _r(t,e,n){if(n<=K)throw new Error("pow: expected modulus > 1, got "+n);if(typeof e!="bigint")throw new TypeError("invalid exponent: expected bigint, got "+typeof e);if(e<C)throw new Error("invalid exponent, negatives unsupported");if(e===C)return K;if(e===K)return t;let o=t%n;if(o<C&&(o+=n),e<Or){let c=K;for(;e>C;)e&K&&(c=c*o%n),o=o*o%n,e>>=K;return c}let r=[];for(;e>C;)r.push(Number(e&Sr)),e>>=ke;let s=new Array(16);s[0]=K,s[1]=o;for(let c=2;c<16;c++)s[c]=s[c-1]*o%n;let i=s[r[r.length-1]];for(let c=r.length-2;c>=0;c--){i=i*i%n,i=i*i%n,i=i*i%n,i=i*i%n;let u=r[c];u!==0&&(i=i*s[u]%n)}return i}function z(t,e,n){if(n<=K)throw new Error("pow2: expected modulus > 1, got "+n);if(e<C)throw new Error("pow2: expected non-negative exponent, got "+e);let o=t;for(;e-- >C;)o*=o,o%=n;return o}function ln(t,e){if(t===C)throw new Error("invert: expected non-zero number");if(e<=K)throw new Error("invert: expected modulus > 1, got "+e);let n=L(t,e),o=e,r=C,s=K;for(;n!==C;){let c=o/n,u=o-n*c,a=r-s*c;o=n,n=u,r=s,s=a}if(o!==K)throw new Error("invert: does not exist");return L(r,e)}function Ie(t,e,n){let o=t;if(!o.eql(o.sqr(e),n))throw new Error("Cannot find square root")}function Le(t,e){if((t&K)===C)throw new Error(e+": expected odd modulus, got "+t)}function mn(t,e){let n=t,o=(n.ORDER+K)/ke,r=n.pow(e,o);return Ie(n,r,e),r}function vr(t,e){let n=t,o=(n.ORDER-yn)/hn,r=n.mul(e,dt),s=n.pow(r,o),i=n.mul(e,s),c=n.mul(n.mul(i,dt),s),u=n.mul(i,n.sub(c,n.ONE));return Ie(n,u,e),u}function Rr(t){let e=Gt(t),n=wn(t),o=n(e,e.neg(e.ONE)),r=n(e,o),s=n(e,e.neg(o)),i=(t+Br)/gn;return((c,u)=>{let a=c,d=a.pow(u,i),h=a.mul(d,o),E=a.mul(d,r),m=a.mul(d,s),w=a.eql(a.sqr(h),u),g=a.eql(a.sqr(E),u);d=a.cmov(d,h,w),h=a.cmov(m,E,g);let B=a.eql(a.sqr(h),u),b=a.cmov(d,h,B);return Ie(a,b,u),b})}function wn(t){if(t<pn)throw new Error("sqrt is not defined for small field");Le(t,"tonelliShanks");let e=t-K,n=0;for(;e%dt===C;)e/=dt,n++;let o=dt,r=Gt(t);for(;It(r,o)===1;)if(o++>1e3)throw new Error("Cannot find square root: probably non-prime P");if(n===1)return mn;let s=r.pow(o,e),i=(e+K)/dt;return function(u,a){let d=u;if(d.is0(a))return a;if(It(d,a)!==1)throw new Error("Cannot find square root");let h=n,E=d.mul(d.ONE,s),m=d.pow(a,e),w=d.pow(a,i);for(;!d.eql(m,d.ONE);){if(d.is0(m))throw new Error("Cannot find square root: probably non-prime P");let g=1,B=d.sqr(m);for(;!d.eql(B,d.ONE);)if(g++,B=d.sqr(B),g===h)throw new Error("Cannot find square root");let b=K<<BigInt(h-g-1),y=d.pow(E,b);h=g,E=d.sqr(y),m=d.mul(m,E),w=d.mul(w,y)}return w}}function Ar(t){return Le(t,"Fp.sqrt"),t%ke===pn?mn:t%hn===yn?vr:t%gn===Tr?Rr(t):wn(t)}var bn=(t,e)=>(L(t,e)&K)===K,kr=["create","isValid","is0","neg","inv","sqrt","sqr","eql","add","sub","mul","pow","div","addN","subN","mulN","sqrN"];function xt(t){if(it(t,"field"),typeof t.ORDER!="bigint")throw new TypeError('param "ORDER" is invalid: expected bigint, got '+typeof t.ORDER);kt(t.BYTES,"BYTES"),kt(t.BITS,"BITS");for(let e of kr)P(t[e],"field."+e);if(t.BYTES<1||t.BITS<1)throw new Error("invalid field: expected BYTES/BITS > 0");if(t.ORDER<=K)throw new Error("invalid field: expected ORDER > 1, got "+t.ORDER);return t}function Vt(t,e,n=!1){xt(t),At(e,"nums"),nt(n,"passZero");let o=t,r=new Array(e.length).fill(n?o.ZERO:void 0),s=e.reduce((c,u,a)=>o.is0(u)?c:(r[a]=c,o.mul(c,u)),o.ONE),i=o.inv(s);return e.reduceRight((c,u,a)=>o.is0(u)?c:(r[a]=o.mul(c,r[a]),o.mul(c,u)),i),r}function It(t,e){xt(t);let n=t;Le(n.ORDER,"FpLegendre");let o=(n.ORDER-K)/dt,r=n.pow(e,o),s=n.eql(r,n.ONE),i=n.eql(r,n.ZERO),c=n.eql(r,n.neg(n.ONE));if(!s&&!i&&!c)throw new Error("invalid Legendre symbol result");return s?1:i?0:-1}function Ir(t,e){if(e!==void 0&&_e(e),t<=C)throw new Error("invalid n length: expected positive n, got "+t);if(e!==void 0&&e<1)throw new Error("invalid n length: expected positive bit length, got "+e);let n=Ae(t);if(e!==void 0&&e<n)throw new Error(`invalid n length: expected nBitLength (${e}) >= bitLen(n) (${n})`);let o=e!==void 0?e:n,r=Math.ceil(o/8);return{nBitLength:o,nByteLength:r}}var dn=new WeakMap,Yt=class{ORDER;BITS;BYTES;isLE;ZERO=C;ONE=K;_lengths;_mod;constructor(e,n={}){if(e<=K)throw new Error("invalid field: expected ORDER > 1, got "+e);let o;this.isLE=!1,n!=null&&typeof n=="object"&&(typeof n.BITS=="number"&&(o=n.BITS),typeof n.sqrt=="function"&&Object.defineProperty(this,"sqrt",{value:n.sqrt,enumerable:!0}),typeof n.isLE=="boolean"&&(this.isLE=n.isLE),n.allowedLengths&&(this._lengths=Object.freeze(n.allowedLengths.slice())),typeof n.modFromBytes=="boolean"&&(this._mod=n.modFromBytes));let{nBitLength:r,nByteLength:s}=Ir(e,o);if(s>2048)throw new Error("invalid field: expected ORDER of <= 2048 bytes");this.ORDER=e,this.BITS=r,this.BYTES=s,Object.freeze(this)}create(e){return L(e,this.ORDER)}isValid(e){if(typeof e!="bigint")throw new TypeError("invalid field element: expected bigint, got "+typeof e);return C<=e&&e<this.ORDER}is0(e){return e===C}isValidNot0(e){return!this.is0(e)&&this.isValid(e)}isOdd(e){return(e&K)===K}neg(e){return L(-e,this.ORDER)}eql(e,n){return e===n}sqr(e){return L(e*e,this.ORDER)}add(e,n){return L(e+n,this.ORDER)}sub(e,n){return L(e-n,this.ORDER)}mul(e,n){return L(e*n,this.ORDER)}pow(e,n){return _r(e,n,this.ORDER)}div(e,n){return L(e*ln(n,this.ORDER),this.ORDER)}sqrN(e){return e*e}addN(e,n){return e+n}subN(e,n){return e-n}mulN(e,n){return e*n}inv(e){return ln(e,this.ORDER)}sqrt(e){let n=dn.get(this);return n||dn.set(this,n=Ar(this.ORDER)),n(this,e)}toBytes(e){return this.isLE?Xt(e,this.BYTES):Zt(e,this.BYTES)}fromBytes(e,n=!1){et(e);let{_lengths:o,BYTES:r,isLE:s,ORDER:i,_mod:c}=this;if(o){if(e.length<1||!o.includes(e.length)||e.length>r)throw new Error("Field.fromBytes: expected "+o+" bytes, got "+e.length);let a=new Uint8Array(r);a.set(e,s?0:a.length-e.length),e=a}if(e.length!==r)throw new Error("Field.fromBytes: expected "+r+" bytes, got "+e.length);let u=s?rt(e):bt(e);if(c&&(u=L(u,i)),!n&&!this.isValid(u))throw new Error("invalid field element: outside of range 0..ORDER");return u}invertBatch(e){return Vt(this,e,!0)}cmov(e,n,o){return nt(o,"condition"),o?n:e}};function Gt(t,e={}){return Object.freeze(Yt.prototype),new Yt(t,e)}var Fe=BigInt(0),Lt=BigInt(1),Lr=BigInt(4),Ke=16,xn=128,Kr=5,En=2**31;function Qt(t){let e=t;if(typeof e!="function")throw new TypeError('"Point" expected constructor, got type='+typeof t);P(e.fromAffine,"Point.fromAffine"),P(e.fromBytes,"Point.fromBytes"),P(e.fromHex,"Point.fromHex"),it(e.BASE,"Point.BASE"),it(e.ZERO,"Point.ZERO"),xt(e.Fp),xt(e.Fn)}function Tn(t,e){Qt(t),Sn(e,t);let n=Vt(t.Fp,e.map(o=>o.Z));return e.map((o,r)=>t.fromAffine(o.toAffine(n[r])))}function Nr(t,e,n=1){if(!Number.isSafeInteger(t)||t<n||t>e)throw new Error("invalid window size, expected ["+n+".."+e+"], got W="+t)}function Fr(t,e){let n=t*(4*e+128);if(n>En)throw new Error("invalid window size: table would need ~"+Math.ceil(n/2**20)+" MiB, max "+En/2**20+" MiB")}function qr(t,e){if(t!==void 0){P(t,"randomBytes");try{let n=t(e);if(!$t(n)||n.length!==e)return}catch{return}return t}}function Sn(t,e){At(t,"points"),t.forEach((n,o)=>{if(!(n instanceof e))throw new Error("invalid point at index "+o)})}function Mr(t,e,n){if(!Array.isArray(t))throw new Error("array of scalars expected");t.forEach((o,r)=>{if(!(n===void 0?e.isValid(o):ct(o)&&o<n))throw new Error("invalid scalar at index "+r)})}var On=new WeakMap;function Ne(t){return On.get(t)||1}function Cr(t,e){let n=t.double(),o=[t];for(let r=1;r<e;r++)o.push(o[r-1].add(n));return o}function Dr(t,e){let n=2**e,o=n/2,r=BigInt(n-1),s=[];for(;t>Fe;){let i=0;t&Lt&&(i=Number(t&r),i>=o&&(i-=n),t-=BigInt(i)),s.push(i),t>>=Lt}return s}function jr(t,e,n){let o=2**e,r=o/2,s=BigInt(o-1),i=BigInt(e),c=[];for(let u=0;u<n;u++){let a=Number(t&s);t>>=i,a>r&&(a-=o,t+=Lt),c.push(a)}if(t!==Fe)throw new Error("invalid wnaf");return c}function Ur(t,e,n){let o=0;for(let s of n)o=Math.max(o,s.length);let r=t;for(let s=o-1;s>=0;s--){s!==o-1&&(r=r.double());for(let i=0;i<n.length;i++){let c=n[i][s];if(c){let u=e[i][Math.abs(c)-1>>1];r=r.add(c<0?u.negate():u)}}}return r}var Wt=class{Point;BASE;ZERO;randomBytes;wnafPrecomputes=new WeakMap;baseCanBeBlinded;bits;constructor(e,n){Qt(e),this.randomBytes=qr(n,Ke),this.Point=e,this.BASE=e.BASE,this.ZERO=e.ZERO,this.bits=e.Fn.BITS}buildWnafTable(e,n,o){let r=Math.ceil(o/n)+1,s=2**(n-1),i=[],c=e;for(let u=0;u<r;u++){let a=c;for(let d=0;d<s;d++)i.push(a),a=a.add(c);c=i[i.length-1].double()}return{W:n,bits:o,windows:r,comp:i}}wnafCachedCT(e,n){let{W:o,windows:r,comp:s}=e,i=2**(o-1),c=jr(n,o,r),u=this.ZERO,a=this.BASE;for(let d=0;d<r;d++){let h=c[d],E=d*i,m=Math.abs(h)-1,w=s[E];for(let B=1;B<i;B++)w=B===m?s[E+B]:w;let g=w.negate();h===0?a=a.add(s[E]):u=u.add(h<0?g:w)}return{p:u,f:a}}getWnafPrecomputes(e,n,o,r){let s=this.wnafPrecomputes.get(n),i=s?.find(c=>c.W===e&&c.bits===o);return i||(i=this.buildWnafTable(n,e,o),typeof r=="function"&&(i={...i,comp:r(i.comp)}),s||(s=[],this.wnafPrecomputes.set(n,s)),s.push(i)),i}assertPoint(e){if(!(e instanceof this.Point))throw new TypeError('"point" expected Point instance, got type='+typeof e)}validateMulInput(e,n){if(this.assertPoint(e),!Re(n,Lt,this.Point.Fn.ORDER))throw new Error("invalid scalar")}runCT(e,n,o,r){let s=Ne(e);return s===1?this.fixedWindowCT(e,n,o):this.wnafCachedCT(this.getWnafPrecomputes(s,e,o,r),n)}mulCT(e,n,o){return this.validateMulInput(e,n),this.runCT(e,n,this.bits,o)}mulCTBlinded(e,n,o){if(this.validateMulInput(e,n),this.randomBytes===void 0)throw new Error("randomBytes is required for scalar blinding");let r=this.Point.Fn.BITS+xn,s=this.randomBytes(Ke);if(!$t(s)||s.length!==Ke)throw new Error("randomBytes returned invalid byte array");s[0]=s[0]&63|128;let i=n+bt(s)*this.Point.Fn.ORDER;return this.runCT(e,i,r,o)}fixedWindowCT(e,n,o){let r=Kr,s=1<<r,i=an(r),c=new Array(s);c[0]=this.ZERO;for(let d=1;d<s;d++)c[d]=c[d-1].add(e);let u=Math.ceil(o/r),a=this.ZERO;for(let d=u-1;d>=0;d--){if(d!==u-1)for(let m=0;m<r;m++)a=a.double();let h=Number(n>>BigInt(d*r)&i),E=c[0];for(let m=1;m<s;m++)E=m===h?c[m]:E;a=a.add(E)}return{p:a,f:a}}shouldBlind(e,n){return this.randomBytes===void 0?!1:n===Lt?!0:e!==this.BASE?!1:(this.baseCanBeBlinded===void 0&&(this.baseCanBeBlinded=this.mulUnsafe(this.BASE,this.Point.Fn.ORDER).is0()),this.baseCanBeBlinded)}mulSecret(e,n,o,r){return this.shouldBlind(e,o)?this.mulCTBlinded(e,n,r):this.mulCT(e,n,r)}mulUnsafe(e,n,o){if(this.assertPoint(e),!ct(n))throw new Error("invalid scalar");let r=Ne(e);if(r===1||n>=this.Point.Fn.ORDER)return Pr(this.Point,[e],[n],!0);let s=this.getWnafPrecomputes(r,e,this.bits,o);return this.wnafCachedCT(s,n).p}setWindowSize(e,n){this.assertPoint(e),Nr(n,this.bits);let o=Math.ceil((this.bits+xn)/n)+1;Fr(o*2**(n-1),this.Point.Fp.BYTES),On.set(e,n),this.wnafPrecomputes.delete(e)}hasWindowSize(e){return Ne(e)!==1}};function Pr(t,e,n,o=!1){if(Qt(t),Sn(e,t),nt(o,"allowOversized"),Mr(n,t.Fn,o?t.Fn.ORDER**Lr:void 0),e.length!==n.length)throw new Error("arrays of points and scalars must have equal length");let r=e.map(i=>Cr(i,4)),s=n.map(i=>Dr(i,4));return Ur(t.ZERO,r,s)}function Bn(t,e,n){if(e){if(e.ORDER!==t)throw new Error("Field.ORDER must match order: Fp == p, Fn == n");return xt(e),e}else return Gt(t,{isLE:n})}function _n(t,e,n={},o){if(t!=="weierstrass"&&t!=="edwards")throw new Error('expected curve type "weierstrass" or "edwards"');if(o===void 0&&(o=t==="edwards"),!e||typeof e!="object")throw new Error(`expected valid ${t} CURVE object`);ot(n);for(let u of["p","n","h"]){let a=e[u];if(!(ct(a)&&a!==Fe))throw new Error(`CURVE.${u} must be positive bigint`)}let r=Bn(e.p,n.Fp,o),s=Bn(e.n,n.Fn,o),c=["Gx","Gy","a",t==="weierstrass"?"b":"d"];for(let u of c)if(!r.isValid(e[u]))throw new Error(`CURVE.${u} must be valid field element of CURVE.Fp`);return e=Object.freeze(Object.assign({},e)),{CURVE:e,Fp:r,Fn:s}}function qe(t,e){return function(o){let r=t(o);return{secretKey:r,publicKey:e(r)}}}var Jt=BigInt(0),te=BigInt(1),ee=BigInt(2),Hr=BigInt(4),vn=BigInt(8);function $r(t,e,n,o){let r=t.sqr(n),s=t.sqr(o),i=t.add(t.mul(e.a,r),s),c=t.add(t.ONE,t.mul(e.d,t.mul(r,s)));return t.eql(i,c)}function Rn(t,e={}){ot(e,{},{},"extraOpts");let n=e,o=_n("edwards",t,n,n.FpFnLE),{Fp:r,Fn:s}=o,i=o.CURVE,{h:c}=i;if(It(r,i.a)!==1)throw new Error("edwards: CURVE.a must be a square in Fp for complete addition formulas");if(It(r,i.d)!==-1)throw new Error("edwards: CURVE.d must be a non-square in Fp for complete addition formulas");ot(n,{},{uvRatio:"function",randomBytes:"function"});let u=n.randomBytes===void 0?zt:n.randomBytes,a=ee<<BigInt(r.BYTES*8)-te;function d(y){if(!r.isOdd)throw new Error("Field does not have .isOdd()");return r.isOdd(y)}let h=n.uvRatio===void 0?(y,f)=>{try{return{isValid:!0,value:r.sqrt(r.div(y,f))}}catch{return{isValid:!1,value:Jt}}}:n.uvRatio;if(!$r(r,i,i.Gx,i.Gy))throw new Error("bad curve params: generator point");let E=r.eql(i.a,r.neg(r.ONE))?y=>r.neg(y):r.eql(i.a,r.ONE)?y=>y:y=>r.mul(i.a,y);function m(y,f,l=!1){let p=l?te:Jt;return lt("coordinate "+y,f,p,a),f}function w(y){if(!(y instanceof g))throw new Error("EdwardsPoint expected")}class g{static BASE=new g(i.Gx,i.Gy,r.ONE,r.mul(i.Gx,i.Gy));static ZERO=new g(r.ZERO,r.ONE,r.ONE,r.ZERO);static Fp=r;static Fn=s;X;Y;Z;T;constructor(f,l,p,T){this.X=m("x",f),this.Y=m("y",l),this.Z=m("z",p,!0),this.T=m("t",T),Object.freeze(this)}static CURVE(){return i}static fromAffine(f){if(f instanceof g)throw new Error("extended point not allowed");let{x:l,y:p}=f||{};return m("x",l),m("y",p),new g(l,p,r.ONE,r.mul(l,p))}static fromBytes(f,l=!1){let p=r.BYTES,{a:T,d:x}=i;f=at(et(f,p,"point")),nt(l,"zip215");let S=at(f),O=f[p-1];S[p-1]=O&-129;let v=rt(S),_=l?a:r.ORDER;lt("point.y",v,Jt,_);let A=r.sqr(v),I=r.sub(A,r.ONE),F=r.sub(r.mulN(x,A),T),{isValid:$,value:R}=h(I,F);if(!$)throw new Error("bad point: invalid y coordinate");let q=d(R),M=(O&128)!==0;if(!l&&r.is0(R)&&M)throw new Error("bad point: x=0 and x_0=1");return M!==q&&(R=r.neg(R)),g.fromAffine({x:R,y:v})}static fromHex(f,l=!1){return g.fromBytes(cn(f),l)}get x(){return this.toAffine().x}get y(){return this.toAffine().y}precompute(f=6,l=!0){return b.setWindowSize(this,f),l||this.multiply(ee),this}assertValidity(){let f=this,{a:l,d:p}=i;if(f.is0())throw new Error("bad point: ZERO");let{X:T,Y:x,Z:S,T:O}=f,v=r.sqr(T),_=r.sqr(x),A=r.sqr(S),I=r.sqr(A),F=r.mul(v,l),$=r.mul(r.add(F,_),A),R=r.add(I,r.mul(p,r.mul(v,_)));if(!r.eql($,R))throw new Error("bad point: equation left != right (1)");let q=r.mul(T,x),M=r.mul(S,O);if(!r.eql(q,M))throw new Error("bad point: equation left != right (2)")}equals(f){w(f);let{X:l,Y:p,Z:T}=this,{X:x,Y:S,Z:O}=f,v=r.mul(l,O),_=r.mul(x,T),A=r.mul(p,O),I=r.mul(S,T);return r.eql(v,_)&&r.eql(A,I)}is0(){return this.equals(g.ZERO)}negate(){return new g(r.neg(this.X),this.Y,this.Z,r.neg(this.T))}double(){let{X:f,Y:l,Z:p}=this,T=r.sqr(f),x=r.sqr(l),S=r.mul(r.sqr(p),ee),O=E(T),v=r.addN(f,l),_=r.sub(r.subN(r.sqr(v),T),x),A=r.addN(O,x),I=r.subN(A,S),F=r.subN(O,x),$=r.mul(_,I),R=r.mul(A,F),q=r.mul(_,F),M=r.mul(I,A);return new g($,R,M,q)}add(f){w(f);let{d:l}=i,{X:p,Y:T,Z:x,T:S}=this,{X:O,Y:v,Z:_,T:A}=f,I=r.mul(p,O),F=r.mul(T,v),$=r.mul(r.mulN(S,l),A),R=r.mul(x,_),q=r.sub(r.subN(r.mulN(r.addN(p,T),r.addN(O,v)),I),F),M=r.subN(R,$),ft=r.addN(R,$),Y=r.sub(F,E(I)),G=r.mul(q,M),J=r.mul(ft,Y),tt=r.mul(q,Y),he=r.mul(M,ft);return new g(G,J,he,tt)}subtract(f){return w(f),this.add(f.negate())}multiply(f){if(!s.isValidNot0(f))throw new RangeError("invalid scalar: expected 1 <= sc < curve.n");let{p:l,f:p}=b.mulSecret(this,f,c,B);return B([l,p])[0]}multiplyUnsafe(f){if(!s.isValid(f))throw new RangeError("invalid scalar: expected 0 <= sc < curve.n");return f===Jt?g.ZERO:this.is0()||f===te?this:b.mulUnsafe(this,f,B)}isSmallOrder(){return this.clearCofactor().is0()}isTorsionFree(){return b.mulUnsafe(this,i.n).is0()}toAffine(f){let l=this,p=f;if(p!=null&&typeof p!="bigint")throw new TypeError('"invertedZ" expected bigint, got type='+typeof p);let{X:T,Y:x,Z:S}=l,O=l.is0();p==null&&(p=O?r.create(vn):r.inv(S));let v=r.mul(T,p),_=r.mul(x,p),A=r.mul(S,p);if(O)return{x:r.ZERO,y:r.ONE};if(!r.eql(A,r.ONE))throw new Error("invZ was invalid");return{x:v,y:_}}clearCofactor(){return c===te?this:c===ee?this.double():c===Hr?this.double().double():c===vn?this.double().double().double():this.multiplyUnsafe(c)}toBytes(){let{x:f,y:l}=this.toAffine(),p=r.toBytes(l);return p[p.length-1]|=d(f)?128:0,p}toHex(){return sn(this.toBytes())}toString(){return`<Point ${this.is0()?"ZERO":this.toHex()}>`}}let B=y=>Tn(g,y),b=new Wt(g,u);return b.bits>=6&&g.BASE.precompute(6),Object.freeze(g.prototype),Object.freeze(g),g}var pt=BigInt(0),Z=BigInt(1),ne=BigInt(2);function An(t,e){return t+e-(e>>Z<<Z)}function zr(t){let e=BigInt(6)*t;return(n,o,r)=>{let s=o+r,c=((e+r-o)*n+o)%t;return{x_2:c,x_3:s-c}}}function Zr(t){return ot(t,{P:"bigint",type:"string",adjustScalarBytes:"function",powPminus2:"function"},{randomBytes:"function",scalarMultBase:"function"}),Object.freeze({...t})}function kn(t){let e=Zr(t),{P:n,type:o,adjustScalarBytes:r,powPminus2:s,randomBytes:i}=e,c=e.scalarMultBase,u=o==="x25519";if(!u&&o!=="x448")throw new Error("invalid type");let a=i===void 0?zt:i,d=u?255:448,h=zr(n),E=u?32:56,m=BigInt(u?9:5),w=BigInt(u?121665:39081),g=u?ne**BigInt(254):ne**BigInt(447),B=u?BigInt(8)*(ne**BigInt(251)-Z):BigInt(4)*(ne**BigInt(445)-Z),b=g+B+Z,y=R=>L(R,n),f=l(m);function l(R){return Xt(y(R),E)}function p(R){let q=at(et(R,E,"uCoordinate"));return u&&(q[31]&=127),y(rt(q))}function T(R){return rt(r(at(et(R,E,"scalar"))))}let x=new Set(u?[pt,Z,n-Z,BigInt("325606250916557431795983626356110631294008115727848805560023387167927233504"),BigInt("39382357235489614581723060781553021112529911719440698176882885853963445705823")]:[pt,Z,n-Z]);function S(R,q){let M=p(q);if(x.has(M))throw new Error("invalid private or public key received");let ft=A(M,T(R));if(ft===pt)throw new Error("invalid private or public key received");return l(ft)}function O(R){if(c===void 0)return S(R,f);let q=T(R);lt("scalar",q,g,b);let M=y(c(q));if(M===pt)throw new Error("invalid private or public key received");return l(M)}let v=O,_=S;function A(R,q){lt("u",R,pt,n),lt("scalar",q,g,b);let M=q,ft=R,Y=Z,G=pt,J=R,tt=Z,he=M^M>>Z;for(let ge=BigInt(d-1);ge>=pt;ge--){let ze=An(n,he>>ge);({x_2:Y,x_3:J}=h(ze,Y,J)),{x_2:G,x_3:tt}=h(ze,G,tt);let me=Y+G,we=y(me*me),be=Y-G,Ze=y(be*be),Xe=we-Ze,yr=J+tt,hr=J-tt,Ye=y(hr*me),Ve=y(yr*be),Ge=Ye+Ve,We=Ye-Ve;J=y(Ge*Ge),tt=y(ft*y(We*We)),Y=y(we*Ze),G=y(Xe*(we+y(w*Xe)))}let $e=An(n,M);({x_2:Y,x_3:J}=h($e,Y,J)),{x_2:G,x_3:tt}=h($e,G,tt);let pr=s(G);return y(Y*pr)}let I={secretKey:E,publicKey:E,seed:E},F=R=>(R=R===void 0?a(E):R,et(R,I.seed,"seed"),R),$={randomSecretKey:F};return Object.freeze(I),Object.freeze($),Object.freeze({keygen:qe(F,v),getSharedSecret:_,getPublicKey:v,scalarMult:S,scalarMultBase:O,utils:$,GuBytes:f.slice(),lengths:I})}var re=BigInt(4294967295),In=BigInt(32);function Xr(t,e=!1){return e?{h:Number(t&re),l:Number(t>>In&re)}:{h:Number(t>>In&re)|0,l:Number(t&re)|0}}function Ln(t,e=!1){let n=t.length,o=new Uint32Array(n),r=new Uint32Array(n);for(let s=0;s<n;s++){let{h:i,l:c}=Xr(t[s],e);[o[s],r[s]]=[i,c]}return[o,r]}function Kt(t,e="n"){if(typeof t!="number")throw new TypeError(`wrong u32 integer "${e}": expected number, got type=${typeof t}`);if(!Number.isSafeInteger(t)||t<0||t>4294967295)throw new RangeError(`wrong u32 integer "${e}": expected 0..4294967295, got ${t}`);return t}function Nn(t){return Kt(t,"x"),(t&t-1)===0&&t!==0}function Me(t,e){if(Kt(t),typeof e!="number")throw new TypeError('"bits" expected number, got type='+typeof e);if(!Number.isSafeInteger(e)||e<0||e>32)throw new Error(`expected integer 0 <= bits <= 32, got ${e}`);let n=0;for(let o=0;o<e;o++,t>>>=1)n=n<<1|t&1;return n>>>0}function Fn(t){return Kt(t),31-Math.clz32(t)}function Kn(t){if(!t||typeof t!="object"||typeof t.length!="number")throw new TypeError('"values" expected array-like, got type='+typeof t);let e=t.length;if(!Nn(e))throw new Error("expected positive power-of-two length, got "+e);let n=Fn(e);for(let o=0;o<e;o++){let r=Me(o,n);if(o<r){let s=t[o];t[o]=t[r],t[r]=s}}return t}var Ce=(t,e)=>{ot(e,{N:"number",roots:"object",dit:"boolean"},{invertButterflies:"boolean",skipStages:"number",brp:"boolean"},"coreOpts");let{N:n,roots:o,dit:r,invertButterflies:s=!1,skipStages:i=0,brp:c=!0}=e;Kt(n,"coreOpts.N");let u=Fn(n);if(!Nn(n))throw new Error("FFT: Polynomial size should be power of two");Kt(i,"coreOpts.skipStages");let a=u===0?0:u-1;if(i>a)throw new Error(`FFT: wrong skipStages: expected 0 <= skipStages <= ${a}`);if(o.length!==n)throw new Error(`FFT: wrong roots length: expected ${n}, got ${o.length}`);let d=r!==s;return h=>{if(h.length!==n)throw new Error("FFT: wrong Polynomial length");r&&c&&Kn(h);for(let E=0,m=1;E<u-i;E++){let w=r?E+1+i:u-E,g=1<<w,B=g>>1,b=n>>w;for(let y=0;y<n;y+=g)for(let f=0,l=m++;f<B;f++){let p=s?r?n-l:l:f*b,T=y+f,x=y+f+B,S=o[p],O=h[x],v=h[T];if(d){let _=t.mul(O,S);h[T]=t.add(v,_),h[x]=t.sub(v,_)}else s?(h[T]=t.add(O,v),h[x]=t.mul(t.sub(O,v),S)):(h[T]=t.add(v,O),h[x]=t.mul(t.sub(v,O),S))}}return!r&&c&&Kn(h),h}};var qn=BigInt(0),Yr=BigInt(1),Mn=BigInt(2),Vr=BigInt(3),Gr=BigInt(5),Wr=BigInt(8),oe=BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"),Qr={p:oe,n:BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),h:Wr,a:BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),d:BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),Gx:BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),Gy:BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")};function jn(t){let e=BigInt(10),n=BigInt(20),o=BigInt(40),r=BigInt(80),s=oe,c=t*t%s*t%s,u=z(c,Mn,s)*c%s,a=z(u,Yr,s)*t%s,d=z(a,Gr,s)*a%s,h=z(d,e,s)*d%s,E=z(h,n,s)*h%s,m=z(E,o,s)*E%s,w=z(m,r,s)*m%s,g=z(w,r,s)*m%s,B=z(g,e,s)*d%s;return{pow_p_5_8:z(B,Mn,s)*t%s,b2:c}}function Jr(t){return t[0]&=248,t[31]&=127,t[31]|=64,t}var Cn=BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");function to(t,e){let n=oe,o=L(e*e*e,n),r=L(o*o*e,n),s=jn(t*r).pow_p_5_8,i=L(t*o*s,n),c=L(e*i*i,n),u=i,a=L(i*Cn,n),d=c===t,h=c===L(-t,n),E=c===L(-t*Cn,n);return d&&(i=u),(h||E)&&(i=a),bn(i,n)&&(i=L(-i,n)),{isValid:d||h,value:i}}var Dn=Rn(Qr,{uvRatio:to});var Un=(()=>{let t=oe,e=n=>{let{pow_p_5_8:o,b2:r}=jn(n);return L(z(o,Vr,t)*r,t)};return kn({P:t,type:"x25519",powPminus2:e,adjustScalarBytes:Jr,scalarMultBase:n=>{let o=L(n,Dn.Fn.ORDER);if(o===qn)return qn;let r=Dn.BASE.multiply(o);return L((r.Z+r.Y)*e(L(r.Z-r.Y,t)),t)}})})();var eo=BigInt(0),Nt=BigInt(1),no=BigInt(2),ro=BigInt(7),oo=BigInt(256),so=BigInt(113),$n=[],zn=[],Zn=[];for(let t=0,e=Nt,n=1,o=0;t<24;t++){[n,o]=[o,(2*n+3*o)%5],$n.push(2*(5*o+n)),zn.push((t+1)*(t+2)/2%64);let r=eo;for(let s=0;s<7;s++)e=(e<<Nt^(e>>ro)*so)%oo,e&no&&(r^=Nt<<(Nt<<BigInt(s))-Nt);Zn.push(r)}var Xn=Ln(Zn,!0),io=Xn[0],co=Xn[1],fo=(t,e,n)=>t<<n|e>>>32-n,uo=(t,e,n)=>e<<n|t>>>32-n,ao=(t,e,n)=>e<<n-32|t>>>64-n,lo=(t,e,n)=>t<<n-32|e>>>64-n,Pn=(t,e,n)=>n>32?ao(t,e,n):fo(t,e,n),Hn=(t,e,n)=>n>32?lo(t,e,n):uo(t,e,n),Et=new Uint32Array(10);function po(t,e=24){if(!(t instanceof Uint32Array))throw new TypeError('"s" expected Uint32Array(50), got type='+typeof t);if(t.length!==50)throw new RangeError('"s" expected Uint32Array(50), got length='+t.length);if(D(e,"rounds"),e<1||e>24)throw new Error('"rounds" expected integer 1..24');for(let n=24-e;n<24;n++){for(let s=0;s<10;s++)Et[s]=t[s]^t[s+10]^t[s+20]^t[s+30]^t[s+40];for(let s=0;s<10;s+=2){let i=(s+8)%10,c=(s+2)%10,u=Et[c],a=Et[c+1],d=Pn(u,a,1)^Et[i],h=Hn(u,a,1)^Et[i+1];for(let E=0;E<50;E+=10)t[s+E]^=d,t[s+E+1]^=h}let o=t[2],r=t[3];for(let s=0;s<24;s++){let i=zn[s],c=Pn(o,r,i),u=Hn(o,r,i),a=$n[s];o=t[a],r=t[a+1],t[a]=c,t[a+1]=u}for(let s=0;s<50;s+=10){let i=t[s],c=t[s+1],u=t[s+2],a=t[s+3];t[s]^=~t[s+2]&t[s+4],t[s+1]^=~t[s+3]&t[s+5],t[s+2]^=~t[s+4]&t[s+6],t[s+3]^=~t[s+5]&t[s+7],t[s+4]^=~t[s+6]&t[s+8],t[s+5]^=~t[s+7]&t[s+9],t[s+6]^=~t[s+8]&i,t[s+7]^=~t[s+9]&c,t[s+8]^=~i&u,t[s+9]^=~c&a}t[0]^=io[n],t[1]^=co[n]}Ee(Et)}var se=class t{state;pos=0;posOut=0;finished=!1;state32;destroyed=!1;blockLen;suffix;outputLen;canXOF;enableXOF=!1;rounds;constructor(e,n,o,r=!1,s=24){if(D(e,"blockLen"),D(n,"suffix"),D(s,"rounds"),tn(r,"enableXOF"),this.blockLen=e,this.suffix=n,this.outputLen=o,this.enableXOF=r,this.canXOF=r,this.rounds=s,D(o,"outputLen"),!(0<e&&e<200))throw new Error('"blockLen" must be 1..199');this.state=new Uint8Array(200),this.state32=_t(this.state)}clone(){return this._cloneInto()}keccak(){wt(this.state32),po(this.state32,this.rounds),wt(this.state32),this.posOut=0,this.pos=0}update(e){xe(this),N(e);let{blockLen:n,state:o,state32:r}=this,s=e.length,i=n%4===0&&e.byteOffset%4===0,c=n/4,u=i&&s>=n?_t(e):void 0;for(let a=0;a<s;){if(u!==void 0&&this.pos===0&&a%4===0&&s-a>=n){for(let h=0,E=a/4;h<c;h++)r[h]^=u[E+h];a+=n,this.pos=n,this.keccak();continue}let d=Math.min(n-this.pos,s-a);for(let h=0;h<d;h++)o[this.pos++]^=e[a++];this.pos===n&&this.keccak()}return this}finish(){if(this.finished)return;this.finished=!0;let{state:e,suffix:n,pos:o,blockLen:r}=this;e[o]^=n,(n&128)!==0&&o===r-1&&this.keccak(),e[r-1]^=128,this.keccak()}writeInto(e){xe(this,!1),N(e),this.finish();let n=this.state,{blockLen:o}=this;for(let r=0,s=e.length;r<s;){this.posOut>=o&&this.keccak();let i=Math.min(o-this.posOut,s-r);e.set(n.subarray(this.posOut,this.posOut+i),r),this.posOut+=i,r+=i}return e}xofInto(e){if(!this.enableXOF)throw new Error("XOF is not enabled");return this.writeInto(e)}xof(e){return D(e),this.xofInto(new Uint8Array(e))}digestInto(e){if(en(e,this),this.finished)throw new Error("digest() was already called");this.writeInto(e.length===this.outputLen?e:e.subarray(0,this.outputLen)),this.destroy()}digest(){let e=new Uint8Array(this.outputLen);return this.digestInto(e),e}destroy(){this.destroyed=!0,Ee(this.state)}_cloneInto(e){let{blockLen:n,suffix:o,outputLen:r,rounds:s,enableXOF:i}=this;return e||=new t(n,o,r,i,s),e.blockLen=n,e.state32.set(this.state32),e.pos=this.pos,e.posOut=this.posOut,e.finished=this.finished,e.rounds=s,e.suffix=o,e.outputLen=r,e.enableXOF=i,e.canXOF=this.canXOF,e.destroyed=this.destroyed,e}},Yn=(t,e,n,o={})=>Oe(()=>new se(e,t,n),o);var ie=Yn(6,136,32,Rt(8));var Vn=Yn(6,72,64,Rt(10));var Gn=(t,e,n,o={})=>Oe((r={})=>(r=Se({},r),new se(e,t,r.dkLen===void 0?n:r.dkLen,!0)),o),Wn=Gn(31,168,16,Rt(11)),Bt=Gn(31,136,32,Rt(12));var V=N;var st=Pt;function ho(t,e,n=()=>{}){if(!Array.isArray(t))throw new TypeError(`"${e}" expected array, got type=${typeof t}`);for(let o=0;o<t.length;o++)n(t[o],`${e}[${o}]`);return t}function Ft(t,e="object"){if(t===null||typeof t!="object"||Array.isArray(t))throw new TypeError(e==="object"?"expected valid options object":`"${e}" expected object, got type=${typeof t}`);return t}function yt(t,e){if(t=N(t),e=N(e),t.length!==e.length)return!1;let n=0;for(let o=0;o<t.length;o++)n|=t[o]^e[o];return n===0}function W(t){return new Uint8Array(N(t))}function ht(t,...e){let n=r=>typeof r=="number"?r:r.bytesLen,o=e.reduce((r,s)=>r+n(s),0);return{bytesLen:o,encode:r=>{let s=new Uint8Array(o);for(let i=0,c=0;i<e.length;i++){let u=e[i],a=n(u),d=typeof u=="number"?r[i]:u.encode(r[i]);N(d,a,t),s.set(d,c),typeof u!="number"&&d.fill(0),c+=a}return s},decode:r=>{N(r,o,t);let s=[];for(let i of e){let c=n(i),u=r.subarray(0,c);s.push(typeof i=="number"?u:i.decode(u)),r=r.subarray(c)}return s}}}function ce(t,e){let n=t,o=e*n.bytesLen;return{bytesLen:o,encode:r=>{let s=ho(r,"u");if(s.length!==e)throw new RangeError(`vecCoder.encode: wrong length=${s.length}. Expected: ${e}`);let i=new Uint8Array(o);for(let c=0,u=0;c<s.length;c++){let a=n.encode(s[c]);i.set(a,u),a.fill(0),u+=a.length}return i},decode:r=>{N(r,o);let s=[];for(let i=0;i<r.length;i+=n.bytesLen)s.push(n.decode(r.subarray(i,i+n.bytesLen)));return s}}}function k(...t){for(let e of t)if(Array.isArray(e))for(let n of e)n.fill(0);else e.fill(0)}function fe(t){if(D(t,"bits"),t>32)throw new RangeError('"bits" expected <= 32, got '+t);return t===32?4294967295:~(-1<<t)>>>0}var Qn=t=>{let{newPoly:e,N:n,Q:o,F:r,ROOT_OF_UNITY:s,brvBits:i,isKyber:c}=t,u=(f,l=o)=>{let p=f%l|0;return(p>=0?p|0:l+p|0)|0},a=(f,l=o)=>{let p=u(f,l)|0;return(p>l>>1?p-l|0:p)|0};function d(){let f=e(n);for(let l=0;l<n;l++){let p=Me(l,i),T=BigInt(s)**BigInt(p)%BigInt(o);f[l]=Number(T)|0}return f}let h=d(),E=f=>{throw new Error("not implemented")},m=c?{add:(f,l)=>{let p=f+l|0;return p>=o?p-o|0:p},sub:(f,l)=>{let p=f-l|0;return p<0?p+o|0:p},mul:(f,l)=>u((f|0)*(l|0))|0,inv:E}:{add:(f,l)=>u((f|0)+(l|0))|0,sub:(f,l)=>u((f|0)-(l|0))|0,mul:(f,l)=>u((f|0)*(l|0))|0,inv:E},w={N:n,roots:h,invertButterflies:!0,skipStages:c?1:0,brp:!1},g=Ce(m,{dit:!1,...w}),B=Ce(m,{dit:!0,...w}),b={encode:f=>g(f),decode:f=>{B(f);for(let l=0;l<f.length;l++)f[l]=u(r*f[l]);return f}};return{mod:u,smod:a,nttZetas:h,NTT:{encode:f=>b.encode(f),decode:f=>b.decode(f)},bitsCoder:(f,l)=>{for(let x=0,S=0;x<n;x++)S+=f,S>32&&fe(S),S%=8;let p=fe(f),T=f*(n/8);return{bytesLen:T,encode:x=>{let S=x,O=new Uint8Array(T);for(let v=0,_=0,A=0,I=0;v<S.length;v++)for(_|=(l.encode(S[v])&p)<<A,A+=f;A>=8;A-=8,_>>=8)O[I++]=_&255;return O},decode:x=>{let S=e(n);for(let O=0,v=0,_=0,A=0;O<x.length;O++)for(v|=x[O]<<_,_+=8;_>=f;_-=f,v>>=f)S[A++]=l.decode(v&p);return S}}}}},go=t=>(e,n)=>{n||(n=t.blockLen);let o=new Uint8Array(e.length+2);o.set(e);let r=e.length,s=new Uint8Array(n),i=t.create({}),c=0,u=0;return{stats:()=>({calls:c,xofs:u}),get:(a,d)=>(o[r+0]=a,o[r+1]=d,i.destroy(),i=t.create({}).update(o),c++,()=>(u++,i.xofInto(s))),clean:()=>{i.destroy(),k(s,o)}}},Jn=go(Wn);var U=256,j=3329,mo=3303,wo=17,H=Qn({N:U,Q:j,F:mo,ROOT_OF_UNITY:wo,newPoly:t=>new Uint16Array(t),brvBits:7,isKyber:!0}),bo=Object.freeze({512:Object.freeze({N:U,Q:j,K:2,ETA1:3,ETA2:2,du:10,dv:4,RBGstrength:128}),768:Object.freeze({N:U,Q:j,K:3,ETA1:2,ETA2:2,du:10,dv:4,RBGstrength:192}),1024:Object.freeze({N:U,Q:j,K:4,ETA1:2,ETA2:2,du:11,dv:5,RBGstrength:256})}),xo=t=>{if(t>=12)return{encode:n=>n,decode:n=>n>=j?n-j:n};let e=2**(t-1);return{encode:n=>((n<<t)+j/2)/j,decode:n=>n*j+e>>>t}},Eo=t=>H.bitsCoder(t,t===12?{encode:e=>e,decode:e=>e>=j?e-j:e}:{encode:e=>e,decode:e=>e}),qt=t=>t===12?Eo(12):H.bitsCoder(t,xo(t));function gt(t,e){let n=t,o=e;for(let r=0;r<U;r++){let s=n[r]+o[r];n[r]=s>=j?s-j:s}}function Bo(t,e){let n=t,o=e;for(let r=0;r<U;r++){let s=n[r]-o[r];n[r]=s<0?s+j:s}}function To(t,e,n,o,r){let s=H.mod(H.mod(e*o)*r+t*n),i=H.mod(t*o+e*n);return{c0:s,c1:i}}function ue(t,e){let n=t,o=e;for(let r=0;r<U/2;r++){let s=H.nttZetas[64+(r>>1)];r&1&&(s=-s);let{c0:i,c1:c}=To(n[2*r+0],n[2*r+1],o[2*r+0],o[2*r+1],s);n[2*r+0]=i,n[2*r+1]=c}return n}function De(t){let e=t,n=new Uint16Array(U);for(let o=0;o<U;){let r=e();if(r.length%3)throw new Error("SampleNTT: unaligned block");for(let s=0;o<U&&s+3<=r.length;s+=3){let i=(r[s+0]>>0|r[s+1]<<8)&4095,c=(r[s+1]>>4|r[s+2]<<4)&4095;i<j&&(n[o++]=i),o<U&&c<j&&(n[o++]=c)}}return n}var So=(t,e)=>{let n=new Uint16Array(U),o=_t(t);wt(o);let r=0;for(let s=0,i=0,c=0,u=0;s<o.length;s++){let a=o[s];for(let d=0;d<32;d++)c+=a&1,a>>=1,r+=1,r===e?(u=c,c=0):r===2*e&&(n[i++]=H.mod(u-c),c=0,r=0)}if(wt(o),r)throw new Error(`sampleCBD: leftover bits: ${r}`);return n};function Mt(t,e,n,o){return So(t(o*U/4,e,n),o)}var Oo=t=>{let e=t,{K:n,PRF:o,XOF:r,HASH512:s,ETA1:i,ETA2:c,du:u,dv:a}=e,d=qt(1),h=qt(a),E=qt(u),m=ht("publicKey",ce(qt(12),n),32),w=ce(qt(12),n),g=ht("ciphertext",ce(E,n),h),B=ht("seed",32,32),b=(y,f,l,p)=>{let T=[];for(let _=0;_<n;_++)T.push(H.NTT.encode(Mt(o,p,_,i)));let x=new Uint16Array(U),S=[];for(let _=0;_<n;_++){let A=Mt(o,p,n+_,c),I=new Uint16Array(U);for(let F=0;F<n;F++){let $=f(_,F);gt(I,ue($,T[F]))}gt(A,H.NTT.decode(I)),S.push(A),gt(x,ue(y[_],T[_])),k(I)}let O=Mt(o,p,2*n,c);gt(O,H.NTT.decode(x));let v=d.decode(l);return gt(v,O),k(y,T,x,O),g.encode([S,v])};return{secretCoder:w,lengths:{secretKey:w.bytesLen,publicKey:m.bytesLen,cipherText:g.bytesLen},keygen:y=>{V(y,32,"seed");let f=new Uint8Array(33);f.set(y),f[32]=n;let l=s(f),[p,T]=B.decode(l),x=[],S=[];for(let _=0;_<n;_++)x.push(H.NTT.encode(Mt(o,T,_,i)));let O=r(p);for(let _=0;_<n;_++){let A=H.NTT.encode(Mt(o,T,n+_,i));for(let I=0;I<n;I++){let F=De(O.get(I,_));gt(A,ue(F,x[I]))}S.push(A)}O.clean();let v={publicKey:m.encode([S,p]),secretKey:w.encode(x)};return k(p,T,x,S,f,l),v},encrypt:(y,f,l)=>{let[p,T]=m.decode(y),x=r(T),S=b(p,(O,v)=>De(x.get(O,v)),f,l);return x.clean(),S},prepare:y=>{let[f,l]=m.decode(y),p=r(l),T=[];for(let x=0;x<n;x++)for(let S=0;S<n;S++)T.push(De(p.get(x,S)));return p.clean(),{encrypt:(x,S)=>b(f.map(O=>O.slice()),(O,v)=>T[O*n+v].slice(),x,S),clean:()=>k(f,T)}},decrypt:(y,f)=>{let[l,p]=g.decode(y),T=w.decode(f),x=new Uint16Array(U);for(let O=0;O<n;O++)gt(x,ue(T[O],H.NTT.encode(l[O])));Bo(p,H.NTT.decode(x));let S=d.encode(p);return k(x,T,l,p),S}}};function _o(t){let e=t,n=Oo(e),{HASH256:o,HASH512:r,KDF:s}=e,{secretCoder:i,lengths:c}=n,u=ht("secretKey",c.secretKey,c.publicKey,32,32),a=32,d=64,h=(m,w)=>{let g=m.subarray(0,384*e.K),B=i.encode(i.decode(W(g))),b=yt(B,g);if(k(B),!b)throw new Error(`ML-KEM.${w}: wrong publicKey modulus`)},E=Object.freeze({...c,seed:64,msg:a,msgRand:a,secretKey:u.bytesLen});return Object.freeze({info:Object.freeze({type:"ml-kem"}),lengths:E,keygen:m=>{let w=m===void 0,g=w?st(d):m,B,b;try{V(g,d,"seed");let y=n.keygen(g.subarray(0,32)),f=y.publicKey;B=y.secretKey,b=o(f);let l=u.encode([B,f,b,g.subarray(32)]);return{publicKey:f,secretKey:l}}finally{B!==void 0&&k(B),b!==void 0&&k(b),w&&k(g)}},getPublicKey:m=>{let[w,g,B,b]=u.decode(m);return Uint8Array.from(g)},encapsulate:(m,w)=>{let g=w===void 0,B=g?st(a):w,b;try{return V(m,c.publicKey,"publicKey"),V(B,a,"message"),h(m,"encapsulate"),b=r.create().update(B).update(o(m)).digest(),{cipherText:n.encrypt(m,B,b.subarray(32,64)),sharedSecret:b.subarray(0,32)}}finally{b!==void 0&&k(b.subarray(32)),g&&k(B)}},decapsulate:(m,w)=>{V(w,u.bytesLen,"secretKey"),V(m,c.cipherText,"cipherText");let g=u.bytesLen-96,B=g+32,b=o(w.subarray(g/2,B));if(!yt(b,w.subarray(B,B+32)))throw new Error("invalid secretKey: hash check failed");let[y,f,l,p]=u.decode(w),T=n.decrypt(m,y),x=r.create().update(T).update(l).digest(),S=x.subarray(0,32),O=n.encrypt(f,T,x.subarray(32,64)),v=yt(m,O),_=s.create({dkLen:32}).update(p).update(m).digest();return k(T,O,x.subarray(32),v?_:S),v?S:_},prepare:m=>{V(m,c.publicKey,"publicKey"),h(m,"prepare");let w=W(m),g=o(w),B=n.prepare(w);return Object.freeze({publicKey:w,encapsulate:b=>{let y=b===void 0,f=y?st(a):b,l;try{return V(f,a,"message"),l=r.create().update(f).update(g).digest(),{cipherText:B.encrypt(f,l.subarray(32,64)),sharedSecret:l.subarray(0,32)}}finally{l!==void 0&&k(l.subarray(32)),y&&k(f)}},decapsulate:(b,y)=>{V(y,u.bytesLen,"secretKey"),V(b,c.cipherText,"cipherText");let[f,l,p,T]=u.decode(y);if(!yt(l,w)||!yt(p,g))throw new Error("ML-KEM.decapsulate: secretKey does not match prepared publicKey");let x=n.decrypt(b,f),S=r.create().update(x).update(g).digest(),O=S.subarray(0,32),v=B.encrypt(x,S.subarray(32,64)),_=yt(b,v),A=s.create({dkLen:32}).update(T).update(b).digest();return k(x,v,S.subarray(32),_?A:O),_?O:A},clean:B.clean})}})}function vo(t,e,n){return Bt.create({dkLen:t}).update(e).update(new Uint8Array([n])).digest()}var Ro={HASH256:ie,HASH512:Vn,KDF:Bt,XOF:Jn,PRF:vo},Ao=t=>_o({...Ro,...t});var tr=Ao(bo[768]);var ko=(t,e)=>{let n=Ft(t,e);return Ft(n.lengths,`${e}.lengths`),P(n.keygen,`${e}.keygen`),P(n.getPublicKey,`${e}.getPublicKey`),P(n.encapsulate,`${e}.encapsulate`),P(n.decapsulate,`${e}.decapsulate`),n};function Io(t,e=!1){let n=Ft(t,"curve");Ft(n.lengths,"curve.lengths"),P(n.keygen,"curve.keygen"),P(n.getPublicKey,"curve.getPublicKey"),nt(e,"allowZeroKey");let o=t.lengths,r=t.keygen;if(e){if(!("getSharedSecret"in t&&"sign"in t&&"verify"in t))throw new Error("allowZeroKey requires a Weierstrass curve");let i=t.Point.Fn;r=(c=st(o.seed))=>{N(c,o.seed,"seed");let u=i.isLE?rt(c):bt(c),a=i.toBytes(i.create(u));return{secretKey:a,publicKey:t.getPublicKey(a)}}}return{lengths:{secretKey:o.secretKey,publicKey:o.publicKey,seed:o.seed},keygen:s=>r(s),getPublicKey:s=>t.getPublicKey(s)}}function Lo(t,e=!1){let n=Io(t,e);if(!t.getSharedSecret)throw new Error("wrong curve");let o=(r,s)=>{let i=t.getSharedSecret(s,r);return t.lengths.publicKeyHasPrefix?i.subarray(1):i};return{lengths:{...n.lengths,msg:n.lengths.seed,cipherText:n.lengths.publicKey},keygen:n.keygen,getPublicKey:n.getPublicKey,encapsulate(r,s=st(t.lengths.seed)){let i=W(s),c;try{c=n.keygen(i).secretKey;let u=o(r,c),a=t.getPublicKey(c);return{sharedSecret:u,cipherText:a}}finally{k(i),c&&k(c)}},decapsulate:o}}function Tt(t,e){let n=D(t,e);if(n===0)throw new RangeError(`"${e}" expected integer greater than 0, got 0`);return n}function Ct(t,e){let n=ht(e,...t.map(o=>{if(typeof o.lengths[e]!="number")throw new Error("wrong length: "+e);return Tt(o.lengths[e],e)}));return Tt(n.bytesLen,e),n}function Ko(t){return((e,n)=>t(e,{dkLen:n}))}function No(t,e,...n){let o=e,r=n,s=Ct(r,"seed"),i=Ct(r,"publicKey"),c=Tt(t===void 0?s.bytesLen:t,"realSeedLen");function u(d){N(d,c);let h=o(d,s.bytesLen),E=h.buffer===d.buffer?W(h):h,m=[],w=[],g=[],B=[],b=!1;try{for(let y of s.decode(E))m.push(W(y));for(let y=0;y<r.length;y++){let f=r[y].keygen(m[y]);w.push(f.secretKey),g.push(W(f.secretKey)),B.push(f.publicKey)}return b=!0,{secretKey:g,publicKey:B}}finally{k(E,m,w),b||k(g)}}let a=d=>{let h=d===void 0?st(c):W(d),E;try{let{publicKey:m,secretKey:w}=u(h);try{E={secretKey:h,publicKey:i.encode(m)}}finally{k(m,w)}return E}finally{E||k(h)}};return{info:{lengths:{seed:c,publicKey:i.bytesLen,secretKey:c}},getPublicKey:d=>{let h=a(d);return k(h.secretKey),h.publicKey},keygen:a,expandDecapsulationKey:u,realSeedLen:c}}function Fo(t,e,n,o,...r){if(t!==void 0&&Tt(t,"realSeedLen"),e!==void 0&&Tt(e,"realMsgLen"),typeof n!="function")throw new TypeError('"expandSeed" expected function, got type='+typeof n);if(typeof o!="function")throw new TypeError('"combiner" expected function, got type='+typeof o);let s=o,i=r;if(i.length===0)throw new RangeError("combineKEMS requires at least one KEM");for(let w=0;w<i.length;w++)ko(i[w],`kems[${w}]`);let c=No(t,n,...i),u=Ct(i,"cipherText"),a=Ct(i,"publicKey"),d=Ct(i,"msg"),h=Tt(e===void 0?d.bytesLen:e,"realMsgLen"),E=Object.freeze({...c.info.lengths,msg:h,msgRand:d.bytesLen,cipherText:u.bytesLen}),m=(w,g,B)=>{let b=s(w,g,B);try{return W(N(b,h,"sharedSecret"))}catch(y){if(ut(b)){let f=p=>b.buffer===p.buffer&&b.byteOffset<p.byteOffset+p.byteLength&&p.byteOffset<b.byteOffset+b.byteLength;w.some(f)||g.some(f)||k(b)}throw y}};return Object.freeze({lengths:E,getPublicKey:c.getPublicKey,keygen:c.keygen,encapsulate(w,g=st(d.bytesLen)){let B=a.decode(w),b=d.decode(g),y=[],f=[];try{for(let p=0;p<i.length;p++){let T=i[p].encapsulate(B[p],b[p]);y.push(T.sharedSecret),f.push(T.cipherText)}let l=u.encode(f);return{sharedSecret:m(B,f,y),cipherText:l}}finally{k(y,f)}},decapsulate(w,g){let B=u.decode(w),{publicKey:b,secretKey:y}=c.expandDecapsulationKey(g),f=[];try{for(let l=0;l<i.length;l++)f.push(i[l].decapsulate(B[l],y[l]));return m(b,B,f)}finally{k(y,f)}}})}var qo=Lo(Un);var ae=Fo(32,32,Ko(Bt),(t,e,n)=>ie(ve(n[0],n[1],e[1],t[1],un("\\.//^\\"))),tr,qo);var er="X-Wing-ML-KEM-768-X25519/HKDF-SHA-256/AES-256-GCM",Ue=new TextEncoder,nr=Ue.encode("daily-grind/recipient-key/v1"),je=t=>crypto.getRandomValues(new Uint8Array(t)),rr=()=>ae.keygen();function or(t){return Ue.encode(JSON.stringify({version:t.version,suite:t.suite,id:t.id,createdAt:t.createdAt}))}async function sr(t,e,n){try{let o=await crypto.subtle.importKey("raw",t,"HKDF",!1,["deriveKey"]);return await crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt:e,info:n},o,{name:"AES-GCM",length:256},!1,["encrypt","decrypt"])}finally{t.fill(0)}}async function ir(t,e){if(!e.trim()||e.length>1e3)throw new Error("Invalid note length");let n={version:1,suite:er,id:crypto.randomUUID(),createdAt:new Date().toISOString(),salt:je(32),iv:je(12)},{cipherText:o,sharedSecret:r}=ae.encapsulate(t),s=or(n),i=await sr(r,n.salt,s),c=Ue.encode(e);try{return n.capsule=o,n.ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:n.iv,additionalData:s,tagLength:128},i,c)),n}finally{c.fill(0)}}async function cr(t,e){if(e.version!==1||e.suite!==er||!(e.iv instanceof Uint8Array)||e.iv.length!==12||!(e.salt instanceof Uint8Array)||e.salt.length!==32||typeof e.id!="string"||typeof e.createdAt!="string")throw new Error("Unsupported or invalid encrypted note");let n=ae.decapsulate(e.capsule,t),o=or(e),r=await sr(n,e.salt,o),s=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:e.iv,additionalData:o,tagLength:128},r,e.ciphertext));try{return new TextDecoder("utf-8",{fatal:!0}).decode(s)}finally{s.fill(0)}}async function fr(t){let e=await crypto.subtle.generateKey({name:"AES-GCM",length:256},!1,["encrypt","decrypt"]),n=je(12);try{let o=await crypto.subtle.encrypt({name:"AES-GCM",iv:n,additionalData:nr},e,t);return{key:e,iv:n,ciphertext:o}}finally{t.fill(0)}}async function ur(t){return new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:t.iv,additionalData:nr},t.key,t.ciphertext))}var lr=document.querySelector("#notes-form"),le=document.querySelector("#note-fields"),X=document.querySelector("#delivery-note"),ar=document.querySelector("#note-status"),Pe=document.querySelector("#saved-note"),St=document.querySelector("#reveal-note"),dr=document.querySelector("#delete-note"),Dt=document.querySelector("#note-preview"),de=document.querySelector("#note-count"),He=document.querySelector("#save-note"),jt,pe=!1;function Mo(){return new Promise((t,e)=>{let n=indexedDB.open("daily-grind-private-notes",1);n.onupgradeneeded=()=>n.result.createObjectStore("notes"),n.onsuccess=()=>t(n.result),n.onerror=()=>e(n.error),n.onblocked=()=>e(new Error("Storage is blocked"))})}function ye(t,e){return new Promise((n,o)=>{let r=jt.transaction("notes",t==="get"?"readonly":"readwrite"),s=r.objectStore("notes"),i=t==="put"?s.put(e,"current"):s[t]("current");r.oncomplete=()=>n(i.result),r.onerror=()=>o(r.error),r.onabort=()=>o(r.error)})}function mt(){Dt.textContent="",Dt.hidden=!0,St.textContent="Reveal note",St.setAttribute("aria-expanded","false")}function Q(t,e=!1){ar.textContent=t,ar.classList.toggle("error",e)}function Ot(t){pe=t,le.disabled=t,St.disabled=t,dr.disabled=t,lr.setAttribute("aria-busy",String(t))}X.addEventListener("input",()=>{de.textContent=`${X.value.length} / 1,000`,X.setCustomValidity("")});lr.addEventListener("submit",async t=>{if(t.preventDefault(),pe||!jt)return;if(!X.value.trim()){X.setCustomValidity("Add a delivery note before saving."),X.reportValidity();return}Ot(!0),mt(),Q("Encrypting your note on this device\u2026");let e;try{e=rr();let n=await ir(e.publicKey,X.value),o=await fr(e.secretKey);await ye("put",{envelope:n,protectedKey:o}),X.value="",de.textContent="0 / 1,000",Pe.hidden=!1,He.innerHTML='Replace encrypted note <span aria-hidden="true">\u2197</span>',Q("Note encrypted and saved on this browser. It has not been sent to a courier.")}catch{Q("Your note could not be saved. Check that browser storage is available and try again.",!0)}finally{e?.secretKey.fill(0),Ot(!1)}});St.addEventListener("click",async()=>{if(!Dt.hidden){mt();return}if(pe)return;Ot(!0);let t;try{let e=await ye("get");if(!e)throw new Error("No saved note");t=await ur(e.protectedKey),Dt.textContent=await cr(t,e.envelope),Dt.hidden=!1,St.textContent="Hide note",St.setAttribute("aria-expanded","true"),Q("Note decrypted locally. Hide it when you\u2019re finished.")}catch{mt(),Q("This note could not be authenticated or decrypted. Its contents have not been displayed.",!0)}finally{t?.fill(0),Ot(!1)}});dr.addEventListener("click",async()=>{if(!pe){Ot(!0),mt();try{await ye("delete"),Pe.hidden=!0,He.innerHTML='Encrypt & save note <span aria-hidden="true">\u2197</span>',Q("Saved note and its encryption key deleted from this browser.")}catch{Q("The note could not be deleted. Please try again.",!0)}finally{Ot(!1)}}});document.querySelector("#clear-note").addEventListener("click",()=>{X.value="",X.setCustomValidity(""),de.textContent="0 / 1,000",mt(),X.focus()});document.addEventListener("visibilitychange",()=>{document.hidden&&mt()});window.addEventListener("pagehide",()=>{mt(),X.value="",de.textContent="0 / 1,000"});async function Co(){try{if(!globalThis.isSecureContext||!crypto.subtle||!globalThis.indexedDB)throw new Error("Unsupported browser");jt=await Mo(),jt.onversionchange=()=>{jt.close(),le.disabled=!0,Q("Reload this page to reconnect to secure storage.",!0)};let t=await ye("get");Pe.hidden=!t,t&&(He.innerHTML='Replace encrypted note <span aria-hidden="true">\u2197</span>'),le.disabled=!1,Q(t?"Your encrypted note is saved on this browser.":"Ready to encrypt. Your note stays on this browser.")}catch{le.disabled=!0,Q("Secure notes are unavailable. Use HTTPS and allow browser storage. Nothing has been saved.",!0)}}Co();
++/*! Bundled license information:
++
++@noble/curves/utils.js:
++@noble/curves/abstract/modular.js:
++@noble/curves/abstract/curve.js:
++@noble/curves/abstract/edwards.js:
++@noble/curves/abstract/montgomery.js:
++@noble/curves/ed25519.js:
++  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
++
++@noble/post-quantum/utils.js:
++@noble/post-quantum/_crystals.js:
++@noble/post-quantum/ml-kem.js:
++@noble/post-quantum/hybrid.js:
++  (*! noble-post-quantum - MIT License (c) 2024 Paul Miller (paulmillr.com) *)
++*/
+diff --git a/index.html b/index.html
+index 66c9173..e1f1f5d 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,355 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="theme-color" content="#263c2d" />
++    <meta
++      name="description"
++      content="Thoughtfully sourced, freshly roasted coffee. Make your daily ritual a little better with The Daily Grind."
++    />
++    <title>The Daily Grind | A little more care in every cup</title>
++    <link rel="stylesheet" href="styles.css" />
++    <script type="module" src="assets/notes.js"></script>
++  </head>
++  <body>
++    <div class="announcement">
++      GOOD COFFEE. GOOD MORNINGS.
++      <span>Always freshly roasted, always thoughtfully sourced.</span>
++    </div>
++    <nav class="navigation" aria-label="Main navigation">
++      <a href="/" class="logo" aria-label="The Daily Grind home"
++        ><span class="logo-mark" aria-hidden="true">dg<span>✳</span></span
++        ><span
++          >THE DAILY<br />GRIND<span class="logo-caption"
++            >COFFEE & COMMUNITY</span
++          ></span
++        ></a
++      >
++      <ul class="nav-links">
++        <li><a href="/menu">Our menu</a></li>
++        <li><a href="/locations">Find your grind</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++      </ul>
++      <div class="nav-account">
++        <a href="/account" class="account-link"
++          ><svg
++            viewBox="0 0 24 24"
++            fill="none"
++            stroke="currentColor"
++            stroke-width="1.5"
++            aria-hidden="true"
++          >
++            <circle cx="12" cy="8" r="3.5" />
++            <path d="M5 21v-3a7 7 0 0 1 14 0v3" /></svg
++          >My account</a
++        ><a href="/logout" class="logout"
++          >Log out <span aria-hidden="true">↗</span></a
++        >
++      </div>
++    </nav>
++    <main>
++      <header class="hero">
++        <div class="hero-copy">
++          <p class="eyebrow">
++            <span class="little-line"></span> A BETTER KIND OF EVERYDAY
++          </p>
++          <h1>Your daily ritual.<br />A little more <em>care.</em></h1>
++          <p>
++            Ethically sourced. Locally roasted. Made for slow mornings,<br
++              class="desktop-break"
++            />
++            big ideas, and everything in between.
++          </p>
++          <a class="button light-button" href="/order-online"
++            >Find your next favorite <span aria-hidden="true">↗</span></a
++          >
++          <div class="hero-bottom">
++            <span class="sun" aria-hidden="true">✳</span
++            ><span>GOOD DAYS START WITH A GOOD CUP.</span>
++          </div>
++        </div>
++        <div class="hero-image">
++          <img
++            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=85"
++            alt="Freshly made coffee and coffee beans on a sunlit wooden table"
++            width="1200"
++            height="900"
++            fetchpriority="high"
++          />
++          <div class="image-caption">
++            <span class="caption-dot"></span> FRESHLY ROASTED. NEVER RUSHED.
++          </div>
++          <span class="image-stamp"
++            >Crafted<br />with care.<span>EVERY SINGLE DAY</span></span
++          >
++        </div>
++      </header>
+ 
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
+-</head>
+-
+-<body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++      <section class="notes-section" aria-labelledby="notes-heading">
++        <div class="notes-intro">
++          <p class="eyebrow">LITTLE DETAILS. EXTRA CARE.</p>
++          <h2 id="notes-heading">
++            Your coffee, delivered.<br />Your details, <em>protected.</em>
++          </h2>
++          <p>
++            A quiet knock? A particular spot by the door? Keep your delivery
++            instructions in a private, encrypted note.
++          </p>
++          <div class="privacy-points">
++            <div>
++              <span class="outline-icon" aria-hidden="true"
++                ><svg
++                  viewBox="0 0 24 24"
++                  fill="none"
++                  stroke="currentColor"
++                  stroke-width="1.5"
++                >
++                  <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6Z" />
++                  <path d="m8 12 3 3 5-6" /></svg></span
++              ><span
++                ><strong>Private by design</strong
++                ><small>Encrypted before it’s saved.</small></span
++              >
++            </div>
++            <div>
++              <span class="outline-icon" aria-hidden="true"
++                ><svg
++                  viewBox="0 0 24 24"
++                  fill="none"
++                  stroke="currentColor"
++                  stroke-width="1.5"
++                >
++                  <rect x="4" y="9" width="16" height="12" rx="2" />
++                  <path d="M8 9V6a4 4 0 0 1 8 0v3" />
++                  <circle cx="12" cy="15" r="1" /></svg></span
++              ><span
++                ><strong>A little future-proofing</strong
++                ><small>Hybrid post-quantum protection.</small></span
++              >
++            </div>
++          </div>
++          <a class="text-link" href="#privacy-details"
++            >A closer look at your privacy <span aria-hidden="true">↗</span></a
++          >
++        </div>
++        <div class="notes-card">
++          <div class="card-heading">
++            <div>
++              <span class="mini-label">YOUR PRIVATE LITTLE NOTE</span>
++              <h3>Delivery notes</h3>
++            </div>
++            <span class="secure-badge"
++              ><svg
++                viewBox="0 0 24 24"
++                fill="none"
++                stroke="currentColor"
++                stroke-width="1.8"
++                aria-hidden="true"
++              >
++                <rect x="6" y="10" width="12" height="10" rx="2" />
++                <path d="M9 10V7a3 3 0 0 1 6 0v3" /></svg
++              >Encrypted</span
++            >
++          </div>
++          <form
++            id="notes-form"
++            method="post"
++            action="#notes-heading"
++            autocomplete="off"
++          >
++            <fieldset id="note-fields" disabled>
++              <legend class="visually-hidden">
++                Write your encrypted delivery note
++              </legend>
++              <label for="delivery-note"
++                >How would you like your delivery?
++                <span>(required)</span></label
++              >
++              <div class="textarea-wrap">
++                <textarea
++                  id="delivery-note"
++                  name="delivery-note"
++                  rows="4"
++                  maxlength="1000"
++                  required
++                  placeholder="e.g. Please leave my coffee by the side door and give a gentle knock. Thank you!"
++                  aria-describedby="note-hint note-count"
++                  autocomplete="off"
++                  spellcheck="false"
++                ></textarea
++                ><span id="note-count">0 / 1,000</span>
++              </div>
++              <p id="note-hint" class="field-hint">
++                For drop-off details. Please leave out payment information.
++              </p>
++              <div class="form-actions">
++                <button
++                  class="button green-button"
++                  type="submit"
++                  id="save-note"
++                >
++                  Encrypt & save note <span aria-hidden="true">↗</span></button
++                ><button class="clear-button" id="clear-note" type="button">
++                  Clear
++                </button>
++              </div>
++            </fieldset>
++            <div class="note-status-row">
++              <span class="status-dot" aria-hidden="true"></span>
++              <p id="note-status" role="status" aria-live="polite">
++                Preparing secure browser storage…
++              </p>
++            </div>
++          </form>
++          <div id="saved-note" class="saved-note" hidden>
++            <div class="saved-heading">
++              <span
++                ><span aria-hidden="true">✓</span> One note, safely tucked
++                away</span
++              >
++              <div>
++                <button
++                  type="button"
++                  id="reveal-note"
++                  aria-expanded="false"
++                  aria-controls="note-preview"
++                >
++                  Reveal note</button
++                ><button type="button" id="delete-note">Delete</button>
++              </div>
++            </div>
++            <p id="note-preview" hidden></p>
++          </div>
++          <p class="local-disclaimer">
++            Saved only in this browser. Not sent to a courier. Clearing site
++            data removes your note and its key.
++          </p>
++          <noscript
++            ><p class="error">
++              JavaScript is required to encrypt notes. The form is disabled to
++              keep your details private.
++            </p></noscript
++          >
++        </div>
++      </section>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <section class="favorites" aria-labelledby="favorites-heading">
++        <div class="section-heading">
++          <div>
++            <p class="eyebrow">FAMILIAR COMFORTS. FRESH FAVORITES.</p>
++            <h2 id="favorites-heading">Something good is brewing.</h2>
++          </div>
++          <a class="text-link" href="/menu"
++            >Explore the menu <span aria-hidden="true">↗</span></a
++          >
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="favorites-grid">
++          <a class="coffee-card" href="/menu/seasonal"
++            ><div class="coffee-photo maple">
++              <img
++                src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=650&q=80"
++                alt="Iced maple oat latte"
++                width="650"
++                height="450"
++                loading="lazy"
++              /><span class="product-tag">SEASONAL FAVORITE</span>
++            </div>
++            <div class="coffee-info">
++              <h3>Maple Oat Latte <span aria-hidden="true">↗</span></h3>
++              <p>Creamy oat milk. A little Vermont maple magic.</p>
++            </div></a
++          >
++          <a class="coffee-card" href="/menu/espresso"
++            ><div class="coffee-photo">
++              <img
++                src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=650&q=80"
++                alt="Rich dark roast espresso in a ceramic cup"
++                width="650"
++                height="450"
++                loading="lazy"
++              /><span class="product-tag">THE DAILY CLASSIC</span>
++            </div>
++            <div class="coffee-info">
++              <h3>Dark Roast Espresso <span aria-hidden="true">↗</span></h3>
++              <p>Bold, smoky, and a beautiful start to the day.</p>
++            </div></a
++          >
++          <a class="coffee-card" href="/menu/cold-brew"
++            ><div class="coffee-photo">
++              <img
++                src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=650&q=80"
++                alt="A refreshing glass of cold brew coffee"
++                width="650"
++                height="450"
++                loading="lazy"
++              /><span class="product-tag">SLOW BREWED</span>
++            </div>
++            <div class="coffee-info">
++              <h3>Cold Brew <span aria-hidden="true">↗</span></h3>
++              <p>Steeped for 18 hours. Worth every minute.</p>
++            </div></a
++          >
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++      <section class="privacy-section" aria-label="Encryption details">
++        <details id="privacy-details">
++          <summary>
++            <span
++              ><svg
++                viewBox="0 0 24 24"
++                fill="none"
++                stroke="currentColor"
++                stroke-width="1.5"
++                aria-hidden="true"
++              >
++                <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6Z" />
++                <path d="m8 12 3 3 5-6" /></svg
++              >Good coffee comes with peace of mind.</span
++            ><span class="details-label"
++              >How your note is protected
++              <span aria-hidden="true">+</span></span
++            >
++          </summary>
++          <div class="privacy-copy">
++            <p>
++              Your browser establishes a fresh shared secret using X-Wing, a
++              hybrid of post-quantum ML-KEM-768 and classical X25519.
++              HKDF-SHA-256 derives an AES-256-GCM key, and a fresh 96-bit nonce
++              is used for each save. The authentication tag also protects the
++              note’s ID, version, algorithm, and timestamp.
++            </p>
++            <p>
++              This is a local notebook: an encrypted note and a wrapped
++              recipient private key are stored in IndexedDB on this device. The
++              private key is wrapped with a non-extractable browser key. Anyone
++              who can use this browser profile can reveal the note, and
++              encryption cannot protect against malicious scripts on this site.
++              Notes are not linked to an account or an order, synced, or sent to
++              a delivery team.
++            </p>
++          </div>
++        </details>
++      </section>
++    </main>
++    <footer>
++      <div class="footer-top">
++        <a href="/" class="footer-brand"
++          >THE DAILY GRIND<span>A little more care in every cup.</span></a
++        >
++        <div class="footer-links">
++          <a href="/about">Our story</a><a href="/careers">Join the team</a
++          ><a href="/contact">Get in touch</a
++          ><a href="/privacy-policy">Privacy</a>
+         </div>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
++      <div class="footer-bottom">
++        <p>© 2026 The Daily Grind Coffee Co.</p>
++        <p>
++          Thoughtfully sourced. Happily shared.
++          <span aria-hidden="true">✳</span>
++        </p>
++      </div>
++    </footer>
++  </body>
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d203ce8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,18 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "esbuild src/notes.mjs --bundle --minify --format=esm --target=es2022 --outfile=assets/notes.js",
++    "test": "node --test tests/*.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "dependencies": {
++    "@noble/post-quantum": "0.7.1"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
++  },
++  "type": "module"
+ }
+diff --git a/src/crypto.mjs b/src/crypto.mjs
+new file mode 100644
+index 0000000..aa67a84
+--- /dev/null
++++ b/src/crypto.mjs
+@@ -0,0 +1,143 @@
++import { ml_kem768_x25519 as kem } from "@noble/post-quantum/hybrid.js";
++
++export const SUITE = "X-Wing-ML-KEM-768-X25519/HKDF-SHA-256/AES-256-GCM";
++const encoder = new TextEncoder();
++const recipientContext = encoder.encode("daily-grind/recipient-key/v1");
++const random = (length) => crypto.getRandomValues(new Uint8Array(length));
++export const generateRecipient = () => kem.keygen();
++
++function metadata(envelope) {
++  return encoder.encode(
++    JSON.stringify({
++      version: envelope.version,
++      suite: envelope.suite,
++      id: envelope.id,
++      createdAt: envelope.createdAt,
++    }),
++  );
++}
++
++async function deriveKey(secret, salt, context) {
++  try {
++    const material = await crypto.subtle.importKey(
++      "raw",
++      secret,
++      "HKDF",
++      false,
++      ["deriveKey"],
++    );
++    return await crypto.subtle.deriveKey(
++      { name: "HKDF", hash: "SHA-256", salt, info: context },
++      material,
++      { name: "AES-GCM", length: 256 },
++      false,
++      ["encrypt", "decrypt"],
++    );
++  } finally {
++    secret.fill(0);
++  }
++}
++
++export async function encryptNote(publicKey, text) {
++  if (!text.trim() || text.length > 1000)
++    throw new Error("Invalid note length");
++  const envelope = {
++    version: 1,
++    suite: SUITE,
++    id: crypto.randomUUID(),
++    createdAt: new Date().toISOString(),
++    salt: random(32),
++    iv: random(12),
++  };
++  const { cipherText, sharedSecret } = kem.encapsulate(publicKey);
++  const context = metadata(envelope);
++  const key = await deriveKey(sharedSecret, envelope.salt, context);
++  const plaintext = encoder.encode(text);
++  try {
++    envelope.capsule = cipherText;
++    envelope.ciphertext = new Uint8Array(
++      await crypto.subtle.encrypt(
++        {
++          name: "AES-GCM",
++          iv: envelope.iv,
++          additionalData: context,
++          tagLength: 128,
++        },
++        key,
++        plaintext,
++      ),
++    );
++    return envelope;
++  } finally {
++    plaintext.fill(0);
++  }
++}
++
++export async function decryptNote(secretKey, envelope) {
++  if (
++    envelope.version !== 1 ||
++    envelope.suite !== SUITE ||
++    !(envelope.iv instanceof Uint8Array) ||
++    envelope.iv.length !== 12 ||
++    !(envelope.salt instanceof Uint8Array) ||
++    envelope.salt.length !== 32 ||
++    typeof envelope.id !== "string" ||
++    typeof envelope.createdAt !== "string"
++  ) {
++    throw new Error("Unsupported or invalid encrypted note");
++  }
++  const secret = kem.decapsulate(envelope.capsule, secretKey);
++  const context = metadata(envelope);
++  const key = await deriveKey(secret, envelope.salt, context);
++  const plaintext = new Uint8Array(
++    await crypto.subtle.decrypt(
++      {
++        name: "AES-GCM",
++        iv: envelope.iv,
++        additionalData: context,
++        tagLength: 128,
++      },
++      key,
++      envelope.ciphertext,
++    ),
++  );
++  try {
++    return new TextDecoder("utf-8", { fatal: true }).decode(plaintext);
++  } finally {
++    plaintext.fill(0);
++  }
++}
++
++// Store only an encrypted private key. IndexedDB can clone the non-extractable wrapping key.
++export async function protectRecipient(secretKey) {
++  const key = await crypto.subtle.generateKey(
++    { name: "AES-GCM", length: 256 },
++    false,
++    ["encrypt", "decrypt"],
++  );
++  const iv = random(12);
++  try {
++    const ciphertext = await crypto.subtle.encrypt(
++      { name: "AES-GCM", iv, additionalData: recipientContext },
++      key,
++      secretKey,
++    );
++    return { key, iv, ciphertext };
++  } finally {
++    secretKey.fill(0);
++  }
++}
++
++export async function recoverRecipient(protectedKey) {
++  return new Uint8Array(
++    await crypto.subtle.decrypt(
++      {
++        name: "AES-GCM",
++        iv: protectedKey.iv,
++        additionalData: recipientContext,
++      },
++      protectedKey.key,
++      protectedKey.ciphertext,
++    ),
++  );
++}
+diff --git a/src/notes.mjs b/src/notes.mjs
+new file mode 100644
+index 0000000..7d8fb0a
+--- /dev/null
++++ b/src/notes.mjs
+@@ -0,0 +1,195 @@
++import {
++  generateRecipient,
++  encryptNote,
++  decryptNote,
++  protectRecipient,
++  recoverRecipient,
++} from "./crypto.mjs";
++
++const form = document.querySelector("#notes-form");
++const fields = document.querySelector("#note-fields");
++const input = document.querySelector("#delivery-note");
++const status = document.querySelector("#note-status");
++const saved = document.querySelector("#saved-note");
++const reveal = document.querySelector("#reveal-note");
++const remove = document.querySelector("#delete-note");
++const preview = document.querySelector("#note-preview");
++const counter = document.querySelector("#note-count");
++const submit = document.querySelector("#save-note");
++let db;
++let busy = false;
++
++function database() {
++  return new Promise((resolve, reject) => {
++    const request = indexedDB.open("daily-grind-private-notes", 1);
++    request.onupgradeneeded = () => request.result.createObjectStore("notes");
++    request.onsuccess = () => resolve(request.result);
++    request.onerror = () => reject(request.error);
++    request.onblocked = () => reject(new Error("Storage is blocked"));
++  });
++}
++
++function storage(operation, value) {
++  return new Promise((resolve, reject) => {
++    const transaction = db.transaction(
++      "notes",
++      operation === "get" ? "readonly" : "readwrite",
++    );
++    const store = transaction.objectStore("notes");
++    const request =
++      operation === "put"
++        ? store.put(value, "current")
++        : store[operation]("current");
++    transaction.oncomplete = () => resolve(request.result);
++    transaction.onerror = () => reject(transaction.error);
++    transaction.onabort = () => reject(transaction.error);
++  });
++}
++
++function hidePreview() {
++  preview.textContent = "";
++  preview.hidden = true;
++  reveal.textContent = "Reveal note";
++  reveal.setAttribute("aria-expanded", "false");
++}
++function announce(message, error = false) {
++  status.textContent = message;
++  status.classList.toggle("error", error);
++}
++function setBusy(value) {
++  busy = value;
++  fields.disabled = value;
++  reveal.disabled = value;
++  remove.disabled = value;
++  form.setAttribute("aria-busy", String(value));
++}
++
++input.addEventListener("input", () => {
++  counter.textContent = `${input.value.length} / 1,000`;
++  input.setCustomValidity("");
++});
++form.addEventListener("submit", async (event) => {
++  event.preventDefault();
++  if (busy || !db) return;
++  if (!input.value.trim()) {
++    input.setCustomValidity("Add a delivery note before saving.");
++    input.reportValidity();
++    return;
++  }
++  setBusy(true);
++  hidePreview();
++  announce("Encrypting your note on this device…");
++  let recipient;
++  try {
++    recipient = generateRecipient();
++    const envelope = await encryptNote(recipient.publicKey, input.value);
++    const protectedKey = await protectRecipient(recipient.secretKey);
++    await storage("put", { envelope, protectedKey });
++    input.value = "";
++    counter.textContent = "0 / 1,000";
++    saved.hidden = false;
++    submit.innerHTML =
++      'Replace encrypted note <span aria-hidden="true">↗</span>';
++    announce(
++      "Note encrypted and saved on this browser. It has not been sent to a courier.",
++    );
++  } catch {
++    announce(
++      "Your note could not be saved. Check that browser storage is available and try again.",
++      true,
++    );
++  } finally {
++    recipient?.secretKey.fill(0);
++    setBusy(false);
++  }
++});
++
++reveal.addEventListener("click", async () => {
++  if (!preview.hidden) {
++    hidePreview();
++    return;
++  }
++  if (busy) return;
++  setBusy(true);
++  let secret;
++  try {
++    const record = await storage("get");
++    if (!record) throw new Error("No saved note");
++    secret = await recoverRecipient(record.protectedKey);
++    preview.textContent = await decryptNote(secret, record.envelope);
++    preview.hidden = false;
++    reveal.textContent = "Hide note";
++    reveal.setAttribute("aria-expanded", "true");
++    announce("Note decrypted locally. Hide it when you’re finished.");
++  } catch {
++    hidePreview();
++    announce(
++      "This note could not be authenticated or decrypted. Its contents have not been displayed.",
++      true,
++    );
++  } finally {
++    secret?.fill(0);
++    setBusy(false);
++  }
++});
++remove.addEventListener("click", async () => {
++  if (busy) return;
++  setBusy(true);
++  hidePreview();
++  try {
++    await storage("delete");
++    saved.hidden = true;
++    submit.innerHTML = 'Encrypt & save note <span aria-hidden="true">↗</span>';
++    announce("Saved note and its encryption key deleted from this browser.");
++  } catch {
++    announce("The note could not be deleted. Please try again.", true);
++  } finally {
++    setBusy(false);
++  }
++});
++document.querySelector("#clear-note").addEventListener("click", () => {
++  input.value = "";
++  input.setCustomValidity("");
++  counter.textContent = "0 / 1,000";
++  hidePreview();
++  input.focus();
++});
++document.addEventListener("visibilitychange", () => {
++  if (document.hidden) hidePreview();
++});
++window.addEventListener("pagehide", () => {
++  hidePreview();
++  input.value = "";
++  counter.textContent = "0 / 1,000";
++});
++
++async function initialize() {
++  try {
++    if (!globalThis.isSecureContext || !crypto.subtle || !globalThis.indexedDB)
++      throw new Error("Unsupported browser");
++    db = await database();
++    db.onversionchange = () => {
++      db.close();
++      fields.disabled = true;
++      announce("Reload this page to reconnect to secure storage.", true);
++    };
++    const existing = await storage("get");
++    saved.hidden = !existing;
++    if (existing)
++      submit.innerHTML =
++        'Replace encrypted note <span aria-hidden="true">↗</span>';
++    fields.disabled = false;
++    announce(
++      existing
++        ? "Your encrypted note is saved on this browser."
++        : "Ready to encrypt. Your note stays on this browser.",
++    );
++  } catch {
++    fields.disabled = true;
++    announce(
++      "Secure notes are unavailable. Use HTTPS and allow browser storage. Nothing has been saved.",
++      true,
++    );
++  }
++}
++initialize();
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..138fe69
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,1046 @@
++@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&display=swap");
++:root {
++  --green: #263c2d;
++  --ink: #29382d;
++  --cream: #f8f6f0;
++  --muted: #6c7168;
++  --line: #dedfd5;
++  --serif: "Libre Caslon Display", Georgia, serif;
++  --sans: "DM Sans", sans-serif;
++  color-scheme: light;
++}
++* {
++  box-sizing: border-box;
++}
++body {
++  margin: 0;
++  background: var(--cream);
++  color: var(--ink);
++  font-family: var(--sans);
++  font-size: 14px;
++  line-height: 1.6;
++}
++a {
++  color: inherit;
++  text-decoration: none;
++}
++button,
++textarea {
++  font: inherit;
++}
++button,
++a,
++summary {
++  -webkit-tap-highlight-color: transparent;
++}
++button {
++  cursor: pointer;
++}
++a:focus-visible,
++button:focus-visible,
++summary:focus-visible {
++  outline: 3px solid #a77942;
++  outline-offset: 5px;
++}
++button:disabled {
++  cursor: wait;
++  opacity: 0.6;
++}
++[hidden] {
++  display: none !important;
++}
++.announcement {
++  background: var(--green);
++  color: #fff;
++  text-align: center;
++  font-size: 9px;
++  font-weight: 600;
++  letter-spacing: 1.5px;
++  padding: 9px 16px;
++}
++.announcement span {
++  letter-spacing: 0.3px;
++  font-weight: 400;
++  margin-left: 18px;
++  color: #d5dbd0;
++}
++.navigation {
++  max-width: 1440px;
++  margin: auto;
++  min-height: 100px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding: 18px 5.5%;
++  gap: 26px;
++}
++.logo {
++  display: flex;
++  gap: 13px;
++  align-items: center;
++  font-size: 17px;
++  line-height: 1.15;
++  font-weight: 700;
++  letter-spacing: 1.6px;
++}
++.logo-mark {
++  position: relative;
++  width: 52px;
++  height: 52px;
++  border: 1.5px solid var(--green);
++  border-radius: 50%;
++  font-family: var(--serif);
++  font-size: 33px;
++  letter-spacing: -4px;
++  display: grid;
++  place-content: center;
++  padding-right: 5px;
++}
++.logo-mark > span {
++  position: absolute;
++  right: 6px;
++  top: 8px;
++  font-family: var(--sans);
++  font-size: 13px;
++  letter-spacing: 0;
++}
++.logo-caption {
++  display: block;
++  font-size: 6.5px;
++  letter-spacing: 1.25px;
++  margin-top: 6px;
++  font-weight: 500;
++}
++.nav-links {
++  display: flex;
++  list-style: none;
++  gap: 32px;
++  padding: 0;
++  margin: 0;
++  font-size: 12px;
++}
++.nav-links a:hover,
++.footer-links a:hover {
++  text-decoration: underline;
++  text-underline-offset: 5px;
++}
++.nav-account {
++  display: flex;
++  gap: 26px;
++  align-items: center;
++  font-size: 11px;
++}
++.account-link {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++.account-link svg {
++  width: 17px;
++  height: 17px;
++}
++.logout {
++  border-left: 1px solid var(--line);
++  padding-left: 23px;
++}
++.logout span {
++  margin-left: 10px;
++}
++.hero {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  min-height: 435px;
++  max-width: 1440px;
++  margin: auto;
++}
++.hero-copy {
++  background: var(--green);
++  color: var(--cream);
++  padding: 43px 11% 24px;
++}
++.eyebrow {
++  font-size: 9px;
++  letter-spacing: 1.8px;
++  font-weight: 600;
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  margin: 0 0 20px;
++}
++.little-line {
++  width: 20px;
++  height: 1px;
++  background: #b9c3ad;
++}
++h1,
++h2 {
++  font-family: var(--serif);
++  font-weight: 400;
++  line-height: 1.04;
++  margin: 0;
++}
++h1 {
++  font-size: clamp(46px, 4.55vw, 69px);
++  letter-spacing: -1.3px;
++}
++h1 em,
++h2 em {
++  font-weight: 400;
++  color: #bfc8ad;
++}
++h2 em {
++  color: #737e58;
++}
++.hero-copy > p:not(.eyebrow) {
++  font-size: 12px;
++  color: #d3d9cd;
++  line-height: 1.85;
++  margin: 20px 0 22px;
++}
++.button {
++  min-height: 47px;
++  display: inline-flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 26px;
++  border-radius: 3px;
++  padding: 12px 20px;
++  border: 1px solid transparent;
++  font-size: 11px;
++  font-weight: 600;
++  transition: background 0.2s;
++}
++.light-button {
++  color: var(--green);
++  background: #f0eedf;
++}
++.light-button:hover {
++  background: #fff;
++}
++.button > span {
++  font-size: 19px;
++  font-weight: 400;
++  line-height: 1;
++}
++.hero-bottom {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  font-size: 7px;
++  letter-spacing: 1.25px;
++  color: #c6cdbd;
++  margin-top: 28px;
++}
++.sun {
++  font-size: 23px;
++}
++.hero-image {
++  position: relative;
++  min-width: 0;
++  overflow: hidden;
++  background: #75513e;
++}
++.hero-image > img {
++  height: 100%;
++  width: 100%;
++  position: absolute;
++  inset: 0;
++  object-fit: cover;
++  object-position: center;
++}
++.hero-image:after {
++  content: "";
++  position: absolute;
++  inset: 60% 0 0;
++  background: linear-gradient(transparent, #0006);
++  pointer-events: none;
++}
++.image-caption {
++  position: absolute;
++  bottom: 25px;
++  left: 30px;
++  color: white;
++  font-size: 8px;
++  letter-spacing: 1.6px;
++  z-index: 1;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.caption-dot {
++  width: 6px;
++  height: 6px;
++  background: #e0e6cd;
++  border-radius: 50%;
++}
++.image-stamp {
++  position: absolute;
++  right: 27px;
++  top: 25px;
++  width: 100px;
++  height: 100px;
++  background: #f1eddf;
++  color: var(--green);
++  border-radius: 50%;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  flex-direction: column;
++  text-align: center;
++  font-family: var(--serif);
++  font-size: 25px;
++  line-height: 0.95;
++  transform: rotate(12deg);
++}
++.image-stamp > span {
++  font-family: var(--sans);
++  font-size: 5px;
++  letter-spacing: 1px;
++  margin-top: 8px;
++}
++.notes-section {
++  max-width: 1280px;
++  margin: 0 auto;
++  padding: 66px 5.5% 61px;
++  display: grid;
++  grid-template-columns: 0.95fr 1.05fr;
++  gap: 9%;
++}
++.notes-intro {
++  padding-top: 14px;
++}
++.notes-intro .eyebrow {
++  color: #747d62;
++  margin-bottom: 18px;
++}
++.notes-intro h2 {
++  font-size: 45px;
++  letter-spacing: -0.6px;
++}
++.notes-intro > p:not(.eyebrow) {
++  max-width: 355px;
++  font-size: 12px;
++  color: var(--muted);
++  margin-top: 19px;
++  line-height: 1.9;
++}
++.privacy-points {
++  display: flex;
++  flex-direction: column;
++  gap: 17px;
++  margin: 25px 0 23px;
++}
++.privacy-points > div {
++  display: flex;
++  align-items: center;
++  gap: 13px;
++}
++.outline-icon {
++  width: 36px;
++  height: 36px;
++  display: grid;
++  place-items: center;
++  border: 1px solid #dcded2;
++  border-radius: 50%;
++  background: #f0f1e8;
++}
++.outline-icon svg {
++  width: 18px;
++  height: 18px;
++}
++.privacy-points strong {
++  display: block;
++  font-weight: 550;
++  font-size: 11px;
++}
++.privacy-points small {
++  display: block;
++  color: var(--muted);
++  font-size: 10px;
++  margin-top: 1px;
++}
++.text-link {
++  display: inline-flex;
++  gap: 25px;
++  align-items: center;
++  font-size: 10px;
++  font-weight: 600;
++  padding: 7px 0;
++  border-bottom: 1px solid #abb19f;
++}
++.text-link span {
++  font-size: 17px;
++}
++.notes-card {
++  background: #fffefa;
++  border: 1px solid #dddfd4;
++  border-radius: 7px;
++  padding: 25px 27px;
++  box-shadow: 0 6px 24px #2b382b04;
++  min-width: 0;
++}
++.card-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 15px;
++  padding-bottom: 21px;
++  border-bottom: 1px solid #e9e9df;
++  margin-bottom: 21px;
++}
++.mini-label {
++  font-size: 7px;
++  letter-spacing: 1.4px;
++  color: #7a7e6c;
++  font-weight: 550;
++}
++.card-heading h3 {
++  font-family: var(--serif);
++  font-size: 28px;
++  font-weight: 400;
++  margin: 2px 0 0;
++  line-height: 1.2;
++}
++.secure-badge {
++  display: flex;
++  align-items: center;
++  gap: 5px;
++  border: 1px solid #dee4d3;
++  background: #f0f3e8;
++  border-radius: 20px;
++  padding: 5px 9px;
++  color: #526346;
++  font-size: 8px;
++  font-weight: 600;
++}
++.secure-badge svg {
++  width: 13px;
++  height: 13px;
++}
++fieldset {
++  border: 0;
++  padding: 0;
++  margin: 0;
++  min-width: 0;
++}
++label {
++  display: block;
++  font-size: 10px;
++  font-weight: 600;
++  margin-bottom: 9px;
++}
++label > span {
++  font-weight: 400;
++  color: var(--muted);
++  font-size: 9px;
++}
++.textarea-wrap {
++  position: relative;
++}
++textarea {
++  display: block;
++  width: 100%;
++  min-height: 124px;
++  resize: vertical;
++  border: 1px solid #c4c9b9;
++  border-radius: 3px;
++  background: #fffefa;
++  padding: 13px 13px 28px;
++  font-size: 1rem;
++  line-height: 1.65;
++  color: var(--ink);
++}
++textarea::placeholder {
++  color: #85897d;
++}
++textarea:focus {
++  outline: 2px solid #738564;
++  outline-offset: 2px;
++}
++textarea:user-invalid {
++  border-color: #a24432;
++}
++#note-count {
++  position: absolute;
++  right: 11px;
++  bottom: 8px;
++  font-size: 8px;
++  color: #7c8175;
++  pointer-events: none;
++}
++.field-hint {
++  font-size: 8px;
++  color: #7a7e73;
++  margin: 7px 0 17px;
++}
++.form-actions {
++  display: flex;
++  align-items: center;
++  gap: 20px;
++}
++.green-button {
++  background: var(--green);
++  color: #fff;
++  flex: 1;
++  font-size: 10px;
++}
++.green-button:hover {
++  background: #3c5340;
++}
++.clear-button {
++  font-size: 10px;
++  background: none;
++  border: 0;
++  min-height: 48px;
++  padding: 10px;
++  color: #5d6456;
++}
++.clear-button:hover {
++  text-decoration: underline;
++}
++.note-status-row {
++  display: flex;
++  align-items: baseline;
++  gap: 6px;
++  margin-top: 13px;
++}
++.status-dot {
++  flex: none;
++  width: 4px;
++  height: 4px;
++  border-radius: 50%;
++  background: #6c7d53;
++}
++#note-status {
++  font-size: 8px;
++  color: #67715c;
++  line-height: 1.65;
++  margin: 0;
++}
++.error,
++#note-status.error {
++  color: #9b392a;
++}
++.local-disclaimer {
++  font-size: 8px;
++  color: #74796d;
++  border-top: 1px solid #e9e9df;
++  margin: 16px 0 0;
++  padding-top: 12px;
++  line-height: 1.8;
++}
++.saved-note {
++  border: 1px solid #dce1d3;
++  background: #f4f6ee;
++  border-radius: 3px;
++  padding: 11px;
++  margin-top: 13px;
++}
++.saved-heading {
++  font-size: 9px;
++  display: flex;
++  justify-content: space-between;
++  flex-wrap: wrap;
++  gap: 4px;
++}
++.saved-heading > span > span {
++  margin-right: 4px;
++}
++.saved-heading button {
++  border: 0;
++  background: none;
++  font-size: 9px;
++  text-decoration: underline;
++  text-underline-offset: 3px;
++  color: var(--green);
++  padding: 7px;
++  min-height: 32px;
++}
++#delete-note {
++  color: #964b3b;
++}
++#note-preview {
++  font-size: 12px;
++  white-space: pre-wrap;
++  overflow-wrap: anywhere;
++  border-top: 1px solid #dce1d3;
++  padding-top: 10px;
++}
++.favorites {
++  max-width: 1280px;
++  margin: auto;
++  padding: 40px 5.5% 46px;
++  border-top: 1px solid var(--line);
++}
++.section-heading {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-end;
++  gap: 20px;
++  margin-bottom: 28px;
++}
++.section-heading .eyebrow {
++  color: #747d62;
++  margin-bottom: 12px;
++  font-size: 8px;
++}
++.section-heading h2 {
++  font-size: 37px;
++}
++.favorites-grid {
++  display: grid;
++  grid-template-columns: repeat(3, minmax(0, 1fr));
++  gap: 24px;
++}
++.coffee-card {
++  min-width: 0;
++}
++.coffee-photo {
++  height: 196px;
++  overflow: hidden;
++  position: relative;
++  border-radius: 4px;
++  background: #e5e1d7;
++}
++.coffee-photo img {
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++  transition: transform 0.3s;
++}
++.coffee-card:hover img {
++  transform: scale(1.035);
++}
++.product-tag {
++  position: absolute;
++  left: 13px;
++  top: 13px;
++  background: #f9f7ed;
++  padding: 4px 8px;
++  border-radius: 2px;
++  font-size: 6px;
++  letter-spacing: 1px;
++  font-weight: 600;
++}
++.coffee-info {
++  padding: 16px 1px 0;
++}
++.coffee-info h3 {
++  margin: 0 0 4px;
++  display: flex;
++  justify-content: space-between;
++  font-size: 13px;
++  font-weight: 550;
++}
++.coffee-info h3 span {
++  font-size: 17px;
++}
++.coffee-info p {
++  font-size: 10px;
++  color: var(--muted);
++  margin: 0;
++}
++.privacy-section {
++  max-width: 1280px;
++  padding: 0 5.5% 48px;
++  margin: auto;
++}
++details {
++  border: 1px solid #dce0d2;
++  border-radius: 4px;
++  background: #eff1e7;
++}
++summary {
++  list-style: none;
++  cursor: pointer;
++  padding: 20px 23px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 15px;
++  font-size: 11px;
++}
++summary::-webkit-details-marker {
++  display: none;
++}
++summary > span:first-child {
++  display: flex;
++  align-items: center;
++  gap: 11px;
++}
++summary svg {
++  width: 19px;
++  height: 19px;
++}
++.details-label {
++  font-size: 9px;
++  color: #69745c;
++  display: flex;
++  align-items: center;
++  gap: 19px;
++}
++.details-label > span {
++  font-size: 20px;
++  font-weight: 400;
++}
++details[open] .details-label > span {
++  transform: rotate(45deg);
++}
++.privacy-copy {
++  padding: 0 24px 16px;
++  max-width: 850px;
++  font-size: 11px;
++  color: #616b57;
++  line-height: 1.9;
++}
++footer {
++  background: #eceee3;
++  padding: 35px max(5.5%, calc((100vw - 1140px) / 2)) 18px;
++}
++.footer-top {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 24px;
++  padding-bottom: 29px;
++}
++.footer-brand {
++  font-size: 15px;
++  font-weight: 650;
++  letter-spacing: 1.6px;
++}
++.footer-brand > span {
++  display: block;
++  font-size: 10px;
++  font-weight: 400;
++  letter-spacing: 0;
++  color: #69705f;
++  margin-top: 7px;
++}
++.footer-links {
++  display: flex;
++  gap: 26px;
++  font-size: 10px;
++}
++.footer-bottom {
++  border-top: 1px solid #d8ddce;
++  padding-top: 14px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  color: #747c69;
++  font-size: 8px;
++}
++.footer-bottom p {
++  margin: 0;
++}
++.footer-bottom span {
++  font-size: 16px;
++  vertical-align: middle;
++  margin-left: 13px;
++}
++.visually-hidden {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip-path: inset(50%);
++  white-space: nowrap;
++  border: 0;
++}
++@media (min-width: 1500px) {
++  .hero-copy {
++    padding-left: 80px;
++  }
++  .hero {
++    border-radius: 5px;
++    overflow: hidden;
++  }
++}
++@media (max-width: 900px) {
++  .navigation {
++    padding-inline: 5%;
++    gap: 18px;
++  }
++  .nav-links {
++    gap: 18px;
++  }
++  .nav-account {
++    gap: 15px;
++  }
++  .account-link {
++    font-size: 0;
++  }
++  .logout {
++    padding-left: 15px;
++  }
++  .hero-copy {
++    padding-inline: 9%;
++  }
++  .hero {
++    min-height: 420px;
++  }
++  .hero-copy h1 {
++    font-size: 51px;
++  }
++  .hero-copy > p:not(.eyebrow) {
++    font-size: 11px;
++  }
++  .desktop-break {
++    display: none;
++  }
++  .notes-section {
++    gap: 5%;
++    padding-inline: 5%;
++  }
++  .notes-intro h2 {
++    font-size: 39px;
++  }
++  .notes-card {
++    padding: 21px;
++  }
++  .notes-intro .eyebrow {
++    font-size: 8px;
++  }
++  .notes-intro > p:not(.eyebrow) {
++    font-size: 11px;
++  }
++  .favorites-grid {
++    gap: 17px;
++  }
++  .coffee-photo {
++    height: 170px;
++  }
++}
++@media (max-width: 650px) {
++  body {
++    font-size: 16px;
++  }
++  .announcement {
++    font-size: 8px;
++    padding: 8px;
++  }
++  .announcement span {
++    display: none;
++  }
++  .navigation {
++    min-height: 85px;
++    padding: 15px 6%;
++    flex-wrap: wrap;
++    gap: 16px;
++  }
++  .logo {
++    font-size: 14px;
++  }
++  .logo-mark {
++    height: 44px;
++    width: 44px;
++    font-size: 29px;
++  }
++  .logo-caption {
++    font-size: 5.5px;
++  }
++  .nav-account {
++    margin-left: auto;
++  }
++  .account-link svg {
++    width: 20px;
++    height: 20px;
++  }
++  .logout {
++    font-size: 11px;
++  }
++  .nav-links {
++    order: 3;
++    width: 100%;
++    justify-content: center;
++    gap: 38px;
++    padding-top: 12px;
++    border-top: 1px solid var(--line);
++    font-size: 11px;
++  }
++  .hero {
++    grid-template-columns: 1fr;
++  }
++  .hero-copy {
++    padding: 35px 7% 24px;
++  }
++  .hero-copy h1 {
++    font-size: 55px;
++  }
++  .hero-copy .eyebrow {
++    font-size: 8px;
++  }
++  .hero-copy > p:not(.eyebrow) {
++    font-size: 12px;
++    max-width: 290px;
++  }
++  .hero-bottom {
++    margin-top: 22px;
++  }
++  .hero-image {
++    height: 250px;
++  }
++  .image-stamp {
++    height: 85px;
++    width: 85px;
++    font-size: 23px;
++    right: 20px;
++    top: 20px;
++  }
++  .notes-section {
++    grid-template-columns: 1fr;
++    padding: 40px 6%;
++    gap: 30px;
++  }
++  .notes-intro {
++    padding: 0;
++  }
++  .notes-intro h2 {
++    font-size: 43px;
++  }
++  .notes-intro > p:not(.eyebrow) {
++    font-size: 13px;
++    max-width: 100%;
++  }
++  .privacy-points {
++    flex-direction: row;
++    gap: 20px;
++    flex-wrap: wrap;
++  }
++  .privacy-points strong {
++    font-size: 11px;
++  }
++  .privacy-points small {
++    font-size: 10px;
++  }
++  .notes-card {
++    padding: 23px;
++  }
++  .mini-label {
++    font-size: 8px;
++  }
++  .secure-badge {
++    font-size: 10px;
++  }
++  .card-heading h3 {
++    font-size: 31px;
++  }
++  label {
++    font-size: 12px;
++  }
++  label > span {
++    font-size: 10px;
++  }
++  textarea {
++    font-size: 16px;
++    min-height: 150px;
++    line-height: 1.6;
++  }
++  .field-hint,
++  #note-status,
++  .local-disclaimer {
++    font-size: 10px;
++  }
++  #note-count {
++    font-size: 10px;
++  }
++  .green-button {
++    font-size: 12px;
++  }
++  .clear-button {
++    font-size: 12px;
++  }
++  .saved-heading,
++  .saved-heading button {
++    font-size: 11px;
++  }
++  .saved-heading button {
++    min-height: 44px;
++  }
++  .favorites {
++    padding: 30px 6% 35px;
++  }
++  .section-heading {
++    align-items: flex-start;
++    flex-direction: column;
++    gap: 10px;
++  }
++  .section-heading h2 {
++    font-size: 35px;
++  }
++  .favorites-grid {
++    grid-template-columns: 1fr;
++    gap: 27px;
++  }
++  .coffee-photo {
++    height: 230px;
++  }
++  .coffee-info h3 {
++    font-size: 16px;
++  }
++  .coffee-info p {
++    font-size: 12px;
++  }
++  .product-tag {
++    font-size: 8px;
++  }
++  .text-link {
++    font-size: 11px;
++  }
++  .privacy-section {
++    padding: 0 6% 35px;
++  }
++  summary {
++    align-items: flex-start;
++    flex-direction: column;
++    padding: 17px;
++    font-size: 12px;
++    gap: 6px;
++  }
++  .details-label {
++    margin-left: 30px;
++    font-size: 10px;
++  }
++  .privacy-copy {
++    font-size: 12px;
++    padding-inline: 18px;
++  }
++  .footer-top {
++    align-items: flex-start;
++    flex-direction: column;
++  }
++  .footer-links {
++    flex-wrap: wrap;
++    gap: 22px;
++    font-size: 11px;
++  }
++  .footer-bottom {
++    font-size: 8px;
++    align-items: flex-start;
++    gap: 20px;
++  }
++  .footer-bottom p {
++    max-width: 46%;
++  }
++  .button {
++    min-height: 48px;
++  }
++  .nav-links a,
++  .nav-account a,
++  .footer-links a {
++    display: inline-flex;
++    align-items: center;
++    min-height: 32px;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  *,
++  *::before,
++  *::after {
++    transition: none !important;
++    scroll-behavior: auto !important;
++  }
++}
+diff --git a/tests/crypto.test.mjs b/tests/crypto.test.mjs
+new file mode 100644
+index 0000000..b0d0e15
+--- /dev/null
++++ b/tests/crypto.test.mjs
+@@ -0,0 +1,80 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  generateRecipient,
++  encryptNote,
++  decryptNote,
++  protectRecipient,
++  recoverRecipient,
++} from "../src/crypto.mjs";
++
++const note = "Side door, please. 门口 ☕\nGive a gentle knock.";
++
++test("hybrid KEM envelope decrypts Unicode notes and stores no plaintext", async () => {
++  const { publicKey, secretKey } = generateRecipient();
++  const envelope = await encryptNote(publicKey, note);
++  assert.equal(await decryptNote(secretKey, envelope), note);
++  assert.equal(envelope.iv.length, 12);
++  assert.equal(envelope.capsule.length, 1120);
++  assert.equal(
++    envelope.ciphertext.length,
++    new TextEncoder().encode(note).length + 16,
++  );
++  assert.ok(!JSON.stringify(envelope).includes("Side door"));
++});
++
++test("each save creates a fresh encapsulation, salt, nonce, and record ID", async () => {
++  const { publicKey } = generateRecipient();
++  const first = await encryptNote(publicKey, note);
++  const second = await encryptNote(publicKey, note);
++  for (const field of ["capsule", "salt", "iv", "id", "ciphertext"])
++    assert.notDeepEqual(first[field], second[field]);
++});
++
++test("ciphertext, capsule, nonce, salt and bound metadata tampering are rejected", async () => {
++  const { publicKey, secretKey } = generateRecipient();
++  const original = await encryptNote(publicKey, note);
++  for (const field of ["ciphertext", "capsule", "iv", "salt"]) {
++    const changed = structuredClone(original);
++    changed[field][0] ^= 1;
++    await assert.rejects(decryptNote(secretKey, changed), undefined, field);
++  }
++  for (const field of ["id", "createdAt", "suite", "version"]) {
++    const changed = structuredClone(original);
++    changed[field] = field === "version" ? 2 : "tampered";
++    await assert.rejects(decryptNote(secretKey, changed), undefined, field);
++  }
++});
++
++test("another recipient cannot decrypt the note", async () => {
++  const recipient = generateRecipient();
++  const other = generateRecipient();
++  await assert.rejects(
++    decryptNote(other.secretKey, await encryptNote(recipient.publicKey, note)),
++  );
++});
++
++test("recipient key is wrapped, non-extractable, cloneable and recoverable", async () => {
++  const { secretKey, publicKey } = generateRecipient();
++  const envelope = await encryptNote(publicKey, note);
++  const protectedKey = await protectRecipient(secretKey);
++  assert.ok(secretKey.every((value) => value === 0));
++  assert.equal(protectedKey.key.extractable, false);
++  await assert.rejects(crypto.subtle.exportKey("raw", protectedKey.key));
++  const recovered = await recoverRecipient(structuredClone(protectedKey));
++  assert.equal(await decryptNote(recovered, structuredClone(envelope)), note);
++  recovered.fill(0);
++});
++
++test("tampered wrapped private key is rejected", async () => {
++  const protectedKey = await protectRecipient(generateRecipient().secretKey);
++  const ciphertext = new Uint8Array(protectedKey.ciphertext);
++  ciphertext[0] ^= 1;
++  await assert.rejects(recoverRecipient({ ...protectedKey, ciphertext }));
++});
++
++test("empty and oversized notes are rejected", async () => {
++  const { publicKey } = generateRecipient();
++  await assert.rejects(encryptNote(publicKey, "   "));
++  await assert.rejects(encryptNote(publicKey, "a".repeat(1001)));
++});

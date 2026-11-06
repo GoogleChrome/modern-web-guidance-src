@@ -1,0 +1,525 @@
+diff --git a/index.html b/index.html
+index 66c9173..61fcb05 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,32 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    ::selection {
++      background-color: var(--accent);
++      color: var(--text);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
+     }
+ 
+     * {
+@@ -129,12 +155,350 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Main Layout: Seasonal Favorites + Order Customization */
++    .main-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    @media (max-width: 850px) {
++      .main-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Order Customization Section */
++    .order-card {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++    }
++
++    .order-card h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-subtitle {
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .form-group > label,
++    fieldset legend {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.4rem;
++      color: var(--primary);
++    }
++
++    fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 16px;
++      margin-block-end: 1.25rem;
++    }
++
++    fieldset legend {
++      padding: 0 6px;
++      margin-block-end: 0;
++    }
++
++    .choice-list {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 6px;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 0.95rem;
++      min-height: 44px;
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    .choice-label:has(:checked) {
++      background-color: color-mix(in oklab, var(--secondary), white 50%);
++      border-color: var(--primary);
++      font-weight: 600;
++    }
++
++    /* Textual inputs, date/time pickers, and textarea */
++    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
++    textarea,
++    select {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1.5px solid var(--primary);
++      border-radius: 6px;
++      padding: 0.7rem 0.85rem;
++      min-height: 48px;
++    }
++
++    textarea {
++      resize: vertical;
++      field-sizing: content;
++      min-height: 80px;
++      max-height: 160px;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    input::placeholder,
++    textarea::placeholder {
++      color: #795548;
++      opacity: 0.85;
++    }
++
++    input:focus-visible,
++    textarea:focus-visible,
++    select:focus-visible,
++    button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* User-interacted validity styling (excluding range sliders) */
++    input:not([type="range"]):user-invalid,
++    textarea:user-invalid,
++    select:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    input:not([type="range"]):user-valid,
++    textarea:user-valid,
++    select:user-valid {
++      border-color: #2e7d32;
++    }
++
++    /* Customizable Select & Picker Styling */
++    .brand-select,
++    .brand-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .brand-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      cursor: pointer;
++      background-color: var(--light);
++      color: var(--text);
++      border: 1.5px solid var(--primary);
++      border-radius: 6px;
++      padding: 0.7rem 0.85rem;
++    }
++
++    .brand-select::picker(select) {
++      background-color: var(--light);
++      color: var(--text);
++      border: 2px solid var(--primary);
++      border-radius: 8px;
++      padding: 0.5rem;
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.2);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    .brand-select::picker-icon {
++      color: var(--primary);
++    }
++
++    .brand-select option {
++      padding: 0.55rem 0.75rem;
++      border-radius: 4px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .brand-select option:hover,
++    .brand-select option:focus {
++      background-color: var(--secondary);
++    }
++
++    .brand-select option::checkmark {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    /* Range slider layout */
++    .range-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-block-end: 0.4rem;
++    }
++
++    .range-header label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .range-header output {
++      font-size: 0.9rem;
++      font-weight: 600;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      cursor: pointer;
++    }
++
++    /* Fallback for older browsers without accent-color */
++    @supports not (accent-color: var(--primary)) {
++      form input[type="checkbox"].visually-hidden,
++      form input[type="radio"].visually-hidden {
++        position: absolute !important;
++        clip-path: inset(50%) !important;
++        overflow: hidden !important;
++        width: 1px !important;
++        height: 1px !important;
++        margin: -1px !important;
++        padding: 0 !important;
++        border: 0 !important;
++        white-space: nowrap !important;
++      }
++
++      .choice-label {
++        position: relative;
++        padding-left: 2.2rem;
++      }
++
++      .choice-label input[type="checkbox"] + span::before,
++      .choice-label input[type="radio"] + span::before {
++        content: "";
++        position: absolute;
++        left: 0.6rem;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 1.15rem;
++        height: 1.15rem;
++        border: 2px solid var(--primary);
++        background: white;
++        box-sizing: border-box;
++      }
++
++      .choice-label input[type="checkbox"] + span::before {
++        border-radius: 4px;
++      }
++
++      .choice-label input[type="radio"] + span::before {
++        border-radius: 50%;
++      }
++
++      .choice-label input:focus-visible + span::before {
++        outline: 2px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      .choice-label input:checked + span::before {
++        background-color: var(--primary);
++        border-color: var(--primary);
++      }
++
++      .choice-label input[type="checkbox"]:checked + span::after {
++        content: "✓";
++        position: absolute;
++        left: 0.8rem;
++        top: 50%;
++        transform: translateY(-50%);
++        color: white;
++        font-weight: bold;
++        font-size: 0.85rem;
++      }
++
++      .choice-label input[type="radio"]:checked + span::after {
++        content: "";
++        position: absolute;
++        left: 0.9rem;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 0.55rem;
++        height: 0.55rem;
++        border-radius: 50%;
++        background: white;
++      }
++
++      input[type="range"] {
++        -webkit-appearance: none;
++        appearance: none;
++        background: transparent;
++      }
++
++      input[type="range"]::-webkit-slider-runnable-track {
++        width: 100%;
++        height: 8px;
++        background: var(--secondary);
++        border-radius: 4px;
++      }
++
++      input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        appearance: none;
++        height: 18px;
++        width: 18px;
++        border-radius: 50%;
++        background: var(--primary);
++        cursor: pointer;
++        margin-top: -5px;
++      }
++
++      input[type="range"]::-moz-range-track {
++        width: 100%;
++        height: 8px;
++        background: var(--secondary);
++        border-radius: 4px;
++      }
++
++      input[type="range"]::-moz-range-thumb {
++        height: 18px;
++        width: 18px;
++        border-radius: 50%;
++        background: var(--primary);
++        cursor: pointer;
++      }
++
++      input[type="range"]::-moz-range-progress {
++        background-color: var(--primary);
++        height: 8px;
++        border-radius: 4px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,9 +538,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container main-layout">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,8 +559,123 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-card" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Customize Your Order</h2>
++      <p class="order-subtitle">Craft your cup with our freshly roasted beans and house-made syrups.</p>
++
++      <form action="/order-online" method="POST" id="coffee-order-form">
++        <div class="form-group">
++          <label for="customer-name">Name for the Cup</label>
++          <input type="text" id="customer-name" name="customer_name" autocomplete="name" placeholder="e.g., Alex" required>
++        </div>
++
++        <div class="form-group">
++          <label for="drink-select">Signature Base Drink</label>
++          <select class="brand-select" id="drink-select" name="drink" required>
++            <button>
++              <selectedcontent></selectedcontent>
++            </button>
++            <option value="maple-oat-latte" selected>Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">18-Hour Cold Brew</option>
++            <option value="honey-cinnamon-cortado">Honey Cinnamon Cortado</option>
++            <option value="caramel-macchiato">Artisanal Caramel Macchiato</option>
++            <option value="pour-over">Single-Origin Pour Over</option>
++            <option value="matcha-latte">Ceremonial Matcha Latte</option>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Cup Size</legend>
++          <div class="choice-list">
++            <label for="size-small" class="choice-label">
++              <input type="radio" id="size-small" name="size" value="small" class="visually-hidden">
++              <span>Small (8 oz)</span>
++            </label>
++            <label for="size-medium" class="choice-label">
++              <input type="radio" id="size-medium" name="size" value="medium" class="visually-hidden" checked>
++              <span>Medium (12 oz)</span>
++            </label>
++            <label for="size-large" class="choice-label">
++              <input type="radio" id="size-large" name="size" value="large" class="visually-hidden">
++              <span>Large (16 oz)</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="milk-select">Milk &amp; Creamer</label>
++          <select class="brand-select" id="milk-select" name="milk">
++            <button>
++              <selectedcontent></selectedcontent>
++            </button>
++            <option value="oat" selected>Barista Oat Milk</option>
++            <option value="whole">Organic Whole Milk</option>
++            <option value="skim">Skim Milk</option>
++            <option value="almond">Roasted Almond Milk</option>
++            <option value="coconut">Coconut Milk</option>
++            <option value="half-and-half">Local Half &amp; Half</option>
++            <option value="none">No Milk (Black)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <div class="range-header">
++            <label for="espresso-shots">Espresso Shots</label>
++            <output id="shots-output" for="espresso-shots">2 shots</output>
++          </div>
++          <input type="range" id="espresso-shots" name="espresso_shots" min="1" max="5" value="2">
++        </div>
++
++        <fieldset>
++          <legend>Flavor Boosts &amp; Toppings</legend>
++          <div class="choice-list">
++            <label for="extra-maple" class="choice-label">
++              <input type="checkbox" id="extra-maple" name="extras" value="maple-syrup" class="visually-hidden" checked>
++              <span>Vermont Maple</span>
++            </label>
++            <label for="extra-vanilla" class="choice-label">
++              <input type="checkbox" id="extra-vanilla" name="extras" value="vanilla-bean" class="visually-hidden">
++              <span>Vanilla Bean</span>
++            </label>
++            <label for="extra-cinnamon" class="choice-label">
++              <input type="checkbox" id="extra-cinnamon" name="extras" value="cinnamon-dust" class="visually-hidden">
++              <span>Cinnamon Dust</span>
++            </label>
++            <label for="extra-foam" class="choice-label">
++              <input type="checkbox" id="extra-foam" name="extras" value="cold-foam" class="visually-hidden">
++              <span>Sweet Cold Foam</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="pickup-time">Preferred Pickup Time</label>
++          <input type="time" id="pickup-time" name="pickup_time" value="08:30" required>
++        </div>
++
++        <div class="form-group">
++          <label for="special-notes">Barista Notes</label>
++          <textarea id="special-notes" name="special_notes" rows="3" placeholder="Extra hot, light ice, allergy notes..."></textarea>
++        </div>
++
++        <button type="submit" class="btn" style="width: 100%;">Add Custom Order to Bag</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    const shotsSlider = document.getElementById('espresso-shots');
++    const shotsOutput = document.getElementById('shots-output');
++    if (shotsSlider && shotsOutput) {
++      shotsSlider.addEventListener('input', (e) => {
++        const count = Number(e.target.value);
++        shotsOutput.textContent = `${count} ${count === 1 ? 'shot' : 'shots'}`;
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

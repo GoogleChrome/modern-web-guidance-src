@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+index 66c9173..a4b7155 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,39 @@
+       border-radius: 4px;
+     }
+ 
++    /*
++      Progressive enhancement: the blocks below use `@supports at-rule(...)`
++      (CSS Conditional Rules Level 5) so each set of declarations is only
++      applied when the browser supports the named at-rule. Browsers that
++      don't understand the query simply keep the baseline styles above.
++    */
++
++    /* Navigation: scoped hover/focus styling, only where @scope is supported */
++    @supports at-rule(@scope) {
++      @scope (nav) {
++        :scope {
++          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
++        }
++
++        a {
++          padding: 4px 6px;
++          border-radius: 4px;
++        }
++
++        a:hover,
++        a:focus-visible {
++          background: rgba(255, 255, 255, 0.08);
++          outline: none;
++        }
++
++        .logout-link:hover,
++        .logout-link:focus-visible {
++          background: var(--accent);
++          color: var(--primary);
++        }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -93,6 +126,54 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Hero: fade-in on first render, only where @starting-style is supported */
++    @supports at-rule(@starting-style) {
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        opacity: 1;
++        translate: 0 0;
++        transition: opacity 0.8s ease-out, translate 0.8s ease-out;
++      }
++
++      .hero p {
++        transition-delay: 0.15s;
++      }
++
++      .hero .btn {
++        transition-delay: 0.3s;
++      }
++
++      @starting-style {
++        .hero h1,
++        .hero p,
++        .hero .btn {
++          opacity: 0;
++          translate: 0 16px;
++        }
++      }
++    }
++
++    /* Hero: animated accent glow behind the heading, only where @property
++       with a registered <color> syntax is supported */
++    @supports at-rule(@property; syntax: "<color>") {
++      @property --hero-glow {
++        syntax: "<color>";
++        inherits: false;
++        initial-value: transparent;
++      }
++
++      .hero h1 {
++        --hero-glow: transparent;
++        text-shadow: 0 0 24px var(--hero-glow);
++        transition: --hero-glow 0.6s ease;
++      }
++
++      .hero:hover h1 {
++        --hero-glow: var(--accent);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -120,6 +201,80 @@
+       color: var(--primary);
+     }
+ 
++    /* Seasonal favorite cards: container-query driven layout, only where
++       @container is supported. Each grid cell becomes a size container so a
++       card can adapt to its own width rather than the viewport. */
++    @supports at-rule(@container) {
++      .grid {
++        gap: 24px;
++      }
++
++      .grid > .card {
++        container: seasonal-card / inline-size;
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++        border: 1px solid var(--secondary);
++      }
++
++      .grid > .card .btn {
++        align-self: center;
++      }
++
++      @container seasonal-card (min-width: 320px) {
++        .card {
++          text-align: left;
++          padding: 28px;
++        }
++
++        .card h3 {
++          font-size: 1.35rem;
++        }
++
++        .card h3::after {
++          margin-left: 0;
++        }
++
++        .card .btn {
++          align-self: flex-start;
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: layered theme overrides, only where @layer is
++       supported, so a later "theme" layer can restyle cards without
++       specificity battles against the component layer */
++    @supports at-rule(@layer) {
++      @layer components, theme;
++
++      @layer components {
++        .card {
++          transition: transform 0.25s ease, box-shadow 0.25s ease;
++        }
++
++        .card:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
++        }
++      }
++
++      @layer theme {
++        .card h3 {
++          color: var(--text);
++        }
++
++        .card h3::after {
++          content: "";
++          display: block;
++          width: 40px;
++          height: 3px;
++          margin: 8px auto 0;
++          background: var(--accent);
++          border-radius: 2px;
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);

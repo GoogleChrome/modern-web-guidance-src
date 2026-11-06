@@ -1,0 +1,1164 @@
+diff --git a/index.html b/index.html
+index 66c9173..d7fbd75 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="phone-verification.css">
+ </head>
+ 
+ <body>
+@@ -163,6 +164,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#phone-verification">Verify Phone</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,10 +173,172 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div style="margin-top: 15px;">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#phone-verification" class="btn" style="background: transparent; border: 2px solid white; margin-left: 10px;">Verify Phone</a>
++    </div>
+   </header>
+ 
+   <main class="container">
++    <!-- Phone Verification Section -->
++    <section id="phone-verification" class="verification-section" aria-labelledby="verification-title">
++      <div class="verification-card">
++        <div class="verification-header">
++          <span class="verification-tag" aria-hidden="true">☕ Rewards &amp; Security</span>
++          <h2 id="verification-title">Verify Your Phone Number</h2>
++          <p class="verification-subtitle">Link your mobile phone to receive order ready notifications, exclusive artisanal offers, and secure one-tap verification.</p>
++        </div>
++
++        <!-- Stepper indicator -->
++        <nav class="stepper" aria-label="Verification progress">
++          <ol class="stepper-list">
++            <li id="step-nav-1" class="step-item step-item--active" aria-current="step">
++              <span class="step-badge" aria-hidden="true">1</span>
++              <span class="step-label">Phone Number</span>
++            </li>
++            <li id="step-nav-2" class="step-item">
++              <span class="step-badge" aria-hidden="true">2</span>
++              <span class="step-label">Passcode</span>
++            </li>
++            <li id="step-nav-3" class="step-item">
++              <span class="step-badge" aria-hidden="true">3</span>
++              <span class="step-label">Verified</span>
++            </li>
++          </ol>
++        </nav>
++
++        <!-- Step 1: Phone Input -->
++        <div id="step-phone" class="step-panel" role="region" aria-labelledby="step-1-title">
++          <h3 id="step-1-title" class="sr-only">Step 1: Enter your mobile phone number</h3>
++          <form id="phone-form" novalidate>
++            <div class="form-group">
++              <label for="phone-input" class="form-label">
++                Mobile Phone Number <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <div class="input-container">
++                <span class="input-affix" aria-hidden="true">
++                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
++                </span>
++                <input
++                  type="tel"
++                  id="phone-input"
++                  name="phone"
++                  class="form-input has-affix"
++                  autocomplete="tel"
++                  inputmode="tel"
++                  placeholder="(555) 000-0000"
++                  required
++                  aria-required="true"
++                  aria-describedby="phone-hint phone-error"
++                  aria-invalid="false"
++                />
++              </div>
++              <p id="phone-hint" class="field-hint">
++                Enter your 10-digit mobile number. We'll send a 6-digit one-time passcode over SMS.
++              </p>
++              <p id="phone-error" class="field-error" role="alert" aria-live="assertive" hidden></p>
++            </div>
++
++            <button type="submit" id="send-code-btn" class="btn btn-block">
++              <span class="btn-text">Send Verification Code</span>
++            </button>
++          </form>
++        </div>
++
++        <!-- Step 2: Passcode Input -->
++        <div id="step-otp" class="step-panel" role="region" aria-labelledby="step-2-title" hidden>
++          <div class="step-otp-header">
++            <h3 id="step-2-title">Enter One-Time Passcode</h3>
++            <p class="step-otp-meta">
++              We sent a 6-digit SMS verification passcode to <strong id="phone-display-value"></strong>.
++              <button type="button" id="edit-phone-btn" class="link-btn" aria-label="Change phone number">Change number</button>
++            </p>
++          </div>
++
++          <!-- SMS Delivery Simulation / Origin-Bound Format Preview -->
++          <aside id="sms-banner" class="sms-delivery-banner" aria-label="SMS delivery details">
++            <div class="sms-banner-badge">
++              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
++              Incoming SMS Message (Origin-Bound Format)
++            </div>
++            <div class="sms-message-card">
++              <p class="sms-msg-text" id="sms-text-preview">[The Daily Grind] Your one-time verification passcode is <strong>------</strong>.</p>
++              <p class="sms-origin-text" id="sms-origin-preview">@localhost #------</p>
++            </div>
++            <div class="sms-banner-actions">
++              <button type="button" id="auto-extract-trigger" class="btn btn-sm btn-outline">
++                ⚡ Simulate Automatic Code Extraction
++              </button>
++            </div>
++          </aside>
++
++          <form id="otp-form" action="/verify-otp" method="POST" novalidate>
++            <div class="form-group">
++              <label for="otp-input" class="form-label">
++                6-Digit Verification Code <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <div class="input-container">
++                <span class="input-affix" aria-hidden="true">
++                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
++                </span>
++                <input
++                  type="text"
++                  id="otp-input"
++                  name="otp"
++                  class="form-input has-affix otp-input-field"
++                  autocomplete="one-time-code"
++                  inputmode="numeric"
++                  pattern="[0-9]{6}"
++                  maxlength="6"
++                  placeholder="123456"
++                  required
++                  aria-required="true"
++                  aria-describedby="otp-hint otp-error"
++                  aria-invalid="false"
++                />
++              </div>
++              <p id="otp-hint" class="field-hint">
++                Passcodes delivered via SMS are extracted automatically when supported by your browser (WebOTP API &amp; autocomplete).
++              </p>
++              <p id="otp-error" class="field-error" role="alert" aria-live="assertive" hidden></p>
++            </div>
++
++            <div class="form-actions-row">
++              <button type="submit" id="verify-code-btn" class="btn btn-block">
++                <span class="btn-text">Verify Passcode</span>
++              </button>
++            </div>
++
++            <div class="resend-container">
++              <p class="resend-text">Didn't receive the text?</p>
++              <button type="button" id="resend-code-btn" class="link-btn resend-btn" disabled>
++                Resend Passcode (<span id="resend-timer">30</span>s)
++              </button>
++            </div>
++          </form>
++        </div>
++
++        <!-- Step 3: Success -->
++        <div id="step-success" class="step-panel" role="region" aria-labelledby="step-3-title" hidden>
++          <div class="success-content">
++            <div class="success-icon" aria-hidden="true">
++              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
++            </div>
++            <h3 id="step-3-title" tabindex="-1">Phone Number Verified!</h3>
++            <p class="success-desc">
++              Your mobile phone <strong id="success-phone-display"></strong> has been verified. You're now connected to artisanal order alerts and perks at The Daily Grind.
++            </p>
++            <button type="button" id="verify-another-btn" class="btn">
++              Verify Another Number
++            </button>
++          </div>
++        </div>
++
++        <!-- Accessible status announcer for screen readers -->
++        <div id="a11y-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +371,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="phone-verification.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/phone-verification.css b/phone-verification.css
+new file mode 100644
+index 0000000..f585f79
+--- /dev/null
++++ b/phone-verification.css
+@@ -0,0 +1,477 @@
++/* Phone Verification Component Styling */
++
++.verification-section {
++  margin: 3rem 0;
++}
++
++.verification-card {
++  background: #ffffff;
++  border-radius: 12px;
++  box-shadow: 0 4px 20px rgba(78, 52, 46, 0.08);
++  border: 1px solid #e0d7d3;
++  padding: 2.5rem 2rem;
++  max-width: 640px;
++  margin: 0 auto;
++}
++
++.verification-header {
++  text-align: center;
++  margin-bottom: 2rem;
++}
++
++.verification-tag {
++  display: inline-block;
++  background-color: #efebe9;
++  color: var(--primary);
++  font-size: 0.85rem;
++  font-weight: 600;
++  padding: 0.25rem 0.75rem;
++  border-radius: 20px;
++  margin-bottom: 0.75rem;
++  letter-spacing: 0.5px;
++}
++
++.verification-header h2 {
++  color: var(--primary);
++  font-size: 1.85rem;
++  margin-bottom: 0.5rem;
++}
++
++.verification-subtitle {
++  color: #5d4037;
++  font-size: 0.95rem;
++  line-height: 1.5;
++}
++
++/* Stepper Progress Indicator */
++.stepper {
++  margin-bottom: 2rem;
++}
++
++.stepper-list {
++  display: flex;
++  justify-content: space-between;
++  list-style: none;
++  position: relative;
++  padding: 0;
++}
++
++.stepper-list::before {
++  content: '';
++  position: absolute;
++  top: 16px;
++  left: 20px;
++  right: 20px;
++  height: 2px;
++  background-color: var(--secondary);
++  z-index: 1;
++}
++
++.step-item {
++  position: relative;
++  z-index: 2;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  background: #ffffff;
++  padding: 0 0.5rem;
++}
++
++.step-badge {
++  width: 32px;
++  height: 32px;
++  border-radius: 50%;
++  background-color: #f5f5f5;
++  border: 2px solid var(--secondary);
++  color: #795548;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  font-weight: 600;
++  font-size: 0.9rem;
++  transition: all 0.3s ease;
++}
++
++.step-label {
++  font-size: 0.8rem;
++  color: #795548;
++  margin-top: 0.4rem;
++  font-weight: 500;
++}
++
++.step-item--active .step-badge {
++  background-color: var(--primary);
++  border-color: var(--primary);
++  color: #ffffff;
++}
++
++.step-item--active .step-label {
++  color: var(--primary);
++  font-weight: 700;
++}
++
++.step-item--completed .step-badge {
++  background-color: #2e7d32;
++  border-color: #2e7d32;
++  color: #ffffff;
++}
++
++.step-item--completed .step-label {
++  color: #2e7d32;
++}
++
++/* Panels */
++.step-panel {
++  display: block;
++}
++
++.step-panel[hidden] {
++  display: none !important;
++}
++
++/* Form Controls */
++.form-group {
++  margin-bottom: 1.5rem;
++  text-align: left;
++}
++
++.form-label {
++  display: block;
++  font-weight: 600;
++  font-size: 0.95rem;
++  color: var(--text);
++  margin-bottom: 0.5rem;
++}
++
++.required-indicator {
++  color: #c62828;
++  margin-left: 2px;
++}
++
++.input-container {
++  position: relative;
++  display: flex;
++  align-items: center;
++}
++
++.input-affix {
++  position: absolute;
++  left: 14px;
++  color: #795548;
++  display: flex;
++  align-items: center;
++  pointer-events: none;
++}
++
++.form-input {
++  width: 100%;
++  padding: 0.85rem 1rem;
++  font-size: 1.05rem;
++  border: 2px solid #bcaaa4;
++  border-radius: 8px;
++  color: var(--text);
++  background-color: #ffffff;
++  transition: border-color 0.2s, box-shadow 0.2s;
++  font-family: inherit;
++}
++
++.form-input.has-affix {
++  padding-left: 2.75rem;
++}
++
++.form-input:hover {
++  border-color: #8d6e63;
++}
++
++.form-input:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 2px;
++  border-color: var(--primary);
++}
++
++.form-input[aria-invalid="true"] {
++  border-color: #c62828;
++  background-color: #fff8f8;
++}
++
++.form-input[aria-invalid="true"]:focus-visible {
++  outline: 3px solid #c62828;
++}
++
++.otp-input-field {
++  letter-spacing: 0.35rem;
++  font-size: 1.4rem;
++  font-weight: 600;
++  text-align: center;
++  font-family: 'Courier New', Courier, monospace;
++}
++
++.field-hint {
++  font-size: 0.825rem;
++  color: #6d4c41;
++  margin-top: 0.45rem;
++  line-height: 1.4;
++}
++
++.field-error {
++  font-size: 0.85rem;
++  color: #c62828;
++  margin-top: 0.45rem;
++  font-weight: 600;
++  display: flex;
++  align-items: center;
++}
++
++.field-error::before {
++  content: '⚠️ ';
++  margin-right: 4px;
++}
++
++.field-error[hidden] {
++  display: none !important;
++}
++
++/* Buttons */
++.btn-block {
++  width: 100%;
++  text-align: center;
++  cursor: pointer;
++  border: none;
++  font-size: 1rem;
++  font-weight: 600;
++  padding: 0.85rem 1.5rem;
++  border-radius: 8px;
++  background-color: var(--primary);
++  color: #ffffff;
++  transition: background-color 0.2s, transform 0.1s;
++}
++
++.btn-block:hover:not(:disabled) {
++  background-color: #3e2723;
++}
++
++.btn-block:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.btn-block:disabled {
++  opacity: 0.6;
++  cursor: not-allowed;
++}
++
++.btn-outline {
++  background-color: transparent;
++  color: var(--primary);
++  border: 1.5px solid var(--primary);
++  padding: 0.5rem 1rem;
++  border-radius: 6px;
++  font-size: 0.9rem;
++  font-weight: 600;
++  cursor: pointer;
++  transition: all 0.2s ease;
++}
++
++.btn-outline:hover:not(:disabled) {
++  background-color: #efebe9;
++}
++
++.btn-outline:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.btn-outline:disabled {
++  opacity: 0.5;
++  cursor: not-allowed;
++  border-color: #bcaaa4;
++  color: #8d6e63;
++}
++
++.btn-sm {
++  padding: 0.4rem 0.75rem;
++  font-size: 0.825rem;
++}
++
++.link-btn {
++  background: none;
++  border: none;
++  color: #bf360c;
++  text-decoration: underline;
++  cursor: pointer;
++  font-size: 0.9rem;
++  font-weight: 600;
++  padding: 2px 4px;
++  border-radius: 4px;
++  display: inline-block;
++}
++
++.link-btn:hover {
++  color: #d84315;
++}
++
++.link-btn:focus-visible {
++  outline: 2px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.link-btn:disabled {
++  color: #a1887f;
++  text-decoration: none;
++  cursor: not-allowed;
++}
++
++/* Step 2 Details */
++.step-otp-header {
++  text-align: center;
++  margin-bottom: 1.25rem;
++}
++
++.step-otp-header h3 {
++  color: var(--primary);
++  font-size: 1.3rem;
++  margin-bottom: 0.4rem;
++}
++
++.step-otp-meta {
++  font-size: 0.9rem;
++  color: #5d4037;
++}
++
++/* Origin-Bound SMS delivery simulator */
++.sms-delivery-banner {
++  background: #fbf9f8;
++  border: 1px dashed #bcaaa4;
++  border-radius: 8px;
++  padding: 1rem;
++  margin-bottom: 1.5rem;
++  text-align: left;
++}
++
++.sms-banner-badge {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  font-size: 0.75rem;
++  text-transform: uppercase;
++  font-weight: 700;
++  letter-spacing: 0.5px;
++  color: #5d4037;
++  margin-bottom: 0.5rem;
++}
++
++.sms-message-card {
++  background: #ffffff;
++  border: 1px solid #e0e0e0;
++  border-radius: 6px;
++  padding: 0.75rem 1rem;
++  margin-bottom: 0.75rem;
++  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
++}
++
++.sms-msg-text {
++  font-size: 0.875rem;
++  color: #3e2723;
++  margin-bottom: 0.25rem;
++}
++
++.sms-origin-text {
++  font-size: 0.8rem;
++  font-family: monospace;
++  color: #5d4037;
++  background: #f5f5f5;
++  padding: 2px 6px;
++  border-radius: 4px;
++  display: inline-block;
++}
++
++.sms-banner-actions {
++  display: flex;
++  gap: 0.5rem;
++  flex-wrap: wrap;
++}
++
++/* Auto-extraction animation highlight */
++@keyframes pulseHighlight {
++  0% { box-shadow: 0 0 0 0 rgba(255, 171, 64, 0.7); border-color: var(--accent); }
++  50% { box-shadow: 0 0 0 8px rgba(255, 171, 64, 0); border-color: #2e7d32; }
++  100% { box-shadow: 0 0 0 0 rgba(255, 171, 64, 0); }
++}
++
++.extracted-highlight {
++  animation: pulseHighlight 1s ease-out;
++}
++
++.resend-container {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 0.5rem;
++  margin-top: 1.25rem;
++  font-size: 0.9rem;
++}
++
++.resend-text {
++  color: #5d4037;
++}
++
++/* Success Screen */
++.success-content {
++  text-align: center;
++  padding: 1.5rem 1rem;
++}
++
++.success-icon {
++  width: 72px;
++  height: 72px;
++  border-radius: 50%;
++  background-color: #e8f5e9;
++  border: 3px solid #81c784;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  margin: 0 auto 1.25rem;
++}
++
++.success-content h3 {
++  color: #2e7d32;
++  font-size: 1.5rem;
++  margin-bottom: 0.5rem;
++}
++
++.success-content h3:focus {
++  outline: none;
++}
++
++.success-desc {
++  color: #4e342e;
++  font-size: 0.95rem;
++  margin-bottom: 1.5rem;
++  line-height: 1.6;
++}
++
++/* Screen reader only utility class */
++.sr-only {
++  position: absolute !important;
++  width: 1px !important;
++  height: 1px !important;
++  padding: 0 !important;
++  margin: -1px !important;
++  overflow: hidden !important;
++  clip: rect(0, 0, 0, 0) !important;
++  white-space: nowrap !important;
++  border: 0 !important;
++}
++
++/* Responsive tweaks */
++@media (max-width: 600px) {
++  .verification-card {
++    padding: 1.75rem 1.25rem;
++  }
++  .stepper-list {
++    padding: 0;
++  }
++  .step-label {
++    font-size: 0.72rem;
++  }
++}
+diff --git a/phone-verification.js b/phone-verification.js
+new file mode 100644
+index 0000000..bca521a
+--- /dev/null
++++ b/phone-verification.js
+@@ -0,0 +1,473 @@
++/**
++ * Accessible Phone Number & SMS One-Time Passcode (OTP) Verification
++ * Implements WebOTP API, origin-bound SMS format, autocomplete="one-time-code",
++ * and comprehensive accessibility (WCAG AA).
++ */
++
++(function () {
++  'use strict';
++
++  // DOM Elements
++  const stepPhone = document.getElementById('step-phone');
++  const stepOtp = document.getElementById('step-otp');
++  const stepSuccess = document.getElementById('step-success');
++
++  const phoneForm = document.getElementById('phone-form');
++  const phoneInput = document.getElementById('phone-input');
++  const phoneError = document.getElementById('phone-error');
++  const sendCodeBtn = document.getElementById('send-code-btn');
++
++  const otpForm = document.getElementById('otp-form');
++  const otpInput = document.getElementById('otp-input');
++  const otpError = document.getElementById('otp-error');
++  const verifyCodeBtn = document.getElementById('verify-code-btn');
++
++  const phoneDisplayValue = document.getElementById('phone-display-value');
++  const editPhoneBtn = document.getElementById('edit-phone-btn');
++  const resendCodeBtn = document.getElementById('resend-code-btn');
++  const resendTimerSpan = document.getElementById('resend-timer');
++
++  const autoExtractTrigger = document.getElementById('auto-extract-trigger');
++  const smsTextPreview = document.getElementById('sms-text-preview');
++  const smsOriginPreview = document.getElementById('sms-origin-preview');
++
++  const stepNav1 = document.getElementById('step-nav-1');
++  const stepNav2 = document.getElementById('step-nav-2');
++  const stepNav3 = document.getElementById('step-nav-3');
++
++  const successHeading = document.getElementById('step-3-title');
++  const successPhoneDisplay = document.getElementById('success-phone-display');
++  const verifyAnotherBtn = document.getElementById('verify-another-btn');
++
++  const a11yAnnouncer = document.getElementById('a11y-announcer');
++
++  // State Management
++  const state = {
++    currentStep: 1,
++    phoneNumber: '',
++    formattedPhone: '',
++    currentOtp: '',
++    countdown: 30,
++    countdownInterval: null,
++    isSubmitting: false,
++    abortController: null,
++  };
++
++  // Expose state for automated testing if needed
++  window.__phoneVerification = {
++    getState: () => ({ ...state }),
++    simulateOtpExtraction: (code) => handleCodeExtracted(code || state.currentOtp),
++    triggerSmsArrival: (code) => triggerSmsArrival(code),
++  };
++
++  /**
++   * Screen Reader Live Announcer
++   */
++  function announce(message) {
++    if (!a11yAnnouncer) return;
++    a11yAnnouncer.textContent = '';
++    setTimeout(() => {
++      a11yAnnouncer.textContent = message;
++    }, 50);
++  }
++
++  /**
++   * Phone Number Formatting
++   */
++  function formatPhoneNumber(value) {
++    const digits = value.replace(/\D/g, '');
++    if (digits.length === 0) return '';
++    if (digits.length <= 3) {
++      return `(${digits}`;
++    }
++    if (digits.length <= 6) {
++      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
++    }
++    if (digits.length <= 10) {
++      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
++    }
++    // International / extended
++    return `+${digits.slice(0, digits.length - 10)} (${digits.slice(-10, -7)}) ${digits.slice(-7, -4)}-${digits.slice(-4)}`;
++  }
++
++  /**
++   * Phone Number Validation
++   */
++  function validatePhoneNumber(value) {
++    const digits = value.replace(/\D/g, '');
++    if (!digits) {
++      return 'Please enter your mobile phone number.';
++    }
++    if (digits.length < 10) {
++      return 'Please enter a valid 10-digit mobile phone number.';
++    }
++    return null;
++  }
++
++  /**
++   * Set Field Error State
++   */
++  function setFieldError(input, errorElement, message) {
++    if (message) {
++      errorElement.textContent = message;
++      errorElement.hidden = false;
++      input.setAttribute('aria-invalid', 'true');
++      announce(`Error: ${message}`);
++    } else {
++      errorElement.textContent = '';
++      errorElement.hidden = true;
++      input.setAttribute('aria-invalid', 'false');
++    }
++  }
++
++  /**
++   * Generate 6-digit Passcode
++   */
++  function generatePasscode() {
++    return Math.floor(100000 + Math.random() * 900000).toString();
++  }
++
++  /**
++   * Update Stepper Indicator
++   */
++  function updateStepper(step) {
++    const steps = [
++      { el: stepNav1, stepNum: 1 },
++      { el: stepNav2, stepNum: 2 },
++      { el: stepNav3, stepNum: 3 },
++    ];
++
++    steps.forEach(({ el, stepNum }) => {
++      el.classList.remove('step-item--active', 'step-item--completed');
++      el.removeAttribute('aria-current');
++
++      if (stepNum === step) {
++        el.classList.add('step-item--active');
++        el.setAttribute('aria-current', 'step');
++      } else if (stepNum < step) {
++        el.classList.add('step-item--completed');
++      }
++    });
++  }
++
++  /**
++   * Start Countdown Timer for Resend
++   */
++  function startResendCountdown() {
++    clearInterval(state.countdownInterval);
++    state.countdown = 30;
++    resendCodeBtn.disabled = true;
++    resendTimerSpan.textContent = state.countdown;
++
++    state.countdownInterval = setInterval(() => {
++      state.countdown -= 1;
++      if (state.countdown <= 0) {
++        clearInterval(state.countdownInterval);
++        resendCodeBtn.disabled = false;
++        resendCodeBtn.innerHTML = 'Resend Passcode';
++        announce('You can now request a new SMS verification code.');
++      } else {
++        resendTimerSpan.textContent = state.countdown;
++      }
++    }, 1000);
++  }
++
++  /**
++   * Origin-Bound SMS Message Format
++   * Specification:
++   * First line(s): Human-readable text
++   * Last line: @<domain> #<code>
++   */
++  function updateSmsPreview(code) {
++    const hostname = window.location.hostname || 'localhost';
++    const originBoundLine = `@${hostname} #${code}`;
++
++    smsTextPreview.innerHTML = `[The Daily Grind] Your one-time verification passcode is <strong>${code}</strong>.`;
++    smsOriginPreview.textContent = originBoundLine;
++  }
++
++  /**
++   * WebOTP API: Automatic Code Extraction Listener
++   */
++  function startWebOtpListener() {
++    // Abort existing listener if any
++    if (state.abortController) {
++      state.abortController.abort();
++    }
++
++    if (!('credentials' in navigator) || !navigator.credentials.get) {
++      console.log('WebOTP API: navigator.credentials.get is not supported in this browser.');
++      return;
++    }
++
++    state.abortController = new AbortController();
++
++    navigator.credentials
++      .get({
++        otp: { transport: ['sms'] },
++        signal: state.abortController.signal,
++      })
++      .then((otp) => {
++        if (otp && otp.code) {
++          handleCodeExtracted(otp.code);
++        }
++      })
++      .catch((err) => {
++        if (err.name !== 'AbortError') {
++          console.warn('WebOTP API notification:', err.message || err);
++        }
++      });
++  }
++
++  /**
++   * Handle Code Extracted (via WebOTP or simulation)
++   */
++  function handleCodeExtracted(code) {
++    if (!code || state.currentStep !== 2) return;
++
++    otpInput.value = code;
++    otpInput.dispatchEvent(new Event('input', { bubbles: true }));
++    otpInput.dispatchEvent(new Event('change', { bubbles: true }));
++
++    // Highlight input visually
++    otpInput.classList.remove('extracted-highlight');
++    void otpInput.offsetWidth; // Trigger reflow
++    otpInput.classList.add('extracted-highlight');
++
++    announce(`Passcode ${code} automatically extracted from SMS. Verifying...`);
++
++    // Automatically submit after extraction
++    setTimeout(() => {
++      submitOtpForm();
++    }, 300);
++  }
++
++  /**
++   * Transition to Step 2 (Passcode Entry)
++   */
++  function goToStep2(phoneNumber) {
++    state.currentStep = 2;
++    state.phoneNumber = phoneNumber;
++    state.formattedPhone = formatPhoneNumber(phoneNumber);
++    state.currentOtp = generatePasscode();
++
++    // Update UI
++    phoneDisplayValue.textContent = state.formattedPhone;
++    updateSmsPreview(state.currentOtp);
++    updateStepper(2);
++
++    stepPhone.hidden = true;
++    stepOtp.hidden = false;
++    stepSuccess.hidden = true;
++
++    // Reset OTP field
++    otpInput.value = '';
++    setFieldError(otpInput, otpError, null);
++    otpInput.focus();
++
++    // Start countdown and WebOTP listener
++    startResendCountdown();
++    startWebOtpListener();
++
++    announce(
++      `Passcode sent to ${state.formattedPhone}. Please enter the 6-digit verification code delivered via SMS.`
++    );
++  }
++
++  /**
++   * Transition back to Step 1 (Phone Number Entry)
++   */
++  function goToStep1() {
++    state.currentStep = 1;
++    clearInterval(state.countdownInterval);
++    if (state.abortController) {
++      state.abortController.abort();
++    }
++
++    updateStepper(1);
++    stepPhone.hidden = false;
++    stepOtp.hidden = true;
++    stepSuccess.hidden = true;
++
++    phoneInput.focus();
++    announce('Returned to phone number entry.');
++  }
++
++  /**
++   * Transition to Step 3 (Verification Success)
++   */
++  function goToStep3() {
++    state.currentStep = 3;
++    clearInterval(state.countdownInterval);
++    if (state.abortController) {
++      state.abortController.abort();
++    }
++
++    updateStepper(3);
++    stepPhone.hidden = true;
++    stepOtp.hidden = true;
++    stepSuccess.hidden = false;
++
++    successPhoneDisplay.textContent = state.formattedPhone;
++    successHeading.focus();
++
++    announce(`Success! Your phone number ${state.formattedPhone} has been verified.`);
++  }
++
++  /**
++   * Submit OTP Verification
++   */
++  function submitOtpForm() {
++    if (state.isSubmitting) return;
++
++    const enteredCode = otpInput.value.trim();
++
++    // Validate 6 digits
++    if (!enteredCode) {
++      setFieldError(otpInput, otpError, 'Please enter the 6-digit passcode.');
++      otpInput.focus();
++      return;
++    }
++
++    if (!/^\d{6}$/.test(enteredCode)) {
++      setFieldError(otpInput, otpError, 'The verification passcode must be exactly 6 digits.');
++      otpInput.focus();
++      return;
++    }
++
++    // Check against expected OTP
++    if (enteredCode !== state.currentOtp) {
++      setFieldError(
++        otpInput,
++        otpError,
++        'Incorrect passcode. Please check your SMS or click Resend Passcode.'
++      );
++      otpInput.focus();
++      return;
++    }
++
++    // Verified successfully
++    setFieldError(otpInput, otpError, null);
++    state.isSubmitting = true;
++    verifyCodeBtn.disabled = true;
++
++    setTimeout(() => {
++      state.isSubmitting = false;
++      verifyCodeBtn.disabled = false;
++      goToStep3();
++    }, 400);
++  }
++
++  /**
++   * Trigger simulated SMS arrival
++   */
++  function triggerSmsArrival(newCode) {
++    state.currentOtp = newCode || generatePasscode();
++    updateSmsPreview(state.currentOtp);
++    announce(`Simulated SMS received with code: ${state.currentOtp}`);
++  }
++
++  // --- Event Listeners ---
++
++  // Live formatting on phone input
++  phoneInput.addEventListener('input', (e) => {
++    const rawVal = e.target.value;
++    const formatted = formatPhoneNumber(rawVal);
++    // Only update if digits are being entered/edited cleanly
++    if (formatted !== rawVal && rawVal.replace(/\D/g, '').length <= 10) {
++      e.target.value = formatted;
++    }
++    // Clear error if user fixes input
++    if (phoneError && !phoneError.hidden) {
++      const error = validatePhoneNumber(e.target.value);
++      if (!error) {
++        setFieldError(phoneInput, phoneError, null);
++      }
++    }
++  });
++
++  // Phone Form Submission
++  phoneForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const error = validatePhoneNumber(phoneInput.value);
++    if (error) {
++      setFieldError(phoneInput, phoneError, error);
++      phoneInput.focus();
++      return;
++    }
++
++    setFieldError(phoneInput, phoneError, null);
++    goToStep2(phoneInput.value);
++  });
++
++  // Edit Phone button
++  editPhoneBtn.addEventListener('click', () => {
++    goToStep1();
++  });
++
++  // OTP Form Submission
++  otpForm.addEventListener('submit', (e) => {
++    e.preventDefault();
++    submitOtpForm();
++  });
++
++  // OTP Input input handling & auto-submit on 6 digits
++  otpInput.addEventListener('input', (e) => {
++    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 6);
++    if (e.target.value !== digitsOnly) {
++      e.target.value = digitsOnly;
++    }
++
++    if (otpError && !otpError.hidden) {
++      setFieldError(otpInput, otpError, null);
++    }
++
++    // When 6 digits are fully typed, auto-verify
++    if (digitsOnly.length === 6) {
++      submitOtpForm();
++    }
++  });
++
++  // OTP Input paste handling (supporting spaces, hyphens, prefixes)
++  otpInput.addEventListener('paste', (e) => {
++    e.preventDefault();
++    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
++    // Extract first sequence of 6 digits or clean all digits
++    const digits = pastedText.replace(/\D/g, '').slice(0, 6);
++    if (digits) {
++      otpInput.value = digits;
++      otpInput.dispatchEvent(new Event('input', { bubbles: true }));
++      otpInput.dispatchEvent(new Event('change', { bubbles: true }));
++      if (digits.length === 6) {
++        submitOtpForm();
++      }
++    }
++  });
++
++  // Resend Passcode button
++  resendCodeBtn.addEventListener('click', () => {
++    state.currentOtp = generatePasscode();
++    updateSmsPreview(state.currentOtp);
++    otpInput.value = '';
++    setFieldError(otpInput, otpError, null);
++
++    resendCodeBtn.innerHTML = 'Resend Passcode (<span id="resend-timer">30</span>s)';
++    startResendCountdown();
++    startWebOtpListener();
++
++    otpInput.focus();
++    announce(`New verification passcode sent to ${state.formattedPhone}.`);
++  });
++
++  // Simulate Automatic Code Extraction button
++  autoExtractTrigger.addEventListener('click', () => {
++    handleCodeExtracted(state.currentOtp);
++  });
++
++  // Verify Another Number button
++  verifyAnotherBtn.addEventListener('click', () => {
++    phoneInput.value = '';
++    otpInput.value = '';
++    goToStep1();
++  });
++})();

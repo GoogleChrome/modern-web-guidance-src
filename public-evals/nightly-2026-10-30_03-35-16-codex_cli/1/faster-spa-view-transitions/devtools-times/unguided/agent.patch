@@ -1,0 +1,156 @@
+diff --git a/README.md b/README.md
+index 4479b53..f64c618 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,14 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++Client-side navigation retains up to five recently visited views in a persistent
++main container. Returning to a retained URL reuses its DOM and hydrated islands;
++inactive views are hidden and inert. Paths and query strings identify views,
++while fragments share the same view. Astro still fetches destination pages and
++handles metadata, styles, history, and scrolling. The cache lasts until a full
++page reload, and form navigations invalidate it. Set `cacheView={false}` on
++`Layout` to exclude a page, as the sign-in and sign-up pages do.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..56085f1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +36,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +49,10 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-container transition:persist="page-views">
++          <div data-page-view data-cache-view={cacheView ? "true" : "false"}>
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..9bc5095
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,66 @@
++import type { TransitionBeforePreparationEvent, TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Keep live nodes (including hydrated islands) inside Astro's persistent main.
++// Map insertion order supplies a least-recently-used eviction policy.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const viewKey = (url: URL) => url.pathname + url.search;
++let invalidateOnSwap = false;
++
++document.addEventListener("astro:before-preparation", (event) => {
++  invalidateOnSwap = Boolean((event as TransitionBeforePreparationEvent).formData);
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const container = document.querySelector<HTMLElement>("[data-view-container]");
++  const incoming = navigation.newDocument.querySelector<HTMLElement>("[data-page-view]");
++  if (!container || !incoming) return;
++
++  const swap = navigation.swap;
++  navigation.swap = () => {
++    const current = container.querySelector<HTMLElement>("[data-page-view]:not([hidden])");
++    const fromKey = viewKey(navigation.from);
++    const toKey = viewKey(navigation.to);
++
++    // Submissions may change server state: do not restore an earlier view.
++    if (invalidateOnSwap) {
++      for (const view of views.values()) {
++        if (view !== current) view.remove();
++      }
++      views.clear();
++    }
++
++    if (current) {
++      current.hidden = true;
++      current.inert = true;
++      if (current.dataset.cacheView === "true" && !invalidateOnSwap) {
++        views.delete(fromKey);
++        views.set(fromKey, current);
++      } else {
++        current.remove();
++      }
++    }
++
++    const cached = incoming.dataset.cacheView === "true" ? views.get(toKey) : undefined;
++    const next = cached ?? incoming;
++
++    // Let Astro handle the head, history, scroll, focus, scripts and persistence.
++    // Insert new content afterwards so Astro doesn't try to persist its islands
++    // against the islands in the outgoing document.
++    swap();
++    if (!cached) container.append(next);
++    next.hidden = false;
++    next.inert = false;
++
++    if (next.dataset.cacheView === "true") {
++      views.delete(toKey);
++      views.set(toKey, next);
++    }
++    while (views.size > MAX_VIEWS) {
++      const oldestKey = views.keys().next().value!;
++      views.get(oldestKey)!.remove();
++      views.delete(oldestKey);
++    }
++  };
++});

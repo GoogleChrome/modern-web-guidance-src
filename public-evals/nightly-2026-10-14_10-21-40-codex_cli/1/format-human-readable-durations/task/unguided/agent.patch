@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,46 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .steeping-calculator {
++      margin-top: 40px;
++      padding: clamp(24px, 5vw, 40px);
++      background: #f2ebe7;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 32px;
++      align-items: center;
++    }
++
++    .steeping-calculator h2 { margin-bottom: 8px; }
++    .calculator-fields { display: flex; gap: 16px; margin-bottom: 20px; }
++    .calculator-field { flex: 1; min-width: 0; }
++    .calculator-field label { display: block; font-weight: 600; margin-bottom: 6px; }
++    .calculator-field input {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #a88e84;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++    .steeping-calculator fieldset { border: 0; }
++    .steeping-calculator legend { font-weight: 600; margin-bottom: 8px; }
++    .unit-options { display: flex; gap: 24px; }
++    .unit-options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
++    .unit-options input { accent-color: var(--primary); width: 18px; height: 18px; }
++    .steeping-calculator input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .duration-result { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--secondary); }
++    .duration-result span { display: block; font-size: 0.85rem; }
++    #humanValue { display: block; font-size: 1.6rem; font-weight: 700; color: var(--primary); }
++    @media (max-width: 640px) {
++      .steeping-calculator { grid-template-columns: 1fr; gap: 24px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +232,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="steeping-calculator" aria-labelledby="steeping-title">
++      <div>
++        <h2 id="steeping-title">Every great cup takes time.</h2>
++        <p>Planning your next brew? Add your steeping time and choose how you’d like to read it.</p>
++      </div>
++      <div>
++        <div class="calculator-fields">
++          <div class="calculator-field">
++            <label for="hoursInput">Hours</label>
++            <input id="hoursInput" type="number" min="0" step="1" value="18" inputmode="numeric">
++          </div>
++          <div class="calculator-field">
++            <label for="minutesInput">Minutes</label>
++            <input id="minutesInput" type="number" min="0" step="1" value="0" inputmode="numeric">
++          </div>
++        </div>
++        <fieldset>
++          <legend>Display duration in</legend>
++          <div class="unit-options">
++            <label><input type="radio" name="largestUnit" value="hours" checked> Hours &amp; minutes</label>
++            <label><input type="radio" name="largestUnit" value="minutes"> Minutes</label>
++          </div>
++        </fieldset>
++        <div class="duration-result">
++          <span>Total steeping time</span>
++          <output id="humanValue" for="hoursInput minutesInput" aria-live="polite" aria-atomic="true"></output>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +274,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hoursInput = document.getElementById('hoursInput');
++    const minutesInput = document.getElementById('minutesInput');
++    const humanValue = document.getElementById('humanValue');
++    const locale = navigator.languages?.[0] || navigator.language || document.documentElement.lang;
++    const hourFormatter = new Intl.NumberFormat(locale, { style: 'unit', unit: 'hour', unitDisplay: 'long' });
++    const minuteFormatter = new Intl.NumberFormat(locale, { style: 'unit', unit: 'minute', unitDisplay: 'long' });
++    const listFormatter = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' });
++
++    function updateSteepingTime() {
++      const inputs = [hoursInput, minutesInput];
++      const values = inputs.map(input => input.value === '' ? 0 : input.valueAsNumber);
++      const totalMinutes = values[0] * 60 + values[1];
++      const valid = inputs.every((input, index) => input.validity.valid &&
++        Number.isSafeInteger(values[index]) && values[index] >= 0);
++
++      inputs.forEach((input, index) => {
++        input.setAttribute('aria-invalid', String(!input.validity.valid ||
++          !Number.isSafeInteger(values[index]) || values[index] < 0));
++      });
++      if (!valid || !Number.isSafeInteger(totalMinutes)) {
++        humanValue.textContent = 'Enter non-negative whole numbers within a supported range.';
++        return;
++      }
++
++      const largestUnit = document.querySelector('input[name="largestUnit"]:checked').value;
++      if (largestUnit === 'minutes') {
++        humanValue.textContent = minuteFormatter.format(totalMinutes);
++        return;
++      }
++      const hours = Math.floor(totalMinutes / 60);
++      const minutes = totalMinutes % 60;
++      const parts = [];
++      if (hours > 0) parts.push(hourFormatter.format(hours));
++      if (minutes > 0 || parts.length === 0) parts.push(minuteFormatter.format(minutes));
++      humanValue.textContent = listFormatter.format(parts);
++    }
++
++    [hoursInput, minutesInput].forEach(input => input.addEventListener('input', updateSteepingTime));
++    document.querySelectorAll('input[name="largestUnit"]').forEach(input =>
++      input.addEventListener('change', updateSteepingTime));
++    updateSteepingTime();
++  </script>
+ </body>
+ 
+ </html>

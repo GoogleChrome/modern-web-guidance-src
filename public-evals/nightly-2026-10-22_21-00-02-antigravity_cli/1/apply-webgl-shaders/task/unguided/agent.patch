@@ -1,0 +1,552 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -90,10 +92,55 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      position: relative;
++      z-index: 2;
++      user-select: text;
++      -webkit-user-select: text;
+     }
+ 
++    .hero p {
++      position: relative;
++      z-index: 2;
++    }
++
++    .hero .btn {
++      position: relative;
++      z-index: 2;
++      user-select: text;
++      -webkit-user-select: text;
++      pointer-events: auto;
++      cursor: pointer;
++    }
++
++    .hero.webgl-active h1[data-webgl-target],
++    .hero.webgl-active .btn[data-webgl-target] {
++      color: transparent;
++      text-shadow: none;
++    }
++
++    .hero.webgl-active .btn[data-webgl-target],
++    .hero.webgl-active .btn[data-webgl-target]:hover {
++      background: transparent;
++      box-shadow: none;
++    }
++
++    .hero.webgl-active h1[data-webgl-target]::selection,
++    .hero.webgl-active .btn[data-webgl-target]::selection {
++      background: rgba(255, 171, 64, 0.35);
++      color: transparent;
++    }
++
++    .webgl-ripple-canvas {
++      position: absolute;
++      pointer-events: none;
++      user-select: none;
++      -webkit-user-select: none;
++      z-index: 1;
++      display: block;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -206,7 +253,481 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script id="vertex-shader" type="x-shader/x-vertex">
++    attribute vec2 a_position;
++    attribute vec2 a_texCoord;
++
++    uniform float u_time;
++    uniform vec2 u_mouse;
++    uniform float u_hover;
++    uniform vec2 u_resolution;
++
++    varying vec2 v_texCoord;
++    varying float v_wave;
++
++    void main() {
++      v_texCoord = a_texCoord;
++
++      vec2 pos = a_position;
++      float aspect = u_resolution.x / max(u_resolution.y, 1.0);
++      vec2 aspectUv = vec2(a_texCoord.x * aspect, a_texCoord.y);
++      vec2 aspectMouse = vec2(u_mouse.x * aspect, u_mouse.y);
++
++      float dist = distance(aspectUv, aspectMouse);
++      float mouseRipple = sin(dist * 18.0 - u_time * 5.0) * exp(-dist * 3.5) * (0.35 + 0.65 * u_hover);
++      float ambientWave = sin(a_texCoord.x * 8.0 + u_time * 2.2) * cos(a_texCoord.y * 6.0 + u_time * 1.8) * 0.25;
++
++      v_wave = mouseRipple + ambientWave;
++      pos.y += v_wave * 0.025;
++
++      gl_Position = vec4(pos, 0.0, 1.0);
++    }
++  </script>
++
++  <script id="fragment-shader" type="x-shader/x-fragment">
++    precision mediump float;
++
++    varying vec2 v_texCoord;
++    varying float v_wave;
++
++    uniform sampler2D u_texture;
++    uniform float u_time;
++    uniform vec2 u_mouse;
++    uniform float u_hover;
++    uniform vec2 u_resolution;
++    uniform vec4 u_ripples[8];
++
++    void main() {
++      float aspect = u_resolution.x / max(u_resolution.y, 1.0);
++      vec2 uv = v_texCoord;
++      vec2 aspectUv = vec2(uv.x * aspect, uv.y);
++
++      // Continuous GPU fluid wave distortion
++      vec2 waveOffset = vec2(
++        sin(uv.y * 10.0 + u_time * 2.6) * 0.0045 + cos(uv.x * 7.0 - u_time * 1.9) * 0.003,
++        cos(uv.x * 9.0 + u_time * 2.3) * 0.0085 + sin(uv.y * 8.0 - u_time * 2.1) * 0.004
++      );
++
++      // Interactive cursor proximity ripple
++      vec2 aspectMouse = vec2(u_mouse.x * aspect, u_mouse.y);
++      vec2 toMouse = aspectUv - aspectMouse;
++      float mouseDist = length(toMouse);
++      vec2 mouseDir = mouseDist > 0.0001 ? toMouse / mouseDist : vec2(0.0);
++      float hoverStrength = 0.35 + 0.65 * u_hover;
++      float cursorWave = sin(mouseDist * 22.0 - u_time * 6.5) * exp(-mouseDist * 3.2) * hoverStrength;
++      waveOffset += mouseDir * cursorWave * vec2(0.012 / max(aspect, 1.0), 0.018);
++
++      // Propagating drop ripples triggered by pointer movement and clicks
++      float totalRipple = cursorWave;
++      for (int i = 0; i < 8; i++) {
++        vec4 r = u_ripples[i];
++        float age = u_time - r.z;
++        if (r.w > 0.0 && age >= 0.0 && age < 3.5) {
++          vec2 rPos = vec2(r.x * aspect, r.y);
++          vec2 delta = aspectUv - rPos;
++          float d = length(delta);
++          vec2 dir = d > 0.0001 ? delta / d : vec2(0.0);
++          float ring = sin(d * 26.0 - age * 8.5) * exp(-d * 4.0) * exp(-age * 1.4) * r.w;
++          waveOffset += dir * ring * vec2(0.015 / max(aspect, 1.0), 0.022);
++          totalRipple += ring;
++        }
++      }
++
++      vec2 distortedUv = clamp(uv + waveOffset, 0.0, 1.0);
++      vec2 chromaShift = waveOffset * 0.18;
++
++      vec4 texCenter = texture2D(u_texture, distortedUv);
++      vec4 texR = texture2D(u_texture, clamp(distortedUv + chromaShift, 0.0, 1.0));
++      vec4 texB = texture2D(u_texture, clamp(distortedUv - chromaShift, 0.0, 1.0));
++
++      float alpha = max(texCenter.a, max(texR.a, texB.a) * 0.85);
++      vec3 color = vec3(texR.r, texCenter.g, texB.b);
++
++      // Subtle specular shimmer on ripple crests
++      float highlight = clamp((totalRipple + v_wave) * 0.18, -0.08, 0.16) * texCenter.a;
++      color += vec3(highlight);
++
++      gl_FragColor = vec4(color, alpha);
++    }
++  </script>
++
++  <script>
++    (function () {
++      const hero = document.querySelector('.hero');
++      if (!hero) return;
++
++      const heading = hero.querySelector('h1');
++      const orderBtn = hero.querySelector('.btn');
++      const targets = [heading, orderBtn].filter(Boolean);
++      if (!targets.length) return;
++
++      const vertexShaderSrc = document.getElementById('vertex-shader').textContent;
++      const fragmentShaderSrc = document.getElementById('fragment-shader').textContent;
++
++      function compileShader(gl, type, source) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++          gl.deleteShader(shader);
++          return null;
++        }
++        return shader;
++      }
++
++      function createProgram(gl, vsSource, fsSource) {
++        const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
++        const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
++        if (!vs || !fs) return null;
++        const program = gl.createProgram();
++        gl.attachShader(program, vs);
++        gl.attachShader(program, fs);
++        gl.linkProgram(program);
++        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++          gl.deleteProgram(program);
++          return null;
++        }
++        return program;
++      }
++
++      function buildSubdividedMesh(cols, rows) {
++        const positions = [];
++        const texCoords = [];
++        for (let y = 0; y < rows; y++) {
++          const v0 = y / rows;
++          const v1 = (y + 1) / rows;
++          const py0 = 1.0 - v0 * 2.0;
++          const py1 = 1.0 - v1 * 2.0;
++          for (let x = 0; x < cols; x++) {
++            const u0 = x / cols;
++            const u1 = (x + 1) / cols;
++            const px0 = u0 * 2.0 - 1.0;
++            const px1 = u1 * 2.0 - 1.0;
++
++            positions.push(
++              px0, py0,
++              px1, py0,
++              px0, py1,
++              px0, py1,
++              px1, py0,
++              px1, py1
++            );
++            texCoords.push(
++              u0, v0,
++              u1, v0,
++              u0, v1,
++              u0, v1,
++              u1, v0,
++              u1, v1
++            );
++          }
++        }
++        return {
++          positions: new Float32Array(positions),
++          texCoords: new Float32Array(texCoords),
++          vertexCount: cols * rows * 6
++        };
++      }
++
++      function drawRoundedRect(ctx, x, y, w, h, r) {
++        const radius = Math.min(r, w / 2, h / 2);
++        ctx.beginPath();
++        ctx.moveTo(x + radius, y);
++        ctx.arcTo(x + w, y, x + w, y + h, radius);
++        ctx.arcTo(x + w, y + h, x, y + h, radius);
++        ctx.arcTo(x, y + h, x, y, radius);
++        ctx.arcTo(x, y, x + w, y, radius);
++        ctx.closePath();
++      }
++
++      const meshData = buildSubdividedMesh(32, 16);
++      const BLEED = 24;
++      const instances = [];
++
++      // Capture original styles before hiding raw DOM text/background
++      const capturedStyles = new Map();
++      targets.forEach((el) => {
++        const cs = window.getComputedStyle(el);
++        const isButton = el.classList.contains('btn');
++        capturedStyles.set(el, {
++          isButton,
++          color: cs.color && cs.color !== 'rgba(0, 0, 0, 0)' ? cs.color : '#ffffff',
++          bgColor: isButton
++            ? (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' ? cs.backgroundColor : '#4e342e')
++            : 'transparent',
++          hoverBgColor: '#3e2723',
++          fontWeight: cs.fontWeight || (isButton ? '400' : '700'),
++          fontSize: cs.fontSize || (isButton ? '16px' : '48px'),
++          fontFamily: cs.fontFamily || "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
++          borderRadius: parseFloat(cs.borderRadius) || (isButton ? 5 : 0)
++        });
++      });
++
++      targets.forEach((el) => {
++        const canvas = document.createElement('canvas');
++        canvas.className = 'webgl-ripple-canvas';
++        canvas.setAttribute('aria-hidden', 'true');
++        canvas.dataset.webglFor = el.tagName.toLowerCase();
++        hero.appendChild(canvas);
++
++        const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false }) ||
++                   canvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
++        if (!gl) {
++          canvas.remove();
++          return;
++        }
++
++        const program = createProgram(gl, vertexShaderSrc, fragmentShaderSrc);
++        if (!program) {
++          canvas.remove();
++          return;
++        }
++
++        el.setAttribute('data-webgl-target', 'true');
++
++        const posBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, meshData.positions, gl.STATIC_DRAW);
++
++        const texBuffer = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
++        gl.bufferData(gl.ARRAY_BUFFER, meshData.texCoords, gl.STATIC_DRAW);
++
++        const texture = gl.createTexture();
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++
++        const texCanvas = document.createElement('canvas');
++        const texCtx = texCanvas.getContext('2d');
++
++        const ripples = Array.from({ length: 8 }, () => [0.5, 0.5, -10.0, 0.0]);
++        let rippleIdx = 0;
++
++        const state = {
++          el,
++          canvas,
++          gl,
++          program,
++          posBuffer,
++          texBuffer,
++          texture,
++          texCanvas,
++          texCtx,
++          ripples,
++          mouse: { x: 0.5, y: 0.5 },
++          targetMouse: { x: 0.5, y: 0.5 },
++          hover: 0,
++          targetHover: 0,
++          isHovered: false,
++          width: 1,
++          height: 1,
++          locations: {
++            aPosition: gl.getAttribLocation(program, 'a_position'),
++            aTexCoord: gl.getAttribLocation(program, 'a_texCoord'),
++            uTexture: gl.getUniformLocation(program, 'u_texture'),
++            uTime: gl.getUniformLocation(program, 'u_time'),
++            uMouse: gl.getUniformLocation(program, 'u_mouse'),
++            uHover: gl.getUniformLocation(program, 'u_hover'),
++            uResolution: gl.getUniformLocation(program, 'u_resolution'),
++            uRipples: gl.getUniformLocation(program, 'u_ripples[0]')
++          },
++          addRipple(nx, ny, strength) {
++            const now = performance.now() * 0.001;
++            ripples[rippleIdx] = [nx, ny, now, strength];
++            rippleIdx = (rippleIdx + 1) % ripples.length;
++          }
++        };
++
++        // Seed an initial ripple wave so distortion is immediately active
++        state.addRipple(0.5, 0.5, 0.85);
++
++        el.addEventListener('mouseenter', (e) => {
++          state.isHovered = true;
++          state.targetHover = 1.0;
++          updateHtmlTexture(state);
++          const rect = state.canvas.getBoundingClientRect();
++          const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / Math.max(rect.width, 1)));
++          const ny = Math.min(1, Math.max(0, (e.clientY - rect.top) / Math.max(rect.height, 1)));
++          state.addRipple(nx, ny, 1.0);
++        });
++
++        el.addEventListener('mouseleave', () => {
++          state.isHovered = false;
++          state.targetHover = 0.0;
++          updateHtmlTexture(state);
++        });
++
++        el.addEventListener('mousedown', (e) => {
++          const rect = state.canvas.getBoundingClientRect();
++          const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / Math.max(rect.width, 1)));
++          const ny = Math.min(1, Math.max(0, (e.clientY - rect.top) / Math.max(rect.height, 1)));
++          state.addRipple(nx, ny, 1.35);
++        });
++
++        instances.push(state);
++      });
++
++      if (!instances.length) return;
++      hero.classList.add('webgl-active');
++
++      function updateHtmlTexture(state) {
++        const { el, canvas, gl, texture, texCanvas, texCtx } = state;
++        const heroRect = hero.getBoundingClientRect();
++        const elRect = el.getBoundingClientRect();
++        const dpr = Math.min(window.devicePixelRatio || 1, 2);
++
++        const elemW = Math.max(1, Math.round(elRect.width));
++        const elemH = Math.max(1, Math.round(elRect.height));
++        const totalW = elemW + BLEED * 2;
++        const totalH = elemH + BLEED * 2;
++
++        const left = elRect.left - heroRect.left - BLEED;
++        const top = elRect.top - heroRect.top - BLEED;
++
++        canvas.style.left = left + 'px';
++        canvas.style.top = top + 'px';
++        canvas.style.width = totalW + 'px';
++        canvas.style.height = totalH + 'px';
++
++        const pixelW = Math.max(1, Math.round(totalW * dpr));
++        const pixelH = Math.max(1, Math.round(totalH * dpr));
++
++        if (canvas.width !== pixelW || canvas.height !== pixelH) {
++          canvas.width = pixelW;
++          canvas.height = pixelH;
++        }
++        if (texCanvas.width !== pixelW || texCanvas.height !== pixelH) {
++          texCanvas.width = pixelW;
++          texCanvas.height = pixelH;
++        }
++
++        state.width = pixelW;
++        state.height = pixelH;
++
++        const styleInfo = capturedStyles.get(el);
++        const cs = window.getComputedStyle(el);
++        const fontSize = cs.fontSize || styleInfo.fontSize;
++        const fontWeight = cs.fontWeight || styleInfo.fontWeight;
++        const fontFamily = cs.fontFamily || styleInfo.fontFamily;
++
++        texCtx.save();
++        texCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        texCtx.clearRect(0, 0, totalW, totalH);
++
++        if (styleInfo.isButton) {
++          texCtx.fillStyle = state.isHovered ? styleInfo.hoverBgColor : styleInfo.bgColor;
++          drawRoundedRect(texCtx, BLEED, BLEED, elemW, elemH, styleInfo.borderRadius);
++          texCtx.fill();
++        }
++
++        texCtx.font = `${fontWeight} ${fontSize} ${fontFamily}`;
++        texCtx.fillStyle = styleInfo.color;
++        texCtx.textAlign = 'center';
++        texCtx.textBaseline = 'middle';
++        const text = (el.textContent || '').trim();
++        texCtx.fillText(text, BLEED + elemW / 2, BLEED + elemH / 2 + 1);
++        texCtx.restore();
++
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texCanvas);
++      }
++
++      function syncAllTextures() {
++        instances.forEach(updateHtmlTexture);
++      }
++
++      syncAllTextures();
++      window.addEventListener('resize', syncAllTextures);
++      if (typeof ResizeObserver !== 'undefined') {
++        const ro = new ResizeObserver(syncAllTextures);
++        ro.observe(hero);
++        targets.forEach((t) => ro.observe(t));
++      }
++
++      let lastMoveDrop = 0;
++      hero.addEventListener('mousemove', (e) => {
++        const now = performance.now();
++        instances.forEach((state) => {
++          const rect = state.canvas.getBoundingClientRect();
++          const nx = (e.clientX - rect.left) / Math.max(rect.width, 1);
++          const ny = (e.clientY - rect.top) / Math.max(rect.height, 1);
++          state.targetMouse.x = Math.min(1.2, Math.max(-0.2, nx));
++          state.targetMouse.y = Math.min(1.2, Math.max(-0.2, ny));
++
++          if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1 && now - lastMoveDrop > 90) {
++            state.addRipple(nx, ny, 0.7);
++            lastMoveDrop = now;
++          }
++        });
++      });
++
++      function render(nowMs) {
++        const timeSec = nowMs * 0.001;
++
++        instances.forEach((state) => {
++          const { gl, program, posBuffer, texBuffer, texture, locations } = state;
++
++          state.mouse.x += (state.targetMouse.x - state.mouse.x) * 0.14;
++          state.mouse.y += (state.targetMouse.y - state.mouse.y) * 0.14;
++          state.hover += (state.targetHover - state.hover) * 0.12;
++
++          gl.viewport(0, 0, state.width, state.height);
++          gl.clearColor(0, 0, 0, 0);
++          gl.clear(gl.COLOR_BUFFER_BIT);
++
++          gl.enable(gl.BLEND);
++          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
++
++          gl.useProgram(program);
++
++          gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
++          gl.enableVertexAttribArray(locations.aPosition);
++          gl.vertexAttribPointer(locations.aPosition, 2, gl.FLOAT, false, 0, 0);
++
++          gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
++          gl.enableVertexAttribArray(locations.aTexCoord);
++          gl.vertexAttribPointer(locations.aTexCoord, 2, gl.FLOAT, false, 0, 0);
++
++          gl.activeTexture(gl.TEXTURE0);
++          gl.bindTexture(gl.TEXTURE_2D, texture);
++          gl.uniform1i(locations.uTexture, 0);
++          gl.uniform1f(locations.uTime, timeSec);
++          gl.uniform2f(locations.uMouse, state.mouse.x, state.mouse.y);
++          gl.uniform1f(locations.uHover, state.hover);
++          gl.uniform2f(locations.uResolution, state.width, state.height);
++
++          const flatRipples = new Float32Array(32);
++          for (let i = 0; i < 8; i++) {
++            flatRipples[i * 4 + 0] = state.ripples[i][0];
++            flatRipples[i * 4 + 1] = state.ripples[i][1];
++            flatRipples[i * 4 + 2] = state.ripples[i][2];
++            flatRipples[i * 4 + 3] = state.ripples[i][3];
++          }
++          gl.uniform4fv(locations.uRipples, flatRipples);
++
++          gl.drawArrays(gl.TRIANGLES, 0, meshData.vertexCount);
++        });
++      }
++
++      if (typeof MutationObserver !== 'undefined') {
++        const mo = new MutationObserver(syncAllTextures);
++        targets.forEach((t) => mo.observe(t, { childList: true, characterData: true, subtree: true }));
++      }
++
++      function animate(nowMs) {
++        render(nowMs);
++        requestAnimationFrame(animate);
++      }
++
++      render(performance.now());
++      requestAnimationFrame(animate);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

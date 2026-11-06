@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,48 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .operations {
++      margin-top: 40px;
++      padding: 28px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .operations-header, .queue-summary, .task-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .operations-intro { margin-top: 8px; color: #715b54; }
++    .queue-state { font-size: 0.85rem; padding: 4px 12px; border-radius: 20px; background: #f2edea; }
++    .queue-state[data-running="true"] { background: #fff0dc; color: #794600; }
++    .operation-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 12px; }
++    .operation-button { font: inherit; text-align: left; padding: 16px; border: 1px solid var(--secondary); border-radius: 6px; background: #faf8f6; color: var(--text); cursor: pointer; }
++    .operation-button strong, .operation-button span { display: block; }
++    .operation-button span { font-size: 0.8rem; margin-top: 4px; color: #715b54; }
++    .operation-button:hover { background: #f1e9e3; border-color: var(--primary); }
++    .operations button:focus-visible { outline: 3px solid #a45a00; outline-offset: 3px; }
++    .batch-button { font: inherit; border: 0; cursor: pointer; margin-top: 0; }
++    .queue-summary { padding: 20px 0 12px; font-size: 0.85rem; border-bottom: 1px solid #ece4df; }
++    .queue-list { list-style: none; max-height: 360px; overflow-y: auto; }
++    .queue-empty { padding: 24px 0 8px; color: #715b54; text-align: center; }
++    .queue-task { padding: 14px 0; border-bottom: 1px solid #ece4df; }
++    .task-heading { font-size: 0.9rem; gap: 6px 12px; }
++    .task-details { color: #715b54; font-size: 0.8rem; margin: 4px 0; }
++    .queue-task progress { display: block; width: 100%; height: 6px; accent-color: var(--primary); }
++    .queue-note { margin-top: 16px; font-size: 0.8rem; color: #715b54; }
++
++    @media (max-width: 600px) {
++      .operations { padding: 20px; }
++      .operation-actions { grid-template-columns: 1fr; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +234,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-header">
++        <h2 id="operations-title">Operations queue</h2>
++        <span class="queue-state" id="queue-state" role="status">Ready to brew</span>
++      </div>
++      <p class="operations-intro">A little work behind every great cup. Run a task or mix a batch to see priorities in action.</p>
++      <div class="operation-actions">
++        <button type="button" class="operation-button" data-task="checkout">
++          <strong>Run checkout</strong>
++          <span>Urgent · Customer comes first</span>
++        </button>
++        <button type="button" class="operation-button" data-task="menu">
++          <strong>Update menu</strong>
++          <span>Standard · Refresh the daily selection</span>
++        </button>
++        <button type="button" class="operation-button" data-task="telemetry">
++          <strong>Log telemetry</strong>
++          <span>Background · Record shop activity</span>
++        </button>
++      </div>
++      <button type="button" class="btn batch-button" id="run-batch">Run mixed batch</button>
++      <div class="queue-summary">
++        <span id="queue-count">0 pending · 0 completed</span>
++        <span>Urgent → Standard → Background</span>
++      </div>
++      <ol class="queue-list" id="queue-list" aria-label="Task queue and recent results"></ol>
++      <p class="queue-empty" id="queue-empty">The queue is clear. Choose a task to get started.</p>
++      <p class="queue-note">Simulated operations only. Work runs in small steps so you can keep clicking, scrolling, and adding urgent tasks.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,136 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const definitions = {
++        checkout: { name: 'Checkout', label: 'Urgent', priority: 'user-blocking', rank: 0, steps: 40 },
++        menu: { name: 'Menu update', label: 'Standard', priority: 'user-visible', rank: 1, steps: 65 },
++        telemetry: { name: 'Telemetry log', label: 'Background', priority: 'background', rank: 2, steps: 80 }
++      };
++      // Local postTask polyfill: preserve priority and FIFO order without a dependency.
++      const fallbackTasks = [];
++      let fallbackTimer = null;
++      const fallbackScheduler = {
++        postTask(callback, { priority }) {
++          return new Promise((resolve, reject) => {
++            fallbackTasks.push({ callback, resolve, reject, priority });
++            if (fallbackTimer !== null) return;
++            fallbackTimer = setTimeout(function drain() {
++              const ranks = { 'user-blocking': 0, 'user-visible': 1, background: 2 };
++              fallbackTasks.sort((a, b) => ranks[a.priority] - ranks[b.priority]);
++              const task = fallbackTasks.shift();
++              try { task.resolve(task.callback()); } catch (error) { task.reject(error); }
++              fallbackTimer = fallbackTasks.length ? setTimeout(drain, 0) : null;
++            }, 0);
++          });
++        }
++      };
++      const taskScheduler = typeof globalThis.scheduler?.postTask === 'function'
++        ? globalThis.scheduler : fallbackScheduler;
++      const yieldToBrowser = () => typeof globalThis.scheduler?.yield === 'function'
++        ? globalThis.scheduler.yield() : new Promise(resolve => setTimeout(resolve, 0));
++      const list = document.getElementById('queue-list');
++      const state = document.getElementById('queue-state');
++      const count = document.getElementById('queue-count');
++      const empty = document.getElementById('queue-empty');
++      const pending = [];
++      const history = [];
++      let sequence = 0;
++      let completed = 0;
++      let processing = false;
++
++      function render() {
++        pending.sort((a, b) => a.rank - b.rank || a.id - b.id);
++        count.textContent = `${pending.length} pending · ${completed} completed`;
++        empty.hidden = pending.length + history.length > 0;
++        list.replaceChildren(...pending.map(task => task.row), ...history.map(task => task.row));
++        for (const task of pending) {
++          const percent = Math.floor(task.done / task.steps * 100);
++          task.status.textContent = `${task.label} · ${task === pending[0] ? 'Running' : task.done ? 'Paused' : 'Queued'} · ${percent}%`;
++          task.progress.value = percent;
++        }
++      }
++
++      function enqueue(type) {
++        const task = { ...definitions[type], id: ++sequence, done: 0 };
++        task.row = document.createElement('li');
++        task.row.className = 'queue-task';
++        const heading = document.createElement('div');
++        heading.className = 'task-heading';
++        const name = document.createElement('strong');
++        name.textContent = `${task.name} #${task.id}`;
++        task.status = document.createElement('span');
++        task.status.className = 'task-details';
++        heading.append(name, task.status);
++        task.progress = document.createElement('progress');
++        task.progress.max = 100;
++        task.progress.value = 0;
++        task.progress.setAttribute('aria-label', `${task.name} #${task.id} progress`);
++        task.row.append(heading, task.progress);
++        pending.push(task);
++      }
++
++      async function processQueue() {
++        if (processing) return;
++        processing = true;
++        state.dataset.running = 'true';
++        try {
++          while (pending.length) {
++            render();
++            const task = pending[0];
++            state.textContent = `Working · ${task.name}`;
++            await taskScheduler.postTask(() => {
++              // Recheck after scheduling: a more urgent task may have just arrived.
++              pending.sort((a, b) => a.rank - b.rank || a.id - b.id);
++              if (pending[0] !== task) return;
++              // A bounded CPU workload represents one piece of a longer operation.
++              const deadline = performance.now() + 4;
++              let value = task.done + 1;
++              while (performance.now() < deadline) value = Math.sqrt(value + 12345);
++              task.result = value;
++              task.done++;
++              if (task.done === task.steps) {
++                pending.shift();
++                completed++;
++                task.status.textContent = `${task.label} · Completed ${completed}`;
++                task.progress.value = 100;
++                history.unshift(task);
++                history.length = Math.min(history.length, 12);
++              }
++            }, { priority: task.priority });
++            render();
++            await yieldToBrowser();
++            // Pace the simulation so progress and priority changes are observable.
++            await new Promise(resolve => setTimeout(resolve, 16));
++          }
++          state.textContent = 'All tasks complete';
++        } catch (error) {
++          state.textContent = 'Queue paused. Add a task to retry.';
++          console.error('Operations queue failed:', error);
++        } finally {
++          state.dataset.running = 'false';
++          processing = false;
++        }
++      }
++
++      document.querySelectorAll('[data-task]').forEach(button => {
++        button.addEventListener('click', () => {
++          enqueue(button.dataset.task);
++          render();
++          void processQueue();
++        });
++      });
++      document.getElementById('run-batch').addEventListener('click', () => {
++        // Intentionally enqueue in reverse priority to demonstrate the sorting.
++        ['telemetry', 'menu', 'checkout'].forEach(enqueue);
++        render();
++        void processQueue();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

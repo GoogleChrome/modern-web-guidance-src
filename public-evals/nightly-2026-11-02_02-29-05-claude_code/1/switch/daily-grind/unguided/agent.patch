@@ -1,0 +1,270 @@
+diff --git a/index.html b/index.html
+index 66c9173..0b71b58 100644
+--- a/index.html
++++ b/index.html
+@@ -108,7 +108,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface, white);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +117,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading, var(--primary));
+     }
+ 
+     .btn {
+@@ -152,6 +152,174 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Dark theme (toggled by the preferences switch) */
++    :root[data-theme="dark"] {
++      --secondary: #3e2723;
++      --text: #efebe9;
++      --light: #1b1210;
++      --surface: #2b1f1b;
++      --heading: #ffcc80;
++    }
++
++    /* Preferences */
++    .preferences {
++      max-width: 560px;
++      margin: 40px auto 0;
++      text-align: left;
++    }
++
++    .preferences h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .setting {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 15px 0;
++    }
++
++    .setting + .setting {
++      border-top: 1px solid rgba(128, 128, 128, 0.35);
++    }
++
++    .setting-label {
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .setting-hint {
++      font-size: 0.85rem;
++      opacity: 0.85;
++    }
++
++    /* Accessible switch: <button role="switch" aria-checked="true|false"> */
++    .switch {
++      --track-off: #8d6e63;
++      --track-on: var(--primary);
++      flex-shrink: 0;
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      min-height: 44px;
++      padding: 0 4px;
++      border: 0;
++      background: none;
++      color: inherit;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      border-radius: 999px;
++    }
++
++    .switch-track {
++      position: relative;
++      width: 48px;
++      height: 28px;
++      border-radius: 999px;
++      border: 2px solid var(--track-off);
++      background: var(--track-off);
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    .switch-thumb {
++      position: absolute;
++      top: 2px;
++      left: 2px;
++      width: 20px;
++      height: 20px;
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++      display: grid;
++      place-items: center;
++      transition: transform 0.2s;
++    }
++
++    .switch-thumb svg {
++      width: 12px;
++      height: 12px;
++      opacity: 0;
++      transition: opacity 0.2s;
++    }
++
++    .switch[aria-checked="true"] .switch-track {
++      background: var(--track-on);
++      border-color: var(--track-on);
++    }
++
++    .switch[aria-checked="true"] .switch-thumb {
++      transform: translateX(20px);
++    }
++
++    .switch[aria-checked="true"] .switch-thumb svg {
++      opacity: 1;
++    }
++
++    /* Visible text state so "on/off" is never conveyed by colour alone */
++    .switch-state {
++      min-width: 2em;
++    }
++
++    .switch:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .switch:hover .switch-track {
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.35);
++    }
++
++    :root[data-theme="dark"] .switch {
++      --track-off: #a1887f;
++      --track-on: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .switch-track,
++      .switch-thumb,
++      .switch-thumb svg {
++        transition: none;
++      }
++    }
++
++    /* Windows High Contrast / forced colours */
++    @media (forced-colors: active) {
++      .switch-track {
++        border-color: ButtonText;
++        background: Canvas;
++      }
++
++      .switch-thumb {
++        background: ButtonText;
++        forced-color-adjust: none;
++      }
++
++      .switch[aria-checked="true"] .switch-track {
++        background: Highlight;
++        border-color: Highlight;
++      }
++
++      .switch[aria-checked="true"] .switch-thumb {
++        background: HighlightText;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +363,31 @@
+         </div>
+       </div>
+     </section>
++    <section class="card preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your Preferences</h2>
++      <div class="setting">
++        <div>
++          <div class="setting-label" id="pref-dark-mode-label">Dark mode</div>
++          <div class="setting-hint" id="pref-dark-mode-hint">Easier on the eyes for late-night coffee runs.</div>
++        </div>
++        <button type="button" class="switch" role="switch" aria-checked="false" id="pref-dark-mode"
++          aria-labelledby="pref-dark-mode-label" aria-describedby="pref-dark-mode-hint">
++          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"><svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
++          <span class="switch-state" aria-hidden="true">Off</span>
++        </button>
++      </div>
++      <div class="setting">
++        <div>
++          <div class="setting-label" id="pref-order-alerts-label">Order-ready alerts</div>
++          <div class="setting-hint" id="pref-order-alerts-hint">Get notified when your drink is ready for pickup.</div>
++        </div>
++        <button type="button" class="switch" role="switch" aria-checked="false" id="pref-order-alerts"
++          aria-labelledby="pref-order-alerts-label" aria-describedby="pref-order-alerts-hint">
++          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"><svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
++          <span class="switch-state" aria-hidden="true">Off</span>
++        </button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +400,40 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var actions = {
++        'pref-dark-mode': function (on) {
++          document.documentElement.dataset.theme = on ? 'dark' : 'light';
++        }
++      };
++
++      function setSwitch(btn, on) {
++        btn.setAttribute('aria-checked', String(on));
++        btn.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
++        if (actions[btn.id]) actions[btn.id](on);
++      }
++
++      document.querySelectorAll('.switch[role="switch"]').forEach(function (btn) {
++        var key = 'daily-grind:' + btn.id;
++        var stored = null;
++        try { stored = localStorage.getItem(key); } catch (e) { }
++        setSwitch(btn, stored === 'true');
++
++        // Clicking the visible label toggles too, like a native <label>.
++        var label = document.getElementById(btn.getAttribute('aria-labelledby'));
++        if (label) label.addEventListener('click', function () { btn.click(); btn.focus(); });
++
++        // <button> already handles Enter/Space and focus natively.
++        btn.addEventListener('click', function () {
++          var on = btn.getAttribute('aria-checked') !== 'true';
++          setSwitch(btn, on);
++          try { localStorage.setItem(key, String(on)); } catch (e) { }
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

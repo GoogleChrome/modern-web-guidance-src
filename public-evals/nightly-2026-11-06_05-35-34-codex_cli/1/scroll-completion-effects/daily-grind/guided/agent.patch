@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+index 66c9173..3d5101d 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,33 @@
+       padding: 0 20px;
+     }
+ 
++    main section + section {
++      margin-top: 60px;
++    }
++
++    section[id] {
++      scroll-margin-top: 100px;
++      border-radius: 8px;
++    }
++
++    section[id]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 8px;
++    }
++
++    .navigation-target {
++      animation: target-highlight 1.2s ease-out;
++    }
++
++    @keyframes target-highlight {
++      from { box-shadow: 0 0 0 8px var(--accent); }
++      to { box-shadow: 0 0 0 8px transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .navigation-target { animation: none; }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,9 +187,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,12 +198,12 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +222,16 @@
+         </div>
+       </div>
+     </section>
++    <section id="locations" tabindex="-1" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Locations</h2>
++      <p>Find your next coffee stop.</p>
++      <a href="/locations" class="btn">Explore Our Locations</a>
++    </section>
++    <section id="rewards" tabindex="-1" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Rewards</h2>
++      <p>Make the most of your daily coffee ritual.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +244,92 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let navigationId = 0;
++    let activeNavigation;
++
++    async function scrollToTarget(target, signal) {
++      // Install the fallback before scrolling so instant scrolls are observed too.
++      let idleTimer;
++      let finish;
++      const settled = new Promise((resolve) => { finish = resolve; });
++      const onScroll = () => {
++        clearTimeout(idleTimer);
++        idleTimer = setTimeout(finish, 120);
++      };
++      const cleanup = () => {
++        clearTimeout(idleTimer);
++        window.removeEventListener('scroll', onScroll);
++        window.removeEventListener('scrollend', finish);
++        signal.removeEventListener('abort', finish);
++      };
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      window.addEventListener('scrollend', finish);
++      signal.addEventListener('abort', finish, { once: true });
++      onScroll(); // Also settles when the target is already at the requested position.
++
++      try {
++        const navHeight = document.querySelector('nav').getBoundingClientRect().height;
++        // Use the root scroll method to avoid early scrollIntoView promise resolution.
++        const result = window.scrollTo({
++          top: Math.max(0, window.scrollY + target.getBoundingClientRect().top - navHeight - 16),
++          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
++            ? 'instant' : 'smooth'
++        });
++        if (result && typeof result.then === 'function') {
++          await result;
++        } else {
++          // Older browsers return undefined: use scrollend or scroll inactivity.
++          await settled;
++        }
++      } finally {
++        cleanup();
++      }
++    }
++
++    document.addEventListener('click', async (event) => {
++      const link = event.target.closest('a[href^="#"]');
++      if (!link || event.defaultPrevented || event.button !== 0 ||
++          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
++          link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++
++      const target = document.getElementById(link.hash.slice(1));
++      if (!target) return;
++      event.preventDefault();
++
++      const id = ++navigationId;
++      activeNavigation?.abort();
++      const controller = new AbortController();
++      activeNavigation = controller;
++      document.querySelectorAll('.navigation-target').forEach((element) => {
++        element.classList.remove('navigation-target');
++      });
++
++      const cancel = () => controller.abort();
++      const cancelOnKey = (keyEvent) => {
++        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Tab', 'Escape'].includes(keyEvent.key)) {
++          cancel();
++        }
++      };
++      const options = { passive: true, signal: controller.signal };
++      window.addEventListener('wheel', cancel, options);
++      window.addEventListener('touchstart', cancel, options);
++      window.addEventListener('keydown', cancelOnKey, { signal: controller.signal });
++
++      try {
++        await scrollToTarget(target, controller.signal);
++        if (id !== navigationId || controller.signal.aborted) return;
++        if (location.hash !== link.hash) history.pushState(null, '', link.hash);
++        target.focus({ preventScroll: true });
++        target.classList.add('navigation-target');
++      } finally {
++        controller.abort();
++        if (activeNavigation === controller) activeNavigation = undefined;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

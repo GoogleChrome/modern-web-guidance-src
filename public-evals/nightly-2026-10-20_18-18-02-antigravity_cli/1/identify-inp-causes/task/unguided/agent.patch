@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,163 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- INP Diagnostics & Attribution -->
++  <script type="module">
++    import { onINP } from 'https://unpkg.com/web-vitals@4/dist/web-vitals.attribution.mjs?module';
++
++    /**
++     * Generates a readable CSS selector for a given DOM element.
++     */
++    function getElementSelector(el) {
++      if (!el || el.nodeType !== 1) return '(unknown)';
++      if (el.id) return `#${el.id}`;
++      const tag = el.tagName.toLowerCase();
++      const classes = el.className && typeof el.className === 'string'
++        ? '.' + el.className.trim().split(/\s+/).join('.')
++        : '';
++      return `${tag}${classes}`;
++    }
++
++    /**
++     * Reports INP diagnostic details including phase breakdown and Long Animation Frames (LoAF) scripts.
++     */
++    function logINPCauses({ value, rating, attribution, entries }) {
++      const {
++        interactionTarget,
++        interactionTargetElement,
++        interactionType,
++        interactionTime,
++        nextPaintTime,
++         loadState,
++        inputDelay,
++        processingDuration,
++        presentationDelay,
++        longAnimationFrameEntries = [],
++      } = attribution;
++
++      // Identify the primary bottleneck phase
++      const phases = [
++        { name: 'Input Delay (main thread busy before handler)', duration: inputDelay },
++        { name: 'Processing Duration (slow event callbacks)', duration: processingDuration },
++        { name: 'Presentation Delay (expensive style/layout/paint)', duration: presentationDelay },
++      ];
++      const primaryCause = phases.reduce((prev, curr) => (curr.duration > prev.duration ? curr : prev));
++
++      // Extract script attribution from Long Animation Frames (LoAF)
++      const slowScripts = [];
++      for (const loaf of longAnimationFrameEntries) {
++        for (const script of loaf.scripts || []) {
++          if (script.duration > 5) {
++            slowScripts.push({
++              invoker: script.invoker,
++              invokerType: script.invokerType,
++              sourceURL: script.sourceURL || '(inline or anonymous)',
++              sourceFunctionName: script.sourceFunctionName || '(anonymous)',
++              sourceCharPosition: script.sourceCharPosition,
++              durationMs: Math.round(script.duration),
++              forcedStyleAndLayoutDurationMs: Math.round(script.forcedStyleAndLayoutDuration || 0),
++            });
++          }
++        }
++      }
++
++      const diagnosticReport = {
++        metric: 'INP',
++        valueMs: Math.round(value),
++        rating, // 'good' (<=200ms) | 'needs-improvement' (200-500ms) | 'poor' (>500ms)
++        target: interactionTarget || getElementSelector(interactionTargetElement),
++        interactionType,
++        loadState,
++        primaryBottleneck: primaryCause.name,
++        phasesMs: {
++          inputDelay: Math.round(inputDelay),
++          processingDuration: Math.round(processingDuration),
++          presentationDelay: Math.round(presentationDelay),
++        },
++        longAnimationFramesCount: longAnimationFrameEntries.length,
++        culpritScripts: slowScripts,
++        rawEntries: entries,
++      };
++
++      console.group(`[INP Diagnostic] ${diagnosticReport.valueMs}ms (${rating})`);
++      console.log('Target Element:', diagnosticReport.target, interactionTargetElement || '');
++      console.log('Interaction Type:', interactionType, '| Load State:', loadState);
++      console.log('Primary Bottleneck:', diagnosticReport.primaryBottleneck);
++      console.table(diagnosticReport.phasesMs);
++      if (slowScripts.length > 0) {
++        console.log('Slow Scripts (via Long Animation Frames):');
++        console.table(slowScripts);
++      }
++      console.groupEnd();
++
++      // Send diagnostic data to an analytics endpoint if available
++      if (window.INP_REPORT_ENDPOINT && navigator.sendBeacon) {
++        navigator.sendBeacon(window.INP_REPORT_ENDPOINT, JSON.stringify(diagnosticReport));
++      }
++    }
++
++    // Observe INP with web-vitals attribution build (reportAllChanges allows inspecting slow interactions during development)
++    onINP(logINPCauses, { reportAllChanges: true });
++
++    // Fallback: Raw PerformanceObserver for Event Timing & Long Animation Frames
++    // Captures individual slow interactions (> 40ms) even before final INP settles
++    if ('PerformanceObserver' in window && PerformanceObserver.supportedEntryTypes?.includes('event')) {
++      const recentLoAFs = [];
++
++      if (PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')) {
++        const loafObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            recentLoAFs.push(entry);
++            if (recentLoAFs.length > 50) recentLoAFs.shift();
++          }
++        });
++        loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++      }
++
++      const interactions = new Map();
++
++      const eventObserver = new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          if (!entry.interactionId) continue;
++
++          const existing = interactions.get(entry.interactionId);
++          if (!existing || entry.duration > existing.duration) {
++            interactions.set(entry.interactionId, entry);
++          }
++
++          // Log slow individual events (>200ms threshold for non-good INP)
++          if (entry.duration > 200) {
++            const inputDelay = entry.processingStart - entry.startTime;
++            const processingDuration = entry.processingEnd - entry.processingStart;
++            const presentationDelay = Math.max(0, entry.duration - (entry.processingEnd - entry.startTime));
++            const matchingLoAFs = recentLoAFs.filter(
++              (loaf) => loaf.startTime <= entry.startTime + entry.duration && loaf.startTime + loaf.duration >= entry.startTime
++            );
++
++            console.warn('[Slow Interaction Detected]', {
++              eventName: entry.name,
++              durationMs: Math.round(entry.duration),
++              target: getElementSelector(entry.target),
++              phasesMs: {
++                inputDelay: Math.round(inputDelay),
++                processingDuration: Math.round(processingDuration),
++                presentationDelay: Math.round(presentationDelay),
++              },
++              longAnimationFrames: matchingLoAFs,
++            });
++          }
++        }
++      });
++
++      eventObserver.observe({
++        type: 'event',
++        durationThreshold: 40,
++        buffered: true,
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

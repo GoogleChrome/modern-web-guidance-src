@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,84 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast selector */
++    .roast-picker {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      margin-top: 1.5rem;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select {
++      min-width: 11rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 0.75rem;
++      font: inherit;
++      color: var(--accent);
++      background-color: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      padding: 0.5rem 1rem;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .roast-select::picker-icon {
++      color: var(--accent);
++      transition: rotate 0.2s;
++    }
++
++    .roast-select:open::picker-icon {
++      rotate: 180deg;
++    }
++
++    .roast-select::picker(select) {
++      margin-top: 4px;
++      padding: 0.25rem;
++      background-color: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++    }
++
++    .roast-select option {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.5rem 0.75rem;
++      color: var(--accent);
++      background-color: var(--primary);
++      border-radius: 3px;
++      cursor: pointer;
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus-visible {
++      color: var(--primary);
++      background-color: var(--accent);
++    }
++
++    .roast-select option::checkmark {
++      color: var(--accent);
++    }
++
++    .roast-select option:hover::checkmark,
++    .roast-select option:focus-visible::checkmark {
++      color: var(--primary);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +246,19 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">Light</option>
++        <option value="medium" selected>Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

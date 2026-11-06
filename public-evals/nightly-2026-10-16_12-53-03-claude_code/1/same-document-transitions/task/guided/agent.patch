@@ -1,0 +1,368 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,10 +71,10 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
+-    .hero {
++    /* Banner Section */
++    .banner {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,9 +87,9 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
++    .banner h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
+@@ -134,8 +134,131 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Views */
++    [hidden] {
++      display: none !important;
++    }
++
++    #list-heading,
++    #title {
++      outline-offset: 4px;
++    }
++
++    #list-heading {
++      text-align: center;
++    }
++
++    /* List view */
++    .thumbnail {
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      aspect-ratio: 4 / 3;
++      padding: 20px;
++      border-radius: 8px;
++      overflow: hidden;
++      color: white;
++      text-decoration: none;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.7)), var(--image);
++      background-size: cover;
++      background-position: center;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .thumbnail:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .thumbnail .title {
++      font-size: 1.4rem;
++      line-height: 1.2;
++      width: fit-content;
++    }
++
++    /* Detail view */
++    #detail-page {
++      max-width: 800px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    #hero {
++      display: flex;
++      align-items: flex-end;
++      min-height: 50vh;
++      padding: clamp(20px, 5vw, 40px);
++      border-radius: 8px;
++      overflow: hidden;
++      color: white;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.7)), var(--image);
++      background-size: cover;
++      background-position: center;
++    }
++
++    #title {
++      font-size: 2.5rem;
++      line-height: 1.2;
++      width: fit-content;
++    }
++
++    #detail-body {
++      margin-top: 24px;
++    }
++
++    #detail-description {
++      font-size: 1.15rem;
++    }
++
++    /* Shared element transitions. Names are applied only while a transition runs
++       (.selected is added/removed by JS) so the list never has duplicate names. */
++    #detail-page #hero,
++    .thumbnail.selected {
++      view-transition-name: hero;
++    }
++
++    #detail-page #title,
++    .thumbnail.selected .title {
++      view-transition-name: title;
++    }
++
++    /* Snapshots fill the morphing group and are cropped, not stretched,
++       when the aspect ratio of the two states differs. */
++    ::view-transition-old(hero),
++    ::view-transition-new(hero) {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    /* Text keeps its own aspect ratio while the group resizes. */
++    ::view-transition-old(title),
++    ::view-transition-new(title) {
++      width: 100%;
++      height: 100%;
++      object-fit: contain;
++      object-position: left bottom;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++
++      nav a,
++      .btn {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -167,35 +290,44 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <div id="list-page">
++    <header class="banner">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <main class="container">
++      <section>
++        <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
++        <div class="grid">
++          <a class="thumbnail" href="#/maple-oat-latte" data-id="maple-oat-latte"
++            style="--image: url('https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1000&q=80')">
++            <h2 class="title">Maple Oat Latte</h2>
++          </a>
++          <a class="thumbnail" href="#/dark-roast-espresso" data-id="dark-roast-espresso"
++            style="--image: url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80')">
++            <h2 class="title">Dark Roast Espresso</h2>
++          </a>
++          <a class="thumbnail" href="#/cold-brew" data-id="cold-brew"
++            style="--image: url('https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1000&q=80')">
++            <h2 class="title">Cold Brew</h2>
++          </a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++      </section>
++    </main>
++  </div>
++
++  <main id="detail-page" hidden>
++    <button type="button" class="btn" id="back">&larr; Back to Seasonal Favorites</button>
++    <div id="hero" style="margin-top: 20px">
++      <h1 id="title" tabindex="-1"></h1>
++    </div>
++    <div id="detail-body">
++      <p id="detail-description"></p>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +338,138 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const items = {
++      'maple-oat-latte': {
++        title: 'Maple Oat Latte',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1600&q=80',
++      },
++      'dark-roast-espresso': {
++        title: 'Dark Roast Espresso',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1600&q=80',
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1600&q=80',
++      },
++    };
++
++    const listPage = document.getElementById('list-page');
++    const detailPage = document.getElementById('detail-page');
++    const listHeading = document.getElementById('list-heading');
++    const heroEl = document.getElementById('hero');
++    const titleEl = document.getElementById('title');
++    const descriptionEl = document.getElementById('detail-description');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++    let currentId = null; // id of the item shown in the detail view, or null for the list
++    let activeTransition = null;
++    let listScrollY = 0;
++
++    const idFromHash = () => {
++      const id = location.hash.replace(/^#\//, '');
++      return id in items ? id : null;
++    };
++
++    const thumbnailFor = (id) => listPage.querySelector(`.thumbnail[data-id="${id}"]`);
++
++    function renderView(id) {
++      currentId = id;
++      if (id) {
++        const item = items[id];
++        titleEl.textContent = item.title;
++        descriptionEl.textContent = item.description;
++        heroEl.style.setProperty('--image', `url('${item.image}')`);
++        document.title = `${item.title} | The Daily Grind`;
++      } else {
++        document.title = 'The Daily Grind | Artisanal Coffee';
++      }
++      listPage.hidden = Boolean(id);
++      detailPage.hidden = !id;
++    }
++
++    function clearTransitionState() {
++      listPage.querySelectorAll('.thumbnail.selected').forEach((el) => el.classList.remove('selected'));
++    }
++
++    // Swaps views, morphing the shared elements when possible, then moves focus
++    // to the new view's heading and removes the temporary transition state.
++    // `fromId` / `toId` identify which thumbnail takes part in the morph.
++    function show(toId) {
++      const fromId = currentId;
++      if (fromId === toId) return;
++      activeTransition?.skipTransition();
++
++      const morphId = toId ?? fromId;
++      const entering = Boolean(toId);
++
++      const update = () => {
++        if (entering) {
++          listScrollY = window.scrollY;
++        }
++        renderView(toId);
++        if (!entering) {
++          // The thumbnail needs its transition names in the new state.
++          thumbnailFor(morphId)?.classList.add('selected');
++        }
++        window.scrollTo(0, entering ? 0 : listScrollY);
++      };
++
++      const finish = () => {
++        if (entering) {
++          titleEl.focus({ preventScroll: true });
++        } else {
++          listHeading.focus({ preventScroll: true });
++        }
++        clearTransitionState();
++        activeTransition = null;
++      };
++
++      if (!document.startViewTransition || reducedMotion.matches) {
++        update();
++        finish();
++        return;
++      }
++
++      // The thumbnail needs its transition names in the old state.
++      if (entering) thumbnailFor(morphId)?.classList.add('selected');
++
++      activeTransition = document.startViewTransition(update);
++      // Clean up and restore focus whether the transition completes or is skipped.
++      const transition = activeTransition;
++      transition.finished.finally(() => {
++        // A newer transition owns focus and cleanup if it replaced this one.
++        if (activeTransition === transition) finish();
++      });
++    }
++
++    listPage.addEventListener('click', (e) => {
++      const thumbnail = e.target.closest('.thumbnail');
++      if (!thumbnail || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
++      e.preventDefault();
++      history.pushState({ id: thumbnail.dataset.id }, '', `#/${thumbnail.dataset.id}`);
++      show(thumbnail.dataset.id);
++    });
++
++    document.getElementById('back').addEventListener('click', () => {
++      // Use history so the browser back button stays consistent with the in-page one.
++      if (history.state?.id) history.back();
++      else {
++        history.replaceState(null, '', location.pathname + location.search);
++        show(null);
++      }
++    });
++
++    window.addEventListener('popstate', () => show(idFromHash()));
++
++    // Deep link support (no transition on initial load).
++    renderView(idFromHash());
++  </script>
++
+ </body>
+ 
+ </html>

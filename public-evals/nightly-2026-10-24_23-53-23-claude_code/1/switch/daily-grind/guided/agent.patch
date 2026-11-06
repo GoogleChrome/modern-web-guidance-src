@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..45e95cb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,84 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Switch */
++    .switch-row {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .switch-row label {
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Fallback for browsers without native switch support (set by script) */
++    input[type="checkbox"].switch-fallback {
++      appearance: none;
++      position: relative;
++      width: 2.75em;
++      height: 1.5em;
++      border-radius: 1.5em;
++      background: #8d6e63;
++      transition: background 0.2s;
++    }
++
++    input[type="checkbox"].switch-fallback::before {
++      content: "";
++      position: absolute;
++      inset-block-start: 0.1875em;
++      inset-inline-start: 0.1875em;
++      width: 1.125em;
++      height: 1.125em;
++      border-radius: 50%;
++      background: white;
++      transition: transform 0.2s;
++    }
++
++    input[type="checkbox"].switch-fallback:checked {
++      background: var(--primary);
++    }
++
++    input[type="checkbox"].switch-fallback:checked::before {
++      transform: translateX(1.25em);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      input[type="checkbox"].switch-fallback,
++      input[type="checkbox"].switch-fallback::before {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      input[type="checkbox"].switch-fallback {
++        border: 2px solid ButtonText;
++        background: ButtonFace;
++      }
++
++      input[type="checkbox"].switch-fallback::before {
++        background: ButtonText;
++      }
++
++      input[type="checkbox"].switch-fallback:checked {
++        background: Highlight;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +273,10 @@
+         </div>
+       </div>
+     </section>
++    <div class="switch-row">
++      <label for="seasonal-alerts">Email me about new seasonal drinks</label>
++      <input id="seasonal-alerts" name="seasonal-alerts" type="checkbox" switch>
++    </div>
+   </main>
+ 
+   <footer>
+@@ -207,6 +289,15 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!('switch' in HTMLInputElement.prototype)) {
++      document.querySelectorAll('input[type="checkbox"][switch]').forEach((input) => {
++        input.setAttribute('role', 'switch');
++        input.classList.add('switch-fallback');
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

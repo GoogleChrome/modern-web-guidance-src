@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,112 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Menu item details exposed to AI assistants via WebMCP.
++    const MENU_ITEMS = [
++      {
++        name: 'Maple Oat Latte',
++        category: 'Seasonal',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        price: { small: 4.75, medium: 5.25, large: 5.75 },
++        caffeineMg: 150,
++        dairyFree: true,
++        servedHot: true,
++        url: '/menu/seasonal'
++      },
++      {
++        name: 'Dark Roast Espresso',
++        category: 'Espresso',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        price: { single: 2.75, double: 3.50 },
++        caffeineMg: 75,
++        dairyFree: true,
++        servedHot: true,
++        url: '/menu/espresso'
++      },
++      {
++        name: 'Cold Brew',
++        category: 'Cold Coffee',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        price: { small: 4.25, medium: 4.75, large: 5.25 },
++        caffeineMg: 200,
++        dairyFree: true,
++        servedHot: false,
++        url: '/menu/cold-brew'
++      }
++    ];
++
++    const normalize = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++    function findMenuItem(name) {
++      const query = normalize(name);
++      if (!query) return null;
++      return MENU_ITEMS.find((item) => normalize(item.name) === query)
++        || MENU_ITEMS.find((item) => normalize(item.name).includes(query) || query.includes(normalize(item.name)))
++        || null;
++    }
++
++    function toolResult(data) {
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
++    }
++
++    (function registerMenuTool() {
++      const modelContext = navigator.modelContext;
++      if (!modelContext || typeof modelContext.registerTool !== 'function') return;
++
++      const TOOL_NAME = 'get_menu_item_details';
++      const controller = new AbortController();
++
++      const registration = modelContext.registerTool({
++        name: TOOL_NAME,
++        description:
++          'Look up details for a single item on The Daily Grind coffee menu by its name ' +
++          '(e.g. "Maple Oat Latte", "Dark Roast Espresso", "Cold Brew"). Returns the item\'s ' +
++          'category, description, prices by size, caffeine content, dietary info, and a link to its menu page. ' +
++          'Matching is case-insensitive and accepts partial names. If no item matches, the list of available item names is returned.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description: 'The name of the menu item to look up, e.g. "Cold Brew". Case-insensitive; partial names like "maple latte" or "espresso" are accepted.'
++            }
++          },
++          required: ['name']
++        },
++        annotations: { readOnlyHint: true },
++        async execute({ name } = {}) {
++          if (typeof name !== 'string' || !name.trim()) {
++            return toolResult({ error: 'The "name" parameter is required.', availableItems: MENU_ITEMS.map((i) => i.name) });
++          }
++          const item = findMenuItem(name);
++          if (!item) {
++            return toolResult({ error: `No menu item found matching "${name}".`, availableItems: MENU_ITEMS.map((i) => i.name) });
++          }
++          return toolResult({ ...item, url: new URL(item.url, location.origin).href });
++        }
++      }, { signal: controller.signal });
++
++      // Deactivate the tool when the page is unloaded. Covers the signal-based API
++      // as well as older implementations that return a handle or expose unregisterTool().
++      let cleanedUp = false;
++      function unregister() {
++        if (cleanedUp) return;
++        cleanedUp = true;
++        controller.abort();
++        try {
++          if (registration && typeof registration.unregister === 'function') {
++            registration.unregister();
++          } else if (typeof modelContext.unregisterTool === 'function') {
++            modelContext.unregisterTool(TOOL_NAME);
++          }
++        } catch (_) { /* already unregistered */ }
++      }
++      window.addEventListener('pagehide', unregister, { once: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

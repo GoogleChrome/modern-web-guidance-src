@@ -1,0 +1,360 @@
+diff --git a/index.html b/index.html
+index 7400c85..ce0d44a 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,19 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --radius: 8px;
++      --shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --space-xs: 0.5rem;
++      --space-s: 0.75rem;
++      --space-m: 1.25rem;
++      --space-l: 2.5rem;
++      --content-width: 1100px;
+     }
+ 
+     * {
+@@ -27,134 +36,224 @@
+       background-color: var(--light);
+     }
+ 
++    h1,
++    h2,
++    h3 {
++      line-height: 1.2;
++      text-wrap: balance;
++    }
++
++    p {
++      text-wrap: pretty;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+-    nav {
++    .site-nav {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: safe center;
++      gap: var(--space-s) var(--space-m);
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding-block: 1rem;
++      padding-inline: 5%;
+       position: sticky;
+-      top: 0;
++      inset-block-start: 0;
+       z-index: 1000;
+     }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
+-
+     .logo {
+-      float: left;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+-    nav ul {
+-      float: right;
++    .nav-links {
++      display: flex;
++      flex-wrap: wrap;
++      flex-wrap: balance;
++      align-items: safe center;
++      gap: var(--space-xs) var(--space-m);
++      margin-inline-start: auto;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      display: inline-block;
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding-block: 5px;
++      padding-inline: 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      display: grid;
++      place-content: center;
++      justify-items: center;
++      gap: var(--space-m);
++      min-block-size: min(60dvh, 36rem);
++      padding-block: var(--space-l);
++      padding-inline: var(--space-m);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 1.25rem + 3vw, 3rem);
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++      max-inline-size: 40ch;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: var(--content-width);
++      margin-block: var(--space-l);
++      margin-inline: auto;
++      padding-inline: var(--space-m);
+     }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
++    .section-title {
++      text-align: center;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    /*
++     * Card grid: as many columns as fit, each at least 16rem wide (or the
++     * full container when narrower). Three explicit row tracks (heading,
++     * description, actions) are shared with the cards via subgrid so the
++     * regions line up across the row. Rows are `auto`, so the grid sizes to
++     * the tallest content in each track rather than to a fixed height.
++     */
++    .card-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      grid-auto-rows: auto;
++      gap: var(--space-m);
++      margin-block-start: var(--space-m);
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      container-type: inline-size;
++      grid-row: span 3;
++      display: grid;
++      /* Same-cascade fallback: ignored where subgrid is supported. */
++      grid-template-rows: auto 1fr auto;
++      grid-template-rows: subgrid;
++      row-gap: var(--space-xs);
++      align-items: start;
++      background: var(--surface);
++      padding: var(--space-m);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card > h3 {
++      grid-row: 1;
+       color: var(--primary);
+     }
+ 
++    .card > :not(h3, footer) {
++      grid-row: 2;
++    }
++
++    .card > footer {
++      grid-row: 3;
++      align-self: end;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: var(--space-xs);
++      margin-block-start: var(--space-xs);
++    }
++
++    /*
++     * Wide card (for example when the grid collapses to one or two columns on
++     * a tablet): put the action beside the text instead of below it. The
++     * card keeps sharing the parent's row tracks, so neighbouring cards in
++     * the same row still align.
++     */
++    @container (inline-size > 26rem) {
++      .card {
++        grid-template-columns: 1fr auto;
++        column-gap: var(--space-m);
++        text-align: start;
++      }
++
++      .card > h3,
++      .card > :not(h3, footer) {
++        grid-column: 1;
++      }
++
++      .card > footer {
++        grid-column: 2;
++        grid-row: 1 / span 3;
++        align-self: center;
++        margin-block-start: 0;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding-block: 10px;
++      padding-inline: 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .hero .btn {
++      margin-block-start: var(--space-xs);
+     }
+ 
+-    footer {
++    footer.site-footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding-block: var(--space-l);
++      padding-inline: var(--space-m);
++      margin-block-start: var(--space-l);
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: var(--space-m);
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin-inline: 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -164,9 +263,9 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++    <ul class="nav-links">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -182,29 +281,35 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <div class="card-grid">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about the Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about the Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about the Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

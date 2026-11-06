@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+index 66c9173..2b358f3 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++      --duration-fast: 150ms;
++      --duration: 250ms;
+     }
+ 
+     * {
+@@ -56,20 +59,73 @@
+     }
+ 
+     nav a {
++      position: relative;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color var(--duration-fast) ease-out;
+     }
+ 
+-    nav a:hover {
++    /* Underline grows via transform so it animates on the compositor */
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -4px;
++      height: 2px;
++      background: var(--accent);
++      border-radius: 1px;
++      transform: scaleX(0);
++      transform-origin: left center;
++      transition: transform var(--duration) var(--ease-out);
++    }
++
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:hover::after,
++    nav a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    nav a:focus-visible,
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++      border-radius: 4px;
++    }
++
+     .logout-link {
++      display: inline-block;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      isolation: isolate;
++      overflow: hidden;
++    }
++
++    /* Fill fades in via opacity instead of animating background-color */
++    .logout-link::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: var(--accent);
++      opacity: 0;
++      transition: opacity var(--duration) var(--ease-out);
++    }
++
++    nav a.logout-link:hover,
++    nav a.logout-link:focus-visible {
++      color: var(--primary);
++    }
++
++    .logout-link:hover::before,
++    .logout-link:focus-visible::before {
++      opacity: 1;
+     }
+ 
+     /* Hero Section */
+@@ -93,6 +149,32 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Staggered entrance using only opacity + transform */
++    .hero > * {
++      /* backwards fill so the finished animation doesn't pin transform and block hover lift */
++      animation: rise-in 700ms var(--ease-out) backwards;
++    }
++
++    .hero p {
++      animation-delay: 120ms;
++    }
++
++    .hero .btn {
++      animation-delay: 240ms;
++    }
++
++    @keyframes rise-in {
++      from {
++        opacity: 0;
++        transform: translateY(16px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,11 +190,28 @@
+     }
+ 
+     .card {
++      position: relative;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      isolation: isolate;
++      transition: transform var(--duration) var(--ease-out);
++    }
++
++    /* Larger hover shadow is pre-rendered and faded in via opacity,
++       avoiding a box-shadow repaint on every frame */
++    .card::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      border-radius: inherit;
++      box-shadow: 0 12px 24px rgba(62, 39, 35, 0.18);
++      opacity: 0;
++      transition: opacity var(--duration) var(--ease-out);
++      pointer-events: none;
+     }
+ 
+     .card h3 {
+@@ -121,6 +220,7 @@
+     }
+ 
+     .btn {
++      position: relative;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,11 +228,97 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      isolation: isolate;
++      overflow: hidden;
++      transition: transform var(--duration-fast) var(--ease-out);
+     }
+ 
+-    .btn:hover {
++    /* Darker hover state fades in via opacity rather than background-color */
++    .btn::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
+       background: #3e2723;
++      opacity: 0;
++      transition: opacity var(--duration) var(--ease-out);
++    }
++
++    .btn:hover::before,
++    .btn:focus-visible::before {
++      opacity: 1;
++    }
++
++    .btn:active {
++      transform: scale(0.97);
++    }
++
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .hero .btn::before {
++      background: #ffc174;
++    }
++
++    /* Lift effects only where a real hover pointer exists */
++    @media (hover: hover) and (pointer: fine) {
++
++      .btn:hover,
++      .btn:focus-visible {
++        transform: translateY(-2px);
++      }
++
++      .btn:active {
++        transform: translateY(0) scale(0.97);
++      }
++
++      .card:hover,
++      .card:focus-within {
++        transform: translateY(-6px);
++      }
++
++      .card:hover::after,
++      .card:focus-within::after {
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        animation-delay: 0ms !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .hero > * {
++        animation: none;
++      }
++
++      .btn:hover,
++      .btn:focus-visible,
++      .btn:active,
++      .card:hover,
++      .card:focus-within {
++        transform: none !important;
++      }
++
++      nav a:not(.logout-link)::after {
++        transform: scaleX(1);
++        opacity: 0;
++      }
++
++      nav a:hover::after,
++      nav a:focus-visible::after {
++        opacity: 1;
++      }
+     }
+ 
+     footer {

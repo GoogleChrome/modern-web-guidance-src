@@ -1,0 +1,611 @@
+diff --git a/index.html b/index.html
+index 66c9173..168b9e5 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,296 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Quick Order floating panel */
++    .quick-order {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      width: 320px;
++      max-width: calc(100vw - 16px);
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      z-index: 1100;
++      overflow: hidden;
++      font-size: 0.9rem;
++    }
++
++    .quick-order.dragging {
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
++      opacity: 0.96;
++      user-select: none;
++    }
++
++    .qo-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 12px;
++      cursor: grab;
++      touch-action: none;
++      user-select: none;
++    }
++
++    .quick-order.dragging .qo-header {
++      cursor: grabbing;
++    }
++
++    .qo-header:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .qo-title {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++    }
++
++    .qo-grip {
++      opacity: 0.6;
++      font-size: 1rem;
++      line-height: 1;
++    }
++
++    .qo-badge {
++      background: var(--accent);
++      color: var(--text);
++      border-radius: 999px;
++      padding: 0 8px;
++      font-size: 0.75rem;
++      min-width: 22px;
++      text-align: center;
++    }
++
++    .qo-toggle {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      color: white;
++      border-radius: 4px;
++      width: 28px;
++      height: 28px;
++      cursor: pointer;
++      font-size: 1rem;
++      line-height: 1;
++    }
++
++    .qo-toggle:hover {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    .qo-body {
++      padding: 14px;
++      max-height: min(70vh, 520px);
++      overflow-y: auto;
++    }
++
++    .quick-order.collapsed .qo-body {
++      display: none;
++    }
++
++    .qo-field {
++      margin-bottom: 10px;
++    }
++
++    .qo-field label,
++    .qo-field legend {
++      display: block;
++      font-weight: 600;
++      font-size: 0.8rem;
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .qo-field select {
++      width: 100%;
++      padding: 6px 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font: inherit;
++    }
++
++    .qo-field fieldset {
++      border: none;
++    }
++
++    .qo-sizes {
++      display: flex;
++      gap: 6px;
++    }
++
++    .qo-sizes label {
++      flex: 1;
++      margin: 0;
++      font-weight: normal;
++      color: var(--text);
++    }
++
++    .qo-sizes input {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .qo-sizes span {
++      display: block;
++      text-align: center;
++      padding: 5px 0;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 0.8rem;
++    }
++
++    .qo-sizes input:checked + span {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .qo-sizes input:focus-visible + span {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .qo-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
++    .qo-stepper {
++      display: inline-flex;
++      align-items: center;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      overflow: hidden;
++    }
++
++    .qo-stepper button {
++      background: var(--light);
++      border: none;
++      width: 28px;
++      height: 28px;
++      cursor: pointer;
++      font-size: 1rem;
++      color: var(--primary);
++    }
++
++    .qo-stepper button:hover {
++      background: var(--secondary);
++    }
++
++    .qo-stepper output {
++      min-width: 28px;
++      text-align: center;
++    }
++
++    .qo-check {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .qo-add {
++      width: 100%;
++      margin-top: 6px;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 6px;
++      padding: 9px;
++      font-weight: bold;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 700;
++    }
++
++    .qo-add:hover {
++      filter: brightness(0.95);
++    }
++
++    .qo-cart {
++      list-style: none;
++      margin-top: 12px;
++      border-top: 1px dashed var(--secondary);
++      padding-top: 10px;
++    }
++
++    .qo-cart li {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 8px;
++      padding: 4px 0;
++      font-size: 0.82rem;
++    }
++
++    .qo-cart .qo-empty {
++      color: #8d6e63;
++      font-style: italic;
++      justify-content: center;
++    }
++
++    .qo-item-meta {
++      color: #8d6e63;
++      font-size: 0.75rem;
++    }
++
++    .qo-remove {
++      background: none;
++      border: none;
++      color: #a1887f;
++      cursor: pointer;
++      font-size: 1rem;
++      line-height: 1;
++      margin-left: 6px;
++    }
++
++    .qo-remove:hover {
++      color: #c62828;
++    }
++
++    .qo-footer {
++      margin-top: 10px;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .qo-total {
++      font-weight: bold;
++      font-size: 1rem;
++    }
++
++    .qo-checkout {
++      margin-top: 0;
++      padding: 8px 14px;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .qo-checkout[disabled] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .qo-status {
++      font-size: 0.78rem;
++      color: #2e7d32;
++      min-height: 1.2em;
++      margin-top: 6px;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +497,309 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Floating Quick Order panel (drag by header) -->
++  <aside class="quick-order" id="quickOrder" aria-labelledby="qoTitle">
++    <div class="qo-header" id="qoHandle" tabindex="0" role="group"
++      aria-label="Quick order panel. Drag, or use arrow keys to move." title="Drag to move">
++      <div class="qo-title">
++        <span class="qo-grip" aria-hidden="true">&#x2807;&#x2807;</span>
++        <span id="qoTitle">Quick Order</span>
++        <span class="qo-badge" id="qoBadge" aria-label="Items in cart">0</span>
++      </div>
++      <button type="button" class="qo-toggle" id="qoToggle" aria-expanded="true" aria-controls="qoBody"
++        aria-label="Minimize quick order">&minus;</button>
++    </div>
++
++    <div class="qo-body" id="qoBody">
++      <form id="qoForm">
++        <div class="qo-field">
++          <label for="qoDrink">Drink</label>
++          <select id="qoDrink">
++            <option value="maple-oat-latte" data-price="5.25">Maple Oat Latte — $5.25</option>
++            <option value="dark-roast-espresso" data-price="3.50">Dark Roast Espresso — $3.50</option>
++            <option value="cold-brew" data-price="4.75">Cold Brew — $4.75</option>
++            <option value="cappuccino" data-price="4.50">Cappuccino — $4.50</option>
++            <option value="drip" data-price="2.95">House Drip — $2.95</option>
++          </select>
++        </div>
++
++        <div class="qo-field">
++          <fieldset>
++            <legend>Size</legend>
++            <div class="qo-sizes">
++              <label><input type="radio" name="qoSize" value="Small" data-mod="-0.50"><span>Small</span></label>
++              <label><input type="radio" name="qoSize" value="Medium" data-mod="0" checked><span>Medium</span></label>
++              <label><input type="radio" name="qoSize" value="Large" data-mod="0.75"><span>Large</span></label>
++            </div>
++          </fieldset>
++        </div>
++
++        <div class="qo-field">
++          <label for="qoMilk">Milk</label>
++          <select id="qoMilk">
++            <option value="Whole" data-price="0">Whole</option>
++            <option value="Oat" data-price="0.60">Oat (+$0.60)</option>
++            <option value="Almond" data-price="0.60">Almond (+$0.60)</option>
++            <option value="None" data-price="0">No milk</option>
++          </select>
++        </div>
++
++        <div class="qo-field qo-row">
++          <label class="qo-check"><input type="checkbox" id="qoShot"> Extra shot (+$0.80)</label>
++          <div class="qo-stepper" role="group" aria-label="Quantity">
++            <button type="button" id="qoMinus" aria-label="Decrease quantity">&minus;</button>
++            <output id="qoQty" aria-live="polite">1</output>
++            <button type="button" id="qoPlus" aria-label="Increase quantity">+</button>
++          </div>
++        </div>
++
++        <button type="submit" class="qo-add" id="qoAdd">Add to cart — $5.25</button>
++      </form>
++
++      <ul class="qo-cart" id="qoCart" aria-live="polite">
++        <li class="qo-empty">Your cart is empty</li>
++      </ul>
++
++      <div class="qo-footer">
++        <div class="qo-row">
++          <span class="qo-total">Total: <span id="qoTotal">$0.00</span></span>
++          <button type="button" class="btn qo-checkout" id="qoCheckout" disabled>Checkout</button>
++        </div>
++        <div class="qo-status" id="qoStatus" role="status"></div>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      var panel = document.getElementById('quickOrder');
++      var handle = document.getElementById('qoHandle');
++      var toggle = document.getElementById('qoToggle');
++      var POS_KEY = 'dailyGrind.quickOrder.pos';
++      var CART_KEY = 'dailyGrind.quickOrder.cart';
++      var COLLAPSE_KEY = 'dailyGrind.quickOrder.collapsed';
++      var MARGIN = 8;
++
++      function store(key, val) {
++        try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* storage unavailable */ }
++      }
++      function load(key) {
++        try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
++      }
++
++      /* ---------- Dragging ---------- */
++      function clamp(v, min, max) { return Math.min(Math.max(v, min), Math.max(min, max)); }
++
++      function setPosition(left, top) {
++        var w = panel.offsetWidth, h = panel.offsetHeight;
++        var vw = document.documentElement.clientWidth, vh = window.innerHeight;
++        left = clamp(left, MARGIN, vw - w - MARGIN);
++        // Keep the header reachable even if the body is taller than the viewport
++        top = clamp(top, MARGIN, vh - Math.min(h, handle.offsetHeight + MARGIN) - MARGIN);
++        panel.style.left = left + 'px';
++        panel.style.top = top + 'px';
++        panel.style.right = 'auto';
++        panel.style.bottom = 'auto';
++        return { left: left, top: top };
++      }
++
++      var drag = null;
++
++      handle.addEventListener('pointerdown', function (e) {
++        if (e.button !== 0 || e.target.closest('button')) return;
++        var rect = panel.getBoundingClientRect();
++        drag = { id: e.pointerId, dx: e.clientX - rect.left, dy: e.clientY - rect.top };
++        handle.setPointerCapture(e.pointerId);
++        panel.classList.add('dragging');
++        e.preventDefault();
++      });
++
++      handle.addEventListener('pointermove', function (e) {
++        if (!drag || e.pointerId !== drag.id) return;
++        setPosition(e.clientX - drag.dx, e.clientY - drag.dy);
++      });
++
++      function endDrag(e) {
++        if (!drag || e.pointerId !== drag.id) return;
++        drag = null;
++        panel.classList.remove('dragging');
++        if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
++        savePosition();
++      }
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++      handle.addEventListener('lostpointercapture', function () {
++        drag = null;
++        panel.classList.remove('dragging');
++      });
++
++      function savePosition() {
++        var rect = panel.getBoundingClientRect();
++        store(POS_KEY, { left: rect.left, top: rect.top });
++      }
++
++      // Keyboard moving for accessibility
++      handle.addEventListener('keydown', function (e) {
++        if (e.target !== handle) return;
++        var step = e.shiftKey ? 40 : 10;
++        var moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
++        if (moves[e.key]) {
++          var rect = panel.getBoundingClientRect();
++          setPosition(rect.left + moves[e.key][0], rect.top + moves[e.key][1]);
++          savePosition();
++          e.preventDefault();
++        } else if (e.key === 'Enter' || e.key === ' ') {
++          toggle.click();
++          e.preventDefault();
++        }
++      });
++
++      // Keep panel on-screen when the window resizes (only after it has been moved)
++      window.addEventListener('resize', function () {
++        if (panel.style.left) {
++          var rect = panel.getBoundingClientRect();
++          setPosition(rect.left, rect.top);
++        }
++      });
++
++      /* ---------- Collapse ---------- */
++      function setCollapsed(collapsed) {
++        panel.classList.toggle('collapsed', collapsed);
++        toggle.setAttribute('aria-expanded', String(!collapsed));
++        toggle.setAttribute('aria-label', collapsed ? 'Expand quick order' : 'Minimize quick order');
++        toggle.innerHTML = collapsed ? '+' : '&minus;';
++        store(COLLAPSE_KEY, collapsed);
++        if (panel.style.left) {
++          var rect = panel.getBoundingClientRect();
++          setPosition(rect.left, rect.top);
++        }
++      }
++      toggle.addEventListener('click', function () {
++        setCollapsed(!panel.classList.contains('collapsed'));
++      });
++
++      /* ---------- Order builder ---------- */
++      var form = document.getElementById('qoForm');
++      var drinkSel = document.getElementById('qoDrink');
++      var milkSel = document.getElementById('qoMilk');
++      var shot = document.getElementById('qoShot');
++      var qtyOut = document.getElementById('qoQty');
++      var addBtn = document.getElementById('qoAdd');
++      var cartEl = document.getElementById('qoCart');
++      var totalEl = document.getElementById('qoTotal');
++      var badge = document.getElementById('qoBadge');
++      var checkout = document.getElementById('qoCheckout');
++      var status = document.getElementById('qoStatus');
++      var qty = 1;
++      var cart = Array.isArray(load(CART_KEY)) ? load(CART_KEY) : [];
++
++      function money(n) { return '$' + n.toFixed(2); }
++
++      function currentItem() {
++        var drinkOpt = drinkSel.options[drinkSel.selectedIndex];
++        var sizeInput = form.querySelector('input[name="qoSize"]:checked');
++        var milkOpt = milkSel.options[milkSel.selectedIndex];
++        var unit = parseFloat(drinkOpt.dataset.price) + parseFloat(sizeInput.dataset.mod) +
++          parseFloat(milkOpt.dataset.price) + (shot.checked ? 0.8 : 0);
++        return {
++          name: drinkOpt.textContent.split(' — ')[0],
++          size: sizeInput.value,
++          milk: milkOpt.value,
++          shot: shot.checked,
++          qty: qty,
++          unit: Math.round(unit * 100) / 100
++        };
++      }
++
++      function updateAddLabel() {
++        var item = currentItem();
++        addBtn.textContent = 'Add to cart — ' + money(item.unit * item.qty);
++      }
++
++      function renderCart() {
++        cartEl.innerHTML = '';
++        var total = 0, count = 0;
++        if (!cart.length) {
++          var empty = document.createElement('li');
++          empty.className = 'qo-empty';
++          empty.textContent = 'Your cart is empty';
++          cartEl.appendChild(empty);
++        }
++        cart.forEach(function (item, i) {
++          total += item.unit * item.qty;
++          count += item.qty;
++          var li = document.createElement('li');
++          var info = document.createElement('div');
++          info.textContent = item.qty + ' × ' + item.name;
++          var meta = document.createElement('div');
++          meta.className = 'qo-item-meta';
++          meta.textContent = item.size + ' · ' + item.milk + (item.shot ? ' · extra shot' : '');
++          info.appendChild(meta);
++          var right = document.createElement('div');
++          right.textContent = money(item.unit * item.qty);
++          var rm = document.createElement('button');
++          rm.type = 'button';
++          rm.className = 'qo-remove';
++          rm.setAttribute('aria-label', 'Remove ' + item.name);
++          rm.innerHTML = '&times;';
++          rm.addEventListener('click', function () {
++            cart.splice(i, 1);
++            status.textContent = item.name + ' removed.';
++            saveCart();
++          });
++          right.appendChild(rm);
++          li.appendChild(info);
++          li.appendChild(right);
++          cartEl.appendChild(li);
++        });
++        totalEl.textContent = money(total);
++        badge.textContent = count;
++        checkout.disabled = cart.length === 0;
++      }
++
++      function saveCart() {
++        store(CART_KEY, cart);
++        renderCart();
++      }
++
++      document.getElementById('qoMinus').addEventListener('click', function () {
++        qty = Math.max(1, qty - 1); qtyOut.textContent = qty; updateAddLabel();
++      });
++      document.getElementById('qoPlus').addEventListener('click', function () {
++        qty = Math.min(20, qty + 1); qtyOut.textContent = qty; updateAddLabel();
++      });
++      form.addEventListener('change', updateAddLabel);
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        var item = currentItem();
++        var existing = cart.find(function (c) {
++          return c.name === item.name && c.size === item.size && c.milk === item.milk && c.shot === item.shot;
++        });
++        if (existing) existing.qty = Math.min(99, existing.qty + item.qty);
++        else cart.push(item);
++        status.textContent = item.qty + ' × ' + item.name + ' added!';
++        qty = 1; qtyOut.textContent = qty;
++        updateAddLabel();
++        saveCart();
++      });
++
++      checkout.addEventListener('click', function () {
++        if (!cart.length) return;
++        window.location.href = '/order-online';
++      });
++
++      /* ---------- Init ---------- */
++      if (load(COLLAPSE_KEY) === true) setCollapsed(true);
++      var saved = load(POS_KEY);
++      if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
++        setPosition(saved.left, saved.top);
++      }
++      updateAddLabel();
++      renderCart();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

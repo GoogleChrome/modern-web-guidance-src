@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip / Popover Styles */
++    .tooltip-wrapper {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tooltip-wrapper .btn {
++      margin-top: 0;
++    }
++
++    .tooltip-popover {
++      position: absolute;
++      bottom: calc(100% + 12px);
++      left: 50%;
++      transform: translateX(-50%) translateY(6px);
++      width: 220px;
++      background: #2b1b17;
++      color: var(--light);
++      padding: 12px 14px;
++      border-radius: 8px;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
++      font-size: 0.82rem;
++      line-height: 1.45;
++      text-align: left;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
++      z-index: 50;
++      border: 1px solid rgba(255, 171, 64, 0.3);
++    }
++
++    .tooltip-popover::after {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: #2b1b17 transparent transparent transparent;
++    }
++
++    .tooltip-wrapper:hover .tooltip-popover,
++    .tooltip-wrapper:focus-within .tooltip-popover {
++      opacity: 1;
++      visibility: visible;
++      transform: translateX(-50%) translateY(0);
++    }
++
++    .tooltip-title {
++      font-weight: 600;
++      color: var(--accent);
++      margin-bottom: 6px;
++      font-size: 0.85rem;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
++      padding-bottom: 4px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .tooltip-row {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 3px;
++    }
++
++    .tooltip-label {
++      color: var(--secondary);
++    }
++
++    .tooltip-value {
++      font-weight: 600;
++      color: #fff;
++    }
++
++    .tooltip-tags {
++      margin-top: 8px;
++      padding-top: 6px;
++      border-top: 1px solid rgba(255, 255, 255, 0.12);
++      font-size: 0.75rem;
++      color: var(--secondary);
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +267,82 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tooltip-maple">View Details</a>
++            <div class="tooltip-popover" id="tooltip-maple" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition Facts</span>
++                <span>16 oz</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Calories</span>
++                <span class="tooltip-value">240 kcal</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Caffeine</span>
++                <span class="tooltip-value">150 mg</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Sugar</span>
++                <span class="tooltip-value">18 g</span>
++              </div>
++              <div class="tooltip-tags">100% Plant-Based • Dairy-Free</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/espresso" class="btn" aria-describedby="tooltip-espresso">View Details</a>
++            <div class="tooltip-popover" id="tooltip-espresso" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition Facts</span>
++                <span>Double (2 oz)</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Calories</span>
++                <span class="tooltip-value">5 kcal</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Caffeine</span>
++                <span class="tooltip-value">130 mg</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Sugar</span>
++                <span class="tooltip-value">0 g</span>
++              </div>
++              <div class="tooltip-tags">Single-Origin • Organic Roast</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tooltip-coldbrew">View Details</a>
++            <div class="tooltip-popover" id="tooltip-coldbrew" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition Facts</span>
++                <span>16 oz</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Calories</span>
++                <span class="tooltip-value">15 kcal</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Caffeine</span>
++                <span class="tooltip-value">205 mg</span>
++              </div>
++              <div class="tooltip-row">
++                <span class="tooltip-label">Sugar</span>
++                <span class="tooltip-value">0 g</span>
++              </div>
++              <div class="tooltip-tags">Slow-Steeped • Low Acidity</div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

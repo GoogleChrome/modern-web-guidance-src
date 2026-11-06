@@ -1,0 +1,271 @@
+diff --git a/index.html b/index.html
+index 66c9173..945c505 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,61 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
++<meta name="theme-color" content="#f6f4ef">
++<title>The Daily Grind — A little ritual, a better day.</title>
++<link rel="preconnect" href="https://images.unsplash.com">
++<link rel="preconnect" href="https://fonts.googleapis.com">
++<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
++<style>
++:root{--ink:#302b26;--muted:#8a847a;--paper:#f7f5f0;--line:#e6e2da;--green:#536849;--brown:#634a36;--serif:'Playfair Display',Georgia,serif}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 'DM Sans',sans-serif}button,a,input{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button{color:inherit}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--green);outline-offset:4px}button{border:0}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}nav{height:94px;max-width:1440px;margin:auto;padding:0 5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px}.brand-icon{width:36px;height:40px}.brand strong{font-size:17px;letter-spacing:2px;display:block;line-height:1.3}.brand small{font-size:9px;letter-spacing:3.4px;color:var(--muted)}.nav-links{display:flex;gap:35px;height:100%;align-items:center;font-size:13px}.nav-links a{height:100%;display:flex;align-items:center;position:relative}.nav-links a.active:after{content:'';height:2px;background:var(--brown);position:absolute;bottom:0;left:0;right:0}.nav-actions{display:flex;gap:23px;align-items:center}.location{font-size:12px;color:#6b655c;display:flex;gap:7px;align-items:center}.icon-button{background:none;padding:7px}.bag-nav{position:relative}.count{background:var(--brown);color:white;border-radius:50%;font-size:9px;position:absolute;top:0;right:0;min-width:15px;line-height:15px}.page{max-width:1320px;margin:auto;padding:0 42px}.hero{display:grid;grid-template-columns:1fr 1fr;min-height:367px;margin:34px 0 37px;border-radius:8px;overflow:hidden;background:#eae6dc}.hero-copy{padding:41px 43px;position:relative}.eyebrow{font-size:10px;letter-spacing:2px;font-weight:650;display:flex;align-items:center;gap:9px;color:#6a7059}.eyebrow:before{content:'';width:19px;height:1px;background:currentColor}h1{font:500 clamp(34px,3.5vw,49px)/1.16 var(--serif);letter-spacing:-1.6px;margin:16px 0}h1 em{font-weight:400;color:#735c45}.hero-copy p{font-size:12px;color:#797165;max-width:310px;line-height:1.8;margin:0 0 22px}.dark-button{background:var(--brown);color:#fff;border-radius:4px;padding:12px 19px;display:inline-flex;align-items:center;justify-content:center;gap:20px;font-size:12px;font-weight:500}.dark-button:hover{background:#493625}.hero-photo{position:relative;min-height:320px}.hero-photo img{width:100%;height:100%;object-fit:cover;position:absolute;object-position:50% 53%}.photo-note{position:absolute;bottom:22px;left:25px;color:white;display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.5px;background:#302b2650;backdrop-filter:blur(8px);padding:8px 12px;border:1px solid #ffffff35;border-radius:4px}.photo-note svg{width:16px}.content{display:grid;grid-template-columns:minmax(0,1fr) 293px;gap:33px;align-items:start}.section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:19px}h2{font:500 29px/1.3 var(--serif);margin:0 0 6px;letter-spacing:-.7px}.section-heading p{color:var(--muted);font-size:11px;margin:0}.tiny-note{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px}.tiny-note svg{width:13px;height:13px}.filters{display:flex;gap:8px;align-items:center;margin-bottom:24px}.filter{padding:9px 15px;border-radius:5px;border:1px solid var(--line);background:transparent;color:#787267;font-size:11px;display:flex;align-items:center;gap:7px}.filter svg{width:15px;height:15px}.filter[aria-pressed=true]{background:var(--brown);color:white;border-color:var(--brown)}.filter:hover{border-color:var(--brown)}.menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px}.product{background:#fff;border:1px solid var(--line);border-radius:7px;overflow:hidden;view-transition-scope:all;align-self:start}.product-photo{height:184px;position:relative;background:#e7e0d4}.product-photo img{width:100%;height:100%;object-fit:cover}.favorite{position:absolute;right:10px;top:10px;border-radius:50%;background:#ffffffd9;width:29px;height:29px;display:grid;place-items:center}.favorite svg{width:14px;height:14px}.favorite[aria-pressed=true]{color:#9d5e47}.favorite[aria-pressed=true] svg{fill:#9d5e4730}.badge{position:absolute;top:12px;left:10px;background:#f5f1e8;padding:4px 7px;border-radius:3px;font-size:8px;letter-spacing:.8px;font-weight:600}.badge.green{color:#526547;background:#edf0e4}.product-body{padding:15px 14px 13px}.product h3{font:500 16px var(--serif);margin:0 0 7px}.description{font-size:10px;line-height:1.7;color:var(--muted);margin:0;min-height:35px}.product-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:15px}.price{font-size:13px;font-weight:600}.price small{font-size:9px;color:var(--muted);font-weight:400;margin-left:3px}.add{background:#f2efe9;border:1px solid #e7e0d5;border-radius:4px;padding:6px 10px;font-size:10px;display:flex;gap:7px;align-items:center}.add svg{width:12px;height:12px}.add:hover{background:#e6dfd1}.options{border-top:1px solid var(--line);margin-top:13px;padding-top:11px}.options-label{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:9px}.close-options{background:none;padding:0;font-size:11px}.sizes{display:flex;gap:5px;margin-bottom:11px}.size{background:var(--paper);border:1px solid var(--line);border-radius:3px;flex:1;font-size:9px;padding:6px 0}.size[aria-pressed=true]{border-color:var(--brown);background:#ece5d9}.add-order{width:100%;font-size:10px;padding:9px;background:var(--brown);color:white;border-radius:3px}.order{background:#eeece5;border:1px solid #e2dfd5;border-radius:7px;padding:22px 21px;view-transition-scope:all;overflow:hidden}.order-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.order h2{font-size:23px;margin:0}.order-heading>span{font-size:10px;color:var(--muted)}.pickup{display:flex;gap:10px;background:#e2e5d9;padding:12px 11px;border-radius:4px;align-items:center}.pickup svg{color:var(--green);width:17px}.pickup strong{font-size:10px;display:block;font-weight:600}.pickup small{font-size:9px;color:#7a806f}.pickup .ready{margin-left:auto;font-size:8px;color:var(--green);white-space:nowrap}.bag-items{min-height:110px;padding-top:6px}.empty{padding:26px 0 20px;text-align:center;color:#918a7e;font-size:11px}.empty svg{display:block;margin:0 auto 8px;width:23px;height:23px}.bag-item{display:flex;gap:9px;padding:15px 0;border-bottom:1px solid #dfdbd1;view-transition-name:match-element}.bag-item img{width:41px;height:46px;object-fit:cover;border-radius:3px}.item-info{flex:1}.item-info strong{font-size:10px;display:block;font-weight:600}.item-info small{font-size:9px;color:var(--muted);display:block;margin:3px 0 6px}.quantity{display:flex;align-items:center;gap:9px;font-size:10px}.quantity button{background:#e2ded4;border-radius:2px;width:16px;height:17px;padding:0;font-size:12px}.item-price{font-size:10px;white-space:nowrap;padding-top:2px}.summary{padding:14px 0 13px}.summary div{display:flex;justify-content:space-between;font-size:10px;color:#8b8478;margin-bottom:8px}.summary .total{border-top:1px solid #ddd8cd;padding-top:12px;margin-top:12px;color:var(--ink);font-size:13px;font-weight:600}.checkout{width:100%;justify-content:space-between;padding:13px 14px}.checkout:disabled{opacity:.5;cursor:default}.checkout svg{width:15px}.secure{font-size:8px;color:#9a9285;display:flex;gap:5px;align-items:center;justify-content:center;margin:11px 0 0}.secure svg{width:10px;height:10px}.loyalty{margin-top:17px;padding:17px 20px;border:1px dashed #d4cebf;border-radius:6px;display:flex;gap:12px;align-items:center}.loyalty>svg{width:26px;height:26px;color:#887253}.loyalty strong{display:block;font:500 15px var(--serif)}.loyalty p{font-size:9px;color:var(--muted);margin:3px 0}.loyalty a{font-size:9px;text-decoration:underline;text-underline-offset:3px}.values{border-top:1px solid var(--line);margin-top:44px;padding:25px 0;display:flex;justify-content:space-between;gap:20px}.value{display:flex;align-items:center;gap:11px}.value svg{color:#85765e;width:23px;height:23px}.value strong{display:block;font-size:10px;font-weight:500}.value small{display:block;font-size:9px;color:var(--muted);margin-top:2px}footer{border-top:1px solid var(--line);padding:22px 0 28px;display:flex;align-items:center;justify-content:space-between;font-size:9px;color:var(--muted)}footer div{display:flex;gap:23px}.toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:var(--brown);color:white;padding:13px 22px;border-radius:5px;box-shadow:0 5px 25px #302b2620;font-size:12px;z-index:10}.toast:empty{display:none}[hidden]{display:none!important}::view-transition-group(*){animation-duration:400ms;animation-timing-function:cubic-bezier(.2,.7,.2,1)}@media(prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}html{scroll-behavior:auto}}@media(min-width:1200px){.page{padding:0 57px}.hero{min-height:360px}}@media(max-width:1000px){.page{padding:0 28px}.content{grid-template-columns:minmax(0,1fr) 255px;gap:22px}.menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-copy{padding:35px 28px}.location{display:none}.nav-links{gap:22px}.tiny-note{display:none}.product-photo{height:190px}}@media(max-width:700px){nav{height:76px;padding:0 22px}.brand strong{font-size:13px}.brand small{font-size:7px}.brand-icon{width:29px}.nav-links{display:none}.nav-actions{gap:10px}.page{padding:0 20px}.hero{grid-template-columns:1fr;margin-top:22px}.hero-copy{padding:30px}.hero-photo{min-height:220px}.hero h1{font-size:40px}.content{grid-template-columns:1fr}.filters{gap:6px;overflow-x:auto}.filter{padding:8px 11px;white-space:nowrap}.menu-grid{gap:12px}.product-photo{height:180px}.values{flex-wrap:wrap;gap:22px}.value{width:calc(50% - 12px)}footer{align-items:flex-start;gap:15px;flex-direction:column}.order{margin-top:10px}.product h3{font-size:15px}.section-heading{margin-bottom:18px}h2{font-size:27px}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<nav aria-label="Main navigation">
++<a href="#" class="brand" aria-label="The Daily Grind home"><svg class="brand-icon" viewBox="0 0 36 44"><path d="M7 19h22v9a10 10 0 0 1-20 0v-9ZM29 21h2a5 5 0 0 1 0 10h-3M5 37h26M13 13c-4-4 4-5 0-10M20 13c-4-4 4-5 0-10"/></svg><span><strong>THE DAILY GRIND</strong><small>GOOD COFFEE. GOOD DAYS.</small></span></a>
++<div class="nav-links"><a class="active" href="#menu">Our menu</a><a href="#our-story">Our story</a><a href="#pickup">Find us</a><a href="#rewards">Rewards</a></div>
++<div class="nav-actions"><span class="location"><span data-icon="pin"></span> Brooklyn, NY</span><button class="icon-button bag-nav" aria-label="View your bag" id="view-bag"><span data-icon="bag"></span><span class="count" id="nav-count">0</span></button></div>
++</nav>
++<main class="page">
++<section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><div class="eyebrow">YOUR DAILY MOMENT OF GOOD</div><h1 id="hero-title">A little ritual.<br><em>A better day.</em></h1><p>Thoughtfully sourced. Lovingly crafted.<br>Your next favorite cup is waiting for you.</p><a href="#menu" class="dark-button">Find your cup <span data-icon="arrow"></span></a></div><div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=85" alt="Freshly brewed coffee on a warm wooden café table" fetchpriority="high"><div class="photo-note"><span data-icon="leaf"></span> Small batches. Big heart.</div></div></section>
++<div class="content"><section id="menu" aria-labelledby="menu-title"><div class="section-heading"><div><h2 id="menu-title">Made for your kind of day.</h2><p>All your favorites, with a little something new.</p></div><span class="tiny-note"><span data-icon="leaf"></span> Always responsibly sourced</span></div><div class="filters" aria-label="Filter menu"><button class="filter" data-filter="all" aria-pressed="true"><span data-icon="grid"></span> All drinks</button><button class="filter" data-filter="hot" aria-pressed="false"><span data-icon="cup"></span> Hot coffee</button><button class="filter" data-filter="cold" aria-pressed="false"><span data-icon="cold"></span> Cold coffee</button><button class="filter" data-filter="tea" aria-pressed="false"><span data-icon="leaf"></span> Tea & more</button></div><div class="menu-grid" id="products"></div></section>
++<aside><section class="order" id="order" aria-labelledby="bag-title"><div class="order-heading"><h2 id="bag-title">Your little pick-me-up</h2><span id="item-count">0 items</span></div><div class="pickup" id="pickup"><span data-icon="bag"></span><div><strong>Pick up in store</strong><small>123 Bedford Ave, Brooklyn</small></div><span class="ready">15–20 min</span></div><div class="bag-items" id="bag-items"></div><div class="summary"><div><span>Subtotal</span><span id="subtotal">$0.00</span></div><div><span>Tax</span><span id="tax">$0.00</span></div><div class="total"><span>Total</span><span id="total">$0.00</span></div></div><button class="dark-button checkout" id="checkout" disabled>Checkout <span data-icon="arrow"></span></button><p class="secure"><span data-icon="lock"></span> A secure checkout. A very good coffee.</p></section><section class="loyalty" id="rewards"><span data-icon="gift"></span><div><strong>Good coffee gives back.</strong><p>Earn points with every little ritual.</p><a href="#rewards" id="rewards-link">Meet the Grind Club <span aria-hidden="true">↗</span></a></div></section></aside></div>
++<section class="values" id="our-story" aria-label="Our coffee values"><div class="value"><span data-icon="leaf"></span><div><strong>Good from the ground up</strong><small>Ethically sourced, always.</small></div></div><div class="value"><span data-icon="cup"></span><div><strong>Roasted around the corner</strong><small>Small batches. Fresh every week.</small></div></div><div class="value"><span data-icon="heart"></span><div><strong>A little love in every cup</strong><small>Handcrafted by people who care.</small></div></div><div class="value"><span data-icon="recycle"></span><div><strong>A lighter footprint</strong><small>Better choices for our planet.</small></div></div></section>
++<footer><span>© 2026 The Daily Grind. Made with a whole lot of love.</span><div><a href="mailto:hello@dailygrind.example">Say hello</a><a href="#our-story">Our story</a><span>Brooklyn, NY · Est. 2016</span></div></footer>
++</main><div class="toast" role="status" id="toast"></div><div class="sr-status" role="status" aria-live="polite" id="bag-status" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
++<script>
++const icons={arrow:'<path d="M4 10h12m-5-5 5 5-5 5"/>',pin:'<path d="M16 8c0 5-6 10-6 10S4 13 4 8a6 6 0 1 1 12 0Z"/><circle cx="10" cy="8" r="2"/>',bag:'<path d="M4 6h12l1 12H3L4 6Z"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/>',leaf:'<path d="M17 3C6 1 1 8 5 14s14 2 12-11ZM4 17 13 7"/>',cup:'<path d="M3 7h11v6a5 5 0 0 1-10 0V7ZM14 8h2a3 3 0 0 1 0 6h-2M2 19h14M6 2v2M10 2v2"/>',cold:'<path d="M5 6h11l-2 13H7L5 6ZM4 6h13M11 6l2-5h4M8 11h5"/>',grid:'<rect x="3" y="3" width="5" height="5" rx="1"/><rect x="12" y="3" width="5" height="5" rx="1"/><rect x="3" y="12" width="5" height="5" rx="1"/><rect x="12" y="12" width="5" height="5" rx="1"/>',heart:'<path d="M10 17 3 10C-2 4 6 0 10 5c4-5 12-1 7 5l-7 7Z"/>',plus:'<path d="M10 4v12M4 10h12"/>',lock:'<rect x="4" y="8" width="12" height="10" rx="2"/><path d="M6 8V5a4 4 0 0 1 8 0v3"/>',gift:'<rect x="3" y="9" width="14" height="9"/><path d="M2 6h16v4H2ZM10 6v12M10 6C1 7 5-4 10 6Zm0 0c9 1 5-10 0 0Z"/>',recycle:'<path d="m6 7 4-5 4 6M10 2l1 5 4-1M15 10l3 6H9m9 0-3-3m3 3-3 3M6 16H2l3-7m-3 3 3-3 3 2"/>'};
++const icon=n=>`<svg viewBox="0 0 20 20" aria-hidden="true">${icons[n]||icons.cup}</svg>`;
++document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
++const drinks=[
++{id:'maple',name:'Maple Oat Latte',description:'Espresso, creamy oat milk & a touch of pure maple.',price:5.50,type:'hot',badge:'SEASONAL FAVORITE',image:'photo-1541167760496-1628856ab772'},
++{id:'espresso',name:'Classic Cappuccino',description:'Rich espresso. Silky milk. The perfect balance.',price:4.50,type:'hot',badge:'THE EVERYDAY CLASSIC',image:'photo-1572442388796-11668a67e53d'},
++{id:'cold',name:'Slow-Steeped Cold Brew',description:'18 hours of patience. Smooth to the last sip.',price:4.75,type:'cold',badge:'A COOL FAVORITE',image:'photo-1517701604599-bb29b565090c'},
++{id:'matcha',name:'Vanilla Matcha Latte',description:'Ceremonial matcha with a soft vanilla finish.',price:5.75,type:'tea',badge:'A MOMENT OF ZEN',image:'photo-1515823064-d6e0c04616a7'},
++{id:'flat',name:'Honey Flat White',description:'Double espresso, velvety milk & golden honey.',price:5.00,type:'hot',badge:'BARISTA’S PICK',image:'photo-1534778101976-62847782c213'},
++{id:'iced',name:'Iced Caramel Latte',description:'Our signature espresso with a caramel swirl.',price:5.50,type:'cold',badge:'SWEET LITTLE RITUAL',image:'photo-1461023058943-07fcbe16d735'}];
++const img=d=>`https://images.unsplash.com/${d.image}?auto=format&fit=crop&w=550&q=80`;
++const money=n=>'$'+n.toFixed(2);const cart=[];const sizes={Small:0,Regular:.5,Large:1};const productRoot=document.querySelector('#products');
++function scoped(scope,update){if(typeof scope.startViewTransition==='function'&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const transition=scope.startViewTransition(update);transition.ready.catch(()=>{});}else update();}
++for(const d of drinks){const card=document.createElement('article');card.className='product';card.dataset.type=d.type;card.innerHTML=`<div class="product-photo"><img src="${img(d)}" alt="${d.name}" loading="lazy"><span class="badge ${d.id==='maple'||d.id==='matcha'?'green':''}">${d.badge}</span><button class="favorite" aria-label="Favorite ${d.name}" aria-pressed="false">${icon('heart')}</button></div><div class="product-body"><h3>${d.name}</h3><p class="description">${d.description}</p><div class="product-bottom"><span class="price">${money(d.price)}<small> / small</small></span><button class="add" aria-expanded="false" aria-controls="options-${d.id}">Add ${icon('plus')}</button></div><div class="options" id="options-${d.id}" hidden><div class="options-label">Make it yours <button class="close-options" aria-label="Close customization">✕</button></div><div class="sizes" aria-label="Drink size">${Object.keys(sizes).map((s,i)=>`<button class="size" aria-pressed="${i===0}">${s}</button>`).join('')}</div><button class="add-order">Add to bag · ${money(d.price)}</button></div></div>`;productRoot.append(card);
++let selected='Small';const options=card.querySelector('.options');const add=card.querySelector('.add');const toggle=open=>scoped(card,()=>{options.hidden=!open;add.setAttribute('aria-expanded',open);});
++add.onclick=()=>toggle(options.hidden);card.querySelector('.close-options').onclick=()=>{add.focus();toggle(false)};card.querySelector('.favorite').onclick=e=>{const b=e.currentTarget;const next=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',next);b.setAttribute('aria-label',`${next?'Unfavorite':'Favorite'} ${d.name}`);notify(next?`${d.name} saved to your favorites`:`${d.name} removed from favorites`)};
++card.querySelectorAll('.size').forEach(b=>b.onclick=()=>{selected=b.textContent;card.querySelectorAll('.size').forEach(s=>s.setAttribute('aria-pressed',s===b));card.querySelector('.add-order').textContent=`Add to bag · ${money(d.price+sizes[selected])}`});
++card.querySelector('.add-order').onclick=()=>{const key=d.id+selected;const existing=cart.find(i=>i.key===key);if(existing)existing.qty++;else cart.push({...d,key,size:selected,unit:d.price+sizes[selected],qty:1});renderBag();document.querySelector('#bag-status').textContent=`${selected} ${d.name} added to your bag`;add.focus();toggle(false)};
++}
++document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{document.querySelectorAll('.filter').forEach(f=>f.setAttribute('aria-pressed',f===b));document.querySelectorAll('.product').forEach(card=>scoped(card,()=>card.hidden=b.dataset.filter!=='all'&&card.dataset.type!==b.dataset.filter))});
++const order=document.querySelector('#order'),items=document.querySelector('#bag-items');
++function renderBag(focusKey){scoped(order,()=>{const oldNodes=new Map([...items.querySelectorAll('.bag-item')].map(n=>[n.dataset.key,n]));items.querySelector('.empty')?.remove();const live=new Set(cart.map(i=>i.key));for(const [key,node] of oldNodes){if(!live.has(key))node.remove()}
++for(const item of cart){let row=oldNodes.get(item.key);if(!row){row=document.createElement('div');row.className='bag-item';row.dataset.key=item.key;row.innerHTML=`<img src="${img(item)}" alt=""><div class="item-info"><strong>${item.name}</strong><small>${item.size} · Made with love</small><div class="quantity"><button class="minus" aria-label="Remove one ${item.name}">−</button><span class="qty"></span><button class="plus" aria-label="Add one ${item.name}">+</button></div></div><span class="item-price"></span>`;row.querySelector('.minus').onclick=()=>change(item.key,-1);row.querySelector('.plus').onclick=()=>change(item.key,1)}row.querySelector('.qty').textContent=item.qty;row.querySelector('.item-price').textContent=money(item.unit*item.qty);items.append(row)}
++if(!cart.length)items.innerHTML=`<div class="empty">${icon('cup')}A good day starts with a good cup.<br>Find your favorite on the menu.</div>`;
++const count=cart.reduce((n,i)=>n+i.qty,0),subtotal=cart.reduce((n,i)=>n+i.unit*i.qty,0),tax=subtotal*.08875;document.querySelector('#item-count').textContent=`${count} ${count===1?'item':'items'}`;document.querySelector('#nav-count').textContent=count;document.querySelector('#subtotal').textContent=money(subtotal);document.querySelector('#tax').textContent=money(tax);document.querySelector('#total').textContent=money(subtotal+tax);document.querySelector('#checkout').disabled=!count;
++if(focusKey){const row=[...items.children].find(n=>n.dataset.key===focusKey);(row?.querySelector('.minus')||items.querySelector('.minus')||document.querySelector('#view-bag')).focus()}})}
++function change(key,delta){const index=cart.findIndex(i=>i.key===key);if(index<0)return;cart[index].qty+=delta;if(!cart[index].qty)cart.splice(index,1);renderBag(key)}
++let toastTimer;function notify(text){document.querySelector('#toast').textContent=text;clearTimeout(toastTimer);toastTimer=setTimeout(()=>document.querySelector('#toast').textContent='',4000)}
++document.querySelector('#view-bag').onclick=()=>{order.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});document.querySelector('#bag-title').tabIndex=-1;document.querySelector('#bag-title').focus({preventScroll:true})};
++document.querySelector('#checkout').onclick=()=>{const total=document.querySelector('#total').textContent;notify(`Demo order complete · ${total}. Thanks for making us part of your day!`);cart.length=0;renderBag();document.querySelector('#view-bag').focus()};document.querySelector('#rewards-link').onclick=e=>{e.preventDefault();notify('The Grind Club is brewing. Ask your barista to join on your next visit.')};renderBag();
++</script>
+ </body>
+-
+ </html>

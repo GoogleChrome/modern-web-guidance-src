@@ -1,0 +1,287 @@
+diff --git a/index.html b/index.html
+index 66c9173..7c6ee85 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,110 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Finder */
++    .finder {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      margin-top: 50px;
++    }
++
++    .finder h2 {
++      text-align: center;
++    }
++
++    .finder-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .finder-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      border-radius: 8px;
++      transition: box-shadow 0.3s;
++    }
++
++    /* Highlight the form while an AI agent is filling it in */
++    .finder-form:tool-form-active {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    .finder-form label {
++      display: flex;
++      flex-direction: column;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .finder-form select,
++    .finder-form input {
++      margin-top: 6px;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      font-weight: normal;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .finder-form select:focus,
++    .finder-form input:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .finder-actions {
++      grid-column: 1 / -1;
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .finder-actions button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .finder-results {
++      margin-top: 30px;
++    }
++
++    .finder-results:empty {
++      display: none;
++    }
++
++    .finder-summary {
++      text-align: center;
++      font-weight: 600;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .tags {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-top: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +299,71 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder" id="coffee-finder">
++      <h2>Find Your Perfect Cup</h2>
++      <p class="finder-intro">Tell us what you're in the mood for and we'll match you with a drink from our menu.</p>
++
++      <form id="coffee-finder-form" class="finder-form"
++        toolname="find_coffee"
++        tooldescription="Search The Daily Grind coffee menu for drinks matching the customer's preferences (hot or iced, flavor profile, milk, caffeine level and budget). Returns a list of matching drinks with names, descriptions and prices. This only recommends drinks; it does not place an order."
++        toolautosubmit>
++        <label>
++          Temperature
++          <select name="temperature" toolparamdescription="Whether the drink should be served hot or iced. Use 'any' if the customer has no preference.">
++            <option value="any">No preference</option>
++            <option value="hot">Hot</option>
++            <option value="iced">Iced</option>
++          </select>
++        </label>
++
++        <label>
++          Flavor profile
++          <select name="flavor" toolparamdescription="The dominant flavor the customer wants. Use 'any' if they have no preference.">
++            <option value="any">No preference</option>
++            <option value="bold">Bold &amp; roasty</option>
++            <option value="sweet">Sweet</option>
++            <option value="smooth">Smooth &amp; mellow</option>
++            <option value="spiced">Spiced</option>
++            <option value="fruity">Bright &amp; fruity</option>
++          </select>
++        </label>
++
++        <label>
++          Milk
++          <select name="milk" toolparamdescription="Milk preference. 'none' means black / no milk; 'dairy' is regular milk; 'oat' and 'almond' are plant-based. Use 'any' if no preference.">
++            <option value="any">No preference</option>
++            <option value="none">No milk</option>
++            <option value="dairy">Dairy</option>
++            <option value="oat">Oat</option>
++            <option value="almond">Almond</option>
++          </select>
++        </label>
++
++        <label>
++          Caffeine
++          <select name="caffeine" toolparamdescription="Desired caffeine level: 'decaf', 'regular' or 'extra' (strong). Use 'any' if no preference.">
++            <option value="any">No preference</option>
++            <option value="decaf">Decaf</option>
++            <option value="regular">Regular</option>
++            <option value="extra">Extra strong</option>
++          </select>
++        </label>
++
++        <label>
++          Max price ($)
++          <input type="number" name="max_price" min="2" max="10" step="0.5" placeholder="Any"
++            toolparamdescription="Maximum price in US dollars the customer is willing to pay for one drink, between 2 and 10. Leave empty for no limit.">
++        </label>
++
++        <div class="finder-actions">
++          <button type="submit" class="btn">Find My Coffee</button>
++          <button type="reset" class="btn btn-secondary">Clear</button>
++        </div>
++      </form>
++
++      <div class="finder-results" id="finder-results" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +376,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const MENU = [
++      { name: 'Maple Oat Latte', description: 'Creamy oat milk with a hint of Vermont maple syrup.', price: 5.75, temperature: ['hot', 'iced'], flavor: ['sweet', 'smooth'], milk: ['oat'], caffeine: 'regular' },
++      { name: 'Dark Roast Espresso', description: 'Bold, smokey, and perfect for a morning boost.', price: 3.25, temperature: ['hot'], flavor: ['bold'], milk: ['none'], caffeine: 'extra' },
++      { name: 'Cold Brew', description: 'Steeped for 18 hours for maximum smoothness.', price: 4.5, temperature: ['iced'], flavor: ['smooth', 'bold'], milk: ['none', 'dairy', 'oat', 'almond'], caffeine: 'extra' },
++      { name: 'Classic Cappuccino', description: 'Equal parts espresso, steamed milk and velvety foam.', price: 4.25, temperature: ['hot'], flavor: ['bold', 'smooth'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular' },
++      { name: 'Pumpkin Chai Latte', description: 'Black tea, warming spices and real pumpkin purée.', price: 5.5, temperature: ['hot', 'iced'], flavor: ['spiced', 'sweet'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular' },
++      { name: 'Caramel Macchiato', description: 'Vanilla, steamed milk and espresso finished with caramel drizzle.', price: 5.25, temperature: ['hot', 'iced'], flavor: ['sweet'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular' },
++      { name: 'Ethiopian Pour-Over', description: 'Single-origin light roast with notes of blueberry and jasmine.', price: 4.75, temperature: ['hot'], flavor: ['fruity'], milk: ['none'], caffeine: 'regular' },
++      { name: 'Decaf House Drip', description: 'Our medium house blend, Swiss Water decaffeinated.', price: 2.75, temperature: ['hot'], flavor: ['smooth'], milk: ['none', 'dairy', 'oat', 'almond'], caffeine: 'decaf' },
++      { name: 'Iced Almond Mocha', description: 'Espresso, dark chocolate and almond milk over ice.', price: 5.5, temperature: ['iced'], flavor: ['sweet', 'bold'], milk: ['almond'], caffeine: 'regular' },
++      { name: 'Cinnamon Decaf Latte', description: 'Decaf espresso with steamed milk and a dusting of cinnamon.', price: 4.75, temperature: ['hot', 'iced'], flavor: ['spiced', 'smooth'], milk: ['dairy', 'oat', 'almond'], caffeine: 'decaf' },
++    ];
++
++    const form = document.getElementById('coffee-finder-form');
++    const results = document.getElementById('finder-results');
++
++    function findCoffee(prefs) {
++      const maxPrice = parseFloat(prefs.max_price);
++      return MENU.filter((drink) =>
++        (prefs.temperature === 'any' || drink.temperature.includes(prefs.temperature)) &&
++        (prefs.flavor === 'any' || drink.flavor.includes(prefs.flavor)) &&
++        (prefs.milk === 'any' || drink.milk.includes(prefs.milk)) &&
++        (prefs.caffeine === 'any' || drink.caffeine === prefs.caffeine) &&
++        (Number.isNaN(maxPrice) || drink.price <= maxPrice)
++      );
++    }
++
++    function renderResults(matches) {
++      results.replaceChildren();
++
++      const summary = document.createElement('p');
++      summary.className = 'finder-summary';
++      summary.textContent = matches.length
++        ? `We found ${matches.length} drink${matches.length === 1 ? '' : 's'} for you:`
++        : 'No drinks match all of those preferences. Try loosening a filter or two.';
++      results.append(summary);
++
++      if (!matches.length) return;
++
++      const grid = document.createElement('div');
++      grid.className = 'grid';
++      for (const drink of matches) {
++        const card = document.createElement('div');
++        card.className = 'card';
++
++        const title = document.createElement('h3');
++        title.textContent = drink.name;
++        const desc = document.createElement('p');
++        desc.textContent = drink.description;
++        const tags = document.createElement('p');
++        tags.className = 'tags';
++        tags.textContent = `${drink.temperature.join(' / ')} · ${drink.caffeine}`;
++        const price = document.createElement('p');
++        price.className = 'price';
++        price.textContent = `$${drink.price.toFixed(2)}`;
++        const order = document.createElement('a');
++        order.className = 'btn';
++        order.href = `/order-online?item=${encodeURIComponent(drink.name)}`;
++        order.textContent = 'Order This';
++
++        card.append(title, desc, tags, price, order);
++        grid.append(card);
++      }
++      results.append(grid);
++    }
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const prefs = Object.fromEntries(new FormData(form));
++      const matches = findCoffee(prefs);
++      renderResults(matches);
++
++      // When submitted by an AI agent via WebMCP, hand the matches back as the tool result.
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve({
++          count: matches.length,
++          drinks: matches.map(({ name, description, price, temperature, caffeine }) => ({
++            name,
++            description,
++            price_usd: price,
++            temperature,
++            caffeine,
++            order_url: new URL(`/order-online?item=${encodeURIComponent(name)}`, location.href).href,
++          })),
++        }));
++      }
++    });
++
++    form.addEventListener('reset', () => results.replaceChildren());
++  </script>
++
+ </body>
+ 
+ </html>

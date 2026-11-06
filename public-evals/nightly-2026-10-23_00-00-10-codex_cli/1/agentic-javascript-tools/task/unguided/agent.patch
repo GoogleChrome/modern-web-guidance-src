@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Older WebMCP implementations expose modelContext on navigator.
++      const modelContext = document.modelContext ?? navigator.modelContext;
++      if (typeof modelContext?.registerTool !== 'function') return;
++
++      const toolName = 'get_menu_item';
++      const normalizeName = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
++      let registrationController;
++
++      const tool = {
++        name: toolName,
++        description: 'Look up a Daily Grind menu item by name and return its name, description, and details URL. Available items include Maple Oat Latte, Dark Roast Espresso, and Cold Brew. Matching ignores case and extra whitespace; unknown names return an error and the available item names.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              minLength: 1,
++              description: 'The full menu item name, for example "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew". Case and extra whitespace do not matter.',
++            },
++          },
++          required: ['name'],
++          additionalProperties: false,
++        },
++        annotations: { readOnlyHint: true },
++        execute: async (input) => {
++          if (typeof input?.name !== 'string' || !input.name.trim()) {
++            return { error: 'Provide a non-empty menu item name.' };
++          }
++
++          // Read the displayed menu so the assistant receives the same details as visitors.
++          const items = Array.from(document.querySelectorAll('main .card'), (card) => ({
++            name: card.querySelector('h3').textContent.trim(),
++            description: card.querySelector('p').textContent.trim(),
++            detailsUrl: card.querySelector('a').href,
++          }));
++          const item = items.find(({ name }) => normalizeName(name) === normalizeName(input.name));
++          return item ?? {
++            error: 'Menu item not found.',
++            availableItems: items.map(({ name }) => name),
++          };
++        },
++      };
++
++      async function registerMenuTool() {
++        if (registrationController) return;
++        registrationController = new AbortController();
++        try {
++          await modelContext.registerTool(tool, { signal: registrationController.signal });
++        } catch (error) {
++          registrationController = undefined;
++          console.error('Could not register the menu lookup tool.', error);
++        }
++      }
++
++      function unregisterMenuTool() {
++        if (!registrationController) return;
++        registrationController.abort();
++        registrationController = undefined;
++        // Compatibility with implementations that predate AbortSignal cleanup.
++        modelContext.unregisterTool?.(toolName);
++      }
++
++      window.addEventListener('pagehide', unregisterMenuTool);
++      // Restore the registration when returning from the back/forward cache.
++      window.addEventListener('pageshow', registerMenuTool);
++      registerMenuTool();
++    })();
++  </script>
+ </body>
+ 
+ </html>

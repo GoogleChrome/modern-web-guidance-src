@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,11 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      min-height: 60vh;
++      overflow: hidden;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +86,70 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Visual Block */
++    .shaped-element {
++      /* Fixed responsive dimensions to prevent layout breakages under any circumstances */
++      width: 170px;
++      height: 170px;
++      max-width: 80vw;
++      max-height: 35vh;
++      aspect-ratio: 1 / 1;
++      overflow: hidden;
++      flex-shrink: 0;
++      margin-bottom: 1.25rem;
++      display: block;
++      box-sizing: border-box;
++
++      /* Fallback organic blob shape if fluid vector / image mask does not load */
++      border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
++
++      /* Artisanal styling & fallback coffee background */
++      background-color: var(--primary);
++      background-image: linear-gradient(135deg, rgba(78, 52, 46, 0.4), rgba(62, 39, 35, 0.6)),
++        url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80');
++      background-size: cover;
++      background-position: center;
++      background-repeat: no-repeat;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++
++      /* Shape-clip via fluid vector clip-path */
++      clip-path: url(#coffee-splash-clip);
++      -webkit-clip-path: url(#coffee-splash-clip);
++
++      /* Shape-clip via fluid vector / image mask */
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Cpath fill='%23000' d='M 0.500 0.080 C 0.527 0.063, 0.550 0.023, 0.580 0.020 C 0.610 0.017, 0.653 0.040, 0.680 0.060 C 0.707 0.080, 0.712 0.130, 0.740 0.140 C 0.768 0.150, 0.820 0.107, 0.850 0.120 C 0.880 0.133, 0.915 0.187, 0.920 0.220 C 0.925 0.253, 0.873 0.290, 0.880 0.320 C 0.887 0.350, 0.943 0.367, 0.960 0.400 C 0.977 0.433, 0.988 0.483, 0.980 0.520 C 0.972 0.557, 0.917 0.583, 0.910 0.620 C 0.903 0.657, 0.950 0.703, 0.940 0.740 C 0.930 0.777, 0.880 0.827, 0.850 0.840 C 0.820 0.853, 0.788 0.803, 0.760 0.820 C 0.732 0.837, 0.717 0.913, 0.680 0.940 C 0.643 0.967, 0.580 0.983, 0.540 0.980 C 0.500 0.977, 0.477 0.923, 0.440 0.920 C 0.403 0.917, 0.360 0.967, 0.320 0.960 C 0.280 0.953, 0.233 0.903, 0.200 0.880 C 0.167 0.857, 0.140 0.850, 0.120 0.820 C 0.100 0.790, 0.097 0.740, 0.080 0.700 C 0.063 0.660, 0.023 0.623, 0.020 0.580 C 0.017 0.537, 0.057 0.483, 0.060 0.440 C 0.063 0.397, 0.030 0.357, 0.040 0.320 C 0.050 0.283, 0.087 0.240, 0.120 0.220 C 0.153 0.200, 0.210 0.220, 0.240 0.200 C 0.270 0.180, 0.270 0.113, 0.300 0.100 C 0.330 0.087, 0.387 0.123, 0.420 0.120 C 0.453 0.117, 0.473 0.097, 0.500 0.080 Z'/%3E%3C/svg%3E"), url('coffee-splash-mask.svg');
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Cpath fill='%23000' d='M 0.500 0.080 C 0.527 0.063, 0.550 0.023, 0.580 0.020 C 0.610 0.017, 0.653 0.040, 0.680 0.060 C 0.707 0.080, 0.712 0.130, 0.740 0.140 C 0.768 0.150, 0.820 0.107, 0.850 0.120 C 0.880 0.133, 0.915 0.187, 0.920 0.220 C 0.925 0.253, 0.873 0.290, 0.880 0.320 C 0.887 0.350, 0.943 0.367, 0.960 0.400 C 0.977 0.433, 0.988 0.483, 0.980 0.520 C 0.972 0.557, 0.917 0.583, 0.910 0.620 C 0.903 0.657, 0.950 0.703, 0.940 0.740 C 0.930 0.777, 0.880 0.827, 0.850 0.840 C 0.820 0.853, 0.788 0.803, 0.760 0.820 C 0.732 0.837, 0.717 0.913, 0.680 0.940 C 0.643 0.967, 0.580 0.983, 0.540 0.980 C 0.500 0.977, 0.477 0.923, 0.440 0.920 C 0.403 0.917, 0.360 0.967, 0.320 0.960 C 0.280 0.953, 0.233 0.903, 0.200 0.880 C 0.167 0.857, 0.140 0.850, 0.120 0.820 C 0.100 0.790, 0.097 0.740, 0.080 0.700 C 0.063 0.660, 0.023 0.623, 0.020 0.580 C 0.017 0.537, 0.057 0.483, 0.060 0.440 C 0.063 0.397, 0.030 0.357, 0.040 0.320 C 0.050 0.283, 0.087 0.240, 0.120 0.220 C 0.153 0.200, 0.210 0.220, 0.240 0.200 C 0.270 0.180, 0.270 0.113, 0.300 0.100 C 0.330 0.087, 0.387 0.123, 0.420 0.120 C 0.453 0.117, 0.473 0.097, 0.500 0.080 Z'/%3E%3C/svg%3E"), url('coffee-splash-mask.svg');
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++      transition: transform 0.3s ease;
++    }
++
++    .shaped-element:hover {
++      transform: scale(1.03) rotate(1deg);
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      pointer-events: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +223,21 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Fluid vector definition for .shaped-element -->
++  <svg width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none;" aria-hidden="true" focusable="false">
++    <defs>
++      <clipPath id="coffee-splash-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0.500 0.080 C 0.527 0.063, 0.550 0.023, 0.580 0.020 C 0.610 0.017, 0.653 0.040, 0.680 0.060 C 0.707 0.080, 0.712 0.130, 0.740 0.140 C 0.768 0.150, 0.820 0.107, 0.850 0.120 C 0.880 0.133, 0.915 0.187, 0.920 0.220 C 0.925 0.253, 0.873 0.290, 0.880 0.320 C 0.887 0.350, 0.943 0.367, 0.960 0.400 C 0.977 0.433, 0.988 0.483, 0.980 0.520 C 0.972 0.557, 0.917 0.583, 0.910 0.620 C 0.903 0.657, 0.950 0.703, 0.940 0.740 C 0.930 0.777, 0.880 0.827, 0.850 0.840 C 0.820 0.853, 0.788 0.803, 0.760 0.820 C 0.732 0.837, 0.717 0.913, 0.680 0.940 C 0.643 0.967, 0.580 0.983, 0.540 0.980 C 0.500 0.977, 0.477 0.923, 0.440 0.920 C 0.403 0.917, 0.360 0.967, 0.320 0.960 C 0.280 0.953, 0.233 0.903, 0.200 0.880 C 0.167 0.857, 0.140 0.850, 0.120 0.820 C 0.100 0.790, 0.097 0.740, 0.080 0.700 C 0.063 0.660, 0.023 0.623, 0.020 0.580 C 0.017 0.537, 0.057 0.483, 0.060 0.440 C 0.063 0.397, 0.030 0.357, 0.040 0.320 C 0.050 0.283, 0.087 0.240, 0.120 0.220 C 0.153 0.200, 0.210 0.220, 0.240 0.200 C 0.270 0.180, 0.270 0.113, 0.300 0.100 C 0.330 0.087, 0.387 0.123, 0.420 0.120 C 0.453 0.117, 0.473 0.097, 0.500 0.080 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <header class="hero">
++    <div class="shaped-element" role="img" aria-label="Decorative artisanal coffee splash">
++      <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Artisanal coffee splash" onerror="this.style.display='none'" />
++    </div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

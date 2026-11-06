@@ -1,0 +1,412 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+index 0000000..41e7aa7
+--- /dev/null
++++ b/PERFORMANCE.md
+@@ -0,0 +1,45 @@
++Client-side performance monitoring runs from `performance-monitor.js` on the
++homepage. Navigation links, Order Now, and clicks anywhere within a Seasonal
++Favorites card are labeled using `data-performance-*` attributes. Link behavior
++is unchanged.
++
++Metrics are available through `window.dailyGrindPerformance.getMetrics()` (the
++latest 100 records), User Timing measures prefixed with `daily-grind:`, and a
++`daily-grind:performance` window event. No data is sent over the network.
++
++```js
++window.addEventListener('daily-grind:performance', ({ detail }) => {
++  // Send detail to your application's telemetry collector if desired.
++  console.log(detail.name, detail.duration, detail.source);
++});
++```
++
++Durations are milliseconds. Native Event Timing includes time from the click's
++timestamp through input processing and the next paint. When native entries are
++unavailable (including interactions below the browser's 16ms reporting threshold),
++two animation frames estimate a paint opportunity; `source` distinguishes
++`event-timing` from `animation-frame-estimate`. Estimates can include an extra
++frame and cannot prove compositor presentation or completion of later async work.
++Hidden-page measurements are discarded.
++
++There is currently no client-side router or view switcher. When adding one, wrap
++its render operation with the provided API. Resolve the callback only after DOM
++updates are committed, including asynchronous data loading or framework rendering:
++
++```js
++const result = await window.dailyGrindPerformance.measureViewSwitch('menu', async () => {
++  const data = await loadMenu();
++  await renderMenu(data);
++  return data;
++});
++```
++
++This measures from the start of the update through a subsequent paint opportunity
++and emits a `view-switch` metric. Failed updates propagate their error without a
++success metric. It does not infer render completion from URL changes. Click
++metrics cover the current document's next paint; full document navigation may
++unload before a metric is available and destination loading is outside their scope.
++
++Run the deterministic Node checks with `node --test performance-monitor.test.cjs`.
++They simulate scheduling and native entries; they do not launch a browser/server
++or validate real compositor timing.
+diff --git a/index.html b/index.html
+index 66c9173..d062d75 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/performance-monitor.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +158,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-performance-region="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +172,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-performance-action="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-performance-action="seasonal-maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-action="seasonal-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-action="seasonal-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/performance-monitor.js b/performance-monitor.js
+new file mode 100644
+index 0000000..a327994
+--- /dev/null
++++ b/performance-monitor.js
+@@ -0,0 +1,141 @@
++(() => {
++  'use strict';
++
++  const recent = [];
++  const pending = new Set();
++  const metricEvent = 'daily-grind:performance';
++  const visible = () => document.visibilityState === 'visible';
++
++  // Two animation frames allow a paint opportunity between callbacks. This is
++  // an estimate, not proof that the compositor has presented pixels.
++  function afterPaint(callback) {
++    let first;
++    let second;
++    first = requestAnimationFrame(() => {
++      second = requestAnimationFrame(callback);
++    });
++    return () => {
++      cancelAnimationFrame(first);
++      if (second !== undefined) cancelAnimationFrame(second);
++    };
++  }
++
++  function report(name, kind, startTime, endTime, source) {
++    if (!visible()) return;
++    const metric = Object.freeze({
++      name,
++      kind,
++      startTime,
++      duration: Math.max(0, endTime - startTime),
++      source,
++    });
++    recent.push(metric);
++    const evicted = recent.length > 100 ? recent.shift() : undefined;
++    // Keep User Timing storage bounded too. The event is the integration point
++    // for a telemetry consumer; nothing is transmitted by this monitor.
++    try {
++      if (evicted && !recent.some((item) => item.kind === evicted.kind && item.name === evicted.name)) {
++        performance.clearMeasures(`daily-grind:${evicted.kind}:${evicted.name}`);
++      }
++      const measureName = `daily-grind:${kind}:${name}`;
++      performance.clearMeasures(measureName);
++      performance.measure(measureName, { start: startTime, end: endTime, detail: metric });
++    } catch {
++      // Older browsers can still consume the custom event and recent metrics.
++    }
++    window.dispatchEvent(new CustomEvent(metricEvent, { detail: metric }));
++  }
++
++  function finish(record, endTime, source) {
++    if (!pending.delete(record)) return;
++    record.cancel();
++    clearTimeout(record.timer);
++    report(record.name, 'click', record.startTime, endTime, source);
++  }
++
++  // Event Timing includes input delay, handler execution, and presentation
++  // delay. The minimum duration threshold is 16ms, so faster interactions use
++  // the paint-opportunity estimate below.
++  if (typeof PerformanceObserver !== 'undefined' &&
++      PerformanceObserver.supportedEntryTypes?.includes('event')) {
++    try {
++      const observer = new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          if (entry.name !== 'click') continue;
++          for (const record of pending) {
++            if (Math.abs(record.startTime - entry.startTime) < 1) {
++              finish(record, entry.startTime + entry.duration, 'event-timing');
++              break;
++            }
++          }
++        }
++      });
++      observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
++    } catch {
++      // Unsupported Event Timing options fall back to animation frames.
++    }
++  }
++
++  document.addEventListener('click', (event) => {
++    if (!visible() || !(event.target instanceof Element)) return;
++    const target = event.target.closest('[data-performance-action], [data-performance-region="navigation"] a');
++    if (!target) return;
++    const name = target.dataset.performanceAction || `navigation:${target.getAttribute('href')}`;
++    // Some older engines use epoch-based event timestamps.
++    const timestamp = event.timeStamp > performance.timeOrigin
++      ? event.timeStamp - performance.timeOrigin : event.timeStamp;
++    const record = { name, startTime: timestamp, cancel: () => {}, timer: undefined };
++    pending.add(record);
++    record.cancel = afterPaint(() => {
++      const endTime = performance.now();
++      // Allow queued Event Timing entries to supply their more precise result.
++      record.timer = setTimeout(() => finish(record, endTime, 'animation-frame-estimate'), 0);
++    });
++  }, { capture: true, passive: true });
++
++  // Hidden pages cannot give a useful paint estimate, and rAF is suspended.
++  document.addEventListener('visibilitychange', () => {
++    if (visible()) return;
++    for (const record of pending) {
++      record.cancel();
++      clearTimeout(record.timer);
++    }
++    pending.clear();
++  });
++
++  // Call around the actual client-side render, including any async work.
++  // Resolving update() must mean its DOM changes have been committed.
++  async function measureViewSwitch(name, update) {
++    const startTime = performance.now();
++    let interrupted = !visible();
++    const onVisibility = () => { if (!visible()) interrupted = true; };
++    document.addEventListener('visibilitychange', onVisibility);
++    try {
++      const result = await update();
++      if (!interrupted) {
++        await new Promise((resolve) => {
++          const cancel = afterPaint(() => {
++            document.removeEventListener('visibilitychange', onHidden);
++            if (!interrupted) report(String(name), 'view-switch', startTime, performance.now(), 'animation-frame-estimate');
++            resolve();
++          });
++          function onHidden() {
++            if (visible()) return;
++            cancel();
++            document.removeEventListener('visibilitychange', onHidden);
++            resolve();
++          }
++          document.addEventListener('visibilitychange', onHidden);
++        });
++      }
++      return result;
++    } finally {
++      document.removeEventListener('visibilitychange', onVisibility);
++    }
++  }
++
++  window.dailyGrindPerformance = Object.freeze({
++    getMetrics: () => recent.slice(),
++    measureViewSwitch,
++  });
++})();
+diff --git a/performance-monitor.test.cjs b/performance-monitor.test.cjs
+new file mode 100644
+index 0000000..56b3801
+--- /dev/null
++++ b/performance-monitor.test.cjs
+@@ -0,0 +1,158 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(`${__dirname}/performance-monitor.js`, 'utf8');
++
++function setup({ eventTiming = false } = {}) {
++  const listeners = new Map();
++  const frames = new Map();
++  const timers = new Map();
++  const emitted = [];
++  const measures = [];
++  let now = 10;
++  let id = 0;
++  let observer;
++  const document = {
++    visibilityState: 'visible',
++    addEventListener(type, callback) {
++      if (!listeners.has(type)) listeners.set(type, new Set());
++      listeners.get(type).add(callback);
++    },
++    removeEventListener(type, callback) { listeners.get(type)?.delete(callback); },
++  };
++  class Element {
++    constructor(name, href) { this.dataset = { performanceAction: name }; this.href = href; }
++    closest() { return this; }
++    getAttribute() { return this.href; }
++  }
++  const window = { dispatchEvent: (event) => emitted.push(event.detail) };
++  class PerformanceObserver {
++    static supportedEntryTypes = eventTiming ? ['event'] : [];
++    constructor(callback) { observer = callback; }
++    observe() {}
++  }
++  vm.runInNewContext(source, {
++    window, document, Element, PerformanceObserver,
++    CustomEvent: class { constructor(type, options) { this.detail = options.detail; } },
++    performance: {
++      now: () => now, timeOrigin: 1700000000000,
++      clearMeasures() {}, measure: (name, options) => measures.push({ name, ...options }),
++    },
++    requestAnimationFrame: (callback) => { frames.set(++id, callback); return id; },
++    cancelAnimationFrame: (key) => frames.delete(key),
++    setTimeout: (callback) => { timers.set(++id, callback); return id; },
++    clearTimeout: (key) => timers.delete(key),
++  });
++  function dispatch(type, event) {
++    for (const callback of [...(listeners.get(type) || [])]) callback(event);
++  }
++  function flush(queue) {
++    const callbacks = [...queue.values()];
++    queue.clear();
++    callbacks.forEach((callback) => callback());
++  }
++  return {
++    api: window.dailyGrindPerformance, emitted, measures,
++    click: (name, href) => dispatch('click', { target: new Element(name, href), timeStamp: now }),
++    frame: () => { now += 16; flush(frames); },
++    timers: () => flush(timers),
++    native: (entries) => observer({ getEntries: () => entries }),
++    hide: () => { document.visibilityState = 'hidden'; dispatch('visibilitychange'); },
++  };
++}
++
++test('clicks wait for a paint opportunity and expose labeled metrics', () => {
++  const monitor = setup();
++  monitor.click('order-now');
++  monitor.frame();
++  assert.equal(monitor.emitted.length, 0);
++  monitor.frame();
++  monitor.timers();
++  assert.equal(monitor.emitted.length, 1);
++  assert.equal(monitor.emitted[0].name, 'order-now');
++  assert.equal(monitor.emitted[0].duration, 32);
++  assert.equal(monitor.emitted[0].source, 'animation-frame-estimate');
++  assert.equal(monitor.measures[0].end, 42);
++});
++
++test('native click timings take precedence and cancel the fallback', () => {
++  const monitor = setup({ eventTiming: true });
++  monitor.click(undefined, '/menu');
++  monitor.native([{ name: 'click', startTime: 10, duration: 24 }]);
++  monitor.frame();
++  monitor.frame();
++  monitor.timers();
++  assert.equal(monitor.emitted.length, 1);
++  assert.equal(monitor.emitted[0].name, 'navigation:/menu');
++  assert.equal(monitor.emitted[0].duration, 24);
++  assert.equal(monitor.emitted[0].source, 'event-timing');
++});
++
++test('overlapping seasonal clicks keep separate timings', () => {
++  const monitor = setup();
++  monitor.click('seasonal-maple-oat-latte');
++  monitor.frame();
++  monitor.click('seasonal-cold-brew');
++  monitor.frame();
++  monitor.timers();
++  monitor.frame();
++  monitor.timers();
++  assert.equal(monitor.emitted.length, 2);
++  assert.equal(monitor.emitted[0].name, 'seasonal-maple-oat-latte');
++  assert.equal(monitor.emitted[1].name, 'seasonal-cold-brew');
++});
++
++test('view switches wait for async rendering and preserve the result', async () => {
++  const monitor = setup();
++  let commit;
++  const update = new Promise((resolve) => { commit = resolve; });
++  const completion = monitor.api.measureViewSwitch('menu', () => update);
++  monitor.frame();
++  monitor.frame();
++  assert.equal(monitor.emitted.length, 0);
++  commit('rendered');
++  await new Promise(setImmediate);
++  monitor.frame();
++  monitor.frame();
++  assert.equal(await completion, 'rendered');
++  assert.equal(monitor.emitted[0].kind, 'view-switch');
++  assert.equal(monitor.emitted[0].duration, 64);
++});
++
++test('failed view updates reject without reporting a successful paint', async () => {
++  const monitor = setup();
++  await assert.rejects(monitor.api.measureViewSwitch('menu', () => {
++    throw new Error('render failed');
++  }), /render failed/);
++  assert.equal(monitor.emitted.length, 0);
++});
++
++test('hiding the page cancels pending clicks and settles view timing', async () => {
++  const monitor = setup();
++  monitor.click('order-now');
++  const completion = monitor.api.measureViewSwitch('menu', () => 'rendered');
++  await new Promise(setImmediate);
++  monitor.hide();
++  monitor.frame();
++  monitor.frame();
++  monitor.timers();
++  assert.equal(await completion, 'rendered');
++  assert.equal(monitor.emitted.length, 0);
++});
++
++test('recent metrics are bounded and callers cannot change stored records', () => {
++  const monitor = setup();
++  for (let i = 0; i < 110; i++) {
++    monitor.click('order-now');
++    monitor.frame();
++    monitor.frame();
++    monitor.timers();
++  }
++  const metrics = monitor.api.getMetrics();
++  assert.equal(metrics.length, 100);
++  assert.ok(Object.isFrozen(metrics[0]));
++  metrics.pop();
++  assert.equal(monitor.api.getMetrics().length, 100);
++});

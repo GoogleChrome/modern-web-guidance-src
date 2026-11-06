@@ -1,0 +1,203 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4fe5add 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -45,11 +45,170 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-root" class="bg-white relative">
++          <div class="spa-view" tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      const MAX_CACHED_VIEWS = 5;
++      const viewCache = new Map<string, HTMLElement>();
++
++      function getViewKey(loc: Location | URL = window.location): string {
++        return loc.pathname + loc.search;
++      }
++
++      function evictOldestIfNeeded(keepKey: string) {
++        while (viewCache.size > MAX_CACHED_VIEWS) {
++          const oldestKey = viewCache.keys().next().value;
++          if (!oldestKey || oldestKey === keepKey) break;
++          const oldView = viewCache.get(oldestKey);
++          oldView?.remove();
++          viewCache.delete(oldestKey);
++        }
++      }
++
++      function touchView(key: string, view: HTMLElement) {
++        viewCache.delete(key);
++        viewCache.set(key, view);
++      }
++
++      function moveElementPreservingState(parent: HTMLElement, node: HTMLElement) {
++        if ('moveBefore' in Element.prototype && node.isConnected && parent.isConnected) {
++          (parent as any).moveBefore(node, null);
++        } else if (node.parentElement !== parent) {
++          parent.insertBefore(node, null);
++        }
++      }
++
++      function switchToView(activeView: HTMLElement) {
++        const root = document.getElementById('spa-view-root');
++        if (!root) return;
++
++        root.querySelectorAll<HTMLElement>(':scope > .spa-view').forEach((view) => {
++          if (view !== activeView) {
++            view.classList.add('inactive');
++            view.setAttribute('aria-hidden', 'true');
++            view.setAttribute('inert', 'inert');
++          }
++        });
++
++        activeView.classList.remove('inactive');
++        activeView.setAttribute('aria-hidden', 'false');
++        activeView.removeAttribute('inert');
++        if (!activeView.hasAttribute('tabindex')) {
++          activeView.setAttribute('tabindex', '-1');
++        }
++        activeView.focus({ preventScroll: true });
++      }
++
++      function initCurrentView() {
++        const root = document.getElementById('spa-view-root');
++        if (!root) return;
++        const key = getViewKey();
++        let activeView = root.querySelector<HTMLElement>(
++          `:scope > .spa-view[data-view-key="${CSS.escape(key)}"]`
++        );
++        if (!activeView) {
++          activeView = root.querySelector<HTMLElement>(':scope > .spa-view:not([data-view-key])');
++          if (activeView) {
++            activeView.dataset.viewKey = key;
++          }
++        }
++        if (activeView) {
++          touchView(key, activeView);
++          evictOldestIfNeeded(key);
++          switchToView(activeView);
++        }
++      }
++
++      initCurrentView();
++
++      document.addEventListener('astro:before-swap', (event: any) => {
++        const currentRoot = document.getElementById('spa-view-root');
++        const newDoc: Document | undefined = event.newDocument;
++        const newRoot = newDoc?.getElementById('spa-view-root');
++        if (!currentRoot || !newRoot) return;
++
++        const currentKey = getViewKey(window.location);
++        const currentActive =
++          currentRoot.querySelector<HTMLElement>(
++            `:scope > .spa-view[data-view-key="${CSS.escape(currentKey)}"]`
++          ) || currentRoot.querySelector<HTMLElement>(':scope > .spa-view:not(.inactive)');
++
++        if (currentActive) {
++          currentActive.dataset.viewKey = currentKey;
++          touchView(currentKey, currentActive);
++        }
++
++        const targetKey = getViewKey(event.to || window.location);
++        const incomingFreshView = newRoot.querySelector<HTMLElement>(':scope > .spa-view');
++        if (incomingFreshView) {
++          incomingFreshView.dataset.viewKey = targetKey;
++        }
++
++        const originalSwap = event.swap;
++        event.swap = () => {
++          const preservedViews = Array.from(viewCache.entries());
++          const hasCachedTarget = viewCache.has(targetKey);
++
++          // Stage preserved views inside newRoot before swapFunctions.swapBodyElement
++          // replaces document.body with newDocument.body, or keep them connected via moveBefore
++          let stagingContainer: HTMLElement | null = null;
++          if ('moveBefore' in Element.prototype && document.documentElement) {
++            stagingContainer = document.createElement('div');
++            stagingContainer.style.display = 'none';
++            document.documentElement.appendChild(stagingContainer);
++            for (const [, view] of preservedViews) {
++              if (view.isConnected) {
++                (stagingContainer as any).moveBefore(view, null);
++              }
++            }
++          }
++
++          originalSwap();
++
++          const liveRoot = document.getElementById('spa-view-root');
++          if (!liveRoot) {
++            stagingContainer?.remove();
++            return;
++          }
++
++          const freshRenderedView =
++            liveRoot.querySelector<HTMLElement>(
++              `:scope > .spa-view[data-view-key="${CSS.escape(targetKey)}"]`
++            ) || liveRoot.querySelector<HTMLElement>(':scope > .spa-view');
++
++          // Re-attach preserved views into the live root
++          for (const [key, view] of preservedViews) {
++            moveElementPreservingState(liveRoot, view);
++            if (key === targetKey && freshRenderedView && freshRenderedView !== view) {
++              freshRenderedView.remove();
++            }
++          }
++
++          stagingContainer?.remove();
++
++          let targetView = hasCachedTarget ? viewCache.get(targetKey) : undefined;
++          if (!targetView && freshRenderedView) {
++            freshRenderedView.dataset.viewKey = targetKey;
++            targetView = freshRenderedView;
++          }
++
++          if (targetView) {
++            touchView(targetKey, targetView);
++            evictOldestIfNeeded(targetKey);
++            switchToView(targetView);
++          }
++        };
++      });
++
++      document.addEventListener('astro:page-load', () => {
++        initCurrentView();
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..5b01201 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,19 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  width: 100%;
++  top: 0;
++  left: 0;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

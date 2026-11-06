@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,66 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Mailing list signup */
++    .mailing-list {
++      max-width: 420px;
++      margin: 0 auto 25px;
++    }
++
++    .mailing-list h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .mailing-list .field-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .mailing-list input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .mailing-list button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .mailing-list button:hover {
++      background: #3e2723;
++    }
++
++    .mailing-list .error-message {
++      display: none;
++      color: #b71c1c;
++      font-size: 0.85rem;
++      margin-top: 6px;
++      text-align: left;
++    }
++
++    /* :user-invalid only matches after the user has interacted with the field
++       (e.g. blurred it while blank, or tried to submit), never on page load. */
++    .mailing-list input:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .mailing-list input:user-invalid~.error-message {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +255,17 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="mailing-list" action="/mailing-list" method="post">
++      <h3>Join our mailing list</h3>
++      <div class="field-row">
++        <input type="email" id="mailing-email" name="email" placeholder="you@example.com" aria-label="Email address"
++          aria-describedby="mailing-email-error" required>
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="error-message" id="mailing-email-error">Please enter a valid email address.</p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |

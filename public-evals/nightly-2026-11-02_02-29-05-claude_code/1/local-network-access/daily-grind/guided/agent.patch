@@ -1,0 +1,361 @@
+diff --git a/index.html b/index.html
+index 66c9173..59f9eee 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,146 @@
+       background: #3e2723;
+     }
+ 
++    /* Equipment Connections */
++    .equipment-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 10px auto 0;
++    }
++
++    .equipment-card {
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .equipment-card header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .equipment-card h3 {
++      margin-bottom: 0;
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .badge[data-state="granted"] {
++      background: #c8e6c9;
++      color: #1b5e20;
++    }
++
++    .badge[data-state="denied"] {
++      background: #ffcdd2;
++      color: #b71c1c;
++    }
++
++    .badge[data-state="prompt"] {
++      background: #ffe0b2;
++      color: #6d3a00;
++    }
++
++    .equipment-card label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      margin-bottom: 4px;
++    }
++
++    .equipment-card input {
++      width: 100%;
++      padding: 8px 10px;
++      font: inherit;
++      font-size: 0.9rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++    }
++
++    .equipment-card input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .equipment-card button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      align-self: flex-start;
++      margin-top: 0;
++    }
++
++    .equipment-card button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .equipment-card button.btn:focus-visible,
++    .equipment-card input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .connection-result {
++      font-size: 0.9rem;
++      padding: 10px;
++      border-radius: 5px;
++      background: #f5f5f5;
++      border-left: 4px solid var(--secondary);
++    }
++
++    .connection-result:empty {
++      display: none;
++    }
++
++    .connection-result[data-kind="success"] {
++      background: #e8f5e9;
++      border-left-color: #2e7d32;
++    }
++
++    .connection-result[data-kind="error"] {
++      background: #ffebee;
++      border-left-color: #c62828;
++    }
++
++    .connection-result pre {
++      margin-top: 6px;
++      white-space: pre-wrap;
++      word-break: break-word;
++      font-size: 0.8rem;
++      max-height: 10rem;
++      overflow: auto;
++    }
++
++    .remediation,
++    .context-warning {
++      font-size: 0.85rem;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      border-radius: 5px;
++      padding: 10px;
++    }
++
++    .remediation ol {
++      margin: 6px 0 0 20px;
++    }
++
++    .context-warning {
++      margin-top: 20px;
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +335,65 @@
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="equipment-heading" style="margin-top: 60px;">
++      <h2 id="equipment-heading" style="text-align: center;">Connect Your Brewing Equipment</h2>
++      <p class="equipment-intro">Link this page to your Daily Grind Wi-Fi brewer and the companion brewing
++        utility on your computer. Your browser will ask for permission the first time you connect —
++        nothing is contacted until you press <em>Connect</em>.</p>
++      <p class="context-warning" id="context-warning" hidden>
++        This page isn't loaded over a secure (<code>https://</code>) connection, so your browser will block
++        access to local equipment. Open the site via <code>https://</code> to connect.
++      </p>
++      <div class="grid">
++        <article class="card equipment-card" data-device="brewer" data-permission="local-network" data-address-space="local">
++          <header>
++            <h3 id="brewer-title">Wi-Fi Coffee Brewer</h3>
++            <span class="badge" data-permission-status="local-network" data-state="unknown">Checking…</span>
++          </header>
++          <p>Talks to your brewer over your local Wi-Fi network to check its status. Requires the <strong>Local network</strong> permission.</p>
++          <form class="connect-form" aria-labelledby="brewer-title" novalidate>
++            <label for="brewer-url">Brewer address</label>
++            <input id="brewer-url" name="url" type="url" required value="http://192.168.1.50/api/status"
++              aria-describedby="brewer-hint" autocomplete="off" spellcheck="false">
++            <p id="brewer-hint" style="font-size: 0.8rem; margin-top: 4px;">Find the IP address or <code>.local</code> name on the brewer's display or router app.</p>
++            <button type="submit" class="btn" style="margin-top: 12px;">Connect</button>
++          </form>
++          <div class="remediation" data-remediation="local-network" hidden>
++            <strong>Access blocked.</strong> Your browser is preventing this page from reaching devices on your local network.
++            <ol>
++              <li>Click the site controls icon to the left of the address bar.</li>
++              <li>Open <em>Site settings</em> and set <em>Local network</em> to <em>Allow</em>.</li>
++              <li>Reload this page and press <em>Connect</em> again.</li>
++            </ol>
++          </div>
++          <div class="connection-result" role="status" aria-live="polite"></div>
++        </article>
++        <article class="card equipment-card" data-device="utility" data-permission="loopback-network" data-address-space="loopback">
++          <header>
++            <h3 id="utility-title">Companion Brewing Utility</h3>
++            <span class="badge" data-permission-status="loopback-network" data-state="unknown">Checking…</span>
++          </header>
++          <p>Talks to the Daily Grind brewing utility running on this computer. Requires the <strong>Loopback network</strong> permission.</p>
++          <form class="connect-form" aria-labelledby="utility-title" novalidate>
++            <label for="utility-url">Utility address</label>
++            <input id="utility-url" name="url" type="url" required value="http://127.0.0.1:47800/health"
++              aria-describedby="utility-hint" autocomplete="off" spellcheck="false">
++            <p id="utility-hint" style="font-size: 0.8rem; margin-top: 4px;">Make sure the brewing utility is running. The default port is 47800.</p>
++            <button type="submit" class="btn" style="margin-top: 12px;">Connect</button>
++          </form>
++          <div class="remediation" data-remediation="loopback-network" hidden>
++            <strong>Access blocked.</strong> Your browser is preventing this page from reaching apps running on this computer.
++            <ol>
++              <li>Click the site controls icon to the left of the address bar.</li>
++              <li>Open <em>Site settings</em> and set <em>Loopback network</em> to <em>Allow</em>.</li>
++              <li>Reload this page and press <em>Connect</em> again.</li>
++            </ol>
++          </div>
++          <div class="connection-result" role="status" aria-live="polite"></div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +406,143 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const REQUEST_TIMEOUT_MS = 8000;
++
++    const STATE_LABELS = {
++      granted: 'Allowed',
++      prompt: 'Will ask',
++      denied: 'Blocked',
++      unsupported: 'Not required',
++    };
++
++    if (!window.isSecureContext) {
++      document.getElementById('context-warning').hidden = false;
++    }
++
++    function setPermissionUI(card, state) {
++      const badge = card.querySelector('[data-permission-status]');
++      badge.dataset.state = state;
++      badge.textContent = STATE_LABELS[state] ?? state;
++      badge.title = state === 'unsupported'
++        ? 'This browser does not use local network permissions'
++        : `Permission: ${state}`;
++      card.querySelector('[data-remediation]').hidden = state !== 'denied';
++    }
++
++    function showResult(card, kind, message, details) {
++      const box = card.querySelector('.connection-result');
++      box.dataset.kind = kind;
++      box.replaceChildren(document.createTextNode(message));
++      if (details !== undefined) {
++        const pre = document.createElement('pre');
++        pre.textContent = typeof details === 'string' ? details : JSON.stringify(details, null, 2);
++        box.append(pre);
++      }
++    }
++
++    /**
++     * Queries the granular Local Network Access permission. Never queries the legacy
++     * 'local-network-access' name, which crashes the renderer in older Chrome versions.
++     * Returns the PermissionStatus, or null when the browser doesn't recognize the name.
++     */
++    async function queryPermission(name) {
++      if (!navigator.permissions?.query) return null;
++      try {
++        return await navigator.permissions.query({ name });
++      } catch {
++        return null;
++      }
++    }
++
++    function describeError(error, card) {
++      const isLocal = card.dataset.addressSpace === 'local';
++      if (error.name === 'TimeoutError') {
++        return isLocal
++          ? 'The brewer did not respond in time. Check that it is powered on and connected to the same Wi-Fi network as this device.'
++          : 'The brewing utility did not respond in time. Check that it is running on this computer.';
++      }
++      if (card.querySelector('[data-permission-status]').dataset.state === 'denied') {
++        return 'Connection blocked: permission was denied. Follow the steps below to allow access.';
++      }
++      return isLocal
++        ? 'Could not reach the brewer. Check the address, make sure the brewer is on the same network, and allow local network access if your browser asks.'
++        : 'Could not reach the brewing utility. Check that it is running on the address above, and allow loopback access if your browser asks.';
++    }
++
++    async function connect(card) {
++      const form = card.querySelector('form');
++      const input = form.elements.url;
++      const button = form.querySelector('button');
++
++      let url;
++      try {
++        url = new URL(input.value.trim());
++        if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new TypeError();
++        input.setCustomValidity('');
++      } catch {
++        input.setCustomValidity('Enter a full http:// or https:// address.');
++        input.reportValidity();
++        showResult(card, 'error', 'Enter a full address starting with http:// or https://.');
++        return;
++      }
++
++      button.disabled = true;
++      button.textContent = 'Connecting…';
++      showResult(card, 'info', `Connecting to ${url.host}…`);
++
++      try {
++        const response = await fetch(new Request(url, {
++          method: 'GET',
++          mode: 'cors',
++          credentials: 'omit',
++          cache: 'no-store',
++          // Exempts http:// targets from mixed-content blocking and makes the browser
++          // verify the resolved IP actually belongs to the declared address space.
++          targetAddressSpace: card.dataset.addressSpace,
++          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
++        }));
++        if (!response.ok) {
++          throw Object.assign(new Error(`HTTP ${response.status}`), { httpStatus: response.status });
++        }
++        const type = response.headers.get('content-type') ?? '';
++        const body = type.includes('json') ? await response.json() : (await response.text()).slice(0, 2000);
++        const name = card.dataset.addressSpace === 'local' ? 'brewer' : 'brewing utility';
++        showResult(card, 'success', `Connected to the ${name} at ${url.host}.`, body || undefined);
++      } catch (error) {
++        const message = error.httpStatus
++          ? `The device answered but returned an error (HTTP ${error.httpStatus}). Check the address path.`
++          : describeError(error, card);
++        showResult(card, 'error', message);
++      } finally {
++        button.disabled = false;
++        button.textContent = 'Connect';
++      }
++    }
++
++    for (const card of document.querySelectorAll('.equipment-card')) {
++      const form = card.querySelector('form');
++      const input = form.elements.url;
++      input.addEventListener('input', () => input.setCustomValidity(''));
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        connect(card);
++      });
++
++      queryPermission(card.dataset.permission).then((status) => {
++        if (!status) {
++          setPermissionUI(card, 'unsupported');
++          return;
++        }
++        setPermissionUI(card, status.state);
++        // Stay in sync if the user changes the permission from site settings or the prompt.
++        status.addEventListener('change', () => setPermissionUI(card, status.state));
++        // Only connect automatically when access was already granted; otherwise wait for a click.
++        if (status.state === 'granted') connect(card);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

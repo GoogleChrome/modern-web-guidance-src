@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,33 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Promo countdown */
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px 12px;
++      border-radius: 6px;
++      background: #fff3e0;
++      font-size: 0.9rem;
++      line-height: 1.4;
++    }
++
++    .promo-timer p + p {
++      margin-top: 4px;
++      color: #6d4c41;
++      font-size: 0.8rem;
++    }
++
++    .promo-timer time {
++      font-weight: 600;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .promo-timer[data-state="ended"] {
++      background: var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +205,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" data-promo-start="2026-01-01" data-promo-end="2026-03-01">
++            <p class="promo-remaining">Limited time: offer ends <time datetime="2026-03-01">March 1, 2026</time>.</p>
++            <p class="promo-elapsed" hidden></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +235,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is not yet available in every browser (Safari in particular),
++    // so feature-detect it and load the polyfill only when needed.
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const timer = document.querySelector('.promo-timer');
++    const remainingEl = timer.querySelector('.promo-remaining');
++    const elapsedEl = timer.querySelector('.promo-elapsed');
++
++    // All math happens in the visitor's own time zone, so "midnight" is their
++    // local midnight and DST shifts inside the window are accounted for.
++    const timeZone = Temporal.Now.timeZoneId();
++    const now = Temporal.Now.zonedDateTimeISO(timeZone);
++    // PlainDate -> ZonedDateTime with no time resolves to the start of that day
++    // (even if local midnight is skipped by a DST change).
++    const start = Temporal.PlainDate.from(timer.dataset.promoStart).toZonedDateTime(timeZone);
++    const end = Temporal.PlainDate.from(timer.dataset.promoEnd).toZonedDateTime(timeZone);
++
++    // Balance into whole days + hours; truncate so we never show a full hour
++    // that has not actually been reached yet.
++    const daysAndHours = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++
++    function formatDuration(duration) {
++      if (duration.blank) return 'less than an hour';
++      if ('DurationFormat' in Intl) {
++        return duration.toLocaleString(undefined, { style: 'long' });
++      }
++      // Minimal fallback for browsers without Intl.DurationFormat.
++      const parts = [];
++      if (duration.days) parts.push(`${duration.days} day${duration.days === 1 ? '' : 's'}`);
++      if (duration.hours) parts.push(`${duration.hours} hour${duration.hours === 1 ? '' : 's'}`);
++      return parts.join(', ');
++    }
++
++    function durationNode(duration) {
++      const time = document.createElement('time');
++      time.dateTime = duration.toString(); // ISO 8601, e.g. P12DT5H
++      time.textContent = formatDuration(duration);
++      return time;
++    }
++
++    function dateNode(zdt) {
++      const time = document.createElement('time');
++      time.dateTime = zdt.toPlainDate().toString();
++      time.textContent = zdt.toLocaleString(undefined, { dateStyle: 'long' });
++      return time;
++    }
++
++    if (Temporal.ZonedDateTime.compare(now, start) < 0) {
++      timer.dataset.state = 'upcoming';
++      remainingEl.replaceChildren('Coming ', dateNode(start), '. Starts in ', durationNode(now.until(start, daysAndHours)), '.');
++      elapsedEl.hidden = true;
++    } else if (Temporal.ZonedDateTime.compare(now, end) >= 0) {
++      timer.dataset.state = 'ended';
++      remainingEl.replaceChildren('This offer ended ', dateNode(end), '.');
++      elapsedEl.replaceChildren('The promotion ran for ', durationNode(start.until(end, daysAndHours)), '.');
++      elapsedEl.hidden = false;
++    } else {
++      timer.dataset.state = 'active';
++      remainingEl.replaceChildren('Offer ends in ', durationNode(now.until(end, daysAndHours)), ' (', dateNode(end), ').');
++      elapsedEl.replaceChildren('Running for ', durationNode(now.since(start, daysAndHours)), ' so far.');
++      elapsedEl.hidden = false;
++    }
++  </script>
++
+ </body>
+ 
+ </html>

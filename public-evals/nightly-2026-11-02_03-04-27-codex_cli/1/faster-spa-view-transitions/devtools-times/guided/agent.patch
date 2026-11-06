@@ -1,0 +1,191 @@
+diff --git a/README.md b/README.md
+index 4479b53..79250a8 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,14 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++Navigation retains up to five recent views (including the active view) in a
++persistent main container. Inactive views use `content-visibility: hidden`,
++`inert`, and `aria-hidden`; browsers without content visibility fall back to
++`display: none`. Returning to a cached pathname and query restores its existing
++DOM and component state. The router still fetches the destination for page
++metadata and navigation behavior. Same-URL navigations refresh the view, and
++sign-in/sign-up forms opt out with the layout's `cacheView={false}` prop.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6f69f10 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -45,11 +46,21 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-cache transition:persist="view-cache">
++          <div
++            class="spa-view"
++            data-view-key={Astro.url.pathname + Astro.url.search}
++            data-cache-view={String(cacheView)}
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import '../scripts/view-cache';
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..9423cb0
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,70 @@
++import type { TransitionBeforeSwapEvent } from 'astro:transitions/client';
++
++// Includes the active view. Map insertion order tracks least-recently used views.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const hostSelector = '[data-view-cache]';
++const viewSelector = ':scope > [data-view-key]';
++let focusAfterSwap = false;
++
++document.addEventListener('astro:before-swap', (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const host = document.querySelector<HTMLElement>(hostSelector);
++  const incomingHost = navigation.newDocument.querySelector<HTMLElement>(hostSelector);
++  const incoming = incomingHost?.querySelector<HTMLElement>(viewSelector);
++  if (!host || !incomingHost || !incoming) return;
++
++  // Run inside Astro's swap so preparation/cancelled navigation cannot hide a view.
++  const swap = navigation.swap;
++  navigation.swap = () => {
++    const current = host.querySelector<HTMLElement>(':scope > [data-view-key]:not([data-inactive])');
++    if (current) {
++      current.dataset.inactive = '';
++      current.inert = true;
++      current.setAttribute('aria-hidden', 'true');
++      if (current.dataset.cacheView === 'true') {
++        views.set(current.dataset.viewKey!, current);
++      } else {
++        current.remove();
++      }
++    }
++
++    const key = incoming.dataset.viewKey!;
++    // A same-URL navigation is a refresh; use the new server-rendered content.
++    const refreshing = navigation.from.pathname + navigation.from.search === key;
++    const cached = views.get(key);
++    const next = !refreshing && incoming.dataset.cacheView === 'true' && cached?.isConnected
++      ? cached
++      : incoming;
++    if (cached && cached !== next) cached.remove();
++
++    next.removeAttribute('data-inactive');
++    next.removeAttribute('aria-hidden');
++    next.inert = false;
++
++    // Touch the selected view and evict oldest entries, releasing their islands.
++    views.delete(key);
++    if (next.dataset.cacheView === 'true') views.set(key, next);
++    const cacheLimit = MAX_VIEWS - (next.dataset.cacheView === 'true' ? 0 : 1);
++    while (views.size > cacheLimit) {
++      const oldestKey = views.keys().next().value!;
++      views.get(oldestKey)!.remove();
++      views.delete(oldestKey);
++    }
++
++    // Astro transfers the persistent host, including all retained child nodes.
++    swap();
++    // Leave fresh content in the incoming document until Astro has marked its
++    // previously executed scripts. New islands connect before astro:after-swap.
++    if (next === incoming) host.append(next);
++    focusAfterSwap = true;
++  };
++});
++
++document.addEventListener('astro:after-swap', () => {
++  if (!focusAfterSwap) return;
++  focusAfterSwap = false;
++  // Avoid changing the router's scroll restoration and fragment navigation.
++  document.querySelector<HTMLElement>(`${hostSelector} > [data-view-key]:not([data-inactive])`)
++    ?.focus({ preventScroll: true });
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..2d3d7e4 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,23 @@
+ @import "tailwindcss";
+ 
++/* Keep inactive DOM and rendering state without contributing to page layout. */
++.spa-view[data-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  width: 100%;
++  height: 0;
++  overflow: clip;
++  visibility: hidden;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view[data-inactive] {
++    display: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

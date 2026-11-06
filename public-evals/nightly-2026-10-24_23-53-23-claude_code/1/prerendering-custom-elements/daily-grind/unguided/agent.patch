@@ -1,0 +1,128 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..464184e
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,55 @@
++// <drink-card> is server-rendered with Declarative Shadow DOM (styles + markup
++// are in the HTML), so it paints fully styled before this script loads.
++// On upgrade we adopt the existing shadow root and only attach behavior.
++const STYLES = `
++  :host { display: block; }
++  .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); text-align: center; position: relative; height: 100%; }
++  h3 { margin-bottom: 10px; color: var(--primary); }
++  .btn { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; transition: background .3s; }
++  .btn:hover { background: #3e2723; }
++  .fav { position: absolute; top: 10px; right: 12px; background: none; border: 0; cursor: pointer; font-size: 1.4rem; line-height: 1; color: #bbb; }
++  .fav[aria-pressed="true"] { color: var(--accent); }
++`;
++
++export function renderDrinkCard({ name, description, href, favorited }) {
++  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
++  return `<style>${STYLES}</style>
++<div class="card">
++  <button class="fav" type="button" aria-pressed="${favorited}" aria-label="Favorite ${esc(name)}">${favorited ? '★' : '☆'}</button>
++  <h3>${esc(name)}</h3>
++  <p>${esc(description)}</p>
++  <a href="${esc(href)}" class="btn">View Details</a>
++</div>`;
++}
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['favorited'];
++
++  connectedCallback() {
++    if (this.hydrated) return;
++    this.hydrated = true;
++    // Declarative shadow root already attached by the parser -> reuse it.
++    // Only client-created elements (no SSR) need to render.
++    if (!this.shadowRoot) {
++      this.attachShadow({ mode: 'open' }).innerHTML = renderDrinkCard({
++        name: this.getAttribute('name') ?? '',
++        description: this.getAttribute('description') ?? '',
++        href: this.getAttribute('href') ?? '#',
++        favorited: this.hasAttribute('favorited'),
++      });
++    }
++    this.shadowRoot.querySelector('.fav').addEventListener('click', () => {
++      this.toggleAttribute('favorited');
++    });
++  }
++
++  attributeChangedCallback() {
++    const btn = this.shadowRoot?.querySelector('.fav');
++    if (!btn) return;
++    const on = this.hasAttribute('favorited');
++    btn.setAttribute('aria-pressed', on);
++    btn.textContent = on ? '★' : '☆';
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..c92892f 100644
+--- a/index.html
++++ b/index.html
+@@ -178,21 +178,39 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card name="Maple Oat Latte" description="Creamy oat milk with a hint of Vermont maple syrup." href="/menu/seasonal">
++          <template shadowrootmode="open">
++            <style>:host { display: block; } .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); text-align: center; position: relative; height: 100%; } h3 { margin-bottom: 10px; color: var(--primary); } .btn { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; transition: background .3s; } .btn:hover { background: #3e2723; } .fav { position: absolute; top: 10px; right: 12px; background: none; border: 0; cursor: pointer; font-size: 1.4rem; line-height: 1; color: #bbb; } .fav[aria-pressed="true"] { color: var(--accent); }</style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Maple Oat Latte">☆</button>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </template>
++        </drink-card>
++        <drink-card name="Dark Roast Espresso" description="Bold, smokey, and perfect for a morning boost." href="/menu/espresso">
++          <template shadowrootmode="open">
++            <style>:host { display: block; } .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); text-align: center; position: relative; height: 100%; } h3 { margin-bottom: 10px; color: var(--primary); } .btn { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; transition: background .3s; } .btn:hover { background: #3e2723; } .fav { position: absolute; top: 10px; right: 12px; background: none; border: 0; cursor: pointer; font-size: 1.4rem; line-height: 1; color: #bbb; } .fav[aria-pressed="true"] { color: var(--accent); }</style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Dark Roast Espresso">☆</button>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </template>
++        </drink-card>
++        <drink-card name="Cold Brew" description="Steeped for 18 hours for maximum smoothness." href="/menu/cold-brew">
++          <template shadowrootmode="open">
++            <style>:host { display: block; } .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); text-align: center; position: relative; height: 100%; } h3 { margin-bottom: 10px; color: var(--primary); } .btn { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; transition: background .3s; } .btn:hover { background: #3e2723; } .fav { position: absolute; top: 10px; right: 12px; background: none; border: 0; cursor: pointer; font-size: 1.4rem; line-height: 1; color: #bbb; } .fav[aria-pressed="true"] { color: var(--accent); }</style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Cold Brew">☆</button>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </template>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +225,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script type="module" src="/drink-card.js"></script>
+ </body>
+ 
+ </html>

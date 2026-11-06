@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+index 66c9173..ac1388d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,42 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating draggable promo */
++    .floating-promo {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      width: 220px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      z-index: 2000;
++      overflow: hidden;
++      touch-action: none;
++    }
++
++    .floating-promo.dragging {
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
++    }
++
++    .floating-promo-handle {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      padding: 6px 12px;
++      cursor: grab;
++      user-select: none;
++    }
++
++    .floating-promo.dragging .floating-promo-handle {
++      cursor: grabbing;
++    }
++
++    .floating-promo-body {
++      padding: 12px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +243,62 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-promo" id="promo">
++    <div class="floating-promo-handle">⠿ Drag me</div>
++    <div class="floating-promo-body">
++      <strong>Happy Hour</strong>
++      <p>Half-price cold brew, 2–4pm daily.</p>
++      <a href="/menu/cold-brew" class="btn">Order</a>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      const el = document.getElementById('promo');
++      const handle = el.querySelector('.floating-promo-handle');
++      let offsetX = 0;
++      let offsetY = 0;
++
++      function clamp(v, min, max) {
++        return Math.min(Math.max(v, min), Math.max(min, max));
++      }
++
++      function moveTo(x, y) {
++        el.style.left = clamp(x, 0, window.innerWidth - el.offsetWidth) + 'px';
++        el.style.top = clamp(y, 0, window.innerHeight - el.offsetHeight) + 'px';
++      }
++
++      handle.addEventListener('pointerdown', (e) => {
++        const rect = el.getBoundingClientRect();
++        offsetX = e.clientX - rect.left;
++        offsetY = e.clientY - rect.top;
++        // Switch from right/bottom anchoring to explicit left/top
++        el.style.right = 'auto';
++        el.style.bottom = 'auto';
++        moveTo(rect.left, rect.top);
++        el.classList.add('dragging');
++        handle.setPointerCapture(e.pointerId);
++        e.preventDefault();
++      });
++
++      handle.addEventListener('pointermove', (e) => {
++        if (!handle.hasPointerCapture(e.pointerId)) return;
++        moveTo(e.clientX - offsetX, e.clientY - offsetY);
++      });
++
++      function endDrag(e) {
++        el.classList.remove('dragging');
++        if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
++      }
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++
++      // Keep it on screen if the window shrinks
++      window.addEventListener('resize', () => {
++        if (el.style.left) moveTo(parseFloat(el.style.left), parseFloat(el.style.top));
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,28 @@
+diff --git a/index.html b/index.html
+index 66c9173..13b6b8d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep base styles above as fallbacks; enhance only with @layer support. */
++    @supports at-rule(@layer) {
++      @layer component-enhancements {
++        .card {
++          border-top: 3px solid var(--accent);
++        }
++
++        .hero h1 {
++          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
++        }
++
++        nav {
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+index 66c9173..c27ec60 100644
+--- a/index.html
++++ b/index.html
+@@ -118,10 +118,56 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.35em;
+     }
+ 
+-    .btn {
++    section h2 {
++      text-align: center;
++    }
++
++    section h2::before {
++      /* Fallback: render the decorative glyph in browsers without `/` support */
++      content: "✦ ";
++      content: "✦ " / "";
++      color: var(--accent);
++      margin-inline-end: 0.25em;
++    }
++
++    section h2::after {
++      /* Fallback: render the decorative glyph in browsers without `/` support */
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++      margin-inline-start: 0.25em;
++    }
++
++    /* Decorative CSS-generated SVG icons for drink headings.
++       Images in `content: url(...)` are presentational by default, so no `/ ""`
++       or duplicate DOM text is used. */
++    .card h3::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cline x1='6' y1='2' x2='6' y2='4'/%3E%3Cline x1='10' y1='2' x2='10' y2='4'/%3E%3Cline x1='14' y1='2' x2='14' y2='4'/%3E%3C/svg%3E");
+       display: inline-block;
++      line-height: 0;
++      flex: none;
++      pointer-events: none;
++    }
++
++    .card h3::after {
++      /* Fallback: render the decorative flourish in browsers without `/` support */
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++      font-size: 0.85em;
++      pointer-events: none;
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +181,31 @@
+       background: #3e2723;
+     }
+ 
++    /* Decorative CSS-generated SVG icon on buttons (presentational by default, no `/ ""`) */
++    .btn::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffab40' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3C/svg%3E");
++      display: inline-block;
++      line-height: 0;
++      margin-inline-end: 0.45em;
++      flex: none;
++      pointer-events: none;
++    }
++
++    /* Decorative arrow flourish silenced for screen readers via empty alt text,
++       preceded by a single-value fallback for older browsers */
++    .btn::after {
++      content: " →";
++      content: " →" / "";
++      margin-inline-start: 0.35em;
++      color: var(--accent);
++      pointer-events: none;
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;

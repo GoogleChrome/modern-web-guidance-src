@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,55 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .target {
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 112px;
++      min-height: 112px;
++      margin: 24px auto 32px;
++      padding: 16px;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      line-height: 1.3;
++      text-align: center;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgb(78 52 46 / 18%);
++      /* Independent properties let both animations and hover compose. */
++      scale: 1;
++      animation: promo-spin 10s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover,
++    .target:focus-visible {
++      scale: 1.15;
++    }
++
++    .target:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -28px 0; }
++      to { translate: 28px 0; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,8 +223,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <a href="/menu/seasonal" class="target">Featured<br>Seasonal Sip</a>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

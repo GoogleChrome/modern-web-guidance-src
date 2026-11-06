@@ -1,0 +1,405 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..be85e09 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -32,6 +32,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign up
+         </a>
++        <a
++          href={`${baseUrl}account`}
++          data-skip-tracking="true"
++          class="text-xs font-semibold py-2 px-3 hover:underline"
++        >
++          Account
++        </a>
+         <a
+           href={`${baseUrl}signin`}
+           data-skip-tracking="true"
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..77dd895
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,209 @@
++import React, { useCallback, useEffect, useState } from 'react';
++import type { AccountUser, StoredPasskeyCredential } from '../utils/passkeys';
++
++const api = (path: string) => `${import.meta.env.BASE_URL}api/${path}`;
++const jsonInit = (method: string, body: unknown): RequestInit => ({
++  method,
++  headers: { 'Content-Type': 'application/json' },
++  body: JSON.stringify(body),
++});
++const formatDate = (ms?: number) =>
++  ms ? new Date(ms).toLocaleDateString(undefined, { dateStyle: 'medium' }) : null;
++
++// Tell the browser's authenticator which passkeys the server still accepts.
++async function syncAcceptedCredentials(user: AccountUser, credentials: StoredPasskeyCredential[]) {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.signalAllAcceptedCredentials) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: location.hostname,
++      userId: user.id,
++      allAcceptedCredentialIds: credentials.map((c) => c.id),
++    });
++  } catch (e) {
++    console.error('signalAllAcceptedCredentials failed:', e);
++  }
++}
++
++async function syncUserDetails(user: AccountUser) {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.signalCurrentUserDetails) return;
++  try {
++    await PublicKeyCredential.signalCurrentUserDetails({
++      rpId: location.hostname,
++      userId: user.id,
++      name: user.name,
++      displayName: user.displayName,
++    });
++  } catch (e) {
++    console.error('signalCurrentUserDetails failed:', e);
++  }
++}
++
++const inputClass =
++  'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
++const buttonClass =
++  'py-1.5 px-3 rounded-md text-sm font-medium border border-gray-300 text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50';
++
++export default function PasskeyManager() {
++  const [user, setUser] = useState<AccountUser | null>(null);
++  const [credentials, setCredentials] = useState<StoredPasskeyCredential[] | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [status, setStatus] = useState<string | null>(null);
++  const [editingId, setEditingId] = useState<string | null>(null);
++  const [editName, setEditName] = useState('');
++  const [profile, setProfile] = useState({ name: '', displayName: '' });
++  const [busy, setBusy] = useState(false);
++
++  const load = useCallback(async () => {
++    const res = await fetch(api('credentials'));
++    if (!res.ok) throw new Error('Could not load your passkeys.');
++    return (await res.json()) as { user: AccountUser; credentials: StoredPasskeyCredential[] };
++  }, []);
++
++  useEffect(() => {
++    load()
++      .then(async (data) => {
++        setUser(data.user);
++        setProfile({ name: data.user.name, displayName: data.user.displayName });
++        setCredentials(data.credentials);
++        await syncAcceptedCredentials(data.user, data.credentials);
++      })
++      .catch((e) => setError(e.message));
++  }, [load]);
++
++  const run = async (action: () => Promise<void>) => {
++    setError(null);
++    setStatus(null);
++    setBusy(true);
++    try {
++      await action();
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'Something went wrong.');
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const saveRename = (id: string) =>
++    run(async () => {
++      const res = await fetch(api(`credential/${encodeURIComponent(id)}`), jsonInit('PUT', { name: editName }));
++      if (!res.ok) throw new Error('Could not rename the passkey.');
++      // Nicknames are a server-side label only; nothing to signal.
++      setCredentials((await load()).credentials);
++      setEditingId(null);
++      setStatus('Passkey renamed.');
++    });
++
++  const remove = (credential: StoredPasskeyCredential) => {
++    if (!user || !confirm(`Remove "${credential.name}"? You won't be able to sign in with it anymore.`)) return;
++    return run(async () => {
++      const res = await fetch(api(`credential/${encodeURIComponent(credential.id)}`), { method: 'DELETE' });
++      if (!res.ok) throw new Error('Could not remove the passkey.');
++      const remaining = (await load()).credentials;
++      setCredentials(remaining);
++      setStatus('Passkey removed.');
++      await syncAcceptedCredentials(user, remaining);
++    });
++  };
++
++  const saveProfile = (e: React.FormEvent) => {
++    e.preventDefault();
++    return run(async () => {
++      const res = await fetch(api('user'), jsonInit('PUT', profile));
++      if (!res.ok) throw new Error('Could not update your account details.');
++      const updated = (await res.json()) as AccountUser;
++      setUser(updated);
++      setStatus('Account details updated.');
++      await syncUserDetails(updated);
++    });
++  };
++
++  return (
++    <div className="max-w-2xl mx-auto mt-10 space-y-8">
++      <h1 className="text-2xl font-bold text-gray-800">Account settings</h1>
++
++      <div aria-live="polite">
++        {error && <p className="p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">{error}</p>}
++        {status && <p className="p-3 text-sm text-green-700 bg-green-100 rounded-lg">{status}</p>}
++      </div>
++
++      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm" aria-labelledby="profile-heading">
++        <h2 id="profile-heading" className="text-lg font-semibold text-gray-800 mb-1">Account details</h2>
++        <p className="text-sm text-gray-600 mb-4">
++          Shown by your password manager next to your passkeys. Changes are shared with it automatically.
++        </p>
++        <form onSubmit={saveProfile} className="space-y-4">
++          <div>
++            <label htmlFor="acct-name" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
++            <input id="acct-name" className={inputClass} required maxLength={64} autoComplete="username"
++              value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
++          </div>
++          <div>
++            <label htmlFor="acct-display" className="block text-sm font-medium text-gray-700 mb-1">Display name</label>
++            <input id="acct-display" className={inputClass} required maxLength={64} autoComplete="name"
++              value={profile.displayName} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} />
++          </div>
++          <button type="submit" disabled={busy || !user}
++            className="py-2 px-4 rounded-md text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-50">
++            Save details
++          </button>
++        </form>
++      </section>
++
++      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm" aria-labelledby="passkeys-heading">
++        <h2 id="passkeys-heading" className="text-lg font-semibold text-gray-800 mb-4">Passkeys</h2>
++        {credentials === null ? (
++          !error && <p className="text-sm text-gray-600">Loading passkeys…</p>
++        ) : credentials.length === 0 ? (
++          <p className="text-sm text-gray-600">No passkeys found.</p>
++        ) : (
++          <ul className="divide-y divide-gray-200">
++            {credentials.map((c) => (
++              <li key={c.id} className="py-4 flex items-start gap-3">
++                {c.providerIcon ? (
++                  <img src={c.providerIcon} alt="" width={32} height={32} className="mt-0.5 shrink-0" />
++                ) : (
++                  <span className="mt-0.5 size-8 shrink-0 rounded bg-gray-100" aria-hidden="true" />
++                )}
++                <div className="min-w-0 flex-1">
++                  {editingId === c.id ? (
++                    <form
++                      onSubmit={(e) => { e.preventDefault(); saveRename(c.id); }}
++                      className="flex flex-wrap gap-2"
++                    >
++                      <label htmlFor={`rename-${c.id}`} className="sr-only">Passkey name</label>
++                      <input id={`rename-${c.id}`} className={`${inputClass} flex-1`} required maxLength={64}
++                        autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} />
++                      <button type="submit" disabled={busy} className={buttonClass}>Save</button>
++                      <button type="button" onClick={() => setEditingId(null)} className={buttonClass}>Cancel</button>
++                    </form>
++                  ) : (
++                    <>
++                      <p className="font-medium text-gray-900 truncate">{c.name}</p>
++                      <p className="text-xs text-gray-600">
++                        Created {formatDate(c.registeredAt)}
++                        {c.lastUsedAt ? ` · Last used ${formatDate(c.lastUsedAt)}` : ''}
++                      </p>
++                    </>
++                  )}
++                </div>
++                {editingId !== c.id && (
++                  <div className="flex gap-2 shrink-0">
++                    <button type="button" className={buttonClass} disabled={busy}
++                      aria-label={`Rename ${c.name}`}
++                      onClick={() => { setEditingId(c.id); setEditName(c.name); }}>
++                      Rename
++                    </button>
++                    <button type="button" className={`${buttonClass} text-red-700`} disabled={busy}
++                      aria-label={`Delete ${c.name}`} onClick={() => remove(c)}>
++                      Delete
++                    </button>
++                  </div>
++                )}
++              </li>
++            ))}
++          </ul>
++        )}
++      </section>
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9d26223 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -30,6 +30,15 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
++        // Remember the reader locally so account settings are available.
++        const userId = data.userId ?? data.user?.id ?? data.id;
++        if (userId) {
++          await fetch(`${import.meta.env.BASE_URL}api/session`, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ username, userId: String(userId) }),
++          });
++        }
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..9ece9c5
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,15 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManager from '../components/PasskeyManager';
++
++const user = await Astro.session?.get('accountUser');
++if (!user) {
++  return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++}
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load />
++  </div>
++</Layout>
+diff --git a/src/pages/api/credential/[id].ts b/src/pages/api/credential/[id].ts
+new file mode 100644
+index 0000000..b19f8a9
+--- /dev/null
++++ b/src/pages/api/credential/[id].ts
+@@ -0,0 +1,27 @@
++import type { APIRoute } from 'astro';
++import { cleanName, getCredentials, getUser, json } from '../../../utils/passkeys';
++
++export const PUT: APIRoute = async ({ params, request, session }) => {
++  if (!(await getUser(session))) return json({ error: 'Not signed in' }, 401);
++  const body = await request.json().catch(() => ({}));
++  const name = cleanName(body.name);
++  if (!name) return json({ error: 'Name is required' }, 400);
++
++  const credentials = await getCredentials(session);
++  const credential = credentials.find((c) => c.id === params.id);
++  if (!credential) return json({ error: 'Credential not found.' }, 404);
++
++  credential.name = name;
++  await session?.set('passkeys', credentials);
++  return json(credential);
++};
++
++export const DELETE: APIRoute = async ({ params, session }) => {
++  if (!(await getUser(session))) return json({ error: 'Not signed in' }, 401);
++  const credentials = await getCredentials(session);
++  if (!credentials.some((c) => c.id === params.id)) {
++    return json({ error: 'Credential not found.' }, 404);
++  }
++  await session?.set('passkeys', credentials.filter((c) => c.id !== params.id));
++  return json({ success: true });
++};
+diff --git a/src/pages/api/credentials.ts b/src/pages/api/credentials.ts
+new file mode 100644
+index 0000000..6758789
+--- /dev/null
++++ b/src/pages/api/credentials.ts
+@@ -0,0 +1,8 @@
++import type { APIRoute } from 'astro';
++import { getCredentials, getUser, json } from '../../utils/passkeys';
++
++export const GET: APIRoute = async ({ session }) => {
++  const user = await getUser(session);
++  if (!user) return json({ error: 'Not signed in' }, 401);
++  return json({ user, credentials: await getCredentials(session) });
++};
+diff --git a/src/pages/api/session.ts b/src/pages/api/session.ts
+new file mode 100644
+index 0000000..3c59c75
+--- /dev/null
++++ b/src/pages/api/session.ts
+@@ -0,0 +1,19 @@
++import type { APIRoute } from 'astro';
++import { cleanName, json, type AccountUser } from '../../utils/passkeys';
++
++// Records the reader who just signed in so account settings can be shown.
++export const POST: APIRoute = async ({ request, session }) => {
++  const body = await request.json().catch(() => ({}));
++  const name = cleanName(body.username);
++  if (!name || typeof body.userId !== 'string' || !body.userId) {
++    return json({ error: 'Username and user ID are required' }, 400);
++  }
++  const existing = (await session?.get('accountUser')) as AccountUser | undefined;
++  const user: AccountUser = {
++    id: body.userId,
++    name,
++    displayName: existing?.id === body.userId ? existing.displayName : name,
++  };
++  await session?.set('accountUser', user);
++  return json(user);
++};
+diff --git a/src/pages/api/user.ts b/src/pages/api/user.ts
+new file mode 100644
+index 0000000..a942eac
+--- /dev/null
++++ b/src/pages/api/user.ts
+@@ -0,0 +1,15 @@
++import type { APIRoute } from 'astro';
++import { cleanName, getUser, json } from '../../utils/passkeys';
++
++export const PUT: APIRoute = async ({ request, session }) => {
++  const user = await getUser(session);
++  if (!user) return json({ error: 'Not signed in' }, 401);
++  const body = await request.json().catch(() => ({}));
++  const name = cleanName(body.name);
++  const displayName = cleanName(body.displayName);
++  if (!name || !displayName) return json({ error: 'Name and display name are required' }, 400);
++
++  const updated = { ...user, name, displayName };
++  await session?.set('accountUser', updated);
++  return json(updated);
++};
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..a41fe1c
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,32 @@
++import type { AstroSession } from 'astro';
++
++export interface StoredPasskeyCredential {
++  /** Base64URL credential ID */
++  id: string;
++  name: string;
++  aaguid?: string;
++  providerIcon?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++export interface AccountUser {
++  /** Base64URL user handle, as used when the passkeys were registered */
++  id: string;
++  name: string;
++  displayName: string;
++}
++
++export const MAX_NAME_LENGTH = 64;
++
++export const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
++
++export const getUser = async (session?: AstroSession) =>
++  (await session?.get('accountUser')) as AccountUser | undefined;
++
++export const getCredentials = async (session?: AstroSession) =>
++  ((await session?.get('passkeys')) ?? []) as StoredPasskeyCredential[];
++
++export const cleanName = (value: unknown) =>
++  typeof value === 'string' ? value.trim().slice(0, MAX_NAME_LENGTH) : '';

@@ -1,0 +1,397 @@
+diff --git a/calendar-tool.js b/calendar-tool.js
+new file mode 100644
+--- a/calendar-tool.js
++++ b/calendar-tool.js
+@@ -0,0 +1,392 @@
++/**
++ * Global Calendar Systems Converter
++ * Uses the modern Temporal API for non-Gregorian calendar calculations.
++ * Supports progressive polyfill feature detection and respects calendar invariants.
++ */
++
++// Step 1: Progressive polyfill feature detection and loading
++export async function getTemporal() {
++  if (typeof Temporal !== 'undefined') {
++    return Temporal;
++  }
++
++  // Progressive enhancement: dynamically import polyfill from CDN if native Temporal is unavailable
++  try {
++    const cdnModule = await import('https://esm.sh/@js-temporal/polyfill');
++    if (cdnModule?.Temporal || cdnModule?.default?.Temporal) {
++      globalThis.Temporal = cdnModule.Temporal || cdnModule.default.Temporal;
++      return globalThis.Temporal;
++    }
++  } catch (cdnErr) {
++    console.warn('CDN polyfill dynamic import failed, attempting local fallback:', cdnErr);
++  }
++
++  if (typeof Temporal !== 'undefined') {
++    return Temporal;
++  }
++
++  // Fallback to local package if available (offline or restricted environments)
++  try {
++    const localModule = await import('./node_modules/@js-temporal/polyfill/dist/index.esm.js');
++    if (localModule?.Temporal || localModule?.default?.Temporal) {
++      globalThis.Temporal = localModule.Temporal || localModule.default.Temporal;
++      return globalThis.Temporal;
++    }
++  } catch (localEsmErr) {
++    // If bare specifiers prevent ESM import, inject UMD build
++    await new Promise((resolve, reject) => {
++      const script = document.createElement('script');
++      script.src = './node_modules/@js-temporal/polyfill/dist/index.umd.js';
++      script.onload = () => {
++        if (typeof temporal !== 'undefined' && temporal.Temporal) {
++          globalThis.Temporal = temporal.Temporal;
++        }
++        resolve(globalThis.Temporal);
++      };
++      script.onerror = () => reject(new Error('Failed to load local Temporal polyfill script.'));
++      document.head.appendChild(script);
++    });
++  }
++
++  return globalThis.Temporal;
++}
++
++// Step 2: Helper to verify calendar support via Intl
++export function isCalendarSupported(calendarId) {
++  try {
++    if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
++      return Intl.supportedValuesOf('calendar').includes(calendarId);
++    }
++    // Fallback detection via DateTimeFormat
++    new Intl.DateTimeFormat('en', { calendar: calendarId });
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++// Calendar configurations
++const CALENDARS = [
++  {
++    key: 'islamic',
++    name: 'Islamic (Umm al-Qura)',
++    preferredId: 'islamic-umalqura',
++    fallbackId: 'islamic',
++    nativeLocale: 'ar-SA',
++    dateElementId: 'islamic-date',
++    description: 'Astronomically calculated lunar calendar of Saudi Arabia',
++    badgeClass: 'badge-islamic',
++    icon: '🌙'
++  },
++  {
++    key: 'hebrew',
++    name: 'Hebrew',
++    preferredId: 'hebrew',
++    fallbackId: 'hebrew',
++    nativeLocale: 'he',
++    dateElementId: 'hebrew-date',
++    description: 'Lunisolar calendar featuring 19-year leap-month Metonic cycles',
++    badgeClass: 'badge-hebrew',
++    icon: '✡️'
++  },
++  {
++    key: 'japanese',
++    name: 'Japanese',
++    preferredId: 'japanese',
++    fallbackId: 'japanese',
++    nativeLocale: 'ja-JP',
++    dateElementId: 'japanese-date',
++    description: 'Era-based imperial calendar (Reiwa era currently in effect)',
++    badgeClass: 'badge-japanese',
++    icon: '🌸'
++  }
++];
++
++/**
++ * Compare target date against current date using Temporal.PlainDate.compare()
++ * Returns 'Past', 'Future', or 'Today'
++ */
++export function getTimelineStatus(targetDate, calendarId) {
++  const today = Temporal.Now.plainDateISO().withCalendar(calendarId);
++  const comparison = Temporal.PlainDate.compare(targetDate, today);
++  if (comparison < 0) return 'Past';
++  if (comparison > 0) return 'Future';
++  return 'Today';
++}
++
++/**
++ * Format date localized with era for Japanese and standard cultural components
++ */
++export function formatLocalizedDate(targetDate, calendarId) {
++  if (calendarId === 'japanese') {
++    return targetDate.toLocaleString('en-u-ca-japanese', {
++      era: 'long',
++      year: 'numeric',
++      month: 'long',
++      day: 'numeric',
++      weekday: 'long'
++    });
++  }
++  return targetDate.toLocaleString(`en-u-ca-${calendarId}`, {
++    dateStyle: 'full'
++  });
++}
++
++/**
++ * Format localized native script date string
++ */
++export function formatNativeDate(targetDate, calendarDef, activeCalendarId) {
++  try {
++    return targetDate.toLocaleString(`${calendarDef.nativeLocale}-u-ca-${activeCalendarId}`, {
++      dateStyle: 'full'
++    });
++  } catch {
++    return '';
++  }
++}
++
++/**
++ * Safely extract year representation including era details when applicable
++ */
++export function getYearDisplay(targetDate, calendarId) {
++  if (calendarId === 'japanese' && targetDate.era) {
++    const eraFormatted = targetDate.era.charAt(0).toUpperCase() + targetDate.era.slice(1);
++    return `${eraFormatted} ${targetDate.eraYear} (${targetDate.year})`;
++  }
++  if (calendarId.startsWith('islamic')) {
++    return `${targetDate.year} AH`;
++  }
++  return `${targetDate.year}`;
++}
++
++/**
++ * Extract full month breakdown for the specific calendar year respecting invariants
++ */
++export function getMonthBreakdown(targetDate, calendarId) {
++  const breakdown = [];
++  // Safety invariant: Iterate strictly up to targetDate.monthsInYear (not hardcoded 12)
++  for (let m = 1; m <= targetDate.monthsInYear; m++) {
++    // Set day: 1 to ensure safe month traversal without day-of-month overflow
++    const monthDate = targetDate.with({ month: m, day: 1 });
++    const isCurrent = m === targetDate.month;
++    let monthName = '';
++    try {
++      monthName = monthDate.toLocaleString(`en-u-ca-${calendarId}`, { month: 'long' });
++    } catch {
++      monthName = `Month ${m}`;
++    }
++
++    breakdown.push({
++      numericMonth: m,
++      monthCode: monthDate.monthCode,
++      monthName,
++      daysInMonth: monthDate.daysInMonth,
++      isCurrent,
++      isLeapMonth: monthDate.monthCode.endsWith('L')
++    });
++  }
++  return breakdown;
++}
++
++/**
++ * Render a calendar card HTML
++ */
++export function renderCalendarCard(calendarDef, isoDate) {
++  const activeCalendarId = isCalendarSupported(calendarDef.preferredId)
++    ? calendarDef.preferredId
++    : isCalendarSupported(calendarDef.fallbackId)
++    ? calendarDef.fallbackId
++    : 'iso8601';
++
++  const targetDate = isoDate.withCalendar(activeCalendarId);
++  const formattedDate = formatLocalizedDate(targetDate, activeCalendarId);
++  const nativeDate = formatNativeDate(targetDate, calendarDef, activeCalendarId);
++  const timelineLabel = getTimelineStatus(targetDate, activeCalendarId);
++  const yearDisplay = getYearDisplay(targetDate, activeCalendarId);
++  const monthsInYear = targetDate.monthsInYear;
++  const isLunisolarLeapYear = monthsInYear > 12;
++  const monthBreakdown = getMonthBreakdown(targetDate, activeCalendarId);
++
++  const timelineClass = timelineLabel.toLowerCase();
++
++  const monthRowsHtml = monthBreakdown
++    .map(
++      (m) => `
++      <tr class="${m.isCurrent ? 'selected-month-row' : ''}">
++        <td class="col-num">${m.numericMonth}</td>
++        <td class="col-name">
++          <strong>${m.monthName}</strong>
++          ${m.isLeapMonth ? '<span class="leap-month-pill" title="Lunisolar Leap Month">Leap Month</span>' : ''}
++          ${m.isCurrent ? '<span class="current-month-indicator" title="Selected Month">● Selected</span>' : ''}
++        </td>
++        <td class="col-code"><code class="month-code-tag">${m.monthCode}</code></td>
++        <td class="col-days">${m.daysInMonth} days</td>
++      </tr>
++    `
++    )
++    .join('');
++
++  return `
++    <article class="calendar-card" data-calendar="${calendarDef.key}">
++      <div class="calendar-card-header">
++        <div class="calendar-card-title-group">
++          <span class="calendar-icon" aria-hidden="true">${calendarDef.icon}</span>
++          <div>
++            <h3 class="calendar-card-title">${calendarDef.name}</h3>
++            <span class="calendar-id-badge">${activeCalendarId}</span>
++          </div>
++        </div>
++        <div class="timeline-badge-wrapper">
++          <span class="timeline-label timeline-${timelineClass}" aria-label="Timeline relation: ${timelineLabel}">
++            ${timelineLabel}
++          </span>
++        </div>
++      </div>
++
++      <p class="calendar-desc">${calendarDef.description}</p>
++
++      <!-- 1. Formatted localized date (Islamic date has ID islamic-date) -->
++      <div class="formatted-date-box">
++        <div class="date-label">Localized Date:</div>
++        <div id="${calendarDef.dateElementId}" class="formatted-date-value">${formattedDate}</div>
++        ${nativeDate ? `<div class="native-date-value" dir="auto" lang="${calendarDef.nativeLocale}">${nativeDate}</div>` : ''}
++      </div>
++
++      <!-- 2 & 3. Converted Year, Numeric Month, Month Code, Total Months In Year -->
++      <div class="calendar-metrics-grid">
++        <div class="metric-card">
++          <div class="metric-label">Converted Year</div>
++          <div class="metric-value font-highlight">${yearDisplay}</div>
++        </div>
++
++        <div class="metric-card">
++          <div class="metric-label">Numeric Month</div>
++          <div class="metric-value font-highlight">Month ${targetDate.month}</div>
++        </div>
++
++        <div class="metric-card">
++          <div class="metric-label">Stable Month Code</div>
++          <div class="metric-value">
++            <code class="month-code-badge">${targetDate.monthCode}</code>
++          </div>
++        </div>
++
++        <div class="metric-card">
++          <div class="metric-label">Months in Year</div>
++          <div class="metric-value font-highlight">
++            ${monthsInYear} Months
++            ${isLunisolarLeapYear ? '<span class="leap-year-tag">Lunisolar Leap Year</span>' : ''}
++          </div>
++        </div>
++      </div>
++
++      <!-- 5. Month breakdown showing each month's code and how many days are in that month -->
++      <div class="month-breakdown-wrapper">
++        <div class="breakdown-header">
++          <h4 class="breakdown-title">Month Breakdown (${yearDisplay})</h4>
++          <span class="breakdown-subtitle">${monthsInYear} Total Months</span>
++        </div>
++        <div class="breakdown-table-container">
++          <table class="breakdown-table">
++            <thead>
++              <tr>
++                <th scope="col">#</th>
++                <th scope="col">Month Name</th>
++                <th scope="col">Code</th>
++                <th scope="col">Days</th>
++              </tr>
++            </thead>
++            <tbody>
++              ${monthRowsHtml}
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </article>
++  `;
++}
++
++/**
++ * Main application initialization
++ */
++export async function initCalendarTool() {
++  const container = document.getElementById('calendar-cards-container');
++  const dateInput = document.getElementById('calendar-date-input');
++  const todayBtn = document.getElementById('calendar-today-btn');
++  const gregorianDisplay = document.getElementById('gregorian-selected-display');
++
++  if (!container || !dateInput) {
++    return;
++  }
++
++  // Show loading indicator while Temporal is initialized
++  container.innerHTML = `
++    <div class="calendar-loading-state" role="status">
++      <div class="spinner" aria-hidden="true"></div>
++      <p>Initializing global calendar engines...</p>
++    </div>
++  `;
++
++  try {
++    await getTemporal();
++  } catch (err) {
++    container.innerHTML = `
++      <div class="calendar-error-state" role="alert">
++        <p><strong>Failed to load Temporal calendar engine.</strong></p>
++        <p>${err.message}</p>
++      </div>
++    `;
++    return;
++  }
++
++  // Set default date to current ISO plain date
++  const todayIso = Temporal.Now.plainDateISO();
++  const todayStr = todayIso.toString();
++
++  if (!dateInput.value) {
++    dateInput.value = todayStr;
++  }
++
++  function update() {
++    const val = dateInput.value || todayStr;
++    try {
++      const isoDate = Temporal.PlainDate.from(val);
++      if (gregorianDisplay) {
++        gregorianDisplay.textContent = isoDate.toLocaleString('en', {
++          dateStyle: 'full'
++        });
++      }
++
++      const cardsHtml = CALENDARS.map((cal) => renderCalendarCard(cal, isoDate)).join('');
++      container.innerHTML = cardsHtml;
++    } catch (e) {
++      console.error('Invalid date entered:', e);
++      if (gregorianDisplay) {
++        gregorianDisplay.textContent = 'Invalid date';
++      }
++    }
++  }
++
++  dateInput.addEventListener('input', update);
++  dateInput.addEventListener('change', update);
++
++  if (todayBtn) {
++    todayBtn.addEventListener('click', () => {
++      const currentToday = Temporal.Now.plainDateISO().toString();
++      dateInput.value = currentToday;
++      update();
++    });
++  }
++
++  // Initial render
++  update();
++}
++
++// Auto-run when DOM is ready
++if (typeof document !== 'undefined') {
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initCalendarTool);
++  } else {
++    initCalendarTool();
++  }
++}

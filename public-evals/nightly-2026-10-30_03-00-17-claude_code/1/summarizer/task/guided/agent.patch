@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      max-width: 760px;
++    }
++
++    .journal h2 {
++      text-align: center;
++      margin-bottom: 5px;
++    }
++
++    .journal-byline {
++      text-align: center;
++      font-style: italic;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    .journal-body p {
++      margin-bottom: 1.2rem;
++    }
++
++    .summary-controls {
++      display: flex;
++      align-items: center;
++      gap: 15px;
++      flex-wrap: wrap;
++      margin-bottom: 20px;
++    }
++
++    .summary-controls .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .summary-controls .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .summary-status {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .summary {
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px 20px 20px 40px;
++      margin-bottom: 25px;
++    }
++
++    .summary li {
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +255,28 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container journal" aria-labelledby="journal-heading">
++    <h2 id="journal-heading">Roaster's Journal</h2>
++    <p class="journal-byline">Notes from the roastery on how our beans find their way to your cup</p>
++
++    <div class="summary-controls">
++      <button type="button" class="btn" id="summarize-btn">Summarize</button>
++      <span class="summary-status" id="summary-status" role="status"></span>
++    </div>
++    <ul class="summary" id="summary" hidden></ul>
++
++    <div class="journal-body" id="journal-body">
++      <p>Every bag of coffee we roast begins with a relationship, not a transaction. Long before a single bean reaches our drum roaster, our sourcing team has spent months, and often years, getting to know the farmers who grow it. We travel to origin at least twice a year, visiting smallholder farms and cooperatives in Ethiopia, Colombia, Guatemala, Kenya, and Sumatra. We walk the rows during harvest, share meals with growing families, and listen to what they need to keep producing exceptional coffee season after season.</p>
++      <p>We buy almost exclusively through direct trade. That means we negotiate prices with producers ourselves rather than purchasing anonymous lots on the commodity market. Our baseline is to pay at least forty percent above the Fairtrade minimum, and for exceptional lots we frequently pay double or triple. We publish the price we paid per pound for each of our single-origin offerings, because we believe transparency is the only way to prove that "ethically sourced" means something more than a label on a bag.</p>
++      <p>Quality is assessed at every step. When samples arrive at the roastery, our head roaster and two licensed Q graders cup each one blind, scoring it for fragrance, acidity, body, sweetness, balance, and finish. Only coffees that score 85 points or higher on the Specialty Coffee Association scale make it onto our menu. We also look closely at moisture content and bean density, since these determine how a coffee will behave in the roaster and how long it will stay fresh in green form.</p>
++      <p>Sustainability shapes which farms we choose to partner with. We prioritize growers who practice shade cultivation, which protects bird habitats and native trees, and who use composted coffee cherry pulp in place of synthetic fertilizers. Through our Origin Fund, two percent of every sale goes back to partner communities. In recent years that money has helped build a water filtration system for a washing station in Huila, Colombia, and funded new drying beds for a women-led cooperative in the Yirgacheffe region of Ethiopia.</p>
++      <p>Once green coffee lands in our warehouse, we roast in small batches of no more than twelve kilograms on a restored 1970s cast-iron roaster. Each origin gets its own roast profile, developed over dozens of test batches to bring out its natural character rather than mask it. Our light roasts highlight the floral and citrus notes of East African coffees, while our medium and dark roasts draw out the chocolate and caramel sweetness of Central and South American beans.</p>
++      <p>Finally, freshness is non-negotiable. We roast to order three days a week, and every bag is stamped with its roast date. Coffee served in our cafés is never more than ten days off the roaster, and anything that passes the three-week mark is donated to local shelters rather than sold. It is a lot of work, but we think you can taste the difference in every cup.</p>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +285,91 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const button = document.getElementById('summarize-btn');
++    const status = document.getElementById('summary-status');
++    const list = document.getElementById('summary');
++    const journal = document.getElementById('journal-body');
++
++    const options = {
++      sharedContext: "A coffee roaster's journal entry about how they source their beans",
++      type: 'key-points',
++      format: 'markdown',
++      length: 'short',
++      expectedInputLanguages: ['en'],
++      outputLanguage: 'en',
++    };
++
++    let summarizer;
++
++    function unsupported(message) {
++      button.disabled = true;
++      status.textContent = message;
++    }
++
++    // Render markdown bullet lines as list items using textContent (never innerHTML).
++    function renderBullets(markdown) {
++      const items = markdown
++        .split('\n')
++        .map((line) => line.replace(/^\s*(?:[-*•]|\d+\.)\s+/, '').replace(/\*\*/g, '').trim())
++        .filter(Boolean);
++      list.replaceChildren(...items.map((text) => {
++        const li = document.createElement('li');
++        li.textContent = text;
++        return li;
++      }));
++      list.hidden = items.length === 0;
++    }
++
++    async function getSummarizer() {
++      if (summarizer) return summarizer;
++      summarizer = await Summarizer.create({
++        ...options,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            status.textContent = `Downloading on-device AI model… ${Math.round((e.loaded / e.total) * 100)}%`;
++          });
++        },
++      });
++      return summarizer;
++    }
++
++    if (!('Summarizer' in self)) {
++      unsupported('On-device summarization is not supported in this browser.');
++    } else {
++      const availability = await Summarizer.availability(options);
++      if (availability === 'unavailable') {
++        unsupported('On-device summarization is unavailable on this device.');
++      } else {
++        if (availability !== 'available') {
++          status.textContent = 'The first summary will download an on-device AI model.';
++        }
++
++        button.addEventListener('click', async () => {
++          button.disabled = true;
++          status.textContent = 'Preparing summarizer…';
++          try {
++            // Create within the click handler: model download requires a user gesture.
++            const s = await getSummarizer();
++            status.textContent = 'Summarizing…';
++            let output = '';
++            for await (const chunk of s.summarizeStreaming(journal.innerText)) {
++              output += chunk;
++              renderBullets(output);
++            }
++            status.textContent = 'Summary generated on your device.';
++          } catch (err) {
++            console.error(err);
++            status.textContent = 'Sorry, we couldn\'t summarize the journal right now.';
++          } finally {
++            button.disabled = false;
++          }
++        });
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

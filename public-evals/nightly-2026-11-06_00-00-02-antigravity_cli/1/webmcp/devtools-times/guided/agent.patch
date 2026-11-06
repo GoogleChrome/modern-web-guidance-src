@@ -1,0 +1,1305 @@
+diff --git a/package.json b/package.json
+index bfffcf0..3605766 100644
+--- a/package.json
++++ b/package.json
+@@ -20,10 +20,12 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "use-webmcp-tool": "^0.3.0"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/ArticleUtilities.tsx b/src/components/ArticleUtilities.tsx
+new file mode 100644
+index 0000000..66a3af0
+--- /dev/null
++++ b/src/components/ArticleUtilities.tsx
+@@ -0,0 +1,445 @@
++import React, { useState, useEffect } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
++
++export interface ArticleSummaryItem {
++  slug: string;
++  title: string;
++  summary: string;
++  author: string;
++  category: string;
++  date: string;
++  readingTime?: number;
++}
++
++interface ArticleUtilitiesProps {
++  currentArticle?: ArticleSummaryItem & {
++    imageCaption?: string;
++    relatedSlugs?: string[];
++  };
++  initialIsBookmarked?: boolean;
++}
++
++const LIST_ARTICLES_SCHEMA = {
++  type: 'object',
++  properties: {
++    category: {
++      type: 'string',
++      description: 'Category name to filter articles by.',
++    },
++    limit: {
++      type: 'number',
++      minimum: 1,
++      maximum: 50,
++      default: 10,
++      description: 'Maximum number of articles to return.',
++    },
++  },
++} as const;
++
++const READ_ONLY_ANNOTATIONS = {
++  readOnlyHint: true,
++} as const;
++
++const MUTATION_ANNOTATIONS = {
++  readOnlyHint: false,
++} as const;
++
++const EMPTY_SCHEMA = {
++  type: 'object',
++  properties: {},
++} as const;
++
++const TEXT_SIZE_OPTIONS = ['sm', 'base', 'lg', 'xl'] as const;
++type TextSizeOption = (typeof TEXT_SIZE_OPTIONS)[number];
++
++const TEXT_SIZE_SCHEMA = {
++  type: 'object',
++  properties: {
++    size: {
++      type: 'string',
++      enum: TEXT_SIZE_OPTIONS,
++      default: 'base',
++      description: 'Desired typography scale for the article body.',
++    },
++  },
++  required: ['size'],
++} as const;
++
++const HIGHLIGHT_SCHEMA = {
++  type: 'object',
++  properties: {
++    term: {
++      type: 'string',
++      description: 'Phrase or keyword to find and highlight in the current article body. Pass an empty string to clear highlights.',
++    },
++  },
++  required: ['term'],
++} as const;
++
++const NAVIGATE_ARTICLE_SCHEMA = {
++  type: 'object',
++  properties: {
++    slug: {
++      type: 'string',
++      description: 'Identifier slug of the article to open.',
++    },
++  },
++  required: ['slug'],
++} as const;
++
++export default function ArticleUtilities({
++  currentArticle,
++  initialIsBookmarked = false,
++}: ArticleUtilitiesProps) {
++  const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
++  const [textSize, setTextSize] = useState<TextSizeOption>('base');
++  const [highlightTerm, setHighlightTerm] = useState<string>('');
++  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
++
++  const isOnArticlePage = Boolean(currentArticle?.slug);
++
++  useEffect(() => {
++    setIsBookmarked(initialIsBookmarked);
++  }, [initialIsBookmarked]);
++
++  useEffect(() => {
++    const handleUpdate = (event: Event) => {
++      const customEvent = event as CustomEvent<{ readingList?: string[] }>;
++      if (currentArticle?.slug && Array.isArray(customEvent.detail?.readingList)) {
++        setIsBookmarked(customEvent.detail.readingList.includes(currentArticle.slug));
++      }
++    };
++    window.addEventListener('reading-list-updated', handleUpdate);
++    return () => {
++      window.removeEventListener('reading-list-updated', handleUpdate);
++    };
++  }, [currentArticle?.slug]);
++
++  const applyTextSizeToDOM = (size: TextSizeOption) => {
++    setTextSize(size);
++    const proseEl = document.querySelector('article .prose') as HTMLElement | null;
++    if (proseEl) {
++      proseEl.classList.remove('prose-sm', 'prose-base', 'prose-lg', 'prose-xl');
++      proseEl.classList.add(`prose-${size}`);
++    }
++  };
++
++  const applyHighlightToDOM = (term: string) => {
++    const trimmed = term.trim();
++    setHighlightTerm(trimmed);
++    const proseEl = document.querySelector('article .prose');
++    if (!proseEl) {
++      return { matches: 0, matchedParagraphs: [] as string[] };
++    }
++
++    const paragraphs = Array.from(proseEl.querySelectorAll('p, li, h2, h3, h4'));
++    const matchedParagraphs: string[] = [];
++    let matchCount = 0;
++
++    paragraphs.forEach(el => {
++      const htmlEl = el as HTMLElement;
++      htmlEl.style.backgroundColor = '';
++      htmlEl.style.outline = '';
++      htmlEl.removeAttribute('data-agent-highlighted');
++
++      if (trimmed && (htmlEl.textContent || '').toLowerCase().includes(trimmed.toLowerCase())) {
++        htmlEl.style.backgroundColor = 'rgba(251, 191, 36, 0.25)';
++        htmlEl.style.outline = '1px solid rgba(245, 158, 11, 0.5)';
++        htmlEl.setAttribute('data-agent-highlighted', 'true');
++        matchCount += 1;
++        matchedParagraphs.push((htmlEl.textContent || '').trim());
++      }
++    });
++
++    return { matches: matchCount, matchedParagraphs };
++  };
++
++  const isGlobalProvider = !currentArticle;
++
++  // Global tool: list or filter articles across the site
++  useWebMCP({
++    name: 'list_articles',
++    description: 'Lists published articles from The DevTools Times, optionally filtered by category. Use when the user wants to browse available articles or discover slugs.',
++    inputSchema: LIST_ARTICLES_SCHEMA,
++    annotations: READ_ONLY_ANNOTATIONS,
++    enabled: isGlobalProvider,
++    async execute({ category, limit = 10 }: { category?: string; limit?: number }, { signal }) {
++      const safeLimit = typeof limit === 'number' && limit >= 1 && limit <= 50 ? Math.floor(limit) : 10;
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal });
++        if (!response.ok) {
++          return { error: `Failed to fetch articles (${response.status}).` };
++        }
++        const data: Array<{ slug: string; title: string; summary: string; image?: string; category?: string }> =
++          await response.json();
++
++        let filtered = data;
++        if (typeof category === 'string' && category.trim()) {
++          const targetCategory = category.trim().toLowerCase();
++          filtered = data.filter(item =>
++            (item.category || '').toLowerCase() === targetCategory ||
++            item.title.toLowerCase().includes(targetCategory) ||
++            item.summary.toLowerCase().includes(targetCategory)
++          );
++        }
++
++        return {
++          totalAvailable: filtered.length,
++          articles: filtered.slice(0, safeLimit).map(item => ({
++            slug: item.slug,
++            title: item.title,
++            summary: item.summary,
++            url: `${import.meta.env.BASE_URL}articles/${item.slug}`,
++          })),
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++  });
++
++  // Global tool: navigate directly to an article by slug
++  useWebMCP({
++    name: 'open_article',
++    description: 'Navigates the browser to a specific article page given its slug. Use when the user asks to open or read a specific article.',
++    inputSchema: NAVIGATE_ARTICLE_SCHEMA,
++    annotations: MUTATION_ANNOTATIONS,
++    enabled: isGlobalProvider,
++    async execute({ slug }: { slug?: string }, { signal }) {
++      if (typeof slug !== 'string' || !slug.trim()) {
++        return { error: 'Please provide a non-empty article slug.' };
++      }
++      const normalized = slug.trim();
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal });
++        if (response.ok) {
++          const catalog: Array<{ slug: string; title: string }> = await response.json();
++          const match = catalog.find(a => a.slug === normalized);
++          if (!match) {
++            return {
++              error: `Article "${normalized}" was not found.`,
++              availableSlugs: catalog.map(a => a.slug),
++            };
++          }
++        }
++        const targetUrl = `${import.meta.env.BASE_URL}articles/${normalized}`;
++        window.location.assign(targetUrl);
++        return {
++          navigatingTo: targetUrl,
++          slug: normalized,
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++  });
++
++  // Article-page utility: extract full structured article content & metadata
++  useWebMCP({
++    name: 'get_current_article_details',
++    description: 'Extracts the full text, headings, metadata, and word count of the article currently open on the page. Use when the user wants to summarize, analyze, or ask questions about the current article.',
++    inputSchema: EMPTY_SCHEMA,
++    annotations: READ_ONLY_ANNOTATIONS,
++    enabled: isOnArticlePage,
++    execute() {
++      if (!currentArticle) {
++        return { error: 'No article is currently active on this page.' };
++      }
++      const proseEl = document.querySelector('article .prose');
++      const bodyText = proseEl ? (proseEl.textContent || '').trim() : '';
++      const headings = proseEl
++        ? Array.from(proseEl.querySelectorAll('h1, h2, h3, h4')).map(h => (h.textContent || '').trim())
++        : [];
++      const wordCount = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
++
++      return {
++        slug: currentArticle.slug,
++        title: currentArticle.title,
++        summary: currentArticle.summary,
++        author: currentArticle.author,
++        category: currentArticle.category,
++        date: currentArticle.date,
++        readingTimeMinutes: currentArticle.readingTime ?? Math.max(1, Math.ceil(wordCount / 200)),
++        wordCount,
++        headings,
++        bodyText,
++        bookmarked: isBookmarked,
++        url: window.location.href,
++      };
++    },
++  });
++
++  // Article-page utility: toggle bookmark status for the current article
++  useWebMCP({
++    name: 'bookmark_current_article',
++    description: 'Toggles the reading-list bookmark status for the article currently open on the page. Use when the user asks to save, bookmark, or remove the current article.',
++    inputSchema: EMPTY_SCHEMA,
++    annotations: MUTATION_ANNOTATIONS,
++    enabled: isOnArticlePage,
++    async execute(_args, { signal }) {
++      if (!currentArticle?.slug) {
++        return { error: 'No article is currently open on this page.' };
++      }
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify({ slug: currentArticle.slug }),
++          signal,
++        });
++        if (!response.ok) {
++          return { error: `Failed to toggle bookmark (${response.status}).` };
++        }
++        const data = await response.json();
++        const updatedList: string[] = Array.isArray(data.readingList) ? data.readingList : [];
++        const nowBookmarked = updatedList.includes(currentArticle.slug);
++        setIsBookmarked(nowBookmarked);
++        window.dispatchEvent(
++          new CustomEvent('reading-list-updated', { detail: { readingList: updatedList } })
++        );
++        return {
++          slug: currentArticle.slug,
++          title: currentArticle.title,
++          bookmarked: nowBookmarked,
++          action: nowBookmarked ? 'bookmarked' : 'removed',
++          readingList: updatedList,
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++  });
++
++  // Article-page utility: adjust article reading text size
++  useWebMCP({
++    name: 'set_article_text_size',
++    description: 'Adjusts the font size of the current article body to make reading more comfortable. Use when the user asks to make the article text larger, smaller, or reset its size.',
++    inputSchema: TEXT_SIZE_SCHEMA,
++    annotations: MUTATION_ANNOTATIONS,
++    enabled: isOnArticlePage,
++    execute({ size = 'base' }: { size?: TextSizeOption }) {
++      if (!TEXT_SIZE_OPTIONS.includes(size)) {
++        return {
++          error: 'Unsupported text size option.',
++          supportedSizes: TEXT_SIZE_OPTIONS,
++        };
++      }
++      applyTextSizeToDOM(size);
++      return {
++        slug: currentArticle?.slug,
++        textSize: size,
++      };
++    },
++  });
++
++  // Article-page utility: highlight passages matching a keyword or phrase
++  useWebMCP({
++    name: 'highlight_article_passages',
++    description: 'Highlights paragraphs and headings in the current article that contain a given keyword or phrase, or clears highlights when passed an empty term. Use when the user wants to locate or emphasize specific mentions within the article.',
++    inputSchema: HIGHLIGHT_SCHEMA,
++    annotations: MUTATION_ANNOTATIONS,
++    enabled: isOnArticlePage,
++    execute({ term }: { term?: string }) {
++      if (typeof term !== 'string') {
++        return { error: 'Pass a string search term to highlight, or an empty string to clear highlights.' };
++      }
++      const { matches, matchedParagraphs } = applyHighlightToDOM(term);
++      return {
++        slug: currentArticle?.slug,
++        term: term.trim(),
++        matchCount: matches,
++        matchedParagraphs,
++      };
++    },
++  });
++
++  // Article-page utility: copy citation / share link
++  useWebMCP({
++    name: 'share_current_article',
++    description: 'Generates a formatted citation and shareable URL for the current article and copies the URL to the clipboard if permitted. Use when the user wants to share, cite, or copy the link to the current article.',
++    inputSchema: EMPTY_SCHEMA,
++    annotations: READ_ONLY_ANNOTATIONS,
++    enabled: isOnArticlePage,
++    async execute() {
++      if (!currentArticle) {
++        return { error: 'No article is currently open on this page.' };
++      }
++      const shareUrl = window.location.href;
++      const citation = `"${currentArticle.title}" by ${currentArticle.author} — The DevTools Times (${currentArticle.date}) ${shareUrl}`;
++      let copiedToClipboard = false;
++
++      if (navigator.clipboard?.writeText) {
++        try {
++          await navigator.clipboard.writeText(shareUrl);
++          copiedToClipboard = true;
++        } catch {
++          copiedToClipboard = false;
++        }
++      }
++
++      setShareFeedback('Link ready to share');
++      return {
++        slug: currentArticle.slug,
++        title: currentArticle.title,
++        author: currentArticle.author,
++        url: shareUrl,
++        citation,
++        copiedToClipboard,
++      };
++    },
++  });
++
++  if (!isOnArticlePage || !currentArticle) {
++    return null;
++  }
++
++  return (
++    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600" aria-label="Article utilities">
++      <div className="flex items-center gap-1 border border-gray-200 rounded-md px-2 py-1 bg-gray-50">
++        <span className="font-semibold text-gray-700 mr-1">Text size:</span>
++        {TEXT_SIZE_OPTIONS.map(option => (
++          <button
++            key={option}
++            type="button"
++            onClick={() => applyTextSizeToDOM(option)}
++            className={`px-1.5 py-0.5 rounded uppercase font-medium transition ${
++              textSize === option
++                ? 'bg-amber-400 text-gray-900'
++                : 'text-gray-600 hover:bg-gray-200'
++            }`}
++            aria-pressed={textSize === option}
++          >
++            {option}
++          </button>
++        ))}
++      </div>
++
++      {highlightTerm && (
++        <button
++          type="button"
++          onClick={() => applyHighlightToDOM('')}
++          className="px-2 py-1 border border-amber-300 bg-amber-50 text-amber-900 rounded-md hover:bg-amber-100 transition"
++        >
++          Clear highlight: "{highlightTerm}"
++        </button>
++      )}
++
++      {shareFeedback && (
++        <span className="text-amber-700 font-medium" role="status">
++          {shareFeedback}
++        </span>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..be990d3 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,5 @@
+-
+ import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
++import { BookmarkIcon } from '@heroicons/react/24/outline';
+ 
+ interface Props {
+   slug: string;
+@@ -10,6 +9,19 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const handleUpdate = (event: Event) => {
++      const customEvent = event as CustomEvent<{ readingList?: string[] }>;
++      if (Array.isArray(customEvent.detail?.readingList)) {
++        setIsBookmarked(customEvent.detail.readingList.includes(slug));
++      }
++    };
++    window.addEventListener('reading-list-updated', handleUpdate);
++    return () => {
++      window.removeEventListener('reading-list-updated', handleUpdate);
++    };
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -19,12 +31,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+       body: JSON.stringify({ slug }),
+     });
+     const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    const updatedList: string[] = Array.isArray(data.readingList) ? data.readingList : [];
++    setIsBookmarked(updatedList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: updatedList } }));
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button onClick={handleClick} className="p-1" aria-label={isBookmarked ? 'Remove from reading list' : 'Add to reading list'}>
++      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`} />
+     </button>
+   );
+ }
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4bac2e1 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import ArticleUtilities from "./ArticleUtilities.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <ArticleUtilities client:load />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..e0de0fa 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,4 +1,3 @@
+-
+ import React, { useState, useEffect } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+@@ -15,16 +14,24 @@ export default function ReadingListButton() {
+ 
+   useEffect(() => {
+     const fetchArticles = async () => {
+-      const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-      const data = await response.json();
+-      setArticles(data);
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++        const data = await response.json();
++        setArticles(data);
++      } catch (error) {
++        console.error('Failed to fetch articles:', error);
++      }
+     };
+     fetchArticles();
+   }, []);
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button
++        onClick={() => setIsOpen(true)}
++        className="p-1"
++        aria-label="Open reading list"
++      >
+         <svg
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+@@ -40,7 +47,12 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout
++        articles={articles}
++        isOpen={isOpen}
++        onOpen={() => setIsOpen(true)}
++        onClose={() => setIsOpen(false)}
++      />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..e41ff87 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+-
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useCallback } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
+ 
+ interface Article {
+   slug: string;
+@@ -11,19 +11,73 @@ interface Article {
+ interface Props {
+   articles: Article[];
+   onClose: () => void;
++  isOpen?: boolean;
++  onOpen?: () => void;
+ }
+ 
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++const GET_READING_LIST_SCHEMA = {
++  type: 'object',
++  properties: {},
++} as const;
++
++const GET_READING_LIST_ANNOTATIONS = {
++  readOnlyHint: true,
++} as const;
++
++const TOGGLE_READING_LIST_SCHEMA = {
++  type: 'object',
++  properties: {
++    slug: {
++      type: 'string',
++      description: 'Identifier slug of the article to add to or remove from the reading list.',
++    },
++  },
++  required: ['slug'],
++} as const;
++
++const TOGGLE_READING_LIST_ANNOTATIONS = {
++  readOnlyHint: false,
++} as const;
++
++export default function ReadingListFlyout({ articles, onClose, isOpen = true, onOpen }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const [selectedSlug, setSelectedSlug] = useState<string>('');
+ 
+-  const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
++  const fetchReadingList = useCallback(async (signal?: AbortSignal) => {
++    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, { signal });
+     const data = await response.json();
+-    setReadingList(data.readingList);
+-  };
++    const list: string[] = Array.isArray(data.readingList) ? data.readingList : [];
++    setReadingList(list);
++    return list;
++  }, []);
++
++  useEffect(() => {
++    fetchReadingList().catch(err => console.error('Failed to fetch reading list:', err));
++  }, [fetchReadingList]);
++
++  useEffect(() => {
++    if (isOpen) {
++      fetchReadingList().catch(err => console.error('Failed to fetch reading list:', err));
++    }
++  }, [isOpen, fetchReadingList]);
+ 
+   useEffect(() => {
+-    fetchReadingList();
++    const handleUpdate = (event: Event) => {
++      const customEvent = event as CustomEvent<{ readingList?: string[] }>;
++      if (Array.isArray(customEvent.detail?.readingList)) {
++        setReadingList(customEvent.detail.readingList);
++      } else {
++        fetchReadingList().catch(err => console.error('Failed to refresh reading list:', err));
++      }
++    };
++    window.addEventListener('reading-list-updated', handleUpdate);
++    return () => {
++      window.removeEventListener('reading-list-updated', handleUpdate);
++    };
++  }, [fetchReadingList]);
++
++  useEffect(() => {
++    if (!isOpen) return;
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+@@ -35,31 +89,191 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     return () => {
+       window.removeEventListener('keydown', handleKeyDown);
+     };
+-  }, [onClose]);
++  }, [isOpen, onClose]);
+ 
+-  const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++  const toggleReadingListItem = async (slug: string, signal?: AbortSignal) => {
++    const normalizedSlug = slug.trim();
++    if (!normalizedSlug) {
++      return { error: 'Article slug is required.' };
++    }
++
++    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+-      body: JSON.stringify({ slug }),
++      body: JSON.stringify({ slug: normalizedSlug }),
++      signal,
++    });
++
++    if (!response.ok) {
++      return { error: `Failed to update reading list (${response.status}).` };
++    }
++
++    const data = await response.json();
++    const updatedList: string[] = Array.isArray(data.readingList) ? data.readingList : [];
++    setReadingList(updatedList);
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: updatedList } }));
++
++    const isBookmarked = updatedList.includes(normalizedSlug);
++    return {
++      slug: normalizedSlug,
++      bookmarked: isBookmarked,
++      action: isBookmarked ? 'added' : 'removed',
++      readingList: updatedList,
++    };
++  };
++
++  useWebMCP({
++    name: 'get_reading_list',
++    description: 'Retrieves the articles currently saved in the user reading list. Use when the user asks to view or check their bookmarked articles.',
++    inputSchema: GET_READING_LIST_SCHEMA,
++    annotations: GET_READING_LIST_ANNOTATIONS,
++    async execute(_args, { signal }) {
++      try {
++        const list = await fetchReadingList(signal);
++        const savedArticles = articles
++          .filter(article => list.includes(article.slug))
++          .map(article => ({
++            slug: article.slug,
++            title: article.title,
++            summary: article.summary,
++            url: `${import.meta.env.BASE_URL}articles/${article.slug}`,
++          }));
++        return {
++          count: list.length,
++          slugs: list,
++          articles: savedArticles,
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++  });
++
++  useWebMCP({
++    name: 'toggle_reading_list_item',
++    description: 'Adds an article to the reading list if not yet saved, or removes it if already saved. Use when the user wants to bookmark or unbookmark an article by slug.',
++    inputSchema: TOGGLE_READING_LIST_SCHEMA,
++    annotations: TOGGLE_READING_LIST_ANNOTATIONS,
++    async execute({ slug }: { slug?: string }, { signal }) {
++      if (typeof slug !== 'string' || !slug.trim()) {
++        return {
++          error: 'Please provide a valid article slug.',
++          availableSlugs: articles.map(a => a.slug),
++        };
++      }
++      try {
++        return await toggleReadingListItem(slug, signal);
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++  });
++
++  const handleRemove = async (slug: string) => {
++    await toggleReadingListItem(slug);
++  };
++
++  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    const nativeEvent = e.nativeEvent as SubmitEvent & {
++      agentInvoked?: boolean;
++      respondWith?: (promise: Promise<unknown>) => void;
++    };
++    const formData = new FormData(e.currentTarget);
++    const slugValue = String(formData.get('slug') ?? selectedSlug).trim();
++
++    if (!slugValue) {
++      if (nativeEvent.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++        nativeEvent.respondWith(
++          Promise.resolve(JSON.stringify({ error: 'Validation failed: slug is required.' }))
++        );
++      }
++      return;
++    }
++
++    onOpen?.();
++    const resultPromise = toggleReadingListItem(slugValue).then(res => {
++      setSelectedSlug('');
++      return JSON.stringify(res);
+     });
+-    fetchReadingList();
++
++    if (nativeEvent.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++      nativeEvent.respondWith(resultPromise);
++    }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
++    <div
++      className={
++        isOpen
++          ? 'fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]'
++          : 'sr-only'
++      }
++      aria-hidden={!isOpen}
++      onClick={isOpen ? onClose : undefined}
++    >
+       <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++        <button
++          type="button"
++          onClick={onClose}
++          className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++        >
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+-        <div className="p-4">
++        <div className="p-4 border-b border-gray-100">
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          <form
++            onSubmit={handleFormSubmit}
++            className="flex flex-col sm:flex-row gap-2"
++            {...({
++              toolname: 'manage-reading-list',
++              tooldescription: 'Add or remove an article in the user reading list by its slug.',
++              toolautosubmit: '',
++            } as any)}
++          >
++            <label htmlFor="reading-list-slug" className="sr-only">
++              Article Slug
++            </label>
++            <input
++              id="reading-list-slug"
++              name="slug"
++              type="text"
++              list="reading-list-article-slugs"
++              required
++              placeholder="Enter article slug to add or remove..."
++              value={selectedSlug}
++              onChange={e => setSelectedSlug(e.target.value)}
++              className="flex-grow p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++              {...({
++                toolparamdescription: 'Article identifier slug (e.g., coffee-alchemy, urban-cycling, super-bowl-lx)',
++              } as any)}
++            />
++            <datalist id="reading-list-article-slugs">
++              {articles.map(article => (
++                <option key={article.slug} value={article.slug}>
++                  {article.title}
++                </option>
++              ))}
++            </datalist>
++            <button
++              type="submit"
++              className="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition whitespace-nowrap"
++            >
++              Toggle Bookmark
++            </button>
++          </form>
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+@@ -72,10 +286,15 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+-                    </svg>
++                <button
++                  type="button"
++                  onClick={() => handleRemove(article.slug)}
++                  className="p-2 text-gray-500 hover:text-amber-400"
++                  aria-label={`Remove ${article.title} from reading list`}
++                >
++                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++                  </svg>
+                 </button>
+               </li>
+             ))}
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..7e6b05f 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,11 +1,11 @@
+-
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import SearchFlyout from './SearchFlyout';
+ 
+ interface Article {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+ export default function SearchButton() {
+@@ -13,12 +13,24 @@ export default function SearchButton() {
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+ 
++    useEffect(() => {
++        const fetchArticles = async () => {
++            try {
++                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++                const data = await response.json();
++                setArticles(data);
++            } catch (error) {
++                console.error('Failed to fetch articles:', error);
++            }
++        };
++        fetchArticles();
++    }, []);
++
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
+             setIsFlyoutOpen(true);
+         } catch (error) {
+-            console.error('Failed to fetch articles:', error);
++            console.error('Failed to open search:', error);
+         } finally {
+             setIsLoading(false);
+         }
+@@ -34,6 +46,7 @@ export default function SearchButton() {
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
+                 disabled={isLoading}
++                aria-label="Open article search"
+             >
+                 {isLoading ? (
+                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+@@ -43,7 +56,12 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <SearchFlyout
++                articles={articles}
++                isOpen={isFlyoutOpen}
++                onOpen={() => setIsFlyoutOpen(true)}
++                onClose={closeSearch}
++            />
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..e37853f 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+-
+ import React, { useState, useMemo, useEffect } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
+ 
+ interface Article {
+     slug: string;
+@@ -11,30 +11,57 @@ interface Article {
+ interface Props {
+     articles: Article[];
+     onClose: () => void;
++    isOpen?: boolean;
++    onOpen?: () => void;
+ }
+ 
++const SEARCH_SCHEMA = {
++    type: 'object',
++    properties: {
++        query: {
++            type: 'string',
++            description: 'Keywords or phrase to match against article titles and summaries.',
++        },
++    },
++    required: ['query'],
++} as const;
++
++const SEARCH_ANNOTATIONS = {
++    readOnlyHint: true,
++} as const;
++
+ // Function to shuffle an array and get the first N items
+ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
++export default function SearchFlyout({ articles: initialArticles, onClose, isOpen = true, onOpen }: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const [loadedArticles, setLoadedArticles] = useState<Article[]>(initialArticles);
++
++    const allArticles = loadedArticles.length > 0 ? loadedArticles : initialArticles;
+ 
+     useEffect(() => {
++        if (!isOpen) return;
++
+         const handleKeyDown = (event: KeyboardEvent) => {
+             if (event.key === 'Escape') {
+                 onClose();
+             }
+         };
+         window.addEventListener('keydown', handleKeyDown);
+-        
+-        // Bug: Redundant fetch for suggestions
++        return () => {
++            window.removeEventListener('keydown', handleKeyDown);
++        };
++    }, [isOpen, onClose]);
++
++    useEffect(() => {
+         const fetchSuggestions = async () => {
+             try {
+                 const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+                 const data = await response.json();
++                setLoadedArticles(data);
+                 setSuggestions(getShuffledItems(data, 3));
+             } catch (error) {
+                 console.error('Failed to fetch suggestions:', error);
+@@ -42,26 +69,108 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+ 
+         fetchSuggestions();
++    }, []);
+ 
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
++    const performSearch = async (query: string, signal?: AbortSignal) => {
++        const normalized = query.trim();
++        setSearchTerm(normalized);
++        onOpen?.();
++
++        let catalog = allArticles;
++        if (catalog.length === 0) {
++            const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal });
++            if (!response.ok) {
++                return { error: `Failed to load articles catalog (${response.status}).` };
++            }
++            catalog = await response.json();
++            setLoadedArticles(catalog);
++        }
++
++        const results = catalog.filter(article =>
++            article.title.toLowerCase().includes(normalized.toLowerCase()) ||
++            article.summary.toLowerCase().includes(normalized.toLowerCase())
++        );
++
++        return {
++            query: normalized,
++            count: results.length,
++            results: results.map(a => ({
++                slug: a.slug,
++                title: a.title,
++                summary: a.summary,
++                url: `${import.meta.env.BASE_URL}articles/${a.slug}`,
++            })),
+         };
+-    }, [onClose]);
++    };
++
++    useWebMCP({
++        name: 'search_articles',
++        description: 'Searches articles in The DevTools Times by matching keywords against titles and summaries. Use when the user wants to find articles on a topic.',
++        inputSchema: SEARCH_SCHEMA,
++        annotations: SEARCH_ANNOTATIONS,
++        async execute({ query }: { query?: string }, { signal }) {
++            if (typeof query !== 'string' || !query.trim()) {
++                return { error: 'Please provide a non-empty search query.' };
++            }
++            try {
++                return await performSearch(query, signal);
++            } catch (err) {
++                if (signal.aborted) {
++                    throw err;
++                }
++                return { error: err instanceof Error ? err.message : String(err) };
++            }
++        },
++    });
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+             return [];
+         }
+-        return articles.filter(article =>
++        return allArticles.filter(article =>
+             article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+         );
+-    }, [articles, searchTerm]);
++    }, [allArticles, searchTerm]);
++
++    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++        e.preventDefault();
++        const nativeEvent = e.nativeEvent as SubmitEvent & {
++            agentInvoked?: boolean;
++            respondWith?: (promise: Promise<unknown>) => void;
++        };
++        const formData = new FormData(e.currentTarget);
++        const queryValue = String(formData.get('query') ?? searchTerm).trim();
++
++        if (!queryValue) {
++            if (nativeEvent.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++                nativeEvent.respondWith(Promise.resolve(JSON.stringify({ error: 'Validation failed: query is required.' })));
++            }
++            return;
++        }
++
++        const resultPromise = performSearch(queryValue).then(res => JSON.stringify(res));
++        if (nativeEvent.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++            nativeEvent.respondWith(resultPromise);
++        }
++    };
+ 
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
++        <div
++            className={
++                isOpen
++                    ? 'fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]'
++                    : 'sr-only'
++            }
++            aria-hidden={!isOpen}
++            onClick={isOpen ? onClose : undefined}
++        >
+             <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++                <button
++                    type="button"
++                    onClick={onClose}
++                    className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10"
++                >
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+@@ -85,15 +194,39 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <form
++                        onSubmit={handleFormSubmit}
++                        {...({
++                            toolname: 'search-articles-form',
++                            tooldescription: 'Search The DevTools Times articles by keyword and open the search results.',
++                            toolautosubmit: '',
++                        } as any)}
++                    >
++                        <label htmlFor="article-search-query" className="block text-sm font-semibold text-gray-500 mb-3">
++                            Search
++                        </label>
++                        <div className="flex gap-2">
++                            <input
++                                id="article-search-query"
++                                name="query"
++                                type="text"
++                                required
++                                placeholder="Search for articles..."
++                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                                value={searchTerm}
++                                onChange={e => setSearchTerm(e.target.value)}
++                                {...({
++                                    toolparamdescription: 'Keywords or topic to find matching articles (e.g., cycling, coffee, Super Bowl)',
++                                } as any)}
++                            />
++                            <button
++                                type="submit"
++                                className="px-4 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition"
++                            >
++                                Search
++                            </button>
++                        </div>
++                    </form>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..f42f520 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -9,6 +9,10 @@ export const GET: APIRoute = async ({ params, request }) => {
+         title: article.data.title,
+         summary: article.data.summary,
+         image: article.data.image,
++        category: article.data.category,
++        author: article.data.author,
++        date: article.data.date,
++        readingTime: article.data.readingTime,
+     }));
+ 
+     // Simulate a network delay to make the INP issue more noticeable
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..d13526e 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -7,6 +7,7 @@ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
++import ArticleUtilities from '../../components/ArticleUtilities.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+ 
+ export const getStaticPaths = (async () => {
+@@ -32,7 +33,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -99,9 +100,25 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
++            <ArticleUtilities
++                client:load
++                currentArticle={{
++                    slug: article.id,
++                    title: article.data.title,
++                    summary: article.data.summary,
++                    author: article.data.author,
++                    category: article.data.category,
++                    date: article.data.date.toDateString(),
++                    readingTime: article.data.readingTime,
++                    imageCaption: article.data.image_caption,
++                    relatedSlugs: relatedArticles.map(a => a.id),
++                }}
++                initialIsBookmarked={isBookmarked}
++            />
++
+         </div>
+ 
+         <!-- Article Body Content -->
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7d8d225 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,13 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++form:tool-form-active {
++  outline: 2px dashed #f59e0b;
++  background-color: rgba(245, 158, 11, 0.05);
++}
++
++button:tool-submit-active {
++  outline: 2px dashed #d97706;
++}
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

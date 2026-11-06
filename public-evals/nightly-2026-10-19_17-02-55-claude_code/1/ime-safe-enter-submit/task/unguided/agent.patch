@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,34 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 0 20px;
++      text-align: center;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      min-height: 120px;
++      margin-top: 15px;
++      padding: 10px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      resize: vertical;
++    }
++
++    .feedback button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +222,26 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="feedback">
++    <h2>Send Us Feedback</h2>
++    <form id="feedback-form" method="post" action="/feedback">
++      <textarea name="message" aria-label="Your feedback" placeholder="Tell us what you think..." required></textarea>
++      <button type="submit" class="btn">Send</button>
++    </form>
++  </section>
++
++  <script>
++    // Enter submits; Shift+Enter inserts a newline.
++    document.querySelector('#feedback-form textarea').addEventListener('keydown', (e) => {
++      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
++        e.preventDefault();
++        e.target.form.requestSubmit();
++      }
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

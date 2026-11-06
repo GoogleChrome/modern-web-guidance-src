@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,27 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .ai-tools { margin-top: 40px; }
++    .ai-tools > p { margin: 8px 0 16px; }
++    .ai-panel { margin-top: 20px; text-align: left; }
++    .ai-panel label { display: block; font-weight: 600; margin-top: 12px; }
++    .ai-panel textarea, .ai-panel select {
++      width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #9b8983;
++      border-radius: 5px; font: inherit; color: var(--text); background: white;
++    }
++    .ai-panel textarea { min-height: 100px; resize: vertical; }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    button:disabled { opacity: .55; cursor: not-allowed; }
++    :focus-visible { outline: 3px solid #b56700; outline-offset: 3px; }
++    .ai-actions { display: flex; flex-wrap: wrap; gap: 10px; }
++    .ai-output { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 16px; }
++    pre.ai-output { padding: 12px; background: var(--light); }
++    .ai-note { font-size: .9rem; margin-top: 10px; }
++    #ai-progress { width: 100%; margin-top: 10px; }
++    #context-meter { width: 100%; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +213,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ai-tools" aria-labelledby="ai-heading">
++      <h2 id="ai-heading">A little help from your local barista</h2>
++      <p>Ask about our favorites, explore a new conversation, or reflect on your visit.
++        AI runs on your device. The first use may download a model; answers can be inaccurate.</p>
++      <p id="ai-status" role="status">Checking on-device AI support…</p>
++      <progress id="ai-progress" max="1" aria-label="Model download progress" hidden></progress>
++      <div class="ai-actions">
++        <button type="button" class="btn" id="stop-ai" disabled>Stop &amp; release AI</button>
++      </div>
++
++      <section class="card ai-panel" aria-labelledby="barista-heading">
++        <h3 id="barista-heading">Ask the barista</h3>
++        <p>Curious about the Maple Oat Latte or our 18-hour Cold Brew?</p>
++        <label for="barista-question">Your coffee question</label>
++        <textarea id="barista-question" maxlength="2000" placeholder="How do the Maple Oat Latte and Cold Brew compare?"></textarea>
++        <button type="button" class="btn" id="ask-the-barista" disabled>Ask the barista</button>
++        <div id="barista-answer" class="ai-output" role="status" aria-live="polite" aria-atomic="false"></div>
++      </section>
++
++      <section class="card ai-panel" aria-labelledby="feedback-heading">
++        <h3 id="feedback-heading">Customer feedback analyzer</h3>
++        <label for="customer-feedback">How was your visit?</label>
++        <textarea id="customer-feedback" maxlength="3000" placeholder="The Cold Brew was smooth and the team made my morning."></textarea>
++        <p class="ai-note">Produces JSON with a score from −1 (negative) to 1 (positive) and a sentiment category.</p>
++        <button type="button" class="btn" id="sentiment-btn" disabled>Analyze feedback</button>
++        <pre id="sentiment-answer" class="ai-output" role="status"></pre>
++      </section>
++
++      <section class="card ai-panel" aria-labelledby="branch-heading">
++        <h3 id="branch-heading">Conversation branching</h3>
++        <p>Clone the active coffee conversation to explore another direction with the same history.
++          Ask your next question above. Keep up to two conversations; cloning again replaces the inactive one.</p>
++        <label for="conversation-select">Active conversation</label>
++        <select id="conversation-select" disabled><option>No conversation yet</option></select>
++        <div class="ai-actions">
++          <button type="button" class="btn" id="clone-btn" disabled>Clone conversation</button>
++          <button type="button" class="btn" id="delete-session" disabled>Close conversation</button>
++        </div>
++        <p id="context-usage" class="ai-note" role="status">Context usage appears when a conversation starts.</p>
++        <meter id="context-meter" min="0" max="1" value="0" aria-label="Active conversation context usage" hidden></meter>
++        <p id="branch-status" class="ai-note" role="status"></p>
++      </section>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +269,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="barista.js" defer></script>
+ </body>
+ 
+ </html>

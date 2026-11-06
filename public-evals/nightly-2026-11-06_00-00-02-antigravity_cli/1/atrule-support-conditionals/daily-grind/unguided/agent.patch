@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+index 66c9173..476df26 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,137 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Progressive Enhancement for Newer CSS @-rules */
++    @supports at-rule(@property) {
++      @property --accent-glow {
++        syntax: '<color>';
++        inherits: false;
++        initial-value: rgba(255, 171, 64, 0);
++      }
++
++      nav {
++        background: linear-gradient(90deg, var(--primary), #3e2723);
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
++        backdrop-filter: blur(8px);
++      }
++
++      .hero {
++        background: linear-gradient(135deg, rgba(62, 39, 35, 0.7), rgba(0, 0, 0, 0.45)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++      }
++
++      .card {
++        --accent-glow: rgba(255, 171, 64, 0);
++        border: 1px solid rgba(215, 204, 200, 0.6);
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 2px var(--accent-glow);
++        transition: transform 0.3s ease, box-shadow 0.3s ease, --accent-glow 0.3s ease;
++      }
++
++      .card:hover {
++        --accent-glow: rgba(255, 171, 64, 0.45);
++        transform: translateY(-4px);
++        box-shadow: 0 10px 20px rgba(62, 39, 35, 0.15), 0 0 0 2px var(--accent-glow);
++      }
++    }
++
++    @supports at-rule(@scope) {
++      @scope (nav) {
++        :scope {
++          border-bottom: 1px solid rgba(255, 171, 64, 0.25);
++        }
++
++        a {
++          position: relative;
++          padding-bottom: 2px;
++        }
++
++        .logout-link:hover {
++          background-color: var(--accent);
++          color: var(--text);
++        }
++      }
++
++      @scope (.hero) {
++        h1 {
++          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
++          letter-spacing: 0.5px;
++        }
++
++        p {
++          font-size: 1.15rem;
++          max-width: 600px;
++          margin-bottom: 0.5rem;
++        }
++
++        .btn {
++          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
++        }
++      }
++
++      @scope (.card) {
++        :scope {
++          display: flex;
++          flex-direction: column;
++          justify-content: space-between;
++          align-items: center;
++        }
++
++        h3 {
++          font-size: 1.25rem;
++        }
++
++        .btn {
++          margin-top: auto;
++        }
++      }
++    }
++
++    @supports at-rule(@container) {
++      header.hero,
++      main.container {
++        container-type: inline-size;
++      }
++
++      @container (min-width: 700px) {
++        .hero h1 {
++          font-size: 3.5rem;
++        }
++
++        .card {
++          padding: 28px 24px;
++        }
++      }
++    }
++
++    @supports at-rule(@starting-style) {
++      nav,
++      .hero {
++        transition: opacity 0.4s ease, transform 0.4s ease;
++      }
++
++      .card {
++        transition: opacity 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease, --accent-glow 0.3s ease;
++      }
++
++      @starting-style {
++        nav {
++          opacity: 0;
++        }
++
++        .hero {
++          opacity: 0;
++          transform: translateY(-8px);
++        }
++
++        .card {
++          opacity: 0;
++          transform: translateY(12px);
++        }
++      }
++    }
+   </style>
+ </head>
+ 

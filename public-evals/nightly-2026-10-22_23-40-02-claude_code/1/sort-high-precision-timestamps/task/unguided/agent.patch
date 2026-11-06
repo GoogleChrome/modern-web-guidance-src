@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .timeline {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .timeline button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .timeline table {
++      width: 100%;
++      margin-top: 20px;
++      border-collapse: collapse;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      font-size: 0.9rem;
++    }
++
++    .timeline th,
++    .timeline td {
++      padding: 8px 12px;
++      text-align: left;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .timeline td.mono {
++      font-family: Consolas, Menlo, monospace;
++      white-space: nowrap;
++    }
++
++    .timeline th {
++      background: var(--primary);
++      color: white;
++    }
++
++    #timeline-summary {
++      margin-top: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +236,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="timeline">
++      <h2>Order Event Timeline</h2>
++      <p>Events arrive out of order from distributed services with nanosecond UTC timestamps.</p>
++      <button type="button" class="btn" id="load-events">Load Order Events</button>
++      <p id="timeline-summary" aria-live="polite"></p>
++      <div id="timeline-output"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +256,95 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Simulated batch from distributed services, deliberately out of order.
++    // Timestamps are RFC 3339 UTC strings with 9 fractional digits (nanoseconds).
++    function fetchOrderEvents() {
++      return [
++        { service: 'kitchen-display', event: 'drink_started', order: 'A-1042', ts: '2026-10-22T08:15:03.412000731Z' },
++        { service: 'pos-terminal', event: 'order_placed', order: 'A-1042', ts: '2026-10-22T08:15:03.405118204Z' },
++        { service: 'pickup-notifier', event: 'order_ready', order: 'A-1042', ts: '2026-10-22T08:15:07.100000000Z' },
++        { service: 'payment-gateway', event: 'payment_authorized', order: 'A-1042', ts: '2026-10-22T08:15:03.405118912Z' },
++        { service: 'inventory', event: 'beans_reserved', order: 'A-1042', ts: '2026-10-22T08:15:03.405119001Z' },
++        { service: 'kitchen-display', event: 'drink_finished', order: 'A-1042', ts: '2026-10-22T08:15:06.987654321Z' },
++        { service: 'order-router', event: 'routed_to_bar', order: 'A-1042', ts: '2026-10-22T08:15:03.411999999Z' },
++      ];
++    }
++
++    const NS_PER_MS = 1000000n;
++    const NS_PER_SEC = 1000000000n;
++
++    // Parse to BigInt nanoseconds since epoch; Date/Number would drop sub-ms digits.
++    function parseNs(ts) {
++      const m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z$/.exec(ts);
++      if (!m) throw new Error('Invalid UTC timestamp: ' + ts);
++      const secs = BigInt(Date.parse(m[1] + 'Z') / 1000);
++      const frac = BigInt((m[2] || '').padEnd(9, '0'));
++      return secs * NS_PER_SEC + frac;
++    }
++
++    function formatNs(ns) {
++      const secs = ns / NS_PER_SEC;
++      const frac = String(ns % NS_PER_SEC).padStart(9, '0');
++      return new Date(Number(secs) * 1000).toISOString().slice(0, 19) + '.' + frac + 'Z';
++    }
++
++    function formatInterval(ns) {
++      const ms = ns / NS_PER_MS;
++      const rem = String(ns % NS_PER_MS).padStart(6, '0');
++      return ms + '.' + rem + ' ms (' + ns + ' ns)';
++    }
++
++    function sortAndMeasure(events) {
++      const sorted = events
++        .map(e => ({ ...e, ns: parseNs(e.ts) }))
++        .sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : 0));
++      sorted.forEach((e, i) => {
++        e.delta = i === 0 ? null : e.ns - sorted[i - 1].ns;
++      });
++      return sorted;
++    }
++
++    function cell(text, cls) {
++      const td = document.createElement('td');
++      td.textContent = text;
++      if (cls) td.className = cls;
++      return td;
++    }
++
++    document.getElementById('load-events').addEventListener('click', () => {
++      const summary = document.getElementById('timeline-summary');
++      const output = document.getElementById('timeline-output');
++      try {
++        const sorted = sortAndMeasure(fetchOrderEvents());
++        const table = document.createElement('table');
++        const head = table.createTHead().insertRow();
++        ['#', 'Timestamp (UTC)', 'Service', 'Event', 'Since previous'].forEach(h => {
++          const th = document.createElement('th');
++          th.textContent = h;
++          head.appendChild(th);
++        });
++        const body = table.createTBody();
++        sorted.forEach((e, i) => {
++          const row = body.insertRow();
++          row.append(
++            cell(i + 1),
++            cell(formatNs(e.ns), 'mono'),
++            cell(e.service),
++            cell(e.event),
++            cell(e.delta === null ? '—' : '+' + formatInterval(e.delta), 'mono')
++          );
++        });
++        output.replaceChildren(table);
++        const total = sorted[sorted.length - 1].ns - sorted[0].ns;
++        summary.textContent = sorted.length + ' events sorted. Total span: ' + formatInterval(total);
++      } catch (err) {
++        output.replaceChildren();
++        summary.textContent = 'Could not load events: ' + err.message;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

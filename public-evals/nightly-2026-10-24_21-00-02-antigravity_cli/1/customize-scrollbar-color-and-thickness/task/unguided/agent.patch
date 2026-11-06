@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-log {
++      max-height: 260px;
++      height: 260px;
++      overflow-y: auto;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 6px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      background-color: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      background-color: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-item {
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 14px;
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .feedback-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .feedback-date {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      font-size: 0.95rem;
++      margin-bottom: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +264,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Customer Feedback Log</h2>
++      <div class="feedback-log" id="feedback-log" role="region" aria-label="Customer Feedback Log" tabindex="0">
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Sarah M.</span>
++            <span class="feedback-date">October 22, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"The Maple Oat Latte is hands-down the best seasonal drink in town! Not overly sweet, and the espresso still shines through."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">James T.</span>
++            <span class="feedback-date">October 19, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"I grab a Dark Roast Espresso here every morning before work. Consistently rich crema and zero bitterness."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Elena R.</span>
++            <span class="feedback-date">October 15, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Their 18-hour Cold Brew is velvet in a glass. Love that they ethically source all of their single-origin beans!"</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Marcus K.</span>
++            <span class="feedback-date">October 11, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
++          <p>"Cozy atmosphere and super friendly baristas. The freshly baked croissants pair wonderfully with the house pour-over."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Priya D.</span>
++            <span class="feedback-date">October 8, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Switched to The Daily Grind for my whole-bean home subscription and couldn't be happier. Every bag arrives freshly roasted."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">David L.</span>
++            <span class="feedback-date">October 3, 2026</span>
++          </div>
++          <div class="feedback-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
++          <p>"Best spot to read or catch up with friends. The attention to detail in every pour makes all the difference."</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

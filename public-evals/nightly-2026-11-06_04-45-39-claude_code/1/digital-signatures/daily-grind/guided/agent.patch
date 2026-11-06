@@ -1,0 +1,609 @@
+diff --git a/index.html b/index.html
+index 66c9173..160f031 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,166 @@
+       background: #3e2723;
+     }
+ 
++
++    /* Signed receipts & vouchers */
++    .signing {
++      margin-top: 60px;
++    }
++
++    .signing h2 {
++      text-align: center;
++    }
++
++    .signing .lede {
++      text-align: center;
++      max-width: 65ch;
++      margin: 0.5rem auto 0;
++    }
++
++    .key-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.5rem;
++      align-items: center;
++      justify-content: center;
++      margin-top: 20px;
++      padding: 12px 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++      font-size: 0.9rem;
++    }
++
++    .key-bar code {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      overflow-wrap: anywhere;
++    }
++
++    .signing .card {
++      text-align: start;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .signing form {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .signing label {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .signing input,
++    .signing select,
++    .signing textarea {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++      background: white;
++      color: var(--text);
++    }
++
++    .signing input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .signing textarea {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.75rem;
++      min-height: 10rem;
++      resize: vertical;
++      field-sizing: content;
++      max-height: 20rem;
++    }
++
++    .signing button {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++    }
++
++    .signing button.btn {
++      margin-top: 0;
++    }
++
++    .signing button.secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 9px 16px;
++      border-radius: 5px;
++    }
++
++    .signing button:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .button-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .verify-card {
++      grid-column: 1 / -1;
++    }
++
++    .verdict {
++      display: block;
++      padding: 12px;
++      border-radius: 6px;
++      border-inline-start: 6px solid transparent;
++      background: #f5f5f5;
++    }
++
++    .verdict:empty {
++      display: none;
++    }
++
++    .verdict[data-state="valid"] {
++      background: #e8f5e9;
++      border-color: #2e7d32;
++    }
++
++    .verdict[data-state="warn"] {
++      background: #fff8e1;
++      border-color: #f9a825;
++    }
++
++    .verdict[data-state="invalid"] {
++      background: #ffebee;
++      border-color: #c62828;
++    }
++
++    .verdict strong {
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .verdict dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 2px 12px;
++      font-size: 0.9rem;
++    }
++
++    .verdict dt {
++      font-weight: 600;
++    }
++
++    .verdict dd {
++      overflow-wrap: anywhere;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +355,70 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signing" id="signed-documents" aria-labelledby="signing-heading">
++      <h2 id="signing-heading">Signed Receipts &amp; Gift Vouchers</h2>
++      <p class="lede">Every receipt and voucher we issue carries a digital signature made with our store's private key,
++        right here in your browser. Anyone holding a trusted copy of our public key can confirm it's genuine and that
++        not a single character has been changed.</p>
++
++      <div class="key-bar" aria-live="polite">
++        <span>Algorithm: <strong id="key-suite">loading…</strong></span>
++        <span>Key fingerprint: <code id="key-fingerprint">—</code></span>
++        <button type="button" class="secondary" id="rotate-key">Rotate signing key</button>
++      </div>
++
++      <div class="grid">
++        <div class="card">
++          <h3>Order Receipt</h3>
++          <form id="receipt-form">
++            <label>Drink
++              <select name="item" required>
++                <option value="maple-oat-latte">Maple Oat Latte — $5.25</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso — $3.50</option>
++                <option value="cold-brew">Cold Brew — $4.75</option>
++              </select>
++            </label>
++            <label>Quantity
++              <input type="number" name="quantity" min="1" max="20" value="1" required>
++            </label>
++            <button type="submit" class="btn">Issue signed receipt</button>
++          </form>
++        </div>
++
++        <div class="card">
++          <h3>Gift Voucher</h3>
++          <form id="voucher-form">
++            <label>Value (USD)
++              <input type="number" name="amount" min="5" max="500" step="5" value="25" required>
++            </label>
++            <label>Recipient
++              <input type="text" name="recipient" maxlength="60" autocomplete="off" required placeholder="e.g. Sam">
++            </label>
++            <label>Valid for (days)
++              <input type="number" name="days" min="1" max="730" value="365" required>
++            </label>
++            <button type="submit" class="btn">Issue signed voucher</button>
++          </form>
++        </div>
++
++        <div class="card verify-card">
++          <h3>Verify a Receipt or Voucher</h3>
++          <form id="verify-form">
++            <label>Signed document (JSON)
++              <textarea name="token" id="token" spellcheck="false" required
++                placeholder="Issue a receipt or voucher above, or paste one here"></textarea>
++            </label>
++            <div class="button-row">
++              <button type="submit" class="btn">Verify signature</button>
++              <button type="button" class="secondary" id="copy-token">Copy</button>
++              <button type="button" class="secondary" id="tamper-token">Simulate tampering</button>
++            </div>
++          </form>
++          <output id="verdict" class="verdict" for="token" aria-live="polite"></output>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +431,366 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---- Signing suites --------------------------------------------------
++    // Prefer post-quantum ML-DSA-65 (FIPS 204); fall back to Ed25519, then ECDSA P-256.
++    const SUITES = {
++      'ML-DSA-65': {
++        generate: () => crypto.subtle.generateKey('ML-DSA-65', false, ['sign', 'verify']),
++        exportFormat: 'raw-public',
++        sign: (key, data, ctx) => crypto.subtle.sign({ name: 'ML-DSA-65', context: ctx }, key, data),
++        verify: (key, sig, data, ctx) => crypto.subtle.verify({ name: 'ML-DSA-65', context: ctx }, key, sig, data),
++      },
++      'Ed25519': {
++        generate: () => crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']),
++        exportFormat: 'raw',
++        sign: (key, data, ctx) => crypto.subtle.sign('Ed25519', key, frame(data, ctx)),
++        verify: (key, sig, data, ctx) => crypto.subtle.verify('Ed25519', key, sig, frame(data, ctx)),
++      },
++      'ECDSA-P256-SHA256': {
++        generate: () => crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']),
++        exportFormat: 'raw',
++        sign: (key, data, ctx) => crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, frame(data, ctx)),
++        verify: (key, sig, data, ctx) =>
++          crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, sig, frame(data, ctx)),
++      },
++    };
++
++    // Domain separation: a receipt signature can never be replayed as a voucher.
++    const CONTEXTS = {
++      receipt: new TextEncoder().encode('daily-grind/receipt/v1'),
++      voucher: new TextEncoder().encode('daily-grind/voucher/v1'),
++    };
++
++    // Classical algorithms ignore `context`, so prepend a length-prefixed context header instead.
++    function frame(payload, ctx) {
++      if (ctx.byteLength > 255) throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      const out = new Uint8Array(1 + ctx.byteLength + payload.byteLength);
++      out[0] = ctx.byteLength;
++      out.set(ctx, 1);
++      out.set(payload, 1 + ctx.byteLength);
++      return out;
++    }
++
++    // ---- Encoding helpers ------------------------------------------------
++    const b64url = {
++      encode(bytes) {
++        if (typeof bytes.toBase64 === 'function') return bytes.toBase64({ alphabet: 'base64url', omitPadding: true });
++        let bin = '';
++        for (const b of bytes) bin += String.fromCharCode(b);
++        return btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
++      },
++      decode(str) {
++        if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(str, { alphabet: 'base64url' });
++        const b64 = str.replaceAll('-', '+').replaceAll('_', '/');
++        const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
++        return Uint8Array.from(bin, (c) => c.charCodeAt(0));
++      },
++    };
++
++    async function fingerprint(publicKeyBytes) {
++      const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', publicKeyBytes)).slice(0, 16);
++      return {
++        kid: b64url.encode(hash),
++        display: Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('').match(/.{4}/g).join(':'),
++      };
++    }
++
++    // ---- Key storage (IndexedDB keeps non-extractable CryptoKeys across visits) ----
++    const DB_NAME = 'daily-grind-signing';
++    const dbPromise = new Promise((resolve, reject) => {
++      const req = indexedDB.open(DB_NAME, 1);
++      req.onupgradeneeded = () => req.result.createObjectStore('keys', { keyPath: 'kid' });
++      req.onsuccess = () => resolve(req.result);
++      req.onerror = () => reject(req.error);
++    });
++
++    async function tx(mode, fn) {
++      const db = await dbPromise;
++      return new Promise((resolve, reject) => {
++        const t = db.transaction('keys', mode);
++        const result = fn(t.objectStore('keys'));
++        t.oncomplete = () => resolve(result.result ?? result);
++        t.onerror = () => reject(t.error);
++      });
++    }
++    const getAllKeys = () => tx('readonly', (s) => s.getAll());
++    const putKey = (record) => tx('readwrite', (s) => s.put(record));
++
++    async function createSigningKey() {
++      const candidates = [];
++      if (globalThis.SubtleCrypto?.supports?.('sign', { name: 'ML-DSA-65', context: CONTEXTS.receipt })) {
++        candidates.push('ML-DSA-65');
++      }
++      candidates.push('Ed25519', 'ECDSA-P256-SHA256');
++
++      for (const suite of candidates) {
++        try {
++          const keyPair = await SUITES[suite].generate();
++          const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey(SUITES[suite].exportFormat, keyPair.publicKey));
++          const fp = await fingerprint(publicKeyBytes);
++          return {
++            kid: fp.kid,
++            display: fp.display,
++            suite,
++            privateKey: keyPair.privateKey, // non-extractable
++            publicKey: keyPair.publicKey,
++            publicKeyBytes,
++            createdAt: new Date().toISOString(),
++            active: true,
++          };
++        } catch (err) {
++          if (err?.name !== 'NotSupportedError') throw err;
++        }
++      }
++      throw new Error('This browser does not support any of the required signature algorithms.');
++    }
++
++    let activeKey;
++    let trustedKeys = new Map();
++
++    async function loadKeys() {
++      const all = await getAllKeys();
++      trustedKeys = new Map(all.map((k) => [k.kid, k]));
++      activeKey = all.find((k) => k.active);
++      if (!activeKey) {
++        activeKey = await createSigningKey();
++        await putKey(activeKey);
++        trustedKeys.set(activeKey.kid, activeKey);
++      }
++      renderKey();
++    }
++
++    async function rotateKey() {
++      const next = await createSigningKey();
++      // Retire the old key: keep its public key trusted for verifying earlier documents,
++      // but drop its private key so it can no longer sign.
++      const retired = { ...activeKey, active: false, privateKey: null, retiredAt: new Date().toISOString() };
++      await putKey(retired);
++      await putKey(next);
++      trustedKeys.set(retired.kid, retired);
++      trustedKeys.set(next.kid, next);
++      activeKey = next;
++      renderKey();
++    }
++
++    // ---- Signing ---------------------------------------------------------
++    async function issue(type, data) {
++      const payload = JSON.stringify({ type, id: crypto.randomUUID(), issuedAt: new Date().toISOString(), ...data });
++      const signature = await SUITES[activeKey.suite].sign(
++        activeKey.privateKey,
++        new TextEncoder().encode(payload),
++        CONTEXTS[type],
++      );
++      // `payload` is the exact signed string, kept human-readable so any edit is visible and detectable.
++      return JSON.stringify(
++        { v: 1, type, alg: activeKey.suite, kid: activeKey.kid, payload, sig: b64url.encode(new Uint8Array(signature)) },
++        null,
++        2,
++      );
++    }
++
++    // ---- Verification ----------------------------------------------------
++    async function verify(text) {
++      let env;
++      try {
++        env = JSON.parse(text);
++      } catch {
++        return { state: 'invalid', title: 'Not a valid signed document (malformed JSON).' };
++      }
++      if (
++        env?.v !== 1 || !Object.hasOwn(CONTEXTS, env.type) || typeof env.payload !== 'string' ||
++        typeof env.sig !== 'string' || typeof env.kid !== 'string' || typeof env.alg !== 'string'
++      ) {
++        return { state: 'invalid', title: 'Not a recognised Daily Grind receipt or voucher.' };
++      }
++
++      const key = trustedKeys.get(env.kid);
++      if (!key) {
++        return { state: 'invalid', title: 'Unknown signer — this was not signed by a trusted Daily Grind key.' };
++      }
++      if (key.suite !== env.alg) {
++        return { state: 'invalid', title: 'Algorithm mismatch — the document does not match the signing key.' };
++      }
++
++      let ok = false;
++      try {
++        ok = await SUITES[key.suite].verify(
++          key.publicKey,
++          b64url.decode(env.sig),
++          new TextEncoder().encode(env.payload),
++          CONTEXTS[env.type],
++        );
++      } catch {
++        ok = false;
++      }
++      if (!ok) {
++        return { state: 'invalid', title: 'Signature invalid — this document has been altered or forged.' };
++      }
++
++      const data = JSON.parse(env.payload);
++      if (data.type !== env.type) {
++        return { state: 'invalid', title: 'Document type does not match its signed contents.' };
++      }
++
++      const details = [
++        ['Type', env.type === 'receipt' ? 'Order receipt' : 'Gift voucher'],
++        ['ID', data.id],
++        ['Issued', formatDate(data.issuedAt)],
++      ];
++      if (env.type === 'receipt') {
++        details.push(['Item', `${data.quantity} × ${data.item}`], ['Total', formatMoney(data.totalCents)]);
++      } else {
++        details.push(['Value', formatMoney(data.amountCents)], ['Recipient', data.recipient], ['Expires', formatDate(data.expiresAt)]);
++      }
++      details.push(['Algorithm', key.suite], ['Signed by key', key.display + (key.active ? ' (current)' : ' (retired)')]);
++
++      if (env.type === 'voucher' && Date.parse(data.expiresAt) < Date.now()) {
++        return { state: 'warn', title: 'Authentic voucher, but it has expired.', details };
++      }
++      return { state: 'valid', title: 'Authentic and unaltered — signed by The Daily Grind.', details };
++    }
++
++    // ---- UI --------------------------------------------------------------
++    const MENU = {
++      'maple-oat-latte': { name: 'Maple Oat Latte', cents: 525 },
++      'dark-roast-espresso': { name: 'Dark Roast Espresso', cents: 350 },
++      'cold-brew': { name: 'Cold Brew', cents: 475 },
++    };
++    const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++    const dateFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
++    const formatMoney = (cents) => money.format(Number(cents) / 100);
++    const formatDate = (iso) => {
++      const t = Date.parse(iso);
++      return Number.isNaN(t) ? String(iso) : dateFmt.format(t);
++    };
++
++    const $ = (id) => document.getElementById(id);
++    const tokenField = $('token');
++    const verdict = $('verdict');
++
++    function renderKey() {
++      $('key-suite').textContent = activeKey.suite + (activeKey.suite === 'ML-DSA-65' ? ' (post-quantum)' : ' (classical)');
++      $('key-fingerprint').textContent = activeKey.display;
++    }
++
++    function showVerdict({ state, title, details = [] }) {
++      verdict.dataset.state = state;
++      const heading = document.createElement('strong');
++      heading.textContent = title;
++      const dl = document.createElement('dl');
++      for (const [term, value] of details) {
++        const dt = document.createElement('dt');
++        const dd = document.createElement('dd');
++        dt.textContent = term;
++        dd.textContent = String(value);
++        dl.append(dt, dd);
++      }
++      verdict.replaceChildren(heading, ...(details.length ? [dl] : []));
++    }
++
++    function clearVerdict() {
++      delete verdict.dataset.state;
++      verdict.replaceChildren();
++    }
++
++    async function withBusy(form, fn) {
++      const buttons = form.querySelectorAll('button');
++      buttons.forEach((b) => (b.disabled = true));
++      try {
++        await fn();
++      } catch (err) {
++        showVerdict({ state: 'invalid', title: `Error: ${err.message}` });
++      } finally {
++        buttons.forEach((b) => (b.disabled = false));
++      }
++    }
++
++    async function issueAndShow(type, data) {
++      tokenField.value = await issue(type, data);
++      clearVerdict();
++      showVerdict(await verify(tokenField.value));
++      tokenField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++    }
++
++    $('receipt-form').addEventListener('submit', (e) => {
++      e.preventDefault();
++      const form = e.currentTarget;
++      const fd = new FormData(form);
++      const product = MENU[fd.get('item')];
++      const quantity = Number(fd.get('quantity'));
++      withBusy(form, () =>
++        issueAndShow('receipt', { item: product.name, unitCents: product.cents, quantity, totalCents: product.cents * quantity }),
++      );
++    });
++
++    $('voucher-form').addEventListener('submit', (e) => {
++      e.preventDefault();
++      const form = e.currentTarget;
++      const fd = new FormData(form);
++      const expiresAt = new Date(Date.now() + Number(fd.get('days')) * 86_400_000).toISOString();
++      withBusy(form, () =>
++        issueAndShow('voucher', {
++          code: b64url.encode(crypto.getRandomValues(new Uint8Array(9))).toUpperCase(),
++          amountCents: Math.round(Number(fd.get('amount')) * 100),
++          recipient: String(fd.get('recipient')).trim(),
++          expiresAt,
++        }),
++      );
++    });
++
++    $('verify-form').addEventListener('submit', (e) => {
++      e.preventDefault();
++      withBusy(e.currentTarget, async () => showVerdict(await verify(tokenField.value)));
++    });
++
++    tokenField.addEventListener('input', clearVerdict);
++
++    $('copy-token').addEventListener('click', async () => {
++      if (!tokenField.value) return;
++      try {
++        await navigator.clipboard.writeText(tokenField.value);
++        $('copy-token').textContent = 'Copied!';
++      } catch {
++        tokenField.select();
++        $('copy-token').textContent = 'Press Ctrl+C';
++      }
++      setTimeout(() => ($('copy-token').textContent = 'Copy'), 1500);
++    });
++
++    // Demo: inflate the total / voucher value inside the signed payload and re-verify.
++    $('tamper-token').addEventListener('click', async () => {
++      try {
++        const env = JSON.parse(tokenField.value);
++        const data = JSON.parse(env.payload);
++        if ('totalCents' in data) data.totalCents = 1;
++        if ('amountCents' in data) data.amountCents *= 10;
++        env.payload = JSON.stringify(data);
++        tokenField.value = JSON.stringify(env, null, 2);
++        showVerdict(await verify(tokenField.value));
++      } catch {
++        showVerdict({ state: 'invalid', title: 'Issue a receipt or voucher first, then try tampering with it.' });
++      }
++    });
++
++    $('rotate-key').addEventListener('click', async (e) => {
++      const btn = e.currentTarget;
++      btn.disabled = true;
++      try {
++        await rotateKey();
++      } catch (err) {
++        showVerdict({ state: 'invalid', title: `Key rotation failed: ${err.message}` });
++      } finally {
++        btn.disabled = false;
++      }
++    });
++
++    loadKeys().catch((err) => {
++      $('key-suite').textContent = 'unavailable';
++      showVerdict({ state: 'invalid', title: `Signing unavailable: ${err.message}` });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

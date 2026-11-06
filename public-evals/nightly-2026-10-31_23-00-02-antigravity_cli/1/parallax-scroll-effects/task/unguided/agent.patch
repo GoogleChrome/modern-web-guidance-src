@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,259 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Scroll-Driven Parallax Section */
++    .parallax-section {
++      position: relative;
++      min-height: 85vh;
++      overflow: hidden;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      background-color: #261714;
++      color: var(--light);
++      contain: paint;
++      view-timeline-name: --parallax-section;
++      view-timeline-axis: block;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    /* Layer 1: Deep Background (slowest speed) */
++    .parallax-layer--back {
++      z-index: 1;
++      inset: -18% 0;
++      background:
++        linear-gradient(180deg, rgba(30, 17, 14, 0.72) 0%, rgba(46, 27, 22, 0.58) 50%, rgba(30, 17, 14, 0.82) 100%),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80');
++      background-size: cover;
++      background-position: center;
++      animation: parallax-depth-back linear both;
++      animation-timeline: view();
++      animation-range: entry 0% exit 100%;
++    }
++
++    /* Layer 2: Midground Visual Cards (medium speed) */
++    .parallax-layer--mid {
++      z-index: 2;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 1240px;
++      margin: 0 auto;
++      padding: 0 4%;
++      animation: parallax-depth-mid linear both;
++      animation-timeline: view();
++      animation-range: entry 0% exit 100%;
++    }
++
++    .parallax-photo-card {
++      width: clamp(180px, 22vw, 280px);
++      border-radius: 14px;
++      overflow: hidden;
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(255, 171, 64, 0.35);
++      background: #1b0f0d;
++    }
++
++    .parallax-photo-card--left {
++      align-self: flex-start;
++      margin-top: 8%;
++      transform: rotate(-3deg);
++    }
++
++    .parallax-photo-card--right {
++      align-self: flex-end;
++      margin-bottom: 8%;
++      transform: rotate(3deg);
++    }
++
++    .parallax-photo-card img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      opacity: 0.88;
++    }
++
++    /* Layer 3: Floating Roasting Accents (fastest speed) */
++    .parallax-layer--accent {
++      z-index: 3;
++      max-width: 1200px;
++      margin: 0 auto;
++      animation: parallax-depth-accent linear both;
++      animation-timeline: view();
++      animation-range: entry 0% exit 100%;
++    }
++
++    .parallax-badge {
++      position: absolute;
++      background: rgba(78, 52, 46, 0.9);
++      color: var(--accent);
++      border: 1px solid rgba(255, 171, 64, 0.5);
++      padding: 0.65rem 1.1rem;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 0.06em;
++      text-transform: uppercase;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
++    }
++
++    .parallax-badge--top {
++      top: 16%;
++      right: 14%;
++    }
++
++    .parallax-badge--bottom {
++      bottom: 16%;
++      left: 14%;
++    }
++
++    /* Layer 4: Foreground Story Content (counter-scroll depth) */
++    .parallax-content {
++      position: relative;
++      z-index: 4;
++      max-width: 640px;
++      margin: 4rem 20px;
++      padding: 2.75rem 2.5rem;
++      text-align: center;
++      background: rgba(33, 19, 16, 0.84);
++      backdrop-filter: blur(8px);
++      border: 1px solid rgba(215, 204, 200, 0.25);
++      border-radius: 16px;
++      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
++      will-change: transform;
++      animation: parallax-depth-front linear both;
++      animation-timeline: view();
++      animation-range: entry 0% exit 100%;
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      color: var(--accent);
++      font-size: 0.85rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.15em;
++      margin-bottom: 0.75rem;
++    }
++
++    .parallax-content h2 {
++      font-size: clamp(1.85rem, 3.5vw, 2.6rem);
++      line-height: 1.2;
++      margin-bottom: 1rem;
++      color: #ffffff;
++    }
++
++    .parallax-content p {
++      font-size: 1.05rem;
++      color: var(--secondary);
++      margin-bottom: 1.5rem;
++    }
++
++    .parallax-stats {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 1rem;
++      margin: 1.5rem 0;
++      padding-top: 1.25rem;
++      border-top: 1px solid rgba(215, 204, 200, 0.2);
++    }
++
++    .parallax-stat strong {
++      display: block;
++      font-size: 1.4rem;
++      color: var(--accent);
++    }
++
++    .parallax-stat span {
++      font-size: 0.8rem;
++      color: var(--secondary);
++    }
++
++    /* Keyframes for different layer speeds */
++    @keyframes parallax-depth-back {
++      from {
++        transform: translate3d(0, -14%, 0) scale(1.12);
++      }
++      to {
++        transform: translate3d(0, 14%, 0) scale(1.12);
++      }
++    }
++
++    @keyframes parallax-depth-mid {
++      from {
++        transform: translate3d(0, 26%, 0);
++      }
++      to {
++        transform: translate3d(0, -26%, 0);
++      }
++    }
++
++    @keyframes parallax-depth-front {
++      from {
++        transform: translate3d(0, 12%, 0);
++      }
++      to {
++        transform: translate3d(0, -12%, 0);
++      }
++    }
++
++    @keyframes parallax-depth-accent {
++      from {
++        transform: translate3d(0, 48%, 0);
++      }
++      to {
++        transform: translate3d(0, -48%, 0);
++      }
++    }
++
++    /* Focus visibility for accessibility */
++    a:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 768px) {
++      .parallax-photo-card {
++        opacity: 0.35;
++      }
++
++      .parallax-badge {
++        display: none;
++      }
++
++      .parallax-content {
++        padding: 2rem 1.5rem;
++      }
++
++      .parallax-stats {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Accessibility: Respect reduced motion preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer,
++      .parallax-layer--back,
++      .parallax-layer--mid,
++      .parallax-layer--accent,
++      .parallax-content {
++        animation: none !important;
++        transform: none !important;
++        will-change: auto;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +424,64 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax-section" aria-labelledby="roasting-journey-title">
++    <!-- Layer 1: Deep Background (Slowest scroll speed) -->
++    <div class="parallax-layer parallax-layer--back" data-speed="slow" aria-hidden="true"></div>
++
++    <!-- Layer 2: Midground Visual Cards (Medium scroll speed) -->
++    <div class="parallax-layer parallax-layer--mid" data-speed="medium" aria-hidden="true">
++      <div class="parallax-photo-card parallax-photo-card--left">
++        <img
++          src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=700&q=80"
++          alt=""
++          loading="lazy"
++          decoding="async"
++        >
++      </div>
++      <div class="parallax-photo-card parallax-photo-card--right">
++        <img
++          src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=700&q=80"
++          alt=""
++          loading="lazy"
++          decoding="async"
++        >
++      </div>
++    </div>
++
++    <!-- Layer 3: Floating Accents (Fastest scroll speed) -->
++    <div class="parallax-layer parallax-layer--accent" data-speed="fast" aria-hidden="true">
++      <span class="parallax-badge parallax-badge--top">Single Origin • High Altitude</span>
++      <span class="parallax-badge parallax-badge--bottom">Small-Batch Drum Roasted</span>
++    </div>
++
++    <!-- Layer 4: Foreground Story Content -->
++    <div class="parallax-content parallax-layer--front" data-speed="foreground">
++      <span class="parallax-eyebrow">From Bean to Cup</span>
++      <h2 id="roasting-journey-title">The Art of the Slow Roast</h2>
++      <p>
++        Every batch begins on high-altitude family farms and finishes in our vintage cast-iron drum roasters.
++        By carefully balancing heat and airflow, we unlock layered notes of dark cocoa, toasted hazelnut, and bright citrus.
++      </p>
++      <div class="parallax-stats" role="list" aria-label="Roasting highlights">
++        <div class="parallax-stat" role="listitem">
++          <strong>1,800m</strong>
++          <span>Growing Elevation</span>
++        </div>
++        <div class="parallax-stat" role="listitem">
++          <strong>14 min</strong>
++          <span>Precision Roast</span>
++        </div>
++        <div class="parallax-stat" role="listitem">
++          <strong>100%</strong>
++          <span>Direct Trade</span>
++        </div>
++      </div>
++      <a href="/about" class="btn">Explore Our Craft</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

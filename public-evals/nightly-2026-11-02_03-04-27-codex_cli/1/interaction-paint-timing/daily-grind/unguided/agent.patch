@@ -1,0 +1,336 @@
+diff --git a/index.html b/index.html
+index 66c9173..fe812d3 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/performance-monitor.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +158,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-performance-label="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +172,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-performance-label="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-label="seasonal-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/performance-monitor.js b/performance-monitor.js
+new file mode 100644
+index 0000000..e097b22
+--- /dev/null
++++ b/performance-monitor.js
+@@ -0,0 +1,171 @@
++(() => {
++  'use strict';
++
++  // Keep monitoring local. An analytics integration can subscribe to
++  // daily-grind:performance without collecting DOM text or account URLs.
++  // All timestamps/durations are milliseconds on the document's performance
++  // timeline. Each ICP record is a contentful paint candidate, not INP.
++  // Read: window.dailyGrindPerformance.getEntries()
++  // Subscribe: window.addEventListener('daily-grind:performance', ({ detail }) => ...)
++  // No record is synthesized for a click without a contentful update. Normal
++  // document navigations require monitoring on the destination page as well.
++  if (window.dailyGrindPerformance) return;
++  const limit = 200;
++  const entries = [];
++  const inputs = [];
++  const interactions = new Map();
++  const navigations = new Map();
++  const pendingPaints = new Map();
++  const navigationPaints = new WeakMap();
++  const observers = [];
++  const supported = window.PerformanceObserver?.supportedEntryTypes || [];
++  const support = {
++    interactionContentfulPaint: supported.includes('interaction-contentful-paint'),
++    softNavigation: supported.includes('soft-navigation'),
++  };
++
++  window.dailyGrindPerformance = {
++    support,
++    getEntries: () => entries.map(entry => ({ ...entry })),
++  };
++
++  function remember(map, key, value) {
++    map.set(key, value);
++    if (map.size > limit) map.delete(map.keys().next().value);
++  }
++
++  function contextFor(target) {
++    const element = target?.closest?.('[data-performance-label]');
++    if (!element) return null;
++    // Static labels identify controls without exposing user-entered text.
++    const link = target.closest('a');
++    return {
++      label: element.dataset.performanceLabel,
++      control: element.tagName === 'NAV' ? link?.getAttribute('href') : undefined,
++    };
++  }
++
++  function contextAt(startTime) {
++    // Event Timing can omit fast interactions. Capture input timestamps too,
++    // then match the ICP start (not the time its async paint arrives).
++    let closest;
++    let distance = 8;
++    for (const input of inputs) {
++      const delta = Math.abs(input.startTime - startTime);
++      if (delta <= distance) {
++        closest = input.context;
++        distance = delta;
++      }
++    }
++    return closest;
++  }
++
++  function capture(event) {
++    if (!event.isTrusted) return;
++    inputs.push({ startTime: event.timeStamp, context: contextFor(event.target) });
++    if (inputs.length > limit) inputs.shift();
++  }
++
++  if (support.interactionContentfulPaint || support.softNavigation) {
++    for (const type of ['pointerdown', 'pointerup', 'click', 'keydown', 'keyup']) {
++      document.addEventListener(type, capture, { capture: true, passive: true });
++    }
++  }
++
++  function report(metric) {
++    if (!Number.isFinite(metric.duration) || metric.duration < 0) return;
++    entries.push(Object.freeze(metric));
++    if (entries.length > limit) entries.shift();
++    window.dispatchEvent(new CustomEvent('daily-grind:performance', {
++      detail: { ...metric },
++    }));
++  }
++
++  function observe(type, callback, options = {}) {
++    if (!supported.includes(type)) return;
++    try {
++      const observer = new PerformanceObserver(list => callback(list.getEntries()));
++      observer.observe({ type, buffered: true, ...options });
++      observers.push(observer);
++    } catch {
++      // Experimental APIs may be advertised but unavailable in this context.
++      if (type === 'interaction-contentful-paint') support.interactionContentfulPaint = false;
++      if (type === 'soft-navigation') support.softNavigation = false;
++    }
++  }
++
++  function attribution(entry) {
++    return interactions.get(entry.interactionId) || contextAt(entry.startTime) || {};
++  }
++
++  if (support.interactionContentfulPaint || support.softNavigation) {
++    observe('event', eventEntries => {
++      for (const entry of eventEntries) {
++        const context = contextFor(entry.target);
++        if (entry.interactionId && context) remember(interactions, entry.interactionId, context);
++      }
++      // Buffered observers need not deliver event and paint entries in order.
++      for (const entry of pendingPaints.values()) {
++        if (reportInteractionPaint(entry)) pendingPaints.delete(entry);
++      }
++    }, { durationThreshold: 16 });
++  }
++
++  function reportNavigationPaint(paint, navigation) {
++    const lcp = paint.largestContentfulPaint;
++    if (!lcp) return;
++    const candidate = `${lcp.startTime}:${lcp.size}`;
++    if (navigationPaints.get(navigation) === candidate) return;
++    navigationPaints.set(navigation, candidate);
++    // ICP duration starts at the interaction. Soft-navigation LCP must instead
++    // use the nested LCP timestamp relative to the navigation's start time.
++    report({
++      type: 'soft-navigation-lcp',
++      startTime: navigation.startTime,
++      duration: lcp.startTime - navigation.startTime,
++      interactionId: navigation.interactionId,
++      navigationId: navigation.navigationId,
++      ...attribution(navigation),
++    });
++  }
++
++  observe('soft-navigation', navigationEntries => {
++    for (const entry of navigationEntries) {
++      // Join by interactionId: a paint may precede the URL update and carry
++      // the previous navigationId. Do not attribute later unrelated clicks.
++      remember(navigations, entry.interactionId, entry);
++      report({
++        type: 'soft-navigation',
++        startTime: entry.startTime,
++        duration: entry.duration,
++        interactionId: entry.interactionId,
++        navigationId: entry.navigationId,
++        ...attribution(entry),
++      });
++      const paint = entry.getLargestInteractionContentfulPaint?.();
++      if (paint) reportNavigationPaint(paint, entry);
++    }
++  });
++
++  function reportInteractionPaint(entry) {
++    const context = attribution(entry);
++    if (!context.label) return false;
++    report({
++      type: 'interaction-contentful-paint',
++      startTime: entry.startTime,
++      duration: entry.duration,
++      interactionId: entry.interactionId,
++      navigationId: entry.navigationId,
++      ...context,
++    });
++    return true;
++  }
++
++  observe('interaction-contentful-paint', paintEntries => {
++    for (const entry of paintEntries) {
++      if (!reportInteractionPaint(entry)) remember(pendingPaints, entry, entry);
++      const navigation = navigations.get(entry.interactionId);
++      if (navigation) reportNavigationPaint(entry, navigation);
++    }
++  });
++})();
+diff --git a/performance-monitor.test.cjs b/performance-monitor.test.cjs
+new file mode 100644
+index 0000000..18e4ead
+--- /dev/null
++++ b/performance-monitor.test.cjs
+@@ -0,0 +1,103 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++
++const script = readFileSync(`${__dirname}/performance-monitor.js`, 'utf8');
++
++function setup(types = ['event', 'soft-navigation', 'interaction-contentful-paint']) {
++  const observers = new Map();
++  const listeners = new Map();
++  const emitted = [];
++  class PerformanceObserver {
++    static supportedEntryTypes = types;
++    constructor(callback) { this.callback = callback; }
++    observe(options) { observers.set(options.type, { callback: this.callback, options }); }
++  }
++  const window = { PerformanceObserver, dispatchEvent: event => emitted.push(event.detail) };
++  runInNewContext(script, {
++    window,
++    PerformanceObserver,
++    document: { addEventListener: (type, callback) => listeners.set(type, callback) },
++    CustomEvent: class { constructor(type, { detail }) { this.type = type; this.detail = detail; } },
++  });
++  return {
++    api: window.dailyGrindPerformance,
++    emitted,
++    observers,
++    input: (target, startTime) => listeners.get('pointerdown')({ target, timeStamp: startTime, isTrusted: true }),
++    deliver: (type, entries) => observers.get(type).callback({ getEntries: () => entries }),
++  };
++}
++
++function target(label, tagName = 'DIV') {
++  const region = { dataset: { performanceLabel: label }, tagName };
++  return { closest: selector => selector === 'a' ? { getAttribute: () => '/menu' } : region };
++}
++
++test('unsupported APIs leave a usable, empty monitoring API', () => {
++  const monitor = setup([]);
++  assert.equal(monitor.api.support.interactionContentfulPaint, false);
++  assert.equal(monitor.api.support.softNavigation, false);
++  assert.equal(monitor.observers.size, 0);
++  assert.equal(monitor.api.getEntries().length, 0);
++});
++
++test('fast interactions use original input time even when content paints much later', () => {
++  const monitor = setup();
++  for (const [index, label] of ['navigation', 'order-now', 'seasonal-maple-oat-latte'].entries()) {
++    monitor.input(target(label, label === 'navigation' ? 'NAV' : 'DIV'), 100 + index * 100);
++    monitor.deliver('interaction-contentful-paint', [{
++      startTime: 100 + index * 100, duration: 1400, interactionId: index + 1,
++    }]);
++  }
++  assert.deepEqual(monitor.emitted.map(entry => entry.label), [
++    'navigation', 'order-now', 'seasonal-maple-oat-latte',
++  ]);
++  assert.equal(monitor.emitted[0].control, '/menu');
++  assert.equal(monitor.emitted[1].duration, 1400);
++  assert.equal(monitor.observers.get('interaction-contentful-paint').options.buffered, true);
++});
++
++test('paint delivery before buffered Event Timing still gets attributed by interactionId', () => {
++  const monitor = setup();
++  monitor.deliver('interaction-contentful-paint', [{ startTime: 10, duration: 42, interactionId: 7 }]);
++  assert.equal(monitor.emitted.length, 0);
++  monitor.deliver('event', [{ interactionId: 7, target: target('order-now') }]);
++  assert.equal(monitor.emitted[0].label, 'order-now');
++});
++
++test('soft navigation includes prior paints and excludes unrelated interaction paints from its LCP', () => {
++  const monitor = setup();
++  const paint = {
++    interactionId: 7, navigationId: 1, startTime: 100, duration: 80,
++    largestContentfulPaint: { startTime: 180, size: 100 },
++  };
++  monitor.deliver('interaction-contentful-paint', [paint]);
++  monitor.deliver('soft-navigation', [{
++    interactionId: 7, navigationId: 2, startTime: 100, duration: 50,
++    getLargestInteractionContentfulPaint: () => paint,
++  }]);
++  monitor.deliver('interaction-contentful-paint', [paint]);
++  monitor.deliver('interaction-contentful-paint', [{ ...paint, interactionId: 8 }]);
++  let metrics = monitor.emitted.filter(entry => entry.type === 'soft-navigation-lcp');
++  assert.equal(metrics.length, 1);
++  assert.equal(metrics[0].duration, 80);
++  assert.equal(metrics[0].navigationId, 2);
++  monitor.deliver('interaction-contentful-paint', [{
++    ...paint, largestContentfulPaint: { startTime: 300, size: 200 },
++  }]);
++  metrics = monitor.emitted.filter(entry => entry.type === 'soft-navigation-lcp');
++  assert.equal(metrics[1].duration, 200);
++});
++
++test('retention is bounded and callers cannot mutate stored metrics', () => {
++  const monitor = setup();
++  for (let index = 0; index < 250; index++) {
++    monitor.deliver('soft-navigation', [{ startTime: index, duration: 10, interactionId: index }]);
++  }
++  const entries = monitor.api.getEntries();
++  assert.equal(entries.length, 200);
++  entries[0].duration = 999;
++  assert.equal(monitor.api.getEntries()[0].duration, 10);
++});

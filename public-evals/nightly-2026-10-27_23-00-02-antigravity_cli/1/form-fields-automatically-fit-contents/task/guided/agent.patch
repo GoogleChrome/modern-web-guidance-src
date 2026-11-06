@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,99 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Custom Order / Inquiry Form */
++    .order-form-section {
++      margin-top: 60px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-form-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-form-section p {
++      margin-bottom: 24px;
++    }
++
++    .order-form fieldset {
++      border: 0;
++    }
++
++    .order-form legend {
++      font-weight: 600;
++      margin-bottom: 16px;
++      color: var(--primary);
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-block-end: 0.4rem;
++      color: var(--text);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid #9e9e9e;
++      border-radius: 5px;
++      padding: 0.65rem 0.85rem;
++      min-height: 48px;
++    }
++
++    .form-group input:focus-visible,
++    .form-group select:focus-visible,
++    .form-group textarea:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-group input {
++      field-sizing: content;
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 50ch;
++    }
++
++    .form-group select {
++      field-sizing: content;
++      width: auto;
++      max-inline-size: 50ch;
++    }
++
++    .form-group textarea {
++      field-sizing: content;
++      height: auto;
++      width: 50ch;
++      max-inline-size: 100%;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
++
++    .order-form button[type="submit"] {
++      border: none;
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      min-height: 48px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +285,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-form-section">
++      <h2>Custom Roast &amp; Catering Inquiry</h2>
++      <p>Tell us about your coffee preferences or upcoming event and we will prepare a tailored blend.</p>
++      <form class="order-form" action="/custom-order" method="POST">
++        <fieldset>
++          <legend>Order Details</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full name (Required)</label>
++            <input type="text" id="customer-name" name="customer_name" autocomplete="name" placeholder="Alex Rivera" required>
++          </div>
++
++          <div class="form-group">
++            <label for="roast-option">Signature roast &amp; grind (Required)</label>
++            <select id="roast-option" name="roast_option" required>
++              <option value="espresso">Espresso Roast</option>
++              <option value="house-whole">House Blend (Whole Bean)</option>
++              <option value="ethiopian-pour-over">Single-Origin Ethiopian Yirgacheffe (Pour-Over Grind)</option>
++              <option value="colombian-french-press">Colombian Supremo Dark Roast (Coarse French Press Grind)</option>
++              <option value="decaf-swiss-water">Swiss Water Process Decaf (Medium Drip Grind)</option>
++              <option value="cold-brew-reserve">Artisanal Cold Brew Reserve (Extra-Coarse Steep Grind)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Special instructions &amp; tasting notes</label>
++            <textarea id="tasting-notes" name="tasting_notes" placeholder="Share any flavor profile preferences, grind adjustments, or delivery instructions..."></textarea>
++          </div>
++
++          <button type="submit" class="btn">Submit Order Inquiry</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

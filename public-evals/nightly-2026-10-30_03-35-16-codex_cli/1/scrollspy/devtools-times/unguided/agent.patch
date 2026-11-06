@@ -1,0 +1,156 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..72290fe
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,84 @@
++---
++interface Props {
++    sections: { id: string; label: string }[];
++}
++
++const { sections } = Astro.props;
++---
++
++<section-nav class="sticky top-0 z-20 block border-b border-gray-300 bg-white shadow-sm">
++    <nav aria-label="Page sections" class="flex items-center gap-6 overflow-x-auto px-4 md:px-6">
++        <span class="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-500">On this page</span>
++        {sections.map(({ id, label }, index) => (
++            <a href={`#${id}`} aria-current={index === 0 ? 'location' : undefined}
++                class="section-link shrink-0 border-b-2 border-transparent py-3 text-sm font-semibold text-gray-600 hover:text-gray-950 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-amber-600">
++                {label}
++            </a>
++        ))}
++    </nav>
++</section-nav>
++
++<style>
++    .section-link[aria-current="location"] {
++        border-bottom-color: var(--color-amber-500);
++        color: var(--color-gray-950);
++    }
++</style>
++
++<script>
++    class SectionNav extends HTMLElement {
++        private cleanup?: () => void;
++
++        connectedCallback() {
++            const links = Array.from(this.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++            const entries = links.flatMap(link => {
++                const section = document.getElementById(link.hash.slice(1));
++                return section ? [{ link, section }] : [];
++            });
++            if (!entries.length) return;
++
++            let frame = 0;
++            const update = () => {
++                frame = 0;
++                // The section reaching the area just below the sticky menu is current.
++                const readingLine = this.getBoundingClientRect().bottom + 24;
++                let current = entries[0];
++                for (const entry of entries) {
++                    if (entry.section.getBoundingClientRect().top <= readingLine) current = entry;
++                }
++                // A short final section may never reach the reading line.
++                if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
++                    current = entries[entries.length - 1];
++                }
++                for (const entry of entries) {
++                    if (entry === current) entry.link.setAttribute('aria-current', 'location');
++                    else entry.link.removeAttribute('aria-current');
++                }
++            };
++            const schedule = () => {
++                if (!frame) frame = requestAnimationFrame(update);
++            };
++            window.addEventListener('scroll', schedule, { passive: true });
++            window.addEventListener('resize', schedule);
++            window.addEventListener('hashchange', schedule);
++            // Recalculate when images, ads, or fonts change the page layout.
++            const observer = new ResizeObserver(schedule);
++            observer.observe(document.body);
++            update();
++
++            this.cleanup = () => {
++                window.removeEventListener('scroll', schedule);
++                window.removeEventListener('resize', schedule);
++                window.removeEventListener('hashchange', schedule);
++                observer.disconnect();
++                cancelAnimationFrame(frame);
++            };
++        }
++
++        disconnectedCallback() {
++            this.cleanup?.();
++        }
++    }
++
++    if (!customElements.get('section-nav')) customElements.define('section-nav', SectionNav);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..6a23a14 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import SectionNav from '../components/SectionNav.astro';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -38,6 +39,13 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav sections={[
++        { id: 'top-stories', label: 'Top Stories' },
++        { id: 'top-news', label: 'Top News' },
++        { id: 'world', label: 'World' },
++        { id: 'politics', label: 'Politics' },
++    ]} />
++    <div id="top-stories" class="scroll-mt-16" role="region" aria-label="Top Stories">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -58,6 +66,7 @@ politicsArticles[2] = {
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +74,26 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <div id="top-news" class="scroll-mt-16" role="region" aria-label="Top News">
++            <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        </div>
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <div id="world" class="scroll-mt-16" role="region" aria-label="World">
++            <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        </div>
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <div id="politics" class="scroll-mt-16" role="region" aria-label="Politics">
++            <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        </div>
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

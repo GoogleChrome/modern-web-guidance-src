@@ -1,0 +1,250 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -40,31 +40,141 @@
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1rem, 4vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-button, .close-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6rem;
++      min-height: 44px;
++      padding: 0.5rem 0.8rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++    }
++
++    .menu-button svg, .close-button svg {
++      width: 20px;
++      height: 20px;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    html:has(.nav-drawer[open]),
++    body:has(.nav-drawer[open]) {
++      overflow: hidden;
++    }
++
++    .nav-drawer {
++      --drawer-width: min(340px, 85vw);
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      max-width: none;
++      height: 100%;
++      height: 100dvh;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior: contain;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++    }
++
++    .nav-drawer::-webkit-scrollbar {
++      display: none;
++    }
++
++    .nav-drawer::backdrop {
++      background: rgb(0 0 0 / 55%);
++    }
++
++    .drawer-track {
+       display: flex;
+-      list-style: none;
++      width: calc(100% + var(--drawer-width));
++      height: 100%;
++      overflow: clip;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer-dismiss {
++      flex: 0 0 calc(100% - var(--drawer-width));
++      border: 0;
++      padding: 0;
++      background: transparent;
++      scroll-snap-align: start;
+     }
+ 
+-    nav a {
++    .drawer-panel {
++      flex: 0 0 var(--drawer-width);
++      min-width: 0;
++      padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
++      background: var(--primary);
++      overflow-y: auto;
++      scroll-snap-align: end;
++    }
++
++    .nav-drawer[open] .drawer-panel {
++      animation: drawer-enter 220ms ease-out;
++    }
++
++    @keyframes drawer-enter {
++      from { transform: translateX(100%); }
++      to { transform: translateX(0); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-drawer[open] .drawer-panel { animation: none; }
++    }
++
++    .drawer-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      margin-bottom: 2rem;
++    }
++
++    .drawer-heading h2 {
++      font-size: 1.3rem;
++    }
++
++    .drawer-panel ul {
++      display: grid;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .drawer-panel a {
++      display: block;
++      padding: 0.75rem;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      border-radius: 4px;
+     }
+ 
+-    nav a:hover {
++    .drawer-panel a:hover {
+       color: var(--accent);
++      background: rgb(255 255 255 / 6%);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+@@ -156,19 +266,45 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <header class="site-header">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <button class="menu-button" type="button" aria-haspopup="dialog" aria-controls="nav-drawer" aria-expanded="false">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++      Menu
++    </button>
++  </header>
+ 
++  <dialog id="nav-drawer" class="nav-drawer" aria-labelledby="drawer-title">
++    <div class="drawer-track">
++      <button class="drawer-dismiss" type="button" aria-label="Close navigation" tabindex="-1"></button>
++      <div class="drawer-panel">
++        <div class="drawer-heading">
++          <h2 id="drawer-title">Explore the Grind</h2>
++          <form method="dialog">
++            <button class="close-button" aria-label="Close navigation" autofocus>
++              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
++                <path d="m6 6 12 12M6 18 18 6" />
++              </svg>
++            </button>
++          </form>
++        </div>
++        <nav aria-label="Main navigation">
++          <ul>
++            <li><a href="/menu">Menu</a></li>
++            <li><a href="/locations">Locations</a></li>
++            <li><a href="/rewards">Rewards</a></li>
++            <li><a href="/account">My Account</a></li>
++            <li><a href="/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
++      </div>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +342,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const menuButton = document.querySelector('.menu-button');
++    const drawer = document.querySelector('#nav-drawer');
++
++    menuButton.addEventListener('click', () => {
++      drawer.showModal();
++      menuButton.setAttribute('aria-expanded', 'true');
++      drawer.scrollTo({ left: drawer.scrollWidth - drawer.clientWidth, behavior: 'instant' });
++    });
++
++    document.querySelector('.drawer-dismiss').addEventListener('click', () => drawer.close());
++
++    // The browser handles the swipe and snaps to either the open or closed position.
++    drawer.addEventListener('scrollend', () => {
++      if (drawer.open && drawer.scrollLeft <= 1) drawer.close();
++    });
++
++    drawer.addEventListener('close', () => {
++      menuButton.setAttribute('aria-expanded', 'false');
++      menuButton.focus({ preventScroll: true });
++    });
++  </script>
+ </body>
+ 
+ </html>

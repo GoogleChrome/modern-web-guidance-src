@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+index 66c9173..bf4ab5b 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Measure how long interactions and soft navigations take to paint new content.
++    // Both entry types are Chromium-only, so feature-detect and skip elsewhere.
++    (() => {
++      const types = PerformanceObserver.supportedEntryTypes || [];
++      const hasIcp = types.includes('interaction-contentful-paint');
++      const hasSoftNav = types.includes('soft-navigation');
++      if (!hasIcp) return;
++
++      // Report the interaction -> contentful paint latency (entry.duration is
++      // presentationTime - startTime, i.e. relative to the interaction start).
++      new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          console.log('[ICP]', {
++            interactionId: entry.interactionId,
++            duration: Math.round(entry.duration),
++            element: entry.largestContentfulPaint?.element,
++          });
++        }
++      }).observe({ type: 'interaction-contentful-paint', buffered: true });
++
++      if (!hasSoftNav) return;
++
++      let activeNav = null;
++      let activeLcp = null;
++
++      const report = () => {
++        if (!activeNav) return;
++        console.log('[Soft nav]', {
++          url: activeNav.name,
++          fcp: Math.round(activeNav.duration),
++          lcp: activeLcp ? Math.round(activeLcp.duration) : null,
++          lcpElement: activeLcp?.largestContentfulPaint?.element ?? null,
++        });
++        activeNav = activeLcp = null;
++      };
++
++      new PerformanceObserver((list) => {
++        for (const nav of list.getEntries()) {
++          report();
++          activeNav = nav;
++          // Include paints that happened before the URL changed.
++          activeLcp = nav.getLargestInteractionContentfulPaint();
++        }
++      }).observe({ type: 'soft-navigation', buffered: true });
++
++      // Correlate by interactionId, not navigationId.
++      new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          if (activeNav && entry.interactionId === activeNav.interactionId) {
++            activeLcp = entry;
++          }
++        }
++      }).observe({ type: 'interaction-contentful-paint', buffered: true });
++
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden') report();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

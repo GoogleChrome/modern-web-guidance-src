@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,43 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    #search-input {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 10px;
++      padding: 10px 16px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      outline: none;
++      transition: border-color 0.3s, box-shadow 0.3s;
++      font-family: inherit;
++      color: var(--text);
++      background-color: white;
++    }
++
++    #search-input:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 5px rgba(255, 171, 64, 0.5);
++    }
++
++    #search-input::placeholder {
++      color: #8d6e63;
++      opacity: 0.8;
++    }
++
++    mark.highlight,
++    .highlight,
++    mark {
++      background-color: gold;
++      color: inherit;
++      padding: 0;
++      margin: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +211,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="text" id="search-input" placeholder="Search seasonal favorites..." autocomplete="off">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +242,95 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const searchInput = document.getElementById('search-input');
++      if (!searchInput) return;
++
++      function escapeRegExp(string) {
++        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++      }
++
++      function clearHighlights() {
++        const highlights = document.querySelectorAll('.card mark, .card .highlight');
++        const parents = new Set();
++        highlights.forEach(el => {
++          const parent = el.parentNode;
++          if (parent) {
++            parents.add(parent);
++            parent.replaceChild(document.createTextNode(el.textContent), el);
++          }
++        });
++        parents.forEach(parent => parent.normalize());
++      }
++
++      function highlightTextInNode(node, regex) {
++        if (node.nodeType === Node.TEXT_NODE) {
++          const text = node.nodeValue;
++          regex.lastIndex = 0;
++          if (!regex.test(text)) return;
++          regex.lastIndex = 0;
++
++          const fragment = document.createDocumentFragment();
++          let lastIndex = 0;
++          let match;
++
++          while ((match = regex.exec(text)) !== null) {
++            if (match[0].length === 0) {
++              regex.lastIndex++;
++              continue;
++            }
++            if (match.index > lastIndex) {
++              fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
++            }
++            const mark = document.createElement('mark');
++            mark.className = 'highlight';
++            mark.style.backgroundColor = 'gold';
++            mark.textContent = match[0];
++            fragment.appendChild(mark);
++
++            lastIndex = regex.lastIndex;
++          }
++
++          if (lastIndex < text.length) {
++            fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
++          }
++
++          node.parentNode.replaceChild(fragment, node);
++        } else if (node.nodeType === Node.ELEMENT_NODE) {
++          if (
++            node.tagName === 'SCRIPT' ||
++            node.tagName === 'STYLE' ||
++            node.tagName === 'MARK' ||
++            node.classList.contains('highlight')
++          ) {
++            return;
++          }
++          const children = Array.from(node.childNodes);
++          for (const child of children) {
++            highlightTextInNode(child, regex);
++          }
++        }
++      }
++
++      function handleSearch() {
++        clearHighlights();
++        const query = searchInput.value.trim();
++        if (!query) return;
++
++        const escaped = query.split(/\s+/).map(escapeRegExp).join('\\s+');
++        const regex = new RegExp(escaped, 'gi');
++
++        const cards = document.querySelectorAll('.card');
++        cards.forEach(card => highlightTextInNode(card, regex));
++      }
++
++      searchInput.addEventListener('input', handleSearch);
++      searchInput.addEventListener('keyup', handleSearch);
++      searchInput.addEventListener('change', handleSearch);
++    })();
++  </script>
+ </body>
+ 
+ </html>

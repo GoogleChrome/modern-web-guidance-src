@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,31 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promotion countdown */
++    .promo-timer {
++      margin-top: 15px;
++      padding: 12px;
++      border: 1px dashed var(--accent);
++      border-radius: 6px;
++      background: #fff8ef;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer .promo-countdown {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-timer .promo-elapsed {
++      font-size: 0.8rem;
++      opacity: 0.85;
++    }
++
++    .promo-timer.is-ended .promo-countdown {
++      color: #8d6e63;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +203,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-promo-timer"
++               data-start="2025-11-01T00:00" data-end="2026-03-01T00:00">
++            <p class="promo-countdown">Limited-time offer &mdash; ends March 1, 2026</p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +234,120 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Maple Oat Latte promotion countdown.
++    // Start/end are wall-clock times (no offset) interpreted in the visitor's
++    // local time zone. Uses the Temporal API when the browser supports it and
++    // falls back to Date otherwise. Runs once on page load.
++    (function () {
++      var el = document.getElementById('maple-promo-timer');
++      if (!el) return;
++      var countdownEl = el.querySelector('.promo-countdown');
++      var elapsedEl = el.querySelector('.promo-elapsed');
++
++      function plural(n, word) {
++        return n + ' ' + word + (n === 1 ? '' : 's');
++      }
++
++      // Parse "YYYY-MM-DDTHH:MM" into numeric parts (avoids engine-specific
++      // Date string parsing).
++      function parts(str) {
++        var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(str);
++        if (!m) throw new Error('Invalid promo date: ' + str);
++        return { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
++      }
++
++      // Each engine returns { now, start, end, diff(a, b) -> {days, hours},
++      // compare(a, b) -> -1/0/1, endLabel }.
++      function temporalEngine(startStr, endStr) {
++        var T = globalThis.Temporal;
++        var tz = T.Now.timeZoneId();
++        var toZdt = function (s) {
++          return T.PlainDateTime.from(s).toZonedDateTime(tz);
++        };
++        var end = toZdt(endStr);
++        return {
++          now: T.Now.zonedDateTimeISO(tz),
++          start: toZdt(startStr),
++          end: end,
++          compare: T.ZonedDateTime.compare,
++          // Calendar-aware: a "day" is a local calendar day, so DST shifts
++          // don't skew the result.
++          diff: function (a, b) {
++            var d = a.until(b, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++            return { days: d.days, hours: d.hours };
++          },
++          endInstantMs: end.epochMilliseconds
++        };
++      }
++
++      function dateEngine(startStr, endStr) {
++        var toDate = function (s) {
++          var p = parts(s);
++          return new Date(p.y, p.mo - 1, p.d, p.h, p.mi);
++        };
++        var end = toDate(endStr);
++        return {
++          now: new Date(),
++          start: toDate(startStr),
++          end: end,
++          compare: function (a, b) { return a < b ? -1 : a > b ? 1 : 0; },
++          // Count whole local calendar days (DST-safe), then remaining hours.
++          diff: function (a, b) {
++            var days = Math.floor((b - a) / 864e5);
++            var cursor = new Date(a);
++            cursor.setDate(cursor.getDate() + days);
++            while (cursor > b) { cursor.setDate(cursor.getDate() - 1); days--; }
++            for (;;) {
++              var next = new Date(cursor);
++              next.setDate(next.getDate() + 1);
++              if (next > b) break;
++              cursor = next; days++;
++            }
++            return { days: days, hours: Math.floor((b - cursor) / 36e5) };
++          },
++          endInstantMs: end.getTime()
++        };
++      }
++
++      var engine;
++      try {
++        engine = (typeof globalThis.Temporal !== 'undefined')
++          ? temporalEngine(el.dataset.start, el.dataset.end)
++          : dateEngine(el.dataset.start, el.dataset.end);
++      } catch (e) {
++        engine = dateEngine(el.dataset.start, el.dataset.end);
++      }
++
++      var endLabel = new Intl.DateTimeFormat(undefined, {
++        dateStyle: 'long', timeStyle: 'short'
++      }).format(new Date(engine.endInstantMs));
++
++      var now = engine.now;
++      var beforeStart = engine.compare(now, engine.start) < 0;
++      var ended = engine.compare(now, engine.end) >= 0;
++
++      if (ended) {
++        el.classList.add('is-ended');
++        countdownEl.textContent = 'This offer ended on ' + endLabel + '.';
++      } else {
++        var left = engine.diff(now, engine.end);
++        countdownEl.textContent = plural(left.days, 'day') + ' and ' +
++          plural(left.hours, 'hour') + ' left \u2014 offer ends ' + endLabel + '.';
++      }
++
++      if (beforeStart) {
++        var until = engine.diff(now, engine.start);
++        elapsedEl.textContent = 'Promotion starts in ' + plural(until.days, 'day') +
++          ' and ' + plural(until.hours, 'hour') + '.';
++      } else {
++        var since = engine.diff(engine.start, now);
++        elapsedEl.textContent = plural(since.days, 'day') + ' and ' +
++          plural(since.hours, 'hour') + ' since the promotion started.';
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,13 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
++    /* Note: Directly transitioning between different intrinsic keyword sizes (such as min-content to max-content, or fit-content to auto) isn't supported; calc-size() only supports transitioning between a definite length/percentage and an intrinsic size keyword, or between calculations sharing the same intrinsic size basis. */
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -73,9 +76,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      block-size: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -94,9 +97,9 @@
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-inline-size: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+@@ -119,8 +122,24 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-badge {
++      display: inline-block;
++      inline-size: clamp(100px, calc-size(max-content, size * 1.2), 100%);
++      background-color: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding-block: 4px;
++      padding-inline: 8px;
++      margin-block-end: 10px;
++      border-radius: 999px;
++      text-align: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -134,8 +153,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* FAQ / Accordion Section */
++    .faq-section {
++      margin-block-start: 48px;
++    }
++
++    .accordion {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-block-start: 20px;
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      inline-size: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding-block: 16px;
++      padding-inline: 20px;
++      font-size: 1.1rem;
++      font-weight: bold;
++      text-align: start;
++      cursor: pointer;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      transition: background 0.3s;
++    }
++
++    #accordion-toggle:hover {
++      background: #3e2723;
++    }
++
++    #accordion-toggle::after {
++      content: '+';
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    #accordion-toggle[aria-expanded="true"]::after {
++      content: '−';
++    }
++
++    .accordion-content {
++      block-size: 0;
++      overflow: clip;
++      padding-inline: 20px;
++      transition: block-size 0.35s ease;
++    }
++
++    .accordion-content.expanded,
++    .accordion.open .accordion-content,
++    #accordion-toggle[aria-expanded="true"] + .accordion-content {
++      block-size: calc-size(auto, size + 2rem);
++    }
++
++    .accordion-content-inner {
++      padding-block-start: 20px;
++    }
++
++    .accordion-content p + p {
++      margin-block-start: 12px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,8 +268,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,10 +285,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section">
++      <h2 style="text-align: center;">Our Sourcing</h2>
++      <div class="accordion">
++        <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">
++          How We Source Our Coffee Beans
++        </button>
++        <div id="sourcing-content" class="accordion-content">
++          <div class="accordion-content-inner">
++            <p>We partner directly with small-scale, sustainable farms across Latin America, East Africa, and Southeast Asia. Every batch is 100% Fair Trade certified and shade-grown to protect local ecosystems.</p>
++            <p>Our roasters travel seasonally to Cup of Excellence auctions and cooperative mills to ensure fair wages for farmers and peak flavor profiles in every cup we serve.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    const accordionToggle = document.getElementById('accordion-toggle');
++    const accordionContent = document.querySelector('.accordion-content');
++
++    if (accordionToggle && accordionContent) {
++      accordionToggle.addEventListener('click', () => {
++        const isExpanded = accordionToggle.getAttribute('aria-expanded') === 'true';
++        accordionToggle.setAttribute('aria-expanded', String(!isExpanded));
++        accordionContent.classList.toggle('expanded', !isExpanded);
++        accordionToggle.closest('.accordion')?.classList.toggle('open', !isExpanded);
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

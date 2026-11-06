@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,181 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SVG Masking & Shaped Elements */
++    .barista-section {
++      margin-top: 50px;
++      padding: 30px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
++    }
++
++    .barista-card {
++      display: flex;
++      align-items: center;
++      gap: 30px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .shaped-avatar {
++      width: 220px;
++      height: 220px;
++      object-fit: cover;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url(#splat-mask);
++      mask-image: url(#splat-mask);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-avatar {
++        clip-path: inset(5% round 15px);
++      }
++    }
++
++    .barista-info {
++      flex: 1;
++      min-width: 280px;
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .barista-subtitle {
++      color: var(--accent);
++      font-weight: 600;
++      margin-bottom: 12px;
++    }
++
++    /* Loyalty Banner (Adjacent Element Masking) */
++    .loyalty-section {
++      margin-top: 50px;
++    }
++
++    .unified-card {
++      display: flex;
++      max-width: 680px;
++      margin: 0 auto;
++      filter: drop-shadow(0 10px 24px rgba(78, 52, 46, 0.2));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      background-color: var(--primary);
++      color: #fff;
++      padding: 30px;
++      border-top-left-radius: 16px;
++      border-bottom-left-radius: 16px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++      font-size: 1.4rem;
++    }
++
++    .unified-card .card-body p {
++      color: var(--light);
++      font-size: 0.95rem;
++      margin-bottom: 15px;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++      color: #000;
++    }
++
++    .unified-card .card-accent {
++      width: 70px;
++      background-color: var(--primary);
++      border-top-right-radius: 16px;
++      border-bottom-right-radius: 16px;
++      -webkit-mask-image: url(#accent-cutout-mask);
++      mask-image: url(#accent-cutout-mask);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    /* Promo Card (Gradient Masking) */
++    .promo-section {
++      margin-top: 50px;
++      filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.12));
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, #4e342e, #8d6e63);
++      color: white;
++      padding: 44px 28px 28px 28px;
++      border-radius: 16px;
++      text-align: center;
++      max-width: 520px;
++      margin: 0 auto;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++    }
++
++    .promo-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    .gradient-masked-card h3 {
++      font-size: 1.5rem;
++      margin-bottom: 10px;
++    }
++
++    .gradient-masked-card p {
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++      opacity: 0.95;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Hidden SVG defining scalable mask shapes -->
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true" focusable="false">
++    <defs>
++      <!-- 1) Organic paint splat mask using objectBoundingBox coordinates (0 to 1) -->
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++
++      <!-- 2) Custom cutout curve mask for adjacent decorative card accent -->
++      <mask id="accent-cutout-mask" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +362,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- 1) Featured Barista Profile -->
++    <section class="barista-section">
++      <div class="barista-card">
++        <img src="https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=600&q=80" alt="Elena Rostova, Featured Master Barista" class="shaped-avatar">
++        <div class="barista-info">
++          <h2>Featured Barista of the Month</h2>
++          <p class="barista-subtitle">Meet Elena Rostova &mdash; Head Roaster &amp; Latte Art Champion</p>
++          <p>Elena crafts our signature seasonal blends and curates single-origin beans from sustainable family farms. Her artisanal brewing technique ensures the perfect extraction in every cup.</p>
++          <a href="/about" class="btn">Meet the Roasters</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- 2) Loyalty Banner with Unmasked Text and Masked Accent -->
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Daily Grind Loyalty Rewards</h3>
++          <p>Collect beans with every brew and redeem them for free signature drinks, whole-bean bags, and invitation-only tasting flights.</p>
++          <a href="/rewards" class="btn btn-accent">Join Rewards Program</a>
++        </div>
++        <div class="card-accent"></div>
++      </div>
++    </section>
++
++    <!-- 3) Promo Card with Gradient Top Notch Cutout -->
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <span class="promo-badge">Limited Time Offer</span>
++        <h3>20% Off Your First Coffee Subscription</h3>
++        <p>Use promo code <strong>ROAST20</strong> at checkout to receive 20% off whole-bean freshly roasted deliveries for your first three months.</p>
++        <a href="/order-online" class="btn btn-accent">Claim Discount</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

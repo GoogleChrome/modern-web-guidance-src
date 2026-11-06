@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    [interestfor="seasonal-preview"] {
++      --interest-delay-start: 0.2s;
++      --interest-delay-end: 0s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    [interestfor="seasonal-preview"]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #seasonal-preview {
++      margin-top: 24px;
++      padding: 24px;
++      border: 2px solid var(--preview-accent, var(--secondary));
++      border-radius: 8px;
++      background: white;
++      text-align: center;
++    }
++
++    #seasonal-preview:is(:interest-target, .interest-target) {
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,22 +211,32 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal">
++            <button type="submit" class="btn" interestfor="seasonal-preview"
++              data-drink="Maple Oat Latte" data-accent="#a65f24">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso">
++            <button type="submit" class="btn" interestfor="seasonal-preview"
++              data-drink="Dark Roast Espresso" data-accent="#4e342e">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew">
++            <button type="submit" class="btn" interestfor="seasonal-preview"
++              data-drink="Cold Brew" data-accent="#386878">View Details</button>
++          </form>
+         </div>
+       </div>
+     </section>
++    <div id="seasonal-preview">Select a drink to preview</div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +247,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const preview = document.getElementById('seasonal-preview');
++    let activeSource = null;
++
++    preview.addEventListener('interest', (event) => {
++      activeSource = event.source;
++      preview.textContent = event.source.dataset.drink;
++      preview.style.setProperty('--preview-accent', event.source.dataset.accent);
++    });
++
++    preview.addEventListener('loseinterest', (event) => {
++      if (event.source !== activeSource) return;
++      activeSource = null;
++      preview.textContent = 'Select a drink to preview';
++      preview.style.removeProperty('--preview-accent');
++    });
++
++    // This static page has no bundler; load the pinned polyfill only when needed.
++    if (!Object.hasOwn(HTMLButtonElement.prototype, 'interestForElement')) {
++      await import('https://unpkg.com/interestfor@1.0.10/src/interestfor.min.js');
++    }
++  </script>
++
+ </body>
+ 
+ </html>

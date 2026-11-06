@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,39 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sign-in */
++    .signin {
++      max-width: 360px;
++      margin: 0 auto;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-top: 12px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 8px 10px;
++      margin-top: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -175,8 +206,23 @@
+   </header>
+ 
+   <main class="container">
+     <section>
++      <h2 style="text-align: center;">Sign In</h2>
++      <form id="signin-form" class="signin">
++        <label for="username">Email
++          <input id="username" name="username" type="email" autocomplete="username webauthn" required>
++        </label>
++        <label for="password">Password
++          <input id="password" name="password" type="password" autocomplete="current-password" required>
++        </label>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      </form>
++    </section>
++  </main>
++
++  <main class="container">
++    <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +252,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const b64urlToBuffer = (s) => {
++      const b64 = s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '=');
++      return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
++    };
++
++    const bufferToB64url = (buf) =>
++      btoa(String.fromCharCode(...new Uint8Array(buf)))
++        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++
++    function decodeCreationOptions(json) {
++      if (PublicKeyCredential.parseCreationOptionsFromJSON) {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++      }
++      return {
++        ...json,
++        challenge: b64urlToBuffer(json.challenge),
++        user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++        excludeCredentials: (json.excludeCredentials || []).map((c) => ({ ...c, id: b64urlToBuffer(c.id) })),
++      };
++    }
++
++    function encodeCredential(cred) {
++      if (cred.toJSON) return cred.toJSON();
++      const r = cred.response;
++      return {
++        id: cred.id,
++        rawId: bufferToB64url(cred.rawId),
++        type: cred.type,
++        authenticatorAttachment: cred.authenticatorAttachment,
++        clientExtensionResults: cred.getClientExtensionResults(),
++        response: {
++          clientDataJSON: bufferToB64url(r.clientDataJSON),
++          attestationObject: bufferToB64url(r.attestationObject),
++          transports: r.getTransports ? r.getTransports() : [],
++        },
++      };
++    }
++
++    // Silently create a passkey after a password sign-in. Never surfaces UI or errors.
++    async function promotePasskey(username) {
++      try {
++        if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return;
++        const caps = await PublicKeyCredential.getClientCapabilities();
++        if (!caps || !caps.conditionalCreate) return;
++
++        const optionsRes = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ username }),
++        });
++        if (!optionsRes.ok) return;
++
++        const credential = await navigator.credentials.create({
++          publicKey: decodeCreationOptions(await optionsRes.json()),
++          mediation: 'conditional',
++        });
++        if (!credential) return;
++
++        await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(encodeCredential(credential)),
++        });
++      } catch (e) {
++        // Intentionally silent: passkey promotion is best-effort.
++      }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++      const username = document.getElementById('username').value;
++      // Password sign-in succeeded; promote to a passkey in the background.
++      promotePasskey(username);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

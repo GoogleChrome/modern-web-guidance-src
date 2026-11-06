@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,71 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: block;
++      opacity: 1;
++      scale: 1;
++      transition:
++        display 0.4s,
++        opacity 0.4s ease-out,
++        scale 0.4s ease-out;
++      transition-behavior: allow-discrete;
+     }
+ 
++    @starting-style {
++      .card {
++        opacity: 0;
++        scale: 0.9;
++      }
++    }
++
++    .card:where([hidden], [data-closing]) {
++      opacity: 0;
++      scale: 0.9;
++    }
++
++    .card[hidden] {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        scale: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        .card {
++          scale: none;
++        }
++      }
++
++      .card:where([hidden], [data-closing]) {
++        scale: none;
++      }
++    }
++
++    .promo-section {
++      margin-top: 60px;
++    }
++
++    .promo-controls {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin: 20px 0;
++      flex-wrap: wrap;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++      margin-top: 0;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -194,8 +255,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo-section">
++      <h2 style="text-align: center;">Special Promotions</h2>
++      <div class="promo-controls">
++        <button id="toggleBtn" class="btn" type="button">Toggle Promo</button>
++        <button id="addBtn" class="btn" type="button">Add Promo Card</button>
++        <button id="removeBtn" class="btn" type="button">Remove Last Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <h3>2-for-1 Morning Pastries</h3>
++          <p>Buy any handcrafted espresso drink before 10 AM and get two fresh croissants for the price of one.</p>
++          <a href="/rewards" class="btn">Claim Offer</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +283,108 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    async function hideElement(el) {
++      if (canTransitionDisplay()) {
++        el.hidden = true;
++      } else {
++        el.setAttribute('data-closing', '');
++      }
++
++      const animations = el.getAnimations();
++      if (animations.length > 0) {
++        await Promise.race([
++          Promise.allSettled(animations.map((a) => a.finished)),
++          new Promise((r) => setTimeout(r, 2000)),
++        ]);
++      }
++
++      if (el.hasAttribute('data-closing')) {
++        el.removeAttribute('data-closing');
++        el.hidden = true;
++      }
++    }
++
++    function showElement(el) {
++      el.removeAttribute('data-closing');
++      el.hidden = false;
++    }
++
++    async function removeElement(el) {
++      await hideElement(el);
++      el.remove();
++    }
++
++    const domContainer = document.getElementById('domContainer');
++    const toggleCard = document.getElementById('toggleCard');
++    const toggleBtn = document.getElementById('toggleBtn');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++
++    const promos = [
++      {
++        title: 'Happy Hour Cold Brew',
++        description: 'Enjoy 50% off all cold brew drinks every weekday between 2 PM and 4 PM.',
++      },
++      {
++        title: 'Free Oat Milk Upgrade',
++        description: 'Rewards members get complimentary plant-based milk upgrades all month long.',
++      },
++      {
++        title: 'Roaster’s Choice Bundle',
++        description: 'Take home two bags of single-origin whole bean coffee and save 20%.',
++      },
++    ];
++    let promoIndex = 0;
++
++    toggleBtn.addEventListener('click', () => {
++      if (toggleCard.hidden || toggleCard.hasAttribute('data-closing')) {
++        showElement(toggleCard);
++      } else {
++        hideElement(toggleCard);
++      }
++    });
++
++    addBtn.addEventListener('click', () => {
++      const promo = promos[promoIndex % promos.length];
++      promoIndex++;
++
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.innerHTML = `
++        <h3>${promo.title}</h3>
++        <p>${promo.description}</p>
++        <a href="/rewards" class="btn">Claim Offer</a>
++      `;
++      domContainer.appendChild(card);
++    });
++
++    removeBtn.addEventListener('click', () => {
++      const cards = [...domContainer.querySelectorAll('.card:not([data-closing]):not([data-removing])')];
++      const lastCard = cards.at(-1);
++      if (lastCard) {
++        lastCard.setAttribute('data-removing', '');
++        removeElement(lastCard);
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

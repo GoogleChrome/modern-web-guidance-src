@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,218 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const TOOL_NAME = 'get_menu_item_details';
++
++      const MENU_CATALOG = [
++        {
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          category: 'Seasonal Favorites',
++          price: '$5.75',
++          sizes: ['Small (12oz)', 'Medium (16oz)', 'Large (20oz)'],
++          calories: 210,
++          ingredients: ['Espresso', 'Steamed oat milk', 'Pure Vermont maple syrup', 'Cinnamon dusting'],
++          dietary: ['Dairy-Free', 'Vegan'],
++          url: '/menu/seasonal'
++        },
++        {
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          category: 'Espresso & Coffee',
++          price: '$3.50',
++          sizes: ['Single Shot', 'Double Shot'],
++          calories: 5,
++          ingredients: ['100% Arabica dark-roasted espresso beans', 'Filtered water'],
++          dietary: ['Dairy-Free', 'Vegan', 'Sugar-Free'],
++          url: '/menu/espresso'
++        },
++        {
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          category: 'Cold Coffee',
++          price: '$4.75',
++          sizes: ['Medium (16oz)', 'Large (20oz)'],
++          calories: 15,
++          ingredients: ['Coarse-ground specialty coffee blend', 'Cold filtered water'],
++          dietary: ['Dairy-Free', 'Vegan', 'Unsweetened'],
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      function getMenuItems() {
++        const itemsByName = new Map();
++        for (const item of MENU_CATALOG) {
++          itemsByName.set(item.name.toLowerCase(), { ...item });
++        }
++
++        const cards = document.querySelectorAll('.card');
++        cards.forEach((card) => {
++          const titleEl = card.querySelector('h3');
++          const descEl = card.querySelector('p');
++          const linkEl = card.querySelector('a');
++          const name = titleEl ? titleEl.textContent.trim() : '';
++          if (!name) return;
++
++          const key = name.toLowerCase();
++          const existing = itemsByName.get(key) || {};
++          itemsByName.set(key, {
++            ...existing,
++            name,
++            description: descEl ? descEl.textContent.trim() : (existing.description || ''),
++            url: linkEl ? linkEl.getAttribute('href') : (existing.url || '')
++          });
++        });
++
++        return Array.from(itemsByName.values());
++      }
++
++      function findMenuItemByName(rawQuery) {
++        const query = String(rawQuery || '').trim().toLowerCase();
++        const items = getMenuItems();
++        if (!query) {
++          return { item: null, items };
++        }
++
++        const exactMatch = items.find((item) => item.name.toLowerCase() === query);
++        if (exactMatch) {
++          return { item: exactMatch, items };
++        }
++
++        const partialMatch = items.find(
++          (item) =>
++            item.name.toLowerCase().includes(query) ||
++            query.includes(item.name.toLowerCase())
++        );
++        return { item: partialMatch || null, items };
++      }
++
++      let controller = null;
++      let registrationHandle = null;
++      let isRegistered = false;
++
++      const menuLookupTool = {
++        name: TOOL_NAME,
++        description:
++          'Look up detailed information for a menu item at The Daily Grind (such as Maple Oat Latte, Dark Roast Espresso, or Cold Brew) by its name.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description:
++                'The name of the menu item to look up (for example, "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew").'
++            }
++          },
++          required: ['name']
++        },
++        annotations: {
++          readOnlyHint: true
++        },
++        async execute(input) {
++          const requestedName =
++            typeof input === 'string'
++              ? input
++              : input?.name ??
++                input?.itemName ??
++                input?.item_name ??
++                input?.item ??
++                input?.query ??
++                '';
++
++          const { item, items } = findMenuItemByName(requestedName);
++
++          if (!item) {
++            const availableNames = items.map((entry) => entry.name);
++            const message = `Menu item "${requestedName}" was not found. Available menu items: ${availableNames.join(', ')}.`;
++            return {
++              found: false,
++              error: message,
++              availableItems: availableNames,
++              content: [{ type: 'text', text: message }]
++            };
++          }
++
++          const summaryText = `${item.name}: ${item.description}${item.price ? ` (Price: ${item.price})` : ''}`;
++          return {
++            found: true,
++            ...item,
++            item,
++            content: [
++              {
++                type: 'text',
++                text: JSON.stringify(item)
++              },
++              {
++                type: 'text',
++                text: summaryText
++              }
++            ]
++          };
++        }
++      };
++
++      function registerMenuTool() {
++        if (isRegistered || !navigator.modelContext || typeof navigator.modelContext.registerTool !== 'function') {
++          return;
++        }
++
++        controller = new AbortController();
++        try {
++          registrationHandle = navigator.modelContext.registerTool(menuLookupTool, {
++            signal: controller.signal
++          });
++          isRegistered = true;
++        } catch (err) {
++          console.error('Failed to register WebMCP menu lookup tool:', err);
++        }
++      }
++
++      function cleanupMenuTool() {
++        if (!isRegistered) return;
++        isRegistered = false;
++
++        if (controller) {
++          try {
++            controller.abort();
++          } catch (err) {
++            // Ignore abort errors during unload
++          }
++          controller = null;
++        }
++
++        if (navigator.modelContext && typeof navigator.modelContext.unregisterTool === 'function') {
++          try {
++            navigator.modelContext.unregisterTool(TOOL_NAME);
++          } catch (err) {
++            // Ignore errors if already unregistered via AbortSignal
++          }
++        }
++
++        if (registrationHandle) {
++          try {
++            if (typeof registrationHandle.unregister === 'function') {
++              registrationHandle.unregister();
++            } else if (typeof registrationHandle.then === 'function') {
++              registrationHandle.then((res) => res?.unregister?.()).catch(() => {});
++            }
++          } catch (err) {
++            // Ignore cleanup errors
++          }
++          registrationHandle = null;
++        }
++      }
++
++      registerMenuTool();
++      window.addEventListener('DOMContentLoaded', registerMenuTool);
++      window.addEventListener('pagehide', cleanupMenuTool);
++      window.addEventListener('beforeunload', cleanupMenuTool);
++      window.addEventListener('unload', cleanupMenuTool);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

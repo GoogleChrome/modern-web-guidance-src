@@ -1,0 +1,504 @@
+diff --git a/README.md b/README.md
+index 4479b53..ef09b55 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,11 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## SMS sign-up
++
++Sign-up verifies a phone number using Twilio Verify before accepting account details. Copy `.env.example` to `.env` and supply your Twilio account SID, auth token, and Verify service SID. Configure the service to use 6-digit codes. Without these credentials the form displays an unavailable message and does not simulate verification.
++
++For automatic SMS extraction, enable Twilio Verify's domain-bound OTP setting for the deployed hostname (no protocol or path). Messages must end with `@your-hostname #123456`, using the actual code. WebOTP requires HTTPS and a supported browser; native `autocomplete="one-time-code"`, typing, and pasting remain available. See [Twilio Verify](https://www.twilio.com/docs/verify/api) and [WebOTP](https://developer.mozilla.org/en-US/docs/Web/API/WebOTP_API).
++
++The local API stores the pending and approved verification in the server session, enforces a 30-second resend interval and five code attempts, and expires the verification after ten minutes. Account creation forwards the verified phone number to the existing registration service. Configure provider-level rate limits and Fraud Guard in Twilio for SMS abuse protection across sessions.
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..823a637 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,101 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState } from 'react';
++import type { FormEvent } from 'react';
+ 
++const base = import.meta.env.BASE_URL;
++const countries = [
++  { name: 'United States', flag: '🇺🇸', prefix: '+1' },
++  { name: 'United Kingdom', flag: '🇬🇧', prefix: '+44' },
++  { name: 'Canada', flag: '🇨🇦', prefix: '+1' },
++  { name: 'Australia', flag: '🇦🇺', prefix: '+61' },
++  { name: 'Germany', flag: '🇩🇪', prefix: '+49' },
++  { name: 'France', flag: '🇫🇷', prefix: '+33' },
++  { name: 'India', flag: '🇮🇳', prefix: '+91' },
++];
++function Icon({ kind }: { kind: 'phone' | 'lock' | 'check' }) {
++  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{kind === 'phone' ? <><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></> : <path d="m5 12 4 4L19 6"/>}</svg>;
++}
+ export default function SignUpForm() {
++  const [step, setStep] = useState(0);
++  const [country, setCountry] = useState(0);
++  const [phone, setPhone] = useState('');
++  const [code, setCode] = useState('');
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
+   const [loading, setLoading] = useState(false);
++  const [cooldown, setCooldown] = useState(0);
++  const [smsRequest, setSmsRequest] = useState(0);
++  const [complete, setComplete] = useState(false);
++  const heading = useRef<HTMLHeadingElement>(null);
++  const otpInput = useRef<HTMLInputElement>(null);
++  const fullPhone = phone.startsWith('+') ? phone.replace(/[^+\d]/g, '') : countries[country].prefix + phone.replace(/\D/g, '').replace(/^0+/, '');
++  useEffect(() => { if (cooldown > 0) { const timer = setTimeout(() => setCooldown(cooldown - 1), 1000); return () => clearTimeout(timer); } }, [cooldown]);
++  useEffect(() => { if (step > 0 || complete) heading.current?.focus(); }, [step, complete]);
++  useEffect(() => {
++    if (step !== 1 || !('OTPCredential' in window)) return;
++    const controller = new AbortController();
++    const timer = setTimeout(() => controller.abort(), 120000);
++    navigator.credentials.get({ otp: { transport: ['sms'] }, signal: controller.signal } as CredentialRequestOptions)
++      .then(credential => { if (credential && 'code' in credential) { setCode(String(credential.code).replace(/\D/g, '').slice(0, 6)); otpInput.current?.focus(); } })
++      .catch(() => { /* Manual input and platform autofill remain available. */ });
++    return () => { clearTimeout(timer); controller.abort(); };
++  }, [step, smsRequest]);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
++  async function request(action: string) {
++    const response = await fetch(`${base}api/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, phone: fullPhone, code, username, password }) });
++    const data = await response.json();
++    if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
++    return data;
++  }
++  async function sendCode() {
++    setError(''); setNotice(''); setLoading(true);
++    try { await request('send'); setStep(1); setCode(''); setCooldown(30); setSmsRequest(value => value + 1); setNotice('A new verification code has been sent.'); }
++    catch (err) { setError(err instanceof Error ? err.message : 'Unable to send your code. Please try again.'); }
++    finally { setLoading(false); }
++  }
++  async function submit(event: FormEvent) {
++    event.preventDefault();
++    if (step === 0) { await sendCode(); return; }
++    setLoading(true); setError(''); setNotice('');
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
++      await request(step === 1 ? 'verify' : 'register');
++      if (step === 1) setStep(2); else { setComplete(true); setPassword(''); }
++    } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.'); }
++    finally { setLoading(false); }
++  }
++  return <div className="signup-form-content">
++    <ol className="signup-steps" aria-label="Sign-up progress">{['Your number', 'Verification', 'Your account'].map((label, index) => <li key={label} className={index === step ? 'active' : index < step || complete ? 'done' : ''} aria-current={index === step ? 'step' : undefined}><span>{index < step || complete ? '✓' : `0${index + 1}`}</span>{label}</li>)}</ol>
++    <div className="form-intro">
++      <div className="form-icon"><Icon kind={complete ? 'check' : step === 1 ? 'lock' : 'phone'} /></div>
++      <span className="form-eyebrow">{complete ? 'YOU’RE ALL SET' : 'A LITTLE CURIOSITY GOES A LONG WAY'}</span>
++      <h2 ref={heading} tabIndex={-1}>{complete ? 'Welcome to the Times.' : step === 0 ? 'A world of stories awaits.' : step === 1 ? 'Check your messages.' : 'Make yourself at home.'}</h2>
++      <p>{complete ? 'Your account is ready. A new perspective is just a story away.' : step === 0 ? 'Create your free account. Start with your phone number.' : step === 1 ? <>Enter the 6-digit code we sent to <strong>{fullPhone}</strong>.</> : 'Your number is verified. Let’s finish creating your account.'}</p>
+     </div>
+-  );
++    {complete ? <a className="signup-primary" href={`${base}signin`}>Continue to sign in <span aria-hidden="true">→</span></a> : <>
++      <form onSubmit={submit} className="signup-form" aria-busy={loading}>
++        {step === 0 && <>
++          <label htmlFor="country">Country / region</label>
++          <div className="country-select"><span aria-hidden="true">{countries[country].flag}</span><select id="country" value={country} onChange={e => { setCountry(Number(e.target.value)); setError(''); }}>{countries.map((item, index) => <option key={item.name} value={index}>{item.name} ({item.prefix})</option>)}</select><span className="select-chevron" aria-hidden="true">⌄</span></div>
++          <label htmlFor="phone">Phone number</label>
++          <div className={`phone-input ${error ? 'input-error' : ''}`}><span>{countries[country].prefix}</span><input id="phone" name="phone" type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 000-0000" value={phone} onChange={e => { setPhone(e.target.value); setError(''); }} required minLength={7} maxLength={25} aria-describedby={`phone-help${error ? ' signup-error' : ''}`} aria-invalid={!!error} /></div>
++          <p id="phone-help" className="input-help">We’ll text you a code to verify it’s really you.</p>
++        </>}
++        {step === 1 && <>
++          <button type="button" className="change-number" onClick={() => { setStep(0); setCode(''); setError(''); setNotice(''); }}>← Change phone number</button>
++          <label htmlFor="verification-code">Verification code</label>
++          <input ref={otpInput} className="code-input" id="verification-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} onPaste={event => { event.preventDefault(); const text = event.clipboardData.getData('text'); const match = text.match(/\b(\d{6})\b/); setCode(match ? match[1] : text.replace(/\D/g, '').slice(0, 6)); setError(''); }} value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }} required aria-invalid={!!error} aria-describedby={`code-help${error ? ' signup-error' : ''}`} placeholder="000000" />
++          <p className="input-help" id="code-help">Your code may fill automatically. You can also type or paste it.</p>
++        </>}
++        {step === 2 && <><div className="verified-number"><Icon kind="check" />{fullPhone}<span>Verified</span></div><label htmlFor="username">Username</label><input className="account-input" id="username" name="username" autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required minLength={3} maxLength={50} /><label htmlFor="password">Password</label><input className="account-input" id="password" name="password" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} pattern="(?=.*[0-9]).{8,}" aria-describedby="password-help" /><p className="input-help" id="password-help">Use at least 8 characters, including a number.</p></>}
++        {error && <p id="signup-error" className="signup-error" role="alert">{error}</p>}
++        <button className="signup-primary" type="submit" disabled={loading}>{loading ? (step === 0 ? 'Sending code…' : step === 1 ? 'Verifying…' : 'Creating account…') : step === 0 ? 'Send verification code' : step === 1 ? 'Verify phone number' : 'Create free account'}<span aria-hidden="true">→</span></button>
++        {step === 1 && <div className="resend-row">Didn’t get a code? <button type="button" onClick={sendCode} disabled={loading || cooldown > 0}>{cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}</button></div>}
++        <p className="sr-only" role="status">{notice}</p>
++      </form>
++      <p className="signup-terms">By continuing, you agree to our <a href={`${base}legal/terms`}>Terms of Service</a> and<br className="desktop-break" /> <a href={`${base}legal/privacy`}>Privacy Policy</a>. Message and data rates may apply.</p>
++      <div className="privacy-note"><Icon kind="lock"/><div><strong>Your number stays yours.</strong><p>Only for account security. Never for marketing.</p></div></div>
++    </>}
++    <div className="form-bottom"><span className="tiny-star" aria-hidden="true">✳</span> A fresh perspective starts here.</div>
++  </div>;
+ }
+diff --git a/src/pages/api/signup.ts b/src/pages/api/signup.ts
+new file mode 100644
+index 0000000..fcc3404
+--- /dev/null
++++ b/src/pages/api/signup.ts
+@@ -0,0 +1,53 @@
++import type { APIRoute } from 'astro';
++
++type Verification = { phone: string; sentAt: number; expiresAt: number; attempts: number; verified: boolean };
++const json = (data: object, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (request.headers.get('origin') !== new URL(request.url).origin) return json({ error: 'Please submit this form from this website.' }, 403);
++  if (!session) return json({ error: 'Your session is unavailable. Please refresh and try again.' }, 503);
++  let body;
++  try { body = await request.json(); } catch { return json({ error: 'Invalid request.' }, 400); }
++  if (!body || typeof body !== 'object') return json({ error: 'Invalid request.' }, 400);
++  const { action, phone, code, username, password } = body;
++  if (typeof phone !== 'string' || !/^\+[1-9]\d{7,14}$/.test(phone)) return json({ error: 'Enter a valid phone number, including its country code.' }, 400);
++  const state = await session.get('signupVerification') as Verification | undefined;
++  const now = Date.now();
++  if (action === 'register') {
++    if (!state?.verified || state.phone !== phone || state.expiresAt < now) return json({ error: 'Please verify your phone number again before creating your account.' }, 403);
++    if (typeof username !== 'string' || username.trim().length < 3 || username.length > 50 || typeof password !== 'string' || password.length < 8 || !/\d/.test(password)) return json({ error: 'Enter a username and a password with at least 8 characters and a number.' }, 400);
++    try {
++      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.trim(), password, phone }), signal: AbortSignal.timeout(15000) });
++      if (!response.ok) return json({ error: 'Unable to create your account. Try another username or try again later.' }, response.status === 409 ? 409 : 502);
++      await session.delete('signupVerification');
++      return json({ success: true });
++    } catch { return json({ error: 'Account creation is temporarily unavailable. Please try again.' }, 502); }
++  }
++  if (action !== 'send' && action !== 'verify') return json({ error: 'Invalid request.' }, 400);
++  const account = process.env.TWILIO_ACCOUNT_SID;
++  const token = process.env.TWILIO_AUTH_TOKEN;
++  const service = process.env.TWILIO_VERIFY_SERVICE_SID;
++  if (!account || !token || !service) return json({ error: 'SMS verification is temporarily unavailable. Please try again later.' }, 503);
++  if (action === 'send' && state && now - state.sentAt < 30000) return json({ error: 'Please wait 30 seconds before requesting another code.' }, 429);
++  if (action === 'verify') {
++    if (!state || state.phone !== phone || state.expiresAt < now) return json({ error: 'Your code has expired. Please request a new one.' }, 400);
++    if (state.attempts >= 5) return json({ error: 'Too many attempts. Please request a new code.' }, 429);
++    if (state.verified) return json({ success: true });
++    if (typeof code !== 'string' || !/^\d{6}$/.test(code)) return json({ error: 'Enter the 6-digit code from your text message.' }, 400);
++    await session.set('signupVerification', { ...state, attempts: state.attempts + 1 });
++  } else {
++    // Reserve the cooldown before contacting the SMS provider.
++    await session.set('signupVerification', { phone, sentAt: now, expiresAt: now + 600000, attempts: 0, verified: false });
++  }
++  try {
++    const params = new URLSearchParams({ To: phone, ...(action === 'send' ? { Channel: 'sms' } : { Code: code }) });
++    const response = await fetch(`https://verify.twilio.com/v2/Services/${service}/${action === 'send' ? 'Verifications' : 'VerificationCheck'}`, { method: 'POST', headers: { Authorization: `Basic ${Buffer.from(`${account}:${token}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: params, signal: AbortSignal.timeout(15000) });
++    const result = await response.json();
++    if (!response.ok) return json({ error: response.status === 429 ? 'Too many attempts. Please wait before trying again.' : action === 'send' ? 'We couldn’t send a code to that number. Check it and try again.' : 'That code is invalid or has expired. Please try again or request a new one.' }, response.status === 429 ? 429 : 400);
++    if (action === 'verify') {
++      if (result.status !== 'approved') return json({ error: 'That code isn’t correct. Please check your message and try again.' }, 400);
++      await session.set('signupVerification', { ...state!, verified: true, expiresAt: now + 600000 });
++    }
++    return json({ success: true });
++  } catch { return json({ error: 'SMS verification is temporarily unavailable. Please try again.' }, 502); }
++};
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..e309e37 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -1,10 +1,38 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
++import '../styles/global.css';
++const base = import.meta.env.BASE_URL;
+ ---
+-
+-<Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
+-    <SignUpForm client:load />
+-  </div>
+-</Layout>
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <title>Create your account | The DevTools Times</title>
++    <link rel="icon" href={`${base}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet" />
++  </head>
++  <body class="signup-page">
++    <header class="signup-header">
++      <a class="signup-brand" href={base} aria-label="The DevTools Times home"><span class="brand-mark">T<span>.</span></span><span>The DevTools Times<span class="brand-tagline">INDEPENDENT MINDS. INFORMED LIVES.</span></span></a>
++      <div class="header-signin">Already a reader? <a href={`${base}signin`}>Sign in <span aria-hidden="true">↗</span></a></div>
++    </header>
++    <main class="signup-main">
++      <section class="signup-story" aria-label="A new perspective, every day">
++        <div class="story-image" style={`background-image: url('${base}images/articles/newspaper-croissant.jpg')`}></div>
++        <div class="story-content">
++          <span class="story-eyebrow"><span></span> YOUR DAILY DOSE OF PERSPECTIVE</span>
++          <h1>Stay curious.<br />Stay informed.<br /><em>Stay ahead.</em></h1>
++          <p>Good stories change the way you see the world.<br class="desktop-break" /> Make room for a little more perspective.</p>
++          <div class="story-rule"></div>
++          <div class="story-benefits"><span><b>✓</b> Independent journalism</span><span><b>✓</b> Stories that matter</span><span><b>✓</b> A world of ideas</span></div>
++          <div class="story-bottom"><span>THE WORLD IS WORTH UNDERSTANDING.</span><span aria-hidden="true">↗</span></div>
++        </div>
++      </section>
++      <section class="signup-form-panel" aria-label="Create your account"><SignUpForm client:load /></section>
++    </main>
++    <footer class="signup-footer"><span>© {new Date().getFullYear()} The DevTools Times</span><div><a href={`${base}legal/privacy`}>Privacy policy</a><a href={`${base}legal/terms`}>Terms of service</a><span class="footer-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Secure sign-up</span></div></footer>
++  </body>
++</html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..f7383ae 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,87 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* The reader onboarding experience. */
++.signup-page { --ink: #272e26; --green: #46583b; --muted: #7a7d73; background: #fafaf7; color: var(--ink); font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
++.signup-header { height: 108px; padding: 0 5.2%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e7e8df; }
++.signup-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: -.7px; }
++.brand-mark { width: 45px; height: 48px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; font-size: 37px; font-weight: 400; letter-spacing: -4px; padding-right: 5px; }
++.brand-mark > span { color: #d2d4a3; }
++.brand-tagline { display: block; font-family: 'DM Sans', sans-serif; font-size: 8px; font-weight: 500; letter-spacing: 2px; margin-top: 5px; }
++.header-signin { font-size: 12px; color: #797d73; }
++.header-signin a { color: var(--ink); font-weight: 600; margin-left: 14px; }
++.header-signin a span { margin-left: 10px; }
++.signup-main { max-width: 1440px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; padding: 38px 5.2% 40px; gap: 6%; min-height: 740px; }
++.signup-story { min-height: 665px; border-radius: 5px; position: relative; overflow: hidden; color: #fff; background: #333c2d; }
++.story-image { position: absolute; inset: 0; background-size: cover; background-position: 44% center; filter: saturate(.4); }
++.signup-story::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(25,34,22,.62) 0%, rgba(27,36,25,.67) 40%, rgba(25,34,22,.95) 100%); }
++.story-content { position: relative; z-index: 1; padding: 48px 40px 26px; height: 100%; display: flex; flex-direction: column; }
++.story-eyebrow { display: flex; align-items: center; gap: 9px; font-size: 9px; letter-spacing: 1.7px; color: #eaecdb; }
++.story-eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: #d4d9ab; }
++.story-content h1 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(40px, 4.3vw, 61px); font-weight: 400; line-height: 1.18; letter-spacing: -1.9px; margin: 43px 0 25px; }
++.story-content h1 em { color: #dee1ba; font-weight: 400; }
++.story-content > p { font-size: 12px; line-height: 1.9; color: #e1e3d9; }
++.story-rule { height: 1px; background: #c5c9b438; margin: 34px 0 23px; }
++.story-benefits { display: flex; flex-direction: column; gap: 14px; font-size: 11px; color: #e1e5d8; }
++.story-benefits b { color: #d6dcb5; margin-right: 11px; font-weight: 400; }
++.story-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 40px; font-size: 8px; letter-spacing: 1.5px; color: #c0c6b4; }
++.story-bottom > span:last-child { font-size: 22px; }
++.signup-form-panel { display: flex; justify-content: center; padding: 22px 0 0; }
++.signup-form-content { width: 100%; max-width: 386px; display: flex; flex-direction: column; }
++.signup-steps { list-style: none; padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 42px; }
++.signup-steps li { display: flex; gap: 7px; align-items: center; font-size: 10px; color: #94978d; white-space: nowrap; }
++.signup-steps li > span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #dddfd5; font-size: 9px; }
++.signup-steps li.active { color: #3d4e33; font-weight: 600; }
++.signup-steps li.active > span, .signup-steps li.done > span { background: var(--green); border-color: var(--green); color: white; }
++.form-icon { width: 45px; height: 45px; border-radius: 12px; background: #edf0e5; border: 1px solid #dce3cf; display: grid; place-items: center; color: #536546; margin-bottom: 24px; }
++.form-icon svg { width: 23px; height: 23px; }
++.form-eyebrow { font-size: 8px; font-weight: 600; letter-spacing: 1.7px; color: #858b77; }
++.form-intro h2 { font-family: 'Playfair Display', Georgia, serif; font-weight: 400; letter-spacing: -.9px; font-size: 31px; margin: 10px 0 11px; line-height: 1.25; outline: none; }
++.form-intro > p { color: #7c7f76; font-size: 11px; line-height: 1.8; }
++.form-intro > p strong { color: #3d4e33; font-weight: 500; }
++.signup-form { margin-top: 28px; }
++.signup-form label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 9px; }
++.country-select { position: relative; display: flex; align-items: center; height: 47px; border: 1px solid #dcded3; border-radius: 5px; margin-bottom: 21px; background: #fdfdfa; }
++.country-select > span:first-child { position: absolute; left: 13px; pointer-events: none; font-size: 18px; }
++.country-select select { appearance: none; background: transparent; width: 100%; height: 100%; padding: 0 34px 0 44px; font-size: 12px; color: #41473c; border-radius: 5px; }
++.select-chevron { position: absolute; right: 15px; top: 9px; color: #7e8274; pointer-events: none; }
++.phone-input { display: flex; align-items: center; border: 1px solid #dcded3; border-radius: 5px; background: #fdfdfa; height: 47px; }
++.phone-input > span { font-size: 12px; color: #5d6357; padding: 0 15px; border-right: 1px solid #e1e3d9; }
++.phone-input input { width: 100%; min-width: 0; height: 100%; padding: 0 14px; outline: none; background: transparent; font-size: 12px; border-radius: 5px; }
++.phone-input input::placeholder { color: #a2a69a; }
++.signup-page :is(input, select, button, a):focus-visible { outline: 2px solid #71885d; outline-offset: 4px; }
++.phone-input:focus-within { border-color: #71885d; box-shadow: 0 0 0 2px #71885d24; }
++.input-help { font-size: 10px; color: #85897c; margin-top: 9px; line-height: 1.7; }
++.signup-primary { display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; background: var(--green); color: #fff; font-size: 12px; font-weight: 500; border-radius: 5px; height: 48px; margin-top: 24px; transition: background .2s; cursor: pointer; }
++.signup-primary > span { font-size: 18px; font-weight: 400; }
++.signup-primary:hover { background: #33452a; }
++.signup-primary:disabled { opacity: .6; cursor: wait; }
++.signup-terms { font-size: 9px; line-height: 1.9; text-align: center; color: #8b8e83; margin-top: 18px; }
++.signup-terms a { color: #59634f; text-decoration: underline; text-underline-offset: 2px; }
++.privacy-note { margin-top: 25px; padding: 17px 18px; display: flex; gap: 13px; background: #f0f1e9; border: 1px solid #e7e9dd; border-radius: 5px; align-items: center; }
++.privacy-note svg { height: 18px; width: 18px; color: #738166; flex-shrink: 0; }
++.privacy-note strong { display: block; font-size: 10px; font-weight: 500; color: #536048; margin-bottom: 4px; }
++.privacy-note p { font-size: 9px; color: #8a907e; }
++.form-bottom { text-align: center; color: #999d8e; font-size: 9px; padding-top: 28px; margin-top: auto; }
++.tiny-star { color: #879272; margin-right: 6px; font-size: 13px; }
++.signup-footer { padding: 23px 5.2%; border-top: 1px solid #e5e7dd; display: flex; justify-content: space-between; color: #929688; font-size: 9px; }
++.signup-footer > div { display: flex; align-items: center; gap: 25px; }
++.footer-secure { display: flex; gap: 6px; align-items: center; padding-left: 23px; border-left: 1px solid #dfe2d5; }
++.footer-secure svg { width: 12px; height: 12px; }
++.signup-error { font-size: 11px; line-height: 1.6; color: #9b3333; background: #fff0ed; border-radius: 4px; padding: 10px 12px; margin-top: 14px; }
++.input-error { border-color: #b95c51; }
++.change-number { font-size: 11px; color: #536546; text-decoration: underline; text-underline-offset: 3px; margin-bottom: 24px; cursor: pointer; }
++.code-input { width: 100%; height: 60px; border: 1px solid #dcded3; border-radius: 5px; font-size: 26px; letter-spacing: 15px; padding-left: 25px; text-align: center; background: #fdfdfa; font-variant-numeric: tabular-nums; }
++.code-input::placeholder { color: #d8dbd0; }
++.resend-row { margin-top: 18px; text-align: center; font-size: 10px; color: #85897c; }
++.resend-row button { color: #46583b; margin-left: 5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
++.resend-row button:disabled { color: #94988c; cursor: default; text-decoration: none; }
++.account-input { width: 100%; height: 45px; border: 1px solid #dcded3; border-radius: 5px; background: #fdfdfa; padding: 0 12px; font-size: 13px; margin-bottom: 16px; }
++.verified-number { display: flex; gap: 8px; align-items: center; color: #46583b; font-size: 12px; margin-bottom: 22px; }
++.verified-number svg { width: 18px; height: 18px; }
++.verified-number > span { margin-left: auto; font-size: 10px; background: #edf0e5; border-radius: 4px; padding: 4px 8px; }
++@media (min-width: 1500px) { .signup-main { padding-top: 55px; padding-bottom: 55px; } }
++@media (max-width: 1000px) { .signup-main { gap: 5%; padding-left: 4%; padding-right: 4%; } .story-content { padding-left: 28px; padding-right: 28px; } .form-intro h2 { font-size: 27px; } .signup-steps li { font-size: 9px; gap: 4px; } .signup-steps { gap: 5px; } .desktop-break { display: none; } }
++@media (max-width: 700px) { .signup-header { height: 85px; padding: 0 6%; } .signup-brand { font-size: 18px; gap: 9px; } .brand-mark { width: 33px; height: 38px; font-size: 30px; } .brand-tagline { font-size: 6px; letter-spacing: 1.2px; } .header-signin { font-size: 0; } .header-signin a { font-size: 11px; margin-left: 0; } .header-signin a span { margin-left: 3px; } .signup-main { display: flex; flex-direction: column; padding: 25px 7% 35px; min-height: calc(100vh - 160px); } .signup-story { display: none; } .signup-form-panel { padding-top: 0; } .signup-form-content { max-width: 400px; } .signup-steps { margin-bottom: 34px; } .signup-steps li { font-size: 10px; gap: 6px; } .form-intro h2 { font-size: 31px; } .form-intro > p { font-size: 12px; } .signup-form label { font-size: 12px; } .signup-footer { padding: 20px 6%; font-size: 8px; gap: 15px; flex-wrap: wrap; } .signup-footer > div { gap: 14px; } .footer-secure { padding-left: 12px; } .form-bottom { padding-top: 30px; } }
++@media (prefers-reduced-motion: reduce) { .signup-primary { transition: none; } }
+diff --git a/tests/signup.test.mjs b/tests/signup.test.mjs
+new file mode 100644
+index 0000000..cbc4263
+--- /dev/null
++++ b/tests/signup.test.mjs
+@@ -0,0 +1,78 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { POST } from '../src/pages/api/signup.ts';
++
++const phone = '+15551234567';
++function context(body, values = new Map(), origin = 'https://example.com') {
++  return {
++    request: new Request('https://example.com/devtools-times/api/signup', {
++      method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
++    }),
++    session: { get: async key => values.get(key), set: async (key, value) => values.set(key, value), delete: async key => values.delete(key) },
++  };
++}
++
++test('SMS sign-up server safeguards and registration', async t => {
++  const previousFetch = globalThis.fetch;
++  const keys = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_VERIFY_SERVICE_SID'];
++  const original = keys.map(key => process.env[key]);
++  keys.forEach(key => process.env[key] = 'test');
++  try {
++    await t.test('rejects cross-origin requests', async () => {
++      assert.equal((await POST(context({ action: 'send', phone }, new Map(), 'https://other.com'))).status, 403);
++    });
++    await t.test('rejects invalid phone numbers', async () => {
++      assert.equal((await POST(context({ action: 'send', phone: '123' }))).status, 400);
++    });
++    await t.test('fails clearly when SMS is not configured', async () => {
++      delete process.env.TWILIO_AUTH_TOKEN;
++      assert.equal((await POST(context({ action: 'send', phone }))).status, 503);
++      process.env.TWILIO_AUTH_TOKEN = 'test';
++    });
++    await t.test('prevents registration without verification', async () => {
++      assert.equal((await POST(context({ action: 'register', phone, username: 'reader', password: 'password1' }))).status, 403);
++    });
++    await t.test('enforces code expiry and attempt limits', async () => {
++      const values = new Map([['signupVerification', { phone, expiresAt: Date.now() - 1, attempts: 0 }]]);
++      assert.equal((await POST(context({ action: 'verify', phone, code: '123456' }, values))).status, 400);
++      values.set('signupVerification', { phone, expiresAt: Date.now() + 60000, attempts: 5 });
++      assert.equal((await POST(context({ action: 'verify', phone, code: '123456' }, values))).status, 429);
++    });
++    await t.test('sends SMS, throttles resend, rejects wrong code, verifies and consumes approval', async () => {
++      const values = new Map();
++      let approved = false;
++      let registrations = 0;
++      globalThis.fetch = async (url, options) => {
++        if (url.includes('/api/register')) {
++          registrations++;
++          assert.equal(JSON.parse(options.body).phone, phone);
++          return Response.json({ success: true });
++        }
++        assert.equal(options.headers['Content-Type'], 'application/x-www-form-urlencoded');
++        assert.equal(new URLSearchParams(options.body).get('To'), phone);
++        if (url.endsWith('/Verifications')) assert.equal(new URLSearchParams(options.body).get('Channel'), 'sms');
++        return Response.json({ status: approved ? 'approved' : 'pending' });
++      };
++      assert.equal((await POST(context({ action: 'send', phone }, values))).status, 200);
++      assert.equal((await POST(context({ action: 'send', phone }, values))).status, 429);
++      assert.equal((await POST(context({ action: 'verify', phone, code: '111111' }, values))).status, 400);
++      assert.equal(values.get('signupVerification').verified, false);
++      approved = true;
++      assert.equal((await POST(context({ action: 'verify', phone, code: '123456' }, values))).status, 200);
++      assert.equal(values.get('signupVerification').verified, true);
++      assert.equal((await POST(context({ action: 'register', phone, username: 'reader', password: 'password1' }, values))).status, 200);
++      assert.equal(registrations, 1);
++      assert.equal(values.has('signupVerification'), false);
++      assert.equal((await POST(context({ action: 'register', phone, username: 'reader', password: 'password1' }, values))).status, 403);
++    });
++    await t.test('provider failures do not approve verification', async () => {
++      globalThis.fetch = async () => { throw new Error('Unavailable'); };
++      const values = new Map();
++      assert.equal((await POST(context({ action: 'send', phone }, values))).status, 502);
++      assert.equal(values.get('signupVerification').verified, false);
++    });
++  } finally {
++    globalThis.fetch = previousFetch;
++    keys.forEach((key, index) => { if (original[index] === undefined) delete process.env[key]; else process.env[key] = original[index]; });
++  }
++});

@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    (async () => {
++      // Polyfill Temporal if not natively available in the browser
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++      }
++
++      // Model credit card expiration (December 2027) using Temporal.PlainYearMonth
++      const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
++      const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
++      const duration = currentMonth.until(expiry, { largestUnit: 'years' });
++
++      if (duration.sign < 0) {
++        console.log('Credit card is expired');
++      } else if (duration.sign === 0) {
++        console.log('Credit card expires this month');
++      } else {
++        console.log(`Credit card expires in ${duration.years} years and ${duration.months} months`);
++      }
++
++      // Calculate exact time until the last day of the expiration month
++      const today = Temporal.Now.plainDateISO();
++      const expiryDate = expiry.toPlainDate({ day: expiry.daysInMonth });
++      const exactDuration = today.until(expiryDate, { largestUnit: 'years' });
++      console.log(`Time until card expiration date (${expiryDate.toString()}): ${exactDuration.years} years, ${exactDuration.months} months, and ${exactDuration.days} days`);
++    })();
++  </script>
+ </body>
+ 
+ </html>

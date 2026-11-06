@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..fe78f90 100644
+--- a/index.html
++++ b/index.html
+@@ -59,17 +59,25 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++      /* Intersection: only links that are also .logout-link */
++      &.logout-link {
++        border: 1px solid var(--accent);
++        padding: 5px 12px;
++        border-radius: 4px;
++      }
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    /* Narrow screens: stack nav, tighten spacing */
++    @media (max-width: 600px) {
++      nav {
++        flex-direction: column;
++        gap: 0.5rem;
++
++        ul li:first-child {
++          margin-left: 0;
++        }
++      }
+     }
+ 
+     /* Hero Section */
+@@ -91,6 +99,10 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++
++      @media (max-width: 600px) {
++        font-size: 2rem;
++      }
+     }
+ 
+     /* Content Sections */
+@@ -128,11 +140,26 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* Union of selectors x union of states, written once */
++    :is(nav a, .footer-links a, .btn):is(:hover, :focus-visible) {
++      --hover-color: var(--accent);
++    }
++
++    nav a:is(:hover, :focus-visible) {
++      color: var(--hover-color);
++    }
++
++    .btn:is(:hover, :focus-visible) {
++      background: var(--text);
++    }
++
++    /* Intersection of conditions: hover-capable device AND motion allowed */
++    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
++      :is(nav a, .btn) {
++        transition: color 0.3s, background 0.3s;
++      }
+     }
+ 
+     footer {
+@@ -152,6 +179,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      color: var(--primary);
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 

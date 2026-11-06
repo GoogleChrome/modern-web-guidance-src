@@ -1,0 +1,197 @@
+diff --git a/coffee-finder.js b/coffee-finder.js
+new file mode 100644
+index 0000000..f82e9e6
+--- /dev/null
++++ b/coffee-finder.js
+@@ -0,0 +1,79 @@
++(() => {
++  const coffees = [
++    {
++      name: 'Maple Oat Latte',
++      flavor: 'sweet',
++      temperature: 'hot',
++      description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++    },
++    {
++      name: 'Dark Roast Espresso',
++      flavor: 'bold',
++      temperature: 'hot',
++      description: 'Bold, smoky, and perfect for a morning boost.',
++    },
++    {
++      name: 'Cold Brew',
++      flavor: 'smooth',
++      temperature: 'iced',
++      description: 'Steeped for 18 hours for maximum smoothness.',
++    },
++  ];
++
++  const form = document.getElementById('coffee-finder-form');
++  const results = document.getElementById('finder-results');
++
++  function respond(event, result) {
++    if (event.agentInvoked && typeof event.respondWith === 'function') {
++      event.respondWith(Promise.resolve(result));
++    }
++  }
++
++  form.addEventListener('submit', (event) => {
++    event.preventDefault();
++    if (!form.reportValidity()) {
++      respond(event, { error: 'Choose a valid flavor and serving temperature.' });
++      return;
++    }
++
++    const data = new FormData(form);
++    const flavor = data.get('flavor');
++    const temperature = data.get('temperature');
++    // Validate enumerations as well as native constraints for agent submissions.
++    if (!['any', 'sweet', 'bold', 'smooth'].includes(flavor) ||
++        !['any', 'hot', 'iced'].includes(temperature)) {
++      const message = 'Choose a valid flavor and serving temperature, then try again.';
++      results.textContent = message;
++      respond(event, { error: message });
++      return;
++    }
++
++    const matches = coffees.filter((coffee) =>
++      (flavor === 'any' || coffee.flavor === flavor) &&
++      (temperature === 'any' || coffee.temperature === temperature));
++    const message = matches.length
++      ? `Found ${matches.length} ${matches.length === 1 ? 'coffee' : 'coffees'} for you.`
++      : 'No featured coffees match both preferences. Try another flavor or choose either temperature.';
++
++    const summary = document.createElement('p');
++    summary.textContent = message;
++    results.replaceChildren(summary);
++    if (matches.length) {
++      const list = document.createElement('ul');
++      for (const coffee of matches) {
++        const item = document.createElement('li');
++        const name = document.createElement('strong');
++        name.textContent = `${coffee.name} · ${coffee.temperature === 'hot' ? 'Hot' : 'Iced'}`;
++        const description = document.createElement('p');
++        description.textContent = coffee.description;
++        item.append(name, description);
++        list.append(item);
++      }
++      results.append(list);
++    }
++
++    respond(event, { filters: { flavor, temperature }, count: matches.length, matches, message });
++  });
++
++  form.addEventListener('reset', () => results.replaceChildren());
++})();
+diff --git a/index.html b/index.html
+index 66c9173..45c5305 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="coffee-finder.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +136,53 @@
+       background: #3e2723;
+     }
+ 
++    #coffee-finder {
++      scroll-margin-top: 100px;
++      background: #f2ece8;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: clamp(20px, 4vw, 36px);
++      margin-bottom: 40px;
++    }
++
++    #coffee-finder h2 { color: var(--primary); }
++
++    .finder-fields {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .finder-fields label { display: block; font-weight: 600; margin-bottom: 6px; }
++
++    .finder-fields select {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #8c736a;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    button { font: inherit; cursor: pointer; }
++    button.btn { border: 0; }
++    .finder-reset { background: transparent; border: 0; color: var(--primary); margin: 15px 0 0 16px; text-decoration: underline; }
++    :focus-visible { outline: 3px solid #a45500; outline-offset: 4px; }
++    #finder-results { margin-top: 24px; }
++    #finder-results ul { padding-left: 22px; }
++    #finder-results li { margin-top: 12px; }
++    .finder-note { margin-top: 12px; font-size: 0.9rem; }
++
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      #coffee-finder { scroll-margin-top: 160px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,10 +219,44 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#coffee-finder" class="btn">Find Your Coffee</a>
+   </header>
+ 
+   <main class="container">
++    <section id="coffee-finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Your next favorite cup</h2>
++      <p>A little sweet? Extra bold? Find a coffee that fits your mood.</p>
++      <form id="coffee-finder-form" toolname="find_coffee"
++        tooldescription="Find Daily Grind featured coffees matching the user's flavor and serving temperature preferences. Returns matching drinks or an empty result with guidance. This only recommends coffee and does not place an order."
++        toolautosubmit aria-describedby="finder-note">
++        <div class="finder-fields">
++          <div>
++            <label for="coffee-flavor">What flavors do you enjoy?</label>
++            <select id="coffee-flavor" name="flavor" required
++              toolparamdescription="Preferred flavor: any for all flavors, sweet for maple and creamy notes, bold for strong smoky espresso, or smooth for mellow cold brew.">
++              <option value="any">Surprise me — any flavor</option>
++              <option value="sweet">Sweet &amp; creamy</option>
++              <option value="bold">Bold &amp; smoky</option>
++              <option value="smooth">Smooth &amp; mellow</option>
++            </select>
++          </div>
++          <div>
++            <label for="coffee-temperature">Hot or cold?</label>
++            <select id="coffee-temperature" name="temperature" required
++              toolparamdescription="Serving temperature: any for either, hot for a warm coffee, or iced for a cold coffee.">
++              <option value="any">Either sounds good</option>
++              <option value="hot">Hot</option>
++              <option value="iced">Iced</option>
++            </select>
++          </div>
++        </div>
++        <button type="submit" class="btn">Find my coffee</button>
++        <button type="reset" class="finder-reset">Start over</button>
++        <p id="finder-note" class="finder-note">Explore our featured coffees. No order or payment needed.</p>
++      </form>
++      <div id="finder-results" role="status" aria-live="polite" aria-atomic="true"></div>
++      <noscript><p>Enable JavaScript to use the coffee finder, or explore our seasonal favorites below.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

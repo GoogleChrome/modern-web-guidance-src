@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .paywall-container {
++      margin-top: 48px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .paywall-container > header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .exclusive-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .roaster-preview {
++      max-width: 720px;
++      margin: 0 auto;
++      /* Fade the content itself so any page background shows through. */
++      -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++      mask-mode: alpha;
++    }
++
++    .roaster-preview h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .roaster-preview p {
++      margin-bottom: 20px;
++    }
++
++    .roaster-preview p:last-child {
++      margin-bottom: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +235,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roaster-secrets-title">
++      <header>
++        <p class="exclusive-label">Exclusive preview</p>
++        <h2 id="roaster-secrets-title">Roaster's Secrets</h2>
++        <p>A peek inside the craft behind your daily cup.</p>
++      </header>
++      <div class="roaster-preview">
++        <h3>Great coffee starts before the first sip</h3>
++        <p>Every bean has a story. At our roasting table, we follow its aroma, color, and character to find the moment when its natural sweetness shines. Here’s a taste of the details our roasters look for.</p>
++        <h3>Listen for the turning point</h3>
++        <p>As beans heat up, a gentle crack signals a new stage in the roast. The time that follows helps shape the balance of sweetness, acidity, and body you taste in your cup.</p>
++        <h3>Let the flavor settle</h3>
++        <p>Freshly roasted beans need a little rest. Giving them time to release gas helps the brew extract more evenly, bringing those subtle tasting notes into focus.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

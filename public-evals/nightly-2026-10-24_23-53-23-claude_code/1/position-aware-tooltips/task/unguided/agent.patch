@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,90 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Info tooltip (popover + anchor positioning, no JS) */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .info-btn {
++      anchor-name: --info-anchor;
++      width: 2rem;
++      height: 2rem;
++      margin-top: 15px;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font: bold 1rem/1 serif;
++      cursor: pointer;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* The popover is the anchored container; it stays unstyled so its
++       descendants can respond to the active fallback position. */
++    .tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      overflow: visible;
++      color: white;
++      position-anchor: --info-anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      width: max-content;
++      max-width: min(16rem, 90vw);
++    }
++
++    .tooltip-body {
++      position: relative;
++      display: block;
++      padding: 8px 12px;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      background: var(--primary);
++      border-radius: 8px 8px 8px 2px;
++      margin-bottom: 10px;
++    }
++
++    .tooltip-body::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 12px;
++      border: 6px solid transparent;
++      border-top-color: var(--primary);
++    }
++
++    /* Flipped below the trigger: arrow points up */
++    @container anchored(fallback: flip-block) {
++      .tooltip-body {
++        border-radius: 2px 8px 8px 8px;
++        margin-bottom: 0;
++        margin-top: 10px;
++      }
++
++      .tooltip-body::after {
++        top: auto;
++        bottom: 100%;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +262,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" aria-label="More info about the Maple Oat Latte"
++              aria-describedby="latte-tooltip" popovertarget="latte-tooltip">i</button>
++            <div id="latte-tooltip" role="tooltip" popover class="tooltip">
++              <span class="tooltip-body">Made with oat milk and real Vermont maple syrup. Dairy-free and available hot or iced.</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

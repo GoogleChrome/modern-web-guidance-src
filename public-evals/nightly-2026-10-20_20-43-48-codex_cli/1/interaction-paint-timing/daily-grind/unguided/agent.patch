@@ -1,0 +1,356 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..2361871
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,75 @@
++const $ = (selector) => document.querySelector(selector);
++const icons = {
++ overview:'<rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/>',
++ cursor:'<path d="m5 3 14 9-7 1-3 7-4-17Z"/><path d="m13 14 5 6"/>',
++ navigation:'<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/>',
++ sessions:'<rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 8h18m-13 5 2 2 3-4m2 3h3M8 22h8"/>',
++ settings:'<path d="m9 3-1 3-3 1-2 4 2 2v4l4 2 3-1 3 1 4-2v-4l2-2-2-4-3-1-1-3Z"/><circle cx="12" cy="11" r="3"/>',
++ book:'<path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"/>',
++ globe:'<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/>',
++ bell:'<path d="M5 16h14l-2-4V9a5 5 0 0 0-10 0v3l-2 4Zm5 4h4"/>',
++ filter:'<path d="M4 7h16M7 12h10m-7 5h4"/><circle cx="8" cy="7" r="1.5" fill="white"/><circle cx="15" cy="12" r="1.5" fill="white"/>',
++ download:'<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',
++ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
++ keyboard:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h1m4 0h1m4 0h1M6 13h1m4 0h1m4 0h1M8 16h8"/>'
++};
++const icon = name => `<svg viewBox="0 0 24 24" class="icon" aria-hidden="true">${icons[name] || icons.cursor}</svg>`;
++document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = icon(el.dataset.icon));
++const sampleRows = [
++ {id:1,name:'Add to cart',route:'/products/linen-shirt',type:'Click',duration:128,time:'Just now',weight:4200},
++ {id:2,name:'Product page',route:'/products/linen-shirt',type:'Navigation',duration:216,time:'12 sec ago',weight:5380},
++ {id:3,name:'Search products',route:'/shop',type:'Keyboard',duration:164,time:'28 sec ago',weight:3200},
++ {id:4,name:'Apply filters',route:'/shop',type:'Click',duration:284,time:'42 sec ago',weight:349},
++ {id:5,name:'Checkout',route:'/checkout',type:'Navigation',duration:248,time:'1 min ago',weight:4900},
++ {id:6,name:'Open product details',route:'/products/ceramic-cup',type:'Click',duration:112,time:'2 min ago',weight:4012},
++ {id:7,name:'Update quantity',route:'/cart',type:'Click',duration:536,time:'3 min ago',weight:100},
++ {id:8,name:'View collection',route:'/collections',type:'Navigation',duration:192,time:'4 min ago',weight:2751}
++];
++const state = {mode:'demo',page:'overview',recording:false,live:[],range:7,percentile:75,type:'all',quality:'all',search:'',sort:0,tablePage:0,showAll:false,goodLimit:200,navLimit:500};
++try { const saved=JSON.parse(localStorage.getItem('render-thresholds')); if(saved?.good>0&&saved?.nav>0){state.goodLimit=saved.good;state.navLimit=saved.nav;} } catch {}
++const quality = row => row.duration <= (row.type==='Navigation'?state.navLimit:state.goodLimit) ? 'Good' : row.duration <= (row.type==='Navigation'?state.navLimit*2:500) ? 'Needs improvement' : 'Poor';
++const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
++function rows(){let data=(state.mode==='demo'?sampleRows:state.live).filter(row => (state.page!=='interactions'||row.type!=='Navigation')&&(state.page!=='navigations'||row.type==='Navigation')&&(state.type==='all'||row.type===state.type)&&(state.quality==='all'||quality(row)===state.quality)&&`${row.name} ${row.route} ${row.type}`.toLowerCase().includes(state.search));if(state.sort)data=[...data].sort((a,b)=>state.sort*(a.duration-b.duration));return data;}
++function percentile(values,p=state.percentile){if(!values.length)return null;const sorted=[...values].sort((a,b)=>a-b);return sorted[Math.ceil(p/100*sorted.length)-1];}
++function number(value){return value==null?'—':Math.round(value).toLocaleString();}
++function getSummary(data){const isDefault=state.mode==='demo'&&state.type==='all'&&state.quality==='all'&&!state.search&&state.page==='overview'&&state.goodLimit===200&&state.navLimit===500;const total=state.mode==='demo'?data.reduce((sum,row)=>sum+row.weight,0)*state.range/7:data.length;const weighted=level=>data.reduce((sum,row)=>sum+(quality(row)===level?(state.mode==='demo'?row.weight:1):0),0);const all=weighted('Good')+weighted('Needs improvement')+weighted('Poor');return {inp:isDefault?142:percentile(data.filter(r=>r.type!=='Navigation').map(r=>r.duration),75),nav:isDefault?238:percentile(data.filter(r=>r.type==='Navigation').map(r=>r.duration),75),total,good:isDefault?98.2:all?weighted('Good')/all*100:0,warn:isDefault?1.4:all?weighted('Needs improvement')/all*100:0,poor:isDefault?.4:all?weighted('Poor')/all*100:0};}
++function render(){const data=rows(),summary=getSummary(data);$('#interaction-metric-label').textContent=state.mode==='live'?'Interaction to content':'Interaction to Next Paint';$('#chart-metric-label').textContent=state.mode==='live'?'Content update estimate':'Interaction to Next Paint';$('#stat-inp').textContent=number(summary.inp);$('#stat-nav').textContent=number(summary.nav);$('#stat-total').textContent=number(summary.total);$('#stat-good').textContent=data.length?summary.good.toFixed(1):'—';$('#table-count').textContent=data.length;$('#donut-percent').innerHTML=(data.length?summary.good.toFixed(1):'—')+'<span>%</span>';for(const key of ['good','warn','poor'])$('#'+key+'-percent').textContent=summary[key].toFixed(1)+'%';$('#donut-good').style.strokeDasharray=`${summary.good/100*408.4} 408.4`;$('#donut-warn').style.strokeDasharray=`${summary.warn/100*408.4} 408.4`;$('#donut-warn').style.strokeDashoffset=-summary.good/100*408.4;$('#donut-poor').style.strokeDasharray=`${summary.poor/100*408.4} 408.4`;$('#donut-poor').style.strokeDashoffset=-(summary.good+summary.warn)/100*408.4;$('#donut-good').style.strokeLinecap=summary.good>98?'butt':'round';
++ for(const [key,limit] of [['inp',state.goodLimit],['nav',state.navLimit]]){const el=$('#'+key+'-status');el.textContent=summary[key]==null?'No data':summary[key]<=limit?'Good':'Improve';el.className='badge '+(summary[key]==null?'':summary[key]<=limit?'good':'warning');}
++ const compare=state.mode==='demo'&&state.type==='all'&&state.quality==='all'&&!state.search&&state.page==='overview';document.querySelectorAll('.stat-foot').forEach(el=>el.classList.toggle('live-foot',!compare));for(const [key,val] of [['inp','↘ 12.8%'],['nav','↘ 8.2%'],['good','↗ 2.4%'],['total','↗ 18.6%']])$('#trend-'+key).textContent=compare?val:'Selected measurements';
++ $('#live-banner').hidden=state.mode!=='live';$('#data-label').textContent=state.mode==='demo'?'Demo workspace':'Local session';$('#dataset-note').textContent=state.mode==='demo'?'Sample data':'Local measurements';$('#live-message').textContent=state.recording?'Recording this tab. Click, filter, search, or navigate to capture content updates.':state.live.length?'Recording paused. Your measurements stay in this session.':'Ready to capture. Start recording, then explore the dashboard.';$('#date-range').disabled=state.mode==='live';$('#percentile').hidden=state.mode==='live';document.querySelectorAll('[data-mode]').forEach(el=>el.classList.toggle('selected',el.dataset.mode===state.mode));const count=Number(state.type!=='all')+Number(state.quality!=='all');$('.filter-count').hidden=!count;$('.filter-count').textContent=count;renderChart(data);renderTable(data);}
++function renderTable(data){const size=state.showAll?20:5;state.tablePage=Math.min(state.tablePage,Math.max(0,Math.ceil(data.length/size)-1));const start=state.tablePage*size;$('#interaction-rows').innerHTML=data.length?data.slice(start,start+size).map(row=>{const q=quality(row);return `<tr tabindex="0" role="button" aria-label="View ${escapeHtml(row.name)} details" data-id="${row.id}"><td><span class="event-name"><span class="event-icon ${row.type==='Navigation'?'navigation':''}">${icon(row.type==='Navigation'?'navigation':row.type==='Keyboard'?'keyboard':'cursor')}</span>${escapeHtml(row.name)}</span></td><td><span class="route">${escapeHtml(row.route)}</span></td><td><span class="type-badge ${row.type==='Navigation'?'navigation':''}">${row.type}</span></td><td class="duration">${Math.round(row.duration)} <span style="font-weight:400;color:#a6a0b1">ms</span></td><td><span class="quality ${q==='Good'?'':q==='Poor'?'poor':'warning'}"><i></i>${q}</span></td><td>${escapeHtml(row.time)}</td><td><span style="font-size:16px;color:#c1bacb">›</span></td></tr>`;}).join(''):'<tr><td colspan="7" class="empty-state">'+(state.mode==='live'&&!state.live.length?'Your next interaction is the first data point. Start a recording to begin.':'No interactions match your filters.')+'</td></tr>';$('#table-summary').textContent=data.length?`Showing ${start+1}–${Math.min(start+size,data.length)} of ${data.length} ${state.page==='navigations'?'navigations':'interactions'}`:'No measurements to display';$('#page-number').textContent=state.tablePage+1;$('#previous').disabled=!state.tablePage;$('#next').disabled=start+size>=data.length;$('#view-all').innerHTML=state.showAll?'Show recent <span>↗</span>':'View all <span>↗</span>';}
++function renderChart(data){const chart=$('#line-chart');if(state.mode==='live'){if(!data.length){chart.innerHTML='<div class="chart-empty">Record a session to see your performance timeline.</div>';$('#chart-insight').textContent='Waiting for your first content update.';$('#chart-period').textContent='Current session';return;}const values=data.slice(0,30).reverse();const max=Math.max(300,...values.map(r=>r.duration))*1.2;const livePoints=type=>values.flatMap((r,i)=>(r.type==='Navigation')===type?[[48+i*590/Math.max(1,values.length-1),185-r.duration/max*165]]:[]);chart.setAttribute('aria-label',`Local content update estimates from ${data.length} interactions, in milliseconds.`);chart.innerHTML=chartSvg(livePoints(false),livePoints(true),max,values.map((r,i)=>i===0?'Start':i===values.length-1?'Now':''));$('#chart-insight').textContent=`${data.length} content update${data.length===1?'':'s'} captured in this tab.`;$('#chart-period').textContent='Current session';return;}
++ const multiplier=state.percentile===50?.78:state.percentile===95?1.65:1;const filtered=state.type!=='all'||state.quality!=='all'||state.search;const summary=getSummary(data);const base1=filtered?(summary.inp||0):142,base2=filtered?(summary.nav||0):238;const purple=[],teal=[];const pattern=[0,6,-3,9,2,-12,5,16,-8,4,-2,14,-8,-4,10,-11,8,-5,12,4,-6,19,-12,3,1,-9,11,-8,5,-5,3,9,-4,7,-2,8,-4,0,-6,1,0];for(let i=0;i<41;i++){const x=48+i*590/40;const trend=(40-i)*1.05;purple.push([x,185-(base1+trend+pattern[i]*1.8)*multiplier/500*165]);teal.push([x,185-(base2+trend+pattern[(i+11)%41]*1.7)*multiplier/500*165]);}if(!data.length){chart.innerHTML='<div class="chart-empty">No measurements match your filters.</div>';return;}const labels=Array.from({length:7},(_,i)=>{const date=new Date(Date.UTC(2026,9,20-state.range+1+Math.round(i*(state.range-1)/6)));return `Oct ${date.getUTCDate()}`;});chart.innerHTML=chartSvg(purple,teal,500,labels);$('#chart-insight').textContent=filtered?'Showing performance for your selected measurements.':'Your app is getting faster. Keep it up.';const start=new Date(Date.UTC(2026,9,21-state.range));$('#chart-period').textContent=`${start.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})} – Oct 20, 2026`;chart.setAttribute('aria-label',`Performance trend, P${state.percentile}, last ${state.range} days. Sample data.`);}
++function chartSvg(points,second,max,labels){const coords=arr=>arr.map(p=>p.map(v=>v.toFixed(2)).join(',')).join(' ');let markup=`<svg viewBox="0 0 660 220" preserveAspectRatio="none"><defs><linearGradient id="fill-purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9c86e2" stop-opacity=".11"/><stop offset="100%" stop-color="#9c86e2" stop-opacity=".015"/></linearGradient><linearGradient id="fill-teal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8bc9bd" stop-opacity=".08"/><stop offset="100%" stop-color="#8bc9bd" stop-opacity=".01"/></linearGradient></defs>`;for(let i=0;i<6;i++){const y=20+i*33;markup+=`<line x1="48" y1="${y}" x2="638" y2="${y}" stroke="#f0edf5" stroke-dasharray="3 4"/><text x="34" y="${y+3}" text-anchor="end" fill="#aaa5b8" font-size="8" font-family="DM Sans,sans-serif">${Math.round(max-i*max/5)} ms</text>`;}const threshold=185-state.goodLimit/max*165;if(threshold>20)markup+=`<line x1="48" y1="${threshold}" x2="638" y2="${threshold}" stroke="#c4dbcc" stroke-width=".8" stroke-dasharray="4 4"/>`;for(const [arr,color,fill] of [[second,'#72b6ac','fill-teal'],[points,'#9b83d8','fill-purple']]){if(!arr.length)continue;markup+=`<polygon points="${arr[0][0]},185 ${coords(arr)} ${arr.at(-1)[0]},185" fill="url(#${fill})"/><polyline points="${coords(arr)}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;arr.forEach(([x,y],i)=>{markup+=`<circle cx="${x}" cy="${y}" r="${arr.length===1?3:6}" fill="${arr.length===1?color:'transparent'}"><title>${color==='#9b83d8'?'Interaction':'Navigation'}: ${Math.round((185-y)/165*max)} ms${state.mode==='demo'?' · sample data':''}</title></circle>`;});}labels.forEach((label,i)=>{if(label)markup+=`<text x="${48+i*590/Math.max(1,labels.length-1)}" y="211" text-anchor="middle" fill="#aaa5b8" font-size="8" font-family="DM Sans,sans-serif">${label}</text>`;});return markup+'</svg>';}
++let toastTimer;function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4000);}
++function dialog(title,content){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=content;$('#dialog').showModal();}
++$('#close-dialog').onclick=()=>$('#dialog').close();$('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog')){const rect=$('#dialog').getBoundingClientRect();if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)$('#dialog').close();}});
++const pageTitles={overview:['Every interaction. Every millisecond.','Understand how fast your app feels, from first click to next paint.'],interactions:['A better experience starts with a click.','Explore the interactions that shape how your app feels.'],navigations:['Every journey deserves a fast start.','Measure the wait between a navigation and new content.'],sessions:['See your experience as it happens.','Capture interactions and content updates from this browser tab.']};
++function navigate(){state.page=location.hash.slice(1) in pageTitles?location.hash.slice(1):'overview';const [title,description]=pageTitles[state.page];$('#page-title').textContent=title;$('#page-description').textContent=description;$('#breadcrumb').textContent={overview:'Overview',interactions:'Interactions',navigations:'Navigations',sessions:'Live sessions'}[state.page];document.querySelectorAll('[data-page]').forEach(el=>{el.classList.toggle('active',el.dataset.page===state.page);if(el.dataset.page===state.page)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});$('#table-title').firstChild.textContent=state.page==='navigations'?'Recent navigations ':state.page==='sessions'?'Session activity ':'Recent interactions ';state.tablePage=0;if(state.page==='sessions')state.mode='live';render();}
++window.addEventListener('hashchange',navigate);
++document.querySelectorAll('[data-mode]').forEach(el=>el.onclick=()=>{state.mode=el.dataset.mode;state.tablePage=0;render();});
++$('#date-range').onchange=e=>{state.range=+e.target.value;state.tablePage=0;render();};$('#percentile').onchange=e=>{state.percentile=+e.target.value;renderChart(rows());};
++$('#filter').onclick=()=>{$('#filter-panel').hidden=!$('#filter-panel').hidden;$('#filter').setAttribute('aria-expanded',!$('#filter-panel').hidden);};
++function updateFilters(){state.type=$('#type-filter').value;state.quality=$('#quality-filter').value;state.tablePage=0;render();}$('#type-filter').onchange=updateFilters;$('#quality-filter').onchange=updateFilters;$('#clear-filters').onclick=()=>{$('#type-filter').value='all';$('#quality-filter').value='all';updateFilters();};
++$('#search').oninput=e=>{state.search=e.target.value.toLowerCase();state.tablePage=0;render();};$('#view-all').onclick=()=>{state.showAll=!state.showAll;state.tablePage=0;render();};$('#sort-duration').onclick=()=>{state.sort=state.sort===1?-1:1;$('#sort-duration span').textContent=state.sort===1?'↑':'↓';render();};$('#previous').onclick=()=>{state.tablePage--;render();};$('#next').onclick=()=>{state.tablePage++;render();};
++function showRow(id){const row=(state.mode==='demo'?sampleRows:state.live).find(r=>r.id===id);if(!row)return;dialog(row.name,`<dl><dt>Page / route</dt><dd>${escapeHtml(row.route)}</dd><dt>Interaction type</dt><dd>${row.type}</dd><dt>Content update</dt><dd>${Math.round(row.duration)} ms</dd><dt>Experience</dt><dd>${quality(row)}</dd><dt>Next paint timing</dt><dd>${row.eventDuration!=null?Math.round(row.eventDuration)+' ms (browser reported)':state.mode==='demo'?'Sample measurement':'No browser event timing available'}</dd><dt>Data source</dt><dd>${state.mode==='demo'?'Demonstration dataset':'This browser tab'}</dd></dl><p class="detail-note">${state.mode==='demo'?'This is sample data for exploring the dashboard. Start a recording to measure real content updates in this tab.':'Content update duration estimates the time from your input until two animation frames after a DOM content change. It is a render estimate, not a guaranteed contentful paint or an official INP value.'}</p>`);}
++$('#interaction-rows').onclick=e=>{const row=e.target.closest('[data-id]');if(row)showRow(+row.dataset.id);};$('#interaction-rows').onkeydown=e=>{const row=e.target.closest('[data-id]');if(row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();showRow(+row.dataset.id);}};
++$('#export').onclick=()=>{const data=rows();if(!data.length){toast('No measurements to export. Record a session first.');return;}const fields=['Interaction','Route','Type','Content update (ms)','Experience','Next paint (ms)','Source'];const csv=[fields,...data.map(row=>[row.name,row.route,row.type,Math.round(row.duration),quality(row),row.eventDuration??'',state.mode==='demo'?'Sample data':'Local render estimate'])].map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`render-${state.mode}-${state.page}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast(`Exported ${data.length} measurements as CSV.`);};
++$('#notifications').onclick=()=>dialog('You’re all caught up',`<p>There are no new notifications for Acme web app.</p><p>In this local workspace, recording results appear immediately in Live data. No notifications are sent externally.</p>`);
++$('#workspace').onclick=()=>dialog('Acme workspace','<p><strong>Acme web app</strong> · Production</p><p>You are exploring a local demo workspace. Start a recording to capture actual content updates from this tab, or export the sample measurements to explore the data format.</p><button class="button" id="workspace-record">Record a local session</button>');
++$('#project').onclick=()=>$('#workspace').click();$('#explore').onclick=()=>{state.mode='demo';state.type='all';state.quality='all';state.search='';$('#search').value='';$('#type-filter').value='all';$('#quality-filter').value='all';if(location.hash!=='#overview')location.hash='overview';else navigate();toast('Explore an interaction to see its timing breakdown.');};
++function docs(){dialog('Measuring what your users feel',`<p><strong>Interaction to Next Paint</strong> measures responsiveness through the next painted frame. Event timings are collected when your browser supports the Event Timing API.</p><p><strong>Navigation to content</strong> here is a local estimate: input to two animation frames after a content mutation. It includes client-side route updates, but does not guarantee image decoding, asynchronous completion, or visible contentful paint.</p><p>Recordings only capture interactions in this dashboard, remain in memory, and stop when you leave the page. Demo data is illustrative. The live interaction summary shows P75 of content-update estimates, not an official page-level INP score.</p><p>Experience ratings use separate interaction and navigation thresholds. You can change them in Settings.</p><p>Learn more in <a href="https://web.dev/articles/inp" target="_blank" rel="noopener">Google’s INP documentation ↗</a> and the <a href="https://developer.mozilla.org/en-US/docs/Web/API/PerformanceEventTiming" target="_blank" rel="noopener">Event Timing API documentation ↗</a>.</p>`);}
++$('#documentation').onclick=docs;$('#experience-info').onclick=()=>dialog('Experience thresholds',`<p><strong>Interactions</strong><br>Good: ≤ ${state.goodLimit} ms<br>Needs improvement: ${state.goodLimit+1}–${Math.max(500,state.goodLimit)} ms<br>Poor: > ${Math.max(500,state.goodLimit)} ms</p><p><strong>Navigations</strong><br>Good: ≤ ${state.navLimit} ms<br>Needs improvement: ${state.navLimit+1}–${state.navLimit*2} ms<br>Poor: > ${state.navLimit*2} ms</p><p>Navigation thresholds are workspace targets. They are separate from INP thresholds.</p>`);
++$('#settings').onclick=()=>dialog('Performance settings',`<p>Choose the timing targets for this browser. Saved locally.</p><form id="settings-form"><label>Good interaction threshold (ms)<input name="good" type="number" min="1" max="500" required value="${state.goodLimit}"></label><label>Good navigation threshold (ms)<input name="nav" type="number" min="1" max="10000" required value="${state.navLimit}"></label><button class="button" type="submit">Save settings</button></form>`);
++$('#dialog-body').addEventListener('submit',e=>{if(e.target.id!=='settings-form')return;e.preventDefault();const form=new FormData(e.target);state.goodLimit=+form.get('good');state.navLimit=+form.get('nav');try{localStorage.setItem('render-thresholds',JSON.stringify({good:state.goodLimit,nav:state.navLimit}));}catch{}$('#dialog').close();render();toast('Performance thresholds saved.');});$('#dialog-body').addEventListener('click',e=>{if(e.target.id==='workspace-record'){$('#dialog').close();if(!state.recording)$('#record').click();}});
++// Content-update estimates are distinct from browser-reported next-paint timings.
++let pending=null,captureId=100,settleVersion=0,pendingTimeout;
++const eventTimings=new Map();
++function startInput(event){if(!state.recording||document.hidden||!event.isTrusted)return;const target=event.target.closest('button,a,input,select,tr[data-id]');if(!target||target.closest('#dialog')||target.id==='record'||target.id==='clear-live')return;if(event.type==='keydown'&&!['Enter',' ','Backspace'].includes(event.key)&&event.key.length!==1)return;const nav=target.closest('a[href^="#"]');const name=target.getAttribute('aria-label')||target.textContent.trim().replace(/\s+/g,' ').slice(0,45)||target.placeholder||'Update content';pending={id:++captureId,name,route:location.hash||'#overview',type:nav?'Navigation':event.type==='keydown'?'Keyboard':'Click',start:performance.now(),time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})};settleVersion++;clearTimeout(pendingTimeout);pendingTimeout=setTimeout(()=>{pending=null;},4000);}
++document.addEventListener('pointerdown',startInput,true);document.addEventListener('keydown',startInput,true);
++const mutationObserver=new MutationObserver(mutations=>{if(!pending||!state.recording)return;const hasContent=mutations.some(m=>m.type==='attributes'||m.type==='characterData'||[...m.addedNodes,...m.removedNodes].some(node=>node.nodeType===3?node.textContent.trim():node.nodeType===1&&node.textContent.trim()));if(!hasContent)return;const captured=pending,version=++settleVersion;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!state.recording||pending!==captured||version!==settleVersion||document.hidden)return;pending=null;clearTimeout(pendingTimeout);const end=performance.now();const match=[...eventTimings.values()].find(entry=>Math.abs(entry.startTime-captured.start)<120);const record={...captured,route:location.hash||'#overview',duration:end-captured.start,eventDuration:match?.duration,weight:1};state.live.unshift(record);if(state.live.length>500)state.live.pop();if(state.mode==='live')render();}));});mutationObserver.observe($('main'),{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden']});
++if('PerformanceObserver' in window && PerformanceObserver.supportedEntryTypes?.includes('event')){try{new PerformanceObserver(list=>{for(const entry of list.getEntries()){if(!entry.interactionId)continue;const old=eventTimings.get(entry.interactionId);if(!old||entry.duration>old.duration)eventTimings.set(entry.interactionId,{startTime:entry.startTime,duration:entry.duration});const row=state.live.find(r=>Math.abs(r.start-entry.startTime)<120);if(row)row.eventDuration=Math.max(row.eventDuration||0,entry.duration);}if(eventTimings.size>200)eventTimings.delete(eventTimings.keys().next().value);}).observe({type:'event',buffered:true,durationThreshold:16});}catch{}}
++document.addEventListener('visibilitychange',()=>{if(document.hidden){pending=null;settleVersion++;}});
++$('#record').onclick=()=>{state.recording=!state.recording;pending=null;settleVersion++;state.mode='live';state.tablePage=0;$('#record').classList.toggle('recording',state.recording);$('#record span:last-child').textContent=state.recording?'Stop recording':'Start recording';$('#record').setAttribute('aria-pressed',state.recording);render();toast(state.recording?'Recording started. Explore the dashboard to capture content updates.':'Recording paused. Export your session anytime.');};
++$('#clear-live').onclick=()=>{pending=null;settleVersion++;state.live=[];render();toast('Session measurements cleared.');};
++navigate();
+diff --git a/index.html b/index.html
+index 66c9173..0016a5b 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,50 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#6355d9"><title>Render — Experience performance</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@500;600;650;700;750;800&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<aside class="sidebar">
++<a class="brand" href="#overview" aria-label="Render home"><span class="brand-icon"><i></i><i></i><i></i><i></i></span>render<span class="brand-period">.</span></a>
++<button class="workspace" id="workspace"><span class="workspace-mark">A</span><span>Acme workspace<small>Pro plan <span>↗</span></small></span><span class="workspace-chevron">⌄</span></button>
++<div class="nav-label">WORKSPACE</div>
++<nav aria-label="Main navigation">
++<a href="#overview" data-page="overview" class="nav-item active"><span data-icon="overview"></span>Overview</a>
++<a href="#interactions" data-page="interactions" class="nav-item"><span data-icon="cursor"></span>Interactions<span class="nav-count">24.8k</span></a>
++<a href="#navigations" data-page="navigations" class="nav-item"><span data-icon="navigation"></span>Navigations</a>
++<a href="#sessions" data-page="sessions" class="nav-item"><span data-icon="sessions"></span>Live sessions<span class="live-dot"></span></a>
++</nav>
++<div class="sidebar-bottom">
++<div class="upgrade"><span class="upgrade-symbol">✧</span><strong>A faster web starts here.</strong><p>Great experiences are measured<br>in milliseconds.</p><button id="explore">Explore your insights <span>↗</span></button></div>
++<button class="nav-item" id="settings"><span data-icon="settings"></span>Settings</button>
++<button class="nav-item" id="documentation"><span data-icon="book"></span>Documentation<span class="external">↗</span></button>
++<div class="profile"><span class="avatar">JL</span><span>Jamie Lee<small>jamie@acme.com</small></span><span class="profile-menu">⌄</span></div>
++</div>
++</aside>
++<div class="app-shell">
++<header class="topbar"><div class="breadcrumbs"><span data-icon="globe"></span><button id="project">Acme web app <span>⌄</span></button><span class="breadcrumb-slash">/</span><span id="breadcrumb">Overview</span><span class="environment"><i></i>Production</span></div><div class="header-right"><span class="sample-label" id="data-label">Demo workspace</span><button class="icon-button" id="notifications" aria-label="Notifications"><span data-icon="bell"></span><i></i></button><span class="avatar small">JL</span></div></header>
++<main>
++<div class="heading"><div><div class="eyebrow">EXPERIENCE PERFORMANCE</div><h1 id="page-title">Every interaction. Every millisecond.</h1><p id="page-description">Understand how fast your app feels, from first click to next paint.</p></div><button class="button record-button" id="record"><span class="record-dot"></span><span>Start recording</span></button></div>
++<div class="toolbar"><div class="segmented" id="view-toggle"><button class="selected" data-mode="demo">Overview</button><button data-mode="live">Live data <i class="live-dot"></i></button></div><div class="toolbar-right"><select id="date-range" aria-label="Date range"><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option></select><span class="toolbar-divider"></span><button class="button" id="filter"><span data-icon="filter"></span>Filters<span class="filter-count" hidden>1</span></button><button class="button" id="export"><span data-icon="download"></span>Export</button></div></div>
++<div class="filter-panel" id="filter-panel" hidden><label>Interaction type <select id="type-filter"><option value="all">All types</option><option value="Click">Click</option><option value="Navigation">Navigation</option><option value="Keyboard">Keyboard</option></select></label><label>Experience <select id="quality-filter"><option value="all">All experiences</option><option value="Good">Good</option><option value="Needs improvement">Needs improvement</option><option value="Poor">Poor</option></select></label><button class="text-button" id="clear-filters">Reset filters</button></div>
++<div class="live-banner" id="live-banner" hidden><span class="live-dot"></span><span id="live-message">Ready to capture. Start recording, then explore the dashboard.</span><button class="text-button" id="clear-live">Clear session</button></div>
++<section class="stats-grid" aria-label="Performance summary">
++<article class="stat-card"><div class="stat-label"><span id="interaction-metric-label">Interaction to Next Paint</span> <span title="75th percentile of observed interaction durations" class="info">i</span></div><div class="stat-value"><span id="stat-inp">142</span><span class="unit">ms</span><span class="badge good" id="inp-status">Good</span></div><div class="stat-foot"><span class="trend" id="trend-inp">↘ 12.8%</span><span>vs. previous period</span><svg class="spark" viewBox="0 0 100 30"><path d="M1 7 11 10 19 6 28 14 37 12 46 17 54 13 64 18 72 17 80 23 90 19 99 24"/></svg></div></article>
++<article class="stat-card"><div class="stat-label">Navigation to content <span title="Time from client-side navigation to rendered content" class="info">i</span></div><div class="stat-value"><span id="stat-nav">238</span><span class="unit">ms</span><span class="badge good" id="nav-status">Good</span></div><div class="stat-foot"><span class="trend" id="trend-nav">↘ 8.2%</span><span>vs. previous period</span><svg class="spark" viewBox="0 0 100 30"><path d="M1 9 10 6 20 13 29 11 39 17 49 12 58 16 67 14 77 23 87 19 99 24"/></svg></div></article>
++<article class="stat-card"><div class="stat-label">Good experiences <span title="Share of measurements meeting the configured thresholds" class="info">i</span></div><div class="stat-value"><span id="stat-good">98.2</span><span class="unit">%</span></div><div class="stat-foot"><span class="trend" id="trend-good">↗ 2.4%</span><span>vs. previous period</span><svg class="spark" viewBox="0 0 100 30"><path d="M1 25 12 21 21 23 32 16 41 20 51 12 60 14 70 8 80 11 89 5 99 3"/></svg></div></article>
++<article class="stat-card"><div class="stat-label">Total interactions <span title="Interactions recorded in the selected time period" class="info">i</span></div><div class="stat-value"><span id="stat-total">24,892</span><span class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div><div class="stat-foot"><span class="trend" id="trend-total">↗ 18.6%</span><span>vs. previous period</span></div></article>
++</section>
++<div class="charts-grid">
++<section class="panel performance-panel"><div class="panel-heading"><div><h2>Performance over time <span class="info" title="Daily 75th percentile, with a good interaction threshold at 200 ms">i</span></h2><p>Small improvements. Noticeably better experiences.</p></div><select id="percentile" aria-label="Percentile"><option value="75">P75</option><option value="50">P50</option><option value="95">P95</option></select></div><div class="chart-legend"><span><i class="legend-line purple"></i><span id="chart-metric-label">Interaction to Next Paint</span></span><span><i class="legend-line teal"></i>Navigation to content</span><span class="threshold-label"><i></i>Good threshold</span></div><div class="line-chart" id="line-chart" role="img" aria-label="Performance trends over the last seven days"></div><div class="chart-footer"><span><i class="live-dot"></i><span id="chart-insight">Your app is getting faster. Keep it up.</span></span><span id="chart-period">Oct 14 – Oct 20, 2026</span></div></section>
++<section class="panel experience-panel"><div class="panel-heading"><div><h2>Experience breakdown</h2><p>A little speed goes a long way.</p></div><button class="icon-button" id="experience-info" aria-label="About experience ratings">···</button></div><div class="donut-wrap"><svg viewBox="0 0 200 180" class="donut" aria-hidden="true"><circle cx="100" cy="90" r="65" class="donut-track"/><circle id="donut-good" cx="100" cy="90" r="65" class="donut-good"/><circle id="donut-warn" cx="100" cy="90" r="65" class="donut-warn"/><circle id="donut-poor" cx="100" cy="90" r="65" class="donut-poor"/></svg><div class="donut-center"><strong id="donut-percent">98.2<span>%</span></strong><span>Good experiences</span></div><span class="donut-leaf">↗</span></div><div class="breakdown-list"><div><span><i class="color-dot green"></i>Good <small>≤ 200 ms</small></span><strong id="good-percent">98.2%</strong></div><div><span><i class="color-dot amber"></i>Needs improvement</span><strong id="warn-percent">1.4%</strong></div><div><span><i class="color-dot red"></i>Poor</span><strong id="poor-percent">0.4%</strong></div></div><div class="experience-note"><span>✧</span><p>Fast feels good.<br><strong>Make every interaction count.</strong></p></div></section>
++</div>
++<section class="panel interactions-panel"><div class="panel-heading"><div><h2 id="table-title">Recent interactions <span class="count-pill" id="table-count">8</span></h2><p id="table-description">A closer look at what your users are experiencing.</p></div><div class="table-tools"><label class="search"><span data-icon="search"></span><input id="search" placeholder="Search interactions…" aria-label="Search interactions"></label><button class="text-button" id="view-all">View all <span>↗</span></button></div></div><div class="table-scroll"><table><thead><tr><th>INTERACTION</th><th>PAGE / ROUTE</th><th>TYPE</th><th><button id="sort-duration">DURATION <span>↓</span></button></th><th>EXPERIENCE</th><th>TIME <span>↓</span></th><th></th></tr></thead><tbody id="interaction-rows"></tbody></table></div><div class="table-footer"><span id="table-summary">Showing 5 of 8 recent interactions</span><div><span class="sample-data"><i></i><span id="dataset-note">Sample data</span></span><button class="icon-button" id="previous" aria-label="Previous page">‹</button><span id="page-number">1</span><button class="icon-button" id="next" aria-label="Next page">›</button></div></div></section>
++<footer class="page-footer"><span><span class="status-dot"></span>All systems operational</span><span>Built for the moments that matter. <span class="footer-logo">render.</span></span></footer>
++</main>
++</div>
++<dialog id="dialog"><div class="dialog-head"><h2 id="dialog-title"></h2><button class="icon-button" id="close-dialog" aria-label="Close dialog">×</button></div><div id="dialog-body"></div></dialog>
++<div class="toast" id="toast" role="status" hidden></div>
++</body></html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..7eb3952
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,7 @@
++:root{--purple:#7160dc;--purple-dark:#5e4cc7;--ink:#282b3a;--muted:#8b8d9a;--line:#ececf2;--green:#2b9c77;--bg:#f8f9fc;--sidebar:235px}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}button,a,input,select{-webkit-tap-highlight-color:transparent}button,input,select{font:inherit}button,a,select{cursor:pointer}button{color:inherit}button{background:none;border:0}a{text-decoration:none;color:inherit}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #ad9df4;outline-offset:3px}button:hover{filter:brightness(.97)}[hidden]{display:none!important}svg.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;display:block}span[data-icon]{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.sidebar{width:var(--sidebar);background:#fff;position:fixed;inset:0 auto 0 0;border-right:1px solid var(--line);padding:33px 18px 0;display:flex;flex-direction:column;z-index:20}.brand{display:flex;align-items:center;font-family:'Manrope',sans-serif;font-weight:800;letter-spacing:-1.7px;font-size:32px;padding-left:13px;line-height:1}.brand-period{color:var(--purple)}.brand-icon{display:flex;align-items:center;gap:3px;margin-right:11px;height:27px}.brand-icon i{width:4px;border-radius:5px;background:var(--purple);height:14px;transform:rotate(15deg)}.brand-icon i:nth-child(2){height:24px}.brand-icon i:nth-child(3){height:30px}.brand-icon i:nth-child(4){height:19px}.workspace{border:1px solid var(--line);border-radius:8px;margin:33px 0 31px;display:flex;align-items:center;gap:10px;text-align:left;padding:11px 10px;font-weight:600;font-size:12px;width:100%;background:#fff;box-shadow:0 2px 3px #24253902}.workspace-mark{display:grid;place-items:center;width:30px;height:32px;background:#f0eefb;color:#7764c9;border:1px solid #e7e2f8;border-radius:6px;font-weight:700;font-size:15px}.workspace small{font-size:10px;display:block;color:var(--muted);margin-top:4px;font-weight:400}.workspace small span{margin-left:4px}.workspace-chevron{margin-left:auto;color:#888b96}.nav-label{font-size:9px;font-weight:600;letter-spacing:1.3px;color:#a0a1ad;margin:0 13px 12px}.nav-item{display:flex;align-items:center;gap:11px;padding:12px 13px;margin:4px 0;font-weight:500;color:#777987;width:100%;font-size:12px;border-radius:6px;text-align:left;min-height:41px}.nav-item:hover{background:#f7f6fc}.nav-item.active{background:#eeebfc;color:#7661d7}.nav-item.active svg{stroke-width:2}.nav-count{font-size:10px;padding:3px 6px;background:#f2f2f6;color:#9696a4;border-radius:4px;margin-left:auto}.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#48b68f;flex-shrink:0}.nav-item>.live-dot{margin-left:auto;margin-right:4px}.sidebar-bottom{margin-top:auto}.upgrade{border:1px solid #eeeafa;border-radius:8px;background:linear-gradient(120deg,#faf9ff,#f3f0fc);margin:32px 4px 23px;padding:17px 14px}.upgrade-symbol{display:block;font-size:29px;color:#8d75d6;height:37px}.upgrade strong{font-size:11px;font-weight:600}.upgrade p{font-size:10px;line-height:1.8;color:#92909f;margin:7px 0 13px}.upgrade button{background:#fff;box-shadow:0 1px 3px #5f4f7920;padding:8px 9px;font-size:10px;font-weight:500;border-radius:5px;width:100%;text-align:left}.upgrade button span{float:right;color:#9984d1}.sidebar-bottom>.nav-item{font-size:11px}.external{margin-left:auto;color:#aaa}.profile{border-top:1px solid var(--line);margin:20px -18px 0;padding:19px 23px;display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600}.avatar{width:32px;height:32px;background:#e9dfd6;border:3px solid #f3ece6;border-radius:50%;display:grid;place-items:center;color:#715d4b;font-size:10px;font-weight:700;flex-shrink:0}.profile small{font-size:9px;color:#9a99a3;display:block;margin-top:4px;font-weight:400}.profile-menu{margin-left:auto;color:#aaa}.app-shell{margin-left:var(--sidebar)}.topbar{height:76px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 36px;gap:15px}.breadcrumbs{display:flex;gap:13px;align-items:center;color:#8a8b97;font-size:11px}.breadcrumbs>span[data-icon]{color:#9698a4}.breadcrumbs button{color:#50515d;font-size:11px;font-weight:500;padding:0}.breadcrumbs button span{color:#999;margin-left:10px}.breadcrumb-slash{color:#cbcbd4}.environment{display:flex;gap:5px;align-items:center;font-size:9px;background:#f3f7f4;border:1px solid #e2eee7;padding:4px 7px;border-radius:4px;color:#688776;margin-left:3px}.environment i{height:4px;width:4px;background:#6caa83;border-radius:50%}.header-right{display:flex;align-items:center;gap:23px}.sample-label{font-size:10px;color:#a0a0ad}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;position:relative;font-size:20px;border-radius:5px;color:#9394a2;flex-shrink:0}.icon-button:hover{background:#f2f0f8}.icon-button:disabled{opacity:.3;cursor:default}.header-right .icon-button i{width:4px;height:4px;background:#9a87dc;position:absolute;top:4px;right:5px;border-radius:50%;border:1px solid #fff}.avatar.small{width:28px;height:28px;font-size:8px}main{padding:36px 36px 0;max-width:1600px;margin:auto}.heading{display:flex;align-items:center;justify-content:space-between;gap:18px}.eyebrow{font-size:9px;letter-spacing:1.7px;font-weight:600;color:#9692ab;margin-bottom:10px}h1{font-family:'Manrope',sans-serif;font-size:27px;letter-spacing:-1px;font-weight:750;margin:0;line-height:1.5}.heading p{color:#92919e;font-size:11px;margin:7px 0 0}.button{background:#fff;border:1px solid #e3e3ec;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;min-height:34px;font-size:10px;font-weight:500;box-shadow:0 1px 2px #28223c03;white-space:nowrap}.button .icon{width:14px;height:14px}.record-button{background:var(--purple);border-color:var(--purple);color:white;box-shadow:0 3px 5px #7461d21b;margin-top:12px;padding:10px 14px;gap:8px}.record-dot{width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #ffffff18}.record-button.recording .record-dot{border-radius:1px;animation:blink 1.4s infinite}@keyframes blink{50%{opacity:.4}}.toolbar{margin:29px 0 23px;display:flex;align-items:center;justify-content:space-between;gap:15px}.segmented{background:#eeedf4;border:1px solid #e9e8f0;border-radius:6px;padding:3px;display:flex;gap:3px}.segmented button{padding:6px 13px;font-size:10px;display:flex;align-items:center;gap:8px;color:#8a8899;border-radius:4px;min-height:27px}.segmented button.selected{background:#fff;box-shadow:0 1px 3px #30264c0e;color:#514b67;font-weight:500}.segmented .live-dot{height:5px;width:5px;background:#9dbeae}.toolbar-right{display:flex;align-items:center;gap:9px}select{border:1px solid #e5e4ed;border-radius:6px;background:#fff;color:#706c80;font-size:10px;padding:9px 25px 9px 11px;min-height:33px;outline:none}.toolbar-divider{height:20px;width:1px;background:#e3e1eb;margin:0 3px}.filter-count{border-radius:3px;background:#eee8fb;color:#7259d0;padding:0 3px}.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.stat-card{background:#fff;border:1px solid #e8e7ef;border-radius:9px;padding:18px 19px 17px;box-shadow:0 2px 3px #23233d01;min-width:0}.stat-label{font-size:10px;color:#7c7c8c;display:flex;gap:6px;align-items:center;font-weight:500;white-space:nowrap}.info{border:1px solid #babbc7;color:#a8a8b6;display:inline-flex;align-items:center;justify-content:center;height:11px;width:11px;font-size:7px;border-radius:50%;font-family:serif;font-weight:bold;cursor:help;flex-shrink:0}.stat-value{display:flex;align-items:center;gap:6px;margin:15px 0 13px;font-size:31px;font-family:'Manrope',sans-serif;font-weight:750;letter-spacing:-1.2px;line-height:1.2}.unit{font-size:16px;font-weight:500;color:#a0a0ad;align-self:flex-end;padding-bottom:4px;letter-spacing:0}.badge{display:inline-flex;align-items:center;font-size:9px;font-family:'DM Sans',sans-serif;font-weight:500;letter-spacing:0;padding:4px 7px;border-radius:4px;gap:4px}.badge.good{color:#389d7a;background:#edf8f2}.badge.warning{color:#b78637;background:#fff6e7}.badge.poor{color:#d06b6b;background:#fff0f0}.stat-value>.badge{margin-left:5px}.stat-foot{display:flex;align-items:center;position:relative;font-size:8px;gap:5px;color:#a1a0ad;min-height:20px;white-space:nowrap}.trend{color:#409d7a;font-weight:500}.spark{width:64px;height:24px;position:absolute;right:0;bottom:0;fill:none;stroke:#5aab90;stroke-width:1.5;stroke-linejoin:round;opacity:.85}.mini-bars{height:30px;display:flex;align-items:flex-end;gap:4px;margin-left:auto}.mini-bars i{height:13px;width:5px;background:#e2ddf7;border-radius:2px 2px 0 0}.mini-bars i:nth-child(2){height:21px}.mini-bars i:nth-child(3){height:16px}.mini-bars i:nth-child(4){height:24px;background:#c8baf0}.mini-bars i:nth-child(5){height:20px}.mini-bars i:nth-child(6){height:27px;background:#b9a8e9}.mini-bars i:nth-child(7){height:30px;background:#8d75d7}.charts-grid{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;margin-top:22px}.panel{border:1px solid #e8e7ef;border-radius:9px;background:white;overflow:hidden;box-shadow:0 2px 3px #23233d01}.panel-heading{padding:20px 21px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:15px}h2{font-weight:600;font-size:12px;margin:0;letter-spacing:-.1px;display:flex;align-items:center;gap:7px}.panel-heading p{font-size:9px;color:#a1a0ad;margin:6px 0 0;line-height:1.6}.panel-heading select{min-height:27px;padding:6px 22px 6px 10px;font-size:9px;background:#fff}.chart-legend{display:flex;align-items:center;gap:21px;font-size:8px;color:#8e8c9c;margin:23px 22px 12px}.chart-legend>span{display:flex;align-items:center;gap:6px}.legend-line{width:13px;height:2px;border-radius:2px;display:inline-block}.legend-line.purple{background:#8b77d6}.legend-line.teal{background:#65b1a8}.threshold-label{margin-left:auto}.threshold-label i{border-top:1px dashed #b7cdbb;width:13px}.line-chart{margin:0 15px 0 12px;height:222px;position:relative}.line-chart svg{width:100%;height:100%;overflow:visible}.chart-footer{border-top:1px solid #f0eff5;padding:13px 20px;display:flex;justify-content:space-between;align-items:center;color:#a2a0af;font-size:8px;gap:10px;margin-top:6px}.chart-footer>span:first-child{display:flex;gap:6px;align-items:center;color:#889a91}.chart-footer .live-dot{width:4px;height:4px}.experience-panel .panel-heading{padding-bottom:0}.experience-panel .icon-button{font-size:17px;letter-spacing:2px;height:15px}.donut-wrap{height:185px;position:relative;margin-top:1px}.donut{height:190px;width:100%;transform:rotate(-90deg)}.donut circle{fill:none;stroke-width:14}.donut-track{stroke:#f1f3f5}.donut-good{stroke:#62b49b;stroke-dasharray:390 409;stroke-linecap:round}.donut-warn{stroke:#e8b965;stroke-dasharray:6 409;stroke-dashoffset:-398}.donut-poor{stroke:#df9292;stroke-dasharray:3 409;stroke-dashoffset:-407}.donut-center{position:absolute;top:65px;left:0;right:0;display:flex;align-items:center;flex-direction:column;gap:7px}.donut-center strong{font-family:'Manrope',sans-serif;font-size:30px;font-weight:750;letter-spacing:-1px}.donut-center strong span{font-size:16px;margin-left:1px}.donut-center>span{font-size:9px;color:#9897a4}.donut-leaf{position:absolute;right:83px;top:125px;background:#f4faf6;color:#7dbba5;border:3px solid #fff;border-radius:50%;height:24px;width:24px;text-align:center;font-size:12px;padding-top:2px}.breakdown-list{margin:0 22px 16px}.breakdown-list>div{display:flex;justify-content:space-between;align-items:center;font-size:10px;margin:12px 0}.breakdown-list>div>span{display:flex;align-items:center;gap:7px;color:#838290}.breakdown-list small{font-size:8px;color:#adaab8;margin-left:2px}.breakdown-list strong{font-size:10px;font-weight:500;color:#696677}.color-dot{width:6px;height:6px;border-radius:50%;display:inline-block}.green{background:#64b299}.amber{background:#e7ba6a}.red{background:#dc9293}.experience-note{background:#f9fbfa;border-top:1px solid #eff3f0;display:flex;align-items:center;gap:10px;padding:12px 21px}.experience-note>span{color:#90b4a3;font-size:24px}.experience-note p{font-size:9px;color:#91a496;line-height:1.7;margin:0}.experience-note strong{color:#8c9a90;font-weight:400}.interactions-panel{margin-top:22px}.interactions-panel .panel-heading{padding-bottom:20px;align-items:center}.count-pill{background:#f2f1f7;border:1px solid #ebe9f2;border-radius:4px;color:#9b94ae;font-size:8px;padding:2px 5px;font-weight:500;margin-left:2px}.table-tools{display:flex;align-items:center;gap:20px}.search{display:flex;align-items:center;gap:7px;border:1px solid #e9e7f0;background:white;border-radius:5px;padding:7px 9px}.search .icon{width:13px;height:13px;color:#aaa5b9}.search input{border:0;outline:none;width:132px;font-size:9px;color:#666}.search input::placeholder{color:#aaa6b6}.text-button{font-size:9px;color:#8a78c7;white-space:nowrap;padding:4px}.text-button span{margin-left:5px}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap}thead{background:#fbfafc;border-block:1px solid #f0eef4}th{font-size:8px;letter-spacing:.65px;font-weight:500;color:#aaa7b6;padding:12px 18px}th:first-child{padding-left:22px;width:25%}th:nth-child(2){width:22%}th button{font:inherit;padding:0;letter-spacing:inherit;color:inherit}th span{margin-left:4px;color:#b5b0c3}td{font-size:10px;color:#8a869a;padding:13px 18px;border-bottom:1px solid #f1eff5;height:48px}td:first-child{padding-left:22px;color:#656071;font-weight:500}td:last-child{padding:6px 12px;width:35px}tr:last-child td{border:0}tbody tr{cursor:pointer}tbody tr:hover{background:#fcfbff}.event-name{display:flex;align-items:center;gap:9px}.event-icon{background:#f4f1fc;border:1px solid #eeebf8;width:25px;height:25px;border-radius:5px;display:grid;place-items:center;color:#9d8bc8}.event-icon .icon{width:12px;height:12px}.event-icon.navigation{color:#72a6b1;background:#f0f7f9;border-color:#e6f0f4}.route{font-family:monospace;font-size:9px;color:#9994a7;background:#f8f7fa;border:1px solid #efedf3;padding:3px 5px;border-radius:4px}.type-badge{font-size:8px;color:#9381b9;background:#f5f1fb;padding:4px 6px;border-radius:4px}.type-badge.navigation{color:#7b9daa;background:#f0f5f8}.duration{color:#6d687c;font-weight:500}.quality{display:flex;align-items:center;gap:5px;font-size:9px;color:#72a18c}.quality.warning{color:#ba9b64}.quality.poor{color:#c28383}.quality i{height:4px;width:4px;background:currentColor;border-radius:50%}.table-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0eef5;padding:11px 21px;font-size:8px;color:#aaa5b8}.table-footer>div{display:flex;align-items:center;gap:12px}.table-footer .icon-button{border:1px solid #eae7f1;width:22px;height:22px;font-size:15px}.sample-data{display:flex;align-items:center;gap:5px;margin-right:9px;color:#a79db9}.sample-data i{height:4px;width:4px;border-radius:50%;background:#b8a9d0}.page-footer{padding:22px 0;display:flex;align-items:center;justify-content:space-between;font-size:8px;color:#a8a4b5}.page-footer>span:first-child{display:flex;align-items:center;gap:6px}.status-dot{width:4px;height:4px;background:#75b599;box-shadow:0 0 0 2px #e9f2ee;border-radius:50%}.footer-logo{font-family:'Manrope',sans-serif;font-weight:800;color:#a29bab;font-size:13px;letter-spacing:-.6px;margin-left:8px}.filter-panel{display:flex;gap:18px;align-items:end;margin:-9px 0 20px;padding:15px;border:1px solid var(--line);background:#fff;border-radius:8px}.filter-panel label{font-size:10px;color:#86818f;display:flex;flex-direction:column;gap:5px}.live-banner{padding:12px 15px;background:#eeedf9;border:1px solid #e5e0f6;border-radius:7px;margin-bottom:18px;display:flex;align-items:center;gap:8px;font-size:11px;color:#71668f}.live-banner button{margin-left:auto}.empty-state{text-align:center;padding:35px;color:#aaa;font-size:12px}dialog{border:1px solid #e7e3ef;border-radius:12px;width:480px;max-width:calc(100% - 32px);padding:24px;color:var(--ink);box-shadow:0 15px 80px #27213930}dialog::backdrop{background:#24213255;backdrop-filter:blur(3px)}.dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.dialog-head h2{font-size:18px}.dialog-head button{font-size:24px}.dialog-body, #dialog-body{font-size:12px;line-height:1.8;color:#81798e}#dialog-body a{color:var(--purple);text-decoration:underline}#dialog-body label{display:block;margin:12px 0;color:#655b77}#dialog-body input{border:1px solid #ddd5eb;border-radius:5px;padding:8px;margin-left:10px;width:90px}#dialog-body .button{margin-top:10px;background:var(--purple);color:#fff}#dialog-body dl{display:grid;grid-template-columns:130px 1fr;gap:9px}#dialog-body dd{margin:0;color:#514664}#dialog-body .detail-note{font-size:11px;background:#f7f4fb;padding:12px;border-radius:6px}.toast{position:fixed;bottom:24px;left:calc(50% + 100px);transform:translateX(-50%);padding:13px 20px;background:#302b40;color:#fff;border-radius:7px;box-shadow:0 4px 20px #28213820;font-size:12px;z-index:100;max-width:80vw}.stat-foot.live-foot>span:nth-child(2){display:none}.chart-empty{height:100%;display:grid;place-items:center;color:#a49cad;font-size:11px}.stat-foot.live-foot .trend{color:#9991a8}.stat-foot.live-foot .spark{opacity:.4}
++@media(min-width:1450px){main{padding-top:43px}.stat-card{padding:22px}.stats-grid{gap:20px}.stat-label{font-size:12px}.stat-foot{font-size:9px}.spark{width:75px}.charts-grid{grid-template-columns:minmax(0,1fr) 340px}.line-chart{height:250px}.donut-wrap{height:210px}.donut{height:210px}.donut-center{top:74px}.donut-leaf{top:143px;right:94px}.panel-heading h2{font-size:14px}.panel-heading p{font-size:11px}.chart-legend{font-size:9px}.breakdown-list>div{font-size:11px;margin:14px 0}.experience-note{padding:14px 22px}.experience-note p{font-size:10px}td{height:55px;font-size:11px}th{font-size:9px}.stat-value{font-size:35px}}
++@media(max-width:1200px){:root{--sidebar:205px}.sidebar{padding-inline:13px}.profile{margin-inline:-13px;padding-inline:18px}.topbar{padding-inline:26px}main{padding-inline:26px}.charts-grid{grid-template-columns:minmax(0,1fr) 280px;gap:16px}.stat-card{padding:16px 13px}.stat-label{font-size:9px}.stat-value{font-size:28px}.stat-value .badge{font-size:8px;margin-left:0;padding:3px 5px}.stat-foot{font-size:7px}.spark{width:46px}.chart-legend{gap:12px;font-size:7px}.threshold-label{display:none!important}.donut-leaf{right:70px}.table-tools{gap:10px}th,td{padding-inline:12px}.heading h1{font-size:24px}.panel-heading{padding-inline:17px}}
++@media(max-width:1000px){:root{--sidebar:185px}.sidebar{padding-inline:10px}.brand{font-size:28px;padding-left:10px}.workspace{font-size:10px;padding:9px 7px}.workspace-mark{width:25px;height:28px}.nav-item{font-size:11px;padding-inline:10px;gap:8px}.upgrade{padding:12px 9px}.upgrade strong{font-size:10px}.upgrade p{font-size:9px}.profile{margin-inline:-10px;padding-inline:14px}.topbar{padding-inline:20px}.sample-label{display:none}main{padding:25px 20px 0}.stats-grid{gap:10px}.stat-label{font-size:8px;gap:4px}.stat-value{font-size:25px}.unit{font-size:12px}.stat-value .badge{font-size:7px}.stat-foot .spark{display:none}.stat-foot{font-size:7px}.charts-grid{grid-template-columns:minmax(0,1fr) 240px;gap:14px}.donut-leaf{right:50px}.panel-heading p{font-size:8px}.panel-heading h2{font-size:11px}.chart-legend{gap:12px;margin-inline:16px}.chart-footer{font-size:7px;padding-inline:15px}.chart-footer>span:last-child{display:none}.breakdown-list{margin-inline:16px}.breakdown-list small{display:none}.breakdown-list>div{font-size:9px}.heading h1{font-size:21px}.heading p{font-size:10px}.record-button{font-size:9px;padding:10px}.eyebrow{font-size:8px}.search input{width:105px}.table-tools .text-button{font-size:8px}.header-right{gap:12px}.breadcrumbs{gap:10px}.environment{font-size:8px}.toolbar{margin-top:24px}.toolbar-right{gap:6px}.button{padding:8px 10px}.toolbar-divider{margin:0 1px}}
++@media(max-width:800px){:root{--sidebar:65px}.sidebar{padding:26px 9px 0}.brand{font-size:0;padding-left:4px}.brand-icon{margin:0;gap:3px}.brand-icon i{width:4px}.brand-period{display:none}.workspace,.nav-label,.upgrade,.profile{display:none}.sidebar nav{margin-top:38px}.nav-item{font-size:0!important;justify-content:center;padding:12px 0;margin:8px 0;gap:0}.nav-item .nav-count,.nav-item .live-dot,.external{display:none}.sidebar-bottom{margin-bottom:20px}.nav-item svg.icon{height:20px;width:20px}.heading h1{font-size:22px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.stat-card{padding:18px}.stat-label{font-size:11px}.stat-value{font-size:32px}.stat-value .badge{font-size:9px}.stat-foot{font-size:9px}.stat-foot .spark{display:block;width:65px}.charts-grid{grid-template-columns:minmax(0,1fr) 230px}.panel-heading{padding-inline:15px}.panel-heading p{font-size:8px}.chart-legend{flex-wrap:wrap;gap:9px}.line-chart{height:234px}.chart-footer{padding-inline:13px;font-size:7px}.experience-note{padding-inline:15px}.experience-note p{font-size:8px}.table-tools .text-button{display:none}.breadcrumbs{font-size:10px}.breadcrumbs button{font-size:10px}}
++@media(max-width:620px){.topbar{height:62px;padding-inline:16px}.breadcrumbs{gap:9px}.breadcrumbs>.breadcrumb-slash,.breadcrumbs>#breadcrumb{display:none}.header-right{gap:8px}.header-right .small{display:none}.environment{margin-left:1px;font-size:7px;padding:4px 5px}.heading{align-items:flex-start;flex-direction:column;gap:4px}.heading h1{font-size:22px;line-height:1.4;max-width:270px}.heading p{line-height:1.7;font-size:10px;max-width:280px}.record-button{margin-top:12px;padding:9px 12px;font-size:10px}.eyebrow{font-size:7px;margin-bottom:9px}main{padding:23px 15px 0}.toolbar{flex-wrap:wrap;margin:22px 0 17px;gap:13px}.toolbar-right{width:100%;justify-content:space-between}.toolbar-right select{flex:1}.toolbar-divider{display:none}.stats-grid{gap:10px}.stat-card{padding:14px 11px}.stat-label{font-size:8px;gap:4px}.stat-value{font-size:27px;gap:4px;margin-block:14px 10px}.stat-value .badge{font-size:7px;padding:3px 4px}.stat-foot{font-size:7px;gap:3px}.spark{display:none!important}.mini-bars{gap:2px;height:25px}.mini-bars i{width:3px}.mini-bars i:nth-child(6){height:23px}.mini-bars i:nth-child(7){height:25px}.charts-grid{grid-template-columns:1fr;margin-top:16px}.panel-heading{padding:18px 15px 0}.panel-heading h2{font-size:12px}.panel-heading p{font-size:9px}.chart-legend{font-size:7px;margin-block:18px 10px;gap:18px}.line-chart{height:210px;margin-inline:5px}.chart-footer{font-size:8px;padding:12px 15px}.experience-panel .panel-heading p{font-size:9px}.experience-panel{display:grid;grid-template-columns:1fr 1fr}.experience-panel .panel-heading{grid-column:1/-1}.donut-wrap{height:160px;margin-block:8px}.donut{height:160px}.donut-center{top:53px;gap:6px}.donut-center strong{font-size:22px}.donut-center>span{font-size:7px}.donut-leaf{right:17px;top:109px;height:21px;width:21px;font-size:10px}.breakdown-list{align-self:center;margin:8px 14px 0 0}.breakdown-list>div{align-items:flex-start;font-size:8px;gap:7px;margin:20px 0}.breakdown-list>div>span{gap:5px;line-height:1.6}.breakdown-list strong{font-size:8px;line-height:1.6}.breakdown-list .color-dot{margin-top:3px;flex-shrink:0}.experience-note{grid-column:1/-1;padding:10px 17px}.experience-note p br{display:none}.experience-note p strong{margin-left:5px}.experience-note p{font-size:9px}.interactions-panel{margin-top:16px}.interactions-panel .panel-heading{flex-wrap:wrap;gap:13px;padding-bottom:15px}.table-tools{width:100%}.search{width:100%}.search input{width:100%;font-size:10px}.table-tools .text-button{display:block}.table-footer{padding:10px;font-size:7px;gap:5px}.table-footer>div{gap:7px}.sample-data{display:none}.page-footer{font-size:7px;gap:10px;line-height:1.8;padding:18px 0}.page-footer>span:last-child{max-width:130px;text-align:right}.footer-logo{font-size:10px;white-space:nowrap}.filter-panel{flex-wrap:wrap;gap:10px}.filter-panel label{flex:1}.filter-panel select{max-width:160px}.live-banner{font-size:9px;flex-wrap:wrap;line-height:1.6}.toast{left:calc(50% + 20px);font-size:10px;width:max-content;max-width:80vw}.brand-icon{transform:scale(.9)}.sidebar{width:58px}:root{--sidebar:58px}}
++@media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}

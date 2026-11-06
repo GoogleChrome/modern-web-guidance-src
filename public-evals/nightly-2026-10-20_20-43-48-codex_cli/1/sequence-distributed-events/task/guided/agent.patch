@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,30 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .trace {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .trace p { margin-top: 8px; }
++    .trace button { border: 0; font: inherit; cursor: pointer; }
++    .trace button:disabled { opacity: 0.65; cursor: wait; }
++    .trace button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .trace-output {
++      margin-top: 20px;
++      padding: 16px;
++      background: #f5f1ef;
++      border-radius: 5px;
++      overflow-x: auto;
++      font-size: 0.85rem;
++      line-height: 1.8;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +216,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="trace" aria-labelledby="trace-heading">
++      <h2 id="trace-heading">Follow a coffee order</h2>
++      <p>Load a sample backend trace to see each step in order, from the first request to a coffee ready for pickup.</p>
++      <p>Server timestamps retain all nine fractional digits. Gaps are measured from the previous event.</p>
++      <button type="button" class="btn" id="load-trace">Load sample trace</button>
++      <p id="trace-status" role="status">No trace loaded yet.</p>
++      <pre id="trace-output" class="trace-output" aria-label="Chronological order trace" tabindex="0" hidden></pre>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +237,11 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    { "imports": { "@js-temporal/polyfill": "https://esm.sh/@js-temporal/polyfill@0.5.1" } }
++  </script>
++  <script type="module" src="./trace-ui.mjs"></script>
+ </body>
+ 
+ </html>

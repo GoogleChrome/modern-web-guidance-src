@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+index 66c9173..7a3e3ac 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,31 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Spacing scale in rem so it grows with the user's text size. */
++      --space-xs: 0.25rem;
++      --space-sm: 0.5rem;
++      --space-md: 1rem;
++      --space-lg: 1.5rem;
++      --space-xl: 2.5rem;
++
++      /* Minimum comfortable hit target for links/buttons (≈44px at 100%). */
++      --tap-target: 2.75rem;
++    }
++
++    /*
++     * Text-scale support
++     * ------------------
++     * The browser's default font size is what the OS / browser "text size"
++     * accessibility setting changes. We never pin a px root size, so every
++     * rem/em value below follows that preference automatically.
++     * text-size-adjust stops mobile browsers from applying their own
++     * inflation on top of the user's setting.
++     */
++    html {
++      font-size: 100%;
++      -webkit-text-size-adjust: 100%;
++      text-size-adjust: 100%;
+     }
+ 
+     * {
+@@ -25,16 +50,19 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: anywhere;
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: var(--space-md) 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: var(--space-sm) var(--space-lg);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -43,38 +71,58 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.05em;
++      line-height: 1.2;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: var(--space-xs) var(--space-md);
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      line-height: 1.4;
++      /* Padding in em keeps the hit area proportional to the link text. */
++      display: inline-flex;
++      align-items: center;
++      min-height: var(--tap-target);
++      padding: 0.25em 0.25em;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 0.35em 0.9em;
++      border-radius: 0.25em;
++    }
++
++    /*
++     * When text is large relative to the viewport height (large text scale,
++     * short screens, or both) a sticky, multi-line nav would hide most of the
++     * page. Let it scroll away in that case.
++     */
++    @media (max-height: 28em) {
++      nav {
++        position: static;
++      }
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      /* min-height rather than height: text can grow without being clipped. */
++      min-height: 60vh;
++      min-height: 60svh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,53 +133,94 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: var(--space-xl) var(--space-lg);
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /*
++       * Both clamp bounds are rem, so the heading still grows with text scale;
++       * the vw term only keeps it from overflowing narrow screens in between.
++       */
++      font-size: clamp(2rem, 1.25rem + 3.5vw, 3rem);
++      line-height: 1.15;
++      margin-bottom: 0.35em;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: 1.125rem;
++      max-width: 40ch;
++      text-wrap: pretty;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 68.75rem;
++      margin: var(--space-xl) auto;
++      padding: 0 var(--space-lg);
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: clamp(1.5rem, 1.1rem + 1.5vw, 2rem);
++      line-height: 1.25;
++      text-wrap: balance;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      /*
++       * Column minimum is in rem so cards get wider as text grows and fewer
++       * fit per row; min(…, 100%) stops a single column overflowing the
++       * viewport at very large scales on narrow screens.
++       */
++      grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
++      gap: var(--space-lg);
++      margin-top: var(--space-lg);
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: var(--space-lg);
++      border-radius: 0.5rem;
++      box-shadow: 0 0.125rem 0.3rem rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      line-height: 1.3;
++      margin-bottom: 0.5em;
+       color: var(--primary);
++      text-wrap: balance;
++    }
++
++    .card p {
++      flex-grow: 1;
++      max-width: 45ch;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-height: var(--tap-target);
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.6em 1.25em;
++      line-height: 1.3;
++      text-align: center;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3em;
++      margin-top: var(--space-md);
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -176,7 +265,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

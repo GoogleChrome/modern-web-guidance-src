@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,137 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Static by default; scroll-driven motion is a progressive enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      display: grid;
++      align-items: center;
++      min-height: 32rem;
++      padding: 6rem 20px;
++      background: #211712;
++      color: white;
++    }
++
++    .coffee-story__photo {
++      position: absolute;
++      inset: -80px 0;
++      z-index: -3;
++      width: 100%;
++      height: calc(100% + 160px);
++      object-fit: cover;
++      object-position: center;
++      --parallax-start: -64px;
++      --parallax-end: 64px;
++    }
++
++    /* A stationary scrim keeps text contrast consistent as the photo moves. */
++    .coffee-story::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      background: linear-gradient(90deg, rgb(24 15 11 / 94%), rgb(24 15 11 / 80%));
++      pointer-events: none;
++    }
++
++    .coffee-story__rings {
++      position: absolute;
++      top: 50%;
++      right: -5rem;
++      width: clamp(18rem, 42vw, 36rem);
++      aspect-ratio: 1;
++      margin-top: -12rem;
++      border: 1px solid rgb(255 171 64 / 35%);
++      border-radius: 50%;
++      z-index: -1;
++      pointer-events: none;
++      --parallax-start: -28px;
++      --parallax-end: 28px;
++    }
++
++    .coffee-story__rings::before,
++    .coffee-story__rings::after {
++      content: '';
++      position: absolute;
++      inset: 2rem;
++      border: 1px solid rgb(255 171 64 / 25%);
++      border-radius: inherit;
++    }
++
++    .coffee-story__rings::after {
++      inset: 4rem;
++    }
++
++    .coffee-story__content {
++      width: 100%;
++      max-width: 1060px;
++      margin-inline: auto;
++      --parallax-start: 20px;
++      --parallax-end: -20px;
++    }
++
++    .coffee-story__eyebrow {
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++      margin-bottom: 1rem;
++    }
++
++    .coffee-story h2 {
++      max-width: 15ch;
++      font-size: clamp(2.25rem, 5vw, 4rem);
++      line-height: 1.1;
++      text-wrap: balance;
++      margin-bottom: 1.5rem;
++    }
++
++    .coffee-story__description {
++      max-width: 43ch;
++      color: #eee4de;
++      font-size: 1.1rem;
++    }
++
++    .coffee-story__link {
++      display: inline-block;
++      margin-top: 1.75rem;
++      padding-block: 0.5rem;
++      color: var(--accent);
++      font-weight: 600;
++      text-underline-offset: 0.3em;
++    }
++
++    .coffee-story__link:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 6px;
++      border-radius: 2px;
++    }
++
++    @keyframes coffee-parallax {
++      from { transform: translateY(var(--parallax-start)); }
++      to { transform: translateY(var(--parallax-end)); }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry) and (view-timeline-name: --coffee-story)) {
++        .coffee-story {
++          view-timeline: --coffee-story block;
++        }
++
++        .coffee-story__layer {
++          /* Keep timeline and range after the shorthand, which resets them. */
++          animation: coffee-parallax auto linear both;
++          animation-timeline: --coffee-story;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +302,25 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <img class="coffee-story__photo coffee-story__layer"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
++        srcset="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=800&amp;q=80 800w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1600&amp;q=80 1600w"
++        sizes="100vw" width="1600" height="1067" alt="" loading="lazy" decoding="async">
++      <div class="coffee-story__rings coffee-story__layer" aria-hidden="true"></div>
++      <div class="coffee-story__content coffee-story__layer">
++        <p class="coffee-story__eyebrow">From bean to cup</p>
++        <h2 id="coffee-story-title">Good coffee.<br>Deeper roots.</h2>
++        <p class="coffee-story__description">Every great cup starts long before the first sip. Discover the care behind our ethically sourced beans, local roasts, and everyday rituals.</p>
++        <a href="/about" class="coffee-story__link">Discover our story <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

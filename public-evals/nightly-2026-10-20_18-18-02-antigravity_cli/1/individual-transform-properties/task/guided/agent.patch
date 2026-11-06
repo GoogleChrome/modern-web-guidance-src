@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,59 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .seasonal-header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 10px;
++    }
++
++    .target {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 0.9rem;
++      padding: 10px 18px;
++      border-radius: 999px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      cursor: pointer;
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      animation:
++        spin 4s linear infinite,
++        slide 2.5s ease-in-out infinite;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes spin {
++      0% {
++        rotate: 0deg;
++      }
++      100% {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      0%, 100% {
++        translate: -20px 0;
++      }
++      50% {
++        translate: 20px 0;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -175,9 +226,12 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="target">Featured Promo</div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

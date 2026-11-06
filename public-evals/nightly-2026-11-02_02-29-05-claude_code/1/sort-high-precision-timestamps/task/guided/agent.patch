@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,70 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Order event timeline */
++    .events {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .events button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .events button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .events-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .events-table-wrap {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .events table {
++      width: 100%;
++      border-collapse: collapse;
++      background: white;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 8px;
++      font-size: 0.9rem;
++      text-align: left;
++    }
++
++    .events caption {
++      caption-side: bottom;
++      padding-top: 8px;
++      font-size: 0.8rem;
++    }
++
++    .events th,
++    .events td {
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .events th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .events td.ts {
++      font-family: ui-monospace, Consolas, monospace;
++      white-space: nowrap;
++    }
++
++    .events tr.tie td {
++      background: #fff3e0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +256,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="events" aria-labelledby="events-heading">
++      <h2 id="events-heading">Order Event Timeline</h2>
++      <p>Pull the latest batch of order events from our kitchen, payment, and pickup services and line them up in the
++        exact order they happened.</p>
++      <button type="button" id="load-events" class="btn">Load Order Events</button>
++      <p id="events-status" class="events-status" role="status"></p>
++      <div class="events-table-wrap" id="events-output" hidden>
++        <table>
++          <caption>Timestamps are UTC with nanosecond precision. Highlighted rows share an identical timestamp with the
++            previous event.</caption>
++          <thead>
++            <tr>
++              <th scope="col">#</th>
++              <th scope="col">Timestamp (UTC)</th>
++              <th scope="col">Service</th>
++              <th scope="col">Order</th>
++              <th scope="col">Event</th>
++              <th scope="col">Since previous</th>
++            </tr>
++          </thead>
++          <tbody id="events-body"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +293,91 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // A batch of order events as received from distributed backend services:
++    // out of order, with nanosecond-precision UTC timestamps. Several fall within
++    // the same millisecond, so Date-based parsing would collide and misorder them.
++    const ORDER_EVENT_BATCH = [
++      { service: 'pickup-svc', orderId: 'DG-1042', type: 'order.ready', ts: '2026-11-02T14:03:27.918204117Z' },
++      { service: 'payment-svc', orderId: 'DG-1042', type: 'payment.authorized', ts: '2026-11-02T14:03:05.412000981Z' },
++      { service: 'order-api', orderId: 'DG-1042', type: 'order.created', ts: '2026-11-02T14:03:05.411873002Z' },
++      { service: 'kitchen-svc', orderId: 'DG-1042', type: 'barista.assigned', ts: '2026-11-02T14:03:05.412000500Z' },
++      { service: 'payment-svc', orderId: 'DG-1043', type: 'payment.authorized', ts: '2026-11-02T14:03:05.412000981Z' },
++      { service: 'kitchen-svc', orderId: 'DG-1042', type: 'espresso.pulled', ts: '2026-11-02T14:03:19.007450333Z' },
++      { service: 'order-api', orderId: 'DG-1043', type: 'order.created', ts: '2026-11-02T14:03:05.411873450Z' },
++      { service: 'kitchen-svc', orderId: 'DG-1042', type: 'milk.steamed', ts: '2026-11-02T14:03:19.007450334Z' },
++      { service: 'notify-svc', orderId: 'DG-1042', type: 'customer.notified', ts: '2026-11-02T14:03:27.918977640Z' },
++      { service: 'kitchen-svc', orderId: 'DG-1043', type: 'barista.assigned', ts: '2026-11-02T14:03:05.412999999Z' },
++    ];
++
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++      }
++    }
++
++    // Simulates fetching the batch from the event collector.
++    async function loadOrderEvents() {
++      await ensureTemporal();
++      return ORDER_EVENT_BATCH.map(evt => ({ ...evt, instant: Temporal.Instant.from(evt.ts) }));
++    }
++
++    function sequenceEvents(events) {
++      return [...events].sort((a, b) => Temporal.Instant.compare(a.instant, b.instant));
++    }
++
++    function formatInterval(duration) {
++      if (duration.blank) return 'same instant';
++      try {
++        return duration.toLocaleString('en-US', { style: 'narrow' });
++      } catch {
++        return duration.toString();
++      }
++    }
++
++    const button = document.getElementById('load-events');
++    const status = document.getElementById('events-status');
++    const output = document.getElementById('events-output');
++    const tbody = document.getElementById('events-body');
++
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      status.textContent = 'Loading order events…';
++      try {
++        const sorted = sequenceEvents(await loadOrderEvents());
++        tbody.replaceChildren(...sorted.map((evt, i) => {
++          const prev = sorted[i - 1];
++          const row = document.createElement('tr');
++          if (prev && evt.instant.equals(prev.instant)) row.className = 'tie';
++          const cells = [
++            String(i + 1),
++            evt.instant.toString({ fractionalSecondDigits: 9 }),
++            evt.service,
++            evt.orderId,
++            evt.type,
++            prev ? formatInterval(evt.instant.since(prev.instant)) : '—',
++          ];
++          cells.forEach((text, col) => {
++            const td = document.createElement('td');
++            if (col === 1) td.className = 'ts';
++            td.textContent = text;
++            row.append(td);
++          });
++          return row;
++        }));
++        const total = sorted.at(-1).instant.since(sorted[0].instant);
++        status.textContent = `Sorted ${sorted.length} events spanning ${formatInterval(total)}.`;
++        output.hidden = false;
++      } catch (err) {
++        status.textContent = `Couldn't load order events: ${err.message}`;
++      } finally {
++        button.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

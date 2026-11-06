@@ -1,0 +1,226 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4ccd431 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const currentPath = Astro.url.pathname.replace(/\/+$/, "") || "/";
+ ---
+ 
+ <!doctype html>
+@@ -35,21 +36,182 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 5;
++      const viewCache = new Map<
++        string,
++        { view: HTMLElement; title: string }
++      >();
++
++      function normalizePath(urlOrPath: string | URL): string {
++        const pathname =
++          typeof urlOrPath === "string"
++            ? new URL(urlOrPath, window.location.origin).pathname
++            : urlOrPath.pathname;
++        return pathname.replace(/\/+$/, "") || "/";
++      }
++
++      function evictOldViews() {
++        while (viewCache.size > MAX_CACHED_VIEWS) {
++          const oldestKey = viewCache.keys().next().value;
++          if (!oldestKey) break;
++          const oldest = viewCache.get(oldestKey);
++          viewCache.delete(oldestKey);
++          if (oldest && oldest.view.isConnected) {
++            oldest.view.querySelectorAll("astro-island").forEach((island) => {
++              island.dispatchEvent(new CustomEvent("astro:unmount"));
++            });
++            oldest.view.remove();
++          }
++        }
++      }
++
++      function registerInitialView() {
++        const currentView = document.querySelector<HTMLElement>(
++          "#spa-view-container > .spa-view:not(.inactive)"
++        );
++        if (currentView) {
++          const path =
++            currentView.dataset.viewPath || normalizePath(window.location.href);
++          currentView.dataset.viewPath = path;
++          viewCache.delete(path);
++          viewCache.set(path, { view: currentView, title: document.title });
++          evictOldViews();
++        }
++      }
++
++      function activateView(activeView: HTMLElement) {
++        const container = document.getElementById("spa-view-container");
++        if (!container) return;
++
++        container.querySelectorAll<HTMLElement>(".spa-view").forEach((view) => {
++          if (view !== activeView) {
++            view.classList.add("inactive");
++            view.setAttribute("aria-hidden", "true");
++          }
++        });
++
++        activeView.classList.remove("inactive");
++        activeView.setAttribute("aria-hidden", "false");
++        if (!activeView.hasAttribute("tabindex")) {
++          activeView.setAttribute("tabindex", "-1");
++        }
++        activeView.focus({ preventScroll: true });
++      }
++
++      registerInitialView();
++
++      document.addEventListener("astro:before-preparation", (event) => {
++        const targetPath = normalizePath(event.to);
++        const cached = viewCache.get(targetPath);
++
++        // Skip network fetch when navigating back to a cached view (unless submitting a form)
++        if (cached && cached.view.isConnected && !event.formData) {
++          event.loader = async () => {};
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event) => {
++        const container = document.getElementById("spa-view-container");
++        if (!container) return;
++
++        const fromPath = normalizePath(event.from);
++        const toPath = normalizePath(event.to);
++
++        const currentActive = container.querySelector<HTMLElement>(
++          ".spa-view:not(.inactive)"
++        );
++        if (currentActive) {
++          currentActive.dataset.viewPath = fromPath;
++          viewCache.delete(fromPath);
++          viewCache.set(fromPath, {
++            view: currentActive,
++            title: document.title,
++          });
++        }
++
++        const cachedTarget = viewCache.get(toPath);
++
++        event.swap = () => {
++          if (cachedTarget && cachedTarget.view.isConnected && !event.formData) {
++            // Re-order LRU on hit
++            viewCache.delete(toPath);
++            viewCache.set(toPath, cachedTarget);
++
++            document.title = cachedTarget.title;
++            activateView(cachedTarget.view);
++            evictOldViews();
++            return;
++          }
++
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          swapFunctions.swapHeadElements(event.newDocument);
++          const restoreFocusFunction = swapFunctions.saveFocus();
++
++          const incomingView =
++            event.newDocument.querySelector<HTMLElement>(".spa-view");
++          if (incomingView) {
++            incomingView.dataset.viewPath = toPath;
++
++            // Replace any stale cached view for the same path
++            const existing = viewCache.get(toPath);
++            if (existing && existing.view.isConnected && existing.view !== currentActive) {
++              existing.view.remove();
++            }
++
++            // Re-create media elements from DOMParser so their media controllers initialize
++            for (const media of incomingView.querySelectorAll("video, audio")) {
++              const fresh = document.createElement(media.localName);
++              for (const attr of media.attributes) {
++                fresh.setAttribute(attr.name, attr.value);
++              }
++              fresh.innerHTML = media.innerHTML;
++              if (fresh.hasAttribute("muted")) (fresh as HTMLMediaElement).muted = true;
++              media.replaceWith(fresh);
++            }
++
++            container.appendChild(incomingView);
++            viewCache.delete(toPath);
++            viewCache.set(toPath, {
++              view: incomingView,
++              title: event.newDocument.title || document.title,
++            });
++
++            activateView(incomingView);
++            evictOldViews();
++          } else {
++            swapFunctions.swapBodyElement(event.newDocument.body, document.body);
++          }
++
++          restoreFocusFunction();
++        };
++      });
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="ad-fireplace" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-container" class="bg-white relative" transition:persist="spa-view-container">
++          <div
++            class="spa-view"
++            data-view-path={currentPath}
++            aria-hidden="false"
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <Footer transition:persist="site-footer" />
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..19bbb0c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,19 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

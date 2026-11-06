@@ -1,0 +1,1078 @@
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..39ed4a2
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,117 @@
++# Privacy by design — The Daily Grind website
++
++This document is the engineering record of how the site protects visitors' privacy.
++It covers the markup in `index.html`, the client script in `assets/app.js`, the
++response headers in `_headers` / `package.json`, and the obligations this page places
++on the backend endpoints it talks to. `npm run check:privacy` enforces the technical
++parts automatically.
++
++## 1. Principles
++
++| Principle | How the site applies it |
++| --- | --- |
++| Data minimisation | The homepage collects nothing passively: no cookies, no analytics, no fingerprinting, no third-party requests. The only data collected is one email address, sent only when a visitor explicitly submits the newsletter form. |
++| Purpose limitation | The newsletter form states its single purpose inline ("Why we ask"). The backend must not reuse the address for anything else (see §5). |
++| Transparency | Explanations sit next to the field, not in a policy page. The footer states that the page sets no cookies and loads no third parties, and links to "Manage your data". |
++| Secure by default | Strict CSP, Trusted Types, clickjacking protection, strict referrer policy, powerful browser features disabled, HSTS, no-store caching for personal pages. |
++| No privacy labour | Because nothing is tracked, there is no consent banner to click through. Adding a tracker would require adding a consent flow; do not do the former without the latter. |
++
++## 2. Data inventory (homepage)
++
++| Data | Collected when | Sent to | Stored in browser | Purpose |
++| --- | --- | --- | --- | --- |
++| Email address | Visitor submits the newsletter form | `POST /api/newsletter` (same origin, no cookies needed) | Never. The field is cleared from the DOM after a successful submit. | Monthly menu email, double opt-in required |
++| Session cookie (if signed in) | Set by the account backend, not by this page | Same origin only | `HttpOnly; Secure; SameSite=Lax` (set server-side) | Authentication |
++| Nothing else | — | — | — | — |
++
++Client-side storage (`localStorage`, `sessionStorage`, IndexedDB) and `document.cookie`
++are never written by site scripts; `assets/app.js` only *clears* web storage on logout.
++
++## 3. Third-party audit
++
++Audited 2026-10-28 by inspecting every absolute URL in HTML, CSS, and JS.
++
++| Origin | What it was | Data a visitor would leak | Decision |
++| --- | --- | --- | --- |
++| `images.unsplash.com` | Hero background image loaded by CSS | IP address, `Referer`, user agent, and page-view timing on every visit | **Removed.** The photo (Unsplash photo `1495474472287-4d71bcdd2085`, Unsplash License) is now self-hosted at `assets/images/hero-coffee.jpg`. |
++
++Result: **zero third-party origins**. `ALLOWED_THIRD_PARTY_ORIGINS` in
++`tools/privacy-check.mjs` is empty and the check fails on any new external URL.
++
++### Adding a third party later
++
++1. Record it in the table above: origin, purpose, exact data sent, retention, and the
++   vendor's privacy terms. Prefer a self-hosted or first-party alternative first.
++2. Prefer static links over SDKs (e.g. a plain share link instead of a social widget)
++   and a click-to-load façade for heavy embeds (e.g. `youtube-nocookie.com` only after
++   the visitor clicks a thumbnail).
++3. Pin to a versioned, immutable URL and add `integrity="sha384-…"`,
++   `crossorigin="anonymous"`, and `referrerpolicy="no-referrer"` on the element.
++4. Add the origin to `ALLOWED_THIRD_PARTY_ORIGINS` and to the relevant CSP directive
++   in all three places (`_headers`, `package.json`, `<meta>`), then run the check.
++5. If it collects personal data or sets cookies, add a consent flow before shipping.
++
++## 4. Security headers
++
++Sent for every response. Local dev gets the CSP via `statikk --csp` (the only header
++the dev server can set); production gets the full set from `_headers`
++(Netlify / Cloudflare Pages format — port the same values to any other host). The
++CSP and referrer policy are duplicated as `<meta>` tags in `index.html` as a fallback
++for hosts without header control.
++
++| Header | Value | Why |
++| --- | --- | --- |
++| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'` | Only same-origin code and assets can load; forms can only post to this origin, so an injected form cannot exfiltrate the email; no inline script/style, so XSS payloads do not execute; Trusted Types blocks DOM XSS sinks at runtime. |
++| `Referrer-Policy` | `strict-origin-when-cross-origin` | Paths and query strings never leak to other origins. |
++| `Permissions-Policy` | camera, microphone, geolocation, motion sensors, display capture, USB, MIDI, XR, Topics/FLoC all `()` | Powerful and tracking-adjacent features are off for this site and any iframe. `payment` and `publickey-credentials-get` are left enabled because the ordering and account pages may legitimately use them. |
++| `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` | | Clickjacking protection. |
++| `X-Content-Type-Options: nosniff` | | Prevents MIME sniffing of responses. |
++| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` | Isolates the window from cross-origin openers while still allowing sign-in popups the site itself opens. |
++| `Cross-Origin-Resource-Policy` | `same-origin` | Other sites cannot embed or read our assets. |
++| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Forces HTTPS. See the rollout note in `_headers` before enabling on a new domain. |
++| `Clear-Site-Data` (on `/logout`) | `"cookies", "storage", "cache"` | Leaves nothing behind on shared devices. `assets/app.js` also clears web storage client-side as a fallback. |
++| `Cache-Control: no-store` (on `/logout`, `/account/*`, `/api/*`) | | Personal responses never land in shared caches. |
++
++No reporting endpoint is configured yet. When one exists, add
++`Reporting-Endpoints: default="https://…"` and `report-to default` to the CSP in
++`_headers`, and make sure the endpoint strips query strings and cookies from reports.
++
++## 5. Requirements for the endpoints this page uses
++
++The page is static, so these controls live in the backend. They are part of the
++design and must hold before the endpoints go live.
++
++**`POST /api/newsletter`**
++- Accept only the `email` field; reject or drop anything else.
++- Double opt-in: send a confirmation link and store the address only after it is clicked;
++  delete unconfirmed addresses after a short window (e.g. 48 hours).
++- Rate-limit by IP and by address to prevent abuse and enumeration.
++- Never log the address in plain text; mask PII in application logs.
++- CSRF: reject cross-site requests using Fetch Metadata (`Sec-Fetch-Site` not in
++  `same-origin`/`none`) before doing any work. The static page cannot carry a token.
++- Respond with `Cache-Control: no-store` and `Cross-Origin-Resource-Policy: same-origin`.
++- One-click unsubscribe in every email (`List-Unsubscribe` / `List-Unsubscribe-Post`).
++
++**`POST /logout`**
++- Accept POST only (the page no longer uses a GET link).
++- Validate `Sec-Fetch-Site` as above, invalidate the session server-side, expire the
++  cookie, and send `Clear-Site-Data: "cookies", "storage", "cache"`.
++
++**Session cookies** (set by `/account`, not this page)
++- `__Host-session=…; Secure; HttpOnly; SameSite=Lax; Path=/`. Never readable by
++  script, never `SameSite=None`.
++
++**Data rights** (`/account/data`, linked from the footer)
++- Let signed-in users export and delete their data without contacting support, and
++  let newsletter subscribers delete their address via the unsubscribe link.
++
++## 6. Running the check
++
++```sh
++npm run check:privacy
++```
++
++It fails the build if any file references an unaudited external origin, uses a DOM
++XSS sink (`innerHTML`, `document.write`, `eval`, …), uses inline scripts/styles/event
++handlers, writes cookies or web storage, submits a form via GET, or if the CSP in
++`package.json`, `_headers`, and `index.html` drift apart or lose a required directive.
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..c150008
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,33 @@
++# Production response headers for The Daily Grind.
++#
++# Format: Netlify / Cloudflare Pages `_headers`. For other hosts, copy the same
++# values into the equivalent config (nginx `add_header`, Vercel `headers`, Express
++# middleware, etc.). The CSP here must stay identical to the `--csp` value in
++# package.json; `npm run check:privacy` fails if they drift.
++#
++# HSTS: the 1-year max-age is intended for a stable HTTPS deployment. If this is
++# the first HTTPS rollout, start with `max-age=300`, verify every subdomain works
++# over HTTPS, then raise it. `preload` is deliberately omitted because it is
++# effectively irreversible once submitted to the browser preload list.
++
++/*
++  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: accelerometer=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), usb=(), xr-spatial-tracking=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Cross-Origin-Opener-Policy: same-origin-allow-popups
++  Cross-Origin-Resource-Policy: same-origin
++  Strict-Transport-Security: max-age=31536000; includeSubDomains
++
++# Session termination: wipe first-party state so nothing lingers on shared devices.
++/logout
++  Clear-Site-Data: "cookies", "storage", "cache"
++  Cache-Control: no-store
++
++# Anything personal must never land in a shared or CDN cache.
++/account/*
++  Cache-Control: no-store
++
++/api/*
++  Cache-Control: no-store
+diff --git a/assets/app.js b/assets/app.js
+new file mode 100644
+index 0000000..a5ba1a0
+--- /dev/null
++++ b/assets/app.js
+@@ -0,0 +1,120 @@
++/*
++ * The Daily Grind — first-party client script.
++ *
++ * Privacy-by-design rules for this file (enforced by `npm run check:privacy`):
++ *  - No third-party code, analytics, pixels, or cookies. Nothing runs on page load
++ *    except wiring up event listeners; no data leaves the browser until the visitor
++ *    explicitly submits a form.
++ *  - Personal data is never written to localStorage/sessionStorage, cookies, or the
++ *    console, and the email field is cleared from the DOM as soon as it is accepted.
++ *  - The DOM is only written through `textContent` and attributes, never innerHTML,
++ *    so the page runs under CSP `require-trusted-types-for 'script'`.
++ *  - Capability checks use feature detection, never user-agent string sniffing.
++ */
++(() => {
++  'use strict';
++
++  const NEWSLETTER_ENDPOINT = '/api/newsletter';
++  const REQUEST_TIMEOUT_MS = 10000;
++
++  /** Shows a message in a live region without leaking it anywhere else. */
++  function setStatus(statusEl, state, message) {
++    statusEl.dataset.state = state;
++    statusEl.textContent = message;
++  }
++
++  /** Minimal, same-origin-only POST. Credentials/referrer never go cross-origin. */
++  function postSameOrigin(url, body) {
++    const init = {
++      method: 'POST',
++      body,
++      mode: 'same-origin',
++      credentials: 'same-origin',
++      referrerPolicy: 'same-origin',
++      redirect: 'follow',
++      headers: { Accept: 'application/json' },
++    };
++    if ('AbortSignal' in window && typeof AbortSignal.timeout === 'function') {
++      init.signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
++    }
++    return fetch(url, init);
++  }
++
++  function enhanceNewsletterForm() {
++    const form = document.getElementById('newsletter-form');
++    if (!form || !('fetch' in window) || !('FormData' in window)) {
++      return; // Plain HTML form submission still works without JS.
++    }
++
++    const emailInput = form.elements.namedItem('email');
++    const submitButton = form.querySelector('button[type="submit"]');
++    const statusEl = document.getElementById('newsletter-status');
++    if (!(emailInput instanceof HTMLInputElement) || !submitButton || !statusEl) return;
++
++    emailInput.addEventListener('invalid', () => {
++      emailInput.setCustomValidity('Please enter an email address like name@example.com.');
++    });
++    emailInput.addEventListener('input', () => {
++      emailInput.setCustomValidity('');
++      if (statusEl.dataset.state === 'error') setStatus(statusEl, '', '');
++    });
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++
++      if (!form.checkValidity()) {
++        form.reportValidity();
++        return;
++      }
++
++      // Data minimisation: send exactly one field, built explicitly, so a future
++      // extra input on the form can't be submitted by accident.
++      const body = new FormData();
++      body.set('email', emailInput.value.trim());
++
++      submitButton.disabled = true; // Prevent double posts after a valid submit.
++      setStatus(statusEl, 'pending', 'Signing you up…');
++
++      try {
++        const response = await postSameOrigin(NEWSLETTER_ENDPOINT, body);
++        if (!response.ok) throw new Error(`HTTP ${response.status}`);
++
++        // Remove the address from the page as soon as the server has it.
++        form.reset();
++        setStatus(
++          statusEl,
++          'success',
++          'Thanks! Check your inbox for a confirmation link to finish signing up.'
++        );
++      } catch {
++        // Never log the submitted value; a generic message is enough for the visitor.
++        setStatus(
++          statusEl,
++          'error',
++          'Sorry, we could not sign you up right now. Please try again in a moment.'
++        );
++      } finally {
++        submitButton.disabled = false;
++      }
++    });
++  }
++
++  function enhanceLogout() {
++    const logoutForm = document.getElementById('logout-form');
++    if (!logoutForm) return;
++
++    // Belt-and-braces for browsers that ignore the Clear-Site-Data response header on
++    // /logout: drop any first-party web storage before the request leaves.
++    logoutForm.addEventListener('submit', () => {
++      try {
++        if ('sessionStorage' in window) sessionStorage.clear();
++        if ('localStorage' in window) localStorage.clear();
++      } catch {
++        // Storage can be unavailable (e.g. blocked by the user); logout still proceeds.
++      }
++    });
++  }
++
++  enhanceNewsletterForm();
++  enhanceLogout();
++})();
+diff --git a/assets/favicon.svg b/assets/favicon.svg
+new file mode 100644
+index 0000000..b072943
+--- /dev/null
++++ b/assets/favicon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#4e342e"/><path d="M8 11h13v8a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5z" fill="#fafafa"/><path d="M21 13h2a3 3 0 0 1 0 6h-2" fill="none" stroke="#fafafa" stroke-width="2"/><path d="M7 26h17" stroke="#ffab40" stroke-width="2" stroke-linecap="round"/></svg>
+diff --git a/assets/images/hero-coffee.jpg b/assets/images/hero-coffee.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/images/hero-coffee.jpg differ
+diff --git a/assets/styles.css b/assets/styles.css
+new file mode 100644
+index 0000000..cd69b68
+--- /dev/null
++++ b/assets/styles.css
+@@ -0,0 +1,278 @@
++/*
++ * The Daily Grind — site styles.
++ *
++ * Privacy/security notes:
++ *  - All styles live in this file (no inline <style> or style="" attributes) so the
++ *    Content-Security-Policy can use `style-src 'self'` without 'unsafe-inline'.
++ *  - Every asset referenced from here is same-origin. The hero photo is self-hosted
++ *    (see PRIVACY.md) so visitors' IP addresses and referrers are not sent to an
++ *    image CDN on every page view.
++ */
++
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++  --focus: #0b57d0;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++:focus-visible {
++  outline: 3px solid var(--focus);
++  outline-offset: 2px;
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  align-items: center;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++/* Logout is a POST form (state change must not be a GET link); the button is
++   styled to match the previous link. */
++.logout-form {
++  display: inline;
++}
++
++.logout-link {
++  font: inherit;
++  font-size: 0.9rem;
++  color: white;
++  background: none;
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  cursor: pointer;
++  transition: color 0.3s;
++}
++
++.logout-link:hover {
++  color: var(--accent);
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('/assets/images/hero-coffee.jpg');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  font: inherit;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border: 0;
++  border-radius: 5px;
++  margin-top: 15px;
++  cursor: pointer;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++/* Newsletter sign-up */
++.newsletter {
++  margin-top: 60px;
++  padding: 30px 20px;
++  background: white;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.newsletter > p {
++  max-width: 48ch;
++  margin: 10px auto 0;
++}
++
++.newsletter-form {
++  max-width: 28rem;
++  margin: 20px auto 0;
++  text-align: left;
++}
++
++.field {
++  margin-block-end: 1rem;
++}
++
++.field label {
++  display: block;
++  font-weight: 600;
++  margin-block-end: 0.25rem;
++}
++
++.field input {
++  width: 100%;
++  font: inherit;
++  font-size: 1rem;
++  padding: 0.75rem;
++  min-height: 48px;
++  border: 1px solid #8d6e63;
++  border-radius: 5px;
++  background: var(--light);
++  color: var(--text);
++}
++
++@media (pointer: coarse) {
++  .field input {
++    min-height: 52px;
++  }
++}
++
++/* Only flag a field after the user has interacted with it. */
++.field input:user-invalid {
++  border-color: #b3261e;
++  border-width: 2px;
++}
++
++.hint {
++  font-size: 0.85rem;
++  margin-block-start: 0.5rem;
++  color: #5d4037;
++}
++
++.hint a {
++  color: var(--primary);
++}
++
++.form-status {
++  min-height: 1.6em;
++  margin-top: 10px;
++  font-size: 0.95rem;
++}
++
++.form-status[data-state='error'] {
++  color: #b3261e;
++}
++
++.form-status[data-state='success'] {
++  color: #1b5e20;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.footer-note {
++  font-size: 0.8rem;
++  margin-top: 10px;
++  color: #5d4037;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  * {
++    transition: none !important;
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..0ec98cf 100644
+--- a/index.html
++++ b/index.html
+@@ -3,168 +3,39 @@
+ 
+ <head>
+   <meta charset="UTF-8">
++  <!--
++    Security/privacy headers are sent by the server (see `_headers` for production and
++    the `--csp` flag in package.json for local dev). The two <meta> tags below are a
++    fallback for hosts where response headers cannot be configured. `frame-ancestors`
++    cannot be expressed in a <meta> CSP, so it only appears in the HTTP header.
++  -->
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'; require-trusted-types-for 'script'">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="The Daily Grind: ethically sourced, locally roasted coffee.">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
++  <link rel="stylesheet" href="/assets/styles.css">
++  <script src="/assets/app.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- Logging out changes server state, so it is a POST, not a GET link that
++             crawlers, prefetchers, or a cross-site <img> could trigger. -->
++        <form id="logout-form" class="logout-form" method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -175,8 +46,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +66,32 @@
+         </div>
+       </div>
+     </section>
++
++    <!--
++      Newsletter sign-up, designed for data minimisation: a single email field, no
++      name, birthday, or location, no pre-ticked marketing boxes, and the reason we
++      ask is shown inline next to the field rather than buried in a policy page.
++      The form works without JavaScript; assets/app.js only enhances it.
++    -->
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading" class="section-title">Fresh from the Roastery</h2>
++      <p>One email a month with new seasonal drinks. No tracking pixels, no third parties.</p>
++      <form id="newsletter-form" class="newsletter-form" method="post" action="/api/newsletter">
++        <div class="field">
++          <label for="newsletter-email">Email address</label>
++          <input id="newsletter-email" name="email" type="email" autocomplete="email" inputmode="email"
++            autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" maxlength="254" required
++            aria-describedby="newsletter-help">
++          <p id="newsletter-help" class="hint">
++            Why we ask: we use your address only to send the monthly menu update. It is never shared or
++            sold, and every email has a one-click unsubscribe.
++            <a href="/privacy-policy">Privacy policy</a>
++          </p>
++        </div>
++        <button type="submit" class="btn">Subscribe</button>
++        <p id="newsletter-status" class="form-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,9 +99,11 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="/account/data">Manage your data</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="footer-note">This page sets no cookies and loads nothing from third parties.</p>
+   </footer>
+ 
+ </body>
+diff --git a/package.json b/package.json
+index 2bd4d77..542e1e7 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222} --csp \"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'\"",
++    "check:privacy": "node tools/privacy-check.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tools/privacy-check.mjs b/tools/privacy-check.mjs
+new file mode 100644
+index 0000000..667630a
+--- /dev/null
++++ b/tools/privacy-check.mjs
+@@ -0,0 +1,224 @@
++#!/usr/bin/env node
++/**
++ * Privacy / security regression check for The Daily Grind.
++ *
++ * Run with `npm run check:privacy`. Exits non-zero on any failure so it can gate CI.
++ *
++ * What it audits:
++ *  1. Third parties — every absolute URL in HTML/CSS/JS must point at an origin listed
++ *     in ALLOWED_THIRD_PARTY_ORIGINS, and every allowed origin must be documented in
++ *     PRIVACY.md. The list is intentionally empty today.
++ *  2. DOM XSS sinks and other anti-patterns in client scripts and markup.
++ *  3. Storage/cookie writes that could persist personal data in the browser.
++ *  4. Header consistency — the CSP in package.json (`statikk --csp`), `_headers`, and
++ *     the <meta> fallback in index.html must agree, and `_headers` must carry the
++ *     baseline privacy headers.
++ */
++import { readFileSync, readdirSync, statSync } from 'node:fs';
++import { join, extname, relative } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const ROOT = fileURLToPath(new URL('..', import.meta.url));
++
++/** Origins that may be referenced from client-side code. Add an entry ONLY after
++ *  recording the audit in PRIVACY.md (what is sent, why, and the retention). */
++const ALLOWED_THIRD_PARTY_ORIGINS = new Set([]);
++
++const REQUIRED_HEADERS = [
++  'Content-Security-Policy',
++  'Referrer-Policy',
++  'Permissions-Policy',
++  'X-Content-Type-Options',
++  'X-Frame-Options',
++  'Cross-Origin-Opener-Policy',
++  'Cross-Origin-Resource-Policy',
++  'Strict-Transport-Security',
++];
++
++const REQUIRED_CSP_DIRECTIVES = {
++  'default-src': "'none'",
++  'object-src': "'none'",
++  'base-uri': "'none'",
++  'frame-ancestors': "'none'",
++  'form-action': "'self'",
++  'require-trusted-types-for': "'script'",
++};
++
++/** Directives that browsers ignore inside a <meta> CSP, so they are header-only. */
++const META_UNSUPPORTED_DIRECTIVES = new Set(['frame-ancestors', 'report-uri', 'report-to', 'sandbox']);
++
++const SCAN_EXTENSIONS = new Set(['.html', '.css', '.js', '.mjs']);
++const IGNORED_DIRS = new Set(['node_modules', '.git', 'tools']);
++
++const failures = [];
++const notes = [];
++const fail = (msg) => failures.push(msg);
++
++function walk(dir, out = []) {
++  for (const name of readdirSync(dir)) {
++    if (IGNORED_DIRS.has(name)) continue;
++    const full = join(dir, name);
++    if (statSync(full).isDirectory()) walk(full, out);
++    else if (SCAN_EXTENSIONS.has(extname(name))) out.push(full);
++  }
++  return out;
++}
++
++const files = walk(ROOT).map((f) => ({
++  path: relative(ROOT, f),
++  ext: extname(f),
++  text: readFileSync(f, 'utf8'),
++}));
++
++/* 1. Third-party origins ---------------------------------------------------- */
++const URL_RE = /(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?=[/'"\s)?#]|$)/gi;
++const externalOrigins = new Map();
++for (const file of files) {
++  for (const match of file.text.matchAll(URL_RE)) {
++    const origin = match[0].replace(/^\/\//, 'https://').toLowerCase();
++    if (origin === 'https://www.w3.org') continue; // XML namespaces are not fetched.
++    if (!externalOrigins.has(origin)) externalOrigins.set(origin, new Set());
++    externalOrigins.get(origin).add(file.path);
++  }
++}
++const privacyDoc = readFileSync(join(ROOT, 'PRIVACY.md'), 'utf8');
++for (const [origin, where] of externalOrigins) {
++  if (!ALLOWED_THIRD_PARTY_ORIGINS.has(origin)) {
++    fail(`Unaudited third-party origin ${origin} referenced in ${[...where].join(', ')}`);
++  } else if (!privacyDoc.includes(origin)) {
++    fail(`Allowed origin ${origin} is not documented in PRIVACY.md`);
++  }
++}
++notes.push(`third-party origins referenced: ${externalOrigins.size}`);
++
++/* 2. Dangerous sinks / anti-patterns --------------------------------------- */
++const JS_SINKS = [
++  [/\.innerHTML\s*=/, 'innerHTML assignment'],
++  [/\.outerHTML\s*=/, 'outerHTML assignment'],
++  [/insertAdjacentHTML\s*\(/, 'insertAdjacentHTML'],
++  [/document\.write(ln)?\s*\(/, 'document.write'],
++  [/\beval\s*\(/, 'eval'],
++  [/new\s+Function\s*\(/, 'new Function'],
++  [/set(Timeout|Interval)\s*\(\s*['"`]/, 'setTimeout/setInterval with a string'],
++  [/navigator\.userAgent\b/, 'navigator.userAgent sniffing (use feature detection)'],
++  [/\bconsole\.(log|info|debug|warn|error)\s*\([^)]*\b(email|password|token|phone|name)\b/i, 'console output that may contain personal data'],
++];
++const HTML_PATTERNS = [
++  [/\son[a-z]+\s*=\s*["']/i, 'inline event handler attribute'],
++  [/<script(?![^>]*\ssrc=)[^>]*>[^<]*\S[^<]*<\/script>/i, 'inline <script> block'],
++  [/<style[\s>]/i, 'inline <style> block'],
++  [/\sstyle\s*=\s*["']/i, 'inline style="" attribute'],
++  [/href\s*=\s*["']\s*javascript:/i, 'javascript: URL'],
++  [/<iframe[\s>]/i, '<iframe> (third-party embed needs an audit + façade)'],
++  [/<(object|embed)[\s>]/i, 'plugin element'],
++  [/<base[\s>]/i, '<base> element'],
++  [/<form(?![^>]*method\s*=\s*["']post["'])[^>]*>/i, '<form> without method="post" (personal data must not go in a URL)'],
++  [/<input[^>]*type\s*=\s*["']hidden["'][^>]*name\s*=\s*["'][^"']*(id|uid|user)[^"']*["']/i, 'hidden identifier field'],
++];
++const stripJsComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
++for (const file of files) {
++  const patterns = file.ext === '.html' ? [...HTML_PATTERNS, ...JS_SINKS] : file.ext === '.css' ? [] : JS_SINKS;
++  const text = file.ext === '.html' ? file.text : stripJsComments(file.text);
++  for (const [re, label] of patterns) {
++    if (re.test(text)) fail(`${file.path}: ${label}`);
++  }
++  if (file.ext === '.html') {
++    for (const tag of file.text.matchAll(/<a\b[^>]*target\s*=\s*["']_blank["'][^>]*>/gi)) {
++      if (!/rel\s*=\s*["'][^"']*noopener/i.test(tag[0])) fail(`${file.path}: target="_blank" link without rel="noopener"`);
++    }
++  }
++}
++
++/* 3. Browser-side persistence ---------------------------------------------- */
++for (const file of files.filter((f) => f.ext !== '.css')) {
++  if (/document\.cookie\s*=/.test(file.text)) fail(`${file.path}: writes document.cookie (cookies must be set server-side with HttpOnly)`);
++  if (/(localStorage|sessionStorage)\.setItem\s*\(|(localStorage|sessionStorage)\[[^\]]+\]\s*=/.test(file.text)) {
++    fail(`${file.path}: writes to web storage (never store personal data or tokens client-side)`);
++  }
++  if (/indexedDB\.open\s*\(/.test(file.text)) fail(`${file.path}: opens IndexedDB (review for personal data)`);
++}
++
++/* 4. Header consistency ---------------------------------------------------- */
++function parseCsp(value) {
++  const map = new Map();
++  for (const part of value.split(';')) {
++    const tokens = part.trim().split(/\s+/).filter(Boolean);
++    if (tokens.length) map.set(tokens[0].toLowerCase(), tokens.slice(1).sort().join(' '));
++  }
++  return map;
++}
++function diffCsp(a, b, { ignore = new Set() } = {}) {
++  const diffs = [];
++  for (const name of new Set([...a.keys(), ...b.keys()])) {
++    if (ignore.has(name)) continue;
++    if (a.get(name) !== b.get(name)) diffs.push(name);
++  }
++  return diffs;
++}
++
++const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
++const startCspMatch = /--csp\s+"([^"]+)"/.exec(pkg.scripts?.start ?? '');
++if (!startCspMatch) fail('package.json: start script does not pass --csp to statikk');
++
++/** Parses a Netlify/Cloudflare `_headers` file into { path -> Map(header -> value) }. */
++function parseHeadersFile(text) {
++  const blocks = new Map();
++  let current = null;
++  for (const raw of text.split('\n')) {
++    if (!raw.trim() || raw.trim().startsWith('#')) continue;
++    if (!/^\s/.test(raw)) {
++      current = new Map();
++      blocks.set(raw.trim(), current);
++      continue;
++    }
++    const idx = raw.indexOf(':');
++    if (current && idx > 0) current.set(raw.slice(0, idx).trim().toLowerCase(), raw.slice(idx + 1).trim());
++  }
++  return blocks;
++}
++
++const headerBlocks = parseHeadersFile(readFileSync(join(ROOT, '_headers'), 'utf8'));
++const globalHeaders = headerBlocks.get('/*') ?? new Map();
++for (const name of REQUIRED_HEADERS) {
++  if (!globalHeaders.has(name.toLowerCase())) fail(`_headers: missing ${name} on /*`);
++}
++if (!headerBlocks.get('/logout')?.has('clear-site-data')) {
++  fail('_headers: /logout must send Clear-Site-Data');
++}
++
++const html = files.find((f) => f.path === 'index.html')?.text ?? '';
++const metaCspMatch = /<meta\s+http-equiv=["']Content-Security-Policy["']\s+content="([^"]+)"/i.exec(html);
++if (!metaCspMatch) fail('index.html: missing <meta http-equiv="Content-Security-Policy"> fallback');
++if (!/<meta\s+name=["']referrer["']\s+content=["']strict-origin-when-cross-origin["']/i.test(html)) {
++  fail('index.html: missing <meta name="referrer" content="strict-origin-when-cross-origin">');
++}
++
++const headerCsp = globalHeaders.get('content-security-policy');
++if (headerCsp) {
++  const parsed = parseCsp(headerCsp);
++  for (const [directive, expected] of Object.entries(REQUIRED_CSP_DIRECTIVES)) {
++    if (parsed.get(directive) !== expected) fail(`CSP: expected "${directive} ${expected}"`);
++  }
++  if (/'unsafe-inline'|'unsafe-eval'|\bhttps?:(?=[\s;]|$)|\*/.test(headerCsp)) {
++    fail("CSP: contains 'unsafe-inline', 'unsafe-eval', a bare scheme, or a wildcard");
++  }
++  if (startCspMatch && diffCsp(parsed, parseCsp(startCspMatch[1])).length) {
++    fail('CSP: package.json --csp differs from _headers');
++  }
++  if (metaCspMatch) {
++    const diffs = diffCsp(parsed, parseCsp(metaCspMatch[1]), { ignore: META_UNSUPPORTED_DIRECTIVES });
++    if (diffs.length) fail(`CSP: <meta> fallback differs from _headers in: ${diffs.join(', ')}`);
++    for (const d of META_UNSUPPORTED_DIRECTIVES) {
++      if (parseCsp(metaCspMatch[1]).has(d)) fail(`CSP: <meta> fallback contains ${d}, which browsers ignore in <meta>`);
++    }
++  }
++}
++
++/* Report -------------------------------------------------------------------- */
++console.log(`privacy-check: scanned ${files.length} files (${notes.join('; ')})`);
++if (failures.length) {
++  console.error(`\n${failures.length} problem(s):`);
++  for (const f of failures) console.error(`  ✗ ${f}`);
++  process.exit(1);
++}
++console.log('privacy-check: OK — no third parties, no unsafe sinks, headers consistent');

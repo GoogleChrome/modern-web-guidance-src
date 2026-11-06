@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,38 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Paywall teaser */
++    .paywall-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .paywall-container {
++      margin-top: 20px;
++      padding: 24px 28px;
++      background: white;
++      border-radius: 8px;
++      text-align: left;
++      /* Mask fades the content itself to transparent, so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-container p + p {
++      margin-top: 12px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +224,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="paywall-section">
++      <h2>Roaster's Secrets</h2>
++      <div class="paywall-container">
++        <h3>Why Our Dark Roast Never Tastes Burnt</h3>
++        <p>Most roasters chase color. We chase the second crack, pulling each batch the moment the sugars caramelize and the oils begin to surface, then letting the beans rest for exactly 48 hours.</p>
++        <p>Our head roaster adjusts airflow every thirty seconds during the final minutes of the roast, a technique that keeps the smokiness bold without any trace of bitterness.</p>
++        <p>The real secret is in the cooling: beans are air-cooled in under four minutes, locking in the aromatics that most roasters lose. Members get the full roast profiles, including exact temperatures, timings, and the brew ratios we use at the bar.</p>
++        <p>Plus, learn how we blend our seasonal single-origins, and the small-batch experiments that never make it onto the menu.</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

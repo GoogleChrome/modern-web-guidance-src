@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Foreground time tracking.
++     *
++     * Adds up the time the page is actually visible to the user, using the
++     * Page Visibility API. Time spent in a background tab, a minimized window,
++     * or a locked screen is not counted. The clock is monotonic
++     * (performance.now()), so changes to the system clock don't affect it.
++     *
++     * Usage:
++     *   getForegroundTime()   // -> total visible time in milliseconds
++     */
++    (function () {
++      let accumulatedMs = 0;   // finished foreground intervals
++      let visibleSince = null; // start of the current interval, or null if hidden
++
++      function now() {
++        return performance.now();
++      }
++
++      function startInterval() {
++        if (visibleSince === null) visibleSince = now();
++      }
++
++      function endInterval() {
++        if (visibleSince !== null) {
++          accumulatedMs += now() - visibleSince;
++          visibleSince = null;
++        }
++      }
++
++      function onVisibilityChange() {
++        if (document.visibilityState === 'visible') {
++          startInterval();
++        } else {
++          endInterval();
++        }
++      }
++
++      /**
++       * Returns the total time, in milliseconds, that this page has been in
++       * the foreground (visible) since it loaded. Includes the interval that
++       * is still running if the page is visible right now.
++       */
++      function getForegroundTime() {
++        const running = visibleSince !== null ? now() - visibleSince : 0;
++        return Math.round(accumulatedMs + running);
++      }
++
++      document.addEventListener('visibilitychange', onVisibilityChange);
++      // Back/forward cache: the page can be frozen and restored without a
++      // visibilitychange, so close and reopen the interval explicitly.
++      window.addEventListener('pagehide', endInterval);
++      window.addEventListener('pageshow', function () {
++        if (document.visibilityState === 'visible') startInterval();
++      });
++
++      // Start counting right away if the page loaded in a visible tab.
++      // Pages opened in a background tab start counting once they're shown.
++      if (document.visibilityState === 'visible') startInterval();
++
++      window.getForegroundTime = getForegroundTime;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

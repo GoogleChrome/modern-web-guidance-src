@@ -1,0 +1,2152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,30 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee &amp; Rewards</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-hover: #372420;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+-      --text: #3e2723;
++      --accent-hover: #ff9100;
++      --text: #2d1e1a;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #bcaaa4;
++      --border-focus: #4e342e;
++      --error: #b71c1c;
++      --error-bg: #ffebee;
++      --error-border: #ef5350;
++      --success: #1b5e20;
++      --success-bg: #e8f5e9;
++      --success-border: #4caf50;
++      --focus-ring: #ffab40;
++      --radius: 8px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -20,16 +34,63 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      -webkit-font-smoothing: antialiased;
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* -------------------------------------------------------------
++       ACCESSIBILITY UTILITIES
++       ------------------------------------------------------------- */
++    /* Canonical visually-hidden pattern per modern a11y guidelines */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Skip Link for keyboard navigation */
++    .skip-link {
++      position: absolute;
++      top: -120px;
++      left: 1.25rem;
++      background: var(--accent);
++      color: #1a120b;
++      font-weight: 700;
++      padding: 0.85rem 1.5rem;
++      border-radius: var(--radius);
++      z-index: 10000;
++      text-decoration: none;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
++      transition: top 0.2s ease-in-out;
++    }
++
++    .skip-link:focus {
++      top: 1.25rem;
++      outline: 3px solid #1a120b;
++      outline-offset: 3px;
++    }
++
++    /* Universal visible focus ring */
++    :where(a, button, input, select, textarea):focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 3px;
++    }
++
++    /* -------------------------------------------------------------
++       NAVIGATION
++       ------------------------------------------------------------- */
++    nav.primary-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -37,46 +98,72 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      font-size: 1.4rem;
++      font-weight: 800;
++      letter-spacing: 1.5px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+-    nav ul {
++    nav.primary-nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      gap: 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    nav.primary-nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      font-weight: 500;
++      padding: 0.5rem 0.65rem;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
+     }
+ 
+-    nav a:hover {
++    nav.primary-nav a:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    /* Secure POST logout button in navigation */
++    .logout-form {
++      display: inline;
++      margin: 0;
++      padding: 0;
++    }
++
++    .logout-btn {
++      background: transparent;
++      color: white;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 500;
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 0.45rem 1rem;
+       border-radius: 4px;
++      cursor: pointer;
++      min-height: 40px;
++      transition: background 0.2s, color 0.2s;
+     }
+ 
+-    /* Hero Section */
++    .logout-btn:hover {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    /* -------------------------------------------------------------
++       HERO SECTION
++       ------------------------------------------------------------- */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 55vh;
++      background: linear-gradient(rgba(30, 18, 14, 0.65), rgba(30, 18, 14, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -84,129 +171,1903 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.5rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vw, 3.25rem);
++      font-weight: 800;
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.5px;
+     }
+ 
+-    /* Content Sections */
++    .hero p {
++      font-size: clamp(1.05rem, 2.5vw, 1.35rem);
++      max-width: 650px;
++      margin-bottom: 1.75rem;
++      color: #f5ebe6;
++    }
++
++    /* -------------------------------------------------------------
++       LAYOUT & CONTENT CONTAINERS
++       ------------------------------------------------------------- */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 1120px;
++      margin: 3rem auto;
++      padding: 0 1.25rem;
+     }
+ 
++    main:focus {
++      outline: none;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 2rem;
++    }
++
++    .section-title {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .section-subtitle {
++      color: var(--text-muted);
++      font-size: 1.05rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    /* Product Cards Grid */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 1.75rem;
++      margin-top: 1.5rem;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      border-radius: var(--radius);
++      overflow: hidden;
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.2s, box-shadow 0.2s;
++      border: 1px solid rgba(0, 0, 0, 0.06);
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-body {
++      padding: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 0.5rem;
+       color: var(--primary);
++      font-size: 1.3rem;
+     }
+ 
++    .card p {
++      color: var(--text-muted);
++      margin-bottom: 1.25rem;
++      flex-grow: 1;
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.75rem 1.5rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 1rem;
++      border: 2px solid transparent;
++      cursor: pointer;
++      min-height: 48px;
++      transition: background 0.2s, transform 0.1s, border-color 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
+-    footer {
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++      border: 2px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: #e0d7d3;
++      color: var(--primary-hover);
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    /* -------------------------------------------------------------
++       REWARDS REGISTRATION SECTION (MULTI-STEP)
++       ------------------------------------------------------------- */
++    .rewards-section {
++      margin-top: 4.5rem;
++      padding-top: 3rem;
++      border-top: 2px solid var(--secondary);
++    }
++
++    .rewards-container {
++      max-width: 760px;
++      margin: 0 auto;
++      background: var(--surface);
++      border-radius: 12px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
++      border: 1px solid #d7ccc8;
++      overflow: hidden;
++    }
++
++    .rewards-banner {
++      background: linear-gradient(135deg, #4e342e 0%, #2e1c16 100%);
++      color: white;
++      padding: 2.25rem 2rem 2rem;
++      text-align: center;
++    }
++
++    .rewards-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: #1a120b;
++      font-size: 0.8rem;
++      font-weight: 800;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 0.35rem 0.9rem;
++      border-radius: 20px;
++      margin-bottom: 0.75rem;
++    }
++
++    .rewards-banner h2 {
++      font-size: clamp(1.6rem, 3vw, 2.2rem);
++      margin-bottom: 0.5rem;
++      color: #ffffff;
++    }
++
++    .rewards-banner p {
++      color: #d7ccc8;
++      font-size: 1rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    /* Progress Tracker */
++    .progress-nav {
++      background: #f7f4f2;
++      border-bottom: 1px solid #e0d7d3;
++      padding: 1.25rem 1.5rem;
++    }
++
++    .progress-tracker {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      position: relative;
++    }
++
++    .progress-tracker::before {
++      content: "";
++      position: absolute;
++      top: 50%;
++      left: 10%;
++      right: 10%;
++      height: 3px;
++      background: #d7ccc8;
++      z-index: 1;
++      transform: translateY(-50%);
++    }
++
++    .progress-step {
++      position: relative;
++      z-index: 2;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      flex: 1;
++    }
++
++    .step-indicator {
++      width: 42px;
++      height: 42px;
++      border-radius: 50%;
++      background: white;
++      border: 3px solid #bcaaa4;
++      color: var(--text-muted);
++      font-weight: 700;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1rem;
++      margin-bottom: 0.4rem;
++      transition: all 0.3s ease;
++    }
++
++    .step-name {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++      transition: color 0.3s;
++    }
++
++    /* Active Step */
++    .progress-step.is-active .step-indicator {
++      background: var(--primary);
++      border-color: var(--accent);
++      color: white;
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.35);
++    }
++
++    .progress-step.is-active .step-name {
++      color: var(--primary);
++      font-weight: 700;
++    }
++
++    /* Completed Step */
++    .progress-step.is-completed .step-indicator {
++      background: var(--accent);
++      border-color: var(--primary);
++      color: var(--primary);
++    }
++
++    .progress-step.is-completed .step-name {
++      color: var(--primary);
++    }
++
++    /* Form Content */
++    .rewards-form {
++      padding: 2.25rem 2rem;
++    }
++
++    .form-step {
++      border: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .form-step[hidden] {
++      display: none !important;
++    }
++
++    .step-legend {
++      float: left;
++      width: 100%;
++      margin-bottom: 1.25rem;
++      padding: 0;
++    }
++
++    .step-legend:focus {
++      outline: none;
++    }
++
++    .legend-subtitle {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--accent-hover);
++      margin-bottom: 0.25rem;
++    }
++
++    .legend-title {
++      font-size: 1.5rem;
++      color: var(--primary);
++      font-weight: 700;
++    }
++
++    .step-desc {
++      clear: both;
++      color: var(--text-muted);
++      margin-bottom: 1.75rem;
++      font-size: 0.95rem;
++    }
++
++    /* -------------------------------------------------------------
++       FORM FIELDS & GESTALT PROXIMITY
++       ------------------------------------------------------------- */
++    .field-group {
++      margin-bottom: 1.65rem;
++    }
++
++    .field-group label,
++    .sub-legend {
++      display: block;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 0.25rem; /* Proximity: closer to input */
++      font-size: 0.95rem;
++    }
++
++    .required-star {
++      color: var(--error);
++      margin-left: 2px;
++    }
++
++    /* Hints placed ABOVE inputs per modern web guidance */
++    .field-hint {
++      display: block;
++      color: var(--text-muted);
++      font-size: 0.85rem;
++      margin-bottom: 0.45rem;
++    }
++
++    .form-input,
++    .form-select,
++    .form-textarea {
++      width: 100%;
++      min-height: 48px;
++      padding: 0.75rem 1rem;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background: #ffffff;
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      box-sizing: border-box;
++      transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-input:focus,
++    .form-select:focus,
++    .form-textarea:focus {
++      border-color: var(--border-focus);
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 1px;
++    }
++
++    /* Modern pseudo-classes :user-invalid and :user-valid with fallback classes */
++    .form-input:user-invalid,
++    .form-select:user-invalid,
++    .form-input.user-invalid-fallback,
++    .form-select.user-invalid-fallback {
++      border-color: var(--error-border);
++      background-color: var(--error-bg);
++    }
++
++    .form-input:user-valid,
++    .form-select:user-valid,
++    .form-input.user-valid-fallback,
++    .form-select.user-valid-fallback {
++      border-color: var(--success-border);
++    }
++
++    /* Error Messages */
++    .error-msg {
++      display: none;
++      color: var(--error);
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 0.4rem;
++    }
++
++    .form-input:user-invalid ~ .error-msg,
++    .form-select:user-invalid ~ .error-msg,
++    .form-input.user-invalid-fallback ~ .error-msg,
++    .form-select.user-invalid-fallback ~ .error-msg,
++    .is-error .error-msg {
++      display: block;
++    }
++
++    /* Password Input with Unmask Toggle */
++    .password-wrapper {
++      position: relative;
++      display: flex;
++      align-items: stretch;
++    }
++
++    .password-wrapper .form-input {
++      padding-right: 5rem;
++    }
++
++    .toggle-password-btn {
++      position: absolute;
++      right: 6px;
++      top: 50%;
++      transform: translateY(-50%);
++      background: transparent;
++      border: 1px solid var(--border);
++      color: var(--primary);
++      padding: 0.35rem 0.65rem;
++      border-radius: 4px;
++      font-size: 0.825rem;
++      font-weight: 600;
++      cursor: pointer;
++      min-height: 36px;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      transition: background 0.2s;
++    }
++
++    .toggle-password-btn:hover {
++      background: #efebe9;
++    }
++
++    /* Password Rules Checklist */
++    .rules-container {
++      background: #fdfbf9;
++      border: 1px solid #e0d7d3;
++      border-radius: 6px;
++      padding: 0.75rem 1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .rules-header {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++      margin-bottom: 0.35rem;
++      display: block;
++    }
++
++    .rules-list {
++      list-style: none;
++      font-size: 0.825rem;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 0.35rem 1rem;
++    }
++
++    .rules-list li {
++      color: #6d4c41;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      transition: color 0.2s;
++    }
++
++    .rules-list li::before {
++      content: "○";
++      font-size: 0.85rem;
++      color: #8d6e63;
++    }
++
++    .rules-list li.is-met {
++      color: var(--success);
++      font-weight: 600;
++    }
++
++    .rules-list li.is-met::before {
++      content: "✓";
++      color: var(--success);
++      font-weight: 800;
++    }
++
++    /* Highlight rules list when field is user-invalid using :has() */
++    .field-group:has(.form-input:user-invalid) .rules-container,
++    .field-group:has(.user-invalid-fallback) .rules-container {
++      border-color: var(--error-border);
++      background-color: var(--error-bg);
++    }
++
++    /* Sub-fieldsets (Radios & Checkboxes) */
++    .sub-fieldset {
++      border: 1px solid #e0d7d3;
++      border-radius: 8px;
++      padding: 1.25rem;
++      margin-bottom: 1.65rem;
++      background: #fdfcfb;
++    }
++
++    .sub-legend {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--primary);
++      padding: 0 0.5rem;
++    }
++
++    /* Radio Cards Grid */
++    .radio-cards-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 0.75rem;
++      margin-top: 0.65rem;
++    }
++
++    .radio-card {
++      display: flex;
++      align-items: flex-start;
++      padding: 0.85rem 1rem;
++      background: white;
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      cursor: pointer;
++      min-height: 54px;
++      transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
++    }
++
++    .radio-card:hover {
++      border-color: var(--primary);
++      background: #faf8f7;
++    }
++
++    .radio-card input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.25rem;
++      height: 1.25rem;
++      margin-right: 0.65rem;
++      margin-top: 2px;
++      cursor: pointer;
++    }
++
++    .radio-card:has(input[type="radio"]:checked) {
++      border-color: var(--primary);
++      background: #f5ebe6;
++      box-shadow: 0 0 0 1px var(--primary);
++    }
++
++    .radio-card-content {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .card-title {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .card-desc {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      margin-top: 2px;
++      line-height: 1.3;
++    }
++
++    /* Birthday Inputs */
++    .birthday-inputs-grid {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 1rem;
++      margin-top: 0.5rem;
++    }
++
++    .field-subgroup label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++      color: var(--text-muted);
++    }
++
++    /* Checkbox Options Stack */
++    .checkbox-options-stack {
++      display: flex;
++      flex-direction: column;
++      gap: 0.85rem;
++      margin-top: 0.5rem;
++    }
++
++    .checkbox-option {
++      display: flex;
++      align-items: flex-start;
++      gap: 0.75rem;
++      cursor: pointer;
++      padding: 0.5rem 0;
++    }
++
++    .checkbox-option input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 1.25rem;
++      height: 1.25rem;
++      margin-top: 3px;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .checkbox-label-text {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.925rem;
++      line-height: 1.4;
++    }
++
++    .checkbox-label-text strong {
++      color: var(--primary);
++    }
++
++    .checkbox-label-text small {
++      color: var(--text-muted);
++      font-size: 0.825rem;
++    }
++
++    .terms-group {
++      background: #f7f4f2;
++      border: 1px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 1rem 1.25rem;
++      margin-top: 1.5rem;
++    }
++
++    /* Review Card */
++    .review-card {
++      background: #fcfbf9;
++      border: 1.5px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 1.5rem;
++      margin-bottom: 1.5rem;
++    }
++
++    .review-card-title {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 1rem;
++      padding-bottom: 0.5rem;
++      border-bottom: 1px solid #e0d7d3;
++    }
++
++    .review-details-list {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 0.65rem;
++    }
++
++    .review-row {
++      display: flex;
++      justify-content: space-between;
++      padding: 0.4rem 0;
++      border-bottom: 1px dashed #e8e0dc;
++      font-size: 0.925rem;
++    }
++
++    .review-row:last-child {
++      border-bottom: none;
++    }
++
++    .review-row dt {
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .review-row dd {
++      font-weight: 700;
++      color: var(--text);
++      text-align: right;
++    }
++
++    /* Step Action Buttons */
++    .step-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 2rem;
++      padding-top: 1.5rem;
++      border-top: 1px solid #e0d7d3;
++    }
++
++    .step-actions .btn {
++      flex: 1;
++    }
++
++    .step-actions .btn-primary {
++      flex: 2;
++    }
++
++    /* Success Card */
++    .rewards-success-panel {
++      padding: 3rem 2rem;
++      text-align: center;
++    }
++
++    .rewards-success-panel[hidden] {
++      display: none !important;
++    }
++
++    .success-icon {
++      font-size: 3.5rem;
++      margin-bottom: 1rem;
++    }
++
++    .rewards-success-panel h3 {
++      font-size: 1.85rem;
++      color: var(--primary);
++      margin-bottom: 0.75rem;
++    }
++
++    .rewards-success-panel h3:focus {
++      outline: none;
++    }
++
++    .success-welcome-text {
++      color: var(--text-muted);
++      font-size: 1.1rem;
++      max-width: 550px;
++      margin: 0 auto 2rem;
++    }
++
++    .stars-highlight {
++      color: var(--primary);
++      background: var(--accent);
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .member-card-preview {
++      background: linear-gradient(135deg, #4e342e 0%, #211512 100%);
++      color: white;
++      max-width: 380px;
++      margin: 0 auto 2.5rem;
++      border-radius: 12px;
++      padding: 1.75rem;
++      text-align: left;
++      box-shadow: 0 8px 24px rgba(78, 52, 46, 0.35);
++      border: 1px solid var(--accent);
++    }
++
++    .member-card-header {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      font-weight: 700;
++      color: var(--accent);
++      margin-bottom: 1.5rem;
++      letter-spacing: 1px;
++    }
++
++    .member-name-display {
++      font-size: 1.4rem;
++      font-weight: 800;
++      margin-bottom: 1.5rem;
++      color: white;
++    }
++
++    .member-details-grid {
++      display: flex;
++      justify-content: space-between;
++      border-top: 1px solid rgba(255, 255, 255, 0.2);
++      padding-top: 1rem;
++      font-size: 0.85rem;
++    }
++
++    .member-details-grid .label {
++      display: block;
++      color: #d7ccc8;
++      font-size: 0.7rem;
++      letter-spacing: 0.5px;
++    }
++
++    .member-details-grid .value {
++      font-weight: 700;
++      color: var(--accent);
++      font-size: 1rem;
++    }
++
++    .success-actions {
++      display: flex;
++      justify-content: center;
++      gap: 1rem;
++      flex-wrap: wrap;
++    }
++
++    /* -------------------------------------------------------------
++       FOOTER
++       ------------------------------------------------------------- */
++    footer.site-footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 3rem 1.25rem 2.5rem;
++      margin-top: 4rem;
++      border-top: 1px solid #bcaaa4;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      list-style: none;
++      margin-bottom: 1.5rem;
++      gap: 0.5rem 1.5rem;
+     }
+ 
++    .footer-links li {
++      display: flex;
++      align-items: center;
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.95rem;
++      font-weight: 500;
++      padding: 0.25rem 0.5rem;
++      border-radius: 4px;
++      transition: color 0.2s;
+     }
++
++    .footer-links a:hover {
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    footer.site-footer p {
++      font-size: 0.875rem;
++      color: var(--text-muted);
++    }
++
++    /* -------------------------------------------------------------
++       RESPONSIVE & PREFERENCES
++       ------------------------------------------------------------- */
++    @media (max-width: 600px) {
++      .rewards-form {
++        padding: 1.5rem 1.25rem;
++      }
++
++      .step-actions {
++        flex-direction: column-reverse;
++      }
++
++      .step-actions .btn {
++        width: 100%;
++      }
++
++      .birthday-inputs-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .progress-tracker .step-name {
++        display: none;
++      }
++    }
++
++    @media (pointer: coarse) {
++      /* Expand tap targets on touch devices per WCAG guidelines */
++      .btn,
++      .form-input,
++      .form-select,
++      .radio-card,
++      .logout-btn {
++        min-height: 52px;
++      }
++
++      nav.primary-nav a,
++      .footer-links a {
++        min-height: 48px;
++        display: inline-flex;
++        align-items: center;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <!-- Accessible Skip Link to bypass navigation -->
++  <a href="#main-content" class="skip-link">Skip to main content</a>
++
++  <!-- Primary Navigation -->
++  <nav class="primary-nav" aria-label="Primary navigation">
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- Secure POST Logout Form with CSRF token (fixes CSRF GET vulnerability) -->
++        <form action="/logout" method="POST" class="logout-form">
++          <input type="hidden" name="csrf_token" value="dailygrind_csrf_token_88492041">
++          <button type="submit" class="logout-btn" aria-label="Log out of your account">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
++  <!-- Hero Banner -->
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <!-- Main Content -->
++  <main class="container" id="main-content" tabindex="-1">
++
++    <!-- Seasonal Favorites Section -->
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++        <p class="section-subtitle">Handcrafted beverages and micro-lot coffees roasted fresh this week.</p>
++      </div>
++
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Hot Maple Oat Latte with foam art in a ceramic cup" class="card-img" loading="lazy">
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk infused with pure Vermont maple syrup and a hint of organic cinnamon.</p>
++            <!-- Accessible disambiguated link name -->
++            <a href="/menu/seasonal" class="btn">
++              View Details <span class="visually-hidden">for Maple Oat Latte</span>
++            </a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly pulled double shot of espresso with rich hazelnut crema" class="card-img" loading="lazy">
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and extracted at 9 bars of pressure for a rich, lingering morning boost.</p>
++            <!-- Accessible disambiguated link name -->
++            <a href="/menu/espresso" class="btn">
++              View Details <span class="visually-hidden">for Dark Roast Espresso</span>
++            </a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Glass of chilled cold brew coffee served over ice" class="card-img" loading="lazy">
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours in cold filtered spring water for maximum smoothness and low acidity.</p>
++            <!-- Accessible disambiguated link name -->
++            <a href="/menu/cold-brew" class="btn">
++              View Details <span class="visually-hidden">for Cold Brew</span>
++            </a>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Multi-Step Rewards Program Registration Section -->
++    <section id="rewards" class="rewards-section" aria-labelledby="rewards-heading">
++      <div class="rewards-container">
++
++        <header class="rewards-banner">
++          <span class="rewards-badge" aria-hidden="true">Rewards Program</span>
++          <h2 id="rewards-heading">Join The Daily Grind Rewards</h2>
++          <p>
++            Earn 2 stars per $1 spent, enjoy a complimentary drink during your birthday month, unlock secret roast drops, and get unlimited free oat milk customizations.
++          </p>
++        </header>
++
++        <!-- Live Regions for screen-reader status and error announcements -->
++        <div id="form-status-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
++        <div id="form-alert-announcer" class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true"></div>
++
++        <!-- Progress Tracker Nav -->
++        <nav aria-label="Registration progress" class="progress-nav">
++          <ol class="progress-tracker">
++            <li class="progress-step is-active" id="progress-step-1" aria-current="step">
++              <span class="step-indicator" aria-hidden="true">1</span>
++              <span class="step-name">Account Details</span>
++            </li>
++            <li class="progress-step" id="progress-step-2">
++              <span class="step-indicator" aria-hidden="true">2</span>
++              <span class="step-name">Coffee Profile</span>
++            </li>
++            <li class="progress-step" id="progress-step-3">
++              <span class="step-indicator" aria-hidden="true">3</span>
++              <span class="step-name">Review &amp; Join</span>
++            </li>
++          </ol>
++        </nav>
++
++        <!-- Registration Multi-Step Form -->
++        <form id="rewards-form" action="/rewards/register" method="POST" class="rewards-form" novalidate>
++
++          <!-- Anti-CSRF Token -->
++          <input type="hidden" name="csrf_token" id="reg-csrf-token" value="dailygrind_rewards_token_7e4f9b20">
++
++          <!-- Honeypot Bot Trap (hidden visually and from screen readers) -->
++          <div class="visually-hidden" aria-hidden="true">
++            <label for="honeypot-website">Leave this field blank</label>
++            <input type="text" id="honeypot-website" name="website_company_url" tabindex="-1" autocomplete="off">
++          </div>
++
++          <!-- ==========================================
++               STEP 1: ACCOUNT INFORMATION
++               ========================================== -->
++          <fieldset class="form-step" id="step-1" aria-labelledby="step-1-legend">
++            <legend id="step-1-legend" class="step-legend" tabindex="-1">
++              <span class="legend-subtitle">Step 1 of 3</span>
++              <span class="legend-title">Create Your Rewards Account</span>
++            </legend>
++            <p class="step-desc">Enter your contact details to secure your account and track stars both online and at the counter.</p>
++
++            <!-- Full Name -->
++            <div class="field-group">
++              <label for="reg-fullname">Full Name <span class="required-star" aria-hidden="true">*</span></label>
++              <!-- Format hint above input per modern guidance -->
++              <span id="name-hint" class="field-hint">First and last name</span>
++              <input
++                type="text"
++                id="reg-fullname"
++                name="fullname"
++                class="form-input"
++                autocomplete="name"
++                required
++                minlength="2"
++                maxlength="100"
++                aria-describedby="name-hint"
++                aria-errormessage="name-error"
++              >
++              <div id="name-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Please enter your full name (at least 2 characters).
++              </div>
++            </div>
++
++            <!-- Email Address -->
++            <div class="field-group">
++              <label for="reg-email">Email Address <span class="required-star" aria-hidden="true">*</span></label>
++              <span id="email-hint" class="field-hint">Format: you@example.com (used for rewards sign-in)</span>
++              <input
++                type="email"
++                id="reg-email"
++                name="email"
++                class="form-input"
++                autocomplete="username email"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                required
++                aria-describedby="email-hint"
++                aria-errormessage="email-error"
++              >
++              <div id="email-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Please enter a valid email address (e.g. name@domain.com).
++              </div>
++            </div>
++
++            <!-- Mobile Phone -->
++            <div class="field-group">
++              <label for="reg-phone">Mobile Phone Number <span class="required-star" aria-hidden="true">*</span></label>
++              <span id="phone-hint" class="field-hint">Format: 10-digit number (e.g. 555-019-2834) for fast counter star lookup</span>
++              <input
++                type="tel"
++                id="reg-phone"
++                name="phone"
++                class="form-input"
++                autocomplete="tel"
++                inputmode="tel"
++                required
++                pattern="[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4}"
++                aria-describedby="phone-hint"
++                aria-errormessage="phone-error"
++              >
++              <div id="phone-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Please enter a valid 10-digit mobile phone number.
++              </div>
++            </div>
++
++            <!-- Password -->
++            <div class="field-group">
++              <label for="reg-password">Password <span class="required-star" aria-hidden="true">*</span></label>
++              <!-- Rules checklist above input per guidance -->
++              <div id="password-rules" class="rules-container" aria-label="Password complexity requirements">
++                <span class="rules-header">Your password must satisfy:</span>
++                <ul class="rules-list">
++                  <li id="rule-len">At least 8 characters</li>
++                  <li id="rule-upper">At least one uppercase letter (A-Z)</li>
++                  <li id="rule-num">At least one number (0-9)</li>
++                  <li id="rule-spec">At least one special character (!@#$%^&*)</li>
++                </ul>
++              </div>
++              <div class="password-wrapper">
++                <input
++                  type="password"
++                  id="reg-password"
++                  name="password"
++                  class="form-input"
++                  autocomplete="new-password"
++                  required
++                  minlength="8"
++                  pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
++                  aria-describedby="password-rules"
++                  aria-errormessage="password-error"
++                >
++                <button
++                  type="button"
++                  id="toggle-password-btn"
++                  class="toggle-password-btn"
++                  aria-pressed="false"
++                  aria-label="Show password"
++                  aria-describedby="toggle-password-warning"
++                >
++                  <span id="toggle-btn-text">Show</span>
++                </button>
++                <span id="toggle-password-warning" class="visually-hidden">
++                  Warning: this will display your password on the screen.
++                </span>
++              </div>
++              <div id="password-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Password must satisfy all 4 complexity requirements above.
++              </div>
++            </div>
++
++            <!-- Confirm Password -->
++            <div class="field-group">
++              <label for="reg-confirm-password">Confirm Password <span class="required-star" aria-hidden="true">*</span></label>
++              <span id="confirm-hint" class="field-hint">Must match password entered above</span>
++              <input
++                type="password"
++                id="reg-confirm-password"
++                name="confirm_password"
++                class="form-input"
++                autocomplete="new-password"
++                required
++                aria-describedby="confirm-hint"
++                aria-errormessage="confirm-error"
++              >
++              <div id="confirm-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Passwords do not match.
++              </div>
++            </div>
++
++            <div class="step-actions">
++              <div></div>
++              <button type="button" class="btn btn-primary" id="btn-next-step-1" enterkeyhint="next">
++                Next: Coffee Profile &rarr;
++              </button>
++            </div>
++          </fieldset>
++
++          <!-- ==========================================
++               STEP 2: COFFEE PROFILE & PREFERENCES
++               ========================================== -->
++          <fieldset class="form-step" id="step-2" aria-labelledby="step-2-legend" hidden>
++            <legend id="step-2-legend" class="step-legend" tabindex="-1">
++              <span class="legend-subtitle">Step 2 of 3</span>
++              <span class="legend-title">Customize Your Coffee Profile</span>
++            </legend>
++            <p class="step-desc">Help our baristas customize your perk offers, roast drops, and tasting events.</p>
++
++            <!-- Roast Preference (Radio Group) -->
++            <fieldset class="sub-fieldset" id="roast-fieldset">
++              <legend class="sub-legend">Favorite Coffee Roast / Brew Style <span class="required-star" aria-hidden="true">*</span></legend>
++              <span id="roast-hint" class="field-hint">Select the style that best matches your daily cup</span>
++              <div class="radio-cards-grid" role="radiogroup" aria-describedby="roast-hint" aria-errormessage="roast-error">
++                <label class="radio-card">
++                  <input type="radio" name="roast_preference" value="Light Roast" required>
++                  <span class="radio-card-content">
++                    <span class="card-title">Light Roast</span>
++                    <span class="card-desc">Floral, bright citrus notes &amp; crisp acidity</span>
++                  </span>
++                </label>
++
++                <label class="radio-card">
++                  <input type="radio" name="roast_preference" value="Medium Roast">
++                  <span class="radio-card-content">
++                    <span class="card-title">Medium Roast</span>
++                    <span class="card-desc">Smooth milk chocolate, caramel &amp; hazelnut</span>
++                  </span>
++                </label>
++
++                <label class="radio-card">
++                  <input type="radio" name="roast_preference" value="Dark Roast">
++                  <span class="radio-card-content">
++                    <span class="card-title">Dark Roast</span>
++                    <span class="card-desc">Smoky, bold cocoa &amp; heavy velvety body</span>
++                  </span>
++                </label>
++
++                <label class="radio-card">
++                  <input type="radio" name="roast_preference" value="Cold Brew & Nitro">
++                  <span class="radio-card-content">
++                    <span class="card-title">Cold Brew &amp; Nitro</span>
++                    <span class="card-desc">18-hour cold steeped, creamy &amp; ultra-smooth</span>
++                  </span>
++                </label>
++
++                <label class="radio-card">
++                  <input type="radio" name="roast_preference" value="Decaf & Herbal">
++                  <span class="radio-card-content">
++                    <span class="card-title">Decaf &amp; Herbal</span>
++                    <span class="card-desc">Swiss Water decaf beans &amp; organic botanical teas</span>
++                  </span>
++                </label>
++              </div>
++              <div id="roast-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Please select your favorite coffee roast style.
++              </div>
++            </fieldset>
++
++            <!-- Home Store Selection (Dropdown) -->
++            <div class="field-group">
++              <label for="reg-store">Home Store / Primary Cafe <span class="required-star" aria-hidden="true">*</span></label>
++              <span id="store-hint" class="field-hint">Your preferred pickup cafe for mobile orders and bean club drops</span>
++              <select id="reg-store" name="home_store" class="form-select" required aria-describedby="store-hint" aria-errormessage="store-error">
++                <option value="">-- Choose your primary cafe --</option>
++                <option value="Downtown Roastery (123 Main St)">Downtown Roastery (123 Main St)</option>
++                <option value="Arts District Cafe (456 Gallery Row)">Arts District Cafe (456 Gallery Row)</option>
++                <option value="Uptown Espresso Bar (789 Heights Blvd)">Uptown Espresso Bar (789 Heights Blvd)</option>
++                <option value="Harbor View Kiosk (101 Marina Pier)">Harbor View Kiosk (101 Marina Pier)</option>
++                <option value="University Commons (202 Campus Dr)">University Commons (202 Campus Dr)</option>
++                <option value="Westside Drive-Thru (303 West Ave)">Westside Roastery &amp; Drive-Thru (303 West Ave)</option>
++              </select>
++              <div id="store-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> Please choose your primary home store.
++              </div>
++            </div>
++
++            <!-- Birthday Drink Perk (Optional) -->
++            <fieldset class="sub-fieldset">
++              <legend class="sub-legend">Birthday Month &amp; Day (Optional)</legend>
++              <span id="bday-hint" class="field-hint">We'll load a free artisan drink into your account during your birthday month!</span>
++              <div class="birthday-inputs-grid" aria-describedby="bday-hint">
++                <div class="field-subgroup">
++                  <label for="reg-bday-month">Birth Month</label>
++                  <select id="reg-bday-month" name="bday_month" class="form-select" autocomplete="bday-month">
++                    <option value="">Select Month</option>
++                    <option value="January">January</option>
++                    <option value="February">February</option>
++                    <option value="March">March</option>
++                    <option value="April">April</option>
++                    <option value="May">May</option>
++                    <option value="June">June</option>
++                    <option value="July">July</option>
++                    <option value="August">August</option>
++                    <option value="September">September</option>
++                    <option value="October">October</option>
++                    <option value="November">November</option>
++                    <option value="December">December</option>
++                  </select>
++                </div>
++                <div class="field-subgroup">
++                  <label for="reg-bday-day">Birth Day</label>
++                  <input
++                    type="text"
++                    id="reg-bday-day"
++                    name="bday_day"
++                    class="form-input"
++                    inputmode="numeric"
++                    pattern="0?[1-9]|[12][0-9]|3[01]"
++                    placeholder="DD (1-31)"
++                    maxlength="2"
++                    autocomplete="bday-day"
++                  >
++                </div>
++              </div>
++            </fieldset>
++
++            <!-- Rewards Notifications (Multi-select) -->
++            <fieldset class="sub-fieldset">
++              <legend class="sub-legend">Perks &amp; Communication Channels</legend>
++              <div class="checkbox-options-stack">
++                <label class="checkbox-option">
++                  <input type="checkbox" id="pref-email-opt" name="notify_email" checked>
++                  <span class="checkbox-label-text">
++                    <strong>Email Perk Updates &amp; Double-Star Days</strong>
++                    <small>Monthly roast releases, invitations to cupping sessions, and bonus challenges</small>
++                  </span>
++                </label>
++                <label class="checkbox-option">
++                  <input type="checkbox" id="pref-sms-opt" name="notify_sms">
++                  <span class="checkbox-label-text">
++                    <strong>SMS Order Ready Alerts &amp; Flash Coupons</strong>
++                    <small>Instant notification when your mobile cup is on the pickup counter</small>
++                  </span>
++                </label>
++              </div>
++            </fieldset>
++
++            <div class="step-actions">
++              <button type="button" class="btn btn-secondary" id="btn-prev-step-2" enterkeyhint="previous">
++                &larr; Back to Account
++              </button>
++              <button type="button" class="btn btn-primary" id="btn-next-step-2" enterkeyhint="next">
++                Next: Review &amp; Join &rarr;
++              </button>
++            </div>
++          </fieldset>
++
++          <!-- ==========================================
++               STEP 3: REVIEW & CONFIRM
++               ========================================== -->
++          <fieldset class="form-step" id="step-3" aria-labelledby="step-3-legend" hidden>
++            <legend id="step-3-legend" class="step-legend" tabindex="-1">
++              <span class="legend-subtitle">Step 3 of 3</span>
++              <span class="legend-title">Review &amp; Confirm Your Membership</span>
++            </legend>
++            <p class="step-desc">Please review your membership information below before creating your account.</p>
++
++            <!-- Dynamic Review Summary Card -->
++            <div class="review-card" aria-label="Registration Summary">
++              <h3 class="review-card-title">Membership Profile Summary</h3>
++              <dl class="review-details-list">
++                <div class="review-row">
++                  <dt>Full Name:</dt>
++                  <dd id="summary-name">—</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Email Address:</dt>
++                  <dd id="summary-email">—</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Mobile Phone:</dt>
++                  <dd id="summary-phone">—</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Roast Preference:</dt>
++                  <dd id="summary-roast">—</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Home Cafe:</dt>
++                  <dd id="summary-store">—</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Birthday Perk:</dt>
++                  <dd id="summary-bday">Not provided</dd>
++                </div>
++                <div class="review-row">
++                  <dt>Notifications:</dt>
++                  <dd id="summary-notifications">Email perks</dd>
++                </div>
++              </dl>
++            </div>
++
++            <!-- Terms & Conditions Checkbox -->
++            <div class="field-group terms-group" id="terms-group">
++              <label class="checkbox-option">
++                <input type="checkbox" id="reg-terms" name="terms" required aria-errormessage="terms-error">
++                <span class="checkbox-label-text">
++                  <span>I agree to The Daily Grind Rewards Terms &amp; Conditions and acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. <span class="required-star" aria-hidden="true">*</span></span>
++                </span>
++              </label>
++              <div id="terms-error" class="error-msg">
++                <span aria-hidden="true">⚠️</span> You must agree to the terms to complete rewards registration.
++              </div>
++            </div>
++
++            <div class="step-actions">
++              <button type="button" class="btn btn-secondary" id="btn-prev-step-3" enterkeyhint="previous">
++                &larr; Back to Preferences
++              </button>
++              <button type="submit" class="btn btn-primary" id="btn-submit-form">
++                Complete Registration &amp; Claim 50 Welcome Stars
++              </button>
++            </div>
++          </fieldset>
++        </form>
++
++        <!-- ==========================================
++             SUCCESS CONFIRMATION VIEW
++             ========================================== -->
++        <div id="rewards-success-card" class="rewards-success-panel" role="region" aria-labelledby="success-heading" hidden>
++          <div class="success-icon" aria-hidden="true">🎉</div>
++          <h3 id="success-heading" tabindex="-1">Welcome to The Daily Grind Rewards!</h3>
++          <p class="success-welcome-text">
++            Your rewards membership has been created! We've credited <strong class="stars-highlight">50 Welcome Stars</strong> to your account balance.
++          </p>
++
++          <div class="member-card-preview" aria-label="Digital Member Card">
++            <div class="member-card-header">
++              <span>THE DAILY GRIND</span>
++              <span>GOLD ROAST TIER</span>
++            </div>
++            <div class="member-name-display" id="success-card-name">Coffee Lover</div>
++            <div class="member-details-grid">
++              <div>
++                <span class="label">MEMBER ID</span>
++                <span class="value" id="success-card-id">DG-892401</span>
++              </div>
++              <div>
++                <span class="label">STAR BALANCE</span>
++                <span class="value">50 ★</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="success-actions">
++            <a href="/account" class="btn btn-primary">Go to My Rewards Dashboard</a>
++            <a href="/order-online" class="btn btn-secondary">Order Now with 50 Stars</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++
+       </div>
+     </section>
++
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++  <!-- Site Footer -->
++  <footer class="site-footer" aria-label="Site footer">
++    <nav aria-label="Footer links">
++      <ul class="footer-links">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy Policy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- =============================================================
++       CLIENT-SIDE SCRIPT: VALIDATION, ACCESSIBILITY & SECURITY
++       ============================================================= -->
++  <script>
++    (function () {
++      'use strict';
++
++      // -----------------------------------------------------------
++      // DOM Elements
++      // -----------------------------------------------------------
++      const form = document.getElementById('rewards-form');
++      const step1 = document.getElementById('step-1');
++      const step2 = document.getElementById('step-2');
++      const step3 = document.getElementById('step-3');
++      const successCard = document.getElementById('rewards-success-card');
++
++      const progressStep1 = document.getElementById('progress-step-1');
++      const progressStep2 = document.getElementById('progress-step-2');
++      const progressStep3 = document.getElementById('progress-step-3');
++
++      const statusAnnouncer = document.getElementById('form-status-announcer');
++      const alertAnnouncer = document.getElementById('form-alert-announcer');
++
++      // Buttons
++      const btnNext1 = document.getElementById('btn-next-step-1');
++      const btnNext2 = document.getElementById('btn-next-step-2');
++      const btnPrev2 = document.getElementById('btn-prev-step-2');
++      const btnPrev3 = document.getElementById('btn-prev-step-3');
++      const btnSubmit = document.getElementById('btn-submit-form');
++
++      // Password Toggle
++      const passwordInput = document.getElementById('reg-password');
++      const confirmInput = document.getElementById('reg-confirm-password');
++      const togglePasswordBtn = document.getElementById('toggle-password-btn');
++      const toggleBtnText = document.getElementById('toggle-btn-text');
++
++      // Password Rules
++      const ruleLen = document.getElementById('rule-len');
++      const ruleUpper = document.getElementById('rule-upper');
++      const ruleNum = document.getElementById('rule-num');
++      const ruleSpec = document.getElementById('rule-spec');
++
++      // Review Fields
++      const summaryName = document.getElementById('summary-name');
++      const summaryEmail = document.getElementById('summary-email');
++      const summaryPhone = document.getElementById('summary-phone');
++      const summaryRoast = document.getElementById('summary-roast');
++      const summaryStore = document.getElementById('summary-store');
++      const summaryBday = document.getElementById('summary-bday');
++      const summaryNotifications = document.getElementById('summary-notifications');
++
++      let currentStep = 1;
++
++      // -----------------------------------------------------------
++      // Live Announcers
++      // -----------------------------------------------------------
++      function announceStatus(message) {
++        if (statusAnnouncer) {
++          statusAnnouncer.textContent = '';
++          setTimeout(function () {
++            statusAnnouncer.textContent = message;
++          }, 50);
++        }
++      }
++
++      function announceAlert(message) {
++        if (alertAnnouncer) {
++          alertAnnouncer.textContent = '';
++          setTimeout(function () {
++            alertAnnouncer.textContent = message;
++          }, 50);
++        }
++      }
++
++      // -----------------------------------------------------------
++      // ARIA Synchronization with CSS :user-invalid state
++      // (Per modern-web-guidance: accessible-error-announcement)
++      // -----------------------------------------------------------
++      function syncAriaState(el) {
++        if (!el || !el.matches || !el.matches('input, select, textarea')) return;
++        const isUserInvalid = el.matches(':user-invalid') || el.classList.contains('user-invalid-fallback');
++        if (isUserInvalid) {
++          el.setAttribute('aria-invalid', 'true');
++        } else if (el.matches(':user-valid') || el.classList.contains('user-valid-fallback')) {
++          el.removeAttribute('aria-invalid');
++        }
++      }
++
++      document.addEventListener('blur', function (e) {
++        syncAriaState(e.target);
++      }, true);
++
++      document.addEventListener('input', function (e) {
++        if (e.target && e.target.hasAttribute && e.target.hasAttribute('aria-invalid')) {
++          syncAriaState(e.target);
++        }
++      });
++
++      // -----------------------------------------------------------
++      // Fallback for browsers lacking native :user-invalid support
++      // -----------------------------------------------------------
++      const UserInvalidFallback = (function () {
++        const dirtyState = new WeakMap();
++
++        function updateState(input) {
++          if (!input || !input.checkValidity) return;
++          const isValid = input.checkValidity();
++          input.classList.toggle('user-invalid-fallback', !isValid);
++          input.classList.toggle('user-valid-fallback', isValid);
++          if (!isValid) {
++            input.setAttribute('aria-invalid', 'true');
++          } else {
++            input.removeAttribute('aria-invalid');
++          }
++        }
++
++        function handleEvent(e) {
++          const input = e.target;
++          if (!input || !input.matches || !input.matches('input, select, textarea')) return;
++
++          if (e.type === 'input' || e.type === 'change') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasInteracted = true;
++            dirtyState.set(input, state);
++            if (state.hasBlurred) updateState(input);
++          } else if (e.type === 'blur') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasBlurred = true;
++            dirtyState.set(input, state);
++            if (state.hasInteracted) updateState(input);
++          }
++        }
++
++        function init() {
++          if (window.CSS && CSS.supports && CSS.supports('selector(:user-invalid)')) {
++            return; // Native support is present
++          }
++          document.addEventListener('blur', handleEvent, true);
++          document.addEventListener('input', handleEvent, true);
++          document.addEventListener('change', handleEvent, true);
++        }
++
++        return { init: init, updateState: updateState };
++      })();
++
++      UserInvalidFallback.init();
++
++      // -----------------------------------------------------------
++      // Password Complexity & Toggle Logic
++      // -----------------------------------------------------------
++      function validatePasswordComplexity(value) {
++        const hasLen = value.length >= 8;
++        const hasUpper = /[A-Z]/.test(value);
++        const hasNum = /[0-9]/.test(value);
++        const hasSpec = /[\W_]/.test(value);
++
++        ruleLen.classList.toggle('is-met', hasLen);
++        ruleUpper.classList.toggle('is-met', hasUpper);
++        ruleNum.classList.toggle('is-met', hasNum);
++        ruleSpec.classList.toggle('is-met', hasSpec);
++
++        return hasLen && hasUpper && hasNum && hasSpec;
++      }
++
++      passwordInput.addEventListener('input', function () {
++        validatePasswordComplexity(passwordInput.value);
++        if (confirmInput.value.length > 0) {
++          checkPasswordsMatch();
++        }
++      });
++
++      function checkPasswordsMatch() {
++        if (!confirmInput.value) return false;
++        const matches = passwordInput.value === confirmInput.value;
++        if (!matches) {
++          confirmInput.setCustomValidity('Passwords do not match');
++        } else {
++          confirmInput.setCustomValidity('');
++        }
++        return matches;
++      }
++
++      confirmInput.addEventListener('input', checkPasswordsMatch);
++      confirmInput.addEventListener('blur', checkPasswordsMatch);
++
++      // Password visibility toggle with accessible announcements
++      togglePasswordBtn.addEventListener('click', function () {
++        const isCurrentlyPassword = passwordInput.getAttribute('type') === 'password';
++        if (isCurrentlyPassword) {
++          passwordInput.setAttribute('type', 'text');
++          togglePasswordBtn.setAttribute('aria-pressed', 'true');
++          togglePasswordBtn.setAttribute('aria-label', 'Hide password');
++          toggleBtnText.textContent = 'Hide';
++        } else {
++          passwordInput.setAttribute('type', 'password');
++          togglePasswordBtn.setAttribute('aria-pressed', 'false');
++          togglePasswordBtn.setAttribute('aria-label', 'Show password');
++          toggleBtnText.textContent = 'Show';
++        }
++      });
++
++      // -----------------------------------------------------------
++      // Step Validation Logic
++      // -----------------------------------------------------------
++      function markFieldDirty(input) {
++        if (!input) return;
++        input.classList.toggle('user-invalid-fallback', !input.checkValidity());
++        if (!input.checkValidity()) {
++          input.setAttribute('aria-invalid', 'true');
++        }
++      }
++
++      function validateStep1() {
++        let firstInvalid = null;
++        let errorMessage = '';
++
++        const nameInput = document.getElementById('reg-fullname');
++        const emailInput = document.getElementById('reg-email');
++        const phoneInput = document.getElementById('reg-phone');
++
++        // Check custom confirm password match
++        checkPasswordsMatch();
++
++        const fields = [nameInput, emailInput, phoneInput, passwordInput, confirmInput];
++
++        fields.forEach(function (field) {
++          markFieldDirty(field);
++          if (!field.checkValidity() && !firstInvalid) {
++            firstInvalid = field;
++          }
++        });
++
++        if (firstInvalid) {
++          firstInvalid.focus();
++          errorMessage = 'Please fix the errors in Step 1 before proceeding.';
++          announceAlert(errorMessage);
++          return false;
++        }
++
++        return true;
++      }
++
++      function validateStep2() {
++        let firstInvalid = null;
++
++        // Check roast radio group
++        const selectedRoast = form.querySelector('input[name="roast_preference"]:checked');
++        const roastFieldset = document.getElementById('roast-fieldset');
++        const roastRadios = form.querySelectorAll('input[name="roast_preference"]');
++
++        if (!selectedRoast) {
++          roastFieldset.classList.add('is-error');
++          if (!firstInvalid && roastRadios[0]) firstInvalid = roastRadios[0];
++        } else {
++          roastFieldset.classList.remove('is-error');
++        }
++
++        // Check home store
++        const storeSelect = document.getElementById('reg-store');
++        markFieldDirty(storeSelect);
++        if (!storeSelect.checkValidity() && !firstInvalid) {
++          firstInvalid = storeSelect;
++        }
++
++        if (firstInvalid) {
++          firstInvalid.focus();
++          announceAlert('Please select your preferred roast and home cafe.');
++          return false;
++        }
++
++        return true;
++      }
++
++      function validateStep3() {
++        const termsCheckbox = document.getElementById('reg-terms');
++        const termsGroup = document.getElementById('terms-group');
++
++        if (!termsCheckbox.checked) {
++          termsGroup.classList.add('is-error');
++          termsCheckbox.setAttribute('aria-invalid', 'true');
++          termsCheckbox.focus();
++          announceAlert('You must agree to the terms to complete registration.');
++          return false;
++        }
++
++        termsGroup.classList.remove('is-error');
++        termsCheckbox.removeAttribute('aria-invalid');
++        return true;
++      }
++
++      // -----------------------------------------------------------
++      // Populate Step 3 Review Card (Safe from XSS via textContent)
++      // -----------------------------------------------------------
++      function populateReviewCard() {
++        const nameVal = document.getElementById('reg-fullname').value.trim();
++        const emailVal = document.getElementById('reg-email').value.trim();
++        const phoneVal = document.getElementById('reg-phone').value.trim();
++        const roastVal = (form.querySelector('input[name="roast_preference"]:checked') || {}).value || 'None selected';
++        const storeVal = document.getElementById('reg-store').value || 'None selected';
++
++        const bdayMonth = document.getElementById('reg-bday-month').value;
++        const bdayDay = document.getElementById('reg-bday-day').value.trim();
++        let bdayDisplay = 'Not provided';
++        if (bdayMonth && bdayDay) {
++          bdayDisplay = bdayMonth + ' ' + bdayDay;
++        } else if (bdayMonth) {
++          bdayDisplay = bdayMonth;
++        }
++
++        const emailPref = document.getElementById('pref-email-opt').checked;
++        const smsPref = document.getElementById('pref-sms-opt').checked;
++        const notificationsList = [];
++        if (emailPref) notificationsList.push('Email Perks');
++        if (smsPref) notificationsList.push('SMS Alerts');
++        const notifDisplay = notificationsList.length > 0 ? notificationsList.join(' & ') : 'None selected';
++
++        summaryName.textContent = nameVal || '—';
++        summaryEmail.textContent = emailVal || '—';
++        summaryPhone.textContent = phoneVal || '—';
++        summaryRoast.textContent = roastVal;
++        summaryStore.textContent = storeVal;
++        summaryBday.textContent = bdayDisplay;
++        summaryNotifications.textContent = notifDisplay;
++      }
++
++      // -----------------------------------------------------------
++      // Step Transition & Focus Management
++      // -----------------------------------------------------------
++      function setStep(newStep) {
++        currentStep = newStep;
++
++        // Hide all steps
++        step1.hidden = currentStep !== 1;
++        step2.hidden = currentStep !== 2;
++        step3.hidden = currentStep !== 3;
++
++        // Update progress tracker indicators
++        [progressStep1, progressStep2, progressStep3].forEach(function (stepEl, idx) {
++          const stepNum = idx + 1;
++          stepEl.classList.remove('is-active', 'is-completed');
++          stepEl.removeAttribute('aria-current');
++
++          if (stepNum === currentStep) {
++            stepEl.classList.add('is-active');
++            stepEl.setAttribute('aria-current', 'step');
++          } else if (stepNum < currentStep) {
++            stepEl.classList.add('is-completed');
++          }
++        });
++
++        // Focus the legend of the active step for screen reader orientation
++        let activeLegend = null;
++        let stepTitle = '';
++        if (currentStep === 1) {
++          activeLegend = document.getElementById('step-1-legend');
++          stepTitle = 'Step 1 of 3: Account Details';
++        } else if (currentStep === 2) {
++          activeLegend = document.getElementById('step-2-legend');
++          stepTitle = 'Step 2 of 3: Coffee Profile';
++        } else if (currentStep === 3) {
++          activeLegend = document.getElementById('step-3-legend');
++          stepTitle = 'Step 3 of 3: Review and Join';
++          populateReviewCard();
++        }
++
++        if (activeLegend) {
++          activeLegend.focus();
++        }
++
++        announceStatus('Navigated to ' + stepTitle);
++      }
++
++      // -----------------------------------------------------------
++      // Button Event Listeners
++      // -----------------------------------------------------------
++      btnNext1.addEventListener('click', function () {
++        if (validateStep1()) {
++          setStep(2);
++        }
++      });
++
++      btnNext2.addEventListener('click', function () {
++        if (validateStep2()) {
++          setStep(3);
++        }
++      });
++
++      btnPrev2.addEventListener('click', function () {
++        setStep(1);
++      });
++
++      btnPrev3.addEventListener('click', function () {
++        setStep(2);
++      });
++
++      // Clear roast radio error immediately on choice change
++      form.querySelectorAll('input[name="roast_preference"]').forEach(function (radio) {
++        radio.addEventListener('change', function () {
++          document.getElementById('roast-fieldset').classList.remove('is-error');
++        });
++      });
++
++      // -----------------------------------------------------------
++      // Form Submission (Security & Confirmation)
++      // -----------------------------------------------------------
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++
++        // 1. Bot Honeypot Check
++        const honeypotVal = document.getElementById('honeypot-website').value;
++        if (honeypotVal) {
++          console.warn('Bot detected via honeypot trap.');
++          return; // Drop silently
++        }
++
++        // 2. Comprehensive validation across all steps
++        if (!validateStep1()) {
++          setStep(1);
++          return;
++        }
++        if (!validateStep2()) {
++          setStep(2);
++          return;
++        }
++        if (!validateStep3()) {
++          return;
++        }
++
++        // 3. Disable submit button to prevent double-submit
++        btnSubmit.disabled = true;
++        btnSubmit.textContent = 'Creating Your Account...';
++
++        // 4. Populate Success Card with Member Name and random ID
++        const fullName = document.getElementById('reg-fullname').value.trim();
++        document.getElementById('success-card-name').textContent = fullName || 'Coffee Lover';
++
++        const randomMemberNum = Math.floor(100000 + Math.random() * 900000);
++        document.getElementById('success-card-id').textContent = 'DG-' + randomMemberNum;
++
++        // 5. Hide form and reveal accessible success panel
++        setTimeout(function () {
++          form.hidden = true;
++          document.querySelector('.progress-nav').hidden = true;
++          successCard.hidden = false;
++
++          const successHeading = document.getElementById('success-heading');
++          successHeading.focus();
++
++          announceStatus('Registration complete! Welcome to The Daily Grind Rewards.');
++        }, 400);
++      });
++
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

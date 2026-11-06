@@ -1,0 +1,510 @@
+diff --git a/index.html b/index.html
+index 66c9173..26e7507 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,141 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Security & Validation Sections */
++    .security-section {
++      margin-top: 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .security-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .widget-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++      margin-top: 15px;
++    }
++
++    .widget-box {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 15px;
++      background: var(--light);
++    }
++
++    .widget-box h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.1rem;
++    }
++
++    .widget-box iframe {
++      width: 100%;
++      height: 150px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: white;
++      margin-top: 8px;
++    }
++
++    .status-banner {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++    }
++
++    .status-banner.accepted {
++      background: #e8f5e9;
++      border-left-color: #2e7d32;
++      color: #1b5e20;
++    }
++
++    .status-banner.rejected {
++      background: #ffebee;
++      border-left-color: #c62828;
++      color: #b71c1c;
++    }
++
++    .external-link::after {
++      content: " ↗";
++      font-size: 0.8em;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      margin-left: 6px;
++    }
++
++    .badge-trusted {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .badge-rejected {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .controls-row {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-top: 10px;
++      align-items: center;
++    }
++
++    .controls-row input {
++      flex: 1;
++      min-width: 220px;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++    }
++
++    .btn-sm {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 14px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.85rem;
++    }
++
++    .btn-sm:hover {
++      background: #3e2723;
++    }
++
++    .log-list {
++      list-style: none;
++      margin-top: 12px;
++      max-height: 180px;
++      overflow-y: auto;
++      font-family: monospace;
++      font-size: 0.82rem;
++    }
++
++    .log-list li {
++      padding: 6px 8px;
++      border-bottom: 1px solid #eee;
++    }
+   </style>
+ </head>
+ 
+@@ -164,14 +299,14 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout?redirect=/menu" class="logout-link" id="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" id="order-now-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +330,54 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="security-section" id="order-messaging-section">
++      <h2>Live Order Status &amp; Sandboxed Drink Customizer</h2>
++      <p>Order updates are verified against our trusted ordering origin, and our sandboxed customizer widget pins its opaque origin on initialization.</p>
++
++      <div class="widget-grid">
++        <div class="widget-box">
++          <h3>Trusted Ordering Channel</h3>
++          <p>Accepts cross-window messages only from <code id="trusted-origin-label">https://orders.dailygrind.com</code> using <code>Origin.from(event)</code> and <code>isSameOrigin()</code>.</p>
++          <div id="order-status-banner" class="status-banner">Waiting for verified order updates...</div>
++        </div>
++
++        <div class="widget-box">
++          <h3>Sandboxed Drink Customizer Widget (Pinned on Init)</h3>
++          <p>Pins the widget's opaque <code>Origin</code> on initialization so subsequent messages from this widget are accepted.</p>
++          <iframe
++            id="customizer-widget"
++            title="Drink Customizer Widget"
++            sandbox="allow-scripts"
++            srcdoc="<!DOCTYPE html><html><body style='font-family:sans-serif;padding:10px;margin:0;background:#fff8f0;color:#3e2723;'><h4 style='margin:0 0 6px;'>Custom Roast Builder</h4><p style='font-size:12px;margin:0 0 8px;'>Sandboxed Widget (Opaque Origin)</p><button id='send-order' style='background:#4e342e;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;'>Add Extra Espresso Shot</button><script>window.parent.postMessage({ type: 'WIDGET_INIT', widgetId: 'customizer-widget' }, '*');document.getElementById('send-order').addEventListener('click', () => { window.parent.postMessage({ type: 'WIDGET_ORDER_UPDATE', item: 'Extra Espresso Shot' }, '*'); });setTimeout(() => { window.parent.postMessage({ type: 'WIDGET_ORDER_UPDATE', item: 'Maple Oat Foam' }, '*'); }, 50);</script></body></html>">
++          </iframe>
++        </div>
++
++        <div class="widget-box">
++          <h3>Untrusted Third-Party Sandboxed Frame</h3>
++          <p>Another sandboxed iframe with its own unique opaque origin; messages from this frame are rejected.</p>
++          <iframe
++            id="untrusted-sandbox"
++            title="Untrusted Sandboxed Frame"
++            sandbox="allow-scripts"
++            srcdoc="<!DOCTYPE html><html><body style='font-family:sans-serif;padding:10px;margin:0;background:#fff5f5;color:#3e2723;'><h4 style='margin:0 0 6px;'>Third-Party Promo</h4><p style='font-size:12px;margin:0 0 8px;'>Separate Sandboxed Frame (Different Opaque Origin)</p><button id='spoof-btn' style='background:#c62828;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;'>Attempt Spoofed Widget Message</button><script>document.getElementById('spoof-btn').addEventListener('click', () => { window.parent.postMessage({ type: 'WIDGET_ORDER_UPDATE', item: 'Spoofed Free Gift Card' }, '*'); });setTimeout(() => { window.parent.postMessage({ type: 'WIDGET_ORDER_UPDATE', item: 'Unauthorized Promo Injection' }, '*'); }, 120);</script></body></html>">
++          </iframe>
++        </div>
++      </div>
++
++      <div id="widget-status-banner" class="status-banner">Initializing sandboxed widget identity pinning...</div>
++      <ul id="message-security-log" class="log-list" aria-live="polite"></ul>
++    </section>
++
++    <section class="security-section" id="redirect-validation-section">
++      <h2>Same-Site Redirect &amp; External Link Validation</h2>
++      <p>Redirects and links are validated with <code>Origin.from()</code>, <code>isSameSite()</code>, and <code>isSameOrigin()</code> without manual string splitting.</p>
++      <div class="controls-row">
++        <input type="text" id="redirect-url-input" value="/menu" aria-label="Redirect URL to validate" placeholder="Enter redirect URL (e.g. /menu or https://evil.example)">
++        <button type="button" class="btn-sm" id="validate-redirect-btn">Validate Redirect URL</button>
++      </div>
++      <div id="redirect-status-banner" class="status-banner">Ready to validate same-site redirects.</div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +385,290 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://fairtrade.org/coffee">Fair Trade Certified</a> |
++      <a href="https://sca.coffee">Specialty Coffee Association</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const TRUSTED_ORDERING_URL = 'https://orders.dailygrind.com';
++      const trustedOrderingOrigin = Origin.from(TRUSTED_ORDERING_URL);
++
++      // Pinned opaque Origin for the sandboxed customizer widget
++      let pinnedWidgetOrigin = null;
++
++      const orderStatusBanner = document.getElementById('order-status-banner');
++      const widgetStatusBanner = document.getElementById('widget-status-banner');
++      const redirectStatusBanner = document.getElementById('redirect-status-banner');
++      const securityLog = document.getElementById('message-security-log');
++
++      function appendLog(message, accepted) {
++        if (!securityLog) return;
++        const li = document.createElement('li');
++        li.textContent = `[${accepted ? 'ACCEPTED' : 'REJECTED'}] ${message}`;
++        li.dataset.status = accepted ? 'accepted' : 'rejected';
++        securityLog.prepend(li);
++      }
++
++      /**
++       * Extracts an Origin object from a MessageEvent (or falls back to parsing event.origin
++       * if the event was synthetically constructed with a string origin).
++       */
++      function extractMessageOrigin(event) {
++        try {
++          return Origin.from(event);
++        } catch {
++          if (event && typeof event.origin === 'string') {
++            return Origin.from(event.origin);
++          }
++          throw new TypeError('Unable to extract Origin from message event');
++        }
++      }
++
++      /**
++       * Verifies whether a cross-window MessageEvent came from the trusted ordering origin
++       * using Origin.from() and isSameOrigin().
++       */
++      function isTrustedOrderingMessage(event, expectedOrigin = trustedOrderingOrigin) {
++        try {
++          const trusted = expectedOrigin instanceof Origin
++            ? expectedOrigin
++            : Origin.from(expectedOrigin);
++          const senderOrigin = extractMessageOrigin(event);
++          if (senderOrigin.opaque) {
++            return false;
++          }
++          return trusted.isSameOrigin(senderOrigin);
++        } catch {
++          return false;
++        }
++      }
++
++      /**
++       * Handles messages from sandboxed iframe widgets by pinning the opaque Origin of the
++       * widget on initialization (WIDGET_INIT) and verifying subsequent messages with isSameOrigin().
++       */
++      function handleSandboxedWidgetMessage(event) {
++        try {
++          const senderOrigin = extractMessageOrigin(event);
++          if (!senderOrigin.opaque) {
++            return false;
++          }
++
++          const payload = event.data || {};
++          const isInitMessage =
++            payload === 'init' ||
++            payload === 'WIDGET_INIT' ||
++            payload.type === 'WIDGET_INIT' ||
++            payload.type === 'init' ||
++            payload.type === 'ready' ||
++            payload.action === 'init';
++
++          if (pinnedWidgetOrigin === null && isInitMessage) {
++            pinnedWidgetOrigin = senderOrigin;
++            if (widgetStatusBanner) {
++              widgetStatusBanner.className = 'status-banner accepted';
++              widgetStatusBanner.textContent = `Pinned sandboxed widget identity (opaque=${senderOrigin.opaque}).`;
++            }
++            appendLog('Pinned opaque Origin for initialized sandboxed widget.', true);
++            return true;
++          }
++
++          if (pinnedWidgetOrigin !== null && pinnedWidgetOrigin.isSameOrigin(senderOrigin)) {
++            const detail = payload.item || payload.type || 'widget message';
++            if (widgetStatusBanner) {
++              widgetStatusBanner.className = 'status-banner accepted';
++              widgetStatusBanner.textContent = `Accepted message from pinned sandboxed widget: ${detail}`;
++            }
++            appendLog(`Accepted message from pinned sandboxed widget: ${detail}`, true);
++            return true;
++          }
++
++          if (widgetStatusBanner) {
++            widgetStatusBanner.className = 'status-banner rejected';
++            widgetStatusBanner.textContent = 'Rejected message from unpinned or different sandboxed iframe.';
++          }
++          appendLog('Rejected message from different sandboxed iframe (opaque Origin mismatch).', false);
++          return false;
++        } catch {
++          return false;
++        }
++      }
++
++      /**
++       * Validates that a candidate redirect URL is same-site with the current page (or reference origin)
++       * using Origin.from() and isSameSite() without string-splitting bugs.
++       */
++      function isValidSameSiteRedirect(redirectInput, referenceOrigin = window.location) {
++        try {
++          const currentOrigin = referenceOrigin instanceof Origin
++            ? referenceOrigin
++            : Origin.from(referenceOrigin);
++
++          let targetOrigin;
++          try {
++            targetOrigin = Origin.from(redirectInput);
++          } catch {
++            const resolvedUrl = new URL(redirectInput, window.location.href);
++            targetOrigin = Origin.from(resolvedUrl);
++          }
++
++          if (targetOrigin.opaque) {
++            return false;
++          }
++
++          return currentOrigin.isSameSite(targetOrigin);
++        } catch {
++          return false;
++        }
++      }
++
++      /**
++       * Validates anchor elements on the page using Origin.from(link) and isSameSite() / isSameOrigin()
++       * without manual hostname string splitting.
++       */
++      function validateAndClassifyLinks(root = document, referenceOrigin = window.location) {
++        let currentOrigin;
++        try {
++          currentOrigin = referenceOrigin instanceof Origin
++            ? referenceOrigin
++            : Origin.from(referenceOrigin);
++        } catch {
++          return;
++        }
++
++        const links = root.querySelectorAll('a[href]');
++        links.forEach((link) => {
++          try {
++            let linkOrigin;
++            try {
++              linkOrigin = Origin.from(link);
++            } catch {
++              linkOrigin = Origin.from(link.href);
++            }
++
++            const sameOrigin = currentOrigin.isSameOrigin(linkOrigin);
++            const sameSite = currentOrigin.isSameSite(linkOrigin);
++
++            if (sameOrigin) {
++              link.dataset.originRelation = 'same-origin';
++            } else if (sameSite) {
++              link.dataset.originRelation = 'same-site';
++            } else {
++              link.dataset.originRelation = 'cross-site';
++              link.dataset.external = 'true';
++              link.classList.add('external-link');
++              link.setAttribute('rel', 'noopener noreferrer');
++              link.setAttribute('target', '_blank');
++            }
++          } catch {
++            link.dataset.originRelation = 'invalid';
++          }
++        });
++      }
++
++      // Listen for cross-window messages (both trusted ordering origin and sandboxed widget iframes)
++      window.addEventListener('message', (event) => {
++        let senderOrigin;
++        try {
++          senderOrigin = extractMessageOrigin(event);
++        } catch {
++          appendLog('Rejected message with unparseable origin.', false);
++          return;
++        }
++
++        if (senderOrigin.opaque) {
++          handleSandboxedWidgetMessage(event);
++          return;
++        }
++
++        if (isTrustedOrderingMessage(event)) {
++          const orderSummary = (event.data && (event.data.orderId || event.data.status || JSON.stringify(event.data))) || 'Order confirmed';
++          if (orderStatusBanner) {
++            orderStatusBanner.className = 'status-banner accepted';
++            orderStatusBanner.textContent = `Verified order message from trusted origin: ${orderSummary}`;
++          }
++          appendLog(`Verified ordering message: ${orderSummary}`, true);
++        } else {
++          if (orderStatusBanner) {
++            orderStatusBanner.className = 'status-banner rejected';
++            orderStatusBanner.textContent = 'Rejected cross-window message from untrusted origin.';
++          }
++          appendLog('Rejected cross-window message from untrusted origin.', false);
++        }
++      });
++
++      // Validate logout redirect parameter using isValidSameSiteRedirect
++      const logoutLink = document.getElementById('logout-link');
++      if (logoutLink) {
++        logoutLink.addEventListener('click', (event) => {
++          const linkUrl = new URL(logoutLink.href, window.location.href);
++          const candidateRedirect = linkUrl.searchParams.get('redirect') || '/';
++          if (!isValidSameSiteRedirect(candidateRedirect)) {
++            event.preventDefault();
++            if (redirectStatusBanner) {
++              redirectStatusBanner.className = 'status-banner rejected';
++              redirectStatusBanner.textContent = `Blocked unsafe cross-site logout redirect: ${candidateRedirect}`;
++            }
++            appendLog(`Blocked unsafe logout redirect: ${candidateRedirect}`, false);
++          } else {
++            if (redirectStatusBanner) {
++              redirectStatusBanner.className = 'status-banner accepted';
++              redirectStatusBanner.textContent = `Validated same-site logout redirect: ${candidateRedirect}`;
++            }
++          }
++        });
++      }
++
++      // Check current page URL for any ?redirect= query parameter
++      const pageParams = new URLSearchParams(window.location.search);
++      if (pageParams.has('redirect')) {
++        const redirectParam = pageParams.get('redirect');
++        const valid = isValidSameSiteRedirect(redirectParam);
++        if (redirectStatusBanner) {
++          redirectStatusBanner.className = `status-banner ${valid ? 'accepted' : 'rejected'}`;
++          redirectStatusBanner.textContent = valid
++            ? `Validated same-site redirect parameter: ${redirectParam}`
++            : `Rejected cross-site redirect parameter: ${redirectParam}`;
++        }
++      }
++
++      // Interactive redirect validation control
++      const validateRedirectBtn = document.getElementById('validate-redirect-btn');
++      const redirectUrlInput = document.getElementById('redirect-url-input');
++      if (validateRedirectBtn && redirectUrlInput) {
++        validateRedirectBtn.addEventListener('click', () => {
++          const candidate = redirectUrlInput.value.trim();
++          const valid = isValidSameSiteRedirect(candidate);
++          if (redirectStatusBanner) {
++            redirectStatusBanner.className = `status-banner ${valid ? 'accepted' : 'rejected'}`;
++            redirectStatusBanner.textContent = valid
++              ? `Allowed same-site redirect URL: ${candidate}`
++              : `Blocked cross-site or invalid redirect URL: ${candidate}`;
++          }
++          appendLog(`Redirect validation for "${candidate}": ${valid ? 'same-site' : 'rejected'}`, valid);
++        });
++      }
++
++      // Validate and classify all links on the page
++      validateAndClassifyLinks(document);
++
++      // Expose validation helpers for programmatic inspection
++      window.DailyGrindSecurity = {
++        trustedOrderingOrigin,
++        isTrustedOrderingMessage,
++        handleSandboxedWidgetMessage,
++        isValidSameSiteRedirect,
++        validateAndClassifyLinks,
++        getPinnedWidgetOrigin: () => pinnedWidgetOrigin,
++        resetPinnedWidgetOrigin: () => { pinnedWidgetOrigin = null; }
++      };
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

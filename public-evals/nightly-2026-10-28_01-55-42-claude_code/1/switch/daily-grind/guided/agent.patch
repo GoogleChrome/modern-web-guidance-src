@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..2cf87f4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,69 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Preferences / switch */
++    .preferences {
++      margin-top: 60px;
++    }
++
++    .preferences .card {
++      text-align: left;
++      max-width: 520px;
++      margin: 20px auto 0;
++    }
++
++    .switch-field {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      border: 0;
++      padding: 8px 0;
++    }
++
++    .switch-field label {
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .switch-field .hint {
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    /* Native switch (Safari 17.4+) or polyfilled checkbox: both render at 1em x 2em,
++       so font-size controls the hit target (>= 24px tall). */
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      font-size: 1.5rem;
++      margin: 0;
++      flex-shrink: 0;
++      cursor: pointer;
++    }
++
++    @media (pointer: coarse) {
++      input[type="checkbox"][switch] {
++        font-size: 1.75rem;
++      }
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (forced-colors: active) {
++      input[type="checkbox"][switch]:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      input[type="checkbox"][switch] {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +258,20 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading" style="text-align: center;">Preferences</h2>
++      <form class="card" id="preferences-form">
++        <div class="switch-field">
++          <div>
++            <label for="seasonal-alerts">Email me when seasonal drinks drop</label>
++            <p class="hint" id="seasonal-alerts-hint">About one message per season. Unsubscribe any time.</p>
++          </div>
++          <input id="seasonal-alerts" name="seasonal-alerts" type="checkbox" switch
++            aria-describedby="seasonal-alerts-hint">
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +284,37 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the <input type="checkbox" switch> polyfill only where the browser
++    // lacks native support (currently everything except Safari 17.4+).
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('https://unpkg.com/input-switch-polyfill@1.12.0/input-switch-polyfill.js');
++    }
++
++    // Persist the preference. A switch is still a checkbox: read `.checked` on `change`.
++    const STORAGE_KEY = 'daily-grind:seasonal-alerts';
++    const seasonalAlerts = document.getElementById('seasonal-alerts');
++
++    try {
++      seasonalAlerts.checked = localStorage.getItem(STORAGE_KEY) === 'true';
++    } catch {
++      // Storage unavailable (private mode, blocked cookies): fall back to unchecked.
++    }
++
++    seasonalAlerts.addEventListener('change', () => {
++      try {
++        localStorage.setItem(STORAGE_KEY, String(seasonalAlerts.checked));
++      } catch {
++        // Ignore storage failures; the control still works for the current page.
++      }
++    });
++
++    // The switch applies immediately, so there is nothing to submit.
++    document.getElementById('preferences-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

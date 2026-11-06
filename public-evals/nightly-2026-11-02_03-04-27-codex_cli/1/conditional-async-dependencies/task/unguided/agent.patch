@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,19 +54,108 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .nav-button {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .nav-button:hover {
+       color: var(--accent);
+     }
+ 
++    .nav-button {
++      font-family: inherit;
++      line-height: inherit;
++      background: none;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .nav-button:disabled {
++      cursor: wait;
++      opacity: 0.65;
++    }
++
++    .nav-button:focus-visible,
++    .rewards-close:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Keep the card hidden while browsers without Popover support load the polyfill. */
++    @supports not selector(:popover-open) {
++      [popover]:not(.\:popover-open) {
++        display: none;
++      }
++    }
++
++    .rewards-popover {
++      position: fixed;
++      inset: 80px 5% auto auto;
++      margin: 0;
++      width: 340px;
++      max-width: calc(100vw - 32px);
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 40px rgba(62, 39, 35, 0.2);
++      z-index: 1001;
++    }
++
++    .rewards-popover h2 {
++      margin: 8px 0 12px;
++      font-size: 1.5rem;
++    }
++
++    .rewards-eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .rewards-close {
++      position: absolute;
++      top: 10px;
++      right: 14px;
++      border: 0;
++      background: none;
++      color: var(--primary);
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .rewards-popover {
++        inset: 140px 16px auto auto;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +250,22 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button id="rewards-button" class="nav-button" type="button" popovertarget="rewards-popover" aria-controls="rewards-popover" aria-expanded="false" disabled>Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" class="rewards-popover" popover="auto" aria-labelledby="rewards-title">
++    <button class="rewards-close" type="button" popovertarget="rewards-popover" popovertargetaction="hide" aria-label="Close rewards">&times;</button>
++    <p class="rewards-eyebrow">Daily Grind Rewards</p>
++    <h2 id="rewards-title">Good coffee. Great perks.</h2>
++    <p>Make every coffee count. Join our rewards program to earn points and enjoy member perks with your daily cup.</p>
++    <a href="/rewards" class="btn">Explore Rewards</a>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +303,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./scripts/rewards.js"></script>
+ </body>
+ 
+ </html>

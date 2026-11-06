@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+index 66c9173..1bfc2a6 100644
+--- a/index.html
++++ b/index.html
+@@ -88,9 +88,35 @@
+       padding: 0 20px;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    /* Poster lockup: every line is sized (not tracked or stretched) to the
++       same width. Fallback sizes below are approximate for no-JS; the script
++       at the end of the page measures each line and sets the exact font-size. */
++    .hero-lockup {
++      width: min(100%, 30rem, 50vh);
++      margin-bottom: 1.25rem;
++      font-weight: 900;
++      line-height: 0.88;
++      letter-spacing: -0.02em;
++      text-transform: uppercase;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
++    }
++
++    .lockup-line {
++      display: block;
++      width: max-content;
++      white-space: nowrap;
++    }
++
++    .lockup-line:nth-child(1) { font-size: clamp(2.6rem, 12.6vw, 7.5rem); }
++    .lockup-line:nth-child(2) { font-size: clamp(1.4rem, 6.8vw, 4rem); }
++    .lockup-line:nth-child(3) { font-size: clamp(1.7rem, 8.2vw, 4.9rem); color: var(--accent); }
++
++    .hero-lockup.is-fitted .lockup-line {
++      width: auto;
++    }
++
++    .hero p {
++      max-width: 36rem;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +195,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="hero-lockup">
++      <span class="lockup-line">Wake</span>
++      <span class="lockup-line">Up Your</span>
++      <span class="lockup-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +237,43 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fit each lockup line to the lockup width by scaling the font-size,
++    // so glyph shapes and spacing stay true and only the size changes.
++    (function () {
++      var lockup = document.querySelector('.hero-lockup');
++      if (!lockup) return;
++      var lines = lockup.querySelectorAll('.lockup-line');
++      var PROBE = 100; // px: measure every line at the same reference size
++
++      function fit() {
++        var target = lockup.getBoundingClientRect().width;
++        if (!target) return;
++        lockup.classList.remove('is-fitted');
++        for (var i = 0; i < lines.length; i++) {
++          lines[i].style.fontSize = PROBE + 'px';
++        }
++        var sizes = [];
++        for (var j = 0; j < lines.length; j++) {
++          var natural = lines[j].getBoundingClientRect().width;
++          sizes.push(natural ? (PROBE * target / natural) : PROBE);
++        }
++        for (var k = 0; k < lines.length; k++) {
++          lines[k].style.fontSize = sizes[k].toFixed(3) + 'px';
++        }
++        lockup.classList.add('is-fitted');
++      }
++
++      fit();
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
++      if (window.ResizeObserver) {
++        new ResizeObserver(fit).observe(lockup);
++      } else {
++        window.addEventListener('resize', fit);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

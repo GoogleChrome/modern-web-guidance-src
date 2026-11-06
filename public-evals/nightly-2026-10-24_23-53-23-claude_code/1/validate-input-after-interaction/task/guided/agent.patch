@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,64 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      margin-bottom: 25px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .newsletter input {
++      padding: 10px 12px;
++      border: 2px solid var(--primary);
++      border-radius: 4px;
++      min-width: 240px;
++      font: inherit;
++    }
++
++    .newsletter button {
++      padding: 10px 20px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.875rem;
++      margin-top: 6px;
++    }
++
++    /* Only after the user has left the field (or tried to submit) */
++    .newsletter input:user-invalid {
++      border-color: #b3261e;
++      background-color: #fce8e6;
++    }
++
++    .newsletter input:user-invalid ~ .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +253,17 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post">
++      <label for="newsletter-email">Get our newsletter</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          placeholder="you@example.com" aria-errormessage="newsletter-email-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <div id="newsletter-email-error" class="error-msg">Please enter a valid email address.</div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +271,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    // Keep aria-invalid in sync with :user-invalid (set on blur/submit, cleared while correcting)
++    const emailInput = document.getElementById('newsletter-email');
++    const syncAria = () => emailInput.setAttribute('aria-invalid', emailInput.matches(':user-invalid'));
++    emailInput.addEventListener('blur', syncAria);
++    emailInput.addEventListener('invalid', syncAria);
++    emailInput.addEventListener('input', () => {
++      if (emailInput.hasAttribute('aria-invalid')) syncAria();
++    });
++  </script>
+ </body>
+ 
+ </html>

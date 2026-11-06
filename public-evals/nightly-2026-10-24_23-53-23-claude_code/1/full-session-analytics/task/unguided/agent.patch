@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,42 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.js';
++
++    const ANALYTICS_URL = '/path/to/analytics/endpoint';
++    const queue = new Set();
++
++    function addToQueue(metric) {
++      // Keep only the latest value per metric; earlier ones are superseded.
++      const { name, value, delta, rating, id, navigationType } = metric;
++      for (const m of queue) if (m.name === name) queue.delete(m);
++      queue.add({ name, value, delta, rating, id, navigationType });
++    }
++
++    function flushQueue() {
++      if (!queue.size) return;
++      const body = JSON.stringify({ page: location.href, metrics: [...queue] });
++      // sendBeacon queues the request reliably during page unload; fall back to keepalive fetch.
++      if (!(navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_URL, body))) {
++        fetch(ANALYTICS_URL, { method: 'POST', body, keepalive: true }).catch(() => { });
++      }
++      queue.clear();
++    }
++
++    // Register web-vitals first so final values are queued before our flush listeners run.
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // visibilitychange is the last reliable event on mobile/bfcache; pagehide covers Safari quirks.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

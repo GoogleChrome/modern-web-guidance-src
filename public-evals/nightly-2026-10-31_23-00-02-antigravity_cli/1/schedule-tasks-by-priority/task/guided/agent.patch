@@ -1,0 +1,352 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,141 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-simulator {
++      margin-top: 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      contain: layout style paint;
++    }
++
++    .ops-simulator h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .ops-subtitle {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++      margin-bottom: 20px;
++    }
++
++    .ops-btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 10px 18px;
++      border-radius: 5px;
++      color: white;
++      transition: opacity 0.2s, transform 0.1s;
++    }
++
++    .ops-btn:active {
++      transform: scale(0.98);
++    }
++
++    .ops-btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .ops-btn-urgent {
++      background: #c62828;
++    }
++
++    .ops-btn-standard {
++      background: var(--primary);
++    }
++
++    .ops-btn-background {
++      background: #546e7a;
++    }
++
++    .ops-btn-batch {
++      background: #ef6c00;
++    }
++
++    .ops-btn-clear {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .ops-status-bar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      background: var(--light);
++      padding: 10px 15px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++      margin-bottom: 15px;
++      font-size: 0.85rem;
++    }
++
++    .ops-log {
++      list-style: none;
++      max-height: 280px;
++      overflow-y: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fdfbf9;
++      padding: 10px;
++    }
++
++    .ops-log-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 8px 12px;
++      border-bottom: 1px solid #efebe9;
++      font-size: 0.85rem;
++    }
++
++    .ops-log-item:last-child {
++      border-bottom: none;
++    }
++
++    .ops-badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      color: white;
++      margin-right: 8px;
++      text-transform: uppercase;
++    }
++
++    .badge-user-blocking {
++      background: #c62828;
++    }
++
++    .badge-user-visible {
++      background: var(--primary);
++    }
++
++    .badge-background {
++      background: #546e7a;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +327,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops-simulator" id="ops-queue-simulator" aria-labelledby="ops-simulator-heading">
++      <h2 id="ops-simulator-heading">Operations Queue Simulator</h2>
++      <p class="ops-subtitle">
++        Prioritized task scheduling keeps the UI responsive during long operations using <code>scheduler.postTask()</code> and <code>scheduler.yield()</code>.
++      </p>
++
++      <div class="ops-controls">
++        <button type="button" id="btn-urgent-checkout" class="ops-btn ops-btn-urgent">
++          Urgent Checkout Task
++        </button>
++        <button type="button" id="btn-standard-menu" class="ops-btn ops-btn-standard">
++          Standard Menu Update
++        </button>
++        <button type="button" id="btn-background-telemetry" class="ops-btn ops-btn-background">
++          Background Telemetry Logging
++        </button>
++        <button type="button" id="btn-batch-mixed" class="ops-btn ops-btn-batch">
++          Run Mixed Batch
++        </button>
++        <button type="button" id="btn-clear-log" class="ops-btn ops-btn-clear">
++          Clear Log
++        </button>
++      </div>
++
++      <div class="ops-status-bar">
++        <div><strong>Scheduler Status:</strong> <span id="scheduler-status">Ready</span></div>
++        <div><strong>Active Queue:</strong> <span id="queue-count">0</span> pending | <span id="completed-count">0</span> completed</div>
++      </div>
++
++      <ul id="ops-log" class="ops-log" aria-live="polite">
++        <li class="ops-log-item" id="ops-empty-state">No operations queued yet. Select a task above to begin.</li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +373,163 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const statusEl = document.getElementById('scheduler-status');
++    const queueCountEl = document.getElementById('queue-count');
++    const completedCountEl = document.getElementById('completed-count');
++    const logListEl = document.getElementById('ops-log');
++    const btnUrgent = document.getElementById('btn-urgent-checkout');
++    const btnStandard = document.getElementById('btn-standard-menu');
++    const btnBackground = document.getElementById('btn-background-telemetry');
++    const btnBatch = document.getElementById('btn-batch-mixed');
++    const btnClear = document.getElementById('btn-clear-log');
++
++    let pendingTasks = 0;
++    let completedTasks = 0;
++    let taskCounter = 0;
++
++    let schedulerReadyPromise;
++    if (!('scheduler' in window && 'postTask' in window.scheduler)) {
++      statusEl.textContent = 'Loading scheduler polyfill...';
++      schedulerReadyPromise = new Promise((resolve) => {
++        const script = document.createElement('script');
++        script.src = 'https://unpkg.com/scheduler-polyfill';
++        script.onload = () => {
++          statusEl.textContent = 'Ready (Polyfill Active)';
++          resolve();
++        };
++        script.onerror = () => {
++          statusEl.textContent = 'Ready (Fallback Mode)';
++          resolve();
++        };
++        document.head.appendChild(script);
++      });
++    } else {
++      statusEl.textContent = 'Ready (Native Scheduler API)';
++      schedulerReadyPromise = Promise.resolve();
++    }
++
++    function updateCounters() {
++      queueCountEl.textContent = String(pendingTasks);
++      completedCountEl.textContent = String(completedTasks);
++    }
++
++    function appendLogItem(id, label, priority, stateText) {
++      const emptyState = document.getElementById('ops-empty-state');
++      if (emptyState) {
++        emptyState.remove();
++      }
++      const li = document.createElement('li');
++      li.className = 'ops-log-item';
++      li.id = `task-log-${id}`;
++      li.dataset.priority = priority;
++
++      const leftSpan = document.createElement('span');
++      const badge = document.createElement('span');
++      badge.className = `ops-badge badge-${priority}`;
++      badge.textContent = priority;
++
++      const textNode = document.createTextNode(`#${id} ${label}`);
++      leftSpan.appendChild(badge);
++      leftSpan.appendChild(textNode);
++
++      const rightSpan = document.createElement('span');
++      rightSpan.className = 'ops-state';
++      rightSpan.textContent = stateText;
++
++      li.appendChild(leftSpan);
++      li.appendChild(rightSpan);
++      logListEl.prepend(li);
++      return rightSpan;
++    }
++
++    // Break up long synchronous work using scheduler.yield() with a 50ms deadline budget
++    async function processWorkItems(items) {
++      let deadline = performance.now() + 50;
++
++      for (const item of items) {
++        // Simulate computational processing per item (~1.5ms)
++        const sliceEnd = performance.now() + 1.5;
++        while (performance.now() < sliceEnd) {
++          Math.sqrt(item * 1337);
++        }
++
++        // MANDATORY: Yield to the main thread periodically when the 50ms deadline is exceeded
++        if (performance.now() >= deadline) {
++          if ('scheduler' in window && 'yield' in window.scheduler) {
++            await scheduler.yield();
++          } else {
++            await new Promise(resolve => setTimeout(resolve, 0));
++          }
++          deadline = performance.now() + 50;
++        }
++      }
++    }
++
++    async function scheduleOperation(label, priority, itemCount) {
++      const taskId = ++taskCounter;
++      pendingTasks++;
++      updateCounters();
++
++      const stateSpan = appendLogItem(taskId, label, priority, 'Queued...');
++      await schedulerReadyPromise;
++
++      const items = Array.from({ length: itemCount }, (_, i) => i + 1);
++      const startTime = performance.now();
++
++      const runTask = async () => {
++        statusEl.textContent = `Running: ${label} (${priority})`;
++        stateSpan.textContent = 'Running...';
++        await processWorkItems(items);
++        const elapsed = Math.round(performance.now() - startTime);
++        stateSpan.textContent = `Completed (${elapsed}ms)`;
++        pendingTasks = Math.max(0, pendingTasks - 1);
++        completedTasks++;
++        updateCounters();
++        if (pendingTasks === 0) {
++          statusEl.textContent = 'Idle — All queued tasks finished';
++        }
++      };
++
++      if ('scheduler' in window && 'postTask' in window.scheduler) {
++        return scheduler.postTask(runTask, { priority });
++      } else {
++        return new Promise((resolve) => setTimeout(() => resolve(runTask()), 0));
++      }
++    }
++
++    btnUrgent.addEventListener('click', () => {
++      // Schedule a high-priority task that blocks user interaction
++      scheduleOperation('Urgent Checkout Processing', 'user-blocking', 25);
++    });
++
++    btnStandard.addEventListener('click', () => {
++      // Schedule a default priority task ('user-visible' by default)
++      scheduleOperation('Seasonal Menu Price & Stock Sync', 'user-visible', 45);
++    });
++
++    btnBackground.addEventListener('click', () => {
++      // Schedule a low-priority background task
++      scheduleOperation('Background Telemetry & Analytics Flush', 'background', 80);
++    });
++
++    btnBatch.addEventListener('click', () => {
++      // Enqueue mixed tasks in reverse urgency to demonstrate priority execution order:
++      // background -> user-visible -> user-blocking
++      scheduleOperation('Batch: Telemetry Log Aggregation', 'background', 60);
++      scheduleOperation('Batch: Menu Nutritional Update', 'user-visible', 40);
++      scheduleOperation('Batch: Express Order Checkout', 'user-blocking', 25);
++      scheduleOperation('Batch: Bean Inventory Sync', 'user-visible', 35);
++      scheduleOperation('Batch: VIP Payment Verification', 'user-blocking', 20);
++    });
++
++    btnClear.addEventListener('click', () => {
++      logListEl.innerHTML = '<li class="ops-log-item" id="ops-empty-state">No operations queued yet. Select a task above to begin.</li>';
++      completedTasks = 0;
++      updateCounters();
++    });
++  </script>
+ </body>
+ 
+ </html>

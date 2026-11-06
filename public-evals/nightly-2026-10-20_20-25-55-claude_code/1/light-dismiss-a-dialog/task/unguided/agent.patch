@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,42 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    dialog {
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .dialog-content {
++      padding: 24px 32px;
++      text-align: center;
++    }
++
++    .dialog-actions {
++      display: flex;
++      gap: 12px;
++      justify-content: center;
++      margin-top: 8px;
++    }
++
++    .dialog-cancel {
++      margin-top: 15px;
++      padding: 10px 20px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +197,38 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog">
++    <div class="dialog-content">
++      <p>Are you sure?</p>
++      <div class="dialog-actions">
++        <button type="button" class="dialog-cancel">Cancel</button>
++        <a href="/logout" class="btn dialog-confirm">Log out</a>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    const logoutDialog = document.getElementById('logout-dialog');
++
++    document.querySelector('.test-dialog-trigger').addEventListener('click', (e) => {
++      e.preventDefault();
++      logoutDialog.showModal();
++    });
++
++    logoutDialog.querySelector('.dialog-cancel').addEventListener('click', () => logoutDialog.close());
++
++    // The dialog has no padding, so a click whose target is the dialog itself landed on the backdrop.
++    logoutDialog.addEventListener('click', (e) => {
++      if (e.target === logoutDialog) logoutDialog.close();
++    });
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

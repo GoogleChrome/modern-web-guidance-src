@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promos {
++      margin-top: 40px;
++    }
++
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .promo-controls button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .promo-controls button:disabled {
++      opacity: 0.5;
++      cursor: default;
++    }
++
++    .promo-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #domContainer .card {
++      display: block;
++      opacity: 1;
++      transform: scale(1);
++      transition: opacity 300ms ease, transform 300ms ease, display 300ms;
++      transition-behavior: allow-discrete;
++    }
++
++    #domContainer .card[hidden] {
++      display: none;
++    }
++
++    #domContainer .card:where([hidden], [data-closing], [data-entering]) {
++      opacity: 0;
++      transform: scale(0.92);
++    }
++
++    @starting-style {
++      #domContainer .card {
++        opacity: 0;
++        transform: scale(0.92);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #domContainer .card {
++        transition-duration: 100ms;
++      }
++
++      #domContainer .card:where([hidden], [data-closing], [data-entering]) {
++        transform: none;
++      }
++
++      @starting-style {
++        #domContainer .card {
++          transform: none;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +260,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promos" aria-labelledby="promoHeading">
++      <h2 id="promoHeading">Special Promos</h2>
++      <p>A little something extra for your next coffee break.</p>
++      <div class="promo-controls">
++        <button type="button" class="btn" id="addBtn" aria-controls="domContainer">Add Promo</button>
++        <button type="button" class="btn" id="removeBtn" aria-controls="domContainer">Remove Last Promo</button>
++        <button type="button" class="btn" id="toggleBtn" aria-controls="toggleCard" aria-expanded="true">Hide Default Promo</button>
++      </div>
++      <div id="domContainer" class="grid" aria-live="polite" aria-relevant="additions removals">
++        <article class="card" id="toggleCard">
++          <h3>Your Coffee Break, Upgraded</h3>
++          <p>Pair your favorite coffee with a freshly baked pastry.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +288,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++    const toggleCard = document.getElementById('toggleCard');
++    const toggleBtn = document.getElementById('toggleBtn');
++    let promoNumber = 1;
++    let isBusy = false;
++
++    function showCard(card) {
++      // Older browsers need an explicit starting state for entry transitions.
++      const needsEntryFallback = !('CSSStartingStyleRule' in window);
++      if (needsEntryFallback) card.setAttribute('data-entering', '');
++      card.hidden = false;
++      if (needsEntryFallback) {
++        getComputedStyle(card).opacity;
++        card.removeAttribute('data-entering');
++      }
++    }
++
++    async function hideCard(card) {
++      if (card.hidden) return;
++      // Keep display intact during exit, including in browsers that cannot
++      // transition display. Only apply hidden once the fade and scale finish.
++      card.setAttribute('data-closing', '');
++      const animations = card.getAnimations();
++      let timeout;
++      await Promise.race([
++        Promise.allSettled(animations.map(animation => animation.finished)),
++        new Promise(resolve => { timeout = setTimeout(resolve, 1000); })
++      ]);
++      clearTimeout(timeout);
++      card.hidden = true;
++      card.removeAttribute('data-closing');
++    }
++
++    addBtn.addEventListener('click', () => {
++      const card = document.createElement('article');
++      card.className = 'card';
++      card.hidden = true;
++      const heading = document.createElement('h3');
++      heading.textContent = `Coffee Break Promo ${promoNumber++}`;
++      const description = document.createElement('p');
++      description.textContent = 'Discover a new favorite with our seasonal coffee and bakery pairings.';
++      card.append(heading, description);
++      domContainer.appendChild(card);
++      showCard(card);
++      removeBtn.disabled = isBusy;
++    });
++
++    removeBtn.addEventListener('click', async () => {
++      const card = domContainer.lastElementChild;
++      if (!card || isBusy) return;
++      isBusy = true;
++      removeBtn.disabled = true;
++      toggleBtn.disabled = true;
++      await hideCard(card);
++      card.remove();
++      isBusy = false;
++      toggleBtn.disabled = !toggleCard.isConnected;
++      removeBtn.disabled = domContainer.childElementCount === 0;
++    });
++
++    toggleBtn.addEventListener('click', async () => {
++      if (isBusy) return;
++      isBusy = true;
++      toggleBtn.disabled = true;
++      removeBtn.disabled = true;
++      if (toggleCard.hidden) {
++        showCard(toggleCard);
++      } else {
++        await hideCard(toggleCard);
++      }
++      toggleBtn.setAttribute('aria-expanded', String(!toggleCard.hidden));
++      toggleBtn.textContent = toggleCard.hidden ? 'Show Default Promo' : 'Hide Default Promo';
++      isBusy = false;
++      toggleBtn.disabled = !toggleCard.isConnected;
++      removeBtn.disabled = domContainer.childElementCount === 0;
++    });
++  </script>
+ </body>
+ 
+ </html>

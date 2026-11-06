@@ -1,0 +1,989 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,9 +2,9 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -19,20 +19,137 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Full-screen Native App Setup */
++    html,
+     body {
++      height: 100%;
++      height: 100dvh;
++      width: 100%;
++      overflow: hidden;
++      position: fixed;
++      inset: 0;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
++      background-color: var(--primary);
++      -webkit-font-smoothing: antialiased;
++      -moz-osx-font-smoothing: grayscale;
++      -webkit-text-size-adjust: 100%;
++      touch-action: pan-x pan-y;
++    }
++
++    /* Stack Scrollable Container */
++    .Stack {
++      display: flex;
++      flex-direction: row;
++      width: 100%;
++      height: 100%;
++      height: 100dvh;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      -webkit-overflow-scrolling: touch;
++      overscroll-behavior-x: contain;
++      overscroll-behavior-y: none;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++    }
++
++    .Stack::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Stack View Container */
++    .Stack-view {
++      flex: 0 0 100%;
++      width: 100%;
++      min-width: 100%;
++      height: 100%;
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      position: relative;
++      overflow: visible;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++    }
++
++    .Stack-view::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Stack View Inner Content: Parallax, Edge Shadow, Dimming */
++    .Stack-viewContent {
++      width: 100%;
++      height: 100%;
++      overflow-y: auto;
++      overflow-x: hidden;
++      position: relative;
+       background-color: var(--light);
++      transform-origin: center center;
++      will-change: transform;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++      -webkit-overflow-scrolling: touch;
+     }
+ 
++    .Stack-viewContent::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Edge Shadow on stacked drill-down cards */
++    .Stack-view:not(:first-child) .Stack-viewContent {
++      box-shadow: -16px 0 32px rgba(0, 0, 0, 0.3), -4px 0 12px rgba(0, 0, 0, 0.18);
++    }
++
++    /* Edge highlight border for crisp card separation */
++    .Stack-view:not(:first-child) .Stack-viewContent::before {
++      content: '';
++      position: absolute;
++      top: 0;
++      bottom: 0;
++      left: 0;
++      width: 1px;
++      background: rgba(255, 255, 255, 0.12);
++      pointer-events: none;
++      z-index: 10000;
++    }
++
++    /* Dimming Overlay on Inner Content */
++    .Stack-viewContent::after {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      min-height: 100%;
++      background-color: #000;
++      opacity: var(--dim, 0);
++      pointer-events: none;
++      z-index: 9999;
++      transition: none;
++    }
++
++    /* Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .Stack {
++        scroll-behavior: auto !important;
++      }
++
++      .Stack-viewContent {
++        transform: none !important;
++        transition: none !important;
++        --dim: 0 !important;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: max(1rem, env(safe-area-inset-top)) max(5%, env(safe-area-inset-right)) 1rem max(5%, env(safe-area-inset-left));
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -73,9 +190,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      height: 55vh;
++      min-height: 320px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -108,38 +226,267 @@
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.2s, box-shadow 0.2s;
+     }
+ 
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
+     }
+ 
++    .card p {
++      margin-bottom: 15px;
++      color: #5d4037;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.2s;
++      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Drill-Down Views Styling */
++    .drilldown-nav {
++      background: var(--primary);
++      color: white;
++      padding: max(0.85rem, env(safe-area-inset-top)) max(5%, env(safe-area-inset-right)) 0.85rem max(5%, env(safe-area-inset-left));
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .drilldown-bar-brand {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      font-weight: 700;
++      color: var(--accent);
++    }
++
++    /* Explicit Back Button */
++    .back {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: rgba(255, 255, 255, 0.12);
++      border: 1px solid rgba(255, 171, 64, 0.6);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 20px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      text-decoration: none;
++      transition: background 0.2s, border-color 0.2s, transform 0.15s;
++    }
++
++    .back:hover {
++      background: var(--accent);
++      color: var(--primary);
++      border-color: var(--accent);
++    }
++
++    .back:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .drilldown-hero {
++      height: 42vh;
++      min-height: 260px;
++      max-height: 420px;
++      background-size: cover;
++      background-position: center;
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      padding: 24px max(5%, env(safe-area-inset-right)) 24px max(5%, env(safe-area-inset-left));
++    }
++
++    .drilldown-hero::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.1) 60%, transparent 100%);
++    }
++
++    .drilldown-badge {
++      position: relative;
++      z-index: 2;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 0.85rem;
++      padding: 6px 14px;
++      border-radius: 20px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
++    }
++
++    .drilldown-body {
++      max-width: 800px;
++      margin: 0 auto;
++      padding: 32px 20px max(60px, env(safe-area-inset-bottom));
++    }
++
++    .drilldown-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 8px;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .drilldown-body h2 {
++      font-size: 2.3rem;
++      color: var(--primary);
++      line-height: 1.2;
++    }
++
++    .drilldown-price {
++      font-size: 1.8rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .drilldown-tagline {
++      font-size: 1.15rem;
++      color: #6d4c41;
++      margin-bottom: 24px;
++      font-style: italic;
++    }
++
++    .drilldown-card {
++      background: white;
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
++      margin-bottom: 20px;
++    }
++
++    .drilldown-card h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.15rem;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 6px;
++    }
++
++    .tasting-notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    .tasting-pill {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 6px 14px;
++      border-radius: 16px;
++      font-size: 0.88rem;
++      font-weight: 600;
++    }
++
++    .specs-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
++      gap: 14px;
++      margin-top: 10px;
++    }
++
++    .spec-item {
++      background: #f7f3f0;
++      padding: 12px;
++      border-radius: 8px;
++      border-left: 3px solid var(--primary);
++    }
++
++    .spec-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #795548;
++    }
++
++    .spec-val {
++      font-size: 1rem;
++      font-weight: bold;
++      color: var(--text);
++      margin-top: 4px;
++    }
++
++    .order-action-bar {
++      margin-top: 32px;
++      text-align: center;
++    }
++
++    .btn-order-cta {
++      display: inline-block;
++      width: 100%;
++      max-width: 420px;
++      background: var(--primary);
++      color: white;
++      padding: 16px 28px;
++      border-radius: 30px;
++      border: none;
++      font-size: 1.15rem;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 4px 16px rgba(78, 52, 46, 0.35);
++      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
++    }
++
++    .btn-order-cta:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++      box-shadow: 0 6px 20px rgba(78, 52, 46, 0.45);
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 40px 20px max(40px, env(safe-area-inset-bottom));
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -151,62 +498,503 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    @media (max-width: 600px) {
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++      .drilldown-body h2 {
++        font-size: 1.8rem;
++      }
++      .drilldown-hero {
++        height: 35vh;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <!-- Main Scrollable Container with class Stack -->
++  <div class="Stack" id="stack">
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <!-- Root Homepage View with class .Stack-view and nested .Stack-viewContent -->
++    <div class="Stack-view" id="view-root" data-view-id="root">
++      <div class="Stack-viewContent">
++        <nav>
++          <div class="logo">THE DAILY GRIND</div>
++          <ul>
++            <li><a href="#/menu">Menu</a></li>
++            <li><a href="#/locations">Locations</a></li>
++            <li><a href="#/rewards">Rewards</a></li>
++            <li><a href="#/account">My Account</a></li>
++            <li><a href="#/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++        <header class="hero">
++          <h1>Wake Up Your Senses</h1>
++          <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++          <a href="#/order-online" class="btn">Order Now</a>
++        </header>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++        <main class="container">
++          <section>
++            <h2 style="text-align: center;">Seasonal Favorites</h2>
++            <div class="grid">
++              <div class="card">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="#/view/1" class="btn item" data-id="1">View Details</a>
++              </div>
++              <div class="card">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="#/view/2" class="btn item" data-id="2">View Details</a>
++              </div>
++              <div class="card">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="#/view/3" class="btn item" data-id="3">View Details</a>
++              </div>
++            </div>
++          </section>
++        </main>
++
++        <footer>
++          <div class="footer-links">
++            <a href="#/about">Our Story</a> |
++            <a href="#/careers">Join the Team</a> |
++            <a href="#/contact">Contact Us</a> |
++            <a href="#/privacy-policy">Privacy</a>
++          </div>
++          <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++        </footer>
++      </div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+ 
++  </div>
++
++  <script>
++    (function () {
++      const stack = document.getElementById('stack');
++      let lastFocusedLink = null;
++      let historyDepth = 0;
++      let isHistoryNavigating = false;
++      let scrollEndTimer = null;
++      let ticking = false;
++
++      const VIEWS_DATA = {
++        '1': {
++          id: '1',
++          title: 'Maple Oat Latte',
++          price: '$5.75',
++          category: 'Seasonal Favorite',
++          tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=80',
++          description: 'Our signature autumn beverage combines freshly pulled double ristretto espresso with silky steamed organic oat milk and Grade-A pure Vermont dark maple syrup. Lightly dusted with freshly grated Ceylon cinnamon and nutmeg.',
++          tastingNotes: ['Vermont Maple', 'Toasted Oats', 'Warm Vanilla', 'Ceylon Cinnamon'],
++          specs: [
++            { label: 'Roast Level', value: 'Medium Roast' },
++            { label: 'Milk Base', value: 'Organic Oat' },
++            { label: 'Calories', value: '190 kcal' },
++            { label: 'Caffeine', value: '150 mg' }
++          ]
++        },
++        '2': {
++          id: '2',
++          title: 'Dark Roast Espresso',
++          price: '$4.25',
++          category: 'Artisanal Blend',
++          tagline: 'Bold, smokey, and perfect for a morning boost.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=80',
++          description: 'Crafted from a robust blend of high-altitude Sumatra Mandheling and washed Ethiopian Sidama beans. Roasted slow and dark in small batches to draw out deep caramelized sweetness and velvet crema without harsh bitterness.',
++          tastingNotes: ['Dark Cacao', 'Smokey Cedar', 'Black Cherry', 'Roasted Walnut'],
++          specs: [
++            { label: 'Origin', value: 'Sumatra & Ethiopia' },
++            { label: 'Extraction', value: '28s Double Shot' },
++            { label: 'Body', value: 'Full & Syrupy' },
++            { label: 'Caffeine', value: '180 mg' }
++          ]
++        },
++        '3': {
++          id: '3',
++          title: 'Cold Brew',
++          price: '$5.25',
++          category: 'Signature Steep',
++          tagline: 'Steeped for 18 hours for maximum smoothness.',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80',
++          description: 'Coarsely ground Colombian Supremo beans immersed in triple-filtered chilled water for a slow, gentle 18-hour cold brew cycle. Produces an impeccably clean, ultra-low acidity cup with a naturally sweet caramel essence.',
++          tastingNotes: ['Milk Chocolate', 'Caramel Toffee', 'Low Acidity', 'Crisp Citrus'],
++          specs: [
++            { label: 'Steep Duration', value: '18 Hours' },
++            { label: 'Water', value: 'Triple-Filtered' },
++            { label: 'Ice Type', value: 'Clear Craft Ice' },
++            { label: 'Caffeine', value: '205 mg' }
++          ]
++        }
++      };
++
++      function prefersReducedMotion() {
++        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      }
++
++      function createViewElement(viewId) {
++        const data = VIEWS_DATA[viewId];
++        const view = document.createElement('div');
++        view.className = 'Stack-view';
++        view.id = `view-${viewId}`;
++        view.dataset.viewId = viewId;
++
++        if (!data) {
++          view.innerHTML = `
++            <div class="Stack-viewContent">
++              <nav class="drilldown-nav">
++                <button type="button" class="back" aria-label="Back to Menu">&larr; Back</button>
++                <span class="drilldown-bar-brand">THE DAILY GRIND</span>
++              </nav>
++              <div class="drilldown-body" style="text-align: center; padding-top: 60px;">
++                <h2>Item Not Found</h2>
++                <p>The requested coffee item could not be found.</p>
++                <button type="button" class="back btn" style="margin-top: 20px;">Return to Menu</button>
++              </div>
++            </div>
++          `;
++          return view;
++        }
++
++        const tastingNotesHtml = data.tastingNotes.map(n => `<span class="tasting-pill">${n}</span>`).join('');
++        const specsHtml = data.specs.map(s => `
++          <div class="spec-item">
++            <div class="spec-label">${s.label}</div>
++            <div class="spec-val">${s.value}</div>
++          </div>
++        `).join('');
++
++        view.innerHTML = `
++          <div class="Stack-viewContent">
++            <nav class="drilldown-nav">
++              <button type="button" class="back" aria-label="Back to Menu">
++                <span aria-hidden="true">&larr;</span> Back
++              </button>
++              <span class="drilldown-bar-brand">Seasonal Special</span>
++            </nav>
++
++            <div class="drilldown-hero" style="background-image: url('${data.image}');">
++              <div class="drilldown-badge">${data.category}</div>
++            </div>
++
++            <div class="drilldown-body">
++              <div class="drilldown-header-row">
++                <h2>${data.title}</h2>
++                <span class="drilldown-price">${data.price}</span>
++              </div>
++              <p class="drilldown-tagline">${data.tagline}</p>
++
++              <section class="drilldown-card">
++                <h3>The Story</h3>
++                <p>${data.description}</p>
++              </section>
++
++              <section class="drilldown-card">
++                <h3>Tasting Notes</h3>
++                <div class="tasting-notes">
++                  ${tastingNotesHtml}
++                </div>
++              </section>
++
++              <section class="drilldown-card">
++                <h3>Brew Specifications</h3>
++                <div class="specs-grid">
++                  ${specsHtml}
++                </div>
++              </section>
++
++              <div class="order-action-bar">
++                <button type="button" class="btn btn-order-cta">Order Now &bull; ${data.price}</button>
++              </div>
++            </div>
++          </div>
++        `;
++
++        return view;
++      }
++
++      function updateParallax() {
++        const width = stack.clientWidth;
++        if (!width) return;
++        const scrollLeft = stack.scrollLeft;
++        const views = stack.querySelectorAll('.Stack-view');
++        const isReduced = prefersReducedMotion();
++
++        views.forEach((view, index) => {
++          const content = view.querySelector('.Stack-viewContent');
++          if (!content) return;
++
++          if (isReduced) {
++            content.style.transform = '';
++            content.style.setProperty('--dim', '0');
++            return;
++          }
++
++          // Relative progress:
++          // progress = 0 when view is active and flush
++          // progress > 0 when this view is being covered by view index + 1
++          const progress = (scrollLeft - index * width) / width;
++
++          if (progress > 0 && progress <= 1) {
++            const p = progress;
++            const parallaxPx = p * width * 0.28;
++            const scale = 1 - p * 0.04;
++            content.style.transform = `translateX(${parallaxPx}px) scale(${scale})`;
++            content.style.setProperty('--dim', (p * 0.45).toFixed(3));
++          } else if (progress > 1) {
++            const parallaxPx = width * 0.28;
++            content.style.transform = `translateX(${parallaxPx}px) scale(0.96)`;
++            content.style.setProperty('--dim', '0.45');
++          } else {
++            content.style.transform = '';
++            content.style.setProperty('--dim', '0');
++          }
++        });
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          requestAnimationFrame(() => {
++            updateParallax();
++            ticking = false;
++          });
++          ticking = true;
++        }
++      }
++
++      function scrollToView(index, smooth = true) {
++        const width = stack.clientWidth;
++        const behavior = (!smooth || prefersReducedMotion()) ? 'auto' : 'smooth';
++        stack.scrollTo({
++          left: index * width,
++          behavior
++        });
++      }
++
++      function navigateTo(viewId, triggerElement = null) {
++        if (!VIEWS_DATA[viewId]) return;
++
++        if (triggerElement) {
++          lastFocusedLink = triggerElement;
++        }
++
++        let targetView = stack.querySelector(`.Stack-view[data-view-id="${viewId}"]`);
++        let views = Array.from(stack.querySelectorAll('.Stack-view'));
++
++        if (!targetView) {
++          targetView = createViewElement(viewId);
++          stack.appendChild(targetView);
++          views = Array.from(stack.querySelectorAll('.Stack-view'));
++        }
++
++        const targetIndex = views.indexOf(targetView);
++        historyDepth++;
++        history.pushState({ depth: historyDepth, viewId }, '', `#/view/${viewId}`);
++
++        scrollToView(targetIndex, true);
++
++        // Focus back button on target view without triggering unwanted scrolls
++        const backBtn = targetView.querySelector('.back');
++        if (backBtn) {
++          backBtn.focus({ preventScroll: true });
++        }
++      }
++
++      function goBack() {
++        const views = Array.from(stack.querySelectorAll('.Stack-view'));
++        if (views.length <= 1) return;
++
++        const prevIndex = views.length - 2;
++        const prevView = views[prevIndex];
++        const prevViewId = prevView.dataset.viewId;
++
++        if (historyDepth > 0) {
++          historyDepth--;
++          isHistoryNavigating = true;
++          history.back();
++          scrollToView(prevIndex, true);
++        } else {
++          const newHash = prevViewId === 'root' ? '' : `#/view/${prevViewId}`;
++          history.replaceState({ depth: 0, viewId: prevViewId }, '', newHash || window.location.pathname + window.location.search);
++          scrollToView(prevIndex, true);
++        }
++      }
++
++      function handleScrollEnd() {
++        const width = stack.clientWidth;
++        if (!width) return;
++        const activeIndex = Math.round(stack.scrollLeft / width);
++        const views = Array.from(stack.querySelectorAll('.Stack-view'));
++
++        if (activeIndex >= 0 && activeIndex < views.length) {
++          const currentView = views[activeIndex];
++          const currentViewId = currentView.dataset.viewId;
++
++          // Any views beyond the activeIndex that we swiped past get removed from the DOM to save memory
++          const viewsToRemove = views.slice(activeIndex + 1);
++          if (viewsToRemove.length > 0) {
++            const dismissedId = viewsToRemove[0].dataset.viewId;
++            viewsToRemove.forEach(v => v.remove());
++
++            // Return focus to the trigger link or fallback without weird scrolls
++            if (lastFocusedLink && document.body.contains(lastFocusedLink)) {
++              lastFocusedLink.focus({ preventScroll: true });
++            } else {
++              const fallback = document.querySelector(`.item[data-id="${dismissedId}"]`) || document.querySelector('.item');
++              if (fallback) {
++                fallback.focus({ preventScroll: true });
++              }
++            }
++
++            // Sync history URL if swipe occurred
++            const expectedHash = currentViewId === 'root' ? '' : `#/view/${currentViewId}`;
++            const currentHash = window.location.hash;
++            if (currentHash !== expectedHash && !(expectedHash === '' && (currentHash === '' || currentHash === '#'))) {
++              if (historyDepth > 0) {
++                historyDepth--;
++                isHistoryNavigating = true;
++                history.back();
++              } else {
++                history.replaceState({ depth: 0, viewId: currentViewId }, '', expectedHash || window.location.pathname + window.location.search);
++              }
++            }
++          } else {
++            // If we navigated forward or stayed on view, make sure the back button has focus
++            if (activeIndex > 0) {
++              const backBtn = currentView.querySelector('.back');
++              if (backBtn && document.activeElement !== backBtn) {
++                backBtn.focus({ preventScroll: true });
++              }
++            }
++          }
++        }
++
++        updateParallax();
++      }
++
++      function handlePopState() {
++        if (isHistoryNavigating) {
++          isHistoryNavigating = false;
++          return;
++        }
++
++        const match = window.location.hash.match(/^#\/view\/([^\/?#]+)/);
++        const targetViewId = match ? match[1] : 'root';
++        let targetView = stack.querySelector(`.Stack-view[data-view-id="${targetViewId}"]`);
++
++        if (targetViewId === 'root') {
++          scrollToView(0, true);
++        } else {
++          if (!targetView) {
++            targetView = createViewElement(targetViewId);
++            stack.appendChild(targetView);
++          }
++          const targetIndex = Array.from(stack.querySelectorAll('.Stack-view')).indexOf(targetView);
++          scrollToView(targetIndex, true);
++          const backBtn = targetView.querySelector('.back');
++          if (backBtn) {
++            backBtn.focus({ preventScroll: true });
++          }
++        }
++      }
++
++      // Event Listeners
++      stack.addEventListener('scroll', () => {
++        onScroll();
++        clearTimeout(scrollEndTimer);
++        scrollEndTimer = setTimeout(handleScrollEnd, 120);
++      }, { passive: true });
++
++      stack.addEventListener('scrollend', () => {
++        clearTimeout(scrollEndTimer);
++        handleScrollEnd();
++      });
++
++      window.addEventListener('popstate', handlePopState);
++
++      window.addEventListener('resize', () => {
++        const width = stack.clientWidth;
++        const views = Array.from(stack.querySelectorAll('.Stack-view'));
++        const activeIndex = Math.min(Math.round(stack.scrollLeft / (width || 1)), views.length - 1);
++        stack.scrollLeft = activeIndex * width;
++        updateParallax();
++      });
++
++      document.addEventListener('click', (e) => {
++        const itemLink = e.target.closest('.item');
++        if (itemLink) {
++          // Preserve modifier and middle clicks so users can still open in new tabs
++          if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
++            return;
++          }
++          e.preventDefault();
++          const id = itemLink.dataset.id;
++          if (id) {
++            navigateTo(id, itemLink);
++          }
++          return;
++        }
++
++        const backBtn = e.target.closest('.back');
++        if (backBtn) {
++          e.preventDefault();
++          goBack();
++          return;
++        }
++      });
++
++      document.addEventListener('keydown', (e) => {
++        if (e.key === 'Escape') {
++          const views = stack.querySelectorAll('.Stack-view');
++          if (views.length > 1) {
++            goBack();
++          }
++        }
++      });
++
++      // Deep linking and initialization
++      function init() {
++        const match = window.location.hash.match(/^#\/view\/([^\/?#]+)/);
++        if (match && VIEWS_DATA[match[1]]) {
++          const viewId = match[1];
++          const drillView = createViewElement(viewId);
++          stack.appendChild(drillView);
++
++          requestAnimationFrame(() => {
++            const width = stack.clientWidth;
++            stack.scrollLeft = width;
++            updateParallax();
++
++            const backBtn = drillView.querySelector('.back');
++            if (backBtn) {
++              backBtn.focus({ preventScroll: true });
++            }
++          });
++        } else {
++          stack.scrollLeft = 0;
++          updateParallax();
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', init);
++      } else {
++        init();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

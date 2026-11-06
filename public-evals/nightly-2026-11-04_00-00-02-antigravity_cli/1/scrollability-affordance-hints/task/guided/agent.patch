@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,132 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-block-start: 40px;
++    }
++
++    .reviews-section h2 {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    .scroller {
++      height: 320px;
++      overflow-y: auto;
++      container-type: scroll-state;
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: sticky;
++      left: 0;
++      right: 0;
++      height: 24px;
++      opacity: 0;
++      transition: opacity 0.2s;
++      pointer-events: none;
++      z-index: 1;
++    }
++
++    .indicator-top {
++      top: 0;
++      background: linear-gradient(to bottom, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      background: linear-gradient(to top, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    @container scroll-state(scrollable: top) {
++      .indicator-top {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: bottom) {
++      .indicator-bottom {
++        opacity: 1;
++      }
++    }
++
++    .sentinel-top,
++    .sentinel-bottom {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    .scroller.scrolled-down .indicator-top {
++      opacity: 1;
++    }
++
++    .scroller.can-scroll-down .indicator-bottom {
++      opacity: 1;
++    }
++
++    .reviews-list {
++      list-style: none;
++      padding-inline: 24px;
++    }
++
++    .review-item {
++      padding-block: 16px;
++    }
++
++    .review-item:not(:last-child) {
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    .review-figure {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-rating {
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .review-stars {
++      color: var(--accent);
++    }
++
++    .review-quote p {
++      font-style: italic;
++    }
++
++    .review-product-link {
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    .review-product-link:hover {
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +318,86 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section">
++      <h2>Customer Reviews</h2>
++      <div class="scroller">
++        <div class="sentinel-top" aria-hidden="true"></div>
++        <div class="indicator-top" aria-hidden="true"></div>
++        <ul class="reviews-list" role="list">
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">Elena Rostova</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★★</span> 5/5 — <a href="/menu/maple-oat-latte" class="review-product-link">Maple Oat Latte</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"The balance of rich espresso and real Vermont maple syrup makes this my absolute favorite autumn drink. Never overly sweet and always velvety smooth."</p>
++              </blockquote>
++            </figure>
++          </li>
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">Marcus Vance</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★★</span> 5/5 — <a href="/menu/dark-roast-espresso" class="review-product-link">Dark Roast Espresso</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"Deep, smoky notes with zero bitterness. You can really taste the care put into small-batch roasting every single morning."</p>
++              </blockquote>
++            </figure>
++          </li>
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">Priya Patel</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★★</span> 5/5 — <a href="/menu/cold-brew-reserve" class="review-product-link">18-Hour Cold Brew</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"Incredibly smooth with subtle chocolate undertones. It has become my go-to afternoon pick-me-up while working remotely."</p>
++              </blockquote>
++            </figure>
++          </li>
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">David Kim</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★☆</span> 4/5 — <a href="/menu/cinnamon-cortado" class="review-product-link">Cinnamon Cortado</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"Warming spice and perfectly textured microfoam. Pairing it with a fresh morning pastry here is unbeatable."</p>
++              </blockquote>
++            </figure>
++          </li>
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">Hannah Abbott</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★★</span> 5/5 — <a href="/menu/vanilla-bean-flat-white" class="review-product-link">Vanilla Bean Flat White</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"Real Madagascar vanilla bean makes all the difference. Friendly baristas and a cozy atmosphere every time I visit."</p>
++              </blockquote>
++            </figure>
++          </li>
++          <li class="review-item">
++            <figure class="review-figure">
++              <figcaption class="review-header">
++                <span class="review-author">Lucas Bernard</span>
++                <span class="review-rating"><span class="review-stars" aria-hidden="true">★★★★★</span> 5/5 — <a href="/menu/hazelnut-pour-over" class="review-product-link">Single-Origin Pour Over</a></span>
++              </figcaption>
++              <blockquote class="review-quote">
++                <p>"Crisp, aromatic, and brewed to order at the exact right temperature. Easily the best artisanal coffee shop in the neighborhood."</p>
++              </blockquote>
++            </figure>
++          </li>
++        </ul>
++        <div class="indicator-bottom" aria-hidden="true"></div>
++        <div class="sentinel-bottom" aria-hidden="true"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +408,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const topSentinel = document.querySelector('.sentinel-top');
++      const bottomSentinel = document.querySelector('.sentinel-bottom');
++      const scroller = document.querySelector('.scroller');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          if (entry.target === topSentinel) {
++            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
++          }
++          if (entry.target === bottomSentinel) {
++            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
++          }
++        });
++      }, { root: scroller });
++
++      observer.observe(topSentinel);
++      observer.observe(bottomSentinel);
++    }
++  </script>
+ </body>
+ 
+ </html>

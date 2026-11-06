@@ -1,0 +1,22 @@
+diff --git a/index.html b/index.html
+index 66c9173..94f87f9 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,17 @@
+       color: var(--primary);
+     }
+ 
++    @function --theme-shadow(--color <color>) {
++      result: 0 2px 5px color-mix(in srgb, var(--color) 10%, transparent);
++    }
++
++    /* Keep the base card shadow when at-rule queries or @function are unsupported. */
++    @supports at-rule(@function) {
++      .card {
++        box-shadow: --theme-shadow(var(--primary));
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);

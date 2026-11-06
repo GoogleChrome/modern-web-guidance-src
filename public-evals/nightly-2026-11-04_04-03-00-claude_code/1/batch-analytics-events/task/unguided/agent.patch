@@ -1,0 +1,153 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,148 @@
++/**
++ * Daily Grind client-side analytics.
++ *
++ * Records page views and click interactions, queues them in memory, and
++ * sends them together in one background request. Each new event pushes the
++ * send back by DEBOUNCE_MS, and the queue is flushed right away once it
++ * holds MAX_BATCH events. Anything still queued is sent with
++ * navigator.sendBeacon when the page is hidden or unloaded, so clicks that
++ * navigate away are not lost.
++ *
++ * The script only observes clicks. It never calls preventDefault, never
++ * delays navigation, and never fetches or prefetches the link targets
++ * (for example /logout), so tracking can't trigger side effects.
++ */
++(function () {
++  'use strict';
++
++  var script = document.currentScript;
++  var ENDPOINT = (script && script.dataset.endpoint) || '/api/analytics';
++  var DEBOUNCE_MS = 2000;   // quiet period before a batch is sent
++  var MAX_WAIT_MS = 10000;  // upper bound on how long an event can sit in the queue
++  var MAX_BATCH = 25;       // flush right away once this many events are queued
++  var MAX_QUEUE = 200;      // drop the oldest events if the endpoint stays unreachable
++
++  // Respect user privacy signals.
++  if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl) {
++    return;
++  }
++
++  var queue = [];
++  var debounceTimer = null;
++  var maxWaitTimer = null;
++  var sessionId = getSessionId();
++
++  function getSessionId() {
++    var key = 'dg_analytics_sid';
++    try {
++      var id = sessionStorage.getItem(key);
++      if (!id) {
++        id = (crypto.randomUUID && crypto.randomUUID()) ||
++          Date.now().toString(36) + Math.random().toString(36).slice(2);
++        sessionStorage.setItem(key, id);
++      }
++      return id;
++    } catch (e) {
++      return null; // storage blocked; still send events, just without a session ID
++    }
++  }
++
++  // Path only: query strings and hashes can contain tokens or personal data.
++  function cleanPath(url) {
++    try {
++      var u = new URL(url, location.href);
++      return u.origin === location.origin ? u.pathname : u.origin + u.pathname;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  function track(type, data) {
++    queue.push(Object.assign({ type: type, ts: Date.now(), path: location.pathname }, data));
++    if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
++
++    if (queue.length >= MAX_BATCH) {
++      flush();
++      return;
++    }
++    clearTimeout(debounceTimer);
++    debounceTimer = setTimeout(scheduleFlush, DEBOUNCE_MS);
++    if (!maxWaitTimer) maxWaitTimer = setTimeout(scheduleFlush, MAX_WAIT_MS);
++  }
++
++  // Send while the browser is idle so analytics never competes with user interaction.
++  function scheduleFlush() {
++    if ('requestIdleCallback' in window) {
++      requestIdleCallback(function () { flush(); }, { timeout: 2000 });
++    } else {
++      flush();
++    }
++  }
++
++  function flush(useBeacon) {
++    clearTimeout(debounceTimer);
++    clearTimeout(maxWaitTimer);
++    debounceTimer = maxWaitTimer = null;
++    if (!queue.length) return;
++
++    var events = queue.splice(0, queue.length);
++    var body = JSON.stringify({
++      sessionId: sessionId,
++      sentAt: Date.now(),
++      events: events
++    });
++
++    if (useBeacon && navigator.sendBeacon) {
++      // Page is going away: sendBeacon is the only reliable way to deliver.
++      navigator.sendBeacon(ENDPOINT, new Blob([body], { type: 'application/json' }));
++      return;
++    }
++
++    fetch(ENDPOINT, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: body,
++      keepalive: body.length < 60000, // keepalive bodies are capped at 64KB
++      credentials: 'same-origin'
++    }).then(function (res) {
++      if (!res.ok) throw new Error('HTTP ' + res.status);
++    }).catch(function () {
++      // Put events back at the front of the queue; they go out with the next batch.
++      queue = events.concat(queue).slice(-MAX_QUEUE);
++    });
++  }
++
++  // Page view
++  track('page_view', {
++    title: document.title,
++    referrer: document.referrer ? cleanPath(document.referrer) : null,
++    viewport: window.innerWidth + 'x' + window.innerHeight
++  });
++
++  // Click interactions: one delegated, passive listener in the capture phase.
++  document.addEventListener('click', function (e) {
++    var target = e.target instanceof Element ? e.target : null;
++    if (!target) return;
++    var el = target.closest('a, button, [data-track]') || target;
++    var section = el.closest('nav, header, main, footer, [data-track-section]');
++
++    track('click', {
++      tag: el.tagName.toLowerCase(),
++      text: (el.dataset.track || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80),
++      href: el.href ? cleanPath(el.href) : null,
++      classes: el.className && typeof el.className === 'string' ? el.className.slice(0, 100) : null,
++      section: section ? (section.dataset.trackSection || section.tagName.toLowerCase()) : null,
++      x: Math.round(e.pageX),
++      y: Math.round(e.pageY)
++    });
++  }, { capture: true, passive: true });
++
++  // Send any remaining events when the page is backgrounded or unloaded.
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush(true);
++  });
++  window.addEventListener('pagehide', function () { flush(true); });
++
++  // Small public API for custom events, e.g. DailyGrindAnalytics.track('signup', {...}).
++  window.DailyGrindAnalytics = { track: track, flush: flush };
++})();

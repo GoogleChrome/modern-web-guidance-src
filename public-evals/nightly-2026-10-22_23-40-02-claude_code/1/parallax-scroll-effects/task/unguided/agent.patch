@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,130 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section
++       Pure CSS scroll-driven animation: each layer is translated by a
++       different distance across the section's pass through the viewport.
++       Only transforms are animated, so it stays on the compositor. */
++    .parallax {
++      position: relative;
++      height: 80vh;
++      min-height: 420px;
++      overflow: hidden;
++      isolation: isolate;
++      color: white;
++      background: var(--primary);
++    }
++
++    .parallax-layer {
++      position: absolute;
++      left: 0;
++      right: 0;
++      /* Extra height so layers never reveal gaps while shifting */
++      top: -30%;
++      bottom: -30%;
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    .parallax-back {
++      z-index: 1;
++      background: linear-gradient(rgba(30, 15, 10, 0.55), rgba(30, 15, 10, 0.7)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .parallax-mid {
++      z-index: 2;
++    }
++
++    .bean {
++      position: absolute;
++      width: var(--size);
++      height: calc(var(--size) * 1.35);
++      left: var(--x);
++      top: var(--y);
++      border-radius: 50%;
++      background: radial-gradient(ellipse at 35% 30%, #8d6e63, #4e342e 70%);
++      box-shadow: inset -4px -6px 10px rgba(0, 0, 0, 0.4);
++      transform: rotate(var(--r));
++      opacity: 0.85;
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 8%;
++      bottom: 8%;
++      width: 6%;
++      background: rgba(30, 15, 10, 0.7);
++      border-radius: 50%;
++      transform: translateX(-50%) rotate(8deg);
++    }
++
++    .parallax-front {
++      z-index: 3;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      padding: 0 20px;
++      /* Keep the text centred in the visible section, not the oversized layer */
++      top: 0;
++      bottom: 0;
++      pointer-events: auto;
++    }
++
++    .parallax-front h2 {
++      font-size: 2.5rem;
++      margin-bottom: 1rem;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
++    }
++
++    .parallax-front p {
++      max-width: 36rem;
++      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
++    }
++
++    @keyframes parallax-slow {
++      from { transform: translateY(-12%); }
++      to   { transform: translateY(12%); }
++    }
++
++    @keyframes parallax-medium {
++      from { transform: translateY(-24%); }
++      to   { transform: translateY(24%); }
++    }
++
++    @keyframes parallax-text {
++      from { transform: translateY(60px); }
++      to   { transform: translateY(-60px); }
++    }
++
++    /* Only enable motion where supported and when the user hasn't opted out.
++       Otherwise the layers simply stay static in a readable composition. */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          animation: linear both;
++          animation-timeline: view();
++          animation-range: cover 0% cover 100%;
++        }
++
++        .parallax-back { animation-name: parallax-slow; }
++        .parallax-mid { animation-name: parallax-medium; }
++        .parallax-front { animation-name: parallax-text; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer { will-change: auto; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +295,24 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-back" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true">
++      <span class="bean" style="--size: 70px; --x: 8%; --y: 30%; --r: 25deg"></span>
++      <span class="bean" style="--size: 40px; --x: 22%; --y: 62%; --r: -40deg"></span>
++      <span class="bean" style="--size: 90px; --x: 78%; --y: 38%; --r: 60deg"></span>
++      <span class="bean" style="--size: 50px; --x: 90%; --y: 66%; --r: -15deg"></span>
++      <span class="bean" style="--size: 35px; --x: 64%; --y: 24%; --r: 110deg"></span>
++      <span class="bean" style="--size: 55px; --x: 40%; --y: 74%; --r: 15deg"></span>
++    </div>
++    <div class="parallax-layer parallax-front">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch begins at small family farms and is slow-roasted in our shop each morning, so what reaches you is as fresh as it gets.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

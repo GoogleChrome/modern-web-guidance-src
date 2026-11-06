@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,126 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose a client-side "get_menu_item_details" tool to AI assistants/agents.
++    (() => {
++      const modelContext = navigator.modelContext;
++      if (!modelContext || typeof modelContext.registerTool !== 'function') return;
++
++      const TOOL_NAME = 'get_menu_item_details';
++
++      const normalize = (s) =>
++        String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++      // Menu cards on the page are the single source of truth for item details.
++      const getMenuItems = () =>
++        Array.from(document.querySelectorAll('.card')).map((card) => {
++          const link = card.querySelector('a[href]');
++          return {
++            name: card.querySelector('h3')?.textContent.trim() ?? '',
++            description: card.querySelector('p')?.textContent.trim() ?? '',
++            category: 'Seasonal Favorites',
++            detailsUrl: link ? new URL(link.getAttribute('href'), location.href).href : null,
++          };
++        }).filter((item) => item.name);
++
++      const findItem = (query) => {
++        const q = normalize(query);
++        const items = getMenuItems();
++        return (
++          items.find((i) => normalize(i.name) === q) ||
++          items.find((i) => normalize(i.name).includes(q) || q.includes(normalize(i.name))) ||
++          // Fall back to matching every word of the query (e.g. "oat maple").
++          items.find((i) => q.split(' ').every((w) => normalize(i.name).includes(w))) ||
++          null
++        );
++      };
++
++      const textResult = (data) => ({
++        content: [{ type: 'text', text: JSON.stringify(data) }],
++      });
++
++      const tool = {
++        name: TOOL_NAME,
++        description:
++          'Look up details for a menu item at The Daily Grind coffee shop by its name ' +
++          '(e.g. "Maple Oat Latte", "Dark Roast Espresso", "Cold Brew"). Returns the item\'s ' +
++          'name, description, category, and a link to its details page. Matching is ' +
++          'case-insensitive and accepts partial names. If no item matches, returns an ' +
++          'error along with the list of available item names.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description:
++                'The name of the menu item to look up, e.g. "Maple Oat Latte". ' +
++                'Case-insensitive; partial names such as "cold brew" or "espresso" are accepted.',
++              minLength: 1,
++            },
++          },
++          required: ['name'],
++          additionalProperties: false,
++        },
++        annotations: { readOnlyHint: true },
++        async execute({ name } = {}) {
++          if (typeof name !== 'string' || !name.trim()) {
++            return { ...textResult({ error: 'A non-empty "name" string is required.' }), isError: true };
++          }
++          const item = findItem(name);
++          if (!item) {
++            return {
++              ...textResult({
++                error: `No menu item found matching "${name}".`,
++                availableItems: getMenuItems().map((i) => i.name),
++              }),
++              isError: true,
++            };
++          }
++          return textResult(item);
++        },
++      };
++
++      let controller = null;
++      let registration = null;
++
++      const register = () => {
++        if (controller) return;
++        controller = new AbortController();
++        try {
++          // Current spec: unregistration is driven by an AbortSignal.
++          registration = modelContext.registerTool(tool, { signal: controller.signal });
++        } catch (err) {
++          controller = null;
++          console.warn(`[WebMCP] Failed to register "${TOOL_NAME}":`, err);
++        }
++      };
++
++      const unregister = () => {
++        if (!controller) return;
++        controller.abort();
++        controller = null;
++        // Support older implementations that return a handle or expose unregisterTool().
++        try {
++          if (registration && typeof registration.unregister === 'function') {
++            registration.unregister();
++          } else if (typeof modelContext.unregisterTool === 'function') {
++            modelContext.unregisterTool(TOOL_NAME);
++          }
++        } catch { /* already unregistered */ }
++        registration = null;
++      };
++
++      register();
++
++      // Clean up when the page is unloaded (pagehide is bfcache-friendly, unlike unload),
++      // and re-register if the page is restored from the back/forward cache.
++      window.addEventListener('pagehide', unregister);
++      window.addEventListener('pageshow', (e) => { if (e.persisted) register(); });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,40 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="card-expiry" role="status"></p>
+   </footer>
+ 
++  <script type="module">
++    const expiryStatus = document.getElementById('card-expiry');
++
++    try {
++      const temporal = globalThis.Temporal ??
++        (await import('https://esm.sh/@js-temporal/polyfill@0.5.1')).Temporal;
++
++      // A card expiration is a calendar month, not a specific day or instant.
++      const expiry = temporal.PlainYearMonth.from({
++        year: 2027,
++        month: 12,
++        calendar: 'iso8601'
++      });
++      const currentMonth = temporal.Now.plainDateISO().toPlainYearMonth();
++      const remaining = currentMonth.until(expiry, { largestUnit: 'months' });
++
++      if (remaining.sign < 0) {
++        expiryStatus.textContent = 'Your credit card expired in December 2027.';
++      } else if (remaining.sign === 0) {
++        expiryStatus.textContent = 'Your credit card expires at the end of this month (December 2027).';
++      } else {
++        const unit = remaining.months === 1 ? 'month' : 'months';
++        expiryStatus.textContent = `Your credit card expires in ${remaining.months} calendar ${unit} (December 2027).`;
++      }
++    } catch (error) {
++      expiryStatus.textContent = 'Your credit card expires in December 2027. Time remaining is unavailable.';
++      console.error('Unable to calculate credit card expiry:', error);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

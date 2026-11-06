@@ -1,0 +1,877 @@
+diff --git a/index.html b/index.html
+index 66c9173..6a0d221 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,20 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Motion tokens */
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++      --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
++      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
++      --dur-fast: 160ms;
++      --dur-base: 260ms;
++      --dur-slow: 420ms;
++      --marquee-duration: 28s;
+     }
+ 
+     * {
+@@ -27,6 +37,15 @@
+       background-color: var(--light);
+     }
+ 
++    body.is-overlay-open {
++      overflow: hidden;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -49,6 +68,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -56,25 +76,64 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 2px 0;
++      transition: color var(--dur-base) var(--ease-out);
++    }
++
++    /* Animated underline that grows from the center */
++    nav a:not(.logout-link)::after {
++      content: "";
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -2px;
++      height: 2px;
++      border-radius: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: center;
++      transition: transform var(--dur-base) var(--ease-out);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 5px 12px !important;
+       border-radius: 4px;
++      transition:
++        color var(--dur-base) var(--ease-out),
++        background-color var(--dur-base) var(--ease-out),
++        transform var(--dur-fast) var(--ease-out);
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: var(--accent);
++      color: var(--primary-dark) !important;
++    }
++
++    .logout-link:active {
++      transform: scale(0.96);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +144,34 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px 96px;
++      overflow: hidden;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      animation: hero-rise var(--dur-slow) var(--ease-out) both;
++    }
++
++    .hero p {
++      animation: hero-rise var(--dur-slow) var(--ease-out) 80ms both;
++    }
++
++    .hero .btn-cta {
++      animation: hero-rise var(--dur-slow) var(--ease-out) 160ms both;
++    }
++
++    @keyframes hero-rise {
++      from {
++        opacity: 0;
++        transform: translateY(14px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
+     }
+ 
+     /* Content Sections */
+@@ -108,11 +189,36 @@
+     }
+ 
+     .card {
++      position: relative;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: transform var(--dur-base) var(--ease-out);
++      will-change: transform;
++    }
++
++    /* Elevated shadow lives on a pseudo-element; only its opacity animates (cheap to composite). */
++    .card::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++      box-shadow: 0 14px 30px rgba(62, 39, 35, 0.18);
++      opacity: 0;
++      transition: opacity var(--dur-base) var(--ease-out);
++      pointer-events: none;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translateY(-6px);
++    }
++
++    .card:hover::before,
++    .card:focus-within::before {
++      opacity: 1;
+     }
+ 
+     .card h3 {
+@@ -121,18 +227,335 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: 0;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font: inherit;
++      cursor: pointer;
++      transition:
++        background-color var(--dur-base) var(--ease-out),
++        transform var(--dur-fast) var(--ease-out),
++        box-shadow var(--dur-base) var(--ease-out);
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background-color: var(--primary-dark);
++    }
++
++    .btn:active {
++      transform: scale(0.97);
++    }
++
++    .btn .btn-arrow {
++      display: inline-block;
++      transition: transform var(--dur-base) var(--ease-out);
++    }
++
++    .btn:hover .btn-arrow,
++    .btn:focus-visible .btn-arrow {
++      transform: translateX(4px);
++    }
++
++    /* Hero call-to-action */
++    .btn-cta {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 600;
++      padding: 12px 26px;
++      border-radius: 999px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++    }
++
++    .btn-cta:hover,
++    .btn-cta:focus-visible {
++      background-color: #ffbe6b;
++      transform: translateY(-2px);
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
++    }
++
++    .btn-cta:active {
++      transform: translateY(0) scale(0.97);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
++    }
++
++    /* Daily roast banner (marquee) */
++    .roast-banner {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 12px 10px 0;
++      background: rgba(62, 39, 35, 0.82);
++      backdrop-filter: blur(4px);
++      border-top: 1px solid rgba(255, 171, 64, 0.35);
++      color: white;
++      font-size: 0.9rem;
++    }
++
++    .roast-viewport {
++      flex: 1;
++      overflow: hidden;
++      /* Soft fade at both edges */
++      -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
++      mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
++    }
++
++    .roast-track {
++      display: flex;
++      width: max-content;
++      animation: roast-scroll var(--marquee-duration) linear infinite;
++      will-change: transform;
++    }
++
++    .roast-banner[data-state="paused"] .roast-track {
++      animation-play-state: paused;
++    }
++
++    .roast-group {
++      display: flex;
++      flex-shrink: 0;
++      list-style: none;
++    }
++
++    .roast-group li {
++      white-space: nowrap;
++      padding: 0 28px;
++      position: relative;
++    }
++
++    .roast-group li::after {
++      content: "\2615";
++      position: absolute;
++      right: -8px;
++      opacity: 0.6;
++    }
++
++    .roast-group strong {
++      color: var(--accent);
++    }
++
++    @keyframes roast-scroll {
++      from {
++        transform: translateX(0);
++      }
++
++      to {
++        transform: translateX(-50%);
++      }
++    }
++
++    .roast-toggle {
++      flex-shrink: 0;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.5);
++      border-radius: 999px;
++      padding: 4px 12px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++      transition:
++        background-color var(--dur-base) var(--ease-out),
++        border-color var(--dur-base) var(--ease-out),
++        color var(--dur-base) var(--ease-out);
++    }
++
++    .roast-toggle:hover,
++    .roast-toggle:focus-visible {
++      background-color: var(--accent);
++      border-color: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .roast-toggle-icon {
++      width: 10px;
++      height: 10px;
++      display: inline-block;
++      position: relative;
++    }
++
++    /* Pause icon (two bars) */
++    .roast-banner[data-state="playing"] .roast-toggle-icon {
++      border-left: 3px solid currentColor;
++      border-right: 3px solid currentColor;
++    }
++
++    /* Play icon (triangle) */
++    .roast-banner[data-state="paused"] .roast-toggle-icon {
++      width: 0;
++      height: 0;
++      border-top: 5px solid transparent;
++      border-bottom: 5px solid transparent;
++      border-left: 9px solid currentColor;
++    }
++
++    /* Drink details overlay */
++    .drink-overlay {
++      width: min(92vw, 480px);
++      max-height: 90vh;
++      margin: auto;
++      padding: 0;
++      border: 0;
++      border-radius: 14px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
++      overflow: auto;
++    }
++
++    .drink-overlay[open] {
++      animation: overlay-in var(--dur-slow) var(--ease-out) both;
++    }
++
++    .drink-overlay[open]::backdrop {
++      background: rgba(30, 18, 14, 0.6);
++      animation: backdrop-in var(--dur-slow) var(--ease-out) both;
++    }
++
++    .drink-overlay.is-closing {
++      animation: overlay-out var(--dur-base) var(--ease-in) both;
++    }
++
++    .drink-overlay.is-closing::backdrop {
++      animation: backdrop-out var(--dur-base) var(--ease-in) both;
++    }
++
++    @keyframes overlay-in {
++      from {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes overlay-out {
++      from {
++        opacity: 1;
++        transform: none;
++      }
++
++      to {
++        opacity: 0;
++        transform: translateY(16px) scale(0.97);
++      }
++    }
++
++    @keyframes backdrop-in {
++      from {
++        opacity: 0;
++      }
++
++      to {
++        opacity: 1;
++      }
++    }
++
++    @keyframes backdrop-out {
++      from {
++        opacity: 1;
++      }
++
++      to {
++        opacity: 0;
++      }
++    }
++
++    .overlay-media {
++      height: 140px;
++      display: grid;
++      place-items: center;
++      font-size: 3.5rem;
++      background: linear-gradient(135deg, var(--primary), #8d6e63);
++      color: white;
++    }
++
++    .overlay-body {
++      padding: 24px 28px 28px;
++    }
++
++    .overlay-body h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .overlay-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin: 14px 0 18px;
++      list-style: none;
++    }
++
++    .overlay-meta li {
++      background: var(--secondary);
++      border-radius: 999px;
++      padding: 2px 12px;
++      font-size: 0.8rem;
++    }
++
++    .overlay-actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    .overlay-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-ghost {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 1px var(--primary);
++    }
++
++    .btn-ghost:hover,
++    .btn-ghost:focus-visible {
++      background-color: var(--secondary);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .overlay-close {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 36px;
++      height: 36px;
++      border: 0;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.2);
++      color: white;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      transition:
++        background-color var(--dur-base) var(--ease-out),
++        transform var(--dur-base) var(--ease-out);
++    }
++
++    .overlay-close:hover,
++    .overlay-close:focus-visible {
++      background: rgba(255, 255, 255, 0.35);
++      transform: rotate(90deg);
+     }
+ 
+     footer {
+@@ -151,11 +574,62 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color var(--dur-base) var(--ease-out);
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    /* Reduced motion: drop movement, keep near-instant state changes so
++       animation/transition events (and the overlay close logic) still fire. */
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after,
++      .drink-overlay[open]::backdrop,
++      .drink-overlay.is-closing::backdrop {
++        animation-duration: 0.01ms !important;
++        animation-delay: 0ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        transition-delay: 0ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .card:hover,
++      .card:focus-within,
++      .btn-cta:hover,
++      .btn-cta:focus-visible,
++      .btn:hover .btn-arrow,
++      .btn:focus-visible .btn-arrow,
++      .overlay-close:hover,
++      .overlay-close:focus-visible {
++        transform: none;
++      }
++
++      /* The marquee only scrolls if the user explicitly presses play. */
++      .roast-banner[data-state="playing"] .roast-track {
++        animation-duration: var(--marquee-duration) !important;
++        animation-iteration-count: infinite !important;
++      }
+     }
+   </style>
+ </head>
+ 
+-<body>
++<body data-last-animation-state="idle">
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+@@ -171,7 +645,33 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-cta">Order Now <span class="btn-arrow" aria-hidden="true">&rarr;</span></a>
++
++    <div class="roast-banner" data-state="playing" role="region" aria-label="Today's daily roast">
++      <div class="roast-viewport">
++        <div class="roast-track">
++          <ul class="roast-group">
++            <li><strong>Today's Roast:</strong> Ethiopian Yirgacheffe &mdash; bright citrus &amp; jasmine</li>
++            <li><strong>Origin:</strong> Gedeo Zone, 2,000 m</li>
++            <li><strong>Roast Level:</strong> Light-medium</li>
++            <li><strong>Brew Tip:</strong> Pour-over at 94&deg;C for a clean, floral cup</li>
++            <li><strong>Pairs with:</strong> Lemon poppy seed scone</li>
++          </ul>
++          <ul class="roast-group" aria-hidden="true">
++            <li><strong>Today's Roast:</strong> Ethiopian Yirgacheffe &mdash; bright citrus &amp; jasmine</li>
++            <li><strong>Origin:</strong> Gedeo Zone, 2,000 m</li>
++            <li><strong>Roast Level:</strong> Light-medium</li>
++            <li><strong>Brew Tip:</strong> Pour-over at 94&deg;C for a clean, floral cup</li>
++            <li><strong>Pairs with:</strong> Lemon poppy seed scone</li>
++          </ul>
++        </div>
++      </div>
++      <button type="button" class="roast-toggle" aria-pressed="false">
++        <span class="roast-toggle-icon" aria-hidden="true"></span>
++        <span class="roast-toggle-label">Pause</span>
++        <span class="visually-hidden"> daily roast banner</span>
++      </button>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +681,36 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-drink="maple-oat-latte" aria-haspopup="dialog">View Details <span class="btn-arrow" aria-hidden="true">&rarr;</span></a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-drink="dark-roast-espresso" aria-haspopup="dialog">View Details <span class="btn-arrow" aria-hidden="true">&rarr;</span></a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-drink="cold-brew" aria-haspopup="dialog">View Details <span class="btn-arrow" aria-hidden="true">&rarr;</span></a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog class="drink-overlay" id="drink-overlay" aria-labelledby="overlay-title" aria-describedby="overlay-description">
++    <div class="overlay-media" aria-hidden="true"><span id="overlay-icon">&#9749;</span></div>
++    <button type="button" class="overlay-close" data-close-overlay aria-label="Close drink details">&times;</button>
++    <div class="overlay-body">
++      <h2 id="overlay-title"></h2>
++      <p id="overlay-description"></p>
++      <ul class="overlay-meta" id="overlay-meta"></ul>
++      <div class="overlay-actions">
++        <a href="/menu" class="btn" id="overlay-link">Full Menu Page <span class="btn-arrow" aria-hidden="true">&rarr;</span></a>
++        <button type="button" class="btn btn-ghost" data-close-overlay>Close</button>
++      </div>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +721,206 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var body = document.body;
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      /* ------------------------------------------------------------------
++       * Animation / transition event tracking
++       * Reads the details of the triggered animation straight off the
++       * AnimationEvent / TransitionEvent and records them on <body>.
++       * ------------------------------------------------------------------ */
++      function describeTarget(el) {
++        if (!el || el === document || !el.tagName) return 'unknown';
++        var name = el.tagName.toLowerCase();
++        if (el.id) return name + '#' + el.id;
++        if (el.classList && el.classList.length) return name + '.' + el.classList[0];
++        return name;
++      }
++
++      function recordAnimationState(event) {
++        var isTransition = typeof TransitionEvent !== 'undefined' && event instanceof TransitionEvent;
++        // AnimationEvent exposes animationName; TransitionEvent exposes propertyName.
++        var name = isTransition ? event.propertyName : event.animationName;
++        if (!name) return;
++
++        var state = [
++          event.type,
++          name,
++          describeTarget(event.target) + (event.pseudoElement || ''),
++          (Number(event.elapsedTime) || 0).toFixed(2) + 's'
++        ].join('|');
++
++        body.setAttribute('data-last-animation-state', state);
++      }
++
++      [
++        'animationstart', 'animationiteration', 'animationend', 'animationcancel',
++        'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel'
++      ].forEach(function (type) {
++        document.addEventListener(type, recordAnimationState, { passive: true });
++      });
++
++      /* ------------------------------------------------------------------
++       * Daily roast banner: pause / resume
++       * ------------------------------------------------------------------ */
++      var banner = document.querySelector('.roast-banner');
++      var toggle = banner && banner.querySelector('.roast-toggle');
++      var toggleLabel = toggle && toggle.querySelector('.roast-toggle-label');
++      var userChoseBannerState = false;
++
++      function setBannerState(playing) {
++        if (!banner) return;
++        banner.setAttribute('data-state', playing ? 'playing' : 'paused');
++        toggle.setAttribute('aria-pressed', playing ? 'false' : 'true');
++        toggleLabel.textContent = playing ? 'Pause' : 'Play';
++      }
++
++      if (banner && toggle) {
++        // Respect reduced-motion: start paused, but let the user opt in.
++        setBannerState(!reducedMotion.matches);
++
++        toggle.addEventListener('click', function () {
++          userChoseBannerState = true;
++          setBannerState(banner.getAttribute('data-state') !== 'playing');
++        });
++
++        var onMotionPrefChange = function (e) {
++          if (!userChoseBannerState) setBannerState(!e.matches);
++        };
++        if (reducedMotion.addEventListener) {
++          reducedMotion.addEventListener('change', onMotionPrefChange);
++        } else if (reducedMotion.addListener) {
++          reducedMotion.addListener(onMotionPrefChange);
++        }
++      }
++
++      /* ------------------------------------------------------------------
++       * Drink details overlay
++       * ------------------------------------------------------------------ */
++      var DRINKS = {
++        'maple-oat-latte': {
++          name: 'Maple Oat Latte',
++          icon: '\u{1F341}',
++          description: 'Double-shot espresso folded into velvety steamed oat milk, sweetened with pure Vermont maple syrup and finished with a dusting of cinnamon.',
++          meta: ['Seasonal', 'Dairy-free', '12 oz · $5.25', '150 mg caffeine']
++        },
++        'dark-roast-espresso': {
++          name: 'Dark Roast Espresso',
++          icon: '☕',
++          description: 'Our house dark roast pulled as a rich double shot — notes of cocoa, toasted walnut, and a lingering smoky finish.',
++          meta: ['Year-round', 'Double shot · $3.50', '130 mg caffeine']
++        },
++        'cold-brew': {
++          name: 'Cold Brew',
++          icon: '\u{1F9CA}',
++          description: 'Coarse-ground beans steeped in cold filtered water for 18 hours, yielding a naturally sweet, low-acid brew served over ice.',
++          meta: ['Year-round', 'Low acidity', '16 oz · $4.75', '200 mg caffeine']
++        }
++      };
++
++      var overlay = document.getElementById('drink-overlay');
++      var supportsDialog = overlay && typeof overlay.showModal === 'function';
++      var lastTrigger = null;
++      var closeFallbackTimer = null;
++
++      function fillOverlay(drink, href) {
++        document.getElementById('overlay-title').textContent = drink.name;
++        document.getElementById('overlay-description').textContent = drink.description;
++        document.getElementById('overlay-icon').textContent = drink.icon;
++        document.getElementById('overlay-link').setAttribute('href', href);
++
++        var meta = document.getElementById('overlay-meta');
++        meta.textContent = '';
++        drink.meta.forEach(function (item) {
++          var li = document.createElement('li');
++          li.textContent = item;
++          meta.appendChild(li);
++        });
++      }
++
++      function openOverlay(drink, trigger) {
++        clearTimeout(closeFallbackTimer);
++        overlay.classList.remove('is-closing');
++        lastTrigger = trigger;
++        fillOverlay(drink, trigger.getAttribute('href'));
++        if (!overlay.open) overlay.showModal();
++        body.classList.add('is-overlay-open');
++      }
++
++      function finishClose() {
++        clearTimeout(closeFallbackTimer);
++        if (!overlay.classList.contains('is-closing')) return;
++        overlay.classList.remove('is-closing');
++        if (overlay.open) overlay.close();
++      }
++
++      function closeOverlay() {
++        if (!overlay.open || overlay.classList.contains('is-closing')) return;
++        overlay.classList.add('is-closing');
++
++        var animName = getComputedStyle(overlay).animationName;
++        if (!animName || animName === 'none') {
++          finishClose();
++          return;
++        }
++        // Safety net in case animationend never arrives (e.g. element hidden).
++        closeFallbackTimer = setTimeout(finishClose, 600);
++      }
++
++      if (supportsDialog) {
++        document.querySelectorAll('[data-drink]').forEach(function (trigger) {
++          trigger.addEventListener('click', function (event) {
++            var drink = DRINKS[trigger.getAttribute('data-drink')];
++            // Let modified clicks (new tab, etc.) behave like normal links.
++            if (!drink || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
++            event.preventDefault();
++            openOverlay(drink, trigger);
++          });
++        });
++
++        overlay.addEventListener('animationend', function (event) {
++          // Only the dialog's own exit animation finalizes the close.
++          if (event.target === overlay && !event.pseudoElement && event.animationName === 'overlay-out') {
++            finishClose();
++          }
++        });
++
++        overlay.addEventListener('animationcancel', function (event) {
++          if (event.target === overlay && event.animationName === 'overlay-out') finishClose();
++        });
++
++        // Escape key: run the animated close instead of the instant native one.
++        overlay.addEventListener('cancel', function (event) {
++          event.preventDefault();
++          closeOverlay();
++        });
++
++        overlay.addEventListener('close', function () {
++          overlay.classList.remove('is-closing');
++          body.classList.remove('is-overlay-open');
++          if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
++          lastTrigger = null;
++        });
++
++        overlay.addEventListener('click', function (event) {
++          // Click on the backdrop (outside the dialog box) closes it.
++          if (event.target === overlay) {
++            var r = overlay.getBoundingClientRect();
++            var inside = event.clientX >= r.left && event.clientX <= r.right &&
++              event.clientY >= r.top && event.clientY <= r.bottom;
++            if (!inside) closeOverlay();
++            return;
++          }
++          if (event.target.closest('[data-close-overlay]')) closeOverlay();
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

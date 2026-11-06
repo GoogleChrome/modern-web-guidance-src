@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,156 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling: text in #tracked drives the reveal of media in #animated */
++    .story {
++      margin-top: 60px;
++    }
++
++    .story > h2 {
++      text-align: center;
++    }
++
++    .story-body {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 20px;
++    }
++
++    #tracked {
++      grid-column: 1;
++      grid-row: 1;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      grid-column: 2;
++      grid-row: 1;
++      position: sticky;
++      top: 90px;
++      height: 70vh;
++      align-self: start;
++      display: grid;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      align-items: flex-end;
++      color: white;
++      font-weight: bold;
++      padding: 20px;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
++    }
++
++    #animated section:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80'); }
++    #animated section:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=80'); }
++    #animated section:nth-child(3) { background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80'); }
++
++    @media (max-width: 700px) {
++      .story-body {
++        grid-template-columns: 1fr;
++      }
++
++      #animated,
++      #tracked {
++        grid-column: 1;
++      }
++
++      #animated {
++        grid-row: 1;
++        height: 35vh;
++        z-index: 1;
++      }
++
++      #tracked {
++        grid-row: 2;
++      }
++
++      #tracked section {
++        min-height: 60vh;
++      }
++    }
++
++    /* Without scroll-driven animation support, fall back to a static stack */
++    @supports not (animation-timeline: view()) {
++      #animated {
++        position: static;
++        height: auto;
++        grid-column: 1 / -1;
++        grid-row: 2;
++      }
++
++      #animated section {
++        grid-area: auto;
++        min-height: 240px;
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      /* Timelines are declared on the text sections and scoped to the common ancestor,
++         so the sections in the other DOM branch can attach to them. */
++      .story-body {
++        timeline-scope: --step-1, --step-2, --step-3;
++      }
++
++      #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++      #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++      #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++
++      #animated section {
++        opacity: 0;
++        animation: reveal linear both;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++
++      @keyframes reveal {
++        0%, 25% { opacity: 0; transform: scale(1.06); }
++        45%, 55% { opacity: 1; transform: scale(1); }
++        75%, 100% { opacity: 0; transform: scale(1.06); }
++      }
++
++      /* First image is visible on arrival; last stays until the story ends */
++      #animated section:nth-child(1) { animation-name: reveal-first; }
++      #animated section:nth-child(3) { animation-name: reveal-last; }
++
++      @keyframes reveal-first {
++        0%, 45% { opacity: 1; transform: scale(1); }
++        75%, 100% { opacity: 0; transform: scale(1.06); }
++      }
++
++      @keyframes reveal-last {
++        0%, 25% { opacity: 0; transform: scale(1.06); }
++        45%, 100% { opacity: 1; transform: scale(1); }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        #animated section:nth-child(n) { animation-name: reveal-fade; }
++        @keyframes reveal-fade { 0%, 40% { opacity: 0; } 50% { opacity: 1; } 60%, 100% { opacity: 0; } }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +342,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story">
++      <h2>From Bean to Cup</h2>
++      <div class="story-body">
++        <div id="tracked">
++          <section>
++            <h3>1. Carefully Sourced</h3>
++            <p>We buy directly from small farms, paying fair prices for beans grown at altitude and picked at peak ripeness.</p>
++          </section>
++          <section>
++            <h3>2. Roasted Locally</h3>
++            <p>Every batch is roasted in small lots just down the street, so the flavor reaches you fresh and full.</p>
++          </section>
++          <section>
++            <h3>3. Poured With Care</h3>
++            <p>Our baristas dial in each cup by hand, finishing a story that started thousands of miles away.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section>Green coffee beans</section>
++          <section>The roastery</section>
++          <section>Your cup</section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

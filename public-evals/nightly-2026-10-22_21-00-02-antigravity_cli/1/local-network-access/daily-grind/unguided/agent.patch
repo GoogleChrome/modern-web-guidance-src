@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+index 66c9173..97cfa15 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Permissions-Policy" content="local-network=(self), loopback-network=(self), local-network-access=(self)">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -195,6 +196,22 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px; text-align: center;">
++      <h2>Local Café &amp; Device Connection</h2>
++      <p>Connect to your local network or loopback coffee brewer and POS service.</p>
++      <div style="margin-top: 15px;">
++        <permission id="lna-permission" type="local-network-access"></permission>
++        <button id="connect-local-btn" class="btn" type="button">Check Local Network &amp; Loopback Resources</button>
++      </div>
++      <p id="local-network-status" style="margin-top: 10px; font-size: 0.9rem;"></p>
++      <iframe
++        id="local-resource-frame"
++        title="Local Network Resource Bridge"
++        allow="local-network; loopback-network; local-network-access"
++        style="display: none; width: 0; height: 0; border: 0;"
++      ></iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +224,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    async function checkLocalNetworkPermissions() {
++      const permissions = ['local-network', 'loopback-network', 'local-network-access'];
++      const results = {};
++      if (navigator.permissions && navigator.permissions.query) {
++        for (const name of permissions) {
++          try {
++            const status = await navigator.permissions.query({ name });
++            results[name] = status.state;
++          } catch (e) {
++            results[name] = 'unsupported';
++          }
++        }
++      }
++      return results;
++    }
++
++    async function fetchLocalResource(url, addressSpace = 'loopback') {
++      const request = new Request(url, {
++        method: 'GET',
++        mode: 'cors',
++        targetAddressSpace: addressSpace,
++      });
++      return fetch(request, {
++        targetAddressSpace: addressSpace,
++      });
++    }
++
++    window.checkLocalNetworkPermissions = checkLocalNetworkPermissions;
++    window.fetchLocalResource = fetchLocalResource;
++
++    const connectBtn = document.getElementById('connect-local-btn');
++    const statusEl = document.getElementById('local-network-status');
++
++    if (connectBtn && statusEl) {
++      connectBtn.addEventListener('click', async () => {
++        statusEl.textContent = 'Checking local network and loopback permissions...';
++        const permStates = await checkLocalNetworkPermissions();
++        try {
++          await Promise.any([
++            fetchLocalResource('http://127.0.0.1:11222/', 'loopback'),
++            fetchLocalResource('http://localhost:11222/', 'local'),
++          ]);
++          statusEl.textContent = 'Connected to local resource (' + JSON.stringify(permStates) + ')';
++        } catch (err) {
++          statusEl.textContent = 'Permission states: ' + JSON.stringify(permStates);
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..431a68d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222} --cors --expose"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

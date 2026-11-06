@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,51 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro-section {
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .intro-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++    }
++
++    .content-section {
++      margin-bottom: 60px;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: 0;
++      container-type: scroll-state;
++      container-name: sticky-header;
++      z-index: 1001;
++    }
++
++    .sticky-header {
++      background-color: var(--secondary);
++      color: var(--primary);
++      padding: 20px;
++      text-align: center;
++      border-radius: 8px;
++    }
++
++    @container sticky-header scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: blue;
++        color: white;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++        padding: 8px;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -108,12 +151,16 @@
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 30px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      min-height: 220px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+@@ -174,28 +221,126 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="intro-section">
++      <h2>Crafted With Passion Since 2012</h2>
++      <p>Every bean we roast tells a story of sustainable farming, careful harvesting, and small-batch roasting in the heart of our neighborhood. Scroll down to explore our curated seasonal drinks, single-origin beans, and freshly baked goods.</p>
++    </div>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and a dusting of cinnamon.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p>Bold, smokey, and perfect for a morning boost with rich dark chocolate notes.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p>Steeped for 18 hours in filtered cold water for maximum smoothness and low acidity.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Spiced Chai Latte</h3>
++          <p>House-brewed black tea infused with cardamom, ginger, cloves, and steamed milk.</p>
++          <a href="/menu/chai" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Honey Lavender Cortado</h3>
++          <p>Equal parts rich espresso and silky textured milk sweetened with local wildflower honey.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Caramel Pecan Macchiato</h3>
++          <p>Velvety steamed milk marked with espresso and finished with toasted pecan drizzle.</p>
++          <a href="/menu/macchiato" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Single-Origin Whole Beans</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p>Bright floral aroma with vibrant notes of bergamot, jasmine, and sweet peach.</p>
++          <a href="/beans/ethiopia" class="btn">Shop Beans</a>
++        </div>
++        <div class="card">
++          <h3>Colombian Huila</h3>
++          <p>Balanced medium roast featuring caramel sweetness, toasted hazelnut, and red apple acidity.</p>
++          <a href="/beans/colombia" class="btn">Shop Beans</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Full-bodied and earthy dark roast with herbal complexity and a lingering cocoa finish.</p>
++          <a href="/beans/sumatra" class="btn">Shop Beans</a>
++        </div>
++        <div class="card">
++          <h3>Guatemalan Antigua</h3>
++          <p>Rich volcanic soil imparts velvety body, sweet milk chocolate, and subtle citrus zest.</p>
++          <a href="/beans/guatemala" class="btn">Shop Beans</a>
++        </div>
++        <div class="card">
++          <h3>Kenyan AA Nyeri</h3>
++          <p>Complex and juicy profile bursting with blackcurrant, ruby grapefruit, and cane sugar.</p>
++          <a href="/beans/kenya" class="btn">Shop Beans</a>
++        </div>
++        <div class="card">
++          <h3>Costa Rican Tarrazu</h3>
++          <p>Crisp, clean honey-processed coffee with notes of brown sugar, apricot, and almond.</p>
++          <a href="/beans/costa-rica" class="btn">Shop Beans</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Artisanal Bakery &amp; Pastries</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky butter pastry filled with house-made almond frangipane and topped with sliced almonds.</p>
++          <a href="/bakery/croissant" class="btn">Order Pastry</a>
++        </div>
++        <div class="card">
++          <h3>Cardamom Morning Bun</h3>
++          <p>Laminated brioche dough swirled with freshly ground green cardamom and orange zest sugar.</p>
++          <a href="/bakery/morning-bun" class="btn">Order Pastry</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Lemon Scone</h3>
++          <p>Tender cream scone packed with wild blueberries and finished with a tart lemon glaze.</p>
++          <a href="/bakery/scone" class="btn">Order Pastry</a>
++        </div>
++        <div class="card">
++          <h3>Espresso Brownie</h3>
++          <p>Fudgy dark chocolate brownie infused with a shot of our signature house espresso.</p>
++          <a href="/bakery/brownie" class="btn">Order Pastry</a>
++        </div>
++        <div class="card">
++          <h3>Savory Rosemary Focaccia</h3>
++          <p>Long-fermented olive oil focaccia topped with flaky sea salt and fresh garden rosemary.</p>
++          <a href="/bakery/focaccia" class="btn">Order Pastry</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Swirl Babka</h3>
++          <p>Rich braided yeast cake layered with dark cinnamon fudge and a light simple syrup glaze.</p>
++          <a href="/bakery/babka" class="btn">Order Pastry</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

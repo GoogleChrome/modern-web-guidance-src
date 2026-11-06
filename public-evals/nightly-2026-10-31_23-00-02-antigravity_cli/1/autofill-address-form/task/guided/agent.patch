@@ -1,0 +1,342 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,177 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form Section */
++    .shipping-section {
++      margin-top: 60px;
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 700px;
++      margin-inline: auto;
++    }
++
++    .shipping-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .shipping-section p.subtitle {
++      text-align: center;
++      margin-bottom: 25px;
++      color: var(--text);
++    }
++
++    .shipping-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 20px;
++      margin-block-end: 1.5rem;
++    }
++
++    .shipping-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 20px;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-row .form-group {
++      margin-block-end: 0;
++    }
++
++    .shipping-form label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-top: -10px;
++      color: var(--text);
++    }
++
++    .required-indicator {
++      color: #b71c1c;
++      font-weight: normal;
++      font-size: 0.85rem;
++    }
++
++    .optional-indicator {
++      color: #5d4037;
++      font-weight: normal;
++      font-size: 0.85rem;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-top: 0.25rem;
++    }
++
++    .shipping-form input,
++    .shipping-form textarea,
++    .shipping-form select {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++      box-sizing: border-box;
++    }
++
++    .shipping-form textarea {
++      min-height: 96px;
++      resize: vertical;
++    }
++
++    @media (pointer: coarse) {
++      .shipping-form input,
++      .shipping-form select {
++        min-height: 52px;
++      }
++    }
++
++    .shipping-form input:focus-visible,
++    .shipping-form textarea:focus-visible,
++    .shipping-form select:focus-visible,
++    .shipping-form button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .shipping-form input:autofill,
++    .shipping-form input:-webkit-autofill,
++    .shipping-form textarea:autofill,
++    .shipping-form textarea:-webkit-autofill,
++    .shipping-form select:autofill,
++    .shipping-form select:-webkit-autofill {
++      border: 2px solid #2e7d32;
++      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
++    }
++
++    .shipping-form input:autofill:focus-visible,
++    .shipping-form input:-webkit-autofill:focus-visible,
++    .shipping-form textarea:autofill:focus-visible,
++    .shipping-form textarea:-webkit-autofill:focus-visible,
++    .shipping-form select:autofill:focus-visible,
++    .shipping-form select:-webkit-autofill:focus-visible {
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
++
++    .shipping-form input:invalid:user-invalid,
++    .shipping-form textarea:invalid:user-invalid {
++      border: 2px solid #b71c1c;
++      background-color: #ffebee;
++    }
++
++    .shipping-form button[type="submit"] {
++      width: 100%;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: bold;
++      border: none;
++      cursor: pointer;
++    }
++
++    .form-status {
++      margin-top: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 5px;
++      background-color: #e8f5e9;
++      border: 1px solid #2e7d32;
++      color: #1b5e20;
++      font-weight: 600;
++      display: none;
++    }
++
++    .form-status.visible {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +363,160 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Coffee Bean Delivery</h2>
++      <p class="subtitle">Enter your shipping address below to get freshly roasted whole-bean or ground coffee delivered straight to your door.</p>
++
++      <form id="shipping-address-form" class="shipping-form" action="/shipping-address" method="POST">
++        <fieldset>
++          <legend>Recipient &amp; Delivery Address</legend>
++
++          <div class="form-group">
++            <label for="shipping-name">Recipient Full Name <span class="required-indicator">(Required)</span></label>
++            <input
++              type="text"
++              id="shipping-name"
++              name="name"
++              autocomplete="shipping name"
++              maxlength="100"
++              enterkeyhint="next"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="shipping-address">Street Address <span class="required-indicator">(Required)</span></label>
++            <textarea
++              id="shipping-address"
++              name="street-address"
++              autocomplete="shipping street-address"
++              maxlength="300"
++              aria-describedby="address-hint"
++              required
++            ></textarea>
++            <span id="address-hint" class="field-hint">Include apartment, suite, unit, or building number if applicable.</span>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="shipping-city">City / Town <span class="required-indicator">(Required)</span></label>
++              <input
++                type="text"
++                id="shipping-city"
++                name="city"
++                autocomplete="shipping address-level2"
++                maxlength="100"
++                enterkeyhint="next"
++                required
++              >
++            </div>
++
++            <div class="form-group">
++              <label for="shipping-region">State / Province / Region <span class="optional-indicator">(Optional)</span></label>
++              <input
++                type="text"
++                id="shipping-region"
++                name="region"
++                autocomplete="shipping address-level1"
++                maxlength="100"
++                enterkeyhint="next"
++              >
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="shipping-postal-code">ZIP or Postal Code <span class="optional-indicator">(Optional)</span></label>
++              <input
++                type="text"
++                id="shipping-postal-code"
++                name="postal-code"
++                autocomplete="shipping postal-code"
++                maxlength="20"
++                autocorrect="off"
++                autocapitalize="characters"
++                spellcheck="false"
++                enterkeyhint="next"
++              >
++            </div>
++
++            <div class="form-group">
++              <label for="shipping-country">Country or Region <span class="required-indicator">(Required)</span></label>
++              <input
++                type="text"
++                id="shipping-country"
++                name="country"
++                autocomplete="shipping country-name"
++                maxlength="100"
++                enterkeyhint="next"
++                required
++              >
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Contact Details for Delivery Updates</legend>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="shipping-email">Email Address <span class="required-indicator">(Required)</span></label>
++              <input
++                type="email"
++                id="shipping-email"
++                name="email"
++                autocomplete="shipping email"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                enterkeyhint="next"
++                required
++              >
++            </div>
++
++            <div class="form-group">
++              <label for="shipping-phone">Phone Number <span class="required-indicator">(Required)</span></label>
++              <input
++                type="tel"
++                id="shipping-phone"
++                name="phone"
++                autocomplete="shipping tel"
++                inputmode="tel"
++                enterkeyhint="done"
++                aria-describedby="phone-hint"
++                required
++              >
++              <span id="phone-hint" class="field-hint">Used only for delivery notifications and courier access.</span>
++            </div>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn" id="shipping-submit-btn">Proceed to Payment</button>
++        <div id="shipping-form-status" class="form-status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-address-form');
++    const shippingStatus = document.getElementById('shipping-form-status');
++    const shippingSubmitBtn = document.getElementById('shipping-submit-btn');
++
++    if (shippingForm) {
++      shippingForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        if (shippingForm.checkValidity()) {
++          shippingSubmitBtn.disabled = true;
++          shippingStatus.textContent = 'Shipping address saved! Preparing your coffee bean delivery order...';
++          shippingStatus.classList.add('visible');
++        }
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

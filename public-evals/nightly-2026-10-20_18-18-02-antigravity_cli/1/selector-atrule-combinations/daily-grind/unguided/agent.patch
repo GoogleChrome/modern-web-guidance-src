@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+index 66c9173..aca9156 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,15 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++
++      @media (prefers-color-scheme: dark) {
++        --primary: #3e2723;
++        --secondary: #2d1e1b;
++        --text: #efebe9;
++        --light: #1a1210;
++        --surface: #261a17;
++      }
+     }
+ 
+     * {
+@@ -27,6 +36,17 @@
+       background-color: var(--light);
+     }
+ 
++    /* Shared link base styles (Union via :where) */
++    :where(nav, .footer-links) a,
++    .btn {
++      text-decoration: none;
++    }
++
++    /* Shared centered alignments (Union via :is) */
++    :is(.hero, main section > h2, .card, footer) {
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,59 +58,71 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      @media (width <= 768px) {
++        flex-direction: column;
++        gap: 0.75rem;
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      ul {
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: center;
++        list-style: none;
++        gap: 20px;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        @media (width <= 768px) {
++          gap: 12px;
++        }
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      a {
++        color: white;
++        font-size: 0.9rem;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        @media (prefers-reduced-motion: no-preference) {
++          transition: color 0.3s, background-color 0.3s;
++        }
++
++        &:is(:hover, :focus-visible) {
++          color: var(--accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--accent);
++          padding: 5px 12px;
++          border-radius: 4px;
++        }
++      }
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++        center / cover;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+-      text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++
++        @media (width <= 768px) {
++          font-size: 2.2rem;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -101,6 +133,7 @@
+     }
+ 
+     .grid {
++      container-type: inline-size;
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -108,16 +141,19 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++
++        @media (prefers-color-scheme: dark) {
++          color: var(--accent);
++        }
++      }
+     }
+ 
+     .btn {
+@@ -125,32 +161,45 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+-      text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      @media (prefers-reduced-motion: no-preference) {
++        transition: background 0.3s, transform 0.2s;
++      }
++
++      &:is(:hover, :focus-visible) {
++        background: #3e2723;
++      }
+     }
+ 
++    /* Footer */
+     footer {
+       background: var(--secondary);
+-      text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+-    }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      .footer-links {
++        margin-bottom: 20px;
++
++        a {
++          margin: 0 10px;
++          color: var(--text);
++          font-size: 0.85rem;
++
++          &:is(:hover, :focus-visible) {
++            color: var(--primary);
++            text-decoration: underline;
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* Print conditional rules */
++    @media print {
++      :is(nav, .hero .btn, .card .btn, .footer-links) {
++        display: none;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +225,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

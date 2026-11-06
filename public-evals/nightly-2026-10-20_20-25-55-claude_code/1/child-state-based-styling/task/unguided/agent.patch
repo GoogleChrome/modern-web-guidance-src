@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,27 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .iced-toggle {
++      display: block;
++      margin-top: 15px;
++      cursor: pointer;
++    }
++
++    .iced-toggle input {
++      margin-right: 6px;
++    }
++
++    .card:has(.iced-toggle input:checked) {
++      background: #d6ecff;
++      color: #0d2b66;
++    }
++
++    .card:has(.iced-toggle input:checked) h3 {
++      color: #0d2b66;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,18 +199,21 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-toggle"><input type="checkbox"> make it iced</label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-toggle"><input type="checkbox"> make it iced</label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-toggle"><input type="checkbox"> make it iced</label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

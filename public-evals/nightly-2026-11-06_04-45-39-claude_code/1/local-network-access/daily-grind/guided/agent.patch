@@ -1,0 +1,473 @@
+diff --git a/index.html b/index.html
+index 66c9173..5358c0a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,139 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Equipment Connections */
++    .equipment {
++      margin-top: 60px;
++    }
++
++    .equipment > p {
++      text-align: center;
++      max-width: 60ch;
++      margin: 0 auto;
++    }
++
++    .insecure-warning {
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      margin-top: 20px;
++      border-radius: 4px;
++    }
++
++    .device-card {
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .device-card header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .device-card h3 {
++      margin: 0;
++    }
++
++    .device-card .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: var(--secondary);
++      white-space: nowrap;
++    }
++
++    .badge[data-state="granted"] { background: #c8e6c9; }
++    .badge[data-state="denied"] { background: #ffcdd2; }
++
++    .device-form {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: end;
++    }
++
++    .device-form label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: 600;
++      flex: 1 1 140px;
++    }
++
++    .device-form input {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      margin-top: 4px;
++    }
++
++    .device-form input:user-invalid {
++      border-color: #c62828;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    button.btn.secondary {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .connection-status {
++      display: block;
++      font-size: 0.9rem;
++      padding: 8px 12px;
++      border-radius: 4px;
++      background: #f5f5f5;
++    }
++
++    .connection-status[data-tone="ok"] { background: #e8f5e9; }
++    .connection-status[data-tone="error"] { background: #ffebee; }
++
++    .device-details {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 4px 12px;
++      font-size: 0.9rem;
++    }
++
++    .device-details dt { font-weight: 600; }
++    .device-details dd { overflow-wrap: anywhere; }
++
++    .remediation {
++      font-size: 0.85rem;
++      background: #fff8e1;
++      padding: 10px 12px;
++      border-radius: 4px;
++    }
++
++    .remediation ol {
++      margin: 6px 0 0 1.2rem;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +328,77 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment" aria-labelledby="equipment-title">
++      <h2 id="equipment-title" style="text-align: center;">Brew Bar Connections</h2>
++      <p>Connect this page to the shop's Wi-Fi brewer and to the Daily Grind brewing helper on your computer.
++        Your browser will ask for permission before anything on your local network is contacted.</p>
++
++      <p class="insecure-warning" id="insecure-warning" hidden>
++        Equipment connections need a secure (<code>https://</code>) page. Open The Daily Grind over HTTPS to connect.
++      </p>
++
++      <div class="grid">
++        <!-- Wi-Fi brewer on the shop LAN -->
++        <article class="card device-card" data-device="brewer">
++          <header>
++            <h3>Wi-Fi Coffee Brewer</h3>
++            <span class="badge" data-permission-status="local-network">checking…</span>
++          </header>
++          <p class="hint">On the shop's private network, e.g. <code>192.168.1.50</code> or <code>brewer.local</code>.</p>
++
++          <form class="device-form" id="brewer-form" novalidate>
++            <label>Brewer address
++              <input name="host" id="brewer-host" required autocomplete="off" spellcheck="false"
++                placeholder="192.168.1.50" value="192.168.1.50">
++            </label>
++            <label style="flex: 0 1 90px;">Port
++              <input name="port" id="brewer-port" type="number" inputmode="numeric" min="1" max="65535" value="80" required>
++            </label>
++            <button type="submit" class="btn">Connect</button>
++          </form>
++
++          <output class="connection-status" id="brewer-status" aria-live="polite">Not connected.</output>
++          <dl class="device-details" id="brewer-details" hidden></dl>
++          <button type="button" class="btn secondary" id="brewer-brew" hidden>Start a brew</button>
++
++          <div class="remediation" data-remediation="local-network" hidden>
++            <strong>Local network access is blocked.</strong>
++            <ol>
++              <li>Click the site controls icon next to the address bar.</li>
++              <li>Set <em>Local network</em> to <em>Allow</em>, then reload this page.</li>
++            </ol>
++          </div>
++        </article>
++
++        <!-- Desktop helper on the user's own machine -->
++        <article class="card device-card" data-device="helper">
++          <header>
++            <h3>Desktop Brewing Helper</h3>
++            <span class="badge" data-permission-status="loopback-network">checking…</span>
++          </header>
++          <p class="hint">The companion app running on this computer at <code>127.0.0.1</code>.</p>
++
++          <form class="device-form" id="helper-form" novalidate>
++            <label>Helper port
++              <input name="port" id="helper-port" type="number" inputmode="numeric" min="1" max="65535" value="45678" required>
++            </label>
++            <button type="submit" class="btn">Connect</button>
++          </form>
++
++          <output class="connection-status" id="helper-status" aria-live="polite">Not connected.</output>
++          <dl class="device-details" id="helper-details" hidden></dl>
++
++          <div class="remediation" data-remediation="loopback-network" hidden>
++            <strong>Access to apps on this computer is blocked.</strong>
++            <ol>
++              <li>Click the site controls icon next to the address bar.</li>
++              <li>Set <em>Loopback network</em> (apps on this device) to <em>Allow</em>, then reload.</li>
++            </ol>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +411,250 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---- Equipment connection panel -------------------------------------
++    // Uses Local Network Access: 'local-network' for the LAN brewer and
++    // 'loopback-network' for the desktop helper on 127.0.0.1.
++
++    const STORAGE_KEY = 'dg-equipment';
++    const TIMEOUT_MS = 5000;
++    const saved = (() => {
++      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}; } catch { return {}; }
++    })();
++    const save = (patch) => {
++      Object.assign(saved, patch);
++      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch { /* storage unavailable */ }
++    };
++
++    if (!window.isSecureContext) {
++      document.getElementById('insecure-warning').hidden = false;
++    }
++
++    // --- Permission handling ---
++    function updatePermissionUI(name, state) {
++      const badge = document.querySelector(`[data-permission-status="${name}"]`);
++      const remediation = document.querySelector(`[data-remediation="${name}"]`);
++      if (badge) {
++        badge.dataset.state = state;
++        badge.textContent = state === 'granted' ? 'allowed' : state === 'denied' ? 'blocked' : 'needs permission';
++      }
++      if (remediation) remediation.hidden = state !== 'denied';
++    }
++
++    /** Never query the legacy 'local-network-access' name: it crashes older Chrome. */
++    async function watchPermission(name) {
++      if (!navigator.permissions?.query) {
++        updatePermissionUI(name, 'prompt');
++        return 'prompt';
++      }
++      try {
++        const status = await navigator.permissions.query({ name });
++        status.addEventListener('change', () => updatePermissionUI(name, status.state));
++        updatePermissionUI(name, status.state);
++        return status.state;
++      } catch {
++        // Browser doesn't know this permission; connect on user click instead.
++        updatePermissionUI(name, 'prompt');
++        return 'prompt';
++      }
++    }
++
++    // --- Address validation ---
++    function isPrivateIPv4(host) {
++      const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
++      if (!m) return false;
++      const [a, b, c, d] = m.slice(1).map(Number);
++      if ([a, b, c, d].some((n) => n > 255)) return false;
++      return a === 10 ||
++        (a === 172 && b >= 16 && b <= 31) ||
++        (a === 192 && b === 168) ||
++        (a === 169 && b === 254);
++    }
++
++    function isLocalHostname(host) {
++      return /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+local$/i.test(host);
++    }
++
++    function parsePort(value) {
++      const n = Number(value);
++      return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : null;
++    }
++
++    // --- Networking ---
++    async function localFetch(url, targetAddressSpace, init = {}) {
++      const response = await fetch(url, {
++        mode: 'cors',
++        credentials: 'omit',
++        cache: 'no-store',
++        signal: AbortSignal.timeout(TIMEOUT_MS),
++        targetAddressSpace,
++        ...init,
++      });
++      if (!response.ok) throw new Error(`HTTP ${response.status}`);
++      const type = response.headers.get('content-type') ?? '';
++      return type.includes('application/json') ? response.json() : {};
++    }
++
++    function describeError(err, where) {
++      if (err?.name === 'TimeoutError') return `No reply from ${where} within ${TIMEOUT_MS / 1000}s.`;
++      if (err instanceof TypeError) {
++        return `Couldn't reach ${where}. Check it's powered on and reachable, and that this site is allowed to access it.`;
++      }
++      return `${where} returned an error (${err?.message ?? 'unknown'}).`;
++    }
++
++    // --- Rendering (textContent only: device data is untrusted) ---
++    function setStatus(el, text, tone = '') {
++      el.textContent = text;
++      el.dataset.tone = tone;
++    }
++
++    function renderDetails(dl, data, fields) {
++      dl.replaceChildren();
++      for (const [key, label, fmt] of fields) {
++        const value = data?.[key];
++        if (value === undefined || value === null || typeof value === 'object') continue;
++        const dt = document.createElement('dt');
++        const dd = document.createElement('dd');
++        dt.textContent = label;
++        dd.textContent = fmt ? fmt(value) : String(value);
++        dl.append(dt, dd);
++      }
++      dl.hidden = dl.childElementCount === 0;
++    }
++
++    function setBusy(form, busy) {
++      form.querySelector('button[type="submit"]').disabled = busy;
++    }
++
++    // --- Wi-Fi brewer (local-network) ---
++    const brewerForm = document.getElementById('brewer-form');
++    const brewerHost = document.getElementById('brewer-host');
++    const brewerPort = document.getElementById('brewer-port');
++    const brewerStatus = document.getElementById('brewer-status');
++    const brewerDetails = document.getElementById('brewer-details');
++    const brewerBrew = document.getElementById('brewer-brew');
++    let brewerBase = null;
++
++    if (saved.brewerHost) brewerHost.value = saved.brewerHost;
++    if (saved.brewerPort) brewerPort.value = saved.brewerPort;
++
++    function readBrewerAddress() {
++      const host = brewerHost.value.trim().toLowerCase();
++      const port = parsePort(brewerPort.value);
++      brewerHost.setCustomValidity(
++        isPrivateIPv4(host) || isLocalHostname(host) ? '' : 'Enter a private network address like 192.168.1.50 or brewer.local'
++      );
++      brewerPort.setCustomValidity(port ? '' : 'Port must be 1–65535');
++      if (!brewerForm.checkValidity()) {
++        brewerForm.reportValidity();
++        return null;
++      }
++      return { host, port, base: new URL(`http://${host}:${port}/`) };
++    }
++
++    async function connectBrewer() {
++      const addr = readBrewerAddress();
++      if (!addr) return;
++      setBusy(brewerForm, true);
++      brewerBrew.hidden = true;
++      setStatus(brewerStatus, `Connecting to ${addr.host}…`);
++      try {
++        const data = await localFetch(new URL('api/status', addr.base), 'local');
++        brewerBase = addr.base;
++        save({ brewerHost: addr.host, brewerPort: addr.port });
++        setStatus(brewerStatus, `Connected to ${data?.name ?? 'brewer'} at ${addr.host}.`, 'ok');
++        renderDetails(brewerDetails, data, [
++          ['model', 'Model'],
++          ['state', 'State'],
++          ['temperatureC', 'Water temp', (v) => `${Number(v).toFixed(1)} °C`],
++          ['waterLevelPct', 'Reservoir', (v) => `${Math.round(Number(v))}%`],
++          ['firmware', 'Firmware'],
++        ]);
++        brewerBrew.hidden = false;
++      } catch (err) {
++        brewerBase = null;
++        brewerDetails.hidden = true;
++        setStatus(brewerStatus, describeError(err, 'the brewer'), 'error');
++      } finally {
++        setBusy(brewerForm, false);
++      }
++    }
++
++    brewerForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      connectBrewer();
++    });
++    brewerHost.addEventListener('input', () => brewerHost.setCustomValidity(''));
++    brewerPort.addEventListener('input', () => brewerPort.setCustomValidity(''));
++
++    brewerBrew.addEventListener('click', async () => {
++      if (!brewerBase) return;
++      brewerBrew.disabled = true;
++      try {
++        await localFetch(new URL('api/brew', brewerBase), 'local', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ recipe: 'house-drip' }),
++        });
++        setStatus(brewerStatus, 'Brew started. Enjoy!', 'ok');
++      } catch (err) {
++        setStatus(brewerStatus, describeError(err, 'the brewer'), 'error');
++      } finally {
++        brewerBrew.disabled = false;
++      }
++    });
++
++    // --- Desktop helper (loopback-network) ---
++    const helperForm = document.getElementById('helper-form');
++    const helperPort = document.getElementById('helper-port');
++    const helperStatus = document.getElementById('helper-status');
++    const helperDetails = document.getElementById('helper-details');
++
++    if (saved.helperPort) helperPort.value = saved.helperPort;
++
++    async function connectHelper() {
++      const port = parsePort(helperPort.value);
++      helperPort.setCustomValidity(port ? '' : 'Port must be 1–65535');
++      if (!helperForm.checkValidity()) {
++        helperForm.reportValidity();
++        return;
++      }
++      setBusy(helperForm, true);
++      setStatus(helperStatus, 'Looking for the brewing helper…');
++      try {
++        const data = await localFetch(`http://127.0.0.1:${port}/health`, 'loopback');
++        save({ helperPort: port });
++        setStatus(helperStatus, 'Brewing helper connected.', 'ok');
++        renderDetails(helperDetails, data, [
++          ['version', 'Version'],
++          ['status', 'Status'],
++          ['activeRecipe', 'Active recipe'],
++        ]);
++      } catch (err) {
++        helperDetails.hidden = true;
++        setStatus(helperStatus, describeError(err, 'the brewing helper'), 'error');
++      } finally {
++        setBusy(helperForm, false);
++      }
++    }
++
++    helperForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      connectHelper();
++    });
++    helperPort.addEventListener('input', () => helperPort.setCustomValidity(''));
++
++    // --- Init: only auto-connect when permission is already granted ---
++    const [lanState, loopState] = await Promise.all([
++      watchPermission('local-network'),
++      watchPermission('loopback-network'),
++    ]);
++    if (window.isSecureContext) {
++      if (lanState === 'granted' && saved.brewerHost) connectBrewer();
++      if (loopState === 'granted' && saved.helperPort) connectHelper();
++    }
++  </script>
+ </body>
+ 
+ </html>

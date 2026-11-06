@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..ce9e572 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,111 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Measures the time from a user interaction or client-side navigation
++     * until the next contentful update (new text, image, etc.) is painted.
++     * Results are pushed to window.__contentfulUpdates, logged, and
++     * dispatched as a "contentful-update" CustomEvent on window.
++     */
++    (function () {
++      const TIMEOUT_MS = 5000;
++      const INTERACTIONS = ['pointerdown', 'keydown'];
++      const results = (window.__contentfulUpdates = []);
++      let pending = null;
++
++      function describe(target) {
++        if (!(target instanceof Element)) return '';
++        const el = target.closest('a,button,input,select,textarea,[role=button]') || target;
++        const text = (el.textContent || '').trim().slice(0, 40);
++        return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (text ? ' "' + text + '"' : '');
++      }
++
++      function begin(type, detail, startTime) {
++        end(null); // supersede any in-flight measurement
++        const observer = new MutationObserver(onMutations);
++        observer.observe(document.documentElement, {
++          childList: true, subtree: true, characterData: true, attributes: true,
++          attributeFilter: ['src', 'srcset', 'style', 'class', 'hidden']
++        });
++        pending = {
++          type, detail, startTime, observer,
++          timer: setTimeout(() => end(null), TIMEOUT_MS)
++        };
++      }
++
++      function end(entry) {
++        if (!pending) return;
++        pending.observer.disconnect();
++        clearTimeout(pending.timer);
++        pending = null;
++        if (!entry) return;
++        results.push(entry);
++        console.log('[contentful-update] ' + entry.type + ' ' + entry.detail + ': ' +
++          entry.duration.toFixed(1) + 'ms');
++        window.dispatchEvent(new CustomEvent('contentful-update', { detail: entry }));
++      }
++
++      function isContentful(node) {
++        if (node.nodeType === Node.TEXT_NODE) return node.data.trim().length > 0;
++        if (node.nodeType !== Node.ELEMENT_NODE) return false;
++        if (/^(IMG|VIDEO|CANVAS|SVG|PICTURE)$/i.test(node.tagName)) return true;
++        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++          if (n.nodeType === Node.TEXT_NODE ? n.data.trim() : /^(IMG|VIDEO|CANVAS|SVG)$/i.test(n.tagName)) return true;
++        }
++        return false;
++      }
++
++      function onMutations(mutations) {
++        if (!pending) return;
++        const contentful = mutations.some(m => {
++          if (m.type === 'characterData') return m.target.data.trim().length > 0;
++          if (m.type === 'childList') return Array.from(m.addedNodes).some(isContentful);
++          // Attribute changes only count when they swap an image source.
++          return m.type === 'attributes' && (m.attributeName === 'src' || m.attributeName === 'srcset');
++        });
++        if (!contentful) return;
++
++        const current = pending;
++        current.observer.disconnect();
++        // Wait for the frame that includes the update to actually be presented.
++        requestAnimationFrame(() => {
++          const channel = new MessageChannel();
++          channel.port1.onmessage = () => {
++            if (pending !== current) return;
++            end({
++              type: current.type,
++              detail: current.detail,
++              startTime: current.startTime,
++              duration: performance.now() - current.startTime,
++              url: location.href
++            });
++          };
++          channel.port2.postMessage(null);
++        });
++      }
++
++      // User interactions (clicks, taps, key presses).
++      INTERACTIONS.forEach(name =>
++        document.addEventListener(name, e => begin('interaction', name + ' ' + describe(e.target), e.timeStamp),
++          { capture: true, passive: true }));
++
++      // Client-side navigations.
++      ['pushState', 'replaceState'].forEach(method => {
++        const original = history[method];
++        history[method] = function () {
++          // Keep the interaction's start time if it triggered this navigation.
++          const start = pending ? pending.startTime : performance.now();
++          const detail = (pending ? pending.detail + ' -> ' : '') + (arguments[2] || location.href);
++          begin('navigation', detail, start);
++          return original.apply(this, arguments);
++        };
++      });
++      window.addEventListener('popstate', () => begin('navigation', 'popstate ' + location.href, performance.now()));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

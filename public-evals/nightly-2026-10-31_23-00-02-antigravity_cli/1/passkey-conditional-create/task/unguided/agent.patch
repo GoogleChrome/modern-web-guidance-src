@@ -1,0 +1,331 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-In Section */
++    .signin-section {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin-section h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      text-align: center;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .signin-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      text-align: center;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +225,40 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin-section" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Member Sign In</h2>
++      <form id="signin-form" data-testid="signin-form" novalidate>
++        <div class="form-group">
++          <label for="username">Email or Username</label>
++          <input
++            type="text"
++            id="username"
++            name="username"
++            autocomplete="username webauthn"
++            placeholder="coffee.lover@example.com"
++            value="coffee.lover@example.com"
++          >
++        </div>
++        <div class="form-group">
++          <label for="password">Password</label>
++          <input
++            type="password"
++            id="password"
++            name="password"
++            autocomplete="current-password"
++            placeholder="Enter your password"
++            value="hunter2"
++          >
++        </div>
++        <button type="submit" class="btn signin-btn" data-testid="signin-button">
++          Sign In
++        </button>
++        <p id="signin-status" class="signin-status" hidden></p>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +289,226 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function toArrayBuffer(value) {
++        if (!value) {
++          return new ArrayBuffer(0);
++        }
++        if (value instanceof ArrayBuffer) {
++          return value;
++        }
++        if (ArrayBuffer.isView(value)) {
++          return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
++        }
++        if (Array.isArray(value)) {
++          return new Uint8Array(value).buffer;
++        }
++        if (typeof value === 'string') {
++          try {
++            const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++            const padding = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
++            const binary = atob(base64 + padding);
++            const bytes = new Uint8Array(binary.length);
++            for (let i = 0; i < binary.length; i++) {
++              bytes[i] = binary.charCodeAt(i);
++            }
++            return bytes.buffer;
++          } catch (_err) {
++            return new TextEncoder().encode(value).buffer;
++          }
++        }
++        return new ArrayBuffer(0);
++      }
++
++      function bufferToBase64Url(buffer) {
++        if (!buffer) {
++          return '';
++        }
++        if (typeof buffer === 'string') {
++          return buffer;
++        }
++        const bytes =
++          buffer instanceof Uint8Array
++            ? buffer
++            : buffer instanceof ArrayBuffer
++              ? new Uint8Array(buffer)
++              : ArrayBuffer.isView(buffer)
++                ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
++                : Array.isArray(buffer)
++                  ? new Uint8Array(buffer)
++                  : new Uint8Array(0);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
++      }
++
++      function normalizePublicKeyCreationOptions(rawOptions) {
++        const source =
++          rawOptions && typeof rawOptions === 'object' && rawOptions.publicKey
++            ? rawOptions.publicKey
++            : rawOptions;
++
++        if (!source || typeof source !== 'object') {
++          return {};
++        }
++
++        const publicKey = {
++          ...source,
++          challenge: toArrayBuffer(source.challenge),
++        };
++
++        if (source.user && typeof source.user === 'object') {
++          publicKey.user = {
++            ...source.user,
++            id: toArrayBuffer(source.user.id),
++          };
++        }
++
++        if (Array.isArray(source.excludeCredentials)) {
++          publicKey.excludeCredentials = source.excludeCredentials.map(function (cred) {
++            return {
++              ...cred,
++              id: toArrayBuffer(cred.id),
++            };
++          });
++        }
++
++        return publicKey;
++      }
++
++      function serializeCredential(credential) {
++        if (credential && typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++
++        const response = (credential && credential.response) || {};
++        return {
++          id: credential.id,
++          rawId: credential.rawId ? bufferToBase64Url(credential.rawId) : credential.id,
++          type: credential.type || 'public-key',
++          authenticatorAttachment: credential.authenticatorAttachment || null,
++          clientExtensionResults:
++            credential && typeof credential.getClientExtensionResults === 'function'
++              ? credential.getClientExtensionResults()
++              : (credential && credential.clientExtensionResults) || {},
++          response: {
++            clientDataJSON: response.clientDataJSON
++              ? bufferToBase64Url(response.clientDataJSON)
++              : undefined,
++            attestationObject: response.attestationObject
++              ? bufferToBase64Url(response.attestationObject)
++              : undefined,
++            transports:
++              typeof response.getTransports === 'function'
++                ? response.getTransports()
++                : response.transports,
++          },
++        };
++      }
++
++      async function registerPasskeyConditionally(username) {
++        try {
++          if (
++            typeof window.PublicKeyCredential === 'undefined' ||
++            typeof window.PublicKeyCredential.getClientCapabilities !== 'function' ||
++            !navigator.credentials ||
++            typeof navigator.credentials.create !== 'function'
++          ) {
++            return;
++          }
++
++          const capabilities = await window.PublicKeyCredential.getClientCapabilities();
++          const canConditionalCreate = Boolean(
++            capabilities &&
++              (capabilities.conditionalCreate === true ||
++                (typeof capabilities.get === 'function' &&
++                  capabilities.get('conditionalCreate') === true) ||
++                (Array.isArray(capabilities) && capabilities.includes('conditionalCreate')))
++          );
++
++          if (!canConditionalCreate) {
++            return;
++          }
++
++          const optionsResponse = await fetch('/api/register/options', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++            },
++            body: JSON.stringify({ username: username }),
++          });
++
++          if (!optionsResponse || !optionsResponse.ok) {
++            return;
++          }
++
++          const rawOptions = await optionsResponse.json();
++          const publicKey = normalizePublicKeyCreationOptions(rawOptions);
++
++          const credential = await navigator.credentials.create({
++            publicKey: publicKey,
++            mediation: 'conditional',
++          });
++
++          if (!credential) {
++            return;
++          }
++
++          const payload = serializeCredential(credential);
++
++          await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++            },
++            body: JSON.stringify(payload),
++          });
++        } catch (_error) {
++          // Silently ignore any errors during background conditional passkey registration
++        }
++      }
++
++      const signinForm = document.getElementById('signin-form');
++      const signinButton = document.querySelector('[data-testid="signin-button"]');
++      const usernameInput = document.getElementById('username');
++      const signinStatus = document.getElementById('signin-status');
++
++      let signingIn = false;
++
++      async function handlePasswordSignIn(event) {
++        if (event) {
++          event.preventDefault();
++        }
++        if (signingIn) {
++          return;
++        }
++        signingIn = true;
++        Promise.resolve().then(function () {
++          signingIn = false;
++        });
++
++        const username = (usernameInput && usernameInput.value.trim()) || 'coffee.lover@example.com';
++
++        if (signinStatus) {
++          signinStatus.textContent = 'Welcome back, ' + username + '!';
++          signinStatus.hidden = false;
++        }
++
++        await registerPasskeyConditionally(username);
++      }
++
++      if (signinForm) {
++        signinForm.addEventListener('submit', handlePasswordSignIn);
++      }
++      if (signinButton) {
++        signinButton.addEventListener('click', handlePasswordSignIn);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

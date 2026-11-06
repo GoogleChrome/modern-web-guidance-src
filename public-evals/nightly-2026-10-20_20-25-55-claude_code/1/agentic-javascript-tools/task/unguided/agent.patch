@@ -1,0 +1,70 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Menu data, read from the Seasonal Favorites cards so the page stays the single source of truth.
++    function getMenuItems() {
++      return Array.from(document.querySelectorAll('.card')).map((card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        url: new URL(card.querySelector('a').getAttribute('href'), location.origin).href,
++      }));
++    }
++
++    const normalize = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++    const menuItemTool = {
++      name: 'get_menu_item_details',
++      description:
++        'Look up details (name, description, and page link) for an item on The Daily Grind coffee menu, ' +
++        'such as "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew". Matching is case-insensitive. ' +
++        'If no item matches, the result lists the available item names.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          name: {
++            type: 'string',
++            description: 'Name of the menu item to look up, e.g. "Cold Brew". Case-insensitive; partial names are accepted.',
++          },
++        },
++        required: ['name'],
++      },
++      annotations: { readOnlyHint: true },
++      async execute({ name }) {
++        const items = getMenuItems();
++        const query = normalize(name ?? '');
++        const item = query && (
++          items.find((i) => normalize(i.name) === query) ||
++          items.find((i) => normalize(i.name).includes(query) || query.includes(normalize(i.name)))
++        );
++        const result = item
++          ? { found: true, item }
++          : { found: false, message: `No menu item matches "${name}".`, availableItems: items.map((i) => i.name) };
++        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
++      },
++    };
++
++    // Register the tool with the browser's WebMCP API (if available); aborting the signal unregisters it.
++    let toolRegistration;
++
++    function registerMenuTool() {
++      if (!navigator.modelContext?.registerTool) return;
++      toolRegistration = new AbortController();
++      navigator.modelContext.registerTool(menuItemTool, { signal: toolRegistration.signal });
++    }
++
++    registerMenuTool();
++
++    // pagehide also fires when a page enters the back/forward cache, so re-register on restore.
++    window.addEventListener('pagehide', () => toolRegistration?.abort());
++    window.addEventListener('pageshow', (e) => { if (e.persisted) registerMenuTool(); });
++  </script>
++
+ </body>
+ 
+ </html>

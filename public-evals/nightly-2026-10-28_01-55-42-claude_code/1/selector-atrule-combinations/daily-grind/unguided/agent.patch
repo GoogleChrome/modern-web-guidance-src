@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+index 66c9173..8a86a2f 100644
+--- a/index.html
++++ b/index.html
+@@ -6,12 +6,62 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++      Theming
++      -------
++      Every themed colour is a token defined ONCE with light-dark(light, dark).
++      Which side wins is decided purely by the `color-scheme` property:
++        - default: `light dark` -> follows the OS prefers-color-scheme setting
++        - <html data-theme="dark"> or <html class="dark">  -> forces dark
++        - <html data-theme="light"> or <html class="light"> -> forces light
++      Component rules (nav, hero, cards) only reference tokens, so no rule is
++      written twice for the two themes.
++    */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      /* Page */
++      --page-bg: light-dark(#fafafa, #171110);
++      --text: light-dark(#3e2723, #e8ddd7);
++
++      /* Navigation bar */
++      --nav-bg: light-dark(#4e342e, #1b1311);
++      --nav-text: light-dark(#ffffff, #f3ebe6);
++      --nav-link-hover: light-dark(#ffab40, #ffc46b);
++      --nav-border: light-dark(transparent, #3a2b26);
++      --nav-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.6));
++
++      /* Hero banner */
++      --hero-overlay: light-dark(rgba(0, 0, 0, 0.5), rgba(10, 6, 4, 0.7));
++      --hero-text: #ffffff;
++      --hero-text-shadow: light-dark(0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.8));
++
++      /* Seasonal Favorites cards */
++      --card-bg: light-dark(#ffffff, #241a16);
++      --card-text: light-dark(#3e2723, #e8ddd7);
++      --card-title: light-dark(#4e342e, #ffcc80);
++      --card-border: light-dark(transparent, #3d2e28);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
++
++      /* Buttons (used in hero + cards) */
++      --btn-bg: light-dark(#4e342e, #ffab40);
++      --btn-text: light-dark(#ffffff, #2a1a14);
++      --btn-bg-hover: light-dark(#3e2723, #ffc46b);
++
++      /* Footer */
++      --footer-bg: light-dark(#d7ccc8, #1f1613);
++      --footer-text: light-dark(#3e2723, #cdbfb8);
++    }
++
++    /* Explicit overrides via root attribute or class win over the OS preference. */
++    :root[data-theme="light"],
++    :root.light {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"],
++    :root.dark {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -24,13 +74,16 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page-bg);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: 0 2px 6px var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +91,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .logo {
+@@ -56,18 +110,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-link-hover);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,7 +129,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +137,8 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
++      text-shadow: var(--hero-text-shadow);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,35 +163,39 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
+       padding: 20px;
++      border: 1px solid var(--card-border);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-title);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +207,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

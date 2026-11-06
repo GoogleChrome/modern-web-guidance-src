@@ -1,0 +1,374 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,184 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast Selector */
++    .roast-selector-container {
++      margin: 20px 0;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      z-index: 50;
++    }
++
++    .roast-label {
++      display: block;
++      font-size: 0.95rem;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: #fafafa;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
++    }
++
++    .custom-dropdown {
++      position: relative;
++      width: 220px;
++      user-select: none;
++    }
++
++    .dropdown-trigger {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background-color: #4e342e;
++      color: #ffffff;
++      border: 2px solid #ffab40;
++      border-radius: 6px;
++      padding: 10px 16px;
++      font-size: 1rem;
++      font-weight: 600;
++      cursor: pointer;
++      font-family: inherit;
++      transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
++    }
++
++    .dropdown-trigger:hover,
++    .dropdown-trigger:focus,
++    .custom-dropdown.open .dropdown-trigger {
++      background-color: #3e2723;
++      border-color: #ffab40;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.4);
++      outline: none;
++    }
++
++    .dropdown-arrow,
++    .arrow {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      color: #ffab40;
++      stroke: #ffab40;
++      fill: #ffab40;
++      margin-left: 10px;
++      transition: transform 0.25s ease;
++    }
++
++    .dropdown-arrow svg,
++    .arrow svg {
++      stroke: #ffab40;
++      fill: #ffab40;
++    }
++
++    .custom-dropdown.open .dropdown-arrow,
++    .custom-dropdown.open .arrow {
++      transform: rotate(180deg);
++    }
++
++    .dropdown-list {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      width: 100%;
++      background-color: #4e342e;
++      border: 2px solid #ffab40;
++      border-radius: 6px;
++      margin: 0;
++      padding: 6px 0;
++      list-style: none;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
++      z-index: 1000;
++      display: none;
++      text-align: left;
++    }
++
++    .custom-dropdown.open .dropdown-list {
++      display: block;
++    }
++
++    .dropdown-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 16px;
++      color: #ffffff;
++      background-color: #4e342e;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .dropdown-item:hover,
++    .dropdown-item:focus {
++      background-color: #ffab40;
++      color: #4e342e;
++      outline: none;
++    }
++
++    .dropdown-item.selected {
++      background-color: rgba(255, 171, 64, 0.18);
++      color: #ffab40;
++      font-weight: 600;
++    }
++
++    .dropdown-item.selected:hover,
++    .dropdown-item.selected:focus {
++      background-color: #ffab40;
++      color: #4e342e;
++    }
++
++    .checkmark {
++      display: none;
++      align-items: center;
++      justify-content: center;
++      color: #ffab40;
++      stroke: #ffab40;
++      fill: #ffab40;
++      margin-left: 10px;
++    }
++
++    .checkmark svg {
++      stroke: #ffab40;
++      fill: none;
++    }
++
++    .dropdown-item.selected .checkmark {
++      display: inline-flex;
++    }
++
++    .dropdown-item:hover .checkmark,
++    .dropdown-item:focus .checkmark {
++      color: #4e342e;
++      stroke: #4e342e;
++      fill: #4e342e;
++    }
++
++    .dropdown-item:hover .checkmark svg,
++    .dropdown-item:focus .checkmark svg {
++      stroke: #4e342e;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    select.roast-native-select {
++      background-color: #4e342e;
++      color: #ffab40;
++      border: 2px solid #ffab40;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,8 +346,52 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector-container">
++      <label for="roast-select" class="roast-label" id="roast-label">Select Roast</label>
++      <div class="custom-dropdown roast-selector" id="roast-selector" role="combobox" aria-labelledby="roast-label" aria-haspopup="listbox" aria-expanded="false" tabindex="0">
++        <button type="button" class="dropdown-trigger roast-trigger dropdown-button" id="roast-trigger" aria-labelledby="roast-label selected-roast">
++          <span class="selected-text roast-selected-text" id="selected-roast">Light</span>
++          <span class="dropdown-arrow arrow roast-arrow" id="dropdown-arrow" aria-hidden="true">
++            <svg width="12" height="12" viewBox="0 0 24 24" fill="#ffab40" stroke="#ffab40" stroke-width="2">
++              <path d="M7 10l5 5 5-5z"/>
++            </svg>
++          </span>
++        </button>
++        <ul class="dropdown-list dropdown-menu roast-dropdown-list" id="dropdown-list" role="listbox" aria-labelledby="roast-label">
++          <li class="dropdown-item roast-item selected" role="option" data-value="light" data-roast="light" id="roast-opt-light" tabindex="0" aria-selected="true">
++            <span class="roast-name">Light</span>
++            <span class="checkmark roast-checkmark" aria-hidden="true">
++              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffab40" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </span>
++          </li>
++          <li class="dropdown-item roast-item" role="option" data-value="medium" data-roast="medium" id="roast-opt-medium" tabindex="0" aria-selected="false">
++            <span class="roast-name">Medium</span>
++            <span class="checkmark roast-checkmark" aria-hidden="true">
++              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffab40" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </span>
++          </li>
++          <li class="dropdown-item roast-item" role="option" data-value="dark" data-roast="dark" id="roast-opt-dark" tabindex="0" aria-selected="false">
++            <span class="roast-name">Dark</span>
++            <span class="checkmark roast-checkmark" aria-hidden="true">
++              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffab40" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </span>
++          </li>
++        </ul>
++      </div>
++      <select id="roast-select" name="roast" class="visually-hidden roast-native-select" aria-label="Select Roast">
++        <option value="light" selected>Light</option>
++        <option value="medium">Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +426,132 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function initRoastSelector() {
++        const customDropdown = document.getElementById('roast-selector');
++        const trigger = document.getElementById('roast-trigger');
++        const selectedText = document.getElementById('selected-roast');
++        const dropdownList = document.getElementById('dropdown-list');
++        if (!customDropdown || !trigger || !dropdownList) return;
++
++        const items = Array.from(dropdownList.querySelectorAll('.dropdown-item'));
++        const nativeSelect = document.getElementById('roast-select');
++
++        function openDropdown() {
++          customDropdown.classList.add('open');
++          trigger.setAttribute('aria-expanded', 'true');
++          const selectedItem = dropdownList.querySelector('.dropdown-item.selected');
++          if (selectedItem) {
++            selectedItem.focus();
++          }
++        }
++
++        function closeDropdown() {
++          customDropdown.classList.remove('open');
++          trigger.setAttribute('aria-expanded', 'false');
++        }
++
++        function toggleDropdown() {
++          if (customDropdown.classList.contains('open')) {
++            closeDropdown();
++          } else {
++            openDropdown();
++          }
++        }
++
++        function selectRoast(value) {
++          items.forEach(item => {
++            const isMatch = item.getAttribute('data-value') === value || item.getAttribute('data-roast') === value;
++            if (isMatch) {
++              item.classList.add('selected');
++              item.setAttribute('aria-selected', 'true');
++              const nameEl = item.querySelector('.roast-name');
++              selectedText.textContent = nameEl ? nameEl.textContent : item.textContent.trim();
++            } else {
++              item.classList.remove('selected');
++              item.setAttribute('aria-selected', 'false');
++            }
++          });
++
++          if (nativeSelect && nativeSelect.value !== value) {
++            nativeSelect.value = value;
++            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
++          }
++        }
++
++        trigger.addEventListener('click', (e) => {
++          e.stopPropagation();
++          toggleDropdown();
++        });
++
++        trigger.addEventListener('keydown', (e) => {
++          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
++            e.preventDefault();
++            openDropdown();
++          }
++        });
++
++        items.forEach((item, index) => {
++          item.addEventListener('click', (e) => {
++            e.stopPropagation();
++            const val = item.getAttribute('data-value') || item.getAttribute('data-roast');
++            selectRoast(val);
++            closeDropdown();
++            trigger.focus();
++          });
++
++          item.addEventListener('keydown', (e) => {
++            if (e.key === 'ArrowDown') {
++              e.preventDefault();
++              const next = items[(index + 1) % items.length];
++              next.focus();
++            } else if (e.key === 'ArrowUp') {
++              e.preventDefault();
++              const prev = items[(index - 1 + items.length) % items.length];
++              prev.focus();
++            } else if (e.key === 'Enter' || e.key === ' ') {
++              e.preventDefault();
++              const val = item.getAttribute('data-value') || item.getAttribute('data-roast');
++              selectRoast(val);
++              closeDropdown();
++              trigger.focus();
++            } else if (e.key === 'Escape') {
++              e.preventDefault();
++              closeDropdown();
++              trigger.focus();
++            }
++          });
++        });
++
++        document.addEventListener('click', (e) => {
++          if (!customDropdown.contains(e.target)) {
++            closeDropdown();
++          }
++        });
++
++        document.addEventListener('keydown', (e) => {
++          if (e.key === 'Escape' && customDropdown.classList.contains('open')) {
++            closeDropdown();
++            trigger.focus();
++          }
++        });
++
++        if (nativeSelect) {
++          nativeSelect.addEventListener('change', (e) => {
++            selectRoast(e.target.value);
++          });
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initRoastSelector);
++      } else {
++        initRoastSelector();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

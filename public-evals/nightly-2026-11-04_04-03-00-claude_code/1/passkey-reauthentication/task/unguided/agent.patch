@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,33 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .reauth-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .reauth-status.error {
++      color: #b71c1c;
++    }
++
++    .reauth-status.success {
++      color: #2e7d32;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +219,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Account Security</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Confirm It's You</h3>
++          <p>Before changing sensitive account details, verify your identity with your registered passkey or security key.</p>
++          <button type="button" class="btn" data-testid="reauth-button" id="reauth-button">Verify with Passkey</button>
++          <p class="reauth-status" id="reauth-status" role="status" aria-live="polite"></p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +243,157 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var button = document.getElementById('reauth-button');
++      var statusEl = document.getElementById('reauth-status');
++      if (!button) return;
++
++      function setStatus(msg, kind) {
++        statusEl.textContent = msg || '';
++        statusEl.className = 'reauth-status' + (kind ? ' ' + kind : '');
++      }
++
++      // --- base64url <-> ArrayBuffer helpers ---
++      function b64urlToBuffer(value) {
++        if (value instanceof ArrayBuffer) return value;
++        if (ArrayBuffer.isView(value)) return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
++        if (typeof value !== 'string') throw new TypeError('Expected base64url string');
++        var b64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        var pad = b64.length % 4;
++        if (pad) b64 += '===='.slice(pad);
++        var bin = atob(b64);
++        var bytes = new Uint8Array(bin.length);
++        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buf) {
++        if (!buf) return null;
++        var bytes = new Uint8Array(buf);
++        var bin = '';
++        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      // Convert server JSON (base64url-encoded binary fields) into
++      // PublicKeyCredentialRequestOptions.
++      function toRequestOptions(json) {
++        var opts = Object.assign({}, json);
++        opts.challenge = b64urlToBuffer(json.challenge);
++        opts.allowCredentials = (json.allowCredentials || []).map(function (c) {
++          var cred = { type: c.type || 'public-key', id: b64urlToBuffer(c.id) };
++          if (c.transports) cred.transports = c.transports;
++          return cred;
++        });
++        return opts;
++      }
++
++      function credentialToJSON(cred) {
++        if (typeof cred.toJSON === 'function') {
++          try { return cred.toJSON(); } catch (e) { /* fall through */ }
++        }
++        var r = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment || null,
++          clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
++          response: {
++            clientDataJSON: bufferToB64url(r.clientDataJSON),
++            authenticatorData: bufferToB64url(r.authenticatorData),
++            signature: bufferToB64url(r.signature),
++            userHandle: r.userHandle ? bufferToB64url(r.userHandle) : null
++          }
++        };
++      }
++
++      async function readError(res) {
++        try {
++          var data = await res.json();
++          return data.error || data.message || ('Request failed (' + res.status + ')');
++        } catch (e) {
++          return 'Request failed (' + res.status + ')';
++        }
++      }
++
++      async function reauthenticate() {
++        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
++          throw new Error('This browser does not support passkeys / security keys.');
++        }
++
++        // 1. Fetch a fresh, server-generated challenge scoped to the signed-in user.
++        var optRes = await fetch('/api/reauth/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: '{}'
++        });
++        if (!optRes.ok) throw new Error(await readError(optRes));
++        var optJson = await optRes.json();
++        var pkJson = optJson.publicKey || optJson.options || optJson;
++
++        if (!pkJson || !pkJson.challenge) {
++          throw new Error('Server did not return a valid challenge.');
++        }
++        // Re-auth must be bound to the current user's registered credentials;
++        // never fall back to an unscoped (discoverable / any-account) ceremony.
++        if (!Array.isArray(pkJson.allowCredentials) || pkJson.allowCredentials.length === 0) {
++          throw new Error('No registered passkey or security key found for your account.');
++        }
++
++        var publicKey = toRequestOptions(pkJson);
++        // Require user verification (PIN / biometric) so possession alone is not enough.
++        publicKey.userVerification = 'required';
++
++        // 2. Run the WebAuthn assertion ceremony (origin-bound => phishing-resistant).
++        var credential = await navigator.credentials.get({ publicKey: publicKey });
++        if (!credential) throw new Error('Verification was cancelled.');
++
++        // 3. Send the signed assertion to the server for verification.
++        var verifyRes = await fetch('/api/reauth/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(credentialToJSON(credential))
++        });
++        if (!verifyRes.ok) throw new Error(await readError(verifyRes));
++        var result = {};
++        try { result = await verifyRes.json(); } catch (e) { /* empty body is fine */ }
++        if (result && (result.verified === false || result.success === false)) {
++          throw new Error(result.error || result.message || 'Verification failed.');
++        }
++        return result;
++      }
++
++      var inFlight = false;
++      button.addEventListener('click', async function () {
++        if (inFlight) return;
++        inFlight = true;
++        button.disabled = true;
++        setStatus('Waiting for your passkey or security key…');
++        try {
++          var result = await reauthenticate();
++          setStatus('Identity confirmed. You can now make account changes.', 'success');
++          document.dispatchEvent(new CustomEvent('reauth:success', { detail: result }));
++        } catch (err) {
++          var msg = err && err.name === 'NotAllowedError'
++            ? 'Verification was cancelled or timed out. Please try again.'
++            : (err && err.message) || 'Verification failed.';
++          setStatus(msg, 'error');
++          document.dispatchEvent(new CustomEvent('reauth:failure', { detail: err }));
++        } finally {
++          inFlight = false;
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

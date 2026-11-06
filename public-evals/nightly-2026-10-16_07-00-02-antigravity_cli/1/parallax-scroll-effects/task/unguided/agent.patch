@@ -1,0 +1,513 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,429 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ============================================================
++       Scroll-Driven Parallax Section (Pure CSS, Accessible, Performant)
++       ============================================================ */
++    .parallax-section {
++      position: relative;
++      min-height: 520px;
++      height: 70vh;
++      max-height: 750px;
++      overflow: hidden;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 60px 20px;
++      background-color: #1a0f0d;
++      color: #fafafa;
++      contain: paint;
++    }
++
++    /* Parallax Layers */
++    .parallax-layer {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++    }
++
++    /* Layer 1: Background (Distant plane, slow movement) */
++    .parallax-layer-bg {
++      top: -15%;
++      height: 130%;
++      background:
++        linear-gradient(
++          to bottom,
++          rgba(26, 15, 13, 0.8) 0%,
++          rgba(46, 26, 22, 0.65) 50%,
++          rgba(26, 15, 13, 0.85) 100%
++        ),
++        url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80') center center / cover no-repeat;
++      will-change: transform;
++      z-index: 1;
++    }
++
++    /* Layer 2: Midground (Intermediate plane, moderate speed) */
++    .parallax-layer-mid {
++      z-index: 2;
++    }
++
++    .parallax-floating-card {
++      position: absolute;
++      background: rgba(30, 20, 18, 0.75);
++      backdrop-filter: blur(8px);
++      -webkit-backdrop-filter: blur(8px);
++      border: 1px solid rgba(255, 171, 64, 0.25);
++      border-radius: 12px;
++      padding: 12px 16px;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
++      color: #fafafa;
++      max-width: 280px;
++      will-change: transform;
++    }
++
++    .parallax-floating-card .card-thumb {
++      width: 52px;
++      height: 52px;
++      border-radius: 8px;
++      object-fit: cover;
++      border: 1px solid rgba(255, 255, 255, 0.2);
++    }
++
++    .parallax-floating-card .roast-badge-icon {
++      font-size: 1.8rem;
++      background: rgba(255, 171, 64, 0.15);
++      width: 50px;
++      height: 50px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      border-radius: 8px;
++      border: 1px solid rgba(255, 171, 64, 0.3);
++    }
++
++    .parallax-floating-card .card-info {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .parallax-floating-card .card-tag {
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .parallax-floating-card strong {
++      font-size: 0.85rem;
++      color: #fff;
++    }
++
++    .parallax-floating-card .card-sub {
++      font-size: 0.75rem;
++      color: var(--secondary);
++    }
++
++    .parallax-item-mid-left {
++      left: 6%;
++      top: 25%;
++    }
++
++    .parallax-item-mid-right {
++      right: 6%;
++      bottom: 22%;
++    }
++
++    /* Layer 3: Foreground (Near plane, fast movement) */
++    .parallax-layer-fg {
++      z-index: 3;
++    }
++
++    .parallax-item-fg-badge {
++      position: absolute;
++      top: 14%;
++      right: 14%;
++      will-change: transform;
++    }
++
++    .parallax-item-fg-accent {
++      position: absolute;
++      bottom: 15%;
++      left: 12%;
++      will-change: transform;
++    }
++
++    .pill-badge {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
++      backdrop-filter: blur(6px);
++      -webkit-backdrop-filter: blur(6px);
++    }
++
++    .elevation-pill {
++      display: inline-block;
++      background: rgba(78, 52, 46, 0.7);
++      border: 1px solid rgba(215, 204, 200, 0.4);
++      color: #fafafa;
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++      letter-spacing: 0.5px;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
++      backdrop-filter: blur(6px);
++      -webkit-backdrop-filter: blur(6px);
++    }
++
++    /* Content block (Center plane, anchored with subtle counter-motion) */
++    .parallax-content {
++      position: relative;
++      z-index: 4;
++      max-width: 680px;
++      margin: 0 auto;
++      text-align: center;
++      background: rgba(30, 18, 14, 0.6);
++      backdrop-filter: blur(10px);
++      -webkit-backdrop-filter: blur(10px);
++      padding: 40px 32px;
++      border-radius: 16px;
++      border: 1px solid rgba(215, 204, 200, 0.2);
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
++      will-change: transform;
++    }
++
++    .section-eyebrow {
++      display: inline-block;
++      color: var(--accent);
++      font-size: 0.85rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      margin-bottom: 8px;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 14px;
++      color: #ffffff;
++      line-height: 1.25;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
++    }
++
++    .section-lead {
++      color: #e0d6d2;
++      font-size: 1rem;
++      line-height: 1.6;
++      margin-bottom: 24px;
++    }
++
++    .parallax-highlights {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 18px;
++      margin-bottom: 26px;
++      flex-wrap: wrap;
++    }
++
++    .highlight-item {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .highlight-value {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--accent);
++    }
++
++    .highlight-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #d7ccc8;
++    }
++
++    .highlight-divider {
++      width: 1px;
++      height: 32px;
++      background: rgba(215, 204, 200, 0.3);
++    }
++
++    .btn-parallax {
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: 600;
++      box-shadow: 0 4px 14px rgba(255, 171, 64, 0.35);
++    }
++
++    .btn-parallax:hover {
++      background: #ff9800;
++      color: #1a0f0d;
++    }
++
++    /* Keyframe Animations for Layers (Different speeds creating depth) */
++    @keyframes parallax-bg-move {
++      from {
++        transform: translateY(-8%);
++      }
++      to {
++        transform: translateY(8%);
++      }
++    }
++
++    @keyframes parallax-mid-left-move {
++      from {
++        transform: translateY(60px) rotate(-3deg);
++      }
++      to {
++        transform: translateY(-60px) rotate(-3deg);
++      }
++    }
++
++    @keyframes parallax-mid-right-move {
++      from {
++        transform: translateY(80px) rotate(3deg);
++      }
++      to {
++        transform: translateY(-80px) rotate(3deg);
++      }
++    }
++
++    @keyframes parallax-fg-badge-move {
++      from {
++        transform: translateY(110px) rotate(6deg);
++      }
++      to {
++        transform: translateY(-110px) rotate(-4deg);
++      }
++    }
++
++    @keyframes parallax-fg-accent-move {
++      from {
++        transform: translateY(130px);
++      }
++      to {
++        transform: translateY(-130px);
++      }
++    }
++
++    @keyframes parallax-content-move {
++      from {
++        transform: translateY(20px);
++      }
++      to {
++        transform: translateY(-20px);
++      }
++    }
++
++    /* Scroll-Driven Parallax Binding */
++    @supports (animation-timeline: view()) {
++      .parallax-layer-bg {
++        animation: parallax-bg-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-item-mid-left {
++        animation: parallax-mid-left-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-item-mid-right {
++        animation: parallax-mid-right-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-item-fg-badge {
++        animation: parallax-fg-badge-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-item-fg-accent {
++        animation: parallax-fg-accent-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++
++      .parallax-content {
++        animation: parallax-content-move linear both;
++        animation-timeline: view();
++        animation-range: cover 0% cover 100%;
++      }
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 900px) {
++      .parallax-floating-card {
++        max-width: 220px;
++        padding: 8px 12px;
++      }
++      .parallax-floating-card .card-thumb,
++      .parallax-floating-card .roast-badge-icon {
++        width: 40px;
++        height: 40px;
++        font-size: 1.4rem;
++      }
++      .parallax-item-mid-left {
++        left: 2%;
++        top: 15%;
++      }
++      .parallax-item-mid-right {
++        right: 2%;
++        bottom: 15%;
++      }
++      .parallax-item-fg-badge {
++        right: 4%;
++        top: 8%;
++      }
++      .parallax-item-fg-accent {
++        left: 4%;
++        bottom: 8%;
++      }
++    }
++
++    @media (max-width: 680px) {
++      .parallax-section {
++        min-height: 480px;
++        height: auto;
++        padding: 40px 16px;
++      }
++      .parallax-item-mid-left,
++      .parallax-item-mid-right {
++        display: none;
++      }
++      .parallax-item-fg-badge {
++        top: 4%;
++        right: 8%;
++      }
++      .parallax-item-fg-accent {
++        bottom: 4%;
++        left: 8%;
++      }
++      .parallax-content {
++        padding: 28px 18px;
++      }
++      .parallax-content h2 {
++        font-size: 1.6rem;
++      }
++    }
++
++    /* Accessibility: Respect Reduced Motion Preference */
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer,
++      .parallax-layer-bg,
++      .parallax-item-mid-left,
++      .parallax-item-mid-right,
++      .parallax-item-fg-badge,
++      .parallax-item-fg-accent,
++      .parallax-content {
++        animation: none !important;
++        transform: none !important;
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +594,79 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <!-- Scroll-Driven Parallax Section -->
++  <section class="parallax-section" aria-labelledby="craft-heading">
++    <!-- Background Layer (Moves slowest, creating deep background perspective) -->
++    <div class="parallax-layer parallax-layer-bg" aria-hidden="true"></div>
++
++    <!-- Midground Layer (Floating cards moving at moderate speed) -->
++    <div class="parallax-layer parallax-layer-mid" aria-hidden="true">
++      <div class="parallax-floating-card parallax-item-mid-left">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=400&q=80"
++          alt=""
++          loading="lazy"
++          class="card-thumb"
++        />
++        <div class="card-info">
++          <span class="card-tag">Single Origin</span>
++          <strong>Ethiopia Yirgacheffe</strong>
++          <span class="card-sub">Notes of jasmine &amp; citrus</span>
++        </div>
++      </div>
++
++      <div class="parallax-floating-card parallax-item-mid-right">
++        <div class="roast-badge-icon" aria-hidden="true">&#9749;</div>
++        <div class="card-info">
++          <span class="card-tag">Drum Roasted</span>
++          <strong>Small Batch No. 42</strong>
++          <span class="card-sub">Slow-roasted at 410&deg;F</span>
++        </div>
++      </div>
++    </div>
++
++    <!-- Foreground Layer (Badges moving at higher speed) -->
++    <div class="parallax-layer parallax-layer-fg" aria-hidden="true">
++      <div class="parallax-item-fg-badge">
++        <span class="pill-badge">&#10022; 100% Arabica Specialty Grade</span>
++      </div>
++      <div class="parallax-item-fg-accent">
++        <span class="elevation-pill">&#9650; 2,100m High Altitude</span>
++      </div>
++    </div>
++
++    <!-- Content Layer (Anchored narrative block with gentle counter-movement) -->
++    <div class="parallax-content">
++      <span class="section-eyebrow">Our Philosophy</span>
++      <h2 id="craft-heading">The Art of Slow Roasting</h2>
++      <p class="section-lead">
++        We believe exceptional coffee begins with altitude and ends with obsessive craft.
++        Every batch is roasted in small drums to highlight each bean's origin, preserving delicate floral notes and deep chocolate bodies.
++      </p>
++
++      <div class="parallax-highlights">
++        <div class="highlight-item">
++          <span class="highlight-value">1,850m+</span>
++          <span class="highlight-label">Peak Elevation</span>
++        </div>
++        <div class="highlight-divider" aria-hidden="true"></div>
++        <div class="highlight-item">
++          <span class="highlight-value">48 hrs</span>
++          <span class="highlight-label">Slow Ferment</span>
++        </div>
++        <div class="highlight-divider" aria-hidden="true"></div>
++        <div class="highlight-item">
++          <span class="highlight-value">Direct Trade</span>
++          <span class="highlight-label">100% Traceable</span>
++        </div>
++      </div>
++
++      <a href="/menu" class="btn btn-parallax">Explore Our Roastery</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

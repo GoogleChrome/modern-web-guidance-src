@@ -1,0 +1,834 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..2d3b302 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,81 +3,55 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon } from '@heroicons/react/24/outline';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+-    large?: boolean;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const { article } = Astro.props;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const categoryUrl = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++<article class="article-teaser group">
++    <a href={articleUrl} class="teaser-media">
++        <Image
++            src={image}
++            alt={article.data.title}
++            width={800}
++            height={450}
++            format="webp"
++            class="teaser-image"
++        />
++    </a>
++    <div class="teaser-content">
++        <div class="teaser-meta-header">
++            <span class="teaser-badge">Featured</span>
++            <a href={categoryUrl} class="teaser-category hover:underline">
++                {capitalizedCategory}
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-            </div>
+         </div>
+-    </article>
+-)}
+\ No newline at end of file
++        <a href={articleUrl} class="flex flex-col flex-grow">
++            <h3 class="teaser-title">
++                {article.data.title}
++            </h3>
++            <p class="teaser-summary">
++                {article.data.summary}
++            </p>
++        </a>
++        <time class="teaser-date" datetime={article.data.date.toISOString()}>
++            {article.data.date.toLocaleDateString()}
++        </time>
++        <footer class="teaser-footer">
++            <span class="text-sm font-medium flex items-center">
++                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                {article.data.readingTime} Min.
++            </span>
++            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++        </footer>
++    </div>
++</article>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..b46ee14 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,5 @@
+-
+-import React, { useState, useEffect } from 'react';
+-import { BookmarkIcon } from '@heroicons/react/24/outline'
++import React, { useState } from 'react';
++import { BookmarkIcon } from '@heroicons/react/24/outline';
+ 
+ interface Props {
+   slug: string;
+@@ -23,8 +22,16 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      type="button"
++      onClick={handleClick}
++      className="bookmark-button"
++      data-bookmarked={isBookmarked ? 'true' : 'false'}
++      aria-pressed={isBookmarked}
++      aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++    >
++      <BookmarkIcon className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
++      <span className="bookmark-label">{isBookmarked ? 'Saved' : 'Save story'}</span>
+     </button>
+   );
+ }
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..2d0a400 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -1,9 +1,6 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+-import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
+-import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import ArticleTeaser from './ArticleTeaser.astro';
+ 
+ export interface Props {
+     title: string;
+@@ -18,85 +15,23 @@ if (articles.length < 4) {
+ 
+ const topArticle = articles[0];
+ const bottomArticles = articles.slice(1, 4);
+-
+-const topArticleImage = await getArticleImage(topArticle);
+-const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+-
+-const readingList = await Astro.session?.get('readingList') || [];
+-
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+ <section class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+-                        {topArticle.data.title}
+-                    </h3>
+-                </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+-                    {topArticle.data.summary}
+-                </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
+-                </div>
+-            </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+-                </a>
+-            </div>
+-        </div>
++    <!-- Top Section: Featured Context -->
++    <div class="featured mb-6 lg:mb-8">
++        <ArticleTeaser article={topArticle} />
+     </div>
+ 
+-    <!-- Bottom Section: Three Smaller Articles -->
++    <!-- Bottom Section: Brief and Spotlight Contexts -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+-        {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+-            const isBookmarked = readingList.includes(article.id);
+-            return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
+-                    {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+-                        </a>
+-                    )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+-                                {article.data.title}
+-                            </h3>
+-                        </a>
+-                        {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
+-                                {article.data.summary}
+-                            </p>
+-                        )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                        </div>
+-                    </div>
+-                </div>
+-            )
+-        })}
++        {bottomArticles.map((article, index) => (
++            <div class={index === 1 ? 'spotlight h-full' : 'brief h-full'}>
++                <ArticleTeaser article={article} />
++            </div>
++        ))}
+     </div>
+ </section>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..9f53f7d 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -1,4 +1,3 @@
+-
+ ---
+ import Layout from '../../layouts/Layout.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+@@ -32,7 +31,6 @@ const randomArticleForHero = allArticlesInCategory.length > 0
+     : null;
+ 
+ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+-const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+@@ -64,25 +62,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         </header>
+ 
+         <div class="px-4 md:px-6">
+-            <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
++            <!-- Featured Article (Featured Context) -->
++            {featuredArticle && (
++                <section class="featured mb-8 pb-8 border-b border-gray-200">
++                    <ArticleTeaser article={featuredArticle} />
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9f992a1 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,25 +38,22 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <!-- Top Stories Bar (Ticker Context) -->
++    <div class="ticker bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    <div class="ticker-item">
++                        <ArticleTeaser article={article} />
+                     </div>
+                 ))}
+             </div>
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
++    <!-- Main Content Area (Featured Context) -->
++    <main class="featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+@@ -81,4 +78,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..fc4c297 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,466 @@
+ @import "tailwindcss";
+ 
++:root {
++  --font-heading: "Grenze", serif;
++  --color-surface: #ffffff;
++  --color-surface-subtle: #fffbeb;
++  --color-text-primary: #111827;
++  --color-text-secondary: #374151;
++  --color-text-muted: #6b7280;
++  --color-border: #e5e7eb;
++  --color-border-strong: #d1d5db;
++  --color-brand-accent: #b45309;
++  --color-brand-accent-hover: #f59e0b;
++  --color-brand-tint: #fef3c7;
++
++  --space-2xs: 0.25rem;
++  --space-xs: 0.5rem;
++  --space-sm: 0.75rem;
++  --space-md: 1rem;
++  --space-lg: 1.5rem;
++  --space-xl: 2rem;
++
++  --radius-sm: 0.25rem;
++  --radius-md: 0.375rem;
++  --radius-pill: 9999px;
++
++  --text-xs: 0.75rem;
++  --text-sm: 0.875rem;
++  --text-base: 1rem;
++  --text-lg: 1.125rem;
++  --text-xl: 1.25rem;
++  --text-2xl: 1.5rem;
++  --text-hero: clamp(1.875rem, 2.5vw, 2.25rem);
++
++  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++}
++
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: var(--font-heading);
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* 1. Semantic Context Containers (no container-type needed for style queries) */
++.featured {
++  --surface: featured;
++}
++
++.spotlight {
++  --surface: spotlight;
++}
++
++.brief {
++  --surface: brief;
++}
++
++.ticker {
++  --surface: ticker;
++}
++
++/* 2. Default Component Styles */
++.article-teaser {
++  display: flex;
++  flex-direction: column;
++  block-size: 100%;
++  background: var(--color-surface);
++}
++
++.teaser-media {
++  display: block;
++  flex-shrink: 0;
++}
++
++.teaser-image {
++  inline-size: 100%;
++  block-size: auto;
++  object-fit: cover;
++  border-radius: var(--radius-md);
++  aspect-ratio: 16 / 9;
++}
++
++.teaser-content {
++  display: flex;
++  flex-direction: column;
++  flex-grow: 1;
++  margin-block-start: var(--space-sm);
++}
++
++.teaser-meta-header {
++  display: flex;
++  align-items: center;
++  gap: var(--space-xs);
++}
++
++.teaser-badge {
++  display: none;
++  padding-inline: var(--space-xs);
++  padding-block: var(--space-2xs);
++  font-size: var(--text-xs);
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  border-radius: var(--radius-pill);
++  background: var(--color-brand-accent);
++  color: var(--color-surface);
++}
++
++.teaser-category {
++  color: var(--color-brand-accent);
++  font-size: var(--text-sm);
++  font-family: var(--font-heading);
++  letter-spacing: 0.1em;
++}
++
++.teaser-title {
++  font-family: var(--font-heading);
++  font-size: var(--text-xl);
++  color: var(--color-text-primary);
++  line-height: 1.25;
++  transition: color 150ms ease;
++}
++
++.article-teaser:hover .teaser-title {
++  color: var(--color-brand-accent-hover);
++}
++
++.teaser-summary {
++  display: block;
++  color: var(--color-text-secondary);
++  margin-block-start: var(--space-2xs);
++  flex-grow: 1;
++}
++
++.teaser-date {
++  display: none;
++  font-size: var(--text-xs);
++  color: var(--color-text-muted);
++  margin-block-start: var(--space-2xs);
++}
++
++.teaser-footer {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  color: var(--color-text-muted);
++  margin-block-start: var(--space-xs);
++  padding-block-start: var(--space-xs);
++  border-block-start: 1px solid var(--color-border);
++}
++
++.bookmark-button {
++  display: inline-flex;
++  align-items: center;
++  gap: var(--space-2xs);
++  padding-inline: var(--space-xs);
++  padding-block: var(--space-2xs);
++  background: transparent;
++  color: var(--color-text-muted);
++  border: 1px solid var(--color-border);
++  border-radius: var(--radius-sm);
++  font-size: var(--text-xs);
++  font-weight: 600;
++  cursor: pointer;
++  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
++}
++
++.bookmark-button:hover:not(:disabled) {
++  color: var(--color-brand-accent-hover);
++  border-color: currentColor;
++}
++
++.bookmark-button[data-bookmarked="true"] {
++  color: var(--color-brand-accent-hover);
++  border-color: currentColor;
++}
++
++.bookmark-label {
++  display: none;
++}
++
++/* 3. Selector-based Contextual Fallbacks (:where() keeps specificity matching style queries) */
++
++/* Featured surface fallback */
++:where(.featured) .article-teaser {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
++  gap: var(--space-xl);
++  padding: var(--space-xl);
++  box-shadow: var(--shadow-card);
++  align-items: center;
++}
++
++:where(.featured) .teaser-content {
++  margin-block-start: 0;
++  order: 1;
++}
++
++:where(.featured) .teaser-media {
++  order: 2;
++}
++
++:where(.featured) .teaser-image {
++  border-radius: 0;
++  block-size: 100%;
++}
++
++:where(.featured) .teaser-badge {
++  display: inline-flex;
++}
++
++:where(.featured) .teaser-title {
++  font-size: var(--text-hero);
++  margin-block-start: var(--space-xs);
++}
++
++:where(.featured) .teaser-summary {
++  font-size: var(--text-lg);
++  margin-block-start: var(--space-md);
++}
++
++:where(.featured) .teaser-footer {
++  margin-block-start: var(--space-lg);
++}
++
++:where(.featured) .bookmark-button {
++  background: var(--color-brand-accent);
++  color: var(--color-surface);
++  border-color: transparent;
++}
++
++:where(.featured) .bookmark-button:hover:not(:disabled) {
++  background: var(--color-brand-accent-hover);
++  color: var(--color-surface);
++}
++
++:where(.featured) .bookmark-label {
++  display: inline;
++}
++
++/* Spotlight surface fallback */
++:where(.spotlight) .article-teaser {
++  box-shadow: var(--shadow-card);
++  background: var(--color-surface-subtle);
++  overflow: hidden;
++}
++
++:where(.spotlight) .teaser-image {
++  border-radius: 0;
++}
++
++:where(.spotlight) .teaser-content {
++  padding: var(--space-lg);
++  margin-block-start: 0;
++}
++
++:where(.spotlight) .teaser-badge {
++  display: inline-flex;
++  background: var(--color-brand-tint);
++  color: var(--color-brand-accent);
++}
++
++:where(.spotlight) .teaser-title {
++  font-size: var(--text-2xl);
++}
++
++:where(.spotlight) .teaser-summary {
++  display: none;
++}
++
++:where(.spotlight) .bookmark-button {
++  background: var(--color-brand-tint);
++  color: var(--color-brand-accent);
++  border-color: transparent;
++}
++
++/* Brief surface fallback */
++:where(.brief) .article-teaser {
++  padding: var(--space-lg);
++  box-shadow: var(--shadow-card);
++}
++
++:where(.brief) .teaser-media {
++  display: none;
++}
++
++:where(.brief) .teaser-content {
++  margin-block-start: 0;
++}
++
++:where(.brief) .teaser-title {
++  font-size: var(--text-2xl);
++}
++
++/* Ticker surface fallback */
++:where(.ticker) .article-teaser {
++  background: transparent;
++}
++
++:where(.ticker) .teaser-media,
++:where(.ticker) .teaser-meta-header,
++:where(.ticker) .teaser-summary,
++:where(.ticker) .teaser-footer {
++  display: none;
++}
++
++:where(.ticker) .teaser-content {
++  margin-block-start: 0;
++}
++
++:where(.ticker) .teaser-title {
++  font-family: inherit;
++  font-size: var(--text-base);
++  font-weight: 700;
++}
++
++:where(.ticker) .teaser-date {
++  display: block;
++}
++
++/* 4. Progressive Enhancement: Container Style Queries */
++
++@container style(--surface: featured) {
++  .article-teaser {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
++    gap: var(--space-xl);
++    padding: var(--space-xl);
++    box-shadow: var(--shadow-card);
++    align-items: center;
++  }
++
++  .teaser-content {
++    margin-block-start: 0;
++    order: 1;
++  }
++
++  .teaser-media {
++    order: 2;
++  }
++
++  .teaser-image {
++    border-radius: 0;
++    block-size: 100%;
++  }
++
++  .teaser-badge {
++    display: inline-flex;
++  }
++
++  .teaser-title {
++    font-size: var(--text-hero);
++    margin-block-start: var(--space-xs);
++  }
++
++  .teaser-summary {
++    font-size: var(--text-lg);
++    margin-block-start: var(--space-md);
++  }
++
++  .teaser-footer {
++    margin-block-start: var(--space-lg);
++  }
++
++  .bookmark-button {
++    background: var(--color-brand-accent);
++    color: var(--color-surface);
++    border-color: transparent;
++  }
++
++  .bookmark-button:hover:not(:disabled) {
++    background: var(--color-brand-accent-hover);
++    color: var(--color-surface);
++  }
++
++  .bookmark-label {
++    display: inline;
++  }
++}
++
++@container style(--surface: spotlight) {
++  .article-teaser {
++    box-shadow: var(--shadow-card);
++    background: var(--color-surface-subtle);
++    overflow: hidden;
++  }
++
++  .teaser-image {
++    border-radius: 0;
++  }
++
++  .teaser-content {
++    padding: var(--space-lg);
++    margin-block-start: 0;
++  }
++
++  .teaser-badge {
++    display: inline-flex;
++    background: var(--color-brand-tint);
++    color: var(--color-brand-accent);
++  }
++
++  .teaser-title {
++    font-size: var(--text-2xl);
++  }
++
++  .teaser-summary {
++    display: none;
++  }
++
++  .bookmark-button {
++    background: var(--color-brand-tint);
++    color: var(--color-brand-accent);
++    border-color: transparent;
++  }
++}
++
++@container style(--surface: brief) {
++  .article-teaser {
++    padding: var(--space-lg);
++    box-shadow: var(--shadow-card);
++  }
++
++  .teaser-media {
++    display: none;
++  }
++
++  .teaser-content {
++    margin-block-start: 0;
++  }
++
++  .teaser-title {
++    font-size: var(--text-2xl);
++  }
++}
++
++@container style(--surface: ticker) {
++  .article-teaser {
++    background: transparent;
++  }
++
++  .teaser-media,
++  .teaser-meta-header,
++  .teaser-summary,
++  .teaser-footer {
++    display: none;
++  }
++
++  .teaser-content {
++    margin-block-start: 0;
++  }
++
++  .teaser-title {
++    font-family: inherit;
++    font-size: var(--text-base);
++    font-weight: 700;
++  }
++
++  .teaser-date {
++    display: block;
++  }
++}
++
++.ticker-item:not(:first-child) {
++  border-inline-start: 1px solid var(--color-border-strong);
++  padding-inline-start: var(--space-md);
++}

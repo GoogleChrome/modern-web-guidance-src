@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,158 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section */
++    .parallax {
++      position: relative;
++      min-height: 90vh;
++      display: grid;
++      place-items: center;
++      padding: 80px 20px;
++      overflow: hidden;
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++      view-timeline: --parallax block;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    .parallax__layer--back {
++      /* Taller than the section so it never reveals an edge while moving */
++      inset: -20% 0;
++      z-index: -3;
++    }
++
++    .parallax__layer--back img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .parallax__layer--back::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 18, 15, 0.55), rgba(30, 18, 15, 0.75));
++    }
++
++    .parallax__layer--mid {
++      z-index: -2;
++    }
++
++    .parallax__layer--front {
++      z-index: 1;
++    }
++
++    .bean {
++      position: absolute;
++      left: var(--x);
++      top: var(--y);
++      width: calc(var(--size) * 1px);
++      aspect-ratio: 3 / 4;
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 30%, #8d6e63, var(--primary) 55%, #2b1b17);
++      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
++      transform: rotate(var(--rotate, 0deg));
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      inset: 12% 30% 12% 46%;
++      border-left: 3px solid #1e120f;
++      border-radius: 50%;
++    }
++
++    .parallax__layer--mid .bean {
++      opacity: 0.7;
++    }
++
++    .parallax__content {
++      max-width: 600px;
++      padding: 40px 30px;
++      text-align: center;
++      background: rgba(30, 18, 15, 0.6);
++      border-radius: 8px;
++    }
++
++    .parallax__content h2 {
++      font-size: 2.25rem;
++      margin-bottom: 1rem;
++    }
++
++    .btn--accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn--accent:hover {
++      background: #ffc77a;
++    }
++
++    /* Scroll-driven parallax: only where supported and motion is welcome */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax__layer--back,
++        .parallax__layer--mid,
++        .parallax__layer--front {
++          animation: linear both;
++          animation-timeline: --parallax;
++          will-change: transform;
++        }
++
++        .parallax__layer--back {
++          animation-name: parallax-back;
++        }
++
++        .parallax__layer--mid {
++          animation-name: parallax-mid;
++        }
++
++        .parallax__layer--front {
++          animation-name: parallax-front;
++        }
++      }
++    }
++
++    /* Layers drifting with the scroll appear farther away; against it, closer */
++    @keyframes parallax-back {
++      from {
++        transform: translate3d(0, -12%, 0);
++      }
++
++      to {
++        transform: translate3d(0, 12%, 0);
++      }
++    }
++
++    @keyframes parallax-mid {
++      from {
++        transform: translate3d(0, -60px, 0);
++      }
++
++      to {
++        transform: translate3d(0, 60px, 0);
++      }
++    }
++
++    @keyframes parallax-front {
++      from {
++        transform: translate3d(0, 160px, 0);
++      }
++
++      to {
++        transform: translate3d(0, -160px, 0);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +323,40 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true">
++      <img
++        src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1600&q=75"
++        srcset="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=75 800w,
++                https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1600&q=75 1600w,
++                https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=2400&q=75 2400w"
++        sizes="100vw" alt="" loading="lazy" decoding="async">
++    </div>
++
++    <div class="parallax__layer parallax__layer--mid" aria-hidden="true">
++      <span class="bean" style="--x: 8%; --y: 18%; --size: 34; --rotate: 25deg;"></span>
++      <span class="bean" style="--x: 22%; --y: 70%; --size: 28; --rotate: -40deg;"></span>
++      <span class="bean" style="--x: 74%; --y: 12%; --size: 30; --rotate: 60deg;"></span>
++      <span class="bean" style="--x: 88%; --y: 58%; --size: 36; --rotate: -15deg;"></span>
++      <span class="bean" style="--x: 55%; --y: 84%; --size: 26; --rotate: 80deg;"></span>
++    </div>
++
++    <div class="parallax__content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch is roasted in small lots just down the street, then brewed by hand so each cup tastes the way
++        the farmer intended.</p>
++      <a href="/about" class="btn btn--accent">Read Our Story</a>
++    </div>
++
++    <div class="parallax__layer parallax__layer--front" aria-hidden="true">
++      <span class="bean" style="--x: 3%; --y: 80%; --size: 64; --rotate: -30deg;"></span>
++      <span class="bean" style="--x: 84%; --y: 85%; --size: 72; --rotate: 35deg;"></span>
++      <span class="bean" style="--x: 90%; --y: 5%; --size: 56; --rotate: -65deg;"></span>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

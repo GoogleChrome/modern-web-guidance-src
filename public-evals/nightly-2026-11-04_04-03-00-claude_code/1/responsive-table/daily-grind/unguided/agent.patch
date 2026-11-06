@@ -1,0 +1,178 @@
+diff --git a/index.html b/index.html
+index 66c9173..1411e16 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,114 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutrition & Pricing Table */
++    .nutrition {
++      margin-top: 40px;
++    }
++
++    .nutrition h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .nutrition .table-note {
++      font-size: 0.85rem;
++      margin-bottom: 10px;
++    }
++
++    /* Scroll container: keeps the table intact on narrow screens instead of
++       squashing columns. Focusable so keyboard users can scroll it. */
++    .table-scroll {
++      overflow-x: auto;
++      -webkit-overflow-scrolling: touch;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition table {
++      width: 100%;
++      min-width: 600px;
++      border-collapse: separate;
++      border-spacing: 0;
++      font-size: 0.95rem;
++    }
++
++    .nutrition caption {
++      text-align: left;
++      padding: 12px 16px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .nutrition th,
++    .nutrition td {
++      padding: 12px 16px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: right;
++      white-space: nowrap;
++    }
++
++    .nutrition thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++      vertical-align: bottom;
++    }
++
++    .nutrition th[scope="row"],
++    .nutrition thead th:first-child {
++      text-align: left;
++    }
++
++    /* Keep the drink name visible while scrolling horizontally */
++    .nutrition th[scope="row"] {
++      position: sticky;
++      left: 0;
++      background: white;
++      color: var(--primary);
++      box-shadow: 2px 0 0 var(--secondary);
++    }
++
++    .nutrition thead th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 1;
++    }
++
++    .nutrition tbody tr:nth-child(even) td,
++    .nutrition tbody tr:nth-child(even) th[scope="row"] {
++      background: #f5efed;
++    }
++
++    .nutrition tbody tr:last-child th,
++    .nutrition tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    .nutrition .unit {
++      display: block;
++      font-weight: normal;
++      font-size: 0.8rem;
++      opacity: 0.85;
++    }
++
++    @media (max-width: 600px) {
++      .nutrition table {
++        font-size: 0.85rem;
++      }
++
++      .nutrition th,
++      .nutrition td {
++        padding: 10px 12px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +302,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="nutrition">
++        <h3 id="nutrition-heading">Nutrition &amp; Pricing</h3>
++        <p class="table-note" id="nutrition-note">
++          Values are per standard serving. On small screens, scroll the table sideways to see every column.
++        </p>
++        <div class="table-scroll" role="region" aria-labelledby="nutrition-heading" aria-describedby="nutrition-note" tabindex="0">
++          <table>
++            <caption>Seasonal Favorites: serving size, price, and nutrition per drink</caption>
++            <thead>
++              <tr>
++                <th scope="col">Drink</th>
++                <th scope="col">Serving <span class="unit">(fl oz)</span></th>
++                <th scope="col">Price <span class="unit">(USD)</span></th>
++                <th scope="col">Calories <span class="unit">(kcal)</span></th>
++                <th scope="col">Caffeine <span class="unit">(mg)</span></th>
++                <th scope="col">Sugar <span class="unit">(g)</span></th>
++                <th scope="col">Fat <span class="unit">(g)</span></th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <th scope="row">Maple Oat Latte</th>
++                <td>12</td>
++                <td>$5.25</td>
++                <td>190</td>
++                <td>150</td>
++                <td>18</td>
++                <td>7</td>
++              </tr>
++              <tr>
++                <th scope="row">Dark Roast Espresso</th>
++                <td>2</td>
++                <td>$3.00</td>
++                <td>5</td>
++                <td>150</td>
++                <td>0</td>
++                <td>0</td>
++              </tr>
++              <tr>
++                <th scope="row">Cold Brew</th>
++                <td>16</td>
++                <td>$4.50</td>
++                <td>5</td>
++                <td>205</td>
++                <td>0</td>
++                <td>0</td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
+     </section>
+   </main>
+ 

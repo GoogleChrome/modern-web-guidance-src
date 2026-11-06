@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .feedback label {
++      display: block;
++      margin-top: 20px;
++      margin-bottom: 8px;
++      font-weight: 600;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      padding: 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      resize: vertical;
++    }
++
++    .feedback button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .feedback button:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .feedback :is(textarea, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .feedback-status,
++    .feedback-download {
++      margin-top: 15px;
++    }
++
++    .feedback progress {
++      display: block;
++      width: 100%;
++      margin-top: 8px;
++      accent-color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback card">
++      <h2>Feedback</h2>
++      <p id="feedback-hint">Write your message in any language, then detect its language right in your browser.
++        A full sentence gives more reliable results.</p>
++      <label for="feedback-message">Message</label>
++      <textarea id="feedback-message" rows="5" aria-describedby="feedback-hint"
++        placeholder="Tell us about your coffee experience…" dir="auto"></textarea>
++      <button id="detect-language" class="btn" type="button" disabled>Detect</button>
++      <div id="feedback-download" class="feedback-download" hidden>
++        <p id="download-label">Downloading language model: <span id="download-percentage">0%</span></p>
++        <progress id="download-progress" max="100" value="0" aria-labelledby="download-label"></progress>
++      </div>
++      <p id="feedback-status" class="feedback-status" role="status">Checking language detection availability…</p>
++      <noscript><p>Enable JavaScript to use language detection.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +274,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const message = document.getElementById('feedback-message');
++    const detectButton = document.getElementById('detect-language');
++    const status = document.getElementById('feedback-status');
++    const download = document.getElementById('feedback-download');
++    const progress = document.getElementById('download-progress');
++    const percentage = document.getElementById('download-percentage');
++    let modelAvailability;
++
++    async function checkLanguageDetection() {
++      if (!('LanguageDetector' in window)) {
++        status.textContent = 'Built-in language detection is not supported in this browser. Try a supported desktop browser such as Chrome or Edge.';
++        return;
++      }
++
++      try {
++        modelAvailability = await LanguageDetector.availability();
++        if (!['available', 'downloadable', 'downloading'].includes(modelAvailability)) {
++          status.textContent = 'Built-in language detection is unavailable on this device or is blocked by browser settings.';
++          return;
++        }
++        status.textContent = modelAvailability === 'available'
++          ? 'Language detection is ready.'
++          : 'Click Detect to download the language model and detect your message’s language.';
++        detectButton.disabled = false;
++      } catch {
++        status.textContent = 'Could not check language detection availability. Reload the page to try again.';
++      }
++    }
++
++    message.addEventListener('input', () => {
++      if (!detectButton.disabled) status.textContent = '';
++    });
++
++    detectButton.addEventListener('click', async () => {
++      const text = message.value.trim();
++      if (!text) {
++        status.textContent = 'Enter a message before detecting its language.';
++        message.focus();
++        return;
++      }
++
++      detectButton.disabled = true;
++      message.readOnly = true;
++      progress.value = 0;
++      percentage.textContent = '0%';
++      download.hidden = modelAvailability === 'available';
++      status.textContent = 'Preparing language detection…';
++      let detector;
++
++      try {
++        // Start creation directly from the click to preserve user activation.
++        detector = await LanguageDetector.create({
++          monitor(monitor) {
++            monitor.addEventListener('downloadprogress', (event) => {
++              const percent = Math.round(Math.min(1, Math.max(0, event.loaded)) * 100);
++              download.hidden = false;
++              progress.value = percent;
++              percentage.textContent = `${percent}%`;
++            });
++          },
++        });
++        modelAvailability = 'available';
++        download.hidden = true;
++        status.textContent = 'Detecting language…';
++        const [result] = await detector.detect(text);
++        if (!result || result.detectedLanguage === 'und' || !Number.isFinite(result.confidence)) {
++          status.textContent = 'Could not identify a language. Try a longer message with more context.';
++          return;
++        }
++
++        const languageName = new Intl.DisplayNames(['en'], { type: 'language' })
++          .of(result.detectedLanguage);
++        const confidence = new Intl.NumberFormat('en', {
++          style: 'percent', maximumFractionDigits: 1,
++        }).format(result.confidence);
++        status.textContent = `Language: ${languageName}. AI confidence: ${confidence}.`;
++      } catch {
++        status.textContent = 'Language detection failed. Check your connection and browser settings, then click Detect to try again.';
++      } finally {
++        detector?.destroy();
++        download.hidden = true;
++        message.readOnly = false;
++        detectButton.disabled = false;
++      }
++    });
++
++    checkLanguageDetection();
++  </script>
++
+ </body>
+ 
+ </html>

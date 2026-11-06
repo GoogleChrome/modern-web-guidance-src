@@ -1,0 +1,764 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..d49e36d
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,48 @@
++# The Daily Grind
++
++Static marketing homepage. Serve locally with `pnpm start` (statikk on port 11222).
++
++## Client-side performance monitoring
++
++`perf-monitor.js` (loaded at the bottom of `index.html`) measures how long user
++interactions take to render **new contentful updates** on screen. It is scoped to
++the elements marked with `data-perf`:
++
++| `data-perf` value | Element |
++| ----------------- | ------- |
++| `nav`             | the navigation bar (every link, plus the logo) |
++| `order-now`       | the hero "Order Now" button |
++| `seasonal-card`   | each "Seasonal Favorites" card (label = card heading / button text) |
++
++It also tracks **client-side view navigations** (`history.pushState` /
++`replaceState`, `popstate`, `hashchange`, Navigation API), using the browser's
++native Soft Navigations API when available and a heuristic fallback otherwise.
++
++### Entry types
++
++| `type`                        | Source              | `duration` means |
++| ----------------------------- | ------------------- | ---------------- |
++| `next-paint`                  | Event Timing API    | input → next paint (with `inputDelay`, `processingTime`, `presentationDelay`) |
++| `interaction`                 | heuristic           | input → first frame that paints new text/media added to the DOM |
++| `soft-navigation`             | native or heuristic | triggering input (or URL change) → contentful paint of the new view |
++| `interaction-contentful-paint`| native              | per-element contentful paint after a soft navigation |
++
++`outcome` on heuristic entries is one of `contentful-paint`, `timeout` (no new
++content within `data-perf-timeout` ms), `superseded` (another interaction
++started first) or `page-unload` (a full-page navigation happened instead, which
++is what the nav links do today).
++
++### Where the data goes
++
++* **DevTools** – every entry is a User Timing measure named `dg:<type>:<component>`
++  (Performance panel → Timings), with the full record in `detail`.
++* **In page** – `window.dgPerf.entries` holds the buffer; `window.dgPerf.summary()`
++  prints p50/p75/max per metric; `window.dgPerf.onEntry(fn)` streams entries.
++* **Collector** – set `data-perf-endpoint="https://…"` on the script tag and the
++  buffered entries are POSTed as JSON via `sendBeacon` whenever the page is
++  hidden or unloaded (`window.dgPerf.flush()` sends on demand).
++* **Console** – add `data-perf-debug="true"` or open the page with `?perfdebug`.
++
++If a future client-side view updates content in a way the mutation heuristic
++cannot see, call `window.dgPerf.contentUpdated()` right after mutating the DOM,
++or mark the view container with `data-perf-view`.
+diff --git a/index.html b/index.html
+index 66c9173..40a92e2 100644
+--- a/index.html
++++ b/index.html
+@@ -157,7 +157,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf="nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +171,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +207,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Client-side performance monitoring: measures input -> next contentful paint for
++    elements marked data-perf (nav, Order Now, Seasonal Favorites cards) and for
++    client-side view navigations. See perf-monitor.js. Set data-perf-endpoint to a
++    collector URL to beacon results; add ?perfdebug to the URL to log to the console.
++  -->
++  <script src="perf-monitor.js" data-perf-endpoint="" data-perf-timeout="5000"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..ea4fd73
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,647 @@
++/*!
++ * The Daily Grind – client-side performance monitor
++ *
++ * Measures how long user interactions take to put *new contentful* pixels on
++ * screen, for the elements marked with a `data-perf="<component>"` attribute
++ * (navigation bar, "Order Now" button, "Seasonal Favorites" cards) and for
++ * client-side (soft) view navigations.
++ *
++ * Three complementary signals are recorded:
++ *
++ *  1. `next-paint`       – Event Timing API. Browser-reported input delay,
++ *                          processing time and presentation delay for each
++ *                          interaction on a tracked element (the same data
++ *                          that feeds Interaction to Next Paint).
++ *  2. `interaction`      – Input -> next *contentful* paint. A MutationObserver
++ *                          watches for DOM changes that add visible text/media
++ *                          after an interaction; the time of the frame that
++ *                          paints them is captured with rAF + setTimeout(0).
++ *  3. `soft-navigation`  – Client-side view navigations. Uses the native Soft
++ *                          Navigations API (`soft-navigation` and
++ *                          `interaction-contentful-paint` entries) where the
++ *                          browser supports it, otherwise falls back to
++ *                          instrumenting history.pushState/replaceState,
++ *                          popstate and hashchange and reusing signal (2).
++ *
++ * Every record is also exposed as a User Timing measure (`dg:*`) so it shows
++ * up in the DevTools Performance panel, is buffered in `window.dgPerf.entries`,
++ * and (optionally) beaconed to the URL in `data-perf-endpoint` when the page is
++ * hidden or unloaded.
++ *
++ * Script tag options:
++ *   data-perf-endpoint="https://collector.example/perf"  POST JSON via sendBeacon
++ *   data-perf-debug="true"   (or `?perfdebug` in the URL)   log entries to console
++ *   data-perf-timeout="5000" ms to wait for a contentful update before giving up
++ *
++ * Apps that update content in a way the heuristic cannot see can call
++ * `window.dgPerf.contentUpdated()` right after they mutate the DOM.
++ */
++(() => {
++  'use strict';
++
++  if (
++    typeof window === 'undefined' ||
++    !('performance' in window) ||
++    typeof PerformanceObserver === 'undefined' ||
++    typeof MutationObserver === 'undefined'
++  ) {
++    return;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Configuration
++  // ---------------------------------------------------------------------------
++  const script = document.currentScript;
++  const dataset = (script && script.dataset) || {};
++  const query = new URLSearchParams(location.search);
++
++  const CONFIG = Object.freeze({
++    endpoint: dataset.perfEndpoint || '',
++    debug: dataset.perfDebug === 'true' || query.has('perfdebug'),
++    contentfulTimeoutMs: Number(dataset.perfTimeout) || 5000,
++    // pointerdown -> click on the same element within this window is one gesture
++    sameGestureWindowMs: 1000,
++    // a URL change this soon after an interaction is attributed to it
++    navigationAttributionWindowMs: 1000,
++    maxBufferedEntries: 500,
++  });
++
++  const MEASURE_PREFIX = 'dg:';
++  const SUPPORTED = PerformanceObserver.supportedEntryTypes || [];
++  const SESSION_ID =
++    (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
++    Math.random().toString(36).slice(2);
++
++  const now = () => performance.now();
++  const round = (n) => (typeof n === 'number' && isFinite(n) ? Math.round(n * 100) / 100 : null);
++
++  // ---------------------------------------------------------------------------
++  // Entry buffer, User Timing bridge, reporting
++  // ---------------------------------------------------------------------------
++  const entries = [];
++  const listeners = new Set();
++  let unsentFrom = 0;
++
++  function record(entry) {
++    entry.ts = Date.now();
++    entry.page = location.pathname + location.search + location.hash;
++    entries.push(entry);
++    if (entries.length > CONFIG.maxBufferedEntries) {
++      entries.splice(0, entries.length - CONFIG.maxBufferedEntries);
++      unsentFrom = Math.max(0, unsentFrom - 1);
++    }
++
++    // Surface in DevTools (Performance panel -> Timings) via User Timing.
++    try {
++      const start = Math.max(0, entry.startTime || 0);
++      const end = start + Math.max(0, entry.duration || 0);
++      const name = `${MEASURE_PREFIX}${entry.type}${entry.component ? ':' + entry.component : ''}`;
++      performance.measure(name, { start, end, detail: entry });
++    } catch (_) {
++      /* User Timing L3 options unsupported – not critical */
++    }
++
++    if (CONFIG.debug) {
++      // eslint-disable-next-line no-console
++      console.debug('[dg-perf]', entry.type, entry.component || entry.to || '', entry.duration, entry);
++    }
++    listeners.forEach((fn) => {
++      try {
++        fn(entry);
++      } catch (_) {
++        /* listener errors must never break the page */
++      }
++    });
++  }
++
++  function buildPayload(list) {
++    const nav = performance.getEntriesByType('navigation')[0];
++    const conn = navigator.connection || {};
++    return {
++      site: 'daily-grind',
++      sessionId: SESSION_ID,
++      url: location.href,
++      referrer: document.referrer || null,
++      navigationType: nav ? nav.type : null,
++      userAgent: navigator.userAgent,
++      connection: {
++        effectiveType: conn.effectiveType || null,
++        rtt: conn.rtt == null ? null : conn.rtt,
++        downlink: conn.downlink == null ? null : conn.downlink,
++        saveData: !!conn.saveData,
++      },
++      deviceMemory: navigator.deviceMemory || null,
++      hardwareConcurrency: navigator.hardwareConcurrency || null,
++      sentAt: Date.now(),
++      entries: list,
++    };
++  }
++
++  function flush() {
++    if (!CONFIG.endpoint || unsentFrom >= entries.length) return false;
++    const batch = entries.slice(unsentFrom);
++    unsentFrom = entries.length;
++    const body = JSON.stringify(buildPayload(batch));
++    try {
++      if (navigator.sendBeacon && navigator.sendBeacon(CONFIG.endpoint, body)) return true;
++    } catch (_) {
++      /* fall through to fetch */
++    }
++    try {
++      fetch(CONFIG.endpoint, {
++        method: 'POST',
++        body,
++        keepalive: true,
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'omit',
++      }).catch(() => {});
++      return true;
++    } catch (_) {
++      return false;
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Attribution: which tracked component did the user interact with?
++  // ---------------------------------------------------------------------------
++  function toElement(node) {
++    if (!node) return null;
++    return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
++  }
++
++  function attribute(node) {
++    const el = toElement(node);
++    const tracked = el && el.closest && el.closest('[data-perf]');
++    if (!tracked) return null;
++
++    const control = el.closest('a, button, [role="button"]');
++    const controlInside = control && tracked.contains(control) ? control : null;
++    const heading = tracked.querySelector('h1, h2, h3, h4');
++    const label =
++      tracked.dataset.perfLabel ||
++      (controlInside && controlInside.textContent) ||
++      (heading && heading.textContent) ||
++      el.textContent ||
++      '';
++
++    return {
++      component: tracked.dataset.perf,
++      label: label.replace(/\s+/g, ' ').trim().slice(0, 60),
++      href: controlInside ? controlInside.getAttribute('href') : null,
++    };
++  }
++
++  // ---------------------------------------------------------------------------
++  // Paint helpers
++  // ---------------------------------------------------------------------------
++  // rAF fires just before the next frame is rendered; a 0ms timeout queued from
++  // inside it runs right after that frame has been presented. This is the usual
++  // approximation of "time of next paint" where there is no native entry.
++  function afterNextPaint(cb) {
++    requestAnimationFrame(() => setTimeout(() => cb(now()), 0));
++  }
++
++  // ---------------------------------------------------------------------------
++  // Pending interaction / navigation state
++  // ---------------------------------------------------------------------------
++  let pendingInteraction = null;
++  let pendingNavigation = null;
++  let lastInteraction = null;
++  let lastContentfulPaint = null; // { time, byInteractionId }
++  let interactionSeq = 0;
++  let navigationSeq = 0;
++  let currentUrl = location.href;
++
++  const NATIVE_SOFT_NAV =
++    SUPPORTED.includes('soft-navigation') && SUPPORTED.includes('interaction-contentful-paint');
++
++  function finalize(p, outcome) {
++    if (!p || p.done) return;
++    p.done = true;
++    clearTimeout(p.timer);
++    if (pendingInteraction === p) pendingInteraction = null;
++    if (pendingNavigation === p) pendingNavigation = null;
++
++    const end = p.contentfulPaintTime;
++    const base = {
++      type: p.type,
++      source: 'heuristic',
++      outcome, // contentful-paint | timeout | superseded | page-unload
++      startTime: round(p.startTime),
++      // input (or URL change) -> frame that painted the new content
++      duration: end != null ? round(end - p.startTime) : null,
++      // input -> DOM mutation that introduced the new content
++      timeToDomUpdate: p.mutationTime != null ? round(p.mutationTime - p.startTime) : null,
++      contentfulReason: p.reason || null,
++      waitedMs: end == null ? round(now() - p.startTime) : null,
++    };
++
++    if (p.type === 'interaction') {
++      record(
++        Object.assign(base, {
++          interactionId: p.id,
++          inputType: p.inputType,
++          events: p.events.slice(),
++          component: p.component,
++          label: p.label,
++          href: p.href,
++        })
++      );
++    } else {
++      record(
++        Object.assign(base, {
++          navigationId: p.id,
++          trigger: p.trigger,
++          from: p.from,
++          to: p.to,
++          urlChangeTime: round(p.urlChangeTime),
++          urlChangeDelay: round(p.urlChangeTime - p.startTime),
++          triggeredBy: p.triggeredBy,
++          component: p.component || null,
++          label: p.label || null,
++        })
++      );
++    }
++  }
++
++  // Called when the heuristic (or the app) sees new content hit the DOM.
++  function onContentfulUpdate(reason) {
++    const targets = [pendingInteraction, pendingNavigation].filter((p) => p && !p.paintScheduled);
++    if (!targets.length) return;
++    const mutationTime = now();
++    targets.forEach((p) => {
++      p.paintScheduled = true;
++      p.mutationTime = mutationTime;
++      p.reason = reason;
++    });
++    afterNextPaint((paintTime) => {
++      lastContentfulPaint = {
++        time: paintTime,
++        byInteractionId: pendingInteraction ? pendingInteraction.id : lastInteraction && lastInteraction.id,
++      };
++      targets.forEach((p) => {
++        p.contentfulPaintTime = paintTime;
++        finalize(p, 'contentful-paint');
++      });
++    });
++  }
++
++  // ---------------------------------------------------------------------------
++  // 1. Event Timing – input -> next paint (browser reported)
++  // ---------------------------------------------------------------------------
++  const INTERACTION_EVENTS = new Set(['pointerdown', 'pointerup', 'click', 'keydown', 'keyup']);
++
++  if (SUPPORTED.includes('event')) {
++    try {
++      new PerformanceObserver((list) => {
++        for (const e of list.getEntries()) {
++          const isInteraction = e.interactionId ? e.interactionId > 0 : INTERACTION_EVENTS.has(e.name);
++          if (!isInteraction) continue;
++          const attr = attribute(e.target);
++          if (!attr) continue;
++          record({
++            type: 'next-paint',
++            source: 'event-timing',
++            eventType: e.name,
++            browserInteractionId: e.interactionId || null,
++            component: attr.component,
++            label: attr.label,
++            href: attr.href,
++            startTime: round(e.startTime),
++            duration: round(e.duration), // input -> next paint
++            inputDelay: round(e.processingStart - e.startTime),
++            processingTime: round(e.processingEnd - e.processingStart),
++            presentationDelay: round(e.startTime + e.duration - e.processingEnd),
++          });
++        }
++      }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
++    } catch (_) {
++      /* older Event Timing implementation – ignore */
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // 2. Interaction -> next contentful paint (heuristic)
++  // ---------------------------------------------------------------------------
++  function startInteraction(event) {
++    const attr = attribute(event.target);
++    if (!attr) return;
++    const start = event.timeStamp; // same clock as performance.now()
++
++    const p = pendingInteraction;
++    if (
++      p &&
++      p.component === attr.component &&
++      p.label === attr.label &&
++      start - p.startTime < CONFIG.sameGestureWindowMs
++    ) {
++      // pointerdown -> pointerup -> click of the same gesture: keep the first start.
++      p.events.push(event.type);
++      return;
++    }
++    if (p) finalize(p, 'superseded');
++
++    const next = {
++      type: 'interaction',
++      id: ++interactionSeq,
++      inputType: event.type.startsWith('key') ? 'keyboard' : 'pointer',
++      events: [event.type],
++      startTime: start,
++      component: attr.component,
++      label: attr.label,
++      href: attr.href,
++      timer: null,
++    };
++    next.timer = setTimeout(() => finalize(next, 'timeout'), CONFIG.contentfulTimeoutMs);
++    pendingInteraction = next;
++    lastInteraction = next;
++  }
++
++  const ACTIVATION_KEYS = new Set(['Enter', ' ', 'Spacebar']);
++  document.addEventListener('pointerdown', startInteraction, { capture: true, passive: true });
++  document.addEventListener('click', startInteraction, { capture: true, passive: true });
++  document.addEventListener(
++    'keydown',
++    (event) => {
++      if (ACTIVATION_KEYS.has(event.key)) startInteraction(event);
++    },
++    { capture: true, passive: true }
++  );
++
++  // --- Contentful mutation detection -----------------------------------------
++  const MEDIA_TAG = /^(IMG|PICTURE|VIDEO|CANVAS|SVG)$/i;
++  const NON_RENDERING = 'script, style, template, noscript, link, meta, title, [data-perf-ignore]';
++  const HIDDEN_HINT = /display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0(?![.\d])|\b(hidden|is-hidden|d-none|invisible|sr-only|collapsed|inactive)\b/i;
++
++  const hasText = (node) => /\S/.test(node.textContent || '');
++  const isRendered = (el) => !!(el && el.getClientRects && el.getClientRects().length);
++
++  function elementIsContentful(el) {
++    if (!isRendered(el)) return false;
++    if (MEDIA_TAG.test(el.tagName)) {
++      // An image only paints content once it has pixels; wait for it if needed.
++      if (el.tagName === 'IMG' && !(el.complete && el.naturalWidth > 0)) {
++        el.addEventListener('load', () => onContentfulUpdate('image-load'), { once: true });
++        return false;
++      }
++      return true;
++    }
++    if (el.querySelector('img, picture, video, canvas, svg')) return true;
++    return hasText(el);
++  }
++
++  function nodeIsContentful(node) {
++    if (node.nodeType === Node.TEXT_NODE) {
++      return /\S/.test(node.data) && isRendered(node.parentElement) && !node.parentElement.closest(NON_RENDERING);
++    }
++    if (node.nodeType !== Node.ELEMENT_NODE) return false;
++    if (node.closest(NON_RENDERING)) return false;
++    return elementIsContentful(node);
++  }
++
++  function mutationIsContentful(m) {
++    const target = m.target;
++    switch (m.type) {
++      case 'childList':
++        for (const n of m.addedNodes) if (nodeIsContentful(n)) return 'node-added';
++        return null;
++
++      case 'characterData': {
++        const parent = target.parentElement;
++        if (!parent || parent.closest(NON_RENDERING)) return null;
++        return /\S/.test(target.data) && target.data !== m.oldValue && isRendered(parent) ? 'text-changed' : null;
++      }
++
++      case 'attributes': {
++        if (target.nodeType !== Node.ELEMENT_NODE || target.closest(NON_RENDERING)) return null;
++        const name = m.attributeName;
++        const value = target.getAttribute(name);
++        if (value === m.oldValue) return null;
++
++        if (name === 'src' || name === 'srcset' || name === 'poster') {
++          return MEDIA_TAG.test(target.tagName) && elementIsContentful(target) ? 'media-source' : null;
++        }
++        if (name === 'hidden' || name === 'aria-hidden' || name === 'open') {
++          const nowShown = name === 'open' ? value !== null : value === null || value === 'false';
++          return nowShown && m.oldValue !== value && elementIsContentful(target) ? 'revealed' : null;
++        }
++        // class / style: only count it when the previous value looks like it was
++        // hiding the element (or the app marks it as a view), so purely cosmetic
++        // toggles such as an "active" link highlight are not mistaken for content.
++        if (name === 'class' || name === 'style') {
++          const wasHidden = HIDDEN_HINT.test(m.oldValue || '') && !HIDDEN_HINT.test(value || '');
++          const isView = target.hasAttribute('data-perf-view');
++          return (wasHidden || isView) && elementIsContentful(target) ? 'revealed' : null;
++        }
++        return null;
++      }
++      default:
++        return null;
++    }
++  }
++
++  const mutationObserver = new MutationObserver((mutations) => {
++    if (!pendingInteraction && !pendingNavigation) return;
++    for (const m of mutations) {
++      const reason = mutationIsContentful(m);
++      if (reason) {
++        onContentfulUpdate(reason);
++        return;
++      }
++    }
++  });
++
++  mutationObserver.observe(document.documentElement, {
++    subtree: true,
++    childList: true,
++    characterData: true,
++    characterDataOldValue: true,
++    attributes: true,
++    attributeOldValue: true,
++    attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'open', 'src', 'srcset', 'poster'],
++  });
++
++  // ---------------------------------------------------------------------------
++  // 3. Client-side (soft) view navigations
++  // ---------------------------------------------------------------------------
++  if (NATIVE_SOFT_NAV) {
++    try {
++      new PerformanceObserver((list) => {
++        for (const e of list.getEntries()) {
++          record({
++            type: 'soft-navigation',
++            source: 'soft-navigation-api',
++            outcome: 'complete',
++            navigationId: e.navigationId || null,
++            to: e.name,
++            startTime: round(e.startTime),
++            duration: round(e.duration),
++            triggeredBy: lastInteraction
++              ? { interactionId: lastInteraction.id, component: lastInteraction.component, label: lastInteraction.label }
++              : null,
++          });
++        }
++      }).observe({ type: 'soft-navigation', buffered: true });
++
++      new PerformanceObserver((list) => {
++        for (const e of list.getEntries()) {
++          const attr = attribute(e.element);
++          record({
++            type: 'interaction-contentful-paint',
++            source: 'soft-navigation-api',
++            navigationId: e.navigationId || null,
++            startTime: round(e.startTime),
++            duration: 0,
++            renderTime: round(e.renderTime || e.startTime),
++            size: e.size || null,
++            element: e.element ? e.element.tagName.toLowerCase() : null,
++            component: attr ? attr.component : null,
++            url: e.url || null,
++          });
++        }
++      }).observe({ type: 'interaction-contentful-paint', buffered: true, includeSoftNavigationObservations: true });
++    } catch (_) {
++      /* ignore – fallback below still runs if needed */
++    }
++  }
++
++  function onUrlChange(trigger) {
++    const to = location.href;
++    if (to === currentUrl) return; // replaceState with the same URL, duplicate hashchange, etc.
++    const from = currentUrl;
++    currentUrl = to;
++
++    // When the browser reports soft navigations natively we only need to track the URL.
++    if (NATIVE_SOFT_NAV) return;
++
++    if (pendingNavigation) finalize(pendingNavigation, 'superseded');
++
++    const t = now();
++    const li = lastInteraction;
++    const attributed = li && t - li.startTime < CONFIG.navigationAttributionWindowMs;
++
++    const nav = {
++      type: 'soft-navigation',
++      id: ++navigationSeq,
++      trigger,
++      from,
++      to,
++      // Soft navigations are measured from the user input that caused them.
++      startTime: attributed ? li.startTime : t,
++      urlChangeTime: t,
++      triggeredBy: attributed ? { interactionId: li.id, component: li.component, label: li.label } : null,
++      component: attributed ? li.component : null,
++      label: attributed ? li.label : null,
++      timer: null,
++    };
++
++    // The app may have rendered the new view *before* updating the URL.
++    if (
++      attributed &&
++      lastContentfulPaint &&
++      lastContentfulPaint.byInteractionId === li.id &&
++      lastContentfulPaint.time >= li.startTime
++    ) {
++      nav.mutationTime = li.mutationTime;
++      nav.reason = li.reason;
++      nav.contentfulPaintTime = lastContentfulPaint.time;
++      finalize(nav, 'contentful-paint');
++      return;
++    }
++
++    nav.timer = setTimeout(() => finalize(nav, 'timeout'), CONFIG.contentfulTimeoutMs);
++    pendingNavigation = nav;
++  }
++
++  ['pushState', 'replaceState'].forEach((method) => {
++    const original = history[method];
++    if (typeof original !== 'function') return;
++    history[method] = function patchedHistoryMethod() {
++      const result = original.apply(this, arguments);
++      onUrlChange(method);
++      return result;
++    };
++  });
++  window.addEventListener('popstate', () => onUrlChange('popstate'));
++  window.addEventListener('hashchange', () => onUrlChange('hashchange'));
++  if (window.navigation && typeof window.navigation.addEventListener === 'function') {
++    window.navigation.addEventListener('navigatesuccess', () => onUrlChange('navigation-api'));
++  }
++
++  // ---------------------------------------------------------------------------
++  // Lifecycle: flush when the page goes away
++  // ---------------------------------------------------------------------------
++  function onHide() {
++    // Full-page navigations (e.g. nav links today) never produce a contentful
++    // update in this document – close them out so they are still reported.
++    if (pendingInteraction) finalize(pendingInteraction, 'page-unload');
++    if (pendingNavigation) finalize(pendingNavigation, 'page-unload');
++    flush();
++  }
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') onHide();
++  });
++  window.addEventListener('pagehide', onHide);
++
++  // ---------------------------------------------------------------------------
++  // Public API
++  // ---------------------------------------------------------------------------
++  function percentile(sorted, p) {
++    if (!sorted.length) return null;
++    const idx = Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1);
++    return sorted[Math.max(0, idx)];
++  }
++
++  function summary() {
++    const groups = new Map();
++    for (const e of entries) {
++      if (e.duration == null) continue;
++      const key = `${e.type} | ${e.component || e.to || '-'}`;
++      if (!groups.has(key)) groups.set(key, []);
++      groups.get(key).push(e.duration);
++    }
++    const rows = [];
++    for (const [key, durations] of groups) {
++      const sorted = durations.slice().sort((a, b) => a - b);
++      rows.push({
++        metric: key,
++        count: sorted.length,
++        p50_ms: round(percentile(sorted, 50)),
++        p75_ms: round(percentile(sorted, 75)),
++        max_ms: round(sorted[sorted.length - 1]),
++      });
++    }
++    if (CONFIG.debug || rows.length) {
++      // eslint-disable-next-line no-console
++      console.table(rows);
++    }
++    return rows;
++  }
++
++  window.dgPerf = Object.freeze({
++    config: CONFIG,
++    entries,
++    supports: Object.freeze({
++      eventTiming: SUPPORTED.includes('event'),
++      softNavigationApi: NATIVE_SOFT_NAV,
++    }),
++    onEntry(fn) {
++      listeners.add(fn);
++      return () => listeners.delete(fn);
++    },
++    contentUpdated() {
++      onContentfulUpdate('app-signal');
++    },
++    summary,
++    flush,
++  });
++
++  if (CONFIG.debug) {
++    // eslint-disable-next-line no-console
++    console.info('[dg-perf] monitoring active', {
++      endpoint: CONFIG.endpoint || '(none – entries kept in window.dgPerf.entries)',
++      eventTiming: SUPPORTED.includes('event'),
++      softNavigationApi: NATIVE_SOFT_NAV,
++    });
++  }
++})();

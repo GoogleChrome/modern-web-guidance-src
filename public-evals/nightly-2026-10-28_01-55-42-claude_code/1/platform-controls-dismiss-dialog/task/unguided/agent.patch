@@ -1,0 +1,327 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,131 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: 0;
+       border-radius: 5px;
+       margin-top: 15px;
++      font: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible,
++    .dialog-close:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Drink detail dialogs */
++    .drink-dialog {
++      border: 0;
++      border-radius: 12px;
++      padding: 0;
++      width: min(520px, calc(100vw - 2rem));
++      max-height: calc(100dvh - 2rem);
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      overflow: hidden;
++    }
++
++    .drink-dialog::backdrop {
++      background: rgba(62, 39, 35, 0.6);
++    }
++
++    .drink-dialog[open] {
++      animation: dialog-in 0.2s ease-out;
++    }
++
++    @keyframes dialog-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drink-dialog[open] {
++        animation: none;
++      }
++    }
++
++    .dialog-content {
++      display: flex;
++      flex-direction: column;
++      max-height: calc(100dvh - 2rem);
++      overflow: auto;
++    }
++
++    .dialog-image {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
++    .dialog-body {
++      padding: 20px 24px 24px;
++    }
++
++    .dialog-body h2 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 8px;
++      padding-right: 40px;
++    }
++
++    .dialog-body p {
++      margin-bottom: 12px;
++    }
++
++    .dialog-meta {
++      list-style: none;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 20px;
++      margin: 12px 0 4px;
++      font-size: 0.9rem;
++    }
++
++    .dialog-meta strong {
++      color: var(--primary);
++    }
++
++    .dialog-close {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 40px;
++      height: 40px;
++      border: 0;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--primary);
++      font-size: 1.6rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .dialog-close:hover {
++      background: white;
++    }
++
++    /* Keep the page from scrolling behind an open dialog */
++    body:has(dialog[open]) {
++      overflow: hidden;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +294,98 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="dialog-maple-oat-latte" data-fallback-href="/menu/seasonal"
++            aria-haspopup="dialog">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="dialog-dark-roast-espresso" data-fallback-href="/menu/espresso"
++            aria-haspopup="dialog">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="dialog-cold-brew" data-fallback-href="/menu/cold-brew"
++            aria-haspopup="dialog">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Drink detail dialogs -->
++  <dialog id="dialog-maple-oat-latte" class="drink-dialog" aria-labelledby="dialog-maple-oat-latte-title"
++    aria-describedby="dialog-maple-oat-latte-desc" closedby="any">
++    <div class="dialog-content">
++      <form method="dialog">
++        <button type="submit" class="dialog-close" aria-label="Close Maple Oat Latte details" autofocus>&times;</button>
++      </form>
++      <img class="dialog-image" width="800" height="450" loading="lazy"
++        src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++        alt="A latte in a white cup with leaf-shaped latte art on a wooden table">
++      <div class="dialog-body">
++        <h2 id="dialog-maple-oat-latte-title">Maple Oat Latte</h2>
++        <p id="dialog-maple-oat-latte-desc">Our double-shot espresso meets silky steamed oat milk and a drizzle of
++          pure Vermont maple syrup, finished with a dusting of cinnamon. Cozy, lightly sweet, and dairy-free.</p>
++        <ul class="dialog-meta">
++          <li><strong>Size:</strong> 12 oz / 16 oz</li>
++          <li><strong>Price:</strong> from $5.25</li>
++          <li><strong>Available:</strong> through December</li>
++        </ul>
++        <a href="/menu/seasonal" class="btn">Order Maple Oat Latte</a>
++      </div>
++    </div>
++  </dialog>
++
++  <dialog id="dialog-dark-roast-espresso" class="drink-dialog" aria-labelledby="dialog-dark-roast-espresso-title"
++    aria-describedby="dialog-dark-roast-espresso-desc" closedby="any">
++    <div class="dialog-content">
++      <form method="dialog">
++        <button type="submit" class="dialog-close" aria-label="Close Dark Roast Espresso details"
++          autofocus>&times;</button>
++      </form>
++      <img class="dialog-image" width="800" height="450" loading="lazy"
++        src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++        alt="A small cup of dark espresso with rich crema on a saucer">
++      <div class="dialog-body">
++        <h2 id="dialog-dark-roast-espresso-title">Dark Roast Espresso</h2>
++        <p id="dialog-dark-roast-espresso-desc">A deep, smoky blend of Sumatran and Brazilian beans roasted in-house to
++          a glossy dark finish. Expect notes of bittersweet chocolate, toasted nuts, and a long, bold finish.</p>
++        <ul class="dialog-meta">
++          <li><strong>Size:</strong> single / double shot</li>
++          <li><strong>Price:</strong> from $3.00</li>
++          <li><strong>Roast:</strong> dark</li>
++        </ul>
++        <a href="/menu/espresso" class="btn">Order Dark Roast Espresso</a>
++      </div>
++    </div>
++  </dialog>
++
++  <dialog id="dialog-cold-brew" class="drink-dialog" aria-labelledby="dialog-cold-brew-title"
++    aria-describedby="dialog-cold-brew-desc" closedby="any">
++    <div class="dialog-content">
++      <form method="dialog">
++        <button type="submit" class="dialog-close" aria-label="Close Cold Brew details" autofocus>&times;</button>
++      </form>
++      <img class="dialog-image" width="800" height="450" loading="lazy"
++        src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=80"
++        alt="A tall glass of iced cold brew coffee with ice cubes">
++      <div class="dialog-body">
++        <h2 id="dialog-cold-brew-title">Cold Brew</h2>
++        <p id="dialog-cold-brew-desc">Coarse-ground single-origin Colombian beans steeped in cold filtered water for a
++          full 18 hours. Naturally sweet, low in acidity, and incredibly smooth over ice.</p>
++        <ul class="dialog-meta">
++          <li><strong>Size:</strong> 16 oz / 20 oz</li>
++          <li><strong>Price:</strong> from $4.50</li>
++          <li><strong>Caffeine:</strong> high</li>
++        </ul>
++        <a href="/menu/cold-brew" class="btn">Order Cold Brew</a>
++      </div>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +394,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // True while we own a history entry pushed for the currently open dialog.
++      var ownsHistoryEntry = false;
++
++      // If the page is reloaded while a dialog's history entry is current, the
++      // dialog is no longer open, so neutralise the stale entry.
++      if (history.state && history.state.dailyGrindDialog) {
++        history.replaceState(null, '');
++      }
++
++      function openDialog(dialog) {
++        if (dialog.open) {
++          return;
++        }
++        dialog.showModal();
++        // Push a history entry so the platform back control (Android back
++        // gesture/button, iOS swipe-back, browser Back) closes the dialog
++        // instead of leaving the page.
++        try {
++          history.pushState({ dailyGrindDialog: dialog.id }, '');
++          ownsHistoryEntry = true;
++        } catch (err) {
++          ownsHistoryEntry = false;
++        }
++      }
++
++      function onDialogClosed() {
++        // Dialog closed by Escape, the close button, or a backdrop click:
++        // drop the history entry we pushed so Back doesn't need two presses.
++        if (ownsHistoryEntry) {
++          ownsHistoryEntry = false;
++          history.back();
++        }
++      }
++
++      window.addEventListener('popstate', function () {
++        // Back navigation: close whichever dialog is open. We clear the flag
++        // first so the resulting "close" event doesn't call history.back() again.
++        var openDialogEl = document.querySelector('dialog.drink-dialog[open]');
++        ownsHistoryEntry = false;
++        if (openDialogEl) {
++          openDialogEl.close();
++        }
++      });
++
++      var triggers = document.querySelectorAll('[data-dialog]');
++      Array.prototype.forEach.call(triggers, function (trigger) {
++        var dialog = document.getElementById(trigger.getAttribute('data-dialog'));
++        var fallbackHref = trigger.getAttribute('data-fallback-href');
++
++        if (!dialog || typeof dialog.showModal !== 'function') {
++          // Very old browser without <dialog>: fall back to the menu page.
++          trigger.addEventListener('click', function () {
++            if (fallbackHref) {
++              window.location.href = fallbackHref;
++            }
++          });
++          return;
++        }
++
++        trigger.addEventListener('click', function () {
++          openDialog(dialog);
++        });
++      });
++
++      var dialogs = document.querySelectorAll('dialog.drink-dialog');
++      Array.prototype.forEach.call(dialogs, function (dialog) {
++        dialog.addEventListener('close', onDialogClosed);
++
++        // Light dismiss on backdrop click for browsers that ignore closedby="any".
++        dialog.addEventListener('click', function (event) {
++          if (event.target === dialog) {
++            dialog.close();
++          }
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,44 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,39 @@
++# Site audit and optimization
++
++Reviewed the complete repository: one HTML page, its inline styles, navigation, image delivery, metadata, dependencies, startup command, and publishing boundary. No backend, authentication, ordering system, database, or existing tests were present.
++
++## Findings and changes
++
++| Area | Finding | Resolution |
++| --- | --- | --- |
++| Navigation | All 13 route links referenced pages absent from the repository. | Replaced links with real section destinations; drink information uses native keyboard-operable disclosures. Removed unsupported account/logout, rewards, location, contact, careers, and ordering links. Added an explicit service-availability note. |
++| Mobile and zoom | Header could overflow; the grid had a fixed 250px minimum; fixed hero height could clip enlarged text. | Wrapping navigation, a grid minimum capped at available width, flexible hero height, responsive heading size, and wrapping long text. Header scrolls normally so it cannot obscure anchor targets or occupy most of a zoomed viewport. |
++| Accessibility | No skip link, explicit focus styling, distinct detail-control names, or deliberate touch-target sizes. | Focusable main target, visible skip link, contextual focus outlines, 44px minimum controls, semantic product list, descriptive native summaries, and ordered headings. Preserved Safari list semantics with a narrowly scoped validator exception. |
++| Text contrast | Hero depended on photo brightness; original CTA had little visual separation from dark surroundings. | A 65% black scrim ensures white text contrast even over white pixels; solid brown fallback and an amber CTA with dark text. Print and forced-color styles included. |
++| Image loading | One remote CSS image was used at every viewport size, with no early image priority. | Reused the existing stock image, hosted locally. HTML picture/source markup, 640/1280/1600px WebP candidates, JPEG fallback, explicit dimensions, and high fetch priority. Hero remains eager-loaded. |
++| SEO | Description and site icon were absent. | Added description, theme color, and a local SVG favicon. Retained language, viewport, and one clear H1. Added a noindex 404 document. |
++| Privacy | Broken privacy-policy link and a third-party image request on each load. | Added a factual website privacy section; page assets are same-origin, with no analytics, client scripts, storage, or forms. |
++| Tooling | Startup downloaded an unpinned server at runtime; no repeatable validation. | Exact development dependency versions, pnpm lockfile, HTML validation, automated browser/axe tests, and a reproducible static build. |
++| Publishing | Serving the repository root could expose package metadata and tooling files. | Build an allowlisted `dist/` directory and serve only it. Development files and asset documentation are excluded. |
++
++## Image measurements
++
++The original 1350px image URL downloaded 157,974 bytes in this environment. New WebP variants are 30,652 bytes (640px), 84,000 bytes (1280px), and 127,434 bytes (1600px). The smallest is about 81% smaller and the 1280px version about 47% smaller. Actual selection depends on viewport width and device pixel ratio. The JPEG fallback is 128,043 bytes. These are file-size measurements, not a claim about real-user load-time improvement.
++
++## Automated verification
++
++- `pnpm run check`: both HTML documents pass the recommended HTML validator rules.
++- `pnpm test`: all five Playwright tests pass using headless Chrome. Coverage includes 320/768/1440px widths, no horizontal overflow, 200% text sizing, valid link targets, successful image decoding, all native disclosures, skip-link focus, Enter/Space operation, no JavaScript exceptions or failed page requests, and no third-party page requests.
++- axe-core reports no violations of its applicable WCAG A/AA rules at all three tested widths with drink disclosures expanded.
++- HTTP checks confirm all photo assets serve as images within a 150 KB per-file budget. Project metadata, source scripts, node_modules, dotfiles, and unknown paths return 404.
++- `pnpm audit --audit-level moderate`: no known vulnerabilities reported.
++- `git diff --check`: passes.
++- Lighthouse 13.0.3 against the built site, using headless Chrome and default mobile throttling: performance **100**, accessibility **100**, best practices **100**, SEO **100**. Lab FCP 0.7 seconds, LCP 1.2 seconds, CLS 0, total blocking time 0 ms. See [the recorded results](audits/lighthouse-summary.json). The first run identified a missing favicon and further image-compression savings; both were fixed before the final run.
++
++## Remaining launch requirements and limits
++
++This is a static coffee showcase. Commerce, account management, rewards, store locations, careers, and direct contact require real services or verified business details. They have not been simulated. The supplied ethical-sourcing and local-roasting claims were retained; verify business claims before publication.
++
++Set the real domain before adding canonical URLs, origin-specific sitemap entries, social-sharing image URLs, or LocalBusiness structured data. Configure production HTTPS, security headers, compression, and real 404 responses on the chosen host. The included preview server uses HTTP and does not replace production host configuration. Published assets are unversioned, so use revalidation rather than immutable caching.
++
++No manual browser or screen-reader verification was performed, as requested. Automated accessibility checks cannot establish full WCAG conformance. Lab performance results do not represent field Core Web Vitals or measure real-user INP. No analytics are installed to measure those values.

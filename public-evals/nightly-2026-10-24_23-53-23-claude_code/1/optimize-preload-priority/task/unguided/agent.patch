@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,60 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand — Watch the film</title>
++<meta name="description" content="Watch the film.">
++
++<!-- Critical resources, discovered immediately; poster (LCP) first -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++
++<style>
++@font-face{
++  font-family:"Brand";
++  src:url(brand-font.woff2) format("woff2");
++  font-display:swap;
++}
++/* Secondary font: only fetched once something uses it (enabled after load) */
++@font-face{
++  font-family:"Secondary";
++  src:url(secondary-font.woff2) format("woff2");
++  font-display:swap;
++}
++/* Metric-adjusted fallback to minimise layout shift when Brand swaps in */
++@font-face{
++  font-family:"Brand Fallback";
++  src:local("Arial");
++  size-adjust:100%;
++  ascent-override:90%;
++  descent-override:22%;
++  line-gap-override:0%;
++}
++*{margin:0;box-sizing:border-box}
++body{background:#000;color:#fff;font:16px/1.4 system-ui,sans-serif}
++h1{
++  font-family:"Brand","Brand Fallback",sans-serif;
++  font-size:clamp(1.5rem,5vw,3rem);
++  padding:1rem;
++}
++.video{display:block;width:100%;aspect-ratio:16/9;max-height:80vh;background:#000;object-fit:cover}
++.ui{padding:1rem;font-family:system-ui,sans-serif}
++.sf .ui{font-family:"Secondary",system-ui,sans-serif}
++a.cta{display:inline-block;padding:.6rem 1.2rem;border:1px solid #fff;color:#fff;text-decoration:none;border-radius:4px}
++</style>
++</head>
++<body>
++<header><h1>Brand</h1></header>
++<main>
++  <video class="video" poster="poster.jpg" width="1280" height="720" controls playsinline preload="none">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++  <p class="ui"><a class="cta" href="#">Get started</a></p>
++</main>
++<script>
++// Apply the non-critical font only after load so it never competes with LCP resources
++addEventListener("load",function(){document.documentElement.className="sf"});
++</script>
++</body>
++</html>

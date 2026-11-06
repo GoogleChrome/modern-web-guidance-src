@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+index 66c9173..a4a43a4 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,21 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!--
++    LCP: the hero photo is the Largest Contentful Paint element. Preload it
++    before the stylesheet is parsed so the request starts with the HTML.
++    imagesrcset/imagesizes MUST match the <img> below exactly so the browser
++    reuses this response instead of fetching a second candidate.
++  -->
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80 640w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=80 1024w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=80 1920w"
++    imagesizes="100vw">
++
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -72,13 +87,17 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section
++       The photo is a real <img> rather than a CSS background-image so the
++       preload scanner discovers it from the HTML, it can carry
++       fetchpriority="high", and it is a first-class LCP candidate. The
++       dark overlay is a pseudo-element layered between the image and text. */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 360px;
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +105,25 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      background-color: #3e2723; /* placeholder tone while the photo streams in */
++    }
++
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: -2;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
+     }
+ 
+     .hero h1 {
+@@ -115,6 +153,19 @@
+       text-align: center;
+     }
+ 
++    /* width/height attributes + aspect-ratio reserve space before the
++       lazy-loaded image arrives, so no layout shift (CLS). */
++    .card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++      background-color: var(--secondary);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -169,6 +220,19 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold / LCP image: eager, high priority, never lazy. -->
++    <img class="hero-img"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=80 1024w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=80 1920w"
++      sizes="100vw"
++      width="1350" height="900"
++      alt="Freshly brewed coffee being poured in a sunlit café"
++      fetchpriority="high"
++      loading="eager"
++      decoding="async">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -177,18 +241,53 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <!-- Below the fold: lazy, low priority, async decode so these never
++           compete with the hero for bandwidth or the main thread. -->
+       <div class="grid">
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&h=400&q=80"
++            srcset="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=400&h=267&q=80 400w,
++                    https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&h=400&q=80 600w,
++                    https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=800&h=533&q=80 800w"
++            sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1140px) calc((100vw - 100px) / 2), 340px"
++            width="600" height="400"
++            alt="Maple Oat Latte with leaf latte art in a glass mug"
++            loading="lazy"
++            fetchpriority="low"
++            decoding="async">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&h=400&q=80"
++            srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&h=267&q=80 400w,
++                    https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&h=400&q=80 600w,
++                    https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&h=533&q=80 800w"
++            sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1140px) calc((100vw - 100px) / 2), 340px"
++            width="600" height="400"
++            alt="Dark Roast Espresso in a white cup on a slate counter"
++            loading="lazy"
++            fetchpriority="low"
++            decoding="async">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&h=400&q=80"
++            srcset="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=400&h=267&q=80 400w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&h=400&q=80 600w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&h=533&q=80 800w"
++            sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1140px) calc((100vw - 100px) / 2), 340px"
++            width="600" height="400"
++            alt="Cold Brew over ice in a tall glass with cream swirling in"
++            loading="lazy"
++            fetchpriority="low"
++            decoding="async">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

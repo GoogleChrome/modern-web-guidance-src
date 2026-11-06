@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+index 66c9173..ea1c947 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --fs-h1: clamp(2rem, 1rem + 5vw, 4rem);
++      --fs-h2: clamp(1.5rem, 1rem + 2.5vw, 2.5rem);
+     }
+ 
+     * {
+@@ -23,6 +25,7 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
++      font-size: 1rem;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -38,10 +41,13 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
++      container-type: inline-size;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.1rem, 0.8rem + 1.5vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+@@ -49,10 +55,12 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      flex-wrap: wrap;
++      gap: 0.25rem 1.25rem;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 0;
+     }
+ 
+     nav a {
+@@ -74,7 +82,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
++      min-height: 60dvh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +94,26 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: var(--fs-h1);
++      line-height: 1.15;
+       margin-bottom: 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++      max-width: 60ch;
++      text-wrap: pretty;
++    }
++
++    h2 {
++      font-size: var(--fs-h2);
++      line-height: 1.2;
++      text-wrap: balance;
+     }
+ 
+     /* Content Sections */
+@@ -107,6 +130,50 @@
+       margin-top: 20px;
+     }
+ 
++    /* Each card adapts to its own width, not the viewport's */
++    .card-wrap {
++      container-type: inline-size;
++    }
++
++    .card-wrap > .card {
++      height: 100%;
++    }
++
++    .card-media {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 1rem;
++      background: var(--secondary);
++    }
++
++    .card-body {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    @container (min-width: 480px) {
++      .card {
++        display: grid;
++        grid-template-columns: 40% 1fr;
++        gap: 1.25rem;
++        text-align: start;
++        align-items: center;
++      }
++
++      .card-media {
++        aspect-ratio: 1;
++        margin-bottom: 0;
++      }
++
++      .card-body {
++        align-items: flex-start;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -118,6 +185,7 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 0.5rem + 4cqi, 1.5rem);
+     }
+ 
+     .btn {
+@@ -142,6 +210,14 @@
+       margin-top: 40px;
+     }
+ 
++    /* Nav collapses to a stacked layout when its container is narrow */
++    @container (max-width: 600px) {
++      nav ul {
++        width: 100%;
++        justify-content: space-between;
++      }
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -178,21 +254,27 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card-wrap"><div class="card">
++          <img class="card-media" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="Latte in a ceramic cup" width="800" height="450" loading="lazy">
++          <div class="card-body">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </div></div></div>
++        <div class="card-wrap"><div class="card">
++          <img class="card-media" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80" alt="Espresso in a dark cup" width="800" height="450" loading="lazy">
++          <div class="card-body">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </div></div></div>
++        <div class="card-wrap"><div class="card">
++          <img class="card-media" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" alt="Iced coffee in a glass" width="800" height="450" loading="lazy">
++          <div class="card-body">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </div></div></div>
+       </div>
+     </section>
+   </main>

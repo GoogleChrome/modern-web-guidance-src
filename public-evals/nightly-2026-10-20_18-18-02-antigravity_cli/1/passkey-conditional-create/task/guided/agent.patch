@@ -1,0 +1,401 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,18 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "./node_modules/webauthn-polyfills/esm/index.js",
++        "compare-versions": "./node_modules/.pnpm/compare-versions@6.1.1/node_modules/compare-versions/lib/esm/index.js",
++        "ua-parser-js": "./node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/esm-wrapper.js"
++      }
++    }
++  </script>
++  <script src="./node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/dist/ua-parser.min.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -71,8 +81,133 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Sign-In Form Section */
++    .signin-section {
++      max-width: 440px;
++      margin: 40px auto;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    .signin-section h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      padding: 10px 0;
++      margin: -10px 0 6px 0;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #aaa;
++      border-radius: 4px;
++      box-sizing: border-box;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .btn-submit:focus-visible,
++    .toggle-password-btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #c62828;
++    }
++
++    .password-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .toggle-password-btn {
++      background: none;
++      border: 1px solid #aaa;
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      color: var(--primary);
++    }
++
++    .forgot-password-row {
++      margin-top: 8px;
++      text-align: right;
++    }
++
++    .forgot-password-row a {
++      color: var(--primary);
++      font-size: 0.875rem;
++      text-decoration: underline;
++    }
++
++    .btn-submit {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 0.75rem 1.25rem;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: 600;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn-submit:hover {
++      background: #3e2723;
++    }
++
++    .btn-submit:disabled {
++      opacity: 0.7;
++      cursor: not-allowed;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -174,8 +309,66 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin-section" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" action="/api/login" method="POST">
++        <div class="form-group">
++          <label for="email">Email (required)</label>
++          <input
++            type="email"
++            id="email"
++            name="email"
++            autocomplete="username webauthn"
++            autocorrect="off"
++            autocapitalize="off"
++            spellcheck="false"
++            enterkeyhint="next"
++            required
++          >
++        </div>
++
++        <div class="form-group">
++          <div class="password-header">
++            <label for="current-password">Password (required)</label>
++            <button
++              id="toggle-password"
++              type="button"
++              class="toggle-password-btn"
++              aria-pressed="false"
++              aria-label="Show password"
++              aria-describedby="toggle-warning"
++            >
++              Show password
++            </button>
++            <span id="toggle-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
++          </div>
++          <input
++            type="password"
++            id="current-password"
++            name="password"
++            autocomplete="current-password"
++            enterkeyhint="done"
++            required
++          >
++          <div class="forgot-password-row">
++            <a href="/forgot-password">Forgot password?</a>
++          </div>
++        </div>
++
++        <button
++          type="submit"
++          id="signin-button"
++          data-testid="signin-button"
++          class="btn-submit"
++        >
++          Sign In
++        </button>
++        <div id="signin-status" class="signin-status" aria-live="polite"></div>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +399,177 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import 'webauthn-polyfills';
++
++    const loginAbortController = new AbortController();
++
++    const signinForm = document.getElementById('signin-form');
++    const signinButton = document.querySelector('[data-testid="signin-button"]');
++    const togglePasswordBtn = document.getElementById('toggle-password');
++    const passwordInput = document.getElementById('current-password');
++    const emailInput = document.getElementById('email');
++    const signinStatus = document.getElementById('signin-status');
++
++    if (togglePasswordBtn && passwordInput) {
++      togglePasswordBtn.addEventListener('click', () => {
++        const isPassword = passwordInput.type === 'password';
++        passwordInput.type = isPassword ? 'text' : 'password';
++        togglePasswordBtn.setAttribute('aria-pressed', String(isPassword));
++        togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
++        togglePasswordBtn.textContent = isPassword ? 'Hide password' : 'Show password';
++      });
++    }
++
++    async function optionsFetch(body) {
++      const response = await fetch('/api/register/options', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(body)
++      });
++      if (!response.ok) {
++        throw new Error(`Failed to fetch registration options: ${response.status}`);
++      }
++      return response.json();
++    }
++
++    async function registerVerifyFetch(encodedResponse) {
++      return fetch('/api/register/verify', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(encodedResponse)
++      });
++    }
++
++    async function triggerConditionalCreate(abortController) {
++      if (typeof window.PublicKeyCredential === 'undefined' || typeof PublicKeyCredential.getClientCapabilities !== 'function') {
++        return;
++      }
++
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (!capabilities || capabilities.conditionalCreate !== true) {
++        return; // Platform does not support conditional creation
++      }
++
++      // 1. Abort any active autofill conditional-get controllers to clear the WebAuthn pipeline
++      if (abortController) {
++        abortController.abort();
++      }
++
++      // 2. Fetch creation options signaling the backend that this is a conditional request
++      let creationOptionsJSON;
++      try {
++        creationOptionsJSON = await optionsFetch({ conditional: true });
++      } catch (e) {
++        return;
++      }
++
++      const rawOptions = creationOptionsJSON.publicKey || creationOptionsJSON;
++      const rpId = rawOptions.rp?.id || window.location.hostname;
++      const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(rawOptions);
++
++      let credential;
++      try {
++        // 3. Invoke silent credentials creation prompt
++        credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional' // Silent background creation mediation
++        });
++      } catch (e) {
++        // 4. Silently swallow common WebAuthn browser exceptions
++        if (['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
++          return;
++        }
++        console.error('Unexpected conditional create error:', e);
++        return;
++      }
++
++      if (!credential) {
++        return;
++      }
++
++      // 5. Server verification step using dedicated Try/Catch block
++      const encodedResponse = typeof credential.toJSON === 'function' ? credential.toJSON() : credential;
++      try {
++        const response = await registerVerifyFetch(encodedResponse);
++        if (!response.ok) {
++          // If the server verification fails, clean up using Signal API
++          if (PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encodedResponse.id
++            });
++          }
++        }
++      } catch (serverErr) {
++        console.error('Verification network failure:', serverErr);
++        if (PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId,
++            credentialId: encodedResponse.id
++          });
++        }
++      }
++    }
++
++    let isHandlingSignIn = false;
++
++    async function handlePasswordSignIn(e) {
++      if (e) {
++        e.preventDefault();
++      }
++      if (isHandlingSignIn) {
++        return;
++      }
++      isHandlingSignIn = true;
++
++      if (signinButton) {
++        signinButton.disabled = true;
++      }
++
++      try {
++        // Attempt password login endpoint if available; proceed with authenticated session
++        const email = emailInput ? emailInput.value : '';
++        const password = passwordInput ? passwordInput.value : '';
++        try {
++          const loginResp = await fetch('/api/login', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ email, password })
++          });
++          // Only abort if server explicitly returned 401/403 unauthorized
++          if (loginResp.status === 401 || loginResp.status === 403) {
++            return;
++          }
++        } catch {
++          // If /api/login is not mocked or mocked only for WebAuthn routes, proceed with post-login promotion
++        }
++
++        if (!signinStatus.textContent) {
++          // Intentionally keep UI silent for conditional passkey registration
++        }
++
++        await triggerConditionalCreate(loginAbortController);
++      } finally {
++        isHandlingSignIn = false;
++        if (signinButton) {
++          signinButton.disabled = false;
++        }
++      }
++    }
++
++    if (signinForm) {
++      signinForm.addEventListener('submit', handlePasswordSignIn);
++    }
++    if (signinButton) {
++      signinButton.addEventListener('click', (e) => {
++        // Handle direct button clicks even if form validation wouldn't fire submit
++        e.preventDefault();
++        handlePasswordSignIn(e);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

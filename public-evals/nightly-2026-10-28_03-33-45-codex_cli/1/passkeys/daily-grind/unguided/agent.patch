@@ -1,0 +1,848 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..22d3788
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++data/
++dist/
++*.log
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..22ba7c3
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,13 @@
++# The Daily Grind
++
++The homepage includes customer registration and sign-in with discoverable WebAuthn passkeys, profile editing, passkey naming/removal, and fresh authentication for sensitive changes. The browser uses SimpleWebAuthn; the Node backend verifies challenges, origin, relying-party ID, signatures, counters, and user verification. No passwords or biometric data are stored.
++
++Requires Node 22.13 or later. Install with `pnpm install`, then run `pnpm build` to bundle the browser assets. `pnpm test` runs account-service tests without opening a port or importing the server entrypoint. The generated `public/account.js` is committed so the checkout can be served without a build step; rebuild after changing `account-client.js`.
++
++For deployment, `pnpm start` runs the Node backend and serves the homepage and assets. Set `APP_ORIGIN` to the exact public HTTPS origin, without a trailing slash (for example `https://coffee.example.com`), `PORT` to the listening port, and `DATA_DIR` to a persistent private directory. The default origin is `http://localhost:11222`. Forward the public origin unchanged through your reverse proxy. Passkeys are scoped to that hostname; changing it prevents existing passkeys from being used. TLS should terminate at the deployment proxy. Static hosting of `dist/` displays the UI but cannot authenticate customers; deploy the Node service for account functionality.
++
++SQLite stores accounts, public credential keys, one-time five-minute challenges, and hashed seven-day session tokens. Back up the data directory and restrict filesystem access. Sessions use HttpOnly, SameSite=Strict cookies, with Secure and a __Host- prefix over HTTPS. Mutations require the configured Origin and are rate limited by socket IP. Adjust rate limits for your deployment proxy and traffic. A single Node process with persistent storage is the supported deployment model.
++
++Creating an account requires saving a passkey successfully. Sign-in can use a saved or synced passkey, a nearby phone, or a security key. Changes to profiles or passkeys require authentication within the last five minutes. Removing a passkey signs out other sessions; the last passkey cannot be removed. Email is profile data, **not verified identity or an account recovery channel**. Keep a backup passkey: there is no email/password recovery flow.
++
++Implementation follows the [SimpleWebAuthn server documentation](https://simplewebauthn.dev/docs/packages/server) and [passkey guidance](https://simplewebauthn.dev/docs/advanced/passkeys).
+diff --git a/account-client.js b/account-client.js
+new file mode 100644
+index 0000000..fc2f59a
+--- /dev/null
++++ b/account-client.js
+@@ -0,0 +1,176 @@
++import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
++
++const dialog = document.querySelector('#account-dialog');
++const content = document.querySelector('#account-content');
++const status = document.querySelector('#account-status');
++const subtitle = document.querySelector('#account-subtitle');
++const logout = document.querySelector('#nav-logout');
++let account = { user: null };
++let tab = 'signin';
++let busy = false;
++let loaded = false;
++let canAuthenticate = window.isSecureContext && browserSupportsWebAuthn();
++const keyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 9 9m-3-3 3-3m-6 0 3-3"/></svg>';
++const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
++const date = value => new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
++function message(text, error = false) {
++  status.textContent = text; status.hidden = !text; status.dataset.error = String(error);
++}
++async function api(path, input, method = 'POST') {
++  const response = await fetch(`/api/${path}`, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...(method === 'GET' ? {} : { body: JSON.stringify(input || {}) }) });
++  const type = response.headers.get('content-type') || '';
++  if (!type.includes('application/json')) throw new Error('Account services are unavailable. Please try again later.');
++  const data = await response.json();
++  if (!response.ok) {
++    const error = new Error(data.error || 'Something went wrong. Please try again.');
++    error.status = response.status; throw error;
++  }
++  return data;
++}
++function setBusy(value) {
++  busy = value; content.setAttribute('aria-busy', String(value));
++  for (const button of dialog.querySelectorAll('button, input')) {
++    if (button.id !== 'account-close') button.disabled = value || button.dataset.disabled === 'true';
++  }
++  logout.disabled = value;
++}
++async function work(fn) {
++  if (busy) return;
++  message(''); setBusy(true);
++  try { await fn(); }
++  catch (error) {
++    if (error.status === 401) { account = { user: null }; tab = 'signin'; render(); }
++    const cancelled = ['NotAllowedError', 'AbortError', 'ERROR_CEREMONY_ABORTED', 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY'].includes(error.name) || ['ERROR_CEREMONY_ABORTED', 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY'].includes(error.code);
++    message(cancelled ? 'The passkey prompt was cancelled or timed out. You can try again.' : error.name === 'InvalidStateError' || error.code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED' ? 'This device already has a passkey for your account. Try another device or security key.' : error.message || 'Could not complete the request. Please try again.', true);
++  } finally { setBusy(false); }
++}
++function update(next) { account = next; render(); }
++async function authenticate(reauth = false) {
++  message(reauth ? 'Confirm it’s you using your device or security key…' : 'Follow the passkey prompt on your device…');
++  const path = reauth ? 'reauth' : 'login';
++  const { options, requestId } = await api(`${path}/options`);
++  const response = await startAuthentication({ optionsJSON: options });
++  const next = await api(`${path}/verify`, { requestId, response });
++  account = next;
++  return next;
++}
++async function sensitive(fn) {
++  // Refresh from the server so a panel left open cannot bypass reauthentication.
++  const next = await api('account', null, 'GET');
++  if (!next.user) { update(next); throw new Error('Your session expired. Please sign in again.'); }
++  account = next;
++  if (next.reauthenticate) await authenticate(true);
++  try { return await fn(); }
++  catch (error) { if (error.status !== 403) throw error; await authenticate(true); return fn(); }
++}
++async function register(input, adding = false) {
++  const path = adding ? 'passkeys' : 'register';
++  const { options, requestId } = await api(`${path}/options`, input);
++  message('Follow the prompt to save a passkey on your device or security key…');
++  const response = await startRegistration({ optionsJSON: options });
++  update(await api(`${path}/verify`, { requestId, response }));
++  message(adding ? 'Your new passkey is ready to use.' : 'Welcome to The Daily Grind. Your account and passkey are ready.');
++}
++function render() {
++  logout.hidden = !account.user;
++  subtitle.textContent = account.user ? `Welcome back, ${account.user.name}. Make yourself at home.` : 'Your coffee break, with one less password.';
++  if (!account.user) {
++    content.innerHTML = `<div class="account-tabs" role="tablist" aria-label="Account access">
++      <button type="button" role="tab" id="signin-tab" aria-controls="access-panel" aria-selected="${tab === 'signin'}" data-tab="signin">Sign in</button>
++      <button type="button" role="tab" id="register-tab" aria-controls="access-panel" aria-selected="${tab === 'register'}" data-tab="register">Create account</button></div>
++      <div id="access-panel" role="tabpanel" aria-labelledby="${tab}-tab">
++      ${tab === 'signin' ? `<div class="account-intro"><div class="passkey-illustration">${keyIcon}</div><h3>A familiar face. A fresh cup.</h3><p>Sign in with your fingerprint, face, device PIN, or security key. No password to remember.</p></div>
++        <button type="button" class="account-primary" data-action="signin" ${!canAuthenticate ? 'disabled data-disabled="true"' : ''}>Sign in with a passkey <span aria-hidden="true">→</span></button>
++        <p class="account-note">Using a different device? Choose a passkey from your phone or a security key in the prompt.</p>` : `<form id="register-form">
++        <label for="register-name">Full name</label><input id="register-name" name="name" autocomplete="name" placeholder="Alex Morgan" required minlength="2" maxlength="80">
++        <label for="register-email">Email address</label><input id="register-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">
++        <label for="register-key">Passkey name</label><input id="register-key" name="passkeyName" placeholder="e.g. My phone" required maxlength="60">
++        <button type="submit" class="account-primary" ${!canAuthenticate ? 'disabled data-disabled="true"' : ''}>Create account with a passkey <span aria-hidden="true">→</span></button>
++        <p class="account-note">Your device will ask you to save a passkey. Your account is created only when that step succeeds. Email is used for your profile, and is not verified.</p></form>`}</div>`;
++  } else {
++    content.innerHTML = `<div class="account-tabs" role="tablist" aria-label="Account settings">
++      <button type="button" id="profile-tab" role="tab" aria-controls="settings-panel" aria-selected="${tab !== 'passkeys'}" data-tab="profile">Profile</button>
++      <button type="button" id="passkeys-tab" role="tab" aria-controls="settings-panel" aria-selected="${tab === 'passkeys'}" data-tab="passkeys">Passkeys (${account.passkeys.length})</button></div>
++      <div id="settings-panel" role="tabpanel" aria-labelledby="${tab === 'passkeys' ? 'passkeys' : 'profile'}-tab">
++      ${tab !== 'passkeys' ? `<div class="account-section-heading"><h3>Your details</h3></div><p class="account-note">A few details to make your daily ritual yours.</p>
++        <form id="profile-form"><label for="profile-name">Full name</label><input id="profile-name" name="name" autocomplete="name" required minlength="2" maxlength="80" value="${escape(account.user.name)}">
++        <label for="profile-email">Email address</label><input id="profile-email" name="email" type="email" autocomplete="email" required maxlength="254" value="${escape(account.user.email)}">
++        <button type="submit" class="account-primary">Save changes</button><p class="account-note">We may ask you to confirm with your passkey before saving. Updating your email keeps your existing passkeys working.</p></form>` : `<div class="account-section-heading"><h3>Your saved passkeys</h3><button type="button" class="account-secondary" data-action="show-add" ${!canAuthenticate ? 'disabled data-disabled="true"' : ''}>+ Add passkey</button></div>
++        <p class="account-note">Keep a second passkey as a backup. You need at least one to access your account.</p>
++        <div id="passkey-editor"></div><div>${account.passkeys.map(key => `<article class="account-key" data-key="${escape(key.id)}"><div class="account-key-title">${keyIcon}<strong>${escape(key.name)}</strong></div><p>Added ${date(key.created_at)} · ${key.backed_up ? 'Backed up by your passkey provider' : 'Not currently backed up'}</p><p>${key.last_used ? `Last used ${date(key.last_used)}` : 'Not used to sign in yet'}</p><div class="account-key-actions"><button type="button" class="account-text" data-action="rename">Rename</button><button type="button" class="account-text" data-action="remove" ${account.passkeys.length === 1 ? 'disabled data-disabled="true" title="Add another passkey before removing your last one"' : ''}>Remove</button></div><div class="account-key-editor"></div></article>`).join('')}</div>
++        <p class="account-note">Removing a passkey here revokes its access. To delete it from your device, use your device’s password or passkey manager.</p>`}</div>
++        <div class="account-section-heading"><button type="button" class="account-text" data-action="reauth" ${!canAuthenticate ? 'disabled data-disabled="true"' : ''}>Confirm it’s me</button><button type="button" class="account-text" data-action="logout">Sign out</button></div>`;
++  }
++  content.setAttribute('aria-busy', String(busy));
++  if (busy) setBusy(true);
++  if (!canAuthenticate) message('Passkeys need a supported browser and a secure HTTPS connection (or localhost). Please open this site in a compatible browser.', true);
++}
++async function load() {
++  await work(async () => { update(await api('account', null, 'GET')); loaded = true; });
++  if (!loaded) {
++    content.innerHTML = '<p class="account-note">We couldn’t load your account.</p><button type="button" class="account-primary" data-action="retry">Try again</button>';
++  }
++}
++document.querySelector('#account-open').addEventListener('click', event => {
++  event.preventDefault(); dialog.showModal(); if (!busy) load();
++});
++document.querySelector('#account-close').addEventListener('click', () => dialog.close());
++dialog.addEventListener('click', event => { if (event.target === dialog) { const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); } });
++async function signout() { update(await api('logout')); tab = 'signin'; render(); message('You’re signed out. See you for your next cup.'); }
++logout.addEventListener('click', () => work(signout));
++content.addEventListener('keydown', event => {
++  const tabs = [...content.querySelectorAll('[role="tab"]')];
++  if (tabs.includes(event.target) && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
++    event.preventDefault();
++    const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (tabs.indexOf(event.target) + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++    tabs[index].click();
++  }
++});
++content.addEventListener('click', event => {
++  const button = event.target.closest('button'); if (!button || busy) return;
++  if (button.dataset.tab) { tab = button.dataset.tab; message(''); render(); content.querySelector(`[data-tab="${tab}"]`).focus(); return; }
++  const action = button.dataset.action;
++  if (action === 'retry') return load();
++  if (action === 'signin') return work(async () => { update(await authenticate()); tab = 'profile'; render(); message('You’re signed in. Welcome back.'); });
++  if (action === 'reauth') return work(async () => { update(await authenticate(true)); message('Identity confirmed. You’re ready to update your account.'); });
++  if (action === 'logout') return work(signout);
++  if (action === 'show-add') {
++    document.querySelector('#passkey-editor').innerHTML = '<form id="add-key-form" class="account-inline-form"><label for="new-key-name">New passkey name</label><input id="new-key-name" name="passkeyName" placeholder="e.g. Backup security key" required maxlength="60"><div class="account-form-actions"><button type="submit" class="account-primary">Save a new passkey</button><button type="button" class="account-text" data-action="cancel-add">Cancel</button></div></form>';
++    document.querySelector('#new-key-name').focus(); return;
++  }
++  if (action === 'cancel-add') { document.querySelector('#passkey-editor').innerHTML = ''; content.querySelector('[data-action="show-add"]').focus(); return; }
++  const row = button.closest('[data-key]');
++  if (!row) return;
++  const key = account.passkeys.find(item => item.id === row.dataset.key);
++  const editor = row.querySelector('.account-key-editor');
++  if (action === 'rename') {
++    editor.innerHTML = `<form class="rename-key-form"><label for="rename-${escape(key.id)}">Passkey name</label><input id="rename-${escape(key.id)}" name="name" value="${escape(key.name)}" required maxlength="60"><div class="account-form-actions"><button type="submit" class="account-primary">Save name</button><button type="button" class="account-text" data-action="cancel-key">Cancel</button></div></form>`;
++    editor.querySelector('input').focus();
++  }
++  if (action === 'remove') {
++    editor.innerHTML = `<div class="account-confirm"><p>Remove “${escape(key.name)}”? This passkey will no longer sign you in, and your other sessions will be signed out.</p><button type="button" class="account-secondary" data-action="confirm-remove">Remove passkey</button><button type="button" class="account-text" data-action="cancel-key">Keep passkey</button></div>`;
++    editor.querySelector('[data-action="cancel-key"]').focus();
++  }
++  if (action === 'cancel-key') { editor.innerHTML = ''; row.querySelector('[data-action="rename"]').focus(); }
++  if (action === 'confirm-remove') work(async () => {
++    await sensitive(async () => update(await api(`passkeys/${key.id}`, {}, 'DELETE')));
++    message('Passkey removed. Your other sessions have been signed out.');
++    content.querySelector('[data-action="show-add"]').focus();
++  });
++});
++content.addEventListener('submit', event => {
++  event.preventDefault();
++  const form = event.target;
++  if (!form.reportValidity()) return;
++  const input = Object.fromEntries(new FormData(form));
++  if (form.id === 'register-form') return work(() => register(input));
++  if (form.id === 'profile-form') return work(async () => { await sensitive(async () => update(await api('profile', input, 'PATCH'))); message('Your profile has been updated.'); });
++  if (form.id === 'add-key-form') return work(() => sensitive(() => register(input, true)));
++  if (form.classList.contains('rename-key-form')) {
++    const id = form.closest('[data-key]').dataset.key;
++    return work(async () => { await sensitive(async () => update(await api(`passkeys/${id}`, input, 'PATCH'))); message('Passkey renamed.'); });
++  }
++});
++// Restore session state without opening the panel or showing an intrusive error.
++api('account', null, 'GET').then(next => { if (!busy && !dialog.open) { account = next; logout.hidden = !next.user; } }).catch(() => {});
++if (location.pathname === '/account') { dialog.showModal(); load(); }
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..217f0b5
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,9 @@
++import { build } from 'esbuild';
++import { mkdir, copyFile } from 'node:fs/promises';
++await mkdir('public', { recursive: true });
++await build({ entryPoints: ['account-client.js'], outfile: 'public/account.js', bundle: true, format: 'esm', minify: true, target: ['es2022'] });
++await mkdir('dist', { recursive: true });
++for (const [source, target] of [['index.html', 'index.html'], ['public/account.js', 'account.js'], ['public/account.css', 'account.css']]) {
++  await copyFile(source, `dist/${target}`);
++}
++console.log('Account assets built. Authentication requires the Node backend; dist alone is a static UI.');
+diff --git a/index.html b/index.html
+index 66c9173..d6ea2dd 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="/account.css">
++  <script type="module" src="/account.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -163,8 +165,8 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/account" id="account-open" aria-haspopup="dialog">My Account</a></li>
++      <li><button type="button" id="nav-logout" class="logout-link" hidden>Sign out</button></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +209,25 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="account-dialog" aria-labelledby="account-title">
++    <div class="account-layout">
++      <aside class="account-story">
++        <span class="account-wordmark">THE DAILY GRIND</span>
++        <div><span class="account-eyebrow">YOUR DAILY RITUAL, SIMPLIFIED</span><h2>Good coffee.<br>A warmer welcome.</h2><p>Your next great morning starts here. Make yourself at home.</p></div>
++        <span class="account-story-footer">Locally roasted. Made for you.</span>
++      </aside>
++      <div class="account-panel">
++        <button type="button" class="account-close" id="account-close" aria-label="Close My Account">&times;</button>
++        <span class="account-eyebrow">A LITTLE MORE PERSONAL</span>
++        <h2 id="account-title">My Account</h2>
++        <p class="account-subtitle" id="account-subtitle">Your coffee break, with one less password.</p>
++        <div id="account-status" role="status" aria-live="polite" hidden></div>
++        <div id="account-content" aria-busy="true"><p>Getting your account ready…</p></div>
++        <p class="account-help" id="account-help"><span aria-hidden="true">◈</span> Protected with passkeys. Your fingerprint or face stays on your device.</p>
++      </div>
++    </div>
++  </dialog>
++
+ </body>
+ 
+ </html>
+diff --git a/lib/accounts.mjs b/lib/accounts.mjs
+new file mode 100644
+index 0000000..781261a
+--- /dev/null
++++ b/lib/accounts.mjs
+@@ -0,0 +1,163 @@
++import { randomBytes, createHash } from 'node:crypto';
++import { DatabaseSync } from 'node:sqlite';
++import {
++  generateRegistrationOptions, verifyRegistrationResponse,
++  generateAuthenticationOptions, verifyAuthenticationResponse,
++} from '@simplewebauthn/server';
++
++const token = () => randomBytes(32).toString('base64url');
++const hash = value => createHash('sha256').update(value).digest('hex');
++const FIVE_MINUTES = 5 * 60 * 1000;
++export class AccountError extends Error {
++  constructor(message, status = 400) { super(message); this.status = status; }
++}
++function check(condition, message, status) {
++  if (!condition) throw new AccountError(message, status);
++}
++function profile(input) {
++  const name = String(input.name ?? '').trim();
++  const email = String(input.email ?? '').trim().toLowerCase();
++  check(name.length >= 2 && name.length <= 80, 'Enter a name between 2 and 80 characters.');
++  check(email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), 'Enter a valid email address.');
++  return { name, email };
++}
++function label(value) {
++  const result = String(value ?? '').trim();
++  check(result.length >= 1 && result.length <= 60, 'Use a passkey name between 1 and 60 characters.');
++  return result;
++}
++
++export function createAccounts({ filename = ':memory:', origin, now = Date.now, verifyRegistration = verifyRegistrationResponse, verifyAuthentication = verifyAuthenticationResponse }) {
++  const rpID = new URL(origin).hostname;
++  const db = new DatabaseSync(filename);
++  db.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;
++    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE);
++    CREATE TABLE IF NOT EXISTS passkeys (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
++      public_key BLOB NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL, name TEXT NOT NULL,
++      created_at INTEGER NOT NULL, last_used INTEGER, backed_up INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
++      expires INTEGER NOT NULL, verified_at INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, purpose TEXT NOT NULL, challenge TEXT NOT NULL,
++      user_id TEXT, session_id TEXT, payload TEXT NOT NULL, expires INTEGER NOT NULL);`);
++  const get = (sql, ...args) => db.prepare(sql).get(...args);
++  const run = (sql, ...args) => db.prepare(sql).run(...args);
++  const all = (sql, ...args) => db.prepare(sql).all(...args);
++  function transaction(fn) {
++    db.exec('BEGIN IMMEDIATE');
++    try { const result = fn(); db.exec('COMMIT'); return result; }
++    catch (error) { db.exec('ROLLBACK'); throw error; }
++  }
++  function session(raw) {
++    const record = raw && get('SELECT * FROM sessions WHERE id = ? AND expires > ?', hash(raw), now());
++    check(record, 'Please sign in to continue.', 401);
++    return record;
++  }
++  function fresh(record) {
++    check(now() - record.verified_at < FIVE_MINUTES, 'Confirm it’s you with your passkey to continue.', 403);
++  }
++  function snapshot(raw) {
++    const record = session(raw);
++    return {
++      user: get('SELECT id, name, email FROM users WHERE id = ?', record.user_id),
++      passkeys: all('SELECT id, name, created_at, last_used, backed_up FROM passkeys WHERE user_id = ? ORDER BY created_at', record.user_id),
++      reauthenticate: now() - record.verified_at >= FIVE_MINUTES,
++    };
++  }
++  function newSession(userId) {
++    const raw = token();
++    run('INSERT INTO sessions VALUES (?, ?, ?, ?)', hash(raw), userId, now() + 7 * 86400000, now());
++    return raw;
++  }
++  function challenge(purpose, value, userId = null, sessionId = null, payload = {}) {
++    run('DELETE FROM challenges WHERE expires <= ?', now());
++    run('DELETE FROM sessions WHERE expires <= ?', now());
++    const id = token();
++    run('INSERT INTO challenges VALUES (?, ?, ?, ?, ?, ?, ?)', hash(id), purpose, value, userId, sessionId, JSON.stringify(payload), now() + FIVE_MINUTES);
++    return id;
++  }
++  function consume(id, purpose) {
++    check(typeof id === 'string', 'Start a new passkey request.');
++    const value = get('DELETE FROM challenges WHERE id = ? RETURNING *', hash(id));
++    check(value && value.expires > now() && value.purpose === purpose, 'This passkey request expired. Please try again.');
++    return { ...value, payload: JSON.parse(value.payload) };
++  }
++  const credentials = userId => all('SELECT * FROM passkeys WHERE user_id = ?', userId);
++  async function registrationOptions(input, raw, adding = false) {
++    const record = adding ? session(raw) : null;
++    if (record) fresh(record);
++    const user = record ? get('SELECT * FROM users WHERE id = ?', record.user_id) : { id: token(), ...profile(input) };
++    check(adding || !get('SELECT id FROM users WHERE email = ?', user.email), 'An account with this email already exists. Sign in with your passkey.');
++    const name = label(input.passkeyName || 'My passkey');
++    const options = await generateRegistrationOptions({
++      rpName: 'The Daily Grind', rpID, userName: user.email, userDisplayName: user.name,
++      userID: new TextEncoder().encode(user.id), attestationType: 'none',
++      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
++      excludeCredentials: credentials(user.id).map(key => ({ id: key.id, transports: JSON.parse(key.transports) })),
++    });
++    return { options, requestId: challenge(adding ? 'add' : 'register', options.challenge, user.id, record?.id, { user, name }) };
++  }
++  async function registrationVerify(input, raw, adding = false) {
++    const request = consume(input.requestId, adding ? 'add' : 'register');
++    if (adding) { const record = session(raw); fresh(record); check(record.id === request.session_id, 'Session changed. Please try again.', 403); }
++    const verification = await verifyRegistration({ response: input.response, expectedChallenge: request.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true });
++    check(verification.verified && verification.registrationInfo, 'Passkey verification failed.');
++    const { credential, credentialBackedUp } = verification.registrationInfo;
++    transaction(() => {
++      if (adding) {
++        const record = session(raw); fresh(record);
++        check(record.id === request.session_id, 'Session changed. Please try again.', 403);
++      }
++      if (!adding) {
++        check(!get('SELECT id FROM users WHERE email = ?', request.payload.user.email), 'This email is already registered.');
++        run('INSERT INTO users VALUES (?, ?, ?)', request.user_id, request.payload.user.name, request.payload.user.email);
++      }
++      run('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', credential.id, request.user_id,
++        credential.publicKey, credential.counter, JSON.stringify(credential.transports || []), request.payload.name, now(), null, credentialBackedUp ? 1 : 0);
++    });
++    return adding ? raw : newSession(request.user_id);
++  }
++  async function authenticationOptions(raw, reauth = false) {
++    const record = reauth ? session(raw) : null;
++    const options = await generateAuthenticationOptions({ rpID, userVerification: 'required',
++      ...(record ? { allowCredentials: credentials(record.user_id).map(key => ({ id: key.id, transports: JSON.parse(key.transports) })) } : {}),
++    });
++    return { options, requestId: challenge(reauth ? 'reauth' : 'login', options.challenge, record?.user_id, record?.id) };
++  }
++  async function authenticationVerify(input, raw, reauth = false) {
++    const request = consume(input.requestId, reauth ? 'reauth' : 'login');
++    const record = reauth ? session(raw) : null;
++    if (record) check(record.id === request.session_id, 'Session changed. Please try again.', 403);
++    const key = get('SELECT * FROM passkeys WHERE id = ?', String(input.response?.id));
++    check(key && (!reauth || key.user_id === record.user_id), 'This passkey could not sign you in. Try another saved passkey.', 401);
++    check(!input.response.response?.userHandle || input.response.response.userHandle === Buffer.from(key.user_id).toString('base64url'), 'Passkey account does not match.', 401);
++    const verification = await verifyAuthentication({ response: input.response, expectedChallenge: request.challenge, expectedOrigin: origin, expectedRPID: rpID,
++      credential: { id: key.id, publicKey: new Uint8Array(key.public_key), counter: key.counter, transports: JSON.parse(key.transports) }, requireUserVerification: true });
++    check(verification.verified, 'Passkey verification failed.', 401);
++    // Recheck after asynchronous verification in case another request removed this key or session.
++    check(get('SELECT id FROM passkeys WHERE id = ?', key.id), 'This passkey was removed. Please sign in again.', 401);
++    run('UPDATE passkeys SET counter = ?, last_used = ?, backed_up = ? WHERE id = ?', verification.authenticationInfo.newCounter, now(), verification.authenticationInfo.credentialBackedUp ? 1 : 0, key.id);
++    if (record) { session(raw); run('UPDATE sessions SET verified_at = ? WHERE id = ?', now(), record.id); return raw; }
++    return newSession(key.user_id);
++  }
++  function updateProfile(input, raw) {
++    const record = session(raw); fresh(record);
++    const user = profile(input);
++    check(!get('SELECT id FROM users WHERE email = ? AND id != ?', user.email, record.user_id), 'This email is already in use.');
++    run('UPDATE users SET name = ?, email = ? WHERE id = ?', user.name, user.email, record.user_id);
++    return snapshot(raw);
++  }
++  function managePasskey(id, input, raw, remove = false) {
++    const record = session(raw); fresh(record);
++    transaction(() => {
++      check(get('SELECT id FROM passkeys WHERE id = ? AND user_id = ?', id, record.user_id), 'Passkey not found.', 404);
++      if (remove) {
++        check(credentials(record.user_id).length > 1, 'Add another passkey before removing your last one.');
++        run('DELETE FROM passkeys WHERE id = ? AND user_id = ?', id, record.user_id);
++        run('DELETE FROM sessions WHERE user_id = ? AND id != ?', record.user_id, record.id);
++      } else run('UPDATE passkeys SET name = ? WHERE id = ? AND user_id = ?', label(input.name), id, record.user_id);
++    });
++    return snapshot(raw);
++  }
++  return { snapshot, registrationOptions, registrationVerify, authenticationOptions, authenticationVerify, updateProfile, managePasskey,
++    logout(raw) { if (raw) run('DELETE FROM sessions WHERE id = ?', hash(raw)); }, close() { db.close(); } };
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..e2f9b0b 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,21 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
++  "engines": { "node": ">=22.13.0" },
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node build.mjs",
++    "test": "node --test test/*.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
+   }
+ }
+diff --git a/public/account.css b/public/account.css
+new file mode 100644
+index 0000000..082264f
+--- /dev/null
++++ b/public/account.css
+@@ -0,0 +1,68 @@
++[hidden] { display: none !important; }
++button, input { font: inherit; }
++button { cursor: pointer; }
++button:disabled { cursor: wait; opacity: .55; }
++:focus-visible { outline: 3px solid #bc742b; outline-offset: 4px; }
++nav .logout-link { color: white; background: transparent; font-size: .9rem; }
++#account-dialog { padding: 0; margin: auto; border: 0; border-radius: 16px; width: min(920px, calc(100% - 32px)); max-height: calc(100dvh - 48px); color: #3e2723; box-shadow: 0 24px 100px #20130d55; }
++#account-dialog::backdrop { background: #241a15a8; backdrop-filter: blur(4px); }
++body:has(#account-dialog[open]) { overflow: hidden; }
++.account-layout { display: grid; grid-template-columns: .82fr 1.18fr; background: #fffcf8; }
++.account-story { background: linear-gradient(180deg, #281e16aa, #281e1670 40%, #281e16e6), url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=85') center/cover; padding: 36px; display: flex; flex-direction: column; justify-content: space-between; min-height: 620px; color: #fff7eb; }
++.account-wordmark { font-size: .8rem; letter-spacing: 2px; font-weight: 700; }
++.account-story h2 { font-family: Georgia, serif; font-weight: 400; font-size: 2.7rem; line-height: 1.16; margin: 18px 0; }
++.account-story p { color: #ede1d0; font-size: .95rem; }
++.account-story-footer { font-size: .72rem; letter-spacing: 1px; color: #ddd1c0; margin-top: 44px; }
++.account-panel { position: relative; padding: 42px 40px 28px; min-width: 0; }
++.account-eyebrow { font-size: .64rem; font-weight: 700; letter-spacing: 1.9px; color: #927155; }
++.account-story .account-eyebrow { color: #edd6b5; }
++.account-panel > h2 { font-family: Georgia, serif; font-size: 2.2rem; font-weight: 400; margin: 4px 0; }
++.account-subtitle { color: #85756a; font-size: .88rem; margin: 0 0 24px; }
++.account-close { border: 0; background: transparent; position: absolute; top: 14px; right: 18px; font-size: 1.7rem; line-height: 1; padding: 6px; color: #85756a; }
++.account-tabs { display: flex; border-bottom: 1px solid #e7dfd4; gap: 24px; margin-bottom: 24px; }
++.account-tabs button { border: 0; border-bottom: 2px solid transparent; padding: 8px 0 12px; background: transparent; color: #8a7b6e; font-weight: 600; font-size: .86rem; }
++.account-tabs button[aria-selected="true"] { color: #4e342e; border-bottom-color: #4e342e; }
++.account-panel label { display: block; font-size: .79rem; font-weight: 600; margin: 16px 0 6px; }
++.account-panel input { width: 100%; min-width: 0; padding: 11px 13px; background: white; border: 1px solid #dcd1c5; border-radius: 6px; font-size: .9rem; color: #3e2723; }
++.account-panel input:focus { border-color: #846145; }
++.account-primary { width: 100%; padding: 12px 18px; border: 1px solid #4e342e; border-radius: 6px; background: #4e342e; color: white; font-weight: 600; font-size: .9rem; margin-top: 22px; }
++.account-primary:hover { background: #3e2723; }
++.account-secondary { border: 1px solid #d9ccbc; background: transparent; color: #4e342e; padding: 8px 12px; border-radius: 5px; font-size: .8rem; }
++.account-secondary:hover { background: #f2ece3; }
++.account-text { background: transparent; border: 0; color: #7f4c33; font-size: .8rem; text-decoration: underline; padding: 6px 0; }
++.passkey-illustration { display: grid; place-items: center; margin: 30px auto 20px; height: 72px; width: 72px; background: #f0e7db; border: 1px solid #e7daca; border-radius: 50%; color: #78563c; }
++.passkey-illustration svg { width: 34px; height: 34px; }
++.account-intro { text-align: center; }
++.account-intro h3 { font-family: Georgia, serif; font-size: 1.4rem; font-weight: 400; margin-bottom: 8px; }
++.account-intro p { color: #85756a; font-size: .87rem; }
++.account-note { font-size: .75rem; color: #85756a; margin-top: 12px; }
++.account-help { border-top: 1px solid #e9e0d6; padding-top: 18px; margin-top: 26px; color: #8b7a6b; font-size: .7rem; line-height: 1.65; }
++.account-help span { color: #806344; margin-right: 4px; }
++#account-status { padding: 11px 13px; border-radius: 6px; background: #edf1e7; color: #455437; margin-bottom: 16px; font-size: .83rem; }
++#account-status[data-error="true"] { background: #fbebe4; color: #923f29; }
++.account-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 20px 0 8px; }
++.account-section-heading h3 { font-family: Georgia, serif; font-weight: 400; font-size: 1.25rem; }
++.account-key { border: 1px solid #e4dace; border-radius: 8px; padding: 14px; margin-top: 12px; background: white; }
++.account-key-title { display: flex; gap: 10px; align-items: center; }
++.account-key-title svg { height: 22px; width: 22px; flex-shrink: 0; color: #8d7154; }
++.account-key-title strong { overflow-wrap: anywhere; font-size: .88rem; }
++.account-key p { font-size: .7rem; color: #8b7a6b; margin-top: 6px; }
++.account-key-actions { display: flex; gap: 16px; margin-top: 5px; }
++.account-key-actions button { font-size: .72rem; }
++.account-key-actions button:disabled { cursor: not-allowed; }
++.account-inline-form { border: 1px solid #e4dace; padding: 0 14px 14px; border-radius: 8px; margin-top: 14px; }
++.account-form-actions { display: flex; align-items: center; gap: 14px; }
++.account-form-actions .account-primary { width: auto; margin-top: 14px; }
++.account-confirm { background: #f9eee5; border-radius: 6px; padding: 12px; margin-top: 8px; font-size: .8rem; }
++.account-confirm .account-secondary { margin: 8px 8px 0 0; }
++@media (max-width: 700px) {
++  .account-layout { grid-template-columns: 1fr; }
++  .account-story { display: none; }
++  .account-panel { padding: 34px 24px 24px; }
++  #account-dialog { max-width: 480px; }
++  nav { flex-wrap: wrap; gap: 10px; }
++  nav ul { flex-wrap: wrap; gap: 10px 16px; }
++  nav ul li { margin-left: 0; }
++  .hero h1 { font-size: 2.3rem; }
++}
++@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+diff --git a/public/account.js b/public/account.js
+new file mode 100644
+index 0000000..b0b8e5a
+--- /dev/null
++++ b/public/account.js
+@@ -0,0 +1,24 @@
++function f(e){let t=new Uint8Array(e),n="";for(let r of t)n+=String.fromCharCode(r);return btoa(n).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")}function k(e){let t=e.replace(/-/g,"+").replace(/_/g,"/"),n=(4-t.length%4)%4,a=t.padEnd(t.length+n,"="),r=atob(a),o=new ArrayBuffer(r.length),l=new Uint8Array(o);for(let d=0;d<r.length;d++)l[d]=r.charCodeAt(d);return o}function h(){return ee.stubThis(globalThis?.PublicKeyCredential!==void 0&&typeof globalThis.PublicKeyCredential=="function")}var ee={stubThis:e=>e};function O(e){let{id:t}=e;return{...e,id:k(t),transports:e.transports,type:e.type}}function v(e){return e==="localhost"||/^((xn--[a-z0-9-]+|[a-z0-9]+(-[a-z0-9]+)*)\.)+([a-z]{2,}|xn--[a-z0-9-]+)$/i.test(e)}var i=class extends Error{constructor({message:t,code:n,cause:a,name:r}){super(t,{cause:a}),Object.defineProperty(this,"code",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),this.name=r??a.name,this.code=n}};function G({error:e,options:t}){let{publicKey:n}=t;if(!n)throw Error("options was missing required publicKey property");if(e.name==="AbortError"){if(t.signal instanceof AbortSignal)return new i({message:"Registration ceremony was sent an abort signal",code:"ERROR_CEREMONY_ABORTED",cause:e})}else if(e.name==="ConstraintError"){if(n.authenticatorSelection?.requireResidentKey===!0)return new i({message:"Discoverable credentials were required but no available authenticator supported it",code:"ERROR_AUTHENTICATOR_MISSING_DISCOVERABLE_CREDENTIAL_SUPPORT",cause:e});if(t.mediation==="conditional"&&n.authenticatorSelection?.userVerification==="required")return new i({message:"User verification was required during automatic registration but it could not be performed",code:"ERROR_AUTO_REGISTER_USER_VERIFICATION_FAILURE",cause:e});if(n.authenticatorSelection?.userVerification==="required")return new i({message:"User verification was required but no available authenticator supported it",code:"ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT",cause:e})}else{if(e.name==="InvalidStateError")return new i({message:"The authenticator was previously registered",code:"ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED",cause:e});if(e.name==="NotAllowedError")return new i({message:e.message,code:"ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY",cause:e});if(e.name==="NotSupportedError")return n.pubKeyCredParams.filter(r=>r.type==="public-key").length===0?new i({message:'No entry in pubKeyCredParams was of type "public-key"',code:"ERROR_MALFORMED_PUBKEYCREDPARAMS",cause:e}):new i({message:"No available authenticator supported any of the specified pubKeyCredParams algorithms",code:"ERROR_AUTHENTICATOR_NO_SUPPORTED_PUBKEYCREDPARAMS_ALG",cause:e});if(e.name==="SecurityError"){let a=globalThis.location.hostname;if(v(a)){if(n.rp.id!==a)return new i({message:`The RP ID "${n.rp.id}" is invalid for this domain`,code:"ERROR_INVALID_RP_ID",cause:e})}else return new i({message:`${globalThis.location.hostname} is an invalid domain`,code:"ERROR_INVALID_DOMAIN",cause:e})}else if(e.name==="TypeError"){if(n.user.id.byteLength<1||n.user.id.byteLength>64)return new i({message:"User ID was not between 1 and 64 characters",code:"ERROR_INVALID_USER_ID_LENGTH",cause:e})}else if(e.name==="UnknownError")return new i({message:"The authenticator was unable to process the specified options, or could not create a new credential",code:"ERROR_AUTHENTICATOR_GENERAL_ERROR",cause:e})}return e}var $=class{constructor(){Object.defineProperty(this,"controller",{enumerable:!0,configurable:!0,writable:!0,value:void 0})}createNewAbortSignal(){if(this.controller){let n=new Error("Cancelling existing WebAuthn API call for new one");n.name="AbortError",this.controller.abort(n)}let t=new AbortController;return this.controller=t,t.signal}cancelCeremony(){if(this.controller){let t=new Error("Manually cancelling existing WebAuthn API call");t.name="AbortError",this.controller.abort(t),this.controller=void 0}}},D=new $;var te=["cross-platform","platform"];function x(e){if(e&&!(te.indexOf(e)<0))return e}async function B(e){!e.optionsJSON&&e.challenge&&(console.warn("startRegistration() was not called correctly. It will try to continue with the provided options, but this call should be refactored to use the expected call structure instead. See https://simplewebauthn.dev/docs/packages/browser#typeerror-cannot-read-properties-of-undefined-reading-challenge for more information."),e={optionsJSON:e});let{optionsJSON:t,useAutoRegister:n=!1}=e;if(!h())throw new Error("WebAuthn is not supported in this browser");let a={...t,challenge:k(t.challenge),user:{...t.user,id:k(t.user.id)},excludeCredentials:t.excludeCredentials?.map(O)},r={};n&&(r.mediation="conditional"),r.publicKey=a,r.signal=D.createNewAbortSignal();let o;try{o=await navigator.credentials.create(r)}catch(b){throw G({error:b,options:r})}if(!o)throw new Error("Registration was not completed");let{id:l,rawId:d,response:p,type:K}=o,R;typeof p.getTransports=="function"&&(R=p.getTransports());let I;if(typeof p.getPublicKeyAlgorithm=="function")try{I=p.getPublicKeyAlgorithm()}catch(b){q("getPublicKeyAlgorithm()",b)}let C;if(typeof p.getPublicKey=="function")try{let b=p.getPublicKey();b!==null&&(C=f(b))}catch(b){q("getPublicKey()",b)}let T;if(typeof p.getAuthenticatorData=="function")try{T=f(p.getAuthenticatorData())}catch(b){q("getAuthenticatorData()",b)}return{id:l,rawId:f(d),response:{attestationObject:f(p.attestationObject),clientDataJSON:f(p.clientDataJSON),transports:R,publicKeyAlgorithm:I,publicKey:C,authenticatorData:T},type:K,clientExtensionResults:o.getClientExtensionResults(),authenticatorAttachment:x(o.authenticatorAttachment)}}function q(e,t){console.warn(`The browser extension that intercepted this WebAuthn API call incorrectly implemented ${e}. You should report this error to them.
++`,t)}function W(){if(!h())return M.stubThis(new Promise(t=>t(!1)));let e=globalThis.PublicKeyCredential;return e?.isConditionalMediationAvailable===void 0?M.stubThis(new Promise(t=>t(!1))):M.stubThis(e.isConditionalMediationAvailable())}var M={stubThis:e=>e};function J({error:e,options:t}){let{publicKey:n}=t;if(!n)throw Error("options was missing required publicKey property");if(e.name==="AbortError"){if(t.signal instanceof AbortSignal)return new i({message:"Authentication ceremony was sent an abort signal",code:"ERROR_CEREMONY_ABORTED",cause:e})}else{if(e.name==="NotAllowedError")return new i({message:e.message,code:"ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY",cause:e});if(e.name==="SecurityError"){let a=globalThis.location.hostname;if(v(a)){if(n.rpId!==a)return new i({message:`The RP ID "${n.rpId}" is invalid for this domain`,code:"ERROR_INVALID_RP_ID",cause:e})}else return new i({message:`${globalThis.location.hostname} is an invalid domain`,code:"ERROR_INVALID_DOMAIN",cause:e})}else if(e.name==="UnknownError")return new i({message:"The authenticator was unable to process the specified options, or could not create a new assertion signature",code:"ERROR_AUTHENTICATOR_GENERAL_ERROR",cause:e})}return e}async function j(e){!e.optionsJSON&&e.challenge&&(console.warn("startAuthentication() was not called correctly. It will try to continue with the provided options, but this call should be refactored to use the expected call structure instead. See https://simplewebauthn.dev/docs/packages/browser#typeerror-cannot-read-properties-of-undefined-reading-challenge for more information."),e={optionsJSON:e});let{optionsJSON:t,useBrowserAutofill:n=!1,verifyBrowserAutofillInput:a=!0}=e;if(!h())throw new Error("WebAuthn is not supported in this browser");let r;t.allowCredentials?.length!==0&&(r=t.allowCredentials?.map(O));let o={...t,challenge:k(t.challenge),allowCredentials:r},l={};if(n){if(!await W())throw Error("Browser does not support WebAuthn autofill");if(document.querySelectorAll("input[autocomplete$='webauthn']").length<1&&a)throw Error('No <input> with "webauthn" as the only or last value in its `autocomplete` attribute was detected');l.mediation="conditional",o.allowCredentials=[]}l.publicKey=o,l.signal=D.createNewAbortSignal();let d;try{d=await navigator.credentials.get(l)}catch(T){throw J({error:T,options:l})}if(!d)throw new Error("Authentication was not completed");let{id:p,rawId:K,response:R,type:I}=d,C;return R.userHandle&&(C=f(R.userHandle)),{id:p,rawId:f(K),response:{authenticatorData:f(R.authenticatorData),clientDataJSON:f(R.clientDataJSON),signature:f(R.signature),userHandle:C},type:I,clientExtensionResults:d.getClientExtensionResults(),authenticatorAttachment:x(d.authenticatorAttachment)}}var w=document.querySelector("#account-dialog"),m=document.querySelector("#account-content"),H=document.querySelector("#account-status"),ne=document.querySelector("#account-subtitle"),L=document.querySelector("#nav-logout"),s={user:null},c="signin",S=!1,F=!1,P=window.isSecureContext&&h(),z='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 9 9m-3-3 3-3m-6 0 3-3"/></svg>',E=e=>String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t]),X=e=>new Date(e).toLocaleDateString(void 0,{month:"short",day:"numeric",year:"numeric"});function u(e,t=!1){H.textContent=e,H.hidden=!e,H.dataset.error=String(t)}async function y(e,t,n="POST"){let a=await fetch(`/api/${e}`,{method:n,credentials:"same-origin",headers:{"Content-Type":"application/json"},...n==="GET"?{}:{body:JSON.stringify(t||{})}});if(!(a.headers.get("content-type")||"").includes("application/json"))throw new Error("Account services are unavailable. Please try again later.");let o=await a.json();if(!a.ok){let l=new Error(o.error||"Something went wrong. Please try again.");throw l.status=a.status,l}return o}function V(e){S=e,m.setAttribute("aria-busy",String(e));for(let t of w.querySelectorAll("button, input"))t.id!=="account-close"&&(t.disabled=e||t.dataset.disabled==="true");L.disabled=e}async function g(e){if(!S){u(""),V(!0);try{await e()}catch(t){t.status===401&&(s={user:null},c="signin",_());let n=["NotAllowedError","AbortError","ERROR_CEREMONY_ABORTED","ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY"].includes(t.name)||["ERROR_CEREMONY_ABORTED","ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY"].includes(t.code);u(n?"The passkey prompt was cancelled or timed out. You can try again.":t.name==="InvalidStateError"||t.code==="ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED"?"This device already has a passkey for your account. Try another device or security key.":t.message||"Could not complete the request. Please try again.",!0)}finally{V(!1)}}}function A(e){s=e,_()}async function U(e=!1){u(e?"Confirm it\u2019s you using your device or security key\u2026":"Follow the passkey prompt on your device\u2026");let t=e?"reauth":"login",{options:n,requestId:a}=await y(`${t}/options`),r=await j({optionsJSON:n}),o=await y(`${t}/verify`,{requestId:a,response:r});return s=o,o}async function N(e){let t=await y("account",null,"GET");if(!t.user)throw A(t),new Error("Your session expired. Please sign in again.");s=t,t.reauthenticate&&await U(!0);try{return await e()}catch(n){if(n.status!==403)throw n;return await U(!0),e()}}async function Q(e,t=!1){let n=t?"passkeys":"register",{options:a,requestId:r}=await y(`${n}/options`,e);u("Follow the prompt to save a passkey on your device or security key\u2026");let o=await B({optionsJSON:a});A(await y(`${n}/verify`,{requestId:r,response:o})),u(t?"Your new passkey is ready to use.":"Welcome to The Daily Grind. Your account and passkey are ready.")}function _(){L.hidden=!s.user,ne.textContent=s.user?`Welcome back, ${s.user.name}. Make yourself at home.`:"Your coffee break, with one less password.",s.user?m.innerHTML=`<div class="account-tabs" role="tablist" aria-label="Account settings">
++      <button type="button" id="profile-tab" role="tab" aria-controls="settings-panel" aria-selected="${c!=="passkeys"}" data-tab="profile">Profile</button>
++      <button type="button" id="passkeys-tab" role="tab" aria-controls="settings-panel" aria-selected="${c==="passkeys"}" data-tab="passkeys">Passkeys (${s.passkeys.length})</button></div>
++      <div id="settings-panel" role="tabpanel" aria-labelledby="${c==="passkeys"?"passkeys":"profile"}-tab">
++      ${c!=="passkeys"?`<div class="account-section-heading"><h3>Your details</h3></div><p class="account-note">A few details to make your daily ritual yours.</p>
++        <form id="profile-form"><label for="profile-name">Full name</label><input id="profile-name" name="name" autocomplete="name" required minlength="2" maxlength="80" value="${E(s.user.name)}">
++        <label for="profile-email">Email address</label><input id="profile-email" name="email" type="email" autocomplete="email" required maxlength="254" value="${E(s.user.email)}">
++        <button type="submit" class="account-primary">Save changes</button><p class="account-note">We may ask you to confirm with your passkey before saving. Updating your email keeps your existing passkeys working.</p></form>`:`<div class="account-section-heading"><h3>Your saved passkeys</h3><button type="button" class="account-secondary" data-action="show-add" ${P?"":'disabled data-disabled="true"'}>+ Add passkey</button></div>
++        <p class="account-note">Keep a second passkey as a backup. You need at least one to access your account.</p>
++        <div id="passkey-editor"></div><div>${s.passkeys.map(e=>`<article class="account-key" data-key="${E(e.id)}"><div class="account-key-title">${z}<strong>${E(e.name)}</strong></div><p>Added ${X(e.created_at)} \xB7 ${e.backed_up?"Backed up by your passkey provider":"Not currently backed up"}</p><p>${e.last_used?`Last used ${X(e.last_used)}`:"Not used to sign in yet"}</p><div class="account-key-actions"><button type="button" class="account-text" data-action="rename">Rename</button><button type="button" class="account-text" data-action="remove" ${s.passkeys.length===1?'disabled data-disabled="true" title="Add another passkey before removing your last one"':""}>Remove</button></div><div class="account-key-editor"></div></article>`).join("")}</div>
++        <p class="account-note">Removing a passkey here revokes its access. To delete it from your device, use your device\u2019s password or passkey manager.</p>`}</div>
++        <div class="account-section-heading"><button type="button" class="account-text" data-action="reauth" ${P?"":'disabled data-disabled="true"'}>Confirm it\u2019s me</button><button type="button" class="account-text" data-action="logout">Sign out</button></div>`:m.innerHTML=`<div class="account-tabs" role="tablist" aria-label="Account access">
++      <button type="button" role="tab" id="signin-tab" aria-controls="access-panel" aria-selected="${c==="signin"}" data-tab="signin">Sign in</button>
++      <button type="button" role="tab" id="register-tab" aria-controls="access-panel" aria-selected="${c==="register"}" data-tab="register">Create account</button></div>
++      <div id="access-panel" role="tabpanel" aria-labelledby="${c}-tab">
++      ${c==="signin"?`<div class="account-intro"><div class="passkey-illustration">${z}</div><h3>A familiar face. A fresh cup.</h3><p>Sign in with your fingerprint, face, device PIN, or security key. No password to remember.</p></div>
++        <button type="button" class="account-primary" data-action="signin" ${P?"":'disabled data-disabled="true"'}>Sign in with a passkey <span aria-hidden="true">\u2192</span></button>
++        <p class="account-note">Using a different device? Choose a passkey from your phone or a security key in the prompt.</p>`:`<form id="register-form">
++        <label for="register-name">Full name</label><input id="register-name" name="name" autocomplete="name" placeholder="Alex Morgan" required minlength="2" maxlength="80">
++        <label for="register-email">Email address</label><input id="register-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">
++        <label for="register-key">Passkey name</label><input id="register-key" name="passkeyName" placeholder="e.g. My phone" required maxlength="60">
++        <button type="submit" class="account-primary" ${P?"":'disabled data-disabled="true"'}>Create account with a passkey <span aria-hidden="true">\u2192</span></button>
++        <p class="account-note">Your device will ask you to save a passkey. Your account is created only when that step succeeds. Email is used for your profile, and is not verified.</p></form>`}</div>`,m.setAttribute("aria-busy",String(S)),S&&V(!0),P||u("Passkeys need a supported browser and a secure HTTPS connection (or localhost). Please open this site in a compatible browser.",!0)}async function Y(){await g(async()=>{A(await y("account",null,"GET")),F=!0}),F||(m.innerHTML='<p class="account-note">We couldn\u2019t load your account.</p><button type="button" class="account-primary" data-action="retry">Try again</button>')}document.querySelector("#account-open").addEventListener("click",e=>{e.preventDefault(),w.showModal(),S||Y()});document.querySelector("#account-close").addEventListener("click",()=>w.close());w.addEventListener("click",e=>{if(e.target===w){let t=w.getBoundingClientRect();(e.clientX<t.left||e.clientX>t.right||e.clientY<t.top||e.clientY>t.bottom)&&w.close()}});async function Z(){A(await y("logout")),c="signin",_(),u("You\u2019re signed out. See you for your next cup.")}L.addEventListener("click",()=>g(Z));m.addEventListener("keydown",e=>{let t=[...m.querySelectorAll('[role="tab"]')];if(t.includes(e.target)&&["ArrowLeft","ArrowRight","Home","End"].includes(e.key)){e.preventDefault();let n=e.key==="Home"?0:e.key==="End"?t.length-1:(t.indexOf(e.target)+(e.key==="ArrowRight"?1:-1)+t.length)%t.length;t[n].click()}});m.addEventListener("click",e=>{let t=e.target.closest("button");if(!t||S)return;if(t.dataset.tab){c=t.dataset.tab,u(""),_(),m.querySelector(`[data-tab="${c}"]`).focus();return}let n=t.dataset.action;if(n==="retry")return Y();if(n==="signin")return g(async()=>{A(await U()),c="profile",_(),u("You\u2019re signed in. Welcome back.")});if(n==="reauth")return g(async()=>{A(await U(!0)),u("Identity confirmed. You\u2019re ready to update your account.")});if(n==="logout")return g(Z);if(n==="show-add"){document.querySelector("#passkey-editor").innerHTML='<form id="add-key-form" class="account-inline-form"><label for="new-key-name">New passkey name</label><input id="new-key-name" name="passkeyName" placeholder="e.g. Backup security key" required maxlength="60"><div class="account-form-actions"><button type="submit" class="account-primary">Save a new passkey</button><button type="button" class="account-text" data-action="cancel-add">Cancel</button></div></form>',document.querySelector("#new-key-name").focus();return}if(n==="cancel-add"){document.querySelector("#passkey-editor").innerHTML="",m.querySelector('[data-action="show-add"]').focus();return}let a=t.closest("[data-key]");if(!a)return;let r=s.passkeys.find(l=>l.id===a.dataset.key),o=a.querySelector(".account-key-editor");n==="rename"&&(o.innerHTML=`<form class="rename-key-form"><label for="rename-${E(r.id)}">Passkey name</label><input id="rename-${E(r.id)}" name="name" value="${E(r.name)}" required maxlength="60"><div class="account-form-actions"><button type="submit" class="account-primary">Save name</button><button type="button" class="account-text" data-action="cancel-key">Cancel</button></div></form>`,o.querySelector("input").focus()),n==="remove"&&(o.innerHTML=`<div class="account-confirm"><p>Remove \u201C${E(r.name)}\u201D? This passkey will no longer sign you in, and your other sessions will be signed out.</p><button type="button" class="account-secondary" data-action="confirm-remove">Remove passkey</button><button type="button" class="account-text" data-action="cancel-key">Keep passkey</button></div>`,o.querySelector('[data-action="cancel-key"]').focus()),n==="cancel-key"&&(o.innerHTML="",a.querySelector('[data-action="rename"]').focus()),n==="confirm-remove"&&g(async()=>{await N(async()=>A(await y(`passkeys/${r.id}`,{},"DELETE"))),u("Passkey removed. Your other sessions have been signed out."),m.querySelector('[data-action="show-add"]').focus()})});m.addEventListener("submit",e=>{e.preventDefault();let t=e.target;if(!t.reportValidity())return;let n=Object.fromEntries(new FormData(t));if(t.id==="register-form")return g(()=>Q(n));if(t.id==="profile-form")return g(async()=>{await N(async()=>A(await y("profile",n,"PATCH"))),u("Your profile has been updated.")});if(t.id==="add-key-form")return g(()=>N(()=>Q(n,!0)));if(t.classList.contains("rename-key-form")){let a=t.closest("[data-key]").dataset.key;return g(async()=>{await N(async()=>A(await y(`passkeys/${a}`,n,"PATCH"))),u("Passkey renamed.")})}});y("account",null,"GET").then(e=>{!S&&!w.open&&(s=e,L.hidden=!e.user)}).catch(()=>{});location.pathname==="/account"&&(w.showModal(),Y());
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..cba0dee
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,113 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { mkdirSync } from 'node:fs';
++import { resolve } from 'node:path';
++import { createAccounts, AccountError } from './lib/accounts.mjs';
++
++const port = Number(process.env.PORT || 11222);
++const origin = process.env.APP_ORIGIN || `http://localhost:${port}`;
++const configuredURL = new URL(origin);
++if (configuredURL.origin !== origin || (configuredURL.protocol !== 'https:' && configuredURL.hostname !== 'localhost')) {
++  throw new Error('APP_ORIGIN must be an HTTPS origin (or http://localhost for local development), with no trailing slash.');
++}
++const dataDirectory = resolve(process.env.DATA_DIR || 'data');
++mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
++const accounts = createAccounts({ filename: resolve(dataDirectory, 'accounts.sqlite'), origin });
++const cookieName = configuredURL.protocol === 'https:' ? '__Host-daily_grind' : 'daily_grind';
++const sessionCookie = (value, clear = false) => `${cookieName}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${clear ? 0 : 604800}${configuredURL.protocol === 'https:' ? '; Secure' : ''}`;
++const limits = new Map();
++function rateLimit(request) {
++  // Use the socket address; do not trust client-supplied forwarding headers.
++  const key = request.socket.remoteAddress;
++  const now = Date.now();
++  if (limits.size > 10000) for (const [id, entry] of limits) if (entry.until <= now) limits.delete(id);
++  const entry = limits.get(key);
++  if (!entry || entry.until <= now) limits.set(key, { count: 1, until: now + 60000 });
++  else if (++entry.count > 60) throw new AccountError('Too many requests. Please wait a minute and try again.', 429);
++}
++async function body(request) {
++  if (!request.headers['content-type']?.startsWith('application/json')) throw new AccountError('Expected JSON.', 415);
++  const chunks = [];
++  let bytes = 0;
++  for await (const chunk of request) {
++    bytes += chunk.length;
++    if (bytes > 65536) throw new AccountError('Request is too large.', 413);
++    chunks.push(chunk);
++  }
++  try {
++    const result = JSON.parse(Buffer.concat(chunks).toString());
++    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error();
++    return result;
++  } catch { throw new AccountError('Invalid JSON.'); }
++}
++const staticFiles = {
++  '/': ['index.html', 'text/html; charset=utf-8'],
++  '/account': ['index.html', 'text/html; charset=utf-8'],
++  '/account.js': ['public/account.js', 'text/javascript; charset=utf-8'],
++  '/account.css': ['public/account.css', 'text/css; charset=utf-8'],
++};
++createServer(async (request, response) => {
++  const headers = {
++    'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
++    'Permissions-Policy': 'publickey-credentials-get=(self), publickey-credentials-create=(self)',
++  };
++  function json(status, value, cookie) {
++    response.writeHead(status, { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...(cookie ? { 'Set-Cookie': cookie } : {}) });
++    response.end(JSON.stringify(value));
++  }
++  try {
++    const path = new URL(request.url, origin).pathname;
++    if (!path.startsWith('/api/')) {
++      const file = staticFiles[path];
++      if (!file || !['GET', 'HEAD'].includes(request.method)) { response.writeHead(404, headers); response.end('Not found'); return; }
++      const content = await readFile(new URL(file[0], import.meta.url));
++      response.writeHead(200, { ...headers, 'Content-Type': file[1] });
++      response.end(request.method === 'HEAD' ? undefined : content); return;
++    }
++    const raw = request.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
++    if (request.method === 'GET' && path === '/api/account') {
++      try { json(200, accounts.snapshot(raw)); }
++      catch (error) { if (error.status === 401) json(200, { user: null }); else throw error; }
++      return;
++    }
++    if (request.headers.origin !== origin) throw new AccountError('Request origin does not match this site.', 403);
++    rateLimit(request);
++    const input = await body(request);
++    const action = `${request.method} ${path}`;
++    switch (action) {
++      case 'POST /api/register/options': json(200, await accounts.registrationOptions(input)); break;
++      case 'POST /api/passkeys/options': json(200, await accounts.registrationOptions(input, raw, true)); break;
++      case 'POST /api/register/verify': {
++        const next = await accounts.registrationVerify(input);
++        accounts.logout(raw);
++        json(200, accounts.snapshot(next), sessionCookie(next)); break;
++      }
++      case 'POST /api/passkeys/verify': {
++        await accounts.registrationVerify(input, raw, true);
++        json(200, accounts.snapshot(raw)); break;
++      }
++      case 'POST /api/login/options': json(200, await accounts.authenticationOptions()); break;
++      case 'POST /api/reauth/options': json(200, await accounts.authenticationOptions(raw, true)); break;
++      case 'POST /api/login/verify': {
++        const next = await accounts.authenticationVerify(input);
++        accounts.logout(raw);
++        json(200, accounts.snapshot(next), sessionCookie(next)); break;
++      }
++      case 'POST /api/reauth/verify': {
++        await accounts.authenticationVerify(input, raw, true);
++        json(200, accounts.snapshot(raw)); break;
++      }
++      case 'PATCH /api/profile': json(200, accounts.updateProfile(input, raw)); break;
++      case 'POST /api/logout': accounts.logout(raw); json(200, { user: null }, sessionCookie('', true)); break;
++      default: {
++        const match = path.match(/^\/api\/passkeys\/([A-Za-z0-9_-]+)$/);
++        if (!match || !['PATCH', 'DELETE'].includes(request.method)) throw new AccountError('Not found.', 404);
++        json(200, accounts.managePasskey(match[1], input, raw, request.method === 'DELETE'));
++      }
++    }
++  } catch (error) {
++    const status = error instanceof AccountError ? error.status : 400;
++    json(status, { error: error instanceof AccountError ? error.message : 'The passkey request could not be verified. Please try again.' });
++  }
++}).listen(port, () => console.log(`Daily Grind listening on port ${port}`));
+diff --git a/test/accounts.test.mjs b/test/accounts.test.mjs
+new file mode 100644
+index 0000000..a94c6e1
+--- /dev/null
++++ b/test/accounts.test.mjs
+@@ -0,0 +1,147 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { generateKeyPairSync, createHash, sign } from 'node:crypto';
++import { createAccounts } from '../lib/accounts.mjs';
++
++// Inject only signature verification for deterministic service-policy tests.
++// Production uses SimpleWebAuthn's actual cryptographic verifiers.
++function fixture(t) {
++  let time = 1700000000000;
++  let serial = 0;
++  const accounts = createAccounts({ origin: 'https://coffee.example.com', now: () => time,
++    verifyRegistration: async ({ response }) => {
++      if (response.reject) throw new Error('Invalid attestation');
++      return { verified: true, registrationInfo: { credential: { id: `key-${++serial}`, publicKey: new Uint8Array([1, 2, 3]), counter: 0, transports: ['internal'] }, credentialBackedUp: true } };
++    },
++    verifyAuthentication: async ({ response }) => ({ verified: !response.reject, authenticationInfo: { newCounter: 1, credentialBackedUp: true } }),
++  });
++  t.after(() => accounts.close());
++  const profile = { name: 'Alex Morgan', email: 'Alex@example.com', passkeyName: 'Phone' };
++  async function register(input = profile) {
++    const request = await accounts.registrationOptions(input);
++    const session = await accounts.registrationVerify({ requestId: request.requestId, response: {} });
++    return { session, state: accounts.snapshot(session) };
++  }
++  return { accounts, profile, register, advance: ms => { time += ms; } };
++}
++
++test('registration requests require discoverable passkeys and create no account before verification', async t => {
++  const { accounts, profile } = fixture(t);
++  const request = await accounts.registrationOptions(profile);
++  assert.equal(request.options.rp.id, 'coffee.example.com');
++  assert.equal(request.options.authenticatorSelection.residentKey, 'required');
++  assert.equal(request.options.authenticatorSelection.userVerification, 'required');
++  await assert.rejects(accounts.registrationVerify({ requestId: request.requestId, response: { reject: true } }));
++  const retry = await accounts.registrationOptions(profile);
++  const session = await accounts.registrationVerify({ requestId: retry.requestId, response: {} });
++  assert.equal(accounts.snapshot(session).user.email, 'alex@example.com');
++  await assert.rejects(accounts.registrationVerify({ requestId: retry.requestId, response: {} }), /expired/);
++});
++
++test('sign-in requires a valid, unexpired, single-use challenge and a registered credential', async t => {
++  const { accounts, register, advance } = fixture(t);
++  const { state } = await register();
++  let request = await accounts.authenticationOptions();
++  assert.equal(request.options.userVerification, 'required');
++  await assert.rejects(accounts.authenticationVerify({ requestId: request.requestId, response: { id: state.passkeys[0].id, reject: true } }), /verification failed/);
++  request = await accounts.authenticationOptions();
++  advance(300001);
++  await assert.rejects(accounts.authenticationVerify({ requestId: request.requestId, response: { id: state.passkeys[0].id } }), /expired/);
++  request = await accounts.authenticationOptions();
++  await assert.rejects(accounts.authenticationVerify({ requestId: request.requestId, response: { id: 'unknown-key' } }), /could not sign you in/);
++  request = await accounts.authenticationOptions();
++  const input = { requestId: request.requestId, response: { id: state.passkeys[0].id } };
++  const session = await accounts.authenticationVerify(input);
++  assert.equal(accounts.snapshot(session).user.id, state.user.id);
++  await assert.rejects(accounts.authenticationVerify(input), /expired/);
++});
++
++test('stale sessions require reauthentication and reauth is bound to the current session', async t => {
++  const { accounts, register, advance, profile } = fixture(t);
++  const { session, state } = await register();
++  advance(300001);
++  assert.equal(accounts.snapshot(session).reauthenticate, true);
++  assert.throws(() => accounts.updateProfile(profile, session), /Confirm/);
++  await assert.rejects(accounts.registrationOptions({ passkeyName: 'Backup' }, session, true), /Confirm/);
++  assert.throws(() => accounts.managePasskey(state.passkeys[0].id, { name: 'New name' }, session), /Confirm/);
++  const request = await accounts.authenticationOptions(session, true);
++  await accounts.authenticationVerify({ requestId: request.requestId, response: { id: state.passkeys[0].id } }, session, true);
++  assert.equal(accounts.snapshot(session).reauthenticate, false);
++  assert.equal(accounts.updateProfile({ ...profile, name: 'Alex Updated' }, session).user.name, 'Alex Updated');
++  const login = await accounts.authenticationOptions();
++  const otherSession = await accounts.authenticationVerify({ requestId: login.requestId, response: { id: state.passkeys[0].id } });
++  const bound = await accounts.authenticationOptions(session, true);
++  await assert.rejects(accounts.authenticationVerify({ requestId: bound.requestId, response: { id: state.passkeys[0].id } }, otherSession, true), /Session changed/);
++});
++
++test('passkey management enforces ownership, protects the last key, and revokes other sessions', async t => {
++  const { accounts, register } = fixture(t);
++  const { session, state } = await register();
++  const first = state.passkeys[0].id;
++  assert.throws(() => accounts.managePasskey(first, {}, session, true), /last one/);
++  const secondAccount = await register({ name: 'Other User', email: 'other@example.com', passkeyName: 'Other phone' });
++  assert.throws(() => accounts.managePasskey(first, { name: 'Hijack' }, secondAccount.session), /not found/);
++  const request = await accounts.registrationOptions({ passkeyName: 'Backup' }, session, true);
++  await accounts.registrationVerify({ requestId: request.requestId, response: {} }, session, true);
++  const renamed = accounts.managePasskey(first, { name: 'My phone' }, session);
++  assert.equal(renamed.passkeys[0].name, 'My phone');
++  const login = await accounts.authenticationOptions();
++  const otherSession = await accounts.authenticationVerify({ requestId: login.requestId, response: { id: first } });
++  const remaining = accounts.managePasskey(first, {}, session, true);
++  assert.equal(remaining.passkeys.length, 1);
++  assert.throws(() => accounts.snapshot(otherSession), /sign in/);
++  const revoked = await accounts.authenticationOptions();
++  await assert.rejects(accounts.authenticationVerify({ requestId: revoked.requestId, response: { id: first } }), /could not sign you in/);
++});
++
++test('profiles validate input and reject duplicate emails; logout invalidates the session', async t => {
++  const { accounts, register } = fixture(t);
++  const { session, state } = await register();
++  await register({ name: 'Other User', email: 'other@example.com', passkeyName: 'Phone' });
++  assert.throws(() => accounts.updateProfile({ name: 'Alex', email: 'invalid' }, session), /valid email/);
++  assert.throws(() => accounts.updateProfile({ name: 'Alex', email: 'other@example.com' }, session), /already in use/);
++  const updated = accounts.updateProfile({ name: 'Alex New', email: 'new@example.com' }, session);
++  assert.equal(updated.user.id, state.user.id);
++  assert.equal(updated.passkeys[0].id, state.passkeys[0].id);
++  accounts.logout(session);
++  assert.throws(() => accounts.snapshot(session), /sign in/);
++});
++
++test('a session expires after seven days', async t => {
++  const { accounts, register, advance } = fixture(t);
++  const { session } = await register();
++  advance(7 * 86400000 + 1);
++  assert.throws(() => accounts.snapshot(session), /sign in/);
++});
++
++test('real WebAuthn verification accepts a signed assertion and rejects wrong origin, RP, missing UV, and invalid signatures', async t => {
++  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
++  const jwk = publicKey.export({ format: 'jwk' });
++  // COSE EC2 key: kty=2, alg=-7 (ES256), crv=1 (P-256), x and y coordinates.
++  const cose = Buffer.concat([Buffer.from('a5010203262001215820', 'hex'), Buffer.from(jwk.x, 'base64url'), Buffer.from('225820', 'hex'), Buffer.from(jwk.y, 'base64url')]);
++  const credentialId = Buffer.from('test-credential').toString('base64url');
++  const accounts = createAccounts({ origin: 'https://coffee.example.com',
++    verifyRegistration: async () => ({ verified: true, registrationInfo: { credential: { id: credentialId, publicKey: cose, counter: 0, transports: [] }, credentialBackedUp: false } }),
++  });
++  t.after(() => accounts.close());
++  const registration = await accounts.registrationOptions({ name: 'Alex Morgan', email: 'alex@example.com', passkeyName: 'Test authenticator' });
++  const initialSession = await accounts.registrationVerify({ requestId: registration.requestId, response: {} });
++  const userId = accounts.snapshot(initialSession).user.id;
++  let counter = 0;
++  async function assertion({ origin = 'https://coffee.example.com', rp = 'coffee.example.com', flags = 5, badSignature = false } = {}) {
++    const { requestId, options } = await accounts.authenticationOptions();
++    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: options.challenge, origin, crossOrigin: false }));
++    const count = Buffer.alloc(4); count.writeUInt32BE(++counter);
++    const authenticatorData = Buffer.concat([createHash('sha256').update(rp).digest(), Buffer.from([flags]), count]);
++    const signature = sign('sha256', Buffer.concat([authenticatorData, createHash('sha256').update(clientDataJSON).digest()]), privateKey);
++    if (badSignature) signature[signature.length - 1] ^= 1;
++    return accounts.authenticationVerify({ requestId, response: { id: credentialId, rawId: credentialId, type: 'public-key', clientExtensionResults: {},
++      response: { clientDataJSON: clientDataJSON.toString('base64url'), authenticatorData: authenticatorData.toString('base64url'), signature: signature.toString('base64url'), userHandle: Buffer.from(userId).toString('base64url') } } });
++  }
++  const signedIn = await assertion();
++  assert.equal(accounts.snapshot(signedIn).user.id, userId);
++  await assert.rejects(assertion({ origin: 'https://attacker.example.com' }));
++  await assert.rejects(assertion({ rp: 'attacker.example.com' }));
++  await assert.rejects(assertion({ flags: 1 }));
++  await assert.rejects(assertion({ badSignature: true }));
++});

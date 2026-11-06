@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,56 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Dashboard</title>
++    <script async src="/js/app.js"></script>
++    <script async src="/js/tracker.js"></script>
++    <style>
++      * { box-sizing: border-box; }
++      body { margin: 0; background: #fafaf8; color: #242823; font: 15px/1.5 system-ui, sans-serif; }
++      header { padding: 24px 6%; border-bottom: 1px solid #e4e6df; }
++      .brand { font-weight: 650; letter-spacing: -.5px; }
++      .brand::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 10px; background: #58754b; border-radius: 3px; }
++      main { max-width: 1100px; margin: 72px auto; padding: 0 24px; }
++      .eyebrow { color: #72796d; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
++      h1 { margin: 10px 0 8px; font-size: clamp(32px, 5vw, 44px); font-weight: 500; letter-spacing: -2px; }
++      .intro { margin: 0; color: #757b70; }
++      .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
++      article { padding: 26px; border: 1px solid #e4e6df; border-radius: 10px; background: #fff; }
++      h2 { margin: 0; color: #72796d; font-size: 13px; font-weight: 450; }
++      .value { margin: 22px 0 10px; font-size: 34px; letter-spacing: -1px; }
++      .note { margin: 0; color: #72796d; font-size: 12px; }
++      .status { display: inline-flex; align-items: center; gap: 7px; margin-top: 32px; color: #72796d; font-size: 12px; }
++      .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #709263; }
++      @media (max-width: 600px) { main { margin-top: 40px; } .metrics { grid-template-columns: 1fr; gap: 12px; } }
++    </style>
++  </head>
++  <body>
++    <header><span class="brand">Overview</span></header>
++    <main>
++      <p class="eyebrow">Your workspace, at a glance</p>
++      <h1>Dashboard</h1>
++      <p class="intro">A little clarity for your day.</p>
++      <section class="metrics" aria-label="Workspace metrics">
++        <article>
++          <h2>Total projects</h2>
++          <p class="value">—</p>
++          <p class="note">Across your workspace</p>
++        </article>
++        <article>
++          <h2>Active tasks</h2>
++          <p class="value">—</p>
++          <p class="note">Currently in progress</p>
++        </article>
++        <article>
++          <h2>Completed</h2>
++          <p class="value">—</p>
++          <p class="note">This month</p>
++        </article>
++      </section>
++      <p class="status">Ready for your data</p>
++    </main>
++    <script src="/js/legacy-widgets.js"></script>
++  </body>
++</html>

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..812d8f2 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,48 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating special card */
++    .floating-card {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      width: 260px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      z-index: 900;
++      overflow: hidden;
++    }
++
++    .floating-card-header {
++      background: var(--primary);
++      color: white;
++      padding: 8px 12px;
++      font-size: 0.85rem;
++      font-weight: bold;
++    }
++
++    .floating-card-header.drag-handle {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .floating-card-header.dragging {
++      cursor: grabbing;
++    }
++
++    .floating-card-body {
++      padding: 12px;
++      font-size: 0.9rem;
++    }
++
++    .floating-card-body .btn {
++      margin-top: 10px;
++      padding: 6px 14px;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +249,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-card" id="special-card" aria-labelledby="special-title">
++    <div class="floating-card-header" id="special-handle">
++      <span id="special-title">Today's Special</span>
++    </div>
++    <div class="floating-card-body">
++      <p>Maple Oat Latte, half off before noon.</p>
++      <a href="/menu/seasonal" class="btn">Grab It</a>
++    </div>
++  </aside>
++
++  <script>
++    (() => {
++      const card = document.getElementById('special-card');
++      const handle = document.getElementById('special-handle');
++      const STEP = 15;
++      let offsetX = 0;
++      let offsetY = 0;
++
++      // Enable drag affordances only once JS is running.
++      handle.classList.add('drag-handle');
++      handle.tabIndex = 0;
++      handle.setAttribute('aria-label', "Today's Special. Use arrow keys to move this card.");
++
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - card.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - card.offsetHeight);
++        card.style.right = 'auto';
++        card.style.bottom = 'auto';
++        card.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        card.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++      }
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0) return;
++        const rect = card.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++        handle.classList.add('dragging');
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', (event) => {
++        const delta = {
++          ArrowLeft: [-STEP, 0],
++          ArrowRight: [STEP, 0],
++          ArrowUp: [0, -STEP],
++          ArrowDown: [0, STEP],
++        }[event.key];
++        if (!delta) return;
++        event.preventDefault();
++        const rect = card.getBoundingClientRect();
++        moveTo(rect.left + delta[0], rect.top + delta[1]);
++      });
++
++      // Keep the card reachable after viewport resizes.
++      window.addEventListener('resize', () => {
++        if (!card.style.left) return;
++        const rect = card.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollable Coffee Origins Section */
++    .origins-section {
++      margin-top: 50px;
++    }
++
++    .origins-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-top: 6px;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    #scroller {
++      height: 320px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: #efebe9;
++      border-radius: 10px;
++      border: 2px solid var(--secondary);
++      contain: content;
++    }
++
++    .origin-card {
++      min-height: 240px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      background: white;
++      padding: 28px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      text-align: center;
++      flex-shrink: 0;
++    }
++
++    .origin-card .origin-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    .origin-card h3 {
++      font-size: 1.5rem;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .origin-card p {
++      max-width: 540px;
++      color: #5d4037;
++    }
++
++    #status {
++      margin-top: 14px;
++      padding: 12px 18px;
++      background: var(--primary);
++      color: white;
++      border-radius: 6px;
++      text-align: center;
++      font-weight: 600;
++      font-size: 0.95rem;
++      letter-spacing: 0.3px;
++      transition: background-color 0.2s ease;
++    }
++
++    #status.is-scrolling {
++      background: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +275,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="origins-section">
++      <h2 style="text-align: center;">Single-Origin Coffee Beans</h2>
++      <p class="origins-subtitle">Scroll through our curated selection of single-origin beans from around the world.</p>
++      <div id="scroller">
++        <div class="origin-card" data-origin="Ethiopian Yirgacheffe">
++          <span class="origin-badge">East Africa &bull; Washed Process</span>
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p>Delicate floral aromatics with vibrant notes of bergamot, jasmine blossom, and sweet Meyer lemon.</p>
++        </div>
++        <div class="origin-card" data-origin="Colombian Huila">
++          <span class="origin-badge">South America &bull; High Altitude</span>
++          <h3>Colombian Huila</h3>
++          <p>Silky medium body balanced by rich caramel sweetness, roasted hazelnut, and crisp red apple acidity.</p>
++        </div>
++        <div class="origin-card" data-origin="Guatemalan Antigua">
++          <span class="origin-badge">Central America &bull; Volcanic Soil</span>
++          <h3>Guatemalan Antigua</h3>
++          <p>Velvety dark chocolate and warm baking spices layered with subtle smoky undertones and orange zest.</p>
++        </div>
++        <div class="origin-card" data-origin="Kenyan AA Nyeri">
++          <span class="origin-badge">East Africa &bull; Double Fermentation</span>
++          <h3>Kenyan AA Nyeri</h3>
++          <p>Bold, wine-like complexity bursting with blackcurrant, ruby grapefruit, and a clean cane sugar finish.</p>
++        </div>
++        <div class="origin-card" data-origin="Sumatran Mandheling">
++          <span class="origin-badge">Indonesia &bull; Wet-Hulled</span>
++          <h3>Sumatran Mandheling</h3>
++          <p>Full-bodied and earthy with deep notes of unsweetened cocoa, cedarwood, and sweet pipe tobacco.</p>
++        </div>
++      </div>
++      <div id="status" role="status" aria-live="polite">Scroll ended. Visible: Ethiopian Yirgacheffe</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +320,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const scroller = document.getElementById('scroller');
++      const statusEl = document.getElementById('status');
++      if (!scroller || !statusEl) return;
++
++      const originItems = Array.from(scroller.querySelectorAll('.origin-card'));
++      let isScrolling = false;
++      let scrollEndTimer = null;
++
++      function getMostVisibleOrigin() {
++        const scrollerRect = scroller.getBoundingClientRect();
++        const scrollerCenterY = scrollerRect.top + scrollerRect.height / 2;
++        const scrollerCenterX = scrollerRect.left + scrollerRect.width / 2;
++
++        let bestItem = null;
++        let maxVisibleArea = -1;
++        let minCenterDistance = Infinity;
++
++        for (let i = 0; i < originItems.length; i++) {
++          const item = originItems[i];
++          const rect = item.getBoundingClientRect();
++
++          const visibleTop = Math.max(rect.top, scrollerRect.top);
++          const visibleBottom = Math.min(rect.bottom, scrollerRect.bottom);
++          const visibleLeft = Math.max(rect.left, scrollerRect.left);
++          const visibleRight = Math.min(rect.right, scrollerRect.right);
++
++          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
++          const visibleWidth = Math.max(0, visibleRight - visibleLeft);
++          const visibleArea = visibleWidth * visibleHeight;
++
++          const itemCenterY = rect.top + rect.height / 2;
++          const itemCenterX = rect.left + rect.width / 2;
++          const centerDistance = Math.hypot(
++            itemCenterX - scrollerCenterX,
++            itemCenterY - scrollerCenterY
++          );
++
++          if (
++            visibleArea > maxVisibleArea ||
++            (visibleArea === maxVisibleArea && centerDistance < minCenterDistance)
++          ) {
++            maxVisibleArea = visibleArea;
++            minCenterDistance = centerDistance;
++            bestItem = item;
++          }
++        }
++
++        if (!bestItem && originItems.length > 0) {
++          bestItem = originItems[0];
++        }
++
++        if (!bestItem) return '';
++        return (
++          bestItem.dataset.origin ||
++          (bestItem.querySelector('h3') && bestItem.querySelector('h3').textContent.trim()) ||
++          bestItem.textContent.trim()
++        );
++      }
++
++      function handleScrollEnd() {
++        if (scrollEndTimer !== null) {
++          clearTimeout(scrollEndTimer);
++          scrollEndTimer = null;
++        }
++        isScrolling = false;
++        statusEl.classList.remove('is-scrolling');
++        const visibleOrigin = getMostVisibleOrigin();
++        statusEl.textContent = 'Scroll ended. Visible: ' + visibleOrigin;
++      }
++
++      function handleScroll() {
++        // Guard active-scroll DOM writes so we only update once per scroll gesture
++        // and never read layout metrics while scrolling is active.
++        if (!isScrolling) {
++          isScrolling = true;
++          statusEl.classList.add('is-scrolling');
++          statusEl.textContent = 'Scrolling...';
++        }
++
++        if (scrollEndTimer !== null) {
++          clearTimeout(scrollEndTimer);
++        }
++        scrollEndTimer = setTimeout(handleScrollEnd, 150);
++      }
++
++      scroller.addEventListener('scroll', handleScroll, { passive: true });
++      scroller.addEventListener('scrollend', handleScrollEnd, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

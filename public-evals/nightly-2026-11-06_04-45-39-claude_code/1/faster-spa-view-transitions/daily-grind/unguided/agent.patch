@@ -1,0 +1,703 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..349e1ec
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,499 @@
++/*
++ * The Daily Grind – client-side SPA router with keep-alive views.
++ *
++ * Routing is hash-based (#/menu, #/locations, ...) so deep links and reloads
++ * work on a plain static file server with no SPA fallback.
++ *
++ * Performance model:
++ *   - Each view is built lazily the first time it's visited (or pre-warmed in
++ *     idle time when the user hovers/focuses its nav link).
++ *   - Once built, a view is never destroyed. Navigating away just sets
++ *     `hidden` on its root, so its DOM, form inputs, filters, open <details>,
++ *     selected tabs, etc. are all preserved, and returning is a single
++ *     attribute flip instead of a full rebuild.
++ *   - Each view's scroll position is remembered and restored on return.
++ */
++(() => {
++  'use strict';
++
++  const SITE = 'The Daily Grind';
++  const app = document.getElementById('app');
++  const announcer = document.getElementById('route-announcer');
++
++  // ---------- helpers ----------
++  const esc = (v) =>
++    String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++  const money = (n) => `$${n.toFixed(2)}`;
++  const html = (strings, ...vals) => strings.reduce((out, s, i) => out + s + (i < vals.length ? vals[i] : ''), '');
++  const el = (markup) => {
++    const t = document.createElement('template');
++    t.innerHTML = markup.trim();
++    return t.content.firstElementChild;
++  };
++  const banner = (title, sub, img) => html`
++    <header class="page-banner" style="background-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url('${img}')">
++      <h1>${esc(title)}</h1><p>${esc(sub)}</p>
++    </header>`;
++  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
++
++  // ---------- shared app state (survives navigation) ----------
++  const state = {
++    cart: new Map(), // itemId -> qty
++    points: 340,
++    preferredStore: null,
++    rewardHistory: [
++      { date: '2026-10-28', text: 'Purchase at Downtown Roastery', pts: +45 },
++      { date: '2026-10-19', text: 'Redeemed: Free Pastry', pts: -150 },
++      { date: '2026-10-11', text: 'Purchase at Riverside Café', pts: +60 },
++    ],
++  };
++
++  // ---------- data ----------
++  const MENU = [
++    { id: 'seasonal', name: 'Maple Oat Latte', cat: 'seasonal', price: 5.75, desc: 'Creamy oat milk with a hint of Vermont maple syrup.' },
++    { id: 'pumpkin', name: 'Spiced Pumpkin Cortado', cat: 'seasonal', price: 5.25, desc: 'Double ristretto, steamed milk, house pumpkin spice.' },
++    { id: 'espresso', name: 'Dark Roast Espresso', cat: 'espresso', price: 3.25, desc: 'Bold, smokey, and perfect for a morning boost.' },
++    { id: 'flat-white', name: 'Flat White', cat: 'espresso', price: 4.5, desc: 'Velvety microfoam over a double shot.' },
++    { id: 'cappuccino', name: 'Cappuccino', cat: 'espresso', price: 4.25, desc: 'Equal parts espresso, milk and airy foam.' },
++    { id: 'cold-brew', name: 'Cold Brew', cat: 'cold', price: 4.75, desc: 'Steeped for 18 hours for maximum smoothness.' },
++    { id: 'nitro', name: 'Nitro Cold Brew', cat: 'cold', price: 5.5, desc: 'Nitrogen-infused for a creamy, stout-like pour.' },
++    { id: 'croissant', name: 'Butter Croissant', cat: 'bakery', price: 3.5, desc: 'Flaky, golden, baked fresh every morning.' },
++    { id: 'muffin', name: 'Blueberry Muffin', cat: 'bakery', price: 3.25, desc: 'Wild blueberries and a crunchy streusel top.' },
++  ];
++  const CATS = [
++    ['all', 'All'], ['seasonal', 'Seasonal'], ['espresso', 'Espresso'], ['cold', 'Cold Drinks'], ['bakery', 'Bakery'],
++  ];
++  const LOCATIONS = [
++    { id: 'downtown', name: 'Downtown Roastery', addr: '120 Main St', hours: [6, 20], phone: '(555) 201-3300', perks: 'Roasting tours on Saturdays, Wi-Fi, outdoor seating' },
++    { id: 'riverside', name: 'Riverside Café', addr: '48 River Rd', hours: [7, 18], phone: '(555) 201-3301', perks: 'Riverfront patio, dog friendly' },
++    { id: 'campus', name: 'Campus Corner', addr: '9 University Ave', hours: [7, 23], phone: '(555) 201-3302', perks: 'Late hours, study booths, student discount' },
++    { id: 'station', name: 'Union Station Kiosk', addr: 'Union Station, Concourse B', hours: [5, 13], phone: '(555) 201-3303', perks: 'Grab-and-go, mobile order pickup' },
++  ];
++  const TIERS = [
++    { name: 'Bean', min: 0, perk: 'Free birthday drink' },
++    { name: 'Roast', min: 250, perk: 'Free refills on brewed coffee' },
++    { name: 'Espresso', min: 750, perk: 'Monthly free drink + early access to seasonals' },
++  ];
++  const REWARDS = [
++    { id: 'shot', name: 'Extra Shot or Syrup', cost: 50 },
++    { id: 'pastry', name: 'Free Pastry', cost: 150 },
++    { id: 'drink', name: 'Any Handcrafted Drink', cost: 200 },
++    { id: 'beans', name: '12oz Bag of Beans', cost: 450 },
++  ];
++
++  // ---------- views ----------
++  // Each factory runs ONCE per session. It returns { el, title, onShow? }.
++  const views = {
++    menu() {
++      const root = el(html`
++        <section class="view" data-view="menu" tabindex="-1">
++          ${banner('Our Menu', 'Handcrafted drinks and fresh-baked treats.', 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80')}
++          <div class="container">
++            <div class="toolbar">
++              <div class="chips" role="group" aria-label="Filter by category">
++                ${CATS.map(([k, label]) => `<button type="button" class="chip" data-cat="${k}" aria-pressed="${k === 'all'}">${label}</button>`).join('')}
++              </div>
++              <label class="visually-hidden" for="menu-search">Search menu</label>
++              <input id="menu-search" type="search" placeholder="Search the menu…">
++            </div>
++            <div class="grid">
++              ${MENU.map((m) => html`
++                <article class="card menu-item" data-id="${m.id}" data-cat="${m.cat}" data-name="${esc(m.name.toLowerCase())}">
++                  <h3>${esc(m.name)}</h3>
++                  <p>${esc(m.desc)}</p>
++                  <div class="price">${money(m.price)}</div>
++                  <div class="qty">
++                    <button type="button" data-act="dec" aria-label="Remove one ${esc(m.name)}">−</button>
++                    <span data-qty aria-live="polite">0</span>
++                    <button type="button" data-act="inc" aria-label="Add one ${esc(m.name)}">+</button>
++                  </div>
++                </article>`).join('')}
++            </div>
++            <p class="empty" hidden>No items match your search.</p>
++            <div class="cart-bar" hidden>
++              <span data-summary></span>
++              <button type="button" class="btn" data-act="checkout">Checkout</button>
++            </div>
++          </div>
++        </section>`);
++
++      const cards = [...root.querySelectorAll('.menu-item')];
++      const chips = [...root.querySelectorAll('.chip')];
++      const search = root.querySelector('#menu-search');
++      const empty = root.querySelector('.empty');
++      const cartBar = root.querySelector('.cart-bar');
++      const summary = root.querySelector('[data-summary]');
++      let cat = 'all';
++
++      const applyFilter = () => {
++        const q = search.value.trim().toLowerCase();
++        let shown = 0;
++        for (const c of cards) {
++          const ok = (cat === 'all' || c.dataset.cat === cat) && (!q || c.dataset.name.includes(q));
++          c.hidden = !ok;
++          if (ok) shown++;
++        }
++        empty.hidden = shown > 0;
++      };
++      const renderCart = () => {
++        let count = 0, total = 0;
++        for (const m of MENU) {
++          const q = state.cart.get(m.id) || 0;
++          count += q;
++          total += q * m.price;
++        }
++        cartBar.hidden = count === 0;
++        summary.textContent = `${count} item${count === 1 ? '' : 's'} · ${money(total)}`;
++      };
++      const setCat = (k) => {
++        cat = k;
++        chips.forEach((ch) => ch.setAttribute('aria-pressed', String(ch.dataset.cat === k)));
++        applyFilter();
++      };
++
++      root.addEventListener('click', (e) => {
++        const chip = e.target.closest('.chip');
++        if (chip) return setCat(chip.dataset.cat);
++        const btn = e.target.closest('[data-act]');
++        if (!btn) return;
++        if (btn.dataset.act === 'checkout') {
++          const earned = Math.round([...state.cart].reduce((s, [id, q]) => s + MENU.find((m) => m.id === id).price * q, 0) * 10);
++          state.points += earned;
++          state.rewardHistory.unshift({ date: new Date().toISOString().slice(0, 10), text: 'Online order', pts: earned });
++          state.cart.clear();
++          cards.forEach((c) => (c.querySelector('[data-qty]').textContent = '0'));
++          renderCart();
++          announce(`Order placed! You earned ${earned} points.`);
++          alert(`Thanks! Your order is in. You earned ${earned} reward points.`);
++          return;
++        }
++        const card = btn.closest('.menu-item');
++        const id = card.dataset.id;
++        const q = Math.max(0, (state.cart.get(id) || 0) + (btn.dataset.act === 'inc' ? 1 : -1));
++        q ? state.cart.set(id, q) : state.cart.delete(id);
++        card.querySelector('[data-qty]').textContent = q;
++        renderCart();
++      });
++      search.addEventListener('input', applyFilter);
++
++      return {
++        el: root,
++        title: 'Menu',
++        // Deep link (e.g. #/menu/cold-brew) highlights that item.
++        onShow(param) {
++          cards.forEach((c) => c.classList.remove('highlight'));
++          const target = param && cards.find((c) => c.dataset.id === param);
++          if (!target) return false;
++          search.value = '';
++          setCat('all');
++          target.classList.add('highlight');
++          target.scrollIntoView({ block: 'center' });
++          return true; // we handled scroll positioning
++        },
++      };
++    },
++
++    locations() {
++      const root = el(html`
++        <section class="view" data-view="locations" tabindex="-1">
++          ${banner('Find a Café', 'Four neighborhood spots and counting.', 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1350&q=80')}
++          <div class="container">
++            <div class="toolbar">
++              <label class="visually-hidden" for="loc-search">Search locations</label>
++              <input id="loc-search" type="search" placeholder="Search by name or address…">
++              <label class="check"><input type="checkbox" id="loc-open"> Open now only</label>
++            </div>
++            <div class="location-list">
++              ${LOCATIONS.map((l) => html`
++                <details class="location" data-id="${l.id}" data-search="${esc((l.name + ' ' + l.addr).toLowerCase())}">
++                  <summary>${esc(l.name)} <span class="badge" data-badge></span></summary>
++                  <p class="meta">${esc(l.addr)} · ${esc(l.phone)}</p>
++                  <p class="meta">Hours: ${l.hours[0]}:00 – ${l.hours[1]}:00 daily</p>
++                  <p>${esc(l.perks)}</p>
++                  <button type="button" class="btn" data-store="${l.id}">Set as my store</button>
++                </details>`).join('')}
++            </div>
++            <p class="empty" hidden>No locations match.</p>
++          </div>
++        </section>`);
++
++      const items = [...root.querySelectorAll('.location')];
++      const search = root.querySelector('#loc-search');
++      const openOnly = root.querySelector('#loc-open');
++      const empty = root.querySelector('.empty');
++      const isOpen = (l) => {
++        const h = new Date().getHours();
++        return h >= l.hours[0] && h < l.hours[1];
++      };
++
++      const refresh = () => {
++        const q = search.value.trim().toLowerCase();
++        let shown = 0;
++        items.forEach((d, i) => {
++          const loc = LOCATIONS[i];
++          const open = isOpen(loc);
++          const badge = d.querySelector('[data-badge]');
++          badge.textContent = open ? 'Open' : 'Closed';
++          badge.classList.toggle('closed', !open);
++          const ok = (!q || d.dataset.search.includes(q)) && (!openOnly.checked || open);
++          d.hidden = !ok;
++          if (ok) shown++;
++          const btn = d.querySelector('[data-store]');
++          const mine = state.preferredStore === loc.id;
++          btn.textContent = mine ? '★ My store' : 'Set as my store';
++          btn.disabled = mine;
++        });
++        empty.hidden = shown > 0;
++      };
++
++      search.addEventListener('input', refresh);
++      openOnly.addEventListener('change', refresh);
++      root.addEventListener('click', (e) => {
++        const btn = e.target.closest('[data-store]');
++        if (!btn) return;
++        state.preferredStore = btn.dataset.store;
++        refresh();
++        announce('Preferred store updated.');
++      });
++
++      // Only the cheap open/closed badges are recomputed on return.
++      return { el: root, title: 'Locations', onShow: refresh };
++    },
++
++    rewards() {
++      const root = el(html`
++        <section class="view" data-view="rewards" tabindex="-1">
++          ${banner('Grind Rewards', 'Earn 10 points for every dollar you spend.', 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1350&q=80')}
++          <div class="container">
++            <div class="card">
++              <h3>You have <span data-points></span> points</h3>
++              <div class="progress" role="progressbar" aria-label="Progress to next tier" aria-valuemin="0" aria-valuemax="100"><span></span></div>
++              <p data-next></p>
++            </div>
++            <h2 style="margin-top:30px">Tiers</h2>
++            <div class="grid">
++              ${TIERS.map((t) => `<div class="card tier-card" data-tier="${t.name}"><h3>${t.name}</h3><p>${t.min}+ pts</p><p>${esc(t.perk)}</p></div>`).join('')}
++            </div>
++            <h2 style="margin-top:30px">Redeem</h2>
++            <div class="grid">
++              ${REWARDS.map((r) => `<div class="card"><h3>${esc(r.name)}</h3><p>${r.cost} pts</p><button type="button" class="btn" data-redeem="${r.id}">Redeem</button></div>`).join('')}
++            </div>
++            <h2 style="margin-top:30px">Activity</h2>
++            <table><thead><tr><th>Date</th><th>Activity</th><th>Points</th></tr></thead><tbody data-history></tbody></table>
++          </div>
++        </section>`);
++
++      const pointsEl = root.querySelector('[data-points]');
++      const bar = root.querySelector('.progress');
++      const nextEl = root.querySelector('[data-next]');
++      const tierCards = [...root.querySelectorAll('.tier-card')];
++      const redeemBtns = [...root.querySelectorAll('[data-redeem]')];
++      const historyEl = root.querySelector('[data-history]');
++      let renderedHistoryLen = -1;
++
++      const refresh = () => {
++        const p = state.points;
++        pointsEl.textContent = p;
++        const tierIdx = TIERS.reduce((acc, t, i) => (p >= t.min ? i : acc), 0);
++        const next = TIERS[tierIdx + 1];
++        const pct = next ? ((p - TIERS[tierIdx].min) / (next.min - TIERS[tierIdx].min)) * 100 : 100;
++        bar.firstElementChild.style.width = `${pct}%`;
++        bar.setAttribute('aria-valuenow', Math.round(pct));
++        nextEl.textContent = next ? `${next.min - p} points to ${next.name} tier.` : 'You have reached the top tier!';
++        tierCards.forEach((c, i) => c.setAttribute('aria-current', String(i === tierIdx)));
++        redeemBtns.forEach((b) => (b.disabled = REWARDS.find((r) => r.id === b.dataset.redeem).cost > p));
++        // Only rebuild the history table when it actually changed.
++        if (renderedHistoryLen !== state.rewardHistory.length) {
++          historyEl.innerHTML = state.rewardHistory
++            .map((h) => `<tr><td>${h.date}</td><td>${esc(h.text)}</td><td>${h.pts > 0 ? '+' : ''}${h.pts}</td></tr>`)
++            .join('');
++          renderedHistoryLen = state.rewardHistory.length;
++        }
++      };
++
++      root.addEventListener('click', (e) => {
++        const btn = e.target.closest('[data-redeem]');
++        if (!btn) return;
++        const r = REWARDS.find((x) => x.id === btn.dataset.redeem);
++        if (r.cost > state.points) return;
++        state.points -= r.cost;
++        state.rewardHistory.unshift({ date: new Date().toISOString().slice(0, 10), text: `Redeemed: ${r.name}`, pts: -r.cost });
++        refresh();
++        announce(`Redeemed ${r.name}.`);
++      });
++
++      return { el: root, title: 'Rewards', onShow: refresh };
++    },
++
++    account() {
++      const root = el(html`
++        <section class="view" data-view="account" tabindex="-1">
++          ${banner('My Account', 'Manage your profile, orders and preferences.', 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80')}
++          <div class="container">
++            <div class="tabs" role="tablist" aria-label="Account sections">
++              <button type="button" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="true">Profile</button>
++              <button type="button" role="tab" id="tab-orders" aria-controls="panel-orders" aria-selected="false" tabindex="-1">Order History</button>
++              <button type="button" role="tab" id="tab-prefs" aria-controls="panel-prefs" aria-selected="false" tabindex="-1">Preferences</button>
++            </div>
++
++            <div class="tab-panel" role="tabpanel" id="panel-profile" aria-labelledby="tab-profile">
++              <form class="form" data-form="profile">
++                <label>Full name <input type="text" name="name" value="Alex Morgan" autocomplete="name" required></label>
++                <label>Email <input type="email" name="email" value="alex@example.com" autocomplete="email" required></label>
++                <label>Preferred store <input type="text" name="store" readonly data-store></label>
++                <button type="submit" class="btn">Save changes</button>
++                <p class="status" role="status"></p>
++              </form>
++            </div>
++
++            <div class="tab-panel" role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" hidden>
++              <table>
++                <thead><tr><th>Date</th><th>Order</th><th>Total</th></tr></thead>
++                <tbody>
++                  <tr><td>2026-10-28</td><td>Maple Oat Latte, Butter Croissant</td><td>$9.25</td></tr>
++                  <tr><td>2026-10-11</td><td>Cold Brew ×2, Blueberry Muffin</td><td>$12.75</td></tr>
++                  <tr><td>2026-09-30</td><td>Flat White</td><td>$4.50</td></tr>
++                </tbody>
++              </table>
++            </div>
++
++            <div class="tab-panel" role="tabpanel" id="panel-prefs" aria-labelledby="tab-prefs" hidden>
++              <form class="form" data-form="prefs">
++                <label>Default milk
++                  <select name="milk"><option>Whole</option><option>Oat</option><option>Almond</option><option>Skim</option></select>
++                </label>
++                <label>Order notes <textarea name="notes" rows="3" placeholder="e.g. extra hot, light ice"></textarea></label>
++                <label class="check"><input type="checkbox" name="emails" checked> Email me about seasonal drinks</label>
++                <button type="submit" class="btn">Save preferences</button>
++                <p class="status" role="status"></p>
++              </form>
++            </div>
++          </div>
++        </section>`);
++
++      const tabs = [...root.querySelectorAll('[role="tab"]')];
++      const storeField = root.querySelector('[data-store]');
++
++      const selectTab = (tab) => {
++        tabs.forEach((t) => {
++          const on = t === tab;
++          t.setAttribute('aria-selected', String(on));
++          t.tabIndex = on ? 0 : -1;
++          root.querySelector('#' + t.getAttribute('aria-controls')).hidden = !on;
++        });
++      };
++      root.querySelector('.tabs').addEventListener('click', (e) => {
++        const tab = e.target.closest('[role="tab"]');
++        if (tab) selectTab(tab);
++      });
++      root.querySelector('.tabs').addEventListener('keydown', (e) => {
++        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
++        const i = tabs.indexOf(document.activeElement);
++        const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
++        selectTab(next);
++        next.focus();
++      });
++      root.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const status = e.target.querySelector('.status');
++        status.textContent = `Saved at ${new Date().toLocaleTimeString()}.`;
++      });
++
++      return {
++        el: root,
++        title: 'My Account',
++        onShow() {
++          const loc = LOCATIONS.find((l) => l.id === state.preferredStore);
++          storeField.value = loc ? `${loc.name} — ${loc.addr}` : 'None selected (choose one on Locations)';
++        },
++      };
++    },
++
++    notFound() {
++      const root = el(html`
++        <section class="view" data-view="notFound" tabindex="-1">
++          <div class="container" style="text-align:center">
++            <h1>Page not found</h1>
++            <p>We couldn't find that page. Maybe grab a coffee instead?</p>
++            <a class="btn" href="#/">Back home</a>
++          </div>
++        </section>`);
++      return { el: root, title: 'Not Found' };
++    },
++  };
++
++  // ---------- keep-alive router ----------
++  /** name -> { el, title, onShow?, scrollY } */
++  const cache = new Map();
++  cache.set('home', { el: app.querySelector('[data-view="home"]'), title: null, scrollY: 0 });
++
++  let current = null;
++  let firstRender = true;
++  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++  const parse = (hash) => {
++    const [name = '', param = null] = hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
++    if (!name) return { name: 'home', param };
++    return { name: Object.hasOwn(views, name) && name !== 'notFound' ? name : 'notFound', param };
++  };
++
++  // Build a view (once) and attach it hidden. Safe to call ahead of time.
++  const ensure = (name) => {
++    let entry = cache.get(name);
++    if (!entry) {
++      entry = { ...views[name](), scrollY: 0 };
++      entry.el.hidden = true;
++      app.appendChild(entry.el);
++      cache.set(name, entry);
++    }
++    return entry;
++  };
++
++  function announce(msg) {
++    announcer.textContent = '';
++    // Defer so screen readers register the change even for identical messages.
++    requestAnimationFrame(() => (announcer.textContent = msg));
++  }
++
++  function render() {
++    const { name, param } = parse(location.hash);
++    const prev = current && cache.get(current);
++    const next = ensure(name);
++
++    if (prev && prev !== next) {
++      prev.scrollY = window.scrollY; // remember where the user was
++      prev.el.hidden = true; // keep DOM alive, just stop rendering it
++    }
++    next.el.hidden = false;
++    current = name;
++
++    const handledScroll = next.onShow ? next.onShow(param) === true : false;
++    if (!handledScroll && prev !== next) window.scrollTo(0, next.scrollY);
++
++    document.title = next.title ? `${next.title} | ${SITE}` : `${SITE} | Artisanal Coffee`;
++    document.querySelectorAll('nav a[data-route]').forEach((a) => {
++      const match = parse(a.getAttribute('href')).name === name && name !== 'home';
++      match ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
++    });
++
++    if (!firstRender && prev !== next) {
++      next.el.focus({ preventScroll: true });
++      announce(`${next.title || 'Home'} page`);
++    }
++    firstRender = false;
++  }
++
++  // Pre-warm a view during idle time when the user shows intent to visit it,
++  // so even the very first navigation to it is just a visibility toggle.
++  const prewarm = (e) => {
++    const a = e.target.closest && e.target.closest('a[href^="#/"]');
++    if (!a) return;
++    const { name } = parse(a.getAttribute('href'));
++    if (!cache.has(name)) idle(() => ensure(name));
++  };
++  document.addEventListener('pointerover', prewarm, { passive: true });
++  document.addEventListener('focusin', prewarm);
++
++  window.addEventListener('hashchange', render);
++  render();
++})();
+diff --git a/index.html b/index.html
+index 66c9173..9fbe748 100644
+--- a/index.html
++++ b/index.html
+@@ -152,26 +152,150 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .logo a { color: inherit; font-size: inherit; border: 0; }
++
++    /* SPA views: inactive views stay in the DOM (state preserved) but are not rendered */
++    [hidden] { display: none !important; }
++    .view:focus { outline: none; }
++
++    .page-banner {
++      height: 32vh;
++      min-height: 200px;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++    .page-banner h1 { font-size: 2.4rem; }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++    }
++    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
++    .chip {
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 999px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++    .chip[aria-pressed="true"] { background: var(--primary); color: white; }
++
++    input[type="search"], input[type="text"], input[type="email"], select, textarea {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      width: 100%;
++    }
++    .toolbar input[type="search"] { max-width: 280px; }
++
++    .card.menu-item { text-align: left; display: flex; flex-direction: column; }
++    .card.menu-item p { flex: 1; }
++    .card.highlight { box-shadow: 0 0 0 3px var(--accent); }
++    .price { font-weight: bold; color: var(--primary); }
++    .qty { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
++    .qty button, button.btn {
++      border: 0; cursor: pointer; font: inherit;
++    }
++    .qty button {
++      width: 32px; height: 32px; border-radius: 50%;
++      background: var(--secondary); color: var(--text); font-weight: bold;
++    }
++    .cart-bar {
++      position: sticky; bottom: 0;
++      background: var(--primary); color: white;
++      padding: 12px 20px; border-radius: 8px 8px 0 0;
++      margin-top: 30px;
++      display: flex; justify-content: space-between; align-items: center;
++    }
++    .cart-bar .btn { margin: 0; background: var(--accent); color: var(--text); }
++
++    .location-list { display: grid; gap: 15px; margin-top: 20px; }
++    .location {
++      background: white; border-radius: 8px; padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++    .location summary { cursor: pointer; font-weight: bold; color: var(--primary); font-size: 1.1rem; }
++    .location .meta { font-size: 0.9rem; color: #6d4c41; }
++    .badge {
++      display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px;
++      background: #c8e6c9; color: #1b5e20; margin-left: 8px; vertical-align: middle;
++    }
++    .badge.closed { background: #ffcdd2; color: #b71c1c; }
++
++    .progress { background: var(--secondary); border-radius: 999px; height: 16px; overflow: hidden; margin: 10px 0; }
++    .progress > span { display: block; height: 100%; background: var(--accent); transition: width 0.4s; }
++    .tier-card[aria-current="true"] { box-shadow: 0 0 0 3px var(--accent); }
++
++    .form { display: grid; gap: 15px; max-width: 560px; margin: 20px auto 0; }
++    .form label { display: grid; gap: 4px; font-size: 0.9rem; font-weight: 600; }
++    .check { display: flex; gap: 8px; align-items: center; font-weight: normal; }
++    .check input { width: auto; }
++    .status { min-height: 1.5em; font-size: 0.9rem; color: #2e7d32; }
++
++    .tabs { display: flex; gap: 5px; border-bottom: 2px solid var(--secondary); margin-top: 20px; }
++    .tabs button {
++      background: none; border: 0; font: inherit; padding: 10px 16px; cursor: pointer; color: var(--text);
++      border-bottom: 3px solid transparent; margin-bottom: -2px;
++    }
++    .tabs button[aria-selected="true"] { border-color: var(--accent); font-weight: bold; }
++    .tab-panel { padding-top: 10px; }
++    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
++    th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--secondary); }
++
++    .visually-hidden {
++      position: absolute !important; width: 1px; height: 1px; overflow: hidden;
++      clip: rect(0 0 0 0); white-space: nowrap;
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-direction: column; gap: 10px; }
++      nav ul { flex-wrap: wrap; justify-content: center; }
++      nav ul li { margin: 0 8px; }
++      .hero h1 { font-size: 2.2rem; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="#/" data-route>THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-route>Menu</a></li>
++      <li><a href="#/locations" data-route>Locations</a></li>
++      <li><a href="#/rewards" data-route>Rewards</a></li>
++      <li><a href="#/account" data-route>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="app">
++  <div class="view" data-view="home" tabindex="-1">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#/menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -181,21 +305,25 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
++  </div>
++  <!-- Other views are rendered lazily on first visit and then kept alive here. -->
++  </div>
++  <div id="route-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +335,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>

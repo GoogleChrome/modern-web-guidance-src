@@ -1,0 +1,51 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..c44ef11 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this app (not cross-origin embeds) to reach the user's local network and loopback interface
++  response.headers.set('Permissions-Policy', 'local-network=(self), loopback-network=(self)');
++  return response;
+ });
+diff --git a/src/utils/localNetwork.ts b/src/utils/localNetwork.ts
+new file mode 100644
+index 0000000..5f5ae5a
+--- /dev/null
++++ b/src/utils/localNetwork.ts
+@@ -0,0 +1,31 @@
++export type LocalNetworkPermission = 'local-network' | 'loopback-network';
++
++/**
++ * Returns the Local Network Access permission state. Browsers without support
++ * report 'prompt' so the request can still run from a user gesture.
++ * Never query the legacy 'local-network-access' name: it crashes older Chrome.
++ */
++export async function queryLocalNetworkPermission(
++  name: LocalNetworkPermission,
++): Promise<PermissionState> {
++  if (!navigator.permissions?.query) return 'prompt';
++  try {
++    const status = await navigator.permissions.query({ name: name as PermissionName });
++    return status.state;
++  } catch {
++    return 'prompt';
++  }
++}
++
++/**
++ * Fetches a resource on the local network or loopback interface. Call from a
++ * user gesture unless the permission is already 'granted'. `targetAddressSpace`
++ * exempts http:// targets from mixed content blocking once permission is granted.
++ */
++export function fetchLocal(
++  url: string,
++  space: 'local' | 'loopback',
++  init: RequestInit = {},
++): Promise<Response> {
++  return fetch(new Request(url, { mode: 'cors', ...init, targetAddressSpace: space } as RequestInit));
++}

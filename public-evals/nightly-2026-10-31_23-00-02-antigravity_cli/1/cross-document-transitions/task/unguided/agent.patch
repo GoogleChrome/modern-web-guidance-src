@@ -1,0 +1,174 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,90 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .pagination {
++      display: flex;
++      justify-content: center;
++      gap: 16px;
++      margin-top: 30px;
++    }
++
++    /* Cross-Document View Transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      @keyframes slide-out-left {
++        from {
++          opacity: 1;
++          transform: translateX(0);
++        }
++        to {
++          opacity: 0;
++          transform: translateX(-60px);
++        }
++      }
++
++      @keyframes slide-in-right {
++        from {
++          opacity: 0;
++          transform: translateX(60px);
++        }
++        to {
++          opacity: 1;
++          transform: translateX(0);
++        }
++      }
++
++      @keyframes slide-out-right {
++        from {
++          opacity: 1;
++          transform: translateX(0);
++        }
++        to {
++          opacity: 0;
++          transform: translateX(60px);
++        }
++      }
++
++      @keyframes slide-in-left {
++        from {
++          opacity: 0;
++          transform: translateX(-60px);
++        }
++        to {
++          opacity: 1;
++          transform: translateX(0);
++        }
++      }
++
++      ::view-transition-old(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-out-left;
++      }
++
++      ::view-transition-new(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-in-right;
++      }
++
++      :active-view-transition-type(next)::view-transition-old(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-out-left;
++      }
++
++      :active-view-transition-type(next)::view-transition-new(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-in-right;
++      }
++
++      :active-view-transition-type(previous)::view-transition-old(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-out-right;
++      }
++
++      :active-view-transition-type(previous)::view-transition-new(root) {
++        animation: 0.35s cubic-bezier(0.4, 0, 0.2, 1) both slide-in-left;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +275,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination">
++        <a href="?page=1" id="previous" class="btn">Previous</a>
++        <a href="?page=2" id="next" class="btn">Next</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +292,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const previousLink = document.getElementById('previous');
++    const nextLink = document.getElementById('next');
++
++    if (previousLink) {
++      previousLink.addEventListener('click', () => {
++        sessionStorage.setItem('transitionType', 'previous');
++      });
++    }
++
++    if (nextLink) {
++      nextLink.addEventListener('click', () => {
++        sessionStorage.setItem('transitionType', 'next');
++      });
++    }
++
++    const resolveTransitionType = (fromEntry, toEntry) => {
++      const savedType = sessionStorage.getItem('transitionType');
++      if (savedType === 'next' || savedType === 'previous') {
++        return savedType;
++      }
++
++      const targetUrl = toEntry?.url || window.location.href;
++      if (nextLink && targetUrl === nextLink.href) {
++        return 'next';
++      }
++      if (previousLink && targetUrl === previousLink.href) {
++        return 'previous';
++      }
++
++      if (fromEntry?.url && toEntry?.url) {
++        const fromUrl = new URL(fromEntry.url, window.location.origin);
++        const toUrl = new URL(toEntry.url, window.location.origin);
++        const fromPage = Number(fromUrl.searchParams.get('page') || 1);
++        const toPage = Number(toUrl.searchParams.get('page') || 1);
++        if (toPage > fromPage) return 'next';
++        if (toPage < fromPage) return 'previous';
++      }
++
++      return 'next';
++    };
++
++    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
++      window.addEventListener('pageswap', (event) => {
++        if (!event.viewTransition) return;
++        const activation = event.activation || window.navigation?.activation;
++        const transitionType = resolveTransitionType(activation?.from, activation?.entry);
++        event.viewTransition.types.add(transitionType);
++      });
++
++      window.addEventListener('pagereveal', (event) => {
++        if (!event.viewTransition) return;
++        const activation = window.navigation?.activation;
++        const transitionType = resolveTransitionType(activation?.from, activation?.entry);
++        event.viewTransition.types.add(transitionType);
++        sessionStorage.removeItem('transitionType');
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

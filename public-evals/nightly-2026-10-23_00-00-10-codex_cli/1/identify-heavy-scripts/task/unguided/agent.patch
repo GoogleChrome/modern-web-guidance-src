@@ -1,0 +1,20 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,15 @@
++# Script performance diagnostics
++
++Open a page with `?debugPerformance=1` (or append `&debugPerformance=1` to an existing query). The normal page does not load the diagnostic module. No dependencies, build step, or telemetry endpoint are needed.
++
++Interact with the page while the panel records. Scripts are ranked by total attributed execution in long animation frames, then slowest request. The existing page has no application scripts, so an empty table is expected until scripts are added or loaded dynamically.
++
++- **Slowest request** measures resource load elapsed time, including waiting. It does not measure JavaScript execution or prove that a request blocks rendering.
++- **Execution in slow frames** measures script activity attributed by the Long Animation Frames API. The longest observed call includes its entry point and character offset; these identify where to begin investigating, not a full stack trace. The report also includes forced style/layout duration.
++- **Long tasks** are page-level stalls over 50 ms. They are not assigned to script URLs because that API does not reliably provide script attribution. Long-task and long-frame totals may overlap; do not add them together.
++
++Browsers without Long Animation Frames still show request timing where supported and explicitly indicate missing execution attribution. Missing attribution does not prove a script is fast. Workers, cross-origin frames, and extension activity may not be attributed. Cross-origin resource details can be hidden without Timing-Allow-Origin headers. Early entries depend on browser buffer availability. This is a lightweight triage aid; use a DevTools Performance recording for a full call tree.
++
++Use **Export JSON** to save a report, or call `window.scriptPerformance.report()` from the console. Reports stay local and can contain script URLs, including query strings. **Stop & close** disconnects observers; `window.scriptPerformance.stop()` also stops collection while keeping the report accessible. Reload with the diagnostic query to start a fresh session. Collection retains up to 200 distinct script URLs and excludes the diagnostic module where identifiable.
++
++API references: [Long animation frame timing](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing), [script attribution](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceScriptTiming).

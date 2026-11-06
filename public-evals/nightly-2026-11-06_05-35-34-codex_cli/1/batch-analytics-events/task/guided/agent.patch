@@ -1,0 +1,29 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,24 @@
++# Daily Grind
++
++The homepage loads `analytics.js` as a deferred script. It records one `page_view`
++and delegated `click` events, including nested link/button clicks, without changing
++navigation behavior. Events contain an ISO timestamp, page pathname, and (for
++clicks) target tag, optional element ID, and link destination pathname. Query
++strings, hashes, text content, and form values are excluded.
++
++Configure your deployment to accept JSON `POST` requests at `/api/analytics`
++(change `ENDPOINT` in `analytics.js` to use a different collector). This static
++repository does not include a server-side collector. The request body is:
++
++```json
++{"events":[{"type":"page_view","timestamp":"2026-11-06T00:00:00.000Z","path":"/"}]}
++```
++
++Each event replaces the pending request with the full batch and restarts a
++one-second inactivity window. Native `fetchLater()` sends on timeout or departure;
++other browsers use a timer and flush on page hide with a low-priority keepalive
++fetch. Full batches (100 events or 48 KiB) are dispatched before starting another.
++Quota errors fall back to the compatibility transport. Failed requests are not
++retried, so analytics remains best-effort and cannot create a retry storm.
++
++Run the isolated, browser-free checks with `node --test analytics.test.cjs`.

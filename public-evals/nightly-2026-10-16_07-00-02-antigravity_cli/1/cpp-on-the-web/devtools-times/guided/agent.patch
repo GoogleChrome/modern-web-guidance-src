@@ -1,0 +1,643 @@
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..948d262
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,23 @@
++CXX = em++
++CXXFLAGS = -O3 -fno-exceptions -sSINGLE_FILE=1 -sEXPORT_ES6=1 -sENVIRONMENT="web,worker" -sALLOW_MEMORY_GROWTH=1 -sSTRICT=1
++EXPORTED_FUNCS = "['_get_sphere_count','_get_sphere_name','_get_sphere_color_r','_get_sphere_color_g','_get_sphere_color_b','_set_sphere_color','_set_random_seed','_randomize_sphere_colors','_randomize_inner_spheres_only','_reset_sphere_colors','_init_buffer','_get_buffer_pointer','_render_row','_render_full','_malloc','_free']"
++RUNTIME_METHODS = "['ccall','cwrap','UTF8ToString','HEAPU8']"
++
++.PHONY: all wasm clean native
++
++all: wasm
++
++wasm: smallpt.js
++
++smallpt.js: smallpt.cpp
++	$(CXX) $(CXXFLAGS) \
++		-sEXPORTED_FUNCTIONS=$(EXPORTED_FUNCS) \
++		-sEXPORTED_RUNTIME_METHODS=$(RUNTIME_METHODS) \
++		smallpt.cpp -o smallpt.js
++	cp smallpt.js public/smallpt.js 2>/dev/null || true
++
++native: smallpt.cpp
++	g++ -O3 smallpt.cpp -o smallpt_native
++
++clean:
++	rm -f smallpt.js smallpt_native
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..8e519eb
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,261 @@
++// Application controller for smallpt WebAssembly path tracer
++import createSmallpt from './smallpt.js';
++
++class SmallptApp {
++  constructor() {
++    this.canvas = document.getElementById('renderCanvas');
++    this.ctx = this.canvas.getContext('2d');
++    this.statusBadge = document.getElementById('statusBadge');
++    this.statusText = document.getElementById('statusText');
++    this.progressBar = document.getElementById('progressBar');
++    this.progressFill = document.getElementById('progressFill');
++    this.randomizeBtn = document.getElementById('randomizeBtn');
++    this.rerunBtn = document.getElementById('rerunBtn');
++    this.resetBtn = document.getElementById('resetBtn');
++    this.samplesSelect = document.getElementById('samplesSelect');
++    this.resolutionSelect = document.getElementById('resolutionSelect');
++    this.statsEl = document.getElementById('renderStats');
++    this.spherePaletteEl = document.getElementById('spherePalette');
++
++    this.isRendering = false;
++    this.worker = null;
++    this.fallbackMod = null;
++
++    this.setupListeners();
++    this.init();
++  }
++
++  setupListeners() {
++    this.randomizeBtn.addEventListener('click', () => this.runRandomized());
++    this.rerunBtn.addEventListener('click', () => this.startRender());
++    this.resetBtn.addEventListener('click', () => this.resetColors());
++    this.resolutionSelect.addEventListener('change', () => {
++      const [w, h] = this.resolutionSelect.value.split('x').map(Number);
++      this.canvas.width = w;
++      this.canvas.height = h;
++      this.startRender();
++    });
++  }
++
++  async init() {
++    this.setStatus('Initializing WebAssembly...', 'loading');
++
++    // Try starting Web Worker first (off-main-thread execution)
++    try {
++      this.worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
++      this.worker.onmessage = (e) => this.handleWorkerMessage(e);
++      this.worker.onerror = (err) => {
++        console.warn('Worker error, switching to direct execution:', err);
++        this.worker = null;
++        this.initFallback();
++      };
++      this.worker.postMessage({ type: 'init' });
++    } catch (err) {
++      console.warn('Could not spawn Web Worker, using direct Wasm execution:', err);
++      this.worker = null;
++      await this.initFallback();
++    }
++  }
++
++  async initFallback() {
++    try {
++      this.fallbackMod = await createSmallpt();
++      const spheres = this.getFallbackSpheres();
++      this.renderSpherePalette(spheres);
++      this.setStatus('Ready (Main thread fallback)', 'ready');
++      this.startRender();
++    } catch (err) {
++      this.setStatus('Initialization failed: ' + err.message, 'error');
++    }
++  }
++
++  handleWorkerMessage(e) {
++    const { type, spheres, completedRows, totalRows, percent, buffer, width, height, durationMs, samps, message } = e.data;
++
++    if (type === 'ready') {
++      this.renderSpherePalette(spheres);
++      this.setStatus('Ready', 'ready');
++      // Automatically trigger initial render
++      this.startRender();
++    } else if (type === 'spheres_updated') {
++      this.renderSpherePalette(spheres);
++      this.startRender();
++    } else if (type === 'progress') {
++      this.updateProgress(percent, completedRows, totalRows);
++    } else if (type === 'complete') {
++      this.displayRenderResult(buffer, width, height, durationMs, samps);
++      if (spheres) this.renderSpherePalette(spheres);
++    } else if (type === 'error') {
++      this.setStatus('Error: ' + message, 'error');
++      this.setButtonsDisabled(false);
++      this.isRendering = false;
++    }
++  }
++
++  getFallbackSpheres() {
++    if (!this.fallbackMod) return [];
++    const count = this.fallbackMod._get_sphere_count();
++    const spheres = [];
++    for (let i = 0; i < count; i++) {
++      const namePtr = this.fallbackMod._get_sphere_name(i);
++      const name = this.fallbackMod.UTF8ToString(namePtr);
++      const r = this.fallbackMod._get_sphere_color_r(i);
++      const g = this.fallbackMod._get_sphere_color_g(i);
++      const b = this.fallbackMod._get_sphere_color_b(i);
++      spheres.push({ id: i, name, r, g, b });
++    }
++    return spheres;
++  }
++
++  runRandomized() {
++    if (this.isRendering) return;
++    if (this.worker) {
++      this.worker.postMessage({ type: 'randomize' });
++    } else if (this.fallbackMod) {
++      this.fallbackMod._set_random_seed(Date.now() & 0xFFFFFF);
++      this.fallbackMod._randomize_sphere_colors();
++      const spheres = this.getFallbackSpheres();
++      this.renderSpherePalette(spheres);
++      this.startRender();
++    }
++  }
++
++  resetColors() {
++    if (this.isRendering) return;
++    if (this.worker) {
++      this.worker.postMessage({ type: 'reset' });
++    } else if (this.fallbackMod) {
++      this.fallbackMod._reset_sphere_colors();
++      const spheres = this.getFallbackSpheres();
++      this.renderSpherePalette(spheres);
++      this.startRender();
++    }
++  }
++
++  startRender() {
++    if (this.isRendering) return;
++    this.isRendering = true;
++    this.setButtonsDisabled(true);
++
++    const [width, height] = this.resolutionSelect.value.split('x').map(Number);
++    const samps = parseInt(this.samplesSelect.value, 10);
++
++    this.canvas.width = width;
++    this.canvas.height = height;
++
++    this.setStatus(`Rendering (${width}×${height}, ${samps * 4} spp)...`, 'rendering');
++    this.progressFill.style.width = '0%';
++    this.progressBar.classList.remove('hidden');
++
++    if (this.worker) {
++      this.worker.postMessage({
++        type: 'render',
++        payload: { width, height, samps }
++      });
++    } else {
++      this.startFallbackRender(width, height, samps);
++    }
++  }
++
++  async startFallbackRender(width, height, samps) {
++    const startTime = performance.now();
++    const mod = this.fallbackMod;
++    const ptr = mod._init_buffer(width, height);
++
++    let y = 0;
++    const chunkSize = 4; // render 4 rows per frame to yield to UI thread
++
++    const renderStep = () => {
++      const endY = Math.min(y + chunkSize, height);
++      for (; y < endY; y++) {
++        mod._render_row(y, width, height, samps);
++      }
++
++      const percent = Math.round((y / height) * 100);
++      this.updateProgress(percent, y, height);
++
++      if (y < height) {
++        requestAnimationFrame(renderStep);
++      } else {
++        const durationMs = Math.round(performance.now() - startTime);
++        const heapData = new Uint8ClampedArray(mod.HEAPU8.buffer, ptr, width * height * 4);
++        const outputBuffer = new Uint8ClampedArray(heapData);
++        this.displayRenderResult(outputBuffer.buffer, width, height, durationMs, samps);
++      }
++    };
++
++    requestAnimationFrame(renderStep);
++  }
++
++  updateProgress(percent, completed, total) {
++    this.progressFill.style.width = `${percent}%`;
++    this.setStatus(`Rendering... ${percent}% (${completed}/${total} rows)`, 'rendering');
++  }
++
++  displayRenderResult(arrayBuffer, width, height, durationMs, samps) {
++    const imgDataArray = new Uint8ClampedArray(arrayBuffer);
++    const imgData = new ImageData(imgDataArray, width, height);
++    this.ctx.putImageData(imgData, 0, 0);
++
++    this.progressBar.classList.add('hidden');
++    this.progressFill.style.width = '100%';
++    this.setStatus(`Done in ${durationMs} ms`, 'ready');
++    this.statsEl.textContent = `Rendered ${width}×${height} @ ${samps * 4} spp in ${durationMs} ms (${Math.round((width * height * samps * 4) / (durationMs || 1) * 1000).toLocaleString()} rays/sec)`;
++    this.setButtonsDisabled(false);
++    this.isRendering = false;
++  }
++
++  renderSpherePalette(spheres) {
++    if (!this.spherePaletteEl) return;
++    this.spherePaletteEl.innerHTML = '';
++
++    spheres.forEach((s) => {
++      // Skip the light source and front invisible wall in color badges
++      if (s.name === 'Front Wall') return;
++
++      const card = document.createElement('div');
++      card.className = 'sphere-chip';
++
++      const colorBox = document.createElement('span');
++      colorBox.className = 'sphere-color-swatch';
++      const r255 = Math.round(Math.pow(s.r, 1 / 2.2) * 255);
++      const g255 = Math.round(Math.pow(s.g, 1 / 2.2) * 255);
++      const b255 = Math.round(Math.pow(s.b, 1 / 2.2) * 255);
++
++      if (s.name === 'Light Source') {
++        colorBox.style.backgroundColor = '#ffffff';
++        colorBox.style.boxShadow = '0 0 8px #ffffff';
++      } else {
++        colorBox.style.backgroundColor = `rgb(${r255}, ${g255}, ${b255})`;
++      }
++
++      const info = document.createElement('div');
++      info.className = 'sphere-info';
++      info.innerHTML = `<strong>${s.name}</strong><span>RGB(${s.r.toFixed(2)}, ${s.g.toFixed(2)}, ${s.b.toFixed(2)})</span>`;
++
++      card.appendChild(colorBox);
++      card.appendChild(info);
++      this.spherePaletteEl.appendChild(card);
++    });
++  }
++
++  setStatus(text, state) {
++    this.statusText.textContent = text;
++    this.statusBadge.className = 'status-badge ' + state;
++  }
++
++  setButtonsDisabled(disabled) {
++    this.randomizeBtn.disabled = disabled;
++    this.rerunBtn.disabled = disabled;
++    this.resetBtn.disabled = disabled;
++    this.samplesSelect.disabled = disabled;
++    this.resolutionSelect.disabled = disabled;
++  }
++}
++
++// Auto-boot on load
++if (document.readyState === 'loading') {
++  document.addEventListener('DOMContentLoaded', () => new SmallptApp());
++} else {
++  new SmallptApp();
++}
+diff --git a/smallpt.cpp b/smallpt.cpp
+new file mode 100644
+index 0000000..8ad45cf
+--- /dev/null
++++ b/smallpt.cpp
+@@ -0,0 +1,246 @@
++#include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <stdint.h>
++#include <string.h>
++#include <time.h>
++#include <emscripten.h>
++
++struct Vec {
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1.0/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; }
++  Vec operator%(const Vec &b) const { return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x); }
++};
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance
++
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  const char* name;
++
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_, const char* name_ = ""):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_), name(name_) {}
++
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++
++static const Sphere default_spheres[] = {
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF, "Left Wall"),//0: Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF, "Right Wall"),//1: Right
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF, "Back Wall"),//2: Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF, "Front Wall"),//3: Front
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF, "Floor"),//4: Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF, "Ceiling"),//5: Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC, "Mirror Sphere"),//6: Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR, "Glass Sphere"),//7: Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF, "Light Source") //8: Lite
++};
++
++static const int NUM_SPHERES = sizeof(default_spheres)/sizeof(Sphere);
++static Sphere spheres[NUM_SPHERES] = {
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF, "Left Wall"),
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF, "Right Wall"),
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF, "Back Wall"),
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF, "Front Wall"),
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF, "Floor"),
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF, "Ceiling"),
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC, "Mirror Sphere"),
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR, "Glass Sphere"),
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF, "Light Source")
++};
++
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=NUM_SPHERES, d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) {
++    if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  }
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++static uint8_t* g_rgba_buffer = nullptr;
++static int g_rgba_w = 0, g_rgba_h = 0;
++static unsigned int g_seed = 12345;
++
++static double rnd(double min_val, double max_val) {
++  return min_val + ((double)rand() / (double)RAND_MAX) * (max_val - min_val);
++}
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++int get_sphere_count() {
++  return NUM_SPHERES;
++}
++
++EMSCRIPTEN_KEEPALIVE
++const char* get_sphere_name(int id) {
++  if (id >= 0 && id < NUM_SPHERES) return spheres[id].name;
++  return "";
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_r(int id) {
++  return (id >= 0 && id < NUM_SPHERES) ? spheres[id].c.x : 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_g(int id) {
++  return (id >= 0 && id < NUM_SPHERES) ? spheres[id].c.y : 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_b(int id) {
++  return (id >= 0 && id < NUM_SPHERES) ? spheres[id].c.z : 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int id, double r, double g, double b) {
++  if (id >= 0 && id < NUM_SPHERES) {
++    spheres[id].c = Vec(clamp(r) * 0.999, clamp(g) * 0.999, clamp(b) * 0.999);
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_random_seed(unsigned int s) {
++  g_seed = s;
++  srand(s);
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_sphere_colors() {
++  // Randomize colors for all visible Cornell box spheres (walls + inner spheres)
++  // Left wall
++  spheres[0].c = Vec(rnd(0.1, 0.9), rnd(0.1, 0.9), rnd(0.1, 0.9));
++  // Right wall
++  spheres[1].c = Vec(rnd(0.1, 0.9), rnd(0.1, 0.9), rnd(0.1, 0.9));
++  // Back wall
++  spheres[2].c = Vec(rnd(0.15, 0.85), rnd(0.15, 0.85), rnd(0.15, 0.85));
++  // Floor
++  spheres[4].c = Vec(rnd(0.15, 0.85), rnd(0.15, 0.85), rnd(0.15, 0.85));
++  // Ceiling
++  spheres[5].c = Vec(rnd(0.15, 0.85), rnd(0.15, 0.85), rnd(0.15, 0.85));
++  // Mirror sphere (specular reflection tint)
++  spheres[6].c = Vec(rnd(0.2, 0.999), rnd(0.2, 0.999), rnd(0.2, 0.999));
++  // Glass sphere (refraction tint)
++  spheres[7].c = Vec(rnd(0.2, 0.999), rnd(0.2, 0.999), rnd(0.2, 0.999));
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_inner_spheres_only() {
++  spheres[6].c = Vec(rnd(0.2, 0.999), rnd(0.2, 0.999), rnd(0.2, 0.999));
++  spheres[7].c = Vec(rnd(0.2, 0.999), rnd(0.2, 0.999), rnd(0.2, 0.999));
++}
++
++EMSCRIPTEN_KEEPALIVE
++void reset_sphere_colors() {
++  for (int i = 0; i < NUM_SPHERES; i++) {
++    spheres[i].c = default_spheres[i].c;
++    spheres[i].e = default_spheres[i].e;
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* init_buffer(int w, int h) {
++  if (!g_rgba_buffer || g_rgba_w != w || g_rgba_h != h) {
++    if (g_rgba_buffer) free(g_rgba_buffer);
++    g_rgba_buffer = (uint8_t*)malloc(w * h * 4);
++    g_rgba_w = w;
++    g_rgba_h = h;
++  }
++  return g_rgba_buffer;
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* get_buffer_pointer() {
++  return g_rgba_buffer;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void render_row(int y, int w, int h, int samps) {
++  if (!g_rgba_buffer || g_rgba_w != w || g_rgba_h != h) {
++    init_buffer(w, h);
++  }
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++
++  for (unsigned short x=0, Xi[3]={0, 0, (unsigned short)(y*y*y + (x + 1) * 31 + g_seed)}; x<w; x++){
++    Vec pixel = Vec();
++    for (int sy=0; sy<2; sy++){
++      for (int sx=0; sx<2; sx++, r=Vec()){
++        for (int s=0; s<samps; s++){
++          double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++          double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++          Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                  cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++          r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++        }
++        pixel = pixel + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++      }
++    }
++    int i = (h - y - 1) * w + x;
++    g_rgba_buffer[i * 4 + 0] = toInt(pixel.x);
++    g_rgba_buffer[i * 4 + 1] = toInt(pixel.y);
++    g_rgba_buffer[i * 4 + 2] = toInt(pixel.z);
++    g_rgba_buffer[i * 4 + 3] = 255;
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_full(int w, int h, int samps) {
++  init_buffer(w, h);
++  for (int y = 0; y < h; y++) {
++    render_row(y, w, h, samps);
++  }
++  return g_rgba_buffer;
++}
++
++}
+diff --git a/smallpt.js b/smallpt.js
+new file mode 100644
+index 0000000..6bb21ee
+Binary files /dev/null and b/smallpt.js differ
+diff --git a/worker.js b/worker.js
+new file mode 100644
+index 0000000..f95c000
+--- /dev/null
++++ b/worker.js
+@@ -0,0 +1,85 @@
++// Web Worker for Smallpt C++ WebAssembly Path Tracer
++import createSmallpt from './smallpt.js';
++
++let wasmMod = null;
++
++async function getModule() {
++  if (!wasmMod) {
++    wasmMod = await createSmallpt();
++  }
++  return wasmMod;
++}
++
++function getSpheresInfo(mod) {
++  const count = mod._get_sphere_count();
++  const spheres = [];
++  for (let i = 0; i < count; i++) {
++    const namePtr = mod._get_sphere_name(i);
++    const name = mod.UTF8ToString(namePtr);
++    const r = mod._get_sphere_color_r(i);
++    const g = mod._get_sphere_color_g(i);
++    const b = mod._get_sphere_color_b(i);
++    spheres.push({ id: i, name, r, g, b });
++  }
++  return spheres;
++}
++
++self.onmessage = async (e) => {
++  const { type, payload } = e.data;
++  try {
++    const mod = await getModule();
++
++    if (type === 'init') {
++      const spheres = getSpheresInfo(mod);
++      self.postMessage({ type: 'ready', spheres });
++    } else if (type === 'randomize') {
++      mod._set_random_seed(Date.now() & 0xFFFFFF);
++      mod._randomize_sphere_colors();
++      const spheres = getSpheresInfo(mod);
++      self.postMessage({ type: 'spheres_updated', spheres });
++    } else if (type === 'reset') {
++      mod._reset_sphere_colors();
++      const spheres = getSpheresInfo(mod);
++      self.postMessage({ type: 'spheres_updated', spheres });
++    } else if (type === 'render') {
++      const { width, height, samps } = payload;
++      const startTime = performance.now();
++      const ptr = mod._init_buffer(width, height);
++
++      // Render rows and report progress periodically
++      const batchSize = Math.max(1, Math.floor(height / 20));
++      for (let y = 0; y < height; y++) {
++        mod._render_row(y, width, height, samps);
++
++        if ((y + 1) % batchSize === 0 || y === height - 1) {
++          self.postMessage({
++            type: 'progress',
++            completedRows: y + 1,
++            totalRows: height,
++            percent: Math.round(((y + 1) / height) * 100)
++          });
++        }
++      }
++
++      const durationMs = Math.round(performance.now() - startTime);
++      // Copy rendered RGBA pixel data to transferable ArrayBuffer
++      const heapData = new Uint8ClampedArray(mod.HEAPU8.buffer, ptr, width * height * 4);
++      const outputBuffer = new Uint8ClampedArray(heapData);
++
++      self.postMessage(
++        {
++          type: 'complete',
++          buffer: outputBuffer.buffer,
++          width,
++          height,
++          samps,
++          durationMs,
++          spheres: getSpheresInfo(mod)
++        },
++        [outputBuffer.buffer]
++      );
++    }
++  } catch (err) {
++    self.postMessage({ type: 'error', message: err.message || String(err) });
++  }
++};

@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -120,8 +120,11 @@
+       color: var(--primary);
+     }
+ 
+     .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -151,8 +154,92 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Every toast is an independent native top-layer popover. */
++    .toast {
++      --toast-height: 4.5rem;
++      --toast-gap: 0.75rem;
++      position: fixed;
++      inset: auto 1rem 1rem auto;
++      /* Toasts are appended last in body; only newer toasts follow each one. */
++      bottom: calc(1rem + (sibling-count() - sibling-index()) * (var(--toast-height) + var(--toast-gap)));
++      margin: 0;
++      width: min(22rem, calc(100vw - 2rem));
++      height: var(--toast-height);
++      padding: 0.75rem 1rem;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 6px 24px rgb(0 0 0 / 0.2);
++      opacity: 0;
++      transform: translateY(1rem);
++      transition: opacity 200ms ease, transform 200ms ease, bottom 200ms ease,
++        display 200ms allow-discrete, overlay 200ms allow-discrete;
++    }
++
++    .toast:popover-open {
++      display: flex;
++    }
++
++    .toast:popover-open:not([data-closing]) {
++      opacity: 1;
++      transform: translateY(0);
++    }
++
++    .toast::backdrop {
++      background: transparent;
++      pointer-events: none;
++    }
++
++    .toast-close {
++      flex-shrink: 0;
++      width: 2.75rem;
++      height: 2.75rem;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    .toast-close:hover {
++      background: rgb(255 255 255 / 0.15);
++    }
++
++    .toast-trigger:focus-visible,
++    .toast-close:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @starting-style {
++      .toast:popover-open:not([data-closing]) {
++        opacity: 0;
++        transform: translateY(1rem);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        transform: none;
++        transition-duration: 1ms;
++      }
++
++      @starting-style {
++        .toast:popover-open:not([data-closing]) {
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +257,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +267,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +293,53 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <template id="toast-template">
++    <div class="toast" popover="manual">
++      <span role="status" aria-live="polite" aria-atomic="true"></span>
++      <button type="button" class="toast-close" aria-label="Close notification"
++        popovertargetaction="hide">&times;</button>
++    </div>
++  </template>
++
++  <script>
++    const toastTemplate = document.getElementById('toast-template');
++    let toastId = 0;
++
++    document.querySelectorAll('.toast-trigger').forEach((trigger) => {
++      trigger.addEventListener('click', () => {
++        const toast = toastTemplate.content.firstElementChild.cloneNode(true);
++        toast.id = `cart-toast-${++toastId}`;
++        const closeButton = toast.querySelector('.toast-close');
++        closeButton.setAttribute('popovertarget', toast.id);
++
++        // Direct body siblings keep positioning entirely in CSS, with no wrapper.
++        document.body.append(toast);
++        toast.showPopover();
++        toast.querySelector('[role="status"]').textContent = 'added to cart!';
++
++        const timeout = setTimeout(dismiss, 3000);
++
++        async function dismiss() {
++          if (toast.hasAttribute('data-closing')) return;
++          clearTimeout(timeout);
++          toast.setAttribute('data-closing', '');
++          // Keep the real top-layer element open until its exit has finished,
++          // including browsers without discrete display/overlay transitions.
++          await Promise.allSettled(toast.getAnimations().map((animation) => animation.finished));
++          toast.hidePopover();
++          toast.remove();
++        }
++
++        closeButton.addEventListener('click', (event) => {
++          // Defer the declarative hide action until after the exit animation.
++          event.preventDefault();
++          dismiss();
++        });
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

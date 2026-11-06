@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,310 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <style>
++    :root {
++      --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      --color-bg: #ffffff;
++      --color-surface: #f9fafb;
++      --color-text: #111827;
++      --color-text-muted: #4b5563;
++      --color-border: #e5e7eb;
++      --color-primary: #2563eb;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: var(--font-family);
++      background-color: var(--color-bg);
++      color: var(--color-text);
++      line-height: 1.5;
++    }
++
++    header {
++      border-bottom: 1px solid var(--color-border);
++      padding: 1rem 2rem;
++      background: var(--color-bg);
++      position: sticky;
++      top: 0;
++      z-index: 10;
++    }
++
++    nav {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 1200px;
++      margin: 0 auto;
++    }
++
++    .brand {
++      font-weight: 700;
++      font-size: 1.25rem;
++    }
++
++    .nav-links {
++      display: flex;
++      gap: 1.5rem;
++      align-items: center;
++      list-style: none;
++    }
++
++    .mega-menu {
++      position: relative;
++    }
++
++    .mega-menu summary {
++      cursor: pointer;
++      font-weight: 500;
++    }
++
++    .mega-menu-content {
++      position: absolute;
++      top: 100%;
++      right: 0;
++      background: var(--color-bg);
++      border: 1px solid var(--color-border);
++      border-radius: 8px;
++      padding: 1rem;
++      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
++      width: 320px;
++      margin-top: 0.5rem;
++    }
++
++    .mega-menu-promo {
++      width: 100%;
++      height: auto;
++      border-radius: 4px;
++      display: block;
++      margin-top: 0.5rem;
++      background-color: var(--color-surface);
++    }
++
++    main {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 2rem 1rem;
++    }
++
++    .hero-section {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 2rem;
++      align-items: center;
++      margin-bottom: 4rem;
++    }
++
++    @media (min-width: 768px) {
++      .hero-section {
++        grid-template-columns: 1fr 1fr;
++      }
++    }
++
++    .hero-image {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 12px;
++      background-color: var(--color-surface);
++      display: block;
++    }
++
++    .hero-content h1 {
++      font-size: 2.25rem;
++      line-height: 1.2;
++      margin-bottom: 1rem;
++    }
++
++    .hero-content p {
++      color: var(--color-text-muted);
++      margin-bottom: 1.5rem;
++      font-size: 1.125rem;
++    }
++
++    .cta-btn {
++      display: inline-block;
++      background-color: var(--color-primary);
++      color: #fff;
++      padding: 0.75rem 1.5rem;
++      border-radius: 6px;
++      text-decoration: none;
++      font-weight: 600;
++    }
++
++    .gallery-section {
++      margin-bottom: 4rem;
++    }
++
++    .gallery-section h2 {
++      margin-bottom: 1.5rem;
++    }
++
++    .gallery-container {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 1.5rem;
++    }
++
++    @media (min-width: 640px) {
++      .gallery-container {
++        grid-template-columns: 1fr 1fr;
++      }
++    }
++
++    .gallery-image {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      background-color: var(--color-surface);
++      display: block;
++    }
++
++    .gallery-toggle {
++      border: 1px solid var(--color-border);
++      border-radius: 8px;
++      padding: 1rem;
++      background-color: var(--color-surface);
++    }
++
++    .gallery-toggle summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--color-primary);
++    }
++
++    .gallery-toggle .toggle-content {
++      margin-top: 1rem;
++    }
++
++    .spacer-content {
++      padding: 3rem 0;
++      border-top: 1px solid var(--color-border);
++      min-height: 600px;
++    }
++
++    .spacer-content h2 {
++      margin-bottom: 1rem;
++    }
++
++    footer {
++      background-color: var(--color-surface);
++      border-top: 1px solid var(--color-border);
++      padding: 4rem 1rem;
++      text-align: center;
++    }
++
++    .footer-logo {
++      width: 120px;
++      height: 40px;
++      object-fit: contain;
++      display: inline-block;
++      margin-bottom: 1rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav aria-label="Main Navigation">
++      <div class="brand">Acme Store</div>
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#gallery">Gallery</a></li>
++        <li>
++          <details class="mega-menu">
++            <summary>Explore Deals</summary>
++            <div class="mega-menu-content">
++              <h3>Seasonal Highlights</h3>
++              <p>Special offer available this week only.</p>
++              <!-- Deprioritize initially hidden images revealed only after user interaction -->
++              <img src="mega-menu-promo.jpg"
++                   alt="Mega Menu Promotional Banner"
++                   fetchpriority="low"
++                   width="300"
++                   height="150"
++                   class="mega-menu-promo">
++            </div>
++          </details>
++        </li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <!-- Hero Section with LCP element -->
++    <section class="hero-section">
++      <div class="hero-media">
++        <!-- Elevate priority for the Largest Contentful Paint (LCP) image; no lazy loading -->
++        <img src="hero-lcp.jpg"
++             alt="Featured Acme Product - Hero View"
++             fetchpriority="high"
++             width="1200"
++             height="675"
++             class="hero-image">
++      </div>
++      <div class="hero-content">
++        <h1>Next-Generation Performance</h1>
++        <p>Engineered for speed, built for reliability. Discover our flagship device today.</p>
++        <a href="#order" class="cta-btn">Order Now</a>
++      </div>
++    </section>
++
++    <!-- Product Image Gallery -->
++    <section id="gallery" class="gallery-section">
++      <h2>Product Gallery</h2>
++      <div class="gallery-container">
++        <div class="gallery-item">
++          <!-- First gallery image is visible; standard priority -->
++          <img src="gallery-1.jpg"
++               alt="Acme Product Angle 1"
++               width="600"
++               height="450"
++               class="gallery-image">
++        </div>
++        <div class="gallery-item">
++          <!-- Second gallery image is hidden behind a toggle above the fold -->
++          <details class="gallery-toggle">
++            <summary>Show Alternate Gallery View</summary>
++            <div class="toggle-content">
++              <img src="gallery-alt.jpg"
++                   alt="Acme Product Alternate Angle"
++                   fetchpriority="low"
++                   loading="lazy"
++                   width="600"
++                   height="450"
++                   class="gallery-image">
++            </div>
++          </details>
++        </div>
++      </div>
++    </section>
++
++    <!-- Deep page content ensuring footer is far below the fold -->
++    <section id="features" class="spacer-content">
++      <h2>Specifications & Details</h2>
++      <p>Detailed technical specifications, user manual, and performance benchmarks...</p>
++    </section>
++  </main>
++
++  <footer>
++    <!-- Below-the-fold image: lazy loading alone, no fetchpriority="low" -->
++    <img src="footer-logo.png"
++         alt="Acme Logo"
++         loading="lazy"
++         width="120"
++         height="40"
++         class="footer-logo">
++    <p>&copy; 2026 Acme Corporation. All rights reserved.</p>
++  </footer>
++</body>
++</html>

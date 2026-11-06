@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+index 66c9173..6214c5c 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,103 @@
+       margin-top: 20px;
+     }
+ 
++    /*
++     * Themed sections
++     * A section declares its context with data-theme; the theme only sets
++     * tokens, and any .card inside picks them up through inheritance.
++     * Cards outside a themed section fall back to the default look.
++     */
++    [data-theme] {
++      background: var(--theme-section-bg);
++      padding: 40px 30px;
++      border-radius: 12px;
++    }
++
++    [data-theme] > h2 {
++      text-align: center;
++      color: var(--theme-heading);
++    }
++
++    [data-theme="autumn"] {
++      --theme-section-bg: linear-gradient(135deg, #fff3e0, #fbe9e7);
++      --theme-heading: #8d3b12;
++      --card-bg: #fffaf3;
++      --card-text: #5d4037;
++      --card-heading: #bf360c;
++      --card-accent: #e65100;
++      --card-border: #ffcc80;
++      --card-shadow: rgba(191, 54, 12, 0.18);
++      --card-btn-bg: #bf360c;
++      --card-btn-hover: #8d2a09;
++    }
++
++    [data-theme="winter"] {
++      --theme-section-bg: linear-gradient(135deg, #e3f2fd, #eceff1);
++      --theme-heading: #1a3a5c;
++      --card-bg: #f7fbff;
++      --card-text: #37474f;
++      --card-heading: #1565c0;
++      --card-accent: #4fc3f7;
++      --card-border: #bbdefb;
++      --card-shadow: rgba(21, 101, 192, 0.18);
++      --card-btn-bg: #1565c0;
++      --card-btn-hover: #0d47a1;
++    }
++
++    [data-theme="spring"] {
++      --theme-section-bg: linear-gradient(135deg, #f1f8e9, #fce4ec);
++      --theme-heading: #33691e;
++      --card-bg: #fbfff7;
++      --card-text: #4e5d3a;
++      --card-heading: #558b2f;
++      --card-accent: #f48fb1;
++      --card-border: #c5e1a5;
++      --card-shadow: rgba(85, 139, 47, 0.18);
++      --card-btn-bg: #558b2f;
++      --card-btn-hover: #33691e;
++    }
++
++    [data-theme="summer"] {
++      --theme-section-bg: linear-gradient(135deg, #fffde7, #e0f7fa);
++      --theme-heading: #00695c;
++      --card-bg: #fffef5;
++      --card-text: #4e4a2f;
++      --card-heading: #00897b;
++      --card-accent: #ffca28;
++      --card-border: #fff59d;
++      --card-shadow: rgba(0, 137, 123, 0.18);
++      --card-btn-bg: #00897b;
++      --card-btn-hover: #00695c;
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-bg, white);
++      color: var(--card-text, inherit);
+       padding: 20px;
++      border: 1px solid var(--card-border, transparent);
++      border-top: 4px solid var(--card-accent, transparent);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow, rgba(0, 0, 0, 0.1));
+       text-align: center;
++      transition: transform 0.3s, box-shadow 0.3s;
++    }
++
++    [data-theme] .card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 8px 20px var(--card-shadow);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading, var(--primary));
++    }
++
++    .card .btn {
++      background: var(--card-btn-bg, var(--primary));
++    }
++
++    .card .btn:hover {
++      background: var(--card-btn-hover, #3e2723);
+     }
+ 
+     .btn {
+@@ -175,8 +261,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section data-theme="autumn" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,1768 @@
+diff --git a/components.js b/components.js
+new file mode 100644
+index 0000000..69aae8d
+--- /dev/null
++++ b/components.js
+@@ -0,0 +1,1595 @@
++// Shared utilities and custom element definitions for The Daily Grind
++
++// ============================================================================
++// 1. <coffee-card> — Reusable Coffee Product Card Web Component
++// ============================================================================
++
++const coffeeCardSheet = new CSSStyleSheet();
++coffeeCardSheet.replaceSync(`
++  @layer base, theme;
++
++  @layer base {
++    :host {
++      display: block;
++      container-type: inline-size;
++      --_card-bg: var(--card-bg, #ffffff);
++      --_card-fg: var(--card-fg, var(--text, #3e2723));
++      --_card-primary: var(--card-primary, var(--primary, #4e342e));
++      --_card-accent: var(--card-accent, var(--accent, #ffab40));
++      --_card-radius: var(--card-radius, 12px);
++      --_card-shadow: var(--card-shadow, 0 4px 12px rgba(62, 39, 35, 0.08));
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    article {
++      background: var(--_card-bg);
++      color: var(--_card-fg);
++      border-radius: var(--_card-radius);
++      box-shadow: var(--_card-shadow);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++      border: 1px solid rgba(78, 52, 46, 0.1);
++      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
++      position: relative;
++    }
++
++    article:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.14);
++    }
++
++    :host(:state(favorited)) article {
++      border-color: var(--_card-accent);
++    }
++
++    :host(:state(in-cart)) article {
++      box-shadow: 0 0 0 2px var(--_card-primary), var(--_card-shadow);
++    }
++
++    .media-wrap {
++      position: relative;
++      aspect-ratio: 16 / 10;
++      background: #efebe9;
++      overflow: hidden;
++    }
++
++    .media-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    article:hover .media-wrap img {
++      transform: scale(1.04);
++    }
++
++    .badges {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      display: flex;
++      gap: 6px;
++      flex-wrap: wrap;
++      z-index: 1;
++    }
++
++    .badge {
++      background: rgba(62, 39, 35, 0.88);
++      color: #ffffff;
++      font-size: 0.72rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 4px 9px;
++      border-radius: 999px;
++      backdrop-filter: blur(4px);
++    }
++
++    .badge.roast {
++      background: rgba(255, 171, 64, 0.95);
++      color: #3e2723;
++    }
++
++    .fav-btn {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      z-index: 1;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.9);
++      color: var(--_card-primary);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      font: inherit;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
++    }
++
++    .fav-btn:hover {
++      transform: scale(1.08);
++      background: #ffffff;
++    }
++
++    .fav-btn:focus-visible,
++    .size-btn:focus-visible,
++    .action-btn:focus-visible,
++    .details-toggle:focus-visible,
++    .details-link:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    .fav-btn[aria-pressed="true"] {
++      background: #fff3e0;
++      color: #d84315;
++    }
++
++    .fav-icon {
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++    }
++
++    .fav-btn[aria-pressed="true"] .fav-icon {
++      fill: currentColor;
++    }
++
++    .body {
++      padding: 18px 20px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      text-align: left;
++    }
++
++    .header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin-bottom: 8px;
++    }
++
++    h3 {
++      margin: 0;
++      font-size: 1.2rem;
++      color: var(--_card-primary);
++      line-height: 1.3;
++    }
++
++    .price {
++      font-weight: 700;
++      font-size: 1.1rem;
++      color: var(--_card-primary);
++      white-space: nowrap;
++    }
++
++    .description {
++      margin: 0 0 14px;
++      font-size: 0.93rem;
++      color: #5d4037;
++      flex: 1;
++    }
++
++    ::slotted(p) {
++      margin: 0;
++    }
++
++    .size-fieldset {
++      border: 1px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 6px 8px 8px;
++      margin: 0 0 14px;
++      display: flex;
++      gap: 6px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .size-fieldset legend {
++      font-size: 0.72rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.04em;
++      color: #6d4c41;
++      padding: 0 4px;
++    }
++
++    .size-options {
++      display: flex;
++      gap: 6px;
++      width: 100%;
++    }
++
++    .size-btn {
++      flex: 1;
++      font: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 5px 8px;
++      border-radius: 5px;
++      border: 1px solid #d7ccc8;
++      background: #fafafa;
++      color: var(--_card-fg);
++      cursor: pointer;
++      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
++    }
++
++    .size-btn[aria-pressed="true"] {
++      background: var(--_card-primary);
++      color: #ffffff;
++      border-color: var(--_card-primary);
++    }
++
++    .details-toggle {
++      font: inherit;
++      font-size: 0.82rem;
++      font-weight: 600;
++      color: var(--_card-primary);
++      background: none;
++      border: none;
++      padding: 4px 0;
++      margin-bottom: 10px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      align-self: flex-start;
++      text-decoration: underline;
++      text-underline-offset: 3px;
++    }
++
++    .details-panel {
++      background: #fbe9e7;
++      background: rgba(215, 204, 200, 0.35);
++      border-radius: 8px;
++      padding: 10px 12px;
++      margin-bottom: 14px;
++      font-size: 0.83rem;
++      color: #4e342e;
++    }
++
++    .details-panel[hidden] {
++      display: none;
++    }
++
++    .details-list {
++      margin: 0;
++      padding: 0;
++      list-style: none;
++      display: grid;
++      gap: 4px;
++    }
++
++    .details-list strong {
++      color: #3e2723;
++    }
++
++    .actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      margin-top: auto;
++    }
++
++    .action-btn {
++      flex: 1;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      background: var(--_card-primary);
++      color: #ffffff;
++      border: none;
++      padding: 10px 16px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s ease, transform 0.1s ease;
++    }
++
++    .action-btn:hover {
++      background: #3e2723;
++    }
++
++    .action-btn:active {
++      transform: scale(0.98);
++    }
++
++    :host(:state(in-cart)) .action-btn {
++      background: #2e7d32;
++    }
++
++    .details-link {
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--_card-primary);
++      text-decoration: none;
++      padding: 9px 12px;
++      border-radius: 6px;
++      border: 1px solid #d7ccc8;
++      transition: background 0.2s ease, border-color 0.2s ease;
++      white-space: nowrap;
++    }
++
++    .details-link:hover {
++      background: #efebe9;
++      border-color: var(--_card-primary);
++    }
++
++    @container (min-width: 32rem) {
++      article {
++        flex-direction: row;
++      }
++      .media-wrap {
++        width: 42%;
++        aspect-ratio: auto;
++      }
++      .body {
++        width: 58%;
++      }
++    }
++  }
++`);
++
++const coffeeCardTemplate = document.createElement('template');
++coffeeCardTemplate.innerHTML = `
++  <article part="card">
++    <div class="media-wrap" part="media">
++      <img id="card-img" alt="" loading="lazy" decoding="async" />
++      <div class="badges">
++        <span id="category-badge" class="badge" part="badge" hidden></span>
++        <span id="roast-badge" class="badge roast" part="roast-badge" hidden></span>
++      </div>
++      <button type="button" id="fav-btn" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Save to favorites">
++        <svg class="fav-icon" viewBox="0 0 24 24" aria-hidden="true">
++          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
++        </svg>
++      </button>
++    </div>
++    <div class="body" part="body">
++      <div class="header-row">
++        <h3 id="card-title" part="title"></h3>
++        <span id="card-price" class="price" part="price"></span>
++      </div>
++      <div class="description" id="card-desc">
++        <slot></slot>
++      </div>
++      <fieldset class="size-fieldset" aria-label="Select cup size">
++        <legend>Cup Size</legend>
++        <div class="size-options" role="group">
++          <button type="button" class="size-btn" data-size="12oz" data-offset="0" aria-pressed="true">12oz</button>
++          <button type="button" class="size-btn" data-size="16oz" data-offset="0.75" aria-pressed="false">16oz (+$0.75)</button>
++          <button type="button" class="size-btn" data-size="20oz" data-offset="1.25" aria-pressed="false">20oz (+$1.25)</button>
++        </div>
++      </fieldset>
++      <button type="button" id="details-toggle" class="details-toggle" aria-expanded="false" aria-controls="details-panel">
++        Tasting Notes &amp; Origin
++      </button>
++      <div id="details-panel" class="details-panel" role="region" aria-labelledby="details-toggle" hidden>
++        <ul class="details-list">
++          <li><strong>Tasting Notes:</strong> <span id="notes-val">Rich &amp; balanced</span></li>
++          <li><strong>Origin:</strong> <span id="origin-val">House Blend</span></li>
++          <li><strong>Calories (12oz):</strong> <span id="cal-val">15 kcal</span></li>
++        </ul>
++        <slot name="details"></slot>
++      </div>
++      <div class="actions" part="actions">
++        <button type="button" id="add-btn" class="action-btn" part="button">Add to Order</button>
++        <a id="details-link" class="details-link" part="link" href="/menu">View Details</a>
++      </div>
++    </div>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = [
++    'name',
++    'description',
++    'price',
++    'category',
++    'roast',
++    'origin',
++    'tasting-notes',
++    'calories',
++    'image',
++    'href',
++    'favorited',
++  ];
++
++  #internals;
++  #selectedSize = '12oz';
++  #sizeOffset = 0;
++  #inCartCount = 0;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [coffeeCardSheet];
++    this.shadowRoot.append(coffeeCardTemplate.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'favorited') {
++      const isFav = this.hasAttribute('favorited');
++      this.#setCustomState('favorited', isFav);
++    }
++    if (this.isConnected) {
++      this.#render();
++    }
++  }
++
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++  set name(val) {
++    val ? this.setAttribute('name', val) : this.removeAttribute('name');
++  }
++
++  get description() {
++    return this.getAttribute('description') ?? '';
++  }
++  set description(val) {
++    val ? this.setAttribute('description', val) : this.removeAttribute('description');
++  }
++
++  get price() {
++    return Number(this.getAttribute('price')) || 4.5;
++  }
++  set price(val) {
++    this.setAttribute('price', String(val));
++  }
++
++  get category() {
++    return this.getAttribute('category') ?? '';
++  }
++  set category(val) {
++    val ? this.setAttribute('category', val) : this.removeAttribute('category');
++  }
++
++  get roast() {
++    return this.getAttribute('roast') ?? '';
++  }
++  set roast(val) {
++    val ? this.setAttribute('roast', val) : this.removeAttribute('roast');
++  }
++
++  get href() {
++    return this.getAttribute('href') ?? '/menu';
++  }
++  set href(val) {
++    val ? this.setAttribute('href', val) : this.removeAttribute('href');
++  }
++
++  get favorited() {
++    return this.hasAttribute('favorited');
++  }
++  set favorited(val) {
++    this.toggleAttribute('favorited', Boolean(val));
++  }
++
++  get selectedSize() {
++    return this.#selectedSize;
++  }
++
++  get effectivePrice() {
++    return +(this.price + this.#sizeOffset).toFixed(2);
++  }
++
++  #setCustomState(stateName, active) {
++    if (!this.#internals?.states) return;
++    if (active) {
++      this.#internals.states.add(stateName);
++    } else {
++      this.#internals.states.delete(stateName);
++    }
++  }
++
++  #setupListeners() {
++    const favBtn = this.shadowRoot.getElementById('fav-btn');
++    const detailsToggle = this.shadowRoot.getElementById('details-toggle');
++    const detailsPanel = this.shadowRoot.getElementById('details-panel');
++    const addBtn = this.shadowRoot.getElementById('add-btn');
++    const sizeBtns = this.shadowRoot.querySelectorAll('.size-btn');
++    const slot = this.shadowRoot.querySelector('slot:not([name])');
++
++    favBtn.addEventListener('click', () => {
++      this.favorited = !this.favorited;
++      this.dispatchEvent(
++        new CustomEvent('coffee-favorite', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.name,
++            favorited: this.favorited,
++          },
++        })
++      );
++    });
++
++    detailsToggle.addEventListener('click', () => {
++      const expanded = detailsToggle.getAttribute('aria-expanded') === 'true';
++      const nextState = !expanded;
++      detailsToggle.setAttribute('aria-expanded', String(nextState));
++      detailsPanel.hidden = !nextState;
++      this.#setCustomState('expanded', nextState);
++    });
++
++    sizeBtns.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        sizeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
++        this.#selectedSize = btn.dataset.size || '12oz';
++        this.#sizeOffset = Number(btn.dataset.offset) || 0;
++        this.#updatePriceDisplay();
++      });
++    });
++
++    addBtn.addEventListener('click', () => {
++      this.#inCartCount += 1;
++      this.#setCustomState('in-cart', true);
++      addBtn.textContent = `Added (${this.#inCartCount} in Bag)`;
++      this.dispatchEvent(
++        new CustomEvent('coffee-order', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.name,
++            size: this.#selectedSize,
++            price: this.effectivePrice,
++            category: this.category,
++            image: this.getAttribute('image') || '',
++          },
++        })
++      );
++    });
++
++    slot.addEventListener('slotchange', () => {
++      this.#syncDescriptionFallback();
++    });
++  }
++
++  #syncDescriptionFallback() {
++    const slot = this.shadowRoot.querySelector('slot:not([name])');
++    const assigned = slot.assignedNodes({ flatten: true }).filter((n) => n.textContent.trim().length > 0);
++    if (assigned.length === 0 && this.description) {
++      slot.textContent = this.description;
++    }
++  }
++
++  #updatePriceDisplay() {
++    const priceEl = this.shadowRoot.getElementById('card-price');
++    priceEl.textContent = `$${this.effectivePrice.toFixed(2)}`;
++  }
++
++  #render() {
++    const titleEl = this.shadowRoot.getElementById('card-title');
++    const imgEl = this.shadowRoot.getElementById('card-img');
++    const catBadge = this.shadowRoot.getElementById('category-badge');
++    const roastBadge = this.shadowRoot.getElementById('roast-badge');
++    const favBtn = this.shadowRoot.getElementById('fav-btn');
++    const notesVal = this.shadowRoot.getElementById('notes-val');
++    const originVal = this.shadowRoot.getElementById('origin-val');
++    const calVal = this.shadowRoot.getElementById('cal-val');
++    const linkEl = this.shadowRoot.getElementById('details-link');
++
++    const name = this.name || 'Artisanal Coffee';
++    titleEl.textContent = name;
++
++    const image =
++      this.getAttribute('image') ||
++      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80';
++    imgEl.src = image;
++    imgEl.alt = `${name} served fresh`;
++
++    if (this.category) {
++      catBadge.textContent = this.category;
++      catBadge.hidden = false;
++    } else {
++      catBadge.hidden = true;
++    }
++
++    if (this.roast) {
++      roastBadge.textContent = `${this.roast} Roast`;
++      roastBadge.hidden = false;
++    } else {
++      roastBadge.hidden = true;
++    }
++
++    const isFav = this.favorited;
++    favBtn.setAttribute('aria-pressed', String(isFav));
++    favBtn.setAttribute(
++      'aria-label',
++      isFav ? `Remove ${name} from favorites` : `Save ${name} to favorites`
++    );
++    this.#setCustomState('favorited', isFav);
++
++    notesVal.textContent = this.getAttribute('tasting-notes') || 'Caramel, toasted hazelnut, smooth cocoa';
++    originVal.textContent = this.getAttribute('origin') || 'Small-lot Latin America & East Africa';
++    calVal.textContent = `${this.getAttribute('calories') || '15'} kcal`;
++
++    linkEl.href = this.href;
++    linkEl.setAttribute('aria-label', `View details for ${name}`);
++
++    this.#syncDescriptionFallback();
++    this.#updatePriceDisplay();
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
++
++// ============================================================================
++// 2. <coffee-menu-section> — Interactive Filterable Menu & Order Bar Component
++// ============================================================================
++
++const menuSectionSheet = new CSSStyleSheet();
++menuSectionSheet.replaceSync(`
++  @layer base;
++
++  @layer base {
++    :host {
++      display: block;
++      margin: 40px 0;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary, #4e342e);
++      margin: 0 0 8px;
++    }
++
++    .section-header p {
++      color: #5d4037;
++      margin: 0;
++      font-size: 1rem;
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 14px;
++      justify-content: space-between;
++      align-items: center;
++      background: #ffffff;
++      padding: 14px 18px;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(62, 39, 35, 0.07);
++      margin-bottom: 24px;
++      border: 1px solid rgba(78, 52, 46, 0.1);
++    }
++
++    .filter-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .pill-btn {
++      font: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      padding: 7px 15px;
++      border-radius: 999px;
++      border: 1px solid #d7ccc8;
++      background: #fafafa;
++      color: var(--text, #3e2723);
++      cursor: pointer;
++      transition: all 0.15s ease;
++    }
++
++    .pill-btn:hover {
++      border-color: var(--primary, #4e342e);
++      background: #efebe9;
++    }
++
++    .pill-btn[aria-pressed="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border-color: var(--primary, #4e342e);
++    }
++
++    .pill-btn:focus-visible,
++    .search-input:focus-visible,
++    .clear-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .search-controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex: 1;
++      max-width: 340px;
++      min-width: 220px;
++    }
++
++    .search-label {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .search-input {
++      width: 100%;
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 8px 12px;
++      border-radius: 6px;
++      border: 1px solid #bcaaa4;
++      color: var(--text, #3e2723);
++      background: #ffffff;
++    }
++
++    .status-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .order-Banner {
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      color: #3e2723;
++      padding: 8px 14px;
++      border-radius: 8px;
++      font-weight: 600;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .order-Banner[hidden] {
++      display: none;
++    }
++
++    .clear-btn {
++      font: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary, #4e342e);
++      background: transparent;
++      border: 1px solid var(--primary, #4e342e);
++      padding: 3px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
++      gap: 24px;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 40px 20px;
++      background: #ffffff;
++      border-radius: 12px;
++      border: 1px dashed #bcaaa4;
++      color: #5d4037;
++    }
++
++    .empty-state[hidden] {
++      display: none;
++    }
++  }
++`);
++
++const menuSectionTemplate = document.createElement('template');
++menuSectionTemplate.innerHTML = `
++  <section aria-labelledby="menu-heading">
++    <div class="section-header">
++      <h2 id="menu-heading" part="heading">Seasonal Favorites</h2>
++      <p id="menu-subtitle">Small-batch creations crafted fresh by our baristas.</p>
++    </div>
++
++    <div class="toolbar" role="region" aria-label="Filter coffee menu">
++      <div class="filter-pills" role="group" aria-label="Filter by category">
++        <button type="button" class="pill-btn" data-filter="all" aria-pressed="true">All Drinks</button>
++        <button type="button" class="pill-btn" data-filter="Seasonal" aria-pressed="false">Seasonal</button>
++        <button type="button" class="pill-btn" data-filter="Espresso" aria-pressed="false">Espresso</button>
++        <button type="button" class="pill-btn" data-filter="Cold Brew" aria-pressed="false">Cold Brew</button>
++        <button type="button" class="pill-btn" data-filter="favorites" aria-pressed="false">Saved Favorites</button>
++      </div>
++
++      <div class="search-controls">
++        <label for="coffee-search" class="search-label">Search coffee drinks</label>
++        <input
++          type="search"
++          id="coffee-search"
++          class="search-input"
++          placeholder="Search flavor, roast, or drink..."
++          autocomplete="off"
++        />
++      </div>
++    </div>
++
++    <div class="status-row">
++      <div id="filter-status" role="status" aria-live="polite">Showing all 3 handcrafted drinks</div>
++      <div id="order-banner" class="order-Banner" role="status" aria-live="polite" hidden>
++        <span id="order-summary-text">Bag: 0 items ($0.00)</span>
++        <button type="button" id="clear-order" class="clear-btn">Reset Bag</button>
++      </div>
++    </div>
++
++    <div class="grid" part="grid">
++      <slot></slot>
++    </div>
++
++    <div id="empty-state" class="empty-state" hidden>
++      <p>No drinks match your current filter. Try clearing the search or choosing "All Drinks".</p>
++    </div>
++  </section>
++`;
++
++export class CoffeeMenuSection extends HTMLElement {
++  static observedAttributes = ['heading', 'subtitle'];
++
++  #activeFilter = 'all';
++  #searchQuery = '';
++  #orderItems = [];
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [menuSectionSheet];
++    this.shadowRoot.append(menuSectionTemplate.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#syncHeader();
++    this.#applyFilters();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal && this.isConnected) {
++      this.#syncHeader();
++    }
++  }
++
++  #syncHeader() {
++    const headingEl = this.shadowRoot.getElementById('menu-heading');
++    const subtitleEl = this.shadowRoot.getElementById('menu-subtitle');
++    if (this.hasAttribute('heading')) {
++      headingEl.textContent = this.getAttribute('heading');
++    }
++    if (this.hasAttribute('subtitle')) {
++      subtitleEl.textContent = this.getAttribute('subtitle');
++    }
++  }
++
++  #getSlottedCards() {
++    const slot = this.shadowRoot.querySelector('slot');
++    return slot
++      .assignedElements({ flatten: true })
++      .filter((el) => el.tagName.toLowerCase() === 'coffee-card');
++  }
++
++  #setupListeners() {
++    const pills = this.shadowRoot.querySelectorAll('.pill-btn');
++    const searchInput = this.shadowRoot.getElementById('coffee-search');
++    const clearBtn = this.shadowRoot.getElementById('clear-order');
++    const slot = this.shadowRoot.querySelector('slot');
++
++    pills.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        pills.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
++        this.#activeFilter = btn.dataset.filter || 'all';
++        this.#applyFilters();
++      });
++    });
++
++    searchInput.addEventListener('input', (e) => {
++      this.#searchQuery = e.target.value.trim().toLowerCase();
++      this.#applyFilters();
++    });
++
++    clearBtn.addEventListener('click', () => {
++      this.#orderItems = [];
++      this.#updateOrderBanner();
++    });
++
++    slot.addEventListener('slotchange', () => {
++      this.#applyFilters();
++    });
++
++    this.addEventListener('coffee-favorite', () => {
++      if (this.#activeFilter === 'favorites') {
++        this.#applyFilters();
++      }
++    });
++
++    this.addEventListener('coffee-order', (e) => {
++      this.#orderItems.push(e.detail);
++      this.#updateOrderBanner();
++    });
++  }
++
++  #updateOrderBanner() {
++    const banner = this.shadowRoot.getElementById('order-banner');
++    const summaryText = this.shadowRoot.getElementById('order-summary-text');
++    if (this.#orderItems.length === 0) {
++      banner.hidden = true;
++      return;
++    }
++    const total = this.#orderItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
++    const lastItem = this.#orderItems[this.#orderItems.length - 1];
++    banner.hidden = false;
++    summaryText.textContent = `Order Bag: ${this.#orderItems.length} item${
++      this.#orderItems.length === 1 ? '' : 's'
++    } ($${total.toFixed(2)}) — Latest: ${lastItem.name} (${lastItem.size})`;
++  }
++
++  #applyFilters() {
++    const cards = this.#getSlottedCards();
++    let visibleCount = 0;
++
++    cards.forEach((card) => {
++      const cat = (card.getAttribute('category') || '').toLowerCase();
++      const name = (card.getAttribute('name') || '').toLowerCase();
++      const desc = (card.getAttribute('description') || card.textContent || '').toLowerCase();
++      const notes = (card.getAttribute('tasting-notes') || '').toLowerCase();
++      const roast = (card.getAttribute('roast') || '').toLowerCase();
++      const isFav = card.hasAttribute('favorited');
++
++      let matchesCategory = true;
++      if (this.#activeFilter === 'favorites') {
++        matchesCategory = isFav;
++      } else if (this.#activeFilter !== 'all') {
++        matchesCategory = cat === this.#activeFilter.toLowerCase();
++      }
++
++      let matchesQuery = true;
++      if (this.#searchQuery) {
++        const searchable = `${name} ${desc} ${notes} ${roast} ${cat}`;
++        matchesQuery = searchable.includes(this.#searchQuery);
++      }
++
++      const show = matchesCategory && matchesQuery;
++      card.hidden = !show;
++      if (show) visibleCount += 1;
++    });
++
++    const statusEl = this.shadowRoot.getElementById('filter-status');
++    const emptyEl = this.shadowRoot.getElementById('empty-state');
++    statusEl.textContent = `Showing ${visibleCount} of ${cards.length} handcrafted drink${
++      cards.length === 1 ? '' : 's'
++    }`;
++    emptyEl.hidden = visibleCount > 0 || cards.length === 0;
++  }
++}
++
++if (!customElements.get('coffee-menu-section')) {
++  customElements.define('coffee-menu-section', CoffeeMenuSection);
++}
++
++// ============================================================================
++// 3. <brew-calculator> — Interactive Brew Ratio & Extraction Calculator
++// ============================================================================
++
++const brewCalculatorSheet = new CSSStyleSheet();
++brewCalculatorSheet.replaceSync(`
++  @layer base;
++
++  @layer base {
++    :host {
++      display: block;
++      margin: 48px 0;
++      container-type: inline-size;
++    }
++
++    .calc-shell {
++      background: #ffffff;
++      border-radius: 14px;
++      padding: 28px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.12);
++    }
++
++    .calc-header {
++      margin-bottom: 22px;
++    }
++
++    .calc-header h2 {
++      margin: 0 0 6px;
++      color: var(--primary, #4e342e);
++      font-size: 1.75rem;
++    }
++
++    .calc-header p {
++      margin: 0;
++      color: #5d4037;
++      font-size: 0.95rem;
++    }
++
++    .calc-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 24px;
++    }
++
++    @container (min-width: 42rem) {
++      .calc-layout {
++        grid-template-columns: 1.2fr 1fr;
++        align-items: stretch;
++      }
++    }
++
++    .controls {
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    .method-tabs {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .method-tab {
++      font: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      padding: 8px 14px;
++      border-radius: 8px;
++      border: 1px solid #d7ccc8;
++      background: #fafafa;
++      color: var(--text, #3e2723);
++      cursor: pointer;
++      transition: all 0.15s ease;
++    }
++
++    .method-tab[aria-selected="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border-color: var(--primary, #4e342e);
++    }
++
++    .method-tab:focus-visible,
++    .slider-input:focus-visible,
++    .strength-select:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .control-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .control-label {
++      display: flex;
++      justify-content: space-between;
++      font-weight: 600;
++      font-size: 0.92rem;
++      color: var(--primary, #4e342e);
++    }
++
++    .slider-input {
++      width: 100%;
++      accent-color: var(--primary, #4e342e);
++      cursor: pointer;
++    }
++
++    .strength-select {
++      font: inherit;
++      padding: 9px 12px;
++      border-radius: 8px;
++      border: 1px solid #bcaaa4;
++      background: #ffffff;
++      color: var(--text, #3e2723);
++      font-weight: 500;
++    }
++
++    .results-card {
++      background: linear-gradient(145deg, #4e342e, #3e2723);
++      color: #ffffff;
++      border-radius: 12px;
++      padding: 22px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .results-title {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      color: var(--accent, #ffab40);
++      margin: 0;
++      font-weight: 700;
++    }
++
++    .metrics-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 14px;
++    }
++
++    .metric-box {
++      background: rgba(255, 255, 255, 0.08);
++      padding: 12px 14px;
++      border-radius: 8px;
++    }
++
++    .metric-label {
++      font-size: 0.78rem;
++      color: #d7ccc8;
++      display: block;
++      margin-bottom: 4px;
++    }
++
++    .metric-value {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: #ffffff;
++    }
++
++    .brew-tip {
++      font-size: 0.88rem;
++      color: #efebe9;
++      border-top: 1px solid rgba(255, 255, 255, 0.15);
++      padding-top: 12px;
++      margin: 0;
++    }
++  }
++`);
++
++const BREW_PRESETS = {
++  'pour-over': {
++    label: 'Pour Over (V60 / Chemex)',
++    ratio: 16,
++    grind: 'Medium-Fine (Sea Salt)',
++    temp: '200°F (93°C)',
++    time: '3:00 – 3:30',
++    tip: 'Bloom with 2x coffee weight in water for 35 seconds before pouring in slow concentric circles.',
++  },
++  'french-press': {
++    label: 'French Press',
++    ratio: 15,
++    grind: 'Coarse (Cracked Pepper)',
++    temp: '202°F (94°C)',
++    time: '4:00 – 4:30',
++    tip: 'Steep for 4 minutes, gently break the top crust with a spoon, skim foam, and press slowly.',
++  },
++  aeropress: {
++    label: 'AeroPress',
++    ratio: 14,
++    grind: 'Fine-Medium (Table Salt)',
++    temp: '195°F (90°C)',
++    time: '1:45 – 2:15',
++    tip: 'Stir briskly for 10 seconds after adding water, attach cap, and press with steady gentle pressure.',
++  },
++  'cold-brew': {
++    label: 'Cold Brew Concentrate',
++    ratio: 8,
++    grind: 'Extra Coarse',
++    temp: 'Filtered Cold Water',
++    time: '16 – 18 Hours',
++    tip: 'Steep at room temperature or refrigerated for 18 hours, then dilute 1:1 with water or oat milk.',
++  },
++};
++
++const brewCalculatorTemplate = document.createElement('template');
++brewCalculatorTemplate.innerHTML = `
++  <section class="calc-shell" aria-labelledby="calc-heading">
++    <div class="calc-header">
++      <h2 id="calc-heading" part="heading">Interactive Home Brew Guide &amp; Ratio Calculator</h2>
++      <p>Dial in cafe-quality extraction at home using our roastery's target water-to-coffee ratios.</p>
++    </div>
++
++    <div class="calc-layout">
++      <div class="controls">
++        <div class="control-group">
++          <span class="control-label" id="method-label">1. Choose Brew Method</span>
++          <div class="method-tabs" role="tablist" aria-labelledby="method-label">
++            <button type="button" role="tab" class="method-tab" data-method="pour-over" aria-selected="true" tabindex="0">Pour Over</button>
++            <button type="button" role="tab" class="method-tab" data-method="french-press" aria-selected="false" tabindex="-1">French Press</button>
++            <button type="button" role="tab" class="method-tab" data-method="aeropress" aria-selected="false" tabindex="-1">AeroPress</button>
++            <button type="button" role="tab" class="method-tab" data-method="cold-brew" aria-selected="false" tabindex="-1">Cold Brew</button>
++          </div>
++        </div>
++
++        <div class="control-group">
++          <label for="cups-slider" class="control-label">
++            <span>2. Number of Cups (8oz each)</span>
++            <output id="cups-output" for="cups-slider">2 Cups (16 oz / 475 ml)</output>
++          </label>
++          <input
++            type="range"
++            id="cups-slider"
++            class="slider-input"
++            min="1"
++            max="8"
++            step="1"
++            value="2"
++          />
++        </div>
++
++        <div class="control-group">
++          <label for="strength-select" class="control-label">
++            <span>3. Flavor Strength Preference</span>
++          </label>
++          <select id="strength-select" class="strength-select">
++            <option value="1">Lighter &amp; Tea-like (+1 ratio water)</option>
++            <option value="0" selected>Roaster's Golden Balance (Standard)</option>
++            <option value="-1">Bold &amp; Rich (-1 ratio water)</option>
++          </select>
++        </div>
++      </div>
++
++      <output class="results-card" id="brew-results" aria-live="polite">
++        <div>
++          <p class="results-title" id="preset-name">Pour Over (V60 / Chemex)</p>
++        </div>
++        <div class="metrics-grid">
++          <div class="metric-box">
++            <span class="metric-label">Coffee Dose</span>
++            <span class="metric-value" id="coffee-grams">29.7 g</span>
++          </div>
++          <div class="metric-box">
++            <span class="metric-label">Water Weight</span>
++            <span class="metric-value" id="water-grams">475 ml</span>
++          </div>
++          <div class="metric-box">
++            <span class="metric-label">Grind &amp; Ratio</span>
++            <span class="metric-value" id="grind-setting" style="font-size: 0.95rem;">1:16 • Medium-Fine</span>
++          </div>
++          <div class="metric-box">
++            <span class="metric-label">Target Time &amp; Temp</span>
++            <span class="metric-value" id="time-temp" style="font-size: 0.95rem;">3:00 – 3:30 • 200°F</span>
++          </div>
++        </div>
++        <p class="brew-tip" id="brew-tip"></p>
++      </output>
++    </div>
++  </section>
++`;
++
++export class BrewCalculator extends HTMLElement {
++  #method = 'pour-over';
++  #cups = 2;
++  #strengthDelta = 0;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [brewCalculatorSheet];
++    this.shadowRoot.append(brewCalculatorTemplate.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#calculate();
++  }
++
++  #setupListeners() {
++    const tabs = Array.from(this.shadowRoot.querySelectorAll('.method-tab'));
++    const cupsSlider = this.shadowRoot.getElementById('cups-slider');
++    const strengthSelect = this.shadowRoot.getElementById('strength-select');
++
++    const activateTab = (tab, focus = false) => {
++      tabs.forEach((t) => {
++        const isTarget = t === tab;
++        t.setAttribute('aria-selected', String(isTarget));
++        t.tabIndex = isTarget ? 0 : -1;
++      });
++      if (focus) tab.focus();
++      this.#method = tab.dataset.method || 'pour-over';
++      this.#calculate();
++    };
++
++    tabs.forEach((tab, idx) => {
++      tab.addEventListener('click', () => activateTab(tab));
++      tab.addEventListener('keydown', (e) => {
++        let nextIdx = null;
++        if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length;
++        else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length;
++        else if (e.key === 'Home') nextIdx = 0;
++        else if (e.key === 'End') nextIdx = tabs.length - 1;
++        if (nextIdx !== null) {
++          e.preventDefault();
++          activateTab(tabs[nextIdx], true);
++        }
++      });
++    });
++
++    cupsSlider.addEventListener('input', (e) => {
++      this.#cups = Number(e.target.value) || 2;
++      this.#calculate();
++    });
++
++    strengthSelect.addEventListener('change', (e) => {
++      this.#strengthDelta = Number(e.target.value) || 0;
++      this.#calculate();
++    });
++  }
++
++  #calculate() {
++    const preset = BREW_PRESETS[this.#method] || BREW_PRESETS['pour-over'];
++    const effectiveRatio = Math.max(5, preset.ratio + this.#strengthDelta);
++    const waterMl = Math.round(this.#cups * 237);
++    const coffeeGrams = (waterMl / effectiveRatio).toFixed(1);
++
++    const cupsOutput = this.shadowRoot.getElementById('cups-output');
++    const presetName = this.shadowRoot.getElementById('preset-name');
++    const coffeeEl = this.shadowRoot.getElementById('coffee-grams');
++    const waterEl = this.shadowRoot.getElementById('water-grams');
++    const grindEl = this.shadowRoot.getElementById('grind-setting');
++    const timeTempEl = this.shadowRoot.getElementById('time-temp');
++    const tipEl = this.shadowRoot.getElementById('brew-tip');
++
++    cupsOutput.textContent = `${this.#cups} Cup${this.#cups === 1 ? '' : 's'} (${this.#cups * 8} oz / ${waterMl} ml)`;
++    presetName.textContent = preset.label;
++    coffeeEl.textContent = `${coffeeGrams} g`;
++    waterEl.textContent = `${waterMl} ml`;
++    grindEl.textContent = `1:${effectiveRatio} • ${preset.grind}`;
++    timeTempEl.textContent = `${preset.time} • ${preset.temp}`;
++    tipEl.textContent = `Barista Tip: ${preset.tip}`;
++  }
++}
++
++if (!customElements.get('brew-calculator')) {
++  customElements.define('brew-calculator', BrewCalculator);
++}
++
++// ============================================================================
++// 4. <roast-subscription> — Interactive Bean Customizer & Rewards Estimator
++// ============================================================================
++
++const roastSubscriptionSheet = new CSSStyleSheet();
++roastSubscriptionSheet.replaceSync(`
++  @layer base;
++
++  @layer base {
++    :host {
++      display: block;
++      margin: 48px 0;
++    }
++
++    .sub-card {
++      background: #efebe9;
++      border-radius: 14px;
++      padding: 28px;
++      border: 1px solid #d7ccc8;
++    }
++
++    .sub-header {
++      margin-bottom: 20px;
++    }
++
++    .sub-header h2 {
++      margin: 0 0 6px;
++      color: var(--primary, #4e342e);
++      font-size: 1.7rem;
++    }
++
++    .sub-header p {
++      margin: 0;
++      color: #5d4037;
++    }
++
++    .sub-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 18px;
++      align-items: end;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .field label {
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--primary, #4e342e);
++    }
++
++    .field select {
++      font: inherit;
++      padding: 10px 12px;
++      border-radius: 8px;
++      border: 1px solid #bcaaa4;
++      background: #ffffff;
++      color: var(--text, #3e2723);
++    }
++
++    .field select:focus-visible,
++    .sub-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .sub-btn {
++      font: inherit;
++      font-weight: 700;
++      padding: 11px 20px;
++      border-radius: 8px;
++      border: none;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      cursor: pointer;
++      transition: background 0.2s ease;
++    }
++
++    .sub-btn:hover {
++      background: #3e2723;
++    }
++
++    .sub-feedback {
++      margin-top: 18px;
++      padding: 12px 16px;
++      border-radius: 8px;
++      background: #ffffff;
++      border-left: 4px solid var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      font-size: 0.92rem;
++    }
++  }
++`);
++
++const roastSubscriptionTemplate = document.createElement('template');
++roastSubscriptionTemplate.innerHTML = `
++  <section class="sub-card" aria-labelledby="sub-heading">
++    <div class="sub-header">
++      <h2 id="sub-heading" part="heading">Roaster's Bean Club &amp; Rewards Estimator</h2>
++      <p>Customize your freshly roasted whole-bean or ground delivery and earn bonus loyalty stars on every bag.</p>
++    </div>
++
++    <form id="sub-form" class="sub-form" novalidate>
++      <div class="field">
++        <label for="roast-level">Roast Profile</label>
++        <select id="roast-level" name="roast">
++          <option value="Light Single-Origin (Bright & Floral)">Light Single-Origin (Bright &amp; Floral)</option>
++          <option value="Medium House Blend (Caramel & Nutty)" selected>Medium House Blend (Caramel &amp; Nutty)</option>
++          <option value="Dark Espresso Roast (Bold & Smoky)">Dark Espresso Roast (Bold &amp; Smoky)</option>
++        </select>
++      </div>
++
++      <div class="field">
++        <label for="grind-type">Grind Preparation</label>
++        <select id="grind-type" name="grind">
++          <option value="Whole Bean" selected>Whole Bean (Maximum Freshness)</option>
++          <option value="Drip / Pour Over Grind">Drip / Pour Over Grind</option>
++          <option value="Espresso Fine Grind">Espresso Fine Grind</option>
++          <option value="French Press Coarse">French Press Coarse</option>
++        </select>
++      </div>
++
++      <div class="field">
++        <label for="cadence">Delivery Cadence</label>
++        <select id="cadence" name="cadence">
++          <option value="weekly" data-price="16.50" data-stars="120">Every Week ($16.50 / bag • Save 15%)</option>
++          <option value="biweekly" data-price="17.50" data-stars="90" selected>Every 2 Weeks ($17.50 / bag • Save 10%)</option>
++          <option value="monthly" data-price="18.50" data-stars="60">Monthly ($18.50 / bag • Save 5%)</option>
++        </select>
++      </div>
++
++      <button type="submit" class="sub-btn" part="button">Preview Subscription Plan</button>
++    </form>
++
++    <div id="sub-feedback" class="sub-feedback" role="status" aria-live="polite">
++      Selected Plan: <strong>Medium House Blend (Caramel &amp; Nutty)</strong> • Whole Bean • <strong>$17.50</strong> every 2 weeks (+90 Bonus Rewards Stars/month).
++    </div>
++  </section>
++`;
++
++export class RoastSubscription extends HTMLElement {
++  #internals;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [roastSubscriptionSheet];
++    this.shadowRoot.append(roastSubscriptionTemplate.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#updateSummary(false);
++  }
++
++  #setupListeners() {
++    const form = this.shadowRoot.getElementById('sub-form');
++    const selects = form.querySelectorAll('select');
++
++    selects.forEach((sel) => {
++      sel.addEventListener('change', () => this.#updateSummary(false));
++    });
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      this.#updateSummary(true);
++    });
++  }
++
++  #updateSummary(confirmed = false) {
++    const roast = this.shadowRoot.getElementById('roast-level').value;
++    const grind = this.shadowRoot.getElementById('grind-type').value;
++    const cadenceSelect = this.shadowRoot.getElementById('cadence');
++    const selectedOpt = cadenceSelect.options[cadenceSelect.selectedIndex];
++    const price = selectedOpt.dataset.price || '17.50';
++    const stars = selectedOpt.dataset.stars || '90';
++    const feedback = this.shadowRoot.getElementById('sub-feedback');
++
++    if (confirmed) {
++      this.#internals?.states?.add('subscribed');
++      feedback.innerHTML = `Plan Saved to Account Preview: <strong>${roast}</strong> (${grind}) at <strong>$${price}/bag</strong> — You'll earn <strong>${stars} Rewards Stars</strong> per month plus free local roastery shipping!`;
++      this.dispatchEvent(
++        new CustomEvent('subscription-preview', {
++          bubbles: true,
++          composed: true,
++          detail: { roast, grind, cadence: cadenceSelect.value, price: Number(price), stars: Number(stars) },
++        })
++      );
++    } else {
++      feedback.innerHTML = `Selected Plan: <strong>${roast}</strong> • ${grind} • <strong>$${price}/bag</strong> (+${stars} Bonus Rewards Stars/month).`;
++    }
++  }
++}
++
++if (!customElements.get('roast-subscription')) {
++  customElements.define('roast-subscription', RoastSubscription);
++}
+diff --git a/index.html b/index.html
+index 66c9173..4298b1c 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --card-fg: #3e2723;
++      --card-primary: #4e342e;
++      --card-accent: #ffab40;
+     }
+ 
+     * {
+@@ -27,6 +31,21 @@
+       background-color: var(--light);
+     }
+ 
++    /* Fail-open guard for custom elements before registration */
++    coffee-card:not(:defined),
++    coffee-menu-section:not(:defined),
++    brew-calculator:not(:defined),
++    roast-subscription:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -100,26 +119,6 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +134,11 @@
+       background: #3e2723;
+     }
+ 
++    /* Consumer custom state hook for favorited coffee cards */
++    coffee-card:state(favorited) {
++      filter: drop-shadow(0 0 6px rgba(255, 171, 64, 0.35));
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,11 +157,12 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -175,26 +180,56 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++    <coffee-menu-section
++      heading="Seasonal Favorites"
++      subtitle="Explore our handcrafted seasonal pours, signature espresso, and slow-steeped cold brew."
++    >
++      <coffee-card
++        name="Maple Oat Latte"
++        price="5.75"
++        category="Seasonal"
++        roast="Medium"
++        origin="Sierra Madre, Chiapas &amp; Vermont Grade-A Maple"
++        tasting-notes="Warm maple, toasted oat, brown sugar, velvety finish"
++        calories="190"
++        href="/menu/seasonal"
++        image="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=800&q=80"
++      >
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      </coffee-card>
++
++      <coffee-card
++        name="Dark Roast Espresso"
++        price="3.95"
++        category="Espresso"
++        roast="Dark"
++        origin="Antigua Guatemala &amp; Sumatra Mandheling"
++        tasting-notes="Bittersweet dark chocolate, roasted walnut, smoky crema"
++        calories="10"
++        href="/menu/espresso"
++        image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++      >
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++      </coffee-card>
++
++      <coffee-card
++        name="Cold Brew"
++        price="4.85"
++        category="Cold Brew"
++        roast="Medium-Dark"
++        origin="Huila, Colombia Single-Estate"
++        tasting-notes="Molasses, sweet cacao nibs, silky low-acid finish"
++        calories="15"
++        href="/menu/cold-brew"
++        image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++      >
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++      </coffee-card>
++    </coffee-menu-section>
++
++    <brew-calculator></brew-calculator>
++
++    <roast-subscription></roast-subscription>
+   </main>
+ 
+   <footer>

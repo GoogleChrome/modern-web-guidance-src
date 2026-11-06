@@ -1,0 +1,404 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,166 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Modal Dialog */
++    dialog.coffee-modal {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      max-width: 520px;
++      width: calc(100% - 32px);
++      margin: auto;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
++      overflow: hidden;
++    }
++
++    dialog.coffee-modal::backdrop {
++      background: rgba(30, 18, 16, 0.65);
++      backdrop-filter: blur(3px);
++    }
++
++    .modal-header {
++      position: relative;
++      height: 220px;
++      background-color: var(--secondary);
++      overflow: hidden;
++    }
++
++    .modal-header img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .modal-close-icon {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(62, 39, 35, 0.85);
++      color: white;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transition: background 0.2s, transform 0.2s;
++    }
++
++    .modal-close-icon:hover {
++      background: var(--primary);
++      transform: scale(1.05);
++    }
++
++    .modal-close-icon:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .modal-body {
++      padding: 24px;
++    }
++
++    .modal-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .modal-title-row h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++    }
++
++    .modal-price {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    .modal-badge {
++      display: inline-block;
++      font-size: 0.78rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      color: var(--primary);
++      background: #fff3e0;
++      border: 1px solid var(--accent);
++      padding: 2px 8px;
++      border-radius: 4px;
++      margin-bottom: 12px;
++    }
++
++    .modal-description {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .modal-meta {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 14px;
++      border-radius: 4px;
++      margin-bottom: 20px;
++      font-size: 0.92rem;
++    }
++
++    .modal-meta p + p {
++      margin-top: 6px;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      border-top: 1px solid #eee;
++      padding-top: 16px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +332,50 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn js-open-details" data-coffee="maple-oat-latte" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn js-open-details" data-coffee="dark-roast-espresso" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn js-open-details" data-coffee="cold-brew" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-details-modal" class="coffee-modal" closedby="any" aria-labelledby="modal-coffee-title" aria-describedby="modal-coffee-description">
++    <div class="modal-header">
++      <img id="modal-coffee-image" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte">
++      <button type="button" class="modal-close-icon" id="modal-close-icon-btn" aria-label="Close details dialog">&times;</button>
++    </div>
++    <div class="modal-body">
++      <span class="modal-badge" id="modal-coffee-badge">Seasonal Craft</span>
++      <div class="modal-title-row">
++        <h3 id="modal-coffee-title">Maple Oat Latte</h3>
++        <span class="modal-price" id="modal-coffee-price">$5.75</span>
++      </div>
++      <p class="modal-description" id="modal-coffee-description">
++        Creamy oat milk with a hint of Vermont maple syrup, paired with our signature double-shot espresso and finished with a light dusting of organic cinnamon.
++      </p>
++      <div class="modal-meta">
++        <p><strong>Tasting Notes:</strong> <span id="modal-coffee-notes">Toasted pecan, warm maple, velvety oat finish</span></p>
++        <p><strong>Origin &amp; Roast:</strong> <span id="modal-coffee-origin">Central American Blend &bull; Medium Roast</span></p>
++        <p><strong>Dietary &amp; Allergens:</strong> <span id="modal-coffee-dietary">100% Plant-Based (Dairy-Free, Vegan)</span></p>
++      </div>
++      <div class="modal-actions">
++        <button type="button" class="btn btn-secondary" id="modal-close-btn">Close</button>
++        <a href="/order-online" class="btn" id="modal-order-link">Order Now</a>
++      </div>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +384,179 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const COFFEE_DETAILS = {
++        'maple-oat-latte': {
++          title: 'Maple Oat Latte',
++          badge: 'Seasonal Craft',
++          price: '$5.75',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Latte art in a ceramic cup for the Maple Oat Latte',
++          description: 'Creamy barista-grade oat milk steamed with pure Grade-A Vermont maple syrup, poured over our velvety double-shot house espresso and finished with a warm dusting of cinnamon.',
++          notes: 'Toasted pecan, warm maple, velvety oat finish',
++          origin: 'Central American Blend • Medium Roast',
++          dietary: '100% Plant-Based (Dairy-Free, Vegan) • 190 kcal (12 oz)',
++          orderUrl: '/order-online?item=maple-oat-latte'
++        },
++        'dark-roast-espresso': {
++          title: 'Dark Roast Espresso',
++          badge: 'Roaster’s Reserve',
++          price: '$3.75',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Rich dark roast espresso shot in a demitasse cup',
++          description: 'Bold, smokey, and full-bodied with a thick golden crema. Small-batch roasted to deep caramelization for an intense morning boost that stands up beautifully on its own.',
++          notes: 'Bittersweet dark chocolate, charred cedar, molasses',
++          origin: 'Sumatra & Colombia • French Dark Roast',
++          dietary: ' Gluten-Free, Vegan • 10 kcal (Double Shot)',
++          orderUrl: '/order-online?item=dark-roast-espresso'
++        },
++        'cold-brew': {
++          title: 'Cold Brew',
++          badge: 'Slow Steeped',
++          price: '$4.95',
++          image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Chilled glass of slow-steeped Cold Brew coffee over ice',
++          description: 'Coarsely ground single-origin beans steeped in filtered cold water for 18 hours. Naturally sweet with low acidity and an ultra-smooth, refreshing finish served over crystal ice.',
++          notes: 'Sweet cocoa nibs, roasted hazelnut, crisp caramel',
++          origin: 'Ethiopian Yirgacheffe • Medium-Dark Roast',
++          dietary: 'Unsweetened, Dairy-Free • 15 kcal (16 oz)',
++          orderUrl: '/order-online?item=cold-brew'
++        }
++      };
++
++      const modal = document.getElementById('coffee-details-modal');
++      const titleEl = document.getElementById('modal-coffee-title');
++      const badgeEl = document.getElementById('modal-coffee-badge');
++      const priceEl = document.getElementById('modal-coffee-price');
++      const imageEl = document.getElementById('modal-coffee-image');
++      const descEl = document.getElementById('modal-coffee-description');
++      const notesEl = document.getElementById('modal-coffee-notes');
++      const originEl = document.getElementById('modal-coffee-origin');
++      const dietaryEl = document.getElementById('modal-coffee-dietary');
++      const orderLinkEl = document.getElementById('modal-order-link');
++      const closeBtn = document.getElementById('modal-close-btn');
++      const closeIconBtn = document.getElementById('modal-close-icon-btn');
++      const triggerButtons = document.querySelectorAll('.js-open-details');
++
++      let lastFocusedTrigger = null;
++      let activeCloseWatcher = null;
++      let pushedHistoryState = false;
++      let closingFromHistory = false;
++
++      function populateModal(coffeeKey) {
++        const data = COFFEE_DETAILS[coffeeKey];
++        if (!data) return false;
++        titleEl.textContent = data.title;
++        badgeEl.textContent = data.badge;
++        priceEl.textContent = data.price;
++        imageEl.src = data.image;
++        imageEl.alt = data.imageAlt;
++        descEl.textContent = data.description;
++        notesEl.textContent = data.notes;
++        originEl.textContent = data.origin;
++        dietaryEl.textContent = data.dietary;
++        orderLinkEl.href = data.orderUrl;
++        return true;
++      }
++
++      function cleanupDismissHandlers() {
++        if (activeCloseWatcher) {
++          const watcher = activeCloseWatcher;
++          activeCloseWatcher = null;
++          watcher.onclose = null;
++          watcher.destroy();
++        }
++        if (pushedHistoryState) {
++          pushedHistoryState = false;
++          if (!closingFromHistory && history.state && history.state.coffeeModalOpen) {
++            history.back();
++          }
++        }
++        closingFromHistory = false;
++      }
++
++      function openCoffeeModal(coffeeKey, triggerEl) {
++        if (!populateModal(coffeeKey)) return;
++        lastFocusedTrigger = triggerEl || document.activeElement;
++
++        if (!modal.open) {
++          if (typeof modal.showModal === 'function') {
++            modal.showModal();
++          } else {
++            modal.setAttribute('open', '');
++          }
++        }
++
++        // Set up CloseWatcher if available (handles Escape and mobile back gesture natively in modern browsers),
++        // and also manage History state fallback for mobile back navigation where CloseWatcher isn't integrated.
++        if ('CloseWatcher' in window) {
++          try {
++            activeCloseWatcher = new window.CloseWatcher();
++            activeCloseWatcher.onclose = function () {
++              activeCloseWatcher = null;
++              if (modal.open) {
++                modal.close();
++              }
++            };
++          } catch (e) {
++            activeCloseWatcher = null;
++          }
++        } else {
++          try {
++            history.pushState({ coffeeModalOpen: true, coffeeKey: coffeeKey }, '');
++            pushedHistoryState = true;
++          } catch (e) {
++            pushedHistoryState = false;
++          }
++        }
++
++        closeIconBtn.focus();
++      }
++
++      function closeCoffeeModal() {
++        if (modal.open) {
++          if (typeof modal.close === 'function') {
++            modal.close();
++          } else {
++            modal.removeAttribute('open');
++          }
++        }
++      }
++
++      triggerButtons.forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          const coffeeKey = btn.getAttribute('data-coffee');
++          openCoffeeModal(coffeeKey, btn);
++        });
++      });
++
++      closeBtn.addEventListener('click', closeCoffeeModal);
++      closeIconBtn.addEventListener('click', closeCoffeeModal);
++
++      // Dismiss when clicking the dialog backdrop
++      modal.addEventListener('click', function (event) {
++        if (event.target === modal) {
++          closeCoffeeModal();
++        }
++      });
++
++      modal.addEventListener('close', function () {
++        cleanupDismissHandlers();
++        if (lastFocusedTrigger && typeof lastFocusedTrigger.focus === 'function') {
++          lastFocusedTrigger.focus();
++        }
++      });
++
++      window.addEventListener('popstate', function () {
++        if (modal.open) {
++          closingFromHistory = true;
++          closeCoffeeModal();
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

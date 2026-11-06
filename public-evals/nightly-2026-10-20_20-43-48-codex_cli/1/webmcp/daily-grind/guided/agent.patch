@@ -1,0 +1,308 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..201b488
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,21 @@
++# The Daily Grind
++
++Start the static site with `pnpm start`. Run automated tests with `npm test` (Node.js 18 or newer).
++
++## WebMCP
++
++The page progressively registers three client-side tools using `document.modelContext.registerTool`:
++
++| Tool | Behavior |
++| --- | --- |
++| `get_seasonal_favorites` | Returns the displayed drink names, descriptions, and detail links. Accepts `{}`. |
++| `get_site_navigation` | Returns the linked page labels, paths, and absolute URLs. Accepts `{}`. |
++| `navigate_to_page` | Opens a listed path in the current tab. Accepts, for example, `{"path":"/order-online"}`. |
++
++Read tools use the current DOM as their source. Navigation accepts only explicitly allowed paths that are also linked on the page. Logout remains a manual action. Opening the ordering page does not place an order. The destination pages are existing links; this static repository does not implement those routes.
++
++Tools require a secure context (HTTPS or trustworthy localhost) and a browser with WebMCP enabled. Unsupported browsers retain the existing page and links. Registrations use an AbortSignal for cleanup on `pagehide` and are restored on `pageshow`, including back/forward cache restoration. Registration failures clean up partial registrations and log a warning without affecting the page.
++
++WebMCP is experimental. See the current [Chrome setup instructions](https://developer.chrome.com/docs/ai/webmcp#get-started), [imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api), and [specification](https://webmachinelearning.github.io/webmcp/). No backend MCP server, API key, or transport is needed.
++
++The Node test suite invokes registered tools against a simulated browser environment using the actual HTML content. It covers tool results, input validation, navigation restrictions, unsupported contexts, lifecycle cleanup/restoration, and registration failures. It does not verify a native browser's WebMCP implementation.
+diff --git a/index.html b/index.html
+index 66c9173..86099b7 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/webmcp.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/test/webmcp.test.cjs b/test/webmcp.test.cjs
+new file mode 100644
+index 0000000..9c15456
+--- /dev/null
++++ b/test/webmcp.test.cjs
+@@ -0,0 +1,136 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(new URL('../webmcp.js', `file://${__filename}`), 'utf8');
++const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++const origin = 'https://daily-grind.example';
++
++// Model only the DOM reads used by the tools, using the actual page content.
++function links(markup) {
++  return Array.from(markup.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/g), ([, path, label]) => ({
++    textContent: label,
++    href: new URL(path, origin).href,
++    getAttribute: () => path,
++  }));
++}
++
++async function setup({ supported = true, secure = true, failAt = 0 } = {}) {
++  const registered = new Map();
++  const calls = [];
++  const navigations = [];
++  const warnings = [];
++  const events = new EventTarget();
++  const cards = Array.from(html.matchAll(/<div class="card">([\s\S]*?)<\/div>/g), ([, markup]) => ({
++    querySelector(selector) {
++      if (selector === 'a') return links(markup)[0];
++      return { textContent: markup.match(new RegExp(`<${selector}>(.*?)</${selector}>`))[1] };
++    },
++  }));
++  const pageLinks = links(html);
++  const document = {
++    querySelectorAll: (selector) => selector === 'a[href]' ? pageLinks : cards,
++  };
++  if (supported) {
++    document.modelContext = {
++      async registerTool(tool, { signal }) {
++        calls.push({ tool, signal });
++        if (calls.length === failAt) throw new Error('Registration blocked');
++        assert.equal(registered.has(tool.name), false, 'No duplicate registrations');
++        registered.set(tool.name, tool);
++        signal.addEventListener('abort', () => registered.delete(tool.name), { once: true });
++      },
++    };
++  }
++  vm.runInNewContext(source, {
++    document,
++    window: {
++      isSecureContext: secure,
++      location: { assign: (path) => navigations.push(path) },
++      addEventListener: events.addEventListener.bind(events),
++    },
++    AbortController,
++    console: { warn: (...args) => warnings.push(args) },
++  });
++  const flush = () => new Promise((resolve) => setImmediate(resolve));
++  await flush();
++  return { registered, calls, navigations, cards, warnings, flush,
++    dispatch: (type) => events.dispatchEvent(new Event(type)) };
++}
++
++test('page loads the integration and registers the three tools', async () => {
++  assert.match(html, /<script src="\/webmcp\.js" defer><\/script>/);
++  const { registered } = await setup();
++  assert.deepEqual([...registered.keys()], ['get_seasonal_favorites', 'get_site_navigation', 'navigate_to_page']);
++  assert.equal(registered.get('get_seasonal_favorites').annotations.readOnlyHint, true);
++  assert.equal(registered.get('navigate_to_page').annotations.readOnlyHint, false);
++});
++
++test('unsupported browsers and insecure contexts skip registration', async () => {
++  for (const options of [{ supported: false }, { secure: false }]) {
++    const { calls, warnings } = await setup(options);
++    assert.equal(calls.length, 0);
++    assert.equal(warnings.length, 0);
++  }
++});
++
++test('favorites reflect the actual page and are read fresh on each invocation', async () => {
++  const { registered, cards } = await setup();
++  const tool = registered.get('get_seasonal_favorites');
++  const { items } = tool.execute({});
++  assert.deepEqual(Array.from(items, (item) => item.name), ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']);
++  assert.equal(items[0].description, 'Creamy oat milk with a hint of Vermont maple syrup.');
++  assert.equal(items[0].url, `${origin}/menu/seasonal`);
++  cards.pop();
++  assert.equal(tool.execute({}).items.length, 2);
++});
++
++test('navigation exposes existing destinations and opens the ordering page', async () => {
++  const { registered, navigations } = await setup();
++  const { destinations } = registered.get('get_site_navigation').execute({});
++  assert.equal(destinations.length, 12);
++  assert.equal(destinations.some((entry) => entry.path === '/logout'), false);
++  const result = registered.get('navigate_to_page').execute({ path: '/order-online' });
++  assert.equal(result.navigatingTo, `${origin}/order-online`);
++  assert.deepEqual(navigations, ['/order-online']);
++});
++
++test('malformed arguments and unlisted URLs produce actionable errors without navigating', async () => {
++  const { registered, navigations } = await setup();
++  for (const input of [null, [], 'menu', {}, { path: 1 }, { path: '/menu', extra: true },
++    { path: '/logout' }, { path: 'https://elsewhere.example' }, { path: '//elsewhere.example' },
++    { path: '/menu?redirect=/logout' }, { path: '/missing' }]) {
++    assert.equal(typeof registered.get('navigate_to_page').execute(input).error, 'string');
++  }
++  for (const name of ['get_site_navigation', 'get_seasonal_favorites']) {
++    for (const input of [null, [], { extra: true }]) {
++      assert.equal(typeof registered.get(name).execute(input).error, 'string');
++    }
++  }
++  assert.equal(navigations.length, 0);
++});
++
++test('pagehide unregisters tools and pageshow restores them without duplicates', async () => {
++  const app = await setup();
++  app.dispatch('pageshow');
++  await app.flush();
++  assert.equal(app.calls.length, 3);
++  app.dispatch('pagehide');
++  assert.equal(app.registered.size, 0);
++  assert.equal(app.calls.every(({ signal }) => signal.aborted), true);
++  app.dispatch('pageshow');
++  await app.flush();
++  assert.equal(app.registered.size, 3);
++  assert.equal(app.calls.length, 6);
++});
++
++test('a rejected registration cleans up partial registrations and reports the failure', async () => {
++  const app = await setup({ failAt: 2 });
++  assert.equal(app.registered.size, 0);
++  assert.equal(app.warnings.length, 1);
++  assert.equal(app.calls.every(({ signal }) => signal.aborted), true);
++  app.dispatch('pageshow');
++  await app.flush();
++  assert.equal(app.registered.size, 3);
++});
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..9efa2c4
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,109 @@
++(() => {
++  // Progressive enhancement: the site's links work without WebMCP.
++  const context = document.modelContext;
++  if (!window.isSecureContext || typeof context?.registerTool !== 'function') return;
++
++  const allowedPaths = new Set([
++    '/menu', '/locations', '/rewards', '/account', '/order-online',
++    '/menu/seasonal', '/menu/espresso', '/menu/cold-brew',
++    '/about', '/careers', '/contact', '/privacy-policy',
++  ]);
++  const emptySchema = { type: 'object', properties: {}, additionalProperties: false };
++  const isObject = (input) => input !== null && typeof input === 'object' && !Array.isArray(input);
++  const isEmptyInput = (input) => isObject(input) && Object.keys(input).length === 0;
++  const invalidEmptyInput = { error: 'This tool accepts an empty object with no parameters.' };
++
++  function destinations() {
++    return Array.from(document.querySelectorAll('a[href]'))
++      .filter((link) => allowedPaths.has(link.getAttribute('href')))
++      .map((link) => ({
++        label: link.textContent.trim(),
++        path: link.getAttribute('href'),
++        url: link.href,
++      }));
++  }
++
++  const tools = [
++    {
++      name: 'get_seasonal_favorites',
++      description: 'Read the featured coffees and their descriptions to help the user choose a drink.',
++      inputSchema: emptySchema,
++      execute(input = {}) {
++        if (!isEmptyInput(input)) return invalidEmptyInput;
++        return {
++          items: Array.from(document.querySelectorAll('main .card')).map((card) => ({
++            name: card.querySelector('h3').textContent.trim(),
++            description: card.querySelector('p').textContent.trim(),
++            path: card.querySelector('a').getAttribute('href'),
++            url: card.querySelector('a').href,
++          })),
++        };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'get_site_navigation',
++      description: 'List the coffee shop pages linked from the current page to find where to browse next.',
++      inputSchema: emptySchema,
++      execute(input = {}) {
++        if (!isEmptyInput(input)) return invalidEmptyInput;
++        return { destinations: destinations() };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'navigate_to_page',
++      description: 'Open a linked coffee shop page in this tab, including drink details or the online ordering page.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          path: {
++            type: 'string',
++            enum: Array.from(allowedPaths),
++            description: 'The destination path returned by the site navigation or seasonal favorites tool.',
++          },
++        },
++        required: ['path'],
++        additionalProperties: false,
++      },
++      execute(input) {
++        if (!isObject(input) || Object.keys(input).length !== 1 || typeof input.path !== 'string') {
++          return { error: 'Provide an object containing only a destination path.' };
++        }
++        const destination = destinations().find((entry) => entry.path === input.path);
++        if (!destination) {
++          return { error: 'Choose a linked destination from get_site_navigation.', destinations: destinations() };
++        }
++        window.location.assign(destination.path);
++        return { navigatingTo: destination.url };
++      },
++      annotations: { readOnlyHint: false },
++    },
++  ];
++
++  let controller;
++
++  async function registerTools() {
++    if (controller) return;
++    const registration = new AbortController();
++    controller = registration;
++    try {
++      for (const tool of tools) {
++        if (registration.signal.aborted) return;
++        await context.registerTool(tool, { signal: registration.signal });
++      }
++    } catch (error) {
++      registration.abort();
++      if (controller === registration) controller = undefined;
++      console.warn('Daily Grind WebMCP tools could not be registered.', error);
++    }
++  }
++
++  window.addEventListener('pagehide', () => {
++    controller?.abort();
++    controller = undefined;
++  });
++  // A page restored from the back/forward cache needs fresh registrations.
++  window.addEventListener('pageshow', () => { void registerTools(); });
++  void registerTools();
++})();

@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+index 66c9173..13fa63a 100644
+--- a/index.html
++++ b/index.html
+@@ -66,12 +66,24 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-link,
++    .signin-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Show "Sign In" or "Logout" depending on session state */
++    body:not([data-signed-in="true"]) .signed-in-only,
++    body[data-signed-in="true"] .signed-out-only {
++      display: none;
++    }
++
++    [aria-busy="true"] {
++      cursor: progress;
++      opacity: 0.7;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -155,23 +167,24 @@
+   </style>
+ </head>
+ 
+-<body>
++<body data-signed-in="false">
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-requires-auth>Rewards</a></li>
++      <li><a href="/account" data-requires-auth>My Account</a></li>
++      <li class="signed-out-only"><a href="/login" class="signin-link" data-requires-auth>Sign In</a></li>
++      <li class="signed-in-only"><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-requires-auth>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +220,131 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Polyfills getClientCapabilities(), parseRequestOptionsFromJSON() and toJSON()
++    import 'https://esm.sh/webauthn-polyfills@0.1.7';
++
++    let isAuthenticating = false;
++
++    async function isImmediateUiSupported() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return false;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        return Boolean(capabilities?.immediateGet);
++      } catch {
++        return false;
++      }
++    }
++
++    // Signs in with a passkey or saved password already on this device,
++    // without leaving the page. Rejects with NotAllowedError when no local
++    // credentials exist, the user dismisses the chooser, or it's unsupported.
++    async function authenticateWithImmediateUi() {
++      // Unsupported browsers would ignore uiMode and open a blocking QR dialog
++      if (!(await isImmediateUiSupported())) {
++        throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
++      }
++
++      const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
++      if (!optionsResponse.ok) {
++        throw new Error('Failed to fetch authentication options');
++      }
++      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await optionsResponse.json());
++
++      // No signal and no allowCredentials: both make immediate mode reject
++      const cred = await navigator.credentials.get({
++        password: true,
++        publicKey,
++        uiMode: 'immediate',
++      });
++
++      if (!cred) {
++        throw new DOMException('No credential returned', 'NotAllowedError');
++      }
++
++      if (cred.type === 'public-key') {
++        const encoded = cred.toJSON();
++        const verifyResponse = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encoded),
++        });
++
++        if (verifyResponse.status === 404) {
++          // Passkey was deleted server-side; ask the password manager to drop it
++          if (PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rpId || window.location.hostname,
++              credentialId: encoded.id,
++            });
++          }
++          throw new Error('Passkey credential is no longer recognized by the server');
++        }
++        if (!verifyResponse.ok) {
++          throw new Error('Passkey verification failed');
++        }
++        return verifyResponse.json();
++      }
++
++      if (cred.type === 'password') {
++        const verifyResponse = await fetch('/api/login/password', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username: cred.id, password: cred.password }),
++        });
++        if (!verifyResponse.ok) {
++          throw new Error('Password verification failed');
++        }
++        return verifyResponse.json();
++      }
++
++      throw new Error(`Unsupported credential type: ${cred.type}`);
++    }
++
++    function goToSignInPage(destination) {
++      const loginUrl = new URL('/login', window.location.origin);
++      if (destination.pathname !== '/login') {
++        loginUrl.searchParams.set('return', destination.pathname + destination.search);
++      }
++      window.location.assign(loginUrl);
++    }
++
++    // Intercept clicks on links that need an account so returning customers
++    // can sign in right here, then continue to where they were headed.
++    document.addEventListener('click', async (event) => {
++      const link = event.target.closest('a[data-requires-auth]');
++      if (!link || document.body.dataset.signedIn === 'true') return;
++      // Leave modified clicks (new tab/window) to the browser
++      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++
++      event.preventDefault();
++      if (isAuthenticating) return;
++
++      const destination = new URL(link.href);
++      isAuthenticating = true;
++      link.setAttribute('aria-busy', 'true');
++      try {
++        await authenticateWithImmediateUi();
++        document.body.dataset.signedIn = 'true';
++        // Clicking "Sign In" only needed the session; everything else continues on
++        if (destination.pathname !== '/login') {
++          window.location.assign(destination);
++        }
++      } catch (err) {
++        if (err.name !== 'NotAllowedError') {
++          console.error('Quick sign-in failed:', err);
++        }
++        // No saved credentials on this device (or unsupported): use the regular sign-in page
++        goToSignInPage(destination);
++      } finally {
++        isAuthenticating = false;
++        link.removeAttribute('aria-busy');
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

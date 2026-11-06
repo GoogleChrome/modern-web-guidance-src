@@ -1,0 +1,299 @@
+diff --git a/index.html b/index.html
+index 66c9173..9947b28 100644
+--- a/index.html
++++ b/index.html
+@@ -113,6 +113,104 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .card p {
++      flex: 1;
++    }
++
++    /* The ARIA row wrapper must not affect visual layout. */
++    .grid [role="row"] {
++      display: contents;
++    }
++
++    .card:has(:focus-visible) {
++      box-shadow: 0 0 0 3px var(--accent), 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .card .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Layout modes */
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      flex-direction: row;
++      text-align: left;
++      gap: 20px;
++    }
++
++    .grid[data-layout="list"] .card h3,
++    .grid[data-layout="list"] .card .btn {
++      margin: 0;
++    }
++
++    .grid[data-layout="list"] .card h3 {
++      flex: 0 0 12rem;
++    }
++
++    .grid[data-layout="featured"] {
++      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
++      grid-auto-flow: dense;
++    }
++
++    .grid[data-layout="featured"] .card:first-child {
++      grid-column: span 2;
++      grid-row: span 2;
++      justify-content: center;
++      font-size: 1.15rem;
++    }
++
++    @media (max-width: 480px) {
++      .grid[data-layout="featured"] .card:first-child {
++        grid-column: auto;
++        grid-row: auto;
++      }
++
++      .grid[data-layout="list"] .card {
++        flex-direction: column;
++        text-align: center;
++      }
++
++      .grid[data-layout="list"] .card h3 {
++        flex: none;
++      }
++    }
++
++    .layout-switcher {
++      display: flex;
++      justify-content: center;
++      gap: 16px;
++      border: none;
++      margin-top: 12px;
++      flex-wrap: wrap;
++    }
++
++    .layout-switcher legend {
++      float: left;
++      font-weight: 600;
++      margin-right: 4px;
++    }
++
++    .layout-switcher label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      cursor: pointer;
++    }
++
++    .grid-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 8px;
+     }
+ 
+     .card h3 {
+@@ -177,21 +275,52 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      <fieldset class="layout-switcher">
++        <legend>Layout:</legend>
++        <label><input type="radio" name="layout" value="grid" checked> Grid</label>
++        <label><input type="radio" name="layout" value="list"> List</label>
++        <label><input type="radio" name="layout" value="featured"> Featured</label>
++      </fieldset>
++      <p class="grid-hint" id="grid-hint">Tip: use the arrow keys to move between drinks, Home/End to jump to the first or last.</p>
++      <div class="grid" id="seasonal-grid" data-layout="grid" role="grid" aria-label="Seasonal favorites"
++        aria-describedby="grid-hint">
++        <div role="row">
++          <div class="card" role="gridcell">
++            <h3 id="card-maple-title">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" id="card-maple-link" tabindex="0"
++              aria-labelledby="card-maple-title card-maple-link">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3 id="card-espresso-title">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" id="card-espresso-link" tabindex="-1"
++              aria-labelledby="card-espresso-title card-espresso-link">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3 id="card-cold-brew-title">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" id="card-cold-brew-link" tabindex="-1"
++              aria-labelledby="card-cold-brew-title card-cold-brew-link">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3 id="card-chai-title">Spiced Chai</h3>
++            <p>Black tea simmered with cinnamon, cardamom, and clove.</p>
++            <a href="/menu/chai" class="btn" id="card-chai-link" tabindex="-1"
++              aria-labelledby="card-chai-title card-chai-link">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3 id="card-mocha-title">Hazelnut Mocha</h3>
++            <p>Rich chocolate and toasted hazelnut over a double shot.</p>
++            <a href="/menu/mocha" class="btn" id="card-mocha-link" tabindex="-1"
++              aria-labelledby="card-mocha-title card-mocha-link">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3 id="card-pour-over-title">Single-Origin Pour Over</h3>
++            <p>Hand-brewed Ethiopian beans with bright citrus notes.</p>
++            <a href="/menu/pour-over" class="btn" id="card-pour-over-link" tabindex="-1"
++              aria-labelledby="card-pour-over-title card-pour-over-link">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +336,121 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Spatial (2D) arrow-key navigation for a composite widget. Candidates are
++    // picked from live geometry on each keypress, so it works in any layout mode
++    // (auto-fit grid, single-column list, dense grid with spanning items, RTL...).
++    function initSpatialNavigation(container, itemSelector) {
++      const TOLERANCE = 1; // px, absorbs sub-pixel rounding
++      const WEIGHT = 2;    // perpendicular offset weight for unaligned fallback
++
++      const items = () => [...container.querySelectorAll(itemSelector)]
++        .filter((el) => el.checkVisibility());
++
++      function setActive(el) {
++        for (const item of container.querySelectorAll(itemSelector)) {
++          item.tabIndex = item === el ? 0 : -1;
++        }
++      }
++
++      function findCandidate(current, direction) {
++        const from = current.getBoundingClientRect();
++        const horizontal = direction === 'left' || direction === 'right';
++        let bestAligned = null, bestAlignedScore = [Infinity, Infinity];
++        let bestFallback = null, bestFallbackScore = Infinity;
++
++        for (const el of items()) {
++          if (el === current) continue;
++          const to = el.getBoundingClientRect();
++
++          // Edge-based direction filter and gap along the navigation axis.
++          let gap;
++          switch (direction) {
++            case 'right': gap = to.left - from.right; break;
++            case 'left': gap = from.left - to.right; break;
++            case 'down': gap = to.top - from.bottom; break;
++            case 'up': gap = from.top - to.bottom; break;
++          }
++          if (gap < -TOLERANCE) continue;
++          gap = Math.max(0, gap);
++
++          const overlaps = horizontal
++            ? to.top < from.bottom - TOLERANCE && to.bottom > from.top + TOLERANCE
++            : to.left < from.right - TOLERANCE && to.right > from.left + TOLERANCE;
++          const offset = horizontal
++            ? Math.abs((to.top + to.bottom) / 2 - (from.top + from.bottom) / 2)
++            : Math.abs((to.left + to.right) / 2 - (from.left + from.right) / 2);
++
++          if (overlaps) {
++            if (gap < bestAlignedScore[0] ||
++              (gap === bestAlignedScore[0] && offset < bestAlignedScore[1])) {
++              bestAligned = el;
++              bestAlignedScore = [gap, offset];
++            }
++          } else if (!bestAligned) {
++            const score = gap + WEIGHT * offset;
++            if (score < bestFallbackScore) {
++              bestFallback = el;
++              bestFallbackScore = score;
++            }
++          }
++        }
++        return bestAligned || bestFallback;
++      }
++
++      // Visual first/last item (top-most row, then inline-start-most).
++      function edgeItem(last) {
++        const rtl = getComputedStyle(container).direction === 'rtl';
++        const sorted = items().map((el) => [el, el.getBoundingClientRect()]).sort(([, a], [, b]) =>
++          Math.abs(a.top - b.top) > TOLERANCE ? a.top - b.top : (rtl ? b.left - a.left : a.left - b.left));
++        const entry = last ? sorted.at(-1) : sorted[0];
++        return entry?.[0] ?? null;
++      }
++
++      const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
++
++      container.addEventListener('keydown', (e) => {
++        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++        const target = e.composedPath()[0];
++        if (!(target instanceof Element) || !target.matches(itemSelector)) return;
++        if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++
++        let next = null;
++        if (e.key in KEYS) next = findCandidate(target, KEYS[e.key]);
++        else if (e.key === 'Home') next = edgeItem(false);
++        else if (e.key === 'End') next = edgeItem(true);
++        else return;
++
++        // No candidate: let the browser scroll the viewport natively.
++        if (!next || next === target) return;
++        e.preventDefault();
++        setActive(next);
++        next.focus();
++        next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      });
++
++      // Keep the single tab stop on whatever item last received focus (e.g. by click).
++      container.addEventListener('focusin', (e) => {
++        if (e.target.matches(itemSelector)) setActive(e.target);
++      });
++
++      // Ensure exactly one item is tabbable even if the active one gets hidden.
++      const ensureTabStop = () => {
++        const visible = items();
++        if (!visible.some((el) => el.tabIndex === 0)) setActive(visible[0] ?? null);
++      };
++      ensureTabStop();
++      new ResizeObserver(ensureTabStop).observe(container);
++    }
++
++    const grid = document.getElementById('seasonal-grid');
++    initSpatialNavigation(grid, '.card .btn');
++
++    document.querySelector('.layout-switcher').addEventListener('change', (e) => {
++      if (e.target.name === 'layout') grid.dataset.layout = e.target.value;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

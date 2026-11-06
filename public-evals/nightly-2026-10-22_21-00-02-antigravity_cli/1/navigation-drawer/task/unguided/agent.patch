@@ -1,0 +1,394 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -45,32 +45,197 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    /* Menu Trigger Button */
++    .menu-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      background: transparent;
++      color: white;
++      border: 1px solid var(--secondary);
++      padding: 0.5rem 0.9rem;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 500;
++      cursor: pointer;
++      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .menu-btn:hover,
++    .menu-btn:focus-visible {
++      border-color: var(--accent);
++      color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.06);
++      outline: none;
++    }
++
++    .menu-btn svg {
++      width: 20px;
++      height: 20px;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++    }
++
++    /* Slide-out Drawer Menu (Popover API + CSS Scroll Snap + Discrete Transitions) */
++    .drawer {
++      position: fixed;
++      inset: 0 auto 0 0;
++      width: min(300px, 85vw);
++      height: 100dvh;
++      max-height: 100dvh;
++      margin: 0;
++      padding: 0;
++      border: none;
++      background: transparent;
++      color: white;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      -ms-overflow-style: none;
++      transform: translateX(-100%);
++      transition:
++        transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
++        overlay 0.3s cubic-bezier(0.32, 0.72, 0, 1) allow-discrete,
++        display 0.3s cubic-bezier(0.32, 0.72, 0, 1) allow-discrete;
++    }
++
++    .drawer::-webkit-scrollbar {
++      display: none;
++    }
++
++    .drawer:popover-open {
++      display: flex;
++      transform: translateX(0);
++    }
++
++    @starting-style {
++      .drawer:popover-open {
++        transform: translateX(-100%);
++      }
++    }
++
++    .drawer::backdrop {
++      background-color: rgba(0, 0, 0, 0);
++      backdrop-filter: blur(0px);
++      transition:
++        background-color 0.3s ease,
++        backdrop-filter 0.3s ease,
++        overlay 0.3s ease allow-discrete,
++        display 0.3s ease allow-discrete;
++    }
++
++    .drawer:popover-open::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    @starting-style {
++      .drawer:popover-open::backdrop {
++        background-color: rgba(0, 0, 0, 0);
++        backdrop-filter: blur(0px);
++      }
++    }
++
++    .drawer-panel {
++      flex: 0 0 100%;
++      width: 100%;
++      height: 100%;
++      background: var(--primary);
++      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
++      padding: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++      overflow-y: auto;
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++    }
++
++    .drawer-dismiss {
++      flex: 0 0 100%;
++      width: 100%;
++      height: 100%;
++      scroll-snap-align: end;
++      background: transparent;
++    }
++
++    .drawer-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-bottom: 1rem;
++      border-bottom: 1px solid rgba(215, 204, 200, 0.2);
++    }
++
++    .drawer-title {
++      font-size: 1.1rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      color: var(--secondary);
++    }
++
++    .close-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      width: 36px;
++      height: 36px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: color 0.2s, border-color 0.2s, background-color 0.2s;
++    }
++
++    .close-btn:hover,
++    .close-btn:focus-visible {
++      color: var(--accent);
++      border-color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.06);
++      outline: none;
++    }
++
+     nav ul {
+       display: flex;
++      flex-direction: column;
+       list-style: none;
++      gap: 0.5rem;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 0;
+     }
+ 
+     nav a {
++      display: block;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 6px;
++      transition: color 0.2s, background-color 0.2s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
++      outline: none;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      margin-top: 0.5rem;
++      text-align: center;
+     }
+ 
+     /* Hero Section */
+     .hero {
+@@ -158,15 +323,55 @@
+ <body>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <button
++      type="button"
++      class="menu-btn"
++      id="menu-button"
++      popovertarget="drawer-menu"
++      aria-label="Open navigation menu"
++      aria-controls="drawer-menu"
++      aria-expanded="false"
++    >
++      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
++        <line x1="3" y1="6" x2="21" y2="6"></line>
++        <line x1="3" y1="12" x2="21" y2="12"></line>
++        <line x1="3" y1="18" x2="21" y2="18"></line>
++      </svg>
++      <span>Menu</span>
++    </button>
++
++    <div
++      id="drawer-menu"
++      class="drawer"
++      popover="auto"
++      role="dialog"
++      aria-label="Site Navigation"
++    >
++      <div class="drawer-panel" id="drawer-panel">
++        <div class="drawer-header">
++          <span class="drawer-title">THE DAILY GRIND</span>
++          <button
++            type="button"
++            class="close-btn"
++            popovertarget="drawer-menu"
++            popovertargetaction="hide"
++            aria-label="Close navigation menu"
++          >
++            &times;
++          </button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </div>
++      <div class="drawer-dismiss" id="drawer-dismiss" aria-hidden="true"></div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -206,7 +411,123 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drawer = document.getElementById('drawer-menu');
++    const drawerPanel = document.getElementById('drawer-panel');
++    const drawerDismiss = document.getElementById('drawer-dismiss');
++    const menuButton = document.getElementById('menu-button');
++
++    function closeDrawer() {
++      if (drawer.matches(':popover-open')) {
++        drawer.hidePopover();
++      }
++    }
++
++    // Sync ARIA state and reset scroll-snap position when the popover toggles
++    drawer.addEventListener('toggle', (event) => {
++      const isOpen = event.newState === 'open';
++      menuButton.setAttribute('aria-expanded', String(isOpen));
++      if (isOpen) {
++        drawer.scrollLeft = 0;
++        drawerPanel.style.transform = '';
++        drawerPanel.style.transition = '';
++      }
++    });
++
++    // Close the popover when native scroll-snap finishes swiping to the dismiss target
++    drawer.addEventListener('scrollend', () => {
++      if (drawer.scrollLeft >= drawer.clientWidth * 0.5) {
++        closeDrawer();
++      }
++    });
++
++    // Clicking the dismiss snap spacer or a nav link closes the drawer
++    drawerDismiss.addEventListener('click', closeDrawer);
++    drawerPanel.querySelectorAll('a').forEach((link) => {
++      link.addEventListener('click', closeDrawer);
++    });
++
++    // Fallback touch / pointer swipe handling for environments that dispatch raw touch/pointer events
++    let startX = null;
++    let startY = null;
++    let currentDeltaX = 0;
++    let isDragging = false;
++
++    function handleStart(clientX, clientY) {
++      if (!drawer.matches(':popover-open')) return;
++      startX = clientX;
++      startY = clientY;
++      currentDeltaX = 0;
++      isDragging = true;
++    }
++
++    function handleMove(clientX, clientY) {
++      if (!isDragging || startX === null || startY === null) return;
++      // If native scroll-snap is already handling the swipe, yield to native scrolling
++      if (drawer.scrollLeft > 0) {
++        drawerPanel.style.transform = '';
++        return;
++      }
++      const deltaX = clientX - startX;
++      const deltaY = clientY - startY;
++      if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < 0) {
++        currentDeltaX = deltaX;
++        drawerPanel.style.transition = 'none';
++        drawerPanel.style.transform = `translateX(${deltaX}px)`;
++      }
++    }
++
++    function handleEnd() {
++      if (!isDragging) return;
++      isDragging = false;
++      startX = null;
++      startY = null;
++      drawerPanel.style.transition = '';
++      drawerPanel.style.transform = '';
++
++      if (drawer.scrollLeft === 0 && currentDeltaX < -50) {
++        closeDrawer();
++      }
++      currentDeltaX = 0;
++    }
++
++    drawer.addEventListener('touchstart', (e) => {
++      if (e.touches.length === 1) {
++        handleStart(e.touches[0].clientX, e.touches[0].clientY);
++      }
++    }, { passive: true });
++
++    drawer.addEventListener('touchmove', (e) => {
++      if (e.touches.length === 1) {
++        handleMove(e.touches[0].clientX, e.touches[0].clientY);
++      }
++    }, { passive: true });
++
++    drawer.addEventListener('touchend', handleEnd);
++    drawer.addEventListener('touchcancel', handleEnd);
++
++    drawer.addEventListener('pointerdown', (e) => {
++      if (e.pointerType === 'touch') return;
++      handleStart(e.clientX, e.clientY);
++    });
++
++    drawer.addEventListener('pointermove', (e) => {
++      if (e.pointerType === 'touch') return;
++      handleMove(e.clientX, e.clientY);
++    });
++
++    drawer.addEventListener('pointerup', (e) => {
++      if (e.pointerType === 'touch') return;
++      handleEnd();
++    });
++
++    drawer.addEventListener('pointercancel', (e) => {
++      if (e.pointerType === 'touch') return;
++      handleEnd();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

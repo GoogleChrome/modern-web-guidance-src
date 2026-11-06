@@ -1,0 +1,399 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,122 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    // Restore an explicit preference before the page is painted.
++    try {
++      const theme = localStorage.getItem('coffee-theme');
++      if (theme === 'light' || theme === 'dark') {
++        document.documentElement.dataset.theme = theme;
++        document.querySelector('meta[name="color-scheme"]').content = theme;
++      }
++    } catch { /* System preference remains available when storage is blocked. */ }
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --background-light: #faf4e9;
++      --background-dark: #1c1512;
++      --surface-light: #fffaf2;
++      --surface-dark: #2b201b;
++      --secondary-light: #eadccb;
++      --secondary-dark: #352720;
++      --primary-light: #57372a;
++      --primary-dark: #e6bc96;
++      --text-light: #39271f;
++      --text-dark: #f3e5d4;
++      --muted-light: #715747;
++      --muted-dark: #cbb5a2;
++      --accent-light: #8c461e;
++      --accent-dark: #f0b879;
++      --accent-hover-light: #693014;
++      --accent-hover-dark: #ffd1a1;
++      --on-accent-light: #fffaf2;
++      --on-accent-dark: #281a12;
++      --border-light: #9b7d65;
++      --border-dark: #a1856e;
++      --scrollbar-thumb-light: #987459;
++      --scrollbar-thumb-dark: #b08b69;
++      --scrollbar-track-light: #eadccb;
++      --scrollbar-track-dark: #352720;
++      --background: var(--background-light);
++      --surface: var(--surface-light);
++      --secondary: var(--secondary-light);
++      --primary: var(--primary-light);
++      --text: var(--text-light);
++      --muted: var(--muted-light);
++      --accent: var(--accent-light);
++      --accent-hover: var(--accent-hover-light);
++      --on-accent: var(--on-accent-light);
++      --border: var(--border-light);
++      --scrollbar-thumb: var(--scrollbar-thumb-light);
++      --scrollbar-track: var(--scrollbar-track-light);
+     }
+ 
++    /* Fallback tokens also honor manual overrides without light-dark(). */
++    @media (prefers-color-scheme: dark) {
++      :root:not([data-theme="light"]) {
++        --background: var(--background-dark);
++        --surface: var(--surface-dark);
++        --secondary: var(--secondary-dark);
++        --primary: var(--primary-dark);
++        --text: var(--text-dark);
++        --muted: var(--muted-dark);
++        --accent: var(--accent-dark);
++        --accent-hover: var(--accent-hover-dark);
++        --on-accent: var(--on-accent-dark);
++        --border: var(--border-dark);
++        --scrollbar-thumb: var(--scrollbar-thumb-dark);
++        --scrollbar-track: var(--scrollbar-track-dark);
++      }
++    }
++
++    :root[data-theme="light"] { color-scheme: only light; }
++    :root[data-theme="dark"] { color-scheme: only dark; }
++
++    :root[data-theme="dark"], .late-night {
++      --background: var(--background-dark);
++      --surface: var(--surface-dark);
++      --secondary: var(--secondary-dark);
++      --primary: var(--primary-dark);
++      --text: var(--text-dark);
++      --muted: var(--muted-dark);
++      --accent: var(--accent-dark);
++      --accent-hover: var(--accent-hover-dark);
++      --on-accent: var(--on-accent-dark);
++      --border: var(--border-dark);
++      --scrollbar-thumb: var(--scrollbar-thumb-dark);
++      --scrollbar-track: var(--scrollbar-track-dark);
++    }
++
++    @supports (color: light-dark(white, black)) {
++      :root, :root[data-theme], .late-night {
++        --background: light-dark(var(--background-light), var(--background-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --muted: light-dark(var(--muted-light), var(--muted-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --accent-hover: light-dark(var(--accent-hover-light), var(--accent-hover-dark));
++        --on-accent: light-dark(var(--on-accent-light), var(--on-accent-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --scrollbar-thumb: light-dark(var(--scrollbar-thumb-light), var(--scrollbar-thumb-dark));
++        --scrollbar-track: light-dark(var(--scrollbar-track-light), var(--scrollbar-track-dark));
++      }
++    }
++
++    :root, .late-night {
++      color: var(--text);
++      background-color: var(--background);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,15 +127,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--background);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--surface);
++      color: var(--text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,9 +159,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -107,9 +211,9 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -121,19 +225,19 @@
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--accent);
++      color: var(--on-accent);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--accent-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
+@@ -151,12 +255,121 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .theme-bar {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      padding: 0.65rem 5%;
++      background: var(--secondary);
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      padding: 0.4rem 0.65rem;
++      max-width: 100%;
++    }
++
++    a:focus-visible, select:focus-visible, .scroll-container:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .btn:active { background: var(--accent-hover); }
++
++    .reviews, .late-night { margin-top: 3rem; }
++    .section-intro { color: var(--muted); margin-bottom: 1rem; }
++
++    .scroll-container {
++      max-height: 18rem;
++      overflow: auto;
++      scrollbar-gutter: stable;
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 1rem;
++      background: var(--surface);
++    }
++
++    .review, .special { padding: 1rem 0; }
++    .review + .review, .special + .special { border-top: 1px solid var(--border); }
++    .review cite { display: block; margin-top: 0.5rem; color: var(--muted); }
++    .special h3 { color: var(--primary); }
++    .special p { color: var(--muted); }
++    .special[hidden] { display: none; }
++
++    .late-night {
++      /* Reapply inherited color properties at this independent scheme boundary. */
++      color-scheme: only dark;
++      color: var(--text);
++      background: var(--background);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      padding: 2rem;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .late-night label { display: block; margin-bottom: 0.4rem; }
++    .late-night select { margin-bottom: 1rem; }
++
++    @supports not (scrollbar-color: auto) {
++      :root::-webkit-scrollbar, .scroll-container::-webkit-scrollbar { width: 12px; height: 12px; }
++      :root::-webkit-scrollbar-thumb, .scroll-container::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 6px;
++      }
++      :root::-webkit-scrollbar-track, .scroll-container::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 0.75rem; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++      .late-night { padding: 1.25rem; }
++    }
++
++    @media (forced-colors: active) {
++      :root, :root[data-theme], .late-night {
++        --background: Canvas;
++        --surface: Canvas;
++        --secondary: Canvas;
++        --primary: CanvasText;
++        --text: CanvasText;
++        --muted: CanvasText;
++        --accent: LinkText;
++        --accent-hover: LinkText;
++        --on-accent: Canvas;
++        --border: CanvasText;
++        scrollbar-color: auto;
++      }
++      .scroll-container { scrollbar-color: auto; }
++      .btn { border: 1px solid ButtonText; }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="theme-bar">
++    <label for="theme-select">Appearance</label>
++    <select id="theme-select">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -194,8 +407,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="reviews" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">From Our Coffee Community</h2>
++      <p class="section-intro">A few kind words from around the neighborhood. Scroll for more.</p>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Customer reviews">
++        <blockquote class="review"><p>“The maple oat latte is my favorite way to start a slow morning.”</p><cite>— Jamie, a neighborhood regular</cite></blockquote>
++        <blockquote class="review"><p>“Rich espresso, friendly faces, and a little space to catch my breath.”</p><cite>— Alex, espresso enthusiast</cite></blockquote>
++        <blockquote class="review"><p>“The cold brew is so smooth. It has become my afternoon ritual.”</p><cite>— Sam, cold brew fan</cite></blockquote>
++        <blockquote class="review"><p>“A cozy corner, a warm cup, and always something delicious to try.”</p><cite>— Morgan, weekend visitor</cite></blockquote>
++        <blockquote class="review"><p>“Love having a spot for a decaf and a sweet treat after dinner.”</p><cite>— Taylor, night owl</cite></blockquote>
++      </div>
++    </section>
++
++    <section class="late-night" aria-labelledby="late-night-heading">
++      <h2 id="late-night-heading">Late Night Specials</h2>
++      <p class="section-intro">For slow evenings and one more chapter. Explore our after-dark favorites.</p>
++      <label for="specials-select">Find your evening favorite</label>
++      <select id="specials-select" aria-controls="specials-list">
++        <option value="all">All specials</option>
++        <option value="drinks">Cozy drinks</option>
++        <option value="treats">Sweet treats</option>
++      </select>
++      <div id="specials-list" class="scroll-container" tabindex="0" role="region" aria-label="Late night specials">
++        <article class="special" data-category="drinks"><h3>Midnight Mocha</h3><p>Dark chocolate, espresso, and steamed milk for a rich evening cup.</p></article>
++        <article class="special" data-category="drinks"><h3>Decaf Vanilla Latte</h3><p>All the comfort of our signature latte, with a gentler finish to your day.</p></article>
++        <article class="special" data-category="drinks"><h3>Spiced Hot Chocolate</h3><p>Velvety cocoa with cinnamon and a cloud of whipped cream.</p></article>
++        <article class="special" data-category="treats"><h3>Warm Chocolate Brownie</h3><p>A fudgy chocolate square, served warm for those late-night cravings.</p></article>
++        <article class="special" data-category="treats"><h3>Cinnamon Coffee Cake</h3><p>Buttery cake with cinnamon crumble, made for sharing over a cup.</p></article>
++        <article class="special" data-category="treats"><h3>Maple Shortbread</h3><p>A crisp, buttery biscuit with a little maple sweetness.</p></article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +449,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSelect = document.getElementById('theme-select');
++    const themeMeta = document.querySelector('meta[name="color-scheme"]');
++
++    function applyTheme(value) {
++      const theme = value === 'light' || value === 'dark' ? value : 'system';
++      if (theme === 'system') {
++        delete document.documentElement.dataset.theme;
++      } else {
++        document.documentElement.dataset.theme = theme;
++      }
++      themeMeta.content = theme === 'system' ? 'light dark' : theme;
++      themeSelect.value = theme;
++    }
++
++    applyTheme(document.documentElement.dataset.theme);
++    themeSelect.addEventListener('change', () => {
++      applyTheme(themeSelect.value);
++      try {
++        if (themeSelect.value === 'system') localStorage.removeItem('coffee-theme');
++        else localStorage.setItem('coffee-theme', themeSelect.value);
++      } catch { /* The control still works without persistent storage. */ }
++    });
++
++    window.addEventListener('storage', (event) => {
++      if (event.key === 'coffee-theme' || event.key === null) applyTheme(event.newValue);
++    });
++
++    document.getElementById('specials-select').addEventListener('change', (event) => {
++      document.querySelectorAll('.special').forEach((special) => {
++        special.hidden = event.target.value !== 'all' && special.dataset.category !== event.target.value;
++      });
++      document.getElementById('specials-list').scrollTop = 0;
++    });
++  </script>
+ </body>
+ 
+ </html>

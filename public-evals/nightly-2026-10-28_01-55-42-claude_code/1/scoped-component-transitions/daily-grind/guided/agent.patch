@@ -1,0 +1,530 @@
+diff --git a/index.html b/index.html
+index 66c9173..3d58bf3 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,20 @@
+       border-radius: 4px;
+     }
+ 
++    .nav-count {
++      display: inline-block;
++      min-width: 1.4em;
++      padding: 0 0.4em;
++      margin-left: 4px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.4em;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -105,21 +119,79 @@
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
++    /* ----------------------------------------------------------------
++       Menu card: an independent view-transition scope.
++       startViewTransition() is called on the .card element itself, so
++       only this subtree is captured and the rest of the page (sticky
++       nav, other cards, order panel) stays interactive.
++       ---------------------------------------------------------------- */
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: grid;
++      gap: 10px;
++      justify-items: center;
++      /* Clip children to the rounded box; the scope's root group
++         automatically inherits this clip during a transition. */
++      overflow: clip;
++      /* Keep this card's internal transition names from leaking into
++         any outer (page- or grid-level) transition. */
++      view-transition-scope: all;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card > * {
++      /* Every direct child animates by its own DOM identity. */
++      view-transition-name: match-element;
++    }
++
++    .card .price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .card .in-order {
++      font-size: 0.85rem;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .card .details {
++      width: 100%;
++      text-align: left;
++      font-size: 0.9rem;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .card .details dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 12px;
++    }
++
++    .card .details dt {
++      font-weight: 600;
++    }
++
++    .card .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      justify-content: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,12 +201,146 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn.secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn.secondary:hover {
++      background: var(--secondary);
++    }
++
++    .card .btn {
++      margin-top: 5px;
++    }
++
++    /* ----------------------------------------------------------------
++       Order panel: a second, independent scope that can transition at
++       the same time as any card.
++       ---------------------------------------------------------------- */
++    .order-panel {
++      margin-top: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      overflow: clip;
++      view-transition-scope: all;
++    }
++
++    .order-panel h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .order-panel > * {
++      view-transition-name: match-element;
++    }
++
++    .order-list {
++      list-style: none;
++      display: grid;
++      gap: 8px;
++    }
++
++    .order-list li {
++      display: grid;
++      grid-template-columns: 1fr auto auto auto;
++      gap: 10px;
++      align-items: center;
++      padding: 10px 12px;
++      border-radius: 6px;
++      background: var(--light);
++      /* Each line item keeps its identity while being moved/removed. */
++      view-transition-name: match-element;
++    }
++
++    .order-list .qty {
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .icon-btn {
++      border: 1px solid var(--secondary);
++      background: white;
++      color: var(--primary);
++      border-radius: 4px;
++      width: 32px;
++      height: 32px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .icon-btn:hover {
++      background: var(--secondary);
++    }
++
++    .icon-btn:disabled {
++      opacity: 0.4;
++      cursor: default;
++    }
++
++    .order-empty {
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .order-total {
++      margin-top: 14px;
++      text-align: right;
++      font-weight: bold;
++    }
++
++    /* ----------------------------------------------------------------
++       View transition animation tuning (applies within every scope)
++       ---------------------------------------------------------------- */
++    ::view-transition-group(*) {
++      animation-duration: 320ms;
++      animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
++    }
++
++    /* Elements that only exist in the new state slide/fade in; elements
++       that only exist in the old state fade out. */
++    ::view-transition-new(*):only-child {
++      animation: vt-enter 320ms cubic-bezier(0.2, 0, 0, 1);
++    }
++
++    ::view-transition-old(*):only-child {
++      animation: vt-exit 220ms ease-in;
++    }
++
++    @keyframes vt-enter {
++      from {
++        opacity: 0;
++        translate: 0 8px;
++      }
++    }
++
++    @keyframes vt-exit {
++      to {
++        opacity: 0;
++        scale: 0.96;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,6 +358,15 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+@@ -164,6 +379,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="#order">Order<span class="nav-count" id="nav-count" aria-label="items in order">0</span></a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -178,23 +394,71 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card" data-id="maple-oat-latte" data-name="Maple Oat Latte" data-price="5.25">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">$5.25</p>
++          <div class="details" id="details-maple-oat-latte" hidden>
++            <dl>
++              <dt>Roast</dt><dd>Medium, Colombian single origin</dd>
++              <dt>Milk</dt><dd>Barista oat (dairy on request)</dd>
++              <dt>Sizes</dt><dd>12 oz / 16 oz / 20 oz</dd>
++              <dt>Calories</dt><dd>210 (16 oz)</dd>
++            </dl>
++          </div>
++          <div class="actions">
++            <button type="button" class="btn secondary" data-action="toggle-details"
++              aria-expanded="false" aria-controls="details-maple-oat-latte">View Details</button>
++            <button type="button" class="btn" data-action="add">Add to Order</button>
++          </div>
++        </article>
++
++        <article class="card" data-id="dark-roast-espresso" data-name="Dark Roast Espresso" data-price="3.50">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">$3.50</p>
++          <div class="details" id="details-dark-roast-espresso" hidden>
++            <dl>
++              <dt>Roast</dt><dd>Dark, Sumatra &amp; Brazil blend</dd>
++              <dt>Shots</dt><dd>Double (ristretto on request)</dd>
++              <dt>Sizes</dt><dd>2 oz / 4 oz</dd>
++              <dt>Calories</dt><dd>5</dd>
++            </dl>
++          </div>
++          <div class="actions">
++            <button type="button" class="btn secondary" data-action="toggle-details"
++              aria-expanded="false" aria-controls="details-dark-roast-espresso">View Details</button>
++            <button type="button" class="btn" data-action="add">Add to Order</button>
++          </div>
++        </article>
++
++        <article class="card" data-id="cold-brew" data-name="Cold Brew" data-price="4.75">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p class="price">$4.75</p>
++          <div class="details" id="details-cold-brew" hidden>
++            <dl>
++              <dt>Roast</dt><dd>Medium-dark, Ethiopian Yirgacheffe</dd>
++              <dt>Steep</dt><dd>18 hours, cold filtered</dd>
++              <dt>Sizes</dt><dd>16 oz / 24 oz</dd>
++              <dt>Calories</dt><dd>15 (black)</dd>
++            </dl>
++          </div>
++          <div class="actions">
++            <button type="button" class="btn secondary" data-action="toggle-details"
++              aria-expanded="false" aria-controls="details-cold-brew">View Details</button>
++            <button type="button" class="btn" data-action="add">Add to Order</button>
++          </div>
++        </article>
+       </div>
+     </section>
++
++    <aside class="order-panel" id="order" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your Order</h2>
++      <p class="order-empty" id="order-empty">Nothing in your order yet. Add a seasonal favorite above.</p>
++      <ul class="order-list" id="order-list" aria-live="polite"></ul>
++      <p class="order-total" id="order-total" hidden>Total: $0.00</p>
++    </aside>
+   </main>
+ 
+   <footer>
+@@ -207,6 +471,171 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // --------------------------------------------------------------
++    // Scoped view transitions
++    // --------------------------------------------------------------
++    // Feature-detect element-scoped transitions on Element.prototype.
++    // Deliberately NOT falling back to document.startViewTransition():
++    // a document-level transition would block pointer events on the
++    // whole page, cover the sticky nav, and prevent concurrent
++    // transitions, which is exactly what this component avoids.
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++      const transition = scopeEl.startViewTransition(updateDOM);
++      // Re-triggering on the same scope skips the active transition and
++      // rejects `ready`; swallow it to avoid unhandled rejections.
++      transition.ready.catch(() => {});
++    }
++
++    // --------------------------------------------------------------
++    // Shared order state
++    // --------------------------------------------------------------
++    const order = new Map(); // id -> { name, price, qty }
++    const orderPanel = document.getElementById('order');
++    const orderList = document.getElementById('order-list');
++    const orderEmpty = document.getElementById('order-empty');
++    const orderTotal = document.getElementById('order-total');
++    const navCount = document.getElementById('nav-count');
++
++    const money = (n) => `$${n.toFixed(2)}`;
++
++    // --------------------------------------------------------------
++    // Card component (one scope per card)
++    // --------------------------------------------------------------
++    document.querySelectorAll('.card').forEach((card) => {
++      const id = card.dataset.id;
++      const details = card.querySelector('.details');
++      const toggleBtn = card.querySelector('[data-action="toggle-details"]');
++      const addBtn = card.querySelector('[data-action="add"]');
++
++      toggleBtn.addEventListener('click', () => {
++        const expand = details.hidden;
++        runScopedTransition(card, () => {
++          details.hidden = !expand;
++          toggleBtn.setAttribute('aria-expanded', String(expand));
++          toggleBtn.textContent = expand ? 'Hide Details' : 'View Details';
++        });
++      });
++
++      addBtn.addEventListener('click', () => {
++        const entry = order.get(id) ?? {
++          name: card.dataset.name,
++          price: Number(card.dataset.price),
++          qty: 0,
++        };
++        entry.qty += 1;
++        order.set(id, entry);
++
++        // 1) Card scope: show / update the "in order" badge.
++        runScopedTransition(card, () => {
++          let badge = card.querySelector('.in-order');
++          if (!badge) {
++            badge = document.createElement('span');
++            badge.className = 'in-order';
++            card.insertBefore(badge, card.querySelector('.actions'));
++          }
++          badge.textContent = `In your order ×${entry.qty}`;
++        });
++
++        // 2) Order panel scope: runs concurrently with the card above.
++        runScopedTransition(orderPanel, () => {
++          let li = orderList.querySelector(`[data-id="${id}"]`);
++          if (!li) {
++            li = createOrderItem(id, entry);
++            orderList.appendChild(li);
++          } else {
++            li.querySelector('.qty').textContent = `× ${entry.qty}`;
++            li.querySelector('.line-total').textContent = money(entry.qty * entry.price);
++          }
++          syncOrderChrome();
++        });
++
++        // Outside any scope: the sticky nav updates immediately and
++        // stays clickable while both transitions play.
++        updateNavCount();
++      });
++    });
++
++    // --------------------------------------------------------------
++    // Order panel component
++    // --------------------------------------------------------------
++    function createOrderItem(id, entry) {
++      const li = document.createElement('li');
++      li.dataset.id = id;
++      li.innerHTML = `
++        <span class="name">${entry.name}
++          <span class="qty">× ${entry.qty}</span>
++        </span>
++        <span class="line-total">${money(entry.qty * entry.price)}</span>
++        <button type="button" class="icon-btn" data-action="move-up" aria-label="Move ${entry.name} up">↑</button>
++        <button type="button" class="icon-btn" data-action="remove" aria-label="Remove ${entry.name}">✕</button>
++      `;
++      return li;
++    }
++
++    orderList.addEventListener('click', (event) => {
++      const btn = event.target.closest('button[data-action]');
++      if (!btn) return;
++      const li = btn.closest('li');
++      const id = li.dataset.id;
++
++      if (btn.dataset.action === 'move-up') {
++        const prev = li.previousElementSibling;
++        if (!prev) return;
++        // Move the existing node (match-element tracks node identity).
++        runScopedTransition(orderPanel, () => {
++          orderList.insertBefore(li, prev);
++          syncOrderChrome();
++          btn.focus();
++        });
++      }
++
++      if (btn.dataset.action === 'remove') {
++        order.delete(id);
++        const hadFocus = li.contains(document.activeElement);
++        const nextFocus =
++          li.nextElementSibling?.querySelector('[data-action="remove"]') ??
++          li.previousElementSibling?.querySelector('[data-action="remove"]') ??
++          document.querySelector(`.card[data-id="${id}"] [data-action="add"]`);
++
++        runScopedTransition(orderPanel, () => {
++          li.remove();
++          syncOrderChrome();
++          if (hadFocus) nextFocus?.focus();
++        });
++
++        // Concurrently clear the badge inside the matching card scope.
++        const card = document.querySelector(`.card[data-id="${id}"]`);
++        const badge = card?.querySelector('.in-order');
++        if (badge) runScopedTransition(card, () => badge.remove());
++
++        updateNavCount();
++      }
++    });
++
++    function syncOrderChrome() {
++      const items = [...order.values()];
++      const total = items.reduce((sum, e) => sum + e.qty * e.price, 0);
++      orderEmpty.hidden = items.length > 0;
++      orderTotal.hidden = items.length === 0;
++      orderTotal.textContent = `Total: ${money(total)}`;
++      orderList.querySelectorAll('li').forEach((li, i) => {
++        li.querySelector('[data-action="move-up"]').disabled = i === 0;
++      });
++    }
++
++    function updateNavCount() {
++      const count = [...order.values()].reduce((sum, e) => sum + e.qty, 0);
++      navCount.textContent = String(count);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

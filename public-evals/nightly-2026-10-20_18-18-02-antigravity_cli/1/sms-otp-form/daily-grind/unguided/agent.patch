@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+index 66c9173..1113481 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,76 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    /* Verification Form Styles */
++    .verification-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .verification-section h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      text-align: center;
++    }
++
++    .verification-section p {
++      text-align: center;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .form-group input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .form-hint {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .status-msg {
++      margin-top: 15px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +265,122 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="verification-section" aria-labelledby="verify-heading">
++      <h2 id="verify-heading">Phone &amp; SMS Passcode Verification</h2>
++      <p>Verify your phone number to receive exclusive coffee rewards and order updates via SMS.</p>
++
++      <form id="verification-form" action="/verify" method="POST">
++        <div class="form-group">
++          <label for="phone-number">Phone Number</label>
++          <input
++            type="tel"
++            id="phone-number"
++            name="phone"
++            autocomplete="tel"
++            inputmode="tel"
++            placeholder="+1 (555) 123-4567"
++            aria-describedby="phone-hint"
++            required
++          >
++          <span id="phone-hint" class="form-hint">Enter your mobile number to receive a one-time passcode via SMS.</span>
++          <button type="button" id="send-code-btn" class="btn">Send Passcode</button>
++        </div>
++
++        <div class="form-group" style="margin-top: 25px;">
++          <label for="otp-code">One-Time Passcode (OTP)</label>
++          <input
++            type="text"
++            id="otp-code"
++            name="otp"
++            autocomplete="one-time-code"
++            inputmode="numeric"
++            pattern="[0-9]*"
++            maxlength="6"
++            placeholder="123456"
++            aria-describedby="otp-hint"
++            required
++          >
++          <span id="otp-hint" class="form-hint">Enter the 6-digit code sent via SMS. It will fill automatically when received.</span>
++        </div>
++
++        <button type="submit" id="verify-btn" class="btn" style="width: 100%;">Verify Passcode</button>
++        <div id="verification-status" class="status-msg" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('verification-form');
++      const phoneInput = document.getElementById('phone-number');
++      const otpInput = document.getElementById('otp-code');
++      const sendCodeBtn = document.getElementById('send-code-btn');
++      const statusEl = document.getElementById('verification-status');
++
++      let otpAbortController = null;
++
++      function startWebOTPListener() {
++        if (!('OTPCredential' in window) || !navigator.credentials) {
++          return;
++        }
++
++        if (otpAbortController) {
++          otpAbortController.abort();
++        }
++        otpAbortController = new AbortController();
++
++        navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: otpAbortController.signal
++        }).then(otp => {
++          if (otp && otp.code) {
++            otpInput.value = otp.code;
++            statusEl.textContent = 'Passcode automatically extracted from SMS.';
++            if (typeof form.requestSubmit === 'function') {
++              form.requestSubmit();
++            } else {
++              form.submit();
++            }
++          }
++        }).catch(err => {
++          // Ignore AbortError or unsupported environments
++        });
++      }
++
++      // Initialize WebOTP automatic extraction on load
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', startWebOTPListener);
++      } else {
++        startWebOTPListener();
++      }
++
++      if (sendCodeBtn) {
++        sendCodeBtn.addEventListener('click', () => {
++          if (!phoneInput.value.trim()) {
++            phoneInput.focus();
++            statusEl.textContent = 'Please enter a valid phone number first.';
++            return;
++          }
++          statusEl.textContent = 'SMS passcode sent to ' + phoneInput.value + '. Waiting for code...';
++          otpInput.focus();
++          startWebOTPListener();
++        });
++      }
++
++      if (form) {
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          if (otpAbortController) {
++            otpAbortController.abort();
++            otpAbortController = null;
++          }
++          statusEl.textContent = 'Phone number and passcode verified successfully!';
++        });
++      }
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

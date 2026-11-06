@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,28 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Calendar converter */
++    .calendars { margin-top: 60px; }
++    .cal-intro, .cal-status { text-align: center; }
++    .cal-status { font-size: 0.9rem; min-height: 1.5em; }
++    .cal-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0 5px; }
++    .cal-controls input { padding: 8px 10px; font: inherit; border: 1px solid var(--secondary); border-radius: 4px; }
++    .cal-card { text-align: left; }
++    .cal-card h3 { text-align: center; }
++    .cal-main { font-size: 1.15rem; font-weight: bold; text-align: center; margin-bottom: 8px; }
++    .cal-badge { display: table; margin: 0 auto 12px; padding: 2px 12px; border-radius: 999px; font-size: 0.8rem; background: var(--secondary); }
++    .cal-future { background: #ffe0b2; }
++    .cal-today { background: #c8e6c9; }
++    .cal-stat { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #eee; padding: 3px 0; font-size: 0.9rem; }
++    .cal-stat-label { color: #6d4c41; }
++    .cal-card h4 { margin: 14px 0 6px; font-size: 0.9rem; color: var(--primary); }
++    .cal-months { list-style: none; font-size: 0.85rem; max-height: 220px; overflow-y: auto; }
++    .cal-months li { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 8px; padding: 2px 0; }
++    .cal-month-name { color: #6d4c41; }
++    .cal-error { text-align: center; color: #b71c1c; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +214,185 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendars" aria-labelledby="cal-heading">
++      <h2 id="cal-heading" style="text-align: center;">Global Calendar Converter</h2>
++      <p class="cal-intro">Pick any date to see it in the Islamic (Umm al-Qura), Hebrew and Japanese calendars.</p>
++      <div class="cal-controls">
++        <label for="cal-date">Date</label>
++        <input type="date" id="cal-date">
++      </div>
++      <p id="cal-status" class="cal-status" role="status" aria-live="polite">Loading calendar support…</p>
++      <div class="grid" id="cal-cards"></div>
++    </section>
+   </main>
+ 
++  <script type="module">
++    // Calendar conversion uses Temporal exclusively (no legacy Date math). Native Temporal is used when
++    // available; otherwise a polyfill is loaded on demand.
++    const POLYFILL_URL = 'https://cdn.jsdelivr.net/npm/temporal-polyfill@0.3.0/global.esm.js';
++
++    const CALENDARS = [
++      { id: 'islamic-umalqura', title: 'Islamic (Umm al-Qura)', dateId: 'islamic-date', extra: {} },
++      { id: 'hebrew', title: 'Hebrew', dateId: 'hebrew-date', extra: {} },
++      { id: 'japanese', title: 'Japanese', dateId: 'japanese-date', extra: { era: 'long' } },
++    ];
++
++    const input = document.getElementById('cal-date');
++    const status = document.getElementById('cal-status');
++    const cardsEl = document.getElementById('cal-cards');
++    const locale = navigator.language || 'en';
++
++    function el(tag, className, text) {
++      const node = document.createElement(tag);
++      if (className) node.className = className;
++      if (text !== undefined) node.textContent = text;
++      return node;
++    }
++
++    async function ensureTemporal() {
++      if (typeof globalThis.Temporal === 'object' && globalThis.Temporal?.PlainDate) return true;
++      try {
++        await import(POLYFILL_URL);
++      } catch {
++        return false;
++      }
++      return typeof globalThis.Temporal === 'object' && !!globalThis.Temporal?.PlainDate;
++    }
++
++    // Feature-detect that Intl can actually format with this calendar (no silent fallback to gregory).
++    function calendarSupported(id) {
++      try {
++        if (typeof Intl.supportedValuesOf === 'function' && !Intl.supportedValuesOf('calendar').includes(id)) {
++          return false;
++        }
++        return new Intl.DateTimeFormat('en-u-ca-' + id).resolvedOptions().calendar === id;
++      } catch {
++        return false;
++      }
++    }
++
++    function timelineLabel(isoDate) {
++      const today = Temporal.Now.plainDateISO();
++      const cmp = Temporal.PlainDate.compare(isoDate, today);
++      return cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++    }
++
++    function convert(isoDate, cal) {
++      const d = isoDate.withCalendar(cal.id);
++      const formatted = d.toLocaleString(locale, { calendar: cal.id, dateStyle: 'full', ...cal.extra });
++
++      const monthCount = d.monthsInYear;
++      const months = [];
++      for (let m = 1; m <= monthCount; m++) {
++        const first = Temporal.PlainDate.from({ calendar: cal.id, year: d.year, month: m, day: 1 });
++        months.push({
++          code: first.monthCode,
++          name: first.toLocaleString(locale, { calendar: cal.id, month: 'long' }),
++          days: first.daysInMonth,
++        });
++      }
++
++      return {
++        formatted,
++        year: d.year,
++        era: d.era,
++        eraYear: d.eraYear,
++        month: d.month,
++        monthCode: d.monthCode,
++        monthsInYear: monthCount,
++        timeline: timelineLabel(isoDate),
++        months,
++      };
++    }
++
++    function stat(label, value) {
++      const row = el('div', 'cal-stat');
++      row.append(el('span', 'cal-stat-label', label), el('span', 'cal-stat-value', value));
++      return row;
++    }
++
++    function renderCard(cal, result, error) {
++      const card = el('div', 'card cal-card');
++      card.append(el('h3', null, cal.title));
++      if (error) {
++        card.append(el('p', 'cal-error', error));
++        return card;
++      }
++      const main = el('p', 'cal-main', result.formatted);
++      main.id = cal.dateId;
++      main.lang = locale;
++
++      const yearText = result.era
++        ? `${result.eraYear} (${result.era}; year ${result.year})`
++        : String(result.year);
++
++      const badge = el('span', 'cal-badge cal-' + result.timeline.toLowerCase(), result.timeline);
++      const stats = el('div', 'cal-stats');
++      stats.append(
++        stat('Year', yearText),
++        stat('Month', String(result.month)),
++        stat('Month code', result.monthCode),
++        stat('Months in year', String(result.monthsInYear)),
++      );
++
++      const list = el('ul', 'cal-months');
++      list.setAttribute('aria-label', cal.title + ' month breakdown');
++      for (const m of result.months) {
++        const li = el('li');
++        li.append(
++          el('code', null, m.code),
++          el('span', 'cal-month-name', m.name),
++          el('span', null, `${m.days} days`),
++        );
++        list.append(li);
++      }
++      card.append(main, badge, stats, el('h4', null, 'Months in this year'), list);
++      return card;
++    }
++
++    function update() {
++      cardsEl.replaceChildren();
++      if (!input.value) {
++        status.textContent = 'Select a date to convert.';
++        return;
++      }
++      let iso;
++      try {
++        iso = Temporal.PlainDate.from(input.value);
++      } catch {
++        status.textContent = 'That date is outside the supported range.';
++        return;
++      }
++      status.textContent = `Showing ${iso.toString()} (ISO 8601) in other calendars.`;
++      for (const cal of CALENDARS) {
++        if (!cal.supported) {
++          cardsEl.append(renderCard(cal, null, 'This calendar is not supported by your browser.'));
++          continue;
++        }
++        try {
++          cardsEl.append(renderCard(cal, convert(iso, cal)));
++        } catch {
++          cardsEl.append(renderCard(cal, null, 'This date cannot be represented in this calendar.'));
++        }
++      }
++    }
++
++    (async () => {
++      if (!(await ensureTemporal())) {
++        status.textContent = 'Calendar conversion is unavailable: your browser lacks Temporal support and the polyfill could not be loaded.';
++        input.disabled = true;
++        return;
++      }
++      for (const cal of CALENDARS) cal.supported = calendarSupported(cal.id);
++      input.value = Temporal.Now.plainDateISO().toString();
++      input.addEventListener('input', update);
++      update();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

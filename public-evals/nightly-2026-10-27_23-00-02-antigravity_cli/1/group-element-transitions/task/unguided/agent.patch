@@ -1,0 +1,485 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,207 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Bean Selection Section & View Transitions */
++    .bean-section {
++      margin-top: 60px;
++      padding: 32px;
++      background: #fff;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++    }
++
++    .bean-section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 24px;
++      padding-bottom: 16px;
++      border-bottom: 2px solid var(--secondary);
++    }
++
++    .bean-section-title h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .bean-section-title p {
++      font-size: 0.95rem;
++      color: #6d4c41;
++    }
++
++    .bean-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .bean-select {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--text);
++      font-size: 0.95rem;
++      cursor: pointer;
++    }
++
++    .btn-add-bean {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .bean-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
++      gap: 20px;
++    }
++
++    .bean-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: box-shadow 0.2s, transform 0.2s;
++      view-transition-class: bean-card;
++    }
++
++    .bean-card:hover {
++      box-shadow: 0 6px 14px rgba(62, 39, 35, 0.12);
++    }
++
++    .bean-card-img {
++      width: 100%;
++      height: 140px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .bean-card-body {
++      padding: 16px;
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .bean-roast-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .bean-card h3 {
++      color: var(--primary);
++      font-size: 1.15rem;
++      margin-bottom: 6px;
++    }
++
++    .bean-card p {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 14px;
++      flex: 1;
++    }
++
++    .bean-card-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-top: 10px;
++      border-top: 1px solid #efebe9;
++    }
++
++    .bean-origin {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: #795548;
++    }
++
++    .btn-remove-bean {
++      background: transparent;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++      padding: 5px 12px;
++      border-radius: 5px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-remove-bean:hover {
++      background: #c62828;
++      color: #fff;
++      border-color: #c62828;
++    }
++
++    .bean-empty-state {
++      grid-column: 1 / -1;
++      text-align: center;
++      padding: 32px;
++      color: #795548;
++      background: var(--light);
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++    }
++
++    /* Shared View Transition Logic for the Bean Group */
++    ::view-transition-group(.bean-card) {
++      animation-duration: 0.45s;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    ::view-transition-old(.bean-card):only-child {
++      animation: bean-card-out 0.3s ease-in forwards;
++    }
++
++    ::view-transition-new(.bean-card):only-child {
++      animation: bean-card-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
++    @keyframes bean-card-in {
++      from {
++        opacity: 0;
++        transform: scale(0.85) translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++    }
++
++    @keyframes bean-card-out {
++      from {
++        opacity: 1;
++        transform: scale(1);
++      }
++      to {
++        opacity: 0;
++        transform: scale(0.8);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +393,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-section" id="coffee-bean-selection" aria-labelledby="bean-section-heading">
++      <div class="bean-section-header">
++        <div class="bean-section-title">
++          <h2 id="bean-section-heading">Coffee Bean Selection</h2>
++          <p>Customize your tasting lineup—add or remove single-origin beans to compare roasts.</p>
++        </div>
++        <div class="bean-controls">
++          <select id="bean-variety-select" class="bean-select" aria-label="Choose a coffee bean variety">
++            <option value="guatemalan-antigua">Guatemalan Antigua (Medium Roast)</option>
++            <option value="costa-rican-tarrazu">Costa Rican Tarrazu (Light-Medium)</option>
++            <option value="brazilian-santos">Brazilian Santos (Medium-Dark)</option>
++            <option value="jamaican-blue">Jamaican Blue Mountain (Medium Roast)</option>
++          </select>
++          <button type="button" id="add-bean-btn" class="btn btn-add-bean">+ Add Bean</button>
++        </div>
++      </div>
++
++      <div id="bean-selection-grid" class="bean-grid">
++        <article class="bean-card" data-bean-id="ethiopian-yirgacheffe" style="view-transition-name: bean-ethiopian-yirgacheffe;">
++          <img class="bean-card-img" src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Ethiopian Yirgacheffe coffee beans">
++          <div class="bean-card-body">
++            <span class="bean-roast-badge">Light Roast</span>
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral aroma with vibrant notes of bergamot, jasmine, and Meyer lemon.</p>
++            <div class="bean-card-footer">
++              <span class="bean-origin">Origin: Ethiopia</span>
++              <button type="button" class="btn-remove-bean" data-remove-bean="ethiopian-yirgacheffe" aria-label="Remove Ethiopian Yirgacheffe">Remove</button>
++            </div>
++          </div>
++        </article>
++
++        <article class="bean-card" data-bean-id="colombian-supremo" style="view-transition-name: bean-colombian-supremo;">
++          <img class="bean-card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Colombian Supremo coffee beans">
++          <div class="bean-card-body">
++            <span class="bean-roast-badge">Medium Roast</span>
++            <h3>Colombian Supremo</h3>
++            <p>Velvety body balanced with rich caramel sweetness and a toasted walnut finish.</p>
++            <div class="bean-card-footer">
++              <span class="bean-origin">Origin: Colombia</span>
++              <button type="button" class="btn-remove-bean" data-remove-bean="colombian-supremo" aria-label="Remove Colombian Supremo">Remove</button>
++            </div>
++          </div>
++        </article>
++
++        <article class="bean-card" data-bean-id="sumatra-mandheling" style="view-transition-name: bean-sumatra-mandheling;">
++          <img class="bean-card-img" src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Sumatra Mandheling coffee beans">
++          <div class="bean-card-body">
++            <span class="bean-roast-badge">Dark Roast</span>
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied and earthy with dark chocolate depth, cedar spice, and low acidity.</p>
++            <div class="bean-card-footer">
++              <span class="bean-origin">Origin: Indonesia</span>
++              <button type="button" class="btn-remove-bean" data-remove-bean="sumatra-mandheling" aria-label="Remove Sumatra Mandheling">Remove</button>
++            </div>
++          </div>
++        </article>
++
++        <article class="bean-card" data-bean-id="kenyan-aa" style="view-transition-name: bean-kenyan-aa;">
++          <img class="bean-card-img" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Kenyan AA coffee beans">
++          <div class="bean-card-body">
++            <span class="bean-roast-badge">Medium-Light</span>
++            <h3>Kenyan AA</h3>
++            <p>Juicy blackcurrant and grapefruit notes paired with a crisp, wine-like finish.</p>
++            <div class="bean-card-footer">
++              <span class="bean-origin">Origin: Kenya</span>
++              <button type="button" class="btn-remove-bean" data-remove-bean="kenyan-aa" aria-label="Remove Kenyan AA">Remove</button>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +477,192 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const BEAN_CATALOG = [
++        {
++          id: 'ethiopian-yirgacheffe',
++          name: 'Ethiopian Yirgacheffe',
++          roast: 'Light Roast',
++          origin: 'Ethiopia',
++          description: 'Bright floral aroma with vibrant notes of bergamot, jasmine, and Meyer lemon.',
++          image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'colombian-supremo',
++          name: 'Colombian Supremo',
++          roast: 'Medium Roast',
++          origin: 'Colombia',
++          description: 'Velvety body balanced with rich caramel sweetness and a toasted walnut finish.',
++          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'sumatra-mandheling',
++          name: 'Sumatra Mandheling',
++          roast: 'Dark Roast',
++          origin: 'Indonesia',
++          description: 'Full-bodied and earthy with dark chocolate depth, cedar spice, and low acidity.',
++          image: 'https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'kenyan-aa',
++          name: 'Kenyan AA',
++          roast: 'Medium-Light',
++          origin: 'Kenya',
++          description: 'Juicy blackcurrant and grapefruit notes paired with a crisp, wine-like finish.',
++          image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'guatemalan-antigua',
++          name: 'Guatemalan Antigua',
++          roast: 'Medium Roast',
++          origin: 'Guatemala',
++          description: 'Velvety cocoa notes layered with warm baking spices and subtle orange zest.',
++          image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'costa-rican-tarrazu',
++          name: 'Costa Rican Tarrazu',
++          roast: 'Light-Medium',
++          origin: 'Costa Rica',
++          description: 'Clean honeyed sweetness with crisp green apple acidity and brown sugar.',
++          image: 'https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'brazilian-santos',
++          name: 'Brazilian Santos',
++          roast: 'Medium-Dark',
++          origin: 'Brazil',
++          description: 'Smooth nutty profile featuring roasted hazelnut, milk chocolate, and mild crema.',
++          image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'jamaican-blue',
++          name: 'Jamaican Blue Mountain',
++          roast: 'Medium Roast',
++          origin: 'Jamaica',
++          description: 'Silky, sweet, and remarkably smooth with delicate herbal and floral undertones.',
++          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80'
++        }
++      ];
++
++      const grid = document.getElementById('bean-selection-grid');
++      const select = document.getElementById('bean-variety-select');
++      const addBtn = document.getElementById('add-bean-btn');
++      let customCounter = 1;
++
++      function runWithViewTransition(updateFn) {
++        if (typeof document.startViewTransition === 'function') {
++          document.startViewTransition(() => {
++            updateFn();
++          });
++        } else {
++          updateFn();
++        }
++      }
++
++      function getActiveIds() {
++        return Array.from(grid.querySelectorAll('.bean-card')).map(
++          (card) => card.getAttribute('data-bean-id')
++        );
++      }
++
++      function syncSelectOptions() {
++        const activeIds = new Set(getActiveIds());
++        const available = BEAN_CATALOG.filter((bean) => !activeIds.has(bean.id));
++        select.innerHTML = '';
++
++        if (available.length > 0) {
++          available.forEach((bean) => {
++            const opt = document.createElement('option');
++            opt.value = bean.id;
++            opt.textContent = `${bean.name} (${bean.roast})`;
++            select.appendChild(opt);
++          });
++        } else {
++          BEAN_CATALOG.forEach((bean) => {
++            const opt = document.createElement('option');
++            opt.value = bean.id;
++            opt.textContent = `${bean.name} (${bean.roast})`;
++            select.appendChild(opt);
++          });
++        }
++
++        const emptyMsg = grid.querySelector('.bean-empty-state');
++        if (activeIds.size === 0 && !emptyMsg) {
++          const empty = document.createElement('div');
++          empty.className = 'bean-empty-state';
++          empty.textContent = 'No coffee beans selected yet. Use "+ Add Bean" to build your lineup.';
++          grid.appendChild(empty);
++        } else if (activeIds.size > 0 && emptyMsg) {
++          emptyMsg.remove();
++        }
++      }
++
++      function createBeanCard(bean, uniqueId) {
++        const article = document.createElement('article');
++        article.className = 'bean-card';
++        article.setAttribute('data-bean-id', uniqueId);
++        article.style.viewTransitionName = `bean-${uniqueId}`;
++
++        article.innerHTML = `
++          <img class="bean-card-img" src="${bean.image}" alt="${bean.name} coffee beans">
++          <div class="bean-card-body">
++            <span class="bean-roast-badge">${bean.roast}</span>
++            <h3>${bean.name}</h3>
++            <p>${bean.description}</p>
++            <div class="bean-card-footer">
++              <span class="bean-origin">Origin: ${bean.origin}</span>
++              <button type="button" class="btn-remove-bean" data-remove-bean="${uniqueId}" aria-label="Remove ${bean.name}">Remove</button>
++            </div>
++          </div>
++        `;
++        return article;
++      }
++
++      addBtn.addEventListener('click', () => {
++        const selectedId = select.value;
++        const activeIds = new Set(getActiveIds());
++        let baseBean = BEAN_CATALOG.find((b) => b.id === selectedId) || BEAN_CATALOG[0];
++        let uniqueId = baseBean.id;
++
++        if (activeIds.has(uniqueId)) {
++          const nextAvailable = BEAN_CATALOG.find((b) => !activeIds.has(b.id));
++          if (nextAvailable) {
++            baseBean = nextAvailable;
++            uniqueId = nextAvailable.id;
++          } else {
++            customCounter += 1;
++            uniqueId = `${baseBean.id}-${customCounter}`;
++          }
++        }
++
++        runWithViewTransition(() => {
++          const emptyMsg = grid.querySelector('.bean-empty-state');
++          if (emptyMsg) {
++            emptyMsg.remove();
++          }
++          const card = createBeanCard(baseBean, uniqueId);
++          grid.appendChild(card);
++          syncSelectOptions();
++        });
++      });
++
++      grid.addEventListener('click', (event) => {
++        const removeBtn = event.target.closest('.btn-remove-bean');
++        if (!removeBtn) return;
++
++        const card = removeBtn.closest('.bean-card');
++        if (!card) return;
++
++        runWithViewTransition(() => {
++          card.remove();
++          syncSelectOptions();
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..38059b3 100644
+--- a/index.html
++++ b/index.html
+@@ -107,9 +107,35 @@
+       margin-top: 20px;
+     }
+ 
++    /* Sections provide context; cards inherit it without variant classes. */
++    section[data-category="seasonal"] {
++      --category: seasonal;
++      --card-background: #fff8ed;
++      --card-accent: #8a461d;
++      --card-border: #e6c8a2;
++    }
++
++    section[data-category="cold-brew"] {
++      --category: cold-brew;
++      --card-background: #eef7f7;
++      --card-accent: #245c60;
++      --card-border: #b6d5d7;
++    }
++
++    section[data-theme="dark"] {
++      --theme: dark;
++      --card-background: #302622;
++      --card-text: #f5e9df;
++      --card-accent: #ffd091;
++      --card-border: #80654f;
++      --card-button-text: #302622;
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-background, white);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border: 1px solid var(--card-border, transparent);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -117,7 +143,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-accent, var(--primary));
+     }
+ 
+     .btn {
+@@ -135,6 +161,53 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      background: var(--card-accent, var(--primary));
++      color: var(--card-button-text, white);
++      border: 1px solid var(--card-accent, var(--primary));
++    }
++
++    .card .btn:is(:hover, :focus-visible) {
++      background: var(--card-background, white);
++      color: var(--card-accent, var(--primary));
++    }
++
++    /* Selector fallbacks retain the contextual treatment in older browsers. */
++    :where(section[data-category="seasonal"]) .card {
++      border-block-start: 4px solid var(--card-accent);
++      box-shadow: 0 4px 12px rgb(78 52 46 / 12%);
++    }
++
++    :where(section[data-category="cold-brew"]) .card {
++      border-radius: 20px;
++      box-shadow: none;
++    }
++
++    :where(section[data-theme="dark"]) .card {
++      box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
++    }
++
++    /* No size containment needed: the semantic flags inherit through .grid. */
++    @container style(--category: seasonal) {
++      .card {
++        border-block-start: 4px solid var(--card-accent, #8a461d);
++        box-shadow: 0 4px 12px rgb(78 52 46 / 12%);
++      }
++    }
++
++    @container style(--category: cold-brew) {
++      .card {
++        border-radius: 20px;
++        box-shadow: none;
++      }
++    }
++
++    @container style(--theme: dark) {
++      .card {
++        box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +248,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-category="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

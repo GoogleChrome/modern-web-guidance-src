@@ -1,0 +1,250 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* MANDATORY: Transitions to intrinsic keywords are disabled by default for compatibility */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -26,8 +28,162 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Promo Alert */
++    #promo-alert {
++      --alert-bg: var(--accent);
++      --alert-text: var(--text);
++      --alert-padding: 0.75rem 5%;
++
++      background-color: var(--alert-bg);
++      color: var(--alert-text);
++      padding: var(--alert-padding);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      block-size: auto;
++      block-size: calc-size(auto, size);
++      overflow: hidden;
++      transition:
++        block-size 0.5s ease-in-out,
++        padding 0.5s ease-in-out,
++        opacity 0.5s ease,
++        display 0.5s;
++      transition-behavior: allow-discrete;
++    }
++
++    #promo-alert:where(.is-dismissed, [hidden], :has(#alert-dismiss:checked)) {
++      block-size: 0;
++      padding-block: 0;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    #promo-alert[hidden] {
++      display: none;
++    }
++
++    @supports not selector(:has(*)) {
++      #promo-alert.is-dismissed {
++        block-size: 0;
++        padding-block: 0;
++        opacity: 0;
++        pointer-events: none;
++      }
++    }
++
++    .promo-dismiss-control {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      padding: 0.35rem 0.75rem;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .promo-dismiss-control:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* FAQ Accordion */
++    .faq-section {
++      margin-block-start: 3rem;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-block-end: 1.5rem;
++    }
++
++    .faq-accordion {
++      max-inline-size: 800px;
++      margin-inline: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding: 1.25rem 1.5rem;
++      background: white;
++      color: var(--primary);
++      font-weight: 600;
++      font-size: 1.1rem;
++      border: none;
++      cursor: pointer;
++      list-style: none;
++      text-align: start;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+";
++      font-size: 1.4rem;
++      line-height: 1;
++      color: var(--primary);
++    }
++
++    details[open] > #faq-trigger::after,
++    #faq-trigger[aria-expanded="true"]::after {
++      content: "−";
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    #faq-content,
++    .faq-accordion::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition:
++        block-size 0.4s ease-out,
++        content-visibility 0.4s,
++        display 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    details[open] > #faq-content,
++    .faq-accordion[open]::details-content,
++    #faq-content.is-expanded,
++    .faq-accordion:has(#faq-trigger[aria-expanded="true"]) #faq-content {
++      block-size: auto;
++      block-size: calc-size(auto, size);
++    }
++
++    .faq-body {
++      padding: 0 1.5rem 1.25rem;
++      color: var(--text);
++    }
++
++    /* MANDATORY Copy-Paste Safety: Disable sizing animations for sensitive users */
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #faq-content,
++      .faq-accordion::details-content {
++        transition: none !important;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,9 +312,14 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <aside id="promo-alert" aria-label="Promotional offer">
++    <p><strong>Limited Time Offer:</strong> Enjoy 20% off your first bag of whole-bean coffee with code <code>FRESHROAST</code>.</p>
++    <button type="button" id="alert-dismiss" class="promo-dismiss-control" aria-label="Dismiss promotional offer">Dismiss</button>
++  </aside>
++
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -194,8 +355,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="faq-accordion" name="faq">
++        <summary id="faq-trigger">Where do you source your coffee beans?</summary>
++        <div id="faq-content">
++          <div class="faq-body">
++            <p>We partner directly with small-batch, Fair Trade Certified farms in Colombia, Ethiopia, and Guatemala. All of our beans are roasted fresh daily in our local roastery to highlight their natural tasting notes.</p>
++          </div>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +379,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // MANDATORY Accessibility Synchronization: Ensure elements collapsed to zero dimensions are removed from the assistive technology tree, and sync aria-expanded states on triggers.
++    const alertElement = document.getElementById('promo-alert');
++    const alertDismissBtn = document.getElementById('alert-dismiss');
++
++    alertDismissBtn?.addEventListener('click', () => {
++      alertElement?.classList.add('is-dismissed');
++      if (alertElement && getComputedStyle(alertElement).transitionDuration === '0s') {
++        alertElement.hidden = true;
++      }
++    });
++
++    alertElement?.addEventListener('transitionend', (e) => {
++      if (e.propertyName === 'block-size' && alertElement.classList.contains('is-dismissed')) {
++        alertElement.hidden = true;
++      }
++    });
++
++    const faqTrigger = document.getElementById('faq-trigger');
++    const faqDetails = faqTrigger?.closest('details');
++    if (faqDetails && faqTrigger) {
++      faqTrigger.setAttribute('aria-expanded', String(faqDetails.open));
++      faqDetails.addEventListener('toggle', () => {
++        faqTrigger.setAttribute('aria-expanded', String(faqDetails.open));
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

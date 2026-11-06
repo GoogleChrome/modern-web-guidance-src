@@ -1,0 +1,344 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..262b980 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,12 +17,12 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div id="lead-story" class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 transition:name={`article-title-${article.id}`} class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -45,6 +45,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         width={800}
+                         height={533}
+                         format="webp"
++                        loading="eager"
++                        transition:name={`article-image-${article.id}`}
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+@@ -60,13 +62,14 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 width={400}
+                 height={225}
+                 format="webp"
++                transition:name={`article-image-${article.id}`}
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 transition:name={`article-title-${article.id}`} class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..73e1f32 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="masthead" class="font-inter group relative bg-white" transition:name="masthead">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..4506fe7 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -39,7 +39,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 transition:name={`article-title-${topArticle.id}`} class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+@@ -55,7 +55,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} transition:name={`article-image-${topArticle.id}`} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+@@ -70,7 +70,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} transition:name={`article-image-${article.id}`} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -78,7 +78,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 transition:name={`article-title-${article.id}`} class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..f304dca 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  expectHref?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, expectHref = "#lead-story" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,15 +24,40 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <style is:inline blocking="render">
++      @view-transition {
++        navigation: auto;
++      }
++      header#masthead {
++        background-color: #ffffff;
++        view-transition-name: masthead;
++      }
++      #lead-story {
++        view-transition-name: lead-story;
++      }
++    </style>
++
++    <script is:inline blocking="render">
++      (function () {
++        const theme = localStorage.getItem("theme") || "light";
++        document.documentElement.dataset.theme = theme;
++        document.documentElement.classList.toggle("dark", theme === "dark");
++      })();
++    </script>
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
++    <link rel="expect" href="#masthead" blocking="render" />
++    <link rel="expect" href={expectHref} blocking="render" />
++    <slot name="head" />
++
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
+@@ -42,10 +68,10 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div id="header-container" transition:name="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative" transition:animate="fade">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..df95a72 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,7 +8,7 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div id="lead-story" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..79a1b84 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div id="lead-story" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..89d2245 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -36,14 +36,14 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article id="lead-story" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 transition:name={`article-title-${article.id}`} class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+@@ -66,6 +66,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title}
+                     width="1200"
+                     height="675"
++                    loading="eager"
++                    transition:name={`article-image-${article.id}`}
+                     class="w-full h-auto"
+                     crossorigin="use-credentials"
+                 />
+@@ -76,6 +78,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
++                    loading="eager"
++                    transition:name={`article-image-${article.id}`}
+                     class="w-full h-auto"
+                 />
+             )}
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..14df078 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="lead-story" class="mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -74,9 +74,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
++                            loading="eager"
++                            transition:name={`article-image-${featuredArticle.id}`}
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 transition:name={`article-title-${featuredArticle.id}`} class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                             {featuredArticle.data.title}
+                         </h2>
+                         <p class="text-base md:text-lg text-gray-700">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..2cb0967 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -45,7 +45,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h3 transition:name={`article-title-${article.id}`} class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..e53d96b 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
+ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div id="lead-story" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..5493a74 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
+ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <div id="lead-story" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..fd999f6 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="lead-story" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..cd420c2 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="lead-story" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..663e2b4 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,15 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++::view-transition-old(root),
++::view-transition-new(root) {
++  animation-duration: 0.25s;
++  animation-timing-function: ease-in-out;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

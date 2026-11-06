@@ -1,0 +1,401 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,217 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order pipeline telemetry */
++    .telemetry {
++      margin-top: 60px;
++    }
++
++    .telemetry h2 {
++      text-align: center;
++    }
++
++    .telemetry .lede {
++      max-width: 60ch;
++      margin: 10px auto 0;
++      text-align: center;
++      color: #5d4037;
++    }
++
++    .telemetry-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .telemetry .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .telemetry .btn[aria-busy="true"],
++    .telemetry .btn:disabled {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .telemetry-status {
++      min-height: 1.5em;
++      font-size: 0.95rem;
++      text-align: center;
++      margin-top: 10px;
++    }
++
++    .telemetry-status[data-state="error"] {
++      color: #b71c1c;
++    }
++
++    .stat-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .stat-tile {
++      background: white;
++      border-radius: 8px;
++      padding: 14px 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .stat-tile .stat-label {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .stat-tile .stat-value {
++      display: block;
++      font-size: 1.35rem;
++      font-weight: 600;
++      color: var(--primary);
++      overflow-wrap: anywhere;
++    }
++
++    .stat-tile .stat-note {
++      display: block;
++      font-size: 0.78rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .table-wrapper {
++      margin-top: 24px;
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(560px, 80vh);
++      container-type: inline-size;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .event-table {
++      inline-size: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      font-size: 0.9rem;
++    }
++
++    .event-table caption {
++      padding: 12px 16px;
++      text-align: start;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .event-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++      background: var(--secondary);
++    }
++
++    .event-table th,
++    .event-table td {
++      padding: 8px 12px;
++      text-align: start;
++      border-block-end: 1px solid #efebe9;
++      vertical-align: top;
++    }
++
++    .event-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++      font-weight: 600;
++    }
++
++    .event-table .num {
++      font-variant-numeric: tabular-nums;
++      font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
++      font-size: 0.85rem;
++      white-space: nowrap;
++    }
++
++    .event-table .ns {
++      color: #a04a00;
++      font-weight: 600;
++    }
++
++    .event-table .muted {
++      color: #8d6e63;
++      font-size: 0.8rem;
++    }
++
++    .event-table tr[data-simultaneous="true"] td.gap {
++      font-style: italic;
++    }
++
++    .event-table .order-tag {
++      display: inline-block;
++      padding: 1px 6px;
++      border-radius: 4px;
++      background: #efebe9;
++      font-size: 0.8rem;
++    }
++
++    @container (width < 640px) {
++      .event-table,
++      .event-table thead,
++      .event-table tbody,
++      .event-table tr,
++      .event-table th,
++      .event-table td {
++        display: block;
++      }
++
++      .event-table caption {
++        display: block;
++      }
++
++      .event-table thead {
++        display: none;
++      }
++
++      .event-table tr {
++        margin: 12px;
++        border: 1px solid #d7ccc8;
++        border-radius: 6px;
++      }
++
++      .event-table tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        inset-inline-start: auto;
++        z-index: 2;
++        background: var(--secondary);
++        border-radius: 6px 6px 0 0;
++      }
++
++      .event-table td::before {
++        content: var(--label) ": ";
++        font-weight: 600;
++        color: #6d4c41;
++      }
++
++      .event-table .num {
++        white-space: normal;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +403,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry" aria-labelledby="telemetry-heading">
++      <h2 id="telemetry-heading">Order Pipeline Telemetry</h2>
++      <p class="lede">
++        Load a batch of order events collected from our backend services. Each service stamps
++        events with nanosecond UTC clocks, and the batch arrives out of order. We sequence it
++        without dropping a single nanosecond and measure the gap between consecutive events.
++      </p>
++      <div class="telemetry-controls">
++        <button type="button" class="btn" id="load-events-btn">Load Order Event Batch</button>
++      </div>
++      <p class="telemetry-status" id="telemetry-status" role="status" aria-live="polite"></p>
++      <div id="telemetry-results" hidden>
++        <div class="stat-row" id="stat-row"></div>
++        <div tabindex="0" role="region" aria-labelledby="event-table-caption" class="table-wrapper">
++          <table class="event-table">
++            <caption id="event-table-caption">Order events in chronological order</caption>
++            <thead>
++              <tr>
++                <th scope="col">Event</th>
++                <th scope="col">Seq</th>
++                <th scope="col">Batch pos.</th>
++                <th scope="col">Timestamp (UTC)</th>
++                <th scope="col">Service / host</th>
++                <th scope="col">Order</th>
++                <th scope="col">Since previous</th>
++              </tr>
++            </thead>
++            <tbody id="event-table-body"></tbody>
++          </table>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +448,137 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { buildTimeline, formatInstant, formatDuration } from './js/order-timeline.js';
++
++    const button = document.getElementById('load-events-btn');
++    const status = document.getElementById('telemetry-status');
++    const results = document.getElementById('telemetry-results');
++    const statRow = document.getElementById('stat-row');
++    const tbody = document.getElementById('event-table-body');
++
++    // Temporal is native in Chrome/Edge 144+ and Firefox 139+; load the
++    // polyfill on demand elsewhere (Safari) and assign it to the global.
++    async function ensureTemporal() {
++      if (typeof globalThis.Temporal !== 'undefined') return;
++      const mod = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = mod.Temporal;
++    }
++
++    function el(tag, props = {}, children = []) {
++      const node = document.createElement(tag);
++      for (const [k, v] of Object.entries(props)) {
++        if (k === 'class') node.className = v;
++        else if (k === 'text') node.textContent = v;
++        else if (k.startsWith('data-')) node.setAttribute(k, v);
++        else node[k] = v;
++      }
++      for (const c of children) node.append(c);
++      return node;
++    }
++
++    /** Timestamp with the nanosecond digits highlighted: ...07.004812|334Z */
++    function timestampCell(instant) {
++      const iso = formatInstant(instant); // always 9 fractional digits + Z
++      const head = iso.slice(0, -4);
++      const nanos = iso.slice(-4, -1);
++      return el('time', { dateTime: iso, class: 'num' }, [
++        head,
++        el('span', { class: 'ns', text: nanos }),
++        'Z',
++      ]);
++    }
++
++    function statTile(label, value, note) {
++      const kids = [
++        el('span', { class: 'stat-label', text: label }),
++        el('span', { class: 'stat-value', text: value }),
++      ];
++      if (note) kids.push(el('span', { class: 'stat-note', text: note }));
++      return el('div', { class: 'stat-tile' }, kids);
++    }
++
++    function render({ timeline, summary }, batch) {
++      statRow.replaceChildren(
++        statTile('Events in batch', String(summary.count), batch.batchId),
++        statTile('Batch span', formatDuration(summary.span), 'first event to last'),
++        statTile('Shortest gap', formatDuration(summary.shortestGap), 'between distinct instants'),
++        statTile('Longest gap', formatDuration(summary.longestGap)),
++        statTile(
++          'Share a millisecond',
++          `${summary.msCollisions} of ${summary.count}`,
++          'would tie under a millisecond clock'
++        ),
++        statTile('Identical instants', String(summary.simultaneousPairs), 'consecutive pairs with equal timestamps'),
++      );
++
++      const labels = ['Seq', 'Batch pos.', 'Timestamp (UTC)', 'Service / host', 'Order', 'Since previous'];
++      const positionOf = new Map(batch.events.map((e, i) => [e.id, i + 1]));
++
++      tbody.replaceChildren(...timeline.map((e, i) => {
++        const gapText = e.gap === null
++          ? 'first event'
++          : e.simultaneous ? 'simultaneous (0 ns)' : `+${formatDuration(e.gap)}`;
++        const gapCell = el('td', { class: 'gap' });
++        gapCell.style.setProperty('--label', JSON.stringify(labels[5]));
++        if (e.gap === null || e.simultaneous) {
++          gapCell.append(el('span', { class: 'muted', text: gapText }));
++        } else {
++          gapCell.append(el('time', { dateTime: e.gap.toString(), class: 'num', text: gapText }));
++        }
++
++        const cells = [
++          el('td', { class: 'num', text: String(i + 1) }),
++          el('td', { class: 'num', text: `#${positionOf.get(e.id)}` }),
++          el('td', {}, [timestampCell(e.instant)]),
++          el('td', {}, [e.service, el('br'), el('span', { class: 'muted', text: e.host })]),
++          el('td', {}, [el('span', { class: 'order-tag', text: e.order })]),
++          gapCell,
++        ];
++        cells.forEach((td, idx) => td.style.setProperty('--label', JSON.stringify(labels[idx])));
++
++        return el('tr', { 'data-simultaneous': String(e.simultaneous) }, [
++          el('th', { scope: 'row', text: e.event }),
++          ...cells,
++        ]);
++      }));
++
++      results.hidden = false;
++    }
++
++    async function loadBatch() {
++      button.disabled = true;
++      button.setAttribute('aria-busy', 'true');
++      status.dataset.state = 'loading';
++      status.textContent = 'Loading event batch…';
++      try {
++        const [response] = await Promise.all([
++          fetch('./data/order-events.json', { headers: { Accept: 'application/json' } }),
++          ensureTemporal(),
++        ]);
++        if (!response.ok) throw new Error(`HTTP ${response.status} fetching event batch`);
++        const batch = await response.json();
++        const result = buildTimeline(batch.events);
++        render(result, batch);
++        status.dataset.state = 'done';
++        status.textContent =
++          `Sequenced ${result.summary.count} events from ${new Set(batch.events.map((e) => e.service)).size} services ` +
++          `spanning ${formatDuration(result.summary.span)}.`;
++        button.textContent = 'Reload Order Event Batch';
++      } catch (err) {
++        console.error(err);
++        status.dataset.state = 'error';
++        status.textContent = `Could not load the event batch: ${err.message}`;
++      } finally {
++        button.disabled = false;
++        button.removeAttribute('aria-busy');
++      }
++    }
++
++    button.addEventListener('click', loadBatch);
++  </script>
++
+ </body>
+ 
+ </html>

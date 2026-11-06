@@ -1,0 +1,481 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..74686b4
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,32 @@
++# Daily Grind WebMCP
++
++The homepage loads `webmcp.js` as a deferred client-side script. It registers tools
++with `document.modelContext.registerTool`, falling back to the early-preview
++`navigator.modelContext` surface when present. Native WebMCP requires a supporting
++browser and a secure context (HTTPS or localhost). Unsupported browsers still have
++working order buttons; no polyfill or backend MCP transport is used.
++
++| Tool | Arguments | Result / page effect |
++| --- | --- | --- |
++| `get_seasonal_menu` | Optional `query` text | Returns matching drink IDs, names, descriptions and details links. Empty input returns all seasonal drinks without changing the UI. |
++| `order_drink` | Required `drinkId`; optional `quantity` (default 1, integer 1–10) | Adds to the visible local order and announces the change. Maximum 10 of each drink per order. |
++| `highlight_drink` | Required `drinkId` | Highlights, focuses and scrolls the drink card into view, and announces its details. |
++
++Drink IDs: `maple-oat-latte`, `dark-roast-espresso`, `cold-brew`.
++Menu data comes from the displayed cards. Every tool validates arguments at runtime
++and returns actionable errors without changing the page on invalid input.
++
++For example, an agent can call `get_seasonal_menu` with `{"query":"oat"}`, then
++`highlight_drink` with `{"drinkId":"maple-oat-latte"}` or `order_drink` with
++`{"drinkId":"maple-oat-latte","quantity":2}`.
++
++Orders exist only in the current page's memory and reset on reload. They do not
++submit purchases, process payments, or contact a service. The Clear order button
++resets the order. The existing details links and navigation stay available.
++Tool registrations are aborted on page exit and restored on back/forward cache
++return. Registration failure leaves the regular page controls usable.
++
++Run `npm test` for Node-based tests using a small DOM/API mock. They cover tool
++registration, menu queries, order state, validation, UI updates, unsupported
++browsers, registration failure and page lifecycle. They do not launch a browser or
++server and do not validate native browser WebMCP behavior.
+diff --git a/index.html b/index.html
+index 66c9173..5721ffc 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,8 @@
+       padding: 0;
+     }
+ 
++    [hidden] { display: none !important; }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -129,12 +131,35 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card.is-highlighted {
++      outline: 3px solid var(--primary);
++      background: #fff3e0;
++    }
++
++    .card { scroll-margin-top: 100px; }
++
++    :focus-visible { outline: 3px solid #ad5900; outline-offset: 4px; }
++
++    .order-panel {
++      margin-top: 30px;
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .order-panel ul { padding-left: 24px; }
++    #menu-status { margin-top: 16px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +200,36 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="maple-oat-latte" hidden>Order Maple Oat Latte</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="dark-roast-espresso" hidden>Order Dark Roast Espresso</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="cold-brew" hidden>Order Cold Brew</button>
+         </div>
+       </div>
++      <p id="menu-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
++    <section class="order-panel" aria-labelledby="order-heading" hidden>
++      <h2 id="order-heading">Your drink order</h2>
++      <p>This order is saved only on this page. No purchase or payment is submitted.</p>
++      <p id="empty-order">Your order is empty. Choose a seasonal favorite to get started.</p>
++      <ul id="order-items" aria-label="Drinks in your order"></ul>
++      <button type="button" class="btn" id="clear-order">Clear order</button>
+     </section>
+   </main>
+ 
+@@ -207,6 +243,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/webmcp.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..3f8b977
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,172 @@
++(() => {
++  'use strict';
++
++  // Read the visible menu so agent responses and human-facing content stay in sync.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map((card) => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++    detailsUrl: card.querySelector('a').getAttribute('href'),
++  }));
++  const order = new Map();
++  const status = document.querySelector('#menu-status');
++  const orderItems = document.querySelector('#order-items');
++
++  function validateInput(input, keys) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) {
++      return { error: 'Provide an object containing the tool arguments.' };
++    }
++    if (Object.keys(input).some((key) => !keys.includes(key))) {
++      return { error: 'Unexpected argument.', acceptedArguments: keys };
++    }
++  }
++
++  function findDrink(drinkId) {
++    return menu.find((drink) => drink.id === drinkId);
++  }
++
++  function unknownDrink() {
++    return { error: 'Choose a drink ID from the seasonal menu.', availableDrinkIds: menu.map((drink) => drink.id) };
++  }
++
++  function renderOrder() {
++    orderItems.replaceChildren();
++    for (const [id, quantity] of order) {
++      const item = document.createElement('li');
++      item.textContent = `${quantity} × ${findDrink(id).name}`;
++      orderItems.append(item);
++    }
++    document.querySelector('#empty-order').hidden = order.size > 0;
++    document.querySelector('#clear-order').disabled = order.size === 0;
++  }
++
++  function orderDrink(input) {
++    const invalid = validateInput(input, ['drinkId', 'quantity']);
++    if (invalid) return invalid;
++    const drink = findDrink(input.drinkId);
++    if (!drink) return unknownDrink();
++    const quantity = input.quantity === undefined ? 1 : input.quantity;
++    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++      return { error: 'Quantity must be a whole number from 1 to 10.' };
++    }
++    const totalQuantity = (order.get(drink.id) || 0) + quantity;
++    if (totalQuantity > 10) return { error: 'An order can contain at most 10 of each drink.' };
++    order.set(drink.id, totalQuantity);
++    renderOrder();
++    status.textContent = `Added ${quantity} × ${drink.name} to your on-page order.`;
++    return {
++      status: 'added_to_page_order',
++      drink: { ...drink },
++      quantityAdded: quantity,
++      order: [...order].map(([id, count]) => ({ drinkId: id, quantity: count })),
++      purchaseSubmitted: false,
++    };
++  }
++
++  const drinkIdSchema = {
++    type: 'string', enum: menu.map((drink) => drink.id),
++    description: 'The stable ID of the seasonal drink.',
++  };
++  const tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Query the Seasonal Favorites coffee menu to discover drinks and their details.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: { query: { type: 'string', description: 'Words to match in drink names or descriptions.', default: '' } },
++      },
++      execute(input = {}) {
++        const invalid = validateInput(input, ['query']);
++        if (invalid) return invalid;
++        const query = input.query === undefined ? '' : input.query;
++        if (typeof query !== 'string') return { error: 'Query must be text.' };
++        const matches = menu.filter((drink) => `${drink.name} ${drink.description}`.toLowerCase().includes(query.trim().toLowerCase()));
++        return { category: 'Seasonal Favorites', drinks: matches.map((drink) => ({ ...drink })) };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible, local on-page order. No purchase or payment is submitted.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: {
++          drinkId: drinkIdSchema,
++          quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1, description: 'How many drinks to add to the order.' },
++        },
++        required: ['drinkId'],
++      },
++      execute: orderDrink,
++      annotations: { readOnlyHint: false },
++    },
++    {
++      name: 'highlight_drink',
++      description: 'Highlight a seasonal drink card and bring it into view for the user.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: { drinkId: drinkIdSchema }, required: ['drinkId'],
++      },
++      execute(input) {
++        const invalid = validateInput(input, ['drinkId']);
++        if (invalid) return invalid;
++        const drink = findDrink(input.drinkId);
++        if (!drink) return unknownDrink();
++        for (const card of cards) {
++          const selected = card.dataset.drinkId === drink.id;
++          card.classList.toggle('is-highlighted', selected);
++          if (selected) {
++            card.focus({ preventScroll: true });
++            card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
++          }
++        }
++        status.textContent = `Showing ${drink.name}. ${drink.description}`;
++        return { status: 'highlighted', drink: { ...drink } };
++      },
++      annotations: { readOnlyHint: false },
++    },
++  ];
++
++  // Human controls use the same action as the agent tools, even without WebMCP.
++  document.querySelector('.order-panel').hidden = false;
++  for (const button of document.querySelectorAll('[data-order-drink]')) {
++    button.hidden = false;
++    button.addEventListener('click', () => {
++      const result = orderDrink({ drinkId: button.dataset.orderDrink });
++      if (result.error) status.textContent = result.error;
++    });
++  }
++  document.querySelector('#clear-order').addEventListener('click', () => {
++    order.clear();
++    renderOrder();
++    status.textContent = 'Your on-page order has been cleared.';
++  });
++  renderOrder();
++
++  // Prefer the current API, with compatibility for early WebMCP previews.
++  const modelContext = document.modelContext || navigator.modelContext;
++  if (typeof modelContext?.registerTool !== 'function') return;
++
++  let registration;
++  async function registerTools() {
++    if (registration) return;
++    const controller = new AbortController();
++    registration = controller;
++    try {
++      for (const tool of tools) {
++        if (controller.signal.aborted) return;
++        await modelContext.registerTool(tool, { signal: controller.signal });
++      }
++    } catch (error) {
++      controller.abort();
++      if (registration === controller) registration = undefined;
++      console.warn('Daily Grind WebMCP registration failed.', error);
++    }
++  }
++  window.addEventListener('pagehide', () => {
++    registration?.abort();
++    registration = undefined;
++  });
++  window.addEventListener('pageshow', () => { void registerTools(); });
++  void registerTools();
++})();
+diff --git a/webmcp.test.cjs b/webmcp.test.cjs
+new file mode 100644
+index 0000000..81d2e50
+--- /dev/null
++++ b/webmcp.test.cjs
+@@ -0,0 +1,148 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const html = readFileSync(`${__dirname}/index.html`, 'utf8');
++const source = readFileSync(`${__dirname}/webmcp.js`, 'utf8');
++
++// Minimal DOM double: exercises callbacks and state without launching a browser.
++function element() {
++  const listeners = {};
++  const classes = new Set();
++  return {
++    dataset: {}, hidden: true, disabled: false, textContent: '', children: [],
++    classList: { toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name); }, contains(name) { return classes.has(name); } },
++    addEventListener(name, callback) { listeners[name] = callback; },
++    click() { listeners.click(); },
++    replaceChildren() { this.children = []; },
++    append(child) { this.children.push(child); },
++    focus() { this.focused = true; },
++    scrollIntoView() { this.scrolled = true; },
++  };
++}
++
++async function setup({ support = 'document', fail = false } = {}) {
++  const cards = [...html.matchAll(/<div class="card" data-drink-id="([^"]+)"[^>]*>\s*<h3>([^<]+)<\/h3>\s*<p>([^<]+)<\/p>\s*<a href="([^"]+)"/g)].map(([, id, name, description, href]) => {
++    const card = element();
++    card.dataset.drinkId = id;
++    card.querySelector = (selector) => ({ h3: { textContent: name }, p: { textContent: description }, a: { getAttribute: () => href } })[selector];
++    return card;
++  });
++  assert.equal(cards.length, 3);
++  const buttons = cards.map((card) => Object.assign(element(), { dataset: { orderDrink: card.dataset.drinkId } }));
++  const nodes = Object.fromEntries(['#menu-status', '#order-items', '#empty-order', '#clear-order', '.order-panel'].map((selector) => [selector, element()]));
++  const tools = new Map();
++  const registrations = [];
++  const events = {};
++  const warnings = [];
++  const api = {
++    async registerTool(tool, { signal }) {
++      if (fail && registrations.length === 1) throw new Error('Registration failed');
++      assert.equal(tools.has(tool.name), false, 'No duplicate tools');
++      tools.set(tool.name, tool);
++      registrations.push({ tool, signal });
++      signal.addEventListener('abort', () => tools.delete(tool.name));
++    },
++  };
++  const document = {
++    querySelectorAll: (selector) => selector === '[data-drink-id]' ? cards : buttons,
++    querySelector: (selector) => nodes[selector],
++    createElement: () => element(),
++  };
++  const navigator = {};
++  if (support === 'document') document.modelContext = api;
++  if (support === 'navigator') navigator.modelContext = api;
++  vm.runInNewContext(source, {
++    document, navigator, AbortController,
++    window: { addEventListener: (name, callback) => { events[name] = callback; } },
++    console: { warn: (...args) => warnings.push(args) },
++  });
++  const settle = () => new Promise((resolve) => setImmediate(resolve));
++  await settle();
++  // Normalize cross-realm values for assertions.
++  const call = (name, input) => JSON.parse(JSON.stringify(tools.get(name).execute(input)));
++  return { tools, cards, buttons, nodes, events, registrations, warnings, call, settle };
++}
++
++test('registers discoverable tools and reads the actual menu without UI mutations', async () => {
++  const { tools, nodes, call } = await setup();
++  assert.deepEqual([...tools.keys()], ['get_seasonal_menu', 'order_drink', 'highlight_drink']);
++  assert.equal(tools.get('get_seasonal_menu').annotations.readOnlyHint, true);
++  assert.equal(tools.get('order_drink').annotations.readOnlyHint, false);
++  assert.equal(call('get_seasonal_menu', {}).drinks.length, 3);
++  assert.equal(call('get_seasonal_menu', { query: ' OAT ' }).drinks[0].id, 'maple-oat-latte');
++  assert.equal(call('get_seasonal_menu', { query: '18 hours' }).drinks[0].id, 'cold-brew');
++  assert.deepEqual(call('get_seasonal_menu', { query: 'not on the menu' }).drinks, []);
++  assert.equal(nodes['#menu-status'].textContent, '');
++});
++
++test('agent and human orders share state, render quantities, and clear', async () => {
++  const { call, buttons, nodes } = await setup();
++  const result = call('order_drink', { drinkId: 'cold-brew', quantity: 2 });
++  assert.equal(result.purchaseSubmitted, false);
++  buttons[2].click();
++  assert.equal(nodes['#order-items'].children[0].textContent, '3 × Cold Brew');
++  assert.equal(nodes['#empty-order'].hidden, true);
++  assert.match(nodes['#menu-status'].textContent, /Added 1 × Cold Brew/);
++  nodes['#clear-order'].click();
++  assert.equal(nodes['#order-items'].children.length, 0);
++  assert.equal(nodes['#empty-order'].hidden, false);
++  assert.equal(nodes['#clear-order'].disabled, true);
++});
++
++test('invalid inputs return actionable errors and leave order state untouched', async () => {
++  const { call, nodes } = await setup();
++  for (const input of [null, [], {}, { drinkId: 'unknown' }, { drinkId: 'cold-brew', quantity: 0 }, { drinkId: 'cold-brew', quantity: 1.5 }, { drinkId: 'cold-brew', quantity: '2' }, { drinkId: 'cold-brew', quantity: 11 }, { drinkId: 'cold-brew', extra: true }]) {
++    assert.ok(call('order_drink', input).error);
++  }
++  assert.ok(call('get_seasonal_menu', { query: 10 }).error);
++  assert.ok(call('highlight_drink', { drinkId: '<script>' }).error);
++  assert.equal(nodes['#order-items'].children.length, 0);
++  call('order_drink', { drinkId: 'cold-brew', quantity: 10 });
++  assert.ok(call('order_drink', { drinkId: 'cold-brew' }).error);
++  assert.equal(nodes['#order-items'].children[0].textContent, '10 × Cold Brew');
++});
++
++test('highlight selects only the requested card and updates accessible status', async () => {
++  const { call, cards, nodes } = await setup();
++  call('highlight_drink', { drinkId: 'maple-oat-latte' });
++  call('highlight_drink', { drinkId: 'cold-brew' });
++  assert.equal(cards[0].classList.contains('is-highlighted'), false);
++  assert.equal(cards[2].classList.contains('is-highlighted'), true);
++  assert.equal(cards[2].focused, true);
++  assert.equal(cards[2].scrolled, true);
++  assert.match(nodes['#menu-status'].textContent, /Showing Cold Brew/);
++});
++
++test('unsupported browsers retain working human controls', async () => {
++  const { tools, buttons, nodes } = await setup({ support: 'none' });
++  assert.equal(tools.size, 0);
++  assert.equal(nodes['.order-panel'].hidden, false);
++  assert.equal(buttons[0].hidden, false);
++  buttons[0].click();
++  assert.equal(nodes['#order-items'].children[0].textContent, '1 × Maple Oat Latte');
++});
++
++test('early-preview API is supported and page lifecycle unregisters and restores tools', async () => {
++  const { tools, events, registrations, settle } = await setup({ support: 'navigator' });
++  assert.equal(tools.size, 3);
++  events.pageshow();
++  await settle();
++  assert.equal(registrations.length, 3);
++  events.pagehide();
++  assert.equal(tools.size, 0);
++  assert.equal(registrations[0].signal.aborted, true);
++  events.pageshow();
++  await settle();
++  assert.equal(tools.size, 3);
++  assert.equal(registrations.length, 6);
++});
++
++test('failed registration cleans partial tools and preserves page controls', async () => {
++  const { tools, warnings, buttons, nodes } = await setup({ fail: true });
++  assert.equal(tools.size, 0);
++  assert.equal(warnings.length, 1);
++  buttons[0].click();
++  assert.equal(nodes['#order-items'].children[0].textContent, '1 × Maple Oat Latte');
++});

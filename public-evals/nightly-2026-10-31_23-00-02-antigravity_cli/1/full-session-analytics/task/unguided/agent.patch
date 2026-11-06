@@ -1,0 +1,48 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,43 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const queue = new Set();
++    let fetchLaterController;
++    let fetchLaterResult;
++
++    function updateQueue(metricUpdate) {
++      // If there was an already complete request for whatever
++      // reason, clear out the queue of already-sent updates.
++      if (fetchLaterResult?.activated) {
++        queue.clear();
++      }
++      queue.add(metricUpdate);
++
++      // JSON.stringify used here for simplicity and will likely include
++      // more data than you need. Replace with a preferred serialization.
++      const body = JSON.stringify([...queue]);
++
++      // Abort any existing `fetchLater()` and schedule a new one with
++      // the update included.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      fetchLaterResult = fetchLater('/path/to/analytics/endpoint', {
++        method: 'POST',
++        body,
++        signal: fetchLaterController.signal,
++        activateAfter: 60 * 60 * 1000, // Timeout to ensure timeliness.
++      });
++    }
++
++    onCLS(updateQueue, { reportAllChanges: true });
++    onINP(updateQueue, { reportAllChanges: true });
++    onLCP(updateQueue, { reportAllChanges: true });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,129 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..40f9034 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -3,8 +3,7 @@ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+-
+-import { ClientRouter } from "astro:transitions";
++import transitionReadyUrl from "../scripts/transition-ready.js?url";
+ 
+ export interface Props {
+   title: string;
+@@ -27,14 +26,20 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Wait for the page content, not just the opening main tag. -->
++    <link rel="expect" href="#page-content-ready" blocking="render" />
++    <!-- Keep async hydration and font work inside the rendering barrier too. -->
++    <link rel="expect" href="#page-state-ready" blocking="render" />
++    <script is:inline type="module" src={transitionReadyUrl} blocking="render"></script>
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -42,11 +47,12 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div data-transition-critical>
+           <Header />
+         </div>
+         <main class="bg-white relative">
+           <slot />
++          <span id="page-content-ready" hidden></span>
+         </main>
+       </div>
+     </div>
+diff --git a/src/scripts/transition-ready.js b/src/scripts/transition-ready.js
+new file mode 100644
+index 0000000..8cb1c31
+--- /dev/null
++++ b/src/scripts/transition-ready.js
+@@ -0,0 +1,49 @@
++// This head module blocks rendering until the initial controls and font are ready.
++// If a resource fails or the browser reveals the page early, skip the animation.
++let ready = false;
++window.addEventListener('pagereveal', (event) => {
++  if (!ready) event.viewTransition?.skipTransition();
++});
++
++const controller = new AbortController();
++const { signal } = controller;
++const timeout = setTimeout(() => controller.abort(), 3000);
++
++function waitForEvent(target, name) {
++  return new Promise((resolve, reject) => {
++    signal.throwIfAborted();
++    target.addEventListener(name, resolve, { once: true, signal });
++    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
++  });
++}
++
++try {
++  // Module evaluation can begin while the document is still being parsed.
++  if (document.readyState === 'loading') {
++    await waitForEvent(document, 'DOMContentLoaded');
++  }
++
++  const controls = [...document.querySelectorAll(
++    '[data-transition-critical] astro-island[client="load"][ssr]',
++  )];
++  const hydration = Promise.all(controls.map((island) => waitForEvent(island, 'astro:hydrate')));
++  const fonts = document.fonts.load('500 1em "Grenze"');
++
++  await Promise.race([
++    Promise.all([hydration, fonts]),
++    new Promise((_, reject) => {
++      signal.throwIfAborted();
++      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
++    }),
++  ]);
++  ready = true;
++} catch {
++  // Leave the server-rendered page usable even if critical JavaScript fails.
++} finally {
++  clearTimeout(timeout);
++  controller.abort();
++  const marker = document.createElement('span');
++  marker.id = 'page-state-ready';
++  marker.hidden = true;
++  (document.body ?? document.documentElement).append(marker);
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce3e6ae 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,17 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

@@ -1,0 +1,443 @@
+diff --git a/index.html b/index.html
+index 66c9173..4ed28b0 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Client-side performance monitoring. Add data-endpoint="/your-collector" to send metrics via sendBeacon; data-debug logs them to the console. -->
++  <script src="/perf-monitor.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +159,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-perf-region="nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +173,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf-region="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" data-perf-region="seasonal-favorites">
++        <div class="card" data-perf-label="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-label="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf-label="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..65a99f2
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,385 @@
++/*
++ * Daily Grind client-side performance monitor.
++ *
++ * Measures how long it takes from a user interaction (or a client-side view
++ * switch) until the resulting visual update has been painted.
++ *
++ *   - Clicks inside tracked regions (elements with [data-perf-region]):
++ *       the navigation bar, the "Order Now" button and the Seasonal Favorites
++ *       cards. Measured with the Event Timing API (input -> next paint), with a
++ *       requestAnimationFrame-based fallback for fast interactions (< 16ms,
++ *       which Event Timing does not report) and for browsers without support.
++ *   - Clicks that cause a full page load: the click time is carried across the
++ *       navigation in sessionStorage and resolved against the next page's
++ *       first-contentful-paint (when that page also loads this script).
++ *   - Client-side view switches (history.pushState / replaceState, popstate,
++ *       hashchange): measured from the switch until the first paint after the
++ *       DOM has settled (no mutations for SETTLE_MS), so async-rendered views
++ *       are counted until they are actually on screen.
++ *
++ * Reporting: every metric is pushed to window.dailyGrindPerf.entries, dispatched
++ * as a `dailygrind:perf` CustomEvent on window, and — when the script tag has a
++ * `data-endpoint` attribute — batched and sent with navigator.sendBeacon.
++ * Add `data-debug` to the script tag to also log metrics to the console.
++ */
++(function () {
++  'use strict';
++
++  if (typeof window === 'undefined' || !window.performance) return;
++
++  var script = document.currentScript;
++  var ENDPOINT = script && script.getAttribute('data-endpoint');
++  var DEBUG = !!(script && script.hasAttribute('data-debug'));
++
++  var SETTLE_MS = 200;           // DOM quiet period that ends a view switch
++  var VIEW_TIMEOUT_MS = 10000;   // hard cap for a view switch measurement
++  var EVENT_TIMING_WAIT_MS = 1000; // how long to wait for an Event Timing entry
++  var STORAGE_KEY = 'dailyGrindPerf:pendingNav';
++  var MAX_BUFFER = 200;
++
++  var api = (window.dailyGrindPerf = window.dailyGrindPerf || {});
++  api.entries = api.entries || [];
++
++  var queue = [];
++  var flushTimer = null;
++
++  function round(n) {
++    return Math.round(n * 10) / 10;
++  }
++
++  function report(metric) {
++    metric.page = location.pathname;
++    metric.ts = Date.now();
++    api.entries.push(metric);
++    if (api.entries.length > MAX_BUFFER) api.entries.shift();
++
++    if (DEBUG && window.console) {
++      console.debug('[perf] ' + metric.type + ' ' + (metric.target || metric.to || '') +
++        ': ' + metric.duration + 'ms', metric);
++    }
++    try {
++      window.dispatchEvent(new CustomEvent('dailygrind:perf', { detail: metric }));
++    } catch (e) { /* CustomEvent unsupported */ }
++
++    if (ENDPOINT) {
++      queue.push(metric);
++      if (!flushTimer) flushTimer = setTimeout(flush, 5000);
++    }
++  }
++
++  function flush() {
++    clearTimeout(flushTimer);
++    flushTimer = null;
++    if (!ENDPOINT || !queue.length) return;
++    var body = JSON.stringify(queue.splice(0, queue.length));
++    if (navigator.sendBeacon) {
++      navigator.sendBeacon(ENDPOINT, new Blob([body], { type: 'application/json' }));
++    } else if (window.fetch) {
++      fetch(ENDPOINT, { method: 'POST', body: body, keepalive: true,
++        headers: { 'Content-Type': 'application/json' } }).catch(function () {});
++    }
++  }
++
++  // Resolves `cb(paintTime)` with a timestamp taken right after the next frame
++  // has been produced. rAF runs before paint; a task posted from it runs after.
++  var channel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
++  var afterPaintCallbacks = [];
++  if (channel) {
++    channel.port1.onmessage = function () {
++      var cb = afterPaintCallbacks.shift();
++      if (cb) cb();
++    };
++  }
++  function afterNextPaint(cb) {
++    requestAnimationFrame(function () {
++      var run = function () { cb(performance.now()); };
++      if (channel) {
++        afterPaintCallbacks.push(run);
++        channel.port1.postMessage(null);
++      } else {
++        setTimeout(run, 0);
++      }
++    });
++  }
++
++  function describe(el) {
++    var region = el.closest('[data-perf-region]');
++    if (!region) return null;
++    var name = region.getAttribute('data-perf-region');
++    var link = el.closest('a');
++    var label = el.closest('[data-perf-label]');
++    var detail = (label && label.getAttribute('data-perf-label')) ||
++      (link && link.textContent.trim()) || '';
++    return {
++      region: name,
++      target: detail ? name + ':' + detail : name,
++      href: link ? link.getAttribute('href') : null
++    };
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Click -> next paint                                                  */
++  /* ------------------------------------------------------------------ */
++
++  var supportsEventTiming = !!(window.PerformanceObserver &&
++    PerformanceObserver.supportedEntryTypes &&
++    PerformanceObserver.supportedEntryTypes.indexOf('event') !== -1);
++
++  // Pending clicks keyed by event.timeStamp, which equals the Event Timing
++  // entry's startTime for the same event.
++  var pendingClicks = new Map();
++  var lastTrackedClick = null;
++
++  function finalizeClick(key, source, duration, extra) {
++    var p = pendingClicks.get(key);
++    if (!p || p.done) return;
++    p.done = true;
++    pendingClicks.delete(key);
++    clearTimeout(p.timer);
++    var metric = {
++      type: 'click',
++      region: p.info.region,
++      target: p.info.target,
++      href: p.info.href,
++      duration: round(duration),
++      source: source,
++      navigatedAway: false
++    };
++    if (extra) for (var k in extra) metric[k] = extra[k];
++    report(metric);
++  }
++
++  if (supportsEventTiming) {
++    try {
++      new PerformanceObserver(function (list) {
++        list.getEntries().forEach(function (entry) {
++          if (entry.name !== 'click' || !pendingClicks.has(entry.startTime)) return;
++          finalizeClick(entry.startTime, 'event-timing', entry.duration, {
++            inputDelay: round(entry.processingStart - entry.startTime),
++            processing: round(entry.processingEnd - entry.processingStart),
++            presentationDelay: round(entry.startTime + entry.duration - entry.processingEnd)
++          });
++        });
++      }).observe({ type: 'event', durationThreshold: 16, buffered: true });
++    } catch (e) {
++      supportsEventTiming = false;
++    }
++  }
++
++  // Capture phase on window so this runs before any page handler.
++  window.addEventListener('click', function (event) {
++    if (!(event.target instanceof Element)) return;
++    var info = describe(event.target);
++    if (!info) return;
++
++    var key = event.timeStamp;
++    var pending = { info: info, start: key, done: false, timer: null };
++    pendingClicks.set(key, pending);
++    lastTrackedClick = pending;
++
++    // Scheduled during the click's own task, so the measured frame includes
++    // all DOM updates made synchronously by the page's click handlers.
++    afterNextPaint(function (paintTime) {
++      var fallback = paintTime - key;
++      if (!supportsEventTiming) {
++        finalizeClick(key, 'raf', fallback);
++        return;
++      }
++      // Event Timing only reports interactions >= 16ms; if nothing arrives,
++      // the interaction was fast and the rAF measurement is used instead.
++      pending.timer = setTimeout(function () {
++        finalizeClick(key, 'raf', fallback);
++      }, EVENT_TIMING_WAIT_MS);
++    });
++  }, true);
++
++  /* ------------------------------------------------------------------ */
++  /* Clicks that trigger a full page navigation                           */
++  /* ------------------------------------------------------------------ */
++
++  function persistPendingNavigation() {
++    var p = lastTrackedClick;
++    if (!p || !p.willNavigate || performance.now() - p.start > 30000) return;
++    try {
++      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
++        region: p.info.region,
++        target: p.info.target,
++        href: p.info.href,
++        from: location.pathname,
++        clickEpoch: performance.timeOrigin + p.start
++      }));
++    } catch (e) { /* storage unavailable */ }
++  }
++
++  // Bubble phase on window: runs after page handlers, so defaultPrevented
++  // tells us whether the browser will actually follow the link.
++  window.addEventListener('click', function (event) {
++    var p = lastTrackedClick;
++    if (!p || p.start !== event.timeStamp || event.defaultPrevented) return;
++    var link = event.target instanceof Element && event.target.closest('a[href]');
++    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey ||
++        event.shiftKey || event.altKey) return;
++    if (link.target && link.target !== '_self') return;
++    if (link.hasAttribute('download') || link.origin !== location.origin) return;
++    if (link.pathname === location.pathname && link.search === location.search) return;
++    p.willNavigate = true;
++  });
++
++  window.addEventListener('pagehide', function () {
++    persistPendingNavigation();
++    flush();
++  });
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush();
++  });
++
++  function resolveIncomingNavigation() {
++    var raw;
++    try {
++      raw = sessionStorage.getItem(STORAGE_KEY);
++      sessionStorage.removeItem(STORAGE_KEY);
++    } catch (e) { return; }
++    if (!raw) return;
++    var data;
++    try { data = JSON.parse(raw); } catch (e) { return; }
++
++    // Ignore stale entries (e.g. the click opened a new tab or was aborted).
++    if (performance.timeOrigin - data.clickEpoch > 30000 ||
++        performance.timeOrigin < data.clickEpoch) return;
++
++    function emit(fcp) {
++      report({
++        type: 'click',
++        region: data.region,
++        target: data.target,
++        href: data.href,
++        from: data.from,
++        duration: round(performance.timeOrigin + fcp - data.clickEpoch),
++        source: 'navigation-fcp',
++        navigatedAway: true
++      });
++    }
++
++    var existing = performance.getEntriesByName('first-contentful-paint')[0];
++    if (existing) return emit(existing.startTime);
++    if (!window.PerformanceObserver) return;
++    try {
++      var obs = new PerformanceObserver(function (list) {
++        list.getEntries().forEach(function (e) {
++          if (e.name === 'first-contentful-paint') {
++            obs.disconnect();
++            emit(e.startTime);
++          }
++        });
++      });
++      obs.observe({ type: 'paint', buffered: true });
++    } catch (e) { /* paint timing unsupported */ }
++  }
++
++  resolveIncomingNavigation();
++
++  /* ------------------------------------------------------------------ */
++  /* Client-side view switches                                            */
++  /* ------------------------------------------------------------------ */
++
++  var activeView = null;
++
++  function startViewSwitch(trigger, fromUrl) {
++    var toUrl = location.pathname + location.search + location.hash;
++    if (toUrl === fromUrl) return;
++
++    if (activeView) activeView.finish(true);
++
++    var start = performance.now();
++    // If the switch was caused by a tracked click in the same task, attribute
++    // it and measure from the click itself.
++    var cause = lastTrackedClick && start - lastTrackedClick.start < 1000 ? lastTrackedClick : null;
++    if (cause) start = cause.start;
++
++    var view = {
++      lastPaint: null,
++      lastMutation: performance.now(),
++      settleTimer: null,
++      hardTimer: null,
++      observer: null,
++      finished: false
++    };
++    activeView = view;
++
++    function paintAfterMutation() {
++      var mutationAt = view.lastMutation;
++      afterNextPaint(function (t) {
++        if (view.lastMutation === mutationAt) view.lastPaint = t;
++      });
++    }
++
++    function scheduleSettle() {
++      clearTimeout(view.settleTimer);
++      view.settleTimer = setTimeout(function () { view.finish(false); }, SETTLE_MS);
++    }
++
++    view.finish = function (interrupted) {
++      if (view.finished) return;
++      view.finished = true;
++      if (view.observer) view.observer.disconnect();
++      clearTimeout(view.settleTimer);
++      clearTimeout(view.hardTimer);
++      if (activeView === view) activeView = null;
++      var end = view.lastPaint || performance.now();
++      report({
++        type: 'view-switch',
++        trigger: trigger,
++        from: fromUrl,
++        to: toUrl,
++        target: cause ? cause.info.target : null,
++        duration: round(end - start),
++        interrupted: interrupted === true,
++        timedOut: interrupted === 'timeout'
++      });
++    };
++
++    if (window.MutationObserver) {
++      view.observer = new MutationObserver(function () {
++        view.lastMutation = performance.now();
++        paintAfterMutation();
++        scheduleSettle();
++      });
++      view.observer.observe(document.documentElement, {
++        childList: true, subtree: true, attributes: true, characterData: true
++      });
++    }
++
++    // Covers views whose DOM was already updated before the URL change.
++    paintAfterMutation();
++    scheduleSettle();
++    view.hardTimer = setTimeout(function () { view.finish('timeout'); }, VIEW_TIMEOUT_MS);
++  }
++
++  function currentUrl() {
++    return location.pathname + location.search + location.hash;
++  }
++
++  var lastUrl = currentUrl();
++
++  ['pushState', 'replaceState'].forEach(function (method) {
++    var original = history[method];
++    if (typeof original !== 'function') return;
++    history[method] = function () {
++      var from = currentUrl();
++      var result = original.apply(this, arguments);
++      lastUrl = currentUrl();
++      startViewSwitch(method, from);
++      return result;
++    };
++  });
++
++  function onUrlEvent(event) {
++    var from = lastUrl;
++    lastUrl = currentUrl();
++    startViewSwitch(event.type, from);
++  }
++  window.addEventListener('popstate', onUrlEvent);
++  window.addEventListener('hashchange', onUrlEvent);
++
++  api.flush = flush;
++})();

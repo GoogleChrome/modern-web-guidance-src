@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+index 66c9173..17d0d24 100644
+--- a/index.html
++++ b/index.html
+@@ -55,21 +55,37 @@
+       margin-left: 20px;
+     }
+ 
++    /* Union: every link-like element shares reset, focus and hover styles */
++    :is(nav a, .btn, .footer-links a) {
++      text-decoration: none;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: color 0.3s, background 0.3s;
++      }
++
++      &:focus-visible {
++        outline: 2px solid var(--accent);
++        outline-offset: 3px;
++      }
++    }
++
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      /* Intersection: nav links that are also the logout link */
++      &.logout-link {
++        border: 1px solid var(--accent);
++        padding: 5px 12px;
++        border-radius: 4px;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      /* Intersection of selector and conditional rule: hover only on hover-capable devices */
++      @media (hover: hover) {
++        &:hover {
++          color: var(--accent);
++        }
++      }
+     }
+ 
+     /* Hero Section */
+@@ -131,8 +147,17 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn {
++      @media (hover: hover) {
++        &:hover {
++          background: var(--text);
++        }
++      }
++
++      /* Intersection: only buttons that are direct children of the hero */
++      .hero > & {
++        font-size: 1.1rem;
++      }
+     }
+ 
+     footer {
+@@ -149,9 +174,24 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Narrow viewports: one conditional block touching several selectors */
++    @media (max-width: 600px) {
++      :is(nav, nav ul) {
++        flex-direction: column;
++        gap: 0.75rem;
++      }
++
++      nav ul li:first-child {
++        margin-left: 0;
++      }
++
++      :is(.hero h1, .container h2) {
++        font-size: 2rem;
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,124 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast picker (customizable select) */
++    .roast-picker {
++      margin-top: 1.5rem;
++      width: min(100%, 360px);
++      text-align: left;
++    }
++
++    .roast-picker label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 10px 14px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .roast-select::picker(select) {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 6px;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
++      width: anchor-size(width);
++    }
++
++    .roast-select option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .roast-select option::checkmark {
++      display: none;
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus-visible {
++      background: #f3ece9;
++    }
++
++    .roast-select option:checked {
++      background: var(--primary);
++      color: white;
++    }
++
++    .roast-select option:checked .option-title {
++      font-weight: 700;
++    }
++
++    .roast-select svg {
++      flex: none;
++      width: 28px;
++      height: 28px;
++    }
++
++    .roast-select .option-text {
++      display: flex;
++      flex-direction: column;
++      line-height: 1.3;
++    }
++
++    .roast-select .option-title {
++      font-weight: 600;
++    }
++
++    .roast-select .option-desc {
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
++    .roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .roast-select selectedcontent .option-desc {
++      display: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +278,52 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++          <option value="light" aria-label="Light Roast">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
++              <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/>
++            </svg>
++            <div class="option-text">
++              <span class="option-title">Light Roast</span>
++              <span class="option-desc">Bright, floral and citrusy</span>
++            </div>
++          </option>
++          <option value="medium" aria-label="Medium Roast">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
++              <path d="M12 3c-4.5 0-7 4-7 9s2.500 9 7 9 7-4 7-9-2.500-9-7-9z"/><path d="M12 3c-3 3-3 6 0 9s3 6 0 9"/>
++            </svg>
++            <div class="option-text">
++              <span class="option-title">Medium Roast</span>
++              <span class="option-desc">Balanced, nutty and caramel-sweet</span>
++            </div>
++          </option>
++          <option value="dark" aria-label="Dark Roast">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
++              <path d="M12 2c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .5 1.500 1 2 2 2-1-3-1-5 1-8z"/>
++            </svg>
++            <div class="option-text">
++              <span class="option-title">Dark Roast</span>
++              <span class="option-desc">Bold, smoky and bittersweet</span>
++            </div>
++          </option>
++          <option value="cold-brew" aria-label="Cold Brew">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
++              <path d="M12 2v20M4.500 7l15 10M4.500 17l15-10"/><path d="M9.500 3.500 12 6l2.500-2.500M9.500 20.500 12 18l2.500 2.500"/>
++            </svg>
++            <div class="option-text">
++              <span class="option-title">Cold Brew</span>
++              <span class="option-desc">Steeped 18 hours, smooth and chilled</span>
++            </div>
++          </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

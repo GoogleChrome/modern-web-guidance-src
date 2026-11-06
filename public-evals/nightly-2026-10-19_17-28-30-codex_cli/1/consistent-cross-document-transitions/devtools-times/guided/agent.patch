@@ -1,0 +1,190 @@
+diff --git a/README.md b/README.md
+index 4479b53..0092ea9 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,16 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++Page navigation uses native cross-document view transitions, respecting reduced
++motion preferences and falling back to normal navigation in unsupported browsers.
++The shared head keeps critical styles render-blocking and uses `rel="expect"` to
++wait for each page's `initial-view-ready` marker after its initial visible content.
++Place this marker before below-the-fold sections on new pages. The initial layout
++is server-rendered; React hydration adds interactions without changing that layout.
++If a script is added that changes the initial appearance, put it in the head with
++`blocking="render"` so it loads and executes before the transition. Keep analytics
++and ad loaders non-blocking.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6d59c80 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -21,6 +19,10 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
++    <!-- Each page places this marker after its initial visible content. -->
++    <link rel="expect" href="#initial-view-ready" blocking="render" />
++
++    <!-- Critical stylesheets stay in the head, where they block rendering. -->
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+@@ -34,7 +36,8 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!-- Initial layout is server-rendered. Any future layout-critical scripts
++         must go in this head with blocking="render"; analytics stays deferred. -->
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..0f08007 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -14,4 +14,5 @@ const { title } = Astro.props;
+             <slot />
+         </div>
+     </div>
++    <span id="initial-view-ready" hidden></span>
+ </Layout>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..849d666 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -12,4 +12,5 @@ import Layout from '../layouts/Layout.astro';
+             Zurück zur Startseite
+         </a>
+     </div>
++    <span id="initial-view-ready" hidden></span>
+ </Layout>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..64d646c 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -85,6 +85,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 </figcaption>
+             )}
+         </figure>
++        <span id="initial-view-ready" hidden></span>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+@@ -123,4 +124,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..d5a6c8e 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -87,6 +87,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             )}
+ 
+             <!-- Other Articles -->
++            <span id="initial-view-ready" hidden></span>
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                     {otherArticles.map(article => <ArticleTeaser article={article} />)}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..a3c72ce 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -58,6 +58,7 @@ politicsArticles[2] = {
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
++    <span id="initial-view-ready" hidden></span>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +82,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..2a97133 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -18,4 +18,5 @@ const multimedia = await getCollection('multimedia');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++    <span id="initial-view-ready" hidden></span>
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..7dace06 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -18,4 +18,5 @@ const reports = await getCollection('reports');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++    <span id="initial-view-ready" hidden></span>
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..95d90d3 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -7,4 +7,5 @@ import SignInForm from '../components/SignInForm';
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
++  <span id="initial-view-ready" hidden></span>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..4dc2246 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -7,4 +7,5 @@ import SignUpForm from '../components/SignUpForm';
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
++  <span id="initial-view-ready" hidden></span>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ccb23cb 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,14 @@
+ @import "tailwindcss";
+ 
++/* Native document navigation; unsupported browsers keep normal navigation. */
++@media (prefers-reduced-motion: no-preference) {
++  @view-transition {
++    navigation: auto;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

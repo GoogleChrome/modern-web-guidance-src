@@ -1,0 +1,409 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..1eab0cb 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,7 +22,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 style={`view-transition-name: article-title-${article.id}`} class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -40,12 +40,14 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
++                        style={`view-transition-name: article-image-${article.id}`}
+                         src={image} 
+                         alt=""
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        fetchpriority="high"
++                        class="w-full h-auto object-cover bg-gray-200 aspect-[3/2]"
+                     />
+                 </a>
+             </div>
+@@ -55,18 +57,19 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <article class="flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+             <Image 
++                style={`view-transition-name: article-image-${article.id}`}
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9] bg-gray-200"
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 style={`view-transition-name: article-title-${article.id}`} class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..14fc65e 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -39,7 +39,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 style={`view-transition-name: article-title-${topArticle.id}`} class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+@@ -55,7 +55,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image style={`view-transition-name: article-image-${topArticle.id}`} width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto bg-gray-200" />
+                 </a>
+             </div>
+         </div>
+@@ -70,7 +70,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image style={`view-transition-name: article-image-${article.id}`} width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video bg-gray-200" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -78,7 +78,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 style={`view-transition-name: article-title-${article.id}`} class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b400782 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,13 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  expectHref?: string;
++  preloadImage?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, expectHref = "#main-content", preloadImage } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,18 +23,47 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    {preloadImage && (
++      <link
++        rel="preload"
++        as="image"
++        href={preloadImage}
++        fetchpriority="high"
++      />
++    )}
++
++    <link rel="expect" href={expectHref} blocking="render" />
++    <slot name="head" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <script is:inline blocking="render">
++      window.addEventListener("pagereveal", async (event) => {
++        if (!event.viewTransition) return;
++
++        const from = window.navigation?.activation?.from;
++        if (!from) return;
++
++        try {
++          await event.viewTransition.ready;
++        } catch (error) {
++          if (error.name !== "InvalidStateError") {
++            throw error;
++          }
++        } finally {
++          await event.viewTransition.finished;
++        }
++      });
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +74,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..8d3172e 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,56 +35,62 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++<Layout title={article.data.title} expectHref="#article-hero" preloadImage={article.data.prompt_comment ? article.data.image : articleImage.src}>
++    <article id="article-content" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <header id="article-hero">
++            <!-- Breadcrumbs/Category -->
++            <div class="text-base text-gray-600 font-semibold mb-2">
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            </div>
+ 
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+-        </div>
++            <!-- Headline -->
++            <h1 id="article-title" style={`view-transition-name: article-title-${article.id}`} class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++                {article.data.title}
++            </h1>
++            
++            <!-- Sub-headline / Lead Paragraph -->
++            <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++                {article.data.summary}
++            </p>
++
++            <!-- Author / Date -->
++            <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            </div>
+ 
+-        <!-- Main Article Image -->
+-        <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
+-            {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+-                    {article.data.image_caption}
+-                </figcaption>
+-            )}
+-        </figure>
++            <!-- Main Article Image -->
++            <figure class="mb-5 bg-gray-200 aspect-[16/9]">
++                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
++                {article.data.prompt_comment ? (
++                    <img 
++                        style={`view-transition-name: article-image-${article.id}`}
++                        src={article.data.image}
++                        alt={article.data.title}
++                        width="1200"
++                        height="675"
++                        fetchpriority="high"
++                        class="w-full h-auto aspect-[16/9] object-cover bg-gray-200"
++                        crossorigin="use-credentials"
++                    />
++                ) : (
++                    <Image 
++                        style={`view-transition-name: article-image-${article.id}`}
++                        src={articleImage} 
++                        alt={article.data.title} 
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        fetchpriority="high"
++                        class="w-full h-auto aspect-[16/9] object-cover bg-gray-200"
++                    />
++                )}
++                {article.data.image_caption && (
++                    <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                        {article.data.image_caption}
++                    </figcaption>
++                )}
++            </figure>
++        </header>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..c615576 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,10 +37,10 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} expectHref="#category-hero" preloadImage={featuredArticleImage?.src || heroImage?.src}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="category-header" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -49,6 +49,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     height={400}
+                     format="webp"
+                     quality={80}
++                    fetchpriority="high"
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+@@ -56,27 +57,29 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+                     <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+-                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
++                    <h1 style={`view-transition-name: category-title-${category}`} class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                         {capitalizedCategory}
+                     </h1>
+                 </div>
+             </div>
+         </header>
+ 
+-        <div class="px-4 md:px-6">
++        <div id="category-hero" class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+                 <section class="mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
++                            style={`view-transition-name: article-image-${featuredArticle.id}`}
+                             src={featuredArticleImage} 
+                             alt={featuredArticle.data.title} 
+                             width={1200}
+                             height={675}
+                             format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
++                            fetchpriority="high"
++                            class="w-full h-auto object-cover mb-4 aspect-[16/9] bg-gray-200"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 style={`view-transition-name: article-title-${featuredArticle.id}`} class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                             {featuredArticle.data.title}
+                         </h2>
+                         <p class="text-base md:text-lg text-gray-700">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..7f99f33 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -17,6 +17,9 @@ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new gri
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+ 
++import { getArticleImage } from '../utils/images';
++const topArticleImage = await getArticleImage(topArticle);
++
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+     id: 'public-transit-overhaul',
+@@ -37,14 +40,14 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" expectHref="#hero" preloadImage={topArticleImage.src}>
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <div id="top-stories" class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} data-article-slug={article.id}>
+                             <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+@@ -55,9 +58,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="hero" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..519deb6 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,15 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

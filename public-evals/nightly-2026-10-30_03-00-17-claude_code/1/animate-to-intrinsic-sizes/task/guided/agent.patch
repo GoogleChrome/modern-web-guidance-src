@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,160 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo Alert: a non-modal <dialog> closed natively by <form method="dialog"> */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    #promo-alert {
++      position: static;
++      display: block;
++      inline-size: 100%;
++      max-inline-size: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: var(--accent);
++      color: var(--text);
++      block-size: auto;
++      overflow: hidden;
++      transition:
++        block-size 0.4s ease-in-out,
++        opacity 0.4s ease,
++        display 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    #promo-alert:not([open]) {
++      display: none;
++      block-size: 0;
++      opacity: 0;
++    }
++
++    .promo-inner {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 1rem;
++      padding: 0.75rem 3rem;
++      position: relative;
++      text-align: center;
++      font-size: 0.95rem;
++    }
++
++    .promo-inner a {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      right: 1rem;
++      top: 50%;
++      translate: 0 -50%;
++      inline-size: 2rem;
++      block-size: 2rem;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--text);
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    #alert-dismiss:hover,
++    #alert-dismiss:focus-visible {
++      background: rgba(0, 0, 0, 0.1);
++    }
++
++    /* FAQ Accordion */
++    .faq {
++      margin-top: 60px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "+";
++      font-size: 1.5rem;
++      line-height: 1;
++      transition: rotate 0.4s ease;
++    }
++
++    .faq details[open] #faq-trigger::after {
++      rotate: 45deg;
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition:
++        block-size 0.4s ease,
++        content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    #faq-content dt {
++      font-weight: bold;
++      margin-top: 1rem;
++    }
++
++    #faq-content dt:first-child {
++      margin-top: 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #faq-trigger::after,
++      .faq details::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="promo-alert" open aria-label="Promotion">
++    <div class="promo-inner">
++      <p>Fall special: 20% off all seasonal drinks this week. <a href="/menu/seasonal">See the menu</a></p>
++      <form method="dialog">
++        <button id="alert-dismiss" aria-label="Dismiss promotion">&times;</button>
++      </form>
++    </div>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +341,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2 style="text-align: center;">FAQ</h2>
++      <details>
++        <summary id="faq-trigger">Frequently Asked Questions</summary>
++        <div id="faq-content">
++          <dl>
++            <dt>Where do you source your beans?</dt>
++            <dd>We buy directly from small farms in Colombia, Ethiopia, and Guatemala and roast every batch in-house.</dd>
++            <dt>Do you offer dairy-free milk?</dt>
++            <dd>Yes. Oat, almond, and soy milk are available for any drink at no extra charge.</dd>
++            <dt>How do rewards work?</dt>
++            <dd>Earn one star per dollar spent. Collect 100 stars for a free drink of your choice.</dd>
++            <dt>Can I order ahead?</dt>
++            <dd>Absolutely. Use our online ordering to skip the line and pick up at your nearest location.</dd>
++          </dl>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

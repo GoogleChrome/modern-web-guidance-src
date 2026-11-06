@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+index 66c9173..eab5ab2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,169 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutrition & pricing table */
++    .table-intro {
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      font-size: 0.95rem;
++    }
++
++    .nutrition-table caption {
++      caption-side: top;
++      padding: 16px 20px 8px;
++      font-weight: bold;
++      color: var(--primary);
++      text-align: start;
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 12px 16px;
++      border-block-end: 1px solid var(--secondary);
++      text-align: start;
++      vertical-align: top;
++    }
++
++    .nutrition-table td.num,
++    .nutrition-table th.num {
++      text-align: end;
++      font-variant-numeric: tabular-nums;
++    }
++
++    /* Sticky column headers (desktop) */
++    .nutrition-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1; /* Above sticky row headers */
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++      white-space: nowrap;
++    }
++
++    /* Sticky row headers (desktop) */
++    .nutrition-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white; /* Required to cover background during scroll */
++      color: var(--primary);
++    }
++
++    .nutrition-table tbody tr:last-child th,
++    .nutrition-table tbody tr:last-child td {
++      border-block-end: 0;
++    }
++
++    .table-note {
++      font-size: 0.85rem;
++      margin-top: 12px;
++      text-align: center;
++    }
++
++    /* Stacked card layout when the table's own container is narrow */
++    @container (width < 600px) {
++      .nutrition-table,
++      .nutrition-table thead,
++      .nutrition-table tbody,
++      .nutrition-table tr,
++      .nutrition-table th,
++      .nutrition-table td {
++        display: block;
++      }
++
++      .nutrition-table thead {
++        /* Hide the column header row from layout and screen readers;
++           labels are re-injected per cell below. */
++        display: none;
++      }
++
++      .nutrition-table caption {
++        display: block;
++      }
++
++      .nutrition-table tr {
++        margin: 0 12px 1.25rem;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        overflow: hidden;
++      }
++
++      .nutrition-table tbody tr:last-child {
++        margin-block-end: 16px;
++      }
++
++      /* Row header becomes a sticky card title */
++      .nutrition-table tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        inset-inline-start: auto;
++        z-index: 2;
++        background: var(--secondary);
++        color: var(--text);
++        font-size: 1.05rem;
++      }
++
++      .nutrition-table td,
++      .nutrition-table td.num {
++        text-align: start;
++        display: flex;
++        justify-content: space-between;
++        gap: 16px;
++      }
++
++      .nutrition-table tbody tr:last-child td {
++        border-block-end: 1px solid var(--secondary);
++      }
++
++      .nutrition-table tbody tr td:last-child {
++        border-block-end: 0;
++      }
++
++      /* Column labels, mirrored from the hidden <thead> */
++      .nutrition-table {
++        --label-2: "Size";
++        --label-3: "Price";
++        --label-4: "Calories";
++        --label-5: "Sugar";
++        --label-6: "Caffeine";
++      }
++
++      .nutrition-table td::before {
++        font-weight: bold;
++        color: var(--primary);
++      }
++
++      .nutrition-table td:nth-child(2)::before { content: var(--label-2) ": "; }
++      .nutrition-table td:nth-child(3)::before { content: var(--label-3) ": "; }
++      .nutrition-table td:nth-child(4)::before { content: var(--label-4) ": "; }
++      .nutrition-table td:nth-child(5)::before { content: var(--label-5) ": "; }
++      .nutrition-table td:nth-child(6)::before { content: var(--label-6) ": "; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +357,50 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 class="table-intro" id="nutrition-heading">Nutrition &amp; Pricing</h3>
++      <div tabindex="0" role="region" aria-labelledby="nutrition-caption" class="table-wrapper">
++        <table class="nutrition-table">
++          <caption id="nutrition-caption">Nutritional and pricing breakdown for our seasonal favorites</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Size</th>
++              <th scope="col" class="num">Price</th>
++              <th scope="col" class="num">Calories</th>
++              <th scope="col" class="num">Sugar</th>
++              <th scope="col" class="num">Caffeine</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>16 fl oz</td>
++              <td class="num">$5.75</td>
++              <td class="num">280 kcal</td>
++              <td class="num">32 g</td>
++              <td class="num">150 mg</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 fl oz (double shot)</td>
++              <td class="num">$3.25</td>
++              <td class="num">5 kcal</td>
++              <td class="num">0 g</td>
++              <td class="num">150 mg</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>16 fl oz</td>
++              <td class="num">$4.50</td>
++              <td class="num">15 kcal</td>
++              <td class="num">0 g</td>
++              <td class="num">205 mg</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p class="table-note">Values are for standard preparations without added syrups or toppings. Prices may vary by location.</p>
+     </section>
+   </main>
+ 

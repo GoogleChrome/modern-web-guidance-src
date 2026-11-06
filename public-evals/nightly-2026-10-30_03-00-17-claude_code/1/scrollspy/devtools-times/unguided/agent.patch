@@ -1,0 +1,202 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..73c78f6
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,87 @@
++---
++export interface Props {
++    sections: { id: string; label: string }[];
++}
++
++const { sections } = Astro.props;
++---
++<nav
++    data-section-nav
++    aria-label="Page sections"
++    class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-300"
++>
++    <ul class="relative max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6 h-12 overflow-x-auto text-sm font-semibold">
++        {sections.map(section => (
++            <li>
++                <a
++                    href={`#${section.id}`}
++                    data-section-link={section.id}
++                    class="block py-3 border-b-2 border-transparent text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors aria-[current=true]:text-amber-500 aria-[current=true]:border-amber-400"
++                >
++                    {section.label}
++                </a>
++            </li>
++        ))}
++    </ul>
++</nav>
++
++<script>
++    // Highlights the nav link of the section currently in view. Uses document-level
++    // listeners registered once, since <ClientRouter /> swaps pages without reloading.
++    let links: HTMLAnchorElement[] = [];
++    let sections: HTMLElement[] = [];
++    let frame = 0;
++    let activeId: string | null = null;
++
++    function update() {
++        frame = 0;
++        if (!sections.length) return;
++
++        const nav = document.querySelector<HTMLElement>('[data-section-nav]');
++        // A section counts as current once its top passes just below the sticky nav.
++        const threshold = (nav?.offsetHeight ?? 0) + 16;
++        const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++
++        let current: HTMLElement | undefined;
++        if (atBottom) {
++            current = sections[sections.length - 1];
++        } else {
++            for (const section of sections) {
++                if (section.getBoundingClientRect().top <= threshold) current = section;
++            }
++        }
++        current ??= sections[0];
++        if (current.id === activeId) return;
++        activeId = current.id;
++
++        for (const link of links) {
++            const active = link.dataset.sectionLink === current.id;
++            link.setAttribute('aria-current', String(active));
++            // Keep the active link visible when the nav overflows horizontally on small screens.
++            const list = link.closest('ul');
++            if (active && list) {
++                const { offsetLeft, offsetWidth } = link;
++                if (offsetLeft < list.scrollLeft || offsetLeft + offsetWidth > list.scrollLeft + list.clientWidth) {
++                    list.scrollTo({ left: offsetLeft - 16, behavior: 'smooth' });
++                }
++            }
++        }
++    }
++
++    function scheduleUpdate() {
++        if (!frame) frame = requestAnimationFrame(update);
++    }
++
++    function init() {
++        links = [...document.querySelectorAll<HTMLAnchorElement>('[data-section-link]')];
++        sections = links
++            .map(link => document.getElementById(link.dataset.sectionLink!))
++            .filter((el): el is HTMLElement => el !== null);
++        activeId = null;
++        scheduleUpdate();
++    }
++
++    window.addEventListener('scroll', scheduleUpdate, { passive: true });
++    window.addEventListener('resize', scheduleUpdate);
++    document.addEventListener('astro:page-load', init);
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..d7cf82f 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -4,12 +4,13 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
+     title: string;
++    id?: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, id, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..e81a383 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -7,10 +7,11 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     title: string;
++    id?: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, id, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8b08d43 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -35,6 +36,13 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++const sections = [
++    { id: 'top-story', label: 'Top Story' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
+ ---
+ 
+ <Layout title="The DevTools Times">
+@@ -54,8 +62,10 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <SectionNav sections={sections} />
++
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 pt-6 scroll-mt-12">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -65,20 +75,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file

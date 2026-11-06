@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,31 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Dashboard</title>
++
++  <!-- Critical interactivity: fetched at high priority, runs as soon as it arrives -->
++  <script src="/js/app.js" async fetchpriority="high"></script>
++
++  <!-- Legacy widgets: deferred so they no longer block parsing; run in order after the DOM is parsed -->
++  <script src="/js/legacy-widgets.js" defer></script>
++
++  <!-- Analytics: non-critical, independent, lowest priority -->
++  <script src="/js/tracker.js" async fetchpriority="low"></script>
++
++  <style>
++    body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; }
++    main { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
++    section { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; }
++  </style>
++</head>
++<body>
++  <header><h1>Dashboard</h1></header>
++  <main>
++    <section id="widget-1"><h2>Overview</h2></section>
++    <section id="widget-2"><h2>Activity</h2></section>
++    <section id="widget-3"><h2>Reports</h2></section>
++  </main>
++</body>
++</html>

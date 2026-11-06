@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8bc10c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,186 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* ==========================================================
++       Icon system
++       Icons are design tokens (custom properties holding an SVG
++       mask image). Any element shows one by setting --icon-start
++       (leading, ::before) or --icon-end (trailing, ::after).
++       Icons are drawn with a CSS mask filled with currentColor, so
++       they follow text color, stay crisp at any resolution, and
++       need no extra requests (embedded data URIs).
++       Generated content uses empty alt text, so icons are
++       decorative and hidden from assistive technologies; the link
++       or button text supplies the accessible name.
++       Tweak via inheritable --icon-style-size / -color / -spacing /
++       -voffset on any ancestor.
++       ========================================================== */
++    :root {
++      --icon-coffee: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/%3E%3C/svg%3E");
++      --icon-map-pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 15 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-gift: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='8' width='18' height='4' rx='1'/%3E%3Cpath d='M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5'/%3E%3C/svg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
++      --icon-log-out: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/%3E%3C/svg%3E");
++      --icon-shopping-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
++      --icon-bean: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.17 6.6C9.95 7.48 9.64 8.36 9 9s-1.52.95-2.4 1.17A6 6 0 0 0 8 22c7.73 0 14-6.27 14-14a6 6 0 0 0-11.83-1.4ZM5.34 10.62a4 4 0 1 0 5.28-5.28'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12h20M12 2v20M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4'/%3E%3C/svg%3E");
++    }
++
++    /* Keep icon assignments from cascading into descendants */
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
++    /* Leading icon: rendered when an element sets --icon-start */
++    @container style(--icon-start) {
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Trailing icon: rendered when an element sets --icon-end */
++    @container style(--icon-end) {
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    /* Fallback for browsers without container style queries:
++       .icon-start / .icon-end class hooks. image-set() makes
++       `content` invalid (→ none) if no icon is assigned. */
++    :where(.icon-start, .icon:empty)::before,
++    :where(.icon-end)::after {
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon-start, .icon:empty)::before {
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++      mask: var(--icon-start) no-repeat center / contain;
++    }
++
++    :where(.icon-start)::before {
++      --icon-start: inherit;
++    }
++
++    :where(.icon:empty)::before {
++      --icon-start: var(--icon);
++    }
++
++    :where(.icon-start:not(.icon, :empty))::before {
++      margin-inline-end: var(--icon-style-spacing, 0.3em);
++    }
++
++    :where(.icon-end)::after {
++      --icon-end: inherit;
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
++      mask: var(--icon-end) no-repeat center / contain;
++      margin-inline-start: var(--icon-style-spacing, 0.3em);
++    }
++
++    /* Safari: WebKit #301609 / #320220 (icons not painting until interaction) */
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      @layer webkit-301609-fix {
++        ::before, ::after {
++          animation: webkit-301609 0s;
++        }
++      }
++
++      /* WebKit #325900: overrides of non-inheriting registered props may not apply */
++      @property --icon-start {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @property --icon-end {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @layer webkit-325900-fix {
++        @container style(--icon-start) {
++          * { --icon-start: initial; }
++        }
++
++        @container style(--icon-end) {
++          * { --icon-end: initial; }
++        }
++      }
++    }
++
++    /* Icon assignments */
++    nav a[href="/menu"] { --icon-start: var(--icon-coffee); }
++    nav a[href="/locations"] { --icon-start: var(--icon-map-pin); }
++    nav a[href="/rewards"] { --icon-start: var(--icon-gift); }
++    nav a[href="/account"] { --icon-start: var(--icon-user); }
++    nav a[href="/logout"] { --icon-start: var(--icon-log-out); }
++
++    .btn-order { --icon-start: var(--icon-shopping-bag); }
++    .btn-details { --icon-end: var(--icon-arrow-right); }
++
++    .card {
++      --icon-style-size: 1.25em;
++      --icon-style-spacing: 0.4em;
++    }
++
++    .card .btn { --icon-style-size: 1em; }
++    .card h3 { --icon-style-color: var(--accent); }
++    .card-latte h3 { --icon-start: var(--icon-leaf); }
++    .card-espresso h3 { --icon-start: var(--icon-bean); }
++    .card-cold-brew h3 { --icon-start: var(--icon-snowflake); }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .btn-details::after { transition: translate 0.2s; }
++      .btn-details:hover::after { translate: 0.2em 0; }
++    }
+   </style>
+ </head>
+ 
+@@ -160,38 +340,38 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon-start">Menu</a></li>
++      <li><a href="/locations" class="icon-start">Locations</a></li>
++      <li><a href="/rewards" class="icon-start">Rewards</a></li>
++      <li><a href="/account" class="icon-start">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon-start">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-order icon-start">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card card-latte">
++          <h3 class="icon-start">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn-details icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card card-espresso">
++          <h3 class="icon-start">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn-details icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card card-cold-brew">
++          <h3 class="icon-start">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn-details icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

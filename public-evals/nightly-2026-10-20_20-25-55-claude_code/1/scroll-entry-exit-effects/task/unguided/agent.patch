@@ -1,0 +1,42 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,38 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Scroll-driven reveal: half size -> full size on entry, back to half on exit.
++       Only applied where supported and when the user hasn't asked for reduced motion;
++       otherwise cards simply render at full size. */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        @keyframes card-reveal {
++          entry 0% {
++            transform: scale(0.5);
++          }
++
++          entry 100% {
++            transform: scale(1);
++          }
++
++          exit 0% {
++            transform: scale(1);
++          }
++
++          exit 100% {
++            transform: scale(0.5);
++          }
++        }
++
++        .card {
++          animation: card-reveal linear both;
++          animation-timeline: view();
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

@@ -1,0 +1,379 @@
+diff --git a/index.html b/index.html
+index 66c9173..53aeb99 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,174 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f5f5f0">
++  <title>Brew Lab — The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--ink:#243c33;--muted:#7a817a;--green:#345d46;--line:#e7e9e1;--paper:#f5f5f0;--lime:#dbe7a5;--track:#e9ece5}
++    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,input,a{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{font:inherit;cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible{outline:3px solid #69823b;outline-offset:5px}button{color:inherit}svg{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.shell{max-width:1240px;margin:auto;padding:0 48px}
++    .header{height:100px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e1e4da}.brand{display:flex;align-items:center;gap:11px}.brand-mark{width:38px;height:38px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center}.brand-mark svg{width:23px;height:23px}.brand-name{font-size:12px;font-weight:800;letter-spacing:1.8px;line-height:1.45}.header nav{display:flex;align-items:center;gap:34px;font-size:13px}.header nav a{color:#747c72}.header nav .active{color:var(--ink);position:relative}.active:after{content:'';width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:-12px;left:50%}.guide-link{display:flex;align-items:center;gap:9px;background:none;border:0;padding:10px 0;font-size:12px}.guide-link svg{width:16px;height:16px}
++    main{padding:49px 0 32px}.eyebrow{display:flex;align-items:center;gap:8px;letter-spacing:2px;text-transform:uppercase;font-size:10px;font-weight:700;color:#6f7e68}.eyebrow i{display:block;width:6px;height:6px;background:#7e9569;border-radius:50%}.intro{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px}h1,h2,h3,p{margin:0}h1{font-family:Manrope,sans-serif;font-size:43px;font-weight:600;letter-spacing:-1.9px;margin:12px 0 10px;line-height:1.2}.intro p{color:var(--muted);font-size:14px;line-height:1.7}.step{font-size:11px;color:#84897e;padding-bottom:6px;display:flex;align-items:center;gap:11px}.step span{height:1px;width:32px;background:#b2ba9a}
++    .workspace{display:grid;grid-template-columns:1.17fr 1fr;gap:24px;align-items:start}.controls{background:#fff;border:1px solid var(--line);border-radius:15px;padding:29px 32px 25px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:21px}.section-head h2{font-size:15px;font-weight:600;letter-spacing:-.25px}.section-head span{font-size:10px;letter-spacing:1.3px;color:#8b9188}.presets{display:flex;gap:8px;margin-bottom:28px}.preset{display:flex;justify-content:center;align-items:center;gap:7px;border:1px solid var(--line);background:white;border-radius:7px;padding:10px 14px;font-size:11px;flex:1;white-space:nowrap}.preset svg{width:15px;height:15px}.preset[aria-pressed="true"]{border-color:#46694d;background:#f0f4e9;color:#34553c}.preset:hover{background:#f5f7f0}.slider-group{border-top:1px solid var(--line);padding:25px 0 22px}.slider-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}.slider-label{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:550}.slider-label svg{color:#929a8d;width:18px;height:18px}.readout{background:#f2f4ed;border:1px solid #e7ebdf;border-radius:6px;min-width:69px;padding:5px 8px;text-align:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}.readout small{font-size:10px;color:#7a8472;font-weight:400}.slider-description{font-size:11px;color:#8a8f86;margin-bottom:11px}.range-labels{display:flex;justify-content:space-between;font-size:10px;color:#8e9489;margin-top:1px}.slider-group:last-of-type{padding-bottom:17px}
++    input[type=range]{--slider-track-size:5px;--slider-thumb-size:21px;--slider-direction:to right;--attr-min:attr(min type(<number>),0);--attr-max:attr(max type(<number>),100);--control-value:attr(value type(<number>),50);--slider-progress:calc(progress(var(--control-value),var(--attr-min),var(--attr-max)) * 100%);appearance:none;-webkit-appearance:none;display:block;width:100%;height:34px;margin:0;padding:0;border:0;border-radius:6px;background:transparent;cursor:pointer;accent-color:var(--green)}
++    input[type=range]:dir(rtl){--slider-direction:to left}input[type=range]::-webkit-slider-runnable-track{height:var(--slider-track-size);border:0;border-radius:99px;background:linear-gradient(var(--slider-direction),var(--green) var(--slider-progress),var(--track) var(--slider-progress))}input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:var(--slider-thumb-size);height:var(--slider-thumb-size);margin-block-start:calc((var(--slider-track-size) - var(--slider-thumb-size))/2);border:5px solid white;border-radius:50%;background:var(--green);box-shadow:0 0 0 1px #d5dacd,0 2px 4px #273a251c;transition:box-shadow .15s}
++    input[type=range]::-moz-range-track{height:var(--slider-track-size);border:0;border-radius:99px;background:var(--track)}input[type=range]::-moz-range-progress{height:var(--slider-track-size);border-radius:99px;background:var(--green)}input[type=range]::-moz-range-thumb{box-sizing:border-box;width:var(--slider-thumb-size);height:var(--slider-thumb-size);border:5px solid white;border-radius:50%;background:var(--green);box-shadow:0 0 0 1px #d5dacd,0 2px 4px #273a251c}
++    input[type=range]:hover::-webkit-slider-thumb{box-shadow:0 0 0 5px #e7eddf}input[type=range]:hover::-moz-range-thumb{box-shadow:0 0 0 5px #e7eddf}input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 7px #dce6d0}input[type=range]:active::-moz-range-thumb{box-shadow:0 0 0 7px #dce6d0}input[type=range]:focus-visible{outline:2px solid var(--green);outline-offset:3px}
++    @supports not (opacity:progress(1,0,100)){input[type=range]{--slider-progress:calc((var(--control-value) - var(--attr-min))/(var(--attr-max) - var(--attr-min))*100%)}}
++    @media(forced-colors:active){input[type=range]{appearance:auto;accent-color:auto}input[type=range]::-webkit-slider-thumb{appearance:auto}input[type=range]::-webkit-slider-runnable-track{background:CanvasText}input[type=range]::-moz-range-track{background:CanvasText}input[type=range]::-moz-range-progress{background:Highlight}input[type=range]::-moz-range-thumb{background:ButtonText;border-color:Canvas}}
++    .controls-bottom{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding-top:19px}.keyboard-hint{font-size:10px;color:#93998e;display:flex;align-items:center;gap:6px}.keyboard-hint svg{width:14px;height:14px}.reset{background:none;border:0;font-size:11px;display:flex;align-items:center;gap:6px;color:#6d7767;padding:5px 0}.reset svg{width:12px;height:12px}
++    .preview{border-radius:15px;overflow:hidden;border:1px solid #dce0d4}.coffee-photo{height:294px;position:relative;background:#604e39}.coffee-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 55%;display:block;filter:brightness(.78)}.coffee-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 45%,#14281e99)}.photo-top{position:absolute;z-index:1;top:21px;left:22px;right:22px;display:flex;justify-content:space-between;align-items:center;color:white}.photo-top span{font-size:9px;letter-spacing:1.8px}.live-badge{font-size:9px!important;letter-spacing:.3px!important;border:1px solid #ffffff6b;border-radius:20px;padding:6px 9px;background:#ffffff12;display:flex;align-items:center;gap:5px;backdrop-filter:blur(6px)}.live-badge i{width:5px;height:5px;background:#dbe7a5;border-radius:50%}.photo-title{position:absolute;z-index:1;left:26px;bottom:23px;color:white}.photo-title h2{font-family:Manrope,sans-serif;font-size:25px;font-weight:500;letter-spacing:-.8px}.photo-title p{font-size:11px;color:#ffffffb3;margin-top:5px}.recipe{background:#263d31;color:white;padding:26px}.recipe-heading{display:flex;align-items:center;justify-content:space-between;font-size:10px;letter-spacing:1.5px;color:#d4dccd}.recipe-heading svg{width:16px;height:16px;color:#c9d89f}.recipe-stats{display:grid;grid-template-columns:1fr 1fr 1fr;margin:22px 0 24px}.stat+.stat{border-left:1px solid #ffffff20;padding-left:20px}.stat strong{font-family:Manrope,sans-serif;display:block;font-size:22px;font-weight:500;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.stat strong small{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0;color:#bdcbbb}.stat>span{display:block;margin-top:5px;color:#b0c0ac;font-size:10px}.save{width:100%;border:0;border-radius:7px;background:var(--lime);padding:14px 18px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between}.save svg{width:16px;height:16px}.save:hover{background:#e5edc3}.save-status{min-height:15px;font-size:10px;color:#cfdbbc;text-align:center;margin-top:11px}
++    .tip{display:flex;align-items:flex-start;gap:14px;margin-top:19px;padding:18px 21px;border:1px solid #e1e5d6;background:#eff1e7;border-radius:10px}.tip-icon{flex-shrink:0;width:29px;height:29px;background:#e3e8d6;border-radius:50%;display:grid;place-items:center}.tip-icon svg{width:15px;height:15px;color:#70815e}.tip h3{font-size:11px;font-weight:600;margin:0 0 5px}.tip p{font-size:11px;color:#858d7c;line-height:1.8}.bottom-note{display:flex;justify-content:center;gap:7px;align-items:center;font-size:10px;color:#8c9484;padding:28px 0 1px}.bottom-note svg{width:13px;height:13px}footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e1e4da;padding:22px 0 27px;font-size:10px;color:#929889}footer span:last-child{display:flex;gap:20px}footer a:hover{color:var(--green)}
++    dialog{border:1px solid var(--line);border-radius:16px;padding:30px;max-width:440px;width:calc(100% - 40px);color:var(--ink);background:var(--paper)}dialog::backdrop{background:#182d2466;backdrop-filter:blur(4px)}dialog h2{font:600 25px Manrope,sans-serif;margin-bottom:18px}dialog p{line-height:1.8;color:#67735f;margin-bottom:15px}dialog button{background:var(--green);color:white;border:0;border-radius:6px;padding:10px 18px;float:right}
++    @media(min-width:1400px){.shell{max-width:1320px;padding:0 65px}main{padding-top:57px}.coffee-photo{height:302px}.slider-group{padding-top:27px;padding-bottom:25px}}
++    @media(max-width:900px){.shell{padding:0 28px}.header nav{gap:20px}.workspace{grid-template-columns:1.1fr 1fr;gap:18px}.controls{padding:24px 22px}.preset{padding:10px 8px}.recipe{padding:23px 20px}.stat+.stat{padding-left:12px}.stat strong{font-size:20px}.keyboard-hint{font-size:9px}h1{font-size:38px}}
++    @media(max-width:700px){.shell{padding:0 20px}.header{height:82px}.header nav{display:none}.brand-name{font-size:10px}.guide-link{font-size:11px}main{padding-top:34px}.intro{margin-bottom:25px}.intro p{font-size:12px;max-width:280px}.step{display:none}h1{font-size:34px}.workspace{grid-template-columns:1fr;gap:20px}.controls{padding:25px}.coffee-photo{height:270px}.tip{margin-top:15px}.bottom-note{padding:23px 0 0}footer{align-items:flex-start;gap:20px;line-height:1.8}footer span:last-child{gap:12px}.keyboard-hint{font-size:10px}.recipe-stats{margin:22px 0}.stat+.stat{padding-left:25px}}
++    @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg"><defs>
++    <symbol id="cup" viewBox="0 0 24 24"><path d="M4 8h12v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M16 9h2a3 3 0 0 1 0 6h-2M8 2v3m4-3v3M2 22h18"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
++    <symbol id="book" viewBox="0 0 24 24"><path d="M12 5v15M3 4c4-1 6 0 9 1 3-1 5-2 9-1v15c-4-1-6 0-9 1-3-1-5-2-9-1Z"/></symbol>
++    <symbol id="drop" viewBox="0 0 24 24"><path d="M12 3c-2 4-7 8-7 12a7 7 0 0 0 14 0c0-4-5-8-7-12Z"/><path d="M8 15a4 4 0 0 0 4 4"/></symbol>
++    <symbol id="bean" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(40 12 12)"/><path d="M17 5c-8 1-2 10-10 14"/></symbol>
++    <symbol id="temp" viewBox="0 0 24 24"><path d="M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0Z"/><path d="M12 9v8m0 0h.01M18 5h3m-3 4h2"/></symbol>
++    <symbol id="icon-grind" viewBox="0 0 24 24"><path d="M5 5h14l-3 7H8ZM8 12v8h8v-8M4 2h16M12 2v3M6 22h12M10 16h4"/></symbol>
++    <symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"/></symbol>
++    <symbol id="icon-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
++    <symbol id="keys" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M8 16h8"/></symbol>
++    <symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3C8 1 2 8 5 15c3 7 17 6 15-12ZM5 20 16 8"/></symbol>
++  </defs></svg>
++  <div class="shell">
++    <header class="header">
++      <a class="brand" href="#" aria-label="The Daily Grind home"><span class="brand-mark"><svg aria-hidden="true"><use href="#cup"/></svg></span><span class="brand-name">THE DAILY<br>GRIND</span></a>
++      <nav aria-label="Main navigation"><a href="#beans" data-guide="beans">Our coffee</a><a href="#brew-lab" class="active" aria-current="page">Brew Lab</a><a href="#story" data-guide="story">Our story</a></nav>
++      <button class="guide-link" data-guide="guide"><svg aria-hidden="true"><use href="#book"/></svg>Brew guide<svg aria-hidden="true"><use href="#arrow"/></svg></button>
++    </header>
++    <main id="brew-lab">
++      <div class="intro"><div><div class="eyebrow"><i></i>A little science. A lot of good coffee.</div><h1>Your coffee. Your way.</h1><p>Find your sweet spot. Fine-tune the details for a cup that’s you.</p></div><div class="step"><span></span>THE BREW LAB / 01</div></div>
++      <div class="workspace">
++        <section class="controls" aria-labelledby="settings-title">
++          <div class="section-head"><h2>Make it your own</h2><span>BREW SETTINGS</span></div>
++          <div class="presets" role="group" aria-label="Brew method presets">
++            <button class="preset" data-preset="pour" aria-pressed="true"><svg aria-hidden="true"><use href="#drop"/></svg>Pour over</button>
++            <button class="preset" data-preset="french" aria-pressed="false"><svg aria-hidden="true"><use href="#cup"/></svg>French press</button>
++            <button class="preset" data-preset="aero" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-grind"/></svg>AeroPress</button>
++          </div>
++          <div class="slider-group">
++            <div class="slider-top"><label class="slider-label" for="dose"><svg aria-hidden="true"><use href="#bean"/></svg>Coffee dose</label><output class="readout" for="dose" id="dose-output">20 <small>g</small></output></div>
++            <p class="slider-description" id="dose-description">The starting point for a balanced cup.</p>
++            <input type="range" id="dose" name="dose" min="10" max="40" step="1" value="20" aria-describedby="dose-description">
++            <div class="range-labels" aria-hidden="true"><span>10 g · Lighter</span><span>40 g · Stronger</span></div>
++          </div>
++          <div class="slider-group">
++            <div class="slider-top"><label class="slider-label" for="temperature"><svg aria-hidden="true"><use href="#temp"/></svg>Water temperature</label><output class="readout" for="temperature" id="temperature-output">94 <small>°C</small></output></div>
++            <p class="slider-description" id="temperature-description">Bring out the best in every bean.</p>
++            <input type="range" id="temperature" name="temperature" min="80" max="100" step="1" value="94" aria-describedby="temperature-description">
++            <div class="range-labels" aria-hidden="true"><span>80 °C · Mellow</span><span>100 °C · Intense</span></div>
++          </div>
++          <div class="slider-group">
++            <div class="slider-top"><label class="slider-label" for="grind"><svg aria-hidden="true"><use href="#icon-grind"/></svg>Grind size</label><output class="readout" for="grind" id="grind-output">Medium</output></div>
++            <p class="slider-description" id="grind-description">Small changes. A whole different flavor.</p>
++            <input type="range" id="grind" name="grind" min="1" max="7" step="1" value="4" aria-describedby="grind-description">
++            <div class="range-labels" aria-hidden="true"><span>Fine</span><span>Coarse</span></div>
++          </div>
++          <div class="controls-bottom"><span class="keyboard-hint"><svg aria-hidden="true"><use href="#keys"/></svg>Tab to focus · Arrow keys to adjust</span><button class="reset" id="reset"><svg aria-hidden="true"><use href="#icon-reset"/></svg>Reset</button></div>
++        </section>
++        <aside>
++          <section class="preview" aria-labelledby="recipe-title">
++            <div class="coffee-photo"><img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1100&q=85" alt="Freshly brewed coffee and a glass pour-over brewer on a wooden table" width="1100" height="730" fetchpriority="high"><div class="photo-top"><span>CRAFTED BY YOU</span><span class="live-badge"><i></i>Live preview</span></div><div class="photo-title"><h2 id="recipe-title">The everyday pour over</h2><p id="recipe-subtitle">Clean, balanced, and beautifully simple.</p></div></div>
++            <div class="recipe"><div class="recipe-heading">YOUR BREW RECIPE<svg aria-hidden="true"><use href="#spark"/></svg></div><div class="recipe-stats"><div class="stat"><strong id="water-value">320 <small>ml</small></strong><span>Water to add</span></div><div class="stat"><strong id="ratio-value">1:16</strong><span>Coffee to water</span></div><div class="stat"><strong id="time-value">3:00 <small>min</small></strong><span>Est. brew time</span></div></div><button class="save" id="save">Save my recipe<svg aria-hidden="true"><use href="#arrow"/></svg></button><p class="save-status" id="save-status" role="status">A good cup is worth remembering.</p></div>
++          </section>
++          <div class="tip"><span class="tip-icon"><svg aria-hidden="true"><use href="#spark"/></svg></span><div><h3>A little brewing wisdom</h3><p id="brew-tip">Start with fresh, filtered water. It makes up over 98% of your cup, so give it the attention it deserves.</p></div></div>
++        </aside>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++      <p class="bottom-note"><svg aria-hidden="true"><use href="#leaf"/></svg>Better coffee begins with a little curiosity.</p>
++    </main>
++    <footer><span>© 2026 The Daily Grind. Thoughtfully sourced. Mindfully brewed.</span><span><a href="#story" data-guide="story">Our philosophy</a><a href="#guide" data-guide="guide">Need a hand? ↗</a></span></footer>
++  </div>
++  <dialog id="info-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><div id="dialog-body"></div><form method="dialog"><button>Got it</button></form></dialog>
++  <script>
++    const sliders = [...document.querySelectorAll('input[type="range"]')];
++    const grindNames = ['Extra fine', 'Fine', 'Medium fine', 'Medium', 'Medium coarse', 'Coarse', 'Extra coarse'];
++    const presets = {
++      pour: { values: [20,94,4], ratio:16, title:'The everyday pour over', subtitle:'Clean, balanced, and beautifully simple.', time:180 },
++      french: { values: [30,96,6], ratio:15, title:'The slow Sunday press', subtitle:'Rich, full-bodied, and worth the wait.', time:240 },
++      aero: { values: [16,85,3], ratio:14, title:'The little daily ritual', subtitle:'Smooth, vibrant, and ready in a moment.', time:90 }
++    };
++    let method = 'pour';
++    function update() {
++      sliders.forEach(slider => {
++        // Synchronize numeric properties for browsers without typed attr() support.
++        slider.style.setProperty('--attr-min', slider.min);
++        slider.style.setProperty('--attr-max', slider.max);
++        slider.style.setProperty('--control-value', slider.value);
++        const output = document.getElementById(slider.id + '-output');
++        if (slider.id === 'grind') {
++          output.textContent = grindNames[Number(slider.value)-1];
++          slider.setAttribute('aria-valuetext', output.textContent);
++        } else {
++          const unit = slider.id === 'dose' ? 'g' : '°C';
++          output.replaceChildren(document.createTextNode(slider.value + ' '));
++          const small = document.createElement('small'); small.textContent = unit; output.append(small);
++          slider.setAttribute('aria-valuetext', slider.value + (slider.id === 'dose' ? ' grams' : ' degrees Celsius'));
++        }
++      });
++      const recipe = presets[method];
++      const dose = Number(sliders[0].value);
++      document.getElementById('water-value').innerHTML = dose * recipe.ratio + ' <small>ml</small>';
++      document.getElementById('ratio-value').textContent = '1:' + recipe.ratio;
++      const seconds = Math.max(30, recipe.time + (dose-recipe.values[0])*3 - (Number(sliders[2].value)-recipe.values[2])*10);
++      document.getElementById('time-value').innerHTML = Math.floor(seconds/60) + ':' + String(seconds%60).padStart(2,'0') + ' <small>min</small>';
++      document.getElementById('recipe-title').textContent = recipe.title;
++      document.getElementById('recipe-subtitle').textContent = recipe.subtitle;
++      document.getElementById('save-status').textContent = 'A good cup is worth remembering.';
++    }
++    function selectPreset(next) {
++      method = next;
++      sliders.forEach((slider,i) => slider.value = presets[method].values[i]);
++      document.querySelectorAll('[data-preset]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.preset === method)));
++      update();
++    }
++    sliders.forEach(slider => slider.addEventListener('input',update));
++    document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click',() => selectPreset(button.dataset.preset)));
++    document.getElementById('reset').addEventListener('click',() => selectPreset(method));
++    document.getElementById('save').addEventListener('click',() => {
++      const savedRecipe = {method,dose:Number(sliders[0].value),temperature:Number(sliders[1].value),grind:Number(sliders[2].value)};
++      try {
++        localStorage.setItem('daily-grind-recipe',JSON.stringify(savedRecipe));
++        document.getElementById('save-status').textContent = 'Recipe saved on this device. Make it again tomorrow.';
++      } catch {
++        document.getElementById('save-status').textContent = 'Saving is unavailable in this browser. Keep these settings handy.';
++      }
++    });
++    const info = {
++      guide: { title:'Find your perfect cup', paragraphs:['Choose a brew method to start with a balanced recipe. Adjust one setting at a time, then taste the difference.','Coffee dose sets your batch size; water scales with it to preserve your brew ratio. Hotter water extracts more flavor. A finer grind slows the flow and increases extraction.','Use Tab to focus a slider, arrow keys for small adjustments, or Home and End to reach its limits. Brew times are a starting point—let your taste guide you.'] },
++      beans: { title:'Good beans. Better mornings.', paragraphs:['Freshly roasted beans are the heart of a good cup. Try a light roast for bright, fruity notes, or a medium roast for a little more sweetness and body.','For the freshest flavor, grind just before brewing and keep your beans in an airtight container away from heat and sunlight.'] },
++      story: { title:'A more thoughtful daily ritual', paragraphs:['The Daily Grind is about slowing down for the little things. Thoughtfully sourced coffee, a simple brewing ritual, and a cup made just the way you like it.','Our Brew Lab makes room for curiosity. Start with a recipe, change a detail, and make your next cup your own.'] }
++    };
++    document.querySelectorAll('[data-guide]').forEach(link => link.addEventListener('click',event => {
++      event.preventDefault();
++      const content = info[link.dataset.guide];
++      document.getElementById('dialog-title').textContent = content.title;
++      document.getElementById('dialog-body').replaceChildren(...content.paragraphs.map(text => { const p = document.createElement('p'); p.textContent = text; return p; }));
++      document.getElementById('info-dialog').showModal();
++    }));
++    update();
++    try {
++      const saved = JSON.parse(localStorage.getItem('daily-grind-recipe'));
++      if (saved && Object.hasOwn(presets,saved.method) && [saved.dose,saved.temperature,saved.grind].every((value,i) => Number.isInteger(value) && value >= Number(sliders[i].min) && value <= Number(sliders[i].max))) {
++        selectPreset(saved.method);
++        [saved.dose,saved.temperature,saved.grind].forEach((value,i) => sliders[i].value = value);
++        update();
++        document.getElementById('save-status').textContent = 'Your saved recipe is ready for another cup.';
++      }
++    } catch { /* Keep the default recipe if storage is unavailable. */ }
++  </script>
+ </body>
+-
+ </html>

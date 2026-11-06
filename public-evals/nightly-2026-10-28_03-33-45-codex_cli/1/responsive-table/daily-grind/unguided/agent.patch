@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+index 66c9173..fac6c31 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,71 @@
+       color: var(--primary);
+     }
+ 
++    .drink-breakdown {
++      margin-top: 32px;
++    }
++
++    .table-help,
++    .table-note {
++      margin: 8px 0;
++      font-size: 0.9rem;
++    }
++
++    .table-scroll {
++      max-width: 100%;
++      overflow-x: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .table-scroll:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .nutrition-table {
++      width: 100%;
++      min-width: 680px;
++      border-spacing: 0;
++      text-align: left;
++      background: white;
++    }
++
++    .nutrition-table caption {
++      padding: 12px 16px;
++      font-weight: bold;
++      text-align: left;
++      background: var(--secondary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 12px 16px;
++      border-bottom: 1px solid var(--secondary);
++      vertical-align: top;
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .nutrition-table tbody th {
++      background: #f3eeeb;
++    }
++
++    .nutrition-table tr > :first-child {
++      position: sticky;
++      left: 0;
++      width: 160px;
++      min-width: 160px;
++      border-right: 1px solid var(--secondary);
++    }
++
++    .nutrition-table tbody tr:last-child > * {
++      border-bottom: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +259,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="drink-breakdown">
++        <h3 id="drink-breakdown-heading">Nutrition &amp; pricing</h3>
++        <p id="drink-table-help" class="table-help">Compare each drink per serving. On small screens, scroll horizontally to see all columns; keyboard users can focus the table area and use the arrow keys.</p>
++        <div class="table-scroll" role="region" aria-labelledby="drink-breakdown-heading" aria-describedby="drink-table-help" tabindex="0">
++          <table class="nutrition-table" aria-describedby="drink-table-note">
++            <caption>Seasonal Favorites — per-serving comparison</caption>
++            <thead>
++              <tr>
++                <th scope="col">Drink</th>
++                <th scope="col">Serving size</th>
++                <th scope="col">Calories (kcal)</th>
++                <th scope="col">Total sugars (g)</th>
++                <th scope="col">Caffeine (mg)</th>
++                <th scope="col">Price (USD)</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <th scope="row">Maple Oat Latte</th>
++                <td>12 fl oz</td>
++                <td>210</td>
++                <td>22</td>
++                <td>150</td>
++                <td>$5.50</td>
++              </tr>
++              <tr>
++                <th scope="row">Dark Roast Espresso</th>
++                <td>2 fl oz (double shot)</td>
++                <td>5</td>
++                <td>0</td>
++                <td>150</td>
++                <td>$3.00</td>
++              </tr>
++              <tr>
++                <th scope="row">Cold Brew</th>
++                <td>12 fl oz (unsweetened)</td>
++                <td>5</td>
++                <td>0</td>
++                <td>200</td>
++                <td>$4.25</td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++        <p id="drink-table-note" class="table-note">Illustrative nutrition estimates and sample prices, pending confirmation by The Daily Grind. Actual values vary with recipe, serving size, and customizations.</p>
++      </div>
+     </section>
+   </main>
+ 

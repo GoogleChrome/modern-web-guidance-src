@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,127 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section (CSS scroll-driven animation, no JS) */
++    .parallax {
++      --parallax-ink: #1b0f0b;
++      position: relative;
++      height: clamp(420px, 70vh, 720px);
++      overflow: clip;
++      background: var(--parallax-ink);
++      color: white;
++      /* Names the timeline driven by this element's progress through the viewport */
++      view-timeline: --parallax block;
++    }
++
++    /* Every layer is oversized by its depth so counter-movement never exposes an edge */
++    .parallax__layer {
++      --depth: 0px;
++      position: absolute;
++      inset: calc(-1 * var(--depth)) 0;
++      display: grid;
++      place-items: center;
++    }
++
++    .parallax__layer--back {
++      --depth: 140px;
++    }
++
++    .parallax__layer--back img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: brightness(0.55) saturate(1.1);
++    }
++
++    .parallax__layer--mid {
++      --depth: 70px;
++      pointer-events: none;
++      /* Soft bokeh highlights drawn with gradients: no extra image requests */
++      background:
++        radial-gradient(circle at 15% 30%, rgba(255, 171, 64, 0.35) 0, transparent 9%),
++        radial-gradient(circle at 78% 72%, rgba(255, 171, 64, 0.25) 0, transparent 12%),
++        radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.18) 0, transparent 6%),
++        radial-gradient(circle at 30% 80%, rgba(255, 255, 255, 0.14) 0, transparent 7%);
++    }
++
++    .parallax__cup {
++      position: absolute;
++      right: 8%;
++      bottom: 18%;
++      width: clamp(140px, 22vw, 260px);
++      aspect-ratio: 1;
++      border-radius: 50%;
++      object-fit: cover;
++      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.08);
++    }
++
++    .parallax__layer--front {
++      /* Negative depth: nearest layer moves slightly faster than the page */
++      --depth: -40px;
++      padding: 0 20px;
++      text-align: center;
++    }
++
++    .parallax__content {
++      max-width: 34rem;
++      padding: 2rem 2.5rem;
++      background: rgba(27, 15, 11, 0.55);
++      backdrop-filter: blur(6px);
++      border: 1px solid rgba(255, 255, 255, 0.12);
++      border-radius: 12px;
++    }
++
++    .parallax__content h2 {
++      font-size: clamp(1.75rem, 4vw, 2.5rem);
++      line-height: 1.15;
++      margin-bottom: 0.75rem;
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .parallax__content .btn:hover {
++      background: #ffbd5c;
++    }
++
++    /* Each layer slides from -depth to +depth as the section crosses the viewport.
++       Larger depth = slower apparent movement = further away. */
++    @keyframes parallax-drift {
++      from {
++        translate: 0 calc(-1 * var(--depth));
++      }
++
++      to {
++        translate: 0 var(--depth);
++      }
++    }
++
++    /* Progressive enhancement: browsers without full scroll-driven animation
++       support (e.g. Firefox) get the same static, layered composition. */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .parallax__layer {
++        animation: parallax-drift linear both;
++        /* Must come after the shorthand so it is not reset */
++        animation-timeline: --parallax;
++
++        @media (prefers-reduced-motion: reduce) {
++          animation: none;
++        }
++      }
++    }
++
++    @media (max-width: 640px) {
++      .parallax__cup {
++        right: 4%;
++        bottom: 6%;
++        width: 110px;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +292,27 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
++        alt="" width="1600" height="1067" loading="lazy" decoding="async">
++    </div>
++    <div class="parallax__layer parallax__layer--mid" aria-hidden="true">
++      <img class="parallax__cup"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=600&amp;h=600&amp;q=80"
++        alt="" width="600" height="600" loading="lazy" decoding="async">
++    </div>
++    <div class="parallax__layer parallax__layer--front">
++      <div class="parallax__content">
++        <h2 id="parallax-heading">From Bean to Brew</h2>
++        <p>Every batch is roasted in small lots just blocks from the cafe, then ground to order so your cup is never more than a few days from the roaster.</p>
++        <a href="/about" class="btn">Our Roasting Story</a>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

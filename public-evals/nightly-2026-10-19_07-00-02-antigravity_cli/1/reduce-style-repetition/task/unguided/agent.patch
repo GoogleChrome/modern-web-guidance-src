@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,55 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Custom Functions for Gradients and Responsive Columns */
++    @function --linear-gradient(--angle: 135deg, --start: #fbf7f4, --end: #e8ded7) {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --cool-gradient(--angle: 135deg, --start: #fbf7f4, --end: #e8ded7) {
++      result: --linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --gradient(--angle: 135deg, --start: #fbf7f4, --end: #e8ded7) {
++      result: --linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --columns(--count: 1) {
++      result: repeat(var(--count), 1fr);
++    }
++
++    @function --grid-columns(--count: 1) {
++      result: repeat(var(--count), 1fr);
++    }
++
++    @function --responsive-columns(--mobile: 1, --desktop: 2) {
++      result: --columns(var(--mobile));
++      @media (min-width: 700px) {
++        result: --columns(var(--desktop));
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background: linear-gradient(135deg, #fdfbf9 0%, #ebdcd0 100%);
++      background: --cool-gradient(135deg, #fdfbf9, #ebdcd0);
++      min-height: 100vh;
+     }
+ 
++    h2 {
++      background: linear-gradient(135deg, #efebe9 0%, #d7ccc8 100%);
++      background: --cool-gradient(135deg, #efebe9, #d7ccc8);
++      padding: 12px 20px;
++      border-radius: 8px;
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,15 +139,28 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .grid,
++    main .grid,
++    main section .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(1, 1fr);
++      grid-template-columns: --columns(1);
++      grid-template-columns: --responsive-columns(1, 2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @media (min-width: 700px) {
++      .grid,
++      main .grid,
++      main section .grid {
++        grid-template-columns: repeat(2, 1fr);
++        grid-template-columns: --columns(2);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

@@ -1,0 +1,368 @@
+diff --git a/index.html b/index.html
+index 66c9173..6d490a2 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,16 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -116,10 +122,18 @@
+     }
+ 
+     .card h3 {
++      display: inline-block;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .section-title {
++      display: block;
++      width: fit-content;
++      margin: 0 auto;
++      text-align: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -151,7 +165,241 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.3s;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++    }
++
++    .footer-links a:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    /* ------------------------------------------------------------------
++       Ink lines: decorative text lines (underline / overline / strike)
++       ------------------------------------------------------------------
++       Each `.ink` element draws its line with a ::after pseudo-element that
++       sits *behind* the glyphs (isolation + z-index: -1). The line's colour
++       is a plain background and its shape comes from a mask, so solid rules,
++       dotted runs, waves and hand-drawn brush strokes all share one engine.
++
++       Tunables (set per element or per group):
++         --ink-color       line colour
++         --ink-thickness   line height (for waves/brushes: the stroke band)
++         --ink-offset      vertical offset. underline: distance below the
++                           baseline; overline: distance above the text box;
++                           strike: shift from the vertical centre (+ = down)
++         --ink-descent     approx. font descent, used to find the baseline
++         --ink-inset-start / --ink-inset-end
++                           horizontal end insets (negative = overshoot)
++         --ink-skip        page/background colour painted as a tight text
++                           shadow so the line skips cleanly around
++                           descenders (g, p, y, j). `transparent` disables.
++         --ink-mask / --ink-mask-size / --ink-mask-repeat
++                           custom shape of the line
++         --ink-duration / --ink-delay / --ink-ease
++                           reveal timing
++         --ink-origin      reveal direction for scale wipes (left|center|right)
++       ------------------------------------------------------------------ */
++    .ink {
++      --ink-color: currentColor;
++      --ink-thickness: 2px;
++      --ink-offset: 0.1em;
++      --ink-descent: 0.22em;
++      --ink-inset-start: 0px;
++      --ink-inset-end: 0px;
++      --ink-skip: var(--light);
++      --ink-mask: none;
++      --ink-mask-size: 100% 100%;
++      --ink-mask-repeat: no-repeat;
++      --ink-duration: 0.5s;
++      --ink-delay: 0s;
++      --ink-ease: cubic-bezier(0.65, 0, 0.35, 1);
++      --ink-origin: left;
++
++      position: relative;
++      isolation: isolate;
++      text-decoration: none;
++      /* Ink skipping: tight horizontal shadows in the background colour lift
++         the line away from any glyph it crosses. */
++      text-shadow:
++        0.035em 0 var(--ink-skip), -0.035em 0 var(--ink-skip),
++        0.07em 0 var(--ink-skip), -0.07em 0 var(--ink-skip),
++        0.105em 0 var(--ink-skip), -0.105em 0 var(--ink-skip);
++    }
++
++    .ink::after {
++      content: "";
++      position: absolute;
++      z-index: -1;
++      left: var(--ink-inset-start);
++      right: var(--ink-inset-end);
++      height: var(--ink-thickness);
++      background-color: var(--ink-color);
++      border-radius: calc(var(--ink-thickness) / 2);
++      pointer-events: none;
++      -webkit-mask-image: var(--ink-mask);
++      mask-image: var(--ink-mask);
++      -webkit-mask-size: var(--ink-mask-size);
++      mask-size: var(--ink-mask-size);
++      -webkit-mask-repeat: var(--ink-mask-repeat);
++      mask-repeat: var(--ink-mask-repeat);
++      -webkit-mask-position: left center;
++      mask-position: left center;
++      /* Hidden until revealed: clipped away from the far end. */
++      clip-path: inset(0 100% 0 0);
++      transition:
++        clip-path var(--ink-duration) var(--ink-ease) var(--ink-delay),
++        transform var(--ink-duration) var(--ink-ease) var(--ink-delay),
++        background-color 0.3s ease,
++        height 0.3s ease;
++    }
++
++    /* Line placement */
++    .ink--underline::after {
++      bottom: calc(var(--ink-descent) - var(--ink-offset) - var(--ink-thickness));
++    }
++
++    .ink--overline::after {
++      top: calc(-1 * var(--ink-offset) - var(--ink-thickness));
+     }
++
++    .ink--strike::after {
++      top: calc(50% + var(--ink-offset));
++      translate: 0 -50%;
++    }
++
++    /* Reveal directions for the clip wipe */
++    .ink--from-center::after {
++      clip-path: inset(0 50% 0 50%);
++    }
++
++    .ink--from-end::after {
++      clip-path: inset(0 0 0 100%);
++    }
++
++    /* Revealed state: by script (in view), on hover, or keyboard focus */
++    .ink.is-inked::after,
++    .ink--hover:hover::after,
++    .ink--hover:focus-visible::after {
++      clip-path: inset(0 0 0 0);
++    }
++
++    /* Scale wipe: draws in from one side and retreats out the other side.
++       Used for solid lines, where stretching the shape is invisible. */
++    .ink--wipe::after {
++      clip-path: none;
++      transform: scaleX(0);
++      transform-origin: right center;
++    }
++
++    .ink--wipe.is-inked::after,
++    .ink--wipe.ink--hover:hover::after,
++    .ink--wipe.ink--hover:focus-visible::after {
++      transform: scaleX(1);
++      transform-origin: var(--ink-origin) center;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .ink::after {
++        transition: none;
++      }
++    }
++
++    /* --- Navigation links: solid accent underline, wipes in from the left
++           on hover and retreats to the right on leave. ---------------- */
++    nav a.ink {
++      --ink-color: var(--accent);
++      --ink-thickness: 2px;
++      --ink-offset: 0.08em;
++      --ink-inset-start: 0.1em;
++      --ink-inset-end: 0.1em;
++      --ink-skip: var(--primary);
++      --ink-duration: 0.4s;
++      --ink-origin: left;
++    }
++
++    /* Logout: a strike-through that crosses the word out on hover. The line
++       is meant to pass *through* the letters, so ink skipping is off. */
++    nav a.logout-link.ink {
++      --ink-thickness: 1.5px;
++      --ink-offset: 0.06em;
++      --ink-inset-start: 10px;
++      --ink-inset-end: 10px;
++      --ink-skip: transparent;
++      --ink-duration: 0.3s;
++    }
++
++    /* --- Section heading: hand-drawn brush stroke that overshoots the text
++           on both ends and paints in from the centre when scrolled into view. */
++    .section-title.ink {
++      --ink-color: var(--accent);
++      --ink-thickness: 0.38em;
++      --ink-offset: -0.02em;
++      --ink-inset-start: -0.35em;
++      --ink-inset-end: -0.35em;
++      --ink-skip: var(--light);
++      --ink-duration: 0.9s;
++      --ink-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 16' preserveAspectRatio='none'><path d='M3 10 C 40 3, 85 14, 128 8 S 205 4, 237 9' fill='none' stroke='black' stroke-width='5.5' stroke-linecap='round'/><path d='M14 12.5 C 70 9, 140 13.5, 226 11.5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' opacity='.85'/></svg>");
++      --ink-mask-size: 100% 100%;
++    }
++
++    .section-title.ink::after {
++      border-radius: 0;
++    }
++
++    /* --- Coffee card titles: a rising "steam" wave tucked under the title
++           with generous end insets, revealed with a staggered left-to-right
++           draw when the cards come into view. ------------------------- */
++    .card h3.ink {
++      --ink-color: var(--accent);
++      --ink-thickness: 0.34em;
++      --ink-offset: 0.04em;
++      --ink-inset-start: 14%;
++      --ink-inset-end: 14%;
++      --ink-skip: white;
++      --ink-duration: 0.8s;
++      --ink-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 8'><path d='M0 4 Q 4 0.5 8 4 T 16 4' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round'/></svg>");
++      --ink-mask-size: 0.9em 100%;
++      --ink-mask-repeat: repeat-x;
++    }
++
++    .card h3.ink::after {
++      border-radius: 0;
++    }
++
++    .card:nth-child(1) h3.ink { --ink-delay: 0.05s; }
++    .card:nth-child(2) h3.ink { --ink-delay: 0.2s; }
++    .card:nth-child(3) h3.ink { --ink-delay: 0.35s; }
++
++    /* --- Footer links: dotted underline that fills in from the right end,
++           staggered; firms up into a solid rule on hover. --------------- */
++    .footer-links a.ink {
++      --ink-color: var(--primary);
++      --ink-thickness: 0.17em;
++      --ink-offset: 0.12em;
++      --ink-inset-start: 0.05em;
++      --ink-inset-end: 0.05em;
++      --ink-skip: var(--secondary);
++      --ink-duration: 0.6s;
++      --ink-mask: radial-gradient(circle at center, black 46%, transparent 52%);
++      --ink-mask-size: 0.42em 100%;
++      --ink-mask-repeat: repeat-x;
++    }
++
++    .footer-links a.ink:hover,
++    .footer-links a.ink:focus-visible {
++      --ink-mask: none;
++      --ink-thickness: 0.12em;
++    }
++
++    .footer-links a.ink:nth-of-type(1) { --ink-delay: 0.05s; }
++    .footer-links a.ink:nth-of-type(2) { --ink-delay: 0.15s; }
++    .footer-links a.ink:nth-of-type(3) { --ink-delay: 0.25s; }
++    .footer-links a.ink:nth-of-type(4) { --ink-delay: 0.35s; }
+   </style>
+ </head>
+ 
+@@ -160,11 +408,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="ink ink--underline ink--wipe ink--hover">Menu</a></li>
++      <li><a href="/locations" class="ink ink--underline ink--wipe ink--hover">Locations</a></li>
++      <li><a href="/rewards" class="ink ink--underline ink--wipe ink--hover">Rewards</a></li>
++      <li><a href="/account" class="ink ink--underline ink--wipe ink--hover">My Account</a></li>
++      <li><a href="/logout" class="logout-link ink ink--strike ink--wipe ink--hover">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,20 +424,20 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title ink ink--underline ink--from-center" data-ink-reveal>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="ink ink--underline" data-ink-reveal>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="ink ink--underline" data-ink-reveal>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="ink ink--underline" data-ink-reveal>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -199,14 +447,38 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" class="ink ink--underline ink--from-end" data-ink-reveal>Our Story</a> |
++      <a href="/careers" class="ink ink--underline ink--from-end" data-ink-reveal>Join the Team</a> |
++      <a href="/contact" class="ink ink--underline ink--from-end" data-ink-reveal>Contact Us</a> |
++      <a href="/privacy-policy" class="ink ink--underline ink--from-end" data-ink-reveal>Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Reveal decorative ink lines once their text scrolls into view.
++    (function () {
++      var targets = Array.prototype.slice.call(document.querySelectorAll('[data-ink-reveal]'));
++      var reveal = function (el) { el.classList.add('is-inked'); };
++
++      if (!('IntersectionObserver' in window)) {
++        targets.forEach(reveal);
++        return;
++      }
++
++      var observer = new IntersectionObserver(function (entries) {
++        entries.forEach(function (entry) {
++          if (entry.isIntersecting) {
++            reveal(entry.target);
++            observer.unobserve(entry.target);
++          }
++        });
++      }, { threshold: 0.5, rootMargin: '0px 0px -8% 0px' });
++
++      targets.forEach(function (el) { observer.observe(el); });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

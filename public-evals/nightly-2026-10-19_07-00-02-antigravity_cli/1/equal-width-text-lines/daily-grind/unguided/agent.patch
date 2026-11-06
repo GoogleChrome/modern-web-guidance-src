@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..4b64130 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 70vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,14 +85,52 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
++    }
++
++    .poster-lockup {
++      container-type: inline-size;
++      width: 100%;
++      max-width: 580px;
++      margin: 0 auto 1.5rem;
++      text-transform: uppercase;
++      font-family: 'Impact', 'Arial Black', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      font-weight: 900;
++      line-height: 0.88;
++      letter-spacing: normal;
++      word-spacing: normal;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .poster-line {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      width: 100%;
++      overflow: visible;
++      text-align: center;
++    }
++
++    .poster-text {
++      display: inline-block;
++      white-space: nowrap;
++      letter-spacing: normal;
++      word-spacing: normal;
++      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
++      transform-origin: center;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    .line-2 .poster-text {
++      color: var(--accent);
+     }
+ 
++    /* CSS container query fallback before JavaScript executes */
++    .line-1 .poster-text { font-size: clamp(2rem, 30cqi, 12rem); }
++    .line-2 .poster-text { font-size: clamp(1.3rem, 19.8cqi, 8rem); }
++    .line-3 .poster-text { font-size: clamp(1.5rem, 22.8cqi, 9.5rem); }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,7 +207,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="poster-lockup" aria-label="Wake Up Your Senses">
++      <span class="poster-line line-1"><span class="poster-text">Wake</span></span>
++      <span class="poster-line line-2"><span class="poster-text">Up Your</span></span>
++      <span class="poster-line line-3"><span class="poster-text">Senses</span></span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +249,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function fitLockup() {
++      const lockup = document.querySelector('.poster-lockup');
++      if (!lockup) return;
++      const targetWidth = lockup.clientWidth;
++      if (!targetWidth) return;
++
++      const texts = lockup.querySelectorAll('.poster-text');
++      texts.forEach(el => {
++        el.style.fontSize = '100px';
++        const initialWidth = el.getBoundingClientRect().width;
++        if (!initialWidth) return;
++
++        let fontSize = 100 * (targetWidth / initialWidth);
++        el.style.fontSize = fontSize + 'px';
++
++        const measured = el.getBoundingClientRect().width;
++        if (Math.abs(measured - targetWidth) > 0.2) {
++          fontSize = fontSize * (targetWidth / measured);
++          el.style.fontSize = fontSize + 'px';
++        }
++      });
++    }
++
++    fitLockup();
++
++    if (document.fonts && document.fonts.ready) {
++      document.fonts.ready.then(fitLockup);
++    }
++
++    if ('ResizeObserver' in window) {
++      const observer = new ResizeObserver(() => fitLockup());
++      const lockup = document.querySelector('.poster-lockup');
++      if (lockup) observer.observe(lockup);
++    } else {
++      window.addEventListener('resize', fitLockup);
++    }
++
++    window.addEventListener('load', fitLockup);
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+index 66c9173..413cae2 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
++      padding-block: 3rem;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -89,8 +90,18 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      width: min(90vw, 560px);
+       margin-bottom: 1rem;
++      line-height: 0.9;
++      text-transform: uppercase;
++      font-weight: 900;
++    }
++
++    /* Each line is sized by JS so its glyphs fill the full heading width */
++    .hero h1 .line {
++      display: block;
++      white-space: nowrap;
++      font-size: 3rem; /* fallback before fitting */
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +180,7 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1><span class="line">Wake Up</span><span class="line">Your</span><span class="line">Senses</span></h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +218,29 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Size each heading line's font so its text width equals the heading width.
++    function fitHeroLines() {
++      document.querySelectorAll('.hero h1').forEach(h1 => {
++        const target = h1.clientWidth;
++        h1.querySelectorAll('.line').forEach(line => {
++          line.style.fontSize = '100px';
++          const probe = document.createElement('span');
++          probe.style.display = 'inline-block';
++          probe.append(...line.childNodes);
++          line.append(probe);
++          const w = probe.getBoundingClientRect().width;
++          line.append(...probe.childNodes);
++          probe.remove();
++          line.style.fontSize = (100 * target / w) + 'px';
++        });
++      });
++    }
++    fitHeroLines();
++    window.addEventListener('resize', fitHeroLines);
++    if (document.fonts) document.fonts.ready.then(fitHeroLines);
++  </script>
++
+ </body>
+ 
+ </html>

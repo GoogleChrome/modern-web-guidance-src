@@ -1,0 +1,88 @@
+diff --git a/INP.md b/INP.md
+new file mode 100644
+--- a/INP.md
++++ b/INP.md
+@@ -0,0 +1,83 @@
++# Homepage INP monitoring
++
++The homepage loads `scripts/inp.js` as a deferred ES module. It uses Google's
++self-hosted `web-vitals` attribution build, version **6.2.3**, with its Apache 2.0
++license in `scripts/vendor/web-vitals.LICENSE`. No install or build is required.
++The vendored file is the unmodified `dist/web-vitals.attribution.js` from
++https://registry.npmjs.org/web-vitals/-/web-vitals-6.2.3.tgz.
++
++## Connect field collection
++
++Set the existing meta tag in `index.html` to a real, same-origin analytics POST
++endpoint, for example:
++
++```html
++<meta name="inp-report-endpoint" content="/analytics/web-vitals">
++```
++
++That route must be provided by your hosting platform or analytics service; this
++static repository has no backend. An empty value (the default) sends no network
++requests. Monitoring still runs and emits `daily-grind:inp` on `window`, with the
++plain report in `event.detail`, for integration with an existing analytics agent.
++Configure one collection path to avoid duplicate ingestion. The collector should
++accept JSON POSTs and return a success response such as 204. If a consent system
++is required by your deployment, gate the module loading through that system.
++
++Reports use `sendBeacon`, with `fetch({ keepalive: true })` as fallback when beacon
++is absent, throws or refuses the payload. Delivery is best effort, with no retry
++queue. Script/frame details and strings are bounded to keep reports small.
++No external runtime CDN requests or persistent client identifiers are introduced.
++
++## Report contents and analysis
++
++Every report includes the INP value in milliseconds, rating, delta, metric ID,
++navigation type, report timestamp, and page pathname. Interaction details include
++a fixed `data-inp-target` label, pointer/keyboard type, time, next-paint time and
++load state. Labels cover every existing homepage link, including nested targets.
++Unknown controls use `unlabeled`; the monitor does not collect text or input values.
++Page queries/fragments and script URL credentials/queries/fragments are excluded.
++
++`phases` breaks INP into input delay, event processing duration and presentation
++delay. For available Long Animation Frame (LoAF) data, reports also include:
++
++- `longestScript`: URL, function, source character position, invoker, duration,
++  forced style/layout duration, the dominant INP subpart, and intersecting duration.
++- `scripts`: the ten scripts with the largest overlap with this INP interval,
++  with separate overlap durations for each phase. Scripts outside the interval
++  are excluded. Overlaps describe timing correlation, not proof of causation.
++- `rendering`: the library's script, style/layout, paint and unattributed totals
++  for the INP interval. Paint duration represents off-main-thread presentation
++  delay; the API cannot separately identify GPU, raster and compositor work.
++- `frames`: up to five related frames with render/style-layout start times,
++  duration and blocking duration. These raw frame durations can extend outside
++  INP; do not sum them with INP phases or script durations. Forced layout is
++  already included in the rendering style/layout total.
++- `omittedScripts` / `omittedFrames`: detail counts omitted from the payload.
++
++The library reports on visibility hidden (including navigation) and handles
++back/forward cache restores. It measures the page's INP candidate, not every slow
++click. Keep the latest report by `id` and `reportedAt` before calculating visit
++percentiles; repeated reports for a visit are updates, not separate samples.
++Back/forward cache restores get a new metric ID. Aggregate the visit-level p75,
++and group slow visits (`value > 200`) by target, phase and script URL/function.
++Values over 500 ms are poor; 200–500 ms need improvement.
++
++Browsers lacking Event Timing produce no report. Without LoAF support, INP and
++its three phases still work, but script/rendering attribution may be unavailable.
++`longAnimationFramesSupported` distinguishes unsupported browsers from supported
++browsers with no captured long frame. Missing rendering totals remain absent,
++not zero. LoAF captures frames over 50 ms and script entries over 5 ms; cross-origin
++scripts may have restricted details. Visits without interactions do not produce
++INP samples and must not be counted as zero.
++
++## Validation
++
++Run `node --test` (or `npm test`). Tests use synthetic performance entries and
++mock transports; they do not launch a browser or server. They cover phase
++attribution, URL sanitization, missing attribution, payload bounds, transport
++fallback, endpoint restrictions and observation setup. Real field delivery still
++requires configuring and deploying a working collector.
++
++References: [web-vitals documentation](https://github.com/GoogleChrome/web-vitals),
++[INP attribution fields](https://github.com/GoogleChrome/web-vitals/blob/v6.2.3/src/types/inp.ts),
++and [identifying INP causes](https://developer.chrome.com/docs/modern-web-guidance/guides/performance/identify-inp-causes).

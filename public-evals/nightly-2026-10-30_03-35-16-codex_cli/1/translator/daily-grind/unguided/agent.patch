@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+index 66c9173..0577771 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,56 @@
+       margin-top: 20px;
+     }
+ 
++    .language-toolbar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px 24px;
++      padding: 18px 20px;
++      margin-bottom: 32px;
++      background: #efe8e3;
++      border-radius: 8px;
++    }
++
++    .language-toolbar label {
++      font-weight: 600;
++      margin-right: 8px;
++    }
++
++    .language-toolbar[hidden] {
++      display: none;
++    }
++
++    .language-toolbar select {
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      padding: 8px 12px;
++      max-width: 100%;
++    }
++
++    .language-toolbar select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .language-note {
++      font-size: 0.85rem;
++    }
++
++    .story {
++      max-width: 720px;
++      margin: 48px auto 0;
++      text-align: center;
++    }
++
++    .story h2 {
++      margin-bottom: 12px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,26 +225,43 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="language-toolbar" id="language-toolbar" hidden>
++      <div>
++        <label for="language-select">Read in</label>
++        <select id="language-select" aria-describedby="language-note">
++          <option value="en" lang="en">English</option>
++          <option value="es" lang="es">Español</option>
++          <option value="fr" lang="fr">Français</option>
++          <option value="de" lang="de">Deutsch</option>
++        </select>
++      </div>
++      <p class="language-note" id="language-note" role="status" aria-live="polite" aria-atomic="true">Menu and story in English. Translated on your device.</p>
++    </div>
++    <noscript><p>Enable JavaScript to translate the menu and story on your device.</p></noscript>
++    <section data-translated-section lang="en" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" data-translation="menuHeading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 lang="en">Maple Oat Latte</h3>
++          <p data-translation="maple">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-translation="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 lang="en">Dark Roast Espresso</h3>
++          <p data-translation="espresso">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-translation="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 lang="en">Cold Brew</h3>
++          <p data-translation="coldBrew">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-translation="details">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story" data-translated-section lang="en" aria-labelledby="story-heading">
++      <h2 id="story-heading" data-translation="storyHeading">Our Story</h2>
++      <p data-translation="story">At The Daily Grind, our story starts with ethically sourced coffee and local roasting. From the first espresso of the morning to a slow afternoon cold brew, we're here to make your daily coffee a moment to savor.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +274,83 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Bundled translations keep all translation work on the visitor's device.
++      const translations = {
++        en: {
++          menuHeading: 'Seasonal Favorites',
++          maple: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          espresso: 'Bold, smokey, and perfect for a morning boost.',
++          coldBrew: 'Steeped for 18 hours for maximum smoothness.',
++          details: 'View Details',
++          storyHeading: 'Our Story',
++          story: "At The Daily Grind, our story starts with ethically sourced coffee and local roasting. From the first espresso of the morning to a slow afternoon cold brew, we're here to make your daily coffee a moment to savor."
++        },
++        es: {
++          menuHeading: 'Favoritos de temporada',
++          maple: 'Cremosa bebida de avena con un toque de sirope de arce de Vermont.',
++          espresso: 'Intenso, con notas ahumadas e ideal para empezar la mañana con energía.',
++          coldBrew: 'Infusionado en frío durante 18 horas para lograr la máxima suavidad.',
++          details: 'Ver detalles',
++          storyHeading: 'Nuestra historia',
++          story: 'En The Daily Grind, nuestra historia comienza con café de origen ético y tueste local. Desde el primer espresso de la mañana hasta un tranquilo café de extracción en frío por la tarde, queremos que tu café de cada día sea un momento para saborear.'
++        },
++        fr: {
++          menuHeading: 'Les favoris de saison',
++          maple: "Une boisson à l’avoine onctueuse avec une touche de sirop d’érable du Vermont.",
++          espresso: 'Intense, aux notes fumées, idéal pour bien démarrer la matinée.',
++          coldBrew: 'Infusé à froid pendant 18 heures pour une douceur maximale.',
++          details: 'Voir les détails',
++          storyHeading: 'Notre histoire',
++          story: 'Chez The Daily Grind, notre histoire commence par un café issu de sources éthiques et torréfié localement. Du premier espresso du matin au café infusé à froid que l’on déguste tranquillement l’après-midi, nous voulons faire de votre café quotidien un moment à savourer.'
++        },
++        de: {
++          menuHeading: 'Saisonale Favoriten',
++          maple: 'Cremiger Haferdrink mit einem Hauch Ahornsirup aus Vermont.',
++          espresso: 'Kräftig, rauchig und perfekt für einen schwungvollen Start in den Morgen.',
++          coldBrew: 'Für einen besonders milden Geschmack 18 Stunden kalt gezogen.',
++          details: 'Details ansehen',
++          storyHeading: 'Unsere Geschichte',
++          story: 'Bei The Daily Grind beginnt unsere Geschichte mit Kaffee aus ethischem Anbau und lokaler Röstung. Vom ersten Espresso am Morgen bis zum entspannten Cold Brew am Nachmittag möchten wir Ihren täglichen Kaffee zu einem Genussmoment machen.'
++        }
++      };
++
++      const selector = document.getElementById('language-select');
++      const note = document.getElementById('language-note');
++      const storageKey = 'daily-grind-language';
++
++      function applyLanguage(language) {
++        const selected = Object.hasOwn(translations, language) ? language : 'en';
++        document.querySelectorAll('[data-translation]').forEach(element => {
++          element.textContent = translations[selected][element.dataset.translation];
++        });
++        document.querySelectorAll('[data-translated-section]').forEach(section => {
++          section.lang = selected;
++        });
++        selector.value = selected;
++        note.textContent = `Menu and story in ${selector.selectedOptions[0].textContent}. Translated on your device.`;
++      }
++
++      let savedLanguage = 'en';
++      try {
++        savedLanguage = localStorage.getItem(storageKey) || 'en';
++      } catch {
++        // Translation also works when browser storage is unavailable.
++      }
++      applyLanguage(savedLanguage);
++      document.getElementById('language-toolbar').hidden = false;
++
++      selector.addEventListener('change', () => {
++        applyLanguage(selector.value);
++        try {
++          localStorage.setItem(storageKey, selector.value);
++        } catch {
++          // Keep the selection for this visit if preferences cannot be saved.
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

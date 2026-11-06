@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,117 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-selector-wrapper {
++      margin-top: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .roast-selector-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--accent);
++    }
++
++    /* Customizable Native Select + Custom Dropdown Fallback */
++    .roast-select-container {
++      position: relative;
++      width: 220px;
++      text-align: left;
++      font-family: inherit;
++    }
++
++    /* Native customizable select (appearance: base-select) */
++    select.roast-select {
++      appearance: base-select;
++      width: 100%;
++      background-color: var(--primary);
++      color: var(--accent);
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      padding: 10px 14px;
++      font-size: 1rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      transition: background-color 0.2s, box-shadow 0.2s;
++    }
++
++    select.roast-select:hover,
++    select.roast-select:focus {
++      outline: none;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    select.roast-select::picker-icon {
++      color: var(--accent);
++      transition: transform 0.2s ease;
++    }
++
++    select.roast-select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    select.roast-select::picker(select) {
++      appearance: base-select;
++      background-color: var(--primary);
++      color: var(--accent);
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      margin-top: 6px;
++      padding: 4px 0;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
++    }
++
++    select.roast-select option {
++      background-color: var(--primary);
++      color: var(--accent);
++      padding: 10px 14px;
++      font-weight: 500;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    select.roast-select option:hover,
++    select.roast-select option:focus {
++      background-color: #3e2723;
++      color: var(--accent);
++    }
++
++    select.roast-select option:checked {
++      background-color: var(--primary);
++      color: var(--accent);
++      font-weight: 700;
++    }
++
++    select.roast-select option::checkmark {
++      color: var(--accent);
++      font-weight: bold;
++    }
++
++    /* Fallback styling for browsers without appearance: base-select */
++    @supports not (appearance: base-select) {
++      select.roast-select {
++        appearance: none;
++        -webkit-appearance: none;
++        padding-right: 38px;
++        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffab40' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
++        background-repeat: no-repeat;
++        background-position: right 12px center;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +279,18 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector-wrapper">
++      <label for="roast-select" class="roast-selector-label">Select Your Roast</label>
++      <div class="roast-select-container">
++        <select id="roast-select" name="roast" class="roast-select" aria-label="Select coffee roast">
++          <option value="light">Light Roast</option>
++          <option value="medium" selected>Medium Roast</option>
++          <option value="dark">Dark Roast</option>
++        </select>
++      </div>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

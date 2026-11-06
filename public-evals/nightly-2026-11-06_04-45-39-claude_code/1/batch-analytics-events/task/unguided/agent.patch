@@ -1,0 +1,171 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,166 @@
++/**
++ * Daily Grind client-side analytics.
++ *
++ * Records page views and click interactions, then coalesces them into a
++ * single deferred background request:
++ *   - Events are queued in memory.
++ *   - Each new event resets a debounce timer (DEBOUNCE_MS), so a burst of
++ *     rapid clicks results in one request once things go quiet.
++ *   - A MAX_WAIT_MS ceiling guarantees continuous activity still flushes
++ *     periodically, and MAX_BATCH_SIZE forces a flush for very large bursts.
++ *   - The actual send is scheduled during idle time (requestIdleCallback)
++ *     so it never competes with user interaction.
++ *   - When the page is hidden or unloaded (e.g. the user clicked a link and
++ *     is navigating away) the queue is flushed immediately via
++ *     navigator.sendBeacon, which survives page teardown.
++ */
++(function () {
++  'use strict';
++
++  var ENDPOINT = '/api/analytics';
++  var DEBOUNCE_MS = 2000;
++  var MAX_WAIT_MS = 10000;
++  var MAX_BATCH_SIZE = 25;
++  var MAX_QUEUE_SIZE = 200; // hard cap so a failing endpoint can't grow memory unbounded
++
++  // Respect Do Not Track / Global Privacy Control.
++  if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) {
++    return;
++  }
++
++  var queue = [];
++  var debounceTimer = null;
++  var maxWaitTimer = null;
++  var idleHandle = null;
++
++  var sessionId = (function () {
++    var key = 'dg_analytics_sid';
++    try {
++      var existing = sessionStorage.getItem(key);
++      if (existing) return existing;
++      var id = (window.crypto && crypto.randomUUID)
++        ? crypto.randomUUID()
++        : Date.now().toString(36) + Math.random().toString(36).slice(2);
++      sessionStorage.setItem(key, id);
++      return id;
++    } catch (e) {
++      return null;
++    }
++  })();
++
++  // Only path is recorded: query strings and fragments may carry tokens or PII.
++  function safePath(url) {
++    try {
++      var u = new URL(url, location.href);
++      return u.origin === location.origin ? u.pathname : u.origin + u.pathname;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  function track(type, data) {
++    if (queue.length >= MAX_QUEUE_SIZE) queue.shift();
++    queue.push({ type: type, ts: Date.now(), path: location.pathname, data: data || {} });
++
++    if (queue.length >= MAX_BATCH_SIZE) {
++      scheduleSend();
++      return;
++    }
++
++    clearTimeout(debounceTimer);
++    debounceTimer = setTimeout(scheduleSend, DEBOUNCE_MS);
++    if (!maxWaitTimer) maxWaitTimer = setTimeout(scheduleSend, MAX_WAIT_MS);
++  }
++
++  function clearTimers() {
++    clearTimeout(debounceTimer);
++    clearTimeout(maxWaitTimer);
++    debounceTimer = maxWaitTimer = null;
++  }
++
++  // Defer the network request to browser idle time.
++  function scheduleSend() {
++    clearTimers();
++    if (idleHandle !== null) return;
++    var run = function () { idleHandle = null; flush(false); };
++    idleHandle = 'requestIdleCallback' in window
++      ? requestIdleCallback(run, { timeout: 2000 })
++      : setTimeout(run, 0);
++  }
++
++  function cancelIdle() {
++    if (idleHandle === null) return;
++    if ('cancelIdleCallback' in window) cancelIdleCallback(idleHandle);
++    clearTimeout(idleHandle);
++    idleHandle = null;
++  }
++
++  function flush(isUnloading) {
++    if (!queue.length) return;
++    clearTimers();
++    if (isUnloading) cancelIdle();
++
++    var batch = queue.splice(0, queue.length);
++    var body = JSON.stringify({ sessionId: sessionId, sentAt: Date.now(), events: batch });
++
++    // sendBeacon is fire-and-forget, low priority, and survives navigation.
++    if (navigator.sendBeacon) {
++      try {
++        if (navigator.sendBeacon(ENDPOINT, new Blob([body], { type: 'application/json' }))) return;
++      } catch (e) { /* fall through */ }
++    }
++
++    if (window.fetch) {
++      fetch(ENDPOINT, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: body,
++        keepalive: true,
++        credentials: 'same-origin'
++      }).catch(function () {
++        // Re-queue on failure (unless leaving the page); a later flush retries.
++        if (!isUnloading) {
++          queue = batch.concat(queue).slice(-MAX_QUEUE_SIZE);
++        }
++      });
++    }
++  }
++
++  // --- Page view ---------------------------------------------------------
++  track('page_view', {
++    title: document.title,
++    referrer: document.referrer ? safePath(document.referrer) : null,
++    viewport: window.innerWidth + 'x' + window.innerHeight
++  });
++
++  // --- Clicks ------------------------------------------------------------
++  // Delegated, passive, capture-phase listener: never blocks or alters
++  // navigation, and catches clicks even if other handlers stop propagation.
++  document.addEventListener('click', function (event) {
++    var el = event.target && event.target.closest
++      ? event.target.closest('a, button, [data-track]')
++      : null;
++    if (!el) return;
++
++    var text = (el.getAttribute('data-track') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80);
++    var section = el.closest('nav, header, main, footer, section');
++
++    track('click', {
++      element: el.tagName.toLowerCase(),
++      text: text,
++      href: el.tagName === 'A' && el.getAttribute('href') ? safePath(el.href) : null,
++      classes: el.className && typeof el.className === 'string' ? el.className : null,
++      section: section ? section.tagName.toLowerCase() : null
++    });
++  }, { capture: true, passive: true });
++
++  // --- Flush on exit -----------------------------------------------------
++  // visibilitychange(hidden) is the most reliable signal on mobile; pagehide
++  // covers desktop navigation and bfcache. Both are idempotent.
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush(true);
++  });
++  window.addEventListener('pagehide', function () { flush(true); });
++
++  window.DailyGrindAnalytics = { track: track, flush: function () { flush(false); } };
++})();

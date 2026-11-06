@@ -1,0 +1,469 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..6d08ea3
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,189 @@
++// The document already contains the component's complete, styled markup.
++// Upgrading only attaches behavior; it never creates or replaces DOM nodes.
++class CoffeeCard extends HTMLElement {
++  connectedCallback() {
++    if (this.hydrated) return;
++    this.hydrated = true;
++    this.quantity = Number(this.getAttribute('quantity')) || 1;
++    this.addEventListener('click', (event) => {
++      const action = event.target.closest('button[data-action]')?.dataset.action;
++      if (action === 'increase') this.setQuantity(this.quantity + 1);
++      if (action === 'decrease') this.setQuantity(this.quantity - 1);
++      if (action === 'add') {
++        this.querySelector('[data-feedback]').textContent = `${this.quantity} ${this.quantity === 1 ? 'bag' : 'bags'} of Morning Ritual added to your bag.`;
++        const button = this.querySelector('[data-action="add"]');
++        button.querySelector('[data-add-label]').textContent = ` ${this.quantity} ${this.quantity === 1 ? 'bag' : 'bags'} added `;
++        clearTimeout(this.feedbackTimer);
++        this.feedbackTimer = setTimeout(() => { button.querySelector('[data-add-label]').textContent = ' Add to bag '; }, 2500);
++      }
++    });
++    this.dataset.hydrated = 'true';
++    document.querySelector('#hydration-state').textContent = 'Hydrated in place';
++  }
++  setQuantity(value) {
++    this.quantity = Math.max(1, Math.min(99, value));
++    this.setAttribute('quantity', String(this.quantity));
++    this.querySelector('[data-quantity]').textContent = this.quantity;
++    this.querySelector('[data-action="decrease"]').disabled = this.quantity === 1;
++    this.querySelector('[data-action="increase"]').disabled = this.quantity === 99;
++  }
++}
++customElements.define('coffee-card', CoffeeCard);
++
++const snippets = {
++  server: { file: 'index.html', label: 'SERVER-RENDERED', code: `<!-- Ready before JavaScript arrives. -->
++<link rel="stylesheet" href="styles.css" />
++
++<coffee-card quantity="1">
++  <div class="product-photo">
++    <img src="coffee.jpg" alt="Fresh coffee" />
++  </div>
++
++  <div class="product-content">
++    <h2>Morning Ritual</h2>
++    <p>A little slower. A little richer.</p>
++
++    <div class="quantity-control">
++      <button data-action="decrease">−</button>
++      <output data-quantity>1</output>
++      <button data-action="increase">+</button>
++    </div>
++
++    <button data-action="add">Add to bag</button>
++  </div>
++</coffee-card>
++
++<script type="module" src="app.js"></script>` },
++  client: { file: 'app.js', label: 'IN-PLACE HYDRATION', code: `// Upgrade the element. Keep the markup.
++class CoffeeCard extends HTMLElement {
++  connectedCallback() {
++    if (this.hydrated) return;
++    this.hydrated = true;
++    this.quantity = 1;
++
++    this.addEventListener('click', (event) => {
++      const action = event.target.closest(
++        'button[data-action]'
++      )?.dataset.action;
++
++      if (action === 'increase') {
++        this.quantity += 1;
++        this.querySelector('[data-quantity]')
++          .textContent = this.quantity;
++      }
++    });
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
++// No innerHTML. No DOM replacement.` },
++  styles: { file: 'styles.css', label: 'FIRST-PAINT STYLES', code: `/* Loaded with the initial document. */
++coffee-card {
++  display: block;
++  width: 338px;
++  max-width: 100%;
++  background: #fff;
++  border: 1px solid #e1e3da;
++  border-radius: 9px;
++  overflow: hidden;
++}
++
++coffee-card .product-photo {
++  height: 182px;
++  background: #7b6046;
++}
++
++coffee-card .add-button {
++  background: #3c5d40;
++  color: #fff;
++  border-radius: 4px;
++}
++
++/* Styled before the element is defined. */` }
++};
++let currentTab = 'server';
++const codeContent = document.querySelector('#code-content');
++function renderCode(tab) {
++  currentTab = tab;
++  const snippet = snippets[tab];
++  document.querySelector('#filename').textContent = snippet.file;
++  document.querySelector('.file-label').textContent = snippet.label;
++  codeContent.replaceChildren(...snippet.code.split('\n').map((line, index) => {
++    const row = document.createElement('span');
++    row.className = 'line';
++    const number = document.createElement('span');
++    number.className = 'line-number';
++    number.textContent = index + 1;
++    number.setAttribute('aria-hidden', 'true');
++    row.append(number);
++    const pattern = /(<!--[\s\S]*?-->|\/\/.*|\/\*.*?\*\/)|("[^"]*"|'[^']*')|(<\/?[\w-]+|\/?>)|\b(class|extends|const|if|return|true|this|new)\b|(\b[\w-]+)(?==)/g;
++    let cursor = 0;
++    for (const match of line.matchAll(pattern)) {
++      row.append(document.createTextNode(line.slice(cursor, match.index)));
++      const token = document.createElement('span');
++      token.className = match[1] ? 'comment' : match[2] ? 'string' : match[3] ? 'tag' : match[4] ? 'keyword' : 'attr';
++      token.textContent = match[0];
++      row.append(token);
++      cursor = match.index + match[0].length;
++    }
++    row.append(document.createTextNode(line.slice(cursor)));
++    return row;
++  }));
++  document.querySelectorAll('[data-tab]').forEach(button => {
++    const active = button.dataset.tab === tab;
++    button.classList.toggle('active', active);
++    button.setAttribute('aria-selected', String(active));
++    button.tabIndex = active ? 0 : -1;
++  });
++}
++document.querySelectorAll('[data-tab]').forEach(button => {
++  button.addEventListener('click', () => renderCode(button.dataset.tab));
++  button.addEventListener('keydown', event => {
++    const tabs = Object.keys(snippets);
++    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
++      event.preventDefault();
++      const next = (tabs.indexOf(currentTab) + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
++      renderCode(tabs[next]);
++      document.querySelector(`[data-tab="${tabs[next]}"]`).focus();
++    }
++  });
++});
++renderCode('server');
++document.querySelector('#copy').addEventListener('click', async event => {
++  const button = event.currentTarget;
++  try {
++    await navigator.clipboard.writeText(snippets[currentTab].code);
++    button.textContent = '✓';
++    button.setAttribute('aria-label', 'Code copied');
++    setTimeout(() => { button.textContent = '▢'; button.setAttribute('aria-label', 'Copy code'); }, 1800);
++  } catch {
++    const range = document.createRange();
++    range.selectNodeContents(codeContent);
++    window.getSelection().removeAllRanges();
++    window.getSelection().addRange(range);
++    button.setAttribute('aria-label', 'Code selected. Press Control or Command C to copy.');
++  }
++});
++document.querySelectorAll('[data-width]').forEach(button => button.addEventListener('click', () => {
++  document.querySelector('#preview-stage').classList.toggle('mobile', button.dataset.width === 'mobile');
++  document.querySelectorAll('[data-width]').forEach(control => {
++    control.classList.toggle('selected', control === button);
++    control.setAttribute('aria-pressed', String(control === button));
++  });
++}));
++document.querySelector('#reset').addEventListener('click', () => {
++  const card = document.querySelector('coffee-card');
++  card.setQuantity(1);
++  clearTimeout(card.feedbackTimer);
++  card.querySelector('[data-add-label]').textContent = ' Add to bag ';
++  card.querySelector('[data-feedback]').textContent = 'Demo reset. Quantity is one.';
++  renderCode('server');
++  document.querySelector('[data-width="desktop"]').click();
++});
++document.querySelector('a[href="#examples"]').addEventListener('click', () => {
++  document.querySelector('#examples').hidden = false;
++});
++document.querySelectorAll('[data-example]').forEach(button => button.addEventListener('click', () => {
++  document.querySelector('coffee-card').setQuantity(Number(button.dataset.example));
++  document.querySelector('#playground').scrollIntoView({ behavior: 'smooth' });
++}));
+diff --git a/index.html b/index.html
+index 66c9173..50e14f6 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,53 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="theme-color" content="#f6f7f3" />
++  <title>Inplace — Server first. Interactive in place.</title>
++  <link rel="stylesheet" href="styles.css" />
++  <script src="app.js" type="module"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <aside class="sidebar">
++    <a class="brand" href="./" aria-label="Inplace home"><span class="brand-mark">▧</span> inplace<span class="brand-dot">.</span></a>
++    <div class="workspace"><span class="workspace-icon">P</span><span>Personal workspace<small>Free plan</small></span><span class="chevrons">⌃<br>⌄</span></div>
++    <div class="nav-label">WORKSPACE</div>
++    <nav aria-label="Main navigation">
++      <a class="nav-item active" href="#playground"><span>▦</span> Playground <span class="nav-key">P</span></a>
++      <a class="nav-item" href="#how-it-works"><span>◈</span> How it works</a>
++      <a class="nav-item" href="#examples"><span>▤</span> Examples <span class="badge">3</span></a>
++    </nav>
++    <div class="nav-label resources-label">RESOURCES</div>
++    <nav aria-label="Resources">
++      <a class="nav-item" href="#documentation"><span>▥</span> Documentation <span class="external">↗</span></a>
++      <a class="nav-item" href="https://github.com/topics/web-components" target="_blank" rel="noreferrer"><span>⌘</span> GitHub <span class="external">↗</span></a>
++    </nav>
++    <div class="sidebar-bottom"><div class="native-note"><span class="native-icon">✳</span><strong>Less JavaScript.<br>More possibility.</strong><p>Built on web standards.<br>Made for a faster web.</p><a href="#how-it-works">Meet the approach <span>↗</span></a></div><div class="profile"><span class="avatar">JD</span><div>Jamie Davis<small>Personal account</small></div><span class="profile-dots">···</span></div></div>
++  </aside>
++  <div class="app-shell">
++    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span><span>Playground</span></div><div class="topbar-right"><span class="version">v1.0.0</span><span class="status-dot"></span> All systems operational</div></header>
++    <main id="playground">
++      <div class="page-heading"><div class="eyebrow"><span></span> THE WEB, WITH LESS WAITING</div><h1>Server first. <span>Interactive in place.</span></h1><p>Render a custom element on the server. Bring it to life in the browser.<br class="desktop-break"> Same markup. Zero re-renders. No flash of unstyled content.</p><a class="outline-button source-link" href="#code-panel">View source <span>↗</span></a></div>
++      <div class="playground-toolbar"><div class="section-title"><span class="small-grid">▦</span> The playground <span class="subtle-pill">Live example</span></div><button class="text-button" id="reset"><span>↻</span> Reset demo</button></div>
++      <section class="playground-grid" aria-label="Interactive custom element playground">
++        <div class="preview-panel"><div class="panel-toolbar"><span><span class="status-dot"></span> Live preview</span><div class="viewport-controls"><button class="selected" data-width="desktop" aria-label="Desktop preview" title="Desktop preview">▱</button><button data-width="mobile" aria-label="Mobile preview" title="Mobile preview">▯</button><span class="toolbar-divider"></span><span class="scale">100%</span></div></div>
++          <div class="preview-stage" id="preview-stage"><div class="preview-glow"></div>
++            <coffee-card quantity="1">
++              <div class="product-photo"><img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&fit=crop&w=800&q=85" alt="Freshly roasted coffee beans and a cup of coffee on a warm wooden table" width="800" height="520"><span class="photo-badge"><span>✳</span> SMALL BATCH, BIG CHARACTER</span><span class="organic-badge">100%<br><small>ORGANIC</small></span></div>
++              <div class="product-content"><div class="product-eyebrow">THE DAILY GRIND <span>★★★★★ <small>(48)</small></span></div><div class="product-heading"><h2>Morning Ritual</h2><span class="price">$18<span>.00</span></span></div><p class="product-description">A little slower. A little richer. Your everyday<br> reminder to take a moment.</p><div class="product-tags"><span>Medium roast</span><span>Whole bean</span><span>250g</span></div><div class="product-actions"><div class="quantity-control"><button data-action="decrease" aria-label="Decrease quantity" disabled>−</button><output data-quantity aria-label="Quantity">1</output><button data-action="increase" aria-label="Increase quantity">+</button></div><button class="add-button" data-action="add"><span class="bag-icon">♧</span><span data-add-label>Add to bag</span><span>↗</span></button></div><div class="product-footer"><span>♧</span> Good coffee. A better morning.</div><span class="sr-only" data-feedback aria-live="polite"></span></div>
++            </coffee-card>
++            <div class="preview-caption"><span class="status-dot"></span> Real HTML. Real component. Ready on arrival.</div>
++          </div>
++          <div class="preview-bottom"><span><span class="green-check">✓</span> <span id="hydration-state">Server rendered</span></span><code>&lt;coffee-card&gt;</code><span class="stable-label">Layout stable <span>⌁</span></span></div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++        <div class="code-panel" id="code-panel"><div class="code-tabs" role="tablist" aria-label="Code examples"><button class="active" role="tab" aria-selected="true" data-tab="server">Server <span>HTML</span></button><button role="tab" aria-selected="false" data-tab="client">Client <span>JS</span></button><button role="tab" aria-selected="false" data-tab="styles">Styles <span>CSS</span></button><button class="copy-button" id="copy" aria-label="Copy code" title="Copy code">▢</button></div><div class="file-bar"><span class="file-icon">◇</span> <span id="filename">index.html</span><span class="file-label">SERVER-RENDERED</span></div><div class="code-scroll"><pre id="code-content" tabindex="0"></pre></div><div class="code-note"><span>ⓘ</span><p>The server sends real, styled HTML.<br>The browser adds behavior. Nothing gets replaced.</p></div></div>
++      </section>
++      <section class="lifecycle" id="how-it-works"><div class="lifecycle-heading"><div class="section-title">A small lifecycle. A big difference.</div><span>Progressive enhancement, by default.</span></div><div class="lifecycle-steps"><div class="step"><span class="step-icon">▤</span><div><h3>01 <span>Render on the server</span></h3><p>Meaningful HTML, ready from the first byte.</p></div><span class="step-arrow">→</span></div><div class="step"><span class="step-icon">◉</span><div><h3>02 <span>Paint with styles</span></h3><p>Fully styled before JavaScript even arrives.</p></div><span class="step-arrow">→</span></div><div class="step"><span class="step-icon">ϟ</span><div><h3>03 <span>Hydrate in place</span></h3><p>Attach behavior. Keep every DOM node.</p></div><span class="step-check">✓</span></div></div></section>
++      <section class="benefits" id="documentation"><div><span class="benefit-icon">◈</span><strong>Zero re-renders</strong><p>Your HTML stays your HTML.</p></div><div><span class="benefit-icon">☀</span><strong>No unstyled flash</strong><p>Looks right from the first paint.</p></div><div><span class="benefit-icon">⌘</span><strong>Framework free</strong><p>Just the platform. Nothing extra.</p></div><div><span class="benefit-icon">♧</span><strong>Progressively enhanced</strong><p>Content first. Interactivity next.</p></div></section>
++      <section class="examples-section" id="examples" hidden><div class="section-title">Try another starting point</div><div class="example-options"><button data-example="1">Single bag <span>A little everyday ritual</span></button><button data-example="2">Coffee for two <span>Two bags, twice the good mornings</span></button><button data-example="3">Stock the shelf <span>Three bags for the week ahead</span></button></div></section>
++      <footer><span><span class="footer-logo">▧</span> A little less code. A lot more web.</span><span>Built with web components <span class="footer-star">✳</span></span></footer>
++    </main>
++  </div>
+ </body>
+-
+ </html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..506d65d
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,5 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Inter:wght@400;450;500;550;600;650;700;750;800&display=swap');
++:root{font-family:'Inter',sans-serif;color:#252c2a;background:#f8f9f6;font-synthesis:none;--green:#3e6651;--muted:#8a908c;--border:#e3e6df}*{box-sizing:border-box}body{margin:0;font-size:13px}button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,pre:focus-visible{outline:2px solid #659c79;outline-offset:4px}button:disabled{cursor:default}button{color:inherit}.sidebar{width:238px;position:fixed;inset:0 auto 0 0;background:#f0f2ec;border-right:1px solid #e0e4da;padding:33px 20px 0;display:flex;flex-direction:column}.brand{font-size:31px;font-weight:750;letter-spacing:-1.8px;display:flex;align-items:center;padding-left:12px}.brand-mark{font-size:37px;font-weight:500;color:#4c7457;line-height:1;margin-right:9px;transform:rotate(-8deg)}.brand-dot{color:#749473}.workspace{border:1px solid #dce1d5;background:#f8f9f5;border-radius:7px;padding:12px 9px;display:flex;align-items:center;gap:9px;margin-top:34px;font-size:11px;font-weight:550}.workspace-icon{display:grid;place-items:center;background:#e6eade;width:29px;height:29px;border:1px solid #d5dbca;border-radius:6px;font-size:13px}.workspace small,.profile small{display:block;font-size:10px;color:#92978b;font-weight:400;margin-top:5px}.chevrons{margin-left:auto;font-size:10px;line-height:7px;color:#8a9380}.nav-label{font-size:9px;letter-spacing:1.4px;color:#969e90;margin:31px 12px 12px;font-weight:600}.nav-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:6px;font-size:12px;margin:4px 0;color:#70796d}.nav-item>span:first-child{font-size:17px;width:17px;text-align:center;line-height:16px}.nav-item.active{background:#e1e8da;color:#3f5f3b;font-weight:600}.nav-key,.badge{margin-left:auto;font-size:9px;background:#eef2e9;border:1px solid #d3ddc9;padding:1px 5px;border-radius:3px}.badge{border:0;background:#e6e9e0}.external{margin-left:auto;font-size:15px;color:#98a08f}.resources-label{margin-top:29px}.sidebar-bottom{margin-top:auto}.native-note{padding:19px 13px 22px;border-top:1px solid #dde2d5}.native-icon{display:block;color:#748965;font-size:28px;margin-bottom:13px}.native-note strong{font-weight:500;line-height:1.6;color:#636f5b;font-size:13px}.native-note p{font-size:11px;line-height:1.8;color:#909888;margin:10px 0 14px}.native-note a{font-size:10px;color:#607653}.native-note a span{margin-left:20px}.profile{display:flex;gap:10px;align-items:center;padding:20px 0;border-top:1px solid #dde2d5;font-size:11px}.avatar{width:31px;height:31px;border-radius:50%;background:#dfe5d6;display:grid;place-items:center;color:#69785e;font-size:10px;border:3px solid #e9ede3}.profile-dots{margin-left:auto;font-size:20px;color:#929a89}.app-shell{margin-left:238px}.topbar{height:75px;border-bottom:1px solid var(--border);padding:0 42px;display:flex;align-items:center;justify-content:space-between;font-size:11px;background:#fafbf8}.breadcrumb{color:#8c938a}.slash{margin:0 16px;color:#bbc0b7}.topbar-right{display:flex;align-items:center;color:#889081;font-size:10px;gap:7px}.version{border:1px solid #dfe4d9;border-radius:4px;padding:4px 6px;margin-right:13px;color:#7a8473;font-size:9px}.status-dot{width:6px;height:6px;border-radius:50%;background:#80a472;display:inline-block;flex-shrink:0}main{max-width:1450px;margin:auto;padding:44px 42px 0}.page-heading{position:relative;padding-bottom:37px}.eyebrow{font-size:9px;font-weight:600;letter-spacing:1.7px;color:#7f9074;display:flex;align-items:center;gap:7px}.eyebrow span{width:5px;height:5px;background:#80976e;border-radius:50%}h1{font-size:clamp(25px,2.65vw,40px);font-weight:550;letter-spacing:-1.55px;line-height:1.3;margin:17px 0 13px}h1>span{color:#8b9487}.page-heading p{font-size:12px;line-height:1.9;color:#858c81;margin:0}.outline-button{display:inline-flex;align-items:center;border:1px solid #dce1d6;padding:10px 13px;border-radius:5px;background:#fff;font-size:10px;gap:20px}.source-link{position:absolute;right:0;bottom:43px}.playground-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.section-title{font-size:12px;font-weight:550;display:flex;gap:8px;align-items:center}.small-grid{color:#7c8773;font-size:19px}.subtle-pill{font-size:8px;border:1px solid #e0e6d8;color:#839373;background:#f0f3ea;padding:4px 7px;border-radius:4px;font-weight:400;margin-left:4px}.text-button{background:none;border:0;color:#92988e;font-size:10px;padding:7px 0 7px 10px}.text-button span{font-size:16px;margin-right:5px}.playground-grid{display:grid;grid-template-columns:1.08fr 1fr;border:1px solid #dfe4d9;border-radius:9px;overflow:hidden;box-shadow:0 3px 7px #293b1a03}.preview-panel{background:#f0f2eb;min-width:0}.panel-toolbar{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;border-bottom:1px solid #e1e5dc;background:#fbfcf9;font-size:10px;color:#727c6d}.panel-toolbar>span{display:flex;align-items:center;gap:7px}.viewport-controls{display:flex;align-items:center;gap:5px}.viewport-controls button{width:25px;height:24px;border:0;background:none;color:#9da594;font-size:20px;line-height:20px;border-radius:3px}.viewport-controls button.selected{background:#eaf0e1;color:#738366}.toolbar-divider{height:13px;border-right:1px solid #dfe5d8;margin:0 6px}.scale{font-size:9px;color:#9ba392}.preview-stage{position:relative;min-height:483px;padding:32px 24px 22px;display:flex;align-items:center;flex-direction:column;background-image:radial-gradient(#cdd4c355 .7px,transparent .7px);background-size:12px 12px}.preview-glow{position:absolute;width:90%;height:80%;background:radial-gradient(ellipse,#e1e6d6,transparent 70%);pointer-events:none}coffee-card{position:relative;display:block;width:338px;max-width:100%;background:#fff;border:1px solid #e1e3da;border-radius:9px;overflow:hidden;box-shadow:0 8px 18px #3e4d3020;color:#2c3428;transition:width .25s}.product-photo{height:182px;position:relative;background:#7b6046;overflow:hidden}.product-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(#1a26151a,transparent 60%,#17281430);pointer-events:none}.product-photo img{width:100%;height:100%;object-fit:cover;object-position:center 55%;display:block}.photo-badge{position:absolute;top:14px;left:14px;z-index:1;background:#f7f9efed;backdrop-filter:blur(4px);padding:6px 8px;border-radius:3px;font-size:6px;font-weight:650;letter-spacing:1px;display:flex;gap:5px;align-items:center}.photo-badge>span{font-size:11px;color:#69825c}.organic-badge{position:absolute;right:14px;bottom:12px;z-index:1;background:#f5f5e5;color:#5b6744;border:1px solid #e8e9d3;border-radius:50%;width:43px;height:43px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:1.1;transform:rotate(12deg)}.organic-badge small{font-size:5px;letter-spacing:.8px;margin-top:3px}.product-content{padding:20px 20px 0}.product-eyebrow{font-size:6px;letter-spacing:1.4px;color:#8c927e;display:flex;justify-content:space-between;align-items:center}.product-eyebrow>span{color:#889369;font-size:8px;letter-spacing:1px}.product-eyebrow small{color:#a5aa9c;letter-spacing:0;font-size:7px}.product-heading{display:flex;align-items:center;justify-content:space-between;margin-top:9px}.product-heading h2{font-size:25px;letter-spacing:-.8px;font-family:'DM Sans',sans-serif;margin:0;font-weight:550}.price{font-size:19px;letter-spacing:-.5px}.price>span{font-size:12px}.product-description{font-size:10px;line-height:1.8;color:#94998c;margin:9px 0 12px}.product-tags{display:flex;gap:5px}.product-tags>span{font-size:7px;background:#f6f7f1;border:1px solid #e9ecdf;border-radius:3px;color:#8c957e;padding:4px 6px}.product-actions{display:flex;gap:10px;margin-top:18px}.quantity-control{display:flex;align-items:center;justify-content:space-between;border:1px solid #e1e6d9;border-radius:4px;width:89px;height:34px}.quantity-control button{border:0;background:none;width:26px;height:32px;font-size:14px;color:#7d8a6d}.quantity-control button:disabled{opacity:.4}.quantity-control output{font-size:10px}.add-button{background:#3c5d40;border:1px solid #3c5d40;color:#fff;flex:1;border-radius:4px;font-size:9px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 11px}.add-button:hover{background:#2f4d33}.add-button>span:last-child{margin-left:auto;font-size:14px;color:#bac9ad}.bag-icon{font-size:14px}.product-footer{border-top:1px solid #eef0e7;margin-top:15px;padding:10px 0;display:flex;align-items:center;justify-content:center;gap:5px;color:#a0a692;font-size:7px}.product-footer>span{font-size:11px}.preview-caption{display:flex;align-items:center;gap:6px;margin-top:20px;color:#96a084;font-size:8px;position:relative}.preview-caption .status-dot{width:4px;height:4px}.preview-bottom{height:40px;border-top:1px solid #e2e6da;background:#f9fbf5;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:10px;font-size:8px;color:#8b987b}.green-check{display:inline-flex;align-items:center;justify-content:center;width:11px;height:11px;background:#e4eedc;border-radius:50%;color:#73935f;margin-right:4px}.preview-bottom code{font-size:8px;color:#a1aa95}.stable-label{font-size:8px;color:#9aa58e}.stable-label>span{color:#7f9b6d;margin-left:3px}.code-panel{display:flex;flex-direction:column;background:#202923;color:#b7c2b4;min-width:0}.code-tabs{display:flex;align-items:stretch;border-bottom:1px solid #344034;height:47px;padding-left:12px;gap:4px}.code-tabs button{background:none;border:0;color:#82927e;font-size:10px;padding:0 12px;position:relative}.code-tabs button.active{color:#deead3}.code-tabs button.active:after{content:'';position:absolute;bottom:-1px;height:2px;background:#b2c69a;left:11px;right:11px}.code-tabs button>span{font-size:7px;color:#819178;background:#303b2e;padding:3px 4px;margin-left:4px;border-radius:3px}.code-tabs button.active>span{background:#3b4835;color:#b9cba7}.code-tabs .copy-button{margin-left:auto;font-size:19px;color:#8f9d86;padding:0 17px}.file-bar{display:flex;align-items:center;gap:7px;padding:17px 20px;font-size:9px;color:#a2b197}.file-icon{color:#c9ab78;font-size:14px}.file-label{margin-left:auto;font-size:6px;letter-spacing:1px;color:#71806a}.code-scroll{padding:5px 16px 20px;overflow:auto;flex:1;min-height:340px}pre{margin:0;font-size:10px;line-height:2.05;font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;white-space:pre;tab-size:2}pre .line{display:block;min-height:20px}pre .line-number{display:inline-block;width:25px;color:#53634f;user-select:none;text-align:right;margin-right:16px;font-size:9px}pre .comment{color:#75856b}pre .tag{color:#c2d6ab}pre .attr{color:#d8c29a}pre .string{color:#b3c58d}pre .punct{color:#9cac93}pre .keyword{color:#c5adca}.code-note{display:flex;gap:10px;align-items:flex-start;margin:0 20px 20px;padding:13px 12px;border:1px solid #3c4737;border-radius:5px;background:#293426}.code-note>span{font-size:13px;color:#8fa27c}.code-note p{font-size:9px;color:#9aaa8d;line-height:1.8;margin:0}.lifecycle{margin-top:30px;padding:22px 23px 24px;border:1px solid #e0e5d8;background:#f5f7ef;border-radius:7px}.lifecycle-heading{display:flex;justify-content:space-between;align-items:center}.lifecycle-heading .section-title{font-size:11px}.lifecycle-heading>span{font-size:9px;color:#99a18e}.lifecycle-steps{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:24px;gap:18px}.step{display:flex;align-items:center;gap:11px;position:relative}.step-icon{width:33px;height:33px;border:1px solid #dce4d1;border-radius:6px;display:grid;place-items:center;color:#84956d;background:#eef2e6;font-size:18px;flex-shrink:0}.step h3{font-size:8px;letter-spacing:.4px;color:#a3ad95;margin:0 0 6px;font-weight:500}.step h3>span{font-size:10px;letter-spacing:0;color:#56664c;margin-left:5px}.step p{font-size:8px;margin:0;color:#99a18f;line-height:1.5}.step-arrow{margin-left:auto;margin-right:5px;color:#b6bfaa;font-size:17px}.step-check{margin-left:auto;color:#8da575}.benefits{display:grid;grid-template-columns:repeat(4,1fr);padding:30px 0 26px;gap:20px;border-bottom:1px solid #e2e6da}.benefits>div{position:relative;padding-left:29px}.benefit-icon{position:absolute;top:-2px;left:0;font-size:19px;color:#8c9b77}.benefits strong{font-size:10px;font-weight:500;color:#6b775f}.benefits p{font-size:9px;color:#a0a793;margin:8px 0 0}footer{display:flex;justify-content:space-between;align-items:center;padding:21px 0 24px;font-size:8px;color:#a0a894}footer>span{display:flex;gap:7px;align-items:center}.footer-logo{font-size:16px;color:#9eac8b}.footer-star{font-size:13px;color:#9bac83;margin-left:3px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.examples-section{padding:24px 0;border-bottom:1px solid var(--border)}.example-options{display:flex;gap:12px;margin-top:15px}.example-options button{background:white;border:1px solid var(--border);border-radius:6px;padding:14px;text-align:left;flex:1;font-size:12px}.example-options button span{display:block;margin-top:7px;color:#8b9481;font-size:10px}#preview-stage.mobile coffee-card{width:285px}.nav-item:hover{background:#e6ebdf}.text-button:hover{color:#48663d}@media(min-width:1500px){main{padding-top:54px}.preview-stage{padding-top:45px;padding-bottom:30px}.product-photo{height:202px}coffee-card{width:360px}.product-content{padding-top:23px}.product-description{margin-top:13px;margin-bottom:15px}.product-actions{margin-top:23px}.product-footer{margin-top:20px}.preview-caption{margin-top:26px}.code-scroll{padding-top:15px}pre{font-size:11px;line-height:2.2}}@media(max-width:1150px){.sidebar{width:200px;padding-left:14px;padding-right:14px}.app-shell{margin-left:200px}.topbar{padding:0 27px}main{padding-left:27px;padding-right:27px}.brand{font-size:28px}.playground-grid{grid-template-columns:1fr 1fr}.code-tabs button{padding:0 8px}.code-tabs button>span{margin-left:2px}.step{gap:7px}.step-arrow{display:none}.step p{font-size:7px}.step h3>span{font-size:9px}.step-icon{width:27px;height:30px}.preview-stage{padding-left:15px;padding-right:15px}.stable-label{display:none}.source-link{bottom:42px;padding:9px;gap:10px}.page-heading p{font-size:11px}pre{font-size:9px}.code-scroll{padding-left:8px}pre .line-number{margin-right:10px}.benefits{gap:12px}.benefits strong{font-size:9px}.benefits p{font-size:8px}.benefits>div{padding-left:24px}}
++@media(max-width:900px){.sidebar{width:175px;padding-left:10px;padding-right:10px}.app-shell{margin-left:175px}.workspace{font-size:9px;gap:6px}.brand{font-size:26px;padding-left:8px}.brand-mark{font-size:30px}.topbar{padding:0 22px}.topbar-right{font-size:8px}.version{display:none}main{padding:32px 22px 0}h1{font-size:28px;max-width:420px}.page-heading h1>span{display:block}.page-heading p{font-size:10px}.source-link{bottom:42px;font-size:9px}.playground-grid{grid-template-columns:1fr}.preview-stage{padding-top:28px}.code-panel{min-height:450px}.code-scroll{padding:6px 20px 20px;min-height:330px}pre{font-size:11px;line-height:1.9}.code-note{margin-top:10px}.lifecycle-steps{grid-template-columns:1fr;gap:20px}.step h3>span{font-size:11px}.step p{font-size:9px}.step-icon{width:33px;height:33px}.lifecycle-heading>span{display:none}.step-check{margin-left:auto}.benefits{grid-template-columns:1fr 1fr;gap:25px}.benefits strong{font-size:10px}.benefits p{font-size:9px}.native-note{padding-left:9px}.nav-item{font-size:11px;gap:8px}.profile{font-size:10px}.profile small{font-size:8px}.chevrons{display:none}}
++@media(max-width:600px){.sidebar{position:static;width:100%;height:62px;flex-direction:row;padding:0 19px;align-items:center;border-right:0;border-bottom:1px solid var(--border);justify-content:space-between}.brand{font-size:25px;padding:0}.brand-mark{font-size:29px}.sidebar>nav:first-of-type{display:flex;gap:7px}.sidebar>nav:first-of-type .nav-item{padding:8px;font-size:10px;margin:0}.sidebar>nav:first-of-type .nav-item:not(.active){display:none}.nav-key{display:none}.workspace,.nav-label,.resources-label,.sidebar>nav[aria-label="Resources"],.sidebar-bottom{display:none}.app-shell{margin-left:0}.topbar{height:48px;padding:0 20px;font-size:10px}.topbar-right{font-size:7px}.slash{margin:0 8px}main{padding:29px 18px 0}.eyebrow{font-size:8px;letter-spacing:1.3px}h1{font-size:29px;letter-spacing:-1.1px;margin-top:14px}.page-heading p{font-size:10px;line-height:1.9;max-width:340px}.desktop-break{display:none}.source-link{position:static;margin-top:19px;font-size:9px;gap:18px}.page-heading{padding-bottom:26px}.section-title{font-size:11px}.subtle-pill{font-size:7px;padding:4px}.text-button{font-size:9px}.preview-stage{padding:25px 20px 20px;min-height:0}.product-photo{height:180px}.preview-bottom{padding:0 12px}.stable-label{display:block}.code-tabs{padding-left:10px}.code-tabs button{padding:0 11px}.code-tabs button>span{margin-left:4px}.code-scroll{padding-left:10px}pre{font-size:9px}.code-note p{font-size:9px}.file-label{font-size:6px}.lifecycle{padding:20px;margin-top:22px}.lifecycle-steps{gap:23px}.benefits{padding:26px 0;gap:25px 12px}.benefits strong{font-size:9px}.benefits p{font-size:8px}footer{font-size:7px;gap:10px}.example-options{flex-direction:column}}
++@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}

@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,43 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="card-expiry-status" role="status"></p>
+   </footer>
+ 
++  <script type="module">
++    const status = document.getElementById('card-expiry-status');
++
++    try {
++      const { Temporal } = globalThis.Temporal
++        ? globalThis
++        : await import('https://esm.sh/@js-temporal/polyfill@0.5.1');
++
++      // A card's expiry is a whole calendar month, valid through its final day.
++      // Calendar arithmetic accounts for leap years without assuming days per year.
++      const expiry = Temporal.PlainYearMonth.from({
++        year: 2027, month: 12, calendar: 'iso8601'
++      });
++      const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
++      const remaining = currentMonth.until(expiry, { largestUnit: 'years' });
++
++      if (remaining.sign < 0) {
++        status.textContent = 'Your credit card expired in December 2027.';
++      } else if (remaining.sign === 0) {
++        status.textContent = 'Your credit card expires at the end of this month (December 2027).';
++      } else {
++        const parts = [
++          [remaining.years, 'year'],
++          [remaining.months, 'month']
++        ].filter(([value]) => value > 0)
++          .map(([value, unit]) => `${value} ${unit}${value === 1 ? '' : 's'}`);
++        status.textContent = `Your credit card expires in ${parts.join(' and ')} (December 2027; valid through the end of that month).`;
++      }
++    } catch {
++      status.textContent = 'Your credit card expires at the end of December 2027. The countdown is currently unavailable.';
++    }
++  </script>
++
+ </body>
+ 
+ </html>

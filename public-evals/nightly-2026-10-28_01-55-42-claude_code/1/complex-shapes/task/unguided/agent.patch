@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,15 +85,78 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
++    /* Keep hero copy above the decorative shape */
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative organic shape (coffee splash)
++       - position: absolute takes it out of flow, so the hero layout is identical
++         whether the clip, the SVG, or the photo loads or not.
++       - border-radius blob is the base look; clip-path (fluid SVG vector) refines it.
++       - solid accent background shows if the photo fails to load. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      top: 50%;
++      width: clamp(220px, 34vw, 480px);
++      aspect-ratio: 1;
++      transform: translateY(-50%) rotate(-8deg);
++      background-color: var(--accent);
++      background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80');
++      background-size: cover;
++      background-position: center;
++      opacity: 0.85;
++      border-radius: 58% 42% 63% 37% / 46% 55% 45% 54%;
++      pointer-events: none;
++      z-index: 0;
++      animation: splash-drift 9s ease-in-out infinite alternate;
++    }
++
++    /* Fluid vector clip: objectBoundingBox units stretch the splash to any size */
++    @supports (clip-path: url(#coffee-splash)) {
++      .shaped-element {
++        clip-path: url(#coffee-splash);
++        border-radius: 0;
++      }
++    }
++
++    @keyframes splash-drift {
++      from { transform: translateY(-50%) rotate(-8deg) scale(1); }
++      to   { transform: translateY(-52%) rotate(-4deg) scale(1.04); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .shaped-element {
++        animation: none;
++      }
++    }
++
++    @media (max-width: 700px) {
++      .shaped-element {
++        width: 60vw;
++        right: -22%;
++        top: auto;
++        bottom: -18%;
++        transform: rotate(-8deg);
++        opacity: 0.45;
++        animation: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,8 +231,39 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <!-- Inline SVG clip definition: no network request, scales with the element -->
++    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="
++            M0.52,0.05
++            C0.60,0.02 0.66,0.10 0.70,0.16
++            C0.73,0.20 0.80,0.14 0.84,0.19
++            C0.88,0.24 0.83,0.30 0.86,0.35
++            C0.90,0.40 0.99,0.42 0.98,0.50
++            C0.97,0.57 0.89,0.58 0.88,0.64
++            C0.87,0.70 0.95,0.75 0.91,0.81
++            C0.87,0.87 0.79,0.83 0.74,0.86
++            C0.69,0.89 0.70,0.98 0.63,0.98
++            C0.56,0.98 0.55,0.90 0.49,0.90
++            C0.43,0.90 0.41,0.99 0.34,0.96
++            C0.28,0.93 0.31,0.85 0.26,0.82
++            C0.21,0.79 0.13,0.85 0.09,0.79
++            C0.05,0.73 0.12,0.67 0.10,0.61
++            C0.08,0.55 0.00,0.54 0.02,0.46
++            C0.04,0.39 0.12,0.40 0.14,0.34
++            C0.16,0.28 0.09,0.22 0.14,0.16
++            C0.19,0.10 0.26,0.16 0.31,0.13
++            C0.36,0.10 0.37,0.01 0.44,0.02
++            C0.47,0.03 0.49,0.06 0.52,0.05 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++
++    <div class="shaped-element" aria-hidden="true"></div>
++
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

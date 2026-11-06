@@ -1,0 +1,627 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,209 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ===== Order board (kanban) ===== */
++    .board-section {
++      margin-top: 56px;
++    }
++
++    .board-toolbar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-bottom: 8px;
++    }
++
++    .board-help {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 16px;
++    }
++
++    .btn-small {
++      margin: 0;
++      padding: 8px 14px;
++      font: inherit;
++      font-size: 0.85rem;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .board {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 20px;
++    }
++
++    .board-column {
++      display: flex;
++      flex-direction: column;
++      min-width: 0;
++      height: min(68vh, 640px);
++      background: var(--secondary);
++      border-radius: 12px;
++      /* Isolate style/layout/paint work to this column so moving a card
++         never forces the rest of the page to reflow. */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 300px auto 640px;
++    }
++
++    @supports not (content-visibility: auto) {
++      .board-column {
++        contain: layout style paint;
++      }
++    }
++
++    /* inset shadow instead of outline: outlines are clipped by paint containment */
++    .board-column.is-over {
++      box-shadow: inset 0 0 0 2px var(--accent);
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 14px 16px 10px;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      font-size: 0.8rem;
++    }
++
++    .column-header h3 {
++      font-size: inherit;
++    }
++
++    .count {
++      background: var(--primary);
++      color: white;
++      border-radius: 999px;
++      padding: 1px 10px;
++      min-width: 2em;
++      text-align: center;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .column-list {
++      position: relative;
++      flex: 1;
++      min-height: 0;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      list-style: none;
++      padding: 4px 12px 12px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .board .card,
++    .drag-ghost {
++      text-align: left;
++      padding: 12px 14px;
++      border-radius: 8px;
++      border-left: 4px solid var(--accent);
++      background: white;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .board .card {
++      flex-shrink: 0;
++      /* Each card is its own containment unit; cards scrolled out of view
++         inside a long column skip layout and paint entirely. */
++      contain: layout style paint;
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 72px;
++    }
++
++    .board .card h3,
++    .drag-ghost h3 {
++      font-size: 1rem;
++      margin-bottom: 2px;
++      color: var(--primary);
++    }
++
++    .board .card .order-meta,
++    .drag-ghost .order-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      line-height: 1.4;
++    }
++
++    .board .card:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .board .card.is-dragging {
++      opacity: 0.35;
++      cursor: grabbing;
++    }
++
++    .board .card.just-dropped {
++      animation: card-dropped 0.25s ease-out;
++    }
++
++    @keyframes card-dropped {
++      from {
++        transform: scale(1.03);
++        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .board .card.just-dropped {
++        animation: none;
++      }
++    }
++
++    /* Floating copy of the card that follows the pointer. It is fixed and
++       moved with transform only, so dragging never touches document layout. */
++    .drag-ghost {
++      position: fixed;
++      top: 0;
++      left: 0;
++      z-index: 2000;
++      margin: 0;
++      list-style: none;
++      pointer-events: none;
++      will-change: transform;
++      cursor: grabbing;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
++    }
++
++    .drop-indicator {
++      position: absolute;
++      top: 0;
++      left: 12px;
++      right: 12px;
++      height: 3px;
++      border-radius: 2px;
++      background: var(--accent);
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    .drop-indicator[hidden] {
++      display: none;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +395,73 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="board-section" aria-labelledby="board-title">
++      <div class="board-toolbar">
++        <h2 id="board-title">Order Board</h2>
++        <button type="button" id="simulate-rush" class="btn btn-small">Simulate rush (+200 orders)</button>
++      </div>
++      <p id="board-help" class="board-help">
++        Drag an order between columns to update its status. With the keyboard, focus a card and press
++        &larr; / &rarr; to move it to another column or &uarr; / &darr; to reorder it.
++      </p>
++      <p id="board-live" class="visually-hidden" aria-live="polite"></p>
++
++      <div class="board" id="order-board">
++        <section class="board-column" data-status="queued" aria-labelledby="col-queued-title">
++          <header class="column-header">
++            <h3 id="col-queued-title">Queued</h3>
++            <span class="count">3</span>
++          </header>
++          <ul class="column-list" aria-labelledby="col-queued-title">
++            <li class="card" tabindex="0" data-id="1041" aria-describedby="board-help">
++              <h3>Maple Oat Latte</h3>
++              <p class="order-meta">#1041 &middot; Priya &middot; Oat milk, extra shot</p>
++            </li>
++            <li class="card" tabindex="0" data-id="1042" aria-describedby="board-help">
++              <h3>Dark Roast Espresso</h3>
++              <p class="order-meta">#1042 &middot; Marcus &middot; Double</p>
++            </li>
++            <li class="card" tabindex="0" data-id="1043" aria-describedby="board-help">
++              <h3>Cold Brew</h3>
++              <p class="order-meta">#1043 &middot; Jo &middot; Large, light ice</p>
++            </li>
++          </ul>
++        </section>
++
++        <section class="board-column" data-status="brewing" aria-labelledby="col-brewing-title">
++          <header class="column-header">
++            <h3 id="col-brewing-title">Brewing</h3>
++            <span class="count">2</span>
++          </header>
++          <ul class="column-list" aria-labelledby="col-brewing-title">
++            <li class="card" tabindex="0" data-id="1039" aria-describedby="board-help">
++              <h3>Flat White</h3>
++              <p class="order-meta">#1039 &middot; Elena &middot; Whole milk</p>
++            </li>
++            <li class="card" tabindex="0" data-id="1040" aria-describedby="board-help">
++              <h3>Cold Brew</h3>
++              <p class="order-meta">#1040 &middot; Sam &middot; Vanilla sweet cream</p>
++            </li>
++          </ul>
++        </section>
++
++        <section class="board-column" data-status="ready" aria-labelledby="col-ready-title">
++          <header class="column-header">
++            <h3 id="col-ready-title">Ready</h3>
++            <span class="count">1</span>
++          </header>
++          <ul class="column-list" aria-labelledby="col-ready-title">
++            <li class="card" tabindex="0" data-id="1038" aria-describedby="board-help">
++              <h3>Maple Oat Latte</h3>
++              <p class="order-meta">#1038 &middot; Theo &middot; Decaf</p>
++            </li>
++          </ul>
++        </section>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +472,339 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const board = document.getElementById('order-board');
++      if (!board) return;
++
++      const columns = Array.from(board.querySelectorAll('.board-column'));
++      const lists = columns.map((col) => col.querySelector('.column-list'));
++      const live = document.getElementById('board-live');
++      const DRAG_THRESHOLD = 4;
++      const AUTOSCROLL_EDGE = 48;
++      const AUTOSCROLL_SPEED = 12;
++
++      const indicator = document.createElement('li');
++      indicator.className = 'drop-indicator';
++      indicator.setAttribute('aria-hidden', 'true');
++      indicator.hidden = true;
++
++      const statusOf = (list) => list.closest('.board-column').dataset.status;
++      const titleOf = (card) => card.querySelector('h3').textContent;
++
++      function announce(text) {
++        live.textContent = text;
++      }
++
++      function updateCount(list) {
++        let n = 0;
++        for (const el of list.children) if (el !== indicator) n++;
++        list.closest('.board-column').querySelector('.count').textContent = String(n);
++      }
++
++      // Move a node, preserving focus/state when the browser supports it.
++      function placeBefore(list, card, ref) {
++        if (typeof list.moveBefore === 'function') {
++          try { list.moveBefore(card, ref); return; } catch (_) { /* fall through */ }
++        }
++        list.insertBefore(card, ref);
++      }
++
++      function moveCard(card, toList, ref) {
++        const fromList = card.parentNode;
++        const hadFocus = document.activeElement === card;
++        placeBefore(toList, card, ref);
++        updateCount(fromList);
++        if (toList !== fromList) updateCount(toList);
++        if (hadFocus && document.activeElement !== card) card.focus({ preventScroll: true });
++        card.classList.add('just-dropped');
++        card.addEventListener('animationend', () => card.classList.remove('just-dropped'), { once: true });
++        announce(`${titleOf(card)} moved to ${statusOf(toList)}`);
++      }
++
++      /* ---------- Pointer drag & drop ---------- */
++      let drag = null;
++
++      function measureLists() {
++        drag.rects = lists.map((list) => list.getBoundingClientRect());
++        drag.rectsDirty = false;
++      }
++
++      // Cache card geometry per column (one layout read per column per drag).
++      // Offsets are relative to the scroll content so they stay valid while
++      // the column scrolls; no DOM in the column mutates until drop.
++      function cardCache(list) {
++        let cache = drag.caches.get(list);
++        if (cache) return cache;
++        const cards = [];
++        for (const el of list.children) if (el !== indicator) cards.push(el);
++        const n = cards.length;
++        const tops = new Float64Array(n);
++        const bottoms = new Float64Array(n);
++        const mids = new Float64Array(n);
++        for (let i = 0; i < n; i++) {
++          const t = cards[i].offsetTop;
++          const h = cards[i].offsetHeight;
++          tops[i] = t;
++          bottoms[i] = t + h;
++          mids[i] = t + h / 2;
++        }
++        cache = { cards, tops, bottoms, mids, padTop: parseFloat(getComputedStyle(list).paddingTop) || 0 };
++        drag.caches.set(list, cache);
++        return cache;
++      }
++
++      function insertionIndex(mids, y) {
++        let lo = 0;
++        let hi = mids.length;
++        while (lo < hi) {
++          const mid = (lo + hi) >> 1;
++          if (mids[mid] > y) hi = mid; else lo = mid + 1;
++        }
++        return lo;
++      }
++
++      // Column scrolling does not move the columns themselves, so only page
++      // scrolls and resizes invalidate the cached column rects.
++      function markDirty(e) {
++        if (!drag) return;
++        if (e.type === 'scroll' && e.target !== document && board.contains(e.target)) return;
++        drag.rectsDirty = true;
++      }
++
++      function startDrag(e) {
++        const { card } = drag;
++        const rect = card.getBoundingClientRect();
++        drag.offsetX = drag.startX - rect.left;
++        drag.offsetY = drag.startY - rect.top;
++        drag.fromList = card.parentNode;
++
++        const ghost = card.cloneNode(true);
++        ghost.className = 'drag-ghost';
++        ghost.removeAttribute('tabindex');
++        ghost.removeAttribute('aria-describedby');
++        ghost.style.width = `${rect.width}px`;
++        ghost.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
++        document.body.appendChild(ghost);
++        drag.ghost = ghost;
++
++        card.classList.add('is-dragging');
++        drag.active = true;
++        drag.caches = new Map();
++        drag.targetList = null;
++        drag.targetIndex = -1;
++        drag.lastX = drag.lastY = NaN;
++        measureLists();
++
++        window.addEventListener('scroll', markDirty, { passive: true, capture: true });
++        window.addEventListener('resize', markDirty, { passive: true });
++        drag.raf = requestAnimationFrame(frame);
++      }
++
++      function setTarget(list, index, cache) {
++        const d = drag;
++        if (list !== d.targetList) {
++          if (d.targetList) d.targetList.closest('.board-column').classList.remove('is-over');
++          if (list) {
++            list.closest('.board-column').classList.add('is-over');
++            list.appendChild(indicator);
++          } else {
++            indicator.hidden = true;
++          }
++          d.targetList = list;
++          d.targetIndex = -1;
++        }
++        if (!list || index === d.targetIndex) return;
++        d.targetIndex = index;
++
++        const { cards, tops, bottoms, padTop } = cache;
++        const n = cards.length;
++        const noop = list === d.fromList && (cards[index] === d.card || cards[index - 1] === d.card);
++        if (noop) { indicator.hidden = true; return; }
++
++        let y;
++        if (n === 0) y = padTop;
++        else if (index < n) y = tops[index] - 6;
++        else y = bottoms[n - 1] + 4;
++        indicator.style.transform = `translateY(${y}px)`;
++        indicator.hidden = false;
++      }
++
++      function frame() {
++        const d = drag;
++        if (!d || !d.active) return;
++        d.raf = requestAnimationFrame(frame);
++        if (d.rectsDirty) measureLists();
++
++        const { x, y } = d;
++        if (x !== d.lastX || y !== d.lastY) {
++          d.ghost.style.transform = `translate3d(${x - d.offsetX}px, ${y - d.offsetY}px, 0) rotate(1.5deg)`;
++          d.lastX = x;
++          d.lastY = y;
++        }
++
++        let list = null;
++        let rect = null;
++        for (let i = 0; i < lists.length; i++) {
++          const r = d.rects[i];
++          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { list = lists[i]; rect = r; break; }
++        }
++
++        if (!list) { setTarget(null, -1, null); return; }
++
++        // Auto-scroll the hovered column near its edges.
++        if (y < rect.top + AUTOSCROLL_EDGE) list.scrollTop -= AUTOSCROLL_SPEED;
++        else if (y > rect.bottom - AUTOSCROLL_EDGE) list.scrollTop += AUTOSCROLL_SPEED;
++
++        const cache = cardCache(list);
++        const contentY = y - rect.top + list.scrollTop;
++        setTarget(list, insertionIndex(cache.mids, contentY), cache);
++      }
++
++      function finishDrag() {
++        const d = drag;
++        const list = d.targetList;
++        if (list) {
++          const { cards } = cardCache(list);
++          const ref = cards[d.targetIndex] ?? null;
++          const noop = list === d.fromList && (ref === d.card || cards[d.targetIndex - 1] === d.card);
++          if (!noop) {
++            indicator.hidden = true;
++            indicator.remove();
++            moveCard(d.card, list, ref);
++          }
++        }
++      }
++
++      function cleanup() {
++        const d = drag;
++        if (!d) return;
++        drag = null;
++        if (!d.active) return;
++        cancelAnimationFrame(d.raf);
++        window.removeEventListener('scroll', markDirty, { capture: true });
++        window.removeEventListener('resize', markDirty);
++        d.ghost.remove();
++        indicator.hidden = true;
++        indicator.remove();
++        d.card.classList.remove('is-dragging');
++        if (d.targetList) d.targetList.closest('.board-column').classList.remove('is-over');
++      }
++
++      board.addEventListener('pointerdown', (e) => {
++        if (e.button !== 0 || drag) return;
++        const card = e.target.closest('.card');
++        if (!card || !board.contains(card)) return;
++        drag = { card, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false };
++        card.setPointerCapture(e.pointerId);
++      });
++
++      board.addEventListener('pointermove', (e) => {
++        if (!drag || e.pointerId !== drag.pointerId) return;
++        drag.x = e.clientX;
++        drag.y = e.clientY;
++        if (!drag.active) {
++          const dx = drag.x - drag.startX;
++          const dy = drag.y - drag.startY;
++          if (dx * dx + dy * dy >= DRAG_THRESHOLD * DRAG_THRESHOLD) startDrag(e);
++        }
++      });
++
++      board.addEventListener('pointerup', (e) => {
++        if (!drag || e.pointerId !== drag.pointerId) return;
++        if (drag.active) {
++          drag.x = e.clientX;
++          drag.y = e.clientY;
++          finishDrag();
++        }
++        const { card, pointerId } = drag;
++        cleanup();
++        if (card.hasPointerCapture(pointerId)) card.releasePointerCapture(pointerId);
++      });
++
++      board.addEventListener('pointercancel', cleanup);
++      board.addEventListener('lostpointercapture', cleanup);
++
++      /* ---------- Keyboard support ---------- */
++      board.addEventListener('keydown', (e) => {
++        const card = e.target.closest('.card');
++        if (!card || e.altKey || e.ctrlKey || e.metaKey) return;
++        const list = card.parentNode;
++        const idx = lists.indexOf(list);
++        switch (e.key) {
++          case 'ArrowRight':
++          case 'ArrowLeft': {
++            const to = lists[idx + (e.key === 'ArrowRight' ? 1 : -1)];
++            if (!to) return;
++            moveCard(card, to, null);
++            card.scrollIntoView({ block: 'nearest' });
++            break;
++          }
++          case 'ArrowUp': {
++            const prev = card.previousElementSibling;
++            if (!prev) return;
++            moveCard(card, list, prev);
++            card.scrollIntoView({ block: 'nearest' });
++            break;
++          }
++          case 'ArrowDown': {
++            const next = card.nextElementSibling;
++            if (!next) return;
++            moveCard(card, list, next.nextElementSibling);
++            card.scrollIntoView({ block: 'nearest' });
++            break;
++          }
++          default:
++            return;
++        }
++        e.preventDefault();
++      });
++
++      /* ---------- Bulk order generation (stress test) ---------- */
++      const DRINKS = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew', 'Flat White', 'Cappuccino', 'Matcha Latte', 'Cortado', 'Mocha', 'Chai Latte', 'Americano'];
++      const CUSTOMERS = ['Priya', 'Marcus', 'Jo', 'Elena', 'Sam', 'Theo', 'Aisha', 'Luca', 'Nadia', 'Omar', 'Wren', 'Kai'];
++      const MODS = ['Oat milk', 'Extra shot', 'Decaf', 'Large', 'Light ice', 'No foam', 'Almond milk', 'Half sweet', 'Extra hot', 'Whole milk'];
++      let nextId = 1044;
++      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
++
++      function createCard(order) {
++        const card = document.createElement('li');
++        card.className = 'card';
++        card.tabIndex = 0;
++        card.dataset.id = order.id;
++        card.setAttribute('aria-describedby', 'board-help');
++        const h = document.createElement('h3');
++        h.textContent = order.drink;
++        const p = document.createElement('p');
++        p.className = 'order-meta';
++        p.textContent = `#${order.id} · ${order.customer} · ${order.mods}`;
++        card.append(h, p);
++        return card;
++      }
++
++      function addOrders(list, count) {
++        const frag = document.createDocumentFragment();
++        for (let i = 0; i < count; i++) {
++          frag.appendChild(createCard({
++            id: nextId++,
++            drink: pick(DRINKS),
++            customer: pick(CUSTOMERS),
++            mods: `${pick(MODS)}, ${pick(MODS)}`,
++          }));
++        }
++        list.appendChild(frag); // single batched insertion, contained to this column
++        updateCount(list);
++        announce(`${count} orders added to ${statusOf(list)}`);
++      }
++
++      document.getElementById('simulate-rush')?.addEventListener('click', () => addOrders(lists[0], 200));
++
++      lists.forEach(updateCount);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

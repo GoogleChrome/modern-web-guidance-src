@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,31 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .search-box {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 0;
++      padding: 10px 14px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    ::highlight(search-results) {
++      background-color: gold;
++      color: black;
++    }
++
++    /* Fallback when the CSS Custom Highlight API is unavailable */
++    mark.search-match {
++      background-color: gold;
++      color: black;
++      padding: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +199,10 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="search" id="search-input" class="search-box" placeholder="Search the menu…"
++        aria-label="Search seasonal favorites" autocomplete="off">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +231,74 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const input = document.getElementById('search-input');
++      const grid = document.querySelector('.grid');
++
++      function textNodes() {
++        const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT);
++        const nodes = [];
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
++        return nodes;
++      }
++
++      function clearHighlights() {
++        if (window.CSS && CSS.highlights) {
++          CSS.highlights.clear();
++          return;
++        }
++        // Fallback: unwrap previous <mark> elements and merge text nodes back together
++        grid.querySelectorAll('mark.search-match').forEach((mark) => mark.replaceWith(mark.textContent));
++        grid.normalize();
++      }
++
++      function highlight(term) {
++        const useApi = window.CSS && CSS.highlights;
++        const ranges = [];
++        for (const node of textNodes()) {
++          const text = node.textContent.toLowerCase();
++          const matches = [];
++          for (let pos = text.indexOf(term); pos !== -1; pos = text.indexOf(term, pos + term.length)) {
++            matches.push(pos);
++          }
++          if (!matches.length) continue;
++
++          if (useApi) {
++            for (const pos of matches) {
++              const range = new Range();
++              range.setStart(node, pos);
++              range.setEnd(node, pos + term.length);
++              ranges.push(range);
++            }
++          } else {
++            const original = node.textContent;
++            const frag = document.createDocumentFragment();
++            let last = 0;
++            for (const pos of matches) {
++              frag.append(original.slice(last, pos));
++              const mark = document.createElement('mark');
++              mark.className = 'search-match';
++              mark.textContent = original.slice(pos, pos + term.length);
++              frag.append(mark);
++              last = pos + term.length;
++            }
++            frag.append(original.slice(last));
++            node.replaceWith(frag);
++          }
++        }
++        if (useApi && ranges.length) CSS.highlights.set('search-results', new Highlight(...ranges));
++      }
++
++      input.addEventListener('input', () => {
++        clearHighlights();
++        const term = input.value.trim().toLowerCase();
++        if (term) highlight(term);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

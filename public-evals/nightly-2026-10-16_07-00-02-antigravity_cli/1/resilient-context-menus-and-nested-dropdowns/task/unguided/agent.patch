@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,12 +48,15 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      display: flex;
++      align-items: center;
+     }
+ 
+     nav a {
+       color: white;
+@@ -71,8 +74,90 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options Dropdown Trigger & Top-layer Resilient Anchored Panel */
++    #trigger-btn {
++      anchor-name: --trigger-btn;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
++    }
++
++    #trigger-btn:hover {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    @position-try --flip-block {
++      top: auto;
++      bottom: anchor(top);
++    }
++
++    @position-try --flip-inline {
++      left: auto;
++      right: anchor(right);
++    }
++
++    @position-try --flip-block-flip-inline {
++      top: auto;
++      bottom: anchor(top);
++      left: auto;
++      right: anchor(right);
++    }
++
++    #action-panel {
++      position: fixed;
++      position-anchor: --trigger-btn;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin: 0;
++      inset: auto;
++      position-try-options: flip-block, flip-inline, flip-block flip-inline, --flip-block, --flip-inline, --flip-block-flip-inline;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, --flip-block, --flip-inline, --flip-block-flip-inline;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
++      padding: 8px;
++      min-width: 180px;
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .action-panel-btn {
++      background: transparent;
++      border: none;
++      color: var(--text);
++      text-align: left;
++      padding: 8px 12px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      border-radius: 4px;
++      cursor: pointer;
++      width: 100%;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .action-panel-btn:hover {
++      background-color: var(--secondary);
++      color: var(--primary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +248,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button id="trigger-btn" type="button" popovertarget="action-panel">Options</button>
++        <div id="action-panel" popover>
++          <button type="button" class="action-panel-btn">Seasonal Offers</button>
++          <button type="button" class="action-panel-btn">Account Settings</button>
++          <button type="button" class="action-panel-btn">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 

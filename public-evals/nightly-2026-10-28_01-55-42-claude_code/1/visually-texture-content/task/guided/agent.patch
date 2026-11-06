@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,25 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Weathered / rustic grunge treatment.
++       The repeating SVG tile is used as an alpha mask, so the distress
++       pattern punches real transparency into the hero rather than
++       sitting on top of it as an overlay. Browsers without mask support
++       simply render the clean, solid hero (progressive enhancement). */
++    .weathered-bg {
++      -webkit-mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      -webkit-mask-size: 400px 400px;
++      -webkit-mask-position: center;
++      mask-image: url('grunge-texture.svg');
++      mask-mode: alpha;
++      mask-repeat: repeat;
++      mask-size: 400px 400px;
++      mask-position: center;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +184,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

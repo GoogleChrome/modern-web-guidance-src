@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,63 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Feedback form */
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      max-width: 600px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback-form label {
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .feedback-form label:first-child {
++      margin-top: 0;
++    }
++
++    /* Size controls to their content instead of a fixed width/height */
++    .feedback-form input,
++    .feedback-form textarea,
++    .feedback-form select {
++      field-sizing: content;
++      min-width: 8rem;
++      max-width: 100%;
++      font: inherit;
++      color: var(--text);
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .feedback-form textarea {
++      min-height: 2.5rem;
++      resize: none;
++    }
++
++    .feedback-form input:focus,
++    .feedback-form textarea:focus,
++    .feedback-form select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .feedback-form .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +249,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Tell Us What You Think</h2>
++      <form class="feedback-form" action="/feedback" method="post">
++        <label for="name">Name</label>
++        <input type="text" id="name" name="name" placeholder="Your name" required>
++
++        <label for="topic">Topic</label>
++        <select id="topic" name="topic">
++          <option value="menu">Menu</option>
++          <option value="service">Customer service</option>
++          <option value="locations">Locations</option>
++          <option value="rewards">Rewards program</option>
++          <option value="other">Other</option>
++        </select>
++
++        <label for="message">Message</label>
++        <textarea id="message" name="message" rows="1" placeholder="Share your thoughts" required></textarea>
++
++        <button type="submit" class="btn">Send Feedback</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

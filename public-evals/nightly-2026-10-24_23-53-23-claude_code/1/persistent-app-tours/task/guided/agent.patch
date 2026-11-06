@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,42 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --feature;
++    }
++
++    #tour-step {
++      position-anchor: --feature;
++      inset: auto;
++      top: anchor(bottom);
++      right: anchor(right);
++      margin: 0.75rem 0 0;
++      padding: 1rem;
++      max-width: 16rem;
++      border: 1px solid var(--accent);
++      border-radius: 0.5rem;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    #tour-step h2 {
++      font-size: 1rem;
++      margin-bottom: 0.25rem;
++    }
++
++    #tour-step .btn {
++      margin-top: 0.75rem;
++      padding: 6px 14px;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +195,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +240,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
++    <h2 id="tour-title">Earn points</h2>
++    <p>Earn points with every purchase and redeem them for free drinks.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
++  <script type="module">
++    // Polyfill anchor positioning where unsupported
++    if (!CSS.supports('anchor-name: --foo')) {
++      await import('https://unpkg.com/@oddbird/css-anchor-positioning');
++    }
++    // Polyfill popover where unsupported
++    if (!('popover' in HTMLElement.prototype)) {
++      await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++
++    const tourStep = document.getElementById('tour-step');
++    tourStep.showPopover();
++    tourStep.querySelector('button').focus();
++
++    // Keep the tour visible instead of navigating away
++    document.getElementById('feature').addEventListener('click', (e) => e.preventDefault());
++  </script>
+ </body>
+ 
+ </html>

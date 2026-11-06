@@ -1,0 +1,117 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,112 @@
++# Daily Grind performance audit
++
++## Scope and evidence
++
++Audited the complete repository: a single static `index.html`, inline CSS, one
++remote stock photograph, and `package.json`. There is no application JavaScript,
++API, font download, framework, build pipeline, or implementation of the linked
++routes in this repository.
++
++Verification was limited to source analysis, image downloads, binary metadata,
++and static assertions. No browser, dev/preview server, server entrypoint, or
++start script was used. A build is unnecessary for this static HTML site.
++LCP, INP, CLS, TTFB, and Lighthouse scores were **not measured**. The changes
++address identified causes and risks; byte savings are measured file sizes,
++not claims of measured Core Web Vitals improvements.
++
++## Findings and changes
++
++| Area | Finding | Implementation / disposition |
++| --- | --- | --- |
++| LCP discovery | Hero URL was only available inside CSS, without a priority hint. | A native HTML `picture` exposes the image to the preload scanner; its `img` uses `fetchpriority="high"` and eager loading. Only this image has elevated priority. |
++| Image transfer | All devices fetched the same 1350-pixel JPEG from Unsplash. | Local AVIF and WebP sources have 480, 768, 1280, and 1920-pixel variants; JPEG remains the fallback. The browser downloads one supported candidate. |
++| Responsive cover sizing | A portrait hero crops a landscape photograph, requiring more source pixels than its CSS width alone implies. | `sizes="max(100vw, 90vh, 30rem)"` accounts for full viewport width, the 3:2 image covering a 60vh hero, and the 20rem minimum hero height. `90vh` is a conservative estimate where `svh` is smaller. |
++| External connection | The photo required a second origin's DNS/TLS connection and availability. | All rendering assets are now same-origin, with content hashes in their filenames. |
++| Layout stability | A fixed 60vh hero could overflow with wrapped or enlarged text. | The hero reserves a minimum height before the image loads, grows for content, and uses `svh` with a `vh` fallback. The positioned image has explicit intrinsic dimensions and cannot move content on arrival. |
++| Mobile interactions | Navigation used an unwrapped flex row; grid columns had a 250px minimum even when less space was available. | Navigation wraps with CSS, small-screen link padding provides larger hit areas, and grid columns can shrink to the available width. All 13 link destinations are preserved. |
++| INP / main thread | No JavaScript handlers, long tasks, hydration, polling, layout-read loops, or third-party scripts exist in the supplied page. | Retained native navigation and zero JavaScript. No timer, worker, library, or speculative prefetch added. Destination response times cannot be assessed here. |
++| CSS / fonts | Small inline styles and system fonts already avoid stylesheet/font request chains. | Retained both; added no external styles, fonts, or frameworks. |
++| Rendering overhead | Three simple cards do not justify containment or deferred rendering. | No `content-visibility`, broad `will-change`, or service worker added. |
++| Input feedback | Focus visibility depended on browser defaults; color transitions ignored motion preference. | Added explicit keyboard focus outlines and a reduced-motion override. |
++
++The original photograph and centered dark-overlay treatment are retained. The
++image is decorative (`alt=""`), matching its previous CSS background semantics.
++No preload is needed: the picture is early in this small HTML document, and a
++separate preload could fetch a second format or wrong responsive candidate.
++
++## Payload evidence
++
++The original URL returned a **157,974-byte JPEG** during this audit. Sizes below
++are actual optimized file sizes, before HTTP compression:
++
++| Width | AVIF bytes | WebP bytes | AVIF reduction against original |
++| --- | ---: | ---: | ---: |
++| 480 | 12,965 | 25,812 | 91.8% |
++| 768 | 21,135 | 50,650 | 86.6% |
++| 1280 | 39,023 | 111,100 | 75.3% |
++| 1920 | 65,385 | 275,922 | 58.6% |
++
++The 1280px JPEG fallback is 142,732 bytes. The 1920px WebP provides greater
++resolution than the original and costs more bytes; it is only eligible for
++browsers without AVIF support when their viewport/density needs that size.
++Actual selection depends on viewport, pixel density, support, and browser
++heuristics; a phone does not necessarily select the smallest candidate.
++
++HTML grew from **4,708 to 6,295 bytes**, or **1,726 to 2,227 bytes with gzip**
++computed locally. The 501-byte gzip increase supplies responsive markup and
++layout fixes. For the 1280px AVIF example, combined gzipped HTML and image bytes
++fall from 159,700 to 41,250 (74.2%). This is a size comparison, not a timing
++measurement or confirmation that production serves gzip.
++
++The initial resource set remains HTML plus one photo. Rendering origins fall
++from two to one. All nine image variants together occupy disk space, but are
++not all fetched by a visitor.
++
++## Static verification completed
++
++- All 13 anchor destinations match the original document, in the same order.
++- Every referenced image exists, and no image asset is unreferenced.
++- Every filename's hash matches its file's SHA-256 prefix.
++- AVIF, WebP, and JPEG signatures are valid; WebP VP8X widths match descriptors.
++- Each modern source has four width candidates and an explicit cover-aware `sizes`.
++- Exactly one image is high priority, eagerly loaded, and explicitly dimensioned.
++- Every AVIF variant is under the 70,000-byte audit budget.
++- HTML has no scripts, remote resource URLs, or CSS `@import` chains.
++- `git diff --check` passes.
++
++These checks cannot verify decoded appearance, actual browser selection,
++interactive paint latency, or rendered layout. No visual verification was
++performed, as requested.
++
++## Deployment and measurement follow-up
++
++The repository has no deployment configuration or production URL. The following
++items require the actual host and are not represented as completed fixes:
++
++1. Serve hashed `/assets/coffee-*` files with
++   `Cache-Control: public, max-age=31536000, immutable`. Serve HTML with
++   `Cache-Control: no-cache` so updates revalidate. Use the host's appropriate
++   configuration; no speculative host-specific file was added.
++2. Enable Brotli or gzip for HTML and correct image MIME types. Do not expect
++   meaningful additional compression from compressing AVIF/WebP/JPEG again.
++3. Check document TTFB, CDN delivery, redirects, and cache hits in production.
++4. Verify the linked destinations on the deployed service. `/menu`, account,
++   logout, ordering, and other linked routes are absent from this repository;
++   their latency and behavior remain outside this audit's code coverage.
++5. After deployment, use available CrUX/PageSpeed Insights field data or the
++   site's existing RUM to evaluate mobile and desktop separately. Target the
++   75th percentile: LCP ≤2.5s, INP ≤200ms, CLS ≤0.1. New field results need a
++   collection window; do not infer a passing score from the payload savings.
++
++## Image provenance and references
++
++All variants derive from the existing [Unsplash photograph](https://images.unsplash.com/photo-1495474472287-4d71bcdd2085).
++They were downloaded using the image endpoint's explicit `fm`, `w`, `h`,
++`fit=crop`, and `q` parameters: quality 50 for AVIF, 72 for WebP, and 75 for JPEG.
++No generated images were used.
++
++Implementation guidance: [web.dev: Optimize LCP](https://web.dev/articles/optimize-lcp),
++[MDN: Responsive images](https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images),
++and the local modern-web-guidance `performance` and `optimize-image-priority`
++guides. These support early image discovery, responsive sources, reserved
++geometry, and prioritizing the hero without lazy loading it.

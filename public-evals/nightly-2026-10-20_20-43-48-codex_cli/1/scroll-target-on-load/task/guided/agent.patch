@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +100,52 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-feed {
++      position: relative;
++      height: 460px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      margin: 20px auto 0;
++      max-width: 600px;
++      padding: 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f3eeeb;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .media-feed .card + .card {
+       margin-top: 20px;
+     }
+ 
++    .media-feed .target {
++      scroll-initial-target: nearest;
++      scroll-margin-block: 16px;
++    }
++
++    .media-feed img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++    }
++
++    @supports not (scroll-initial-target: nearest) {
++      .js .media-feed:not([data-scroll-ready]) {
++        visibility: hidden;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +213,53 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="favorites-heading" tabindex="0">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=1120&amp;h=440&amp;q=80" width="560" height="220" alt="A creamy iced latte in a tall glass">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1120&amp;h=440&amp;q=80" width="560" height="220" alt="Freshly brewed espresso in a coffee cup">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=1120&amp;h=440&amp;q=80" width="560" height="220" alt="Cold coffee served over ice">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&amp;fit=crop&amp;w=1120&amp;h=440&amp;q=80" width="560" height="220" alt="A cup of coffee topped with latte art">
++          <h3>Vanilla Cappuccino</h3>
++          <p>Rich espresso, silky foam, and a touch of vanilla.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=1120&amp;h=440&amp;q=80" width="560" height="220" alt="A warm cup of freshly brewed coffee">
++          <h3>House Blend</h3>
++          <p>A balanced, comforting roast for your everyday ritual.</p>
++          <a href="/menu/house-blend" class="btn">View Details</a>
++        </article>
+       </div>
++      <script>
++        {
++          const feed = document.querySelector('.media-feed');
++          if (!CSS.supports('scroll-initial-target', 'nearest')) {
++            const target = feed.querySelector('.target');
++            // Position only this container, synchronously before revealing it.
++            // Explicit image sizes keep this layout stable as photos load.
++            feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++          }
++          feed.dataset.scrollReady = '';
++        }
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

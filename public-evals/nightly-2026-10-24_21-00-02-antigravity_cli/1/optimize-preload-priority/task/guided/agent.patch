@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,105 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Elevate priority for the video poster image acting as the LCP candidate -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical header font (fonts are high priority by default; always include crossorigin) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Deprioritize secondary font preload to avoid network contention with critical LCP assets -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <!-- Inline critical CSS to optimize the Critical Rendering Path -->
++  <style>
++    @font-face {
++      font-family: "BrandFont";
++      src: url("brand-font.woff2") format("woff2");
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: "SecondaryFont";
++      src: url("secondary-font.woff2") format("woff2");
++      font-display: swap;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      font-family: "SecondaryFont", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      background-color: #0f172a;
++      color: #f8fafc;
++      line-height: 1.5;
++    }
++
++    header, main, footer {
++      max-width: 960px;
++      margin-inline: auto;
++      padding: 1.5rem;
++    }
++
++    h1 {
++      font-family: "BrandFont", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      font-size: clamp(2rem, 5vw, 3.25rem);
++      margin: 0;
++    }
++
++    .video-wrapper {
++      margin-block: 1rem;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      max-width: 1200px;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background-color: #1e293b;
++      border-radius: 0.5rem;
++    }
++
++    .secondary-ui {
++      font-family: "SecondaryFont", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      color: #94a3b8;
++      font-size: 0.875rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Next-Gen Video</h1>
++  </header>
++
++  <main>
++    <div class="video-wrapper">
++      <video
++        controls
++        width="1200"
++        height="675"
++        poster="poster.jpg"
++        preload="none"
++      >
++        <source src="video.webm" type="video/webm">
++        <source src="video.mp4" type="video/mp4">
++        <track src="captions.vtt" kind="captions" srclang="en" label="English">
++      </video>
++    </div>
++    <p class="secondary-ui">Streamlined playback engineered for instant startup.</p>
++  </main>
++
++  <footer class="secondary-ui">
++    <p>&copy; 2026 Video Platform</p>
++  </footer>
++</body>
++</html>

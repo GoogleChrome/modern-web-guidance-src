@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+index 1bacf96..f689028 100644
+--- a/index.html
++++ b/index.html
+@@ -12,8 +12,21 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Hover shade for primary buttons, derived so it follows --primary */
++      --primary-hover: color-mix(in srgb, var(--primary), black 20%);
+     }
+ 
++    /*
++     * Auto-contrast text colors.
++     * The rule `lch(from BG clamp(0, (49.44 - l) * 1000, 100) 0 0)` yields pure
++     * white for backgrounds darker than L*≈49.44 and pure black for lighter ones
++     * (the point where white and black give equal WCAG contrast), so text stays
++     * readable whenever --primary / --secondary change — no JS needed.
++     * The color is computed inside each rule (not in :root) so it also tracks
++     * overrides of --primary / --secondary scoped to a single element.
++     * Static fallbacks below apply in browsers without relative color syntax.
++     */
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -30,7 +43,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: #fff;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +69,22 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: text-decoration-color 0.3s;
++      text-decoration-line: underline;
++      text-decoration-color: transparent;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 4px;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    /* Hover keeps the high-contrast text color and signals with an accent
++       underline, since an accent-colored label can't stay readable on
++       every possible --primary. */
++    nav a:hover,
++    nav a:focus-visible {
++      text-decoration-color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -123,6 +144,7 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: #fff;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -130,12 +152,14 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +171,34 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      text-decoration: underline;
++    }
++
++    @supports (color: lch(from white l c h)) {
++      nav {
++        color: lch(from var(--primary) clamp(0, (49.44 - l) * 1000, 100) 0 0);
++      }
++
++      .btn {
++        color: lch(from var(--primary) clamp(0, (49.44 - l) * 1000, 100) 0 0);
++      }
++
++      .btn:hover,
++      .btn:focus-visible {
++        color: lch(from var(--primary-hover) clamp(0, (49.44 - l) * 1000, 100) 0 0);
++      }
++
++      footer {
++        color: lch(from var(--secondary) clamp(0, (49.44 - l) * 1000, 100) 0 0);
++      }
++    }
+   </style>
+ </head>
+ 

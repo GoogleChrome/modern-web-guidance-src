@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="blend-lab.css">
++  <script type="module" src="blend-lab.mjs"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -174,8 +176,57 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="blend-lab" aria-labelledby="lab-title">
++      <div class="lab-heading">
++        <div>
++          <p class="lab-eyebrow">A LITTLE SCIENCE. A LOT OF COFFEE.</p>
++          <h2 id="lab-title">Find your next favorite blend.</h2>
++          <p>Explore thousands of recipes, one delicious possibility at a time.</p>
++        </div>
++        <span class="lab-badge">THE BLEND LAB</span>
++      </div>
++      <div class="lab-layout">
++        <form id="blend-form" class="lab-controls">
++          <div class="lab-step"><span>01</span><h3>Make it your own</h3></div>
++          <p class="lab-help">We’ll blend Brazilian, Colombian, and Ethiopian beans to find your closest flavor match.</p>
++          <fieldset id="blend-settings">
++            <legend class="visually-hidden">Simulation settings</legend>
++            <label for="flavor-target">Your flavor direction</label>
++            <select id="flavor-target" name="target">
++              <option value="balanced">Balanced &amp; smooth</option>
++              <option value="bright">Bright &amp; fruity</option>
++              <option value="bold">Bold &amp; chocolatey</option>
++            </select>
++            <div class="lab-control-row">
++              <div><label for="roast">Roast level</label><select id="roast" name="roast"><option value="light">Light</option><option value="medium" selected>Medium</option><option value="dark">Dark</option></select></div>
++              <div><label for="brew">Brew method</label><select id="brew" name="brew"><option value="filter">Pour-over</option><option value="espresso">Espresso</option><option value="cold">Cold brew</option></select></div>
++            </div>
++            <label for="batch-size">Recipes to explore</label>
++            <select id="batch-size" name="batch"><option value="100000">100,000 recipes</option><option value="500000" selected>500,000 recipes</option><option value="1000000">1,000,000 recipes</option></select>
++          </fieldset>
++          <div class="lab-actions"><button class="lab-run" id="run-blends" type="submit">Simulate blends <span aria-hidden="true">↗</span></button><button class="lab-cancel" id="cancel-blends" type="button" hidden>Stop</button></div>
++          <p class="lab-footnote">An exploratory model, inspired by origin tasting notes. Your cup may vary.</p>
++        </form>
++        <div class="lab-output">
++          <div class="lab-output-heading"><div class="lab-step"><span>02</span><h3>Your flavor discoveries</h3></div><span id="lab-state" class="lab-state">Ready to explore</span></div>
++          <div id="lab-empty" class="lab-empty">
++            <svg viewBox="0 0 80 80" width="80" height="80" fill="none" aria-hidden="true"><path d="M21 29h36v20a18 18 0 0 1-36 0V29Z" stroke="currentColor" stroke-width="2"/><path d="M57 33h5a8 8 0 0 1 0 16h-5M16 69h48M30 19c-7-7 7-8 0-15M42 19c-7-7 7-8 0-15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
++            <h4>A great cup starts with curiosity.</h4><p>Choose your preferences and let’s discover<br>what’s brewing in your perfect blend.</p>
++            <div class="lab-origin-tags"><span>Brazil · nutty</span><span>Colombia · sweet</span><span>Ethiopia · fruity</span></div>
++          </div>
++          <div id="lab-progress-area" class="lab-progress-area" hidden>
++            <div class="lab-progress-label"><label for="lab-progress">Exploring recipes</label><span id="lab-percent">0%</span></div>
++            <progress id="lab-progress" value="0" max="100">0%</progress>
++            <div class="lab-progress-meta"><span id="lab-count">0 recipes explored</span><span id="lab-elapsed">0.0s</span></div>
++          </div>
++          <p id="lab-status" class="lab-status" role="status" aria-live="polite" aria-atomic="true"></p>
++          <div id="lab-results" class="lab-results"></div>
++        </div>
++      </div>
++      <noscript><p class="lab-help">Enable JavaScript to use the flavor simulation.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

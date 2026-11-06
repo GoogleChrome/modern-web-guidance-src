@@ -1,0 +1,383 @@
+diff --git a/index.html b/index.html
+index 66c9173..ccdbce7 100644
+--- a/index.html
++++ b/index.html
+@@ -6,158 +6,239 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /*
++     * Cascade order: later layers win regardless of selector specificity.
++     * Unlayered styles (none, intentionally) would beat every layer.
++     */
++    @layer reset, tokens, base, layout, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    /* ---------- Reset ---------- */
++    @layer reset {
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++    /* ---------- Design tokens ---------- */
++    @layer tokens {
++      :root {
++        /* Primitive palette */
++        --color-espresso-700: #4e342e;
++        --color-espresso-900: #3e2723;
++        --color-latte-200: #d7ccc8;
++        --color-caramel-300: #ffab40;
++        --color-milk-50: #fafafa;
++        --color-white: #fff;
++        --color-shadow: rgb(0 0 0 / 0.1);
++        --color-scrim: rgb(0 0 0 / 0.5);
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Semantic roles */
++        --color-brand: var(--color-espresso-700);
++        --color-brand-strong: var(--color-espresso-900);
++        --color-accent: var(--color-caramel-300);
++        --color-text: var(--color-espresso-900);
++        --color-text-inverse: var(--color-white);
++        --color-surface: var(--color-white);
++        --color-surface-page: var(--color-milk-50);
++        --color-surface-muted: var(--color-latte-200);
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        /* Typography */
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --line-height-body: 1.6;
++        --font-size-xs: 0.85rem;
++        --font-size-sm: 0.9rem;
++        --font-size-lg: 1.5rem;
++        --font-size-display: 3rem;
++        --letter-spacing-wide: 1px;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Spacing scale */
++        --space-2xs: 5px;
++        --space-xs: 10px;
++        --space-sm: 12px;
++        --space-md: 15px;
++        --space-lg: 20px;
++        --space-xl: 40px;
++        --space-gutter: 5%;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        /* Shape & depth */
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
++        --border-width: 1px;
++        --shadow-card: 0 2px 5px var(--color-shadow);
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        /* Layout */
++        --container-max: 1100px;
++        --card-min: 250px;
++        --hero-block-size: 60vh;
++        --z-sticky: 1000;
+ 
+-    nav a:hover {
+-      color: var(--accent);
++        /* Motion */
++        --transition-fast: 0.3s;
++      }
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++    /* ---------- Base elements ---------- */
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        line-height: var(--line-height-body);
++        color: var(--color-text);
++        background-color: var(--color-surface-page);
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++      a {
++        text-decoration: none;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      ul {
++        list-style: none;
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    /* ---------- Layout regions ---------- */
++    @layer layout {
++      .site-nav {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        padding-block: 1rem;
++        padding-inline: var(--space-gutter);
++        background: var(--color-brand);
++        color: var(--color-text-inverse);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        & ul {
++          display: flex;
++          gap: var(--space-lg);
++        }
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      .hero {
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        min-block-size: var(--hero-block-size);
++        padding-inline: var(--space-lg);
++        background:
++          linear-gradient(var(--color-scrim), var(--color-scrim)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++          center / cover;
++        color: var(--color-text-inverse);
++        text-align: center;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        & h1 {
++          font-size: var(--font-size-display);
++          margin-block-end: 1rem;
++        }
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .container {
++        max-inline-size: var(--container-max);
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--space-lg);
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(var(--card-min), 100%), 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      .site-footer {
++        margin-block-start: var(--space-xl);
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        background: var(--color-surface-muted);
++        text-align: center;
++      }
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    /* ---------- Components ---------- */
++    @layer components {
++      .logo {
++        font-size: var(--font-size-lg);
++        font-weight: bold;
++        letter-spacing: var(--letter-spacing-wide);
++      }
++
++      .site-nav a {
++        color: var(--color-text-inverse);
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-accent);
++        }
++      }
++
++      .logout-link {
++        padding-block: var(--space-2xs);
++        padding-inline: var(--space-sm);
++        border: var(--border-width) solid var(--color-accent);
++        border-radius: var(--radius-sm);
++      }
++
++      .card {
++        padding: var(--space-lg);
++        border-radius: var(--radius-lg);
++        background: var(--color-surface);
++        box-shadow: var(--shadow-card);
++        text-align: center;
++
++        & h3 {
++          margin-block-end: var(--space-xs);
++          color: var(--color-brand);
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        margin-block-start: var(--space-md);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-md);
++        background: var(--color-brand);
++        color: var(--color-text-inverse);
++        transition: background-color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          background: var(--color-brand-strong);
++        }
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-lg);
++
++        & a {
++          margin-inline: var(--space-xs);
++          color: var(--color-text);
++          font-size: var(--font-size-xs);
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* ---------- Utilities ---------- */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +257,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +278,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,1293 @@
+diff --git a/index.html b/index.html
+index 66c9173..ad045ed 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,16 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-soft: #fff3e0;
+       --text: #3e2723;
++      --muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --success: #2e7d32;
++      --border: #e0d6d2;
+     }
+ 
+     * {
+@@ -38,6 +44,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+@@ -46,9 +53,16 @@
+       letter-spacing: 1px;
+     }
+ 
++    .nav-right {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -72,10 +86,48 @@
+       border-radius: 4px;
+     }
+ 
++    /* Interactive page-level status widget in navbar (remains interactive during all transitions) */
++    .live-tray-Controls {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      background: rgba(255, 255, 255, 0.12);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
++    .tray-badge {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++      padding: 2px 8px;
++      border-radius: 999px;
++      min-width: 24px;
++      text-align: center;
++    }
++
++    .quick-shot-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      padding: 3px 10px;
++      border-radius: 999px;
++      cursor: pointer;
++      font-size: 0.8rem;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .quick-shot-btn:hover {
++      background: rgba(255, 171, 64, 0.25);
++      border-color: var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 52vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -95,51 +147,528 @@
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1140px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .section-header h2 {
++      font-size: 1.8rem;
++      color: var(--primary);
++    }
++
++    .concurrency-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 10px;
++      background: #f3ece9;
++      padding: 10px 14px;
++      border-radius: 8px;
++      border: 1px solid var(--border);
++    }
++
++    .toolbar-status {
++      font-size: 0.85rem;
++      color: var(--muted);
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .active-transitions-pill {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--primary);
++      color: white;
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 2px 9px;
++      border-radius: 999px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      align-items: start;
++    }
++
++    /*
++     * Scoped View Transition Roots:
++     * Each .card, .menu-list-panel, and .brew-panel is an isolated transition root
++     * using contain: layout and element.startViewTransition().
++     */
++    .scoped-transition-root {
++      contain: layout;
++      view-transition-scope: all;
++      position: relative;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      contain: layout;
++      background: var(--surface);
++      padding: 22px;
++      border-radius: 12px;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      text-align: left;
++      border: 1px solid var(--border);
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      overflow: hidden;
++    }
++
++    .card-media {
++      position: relative;
++      height: 170px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card.is-expanded .card-media {
++      height: 210px;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      background: rgba(62, 39, 35, 0.88);
++      color: var(--accent);
++      font-size: 0.78rem;
++      font-weight: 700;
++      padding: 4px 10px;
++      border-radius: 999px;
++      backdrop-filter: blur(4px);
++    }
++
++    .card-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.25rem;
++    }
++
++    .card-price {
++      font-weight: 700;
++      font-size: 1.1rem;
++      color: var(--primary-dark);
++    }
++
++    .card-summary {
++      color: var(--muted);
++      font-size: 0.95rem;
++    }
++
++    /* Card state tabs inside each component */
++    .card-tabs {
++      display: flex;
++      gap: 6px;
++      background: #f5efed;
++      padding: 4px;
++      border-radius: 8px;
++    }
++
++    .card-tab {
++      flex: 1;
++      border: none;
++      background: transparent;
++      color: var(--muted);
++      font-size: 0.82rem;
++      font-weight: 600;
++      padding: 6px 8px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .card-tab.active {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Expandable / dynamic state body inside the card subtree */
++    .card-state-body {
++      background: #fcf9f8;
++      border: 1px solid #ede3df;
++      border-radius: 8px;
++      padding: 12px;
++      font-size: 0.88rem;
++    }
++
++    .tasting-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-top: 8px;
++    }
++
++    .tasting-pill {
++      background: var(--accent-soft);
++      color: var(--primary-dark);
++      border: 1px solid #ffe0b2;
++      padding: 3px 9px;
++      border-radius: 999px;
++      font-size: 0.78rem;
++      font-weight: 600;
++    }
++
++    .size-options {
++      display: flex;
++      gap: 8px;
++      margin-top: 8px;
++    }
++
++    .size-option-btn {
++      flex: 1;
++      padding: 6px 8px;
++      border: 1px solid var(--border);
++      background: white;
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .size-option-btn.selected {
++      border-color: var(--primary);
++      background: var(--primary);
++      color: white;
++    }
++
++    .nutrition-grid {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++      text-align: center;
++      margin-top: 6px;
++    }
++
++    .nutrition-stat {
++      background: white;
++      padding: 6px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++    }
++
++    .nutrition-stat strong {
++      display: block;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      margin-top: 4px;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 9px 16px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      cursor: pointer;
++      font-size: 0.88rem;
++      font-weight: 600;
++      transition: background 0.25s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary-dark);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* Secondary Workspace Grid: Interactive Subtree List + Live Brew Panel */
++    .workspace-split {
++      display: grid;
++      grid-template-columns: 1.35fr 1fr;
++      gap: 24px;
++      margin-top: 44px;
++    }
++
++    @media (max-width: 820px) {
++      .workspace-split {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .subtree-panel {
++      contain: layout;
++      background: white;
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 22px;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.06);
++    }
++
++    .panel-top {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .filter-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .filter-chip {
++      border: 1px solid var(--border);
++      background: #f8f5f4;
++      color: var(--text);
++      padding: 5px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .filter-chip.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .menu-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .menu-list-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 14px;
++      border-radius: 8px;
++      background: #fcf9f8;
++      border: 1px solid #ede3df;
++      gap: 12px;
++    }
++
++    .menu-item-info {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .menu-item-thumb {
++      width: 46px;
++      height: 46px;
++      border-radius: 8px;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    .menu-item-title {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .menu-item-meta {
++      font-size: 0.8rem;
++      color: var(--muted);
++    }
++
++    /* Live Brew Queue / Stepper Subtree Panel */
++    .brew-steps {
++      display: flex;
++      gap: 8px;
++      margin-bottom: 16px;
++    }
++
++    .brew-step-btn {
++      flex: 1;
++      padding: 8px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      background: #f8f5f4;
++      color: var(--muted);
++      cursor: pointer;
++    }
++
++    .brew-step-btn.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .brew-stage-card {
++      background: #fcf9f8;
++      border: 1px solid #ede3df;
++      border-radius: 10px;
++      padding: 16px;
++    }
++
++    .brew-progress-bar {
++      height: 8px;
++      background: #e6dcd8;
++      border-radius: 999px;
++      overflow: hidden;
++      margin: 12px 0;
++    }
++
++    .brew-progress-fill {
++      height: 100%;
++      background: var(--accent);
++      border-radius: 999px;
++      transition: width 0.3s ease;
++    }
++
++    /*
++     * Scoped View Transition Pseudo-Element Animations
++     * Works both when scoped to the component root (element::view-transition-*)
++     * and via view-transition-class / named groups.
++     */
++    .scoped-transition-root::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: 420ms;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    .scoped-transition-root::view-transition-group(*) {
++      animation-duration: 420ms;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    ::view-transition-old(.state-pane),
++    .scoped-transition-root::view-transition-old(.state-pane) {
++      animation: 260ms cubic-bezier(0.4, 0, 1, 1) both subtree-slide-out;
++    }
++
++    ::view-transition-new(.state-pane),
++    .scoped-transition-root::view-transition-new(.state-pane) {
++      animation: 380ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both subtree-slide-in;
++    }
++
++    ::view-transition-old(.menu-row),
++    .scoped-transition-root::view-transition-old(.menu-row) {
++      animation: 240ms ease-in both row-fade-out;
++    }
++
++    ::view-transition-new(.menu-row),
++    .scoped-transition-root::view-transition-new(.menu-row) {
++      animation: 340ms ease-out 60ms both row-fade-in;
++    }
++
++    @keyframes subtree-slide-out {
++      from {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-10px) scale(0.97);
++      }
++    }
++
++    @keyframes subtree-slide-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px) scale(0.97);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @keyframes row-fade-out {
++      from {
++        opacity: 1;
++        transform: scale(1);
++      }
++      to {
++        opacity: 0;
++        transform: scale(0.94);
++      }
++    }
++
++    @keyframes row-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px) scale(0.96);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    /* Visual ring indicator when a component is actively running a scoped transition */
++    .is-transitioning {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -159,41 +688,186 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-right">
++      <div class="live-tray-Controls" aria-label="Interactive Barista Tray">
++        <span>Order Tray:</span>
++        <span class="tray-badge" id="tray-count">0</span>
++        <button type="button" class="quick-shot-btn" id="quick-shot-btn" title="Remains interactive during any component animation">
++          + Espresso Shot
++        </button>
++      </div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" style="margin-top: 15px;">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="concurrency-toolbar">
++          <button type="button" class="btn btn-accent" id="animate-all-concurrent-btn">
++            Animate All Components Concurrently
++          </button>
++          <div class="toolbar-status">
++            <span>Active Scoped Transitions:</span>
++            <span class="active-transitions-pill" id="active-transitions-count">0</span>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <div class="grid" id="seasonal-grid">
++        <!-- Card 1: Maple Oat Latte (Scoped Transition Component) -->
++        <article class="card scoped-transition-root" id="card-maple" data-card-id="maple" data-state="overview" data-size="M">
++          <div class="card-media" style="view-transition-name: card-maple-media;">
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte">
++            <span class="card-badge" style="view-transition-name: card-maple-badge;">Seasonal Pick</span>
++          </div>
++          <div class="card-header-row" style="view-transition-name: card-maple-header;">
++            <h3>Maple Oat Latte</h3>
++            <span class="card-price" data-role="price">$5.75</span>
++          </div>
++          <p class="card-summary">Creamy oat milk with a hint of Vermont maple syrup.</p>
++
++          <div class="card-tabs" role="tablist" aria-label="Maple Oat Latte views">
++            <button type="button" class="card-tab active" data-tab="overview">Overview</button>
++            <button type="button" class="card-tab" data-tab="customize">Customize</button>
++            <button type="button" class="card-tab" data-tab="nutrition">Nutrition</button>
++          </div>
++
++          <div class="card-state-body" data-role="state-body" style="view-transition-name: card-maple-body; view-transition-class: state-pane;">
++            <strong>Tasting Profile</strong>
++            <p>Velvety steamed barista oat milk layered with double-ristretto espresso and pure amber maple.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">Toasted Pecan</span>
++              <span class="tasting-pill">Amber Maple</span>
++              <span class="tasting-pill">Velvet Finish</span>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-maple-actions;">
++            <a href="/menu/seasonal" class="btn btn-secondary" data-action="cycle-state">View Details</a>
++            <button type="button" class="btn" data-action="add-to-tray">Add to Tray</button>
++          </div>
++        </article>
++
++        <!-- Card 2: Dark Roast Espresso (Scoped Transition Component) -->
++        <article class="card scoped-transition-root" id="card-espresso" data-card-id="espresso" data-state="overview" data-size="M">
++          <div class="card-media" style="view-transition-name: card-espresso-media;">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso">
++            <span class="card-badge" style="view-transition-name: card-espresso-badge;">Single Origin</span>
++          </div>
++          <div class="card-header-row" style="view-transition-name: card-espresso-header;">
++            <h3>Dark Roast Espresso</h3>
++            <span class="card-price" data-role="price">$4.25</span>
++          </div>
++          <p class="card-summary">Bold, smokey, and perfect for a morning boost.</p>
++
++          <div class="card-tabs" role="tablist" aria-label="Dark Roast Espresso views">
++            <button type="button" class="card-tab active" data-tab="overview">Overview</button>
++            <button type="button" class="card-tab" data-tab="customize">Customize</button>
++            <button type="button" class="card-tab" data-tab="nutrition">Nutrition</button>
++          </div>
++
++          <div class="card-state-body" data-role="state-body" style="view-transition-name: card-espresso-body; view-transition-class: state-pane;">
++            <strong>Tasting Profile</strong>
++            <p>Full-bodied Sumatra &amp; Colombian dark roast pulled at 9 bars with richtiger-stripe crema.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">85% Cacao</span>
++              <span class="tasting-pill">Cedar Smoke</span>
++              <span class="tasting-pill">Molasses</span>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-espresso-actions;">
++            <a href="/menu/espresso" class="btn btn-secondary" data-action="cycle-state">View Details</a>
++            <button type="button" class="btn" data-action="add-to-tray">Add to Tray</button>
++          </div>
++        </article>
++
++        <!-- Card 3: Cold Brew (Scoped Transition Component) -->
++        <article class="card scoped-transition-root" id="card-coldbrew" data-card-id="coldbrew" data-state="overview" data-size="M">
++          <div class="card-media" style="view-transition-name: card-coldbrew-media;">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Cold Brew">
++            <span class="card-badge" style="view-transition-name: card-coldbrew-badge;">18h Steeped</span>
++          </div>
++          <div class="card-header-row" style="view-transition-name: card-coldbrew-header;">
++            <h3>Cold Brew</h3>
++            <span class="card-price" data-role="price">$5.25</span>
++          </div>
++          <p class="card-summary">Steeped for 18 hours for maximum smoothness.</p>
++
++          <div class="card-tabs" role="tablist" aria-label="Cold Brew views">
++            <button type="button" class="card-tab active" data-tab="overview">Overview</button>
++            <button type="button" class="card-tab" data-tab="customize">Customize</button>
++            <button type="button" class="card-tab" data-tab="nutrition">Nutrition</button>
++          </div>
++
++          <div class="card-state-body" data-role="state-body" style="view-transition-name: card-coldbrew-body; view-transition-class: state-pane;">
++            <strong>Tasting Profile</strong>
++            <p>Coarse-ground Ethiopian beans cold-filtered in small batches for ultra-low acidity.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">Sweet Caramel</span>
++              <span class="tasting-pill">Stone Fruit</span>
++              <span class="tasting-pill">Crisp Finish</span>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-coldbrew-actions;">
++            <a href="/menu/cold-brew" class="btn btn-secondary" data-action="cycle-state">View Details</a>
++            <button type="button" class="btn" data-action="add-to-tray">Add to Tray</button>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Additional Independent Subtree Components: Filterable Menu List & Live Brew Panel -->
++    <section class="workspace-split" aria-label="Interactive Store Subtrees">
++      <!-- Subtree Component 4: Filterable Roastery Menu List -->
++      <div class="subtree-panel scoped-transition-root" id="roastery-list-panel" data-filter="all">
++        <div class="panel-top">
++          <div>
++            <h3 style="color: var(--primary);">Fresh Bar Menu</h3>
++            <p style="font-size: 0.85rem; color: var(--muted);">Scoped list transitions animate items independently.</p>
++          </div>
++          <div class="filter-group" role="group" aria-label="Filter menu list">
++            <button type="button" class="filter-chip active" data-filter="all">All</button>
++            <button type="button" class="filter-chip" data-filter="espresso">Espresso</button>
++            <button type="button" class="filter-chip" data-filter="cold">Cold Craft</button>
++            <button type="button" class="filter-chip" data-filter="bakery">Bakery</button>
++          </div>
+         </div>
++        <ul class="menu-list" id="scoped-menu-list"></ul>
+       </div>
++
++      <!-- Subtree Component 5: Live Brew Telemetry Panel -->
++      <aside class="subtree-panel scoped-transition-root" id="brew-telemetry-panel" data-stage="grind">
++        <div class="panel-top">
++          <div>
++            <h3 style="color: var(--primary);">Live Pour-Over Bar</h3>
++            <p style="font-size: 0.85rem; color: var(--muted);">Inspect brew stages while other transitions run.</p>
++          </div>
++        </div>
++        <div class="brew-steps" role="tablist" aria-label="Brew stages">
++          <button type="button" class="brew-step-btn active" data-stage="grind">1. Micro-Grind</button>
++          <button type="button" class="brew-step-btn" data-stage="bloom">2. Pre-Infusion</button>
++          <button type="button" class="brew-step-btn" data-stage="pour">3. Spiral Pour</button>
++        </div>
++        <div class="brew-stage-card" id="brew-stage-content" style="view-transition-name: brew-stage-box; view-transition-class: state-pane;">
++          <!-- Populated dynamically and transitioned within #brew-telemetry-panel -->
++        </div>
++      </aside>
+     </section>
+   </main>
+ 
+@@ -207,6 +881,441 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Data catalog for the 3 Seasonal Cards
++      const CARD_DATA = {
++        maple: {
++          basePrice: 5.75,
++          tasting: 'Velvety steamed barista oat milk layered with double-ristretto espresso and pure amber maple.',
++          pills: ['Toasted Pecan', 'Amber Maple', 'Velvet Finish'],
++          nutrition: { calories: '210', caffeine: '150mg', sugar: '14g' }
++        },
++        espresso: {
++          basePrice: 4.25,
++          tasting: 'Full-bodied Sumatra & Colombian dark roast pulled at 9 bars with rich tiger-stripe crema.',
++          pills: ['85% Cacao', 'Cedar Smoke', 'Molasses'],
++          nutrition: { calories: '15', caffeine: '185mg', sugar: '0g' }
++        },
++        coldbrew: {
++          basePrice: 5.25,
++          tasting: 'Coarse-ground Ethiopian beans cold-filtered in small batches for ultra-low acidity.',
++          pills: ['Sweet Caramel', 'Stone Fruit', 'Crisp Finish'],
++          nutrition: { calories: '25', caffeine: '205mg', sugar: '0g' }
++        }
++      };
++
++      const SIZE_PRICE_DELTA = { S: -0.5, M: 0, L: 0.75 };
++      const STATE_ORDER = ['overview', 'customize', 'nutrition'];
++
++      // Data catalog for the Filterable Menu List component
++      const MENU_ITEMS = [
++        {
++          id: 'cortado',
++          title: 'Gibraltar Cortado',
++          category: 'espresso',
++          meta: 'Equal parts espresso & silky textured milk',
++          price: '$4.50',
++          img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80'
++        },
++        {
++          id: 'nitro',
++          title: 'Cascara Nitro Draft',
++          category: 'cold',
++          meta: 'Nitrogen-infused cold brew with coffee cherry notes',
++          price: '$5.50',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=200&q=80'
++        },
++        {
++          id: 'croissant',
++          title: 'Cardamom Kouign-Amann',
++          category: 'bakery',
++          meta: 'Caramelized laminated pastry with freshly ground cardamom',
++          price: '$4.75',
++          img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=200&q=80'
++        },
++        {
++          id: 'affogato',
++          title: 'Tahitian Vanilla Affogato',
++          category: 'espresso',
++          meta: 'Double espresso poured over house-churned gelato',
++          price: '$6.00',
++          img: 'https://images.unsplash.com/photo-1579992357154-faf4bde95b3d?auto=format&fit=crop&w=200&q=80'
++        },
++        {
++          id: 'tonic',
++          title: 'Yuzu Espresso Tonic',
++          category: 'cold',
++          meta: 'Sparkling botanical tonic topped with bright single-origin shot',
++          price: '$5.85',
++          img: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80'
++        }
++      ];
++
++      // Data catalog for the Live Brew Telemetry Panel component
++      const BREW_STAGES = {
++        grind: {
++          title: 'Stage 1: Conical Burr Micro-Grind',
++          detail: '22g of washed Geisha beans ground at 620 microns for uniform extraction.',
++          temp: 'Ambient 21°C',
++          progress: 33
++        },
++        bloom: {
++          title: 'Stage 2: 35-Second CO₂ Bloom',
++          detail: '45g of 93°C spring water saturates the coffee bed to release trapped aromatics.',
++          temp: 'Water 93°C',
++          progress: 66
++        },
++        pour: {
++          title: 'Stage 3: Concentric Spiral Pour',
++          detail: 'Slow steady pour to 350g total yield, balancing floral acidity and honey sweetness.',
++          temp: 'Yield 350ml',
++          progress: 100
++        }
++      };
++
++      let activeTransitions = 0;
++      let trayCount = 0;
++      const activeCountEl = document.getElementById('active-transitions-count');
++      const trayCountEl = document.getElementById('tray-count');
++
++      function updateActiveCounter(delta) {
++        activeTransitions = Math.max(0, activeTransitions + delta);
++        if (activeCountEl) {
++          activeCountEl.textContent = String(activeTransitions);
++        }
++      }
++
++      /**
++       * Runs an Element-Scoped View Transition on a single component subtree (`scopeEl.startViewTransition`).
++       * Keeps the rest of the document interactive and allows multiple transitions to run concurrently.
++       */
++      function animateSubtreeState(scopeEl, mutateSubtreeFn) {
++        if (!scopeEl) return null;
++
++        scopeEl.classList.add('is-transitioning');
++        updateActiveCounter(1);
++
++        // Use native Element-Scoped View Transitions API (element.startViewTransition) when supported
++        if (typeof scopeEl.startViewTransition === 'function') {
++          const transition = scopeEl.startViewTransition(() => {
++            mutateSubtreeFn();
++          });
++
++          if (transition && transition.finished && typeof transition.finished.finally === 'function') {
++            transition.finished.finally(() => {
++              scopeEl.classList.remove('is-transitioning');
++              updateActiveCounter(-1);
++            });
++          } else {
++            setTimeout(() => {
++              scopeEl.classList.remove('is-transitioning');
++              updateActiveCounter(-1);
++            }, 420);
++          }
++
++          return transition;
++        }
++
++        // Non-blocking Web Animations API fallback on the component subtree
++        mutateSubtreeFn();
++        const animTarget = scopeEl.querySelector('[data-role="state-body"]') || scopeEl;
++        if (typeof animTarget.animate === 'function') {
++          const animation = animTarget.animate(
++            [
++              { opacity: 0.25, transform: 'translateY(8px) scale(0.98)' },
++              { opacity: 1, transform: 'translateY(0) scale(1)' }
++            ],
++            { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
++          );
++          animation.onfinish = animation.oncancel = () => {
++            scopeEl.classList.remove('is-transitioning');
++            updateActiveCounter(-1);
++          };
++        } else {
++          scopeEl.classList.remove('is-transitioning');
++          updateActiveCounter(-1);
++        }
++        return null;
++      }
++
++      // Render interior state of a single seasonal drink card
++      function renderCardSubtree(card, nextState, nextSize) {
++        const cardId = card.getAttribute('data-card-id');
++        const info = CARD_DATA[cardId];
++        if (!info) return;
++
++        const state = nextState || card.getAttribute('data-state') || 'overview';
++        const size = nextSize || card.getAttribute('data-size') || 'M';
++
++        card.setAttribute('data-state', state);
++        card.setAttribute('data-size', size);
++        card.classList.toggle('is-expanded', state !== 'overview');
++
++        // Update price based on selected size
++        const priceEl = card.querySelector('[data-role="price"]');
++        if (priceEl) {
++          const finalPrice = info.basePrice + (SIZE_PRICE_DELTA[size] || 0);
++          priceEl.textContent = '$' + finalPrice.toFixed(2);
++        }
++
++        // Update active tab button
++        card.querySelectorAll('.card-tab').forEach((tabBtn) => {
++          const isMatch = tabBtn.getAttribute('data-tab') === state;
++          tabBtn.classList.toggle('active', isMatch);
++          tabBtn.setAttribute('aria-selected', String(isMatch));
++        });
++
++        // Update state body content inside the card subtree
++        const bodyEl = card.querySelector('[data-role="state-body"]');
++        if (!bodyEl) return;
++
++        if (state === 'overview') {
++          bodyEl.innerHTML = `
++            <strong>Tasting Profile</strong>
++            <p>${info.tasting}</p>
++            <div class="tasting-pills">
++              ${info.pills.map((p) => `<span class="tasting-pill">${p}</span>`).join('')}
++            </div>
++          `;
++        } else if (state === 'customize') {
++          bodyEl.innerHTML = `
++            <strong>Select Cup Size &amp; Prep</strong>
++            <p>Tailor your cup size; price updates live within this card.</p>
++            <div class="size-options">
++              ${['S', 'M', 'L']
++                .map(
++                  (s) => `
++                <button type="button" class="size-option-btn ${s === size ? 'selected' : ''}" data-size-select="${s}">
++                  ${s === 'S' ? '8oz Short' : s === 'M' ? '12oz Regular' : '16oz Large'}
++                </button>
++              `
++                )
++                .join('')}
++            </div>
++          `;
++        } else if (state === 'nutrition') {
++          bodyEl.innerHTML = `
++            <strong>Nutrition &amp; Extraction Facts</strong>
++            <div class="nutrition-grid">
++              <div class="nutrition-stat">
++                <strong>${info.nutrition.calories}</strong>
++                <span>Calories</span>
++              </div>
++              <div class="nutrition-stat">
++                <strong>${info.nutrition.caffeine}</strong>
++                <span>Caffeine</span>
++              </div>
++              <div class="nutrition-stat">
++                <strong>${info.nutrition.sugar}</strong>
++                <span>Sugar</span>
++              </div>
++            </div>
++          `;
++        }
++
++        const cycleLink = card.querySelector('[data-action="cycle-state"]');
++        if (cycleLink) {
++          cycleLink.textContent = state === 'overview' ? 'View Details' : state === 'customize' ? 'Nutrition Info' : 'Back to Overview';
++        }
++      }
++
++      // Attach listeners to each Seasonal Card component
++      document.querySelectorAll('.card.scoped-transition-root').forEach((card) => {
++        card.addEventListener('click', (event) => {
++          const tabBtn = event.target.closest('[data-tab]');
++          if (tabBtn) {
++            const targetState = tabBtn.getAttribute('data-tab');
++            if (targetState !== card.getAttribute('data-state')) {
++              animateSubtreeState(card, () => {
++                renderCardSubtree(card, targetState, null);
++              });
++            }
++            return;
++          }
++
++          const sizeBtn = event.target.closest('[data-size-select]');
++          if (sizeBtn) {
++            const targetSize = sizeBtn.getAttribute('data-size-select');
++            animateSubtreeState(card, () => {
++              renderCardSubtree(card, 'customize', targetSize);
++            });
++            return;
++          }
++
++          const cycleBtn = event.target.closest('[data-action="cycle-state"]');
++          if (cycleBtn) {
++            event.preventDefault();
++            const current = card.getAttribute('data-state') || 'overview';
++            const nextIndex = (STATE_ORDER.indexOf(current) + 1) % STATE_ORDER.length;
++            animateSubtreeState(card, () => {
++              renderCardSubtree(card, STATE_ORDER[nextIndex], null);
++            });
++            return;
++          }
++
++          const addBtn = event.target.closest('[data-action="add-to-tray"]');
++          if (addBtn) {
++            trayCount += 1;
++            if (trayCountEl) trayCountEl.textContent = String(trayCount);
++            animateSubtreeState(card, () => {
++              addBtn.textContent = 'Added (' + trayCount + ')';
++              const badge = card.querySelector('.card-badge');
++              if (badge) badge.textContent = 'In Tray ✓';
++            });
++          }
++        });
++      });
++
++      // Render & transition Filterable Menu List subtree component
++      const listPanel = document.getElementById('roastery-list-panel');
++      const listEl = document.getElementById('scoped-menu-list');
++
++      function renderMenuList(filter) {
++        if (!listPanel || !listEl) return;
++        listPanel.setAttribute('data-filter', filter);
++        listPanel.querySelectorAll('.filter-chip').forEach((chip) => {
++          chip.classList.toggle('active', chip.getAttribute('data-filter') === filter);
++        });
++
++        const filtered = filter === 'all' ? MENU_ITEMS : MENU_ITEMS.filter((item) => item.category === filter);
++        listEl.innerHTML = filtered
++          .map(
++            (item) => `
++          <li class="menu-list-item" style="view-transition-name: menu-item-${item.id}; view-transition-class: menu-row;">
++            <div class="menu-item-info">
++              <img class="menu-item-thumb" src="${item.img}" alt="${item.title}">
++              <div>
++                <div class="menu-item-title">${item.title}</div>
++                <div class="menu-item-meta">${item.meta}</div>
++              </div>
++            </div>
++            <div style="display: flex; align-items: center; gap: 10px;">
++              <strong>${item.price}</strong>
++              <button type="button" class="btn btn-secondary" data-list-add="${item.id}" style="padding: 6px 12px;">+ Add</button>
++            </div>
++          </li>
++        `
++          )
++          .join('');
++      }
++
++      if (listPanel) {
++        renderMenuList('all');
++        listPanel.addEventListener('click', (event) => {
++          const chip = event.target.closest('[data-filter]');
++          if (chip) {
++            const nextFilter = chip.getAttribute('data-filter');
++            if (nextFilter !== listPanel.getAttribute('data-filter')) {
++              animateSubtreeState(listPanel, () => {
++                renderMenuList(nextFilter);
++              });
++            }
++            return;
++          }
++
++          const addItemBtn = event.target.closest('[data-list-add]');
++          if (addItemBtn) {
++            trayCount += 1;
++            if (trayCountEl) trayCountEl.textContent = String(trayCount);
++            animateSubtreeState(listPanel, () => {
++              addItemBtn.textContent = 'Added ✓';
++            });
++          }
++        });
++      }
++
++      // Render & transition Live Brew Telemetry Panel subtree component
++      const brewPanel = document.getElementById('brew-telemetry-panel');
++      const brewContent = document.getElementById('brew-stage-content');
++
++      function renderBrewStage(stageKey) {
++        if (!brewPanel || !brewContent) return;
++        const stage = BREW_STAGES[stageKey] || BREW_STAGES.grind;
++        brewPanel.setAttribute('data-stage', stageKey);
++
++        brewPanel.querySelectorAll('.brew-step-btn').forEach((btn) => {
++          btn.classList.toggle('active', btn.getAttribute('data-stage') === stageKey);
++        });
++
++        brewContent.innerHTML = `
++          <div style="display: flex; justify-content: space-between; align-items: center;">
++            <strong style="color: var(--primary);">${stage.title}</strong>
++            <span class="tasting-pill">${stage.temp}</span>
++          </div>
++          <p style="font-size: 0.88rem; color: var(--muted); margin-top: 8px;">${stage.detail}</p>
++          <div class="brew-progress-bar">
++            <div class="brew-progress-fill" style="width: ${stage.progress}%;"></div>
++          </div>
++          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted);">
++            <span>Extraction Progress</span>
++            <strong>${stage.progress}%</strong>
++          </div>
++        `;
++      }
++
++      if (brewPanel) {
++        renderBrewStage('grind');
++        brewPanel.addEventListener('click', (event) => {
++          const stepBtn = event.target.closest('[data-stage]');
++          if (stepBtn) {
++            const nextStage = stepBtn.getAttribute('data-stage');
++            if (nextStage !== brewPanel.getAttribute('data-stage')) {
++              animateSubtreeState(brewPanel, () => {
++                renderBrewStage(nextStage);
++              });
++            }
++          }
++        });
++      }
++
++      // Page-level interactive control in the header (proves rest of page stays interactive during transitions)
++      const quickShotBtn = document.getElementById('quick-shot-btn');
++      if (quickShotBtn) {
++        quickShotBtn.addEventListener('click', () => {
++          trayCount += 1;
++          if (trayCountEl) trayCountEl.textContent = String(trayCount);
++        });
++      }
++
++      // Trigger concurrent scoped view transitions across all components simultaneously
++      const concurrentBtn = document.getElementById('animate-all-concurrent-btn');
++      if (concurrentBtn) {
++        const filters = ['all', 'espresso', 'cold', 'bakery'];
++        const stages = ['grind', 'bloom', 'pour'];
++
++        concurrentBtn.addEventListener('click', () => {
++          // 1. Transition all 3 cards concurrently
++          document.querySelectorAll('.card.scoped-transition-root').forEach((card) => {
++            const current = card.getAttribute('data-state') || 'overview';
++            const nextIndex = (STATE_ORDER.indexOf(current) + 1) % STATE_ORDER.length;
++            animateSubtreeState(card, () => {
++              renderCardSubtree(card, STATE_ORDER[nextIndex], null);
++            });
++          });
++
++          // 2. Transition the menu list panel concurrently
++          if (listPanel) {
++            const currentFilter = listPanel.getAttribute('data-filter') || 'all';
++            const nextFilter = filters[(filters.indexOf(currentFilter) + 1) % filters.length];
++            animateSubtreeState(listPanel, () => {
++              renderMenuList(nextFilter);
++            });
++          }
++
++          // 3. Transition the brew telemetry panel concurrently
++          if (brewPanel) {
++            const currentStage = brewPanel.getAttribute('data-stage') || 'grind';
++            const nextStage = stages[(stages.indexOf(currentStage) + 1) % stages.length];
++            animateSubtreeState(brewPanel, () => {
++              renderBrewStage(nextStage);
++            });
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

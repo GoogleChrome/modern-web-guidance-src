@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -76,8 +76,32 @@
+       margin: 6rem auto 2rem;
+       padding: 0 1rem;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 370px;
++    }
++
++    .debug-panel {
++      content-visibility: hidden;
++      contain-intrinsic-size: auto 200px;
++      max-width: 800px;
++      margin: 2rem auto;
++      padding: 1.5rem;
++      background: var(--card-bg);
++      border-radius: 1rem;
++      border: 1px solid #e2e8f0;
++      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
++    }
++
++    .debug-panel.visible,
++    .debug-panel.show,
++    .debug-panel.open,
++    .debug-panel.active {
++      content-visibility: visible;
++    }
++
+     .card {
+       background: var(--card-bg);
+       border-radius: 1rem;
+       padding: 1.5rem;
+@@ -207,8 +231,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off toggle-debug">Toggle Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,8 +244,33 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
++      <h3 style="margin: 0; font-size: 1.1rem;">Debug Panel</h3>
++      <span class="badge" style="margin: 0;">Diagnostic</span>
++    </div>
++    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
++      <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++        <div style="font-size: 0.8rem; color: #64748b;">Total Cards</div>
++        <div class="metric" style="font-size: 1.25rem;">500</div>
++      </div>
++      <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++        <div style="font-size: 0.8rem; color: #64748b;">Offscreen Rendering</div>
++        <div class="metric" style="font-size: 1.25rem;">content-visibility: auto</div>
++      </div>
++      <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++        <div style="font-size: 0.8rem; color: #64748b;">Debug State</div>
++        <div class="metric" style="font-size: 1.25rem;">content-visibility: hidden</div>
++      </div>
++      <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++        <div style="font-size: 0.8rem; color: #64748b;">Performance</div>
++        <div class="metric" style="font-size: 1.25rem; color: #16a34a;">Optimized</div>
++      </div>
++    </div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+@@ -230,9 +280,9 @@
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -298,9 +348,32 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    const debugPanel = document.getElementById('debug-panel');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
+ 
++    function toggleDebugPanel() {
++      if (!debugPanel) return;
++      const isCurrentlyVisible = getComputedStyle(debugPanel).contentVisibility === 'visible';
++      if (isCurrentlyVisible) {
++        debugPanel.classList.remove('visible', 'show', 'open', 'active');
++        debugPanel.style.contentVisibility = 'hidden';
++        if (toggleDebugBtn) toggleDebugBtn.classList.add('off');
++      } else {
++        debugPanel.classList.add('visible');
++        debugPanel.style.contentVisibility = 'visible';
++        if (toggleDebugBtn) toggleDebugBtn.classList.remove('off');
++      }
++    }
++
++    if (toggleDebugBtn) {
++      toggleDebugBtn.addEventListener('click', toggleDebugPanel);
++    }
++    window.toggleDebugPanel = toggleDebugPanel;
++    window.toggleDebug = toggleDebugPanel;
++
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

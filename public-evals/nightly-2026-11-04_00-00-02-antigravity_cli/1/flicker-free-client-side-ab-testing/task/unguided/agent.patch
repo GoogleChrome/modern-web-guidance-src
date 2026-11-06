@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,149 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>NextGen Platform — Ship Faster with Confidence</title>
++  <meta name="description" content="Accelerate your workflow with automated deployments, real-time analytics, and seamless team collaboration." />
++
++  <!-- Preconnect to external domains to minimize connection latency -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
++
++  <!--
++    Non-blocking Anti-Flicker / FOOC Prevention Pattern:
++    1. Apply an `.anti-flicker-hide` class to `<html>` synchronously before first paint.
++    2. Scope opacity hiding strictly to the experiment target elements (rather than blocking
++       the entire page parse with a synchronous script or hiding the whole body), preserving
++       First Contentful Paint (FCP) and Largest Contentful Paint (LCP) on unaffected elements.
++    3. Load the A/B testing SDK asynchronously (`async`) so HTML parsing and image/resource
++       discovery are never render-blocked.
++    4. Reveal the experiment elements immediately once the SDK loads (or errors), with a
++       hard fallback timeout (1500ms) so users are never stuck if the CDN hangs.
++  -->
++  <style>
++    .anti-flicker-hide [data-experiment-target] {
++      opacity: 0 !important;
++      pointer-events: none !important;
++    }
++    [data-experiment-target] {
++      transition: opacity 0.15s ease-in-out;
++    }
++  </style>
++  <script>
++    (function () {
++      var docEl = document.documentElement;
++      docEl.classList.add('anti-flicker-hide');
++
++      var revealed = false;
++      function revealExperimentContent() {
++        if (revealed) return;
++        revealed = true;
++        docEl.classList.remove('anti-flicker-hide');
++      }
++
++      // Expose reveal hook globally in case the SDK invokes a completion callback
++      window.__onExperimentReady = revealExperimentContent;
++
++      // Hard safety timeout so content is guaranteed to render even on slow/failed networks
++      var fallbackTimer = setTimeout(revealExperimentContent, 1500);
++
++      window.__handleExperimentSdkSettled = function () {
++        clearTimeout(fallbackTimer);
++        // Allow microtask/synchronous DOM updates from the SDK to complete before revealing
++        requestAnimationFrame(revealExperimentContent);
++      };
++    })();
++  </script>
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    onload="window.__handleExperimentSdkSettled && window.__handleExperimentSdkSettled()"
++    onerror="window.__handleExperimentSdkSettled && window.__handleExperimentSdkSettled()"
++  ></script>
++
++  <link rel="stylesheet" href="styles.css" />
++</head>
++<body>
++  <header class="site-header">
++    <div class="container header-inner">
++      <a href="/" class="brand" aria-label="NextGen Home">
++        <span class="brand-mark" aria-hidden="true">◆</span>
++        <span class="brand-name">NextGen</span>
++      </a>
++      <nav class="site-nav" aria-label="Primary Navigation">
++        <a href="#features">Features</a>
++        <a href="#metrics">Metrics</a>
++        <a href="#pricing">Pricing</a>
++      </nav>
++      <div class="header-actions">
++        <a href="#login" class="btn btn-ghost">Sign In</a>
++      </div>
++    </div>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-heading">
++      <div class="container hero-grid">
++        <!-- Experiment target container: hidden until variant is applied or fallback triggers -->
++        <div class="hero-content" data-experiment-target="hero-copy">
++          <div class="badge" data-experiment-id="hero-badge">
++            <span class="badge-dot" aria-hidden="true"></span>
++            <span>Release 4.0 is now live</span>
++          </div>
++          <h1 id="hero-heading" class="hero-title" data-experiment-id="hero-headline">
++            Ship high-impact products without the deployment bottlenecks.
++          </h1>
++          <p class="hero-subtitle" data-experiment-id="hero-subheadline">
++            Unify your preview environments, feature flags, and instant rollbacks in one edge-native workflow built for modern engineering teams.
++          </p>
++          <div class="hero-cta-group" data-experiment-id="hero-cta-group">
++            <a href="#get-started" id="hero-cta-btn" class="btn btn-primary btn-lg" data-experiment-id="hero-cta">
++              Start Building Free
++            </a>
++            <a href="#demo" class="btn btn-secondary btn-lg">
++              Book a Live Demo
++            </a>
++          </div>
++          <p class="hero-footnote">
++            No credit card required · 14-day Pro trial · SOC2 Type II Certified
++          </p>
++        </div>
++
++        <div class="hero-visual">
++          <div class="visual-frame">
++            <img
++              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80"
++              alt="Analytics dashboard showing real-time deployment performance and conversion metrics"
++              width="600"
++              height="420"
++              fetchpriority="high"
++              decoding="async"
++              class="hero-image"
++            />
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section id="features" class="features" aria-label="Core Platform Features">
++      <div class="container">
++        <div class="features-grid">
++          <article class="feature-card">
++            <h2>Instant Edge Previews</h2>
++            <p>Every pull request gets an isolated, production-grade preview URL in under three seconds.</p>
++          </article>
++          <article class="feature-card">
++            <h2>Zero-Latency Rollbacks</h2>
++            <p>Revert to any previous immutable build instantly with a single click or automated health check.</p>
++          </article>
++          <article class="feature-card">
++            <h2>Real-Time Telemetry</h2>
++            <p>Correlate Core Web Vitals and conversion events directly with individual code deployments.</p>
++          </article>
++        </div>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

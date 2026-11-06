@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..4a84408 100644
+--- a/index.html
++++ b/index.html
+@@ -153,18 +153,24 @@
+       font-size: 0.85rem;
+     }
+ 
++    body:has(dialog:modal),
++    body:has(dialog[open]),
+     body.modal-open {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      margin: auto;
++      padding: 20px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
++      overscroll-behavior: contain;
+     }
+   </style>
+ </head>
+@@ -230,10 +236,32 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+-    if (noticeDialog) {
+-      noticeDialog.show();
++    const closeNoticeBtn = document.getElementById("close-notice");
++
++    function lockBodyScroll() {
+       document.body.classList.add("modal-open");
+       document.body.style.overflow = "hidden";
++      document.documentElement.style.overflow = "hidden";
++    }
++
++    function unlockBodyScroll() {
++      document.body.classList.remove("modal-open");
++      document.body.style.overflow = "";
++      document.documentElement.style.overflow = "";
++    }
++
++    if (noticeDialog) {
++      noticeDialog.showModal();
++      lockBodyScroll();
++
++      noticeDialog.addEventListener("close", unlockBodyScroll);
++
++      if (closeNoticeBtn) {
++        closeNoticeBtn.addEventListener("click", () => {
++          noticeDialog.close();
++          unlockBodyScroll();
++        });
++      }
+     }
+   </script>
+ </body>

@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,67 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Featured promo badge */
++    .seasonal {
++      position: relative;
++    }
++
++    .target {
++      position: absolute;
++      top: 0;
++      right: 0;
++      width: 90px;
++      height: 90px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      font-size: 0.75rem;
++      font-weight: bold;
++      line-height: 1.2;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: var(--accent);
++      border: 3px dashed var(--primary);
++      border-radius: 50%;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
++      z-index: 1;
++
++      /* Identity values for every individual transform property keep the
++         stacking context stable, so hover doesn't create a new one. */
++      translate: 0 0;
++      rotate: 0deg;
++      scale: 1;
++
++      /* Spin (rotate) and slide (translate) run independently of the
++         hover scale, so neither is interrupted when scale changes. */
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 3s ease-in-out infinite;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes badge-spin {
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      0%, 100% { translate: 0 0; }
++      50% { translate: -40px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,9 +233,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
++      <span class="target">Featured Pick</span>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

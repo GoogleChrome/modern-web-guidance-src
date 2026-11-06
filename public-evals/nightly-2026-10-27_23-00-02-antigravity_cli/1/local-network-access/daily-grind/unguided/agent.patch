@@ -1,0 +1,617 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0ab131 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,244 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Equipment Connection Panel */
++    .equipment-section {
++      margin-top: 50px;
++      padding: 30px;
++      background: #fff;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .equipment-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .equipment-header h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .equipment-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .context-banner {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++      background: #fdfbf9;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 18px;
++      margin-bottom: 24px;
++      font-size: 0.9rem;
++    }
++
++    .context-banner.insecure {
++      background: #fff8e1;
++      border-color: var(--accent);
++      color: #bf360c;
++    }
++
++    .device-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .device-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 22px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .device-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 10px;
++      margin-bottom: 12px;
++    }
++
++    .device-card h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    .address-space-tag {
++      font-family: monospace;
++      font-size: 0.78rem;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 3px 8px;
++      border-radius: 4px;
++      white-space: nowrap;
++    }
++
++    .device-desc {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 16px;
++    }
++
++    .permission-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      background: #fff;
++      border: 1px solid #e0e0e0;
++      padding: 10px 14px;
++      border-radius: 6px;
++      margin-bottom: 16px;
++      font-size: 0.88rem;
++    }
++
++    .perm-badge {
++      display: inline-block;
++      padding: 3px 10px;
++      border-radius: 12px;
++      font-weight: 600;
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.4px;
++    }
++
++    .perm-granted {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .perm-prompt {
++      background: #fff3e0;
++      color: #ef6c00;
++    }
++
++    .perm-denied {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .perm-unsupported {
++      background: #eceff1;
++      color: #455a64;
++    }
++
++    .endpoint-field {
++      margin-bottom: 16px;
++    }
++
++    .endpoint-field label {
++      display: block;
++      font-size: 0.82rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++      color: var(--primary);
++    }
++
++    .endpoint-field input {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-family: monospace;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: #fff;
++    }
++
++    .device-actions {
++      display: flex;
++      gap: 10px;
++      margin-bottom: 14px;
++    }
++
++    .btn-connect {
++      flex: 1;
++      background: var(--primary);
++      color: #fff;
++      border: none;
++      padding: 10px 16px;
++      border-radius: 5px;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-connect:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-connect:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 10px 14px;
++      border-radius: 5px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .feedback-box {
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-size: 0.86rem;
++      line-height: 1.45;
++      background: #f5f5f5;
++      border-left: 4px solid #9e9e9e;
++      word-break: break-word;
++    }
++
++    .feedback-box.status-idle {
++      background: #f5f5f5;
++      border-left-color: #8d6e63;
++      color: #4e342e;
++    }
++
++    .feedback-box.status-connecting {
++      background: #e3f2fd;
++      border-left-color: #1976d2;
++      color: #0d47a1;
++    }
++
++    .feedback-box.status-success {
++      background: #e8f5e9;
++      border-left-color: #2e7d32;
++      color: #1b5e20;
++    }
++
++    .feedback-box.status-error {
++      background: #ffebee;
++      border-left-color: #c62828;
++      color: #b71c1c;
++    }
++
++    .feedback-meta {
++      margin-top: 6px;
++      font-size: 0.78rem;
++      opacity: 0.9;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +433,103 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="equipment-panel" class="equipment-section" aria-labelledby="equipment-panel-title">
++      <div class="equipment-header">
++        <h2 id="equipment-panel-title">Smart Brewing Equipment &amp; Companion Utility</h2>
++        <p>Connect directly from your browser to our local network Wi-Fi coffee brewer or your local loopback companion brewing utility.</p>
++      </div>
++
++      <div id="security-context-banner" class="context-banner" role="status">
++        <div>
++          <strong>Browser Security Context:</strong>
++          <span id="secure-context-status">Checking environment...</span>
++        </div>
++        <button type="button" id="refresh-permissions-btn" class="btn-secondary">Refresh Permission Status</button>
++      </div>
++
++      <div class="device-grid">
++        <!-- Wi-Fi Coffee Brewer (Local Network) -->
++        <div class="device-card" id="local-brewer-card" data-device="local">
++          <div>
++            <div class="device-card-top">
++              <h3>Wi-Fi Coffee Brewer</h3>
++              <span class="address-space-tag" title="Fetch targetAddressSpace option">targetAddressSpace: "local"</span>
++            </div>
++            <p class="device-desc">
++              Connect to the shop's smart espresso &amp; pour-over brewer on your local Wi-Fi network (private IP / <code>.local</code> mDNS).
++            </p>
++
++            <div class="permission-row">
++              <span>Permission (<code>local-network</code>):</span>
++              <span id="local-perm-badge" class="perm-badge perm-unsupported" data-permission="local-network">Checking...</span>
++            </div>
++
++            <div class="endpoint-field">
++              <label for="local-endpoint-input">Local Network Brewer Endpoint</label>
++              <input
++                type="url"
++                id="local-endpoint-input"
++                value="http://192.168.1.120:8080/api/brewer/status"
++                placeholder="http://192.168.1.120:8080/api/brewer/status"
++              />
++            </div>
++          </div>
++
++          <div>
++            <div class="device-actions">
++              <button type="button" id="connect-local-btn" class="btn-connect">Connect to Wi-Fi Brewer</button>
++            </div>
++            <div id="local-feedback" class="feedback-box status-idle" role="region" aria-live="polite">
++              <strong>Status:</strong> Ready to connect to local network Wi-Fi brewer.
++              <div class="feedback-meta" id="local-feedback-detail">
++                Uses <code>fetch(url, { targetAddressSpace: 'local' })</code> with <code>local-network</code> permission check.
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Companion Brewing Utility (Loopback Interface) -->
++        <div class="device-card" id="loopback-utility-card" data-device="loopback">
++          <div>
++            <div class="device-card-top">
++              <h3>Companion Brewing Utility</h3>
++              <span class="address-space-tag" title="Fetch targetAddressSpace option">targetAddressSpace: "loopback"</span>
++            </div>
++            <p class="device-desc">
++              Link with the Daily Grind scale, grind profile logger, and recipe daemon running on your machine's local loopback interface (<code>127.0.0.1</code> / <code>localhost</code>).
++            </p>
++
++            <div class="permission-row">
++              <span>Permission (<code>loopback-network</code>):</span>
++              <span id="loopback-perm-badge" class="perm-badge perm-unsupported" data-permission="loopback-network">Checking...</span>
++            </div>
++
++            <div class="endpoint-field">
++              <label for="loopback-endpoint-input">Loopback Utility Endpoint</label>
++              <input
++                type="url"
++                id="loopback-endpoint-input"
++                value="http://127.0.0.1:9420/api/companion/status"
++                placeholder="http://127.0.0.1:9420/api/companion/status"
++              />
++            </div>
++          </div>
++
++          <div>
++            <div class="device-actions">
++              <button type="button" id="connect-loopback-btn" class="btn-connect">Connect to Loopback Utility</button>
++            </div>
++            <div id="loopback-feedback" class="feedback-box status-idle" role="region" aria-live="polite">
++              <strong>Status:</strong> Ready to connect to local loopback companion utility.
++              <div class="feedback-meta" id="loopback-feedback-detail">
++                Uses <code>fetch(url, { targetAddressSpace: 'loopback' })</code> with <code>loopback-network</code> permission check.
++              </div>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +542,263 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DEVICE_CONFIG = {
++        local: {
++          label: 'Wi-Fi Coffee Brewer',
++          permissionName: 'local-network',
++          legacyPermissionName: 'local-network-access',
++          targetAddressSpace: 'local',
++          badgeEl: document.getElementById('local-perm-badge'),
++          inputEl: document.getElementById('local-endpoint-input'),
++          buttonEl: document.getElementById('connect-local-btn'),
++          feedbackEl: document.getElementById('local-feedback'),
++          permissionState: 'unknown'
++        },
++        loopback: {
++          label: 'Companion Brewing Utility',
++          permissionName: 'loopback-network',
++          legacyPermissionName: 'local-network-access',
++          targetAddressSpace: 'loopback',
++          badgeEl: document.getElementById('loopback-perm-badge'),
++          inputEl: document.getElementById('loopback-endpoint-input'),
++          buttonEl: document.getElementById('connect-loopback-btn'),
++          feedbackEl: document.getElementById('loopback-feedback'),
++          permissionState: 'unknown'
++        }
++      };
++
++      const contextBanner = document.getElementById('security-context-banner');
++      const contextStatus = document.getElementById('secure-context-status');
++      const refreshBtn = document.getElementById('refresh-permissions-btn');
++
++      function checkSecureContext() {
++        if (window.isSecureContext) {
++          contextBanner.classList.remove('insecure');
++          contextStatus.textContent = 'Secure Context (HTTPS / localhost) — Local Network Access permissions active.';
++        } else {
++          contextBanner.classList.add('insecure');
++          contextStatus.textContent = 'Non-Secure Context (HTTP) — Browsers require HTTPS to grant local-network and loopback-network permissions.';
++        }
++      }
++
++      function renderPermissionBadge(badgeEl, state, note) {
++        badgeEl.className = 'perm-badge';
++        const normalized = (state || 'unsupported').toLowerCase();
++        if (normalized === 'granted') {
++          badgeEl.classList.add('perm-granted');
++          badgeEl.textContent = 'Granted';
++        } else if (normalized === 'prompt') {
++          badgeEl.classList.add('perm-prompt');
++          badgeEl.textContent = 'Prompt Required';
++        } else if (normalized === 'denied') {
++          badgeEl.classList.add('perm-denied');
++          badgeEl.textContent = 'Denied';
++        } else {
++          badgeEl.classList.add('perm-unsupported');
++          badgeEl.textContent = note || 'Unsupported';
++        }
++      }
++
++      async function queryDevicePermission(deviceKey) {
++        const cfg = DEVICE_CONFIG[deviceKey];
++        if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
++          cfg.permissionState = 'unsupported';
++          renderPermissionBadge(cfg.badgeEl, 'unsupported', 'Permissions API Unavailable');
++          return 'unsupported';
++        }
++
++        try {
++          const status = await navigator.permissions.query({ name: cfg.permissionName });
++          cfg.permissionState = status.state;
++          renderPermissionBadge(cfg.badgeEl, status.state);
++          status.onchange = function () {
++            cfg.permissionState = status.state;
++            renderPermissionBadge(cfg.badgeEl, status.state);
++          };
++          return status.state;
++        } catch (primaryErr) {
++          try {
++            const fallbackStatus = await navigator.permissions.query({ name: cfg.legacyPermissionName });
++            cfg.permissionState = fallbackStatus.state;
++            renderPermissionBadge(cfg.badgeEl, fallbackStatus.state);
++            fallbackStatus.onchange = function () {
++              cfg.permissionState = fallbackStatus.state;
++              renderPermissionBadge(cfg.badgeEl, fallbackStatus.state);
++            };
++            return fallbackStatus.state;
++          } catch (fallbackErr) {
++            cfg.permissionState = 'unsupported';
++            renderPermissionBadge(cfg.badgeEl, 'unsupported', 'API Unsupported');
++            return 'unsupported';
++          }
++        }
++      }
++
++      async function refreshAllPermissions() {
++        checkSecureContext();
++        await Promise.all([
++          queryDevicePermission('local'),
++          queryDevicePermission('loopback')
++        ]);
++      }
++
++      function setFeedback(cfg, statusType, headline, detail) {
++        cfg.feedbackEl.className = 'feedback-box status-' + statusType;
++        cfg.feedbackEl.innerHTML = '';
++
++        const strong = document.createElement('strong');
++        strong.textContent = headline;
++        cfg.feedbackEl.appendChild(strong);
++
++        if (detail) {
++          const meta = document.createElement('div');
++          meta.className = 'feedback-meta';
++          meta.textContent = detail;
++          cfg.feedbackEl.appendChild(meta);
++        }
++      }
++
++      function validateEndpointUrl(rawUrl, deviceKey) {
++        let parsed;
++        try {
++          parsed = new URL(rawUrl);
++        } catch (e) {
++          return { valid: false, reason: 'Invalid URL format. Please enter a full http:// or https:// endpoint URL.' };
++        }
++
++        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
++          return { valid: false, reason: 'Unsupported protocol "' + parsed.protocol + '". Only HTTP/HTTPS endpoints are supported.' };
++        }
++
++        return { valid: true, url: parsed.toString(), hostname: parsed.hostname };
++      }
++
++      async function connectToDevice(deviceKey) {
++        const cfg = DEVICE_CONFIG[deviceKey];
++        const rawUrl = cfg.inputEl.value.trim();
++
++        const validation = validateEndpointUrl(rawUrl, deviceKey);
++        if (!validation.valid) {
++          setFeedback(cfg, 'error', 'Invalid Endpoint Configuration', validation.reason);
++          return;
++        }
++
++        const currentPerm = await queryDevicePermission(deviceKey);
++
++        if (!window.isSecureContext) {
++          setFeedback(
++            cfg,
++            'error',
++            'Insecure Context Blocked',
++            'Local Network Access requests require a Secure Context (HTTPS). Please load The Daily Grind over HTTPS before connecting to ' + cfg.label + '.'
++          );
++          return;
++        }
++
++        if (currentPerm === 'denied') {
++          setFeedback(
++            cfg,
++            'error',
++            'Permission Denied (' + cfg.permissionName + ')',
++            'Browser permission for "' + cfg.permissionName + '" is blocked. Please allow Local Network / Loopback access in your browser site settings and retry.'
++          );
++          return;
++        }
++
++        cfg.buttonEl.disabled = true;
++        setFeedback(
++          cfg,
++          'connecting',
++          'Connecting to ' + cfg.label + '...',
++          'Requesting ' + validation.url + ' with targetAddressSpace: "' + cfg.targetAddressSpace + '" (permission state: ' + currentPerm + ').'
++        );
++
++        const controller = new AbortController();
++        const timeoutId = setTimeout(function () {
++          controller.abort();
++        }, 4500);
++
++        try {
++          const response = await fetch(validation.url, {
++            method: 'GET',
++            mode: 'cors',
++            targetAddressSpace: cfg.targetAddressSpace,
++            signal: controller.signal
++          });
++          clearTimeout(timeoutId);
++
++          await queryDevicePermission(deviceKey);
++
++          if (!response.ok) {
++            setFeedback(
++              cfg,
++              'error',
++              'Equipment Returned HTTP ' + response.status,
++              cfg.label + ' responded with status ' + response.status + ' (' + (response.statusText || 'Error') + ') at ' + validation.url + '.'
++            );
++            return;
++          }
++
++          let summary = 'Connected to ' + cfg.label + ' at ' + validation.url + '.';
++          try {
++            const data = await response.json();
++            if (data && (data.status || data.model || data.temperature)) {
++              summary += ' Device report: ' + JSON.stringify(data);
++            }
++          } catch (_) {
++            // Non-JSON response is still a valid connection
++          }
++
++          setFeedback(cfg, 'success', 'Connected (' + cfg.targetAddressSpace + ')', summary);
++        } catch (err) {
++          clearTimeout(timeoutId);
++          const updatedPerm = await queryDevicePermission(deviceKey);
++
++          if (err && err.name === 'AbortError') {
++            setFeedback(
++              cfg,
++              'error',
++              'Connection Timed Out',
++              cfg.label + ' at ' + validation.url + ' did not respond within 4.5s. Verify the device is powered on and reachable on the ' + cfg.targetAddressSpace + ' interface.'
++            );
++          } else if (updatedPerm === 'denied') {
++            setFeedback(
++              cfg,
++              'error',
++              'Permission Denied (' + cfg.permissionName + ')',
++              'The browser blocked access to the ' + cfg.targetAddressSpace + ' address space (' + cfg.permissionName + ' permission denied). Update site permissions in your browser address bar to connect.'
++            );
++          } else {
++            const errMsg = err && err.message ? err.message : String(err);
++            setFeedback(
++              cfg,
++              'error',
++              'Connection Failed (' + cfg.targetAddressSpace + ' network error)',
++              'Could not reach ' + cfg.label + ' at ' + validation.url + ' (' + errMsg + '). Check that "' + cfg.permissionName + '" permission is granted, CORS/Private Network headers are enabled on the device, and the endpoint is active.'
++            );
++          }
++        } finally {
++          cfg.buttonEl.disabled = false;
++        }
++      }
++
++      DEVICE_CONFIG.local.buttonEl.addEventListener('click', function () {
++        connectToDevice('local');
++      });
++
++      DEVICE_CONFIG.loopback.buttonEl.addEventListener('click', function () {
++        connectToDevice('loopback');
++      });
++
++      refreshBtn.addEventListener('click', function () {
++        refreshAllPermissions();
++      });
++
++      refreshAllPermissions();
++    })();
++  </script>
+ </body>
+ 
+ </html>

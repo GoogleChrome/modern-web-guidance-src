@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+index 66c9173..438f8f1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,28 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating draggable element */
++    .floating {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 2000;
++      background: var(--accent);
++      color: var(--text);
++      padding: 12px 18px;
++      border-radius: 999px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      font-weight: 600;
++      cursor: grab;
++      user-select: none;
++      touch-action: none;
++    }
++
++    .floating.dragging {
++      cursor: grabbing;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +229,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="floating" id="floating">☕ Drag me!</div>
++
++  <script>
++    (function () {
++      const el = document.getElementById('floating');
++      let offsetX = 0, offsetY = 0;
++
++      function clamp(v, min, max) {
++        return Math.min(Math.max(v, min), max);
++      }
++
++      el.addEventListener('pointerdown', (e) => {
++        const rect = el.getBoundingClientRect();
++        offsetX = e.clientX - rect.left;
++        offsetY = e.clientY - rect.top;
++        // Switch from right/bottom anchoring to explicit left/top
++        el.style.left = rect.left + 'px';
++        el.style.top = rect.top + 'px';
++        el.style.right = 'auto';
++        el.style.bottom = 'auto';
++        el.classList.add('dragging');
++        el.setPointerCapture(e.pointerId);
++      });
++
++      el.addEventListener('pointermove', (e) => {
++        if (!el.hasPointerCapture(e.pointerId)) return;
++        el.style.left = clamp(e.clientX - offsetX, 0, window.innerWidth - el.offsetWidth) + 'px';
++        el.style.top = clamp(e.clientY - offsetY, 0, window.innerHeight - el.offsetHeight) + 'px';
++      });
++
++      function stop(e) {
++        el.classList.remove('dragging');
++        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
++      }
++      el.addEventListener('pointerup', stop);
++      el.addEventListener('pointercancel', stop);
++
++      // Keep it on-screen if the window shrinks
++      window.addEventListener('resize', () => {
++        if (!el.style.left) return;
++        el.style.left = clamp(el.offsetLeft, 0, window.innerWidth - el.offsetWidth) + 'px';
++        el.style.top = clamp(el.offsetTop, 0, window.innerHeight - el.offsetHeight) + 'px';
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

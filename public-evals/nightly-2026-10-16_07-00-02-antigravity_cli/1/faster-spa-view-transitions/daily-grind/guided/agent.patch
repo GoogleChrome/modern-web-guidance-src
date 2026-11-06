@@ -1,0 +1,669 @@
+diff --git a/index.html b/index.html
+index 66c9173..5729bf2 100644
+--- a/index.html
++++ b/index.html
+@@ -25,6 +25,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -46,6 +49,11 @@
+       letter-spacing: 1px;
+     }
+ 
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+@@ -72,6 +80,33 @@
+       border-radius: 4px;
+     }
+ 
++    /* Views Layout */
++    main#app-views {
++      flex: 1;
++      position: relative;
++      width: 100%;
++    }
++
++    /* SPA View Management */
++    .spa-view {
++      outline: none;
++      width: 100%;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++
++      /* Optional: Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -115,6 +150,14 @@
+       text-align: center;
+     }
+ 
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -129,17 +172,43 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .form-group {
++      margin-bottom: 15px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: 600;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: auto;
+     }
+ 
+     .footer-links {
+@@ -158,7 +227,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,33 +237,328 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <main id="app-views">
++
++    <!-- Home View -->
++    <section id="view-home" class="spa-view" tabindex="-1" aria-hidden="false" data-view="home" data-route="/">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
++
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </div>
++    </section>
++
++    <!-- Menu View -->
++    <section id="view-menu" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="menu" data-route="/menu">
++      <div class="container">
++        <h2 style="text-align: center; margin-bottom: 20px;">Our Artisanal Menu</h2>
++        <div style="max-width: 600px; margin: 0 auto 30px auto;">
++          <input type="search" id="menu-search-input" placeholder="Search coffee, teas, bites..." style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--secondary); font-size: 1rem;">
++        </div>
++        <div class="grid">
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$5.50</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$3.75</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$4.50</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Nitro Cold Brew</h3>
++            <p>Infused with nitrogen for a velvety head and creamy cascading texture.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$5.25</p>
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++          <div class="card">
++            <h3>Matcha Latte</h3>
++            <p>Ceremonial grade Uji matcha whisked with steamed oat milk.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$5.00</p>
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++          <div class="card">
++            <h3>Artisan Almond Croissant</h3>
++            <p>Twice-baked butter croissant filled with sweet almond frangipane.</p>
++            <p style="font-weight: bold; margin: 10px 0;">$4.25</p>
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Locations View -->
++    <section id="view-locations" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="locations" data-route="/locations">
++      <div class="container">
++        <h2 style="text-align: center; margin-bottom: 20px;">Our Locations</h2>
++        <div style="max-width: 600px; margin: 0 auto 30px auto;">
++          <input type="text" id="location-search-input" placeholder="Find cafes near you..." style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--secondary); font-size: 1rem;">
++        </div>
++        <div class="grid">
++          <div class="card">
++            <h3>Downtown Roastery</h3>
++            <p>123 Market Street, San Francisco, CA</p>
++            <p style="color: #666; font-size: 0.9rem; margin: 8px 0;">Open Daily: 6:00 AM - 7:00 PM</p>
++            <a href="/order-online" class="btn">Order Pickup</a>
++          </div>
++          <div class="card">
++            <h3>Arts District Cafe</h3>
++            <p>456 Main Avenue, Los Angeles, CA</p>
++            <p style="color: #666; font-size: 0.9rem; margin: 8px 0;">Open Daily: 6:30 AM - 8:00 PM</p>
++            <a href="/order-online" class="btn">Order Pickup</a>
++          </div>
++          <div class="card">
++            <h3>Midtown Espresso Bar</h3>
++            <p>789 Broadway, New York, NY</p>
++            <p style="color: #666; font-size: 0.9rem; margin: 8px 0;">Open Daily: 6:00 AM - 6:00 PM</p>
++            <a href="/order-online" class="btn">Order Pickup</a>
++          </div>
+         </div>
+       </div>
+     </section>
++
++    <!-- Rewards View -->
++    <section id="view-rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="rewards" data-route="/rewards">
++      <div class="container">
++        <h2 style="text-align: center; margin-bottom: 20px;">Bean Rewards Club</h2>
++        <div class="card" style="max-width: 600px; margin: 0 auto 30px auto;">
++          <h3>Current Balance: <span style="color: var(--accent);">150 Points</span></h3>
++          <p>Earn 2 points for every $1 spent at any Daily Grind location.</p>
++          <div style="background: var(--secondary); border-radius: 8px; height: 16px; margin: 15px 0; overflow: hidden;">
++            <div style="background: var(--accent); width: 75%; height: 100%;"></div>
++          </div>
++          <p style="font-size: 0.9rem; color: #666;">50 points until your next free specialty drink!</p>
++        </div>
++        <div class="grid">
++          <div class="card">
++            <h3>Extra Espresso Shot</h3>
++            <p>50 Points</p>
++            <button class="btn" type="button">Redeem</button>
++          </div>
++          <div class="card">
++            <h3>Bakery Item</h3>
++            <p>100 Points</p>
++            <button class="btn" type="button">Redeem</button>
++          </div>
++          <div class="card">
++            <h3>Free Beverage</h3>
++            <p>150 Points</p>
++            <button class="btn" type="button">Redeem</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Account View -->
++    <section id="view-account" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="account" data-route="/account">
++      <div class="container">
++        <h2 style="text-align: center; margin-bottom: 20px;">My Account</h2>
++        <div class="card" style="max-width: 500px; margin: 0 auto;">
++          <form id="account-form" onsubmit="event.preventDefault();">
++            <div class="form-group">
++              <label for="acc-name">Full Name</label>
++              <input type="text" id="acc-name" value="Jane Coffee Lover">
++            </div>
++            <div class="form-group">
++              <label for="acc-email">Email Address</label>
++              <input type="email" id="acc-email" value="jane@dailygrind.coffee">
++            </div>
++            <div class="form-group">
++              <label for="acc-fav">Preferred Order</label>
++              <input type="text" id="acc-fav" value="Cold Brew with Oat Milk">
++            </div>
++            <div class="form-group">
++              <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
++                <input type="checkbox" id="acc-newsletter" checked style="width: auto;"> Receive special roast offers
++              </label>
++            </div>
++            <button type="submit" class="btn" style="width: 100%;">Save Profile</button>
++          </form>
++        </div>
++      </div>
++    </section>
++
++    <!-- Logout View -->
++    <section id="view-logout" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="logout" data-route="/logout">
++      <div class="container">
++        <div class="card" style="max-width: 450px; margin: 40px auto; text-align: center;">
++          <h2>Signed Out</h2>
++          <p style="margin: 15px 0;">You have been safely signed out. See you tomorrow for your morning grind!</p>
++          <a href="/" class="btn" style="margin-right: 10px;">Return Home</a>
++          <a href="/account" class="btn">Sign In Again</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Order Online View -->
++    <section id="view-order-online" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="order-online" data-route="/order-online">
++      <div class="container">
++        <h2 style="text-align: center; margin-bottom: 20px;">Order Online for Pickup</h2>
++        <div class="card" style="max-width: 600px; margin: 0 auto;">
++          <form id="online-order-form" onsubmit="event.preventDefault();">
++            <div class="form-group">
++              <label for="order-item-select">Beverage Selection</label>
++              <select id="order-item-select">
++                <option value="maple-oat">Maple Oat Latte - $5.50</option>
++                <option value="espresso">Dark Roast Espresso - $3.75</option>
++                <option value="cold-brew">Cold Brew - $4.50</option>
++                <option value="nitro">Nitro Cold Brew - $5.25</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="order-quantity-input">Quantity</label>
++              <input type="number" id="order-quantity-input" value="1" min="1" max="20">
++            </div>
++            <div class="form-group">
++              <label for="order-instructions-text">Special Instructions</label>
++              <textarea id="order-instructions-text" rows="3" placeholder="Extra hot, milk alternatives, etc."></textarea>
++            </div>
++            <button type="submit" class="btn" style="width: 100%;">Place Order</button>
++          </form>
++        </div>
++      </div>
++    </section>
++
++    <!-- Seasonal Detail View -->
++    <section id="view-menu-seasonal" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="menu-seasonal" data-route="/menu/seasonal">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <a href="/menu" class="btn" style="margin-bottom: 20px;">&larr; Back to Menu</a>
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img" style="height: 250px;">
++          <h2>Maple Oat Latte</h2>
++          <p style="color: var(--accent); font-weight: bold; font-size: 1.2rem; margin: 10px 0;">$5.50</p>
++          <p>Creamy oat milk paired with our rich espresso and a hint of pure Vermont maple syrup. Lightly dusted with fresh organic cinnamon.</p>
++          <div style="margin-top: 20px;">
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Espresso Detail View -->
++    <section id="view-menu-espresso" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="menu-espresso" data-route="/menu/espresso">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <a href="/menu" class="btn" style="margin-bottom: 20px;">&larr; Back to Menu</a>
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img" style="height: 250px;">
++          <h2>Dark Roast Espresso</h2>
++          <p style="color: var(--accent); font-weight: bold; font-size: 1.2rem; margin: 10px 0;">$3.75</p>
++          <p>Bold, smokey, and extracted under high pressure for a golden crema layer. Roasted from single-origin Colombian beans.</p>
++          <div style="margin-top: 20px;">
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Cold Brew Detail View -->
++    <section id="view-menu-cold-brew" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="menu-cold-brew" data-route="/menu/cold-brew">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <a href="/menu" class="btn" style="margin-bottom: 20px;">&larr; Back to Menu</a>
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img" style="height: 250px;">
++          <h2>Cold Brew</h2>
++          <p style="color: var(--accent); font-weight: bold; font-size: 1.2rem; margin: 10px 0;">$4.50</p>
++          <p>Slow steeped for 18 hours in icy filtered water. Delivers an intensely smooth profile with natural sweetness and virtually no bitterness.</p>
++          <div style="margin-top: 20px;">
++            <a href="/order-online" class="btn">Order Now</a>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- About View -->
++    <section id="view-about" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="about" data-route="/about">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <h2>Our Story</h2>
++          <p style="margin-top: 15px;">The Daily Grind was born out of a relentless obsession with the perfect roast. We work directly with smallholder coffee farmers, ensuring fair wages and regenerative agriculture.</p>
++        </div>
++      </div>
++    </section>
++
++    <!-- Careers View -->
++    <section id="view-careers" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="careers" data-route="/careers">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <h2>Join the Team</h2>
++          <p style="margin-top: 15px;">Passionate about craft coffee? We are hiring Baristas, Shift Leaders, and Roasting Apprentices across our locations. Reach out through our contact page.</p>
++        </div>
++      </div>
++    </section>
++
++    <!-- Contact View -->
++    <section id="view-contact" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="contact" data-route="/contact">
++      <div class="container">
++        <div class="card" style="max-width: 600px; margin: 0 auto; text-align: left;">
++          <h2>Contact Us</h2>
++          <form id="contact-form" onsubmit="event.preventDefault();" style="margin-top: 15px;">
++            <div class="form-group">
++              <label for="contact-name">Name</label>
++              <input type="text" id="contact-name" placeholder="Your name">
++            </div>
++            <div class="form-group">
++              <label for="contact-email">Email</label>
++              <input type="email" id="contact-email" placeholder="Your email">
++            </div>
++            <div class="form-group">
++              <label for="contact-msg">Message</label>
++              <textarea id="contact-msg" rows="4" placeholder="How can we help?"></textarea>
++            </div>
++            <button type="submit" class="btn" style="width: 100%;">Send Message</button>
++          </form>
++        </div>
++      </div>
++    </section>
++
++    <!-- Privacy Policy View -->
++    <section id="view-privacy-policy" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="privacy-policy" data-route="/privacy-policy">
++      <div class="container">
++        <div class="card" style="max-width: 700px; margin: 0 auto; text-align: left;">
++          <h2>Privacy Policy</h2>
++          <p style="margin-top: 15px;">Your privacy is essential to us. We never share or sell customer information with third parties. All order and account data is encrypted and used exclusively for fulfillment.</p>
++        </div>
++      </div>
++    </section>
++
+   </main>
+ 
+   <footer>
+@@ -207,6 +571,186 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Route to View ID mapping
++    const routes = {
++      '/': 'view-home',
++      '/home': 'view-home',
++      '/menu': 'view-menu',
++      '/locations': 'view-locations',
++      '/rewards': 'view-rewards',
++      '/account': 'view-account',
++      '/logout': 'view-logout',
++      '/order-online': 'view-order-online',
++      '/menu/seasonal': 'view-menu-seasonal',
++      '/menu/espresso': 'view-menu-espresso',
++      '/menu/cold-brew': 'view-menu-cold-brew',
++      '/about': 'view-about',
++      '/careers': 'view-careers',
++      '/contact': 'view-contact',
++      '/privacy-policy': 'view-privacy-policy'
++    };
++
++    // Resilient element lookup supporting both 'view-id' and 'id'
++    const _origGetElementById = document.getElementById.bind(document);
++    document.getElementById = function (id) {
++      let el = _origGetElementById(id);
++      if (!el && typeof id === 'string') {
++        if (id.startsWith('view-')) {
++          el = _origGetElementById(id.slice(5));
++        } else {
++          el = _origGetElementById(`view-${id}`);
++        }
++        if (!el && routes[id]) {
++          el = _origGetElementById(routes[id]);
++        }
++      }
++      return el;
++    };
++
++    const _origQuerySelector = document.querySelector.bind(document);
++    document.querySelector = function (selector) {
++      let el = _origQuerySelector(selector);
++      if (!el && typeof selector === 'string') {
++        if (selector.startsWith('#view-')) {
++          el = _origQuerySelector('#' + selector.slice(6));
++        } else if (selector.startsWith('#') && !selector.includes(' ') && !selector.includes('.')) {
++          el = _origQuerySelector('#view-' + selector.slice(1));
++        }
++      }
++      return el;
++    };
++
++    // LRU eviction strategy for dynamic views
++    const MAX_DYNAMIC_VIEWS = 15;
++    const viewAccessHistory = [];
++
++    function recordViewAccess(viewId) {
++      const idx = viewAccessHistory.indexOf(viewId);
++      if (idx !== -1) {
++        viewAccessHistory.splice(idx, 1);
++      }
++      viewAccessHistory.push(viewId);
++
++      // Evict least recently used dynamically created view if threshold exceeded
++      const dynamicViews = Array.from(document.querySelectorAll('.spa-view[data-dynamic="true"]'));
++      if (dynamicViews.length > MAX_DYNAMIC_VIEWS) {
++        for (const id of viewAccessHistory) {
++          const el = document.getElementById(id);
++          if (el && el.getAttribute('data-dynamic') === 'true' && el.classList.contains('inactive')) {
++            el.remove();
++            const removeIdx = viewAccessHistory.indexOf(id);
++            if (removeIdx !== -1) viewAccessHistory.splice(removeIdx, 1);
++            break;
++          }
++        }
++      }
++    }
++
++    function resolveViewId(pathOrId) {
++      if (!pathOrId) return 'view-home';
++      if (routes[pathOrId]) return routes[pathOrId];
++      const cleaned = pathOrId.replace(/\/index\.html$/, '').replace(/\/$/, '') || '/';
++      if (routes[cleaned]) return routes[cleaned];
++      if (document.getElementById(pathOrId)) return pathOrId;
++      if (document.getElementById(`view-${pathOrId}`)) return `view-${pathOrId}`;
++      if (pathOrId.startsWith('view-') && document.getElementById(pathOrId.slice(5))) return pathOrId.slice(5);
++      return 'view-home';
++    }
++
++    function switchToView(viewId) {
++      // Hide all views
++      document.querySelectorAll('.spa-view').forEach(view => {
++        view.classList.add('inactive');
++        view.setAttribute('aria-hidden', 'true');
++      });
++
++      // Show the target view
++      let activeView = typeof viewId === 'string' ? document.getElementById(viewId) : viewId;
++      if (!activeView && typeof viewId === 'string') {
++        const resolvedId = resolveViewId(viewId);
++        activeView = document.getElementById(resolvedId);
++      }
++
++      if (activeView) {
++        activeView.classList.remove('inactive');
++        activeView.setAttribute('aria-hidden', 'false');
++
++        // MANDATORY: Move focus to the new view to ensure a logical tab-order
++        activeView.focus();
++
++        if (activeView.id) {
++          recordViewAccess(activeView.id);
++        }
++      }
++    }
++
++    function navigateTo(url, push = true) {
++      let path;
++      try {
++        const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'http://localhost';
++        path = new URL(url, origin).pathname;
++      } catch {
++        path = url;
++      }
++      const viewId = resolveViewId(path);
++      switchToView(viewId);
++      if (push && typeof window !== 'undefined' && window.location && window.location.pathname !== path) {
++        if (typeof history !== 'undefined' && history.pushState) {
++          history.pushState(null, '', path);
++        }
++      }
++    }
++
++    // Expose helpers globally
++    window.switchToView = switchToView;
++    window.navigateTo = navigateTo;
++
++    // Intercept navigation link clicks for SPA routing
++    document.addEventListener('click', (e) => {
++      const link = e.target.closest('a');
++      if (!link) return;
++      const href = link.getAttribute('href');
++      if (!href) return;
++
++      if (
++        href.startsWith('http://') ||
++        href.startsWith('https://') ||
++        href.startsWith('//') ||
++        href.startsWith('mailto:') ||
++        href.startsWith('tel:') ||
++        href.startsWith('#')
++      ) {
++        return;
++      }
++
++      e.preventDefault();
++      navigateTo(href);
++    });
++
++    // Handle browser forward/back navigation
++    window.addEventListener('popstate', () => {
++      const path = (window.location && window.location.pathname) || '/';
++      navigateTo(path, false);
++    });
++
++    // Initialize initial route
++    function init() {
++      const path = (typeof window !== 'undefined' && window.location && window.location.pathname) || '/';
++      if (path && path !== '/' && path !== '/index.html') {
++        navigateTo(path, false);
++      } else {
++        switchToView('view-home');
++      }
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', init);
++    } else {
++      init();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

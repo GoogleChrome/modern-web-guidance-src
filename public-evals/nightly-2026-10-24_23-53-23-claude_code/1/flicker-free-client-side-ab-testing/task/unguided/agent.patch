@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,90 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad — Ship your ideas faster</title>
++  <meta name="description" content="Launchpad helps teams go from idea to launch in days, not months.">
++
++  <!-- Anti-flicker: hide the page until the experiment has applied its variant. -->
++  <style id="experiment-antiflicker">
++    html.experiment-pending { opacity: 0 !important; }
++    html { transition: opacity .2s ease; }
++  </style>
++  <script>
++    (function (w, d, timeoutMs) {
++      var root = d.documentElement;
++      root.classList.add('experiment-pending');
++
++      var done = false;
++      w.__revealPage = function () {
++        if (done) return;
++        done = true;
++        clearTimeout(timer);
++        root.classList.remove('experiment-pending');
++      };
++      // Safety net: never leave the page hidden if the SDK is slow or blocked.
++      var timer = setTimeout(w.__revealPage, timeoutMs);
++    })(window, document, 1500);
++  </script>
++  <noscript><style>html.experiment-pending { opacity: 1 !important; }</style></noscript>
++
++  <!-- Async so a slow CDN can't block parsing; the page stays hidden until it finishes (or times out). -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    onload="requestAnimationFrame(function () { requestAnimationFrame(window.__revealPage); })"
++    onerror="window.__revealPage()"></script>
++
++  <style>
++    *, *::before, *::after { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      color: #0f172a;
++      line-height: 1.5;
++    }
++    header {
++      display: flex; justify-content: space-between; align-items: center;
++      max-width: 1100px; margin: 0 auto; padding: 1.25rem 1.5rem;
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; color: #fff; }
++    .hero {
++      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #db2777 100%);
++      color: #fff;
++      margin-top: -4.5rem;
++      padding: 8rem 1.5rem 6rem;
++      text-align: center;
++    }
++    .hero-inner { max-width: 760px; margin: 0 auto; }
++    .hero h1 { font-size: clamp(2.25rem, 6vw, 4rem); line-height: 1.1; margin: 0 0 1rem; }
++    .hero p { font-size: 1.2rem; opacity: .92; margin: 0 0 2rem; }
++    .cta {
++      display: inline-block; padding: .9rem 2.2rem; border-radius: 999px;
++      background: #fff; color: #4f46e5; font-weight: 700; font-size: 1.1rem;
++      text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.2);
++      transition: transform .15s ease, box-shadow .15s ease;
++    }
++    .cta:hover, .cta:focus-visible { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.25); }
++    .cta:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
++    footer { text-align: center; padding: 2rem 1rem; color: #64748b; font-size: .9rem; }
++  </style>
++</head>
++<body>
++  <header>
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero" id="hero" data-experiment="hero">
++      <div class="hero-inner">
++        <h1 id="hero-title">Ship your ideas faster</h1>
++        <p id="hero-subtitle">Launchpad takes you from idea to launch in days, not months — with everything your team needs in one place.</p>
++        <a class="cta" id="cta-button" href="#signup" data-experiment="cta">Get started free</a>
++      </div>
++    </section>
++  </main>
++
++  <footer>&copy; 2026 Launchpad. All rights reserved.</footer>
++</body>
++</html>

@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,110 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Northwind — Ship faster with less noise</title>
++  <meta name="description" content="Northwind helps small teams plan, build, and launch without the overhead.">
++
++  <!--
++    Anti-flicker guard.
++    Order matters here:
++      1. Hide the page (CSS class on <html>) before anything renders.
++      2. Load the experiment SDK *synchronously* (no async/defer) so it runs
++         before the body is parsed and painted.
++      3. Reveal once the SDK has applied its variant, or on error, or after a
++         timeout so a slow/blocked CDN can never leave the page blank.
++    With JavaScript disabled, <noscript> undoes the hide entirely.
++  -->
++  <style>
++    html.exp-pending { opacity: 0 !important; }
++    html.exp-pending body { visibility: hidden !important; }
++  </style>
++  <noscript><style>html.exp-pending { opacity: 1 !important; } html.exp-pending body { visibility: visible !important; }</style></noscript>
++
++  <script>
++    (function (d, w) {
++      var html = d.documentElement;
++      var TIMEOUT_MS = 2000; // hard cap on how long we hide content
++      var revealed = false;
++
++      html.className += ' exp-pending';
++
++      function reveal(reason) {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        html.className = html.className.replace(/\bexp-pending\b/, '').trim();
++        html.setAttribute('data-exp-reveal', reason || 'unknown');
++      }
++
++      var timer = setTimeout(function () { reveal('timeout'); }, TIMEOUT_MS);
++
++      // Public hook for the SDK (or anyone) to call once the variant is in the DOM.
++      w.__experimentReady = function () { reveal('sdk'); };
++
++      // Expose for the <script> tag's onload/onerror handlers below.
++      w.__experimentReveal = reveal;
++    })(document, window);
++  </script>
++
++  <!--
++    Synchronous (render-blocking) load on purpose: the browser will not paint
++    the body until this script has executed, so DOM changes it makes are in
++    place before first paint. If the SDK itself signals completion via
++    window.__experimentReady(), that wins; otherwise onload reveals as soon as
++    the script finishes running, and onerror reveals immediately on failure.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    onload="window.__experimentReveal && window.__experimentReveal('load')"
++    onerror="window.__experimentReveal && window.__experimentReveal('error')"></script>
++
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <header class="site-header">
++    <a class="brand" href="/">Northwind</a>
++    <nav class="nav" aria-label="Primary">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#docs">Docs</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" id="hero" data-experiment="hero">
++      <div class="hero-copy">
++        <p class="eyebrow">Now in public beta</p>
++        <h1 class="hero-title" data-experiment="hero-title">
++          Ship faster with less noise.
++        </h1>
++        <p class="hero-subtitle" data-experiment="hero-subtitle">
++          Northwind gives small teams one calm place to plan, build, and launch.
++          No tab sprawl, no status meetings, no surprises.
++        </p>
++        <div class="hero-actions">
++          <a class="btn btn-primary" id="cta-primary" href="#signup" data-experiment="cta-primary">
++            Start free trial
++          </a>
++          <a class="btn btn-ghost" href="#demo">Watch the demo</a>
++        </div>
++        <p class="hero-note">Free for 14 days. No credit card required.</p>
++      </div>
++
++      <figure class="hero-media">
++        <img
++          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++          alt="A small team collaborating around a laptop in a bright office"
++          width="1200" height="800"
++          fetchpriority="high" decoding="async">
++      </figure>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <p>&copy; 2026 Northwind, Inc.</p>
++  </footer>
++</body>
++</html>

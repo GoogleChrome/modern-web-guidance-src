@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .section-title {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    /* Vertical Scroll Media Feed */
++    .media-feed-section {
++      margin-block-start: 40px;
++    }
++
++    .scroll-container {
++      height: 420px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: hidden;
++      flex-shrink: 0;
++    }
++
++    .target {
++      scroll-initial-target: nearest;
++      border-color: var(--accent);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 240px;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
++    .media-card-content {
++      padding: 16px;
++    }
++
++    .media-card-content h3 {
++      color: var(--primary);
++      margin-block-end: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-feed-section">
++      <h2 class="section-title">Behind the Craft</h2>
++      <div class="scroll-container" tabindex="0" aria-label="Coffee craft media feed">
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=640&q=80"
++            alt="Warm interior of the coffee shop with wooden tables"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-content">
++            <h3>Morning Atmosphere</h3>
++            <p>Our flagship café welcomes early risers with the aroma of freshly ground beans.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=640&q=80"
++            alt="Overhead view of a freshly poured latte in a ceramic cup"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-content">
++            <h3>Precision Pouring</h3>
++            <p>Every cup is crafted to balance velvety microfoam with rich espresso crema.</p>
++          </div>
++        </article>
++
++        <article class="media-card target">
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=640&q=80"
++            alt="Close-up of freshly roasted whole coffee beans"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-content">
++            <h3>Featured: Small-Batch Roasting</h3>
++            <p>Our signature medium-dark roast highlights caramel and toasted hazelnut notes.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=640&q=80"
++            alt="Pour-over coffee brewing into a glass carafe"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-content">
++            <h3>Hand-Brewed Single Origins</h3>
++            <p>Slow-poured filter coffee brings out bright floral and citrus complexities.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=80"
++            alt="Assortment of artisanal pastries next to a cup of coffee"
++            width="640"
++            height="360"
++          >
++          <div class="media-card-content">
++            <h3>Baked Fresh Daily</h3>
++            <p>Pair your afternoon espresso with flaky croissants and seasonal fruit tarts.</p>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +328,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener("DOMContentLoaded", () => {
++      if (!CSS.supports("scroll-initial-target", "nearest")) {
++        const feedTarget = document.querySelector(".scroll-container .target");
++        if (feedTarget) {
++          feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

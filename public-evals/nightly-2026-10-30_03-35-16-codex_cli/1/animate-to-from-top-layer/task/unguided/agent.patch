@@ -1,0 +1,274 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,145 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button:focus-visible, a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    body:has(dialog[open]) {
++      overflow: hidden;
++    }
++
++    .logout-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(420px, calc(100% - 32px));
++      padding: 32px;
++      border: 0;
++      border-radius: 12px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
++    }
++
++    .logout-dialog[open] {
++      animation: dialog-in 220ms ease-out both;
++    }
++
++    .logout-dialog::backdrop {
++      background: rgb(25 15 12 / 55%);
++      animation: backdrop-in 220ms ease-out both;
++    }
++
++    .logout-dialog.is-closing {
++      animation: dialog-out 220ms ease-in both;
++    }
++
++    .logout-dialog.is-closing::backdrop {
++      animation: backdrop-out 220ms ease-in both;
++    }
++
++    .logout-dialog h2 {
++      padding-right: 24px;
++      margin-bottom: 12px;
++    }
++
++    .dismiss-button {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 32px;
++      height: 32px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 24px;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .dismiss-button:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #c6b8b2;
++    }
++
++    .ordering-notice {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: min(380px, calc(100% - 32px));
++      padding: 24px 48px 24px 24px;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      box-shadow: 0 8px 32px rgb(0 0 0 / 20%);
++      animation: notice-in 220ms ease-out both;
++    }
++
++    .ordering-notice.is-closing {
++      animation: notice-out 220ms ease-in both;
++    }
++
++    @keyframes dialog-in {
++      from { opacity: 0; transform: translateY(16px) scale(0.97); }
++      to { opacity: 1; transform: translateY(0) scale(1); }
++    }
++
++    @keyframes dialog-out {
++      from { opacity: 1; transform: translateY(0) scale(1); }
++      to { opacity: 0; transform: translateY(16px) scale(0.97); }
++    }
++
++    @keyframes backdrop-in {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes backdrop-out {
++      from { opacity: 1; }
++      to { opacity: 0; }
++    }
++
++    @keyframes notice-in {
++      from { opacity: 0; transform: translateY(16px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    @keyframes notice-out {
++      from { opacity: 1; transform: translateY(0); }
++      to { opacity: 0; transform: translateY(16px); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .logout-dialog[open], .logout-dialog::backdrop, .ordering-notice {
++        animation-duration: 1ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +303,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" id="foobar" aria-controls="ordering-notice" aria-expanded="false">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +346,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="logout-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <button type="button" class="dismiss-button" id="close-dialog-btn" aria-label="Close logout confirmation">&times;</button>
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" id="cancel-logout-btn" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <aside class="ordering-notice" id="ordering-notice" aria-label="Online ordering information" hidden>
++    <button type="button" class="dismiss-button" id="dismiss-notice-btn" aria-label="Dismiss ordering information">&times;</button>
++    <p role="status" id="ordering-status"></p>
++  </aside>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const logoutDialog = document.getElementById('logout-dialog');
++    const orderButton = document.getElementById('foobar');
++    const orderingNotice = document.getElementById('ordering-notice');
++    const orderingStatus = document.getElementById('ordering-status');
++
++    // Keep elements visible until their CSS exit animation finishes.
++    function animateDismiss(element, animationName, finish) {
++      if (element.classList.contains('is-closing')) return;
++      element.classList.add('is-closing');
++      let fallback;
++      function complete() {
++        clearTimeout(fallback);
++        element.removeEventListener('animationend', onAnimationEnd);
++        finish();
++        element.classList.remove('is-closing');
++      }
++      function onAnimationEnd(event) {
++        if (event.target === element && event.animationName === animationName) complete();
++      }
++      element.addEventListener('animationend', onAnimationEnd);
++      fallback = setTimeout(complete, 280);
++    }
++
++    function closeLogoutDialog() {
++      if (!logoutDialog.open) return;
++      animateDismiss(logoutDialog, 'dialog-out', () => logoutDialog.close());
++    }
++
++    logoutLink.addEventListener('click', (event) => {
++      event.preventDefault();
++      if (!logoutDialog.open) logoutDialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', closeLogoutDialog);
++    document.getElementById('cancel-logout-btn').addEventListener('click', closeLogoutDialog);
++    logoutDialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeLogoutDialog();
++    });
++    logoutDialog.addEventListener('click', (event) => {
++      const bounds = logoutDialog.getBoundingClientRect();
++      if (event.target === logoutDialog &&
++          (event.clientX < bounds.left || event.clientX > bounds.right ||
++           event.clientY < bounds.top || event.clientY > bounds.bottom)) {
++        closeLogoutDialog();
++      }
++    });
++
++    function dismissNotice() {
++      if (orderingNotice.hidden) return;
++      animateDismiss(orderingNotice, 'notice-out', () => {
++        if (orderingNotice.contains(document.activeElement)) orderButton.focus();
++        orderingNotice.hidden = true;
++        orderingStatus.textContent = '';
++        orderButton.setAttribute('aria-expanded', 'false');
++      });
++    }
++
++    orderButton.addEventListener('click', () => {
++      if (!orderingNotice.hidden) return;
++      orderingNotice.hidden = false;
++      orderButton.setAttribute('aria-expanded', 'true');
++      orderingStatus.textContent = 'online ordering is currently offline';
++    });
++    document.getElementById('dismiss-notice-btn').addEventListener('click', dismissNotice);
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && !logoutDialog.open) dismissNotice();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

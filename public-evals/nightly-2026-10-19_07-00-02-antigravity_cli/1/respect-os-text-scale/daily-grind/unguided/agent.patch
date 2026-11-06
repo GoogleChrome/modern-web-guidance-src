@@ -1,0 +1,12 @@
+diff --git a/index.html b/index.html
+index 66c9173..1f6f644 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {

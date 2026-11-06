@@ -1,0 +1,451 @@
+diff --git a/index.html b/index.html
+index 66c9173..1a5a58e 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,37 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Accessibility Utilities & Focus Indicators */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link:focus-visible {
++      position: fixed;
++      inset-block-start: 10px;
++      inset-inline-start: 10px;
++      z-index: 2000;
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-weight: 600;
++    }
++
++    :where(a:any-link, button, [tabindex]):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,19 +131,117 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: safe center;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .layout-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: safe center;
++      gap: 8px;
++    }
++
++    .layout-controls-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .layout-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 6px 12px;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .layout-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    /* Asymmetric / Bento Featured Grid Mode */
++    .grid[data-layout="featured"] {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 20px;
++    }
++
++    @media (min-width: 640px) {
++      .grid[data-layout="featured"] .card:first-child,
++      .grid[data-layout="featured"] .card:last-child {
++        grid-column: span 2;
++      }
++    }
++
++    /* Wrapped Flexbox Mode (with staggered center alignment) */
++    .grid[data-layout="flex"] {
++      display: flex;
++      flex-flow: row wrap;
++      justify-content: center;
++      gap: 20px;
++    }
++
++    .grid[data-layout="flex"] .card {
++      flex: 1 1 280px;
++      max-inline-size: 340px;
++    }
++
++    /* Single-Column List Mode */
++    .grid[data-layout="list"] {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 16px;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: safe center;
++      text-align: start;
++      gap: 16px;
++    }
++
++    .grid[data-layout="list"] .card .btn {
++      inline-size: auto;
++      margin-top: 0;
++      margin-inline-start: auto;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: grid;
++      grid-template-rows: auto 1fr auto;
++      align-items: start;
+     }
+ 
+     .card h3 {
+@@ -125,12 +254,23 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
++      min-block-size: 24px;
++      min-inline-size: 24px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    .card .btn {
++      inline-size: 100%;
++    }
++
++    .card .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -156,8 +296,9 @@
+ </head>
+ 
+ <body>
++  <a href="#main-heading" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -169,29 +310,54 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="main-heading" tabindex="-1">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="section-header">
++        <h2 id="seasonal-favorites-heading">Seasonal Favorites</h2>
++        <div class="layout-controls" role="group" aria-label="Card layout mode">
++          <span class="layout-controls-label" id="layout-mode-label">Layout:</span>
++          <button type="button" class="layout-btn" data-layout-mode="grid" aria-pressed="true">Grid</button>
++          <button type="button" class="layout-btn" data-layout-mode="featured" aria-pressed="false">Featured</button>
++          <button type="button" class="layout-btn" data-layout-mode="flex" aria-pressed="false">Wrapped Flex</button>
++          <button type="button" class="layout-btn" data-layout-mode="list" aria-pressed="false">List</button>
++        </div>
++      </div>
++
++      <div class="grid" data-layout="grid" data-spatial-nav>
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="card-title-maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" id="card-cta-maple" class="btn" aria-labelledby="card-cta-maple card-title-maple" tabindex="0">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="card-title-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" id="card-cta-espresso" class="btn" aria-labelledby="card-cta-espresso card-title-espresso" tabindex="-1">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="card-title-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" id="card-cta-cold-brew" class="btn" aria-labelledby="card-cta-cold-brew card-title-cold-brew" tabindex="-1">View Details</a>
++        </div>
++        <div class="card">
++          <h3 id="card-title-chai">Spiced Chai Cortado</h3>
++          <p>Warm cardamom and cinnamon balanced with velvety steamed milk.</p>
++          <a href="/menu/chai-cortado" id="card-cta-chai" class="btn" aria-labelledby="card-cta-chai card-title-chai" tabindex="-1">View Details</a>
++        </div>
++        <div class="card">
++          <h3 id="card-title-lavender">Honey Lavender Flat White</h3>
++          <p>Floral culinary lavender infused with local wildflower honey.</p>
++          <a href="/menu/honey-lavender" id="card-cta-lavender" class="btn" aria-labelledby="card-cta-lavender card-title-lavender" tabindex="-1">View Details</a>
++        </div>
++        <div class="card">
++          <h3 id="card-title-pour-over">Single-Origin Pour Over</h3>
++          <p>Bright citrus and jasmine notes from high-altitude Ethiopian beans.</p>
++          <a href="/menu/pour-over" id="card-cta-pour-over" class="btn" aria-labelledby="card-cta-pour-over card-title-pour-over" tabindex="-1">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +373,190 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const CANDIDATE_SELECTOR = [
++        'a[href]',
++        'button:not(:disabled)',
++        'input:not(:disabled):not([type="hidden"])',
++        'select:not(:disabled)',
++        'textarea:not(:disabled)',
++        '[tabindex]'
++      ].join(', ');
++
++      const DIRECTION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
++      const SUBPIXEL_TOLERANCE = 1;
++      const FALLBACK_PERPENDICULAR_WEIGHT = 2;
++
++      function getVisibleCandidates(container) {
++        return Array.from(container.querySelectorAll(CANDIDATE_SELECTOR)).filter((el) => {
++          if (el.disabled || el.hidden || el.closest('[hidden], [inert]')) {
++            return false;
++          }
++          if (typeof el.checkVisibility === 'function' && !el.checkVisibility()) {
++            return false;
++          }
++          return true;
++        });
++      }
++
++      function updateRovingTabindex(candidates, activeElement) {
++        if (candidates.length === 0) return;
++        const targetActive = activeElement && candidates.includes(activeElement)
++          ? activeElement
++          : candidates.find((el) => el.getAttribute('tabindex') === '0') || candidates[0];
++
++        for (const candidate of candidates) {
++          const desired = candidate === targetActive ? '0' : '-1';
++          if (candidate.getAttribute('tabindex') !== desired) {
++            candidate.setAttribute('tabindex', desired);
++          }
++        }
++      }
++
++      function findSpatialCandidate(currentElement, candidates, key) {
++        const currentRect = currentElement.getBoundingClientRect();
++        const isHorizontal = key === 'ArrowLeft' || key === 'ArrowRight';
++        const currentPerpCenter = isHorizontal
++          ? (currentRect.top + currentRect.bottom) / 2
++          : (currentRect.left + currentRect.right) / 2;
++
++        const alignedCandidates = [];
++        const fallbackCandidates = [];
++
++        for (const candidate of candidates) {
++          if (candidate === currentElement) continue;
++
++          const rect = candidate.getBoundingClientRect();
++          if (rect.width === 0 && rect.height === 0) continue;
++
++          let inDirection = false;
++          let gap = 0;
++
++          if (key === 'ArrowRight') {
++            inDirection = rect.left >= currentRect.right - SUBPIXEL_TOLERANCE;
++            gap = Math.max(0, rect.left - currentRect.right);
++          } else if (key === 'ArrowLeft') {
++            inDirection = rect.right <= currentRect.left + SUBPIXEL_TOLERANCE;
++            gap = Math.max(0, currentRect.left - rect.right);
++          } else if (key === 'ArrowDown') {
++            inDirection = rect.top >= currentRect.bottom - SUBPIXEL_TOLERANCE;
++            gap = Math.max(0, rect.top - currentRect.bottom);
++          } else if (key === 'ArrowUp') {
++            inDirection = rect.bottom <= currentRect.top + SUBPIXEL_TOLERANCE;
++            gap = Math.max(0, currentRect.top - rect.bottom);
++          }
++
++          if (!inDirection) continue;
++
++          const overlapsPerpendicular = isHorizontal
++            ? Math.min(currentRect.bottom, rect.bottom) > Math.max(currentRect.top, rect.top)
++            : Math.min(currentRect.right, rect.right) > Math.max(currentRect.left, rect.left);
++
++          const candidatePerpCenter = isHorizontal
++            ? (rect.top + rect.bottom) / 2
++            : (rect.left + rect.right) / 2;
++          const perpendicularCentreOffset = Math.abs(candidatePerpCenter - currentPerpCenter);
++
++          const entry = {
++            element: candidate,
++            gap,
++            perpendicularCentreOffset,
++            fallbackScore: gap + FALLBACK_PERPENDICULAR_WEIGHT * perpendicularCentreOffset
++          };
++
++          if (overlapsPerpendicular) {
++            alignedCandidates.push(entry);
++          } else {
++            fallbackCandidates.push(entry);
++          }
++        }
++
++        if (alignedCandidates.length > 0) {
++          alignedCandidates.sort((a, b) => {
++            if (Math.abs(a.gap - b.gap) > SUBPIXEL_TOLERANCE) {
++              return a.gap - b.gap;
++            }
++            return a.perpendicularCentreOffset - b.perpendicularCentreOffset;
++          });
++          return alignedCandidates[0].element;
++        }
++
++        if (fallbackCandidates.length > 0) {
++          fallbackCandidates.sort((a, b) => a.fallbackScore - b.fallbackScore);
++          return fallbackCandidates[0].element;
++        }
++
++        return null;
++      }
++
++      function initSpatialContainer(container) {
++        updateRovingTabindex(getVisibleCandidates(container));
++
++        container.addEventListener('focusin', (e) => {
++          const target = e.composedPath()[0] || e.target;
++          if (!(target instanceof Element)) return;
++          const candidates = getVisibleCandidates(container);
++          if (candidates.includes(target)) {
++            updateRovingTabindex(candidates, target);
++          }
++        });
++
++        container.addEventListener('keydown', (e) => {
++          if (e.defaultPrevented) return;
++          if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++          if (!DIRECTION_KEYS.has(e.key)) return;
++
++          const target = e.composedPath()[0] || e.target;
++          if (!(target instanceof Element)) return;
++
++          if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) {
++            return;
++          }
++
++          const candidates = getVisibleCandidates(container);
++          if (!candidates.includes(target)) return;
++
++          const nextCandidate = findSpatialCandidate(target, candidates, e.key);
++          if (!nextCandidate) {
++            return;
++          }
++
++          e.preventDefault();
++          updateRovingTabindex(candidates, nextCandidate);
++          nextCandidate.focus();
++          nextCandidate.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++
++        const observer = new MutationObserver(() => {
++          updateRovingTabindex(getVisibleCandidates(container));
++        });
++        observer.observe(container, {
++          childList: true,
++          subtree: true,
++          attributes: true,
++          attributeFilter: ['hidden', 'inert', 'disabled', 'style', 'class']
++        });
++      }
++
++      const gridContainer = document.querySelector('.grid');
++      if (gridContainer) {
++        initSpatialContainer(gridContainer);
++      }
++
++      const layoutButtons = document.querySelectorAll('.layout-btn[data-layout-mode]');
++      layoutButtons.forEach((button) => {
++        button.addEventListener('click', () => {
++          const mode = button.getAttribute('data-layout-mode');
++          if (!gridContainer || !mode) return;
++          gridContainer.setAttribute('data-layout', mode);
++          layoutButtons.forEach((btn) => {
++            btn.setAttribute('aria-pressed', String(btn === button));
++          });
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

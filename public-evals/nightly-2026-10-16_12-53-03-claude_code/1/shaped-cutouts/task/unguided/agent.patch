@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shaped elements */
++    .shaped-section {
++      display: grid;
++      gap: 40px;
++      margin-top: 60px;
++    }
++
++    /* Paint-splat mask; the path is stretched to the element's box (viewBox + preserveAspectRatio="none"), so it scales with the image */
++    .shaped-avatar {
++      display: block;
++      width: 100%;
++      max-width: 320px;
++      aspect-ratio: 1;
++      margin: 0 auto;
++      object-fit: cover;
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 3 64 10 72 12C82 14 90 12 93 22C96 32 90 38 94 47C98 56 99 62 92 70C86 77 88 86 78 90C68 94 62 88 54 95C46 102 38 96 33 90C27 83 16 88 11 78C6 68 14 62 8 53C2 44 4 36 10 28C16 20 14 12 26 10C36 8 40 3 50 3Z'/%3E%3Ccircle cx='96' cy='8' r='3'/%3E%3Ccircle cx='5' cy='90' r='4'/%3E%3Ccircle cx='88' cy='96' r='2'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 3 64 10 72 12C82 14 90 12 93 22C96 32 90 38 94 47C98 56 99 62 92 70C86 77 88 86 78 90C68 94 62 88 54 95C46 102 38 96 33 90C27 83 16 88 11 78C6 68 14 62 8 53C2 44 4 36 10 28C16 20 14 12 26 10C36 8 40 3 50 3Z'/%3E%3Ccircle cx='96' cy='8' r='3'/%3E%3Ccircle cx='5' cy='90' r='4'/%3E%3Ccircle cx='88' cy='96' r='2'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    .barista-feature {
++      text-align: center;
++    }
++
++    .barista-feature figcaption {
++      margin-top: 12px;
++    }
++
++    /* The shadow filter lives on the parent so it follows the masked accent's cutout and the card reads as one shape */
++    .unified-card {
++      display: flex;
++      max-width: 700px;
++      margin: 0 auto;
++      filter: drop-shadow(0 8px 14px rgba(62, 39, 35, 0.3));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      padding: 30px;
++      background: white;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 110px;
++      margin-left: -1px;
++      background: linear-gradient(160deg, var(--accent), #ff8f00);
++      border-radius: 0 12px 12px 0;
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C30 80 30 20 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C30 80 30 20 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    .gradient-masked-card {
++      max-width: 340px;
++      margin: 0 auto;
++      padding: 50px 24px 28px;
++      text-align: center;
++      color: white;
++      background: linear-gradient(135deg, var(--primary), #8d6e63);
++      border-radius: 12px;
++      -webkit-mask: radial-gradient(circle 30px at 50% 0, transparent 97%, #000 100%);
++      mask: radial-gradient(circle 30px at 50% 0, transparent 97%, #000 100%);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +257,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shaped-section">
++      <figure class="barista-feature">
++        <img class="shaped-avatar" src="https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=600&q=80" alt="Featured barista pouring latte art">
++        <figcaption><strong>Meet Our Featured Barista</strong><br>Crafting your perfect cup, one pour at a time.</figcaption>
++      </figure>
++
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Join the Grind Rewards</h3>
++          <p>Earn a star with every cup and get a free drink after ten.</p>
++          <a href="/rewards" class="btn">Join Now</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++
++      <div class="gradient-masked-card">
++        <h3>Free Pastry Friday</h3>
++        <p>Buy any large drink and take home a fresh pastry.</p>
++        <a href="/menu/promos" class="btn">Claim Offer</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

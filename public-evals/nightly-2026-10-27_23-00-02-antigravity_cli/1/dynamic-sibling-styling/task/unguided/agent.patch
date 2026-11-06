@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,13 +114,154 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .spectrum-card {
++      --hue: calc((sibling-index() - 1) * (360deg / sibling-count()));
++      background: hsl(var(--hue) 75% 88%);
++      border: 1px solid hsl(var(--hue) 60% 75%);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Section Headings */
++    section {
++      margin-bottom: 60px;
++    }
++
++    section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 30px;
++    }
++
++    /* Fan Container & Loyalty Cards */
++    .fan-container {
++      position: relative;
++      height: 320px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      margin: 40px auto;
++    }
++
++    .fan-card {
++      --middle: calc((sibling-count() + 1) / 2);
++      --offset: calc(sibling-index() - var(--middle));
++      --angle: calc(var(--offset) * (60deg / sibling-count()));
++      position: absolute;
++      width: 190px;
++      height: 250px;
++      background: linear-gradient(145deg, var(--primary), #271815);
++      color: var(--light);
++      border: 2px solid var(--accent);
++      border-radius: 14px;
++      padding: 20px 16px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: center;
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
++      transform-origin: 50% 140%;
++      transform: rotate(var(--angle));
++      z-index: sibling-index();
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .fan-card:hover {
++      transform: rotate(var(--angle)) translateY(-20px) scale(1.05);
++      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.38);
++      z-index: 100;
++    }
++
++    .fan-card .tier-badge {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      color: var(--accent);
++      font-weight: bold;
++    }
++
++    .fan-card h3 {
++      font-size: 1.2rem;
++      color: white;
++      margin: 8px 0;
++    }
++
++    .fan-card p {
++      font-size: 0.85rem;
++      color: var(--secondary);
++    }
++
++    .fan-card .tier-points {
++      font-size: 0.8rem;
++      background: rgba(255, 171, 64, 0.15);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      border-radius: 20px;
++      padding: 4px 10px;
++      color: var(--accent);
++    }
++
++    /* Circle Container & Coffee Origin Badges */
++    .circle-container {
++      --radius: 140px;
++      position: relative;
++      width: 380px;
++      height: 380px;
++      margin: 40px auto;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      border-radius: 50%;
++      border: 2px dashed var(--secondary);
++    }
++
++    .circle-orb {
++      --angle: calc((sibling-index() - 1) * (360deg / sibling-count()));
++      --hue: calc((sibling-index() - 1) * (360deg / sibling-count()));
++      position: absolute;
++      width: 96px;
++      height: 96px;
++      border-radius: 50%;
++      background: hsl(var(--hue) 65% 28%);
++      color: white;
++      border: 3px solid var(--accent);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      padding: 8px;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
++      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius))) rotate(calc(-1 * var(--angle)));
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .circle-orb:hover {
++      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius))) rotate(calc(-1 * var(--angle))) scale(1.12);
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
++      z-index: 10;
++    }
++
++    .circle-orb strong {
++      font-size: 0.9rem;
++      display: block;
++    }
++
++    .circle-orb span {
++      font-size: 0.7rem;
++      color: var(--secondary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +318,93 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2>Daily Grind Loyalty Cards</h2>
++      <p class="section-subtitle">Collect beans with every cup and unlock exclusive artisanal perks.</p>
++      <div class="fan-container">
++        <div class="fan-card">
++          <span class="tier-badge">Tier 1</span>
++          <h3>Bronze Bean</h3>
++          <p>Free birthday brew &amp; early seasonal menu access.</p>
++          <span class="tier-points">0 – 99 Beans</span>
++        </div>
++        <div class="fan-card">
++          <span class="tier-badge">Tier 2</span>
++          <h3>Silver Sip</h3>
++          <p>Complimentary oat milk upgrades &amp; double bean Tuesdays.</p>
++          <span class="tier-points">100 – 249 Beans</span>
++        </div>
++        <div class="fan-card">
++          <span class="tier-badge">Tier 3</span>
++          <h3>Gold Grind</h3>
++          <p>Free espresso shot in any drink &amp; monthly pastry reward.</p>
++          <span class="tier-points">250 – 499 Beans</span>
++        </div>
++        <div class="fan-card">
++          <span class="tier-badge">Tier 4</span>
++          <h3>Platinum Pour</h3>
++          <p>Priority mobile ordering &amp; quarterly single-origin bag.</p>
++          <span class="tier-points">500 – 999 Beans</span>
++        </div>
++        <div class="fan-card">
++          <span class="tier-badge">Tier 5</span>
++          <h3>Diamond Drip</h3>
++          <p>Unlimited drip refills &amp; private roastery tasting invites.</p>
++          <span class="tier-points">1,000+ Beans</span>
++        </div>
++      </div>
++    </section>
++
++    <section>
++      <h2>Single-Origin Coffee Badges</h2>
++      <p class="section-subtitle">Explore the ethical farms and regions behind our signature roasts.</p>
++      <div class="circle-container">
++        <div class="circle-orb">
++          <strong>Ethiopia</strong>
++          <span>Floral &amp; Citrus</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Colombia</strong>
++          <span>Caramel &amp; Nutty</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Sumatra</strong>
++          <span>Earthy &amp; Spice</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Guatemala</strong>
++          <span>Cocoa &amp; Berry</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Kenya</strong>
++          <span>Bright &amp; Winey</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Brazil</strong>
++          <span>Sweet &amp; Smooth</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

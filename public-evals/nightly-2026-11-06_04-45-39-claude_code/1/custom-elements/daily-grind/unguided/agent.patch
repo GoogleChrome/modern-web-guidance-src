@@ -1,0 +1,428 @@
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..b350ad9
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,338 @@
++/**
++ * <coffee-card> — an autonomous custom element for menu items.
++ *
++ * Attributes (all reflected to/from same-named camelCase properties):
++ *   name        string   Drink name (heading).
++ *   href        string   Link target for the "View Details" button.
++ *   image       string   Optional image URL.
++ *   image-alt   string   Alt text for the image (defaults to the name).
++ *   cta         string   Button label (default "View Details").
++ *   price       number   Price in USD; omitted/invalid -> not shown.
++ *   strength    number   Roast strength 0–5 (clamped, integer).
++ *   featured    boolean  Shows a "Seasonal" badge and highlight.
++ *   sold-out    boolean  Greys the card out and disables the button.
++ *
++ * Slots:
++ *   (default)   Description text.
++ *
++ * Events:
++ *   coffee-card:select   Fired (bubbles, composed, cancelable) when the CTA
++ *                        is activated. detail = { name, href, price }.
++ *                        Call preventDefault() to stop navigation.
++ */
++
++const STRING_ATTRS = {
++  name: 'name',
++  href: 'href',
++  image: 'image',
++  imageAlt: 'image-alt',
++  cta: 'cta',
++};
++const NUMBER_ATTRS = {
++  price: 'price',
++  strength: 'strength',
++};
++const BOOLEAN_ATTRS = {
++  featured: 'featured',
++  soldOut: 'sold-out',
++};
++
++const ALL_PROPS = { ...STRING_ATTRS, ...NUMBER_ATTRS, ...BOOLEAN_ATTRS };
++
++const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      overflow: hidden;
++      position: relative;
++      color: var(--text, #3e2723);
++      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
++    }
++    :host([hidden]) { display: none; }
++    :host(:hover) {
++      transform: translateY(-2px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
++    }
++    :host([featured]) {
++      box-shadow: 0 0 0 2px var(--accent, #ffab40), 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++    :host([sold-out]) { opacity: 0.6; }
++    :host([sold-out]) img { filter: grayscale(1); }
++
++    figure { margin: 0; aspect-ratio: 16 / 10; background: var(--secondary, #d7ccc8); }
++    figure[hidden] { display: none; }
++    img { width: 100%; height: 100%; object-fit: cover; display: block; }
++
++    .badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 2px 10px;
++      border-radius: 999px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++    .badge.sold { left: auto; right: 12px; background: var(--text, #3e2723); color: white; }
++    .badge[hidden] { display: none; }
++
++    .body { padding: 20px; }
++    h3 { margin: 0 0 10px; color: var(--primary, #4e342e); }
++    .meta {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      align-items: center;
++      font-size: 0.9rem;
++      margin-bottom: 8px;
++    }
++    .meta[hidden], .price[hidden], .strength[hidden] { display: none; }
++    .price { font-weight: bold; }
++    .strength { letter-spacing: 2px; color: var(--primary, #4e342e); }
++    .strength .off { opacity: 0.25; }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++      font: inherit;
++    }
++    .btn:hover { background: #3e2723; }
++    .btn[aria-disabled="true"] { background: #9e9e9e; cursor: not-allowed; pointer-events: none; }
++  </style>
++  <span class="badge featured" part="badge" hidden>Seasonal</span>
++  <span class="badge sold" part="badge" hidden>Sold out</span>
++  <figure part="media" hidden><img alt="" loading="lazy" decoding="async"></figure>
++  <div class="body" part="body">
++    <h3 part="name"></h3>
++    <div class="meta" part="meta" hidden>
++      <span class="price" part="price" hidden></span>
++      <span class="strength" part="strength" role="img" hidden></span>
++    </div>
++    <p part="description"><slot></slot></p>
++    <a class="btn" part="button"></a>
++  </div>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static get observedAttributes() {
++    return Object.values(ALL_PROPS);
++  }
++
++  #els;
++  #renderQueued = false;
++  #connected = false;
++  #onClick = (event) => this.#handleClick(event);
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.appendChild(template.content.cloneNode(true));
++    this.#els = {
++      featuredBadge: root.querySelector('.badge.featured'),
++      soldBadge: root.querySelector('.badge.sold'),
++      figure: root.querySelector('figure'),
++      img: root.querySelector('img'),
++      name: root.querySelector('h3'),
++      meta: root.querySelector('.meta'),
++      price: root.querySelector('.price'),
++      strength: root.querySelector('.strength'),
++      button: root.querySelector('.btn'),
++    };
++  }
++
++  // ---- Lifecycle -----------------------------------------------------------
++
++  connectedCallback() {
++    this.#connected = true;
++    // Properties may have been set on the element before it was upgraded;
++    // re-run them through our setters so they reflect correctly.
++    for (const prop of Object.keys(ALL_PROPS)) this.#upgradeProperty(prop);
++    if (!this.hasAttribute('role')) this.setAttribute('role', 'article');
++    this.#els.button.addEventListener('click', this.#onClick);
++    this.#render();
++  }
++
++  disconnectedCallback() {
++    this.#connected = false;
++    this.#els.button.removeEventListener('click', this.#onClick);
++  }
++
++  adoptedCallback() {
++    // Moved into a new document (e.g. via adoptNode); re-render to be safe.
++    this.#scheduleRender();
++  }
++
++  attributeChangedCallback(_name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    this.#scheduleRender();
++  }
++
++  // ---- Reflection helpers --------------------------------------------------
++
++  #upgradeProperty(prop) {
++    if (Object.prototype.hasOwnProperty.call(this, prop)) {
++      const value = this[prop];
++      delete this[prop];
++      this[prop] = value;
++    }
++  }
++
++  #getString(attr, fallback = '') {
++    return this.getAttribute(attr) ?? fallback;
++  }
++
++  #setString(attr, value) {
++    if (value === null || value === undefined) this.removeAttribute(attr);
++    else this.setAttribute(attr, String(value));
++  }
++
++  #getNumber(attr) {
++    const raw = this.getAttribute(attr);
++    if (raw === null || raw.trim() === '') return null;
++    const n = Number(raw);
++    return Number.isFinite(n) ? n : null;
++  }
++
++  #setNumber(attr, value) {
++    if (value === null || value === undefined || value === '') {
++      this.removeAttribute(attr);
++      return;
++    }
++    const n = Number(value);
++    if (Number.isFinite(n)) this.setAttribute(attr, String(n));
++    else this.removeAttribute(attr);
++  }
++
++  #setBoolean(attr, value) {
++    this.toggleAttribute(attr, Boolean(value));
++  }
++
++  // ---- Rendering -----------------------------------------------------------
++
++  #scheduleRender() {
++    if (!this.#connected || this.#renderQueued) return;
++    this.#renderQueued = true;
++    queueMicrotask(() => {
++      this.#renderQueued = false;
++      if (this.#connected) this.#render();
++    });
++  }
++
++  #render() {
++    const els = this.#els;
++    const { name, href, image, imageAlt, cta, price, strength, featured, soldOut } = this;
++
++    els.name.textContent = name;
++    this.setAttribute('aria-label', name);
++
++    els.figure.hidden = !image;
++    if (image) {
++      if (els.img.getAttribute('src') !== image) els.img.src = image;
++      els.img.alt = imageAlt || name;
++    } else {
++      els.img.removeAttribute('src');
++    }
++
++    els.price.hidden = price === null;
++    els.price.textContent = price === null ? '' : currency.format(price);
++
++    els.strength.hidden = strength === null;
++    if (strength !== null) {
++      els.strength.setAttribute('aria-label', `Strength ${strength} of 5`);
++      els.strength.innerHTML =
++        '<span aria-hidden="true">' +
++        '●'.repeat(strength) +
++        `<span class="off">${'●'.repeat(5 - strength)}</span></span>`;
++    } else {
++      els.strength.textContent = '';
++    }
++    els.meta.hidden = els.price.hidden && els.strength.hidden;
++
++    els.featuredBadge.hidden = !featured;
++    els.soldBadge.hidden = !soldOut;
++
++    els.button.textContent = soldOut ? 'Unavailable' : cta;
++    if (href && !soldOut) els.button.href = href;
++    else els.button.removeAttribute('href');
++    els.button.setAttribute('aria-disabled', String(soldOut || !href));
++    if (soldOut) els.button.setAttribute('tabindex', '-1');
++    else els.button.removeAttribute('tabindex');
++  }
++
++  #handleClick(event) {
++    if (this.soldOut) {
++      event.preventDefault();
++      return;
++    }
++    const proceed = this.dispatchEvent(
++      new CustomEvent('coffee-card:select', {
++        bubbles: true,
++        composed: true,
++        cancelable: true,
++        detail: { name: this.name, href: this.href, price: this.price },
++      }),
++    );
++    if (!proceed) event.preventDefault();
++  }
++
++  // ---- Reflected properties: strings ---------------------------------------
++
++  get name() { return this.#getString('name'); }
++  set name(v) { this.#setString('name', v); }
++
++  get href() { return this.#getString('href'); }
++  set href(v) { this.#setString('href', v); }
++
++  get image() { return this.#getString('image'); }
++  set image(v) { this.#setString('image', v); }
++
++  get imageAlt() { return this.#getString('image-alt'); }
++  set imageAlt(v) { this.#setString('image-alt', v); }
++
++  get cta() { return this.#getString('cta', 'View Details'); }
++  set cta(v) { this.#setString('cta', v); }
++
++  // ---- Reflected properties: numbers ---------------------------------------
++
++  /** @returns {number|null} */
++  get price() {
++    const n = this.#getNumber('price');
++    return n !== null && n >= 0 ? n : null;
++  }
++  set price(v) { this.#setNumber('price', v); }
++
++  /** @returns {number|null} integer clamped to 0–5 */
++  get strength() {
++    const n = this.#getNumber('strength');
++    return n === null ? null : Math.min(5, Math.max(0, Math.round(n)));
++  }
++  set strength(v) { this.#setNumber('strength', v); }
++
++  // ---- Reflected properties: booleans --------------------------------------
++
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(v) { this.#setBoolean('featured', v); }
++
++  get soldOut() { return this.hasAttribute('sold-out'); }
++  set soldOut(v) { this.#setBoolean('sold-out', v); }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..9c33435 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,15 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    /* Pre-upgrade fallback so cards don't flash unstyled before JS runs */
++    coffee-card:not(:defined) {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      min-height: 200px;
+     }
+ 
+     .btn {
+@@ -153,6 +151,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/coffee-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +177,34 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          href="/menu/seasonal"
++          image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++          image-alt="Latte with latte art in a ceramic cup"
++          price="5.75"
++          strength="2"
++          featured>
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          href="/menu/espresso"
++          image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++          image-alt="Shot of espresso"
++          price="3.25"
++          strength="5">
++          Bold, smokey, and perfect for a morning boost.
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          href="/menu/cold-brew"
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++          image-alt="Iced coffee in a glass"
++          price="4.50"
++          strength="4">
++          Steeped for 18 hours for maximum smoothness.
++        </coffee-card>
+       </div>
+     </section>
+   </main>

@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+index 66c9173..faa6bfa 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,117 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutritional & Pricing Table */
++    .table-container {
++      margin-top: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++    }
++
++    .table-scroll {
++      overflow-x: auto;
++      -webkit-overflow-scrolling: touch;
++      border-radius: 6px;
++    }
++
++    .table-scroll:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-variant-numeric: tabular-nums;
++      min-width: 580px;
++      border: 1px solid var(--secondary);
++    }
++
++    .nutrition-table caption {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      text-align: left;
++      margin-bottom: 14px;
++      caption-side: top;
++    }
++
++    .nutrition-table caption span {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: normal;
++      color: var(--text);
++      margin-top: 4px;
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 14px 16px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .nutrition-table thead th {
++      background-color: var(--primary);
++      color: white;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .nutrition-table tbody th[scope="row"] {
++      background-color: #f5f0ee;
++      color: var(--primary);
++      font-weight: 600;
++      position: sticky;
++      left: 0;
++      z-index: 1;
++      border-right: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .nutrition-table thead th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 2;
++      border-right: 1px solid rgba(255, 255, 255, 0.25);
++    }
++
++    .nutrition-table tbody tr:last-child th,
++    .nutrition-table tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    .nutrition-table tbody tr:nth-child(even) td {
++      background-color: var(--light);
++    }
++
++    .nutrition-table tbody tr:nth-child(odd) td {
++      background-color: white;
++    }
++
++    .nutrition-table tbody tr:hover td {
++      background-color: #f9f4f2;
++    }
++
++    .nutrition-table .num {
++      text-align: right;
++      white-space: nowrap;
++    }
++
++    @media (max-width: 600px) {
++      .table-container {
++        padding: 16px;
++      }
++
++      .nutrition-table th,
++      .nutrition-table td {
++        padding: 10px 12px;
++        font-size: 0.9rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +305,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="table-container">
++        <div class="table-scroll" role="region" aria-labelledby="seasonal-nutrition-caption" tabindex="0">
++          <table class="nutrition-table">
++            <caption id="seasonal-nutrition-caption">
++              Nutritional &amp; Pricing Breakdown
++              <span>Standard 12 oz (2 oz for Espresso) serving values. Swipe horizontally on small screens to view all columns.</span>
++            </caption>
++            <thead>
++              <tr>
++                <th scope="col">Drink</th>
++                <th scope="col">Serving Size</th>
++                <th scope="col" class="num">Calories</th>
++                <th scope="col" class="num">Total Fat (g)</th>
++                <th scope="col" class="num">Sugar (g)</th>
++                <th scope="col" class="num">Caffeine (mg)</th>
++                <th scope="col" class="num">Price</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <th scope="row">Maple Oat Latte</th>
++                <td>12 fl oz</td>
++                <td class="num">190</td>
++                <td class="num">5g</td>
++                <td class="num">18g</td>
++                <td class="num">150mg</td>
++                <td class="num">$5.75</td>
++              </tr>
++              <tr>
++                <th scope="row">Dark Roast Espresso</th>
++                <td>2 fl oz (Double)</td>
++                <td class="num">10</td>
++                <td class="num">0g</td>
++                <td class="num">0g</td>
++                <td class="num">150mg</td>
++                <td class="num">$3.25</td>
++              </tr>
++              <tr>
++                <th scope="row">Cold Brew</th>
++                <td>12 fl oz</td>
++                <td class="num">5</td>
++                <td class="num">0g</td>
++                <td class="num">0g</td>
++                <td class="num">200mg</td>
++                <td class="num">$4.50</td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
+     </section>
+   </main>
+ 

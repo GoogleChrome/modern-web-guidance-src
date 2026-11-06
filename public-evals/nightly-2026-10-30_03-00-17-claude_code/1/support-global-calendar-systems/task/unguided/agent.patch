@@ -1,0 +1,365 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,131 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* World Calendars */
++    .calendars {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .calendars-intro {
++      max-width: 640px;
++      margin: 8px auto 20px;
++    }
++
++    .date-picker label {
++      font-weight: bold;
++      margin-right: 10px;
++    }
++
++    .date-picker input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .date-picker input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .calendar-status {
++      min-height: 1.6em;
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-status.error {
++      color: #b71c1c;
++    }
++
++    .calendar-card {
++      text-align: left;
++    }
++
++    .calendar-card[hidden] {
++      display: none;
++    }
++
++    .calendar-card .formatted {
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .calendar-card .native {
++      font-size: 1.05rem;
++      margin-bottom: 10px;
++    }
++
++    .timeline {
++      display: inline-block;
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: bold;
++      color: white;
++      background: var(--primary);
++    }
++
++    .timeline[data-timeline="Today"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .timeline[data-timeline="Future"] {
++      background: #2e7d32;
++    }
++
++    .timeline-detail {
++      font-size: 0.85rem;
++      margin-left: 6px;
++    }
++
++    .calendar-fields {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 12px;
++      margin: 12px 0;
++      font-size: 0.9rem;
++    }
++
++    .calendar-fields dt {
++      font-weight: bold;
++    }
++
++    .calendar-card table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .calendar-card caption {
++      text-align: left;
++      font-weight: bold;
++      margin-bottom: 4px;
++    }
++
++    .calendar-card th,
++    .calendar-card td {
++      padding: 3px 6px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    .calendar-card td:last-child,
++    .calendar-card th:last-child {
++      text-align: right;
++    }
++
++    .calendar-card tr.current {
++      background: #fff3e0;
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +317,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendars" aria-labelledby="calendars-heading">
++      <h2 id="calendars-heading">Your Date, Around the World</h2>
++      <p class="calendars-intro">Pick any date to see it in the Islamic (Umm al-Qura), Hebrew, and Japanese calendars.</p>
++      <div class="date-picker">
++        <label for="calendar-date-input">Choose a date</label>
++        <input type="date" id="calendar-date-input" disabled>
++      </div>
++      <p class="calendar-status" id="calendar-status" role="status" aria-live="polite">Loading calendars…</p>
++      <noscript>
++        <p class="calendar-status error">Please enable JavaScript to use the calendar converter.</p>
++      </noscript>
++
++      <div class="grid" id="calendar-cards">
++        <article class="card calendar-card" data-calendar="islamic-umalqura" data-native-locale="ar-SA" hidden>
++          <h3>Islamic (Umm al-Qura)</h3>
++          <p class="formatted" id="islamic-date" dir="auto"></p>
++          <p class="native" lang="ar-SA" dir="auto"></p>
++          <p><span class="timeline"></span><span class="timeline-detail"></span></p>
++          <dl class="calendar-fields"></dl>
++          <table>
++            <caption>Months this year</caption>
++            <thead><tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr></thead>
++            <tbody></tbody>
++          </table>
++        </article>
++        <article class="card calendar-card" data-calendar="hebrew" data-native-locale="he-IL" hidden>
++          <h3>Hebrew</h3>
++          <p class="formatted" id="hebrew-date" dir="auto"></p>
++          <p class="native" lang="he-IL" dir="auto"></p>
++          <p><span class="timeline"></span><span class="timeline-detail"></span></p>
++          <dl class="calendar-fields"></dl>
++          <table>
++            <caption>Months this year</caption>
++            <thead><tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr></thead>
++            <tbody></tbody>
++          </table>
++        </article>
++        <article class="card calendar-card" data-calendar="japanese" data-native-locale="ja-JP" hidden>
++          <h3>Japanese</h3>
++          <p class="formatted" id="japanese-date" dir="auto"></p>
++          <p class="native" lang="ja-JP" dir="auto"></p>
++          <p><span class="timeline"></span><span class="timeline-detail"></span></p>
++          <dl class="calendar-fields"></dl>
++          <table>
++            <caption>Months this year</caption>
++            <thead><tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr></thead>
++            <tbody></tbody>
++          </table>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +381,168 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Pinned polyfill build with non-ISO calendar support. The "implementation" entry always
++    // returns the polyfill, so it can also replace a native Temporal that lacks calendar data.
++    const POLYFILL_URL = 'https://cdn.jsdelivr.net/npm/temporal-polyfill@1.0.6/full/implementation/+esm';
++    const CALENDAR_IDS = ['islamic-umalqura', 'hebrew', 'japanese'];
++
++    const input = document.getElementById('calendar-date-input');
++    const status = document.getElementById('calendar-status');
++    const cards = [...document.querySelectorAll('.calendar-card')];
++    const userLocale = new Intl.DateTimeFormat().resolvedOptions().locale;
++    const relativeFormat = new Intl.RelativeTimeFormat(userLocale, { numeric: 'auto' });
++
++    // Both Temporal (for arithmetic) and Intl (for formatting) must know every calendar;
++    // Intl silently falls back to Gregorian for unknown calendars, so check what it resolved to.
++    function supportsCalendars(T) {
++      try {
++        const probe = T.PlainDate.from('2000-01-01');
++        return CALENDAR_IDS.every((id) =>
++          probe.withCalendar(id).calendarId === id &&
++          new Intl.DateTimeFormat(userLocale, { calendar: id }).resolvedOptions().calendar === id);
++      } catch {
++        return false;
++      }
++    }
++
++    async function loadTemporal() {
++      if (globalThis.Temporal && supportsCalendars(globalThis.Temporal)) return globalThis.Temporal;
++      const { Temporal } = await import(POLYFILL_URL);
++      if (!supportsCalendars(Temporal)) throw new Error('Required calendars are not supported');
++      return Temporal;
++    }
++
++    // Umm al-Qura conversions are only backed by observational data for AH 1300–1600; outside
++    // that range engines silently switch to arithmetic approximations. The range also keeps
++    // Japanese dates after Japan's 1873 Gregorian adoption, where Temporal and Intl agree on eras.
++    function supportedRange(T) {
++      const first = T.PlainDate.from({ calendar: 'islamic-umalqura', year: 1300, monthCode: 'M01', day: 1 });
++      const lastMonth = T.PlainDate.from({ calendar: 'islamic-umalqura', year: 1600, monthCode: 'M12', day: 1 });
++      return {
++        min: first.withCalendar('iso8601'),
++        max: lastMonth.with({ day: lastMonth.daysInMonth }).withCalendar('iso8601'),
++      };
++    }
++
++    function showError(message) {
++      status.textContent = message;
++      status.classList.add('error');
++      for (const card of cards) card.hidden = true;
++    }
++
++    function cell(tag, text) {
++      const el = document.createElement(tag);
++      el.textContent = text;
++      return el;
++    }
++
++    function renderCard(card, date, timeline, relative) {
++      const calendar = date.calendarId;
++      const dateOptions = {
++        calendar,
++        weekday: 'long',
++        year: 'numeric',
++        month: 'long',
++        day: 'numeric',
++        ...(calendar === 'japanese' && { era: 'long' }),
++      };
++      card.querySelector('.formatted').textContent = date.toLocaleString(userLocale, dateOptions);
++      card.querySelector('.native').textContent = date.toLocaleString(card.dataset.nativeLocale, dateOptions);
++
++      const badge = card.querySelector('.timeline');
++      badge.textContent = timeline;
++      badge.dataset.timeline = timeline;
++      card.querySelector('.timeline-detail').textContent = timeline === 'Today' ? '' : relative;
++
++      const fields = [
++        ...(date.era !== undefined ? [['Era', `${date.era} ${date.eraYear}`]] : []),
++        ['Year', date.year],
++        ['Month', date.month],
++        ['Month code', date.monthCode],
++        ['Months in year', date.monthsInYear],
++        ['Leap year', date.inLeapYear ? 'Yes' : 'No'],
++      ];
++      card.querySelector('.calendar-fields').replaceChildren(
++        ...fields.flatMap(([term, value]) => [cell('dt', term), cell('dd', value)]));
++
++      // Iterate by ordinal month so leap months (e.g. Hebrew M05L) are included; the month
++      // code, not the ordinal, identifies the same month across years.
++      const rows = [];
++      for (let month = 1; month <= date.monthsInYear; month++) {
++        const first = date.with({ month, day: 1 });
++        const row = document.createElement('tr');
++        if (first.monthCode === date.monthCode) row.className = 'current';
++        row.append(
++          cell('td', first.monthCode),
++          cell('td', first.toLocaleString(userLocale, { calendar, month: 'long' })),
++          cell('td', first.daysInMonth));
++        rows.push(row);
++      }
++      card.querySelector('tbody').replaceChildren(...rows);
++      card.hidden = false;
++    }
++
++    let T;
++    let range;
++
++    function render() {
++      let selected;
++      try {
++        selected = T.PlainDate.from(input.value, { overflow: 'reject' });
++      } catch {
++        return showError('Please enter a complete, valid date.');
++      }
++      if (T.PlainDate.compare(selected, range.min) < 0 || T.PlainDate.compare(selected, range.max) > 0) {
++        const format = (d) => d.toLocaleString(userLocale, { calendar: 'gregory', dateStyle: 'long' });
++        return showError(`Please choose a date between ${format(range.min)} and ${format(range.max)}.`);
++      }
++
++      const today = T.Now.plainDateISO();
++      const order = T.PlainDate.compare(selected, today);
++      const timeline = order < 0 ? 'Past' : order > 0 ? 'Future' : 'Today';
++      const relative = relativeFormat.format(today.until(selected, { largestUnit: 'days' }).days, 'day');
++
++      for (const card of cards) {
++        renderCard(card, selected.withCalendar(card.dataset.calendar), timeline, relative);
++      }
++      status.textContent = '';
++      status.classList.remove('error');
++    }
++
++    // Keep the Past/Today/Future labels correct when the local date rolls over.
++    function scheduleMidnightRefresh() {
++      const now = T.Now.zonedDateTimeISO();
++      const nextMidnight = now.startOfDay().add({ days: 1 });
++      setTimeout(() => {
++        render();
++        scheduleMidnightRefresh();
++      }, now.until(nextMidnight).total('milliseconds'));
++    }
++
++    try {
++      T = await loadTemporal();
++      range = supportedRange(T);
++    } catch (error) {
++      console.error(error);
++      showError('Sorry, calendar conversion is not available in this browser.');
++    }
++
++    if (T) {
++      input.min = range.min.toString();
++      input.max = range.max.toString();
++      input.value = T.Now.plainDateISO().toString();
++      input.disabled = false;
++      input.addEventListener('input', render);
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'visible') render();
++      });
++      render();
++      scheduleMidnightRefresh();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

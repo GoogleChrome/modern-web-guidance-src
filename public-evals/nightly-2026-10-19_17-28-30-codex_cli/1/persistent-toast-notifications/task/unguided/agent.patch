@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -121,8 +121,11 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -134,8 +137,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Each manual popover enters the top layer independently. Toasts are
++       appended last in body, so only newer toasts count toward this offset. */
++    .toast {
++      --toast-height: 4.5rem;
++      position: fixed;
++      inset: auto;
++      right: max(1rem, env(safe-area-inset-right));
++      bottom: calc(max(1rem, env(safe-area-inset-bottom)) +
++        (sibling-count() - sibling-index()) * (var(--toast-height) + 0.75rem));
++      margin: 0;
++      width: min(22rem, calc(100vw - 2rem));
++      height: var(--toast-height);
++      padding: 1rem;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 6px 24px rgb(62 39 35 / 20%);
++      opacity: 0;
++      transform: translateX(calc(100% + 2rem));
++      transition:
++        opacity 220ms ease,
++        transform 220ms ease,
++        bottom 220ms ease,
++        display 220ms allow-discrete,
++        overlay 220ms allow-discrete;
++    }
++
++    .toast:popover-open {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      opacity: 1;
++      transform: translateX(0);
++    }
++
++    @starting-style {
++      .toast:popover-open {
++        opacity: 0;
++        transform: translateX(calc(100% + 2rem));
++      }
++    }
++
++    .toast::backdrop {
++      background: transparent;
++      pointer-events: none;
++    }
++
++    .toast-close {
++      flex: none;
++      width: 2rem;
++      height: 2rem;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .toast-close:hover {
++      background: rgb(255 255 255 / 15%);
++    }
++
++    .toast-close:focus-visible,
++    .toast-trigger:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        transition-duration: 0.01ms;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +253,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +263,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +289,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.toast-trigger').forEach((trigger) => {
++      trigger.addEventListener('click', () => {
++        const toast = document.createElement('div');
++        toast.className = 'toast';
++        toast.setAttribute('popover', 'manual');
++
++        const message = document.createElement('span');
++        message.setAttribute('role', 'status');
++        message.setAttribute('aria-atomic', 'true');
++        message.textContent = 'added to cart!';
++
++        const close = document.createElement('button');
++        close.type = 'button';
++        close.className = 'toast-close';
++        close.setAttribute('aria-label', 'Close notification');
++        close.textContent = '×';
++
++        let dismissed = false;
++        let timeout;
++        const dismiss = () => {
++          if (dismissed) return;
++          dismissed = true;
++          clearTimeout(timeout);
++          if (toast.contains(document.activeElement)) {
++            trigger.focus({ preventScroll: true });
++          }
++          toast.hidePopover();
++          // Keep the element through its CSS exit transition before cleanup.
++          setTimeout(() => toast.remove(), 240);
++        };
++
++        close.addEventListener('click', dismiss);
++        toast.append(message, close);
++        document.body.append(toast);
++        toast.showPopover();
++        timeout = setTimeout(dismiss, 3000);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

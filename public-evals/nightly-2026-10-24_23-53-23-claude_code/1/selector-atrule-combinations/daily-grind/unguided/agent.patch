@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+index 66c9173..085ba06 100644
+--- a/index.html
++++ b/index.html
+@@ -55,14 +55,26 @@
+       margin-left: 20px;
+     }
+ 
++    /* Shared by every link-like element: nav links, buttons, footer links */
++    :is(nav, footer) a,
++    a.btn {
++      text-decoration: none;
++      transition: color 0.3s, background 0.3s;
++    }
++
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    /* Hover only on hover-capable devices; focus-visible always */
++    @media (hover: hover) {
++      nav a:hover {
++        color: var(--accent);
++      }
++    }
++
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -125,14 +137,12 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+-      text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:is(:hover, :focus-visible) {
++      background: var(--text);
+     }
+ 
+     footer {
+@@ -149,9 +159,31 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Narrow screens: stack nav, shrink hero */
++    @media (max-width: 640px) {
++      :is(nav, nav ul) {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 0.5rem 0;
++      }
++
++      nav ul li:first-child {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      :is(nav a, .btn) {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 

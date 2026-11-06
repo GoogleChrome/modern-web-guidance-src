@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,59 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: 1.5rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    .hero-content {
++      max-width: 600px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .shaped-element {
++      width: 240px;
++      height: 180px;
++      background: linear-gradient(135deg, var(--accent), var(--primary)),
++        url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80') center / cover no-repeat;
++      background-blend-mode: overlay;
++      border-radius: 15px;
++      flex-shrink: 0;
++
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url(#coffee-splash-mask);
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++
++      /* Standard property for modern browsers */
++      mask-image: url(#coffee-splash-mask);
++      mask-size: cover;
++      mask-repeat: no-repeat;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: inset(5% round 15px);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +200,27 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <svg width="0" height="0" aria-hidden="true" style="position: absolute;">
++      <defs>
++        <mask id="coffee-splash-mask" maskContentUnits="objectBoundingBox">
++          <!-- Organic brush stroke / coffee splash shape using luminance masking -->
++          <path d="M0.12,0.22 C0.28,0.04 0.72,0.06 0.88,0.24 C0.98,0.38 0.94,0.68 0.82,0.84 C0.66,0.96 0.32,0.94 0.14,0.80 C0.02,0.66 0.01,0.36 0.12,0.22 Z" fill="white" />
++          <circle cx="0.10" cy="0.16" r="0.06" fill="white" />
++          <circle cx="0.91" cy="0.20" r="0.05" fill="gray" />
++          <circle cx="0.88" cy="0.85" r="0.07" fill="white" />
++          <circle cx="0.08" cy="0.78" r="0.05" fill="gray" />
++          <path d="M0.18,0.28 C0.34,0.12 0.68,0.14 0.82,0.30 C0.90,0.42 0.86,0.64 0.76,0.78 C0.62,0.88 0.34,0.86 0.20,0.74 C0.10,0.62 0.08,0.40 0.18,0.28 Z" fill="gray" />
++        </mask>
++      </defs>
++    </svg>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" aria-hidden="true"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

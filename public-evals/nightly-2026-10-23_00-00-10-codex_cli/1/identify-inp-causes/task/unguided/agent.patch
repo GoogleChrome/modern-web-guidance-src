@@ -1,0 +1,35 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,30 @@
++# INP diagnostics
++
++Open the page with `?inp-debug` to enable local diagnostics, then click, tap, or
++use the keyboard. In DevTools, enable **Preserve log** before following links.
++Normal visits do not load the diagnostic modules. No reports are sent anywhere.
++
++The console reports the current Interaction to Next Paint (INP) candidate, its
++target and loading state, and the input delay, event processing, and presentation
++phases. The largest phase gets a suggested investigation. Where the browser
++supports Long Animation Frames, reports include the longest overlapping script's
++URL, function, character position, invoker, and forced layout time.
++These are investigation leads, not proof that a particular script caused INP.
++
++Use `inpDiagnostics.getReports()` in the console for the latest 20 candidate
++updates or `inpDiagnostics.download()` for a JSON file. Reports live only in
++memory for this document. Export before navigating away. Selectors and script
++URLs can contain page-specific information; review exports before sharing.
++
++INP is good at ≤200 ms, needs improvement at >200–500 ms, and poor above 500 ms.
++The value is provisional until the visit ends. Callbacks report changes to the
++page's INP candidate, not every interaction. Very fast interactions can have no
++timing attribution. An empty report list means no candidate has been reported;
++it does not mean INP is zero. Unsupported browsers warn explicitly. Script
++attribution may be missing even when Event Timing is supported. This measures
++the current document; interactions inside cross-origin frames are not available.
++
++The self-contained attribution build of Google's
++[web-vitals 6.2.3](https://github.com/GoogleChrome/web-vitals) is vendored in
++`scripts/vendor` with its Apache-2.0 license. No runtime CDN or build is needed.
++See Google's [INP optimization guidance](https://web.dev/articles/optimize-inp).

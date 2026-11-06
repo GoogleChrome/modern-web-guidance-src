@@ -1,0 +1,601 @@
+diff --git a/index.html b/index.html
+index 66c9173..f7903f8 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,6 +13,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --bar-height: 3.25rem;
++      /* Lets <details> content animate to its natural height (progressive enhancement). */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+@@ -20,6 +24,11 @@
+       padding: 0;
+     }
+ 
++    html {
++      /* Remembers scroll direction so the top bar can hide while reading. */
++      container-type: scroll-state;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -27,54 +36,136 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
++    :target {
++      scroll-margin-top: calc(var(--bar-height) + 1rem);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* ---------- Compact sticky top bar (single row) ---------- */
++    .top-bar {
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 10;
++      block-size: var(--bar-height);
++      padding: 0 5%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      background: var(--primary);
++      color: white;
++      transition: transform 0.25s ease;
++    }
++
++    @container scroll-state((scrolled: bottom) and (scrollable: top)) {
++      .top-bar {
++        transform: translateY(-100%);
++      }
++    }
++
++    /* JS fallback for browsers without scroll-state queries. */
++    .top-bar.is-hidden {
++      transform: translateY(-100%);
++    }
++
++    .top-bar:focus-within {
++      transform: none;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.1rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      white-space: nowrap;
+     }
+ 
+-    nav ul {
++    .nav-primary {
+       display: flex;
++      align-items: center;
++      gap: 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    .top-bar a,
++    .more-btn {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s;
+     }
+ 
+-    nav a:hover {
++    .top-bar a:hover,
++    .more-btn:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
++    .nav-order {
++      background: var(--accent);
++      color: var(--text) !important;
++      font-weight: 600;
++      padding: 4px 12px;
++      border-radius: 4px;
++    }
++
++    .more-btn {
++      background: none;
++      border: 1px solid rgba(255, 255, 255, 0.4);
+       border-radius: 4px;
++      padding: 3px 10px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    /* Secondary nav: a small, user-opened menu (light-dismissable, never auto-opened). */
++    #more-menu {
++      position: fixed;
++      inset: calc(var(--bar-height) - 4px) 5% auto auto;
++      margin: 0;
++      min-inline-size: 11rem;
++      padding: 0.5rem 0;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
++    }
++
++    #more-menu ul {
++      list-style: none;
++    }
++
++    #more-menu a {
++      display: block;
++      padding: 0.5rem 1rem;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.9rem;
++    }
++
++    #more-menu a:hover {
++      background: var(--secondary);
++    }
++
++    @media (max-width: 560px) {
++      .nav-primary .hide-sm {
++        display: none;
++      }
++
++      .nav-primary {
++        gap: 0.75rem;
++      }
+     }
+ 
+-    /* Hero Section */
++    /* ---------- Hero (shorter so the coffee is visible sooner) ---------- */
+     .hero {
+-      height: 60vh;
++      min-block-size: 38vh;
++      padding: 3rem 20px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,41 +176,73 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vw, 3rem);
++      margin-bottom: 0.5rem;
+     }
+ 
+-    /* Content Sections */
++    /* ---------- Coffee showcase ---------- */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      border-radius: 10px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .card img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .card-body {
++      padding: 18px 20px 20px;
++    }
++
++    .card-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 0.5rem;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .price {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .tagline {
++      margin-top: 4px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,21 +258,111 @@
+       background: #3e2723;
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* ---------- On-demand disclosures ---------- */
++    .disclosure {
++      margin-top: 14px;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .disclosure summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++      list-style-position: inside;
++    }
++
++    .disclosure::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.3s ease, content-visibility 0.3s allow-discrete;
++    }
++
++    .disclosure[open]::details-content {
++      block-size: auto;
++    }
++
++    .disclosure dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 4px 12px;
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .disclosure dt {
++      font-weight: 600;
++    }
++
++    .disclosure .btn {
++      margin-top: 12px;
++      padding: 6px 14px;
++      font-size: 0.9rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .top-bar,
++      .disclosure::details-content {
++        transition: none;
++      }
++    }
++
++    /* ---------- Footer ---------- */
+     footer {
+       background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
++      padding: 32px 20px;
+       margin-top: 40px;
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    .footer-inner {
++      max-width: 1100px;
++      margin: 0 auto;
++    }
++
++    .footer-info {
++      max-width: 640px;
++      margin: 0 auto 20px;
++      border-top: none;
++    }
++
++    .footer-info summary {
++      text-align: center;
++    }
++
++    .footer-cols {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
++      gap: 16px;
++      margin-top: 14px;
++      font-size: 0.9rem;
++    }
++
++    .footer-cols h3 {
++      font-size: 0.95rem;
++      margin-bottom: 4px;
++    }
++
++    .footer-cols ul {
++      list-style: none;
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
++    .footer-cols a {
+       color: var(--text);
+-      text-decoration: none;
++    }
++
++    .copyright {
++      text-align: center;
+       font-size: 0.85rem;
+     }
+   </style>
+@@ -157,56 +370,165 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
++  <header class="top-bar">
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <nav aria-label="Main">
++      <ul class="nav-primary">
++        <li><a href="/menu">Menu</a></li>
++        <li class="hide-sm"><a href="/locations">Locations</a></li>
++        <li><a href="/order-online" class="nav-order">Order</a></li>
++        <li><button type="button" class="more-btn" popovertarget="more-menu" aria-label="More links">More ▾</button></li>
++      </ul>
++    </nav>
++    <nav id="more-menu" popover aria-label="More links">
++      <ul>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout">Logout</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <section class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <a href="/order-online" class="btn btn-accent">Order Now</a>
++  </section>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=75"
++            alt="Latte with leaf art in a white cup" width="600" height="400" loading="lazy" decoding="async">
++          <div class="card-body">
++            <div class="card-head">
++              <h3>Maple Oat Latte</h3>
++              <span class="price">$5.25</span>
++            </div>
++            <p class="tagline">Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <details class="disclosure">
++              <summary>Tasting notes &amp; details</summary>
++              <dl>
++                <dt>Notes</dt>
++                <dd>Toasted oat, maple, brown sugar</dd>
++                <dt>Roast</dt>
++                <dd>Medium house espresso</dd>
++                <dt>Sizes</dt>
++                <dd>12 oz · 16 oz · 20 oz</dd>
++                <dt>Diet</dt>
++                <dd>Dairy-free</dd>
++              </dl>
++              <a href="/menu/seasonal" class="btn">Full details</a>
++            </details>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&h=400&q=75"
++            alt="Shot of espresso with crema in a cup on a dark table" width="600" height="400" loading="lazy"
++            decoding="async">
++          <div class="card-body">
++            <div class="card-head">
++              <h3>Dark Roast Espresso</h3>
++              <span class="price">$3.50</span>
++            </div>
++            <p class="tagline">Bold, smokey, and perfect for a morning boost.</p>
++            <details class="disclosure">
++              <summary>Tasting notes &amp; details</summary>
++              <dl>
++                <dt>Notes</dt>
++                <dd>Dark chocolate, smoke, molasses</dd>
++                <dt>Origin</dt>
++                <dd>Sumatra &amp; Brazil blend</dd>
++                <dt>Sizes</dt>
++                <dd>Single · Double</dd>
++                <dt>Caffeine</dt>
++                <dd>~75 mg per shot</dd>
++              </dl>
++              <a href="/menu/espresso" class="btn">Full details</a>
++            </details>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=400&q=75"
++            alt="Glass of iced cold brew with cream swirling in" width="600" height="400" loading="lazy"
++            decoding="async">
++          <div class="card-body">
++            <div class="card-head">
++              <h3>Cold Brew</h3>
++              <span class="price">$4.75</span>
++            </div>
++            <p class="tagline">Steeped for 18 hours for maximum smoothness.</p>
++            <details class="disclosure">
++              <summary>Tasting notes &amp; details</summary>
++              <dl>
++                <dt>Notes</dt>
++                <dd>Cocoa, caramel, low acidity</dd>
++                <dt>Origin</dt>
++                <dd>Colombia single origin</dd>
++                <dt>Sizes</dt>
++                <dd>16 oz · 24 oz</dd>
++                <dt>Add-ons</dt>
++                <dd>Vanilla sweet cream, oat milk</dd>
++              </dl>
++              <a href="/menu/cold-brew" class="btn">Full details</a>
++            </details>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++    <div class="footer-inner">
++      <details class="disclosure footer-info">
++        <summary>About, hours &amp; more</summary>
++        <div class="footer-cols">
++          <div>
++            <h3>Company</h3>
++            <ul>
++              <li><a href="/about">Our Story</a></li>
++              <li><a href="/careers">Join the Team</a></li>
++              <li><a href="/contact">Contact Us</a></li>
++            </ul>
++          </div>
++          <div>
++            <h3>Hours</h3>
++            <p>Mon–Fri 6:30am–7pm<br>Sat–Sun 7am–6pm</p>
++          </div>
++          <div>
++            <h3>Legal</h3>
++            <ul>
++              <li><a href="/privacy-policy">Privacy</a></li>
++            </ul>
++          </div>
++        </div>
++      </details>
++      <p class="copyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Popover polyfill only where native support is missing.
++    if (!('popover' in HTMLElement.prototype)) {
++      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++
++    // Hide-on-scroll-down fallback for browsers without scroll-state container queries.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const bar = document.querySelector('.top-bar');
++      let lastY = scrollY;
++      addEventListener('scroll', () => {
++        const y = Math.max(0, Math.min(scrollY, document.documentElement.scrollHeight - innerHeight));
++        if (y === lastY) return;
++        bar.classList.toggle('is-hidden', y > lastY && y > bar.offsetHeight);
++        lastY = y;
++      }, { passive: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

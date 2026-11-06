@@ -1,0 +1,201 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..2541fb0
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,119 @@
++import React, { useState, useEffect } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++interface TopStory {
++  id: string;
++  data: {
++    title: string;
++    date: Date | string;
++  };
++}
++
++interface TopStoriesSliderProps {
++  stories: TopStory[];
++}
++
++const checkReducedMotion = (): boolean => {
++  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
++    return false;
++  }
++  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++};
++
++const TopStoriesSlider: React.FC<TopStoriesSliderProps> = ({ stories }) => {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
++
++  useEffect(() => {
++    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
++      return;
++    }
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    setPrefersReducedMotion(mediaQuery.matches);
++
++    const handleChange = (event: MediaQueryListEvent) => {
++      setPrefersReducedMotion(event.matches);
++    };
++
++    mediaQuery.addEventListener('change', handleChange);
++    return () => {
++      mediaQuery.removeEventListener('change', handleChange);
++    };
++  }, []);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handlePrev = () => {
++    setPrefersReducedMotion(checkReducedMotion());
++    setDirection('prev');
++    setCurrentIndex((prevIndex) => (prevIndex - 1 + stories.length) % stories.length);
++  };
++
++  const handleNext = () => {
++    setPrefersReducedMotion(checkReducedMotion());
++    setDirection('next');
++    setCurrentIndex((prevIndex) => (prevIndex + 1) % stories.length);
++  };
++
++  const currentStory = stories[currentIndex];
++  const formattedDate =
++    currentStory.data.date instanceof Date
++      ? currentStory.data.date.toLocaleDateString()
++      : new Date(currentStory.data.date).toLocaleDateString();
++
++  const isReduced = prefersReducedMotion || checkReducedMotion();
++  const animationClass = isReduced
++    ? ''
++    : direction === 'next'
++    ? 'slide-from-right'
++    : direction === 'prev'
++    ? 'slide-from-left'
++    : '';
++
++  const baseUrl = import.meta.env.BASE_URL;
++
++  return (
++    <div className="flex items-center justify-between gap-4" role="region" aria-label="Top Stories">
++      <button
++        type="button"
++        onClick={handlePrev}
++        aria-label="Previous"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer shrink-0"
++      >
++        <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++        <span>Previous</span>
++      </button>
++
++      <div className="flex-1 overflow-hidden">
++        <div
++          key={`${currentIndex}-${direction ?? 'initial'}`}
++          data-direction={direction ?? undefined}
++          className={animationClass}
++          style={isReduced ? { animation: 'none', transition: 'none' } : undefined}
++        >
++          <a href={`${baseUrl}articles/${currentStory.id}`}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++              {currentStory.data.title}
++            </h3>
++          </a>
++          <span className="text-xs text-gray-500">{formattedDate}</span>
++        </div>
++      </div>
++
++      <button
++        type="button"
++        onClick={handleNext}
++        aria-label="Next"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer shrink-0"
++      >
++        <span>Next</span>
++        <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++      </button>
++    </div>
++  );
++};
++
++export default TopStoriesSlider;
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..054a83f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -41,16 +42,7 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider client:load stories={topStories} />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..085b57d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,39 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slide-in-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-in-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.slide-from-right {
++  animation: slide-in-from-right 300ms ease-out;
++}
++
++.slide-from-left {
++  animation: slide-in-from-left 300ms ease-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .slide-from-right,
++  .slide-from-left {
++    animation: none !important;
++    transition: none !important;
++    transform: none !important;
++  }
++}

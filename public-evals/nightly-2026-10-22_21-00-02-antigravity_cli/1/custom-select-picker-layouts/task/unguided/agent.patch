@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,159 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Customizable Select (Rich-Media 3-Column Grid Picker) */
++    .roast-picker-group {
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .roast-picker-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--secondary);
++    }
++
++    .roast-select,
++    ::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select {
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      padding: 10px 18px;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      min-width: 240px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
++    }
++
++    .roast-select:hover,
++    .roast-select:focus-visible {
++      background: #ffffff;
++      border-color: #ffffff;
++      outline: none;
++    }
++
++    .roast-select::picker-icon {
++      color: var(--primary);
++      transition: rotate 0.25s ease;
++    }
++
++    .roast-select:open::picker-icon {
++      rotate: 180deg;
++    }
++
++    .roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .roast-select selectedcontent img {
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      object-fit: cover;
++      border: 1px solid var(--secondary);
++    }
++
++    .roast-select selectedcontent .roast-desc {
++      display: none;
++    }
++
++    .roast-select::picker(select) {
++      background: #ffffff;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 16px;
++      margin-top: 8px;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
++      width: min(620px, 92vw);
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 14px;
++    }
++
++    .roast-options-grid {
++      grid-column: 1 / -1;
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 14px;
++    }
++
++    .roast-select option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      padding: 14px 12px;
++      border: 2px solid #efebe9;
++      border-radius: 10px;
++      background: var(--light);
++      color: var(--text);
++      cursor: pointer;
++      transition: border-color 0.2s, background-color 0.2s, transform 0.2s, box-shadow 0.2s;
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus-visible {
++      border-color: var(--accent);
++      background: #fff8e1;
++      transform: translateY(-2px);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.12);
++      outline: none;
++    }
++
++    .roast-select option:checked {
++      border-color: var(--primary);
++      background: #efebe9;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.18);
++    }
++
++    .roast-select option::checkmark {
++      display: none;
++    }
++
++    .roast-select option img {
++      width: 100%;
++      height: 100px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 10px;
++    }
++
++    .roast-title {
++      font-weight: 700;
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .roast-desc {
++      font-size: 0.8rem;
++      line-height: 1.35;
++      color: #5d4037;
++      white-space: normal;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +321,33 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker-group">
++      <label for="roast-select" class="roast-picker-label">Choose Your Roast</label>
++      <select id="roast-select" name="roast" class="roast-select">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <div class="roast-options-grid">
++          <option value="light">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80" alt="Light Roast">
++            <span class="roast-title">Light Roast</span>
++            <span class="roast-desc">Bright, floral &amp; citrus notes with crisp acidity</span>
++          </option>
++          <option value="medium" selected>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=400&q=80" alt="Medium Roast">
++            <span class="roast-title">Medium Roast</span>
++            <span class="roast-desc">Smooth, balanced caramel &amp; toasted nut finish</span>
++          </option>
++          <option value="dark">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80" alt="Dark Roast">
++            <span class="roast-title">Dark Roast</span>
++            <span class="roast-desc">Bold, smoky &amp; rich dark chocolate intensity</span>
++          </option>
++        </div>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

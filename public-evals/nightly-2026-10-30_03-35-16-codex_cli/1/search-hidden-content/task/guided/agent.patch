@@ -1,0 +1,202 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,109 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .page-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 240px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    .sidebar {
++      padding: 24px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .sidebar h2 {
++      margin-bottom: 10px;
++      font-size: 1.25rem;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      width: 100%;
++    }
++
++    .btn[aria-disabled="true"] {
++      background: var(--primary);
++      cursor: default;
++    }
++
++    .btn:focus-visible,
++    .wholesale-tab summary:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    /* Keep decoration inside the searchable hidden wrapper. */
++    .coupon-content {
++      margin-top: 30px;
++      padding: 24px;
++      background: #fff3e0;
++      border: 2px dashed var(--primary);
++      border-radius: 8px;
++    }
++
++    #coupon-panel,
++    .wholesale-tab {
++      scroll-margin-top: 90px;
++    }
++
++    .coupon-code {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++    }
++
++    .business-info {
++      margin-top: 40px;
++    }
++
++    .business-info h2 {
++      margin-bottom: 15px;
++    }
++
++    .wholesale-tab {
++      margin-top: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .wholesale-tab summary {
++      padding: 15px 20px;
++      cursor: pointer;
++      font-weight: bold;
++      color: var(--primary);
++      border-radius: 7px;
++    }
++
++    .wholesale-tab[open] > summary {
++      background: var(--secondary);
++    }
++
++    .business-content {
++      padding: 20px;
++    }
++
++    .business-content p + p {
++      margin-top: 12px;
++    }
++
++    .business-content a {
++      color: var(--primary);
++    }
++
++    @media (max-width: 760px) {
++      .page-layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +274,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container page-layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +296,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="coupon-panel" hidden="until-found" aria-labelledby="coupon-heading" tabindex="-1">
++      <div class="coupon-content">
++        <h2 id="coupon-heading">A little extra in your cup</h2>
++        <p>Use this code at checkout for 10% off your order:</p>
++        <p class="coupon-code">GRIND10</p>
++      </div>
++    </section>
++
++    <section class="business-info">
++      <h2>Coffee for your business &amp; events</h2>
++      <details class="wholesale-tab" name="business-info" id="wholesale-info" open>
++        <summary>Wholesale</summary>
++        <div class="business-content">
++          <p>Bring The Daily Grind to your café, shop, or office with our wholesale coffee. Talk to us about bulk beans, roast options, and a supply that suits your business.</p>
++          <p><a href="/contact?subject=wholesale">Ask about wholesale</a></p>
++        </div>
++      </details>
++      <details class="wholesale-tab" name="business-info" id="catering-info">
++        <summary>Catering</summary>
++        <div class="business-content">
++          <p>Keep your guests caffeinated at meetings, celebrations, and events. Get in touch to discuss coffee catering, your guest count, and your preferred date.</p>
++          <p><a href="/contact?subject=catering">Ask about catering</a></p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
++  <aside class="sidebar" aria-labelledby="offers-heading">
++    <h2 id="offers-heading">Your next coffee, on offer</h2>
++    <p>A little treat for your next order.</p>
++    <button type="button" class="btn" id="reveal-coupon" aria-controls="coupon-panel" aria-expanded="false">Reveal coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +341,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const couponPanel = document.getElementById('coupon-panel');
++    const couponButton = document.getElementById('reveal-coupon');
++
++    function revealCoupon() {
++      couponPanel.removeAttribute('hidden');
++      couponButton.setAttribute('aria-expanded', 'true');
++      couponButton.setAttribute('aria-disabled', 'true');
++      couponButton.textContent = 'Coupon revealed';
++    }
++
++    couponButton.addEventListener('click', () => {
++      if (couponButton.getAttribute('aria-disabled') === 'true') return;
++      revealCoupon();
++      couponPanel.focus();
++    });
++
++    // Find-in-page and fragment navigation share the same permanent reveal state.
++    couponPanel.addEventListener('beforematch', revealCoupon);
++
++    if (!('onbeforematch' in HTMLElement.prototype) || !couponPanel.hasAttribute('hidden')) {
++      revealCoupon();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

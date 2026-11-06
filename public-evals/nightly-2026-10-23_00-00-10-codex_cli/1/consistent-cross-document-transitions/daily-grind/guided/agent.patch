@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+index 66c9173..e4bd265 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,27 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Wait for the initial visible content before taking the incoming snapshot. -->
++  <link rel="expect" href="#main-content" blocking="render">
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80">
++  <!-- Keep critical styles in the head. Any future layout-critical deferred or
++       module scripts must also live here and use blocking="render". -->
+   <style>
++    /* Every participating document must opt in. Unsupported browsers retain
++       normal navigation; reduced-motion users receive no transition. */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 220ms;
++        animation-timing-function: ease-in-out;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -77,6 +97,7 @@
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -174,7 +195,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main id="main-content" class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

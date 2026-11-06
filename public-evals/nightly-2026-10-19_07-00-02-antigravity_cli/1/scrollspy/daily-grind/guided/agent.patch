@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+index 66c9173..91caa3e 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,11 @@
+       background-color: var(--light);
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++      scroll-padding-top: 80px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,6 +43,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* MANDATORY: The container of markers must have scroll-target-group: auto */
++      scroll-target-group: auto;
+     }
+ 
+     .logo {
+@@ -49,6 +56,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      /* Enables automatic tracking of fragment links */
++      scroll-target-group: auto;
+     }
+ 
+     nav ul li {
+@@ -59,13 +68,23 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-color 0.3s;
++      border-bottom: 2px solid transparent;
++      padding-bottom: 4px;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* Fallback style if :target-current is not supported.
++       Use :is() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.\:target-current`, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
++    nav a:is(:target-current, .\:target-current) {
++      color: var(--accent, #ffab40);
++      border-bottom-color: var(--accent, #ffab40);
++      font-weight: bold;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +119,19 @@
+       padding: 0 20px;
+     }
+ 
++    .section {
++      padding: 60px 0;
++      min-height: 60vh;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,10 +192,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +203,113 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- MANDATORY: Each section must have a unique ID matching a link fragment in the <nav>. -->
++    <section id="menu" class="section">
++      <h2 style="text-align: center;">Our Menu &amp; Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#menu" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="section">
++      <h2 style="text-align: center;">Our Locations</h2>
++      <p style="text-align: center; color: #6d4c41; margin-top: 10px; margin-bottom: 20px;">
++        Visit our cozy coffeehouses across the city for handcrafted drinks and warm hospitality.
++      </p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Downtown Roastery" class="card-img">
++          <h3>Downtown Roastery</h3>
++          <p>124 Main Street<br>Mon–Sun: 6:00 AM – 8:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Arts District Cafe" class="card-img">
++          <h3>Arts District Cafe</h3>
++          <p>450 Gallery Way<br>Mon–Sun: 7:00 AM – 6:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" alt="Waterfront Kiosk" class="card-img">
++          <h3>Waterfront Kiosk</h3>
++          <p>88 Harbor Boulevard<br>Mon–Sun: 6:30 AM – 5:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="section">
++      <h2 style="text-align: center;">Grind Club Rewards</h2>
++      <p style="text-align: center; color: #6d4c41; margin-top: 10px; margin-bottom: 20px;">
++        Earn points with every purchase and enjoy exclusive member perks.
++      </p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Free Sips" class="card-img">
++          <h3>Free Sips</h3>
++          <p>Earn 2 stars per $1. Redeem 100 stars for any handcrafted beverage.</p>
++          <a href="#rewards" class="btn">Join Now</a>
++        </div>
++        <div class="card">
++          <div style="font-size: 3rem; margin: 20px 0;">🎂</div>
++          <h3>Birthday Treat</h3>
++          <p>Celebrate your birthday with a free drink and pastry on us.</p>
++          <a href="#rewards" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <div style="font-size: 3rem; margin: 20px 0;">⚡</div>
++          <h3>Order Ahead</h3>
++          <p>Skip the morning rush with quick mobile ordering and contactless pickup.</p>
++          <a href="#rewards" class="btn">Get the App</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="section">
++      <h2 style="text-align: center;">My Account</h2>
++      <p style="text-align: center; color: #6d4c41; margin-top: 10px; margin-bottom: 20px;">
++        Manage your profile, saved payment methods, and reward balances.
++      </p>
++      <div class="grid">
++        <div class="card">
++          <h3>Member Profile</h3>
++          <p><strong>Status:</strong> Gold Tier</p>
++          <p><strong>Member ID:</strong> #GRIND-84920</p>
++          <p style="margin-top: 10px;">Primary Store: Downtown Roastery</p>
++          <a href="#account" class="btn">Edit Profile</a>
++        </div>
++        <div class="card">
++          <h3>Rewards Balance</h3>
++          <p style="font-size: 2.2rem; font-weight: bold; color: var(--primary); margin: 10px 0;">450 pts</p>
++          <p>Eligible for 4 complimentary specialty beverages.</p>
++          <a href="#rewards" class="btn">Redeem Rewards</a>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p><strong>Last Order:</strong> Maple Oat Latte (Large)</p>
++          <p>Ordered yesterday &bull; Delivered to table</p>
++          <a href="#menu" class="btn">Reorder Now</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +325,45 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Feature detection for scroll-target-group
++    const supportsScrollTargetGroup = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scroll-target-group: auto');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('nav a:target-current');
++        document.querySelectorAll('nav a').forEach(link => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++      // Update the aria on initial page load. Ensure the DOM content is loaded, either by using `<script type="module">` or an event listener for `DOMContentLoaded`.
++      syncAriaCurrent();
++      // Update the aria after scroll ends or during scroll
++      document.addEventListener('scrollend', syncAriaCurrent);
++      window.addEventListener('scroll', syncAriaCurrent, { passive: true });
++    } else {
++      const navLinks = document.querySelectorAll('nav a');
++      const sections = document.querySelectorAll('main section');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) {
++            const id = entry.target.getAttribute('id');
++            navLinks.forEach(link => {
++              const isActive = link.getAttribute('href') === `#${id}`;
++              // Use the escaped colon class for consistent styling
++              link.classList.toggle(':target-current', isActive);
++              link.classList.toggle('active', isActive);
++              link.setAttribute('aria-current', isActive ? 'true' : 'false');
++            });
++          }
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      sections.forEach(section => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

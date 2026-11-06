@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+index 66c9173..a7f0929 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -93,6 +93,55 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumbs {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumbs ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .breadcrumbs li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-width: 0;
++    }
++
++    .breadcrumbs li + li::before {
++      content: "/" / "";
++    }
++
++    .breadcrumbs a {
++      color: var(--primary);
++      padding: 4px 0;
++      overflow-wrap: anywhere;
++      text-underline-offset: 3px;
++    }
++
++    .breadcrumbs a:hover {
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumbs a[aria-current="page"] {
++      font-weight: 600;
++    }
++
++    .breadcrumbs a:focus-visible {
++      position: relative;
++      z-index: 1;
++      outline: 2px solid currentColor;
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -157,7 +206,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,6 +223,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumbs" aria-label="Breadcrumbs">
++    <ol id="breadcrumb-trail">
++      <li><a href="/" aria-current="page">Home</a></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +262,44 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const breadcrumbTrail = document.getElementById('breadcrumb-trail');
++    const routeLabels = {
++      '/menu': 'Menu',
++      '/menu/seasonal': 'Maple Oat Latte',
++      '/menu/espresso': 'Dark Roast Espresso',
++      '/menu/cold-brew': 'Cold Brew',
++      '/locations': 'Locations',
++      '/rewards': 'Rewards',
++      '/account': 'My Account',
++      '/logout': 'Logout',
++      '/order-online': 'Order Online',
++      '/about': 'Our Story',
++      '/careers': 'Join the Team',
++      '/contact': 'Contact Us',
++      '/privacy-policy': 'Privacy'
++    };
++    const segments = window.location.pathname.split('/').filter(Boolean);
++    if (segments.at(-1) === 'index.html') segments.pop();
++
++    if (segments.length > 0) {
++      breadcrumbTrail.querySelector('a').removeAttribute('aria-current');
++      let path = '';
++
++      segments.forEach((segment, index) => {
++        path += '/' + segment;
++        const item = document.createElement('li');
++        const link = document.createElement('a');
++        link.href = path;
++        link.textContent = routeLabels[path] ?? segment.replaceAll('-', ' ');
++        if (index === segments.length - 1) {
++          link.setAttribute('aria-current', 'page');
++        }
++        item.append(link);
++        breadcrumbTrail.append(item);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

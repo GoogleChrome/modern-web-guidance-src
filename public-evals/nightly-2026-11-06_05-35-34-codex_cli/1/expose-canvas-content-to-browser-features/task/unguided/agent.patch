@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,52 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer { margin-top: 48px; }
++    .customizer > h2, .customizer > p { text-align: center; }
++    .customizer > p { margin: 6px 0 24px; color: #725b51; }
++    .coffee-stage {
++      position: relative;
++      overflow: hidden;
++      border: 1px solid #e4d8c9;
++      border-radius: 16px;
++      background: #f5eee4;
++    }
++    #canvas { display: block; width: 100%; height: 460px; }
++    .coffee-ui { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
++    .coffee-form { color: var(--text); font-size: 16px; }
++    .coffee-form .eyebrow {
++      color: #866346; font-size: 11px; font-weight: 700;
++      letter-spacing: 2px; text-transform: uppercase;
++    }
++    .coffee-form h3 { font-size: 25px; margin: 3px 0 14px; }
++    .coffee-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
++    .coffee-form input, .coffee-form select {
++      display: block; width: 100%; min-height: 44px; padding: 9px 12px;
++      background: #fffdf9; border: 1px solid #cbb9a5; border-radius: 6px;
++      color: var(--text); font: inherit;
++    }
++    .coffee-form input:focus-visible, .coffee-form select:focus-visible {
++      outline: 3px solid #a86224; outline-offset: 3px;
++    }
++    .coffee-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
++    .coffee-summary { display: block; border-top: 1px solid #ddcdbb; margin-top: 20px; padding-top: 15px; font-size: 14px; }
++    .coffee-note { font-size: 12px; color: #725b51; margin-top: 5px; }
++    .cup-label { text-align: center; color: #fffaf1; line-height: 1.4; }
++    .cup-label small { display: block; font-size: 9px; letter-spacing: 2px; }
++    .cup-label strong {
++      display: block; font-family: Georgia, serif; font-size: 24px;
++      overflow-wrap: anywhere; margin: 5px 0;
++    }
++    .cup-label span { display: block; font-size: 10px; letter-spacing: 1px; }
++    @media (max-width: 640px) {
++      #canvas { height: 740px; }
++      .coffee-form h3 { font-size: 23px; }
++      .coffee-options { grid-template-columns: 1fr; gap: 10px; }
++      .coffee-summary { margin-top: 14px; padding-top: 10px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +238,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">A Little More You. A Lot More Coffee.</h2>
++      <p>Make your daily cup your own. Watch it come together as you choose.</p>
++      <div class="coffee-stage" id="coffee-stage">
++        <canvas id="canvas" layoutsubtree content="drawable" aria-label="Live preview of your customized coffee cup">
++          <div class="coffee-ui cup-label" id="cup-label" drawable>
++            <small>THE DAILY GRIND</small>
++            <strong id="cup-preview-name">Your name</strong>
++            <span>MADE FOR YOU</span>
++          </div>
++          <form class="coffee-ui coffee-form" id="coffee-form" drawable aria-label="Customize your coffee">
++            <p class="eyebrow">Your daily ritual</p>
++            <h3>Meet your signature cup.</h3>
++            <label for="cup-name">Name on your cup</label>
++            <input id="cup-name" name="cup-name" type="text" maxlength="24" placeholder="Your name" autocomplete="given-name">
++            <div class="coffee-options">
++              <div>
++                <label for="coffee-milk">Milk</label>
++                <select id="coffee-milk" name="milk">
++                  <option value="oat">Oat milk</option>
++                  <option value="whole">Whole milk</option>
++                  <option value="almond">Almond milk</option>
++                  <option value="none">No milk</option>
++                </select>
++              </div>
++              <div>
++                <label for="coffee-syrup">Syrup</label>
++                <select id="coffee-syrup" name="syrup">
++                  <option value="maple">Maple</option>
++                  <option value="vanilla">Vanilla</option>
++                  <option value="caramel">Caramel</option>
++                  <option value="none">No syrup</option>
++                </select>
++              </div>
++            </div>
++            <output class="coffee-summary" id="coffee-summary" for="cup-name coffee-milk coffee-syrup" aria-live="polite" aria-atomic="true">Your cup · Oat milk · Maple syrup</output>
++            <p class="coffee-note">A little inspiration for your next coffee run.</p>
++          </form>
++        </canvas>
++      </div>
++      <noscript><p>Enable JavaScript to see your personalized coffee preview.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +293,160 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = document.getElementById('coffee-stage');
++      const form = document.getElementById('coffee-form');
++      const label = document.getElementById('cup-label');
++      const name = document.getElementById('cup-name');
++      const milk = document.getElementById('coffee-milk');
++      const syrup = document.getElementById('coffee-syrup');
++      const summary = document.getElementById('coffee-summary');
++      const previewName = document.getElementById('cup-preview-name');
++      const ctx = canvas.getContext('2d');
++      let nativeHTML = !!ctx && typeof ctx.drawElementImage === 'function'
++        && typeof canvas.requestPaint === 'function';
++      let width = 0, height = 0, dpr = 1;
++      let geometry;
++
++      function useOverlay() {
++        nativeHTML = false;
++        canvas.removeAttribute('layoutsubtree');
++        canvas.removeAttribute('content');
++        [label, form].forEach(element => {
++          element.style.transform = '';
++          stage.appendChild(element);
++        });
++        placeControls();
++      }
++
++      // Canvas drawing and DOM controls share the same CSS-pixel geometry.
++      function placeControls() {
++        if (!geometry) return;
++        const { cupX, cupY, cupScale, formX, formY, formWidth } = geometry;
++        previewName.style.fontSize = `${(name.value.trim().length > 14 ? 18 : 24) * cupScale}px`;
++        const placements = [
++          [form, formX, formY, formWidth],
++          [label, cupX - 79 * cupScale, cupY + 139 * cupScale, 158 * cupScale]
++        ];
++        placements.forEach(([element, x, y, w]) => {
++          element.style.width = `${w}px`;
++          element.style.left = nativeHTML ? '0px' : `${x}px`;
++          element.style.top = nativeHTML ? '0px' : `${y}px`;
++        });
++      }
++
++      function drawHTML(element, x, y) {
++        const transform = ctx.drawElementImage(element, x, y);
++        // Older implementations require explicit hit-test synchronization.
++        if (transform && typeof transform.toString === 'function') {
++          element.style.transform = transform.toString();
++        } else {
++          element.style.transform = '';
++        }
++      }
++
++      function paint() {
++        if (!ctx || !geometry) return;
++        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        ctx.clearRect(0, 0, width, height);
++        const { cupX, cupY, cupScale, formX, formY } = geometry;
++        ctx.save();
++        ctx.translate(cupX, cupY);
++        ctx.scale(cupScale, cupScale);
++
++        // A soft tabletop shadow, ceramic body, handle, and changing coffee.
++        ctx.fillStyle = '#e2d4c1';
++        ctx.beginPath(); ctx.ellipse(12, 298, 128, 15, 0, 0, Math.PI * 2); ctx.fill();
++        ctx.strokeStyle = '#c6b29a'; ctx.lineWidth = 18;
++        ctx.beginPath(); ctx.ellipse(99, 160, 44, 54, 0, 0, Math.PI * 2); ctx.stroke();
++        ctx.strokeStyle = '#fffcf5'; ctx.lineWidth = 12; ctx.stroke();
++        const ceramic = ctx.createLinearGradient(-110, 0, 110, 0);
++        ceramic.addColorStop(0, '#e4d8c6'); ceramic.addColorStop(0.4, '#fffdf6');
++        ceramic.addColorStop(1, '#eee4d4');
++        ctx.fillStyle = ceramic;
++        ctx.beginPath(); ctx.moveTo(-110, 74); ctx.lineTo(-88, 265);
++        ctx.quadraticCurveTo(0, 303, 88, 265); ctx.lineTo(110, 74); ctx.closePath(); ctx.fill();
++        ctx.fillStyle = '#79533c';
++        ctx.beginPath(); ctx.moveTo(-102, 132); ctx.lineTo(-92, 226);
++        ctx.quadraticCurveTo(0, 255, 92, 226); ctx.lineTo(102, 132);
++        ctx.quadraticCurveTo(0, 159, -102, 132); ctx.fill();
++        ctx.fillStyle = '#fffaf0';
++        ctx.beginPath(); ctx.ellipse(0, 74, 110, 34, 0, 0, Math.PI * 2); ctx.fill();
++        ctx.fillStyle = { oat: '#bd956b', whole: '#d5b18a', almond: '#b38a61', none: '#4b2e21' }[milk.value];
++        ctx.beginPath(); ctx.ellipse(0, 76, 99, 25, 0, 0, Math.PI * 2); ctx.fill();
++        if (syrup.value !== 'none') {
++          ctx.strokeStyle = { maple: '#8f562b', vanilla: '#f3ddac', caramel: '#b36b27' }[syrup.value];
++          ctx.lineWidth = 3; ctx.beginPath();
++          ctx.ellipse(0, 76, 61, 13, 0, 0.1, Math.PI * 1.8);
++          ctx.ellipse(0, 76, 35, 7, 0, 0.1, Math.PI * 1.8); ctx.stroke();
++        }
++        ctx.strokeStyle = '#b7a18b'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
++        [-32, 0, 32].forEach(x => {
++          ctx.beginPath(); ctx.moveTo(x, 22); ctx.bezierCurveTo(x - 15, 7, x + 14, -5, x, -22); ctx.stroke();
++        });
++        ctx.restore();
++
++        if (nativeHTML) {
++          try {
++            drawHTML(label, cupX - 79 * cupScale, cupY + 139 * cupScale);
++            drawHTML(form, formX, formY);
++          } catch (error) {
++            // A partially implemented experimental API must not hide the form.
++            useOverlay();
++          }
++        }
++      }
++
++      function requestDraw() {
++        if (nativeHTML) canvas.requestPaint();
++        else paint();
++      }
++
++      function resize() {
++        const bounds = canvas.getBoundingClientRect();
++        width = bounds.width; height = bounds.height;
++        dpr = window.devicePixelRatio || 1;
++        canvas.width = Math.round(width * dpr);
++        canvas.height = Math.round(height * dpr);
++        const compact = window.matchMedia('(max-width: 640px)').matches;
++        geometry = compact
++          ? { cupX: width / 2 - 8, cupY: 42, cupScale: 0.84, formX: 22, formY: 330, formWidth: width - 44 }
++          : { cupX: width * 0.25, cupY: 85, cupScale: Math.min(1.1, width / 850), formX: width * 0.52, formY: 66, formWidth: width * 0.43 };
++        placeControls();
++        requestDraw();
++      }
++
++      function update() {
++        const cupName = name.value.trim();
++        previewName.textContent = cupName || 'Your name';
++        const milkText = milk.selectedOptions[0].textContent;
++        const syrupText = syrup.value === 'none' ? 'No syrup' : `${syrup.selectedOptions[0].textContent} syrup`;
++        summary.textContent = `${cupName ? `${cupName}'s cup` : 'Your cup'} · ${milkText} · ${syrupText}`;
++        placeControls();
++        requestDraw();
++      }
++
++      if (!nativeHTML) useOverlay();
++      canvas.addEventListener('paint', paint);
++      form.addEventListener('input', update);
++      form.addEventListener('change', update);
++      form.addEventListener('submit', event => event.preventDefault());
++      new ResizeObserver(resize).observe(canvas);
++      window.addEventListener('resize', resize);
++      // Re-arm the query after moving between displays with different densities.
++      function watchDensity() {
++        const query = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
++        query.addEventListener('change', () => { resize(); watchDensity(); }, { once: true });
++      }
++      watchDensity();
++      resize();
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+index 66c9173..cb88709 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="{{CSP_NONCE}}">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -75,8 +76,10 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" cross-origin(anonymous) referrer-policy(no-referrer));
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -88,6 +91,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -176,7 +183,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +214,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script nonce="{{CSP_NONCE}}">
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    window.escapeHtmlPolicy = window.trustedTypes.createPolicy('escape-html', {
++      createHTML: (input) =>
++        String(input)
++          .replaceAll('&', '&amp;')
++          .replaceAll('<', '&lt;')
++          .replaceAll('>', '&gt;')
++          .replaceAll('"', '&quot;')
++          .replaceAll("'", '&#39;'),
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/server.js b/server.js
+index 52c2fd5..10fced9 100644
+--- a/server.js
++++ b/server.js
+@@ -1,29 +1,127 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
++const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++
++function generateNonce() {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  return btoa(String.fromCharCode(...bytes));
++}
++
++function isAllowedFetchMetadata(req) {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  if (!site) return true; // Fallback for legacy browsers
++  if (['same-origin', 'same-site', 'none'].includes(site)) return true;
++
++  // Allow standard navigate GET requests (link clicks)
++  if (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    (req.method === 'GET' || req.method === 'HEAD') &&
++    !['object', 'embed'].includes(dest)
++  ) {
++    return true;
++  }
++
++  return false;
++}
++
++function getSecurityHeaders(req, nonce) {
++  const csp = [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    `style-src 'self' 'nonce-${nonce}'`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "connect-src 'self'",
++    "font-src 'self'",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    'trusted-types escape-html sanitize-html dompurify',
++    'report-to main-endpoint',
++  ].join('; ');
++
++  const headers = {
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++    'Reporting-Endpoints': 'default="/csp-reports", main-endpoint="/csp-reports"',
++    'Content-Security-Policy': csp,
++    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
++    'X-Frame-Options': 'SAMEORIGIN',
++    'X-Content-Type-Options': 'nosniff',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), accelerometer=(), focus-without-user-activation=()',
++    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++  };
++
++  const secFetchDest = req.headers['sec-fetch-dest'];
++  if (!secFetchDest || ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) {
++    headers['Connection-Allowlist'] = '(response-origin "https://images.unsplash.com/*"); report-to=main-endpoint';
++  }
++
++  return headers;
++}
+ 
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  const nonce = generateNonce();
++  const baseHeaders = getSecurityHeaders(req, nonce);
++
++  if (!isAllowedFetchMetadata(req)) {
++    res.writeHead(403, {
++      ...baseHeaders,
++      'Content-Type': 'text/plain; charset=utf-8',
++    });
++    res.end('Forbidden');
++    return;
++  }
++
++  if (pathname === '/csp-reports' && req.method === 'POST') {
++    res.writeHead(204, baseHeaders);
++    res.end();
++    return;
++  }
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      ...baseHeaders,
++      'Content-Type': 'text/html; charset=utf-8',
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++      'Set-Cookie': '__Host-session_id=; SameSite=Lax; HttpOnly; Secure; Path=/; Max-Age=0',
++    });
+     res.end('Logged out');
+     return;
+   }
+ 
+   const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(filePath, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, {
++        ...baseHeaders,
++        'Content-Type': 'text/plain; charset=utf-8',
++      });
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    const renderedHtml = data.replaceAll('{{CSP_NONCE}}', nonce);
++    res.writeHead(200, {
++      ...baseHeaders,
++      'Content-Type': 'text/html; charset=utf-8',
++    });
++    res.end(renderedHtml);
+   });
+ });
+ 

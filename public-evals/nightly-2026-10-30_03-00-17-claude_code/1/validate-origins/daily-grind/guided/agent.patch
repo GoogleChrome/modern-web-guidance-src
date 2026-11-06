@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+index 66c9173..2d3495c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,24 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .rewards-widget {
++      display: block;
++      width: 100%;
++      max-width: 420px;
++      height: 160px;
++      margin: 20px auto 0;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: white;
++    }
++
++    .order-status {
++      margin-top: 1rem;
++      min-height: 1.6em;
++      font-weight: bold;
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -171,7 +189,8 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" id="order-now">Order Now</a>
++    <p class="order-status" id="order-status" role="status"></p>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +214,23 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Your Rewards</h2>
++      <!-- Sandboxed without allow-same-origin, so the widget runs in an opaque origin -->
++      <iframe id="rewards-widget" class="rewards-widget" title="Rewards balance" sandbox="allow-scripts" srcdoc="
++        <!DOCTYPE html>
++        <style>body{font-family:sans-serif;text-align:center;color:#3e2723;margin:0;padding:20px}button{margin-top:10px;padding:8px 16px;border:0;border-radius:5px;background:#4e342e;color:white;cursor:pointer}</style>
++        <p>You have <strong>120</strong> Grind Points.</p>
++        <button type=button id=redeem>Redeem a free drip coffee</button>
++        <script>
++          parent.postMessage({ type: 'init' }, '*');
++          document.getElementById('redeem').addEventListener('click', () => {
++            parent.postMessage({ type: 'redeem', reward: 'Free drip coffee' }, '*');
++          });
++        </script>
++      "></iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +238,139 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://www.instagram.com/">Instagram</a> |
++      <a href="https://www.fairtradecertified.org/">Fair Trade</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Trusted ordering service that is allowed to send us order updates
++    const ORDER_SERVICE_URL = 'https://order.thedailygrind.coffee';
++    // Registrable domain we control, used only when the Origin API is unavailable
++    const SITE_DOMAIN = 'thedailygrind.coffee';
++    const hasOriginApi = 'Origin' in globalThis;
++
++    function extractOrigin(candidate) {
++      try {
++        return Origin.from(candidate);
++      } catch (err) {
++        // Synthetic MessageEvents (e.g. in tests) lack an internal origin
++        if (candidate instanceof MessageEvent) return Origin.from(candidate.origin);
++        throw err;
++      }
++    }
++
++    function extractUrlString(candidate) {
++      if (typeof candidate === 'string') return candidate;
++      if (candidate instanceof MessageEvent) return candidate.origin;
++      return candidate?.href ?? '';
++    }
++
++    function isTrustedOrderOrigin(candidate) {
++      try {
++        if (hasOriginApi) {
++          return extractOrigin(candidate).isSameOrigin(Origin.from(ORDER_SERVICE_URL));
++        }
++        const url = new URL(extractUrlString(candidate));
++        return url.origin !== 'null' && url.origin === new URL(ORDER_SERVICE_URL).origin;
++      } catch {
++        return false;
++      }
++    }
++
++    // Accepts URLs/<a> elements on this site (any subdomain, same scheme); rejects
++    // opaque origins (data:, javascript:), scheme downgrades and other sites.
++    function isSameSiteUrl(candidate) {
++      try {
++        if (typeof candidate === 'string') candidate = new URL(candidate, location.href);
++        if (hasOriginApi) {
++          const origin = extractOrigin(candidate);
++          return !origin.opaque && origin.isSameSite(Origin.from(self));
++        }
++        const url = new URL(extractUrlString(candidate));
++        if (url.origin === 'null' || url.protocol !== location.protocol) return false;
++        return url.origin === location.origin ||
++          url.hostname === SITE_DOMAIN ||
++          url.hostname.endsWith(`.${SITE_DOMAIN}`);
++      } catch {
++        return false;
++      }
++    }
++
++    function safeRedirect(target) {
++      if (!isSameSiteUrl(target)) return false;
++      location.assign(new URL(target, location.href).href);
++      return true;
++    }
++
++    // Post-login style redirects: /?returnTo=/rewards
++    const returnTo = new URLSearchParams(location.search).get('returnTo');
++    if (returnTo) safeRedirect(returnTo);
++
++    // Open external links in a new tab without leaking the opener or referrer
++    for (const link of document.querySelectorAll('a[href]')) {
++      if (!isSameSiteUrl(link)) {
++        link.target = '_blank';
++        link.rel = 'noopener noreferrer external';
++      }
++    }
++
++    // Order updates from the trusted ordering window
++    const orderStatus = document.getElementById('order-status');
++    document.getElementById('order-now').addEventListener('click', (event) => {
++      event.preventDefault();
++      window.open(new URL('/start', ORDER_SERVICE_URL).href, 'daily-grind-order', 'popup');
++    });
++
++    // Rewards widget: pin its opaque origin once on init, then only accept that sender
++    const widgetFrame = document.getElementById('rewards-widget');
++    let pinnedWidgetOrigin = hasOriginApi ? new Origin() : null;
++    let isWidgetPinned = false;
++
++    function isFromRewardsWidget(event) {
++      const fromWidgetWindow = event.source === widgetFrame.contentWindow;
++      if (!hasOriginApi) {
++        // Without Origin, opaque senders are indistinguishable by event.origin alone
++        // so fall back to pinning the widget's WindowProxy instead.
++        if (!fromWidgetWindow || event.origin !== 'null') return false;
++        if (!isWidgetPinned && event.data?.type === 'init') isWidgetPinned = true;
++        return isWidgetPinned;
++      }
++      try {
++        const sender = Origin.from(event);
++        if (!isWidgetPinned && fromWidgetWindow && sender.opaque && event.data?.type === 'init') {
++          pinnedWidgetOrigin = sender;
++          isWidgetPinned = true;
++        }
++        return sender.isSameOrigin(pinnedWidgetOrigin);
++      } catch {
++        return false;
++      }
++    }
++
++    window.addEventListener('message', (event) => {
++      const data = event.data;
++      if (typeof data !== 'object' || data === null) return;
++
++      if (isTrustedOrderOrigin(event)) {
++        if (data.type === 'order-status' && typeof data.status === 'string') {
++          orderStatus.textContent = data.status;
++        } else if (data.type === 'order-complete' && typeof data.redirect === 'string') {
++          safeRedirect(data.redirect);
++        }
++        return;
++      }
++
++      if (isFromRewardsWidget(event)) {
++        if (data.type === 'redeem' && typeof data.reward === 'string') {
++          orderStatus.textContent = `Reward redeemed: ${data.reward}`;
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

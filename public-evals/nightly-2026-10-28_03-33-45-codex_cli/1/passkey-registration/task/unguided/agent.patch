@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +185,16 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" aria-labelledby="passkey-heading">
++      <h2 id="passkey-heading">Secure your account</h2>
++      <p>Create a passkey to sign in with your device’s screen lock.</p>
++      <button type="button" class="btn" data-testid="register-button"
++        aria-describedby="registration-status">Create passkey</button>
++      <p id="registration-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +225,124 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.querySelector('[data-testid="register-button"]');
++      const status = document.getElementById('registration-status');
++      let registering = false;
++
++      function decodeBase64url(value) {
++        if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) {
++          throw new Error('Invalid registration options');
++        }
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
++        return Uint8Array.from(binary, character => character.charCodeAt(0));
++      }
++
++      // Older browsers need the binary WebAuthn fields decoded explicitly.
++      function parseOptions(options) {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(options);
++        }
++        return {
++          ...options,
++          challenge: decodeBase64url(options.challenge),
++          user: { ...options.user, id: decodeBase64url(options.user.id) },
++          ...(options.excludeCredentials && {
++            excludeCredentials: options.excludeCredentials.map(credential => ({
++              ...credential,
++              id: decodeBase64url(credential.id)
++            }))
++          })
++        };
++      }
++
++      function encodeBinary(value) {
++        if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
++          const bytes = value instanceof ArrayBuffer
++            ? new Uint8Array(value)
++            : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
++          let binary = '';
++          for (const byte of bytes) binary += String.fromCharCode(byte);
++          return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++        }
++        if (Array.isArray(value)) return value.map(encodeBinary);
++        if (value && typeof value === 'object') {
++          return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, encodeBinary(item)]));
++        }
++        return value;
++      }
++
++      function serializeCredential(credential) {
++        if (typeof credential.toJSON === 'function') return credential.toJSON();
++        return {
++          id: credential.id,
++          rawId: encodeBinary(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment,
++          response: {
++            clientDataJSON: encodeBinary(credential.response.clientDataJSON),
++            attestationObject: encodeBinary(credential.response.attestationObject),
++            transports: credential.response.getTransports?.() || []
++          },
++          clientExtensionResults: encodeBinary(credential.getClientExtensionResults())
++        };
++      }
++
++      async function postJSON(url, body) {
++        const response = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          mode: 'same-origin',
++          redirect: 'error',
++          cache: 'no-store',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body)
++        });
++        if (!response.ok) throw new Error('Registration request failed');
++        return response.json();
++      }
++
++      button.addEventListener('click', async () => {
++        if (registering) return;
++        if (!window.isSecureContext || !window.PublicKeyCredential ||
++            typeof navigator.credentials?.create !== 'function') {
++          status.textContent = 'Passkeys require a supported browser and a secure connection (HTTPS).';
++          return;
++        }
++
++        registering = true;
++        button.disabled = true;
++        status.textContent = 'Follow your device’s instructions to create a passkey.';
++        try {
++          // The server owns the challenge, relying party, user identity, and security policy.
++          const options = await postJSON('/api/register/options', { promotion: true });
++          const credential = await navigator.credentials.create({ publicKey: parseOptions(options) });
++          if (!credential || credential.type !== 'public-key') {
++            throw new Error('No public-key credential returned');
++          }
++          const result = await postJSON('/api/register/verify', serializeCredential(credential));
++          // Creating a credential locally alone does not complete registration.
++          if (result.verified !== true) throw new Error('Registration was not verified');
++          status.textContent = 'Your passkey was registered successfully.';
++        } catch (error) {
++          if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
++            status.textContent = 'Passkey creation was canceled or timed out. You can try again.';
++          } else if (error.name === 'InvalidStateError') {
++            status.textContent = 'A passkey for this account already exists on this device.';
++          } else {
++            status.textContent = 'Unable to register your passkey. Please try again.';
++          }
++        } finally {
++          registering = false;
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

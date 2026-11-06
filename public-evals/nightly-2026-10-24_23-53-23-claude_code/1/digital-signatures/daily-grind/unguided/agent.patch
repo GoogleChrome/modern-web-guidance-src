@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+index 66c9173..16e2cce 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,86 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Signing & Verification */
++    .signing {
++      margin-top: 60px;
++    }
++
++    .signing .intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 10px auto 0;
++    }
++
++    .signing .card {
++      text-align: left;
++    }
++
++    .signing label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .signing input,
++    .signing select,
++    .signing textarea {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      background: white;
++      color: var(--text);
++    }
++
++    .signing textarea {
++      font-family: monospace;
++      font-size: 0.75rem;
++      min-height: 160px;
++      resize: vertical;
++    }
++
++    .signing button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-right: 8px;
++    }
++
++    .fingerprint {
++      font-family: monospace;
++      font-size: 0.8rem;
++      word-break: break-all;
++    }
++
++    .status {
++      margin-top: 12px;
++      padding: 10px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      display: none;
++    }
++
++    .status.ok {
++      display: block;
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .status.bad {
++      display: block;
++      background: #ffebee;
++      color: #b71c1c;
++    }
++
++    .status.info {
++      display: block;
++      background: #fff8e1;
++      color: #5d4037;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +275,51 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signing" id="signing">
++      <h2 style="text-align: center;">Signed Receipts &amp; Gift Vouchers</h2>
++      <p class="intro">
++        Every receipt and voucher is digitally signed in your browser with an ECDSA P-256 key (Web Crypto).
++        Anyone holding the signed document can check that it is authentic and has not been altered.
++      </p>
++      <div class="grid">
++        <div class="card">
++          <h3>1. Issue &amp; Sign</h3>
++          <label for="doc-type">Document type</label>
++          <select id="doc-type">
++            <option value="receipt">Coffee order receipt</option>
++            <option value="voucher">Gift voucher</option>
++          </select>
++          <label for="doc-ref">Order / voucher code</label>
++          <input id="doc-ref" maxlength="64" placeholder="e.g. DG-10234">
++          <label for="doc-desc">Items / message</label>
++          <input id="doc-desc" maxlength="200" placeholder="e.g. 2x Maple Oat Latte">
++          <label for="doc-amount">Amount (USD)</label>
++          <input id="doc-amount" type="number" min="0" step="0.01" value="9.50">
++          <button class="btn" id="sign-btn" type="button">Sign document</button>
++          <p style="margin-top:15px;font-size:0.85rem;">Signer key fingerprint (SHA-256):</p>
++          <p class="fingerprint" id="signer-fp">Generating key…</p>
++          <button class="btn" id="reset-key-btn" type="button">Rotate key</button>
++        </div>
++        <div class="card">
++          <h3>2. Signed document</h3>
++          <label for="signed-out">Copy, save or share this JSON</label>
++          <textarea id="signed-out" spellcheck="false" placeholder="Signed document appears here"></textarea>
++          <button class="btn" id="copy-btn" type="button">Copy</button>
++          <button class="btn" id="download-btn" type="button">Download</button>
++        </div>
++        <div class="card">
++          <h3>3. Verify</h3>
++          <label for="verify-in">Paste a signed document</label>
++          <textarea id="verify-in" spellcheck="false" placeholder="Paste signed JSON here"></textarea>
++          <label for="trusted-fp">Trusted signer fingerprint (optional)</label>
++          <input id="trusted-fp" class="fingerprint" placeholder="Paste the fingerprint you trust">
++          <button class="btn" id="verify-btn" type="button">Verify</button>
++          <button class="btn" id="load-btn" type="button">Use signed document</button>
++          <div class="status" id="verify-status" role="status"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +332,158 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const ALG = { name: 'ECDSA', namedCurve: 'P-256' };
++      const SIG = { name: 'ECDSA', hash: 'SHA-256' };
++      const DB = 'daily-grind-signing', STORE = 'keys', KEY_ID = 'signer';
++      const $ = (id) => document.getElementById(id);
++      const enc = new TextEncoder();
++
++      const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
++      const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
++
++      // Deterministic JSON (sorted keys) so signer and verifier hash identical bytes.
++      const canonical = (v) => {
++        if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
++        if (v && typeof v === 'object') {
++          return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}';
++        }
++        return JSON.stringify(v);
++      };
++
++      // Fingerprint over the canonical public JWK (only the fields that define the key).
++      const fingerprint = async (jwk) => {
++        const { kty, crv, x, y } = jwk;
++        const hash = await crypto.subtle.digest('SHA-256', enc.encode(canonical({ kty, crv, x, y })));
++        return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join(':');
++      };
++
++      // Key storage: private key is non-extractable and kept in IndexedDB.
++      const idb = () => new Promise((res, rej) => {
++        const r = indexedDB.open(DB, 1);
++        r.onupgradeneeded = () => r.result.createObjectStore(STORE);
++        r.onsuccess = () => res(r.result);
++        r.onerror = () => rej(r.error);
++      });
++      const idbOp = async (mode, fn) => {
++        const db = await idb();
++        return new Promise((res, rej) => {
++          const req = fn(db.transaction(STORE, mode).objectStore(STORE));
++          req.onsuccess = () => res(req.result);
++          req.onerror = () => rej(req.error);
++        });
++      };
++
++      let signer = null; // { privateKey, publicJwk, fp }
++
++      const createSigner = async () => {
++        const pair = await crypto.subtle.generateKey(ALG, false, ['sign', 'verify']);
++        const publicJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
++        const rec = { privateKey: pair.privateKey, publicJwk };
++        await idbOp('readwrite', (s) => s.put(rec, KEY_ID));
++        return rec;
++      };
++
++      const loadSigner = async () => {
++        let rec;
++        try { rec = await idbOp('readonly', (s) => s.get(KEY_ID)); } catch (e) { rec = null; }
++        if (!rec) rec = await createSigner();
++        signer = { ...rec, fp: await fingerprint(rec.publicJwk) };
++        $('signer-fp').textContent = signer.fp;
++      };
++
++      const setStatus = (cls, msg) => {
++        const el = $('verify-status');
++        el.className = 'status ' + cls;
++        el.textContent = msg;
++      };
++
++      const sign = async () => {
++        const ref = $('doc-ref').value.trim();
++        const amount = Number($('doc-amount').value);
++        if (!ref || !Number.isFinite(amount) || amount < 0) {
++          $('signed-out').value = 'Please enter a code and a valid amount.';
++          return;
++        }
++        const payload = {
++          type: $('doc-type').value,
++          ref,
++          description: $('doc-desc').value.trim(),
++          amount: amount.toFixed(2),
++          currency: 'USD',
++          issuer: 'The Daily Grind Coffee Co.',
++          issuedAt: new Date().toISOString(),
++          nonce: b64(crypto.getRandomValues(new Uint8Array(12)))
++        };
++        const sig = await crypto.subtle.sign(SIG, signer.privateKey, enc.encode(canonical(payload)));
++        const signed = {
++          payload,
++          signature: b64(sig),
++          algorithm: 'ECDSA-P256-SHA256',
++          publicKey: signer.publicJwk,
++          keyFingerprint: signer.fp
++        };
++        $('signed-out').value = JSON.stringify(signed, null, 2);
++      };
++
++      const verify = async () => {
++        let doc;
++        try { doc = JSON.parse($('verify-in').value); } catch (e) {
++          return setStatus('bad', 'Not valid JSON.');
++        }
++        try {
++          if (!doc || !doc.payload || !doc.signature || !doc.publicKey || doc.algorithm !== 'ECDSA-P256-SHA256') {
++            return setStatus('bad', 'Missing payload, signature, public key or unsupported algorithm.');
++          }
++          const { kty, crv, x, y } = doc.publicKey;
++          const jwk = { kty, crv, x, y, ext: true };
++          if (kty !== 'EC' || crv !== 'P-256') return setStatus('bad', 'Unsupported public key.');
++          const fp = await fingerprint(jwk);
++          const key = await crypto.subtle.importKey('jwk', jwk, ALG, false, ['verify']);
++          const valid = await crypto.subtle.verify(SIG, key, unb64(doc.signature), enc.encode(canonical(doc.payload)));
++          if (!valid) return setStatus('bad', 'INVALID: the signature does not match. The document was altered or forged.');
++          const p = doc.payload;
++          const summary = `${p.type} ${p.ref} – $${p.amount} issued ${p.issuedAt}`;
++          const trusted = $('trusted-fp').value.trim().toLowerCase();
++          if (trusted) {
++            return trusted === fp
++              ? setStatus('ok', `VALID and signed by the trusted key. ${summary}`)
++              : setStatus('bad', `Signature is intact, but the signer (${fp}) is NOT the trusted key.`);
++          }
++          setStatus('info', `Integrity OK (signed by ${fp}). Authenticity is only confirmed if you recognise this fingerprint — enter a trusted fingerprint to check. ${summary}`);
++        } catch (e) {
++          setStatus('bad', 'Verification failed: malformed document.');
++        }
++      };
++
++      $('sign-btn').addEventListener('click', sign);
++      $('verify-btn').addEventListener('click', verify);
++      $('load-btn').addEventListener('click', () => { $('verify-in').value = $('signed-out').value; });
++      $('copy-btn').addEventListener('click', () => navigator.clipboard && navigator.clipboard.writeText($('signed-out').value));
++      $('download-btn').addEventListener('click', () => {
++        const text = $('signed-out').value;
++        if (!text.startsWith('{')) return;
++        const a = document.createElement('a');
++        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
++        a.download = 'daily-grind-signed-document.json';
++        a.click();
++        URL.revokeObjectURL(a.href);
++      });
++      $('reset-key-btn').addEventListener('click', async () => {
++        signer = null;
++        $('signer-fp').textContent = 'Generating key…';
++        await idbOp('readwrite', (s) => s.delete(KEY_ID)).catch(() => {});
++        await loadSigner();
++      });
++
++      if (!window.crypto || !crypto.subtle) {
++        $('signer-fp').textContent = 'Web Crypto unavailable (requires HTTPS or localhost).';
++      } else {
++        loadSigner().catch(() => { $('signer-fp').textContent = 'Could not initialise signing key.'; });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

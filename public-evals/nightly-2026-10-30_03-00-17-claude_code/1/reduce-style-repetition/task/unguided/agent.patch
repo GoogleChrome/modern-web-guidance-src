@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,21 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --caramel: #a1662f;
+     }
+ 
++    /* Reusable helpers (native CSS @function). Browsers without support
++       ignore these and use the plain declaration placed before each call. */
++    @function --brand-gradient(--from, --to, --angle: 135deg) {
++      result: linear-gradient(var(--angle), var(--from), var(--to));
++    }
++
++    @function --equal-columns(--count) {
++      result: repeat(var(--count), minmax(0, 1fr));
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +34,22 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      min-height: 100vh;
++      background: linear-gradient(180deg, var(--light), var(--secondary));
++      background: --brand-gradient(var(--light), var(--secondary), 180deg);
++      background-attachment: fixed;
+     }
+ 
++    h2 {
++      padding: 12px 20px;
++      border-radius: 8px;
++      color: white;
++      background: linear-gradient(135deg, var(--primary), var(--caramel));
++      background: --brand-gradient(var(--primary), var(--caramel));
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -101,13 +123,21 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: 1fr;
++      grid-template-columns: --equal-columns(1);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @media (min-width: 700px) {
++      .grid {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++        grid-template-columns: --equal-columns(2);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

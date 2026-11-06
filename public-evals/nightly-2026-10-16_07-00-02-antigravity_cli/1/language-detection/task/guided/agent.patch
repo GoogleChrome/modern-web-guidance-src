@@ -1,0 +1,351 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,168 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++      padding-top: 30px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .feedback-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    .feedback-card {
++      background: white;
++      padding: 25px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .feedback-label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    #feedback-message {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      resize: vertical;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    #feedback-message:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .feedback-actions {
++      display: flex;
++      align-items: center;
++      gap: 15px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++    }
++
++    .btn-detect {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 0;
++    }
++
++    .btn-detect:disabled {
++      background: #a1887f;
++      cursor: not-allowed;
++      opacity: 0.7;
++    }
++
++    .status-badge {
++      font-size: 0.85rem;
++      padding: 4px 10px;
++      border-radius: 4px;
++      display: inline-block;
++    }
++
++    .status-badge.info {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .status-badge.warning {
++      background: #fff8e1;
++      color: #b78103;
++    }
++
++    .status-badge.error {
++      background: #ffebee;
++      color: #c62828;
++    }
++
++    .progress-container {
++      margin-top: 18px;
++      background: #fdfbf7;
++      padding: 14px 16px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++    }
++
++    .progress-label-row {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    progress {
++      width: 100%;
++      height: 12px;
++      border-radius: 6px;
++      overflow: hidden;
++      border: none;
++      display: block;
++    }
++
++    progress::-webkit-progress-bar {
++      background-color: #ede0d4;
++      border-radius: 6px;
++    }
++
++    progress::-webkit-progress-value {
++      background-color: var(--accent);
++      border-radius: 6px;
++    }
++
++    progress::-moz-progress-bar {
++      background-color: var(--accent);
++      border-radius: 6px;
++    }
++
++    .result-box {
++      margin-top: 20px;
++      padding: 16px 20px;
++      border-radius: 6px;
++      background: #fbf8f6;
++      border-left: 4px solid var(--accent);
++    }
++
++    .result-box h4 {
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .result-row {
++      margin-top: 4px;
++      font-size: 0.95rem;
++    }
++
++    .result-row strong {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +354,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Feedback Section -->
++    <section class="feedback-section" id="feedback-section">
++      <h2>Customer Feedback</h2>
++      <p class="feedback-subtitle">We would love to hear your thoughts and suggestions!</p>
++
++      <div class="feedback-card">
++        <label for="feedback-message" class="feedback-label">Your Message</label>
++        <textarea id="feedback-message" rows="4" placeholder="Type your feedback here in any language..."></textarea>
++
++        <div class="feedback-actions">
++          <button type="button" id="detect-btn" class="btn btn-detect">Detect</button>
++          <span id="availability-status" class="status-badge" role="status" aria-live="polite"></span>
++        </div>
++
++        <div id="download-progress-container" class="progress-container" style="display: none;" role="region" aria-live="polite">
++          <div class="progress-label-row">
++            <span>Downloading language detection model...</span>
++            <span id="download-percentage">0%</span>
++          </div>
++          <progress id="download-progress-bar" value="0" max="100">0%</progress>
++        </div>
++
++        <div id="detection-result" class="result-box" style="display: none;" role="status" aria-live="polite"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +392,143 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', async () => {
++      const messageInput = document.getElementById('feedback-message');
++      const detectBtn = document.getElementById('detect-btn');
++      const statusBadge = document.getElementById('availability-status');
++      const progressContainer = document.getElementById('download-progress-container');
++      const progressBar = document.getElementById('download-progress-bar');
++      const progressPercentage = document.getElementById('download-percentage');
++      const resultBox = document.getElementById('detection-result');
++
++      let detector = null;
++
++      // Check if LanguageDetector API is supported in this browser
++      const hasLanguageDetector = ('LanguageDetector' in window) || ('ai' in window && 'languageDetector' in window.ai);
++
++      async function checkAvailability() {
++        if (!hasLanguageDetector) {
++          statusBadge.className = 'status-badge error';
++          statusBadge.textContent = 'Language detection is not supported in this browser.';
++          detectBtn.disabled = true;
++          return 'unsupported';
++        }
++
++        try {
++          let availability;
++          if ('LanguageDetector' in window && typeof window.LanguageDetector.availability === 'function') {
++            availability = await window.LanguageDetector.availability();
++          } else if (window.ai?.languageDetector?.capabilities) {
++            const caps = await window.ai.languageDetector.capabilities();
++            availability = caps.available;
++          }
++
++          if (availability === 'unavailable' || availability === 'no') {
++            statusBadge.className = 'status-badge error';
++            statusBadge.textContent = 'Language detection is unavailable on this device.';
++            detectBtn.disabled = true;
++            return 'unavailable';
++          } else if (availability === 'downloadable' || availability === 'after-download') {
++            statusBadge.className = 'status-badge warning';
++            statusBadge.textContent = 'Model download required on first use.';
++            return 'downloadable';
++          } else {
++            statusBadge.className = 'status-badge info';
++            statusBadge.textContent = 'Language detector ready.';
++            return 'available';
++          }
++        } catch (err) {
++          console.warn('Could not determine language detector availability:', err);
++          statusBadge.className = 'status-badge warning';
++          statusBadge.textContent = 'Status check pending.';
++          return 'unknown';
++        }
++      }
++
++      const initialStatus = await checkAvailability();
++
++      detectBtn.addEventListener('click', async () => {
++        const text = messageInput.value.trim();
++        if (!text) {
++          resultBox.style.display = 'block';
++          resultBox.innerHTML = '<p style="color: #c62828; margin: 0;">Please enter a message to detect its language.</p>';
++          return;
++        }
++
++        resultBox.style.display = 'none';
++        detectBtn.disabled = true;
++
++        try {
++          if (!detector) {
++            const monitor = (m) => {
++              m.addEventListener('downloadprogress', (e) => {
++                progressContainer.style.display = 'block';
++                let percent = 0;
++                if (e.total && e.total > 0) {
++                  percent = Math.round((e.loaded / e.total) * 100);
++                } else if (typeof e.loaded === 'number') {
++                  percent = Math.round(e.loaded <= 1 ? e.loaded * 100 : e.loaded);
++                }
++                percent = Math.min(Math.max(percent, 0), 100);
++                progressBar.value = percent;
++                progressBar.textContent = `${percent}%`;
++                progressPercentage.textContent = `${percent}%`;
++              });
++            };
++
++            if ('LanguageDetector' in window) {
++              detector = await window.LanguageDetector.create({ monitor });
++            } else if (window.ai?.languageDetector) {
++              detector = await window.ai.languageDetector.create({ monitor });
++            } else {
++              throw new Error('LanguageDetector API is not supported in this browser.');
++            }
++          }
++
++          const results = await detector.detect(text);
++          progressContainer.style.display = 'none';
++
++          if (!results || results.length === 0) {
++            resultBox.style.display = 'block';
++            resultBox.innerHTML = '<p style="margin: 0;">No language could be identified with confidence.</p>';
++            return;
++          }
++
++          const topResult = results[0];
++          let languageName = topResult.detectedLanguage;
++          try {
++            const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
++            const resolvedName = displayNames.of(topResult.detectedLanguage);
++            if (resolvedName) {
++              languageName = `${resolvedName} (${topResult.detectedLanguage})`;
++            }
++          } catch (e) {
++            languageName = topResult.detectedLanguage;
++          }
++
++          const confidencePercent = Math.round(topResult.confidence * 100);
++
++          resultBox.style.display = 'block';
++          resultBox.innerHTML = `
++            <h4>Detection Result</h4>
++            <div class="result-row"><strong>Language:</strong> ${languageName}</div>
++            <div class="result-row"><strong>Confidence:</strong> ${confidencePercent}% (${(topResult.confidence * 100).toFixed(1)}%)</div>
++          `;
++        } catch (error) {
++          console.error('Language detection failed:', error);
++          progressContainer.style.display = 'none';
++          resultBox.style.display = 'block';
++          resultBox.innerHTML = `<p style="color: #c62828; margin: 0;">Detection failed: ${error.message || 'Unknown error'}</p>`;
++        } finally {
++          if (hasLanguageDetector && initialStatus !== 'unavailable' && initialStatus !== 'unsupported') {
++            detectBtn.disabled = false;
++          }
++        }
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

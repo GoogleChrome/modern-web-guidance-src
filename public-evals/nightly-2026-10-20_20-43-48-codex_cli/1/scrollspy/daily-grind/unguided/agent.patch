@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+index 66c9173..d2aff64 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,17 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="location"] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 6px;
++      text-decoration-thickness: 2px;
++    }
++
++    section[id] {
++      scroll-margin-top: var(--nav-height, 80px);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,7 +171,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -175,7 +186,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +218,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const sectionLinks = [...navigation.querySelectorAll('a[href^="#"]')]
++      .map(link => ({ link, section: document.getElementById(link.hash.slice(1)) }))
++      .filter(({ section }) => section);
++    let updatePending = false;
++
++    function updateCurrentSection() {
++      const navigationBottom = navigation.getBoundingClientRect().bottom;
++      document.documentElement.style.setProperty('--nav-height', `${navigation.offsetHeight + 16}px`);
++      let currentLink = null;
++      let largestVisibleHeight = 0;
++
++      for (const { link, section } of sectionLinks) {
++        const bounds = section.getBoundingClientRect();
++        const visibleHeight = Math.max(0,
++          Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, navigationBottom));
++        if (visibleHeight > largestVisibleHeight) {
++          largestVisibleHeight = visibleHeight;
++          currentLink = link;
++        }
++      }
++
++      for (const { link } of sectionLinks) {
++        if (link === currentLink) {
++          link.setAttribute('aria-current', 'location');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      }
++      updatePending = false;
++    }
++
++    function scheduleSectionUpdate() {
++      if (!updatePending) {
++        updatePending = true;
++        requestAnimationFrame(updateCurrentSection);
++      }
++    }
++
++    window.addEventListener('scroll', scheduleSectionUpdate, { passive: true });
++    window.addEventListener('resize', scheduleSectionUpdate);
++    window.addEventListener('load', scheduleSectionUpdate);
++    updateCurrentSection();
++  </script>
++
+ </body>
+ 
+ </html>

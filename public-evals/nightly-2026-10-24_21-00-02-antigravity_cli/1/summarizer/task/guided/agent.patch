@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      background: #9e9e9e;
++      cursor: not-allowed;
++      opacity: 0.7;
++    }
++
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 35px;
++    }
++
++    .journal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 15px;
++      margin-bottom: 20px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .journal-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .summarize-controls {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-end;
++      gap: 6px;
++    }
++
++    .btn-summarize {
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .summarizer-status {
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .journal-summary {
++      background: #fdfaf7;
++      border-left: 4px solid var(--accent);
++      padding: 18px 24px;
++      border-radius: 4px;
++      margin-bottom: 24px;
++    }
++
++    .journal-summary h3 {
++      color: var(--primary);
++      font-size: 1.05rem;
++      margin-bottom: 10px;
++    }
++
++    .journal-summary ul {
++      padding-left: 20px;
++    }
++
++    .journal-summary li {
++      margin-bottom: 6px;
++    }
++
++    .journal-article p {
++      margin-bottom: 16px;
++    }
++
++    .journal-article p:last-child {
++      margin-bottom: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +281,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal-section" aria-labelledby="journal-heading">
++      <div class="journal-header">
++        <div>
++          <h2 id="journal-heading">Roaster's Journal</h2>
++          <p class="journal-subtitle">Field Notes: How We Source Our Direct-Trade Coffee Beans</p>
++        </div>
++        <div class="summarize-controls">
++          <button id="summarize-btn" type="button" class="btn btn-summarize">Summarize</button>
++          <p id="summarizer-status" class="summarizer-status" aria-live="polite" hidden></p>
++        </div>
++      </div>
++
++      <div id="journal-summary" class="journal-summary" aria-live="polite" hidden>
++        <h3>Key Takeaways</h3>
++        <ul id="journal-summary-list"></ul>
++      </div>
++
++      <article id="journal-article" class="journal-article">
++        <p>Every exceptional cup at The Daily Grind begins thousands of miles away from our roastery, tucked into high-altitude micro-lots across the coffee belt. Rather than buying anonymous commodity lots through middlemen, our sourcing team travels directly to origin regions in Colombia's Huila highlands, Ethiopia's Yirgacheffe valleys, and Guatemala's volcanic slopes of Huehuetenango. Walking the steep rows alongside third-generation smallholder farmers allows us to evaluate soil vitality, shade-canopy biodiversity, and cherry ripeness firsthand before a single sack is harvested.</p>
++        <p>Selective hand-picking is the cornerstone of our quality standards. Because coffee cherries on the same branch ripen at different rates, our partner producers make up to four separate passes through each parcel during harvest season, picking only deep-crimson cherries at peak sugar content. Within hours of harvest, cherries are floated to remove under-ripe fruit and transferred to local washing stations. Depending on regional climate and varietal character, lots undergo either pristine mountain-spring washed fermentation for crisp floral clarity or slow raised-bed natural drying that locks in jammy berry sweetness.</p>
++        <p>Financial transparency and environmental stewardship anchor every partnership we sign. We pay a minimum of 45% above Fair Trade base prices directly to farmer cooperatives, rewarding cup quality while funding climate-resilient agronomy, organic composting programs, and clean water filtration at wet mills. Once the parchment coffee rests and reaches an ideal 10.8% moisture content, samples are cupped both at origin and in our lab. Only lots scoring 86 points or higher are sealed in grain-pro bags for ocean transit, ready to be small-batch roasted to highlight the terroir and dedication behind every bean.</p>
++      </article>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (async () => {
++      const summarizeBtn = document.getElementById('summarize-btn');
++      const statusEl = document.getElementById('summarizer-status');
++      const summaryContainer = document.getElementById('journal-summary');
++      const summaryList = document.getElementById('journal-summary-list');
++      const articleEl = document.getElementById('journal-article');
++
++      const summarizerOptions = {
++        sharedContext: "An artisanal coffee roaster's journal article describing their ethical, direct-trade coffee bean sourcing and processing practices.",
++        type: 'key-points',
++        format: 'plain-text',
++        length: 'short',
++      };
++
++      function showStatus(message) {
++        statusEl.textContent = message;
++        statusEl.hidden = !message;
++      }
++
++      function renderBullets(summaryText) {
++        summaryList.replaceChildren();
++        const lines = summaryText
++          .split(/\r?\n/)
++          .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
++          .filter(Boolean);
++
++        for (const line of lines) {
++          const li = document.createElement('li');
++          li.textContent = line;
++          summaryList.appendChild(li);
++        }
++        summaryContainer.hidden = false;
++      }
++
++      if (!('Summarizer' in self)) {
++        summarizeBtn.disabled = true;
++        showStatus('Local summarization is currently unsupported in this browser.');
++        return;
++      }
++
++      let availability;
++      try {
++        availability = await Summarizer.availability(summarizerOptions);
++      } catch (err) {
++        summarizeBtn.disabled = true;
++        showStatus('Local summarization is currently unavailable.');
++        return;
++      }
++
++      if (availability === 'unavailable') {
++        summarizeBtn.disabled = true;
++        showStatus('Local summarization is currently unavailable on this device.');
++        return;
++      }
++
++      let summarizerInstance = null;
++
++      summarizeBtn.addEventListener('click', async () => {
++        summarizeBtn.disabled = true;
++        try {
++          if (!summarizerInstance) {
++            showStatus(
++              availability === 'downloadable' || availability === 'downloading'
++                ? 'Preparing on-device AI model...'
++                : 'Initializing summarizer...'
++            );
++            summarizerInstance = await Summarizer.create({
++              ...summarizerOptions,
++              monitor(m) {
++                m.addEventListener('downloadprogress', (e) => {
++                  if (e.total) {
++                    const pct = Math.round((e.loaded / e.total) * 100);
++                    showStatus(`Downloading AI model: ${pct}%`);
++                  }
++                });
++              },
++            });
++          }
++
++          showStatus('Generating summary...');
++          const textToSummarize = articleEl.innerText.trim();
++          const summary = await summarizerInstance.summarize(textToSummarize, {
++            context: 'Summarize the coffee bean sourcing process into concise bullet points for coffee shop customers.',
++          });
++
++          renderBullets(summary);
++          showStatus('');
++          summarizeBtn.textContent = 'Summarize Again';
++        } catch (error) {
++          showStatus(`Unable to generate summary: ${error.message || 'Unknown error'}`);
++        } finally {
++          summarizeBtn.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+index 66c9173..42a9ec6 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,39 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: white;
++      --btn-hover: #3e2723;
++
++      /* One combined "is dark?" flag: OS preference OR explicit override */
++      --color-scheme: light;
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &:is(.dark, :has(> head > meta[name="color-scheme"][content="dark"])) {
++        --color-scheme: dark;
++      }
++
++      &:is(.light, :has(> head > meta[name="color-scheme"][content="light"])) {
++        --color-scheme: light;
++      }
++    }
++
++    /* Dark overrides, written once (non-critical branching: light is the default) */
++    @container style(--color-scheme: dark) {
++      body {
++        --primary: #2b1d1a;
++        --secondary: #3a2e2b;
++        --text: #efebe9;
++        --light: #1b1412;
++        --surface: #2a211e;
++        --btn-hover: #5d4037;
++      }
++
++      .card h3 {
++        color: var(--accent);
++      }
+     }
+ 
+     * {
+@@ -108,7 +141,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -132,7 +165,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {

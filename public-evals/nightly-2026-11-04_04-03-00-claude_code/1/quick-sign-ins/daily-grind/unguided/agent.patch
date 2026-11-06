@@ -1,0 +1,483 @@
+diff --git a/index.html b/index.html
+index 66c9173..98f5586 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,149 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .auth-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .auth-link:hover {
++      color: var(--accent);
++    }
++
++    .greeting {
++      font-size: 0.9rem;
++      color: var(--secondary);
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    /* Sign-in dialog */
++    .signin-dialog {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: min(400px, 92vw);
++      margin: auto;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      color: var(--text);
++    }
++
++    .signin-dialog::backdrop {
++      background: rgba(30, 20, 15, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    .signin-header {
++      background: var(--primary);
++      color: white;
++      padding: 18px 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .signin-header h2 {
++      font-size: 1.2rem;
++    }
++
++    .signin-close {
++      background: none;
++      border: none;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .signin-body {
++      padding: 20px 24px 24px;
++    }
++
++    .signin-context {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++    }
++
++    .signin-body label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .signin-body input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font: inherit;
++      margin-bottom: 14px;
++    }
++
++    .signin-body input:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--accent);
++    }
++
++    .signin-body .btn {
++      width: 100%;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: white !important;
++      color: var(--primary) !important;
++      border: 1px solid var(--primary) !important;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary) !important;
++    }
++
++    .signin-divider {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin: 16px 0;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .signin-divider::before,
++    .signin-divider::after {
++      content: "";
++      flex: 1;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .signin-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++      margin-bottom: 8px;
++    }
++
++    .signin-footer {
++      font-size: 0.8rem;
++      text-align: center;
++      margin-top: 14px;
++    }
++
++    .signin-footer a {
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -162,16 +305,18 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-requires-auth>Rewards</a></li>
++      <li><a href="/account" data-requires-auth>My Account</a></li>
++      <li data-auth="signed-in" hidden><span class="greeting" id="greeting"></span></li>
++      <li data-auth="signed-in" hidden><a href="/logout" class="logout-link" id="logout-link">Logout</a></li>
++      <li data-auth="signed-out"><button type="button" class="auth-link" id="signin-open">Sign In</button></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-requires-auth>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +352,305 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- In-page sign-in: passkey + password autofill, no redirect to a login page -->
++  <dialog class="signin-dialog" id="signin-dialog" aria-labelledby="signin-title">
++    <div class="signin-header">
++      <h2 id="signin-title">Welcome back</h2>
++      <button type="button" class="signin-close" id="signin-close" aria-label="Close sign-in">&times;</button>
++    </div>
++    <div class="signin-body">
++      <p class="signin-context" id="signin-context">Sign in to keep browsing with your rewards and saved orders.</p>
++
++      <form id="signin-form" action="/api/auth/password" method="post" novalidate>
++        <label for="signin-email">Email</label>
++        <!-- "webauthn" token lets the browser offer saved passkeys in the autofill dropdown -->
++        <input type="email" id="signin-email" name="email" autocomplete="username webauthn" required
++          inputmode="email" autocapitalize="off" spellcheck="false">
++
++        <label for="signin-password">Password</label>
++        <input type="password" id="signin-password" name="password" autocomplete="current-password" required>
++
++        <p class="signin-error" id="signin-error" role="alert" aria-live="assertive"></p>
++
++        <button type="submit" class="btn" id="signin-submit">Sign In</button>
++      </form>
++
++      <div class="signin-divider" id="passkey-divider" hidden>or</div>
++      <button type="button" class="btn btn-secondary" id="passkey-button" hidden>Sign in with a passkey</button>
++
++      <p class="signin-footer">
++        <a href="/forgot-password">Forgot password?</a> &middot; <a href="/join">Create an account</a>
++      </p>
++    </div>
++  </dialog>
++
++  <script>
++    (() => {
++      // Backend endpoints (same origin). Adjust to match the auth service.
++      const API = {
++        session: '/api/auth/session',          // GET  -> { authenticated: bool, name?: string }
++        passkeyOptions: '/api/auth/passkey/options', // POST -> PublicKeyCredentialRequestOptionsJSON
++        passkeyVerify: '/api/auth/passkey/verify',   // POST <- assertion JSON -> { name?: string }
++        password: '/api/auth/password',        // POST <- { email, password } -> { name?: string }
++        logout: '/api/auth/logout'             // POST
++      };
++
++      const dialog = document.getElementById('signin-dialog');
++      const form = document.getElementById('signin-form');
++      const emailInput = document.getElementById('signin-email');
++      const passwordInput = document.getElementById('signin-password');
++      const errorEl = document.getElementById('signin-error');
++      const submitBtn = document.getElementById('signin-submit');
++      const passkeyBtn = document.getElementById('passkey-button');
++      const passkeyDivider = document.getElementById('passkey-divider');
++      const contextEl = document.getElementById('signin-context');
++      const greetingEl = document.getElementById('greeting');
++
++      const defaultContext = contextEl.textContent;
++      let signedIn = false;
++      let pendingDestination = null;   // link the user clicked before signing in
++      let conditionalAbort = null;     // AbortController for the passkey autofill request
++
++      const webauthnSupported = typeof window.PublicKeyCredential === 'function' &&
++        !!navigator.credentials && window.isSecureContext;
++
++      // ---------- UI state ----------
++      function setSignedIn(isSignedIn, name) {
++        signedIn = isSignedIn;
++        document.querySelectorAll('[data-auth="signed-in"]').forEach(el => { el.hidden = !isSignedIn; });
++        document.querySelectorAll('[data-auth="signed-out"]').forEach(el => { el.hidden = isSignedIn; });
++        greetingEl.textContent = isSignedIn && name ? `Hi, ${name}` : '';
++        if (greetingEl.parentElement) greetingEl.parentElement.hidden = !(isSignedIn && name);
++      }
++
++      function showError(msg) { errorEl.textContent = msg || ''; }
++
++      function setBusy(busy) {
++        submitBtn.disabled = busy;
++        passkeyBtn.disabled = busy;
++        submitBtn.textContent = busy ? 'Signing in…' : 'Sign In';
++      }
++
++      function openSignIn(destination, label) {
++        pendingDestination = destination || null;
++        contextEl.textContent = label
++          ? `Sign in to continue to ${label}.`
++          : defaultContext;
++        showError('');
++        if (!dialog.open) dialog.showModal();
++        emailInput.focus();
++        startConditionalPasskey(); // no-op if already armed
++      }
++
++      function closeSignIn() {
++        if (dialog.open) dialog.close();
++      }
++
++      function onSignedIn(data) {
++        setSignedIn(true, data && data.name);
++        stopConditionalPasskey();
++        form.reset();
++        closeSignIn();
++        const dest = pendingDestination;
++        pendingDestination = null;
++        // Continue to whatever the user was trying to reach.
++        if (dest) window.location.assign(dest);
++      }
++
++      // ---------- Helpers ----------
++      async function postJSON(url, body) {
++        const res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body || {})
++        });
++        let data = null;
++        try { data = await res.json(); } catch (_) { /* empty body */ }
++        if (!res.ok) {
++          const err = new Error((data && data.error) || `Request failed (${res.status})`);
++          err.status = res.status;
++          throw err;
++        }
++        return data || {};
++      }
++
++      const b64urlToBuf = (s) => {
++        const pad = '='.repeat((4 - (s.length % 4)) % 4);
++        const bin = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
++        return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
++      };
++      const bufToB64url = (buf) => {
++        let bin = '';
++        new Uint8Array(buf).forEach(b => { bin += String.fromCharCode(b); });
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      };
++
++      function parseRequestOptions(json) {
++        if (typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseRequestOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuf(json.challenge),
++          allowCredentials: (json.allowCredentials || []).map(c => ({ ...c, id: b64urlToBuf(c.id) }))
++        };
++      }
++
++      function credentialToJSON(cred) {
++        if (typeof cred.toJSON === 'function') return cred.toJSON();
++        const r = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment || null,
++          clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
++          response: {
++            clientDataJSON: bufToB64url(r.clientDataJSON),
++            authenticatorData: bufToB64url(r.authenticatorData),
++            signature: bufToB64url(r.signature),
++            userHandle: r.userHandle ? bufToB64url(r.userHandle) : null
++          }
++        };
++      }
++
++      // ---------- Passkeys ----------
++      async function getPasskey(mediation, signal) {
++        const optionsJSON = await postJSON(API.passkeyOptions, {});
++        const publicKey = parseRequestOptions(optionsJSON);
++        // Discoverable credentials: let the browser list all passkeys for this site.
++        publicKey.allowCredentials = [];
++        const cred = await navigator.credentials.get({ publicKey, mediation, signal });
++        if (!cred) return null;
++        return postJSON(API.passkeyVerify, credentialToJSON(cred));
++      }
++
++      // Passkey autofill: suggestions appear in the email field's autofill dropdown.
++      async function startConditionalPasskey() {
++        if (!webauthnSupported || signedIn || conditionalAbort) return;
++        if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') return;
++        if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return;
++
++        conditionalAbort = new AbortController();
++        const { signal } = conditionalAbort;
++        try {
++          const result = await getPasskey('conditional', signal);
++          if (result) onSignedIn(result);
++        } catch (err) {
++          if (err.name !== 'AbortError' && !signal.aborted && dialog.open) {
++            showError('We couldn’t verify that passkey. Try again or use your password.');
++          }
++        } finally {
++          if (conditionalAbort && conditionalAbort.signal === signal) conditionalAbort = null;
++        }
++        // Not re-armed here (avoids a retry loop if the server is down); openSignIn() re-arms it.
++      }
++
++      function stopConditionalPasskey() {
++        if (conditionalAbort) {
++          conditionalAbort.abort();
++          conditionalAbort = null;
++        }
++      }
++
++      // Explicit "Sign in with a passkey" button (modal browser prompt).
++      async function signInWithPasskeyButton() {
++        showError('');
++        stopConditionalPasskey(); // only one credentials.get() may be pending at a time
++        setBusy(true);
++        try {
++          const result = await getPasskey('optional');
++          if (result) onSignedIn(result);
++        } catch (err) {
++          if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
++            showError('Passkey sign-in failed. Try again or use your password.');
++          }
++        } finally {
++          setBusy(false);
++          if (!signedIn) startConditionalPasskey();
++        }
++      }
++
++      // ---------- Passwords ----------
++      async function signInWithPassword(e) {
++        e.preventDefault();
++        showError('');
++        const email = emailInput.value.trim();
++        const password = passwordInput.value;
++        if (!email || !password) {
++          showError('Enter your email and password.');
++          (email ? passwordInput : emailInput).focus();
++          return;
++        }
++        setBusy(true);
++        try {
++          const result = await postJSON(API.password, { email, password });
++          // Offer to save/update the password in the browser's password manager.
++          if ('PasswordCredential' in window) {
++            try {
++              await navigator.credentials.store(new PasswordCredential({ id: email, password, name: result.name || email }));
++            } catch (_) { /* user declined or unsupported */ }
++          }
++          onSignedIn(result);
++        } catch (err) {
++          showError(err.status === 401 || err.status === 400
++            ? 'That email and password don’t match our records.'
++            : 'Something went wrong. Please try again.');
++          passwordInput.select();
++        } finally {
++          setBusy(false);
++        }
++      }
++
++      // ---------- Wiring ----------
++      document.addEventListener('click', (e) => {
++        const link = e.target.closest('a[data-requires-auth]');
++        if (!link || signedIn) return;
++        // Respect new-tab / modified clicks.
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        e.preventDefault();
++        openSignIn(link.href, link.textContent.trim());
++      });
++
++      document.getElementById('signin-open').addEventListener('click', () => openSignIn(null));
++      document.getElementById('signin-close').addEventListener('click', closeSignIn);
++      dialog.addEventListener('click', (e) => { if (e.target === dialog) closeSignIn(); }); // backdrop click
++      dialog.addEventListener('close', () => { pendingDestination = null; showError(''); });
++      form.addEventListener('submit', signInWithPassword);
++      passkeyBtn.addEventListener('click', signInWithPasskeyButton);
++
++      document.getElementById('logout-link').addEventListener('click', async (e) => {
++        e.preventDefault();
++        try { await postJSON(API.logout); } catch (_) { /* fall through */ }
++        if (navigator.credentials && navigator.credentials.preventSilentAccess) {
++          try { await navigator.credentials.preventSilentAccess(); } catch (_) {}
++        }
++        setSignedIn(false);
++        startConditionalPasskey();
++      });
++
++      if (webauthnSupported) {
++        passkeyBtn.hidden = false;
++        passkeyDivider.hidden = false;
++      }
++
++      // ---------- Init ----------
++      (async () => {
++        setSignedIn(false);
++        try {
++          const res = await fetch(API.session, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
++          if (res.ok) {
++            const data = await res.json();
++            if (data && data.authenticated) { setSignedIn(true, data.name); return; }
++          }
++        } catch (_) { /* treat as signed out */ }
++        // Arm passkey autofill so suggestions are ready as soon as the email field is focused.
++        startConditionalPasskey();
++      })();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

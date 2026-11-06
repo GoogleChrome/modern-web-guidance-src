@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,112 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form Section */
++    .payment-section {
++      max-width: 520px;
++      margin: 60px auto 20px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment-section h2 {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      color: var(--primary);
++    }
++
++    .payment-fieldset {
++      border: 0;
++      padding: 0;
++      margin: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      color: var(--text);
++      margin-block-end: 0.25rem;
++    }
++
++    .hint {
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-block-end: 0.375rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      color: var(--text);
++      background-color: white;
++      box-sizing: border-box;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .submit-btn {
++      width: 100%;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      border: none;
++      cursor: pointer;
++      margin-top: 0.5rem;
++    }
++
++    .submit-btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .payment-status {
++      margin-block-start: 1rem;
++      font-weight: 600;
++      text-align: center;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +298,96 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment-section" id="payment" aria-labelledby="payment-heading">
++      <h2 id="payment-heading">Express Checkout</h2>
++      <form id="payment-form" action="/checkout" method="POST">
++        <fieldset class="payment-fieldset">
++          <legend class="visually-hidden">Payment Card Details</legend>
++
++          <div class="form-group">
++            <label for="cc-number">Card number</label>
++            <span id="cc-number-hint" class="hint">13 to 19 digits, spaces allowed</span>
++            <input
++              id="cc-number"
++              name="cc-number"
++              type="text"
++              autocomplete="cc-number"
++              inputmode="numeric"
++              enterkeyhint="next"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              maxlength="19"
++              pattern="[\d ]{13,19}"
++              aria-describedby="cc-number-hint"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="cc-name">Name on card</label>
++            <span id="cc-name-hint" class="hint">Enter the full name exactly as printed on your card</span>
++            <input
++              id="cc-name"
++              name="cc-name"
++              type="text"
++              autocomplete="cc-name"
++              enterkeyhint="next"
++              maxlength="50"
++              pattern="[\p{L} \-\.]+"
++              aria-describedby="cc-name-hint"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="cc-exp">Expiry date</label>
++            <span id="exp-hint" class="hint">Format: MM/YY</span>
++            <input
++              id="cc-exp"
++              name="cc-exp"
++              type="text"
++              autocomplete="cc-exp"
++              inputmode="numeric"
++              enterkeyhint="next"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              maxlength="5"
++              pattern="(0[1-9]|1[0-2])\/[0-9]{2}"
++              aria-describedby="exp-hint"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="cc-csc">Security code</label>
++            <span id="csc-hint" class="hint">3 or 4 digits on your card</span>
++            <input
++              id="cc-csc"
++              name="cc-csc"
++              type="text"
++              autocomplete="cc-csc"
++              inputmode="numeric"
++              enterkeyhint="done"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              maxlength="4"
++              pattern="[0-9]{3,4}"
++              aria-describedby="csc-hint"
++              required
++            >
++          </div>
++
++          <button type="submit" id="pay-button" class="btn submit-btn">Complete Payment</button>
++          <p id="payment-status" class="payment-status" aria-live="polite" hidden></p>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +398,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const paymentForm = document.getElementById('payment-form');
++    const payButton = document.getElementById('pay-button');
++    const paymentStatus = document.getElementById('payment-status');
++
++    paymentForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      if (!paymentForm.checkValidity()) {
++        paymentForm.reportValidity();
++        return;
++      }
++      payButton.disabled = true;
++      payButton.textContent = 'Processing Payment...';
++      paymentStatus.textContent = 'Payment details submitted.';
++      paymentStatus.hidden = false;
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +84,25 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      gap: 20px;
+     }
+ 
++    .hero.theater-active {
++      min-height: 80vh;
++    }
++
++    .hero iframe {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -125,17 +139,57 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .roasting-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .video-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 800px;
++      margin: 0 auto 15px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .video-header h2 {
++      margin: 0;
++    }
++
++    .video-header .btn {
++      margin-top: 0;
++    }
++
++    .video-container {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .video-container iframe {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -167,15 +221,17 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero-section">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,8 +250,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasting-section">
++      <div class="video-header">
++        <h2>Inside Our Roastery</h2>
++        <button type="button" id="theater-toggle-btn" class="btn" aria-pressed="false">Theater Mode</button>
++      </div>
++      <div id="video-slot" class="video-container">
++        <iframe
++          id="roasting-video"
++          width="560"
++          height="315"
++          src="https://www.youtube.com/embed/PFb6T5963cE"
++          title="Coffee Roasting Process Video"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin"
++          allowfullscreen>
++        </iframe>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +281,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const heroSection = document.getElementById('hero-section');
++    const videoSlot = document.getElementById('video-slot');
++    const roastingVideo = document.getElementById('roasting-video');
++    const theaterToggleBtn = document.getElementById('theater-toggle-btn');
++
++    let isTheaterMode = false;
++
++    function reparentElement(targetParent, nodeToMove) {
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(nodeToMove, null);
++      } else {
++        targetParent.insertBefore(nodeToMove, null);
++      }
++    }
++
++    theaterToggleBtn.addEventListener('click', () => {
++      isTheaterMode = !isTheaterMode;
++      const targetParent = isTheaterMode ? heroSection : videoSlot;
++
++      reparentElement(targetParent, roastingVideo);
++
++      heroSection.classList.toggle('theater-active', isTheaterMode);
++      theaterToggleBtn.setAttribute('aria-pressed', String(isTheaterMode));
++      theaterToggleBtn.textContent = isTheaterMode ? 'Exit Theater Mode' : 'Theater Mode';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

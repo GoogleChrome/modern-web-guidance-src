@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,117 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Inline sign-up */
++    .signup {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      margin-top: 60px;
++      padding: clamp(20px, 4vw, 40px);
++      background: var(--secondary);
++      border-radius: 8px;
++      scroll-margin-top: 120px;
++    }
++
++    .signup h2 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .signup-form {
++      min-width: 0;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++    }
++
++    .signup-field {
++      margin-top: 20px;
++    }
++
++    .signup-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .signup-field input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #8d7972;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++    }
++
++    .signup-help {
++      font-size: 0.875rem;
++      margin-top: 6px;
++    }
++
++    .password-toggle {
++      min-height: 48px;
++      padding: 8px 0;
++      border: 0;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      text-decoration: underline;
++      cursor: pointer;
++    }
++
++    .signup-submit {
++      width: 100%;
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .signup-submit:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .signup-status:not(:empty) {
++      margin-top: 16px;
++    }
++
++    .signup :focus-visible,
++    nav a:focus-visible {
++      outline: 3px solid #a34c00;
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 8px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .signup {
++        grid-template-columns: 1fr;
++        gap: 24px;
++        scroll-margin-top: 180px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,8 +272,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -194,8 +304,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup" aria-labelledby="signup-heading">
++      <div>
++        <h2 id="signup-heading">Make us part of your daily grind.</h2>
++        <p>Create your Daily Grind account and get ready for your next coffee break.</p>
++      </div>
++      <form id="signup-form" class="signup-form" action="#signup" method="post"
++        aria-labelledby="signup-form-heading" aria-describedby="signup-note">
++        <h3 id="signup-form-heading">Sign up</h3>
++        <p class="signup-help">All fields are required.</p>
++        <div class="signup-field">
++          <label for="signup-name">Full name</label>
++          <input id="signup-name" name="name" type="text" autocomplete="name" required>
++        </div>
++        <div class="signup-field">
++          <label for="signup-email">Email address</label>
++          <input id="signup-email" name="email" type="email" autocomplete="username"
++            autocapitalize="off" spellcheck="false" required>
++        </div>
++        <div class="signup-field">
++          <label for="signup-password">Password</label>
++          <input id="signup-password" name="password" type="password" autocomplete="new-password"
++            minlength="8" aria-describedby="signup-password-help" required>
++          <p id="signup-password-help" class="signup-help">Use at least 8 characters.</p>
++          <button id="toggle-password" class="password-toggle" type="button"
++            aria-controls="signup-password" aria-pressed="false" hidden>Show password</button>
++        </div>
++        <button id="signup-submit" class="btn signup-submit" type="submit" disabled>Create account</button>
++        <p id="signup-note" class="signup-help">Account creation is coming soon. This form does not send or save your details.</p>
++        <noscript><p class="signup-help">Enable JavaScript to preview the form.</p></noscript>
++        <p id="signup-status" class="signup-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +349,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signupForm = document.getElementById('signup-form');
++    const signupPassword = document.getElementById('signup-password');
++    const passwordToggle = document.getElementById('toggle-password');
++    const signupStatus = document.getElementById('signup-status');
++
++    passwordToggle.hidden = false;
++    passwordToggle.addEventListener('click', () => {
++      const showPassword = signupPassword.type === 'password';
++      signupPassword.type = showPassword ? 'text' : 'password';
++      passwordToggle.setAttribute('aria-pressed', String(showPassword));
++      passwordToggle.textContent = showPassword ? 'Hide password' : 'Show password';
++    });
++
++    signupForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      signupStatus.textContent = 'Your entries passed the form checks. Account creation is not available yet, so no account has been created and your details have not been sent or saved.';
++    });
++    signupForm.addEventListener('input', () => {
++      signupStatus.textContent = '';
++    });
++    document.getElementById('signup-submit').disabled = false;
++  </script>
+ </body>
+ 
+ </html>

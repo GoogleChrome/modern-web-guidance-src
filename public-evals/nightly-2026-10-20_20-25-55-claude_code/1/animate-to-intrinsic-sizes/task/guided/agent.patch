@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,120 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert: dismissed via a hidden popover toggled by the close button (no JS) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, opacity 0.4s ease, visibility 0s;
++    }
++
++    .promo-inner {
++      min-height: 0;
++      overflow: hidden;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .promo-inner p {
++      padding: 0.6rem 0;
++      font-size: 0.9rem;
++    }
++
++    #alert-dismiss {
++      background: none;
++      border: 0;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++      color: inherit;
++    }
++
++    #alert-dismissed {
++      position: fixed;
++      inset: auto;
++      width: 0;
++      height: 0;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++    }
++
++    body:has(#alert-dismissed:popover-open) #promo-alert {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      /* keep visible until the collapse finishes, then drop from the a11y tree */
++      transition: grid-template-rows 0.4s ease, opacity 0.4s ease, visibility 0s 0.4s;
++    }
++
++    /* FAQ accordion */
++    .faq {
++      max-width: 700px;
++      margin: 40px auto 0;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: block-size 0.4s ease, opacity 0.4s ease, content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++      opacity: 1;
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      body:has(#alert-dismissed:popover-open) #promo-alert,
++      .faq details::details-content {
++        transition-duration: 0.01s;
++        transition-delay: 0s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-inner">
++      <p>Free pastry with any cold brew this week!</p>
++      <button id="alert-dismiss" type="button" popovertarget="alert-dismissed" popovertargetaction="show" aria-label="Dismiss promotion">&times;</button>
++    </div>
++  </div>
++  <div id="alert-dismissed" popover="manual" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +301,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2 style="text-align: center; margin-bottom: 20px;">FAQ</h2>
++      <details>
++        <summary id="faq-trigger">Where do you source your beans?</summary>
++        <div id="faq-content">
++          <p>Our beans come from small, ethically run farms and are roasted locally in small batches every week.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

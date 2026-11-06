@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,15 +85,136 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      transition: min-height 0.3s ease, padding 0.3s ease;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.theater-mode {
++      height: auto;
++      min-height: 80vh;
++      padding: 40px 20px 50px;
++    }
++
++    .hero.theater-mode .hero-content h1 {
++      font-size: 2.2rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero.theater-mode .hero-content {
++      margin-bottom: 24px;
++    }
++
++    .hero iframe {
++      width: 100%;
++      max-width: 960px;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      border: 2px solid rgba(255, 171, 64, 0.7);
++      border-radius: 12px;
++      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
++    }
++
++    /* Roasting Showcase & Video Container */
++    .roasting-showcase {
++      background: white;
++      border-radius: 8px;
++      padding: 30px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++    }
++
++    .roasting-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .roasting-header h2 {
++      color: var(--primary);
++      font-size: 1.8rem;
++    }
++
++    .roasting-header p {
++      color: #5d4037;
++      font-size: 0.95rem;
++    }
++
++    .video-container {
++      width: 100%;
++      max-width: 900px;
++      margin: 0 auto;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      aspect-ratio: 16 / 9;
++    }
++
++    .video-container:empty {
++      display: none;
++    }
++
++    .video-container iframe {
++      width: 100%;
++      height: 100%;
++      aspect-ratio: 16 / 9;
++      border: none;
++      display: block;
++    }
++
++    .theater-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 10px 20px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: all 0.25s ease;
++      font-family: inherit;
++    }
++
++    .theater-btn:hover {
++      background: #3e2723;
++      color: var(--accent);
++    }
++
++    .theater-btn.active {
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--primary);
++    }
++
++    .theater-placeholder {
++      display: none;
++      padding: 40px 20px;
++      text-align: center;
++      color: #6d4c41;
++      background: #efebe9;
++      border: 2px dashed #bcaaa4;
++      border-radius: 8px;
++      margin-top: 10px;
++    }
++
++    .in-theater-mode .theater-placeholder {
++      display: block;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,15 +288,50 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero-section">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
++    <section class="roasting-showcase" id="roasting-showcase">
++      <div class="roasting-header">
++        <div>
++          <h2>Artisanal Roasting Process</h2>
++          <p>Watch how we ethically roast our specialty beans daily.</p>
++        </div>
++        <button
++          type="button"
++          id="theater-mode-btn"
++          class="btn theater-btn"
++          aria-pressed="false"
++          aria-label="Theater Mode">
++          <span class="btn-text">Theater Mode</span>
++        </button>
++      </div>
++
++      <div id="video-container" class="video-container">
++        <iframe
++          id="roasting-video"
++          src="https://www.youtube.com/embed/i3m09wkbqY0?enablejsapi=1"
++          title="Coffee Roasting Video"
++          frameborder="0"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin"
++          allowfullscreen>
++        </iframe>
++      </div>
++
++      <div id="theater-placeholder" class="theater-placeholder">
++        <p>🎬 Video is currently playing in <strong>Theater Mode</strong> in the hero section above.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +362,132 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const heroSection = document.getElementById('hero-section') || document.querySelector('.hero');
++      const videoContainer = document.getElementById('video-container');
++      const iframe = document.getElementById('roasting-video');
++      const theaterBtn = document.getElementById('theater-mode-btn');
++
++      if (!heroSection || !videoContainer || !iframe || !theaterBtn) {
++        return;
++      }
++
++      let isTheaterMode = false;
++      let lastKnownTime = 0;
++      let isPlaying = false;
++
++      // Listen for YouTube player state updates via postMessage for older browser fallback
++      window.addEventListener('message', (event) => {
++        try {
++          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
++          if (data && data.info) {
++            if (typeof data.info.currentTime === 'number') {
++              lastKnownTime = data.info.currentTime;
++            }
++            if (data.info.playerState === 1) {
++              isPlaying = true;
++            } else if (data.info.playerState === 2) {
++              isPlaying = false;
++            }
++          }
++        } catch (e) {
++          // Ignore unrelated messages
++        }
++      });
++
++      // Periodically request status to keep lastKnownTime current (for browsers lacking moveBefore)
++      setInterval(() => {
++        if (iframe && iframe.contentWindow) {
++          try {
++            iframe.contentWindow.postMessage(JSON.stringify({ event: 'listening' }), '*');
++            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'getCurrentTime' }), '*');
++          } catch (e) {}
++        }
++      }, 1000);
++
++      /**
++       * Reparents a node to a new parent without reload or playback interruption
++       * using the modern DOM moveBefore API, with insertBefore fallback for older browsers.
++       */
++      function reparentNode(node, newParent, referenceNode = null) {
++        if (typeof newParent.moveBefore === 'function') {
++          // Modern browsers (Chrome 133+, Firefox): atomic move preserving iframe state & playback
++          newParent.moveBefore(node, referenceNode);
++        } else {
++          // Fallback for older browsers:
++          const resumeTime = lastKnownTime;
++          const resumePlay = isPlaying;
++
++          newParent.insertBefore(node, referenceNode);
++
++          if (resumeTime > 0) {
++            const onReload = () => {
++              node.removeEventListener('load', onReload);
++              try {
++                node.contentWindow?.postMessage(JSON.stringify({
++                  event: 'command',
++                  func: 'seekTo',
++                  args: [resumeTime, true]
++                }), '*');
++                if (resumePlay) {
++                  node.contentWindow?.postMessage(JSON.stringify({
++                    event: 'command',
++                    func: 'playVideo',
++                    args: []
++                  }), '*');
++                }
++              } catch (err) {}
++            };
++            node.addEventListener('load', onReload);
++          }
++        }
++      }
++
++      function toggleTheaterMode() {
++        isTheaterMode = !isTheaterMode;
++
++        if (isTheaterMode) {
++          // Reparent iframe to the hero section
++          reparentNode(iframe, heroSection, null);
++          heroSection.classList.add('theater-mode');
++          document.body.classList.add('in-theater-mode');
++          theaterBtn.classList.add('active');
++          theaterBtn.setAttribute('aria-pressed', 'true');
++          const textSpan = theaterBtn.querySelector('.btn-text');
++          if (textSpan) {
++            textSpan.textContent = 'Exit Theater Mode';
++          } else {
++            theaterBtn.textContent = 'Exit Theater Mode';
++          }
++        } else {
++          // Reparent iframe back to the main container
++          reparentNode(iframe, videoContainer, null);
++          heroSection.classList.remove('theater-mode');
++          document.body.classList.remove('in-theater-mode');
++          theaterBtn.classList.remove('active');
++          theaterBtn.setAttribute('aria-pressed', 'false');
++          const textSpan = theaterBtn.querySelector('.btn-text');
++          if (textSpan) {
++            textSpan.textContent = 'Theater Mode';
++          } else {
++            theaterBtn.textContent = 'Theater Mode';
++          }
++        }
++      }
++
++      theaterBtn.addEventListener('click', toggleTheaterMode);
++
++      // Expose globally for automated tests or integration
++      window.theaterMode = {
++        toggle: toggleTheaterMode,
++        reparentNode: reparentNode,
++        get isTheaterMode() { return isTheaterMode; }
++      };
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

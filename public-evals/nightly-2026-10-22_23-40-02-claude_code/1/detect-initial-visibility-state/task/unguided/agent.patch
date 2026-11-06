@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,49 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Background-tab detection. Kept inline, synchronous and first in <head> so it
++    // runs as early as possible: the fallback below reads live state, so any
++    // delay (async/defer/external script) makes its answer less trustworthy.
++    (function () {
++      var info = { backgrounded: false, backgroundTime: null, fallback: false };
++
++      // Primary: the Visibility State Performance Timeline (Chrome 115+). The browser
++      // records every visibility change with a timestamp, including the state at
++      // navigation start (startTime 0), so this is accurate regardless of when we run.
++      var entries = [];
++      try {
++        entries = performance.getEntriesByType('visibility-state');
++      } catch (e) { /* unsupported entry type */ }
++
++      if (entries.length) {
++        var first = entries[0];
++        info.backgrounded = first.name === 'hidden';
++        // ms since navigation start (performance.timeOrigin)
++        info.backgroundTime = info.backgrounded ? first.startTime : null;
++      } else {
++        // !! FALLBACK ACTIVE - POTENTIALLY UNRELIABLE !!
++        // No timeline support, so we can only read document.visibilityState *now*.
++        // That is the state when this script ran, not at load: the tab may have been
++        // hidden/shown in between, and the exact moment of backgrounding is unknowable.
++        // backgroundTime is therefore only an upper bound (time of this check), not
++        // the real background time.
++        info.fallback = true;
++        info.backgrounded = document.visibilityState === 'hidden';
++        info.backgroundTime = info.backgrounded ? performance.now() : null;
++        console.warn('[background-detect] Using legacy fallback (document.visibilityState); ' +
++          'result is approximate and may be unreliable.');
++      }
++
++      console.log({
++        backgrounded: info.backgrounded,
++        backgroundTime: info.backgroundTime,
++        fallback: info.fallback
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

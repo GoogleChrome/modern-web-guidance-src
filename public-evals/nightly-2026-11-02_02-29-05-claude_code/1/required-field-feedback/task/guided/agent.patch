@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,84 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h2 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin-bottom: 5px;
++    }
++
++    .newsletter form {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .newsletter label {
++      flex-basis: 100%;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      font: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.6rem 0.75rem;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .newsletter button {
++      font: inherit;
++      min-height: 48px;
++      padding: 0 20px;
++      border: none;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    /* Errors only appear after the user has interacted with the field (or tried to submit) */
++    .newsletter .error-msg {
++      display: none;
++      flex-basis: 100%;
++      color: #8b0000;
++      font-size: 0.875rem;
++    }
++
++    .newsletter input:user-invalid {
++      border: 2px solid #8b0000;
++      background: #fce8e6;
++    }
++
++    .newsletter form:has(input:user-invalid) .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +273,22 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join Our Mailing List</h2>
++      <p>Seasonal drinks, roast releases, and members-only offers. No spam, ever.</p>
++      <form id="newsletter-form" action="/subscribe" method="POST">
++        <label for="newsletter-email">Email address <span aria-hidden="true">*</span></label>
++        <input type="email" id="newsletter-email" name="email" autocomplete="email" autocapitalize="off"
++          autocorrect="off" spellcheck="false" required aria-errormessage="newsletter-email-error">
++        <button type="submit">Subscribe</button>
++        <span id="newsletter-email-error" class="error-msg">
++          <span aria-hidden="true">&#9888;</span> Please enter a valid email address.
++        </span>
++      </form>
++    </section>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +296,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid in sync with the visual :user-invalid state so screen
++    // readers only hear the error after the user has interacted with the field.
++    const newsletterForm = document.getElementById('newsletter-form');
++    const newsletterEmail = document.getElementById('newsletter-email');
++
++    const syncAriaInvalid = () => {
++      if (newsletterEmail.matches(':user-invalid')) {
++        newsletterEmail.setAttribute('aria-invalid', 'true');
++      } else {
++        newsletterEmail.removeAttribute('aria-invalid');
++      }
++    };
++
++    newsletterEmail.addEventListener('blur', syncAriaInvalid);
++    newsletterEmail.addEventListener('input', () => {
++      if (newsletterEmail.hasAttribute('aria-invalid')) syncAriaInvalid();
++    });
++    // Submitting with an empty field flips it to :user-invalid; the browser fires
++    // "invalid" before focusing it, so sync once the state has settled.
++    newsletterEmail.addEventListener('invalid', () => requestAnimationFrame(syncAriaInvalid));
++  </script>
++
+ </body>
+ 
+ </html>

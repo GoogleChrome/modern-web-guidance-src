@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,151 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad – Ship your ideas faster</title>
++  <meta name="description" content="Launchpad helps teams go from idea to launch in days, not months.">
++
++  <style>
++    /* Fallback only: hides the page in browsers without blocking="render" support. */
++    .ab-loading {
++      opacity: 0 !important;
++    }
++  </style>
++
++  <script>
++    // Anti-flicker fallback for browsers that ignore blocking="render" (e.g. Firefox).
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      const root = document.documentElement;
++      root.classList.add('ab-loading');
++      window.abReveal = () => root.classList.remove('ab-loading');
++      // Never leave the page blank if the SDK is slow or unavailable.
++      setTimeout(window.abReveal, 4000);
++    } else {
++      window.abReveal = () => {};
++    }
++  </script>
++
++  <!--
++    Render-blocking experiment SDK: the browser won't paint until it has run,
++    so the original content is never shown before the variant is applied.
++    onload/onerror reveal the page in the fallback path.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="abReveal()"
++    onerror="abReveal()"
++  ></script>
++
++  <style>
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#f7f8fc, #0d1020);
++      --fg: light-dark(#14172b, #eef0ff);
++      --muted: light-dark(#555a78, #a6abcc);
++      --accent: #5b5bf0;
++      --accent-fg: #fff;
++    }
++
++    * { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++    }
++
++    header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 1.25rem 1.5rem;
++    }
++
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; }
++
++    .hero {
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: clamp(3rem, 10vw, 7rem) 1.5rem;
++      display: grid;
++      gap: 3rem;
++      align-items: center;
++      grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
++    }
++
++    .hero h1 {
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.05;
++      letter-spacing: -0.03em;
++      margin: 0 0 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: 1.2rem;
++      color: var(--muted);
++      margin: 0 0 2rem;
++      max-width: 36rem;
++      text-wrap: pretty;
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 1.8rem;
++      border-radius: 0.75rem;
++      background: var(--accent);
++      color: var(--accent-fg);
++      font: inherit;
++      font-weight: 700;
++      text-decoration: none;
++      box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 40%, transparent);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .cta-button:hover { transform: translateY(-2px); }
++    .cta-button:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
++
++    .hero img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 1.25rem;
++    }
++
++    /* Variant hooks: the SDK may also set data-variant on <html>. */
++    [data-variant="b"] .cta-button { background: #12a150; }
++  </style>
++</head>
++<body>
++  <header>
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero" id="hero">
++      <div>
++        <h1 data-experiment="headline">Ship your ideas faster</h1>
++        <p data-experiment="subhead">
++          Launchpad takes your team from first sketch to live product in days,
++          not months — with everything you need in one place.
++        </p>
++        <a class="cta-button" id="cta" href="#signup" data-experiment="cta">Get started free</a>
++      </div>
++      <img
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++        alt="A team collaborating around a table with laptops"
++        width="1200" height="900"
++        fetchpriority="high"
++      >
++    </section>
++  </main>
++</body>
++</html>

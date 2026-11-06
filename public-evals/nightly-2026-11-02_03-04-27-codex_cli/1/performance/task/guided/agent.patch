@@ -1,0 +1,58 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,53 @@
++# Daily Grind performance audit
++
++The homepage is a small static document with inline CSS, system fonts, and no client JavaScript. The largest concrete opportunity was its remote hero photograph. The optimized page serves the same photograph locally in responsive AVIF and WebP formats with a JPEG fallback, and exposes it directly to the HTML preload scanner. Mobile navigation and card sizing now accommodate narrow viewports.
++
++This is a source and asset audit of `index.html`, `package.json`, and the committed image files. No browser, development server, preview server, or server entrypoint was used. Actual LCP, INP, CLS, TTFB, visual rendering, and production cache behavior remain unmeasured; byte savings below are asset measurements, not timing predictions.
++
++## Findings and changes
++
++| Priority | Area | Finding | Result |
++| --- | --- | --- | --- |
++| High | LCP discovery | The hero was a CSS background pointing to Unsplash, with no explicit fetch priority. | A static `picture` exposes the resource in HTML; the single hero `img` uses eager loading and high priority. |
++| High | LCP transfer | Every viewport referenced the same 1350px remote image. | Local 640, 960, 1350, and 1920px AVIF and WebP candidates use width descriptors and `sizes="100vw"`. Browsers select one supported candidate; JPEG is the fallback. |
++| Medium | Network dependencies | The critical image required a separate third-party connection. | Homepage rendering now needs only the site origin. Content hashes in asset filenames support safe immutable caching when configured on the host. |
++| Medium | Mobile interactions | Navigation could extend beyond the screen because its flex rows did not wrap. | Both rows wrap; navigation links have a 44px minimum height. Mobile navigation no longer remains sticky over the content. Keyboard focus is visible. |
++| Medium | Layout robustness | A 250px grid minimum could overflow very narrow containers. Fixed hero height could clip enlarged text. | The grid minimum is capped at available width. The hero has a minimum height, can expand for content, and uses small viewport units with a `vh` fallback. |
++| Maintain | CLS | The original background did not affect document flow; it already had reserved hero space. | The replacement image is absolutely positioned inside a reserved hero, with intrinsic dimensions. Image arrival cannot push the sections below it. No measured CLS reduction is claimed. |
++| Maintain | INP | There are no event handlers, polling timers, hydration, third-party scripts, or JavaScript bundles to optimize. | Navigation remains native links with no added client code. Reduced-motion preferences disable link transitions. No JavaScript long-task defect was found in the supplied code. |
++| Maintain | Critical path | Small inline CSS and system fonts already avoid stylesheet and font requests. | These are preserved. No additional preload, framework, service worker, or rendering-containment machinery was added to this small page. |
++
++Making the LCP candidate discoverable in HTML and assigning high fetch priority follows [web.dev responsive image guidance](https://web.dev/learn/design/responsive-images). Small viewport units use the small viewport size; the preceding `vh` declaration supports browsers that do not understand `svh`. See [MDN length units](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/length).
++
++## Measured asset sizes
++
++The original Unsplash URL returned 157,969 bytes during this audit. Its automatic format negotiation can produce different responses for different clients. Savings below compare the committed assets against that specific response.
++
++| Image candidate | AVIF bytes | WebP bytes | AVIF reduction versus original response |
++| --- | ---: | ---: | ---: |
++| 640px | 13,381 | 16,900 | 91.5% |
++| 960px | 21,061 | 30,358 | 86.7% |
++| 1350px | 33,485 | 49,440 | 78.8% |
++| 1920px | 58,351 | 83,388 | 63.1% |
++
++The 1350px JPEG fallback is 113,605 bytes. HTML grows from 4,708 to 6,320 bytes (Python gzip estimate: 1,735 to 2,215 bytes); the image savings outweigh the markup increase for every candidate. Actual transfer sizes depend on host compression, caching, viewport, browser format support, and pixel density.
++
++All variants retain the existing stock photo from [Unsplash](https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80), image identifier `photo-1495474472287-4d71bcdd2085`. No generated images were used. The source was retrieved at 1920 by 1280 pixels; derivatives were encoded with Pillow using AVIF quality 48, WebP quality 76, and progressive JPEG quality 78. If replacing a derivative, change its content hash and update the HTML references together.
++
++## Static verification
++
++- Strict HTML5 parsing with html5lib passed; CSS syntax parsing with tinycss2 passed, including media rules.
++- All nine committed images decoded successfully. Every responsive width descriptor and filename content hash matched its file.
++- Every navigation destination matched the original page. No scripts or external resource URLs remain in the homepage.
++- The hero has eager loading, high fetch priority, and explicit dimensions. Responsive wrapping, grid sizing, and viewport fallbacks were checked in source.
++- `git diff --check` passed. No build script exists or is required. Temporary image and validation tools added no project dependencies.
++
++The npm HTML validator could not launch in this environment; HTML5 and CSS parsers provided the syntax checks above. These checks do not establish visual correctness or runtime performance.
++
++## Production follow up
++
++The repository has no deployment configuration, backend, or implementations for the linked menu, account, ordering, and other routes. Response latency and navigation behavior for those destinations require the deployed application; they cannot be diagnosed from this homepage.
++
++At the actual hosting layer, enable Brotli or gzip for HTML, serve AVIF and WebP with their correct MIME types, and use `Cache-Control: public, max-age=31536000, immutable` for the content-hashed images. Revalidate the public homepage HTML so it can reference newly versioned assets. Keep account and logout response caching under the application's authentication policy. Retain older hashed assets during releases so cached HTML can still resolve them.
++
++Evaluate production field data separately for mobile and desktop. The targets at the 75th percentile are LCP at most 2.5 seconds, INP at most 200 milliseconds, and CLS at most 0.1, as defined by [Core Web Vitals](https://web.dev/articles/vitals). Use existing CrUX or Search Console data where available. If measurements remain poor, distinguish slow document delivery, image transfer, rendering delay, and destination-route latency before adding client code.

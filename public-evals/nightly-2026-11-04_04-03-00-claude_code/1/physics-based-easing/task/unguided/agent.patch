@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interactive card motion */
++    .card.spring,
++    .card.bounce {
++      will-change: transform;
++      transition-property: transform, box-shadow;
++    }
++
++    /* Maple Oat Latte: damped spring that overshoots its target scale, then settles */
++    .card.spring {
++      --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
++      transition-duration: 0.7s;
++      transition-timing-function: var(--spring-ease);
++    }
++
++    @supports (transition-timing-function: linear(0, 1)) {
++      .card.spring {
++        /* Sampled damped harmonic oscillator (ζ ≈ 0.32): overshoot, undershoot, settle */
++        --spring-ease: linear(0, 0.05, 0.183, 0.37, 0.583, 0.796, 0.988, 1.145, 1.258, 1.324,
++            1.346, 1.33, 1.286, 1.222, 1.148, 1.074, 1.007, 0.952, 0.913, 0.889, 0.88,
++            0.885, 0.9, 0.922, 0.947, 0.973, 0.996, 1.016, 1.03, 1.038, 1.041, 1.04,
++            1.035, 1.027, 1.019, 1.01, 1.002, 0.995, 0.99, 0.987, 1);
++      }
++    }
++
++    .card.spring:hover,
++    .card.spring:focus-within {
++      transform: scale(1.06);
++      box-shadow: 0 14px 28px rgba(78, 52, 46, 0.18), 0 4px 10px rgba(78, 52, 46, 0.12);
++    }
++
++    /* Dark Roast Espresso: playful lift that bounces into place */
++    .card.bounce {
++      --bounce-ease: cubic-bezier(0.68, -0.55, 0.27, 1.55);
++      transition-duration: 0.8s;
++      transition-timing-function: var(--bounce-ease);
++    }
++
++    @supports (transition-timing-function: linear(0, 1)) {
++      .card.bounce {
++        /* Classic ease-out-bounce: hits the target, rebounds with decaying hops */
++        --bounce-ease: linear(0, 0.019, 0.076, 0.17, 0.303, 0.473, 0.681, 0.926, 1 36.4%,
++            0.86, 0.788, 0.753, 0.75 55%, 0.772, 0.833, 0.931, 1 72.7%,
++            0.952, 0.938 82%, 0.962, 1 90.9%, 0.985, 0.984 95.5%, 1);
++      }
++    }
++
++    .card.bounce:hover,
++    .card.bounce:focus-within {
++      transform: translateY(-10px) scale(1.03);
++      box-shadow: 0 16px 24px rgba(78, 52, 46, 0.2), 0 6px 8px rgba(78, 52, 46, 0.1);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce {
++        transition: none;
++        will-change: auto;
++      }
++
++      .card.spring:hover,
++      .card.spring:focus-within,
++      .card.bounce:hover,
++      .card.bounce:focus-within {
++        transform: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,14 +244,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

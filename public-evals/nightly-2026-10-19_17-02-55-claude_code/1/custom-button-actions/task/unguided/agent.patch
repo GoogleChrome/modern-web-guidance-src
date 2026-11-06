@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Action Demo */
++    .action-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .action-controls button.btn {
++      border: none;
++      margin-top: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .action-stage {
++      display: flex;
++      justify-content: center;
++      padding: 40px 0;
++    }
++
++    #action-target {
++      width: 120px;
++      height: 120px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++      border-radius: 8px;
++      transition: transform 0.6s, border-radius 0.6s;
++    }
++
++    #action-target.is-spun {
++      transform: rotate(360deg);
++    }
++
++    #action-target.is-grown {
++      width: 200px;
++      height: 200px;
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Play With the Bean</h2>
++      <div class="action-controls">
++        <button type="button" class="btn" commandfor="action-target" command="--spin">Spin</button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow">Grow</button>
++        <button type="button" class="btn" commandfor="action-target" command="--round">Make Round</button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++      <div class="action-stage">
++        <div id="action-target">Bean</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +267,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Custom commands (prefixed with "--") are dispatched to the target as "command" events.
++    const actionTarget = document.getElementById('action-target');
++    const toggles = {
++      '--spin': 'is-spun',
++      '--grow': 'is-grown',
++      '--round': 'is-rounded',
++    };
++
++    actionTarget.addEventListener('command', (event) => {
++      if (event.command === '--reset') {
++        actionTarget.classList.remove(...Object.values(toggles));
++      } else if (event.command in toggles) {
++        actionTarget.classList.toggle(toggles[event.command]);
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

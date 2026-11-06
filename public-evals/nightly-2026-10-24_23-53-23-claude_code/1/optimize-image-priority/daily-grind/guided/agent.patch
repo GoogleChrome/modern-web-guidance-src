@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+index 66c9173..1a0add0 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,9 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +86,24 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -115,6 +131,16 @@
+       text-align: center;
+     }
+ 
++    .card-img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -169,6 +195,12 @@
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-img"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80 800w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=2000&q=80 2000w"
++      sizes="100vw" alt="" width="1350" height="900" fetchpriority="high">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +211,28 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80 600w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=900&q=80 900w"
++            sizes="(min-width: 1100px) 340px, (min-width: 600px) 33vw, 100vw"
++            alt="A barista's hand holding a maple oat latte with latte art" width="600" height="400" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80 600w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=900&q=80 900w"
++            sizes="(min-width: 1100px) 340px, (min-width: 600px) 33vw, 100vw"
++            alt="A cup of dark roast espresso with golden crema" width="600" height="400" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            srcset="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80 600w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80 900w"
++            sizes="(min-width: 1100px) 340px, (min-width: 600px) 33vw, 100vw"
++            alt="A tall glass of cold brew coffee with milk swirling in" width="600" height="400" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

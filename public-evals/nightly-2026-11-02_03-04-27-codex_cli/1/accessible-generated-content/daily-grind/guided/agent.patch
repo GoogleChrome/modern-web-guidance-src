@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b7290d 100644
+--- a/index.html
++++ b/index.html
+@@ -120,9 +120,47 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
++    .card h3::after {
++      content: "";
++      display: block;
++      inline-size: 2.5rem;
++      block-size: 3px;
++      margin: 10px auto 0;
++      border-radius: 999px;
++      background: var(--accent);
++    }
++
++    /* Decorative glyphs have empty alternative text. Their aria-hidden
++       wrappers also hide the single-value fallback in older browsers. */
++    .decoration {
+       display: inline-block;
++      flex-shrink: 0;
++      line-height: 1;
++      pointer-events: none;
++    }
++
++    .decoration::before {
++      content: var(--glyph);
++      content: var(--glyph) / "";
++    }
++
++    .maple-icon { --glyph: "🍁"; }
++    .coffee-icon { --glyph: "☕"; }
++    .cold-icon { --glyph: "❄"; }
++    .arrow-icon { --glyph: "→"; }
++
++    .card h3 .decoration {
++      margin-inline-end: 0.4em;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6em;
+       background: var(--primary);
++      background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -171,7 +209,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="decoration coffee-icon" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +217,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3><span class="decoration maple-icon" aria-hidden="true"></span>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="decoration arrow-icon" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3><span class="decoration coffee-icon" aria-hidden="true"></span>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="decoration arrow-icon" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3><span class="decoration cold-icon" aria-hidden="true"></span>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="decoration arrow-icon" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

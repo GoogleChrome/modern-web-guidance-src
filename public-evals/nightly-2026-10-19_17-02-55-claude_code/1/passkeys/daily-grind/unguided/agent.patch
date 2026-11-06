@@ -1,0 +1,848 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..e7de037
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++data.json
++node_modules
+diff --git a/index.html b/index.html
+index 66c9173..8b1ba91 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,48 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Passkeys */
++    nav button.logout-link, nav button.login-link {
++      background: none; color: white; font: inherit; font-size: 0.9rem; cursor: pointer;
++      border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px;
++    }
++    nav button.logout-link:hover, nav button.login-link:hover { color: var(--accent); }
++    [hidden] { display: none !important; }
++
++    button.btn { border: 0; cursor: pointer; font: inherit; }
++    button.btn.secondary { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
++    button.btn.danger { background: #b71c1c; }
++    button.btn:disabled { opacity: 0.6; cursor: wait; }
++
++    dialog {
++      border: 0; border-radius: 8px; padding: 24px; width: min(420px, 92vw);
++      margin: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++    dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
++    dialog h2 { margin-bottom: 8px; color: var(--primary); }
++    dialog p { margin-bottom: 12px; }
++    dialog input[type=text] {
++      width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; font: inherit; margin: 6px 0 4px;
++    }
++    .dialog-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
++    .dialog-actions .btn { margin-top: 0; }
++    .form-error { color: #b71c1c; min-height: 1.4em; font-size: 0.9rem; margin-top: 8px; }
++    .divider { text-align: center; color: #777; margin: 14px 0 4px; font-size: 0.85rem; }
++
++    .passkey-list { list-style: none; margin-top: 16px; }
++    .passkey-list li {
++      background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 14px 16px; margin-bottom: 12px; display: flex; gap: 12px;
++      justify-content: space-between; align-items: center; flex-wrap: wrap;
++    }
++    .passkey-meta { font-size: 0.85rem; color: #6d4c41; }
++    .passkey-actions { display: flex; gap: 8px; }
++    .passkey-actions .btn { margin-top: 0; padding: 6px 12px; font-size: 0.85rem; }
++    #toast {
++      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
++      background: var(--primary); color: white; padding: 10px 18px; border-radius: 6px; z-index: 3000;
++    }
+   </style>
+ </head>
+ 
+@@ -164,17 +206,18 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" id="login-btn" class="login-link">Sign in</button></li>
++      <li><button type="button" id="logout-btn" class="logout-link" hidden>Logout</button></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home-hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="home-main">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -197,6 +240,57 @@
+     </section>
+   </main>
+ 
++  <main class="container" id="account-view" hidden>
++    <h2>My Account</h2>
++    <p>Signed in as <strong id="account-username"></strong>.</p>
++    <h3 style="margin-top: 24px;">Passkeys</h3>
++    <p>Passkeys let you sign in with your fingerprint, face, or screen lock instead of a password.</p>
++    <ul class="passkey-list" id="passkey-list"></ul>
++    <button type="button" class="btn" id="add-passkey-btn">Add a passkey</button>
++    <p class="form-error" id="account-error" role="alert"></p>
++  </main>
++
++  <dialog id="auth-dialog">
++    <h2>Sign in</h2>
++    <p id="passkey-unsupported" hidden>Your browser does not support passkeys.</p>
++    <div id="auth-forms">
++      <button type="button" class="btn" id="signin-passkey-btn" style="margin-top:0">Sign in with a passkey</button>
++      <div class="divider">New here?</div>
++      <form id="register-form">
++        <label for="reg-username">Choose a username</label>
++        <input type="text" id="reg-username" autocomplete="username webauthn" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._\-]+">
++        <div class="dialog-actions">
++          <button type="submit" class="btn">Create account with a passkey</button>
++        </div>
++      </form>
++    </div>
++    <p class="form-error" id="auth-error" role="alert"></p>
++    <div class="dialog-actions"><button type="button" class="btn secondary" data-close>Cancel</button></div>
++  </dialog>
++
++  <dialog id="reauth-dialog">
++    <h2>Confirm it's you</h2>
++    <p id="reauth-reason">For your security, please verify with your passkey to continue.</p>
++    <p class="form-error" id="reauth-error" role="alert"></p>
++    <div class="dialog-actions">
++      <button type="button" class="btn" id="reauth-confirm">Verify with passkey</button>
++      <button type="button" class="btn secondary" id="reauth-cancel">Cancel</button>
++    </div>
++  </dialog>
++
++  <dialog id="rename-dialog">
++    <form id="rename-form">
++      <h2>Rename passkey</h2>
++      <input type="text" id="rename-input" maxlength="60" required aria-label="Passkey name">
++      <div class="dialog-actions">
++        <button type="submit" class="btn">Save</button>
++        <button type="button" class="btn secondary" data-close>Cancel</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="toast" role="status" hidden></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +301,246 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const $ = (id) => document.getElementById(id);
++    const supported = !!(window.PublicKeyCredential && navigator.credentials);
++    let currentUser = null;
++
++    /* ---- encoding ---- */
++    const toBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)).buffer;
++    const toB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++
++    async function api(method, url, body) {
++      const res = await fetch(url, {
++        method, credentials: 'same-origin',
++        headers: body ? { 'Content-Type': 'application/json' } : {},
++        body: body ? JSON.stringify(body) : undefined,
++      });
++      const data = await res.json().catch(() => ({}));
++      if (!res.ok) throw Object.assign(new Error(data.message || 'Request failed'), { code: data.error });
++      return data;
++    }
++    const post = (url, body = {}) => api('POST', url, body);
++
++    function friendly(e) {
++      if (e && e.name === 'NotAllowedError') return 'The passkey prompt was cancelled or timed out.';
++      if (e && e.name === 'InvalidStateError') return 'This passkey is already registered on this device.';
++      return (e && e.message) || 'Something went wrong.';
++    }
++
++    function toast(msg) {
++      const t = $('toast'); t.textContent = msg; t.hidden = false;
++      clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 3000);
++    }
++
++    /* ---- WebAuthn ceremonies ---- */
++    async function createPasskey(options) {
++      options.challenge = toBuf(options.challenge);
++      options.user.id = toBuf(options.user.id);
++      options.excludeCredentials = options.excludeCredentials.map((c) => ({ ...c, id: toBuf(c.id) }));
++      const cred = await navigator.credentials.create({ publicKey: options });
++      return {
++        id: cred.id,
++        response: {
++          clientDataJSON: toB64u(cred.response.clientDataJSON),
++          attestationObject: toB64u(cred.response.attestationObject),
++          transports: cred.response.getTransports ? cred.response.getTransports() : [],
++        },
++      };
++    }
++
++    async function getAssertion(options) {
++      options.challenge = toBuf(options.challenge);
++      options.allowCredentials = options.allowCredentials.map((c) => ({ ...c, id: toBuf(c.id) }));
++      const cred = await navigator.credentials.get({ publicKey: options });
++      const r = cred.response;
++      return {
++        id: cred.id,
++        response: {
++          clientDataJSON: toB64u(r.clientDataJSON),
++          authenticatorData: toB64u(r.authenticatorData),
++          signature: toB64u(r.signature),
++          userHandle: r.userHandle ? toB64u(r.userHandle) : null,
++        },
++      };
++    }
++
++    const defaultPasskeyName = () => {
++      const ua = navigator.userAgent;
++      const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'Device';
++      return `${os} passkey`;
++    };
++
++    /* ---- reauthentication ---- */
++    // Runs `action`; if the server demands a fresh passkey check, prompts for one and retries once.
++    async function withReauth(action, reason) {
++      try { return await action(); }
++      catch (e) {
++        if (e.code !== 'reauth_required') throw e;
++        await reauthenticate(reason);
++        return action();
++      }
++    }
++
++    function reauthenticate(reason) {
++      const dlg = $('reauth-dialog');
++      $('reauth-error').textContent = '';
++      if (reason) $('reauth-reason').textContent = reason;
++      return new Promise((resolve, reject) => {
++        const confirmBtn = $('reauth-confirm'), cancelBtn = $('reauth-cancel');
++        const cleanup = () => { confirmBtn.onclick = cancelBtn.onclick = dlg.oncancel = null; dlg.close(); };
++        cancelBtn.onclick = dlg.oncancel = () => { cleanup(); reject(new Error('Verification cancelled.')); };
++        confirmBtn.onclick = async () => {
++          confirmBtn.disabled = true;
++          try {
++            const assertion = await getAssertion(await post('/api/reauth/options'));
++            await post('/api/reauth/verify', assertion);
++            cleanup(); resolve();
++          } catch (e) { $('reauth-error').textContent = friendly(e); }
++          finally { confirmBtn.disabled = false; }
++        };
++        dlg.showModal();
++      });
++    }
++
++    /* ---- session / views ---- */
++    function render() {
++      $('login-btn').hidden = !!currentUser;
++      $('logout-btn').hidden = !currentUser;
++      const onAccount = location.pathname === '/account' && currentUser;
++      $('account-view').hidden = !onAccount;
++      $('home-hero').hidden = $('home-main').hidden = !!onAccount;
++      if (onAccount) {
++        $('account-username').textContent = currentUser.username;
++        loadPasskeys();
++      }
++    }
++
++    async function refreshUser() {
++      currentUser = (await api('GET', '/api/me')).user;
++      if (!currentUser && location.pathname === '/account') openAuth();
++      render();
++    }
++
++    function navigate(path) { history.pushState({}, '', path); render(); }
++
++    /* ---- sign in / sign up ---- */
++    function openAuth() {
++      $('auth-error').textContent = '';
++      $('passkey-unsupported').hidden = supported;
++      $('auth-forms').hidden = !supported;
++      if (!$('auth-dialog').open) $('auth-dialog').showModal();
++    }
++
++    async function onSignedIn(user, goAccount) {
++      currentUser = user;
++      $('auth-dialog').close();
++      if (goAccount) navigate('/account'); else render();
++      toast(`Welcome, ${user.username}!`);
++    }
++
++    $('signin-passkey-btn').onclick = async (ev) => {
++      const btn = ev.currentTarget; btn.disabled = true; $('auth-error').textContent = '';
++      try {
++        const assertion = await getAssertion(await post('/api/login/options'));
++        const { user } = await post('/api/login/verify', assertion);
++        await onSignedIn(user, location.pathname === '/account');
++      } catch (e) { $('auth-error').textContent = friendly(e); }
++      finally { btn.disabled = false; }
++    };
++
++    $('register-form').onsubmit = async (ev) => {
++      ev.preventDefault();
++      const btn = ev.submitter; btn.disabled = true; $('auth-error').textContent = '';
++      try {
++        const options = await post('/api/register/options', { username: $('reg-username').value });
++        const cred = await createPasskey(options);
++        const { user } = await post('/api/register/verify', { ...cred, name: defaultPasskeyName() });
++        await onSignedIn(user, true);
++      } catch (e) { $('auth-error').textContent = friendly(e); }
++      finally { btn.disabled = false; }
++    };
++
++    $('login-btn').onclick = openAuth;
++    $('logout-btn').onclick = async () => {
++      await post('/api/logout');
++      currentUser = null;
++      navigate('/');
++    };
++    document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.closest('dialog').close()));
++
++    document.querySelector('nav a[href="/account"]').onclick = (ev) => {
++      ev.preventDefault();
++      if (currentUser) navigate('/account'); else { history.pushState({}, '', '/account'); openAuth(); }
++    };
++    window.onpopstate = render;
++
++    /* ---- passkey management ---- */
++    const fmtDate = (t) => (t ? new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'never');
++
++    async function loadPasskeys() {
++      const list = $('passkey-list');
++      try {
++        const { passkeys } = await api('GET', '/api/passkeys');
++        list.replaceChildren(...passkeys.map((p) => {
++          const li = document.createElement('li');
++          const info = document.createElement('div');
++          const name = document.createElement('strong'); name.textContent = p.name;
++          const meta = document.createElement('div'); meta.className = 'passkey-meta';
++          meta.textContent = `Added ${fmtDate(p.createdAt)} · Last used ${fmtDate(p.lastUsedAt)}` +
++            (p.deviceType === 'multiDevice' ? ' · Synced' : '');
++          info.append(name, meta);
++          const actions = document.createElement('div'); actions.className = 'passkey-actions';
++          const rename = document.createElement('button'); rename.className = 'btn secondary'; rename.textContent = 'Rename';
++          rename.onclick = () => renamePasskey(p);
++          const del = document.createElement('button'); del.className = 'btn danger'; del.textContent = 'Remove';
++          del.disabled = passkeys.length < 2; del.title = del.disabled ? 'You need at least one passkey' : '';
++          del.onclick = () => removePasskey(p);
++          actions.append(rename, del);
++          li.append(info, actions);
++          return li;
++        }));
++      } catch (e) {
++        if (e.code === 'unauthenticated') { currentUser = null; render(); } else $('account-error').textContent = e.message;
++      }
++    }
++
++    $('add-passkey-btn').onclick = async (ev) => {
++      const btn = ev.currentTarget; btn.disabled = true; $('account-error').textContent = '';
++      try {
++        await withReauth(async () => {
++          const options = await post('/api/passkeys/options');
++          const cred = await createPasskey(options);
++          await post('/api/passkeys/verify', { ...cred, name: defaultPasskeyName() });
++        }, 'Verify with a passkey to add a new one.');
++        toast('Passkey added'); loadPasskeys();
++      } catch (e) { $('account-error').textContent = friendly(e); }
++      finally { btn.disabled = false; }
++    };
++
++    function renamePasskey(p) {
++      const dlg = $('rename-dialog'), input = $('rename-input');
++      input.value = p.name;
++      $('rename-form').onsubmit = async (ev) => {
++        ev.preventDefault();
++        try { await api('PATCH', '/api/passkeys', { id: p.id, name: input.value }); dlg.close(); loadPasskeys(); }
++        catch (e) { $('account-error').textContent = e.message; dlg.close(); }
++      };
++      dlg.showModal();
++    }
++
++    async function removePasskey(p) {
++      if (!confirm(`Remove "${p.name}"? You will no longer be able to sign in with it.`)) return;
++      $('account-error').textContent = '';
++      try {
++        await withReauth(() => api('DELETE', '/api/passkeys', { id: p.id }), 'Verify with a passkey to remove a passkey.');
++        toast('Passkey removed'); loadPasskeys();
++      } catch (e) { $('account-error').textContent = friendly(e); }
++    }
++
++    refreshUser();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..4c40882
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,441 @@
++// Static file server + passkey (WebAuthn) API. No third-party dependencies.
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++
++const PORT = Number(process.env.PORT || 11222);
++const ORIGIN = process.env.ORIGIN || `http://localhost:${PORT}`;
++const RP_ID = process.env.RP_ID || new URL(ORIGIN).hostname;
++const RP_NAME = 'The Daily Grind';
++const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data.json');
++const REAUTH_WINDOW_MS = 5 * 60 * 1000;
++const CHALLENGE_TTL_MS = 5 * 60 * 1000;
++const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
++
++/* ---------- storage ---------- */
++
++// users: { [id]: { id, username, handle } }
++// credentials: { [credId]: { id, userId, publicKey (SPKI b64url), alg, counter, name, createdAt, lastUsedAt, transports, backedUp, deviceType } }
++let db = { users: {}, credentials: {} };
++try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch { /* fresh db */ }
++const save = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
++
++const sessions = new Map(); // sid -> { userId, reauthAt, challenge, expires, created }
++
++/* ---------- helpers ---------- */
++
++const b64u = (buf) => Buffer.from(buf).toString('base64url');
++const fromB64u = (s) => Buffer.from(String(s), 'base64url');
++const sha256 = (d) => crypto.createHash('sha256').update(d).digest();
++
++class HttpError extends Error {
++  constructor(status, code, message) { super(message || code); this.status = status; this.code = code; }
++}
++
++function parseCookies(req) {
++  const out = {};
++  for (const part of (req.headers.cookie || '').split(';')) {
++    const i = part.indexOf('=');
++    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
++  }
++  return out;
++}
++
++function getSession(req, res, create = false) {
++  const sid = parseCookies(req).sid;
++  let s = sid && sessions.get(sid);
++  if (s && s.expires < Date.now()) { sessions.delete(sid); s = null; }
++  if (!s && create) s = newSession(res);
++  return s || null;
++}
++
++function newSession(res) {
++  const sid = crypto.randomBytes(32).toString('base64url');
++  const s = { sid, userId: null, reauthAt: 0, challenge: null, expires: Date.now() + SESSION_TTL_MS };
++  sessions.set(sid, s);
++  const secure = ORIGIN.startsWith('https') ? '; Secure' : '';
++  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}${secure}`);
++  return s;
++}
++
++// Rotate the session id on privilege change to prevent session fixation.
++function startAuthedSession(req, res, userId, reauth = true) {
++  const old = parseCookies(req).sid;
++  if (old) sessions.delete(old);
++  const s = newSession(res);
++  s.userId = userId;
++  s.reauthAt = reauth ? Date.now() : 0;
++  return s;
++}
++
++function requireUser(req, res) {
++  const s = getSession(req, res);
++  const user = s && s.userId && db.users[s.userId];
++  if (!user) throw new HttpError(401, 'unauthenticated', 'Please sign in.');
++  return { s, user };
++}
++
++function requireRecentAuth(s) {
++  if (Date.now() - s.reauthAt > REAUTH_WINDOW_MS) {
++    throw new HttpError(403, 'reauth_required', 'Please confirm it is you with your passkey.');
++  }
++}
++
++function setChallenge(s, purpose, extra = {}) {
++  const challenge = crypto.randomBytes(32);
++  s.challenge = { value: b64u(challenge), purpose, expires: Date.now() + CHALLENGE_TTL_MS, ...extra };
++  return b64u(challenge);
++}
++
++// Challenges are single use: always cleared when consumed, pass or fail.
++function takeChallenge(s, purpose) {
++  const c = s && s.challenge;
++  if (s) s.challenge = null;
++  if (!c || c.purpose !== purpose || c.expires < Date.now()) {
++    throw new HttpError(400, 'bad_challenge', 'Challenge expired. Please try again.');
++  }
++  return c;
++}
++
++const userCreds = (userId) => Object.values(db.credentials).filter((c) => c.userId === userId);
++
++const publicCred = (c) => ({
++  id: c.id, name: c.name, createdAt: c.createdAt, lastUsedAt: c.lastUsedAt,
++  backedUp: c.backedUp, deviceType: c.deviceType, transports: c.transports,
++});
++
++/* ---------- minimal CBOR decoder (enough for COSE keys / attestation objects) ---------- */
++
++function cborDecode(buf) {
++  let o = 0;
++  function read() {
++    const ib = buf[o++];
++    const major = ib >> 5;
++    let info = ib & 31;
++    let val;
++    if (info < 24) val = info;
++    else if (info === 24) val = buf[o++];
++    else if (info === 25) { val = buf.readUInt16BE(o); o += 2; }
++    else if (info === 26) { val = buf.readUInt32BE(o); o += 4; }
++    else if (info === 27) { val = Number(buf.readBigUInt64BE(o)); o += 8; }
++    else throw new Error('unsupported CBOR');
++    switch (major) {
++      case 0: return val;
++      case 1: return -1 - val;
++      case 2: { const r = buf.subarray(o, o + val); o += val; return r; }
++      case 3: { const r = buf.toString('utf8', o, o + val); o += val; return r; }
++      case 4: { const a = []; for (let i = 0; i < val; i++) a.push(read()); return a; }
++      case 5: { const m = new Map(); for (let i = 0; i < val; i++) { const k = read(); m.set(k, read()); } return m; }
++      case 7: if (info === 20) return false; if (info === 21) return true; if (info === 22) return null; // fallthrough
++      default: throw new Error('unsupported CBOR');
++    }
++  }
++  const v = read();
++  return { value: v, length: o };
++}
++
++/* ---------- WebAuthn verification ---------- */
++
++function parseAuthData(ad) {
++  if (ad.length < 37) throw new HttpError(400, 'bad_response', 'Malformed authenticator data');
++  const flags = ad[32];
++  const out = {
++    rpIdHash: ad.subarray(0, 32), flags,
++    up: !!(flags & 0x01), uv: !!(flags & 0x04), be: !!(flags & 0x08), bs: !!(flags & 0x10), at: !!(flags & 0x40),
++    counter: ad.readUInt32BE(33),
++  };
++  if (out.at) {
++    let o = 37 + 16; // skip aaguid
++    const len = ad.readUInt16BE(o); o += 2;
++    out.credId = ad.subarray(o, o + len); o += len;
++    out.cose = cborDecode(ad.subarray(o)).value;
++  }
++  return out;
++}
++
++function checkClientData(clientDataJSON, type, expectedChallenge) {
++  let cd;
++  try { cd = JSON.parse(fromB64u(clientDataJSON).toString('utf8')); } catch { throw new HttpError(400, 'bad_response', 'Malformed client data'); }
++  if (cd.type !== type) throw new HttpError(400, 'bad_response', 'Wrong ceremony type');
++  const a = Buffer.from(String(cd.challenge)), b = Buffer.from(expectedChallenge);
++  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new HttpError(400, 'bad_response', 'Challenge mismatch');
++  if (cd.origin !== ORIGIN) throw new HttpError(400, 'bad_response', 'Unexpected origin');
++  if (cd.crossOrigin) throw new HttpError(400, 'bad_response', 'Cross-origin ceremonies are not allowed');
++}
++
++function checkAuthData(ad) {
++  if (!ad.rpIdHash.equals(sha256(RP_ID))) throw new HttpError(400, 'bad_response', 'RP ID mismatch');
++  if (!ad.up) throw new HttpError(400, 'bad_response', 'User presence required');
++  if (!ad.uv) throw new HttpError(400, 'bad_response', 'User verification required');
++}
++
++// COSE_Key -> { spki (b64url), alg }
++function coseToSpki(cose) {
++  const kty = cose.get(1), alg = cose.get(3);
++  let jwk;
++  if (kty === 2 && alg === -7 && cose.get(-1) === 1) {
++    jwk = { kty: 'EC', crv: 'P-256', x: b64u(cose.get(-2)), y: b64u(cose.get(-3)) };
++  } else if (kty === 3 && alg === -257) {
++    jwk = { kty: 'RSA', n: b64u(cose.get(-1)), e: b64u(cose.get(-2)) };
++  } else if (kty === 1 && alg === -8 && cose.get(-1) === 6) {
++    jwk = { kty: 'OKP', crv: 'Ed25519', x: b64u(cose.get(-2)) };
++  } else {
++    throw new HttpError(400, 'unsupported_key', 'Unsupported passkey algorithm');
++  }
++  const spki = crypto.createPublicKey({ key: jwk, format: 'jwk' }).export({ type: 'spki', format: 'der' });
++  return { spki: b64u(spki), alg };
++}
++
++function verifySignature(cred, data, signature) {
++  const key = crypto.createPublicKey({ key: fromB64u(cred.publicKey), format: 'der', type: 'spki' });
++  if (cred.alg === -8) return crypto.verify(null, data, key, signature);
++  return crypto.verify('sha256', data, key, signature); // ES256 (DER) and RS256 (PKCS1 v1.5)
++}
++
++function verifyRegistration(s, body, userId) {
++  const ch = takeChallenge(s, 'register');
++  const r = body && body.response;
++  if (!r || typeof r.clientDataJSON !== 'string' || typeof r.attestationObject !== 'string') throw new HttpError(400, 'bad_response');
++  checkClientData(r.clientDataJSON, 'webauthn.create', ch.value);
++  let att;
++  try { att = cborDecode(fromB64u(r.attestationObject)).value; } catch { throw new HttpError(400, 'bad_response', 'Malformed attestation'); }
++  const ad = parseAuthData(att.get('authData'));
++  checkAuthData(ad);
++  if (!ad.at) throw new HttpError(400, 'bad_response', 'Missing credential data');
++  // We request attestation "none", so attestation statements are not evaluated.
++  const id = b64u(ad.credId);
++  if (db.credentials[id]) throw new HttpError(409, 'duplicate', 'This passkey is already registered.');
++  const { spki, alg } = coseToSpki(ad.cose);
++  const transports = Array.isArray(r.transports) ? r.transports.filter((t) => typeof t === 'string').slice(0, 8) : [];
++  return {
++    id, userId, publicKey: spki, alg, counter: ad.counter, transports,
++    backedUp: ad.bs, deviceType: ad.be ? 'multiDevice' : 'singleDevice',
++    createdAt: Date.now(), lastUsedAt: null,
++  };
++}
++
++// Returns the credential used; updates counter / lastUsedAt.
++function verifyAssertion(s, body, purpose, expectedUserId) {
++  const ch = takeChallenge(s, purpose);
++  const r = body && body.response;
++  if (!body || typeof body.id !== 'string' || !r || ['clientDataJSON', 'authenticatorData', 'signature'].some((k) => typeof r[k] !== 'string')) {
++    throw new HttpError(400, 'bad_response');
++  }
++  const cred = db.credentials[body.id];
++  if (!cred) throw new HttpError(401, 'unknown_credential', 'Passkey not recognised.');
++  if (expectedUserId && cred.userId !== expectedUserId) throw new HttpError(403, 'wrong_user', 'That passkey belongs to a different account.');
++  if (typeof r.userHandle === 'string' && r.userHandle && r.userHandle !== db.users[cred.userId].handle) {
++    throw new HttpError(401, 'bad_response', 'User handle mismatch');
++  }
++  checkClientData(r.clientDataJSON, 'webauthn.get', ch.value);
++  const adBuf = fromB64u(r.authenticatorData);
++  const ad = parseAuthData(adBuf);
++  checkAuthData(ad);
++  const signed = Buffer.concat([adBuf, sha256(fromB64u(r.clientDataJSON))]);
++  let ok = false;
++  try { ok = verifySignature(cred, signed, fromB64u(r.signature)); } catch { /* invalid */ }
++  if (!ok) throw new HttpError(401, 'bad_signature', 'Passkey verification failed.');
++  if ((ad.counter || cred.counter) && ad.counter <= cred.counter) {
++    throw new HttpError(401, 'counter', 'Passkey appears to be cloned; sign-in refused.');
++  }
++  cred.counter = ad.counter;
++  cred.backedUp = ad.bs;
++  cred.lastUsedAt = Date.now();
++  return cred;
++}
++
++/* ---------- routes ---------- */
++
++const USERNAME_RE = /^[A-Za-z0-9._-]{3,32}$/;
++const findUserByName = (name) => Object.values(db.users).find((u) => u.username.toLowerCase() === name.toLowerCase());
++
++function registrationOptions(s, user, excludeIds) {
++  return {
++    challenge: setChallenge(s, 'register', { userId: user.id }),
++    rp: { name: RP_NAME, id: RP_ID },
++    user: { id: user.handle, name: user.username, displayName: user.username },
++    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }, { type: 'public-key', alg: -8 }],
++    timeout: 120000,
++    attestation: 'none',
++    excludeCredentials: excludeIds.map((id) => ({ type: 'public-key', id })),
++    authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'required' },
++  };
++}
++
++const routes = {
++  // --- sign up with a first passkey ---
++  'POST /api/register/options': (req, res, body) => {
++    const username = String(body.username || '').trim();
++    if (!USERNAME_RE.test(username)) throw new HttpError(400, 'bad_username', 'Username must be 3-32 letters, numbers, dots, dashes or underscores.');
++    if (findUserByName(username)) throw new HttpError(409, 'username_taken', 'That username is taken.');
++    // The user is only persisted once the passkey is verified.
++    const s = getSession(req, res, true);
++    const pending = { id: crypto.randomUUID(), username, handle: b64u(crypto.randomBytes(32)) };
++    const options = registrationOptions(s, pending, []);
++    s.challenge.pendingUser = pending;
++    return options;
++  },
++  'POST /api/register/verify': (req, res, body) => {
++    const s = getSession(req, res);
++    const pending = s && s.challenge && s.challenge.pendingUser;
++    if (!pending) throw new HttpError(400, 'bad_challenge', 'Registration expired. Please try again.');
++    if (findUserByName(pending.username)) throw new HttpError(409, 'username_taken', 'That username is taken.');
++    const cred = verifyRegistration(s, body, pending.id);
++    cred.name = String(body.name || 'Passkey').slice(0, 60);
++    db.users[pending.id] = pending;
++    db.credentials[cred.id] = cred;
++    save();
++    startAuthedSession(req, res, pending.id);
++    return { user: { username: pending.username } };
++  },
++
++  // --- sign in (discoverable credentials: no username needed) ---
++  'POST /api/login/options': (req, res) => {
++    const s = getSession(req, res, true);
++    return {
++      challenge: setChallenge(s, 'login'), rpId: RP_ID, timeout: 120000,
++      userVerification: 'required', allowCredentials: [],
++    };
++  },
++  'POST /api/login/verify': (req, res, body) => {
++    const s = getSession(req, res);
++    const cred = verifyAssertion(s, body, 'login');
++    save();
++    startAuthedSession(req, res, cred.userId);
++    return { user: { username: db.users[cred.userId].username } };
++  },
++
++  'GET /api/me': (req, res) => {
++    const s = getSession(req, res);
++    const user = s && s.userId && db.users[s.userId];
++    if (!user) return { user: null };
++    return { user: { username: user.username }, reauthRemainingMs: Math.max(0, REAUTH_WINDOW_MS - (Date.now() - s.reauthAt)) };
++  },
++  'POST /api/logout': (req, res) => {
++    const sid = parseCookies(req).sid;
++    if (sid) sessions.delete(sid);
++    res.setHeader('Set-Cookie', 'sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
++    return { ok: true };
++  },
++
++  // --- reauthentication ---
++  'POST /api/reauth/options': (req, res) => {
++    const { s, user } = requireUser(req, res);
++    return {
++      challenge: setChallenge(s, 'reauth'), rpId: RP_ID, timeout: 120000, userVerification: 'required',
++      allowCredentials: userCreds(user.id).map((c) => ({ type: 'public-key', id: c.id, transports: c.transports })),
++    };
++  },
++  'POST /api/reauth/verify': (req, res, body) => {
++    const { s, user } = requireUser(req, res);
++    verifyAssertion(s, body, 'reauth', user.id);
++    s.reauthAt = Date.now();
++    save();
++    return { ok: true };
++  },
++
++  // --- management ---
++  'GET /api/passkeys': (req, res) => {
++    const { user } = requireUser(req, res);
++    return { passkeys: userCreds(user.id).sort((a, b) => a.createdAt - b.createdAt).map(publicCred) };
++  },
++  'POST /api/passkeys/options': (req, res) => {
++    const { s, user } = requireUser(req, res);
++    requireRecentAuth(s);
++    return registrationOptions(s, user, userCreds(user.id).map((c) => c.id));
++  },
++  'POST /api/passkeys/verify': (req, res, body) => {
++    const { s, user } = requireUser(req, res);
++    requireRecentAuth(s);
++    const cred = verifyRegistration(s, body, user.id);
++    cred.name = String(body.name || 'Passkey').trim().slice(0, 60) || 'Passkey';
++    db.credentials[cred.id] = cred;
++    save();
++    return { passkey: publicCred(cred) };
++  },
++  'PATCH /api/passkeys': (req, res, body) => {
++    const { user } = requireUser(req, res);
++    const cred = db.credentials[body.id];
++    const name = String(body.name || '').trim().slice(0, 60);
++    if (!cred || cred.userId !== user.id) throw new HttpError(404, 'not_found', 'Passkey not found.');
++    if (!name) throw new HttpError(400, 'bad_name', 'Name required.');
++    cred.name = name;
++    save();
++    return { passkey: publicCred(cred) };
++  },
++  'DELETE /api/passkeys': (req, res, body) => {
++    const { s, user } = requireUser(req, res);
++    requireRecentAuth(s);
++    const cred = db.credentials[body.id];
++    if (!cred || cred.userId !== user.id) throw new HttpError(404, 'not_found', 'Passkey not found.');
++    if (userCreds(user.id).length <= 1) throw new HttpError(400, 'last_passkey', 'You cannot remove your only passkey.');
++    delete db.credentials[cred.id];
++    save();
++    return { ok: true };
++  },
++};
++
++/* ---------- server ---------- */
++
++const INDEX = path.join(__dirname, 'index.html');
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'same-origin',
++  'X-Frame-Options': 'DENY',
++};
++
++function readBody(req) {
++  return new Promise((resolve, reject) => {
++    let size = 0; const chunks = [];
++    req.on('data', (c) => { size += c.length; if (size > 64 * 1024) { reject(new HttpError(413, 'too_large')); req.destroy(); } else chunks.push(c); });
++    req.on('end', () => {
++      if (!chunks.length) return resolve({});
++      try { const v = JSON.parse(Buffer.concat(chunks).toString('utf8')); resolve(v && typeof v === 'object' ? v : {}); }
++      catch { reject(new HttpError(400, 'bad_json')); }
++    });
++    req.on('error', reject);
++  });
++}
++
++const server = http.createServer(async (req, res) => {
++  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
++  const { pathname } = new URL(req.url, ORIGIN);
++
++  if (pathname.startsWith('/api/')) {
++    res.setHeader('Cache-Control', 'no-store');
++    try {
++      const handler = routes[`${req.method} ${pathname}`];
++      if (!handler) throw new HttpError(404, 'not_found');
++      if (req.method !== 'GET') {
++        // CSRF defence in depth (cookie is also SameSite=Strict).
++        if (req.headers.origin !== ORIGIN) throw new HttpError(403, 'bad_origin');
++        if (!String(req.headers['content-type'] || '').startsWith('application/json')) throw new HttpError(415, 'bad_content_type');
++      }
++      const body = req.method === 'GET' ? {} : await readBody(req);
++      const result = handler(req, res, body);
++      res.writeHead(200, { 'Content-Type': 'application/json' });
++      res.end(JSON.stringify(result));
++    } catch (e) {
++      if (!(e instanceof HttpError)) console.error(e);
++      const err = e instanceof HttpError ? e : new HttpError(500, 'server_error', 'Something went wrong.');
++      if (!res.headersSent) res.writeHead(err.status, { 'Content-Type': 'application/json' });
++      res.end(JSON.stringify({ error: err.code, message: err.message }));
++    }
++    return;
++  }
++
++  if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html' || pathname === '/account')) {
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    return fs.createReadStream(INDEX).pipe(res);
++  }
++  res.writeHead(404, { 'Content-Type': 'text/plain' });
++  res.end('Not found');
++});
++
++setInterval(() => {
++  const now = Date.now();
++  for (const [sid, s] of sessions) if (s.expires < now) sessions.delete(sid);
++}, 60 * 1000).unref();
++
++server.listen(PORT, () => console.log(`The Daily Grind listening on ${ORIGIN} (rpId ${RP_ID})`));

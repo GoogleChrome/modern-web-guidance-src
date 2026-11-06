@@ -1,0 +1,418 @@
+diff --git a/coffee-box.js b/coffee-box.js
+new file mode 100644
+--- a/coffee-box.js
++++ b/coffee-box.js
+@@ -0,0 +1,413 @@
++/*
++ * Spinning 3D coffee box with a live, interactive HTML form on its front face.
++ *
++ * Native path (HTML-in-Canvas, `<canvas layoutsubtree>`):
++ *   The form is a real child of the canvas. On every `paint` event the browser
++ *   gives us a fresh snapshot of it which we upload as a WebGL texture with
++ *   `gl.texElementImage2D`. Each frame we also set the form's CSS transform to
++ *   the exact same projection used to draw the face, so pointer hit-testing,
++ *   focus rings, text selection, etc. land on what the user actually sees.
++ *
++ * Fallback path (browsers without HTML-in-Canvas):
++ *   The form is moved out of the canvas into the stage and overlaid on the
++ *   WebGL box using the same matrix3d projection, so it still looks and
++ *   behaves as if printed on the rotating box.
++ */
++(() => {
++  'use strict';
++
++  const stage = document.getElementById('box-stage');
++  const canvas = document.getElementById('box-canvas');
++  const form = document.getElementById('box-form');
++  if (!stage || !canvas || !form) return;
++
++  // ---------------------------------------------------------------- form logic
++  const qtyOut = document.getElementById('qty');
++  const status = document.getElementById('box-status');
++  const email = document.getElementById('box-email');
++  let qty = 2;
++  form.querySelectorAll('[data-step]').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      qty = Math.min(6, Math.max(1, qty + Number(btn.dataset.step)));
++      qtyOut.textContent = `${qty} bag${qty === 1 ? '' : 's'}`;
++    });
++  });
++  form.addEventListener('submit', (e) => {
++    e.preventDefault();
++    if (!email.value || !email.checkValidity()) {
++      status.textContent = 'Please enter a valid email.';
++      email.focus();
++      return;
++    }
++    const data = new FormData(form);
++    status.textContent = `Brewing! ${qty} × ${data.get('roast')} roast (${data.get('grind')}) on its way.`;
++  });
++
++  // ------------------------------------------------------------------ WebGL
++  const gl = canvas.getContext('webgl', { antialias: true, alpha: true, premultipliedAlpha: false });
++  if (!gl) {
++    // No WebGL at all: just show the form as a regular, flat form.
++    stage.classList.add('is-fallback');
++    stage.appendChild(form);
++    form.style.left = '50%';
++    form.style.top = '50%';
++    form.style.transform = 'translate(-50%, -50%)';
++    return;
++  }
++
++  const nativeHTML = typeof gl.texElementImage2D === 'function';
++  if (!nativeHTML) {
++    stage.classList.add('is-fallback');
++    stage.appendChild(form); // canvas children are not rendered without layoutsubtree support
++  }
++
++  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++  // Box dimensions in world units. Front face aspect (W/H) matches the form (320x400).
++  const W = 1.6, H = 2.0, D = 1.0;
++  const FORM_W = 320, FORM_H = 400;
++
++  // ------------------------------------------------------------- mat4 utils
++  // Column-major, same layout as WebGL uniforms and CSS matrix3d().
++  const mul = (a, b) => {
++    const o = new Float32Array(16);
++    for (let c = 0; c < 4; c++) {
++      for (let r = 0; r < 4; r++) {
++        let s = 0;
++        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
++        o[c * 4 + r] = s;
++      }
++    }
++    return o;
++  };
++  const perspective = (fovy, aspect, near, far) => {
++    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
++    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
++  };
++  const translate = (x, y, z) => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
++  const rotY = (a) => {
++    const c = Math.cos(a), s = Math.sin(a);
++    return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
++  };
++  const rotX = (a) => {
++    const c = Math.cos(a), s = Math.sin(a);
++    return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]);
++  };
++  const xform = (m, v) => [0, 1, 2, 3].map((r) => m[r] * v[0] + m[4 + r] * v[1] + m[8 + r] * v[2] + m[12 + r] * v[3]);
++
++  // ---------------------------------------------------------------- shaders
++  const VS = `
++    attribute vec3 aPos;
++    attribute vec3 aNormal;
++    attribute vec2 aUV;
++    uniform mat4 uMVP;
++    uniform mat4 uModel;
++    varying vec2 vUV;
++    varying vec3 vNormal;
++    void main() {
++      vUV = aUV;
++      vNormal = mat3(uModel) * aNormal;
++      gl_Position = uMVP * vec4(aPos, 1.0);
++    }`;
++  const FS = `
++    precision mediump float;
++    uniform sampler2D uTex;
++    uniform float uLit;
++    varying vec2 vUV;
++    varying vec3 vNormal;
++    void main() {
++      vec4 c = texture2D(uTex, vUV);
++      vec3 n = normalize(vNormal);
++      float diff = max(dot(n, normalize(vec3(0.4, 0.7, 1.0))), 0.0);
++      float light = mix(1.0, 0.45 + 0.65 * diff, uLit);
++      gl_FragColor = vec4(c.rgb * light, 1.0);
++    }`;
++  const compile = (type, src) => {
++    const s = gl.createShader(type);
++    gl.shaderSource(s, src);
++    gl.compileShader(s);
++    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
++    return s;
++  };
++  const prog = gl.createProgram();
++  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
++  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
++  gl.linkProgram(prog);
++  gl.useProgram(prog);
++  const loc = {
++    pos: gl.getAttribLocation(prog, 'aPos'),
++    normal: gl.getAttribLocation(prog, 'aNormal'),
++    uv: gl.getAttribLocation(prog, 'aUV'),
++    mvp: gl.getUniformLocation(prog, 'uMVP'),
++    model: gl.getUniformLocation(prog, 'uModel'),
++    tex: gl.getUniformLocation(prog, 'uTex'),
++    lit: gl.getUniformLocation(prog, 'uLit'),
++  };
++
++  // --------------------------------------------------------------- geometry
++  // Each face: center, right vector, up vector, width, height. Normal = right × up.
++  const faces = {
++    front: { c: [0, 0, D / 2], r: [1, 0, 0], u: [0, 1, 0], w: W, h: H },
++    back: { c: [0, 0, -D / 2], r: [-1, 0, 0], u: [0, 1, 0], w: W, h: H },
++    right: { c: [W / 2, 0, 0], r: [0, 0, -1], u: [0, 1, 0], w: D, h: H },
++    left: { c: [-W / 2, 0, 0], r: [0, 0, 1], u: [0, 1, 0], w: D, h: H },
++    top: { c: [0, H / 2, 0], r: [1, 0, 0], u: [0, 0, -1], w: W, h: D },
++    bottom: { c: [0, -H / 2, 0], r: [1, 0, 0], u: [0, 0, 1], w: W, h: D },
++  };
++  const verts = [];
++  const order = Object.keys(faces);
++  order.forEach((name) => {
++    const { c, r, u, w, h } = faces[name];
++    const n = [r[1] * u[2] - r[2] * u[1], r[2] * u[0] - r[0] * u[2], r[0] * u[1] - r[1] * u[0]];
++    const p = (sx, sy) => [0, 1, 2].map((i) => c[i] + r[i] * sx * w / 2 + u[i] * sy * h / 2);
++    // uv (0,0) = top-left of texture (first row), no FLIP_Y.
++    const tl = [...p(-1, 1), ...n, 0, 0];
++    const tr = [...p(1, 1), ...n, 1, 0];
++    const br = [...p(1, -1), ...n, 1, 1];
++    const bl = [...p(-1, -1), ...n, 0, 1];
++    verts.push(...tl, ...bl, ...br, ...tl, ...br, ...tr);
++  });
++  const vbo = gl.createBuffer();
++  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
++  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
++  const STRIDE = 8 * 4;
++  gl.enableVertexAttribArray(loc.pos);
++  gl.vertexAttribPointer(loc.pos, 3, gl.FLOAT, false, STRIDE, 0);
++  gl.enableVertexAttribArray(loc.normal);
++  gl.vertexAttribPointer(loc.normal, 3, gl.FLOAT, false, STRIDE, 12);
++  gl.enableVertexAttribArray(loc.uv);
++  gl.vertexAttribPointer(loc.uv, 2, gl.FLOAT, false, STRIDE, 24);
++
++  // --------------------------------------------------------------- textures
++  const makeTexture = () => {
++    const t = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, t);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++    return t;
++  };
++  const kraft = (ctx, w, h) => {
++    const g = ctx.createLinearGradient(0, 0, w, h);
++    g.addColorStop(0, '#d9b892');
++    g.addColorStop(1, '#b88b5e');
++    ctx.fillStyle = g;
++    ctx.fillRect(0, 0, w, h);
++    // paper fibre speckle
++    for (let i = 0; i < (w * h) / 180; i++) {
++      ctx.fillStyle = `rgba(62,39,35,${Math.random() * 0.08})`;
++      ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1);
++    }
++    ctx.strokeStyle = '#3e2723';
++    ctx.lineWidth = 6;
++    ctx.strokeRect(3, 3, w - 6, h - 6);
++  };
++  const canvasTexture = (w, h, draw) => {
++    const c = document.createElement('canvas');
++    c.width = w;
++    c.height = h;
++    const ctx = c.getContext('2d');
++    kraft(ctx, w, h);
++    ctx.fillStyle = '#3e2723';
++    ctx.textAlign = 'center';
++    ctx.textBaseline = 'middle';
++    draw && draw(ctx, w, h);
++    const t = makeTexture();
++    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
++    return t;
++  };
++  const font = (px, weight = 'bold') => `${weight} ${px}px "Segoe UI", Tahoma, sans-serif`;
++  const bean = (ctx, x, y, s) => {
++    ctx.save();
++    ctx.translate(x, y);
++    ctx.rotate(-0.5);
++    ctx.beginPath();
++    ctx.ellipse(0, 0, s * 0.62, s, 0, 0, Math.PI * 2);
++    ctx.fill();
++    ctx.strokeStyle = '#d9b892';
++    ctx.lineWidth = s * 0.14;
++    ctx.beginPath();
++    ctx.moveTo(0, -s * 0.85);
++    ctx.bezierCurveTo(s * 0.35, -s * 0.3, -s * 0.35, s * 0.3, 0, s * 0.85);
++    ctx.stroke();
++    ctx.restore();
++  };
++
++  const textures = {
++    // Front: replaced by the live form texture in native mode.
++    front: canvasTexture(FORM_W * 2, FORM_H * 2),
++    back: canvasTexture(640, 800, (ctx, w, h) => {
++      bean(ctx, w / 2, 210, 80);
++      ctx.font = font(54);
++      ctx.fillText('THE DAILY GRIND', w / 2, 380);
++      ctx.font = font(30, 'normal');
++      ctx.fillText('Small-batch roasted', w / 2, 450);
++      ctx.fillText('every Monday morning.', w / 2, 495);
++      ctx.font = font(26, 'normal');
++      ctx.fillText('Net wt. 340g · 12oz', w / 2, 690);
++    }),
++    right: canvasTexture(400, 800, (ctx, w, h) => {
++      ctx.save();
++      ctx.translate(w / 2, h / 2);
++      ctx.rotate(-Math.PI / 2);
++      ctx.font = font(62);
++      ctx.fillText('FRESHLY ROASTED', 0, -40);
++      ctx.font = font(34, 'normal');
++      ctx.fillText('Ethically sourced beans', 0, 40);
++      ctx.restore();
++    }),
++    left: canvasTexture(400, 800, (ctx, w, h) => {
++      ctx.save();
++      ctx.translate(w / 2, h / 2);
++      ctx.rotate(Math.PI / 2);
++      ctx.font = font(62);
++      ctx.fillText('BEAN BOX', 0, -40);
++      ctx.font = font(34, 'normal');
++      ctx.fillText('Delivered monthly', 0, 40);
++      ctx.restore();
++    }),
++    top: canvasTexture(640, 400, (ctx, w, h) => {
++      bean(ctx, w / 2 - 120, h / 2, 50);
++      bean(ctx, w / 2, h / 2, 50);
++      bean(ctx, w / 2 + 120, h / 2, 50);
++    }),
++    bottom: canvasTexture(640, 400),
++  };
++
++  // Native HTML-in-Canvas: refresh the front texture whenever the form repaints
++  // (typing, caret blink, hover/checked state changes, status text, ...).
++  if (nativeHTML) {
++    const formTex = makeTexture();
++    let ready = false;
++    canvas.addEventListener('paint', () => {
++      try {
++        gl.bindTexture(gl.TEXTURE_2D, formTex);
++        gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++        if (!ready) {
++          textures.front = formTex;
++          ready = true;
++        }
++      } catch (err) {
++        console.warn('texElementImage2D failed', err);
++      }
++    });
++    if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
++  }
++
++  // ------------------------------------------------------------- sizing
++  let cssW = 0, cssH = 0;
++  let layoutDX = 0, layoutDY = 0; // form's untransformed layout offset within the canvas
++  const measureLayout = () => {
++    const prev = form.style.transform;
++    form.style.transform = 'none';
++    const fr = form.getBoundingClientRect();
++    const cr = canvas.getBoundingClientRect();
++    layoutDX = fr.left - cr.left;
++    layoutDY = fr.top - cr.top;
++    form.style.transform = prev;
++  };
++  const resize = () => {
++    const dpr = Math.min(window.devicePixelRatio || 1, 2);
++    cssW = canvas.clientWidth;
++    cssH = canvas.clientHeight;
++    canvas.width = Math.max(1, Math.round(cssW * dpr));
++    canvas.height = Math.max(1, Math.round(cssH * dpr));
++    gl.viewport(0, 0, canvas.width, canvas.height);
++    measureLayout();
++  };
++  new ResizeObserver(resize).observe(canvas);
++  resize();
++
++  // ---------------------------------------------------------- interaction
++  // While the user is engaging with the label, ease the box round to face them.
++  let hovering = false;
++  let focused = false;
++  form.addEventListener('pointerenter', () => { hovering = true; });
++  form.addEventListener('pointerleave', () => { hovering = false; });
++  form.addEventListener('focusin', () => { focused = true; });
++  form.addEventListener('focusout', () => {
++    // Defer so focus moving between controls inside the form doesn't flicker.
++    setTimeout(() => { focused = form.contains(document.activeElement); }, 0);
++  });
++
++  // ------------------------------------------------------------- render loop
++  const TWO_PI = Math.PI * 2;
++  let angle = -0.6;
++  let speed = 0.55; // rad/s
++  let last = performance.now();
++  let visible = true;
++  new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(stage);
++
++  // Element px (x, y) on the form -> model-space point on the front face.
++  const faceMap = new Float32Array([
++    W / FORM_W, 0, 0, 0,
++    0, -H / FORM_H, 0, 0,
++    0, 0, 1, 0,
++    -W / 2, H / 2, D / 2, 1,
++  ]);
++
++  const frame = (now) => {
++    requestAnimationFrame(frame);
++    const dt = Math.min(0.05, (now - last) / 1000);
++    last = now;
++    if (!visible || !cssW || !cssH) return;
++
++    const engaged = hovering || focused;
++    const targetSpeed = engaged || reduceMotion.matches ? 0 : 0.55;
++    speed += (targetSpeed - speed) * Math.min(1, dt * 4);
++    angle += speed * dt;
++    if (engaged || reduceMotion.matches) {
++      // Turn toward the nearest front-facing orientation.
++      const nearest = Math.round(angle / TWO_PI) * TWO_PI;
++      angle += (nearest - angle) * Math.min(1, dt * 5);
++    }
++    angle %= TWO_PI * 1000;
++    const tilt = engaged || reduceMotion.matches ? 0.04 : 0.12 + Math.sin(now / 1400) * 0.05;
++
++    const aspect = cssW / cssH;
++    const dist = aspect < 0.9 ? 4.8 / aspect : 4.6;
++    const proj = perspective(Math.PI / 5, aspect, 0.1, 50);
++    const model = mul(rotX(tilt), rotY(angle));
++    const view = translate(0, 0, -dist);
++    const mvp = mul(proj, mul(view, model));
++
++    gl.clearColor(0, 0, 0, 0);
++    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++    gl.enable(gl.DEPTH_TEST);
++    gl.enable(gl.CULL_FACE);
++    gl.useProgram(prog);
++    gl.uniformMatrix4fv(loc.mvp, false, mvp);
++    gl.uniformMatrix4fv(loc.model, false, model);
++    gl.uniform1i(loc.tex, 0);
++    gl.activeTexture(gl.TEXTURE0);
++    order.forEach((name, i) => {
++      gl.bindTexture(gl.TEXTURE_2D, textures[name]);
++      // Keep the live form crisp and readable: only light it lightly.
++      gl.uniform1f(loc.lit, name === 'front' ? 0.35 : 1.0);
++      gl.drawArrays(gl.TRIANGLES, i * 6, 6);
++    });
++
++    // --- Sync the real DOM form with the drawn front face -------------------
++    // Is the front face pointing at the camera (and not too oblique)?
++    const centerW = xform(model, [0, 0, D / 2, 1]);
++    const normalW = xform(model, [0, 0, 1, 0]);
++    const toCam = [-centerW[0], -centerW[1], dist - centerW[2]];
++    const len = Math.hypot(...toCam);
++    const facing = (normalW[0] * toCam[0] + normalW[1] * toCam[1] + normalW[2] * toCam[2]) / len;
++    const hidden = facing < 0.2;
++    if (form.dataset.hidden !== String(hidden)) form.dataset.hidden = String(hidden);
++
++    // clip space -> canvas CSS pixels
++    const viewport = new Float32Array([
++      cssW / 2, 0, 0, 0,
++      0, -cssH / 2, 0, 0,
++      0, 0, 1, 0,
++      cssW / 2, cssH / 2, 0, 1,
++    ]);
++    // Undo the form's own layout offset so the transform is relative to the canvas origin.
++    const m = mul(translate(-layoutDX, -layoutDY, 0), mul(viewport, mul(mvp, faceMap)));
++    form.style.transform = `matrix3d(${Array.from(m).join(',')})`;
++  };
++  requestAnimationFrame(frame);
++})();

@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+index 66c9173..6aec851 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,47 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Block first render until the above-the-fold content is parsed, so the page transition never animates to a blank or partial page. -->
++  <link rel="expect" href="#hero" blocking="render">
+   <style>
++    /* Cross-document page transitions (progressive enhancement; include on every page). */
++    @view-transition {
++      navigation: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
++    /* Keep the nav steady while the page content cross-fades. */
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    ::view-transition-old(root) {
++      animation: 0.25s ease-in both page-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 0.35s ease-out both page-in;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -168,7 +208,7 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

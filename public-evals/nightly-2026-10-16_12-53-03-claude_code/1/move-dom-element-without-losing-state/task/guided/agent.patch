@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Video */
++    .video-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .video-slot {
++      aspect-ratio: 16 / 9;
++      max-width: 800px;
++      margin: 20px auto 0;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    .video-slot:empty {
++      background: var(--secondary);
++    }
++
++    .video-slot:empty::before {
++      content: 'Video is playing in theater mode above';
++      display: grid;
++      place-items: center;
++      height: 100%;
++      color: var(--text);
++    }
++
++    .video-frame {
++      width: 100%;
++      height: 100%;
++      border: 0;
++      display: block;
++    }
++
++    .hero-video {
++      width: min(100%, 60vh * 16 / 9 - 8rem);
++      aspect-ratio: 16 / 9;
++      margin-top: 1rem;
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    .hero-video .video-frame {
++      width: 100%;
++      height: 100%;
++    }
++
++    .hero.theater > :not(.hero-video) {
++      display: none;
++    }
++
++    .hero.theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 2rem 20px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +251,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section">
++      <h2>See How We Roast</h2>
++      <p>Watch a batch go from green bean to dark roast.</p>
++      <div class="video-slot" id="video-slot">
++        <iframe id="roast-video" class="video-frame"
++          src="https://www.youtube-nocookie.com/embed/ROASTING_VIDEO_ID?enablejsapi=1"
++          title="Coffee roasting video" loading="lazy"
++          allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
++          allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
++      </div>
++      <button type="button" class="btn" id="theater-toggle" aria-pressed="false">Theater mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    const hero = document.querySelector('.hero');
++    const slot = document.getElementById('video-slot');
++    const video = document.getElementById('roast-video');
++    const toggle = document.getElementById('theater-toggle');
++    const heroVideo = document.createElement('div');
++    heroVideo.className = 'hero-video';
++
++    // moveBefore() moves the node atomically, so the iframe keeps playing.
++    // Browsers without it (e.g. Safari) fall back to insertBefore(), which
++    // reloads the iframe and resets playback.
++    function move(parent) {
++      if ('moveBefore' in Element.prototype) {
++        parent.moveBefore(video, null);
++      } else {
++        parent.insertBefore(video, null);
++      }
++    }
++
++    toggle.addEventListener('click', () => {
++      const on = toggle.getAttribute('aria-pressed') !== 'true';
++      if (on) {
++        hero.append(heroVideo);
++        move(heroVideo);
++        hero.classList.add('theater');
++        hero.scrollIntoView({ behavior: 'smooth' });
++      } else {
++        move(slot);
++        heroVideo.remove();
++        hero.classList.remove('theater');
++      }
++      toggle.setAttribute('aria-pressed', on);
++      toggle.textContent = on ? 'Exit theater mode' : 'Theater mode';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

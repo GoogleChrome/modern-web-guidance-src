@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+index 66c9173..96ef689 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,40 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    /* Active nav indicator: tethered to the active item and slides between items */
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active-nav;
++      inset-block-start: calc(anchor(bottom) + 4px);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 3px;
++      border-radius: 3px;
++      background: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset 0.3s ease;
++      }
++    }
++
++    nav ul li.active {
++      anchor-name: --active-nav;
++    }
++
++    nav ul li.active a {
++      color: var(--accent);
++    }
++
++    @supports not (position-anchor: auto) {
++      nav ul li.active {
++        border-bottom: 3px solid var(--accent);
++      }
+     }
+ 
+     nav ul li {
+@@ -160,7 +194,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +241,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navItems = document.querySelectorAll('nav li:has(> a:not(.logout-link))');
++
++    function setActiveNav(item) {
++      navItems.forEach((li) => {
++        const isActive = li === item;
++        li.classList.toggle('active', isActive);
++        const link = li.querySelector('a');
++        if (isActive) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    }
++
++    navItems.forEach((li) => {
++      li.querySelector('a').addEventListener('click', (event) => {
++        event.preventDefault();
++        setActiveNav(li);
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

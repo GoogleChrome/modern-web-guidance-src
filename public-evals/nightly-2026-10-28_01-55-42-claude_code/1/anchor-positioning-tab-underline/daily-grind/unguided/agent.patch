@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+index 66c9173..703ffaf 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +63,43 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    .nav-link {
++      display: inline-block;
++      padding-bottom: 4px;
++    }
++
++    /* Sliding active underline */
++    .nav-indicator {
++      position: absolute;
++      bottom: 0;
++      left: 0;
++      margin: 0;
++      width: 0;
++      height: 2px;
++      background: var(--accent);
++      border-radius: 2px;
++      pointer-events: none;
++      opacity: 0;
++      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        opacity 0.2s;
++    }
++
++    .nav-indicator.ready {
++      opacity: 1;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -159,12 +193,13 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++    <ul id="nav-links">
++      <li><a href="/menu" class="nav-link active" aria-current="page">Menu</a></li>
++      <li><a href="/locations" class="nav-link">Locations</a></li>
++      <li><a href="/rewards" class="nav-link">Rewards</a></li>
++      <li><a href="/account" class="nav-link">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-indicator" aria-hidden="true"></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +242,60 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var list = document.getElementById('nav-links');
++      var indicator = list.querySelector('.nav-indicator');
++      var links = Array.prototype.slice.call(list.querySelectorAll('.nav-link'));
++
++      function moveIndicator(link) {
++        var listRect = list.getBoundingClientRect();
++        var linkRect = link.getBoundingClientRect();
++        indicator.style.width = linkRect.width + 'px';
++        indicator.style.transform = 'translateX(' + (linkRect.left - listRect.left) + 'px)';
++      }
++
++      function setActive(link) {
++        links.forEach(function (l) {
++          l.classList.toggle('active', l === link);
++          if (l === link) {
++            l.setAttribute('aria-current', 'page');
++          } else {
++            l.removeAttribute('aria-current');
++          }
++        });
++        moveIndicator(link);
++      }
++
++      function currentActive() {
++        return list.querySelector('.nav-link.active') || links[0];
++      }
++
++      links.forEach(function (link) {
++        link.addEventListener('click', function (event) {
++          // Single-page demo: keep the user here so the underline can slide.
++          event.preventDefault();
++          setActive(link);
++        });
++      });
++
++      // Place the underline under the initial item without animating, then enable transitions.
++      moveIndicator(currentActive());
++      requestAnimationFrame(function () {
++        indicator.classList.add('ready');
++      });
++
++      window.addEventListener('resize', function () {
++        moveIndicator(currentActive());
++      });
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(function () {
++          moveIndicator(currentActive());
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

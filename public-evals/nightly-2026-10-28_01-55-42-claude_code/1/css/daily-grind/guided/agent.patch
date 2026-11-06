@@ -1,0 +1,423 @@
+diff --git a/index.html b/index.html
+index 66c9173..dcfcded 100644
+--- a/index.html
++++ b/index.html
+@@ -6,158 +6,279 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /* ==========================================================================
++       Cascade layers — declared upfront so priority is explicit and predictable.
++       Later layers win over earlier ones regardless of selector specificity.
++       ========================================================================== */
++    @layer tokens, reset, base, layout, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    /* --------------------------------------------------------------------------
++       1. Design tokens
++       Tier 1: literal palette / scales. Tier 2: semantic roles built on tier 1.
++       Components only ever reference tier 2 (or their own tier-3 tokens).
++       -------------------------------------------------------------------------- */
++    @layer tokens {
++      :root {
++        /* Tier 1 — palette */
++        --color-brown-900: #3e2723;
++        --color-brown-800: #4e342e;
++        --color-brown-100: #d7ccc8;
++        --color-amber-400: #ffab40;
++        --color-neutral-50: #fafafa;
++        --color-white: #fff;
++        --color-scrim: rgb(0 0 0 / 0.5);
++        --color-shadow: rgb(0 0 0 / 0.1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        /* Tier 1 — type */
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --text-sm: 0.85rem;
++        --text-lg: 1.5rem;
++        --text-3xl: 3rem;
++        --leading-body: 1.6;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Tier 1 — spacing scale (4px base) */
++        --space-3xs: 0.25rem;
++        --space-2xs: 0.5rem;
++        --space-xs: 0.75rem;
++        --space-s: 1rem;
++        --space-m: 1.25rem;
++        --space-l: 2.5rem;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        /* Tier 1 — shape, elevation, motion */
++        --radius-s: 0.25rem;
++        --radius-m: 0.3125rem;
++        --radius-l: 0.5rem;
++        --shadow-1: 0 2px 5px var(--color-shadow);
++        --duration-base: 0.3s;
++        --ease-base: ease;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Tier 2 — semantic roles */
++        --color-brand: var(--color-brown-800);
++        --color-brand-strong: var(--color-brown-900);
++        --color-accent: var(--color-amber-400);
++        --color-text: var(--color-brown-900);
++        --color-text-on-brand: var(--color-white);
++        --color-text-on-media: var(--color-white);
++        --surface-page: var(--color-neutral-50);
++        --surface-card: var(--color-white);
++        --surface-footer: var(--color-brown-100);
++        --surface-nav: var(--color-brand);
++        --font-body: var(--font-sans);
+ 
+-    nav ul li {
+-      margin-left: 20px;
++        /* Tier 2 — layout */
++        --content-max-inline-size: 1100px;
++        --gutter: var(--space-m);
++        --gutter-nav: 5%;
++        --hero-min-block-size: 60svb;
++        --card-min-inline-size: 250px;
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++    /* --------------------------------------------------------------------------
++       2. Reset — targeted at the elements we use rather than a global `*` rule,
++       and wrapped in :where() so any later rule can override without a fight.
++       -------------------------------------------------------------------------- */
++    @layer reset {
++      :where(body, h1, h2, h3, p, ul) {
++        margin: 0;
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      :where(ul) {
++        padding: 0;
++        list-style: none;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      :where(nav, header, main, footer, section, div, a) {
++        box-sizing: border-box;
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    /* --------------------------------------------------------------------------
++       3. Base — document-level defaults and shared interactive behaviour.
++       -------------------------------------------------------------------------- */
++    @layer base {
++      body {
++        font-family: var(--font-body);
++        line-height: var(--leading-body);
++        color: var(--color-text);
++        background-color: var(--surface-page);
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++        transition: color var(--duration-base) var(--ease-base),
++                    background-color var(--duration-base) var(--ease-base);
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      :where(a):focus-visible {
++        outline: 2px solid var(--color-accent);
++        outline-offset: 2px;
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      @media (prefers-reduced-motion: reduce) {
++        :where(a) {
++          transition-duration: 0s;
++        }
++      }
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++    /* --------------------------------------------------------------------------
++       4. Layout — page-level containers and rhythm (logical properties only).
++       -------------------------------------------------------------------------- */
++    @layer layout {
++      .container {
++        max-inline-size: var(--content-max-inline-size);
++        margin-block: var(--space-l);
++        margin-inline: auto;
++        padding-inline: var(--gutter);
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(var(--card-min-inline-size), 100%), 1fr));
++        gap: var(--space-m);
++        margin-block-start: var(--space-m);
++      }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++    /* --------------------------------------------------------------------------
++       5. Components — nav, hero, card, button, footer.
++       Related rules are grouped with native nesting.
++       -------------------------------------------------------------------------- */
++    @layer components {
++      /* Sticky navigation bar */
++      .site-nav {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: space-between;
++        align-items: center;
++        gap: var(--space-s) var(--space-m);
++        padding-block: var(--space-s);
++        padding-inline: var(--gutter-nav);
++        background: var(--surface-nav);
++        color: var(--color-text-on-brand);
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        & ul {
++          display: flex;
++          flex-wrap: wrap;
++          gap: var(--space-m);
++        }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++        & a {
++          font-size: var(--text-sm);
++
++          &:is(:hover, :focus-visible) {
++            color: var(--color-accent);
++          }
++        }
++      }
++
++      .logo {
++        font-size: var(--text-lg);
++        font-weight: bold;
++        letter-spacing: 0.04em;
++      }
++
++      .logout-link {
++        padding-block: var(--space-3xs);
++        padding-inline: var(--space-xs);
++        border: 1px solid var(--color-accent);
++        border-radius: var(--radius-s);
++      }
++
++      /* "Wake Up Your Senses" hero banner */
++      .hero {
++        --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++
++        display: flex;
++        flex-direction: column;
++        place-content: center;
++        align-items: center;
++        min-block-size: var(--hero-min-block-size);
++        padding-block: var(--space-l);
++        padding-inline: var(--gutter);
++        text-align: center;
++        color: var(--color-text-on-media);
++        background:
++          linear-gradient(var(--color-scrim), var(--color-scrim)),
++          var(--hero-image) center / cover;
++
++        & h1 {
++          font-size: var(--text-3xl);
++          margin-block-end: var(--space-s);
++        }
++      }
++
++      /* "Seasonal Favorites" cards */
++      .card {
++        padding: var(--space-m);
++        text-align: center;
++        background: var(--surface-card);
++        border-radius: var(--radius-l);
++        box-shadow: var(--shadow-1);
++
++        & h3 {
++          margin-block-end: var(--space-2xs);
++          color: var(--color-brand);
++        }
++      }
++
++      /* Button */
++      .btn {
++        --btn-bg: var(--color-brand);
++        --btn-bg-hover: var(--color-brand-strong);
++
++        display: inline-block;
++        margin-block-start: var(--space-s);
++        padding-block: var(--space-2xs);
++        padding-inline: var(--space-m);
++        border-radius: var(--radius-m);
++        background: var(--btn-bg);
++        color: var(--color-text-on-brand);
++
++        &:is(:hover, :focus-visible) {
++          background: var(--btn-bg-hover);
++        }
++      }
++
++      /* Footer */
++      .site-footer {
++        margin-block-start: var(--space-l);
++        padding-block: var(--space-l);
++        padding-inline: var(--gutter);
++        text-align: center;
++        background: var(--surface-footer);
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-m);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++        & a {
++          margin-inline: var(--space-2xs);
++          font-size: var(--text-sm);
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* --------------------------------------------------------------------------
++       6. Utilities — single-purpose helpers; highest priority layer.
++       -------------------------------------------------------------------------- */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +297,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +318,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

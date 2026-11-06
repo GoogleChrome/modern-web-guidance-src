@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,60 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts &amp; Independent Theme</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      max-width: 40rem;
++      margin: 2rem auto;
++      padding: 0 1rem;
++      line-height: 1.6;
++    }
++
++    /* Normalize x-height across the different font families in the paragraph.
++       `from-font` takes the aspect value from the first available font, and
++       applies it to every fallback/inline font so they share a visual height. */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
++      /* inherits the adjusted x-height ratio, so no manual em-scaling needed */
++      font-size-adjust: inherit;
++      background: #eef1f5;
++      padding: 0.1em 0.35em;
++      border-radius: 0.25em;
++    }
++
++    /* Independent theme: its own color scheme, locked to a 16 / 9 ratio. */
++    #independent-theme-container {
++      color-scheme: dark;
++      background: #14181f;
++      color: #e8ecf2;
++      aspect-ratio: 16 / 9;
++      width: 100%;
++      margin-top: 2rem;
++      border-radius: 0.75rem;
++      display: grid;
++      place-items: center;
++      text-align: center;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text sits next to inline code such as
++    <code>const ratio = 16 / 9;</code> and continues with more prose, so the
++    glyphs in both font families appear at the same visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    <p>Independent theme container (16 / 9)</p>
++  </div>
++</body>
++</html>

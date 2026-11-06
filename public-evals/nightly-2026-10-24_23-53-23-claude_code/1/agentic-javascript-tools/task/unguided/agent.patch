@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose a menu lookup tool to in-browser AI assistants.
++    (function () {
++      const modelContext = navigator.modelContext;
++      if (!modelContext || typeof modelContext.registerTool !== 'function') return;
++
++      const normalize = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
++
++      // Read menu items from the cards on the page so the tool never drifts from the UI.
++      function getMenuItems() {
++        return Array.from(document.querySelectorAll('.card')).map((card) => ({
++          name: card.querySelector('h3')?.textContent.trim(),
++          description: card.querySelector('p')?.textContent.trim(),
++          url: card.querySelector('a')?.getAttribute('href'),
++        })).filter((item) => item.name);
++      }
++
++      const result = (payload, isError = false) => ({
++        content: [{ type: 'text', text: JSON.stringify(payload) }],
++        ...(isError && { isError: true }),
++      });
++
++      const controller = new AbortController();
++
++      modelContext.registerTool({
++        name: 'get_menu_item_details',
++        description:
++          'Look up details (name, description, and page link) for a single item on The Daily Grind ' +
++          'menu, such as "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew". ' +
++          'Returns an error listing the available items if no match is found.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description:
++                'Name of the menu item to look up, e.g. "Maple Oat Latte". Case-insensitive; partial names are accepted.',
++            },
++          },
++          required: ['name'],
++        },
++        annotations: { readOnlyHint: true },
++        async execute({ name } = {}) {
++          const items = getMenuItems();
++          const query = normalize(name ?? '');
++          const item = query && (
++            items.find((i) => normalize(i.name) === query) ||
++            items.find((i) => normalize(i.name).includes(query))
++          );
++          if (!item) {
++            return result({
++              error: `No menu item found matching "${name ?? ''}".`,
++              availableItems: items.map((i) => i.name),
++            }, true);
++          }
++          return result(item);
++        },
++      }, { signal: controller.signal });
++
++      // Deactivate the tool when the page is unloaded (pagehide also covers bfcache).
++      window.addEventListener('pagehide', () => {
++        controller.abort();
++        // Fallback for implementations that don't support the abort signal.
++        if (typeof modelContext.unregisterTool === 'function') {
++          try { modelContext.unregisterTool('get_menu_item_details'); } catch (e) { /* already removed */ }
++        }
++      }, { once: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..5a0831b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,95 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Bars */
++    .progress-panel {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++      margin-bottom: 40px;
++    }
++
++    .progress-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 10px;
++    }
++
++    .progress-header h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++    }
++
++    .progress-value {
++      font-weight: bold;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .progress {
++      position: relative;
++      height: 14px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: var(--progress, 0%);
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    .progress.indeterminate .progress-fill {
++      position: absolute;
++      width: 40%;
++      animation: progress-slide 1.4s ease-in-out infinite;
++    }
++
++    @keyframes progress-slide {
++      0% {
++        left: -40%;
++      }
++
++      100% {
++        left: 100%;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      .progress.indeterminate .progress-fill {
++        animation: progress-pulse 2s ease-in-out infinite;
++        left: 0;
++        width: 100%;
++      }
++
++      @keyframes progress-pulse {
++        50% {
++          opacity: 0.4;
++        }
++      }
++    }
++
++    .progress-caption {
++      margin-top: 8px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +264,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-label="Your progress">
++      <div class="progress-card">
++        <div class="progress-header">
++          <h3 id="rewards-label">Rewards Progress</h3>
++          <span class="progress-value">7 / 10 stamps</span>
++        </div>
++        <div class="progress" role="progressbar" aria-labelledby="rewards-label" aria-valuemin="0"
++          aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps collected">
++          <div class="progress-fill" style="--progress: 70%;"></div>
++        </div>
++        <p class="progress-caption">3 more drinks until your free coffee.</p>
++      </div>
++      <div class="progress-card">
++        <div class="progress-header">
++          <h3 id="order-label">Current Order</h3>
++          <span class="progress-value">Brewing&hellip;</span>
++        </div>
++        <div class="progress indeterminate" role="progressbar" aria-labelledby="order-label"
++          aria-valuetext="Your order is being prepared">
++          <div class="progress-fill"></div>
++        </div>
++        <p class="progress-caption">Your barista is preparing your order.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

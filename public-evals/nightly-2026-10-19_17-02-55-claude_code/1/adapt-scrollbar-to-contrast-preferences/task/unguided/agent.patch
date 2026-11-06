@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,49 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scrollbars: thumb/track contrast is ~6.8:1 (WCAG non-text minimum is 3:1) */
++    :root {
++      --scroll-thumb: var(--primary);
++      --scroll-track: var(--secondary);
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --scroll-thumb: #000;
++        --scroll-track: #fff;
++      }
++    }
++
++    * {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scroll-thumb) var(--scroll-track);
++    }
++
++    /* WebKit fallback for browsers without scrollbar-color */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scroll-track);
++        border-left: 1px solid var(--scroll-thumb);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scroll-thumb);
++        border: 3px solid var(--scroll-track);
++        border-radius: 8px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background: var(--text);
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

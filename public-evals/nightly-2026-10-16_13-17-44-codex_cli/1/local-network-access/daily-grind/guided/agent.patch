@@ -1,0 +1,345 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..11bc6a9
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,17 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the site and `pnpm test` for the network helper tests.
++
++## Local resources
++
++Use **Connect to a local resource** to choose a local network device or a service on this computer, enter its HTTP(S) resource URL, and click **Connect**. No device requests run on page load. Only use read-only endpoints: the connector sends a GET request and displays the response as text.
++
++Deploy the site over HTTPS. Localhost development is a secure-context exception; serving over a plain HTTP LAN address is not. Browser local-network permission must be granted when requested. If blocked, change the site's local network or loopback permission in browser site settings.
++
++The target service must return an appropriate `Access-Control-Allow-Origin` header for the website's origin. Browser permission does not replace CORS. No deprecated Private Network Access preflight handling is required. Connections omit credentials and reject redirects.
++
++The connector declares `targetAddressSpace` as `local` or `loopback`. Unsupported permission queries fall back to a user-initiated request; browser mixed-content and network restrictions may still prevent it. Use HTTPS on the local service if your browser blocks HTTP requests.
++
++If hosting inside a cross-origin iframe, the parent must delegate `allow="local-network; loopback-network"` and any parent `Permissions-Policy` must permit this app's origin. The app cannot override its parent's policy.
++
++Reference: [Local Network Access specification](https://wicg.github.io/local-network-access/).
+diff --git a/index.html b/index.html
+index 66c9173..7052c50 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,49 @@
+       background: #3e2723;
+     }
+ 
++    .network-panel {
++      margin-top: 40px;
++      padding: 24px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .network-panel label {
++      display: block;
++      margin-top: 16px;
++      font-weight: 600;
++    }
++
++    .network-panel input, .network-panel select {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++    }
++
++    .network-panel button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .network-panel button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    #network-status { margin-top: 16px; }
++    #network-result {
++      margin-top: 16px;
++      padding: 16px;
++      background: var(--light);
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      max-height: 320px;
++      overflow: auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +238,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="network-panel" aria-labelledby="network-heading">
++      <h2 id="network-heading">Connect to a local resource</h2>
++      <p>Read a resource from a device on your network or a service running on this computer. Your browser may ask for permission when you connect.</p>
++      <form id="network-form">
++        <label for="network-space">Resource location</label>
++        <select id="network-space" name="addressSpace">
++          <option value="local">Local network device</option>
++          <option value="loopback">This computer (loopback)</option>
++        </select>
++        <label for="network-url">Resource URL</label>
++        <input id="network-url" name="url" type="url" required placeholder="http://device.local:8080/status" aria-describedby="network-help" autocomplete="off" spellcheck="false">
++        <p id="network-help">Enter an HTTP or HTTPS endpoint you trust. The service must allow this website to read its response through CORS.</p>
++        <button id="network-connect" class="btn" type="submit">Connect</button>
++      </form>
++      <p id="network-status" role="status" aria-live="polite">Ready to connect.</p>
++      <pre id="network-result" aria-label="Resource response" hidden></pre>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +268,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./local-network-ui.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/local-network-ui.mjs b/local-network-ui.mjs
+new file mode 100644
+index 0000000..4d5f7c9
+--- /dev/null
++++ b/local-network-ui.mjs
+@@ -0,0 +1,81 @@
++import { queryNetworkPermission, readLocalResource } from './local-network.mjs';
++
++const form = document.querySelector('#network-form');
++const space = document.querySelector('#network-space');
++const url = document.querySelector('#network-url');
++const button = document.querySelector('#network-connect');
++const status = document.querySelector('#network-status');
++const result = document.querySelector('#network-result');
++let observedPermission;
++let permissionListener;
++let revision = 0;
++let busy = false;
++
++function showPermission() {
++  if (busy) return;
++  const state = observedPermission?.state;
++  status.textContent = state === 'denied'
++    ? 'Access is blocked. Allow local network or loopback access in your browser’s site settings, then connect again.'
++    : state === 'granted'
++      ? 'Access is allowed. Enter a resource URL and connect.'
++      : 'Ready to connect. Your browser may ask you to allow access.';
++}
++
++async function watchPermission() {
++  const current = ++revision;
++  observedPermission?.removeEventListener('change', permissionListener);
++  const permission = await queryNetworkPermission(space.value);
++  if (current !== revision) return;
++  observedPermission = permission;
++  permissionListener = showPermission;
++  permission?.addEventListener('change', permissionListener);
++  showPermission();
++}
++
++space.addEventListener('change', () => {
++  url.placeholder = space.value === 'local'
++    ? 'http://device.local:8080/status'
++    : 'http://localhost:8080/health';
++  result.hidden = true;
++  void watchPermission();
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (busy) return;
++  busy = true;
++  button.disabled = true;
++  space.disabled = true;
++  url.disabled = true;
++  result.hidden = true;
++  result.textContent = '';
++  status.textContent = 'Connecting… Allow access if your browser asks.';
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(), 15000);
++  try {
++    const text = await readLocalResource(url.value, space.value, controller.signal);
++    // Resource content is untrusted: never render it as HTML.
++    result.textContent = text || '(Empty response)';
++    result.hidden = false;
++    status.textContent = 'Connected. Resource response received.';
++  } catch (error) {
++    status.textContent = controller.signal.aborted
++      ? 'Connection timed out. Check the resource address and that the service is running, then try again.'
++      : error instanceof TypeError
++        ? 'Could not connect. Check the URL and resource location, that the service is running on this computer or network, its CORS settings, and your browser’s local network permissions. Some browsers block local HTTP connections; try HTTPS if available.'
++        : error.message;
++  } finally {
++    clearTimeout(timeout);
++    busy = false;
++    button.disabled = false;
++    space.disabled = false;
++    url.disabled = false;
++  }
++});
++
++// Permission queries do not initiate connections or prompt on page load.
++if (globalThis.isSecureContext) void watchPermission();
++else {
++  status.textContent = 'Open this website over HTTPS to connect to local resources. Localhost development is also supported.';
++  button.disabled = true;
++}
+diff --git a/local-network.mjs b/local-network.mjs
+new file mode 100644
+index 0000000..f4602e0
+--- /dev/null
++++ b/local-network.mjs
+@@ -0,0 +1,45 @@
++const permissions = { local: 'local-network', loopback: 'loopback-network' };
++
++export function permissionName(addressSpace) {
++  if (!Object.hasOwn(permissions, addressSpace)) {
++    throw new Error('Choose local network or loopback access.');
++  }
++  return permissions[addressSpace];
++}
++
++export async function queryNetworkPermission(addressSpace) {
++  const name = permissionName(addressSpace);
++  try {
++    return await globalThis.navigator?.permissions?.query({ name }) ?? null;
++  } catch {
++    // Unsupported permission names must still allow a user-initiated attempt.
++    // Never query the legacy combined name: it can crash older Chromium versions.
++    return null;
++  }
++}
++
++export async function readLocalResource(url, addressSpace, signal) {
++  permissionName(addressSpace);
++  if (!globalThis.isSecureContext) {
++    throw new Error('Open this website over HTTPS to connect to local resources. Localhost development is also supported.');
++  }
++  const endpoint = new URL(url);
++  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
++    throw new Error('Enter an HTTP or HTTPS URL without embedded credentials.');
++  }
++  const permission = await queryNetworkPermission(addressSpace);
++  if (permission?.state === 'denied') {
++    throw new Error('Access is blocked. Allow local network or loopback access in your browser’s site settings, then connect again.');
++  }
++  const response = await fetch(endpoint.href, {
++    method: 'GET',
++    mode: 'cors',
++    credentials: 'omit',
++    redirect: 'error',
++    cache: 'no-store',
++    targetAddressSpace: addressSpace,
++    signal,
++  });
++  if (!response.ok) throw new Error(`The resource returned HTTP ${response.status}.`);
++  return response.text();
++}
+diff --git a/local-network.test.mjs b/local-network.test.mjs
+new file mode 100644
+index 0000000..1ba53cb
+--- /dev/null
++++ b/local-network.test.mjs
+@@ -0,0 +1,77 @@
++import { test, afterEach } from 'node:test';
++import assert from 'node:assert/strict';
++import { queryNetworkPermission, readLocalResource } from './local-network.mjs';
++
++const originals = new Map(['navigator', 'isSecureContext', 'fetch'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
++function mock(key, value) {
++  Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
++}
++afterEach(() => {
++  for (const [key, descriptor] of originals) {
++    if (descriptor) Object.defineProperty(globalThis, key, descriptor);
++    else delete globalThis[key];
++  }
++});
++
++test('queries the two granular permissions without a network request', async () => {
++  const names = [];
++  mock('navigator', { permissions: { query: async ({ name }) => {
++    names.push(name);
++    return { state: 'prompt' };
++  } } });
++  mock('fetch', () => assert.fail('Permission checks must not connect'));
++  await queryNetworkPermission('local');
++  await queryNetworkPermission('loopback');
++  assert.deepEqual(names, ['local-network', 'loopback-network']);
++});
++
++test('unsupported Permissions API and unknown permission names fall back safely', async () => {
++  mock('navigator', {});
++  assert.equal(await queryNetworkPermission('local'), null);
++  mock('navigator', { permissions: { query: async () => { throw new TypeError('Unsupported'); } } });
++  assert.equal(await queryNetworkPermission('loopback'), null);
++});
++
++test('reads both address spaces with CORS, declared targets, and cancellation', async () => {
++  mock('isSecureContext', true);
++  mock('navigator', {});
++  const signal = new AbortController().signal;
++  for (const space of ['local', 'loopback']) {
++    mock('fetch', async (url, options) => {
++      assert.equal(url, 'http://device.local:8080/status');
++      assert.equal(options.targetAddressSpace, space);
++      assert.equal(options.mode, 'cors');
++      assert.equal(options.credentials, 'omit');
++      assert.equal(options.redirect, 'error');
++      assert.equal(options.signal, signal);
++      return new Response('resource content');
++    });
++    assert.equal(await readLocalResource('http://device.local:8080/status', space, signal), 'resource content');
++  }
++});
++
++test('denied permission prevents a request and gives remediation', async () => {
++  mock('isSecureContext', true);
++  mock('navigator', { permissions: { query: async () => ({ state: 'denied' }) } });
++  mock('fetch', () => assert.fail('Denied access must not connect'));
++  await assert.rejects(readLocalResource('http://localhost:8080', 'loopback'), /site settings/);
++});
++
++test('insecure pages, invalid schemes, credentials, and unknown spaces are rejected', async () => {
++  mock('fetch', () => assert.fail('Invalid requests must not connect'));
++  mock('isSecureContext', false);
++  await assert.rejects(readLocalResource('http://localhost', 'loopback'), /HTTPS/);
++  mock('isSecureContext', true);
++  await assert.rejects(readLocalResource('file:///etc/hosts', 'local'), /HTTP or HTTPS/);
++  await assert.rejects(readLocalResource('http://user:password@localhost', 'loopback'), /credentials/);
++  await assert.rejects(readLocalResource('http://localhost', 'public'), /Choose local network/);
++});
++
++test('HTTP and network failures propagate for actionable UI feedback', async () => {
++  mock('isSecureContext', true);
++  mock('navigator', {});
++  mock('fetch', async () => new Response('', { status: 503 }));
++  await assert.rejects(readLocalResource('http://localhost', 'loopback'), /HTTP 503/);
++  mock('fetch', async () => { throw new TypeError('Network failure'); });
++  await assert.rejects(readLocalResource('http://localhost', 'loopback'), /Network failure/);
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..b1c23fc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

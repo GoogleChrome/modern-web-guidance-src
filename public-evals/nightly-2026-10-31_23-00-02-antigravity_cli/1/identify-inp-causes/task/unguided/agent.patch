@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,181 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onINP } from 'https://unpkg.com/web-vitals@4/dist/web-vitals.attribution.js?module';
++
++    function sendToAnalytics(metric) {
++      const { name, value, rating, id, attribution } = metric;
++      const {
++        interactionTarget,
++        interactionTargetElement,
++        interactionType,
++        interactionTime,
++        nextPaintTime,
++        inputDelay,
++        processingDuration,
++        presentationDelay,
++        loadState,
++        longAnimationFrameEntries = [],
++        processedEventEntries = [],
++        eventTarget,
++        eventType,
++        eventTime,
++        eventEntry,
++      } = attribution || {};
++
++      const scripts = longAnimationFrameEntries.flatMap((loaf) =>
++        (loaf.scripts || []).map((script) => ({
++          name: script.name,
++          invoker: script.invoker,
++          invokerType: script.invokerType,
++          sourceURL: script.sourceURL,
++          sourceFunctionName: script.sourceFunctionName,
++          sourceCharPosition: script.sourceCharPosition,
++          duration: script.duration,
++          forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
++        }))
++      );
++
++      const diagnosticReport = {
++        name,
++        id,
++        value,
++        rating,
++        interactionTarget: interactionTarget || eventTarget,
++        interactionTargetElement,
++        interactionType: interactionType || eventType,
++        interactionTime: interactionTime || eventTime,
++        nextPaintTime,
++        loadState,
++        inputDelay,
++        processingDuration,
++        presentationDelay,
++        processedEventEntries,
++        longAnimationFrameEntries,
++        scripts,
++        eventEntry,
++      };
++
++      console.log('INP Attribution:', diagnosticReport);
++
++      if (navigator.sendBeacon) {
++        navigator.sendBeacon('/analytics', JSON.stringify(diagnosticReport));
++      }
++    }
++
++    onINP(sendToAnalytics, { reportAllChanges: true });
++  </script>
++
++  <script>
++    (function identifyPoorINPCauses() {
++      if (typeof PerformanceObserver === 'undefined') return;
++
++      const supportedTypes = PerformanceObserver.supportedEntryTypes || [];
++
++      // Observe Event Timing API entries to break down interaction phases:
++      // 1. Input Delay (processingStart - startTime)
++      // 2. Processing Duration (processingEnd - processingStart)
++      // 3. Presentation Delay (startTime + duration - processingEnd)
++      if (supportedTypes.includes('event')) {
++        const eventObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            if (!entry.interactionId) continue;
++
++            const inputDelay = entry.processingStart - entry.startTime;
++            const processingDuration = entry.processingEnd - entry.processingStart;
++            const presentationDelay = entry.startTime + entry.duration - entry.processingEnd;
++
++            const phases = [
++              { phase: 'inputDelay', duration: inputDelay },
++              { phase: 'processingDuration', duration: processingDuration },
++              { phase: 'presentationDelay', duration: presentationDelay },
++            ].sort((a, b) => b.duration - a.duration);
++
++            const details = {
++              interactionId: entry.interactionId,
++              eventType: entry.name,
++              target: entry.target,
++              duration: entry.duration,
++              startTime: entry.startTime,
++              processingStart: entry.processingStart,
++              processingEnd: entry.processingEnd,
++              inputDelay,
++              processingDuration,
++              presentationDelay,
++              primaryCause: phases[0].phase,
++            };
++
++            if (entry.duration > 200) {
++              console.warn('Poor INP interaction detected:', details);
++            } else {
++              console.log('Interaction timing:', details);
++            }
++          }
++        });
++
++        eventObserver.observe({
++          type: 'event',
++          buffered: true,
++          durationThreshold: 16,
++        });
++      }
++
++      // Observe Long Animation Frames (LoAF) to identify slow scripts and rendering bottlenecks
++      if (supportedTypes.includes('long-animation-frame')) {
++        const loafObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            const scripts = (entry.scripts || []).map((script) => ({
++              name: script.name,
++              invoker: script.invoker,
++              invokerType: script.invokerType,
++              sourceURL: script.sourceURL,
++              sourceFunctionName: script.sourceFunctionName,
++              sourceCharPosition: script.sourceCharPosition,
++              executionStart: script.executionStart,
++              duration: script.duration,
++              forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
++            }));
++
++            console.log('Long Animation Frame (LoAF) detected:', {
++              startTime: entry.startTime,
++              duration: entry.duration,
++              blockingDuration: entry.blockingDuration,
++              renderStart: entry.renderStart,
++              styleAndLayoutStart: entry.styleAndLayoutStart,
++              scripts,
++            });
++          }
++        });
++
++        loafObserver.observe({
++          type: 'long-animation-frame',
++          buffered: true,
++        });
++      }
++
++      // Observe Long Tasks blocking the main thread
++      if (supportedTypes.includes('longtask')) {
++        const longTaskObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            console.log('Long Task detected:', {
++              name: entry.name,
++              startTime: entry.startTime,
++              duration: entry.duration,
++              attribution: entry.attribution,
++            });
++          }
++        });
++
++        longTaskObserver.observe({
++          type: 'longtask',
++          buffered: true,
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 70px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -36,8 +37,9 @@
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
++      min-height: var(--nav-height);
+       z-index: 1000;
+     }
+ 
+     .logo {
+@@ -151,8 +153,61 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sticky section headers (viewport is the scroll root).
++       The container is named so the scroll-state query can't collide with other containers. */
++    .intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 60px;
++    }
++
++    .intro p {
++      margin-bottom: 1rem;
++    }
++
++    .content-section {
++      margin-bottom: 40px;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height); /* stick just below the sticky site nav */
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-sticky;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      text-align: center;
++      padding: 1.5rem 1rem;
++      border-radius: 8px;
++      transition: background-color 0.2s, box-shadow 0.2s, padding 0.2s, color 0.2s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.75rem;
++      line-height: 1.3;
++      transition: font-size 0.2s;
++    }
++
++    @container section-sticky scroll-state(stuck: top) {
++      .sticky-header {
++        background: #1565c0;
++        color: white;
++        padding: 0.4rem 1rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
++      }
++
++      .sticky-header h2 {
++        font-size: 1.1rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,10 +229,22 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro">
++      <h2>Our Story</h2>
++      <p>The Daily Grind started as a single cart on a busy corner, serving coffee roasted in small batches the night before.</p>
++      <p>Today we partner directly with growers across three continents, paying fair prices for beans we are proud to put in your cup.</p>
++      <p>Every bag is roasted within days of reaching you, and every drink is made by a barista who cares about the details.</p>
++      <p>Scroll on to explore what is brewing this season.</p>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Seasonal Favorites</h2>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -192,10 +259,105 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Pumpkin Spice Cortado</h3>
++          <p>Smooth espresso with roasted pumpkin and warm spices.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Flat White</h3>
++          <p>Velvety microfoam with a dusting of Ceylon cinnamon.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Hazelnut Mocha</h3>
++          <p>Rich chocolate and toasted hazelnut over double espresso.</p>
++          <a href="/menu/mocha" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Fresh Bakes</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Scone</h3>
++          <p>Studded with wild blueberries and finished with lemon glaze.</p>
++          <a href="/menu/scone" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cardamom Bun</h3>
++          <p>Soft, sweet, and fragrant with fresh-ground cardamom.</p>
++          <a href="/menu/bun" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist, dense, and topped with toasted walnuts.</p>
++          <a href="/menu/banana-bread" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Chocolate Chip Cookie</h3>
++          <p>Crisp edges, gooey center, flaky sea salt.</p>
++          <a href="/menu/cookie" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="content-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Brewing Guides</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Pour Over</h3>
++          <p>A clean, bright cup in four minutes with a gooseneck kettle.</p>
++          <a href="/guides/pour-over" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Full-bodied coffee with a coarse grind and patient steep.</p>
++          <a href="/guides/french-press" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Espresso at Home</h3>
++          <p>Dial in your grind, dose, and yield like a barista.</p>
++          <a href="/guides/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew Basics</h3>
++          <p>Make a smooth concentrate that keeps for a week.</p>
++          <a href="/guides/cold-brew" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>AeroPress</h3>
++          <p>Fast, forgiving, and endlessly tweakable.</p>
++          <a href="/guides/aeropress" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Moka Pot</h3>
++          <p>Stovetop coffee with an espresso-like punch.</p>
++          <a href="/guides/moka" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

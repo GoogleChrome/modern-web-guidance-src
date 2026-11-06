@@ -1,0 +1,279 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..db0845e
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,33 @@
++# Daily Grind browser tools
++
++The static homepage registers four WebMCP tools using `document.modelContext`
++(or the earlier `navigator.modelContext` API when present):
++
++| Tool | Inputs | Effect |
++| --- | --- | --- |
++| `get_seasonal_menu` | Optional `query` string | Read the visible Seasonal Favorites menu. |
++| `order_drink` | `drinkId`, optional integer `quantity` (1–10, default 1) | Add a visible page-session order and highlight its drink. |
++| `highlight_drink` | `drinkId` | Scroll to, focus, and highlight a drink card. |
++| `get_orders` | None | Read current orders and total drink quantity. |
++
++Native WebMCP requires a supporting browser and a secure context. The page also
++exposes a fallback without replacing browser APIs:
++
++```js
++window.dailyGrind.listTools(); // Names, descriptions, annotations, JSON Schemas
++await window.dailyGrind.callTool('get_seasonal_menu', { query: 'oat' });
++await window.dailyGrind.callTool('order_drink', {
++  drinkId: 'maple-oat-latte', quantity: 2
++});
++await window.dailyGrind.callTool('get_orders');
++await window.dailyGrind.callTool('highlight_drink', { drinkId: 'cold-brew' });
++```
++
++The fallback returns JSON objects; native tool results contain the same JSON in
++a text content block. Invalid arguments return an `error` without mutating the
++page. Menu data comes from the cards on the homepage. Visitors can use View
++Details to open a drink dialog and add orders through the same ordering logic.
++Orders are a local demo: no backend, payment, or café submission; reloading clears
++them. Repeating `order_drink` adds another order.
++
++API reference: [Chrome WebMCP guidance](https://developer.chrome.com/docs/modern-web-guidance/guides/webmcp/agentic-javascript-tools).
+diff --git a/browser-tools.js b/browser-tools.js
+new file mode 100644
+index 0000000..979444c
+--- /dev/null
++++ b/browser-tools.js
+@@ -0,0 +1,141 @@
++(() => {
++  'use strict';
++
++  // Read the visible cards so the agent and visitor always see the same menu.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map(card => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++  }));
++  const orders = [];
++  const dialog = document.querySelector('#drink-dialog');
++  const quantityInput = document.querySelector('#drink-quantity');
++  const status = document.querySelector('#order-status');
++  let selectedDrinkId;
++
++  function findDrink(drinkId) {
++    return menu.find(drink => drink.id === drinkId);
++  }
++
++  function highlightDrink(drinkId) {
++    cards.forEach(card => card.classList.toggle('is-highlighted', card.dataset.drinkId === drinkId));
++    const card = cards.find(card => card.dataset.drinkId === drinkId);
++    card.scrollIntoView({ block: 'center', behavior: 'instant' });
++    card.focus({ preventScroll: true });
++  }
++
++  function orderDrink(drinkId, quantity) {
++    const drink = findDrink(drinkId);
++    const order = { id: `order-${orders.length + 1}`, drinkId, name: drink.name, quantity };
++    orders.push(order);
++    const row = document.createElement('li');
++    row.textContent = `${quantity} × ${drink.name} — ${order.id}`;
++    document.querySelector('#orders').append(row);
++    document.querySelector('#empty-orders').hidden = true;
++    status.textContent = `Added ${quantity} × ${drink.name} to your page order.`;
++    highlightDrink(drinkId);
++    return { ...order };
++  }
++
++  document.querySelectorAll('[data-order-drink]').forEach(button => {
++    button.addEventListener('click', () => {
++      selectedDrinkId = button.dataset.orderDrink;
++      const drink = findDrink(selectedDrinkId);
++      document.querySelector('#drink-title').textContent = drink.name;
++      document.querySelector('#drink-description').textContent = drink.description;
++      quantityInput.value = '1';
++      dialog.showModal();
++    });
++  });
++  document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
++  document.querySelector('#drink-order-form').addEventListener('submit', event => {
++    event.preventDefault();
++    if (!event.currentTarget.reportValidity()) return;
++    const quantity = Number(quantityInput.value);
++    if (!findDrink(selectedDrinkId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) return;
++    dialog.close();
++    orderDrink(selectedDrinkId, quantity);
++  });
++
++  const drinkIdSchema = {
++    type: 'string', enum: menu.map(drink => drink.id),
++    description: 'The exact drink ID from get_seasonal_menu.',
++  };
++  const definitions = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Query the Daily Grind Seasonal Favorites. Returns drink IDs, names, and descriptions. Optionally filter by name or description.',
++      inputSchema: { type: 'object', properties: { query: { type: 'string', maxLength: 200 } }, additionalProperties: false },
++      annotations: { readOnlyHint: true },
++      run: ({ query = '' }) => ({
++        section: 'Seasonal Favorites',
++        drinks: menu.filter(drink => `${drink.name} ${drink.description}`.toLowerCase().includes(query.toLowerCase())).map(drink => ({ ...drink })),
++      }),
++    },
++    {
++      name: 'order_drink',
++      description: 'Add 1–10 of a seasonal drink to the visible page order and highlight its card. This is a local demo order, with no payment or café submission. Each call adds a new order.',
++      inputSchema: { type: 'object', properties: { drinkId: drinkIdSchema, quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1 } }, required: ['drinkId'], additionalProperties: false },
++      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
++      run: ({ drinkId, quantity = 1 }) => ({ order: orderDrink(drinkId, quantity), scope: 'page-session' }),
++    },
++    {
++      name: 'highlight_drink',
++      description: 'Highlight, scroll to, and focus a Seasonal Favorites drink card without ordering it.',
++      inputSchema: { type: 'object', properties: { drinkId: drinkIdSchema }, required: ['drinkId'], additionalProperties: false },
++      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
++      run: ({ drinkId }) => {
++        highlightDrink(drinkId);
++        status.textContent = `Selected ${findDrink(drinkId).name}.`;
++        return { highlightedDrinkId: drinkId };
++      },
++    },
++    {
++      name: 'get_orders',
++      description: 'Read the current page-session drink orders and total number of drinks.',
++      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++      annotations: { readOnlyHint: true },
++      run: () => ({ orders: orders.map(order => ({ ...order })), totalQuantity: orders.reduce((total, order) => total + order.quantity, 0), scope: 'page-session' }),
++    },
++  ];
++
++  // Validate at execution time too: native implementations may not enforce schemas.
++  function execute(definition, input = {}) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Input must be an object.' };
++    const schema = definition.inputSchema;
++    if (Object.keys(input).some(key => !Object.hasOwn(schema.properties, key))) return { error: 'Unknown input property.' };
++    if ((schema.required || []).some(key => !Object.hasOwn(input, key))) return { error: 'drinkId is required. Use get_seasonal_menu to find valid IDs.' };
++    if (Object.hasOwn(input, 'drinkId') && !findDrink(input.drinkId)) return { error: 'Unknown drinkId. Use get_seasonal_menu to find valid IDs.' };
++    if (Object.hasOwn(input, 'quantity') && (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 10)) return { error: 'quantity must be an integer from 1 to 10.' };
++    if (Object.hasOwn(input, 'query') && (typeof input.query !== 'string' || input.query.length > 200)) return { error: 'query must be a string of at most 200 characters.' };
++    return definition.run(input);
++  }
++
++  // A discoverable fallback for agents in browsers without native WebMCP.
++  window.dailyGrind = Object.freeze({
++    listTools: () => definitions.map(({ run, ...definition }) => JSON.parse(JSON.stringify(definition))),
++    callTool: async (name, input = {}) => {
++      const definition = definitions.find(tool => tool.name === name);
++      return definition ? execute(definition, input) : { error: `Unknown tool: ${name}` };
++    },
++  });
++
++  // Prefer the current API; support earlier browser implementations as well.
++  const modelContext = document.modelContext || navigator.modelContext;
++  if (typeof modelContext?.registerTool === 'function') {
++    for (const { run, ...definition } of definitions) {
++      try {
++        Promise.resolve(modelContext.registerTool({
++          ...definition,
++          execute: async (input = {}) => {
++            const result = execute(definitions.find(tool => tool.name === definition.name), input);
++            return { content: [{ type: 'text', text: JSON.stringify(result) }], ...(result.error ? { isError: true } : {}) };
++          },
++        })).catch(error => console.warn(`Could not register ${definition.name}`, error));
++      } catch (error) {
++        console.warn(`Could not register ${definition.name}`, error);
++      }
++    }
++  }
++})();
+diff --git a/index.html b/index.html
+index 66c9173..c3b5a79 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,18 @@
+       background: #3e2723;
+     }
+ 
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    .card.is-highlighted { outline: 3px solid var(--accent); }
++    .card:focus { outline: 3px solid var(--accent); }
++    .order-panel { margin-top: 32px; padding: 24px; background: var(--secondary); border-radius: 8px; }
++    #orders { padding-left: 24px; margin-top: 12px; }
++    dialog { margin: auto; padding: 28px; max-width: min(440px, 90vw); border: 0; border-radius: 8px; color: var(--text); }
++    dialog::backdrop { background: rgb(0 0 0 / 50%); }
++    dialog label { display: block; margin-top: 16px; }
++    dialog input { padding: 8px; width: 100%; font: inherit; }
++    .dialog-actions { display: flex; gap: 12px; }
++    #order-status { margin-top: 12px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,32 +183,52 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#seasonal-favorites" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="maple-oat-latte" aria-label="View details and order Maple Oat Latte">View Details</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="dark-roast-espresso" aria-label="View details and order Dark Roast Espresso">View Details</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="cold-brew" aria-label="View details and order Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
++    <section class="order-panel" aria-labelledby="orders-heading">
++      <h2 id="orders-heading">Your drinks</h2>
++      <p>Try an order here. Orders stay in this page session; no payment or café submission.</p>
++      <p id="empty-orders">No drinks ordered yet. Pick a seasonal favorite to get started.</p>
++      <ol id="orders"></ol>
++      <p id="order-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
++  <dialog id="drink-dialog" aria-labelledby="drink-title" aria-describedby="drink-description">
++    <form id="drink-order-form">
++      <h2 id="drink-title"></h2>
++      <p id="drink-description"></p>
++      <label for="drink-quantity">Quantity (1–10)</label>
++      <input id="drink-quantity" name="quantity" type="number" min="1" max="10" step="1" value="1" required>
++      <div class="dialog-actions">
++        <button class="btn" type="submit">Add drink order</button>
++        <button class="btn" type="button" id="close-dialog">Cancel</button>
++      </div>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +239,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/browser-tools.js" defer></script>
+ </body>
+ 
+ </html>

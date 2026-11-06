@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,117 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Auto-sizing Form Section */
++    .order-form-section {
++      margin-top: 50px;
++    }
++
++    .form-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 680px;
++      margin: 0 auto;
++    }
++
++    .form-card h2 {
++      color: var(--primary);
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .form-desc {
++      text-align: center;
++      color: #666;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .coffee-order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 20px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      width: 100%;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .coffee-order-form input[type="text"],
++    .coffee-order-form select,
++    .coffee-order-form textarea {
++      field-sizing: content;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 8px 12px;
++      border: 1px solid #ccc;
++      border-radius: 6px;
++      color: var(--text);
++      background-color: #fff;
++      box-sizing: border-box;
++      align-self: flex-start;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .coffee-order-form input[type="text"]:focus,
++    .coffee-order-form select:focus,
++    .coffee-order-form textarea:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .coffee-order-form input[type="text"] {
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 100%;
++    }
++
++    .coffee-order-form select {
++      width: auto;
++      max-inline-size: 100%;
++      cursor: pointer;
++    }
++
++    .coffee-order-form textarea {
++      width: auto;
++      height: auto;
++      min-inline-size: 25ch;
++      max-inline-size: 100%;
++      min-block-size: 2.5lh;
++      max-block-size: 10lh;
++    }
++
++    .coffee-order-form button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    @supports not (field-sizing: content) {
++      .coffee-order-form input[type="text"],
++      .coffee-order-form select,
++      .coffee-order-form textarea {
++        width: 100%;
++        max-width: 400px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +303,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-form-section">
++      <div class="form-card">
++        <h2>Custom Coffee Order</h2>
++        <p class="form-desc">Tell us how you take your brew and we'll craft it to perfection.</p>
++        <form class="coffee-order-form" action="#" method="post">
++          <div class="form-group">
++            <label for="customer-name">Your Name</label>
++            <input type="text" id="customer-name" name="name" placeholder="e.g., Alex" required>
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-selection">Select Your Blend</label>
++            <select id="coffee-selection" name="coffee">
++              <option value="espresso">Espresso</option>
++              <option value="cappuccino">Cappuccino</option>
++              <option value="ethiopian-pourover">Ethiopian Yirgacheffe Pour-Over (Single Origin)</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="latte">Vanilla Bean Oat Milk Latte</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="special-instructions">Special Instructions</label>
++            <textarea id="special-instructions" name="instructions" rows="2" placeholder="e.g., Extra hot with oat milk and cinnamon on top..."></textarea>
++          </div>
++
++          <button type="submit" class="btn">Place Order</button>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

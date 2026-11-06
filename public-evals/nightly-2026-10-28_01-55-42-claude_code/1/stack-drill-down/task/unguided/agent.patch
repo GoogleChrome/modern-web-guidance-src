@@ -1,0 +1,588 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+--- a/app.js
++++ b/app.js
+@@ -0,0 +1,583 @@
++/*
++ * The Daily Grind — hierarchical navigation stack.
++ *
++ * The URL hash is the single source of truth. Every route maps to a stack of
++ * screens (e.g. "#/menu/cold-brew/brewing" => [home, cold-brew, brewing]).
++ * Whenever the URL changes — card click, back button, browser back/forward,
++ * edge swipe, or a deep link on first load — we diff the desired stack against
++ * the screens currently on display and animate the difference.
++ */
++(function () {
++  'use strict';
++
++  var SITE_TITLE = 'The Daily Grind';
++  var HOME_TITLE = 'The Daily Grind | Artisanal Coffee';
++  var DURATION = 340;
++  var EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
++  var PARALLAX = -30; // % the underlying screen slides while covered
++  var EDGE_PX = 40; // swipe-back must start this close to the left edge
++  var COMMIT_FRACTION = 0.35; // drag past this fraction of the width => pop
++  var COMMIT_VELOCITY = 0.5; // px/ms
++
++  /* ------------------------------------------------------------------ */
++  /* Content                                                             */
++  /* ------------------------------------------------------------------ */
++
++  var ITEMS = {
++    'maple-oat-latte': {
++      name: 'Maple Oat Latte',
++      price: '$5.75',
++      tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      description: 'Our autumn signature. A double shot of House Blend espresso is swirled with dark maple syrup from a family sugarhouse in Vermont, then topped with velvety steamed oat milk and a whisper of flaky salt.',
++      image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1400&q=75',
++      imageAlt: 'Latte art being poured into a white cup',
++      facts: [
++        ['Served', 'Hot or iced'],
++        ['Caffeine', '150 mg'],
++        ['Season', 'Through November'],
++        ['Dairy', 'Dairy-free']
++      ],
++      notes: ['Maple', 'Brown butter', 'Toasted oat'],
++      ingredients: [
++        ['House Blend espresso', 'Double shot, 36 g. Washed Colombian beans from Huila roasted to a medium profile.'],
++        ['Oat milk', 'Barista-style oat milk steamed to a silky microfoam.'],
++        ['Vermont maple syrup', 'Grade A dark, from a fourth-generation sugarhouse in Addison County.'],
++        ['Flaky sea salt', 'A single pinch to sharpen the maple.']
++      ],
++      sourcing: 'The Huila cooperative we buy from is paid 40% above the Fair Trade minimum, and our maple partner taps the same sugar bush their grandparents did. Both relationships are now in their sixth year.',
++      brewing: [
++        'Pull a 36 g double shot of House Blend in 27–30 seconds.',
++        'Stir 20 ml of dark maple syrup into the shot while it is still hot.',
++        'Steam 240 ml of oat milk to 60 °C, aiming for glossy, paint-like foam.',
++        'Pour from a height, then finish close to the surface to draw the rosetta.',
++        'Finish with a pinch of flaky salt. For iced, build over ice and skip the steam.'
++      ]
++    },
++    'dark-roast-espresso': {
++      name: 'Dark Roast Espresso',
++      price: '$3.25',
++      tagline: 'Bold, smokey, and perfect for a morning boost.',
++      description: 'Our darkest roast, built for people who like their coffee to announce itself. Brazilian Cerrado brings body and sweetness; Sumatran Mandheling brings earth and smoke. Served as a straight double with sparkling water on the side.',
++      image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1400&q=75',
++      imageAlt: 'A fresh shot of espresso in a white cup, seen from above',
++      facts: [
++        ['Served', 'Double shot'],
++        ['Caffeine', '130 mg'],
++        ['Roast', 'Dark'],
++        ['Body', 'Full']
++      ],
++      notes: ['Dark chocolate', 'Smoked cedar', 'Molasses'],
++      ingredients: [
++        ['Brazil Cerrado (60%)', 'Natural process. Heavy body, nutty sweetness, low acidity.'],
++        ['Sumatra Mandheling (40%)', 'Wet-hulled. Earthy, savory, and lightly smoky.'],
++        ['Filtered water', 'Remineralized to 90 ppm for a balanced extraction.']
++      ],
++      sourcing: 'Both lots are bought through long-term direct contracts and roasted in small 12 kg batches at our Portland roastery, never more than ten days before they reach the bar.',
++      brewing: [
++        'Dose 18 g of freshly ground coffee, ground fine enough to hold together when pinched.',
++        'Distribute and tamp level with firm, even pressure.',
++        'Brew at 93 °C and 9 bar, targeting 36 g of espresso in 27–30 seconds.',
++        'Serve immediately in a warmed demitasse with a glass of sparkling water.'
++      ]
++    },
++    'cold-brew': {
++      name: 'Cold Brew',
++      price: '$4.50',
++      tagline: 'Steeped for 18 hours for maximum smoothness.',
++      description: 'Coarsely ground Ethiopian and Guatemalan beans steeped overnight in cold filtered water, then double filtered for a clean, naturally sweet cup with almost no bitterness. Poured over ice, or on nitro at select locations.',
++      image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1400&q=75',
++      imageAlt: 'A tall glass of cold brew with cream swirling through it',
++      facts: [
++        ['Served', 'Over ice or nitro'],
++        ['Caffeine', '200 mg'],
++        ['Steep time', '18 hours'],
++        ['Sweetness', 'Naturally sweet']
++      ],
++      notes: ['Cocoa nib', 'Dried cherry', 'Caramel'],
++      ingredients: [
++        ['Ethiopia Sidama (50%)', 'Washed. Bright fruit and floral notes that survive the long steep.'],
++        ['Guatemala Antigua (50%)', 'Washed. Chocolate and caramel for depth.'],
++        ['Cold filtered water', 'Steeped at 4 °C.'],
++        ['Ice', 'Made from the same filtered water so the drink never goes flat.']
++      ],
++      sourcing: 'The Sidama lot comes from a washing station we have visited every harvest since 2021. The Antigua is grown on a single family farm on the slopes of Volcán de Agua.',
++      brewing: [
++        'Grind the blend coarse, like raw sugar.',
++        'Combine 1 part coffee to 8 parts cold filtered water and stir to wet all the grounds.',
++        'Steep covered in the walk-in at 4 °C for 18 hours.',
++        'Filter twice: first through a mesh basket, then through paper for clarity.',
++        'Serve over ice, or charge with nitrogen and pour from the tap.'
++      ]
++    }
++  };
++
++  var SUBVIEWS = {
++    ingredients: { title: 'Ingredients & Sourcing', blurb: 'What goes in the cup, and where it comes from.' },
++    brewing: { title: 'How We Brew It', blurb: 'The recipe our baristas follow, step by step.' }
++  };
++
++  /* ------------------------------------------------------------------ */
++  /* Routing                                                             */
++  /* ------------------------------------------------------------------ */
++
++  function parseRoute(hash) {
++    var path = (hash || '').replace(/^#/, '').replace(/^\/+|\/+$/g, '');
++    var segs = path ? path.split('/') : [];
++    var route = [{ key: 'home', type: 'home', path: '/', title: HOME_TITLE }];
++
++    if (!segs.length) return route;
++
++    if (segs[0] === 'menu' && segs.length >= 2 && ITEMS.hasOwnProperty(segs[1])) {
++      var slug = segs[1];
++      var item = ITEMS[slug];
++      route.push({
++        key: 'item/' + slug, type: 'item', slug: slug, item: item,
++        path: '/menu/' + slug, title: item.name, parentTitle: 'Seasonal Favorites'
++      });
++      if (segs.length === 2) return route;
++      if (segs.length === 3 && SUBVIEWS.hasOwnProperty(segs[2])) {
++        route.push({
++          key: 'item/' + slug + '/' + segs[2], type: 'subview', slug: slug, item: item,
++          sub: segs[2], path: '/menu/' + slug + '/' + segs[2],
++          title: SUBVIEWS[segs[2]].title, parentTitle: item.name
++        });
++        return route;
++      }
++    }
++
++    route.push({
++      key: 'missing/' + path, type: 'missing', path: '/' + path,
++      title: 'Page not found',
++      parentTitle: route.length > 1 ? route[route.length - 1].title : 'Home'
++    });
++    return route;
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Rendering                                                           */
++  /* ------------------------------------------------------------------ */
++
++  function esc(s) {
++    return String(s).replace(/[&<>"']/g, function (c) {
++      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
++    });
++  }
++
++  var CHEVRON_LEFT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
++  var CHEVRON_RIGHT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
++
++  function barHtml(desc) {
++    return '<header class="screen-bar">' +
++      '<button type="button" class="back-btn" data-nav-back aria-label="Back to ' + esc(desc.parentTitle) + '">' +
++      CHEVRON_LEFT + '<span>' + esc(desc.parentTitle) + '</span></button>' +
++      '<h1>' + esc(desc.title) + '</h1>' +
++      '</header>';
++  }
++
++  function itemHtml(desc) {
++    var it = desc.item;
++    var html = barHtml(desc);
++    html += '<figure class="detail-hero"><img src="' + esc(it.image) + '" alt="' + esc(it.imageAlt) + '"></figure>';
++    html += '<div class="detail-body">';
++    html += '<p class="eyebrow">Seasonal Favorite</p>';
++    html += '<div class="detail-title"><h2>' + esc(it.name) + '</h2><span class="price">' + esc(it.price) + '</span></div>';
++    html += '<p class="lede">' + esc(it.tagline) + '</p>';
++    html += '<p>' + esc(it.description) + '</p>';
++    html += '<h3>At a glance</h3><ul class="facts">';
++    it.facts.forEach(function (f) {
++      html += '<li><span class="label">' + esc(f[0]) + '</span><span class="value">' + esc(f[1]) + '</span></li>';
++    });
++    html += '</ul>';
++    html += '<h3>Tasting notes</h3><ul class="chips">';
++    it.notes.forEach(function (n) { html += '<li>' + esc(n) + '</li>'; });
++    html += '</ul>';
++    html += '<h3>Learn more</h3><div class="row-links">';
++    Object.keys(SUBVIEWS).forEach(function (k) {
++      html += '<a class="row-link" href="#/menu/' + esc(desc.slug) + '/' + k + '">' +
++        '<span><strong>' + esc(SUBVIEWS[k].title) + '</strong><small>' + esc(SUBVIEWS[k].blurb) + '</small></span>' +
++        CHEVRON_RIGHT + '</a>';
++    });
++    html += '</div>';
++    html += '<a href="/order-online" class="btn">Order Now</a>';
++    html += '</div>';
++    return html;
++  }
++
++  function subviewHtml(desc) {
++    var it = desc.item;
++    var html = barHtml(desc);
++    html += '<div class="detail-body">';
++    html += '<p class="eyebrow">' + esc(it.name) + '</p>';
++    html += '<div class="detail-title"><h2>' + esc(desc.title) + '</h2></div>';
++    if (desc.sub === 'ingredients') {
++      html += '<ul class="ingredient-list">';
++      it.ingredients.forEach(function (row) {
++        html += '<li><strong>' + esc(row[0]) + '</strong><br>' + esc(row[1]) + '</li>';
++      });
++      html += '</ul>';
++      html += '<h3>Where it comes from</h3><p>' + esc(it.sourcing) + '</p>';
++    } else {
++      html += '<p class="lede">' + esc(SUBVIEWS.brewing.blurb) + '</p>';
++      html += '<ol class="steps">';
++      it.brewing.forEach(function (step) { html += '<li>' + esc(step) + '</li>'; });
++      html += '</ol>';
++    }
++    html += '<a href="/order-online" class="btn">Order Now</a>';
++    html += '</div>';
++    return html;
++  }
++
++  function missingHtml(desc) {
++    var html = barHtml(desc);
++    html += '<div class="missing-body">';
++    html += '<p class="eyebrow">404</p>';
++    html += '<h2 style="color:var(--primary);margin-bottom:12px">We couldn\'t find that</h2>';
++    html += '<p>There is nothing on the menu at <code>' + esc(desc.path) + '</code>.</p>';
++    html += '<a href="#/" class="btn" data-nav-back>Go back</a>';
++    html += '</div>';
++    return html;
++  }
++
++  function createScreen(desc) {
++    var el = document.createElement('section');
++    el.className = 'screen screen--detail';
++    el.tabIndex = -1;
++    el.setAttribute('aria-label', desc.title);
++    el.dataset.key = desc.key;
++    el.innerHTML = desc.type === 'item' ? itemHtml(desc)
++      : desc.type === 'subview' ? subviewHtml(desc)
++        : missingHtml(desc);
++    return el;
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Stack state                                                         */
++  /* ------------------------------------------------------------------ */
++
++  var stackEl = document.getElementById('stack');
++  var scrim = stackEl.querySelector('.scrim');
++  var homeEl = document.getElementById('screen-home');
++  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++  // Each entry: { desc, el, returnFocus }
++  var stack = [{ desc: parseRoute('')[0], el: homeEl, returnFocus: null }];
++  var animating = false;
++  var queue = Promise.resolve();
++
++  function top() { return stack[stack.length - 1]; }
++  function duration() { return reduceMotion.matches ? 0 : DURATION; }
++
++  function tx(pct) { return 'translateX(' + pct + '%)'; }
++
++  function animate(el, from, to) {
++    // Inline styles hold the end state; the animation plays from `from` to it.
++    Object.keys(to).forEach(function (p) { el.style[p] = to[p]; });
++    var d = duration();
++    if (!d || typeof el.animate !== 'function') return Promise.resolve();
++    var anim = el.animate([from, to], { duration: d, easing: EASE });
++    return anim.finished.catch(function () { /* cancelled */ });
++  }
++
++  function currentTransform(el, fallbackPct) {
++    return el.style.transform || tx(fallbackPct);
++  }
++
++  function setTopState() {
++    stack.forEach(function (entry, i) {
++      var isTop = i === stack.length - 1;
++      entry.el.inert = !isTop;
++      if (isTop) entry.el.removeAttribute('aria-hidden');
++      else entry.el.setAttribute('aria-hidden', 'true');
++    });
++    var t = top();
++    document.title = t.desc.type === 'home' ? HOME_TITLE : t.desc.title + ' | ' + SITE_TITLE;
++    // Keep the scrim directly beneath the top screen.
++    if (stack.length > 1) stackEl.insertBefore(scrim, t.el);
++    else stackEl.appendChild(scrim);
++    scrim.style.opacity = stack.length > 1 ? '1' : '0';
++  }
++
++  function stampHistory() {
++    // Mark this history entry as one we have laid out, so a reload is not
++    // mistaken for a fresh deep link.
++    var depth = stack.length - 1;
++    if (!history.state || history.state.dgDepth !== depth) {
++      try { history.replaceState({ dgDepth: depth }, ''); } catch (e) { /* ignore */ }
++    }
++  }
++
++  function focusScreen(el) {
++    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Push / pop                                                          */
++  /* ------------------------------------------------------------------ */
++
++  function pushScreens(descs, shouldAnimate) {
++    var under = top();
++    under.returnFocus = document.activeElement;
++    var els = descs.map(createScreen);
++
++    // Intermediate screens (deep links several levels down) are placed
++    // directly in their covered position; only the last one slides in.
++    els.forEach(function (el, i) {
++      var isLast = i === els.length - 1;
++      el.style.transform = isLast ? tx(100) : tx(PARALLAX);
++      stackEl.appendChild(el);
++      stack.push({ desc: descs[i], el: el, returnFocus: null });
++    });
++    var incoming = els[els.length - 1];
++    var revealedUnder = stack[stack.length - 2].el;
++    setTopState();
++
++    if (!shouldAnimate) {
++      incoming.style.transform = tx(0);
++      under.el.style.transform = tx(PARALLAX);
++      if (under.el !== revealedUnder) revealedUnder.style.transform = tx(PARALLAX);
++      focusScreen(incoming);
++      return Promise.resolve();
++    }
++
++    animating = true;
++    return Promise.all([
++      animate(incoming, { transform: tx(100) }, { transform: tx(0) }),
++      animate(revealedUnder, { transform: currentTransform(revealedUnder, 0) }, { transform: tx(PARALLAX) }),
++      animate(scrim, { opacity: 0 }, { opacity: 1 })
++    ]).then(function () {
++      if (under.el !== revealedUnder) under.el.style.transform = tx(PARALLAX);
++      animating = false;
++      focusScreen(incoming);
++    });
++  }
++
++  function popScreens(count, shouldAnimate) {
++    var removed = stack.splice(stack.length - count, count);
++    var outgoing = removed[removed.length - 1].el;
++    var revealed = top();
++
++    // Any intermediate screens vanish immediately; only the top one slides out.
++    removed.slice(0, -1).forEach(function (e) { e.el.remove(); });
++
++    // Put the scrim under the outgoing screen while it slides away.
++    stackEl.insertBefore(scrim, outgoing);
++    revealed.el.inert = false;
++    revealed.el.removeAttribute('aria-hidden');
++    outgoing.inert = true;
++    document.title = revealed.desc.type === 'home' ? HOME_TITLE : revealed.desc.title + ' | ' + SITE_TITLE;
++
++    function finish() {
++      outgoing.remove();
++      setTopState();
++      animating = false;
++      var rf = revealed.returnFocus;
++      revealed.returnFocus = null;
++      if (rf && rf.isConnected && revealed.el.contains(rf)) focusScreen(rf);
++      else focusScreen(revealed.el);
++    }
++
++    if (!shouldAnimate) {
++      revealed.el.style.transform = tx(0);
++      finish();
++      return Promise.resolve();
++    }
++
++    animating = true;
++    var scrimFrom = parseFloat(scrim.style.opacity);
++    if (isNaN(scrimFrom)) scrimFrom = 1;
++    return Promise.all([
++      animate(outgoing, { transform: currentTransform(outgoing, 0) }, { transform: tx(100) }),
++      animate(revealed.el, { transform: currentTransform(revealed.el, PARALLAX) }, { transform: tx(0) }),
++      // The scrim dims the revealed screen, so it always fades out here;
++      // setTopState() re-seats it beneath the new top screen afterwards.
++      animate(scrim, { opacity: scrimFrom }, { opacity: 0 })
++    ]).then(finish);
++  }
++
++  function applyRoute(route, shouldAnimate) {
++    var i = 0;
++    while (i < stack.length && i < route.length && stack[i].desc.key === route[i].key) i++;
++    var popCount = stack.length - i;
++    var toPush = route.slice(i);
++
++    var p = Promise.resolve();
++    if (popCount > 0 && toPush.length > 0) {
++      // Sibling swap (e.g. hash edited from one drink to another):
++      // drop the old branch instantly, then slide the new one in.
++      p = popScreens(popCount, false).then(function () { return pushScreens(toPush, shouldAnimate); });
++    } else if (popCount > 0) {
++      p = popScreens(popCount, shouldAnimate);
++    } else if (toPush.length > 0) {
++      p = pushScreens(toPush, shouldAnimate);
++    }
++    return p.then(stampHistory);
++  }
++
++  function sync(shouldAnimate) {
++    queue = queue.then(function () {
++      return applyRoute(parseRoute(location.hash), shouldAnimate);
++    }).catch(function (err) {
++      animating = false;
++      if (window.console) console.error(err);
++    });
++    return queue;
++  }
++
++  function goBack() {
++    if (stack.length < 2 || animating) return;
++    history.back();
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Interactive swipe-back                                              */
++  /* ------------------------------------------------------------------ */
++
++  var drag = null;
++  var suppressClick = false;
++  var swipeFallbackTimer = 0;
++
++  function setDragProgress(p) {
++    var topEl = top().el;
++    var underEl = stack[stack.length - 2].el;
++    topEl.style.transform = tx(p * 100);
++    underEl.style.transform = tx(PARALLAX * (1 - p));
++    scrim.style.opacity = String(1 - p);
++  }
++
++  function snapBack() {
++    var topEl = top().el;
++    var underEl = stack[stack.length - 2].el;
++    animating = true;
++    Promise.all([
++      animate(topEl, { transform: currentTransform(topEl, 0) }, { transform: tx(0) }),
++      animate(underEl, { transform: currentTransform(underEl, PARALLAX) }, { transform: tx(PARALLAX) }),
++      animate(scrim, { opacity: parseFloat(scrim.style.opacity) || 0 }, { opacity: 1 })
++    ]).then(function () { animating = false; });
++  }
++
++  function endDrag() {
++    drag = null;
++    document.body.classList.remove('is-dragging');
++  }
++
++  stackEl.addEventListener('pointerdown', function (e) {
++    if (stack.length < 2 || animating || drag) return;
++    if (e.pointerType === 'mouse' && e.button !== 0) return;
++    if (e.clientX - stackEl.getBoundingClientRect().left > EDGE_PX) return;
++    drag = {
++      id: e.pointerId, x0: e.clientX, y0: e.clientY, active: false,
++      width: stackEl.clientWidth || window.innerWidth, samples: []
++    };
++  });
++
++  stackEl.addEventListener('pointermove', function (e) {
++    if (!drag || e.pointerId !== drag.id) return;
++    var dx = e.clientX - drag.x0;
++    var dy = e.clientY - drag.y0;
++
++    if (!drag.active) {
++      if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
++        drag.active = true;
++        document.body.classList.add('is-dragging');
++        try { stackEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
++      } else if (Math.abs(dy) > 6) {
++        drag = null; // vertical scroll wins
++        return;
++      } else {
++        return;
++      }
++    }
++
++    if (e.cancelable) e.preventDefault();
++    var p = Math.min(1, Math.max(0, dx / drag.width));
++    drag.progress = p;
++    drag.samples.push({ t: e.timeStamp, x: e.clientX });
++    if (drag.samples.length > 6) drag.samples.shift();
++    setDragProgress(p);
++  });
++
++  function onPointerEnd(e) {
++    if (!drag || e.pointerId !== drag.id) return;
++    if (!drag.active) { drag = null; return; }
++
++    var p = drag.progress || 0;
++    var velocity = 0;
++    var s = drag.samples;
++    if (s.length >= 2) {
++      var a = s[0], b = s[s.length - 1];
++      if (b.t > a.t) velocity = (b.x - a.x) / (b.t - a.t);
++    }
++    var commit = e.type !== 'pointercancel' && (p > COMMIT_FRACTION || (velocity > COMMIT_VELOCITY && p > 0.05));
++    suppressClick = true;
++    setTimeout(function () { suppressClick = false; }, 0);
++    endDrag();
++
++    if (commit) {
++      // Let the history change drive the pop so the URL and stack stay in sync.
++      // popScreens() animates from wherever the drag left the screen.
++      animating = true; // block new input until popstate arrives
++      swipeFallbackTimer = setTimeout(function () {
++        // Nothing came back from history (should not happen); undo the drag.
++        swipeFallbackTimer = 0;
++        animating = false;
++        if (stack.length > 1) snapBack();
++      }, 600);
++      history.back();
++    } else {
++      snapBack();
++    }
++  }
++
++  stackEl.addEventListener('pointerup', onPointerEnd);
++  stackEl.addEventListener('pointercancel', onPointerEnd);
++  stackEl.addEventListener('lostpointercapture', function (e) {
++    if (drag && drag.active && e.pointerId === drag.id) onPointerEnd({ pointerId: e.pointerId, type: 'pointercancel' });
++  });
++
++  // A finished drag must not register as a click on whatever is under the pointer.
++  stackEl.addEventListener('click', function (e) {
++    if (suppressClick) { e.preventDefault(); e.stopPropagation(); }
++  }, true);
++
++  /* ------------------------------------------------------------------ */
++  /* Wiring                                                              */
++  /* ------------------------------------------------------------------ */
++
++  stackEl.addEventListener('click', function (e) {
++    var btn = e.target.closest && e.target.closest('[data-nav-back]');
++    if (btn) { e.preventDefault(); goBack(); }
++  });
++
++  document.addEventListener('keydown', function (e) {
++    if (e.key === 'Escape' && !e.defaultPrevented) goBack();
++  });
++
++  window.addEventListener('popstate', function () {
++    if (swipeFallbackTimer) { clearTimeout(swipeFallbackTimer); swipeFallbackTimer = 0; }
++    animating = false;
++    sync(true);
++  });
++
++  // Hash-only navigations fire popstate in every modern browser; keep
++  // hashchange as a belt-and-braces fallback (sync() is idempotent).
++  window.addEventListener('hashchange', function () { sync(true); });
++
++  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++  (function init() {
++    var route = parseRoute(location.hash);
++    var alreadyLaidOut = history.state && typeof history.state.dgDepth === 'number';
++
++    if (route.length > 1 && !alreadyLaidOut) {
++      // Fresh deep link: rebuild the ancestor chain in session history so
++      // browser back / swipe back walk up the hierarchy instead of leaving.
++      try {
++        history.replaceState({ dgDepth: 0 }, '', '#/');
++        for (var k = 1; k < route.length; k++) {
++          history.pushState({ dgDepth: k }, '', '#' + route[k].path);
++        }
++      } catch (e) { /* ignore: sandboxed or file: origins */ }
++    }
++    sync(false);
++  })();
++})();

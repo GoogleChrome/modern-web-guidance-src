@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..2f030c5 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,170 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Drink customization checkboxes */
++    :root {
++      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
++      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
++      /* Option icons */
++      --icon-bean: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><ellipse cx='12' cy='12' rx='7' ry='10' transform='rotate(35 12 12)' fill='black'/><path d='M8 18c4-3 4-9 8-12' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/></svg>");
++      --icon-drop: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2C9 7 5 10.5 5 15a7 7 0 0 0 14 0c0-4.5-4-8-7-13z' fill='black'/></svg>");
++      --icon-leaf: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M20 3C9 3 4 8 4 15c0 2 .5 3.5 1.5 5 1-4 4-8 9-10-4 3-6.5 6.5-7.5 11 1 .5 2 .5 3 .5C17 21.5 21 15 20 3z' fill='black'/></svg>");
++      --icon-cloud: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 19a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 8.5a4.5 4.5 0 0 1-.5 10.5H7z' fill='black'/></svg>");
++      --icon-snow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'><path d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2'/></svg>");
++      --icon-spice: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 1l2.6 7.4L22 11l-7.4 2.6L12 21l-2.6-7.4L2 11l7.4-2.6z' fill='black'/></svg>");
++    }
++
++    .customize {
++      border: 0;
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .customize legend {
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .option {
++      --option-bg: transparent;
++      --option-border: var(--secondary);
++
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      padding: 4px 12px;
++      margin-bottom: 6px;
++      border: 1px solid var(--option-border);
++      border-radius: 6px;
++      background: var(--option-bg);
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    .option:hover {
++      --option-border: #a1887f;
++    }
++
++    /* Highlight the whole row when its checkbox is checked */
++    .option:has(.checkbox:checked) {
++      --option-bg: #fff3e0;
++      --option-border: var(--accent);
++    }
++
++    .option-icon {
++      inline-size: 1.1em;
++      aspect-ratio: 1;
++      flex-shrink: 0;
++      background-color: #8d6e63;
++      mask: var(--option-icon) no-repeat center / contain;
++      transition: background-color 0.2s;
++    }
++
++    .option:has(.checkbox:checked) .option-icon {
++      background-color: var(--primary);
++    }
++
++    .option-icon.bean { --option-icon: var(--icon-bean); }
++    .option-icon.drop { --option-icon: var(--icon-drop); }
++    .option-icon.leaf { --option-icon: var(--icon-leaf); }
++    .option-icon.cloud { --option-icon: var(--icon-cloud); }
++    .option-icon.snow { --option-icon: var(--icon-snow); }
++    .option-icon.spice { --option-icon: var(--icon-spice); }
++
++    .option-price {
++      margin-left: auto;
++      font-size: 0.8rem;
++      color: #795548;
++    }
++
++    .checkbox {
++      --checkbox-size: 1.25em;
++      --checkbox-icon-size: 0.75em;
++
++      appearance: none;
++      display: inline-grid;
++      place-content: center;
++      flex-shrink: 0;
++      inline-size: var(--checkbox-size);
++      aspect-ratio: 1;
++      margin: 0;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      background-color: white;
++      color: white;
++      cursor: pointer;
++
++      &::before {
++        content: "";
++        inline-size: var(--checkbox-icon-size);
++        aspect-ratio: 1;
++        background-color: currentColor;
++        mask: var(--checkbox-icon, var(--icon-check)) no-repeat center / contain;
++        scale: 0;
++        rotate: -45deg;
++
++        @media (forced-colors: active) {
++          background-color: CanvasText;
++        }
++      }
++
++      &:is(:checked, :indeterminate) {
++        background-color: var(--primary);
++      }
++
++      &:checked {
++        --checkbox-icon: var(--icon-check);
++      }
++
++      &:indeterminate {
++        --checkbox-icon: var(--icon-dash);
++      }
++
++      &:is(:checked, :indeterminate)::before {
++        scale: 1;
++        rotate: 0deg;
++      }
++
++      &:focus-visible {
++        outline: 2px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      &:disabled {
++        cursor: not-allowed;
++        opacity: 0.5;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: background-color 150ms ease;
++
++        &::before {
++          /* Slight overshoot gives the check a springy "pop" */
++          transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), rotate 200ms ease;
++        }
++
++        &:checked {
++          animation: checkbox-pop 250ms ease;
++        }
++      }
++    }
++
++    @keyframes checkbox-pop {
++      50% {
++        scale: 1.2;
++      }
++    }
++
++    .option:has(.checkbox:disabled) {
++      cursor: not-allowed;
++    }
+   </style>
+ </head>
+ 
+@@ -181,16 +345,79 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customize">
++            <legend>Customize your Maple Oat Latte</legend>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="maple-oat-latte-extras" value="extra-shot">
++              <span class="option-icon bean" aria-hidden="true"></span>
++              Extra espresso shot
++              <span class="option-price">+$0.75</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="maple-oat-latte-extras" value="extra-maple">
++              <span class="option-icon drop" aria-hidden="true"></span>
++              Extra maple syrup
++              <span class="option-price">+$0.50</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="maple-oat-latte-extras" value="cinnamon">
++              <span class="option-icon spice" aria-hidden="true"></span>
++              Cinnamon dusting
++              <span class="option-price">Free</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customize">
++            <legend>Customize your Dark Roast Espresso</legend>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="dark-roast-espresso-extras" value="double-shot">
++              <span class="option-icon bean" aria-hidden="true"></span>
++              Make it a double
++              <span class="option-price">+$1.00</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="dark-roast-espresso-extras" value="steamed-milk">
++              <span class="option-icon cloud" aria-hidden="true"></span>
++              Splash of steamed milk
++              <span class="option-price">+$0.30</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="dark-roast-espresso-extras" value="vanilla">
++              <span class="option-icon drop" aria-hidden="true"></span>
++              Vanilla syrup
++              <span class="option-price">+$0.50</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customize">
++            <legend>Customize your Cold Brew</legend>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="cold-brew-extras" value="cold-foam">
++              <span class="option-icon cloud" aria-hidden="true"></span>
++              Sweet cream cold foam
++              <span class="option-price">+$1.25</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="cold-brew-extras" value="oat-milk">
++              <span class="option-icon leaf" aria-hidden="true"></span>
++              Oat milk
++              <span class="option-price">+$0.60</span>
++            </label>
++            <label class="option">
++              <input type="checkbox" class="checkbox" name="cold-brew-extras" value="light-ice">
++              <span class="option-icon snow" aria-hidden="true"></span>
++              Light ice
++              <span class="option-price">Free</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

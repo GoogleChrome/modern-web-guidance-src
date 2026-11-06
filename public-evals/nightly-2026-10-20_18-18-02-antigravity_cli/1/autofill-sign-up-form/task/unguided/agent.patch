@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,92 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-up Form Section */
++    .signup-section {
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
++      max-width: 500px;
++      margin: 60px auto 20px;
++    }
++
++    .signup-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .signup-section p {
++      text-align: center;
++      margin-bottom: 25px;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form-group input,
++    .form-group select {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.15);
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .checkbox-group input {
++      width: auto;
++      accent-color: var(--primary);
++    }
++
++    .signup-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 5px;
++    }
++
++    .signup-message {
++      display: none;
++      margin-top: 15px;
++      padding: 12px;
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border-radius: 5px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -162,8 +246,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +279,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup-section">
++      <h2>Create an Account</h2>
++      <p>Sign up for The Daily Grind Rewards and get your first coffee on us!</p>
++      <form id="signup-form" action="/signup" method="POST">
++        <div class="form-group">
++          <label for="full-name">Full Name</label>
++          <input type="text" id="full-name" name="fullName" placeholder="Jane Doe" required>
++        </div>
++        <div class="form-group">
++          <label for="email">Email Address</label>
++          <input type="email" id="email" name="email" placeholder="jane@example.com" required>
++        </div>
++        <div class="form-group">
++          <label for="password">Password</label>
++          <input type="password" id="password" name="password" placeholder="At least 8 characters" minlength="8" required>
++        </div>
++        <div class="form-group">
++          <label for="favorite-roast">Favorite Roast</label>
++          <select id="favorite-roast" name="favoriteRoast">
++            <option value="light">Light Roast</option>
++            <option value="medium" selected>Medium Roast</option>
++            <option value="dark">Dark Roast</option>
++            <option value="espresso">Espresso</option>
++          </select>
++        </div>
++        <div class="checkbox-group">
++          <input type="checkbox" id="newsletter" name="newsletter" checked>
++          <label for="newsletter">Send me exclusive offers and seasonal updates</label>
++        </div>
++        <button type="submit" class="btn signup-btn">Sign Up</button>
++        <div id="signup-message" class="signup-message">
++          Welcome to The Daily Grind! Your account has been created.
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +327,15 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('signup-form').addEventListener('submit', function (e) {
++      e.preventDefault();
++      const message = document.getElementById('signup-message');
++      message.style.display = 'block';
++      this.reset();
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,64 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..50f457e
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example/": {
++    "allow_migration": true
++  }
++}
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..0e4001f
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#fafafa"/>
++  <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#fafafa" stroke-width="24"/>
++  <path d="M200 112c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64M312 112c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..ec8a8d9 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..becc182
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,21 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.dailygrind.example/",
++      "install_url": "https://www.dailygrind.example/?noredirect=true",
++      "behavior": "suggest"
++    }
++  ]
++}

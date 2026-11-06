@@ -1,0 +1,244 @@
+diff --git a/index.html b/index.html
+index 66c9173..42428e8 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +13,118 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Raw light/dark palette */
++      --page-bg-light: var(--light);
++      --page-bg-dark: #17110f;
++      --page-text-light: var(--text);
++      --page-text-dark: #ece2dd;
++      --nav-bg-light: var(--primary);
++      --nav-bg-dark: #1f1613;
++      --nav-text-light: #ffffff;
++      --nav-text-dark: #f3e9e4;
++      --nav-border-light: transparent;
++      --nav-border-dark: #3e2f2a;
++      --nav-accent-light: var(--accent);
++      --nav-accent-dark: #ffc46b;
++      --hero-overlay-light: rgba(62, 39, 35, 0.45);
++      --hero-overlay-dark: rgba(10, 6, 5, 0.72);
++      --hero-text-light: #ffffff;
++      --hero-text-dark: #f3e9e4;
++      --card-bg-light: #ffffff;
++      --card-bg-dark: #2a1f1c;
++      --card-text-light: var(--text);
++      --card-text-dark: #e2d6d0;
++      --card-heading-light: var(--primary);
++      --card-heading-dark: #ffcc80;
++      --card-border-light: transparent;
++      --card-border-dark: #3e2f2a;
++      --card-shadow-light: rgba(0, 0, 0, 0.1);
++      --card-shadow-dark: rgba(0, 0, 0, 0.5);
++      --btn-bg-light: var(--primary);
++      --btn-bg-dark: #ffab40;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #1f1613;
++      --btn-hover-light: #3e2723;
++      --btn-hover-dark: #ffc46b;
++      --footer-bg-light: var(--secondary);
++      --footer-bg-dark: #241a17;
++
++      /* Themed tokens: resolve against the computed color-scheme */
++      --page-bg: light-dark(var(--page-bg-light), var(--page-bg-dark));
++      --page-text: light-dark(var(--page-text-light), var(--page-text-dark));
++      --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++      --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++      --nav-border: light-dark(var(--nav-border-light), var(--nav-border-dark));
++      --nav-accent: light-dark(var(--nav-accent-light), var(--nav-accent-dark));
++      --hero-overlay: light-dark(var(--hero-overlay-light), var(--hero-overlay-dark));
++      --hero-text: light-dark(var(--hero-text-light), var(--hero-text-dark));
++      --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
++      --card-text: light-dark(var(--card-text-light), var(--card-text-dark));
++      --card-heading: light-dark(var(--card-heading-light), var(--card-heading-dark));
++      --card-border: light-dark(var(--card-border-light), var(--card-border-dark));
++      --card-shadow: light-dark(var(--card-shadow-light), var(--card-shadow-dark));
++      --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++      --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++      --btn-hover: light-dark(var(--btn-hover-light), var(--btn-hover-dark));
++      --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++
++      /* Follow the OS preference by default */
++      color-scheme: light dark;
++    }
++
++    /* Explicit overrides via root attribute, class, or <meta name="color-scheme"> */
++    :root:is([data-theme="light"], .light, .theme-light, :has(> head > meta[name="color-scheme"][content="light"])) {
++      color-scheme: light;
++    }
++
++    :root:is([data-theme="dark"], .dark, .theme-dark, :has(> head > meta[name="color-scheme"][content="dark"])) {
++      color-scheme: dark;
++    }
++
++    /* Fallback for browsers without light-dark(): space toggles flip each token */
++    @supports not (color: light-dark(#000, #fff)) {
++      :root {
++        --if-light: ;
++        --if-dark: initial;
++      }
++
++      @media (prefers-color-scheme: dark) {
++        :root {
++          --if-light: initial;
++          --if-dark: ;
++        }
++      }
++
++      :root:is([data-theme="light"], .light, .theme-light, :has(> head > meta[name="color-scheme"][content="light"])) {
++        --if-light: ;
++        --if-dark: initial;
++      }
++
++      :root:is([data-theme="dark"], .dark, .theme-dark, :has(> head > meta[name="color-scheme"][content="dark"])) {
++        --if-light: initial;
++        --if-dark: ;
++      }
++
++      :root {
++        --page-bg: var(--if-dark, var(--page-bg-light)) var(--if-light, var(--page-bg-dark));
++        --page-text: var(--if-dark, var(--page-text-light)) var(--if-light, var(--page-text-dark));
++        --nav-bg: var(--if-dark, var(--nav-bg-light)) var(--if-light, var(--nav-bg-dark));
++        --nav-text: var(--if-dark, var(--nav-text-light)) var(--if-light, var(--nav-text-dark));
++        --nav-border: var(--if-dark, var(--nav-border-light)) var(--if-light, var(--nav-border-dark));
++        --nav-accent: var(--if-dark, var(--nav-accent-light)) var(--if-light, var(--nav-accent-dark));
++        --hero-overlay: var(--if-dark, var(--hero-overlay-light)) var(--if-light, var(--hero-overlay-dark));
++        --hero-text: var(--if-dark, var(--hero-text-light)) var(--if-light, var(--hero-text-dark));
++        --card-bg: var(--if-dark, var(--card-bg-light)) var(--if-light, var(--card-bg-dark));
++        --card-text: var(--if-dark, var(--card-text-light)) var(--if-light, var(--card-text-dark));
++        --card-heading: var(--if-dark, var(--card-heading-light)) var(--if-light, var(--card-heading-dark));
++        --card-border: var(--if-dark, var(--card-border-light)) var(--if-light, var(--card-border-dark));
++        --card-shadow: var(--if-dark, var(--card-shadow-light)) var(--if-light, var(--card-shadow-dark));
++        --btn-bg: var(--if-dark, var(--btn-bg-light)) var(--if-light, var(--btn-bg-dark));
++        --btn-text: var(--if-dark, var(--btn-text-light)) var(--if-light, var(--btn-text-dark));
++        --btn-hover: var(--if-dark, var(--btn-hover-light)) var(--if-light, var(--btn-hover-dark));
++        --footer-bg: var(--if-dark, var(--footer-bg-light)) var(--if-light, var(--footer-bg-dark));
++      }
+     }
+ 
+     * {
+@@ -23,14 +136,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--page-text);
++      background-color: var(--page-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,18 +170,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,7 +189,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +197,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +222,24 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +248,11 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +264,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--page-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

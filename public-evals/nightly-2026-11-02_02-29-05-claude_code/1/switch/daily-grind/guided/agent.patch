@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..7b0ab70 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,68 @@
+       background: #3e2723;
+     }
+ 
++    /* Preferences / Switches */
++    .preferences {
++      max-width: 600px;
++      margin: 60px auto 0;
++    }
++
++    .preferences fieldset {
++      border: none;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 10px 20px;
++      margin-top: 20px;
++    }
++
++    .preferences legend {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .switch-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 14px 0;
++      cursor: pointer;
++    }
++
++    .switch-row + .switch-row {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .switch-row small {
++      display: block;
++      color: #6d4c41;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      flex-shrink: 0;
++      margin: 0;
++      font-size: 1.25rem;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .preferences-status {
++      margin-top: 10px;
++      text-align: center;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +257,30 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading" style="text-align: center;">Order Preferences</h2>
++      <form id="preferences-form">
++        <fieldset>
++          <legend>Order preferences</legend>
++          <label class="switch-row">
++            <span>
++              Plant-based milk by default
++              <small>Swap in oat milk on every drink.</small>
++            </span>
++            <input type="checkbox" switch name="oatMilk">
++          </label>
++          <label class="switch-row">
++            <span>
++              Seasonal drink alerts
++              <small>Email me when new seasonal favorites arrive.</small>
++            </span>
++            <input type="checkbox" switch name="seasonalAlerts" checked>
++          </label>
++        </fieldset>
++        <p class="preferences-status" id="preferences-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +293,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('https://cdn.jsdelivr.net/npm/input-switch-polyfill@1.12.0/input-switch-polyfill.js');
++    }
++
++    const form = document.getElementById('preferences-form');
++    const status = document.getElementById('preferences-status');
++    const saved = JSON.parse(localStorage.getItem('dailyGrindPreferences') ?? '{}');
++
++    for (const input of form.querySelectorAll('input[switch]')) {
++      if (input.name in saved) input.checked = saved[input.name];
++
++      input.addEventListener('change', () => {
++        saved[input.name] = input.checked;
++        localStorage.setItem('dailyGrindPreferences', JSON.stringify(saved));
++        const label = input.closest('label').querySelector('span').firstChild.textContent.trim();
++        status.textContent = `${label} turned ${input.checked ? 'on' : 'off'}.`;
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

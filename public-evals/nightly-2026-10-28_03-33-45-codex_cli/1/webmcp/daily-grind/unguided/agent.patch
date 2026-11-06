@@ -1,0 +1,378 @@
+diff --git a/daily-grind.js b/daily-grind.js
+new file mode 100644
+index 0000000..5f0aba4
+--- /dev/null
++++ b/daily-grind.js
+@@ -0,0 +1,164 @@
++(() => {
++  'use strict';
++
++  // The visible menu is the source of truth for both visitors and agents.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map(card => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++    detailsUrl: card.querySelector('a').getAttribute('href'),
++  }));
++  const form = document.getElementById('order-form');
++  const drinkSelect = document.getElementById('order-drink');
++  const quantityInput = document.getElementById('order-quantity');
++  const items = document.getElementById('order-items');
++  const empty = document.getElementById('order-empty');
++  const clearButton = document.getElementById('clear-order');
++  const status = document.getElementById('order-status');
++  const order = new Map();
++
++  function announce(message) { status.textContent = message; }
++
++  function getDrink(drinkId) {
++    const drink = menu.find(item => item.id === drinkId);
++    if (!drink) throw new Error(`Unknown drink. Use one of: ${menu.map(item => item.id).join(', ')}.`);
++    return drink;
++  }
++
++  function selectDrink(drinkId) {
++    const drink = getDrink(drinkId);
++    drinkSelect.value = drink.id;
++    cards.forEach(card => card.classList.toggle('is-selected', card.dataset.drinkId === drink.id));
++    return drink;
++  }
++
++  function getOrder() {
++    return {
++      status: 'draft',
++      submitted: false,
++      items: [...order].map(([drinkId, quantity]) => ({ drinkId, name: getDrink(drinkId).name, quantity })),
++      totalQuantity: [...order.values()].reduce((total, quantity) => total + quantity, 0),
++    };
++  }
++
++  function renderOrder() {
++    items.replaceChildren();
++    for (const item of getOrder().items) {
++      const row = document.createElement('li');
++      row.textContent = `${item.quantity} × ${item.name}`;
++      items.append(row);
++    }
++    empty.hidden = order.size > 0;
++    clearButton.disabled = order.size === 0;
++  }
++
++  function addDrink(drinkId, quantity = 1) {
++    const drink = getDrink(drinkId);
++    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
++      throw new Error('Quantity must be a whole number from 1 to 20.');
++    }
++    const nextQuantity = (order.get(drinkId) || 0) + quantity;
++    if (nextQuantity > 20) throw new Error('An order draft can contain at most 20 of each drink.');
++    order.set(drinkId, nextQuantity);
++    selectDrink(drinkId);
++    renderOrder();
++    announce(`Added ${quantity} × ${drink.name} to your order draft.`);
++    return getOrder();
++  }
++
++  for (const [index, drink] of menu.entries()) {
++    const option = document.createElement('option');
++    option.value = drink.id;
++    option.textContent = drink.name;
++    drinkSelect.append(option);
++    const button = document.createElement('button');
++    button.type = 'button';
++    button.className = 'btn';
++    button.textContent = `Order ${drink.name}`;
++    button.addEventListener('click', () => {
++      selectDrink(drink.id);
++      announce(`${drink.name} selected. Choose a quantity and add it to your order.`);
++      document.getElementById('drink-order').scrollIntoView({ block: 'start' });
++      quantityInput.focus({ preventScroll: true });
++    });
++    cards[index].append(button);
++  }
++  drinkSelect.addEventListener('change', () => selectDrink(drinkSelect.value));
++  form.addEventListener('submit', event => {
++    event.preventDefault();
++    try { addDrink(drinkSelect.value, Number(quantityInput.value)); }
++    catch (error) { announce(error.message); }
++  });
++  clearButton.addEventListener('click', () => {
++    order.clear();
++    renderOrder();
++    announce('Order draft cleared.');
++  });
++
++  // Feature detection keeps the regular UI available in browsers without WebMCP.
++  const modelContext = document.modelContext ?? navigator.modelContext;
++  if (typeof modelContext?.registerTool !== 'function') return;
++
++  const drinkIdSchema = {
++    type: 'string',
++    enum: menu.map(drink => drink.id),
++    description: 'The seasonal drink ID returned by get_seasonal_menu.',
++  };
++  const result = data => ({ content: [{ type: 'text', text: JSON.stringify(data) }] });
++  const execute = action => async (input = {}) => {
++    try {
++      if (!input || typeof input !== 'object' || Array.isArray(input)) {
++        throw new Error('Tool input must be an object.');
++      }
++      return result(action(input));
++    } catch (error) {
++      return { ...result({ error: error.message }), isError: true };
++    }
++  };
++  const tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Read the Seasonal Favorites coffee menu, including drink IDs, names, descriptions and detail links. Does not change the page.',
++      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++      annotations: { readOnlyHint: true },
++      execute: execute(() => ({ title: 'Seasonal Favorites', drinks: menu.map(drink => ({ ...drink })) })),
++    },
++    {
++      name: 'select_drink',
++      description: 'Highlight a seasonal drink and select it in the on-page order form. Does not add it to the order draft.',
++      inputSchema: { type: 'object', properties: { drinkId: drinkIdSchema }, required: ['drinkId'], additionalProperties: false },
++      execute: execute(({ drinkId }) => {
++        const drink = selectDrink(drinkId);
++        announce(`${drink.name} selected. Choose a quantity and add it to your order.`);
++        document.getElementById('drink-order').scrollIntoView({ block: 'start' });
++        return { selectedDrink: { ...drink } };
++      }),
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible client-side order draft. Quantity defaults to 1, with at most 20 of each drink. Does not submit an order, charge payment, or contact the café.',
++      inputSchema: {
++        type: 'object',
++        properties: { drinkId: drinkIdSchema, quantity: { type: 'integer', minimum: 1, maximum: 20, default: 1 } },
++        required: ['drinkId'], additionalProperties: false,
++      },
++      execute: execute(({ drinkId, quantity = 1 }) => addDrink(drinkId, quantity)),
++    },
++    {
++      name: 'get_order',
++      description: 'Read the current on-page order draft and total number of drinks. Drafts are kept only for this page session and are never submitted.',
++      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++      annotations: { readOnlyHint: true },
++      execute: execute(getOrder),
++    },
++  ];
++
++  async function registerTools() {
++    for (const tool of tools) {
++      try { await modelContext.registerTool(tool); }
++      catch (error) { console.warn(`Could not register WebMCP tool ${tool.name}.`, error); }
++    }
++  }
++  void registerTools();
++})();
+diff --git a/index.html b/index.html
+index 66c9173..3f5e50d 100644
+--- a/index.html
++++ b/index.html
+@@ -121,6 +121,9 @@
+     }
+ 
+     .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -135,6 +138,18 @@
+       background: #3e2723;
+     }
+ 
++    .card.is-selected { outline: 3px solid var(--accent); }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    #seasonal-menu, #drink-order { scroll-margin-top: 100px; }
++    #drink-order { margin-top: 40px; padding: 24px; background: var(--secondary); border-radius: 8px; }
++    #order-form { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin: 16px 0; }
++    #order-form label { display: grid; gap: 4px; }
++    select, input { font: inherit; padding: 8px; max-width: 100%; }
++    #order-quantity { width: 90px; }
++    #order-items { padding-left: 24px; }
++    #order-status { min-height: 1.6em; margin-top: 12px; }
++    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,30 +186,45 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#drink-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-menu" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section id="drink-order" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your drink order</h2>
++      <p>Build an order draft here. No payment or order is sent to the café.</p>
++      <form id="order-form">
++        <label>Drink<select id="order-drink" name="drinkId" required></select></label>
++        <label>Quantity<input id="order-quantity" name="quantity" type="number" min="1" max="20" value="1" required></label>
++        <button class="btn" type="submit">Add to order</button>
++      </form>
++      <h3>Order draft</h3>
++      <p id="order-empty">Your order is empty.</p>
++      <ul id="order-items" aria-label="Drinks in your order"></ul>
++      <button id="clear-order" class="btn" type="button" disabled>Clear order</button>
++      <p id="order-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      <noscript>Enable JavaScript to build a drink order on this page.</noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +237,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./daily-grind.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/tests/webmcp.test.cjs b/tests/webmcp.test.cjs
+new file mode 100644
+index 0000000..613bceb
+--- /dev/null
++++ b/tests/webmcp.test.cjs
+@@ -0,0 +1,109 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(new URL('../daily-grind.js', `file://${__filename}`), 'utf8');
++const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++
++// Small DOM fixture: exercises the actual script without launching a browser.
++class Element {
++  constructor(text = '') {
++    this.textContent = text;
++    this.children = [];
++    this.listeners = {};
++    this.classes = new Set();
++    this.classList = { toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name) };
++  }
++  append(child) { this.children.push(child); }
++  replaceChildren() { this.children = []; }
++  addEventListener(event, callback) { this.listeners[event] = callback; }
++  scrollIntoView() { this.scrolled = true; }
++  focus() { this.focused = true; }
++}
++
++async function load(mode = 'document') {
++  const cards = [...html.matchAll(/<div class="card" data-drink-id="([^"]+)">\s*<h3>(.*?)<\/h3>\s*<p>(.*?)<\/p>\s*<a href="([^"]+)"/g)].map(match => {
++    const card = new Element();
++    card.dataset = { drinkId: match[1] };
++    card.querySelector = selector => ({ h3: new Element(match[2]), p: new Element(match[3]), a: { getAttribute: () => match[4] } })[selector];
++    return card;
++  });
++  assert.equal(cards.length, 3);
++  const elements = Object.fromEntries(['order-form', 'order-drink', 'order-quantity', 'order-items', 'order-empty', 'clear-order', 'order-status', 'drink-order'].map(id => [id, new Element()]));
++  const registered = new Map();
++  const warnings = [];
++  const context = { registerTool: async tool => {
++    if (mode === 'failure' && tool.name === 'get_seasonal_menu') throw Error('Unavailable');
++    registered.set(tool.name, tool);
++  } };
++  const document = {
++    querySelectorAll: () => cards,
++    getElementById: id => elements[id],
++    createElement: () => new Element(),
++  };
++  const navigator = {};
++  if (mode === 'document' || mode === 'failure') document.modelContext = context;
++  if (mode === 'navigator') navigator.modelContext = context;
++  vm.runInNewContext(source, { document, navigator, console: { warn: (...args) => warnings.push(args) } });
++  await new Promise(resolve => setImmediate(resolve));
++  const call = async (name, input) => {
++    const result = await registered.get(name).execute(input);
++    return { ...result, data: JSON.parse(result.content[0].text) };
++  };
++  return { cards, elements, registered, call, warnings };
++}
++
++test('registers tools with both API locations and gracefully handles unsupported browsers', async () => {
++  for (const mode of ['document', 'navigator', 'unsupported']) {
++    const app = await load(mode);
++    assert.equal(app.registered.size, mode === 'unsupported' ? 0 : 4);
++    assert.equal(app.elements['order-drink'].children.length, 3);
++  }
++  const app = await load('failure');
++  assert.equal(app.registered.size, 3);
++  assert.equal(app.warnings.length, 1);
++});
++
++test('queries the visible menu and selects drinks without adding to the draft', async () => {
++  const { call, elements, cards } = await load();
++  const menu = (await call('get_seasonal_menu', {})).data;
++  assert.deepEqual(menu.drinks.map(drink => drink.name), ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']);
++  await call('select_drink', { drinkId: 'cold-brew' });
++  assert.equal(elements['order-drink'].value, 'cold-brew');
++  assert.ok(cards[2].classes.has('is-selected'));
++  assert.ok(elements['drink-order'].scrolled);
++  assert.equal((await call('get_order')).data.totalQuantity, 0);
++});
++
++test('agent orders update the visible draft; manual controls share the same state', async () => {
++  const { call, elements, cards } = await load();
++  assert.equal((await call('order_drink', { drinkId: 'maple-oat-latte', quantity: 2 })).data.totalQuantity, 2);
++  await call('order_drink', { drinkId: 'maple-oat-latte' });
++  assert.equal(elements['order-items'].children[0].textContent, '3 × Maple Oat Latte');
++  assert.equal(elements['order-empty'].hidden, true);
++  cards[2].children[0].listeners.click();
++  assert.ok(elements['order-quantity'].focused);
++  elements['order-quantity'].value = '2';
++  elements['order-form'].listeners.submit({ preventDefault() {} });
++  const order = (await call('get_order')).data;
++  assert.equal(order.totalQuantity, 5);
++  assert.equal(order.submitted, false);
++  elements['clear-order'].listeners.click();
++  assert.equal((await call('get_order')).data.totalQuantity, 0);
++  assert.equal(elements['order-items'].children.length, 0);
++  assert.equal(elements['clear-order'].disabled, true);
++});
++
++test('invalid orders return errors without changing state', async () => {
++  const { call } = await load();
++  for (const quantity of [0, -1, 1.5, 21, '2', null]) {
++    assert.equal((await call('order_drink', { drinkId: 'cold-brew', quantity })).isError, true);
++  }
++  assert.equal((await call('order_drink', { drinkId: 'missing' })).isError, true);
++  assert.equal((await call('order_drink', null)).isError, true);
++  assert.equal((await call('get_order')).data.totalQuantity, 0);
++  await call('order_drink', { drinkId: 'cold-brew', quantity: 20 });
++  assert.equal((await call('order_drink', { drinkId: 'cold-brew' })).isError, true);
++  assert.equal((await call('get_order')).data.totalQuantity, 20);
++});

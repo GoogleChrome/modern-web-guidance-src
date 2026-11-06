@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,75 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    // Core Web Vitals reporting. Metrics are reported on every change and the
++    // latest values are queued with fetchLater(), so the browser itself sends
++    // the beacon once the page is unloaded (tab closed, navigated away, or
++    // discarded) with final values. Browsers without fetchLater() fall back to
++    // navigator.sendBeacon() when the page becomes hidden.
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@6.2.3/dist/web-vitals.js?module';
++
++    const ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value of each metric not yet delivered, keyed by metric id so
++    // metrics from a bfcache restore don't overwrite the previous page view's.
++    const metrics = new Map();
++
++    // The currently queued fetchLater() request: { controller, result }.
++    let pending = null;
++
++    function body() {
++      return JSON.stringify([...metrics.values()]);
++    }
++
++    function queueDeferredBeacon() {
++      // Replace the previously queued request with one holding the latest values.
++      pending?.controller.abort();
++      pending = null;
++
++      const controller = new AbortController();
++      try {
++        const result = fetchLater(ENDPOINT, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: body(),
++          signal: controller.signal,
++        });
++        pending = { controller, result };
++      } catch (err) {
++        // e.g. QuotaExceededError: leave `pending` null so the sendBeacon
++        // fallback below delivers the data when the page is hidden.
++      }
++    }
++
++    function handleMetric({ name, id, value, delta, rating, navigationType }) {
++      // If the browser already sent the queued request (e.g. when the page
++      // entered the bfcache), those values are delivered; start a new batch.
++      if (pending?.result.activated) {
++        metrics.clear();
++        pending = null;
++      }
++
++      metrics.set(id, { name, id, value, delta, rating, navigationType });
++
++      if ('fetchLater' in window) {
++        queueDeferredBeacon();
++      }
++    }
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState !== 'hidden' || pending || metrics.size === 0) return;
++      navigator.sendBeacon(ENDPOINT, new Blob([body()], { type: 'application/json' }));
++      metrics.clear();
++    });
++
++    const opts = { reportAllChanges: true };
++    onCLS(handleMetric, opts);
++    onINP(handleMetric, opts);
++    onLCP(handleMetric, opts);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

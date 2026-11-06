@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+index 66c9173..de94f0b 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,22 @@
+       color: var(--primary);
+     }
+ 
++    .navigation-target {
++      scroll-margin-top: 100px;
++      border-radius: 8px;
++    }
++
++    .navigation-target + .navigation-target {
++      margin-top: 60px;
++      padding: 24px 20px;
++      background: white;
++    }
++
++    .navigation-target:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 6px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,9 +176,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +191,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="navigation-target" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +211,18 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="navigation-target" tabindex="-1" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Find Your Daily Grind</h2>
++      <p>Find a coffee stop for your next visit.</p>
++      <a href="/locations" class="btn">Explore Locations</a>
++    </section>
++
++    <section id="rewards" class="navigation-target" tabindex="-1" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Daily Grind Rewards</h2>
++      <p>Explore our rewards program for your daily coffee ritual.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +235,86 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let cancelNavigation = () => {};
++    let targetAnimation;
++
++    navigation.addEventListener('click', (event) => {
++      const link = event.target.closest('a[href^="#"]');
++      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      const target = document.getElementById(link.hash.slice(1));
++      if (!target) return;
++
++      event.preventDefault();
++      cancelNavigation();
++      targetAnimation?.cancel();
++
++      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
++      const destination = Math.min(maxScroll, Math.max(0,
++        window.scrollY + target.getBoundingClientRect().top - navigation.getBoundingClientRect().height - 16));
++      let frame;
++      let lastPosition = window.scrollY;
++      let lastMovement = performance.now();
++      let moved = false;
++      const alreadyThere = Math.abs(lastPosition - destination) <= 1;
++      const controller = new AbortController();
++
++      const cleanup = () => {
++        cancelAnimationFrame(frame);
++        controller.abort();
++        cancelNavigation = () => {};
++      };
++
++      const cancel = () => {
++        cleanup();
++        // Stop any remaining native smooth scroll when the user takes control.
++        window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'instant' });
++      };
++      cancelNavigation = cancel;
++
++      for (const type of ['wheel', 'touchstart', 'pointerdown']) {
++        window.addEventListener(type, cancel, { passive: true, signal: controller.signal });
++      }
++      window.addEventListener('keydown', (event) => {
++        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Tab', 'Escape'].includes(event.key)) cancel();
++      }, { signal: controller.signal });
++
++      const finish = () => {
++        cleanup();
++        history.pushState(null, '', link.hash);
++        target.focus({ preventScroll: true });
++        if (!reducedMotion.matches) {
++          targetAnimation = target.animate([
++            { boxShadow: '0 0 0 5px rgba(255, 171, 64, 0.65)' },
++            { boxShadow: '0 0 0 12px rgba(255, 171, 64, 0)' }
++          ], { duration: 700, easing: 'ease-out' });
++        }
++      };
++
++      // Observe actual movement instead of guessing the browser's scroll duration.
++      // This also works in browsers without the scrollend event.
++      const waitForScroll = (now) => {
++        const position = window.scrollY;
++        if (position !== lastPosition) {
++          moved = true;
++          lastMovement = now;
++          lastPosition = position;
++        }
++        if (alreadyThere || ((moved || now - lastMovement >= 250) && now - lastMovement >= 120)) {
++          if (Math.abs(position - destination) <= 1) finish();
++          else cleanup();
++          return;
++        }
++        frame = requestAnimationFrame(waitForScroll);
++      };
++
++      window.scrollTo({ top: destination, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
++      frame = requestAnimationFrame(waitForScroll);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

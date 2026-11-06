@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,29 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 340px;
++    }
++
++    .debug-panel {
++      /* Keep the contents cached while skipping their rendering when hidden. */
++      content-visibility: hidden;
++      block-size: 0;
++      overflow: hidden;
++      background: var(--card-bg);
++      border-radius: 1rem;
++    }
++
++    .debug-panel.is-visible {
++      content-visibility: visible;
++      block-size: auto;
++      padding: 1.5rem;
++      border: 1px solid #e2e8f0;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -207,8 +228,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Show Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -217,22 +239,31 @@
+   <div class="feed" id="feed">
+     <div class="info-text">
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
++    <div id="cards"></div>
++    <section id="debug-panel" class="debug-panel" aria-hidden="true" inert aria-labelledby="debug-heading">
++      <h2 id="debug-heading">Debug Panel</h2>
++      <p>Cards: <span id="debug-card-count">500</span></p>
++      <p>Offscreen card rendering is deferred with content-visibility: auto.</p>
++    </section>
+   </div>
+ 
+   <script>
+-    const feed = document.getElementById('feed');
++    const cards = document.getElementById('cards');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const cardCount = 500;
++    document.getElementById('debug-card-count').textContent = cardCount;
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -278,18 +309,16 @@
+       });
+     }
+ 
+     function renderCards() {
+-      const info = feed.querySelector('.info-text');
+-      feed.innerHTML = '';
+-      feed.appendChild(info);
++      cards.replaceChildren();
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+-      feed.appendChild(fragment);
++      cards.appendChild(fragment);
+ 
+       measureRender(startTime);
+     }
+ 
+@@ -298,9 +327,16 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const visible = debugPanel.classList.toggle('is-visible');
++      debugPanel.setAttribute('aria-hidden', String(!visible));
++      debugPanel.inert = !visible;
++      debugBtn.setAttribute('aria-expanded', String(visible));
++      debugBtn.textContent = visible ? 'Hide Debug Panel' : 'Show Debug Panel';
++    });
+ 
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

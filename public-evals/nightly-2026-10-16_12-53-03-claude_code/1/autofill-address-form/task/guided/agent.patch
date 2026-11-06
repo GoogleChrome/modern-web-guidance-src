@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,83 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form */
++    .shipping {
++      max-width: 600px;
++      margin: 60px auto 0;
++    }
++
++    .shipping h2,
++    .shipping > p {
++      text-align: center;
++    }
++
++    .shipping form {
++      background: white;
++      padding: 24px;
++      margin-top: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 16px;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .field.full {
++      grid-column: 1 / -1;
++    }
++
++    .field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .field input,
++    .field select,
++    .field textarea {
++      font: inherit;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .field input:focus-visible,
++    .field select:focus-visible,
++    .field textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field input:user-invalid,
++    .field select:user-invalid,
++    .field textarea:user-invalid {
++      border-color: #c62828;
++    }
++
++    .shipping button.btn {
++      grid-column: 1 / -1;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    @media (max-width: 480px) {
++      .shipping form {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +269,53 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Shipping Address</h2>
++      <p>Where should we send your beans?</p>
++      <form action="/checkout/payment" method="post">
++        <div class="field full">
++          <label for="name">Full name</label>
++          <input type="text" id="name" name="name" autocomplete="shipping name" required>
++        </div>
++        <div class="field full">
++          <label for="address">Street address</label>
++          <textarea id="address" name="address" rows="3" autocomplete="shipping street-address" required></textarea>
++        </div>
++        <div class="field">
++          <label for="city">City</label>
++          <input type="text" id="city" name="city" autocomplete="shipping address-level2" required>
++        </div>
++        <div class="field">
++          <label for="state">State / Province / Region</label>
++          <input type="text" id="state" name="state" autocomplete="shipping address-level1">
++        </div>
++        <div class="field">
++          <label for="postal-code">ZIP / Postal code</label>
++          <input type="text" id="postal-code" name="postal-code" autocomplete="shipping postal-code" required>
++        </div>
++        <div class="field">
++          <label for="country">Country</label>
++          <select id="country" name="country" autocomplete="shipping country" required>
++            <option value="" selected disabled>Select a country</option>
++            <option value="US">United States</option>
++            <option value="CA">Canada</option>
++            <option value="GB">United Kingdom</option>
++            <option value="AU">Australia</option>
++            <option value="DE">Germany</option>
++            <option value="FR">France</option>
++            <option value="JP">Japan</option>
++          </select>
++        </div>
++        <div class="field full">
++          <label for="phone">Phone (for delivery updates)</label>
++          <input type="tel" id="phone" name="phone" autocomplete="shipping tel">
++        </div>
++        <button type="submit" class="btn">Proceed to Payment</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

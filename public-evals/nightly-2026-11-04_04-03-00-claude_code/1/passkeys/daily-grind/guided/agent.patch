@@ -1,0 +1,1175 @@
+diff --git a/account.js b/account.js
+new file mode 100644
+index 0000000..ff2a9cc
+--- /dev/null
++++ b/account.js
+@@ -0,0 +1,676 @@
++/**
++ * The Daily Grind — "My Account" passkey client.
++ *
++ * Calls the native WebAuthn APIs directly. All options generation and
++ * signature verification happens on the server (use a vetted FIDO2 library,
++ * e.g. SimpleWebAuthn). Server contract expected by this module (JSON bodies,
++ * cookie session, same origin):
++ *
++ *   GET    /api/session                      -> 200 { rpId, user: { id, name, displayName, hasPassword } } | 401
++ *   POST   /api/signup   { name, displayName, password } -> 200 session payload (signs the customer in)
++ *   POST   /api/signin   { name, password }   -> 200 session payload | 401
++ *   POST   /api/signout                       -> 204
++ *
++ *   POST   /api/passkeys/register/options { promotion, conditional } -> PublicKeyCredentialCreationOptionsJSON
++ *          (residentKey "required", excludeCredentials = user's passkeys,
++ *           authenticatorAttachment "platform" only when promotion=true)
++ *   POST   /api/passkeys/register/verify  <RegistrationResponseJSON>  -> 200 | 4xx
++ *          (stores aaguid + AAGUID-registry name/providerIcon; relaxes UP only for conditional=true)
++ *   POST   /api/passkeys/signin/options      -> PublicKeyCredentialRequestOptionsJSON (allowCredentials: [])
++ *   POST   /api/passkeys/signin/verify  <AuthenticationResponseJSON> -> 200 session payload | 404 unknown credential
++ *   POST   /api/passkeys/reauth/options      -> request options, allowCredentials = signed-in user's passkeys
++ *   POST   /api/passkeys/reauth/verify       -> 200 | 404 | 403 (credential belongs to another user)
++ *   POST   /api/reauth/password { password }  -> 200 | 401   (for customers with no passkeys yet)
++ *
++ *   GET    /api/passkeys                     -> [{ id, name, providerIcon?, registeredAt, lastUsedAt?, credentialBackedUp }]
++ *   PATCH  /api/passkeys/:id { name }        -> 200
++ *   DELETE /api/passkeys/:id                 -> 200 (requires a recent reauthentication)
++ *   PUT    /api/user { name, displayName }   -> 200 { id, name, displayName } (requires a recent reauthentication)
++ *
++ * The server MUST enforce the "recent reauthentication" requirement itself;
++ * the client-side prompt is only the UX for obtaining it.
++ */
++
++// ---------------------------------------------------------------------------
++// Feature detection + polyfill
++// ---------------------------------------------------------------------------
++
++const webauthnAvailable = 'PublicKeyCredential' in window;
++
++if (
++  webauthnAvailable &&
++  (!PublicKeyCredential.parseRequestOptionsFromJSON ||
++    !PublicKeyCredential.parseCreationOptionsFromJSON ||
++    !PublicKeyCredential.getClientCapabilities ||
++    !PublicKeyCredential.prototype.toJSON)
++) {
++  try {
++    await import('https://unpkg.com/webauthn-polyfills');
++  } catch (e) {
++    console.error('Failed to load webauthn-polyfills:', e);
++  }
++}
++
++if (!('commandForElement' in HTMLButtonElement.prototype)) {
++  import('https://unpkg.com/invokers-polyfill').catch((e) => console.error('Failed to load invokers-polyfill:', e));
++}
++
++const capabilities =
++  webauthnAvailable && PublicKeyCredential.getClientCapabilities
++    ? await PublicKeyCredential.getClientCapabilities().catch(() => ({}))
++    : {};
++
++/** Passkey creation is offered only where platform passkeys + autofill exist. */
++const canCreatePasskeys =
++  capabilities.passkeyPlatformAuthenticator === true && capabilities.conditionalGet === true;
++
++// ---------------------------------------------------------------------------
++// API helpers
++// ---------------------------------------------------------------------------
++
++class ApiError extends Error {
++  constructor(response, body) {
++    super(body?.error || `Request failed (${response.status})`);
++    this.status = response.status;
++  }
++}
++
++async function api(path, { method = 'GET', body } = {}) {
++  const response = await fetch(path, {
++    method,
++    credentials: 'same-origin',
++    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body),
++  });
++  const text = await response.text();
++  const data = text ? JSON.parse(text) : null;
++  if (!response.ok) throw new ApiError(response, data);
++  return data;
++}
++
++// ---------------------------------------------------------------------------
++// State + DOM
++// ---------------------------------------------------------------------------
++
++let session = null; // { rpId, user }
++let passkeys = [];
++let autofillController = new AbortController();
++
++const $ = (id) => document.getElementById(id);
++const accountDialog = $('account-dialog');
++const views = {
++  signin: $('view-signin'),
++  signup: $('view-signup'),
++  promo: $('view-promo'),
++  account: $('view-account'),
++};
++
++const rpId = () => session?.rpId ?? location.hostname;
++const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++function showView(name) {
++  for (const [key, el] of Object.entries(views)) el.hidden = key !== name;
++  const heading = {
++    signin: 'Sign in',
++    signup: 'Create your account',
++    promo: 'Faster sign-ins with passkeys',
++    account: 'My Account',
++  }[name];
++  $('account-title').textContent = heading;
++}
++
++function setStatus(el, message, tone = 'info') {
++  el.textContent = message;
++  el.dataset.tone = tone;
++}
++
++function setBusy(form, busy) {
++  for (const control of form.querySelectorAll('button, input')) control.disabled = busy;
++}
++
++function webauthnErrorMessage(err, action) {
++  switch (err.name) {
++    case 'NotAllowedError':
++      return `${action} was cancelled.`;
++    case 'InvalidStateError':
++      return 'A passkey for this account already exists in this passkey provider.';
++    case 'SecurityError':
++      return 'Passkeys are misconfigured for this site. Please try again later.';
++    case 'AbortError':
++      return '';
++    default:
++      return err.message || `${action} failed.`;
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Signal API helpers (progressive enhancement; Base64URL strings only)
++// ---------------------------------------------------------------------------
++
++async function signalUnknownCredential(credentialId) {
++  if (!webauthnAvailable || !PublicKeyCredential.signalUnknownCredential) return;
++  try {
++    await PublicKeyCredential.signalUnknownCredential({ rpId: rpId(), credentialId });
++  } catch (e) {
++    console.error('signalUnknownCredential failed:', e);
++  }
++}
++
++async function signalAllAcceptedCredentials() {
++  if (!session || !webauthnAvailable || !PublicKeyCredential.signalAllAcceptedCredentials) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: rpId(),
++      userId: session.user.id,
++      allAcceptedCredentialIds: passkeys.map((p) => p.id),
++    });
++  } catch (e) {
++    console.error('signalAllAcceptedCredentials failed:', e);
++  }
++}
++
++async function signalCurrentUserDetails() {
++  if (!session || !webauthnAvailable || !PublicKeyCredential.signalCurrentUserDetails) return;
++  try {
++    await PublicKeyCredential.signalCurrentUserDetails({
++      rpId: rpId(),
++      userId: session.user.id,
++      name: session.user.name,
++      displayName: session.user.displayName,
++    });
++  } catch (e) {
++    console.error('signalCurrentUserDetails failed:', e);
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Session handling
++// ---------------------------------------------------------------------------
++
++function applySession(next) {
++  session = next;
++  document.documentElement.dataset.auth = session ? 'signed-in' : 'signed-out';
++  $('nav-account-label').textContent = session
++    ? `Hi, ${session.user.displayName || session.user.name}`
++    : 'My Account';
++}
++
++async function loadSession() {
++  try {
++    applySession(await api('/api/session'));
++  } catch {
++    applySession(null);
++  }
++}
++
++async function enterAccount(nextSession) {
++  autofillController.abort();
++  applySession(nextSession);
++  showView('account');
++  await renderAccount();
++}
++
++async function signOut() {
++  try {
++    await api('/api/signout', { method: 'POST' });
++  } catch (e) {
++    console.error('Sign out failed:', e);
++  }
++  applySession(null);
++  passkeys = [];
++  showView('signin');
++  startConditionalPasskeySignIn();
++}
++
++// ---------------------------------------------------------------------------
++// Passkey sign-in (conditional mediation + explicit button)
++// ---------------------------------------------------------------------------
++
++async function verifyPasskeySignIn(credential, statusEl) {
++  const encoded = credential.toJSON();
++  try {
++    const nextSession = await api('/api/passkeys/signin/verify', { method: 'POST', body: encoded });
++    await enterAccount(nextSession);
++  } catch (err) {
++    if (err instanceof ApiError && err.status === 404) {
++      // Pre-authentication: the credential is unknown to the server, so ask
++      // the passkey provider to hide/remove it.
++      await signalUnknownCredential(encoded.id);
++      setStatus(statusEl, 'That passkey is no longer registered with The Daily Grind. Sign in with your password instead.', 'error');
++    } else {
++      setStatus(statusEl, 'We couldn’t verify your passkey. Please try again.', 'error');
++    }
++  }
++}
++
++async function startConditionalPasskeySignIn() {
++  if (session || capabilities.conditionalGet !== true) return;
++  autofillController.abort();
++  autofillController = new AbortController();
++  const { signal } = autofillController;
++  try {
++    const optionsJSON = await api('/api/passkeys/signin/options', { method: 'POST' });
++    if (signal.aborted) return;
++    const credential = await navigator.credentials.get({
++      publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON),
++      mediation: 'conditional',
++      signal,
++    });
++    if (credential) await verifyPasskeySignIn(credential, $('signin-status'));
++  } catch (err) {
++    if (['NotAllowedError', 'AbortError'].includes(err.name)) return;
++    console.error('Conditional passkey sign-in failed:', err);
++  }
++}
++
++async function passkeyButtonSignIn() {
++  const statusEl = $('signin-status');
++  autofillController.abort();
++  autofillController = new AbortController();
++  setStatus(statusEl, '');
++
++  let credential;
++  try {
++    const optionsJSON = await api('/api/passkeys/signin/options', { method: 'POST' });
++    credential = await navigator.credentials.get({
++      publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON),
++      signal: autofillController.signal,
++    });
++  } catch (err) {
++    const message = err instanceof ApiError ? err.message : webauthnErrorMessage(err, 'Passkey sign-in');
++    if (message) setStatus(statusEl, message, err.name === 'NotAllowedError' ? 'info' : 'error');
++    startConditionalPasskeySignIn(); // re-arm autofill after a cancelled prompt
++    return;
++  }
++  await verifyPasskeySignIn(credential, statusEl);
++}
++
++// ---------------------------------------------------------------------------
++// Passkey registration
++// ---------------------------------------------------------------------------
++
++/**
++ * @param {{ promotion?: boolean, conditional?: boolean }} opts
++ * @returns {Promise<{ ok: boolean, message?: string }>}
++ */
++async function registerPasskey({ promotion = false, conditional = false } = {}) {
++  let credential;
++  try {
++    const optionsJSON = await api('/api/passkeys/register/options', {
++      method: 'POST',
++      body: { promotion, conditional },
++    });
++    credential = await navigator.credentials.create({
++      publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON),
++      ...(conditional && { mediation: 'conditional' }),
++    });
++  } catch (err) {
++    if (conditional) return { ok: false }; // silent by design
++    if (err instanceof ApiError) return { ok: false, message: err.message };
++    return { ok: false, message: webauthnErrorMessage(err, 'Passkey creation') };
++  }
++  if (!credential) return { ok: false };
++
++  const encoded = credential.toJSON();
++  try {
++    await api('/api/passkeys/register/verify', { method: 'POST', body: encoded });
++    return { ok: true };
++  } catch (err) {
++    // The provider saved a credential the server rejected — clean up the orphan.
++    await signalUnknownCredential(encoded.id);
++    return { ok: false, message: conditional ? undefined : 'We couldn’t save your passkey. Please try again.' };
++  }
++}
++
++/** Silent post-password-sign-in passkey creation (Conditional Create). */
++async function tryConditionalCreate() {
++  if (capabilities.conditionalCreate !== true) return false;
++  autofillController.abort();
++  const { ok } = await registerPasskey({ promotion: true, conditional: true });
++  return ok;
++}
++
++// ---------------------------------------------------------------------------
++// Reauthentication
++// ---------------------------------------------------------------------------
++
++const reauthDialog = $('reauth-dialog');
++let reauthResolve = null;
++
++/** Prompts the signed-in customer to re-verify. Resolves true on success. */
++function requireReauth(reason) {
++  const usePasskey = passkeys.length > 0 && webauthnAvailable;
++  $('reauth-reason').textContent = reason;
++  $('reauth-passkey').hidden = !usePasskey;
++  $('reauth-password-form').hidden = usePasskey || session?.user.hasPassword === false;
++  $('reauth-use-password').hidden = !usePasskey || session?.user.hasPassword === false;
++  setStatus($('reauth-status'), '');
++  $('reauth-password-form').reset();
++  reauthDialog.returnValue = '';
++  reauthDialog.showModal();
++  return new Promise((resolve) => {
++    reauthResolve = resolve;
++  });
++}
++
++function finishReauth(ok) {
++  reauthDialog.returnValue = ok ? 'verified' : '';
++  reauthDialog.close();
++}
++
++reauthDialog.addEventListener('close', () => {
++  reauthResolve?.(reauthDialog.returnValue === 'verified');
++  reauthResolve = null;
++  reauthDialog.returnValue = '';
++});
++
++$('reauth-passkey-button').addEventListener('click', async () => {
++  const statusEl = $('reauth-status');
++  setStatus(statusEl, '');
++  try {
++    const optionsJSON = await api('/api/passkeys/reauth/options', { method: 'POST' });
++    const credential = await navigator.credentials.get({
++      publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON),
++    });
++    const encoded = credential.toJSON();
++    try {
++      await api('/api/passkeys/reauth/verify', { method: 'POST', body: encoded });
++      finishReauth(true);
++    } catch (err) {
++      if (err instanceof ApiError && err.status === 404) await signalUnknownCredential(encoded.id);
++      setStatus(statusEl, err.status === 403 ? 'That passkey belongs to a different account.' : 'We couldn’t verify that passkey.', 'error');
++    }
++  } catch (err) {
++    const message = err instanceof ApiError ? err.message : webauthnErrorMessage(err, 'Verification');
++    if (message) setStatus(statusEl, message, err.name === 'NotAllowedError' ? 'info' : 'error');
++  }
++});
++
++$('reauth-use-password').addEventListener('click', () => {
++  $('reauth-password-form').hidden = false;
++  $('reauth-use-password').hidden = true;
++  $('reauth-password').focus();
++});
++
++$('reauth-password-form').addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const form = event.currentTarget;
++  setBusy(form, true);
++  try {
++    await api('/api/reauth/password', { method: 'POST', body: { password: form.password.value } });
++    finishReauth(true);
++  } catch {
++    setStatus($('reauth-status'), 'That password isn’t right.', 'error');
++  } finally {
++    setBusy(form, false);
++  }
++});
++
++// ---------------------------------------------------------------------------
++// Account view: profile + passkey management
++// ---------------------------------------------------------------------------
++
++async function renderAccount() {
++  const profileForm = $('profile-form');
++  profileForm.displayName.value = session.user.displayName ?? '';
++  profileForm.name.value = session.user.name ?? '';
++  setStatus($('profile-status'), '');
++  setStatus($('passkeys-status'), '');
++
++  $('create-passkey').hidden = !canCreatePasskeys;
++  $('passkeys-unsupported').hidden = canCreatePasskeys;
++
++  await refreshPasskeys();
++  // Keep password managers in sync with the server's list on every load.
++  await signalAllAcceptedCredentials();
++}
++
++async function refreshPasskeys() {
++  try {
++    passkeys = await api('/api/passkeys');
++  } catch (err) {
++    passkeys = [];
++    setStatus($('passkeys-status'), 'We couldn’t load your passkeys.', 'error');
++  }
++  renderPasskeyList();
++}
++
++function formatDate(epoch) {
++  return epoch ? dateFormat.format(new Date(epoch)) : null;
++}
++
++function renderPasskeyList() {
++  const list = $('passkey-list');
++  const template = $('passkey-row');
++  list.replaceChildren();
++  $('passkeys-empty').hidden = passkeys.length > 0;
++
++  for (const passkey of passkeys) {
++    const row = template.content.firstElementChild.cloneNode(true);
++    const icon = row.querySelector('.passkey-icon');
++    if (passkey.providerIcon) {
++      icon.src = passkey.providerIcon;
++    } else {
++      icon.replaceWith($('generic-key-icon').content.firstElementChild.cloneNode(true));
++    }
++    row.querySelector('.passkey-name').textContent = passkey.name || 'Passkey';
++    const registered = row.querySelector('.passkey-registered');
++    registered.textContent = `Created ${formatDate(passkey.registeredAt)}`;
++    const lastUsed = row.querySelector('.passkey-last-used');
++    if (passkey.lastUsedAt) lastUsed.textContent = `Last used ${formatDate(passkey.lastUsedAt)}`;
++    else lastUsed.remove();
++    if (passkey.credentialBackedUp) row.querySelector('.passkey-synced').hidden = false;
++
++    const label = passkey.name || 'passkey';
++    const renameBtn = row.querySelector('[data-action="rename"]');
++    const deleteBtn = row.querySelector('[data-action="delete"]');
++    renameBtn.setAttribute('aria-label', `Rename ${label}`);
++    deleteBtn.setAttribute('aria-label', `Delete ${label}`);
++    renameBtn.addEventListener('click', () => openRename(passkey));
++    deleteBtn.addEventListener('click', () => deletePasskey(passkey));
++    list.append(row);
++  }
++}
++
++// Rename (server-side label only — no Signal API call needed)
++const renameDialog = $('rename-dialog');
++let renameTarget = null;
++
++function openRename(passkey) {
++  renameTarget = passkey;
++  const form = $('rename-form');
++  form.passkeyName.value = passkey.name ?? '';
++  renameDialog.returnValue = '';
++  renameDialog.showModal();
++}
++
++$('rename-form').addEventListener('submit', async (event) => {
++  if (event.submitter?.value !== 'save') return; // Cancel closes via method=dialog
++  event.preventDefault();
++  const form = event.currentTarget;
++  const name = form.passkeyName.value.trim();
++  setBusy(form, true);
++  try {
++    await api(`/api/passkeys/${encodeURIComponent(renameTarget.id)}`, { method: 'PATCH', body: { name } });
++    renameDialog.close('saved');
++    await refreshPasskeys();
++    setStatus($('passkeys-status'), 'Passkey renamed.', 'success');
++  } catch (err) {
++    setStatus($('passkeys-status'), err.message, 'error');
++    renameDialog.close();
++  } finally {
++    setBusy(form, false);
++  }
++});
++
++async function deletePasskey(passkey) {
++  const statusEl = $('passkeys-status');
++  const verified = await requireReauth(`Confirm it’s you to delete “${passkey.name || 'this passkey'}”.`);
++  if (!verified) return;
++  try {
++    await api(`/api/passkeys/${encodeURIComponent(passkey.id)}`, { method: 'DELETE' });
++    await refreshPasskeys();
++    await signalAllAcceptedCredentials();
++    setStatus(statusEl, 'Passkey deleted. You may also remove it from your password manager.', 'success');
++  } catch (err) {
++    setStatus(statusEl, err.message, 'error');
++  }
++}
++
++$('create-passkey').addEventListener('click', async (event) => {
++  const button = event.currentTarget;
++  const statusEl = $('passkeys-status');
++  button.disabled = true;
++  setStatus(statusEl, '');
++  // Management flow: no authenticatorAttachment, so security keys work too.
++  const { ok, message } = await registerPasskey({ promotion: false });
++  button.disabled = false;
++  if (ok) {
++    await refreshPasskeys();
++    setStatus(statusEl, 'Passkey created. Next time, just use your fingerprint, face, or screen lock.', 'success');
++  } else if (message) {
++    setStatus(statusEl, message, 'error');
++  }
++});
++
++$('profile-form').addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const form = event.currentTarget;
++  const statusEl = $('profile-status');
++  const name = form.name.value.trim();
++  const displayName = form.displayName.value.trim();
++  if (name === session.user.name && displayName === session.user.displayName) {
++    setStatus(statusEl, 'No changes to save.');
++    return;
++  }
++  const verified = await requireReauth('Confirm it’s you to update your profile.');
++  if (!verified) return;
++  setBusy(form, true);
++  try {
++    const user = await api('/api/user', { method: 'PUT', body: { name, displayName } });
++    applySession({ ...session, user: { ...session.user, ...user } });
++    await signalCurrentUserDetails();
++    setStatus(statusEl, 'Profile updated.', 'success');
++  } catch (err) {
++    setStatus(statusEl, err.message, 'error');
++  } finally {
++    setBusy(form, false);
++  }
++});
++
++// ---------------------------------------------------------------------------
++// Sign-in / sign-up forms
++// ---------------------------------------------------------------------------
++
++$('signin-form').addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const form = event.currentTarget;
++  const statusEl = $('signin-status');
++  setBusy(form, true);
++  setStatus(statusEl, '');
++  try {
++    const nextSession = await api('/api/signin', {
++      method: 'POST',
++      body: { name: form.email.value.trim(), password: form.password.value },
++    });
++    form.reset();
++    await enterAccount(nextSession);
++    // Silently upgrade to a passkey right after a successful password sign-in.
++    tryConditionalCreate().then((created) => {
++      if (created) refreshPasskeys();
++    });
++  } catch (err) {
++    setStatus(statusEl, err.status === 401 ? 'Incorrect email or password.' : err.message, 'error');
++  } finally {
++    setBusy(form, false);
++  }
++});
++
++$('signin-passkey').addEventListener('click', passkeyButtonSignIn);
++
++$('signup-form').addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const form = event.currentTarget;
++  const statusEl = $('signup-status');
++  setBusy(form, true);
++  setStatus(statusEl, '');
++  try {
++    const nextSession = await api('/api/signup', {
++      method: 'POST',
++      body: {
++        name: form.email.value.trim(),
++        displayName: form.fullName.value.trim(),
++        password: form.password.value,
++      },
++    });
++    autofillController.abort();
++    applySession(nextSession);
++    form.reset();
++    if (canCreatePasskeys) {
++      showView('promo');
++      setStatus($('promo-status'), '');
++    } else {
++      await enterAccount(nextSession);
++    }
++  } catch (err) {
++    setStatus(statusEl, err.status === 409 ? 'An account with that email already exists.' : err.message, 'error');
++  } finally {
++    setBusy(form, false);
++  }
++});
++
++$('promo-create').addEventListener('click', async (event) => {
++  const button = event.currentTarget;
++  button.disabled = true;
++  // Promotion flow: platform authenticator only.
++  const { ok, message } = await registerPasskey({ promotion: true });
++  button.disabled = false;
++  if (ok) {
++    await enterAccount(session);
++    setStatus($('passkeys-status'), 'You’re all set — your passkey is ready.', 'success');
++  } else if (message) {
++    setStatus($('promo-status'), message, 'error');
++  }
++});
++
++$('promo-skip').addEventListener('click', () => enterAccount(session));
++
++for (const link of document.querySelectorAll('[data-show-view]')) {
++  link.addEventListener('click', (event) => {
++    event.preventDefault();
++    showView(link.dataset.showView);
++  });
++}
++
++$('signout-button').addEventListener('click', signOut);
++$('nav-logout').addEventListener('click', async (event) => {
++  event.preventDefault();
++  await signOut();
++});
++
++// ---------------------------------------------------------------------------
++// Boot
++// ---------------------------------------------------------------------------
++
++if (!webauthnAvailable || capabilities.conditionalGet !== true) {
++  // Keep password sign-in; hide the passkey button when WebAuthn is missing entirely.
++  $('signin-passkey').hidden = !webauthnAvailable;
++}
++
++accountDialog.addEventListener('close', () => {
++  accountDialog.returnValue = '';
++});
++
++await loadSession();
++if (session) {
++  showView('account');
++  renderAccount();
++} else {
++  showView('signin');
++  startConditionalPasskeySignIn();
++}
++
++// Open the panel directly when arriving at /account or #account.
++if (location.pathname === '/account' || location.hash === '#account') {
++  accountDialog.showModal();
++}
+diff --git a/index.html b/index.html
+index 66c9173..2abdb20 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,277 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Account dialog */
++    [hidden] {
++      display: none !important;
++    }
++
++    html:not([data-auth="signed-in"]) .signed-in-only {
++      display: none;
++    }
++
++    .nav-account {
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      background: none;
++      border: 0;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .nav-account:hover,
++    .nav-account:focus-visible {
++      color: var(--accent);
++    }
++
++    .account-dialog {
++      width: min(34rem, calc(100% - 2rem));
++      max-height: calc(100dvh - 2rem);
++      margin: auto;
++      border: 0;
++      border-radius: 12px;
++      padding: 0;
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++    }
++
++    .account-dialog.small {
++      width: min(26rem, calc(100% - 2rem));
++    }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background: rgba(30, 20, 15, 0.6);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      padding: 1rem 1.5rem;
++      background: var(--primary);
++      color: white;
++    }
++
++    .dialog-header h2 {
++      font-size: 1.25rem;
++    }
++
++    .dialog-close {
++      background: none;
++      border: 0;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 0.25rem 0.5rem;
++      border-radius: 4px;
++    }
++
++    .dialog-body {
++      padding: 1.5rem;
++    }
++
++    .account-banner {
++      height: 120px;
++      background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=70') center / cover;
++    }
++
++    .stack {
++      display: grid;
++      gap: 1rem;
++    }
++
++    .field {
++      display: grid;
++      gap: 0.25rem;
++    }
++
++    .field label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .field input {
++      font: inherit;
++      padding: 0.6rem 0.75rem;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++    }
++
++    .field input:focus-visible,
++    .account-dialog button:focus-visible,
++    .account-dialog a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .account-dialog .btn,
++    .btn-secondary,
++    .btn-link {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++      margin-top: 0;
++    }
++
++    .account-dialog .btn:disabled,
++    .btn-secondary:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .btn-secondary {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      padding: 10px 20px;
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .btn-link {
++      background: none;
++      color: var(--primary);
++      text-decoration: underline;
++      padding: 0;
++    }
++
++    .btn-danger {
++      color: #b71c1c;
++      border-color: #b71c1c;
++    }
++
++    .divider {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      color: #8d6e63;
++      font-size: 0.85rem;
++    }
++
++    .divider::before,
++    .divider::after {
++      content: "";
++      flex: 1;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .status {
++      min-height: 1.5em;
++      font-size: 0.9rem;
++    }
++
++    .status[data-tone="error"] {
++      color: #b71c1c;
++    }
++
++    .status[data-tone="success"] {
++      color: #2e7d32;
++    }
++
++    .account-section + .account-section {
++      margin-top: 1.5rem;
++      padding-top: 1.5rem;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .account-section h3 {
++      color: var(--primary);
++      margin-bottom: 0.75rem;
++    }
++
++    .section-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      flex-wrap: wrap;
++      margin-bottom: 0.75rem;
++    }
++
++    .section-heading h3 {
++      margin-bottom: 0;
++    }
++
++    .passkey-list {
++      list-style: none;
++      display: grid;
++      gap: 0.75rem;
++    }
++
++    .passkey-item {
++      display: grid;
++      grid-template-columns: auto 1fr auto;
++      align-items: center;
++      gap: 0.75rem;
++      padding: 0.75rem;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .passkey-icon {
++      width: 32px;
++      height: 32px;
++      border-radius: 6px;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      overflow-wrap: anywhere;
++    }
++
++    .passkey-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0 0.75rem;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .passkey-actions button {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++    }
++
++    .row {
++      display: flex;
++      gap: 0.75rem;
++      flex-wrap: wrap;
++      justify-content: flex-end;
++    }
++
++    @media (max-width: 480px) {
++      .passkey-item {
++        grid-template-columns: auto 1fr;
++      }
++
++      .passkey-actions {
++        grid-column: 1 / -1;
++        justify-content: flex-end;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -163,8 +434,12 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="nav-account" command="show-modal" commandfor="account-dialog">
++          <span id="nav-account-label">My Account</span>
++        </button>
++      </li>
++      <li class="signed-in-only"><a href="/logout" id="nav-logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +482,195 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- My Account -->
++  <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title" closedby="any">
++    <div class="dialog-header">
++      <h2 id="account-title">My Account</h2>
++      <button type="button" class="dialog-close" command="close" commandfor="account-dialog" aria-label="Close">&times;</button>
++    </div>
++
++    <!-- Sign in -->
++    <div id="view-signin" hidden>
++      <div class="account-banner" role="presentation"></div>
++      <div class="dialog-body stack">
++        <form id="signin-form" class="stack" action="/api/signin" method="post">
++          <div class="field">
++            <label for="signin-email">Email</label>
++            <input type="email" id="signin-email" name="email" autocomplete="username webauthn"
++              spellcheck="false" enterkeyhint="next" required>
++          </div>
++          <div class="field">
++            <label for="signin-password">Password</label>
++            <input type="password" id="signin-password" name="password" autocomplete="current-password"
++              enterkeyhint="done" required>
++            <a class="hint" href="/account/forgot-password">Forgot password?</a>
++          </div>
++          <button type="submit" class="btn">Sign in</button>
++        </form>
++        <div class="divider">or</div>
++        <button type="button" id="signin-passkey" class="btn-secondary">
++          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <circle cx="8" cy="8" r="4" />
++            <path d="M2 21v-2a5 5 0 0 1 5-5h2" />
++            <circle cx="17" cy="13" r="2.5" />
++            <path d="M17 15.5V22l1.5-1.5L17 19l1.5-1.5" />
++          </svg>
++          Sign in with a passkey
++        </button>
++        <p id="signin-status" class="status" role="status"></p>
++        <p class="hint">New to The Daily Grind? <a href="#" data-show-view="signup">Create an account</a></p>
++      </div>
++    </div>
++
++    <!-- Sign up -->
++    <div id="view-signup" hidden>
++      <div class="dialog-body stack">
++        <form id="signup-form" class="stack" action="/api/signup" method="post">
++          <div class="field">
++            <label for="signup-name">Name</label>
++            <input type="text" id="signup-name" name="fullName" autocomplete="name" enterkeyhint="next" required>
++          </div>
++          <div class="field">
++            <label for="signup-email">Email</label>
++            <input type="email" id="signup-email" name="email" autocomplete="username" spellcheck="false"
++              enterkeyhint="next" required>
++          </div>
++          <div class="field">
++            <label for="signup-password">Password</label>
++            <input type="password" id="signup-password" name="password" autocomplete="new-password"
++              minlength="8" aria-describedby="signup-password-hint" enterkeyhint="done" required>
++            <span id="signup-password-hint" class="hint">At least 8 characters. You can add a passkey next.</span>
++          </div>
++          <button type="submit" class="btn">Create account</button>
++        </form>
++        <p id="signup-status" class="status" role="status"></p>
++        <p class="hint">Already a member? <a href="#" data-show-view="signin">Sign in</a></p>
++      </div>
++    </div>
++
++    <!-- Post-signup passkey promotion -->
++    <div id="view-promo" hidden>
++      <div class="dialog-body stack">
++        <p>Skip the password next time. A passkey lets you sign in to your Daily Grind account with your
++          fingerprint, face, or screen lock — and it can’t be phished.</p>
++        <div class="row">
++          <button type="button" id="promo-skip" class="btn-link">Not now</button>
++          <button type="button" id="promo-create" class="btn">Create a passkey</button>
++        </div>
++        <p id="promo-status" class="status" role="status"></p>
++      </div>
++    </div>
++
++    <!-- Signed-in account management -->
++    <div id="view-account" hidden>
++      <div class="dialog-body">
++        <section class="account-section" aria-labelledby="profile-heading">
++          <h3 id="profile-heading">Profile</h3>
++          <form id="profile-form" class="stack">
++            <div class="field">
++              <label for="profile-display-name">Name</label>
++              <input type="text" id="profile-display-name" name="displayName" autocomplete="name" required>
++            </div>
++            <div class="field">
++              <label for="profile-email">Email</label>
++              <input type="email" id="profile-email" name="name" autocomplete="username" spellcheck="false"
++                required>
++            </div>
++            <div class="row">
++              <button type="submit" class="btn">Save changes</button>
++            </div>
++          </form>
++          <p id="profile-status" class="status" role="status"></p>
++        </section>
++
++        <section class="account-section" aria-labelledby="passkeys-heading">
++          <div class="section-heading">
++            <h3 id="passkeys-heading">Passkeys</h3>
++            <button type="button" id="create-passkey" class="btn">Create a passkey</button>
++          </div>
++          <p id="passkeys-unsupported" class="hint" hidden>This browser or device can’t create passkeys. For
++            extra protection, use a strong, unique password and turn on two-step verification.</p>
++          <p id="passkeys-empty" class="hint" hidden>No passkeys yet. Create one to sign in without a password.</p>
++          <ul id="passkey-list" class="passkey-list"></ul>
++          <p id="passkeys-status" class="status" role="status"></p>
++        </section>
++
++        <section class="account-section">
++          <button type="button" id="signout-button" class="btn-secondary">Sign out</button>
++        </section>
++      </div>
++    </div>
++  </dialog>
++
++  <!-- Reauthentication before sensitive changes -->
++  <dialog id="reauth-dialog" class="account-dialog small" aria-labelledby="reauth-title" closedby="any">
++    <div class="dialog-header">
++      <h2 id="reauth-title">Confirm it’s you</h2>
++      <button type="button" class="dialog-close" command="close" commandfor="reauth-dialog" aria-label="Cancel">&times;</button>
++    </div>
++    <div class="dialog-body stack">
++      <p id="reauth-reason"></p>
++      <div id="reauth-passkey" class="stack">
++        <button type="button" id="reauth-passkey-button" class="btn" autofocus>Verify with passkey</button>
++        <button type="button" id="reauth-use-password" class="btn-link">Use my password instead</button>
++      </div>
++      <form id="reauth-password-form" class="stack">
++        <div class="field">
++          <label for="reauth-password">Password</label>
++          <input type="password" id="reauth-password" name="password" autocomplete="current-password" required>
++        </div>
++        <button type="submit" class="btn">Verify</button>
++      </form>
++      <p id="reauth-status" class="status" role="status"></p>
++    </div>
++  </dialog>
++
++  <!-- Rename passkey -->
++  <dialog id="rename-dialog" class="account-dialog small" aria-labelledby="rename-title" closedby="any">
++    <div class="dialog-header">
++      <h2 id="rename-title">Rename passkey</h2>
++    </div>
++    <form id="rename-form" method="dialog" class="dialog-body stack">
++      <div class="field">
++        <label for="rename-input">Passkey name</label>
++        <input type="text" id="rename-input" name="passkeyName" autocomplete="off" maxlength="64" required autofocus>
++      </div>
++      <div class="row">
++        <button type="submit" value="cancel" class="btn-link" formnovalidate>Cancel</button>
++        <button type="submit" value="save" class="btn">Save</button>
++      </div>
++    </form>
++  </dialog>
++
++  <template id="passkey-row">
++    <li class="passkey-item">
++      <img class="passkey-icon" alt="" width="32" height="32">
++      <div>
++        <div class="passkey-name"></div>
++        <div class="passkey-meta">
++          <span class="passkey-registered"></span>
++          <span class="passkey-last-used"></span>
++          <span class="passkey-synced" hidden>Synced</span>
++        </div>
++      </div>
++      <div class="passkey-actions">
++        <button type="button" class="btn-secondary" data-action="rename">Rename</button>
++        <button type="button" class="btn-secondary btn-danger" data-action="delete">Delete</button>
++      </div>
++    </li>
++  </template>
++
++  <template id="generic-key-icon">
++    <svg class="passkey-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#4e342e"
++      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++      <circle cx="7.5" cy="15.5" r="5.5" />
++      <path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3" />
++    </svg>
++  </template>
++
++  <script type="module" src="/account.js"></script>
++
+ </body>
+ 
+ </html>

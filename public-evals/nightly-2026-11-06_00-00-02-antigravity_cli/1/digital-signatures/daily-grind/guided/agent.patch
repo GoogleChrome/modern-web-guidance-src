@@ -1,0 +1,738 @@
+diff --git a/index.html b/index.html
+index 66c9173..a08b32e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,181 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Digital Signing & Verification Portal */
++    .crypto-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 10px;
++      padding: 32px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .crypto-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .crypto-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .crypto-status-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: space-between;
++      align-items: center;
++      background: #f5f0ee;
++      padding: 16px 20px;
++      border-radius: 8px;
++      margin-bottom: 24px;
++      font-size: 0.9rem;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-weight: 600;
++      font-size: 0.8rem;
++      background: var(--primary);
++      color: white;
++    }
++
++    .badge.quantum {
++      background: #1b5e20;
++    }
++
++    .badge.classical {
++      background: #e65100;
++    }
++
++    .crypto-columns {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .crypto-panel {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      background: #fffdfb;
++    }
++
++    .crypto-panel h3 {
++      color: var(--primary);
++      margin-bottom: 14px;
++      font-size: 1.15rem;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.85rem;
++      margin-bottom: 5px;
++      color: var(--text);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 9px 11px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .form-group textarea,
++    .mono-input {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.82rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    .btn-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
++    .btn-secondary {
++      background: #6d4c41;
++      color: white;
++      border: none;
++      cursor: pointer;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      cursor: pointer;
++    }
++
++    .btn-outline:hover {
++      background: #efebe9;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++    }
++
++    .verify-banner {
++      margin-top: 16px;
++      padding: 14px 16px;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      border: 1px solid transparent;
++    }
++
++    .verify-banner.valid {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border-color: #a5d6a7;
++    }
++
++    .verify-banner.invalid {
++      background: #ffebee;
++      color: #b71c1c;
++      border-color: #ef9a9a;
++    }
++
++    .verify-banner.neutral {
++      background: #efebe9;
++      color: var(--text);
++      border-color: var(--secondary);
++    }
++
++    .meta-list {
++      margin-top: 12px;
++      font-size: 0.82rem;
++      color: #5d4037;
++      display: grid;
++      gap: 4px;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +338,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#crypto-portal">Receipts &amp; Vouchers</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,7 +347,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#crypto-portal" class="btn">Order &amp; Verify Receipts</a>
+   </header>
+ 
+   <main class="container">
+@@ -182,16 +358,160 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn btn-outline quick-order-btn" data-item="Maple Oat Latte" data-price="6.50">Sign Order Receipt</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn btn-outline quick-order-btn" data-item="Dark Roast Espresso" data-price="4.25">Sign Order Receipt</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn btn-outline quick-order-btn" data-item="Cold Brew" data-price="5.50">Sign Order Receipt</button>
++        </div>
++      </div>
++    </section>
++
++    <section id="crypto-portal" class="crypto-section" aria-labelledby="crypto-portal-heading">
++      <div class="crypto-header">
++        <h2 id="crypto-portal-heading">Digital Receipt &amp; Gift Voucher Signing Portal</h2>
++        <p>Cryptographically sign and verify Daily Grind coffee order receipts and gift vouchers in the browser using quantum-resistant (ML-DSA) or classical (Ed25519) asymmetric keys.</p>
++      </div>
++
++      <div class="crypto-status-bar" aria-live="polite">
++        <div>
++          <strong>Active Key Suite:</strong>
++          <span id="active-suite-badge" class="badge">Initializing...</span>
++          <span id="pq-support-note" style="margin-left: 8px;"></span>
++        </div>
++        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
++          <label for="suite-select" style="font-weight: 600;">Algorithm:</label>
++          <select id="suite-select" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #bcaaa4;">
++            <option value="auto" selected>Auto (ML-DSA-65 preferred, Ed25519 fallback)</option>
++            <option value="ML-DSA-65">ML-DSA-65 (NIST Category 3 — Default PQ)</option>
++            <option value="ML-DSA-44">ML-DSA-44 (NIST Category 2 — Compact PQ)</option>
++            <option value="ML-DSA-87">ML-DSA-87 (NIST Category 5 — CNSA 2.0 PQ)</option>
++            <option value="Ed25519">Ed25519 (Classical Fallback)</option>
++          </select>
++          <button type="button" id="rotate-keys-btn" class="btn btn-secondary" style="margin-top: 0; padding: 7px 14px;">Rotate Key Pair</button>
++        </div>
++      </div>
++
++      <div class="crypto-columns">
++        <!-- Signer Panel -->
++        <div class="crypto-panel">
++          <h3>1. Issue &amp; Sign Artifact</h3>
++          <form id="sign-artifact-form">
++            <div class="form-group">
++              <label for="artifact-type">Artifact Type &amp; Domain Separation Context</label>
++              <select id="artifact-type" name="artifactType">
++                <option value="receipt" selected>Coffee Order Receipt (context: daily-grind-receipt-v1)</option>
++                <option value="voucher">Gift Voucher (context: daily-grind-voucher-v1)</option>
++              </select>
++            </div>
++
++            <!-- Receipt Fields -->
++            <div id="receipt-fields">
++              <div class="form-row">
++                <div class="form-group">
++                  <label for="receipt-order-id">Order ID</label>
++                  <input type="text" id="receipt-order-id" value="DG-2026-8492" required>
++                </div>
++                <div class="form-group">
++                  <label for="receipt-total">Total ($ USD)</label>
++                  <input type="text" id="receipt-total" value="6.50" required>
++                </div>
++              </div>
++              <div class="form-row">
++                <div class="form-group">
++                  <label for="receipt-item">Coffee Beverage</label>
++                  <input type="text" id="receipt-item" value="Maple Oat Latte" required>
++                </div>
++                <div class="form-group">
++                  <label for="receipt-customer">Customer Name</label>
++                  <input type="text" id="receipt-customer" value="Alex Rivera" required>
++                </div>
++              </div>
++            </div>
++
++            <!-- Voucher Fields -->
++            <div id="voucher-fields" hidden>
++              <div class="form-row">
++                <div class="form-group">
++                  <label for="voucher-code">Voucher Code</label>
++                  <input type="text" id="voucher-code" value="GIFT-ROAST-25">
++                </div>
++                <div class="form-group">
++                  <label for="voucher-amount">Voucher Value ($ USD)</label>
++                  <input type="text" id="voucher-amount" value="25.00">
++                </div>
++              </div>
++              <div class="form-row">
++                <div class="form-group">
++                  <label for="voucher-recipient">Recipient</label>
++                  <input type="text" id="voucher-recipient" value="Jordan Taylor">
++                </div>
++                <div class="form-group">
++                  <label for="voucher-expiry">Expires On</label>
++                  <input type="date" id="voucher-expiry" value="2027-12-31">
++                </div>
++              </div>
++            </div>
++
++            <div class="btn-row">
++              <button type="submit" id="sign-btn" class="btn" style="margin-top: 0;">Sign Artifact</button>
++              <button type="button" id="sign-sample-voucher-btn" class="btn btn-outline" style="margin-top: 0;">Switch &amp; Sign Gift Voucher</button>
++            </div>
++          </form>
++
++          <div class="meta-list" id="signer-key-meta">
++            <div><strong>Exported Key Format:</strong> <code id="meta-key-format">-</code></div>
++            <div><strong>Public Key Size:</strong> <span id="meta-pubkey-size">-</span></div>
++            <div><strong>Last Signature Size:</strong> <span id="meta-sig-size">-</span></div>
++            <div><strong>Domain Context:</strong> <code id="meta-domain-context">daily-grind-receipt-v1</code></div>
++          </div>
++        </div>
++
++        <!-- Verifier Panel -->
++        <div class="crypto-panel">
++          <h3>2. Verify Authenticity &amp; Integrity</h3>
++          <form id="verify-artifact-form">
++            <div class="form-group">
++              <label for="verify-context">Expected Verification Domain Context</label>
++              <select id="verify-context">
++                <option value="daily-grind-receipt-v1" selected>daily-grind-receipt-v1 (Coffee Order Receipt)</option>
++                <option value="daily-grind-voucher-v1">daily-grind-voucher-v1 (Gift Voucher)</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="verify-payload">Signed Payload JSON</label>
++              <textarea id="verify-payload" rows="4" spellcheck="false"></textarea>
++            </div>
++
++            <div class="form-group">
++              <label for="verify-signature">Digital Signature (Base64)</label>
++              <textarea id="verify-signature" class="mono-input" rows="3" spellcheck="false"></textarea>
++            </div>
++
++            <div class="form-group">
++              <label for="verify-public-key">Signer Public Key Bytes (Base64 — <code>raw-public</code> for ML-DSA / <code>raw</code> for Ed25519)</label>
++              <textarea id="verify-public-key" class="mono-input" rows="2" spellcheck="false"></textarea>
++            </div>
++
++            <div class="btn-row">
++              <button type="submit" id="verify-btn" class="btn" style="margin-top: 0;">Verify Signature</button>
++              <button type="button" id="tamper-payload-btn" class="btn btn-outline" style="margin-top: 0;">Tamper Payload</button>
++              <button type="button" id="replay-context-btn" class="btn btn-outline" style="margin-top: 0;">Test Cross-Domain Replay</button>
++            </div>
++          </form>
++
++          <div id="verify-result-banner" class="verify-banner neutral" role="status" aria-live="polite">
++            Sign a receipt or voucher to verify its cryptographic signature.
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +527,373 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
++      1312: 'ML-DSA-44',
++      1952: 'ML-DSA-65',
++      2592: 'ML-DSA-87',
++    };
++
++    const DOMAIN_CONTEXTS = {
++      receipt: 'daily-grind-receipt-v1',
++      voucher: 'daily-grind-voucher-v1',
++    };
++
++    export function supportsPostQuantumSignatures(algorithm = 'ML-DSA-65') {
++      return (
++        typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('sign', algorithm)
++      );
++    }
++
++    export async function generateSigningKeyPair(preferredSuite = 'auto') {
++      const requestedMlDsa =
++        preferredSuite === 'auto'
++          ? 'ML-DSA-65'
++          : preferredSuite.startsWith('ML-DSA')
++            ? preferredSuite
++            : null;
++
++      if (requestedMlDsa && supportsPostQuantumSignatures(requestedMlDsa)) {
++        const keyPair = await crypto.subtle.generateKey(requestedMlDsa, false, ['sign', 'verify']);
++        const publicKey =
++          keyPair.publicKey ??
++          (await crypto.subtle.getPublicKey(keyPair.privateKey, ['verify']));
++        const publicKeyBytes = new Uint8Array(
++          await crypto.subtle.exportKey('raw-public', publicKey),
++        );
++        return {
++          suite: requestedMlDsa,
++          keyFormat: 'raw-public',
++          keyPair,
++          publicKeyBytes,
++        };
++      }
++
++      // Classical fallback: Ed25519
++      const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
++      const publicKeyBytes = new Uint8Array(
++        await crypto.subtle.exportKey('raw', keyPair.publicKey),
++      );
++      return {
++        suite: 'Ed25519',
++        keyFormat: 'raw',
++        keyPair,
++        publicKeyBytes,
++      };
++    }
++
++    export function frameFallbackInput(payloadBytes, contextBytes) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++      framed[0] = contextBytes.byteLength;
++      framed.set(contextBytes, 1);
++      framed.set(payloadBytes, 1 + contextBytes.byteLength);
++      return framed;
++    }
++
++    export async function signPayload(
++      privateKey,
++      payloadBytes,
++      contextBytes = new Uint8Array(0),
++    ) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      if (privateKey.algorithm.name.startsWith('ML-DSA')) {
++        const sig = await crypto.subtle.sign(
++          { name: privateKey.algorithm.name, context: contextBytes },
++          privateKey,
++          payloadBytes,
++        );
++        return new Uint8Array(sig);
++      }
++
++      const framed = frameFallbackInput(payloadBytes, contextBytes);
++      const sig = await crypto.subtle.sign('Ed25519', privateKey, framed);
++      return new Uint8Array(sig);
++    }
++
++    export async function verifyPayload(
++      publicKeyOrBytes,
++      signatureBytes,
++      payloadBytes,
++      contextBytes = new Uint8Array(0),
++    ) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      const publicKey =
++        publicKeyOrBytes instanceof CryptoKey
++          ? publicKeyOrBytes
++          : await (() => {
++              const bytes =
++                publicKeyOrBytes instanceof Uint8Array
++                  ? publicKeyOrBytes
++                  : new Uint8Array(publicKeyOrBytes);
++              const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++              return mlDsaName
++                ? crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
++                : crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
++            })();
++
++      if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++        return crypto.subtle.verify(
++          { name: publicKey.algorithm.name, context: contextBytes },
++          publicKey,
++          signatureBytes,
++          payloadBytes,
++        );
++      }
++
++      const framed = frameFallbackInput(payloadBytes, contextBytes);
++      return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
++    }
++
++    function bytesToBase64(bytes) {
++      if (typeof bytes.toBase64 === 'function') {
++        return bytes.toBase64();
++      }
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary);
++    }
++
++    function base64ToBytes(b64) {
++      const cleaned = b64.trim();
++      if (typeof Uint8Array.fromBase64 === 'function') {
++        return Uint8Array.fromBase64(cleaned);
++      }
++      const binary = atob(cleaned);
++      const out = new Uint8Array(binary.length);
++      for (let i = 0; i < binary.length; i++) {
++        out[i] = binary.charCodeAt(i);
++      }
++      return out;
++    }
++
++    // Expose signing helpers on globalThis for programmatic inspection
++    Object.assign(globalThis, {
++      supportsPostQuantumSignatures,
++      generateSigningKeyPair,
++      signPayload,
++      verifyPayload,
++      frameFallbackInput,
++    });
++
++    // UI State & Wiring
++    let activeKeyBundle = null;
++
++    const suiteBadge = document.getElementById('active-suite-badge');
++    const pqSupportNote = document.getElementById('pq-support-note');
++    const suiteSelect = document.getElementById('suite-select');
++    const rotateKeysBtn = document.getElementById('rotate-keys-btn');
++    const artifactTypeSelect = document.getElementById('artifact-type');
++    const receiptFields = document.getElementById('receipt-fields');
++    const voucherFields = document.getElementById('voucher-fields');
++    const signForm = document.getElementById('sign-artifact-form');
++    const signSampleVoucherBtn = document.getElementById('sign-sample-voucher-btn');
++    const verifyForm = document.getElementById('verify-artifact-form');
++    const verifyContextSelect = document.getElementById('verify-context');
++    const verifyPayloadInput = document.getElementById('verify-payload');
++    const verifySignatureInput = document.getElementById('verify-signature');
++    const verifyPublicKeyInput = document.getElementById('verify-public-key');
++    const verifyBanner = document.getElementById('verify-result-banner');
++    const tamperPayloadBtn = document.getElementById('tamper-payload-btn');
++    const replayContextBtn = document.getElementById('replay-context-btn');
++
++    const metaKeyFormat = document.getElementById('meta-key-format');
++    const metaPubkeySize = document.getElementById('meta-pubkey-size');
++    const metaSigSize = document.getElementById('meta-sig-size');
++    const metaDomainContext = document.getElementById('meta-domain-context');
++
++    function setBanner(status, message) {
++      verifyBanner.className = `verify-banner ${status}`;
++      verifyBanner.textContent = message;
++    }
++
++    function buildArtifactPayload() {
++      const type = artifactTypeSelect.value;
++      if (type === 'voucher') {
++        return {
++          type: 'gift-voucher',
++          issuer: 'The Daily Grind Coffee Co.',
++          voucherCode: document.getElementById('voucher-code').value.trim(),
++          amountUSD: document.getElementById('voucher-amount').value.trim(),
++          recipient: document.getElementById('voucher-recipient').value.trim(),
++          expiresOn: document.getElementById('voucher-expiry').value.trim(),
++          issuedAt: '2026-11-06T09:00:00Z',
++        };
++      }
++      return {
++        type: 'coffee-order-receipt',
++        merchant: 'The Daily Grind Coffee Co.',
++        orderId: document.getElementById('receipt-order-id').value.trim(),
++        item: document.getElementById('receipt-item').value.trim(),
++        totalUSD: document.getElementById('receipt-total').value.trim(),
++        customer: document.getElementById('receipt-customer').value.trim(),
++        issuedAt: '2026-11-06T09:00:00Z',
++      };
++    }
++
++    async function initKeyPair() {
++      const preferred = suiteSelect.value;
++      activeKeyBundle = await generateSigningKeyPair(preferred);
++      const isPQ = activeKeyBundle.suite.startsWith('ML-DSA');
++      suiteBadge.textContent = activeKeyBundle.suite;
++      suiteBadge.className = `badge ${isPQ ? 'quantum' : 'classical'}`;
++      pqSupportNote.textContent = supportsPostQuantumSignatures()
++        ? '(Browser supports post-quantum ML-DSA via SubtleCrypto.supports)'
++        : '(Using classical Ed25519 fallback — ML-DSA not detected in this runtime)';
++      metaKeyFormat.textContent = activeKeyBundle.keyFormat;
++      metaPubkeySize.textContent = `${activeKeyBundle.publicKeyBytes.byteLength} bytes`;
++      verifyPublicKeyInput.value = bytesToBase64(activeKeyBundle.publicKeyBytes);
++    }
++
++    async function handleSign() {
++      if (!activeKeyBundle) {
++        await initKeyPair();
++      }
++      const type = artifactTypeSelect.value;
++      const contextName = DOMAIN_CONTEXTS[type];
++      const contextBytes = new TextEncoder().encode(contextName);
++      const payloadObj = buildArtifactPayload();
++      const payloadJson = JSON.stringify(payloadObj, null, 2);
++      const payloadBytes = new TextEncoder().encode(payloadJson);
++
++      const signatureBytes = await signPayload(
++        activeKeyBundle.keyPair.privateKey,
++        payloadBytes,
++        contextBytes,
++      );
++
++      metaDomainContext.textContent = contextName;
++      metaSigSize.textContent = `${signatureBytes.byteLength} bytes (${activeKeyBundle.suite})`;
++
++      verifyContextSelect.value = contextName;
++      verifyPayloadInput.value = payloadJson;
++      verifySignatureInput.value = bytesToBase64(signatureBytes);
++      verifyPublicKeyInput.value = bytesToBase64(activeKeyBundle.publicKeyBytes);
++
++      await handleVerify();
++    }
++
++    async function handleVerify() {
++      try {
++        const contextName = verifyContextSelect.value;
++        const contextBytes = new TextEncoder().encode(contextName);
++        const payloadBytes = new TextEncoder().encode(verifyPayloadInput.value);
++        const signatureBytes = base64ToBytes(verifySignatureInput.value);
++        const publicKeyBytes = base64ToBytes(verifyPublicKeyInput.value);
++
++        const isValid = await verifyPayload(
++          publicKeyBytes,
++          signatureBytes,
++          payloadBytes,
++          contextBytes,
++        );
++
++        const detectedSuite =
++          ML_DSA_PUBLIC_KEY_ALGORITHMS[publicKeyBytes.byteLength] || 'Ed25519';
++
++        if (isValid) {
++          setBanner(
++            'valid',
++            `Verified Authentic & Intact (${detectedSuite}, context "${contextName}") — Signature matches payload and signer public key.`,
++          );
++        } else {
++          setBanner(
++            'invalid',
++            `Verification Failed (${detectedSuite}, context "${contextName}") — Payload was modified, signature is invalid, or domain context did not match.`,
++          );
++        }
++      } catch (err) {
++        setBanner(
++          'invalid',
++          `Verification Error: ${err instanceof Error ? err.message : String(err)}`,
++        );
++      }
++    }
++
++    artifactTypeSelect.addEventListener('change', () => {
++      const isVoucher = artifactTypeSelect.value === 'voucher';
++      receiptFields.hidden = isVoucher;
++      voucherFields.hidden = !isVoucher;
++      metaDomainContext.textContent = DOMAIN_CONTEXTS[artifactTypeSelect.value];
++    });
++
++    suiteSelect.addEventListener('change', async () => {
++      await initKeyPair();
++      await handleSign();
++    });
++
++    rotateKeysBtn.addEventListener('click', async () => {
++      await initKeyPair();
++      await handleSign();
++    });
++
++    signForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      await handleSign();
++    });
++
++    signSampleVoucherBtn.addEventListener('click', async () => {
++      artifactTypeSelect.value = 'voucher';
++      artifactTypeSelect.dispatchEvent(new Event('change'));
++      await handleSign();
++    });
++
++    verifyForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      await handleVerify();
++    });
++
++    tamperPayloadBtn.addEventListener('click', async () => {
++      try {
++        const parsed = JSON.parse(verifyPayloadInput.value);
++        if ('totalUSD' in parsed) {
++          parsed.totalUSD = '0.01';
++        } else if ('amountUSD' in parsed) {
++          parsed.amountUSD = '999.00';
++        } else {
++          parsed.tampered = true;
++        }
++        verifyPayloadInput.value = JSON.stringify(parsed, null, 2);
++      } catch {
++        verifyPayloadInput.value += '\n// tampered';
++      }
++      await handleVerify();
++    });
++
++    replayContextBtn.addEventListener('click', async () => {
++      verifyContextSelect.value =
++        verifyContextSelect.value === DOMAIN_CONTEXTS.receipt
++          ? DOMAIN_CONTEXTS.voucher
++          : DOMAIN_CONTEXTS.receipt;
++      await handleVerify();
++    });
++
++    document.querySelectorAll('.quick-order-btn').forEach((btn) => {
++      btn.addEventListener('click', async () => {
++        artifactTypeSelect.value = 'receipt';
++        artifactTypeSelect.dispatchEvent(new Event('change'));
++        document.getElementById('receipt-item').value = btn.dataset.item || 'Maple Oat Latte';
++        document.getElementById('receipt-total').value = btn.dataset.price || '6.50';
++        document.getElementById('receipt-order-id').value =
++          `DG-2026-${Math.floor(1000 + Math.random() * 9000)}`;
++        document.getElementById('crypto-portal').scrollIntoView({ behavior: 'smooth' });
++        await handleSign();
++      });
++    });
++
++    // Initialize key pair and sign initial receipt on load
++    initKeyPair().then(() => handleSign());
++  </script>
++
+ </body>
+ 
+ </html>

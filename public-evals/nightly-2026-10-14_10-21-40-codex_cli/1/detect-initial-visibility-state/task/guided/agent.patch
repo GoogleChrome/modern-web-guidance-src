@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,59 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const fallbackActive = entries.length === 0;
++      const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++
++      // Times are milliseconds relative to performance.timeOrigin (navigation).
++      // null means no backgrounding has been recorded yet; 0 is a valid time.
++      const visibilityInfo = {
++        initiallyBackgrounded: fallbackActive
++          ? document.visibilityState === 'hidden'
++          : entries[0].name === 'hidden',
++        timeBackgrounded: firstHiddenEntry ? firstHiddenEntry.startTime : null,
++        fallbackActive,
++      };
++      const logVisibilityInfo = () => console.log({ ...visibilityInfo });
++
++      if (fallbackActive) {
++        // UNRELIABLE FALLBACK: this query only sees visibility at execution time.
++        // An async script can miss an initially hidden tab that became visible.
++        // performance.now() records observation time, not the exact transition.
++        console.warn('Visibility detection fallback active: initial background status and background time may be inaccurate, especially for async scripts.');
++        if (visibilityInfo.initiallyBackgrounded) {
++          visibilityInfo.timeBackgrounded = performance.now();
++        }
++        if (visibilityInfo.timeBackgrounded === null) {
++          const recordBackgrounding = () => {
++            if (document.visibilityState !== 'hidden') return;
++            visibilityInfo.timeBackgrounded = performance.now();
++            logVisibilityInfo();
++            document.removeEventListener('visibilitychange', recordBackgrounding);
++          };
++          document.addEventListener('visibilitychange', recordBackgrounding);
++        }
++      } else if (visibilityInfo.timeBackgrounded === null) {
++        // Observe future entries as well, preserving the initial state above.
++        const observer = new PerformanceObserver((list) => {
++          const hiddenEntry = list.getEntries().find((entry) => entry.name === 'hidden');
++          if (!hiddenEntry) return;
++          visibilityInfo.timeBackgrounded = hiddenEntry.startTime;
++          logVisibilityInfo();
++          observer.disconnect();
++        });
++        observer.observe({ type: 'visibility-state', buffered: true });
++      }
++
++      logVisibilityInfo();
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

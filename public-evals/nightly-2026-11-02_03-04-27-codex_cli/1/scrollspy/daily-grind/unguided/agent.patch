@@ -1,0 +1,211 @@
+diff --git a/index.html b/index.html
+index 66c9173..7be3706 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 72px;
+     }
+ 
+     * {
+@@ -62,10 +63,22 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="location"] {
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="location"] {
++      text-decoration: underline;
++      text-underline-offset: 6px;
++      text-decoration-thickness: 2px;
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 5px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +113,43 @@
+       padding: 0 20px;
+     }
+ 
++    main section {
++      padding: 40px 0;
++      scroll-margin-top: calc(var(--nav-height) + 20px);
++    }
++
++    main section + section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .section-heading {
++      text-align: center;
++      margin-bottom: 12px;
++    }
++
++    .section-intro {
++      max-width: 650px;
++      margin: 0 auto;
++      text-align: center;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 12px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -157,13 +207,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +225,9 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" class="section-heading">Menu</h2>
++      <p class="section-intro">Explore our seasonal favorites, from a comforting latte to a refreshing cold brew.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +246,42 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" class="section-heading">Locations</h2>
++      <p class="section-intro">Make time for a great cup of coffee. Find a Daily Grind café for your morning stop, an afternoon catch-up, or a quiet moment.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Find your neighborhood café</h3>
++          <p>Explore our locations and check café details before your next visit.</p>
++          <a href="/locations" class="btn">Browse Cafés</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" class="section-heading">Rewards</h2>
++      <p class="section-intro">Bring a little more joy to your coffee routine with Daily Grind Rewards.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>A little extra with your daily cup</h3>
++          <p>Discover the rewards program, learn how it works, and explore member benefits.</p>
++          <a href="/rewards" class="btn">Explore Rewards</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" aria-labelledby="account-heading">
++      <h2 id="account-heading" class="section-heading">My Account</h2>
++      <p class="section-intro">Your Daily Grind, all in one place.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Manage your account</h3>
++          <p>Visit your account to access your profile and keep your details up to date.</p>
++          <a href="/account" class="btn">Open My Account</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +294,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const sectionLinks = [...navigation.querySelectorAll('a[href^="#"]')];
++    const sections = sectionLinks.map(link => document.querySelector(link.hash));
++    let updatePending = false;
++
++    function updateActiveSection() {
++      updatePending = false;
++      const navHeight = navigation.getBoundingClientRect().height;
++      document.documentElement.style.setProperty('--nav-height', `${navHeight}px`);
++
++      // Follow the section at the reading position beneath the sticky navigation.
++      const readingPosition = navHeight + Math.min((window.innerHeight - navHeight) * 0.25, 160);
++      let activeSection = null;
++      for (const section of sections) {
++        const bounds = section.getBoundingClientRect();
++        if (bounds.top <= readingPosition && bounds.bottom > navHeight) {
++          activeSection = section;
++        }
++      }
++
++      // The final section may be too short to reach the reading position.
++      if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
++        activeSection = sections[sections.length - 1];
++      }
++
++      for (const link of sectionLinks) {
++        if (activeSection && link.hash === `#${activeSection.id}`) {
++          link.setAttribute('aria-current', 'location');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      }
++    }
++
++    function scheduleUpdate() {
++      if (!updatePending) {
++        updatePending = true;
++        requestAnimationFrame(updateActiveSection);
++      }
++    }
++
++    window.addEventListener('scroll', scheduleUpdate, { passive: true });
++    window.addEventListener('resize', scheduleUpdate);
++    window.addEventListener('hashchange', scheduleUpdate);
++    window.addEventListener('pageshow', scheduleUpdate);
++    new ResizeObserver(scheduleUpdate).observe(navigation);
++    updateActiveSection();
++  </script>
++
+ </body>
+ 
+ </html>

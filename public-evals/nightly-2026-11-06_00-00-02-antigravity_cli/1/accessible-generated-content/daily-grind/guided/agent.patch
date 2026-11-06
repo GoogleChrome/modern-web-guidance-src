@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+index 66c9173..951fbd6 100644
+--- a/index.html
++++ b/index.html
+@@ -115,13 +115,61 @@
+       text-align: center;
+     }
+ 
++    section h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    /* Decorative flourishes on the section heading:
++       Single-value fallback precedes the empty alt text syntax (`/ ""`)
++       so screen readers silence the decorative glyph while older browsers still render it. */
++    section h2::before {
++      content: "✦ ";
++      content: "✦ " / "";
++      color: var(--accent);
++      margin-inline-end: 0.35em;
++    }
++
++    section h2::after {
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++      margin-inline-start: 0.35em;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.4em;
++    }
++
++    /* Decorative CSS-generated icon for drink headings:
++       Images in `content: url(...)` are presentational by default and the heading
++       text is already in the DOM, so no `/ ""` or duplicate alt text is used. */
++    .card h3::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cline x1='6' y1='2' x2='6' y2='4'/%3E%3Cline x1='10' y1='2' x2='10' y2='4'/%3E%3Cline x1='14' y1='2' x2='14' y2='4'/%3E%3C/svg%3E");
++      display: inline-flex;
++      align-items: center;
++      line-height: 0;
++      pointer-events: none;
++    }
++
++    /* Decorative text flourish after drink headings, silenced from screen readers via `/ ""` */
++    .card h3::after {
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++      font-size: 0.85em;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.45em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -131,6 +179,24 @@
+       transition: background 0.3s;
+     }
+ 
++    /* Decorative CSS-generated icon for "Order Now" and "View Details" buttons:
++       Omit `/ ""` and duplicate alt text since `url(...)` images are presentational by default
++       and the button label is already present in the DOM. */
++    .btn::before {
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffab40' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3C/svg%3E");
++      display: inline-flex;
++      align-items: center;
++      line-height: 0;
++      pointer-events: none;
++    }
++
++    /* Decorative trailing arrow flourish for buttons, with single-value fallback before `/ ""` */
++    .btn::after {
++      content: " →";
++      content: " →" / "";
++      pointer-events: none;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }

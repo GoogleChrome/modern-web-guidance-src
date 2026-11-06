@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+index 66c9173..52b770e 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -94,6 +95,10 @@
+     }
+ 
+     /* Content Sections */
++    .section-title {
++      text-align: center;
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -176,7 +181,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..83aee5b 100644
+--- a/server.js
++++ b/server.js
+@@ -1,16 +1,60 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++// The page has no scripts, so script execution is disabled entirely. Inline <style>
++// blocks are allowed only by hash, computed from index.html on each response so the policy
++// can't drift from the markup. Set CSP_REPORT_ONLY=1 to trial the policy first.
++function buildCsp(html) {
++  const hashes = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(
++    (m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`
++  );
++  return [
++    "default-src 'none'",
++    "script-src 'none'",
++    `style-src ${['\'self\'', ...hashes].join(' ')}`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "font-src 'self'",
++    "connect-src 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    "base-uri 'none'",
++    "object-src 'none'",
++    "manifest-src 'none'",
++    "upgrade-insecure-requests",
++  ].join('; ');
++}
++
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++};
++
++const cspHeader = process.env.CSP_REPORT_ONLY
++  ? 'Content-Security-Policy-Report-Only'
++  : 'Content-Security-Policy';
++
++function headers(extra, csp) {
++  const h = { ...SECURITY_HEADERS, ...extra };
++  if (csp) h[cspHeader] = csp;
++  return h;
++}
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, headers({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, "default-src 'none'; frame-ancestors 'none'"));
+     res.end('Logged out');
+     return;
+   }
+@@ -18,11 +62,11 @@ const server = http.createServer((req, res) => {
+   const filePath = path.join(WORK_DIR, 'index.html');
+   fs.readFile(filePath, (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, headers({ 'Content-Type': 'text/plain; charset=utf-8' }));
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, headers({ 'Content-Type': 'text/html; charset=utf-8' }, buildCsp(data.toString('utf8'))));
+     res.end(data);
+   });
+ });

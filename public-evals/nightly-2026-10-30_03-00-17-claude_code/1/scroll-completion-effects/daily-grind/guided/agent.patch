@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+index 66c9173..ba482b1 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,69 @@
+       background: #3e2723;
+     }
+ 
++    /* In-page navigation targets */
++    .nav-target {
++      /* Keep headings clear of the sticky nav when scrolled into view */
++      scroll-margin-top: 80px;
++      padding: 20px;
++      margin-bottom: 40px;
++      border-radius: 12px;
++    }
++
++    .nav-target h2 {
++      text-align: center;
++    }
++
++    .nav-target h2:focus {
++      outline: none;
++    }
++
++    .nav-target h2:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Applied only after the smooth scroll to the section has finished */
++    .nav-target.arrived {
++      animation: arrive 1.2s ease-out;
++    }
++
++    .nav-target.arrived h2 {
++      animation: arrive-heading 0.6s ease-out;
++    }
++
++    @keyframes arrive {
++      0% {
++        background-color: rgba(255, 171, 64, 0.35);
++        box-shadow: 0 0 0 4px var(--accent);
++      }
++
++      100% {
++        background-color: transparent;
++        box-shadow: 0 0 0 4px transparent;
++      }
++    }
++
++    @keyframes arrive-heading {
++      0% {
++        transform: translateY(8px);
++        opacity: 0.4;
++      }
++
++      100% {
++        transform: none;
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .nav-target.arrived,
++      .nav-target.arrived h2 {
++        animation: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,9 +223,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +238,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="nav-target">
++      <h2 tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +258,45 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="nav-target">
++      <h2 tabindex="-1">Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>142 Market Street<br>Mon&ndash;Fri 6am&ndash;8pm, Sat&ndash;Sun 7am&ndash;6pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>8 Mill Lane<br>Daily 7am&ndash;7pm</p>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>301 College Avenue<br>Daily 6am&ndash;10pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="nav-target">
++      <h2 tabindex="-1">Grind Rewards</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect one bean for every dollar you spend in store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Drinks</h3>
++          <p>Redeem 100 beans for any handcrafted drink, any size.</p>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>Enjoy a free pastry and drink on us during your birthday week.</p>
++        </div>
++      </div>
++      <div style="text-align: center;">
++        <a href="/rewards" class="btn">Join Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +309,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    let currentScrollId = 0;
++
++    // Resolves once the scroll has finished. Uses the Promise returned by
++    // scrollIntoView() where supported, otherwise falls back to scrollend
++    // with an idle timeout (covers targets already in view).
++    function scrollIntoViewAsync(element, options, scroller = window) {
++      const result = element.scrollIntoView(options);
++
++      if (result instanceof Promise) {
++        return result;
++      }
++
++      return new Promise((resolve) => {
++        let timeoutId;
++
++        const finish = () => {
++          clearTimeout(timeoutId);
++          scroller.removeEventListener('scrollend', finish);
++          scroller.removeEventListener('scroll', onScroll);
++          resolve();
++        };
++
++        const onScroll = () => {
++          clearTimeout(timeoutId);
++          timeoutId = setTimeout(finish, 100);
++        };
++
++        scroller.addEventListener('scrollend', finish, { once: true });
++        scroller.addEventListener('scroll', onScroll, { passive: true });
++        timeoutId = setTimeout(finish, 100);
++      });
++    }
++
++    async function navigateTo(target) {
++      const scrollId = ++currentScrollId;
++      document.querySelectorAll('.nav-target.arrived')
++        .forEach((el) => el.classList.remove('arrived'));
++
++      await scrollIntoViewAsync(target, {
++        behavior: reducedMotion.matches ? 'auto' : 'smooth',
++        block: 'start'
++      });
++
++      // A newer navigation superseded this one while scrolling
++      if (scrollId !== currentScrollId) return;
++
++      target.querySelector('h2')?.focus({ preventScroll: true });
++      // Force a reflow so the animation restarts on repeat visits
++      void target.offsetWidth;
++      target.classList.add('arrived');
++    }
++
++    document.querySelectorAll('a[href^="#"]').forEach((link) => {
++      link.addEventListener('click', (event) => {
++        const target = document.getElementById(link.hash.slice(1));
++        if (!target) return;
++
++        event.preventDefault();
++        if (location.hash !== link.hash) {
++          history.pushState(null, '', link.hash);
++        }
++        navigateTo(target);
++      });
++    });
++
++    window.addEventListener('popstate', () => {
++      const target = location.hash && document.getElementById(location.hash.slice(1));
++      if (target) navigateTo(target);
++    });
++
++    document.querySelectorAll('.nav-target').forEach((section) => {
++      section.addEventListener('animationend', (event) => {
++        if (event.target === section) section.classList.remove('arrived');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

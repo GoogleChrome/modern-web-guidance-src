@@ -1,0 +1,449 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,141 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* World Calendars */
++    .calendar-tool {
++      margin-top: 60px;
++    }
++
++    .calendar-tool h2 {
++      text-align: center;
++    }
++
++    .calendar-tool > p {
++      text-align: center;
++      max-width: 60ch;
++      margin: 10px auto 0;
++    }
++
++    .calendar-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .calendar-controls label {
++      font-weight: 600;
++    }
++
++    .calendar-controls input[type="date"] {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .calendar-controls input[type="date"]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .calendar-status {
++      text-align: center;
++      margin-top: 12px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card {
++      text-align: start;
++    }
++
++    .calendar-card h3 {
++      text-align: center;
++    }
++
++    .calendar-card .formatted-date {
++      font-size: 1.25rem;
++      font-weight: 600;
++      text-align: center;
++      margin-bottom: 12px;
++      min-height: 1.6em;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++      font-size: 0.95rem;
++    }
++
++    .calendar-card dt {
++      font-weight: 600;
++    }
++
++    .calendar-card dd {
++      margin: 0;
++    }
++
++    .timeline-label {
++      display: inline-block;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .timeline-label[data-timeline="Today"] {
++      background: var(--accent);
++    }
++
++    .calendar-card details {
++      margin-top: 14px;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .calendar-card summary {
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .calendar-card table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card th,
++    .calendar-card td {
++      padding: 4px 6px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: start;
++    }
++
++    .calendar-card td:last-child,
++    .calendar-card th:last-child {
++      text-align: end;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .calendar-card tr.current-month {
++      font-weight: 600;
++    }
++
++    .calendar-card .card-error {
++      color: #8b2b1f;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +327,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-tool" aria-labelledby="calendar-tool-heading">
++      <h2 id="calendar-tool-heading">World Calendars</h2>
++      <p>Planning a visit or a gift around a holiday? Pick any date and see it in the Islamic (Umm al-Qura), Hebrew, and Japanese calendars.</p>
++
++      <form class="calendar-controls" id="calendar-form">
++        <label for="calendar-date-input">Choose a date</label>
++        <input type="date" id="calendar-date-input" name="date" required autocomplete="off">
++      </form>
++      <p class="calendar-status" id="calendar-status" role="status" aria-live="polite">
++        <noscript>Enable JavaScript to use the calendar converter.</noscript>
++      </p>
++
++      <div class="grid" id="calendar-cards">
++        <article class="card calendar-card" data-calendar="islamic-umalqura" aria-labelledby="islamic-heading">
++          <h3 id="islamic-heading">Islamic (Umm al-Qura)</h3>
++          <p class="formatted-date" id="islamic-date"></p>
++          <dl class="calendar-facts"></dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++        </article>
++
++        <article class="card calendar-card" data-calendar="hebrew" aria-labelledby="hebrew-heading">
++          <h3 id="hebrew-heading">Hebrew</h3>
++          <p class="formatted-date" id="hebrew-date"></p>
++          <dl class="calendar-facts"></dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++        </article>
++
++        <article class="card calendar-card" data-calendar="japanese" aria-labelledby="japanese-heading">
++          <h3 id="japanese-heading">Japanese</h3>
++          <p class="formatted-date" id="japanese-date"></p>
++          <dl class="calendar-facts"></dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr><th scope="col">Code</th><th scope="col">Month</th><th scope="col">Days</th></tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +399,234 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const statusEl = document.getElementById('calendar-status');
++    const input = document.getElementById('calendar-date-input');
++    const form = document.getElementById('calendar-form');
++    const cards = [...document.querySelectorAll('.calendar-card[data-calendar]')];
++
++    // Per-calendar display config. Era names only matter for era-based
++    // calendars (Japanese); the others are formatted as day / month / year.
++    const CALENDAR_CONFIG = {
++      'islamic-umalqura': {
++        format: { day: 'numeric', month: 'long', year: 'numeric' },
++        showEra: false,
++      },
++      'hebrew': {
++        format: { day: 'numeric', month: 'long', year: 'numeric' },
++        showEra: false,
++      },
++      'japanese': {
++        format: { day: 'numeric', month: 'long', year: 'numeric', era: 'long' },
++        showEra: true,
++      },
++    };
++
++    function setStatus(message) {
++      statusEl.textContent = message;
++    }
++
++    // 1. Progressive enhancement: use native Temporal when present, otherwise
++    //    lazy-load the polyfill. The polyfill does not install a global, so we
++    //    assign it explicitly.
++    async function ensureTemporal() {
++      if (typeof globalThis.Temporal !== 'undefined') return true;
++      try {
++        setStatus('Loading calendar support…');
++        const mod = await import('https://esm.sh/temporal-polyfill@0.3.0');
++        globalThis.Temporal = mod.Temporal;
++        return true;
++      } catch (err) {
++        console.error('Temporal polyfill failed to load', err);
++        return false;
++      }
++    }
++
++    // 2. Calendar feature detection. Prefer Intl.supportedValuesOf; where that
++    //    is missing, fall back to probing the calendar through Temporal itself.
++    function isCalendarSupported(calendarId) {
++      try {
++        if (typeof Intl.supportedValuesOf === 'function') {
++          return Intl.supportedValuesOf('calendar').includes(calendarId);
++        }
++        Temporal.Now.plainDateISO().withCalendar(calendarId);
++        return true;
++      } catch {
++        return false;
++      }
++    }
++
++    // Parse the <input type="date"> value (always ISO 8601 YYYY-MM-DD).
++    function parseInputDate(value) {
++      if (!value) return null;
++      try {
++        return Temporal.PlainDate.from(value);
++      } catch {
++        return null;
++      }
++    }
++
++    function formatDate(date, options) {
++      // The formatter's calendar must match the date's calendar, otherwise
++      // toLocaleString throws. Passing it explicitly keeps the user's locale.
++      return date.toLocaleString(undefined, { ...options, calendar: date.calendarId });
++    }
++
++    function timelineLabel(selected, today) {
++      const cmp = Temporal.PlainDate.compare(selected, today);
++      return cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++    }
++
++    function addFact(dl, term, value) {
++      const dt = document.createElement('dt');
++      dt.textContent = term;
++      const dd = document.createElement('dd');
++      if (value instanceof Node) dd.append(value); else dd.textContent = value;
++      dl.append(dt, dd);
++    }
++
++    function renderCard(card, isoDate, isoToday) {
++      const calendarId = card.dataset.calendar;
++      const formatted = card.querySelector('.formatted-date');
++      const facts = card.querySelector('.calendar-facts');
++      const tbody = card.querySelector('tbody');
++      const details = card.querySelector('details');
++
++      formatted.textContent = '';
++      facts.replaceChildren();
++      tbody.replaceChildren();
++      details.hidden = false;
++
++      const fail = (message) => {
++        formatted.textContent = '—';
++        const p = document.createElement('p');
++        p.className = 'card-error';
++        p.textContent = message;
++        facts.replaceChildren(p);
++        details.hidden = true;
++      };
++
++      if (!isoDate) {
++        fail('Pick a valid date to see it in this calendar.');
++        return;
++      }
++      if (!isCalendarSupported(calendarId)) {
++        fail('This calendar is not supported by your browser.');
++        return;
++      }
++
++      // Every Temporal read happens inside this block: calendars have finite
++      // supported ranges and must fail per-card without breaking the others.
++      let view;
++      try {
++        const date = isoDate.withCalendar(calendarId);
++        const today = isoToday.withCalendar(calendarId);
++        const config = CALENDAR_CONFIG[calendarId];
++
++        // Month breakdown: iterate up to monthsInYear (never a hardcoded 12)
++        // and read daysInMonth from each month of this specific year.
++        const months = [];
++        for (let m = 1; m <= date.monthsInYear; m++) {
++          const monthDate = date.with({ month: m, day: 1 });
++          months.push({
++            code: monthDate.monthCode,
++            name: formatDate(monthDate, { month: 'long' }),
++            days: monthDate.daysInMonth,
++            isCurrent: monthDate.monthCode === date.monthCode,
++          });
++        }
++
++        view = {
++          formatted: formatDate(date, config.format),
++          era: config.showEra && date.era !== undefined
++            ? `${date.era} (year ${date.eraYear})`
++            : null,
++          year: date.year,
++          month: date.month,
++          monthCode: date.monthCode,
++          monthsInYear: date.monthsInYear,
++          inLeapYear: date.inLeapYear,
++          daysInYear: date.daysInYear,
++          timeline: timelineLabel(date, today),
++          months,
++        };
++      } catch (err) {
++        console.error(`Could not convert to ${calendarId}`, err);
++        fail('This date is outside the supported range for this calendar.');
++        return;
++      }
++
++      formatted.textContent = view.formatted;
++
++      // Year / month / stable month code (monthCode is what stays stable
++      // across leap-month years in lunisolar calendars such as Hebrew).
++      if (view.era) addFact(facts, 'Era', view.era);
++      addFact(facts, 'Year', String(view.year));
++      addFact(facts, 'Month', `${view.month} of ${view.monthsInYear}`);
++      addFact(facts, 'Month code', view.monthCode);
++      addFact(
++        facts,
++        'Months in year',
++        `${view.monthsInYear}${view.inLeapYear ? ' (leap year)' : ''}`
++      );
++      addFact(facts, 'Days in year', String(view.daysInYear));
++
++      const label = document.createElement('span');
++      label.className = 'timeline-label';
++      label.dataset.timeline = view.timeline;
++      label.textContent = view.timeline;
++      addFact(facts, 'Timeline', label);
++
++      for (const month of view.months) {
++        const row = document.createElement('tr');
++        const codeCell = document.createElement('th');
++        codeCell.scope = 'row';
++        codeCell.textContent = month.code;
++        const nameCell = document.createElement('td');
++        nameCell.textContent = month.name;
++        const daysCell = document.createElement('td');
++        daysCell.textContent = String(month.days);
++        row.append(codeCell, nameCell, daysCell);
++        if (month.isCurrent) {
++          row.setAttribute('aria-current', 'date');
++          row.classList.add('current-month');
++        }
++        tbody.append(row);
++      }
++    }
++
++    function render() {
++      const isoToday = Temporal.Now.plainDateISO();
++      const isoDate = parseInputDate(input.value);
++      for (const card of cards) renderCard(card, isoDate, isoToday);
++      if (isoDate) {
++        setStatus(`Showing ${formatDate(isoDate, { dateStyle: 'full' })} in three calendars.`);
++      } else {
++        setStatus('Choose a date to convert.');
++      }
++    }
++
++    async function init() {
++      const ready = await ensureTemporal();
++      if (!ready) {
++        setStatus('Calendar conversion is unavailable in this browser right now.');
++        input.disabled = true;
++        return;
++      }
++
++      // Default to today, taken from the system clock in the user's time zone.
++      if (!input.value) input.value = Temporal.Now.plainDateISO().toString();
++
++      form.addEventListener('submit', (event) => event.preventDefault());
++      input.addEventListener('input', render);
++      input.addEventListener('change', render);
++      render();
++    }
++
++    init();
++  </script>
++
+ </body>
+ 
+ </html>

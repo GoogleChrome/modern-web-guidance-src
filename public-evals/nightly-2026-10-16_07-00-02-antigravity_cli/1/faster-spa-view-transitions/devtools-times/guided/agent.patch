@@ -1,0 +1,202 @@
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..b5bcf57 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -21,9 +21,9 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href=`${baseUrl}category/national` class="text-sm hover:underline">National</a></li>
++                <li><a href=`${baseUrl}category/politics` class="text-sm hover:underline">Politics</a></li>
++                <li><a href=`${baseUrl}category/business` class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+@@ -31,8 +31,8 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href=`${baseUrl}category/culture` class="text-sm hover:underline">Culture</a></li>
++                <li><a href=`${baseUrl}category/media` class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+@@ -40,9 +40,9 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href=`${baseUrl}category/lifestyle` class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href=`${baseUrl}category/sports` class="text-sm hover:underline">Sports</a></li>
++                <li><a href=`${baseUrl}category/urban%20development` class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+@@ -50,7 +50,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href=`${baseUrl}category/science` class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..13c2b2a 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,10 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++
++const rawPathname = Astro.url.pathname;
++const normalizedPath = rawPathname.replace(/\/+$/, '') || '/';
++const viewId = 'view-' + (normalizedPath.replace(/[^a-zA-Z0-9_-]/g, '_') || 'root');
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +49,102 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" id="spa-view-container">
++          <div
++            id={viewId}
++            class="spa-view"
++            data-view-id={viewId}
++            data-view-path={normalizedPath}
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import { swapFunctions } from 'astro:transitions/client';
++
++      const MAX_CACHED_VIEWS = 8;
++      const lruOrder: string[] = [];
++
++      function updateLru(viewId: string) {
++        const index = lruOrder.indexOf(viewId);
++        if (index !== -1) {
++          lruOrder.splice(index, 1);
++        }
++        lruOrder.push(viewId);
++      }
++
++      function addToLru(viewId: string) {
++        updateLru(viewId);
++        while (lruOrder.length > MAX_CACHED_VIEWS) {
++          const evictId = lruOrder.shift();
++          if (evictId && evictId !== viewId) {
++            const el = document.getElementById(evictId);
++            if (el && el.classList.contains('inactive')) {
++              el.remove();
++            }
++          }
++        }
++      }
++
++      function switchToView(viewId: string) {
++        // Hide all views
++        document.querySelectorAll('.spa-view').forEach(view => {
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++        });
++
++        // Show the target view
++        const activeView = document.getElementById(viewId);
++        if (activeView) {
++          activeView.classList.remove('inactive');
++          activeView.setAttribute('aria-hidden', 'false');
++
++          // MANDATORY: Move focus to the new view to ensure a logical tab-order
++          activeView.focus();
++        }
++      }
++
++      // Initialize LRU cache with the initial active view
++      const initialView = document.querySelector('#spa-view-container > .spa-view:not(.inactive)');
++      if (initialView && initialView.id) {
++        updateLru(initialView.id);
++      }
++
++      document.addEventListener('astro:before-swap', (event: any) => {
++        event.swap = () => {
++          // Deselect scripts and swap head and root attributes
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          swapFunctions.swapHeadElements(event.newDocument);
++
++          const container = document.getElementById('spa-view-container');
++          const incomingView = event.newDocument.querySelector('#spa-view-container > .spa-view');
++
++          if (container && incomingView) {
++            const targetViewId = incomingView.id;
++            const existingView = document.getElementById(targetViewId);
++
++            if (existingView && container.contains(existingView)) {
++              // The view's structural DOM state was preserved in memory.
++              // Instantly restore and focus without destroying or rebuilding.
++              switchToView(targetViewId);
++              updateLru(targetViewId);
++            } else {
++              // First visit to this view: append to container and activate
++              container.appendChild(incomingView);
++              switchToView(targetViewId);
++              addToLru(targetViewId);
++            }
++          } else {
++            // Fallback for document structures without the view container
++            swapFunctions.swapBodyElement(event.newDocument.body, document.body);
++          }
++        };
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..24350ce 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,26 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++.spa-view {
++  width: 100%;
++}
++
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Optional: Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
+ }
+\ No newline at end of file

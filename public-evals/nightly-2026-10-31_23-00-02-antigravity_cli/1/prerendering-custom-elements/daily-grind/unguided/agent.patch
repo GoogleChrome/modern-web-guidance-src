@@ -1,0 +1,581 @@
+diff --git a/index.html b/index.html
+index 66c9173..f392366 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,10 @@
+       margin-top: 20px;
+     }
+ 
++    drink-card {
++      display: block;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -129,6 +133,10 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+@@ -178,21 +186,413 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <drink-card name="Maple Oat Latte" category="Seasonal" calories="240" price="$5.50" href="/menu/seasonal">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: transform 0.2s, box-shadow 0.2s;
++              }
++              :host(:hover) {
++                transform: translateY(-2px);
++                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++              }
++              :host([favorited]) {
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                margin-bottom: 8px;
++              }
++              .badge {
++                font-size: 0.75rem;
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++                padding: 2px 8px;
++                border-radius: 12px;
++                font-weight: 600;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                font-size: 1rem;
++                color: var(--primary, #4e342e);
++                transition: background 0.2s, color 0.2s, border-color 0.2s;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              h3 {
++                margin: 0 0 10px;
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                margin: 0 0 12px;
++                color: var(--text, #3e2723);
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 10px;
++                background: var(--light, #fafafa);
++                border-radius: 6px;
++                font-size: 0.85rem;
++                text-align: left;
++                border-left: 3px solid var(--accent, #ffab40);
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-meta {
++                display: flex;
++                justify-content: space-between;
++                font-weight: 600;
++                margin-top: 6px;
++                color: var(--primary, #4e342e);
++              }
++              .actions {
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                border: none;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-outline {
++                background: transparent;
++                color: var(--primary, #4e342e);
++                border: 1px solid var(--primary, #4e342e);
++              }
++              .btn-outline:hover {
++                background: var(--secondary, #d7ccc8);
++              }
++            </style>
++            <div class="card-header">
++              <span class="badge">Seasonal</span>
++              <button type="button" class="fav-btn" data-action="favorite" aria-pressed="false" aria-label="Favorite Maple Oat Latte" title="Toggle Favorite">&#9825;</button>
++            </div>
++            <h3><slot name="title">Maple Oat Latte</slot></h3>
++            <div class="summary"><slot>Creamy oat milk with a hint of Vermont maple syrup.</slot></div>
++            <div class="details-panel" id="details" hidden>
++              <slot name="details">Crafted with our signature espresso, velvety steamed oat milk, pure Grade A Vermont maple syrup, and a light dusting of cinnamon.</slot>
++              <div class="details-meta">
++                <span>240 cal</span>
++                <span>$5.50</span>
++              </div>
++            </div>
++            <div class="actions">
++              <button type="button" class="btn btn-outline" data-action="details" aria-expanded="false" aria-controls="details">View Details</button>
++              <a href="/menu/seasonal" class="btn">Order</a>
++            </div>
++          </template>
++          <span slot="title">Maple Oat Latte</span>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <p slot="details">Crafted with our signature espresso, velvety steamed oat milk, pure Grade A Vermont maple syrup, and a light dusting of cinnamon.</p>
++        </drink-card>
++
++        <drink-card name="Dark Roast Espresso" category="Espresso" calories="15" price="$3.75" href="/menu/espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: transform 0.2s, box-shadow 0.2s;
++              }
++              :host(:hover) {
++                transform: translateY(-2px);
++                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++              }
++              :host([favorited]) {
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                margin-bottom: 8px;
++              }
++              .badge {
++                font-size: 0.75rem;
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++                padding: 2px 8px;
++                border-radius: 12px;
++                font-weight: 600;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                font-size: 1rem;
++                color: var(--primary, #4e342e);
++                transition: background 0.2s, color 0.2s, border-color 0.2s;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              h3 {
++                margin: 0 0 10px;
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                margin: 0 0 12px;
++                color: var(--text, #3e2723);
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 10px;
++                background: var(--light, #fafafa);
++                border-radius: 6px;
++                font-size: 0.85rem;
++                text-align: left;
++                border-left: 3px solid var(--accent, #ffab40);
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-meta {
++                display: flex;
++                justify-content: space-between;
++                font-weight: 600;
++                margin-top: 6px;
++                color: var(--primary, #4e342e);
++              }
++              .actions {
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                border: none;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-outline {
++                background: transparent;
++                color: var(--primary, #4e342e);
++                border: 1px solid var(--primary, #4e342e);
++              }
++              .btn-outline:hover {
++                background: var(--secondary, #d7ccc8);
++              }
++            </style>
++            <div class="card-header">
++              <span class="badge">Espresso</span>
++              <button type="button" class="fav-btn" data-action="favorite" aria-pressed="false" aria-label="Favorite Dark Roast Espresso" title="Toggle Favorite">&#9825;</button>
++            </div>
++            <h3><slot name="title">Dark Roast Espresso</slot></h3>
++            <div class="summary"><slot>Bold, smokey, and perfect for a morning boost.</slot></div>
++            <div class="details-panel" id="details" hidden>
++              <slot name="details">Double-pulled shot of single-origin Sumatra dark roast with notes of dark chocolate, toasted walnut, and a rich velvety crema.</slot>
++              <div class="details-meta">
++                <span>15 cal</span>
++                <span>$3.75</span>
++              </div>
++            </div>
++            <div class="actions">
++              <button type="button" class="btn btn-outline" data-action="details" aria-expanded="false" aria-controls="details">View Details</button>
++              <a href="/menu/espresso" class="btn">Order</a>
++            </div>
++          </template>
++          <span slot="title">Dark Roast Espresso</span>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <p slot="details">Double-pulled shot of single-origin Sumatra dark roast with notes of dark chocolate, toasted walnut, and a rich velvety crema.</p>
++        </drink-card>
++
++        <drink-card name="Cold Brew" category="Cold Brew" calories="5" price="$4.75" href="/menu/cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                transition: transform 0.2s, box-shadow 0.2s;
++              }
++              :host(:hover) {
++                transform: translateY(-2px);
++                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++              }
++              :host([favorited]) {
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: space-between;
++                align-items: center;
++                margin-bottom: 8px;
++              }
++              .badge {
++                font-size: 0.75rem;
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++                padding: 2px 8px;
++                border-radius: 12px;
++                font-weight: 600;
++              }
++              .fav-btn {
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                font-size: 1rem;
++                color: var(--primary, #4e342e);
++                transition: background 0.2s, color 0.2s, border-color 0.2s;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              h3 {
++                margin: 0 0 10px;
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                margin: 0 0 12px;
++                color: var(--text, #3e2723);
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 10px;
++                background: var(--light, #fafafa);
++                border-radius: 6px;
++                font-size: 0.85rem;
++                text-align: left;
++                border-left: 3px solid var(--accent, #ffab40);
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-meta {
++                display: flex;
++                justify-content: space-between;
++                font-weight: 600;
++                margin-top: 6px;
++                color: var(--primary, #4e342e);
++              }
++              .actions {
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                align-items: center;
++                margin-top: 15px;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 8px 16px;
++                text-decoration: none;
++                border-radius: 5px;
++                border: none;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-outline {
++                background: transparent;
++                color: var(--primary, #4e342e);
++                border: 1px solid var(--primary, #4e342e);
++              }
++              .btn-outline:hover {
++                background: var(--secondary, #d7ccc8);
++              }
++            </style>
++            <div class="card-header">
++              <span class="badge">Cold Brew</span>
++              <button type="button" class="fav-btn" data-action="favorite" aria-pressed="false" aria-label="Favorite Cold Brew" title="Toggle Favorite">&#9825;</button>
++            </div>
++            <h3><slot name="title">Cold Brew</slot></h3>
++            <div class="summary"><slot>Steeped for 18 hours for maximum smoothness.</slot></div>
++            <div class="details-panel" id="details" hidden>
++              <slot name="details">Coarse-ground Colombian beans cold-steeped in filtered water for 18 hours, served over artisanal ice for a naturally sweet, low-acid finish.</slot>
++              <div class="details-meta">
++                <span>5 cal</span>
++                <span>$4.75</span>
++              </div>
++            </div>
++            <div class="actions">
++              <button type="button" class="btn btn-outline" data-action="details" aria-expanded="false" aria-controls="details">View Details</button>
++              <a href="/menu/cold-brew" class="btn">Order</a>
++            </div>
++          </template>
++          <span slot="title">Cold Brew</span>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p slot="details">Coarse-ground Colombian beans cold-steeped in filtered water for 18 hours, served over artisanal ice for a naturally sweet, low-acid finish.</p>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +607,128 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class DrinkCard extends HTMLElement {
++      static get observedAttributes() {
++        return ['favorited', 'expanded'];
++      }
++
++      constructor() {
++        super();
++        this._onFavClick = this._onFavClick.bind(this);
++        this._onDetailsClick = this._onDetailsClick.bind(this);
++      }
++
++      connectedCallback() {
++        if (!this.shadowRoot) {
++          const tpl = this.querySelector('template[shadowrootmode]');
++          if (tpl) {
++            const root = this.attachShadow({ mode: 'open' });
++            root.appendChild(tpl.content.cloneNode(true));
++            tpl.remove();
++          }
++        }
++
++        if (!this.shadowRoot) return;
++
++        this._favBtn = this.shadowRoot.querySelector('[data-action="favorite"]');
++        this._detailsBtn = this.shadowRoot.querySelector('[data-action="details"]');
++        this._detailsPanel = this.shadowRoot.getElementById('details');
++
++        if (this._favBtn) {
++          this._favBtn.addEventListener('click', this._onFavClick);
++        }
++        if (this._detailsBtn) {
++          this._detailsBtn.addEventListener('click', this._onDetailsClick);
++        }
++
++        this._syncState();
++        this.setAttribute('hydrated', '');
++      }
++
++      disconnectedCallback() {
++        if (this._favBtn) {
++          this._favBtn.removeEventListener('click', this._onFavClick);
++        }
++        if (this._detailsBtn) {
++          this._detailsBtn.removeEventListener('click', this._onDetailsClick);
++        }
++      }
++
++      attributeChangedCallback() {
++        if (this.shadowRoot) {
++          this._syncState();
++        }
++      }
++
++      get favorited() {
++        return this.hasAttribute('favorited');
++      }
++
++      set favorited(val) {
++        if (val) {
++          this.setAttribute('favorited', '');
++        } else {
++          this.removeAttribute('favorited');
++        }
++      }
++
++      get expanded() {
++        return this.hasAttribute('expanded');
++      }
++
++      set expanded(val) {
++        if (val) {
++          this.setAttribute('expanded', '');
++        } else {
++          this.removeAttribute('expanded');
++        }
++      }
++
++      _onFavClick() {
++        this.favorited = !this.favorited;
++        this.dispatchEvent(new CustomEvent('favorite-toggle', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.getAttribute('name'),
++            favorited: this.favorited
++          }
++        }));
++      }
++
++      _onDetailsClick() {
++        this.expanded = !this.expanded;
++        this.dispatchEvent(new CustomEvent('details-toggle', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.getAttribute('name'),
++            expanded: this.expanded
++          }
++        }));
++      }
++
++      _syncState() {
++        if (this._favBtn) {
++          const isFav = this.favorited;
++          this._favBtn.setAttribute('aria-pressed', String(isFav));
++          this._favBtn.textContent = isFav ? '\u2665' : '\u2661';
++        }
++        if (this._detailsBtn && this._detailsPanel) {
++          const isExp = this.expanded;
++          this._detailsBtn.setAttribute('aria-expanded', String(isExp));
++          this._detailsBtn.textContent = isExp ? 'Hide Details' : 'View Details';
++          this._detailsPanel.hidden = !isExp;
++        }
++      }
++    }
++
++    if (!customElements.get('drink-card')) {
++      customElements.define('drink-card', DrinkCard);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

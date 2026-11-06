@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+index 66c9173..8bcd819 100644
+--- a/index.html
++++ b/index.html
+@@ -108,16 +108,64 @@
+     }
+ 
+     .card {
++      container-type: inline-size;
++      container-name: drink-card;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .card-inner {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+       text-align: center;
++      height: 100%;
++    }
++
++    .card-media {
++      width: 100%;
++      height: 190px;
++      background-color: var(--secondary);
++      flex-shrink: 0;
++      overflow: hidden;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.04);
++    }
++
++    .card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++      flex: 1;
++      width: 100%;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.15rem, 5cqi, 1.35rem);
++    }
++
++    .card p {
++      font-size: 0.95rem;
++      color: var(--text);
++      margin-bottom: 5px;
+     }
+ 
+     .btn {
+@@ -131,10 +179,53 @@
+       transition: background 0.3s;
+     }
+ 
++    .card .btn {
++      align-self: center;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Container query: adapt card layout and styling based on card's own width */
++    @container (min-width: 380px) {
++      .card-inner {
++        flex-direction: row;
++        align-items: stretch;
++        text-align: left;
++      }
++
++      .card-media {
++        width: 42%;
++        min-width: 150px;
++        max-width: 220px;
++        height: auto;
++        min-height: 190px;
++      }
++
++      .card-body {
++        padding: 24px;
++        align-items: flex-start;
++        justify-content: center;
++        border-left: 3px solid var(--secondary);
++      }
++
++      .card h3 {
++        font-size: clamp(1.25rem, 4cqi, 1.5rem);
++        margin-bottom: 8px;
++      }
++
++      .card p {
++        font-size: 1rem;
++        margin-bottom: 10px;
++      }
++
++      .card .btn {
++        align-self: flex-start;
++        margin-top: 12px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -179,19 +270,40 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            </div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            </div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            </div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

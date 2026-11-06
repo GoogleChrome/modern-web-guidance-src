@@ -1,0 +1,946 @@
+diff --git a/index.html b/index.html
+index 66c9173..bbfc7ae 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,19 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>smallpt — WebAssembly Path Tracer</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --bg-dark: #0f1117;
++      --bg-panel: #181b24;
++      --bg-card: #212634;
++      --border: #2e3548;
++      --text-main: #f1f5f9;
++      --text-muted: #94a3b8;
++      --accent: #6366f1;
++      --accent-hover: #4f46e5;
++      --success: #10b981;
++      --warning: #f59e0b;
+     }
+ 
+     * {
+@@ -21,192 +26,509 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg-dark);
++      color: var(--text-main);
++      line-height: 1.5;
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
++    header {
++      background: var(--bg-panel);
++      border-bottom: 1px solid var(--border);
++      padding: 1rem 2rem;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      flex-wrap: wrap;
++      gap: 1rem;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++    .brand {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++    .brand h1 {
++      font-size: 1.35rem;
++      font-weight: 700;
++      letter-spacing: -0.02em;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .badge {
++      background: rgba(99, 102, 241, 0.15);
++      color: #818cf8;
++      border: 1px solid rgba(99, 102, 241, 0.35);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 0.2rem 0.6rem;
++      border-radius: 999px;
+     }
+ 
+-    nav a {
+-      color: white;
++    .header-links a {
++      color: var(--text-muted);
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    .header-links a:hover {
++      color: var(--text-main);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    main {
++      max-width: 1180px;
++      width: 100%;
++      margin: 2rem auto;
++      padding: 0 1.5rem;
++      display: grid;
++      grid-template-columns: 1fr 340px;
++      gap: 1.75rem;
++      flex: 1;
++    }
++
++    @media (max-width: 900px) {
++      main {
++        grid-template-columns: 1fr;
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++    .viewport-card {
++      background: var(--bg-panel);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 1.25rem;
+       display: flex;
+       flex-direction: column;
+-      justify-content: center;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      gap: 1rem;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
++    }
++
++    .canvas-wrapper {
++      position: relative;
++      width: 100%;
++      max-width: 640px;
++      aspect-ratio: 4 / 3;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      border: 1px solid var(--border);
++      display: flex;
++      align-items: center;
++      justify-content: center;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    canvas {
++      width: 100%;
++      height: 100%;
++      image-rendering: pixelated;
++      display: block;
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++    .progress-bar-container {
++      width: 100%;
++      max-width: 640px;
++      height: 6px;
++      background: var(--bg-card);
++      border-radius: 999px;
++      overflow: hidden;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .progress-bar {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, var(--accent), #ec4899);
++      transition: width 0.12s ease-out;
++    }
++
++    .status-bar {
++      width: 100%;
++      max-width: 640px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .controls-panel {
++      display: flex;
++      flex-direction: column;
++      gap: 1.25rem;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      background: var(--bg-panel);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 1.25rem;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .card h2 {
++      font-size: 1rem;
++      font-weight: 600;
++      margin-bottom: 0.9rem;
++      color: var(--text-main);
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .btn-group {
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++    }
++
++    button {
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      padding: 0.75rem 1.1rem;
++      border-radius: 8px;
++      border: none;
++      transition: all 0.15s ease;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
++    .btn-primary {
++      background: var(--accent);
+       color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn-primary:hover:not(:disabled) {
++      background: var(--accent-hover);
++      transform: translateY(-1px);
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    .btn-secondary {
++      background: var(--bg-card);
++      color: var(--text-main);
++      border: 1px solid var(--border);
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    .btn-secondary:hover:not(:disabled) {
++      background: #2b3245;
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    button:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .setting-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 0.75rem;
++      font-size: 0.875rem;
++    }
++
++    .setting-row:last-child {
++      margin-bottom: 0;
++    }
++
++    .setting-row label {
++      color: var(--text-muted);
++    }
++
++    select {
++      background: var(--bg-card);
++      color: var(--text-main);
++      border: 1px solid var(--border);
++      padding: 0.4rem 0.65rem;
++      border-radius: 6px;
++      font-size: 0.875rem;
++    }
++
++    .palette-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 0.6rem;
++    }
++
++    .swatch-item {
++      background: var(--bg-card);
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 0.45rem 0.6rem;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      font-size: 0.8rem;
++    }
++
++    .swatch-color {
++      width: 18px;
++      height: 18px;
++      border-radius: 4px;
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      flex-shrink: 0;
++    }
++
++    .swatch-label {
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      color: var(--text-muted);
++    }
++
++    .info-text {
++      font-size: 0.825rem;
++      color: var(--text-muted);
++      line-height: 1.55;
++    }
++
++    footer {
++      text-align: center;
++      padding: 1.25rem;
++      font-size: 0.825rem;
++      color: var(--text-muted);
++      border-top: 1px solid var(--border);
++      background: var(--bg-panel);
+     }
+   </style>
+ </head>
+ 
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header>
++    <div class="brand">
++      <h1>smallpt WebAssembly Path Tracer</h1>
++      <span class="badge">C++ to WASM</span>
++    </div>
++    <div class="header-links">
++      <a href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">Original 99-line C++ by Kevin Beason</a>
++    </div>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main>
++    <section class="viewport-card">
++      <div class="canvas-wrapper">
++        <canvas id="renderCanvas" width="320" height="240"></canvas>
++      </div>
++      <div class="progress-bar-container">
++        <div id="progressBar" class="progress-bar"></div>
++      </div>
++      <div class="status-bar">
++        <span id="statusText">Initializing WebAssembly module...</span>
++        <span id="timingText">0 ms</span>
++      </div>
++    </section>
++
++    <aside class="controls-panel">
++      <div class="card">
++        <h2>Scene Controls</h2>
++        <div class="btn-group">
++          <button id="randomizeBtn" class="btn-primary" disabled>
++            🎲 Run with Randomized Sphere Colors
++          </button>
++          <button id="resetBtn" class="btn-secondary" disabled>
++            ↺ Run with Classic Cornell Box Colors
++          </button>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <div class="card">
++        <h2>Render Settings</h2>
++        <div class="setting-row">
++          <label for="resolutionSelect">Resolution</label>
++          <select id="resolutionSelect">
++            <option value="160x120">160 × 120 (Fast)</option>
++            <option value="256x192" selected>256 × 192 (Balanced)</option>
++            <option value="320x240">320 × 240 (Detailed)</option>
++            <option value="512x384">512 × 384 (High Res)</option>
++          </select>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="setting-row">
++          <label for="samplesSelect">Samples per Pixel (SPP)</label>
++          <select id="samplesSelect">
++            <option value="1">4 SPP (1 pass / subpixel)</option>
++            <option value="2" selected>8 SPP (2 passes / subpixel)</option>
++            <option value="4">16 SPP (4 passes / subpixel)</option>
++            <option value="8">32 SPP (8 passes / subpixel)</option>
++            <option value="16">64 SPP (16 passes / subpixel)</option>
++          </select>
+         </div>
+       </div>
+-    </section>
++
++      <div class="card">
++        <h2>Current Sphere Colors</h2>
++        <div id="paletteGrid" class="palette-grid"></div>
++      </div>
++
++      <div class="card">
++        <h2>About smallpt</h2>
++        <p class="info-text">
++          Compiled directly from Kevin Beason's open-source C++ global illumination renderer using Emscripten. Features Monte Carlo path tracing, soft area lighting, diffuse walls, specular mirror reflection, and dielectric glass refraction with Fresnel &amp; Russian Roulette termination.
++        </p>
++      </div>
++    </aside>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    Client-Side WebAssembly Execution • Monte Carlo Global Illumination
+   </footer>
+ 
++  <script src="smallpt.js"></script>
++  <script>
++    const SPHERE_NAMES = [
++      { id: 0, name: 'Left Wall' },
++      { id: 1, name: 'Right Wall' },
++      { id: 2, name: 'Back Wall' },
++      { id: 4, name: 'Floor' },
++      { id: 5, name: 'Ceiling' },
++      { id: 6, name: 'Mirror Sphere' },
++      { id: 7, name: 'Glass Sphere' }
++    ];
++
++    const canvas = document.getElementById('renderCanvas');
++    const ctx = canvas.getContext('2d');
++    const randomizeBtn = document.getElementById('randomizeBtn');
++    const resetBtn = document.getElementById('resetBtn');
++    const resolutionSelect = document.getElementById('resolutionSelect');
++    const samplesSelect = document.getElementById('samplesSelect');
++    const statusText = document.getElementById('statusText');
++    const timingText = document.getElementById('timingText');
++    const progressBar = document.getElementById('progressBar');
++    const paletteGrid = document.getElementById('paletteGrid');
++
++    let wasmReady = false;
++    let currentRenderId = 0;
++    let seedCounter = 1;
++
++    function toCssRgb(r, g, b) {
++      // Apply gamma correction (1/2.2) to match smallpt's toInt()
++      const gamma = (v) => Math.round(Math.pow(Math.max(0, Math.min(1, v)), 1 / 2.2) * 255);
++      return `rgb(${gamma(r)}, ${gamma(g)}, ${gamma(b)})`;
++    }
++
++    function updatePaletteUI() {
++      if (!wasmReady) return;
++      paletteGrid.innerHTML = '';
++      for (const sphere of SPHERE_NAMES) {
++        const r = Module._get_sphere_color_channel(sphere.id, 0);
++        const g = Module._get_sphere_color_channel(sphere.id, 1);
++        const b = Module._get_sphere_color_channel(sphere.id, 2);
++
++        const item = document.createElement('div');
++        item.className = 'swatch-item';
++
++        const colorBox = document.createElement('div');
++        colorBox.className = 'swatch-color';
++        colorBox.style.backgroundColor = toCssRgb(r, g, b);
++
++        const label = document.createElement('span');
++        label.className = 'swatch-label';
++        label.textContent = sphere.name;
++
++        item.appendChild(colorBox);
++        item.appendChild(label);
++        paletteGrid.appendChild(item);
++      }
++    }
++
++    function parseResolution() {
++      const [w, h] = resolutionSelect.value.split('x').map(Number);
++      return { w, h };
++    }
++
++    function startRender() {
++      if (!wasmReady) return;
++
++      const renderId = ++currentRenderId;
++      const { w, h } = parseResolution();
++      const samps = parseInt(samplesSelect.value, 10);
++      const totalSpp = samps * 4;
++
++      canvas.width = w;
++      canvas.height = h;
++
++      const bufPtr = Module._init_render(w, h);
++      const imageData = ctx.createImageData(w, h);
++      updatePaletteUI();
++
++      let currentRow = 0;
++      const rowsPerChunk = Math.max(4, Math.floor(24 / Math.sqrt(samps)));
++      const startTime = performance.now();
++      const seedOffset = seedCounter++;
++
++      progressBar.style.width = '0%';
++      statusText.textContent = `Rendering (${totalSpp} SPP) — 0%`;
++
++      function step() {
++        if (renderId !== currentRenderId) return;
++
++        const nextRow = Math.min(h, currentRow + rowsPerChunk);
++        Module._render_rows(currentRow, nextRow, samps, seedOffset);
++        currentRow = nextRow;
++
++        // Copy pixel data from WebAssembly linear memory to Canvas
++        const wasmBytes = new Uint8ClampedArray(Module.HEAPU8.buffer, bufPtr, w * h * 4);
++        imageData.data.set(wasmBytes);
++        ctx.putImageData(imageData, 0, 0);
++
++        const pct = Math.round((currentRow / h) * 100);
++        const elapsed = Math.round(performance.now() - startTime);
++        progressBar.style.width = `${pct}%`;
++        timingText.textContent = `${elapsed} ms`;
++
++        if (currentRow < h) {
++          statusText.textContent = `Rendering (${totalSpp} SPP) — ${pct}%`;
++          requestAnimationFrame(step);
++        } else {
++          statusText.textContent = `Complete (${w}×${h}, ${totalSpp} SPP)`;
++        }
++      }
++
++      requestAnimationFrame(step);
++    }
++
++    randomizeBtn.addEventListener('click', () => {
++      if (!wasmReady) return;
++      const randomSeed = Math.floor(Math.random() * 0xffffffff);
++      Module._randomize_colors(randomSeed);
++      startRender();
++    });
++
++    resetBtn.addEventListener('click', () => {
++      if (!wasmReady) return;
++      Module._reset_colors();
++      startRender();
++    });
++
++    resolutionSelect.addEventListener('change', () => startRender());
++    samplesSelect.addEventListener('change', () => startRender());
++
++    function onWasmInitialized() {
++      if (wasmReady) return;
++      wasmReady = true;
++      randomizeBtn.disabled = false;
++      resetBtn.disabled = false;
++      startRender();
++    }
++
++    if (typeof Module !== 'undefined') {
++      if (Module.calledRun) {
++        onWasmInitialized();
++      } else {
++        const prevInit = Module.onRuntimeInitialized;
++        Module.onRuntimeInitialized = function () {
++          if (prevInit) prevInit();
++          onWasmInitialized();
++        };
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/smallpt.cpp b/smallpt.cpp
+new file mode 100644
+index 0000000..1037eba
+--- /dev/null
++++ b/smallpt.cpp
+@@ -0,0 +1,265 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++#include <stdint.h>
++#ifdef __EMSCRIPTEN__
++#include <emscripten/emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (depth>100) return obj.e; // prevent stack overflow in WASM
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// Buffers for progressive/interactive WebAssembly rendering
++static int cur_w = 0, cur_h = 0, cur_samples = 0;
++static Vec *accum_c = NULL;
++static uint8_t *rgba_buf = NULL;
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++void reset_colors() {
++  spheres[0].c = Vec(.75, .25, .25);
++  spheres[1].c = Vec(.25, .25, .75);
++  spheres[2].c = Vec(.75, .75, .75);
++  spheres[3].c = Vec();
++  spheres[4].c = Vec(.75, .75, .75);
++  spheres[5].c = Vec(.75, .75, .75);
++  spheres[6].c = Vec(1, 1, 1) * .999;
++  spheres[7].c = Vec(1, 1, 1) * .999;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int index, double r, double g, double b) {
++  if (index >= 0 && index < 9) {
++    spheres[index].c = Vec(r, g, b);
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_channel(int index, int channel) {
++  if (index < 0 || index >= 9) return 0;
++  if (channel == 0) return spheres[index].c.x;
++  if (channel == 1) return spheres[index].c.y;
++  if (channel == 2) return spheres[index].c.z;
++  return 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_colors(unsigned int seed) {
++  srand(seed);
++  auto randCol = []() {
++    return 0.15 + 0.75 * (double(rand()) / RAND_MAX);
++  };
++  // Randomize Left, Right, Back, Bottom, Top, Mirror, Glass spheres
++  spheres[0].c = Vec(randCol(), randCol(), randCol()); // Left wall
++  spheres[1].c = Vec(randCol(), randCol(), randCol()); // Right wall
++  spheres[2].c = Vec(randCol(), randCol(), randCol()); // Back wall
++  spheres[4].c = Vec(randCol(), randCol(), randCol()); // Bottom floor
++  spheres[5].c = Vec(randCol(), randCol(), randCol()); // Top ceiling
++  // Also tint the mirror and glass spheres slightly or vibrantly
++  spheres[6].c = Vec(0.4 + 0.599 * (double(rand()) / RAND_MAX),
++                     0.4 + 0.599 * (double(rand()) / RAND_MAX),
++                     0.4 + 0.599 * (double(rand()) / RAND_MAX));
++  spheres[7].c = Vec(0.4 + 0.599 * (double(rand()) / RAND_MAX),
++                     0.4 + 0.599 * (double(rand()) / RAND_MAX),
++                     0.4 + 0.599 * (double(rand()) / RAND_MAX));
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* init_render(int w, int h) {
++  if (cur_w != w || cur_h != h || !accum_c || !rgba_buf) {
++    delete[] accum_c;
++    delete[] rgba_buf;
++    cur_w = w;
++    cur_h = h;
++    accum_c = new Vec[w * h];
++    rgba_buf = new uint8_t[w * h * 4];
++  }
++  for (int i = 0; i < w * h; i++) {
++    accum_c[i] = Vec();
++    rgba_buf[i * 4 + 0] = 0;
++    rgba_buf[i * 4 + 1] = 0;
++    rgba_buf[i * 4 + 2] = 0;
++    rgba_buf[i * 4 + 3] = 255;
++  }
++  cur_samples = 0;
++  return rgba_buf;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void render_rows(int y_start, int y_end, int samps, int seed_offset) {
++  int w = cur_w, h = cur_h;
++  if (!accum_c || !rgba_buf || w <= 0 || h <= 0) return;
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++  for (int y = y_start; y < y_end && y < h; y++) {
++    unsigned short Xi[3] = {0, 0, (unsigned short)(y*y*y + seed_offset * 997)};
++    for (unsigned short x = 0; x < w; x++) {
++      int i = (h - y - 1) * w + x;
++      Vec c_pixel = Vec();
++      for (int sy = 0; sy < 2; sy++) {     // 2x2 subpixel rows
++        for (int sx = 0; sx < 2; sx++, r = Vec()) { // 2x2 subpixel cols
++          for (int s = 0; s < samps; s++) {
++            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / samps);
++          }
++          c_pixel = c_pixel + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      accum_c[i] = accum_c[i] + c_pixel;
++      rgba_buf[i * 4 + 0] = toInt(c_pixel.x);
++      rgba_buf[i * 4 + 1] = toInt(c_pixel.y);
++      rgba_buf[i * 4 + 2] = toInt(c_pixel.z);
++      rgba_buf[i * 4 + 3] = 255;
++    }
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++void render_pass(int samps_per_subpixel, int pass_index) {
++  int w = cur_w, h = cur_h;
++  if (!accum_c || !rgba_buf || w <= 0 || h <= 0) return;
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++  cur_samples += samps_per_subpixel;
++  double inv_passes = 1.0 / (pass_index + 1);
++  for (int y = 0; y < h; y++) {
++    unsigned short Xi[3] = {
++      (unsigned short)(pass_index * 131 + y),
++      (unsigned short)(pass_index * 31337),
++      (unsigned short)(y*y*y + pass_index * 7919)
++    };
++    for (unsigned short x = 0; x < w; x++) {
++      int i = (h - y - 1) * w + x;
++      Vec c_pixel = Vec();
++      for (int sy = 0; sy < 2; sy++) {     // 2x2 subpixel rows
++        for (int sx = 0; sx < 2; sx++, r = Vec()) { // 2x2 subpixel cols
++          for (int s = 0; s < samps_per_subpixel; s++) {
++            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / samps_per_subpixel);
++          }
++          c_pixel = c_pixel + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      accum_c[i] = accum_c[i] + c_pixel;
++      Vec avg = accum_c[i] * inv_passes;
++      rgba_buf[i * 4 + 0] = toInt(avg.x);
++      rgba_buf[i * 4 + 1] = toInt(avg.y);
++      rgba_buf[i * 4 + 2] = toInt(avg.z);
++      rgba_buf[i * 4 + 3] = 255;
++    }
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_scene(int w, int h, int samps) {
++  init_render(w, h);
++  render_rows(0, h, samps, 0);
++  return rgba_buf;
++}
++
++} // extern "C"
++
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,(unsigned short)(y*y*y)}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/smallpt.js b/smallpt.js
+new file mode 100644
+index 0000000..4bf5882
+--- /dev/null
++++ b/smallpt.js
+@@ -0,0 +1 @@
++var Module=typeof Module!="undefined"?Module:{};var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=globalThis.document?.currentScript?.src;if(typeof __filename!="undefined"){_scriptName=__filename}else if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");scriptDirectory=__dirname+"/";readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?undefined:"utf8");return ret};if(process.argv.length>1){thisProgram=process.argv[1].replace(/\\/g,"/")}programArgs=process.argv.slice(2);if(typeof module!="undefined"){module["exports"]=Module}quit_=(status,toThrow)=>{process.exitCode=status;throw toThrow}}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{if(isFileURI(url)){return new Promise((resolve,reject)=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,true);xhr.responseType="arraybuffer";xhr.onload=()=>{if(xhr.status==200||xhr.status==0&&xhr.response){resolve(xhr.response);return}reject(xhr.status)};xhr.onerror=reject;xhr.send(null)})}var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var isFileURI=filename=>filename.startsWith("file://");class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["d"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("smallpt.wasm")}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!isFileURI(binaryFile)&&!ENVIRONMENT_IS_NODE){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var __abort_js=()=>abort("");var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}Module["ccall"]=ccall;Module["cwrap"]=cwrap;var _reset_colors,_set_sphere_color,_get_sphere_color_channel,_randomize_colors,_init_render,_render_rows,_render_pass,_render_scene,_malloc,_free,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_reset_colors=Module["_reset_colors"]=wasmExports["e"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["f"];_get_sphere_color_channel=Module["_get_sphere_color_channel"]=wasmExports["g"];_randomize_colors=Module["_randomize_colors"]=wasmExports["h"];_init_render=Module["_init_render"]=wasmExports["i"];_render_rows=Module["_render_rows"]=wasmExports["j"];_render_pass=Module["_render_pass"]=wasmExports["k"];_render_scene=Module["_render_scene"]=wasmExports["l"];_malloc=Module["_malloc"]=wasmExports["m"];_free=Module["_free"]=wasmExports["n"];__emscripten_stack_restore=wasmExports["o"];__emscripten_stack_alloc=wasmExports["p"];_emscripten_stack_get_current=wasmExports["q"];memory=wasmMemory=wasmExports["c"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={b:__abort_js,a:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;createWasm().then(()=>run());
+diff --git a/smallpt.wasm b/smallpt.wasm
+new file mode 100755
+index 0000000..5486819
+Binary files /dev/null and b/smallpt.wasm differ

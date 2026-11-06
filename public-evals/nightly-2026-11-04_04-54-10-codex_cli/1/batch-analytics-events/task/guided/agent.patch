@@ -1,0 +1,31 @@
+diff --git a/ANALYTICS.md b/ANALYTICS.md
+new file mode 100644
+--- a/ANALYTICS.md
++++ b/ANALYTICS.md
+@@ -0,0 +1,26 @@
++# Homepage analytics
++
++`index.html` loads `analytics.js` with `defer`. It records one `page_view` per
++document load and delegated `click` events, including clicks on non-link content.
++Each event has a millisecond timestamp and the current pathname. Clicks include
++the target tag, a bounded element ID, and the destination pathname for links.
++Text, form values, URL queries, and fragments are not collected.
++
++Provide a same-origin `POST /api/analytics` collector in the deployment (or change
++`ANALYTICS_ENDPOINT` in `analytics.js`). This static repository does not include a
++backend. The collector should accept JSON in this format and return a successful
++status with no response body required:
++
++```json
++{"events":[{"type":"page_view","path":"/","timestamp":1793768400000},{"type":"click","target":{"tag":"a","id":"","href":"/menu"},"path":"/","timestamp":1793768400500}]}
++```
++
++Events reset a one-second inactivity window. Native `fetchLater` requests are
++aborted and replaced with the combined snapshot until delivery activates. A full
++50-event batch is scheduled immediately, bounding the payload well below the
++usual 64 KiB deferred-request limit. Requests omit credentials.
++
++Browsers without `fetchLater`, or whose native scheduling rejects the request,
++use a timer and low-priority keepalive fetch. This fallback also flushes when the
++document becomes hidden or receives `pagehide`, without blocking navigation.
++Delivery is best effort: failed requests are ignored and are not retried.

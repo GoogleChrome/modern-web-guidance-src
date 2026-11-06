@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,41 @@
++<!doctype html>
++<html lang="en">
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Load data</title>
++<style>
++  body { margin: 0; min-height: 100vh; display: grid; place-content: center; font: 16px system-ui, sans-serif; background: #fafafa; color: #171717; }
++  button { padding: 12px 24px; border: 0; border-radius: 6px; background: #171717; color: white; font: inherit; cursor: pointer; }
++  button:disabled { opacity: .5; cursor: wait; }
++  output { display: block; max-width: 80vw; margin-top: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
++</style>
++<button type="button">Load data</button>
++<output aria-live="polite"></output>
++<script>
++  const button = document.querySelector('button');
++  const output = document.querySelector('output');
++
++  button.addEventListener('click', () => {
++    button.disabled = true;
++    output.textContent = 'Loading…';
++
++    // Start the critical request first; never wait for analytics.
++    fetch('/api/data', { priority: 'high' })
++      .then(response => {
++        if (!response.ok) throw new Error(`Data request failed (${response.status}).`);
++        return response.text();
++      })
++      .then(data => { output.textContent = data; })
++      .catch(() => { output.textContent = 'Could not load data. Please try again.'; })
++      .finally(() => { button.disabled = false; });
++
++    fetch('/api/analytics', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ click: 1 }),
++      priority: 'low',
++      keepalive: true
++    }).catch(() => {});
++  });
++</script>
++</html>

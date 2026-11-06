@@ -1,0 +1,16 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..33a5e1f 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self), local-network-access=(self)'
++  );
++  return response;
+ });

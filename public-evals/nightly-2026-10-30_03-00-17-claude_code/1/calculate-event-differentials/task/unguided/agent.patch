@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,31 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 15px;
++      padding: 10px;
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.9rem;
++    }
++
++    .promo-remaining {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-elapsed {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .promo-elapsed:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +203,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Dates are wall-clock times, interpreted in the visitor's local time zone. -->
++          <div class="promo-timer" data-promo-start="2025-12-01T00:00" data-promo-end="2026-03-01T00:00">
++            <p class="promo-remaining">Offer ends <time datetime="2026-03-01T00:00">March 1, 2026</time></p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +234,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Promo countdown: computed once on page load in the visitor's local time zone.
++    // Uses Temporal where available (Chrome/Edge 144+, Firefox 139+) for DST-correct
++    // calendar math; falls back to Date elsewhere (e.g. Safari).
++    (function () {
++      function plural(n, unit) {
++        return n + ' ' + unit + (n === 1 ? '' : 's');
++      }
++
++      function formatSpan(span) {
++        return plural(span.days, 'day') + ', ' + plural(span.hours, 'hour');
++      }
++
++      // Whole days and hours from `from` to `to`; null if `to` is not after `from`.
++      function spanTemporal(from, to) {
++        if (Temporal.ZonedDateTime.compare(from, to) >= 0) return null;
++        var d = from.until(to, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++        return { days: d.days, hours: d.hours };
++      }
++
++      function spanDate(from, to) {
++        var ms = to - from;
++        if (ms <= 0) return null;
++        var totalHours = Math.floor(ms / 3600000);
++        return { days: Math.floor(totalHours / 24), hours: totalHours % 24 };
++      }
++
++      // Parses "YYYY-MM-DDTHH:MM" as local wall-clock time without relying on
++      // Date's string parsing.
++      function localDate(str) {
++        var p = str.split(/[-T:]/).map(Number);
++        return new Date(p[0], p[1] - 1, p[2], p[3] || 0, p[4] || 0);
++      }
++
++      document.querySelectorAll('.promo-timer').forEach(function (el) {
++        var remainingEl = el.querySelector('.promo-remaining');
++        var elapsedEl = el.querySelector('.promo-elapsed');
++        var now, start, end, span, endDateForDisplay;
++
++        if (typeof Temporal !== 'undefined') {
++          now = Temporal.Now.zonedDateTimeISO();
++          var tz = now.timeZoneId;
++          start = Temporal.PlainDateTime.from(el.dataset.promoStart).toZonedDateTime(tz);
++          end = Temporal.PlainDateTime.from(el.dataset.promoEnd).toZonedDateTime(tz);
++          span = spanTemporal;
++          endDateForDisplay = new Date(end.epochMilliseconds);
++        } else {
++          now = new Date();
++          start = localDate(el.dataset.promoStart);
++          end = localDate(el.dataset.promoEnd);
++          span = spanDate;
++          endDateForDisplay = end;
++        }
++
++        var untilStart = span(now, start);
++        var untilEnd = span(now, end);
++        var sinceStart = span(start, now);
++        var endLabel = endDateForDisplay.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' });
++
++        if (untilStart) {
++          remainingEl.textContent = 'Offer starts in ' + formatSpan(untilStart);
++        } else if (untilEnd) {
++          remainingEl.textContent = formatSpan(untilEnd) + ' left — ends ' + endLabel;
++        } else {
++          remainingEl.textContent = 'This offer ended ' + endLabel;
++        }
++
++        if (sinceStart) {
++          elapsedEl.textContent = 'Promotion started ' + formatSpan(sinceStart) + ' ago';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

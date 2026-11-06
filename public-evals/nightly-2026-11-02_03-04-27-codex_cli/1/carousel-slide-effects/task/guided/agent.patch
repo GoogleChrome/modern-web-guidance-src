@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,28 +99,99 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .section-heading {
++      text-align: center;
+     }
+ 
++    .carousel-hint {
++      margin-top: 8px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .scroller {
++      --card-width: min(320px, 78vw);
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x proximity;
++      /* End spacing lets the first and last products reach the center too. */
++      padding: 32px max(20px, calc((100% - var(--card-width)) / 2)) 28px;
++      list-style: none;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller > li {
++      flex: 0 0 var(--card-width);
++      min-width: 0;
++      display: flex;
++      scroll-snap-align: center;
++    }
++
+     .card {
++      width: 100%;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 6px 20px rgba(78, 52, 46, 0.08);
++      display: flex;
++      flex-direction: column;
+     }
+ 
++    .card img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 11px 11px 0 0;
++    }
++
++    .card-content {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      padding: 24px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card p {
++      margin-bottom: 8px;
++      flex: 1;
++    }
++
++    :where(a, .scroller):focus-visible {
++      outline: 3px solid #a95b00;
++      outline-offset: 5px;
++    }
++
++    /* Keep the timeline's subject unscaled so its geometry stays stable. */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > li {
++          view-timeline: --product inline;
++          view-timeline-inset: 0;
++        }
++
++        .scroller .card {
++          animation: center-product auto linear both;
++          animation-timeline: --product;
++          animation-range: cover;
++        }
++      }
++    }
++
++    @keyframes center-product {
++      0%, 100% { transform: scale(0.82); }
++      50% { transform: scale(1); }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -175,26 +246,42 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <h2 id="favorites-heading" class="section-heading">Seasonal Favorites</h2>
++      <p id="carousel-hint" class="carousel-hint">Swipe or scroll to find your favorite. With a keyboard, focus the carousel and use the arrow keys, or Tab through the product links.</p>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="favorites-heading" aria-describedby="carousel-hint">
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=640&amp;q=80" alt="Latte with leaf-shaped foam art in a ceramic cup" width="640" height="440" loading="lazy">
++            <div class="card-content">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn" aria-label="View Details for Maple Oat Latte">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=640&amp;q=80" alt="Freshly brewed espresso in a small cup" width="640" height="440" loading="lazy">
++            <div class="card-content">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn" aria-label="View Details for Dark Roast Espresso">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card">
++            <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=640&amp;q=80" alt="Cold coffee served over ice in a glass" width="640" height="440" loading="lazy">
++            <div class="card-content">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn" aria-label="View Details for Cold Brew">View Details</a>
++            </div>
++          </article>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 
+   <footer>

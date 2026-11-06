@@ -1,0 +1,192 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..1f1e0fd 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -16,62 +16,34 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++<div class:list={["card-container @container h-full", { "bg-white shadow-sm": large }]}>
++    <article class="card h-full group">
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="card-image-link flex-shrink-0">
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+-                width={400}
+-                height={225}
++                width={large ? 800 : 400}
++                height={large ? 533 : 225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="card-image w-full object-cover rounded-md aspect-[16/9]"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++        <div class="card-content flex flex-col flex-grow">
++            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">
++                {capitalizedCategory}
++            </a>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col flex-grow">
++                <h3 class="card-title mt-1 font-brand text-gray-900 leading-tight group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="card-summary text-gray-600 mt-2">
++                    {article.data.summary}
++                </p>
++                <p class="card-details text-xs text-gray-500 mt-2">
++                    By <span class="font-medium text-gray-700">{article.data.author}</span> &middot; {article.data.date.toLocaleDateString()}
++                </p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="flex justify-between items-center text-gray-500 mt-3 pt-2 border-t border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+@@ -80,4 +52,102 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++</div>
++
++<style>
++    .card-container {
++        container-type: inline-size;
++        container-name: card;
++    }
++
++    /* Default safe stacked layout for small containers */
++    .card {
++        display: flex;
++        flex-direction: column;
++        gap: 0.75rem;
++    }
++
++    .card-content {
++        min-inline-size: 0;
++    }
++
++    .card-image {
++        aspect-ratio: 16 / 9;
++        inline-size: 100%;
++        block-size: auto;
++    }
++
++    .card-title {
++        /* Fallback for browsers that do not support container units */
++        font-size: clamp(1.125rem, 4vw, 2.25rem);
++    }
++
++    @supports (font-size: 1cqi) {
++        .card-title {
++            /* Scale font size with container inline size, capped within 2.5x min size */
++            font-size: clamp(1.125rem, 4cqi, 2.25rem);
++        }
++    }
++
++    .card-details {
++        /* Hide extra details by default in small spaces */
++        display: none;
++    }
++
++    /* Fallback using media queries for older browsers */
++    @media (min-width: 600px) {
++        .card {
++            flex-direction: row;
++        }
++    }
++
++    /* Overwrite with container queries where supported */
++    @supports (container-type: inline-size) {
++        @media (min-width: 600px) {
++            .card {
++                /* Reset media query fallback so container query handles layout */
++                flex-direction: column;
++            }
++        }
++
++        @container (min-width: 400px) {
++            .card {
++                flex-direction: row;
++                align-items: center;
++                gap: 1.25rem;
++            }
++
++            .card-image {
++                width: 150px;
++                height: 150px;
++            }
++        }
++
++        @container (min-width: 600px) {
++            .card {
++                align-items: stretch;
++                gap: 2rem;
++                padding: 1.5rem;
++            }
++
++            .card-image-link {
++                flex: 1 1 55%;
++            }
++
++            .card-image {
++                width: 100%;
++                height: 100%;
++                aspect-ratio: 16 / 9;
++            }
++
++            .card-content {
++                flex: 1 1 45%;
++            }
++
++            .card-details {
++                /* Show details when there is plenty of room */
++                display: block;
++            }
++        }
++    }
++</style>
+\ No newline at end of file

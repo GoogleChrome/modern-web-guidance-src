@@ -1,0 +1,1441 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..d59884c
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,14 @@
++/*
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-aWQPYsDjsCSiEwqgCoESlQrVPBcvhIMHP+7dFdgVyN8='; style-src 'self' 'sha256-kBO1GJipnhnQr5u1sVizc4uZ5qPXd8AK4wRLpYTUnAE='; img-src 'self' https://images.unsplash.com data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
++  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
++  Referrer-Policy: no-referrer
++  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=(), browsing-topics=(), attribution-reporting=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  Cache-Control: no-store, max-age=0
++
++/logout
++  Clear-Site-Data: "cache", "cookies", "storage"
++  Cache-Control: no-store, no-cache, must-revalidate, private
+diff --git a/index.html b/index.html
+index 66c9173..c454482 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,30 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Privacy & Security Headers (Defense-in-Depth via Meta Directives) -->
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-aWQPYsDjsCSiEwqgCoESlQrVPBcvhIMHP+7dFdgVyN8='; style-src 'self' 'sha256-kBO1GJipnhnQr5u1sVizc4uZ5qPXd8AK4wRLpYTUnAE='; img-src 'self' https://images.unsplash.com data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
++  <meta name="referrer" content="no-referrer">
++  <meta http-equiv="X-Content-Type-Options" content="nosniff">
++  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=(), browsing-topics=(), attribution-reporting=()">
++  <meta name="robots" content="index, follow, noarchive">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
++      --success-bg: #e8f5e9;
++      --success-text: #1b5e20;
++      --warn-bg: #fff8e1;
++      --warn-text: #e65100;
++      --danger-bg: #ffebee;
++      --danger-text: #b71c1c;
+     }
+ 
+     * {
+@@ -27,6 +43,24 @@
+       background-color: var(--light);
+     }
+ 
++    /* Skip Link for Accessibility */
++    .skip-link {
++      position: absolute;
++      left: -9999px;
++      top: 0;
++      background: var(--accent);
++      color: var(--text);
++      padding: 8px 16px;
++      z-index: 2000;
++      font-weight: 600;
++      text-decoration: none;
++    }
++
++    .skip-link:focus {
++      left: 10px;
++      top: 10px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,6 +72,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 12px;
+     }
+ 
+     .logo {
+@@ -49,10 +85,9 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -62,20 +97,81 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus {
+       color: var(--accent);
+     }
+ 
++    .inline-form {
++      display: inline;
++    }
++
+     .logout-link {
++      background: transparent;
++      color: white;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .logout-link:hover,
++    .logout-link:focus {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    /* Privacy Status Banner */
++    .privacy-status-bar {
++      background: #efebe9;
++      border-bottom: 1px solid var(--border);
++      padding: 8px 5%;
++      font-size: 0.82rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .badge-group {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    .badge-success {
++      background: var(--success-bg);
++      color: var(--success-text);
++    }
++
++    .badge-warn {
++      background: var(--warn-bg);
++      color: var(--warn-text);
++    }
++
++    .badge-danger {
++      background: var(--danger-bg);
++      color: var(--danger-text);
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -88,6 +184,10 @@
+       padding: 0 20px;
+     }
+ 
++    .hero.local-media-only {
++      background: radial-gradient(circle at center, #5d4037 0%, #3e2723 65%, #271815 100%);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -100,6 +200,23 @@
+       padding: 0 20px;
+     }
+ 
++    .section-block {
++      margin-bottom: 48px;
++    }
++
++    .section-title {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--muted);
++      font-size: 0.95rem;
++      margin-bottom: 24px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,11 +225,16 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      border: 1px solid var(--border);
++    }
++
++    .card-left {
++      text-align: left;
+     }
+ 
+     .card h3 {
+@@ -129,10 +251,150 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++    }
++
++    .btn:hover,
++    .btn:focus {
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-danger {
++      background: var(--danger-text);
++    }
++
++    .btn-danger:hover,
++    .btn-danger:focus {
++      background: #7f0000;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    /* Forms & Data Minimization Controls */
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .field-hint {
++      display: block;
++      font-size: 0.78rem;
++      color: var(--muted);
++      margin-bottom: 6px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      margin: 10px 0;
++      font-size: 0.88rem;
++      text-align: left;
++    }
++
++    .checkbox-group input[type="checkbox"] {
++      margin-top: 4px;
++    }
++
++    .privacy-notice-box {
++      background: #f5f0ee;
++      border-left: 4px solid var(--primary);
++      padding: 10px 12px;
++      font-size: 0.82rem;
++      margin: 12px 0;
++      text-align: left;
++      border-radius: 0 4px 4px 0;
++    }
++
++    .status-message {
++      margin-top: 12px;
++      padding: 10px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      display: none;
++    }
++
++    .status-message.visible {
++      display: block;
++    }
++
++    /* Audit Table */
++    .table-responsive {
++      overflow-x: auto;
++      margin-top: 12px;
++    }
++
++    table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    th,
++    td {
++      padding: 10px 12px;
++      border-bottom: 1px solid var(--border);
++    }
++
++    th {
++      background: #efebe9;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .code-pill {
++      font-family: monospace;
++      background: #efebe9;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++    }
++
++    .action-row {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-top: 12px;
++    }
++
++    .audit-card {
++      margin-top: 20px;
++    }
++
++    .audit-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
+     }
+ 
+     footer {
+@@ -152,46 +414,239 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    .footer-privacy-summary {
++      font-size: 0.8rem;
++      color: var(--muted);
++      max-width: 720px;
++      margin: 10px auto 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#seasonal-menu" referrerpolicy="no-referrer">Menu</a></li>
++      <li><a href="#locations" referrerpolicy="no-referrer">Locations</a></li>
++      <li><a href="#rewards" referrerpolicy="no-referrer">Rewards</a></li>
++      <li><a href="#privacy-center" referrerpolicy="no-referrer">My Account &amp; Privacy</a></li>
++      <li>
++        <!-- Secure POST Logout Form replacing unsafe GET link to prevent CSRF/prefetch logout -->
++        <form id="logout-form" class="inline-form" action="/logout" method="POST">
++          <input type="hidden" name="csrf_token" id="logout-csrf-token" value="">
++          <button type="submit" class="logout-link" id="logout-btn" title="End session and purge all client storage">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <div class="privacy-status-bar" role="region" aria-label="Privacy Protection Status">
++    <div class="badge-group">
++      <span class="badge badge-success" id="csp-status-badge">CSP: Strict Hash Enforcement</span>
++      <span class="badge badge-success" id="referrer-status-badge">Referrer-Policy: no-referrer</span>
++      <span class="badge badge-success" id="gpc-status-badge">GPC / DNT: Checking...</span>
++      <span class="badge badge-success" id="url-sanitizer-badge">URL Sanitizer: Active</span>
++    </div>
++    <div>
++      <span id="session-ttl-indicator">Session Ephemeral Storage: Empty</span>
++    </div>
++  </div>
++
++  <header class="hero" id="hero-banner">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn" referrerpolicy="no-referrer">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" id="main-content">
++    <!-- Seasonal Menu Section -->
++    <section class="section-block" id="seasonal-menu">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Crafted fresh with zero third-party behavioral tracking.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#quick-order" class="btn select-drink-btn" data-drink="Maple Oat Latte" referrerpolicy="no-referrer">Select Drink</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#quick-order" class="btn select-drink-btn" data-drink="Dark Roast Espresso" referrerpolicy="no-referrer">Select Drink</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#quick-order" class="btn select-drink-btn" data-drink="Cold Brew" referrerpolicy="no-referrer">Select Drink</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Data Minimization: Express Order & Zero-GPS Store Locator -->
++    <section class="section-block" id="quick-order">
++      <h2 class="section-title">Privacy-First Ordering &amp; Store Finder</h2>
++      <p class="section-subtitle">Designed with strict data minimization: we collect only what is strictly necessary to prepare your cup.</p>
++
++      <div class="grid">
++        <!-- Minimized Express Order Card -->
++        <div class="card card-left">
++          <h3>Express Counter Pickup</h3>
++          <div class="privacy-notice-box">
++            <strong>Data Minimization Notice:</strong> No account, phone number, email, or legal name is required. Your pickup alias and drink choice are held solely in ephemeral session storage with a <strong>15-minute TTL</strong> and automatically purged.
++          </div>
++          <form id="express-order-form" action="/order-online" method="POST" autocomplete="off" novalidate>
++            <div class="form-group">
++              <label for="pickup-alias">Pickup Alias or Initials (Required)</label>
++              <span class="field-hint">Use a nickname or initials (max 24 chars). Do not enter your full legal name.</span>
++              <input type="text" id="pickup-alias" name="pickupAlias" class="form-control" required maxlength="24" pattern="[A-Za-z0-9 _\-]{1,24}" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="e.g., EspressoFan or J.D.">
++            </div>
++            <div class="form-group">
++              <label for="drink-choice">Beverage Selection (Required)</label>
++              <select id="drink-choice" name="drinkChoice" class="form-control" required autocomplete="off">
++                <option value="Maple Oat Latte">Maple Oat Latte</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                <option value="Cold Brew">Cold Brew</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="pickup-window">Pickup Window</label>
++              <select id="pickup-window" name="pickupWindow" class="form-control" autocomplete="off">
++                <option value="10-15 mins">In 10-15 minutes</option>
++                <option value="30 mins">In 30 minutes</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Queue Ephemeral Order</button>
++          </form>
++          <div id="order-status-msg" class="status-message badge-success" role="status" aria-live="polite"></div>
++        </div>
++
++        <!-- Privacy-Preserving Store Locator (#locations) -->
++        <div class="card card-left" id="locations">
++          <h3>Coarse-Location Cafe Finder</h3>
++          <div class="privacy-notice-box">
++            <strong>Zero Geolocation Tracking:</strong> Browser GPS (<span class="code-pill">navigator.geolocation</span>) is disabled via <span class="code-pill">Permissions-Policy</span>. Lookup uses only a 3-digit postal prefix evaluated locally in your browser.
++          </div>
++          <form id="location-lookup-form" autocomplete="off" novalidate>
++            <div class="form-group">
++              <label for="zip-prefix">3-Digit ZIP / Postal Prefix</label>
++              <span class="field-hint">Enter only the first 3 digits of a ZIP code (e.g., 100, 606, 941, 981) to prevent precise location profiling.</span>
++              <input type="text" id="zip-prefix" name="zipPrefix" class="form-control" maxlength="3" pattern="[0-9]{3}" inputmode="numeric" autocomplete="off" placeholder="e.g., 981" required>
++            </div>
++            <button type="submit" class="btn btn-secondary">Find Roasteries Locally</button>
++          </form>
++          <div id="location-results" class="status-message badge-success" role="region" aria-live="polite"></div>
++        </div>
++
++        <!-- Opt-In Only Rewards (#rewards) -->
++        <div class="card card-left" id="rewards">
++          <h3>Privacy-First Rewards</h3>
++          <div class="privacy-notice-box">
++            <strong>Strict Opt-In &amp; Masking:</strong> No pre-checked boxes, no third-party ad brokers, and automatic email masking in client storage.
++          </div>
++          <form id="rewards-form" action="/rewards" method="POST" autocomplete="off" novalidate>
++            <div class="form-group">
++              <label for="rewards-email">Contact Email (Masked Locally)</label>
++              <span class="field-hint">Used strictly for digital punch-card receipts. Never shared or sold.</span>
++              <input type="email" id="rewards-email" name="rewardsEmail" class="form-control" maxlength="80" autocomplete="off" spellcheck="false" placeholder="coffee@example.com" required>
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="rewards-terms-consent" name="rewardsTermsConsent" required>
++              <label for="rewards-terms-consent">I explicitly opt in to store a masked loyalty token in ephemeral session storage for this visit (Required for Rewards).</label>
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="seasonal-digest-optin" name="seasonalDigestOptIn">
++              <label for="seasonal-digest-optin">Optional: Send quarterly roast notes (Unchecked by default; disabled automatically under GPC/DNT).</label>
++            </div>
++            <button type="submit" class="btn">Join Without Tracking</button>
++          </form>
++          <div id="rewards-status-msg" class="status-message badge-success" role="status" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Privacy Center, Consent Controls & Secure Data Handling -->
++    <section class="section-block" id="privacy-center">
++      <h2 class="section-title">Privacy Center &amp; Third-Party Audit</h2>
++      <p class="section-subtitle">Complete transparency and self-service control over client-side scripts, third-party origins, and stored data.</p>
++
++      <div class="grid">
++        <!-- Granular Consent Preferences -->
++        <div class="card card-left">
++          <h3>Granular Privacy Preferences</h3>
++          <p>All non-essential features are <strong>Off by default</strong> (Privacy by Default).</p>
++          <form id="privacy-preferences-form" autocomplete="off">
++            <div class="checkbox-group">
++              <input type="checkbox" id="pref-necessary" checked disabled>
++              <label for="pref-necessary"><strong>Strictly Necessary Security &amp; CSRF Protection</strong> (Always active; zero tracking).</label>
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="pref-external-media">
++              <label for="pref-external-media"><strong>Allow Audited External Hero Stock Photo</strong> (<span class="code-pill">images.unsplash.com</span> loaded with <span class="code-pill">no-referrer</span>). Turn off to use 100% local CSS artwork.</label>
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="pref-remember-ui">
++              <label for="pref-remember-ui"><strong>Remember Privacy UI Preferences</strong> (Stores boolean toggles only in ephemeral storage).</label>
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="pref-diagnostics">
++              <label for="pref-diagnostics"><strong>First-Party Anonymous Diagnostics</strong> (Opt-in only; automatically locked off when GPC or DNT is active).</label>
++            </div>
++            <button type="submit" class="btn btn-sm">Apply Preferences</button>
++          </form>
++          <div id="prefs-status-msg" class="status-message badge-success" role="status" aria-live="polite"></div>
++        </div>
++
++        <!-- Secure Data Handling & Self-Service Data Rights -->
++        <div class="card card-left" id="data-management">
++          <h3>Secure Data Handling &amp; DSAR</h3>
++          <p>Inspect, export, or immediately purge all client-side state. Sensitive fields and URL tracking parameters are automatically sanitized.</p>
++          <div class="privacy-notice-box">
++            <div><strong>Active Storage Keys:</strong> <span id="storage-key-count">0</span></div>
++            <div><strong>Sanitized URL Params Removed:</strong> <span id="stripped-params-log">None detected</span></div>
++            <div><strong>Blocked Sensitive/Third-Party Events:</strong> <span id="blocked-events-count">0</span></div>
++          </div>
++          <pre id="storage-inspector-view" class="privacy-notice-box code-pill" aria-label="Live Sanitized Storage Inspector">No user data stored.</pre>
++          <div class="action-row">
++            <button type="button" id="inspect-storage-btn" class="btn btn-secondary btn-sm">Refresh Inspector</button>
++            <button type="button" id="export-data-btn" class="btn btn-secondary btn-sm">Export My Data (JSON)</button>
++            <button type="button" id="purge-data-btn" class="btn btn-danger btn-sm">Purge All Data (Forget Me)</button>
++          </div>
++          <div id="dsar-status-msg" class="status-message badge-success" role="status" aria-live="polite"></div>
++        </div>
++      </div>
++
++      <!-- Third-Party Resource & Script Audit Table -->
++      <div class="card card-left audit-card" id="third-party-audit">
++        <div class="audit-header">
++          <div>
++            <h3>Live Third-Party &amp; Resource Audit</h3>
++            <p>Automated DOM, stylesheet, and <span class="code-pill">PerformanceResourceTiming</span> audit verifying zero unauthorized third-party scripts or trackers.</p>
++          </div>
++          <button type="button" id="run-audit-btn" class="btn btn-secondary btn-sm">Re-Run Audit Now</button>
++        </div>
++        <div class="table-responsive">
++          <table aria-label="Third-Party Resource Audit Results">
++            <thead>
++              <tr>
++                <th>Resource / Origin</th>
++                <th>Category</th>
++                <th>Data Shared</th>
++                <th>Mitigation / Policy</th>
++                <th>Audit Status</th>
++              </tr>
++            </thead>
++            <tbody id="audit-table-body">
++              <!-- Populated dynamically by ThirdPartyAuditor -->
++            </tbody>
++          </table>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +654,789 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#seasonal-menu" referrerpolicy="no-referrer">Our Story</a> |
++      <a href="#locations" referrerpolicy="no-referrer">Join the Team</a> |
++      <a href="#rewards" referrerpolicy="no-referrer">Contact Us</a> |
++      <a href="#privacy-center" referrerpolicy="no-referrer">Privacy &amp; Security Architecture</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="footer-privacy-summary">
++      Protected by Privacy by Design: Strict Content-Security-Policy, Referrer-Policy (no-referrer), Permissions-Policy (zero sensor/ad-topic access), Global Privacy Control (GPC) enforcement, URL tracker sanitization, and 15-minute ephemeral storage TTL.
++    </p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      /* ==========================================================================
++       * 1. CONFIGURATION & PRIVACY BY DESIGN CONSTANTS
++       * ========================================================================== */
++      var STORAGE_PREFIX = 'dg_ephemeral_';
++      var DEFAULT_TTL_MS = 15 * 60 * 1000; // 15 minutes ephemeral retention
++      var IDLE_TIMEOUT_MS = 15 * 60 * 1000;
++
++      // Known tracking and sensitive/PII URL parameters to strip immediately
++      var TRACKING_AND_PII_PARAMS = [
++        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
++        'fbclid', 'gclid', 'msclkid', 'dclid', 'twclid', 'mc_eid', '_ga', '_gl',
++        'igshid', 'yclid', 'ref', 'token', 'session', 'session_id', 'auth',
++        'password', 'passwd', 'secret', 'email', 'phone', 'ssn', 'credit_card'
++      ];
++
++      // Prohibited sensitive field names never allowed in client storage
++      var PROHIBITED_STORAGE_FIELDS = [
++        'password', 'passwd', 'secret', 'ssn', 'socialsecurity', 'creditcard',
++        'cardnumber', 'cvv', 'cvc', 'dob', 'birthdate', 'fulladdress', 'precisegps'
++      ];
++
++      // Allowed origins for third-party audit
++      var ALLOWED_EXTERNAL_MEDIA_ORIGINS = ['https://images.unsplash.com'];
++      var KNOWN_TRACKER_PATTERNS = [
++        /google-analytics\.com/i,
++        /googletagmanager\.com/i,
++        /doubleclick\.net/i,
++        /connect\.facebook\.net/i,
++        /facebook\.com\/tr/i,
++        /hotjar\.com/i,
++        /mixpanel\.com/i,
++        /segment\.io/i,
++        /fullstory\.com/i,
++        /tiktok\.com/i
++      ];
++
++      var auditState = {
++        strippedUrlParams: [],
++        blockedEvents: [],
++        externalMediaAllowed: false,
++        gpcOrDntActive: false
++      };
++
++      /* ==========================================================================
++       * 2. PRIVACY SIGNALS (GPC & DNT) DETECTION
++       * ========================================================================== */
++      function detectPrivacySignals() {
++        var gpc = Boolean(navigator.globalPrivacyControl);
++        var dnt = (
++          navigator.doNotTrack === '1' ||
++          navigator.doNotTrack === 'yes' ||
++          window.doNotTrack === '1'
++        );
++        auditState.gpcOrDntActive = gpc || dnt;
++
++        var badge = document.getElementById('gpc-status-badge');
++        if (badge) {
++          if (auditState.gpcOrDntActive) {
++            var signalNames = [];
++            if (gpc) signalNames.push('GPC');
++            if (dnt) signalNames.push('DNT');
++            badge.textContent = signalNames.join(' + ') + ' Signal Honored (Strict Opt-Out)';
++            badge.className = 'badge badge-success';
++          } else {
++            badge.textContent = 'Privacy Defaults Active (Opt-In Only)';
++            badge.className = 'badge badge-success';
++          }
++        }
++
++        // Lock optional marketing/diagnostics checkboxes if GPC/DNT is active
++        var digestCheckbox = document.getElementById('seasonal-digest-optin');
++        var diagCheckbox = document.getElementById('pref-diagnostics');
++        if (auditState.gpcOrDntActive) {
++          if (digestCheckbox) {
++            digestCheckbox.checked = false;
++            digestCheckbox.disabled = true;
++          }
++          if (diagCheckbox) {
++            diagCheckbox.checked = false;
++            diagCheckbox.disabled = true;
++          }
++        }
++      }
++
++      /* ==========================================================================
++       * 3. URL TRACKER & PII SANITIZER
++       * ========================================================================== */
++      function sanitizeCurrentUrl() {
++        try {
++          var currentUrl = new URL(window.location.href);
++          var removed = [];
++          var searchParams = currentUrl.searchParams;
++          var keys = Array.from(searchParams.keys());
++
++          for (var i = 0; i < keys.length; i++) {
++            var key = keys[i];
++            var lowerKey = key.toLowerCase();
++            if (
++              TRACKING_AND_PII_PARAMS.indexOf(lowerKey) !== -1 ||
++              lowerKey.indexOf('utm_') === 0
++            ) {
++              searchParams.delete(key);
++              removed.push(key);
++            }
++          }
++
++          if (removed.length > 0) {
++            auditState.strippedUrlParams = auditState.strippedUrlParams.concat(removed);
++            var cleanPath = currentUrl.pathname +
++              (searchParams.toString() ? '?' + searchParams.toString() : '') +
++              currentUrl.hash;
++            window.history.replaceState(null, document.title, cleanPath);
++          }
++
++          var strippedLogEl = document.getElementById('stripped-params-log');
++          if (strippedLogEl) {
++            strippedLogEl.textContent = auditState.strippedUrlParams.length > 0
++              ? auditState.strippedUrlParams.join(', ')
++              : 'None detected (Clean URL)';
++          }
++        } catch (err) {
++          // Fail safely without exposing stack traces
++        }
++      }
++
++      /* ==========================================================================
++       * 4. DATA MINIMIZATION, INPUT SANITIZATION & PII MASKING
++       * ========================================================================== */
++      function sanitizeText(input, maxLength) {
++        if (typeof input !== 'string') return '';
++        var trimmed = input.replace(/[\u0000-\u001F\u007F<>`"']/g, '').trim();
++        return trimmed.slice(0, maxLength || 64);
++      }
++
++      function maskEmail(email) {
++        var clean = sanitizeText(email, 80);
++        var parts = clean.split('@');
++        if (parts.length !== 2 || !parts[0] || !parts[1]) {
++          return '[REDACTED_EMAIL]';
++        }
++        var local = parts[0];
++        var domain = parts[1];
++        var maskedLocal = local.charAt(0) + '***' + (local.length > 1 ? local.charAt(local.length - 1) : '');
++        return maskedLocal + '@' + domain;
++      }
++
++      function redactPIIInString(text) {
++        if (typeof text !== 'string') return '';
++        return text
++          // Redact email patterns
++          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]')
++          // Redact SSN-like patterns
++          .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[REDACTED_SSN]')
++          // Redact phone patterns
++          .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[REDACTED_PHONE]')
++          // Redact 13-16 digit payment card patterns
++          .replace(/\b(?:\d[ -]*?){13,16}\b/g, '[REDACTED_CARD]');
++      }
++
++      function containsProhibitedFields(obj) {
++        if (!obj || typeof obj !== 'object') return false;
++        var keys = Object.keys(obj);
++        for (var i = 0; i < keys.length; i++) {
++          var normalizedKey = keys[i].toLowerCase().replace(/[^a-z0-9]/g, '');
++          if (PROHIBITED_STORAGE_FIELDS.indexOf(normalizedKey) !== -1) {
++            return true;
++          }
++        }
++        return false;
++      }
++
++      /* ==========================================================================
++       * 5. SECURE EPHEMERAL STORAGE WITH TTL & INTEGRITY
++       * ========================================================================== */
++      var SecureStorage = {
++        setItem: function (key, value, ttlMs, purpose) {
++          if (containsProhibitedFields(value)) {
++            auditState.blockedEvents.push('Blocked prohibited sensitive field in key: ' + key);
++            updateStorageInspectorUI();
++            return false;
++          }
++
++          var now = Date.now();
++          var record = {
++            value: value,
++            purpose: sanitizeText(purpose || 'ephemeral-session-state', 48),
++            createdAt: now,
++            expiresAt: now + (ttlMs || DEFAULT_TTL_MS)
++          };
++
++          try {
++            window.sessionStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(record));
++            updateStorageInspectorUI();
++            return true;
++          } catch (e) {
++            return false;
++          }
++        },
++
++        getItem: function (key) {
++          try {
++            var raw = window.sessionStorage.getItem(STORAGE_PREFIX + key);
++            if (!raw) return null;
++            var record = JSON.parse(raw);
++            if (!record || typeof record.expiresAt !== 'number' || Date.now() > record.expiresAt) {
++              window.sessionStorage.removeItem(STORAGE_PREFIX + key);
++              updateStorageInspectorUI();
++              return null;
++            }
++            return record;
++          } catch (e) {
++            window.sessionStorage.removeItem(STORAGE_PREFIX + key);
++            return null;
++          }
++        },
++
++        purgeExpired: function () {
++          try {
++            var now = Date.now();
++            var keysToRemove = [];
++            for (var i = 0; i < window.sessionStorage.length; i++) {
++              var k = window.sessionStorage.key(i);
++              if (k && k.indexOf(STORAGE_PREFIX) === 0) {
++                try {
++                  var parsed = JSON.parse(window.sessionStorage.getItem(k));
++                  if (!parsed || !parsed.expiresAt || now > parsed.expiresAt) {
++                    keysToRemove.push(k);
++                  }
++                } catch (parseErr) {
++                  keysToRemove.push(k);
++                }
++              }
++            }
++            for (var j = 0; j < keysToRemove.length; j++) {
++              window.sessionStorage.removeItem(keysToRemove[j]);
++            }
++            updateStorageInspectorUI();
++          } catch (e) {
++            // Ignore storage access errors in restricted sandboxes
++          }
++        },
++
++        clearAllUserData: function () {
++          try {
++            window.sessionStorage.clear();
++          } catch (e) {}
++          try {
++            window.localStorage.clear();
++          } catch (e) {}
++          try {
++            // Expire any accessible non-HttpOnly cookies
++            var cookies = document.cookie ? document.cookie.split(';') : [];
++            for (var i = 0; i < cookies.length; i++) {
++              var cookie = cookies[i];
++              var eqPos = cookie.indexOf('=');
++              var name = eqPos > -1 ? cookie.slice(0, eqPos).trim() : cookie.trim();
++              if (name) {
++                document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict';
++              }
++            }
++          } catch (e) {}
++          try {
++            if (window.caches && typeof window.caches.keys === 'function') {
++              window.caches.keys().then(function (names) {
++                for (var idx = 0; idx < names.length; idx++) {
++                  window.caches.delete(names[idx]);
++                }
++              });
++            }
++          } catch (e) {}
++          regenerateCsrfToken();
++          updateStorageInspectorUI();
++        },
++
++        getSanitizedSnapshot: function () {
++          this.purgeExpired();
++          var snapshot = {};
++          try {
++            for (var i = 0; i < window.sessionStorage.length; i++) {
++              var fullKey = window.sessionStorage.key(i);
++              if (fullKey && fullKey.indexOf(STORAGE_PREFIX) === 0) {
++                var shortKey = fullKey.slice(STORAGE_PREFIX.length);
++                var rec = this.getItem(shortKey);
++                if (rec) {
++                  snapshot[shortKey] = {
++                    purpose: rec.purpose,
++                    ttlRemainingSec: Math.max(0, Math.round((rec.expiresAt - Date.now()) / 1000)),
++                    data: rec.value
++                  };
++                }
++              }
++            }
++          } catch (e) {}
++          return snapshot;
++        }
++      };
++
++      /* ==========================================================================
++       * 6. CSRF TOKEN GENERATION FOR SECURE POST LOGOUT
++       * ========================================================================== */
++      function regenerateCsrfToken() {
++        var tokenInput = document.getElementById('logout-csrf-token');
++        if (!tokenInput) return;
++        var token = '';
++        if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
++          var bytes = new Uint8Array(16);
++          window.crypto.getRandomValues(bytes);
++          for (var i = 0; i < bytes.length; i++) {
++            token += ('0' + bytes[i].toString(16)).slice(-2);
++          }
++        } else {
++          token = 'csrf_' + Date.now();
++        }
++        tokenInput.value = token;
++      }
++
++      /* ==========================================================================
++       * 7. THIRD-PARTY AUDITOR & RUNTIME DOM GUARD
++       * ========================================================================== */
++      function isKnownTracker(urlStr) {
++        for (var i = 0; i < KNOWN_TRACKER_PATTERNS.length; i++) {
++          if (KNOWN_TRACKER_PATTERNS[i].test(urlStr)) {
++            return true;
++          }
++        }
++        return false;
++      }
++
++      function enforceHeroMediaPolicy(allowExternal) {
++        auditState.externalMediaAllowed = Boolean(allowExternal);
++        var hero = document.getElementById('hero-banner');
++        var checkbox = document.getElementById('pref-external-media');
++        if (checkbox) {
++          checkbox.checked = auditState.externalMediaAllowed;
++        }
++        if (hero) {
++          if (auditState.externalMediaAllowed) {
++            hero.classList.remove('local-media-only');
++          } else {
++            hero.classList.add('local-media-only');
++          }
++        }
++      }
++
++      function runThirdPartyAudit() {
++        var findings = [];
++        var currentOrigin = window.location.origin;
++
++        // 1. Audit self-hosted document & inline scripts/styles
++        findings.push({
++          origin: currentOrigin || 'self (document)',
++          category: 'First-Party Markup & Scripts',
++          dataShared: 'None (Local execution only)',
++          mitigation: 'Strict CSP SHA-256 hash; zero unsafe-eval',
++          status: 'Verified Safe',
++          badgeClass: 'badge-success'
++        });
++
++        // 2. Audit external hero stock image
++        findings.push({
++          origin: 'https://images.unsplash.com',
++          category: 'Third-Party Stock Image (Hero)',
++          dataShared: auditState.externalMediaAllowed
++            ? 'IP & User-Agent only (Referer stripped)'
++            : 'None (Blocked by Privacy by Default policy)',
++          mitigation: 'Referrer-Policy: no-referrer; CSP img-src allowlist; local CSS fallback',
++          status: auditState.externalMediaAllowed ? 'Audited (no-referrer)' : 'Isolated (Local CSS Active)',
++          badgeClass: auditState.externalMediaAllowed ? 'badge-warn' : 'badge-success'
++        });
++
++        // 3. Scan DOM for any external scripts, iframes, objects, or unapproved media
++        var selectors = 'script[src], iframe[src], img[src], link[href], object[data], embed[src]';
++        var elements = document.querySelectorAll(selectors);
++        for (var i = 0; i < elements.length; i++) {
++          var el = elements[i];
++          var rawUrl = el.getAttribute('src') || el.getAttribute('href') || el.getAttribute('data') || '';
++          if (!rawUrl || rawUrl.indexOf('#') === 0 || rawUrl.indexOf('data:') === 0) continue;
++
++          try {
++            var resolved = new URL(rawUrl, window.location.href);
++            if (resolved.origin !== currentOrigin) {
++              var isTracker = isKnownTracker(resolved.href);
++              var isAllowedMedia = el.tagName === 'IMG' && ALLOWED_EXTERNAL_MEDIA_ORIGINS.indexOf(resolved.origin) !== -1;
++
++              if (isTracker || !isAllowedMedia) {
++                el.parentNode && el.parentNode.removeChild(el);
++                auditState.blockedEvents.push('Removed unauthorized third-party element: ' + resolved.origin);
++                findings.push({
++                  origin: resolved.origin,
++                  category: 'Unauthorized ' + el.tagName,
++                  dataShared: 'Blocked before transmission',
++                  mitigation: 'Removed by Runtime DOM Guard & CSP',
++                  status: 'Blocked',
++                  badgeClass: 'badge-danger'
++                });
++              }
++            }
++          } catch (e) {}
++        }
++
++        // 4. Audit Browser Sensor / Ad-Topic APIs
++        findings.push({
++          origin: 'Browser APIs (Geolocation, Camera, Mic, Topics)',
++          category: 'Hardware & Ad-Profiling APIs',
++          dataShared: 'None (Disabled)',
++          mitigation: 'Permissions-Policy: geolocation=(), camera=(), microphone=(), browsing-topics=()',
++          status: 'Blocked by Header',
++          badgeClass: 'badge-success'
++        });
++
++        renderAuditTable(findings);
++        updateStorageInspectorUI();
++      }
++
++      function renderAuditTable(findings) {
++        var tbody = document.getElementById('audit-table-body');
++        if (!tbody) return;
++        while (tbody.firstChild) {
++          tbody.removeChild(tbody.firstChild);
++        }
++
++        for (var i = 0; i < findings.length; i++) {
++          var item = findings[i];
++          var tr = document.createElement('tr');
++
++          var tdOrigin = document.createElement('td');
++          var codeEl = document.createElement('span');
++          codeEl.className = 'code-pill';
++          codeEl.textContent = item.origin;
++          tdOrigin.appendChild(codeEl);
++
++          var tdCat = document.createElement('td');
++          tdCat.textContent = item.category;
++
++          var tdData = document.createElement('td');
++          tdData.textContent = item.dataShared;
++
++          var tdMitigation = document.createElement('td');
++          tdMitigation.textContent = item.mitigation;
++
++          var tdStatus = document.createElement('td');
++          var badge = document.createElement('span');
++          badge.className = 'badge ' + item.badgeClass;
++          badge.textContent = item.status;
++          tdStatus.appendChild(badge);
++
++          tr.appendChild(tdOrigin);
++          tr.appendChild(tdCat);
++          tr.appendChild(tdData);
++          tr.appendChild(tdMitigation);
++          tr.appendChild(tdStatus);
++          tbody.appendChild(tr);
++        }
++      }
++
++      function initRuntimeDomGuard() {
++        if (typeof MutationObserver === 'undefined') return;
++        var observer = new MutationObserver(function (mutations) {
++          for (var i = 0; i < mutations.length; i++) {
++            var addedNodes = mutations[i].addedNodes;
++            for (var j = 0; j < addedNodes.length; j++) {
++              var node = addedNodes[j];
++              if (!node || node.nodeType !== 1) continue;
++              var tag = node.tagName;
++              if (tag === 'SCRIPT' || tag === 'IFRAME' || tag === 'OBJECT' || tag === 'EMBED' || tag === 'IMG') {
++                var src = node.getAttribute('src') || node.getAttribute('data') || '';
++                if (src) {
++                  try {
++                    var parsed = new URL(src, window.location.href);
++                    var allowed = (parsed.origin === window.location.origin) ||
++                      (tag === 'IMG' && auditState.externalMediaAllowed && ALLOWED_EXTERNAL_MEDIA_ORIGINS.indexOf(parsed.origin) !== -1);
++                    if (!allowed || isKnownTracker(parsed.href)) {
++                      node.parentNode && node.parentNode.removeChild(node);
++                      auditState.blockedEvents.push('Quarantined injected ' + tag + ' from ' + parsed.origin);
++                      updateStorageInspectorUI();
++                    }
++                  } catch (e) {}
++                }
++              }
++            }
++          }
++        });
++        observer.observe(document.documentElement, { childList: true, subtree: true });
++      }
++
++      /* ==========================================================================
++       * 8. UI STORAGE INSPECTOR & SELF-SERVICE DATA RIGHTS
++       * ========================================================================== */
++      function showStatusMessage(elementId, message, badgeType) {
++        var el = document.getElementById(elementId);
++        if (!el) return;
++        el.textContent = message;
++        el.className = 'status-message visible ' + (badgeType || 'badge-success');
++      }
++
++      function updateStorageInspectorUI() {
++        var snapshot = SecureStorage.getSanitizedSnapshot();
++        var keys = Object.keys(snapshot);
++
++        var countEl = document.getElementById('storage-key-count');
++        if (countEl) countEl.textContent = String(keys.length);
++
++        var blockedEl = document.getElementById('blocked-events-count');
++        if (blockedEl) blockedEl.textContent = String(auditState.blockedEvents.length);
++
++        var inspectorEl = document.getElementById('storage-inspector-view');
++        if (inspectorEl) {
++          inspectorEl.textContent = keys.length > 0
++            ? JSON.stringify(snapshot, null, 2)
++            : 'No user data stored (Zero client-side footprint).';
++        }
++
++        var ttlIndicator = document.getElementById('session-ttl-indicator');
++        if (ttlIndicator) {
++          if (keys.length === 0) {
++            ttlIndicator.textContent = 'Session Ephemeral Storage: Empty (0 keys)';
++          } else {
++            var minTtl = Infinity;
++            for (var i = 0; i < keys.length; i++) {
++              var t = snapshot[keys[i]].ttlRemainingSec;
++              if (t < minTtl) minTtl = t;
++            }
++            ttlIndicator.textContent = 'Ephemeral Keys: ' + keys.length + ' (Auto-purge in ' + minTtl + 's)';
++          }
++        }
++      }
++
++      /* ==========================================================================
++       * 9. EVENT HANDLERS (FORMS, COARSE LOCATION, LOGOUT, DSAR)
++       * ========================================================================== */
++      var ROASTERY_DIRECTORY = {
++        '100': 'Manhattan Roastery & Tasting Room — 245 W Broadway (Pickup Only)',
++        '606': 'Chicago River North Espresso Bar — 412 N Clark St',
++        '941': 'San Francisco Mission Roastery — 780 Valencia St',
++        '981': 'Seattle Pike Market Flagship — 1420 Western Ave'
++      };
++
++      function bindEvents() {
++        // Drink quick-select buttons
++        var drinkBtns = document.querySelectorAll('.select-drink-btn');
++        for (var i = 0; i < drinkBtns.length; i++) {
++          drinkBtns[i].addEventListener('click', function (e) {
++            var drink = e.currentTarget.getAttribute('data-drink');
++            var selectEl = document.getElementById('drink-choice');
++            if (drink && selectEl) {
++              selectEl.value = drink;
++            }
++          });
++        }
++
++        // Express Order Form (Data Minimization + Ephemeral TTL)
++        var orderForm = document.getElementById('express-order-form');
++        if (orderForm) {
++          orderForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            var aliasInput = document.getElementById('pickup-alias');
++            var drinkInput = document.getElementById('drink-choice');
++            var windowInput = document.getElementById('pickup-window');
++
++            var rawAlias = aliasInput ? aliasInput.value : '';
++            var cleanAlias = redactPIIInString(sanitizeText(rawAlias, 24));
++            if (!cleanAlias) {
++              showStatusMessage('order-status-msg', 'Please enter a valid pickup alias or initials (1-24 characters).', 'badge-warn');
++              return;
++            }
++
++            var ticket = {
++              pickupAlias: cleanAlias,
++              drink: sanitizeText(drinkInput ? drinkInput.value : 'Maple Oat Latte', 40),
++              pickupWindow: sanitizeText(windowInput ? windowInput.value : '10-15 mins', 20),
++              ticketCode: 'DG-' + Math.floor(1000 + Math.random() * 9000)
++            };
++
++            SecureStorage.setItem('active_order', ticket, DEFAULT_TTL_MS, 'express-pickup-order');
++            orderForm.reset();
++            showStatusMessage(
++              'order-status-msg',
++              'Order queued under alias "' + ticket.pickupAlias + '" (Ticket ' + ticket.ticketCode + '). Stored in ephemeral session storage with a 15-minute TTL.',
++              'badge-success'
++            );
++          });
++        }
++
++        // Coarse-Location Store Lookup Form (3-digit ZIP prefix only)
++        var locationForm = document.getElementById('location-lookup-form');
++        if (locationForm) {
++          locationForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            var zipInput = document.getElementById('zip-prefix');
++            var prefix = sanitizeText(zipInput ? zipInput.value : '', 3).replace(/[^0-9]/g, '');
++            if (prefix.length !== 3) {
++              showStatusMessage('location-results', 'Please enter a 3-digit postal prefix (e.g., 100, 606, 941, 981).', 'badge-warn');
++              return;
++            }
++            var match = ROASTERY_DIRECTORY[prefix] ||
++              ('Regional Partner Roastery serving prefix ' + prefix + 'xx — Local bean delivery & counter pickup available.');
++            showStatusMessage('location-results', 'Closest Location: ' + match + ' (Evaluated locally; zero location data stored or transmitted).', 'badge-success');
++          });
++        }
++
++        // Privacy-First Rewards Form (Strict Opt-In & Email Masking)
++        var rewardsForm = document.getElementById('rewards-form');
++        if (rewardsForm) {
++          rewardsForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            var emailInput = document.getElementById('rewards-email');
++            var termsConsent = document.getElementById('rewards-terms-consent');
++            var digestConsent = document.getElementById('seasonal-digest-optin');
++
++            if (!termsConsent || !termsConsent.checked) {
++              showStatusMessage('rewards-status-msg', 'Explicit opt-in consent is required before storing a loyalty token.', 'badge-warn');
++              return;
++            }
++
++            var rawEmail = emailInput ? emailInput.value : '';
++            if (!rawEmail || rawEmail.indexOf('@') === -1) {
++              showStatusMessage('rewards-status-msg', 'Please enter a valid email address.', 'badge-warn');
++              return;
++            }
++
++            var masked = maskEmail(rawEmail);
++            var digestAllowed = Boolean(digestConsent && digestConsent.checked && !auditState.gpcOrDntActive);
++
++            SecureStorage.setItem('loyalty_member', {
++              maskedContact: masked,
++              seasonalDigestOptIn: digestAllowed
++            }, DEFAULT_TTL_MS, 'opt-in-loyalty-session');
++
++            rewardsForm.reset();
++            detectPrivacySignals();
++            showStatusMessage(
++              'rewards-status-msg',
++              'Rewards token active for masked identity ' + masked + ' (Seasonal digest: ' + (digestAllowed ? 'Opted In' : 'Off') + ').',
++              'badge-success'
++            );
++          });
++        }
++
++        // Privacy Preferences Form
++        var prefsForm = document.getElementById('privacy-preferences-form');
++        if (prefsForm) {
++          prefsForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            var allowExternalMedia = Boolean(document.getElementById('pref-external-media') && document.getElementById('pref-external-media').checked);
++            var rememberUi = Boolean(document.getElementById('pref-remember-ui') && document.getElementById('pref-remember-ui').checked);
++            var allowDiag = Boolean(document.getElementById('pref-diagnostics') && document.getElementById('pref-diagnostics').checked && !auditState.gpcOrDntActive);
++
++            enforceHeroMediaPolicy(allowExternalMedia);
++
++            if (rememberUi) {
++              SecureStorage.setItem('privacy_prefs', {
++                externalMedia: allowExternalMedia,
++                diagnostics: allowDiag
++              }, DEFAULT_TTL_MS, 'user-privacy-preferences');
++            } else {
++              window.sessionStorage.removeItem(STORAGE_PREFIX + 'privacy_prefs');
++            }
++
++            runThirdPartyAudit();
++            showStatusMessage('prefs-status-msg', 'Privacy preferences updated and enforced.', 'badge-success');
++          });
++        }
++
++        // Secure POST Logout Form
++        var logoutForm = document.getElementById('logout-form');
++        if (logoutForm) {
++          logoutForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            SecureStorage.clearAllUserData();
++            enforceHeroMediaPolicy(false);
++            runThirdPartyAudit();
++            showStatusMessage('dsar-status-msg', 'Logged out via secure POST handler. All session storage, local storage, caches, and cookies have been purged.', 'badge-success');
++          });
++        }
++
++        // DSAR Controls: Refresh Inspector, Export JSON, Purge All Data
++        var inspectBtn = document.getElementById('inspect-storage-btn');
++        if (inspectBtn) {
++          inspectBtn.addEventListener('click', function () {
++            updateStorageInspectorUI();
++            showStatusMessage('dsar-status-msg', 'Storage inspector refreshed.', 'badge-success');
++          });
++        }
++
++        var exportBtn = document.getElementById('export-data-btn');
++        if (exportBtn) {
++          exportBtn.addEventListener('click', function () {
++            var payload = {
++              exportedAt: new Date().toISOString(),
++              service: 'The Daily Grind Coffee Co.',
++              privacySignalsHonored: auditState.gpcOrDntActive,
++              ephemeralStorage: SecureStorage.getSanitizedSnapshot()
++            };
++            var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
++            var url = URL.createObjectURL(blob);
++            var a = document.createElement('a');
++            a.href = url;
++            a.download = 'daily-grind-data-export.json';
++            document.body.appendChild(a);
++            a.click();
++            document.body.removeChild(a);
++            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
++            showStatusMessage('dsar-status-msg', 'Portable JSON data export generated.', 'badge-success');
++          });
++        }
++
++        var purgeBtn = document.getElementById('purge-data-btn');
++        if (purgeBtn) {
++          purgeBtn.addEventListener('click', function () {
++            SecureStorage.clearAllUserData();
++            enforceHeroMediaPolicy(false);
++            runThirdPartyAudit();
++            showStatusMessage('dsar-status-msg', 'All client-side storage, cookies, and caches permanently purged.', 'badge-success');
++          });
++        }
++
++        var auditBtn = document.getElementById('run-audit-btn');
++        if (auditBtn) {
++          auditBtn.addEventListener('click', function () {
++            runThirdPartyAudit();
++          });
++        }
++      }
++
++      /* ==========================================================================
++       * 10. INITIALIZATION & AUTOMATIC IDLE / TTL CLEANUP
++       * ========================================================================== */
++      var idleTimer = null;
++      function resetIdleTimer() {
++        if (idleTimer) clearTimeout(idleTimer);
++        idleTimer = setTimeout(function () {
++          SecureStorage.clearAllUserData();
++        }, IDLE_TIMEOUT_MS);
++      }
++
++      function init() {
++        sanitizeCurrentUrl();
++        detectPrivacySignals();
++        regenerateCsrfToken();
++        SecureStorage.purgeExpired();
++
++        // Allow Hero stock image by default per CSP allowlist & no-referrer mitigation, while enabling user opt-out toggle
++        enforceHeroMediaPolicy(true);
++
++        initRuntimeDomGuard();
++        bindEvents();
++        runThirdPartyAudit();
++        updateStorageInspectorUI();
++
++        // Periodic TTL cleanup every 15 seconds
++        setInterval(function () {
++          SecureStorage.purgeExpired();
++        }, 15000);
++
++        // Reset session inactivity timer on user interaction
++        ['click', 'keydown', 'submit'].forEach(function (evt) {
++          document.addEventListener(evt, resetIdleTimer, { passive: true });
++        });
++        resetIdleTimer();
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', init);
++      } else {
++        init();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

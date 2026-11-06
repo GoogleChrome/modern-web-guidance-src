@@ -1,0 +1,459 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..d505461
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++.env
++.env.*
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..4d41676
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,19 @@
++# Cipher
++
++A browser-based cryptography workspace with classical X25519 agreement, hybrid X25519 + ML-KEM-768, and ML-KEM-768/1024 encapsulation. Shared secrets are verified locally and converted to non-exportable AES-256-GCM keys with HKDF-SHA-256.
++
++## Run
++
++```sh
++pnpm install
++pnpm start
++```
++
++The development server defaults to port 11222. `PORT` can override it. Use localhost or HTTPS so Web Crypto is available.
++
++```sh
++pnpm test
++pnpm build
++```
++
++Both exchange participants run in this browser as a local demonstration. This app does not implement remote participant identity verification or an authenticated transport protocol. Keys and activity are held in memory and disappear on refresh; downloaded ciphertext requires its original in-memory session to decrypt. Public-key exports do not include private key material.
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..cd8fec2
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,61 @@
++import { establishSession, encryptMessage, decryptMessage, b64, algorithms } from './crypto.js';
++const paths = {
++ shield:'<path d="M12 3 4.5 6v5c0 5 7.5 10 7.5 10s7.5-5 7.5-10V6L12 3Z"/>',
++ 'shield-check':'<path d="M12 3 4.5 6v5c0 5 7.5 10 7.5 10s7.5-5 7.5-10V6L12 3Z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/>',
++ grid:'<rect x="3.5" y="3.5" width="6" height="6" rx="1.4"/><rect x="14.5" y="3.5" width="6" height="6" rx="1.4"/><rect x="3.5" y="14.5" width="6" height="6" rx="1.4"/><rect x="14.5" y="14.5" width="6" height="6" rx="1.4"/>',
++ key:'<circle cx="15" cy="8" r="5"/><path d="m11.5 11.5-8 8V22H7v-3h3v-3l2-2"/><path d="m16.5 6.5.01.01"/>',
++ lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',
++ folder:'<path d="M3 8V5a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8h18"/><path d="M10 14h4m-2-2v4"/>',
++ activity:'<path d="M2 12h4l3-8 5 16 3-8h5"/>',
++ sparkles:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Zm7-1v4m-2-2h4"/>',
++ book:'<path d="M12 5v16M3 3.5c4-1 6.5 0 9 1.5 2.5-1.5 5-2.5 9-1.5V19c-4-1-6.5 0-9 1.5C9.5 19 7 18 3 19V3.5Z"/>',
++ settings:'<path d="m9.5 3-.7 3-2.5 1-2.7-1-2 3.5 2 2.1v2.8l-2 2.1 2 3.5 2.7-1 2.5 1 .7 2h5l.7-2 2.5-1 2.7 1 2-3.5-2-2.1v-2.8l2-2.1-2-3.5-2.7 1-2.5-1-.7-3h-5Z" transform="translate(1 0) scale(.92)"/><circle cx="12" cy="12" r="3"/>',
++ chevrons:'<path d="m9 8 3-3 3 3m-6 8 3 3 3-3"/>',
++ 'arrow-up-right':'<path d="M6 18 18 6M6 6h12v12"/>',
++ 'arrow-right':'<path d="M4 12h16m-6-6 6 6-6 6"/>',
++ 'chevron-down':'<path d="m7 10 5 5 5-5"/>',
++ help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1-1.5 2.5m0 3h.01"/>',
++ info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
++ layers:'<path d="m12 3 10 5-10 5L2 8l10-5Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',
++ link:'<path d="m10 13 4-4m-6 6-2 2a4.2 4.2 0 0 1-6-6l5-5a4.2 4.2 0 0 1 6 0m2 2 2-2a4.2 4.2 0 0 1 6 6l-5 5a4.2 4.2 0 0 1-6 0" transform="translate(2 1) scale(.9)"/>',
++ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
++ x:'<path d="m6 6 12 12M6 18 18 6"/>',
++ check:'<path d="m5 12 4 4L19 6"/>',
++ copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>'
++};
++const $ = selector => document.querySelector(selector);
++const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.shield}</svg>`;
++function icons(root=document){root.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));}
++icons();
++const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++const state = { mode:'hybrid',session:null,sessions:[],events:[],page:'key',cryptoTab:'encrypt',lastEnvelope:'',plaintext:'',aad:'',decryptInput:'' };
++let toastTimer;
++function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4000);}
++function modal(title,content){$('#dialog-title').textContent=title;$('#dialog-content').innerHTML=content;$('#dialog').showModal();}
++$('#close-dialog').onclick=()=>$('#dialog').close();
++$('#dialog').onclick=e=>{if(e.target===$('#dialog'))$('#dialog').close();};
++const guide = () => modal('A secure connection, in three steps',`<h3>01 · Establish a shared secret</h3><p>Choose Classical (X25519), Post-quantum (ML-KEM), or Hybrid to combine both. Cipher generates both participants locally and verifies that their secrets match.</p><h3>02 · Encrypt your data</h3><p>Your shared secret is converted into an AES-256-GCM key using HKDF-SHA-256. Every encryption uses a fresh 96-bit nonce and includes a 128-bit authentication tag.</p><h3>03 · Decrypt and verify</h3><p>Paste an encrypted envelope into Decrypt. Authentication checks that the ciphertext and associated data have not changed.</p><p>Sessions live in this tab’s memory and disappear on refresh. This is a local cryptography workspace; connecting remote participants requires an authenticated exchange protocol.</p>`);
++const docs = () => modal('Built on open cryptographic standards',`<p>Cipher uses the noble cryptography libraries for key establishment and the browser’s Web Crypto API for authenticated encryption.</p><h3>Classical · X25519</h3><p>Elliptic-curve Diffie–Hellman key agreement.</p><h3>Post-quantum · ML-KEM</h3><p>Choose ML-KEM-768 or ML-KEM-1024 for post-quantum key encapsulation.</p><h3>Hybrid · X25519 + ML-KEM-768</h3><p>Combines classical and post-quantum secrets using noble’s hybrid KEM preset.</p><p><a href="https://github.com/paulmillr/noble-post-quantum" target="_blank" rel="noopener noreferrer">Read the noble post-quantum documentation ↗</a></p><p><a href="https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto" target="_blank" rel="noopener noreferrer">Explore the Web Crypto API ↗</a></p>`);
++$('#view-guide').onclick=guide;$('#help').onclick=guide;$('#docs').onclick=docs;$('#learn').onclick=docs;
++$('#settings').onclick=()=>{modal('Workspace settings',`<h3>Session storage</h3><p>Memory only. Secret keys are never written to browser storage. Refreshing this page clears all sessions.</p><h3>Encryption defaults</h3><p>AES-256-GCM · 96-bit random nonce · 128-bit authentication tag · HKDF-SHA-256 key derivation.</p><button class="button secondary" id="clear-sessions">Clear all sessions and activity</button>`);$('#clear-sessions').onclick=()=>{state.sessions=[];state.session=null;state.events=[];state.lastEnvelope='';state.plaintext='';state.aad='';state.decryptInput='';$('#dialog').close();renderSession();renderActivity();navigate('key');toast('All sessions and activity cleared');};};
++const modeData = {classical:{title:'Fast, proven key agreement',description:'Establish a shared secret with X25519.<br>A compact, classical elliptic-curve algorithm.',options:[['classical','X25519']]},hybrid:{title:'The best of both worlds',description:'Classical key agreement meets post-quantum protection.<br>Built for today. Prepared for tomorrow.',options:[['hybrid','X25519 + ML-KEM-768']]},pq:{title:'Ready for a post-quantum world',description:'Establish a secret with lattice-based key encapsulation.<br>Choose your ML-KEM protection level.',options:[['pq','ML-KEM-768'],['pq1024','ML-KEM-1024']]}};
++function setMode(mode){state.mode=mode;document.querySelectorAll('[data-mode]').forEach(btn=>{btn.classList.toggle('selected',btn.dataset.mode===mode);btn.setAttribute('aria-selected',btn.dataset.mode===mode);});const data=modeData[mode];$('#algorithm').innerHTML=data.options.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');$('#mode-title').textContent=data.title;$('#mode-description').innerHTML=data.description;$('.recommended').hidden=mode==='classical';}
++document.querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>setMode(btn.dataset.mode));
++$('#session-name').oninput=e=>$('#name-count').textContent=`${e.target.value.length} / 40`;
++function addEvent(title,detail,type='key'){state.events.unshift({title,detail,type,time:new Date()});renderActivity();}
++$('#establish').onclick=async()=>{const btn=$('#establish');btn.disabled=true;btn.innerHTML='Establishing secure session…';try{const session=await establishSession($('#algorithm').value,$('#session-name').value);state.session=session;state.sessions.push(session);renderSession();addEvent('Shared secret established',`${session.name} · ${session.label}`);toast('Shared secret established and verified');}catch(e){toast(e.message);}finally{btn.disabled=false;btn.innerHTML=icon('key')+'Establish shared secret'+icon('arrow-right');}};
++function download(value,filename){const url=URL.createObjectURL(new Blob([value],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
++function exportPublic(session){download(JSON.stringify({version:1,session:session.id,name:session.name,algorithm:session.label,publicKey:b64(session.publicKey),fingerprint:session.fingerprint},null,2),'cipher-public-key-'+session.id.slice(0,8)+'.json');addEvent('Public key exported',session.name,'folder');toast('Public key downloaded');}
++function renderSession(){const s=state.session;$('#vault-count').textContent=state.sessions.length;$('#session-badge').classList.toggle('established',!!s);$('#session-badge').innerHTML=`<i></i>${s?'Established':'Not established'}`;if(s){$('#session-display').innerHTML=`<div class="session-live"><div class="success-symbol">${icon('shield-check')}</div><dl><div><dt>Session</dt><dd>${escape(s.name)}</dd></div><div><dt>Algorithm</dt><dd>${escape(s.label)}</dd></div><div><dt>Key derivation</dt><dd>HKDF-SHA-256</dd></div><div><dt>Encryption</dt><dd>AES-256-GCM</dd></div><div><dt>Fingerprint</dt><dd>${s.fingerprint}</dd></div><div><dt>Established in</dt><dd>${s.duration} ms</dd></div></dl><button class="button secondary" id="export-key">${icon('folder')}Export public key${icon('arrow-up-right')}</button></div>`;$('#export-key').onclick=()=>exportPublic(s);}else{$('#session-display').innerHTML=`<div class="orb">${icon('link')}<span class="orb-small">${icon('lock')}</span></div><h3>Your secure connection<br>starts here</h3><p>Establish a shared secret to see<br>your session details.</p>`;}}
++function eventRows(events){return events.map(event=>`<div class="activity-row"><span class="heading-icon">${icon(event.type)}</span><div>${escape(event.title)}<small>${escape(event.detail)}</small></div><time>${event.time.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time><span class="activity-success">Successful</span></div>`).join('');}
++function renderActivity(){$('#activity-count').textContent=state.events.length;if(state.events.length){$('#activity-content').className='';$('#activity-content').innerHTML=eventRows(state.events.slice(0,3));}else{$('#activity-content').className='activity-empty';$('#activity-content').innerHTML=`<span class="empty-activity-icon">${icon('activity')}</span><div><strong>A clean slate. A secure start.</strong><p>Your cryptographic operations will appear here.</p></div><span class="activity-placeholder">Waiting for your first operation</span>`;}if(state.page==='activity')renderActivityPage();}
++const pageInfo={key:['Key establishment','A shared secret. A secure beginning.'],encrypt:['Encrypt & decrypt','Keep it confidential. Know it’s authentic.'],keys:['Key vault','Your sessions. Always in your control.'],activity:['Activity','A clear view of every cryptographic operation.'],overview:['Overview','Your private cryptography workspace, at a glance.']};
++function navigate(page){state.page=page;document.querySelectorAll('[data-page]').forEach(btn=>btn.classList.toggle('active',btn.dataset.page===page));$('#page-title').textContent=pageInfo[page][0];$('#breadcrumb').textContent=pageInfo[page][0];$('#page-description').textContent=pageInfo[page][1];$('#main-workspace').hidden=page!=='key';$('#alternate-view').hidden=page==='key';if(page==='encrypt')renderEncrypt();if(page==='keys')renderVault();if(page==='activity')renderActivityPage();if(page==='overview')renderOverview();}
++document.querySelectorAll('[data-page]').forEach(btn=>btn.onclick=()=>navigate(btn.dataset.page));$('#next-encrypt').onclick=()=>navigate('encrypt');$('#view-activity').onclick=()=>navigate('activity');
++function renderEncrypt(){const isEncrypt=state.cryptoTab==='encrypt';$('#alternate-view').innerHTML=`<div class="panel large-panel"><h2>Authenticated encryption</h2><p class="subtext">AES-256-GCM protects your data and verifies its integrity. All operations stay on this device.</p>${state.session?`<div class="privacy-banner">${icon('shield-check')} Active session: <strong>${escape(state.session.name)}</strong> · ${escape(state.session.label)}</div>`:`<div class="privacy-banner">${icon('info')} Establish a shared secret before encrypting or decrypting.<button class="text-button" id="create-session">Create a session →</button></div>`}<div class="crypto-tabs"><button class="${isEncrypt?'selected':''}" data-crypto-tab="encrypt">Encrypt</button><button class="${!isEncrypt?'selected':''}" data-crypto-tab="decrypt">Decrypt</button></div><div class="encryption-form"><label class="field-label" for="message">${isEncrypt?'Sensitive data':'Encrypted envelope'}</label><textarea id="message" placeholder="${isEncrypt?'Enter the message you want to protect…':'Paste your Cipher JSON envelope…'}">${escape(isEncrypt?state.plaintext:state.decryptInput)}</textarea>${isEncrypt?`<label class="field-label" for="aad">Associated data <span class="optional">Optional · authenticated, not encrypted</span></label><input id="aad" placeholder="e.g. document ID or message context" value="${escape(state.aad)}"/>`:''}<button class="button primary" id="run-crypto" style="margin-top:20px">${icon('lock')}${isEncrypt?'Encrypt data':'Decrypt & verify'}${icon('arrow-right')}</button><div id="crypto-output" hidden class="crypto-result"></div></div></div>`;
++ document.querySelectorAll('[data-crypto-tab]').forEach(btn=>btn.onclick=()=>{state.cryptoTab=btn.dataset.cryptoTab;renderEncrypt();});if($('#create-session'))$('#create-session').onclick=()=>navigate('key');$('#message').oninput=e=>{if(isEncrypt)state.plaintext=e.target.value;else state.decryptInput=e.target.value;};if($('#aad'))$('#aad').oninput=e=>state.aad=e.target.value;
++ $('#run-crypto').onclick=async()=>{if(!state.session){toast('Establish a shared secret first');return;}const input=$('#message').value;if(!input){toast(isEncrypt?'Enter data to encrypt':'Paste an encrypted envelope');return;}const button=$('#run-crypto');button.disabled=true;try{const result=isEncrypt?await encryptMessage(state.session,input,$('#aad').value):await decryptMessage(state.session,input);if(isEncrypt){state.lastEnvelope=result;state.decryptInput=result;}$('#crypto-output').hidden=false;$('#crypto-output').innerHTML=`<div class="row-label"><strong>${isEncrypt?'Encrypted envelope':'Authenticated plaintext'}</strong><button class="text-button" id="copy-result">${icon('copy')}Copy</button></div><pre id="result-text"></pre>${isEncrypt?'<button class="text-button" id="try-decrypt">Decrypt this message →</button>':''}`;$('#result-text').textContent=result;$('#copy-result').onclick=()=>copy(result);if($('#try-decrypt'))$('#try-decrypt').onclick=()=>{state.cryptoTab='decrypt';renderEncrypt();};addEvent(isEncrypt?'Data encrypted':'Data decrypted & verified',`${state.session.name} · AES-256-GCM`,'lock');toast(isEncrypt?'Data encrypted successfully':'Authentication verified. Data decrypted.');}catch(e){toast(e.message);}finally{button.disabled=false;}};}
++async function copy(text){try{await navigator.clipboard.writeText(text);toast('Copied to clipboard');}catch{toast('Clipboard unavailable. Select the result to copy it.');}}
++function renderVault(){$('#alternate-view').innerHTML=`<div class="panel large-panel"><h2>Session keys <span class="optional">${state.sessions.length} in memory</span></h2><p class="subtext">Keys are available for this browser session. Public keys can be exported; encryption keys stay on your device.</p>${state.sessions.length?state.sessions.map((s,i)=>`<div class="vault-row"><div class="heading-icon">${icon('key')}</div><div><h3>${escape(s.name)}</h3><p>${escape(s.label)} · ${s.fingerprint}</p></div><button class="button secondary" data-select-session="${i}">${s===state.session?'Active session':'Use session'}</button><button class="icon-button" aria-label="Export public key" data-export-session="${i}">${icon('arrow-up-right')}</button></div>`).join(''):'<div class="session-empty"><div class="orb">'+icon('key')+'</div><h3>Your vault is ready.</h3><p>Create your first session to get started.</p><button class="button primary" id="vault-create" style="margin-top:20px">Establish a shared secret →</button></div>'}</div>`;if($('#vault-create'))$('#vault-create').onclick=()=>navigate('key');document.querySelectorAll('[data-select-session]').forEach(btn=>btn.onclick=()=>{state.session=state.sessions[Number(btn.dataset.selectSession)];renderSession();renderVault();toast('Active session updated');});document.querySelectorAll('[data-export-session]').forEach(btn=>btn.onclick=()=>exportPublic(state.sessions[Number(btn.dataset.exportSession)]));}
++function renderActivityPage(){$('#alternate-view').innerHTML=`<div class="panel large-panel"><div class="row-label"><h2>Session activity</h2><button class="text-button" id="export-activity">Export log ${icon('arrow-up-right')}</button></div><p class="subtext">${state.events.length} operations recorded in this browser session.</p><div>${state.events.length?eventRows(state.events):'<div class="session-empty"><div class="orb">'+icon('activity')+'</div><h3>No operations yet</h3><p>Establish a session to begin your activity log.</p></div>'}</div></div>`;$('#export-activity').onclick=()=>{download(JSON.stringify(state.events,null,2),'cipher-activity.json');toast('Activity log downloaded');};}
++function renderOverview(){$('#alternate-view').innerHTML=`<div class="panel large-panel"><h2>Security starts here.</h2><p class="subtext">Generate a shared secret, protect a message, and keep control of your data.</p><div class="overview-grid"><div class="stat-card"><span>Sessions established</span><strong>${state.sessions.length}</strong></div><div class="stat-card"><span>Completed operations</span><strong>${state.events.length}</strong></div><div class="stat-card"><span>Data sent to a server</span><strong>0 B</strong></div></div><button class="button primary" id="overview-start">${icon('key')}Establish a shared secret ${icon('arrow-right')}</button></div>`;$('#overview-start').onclick=()=>navigate('key');}
+diff --git a/crypto.js b/crypto.js
+new file mode 100644
+index 0000000..2a442c5
+--- /dev/null
++++ b/crypto.js
+@@ -0,0 +1,53 @@
++import { x25519 } from '@noble/curves/ed25519.js';
++import { ml_kem768, ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
++import { ml_kem768_x25519 } from '@noble/post-quantum/hybrid.js';
++
++const encoder = new TextEncoder();
++export const b64 = bytes => btoa(String.fromCharCode(...bytes));
++export const unb64 = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
++export const algorithms = { hybrid: 'X25519 + ML-KEM-768', classical: 'X25519', pq: 'ML-KEM-768', pq1024: 'ML-KEM-1024' };
++export async function establishSession(algorithm = 'hybrid', name = '') {
++  if (!Object.hasOwn(algorithms, algorithm)) throw new Error('Unknown algorithm');
++  const started = performance.now();
++  let sender, receiver, publicKey, ciphertext;
++  if (algorithm === 'classical') {
++    const alice = x25519.keygen(), bob = x25519.keygen();
++    sender = x25519.getSharedSecret(alice.secretKey, bob.publicKey);
++    receiver = x25519.getSharedSecret(bob.secretKey, alice.publicKey);
++    publicKey = alice.publicKey;
++    ciphertext = bob.publicKey;
++    alice.secretKey.fill(0); bob.secretKey.fill(0);
++  } else {
++    const kem = algorithm === 'hybrid' ? ml_kem768_x25519 : algorithm === 'pq1024' ? ml_kem1024 : ml_kem768;
++    const keys = kem.keygen();
++    const encapsulated = kem.encapsulate(keys.publicKey);
++    sender = encapsulated.sharedSecret;
++    receiver = kem.decapsulate(encapsulated.cipherText, keys.secretKey);
++    publicKey = keys.publicKey;
++    ciphertext = encapsulated.cipherText;
++    keys.secretKey.fill(0);
++  }
++  const same = sender.length === receiver.length && sender.reduce((diff, byte, i) => diff | (byte ^ receiver[i]), 0) === 0;
++  if (!same) throw new Error('Shared secret verification failed');
++  const salt = crypto.getRandomValues(new Uint8Array(32));
++  const source = await crypto.subtle.importKey('raw', sender, 'HKDF', false, ['deriveKey']);
++  const key = await crypto.subtle.deriveKey({name:'HKDF', hash:'SHA-256', salt, info:encoder.encode('cipher/browser-session/v1/'+algorithm)}, source, {name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
++  sender.fill(0); receiver.fill(0);
++  const fingerprint = new Uint8Array(await crypto.subtle.digest('SHA-256', publicKey));
++  return { id: crypto.randomUUID(), name: name.trim() || 'Untitled session', algorithm, label: algorithms[algorithm], key, publicKey, ciphertext, fingerprint: Array.from(fingerprint.slice(0, 8), b => b.toString(16).padStart(2, '0')).join(':'), created: new Date(), duration: Math.round(performance.now() - started), salt };
++}
++export async function encryptMessage(session, plaintext, aad = '') {
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(aad),tagLength:128},session.key,encoder.encode(plaintext));
++  return JSON.stringify({version:1,session:session.id,algorithm:'AES-256-GCM',iv:b64(iv),aad,ciphertext:b64(new Uint8Array(ciphertext))},null,2);
++}
++export async function decryptMessage(session, envelope) {
++  let data;
++  try { data = JSON.parse(envelope); } catch { throw new Error('Enter a valid Cipher JSON envelope.'); }
++  if (data.version !== 1 || data.algorithm !== 'AES-256-GCM') throw new Error('Unsupported encrypted envelope.');
++  if (data.session !== session.id) throw new Error('This message belongs to a different session. Select its original key in the vault.');
++  try {
++    const plaintext = await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(data.iv),additionalData:encoder.encode(data.aad || ''),tagLength:128},session.key,unb64(data.ciphertext));
++    return new TextDecoder('utf-8',{fatal:true}).decode(plaintext);
++  } catch { throw new Error('Authentication failed. The ciphertext or associated data has changed.'); }
++}
+diff --git a/crypto.test.js b/crypto.test.js
+new file mode 100644
+index 0000000..b8ea3a4
+--- /dev/null
++++ b/crypto.test.js
+@@ -0,0 +1,29 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { establishSession, encryptMessage, decryptMessage, algorithms } from './crypto.js';
++for (const algorithm of Object.keys(algorithms)) {
++  test(`${algorithm}: shared secret, encryption, authentication, nonce uniqueness`, async () => {
++    const session = await establishSession(algorithm, 'Test session');
++    assert.equal(session.key.extractable, false);
++    assert.equal(session.publicKey.length > 0, true);
++    const plaintext = 'Confidential message 🔐';
++    const envelope = await encryptMessage(session, plaintext, 'context');
++    assert.equal(await decryptMessage(session, envelope), plaintext);
++    const next = await encryptMessage(session, plaintext, 'context');
++    assert.notEqual(JSON.parse(next).iv, JSON.parse(envelope).iv);
++    const tampered = JSON.parse(envelope);
++    tampered.aad = 'modified';
++    await assert.rejects(() => decryptMessage(session, JSON.stringify(tampered)), /Authentication failed/);
++    const damaged = JSON.parse(envelope);
++    damaged.ciphertext = (damaged.ciphertext[0] === 'A' ? 'B' : 'A') + damaged.ciphertext.slice(1);
++    await assert.rejects(() => decryptMessage(session, JSON.stringify(damaged)), /Authentication failed/);
++    const other = await establishSession(algorithm);
++    await assert.rejects(() => decryptMessage(other, envelope), /different session/);
++  });
++}
++test('reject invalid inputs', async () => {
++  await assert.rejects(() => establishSession('invalid'), /Unknown algorithm/);
++  const session = await establishSession();
++  await assert.rejects(() => decryptMessage(session, 'invalid'), /valid Cipher JSON/);
++  await assert.rejects(() => decryptMessage(session, '{}'), /Unsupported/);
++});
+diff --git a/index.html b/index.html
+index 66c9173..32d9bb4 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,12 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
+-</head>
+-
+-<body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<!doctype html>
++<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="theme-color" content="#087b65"/><title>Cipher — Cryptography workspace</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"></head><body>
++<aside class="sidebar"><a class="brand" href="/"><span class="brand-icon" data-icon="shield"></span>cipher<span class="brand-dot">.</span></a><div class="workspace"><span class="workspace-logo">P</span><div>Personal workspace<small>Free plan</small></div><span data-icon="chevrons" class="muted"></span></div><div class="nav-label">WORKSPACE</div><nav><button class="nav-item" data-page="overview"><span data-icon="grid"></span>Overview</button><button class="nav-item active" data-page="key"><span data-icon="key"></span>Key establishment<span class="nav-dot"></span></button><button class="nav-item" data-page="encrypt"><span data-icon="lock"></span>Encrypt & decrypt</button><button class="nav-item" data-page="keys"><span data-icon="folder"></span>Key vault<span class="count" id="vault-count">0</span></button><button class="nav-item" data-page="activity"><span data-icon="activity"></span>Activity</button></nav><div class="sidebar-bottom"><div class="quantum-card"><span class="quantum-symbol" data-icon="sparkles"></span><strong>Ready for what’s next.</strong><p>Build with post-quantum<br>cryptography today.</p><button id="learn">Explore the algorithms <span>↗</span></button></div><button class="nav-item" id="docs"><span data-icon="book"></span>Documentation<span class="external">↗</span></button><button class="nav-item" id="settings"><span data-icon="settings"></span>Settings</button><div class="profile"><div class="avatar">JD</div><div>Jamie Davis<small>Personal account</small></div><span data-icon="chevrons"></span></div></div></aside>
++<div class="app"><header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong id="breadcrumb">Key establishment</strong></div><div class="topbar-right"><span class="local-status"><i></i> All operations run locally</span><button class="icon-button" id="help" aria-label="Help" data-icon="help"></button><span class="top-avatar">JD</span></div></header>
++<main><div class="page-heading"><div><div class="eyebrow">YOUR SECURITY, YOUR CONTROL</div><h1 id="page-title">Key establishment</h1><p id="page-description">A shared secret. A secure beginning.</p></div><button class="button secondary" id="view-guide"><span data-icon="book"></span>Quick start guide<span data-icon="arrow-up-right"></span></button></div>
++<div class="privacy-banner"><span class="banner-icon" data-icon="shield-check"></span><div><strong>Private by design.</strong> Your keys and data never leave this browser.</div><span class="browser-badge"><i></i> Browser-native security</span></div>
++<div id="main-workspace"><div class="main-grid"><section class="panel establish-panel"><div class="panel-heading"><div class="heading-icon" data-icon="key"></div><div><h2>Establish a shared secret</h2><p>Choose your protection. Create a secure connection.</p></div><span class="step-badge">STEP 01</span></div><div class="form-body"><label class="field-label">Protection mode <span data-icon="info" title="Select classical, hybrid, or post-quantum key establishment"></span></label><div class="mode-tabs" role="tablist"><button data-mode="classical" role="tab"><span data-icon="shield"></span>Classical</button><button data-mode="hybrid" class="selected" role="tab" aria-selected="true"><span data-icon="layers"></span>Hybrid<span class="recommended-dot"></span></button><button data-mode="pq" role="tab"><span data-icon="sparkles"></span>Post-quantum</button></div><label for="algorithm" class="field-label algorithm-label">Algorithm <span class="recommended">Recommended</span></label><div class="select-wrap"><select id="algorithm"><option value="hybrid">X25519 + ML-KEM-768</option></select><span data-icon="chevron-down"></span></div><div class="mode-explanation"><span data-icon="shield-check"></span><div><strong id="mode-title">The best of both worlds</strong><p id="mode-description">Classical key agreement meets post-quantum protection.<br>Built for today. Prepared for tomorrow.</p></div></div><div class="divider"></div><div class="row-label"><label for="session-name" class="field-label">Session name <span class="optional">Optional</span></label><span class="character-count" id="name-count">0 / 40</span></div><input id="session-name" maxlength="40" placeholder="e.g. Secure document exchange"/><button class="button primary establish-button" id="establish"><span data-icon="key"></span>Establish shared secret<span data-icon="arrow-right"></span></button><p class="form-footnote"><span data-icon="lock"></span>Keys are generated securely on your device</p></div></section>
++<aside class="right-column"><section class="panel session-panel"><div class="section-title"><h2>Session details</h2><span class="status-badge" id="session-badge"><i></i>Not established</span></div><div class="session-empty" id="session-display"><div class="orb"><span data-icon="link"></span><span class="orb-small" data-icon="lock"></span></div><h3>Your secure connection<br>starts here</h3><p>Establish a shared secret to see<br>your session details.</p></div><div class="session-footer"><span data-icon="clock"></span>Ephemeral keys. Lasting protection.</div></section><section class="next-card"><div class="next-icon" data-icon="lock"></div><div><h3>Next, make it confidential.</h3><p>Use your shared secret to encrypt data<br>with authenticated encryption.</p><button id="next-encrypt">Encrypt & decrypt <span data-icon="arrow-right"></span></button></div></section></aside></div>
++<section class="panel activity-panel"><div class="section-title"><div class="activity-title"><span data-icon="activity"></span><h2>Recent activity</h2><span class="count" id="activity-count">0</span></div><button class="text-button" id="view-activity">View all activity<span data-icon="arrow-right"></span></button></div><div id="activity-content" class="activity-empty"><span class="empty-activity-icon" data-icon="activity"></span><div><strong>A clean slate. A secure start.</strong><p>Your cryptographic operations will appear here.</p></div><span class="activity-placeholder">Waiting for your first operation</span></div></section></div>
++<section id="alternate-view" hidden></section>
++<footer><span><span data-icon="shield-check"></span> Built on open standards. Designed for trust.</span><div><span class="footer-dot"></span> All systems operational <span class="footer-separator">|</span> Cipher v1.0</div></footer></main></div>
++<dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button class="icon-button" id="close-dialog" aria-label="Close" data-icon="x"></button></div><div id="dialog-content"></div></dialog><div id="toast" role="status"></div><script type="module" src="/app.js"></script></body></html>
+diff --git a/package.json b/package.json
+index 2bd4d77..1e7f93a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,19 @@
+ {
+-  "name": "daily-grind",
++  "name": "cipher-workspace",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "vite build",
++    "test": "node --test crypto.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "dependencies": {
++    "@noble/curves": "^2.4.0",
++    "@noble/hashes": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1",
++    "vite": "^8.3.4"
++  },
++  "type": "module"
+ }
+diff --git a/style.css b/style.css
+new file mode 100644
+index 0000000..eb06bf0
+--- /dev/null
++++ b/style.css
+@@ -0,0 +1 @@
++:root{font-family:'DM Sans',sans-serif;color:#26332f;background:#f7f9f8;font-synthesis:none;--green:#087c65;--muted:#89908d;--border:#e5eae7}*{box-sizing:border-box}body{margin:0;font-size:13px}button,input,select,textarea{font:inherit}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button,a{cursor:pointer}button{color:inherit}button{border:0;background:none}a{color:inherit;text-decoration:none}svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.65;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}button{transition:background .16s,box-shadow .16s,transform .16s}button:hover{filter:brightness(.96)}button:focus-visible,a:focus-visible{outline:3px solid #8dc8b8;outline-offset:3px}.sidebar{width:244px;background:#fff;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;border-right:1px solid var(--border);padding:32px 18px 0}.brand{font-family:'Manrope',sans-serif;font-size:33px;font-weight:800;display:flex;align-items:center;padding-left:13px;letter-spacing:-1.5px;line-height:40px}.brand-icon{display:flex;background:var(--green);width:34px;height:38px;color:white;border-radius:10px;align-items:center;justify-content:center;margin-right:9px}.brand-icon svg{width:24px;height:24px;stroke-width:1.7}.brand-dot{color:var(--green)}.workspace{margin:35px 0 29px;border:1px solid var(--border);border-radius:8px;padding:11px 10px;display:flex;align-items:center;gap:9px;font-weight:550;font-size:11px}.workspace-logo{background:#f0f3f1;border:1px solid #e3e8e5;border-radius:5px;width:28px;height:29px;display:grid;place-items:center;font-size:13px}.workspace small,.profile small{display:block;color:#8a918e;font-size:10px;margin-top:4px;font-weight:400}.workspace>.muted{margin-left:auto}.workspace svg{width:13px}.nav-label{font-size:9px;letter-spacing:1.5px;color:#a2a9a5;font-weight:650;padding:0 13px;margin-bottom:11px}nav{display:grid;gap:6px}.nav-item{display:flex;width:100%;align-items:center;gap:12px;text-align:left;height:43px;border-radius:6px;padding:0 13px;color:#6f7973;font-size:12px}.nav-item svg{width:18px;height:18px}.nav-item.active{color:var(--green);background:#eaf4ef;font-weight:600}.nav-dot{background:var(--green);width:5px;height:5px;margin-left:auto;border-radius:50%}.count{font-size:10px;background:#f0f3f1;color:#87918a;border-radius:5px;min-width:20px;height:19px;display:grid;place-items:center}.nav-item .count{margin-left:auto}.sidebar-bottom{margin-top:auto}.quantum-card{background:linear-gradient(120deg,#f2f7f3,#eaf3ee);border:1px solid #e0ebe3;border-radius:8px;padding:17px 15px;margin:35px 6px 18px;position:relative;overflow:hidden}.quantum-card:after{content:'';position:absolute;width:105px;height:105px;border:1px solid #dce8de;border-radius:50%;right:-57px;top:12px;box-shadow:0 0 0 13px #e2ece44d,0 0 0 27px #e1ebe347;pointer-events:none}.quantum-symbol{color:var(--green);display:block;margin-bottom:12px}.quantum-card strong{font-size:12px;font-weight:600}.quantum-card p{font-size:11px;color:#86918a;line-height:1.7;margin:6px 0 12px}.quantum-card button{font-size:10px;font-weight:600;color:var(--green);padding:0}.quantum-card button span{margin-left:6px}.external{margin-left:auto}.profile{border-top:1px solid var(--border);margin-top:18px;display:flex;align-items:center;gap:10px;padding:19px 8px 22px;font-size:12px;font-weight:550}.avatar,.top-avatar{background:#eee9de;color:#817867;display:grid;place-items:center;border-radius:50%;font-size:10px;font-weight:600;width:32px;height:32px}.profile>span{margin-left:auto;color:#8b938e}.profile svg{width:13px}.app{margin-left:244px}.topbar{height:76px;border-bottom:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 39px}.breadcrumbs{color:#929994;font-size:11px;display:flex;gap:17px;align-items:center}.breadcrumbs span{color:#c9cfcb}.breadcrumbs strong{font-weight:500;color:#4f5c54}.topbar-right{display:flex;align-items:center;gap:24px}.local-status{color:#78847c;font-size:10px;display:flex;align-items:center;gap:7px}i,.footer-dot{width:5px;height:5px;display:inline-block;background:#2b9a75;border-radius:50%}.icon-button{display:grid;place-items:center;color:#8a948d;padding:3px}.top-avatar{width:29px;height:29px;font-size:9px}main{padding:37px 39px 0;max-width:1550px;margin:auto}.page-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:27px}.eyebrow{font-size:9px;font-weight:600;letter-spacing:1.7px;color:#92a097;margin-bottom:10px}h1{font-family:'Manrope',sans-serif;font-size:29px;letter-spacing:-1.1px;line-height:1.3;margin:0;font-weight:750}.page-heading p{color:#8b958f;font-size:12px;margin:9px 0 0}.button{display:flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;font-size:11px;font-weight:550;height:37px;padding:0 14px}.button svg{width:15px;height:15px}.secondary{background:#fff;border:1px solid #dfe5e1;box-shadow:0 1px 2px #253a2f03}.page-heading>.button{margin-top:17px}.page-heading>.button svg:last-child{margin-left:7px;width:13px}.privacy-banner{display:flex;align-items:center;gap:11px;background:#eef5f0;border:1px solid #e0ebe3;border-radius:7px;min-height:49px;padding:10px 16px;margin-bottom:25px;color:#778a7c;font-size:11px}.privacy-banner strong{font-weight:600;color:#476b53}.banner-icon{display:flex;color:#65876c}.banner-icon svg{width:18px}.browser-badge{margin-left:auto;display:flex;align-items:center;gap:6px;color:#74917b;font-size:9px;white-space:nowrap}.browser-badge i{width:4px;height:4px;background:#7b9b7f}.main-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:22px}.panel{border:1px solid #e1e6e2;border-radius:9px;background:white;box-shadow:0 2px 3px #30433402}.panel-heading{padding:22px 23px 21px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #edf0ed}.heading-icon{display:grid;place-items:center;width:36px;height:36px;background:#f1f6f2;border:1px solid #e6ede7;border-radius:8px;color:#5c8066}.heading-icon svg{width:18px}.panel h2{font-size:14px;letter-spacing:-.25px;font-weight:600;margin:0}.panel-heading p{font-size:10px;color:#97a098;margin:6px 0 0}.step-badge{font-size:8px;color:#9aa39d;letter-spacing:1px;margin-left:auto;white-space:nowrap}.form-body{padding:24px}.field-label{font-size:11px;display:flex;align-items:center;gap:6px;font-weight:550;margin-bottom:10px}.field-label svg{width:12px;height:12px;color:#a4ada6}.mode-tabs{border:1px solid #e6ebe7;border-radius:6px;padding:4px;display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:3px;background:#f8faf8}.mode-tabs button{height:35px;display:flex;align-items:center;justify-content:center;gap:7px;color:#8a958c;font-size:10px;border:1px solid transparent;border-radius:4px}.mode-tabs svg{width:14px;height:14px}.mode-tabs button.selected{background:#fff;border-color:#bed2c5;box-shadow:0 1px 3px #2942340d;color:#187958;font-weight:600}.recommended-dot{width:4px;height:4px;background:#238667;border-radius:50%;margin-left:3px}.algorithm-label{margin-top:22px;justify-content:space-between}.recommended{font-size:8px;color:#5e8a6d;background:#eef5ef;border:1px solid #e2ece2;border-radius:4px;padding:3px 6px;font-weight:450}.select-wrap{position:relative}select,input,textarea{width:100%;outline:none;border:1px solid #dde5df;border-radius:5px;background:#fff;color:#44574b;font-size:11px;height:41px;padding:0 12px}select{appearance:none;font-weight:500;padding-right:32px}.select-wrap>span{position:absolute;right:12px;top:12px;pointer-events:none;color:#77897c}.select-wrap svg{width:14px;height:14px}input:focus,textarea:focus,select:focus{border-color:#7caf99;box-shadow:0 0 0 3px #0b7b6510}input::placeholder,textarea::placeholder{color:#a4ada6}.mode-explanation{display:flex;gap:10px;background:#f7faf7;border:1px solid #eaf0e9;border-radius:5px;padding:13px 12px;margin-top:12px}.mode-explanation>span{color:#74967a;margin-top:1px}.mode-explanation svg{width:16px;height:16px}.mode-explanation strong{font-weight:500;font-size:10px;color:#65806a}.mode-explanation p{color:#8b9b8c;font-size:10px;line-height:1.7;margin:4px 0 0}.divider{height:1px;background:#edf0ed;margin:22px 0 20px}.row-label{display:flex;justify-content:space-between}.optional{font-size:9px;color:#a6aea8;font-weight:400;margin-left:3px}.character-count{font-size:9px;color:#a5ada7}.primary{background:var(--green);color:white;border:1px solid #08725d;box-shadow:0 2px 2px #045a5b10}.establish-button{margin-top:20px;width:100%;height:42px}.establish-button svg:last-child{margin-left:auto}.establish-button svg:first-child{margin-right:auto}.form-footnote{font-size:9px;color:#99a29b;display:flex;align-items:center;justify-content:center;gap:5px;margin:12px 0 0}.form-footnote svg{width:10px;height:10px}.right-column{display:flex;flex-direction:column;gap:17px}.session-panel{flex:1;display:flex;flex-direction:column}.section-title{display:flex;justify-content:space-between;align-items:center;padding:21px}.status-badge{font-size:8px;display:flex;align-items:center;gap:5px;background:#f4f6f4;border:1px solid #e8ece8;padding:5px 7px;border-radius:4px;color:#939c95;white-space:nowrap}.status-badge i{background:#a0aaa2;width:4px;height:4px}.status-badge.established{color:var(--green);background:#edf7f0}.status-badge.established i{background:var(--green)}.session-empty{display:flex;align-items:center;flex-direction:column;justify-content:center;flex:1;padding:25px 10px 33px;min-height:244px;text-align:center}.orb{height:69px;width:69px;background:linear-gradient(135deg,#f7f9f7,#eaf1e9);border:1px solid #e0e8df;border-radius:50%;display:grid;place-items:center;color:#88a48d;position:relative;box-shadow:0 0 0 8px #f8faf7;margin-bottom:22px}.orb>svg{width:28px;height:28px;transform:rotate(-36deg);stroke-width:1.3}.orb-small{position:absolute;bottom:-1px;right:-2px;background:white;width:23px;height:23px;border-radius:50%;border:1px solid #e7ece5;display:grid;place-items:center}.orb-small svg{height:11px;width:11px}.session-empty h3{font-family:'Manrope',sans-serif;font-size:15px;color:#65766a;font-weight:600;line-height:1.6;margin:0;letter-spacing:-.2px}.session-empty p{font-size:10px;color:#a0aaa1;line-height:1.8;margin:10px 0 0}.session-footer{border-top:1px solid #edf0ec;background:#fbfcfa;border-radius:0 0 9px 9px;padding:14px 8px;display:flex;justify-content:center;align-items:center;gap:7px;font-size:9px;color:#9aa59a}.session-footer svg{height:12px;width:12px}.next-card{display:flex;gap:13px;background:#edf3ee;border:1px solid #dfe8e0;border-radius:8px;padding:21px 19px}.next-icon{display:grid;place-items:center;width:33px;height:33px;border:1px solid #d9e6db;background:#e6efe6;border-radius:7px;color:#6d9176;flex-shrink:0}.next-icon svg{width:17px;height:17px}.next-card h3{font-size:11px;font-weight:600;margin:0 0 7px;color:#506e58}.next-card p{color:#8c9b8e;font-size:10px;line-height:1.8;margin:0}.next-card button{display:flex;align-items:center;gap:8px;font-size:10px;color:#387e58;padding:12px 0 0;font-weight:600}.next-card button svg{width:13px;height:13px}.activity-panel{margin-top:23px}.activity-panel>.section-title{padding:19px 22px;border-bottom:1px solid #edf0ed}.activity-title{display:flex;gap:9px;align-items:center}.activity-title>span:first-child{color:#97a49a;display:flex}.activity-title svg{width:16px;height:16px}.activity-title h2{font-size:12px}.activity-title .count{height:17px;min-width:18px;margin-left:2px;font-size:9px}.text-button{font-size:10px;color:#809087;display:flex;gap:7px;align-items:center}.text-button svg{width:13px;height:13px}.activity-empty{display:flex;gap:14px;align-items:center;padding:25px 24px}.empty-activity-icon{border:1px solid #e9eee9;background:#fafbf9;border-radius:8px;width:35px;height:35px;color:#aab5ab;display:grid;place-items:center}.empty-activity-icon svg{width:17px;height:17px}.activity-empty strong{font-size:11px;font-weight:500;color:#7d8b80}.activity-empty p{font-size:10px;color:#a2aca3;margin:6px 0 0}.activity-placeholder{margin-left:auto;color:#adb6ae;font-size:9px}footer{display:flex;align-items:center;justify-content:space-between;color:#9aa79d;font-size:9px;padding:27px 0 23px}footer>span,footer>div{display:flex;align-items:center;gap:6px}footer svg{width:12px;height:12px}.footer-dot{height:4px;width:4px;background:#7aa485}.footer-separator{margin:0 6px;color:#d0d7d0}dialog{width:540px;max-width:calc(100% - 32px);padding:25px;border:1px solid #d9e5dc;border-radius:12px;box-shadow:0 15px 70px #17332822;color:#334b3c}dialog::backdrop{background:#172c2444;backdrop-filter:blur(3px)}.dialog-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.dialog-heading h2{font-size:19px;margin:0}.dialog-heading~div{font-size:13px;line-height:1.8;color:#718177}.dialog-heading~div a{color:var(--green);text-decoration:underline}.dialog-heading~div h3{font-size:13px;color:#345a44}.dialog-heading~div p{margin:12px 0}#toast{position:fixed;bottom:24px;left:calc(50% + 120px);transform:translate(-50%,15px);padding:12px 20px;background:#254d3c;color:white;border-radius:7px;box-shadow:0 3px 20px #123b2722;font-size:12px;opacity:0;pointer-events:none;transition:all .2s;z-index:10}#toast.show{opacity:1;transform:translate(-50%,0)}.session-live{width:100%;text-align:left;padding:0 13px}.session-live .success-symbol{margin:2px auto 20px;color:var(--green);width:46px;height:46px;border-radius:50%;background:#eef7f0;display:grid;place-items:center}.session-live dl{margin:0}.session-live dl>div{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f3ef;gap:10px}.session-live dt{font-size:10px;color:#95a097}.session-live dd{font-size:10px;margin:0;color:#4a6c56;text-align:right}.session-live .button{width:100%;margin-top:15px;font-size:10px}.activity-row{display:flex;gap:12px;align-items:center;padding:17px 22px;border-bottom:1px solid #f0f3ef;font-size:11px}.activity-row:last-child{border:0}.activity-row>.heading-icon{width:30px;height:30px}.activity-row small{display:block;color:#98a69b;margin-top:4px;font-size:9px}.activity-row time{margin-left:auto;color:#9da89f;font-size:9px}.activity-success{color:#4d9470;font-size:9px;background:#eff7ef;padding:4px 7px;border-radius:4px}.large-panel{padding:25px;min-height:360px}.large-panel h2{margin:0 0 8px;font-size:17px}.subtext{font-size:11px;color:#8c9b90;line-height:1.8}.crypto-tabs{display:flex;border-bottom:1px solid var(--border);gap:25px;margin:20px 0}.crypto-tabs button{padding:12px 0;color:#87968a}.crypto-tabs button.selected{color:var(--green);border-bottom:2px solid var(--green)}textarea{height:145px;resize:vertical;padding:13px;line-height:1.8;font-family:monospace;font-size:12px;margin-bottom:15px}.encryption-form{max-width:750px}.crypto-result{margin-top:25px;overflow-wrap:anywhere;padding:15px;background:#f4f8f4;border:1px solid #e2eae1;border-radius:6px}.crypto-result pre{white-space:pre-wrap;word-break:break-all;font-size:11px;line-height:1.7}.crypto-result>.row-label{align-items:center}.vault-row{border:1px solid var(--border);padding:20px;border-radius:8px;margin-top:20px;display:flex;gap:14px;align-items:center}.vault-row h3{margin:0;font-size:13px}.vault-row p{margin:6px 0 0;font-size:11px;color:#8b9b90}.vault-row>.button{margin-left:auto}.overview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:25px 0}.stat-card{background:#f5f8f4;border:1px solid #e3ebe1;padding:25px;border-radius:8px}.stat-card strong{display:block;color:var(--green);font-size:30px;margin-top:12px}.stat-card span{font-size:12px;color:#88998b}[hidden]{display:none!important}@media(min-width:1500px){main{padding-top:45px}.main-grid{grid-template-columns:1.65fr 1fr}.form-body{padding:28px}.session-empty{min-height:272px}.sidebar{width:260px}.app{margin-left:260px}}@media(max-width:1100px){.sidebar{width:210px;padding-left:12px;padding-right:12px}.app{margin-left:210px}.topbar{padding:0 25px}main{padding:30px 25px 0}.main-grid{gap:16px;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr)}.panel-heading{padding:20px 17px;gap:9px}.panel-heading p{font-size:9px}.step-badge{display:none}.form-body{padding:20px}.mode-tabs button{font-size:9px;gap:4px}.section-title{padding:19px 17px}.session-panel h2{font-size:12px}.browser-badge{display:none}.activity-placeholder{display:none}.topbar-right{gap:15px}.next-card{padding:19px 14px;gap:10px}}@media(max-width:850px){.sidebar{width:76px;padding:26px 12px 0}.brand{font-size:0;padding:0;justify-content:center}.brand-icon{margin:0}.brand-dot,.workspace,.nav-label,.nav-item .count,.nav-dot,.quantum-card,.profile,.external{display:none}.sidebar nav{margin-top:40px}.nav-item{font-size:0;justify-content:center;padding:0;gap:0}.nav-item svg{width:20px;height:20px}.sidebar-bottom{margin-bottom:20px}.app{margin-left:76px}.main-grid{grid-template-columns:minmax(0,1.4fr) minmax(245px,1fr)}main{padding:28px 20px 0}.topbar{padding:0 20px}.privacy-banner{font-size:10px}.page-heading>.button{font-size:10px;padding:0 10px}.page-heading>.button svg:last-child{display:none}.panel h2{font-size:12px}.panel-heading p{line-height:1.7}.heading-icon{width:30px;height:30px;flex-shrink:0}.form-body{padding:17px}.mode-tabs svg{display:none}.mode-tabs button{font-size:10px}.status-badge{font-size:7px}.section-title{padding:17px 12px}.next-card p br{display:none}footer{font-size:8px}.local-status{font-size:9px}#toast{left:calc(50% + 38px)}}@media(max-width:650px){.topbar{height:64px}.local-status{display:none}.breadcrumbs{gap:9px;font-size:10px}.topbar-right{gap:14px}.page-heading{align-items:flex-start}.eyebrow{font-size:7px;letter-spacing:1.1px}h1{font-size:24px}.page-heading p{font-size:11px}.page-heading>.button{font-size:0;width:34px;height:34px;padding:0;margin-top:20px}.page-heading>.button svg{width:15px;height:15px}.privacy-banner{line-height:1.7;padding:10px}.main-grid{grid-template-columns:1fr}.right-column{display:grid;grid-template-columns:1fr}.session-empty{min-height:240px}.activity-panel>.section-title{padding:17px 14px}.activity-empty{padding:20px 14px}.text-button{font-size:8px}.activity-title{gap:6px}.activity-title h2{font-size:11px}.activity-empty strong{font-size:10px}.activity-empty p{font-size:9px}.activity-title>span:first-child{display:none}footer{align-items:flex-start;gap:15px;line-height:1.6}footer>div{display:none}.overview-grid{grid-template-columns:1fr}.large-panel{padding:20px}.vault-row{flex-wrap:wrap}.vault-row>.button{margin:0}.crypto-result pre{font-size:9px}.activity-success{display:none}}

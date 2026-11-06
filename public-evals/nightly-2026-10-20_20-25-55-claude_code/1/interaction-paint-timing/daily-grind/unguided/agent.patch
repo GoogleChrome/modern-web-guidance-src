@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+index 66c9173..dcd73aa 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/interaction-metrics.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/interaction-metrics.js b/interaction-metrics.js
+new file mode 100644
+index 0000000..ff509a5
+--- /dev/null
++++ b/interaction-metrics.js
+@@ -0,0 +1,128 @@
++/*
++ * Measures the time from a user interaction or client-side navigation to the
++ * first contentful update (new text or image) painted on screen.
++ *
++ * Results are pushed to window.__interactionMetrics, logged to the console,
++ * and dispatched as an "interaction-paint" CustomEvent on window.
++ */
++(function () {
++  var TIMEOUT_MS = 5000; // give up waiting for a contentful update after this
++  var metrics = (window.__interactionMetrics = []);
++  var pending = null;
++
++  function report(entry) {
++    metrics.push(entry);
++    console.log(
++      '[interaction-paint] ' + entry.type + ' ' + entry.name + ': ' +
++      entry.duration.toFixed(1) + 'ms'
++    );
++    window.dispatchEvent(new CustomEvent('interaction-paint', { detail: entry }));
++  }
++
++  function describe(target) {
++    if (!(target instanceof Element)) return 'unknown';
++    var id = target.id ? '#' + target.id : '';
++    var cls = typeof target.className === 'string' && target.className
++      ? '.' + target.className.trim().split(/\s+/).join('.') : '';
++    return target.tagName.toLowerCase() + id + cls;
++  }
++
++  function start(type, name, startTime) {
++    if (pending) finish(false); // a newer interaction supersedes the old one
++    pending = {
++      type: type,
++      name: name,
++      startTime: startTime,
++      url: location.href,
++      timer: setTimeout(function () { finish(false); }, TIMEOUT_MS)
++    };
++  }
++
++  function finish(painted, imgEl) {
++    var p = pending;
++    if (!p) return;
++    pending = null;
++    clearTimeout(p.timer);
++    if (!painted) return;
++    // Wait for the frame containing the update to be presented: rAF fires
++    // before paint, so measure after the following task.
++    requestAnimationFrame(function () {
++      var ch = new MessageChannel();
++      ch.port1.onmessage = function () {
++        report({
++          type: p.type,
++          name: p.name,
++          url: p.url,
++          startTime: p.startTime,
++          duration: performance.now() - p.startTime,
++          contentful: imgEl ? 'image' : 'text'
++        });
++      };
++      ch.port2.postMessage(null);
++    });
++  }
++
++  function isContentful(node) {
++    if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim().length > 0;
++    if (node.nodeType !== Node.ELEMENT_NODE) return false;
++    if (node.tagName === 'IMG' || node.tagName === 'SVG' || node.tagName === 'CANVAS') return true;
++    return (node.textContent || '').trim().length > 0 || !!node.querySelector('img,svg,canvas,video');
++  }
++
++  // Watch the DOM for contentful additions after an interaction/navigation.
++  new MutationObserver(function (records) {
++    if (!pending) return;
++    for (var i = 0; i < records.length; i++) {
++      var r = records[i];
++      if (r.type === 'characterData') {
++        if (r.target.textContent.trim()) return finish(true);
++        continue;
++      }
++      for (var j = 0; j < r.addedNodes.length; j++) {
++        var n = r.addedNodes[j];
++        if (!isContentful(n)) continue;
++        var img = n.nodeType === Node.ELEMENT_NODE &&
++          (n.tagName === 'IMG' ? n : n.querySelector('img'));
++        if (img && !img.complete) {
++          // Image content counts once it has actually loaded.
++          img.addEventListener('load', function () { finish(true, img); }, { once: true });
++          if (!(n.textContent || '').trim()) continue;
++        }
++        return finish(true);
++      }
++    }
++  }).observe(document, { childList: true, subtree: true, characterData: true });
++
++  // User interactions.
++  ['click', 'keydown', 'pointerdown'].forEach(function (type) {
++    document.addEventListener(type, function (e) {
++      // pointerdown is only the start of a click; the click restarts timing.
++      if (type === 'pointerdown' && e.target.closest && e.target.closest('a[href]')) return;
++      start('interaction:' + type, describe(e.target), e.timeStamp);
++    }, { capture: true, passive: true });
++  });
++
++  // Client-side navigations (History API and Navigation API).
++  ['pushState', 'replaceState'].forEach(function (fn) {
++    var orig = history[fn];
++    history[fn] = function () {
++      var res = orig.apply(this, arguments);
++      start('navigation', location.pathname, performance.now());
++      return res;
++    };
++  });
++  window.addEventListener('popstate', function (e) {
++    start('navigation', location.pathname, e.timeStamp);
++  });
++
++  // Browser-native entries, where supported (Chromium experimental).
++  ['soft-navigation', 'interaction-contentful-paint'].forEach(function (t) {
++    try {
++      new PerformanceObserver(function (list) {
++        list.getEntries().forEach(function (e) {
++          console.log('[native ' + t + ']', e.name || '', e.startTime);
++        });
++      }).observe({ type: t, buffered: true });
++    } catch (_) { /* unsupported entry type */ }
++  });
++})();

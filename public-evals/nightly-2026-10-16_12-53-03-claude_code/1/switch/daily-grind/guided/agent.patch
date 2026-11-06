@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+index 66c9173..23101ee 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,81 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Switch */
++    .switch-row {
++      display: flex;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .switch-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Fallback: styled checkbox where the native switch appearance is unsupported */
++    @supports not (appearance: switch) {
++      input[type="checkbox"][switch] {
++        appearance: none;
++        position: relative;
++        flex: none;
++        width: 3rem;
++        height: 1.75rem;
++        border: 2px solid var(--primary);
++        border-radius: 1rem;
++        background: white;
++        transition: background 0.2s;
++      }
++
++      input[type="checkbox"][switch]::before {
++        content: "";
++        position: absolute;
++        top: 50%;
++        left: 0.2rem;
++        width: 1.1rem;
++        height: 1.1rem;
++        border-radius: 50%;
++        background: var(--primary);
++        transform: translateY(-50%);
++        transition: left 0.2s, background 0.2s;
++      }
++
++      input[type="checkbox"][switch]:checked {
++        background: var(--primary);
++      }
++
++      input[type="checkbox"][switch]:checked::before {
++        left: calc(100% - 1.3rem);
++        background: white;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        input[type="checkbox"][switch],
++        input[type="checkbox"][switch]::before {
++          transition: none;
++        }
++      }
++    }
++
++    @media (forced-colors: active) {
++      input[type="checkbox"][switch]:checked::before {
++        background: HighlightText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,6 +269,12 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="switch-row">
++        <label class="switch-label">
++          <input type="checkbox" switch role="switch" name="seasonal-alerts">
++          Notify me about new seasonal drinks
++        </label>
++      </div>
+     </section>
+   </main>
+ 

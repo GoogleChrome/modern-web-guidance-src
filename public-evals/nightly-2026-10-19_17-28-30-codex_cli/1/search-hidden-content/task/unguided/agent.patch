@@ -1,0 +1,233 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,111 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .product-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 240px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    .sidebar {
++      background: var(--secondary);
++      padding: 24px;
++      border-radius: 8px;
++    }
++
++    .sidebar p {
++      margin-top: 8px;
++    }
++
++    .btn:focus-visible,
++    .wholesale-tab:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .btn:disabled {
++      background: var(--primary);
++      opacity: 0.7;
++      cursor: default;
++    }
++
++    .business-info {
++      margin-top: 40px;
++    }
++
++    .tab-list {
++      display: flex;
++      gap: 8px;
++      border-bottom: 2px solid var(--secondary);
++      margin-top: 16px;
++    }
++
++    .wholesale-tab {
++      padding: 12px 24px;
++      border: 0;
++      border-radius: 5px 5px 0 0;
++      background: var(--secondary);
++      color: var(--text);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .wholesale-tab[aria-selected="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .panel-content {
++      padding: 24px;
++      background: white;
++      border-radius: 0 0 8px 8px;
++    }
++
++    .panel-content p {
++      margin-top: 8px;
++    }
++
++    /* Keep the hidden-until-found wrappers free of padding and borders so
++       they take no visible space while their contents remain searchable. */
++    #coupon-panel .panel-content {
++      margin-top: 24px;
++      border: 2px dashed var(--primary);
++      border-radius: 8px;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      margin-top: 12px;
++      padding: 8px 16px;
++      background: var(--secondary);
++      font-size: 1.4rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++    }
++
++    [role="tabpanel"],
++    #coupon-panel {
++      scroll-margin-top: 90px;
++    }
++
++    @media (max-width: 760px) {
++      .product-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +271,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <div class="product-layout">
++    <div>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,8 +293,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="coupon-panel" hidden="until-found" aria-labelledby="coupon-heading" tabindex="-1">
++      <div class="panel-content">
++        <h2 id="coupon-heading">A little extra in your cup</h2>
++        <!-- Placeholder offer: replace with a configured, valid promotion before publishing. -->
++        <p>Use this code for 10% off your next order.</p>
++        <code class="coupon-code">GRIND10</code>
++      </div>
++    </section>
++    </div>
++
++    <aside class="sidebar" aria-labelledby="offer-heading">
++      <h2 id="offer-heading">Your coffee perk</h2>
++      <p>A little treat for your next coffee run.</p>
++      <button type="button" class="btn" id="reveal-coupon" aria-controls="coupon-panel" aria-expanded="false">Reveal coupon</button>
++    </aside>
++    </div>
++
++    <section class="business-info" aria-labelledby="business-heading">
++      <h2 id="business-heading">Good coffee, on a bigger scale</h2>
++      <div class="tab-list" role="tablist" aria-label="Wholesale and catering information">
++        <button type="button" class="wholesale-tab" id="wholesale-tab" role="tab" aria-selected="true" aria-controls="wholesale-panel" tabindex="0">Wholesale</button>
++        <button type="button" class="wholesale-tab" id="catering-tab" role="tab" aria-selected="false" aria-controls="catering-panel" tabindex="-1">Catering</button>
++      </div>
++      <div id="wholesale-panel" role="tabpanel" aria-labelledby="wholesale-tab" tabindex="0">
++        <div class="panel-content">
++          <h3>Coffee for your business</h3>
++          <p>Bring The Daily Grind to your café, office, or shop with freshly roasted wholesale coffee. Contact our team to discuss beans, order sizes, and regular deliveries.</p>
++          <a class="btn" href="/contact?interest=wholesale">Ask about wholesale</a>
++        </div>
++      </div>
++      <div id="catering-panel" role="tabpanel" aria-labelledby="catering-tab" tabindex="0" hidden="until-found">
++        <div class="panel-content">
++          <h3>Make your next gathering a coffee occasion</h3>
++          <p>From team breakfasts to celebrations, explore coffee catering for your event. Contact our team with your date, guest count, and location to discuss the details.</p>
++          <a class="btn" href="/contact?interest=catering">Ask about catering</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +344,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const tabs = Array.from(document.querySelectorAll('.wholesale-tab'));
++
++    function selectTab(selectedTab) {
++      tabs.forEach((tab) => {
++        const selected = tab === selectedTab;
++        const panel = document.getElementById(tab.getAttribute('aria-controls'));
++        tab.setAttribute('aria-selected', String(selected));
++        tab.tabIndex = selected ? 0 : -1;
++        if (selected) {
++          panel.removeAttribute('hidden');
++        } else {
++          // Ordinary hidden/display:none would prevent native find-in-page.
++          panel.setAttribute('hidden', 'until-found');
++        }
++      });
++    }
++
++    tabs.forEach((tab, index) => {
++      tab.addEventListener('click', () => selectTab(tab));
++      document.getElementById(tab.getAttribute('aria-controls'))
++        .addEventListener('beforematch', () => selectTab(tab));
++      tab.addEventListener('keydown', (event) => {
++        let nextIndex;
++        if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
++        else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
++        else if (event.key === 'Home') nextIndex = 0;
++        else if (event.key === 'End') nextIndex = tabs.length - 1;
++        else return;
++        event.preventDefault();
++        selectTab(tabs[nextIndex]);
++        tabs[nextIndex].focus();
++      });
++    });
++
++    const couponButton = document.getElementById('reveal-coupon');
++    const couponPanel = document.getElementById('coupon-panel');
++
++    function revealCoupon() {
++      couponPanel.removeAttribute('hidden');
++      couponButton.setAttribute('aria-expanded', 'true');
++      couponButton.textContent = 'Coupon revealed';
++      couponButton.disabled = true;
++    }
++
++    couponButton.addEventListener('click', () => {
++      revealCoupon();
++      couponPanel.focus();
++    });
++    couponPanel.addEventListener('beforematch', revealCoupon);
++  </script>
+ </body>
+ 
+ </html>

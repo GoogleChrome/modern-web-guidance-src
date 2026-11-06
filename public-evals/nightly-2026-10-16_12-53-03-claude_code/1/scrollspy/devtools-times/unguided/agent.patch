@@ -1,0 +1,89 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..e6284d5 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,10 +8,80 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
+-            <slot />
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 lg:grid lg:grid-cols-[14rem_1fr] lg:gap-10">
++        <aside class="hidden lg:block order-last lg:order-first">
++            <nav id="section-nav" aria-label="On this page" class="sticky top-24 text-sm hidden">
++                <p class="font-semibold text-gray-900 mb-3">On this page</p>
++                <ul id="section-nav-list" class="space-y-2 border-l border-gray-200"></ul>
++            </nav>
++        </aside>
++        <div class="min-w-0">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            <div id="legal-content" class="prose max-w-none">
++                <slot />
++            </div>
+         </div>
+     </div>
+ </Layout>
++
++<script>
++    const headings = Array.from(document.querySelectorAll<HTMLHeadingElement>('#legal-content h2'));
++    const nav = document.getElementById('section-nav');
++    const list = document.getElementById('section-nav-list');
++
++    if (nav && list && headings.length > 0) {
++        const linkClasses = 'block -ml-px pl-3 border-l-2 border-transparent text-gray-500 hover:text-gray-900';
++        const activeClasses = ['border-amber-400', 'text-gray-900', 'font-semibold'];
++        const inactiveClasses = ['border-transparent', 'text-gray-500'];
++        const links = new Map<Element, HTMLAnchorElement>();
++
++        headings.forEach((heading, i) => {
++            if (!heading.id) heading.id = `section-${i + 1}`;
++            heading.style.scrollMarginTop = '6rem';
++            const li = document.createElement('li');
++            const a = document.createElement('a');
++            a.href = `#${heading.id}`;
++            a.textContent = heading.textContent;
++            a.className = linkClasses;
++            li.appendChild(a);
++            list.appendChild(li);
++            links.set(heading, a);
++        });
++        nav.classList.remove('hidden');
++
++        const setActive = (heading: Element) => {
++            links.forEach((a, h) => {
++                const active = h === heading;
++                a.classList.remove(...(active ? inactiveClasses : activeClasses));
++                a.classList.add(...(active ? activeClasses : inactiveClasses));
++                if (active) a.setAttribute('aria-current', 'true');
++                else a.removeAttribute('aria-current');
++            });
++        };
++
++        // The active section is the last heading that has scrolled past the top offset.
++        const update = () => {
++            const offset = window.innerHeight * 0.25;
++            let current = headings[0];
++            for (const h of headings) {
++                if (h.getBoundingClientRect().top - offset <= 0) current = h;
++            }
++            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
++                current = headings[headings.length - 1];
++            }
++            setActive(current);
++        };
++
++        let ticking = false;
++        window.addEventListener('scroll', () => {
++            if (ticking) return;
++            ticking = true;
++            requestAnimationFrame(() => {
++                update();
++                ticking = false;
++            });
++        }, { passive: true });
++        window.addEventListener('resize', update);
++        update();
++    }
++</script>

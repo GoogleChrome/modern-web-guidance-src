@@ -1,0 +1,488 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,213 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Global Calendar Converter Section */
++    .calendar-section {
++      margin-top: 60px;
++      padding: 35px 30px;
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .calendar-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .calendar-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .calendar-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .calendar-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 30px;
++      flex-wrap: wrap;
++    }
++
++    .calendar-controls label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-controls input[type="date"] {
++      padding: 10px 14px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      color: var(--text);
++      background-color: var(--light);
++      font-family: inherit;
++      outline: none;
++      transition: border-color 0.2s;
++    }
++
++    .calendar-controls input[type="date"]:focus {
++      border-color: var(--primary);
++    }
++
++    .calendar-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++    }
++
++    .calendar-card {
++      background: var(--light);
++      border: 1px solid #e0e0e0;
++      border-radius: 10px;
++      padding: 24px;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++    }
++
++    .calendar-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .calendar-card-header h3 {
++      margin: 0;
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    .timeline-badge {
++      display: inline-block;
++      padding: 4px 12px;
++      border-radius: 20px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .timeline-Past {
++      background-color: #efebe9;
++      color: #5d4037;
++    }
++
++    .timeline-Today {
++      background-color: #ffe0b2;
++      color: #e65100;
++    }
++
++    .timeline-Future {
++      background-color: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .formatted-date-box {
++      background: white;
++      padding: 14px;
++      border-radius: 8px;
++      border-left: 4px solid var(--accent);
++      font-size: 1.1rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .calendar-meta-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 10px;
++    }
++
++    .meta-item {
++      background: white;
++      padding: 10px 12px;
++      border-radius: 6px;
++      border: 1px solid #eee;
++    }
++
++    .meta-label {
++      display: block;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      color: #795548;
++      margin-bottom: 2px;
++    }
++
++    .meta-value {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .month-breakdown {
++      background: white;
++      padding: 12px;
++      border-radius: 8px;
++      border: 1px solid #eee;
++    }
++
++    .month-breakdown-title {
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      color: #795548;
++      margin-bottom: 8px;
++    }
++
++    .month-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
++      gap: 6px;
++      list-style: none;
++    }
++
++    .month-chip {
++      background: var(--light);
++      border: 1px solid #e0e0e0;
++      border-radius: 4px;
++      padding: 4px 6px;
++      font-size: 0.78rem;
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .month-chip .m-sep {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++    }
++
++    .month-chip.active-month {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .month-chip .m-code {
++      font-weight: 700;
++    }
++
++    .month-chip .m-days {
++      font-size: 0.72rem;
++      opacity: 0.85;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +399,115 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-section" id="global-calendar-tool" aria-labelledby="calendar-section-heading">
++      <div class="calendar-header">
++        <h2 id="calendar-section-heading">Global Harvest &amp; Cultural Calendar Explorer</h2>
++        <p>Explore dates across non-Gregorian calendar systems used around the world.</p>
++      </div>
++
++      <div class="calendar-controls">
++        <label for="calendar-date-input">Select Date:</label>
++        <input type="date" id="calendar-date-input" name="calendar-date" aria-label="Select Date" />
++      </div>
++
++      <div class="calendar-grid" id="calendar-cards-container">
++        <!-- Islamic (Umm al-Qura) Card -->
++        <article class="card calendar-card" id="card-islamic-umalqura" data-calendar="islamic-umalqura">
++          <div class="calendar-card-header">
++            <h3>Islamic (Umm al-Qura)</h3>
++            <span class="timeline-badge" id="islamic-timeline" data-field="timeline">Today</span>
++          </div>
++          <div class="formatted-date-box" id="islamic-date" data-field="formatted-date">Loading...</div>
++          <div class="calendar-meta-grid">
++            <div class="meta-item">
++              <span class="meta-label">Converted Year</span>
++              <span class="meta-value" id="islamic-year" data-field="year">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Numeric Month</span>
++              <span class="meta-value" id="islamic-month" data-field="month">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Month Code</span>
++              <span class="meta-value" id="islamic-month-code" data-field="month-code">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Months in Year</span>
++              <span class="meta-value" id="islamic-months-in-year" data-field="months-in-year">-</span>
++            </div>
++          </div>
++          <div class="month-breakdown">
++            <div class="month-breakdown-title">Year Month Breakdown</div>
++            <ul class="month-list" id="islamic-months-breakdown" data-field="month-breakdown"></ul>
++          </div>
++        </article>
++
++        <!-- Hebrew Card -->
++        <article class="card calendar-card" id="card-hebrew" data-calendar="hebrew">
++          <div class="calendar-card-header">
++            <h3>Hebrew</h3>
++            <span class="timeline-badge" id="hebrew-timeline" data-field="timeline">Today</span>
++          </div>
++          <div class="formatted-date-box" id="hebrew-date" data-field="formatted-date">Loading...</div>
++          <div class="calendar-meta-grid">
++            <div class="meta-item">
++              <span class="meta-label">Converted Year</span>
++              <span class="meta-value" id="hebrew-year" data-field="year">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Numeric Month</span>
++              <span class="meta-value" id="hebrew-month" data-field="month">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Month Code</span>
++              <span class="meta-value" id="hebrew-month-code" data-field="month-code">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Months in Year</span>
++              <span class="meta-value" id="hebrew-months-in-year" data-field="months-in-year">-</span>
++            </div>
++          </div>
++          <div class="month-breakdown">
++            <div class="month-breakdown-title">Year Month Breakdown</div>
++            <ul class="month-list" id="hebrew-months-breakdown" data-field="month-breakdown"></ul>
++          </div>
++        </article>
++
++        <!-- Japanese Card -->
++        <article class="card calendar-card" id="card-japanese" data-calendar="japanese">
++          <div class="calendar-card-header">
++            <h3>Japanese</h3>
++            <span class="timeline-badge" id="japanese-timeline" data-field="timeline">Today</span>
++          </div>
++          <div class="formatted-date-box" id="japanese-date" data-field="formatted-date">Loading...</div>
++          <div class="calendar-meta-grid">
++            <div class="meta-item">
++              <span class="meta-label">Converted Year</span>
++              <span class="meta-value" id="japanese-year" data-field="year">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Numeric Month</span>
++              <span class="meta-value" id="japanese-month" data-field="month">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Month Code</span>
++              <span class="meta-value" id="japanese-month-code" data-field="month-code">-</span>
++            </div>
++            <div class="meta-item">
++              <span class="meta-label">Months in Year</span>
++              <span class="meta-value" id="japanese-months-in-year" data-field="months-in-year">-</span>
++            </div>
++          </div>
++          <div class="month-breakdown">
++            <div class="month-breakdown-title">Year Month Breakdown</div>
++            <ul class="month-list" id="japanese-months-breakdown" data-field="month-breakdown"></ul>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +518,154 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    async function ensureTemporal() {
++      if (typeof globalThis.Temporal !== 'undefined') {
++        return globalThis.Temporal;
++      }
++      const mod = await import('https://esm.sh/@js-temporal/polyfill');
++      const TemporalObj = mod.Temporal || (mod.default && mod.default.Temporal);
++      if (TemporalObj) {
++        globalThis.Temporal = TemporalObj;
++      }
++      return globalThis.Temporal;
++    }
++
++    const CALENDARS = [
++      {
++        id: 'islamic-umalqura',
++        prefix: 'islamic',
++        formatOptions: {
++          calendar: 'islamic-umalqura',
++          year: 'numeric',
++          month: 'long',
++          day: 'numeric'
++        }
++      },
++      {
++        id: 'hebrew',
++        prefix: 'hebrew',
++        formatOptions: {
++          calendar: 'hebrew',
++          year: 'numeric',
++          month: 'long',
++          day: 'numeric'
++        }
++      },
++      {
++        id: 'japanese',
++        prefix: 'japanese',
++        formatOptions: {
++          calendar: 'japanese',
++          era: 'long',
++          year: 'numeric',
++          month: 'long',
++          day: 'numeric'
++        }
++      }
++    ];
++
++    function getTimelineStatus(Temporal, selectedIsoDate, todayIsoDate) {
++      const cmp = Temporal.PlainDate.compare(selectedIsoDate, todayIsoDate);
++      if (cmp < 0) return 'Past';
++      if (cmp > 0) return 'Future';
++      return 'Today';
++    }
++
++    function renderCalendars(Temporal, isoDateString) {
++      if (!isoDateString) return;
++
++      let selectedIsoDate;
++      try {
++        selectedIsoDate = Temporal.PlainDate.from(isoDateString);
++      } catch (err) {
++        return;
++      }
++
++      const todayIsoDate = Temporal.Now.plainDateISO();
++      const timelineStatus = getTimelineStatus(Temporal, selectedIsoDate, todayIsoDate);
++
++      for (const calConfig of CALENDARS) {
++        const convertedDate = selectedIsoDate.withCalendar(calConfig.id);
++
++        // 1. Formatted localized date (with era names for Japanese)
++        const formattedDateStr = convertedDate.toLocaleString('en-US', calConfig.formatOptions);
++        const dateEl = document.getElementById(`${calConfig.prefix}-date`);
++        if (dateEl) {
++          dateEl.textContent = formattedDateStr;
++        }
++
++        // 2. Converted year, numeric month, and unique stable month code
++        const yearEl = document.getElementById(`${calConfig.prefix}-year`);
++        if (yearEl) {
++          yearEl.textContent = String(convertedDate.year);
++        }
++
++        const monthEl = document.getElementById(`${calConfig.prefix}-month`);
++        if (monthEl) {
++          monthEl.textContent = String(convertedDate.month);
++        }
++
++        const monthCodeEl = document.getElementById(`${calConfig.prefix}-month-code`);
++        if (monthCodeEl) {
++          monthCodeEl.textContent = convertedDate.monthCode;
++        }
++
++        // 3. Total number of months in that specific calendar year
++        const monthsInYearEl = document.getElementById(`${calConfig.prefix}-months-in-year`);
++        if (monthsInYearEl) {
++          monthsInYearEl.textContent = String(convertedDate.monthsInYear);
++        }
++
++        // 4. Timeline label comparing selected date against current date ('Past', 'Future', or 'Today')
++        const timelineEl = document.getElementById(`${calConfig.prefix}-timeline`);
++        if (timelineEl) {
++          timelineEl.textContent = timelineStatus;
++          timelineEl.className = `timeline-badge timeline-${timelineStatus}`;
++        }
++
++        // 5. Month breakdown showing each month's code and how many days are in that month for that specific year
++        const breakdownEl = document.getElementById(`${calConfig.prefix}-months-breakdown`);
++        if (breakdownEl) {
++          breakdownEl.innerHTML = '';
++          const totalMonths = convertedDate.monthsInYear;
++          for (let m = 1; m <= totalMonths; m++) {
++            const monthDate = convertedDate.with({ month: m, day: 1 });
++            const li = document.createElement('li');
++            const isCurrentMonth = monthDate.monthCode === convertedDate.monthCode;
++            li.className = `month-chip${isCurrentMonth ? ' active-month' : ''}`;
++            li.dataset.monthCode = monthDate.monthCode;
++            li.dataset.daysInMonth = String(monthDate.daysInMonth);
++            li.innerHTML = `<span class="m-code">${monthDate.monthCode}</span><span class="m-sep">: </span><span class="m-days">${monthDate.daysInMonth} days</span>`;
++            breakdownEl.appendChild(li);
++          }
++        }
++      }
++    }
++
++    async function initCalendarTool() {
++      const Temporal = await ensureTemporal();
++      const dateInput = document.getElementById('calendar-date-input');
++      if (!dateInput || !Temporal) return;
++
++      const todayIso = Temporal.Now.plainDateISO().toString();
++      if (!dateInput.value) {
++        dateInput.value = todayIso;
++      }
++
++      renderCalendars(Temporal, dateInput.value);
++
++      const handleUpdate = (e) => {
++        renderCalendars(Temporal, e.target.value);
++      };
++
++      dateInput.addEventListener('input', handleUpdate);
++      dateInput.addEventListener('change', handleUpdate);
++    }
++
++    initCalendarTool();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    /* Info button + tooltip (CSS anchor positioning, no JS) */
++    .info-btn {
++      anchor-name: --info-anchor;
++      width: 2.2rem;
++      height: 2.2rem;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .tooltip {
++      /* reset UA popover styles */
++      border: 0;
++      padding: 0;
++      background: transparent;
++      overflow: visible;
++      inset: auto;
++      margin: 0;
++
++      position: fixed;
++      position-anchor: --info-anchor;
++      position-area: top;
++      position-try-fallbacks: --below;
++      width: max-content;
++      max-width: min(16rem, 90vw);
++
++      /* lets descendants query which position is active */
++      container-type: anchored;
++    }
++
++    @position-try --below {
++      position-area: bottom;
++    }
++
++    .tooltip-body {
++      --arrow: 8px;
++      position: relative;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      padding: 10px 14px;
++      margin: 0 0 var(--arrow);
++      border-radius: 10px 10px 10px 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    /* Arrow: default is above the trigger, pointing down */
++    .tooltip-body::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      translate: -50% 0;
++      border: var(--arrow) solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-width: 0;
++    }
++
++    /* Flipped below the trigger: arrow points up, margins and radius change */
++    @container anchored(fallback: --below) {
++      .tooltip-body {
++        margin: var(--arrow) 0 0;
++        border-radius: 0 0 10px 10px;
++      }
++
++      .tooltip-body::after {
++        top: auto;
++        bottom: 100%;
++        border-top-width: 0;
++        border-top-color: transparent;
++        border-bottom-width: var(--arrow);
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +277,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="maple-tip"
++              aria-describedby="maple-tip" aria-label="More info about the Maple Oat Latte">i</button>
++          </div>
++          <div id="maple-tip" class="tooltip" role="tooltip" popover>
++            <div class="tooltip-body">Made with oat milk, espresso, and Vermont maple syrup. Dairy-free and served hot or iced.</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

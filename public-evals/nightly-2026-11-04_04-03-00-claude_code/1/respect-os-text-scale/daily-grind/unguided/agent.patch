@@ -1,0 +1,299 @@
+diff --git a/index.html b/index.html
+index 66c9173..54b2d78 100644
+--- a/index.html
++++ b/index.html
+@@ -6,15 +6,48 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++     * Accessibility-first sizing:
++     * - The root font size is never set in px, so the browser/OS text-size
++     *   preference is the base for every rem/em value below.
++     * - On Apple platforms, -apple-system-body maps the root size to the
++     *   system Dynamic Type setting (iOS/iPadOS "Larger Text").
++     * - Typography, spacing, borders-radius and layout breakpoints use
++     *   rem/em so the whole page scales proportionally with the user's text.
++     */
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Spacing scale (tracks the user's text size) */
++      --space-2xs: 0.25rem;
++      --space-xs: 0.5rem;
++      --space-sm: 0.75rem;
++      --space-md: 1rem;
++      --space-lg: 1.5rem;
++      --space-xl: 2.5rem;
++
++      /* Horizontal page gutter: grows on wide screens, never below 1rem */
++      --gutter: max(1rem, 5vw);
++    }
++
++    @supports (font: -apple-system-body) {
++      html {
++        font: -apple-system-body;
++      }
+     }
+ 
+-    * {
++    html {
++      -webkit-text-size-adjust: 100%;
++      text-size-adjust: 100%;
++    }
++
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -22,19 +55,34 @@
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 1rem;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: break-word;
++    }
++
++    h1,
++    h2,
++    h3 {
++      line-height: 1.2;
++    }
++
++    a:focus-visible {
++      outline: 0.1875rem solid var(--accent);
++      outline-offset: 0.1875rem;
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: var(--space-md) var(--gutter);
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: var(--space-sm) var(--space-lg);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -43,22 +91,26 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.04em;
++      line-height: 1.2;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: var(--space-xs) var(--space-md);
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      line-height: 1.3;
++      /* Comfortable touch target that scales with text */
++      padding: var(--space-2xs) 0;
+       transition: color 0.3s;
+     }
+ 
+@@ -67,67 +119,108 @@
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      border: 0.0625rem solid var(--accent);
++      padding: 0.3em 0.85em;
++      border-radius: 0.25rem;
++    }
++
++    /*
++     * When the text is large relative to the viewport (big text setting
++     * or narrow screen), stack the nav and let it scroll away so it
++     * doesn't cover the content.
++     */
++    @media (max-width: 48em) {
++      nav {
++        position: static;
++        flex-direction: column;
++        align-items: flex-start;
++      }
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      /* min-height (not height) so large text grows the banner instead of overflowing */
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
++      gap: var(--space-md);
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: var(--space-xl) var(--gutter);
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /* Fluid, but every bound is rem-based so it always tracks the user's text size */
++      font-size: clamp(2rem, 1.5rem + 2.5vw, 3rem);
++      max-width: 20ch;
++    }
++
++    .hero p {
++      font-size: 1.125rem;
++      max-width: 40ch;
++    }
++
++    .hero .btn {
++      margin-top: var(--space-xs);
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 70rem;
++      margin: var(--space-xl) auto;
++      padding: 0 var(--space-md);
++    }
++
++    .container h2 {
++      font-size: 1.75rem;
++      text-align: center;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      /* min() prevents horizontal overflow when 16rem is wider than the viewport at large text */
++      grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
++      gap: var(--space-lg);
++      margin-top: var(--space-lg);
+     }
+ 
+     .card {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: var(--space-lg);
++      border-radius: 0.5rem;
++      box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      margin-bottom: var(--space-xs);
+       color: var(--primary);
+     }
+ 
++    .card p {
++      flex-grow: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.625em 1.25em;
++      line-height: 1.3;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3125rem;
++      margin-top: var(--space-md);
+       transition: background 0.3s;
+     }
+ 
+@@ -138,26 +231,33 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: var(--space-xl) var(--space-md);
++      margin-top: var(--space-xl);
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: var(--space-md);
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      display: inline-block;
++      margin: 0 var(--space-xs);
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (prefers-reduced-motion: reduce) {
++      * {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +276,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,1104 @@
+diff --git a/package.json b/package.json
+index 2e1f2e8..fcea70f 100644
+--- a/package.json
++++ b/package.json
+@@ -20,10 +20,12 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "use-webmcp-tool": "^0.3.0"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..4f6a81e 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,19 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const handleUpdate = (event: Event) => {
++      const customEvent = event as CustomEvent<{ readingList?: string[] }>;
++      if (customEvent.detail?.readingList) {
++        setIsBookmarked(customEvent.detail.readingList.includes(slug));
++      }
++    };
++    window.addEventListener('reading-list-updated', handleUpdate);
++    return () => {
++      window.removeEventListener('reading-list-updated', handleUpdate);
++    };
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -20,6 +33,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: data.readingList } }));
+   };
+ 
+   return (
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..b3a6545 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState, useMemo } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -18,6 +19,107 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    const normalizedCategories = useMemo(
++        () => [...new Set(categories.map((c) => c.toLowerCase()))],
++        [categories]
++    );
++
++    const categorySchema = useMemo(
++        () => ({
++            type: 'object',
++            properties: {
++                category: {
++                    type: 'string',
++                    enum: normalizedCategories,
++                    description: 'Optional category filter to list only articles in that section.',
++                },
++            },
++        }),
++        [normalizedCategories]
++    );
++
++    const navigateSchema = useMemo(
++        () => ({
++            type: 'object',
++            properties: {
++                category: {
++                    type: 'string',
++                    enum: normalizedCategories,
++                    description: 'Target category section to open.',
++                },
++            },
++            required: ['category'],
++        }),
++        [normalizedCategories]
++    );
++
++    useWebMCP({
++        name: 'list-articles-by-category',
++        description: 'Lists available news articles, optionally filtered by category, along with all available categories, reports, and multimedia items. Use when the user wants to browse sections or see articles in a category.',
++        inputSchema: categorySchema,
++        execute({ category }: { category?: string }) {
++            let matchingArticles = articles;
++            if (category !== undefined) {
++                if (typeof category !== 'string' || !normalizedCategories.includes(category.toLowerCase())) {
++                    return {
++                        error: `Category "${category}" not found.`,
++                        availableCategories: normalizedCategories,
++                    };
++                }
++                matchingArticles = articles.filter(
++                    (a) => a.data?.category?.toLowerCase() === category.toLowerCase()
++                );
++            }
++
++            return {
++                categories: normalizedCategories,
++                articles: matchingArticles.map((a) => ({
++                    slug: a.id,
++                    title: a.data?.title,
++                    summary: a.data?.summary,
++                    category: a.data?.category,
++                    author: a.data?.author,
++                    readingTime: a.data?.readingTime,
++                })),
++                reports: reports.map((r) => ({
++                    slug: r.id || r.slug,
++                    title: r.data?.title,
++                    description: r.data?.description,
++                    category: r.data?.category,
++                })),
++                multimedia: multimedia.map((m) => ({
++                    slug: m.id || m.slug,
++                    title: m.data?.title,
++                    description: m.data?.description,
++                    category: m.data?.category,
++                })),
++            };
++        },
++        annotations: {
++            readOnlyHint: true,
++        },
++    });
++
++    useWebMCP({
++        name: 'navigate-to-category',
++        description: 'Navigates the browser to the specified news category page. Use when the user asks to open or go to a specific category section.',
++        inputSchema: navigateSchema,
++        execute({ category }: { category?: string }) {
++            if (typeof category !== 'string' || !normalizedCategories.includes(category.toLowerCase())) {
++                return {
++                    error: `Category "${category}" not found.`,
++                    availableCategories: normalizedCategories,
++                };
++            }
++            const targetUrl = `${import.meta.env.BASE_URL}category/${encodeURIComponent(category.toLowerCase())}`;
++            window.location.assign(targetUrl);
++            return { navigatedTo: targetUrl, category: category.toLowerCase() };
++        },
++        annotations: {
++            readOnlyHint: false,
++        },
++    });
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..f9473d2 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+ interface Article {
+@@ -22,6 +23,118 @@ export default function ReadingListButton() {
+     fetchArticles();
+   }, []);
+ 
++  const ensureArticles = async (signal?: AbortSignal): Promise<Article[]> => {
++    if (articles.length > 0) {
++      return articles;
++    }
++    const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal });
++    if (!response.ok) {
++      throw new Error(`Failed to fetch articles with status ${response.status}`);
++    }
++    const data = await response.json();
++    setArticles(data);
++    return data;
++  };
++
++  useWebMCP({
++    name: 'get-reading-list',
++    description: 'Retrieves the articles currently saved in the user\'s reading list and opens the reading list view. Use when the user wants to inspect their saved or bookmarked articles.',
++    inputSchema: {
++      type: 'object',
++      properties: {},
++    },
++    async execute(_input, { signal }) {
++      try {
++        const [allArticles, listResponse] = await Promise.all([
++          ensureArticles(signal),
++          fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, { signal }),
++        ]);
++        if (!listResponse.ok) {
++          return { error: `Failed to fetch reading list with status ${listResponse.status}` };
++        }
++        const listData = await listResponse.json();
++        const slugs: string[] = listData.readingList || [];
++        const savedArticles = allArticles.filter((article) => slugs.includes(article.slug));
++        setIsOpen(true);
++        return {
++          count: savedArticles.length,
++          articles: savedArticles,
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++    annotations: {
++      readOnlyHint: true,
++    },
++  });
++
++  useWebMCP({
++    name: 'toggle-reading-list-article',
++    description: 'Adds an article to the reading list if not present, or removes it if already bookmarked. Use when the user wants to bookmark or unbookmark an article.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: {
++          type: 'string',
++          description: 'Identifier slug of the article to add or remove.',
++        },
++      },
++      required: ['slug'],
++    },
++    async execute({ slug }: { slug?: string }, { signal }) {
++      if (typeof slug !== 'string' || !slug.trim()) {
++        return { error: 'Pass a valid article slug.' };
++      }
++      try {
++        const allArticles = await ensureArticles(signal);
++        const target = allArticles.find((a) => a.slug === slug.trim());
++        if (!target) {
++          return {
++            error: `Article "${slug}" not found.`,
++            availableSlugs: allArticles.map((a) => a.slug),
++          };
++        }
++
++        const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify({ slug: target.slug }),
++          signal,
++        });
++
++        if (!response.ok) {
++          return { error: `Request failed with status ${response.status}` };
++        }
++
++        const data = await response.json();
++        const readingList: string[] = data.readingList || [];
++        const isBookmarked = readingList.includes(target.slug);
++        window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList } }));
++
++        return {
++          slug: target.slug,
++          title: target.title,
++          bookmarked: isBookmarked,
++          readingList,
++        };
++      } catch (err) {
++        if (signal.aborted) {
++          throw err;
++        }
++        return { error: err instanceof Error ? err.message : String(err) };
++      }
++    },
++    annotations: {
++      readOnlyHint: false,
++    },
++  });
++
+   return (
+     <>
+       <button onClick={() => setIsOpen(true)} className="p-1">
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..5fe6fa0 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -30,22 +30,34 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         onClose();
+       }
+     };
++    const handleReadingListUpdated = (event: Event) => {
++      const customEvent = event as CustomEvent<{ readingList?: string[] }>;
++      if (customEvent.detail?.readingList) {
++        setReadingList(customEvent.detail.readingList);
++      } else {
++        fetchReadingList();
++      }
++    };
+     window.addEventListener('keydown', handleKeyDown);
++    window.addEventListener('reading-list-updated', handleReadingListUpdated);
+ 
+     return () => {
+       window.removeEventListener('keydown', handleKeyDown);
++      window.removeEventListener('reading-list-updated', handleReadingListUpdated);
+     };
+   }, [onClose]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify({ slug }),
+     });
+-    fetchReadingList();
++    const data = await response.json();
++    setReadingList(data.readingList);
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: data.readingList } }));
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..0871225 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,24 +1,42 @@
+ 
+ import React, { useState } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
+ import SearchFlyout from './SearchFlyout';
+ 
+ interface Article {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
++    const [initialQuery, setInitialQuery] = useState('');
++
++    const fetchArticlesList = async (signal?: AbortSignal): Promise<Article[]> => {
++        if (articles.length > 0) {
++            return articles;
++        }
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal });
++        if (!response.ok) {
++            throw new Error(`Request failed with status ${response.status}`);
++        }
++        const data = await response.json();
++        setArticles(data);
++        return data;
++    };
+ 
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
++            setIsLoading(true);
++            await fetchArticlesList();
+             setIsFlyoutOpen(true);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
++            setIsFlyoutOpen(true);
+         } finally {
+             setIsLoading(false);
+         }
+@@ -28,6 +46,50 @@ export default function SearchButton() {
+         setIsFlyoutOpen(false);
+     };
+ 
++    useWebMCP({
++        name: 'search-articles',
++        description: 'Searches published articles by keyword and displays matching articles in the search dialog. Use when the user wants to find articles about a topic.',
++        inputSchema: {
++            type: 'object',
++            properties: {
++                query: {
++                    type: 'string',
++                    description: 'Keywords or phrase to match against article titles and summaries.',
++                },
++            },
++            required: ['query'],
++        },
++        async execute({ query }: { query?: string }, { signal }) {
++            if (typeof query !== 'string' || !query.trim()) {
++                return { error: 'Pass a non-empty search query.' };
++            }
++            try {
++                const allArticles = await fetchArticlesList(signal);
++                const normalized = query.trim().toLowerCase();
++                const matches = allArticles.filter(
++                    (article) =>
++                        article.title.toLowerCase().includes(normalized) ||
++                        article.summary.toLowerCase().includes(normalized)
++                );
++                setInitialQuery(query.trim());
++                setIsFlyoutOpen(true);
++                return {
++                    query: query.trim(),
++                    count: matches.length,
++                    articles: matches,
++                };
++            } catch (err) {
++                if (signal.aborted) {
++                    throw err;
++                }
++                return { error: err instanceof Error ? err.message : String(err) };
++            }
++        },
++        annotations: {
++            readOnlyHint: true,
++        },
++    });
++
+     return (
+         <>
+             <button
+@@ -43,7 +105,13 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && (
++                <SearchFlyout
++                    articles={articles}
++                    initialQuery={initialQuery}
++                    onClose={closeSearch}
++                />
++            )}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..e77ffa6 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,6 +1,11 @@
+ 
+ import React, { useState, useMemo, useEffect } from 'react';
+ 
++type AgentSubmitEvent = SubmitEvent & {
++    agentInvoked?: boolean;
++    respondWith?: (promise: Promise<unknown>) => void;
++};
++
+ interface Article {
+     slug: string;
+     title: string;
+@@ -10,6 +15,7 @@ interface Article {
+ 
+ interface Props {
+     articles: Article[];
++    initialQuery?: string;
+     onClose: () => void;
+ }
+ 
+@@ -18,9 +24,22 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
+-    const [searchTerm, setSearchTerm] = useState('');
++export default function SearchFlyout({ articles, initialQuery = '', onClose }: Props) {
++    const [searchTerm, setSearchTerm] = useState(initialQuery);
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const [allArticles, setAllArticles] = useState<Article[]>(articles);
++
++    useEffect(() => {
++        if (initialQuery) {
++            setSearchTerm(initialQuery);
++        }
++    }, [initialQuery]);
++
++    useEffect(() => {
++        if (articles.length > 0) {
++            setAllArticles(articles);
++        }
++    }, [articles]);
+ 
+     useEffect(() => {
+         const handleKeyDown = (event: KeyboardEvent) => {
+@@ -35,6 +54,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+             try {
+                 const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+                 const data = await response.json();
++                setAllArticles(data);
+                 setSuggestions(getShuffledItems(data, 3));
+             } catch (error) {
+                 console.error('Failed to fetch suggestions:', error);
+@@ -52,11 +72,36 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         if (!searchTerm) {
+             return [];
+         }
+-        return articles.filter(article =>
++        return allArticles.filter(article =>
+             article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+         );
+-    }, [articles, searchTerm]);
++    }, [allArticles, searchTerm]);
++
++    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++        e.preventDefault();
++        const nativeEvent = e.nativeEvent as AgentSubmitEvent;
++        const formData = new FormData(e.currentTarget);
++        const query = ((formData.get('query') as string) ?? searchTerm).trim();
++
++        if (!query) {
++            if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++                nativeEvent.respondWith(Promise.resolve('Validation failed: query (Search query is required)'));
++            }
++            return;
++        }
++
++        setSearchTerm(query);
++        const matches = allArticles.filter(
++            (article) =>
++                article.title.toLowerCase().includes(query.toLowerCase()) ||
++                article.summary.toLowerCase().includes(query.toLowerCase())
++        );
++
++        if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++            nativeEvent.respondWith(Promise.resolve(JSON.stringify({ query, count: matches.length, articles: matches })));
++        }
++    };
+ 
+     return (
+         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+@@ -85,15 +130,30 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <form
++                        onSubmit={handleFormSubmit}
++                        {...({
++                            toolname: 'filter-search-flyout',
++                            tooldescription: 'Filter articles inside the open search flyout by keyword.',
++                            toolautosubmit: '',
++                        } as any)}
++                    >
++                        <label htmlFor="search-flyout-query" className="block text-sm font-semibold text-gray-500 mb-3">
++                            Search
++                        </label>
++                        <input
++                            id="search-flyout-query"
++                            name="query"
++                            type="text"
++                            placeholder="Search for articles..."
++                            required
++                            {...({ toolparamdescription: 'Keywords to search for, e.g., cycling, AI, coffee' } as any)}
++                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                            value={searchTerm}
++                            onChange={e => setSearchTerm(e.target.value)}
++                            autoFocus
++                        />
++                    </form>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..952fc38 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,10 @@
+ import React, { useState } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
++
++type AgentSubmitEvent = SubmitEvent & {
++  agentInvoked?: boolean;
++  respondWith?: (promise: Promise<unknown>) => void;
++};
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +13,7 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const performSignIn = async (user: string, pass: string, signal?: AbortSignal) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,26 +24,83 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: user, password: pass }),
++        signal,
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const errMsg = `Login failed: ${data.error || 'Unknown error'}`;
++        setError(errMsg);
++        return { error: errMsg };
+       } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        const successMsg = 'Login successful!';
++        setSuccess(successMsg);
++        return { status: 'success', message: successMsg };
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      if (signal?.aborted) {
++        throw err;
++      }
++      const errMsg = 'An unexpected error occurred. Please try again later.';
++      setError(errMsg);
++      return { error: errMsg };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  useWebMCP({
++    name: 'sign-in-user',
++    description: 'Authenticates an existing user account. Use when the user wants to sign in to their DevTools Times account.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        username: { type: 'string', description: 'Account username.' },
++        password: { type: 'string', description: 'Account password.' },
++      },
++      required: ['username', 'password'],
++    },
++    async execute({ username: inputUser, password: inputPass }: { username?: string; password?: string }, { signal }) {
++      if (typeof inputUser !== 'string' || !inputUser.trim() || typeof inputPass !== 'string' || !inputPass) {
++        return { error: 'Both username and password are required to sign in.' };
++      }
++      setUsername(inputUser);
++      setPassword(inputPass);
++      return await performSignIn(inputUser, inputPass, signal);
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: true,
++    },
++  });
++
++  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    const nativeEvent = e.nativeEvent as AgentSubmitEvent;
++    const formData = new FormData(e.currentTarget);
++    const formUsername = (formData.get('username') as string) || username;
++    const formPassword = (formData.get('password') as string) || password;
++
++    if (!formUsername || !formPassword) {
++      const msg = 'Validation failed: username and password are required.';
++      setError(msg);
++      if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++        nativeEvent.respondWith(Promise.resolve(msg));
++      }
++      return;
++    }
++
++    const resultPromise = performSignIn(formUsername, formPassword).then((res) =>
++      'error' in res && res.error ? res.error : res.message
++    );
++
++    if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++      nativeEvent.respondWith(resultPromise);
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -55,7 +117,14 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({
++          toolname: 'sign-in-form',
++          tooldescription: 'Sign in to an existing DevTools Times account.',
++        } as any)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,9 +132,11 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            {...({ toolparamdescription: 'Account username, e.g., jdoe' } as any)}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+@@ -77,9 +148,11 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            {...({ toolparamdescription: 'Account password' } as any)}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..04202eb 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,10 @@
+ import React, { useState } from 'react';
++import { useWebMCP } from 'use-webmcp-tool';
++
++type AgentSubmitEvent = SubmitEvent & {
++  agentInvoked?: boolean;
++  respondWith?: (promise: Promise<unknown>) => void;
++};
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +13,7 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const performSignUp = async (user: string, pass: string, signal?: AbortSignal) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,27 +24,98 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: user, password: pass }),
++        signal,
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const errMsg = `Registration failed: ${data.error || 'Unknown error'}`;
++        setError(errMsg);
++        return { error: errMsg };
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        const successMsg = 'User registered successfully! You can now sign in.';
++        setSuccess(successMsg);
+         setUsername('');
+         setPassword('');
++        return { status: 'success', message: successMsg };
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      if (signal?.aborted) {
++        throw err;
++      }
++      const errMsg = 'An unexpected error occurred. Please try again later.';
++      setError(errMsg);
++      return { error: errMsg };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  useWebMCP({
++    name: 'register-user-account',
++    description: 'Registers a new user account on The DevTools Times. Use when the user wants to create an account or sign up.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        username: { type: 'string', description: 'Desired username for the new account.' },
++        password: { type: 'string', description: 'Password for the new account.' },
++      },
++      required: ['username', 'password'],
++    },
++    async execute({ username: inputUser, password: inputPass }: { username?: string; password?: string }, { signal }) {
++      if (typeof inputUser !== 'string' || !inputUser.trim()) {
++        return { error: 'A valid username is required.' };
++      }
++      if (typeof inputPass !== 'string' || inputPass.length < 8 || !/\d/.test(inputPass)) {
++        return { error: 'Password must be at least 8 characters long and contain a number.' };
++      }
++      setUsername(inputUser);
++      setPassword(inputPass);
++      return await performSignUp(inputUser, inputPass, signal);
++    },
++    annotations: {
++      readOnlyHint: false,
++      consequentialHint: true,
++    },
++  });
++
++  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    const nativeEvent = e.nativeEvent as AgentSubmitEvent;
++    const formData = new FormData(e.currentTarget);
++    const formUsername = (formData.get('username') as string) || username;
++    const formPassword = (formData.get('password') as string) || password;
++
++    const validationErrors: { field: string; message: string }[] = [];
++    if (!formUsername || !formUsername.trim()) {
++      validationErrors.push({ field: 'username', message: 'Username is required' });
++    }
++    if (!formPassword || formPassword.length < 8 || !/\d/.test(formPassword)) {
++      validationErrors.push({ field: 'password', message: 'Password must be at least 8 characters and contain a number' });
++    }
++
++    if (validationErrors.length > 0) {
++      const errorString =
++        'Validation failed: ' +
++        validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++      setError(errorString);
++      if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++        nativeEvent.respondWith(Promise.resolve(errorString));
++      }
++      return;
++    }
++
++    const resultPromise = performSignUp(formUsername, formPassword).then((res) =>
++      'error' in res && res.error ? res.error : res.message
++    );
++
++    if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++      nativeEvent.respondWith(resultPromise);
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+@@ -56,7 +132,14 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({
++          toolname: 'sign-up-form',
++          tooldescription: 'Create a new user account on The DevTools Times.',
++        } as any)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,9 +147,11 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            {...({ toolparamdescription: 'Desired username for the new account, e.g., alex_dev' } as any)}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+@@ -78,9 +163,11 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            {...({ toolparamdescription: 'Account password containing letters and digits' } as any)}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+           <p className="text-xs text-gray-500 mt-1">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..c307d35 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,38 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      let listenerController: AbortController | null = null;
++
++      function setupWebMCPLifecycleListeners() {
++        listenerController?.abort();
++        const controller = new AbortController();
++        listenerController = controller;
++
++        const targetFor = (type: string, listener: EventListener, options?: AddEventListenerOptions) =>
++          (`on${type}` in (document.modelContext ?? {}) ? document.modelContext! : window)
++            .addEventListener(type, listener, options);
++
++        targetFor(
++          'toolactivated',
++          ((event: Event) => {
++            const toolName = (event as ToolActivatedEvent).toolName;
++            console.info(`[WebMCP] Tool "${toolName}" started execution.`);
++          }) as EventListener,
++          { signal: controller.signal }
++        );
++
++        targetFor(
++          'toolcancel',
++          ((event: Event) => {
++            const toolName = (event as ToolCancelEvent).toolName;
++            console.info(`[WebMCP] Tool "${toolName}" execution is cancelled.`);
++          }) as EventListener,
++          { signal: controller.signal }
++        );
++      }
++
++      document.addEventListener('astro:page-load', setupWebMCPLifecycleListeners);
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..80f794b 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -36,7 +36,16 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article
++        class="max-w-3xl mx-auto px-4 py-8 md:py-12"
++        data-article-slug={article.id}
++        data-article-title={article.data.title}
++        data-article-summary={article.data.summary}
++        data-article-author={article.data.author}
++        data-article-date={article.data.date.toISOString()}
++        data-article-category={article.data.category}
++        data-article-reading-time={article.data.readingTime}
++    >
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -122,5 +131,85 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+     </section>
+ 
+-
++    <script>
++        let articleToolController: AbortController | null = null;
++
++        async function registerArticleTools() {
++            articleToolController?.abort();
++            articleToolController = null;
++
++            if (!('modelContext' in document) || !document.modelContext) {
++                return;
++            }
++
++            const articleEl = document.querySelector<HTMLElement>('article[data-article-slug]');
++            if (!articleEl) {
++                return;
++            }
++
++            const controller = new AbortController();
++            articleToolController = controller;
++
++            await document.modelContext.registerTool(
++                {
++                    name: 'get-current-article-details',
++                    description: 'Retrieves the full text content, metadata, and popularity metrics of the article currently displayed on the page. Use when the user asks questions about or wants a summary of the current article.',
++                    inputSchema: {
++                        type: 'object',
++                        properties: {
++                            includePopularity: {
++                                type: 'boolean',
++                                default: false,
++                                description: 'Whether to also fetch live view and trending statistics for the article.',
++                            },
++                        },
++                    },
++                    async execute({ includePopularity = false }: { includePopularity?: boolean } = {}, { signal }) {
++                        const slug = articleEl.dataset.articleSlug || '';
++                        const bodyEl = articleEl.querySelector('.prose');
++                        const content = bodyEl?.textContent?.trim() || '';
++
++                        let popularity: unknown = undefined;
++                        if (includePopularity && slug) {
++                            try {
++                                const res = await fetch(`${import.meta.env.BASE_URL}api/article-popularity?id=${encodeURIComponent(slug)}`, { signal });
++                                if (res.ok) {
++                                    popularity = await res.json();
++                                } else {
++                                    popularity = { error: `Popularity request failed with status ${res.status}` };
++                                }
++                            } catch (err) {
++                                if (signal.aborted) {
++                                    throw err;
++                                }
++                                popularity = { error: err instanceof Error ? err.message : String(err) };
++                            }
++                        }
++
++                        return {
++                            slug,
++                            title: articleEl.dataset.articleTitle || '',
++                            summary: articleEl.dataset.articleSummary || '',
++                            author: articleEl.dataset.articleAuthor || '',
++                            date: articleEl.dataset.articleDate || '',
++                            category: articleEl.dataset.articleCategory || '',
++                            readingTimeMinutes: Number(articleEl.dataset.articleReadingTime) || undefined,
++                            content,
++                            ...(popularity !== undefined ? { popularity } : {}),
++                        };
++                    },
++                    annotations: {
++                        readOnlyHint: true,
++                    },
++                },
++                { signal: controller.signal }
++            );
++        }
++
++        document.addEventListener('astro:page-load', registerArticleTools);
++        document.addEventListener('astro:before-swap', () => {
++            articleToolController?.abort();
++            articleToolController = null;
++        });
++    </script>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..71222b4 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,14 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++form:tool-form-active {
++  outline: 2px dashed #f59e0b;
++  background-color: rgba(245, 158, 11, 0.05);
++}
++
++button:tool-submit-active {
++  outline: 2px dashed #ef4444;
++  animation: pulse 2s infinite;
+ }
+\ No newline at end of file
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

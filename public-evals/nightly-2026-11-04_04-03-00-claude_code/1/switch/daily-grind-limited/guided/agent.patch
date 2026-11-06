@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+index 66c9173..1644d84 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Apply the saved preference before first paint to avoid a layout flash.
++    try { if (localStorage.getItem("compact-view") === "on") document.documentElement.dataset.compact = ""; } catch {}
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +139,53 @@
+       background: #3e2723;
+     }
+ 
++    /* Preference toggle */
++    .pref-toggle {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .pref-toggle input[type="checkbox"][switch] {
++      accent-color: var(--accent);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .pref-toggle input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Compact view preference */
++    [data-compact] .hero {
++      height: 35vh;
++    }
++
++    [data-compact] .hero h1 {
++      font-size: 2rem;
++      margin-bottom: 0.5rem;
++    }
++
++    [data-compact] .container {
++      margin: 20px auto;
++    }
++
++    [data-compact] .grid {
++      gap: 12px;
++    }
++
++    [data-compact] .card {
++      padding: 12px;
++    }
++
++    [data-compact] .btn {
++      padding: 6px 14px;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -165,6 +216,12 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <label class="pref-toggle">
++          Compact view
++          <input id="compact-toggle" type="checkbox" switch>
++        </label>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +264,31 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const KEY = "compact-view";
++      const toggle = document.getElementById("compact-toggle");
++      const root = document.documentElement;
++
++      const apply = (on) => {
++        root.toggleAttribute("data-compact", on);
++        toggle.checked = on;
++      };
++
++      apply(root.hasAttribute("data-compact"));
++
++      toggle.addEventListener("change", () => {
++        apply(toggle.checked);
++        try { localStorage.setItem(KEY, toggle.checked ? "on" : "off"); } catch {}
++      });
++
++      // Keep other open tabs in sync.
++      window.addEventListener("storage", (e) => {
++        if (e.key === KEY) apply(e.newValue === "on");
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

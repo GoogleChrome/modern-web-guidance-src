@@ -1,0 +1,71 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,66 @@
++# Site audit and optimization
++
++Audited October 14, 2026. Scope: the complete supplied site, its single HTML
++page, asset loading, links, responsive behavior, accessibility, metadata,
++and local development dependencies. All verification was automated.
++
++## Findings and changes
++
++| Area | Finding | Resolution |
++| --- | --- | --- |
++| Responsive layout | The original header overflows the mobile viewport; Logout can render outside its dark background, failing contrast. | Wrapping navigation, responsive spacing, fluid headings, and a single-column menu on smaller screens. |
++| Text enlargement | Enlarged text can expand grid tracks and the hero action beyond the viewport. | Zero-minimum grid tracks, bounded action width, and text wrapping; tested at 200% root font size at 320px. |
++| Navigation and functionality | Every original route points to an absent page. The repository contains no order, account, logout, rewards, locations, careers, contact, or privacy implementation. | Navigation now links to real menu and story sections. Each drink has a uniquely named native details disclosure. The ordering action now says “Explore the menu.” Unsupported service links were removed. |
++| Keyboard accessibility | No skip link or explicit focus treatment; repeated “View Details” labels conceal link purpose. | Focusable main landmark, skip link, visible focus outlines, descriptive disclosure labels, and native keyboard interactions. |
++| Touch accessibility | Small links and fixed header geometry constrain touch use. | Navigation and footer links have 44px minimum height; action and summaries have 48px minimum height. |
++| Hero loading | A remote CSS background is discovered after CSS processing and uses a single image size. | A parser-discoverable picture with high fetch priority, AVIF/WebP sources, responsive widths and sizes, explicit dimensions, and locally served files. |
++| Layout stability | Hero sizing depends on viewport height. | Content can grow within a minimum-height hero; image dimensions and positioning reserve stable space. |
++| Preferences | No forced-colors or print accommodations. | System fonts, no motion, forced-colors fallback, and a compact print layout. |
++| Search metadata | No meta description or favicon. | Descriptive metadata, theme color, and an SVG favicon; original page title and language retained. |
++| Privacy | The original image makes a third-party request and the privacy route is missing. | All visitor assets are local. A native disclosure describes the actual page behavior and distinguishes hosting-provider request logs. |
++| Maintainability | Starting the site fetches an unpinned server through `pnpm dlx`. | Installed server, committed dependency lockfile, HTML validation, and reproducible automated regression checks. |
++| Security | No runtime scripts or user-input processing exist to inspect. | Page remains JavaScript-free, avoids third-party runtime resources, and full dependency audit found no known vulnerabilities. |
++
++The existing photograph and coffee descriptions were retained. The story
++uses the existing sourcing and roasting claims. No store addresses, prices,
++opening hours, contact information, checkout, or authentication were invented.
++
++## Automated results
++
++Lighthouse comparison and lab metrics are recorded in [audit-results.json](audit-results.json).
++Both comparison runs used the same local Python HTTP server, default mobile
++Lighthouse emulation, and headless Chrome. A separate run against the installed
++Statikk server also scored 100 in all four categories. These are single-run lab
++measurements, not production Core Web Vitals or a guarantee of accessibility.
++
++`pnpm test` passed:
++
++- HTML validation.
++- Image loading and absence of horizontal overflow at 320, 390, 768, and 1440px.
++- Every link's fragment resolves to exactly one target.
++- Reflow at 200% root font size on a 320px viewport.
++- Keyboard skip-to-content focus and all four native disclosures.
++- Content and navigation with JavaScript disabled, with no failed requests or HTTP errors.
++- Axe WCAG A/AA checks at 320px and 1440px with all disclosures open: zero violations.
++- Forced-colors image fallback.
++
++`pnpm audit` found no known vulnerabilities across all dependencies.
++`git diff --check` passed. No manual browser verification was performed.
++
++To reproduce a Lighthouse audit against the running site:
++
++```sh
++pnpm dlx lighthouse http://localhost:11222 \
++  --chrome-flags='--headless --no-sandbox' \
++  --only-categories=performance,accessibility,best-practices,seo \
++  --output=json --output-path=/tmp/daily-grind-lighthouse.json
++```
++
++## Remaining work requiring real business or deployment information
++
++- Restore ordering, account, rewards, store, hiring, and contact entry points only when their destinations and services exist.
++- Verify the original ethical-sourcing and local-roasting claims before publishing.
++- Add a production canonical URL, sitemap, and appropriate business structured data once a domain, addresses, and business details are supplied.
++- Configure production HTTPS, HTML compression, security headers, and asset caching in the actual hosting platform. The static local server is not a deployment configuration. Use revalidation for HTML and versioned filenames before long-lived immutable asset caching. Lighthouse's local cache-lifetime warning remains a hosting concern.
++- Confirm privacy wording against the chosen hosting provider and any future analytics or account services.
++- Measure production performance on real devices and traffic after deployment. Screen-reader usability has not been manually assessed, in accordance with the requested automated-only verification.

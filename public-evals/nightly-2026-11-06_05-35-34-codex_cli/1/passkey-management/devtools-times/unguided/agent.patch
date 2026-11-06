@@ -1,0 +1,1750 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..9934840 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,5 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..6e9bae5 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,40 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Account settings and passkeys
++
++Signed-in readers can open **Account settings** from the header at
++`/devtools-times/account/settings`. Password sign-in is verified by the existing
++Times identity service; the app then creates an HttpOnly, same-site server session.
++Readers can register a passkey, rename its local label, remove it, or update their
++account display name. Registered passkeys can also be used on the sign-in page.
++
++The app requires Node.js 22.13 or newer for built-in SQLite. Accounts and verified
++credentials are persisted in `.data/accounts.sqlite`; sessions live in
++`.data/sessions`. Mount `.data` on persistent storage for a single-instance
++deployment. Set `ACCOUNT_DB_PATH` to relocate the database. For multiple instances,
++use shared credential and session stores rather than separate local files.
++
++Set `WEBAUTHN_RP_ID` to the public hostname (without a scheme or port), and
++`WEBAUTHN_ORIGIN` to the exact public origin when deploying behind a proxy. They
++default to the incoming request hostname and origin. WebAuthn requires HTTPS
++(localhost is allowed). Existing credentials belonging to another RP, origin, or
++identity service cannot be imported by the browser; connect that service's
++credential store if migrating an existing passkey installation.
++
++Credential changes are authorized against the session's account and RP. The
++complete server list is signaled to compatible password managers on page load,
++registration, and deletion. Account display-name changes use the user-details
++signal; a passkey nickname is only a server label. Signal failures do not undo
++saved changes, and readers can retry synchronization. Unsupported browsers get
++manual password-manager guidance.
++
++Provider metadata is a bundled subset of the
++[community AAGUID registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids),
++with a generic fallback for unknown or anonymized authenticators. It is display
++metadata, not a security assertion.
++
++Run `pnpm run build` for a production build and `node --test tests/*.test.mjs`
++on Node.js 22.18+ for isolated storage and synchronization tests. No running server
++is needed for these checks.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..f2eff22 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -1,5 +1,5 @@
+ // @ts-check
+-import { defineConfig } from "astro/config";
++import { defineConfig, sessionDrivers } from "astro/config";
+ import react from "@astrojs/react";
+ import tailwindcss from "@tailwindcss/vite";
+ import node from "@astrojs/node";
+@@ -18,6 +18,12 @@ export default defineConfig({
+   }),
+   output: "server",
+ 
++  session: {
++    driver: sessionDrivers.fsLite({ base: ".data/sessions" }),
++    cookie: { sameSite: "lax", path: "/", maxAge: 86400 },
++    ttl: 86400,
++  },
++
+   image: {
+     service: {
+        entrypoint: 'astro/assets/services/sharp',
+@@ -44,4 +50,4 @@ export default defineConfig({
+       }
+     ]
+   }
+-});
+\ No newline at end of file
++});
+diff --git a/package.json b/package.json
+index bfffcf0..da447f5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "devtools-times",
+   "type": "module",
+   "version": "0.0.1",
++  "engines": { "node": ">=22.13.0" },
+   "scripts": {
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+@@ -13,6 +14,8 @@
+     "@astrojs/node": "^11.1.9",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -23,7 +26,9 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.6",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..5e570d7
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,549 @@
++import { useEffect, useState } from 'react';
++import { startRegistration } from '@simplewebauthn/browser';
++import {
++  KeyIcon,
++  ShieldCheckIcon,
++  ArrowPathIcon,
++  PlusIcon,
++  PencilSquareIcon,
++  TrashIcon,
++} from '@heroicons/react/24/outline';
++import providers from '../lib/passkey-providers.json';
++import {
++  accountRequest,
++  syncPasskeys,
++  syncReaderDetails,
++  type Passkey,
++  type PasskeyState,
++} from '../lib/passkeys';
++
++const button =
++  'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-not-allowed';
++const field =
++  'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-2 focus:outline-gray-900';
++const registry = providers as Record<
++  string,
++  { name: string; icon_light: string }
++>;
++function provider(key: Passkey) {
++  return registry[key.aaguid.toLowerCase()];
++}
++function label(key: Passkey) {
++  return key.name || provider(key)?.name || 'Unknown passkey provider';
++}
++function date(timestamp: number) {
++  return new Intl.DateTimeFormat('en', {
++    month: 'short',
++    day: 'numeric',
++    year: 'numeric',
++  }).format(timestamp);
++}
++
++export default function AccountSettings() {
++  const [state, setState] = useState<PasskeyState | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const [syncNotice, setSyncNotice] = useState<string | null>(null);
++  const [canCreate, setCanCreate] = useState(false);
++  const [editing, setEditing] = useState<string | null>(null);
++  const [keyName, setKeyName] = useState('');
++  const [removing, setRemoving] = useState<string | null>(null);
++  const [displayName, setDisplayName] = useState('');
++
++  async function load() {
++    setLoading(true);
++    setError('');
++    try {
++      const data: PasskeyState = await accountRequest('passkeys');
++      setState(data);
++      setDisplayName(data.account.displayName);
++      const keysNotice = await syncPasskeys(data);
++      const detailsNotice = await syncReaderDetails(data.rpId, data.account);
++      setSyncNotice(keysNotice || detailsNotice);
++    } catch (error) {
++      setError((error as Error).message);
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  useEffect(() => {
++    void load();
++    async function detect() {
++      if (!window.isSecureContext || typeof PublicKeyCredential === 'undefined')
++        return;
++      try {
++        // Older browsers can still manage their existing passkeys.
++        if (PublicKeyCredential.getClientCapabilities) {
++          const capabilities =
++            await PublicKeyCredential.getClientCapabilities();
++          setCanCreate(!!capabilities.userVerifyingPlatformAuthenticator);
++        } else {
++          setCanCreate(
++            await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(),
++          );
++        }
++      } catch {
++        setCanCreate(false);
++      }
++    }
++    void detect();
++  }, []);
++
++  async function run(action: () => Promise<void>) {
++    setBusy(true);
++    setError('');
++    setNotice('');
++    try {
++      await action();
++    } catch (error) {
++      setError((error as Error).message);
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  async function createPasskey() {
++    await run(async () => {
++      const optionsJSON = await accountRequest('passkeys/register', 'POST');
++      const response = await startRegistration({ optionsJSON });
++      const data: PasskeyState = await accountRequest(
++        'passkeys/register',
++        'PUT',
++        response,
++      );
++      setState(data);
++      setNotice(
++        'Your new passkey is ready. You can use it next time you sign in.',
++      );
++      setSyncNotice(await syncPasskeys(data));
++    });
++  }
++
++  return (
++    <div className="mx-auto max-w-4xl px-5 py-10 sm:px-10 sm:py-14">
++      <a
++        href={import.meta.env.BASE_URL}
++        className="text-sm text-gray-500 hover:text-gray-900"
++      >
++        ← Back to the Times
++      </a>
++      <div className="mt-6 border-b border-gray-200 pb-8">
++        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
++          Your account
++        </p>
++        <h1 className="font-brand mt-2 text-4xl text-gray-900 sm:text-5xl">
++          Account settings
++        </h1>
++        <p className="mt-3 text-gray-600">
++          A little housekeeping for a more secure reading experience.
++        </p>
++      </div>
++
++      {error && (
++        <div
++          role="alert"
++          className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800"
++        >
++          {error}{' '}
++          {!state && (
++            <>
++              <button onClick={() => void load()} className="ml-2 underline">
++                Try again
++              </button>
++              <a
++                href={`${import.meta.env.BASE_URL}signin`}
++                className="ml-3 underline"
++              >
++                Sign in
++              </a>
++            </>
++          )}
++        </div>
++      )}
++      {notice && (
++        <p
++          role="status"
++          className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800"
++        >
++          {notice}
++        </p>
++      )}
++      {loading && (
++        <p role="status" className="py-12 text-sm text-gray-500">
++          Loading your account…
++        </p>
++      )}
++
++      {state && !loading && (
++        <>
++          <section
++            className="border-b border-gray-200 py-8"
++            aria-labelledby="profile-heading"
++          >
++            <h2
++              id="profile-heading"
++              className="text-xl font-semibold text-gray-900"
++            >
++              Reader profile
++            </h2>
++            <p className="mt-2 text-sm text-gray-500">
++              Signed in as{' '}
++              <span className="font-medium text-gray-800">
++                {state.account.username}
++              </span>
++            </p>
++            <form
++              className="mt-5 flex max-w-lg flex-col items-start gap-3 sm:flex-row sm:items-end"
++              onSubmit={(event) => {
++                event.preventDefault();
++                void run(async () => {
++                  const { account } = await accountRequest('account', 'PUT', {
++                    displayName: displayName.trim(),
++                  });
++                  setState({ ...state, account });
++                  setDisplayName(account.displayName);
++                  setNotice('Your display name has been updated.');
++                  setSyncNotice(await syncReaderDetails(state.rpId, account));
++                });
++              }}
++            >
++              <div className="w-full flex-1">
++                <label
++                  htmlFor="reader-name"
++                  className="mb-2 block text-sm font-medium"
++                >
++                  Display name
++                </label>
++                <input
++                  id="reader-name"
++                  autoComplete="nickname"
++                  className={field}
++                  value={displayName}
++                  onChange={(event) => setDisplayName(event.target.value)}
++                  required
++                  maxLength={80}
++                  disabled={busy}
++                />
++              </div>
++              <button
++                disabled={
++                  busy ||
++                  !displayName.trim() ||
++                  displayName.trim() === state.account.displayName
++                }
++                className={`${button} whitespace-nowrap border border-gray-300 bg-white hover:bg-gray-50`}
++              >
++                Save changes
++              </button>
++            </form>
++          </section>
++
++          <section
++            className="py-8"
++            aria-labelledby="passkeys-heading"
++            aria-busy={busy}
++          >
++            <div className="flex flex-wrap items-center justify-between gap-4">
++              <div className="flex items-center gap-3">
++                <KeyIcon className="h-6 w-6 text-gray-700" />
++                <h2
++                  id="passkeys-heading"
++                  className="text-xl font-semibold text-gray-900"
++                >
++                  Passkeys
++                </h2>
++                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
++                  {state.passkeys.length}
++                </span>
++              </div>
++              {canCreate && (
++                <button
++                  onClick={() => void createPasskey()}
++                  disabled={busy}
++                  className={`${button} bg-gray-900 text-white hover:bg-gray-700`}
++                >
++                  <PlusIcon className="h-4 w-4" />
++                  Create passkey
++                </button>
++              )}
++            </div>
++            <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
++              Sign in securely with your fingerprint, face, or device PIN. Give
++              each passkey a name you recognize, and remove any you no longer
++              use.
++            </p>
++
++            <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
++              {state.passkeys.length === 0 ? (
++                <div className="px-6 py-10 text-center">
++                  <KeyIcon className="mx-auto h-9 w-9 text-gray-400" />
++                  <h3 className="mt-4 font-semibold text-gray-900">
++                    No passkeys yet
++                  </h3>
++                  <p className="mt-2 text-sm text-gray-500">
++                    {canCreate
++                      ? 'Create your first passkey for a simpler, safer sign-in.'
++                      : 'You can still sign in with your password.'}
++                  </p>
++                </div>
++              ) : (
++                <ul className="divide-y divide-gray-200">
++                  {state.passkeys.map((key) => (
++                    <li key={key.id} className="p-5 sm:p-6">
++                      <div className="flex items-start gap-4">
++                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
++                          {provider(key)?.icon_light ? (
++                            <img
++                              src={provider(key)!.icon_light}
++                              alt=""
++                              className="h-7 w-7 object-contain"
++                            />
++                          ) : (
++                            <KeyIcon className="h-6 w-6 text-gray-600" />
++                          )}
++                        </div>
++                        <div className="min-w-0 flex-1">
++                          <h3 className="break-words font-semibold text-gray-900">
++                            {label(key)}
++                          </h3>
++                          {key.name && (
++                            <p className="mt-0.5 text-xs text-gray-500">
++                              {provider(key)?.name ||
++                                'Unknown passkey provider'}
++                            </p>
++                          )}
++                          <p className="mt-2 text-xs leading-5 text-gray-500">
++                            Added{' '}
++                            <time
++                              dateTime={new Date(
++                                key.registeredAt,
++                              ).toISOString()}
++                            >
++                              {date(key.registeredAt)}
++                            </time>
++                            <span aria-hidden="true"> · </span>
++                            {key.lastUsedAt ? (
++                              <>
++                                Last used{' '}
++                                <time
++                                  dateTime={new Date(
++                                    key.lastUsedAt,
++                                  ).toISOString()}
++                                >
++                                  {date(key.lastUsedAt)}
++                                </time>
++                              </>
++                            ) : (
++                              'Not used to sign in yet'
++                            )}
++                          </p>
++                          {editing !== key.id && removing !== key.id && (
++                            <div className="mt-3 flex flex-wrap gap-5">
++                              <button
++                                disabled={busy}
++                                onClick={() => {
++                                  setEditing(key.id);
++                                  setRemoving(null);
++                                  setKeyName(label(key));
++                                }}
++                                aria-label={`Rename ${label(key)}`}
++                                className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
++                              >
++                                <PencilSquareIcon className="h-4 w-4" />
++                                Rename
++                              </button>
++                              <button
++                                disabled={busy}
++                                onClick={() => {
++                                  setRemoving(key.id);
++                                  setEditing(null);
++                                }}
++                                aria-label={`Remove ${label(key)}`}
++                                className="inline-flex items-center gap-1.5 text-sm font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
++                              >
++                                <TrashIcon className="h-4 w-4" />
++                                Remove
++                              </button>
++                            </div>
++                          )}
++                          {editing === key.id && (
++                            <form
++                              className="mt-4 max-w-md"
++                              onSubmit={(event) => {
++                                event.preventDefault();
++                                void run(async () => {
++                                  const data: PasskeyState =
++                                    await accountRequest(
++                                      `passkeys/${encodeURIComponent(key.id)}`,
++                                      'PUT',
++                                      { name: keyName.trim() },
++                                    );
++                                  setState(data);
++                                  setEditing(null);
++                                  setNotice('Passkey name updated.');
++                                });
++                              }}
++                            >
++                              <label
++                                htmlFor="passkey-name"
++                                className="mb-2 block text-sm font-medium"
++                              >
++                                Passkey name
++                              </label>
++                              <input
++                                autoFocus
++                                id="passkey-name"
++                                className={field}
++                                maxLength={80}
++                                required
++                                disabled={busy}
++                                value={keyName}
++                                onChange={(event) =>
++                                  setKeyName(event.target.value)
++                                }
++                              />
++                              <div className="mt-3 flex gap-2">
++                                <button
++                                  disabled={busy || !keyName.trim()}
++                                  className={`${button} bg-gray-900 text-white`}
++                                >
++                                  Save name
++                                </button>
++                                <button
++                                  type="button"
++                                  disabled={busy}
++                                  onClick={() => setEditing(null)}
++                                  className={`${button} border border-gray-300`}
++                                >
++                                  Cancel
++                                </button>
++                              </div>
++                            </form>
++                          )}
++                          {removing === key.id && (
++                            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4">
++                              <p className="text-sm font-semibold text-gray-900">
++                                Remove this passkey?
++                              </p>
++                              <p className="mt-1 text-sm leading-6 text-gray-600">
++                                It will no longer work for this account.{' '}
++                                {state.passkeys.length === 1
++                                  ? 'This is your last passkey. You can still sign in with your password.'
++                                  : 'You can still sign in with your other passkeys or password.'}
++                              </p>
++                              <div className="mt-3 flex flex-wrap gap-2">
++                                <button
++                                  autoFocus
++                                  disabled={busy}
++                                  onClick={() =>
++                                    void run(async () => {
++                                      const data: PasskeyState =
++                                        await accountRequest(
++                                          `passkeys/${encodeURIComponent(key.id)}`,
++                                          'DELETE',
++                                        );
++                                      setState(data);
++                                      setRemoving(null);
++                                      setNotice(
++                                        'Passkey removed from your account.',
++                                      );
++                                      setSyncNotice(await syncPasskeys(data));
++                                    })
++                                  }
++                                  className={`${button} bg-red-700 text-white hover:bg-red-800`}
++                                >
++                                  {busy ? 'Removing…' : 'Remove passkey'}
++                                </button>
++                                <button
++                                  disabled={busy}
++                                  onClick={() => setRemoving(null)}
++                                  className={`${button} border border-gray-300 bg-white`}
++                                >
++                                  Keep passkey
++                                </button>
++                              </div>
++                            </div>
++                          )}
++                        </div>
++                      </div>
++                    </li>
++                  ))}
++                </ul>
++              )}
++            </div>
++
++            {!canCreate && (
++              <p className="mt-4 text-sm text-gray-500">
++                To create a passkey, use a browser and device that support
++                passkeys over a secure connection.
++              </p>
++            )}
++            <div className="mt-6 flex items-start gap-3 rounded-lg bg-gray-50 p-4">
++              <ShieldCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" />
++              <div className="text-xs leading-5 text-gray-500">
++                <p>
++                  Passkeys stay protected by your device or password manager.
++                  The Times never receives your fingerprint, face, or PIN.
++                </p>
++                <p className="mt-1">
++                  We notify supported password managers when you remove a
++                  passkey or change your account display name.
++                </p>
++              </div>
++            </div>
++            {syncNotice && (
++              <div
++                role="status"
++                className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"
++              >
++                {syncNotice}
++                <button
++                  disabled={busy}
++                  onClick={() =>
++                    void run(async () => {
++                      const data: PasskeyState =
++                        await accountRequest('passkeys');
++                      setState(data);
++                      const keysNotice = await syncPasskeys(data);
++                      const detailsNotice = await syncReaderDetails(
++                        data.rpId,
++                        data.account,
++                      );
++                      setSyncNotice(keysNotice || detailsNotice);
++                      if (!keysNotice && !detailsNotice)
++                        setNotice('Browser sync completed.');
++                    })
++                  }
++                  className="mt-2 flex items-center gap-1.5 font-semibold underline"
++                >
++                  <ArrowPathIcon className="h-4 w-4" />
++                  Retry sync
++                </button>
++              </div>
++            )}
++          </section>
++          <div className="flex justify-between border-t border-gray-200 pt-6 text-sm">
++            <span className="text-gray-500">
++              All changes are saved to your account.
++            </span>
++            <button
++              disabled={busy}
++              onClick={() =>
++                void run(async () => {
++                  await accountRequest('account/logout', 'POST');
++                  window.location.assign(import.meta.env.BASE_URL);
++                })
++              }
++              className="font-medium text-gray-700 underline hover:text-gray-900"
++            >
++              Sign out
++            </button>
++          </div>
++        </>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..5ea3241 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,10 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import { signedInAccount } from '../lib/server/account-api';
++
++const account = await signedInAccount(Astro);
++if (account) Astro.response.headers.set('Cache-Control', 'no-store');
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -25,6 +29,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {account ? <a href={`${baseUrl}account/settings`} data-skip-tracking="true" class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700">Account settings</a> : <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +44,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..5b59cdc 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,7 @@
+ import React, { useState } from 'react';
++import { useEffect } from 'react';
++import { startAuthentication } from '@simplewebauthn/browser';
++import { accountRequest } from '../lib/passkeys';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -6,6 +9,23 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [supportsPasskeys, setSupportsPasskeys] = useState(false);
++
++  useEffect(() => {
++    setSupportsPasskeys(window.isSecureContext && typeof PublicKeyCredential !== 'undefined');
++  }, []);
++
++  const signInWithPasskey = async () => {
++    setLoading(true); setError(null);
++    try {
++      const optionsJSON = await accountRequest('passkeys/authenticate', 'POST');
++      const response = await startAuthentication({ optionsJSON });
++      await accountRequest('passkeys/authenticate', 'PUT', response);
++      window.location.assign(`${import.meta.env.BASE_URL}account/settings`);
++    } catch (error) {
++      setError((error as Error).message);
++    } finally { setLoading(false); }
++  };
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -14,7 +34,7 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/account/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+@@ -25,12 +45,10 @@ export default function SignInForm() {
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError(data.error || 'Sign-in failed. Please try again.');
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        window.location.assign(`${import.meta.env.BASE_URL}account/settings`);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -63,6 +81,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username webauthn"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +96,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +114,7 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++      {supportsPasskeys && <button type="button" disabled={loading} onClick={() => void signInWithPasskey()} className="mt-4 w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50">Sign in with a passkey</button>}
+     </div>
+   );
+ }
+diff --git a/src/env.d.ts b/src/env.d.ts
+new file mode 100644
+index 0000000..f44dfdc
+--- /dev/null
++++ b/src/env.d.ts
+@@ -0,0 +1,7 @@
++declare namespace App {
++  interface SessionData {
++    accountId: string;
++    registrationChallenge: { challenge: string; expires: number };
++    authenticationChallenge: { challenge: string; expires: number };
++  }
++}
+diff --git a/src/lib/passkey-providers.json b/src/lib/passkey-providers.json
+new file mode 100644
+index 0000000..95fd13d
+--- /dev/null
++++ b/src/lib/passkey-providers.json
+@@ -0,0 +1,94 @@
++{
++  "9eb7eabc-9db5-49a1-b6c3-555a802093f4": {
++    "name": "YubiKey 5 Series with NFC KVZR57",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "fa2b99dc-9e39-4257-8f92-4a30d23c4118": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "data:image/png;base64,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"
++  },
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "7dab85a5-d16d-4eaf-a7ef-4c1385b151c5": {
++    "name": "YubiKey 5 Series with NFC (Consumer Profile) KVZR57-2",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "b2c1a50b-dad8-4dc7-ba4d-0ce9597904bc": {
++    "name": "YubiKey 5 Series with NFC - Enhanced PIN (Enterprise Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "2fc0579f-8113-47ea-b116-bb5a8db9202a": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "data:image/png;base64,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"
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "0ebd9f2c-f685-441c-8c3e-a02a234a840a": {
++    "name": "YubiKey 5 Series with NFC Enhanced PIN (Consumer Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "f4ce5fc0-57d3-46f5-a736-efb7d5bc63b5": {
++    "name": "YubiKey 5 Series with NFC (Consumer Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "662ef48a-95e2-4aaa-a6c1-5b9c40375824": {
++    "name": "YubiKey 5 Series with NFC - Enhanced PIN",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "d7781e5d-e353-46aa-afe2-3ca49f13332a": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "34f5766d-1536-4a24-9033-0e294e510fb0": {
++    "name": "YubiKey 5 Series with NFC Preview",
++    "icon_light": "data:image/png;base64,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"
++  },
++  "9a3f2abd-a73d-439c-9ee7-1b53a857eaa7": {
++    "name": "YubiKey 5 Series with NFC Enhanced PIN (Enterprise Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "41e39911-c669-4811-b860-c6ad0b411b96": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "a25342c0-3cdc-4414-8e46-f4807fca511c": {
++    "name": "YubiKey 5 Series with NFC",
++    "icon_light": "data:image/png;base64,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"
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "1ac71f64-468d-4fe0-bef1-0e5f2f551f18": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)",
++    "icon_light": "data:image/png;base64,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"
++  },
++  "6ab56fad-881f-4a43-acb2-0be065924522": {
++    "name": "YubiKey 5 Series with NFC (Enterprise Profile)",
++    "icon_light": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHdpZHRoPSIxMDAwcHQiIGhlaWdodD0iMTAwMHB0IiB2aWV3Qm94PSIwIDAgMTAwMCAxMDAwIiB2ZXJzaW9uPSIxLjIiIGJhc2VQcm9maWxlPSJ0aW55LXBzIj48dGl0bGU+WXViaUtleTwvdGl0bGU+PGRlZnMgaWQ9ImRlZnMxIj48L2RlZnM+PGRlc2MgaWQ9ImxvZ28tZGVzYy12MiI+WXViaUtleTwvZGVzYz48ZyBpZD0iIzc2YjkzZGZmIj48cGF0aCBmaWxsPSIjNzZCOTNEIiBkPSIgTSA0OTEuNzggMC4wMCBMIDUxMS4zNyAwLjAwIEMgNTc0LjI0IDEuMzggNjM2LjY3IDE1LjE2IDY5NC41NyAzOS41OCBDIDcxNy43MyA1MC42MCA3NDEuMTMgNjEuMzggNzYyLjc3IDc1LjI1IEMgNzc5LjY5IDg0LjcxIDc5NC44MyA5Ni44OSA4MDkuOTggMTA4Ljg4IEMgODI1LjEyIDEyMC4yNSA4MzkuMzggMTMyLjgwIDg1Mi42MSAxNDYuMzYgQyA4NTYuOTIgMTUwLjcyIDg2MC43OCAxNTUuNTAgODY1LjIzIDE1OS43MyBDIDg3OS40OSAxNzMuOTYgODkyLjE0IDE4OS43MyA5MDMuNzcgMjA2LjE2IEMgOTEwLjYxIDIxNi4yOSA5MTguMzYgMjI1LjgxIDkyNC42NyAyMzYuMzAgQyA5MzQuNzUgMjUyLjM5IDk0My4yOSAyNjkuMzcgOTUxLjUzIDI4Ni40NSBDIDk3OS40NSAzNDMuMjggOTk1LjI4IDQwNS44MCA5OTkuMjkgNDY4LjkyIEMgOTk5LjkwIDQ4MS4yOCAxMDAwLjg2IDQ5My42MyAxMDAwLjYyIDUwNi4wMiBDIDk5OS45MiA1MzAuMjggOTk4LjI3IDU1NC41NSA5OTQuMjggNTc4LjUxIEMgOTkwLjcxIDYwMC41MCA5ODUuNjYgNjIyLjI1IDk3OS40MCA2NDMuNjIgQyA5NzQuNTQgNjU5Ljg4IDk2OS40NiA2NzYuMTIgOTYyLjQ5IDY5MS42MSBDIDk0OS44OCA3MjAuMDEgOTM2LjM3IDc0OC4yMSA5MTguNzIgNzczLjg3IEMgOTE1LjUzIDc3OC42MSA5MTEuODYgNzgzLjAxIDkwOC43MSA3ODcuNzggQyA4OTguOTQgODAyLjM2IDg4Ny44NiA4MTYuMDMgODc2LjE3IDgyOS4xMSBDIDg2Mi40NiA4NDQuMzUgODQ4LjIyIDg1OS4xNiA4MzIuODQgODcyLjc0IEMgODIyLjcwIDg4Mi4wNCA4MTEuNDMgODg5Ljk2IDgwMC45NiA4OTguODUgQyA3ODQuOTMgOTExLjY2IDc2Ny41NCA5MjIuNjUgNzQ5LjgwIDkzMi45MCBDIDcyMS4wMCA5NDkuOTAgNjkwLjY0IDk2NC4zMCA2NTguOTIgOTc0Ljk4IEMgNjEzLjA2IDk5MC41OSA1NjQuNzkgOTk4Ljk4IDUxNi4zNiAxMDAwLjAwIEwgNTA0LjQ3IDEwMDAuMDAgQyA1MTEuNzUgOTgxLjQyIDUxOS4wMSA5NjIuODIgNTI2LjExIDk0NC4xNyBDIDUzNy4zMiA5MTkuMzkgNTQ1Ljk1IDg5My41NSA1NTYuNDIgODY4LjQ3IEMgNTYyLjg2IDg1Mi43MyA1NjguNTEgODM2LjY3IDU3NS4yMSA4MjEuMDQgQyA1ODIuNTkgODA1LjYzIDU4OC4xMCA3ODkuNDIgNTk0LjU0IDc3My42MSBDIDYwNS45NyA3NDYuODEgNjE1LjQyIDcxOS4xOSA2MjcuNzQgNjkyLjc3IEMgNjQzLjc3IDY1My4xMCA2NTkuMzAgNjEzLjIyIDY3Ni4xMiA1NzMuODcgQyA2OTIuOTEgNTMzLjkwIDcwNy45OCA0OTMuMjMgNzI1LjMxIDQ1My40OSBDIDczMi45NCA0MzUuMjcgNzQwLjA2IDQxNi44NCA3NDcuMzQgMzk4LjQ4IEMgNzUzLjg5IDM4Mi41MSA3NjAuMjEgMzY2LjQ0IDc2Ni41MCAzNTAuMzcgQyA3NzQuOTcgMzMyLjU1IDc4MS40NiAzMTMuOTEgNzg4Ljc5IDI5NS42MyBDIDczMC41NiAyOTUuNjQgNjcyLjMzIDI5Ni4wMCA2MTQuMTAgMjk1LjQ3IEMgNjAwLjQ0IDMzMi4zNSA1ODguMzEgMzY5Ljc4IDU3NC40MCA0MDYuNTcgQyA1NTkuNzIgNDQ4LjYxIDU0NS40MyA0OTAuNzggNTMwLjY2IDUzMi43OSBDIDUyNC45NyA1NDYuMTUgNTIwLjM5IDU1OS45NCA1MTUuNDQgNTczLjU5IEMgNTA4LjAzIDU5NS4zNCA0OTkuMzggNjE2LjY0IDQ5MS43NSA2MzguMzEgQyA0ODcuNzIgNjIyLjA4IDQ4Mi4wMSA2MDYuMzQgNDc2LjQ0IDU5MC41OSBDIDQ2Mi41MyA1NDkuNzYgNDQ3LjQ4IDUwOS4zMyA0MzEuODAgNDY5LjE1IEMgNDI1LjA5IDQ1Mi44OCA0MTkuNDMgNDM2LjIxIDQxMy4yNyA0MTkuNzMgQyA0MDQuODMgMzk2LjcwIDM5Ni40MiAzNzMuNjUgMzg4LjUzIDM1MC40MiBDIDM4Ni42MiAzNDQuNjEgMzg0LjAyIDMzOS4wNyAzODEuNzggMzMzLjM5IEMgMzc2LjQ3IDMyMC40MiAzNzEuMTMgMzA3LjQzIDM2NC45OSAyOTQuODIgQyAzMDYuODEgMjk2Ljc2IDI0OC41OSAyOTUuMTIgMTkwLjQwIDI5NS45MCBDIDIwNC43OSAzMzQuMDcgMjE4LjgxIDM3Mi4zOCAyMzMuNzggNDEwLjMzIEMgMjUwLjc5IDQ1Mi41OSAyNjYuNTYgNDk1LjMzIDI4My4xMSA1MzcuNzYgQyAyOTMuNDkgNTYwLjc0IDMwMS40NyA1ODQuNjggMzExLjAxIDYwOC4wMCBDIDMxOS4yMCA2MjguODAgMzI2Ljc1IDY0OS44NiAzMzUuNzUgNjcwLjMyIEMgMzQ3LjE3IDY5OC42NyAzNTguMDggNzI3LjIxIDM2OS4yNCA3NTUuNjYgQyAzNzcuNjYgNzc2Ljg3IDM4Ni42NCA3OTcuODUgMzk0Ljk0IDgxOS4xMiBDIDM4NS4wMCA4NDMuMDMgMzc0LjUyIDg2Ni43MSAzNjQuNTYgODkwLjYyIEMgMzU5Ljc4IDkwMi4zOCAzNTQuOTAgOTE0LjExIDM0OS44MCA5MjUuNzQgQyAzNDMuMzYgOTQwLjc0IDMzNy4xMSA5NTUuODYgMzI5LjUwIDk3MC4zMiBDIDMwMi44MSA5NjAuODcgMjc3LjM1IDk0OC4yNyAyNTIuODIgOTM0LjIwIEMgMjQxLjA3IDkyNy40MSAyMjkuMzAgOTIwLjYxIDIxOC4yNCA5MTIuNzIgQyAxNDQuMjYgODYxLjE4IDgzLjIwIDc5MC4zNyA0Ni4xOSA3MDcuOTIgQyA0MS4zMSA2OTguNDQgMzYuODkgNjg4LjcxIDMzLjQ5IDY3OC41OSBDIC0xNi41MSA1NTAuNTQgLTkuOTAgNDAxLjIwIDUyLjg5IDI3OC43MiBDIDYzLjk1IDI1Ni41MSA3NS45MiAyMzQuNjEgOTAuNzkgMjE0LjY5IEMgMTA2LjQzIDE5My4wMiAxMjIuNzQgMTcxLjY2IDE0MS45NyAxNTMuMDEgQyAxNTkuMDkgMTM0LjA4IDE3OC44NSAxMTcuNzggMTk5LjA2IDEwMi4yNiBDIDIwNy4yNyA5Ni4wNiAyMTUuMjUgODkuNTMgMjIzLjk0IDgzLjk5IEMgMjUzLjcwIDY0LjQxIDI4NS41OCA0OC4xNSAzMTguNDggMzQuNTUgQyAzNzMuNjEgMTIuOTAgNDMyLjU4IDEuMjUgNDkxLjc4IDAuMDAgWiIgaWQ9InBhdGgxIj48L3BhdGg+PC9nPjxtZXRhZGF0YT48L21ldGFkYXRhPjwvc3ZnPg=="
++  },
++  "531126d6-e717-415c-9320-3d9aa6981239": {
++    "name": "Dashlane",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTcuNDc0IDM1OS4yMDlDMjU3LjQ3NCAzNTYuMTg5IDI1NC40NTQgMzUzLjE2OSAyNTAuMjE1IDM1MS45NTlMMTk5LjQxMSAzMzMuMjMxQzE5MC44OTUgMzI5LjYwMSAxODEuMjY0IDMzMy44MzEgMTgxLjI2NCAzMzkuODlWNDc1Ljc3OUMxODEuMjY0IDQ3OC44MDkgMTg0LjI4MyA0ODIuNDM4IDE4Ny4zMDMgNDgzLjY0OEwyMzkuMzI2IDUwMi4zNzZDMjQ3LjE5NSA1MDUuMzk2IDI1Ny40NzQgNTAxLjE2NiAyNTcuNDc0IDQ5NC41MDhWMzU5LjIwOVoiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTM1Mi43MzYgMzIxLjEwM0MzNTIuNzM2IDMxOC4wODQgMzQ5LjcxNyAzMTUuMDY0IDM0NS40NzcgMzEzLjg1NEwyOTQuNjc0IDI5NS4xMjZDMjg2LjE1NyAyOTEuNDk2IDI3Ni41MjYgMjk1LjcyNiAyNzYuNTI2IDMwMS43ODVWNDM3LjY3NEMyNzYuNTI2IDQ0MC43MDQgMjc5LjU0NiA0NDQuMzMzIDI4Mi41NjYgNDQ1LjU0M0wzMzQuNTg5IDQ2NC4yNzFDMzQyLjQ1OCA0NjcuMjkxIDM1Mi43MzYgNDYzLjA2MSAzNTIuNzM2IDQ1Ni40MDNWMzIxLjEwM1oiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTI1Ny40NzQgMzUuMzIxMUMyNTcuNDc0IDMyLjMwMTMgMjU0LjQ1NCAyOS4yODE1IDI1MC4yMTUgMjguMDcxN0wxOTkuNDExIDkuMzQzNDNDMTkwLjg5NSA1LjcxMzk5IDE4MS4yNjQgOS45NDM1OCAxODEuMjY0IDE2LjAwMjJWMTUxLjg5MkMxODEuMjY0IDE1NC45MjEgMTg0LjI4MyAxNTguNTUxIDE4Ny4zMDMgMTU5Ljc2TDIzOS4zMjYgMTc4LjQ4OUMyNDcuMTk1IDE4MS41MDggMjU3LjQ3NCAxNzcuMjc5IDI1Ny40NzQgMTcwLjYyVjM1LjMyMTFaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDkyLjQ3NzdDMzUyLjczNiA4OS40NTc5IDM0OS43MTcgODYuNDM4MiAzNDUuNDc3IDg1LjIyODNMMjk0LjY3NCA2Ni41QzI4Ni4xNTcgNjIuODcwNiAyNzYuNTI2IDY3LjEwMDIgMjc2LjUyNiA3My4xNTg4VjIwOS4wNDhDMjc2LjUyNiAyMTIuMDc4IDI3OS41NDYgMjE1LjcwNyAyODIuNTY2IDIxNi45MTdMMzM0LjU4OSAyMzUuNjQ1QzM0Mi40NTggMjM4LjY2NSAzNTIuNzM2IDIzNC40MzYgMzUyLjczNiAyMjcuNzc3VjkyLjQ3NzdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik00NDggMTY4LjY4N0M0NDggMTY1LjY2NyA0NDQuOTggMTYyLjY0NyA0NDAuNzQxIDE2MS40MzdMMzg5LjkzNyAxNDIuNzA5QzM4MS40MjEgMTM5LjA3OSAzNzEuNzkgMTQzLjMwOSAzNzEuNzkgMTQ5LjM2OFYzNjEuNDY2QzM3MS43OSAzNjQuNDk1IDM3NC44MSAzNjguMTI1IDM3Ny44MjkgMzY5LjMzNUw0MjkuODUyIDM4OC4wNjNDNDM3LjcyMSAzOTEuMDgzIDQ0OCAzODYuODUzIDQ0OCAzODAuMTk0VjE2OC42ODdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0xNjIuMjEgMzUuMzMwNkMxNjIuMjEgMzIuMzEwOCAxNTkuMTkgMjkuMjgxNSAxNTQuOTUxIDI4LjA3MTdMMTA0LjE0OCA5LjM0MzQzQzk1LjY3ODcgNS43MTM5OSA4NiA5Ljk0MzU4IDg2IDE2LjAwMjJWNDc1Ljc4OUM4NiA0NzguODA4IDg5LjAxOTggNDgyLjQzOCA5Mi4wNDkyIDQ4My42NDhMMTQ0LjA2MyA1MDIuMzc2QzE1MS45MzEgNTA1LjM5NiAxNjIuMjEgNTAxLjE2NiAxNjIuMjEgNDk0LjUwN1YzNS4zMzA2WiIgZmlsbD0iIzA5MzYzRiIvPgo8L3N2Zz4K"
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="
++  }
++}
+\ No newline at end of file
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..6bfbde4
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,96 @@
++export interface ReaderAccount {
++  id: string;
++  username: string;
++  displayName: string;
++}
++export interface Passkey {
++  id: string;
++  name: string;
++  aaguid: string;
++  registeredAt: number;
++  lastUsedAt: number | null;
++}
++export interface PasskeyState {
++  account: ReaderAccount;
++  rpId: string;
++  passkeys: Passkey[];
++}
++
++export async function accountRequest(
++  path: string,
++  method = 'GET',
++  body?: unknown,
++) {
++  const response = await fetch(`${import.meta.env.BASE_URL}api/${path}`, {
++    method,
++    credentials: 'same-origin',
++    cache: 'no-store',
++    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body),
++  });
++  const data = await response.json();
++  if (!response.ok)
++    throw new Error(
++      data.error || 'Could not save your changes. Please try again.',
++    );
++  return data;
++}
++
++type SignalCredential = typeof PublicKeyCredential & {
++  signalAllAcceptedCredentials?: (options: {
++    rpId: string;
++    userId: string;
++    allAcceptedCredentialIds: string[];
++  }) => Promise<void>;
++  signalCurrentUserDetails?: (options: {
++    rpId: string;
++    userId: string;
++    name: string;
++    displayName: string;
++  }) => Promise<void>;
++};
++
++// IDs are already base64url encoded by the server; never encode them twice.
++export async function syncPasskeys(
++  state: PasskeyState,
++): Promise<string | null> {
++  const credential =
++    typeof PublicKeyCredential !== 'undefined'
++      ? (PublicKeyCredential as SignalCredential)
++      : undefined;
++  if (!credential?.signalAllAcceptedCredentials)
++    return 'Your browser cannot sync passkey changes automatically. You can manage saved copies in your password manager.';
++  try {
++    await credential.signalAllAcceptedCredentials({
++      rpId: state.rpId,
++      userId: state.account.id,
++      allAcceptedCredentialIds: state.passkeys.map((key) => key.id),
++    });
++    return null;
++  } catch {
++    return 'Your account is up to date, but browser sync failed. Retry sync or manage saved copies in your password manager.';
++  }
++}
++
++export async function syncReaderDetails(
++  rpId: string,
++  account: ReaderAccount,
++): Promise<string | null> {
++  const credential =
++    typeof PublicKeyCredential !== 'undefined'
++      ? (PublicKeyCredential as SignalCredential)
++      : undefined;
++  if (!credential?.signalCurrentUserDetails)
++    return 'Your display name was saved. Update your saved account details in your password manager if needed.';
++  try {
++    await credential.signalCurrentUserDetails({
++      rpId,
++      userId: account.id,
++      name: account.username,
++      displayName: account.displayName,
++    });
++    return null;
++  } catch {
++    return 'Your display name was saved, but browser sync failed. Retry sync to update your password manager.';
++  }
++}
+diff --git a/src/lib/server/account-api.ts b/src/lib/server/account-api.ts
+new file mode 100644
+index 0000000..8b3270f
+--- /dev/null
++++ b/src/lib/server/account-api.ts
+@@ -0,0 +1,33 @@
++import type { APIContext } from 'astro';
++import { findAccount } from './accounts';
++
++export function json(data: unknown, status = 200) {
++  return new Response(JSON.stringify(data), {
++    status,
++    headers: {
++      'Content-Type': 'application/json',
++      'Cache-Control': 'no-store',
++    },
++  });
++}
++
++export async function signedInAccount(context: Pick<APIContext, 'session'>) {
++  const id = await context.session?.get('accountId');
++  return typeof id === 'string' ? findAccount(id) : undefined;
++}
++
++export function sameOrigin(request: Request) {
++  return request.headers.get('Origin') === new URL(request.url).origin;
++}
++
++export function relyingParty(url: URL) {
++  return process.env.WEBAUTHN_RP_ID || url.hostname;
++}
++
++export function validName(value: unknown): value is string {
++  return (
++    typeof value === 'string' &&
++    value.trim().length > 0 &&
++    value.trim().length <= 80
++  );
++}
+diff --git a/src/lib/server/accounts.ts b/src/lib/server/accounts.ts
+new file mode 100644
+index 0000000..261ed81
+--- /dev/null
++++ b/src/lib/server/accounts.ts
+@@ -0,0 +1,166 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname } from 'node:path';
++import { randomBytes } from 'node:crypto';
++import type { WebAuthnCredential } from '@simplewebauthn/server';
++
++export interface Account {
++  id: string;
++  username: string;
++  displayName: string;
++}
++export interface StoredPasskey {
++  id: string;
++  userId: string;
++  rpId: string;
++  name: string;
++  aaguid: string;
++  registeredAt: number;
++  lastUsedAt: number | null;
++  credential: WebAuthnCredential;
++}
++
++// Keep this database on a persistent volume when deploying the standalone app.
++let database: DatabaseSync;
++function db() {
++  if (!database) {
++    const path = process.env.ACCOUNT_DB_PATH || '.data/accounts.sqlite';
++    mkdirSync(dirname(path), { recursive: true });
++    database = new DatabaseSync(path);
++    database.exec(`
++      PRAGMA journal_mode = WAL;
++      PRAGMA foreign_keys = ON;
++      PRAGMA busy_timeout = 5000;
++      CREATE TABLE IF NOT EXISTS accounts (
++        id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, displayName TEXT NOT NULL
++      );
++      CREATE TABLE IF NOT EXISTS passkeys (
++        id TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES accounts(id),
++        rpId TEXT NOT NULL, name TEXT NOT NULL, aaguid TEXT NOT NULL,
++        registeredAt INTEGER NOT NULL, lastUsedAt INTEGER, credential TEXT NOT NULL
++      );
++    `);
++  }
++  return database;
++}
++
++export function findAccount(id: string): Account | undefined {
++  return db().prepare('SELECT * FROM accounts WHERE id = ?').get(id) as
++    Account | undefined;
++}
++
++// Called only after the existing identity service has verified the password.
++export function accountForUsername(username: string): Account {
++  db()
++    .prepare('INSERT OR IGNORE INTO accounts VALUES (?, ?, ?)')
++    .run(randomBytes(32).toString('base64url'), username, username);
++  return db()
++    .prepare('SELECT * FROM accounts WHERE username = ?')
++    .get(username) as unknown as Account;
++}
++
++export function renameAccount(id: string, displayName: string): Account {
++  db()
++    .prepare('UPDATE accounts SET displayName = ? WHERE id = ?')
++    .run(displayName, id);
++  return findAccount(id)!;
++}
++
++export function listPasskeys(userId: string, rpId: string): StoredPasskey[] {
++  const rows = db()
++    .prepare(
++      'SELECT * FROM passkeys WHERE userId = ? AND rpId = ? ORDER BY registeredAt DESC',
++    )
++    .all(userId, rpId);
++  return rows.map((row) => {
++    const credential = JSON.parse(row.credential as string);
++    credential.publicKey = Buffer.from(credential.publicKey, 'base64url');
++    return { ...row, credential };
++  }) as unknown as StoredPasskey[];
++}
++
++export function savePasskey(passkey: StoredPasskey) {
++  db()
++    .prepare('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
++    .run(
++      passkey.id,
++      passkey.userId,
++      passkey.rpId,
++      passkey.name,
++      passkey.aaguid,
++      passkey.registeredAt,
++      passkey.lastUsedAt,
++      JSON.stringify({
++        ...passkey.credential,
++        publicKey: Buffer.from(passkey.credential.publicKey).toString(
++          'base64url',
++        ),
++      }),
++    );
++}
++
++export function renamePasskey(
++  userId: string,
++  rpId: string,
++  id: string,
++  name: string,
++) {
++  return (
++    db()
++      .prepare(
++        'UPDATE passkeys SET name = ? WHERE id = ? AND userId = ? AND rpId = ?',
++      )
++      .run(name, id, userId, rpId).changes > 0
++  );
++}
++
++export function removePasskey(userId: string, rpId: string, id: string) {
++  return (
++    db()
++      .prepare('DELETE FROM passkeys WHERE id = ? AND userId = ? AND rpId = ?')
++      .run(id, userId, rpId).changes > 0
++  );
++}
++
++export function publicPasskeys(userId: string, rpId: string) {
++  return listPasskeys(userId, rpId).map(
++    ({ credential, userId: _userId, rpId: _rpId, ...passkey }) => passkey,
++  );
++}
++
++export function findPasskey(
++  id: string,
++  rpId: string,
++): StoredPasskey | undefined {
++  const row = db()
++    .prepare('SELECT userId FROM passkeys WHERE id = ? AND rpId = ?')
++    .get(id, rpId);
++  return row
++    ? listPasskeys(row.userId as string, rpId).find((key) => key.id === id)
++    : undefined;
++}
++
++export function markPasskeyUsed(key: StoredPasskey, counter: number) {
++  const credential = JSON.stringify({
++    ...key.credential,
++    counter,
++    publicKey: Buffer.from(key.credential.publicKey).toString('base64url'),
++  });
++  return (
++    db()
++      .prepare(
++        'UPDATE passkeys SET credential = ?, lastUsedAt = ? WHERE id = ? AND credential = ?',
++      )
++      .run(
++        credential,
++        Date.now(),
++        key.id,
++        JSON.stringify({
++          ...key.credential,
++          publicKey: Buffer.from(key.credential.publicKey).toString(
++            'base64url',
++          ),
++        }),
++      ).changes > 0
++  );
++}
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..3b58a32
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,13 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import AccountSettings from '../../components/AccountSettings';
++import { signedInAccount } from '../../lib/server/account-api';
++
++Astro.response.headers.set('Cache-Control', 'no-store');
++const account = await signedInAccount(Astro);
++if (!account) return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++---
++
++<Layout title="Account settings | The DevTools Times">
++  <AccountSettings client:load />
++</Layout>
+diff --git a/src/pages/api/account/index.ts b/src/pages/api/account/index.ts
+new file mode 100644
+index 0000000..b1af5e8
+--- /dev/null
++++ b/src/pages/api/account/index.ts
+@@ -0,0 +1,27 @@
++import type { APIRoute } from 'astro';
++import { renameAccount } from '../../../lib/server/accounts';
++import {
++  json,
++  sameOrigin,
++  signedInAccount,
++  validName,
++} from '../../../lib/server/account-api';
++
++export const PUT: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  const account = await signedInAccount(context);
++  if (!account) return json({ error: 'Please sign in again.' }, 401);
++  let body;
++  try {
++    body = await context.request.json();
++  } catch {
++    return json({ error: 'Invalid request.' }, 400);
++  }
++  if (!validName(body?.displayName))
++    return json(
++      { error: 'Use a display name between 1 and 80 characters.' },
++      400,
++    );
++  return json({ account: renameAccount(account.id, body.displayName.trim()) });
++};
+diff --git a/src/pages/api/account/login.ts b/src/pages/api/account/login.ts
+new file mode 100644
+index 0000000..d282de6
+--- /dev/null
++++ b/src/pages/api/account/login.ts
+@@ -0,0 +1,53 @@
++import type { APIRoute } from 'astro';
++import { accountForUsername } from '../../../lib/server/accounts';
++import { json, sameOrigin } from '../../../lib/server/account-api';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  if (!session) return json({ error: 'Sessions are unavailable.' }, 503);
++  let body;
++  try {
++    body = await request.json();
++  } catch {
++    return json({ error: 'Invalid request.' }, 400);
++  }
++  if (
++    typeof body?.username !== 'string' ||
++    !body.username.trim() ||
++    typeof body.password !== 'string' ||
++    !body.password
++  ) {
++    return json({ error: 'Enter your username and password.' }, 400);
++  }
++  try {
++    const response = await fetch(
++      'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login',
++      {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          username: body.username.trim(),
++          password: body.password,
++        }),
++        signal: AbortSignal.timeout(15000),
++      },
++    );
++    if (!response.ok)
++      return json(
++        { error: 'Sign-in failed. Check your username and password.' },
++        response.status === 429 ? 429 : 401,
++      );
++    const account = accountForUsername(body.username.trim());
++    await session.regenerate();
++    session.delete('registrationChallenge');
++    session.delete('authenticationChallenge');
++    session.set('accountId', account.id);
++    return json({ success: true });
++  } catch {
++    return json(
++      { error: 'Sign-in is temporarily unavailable. Please try again.' },
++      503,
++    );
++  }
++};
+diff --git a/src/pages/api/account/logout.ts b/src/pages/api/account/logout.ts
+new file mode 100644
+index 0000000..668da45
+--- /dev/null
++++ b/src/pages/api/account/logout.ts
+@@ -0,0 +1,9 @@
++import type { APIRoute } from 'astro';
++import { json, sameOrigin } from '../../../lib/server/account-api';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  if (!sameOrigin(request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  session?.destroy();
++  return json({ success: true });
++};
+diff --git a/src/pages/api/passkeys/[id].ts b/src/pages/api/passkeys/[id].ts
+new file mode 100644
+index 0000000..af8b6b2
+--- /dev/null
++++ b/src/pages/api/passkeys/[id].ts
+@@ -0,0 +1,49 @@
++import type { APIRoute } from 'astro';
++import {
++  publicPasskeys,
++  removePasskey,
++  renamePasskey,
++} from '../../../lib/server/accounts';
++import {
++  json,
++  relyingParty,
++  sameOrigin,
++  signedInAccount,
++  validName,
++} from '../../../lib/server/account-api';
++
++const mutate: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  const account = await signedInAccount(context);
++  if (!account) return json({ error: 'Please sign in again.' }, 401);
++  const rpId = relyingParty(context.url);
++  const id = context.params.id!;
++  let changed;
++  if (context.request.method === 'PUT') {
++    let body;
++    try {
++      body = await context.request.json();
++    } catch {
++      return json({ error: 'Invalid request.' }, 400);
++    }
++    if (!validName(body?.name))
++      return json(
++        { error: 'Use a passkey name between 1 and 80 characters.' },
++        400,
++      );
++    changed = renamePasskey(account.id, rpId, id, body.name.trim());
++  } else {
++    changed = removePasskey(account.id, rpId, id);
++  }
++  if (!changed)
++    return json(
++      { error: 'This passkey no longer exists. Refresh the list.' },
++      404,
++    );
++  // Always return the complete authoritative list, including an empty list.
++  return json({ account, rpId, passkeys: publicPasskeys(account.id, rpId) });
++};
++
++export const PUT = mutate;
++export const DELETE = mutate;
+diff --git a/src/pages/api/passkeys/authenticate.ts b/src/pages/api/passkeys/authenticate.ts
+new file mode 100644
+index 0000000..33a3b11
+--- /dev/null
++++ b/src/pages/api/passkeys/authenticate.ts
+@@ -0,0 +1,76 @@
++import type { APIRoute } from 'astro';
++import {
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} from '@simplewebauthn/server';
++import { findPasskey, markPasskeyUsed } from '../../../lib/server/accounts';
++import {
++  json,
++  relyingParty,
++  sameOrigin,
++} from '../../../lib/server/account-api';
++
++export const POST: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  if (!context.session)
++    return json({ error: 'Sessions are unavailable.' }, 503);
++  const options = await generateAuthenticationOptions({
++    rpID: relyingParty(context.url),
++    userVerification: 'required',
++  });
++  context.session.set('authenticationChallenge', {
++    challenge: options.challenge,
++    expires: Date.now() + 300000,
++  });
++  return json(options);
++};
++
++export const PUT: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  if (!context.session)
++    return json({ error: 'Sessions are unavailable.' }, 503);
++  const pending = await context.session.get('authenticationChallenge');
++  context.session.delete('authenticationChallenge');
++  if (!pending || pending.expires < Date.now())
++    return json({ error: 'Sign-in expired. Please try again.' }, 400);
++  try {
++    const body = await context.request.json();
++    const rpId = relyingParty(context.url);
++    const key =
++      typeof body?.id === 'string' ? findPasskey(body.id, rpId) : undefined;
++    if (!key || body.response?.userHandle !== key.userId)
++      return json(
++        {
++          error: 'This passkey is not registered. Sign in with your password.',
++        },
++        401,
++      );
++    const result = await verifyAuthenticationResponse({
++      response: body,
++      expectedChallenge: pending.challenge,
++      expectedOrigin: process.env.WEBAUTHN_ORIGIN || context.url.origin,
++      expectedRPID: rpId,
++      credential: key.credential,
++      requireUserVerification: true,
++    });
++    if (
++      !result.verified ||
++      !markPasskeyUsed(key, result.authenticationInfo.newCounter)
++    )
++      return json(
++        { error: 'Could not verify this passkey. Please try again.' },
++        401,
++      );
++    await context.session.regenerate();
++    context.session.delete('registrationChallenge');
++    context.session.set('accountId', key.userId);
++    return json({ success: true });
++  } catch {
++    return json(
++      { error: 'Could not sign in with this passkey. Please try again.' },
++      401,
++    );
++  }
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..fca271e
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,14 @@
++import type { APIRoute } from 'astro';
++import { publicPasskeys } from '../../../lib/server/accounts';
++import {
++  json,
++  relyingParty,
++  signedInAccount,
++} from '../../../lib/server/account-api';
++
++export const GET: APIRoute = async (context) => {
++  const account = await signedInAccount(context);
++  if (!account) return json({ error: 'Please sign in again.' }, 401);
++  const rpId = relyingParty(context.url);
++  return json({ account, rpId, passkeys: publicPasskeys(account.id, rpId) });
++};
+diff --git a/src/pages/api/passkeys/register.ts b/src/pages/api/passkeys/register.ts
+new file mode 100644
+index 0000000..3d341b6
+--- /dev/null
++++ b/src/pages/api/passkeys/register.ts
+@@ -0,0 +1,89 @@
++import type { APIRoute } from 'astro';
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++} from '@simplewebauthn/server';
++import {
++  listPasskeys,
++  publicPasskeys,
++  savePasskey,
++} from '../../../lib/server/accounts';
++import {
++  json,
++  relyingParty,
++  sameOrigin,
++  signedInAccount,
++} from '../../../lib/server/account-api';
++
++export const POST: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  const account = await signedInAccount(context);
++  if (!account || !context.session)
++    return json({ error: 'Please sign in again.' }, 401);
++  const rpId = relyingParty(context.url);
++  const options = await generateRegistrationOptions({
++    rpName: 'The DevTools Times',
++    rpID: rpId,
++    userID: Buffer.from(account.id, 'base64url'),
++    userName: account.username,
++    userDisplayName: account.displayName,
++    attestationType: 'none',
++    excludeCredentials: listPasskeys(account.id, rpId).map((key) => ({
++      id: key.id,
++    })),
++    authenticatorSelection: {
++      residentKey: 'required',
++      userVerification: 'required',
++    },
++  });
++  context.session.set('registrationChallenge', {
++    challenge: options.challenge,
++    expires: Date.now() + 300000,
++  });
++  return json(options);
++};
++
++export const PUT: APIRoute = async (context) => {
++  if (!sameOrigin(context.request))
++    return json({ error: 'Request origin is not allowed.' }, 403);
++  const account = await signedInAccount(context);
++  if (!account || !context.session)
++    return json({ error: 'Please sign in again.' }, 401);
++  const pending = await context.session.get('registrationChallenge');
++  context.session.delete('registrationChallenge');
++  if (!pending || pending.expires < Date.now())
++    return json({ error: 'Registration expired. Please try again.' }, 400);
++  const rpId = relyingParty(context.url);
++  try {
++    const result = await verifyRegistrationResponse({
++      response: await context.request.json(),
++      expectedChallenge: pending.challenge,
++      expectedOrigin: process.env.WEBAUTHN_ORIGIN || context.url.origin,
++      expectedRPID: rpId,
++      requireUserVerification: true,
++    });
++    if (!result.verified)
++      return json({ error: 'Could not verify this passkey.' }, 400);
++    const { credential, aaguid } = result.registrationInfo;
++    savePasskey({
++      id: credential.id,
++      userId: account.id,
++      rpId,
++      name: '',
++      aaguid,
++      registeredAt: Date.now(),
++      lastUsedAt: null,
++      credential,
++    });
++    return json({ account, rpId, passkeys: publicPasskeys(account.id, rpId) });
++  } catch {
++    return json(
++      {
++        error:
++          'Could not register this passkey. It may already be registered. Please try again.',
++      },
++      400,
++    );
++  }
++};
+diff --git a/tests/accounts.test.mjs b/tests/accounts.test.mjs
+new file mode 100644
+index 0000000..a876fae
+--- /dev/null
++++ b/tests/accounts.test.mjs
+@@ -0,0 +1,73 @@
++import { test, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++const directory = mkdtempSync(join(tmpdir(), 'times-accounts-'));
++process.env.ACCOUNT_DB_PATH = join(directory, 'accounts.sqlite');
++const store = await import('../src/lib/server/accounts.ts');
++after(() => rmSync(directory, { recursive: true, force: true }));
++
++const alice = store.accountForUsername('alice');
++const bob = store.accountForUsername('bob');
++const rpId = 'example.test';
++const keyId = Buffer.from('credential-id').toString('base64url');
++const key = {
++  id: keyId,
++  userId: alice.id,
++  rpId,
++  name: 'Laptop',
++  aaguid: '00000000-0000-0000-0000-000000000000',
++  registeredAt: Date.now(),
++  lastUsedAt: null,
++  credential: {
++    id: keyId,
++    publicKey: new Uint8Array([1, 2, 3]),
++    counter: 0,
++    transports: ['internal'],
++  },
++};
++
++test('accounts have stable base64url handles and persistent display names', () => {
++  assert.match(alice.id, /^[A-Za-z0-9_-]+$/);
++  assert.equal(store.accountForUsername('alice').id, alice.id);
++  assert.notEqual(alice.id, bob.id);
++  store.renameAccount(alice.id, 'Alice Reader');
++  assert.equal(store.findAccount(alice.id).displayName, 'Alice Reader');
++  assert.equal(store.accountForUsername('alice').displayName, 'Alice Reader');
++});
++
++test('credential management is scoped to its owner and relying party', () => {
++  store.savePasskey(key);
++  assert.equal(store.publicPasskeys(alice.id, rpId).length, 1);
++  assert.deepEqual(store.publicPasskeys(bob.id, rpId), []);
++  assert.deepEqual(store.publicPasskeys(alice.id, 'other.test'), []);
++  assert.equal(store.renamePasskey(bob.id, rpId, keyId, 'Stolen'), false);
++  assert.equal(store.removePasskey(bob.id, rpId, keyId), false);
++  assert.equal(store.removePasskey(alice.id, 'other.test', keyId), false);
++  assert.equal(store.renamePasskey(alice.id, rpId, keyId, 'Work laptop'), true);
++  const publicKey = store.publicPasskeys(alice.id, rpId)[0];
++  assert.equal(publicKey.name, 'Work laptop');
++  assert.equal(publicKey.registeredAt, key.registeredAt);
++  assert.equal(publicKey.lastUsedAt, null);
++  assert.equal('credential' in publicKey, false);
++  assert.equal('userId' in publicKey, false);
++});
++
++test('stored public keys round-trip and authentication updates usage atomically', () => {
++  const stored = store.findPasskey(keyId, rpId);
++  assert.deepEqual([...stored.credential.publicKey], [1, 2, 3]);
++  assert.equal(store.markPasskeyUsed(stored, 1), true);
++  assert.equal(store.markPasskeyUsed(stored, 2), false);
++  const updated = store.findPasskey(keyId, rpId);
++  assert.equal(updated.credential.counter, 1);
++  assert.ok(updated.lastUsedAt >= key.registeredAt);
++});
++
++test('deleting the last credential returns an authoritative empty list', () => {
++  assert.equal(store.removePasskey(alice.id, rpId, keyId), true);
++  assert.deepEqual(store.publicPasskeys(alice.id, rpId), []);
++  assert.equal(store.findPasskey(keyId, rpId), undefined);
++  assert.equal(store.removePasskey(alice.id, rpId, keyId), false);
++});
+diff --git a/tests/passkey-sync.test.mjs b/tests/passkey-sync.test.mjs
+new file mode 100644
+index 0000000..96ef94d
+--- /dev/null
++++ b/tests/passkey-sync.test.mjs
+@@ -0,0 +1,70 @@
++import { test, afterEach } from 'node:test';
++import assert from 'node:assert/strict';
++import { syncPasskeys, syncReaderDetails } from '../src/lib/passkeys.ts';
++
++const original = globalThis.PublicKeyCredential;
++afterEach(() => {
++  if (original === undefined) delete globalThis.PublicKeyCredential;
++  else globalThis.PublicKeyCredential = original;
++});
++const state = {
++  account: { id: 'cmVhZGVy', username: 'reader', displayName: 'A Reader' },
++  rpId: 'example.test',
++  passkeys: [{ id: 'Zmlyc3Q' }, { id: 'c2Vjb25k' }],
++};
++
++test('sync uses the full server credential list and existing base64url IDs', async () => {
++  let received;
++  globalThis.PublicKeyCredential = {
++    signalAllAcceptedCredentials: async (value) => {
++      received = value;
++    },
++  };
++  assert.equal(await syncPasskeys(state), null);
++  assert.deepEqual(received, {
++    rpId: state.rpId,
++    userId: state.account.id,
++    allAcceptedCredentialIds: ['Zmlyc3Q', 'c2Vjb25k'],
++  });
++  await syncPasskeys({ ...state, passkeys: [] });
++  assert.deepEqual(received.allAcceptedCredentialIds, []);
++});
++
++test('account name sync passes the canonical user handle and saved names', async () => {
++  let received;
++  globalThis.PublicKeyCredential = {
++    signalCurrentUserDetails: async (value) => {
++      received = value;
++    },
++  };
++  assert.equal(await syncReaderDetails(state.rpId, state.account), null);
++  assert.deepEqual(received, {
++    rpId: state.rpId,
++    userId: state.account.id,
++    name: 'reader',
++    displayName: 'A Reader',
++  });
++});
++
++test('unsupported signal methods produce actionable manual guidance', async () => {
++  delete globalThis.PublicKeyCredential;
++  assert.match(await syncPasskeys(state), /password manager/);
++  globalThis.PublicKeyCredential = {};
++  assert.match(await syncReaderDetails(state.rpId, state.account), /saved/);
++});
++
++test('rejected signals report sync failures without throwing away saved changes', async () => {
++  globalThis.PublicKeyCredential = {
++    signalAllAcceptedCredentials: async () => {
++      throw new Error('Denied');
++    },
++    signalCurrentUserDetails: async () => {
++      throw new Error('Denied');
++    },
++  };
++  assert.match(await syncPasskeys(state), /browser sync failed/);
++  assert.match(
++    await syncReaderDetails(state.rpId, state.account),
++    /saved.*sync failed/,
++  );
++});

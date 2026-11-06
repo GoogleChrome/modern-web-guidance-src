@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,89 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-launch {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    #feedback-dialog {
++      margin: auto;
++      width: min(440px, calc(100vw - 32px));
++      padding: 24px;
++      border: 0;
++      border-radius: 10px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    #feedback-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    #feedback-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    #feedback-dialog label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    #feedback-dialog textarea {
++      width: 100%;
++      min-height: 90px;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-location {
++      font-size: 0.85rem;
++      margin: 8px 0;
++    }
++
++    .feedback-moves,
++    .feedback-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 12px;
++    }
++
++    .feedback-actions {
++      justify-content: flex-end;
++    }
++
++    #feedback-dialog button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 6px 12px;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    #feedback-dialog button.primary {
++      background: var(--primary);
++      color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -206,7 +287,112 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launch" id="feedback-open">Feedback</button>
++
++  <dialog id="feedback-dialog" aria-labelledby="feedback-title">
++    <form method="dialog" id="feedback-form">
++      <h2 id="feedback-title">Send us feedback</h2>
++      <p class="feedback-location">Currently inside: <strong id="feedback-location">body</strong></p>
++      <label for="feedback-text">How can we do better?</label>
++      <textarea id="feedback-text" name="feedback"></textarea>
++      <div class="feedback-moves" role="group" aria-label="Move this dialog">
++        <button type="button" data-move-to="nav">Move to nav</button>
++        <button type="button" data-move-to=".hero">Move to hero</button>
++        <button type="button" data-move-to="main">Move to main</button>
++        <button type="button" data-move-to="footer">Move to footer</button>
++      </div>
++      <p class="feedback-location" id="feedback-status" role="status"></p>
++      <div class="feedback-actions">
++        <button type="submit" value="cancel">Close</button>
++        <button type="submit" value="send" class="primary">Send</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-dialog');
++      const opener = document.getElementById('feedback-open');
++      const locationLabel = document.getElementById('feedback-location');
++      const status = document.getElementById('feedback-status');
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++
++      opener.addEventListener('click', () => {
++        if (!dialog.open) dialog.showModal();
++      });
++
++      // Capture what removal from the DOM would destroy (open state, focus, caret, scroll).
++      function captureState() {
++        const active = document.activeElement;
++        const inDialog = active && dialog.contains(active);
++        return {
++          modal: dialog.matches(':modal'),
++          focus: inDialog ? active : null,
++          selection: inDialog && 'selectionStart' in active
++            ? [active.selectionStart, active.selectionEnd, active.selectionDirection]
++            : null,
++          scrolls: [dialog, ...dialog.querySelectorAll('*')]
++            .filter((el) => el.scrollTop || el.scrollLeft)
++            .map((el) => [el, el.scrollTop, el.scrollLeft]),
++        };
++      }
++
++      function restoreState(state) {
++        if (state.modal) dialog.showModal();
++        else dialog.show();
++        for (const [el, top, left] of state.scrolls) {
++          el.scrollTop = top;
++          el.scrollLeft = left;
++        }
++        if (state.focus) {
++          state.focus.focus({ preventScroll: true });
++          if (state.selection) {
++            try { state.focus.setSelectionRange(...state.selection); } catch {}
++          }
++        }
++      }
++
++      function relocate(target) {
++        if (!target || dialog.parentElement === target) return 'unchanged';
++        if (supportsMoveBefore && dialog.isConnected) {
++          // Atomic move: preserves open/top-layer state, focus, and form state.
++          target.moveBefore(dialog, null);
++          return 'moveBefore';
++        }
++        // Fallback: insertion closes the dialog, so reopen it and restore state.
++        const state = captureState();
++        const wasOpen = dialog.open;
++        const value = dialog.returnValue;
++        target.append(dialog);
++        if (wasOpen) restoreState(state);
++        dialog.returnValue = value;
++        return 'reopen fallback';
++      }
++
++      dialog.addEventListener('click', (event) => {
++        const button = event.target.closest('[data-move-to]');
++        if (!button) return;
++        const target = document.querySelector(button.dataset.moveTo);
++        const how = relocate(target);
++        locationLabel.textContent = dialog.parentElement.localName +
++          (dialog.parentElement.className ? '.' + dialog.parentElement.className : '');
++        status.textContent = how === 'unchanged'
++          ? 'Already there.'
++          : `Moved using ${how}.`;
++        // Keep keyboard focus on the button that was pressed.
++        if (document.activeElement !== button) button.focus({ preventScroll: true });
++      });
++
++      dialog.addEventListener('close', () => {
++        if (dialog.returnValue === 'send') {
++          dialog.querySelector('textarea').value = '';
++          status.textContent = '';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

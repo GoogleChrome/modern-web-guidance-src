@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+index 66c9173..a09ea5a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,75 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Generated content.
++       Each rule declares a plain fallback first, then the "content: <x> / <alt>"
++       form. An empty alt ("/ ''") hides purely decorative content from assistive
++       tech; browsers without alt-text support ignore the second declaration. */
++    .btn::after {
++      content: "\2192";
++      content: "\2192" / "";
++      margin-left: 0.5em;
++      display: inline-block;
++      transition: transform 0.3s;
++    }
++
++    .btn:hover::after,
++    .btn:focus-visible::after {
++      transform: translateX(4px);
++    }
++
++    .hero h1::before,
++    .hero h1::after {
++      content: "\2615";
++      content: "\2615" / "";
++      display: inline-block;
++      font-size: 0.6em;
++      vertical-align: middle;
++      color: var(--accent);
++      margin: 0 0.5em;
++    }
++
++    .card::before {
++      content: "\2615";
++      content: "\2615" / "";
++      display: block;
++      font-size: 2rem;
++      color: var(--accent);
++      margin-bottom: 5px;
++    }
++
++    .card-new {
++      position: relative;
++    }
++
++    /* Meaningful content: spoken alt text conveys what the badge means */
++    .card-new::after {
++      content: "New";
++      content: "New" / "New this season";
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 10px;
++    }
++
++    .footer-links a:not(:last-child)::after {
++      content: "|";
++      content: "|" / "";
++      margin-left: 20px;
++      color: var(--text);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -178,7 +247,7 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card-new">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -199,9 +268,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>

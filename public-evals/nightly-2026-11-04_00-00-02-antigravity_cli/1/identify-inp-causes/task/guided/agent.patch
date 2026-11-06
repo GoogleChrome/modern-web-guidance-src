@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,16 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals": "./node_modules/web-vitals/dist/web-vitals.js",
++        "web-vitals/attribution": "./node_modules/web-vitals/dist/web-vitals.attribution.js"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -206,7 +214,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onINP } from 'web-vitals/attribution';
++
++    onINP((metric) => {
++      const { attribution } = metric;
++      const longestScript = attribution.longestScript;
++
++      // Sum rendering-phase style and layout durations across all LoAF entries
++      // intersecting the INP interaction (primarily explains presentationDelay).
++      let renderStyleDuration = 0;
++      let renderLayoutDuration = 0;
++      for (const entry of attribution.longAnimationFrameEntries) {
++        renderStyleDuration += entry.styleDuration ?? 0;
++        renderLayoutDuration += entry.layoutDuration ?? 0;
++      }
++
++      // Beacon script, style, and layout attribution for the INP interaction,
++      // so you can identify the root cause in production.
++      navigator.sendBeacon(
++        '/analytics',
++        JSON.stringify({
++          name: 'INP',
++          value: metric.value,
++          rating: metric.rating,
++          id: metric.id,
++          // INP subparts and interaction details:
++          inputDelay: attribution.inputDelay,
++          processingDuration: attribution.processingDuration,
++          presentationDelay: attribution.presentationDelay,
++          interactionTarget: attribution.interactionTarget,
++          interactionType: attribution.interactionType,
++          interactionTime: attribution.interactionTime,
++          nextPaintTime: attribution.nextPaintTime,
++          loadState: attribution.loadState,
++          // Longest script attribution from Long Animation Frames (LoAF):
++          invokerType: longestScript?.entry?.invokerType,
++          invoker: longestScript?.entry?.invoker,
++          sourceURL: longestScript?.entry?.sourceURL,
++          sourceFunctionName: longestScript?.entry?.sourceFunctionName,
++          sourceCharPosition: longestScript?.entry?.sourceCharPosition,
++          subpart: longestScript?.subpart,
++          intersectingDuration: longestScript?.intersectingDuration,
++          // Synchronous style and layout work forced inside the longest script
++          // (with forcedStyleAndLayoutDuration as a combined fallback):
++          forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
++          forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
++          forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
++          // Rendering-phase style and layout work across the interaction's frames
++          // (with totalStyleAndLayoutDuration as a combined fallback):
++          renderStyleDuration,
++          renderLayoutDuration,
++          totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration,
++          totalScriptDuration: attribution.totalScriptDuration,
++          totalPaintDuration: attribution.totalPaintDuration,
++          totalUnattributedDuration: attribution.totalUnattributedDuration
++        })
++      );
++    });
++  </script>
++
+ </body>
+ 
+ </html>

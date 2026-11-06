@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,113 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling: text sections in #tracked drive the reveal of #animated.
++       Pure CSS via scroll-driven animations; the named view timelines are
++       hoisted to .scrolly with timeline-scope so they can be consumed by
++       elements in a different DOM branch. Only opacity/transform animate. */
++    .scrolly {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      margin-top: 60px;
++      timeline-scope: --step-1, --step-2, --step-3;
++    }
++
++    #tracked section {
++      min-height: 90vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.8rem;
++      margin-bottom: 10px;
++    }
++
++    #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++    #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++    #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++
++    #animated {
++      position: sticky;
++      top: 90px;
++      height: calc(100vh - 130px);
++      align-self: start;
++      display: grid;
++      border-radius: 8px;
++      overflow: hidden;
++      background: var(--secondary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      display: flex;
++      align-items: flex-end;
++      padding: 24px;
++      color: white;
++      font-size: 1.3rem;
++      font-weight: bold;
++      background-size: cover;
++      background-position: center;
++    }
++
++    #animated section:nth-child(1) {
++      background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.7)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80');
++    }
++
++    #animated section:nth-child(2) {
++      background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.7)),
++        url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=80');
++    }
++
++    #animated section:nth-child(3) {
++      background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.7)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80');
++    }
++
++    @keyframes reveal {
++      from { opacity: 0; transform: translateY(40px) scale(1.05); }
++      to { opacity: 1; transform: none; }
++    }
++
++    /* Without scroll-driven animation support, everything stays visible (stacked). */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        #animated section {
++          animation: reveal linear both;
++          will-change: opacity, transform;
++        }
++
++        /* The first step is visible from the start; the rest reveal as their text enters. */
++        #animated section:nth-child(1) { animation: none; }
++        #animated section:nth-child(2) {
++          animation-timeline: --step-2;
++          animation-range: entry 20% entry 90%;
++        }
++        #animated section:nth-child(3) {
++          animation-timeline: --step-3;
++          animation-range: entry 20% entry 90%;
++        }
++      }
++    }
++
++    @media (max-width: 700px) {
++      .scrolly { grid-template-columns: 1fr; gap: 0; }
++      #animated {
++        order: -1;
++        top: 70px;
++        height: 35vh;
++        z-index: 1;
++      }
++      #tracked section { min-height: 60vh; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +299,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div class="scrolly">
++      <div id="tracked">
++        <section>
++          <h3>1. Sourced with care</h3>
++          <p>We buy directly from small farms, paying fair prices for beans picked at peak ripeness.</p>
++        </section>
++        <section>
++          <h3>2. Roasted locally</h3>
++          <p>Every batch is roasted in small lots just days before it reaches your cup.</p>
++        </section>
++        <section>
++          <h3>3. Brewed to order</h3>
++          <p>Our baristas dial in each drink so the first sip tastes as good as the last.</p>
++        </section>
++      </div>
++      <div id="animated" aria-hidden="true">
++        <section>Fresh beans</section>
++        <section>Small-batch roasting</section>
++        <section>Your perfect cup</section>
++      </div>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,124 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    /* Newsletter Form */
++    .newsletter-section {
++      max-width: 500px;
++      margin: 0 auto 36px auto;
++    }
++
++    .newsletter-heading {
++      font-size: 1.35rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .newsletter-desc {
++      font-size: 0.95rem;
++      color: var(--text);
++      margin-bottom: 16px;
++    }
++
++    .newsletter-field {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    /* Format hint placed above input so autocomplete popovers don't obscure it */
++    .newsletter-hint {
++      display: block;
++      color: #5d4037;
++      font-size: 0.825rem;
++      margin-bottom: 8px;
++    }
++
++    .newsletter-input-group {
++      display: flex;
++      width: 100%;
++      max-width: 440px;
++      gap: 8px;
++    }
++
++    .newsletter-input-group input[type="email"] {
++      flex: 1;
++      padding: 10px 14px;
++      font-size: 0.95rem;
++      border: 2px solid #bcaaa4;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      outline: none;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .newsletter-input-group input[type="email"]:focus {
++      border-color: var(--primary);
++    }
++
++    /*
++      Validation styles: Only apply error styling after user interaction / blur
++      using multiple indicators (border + background shift + text)
++    */
++    .newsletter-input-group input[type="email"]:user-invalid,
++    .newsletter-input-group input[type="email"].user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .newsletter-input-group input[type="email"]:user-valid,
++    .newsletter-input-group input[type="email"].user-valid-fallback {
++      border-color: #188038;
++    }
++
++    .newsletter-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.3s;
++      white-space: nowrap;
++    }
++
++    .newsletter-btn:hover {
++      background: #3e2723;
++    }
++
++    .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-top: 8px;
++      text-align: left;
++      width: 100%;
++      max-width: 440px;
++    }
++
++    .newsletter-field:has(input:user-invalid) .error-msg,
++    .newsletter-field:has(input.user-invalid-fallback) .error-msg {
++      display: block;
++    }
++
++    .newsletter-success {
++      display: none;
++      color: #1b5e20;
++      background-color: #e8f5e9;
++      border: 1px solid #a5d6a7;
++      border-radius: 6px;
++      padding: 10px 16px;
++      font-size: 0.9rem;
++      margin-top: 12px;
++      max-width: 440px;
++      width: 100%;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -197,8 +313,38 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter-section" aria-labelledby="newsletter-heading">
++      <h3 id="newsletter-heading" class="newsletter-heading">Stay in the Loop</h3>
++      <p class="newsletter-desc">Subscribe for artisanal brewing tips, seasonal drops, and special offers.</p>
++      <form class="newsletter-form" id="newsletter-form" action="#">
++        <div class="newsletter-field">
++          <span id="newsletter-hint" class="newsletter-hint">Format: you@example.com</span>
++          <div class="newsletter-input-group">
++            <input
++              type="email"
++              id="newsletter-email"
++              name="email"
++              placeholder="you@example.com"
++              required
++              autocomplete="email"
++              aria-label="Email address"
++              aria-describedby="newsletter-hint"
++              aria-errormessage="newsletter-error"
++            >
++            <button type="submit" class="newsletter-btn">Subscribe</button>
++          </div>
++          <div id="newsletter-error" class="error-msg" role="alert">
++            <span aria-hidden="true">⚠️</span> Please enter a valid email address.
++          </div>
++          <div id="newsletter-success" class="newsletter-success" role="status">
++            Thanks for subscribing! Check your inbox soon.
++          </div>
++        </div>
++      </form>
++    </section>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +352,130 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Synchronize aria-invalid with the :user-invalid state
++    const updateAriaState = (event) => {
++      const input = event.target;
++      if (!input.matches?.('input, textarea, select')) return;
++
++      const isUserInvalid = input.matches(':user-invalid') || input.classList.contains('user-invalid-fallback');
++      if (isUserInvalid) {
++        input.setAttribute('aria-invalid', 'true');
++      } else {
++        input.removeAttribute('aria-invalid');
++      }
++
++      const errorId = input.getAttribute('aria-errormessage');
++      if (errorId) {
++        const errorEl = document.getElementById(errorId);
++        if (errorEl) {
++          errorEl.style.display = isUserInvalid ? 'block' : '';
++        }
++      }
++    };
++
++    // 'blur' and 'focus' do not bubble, so we must use the capture phase (true)
++    document.addEventListener('blur', updateAriaState, true);
++    document.addEventListener('focus', updateAriaState, true);
++
++    // Update on input if error is already shown so error clears immediately upon correction
++    document.addEventListener('input', (event) => {
++      const input = event.target;
++      if (!input.matches?.('input, textarea, select')) return;
++
++      if (input.hasAttribute('aria-invalid')) {
++        updateAriaState(event);
++      }
++    });
++
++    // Fallback logic for environments without native :user-invalid support
++    const UserInvalidFallback = (() => {
++      const dirtyState = new WeakMap();
++
++      const updateState = (input) => {
++        const isValid = input.checkValidity();
++        input.classList.toggle('user-invalid-fallback', !isValid);
++        input.classList.toggle('user-valid-fallback', isValid);
++
++        if (!isValid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++
++        const errorId = input.getAttribute('aria-errormessage');
++        if (errorId) {
++          const errorEl = document.getElementById(errorId);
++          if (errorEl) {
++            errorEl.style.display = !isValid ? 'block' : '';
++          }
++        }
++      };
++
++      const handleEvent = (event) => {
++        const input = event.target;
++
++        if (event.type === 'reset' && input.matches?.('form')) {
++          const controls = input.elements || [];
++          for (const control of controls) {
++            dirtyState.delete(control);
++            control.classList.remove('user-invalid-fallback');
++            control.classList.remove('user-valid-fallback');
++            control.removeAttribute('aria-invalid');
++          }
++          return;
++        }
++
++        if (!input.matches?.('input, textarea, select')) return;
++
++        if (event.type === 'input' || event.type === 'change') {
++          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++          state.hasInteracted = true;
++          dirtyState.set(input, state);
++          if (state.hasBlurred) {
++            updateState(input);
++          }
++        } else if (event.type === 'blur') {
++          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++          state.hasBlurred = true;
++          dirtyState.set(input, state);
++          if (state.hasInteracted) {
++            updateState(input);
++          }
++        }
++      };
++
++      const init = () => {
++        if (CSS.supports('selector(:user-invalid)')) return;
++
++        document.addEventListener('blur', handleEvent, true); // Capture phase required
++        document.addEventListener('input', handleEvent, true);
++        document.addEventListener('change', handleEvent, true);
++        document.addEventListener('reset', handleEvent, true);
++      };
++
++      return { init };
++    })();
++
++    UserInvalidFallback.init();
++
++    // Handle form submission UX
++    const newsletterForm = document.getElementById('newsletter-form');
++    if (newsletterForm) {
++      newsletterForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const emailInput = document.getElementById('newsletter-email');
++        if (emailInput && emailInput.checkValidity()) {
++          const successEl = document.getElementById('newsletter-success');
++          if (successEl) {
++            successEl.style.display = 'block';
++          }
++          newsletterForm.reset();
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

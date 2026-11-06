@@ -1,0 +1,761 @@
+diff --git a/index.html b/index.html
+index 66c9173..7b842a2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,155 @@
+       background: #3e2723;
+     }
+ 
++    .card {
++      position: relative;
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++
++    .card.highlight {
++      box-shadow: 0 0 0 3px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.2);
++      transform: translateY(-4px);
++    }
++
++    .card[hidden] {
++      display: none;
++    }
++
++    .card .meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .card .tags {
++      margin-top: 8px;
++    }
++
++    .tag {
++      display: inline-block;
++      background: var(--secondary);
++      border-radius: 10px;
++      padding: 1px 8px;
++      margin: 2px;
++      font-size: 0.75rem;
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn.btn-accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn.btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .menu-filters {
++      text-align: center;
++      margin-top: 15px;
++    }
++
++    .menu-filters button {
++      background: white;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 16px;
++      padding: 4px 14px;
++      margin: 3px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .menu-filters button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Order panel */
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      margin-top: 40px;
++    }
++
++    .order-panel h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .order-items {
++      list-style: none;
++    }
++
++    .order-items li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #eee;
++      padding: 8px 0;
++      gap: 10px;
++    }
++
++    .order-items .remove {
++      background: none;
++      border: none;
++      color: #b71c1c;
++      cursor: pointer;
++      font-size: 0.85rem;
++    }
++
++    .order-total {
++      text-align: right;
++      font-weight: bold;
++      margin-top: 10px;
++    }
++
++    .order-empty {
++      color: #8d6e63;
++      font-style: italic;
++    }
++
++    .order-status {
++      margin-top: 10px;
++      color: #2e7d32;
++      font-weight: bold;
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 20px;
++      right: 20px;
++      background: var(--primary);
++      color: white;
++      padding: 12px 18px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      opacity: 0;
++      transform: translateY(10px);
++      transition: opacity 0.3s, transform 0.3s;
++      pointer-events: none;
++      z-index: 2000;
++    }
++
++    .toast.show {
++      opacity: 1;
++      transform: translateY(0);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,23 +326,25 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="menu-filters" id="menu-filters" role="group" aria-label="Filter seasonal favorites">
++        <button type="button" data-filter="all" aria-pressed="true">All</button>
++        <button type="button" data-filter="hot" aria-pressed="false">Hot</button>
++        <button type="button" data-filter="iced" aria-pressed="false">Iced</button>
++        <button type="button" data-filter="dairy-free" aria-pressed="false">Dairy-Free</button>
+       </div>
++      <!-- Cards are rendered from the menu data in webmcp.js -->
++      <div class="grid" id="seasonal-grid"></div>
++    </section>
++
++    <section class="order-panel" id="order-panel" aria-live="polite">
++      <h2>Your Order</h2>
++      <p class="order-empty" id="order-empty">Your cup is empty. Add a seasonal favorite to get started.</p>
++      <ul class="order-items" id="order-items"></ul>
++      <p class="order-total" id="order-total" hidden></p>
++      <div class="card-actions">
++        <button type="button" class="btn btn-accent" id="place-order-btn" hidden>Place Order</button>
++      </div>
++      <p class="order-status" id="order-status" hidden></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +358,10 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="toast" id="toast" role="status"></div>
++
++  <script src="/webmcp.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..c9c9565
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,542 @@
++/*
++ * The Daily Grind — Seasonal Favorites menu, order panel, and WebMCP tools.
++ *
++ * WebMCP (navigator.modelContext) lets in-browser AI agents call these tools
++ * directly. Every tool drives the same UI code paths a human uses, so the page
++ * always reflects what the agent did. If the browser has no WebMCP support the
++ * page still works normally; the tools just aren't registered.
++ */
++(function () {
++  'use strict';
++
++  // ---------------------------------------------------------------------------
++  // Menu data
++  // ---------------------------------------------------------------------------
++
++  var SIZES = { small: 0, medium: 0.5, large: 1.0 };
++  var MILKS = { whole: 0, skim: 0, oat: 0.75, almond: 0.75, none: 0 };
++  var EXTRA_SHOT_PRICE = 0.9;
++  var MAX_QUANTITY = 10;
++  var MAX_EXTRA_SHOTS = 4;
++
++  var SEASONAL_MENU = [
++    {
++      id: 'maple-oat-latte',
++      name: 'Maple Oat Latte',
++      description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      basePrice: 5.25,
++      temperatures: ['hot', 'iced'],
++      defaultMilk: 'oat',
++      milkOptions: ['oat', 'almond', 'whole', 'skim'],
++      caffeineMg: 150,
++      tags: ['dairy-free', 'seasonal', 'sweet'],
++      detailsUrl: '/menu/seasonal'
++    },
++    {
++      id: 'dark-roast-espresso',
++      name: 'Dark Roast Espresso',
++      description: 'Bold, smokey, and perfect for a morning boost.',
++      basePrice: 3.25,
++      temperatures: ['hot'],
++      defaultMilk: 'none',
++      milkOptions: ['none'],
++      caffeineMg: 130,
++      tags: ['dairy-free', 'strong'],
++      detailsUrl: '/menu/espresso'
++    },
++    {
++      id: 'cold-brew',
++      name: 'Cold Brew',
++      description: 'Steeped for 18 hours for maximum smoothness.',
++      basePrice: 4.5,
++      temperatures: ['iced'],
++      defaultMilk: 'none',
++      milkOptions: ['none', 'oat', 'almond', 'whole', 'skim'],
++      caffeineMg: 200,
++      tags: ['dairy-free', 'smooth'],
++      detailsUrl: '/menu/cold-brew'
++    }
++  ];
++
++  var FILTERS = ['all', 'hot', 'iced', 'dairy-free'];
++
++  function findDrink(id) {
++    for (var i = 0; i < SEASONAL_MENU.length; i++) {
++      if (SEASONAL_MENU[i].id === id) return SEASONAL_MENU[i];
++    }
++    return null;
++  }
++
++  function matchesFilter(drink, filter) {
++    if (filter === 'all') return true;
++    if (filter === 'hot' || filter === 'iced') return drink.temperatures.indexOf(filter) !== -1;
++    return drink.tags.indexOf(filter) !== -1;
++  }
++
++  function money(n) {
++    return '$' + n.toFixed(2);
++  }
++
++  function round2(n) {
++    return Math.round(n * 100) / 100;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Page state & rendering
++  // ---------------------------------------------------------------------------
++
++  var state = {
++    filter: 'all',
++    order: [], // { lineId, drinkId, name, size, milk, temperature, extraShots, quantity, unitPrice }
++    nextLineId: 1,
++    lastPlacedOrder: null
++  };
++
++  var els = {
++    grid: document.getElementById('seasonal-grid'),
++    filters: document.getElementById('menu-filters'),
++    items: document.getElementById('order-items'),
++    empty: document.getElementById('order-empty'),
++    total: document.getElementById('order-total'),
++    placeBtn: document.getElementById('place-order-btn'),
++    status: document.getElementById('order-status'),
++    panel: document.getElementById('order-panel'),
++    toast: document.getElementById('toast')
++  };
++
++  function el(tag, className, text) {
++    var node = document.createElement(tag);
++    if (className) node.className = className;
++    if (text != null) node.textContent = text;
++    return node;
++  }
++
++  function renderMenu() {
++    els.grid.textContent = '';
++    SEASONAL_MENU.forEach(function (drink) {
++      var card = el('div', 'card');
++      card.id = 'drink-' + drink.id;
++      card.dataset.drinkId = drink.id;
++
++      card.appendChild(el('h3', null, drink.name));
++      card.appendChild(el('p', null, drink.description));
++      card.appendChild(el('p', 'meta',
++        'From ' + money(drink.basePrice) + ' · ' + drink.temperatures.join(' / ') + ' · ' + drink.caffeineMg + 'mg caffeine'));
++
++      var tags = el('div', 'tags');
++      drink.tags.forEach(function (t) { tags.appendChild(el('span', 'tag', t)); });
++      card.appendChild(tags);
++
++      var actions = el('div', 'card-actions');
++      var details = el('a', 'btn', 'View Details');
++      details.href = drink.detailsUrl;
++      var add = el('button', 'btn btn-accent', 'Add to Order');
++      add.type = 'button';
++      add.addEventListener('click', function () {
++        addToOrder({ drinkId: drink.id });
++      });
++      actions.appendChild(details);
++      actions.appendChild(add);
++      card.appendChild(actions);
++
++      els.grid.appendChild(card);
++    });
++    applyFilter(state.filter);
++  }
++
++  function applyFilter(filter) {
++    state.filter = filter;
++    Array.prototype.forEach.call(els.grid.children, function (card) {
++      card.hidden = !matchesFilter(findDrink(card.dataset.drinkId), filter);
++    });
++    Array.prototype.forEach.call(els.filters.querySelectorAll('button'), function (btn) {
++      btn.setAttribute('aria-pressed', String(btn.dataset.filter === filter));
++    });
++    return SEASONAL_MENU.filter(function (d) { return matchesFilter(d, filter); });
++  }
++
++  function orderTotal() {
++    return round2(state.order.reduce(function (sum, line) {
++      return sum + line.unitPrice * line.quantity;
++    }, 0));
++  }
++
++  function describeLine(line) {
++    var parts = [line.size, line.temperature, line.name];
++    var extras = [];
++    if (line.milk !== 'none') extras.push(line.milk + ' milk');
++    if (line.extraShots) extras.push('+' + line.extraShots + ' shot' + (line.extraShots > 1 ? 's' : ''));
++    return line.quantity + '× ' + parts.join(' ') + (extras.length ? ' (' + extras.join(', ') + ')' : '');
++  }
++
++  function renderOrder() {
++    els.items.textContent = '';
++    state.order.forEach(function (line) {
++      var li = el('li');
++      li.appendChild(el('span', null, describeLine(line)));
++      var right = el('span');
++      right.appendChild(document.createTextNode(money(line.unitPrice * line.quantity) + ' '));
++      var remove = el('button', 'remove', 'Remove');
++      remove.type = 'button';
++      remove.setAttribute('aria-label', 'Remove ' + line.name);
++      remove.addEventListener('click', function () { removeFromOrder(line.lineId); });
++      right.appendChild(remove);
++      li.appendChild(right);
++      els.items.appendChild(li);
++    });
++
++    var hasItems = state.order.length > 0;
++    els.empty.hidden = hasItems;
++    els.total.hidden = !hasItems;
++    els.placeBtn.hidden = !hasItems;
++    els.total.textContent = 'Total: ' + money(orderTotal());
++  }
++
++  var toastTimer = null;
++  function showToast(message) {
++    els.toast.textContent = message;
++    els.toast.classList.add('show');
++    clearTimeout(toastTimer);
++    toastTimer = setTimeout(function () { els.toast.classList.remove('show'); }, 3000);
++  }
++
++  function highlightDrink(drinkId) {
++    var card = document.getElementById('drink-' + drinkId);
++    if (!card) return false;
++    if (card.hidden) applyFilter('all');
++    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
++    card.classList.add('highlight');
++    setTimeout(function () { card.classList.remove('highlight'); }, 2500);
++    return true;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Order actions (shared by UI and WebMCP tools)
++  // ---------------------------------------------------------------------------
++
++  function OrderError(message) {
++    this.message = message;
++  }
++
++  function addToOrder(opts) {
++    var drink = findDrink(opts.drinkId);
++    if (!drink) throw new OrderError('Unknown drink "' + opts.drinkId + '". Call get_seasonal_menu for valid ids.');
++
++    var size = opts.size || 'medium';
++    if (!(size in SIZES)) throw new OrderError('Invalid size "' + size + '". Choose one of: ' + Object.keys(SIZES).join(', ') + '.');
++
++    var temperature = opts.temperature || drink.temperatures[0];
++    if (drink.temperatures.indexOf(temperature) === -1) {
++      throw new OrderError(drink.name + ' is only available ' + drink.temperatures.join(' or ') + '.');
++    }
++
++    var milk = opts.milk || drink.defaultMilk;
++    if (drink.milkOptions.indexOf(milk) === -1) {
++      throw new OrderError(drink.name + ' milk options are: ' + drink.milkOptions.join(', ') + '.');
++    }
++
++    var extraShots = opts.extraShots == null ? 0 : opts.extraShots;
++    if (!Number.isInteger(extraShots) || extraShots < 0 || extraShots > MAX_EXTRA_SHOTS) {
++      throw new OrderError('extraShots must be an integer from 0 to ' + MAX_EXTRA_SHOTS + '.');
++    }
++
++    var quantity = opts.quantity == null ? 1 : opts.quantity;
++    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
++      throw new OrderError('quantity must be an integer from 1 to ' + MAX_QUANTITY + '.');
++    }
++
++    var line = {
++      lineId: state.nextLineId++,
++      drinkId: drink.id,
++      name: drink.name,
++      size: size,
++      temperature: temperature,
++      milk: milk,
++      extraShots: extraShots,
++      quantity: quantity,
++      unitPrice: round2(drink.basePrice + SIZES[size] + MILKS[milk] + extraShots * EXTRA_SHOT_PRICE)
++    };
++    state.order.push(line);
++    state.lastPlacedOrder = null;
++    els.status.hidden = true;
++    renderOrder();
++    highlightDrink(drink.id);
++    showToast('Added ' + describeLine(line));
++    return line;
++  }
++
++  function removeFromOrder(lineId) {
++    var idx = -1;
++    for (var i = 0; i < state.order.length; i++) {
++      if (state.order[i].lineId === lineId) idx = i;
++    }
++    if (idx === -1) throw new OrderError('No order line with lineId ' + lineId + '. Call get_current_order to see lines.');
++    var removed = state.order.splice(idx, 1)[0];
++    renderOrder();
++    showToast('Removed ' + removed.name);
++    return removed;
++  }
++
++  function clearOrder() {
++    state.order = [];
++    renderOrder();
++  }
++
++  // Orders are fulfilled in-store; this confirms the order on the page and
++  // issues a pickup number.
++  function placeOrder() {
++    if (!state.order.length) throw new OrderError('The order is empty. Add drinks before placing it.');
++    var placed = {
++      orderNumber: 'DG-' + String(Date.now()).slice(-6),
++      items: summarizeOrder().items,
++      total: orderTotal(),
++      estimatedReadyMinutes: 5 + state.order.reduce(function (n, l) { return n + l.quantity; }, 0) * 2
++    };
++    state.lastPlacedOrder = placed;
++    clearOrder();
++    els.status.textContent = 'Order ' + placed.orderNumber + ' placed! Ready for pickup in about ' +
++      placed.estimatedReadyMinutes + ' minutes.';
++    els.status.hidden = false;
++    els.panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
++    showToast('Order ' + placed.orderNumber + ' placed');
++    return placed;
++  }
++
++  function summarizeOrder() {
++    return {
++      items: state.order.map(function (line) {
++        return {
++          lineId: line.lineId,
++          drinkId: line.drinkId,
++          description: describeLine(line),
++          size: line.size,
++          temperature: line.temperature,
++          milk: line.milk,
++          extraShots: line.extraShots,
++          quantity: line.quantity,
++          unitPrice: line.unitPrice,
++          lineTotal: round2(line.unitPrice * line.quantity)
++        };
++      }),
++      total: orderTotal()
++    };
++  }
++
++  // ---------------------------------------------------------------------------
++  // UI wiring
++  // ---------------------------------------------------------------------------
++
++  els.filters.addEventListener('click', function (e) {
++    var btn = e.target.closest('button[data-filter]');
++    if (btn) applyFilter(btn.dataset.filter);
++  });
++
++  els.placeBtn.addEventListener('click', function () {
++    placeOrder();
++  });
++
++  renderMenu();
++  renderOrder();
++
++  // ---------------------------------------------------------------------------
++  // WebMCP tools
++  // ---------------------------------------------------------------------------
++
++  var modelContext = navigator.modelContext;
++  if (!modelContext || typeof modelContext.registerTool !== 'function') return;
++
++  function textResult(data) {
++    return {
++      content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }]
++    };
++  }
++
++  function errorResult(message) {
++    return { content: [{ type: 'text', text: message }], isError: true };
++  }
++
++  // Wraps an execute function so validation errors come back to the agent as
++  // tool errors instead of rejected promises.
++  function safe(fn) {
++    return async function (input, client) {
++      try {
++        return await fn(input || {}, client);
++      } catch (err) {
++        if (err instanceof OrderError) return errorResult(err.message);
++        throw err;
++      }
++    };
++  }
++
++  function publicDrink(drink) {
++    return {
++      id: drink.id,
++      name: drink.name,
++      description: drink.description,
++      basePrice: drink.basePrice,
++      temperatures: drink.temperatures,
++      defaultMilk: drink.defaultMilk,
++      milkOptions: drink.milkOptions,
++      caffeineMg: drink.caffeineMg,
++      tags: drink.tags
++    };
++  }
++
++  var drinkIds = SEASONAL_MENU.map(function (d) { return d.id; });
++
++  var tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'List the Daily Grind "Seasonal Favorites" drinks with ids, prices, available temperatures, ' +
++        'milk options, caffeine, and tags. Also returns size and add-on pricing. Optionally filter by temperature, ' +
++        'tag, or maximum base price.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          temperature: { type: 'string', enum: ['hot', 'iced'], description: 'Only drinks available at this temperature.' },
++          tag: { type: 'string', description: 'Only drinks with this tag, e.g. "dairy-free", "strong", "sweet".' },
++          maxPrice: { type: 'number', minimum: 0, description: 'Only drinks with a base price at or below this (USD).' }
++        }
++      },
++      annotations: { readOnlyHint: true },
++      execute: safe(function (input) {
++        var drinks = SEASONAL_MENU.filter(function (d) {
++          if (input.temperature && d.temperatures.indexOf(input.temperature) === -1) return false;
++          if (input.tag && d.tags.indexOf(String(input.tag).toLowerCase()) === -1) return false;
++          if (typeof input.maxPrice === 'number' && d.basePrice > input.maxPrice) return false;
++          return true;
++        });
++        return textResult({
++          currency: 'USD',
++          drinks: drinks.map(publicDrink),
++          pricing: {
++            sizeSurcharge: SIZES,
++            milkSurcharge: MILKS,
++            extraShot: EXTRA_SHOT_PRICE,
++            maxExtraShots: MAX_EXTRA_SHOTS,
++            maxQuantityPerLine: MAX_QUANTITY
++          }
++        });
++      })
++    },
++    {
++      name: 'show_drink',
++      description: 'Scroll the page to a Seasonal Favorites drink and briefly highlight its card so the user can see it.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          drinkId: { type: 'string', enum: drinkIds, description: 'Drink id from get_seasonal_menu.' }
++        },
++        required: ['drinkId']
++      },
++      execute: safe(function (input) {
++        if (!highlightDrink(input.drinkId)) throw new OrderError('Unknown drink "' + input.drinkId + '".');
++        return textResult('Highlighted ' + findDrink(input.drinkId).name + ' on the page.');
++      })
++    },
++    {
++      name: 'filter_seasonal_menu',
++      description: 'Change which Seasonal Favorites cards are visible on the page. Returns the drinks now shown.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          filter: { type: 'string', enum: FILTERS, description: '"all" shows every drink.' }
++        },
++        required: ['filter']
++      },
++      execute: safe(function (input) {
++        if (FILTERS.indexOf(input.filter) === -1) {
++          throw new OrderError('Invalid filter. Choose one of: ' + FILTERS.join(', ') + '.');
++        }
++        var shown = applyFilter(input.filter);
++        return textResult({ filter: input.filter, visibleDrinks: shown.map(function (d) { return d.name; }) });
++      })
++    },
++    {
++      name: 'add_drink_to_order',
++      description: 'Add a Seasonal Favorites drink to the order panel on the page. Unspecified options use defaults ' +
++        '(medium, first available temperature, the drink\'s default milk, no extra shots, quantity 1). ' +
++        'Returns the added line and the updated order.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          drinkId: { type: 'string', enum: drinkIds, description: 'Drink id from get_seasonal_menu.' },
++          size: { type: 'string', enum: Object.keys(SIZES) },
++          temperature: { type: 'string', enum: ['hot', 'iced'], description: 'Must be one the drink supports.' },
++          milk: { type: 'string', enum: Object.keys(MILKS), description: 'Must be one of the drink\'s milkOptions.' },
++          extraShots: { type: 'integer', minimum: 0, maximum: MAX_EXTRA_SHOTS },
++          quantity: { type: 'integer', minimum: 1, maximum: MAX_QUANTITY }
++        },
++        required: ['drinkId']
++      },
++      execute: safe(function (input) {
++        var line = addToOrder(input);
++        return textResult({ added: describeLine(line), lineId: line.lineId, order: summarizeOrder() });
++      })
++    },
++    {
++      name: 'get_current_order',
++      description: 'Get the drinks currently in the order panel, with line ids, prices, and the total. ' +
++        'Also includes the most recently placed order, if any.',
++      inputSchema: { type: 'object', properties: {} },
++      annotations: { readOnlyHint: true },
++      execute: safe(function () {
++        var summary = summarizeOrder();
++        summary.lastPlacedOrder = state.lastPlacedOrder;
++        return textResult(summary);
++      })
++    },
++    {
++      name: 'remove_drink_from_order',
++      description: 'Remove one line from the order panel by its lineId (from get_current_order or add_drink_to_order).',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          lineId: { type: 'integer', minimum: 1 }
++        },
++        required: ['lineId']
++      },
++      execute: safe(function (input) {
++        var removed = removeFromOrder(input.lineId);
++        return textResult({ removed: describeLine(removed), order: summarizeOrder() });
++      })
++    },
++    {
++      name: 'place_order',
++      description: 'Submit the current order for in-store pickup. The user is asked to confirm in the page before ' +
++        'the order is placed. Returns the order number and estimated ready time.',
++      inputSchema: { type: 'object', properties: {} },
++      execute: safe(async function (input, client) {
++        if (!state.order.length) throw new OrderError('The order is empty. Add drinks before placing it.');
++        var prompt = 'An assistant wants to place your Daily Grind order:\n\n' +
++          state.order.map(describeLine).join('\n') + '\n\nTotal: ' + money(orderTotal()) + '\n\nPlace this order?';
++        var ask = function () { return Promise.resolve(window.confirm(prompt)); };
++        var confirmed = client && typeof client.requestUserInteraction === 'function'
++          ? await client.requestUserInteraction(ask)
++          : await ask();
++        if (!confirmed) return errorResult('The user declined to place the order. The order is unchanged.');
++        return textResult(placeOrder());
++      })
++    },
++    {
++      name: 'clear_order',
++      description: 'Remove every drink from the order panel.',
++      inputSchema: { type: 'object', properties: {} },
++      annotations: { destructiveHint: true },
++      execute: safe(function () {
++        var count = state.order.length;
++        clearOrder();
++        showToast('Order cleared');
++        return textResult('Cleared ' + count + ' line(s) from the order.');
++      })
++    }
++  ];
++
++  tools.forEach(function (tool) {
++    try {
++      modelContext.registerTool(tool);
++    } catch (err) {
++      console.warn('[WebMCP] Failed to register tool "' + tool.name + '":', err);
++    }
++  });
++})();

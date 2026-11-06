@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,8 +54,50 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
++    /* Shrink the nav over the first 100px of scroll (scroll-driven, no JS). */
++    @keyframes shrink-nav {
++      to {
++        padding-block: 0.4rem;
++        box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
++      }
++    }
++
++    @keyframes shrink-logo {
++      to {
++        font-size: 1.15rem;
++      }
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav {
++          animation: shrink-nav linear both;
++          animation-timeline: scroll(root block);
++          animation-range: 0px 100px;
++        }
++
++        .logo {
++          animation: shrink-logo linear both;
++          animation-timeline: scroll(root block);
++          animation-range: 0px 100px;
++        }
++      }
++    }
++
++    /* Fallback: script sets --shrink (0 to 1) from the scroll position. */
++    @supports not ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      nav {
++        padding-block: calc(1rem - 0.6rem * var(--shrink, 0));
++        box-shadow: 0 2px 8px rgb(0 0 0 / calc(0.35 * var(--shrink, 0)));
++      }
++
++      .logo {
++        font-size: calc(1.5rem - 0.35rem * var(--shrink, 0));
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -206,7 +248,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Fallback for browsers without scroll-driven animations.
++    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)') &&
++      !matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const nav = document.querySelector('nav');
++      const distance = 100;
++      let ticking = false;
++
++      const update = () => {
++        nav.style.setProperty('--shrink', Math.min(1, Math.max(0, window.scrollY / distance)));
++        ticking = false;
++      };
++
++      window.addEventListener('scroll', () => {
++        if (!ticking) {
++          ticking = true;
++          requestAnimationFrame(update);
++        }
++      }, { passive: true });
++      update();
++    }
++  </script>
+ </body>
+ 
+ </html>

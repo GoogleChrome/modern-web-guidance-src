@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,77 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Calendar Converter */
++    .calendar-tool {
++      margin-top: 60px;
++    }
++
++    .calendar-tool .intro {
++      text-align: center;
++    }
++
++    .date-picker {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .date-picker input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .cal-card .main-date {
++      font-size: 1.15rem;
++      font-weight: bold;
++      margin-bottom: 10px;
++    }
++
++    .cal-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .cal-card dt {
++      font-weight: bold;
++    }
++
++    .timeline-label {
++      display: inline-block;
++      margin: 10px 0;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      font-size: 0.8rem;
++      font-weight: bold;
++    }
++
++    .month-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.8rem;
++      text-align: left;
++    }
++
++    .month-table th,
++    .month-table td {
++      padding: 2px 6px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .cal-error {
++      color: #b71c1c;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +263,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-tool" aria-labelledby="calendar-heading">
++      <h2 id="calendar-heading" class="intro">Calendar Converter</h2>
++      <p class="intro">Planning a visit or an event? Pick a date to see it in other calendars.</p>
++      <div class="date-picker">
++        <label for="calendar-date">Date</label>
++        <input type="date" id="calendar-date">
++      </div>
++      <p id="calendar-status" class="intro" role="status" aria-live="polite"></p>
++      <div class="grid" id="calendar-cards" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +286,106 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const POLYFILL_URL = 'https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.5.1/+esm';
++    const CALENDARS = [
++      { id: 'islamic-umalqura', title: 'Islamic (Umm al-Qura)', mainId: 'islamic-date', eras: false },
++      { id: 'hebrew', title: 'Hebrew', eras: false },
++      { id: 'japanese', title: 'Japanese', eras: true },
++    ];
++
++    const input = document.getElementById('calendar-date');
++    const cards = document.getElementById('calendar-cards');
++    const status = document.getElementById('calendar-status');
++    const locale = navigator.language || 'en';
++
++    // Progressive enhancement: use native Temporal when present, otherwise load a polyfill.
++    let Temporal = globalThis.Temporal;
++    if (!Temporal) {
++      try {
++        ({ Temporal } = await import(POLYFILL_URL));
++      } catch (e) {
++        status.textContent = 'Calendar conversion is unavailable in this browser.';
++      }
++    }
++
++    function el(tag, text, className) {
++      const node = document.createElement(tag);
++      if (text !== undefined) node.textContent = text;
++      if (className) node.className = className;
++      return node;
++    }
++
++    function timelineLabel(isoDate) {
++      const cmp = Temporal.PlainDate.compare(isoDate, Temporal.Now.plainDateISO());
++      return cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++    }
++
++    function monthBreakdown(date) {
++      const rows = [];
++      for (let month = 1; month <= date.monthsInYear; month++) {
++        const first = Temporal.PlainDate.from({ calendar: date.calendarId, year: date.year, month, day: 1 });
++        rows.push({ code: first.monthCode, days: first.daysInMonth });
++      }
++      return rows;
++    }
++
++    function renderCard(cfg, isoDate) {
++      const card = el('div', undefined, 'card cal-card');
++      card.append(el('h3', cfg.title));
++      try {
++        const date = isoDate.withCalendar(cfg.id);
++        const fmt = { calendar: cfg.id, year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
++        if (cfg.eras) fmt.era = 'long';
++        const main = el('p', date.toLocaleString(locale, fmt), 'main-date');
++        if (cfg.mainId) main.id = cfg.mainId;
++
++        const facts = el('dl');
++        const add = (k, v) => facts.append(el('dt', k), el('dd', String(v)));
++        add('Year', date.year);
++        add('Month', date.month);
++        add('Month code', date.monthCode);
++        add('Months in year', date.monthsInYear);
++
++        const table = el('table', undefined, 'month-table');
++        const head = table.createTHead().insertRow();
++        ['Month code', 'Days'].forEach(t => head.append(el('th', t)));
++        const body = table.createTBody();
++        for (const { code, days } of monthBreakdown(date)) {
++          const row = body.insertRow();
++          row.append(el('td', code), el('td', days));
++        }
++
++        card.append(main, el('span', timelineLabel(isoDate), 'timeline-label'), facts, table);
++      } catch (e) {
++        card.append(el('p', 'This date is outside the range supported by this calendar.', 'cal-error'));
++      }
++      return card;
++    }
++
++    function render() {
++      cards.replaceChildren();
++      status.textContent = '';
++      let isoDate;
++      try {
++        isoDate = Temporal.PlainDate.from(input.value);
++      } catch (e) {
++        status.textContent = 'Please choose a valid date.';
++        return;
++      }
++      cards.append(...CALENDARS.map(cfg => renderCard(cfg, isoDate)));
++    }
++
++    if (Temporal) {
++      input.value = Temporal.Now.plainDateISO().toString();
++      input.addEventListener('input', render);
++      render();
++    } else {
++      input.disabled = true;
++    }
++  </script>
++
+ </body>
+ 
+ </html>

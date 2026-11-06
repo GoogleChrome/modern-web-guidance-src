@@ -1,0 +1,37 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,33 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    /**
++     * Returns total visible time since navigation, in milliseconds.
++     * If visibility history is unavailable, returns elapsed page time as an
++     * upper bound; that fallback may include time spent in the background.
++     */
++    function getTotalForegroundTime() {
++      const entries = performance.getEntriesByType('visibility-state');
++      const now = performance.now();
++
++      if (entries.length === 0) {
++        return now;
++      }
++
++      let total = 0;
++      for (let i = 0; i < entries.length; i++) {
++        if (entries[i].name === 'visible') {
++          const end = i + 1 < entries.length ? entries[i + 1].startTime : now;
++          total += end - entries[i].startTime;
++        }
++      }
++
++      return total;
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

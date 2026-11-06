@@ -1,0 +1,327 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,172 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roast picker */
++    .roast-picker {
++      position: relative;
++      margin-top: 1.5rem;
++      width: min(100%, 460px);
++      text-align: left;
++    }
++
++    .roast-picker label {
++      display: block;
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++      color: var(--secondary);
++    }
++
++    /* Native select (no-JS fallback; hidden once enhanced) */
++    .roast-picker select {
++      width: 100%;
++      padding: 10px 12px;
++      border-radius: 5px;
++      border: none;
++      font: inherit;
++      color: var(--text);
++    }
++
++    .roast-picker.enhanced select {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .roast-trigger {
++      display: none;
++      width: 100%;
++      align-items: center;
++      gap: 12px;
++      padding: 8px 12px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      border: 2px solid transparent;
++      border-radius: 8px;
++      font: inherit;
++      cursor: pointer;
++      text-align: left;
++      transition: border-color 0.2s;
++    }
++
++    .roast-picker.enhanced .roast-trigger {
++      display: flex;
++    }
++
++    .roast-trigger:hover,
++    .roast-trigger:focus-visible,
++    .roast-trigger[aria-expanded="true"] {
++      border-color: var(--accent);
++      outline: none;
++    }
++
++    .roast-trigger .thumb {
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      flex-shrink: 0;
++    }
++
++    .roast-trigger .value {
++      flex: 1;
++      font-weight: 600;
++    }
++
++    .roast-trigger .chevron {
++      transition: transform 0.2s;
++    }
++
++    .roast-trigger[aria-expanded="true"] .chevron {
++      transform: rotate(180deg);
++    }
++
++    /* Options menu: 3-column grid instead of a vertical list */
++    .roast-options {
++      position: absolute;
++      top: calc(100% + 8px);
++      left: 50%;
++      transform: translateX(-50%);
++      width: min(92vw, 520px);
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      padding: 10px;
++      list-style: none;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
++      z-index: 50;
++    }
++
++    .roast-options[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      display: flex;
++      flex-direction: column;
++      border-radius: 8px;
++      overflow: hidden;
++      border: 2px solid var(--secondary);
++      cursor: pointer;
++      color: var(--text);
++      background: var(--light);
++      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
++    }
++
++    .roast-option:hover,
++    .roast-option.active {
++      transform: translateY(-2px);
++      border-color: var(--accent);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .roast-option[aria-selected="true"] {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .thumb {
++      background-image: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&q=60');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .thumb.light { background-color: #c8a165; filter: sepia(0.6) saturate(1.3) brightness(1.35); }
++    .thumb.medium { background-color: #8d5a32; filter: saturate(1.1) brightness(0.95); }
++    .thumb.dark { background-color: #2b1a12; filter: brightness(0.5) contrast(1.2); }
++
++    .roast-option .thumb {
++      aspect-ratio: 4 / 3;
++      width: 100%;
++    }
++
++    .roast-option .info {
++      padding: 8px;
++      text-align: center;
++    }
++
++    .roast-option strong {
++      display: block;
++      font-size: 0.95rem;
++    }
++
++    .roast-option small {
++      display: block;
++      font-size: 0.72rem;
++      line-height: 1.3;
++      color: #6d4c41;
++    }
++
++    @media (max-width: 420px) {
++      .roast-option small { display: none; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +334,17 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-picker" id="roast-picker">
++      <label for="roast-select">Choose your roast</label>
++      <select id="roast-select" name="roast">
++        <option value="light" data-desc="Bright, fruity &amp; floral">Light Roast</option>
++        <option value="medium" data-desc="Balanced, caramel &amp; nutty" selected>Medium Roast</option>
++        <option value="dark" data-desc="Bold, smoky &amp; rich">Dark Roast</option>
++      </select>
++    </div>
++    <a href="/order-online?roast=medium" class="btn" id="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +378,131 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var picker = document.getElementById('roast-picker');
++      var select = document.getElementById('roast-select');
++      var orderBtn = document.getElementById('order-now');
++      if (!picker || !select) return;
++
++      function syncOrderLink() {
++        orderBtn.href = '/order-online?roast=' + encodeURIComponent(select.value);
++      }
++      select.addEventListener('change', syncOrderLink);
++      syncOrderLink();
++
++      // Enhance the native select into a 3-column rich-media grid picker
++      var opts = Array.prototype.slice.call(select.options);
++      var trigger = document.createElement('button');
++      trigger.type = 'button';
++      trigger.className = 'roast-trigger';
++      trigger.id = 'roast-trigger';
++      trigger.setAttribute('aria-haspopup', 'listbox');
++      trigger.setAttribute('aria-expanded', 'false');
++      trigger.setAttribute('aria-controls', 'roast-options');
++      trigger.innerHTML = '<span class="thumb"></span><span class="value"></span><span class="chevron" aria-hidden="true">&#9662;</span>';
++
++      var list = document.createElement('ul');
++      list.className = 'roast-options';
++      list.id = 'roast-options';
++      list.setAttribute('role', 'listbox');
++      list.setAttribute('aria-label', 'Roast');
++      list.tabIndex = -1;
++      list.hidden = true;
++
++      var items = opts.map(function (opt, i) {
++        var li = document.createElement('li');
++        li.className = 'roast-option';
++        li.id = 'roast-opt-' + opt.value;
++        li.setAttribute('role', 'option');
++        li.dataset.index = i;
++        li.innerHTML = '<span class="thumb ' + opt.value + '" aria-hidden="true"></span>' +
++          '<span class="info"><strong></strong><small></small></span>';
++        li.querySelector('strong').textContent = opt.text;
++        li.querySelector('small').textContent = opt.dataset.desc || '';
++        li.addEventListener('click', function () { choose(i); close(true); });
++        li.addEventListener('mousemove', function () { setActive(i); });
++        list.appendChild(li);
++        return li;
++      });
++
++      picker.querySelector('label').setAttribute('for', 'roast-trigger');
++      select.tabIndex = -1;
++      select.setAttribute('aria-hidden', 'true');
++      picker.appendChild(trigger);
++      picker.appendChild(list);
++      picker.classList.add('enhanced');
++
++      var active = select.selectedIndex;
++
++      function render() {
++        var opt = select.options[select.selectedIndex];
++        trigger.querySelector('.thumb').className = 'thumb ' + opt.value;
++        trigger.querySelector('.value').textContent = opt.text;
++        items.forEach(function (li, i) {
++          li.setAttribute('aria-selected', i === select.selectedIndex ? 'true' : 'false');
++        });
++      }
++
++      function setActive(i) {
++        active = (i + items.length) % items.length;
++        items.forEach(function (li, j) { li.classList.toggle('active', j === active); });
++        list.setAttribute('aria-activedescendant', items[active].id);
++      }
++
++      function choose(i) {
++        if (select.selectedIndex !== i) {
++          select.selectedIndex = i;
++          select.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++        render();
++      }
++
++      function open() {
++        list.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        setActive(select.selectedIndex);
++        list.focus();
++      }
++
++      function close(focusTrigger) {
++        list.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        if (focusTrigger) trigger.focus();
++      }
++
++      trigger.addEventListener('click', function () {
++        list.hidden ? open() : close(true);
++      });
++
++      trigger.addEventListener('keydown', function (e) {
++        if (['ArrowDown', 'ArrowUp', 'Enter', ' '].indexOf(e.key) !== -1) {
++          e.preventDefault();
++          open();
++        }
++      });
++
++      list.addEventListener('keydown', function (e) {
++        switch (e.key) {
++          case 'ArrowRight': case 'ArrowDown': e.preventDefault(); setActive(active + 1); break;
++          case 'ArrowLeft': case 'ArrowUp': e.preventDefault(); setActive(active - 1); break;
++          case 'Home': e.preventDefault(); setActive(0); break;
++          case 'End': e.preventDefault(); setActive(items.length - 1); break;
++          case 'Enter': case ' ': e.preventDefault(); choose(active); close(true); break;
++          case 'Escape': e.preventDefault(); close(true); break;
++          case 'Tab': close(false); break;
++        }
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!list.hidden && !picker.contains(e.target)) close(false);
++      });
++
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

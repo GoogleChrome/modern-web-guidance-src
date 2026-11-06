@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+index 66c9173..ae6353f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,110 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Draggable Order Tracker Panel */
++    .floating-panel {
++      position: fixed;
++      inset-inline-end: 24px;
++      inset-block-end: 24px;
++      width: min(320px, calc(100vw - 32px));
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++      border: 1px solid var(--secondary);
++      z-index: 1100;
++      overflow: hidden;
++    }
++
++    .floating-panel-header {
++      background: var(--primary);
++      color: white;
++      padding: 10px 14px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
++    .floating-panel-title {
++      font-size: 0.95rem;
++      font-weight: 600;
++      margin: 0;
++      color: white;
++    }
++
++    .drag-handle {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      min-block-size: 28px;
++      min-inline-size: 28px;
++      padding: 4px 8px;
++      background: rgba(255, 255, 255, 0.14);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.8rem;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle[hidden] {
++      display: none;
++    }
++
++    .drag-handle:hover {
++      background: rgba(255, 255, 255, 0.24);
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--accent);
++    }
++
++    :where(a:any-link, button, .drag-handle):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .floating-panel-body {
++      padding: 16px;
++      font-size: 0.9rem;
++    }
++
++    .floating-panel-body p {
++      margin-bottom: 10px;
++    }
++
++    .order-status-badge {
++      display: inline-block;
++      background: #fff3e0;
++      color: var(--primary);
++      border: 1px solid var(--accent);
++      font-weight: 600;
++      font-size: 0.8rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .floating-panel-actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      margin-top: 12px;
++    }
++
++    .floating-panel-actions .btn {
++      margin-top: 0;
++      padding: 7px 14px;
++      font-size: 0.85rem;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +311,127 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside id="order-tracker" class="floating-panel" aria-labelledby="order-tracker-title">
++    <div class="floating-panel-header">
++      <h2 id="order-tracker-title" class="floating-panel-title">Active Order #402</h2>
++      <button
++        type="button"
++        id="order-tracker-handle"
++        class="drag-handle"
++        aria-label="Move order tracker panel; use arrow keys to reposition"
++        hidden
++      >
++        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
++          <circle cx="5" cy="3" r="1.5" />
++          <circle cx="11" cy="3" r="1.5" />
++          <circle cx="5" cy="8" r="1.5" />
++          <circle cx="11" cy="8" r="1.5" />
++          <circle cx="5" cy="13" r="1.5" />
++          <circle cx="11" cy="13" r="1.5" />
++        </svg>
++        <span>Move</span>
++      </button>
++    </div>
++    <div class="floating-panel-body">
++      <span class="order-status-badge">Steaming milk • ~3 mins</span>
++      <p><strong>1x Maple Oat Latte</strong> (16 oz, Extra Hot)</p>
++      <p>Pickup counter: Downtown Roastery</p>
++      <div class="floating-panel-actions">
++        <a href="/order-status/402" class="btn">Track Order</a>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    (() => {
++      const draggable = document.getElementById('order-tracker');
++      const handle = document.getElementById('order-tracker-handle');
++      if (!draggable || !handle) return;
++
++      // Progressive enhancement: reveal the standalone drag handle once JS initializes
++      handle.hidden = false;
++
++      let startX = 0;
++      let startY = 0;
++      let offsetX = 0;
++      let offsetY = 0;
++      let isDragging = false;
++      let hasCustomPosition = false;
++      const DRAG_THRESHOLD_PX = 4;
++      const KEYBOARD_STEP_PX = 15;
++
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
++
++        draggable.style.insetInlineEnd = 'auto';
++        draggable.style.insetBlockEnd = 'auto';
++        draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++        hasCustomPosition = true;
++      }
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0 || event.target.closest('input, select, textarea, a')) return;
++
++        const rect = draggable.getBoundingClientRect();
++        startX = event.clientX;
++        startY = event.clientY;
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        isDragging = false;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++
++        if (!isDragging) {
++          const distance = Math.hypot(event.clientX - startX, event.clientY - startY);
++          if (distance < DRAG_THRESHOLD_PX) return;
++          isDragging = true;
++          handle.classList.add('dragging');
++        }
++
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        isDragging = false;
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', (event) => {
++        const deltas = {
++          ArrowLeft: [-KEYBOARD_STEP_PX, 0],
++          ArrowRight: [KEYBOARD_STEP_PX, 0],
++          ArrowUp: [0, -KEYBOARD_STEP_PX],
++          ArrowDown: [0, KEYBOARD_STEP_PX],
++        };
++
++        const delta = deltas[event.key];
++        if (!delta) return;
++
++        event.preventDefault();
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left + delta[0], rect.top + delta[1]);
++      });
++
++      function reclampPosition() {
++        if (!hasCustomPosition) return;
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      }
++
++      window.addEventListener('resize', reclampPosition);
++
++      if (typeof ResizeObserver !== 'undefined') {
++        const resizeObserver = new ResizeObserver(reclampPosition);
++        resizeObserver.observe(draggable);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

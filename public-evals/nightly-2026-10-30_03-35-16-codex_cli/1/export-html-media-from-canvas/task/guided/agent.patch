@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="gift-card.css">
++  <script src="gift-card.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +196,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-heading">
++      <div class="gift-intro">
++        <p class="gift-eyebrow">A LITTLE COFFEE. A LOT OF LOVE.</p>
++        <h2 id="gift-heading">Make their daily grind a little sweeter.</h2>
++        <p>Design a coffee gift card with a personal touch, then download it to share.</p>
++      </div>
++      <div class="gift-layout">
++        <form id="gift-form" class="gift-controls">
++          <fieldset id="gift-fields">
++            <legend class="gift-control-heading">Make it yours</legend>
++            <label for="gift-name">Their name <span>(optional)</span></label>
++            <input id="gift-name" name="recipient" type="text" maxlength="40" placeholder="e.g. Alex" autocomplete="off">
++            <label for="gift-message">Your message</label>
++            <textarea id="gift-message" name="message" rows="3" maxlength="100" aria-describedby="message-hint">Good days start with great coffee.</textarea>
++            <p id="message-hint" class="gift-hint">A little note, up to 100 characters.</p>
++            <label for="gift-color">Card background</label>
++            <div class="gift-color-control">
++              <input id="gift-color" name="color" type="color" value="#f0dfca">
++              <span>Choose your favorite shade</span>
++            </div>
++            <button id="gift-download" class="btn" type="submit">Download gift card <span aria-hidden="true">↓</span></button>
++          </fieldset>
++          <p class="gift-hint">PNG image · Ready to send or print</p>
++          <p id="gift-status" class="gift-status" role="status" aria-live="polite"></p>
++        </form>
++        <div class="gift-preview">
++          <p class="gift-preview-label">YOUR CARD, MADE PERSONAL</p>
++          <div id="gift-frame" class="gift-frame">
++            <div id="export_element" class="coffee-gift-card" drawable>
++              <div class="gift-card-brand">THE DAILY GRIND <span>COFFEE CO.</span></div>
++              <div class="gift-card-copy">
++                <p class="gift-card-kicker">A CUP OF SOMETHING GOOD</p>
++                <p id="card-message" class="gift-card-message">Good days start with great coffee.</p>
++                <p id="card-name" class="gift-card-name">Just for you.</p>
++              </div>
++              <div class="gift-card-footer"><span>Roasted with care. Shared with love.</span><span class="gift-card-cup" aria-hidden="true"></span></div>
++            </div>
++            <canvas id="gift-canvas" content="drawable" aria-label="Your custom coffee gift card" hidden></canvas>
++          </div>
++          <p class="gift-preview-note">A thoughtful little gesture, designed by you.</p>
++          <p class="gift-hint">A personal greeting design. No stored value or redemption code.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

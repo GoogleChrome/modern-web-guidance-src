@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,158 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <style>
++    body {
++      margin: 0;
++      font-family: system-ui, sans-serif;
++      line-height: 1.5;
++      color: #111;
++    }
++    header, main, footer {
++      max-width: 960px;
++      margin: 0 auto;
++      padding: 1.5rem;
++    }
++    nav {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #e5e7eb;
++      padding-bottom: 1rem;
++    }
++    .hero {
++      margin: 2rem 0;
++    }
++    .gallery {
++      margin: 3rem 0;
++    }
++    .gallery-items {
++      display: flex;
++      gap: 1.5rem;
++      flex-wrap: wrap;
++      margin-bottom: 1rem;
++    }
++    .below-fold-spacer {
++      min-height: 120vh;
++      padding: 3rem 0;
++      border-top: 1px solid #e5e7eb;
++    }
++    footer {
++      border-top: 1px solid #e5e7eb;
++      padding-top: 2rem;
++    }
++    img {
++      max-width: 100%;
++      height: auto;
++      background-color: #f3f4f6;
++      display: block;
++    }
++    [hidden] {
++      display: none !important;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <nav aria-label="Primary navigation">
++      <strong>Brand</strong>
++      <div>
++        <button type="button" id="mega-menu-toggle" aria-expanded="false" aria-controls="mega-menu">
++          Products Menu
++        </button>
++        <div id="mega-menu" hidden>
++          <p>Special Offer</p>
++          <!-- Deprioritize images revealed only after user interaction -->
++          <img
++            src="mega-menu-promo.jpg"
++            alt="Special promotional offer"
++            fetchpriority="low"
++            width="300"
++            height="150"
++          >
++        </div>
++      </div>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero">
++      <h1>Flagship Product</h1>
++      <p>Engineered for minimal overhead and maximum performance.</p>
++      <!-- Elevate priority for the LCP image; never lazy-load -->
++      <img
++        src="hero-lcp.jpg"
++        alt="Flagship product hero banner"
++        fetchpriority="high"
++        width="800"
++        height="400"
++      >
++    </section>
++
++    <section class="gallery">
++      <h2>Product Gallery</h2>
++      <div class="gallery-items">
++        <!-- Visible first gallery image uses default priority (fetchpriority omitted) -->
++        <img
++          src="gallery-main.jpg"
++          alt="Product primary angle"
++          width="400"
++          height="300"
++        >
++        <!-- Deprioritize initially hidden image above the fold -->
++        <img
++          id="gallery-alt-img"
++          src="gallery-alt.jpg"
++          alt="Product alternate angle"
++          fetchpriority="low"
++          loading="lazy"
++          width="400"
++          height="300"
++          hidden
++        >
++      </div>
++      <button type="button" id="gallery-toggle" aria-expanded="false" aria-controls="gallery-alt-img">
++        Toggle Alternate View
++      </button>
++    </section>
++
++    <section class="below-fold-spacer">
++      <h2>Specifications</h2>
++      <p>Scroll down to the footer below the fold.</p>
++    </section>
++  </main>
++
++  <footer>
++    <!-- Use lazy loading alone for standard below-the-fold images -->
++    <img
++      src="footer-logo.png"
++      alt="Company Footer Logo"
++      loading="lazy"
++      width="120"
++      height="60"
++    >
++    <p>&copy; 2026 Brand. All rights reserved.</p>
++  </footer>
++
++  <script>
++    const menuToggle = document.getElementById('mega-menu-toggle');
++    const megaMenu = document.getElementById('mega-menu');
++    menuToggle.addEventListener('click', () => {
++      const isHidden = megaMenu.hasAttribute('hidden');
++      megaMenu.toggleAttribute('hidden', !isHidden);
++      menuToggle.setAttribute('aria-expanded', String(isHidden));
++    });
++
++    const galleryToggle = document.getElementById('gallery-toggle');
++    const galleryAltImg = document.getElementById('gallery-alt-img');
++    galleryToggle.addEventListener('click', () => {
++      const isHidden = galleryAltImg.hasAttribute('hidden');
++      galleryAltImg.toggleAttribute('hidden', !isHidden);
++      galleryToggle.setAttribute('aria-expanded', String(isHidden));
++    });
++  </script>
++</body>
++</html>

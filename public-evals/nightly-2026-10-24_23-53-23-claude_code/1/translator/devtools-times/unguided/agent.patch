@@ -1,0 +1,274 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..5022bad 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,10 +22,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 data-translatable class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p data-translatable class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -66,10 +66,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 data-translatable class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p data-translatable class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..3bc6a22 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -2,6 +2,7 @@
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
++import TranslateButton from "./TranslateButton.tsx";
+ import BottomNav from "./BottomNav.tsx";
+ 
+ const articles = await getCollection("articles");
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <TranslateButton client:load />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/TranslateButton.tsx b/src/components/TranslateButton.tsx
+new file mode 100644
+index 0000000..afc0d57
+--- /dev/null
++++ b/src/components/TranslateButton.tsx
+@@ -0,0 +1,181 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++
++// Chrome's on-device Translator API (https://developer.chrome.com/docs/ai/translator-api)
++declare const Translator: {
++  availability(opts: { sourceLanguage: string; targetLanguage: string }): Promise<string>;
++  create(opts: {
++    sourceLanguage: string;
++    targetLanguage: string;
++    monitor?: (m: EventTarget) => void;
++  }): Promise<{ translate(text: string): Promise<string>; destroy?: () => void }>;
++};
++
++const SOURCE_LANGUAGE = 'en';
++const LANGUAGES: Record<string, string> = {
++  es: 'Español',
++  fr: 'Français',
++  de: 'Deutsch',
++  it: 'Italiano',
++  pt: 'Português',
++  ja: '日本語',
++  zh: '中文',
++  ko: '한국어',
++  ru: 'Русский',
++  ar: 'العربية',
++};
++
++const SELECTOR = '[data-translatable]';
++
++// Original text of every text node we touched, so translation can be reverted.
++const originals = new Map<Text, string>();
++
++function collectTextNodes(): Text[] {
++  const nodes: Text[] = [];
++  document.querySelectorAll(SELECTOR).forEach((root) => {
++    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
++    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++      if (n.textContent?.trim()) nodes.push(n as Text);
++    }
++  });
++  return nodes;
++}
++
++function restore() {
++  originals.forEach((text, node) => {
++    node.textContent = text;
++  });
++  originals.clear();
++  document.querySelectorAll(SELECTOR).forEach((el) => el.removeAttribute('lang'));
++}
++
++export default function TranslateButton() {
++  const [supported, setSupported] = useState(false);
++  const [open, setOpen] = useState(false);
++  const [target, setTarget] = useState('es');
++  const [active, setActive] = useState<string | null>(null);
++  const [status, setStatus] = useState<string | null>(null);
++  const [busy, setBusy] = useState(false);
++  const container = useRef<HTMLDivElement>(null);
++
++  useEffect(() => {
++    setSupported(typeof (globalThis as any).Translator !== 'undefined');
++  }, []);
++
++  useEffect(() => {
++    if (!open) return;
++    const onClick = (e: MouseEvent) => {
++      if (!container.current?.contains(e.target as Node)) setOpen(false);
++    };
++    document.addEventListener('mousedown', onClick);
++    return () => document.removeEventListener('mousedown', onClick);
++  }, [open]);
++
++  if (!supported) return null;
++
++  const translatePage = async () => {
++    setBusy(true);
++    setStatus(null);
++    try {
++      const pair = { sourceLanguage: SOURCE_LANGUAGE, targetLanguage: target };
++      if ((await Translator.availability(pair)) === 'unavailable') {
++        setStatus('This language pair is not supported on your device.');
++        return;
++      }
++      const translator = await Translator.create({
++        ...pair,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e: any) =>
++            setStatus(`Downloading language model… ${Math.round(e.loaded * 100)}%`),
++          );
++        },
++      });
++      setStatus('Translating…');
++      // Always translate from the original text, even when switching languages.
++      restore();
++      const nodes = collectTextNodes();
++      for (const node of nodes) {
++        const text = node.textContent!;
++        const translated = await translator.translate(text.trim());
++        originals.set(node, text);
++        const lead = text.match(/^\s*/)![0];
++        const trail = text.match(/\s*$/)![0];
++        node.textContent = lead + translated + trail;
++      }
++      document.querySelectorAll(SELECTOR).forEach((el) => el.setAttribute('lang', target));
++      translator.destroy?.();
++      setActive(target);
++      setStatus(null);
++      setOpen(false);
++    } catch (err) {
++      console.error(err);
++      restore();
++      setStatus('Translation failed. Please try again.');
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const showOriginal = () => {
++    restore();
++    setActive(null);
++    setStatus(null);
++    setOpen(false);
++  };
++
++  return (
++    <div ref={container} className="relative">
++      <button
++        onClick={() => setOpen(!open)}
++        className={`flex items-center gap-1 p-1 text-xs font-semibold ${active ? 'text-amber-600' : 'text-gray-700'}`}
++        aria-haspopup="dialog"
++        aria-expanded={open}
++        aria-label="Translate articles"
++      >
++        <LanguageIcon className="h-5 w-5" />
++        <span className="hidden sm:inline">{active ? LANGUAGES[active] : 'Translate'}</span>
++      </button>
++      {open && (
++        <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded border border-gray-300 bg-white p-3 shadow-lg text-xs">
++          <label htmlFor="translate-language" className="block font-semibold text-gray-800 mb-1">
++            Translate articles from English to
++          </label>
++          <select
++            id="translate-language"
++            value={target}
++            onChange={(e) => setTarget(e.target.value)}
++            disabled={busy}
++            className="w-full rounded border border-gray-300 p-1 mb-2"
++          >
++            {Object.entries(LANGUAGES).map(([code, name]) => (
++              <option key={code} value={code}>
++                {name}
++              </option>
++            ))}
++          </select>
++          <div className="flex gap-2">
++            <button
++              onClick={translatePage}
++              disabled={busy}
++              className="flex-1 rounded bg-gray-800 py-1.5 font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
++            >
++              Translate
++            </button>
++            {active && (
++              <button
++                onClick={showOriginal}
++                disabled={busy}
++                className="flex-1 rounded bg-gray-200 py-1.5 font-semibold text-gray-800 hover:bg-gray-300 disabled:opacity-50"
++              >
++                Show original
++              </button>
++            )}
++          </div>
++          <p role="status" className="mt-2 text-gray-500">
++            {status ?? 'Translated on your device. No text leaves your browser.'}
++          </p>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..4011352 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -43,12 +43,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translatable class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translatable class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -80,7 +80,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption data-translatable class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+@@ -105,7 +105,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div data-translatable class="prose max-w-none">
+             <Content />
+         </div>
+ 

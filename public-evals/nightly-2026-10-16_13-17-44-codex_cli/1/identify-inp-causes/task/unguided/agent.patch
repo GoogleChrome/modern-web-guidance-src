@@ -1,0 +1,23 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,18 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the static site.
++
++## INP diagnostics
++
++`inp-diagnostics.mjs` uses the [web-vitals attribution build](https://github.com/GoogleChrome/web-vitals) to measure Interaction to Next Paint. Open the developer console and interact with the page. When the current INP candidate exceeds 200 ms, a collapsed `[INP]` report includes:
++
++- The interaction target, type, time since navigation, and document load state.
++- Input delay, event processing duration, and presentation delay, in milliseconds.
++- The largest phase and a suggested area to investigate.
++- The longest associated script's URL, function, invoker, character offset, and forced layout time when available.
++
++Reports are local console diagnostics; nothing is sent to a server. They describe the page's INP candidate, not every slow event. Candidates can change during a visit, and the library also reports at page hide and handles back/forward cache restores. No interaction means no INP report. Unsupported Event Timing browsers skip monitoring; missing Long Animation Frame data means script attribution is unavailable, not that scripts were fast. Timings and script associations are diagnostic leads, not definitive causes.
++
++The self-hosted, unmodified `vendor/web-vitals/attribution.mjs` is the `dist/web-vitals.attribution.js` ESM bundle from npm `web-vitals@6.2.3`, under the included Apache-2.0 license. It needs no CDN or build step. To update it, obtain a reviewed version from the [npm package](https://www.npmjs.com/package/web-vitals), replace the bundle and license, and update this version note.
++
++Run `node --test` for the diagnostic reporting checks. No manual browser verification is required.

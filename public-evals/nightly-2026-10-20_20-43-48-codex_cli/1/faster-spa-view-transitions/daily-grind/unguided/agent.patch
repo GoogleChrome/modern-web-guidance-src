@@ -1,0 +1,402 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..07a4305 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,31 @@
+       background-color: var(--light);
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
++    .view {
++      min-height: 55vh;
++    }
++
++    .view label {
++      display: block;
++      margin-top: 15px;
++    }
++
++    .view input, .view textarea {
++      display: block;
++      width: 100%;
++      max-width: 480px;
++      padding: 10px;
++      font: inherit;
++    }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -158,7 +183,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,6 +193,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div data-view="/" class="view">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -197,6 +224,53 @@
+     </section>
+   </main>
+ 
++  </div>
++  </div>
++
++  <template data-route="/menu" data-title="Menu">
++    <main class="container view">
++      <h1>Our Menu</h1>
++      <div class="grid">
++        <article class="card"><h2>Maple Oat Latte</h2><p>Creamy oat milk with Vermont maple syrup.</p><a class="btn" href="/menu/seasonal">View Details</a></article>
++        <article class="card"><h2>Dark Roast Espresso</h2><p>Bold and smoky.</p><a class="btn" href="/menu/espresso">View Details</a></article>
++        <article class="card"><h2>Cold Brew</h2><p>Steeped for 18 hours.</p><a class="btn" href="/menu/cold-brew">View Details</a></article>
++      </div>
++    </main>
++  </template>
++  <template data-route="/menu/seasonal" data-title="Maple Oat Latte">
++    <main class="container view"><h1>Maple Oat Latte</h1><p>Creamy oat milk with a hint of Vermont maple syrup.</p><a class="btn" href="/menu">Back to Menu</a></main>
++  </template>
++  <template data-route="/menu/espresso" data-title="Dark Roast Espresso">
++    <main class="container view"><h1>Dark Roast Espresso</h1><p>Bold, smoky, and perfect for a morning boost.</p><a class="btn" href="/menu">Back to Menu</a></main>
++  </template>
++  <template data-route="/menu/cold-brew" data-title="Cold Brew">
++    <main class="container view"><h1>Cold Brew</h1><p>Steeped for 18 hours for maximum smoothness.</p><a class="btn" href="/menu">Back to Menu</a></main>
++  </template>
++  <template data-route="/locations" data-title="Locations">
++    <main class="container view"><h1>Locations</h1><p>Contact our team for coffee shop locations and opening hours.</p><a class="btn" href="/contact">Contact Us</a></main>
++  </template>
++  <template data-route="/rewards" data-title="Rewards">
++    <main class="container view"><h1>Rewards</h1><p>Visit your account to explore your coffee rewards.</p><a class="btn" href="/account">My Account</a></main>
++  </template>
++  <template data-route="/account" data-title="My Account">
++    <main class="container view"><h1>My Account</h1><p>Keep your preferences here while you explore the menu.</p><label for="account-name">Name</label><input id="account-name" autocomplete="name"><label for="favorite-drink">Favorite drink</label><input id="favorite-drink"><a class="btn" href="/menu">Explore the Menu</a></main>
++  </template>
++  <template data-route="/order-online" data-title="Order Online">
++    <main class="container view"><h1>Order Online</h1><p>Explore our favorites to find your next cup.</p><a class="btn" href="/menu">Browse Menu</a></main>
++  </template>
++  <template data-route="/about" data-title="Our Story">
++    <main class="container view"><h1>Our Story</h1><p>Ethically sourced, locally roasted, delivered to your cup.</p></main>
++  </template>
++  <template data-route="/careers" data-title="Join the Team">
++    <main class="container view"><h1>Join the Team</h1><p>Interested in working at The Daily Grind? Contact our team to learn more.</p><a class="btn" href="/contact">Contact Us</a></main>
++  </template>
++  <template data-route="/contact" data-title="Contact Us">
++    <main class="container view"><h1>Contact Us</h1><p>Stop by your local Daily Grind to speak with our team.</p></main>
++  </template>
++  <template data-route="/privacy-policy" data-title="Privacy">
++    <main class="container view"><h1>Privacy</h1><p>Account preferences on this demo remain in this tab until you reload or leave the site.</p></main>
++  </template>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +281,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/router.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..461a3bd 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3"
++  },
++  "type": "module"
+ }
+diff --git a/router.js b/router.js
+new file mode 100644
+index 0000000..2ed262f
+--- /dev/null
++++ b/router.js
+@@ -0,0 +1,73 @@
++// Views stay mounted for the lifetime of the document, preserving DOM identity,
++// event listeners, and in-progress input without serializing or rebuilding them.
++export function startRouter(document, window) {
++  const host = document.getElementById('views');
++  const home = host.querySelector('[data-view="/"]');
++  const templates = new Map([...document.querySelectorAll('template[data-route]')]
++    .map(template => [template.dataset.route, template]));
++  const views = new Map([['/', home]]);
++  const scrollPositions = new Map();
++  const homeTitle = document.title;
++  let activePath = '/';
++
++  const routePath = url => url.pathname.replace(/\/+$/, '') || '/';
++  const hasRoute = path => path === '/' || templates.has(path);
++
++  function show(url) {
++    const path = routePath(url);
++    if (!hasRoute(path)) return false;
++
++    scrollPositions.set(activePath, [window.scrollX, window.scrollY]);
++    let view = views.get(path);
++    if (!view) {
++      view = templates.get(path).content.firstElementChild.cloneNode(true);
++      view.dataset.view = path;
++      view.hidden = true;
++      host.append(view);
++      views.set(path, view);
++    }
++
++    const previous = views.get(activePath);
++    const focusWasInView = previous.contains(document.activeElement);
++    previous.hidden = true;
++    view.hidden = false;
++    activePath = path;
++    document.title = path === '/' ? homeTitle
++      : `${templates.get(path).dataset.title} | The Daily Grind`;
++    for (const link of document.querySelectorAll('nav a[href]')) {
++      if (routePath(new URL(link.href)) === path) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    }
++
++    // Hidden views are excluded from tab order and the accessibility tree.
++    if (focusWasInView) {
++      const heading = view.querySelector('h1');
++      heading.setAttribute('tabindex', '-1');
++      heading.focus({ preventScroll: true });
++    }
++    window.scrollTo(...(scrollPositions.get(path) || [0, 0]));
++    return true;
++  }
++
++  document.addEventListener('click', event => {
++    if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
++        event.ctrlKey || event.shiftKey || event.altKey) return;
++    const link = event.target.closest?.('a[href]');
++    if (!link || link.hasAttribute('download') ||
++        (link.target && link.target !== '_self')) return;
++    const url = new URL(link.href);
++    if (url.origin !== window.location.origin || url.hash || !hasRoute(routePath(url))) return;
++    event.preventDefault();
++    if (url.href === window.location.href) return;
++    window.history.pushState(null, '', url);
++    show(url);
++  });
++
++  window.addEventListener('popstate', () => {
++    if (!show(new URL(window.location.href))) window.location.reload();
++  });
++  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
++  show(new URL(window.location.href));
++}
++
++if (typeof document !== 'undefined') startRouter(document, window);
+diff --git a/router.test.js b/router.test.js
+new file mode 100644
+index 0000000..d58d6cd
+--- /dev/null
++++ b/router.test.js
+@@ -0,0 +1,109 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { test } from 'node:test';
++import { JSDOM } from 'jsdom';
++import { startRouter } from './router.js';
++
++const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
++function setup(path = '/') {
++  const dom = new JSDOM(html, { url: `https://daily-grind.test${path}` });
++  const { window } = dom;
++  window.scrollTo = (x, y) => {
++    window.scrollX = x;
++    window.scrollY = y;
++  };
++  startRouter(window.document, window);
++  const click = href => {
++    const link = [...window.document.querySelectorAll('a')].find(link =>
++      link.getAttribute('href') === href && !link.closest('[hidden]'));
++    assert.ok(link, `Visible link to ${href}`);
++    link.click();
++  };
++  return { window, document: window.document, click };
++}
++
++test('returning to a view preserves its DOM, inputs, listeners, and scroll', () => {
++  const { window, document, click } = setup();
++  click('/account');
++  const account = document.querySelector('[data-view="/account"]');
++  const input = account.querySelector('input');
++  input.value = 'Coffee enthusiast';
++  let events = 0;
++  input.addEventListener('change', () => events++);
++  window.scrollTo(0, 320);
++  click('/menu');
++  assert.equal(account.hidden, true);
++  assert.equal(document.querySelectorAll('[data-view]').length, 3);
++  click('/account');
++  assert.strictEqual(document.querySelector('[data-view="/account"]'), account);
++  assert.strictEqual(account.querySelector('input'), input);
++  assert.equal(input.value, 'Coffee enthusiast');
++  input.dispatchEvent(new window.Event('change'));
++  assert.equal(events, 1);
++  assert.equal(window.scrollY, 320);
++  assert.equal(document.querySelectorAll('[data-view]:not([hidden])').length, 1);
++  assert.equal(document.querySelectorAll('[data-view="/account"]').length, 1);
++  assert.equal(document.querySelector('nav a[aria-current]').pathname, '/account');
++  window.close();
++});
++
++test('Back and Forward restore cached views', async () => {
++  const { window, document, click } = setup();
++  click('/menu');
++  const menu = document.querySelector('[data-view="/menu"]');
++  click('/account');
++  const popstate = () => new Promise(resolve => window.addEventListener('popstate', resolve, { once: true }));
++  let popped = popstate();
++  window.history.back();
++  await popped;
++  assert.equal(window.location.pathname, '/menu');
++  assert.strictEqual(document.querySelector('[data-view="/menu"]'), menu);
++  assert.equal(menu.hidden, false);
++  popped = popstate();
++  window.history.forward();
++  await popped;
++  assert.equal(window.location.pathname, '/account');
++  assert.equal(menu.hidden, true);
++  window.close();
++});
++
++test('a deep link initializes the correct view and moves focus out of hidden content', () => {
++  const { window, document, click } = setup('/menu/seasonal/');
++  assert.equal(document.querySelector('[data-view="/"]').hidden, true);
++  assert.equal(document.title, 'Maple Oat Latte | The Daily Grind');
++  document.querySelector('[data-view="/menu/seasonal"] a').focus();
++  click('/menu');
++  assert.equal(document.activeElement.textContent, 'Our Menu');
++  window.close();
++});
++
++test('modified clicks, external URLs, downloads, hashes, and unknown routes stay native', () => {
++  const { window, document } = setup();
++  for (const attributes of [
++    { href: '/menu', ctrlKey: true },
++    { href: 'https://example.com', target: '_blank' },
++    { href: '/menu', target: '_blank' },
++    { href: '/menu', download: '' },
++    { href: '/#favorites' },
++    { href: '/logout' },
++  ]) {
++    const link = document.createElement('a');
++    for (const [name, value] of Object.entries(attributes)) {
++      if (name !== 'ctrlKey') link.setAttribute(name, value);
++    }
++    document.body.append(link);
++    let prevented;
++    // Cancel native navigation after recording whether the router intercepted it.
++    window.addEventListener('click', event => {
++      prevented = event.defaultPrevented;
++      event.preventDefault();
++    }, { once: true });
++    link.dispatchEvent(new window.MouseEvent('click', {
++      bubbles: true, cancelable: true, button: 0, ctrlKey: attributes.ctrlKey,
++    }));
++    assert.equal(prevented, false, JSON.stringify(attributes));
++    assert.equal(window.location.pathname, '/');
++    link.remove();
++  }
++  window.close();
++});
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..9b79762
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,30 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { resolve } from 'node:path';
++
++export async function createAppServer() {
++  const html = await readFile(new URL('./index.html', import.meta.url));
++  const router = await readFile(new URL('./router.js', import.meta.url));
++  const routes = new Set(['/', '/index.html',
++    ...[...html.toString().matchAll(/data-route="([^"]+)"/g)].map(match => match[1])]);
++  return createServer((request, response) => {
++    const path = new URL(request.url, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
++    if (request.method !== 'GET' && request.method !== 'HEAD') {
++      response.writeHead(405, { Allow: 'GET, HEAD' });
++      response.end();
++      return;
++    }
++    const body = routes.has(path) ? html : path === '/router.js' ? router : null;
++    response.writeHead(body ? 200 : 404, {
++      'Content-Type': path === '/router.js' ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8',
++    });
++    response.end(request.method === 'HEAD' ? undefined : body || 'Not found');
++  });
++}
++
++if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
++  const server = await createAppServer();
++  const port = Number(process.env.PORT || 11222);
++  server.listen(port, '0.0.0.0', () => console.log(`The Daily Grind: http://localhost:${port}`));
++}
+diff --git a/server.test.js b/server.test.js
+new file mode 100644
+index 0000000..dd68ecc
+--- /dev/null
++++ b/server.test.js
+@@ -0,0 +1,22 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { createAppServer } from './server.js';
++
++test('server supports direct view URLs and serves the router module', async () => {
++  const server = await createAppServer();
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  const base = `http://127.0.0.1:${server.address().port}`;
++  try {
++    for (const path of ['/', '/menu/seasonal', '/account/']) {
++      const response = await fetch(`${base}${path}`);
++      assert.equal(response.status, 200);
++      assert.match(await response.text(), /id="views"/);
++    }
++    const script = await fetch(`${base}/router.js`);
++    assert.equal(script.status, 200);
++    assert.match(script.headers.get('content-type'), /javascript/);
++    assert.equal((await fetch(`${base}/missing`)).status, 404);
++  } finally {
++    await new Promise(resolve => server.close(resolve));
++  }
++});

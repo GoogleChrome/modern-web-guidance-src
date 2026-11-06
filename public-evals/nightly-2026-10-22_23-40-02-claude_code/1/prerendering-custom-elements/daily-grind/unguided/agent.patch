@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+index 66c9173..c20ed55 100644
+--- a/index.html
++++ b/index.html
+@@ -178,21 +178,87 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <menu-card price="5.50" count="0">
++          <template shadowrootmode="open">
++            <style>
++          :host { display: block; }
++          .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); text-align: center; height: 100%; }
++          ::slotted([slot=name]) { display: block; font-size: 1.17rem; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
++          .price { font-weight: bold; margin-top: 8px; }
++          .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
++          .btn, button { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border: 0; border-radius: 5px; margin-top: 15px; font: inherit; cursor: pointer; transition: background 0.3s; }
++          .btn:hover, button:hover { background: #3e2723; }
++          button { background: var(--accent); color: var(--text); }
++          button:hover { background: #ff9100; }
++          button:not([data-ready]) { cursor: default; }
++            </style>
++            <div class="card">
++              <slot name="name"></slot>
++              <slot></slot>
++              <p class="price">$<span class="amount">5.50</span></p>
++              <div class="actions">
++                <a href="/menu/seasonal" class="btn">View Details</a>
++                <button type="button" class="add">Add to Order</button>
++              </div>
++            </div>
++          </template>
++          <span slot="name">Maple Oat Latte</span>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        </menu-card>
++        <menu-card price="3.75" count="0">
++          <template shadowrootmode="open">
++            <style>
++          :host { display: block; }
++          .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); text-align: center; height: 100%; }
++          ::slotted([slot=name]) { display: block; font-size: 1.17rem; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
++          .price { font-weight: bold; margin-top: 8px; }
++          .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
++          .btn, button { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border: 0; border-radius: 5px; margin-top: 15px; font: inherit; cursor: pointer; transition: background 0.3s; }
++          .btn:hover, button:hover { background: #3e2723; }
++          button { background: var(--accent); color: var(--text); }
++          button:hover { background: #ff9100; }
++          button:not([data-ready]) { cursor: default; }
++            </style>
++            <div class="card">
++              <slot name="name"></slot>
++              <slot></slot>
++              <p class="price">$<span class="amount">3.75</span></p>
++              <div class="actions">
++                <a href="/menu/espresso" class="btn">View Details</a>
++                <button type="button" class="add">Add to Order</button>
++              </div>
++            </div>
++          </template>
++          <span slot="name">Dark Roast Espresso</span>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        </menu-card>
++        <menu-card price="4.50" count="0">
++          <template shadowrootmode="open">
++            <style>
++          :host { display: block; }
++          .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); text-align: center; height: 100%; }
++          ::slotted([slot=name]) { display: block; font-size: 1.17rem; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
++          .price { font-weight: bold; margin-top: 8px; }
++          .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
++          .btn, button { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border: 0; border-radius: 5px; margin-top: 15px; font: inherit; cursor: pointer; transition: background 0.3s; }
++          .btn:hover, button:hover { background: #3e2723; }
++          button { background: var(--accent); color: var(--text); }
++          button:hover { background: #ff9100; }
++          button:not([data-ready]) { cursor: default; }
++            </style>
++            <div class="card">
++              <slot name="name"></slot>
++              <slot></slot>
++              <p class="price">$<span class="amount">4.50</span></p>
++              <div class="actions">
++                <a href="/menu/cold-brew" class="btn">View Details</a>
++                <button type="button" class="add">Add to Order</button>
++              </div>
++            </div>
++          </template>
++          <span slot="name">Cold Brew</span>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </menu-card>
+       </div>
+     </section>
+   </main>
+@@ -206,6 +272,53 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  <script type="module">
++    // Hydrates server-rendered <menu-card> elements. The markup (including the
++    // declarative shadow root) is already in the HTML, so we adopt the existing
++    // shadow root and only attach behavior; nothing is re-rendered.
++    class MenuCard extends HTMLElement {
++      #count = 0;
++
++      connectedCallback() {
++        // Fallback for browsers without declarative shadow DOM support.
++        if (!this.shadowRoot) {
++          const tpl = this.querySelector(':scope > template[shadowrootmode]');
++          if (tpl) {
++            this.attachShadow({ mode: tpl.getAttribute('shadowrootmode') }).append(tpl.content);
++            tpl.remove();
++          }
++        }
++        const root = this.shadowRoot;
++        if (!root) return;
++        this.#count = Number(this.getAttribute('count')) || 0;
++        this.button = root.querySelector('.add');
++        this.button.addEventListener('click', this.#onAdd);
++        this.button.dataset.ready = '';
++        this.#sync();
++      }
++
++      disconnectedCallback() {
++        this.button?.removeEventListener('click', this.#onAdd);
++      }
++
++      #onAdd = () => {
++        this.#count++;
++        this.setAttribute('count', this.#count);
++        this.#sync();
++        this.dispatchEvent(new CustomEvent('add-to-order', {
++          bubbles: true, composed: true,
++          detail: { price: Number(this.getAttribute('price')), count: this.#count }
++        }));
++      };
++
++      // Only touch the DOM when state differs from what the server rendered.
++      #sync() {
++        const label = this.#count ? `Add to Order (${this.#count})` : 'Add to Order';
++        if (this.button.textContent !== label) this.button.textContent = label;
++      }
++    }
++    customElements.define('menu-card', MenuCard);
++  </script>
+ 
+ </body>
+ 

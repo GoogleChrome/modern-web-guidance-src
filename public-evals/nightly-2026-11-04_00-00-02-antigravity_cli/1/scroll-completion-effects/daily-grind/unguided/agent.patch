@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..d0b4ce6 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,11 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++      scroll-padding-top: 80px;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -62,7 +67,8 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
+@@ -100,6 +106,40 @@
+       padding: 0 20px;
+     }
+ 
++    section {
++      scroll-margin-top: 80px;
++      margin-bottom: 60px;
++      padding: 30px;
++      border-radius: 12px;
++      transition: box-shadow 0.4s ease, transform 0.4s ease, background-color 0.4s ease;
++      outline: none;
++    }
++
++    section:focus-visible,
++    section.scroll-target-active,
++    .card.scroll-target-active {
++      animation: targetHighlight 1.2s ease-out;
++      box-shadow: 0 0 0 3px var(--accent), 0 8px 24px rgba(78, 52, 46, 0.18);
++    }
++
++    @keyframes targetHighlight {
++      0% {
++        transform: translateY(0) scale(1);
++        box-shadow: 0 0 0 0 rgba(255, 171, 64, 0);
++        background-color: rgba(255, 171, 64, 0.18);
++      }
++      35% {
++        transform: translateY(-4px) scale(1.01);
++        box-shadow: 0 0 0 4px var(--accent), 0 12px 28px rgba(78, 52, 46, 0.22);
++        background-color: rgba(255, 171, 64, 0.12);
++      }
++      100% {
++        transform: translateY(0) scale(1);
++        box-shadow: 0 0 0 3px var(--accent), 0 8px 24px rgba(78, 52, 46, 0.18);
++        background-color: transparent;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,11 +148,14 @@
+     }
+ 
+     .card {
++      scroll-margin-top: 90px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: box-shadow 0.4s ease, transform 0.4s ease;
++      outline: none;
+     }
+ 
+     .card h3 {
+@@ -160,10 +203,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,42 +214,189 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu" tabindex="-1">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="seasonal" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" tabindex="-1">
++      <h2 style="text-align: center;">Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>124 Roast Ave &bull; Open Daily 6am &ndash; 7pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>88 Harbor Blvd &bull; Open Daily 7am &ndash; 6pm</p>
++        </div>
++        <div class="card">
++          <h3>University Corner</h3>
++          <p>410 College Way &bull; Open Daily 6:30am &ndash; 9pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" tabindex="-1">
++      <h2 style="text-align: center;">Grind Rewards</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect 2 Beans for every $1 spent in-store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your special day with any handcrafted beverage on us.</p>
++        </div>
++        <div class="card">
++          <h3>Member Exclusives</h3>
++          <p>Early access to single-origin reserve drops and seasonal tastings.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" tabindex="-1">
++      <h2 style="text-align: center;">My Account</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Order History</h3>
++          <p>Quickly reorder your favorite morning rituals with one tap.</p>
++        </div>
++        <div class="card">
++          <h3>Saved Preferences</h3>
++          <p>Customize default milk, sweetness, and pickup location.</p>
++        </div>
++        <div class="card">
++          <h3>Bean Balance</h3>
++          <p>Track your rewards progress and redeem available perks.</p>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="contact" tabindex="-1">
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu">Our Story</a> |
++      <a href="#locations">Join the Team</a> |
++      <a href="#contact">Contact Us</a> |
++      <a href="#account">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      let activeCleanup = null;
++
++      function waitForScrollEnd(targetElement, callback) {
++        if (activeCleanup) {
++          activeCleanup();
++          activeCleanup = null;
++        }
++
++        let finished = false;
++        let debounceTimer = null;
++        let maxWaitTimer = null;
++
++        function complete() {
++          if (finished) return;
++          finished = true;
++          cleanup();
++          callback();
++        }
++
++        function onScroll() {
++          clearTimeout(debounceTimer);
++          debounceTimer = setTimeout(complete, 120);
++        }
++
++        function onScrollEnd() {
++          complete();
++        }
++
++        function cleanup() {
++          window.removeEventListener('scroll', onScroll, { passive: true });
++          window.removeEventListener('scrollend', onScrollEnd);
++          clearTimeout(debounceTimer);
++          clearTimeout(maxWaitTimer);
++          if (activeCleanup === cleanup) {
++            activeCleanup = null;
++          }
++        }
++
++        activeCleanup = cleanup;
++
++        window.addEventListener('scroll', onScroll, { passive: true });
++        window.addEventListener('scrollend', onScrollEnd, { once: true });
++
++        // Handle case where page is already at target scroll position (no scroll events fired)
++        debounceTimer = setTimeout(complete, 150);
++        // Fallback safety timeout
++        maxWaitTimer = setTimeout(complete, 1500);
++      }
++
++      function activateTarget(target, link) {
++        document.querySelectorAll('.scroll-target-active').forEach((el) => {
++          el.classList.remove('scroll-target-active');
++        });
++        document.querySelectorAll('nav a.active').forEach((el) => {
++          el.classList.remove('active');
++        });
++
++        if (link && link.closest('nav')) {
++          link.classList.add('active');
++        }
++
++        if (!target.hasAttribute('tabindex')) {
++          target.setAttribute('tabindex', '-1');
++        }
++
++        // Force reflow so animation restarts if clicking the same link twice
++        void target.offsetWidth;
++        target.classList.add('scroll-target-active');
++        target.focus({ preventScroll: true });
++      }
++
++      document.querySelectorAll('a[href^="#"]').forEach((link) => {
++        link.addEventListener('click', (event) => {
++          const hash = link.getAttribute('href');
++          if (!hash || hash === '#') return;
++
++          const target = document.querySelector(hash);
++          if (!target) return;
++
++          event.preventDefault();
++          history.pushState(null, '', hash);
++
++          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++
++          waitForScrollEnd(target, () => {
++            activateTarget(target, link);
++          });
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

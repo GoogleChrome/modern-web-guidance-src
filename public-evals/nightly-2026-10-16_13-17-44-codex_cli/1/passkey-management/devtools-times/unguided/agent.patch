@@ -1,0 +1,354 @@
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..53a7e4d
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,95 @@
++import { useEffect, useRef, useState } from 'react';
++import { ArrowLeftIcon, ArrowRightIcon, ArrowUpRightIcon, BookOpenIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CreditCardIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, EllipsisHorizontalIcon, EnvelopeIcon, FingerPrintIcon, InformationCircleIcon, KeyIcon, LockClosedIcon, PlusIcon, QuestionMarkCircleIcon, ShieldCheckIcon, UserCircleIcon, UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
++
++type Passkey = { id: string; name: string; device: string; created: string; used: string; current?: boolean };
++const initial: Passkey[] = [
++  { id: 'macbook', name: 'MacBook Pro', device: 'iCloud Keychain', created: 'October 12, 2025', used: 'Today, 9:41 AM', current: true },
++  { id: 'iphone', name: 'iPhone 15', device: 'iCloud Keychain', created: 'October 12, 2025', used: 'Yesterday, 6:24 PM' },
++];
++const navigation = [ ['Overview', UserCircleIcon], ['Personal information', UserIcon], ['Sign-in & security', ShieldCheckIcon], ['Subscription & billing', CreditCardIcon], ['Email preferences', EnvelopeIcon], ['Reading list', BookOpenIcon] ] as const;
++const faqs = [
++  ['What is a passkey?', 'A passkey is a secure alternative to a password. It lets you sign in using your fingerprint, face, or device screen lock. Your biometric information stays on your device.'],
++  ['Can I use a passkey on another device?', 'If your passkeys sync through a provider such as iCloud Keychain or Google Password Manager, you can use them on your other supported devices. You can also use your phone to sign in by scanning a QR code.'],
++  ['What happens if I lose my device?', 'You can sign in with a synced passkey on another device or use your password. Once signed in, remove the passkey for the lost device from this page.'],
++];
++const base = import.meta.env.BASE_URL;
++
++export default function AccountSettings() {
++  const [passkeys, setPasskeys] = useState(initial);
++  const [ready, setReady] = useState(false);
++  const [active, setActive] = useState('Sign-in & security');
++  const [tab, setTab] = useState('Passkeys');
++  const [menu, setMenu] = useState<string | null>(null);
++  const [modal, setModal] = useState<{ type: 'rename' | 'remove' | 'add'; key?: Passkey } | null>(null);
++  const [name, setName] = useState('');
++  const [notice, setNotice] = useState('');
++  const [profile, setProfile] = useState(false);
++  const [storageError, setStorageError] = useState(false);
++  const dialog = useRef<HTMLDialogElement>(null);
++  useEffect(() => {
++    try {
++      const saved = localStorage.getItem('times-demo-passkeys');
++      if (saved) {
++        const parsed = JSON.parse(saved);
++        if (Array.isArray(parsed) && parsed.every(p => typeof p.id === 'string' && typeof p.name === 'string' && typeof p.device === 'string' && typeof p.created === 'string' && typeof p.used === 'string')) setPasskeys(parsed);
++      }
++    } catch { setStorageError(true); }
++    setReady(true);
++  }, []);
++  useEffect(() => {
++    if (ready) { try { localStorage.setItem('times-demo-passkeys', JSON.stringify(passkeys)); } catch { setStorageError(true); } }
++  }, [passkeys, ready]);
++  useEffect(() => { if (modal) dialog.current?.showModal(); else dialog.current?.close(); }, [modal]);
++  useEffect(() => {
++    if (!menu) return;
++    const close = () => setMenu(null);
++    window.addEventListener('click', close);
++    return () => window.removeEventListener('click', close);
++  }, [menu]);
++  function open(type: 'rename' | 'remove' | 'add', key?: Passkey) { setMenu(null); setName(key?.name ?? ''); setModal({ type, key }); }
++  function submit(e: React.FormEvent) {
++    e.preventDefault();
++    if (!modal) return;
++    if (modal.type !== 'remove' && !name.trim()) return;
++    if (modal.type === 'remove') { setPasskeys(passkeys.filter(p => p.id !== modal.key?.id)); setNotice('Passkey removed. You can still sign in with your other sign-in methods.'); }
++    else if (modal.type === 'rename') { setPasskeys(passkeys.map(p => p.id === modal.key?.id ? { ...p, name: name.trim() } : p)); setNotice('Passkey name updated.'); }
++    else { setPasskeys([...passkeys, { id: crypto.randomUUID(), name: name.trim(), device: 'Demo device', created: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), used: 'Not used yet' }]); setNotice('Demo passkey added to this preview.'); }
++    setModal(null);
++  }
++  return <>
++    <header className="account-header">
++      <div className="masthead"><a href={`${base}news`} className="brand"><img src={`${base}logo.svg`} alt="The DevTools Times" /></a><span className="header-divider" /><span className="account-label">My Account</span>
++        <div className="header-actions"><a className="back-news" href={`${base}news`}>Back to the news <ArrowUpRightIcon /></a><div className="profile-wrap"><button className="profile-button" aria-expanded={profile} aria-label="Account menu" onClick={() => setProfile(!profile)}><span className="avatar">JD</span><ChevronDownIcon /></button>{profile && <div className="profile-menu"><strong>Jamie Davis</strong><span>jamie.davis@gmail.com</span><a href={`${base}signin`}>Sign in to another account <ArrowRightIcon /></a></div>}</div></div>
++      </div>
++    </header>
++    <div className="account-shell">
++      <aside className="account-sidebar">
++        <div className="member"><span className="avatar large">JD</span><h2>Jamie Davis</h2><p>jamie.davis@gmail.com</p><span className="subscriber"><span />Digital subscriber</span></div>
++        <nav aria-label="Account settings">{navigation.map(([label, Icon]) => <button key={label} onClick={() => { if(label === 'Reading list') { window.location.href = `${base}news`; return; } setActive(label); }} className={`side-link ${active === label ? 'selected' : ''}`} aria-current={active === label ? 'page' : undefined}><Icon /><span>{label}</span>{active === label && <ChevronRightIcon className="nav-arrow" />}</button>)}</nav>
++        <div className="sidebar-help"><QuestionMarkCircleIcon /><h3>A little help?</h3><p>We're here for you.</p><a href="mailto:support@devtoolstimes.com">Contact support <ArrowUpRightIcon /></a></div>
++        <a className="sidebar-back" href={`${base}news`}><ArrowLeftIcon /> Back to The Times</a>
++      </aside>
++      <main className="settings-main">
++        <div className="breadcrumb">My account <ChevronRightIcon /> {active}</div>
++        <div className="page-heading"><span className="eyebrow">YOUR ACCOUNT, PROTECTED</span><h1>{active}</h1><p>{active === 'Sign-in & security' ? 'Manage how you sign in and keep your account secure.' : 'Your details and preferences, all in one place.'}</p></div>
++        {active === 'Sign-in & security' ? <>
++          <nav className="security-tabs" aria-label="Security settings">{['Password', 'Passkeys', 'Active sessions'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}{t === 'Passkeys' && <span className="tab-count">{passkeys.length}</span>}</button>)}</nav>
++          {tab === 'Passkeys' ? <>
++            <section className="passkey-intro"><div className="intro-copy"><span className="icon-tile"><FingerPrintIcon /></span><div><h2>A simpler, safer way to sign in.</h2><p>Skip the password. Use your fingerprint, face, or screen lock<br className="desktop-break" /> to sign in securely on any of your devices.</p><a href="#passkey-questions">Get to know passkeys <ArrowUpRightIcon /></a></div></div><div className="key-art" aria-hidden="true"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-spark spark-one">+</div><div className="art-spark spark-two">+</div><div className="art-key"><KeyIcon /></div><span className="art-check"><CheckIcon /></span></div></section>
++            <section className="passkeys-section" aria-labelledby="passkeys-title"><div className="section-heading"><div><h2 id="passkeys-title">Your passkeys <span>{passkeys.length}</span></h2><p>Manage the passkeys you've added to your account.</p></div><button className="primary-button" onClick={() => open('add')}><PlusIcon /> Add a passkey</button></div>
++              {notice && <div className="status-notice" role="status"><CheckIcon />{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}><XMarkIcon /></button></div>}
++              {storageError && <p role="alert" className="storage-error">Changes cannot be saved in this browser. They will last only while this page is open.</p>}
++              <div className="passkey-list">{passkeys.map(key => <article className="passkey-row" key={key.id}><span className="device-icon">{key.id === 'iphone' ? <DevicePhoneMobileIcon /> : <ComputerDesktopIcon />}</span><div className="device-details"><div className="device-title"><h3>{key.name}</h3>{key.current && <span className="current-device">This device</span>}</div><p>{key.device}<span className="dot">·</span>Added {key.created}</p><span className="last-used">Last used: {key.used}</span></div><div className="row-action"><button className="more-button" aria-label={`Manage ${key.name}`} aria-expanded={menu === key.id} onClick={e => { e.stopPropagation(); setMenu(menu === key.id ? null : key.id); }}><EllipsisHorizontalIcon /></button>{menu === key.id && <div className="action-menu"><button onClick={() => open('rename', key)}>Rename passkey</button><button className="danger-text" onClick={() => open('remove', key)}>Remove passkey</button></div>}</div></article>)}{passkeys.length === 0 && <div className="empty-passkeys"><KeyIcon /><h3>No passkeys yet</h3><p>Add a passkey for a simpler way to sign in.</p></div>}</div>
++              <div className="security-note"><LockClosedIcon /><p>Your passkeys are encrypted and never shared with The DevTools Times.</p></div>
++            </section>
++            <section className="good-to-know"><span className="info-icon"><InformationCircleIcon /></span><div><h3>A few things to know</h3><p>You can add multiple passkeys to your account. We recommend adding a passkey on<br className="desktop-break" /> another device, so you always have a way to sign in.</p><p>Your password will still work if you need it.</p></div></section>
++            <section className="faq-section" id="passkey-questions"><h2>A little more about passkeys</h2>{faqs.map(([question, answer]) => <details key={question}><summary>{question}<PlusIcon /></summary><p>{answer}</p></details>)}</section>
++          </> : <section className="alternate-panel"><span className="icon-tile">{tab === 'Password' ? <LockClosedIcon /> : <ComputerDesktopIcon />}</span><h2>{tab === 'Password' ? 'Your password' : 'Your active sessions'}</h2><p>{tab === 'Password' ? 'Your password remains available when you need another way to sign in. Password changes require a connected account service.' : 'Session details will appear here when you sign in to a connected account.'}</p><button className="secondary-button" onClick={() => setTab('Passkeys')}>Manage passkeys <ArrowRightIcon /></button></section>}
++        </> : <section className="alternate-panel"><h2>{active === 'Overview' ? 'Welcome back, Jamie.' : active}</h2>{active === 'Personal information' || active === 'Overview' ? <><p>Manage your personal details and account security.</p><dl><dt>Name</dt><dd>Jamie Davis</dd><dt>Email address</dt><dd>jamie.davis@gmail.com</dd></dl></> : active === 'Subscription & billing' ? <><p>Digital subscriber</p><p>Unlimited access to The DevTools Times.</p></> : <p>Contact support to update newsletter preferences for this preview account.</p>}<button className="secondary-button" onClick={() => { setActive('Sign-in & security'); setTab('Passkeys'); }}>Manage account security <ArrowRightIcon /></button></section>}
++        <div className="settings-help">Need help with your account? <a href="mailto:support@devtoolstimes.com">Visit our Help Center <ArrowUpRightIcon /></a></div>
++      </main>
++    </div>
++    <footer className="account-footer"><span>© {new Date().getFullYear()} The DevTools Times Company</span><div><a href={`${base}legal/privacy`}>Privacy Policy</a><a href={`${base}legal/terms`}>Terms of Service</a><a href="mailto:support@devtoolstimes.com">Contact Us</a></div><span className="footer-lock"><LockClosedIcon /> Your trust. Our commitment.</span></footer>
++    <dialog ref={dialog} className="passkey-dialog" aria-labelledby="passkey-dialog-title" onCancel={() => setModal(null)} onClick={e => { if(e.target === dialog.current) setModal(null); }}><form onSubmit={submit}><button type="button" className="dialog-close" aria-label="Close dialog" onClick={() => setModal(null)}><XMarkIcon /></button><span className="icon-tile"><KeyIcon /></span><h2 id="passkey-dialog-title">{modal?.type === 'remove' ? 'Remove this passkey?' : modal?.type === 'rename' ? 'Rename your passkey' : 'Add a passkey'}</h2>{modal?.type === 'remove' ? <p>“{modal.key?.name}” will be removed from this preview. You can continue using your password or another passkey.</p> : <><p>{modal?.type === 'add' ? 'This is a demo account. Add a sample device to explore passkey management. No real sign-in credential will be created.' : 'Choose a name that helps you recognize this device.'}</p><label htmlFor="passkey-name">Passkey name</label><input autoFocus id="passkey-name" placeholder="e.g. My personal laptop" value={name} onChange={e => setName(e.target.value)} required maxLength={60} /></>}<div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setModal(null)}>Cancel</button><button type="submit" disabled={modal?.type !== 'remove' && !name.trim()} className={modal?.type === 'remove' ? 'danger-button' : 'primary-button'}>{modal?.type === 'remove' ? 'Remove passkey' : modal?.type === 'rename' ? 'Save changes' : 'Add demo passkey'}</button></div></form></dialog>
++  </>;
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..a632638 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}account/security`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..c4d3176 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/security`} class="text-xs font-semibold text-gray-700 hover:underline">My account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/layouts/AccountLayout.astro b/src/layouts/AccountLayout.astro
+new file mode 100644
+index 0000000..91a44e6
+--- /dev/null
++++ b/src/layouts/AccountLayout.astro
+@@ -0,0 +1,18 @@
++---
++import '../styles/global.css';
++import '../styles/account.css';
++const base = import.meta.env.BASE_URL;
++---
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <title>Passkeys · My Account · The DevTools Times</title>
++    <link rel="icon" href={`${base}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Text:wght@400;700&display=swap" rel="stylesheet" />
++  </head>
++  <body class="account-body"><slot /></body>
++</html>
+diff --git a/src/pages/account/security.astro b/src/pages/account/security.astro
+new file mode 100644
+index 0000000..922654b
+--- /dev/null
++++ b/src/pages/account/security.astro
+@@ -0,0 +1,5 @@
++---
++import AccountLayout from '../../layouts/AccountLayout.astro';
++import AccountSettings from '../../components/AccountSettings';
++---
++<AccountLayout><AccountSettings client:load /></AccountLayout>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f8de4f8 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,5 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import AccountLayout from '../layouts/AccountLayout.astro';
++import AccountSettings from '../components/AccountSettings';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<AccountLayout><AccountSettings client:load /></AccountLayout>
+diff --git a/src/pages/news.astro b/src/pages/news.astro
+new file mode 100644
+index 0000000..92f6399
+--- /dev/null
++++ b/src/pages/news.astro
+@@ -0,0 +1,84 @@
++---
++import Layout from '../layouts/Layout.astro';
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++<Layout title="The DevTools Times">
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </main>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </div>
++</Layout>
+\ No newline at end of file
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..c78b967
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1,3 @@
++.account-body{margin:0;background:#fcfcfa;color:#222b35;font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}.account-body *{box-sizing:border-box}.account-body button,.account-body a,.account-body summary{-webkit-tap-highlight-color:transparent}.account-body button{font:inherit;cursor:pointer}.account-body button,.account-body input{transition:background .15s,border-color .15s,box-shadow .15s}.account-body a{text-decoration:none;color:inherit}.account-body button:focus-visible,.account-body a:focus-visible,.account-body summary:focus-visible,.account-body input:focus-visible{outline:3px solid #88b4db;outline-offset:4px}.account-body svg{width:20px;height:20px;stroke-width:1.65}.account-header{height:95px;background:#fff;border-bottom:1px solid #dedfdc}.masthead{height:100%;max-width:1280px;margin:auto;padding:0 44px;display:flex;align-items:center;gap:25px}.brand{display:block;width:248px}.brand img{width:100%;height:auto}.header-divider{width:1px;height:25px;background:#d8dbde}.account-label{font-size:14px;color:#59626d}.header-actions{margin-left:auto;display:flex;align-items:center;gap:32px}.back-news{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500}.back-news svg{width:15px;height:15px}.profile-wrap{position:relative}.profile-button{background:none;border:0;display:flex;align-items:center;gap:10px}.profile-button>svg{width:12px}.avatar{width:34px;height:34px;display:inline-flex;justify-content:center;align-items:center;border-radius:50%;background:#e8edf1;color:#2b4762;font-size:12px;font-weight:600}.profile-menu{position:absolute;right:0;top:46px;z-index:5;background:white;padding:20px;width:275px;border:1px solid #ddd;border-radius:6px;box-shadow:0 6px 25px #23334414;display:grid;gap:8px}.profile-menu>span{font-size:12px;color:#747b84}.profile-menu a{display:flex;align-items:center;gap:9px;font-size:12px;border-top:1px solid #eee;padding-top:15px;margin-top:8px}.account-shell{max-width:1192px;margin:0 auto;display:grid;grid-template-columns:246px minmax(0,1fr);min-height:1000px}.account-sidebar{border-right:1px solid #e2e4e3;padding:41px 24px 28px 0}.member{padding-left:18px;margin-bottom:30px}.avatar.large{width:48px;height:48px;font-size:17px;margin-bottom:13px;background:#e9edf0}.member h2{font-size:16px;font-weight:600;margin:0 0 4px}.member p{font-size:12px;color:#777f87;margin:0 0 13px}.subscriber{display:inline-flex;align-items:center;gap:6px;background:#f0f2eb;border:1px solid #e1e6d7;color:#626e4b;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:500}.subscriber>span{width:5px;height:5px;background:#7c8d5c;border-radius:50%}.account-sidebar nav{display:grid;gap:6px}.side-link{display:flex;align-items:center;gap:11px;background:none;border:1px solid transparent;padding:12px 12px 12px 16px;text-align:left;width:100%;color:#646c75;font-size:12px!important;border-radius:5px;white-space:nowrap}.side-link>svg{width:18px;height:18px;color:#7c848c}.side-link.selected{background:#eaf0f5;color:#264d70;font-weight:600;border-color:#e1e9ef}.side-link.selected>svg{color:#315f84}.side-link .nav-arrow{margin-left:auto;width:13px;height:13px}.side-link:hover{background:#f0f2f3}.sidebar-help{border-top:1px solid #e1e4e3;margin:41px 15px 0;padding-top:27px}.sidebar-help>svg{color:#78828b;width:21px;height:21px;margin-bottom:10px}.sidebar-help h3{font-size:12px;font-weight:600;margin:0 0 5px}.sidebar-help p{font-size:12px;color:#7b8187;margin:0 0 12px}.sidebar-help a{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;color:#325977}.sidebar-help a svg{width:13px;height:13px}.sidebar-back{display:flex;gap:8px;align-items:center;font-size:11px;color:#7b8188!important;margin:41px 15px}.sidebar-back svg{width:14px}.settings-main{padding:34px 0 0 54px;min-width:0}.breadcrumb{display:flex;gap:9px;align-items:center;color:#8a9096;font-size:10px}.breadcrumb svg{width:11px;height:11px;color:#92989c}.page-heading{margin-top:31px}.eyebrow{font-size:9px;letter-spacing:1.65px;font-weight:600;color:#6d7d8a}.page-heading h1{font-family:'Libre Caslon Text',Georgia,serif;font-size:33px;font-weight:400;letter-spacing:-1px;line-height:1.4;margin:9px 0 9px;color:#1d2c3b}.page-heading>p{color:#7a8187;font-size:12px;margin:0}.security-tabs{margin-top:30px;display:flex;gap:30px;border-bottom:1px solid #dcdfe0}.security-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:0 0 14px;display:flex;align-items:center;gap:8px;color:#7b8188;font-size:12px;font-weight:500;margin-bottom:-1px}.security-tabs button.active{color:#315a7c;border-bottom-color:#315a7c}.tab-count{font-size:9px;border-radius:4px;background:#e8eef2;padding:1px 5px;min-width:16px}.passkey-intro{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:166px;border:1px solid #dfe6ec;border-radius:7px;background:#f1f5f8;margin-top:28px;padding:26px}.intro-copy{display:flex;align-items:flex-start;gap:19px;z-index:1}.icon-tile{display:inline-flex;align-items:center;justify-content:center;width:42px;height:46px;background:#e6edf3;border:1px solid #d8e2eb;border-radius:8px;flex-shrink:0;color:#355e80}.icon-tile svg{width:27px;height:27px;stroke-width:1.4}.intro-copy h2{font-family:'Libre Caslon Text',Georgia,serif;font-size:18px;letter-spacing:-.3px;font-weight:400;margin:2px 0 10px;color:#293e52}.intro-copy p{font-size:11px;line-height:1.9;color:#74818e;margin:0 0 11px}.intro-copy a{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#345b7c;font-weight:600}.intro-copy a svg{width:12px;height:12px}.key-art{position:relative;width:155px;height:116px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-right:4px}.art-orbit{position:absolute;border:1px solid #dfe8ef;border-radius:50%;width:108px;height:108px}.orbit-two{width:147px;height:147px;border-style:dashed}.art-key{width:76px;height:76px;border:1px solid #c6d5e2;border-radius:19px;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#f9fbfd,#d9e4ed);box-shadow:0 6px 9px #4c6d7f0c;transform:rotate(-10deg)}.art-key svg{width:42px;height:42px;color:#476c8d;stroke-width:1.3;transform:rotate(10deg)}.art-check{position:absolute;right:29px;bottom:13px;border-radius:50%;width:25px;height:25px;background:#6c8a70;border:3px solid #f1f5f8;color:white;display:flex;align-items:center;justify-content:center}.art-check svg{width:13px;height:13px;stroke-width:2.5}.art-spark{position:absolute;color:#9cb1c1;font-size:17px;font-weight:400}.spark-one{left:8px;bottom:12px}.spark-two{right:13px;top:7px;font-size:12px}.passkeys-section{margin-top:32px}.section-heading{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:19px}.section-heading h2{font-size:16px;font-weight:600;margin:0 0 7px;display:flex;gap:9px;align-items:center}.section-heading h2>span{font-size:10px;color:#7d8790;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;background:#edefee;border-radius:4px;font-weight:500}.section-heading p{font-size:11px;margin:0;color:#7a8188}.primary-button,.secondary-button,.danger-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:4px;padding:10px 14px;background:#2e5575;border:1px solid #2e5575;color:#fff;font-size:11px!important;font-weight:500;white-space:nowrap}.primary-button svg,.secondary-button svg{width:14px;height:14px}.primary-button:hover{background:#1e405c}.passkey-list{background:#fff;border:1px solid #dfe2e3;border-radius:6px}.passkey-row{padding:23px 22px;display:flex;align-items:center;gap:17px;position:relative}.passkey-row+.passkey-row{border-top:1px solid #e6e8e8}.device-icon{height:45px;width:45px;display:flex;align-items:center;justify-content:center;background:#f5f6f5;border:1px solid #e8eae9;border-radius:8px;flex-shrink:0;color:#656f77}.device-icon svg{width:24px;height:24px;stroke-width:1.4}.device-details{min-width:0}.device-title{display:flex;gap:9px;align-items:center}.device-title h3{font-size:12px;font-weight:600;margin:0;overflow-wrap:anywhere}.current-device{border:1px solid #dfe7df;color:#617d64;font-size:8px;padding:2px 6px;background:#f3f7f1;border-radius:4px;white-space:nowrap}.device-details p{margin:6px 0 3px;color:#7b8187;font-size:10px}.dot{padding:0 6px;color:#a6adb2}.last-used{font-size:9px;color:#959ba1}.row-action{margin-left:auto;position:relative;align-self:center}.more-button{display:flex;border:0;background:transparent;color:#7d858d;padding:8px;border-radius:4px}.more-button:hover{background:#edf2f5}.more-button svg{width:20px;height:20px}.action-menu{position:absolute;z-index:3;right:0;top:35px;background:#fff;box-shadow:0 5px 20px #25394e1c;border:1px solid #dfe3e5;border-radius:5px;padding:5px;width:155px}.action-menu button{display:block;background:none;border:0;padding:10px;width:100%;font-size:11px;text-align:left;border-radius:3px}.action-menu button:hover{background:#f0f3f6}.danger-text{color:#ae4343}.security-note{display:flex;gap:7px;justify-content:center;align-items:center;margin-top:14px;color:#8e959a}.security-note svg{width:12px;height:12px}.security-note p{margin:0;font-size:9px}.good-to-know{display:flex;gap:12px;background:#f5f5f1;border:1px solid #e9e9e1;border-radius:6px;padding:19px 20px;margin-top:28px}.info-icon{color:#8e937c}.info-icon svg{width:17px;height:17px}.good-to-know h3{font-size:11px;font-weight:600;margin:0 0 7px;color:#5b6256}.good-to-know p{color:#86897f;font-size:10px;line-height:1.85;margin:0}.good-to-know p+p{margin-top:6px}.faq-section{margin-top:32px}.faq-section h2{font-size:14px;font-weight:600;margin:0 0 14px}.faq-section details{border-bottom:1px solid #e3e5e4}.faq-section summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:15px 0;font-size:11px;color:#5f6872}.faq-section summary::-webkit-details-marker{display:none}.faq-section summary svg{width:13px;height:13px;color:#7b858d}.faq-section details[open] summary svg{transform:rotate(45deg)}.faq-section details>p{font-size:12px;color:#75808b;line-height:1.8;margin:0 20px 18px 0}.settings-help{display:flex;justify-content:center;gap:5px;margin:32px 0;color:#8d949a;font-size:10px}.settings-help a{display:inline-flex;gap:3px;align-items:center;color:#4f6c84}.settings-help a svg{width:11px;height:11px}.account-footer{max-width:1192px;margin:0 auto;display:flex;gap:30px;align-items:center;border-top:1px solid #dedfdd;padding:24px 0;color:#92989d;font-size:9px}.account-footer>div{display:flex;gap:20px}.footer-lock{margin-left:auto;display:flex;gap:6px;align-items:center}.footer-lock svg{width:11px;height:11px}.status-notice{display:flex;gap:8px;align-items:center;background:#edf4ed;color:#4c7353;padding:12px;margin-bottom:12px;border-radius:5px;font-size:11px}.status-notice>svg{width:15px;flex-shrink:0}.status-notice>button{margin-left:auto;border:0;background:none}.status-notice>button>svg{width:14px;height:14px}.storage-error{font-size:12px;color:#a84c36}.empty-passkeys{text-align:center;padding:28px;color:#73818c}.empty-passkeys>svg{width:30px;height:30px;margin:auto}.empty-passkeys h3{font-size:15px}.empty-passkeys p{font-size:12px}.alternate-panel{margin:28px 0;border:1px solid #dfe4e7;border-radius:7px;background:white;padding:30px;min-height:280px}.alternate-panel h2{font-family:'Libre Caslon Text',serif;font-size:22px;margin:20px 0 10px}.alternate-panel p{font-size:13px;color:#7c858e;line-height:1.8;max-width:500px}.alternate-panel .secondary-button{margin-top:20px}.alternate-panel dl{display:grid;grid-template-columns:110px 1fr;gap:15px;font-size:13px;margin-top:25px}.alternate-panel dt{color:#8a9198}.secondary-button{background:#fff;border-color:#d6dde2;color:#48637a}.secondary-button:hover{background:#edf2f6}.passkey-dialog{color:#273543;background:#fff;padding:30px;width:440px;max-width:calc(100% - 32px);border:1px solid #dce3e8;border-radius:10px;box-shadow:0 15px 80px #10283d30}.passkey-dialog::backdrop{background:#1a2d4266;backdrop-filter:blur(3px)}.passkey-dialog h2{font-family:'Libre Caslon Text',serif;font-size:22px;font-weight:400;margin:20px 0 12px}.passkey-dialog p{font-size:13px;line-height:1.8;color:#76818c}.passkey-dialog label{display:block;font-size:12px;margin:20px 0 8px}.passkey-dialog input{width:100%;border:1px solid #cbd5dc;border-radius:5px;font:inherit;padding:11px}.dialog-close{position:absolute;right:15px;top:15px;background:none;border:0;padding:5px;color:#7c8790}.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:25px}.danger-button{background:#a34040;border-color:#a34040}.danger-button:hover{background:#8d3030}
++@media(min-width:1400px){.account-shell,.account-footer{max-width:1192px}.settings-main{padding-right:26px}.masthead{max-width:1280px}}@media(max-width:1250px){.account-shell,.account-footer{margin-left:44px;margin-right:44px}.settings-main{padding-left:40px}.key-art{width:120px}.intro-copy{gap:14px}.passkey-intro{padding:23px}.intro-copy h2{font-size:17px}}@media(max-width:1000px){.account-shell{grid-template-columns:210px 1fr}.account-sidebar{padding-right:16px}.settings-main{padding-left:28px}.account-shell,.account-footer{margin-left:24px;margin-right:24px}.masthead{padding:0 24px}.key-art{display:none}.intro-copy h2{font-size:18px}.desktop-break{display:none}.account-footer{flex-wrap:wrap;gap:16px}.footer-lock{margin-left:0}.account-sidebar .side-link{font-size:11px!important;padding-left:10px;gap:8px}.member{padding-left:10px}.settings-main{padding-top:30px}.account-shell{min-height:1020px}}@media(max-width:700px){.account-header{height:76px}.brand{width:190px}.masthead{padding:0 20px;gap:15px}.header-divider,.account-label,.back-news{display:none!important}.header-actions{gap:12px}.account-shell{display:block;margin:0 20px;min-height:0}.account-sidebar{border:0;padding:18px 0 0}.member,.sidebar-help,.sidebar-back{display:none}.account-sidebar nav{display:flex;overflow-x:auto;border-bottom:1px solid #e0e3e4;gap:6px;padding-bottom:10px}.side-link{width:auto;flex-shrink:0;padding:9px!important}.side-link .nav-arrow{display:none}.settings-main{padding:23px 0 0}.breadcrumb{font-size:9px}.page-heading{margin-top:25px}.page-heading h1{font-size:29px}.page-heading>p{font-size:11px}.security-tabs{gap:27px;margin-top:24px}.passkey-intro{padding:19px 16px;margin-top:24px;min-height:155px}.intro-copy{gap:12px}.intro-copy h2{font-size:16px;line-height:1.5;margin-top:0}.intro-copy p{font-size:10px;line-height:1.8}.icon-tile{width:34px;height:40px}.icon-tile svg{width:23px}.section-heading h2{font-size:14px}.section-heading p{font-size:10px;max-width:170px;line-height:1.5}.primary-button{padding:9px 10px;font-size:10px!important}.passkey-row{padding:19px 13px;gap:11px}.device-icon{width:38px;height:40px}.device-title h3{font-size:11px}.device-title{gap:6px}.device-details p{font-size:9px;line-height:1.6}.current-device{font-size:7px;padding:2px 4px}.last-used{font-size:8px}.security-note p{font-size:8px;line-height:1.5}.security-note{align-items:flex-start;padding:0 6px}.security-note svg{flex-shrink:0}.good-to-know{padding:16px 13px;gap:9px}.faq-section h2{font-size:13px}.settings-help{font-size:9px;flex-wrap:wrap;margin:30px 0}.account-footer{margin:0 20px;padding:22px 0;gap:16px;font-size:8px;justify-content:center}.account-footer>span:first-child{width:100%;text-align:center}.footer-lock{display:none}.passkey-dialog{padding:25px}.passkey-dialog h2{font-size:21px}.passkey-dialog .primary-button{font-size:11px!important}}
++.account-body button:disabled{opacity:.5;cursor:not-allowed}

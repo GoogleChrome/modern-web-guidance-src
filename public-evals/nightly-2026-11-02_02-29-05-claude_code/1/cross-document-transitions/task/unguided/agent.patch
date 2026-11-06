@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,124 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .page-indicator {
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    /* Page transitions (cross-document View Transitions) */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 0.4s;
++        animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
++      }
++
++      ::view-transition-old(root) {
++        animation-name: fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation-name: fade-in;
++      }
++
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation-name: slide-out-to-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation-name: slide-in-from-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation-name: slide-out-to-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation-name: slide-in-from-left;
++      }
++    }
++
++    @keyframes fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes fade-in {
++      from { opacity: 0; }
++    }
++
++    @keyframes slide-out-to-left {
++      to { opacity: 0; transform: translateX(-30%); }
++    }
++
++    @keyframes slide-in-from-right {
++      from { opacity: 0; transform: translateX(30%); }
++    }
++
++    @keyframes slide-out-to-right {
++      to { opacity: 0; transform: translateX(30%); }
++    }
++
++    @keyframes slide-in-from-left {
++      from { opacity: 0; transform: translateX(-30%); }
++    }
+   </style>
++  <script>
++    // Apply a "next"/"previous" view transition type on cross-document navigations.
++    // Registered in <head> so the listener is in place before the first render.
++    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const DIRECTION_KEY = 'daily-grind:nav-direction';
++
++      const pageOf = (url) => {
++        const page = parseInt(new URL(url, location.href).searchParams.get('page'), 10);
++        return Number.isFinite(page) && page > 0 ? page : 1;
++      };
++
++      // Remember which pagination link was clicked so the next page knows the direction.
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('#next, #previous');
++        if (link) sessionStorage.setItem(DIRECTION_KEY, link.id);
++      });
++
++      window.addEventListener('pagereveal', (event) => {
++        if (!event.viewTransition) return;
++
++        let direction = sessionStorage.getItem(DIRECTION_KEY);
++        sessionStorage.removeItem(DIRECTION_KEY);
++
++        // Back/forward traversals: infer direction from the page numbers.
++        const activation = window.navigation && navigation.activation;
++        if (activation && activation.navigationType === 'traverse' && activation.from) {
++          const from = pageOf(activation.from.url);
++          const to = pageOf(activation.entry.url);
++          direction = to > from ? 'next' : to < from ? 'previous' : null;
++        }
++
++        if (direction === 'next' || direction === 'previous') {
++          event.viewTransition.types.add(direction);
++        }
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -193,8 +308,60 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a href="/?page=3" id="previous" class="btn" rel="prev">&larr; Previous</a>
++        <span class="page-indicator">Page 1 of 3</span>
++        <a href="/?page=2" id="next" class="btn" rel="next">Next &rarr;</a>
++      </div>
++      <script>
++        (() => {
++          const pages = [
++            [
++              ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', '/menu/seasonal'],
++              ['Dark Roast Espresso', 'Bold, smokey, and perfect for a morning boost.', '/menu/espresso'],
++              ['Cold Brew', 'Steeped for 18 hours for maximum smoothness.', '/menu/cold-brew'],
++            ],
++            [
++              ['Pumpkin Spice Cappuccino', 'Velvety foam dusted with cinnamon, nutmeg, and clove.', '/menu/pumpkin-spice'],
++              ['Chai Tea Latte', 'Black tea simmered with warming spices and steamed milk.', '/menu/chai'],
++              ['Honey Lavender Flat White', 'Floral lavender and wildflower honey over ristretto shots.', '/menu/honey-lavender'],
++            ],
++            [
++              ['Salted Caramel Mocha', 'Rich chocolate and caramel finished with sea salt.', '/menu/salted-caramel'],
++              ['Nitro Cold Brew', 'Nitrogen-infused for a creamy, cascading pour.', '/menu/nitro'],
++              ['Cinnamon Dolce Americano', 'Smooth espresso brightened with cinnamon dolce syrup.', '/menu/cinnamon-dolce'],
++            ],
++          ];
++
++          const requested = parseInt(new URLSearchParams(location.search).get('page'), 10);
++          const page = requested >= 1 && requested <= pages.length ? requested : 1;
++          const prevPage = page === 1 ? pages.length : page - 1;
++          const nextPage = page === pages.length ? 1 : page + 1;
++
++          const section = document.currentScript.closest('section');
++          const grid = section.querySelector('.grid');
++          grid.replaceChildren(...pages[page - 1].map(([title, description, href]) => {
++            const card = document.createElement('div');
++            card.className = 'card';
++            const h3 = document.createElement('h3');
++            h3.textContent = title;
++            const p = document.createElement('p');
++            p.textContent = description;
++            const a = document.createElement('a');
++            a.className = 'btn';
++            a.href = href;
++            a.textContent = 'View Details';
++            card.append(h3, p, a);
++            return card;
++          }));
++
++          section.querySelector('#previous').href = `/?page=${prevPage}`;
++          section.querySelector('#next').href = `/?page=${nextPage}`;
++          section.querySelector('.page-indicator').textContent = `Page ${page} of ${pages.length}`;
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

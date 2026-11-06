@@ -1,0 +1,210 @@
+diff --git a/README.md b/README.md
+index 4479b53..64158e3 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,24 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Developer diagnostics
++
++The homepage workbench checks a hardware device on a private LAN and a companion
++HTTP service on the reader's computer. All requests originate in the browser,
++only after the reader selects Connect. There is no server-side network proxy.
++
++The endpoint URLs are editable examples, not bundled services. Configure each
++service to expose a health endpoint that accepts GET and returns a 2xx status.
++The response format is unrestricted; the widget verifies reachability rather
++than opening a persistent telemetry stream. Each service must return
++`Access-Control-Allow-Origin` for the deployed site's origin (the origin has no
++path, including no `/devtools-times/`). Credentials are omitted.
++
++Serve the site over HTTPS. Supporting browsers can prompt separately for local
++network and loopback access. Requests declare `targetAddressSpace` as `local` for
++the device and `loopback` for the CLI; unsupported browsers still require their
++normal CORS and mixed-content rules. See the [browser network access guide](https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access).
++
++Checks time out after 15 seconds, can be canceled, and do not run automatically.
++Activity is held in memory for the current widget session, with a 50-event limit.
+diff --git a/src/components/diagnostics/DeveloperDiagnostics.tsx b/src/components/diagnostics/DeveloperDiagnostics.tsx
+new file mode 100644
+index 0000000..d25e065
+--- /dev/null
++++ b/src/components/diagnostics/DeveloperDiagnostics.tsx
+@@ -0,0 +1,149 @@
++import { useEffect, useRef, useState } from 'react';
++import type { FormEvent, ReactNode } from 'react';
++import './diagnostics.css';
++
++type Kind = 'device' | 'cli';
++type Status = 'idle' | 'connecting' | 'connected' | 'error';
++type Connection = { status: Status; message: string; latency?: number; checked?: string };
++type Entry = { id: number; time: string; kind: Kind; message: string; error?: boolean };
++const initial: Connection = { status: 'idle', message: 'Ready when you are. Enter your endpoint to get started.' };
++const config = {
++  device: { name: 'Hardware test device', label: 'Device endpoint', address: 'http://192.168.1.100:8080/health', space: 'local', permission: 'local-network' },
++  cli: { name: 'Local companion CLI', label: 'CLI endpoint', address: 'http://127.0.0.1:3001/health', space: 'loopback', permission: 'loopback-network' },
++} as const;
++
++function Icon({ name, size = 20 }: { name: string; size?: number }) {
++  const paths: Record<string, ReactNode> = {
++    device: <><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 9h6v6H9zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></>,
++    cli: <><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3m6 0h4"/></>,
++    arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>,
++    shield: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></>,
++    help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1.5 1-1.5 1-1.5 3m0 3h.01"/></>,
++    plug: <><path d="M9 3v5m6-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></>,
++    activity: <path d="M2 12h5l3-8 4 16 3-8h5"/>,
++    lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></>,
++  };
++  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.plug}</svg>;
++}
++
++// Keep each endpoint in its intended address space, including on browsers without LNA support.
++export function validateEndpoint(value: string, kind: Kind): URL {
++  let url: URL;
++  try { url = new URL(value.trim()); } catch { throw new Error('Enter a full endpoint URL, including http:// or https://.'); }
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++    throw new Error('Use an HTTP or HTTPS URL without credentials or a fragment.');
++  }
++  const host = url.hostname.toLowerCase();
++  const octets = host.split('.').map(Number);
++  const ipv4 = octets.length === 4 && octets.every(n => Number.isInteger(n) && n >= 0 && n <= 255);
++  const loopback = host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' || (ipv4 && octets[0] === 127);
++  const privateIP = ipv4 && (octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 169 && octets[1] === 254));
++  const privateIPv6 = /^\[f[cd][0-9a-f]{2}:/.test(host) || /^\[fe[89ab][0-9a-f]:/.test(host);
++  if (kind === 'cli' && !loopback) throw new Error('Use 127.0.0.1, localhost, or [::1] for the companion on this machine.');
++  if (kind === 'device' && !(privateIP || privateIPv6 || host.endsWith('.local'))) {
++    throw new Error('Use a private LAN IP (such as 192.168.1.100) or a .local device hostname.');
++  }
++  return url;
++}
++
++export default function DeveloperDiagnostics() {
++  const [tab, setTab] = useState<'connections' | 'activity'>('connections');
++  const [help, setHelp] = useState(false);
++  const [addresses, setAddresses] = useState({ device: config.device.address as string, cli: config.cli.address as string });
++  const [connections, setConnections] = useState<Record<Kind, Connection>>({ device: initial, cli: initial });
++  const [entries, setEntries] = useState<Entry[]>([]);
++  const controllers = useRef<Partial<Record<Kind, AbortController>>>({});
++  const sequence = useRef(0);
++  useEffect(() => () => { Object.values(controllers.current).forEach(c => c?.abort()); controllers.current = {}; }, []);
++  const log = (kind: Kind, message: string, error = false) => setEntries(old => [{ id: ++sequence.current, time: new Date().toLocaleTimeString(), kind, message, error }, ...old].slice(0, 50));
++  const update = (kind: Kind, value: Connection) => setConnections(old => ({ ...old, [kind]: value }));
++
++  async function connect(event: FormEvent, kind: Kind) {
++    event.preventDefault();
++    const controller = new AbortController();
++    controllers.current[kind]?.abort();
++    controllers.current[kind] = controller;
++    let timer: ReturnType<typeof setTimeout> | undefined;
++    let timedOut = false;
++    try {
++      const url = validateEndpoint(addresses[kind], kind);
++      if (!window.isSecureContext) throw new Error('Open this site over HTTPS to enable local connections.');
++      update(kind, { status: 'connecting', message: 'Waiting for your endpoint. Allow browser access if prompted.' });
++      log(kind, `Connecting to ${url.origin}${url.pathname}`);
++      // Unsupported permission names are expected in some browsers; the request remains user initiated.
++      let permission: PermissionState | undefined;
++      try { permission = (await navigator.permissions.query({ name: config[kind].permission as PermissionName })).state; } catch { /* Try the standard request below. */ }
++      if (controllers.current[kind] !== controller) return;
++      if (permission === 'denied') throw new Error('Access is blocked. Allow local network or loopback access in your browser’s site settings, then retry.');
++      timer = setTimeout(() => { timedOut = true; controller.abort(); }, 15000);
++      const start = performance.now();
++      const options: RequestInit & { targetAddressSpace: 'local' | 'loopback' } = {
++        method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store', redirect: 'error',
++        referrerPolicy: 'no-referrer', signal: controller.signal, targetAddressSpace: config[kind].space,
++      };
++      const response = await fetch(url.href, options);
++      if (!response.ok) throw new Error(`Endpoint returned HTTP ${response.status}. Check the health endpoint and retry.`);
++      const latency = Math.round(performance.now() - start);
++      // A readable, successful response confirms reachability; no specific payload is required.
++      await response.body?.cancel();
++      if (controllers.current[kind] !== controller) return;
++      update(kind, { status: 'connected', message: `Endpoint responded successfully (HTTP ${response.status}).`, latency, checked: new Date().toLocaleTimeString() });
++      log(kind, `Connection verified · HTTP ${response.status} · ${latency} ms`);
++    } catch (error) {
++      if (controllers.current[kind] !== controller) return;
++      const message = timedOut ? 'No response after 15 seconds. Check the address, service, and network, then retry.'
++        : error instanceof TypeError ? 'Could not reach the endpoint. Check the service, browser site permissions, and CORS configuration.'
++        : error instanceof Error ? error.message : 'Connection failed. Please retry.';
++      update(kind, { status: 'error', message });
++      log(kind, message, true);
++    } finally { if (timer) clearTimeout(timer); }
++  }
++  function disconnect(kind: Kind) {
++    controllers.current[kind]?.abort();
++    delete controllers.current[kind];
++    update(kind, { status: 'idle', message: 'Disconnected. You can connect again at any time.' });
++    log(kind, 'Disconnected');
++  }
++  const count = Object.values(connections).filter(c => c.status === 'connected').length;
++
++  return <section className="diagnostics" aria-labelledby="diagnostics-title">
++    <div className="diag-eyebrow"><span><span className="diag-tiny-square"/> THE DEVELOPER WORKBENCH</span><span className="diag-edition">TOOLS FOR THE CURIOUS</span></div>
++    <div className="diag-heading"><div><h1 id="diagnostics-title">A closer look, <em>connected.</em></h1><p>Your hardware. Your local tools. One place to see what’s happening.</p></div><span className="diag-lab-badge"><span/> DEVELOPER DIAGNOSTICS</span></div>
++    <div className="diag-workspace">
++      <div className="diag-toolbar"><div className="diag-tabs" role="tablist" aria-label="Diagnostics views" onKeyDown={event => {
++        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++        event.preventDefault();
++        const next = event.key === 'Home' ? 'connections' : event.key === 'End' ? 'activity' : tab === 'connections' ? 'activity' : 'connections';
++        setTab(next);
++        event.currentTarget.querySelector<HTMLButtonElement>(`#${next}-tab`)?.focus();
++      }}>
++        <button id="connections-tab" role="tab" tabIndex={tab === 'connections' ? 0 : -1} aria-selected={tab === 'connections'} aria-controls="connections-panel" onClick={() => setTab('connections')}><Icon name="plug" size={16}/> Connections <span className="diag-count">{count}/2</span></button>
++        <button id="activity-tab" role="tab" tabIndex={tab === 'activity' ? 0 : -1} aria-selected={tab === 'activity'} aria-controls="activity-panel" onClick={() => setTab('activity')}><Icon name="activity" size={16}/> Activity log {entries.length > 0 && <span className="diag-count">{entries.length}</span>}</button>
++      </div><button className="diag-help-button" aria-expanded={help} aria-controls="diag-setup" onClick={() => setHelp(!help)}><Icon name="help" size={16}/><span>Setup guide</span></button></div>
++      <div id="connections-panel" role="tabpanel" aria-labelledby="connections-tab" hidden={tab !== 'connections'}>
++        <div className="diag-intro"><div><h2>Make a local connection</h2><p>Connect to a test device or companion service to check its availability.</p></div><span className="diag-session"><span/> {count ? `${count} of 2 verified` : 'No active connections'}</span></div>
++        <div className="diag-cards">{(['device', 'cli'] as Kind[]).map((kind, index) => {
++          const state = connections[kind];
++          return <form className={`diag-card diag-card-${kind} diag-card-${state.status}`} key={kind} onSubmit={e => connect(e, kind)}>
++            <div className="diag-card-top"><div className={`diag-icon diag-icon-${kind}`}><Icon name={kind} size={25}/></div><span className={`diag-status ${state.status}`}><span/>{({idle: 'Not connected', connecting: 'Connecting', connected: 'Connected', error: 'Connection failed'})[state.status]}</span></div>
++            <div className="diag-card-title"><h3>{config[kind].name}</h3><span>0{index + 1}</span></div>
++            <p className="diag-card-description">{kind === 'device' ? 'Reach a hardware device on your private Wi-Fi network.' : 'Reach the companion service running on this computer.'}</p>
++            <div className="diag-network"><span className="diag-network-line"/><span>{kind === 'device' ? 'PRIVATE NETWORK' : 'THIS MACHINE'}</span><code>{kind === 'device' ? '192.168.x.x' : '127.0.0.1'}</code></div>
++            <label htmlFor={`endpoint-${kind}`}>{config[kind].label}</label>
++            <div className="diag-input-wrap"><Icon name={kind === 'device' ? 'device' : 'cli'} size={16}/><input id={`endpoint-${kind}`} type="url" required spellCheck={false} autoCapitalize="none" autoComplete="off" value={addresses[kind]} disabled={state.status === 'connecting' || state.status === 'connected'} onChange={e => { setAddresses(old => ({ ...old, [kind]: e.target.value })); update(kind, initial); }} aria-describedby={`hint-${kind} message-${kind}`} /></div>
++            <p id={`hint-${kind}`} className="diag-input-hint">{kind === 'device' ? 'Use the address and health path provided by your device.' : 'Use the port and health path configured in your CLI.'}</p>
++            {state.status === 'connected' ? <div className="diag-connected-actions"><button type="submit" className="diag-connect">Check again <Icon name="activity" size={16}/></button><button type="button" className="diag-disconnect" onClick={() => disconnect(kind)}>Disconnect</button></div>
++              : state.status === 'connecting' ? <button className="diag-connect" type="button" onClick={() => disconnect(kind)}><span className="diag-spinner"/> Cancel connection</button>
++              : <button className="diag-connect" type="submit">{state.status === 'error' ? 'Retry connection' : kind === 'device' ? 'Connect to device' : 'Connect to CLI'}<Icon name="arrow" size={18}/></button>}
++            <div id={`message-${kind}`} className={`diag-card-message ${state.status === 'error' ? 'diag-error-message' : ''}`} role="status">{state.status === 'idle' ? <><Icon name="lock" size={13}/> {kind === 'device' ? 'Your browser may ask for local network access.' : 'Your browser may ask for access to this machine.'}</> : state.message}{state.checked && <small>Last checked {state.checked} · {state.latency} ms</small>}</div>
++          </form>;
++        })}</div>
++        <div className="diag-privacy"><Icon name="shield" size={19}/><div><strong>Local by design.</strong> Connections go directly from your browser to your endpoints. <span>Only the endpoints you connect to are contacted.</span></div></div>
++      </div>
++      <div id="activity-panel" role="tabpanel" aria-labelledby="activity-tab" hidden={tab !== 'activity'} className="diag-activity"><div className="diag-intro"><div><h2>Connection activity</h2><p>Recent checks from this session. The latest event appears first.</p></div><button className="diag-text-button" disabled={!entries.length} onClick={() => setEntries([])}>Clear log</button></div>{entries.length ? <ol>{entries.map(entry => <li key={entry.id} className={entry.error ? 'diag-log-error' : ''}><time>{entry.time}</time><strong>{entry.kind === 'device' ? 'DEVICE' : 'CLI'}</strong><span>{entry.message}</span></li>)}</ol> : <div className="diag-empty"><Icon name="activity" size={32}/><h3>A fresh start.</h3><p>Connect to an endpoint and your activity will appear here.</p><button onClick={() => setTab('connections')} className="diag-text-button">Go to connections →</button></div>}</div>
++      {help && <div className="diag-setup" id="diag-setup"><h2>A little setup goes a long way.</h2><div><section><h3>01 / Prepare your endpoints</h3><p>Join the same Wi-Fi as your test device. Start your companion CLI’s HTTP service on this computer. Replace the example URLs with each service’s actual health endpoint; a successful GET response confirms availability.</p></section><section><h3>02 / Allow the connection</h3><p>Use this site over HTTPS. Allow local network or loopback access when your browser asks. Each endpoint must allow this site’s origin with the <code>Access-Control-Allow-Origin</code> response header. If blocked, review browser site permissions and your endpoint’s CORS settings.</p></section></div><p className="diag-setup-foot">Checks are on demand, with a 15-second timeout. “Connected” means the last check succeeded; it does not open a persistent stream. Browser support varies. <a href="https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access" target="_blank" rel="noreferrer">About browser network access ↗</a></p></div>}
++      <div className="diag-workspace-footer"><span><span className="diag-footer-dot"/> BROWSER → LOCAL ENDPOINT</span><span>Built for your debugging workflow.</span></div>
++    </div>
++    <div className="diag-bottom"><span>GOOD TO KNOW</span><p>Two connections. Independent permissions. You’re in control of both.</p><button onClick={() => setHelp(!help)}>How it works <span>↗</span></button></div>
++  </section>;
++}
+diff --git a/src/components/diagnostics/diagnostics.css b/src/components/diagnostics/diagnostics.css
+new file mode 100644
+index 0000000..4062459
+--- /dev/null
++++ b/src/components/diagnostics/diagnostics.css
+@@ -0,0 +1 @@
++.diagnostics{--diag-ink:#202d2a;--diag-muted:#748079;--diag-green:#225d4c;background:#f7f8f4;padding:32px 32px 24px;color:var(--diag-ink);border-bottom:1px solid #dce1d9;font-family:Arial,Helvetica,sans-serif}.diag-eyebrow{display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:1.8px;color:#5b6d60}.diag-eyebrow>span:first-child{display:flex;align-items:center;gap:9px}.diag-tiny-square{width:7px;height:7px;background:#597460}.diag-edition{color:#92988c;font-weight:400;font-size:9px}.diag-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:23px 0 28px}.diag-heading h1{font-family:Georgia,'Times New Roman',serif;font-size:42px;line-height:1.15;letter-spacing:-1.5px;font-weight:400;margin:0 0 12px}.diag-heading h1 em{color:#386a54;font-weight:400}.diag-heading p{color:#73796f;font-size:13px;margin:0;line-height:1.6}.diag-lab-badge{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:8px;font-weight:600;letter-spacing:1px;border:1px solid #d7dfd1;border-radius:4px;padding:8px 10px;background:#eef2e9;color:#5b7254}.diag-lab-badge>span{width:5px;height:5px;background:#788b5c;border-radius:50%}.diag-workspace{background:#fff;border:1px solid #d9dfd8;border-radius:9px;box-shadow:0 4px 14px #253d2810;overflow:hidden}.diag-toolbar{display:flex;justify-content:space-between;align-items:center;padding:0 23px;border-bottom:1px solid #e5e8e2;background:#fdfefd;gap:15px}.diag-tabs{display:flex;gap:25px}.diagnostics button{cursor:pointer;font-family:inherit}.diagnostics button:disabled{cursor:default;opacity:.5}.diag-tabs button{display:flex;align-items:center;gap:8px;border:0;border-bottom:2px solid transparent;background:none;color:#7c847b;padding:18px 0 16px;font-size:12px;font-weight:600;white-space:nowrap}.diag-tabs button[aria-selected=true]{color:#225d4c;border-bottom-color:#225d4c}.diag-count{font-family:monospace;font-size:10px;font-weight:400;background:#edf1ec;color:#647363;padding:1px 5px;border-radius:3px}.diag-help-button{display:flex;align-items:center;gap:6px;border:0;background:none;font-size:11px;color:#69756c}.diag-intro{padding:25px 25px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px}.diag-intro h2{font-size:15px;font-weight:600;margin:0 0 6px;letter-spacing:-.2px}.diag-intro p{font-size:11px;line-height:1.6;color:#82877e;margin:0}.diag-session{display:flex;align-items:center;gap:7px;color:#879083;font-size:10px;white-space:nowrap}.diag-session>span{width:5px;height:5px;border-radius:50%;background:#b4bcb0}.diag-cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:0 25px}.diag-card{border:1px solid #dee3da;border-radius:7px;padding:21px;background:linear-gradient(145deg,#fff,#fcfdfb);min-width:0}.diag-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.diag-icon{width:45px;height:45px;border:1px solid #dce6d8;border-radius:9px;display:grid;place-items:center;background:#eef3ea;color:#5e7957}.diag-icon-cli{background:#edf1f2;border-color:#dfe6e6;color:#5b7278}.diag-status{display:flex;align-items:center;gap:6px;color:#81887d;font-size:9px;background:#f3f4f0;border:1px solid #e8ebe4;border-radius:20px;padding:5px 8px}.diag-status>span{width:5px;height:5px;background:#b6bdb1;border-radius:50%}.diag-status.connected{color:#225d4c;background:#eef7f1}.diag-status.connected>span{background:#348a61}.diag-status.error{color:#a34b36;background:#fff4ef}.diag-status.error>span{background:#c06e53}.diag-status.connecting>span{background:#b89845;animation:diag-pulse 1s infinite}.diag-card-title{display:flex;justify-content:space-between;align-items:center}.diag-card-title h3{margin:0;font-size:17px;letter-spacing:-.4px;font-weight:600}.diag-card-title>span{font:11px monospace;color:#b1b9ab}.diag-card-description{font-size:11px;line-height:1.7;color:#7b8476;margin:8px 0 16px}.diag-network{display:flex;align-items:center;gap:6px;font-size:8px;font-weight:600;letter-spacing:.8px;color:#78856e;border-bottom:1px solid #e8ece4;padding-bottom:18px;margin-bottom:19px}.diag-network-line{width:12px;height:7px;border-left:1px solid #9bab91;border-bottom:1px solid #9bab91;margin-top:-5px}.diag-network code{margin-left:auto;font-size:10px;letter-spacing:0;color:#89927f;font-weight:400}.diag-card label{display:block;font-size:11px;font-weight:600;margin-bottom:8px}.diag-input-wrap{display:flex;align-items:center;gap:9px;border:1px solid #dce2d6;border-radius:4px;background:#fff;padding:11px 10px;color:#939d8c}.diag-input-wrap:focus-within{outline:2px solid #4a7c60;outline-offset:2px}.diag-input-wrap input{width:100%;min-width:0;border:0;outline:none;font-family:monospace;font-size:11px;color:#4d5c4b;background:transparent}.diag-input-wrap input:disabled{color:#7c8977}.diag-input-hint{color:#9a9f92;font-size:9px;line-height:1.6;margin:8px 0 19px}.diag-connect{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;font-size:11px;font-weight:600;border:1px solid #225d4c;background:#225d4c;color:#fff;border-radius:4px;min-height:39px;padding:10px 12px;transition:background .15s}.diag-connect:hover{background:#174636}.diag-card-cli .diag-connect{background:#303c37}.diag-card-message{min-height:28px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;text-align:center;font-size:9px;line-height:1.6;color:#92998a;margin-top:13px}.diag-card-message small{display:block;width:100%;font-family:monospace;font-size:9px}.diag-error-message{color:#a34b36;text-align:left;justify-content:flex-start}.diag-privacy{display:flex;align-items:center;justify-content:center;gap:10px;margin:21px 25px;color:#7b8c71;font-size:9px;line-height:1.7}.diag-privacy strong{color:#586e50;font-weight:600}.diag-workspace-footer{border-top:1px solid #e6eae1;background:#fafbf8;display:flex;justify-content:space-between;padding:12px 25px;font-size:9px;color:#929b88;gap:10px}.diag-workspace-footer>span:first-child{display:flex;align-items:center;gap:7px;font-family:monospace;font-size:8px;letter-spacing:.7px}.diag-footer-dot{height:5px;width:5px;background:#97a98a;border-radius:50%}.diag-bottom{display:flex;align-items:center;gap:15px;padding-top:18px;font-size:10px;color:#8b9384}.diag-bottom>span{font-size:8px;letter-spacing:1px;font-weight:600;color:#7a8970;white-space:nowrap}.diag-bottom p{margin:0;line-height:1.6}.diag-bottom button{margin-left:auto;white-space:nowrap;background:none;border:0;font-size:10px;color:#607457}.diag-bottom button span{margin-left:6px}.diag-connected-actions{display:flex;gap:8px}.diag-disconnect{border:1px solid #dce3d6;background:#fff;color:#63745b;border-radius:4px;font-size:10px;padding:8px 10px}.diag-card-connected{border-color:#9fbba5}.diag-activity{min-height:428px}.diag-activity ol{list-style:none;margin:0;padding:0 25px 25px;max-height:450px;overflow:auto}.diag-activity li{display:grid;grid-template-columns:85px 60px 1fr;gap:12px;font-size:11px;padding:14px 0;border-bottom:1px solid #e8ece4;line-height:1.6;overflow-wrap:anywhere}.diag-activity time{color:#8a9482;font-family:monospace}.diag-activity li strong{font-size:9px;color:#65785c}.diag-activity .diag-log-error{color:#a34b36}.diag-text-button{border:0;background:none;font-size:11px;color:#225d4c;text-decoration:underline;text-underline-offset:4px}.diag-empty{padding:60px 20px;text-align:center;color:#89977d}.diag-empty svg{margin:auto}.diag-empty h3{font:25px Georgia,serif;color:#3f5844;margin:15px 0 10px}.diag-empty p{font-size:12px;margin-bottom:20px}.diag-setup{background:#f5f7f1;border-top:1px solid #e0e5d9;padding:25px}.diag-setup h2{font:23px Georgia,serif;margin:0 0 20px}.diag-setup>div{display:grid;grid-template-columns:1fr 1fr;gap:25px}.diag-setup h3{font-size:12px;font-weight:600;margin:0 0 8px}.diag-setup p{font-size:11px;line-height:1.8;color:#73816a;margin:0}.diag-setup code{overflow-wrap:anywhere;font-size:10px}.diag-setup .diag-setup-foot{border-top:1px solid #e0e5d9;margin-top:20px;padding-top:15px;font-size:10px}.diag-setup a{color:#225d4c;text-decoration:underline;text-underline-offset:2px}.diag-spinner{width:13px;height:13px;border:1.5px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:diag-spin .8s linear infinite}.diagnostics button:focus-visible{outline:2px solid #619c71;outline-offset:4px}.diagnostics [hidden]{display:none}@keyframes diag-spin{to{transform:rotate(360deg)}}@keyframes diag-pulse{50%{opacity:.3}}@media(min-width:1100px){.diagnostics{padding:35px 44px 25px}.diag-heading h1{font-size:45px}.diag-card{padding:23px}.diag-card-title h3{font-size:18px}.diag-card-description{font-size:12px}.diag-input-wrap input{font-size:12px}}@media(max-width:760px){.diagnostics{padding:25px 18px 20px}.diag-heading{align-items:flex-start;margin:20px 0}.diag-heading h1{font-size:34px}.diag-lab-badge{display:none}.diag-cards{grid-template-columns:1fr;padding:0 18px;gap:16px}.diag-intro{padding:20px 18px;align-items:flex-start;flex-direction:column;gap:12px}.diag-toolbar{padding:0 18px}.diag-tabs{gap:18px}.diag-privacy{margin:20px 18px;align-items:flex-start;justify-content:flex-start}.diag-privacy svg{flex-shrink:0}.diag-workspace-footer{padding:12px 18px}.diag-workspace-footer>span:last-child{display:none}.diag-bottom{flex-wrap:wrap;gap:8px 12px}.diag-bottom p{flex:1;min-width:200px}.diag-bottom button{margin-left:0}.diag-setup>div{grid-template-columns:1fr;gap:18px}.diag-activity li{grid-template-columns:75px 45px 1fr;gap:7px;font-size:10px}.diag-edition{display:none}.diag-help-button span{display:none}.diag-privacy span{display:block}.diag-heading p{font-size:12px}}@media(prefers-reduced-motion:reduce){.diag-spinner,.diag-status.connecting>span{animation:none}}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9d5c540 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import DeveloperDiagnostics from '../components/diagnostics/DeveloperDiagnostics';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -38,6 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <DeveloperDiagnostics client:load />
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

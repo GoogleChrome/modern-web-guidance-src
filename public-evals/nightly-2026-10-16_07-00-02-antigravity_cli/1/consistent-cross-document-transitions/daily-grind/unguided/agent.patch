@@ -1,0 +1,716 @@
+diff --git a/css/styles.css b/css/styles.css
+new file mode 100644
+index 0000000..f4705a9
+--- /dev/null
++++ b/css/styles.css
+@@ -0,0 +1,381 @@
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --text-muted: #6d4c41;
++  --light: #fafafa;
++  --white: #ffffff;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++}
++
++/* ==========================================================================
++   Cross-Document View Transitions (Modern Web Standards)
++   ========================================================================== */
++
++/* Opt-in to cross-document view transitions for same-origin navigations */
++@view-transition {
++  navigation: auto;
++}
++
++/* MANDATORY: Disable cross-document view transitions for users requesting reduced motion */
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}
++
++/* Smooth customized cross-document transitions */
++@media (prefers-reduced-motion: no-preference) {
++  ::view-transition-old(root) {
++    animation: 0.28s cubic-bezier(0.4, 0, 0.2, 1) both fade-out;
++  }
++  ::view-transition-new(root) {
++    animation: 0.28s cubic-bezier(0.4, 0, 0.2, 1) both fade-in;
++  }
++}
++
++@keyframes fade-out {
++  from {
++    opacity: 1;
++    transform: translateY(0);
++  }
++  to {
++    opacity: 0;
++    transform: translateY(-8px);
++  }
++}
++
++@keyframes fade-in {
++  from {
++    opacity: 0;
++    transform: translateY(8px);
++  }
++  to {
++    opacity: 1;
++    transform: translateY(0);
++  }
++}
++
++/* Persistent shared elements */
++nav {
++  view-transition-name: main-nav;
++}
++
++.logo {
++  view-transition-name: site-logo;
++  width: fit-content;
++}
++
++/* Maintain stable aspect ratios for text transitions */
++.hero h1,
++.page-header h1 {
++  width: fit-content;
++}
++
++/* Aspect ratio stability for transition images */
++::view-transition-old(hero-image),
++::view-transition-new(hero-image) {
++  height: 100%;
++  object-fit: cover;
++}
++
++/* ==========================================================================
++   Navigation
++   ========================================================================== */
++
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  color: white;
++  text-decoration: none;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover,
++nav a.active {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* ==========================================================================
++   Hero & Header Sections
++   ========================================================================== */
++
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++.page-header {
++  background: var(--primary);
++  color: white;
++  padding: 50px 20px;
++  text-align: center;
++}
++
++.page-header h1 {
++  font-size: 2.5rem;
++  margin-bottom: 0.5rem;
++}
++
++.page-header p {
++  font-size: 1.1rem;
++  opacity: 0.9;
++}
++
++/* ==========================================================================
++   Content Sections & Layout
++   ========================================================================== */
++
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++  flex: 1;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++  gap: 25px;
++  margin-top: 25px;
++}
++
++.card {
++  background: white;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++  overflow: hidden;
++  display: flex;
++  flex-direction: column;
++  transition: transform 0.2s, box-shadow 0.2s;
++}
++
++.card:hover {
++  transform: translateY(-2px);
++  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
++}
++
++.card-content {
++  padding: 20px;
++  flex: 1;
++  display: flex;
++  flex-direction: column;
++}
++
++.card-img-wrapper {
++  width: 100%;
++  height: 200px;
++  overflow: hidden;
++  background-color: var(--secondary);
++}
++
++.card img {
++  width: 100%;
++  height: 200px;
++  object-fit: cover;
++  display: block;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.card p {
++  color: var(--text-muted);
++  font-size: 0.95rem;
++  margin-bottom: 15px;
++  flex: 1;
++}
++
++.card .price {
++  font-size: 1.2rem;
++  font-weight: bold;
++  color: var(--primary);
++  margin-bottom: 10px;
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: auto;
++  transition: background 0.3s;
++  cursor: pointer;
++  border: none;
++  font-size: 1rem;
++}
++
++.btn:hover {
++  background: var(--primary-dark);
++}
++
++.btn-secondary {
++  background: var(--secondary);
++  color: var(--text);
++}
++
++.btn-secondary:hover {
++  background: #bcaaa4;
++}
++
++/* Detail page layout */
++.detail-layout {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 40px;
++  align-items: center;
++  margin-top: 30px;
++}
++
++@media (max-width: 768px) {
++  .detail-layout {
++    grid-template-columns: 1fr;
++  }
++}
++
++.detail-image {
++  width: 100%;
++  border-radius: 8px;
++  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++  height: 380px;
++  object-fit: cover;
++  background-color: var(--secondary);
++}
++
++.detail-info h2 {
++  font-size: 2.2rem;
++  color: var(--primary);
++  margin-bottom: 15px;
++}
++
++.detail-info .price {
++  font-size: 1.5rem;
++  font-weight: bold;
++  color: var(--primary);
++  margin-bottom: 15px;
++}
++
++.detail-info p {
++  margin-bottom: 20px;
++  line-height: 1.8;
++}
++
++/* Form Styles */
++.form-group {
++  margin-bottom: 20px;
++}
++
++.form-group label {
++  display: block;
++  margin-bottom: 5px;
++  font-weight: bold;
++  color: var(--primary);
++}
++
++.form-control {
++  width: 100%;
++  padding: 10px;
++  border: 1px solid #ccc;
++  border-radius: 4px;
++  font-size: 1rem;
++}
++
++/* Footer */
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.footer-links a:hover {
++  text-decoration: underline;
++}
+diff --git a/index.html b/index.html
+index 66c9173..ec6a7c8 100644
+--- a/index.html
++++ b/index.html
+@@ -5,160 +5,26 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++  <!-- Critical styles for initial viewport -->
++  <link rel="stylesheet" href="/css/styles.css">
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++  <!-- Preload critical hero transition image -->
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++  <!-- Block rendering until critical above-the-fold elements are parsed into the DOM -->
++  <link rel="expect" href="#hero" blocking="render">
++  <link rel="expect" href="#main-content" blocking="render">
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <!-- Block rendering until critical scripts have executed -->
++  <script async blocking="render" src="/js/critical-init.js"></script>
++  <script async blocking="render" src="/js/transition-setup.js"></script>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,30 +34,48 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header id="hero" class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main id="main-content" class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center; margin-bottom: 20px;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card" id="card-seasonal">
++          <div class="card-img-wrapper">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" width="300" height="200" alt="Maple Oat Latte">
++          </div>
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="price">$5.75</div>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" id="card-espresso">
++          <div class="card-img-wrapper">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" width="300" height="200" alt="Dark Roast Espresso">
++          </div>
++          <div class="card-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="price">$4.25</div>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" id="card-cold-brew">
++          <div class="card-img-wrapper">
++            <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" width="300" height="200" alt="Cold Brew">
++          </div>
++          <div class="card-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="price">$5.00</div>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+diff --git a/js/critical-init.js b/js/critical-init.js
+new file mode 100644
+index 0000000..977e69e
+--- /dev/null
++++ b/js/critical-init.js
+@@ -0,0 +1,17 @@
++/**
++ * Critical page state initialization.
++ * Loaded with blocking="render" in <head> to ensure state is stable
++ * before the browser captures the initial transition snapshot or performs first paint.
++ */
++(function () {
++  'use strict';
++  
++  // Apply saved theme or system preference
++  const savedTheme = localStorage.getItem('theme');
++  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
++  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
++  document.documentElement.dataset.theme = theme;
++
++  // Mark critical page state as ready and stable
++  document.documentElement.dataset.pageState = 'stable';
++})();
+diff --git a/js/transition-setup.js b/js/transition-setup.js
+new file mode 100644
+index 0000000..a684e2f
+--- /dev/null
++++ b/js/transition-setup.js
+@@ -0,0 +1,60 @@
++/**
++ * Transition Setup & Lifecycle Management.
++ * Registered in <head> with blocking="render" to ensure listeners are active
++ * before the incoming document's first rendering opportunity.
++ */
++
++// Incoming page reveal event
++window.addEventListener('pagereveal', async (event) => {
++  if (!event.viewTransition) return;
++
++  const transition = event.viewTransition;
++  const from = window.navigation?.activation?.from;
++  const entry = window.navigation?.activation?.entry;
++
++  // Accessibility focus management: update focus to the main heading after transition
++  const focusTarget = document.querySelector('main h1, .page-header h1, .hero h1, #main-content');
++  if (focusTarget && !focusTarget.hasAttribute('tabindex')) {
++    focusTarget.setAttribute('tabindex', '-1');
++  }
++
++  try {
++    await transition.ready;
++    // Shift focus programmatically to prevent abandoned keyboard focus
++    if (focusTarget) {
++      focusTarget.focus({ preventScroll: true });
++    }
++  } catch (error) {
++    // Skipped view transitions reject `ready` with InvalidStateError
++    if (error.name !== 'InvalidStateError') {
++      console.warn('View transition ready error:', error);
++    }
++  } finally {
++    // MANDATORY bfcache compatibility: wait for transition to finish
++    // and clean up any dynamically assigned transition names
++    try {
++      await transition.finished;
++    } catch (e) {
++      // Ignore transition finish errors
++    }
++
++    // Clean up temporary inline view-transition-names
++    const elementsWithTemporaryNames = document.querySelectorAll('[data-temporary-vt-name]');
++    for (const el of elementsWithTemporaryNames) {
++      el.style.viewTransitionName = '';
++      el.removeAttribute('data-temporary-vt-name');
++    }
++  }
++});
++
++// Outgoing page swap event
++window.addEventListener('pageswap', async (event) => {
++  if (!event.viewTransition) return;
++
++  // Additional outgoing transition configuration if needed
++  try {
++    await event.viewTransition.finished;
++  } catch (e) {
++    // Ignore finish error
++  }
++});

@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,108 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shipping Form Section */
++    .shipping-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      margin-top: 50px;
++    }
++
++    .shipping-section h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .shipping-section .form-intro {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    .shipping-form {
++      max-width: 650px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      color: var(--text);
++      padding: 10px 0;
++      margin: -10px 0;
++      margin-bottom: 4px;
++    }
++
++    .form-group label .required-indicator {
++      color: #c62828;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      box-sizing: border-box;
++      border: 1.5px solid #bcaaa4;
++      border-radius: 6px;
++      background-color: #fff;
++      color: var(--text);
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input,
++      .form-group select,
++      .form-group textarea {
++        min-height: 52px;
++      }
++    }
++
++    .form-group textarea {
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    .form-group input:focus-visible,
++    .form-group select:focus-visible,
++    .form-group textarea:focus-visible {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.25);
++    }
++
++    .btn-submit {
++      width: 100%;
++      border: none;
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      text-align: center;
++      background: var(--primary);
++    }
++
++    .btn-submit:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +294,76 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" id="shipping-address">
++      <h2>Shipping Address</h2>
++      <p class="form-intro">Provide your delivery address below to receive fresh beans and brews right at your door.</p>
++
++      <form action="/checkout/shipping" method="post" class="shipping-form">
++        <div class="form-group">
++          <label for="shipping-name">Full name <span class="required-indicator" aria-hidden="true">*</span></label>
++          <input type="text" id="shipping-name" name="name" autocomplete="shipping name" required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="shipping-email">Email address <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="email" id="shipping-email" name="email" autocomplete="shipping email" required>
++          </div>
++
++          <div class="form-group">
++            <label for="shipping-tel">Phone number (optional)</label>
++            <input type="tel" id="shipping-tel" name="tel" autocomplete="shipping tel">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="shipping-street">Street address <span class="required-indicator" aria-hidden="true">*</span></label>
++          <textarea id="shipping-street" name="address" autocomplete="shipping street-address" rows="3" required placeholder="House number, street name, apartment or suite"></textarea>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="shipping-city">City <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="shipping-city" name="city" autocomplete="shipping address-level2" required>
++          </div>
++
++          <div class="form-group">
++            <label for="shipping-state">State / Province</label>
++            <input type="text" id="shipping-state" name="state" autocomplete="shipping address-level1">
++          </div>
++
++          <div class="form-group">
++            <label for="shipping-postal-code">ZIP / Postal code (optional)</label>
++            <input type="text" id="shipping-postal-code" name="postal-code" autocomplete="shipping postal-code">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="shipping-country">Country / Region <span class="required-indicator" aria-hidden="true">*</span></label>
++          <select id="shipping-country" name="country" autocomplete="shipping country" required>
++            <option value="">Select country...</option>
++            <option value="US" selected>United States</option>
++            <option value="CA">Canada</option>
++            <option value="GB">United Kingdom</option>
++            <option value="AU">Australia</option>
++            <option value="DE">Germany</option>
++            <option value="FR">France</option>
++            <option value="JP">Japan</option>
++            <option value="OTHER">Other</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="shipping-notes">Delivery notes (optional)</label>
++          <textarea id="shipping-notes" name="delivery-notes" rows="2" placeholder="Gate code, drop-off location, or special instructions"></textarea>
++        </div>
++
++        <button type="submit" class="btn btn-submit">Proceed to Payment</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+index 66c9173..4fcc0f2 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SPA views: inactive views keep their DOM and rendering state cached */
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -168,6 +184,7 @@
+     </ul>
+   </nav>
+ 
++  <div class="spa-view" id="view-root" data-route="/" tabindex="-1">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +213,7 @@
+       </div>
+     </section>
+   </main>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +225,87 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Keeps previously visited views in the DOM (content-visibility: hidden)
++    // so returning to them is near-instant. LRU eviction bounds memory use.
++    const MAX_CACHED_VIEWS = 5;
++    const viewsByRoute = new Map(); // insertion order = recency (oldest first)
++    let activeRoute = null;
++
++    const homeView = document.getElementById('view-root');
++    viewsByRoute.set('/', homeView);
++    activeRoute = '/';
++    const viewParent = homeView.parentNode;
++
++    function titleFor(route) {
++      const link = document.querySelector(`a[href="${route}"]`);
++      const text = link ? link.textContent.trim() : route.split('/').filter(Boolean).pop() || 'Home';
++      return text.replace(/[-_]/g, ' ');
++    }
++
++    function createView(route) {
++      const view = document.createElement('div');
++      view.className = 'spa-view inactive';
++      view.dataset.route = route;
++      view.tabIndex = -1;
++      view.innerHTML = `<main class="container"><h2></h2><p>Coming soon.</p>
++        <a href="/" class="btn">Back to Home</a></main>`;
++      view.querySelector('h2').textContent = titleFor(route);
++      viewParent.insertBefore(view, document.querySelector('footer'));
++      return view;
++    }
++
++    function evictOldViews() {
++      for (const [route, view] of viewsByRoute) {
++        if (viewsByRoute.size <= MAX_CACHED_VIEWS) break;
++        if (route === activeRoute || route === '/') continue;
++        view.remove();
++        viewsByRoute.delete(route);
++      }
++    }
++
++    function showRoute(route) {
++      let view = viewsByRoute.get(route);
++      if (view) {
++        viewsByRoute.delete(route); // refresh recency
++      } else {
++        view = createView(route);
++      }
++      viewsByRoute.set(route, view);
++      activeRoute = route;
++
++      for (const v of viewsByRoute.values()) {
++        const isActive = v === view;
++        v.classList.toggle('inactive', !isActive);
++        v.setAttribute('aria-hidden', String(!isActive));
++      }
++      evictOldViews();
++
++      document.title = route === '/'
++        ? 'The Daily Grind | Artisanal Coffee'
++        : `${titleFor(route)} | The Daily Grind`;
++      view.focus({ preventScroll: true });
++      window.scrollTo(0, 0);
++    }
++
++    document.addEventListener('click', (e) => {
++      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      const a = e.target.closest('a[href]');
++      if (!a || a.target || a.hasAttribute('download') || a.origin !== location.origin) return;
++      if (a.pathname === '/logout') return; // let the server handle logout
++      e.preventDefault();
++      if (a.pathname === activeRoute) return;
++      history.pushState(null, '', a.pathname);
++      showRoute(a.pathname);
++    });
++
++    window.addEventListener('popstate', () => showRoute(location.pathname));
++
++    // Deep links: render the requested route on first load
++    if (location.pathname !== '/' && location.pathname !== '/index.html') {
++      showRoute(location.pathname);
++    }
++  </script>
+ </body>
+ 
+ </html>

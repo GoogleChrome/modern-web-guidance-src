@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,79 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    .sr-toggle {
++      position: absolute;
++      width: 0;
++      height: 0;
++      opacity: 0;
++      pointer-events: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++    }
++
++    /* Promo Alert */
++    #promo-alert {
++      interpolate-size: allow-keywords;
++      background-color: var(--accent);
++      color: var(--text);
++      height: auto;
++      overflow: hidden;
++      opacity: 1;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    #promo-alert:has(#alert-dismiss-toggle:checked) {
++      height: 0;
++      opacity: 0;
++      padding-top: 0;
++      padding-bottom: 0;
++      margin-top: 0;
++      margin-bottom: 0;
++      border-width: 0;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 5%;
++      gap: 16px;
++      font-size: 0.95rem;
++      font-weight: 500;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: rgba(62, 39, 35, 0.12);
++      color: var(--text);
++      border: none;
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.2s ease;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.22);
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -134,8 +197,84 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* FAQ Accordion */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .faq-accordion {
++      max-width: 800px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      border: none;
++      text-align: left;
++      transition: background-color 0.2s ease;
++    }
++
++    #faq-trigger:hover {
++      background-color: #f5f0ee;
++    }
++
++    #faq-trigger span {
++      pointer-events: none;
++    }
++
++    .faq-icon {
++      font-size: 1.25rem;
++      line-height: 1;
++      transition: transform 0.35s ease;
++    }
++
++    .faq-accordion:has(#faq-toggle:checked) .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      interpolate-size: allow-keywords;
++      height: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-content,
++    .faq-accordion:has(#faq-toggle:checked) #faq-content {
++      height: auto;
++      opacity: 1;
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px;
++      color: var(--text);
++      border-top: 1px solid var(--secondary);
++      padding-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +295,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotional Alert">
++    <input type="checkbox" id="alert-dismiss-toggle" class="sr-toggle" aria-hidden="true">
++    <div class="promo-alert-inner">
++      <span>Free shipping on all artisanal whole-bean orders over $35! Use code <strong>DAILYGRIND</strong> at checkout.</span>
++      <label for="alert-dismiss-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss alert">Dismiss &times;</label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +341,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section">
++      <h2>Frequently Asked Questions</h2>
++      <div class="faq-accordion">
++        <input type="checkbox" id="faq-toggle" class="sr-toggle" aria-hidden="true">
++        <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0">
++          <span>How are your coffee beans ethically sourced and roasted?</span>
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </label>
++        <div id="faq-content" role="region" aria-labelledby="faq-trigger">
++          <div class="faq-content-inner">
++            <p>We partner directly with fair-trade family farms in Colombia, Ethiopia, and Guatemala. All of our beans are small-batch roasted daily in our local roastery and shipped within 24 hours so every cup tastes as fresh and vibrant as possible.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

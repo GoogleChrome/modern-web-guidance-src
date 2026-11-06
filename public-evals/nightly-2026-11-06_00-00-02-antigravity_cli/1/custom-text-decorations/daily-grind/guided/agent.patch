@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+index 66c9173..0c9a12f 100644
+--- a/index.html
++++ b/index.html
+@@ -55,23 +55,108 @@
+       margin-left: 20px;
+     }
+ 
++    /* Decorative text lines */
++    :where(.decorated, nav a:not(.logout-link), .footer-links a, .card h3) {
++      text-decoration: underline solid color-mix(in srgb, currentColor, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.2em;
++    }
++
++    :where(.decorated:is(:hover, :focus-visible), nav a:not(.logout-link):is(:hover, :focus-visible), .footer-links a:is(:hover, :focus-visible)) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    :where(.decorated-over) {
++      text-decoration-line: overline;
++    }
++
++    :where(.decorated-through) {
++      text-decoration-line: line-through;
++    }
++
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      text-decoration: none;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Navigation links: underline with animated inset reveal */
++    :where(nav a:not(.logout-link)) {
++      text-decoration-color: var(--accent);
++      text-underline-offset: 0.22em;
++    }
++
++    /* Footer links: dotted underline with softer color & animated inset reveal */
++    :where(.footer-links a) {
++      text-decoration-style: dotted;
++      text-underline-offset: 0.25em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a:not(.logout-link), .footer-links a) {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset var(--reveal-duration, 0.25s) ease-out, text-decoration-color 0.25s ease-out, text-decoration-thickness 0.25s ease-out;
++      }
++
++      :where(nav a:not(.logout-link), .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++    }
++
++    /* Seasonal Favorites heading: custom squiggle shape with draw-on reveal and overline accent */
++    .seasonal-heading {
++      position: relative;
++      display: inline-block;
++      color: var(--primary);
++      text-decoration: overline solid color-mix(in srgb, var(--accent) 65%, transparent) max(2px, 0.1em);
++      text-decoration-inset: 0.35em;
++      padding-block-end: 0.4em;
++    }
++
++    .seasonal-heading::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0 0;
++      pointer-events: none;
++      border-block-end: var(--deco-thickness, max(2px, 0.1em)) solid var(--deco-color, var(--accent));
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .seasonal-heading::after {
++        block-size: 0.4em;
++        border: var(--deco-thickness, max(2px, 0.1em)) solid var(--deco-color, var(--accent));
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .seasonal-heading::after {
++        clip-path: inset(-1em 100% -1em 0);
++        transition: clip-path var(--draw-duration, 0.6s) ease-out;
++      }
++
++      section:is(:hover, :focus-within) .seasonal-heading::after,
++      .seasonal-heading:is(:hover, :focus-visible)::after {
++        clip-path: inset(-1em 0 -1em 0);
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -118,6 +203,21 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      text-decoration: underline wavy color-mix(in srgb, var(--accent) 80%, currentColor) max(1px, 0.1em);
++      text-underline-offset: 0.22em;
++      text-decoration-inset: var(--deco-inset, 0.15em);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card h3 {
++        transition: text-decoration-inset 0.25s ease-out, text-decoration-color 0.25s ease-out, text-decoration-thickness 0.25s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-color: var(--accent);
++        text-decoration-thickness: max(2px, 0.13em);
++        text-decoration-inset: 0;
++      }
+     }
+ 
+     .btn {
+@@ -149,7 +249,6 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
+@@ -175,8 +274,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section style="text-align: center;">
++      <h2 class="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

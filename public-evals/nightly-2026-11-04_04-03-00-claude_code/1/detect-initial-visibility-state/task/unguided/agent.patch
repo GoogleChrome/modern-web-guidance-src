@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,41 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    // Detect whether this tab was opened in the background (hidden) during initial page load.
++    (function detectBackgroundLoad() {
++      var result = { backgrounded: false, timestamp: Date.now() };
++
++      // Preferred: the Performance timeline records a 'visibility-state' entry at
++      // navigation start (startTime 0), so it reflects the *initial* state no
++      // matter when this script actually runs (sync, defer, or async).
++      var entries = [];
++      try {
++        if (window.PerformanceObserver &&
++            PerformanceObserver.supportedEntryTypes &&
++            PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1) {
++          entries = performance.getEntriesByType('visibility-state');
++        }
++      } catch (e) { /* fall through to legacy checks */ }
++
++      if (entries.length) {
++        result.backgrounded = entries[0].name === 'hidden';
++      } else {
++        // Legacy fallback: only reports visibility at the moment this script runs.
++        var state = document.visibilityState || document.webkitVisibilityState;
++        var hidden = typeof document.hidden === 'boolean' ? document.hidden : document.webkitHidden;
++        result.backgrounded = hidden === true || state === 'hidden';
++        result.note = 'Visibility-state performance entries are unavailable; fell back to ' +
++          'document.visibilityState/document.hidden, which only reflect the state when the ' +
++          'script executes. This is unreliable for async/deferred scripts, since the tab may ' +
++          'have been foregrounded or backgrounded before the script ran.';
++      }
++
++      console.log(result);
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

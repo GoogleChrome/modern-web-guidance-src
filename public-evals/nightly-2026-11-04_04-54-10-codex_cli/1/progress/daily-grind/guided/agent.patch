@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+index 66c9173..a3996a0 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,111 @@
+       padding: 0 20px;
+     }
+ 
++    /* Rewards and order progress */
++    .progress-section {
++      margin-bottom: 40px;
++      padding: clamp(20px, 4vw, 32px);
++      background: #fff8ef;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .progress-section > p {
++      margin-top: 4px;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .progress-item {
++      min-width: 0;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: baseline;
++      justify-content: space-between;
++      gap: 4px 12px;
++      margin-bottom: 12px;
++    }
++
++    .progress-heading label {
++      font-weight: 600;
++    }
++
++    .progress-heading span {
++      font-size: 0.85rem;
++    }
++
++    .progress-item p {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .process-progress {
++      --progress-fill: var(--primary);
++      --progress-animation-duration: 2s;
++      --progress-segment-size: 30%;
++      appearance: none;
++      border: 0 solid;
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++      overflow: clip;
++      border-radius: 100px;
++      background: #e9e0db;
++      container-type: inline-size;
++    }
++
++    .process-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    .process-progress::-webkit-progress-value {
++      background: var(--progress-fill);
++      border-radius: 100px;
++      animation: var(--progress-animation, none);
++    }
++
++    .process-progress::-moz-progress-bar {
++      background: var(--progress-fill);
++      border-radius: 100px;
++      animation: var(--progress-animation, none);
++    }
++
++    .process-progress:indeterminate {
++      --progress-fill: #9b5700;
++      --progress-animation: progress-pending var(--progress-animation-duration) linear infinite;
++    }
++
++    .process-progress:indeterminate:dir(rtl) {
++      --progress-animation: progress-pending var(--progress-animation-duration) linear infinite reverse;
++    }
++
++    @keyframes progress-pending {
++      from, to {
++        inline-size: var(--progress-segment-size);
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .process-progress {
++        --progress-animation-duration: 10s;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -175,6 +280,30 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-title">
++      <h2 id="progress-title">Good Things Are Brewing</h2>
++      <p>A little closer to your next cup.</p>
++      <div class="progress-grid">
++        <div class="progress-item">
++          <div class="progress-heading">
++            <label for="reward-progress">Your rewards</label>
++            <span>6 of 10 coffees · 60%</span>
++          </div>
++          <progress class="process-progress" id="reward-progress" value="6" max="10"
++            aria-describedby="reward-description" aria-valuetext="6 of 10 coffees toward a free cup"></progress>
++          <p id="reward-description">Just 4 more coffees until your free cup.</p>
++        </div>
++        <div class="progress-item">
++          <div class="progress-heading">
++            <label for="order-progress">Your order</label>
++            <span>Awaiting confirmation</span>
++          </div>
++          <progress class="process-progress" id="order-progress"
++            aria-describedby="order-description"></progress>
++          <p id="order-description">Connecting to the café. Order progress will appear once confirmed.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

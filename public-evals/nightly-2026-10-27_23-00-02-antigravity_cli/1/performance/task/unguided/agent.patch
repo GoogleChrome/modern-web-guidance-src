@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,9 +3,21 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="The Daily Grind — ethically sourced, locally roasted artisanal coffee delivered to your cup.">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Preconnect & Preload for LCP Hero Image -->
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++  <link
++    rel="preload"
++    as="image"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    fetchpriority="high"
++  >
++
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,13 +85,13 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 320px;
++      background-color: #2b1d1a;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +99,33 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: 0;
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++    }
++
++    .hero h1,
++    .hero p,
++    .hero .btn {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -99,8 +136,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    section h2 {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -121,26 +162,28 @@
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background-color: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background-color: #3e2723;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      content-visibility: auto;
++      contain-intrinsic-size: auto 140px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -152,8 +195,40 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Speculation Rules for instant navigation while excluding state-changing/sensitive routes -->
++  <script type="speculationrules">
++    {
++      "prerender": [
++        {
++          "source": "document",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ],
++      "prefetch": [
++        {
++          "source": "document",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -168,16 +243,25 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <img
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      alt="Artisanal coffee cups on a table"
++      width="1350"
++      height="900"
++      fetchpriority="high"
++      decoding="async"
++      class="hero-img"
++    >
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

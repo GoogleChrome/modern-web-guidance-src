@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..414a8d4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,79 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Swipe-to-reveal drink cards */
++    .SwipeReveal {
++      /* Column 1: full-width card content. Column 2: auto-sized actions. */
++      display: grid;
++      grid-template-columns: 100% max-content;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      overscroll-behavior: chain;
++      padding: 0;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .SwipeReveal-content {
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++      background: white;
++      padding: 20px;
++    }
++
++    .SwipeReveal-panel {
++      scroll-snap-align: end;
++      display: flex;
++    }
++
++    .SwipeReveal-panel > * {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      min-inline-size: 5.5rem;
++      padding: 0 12px;
++      border: 0;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
++    }
++
++    .SwipeReveal-panel > *:focus-visible {
++      outline: 3px solid var(--text);
++      outline-offset: -3px;
++    }
++
++    .action-order {
++      background: var(--primary);
++    }
++
++    .action-customize {
++      background: #8d6e63;
++    }
++
++    .action-save {
++      background: var(--accent);
++      color: var(--text) !important;
++    }
++
++    .action-save[aria-pressed="true"]::before {
++      content: "\2605\00a0";
++    }
++
++    .swipe-hint {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.75rem;
++      color: #8d6e63;
++    }
+   </style>
+ </head>
+ 
+@@ -178,21 +251,45 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card SwipeReveal" aria-label="Maple Oat Latte">
++          <div class="SwipeReveal-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for quick actions</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <a href="/order-online?item=maple-oat-latte" class="action-order">Add to Order</a>
++            <a href="/menu/seasonal#customize" class="action-customize">Customize</a>
++            <button type="button" class="action-save" aria-pressed="false">Save</button>
++          </div>
++        </article>
++        <article class="card SwipeReveal" aria-label="Dark Roast Espresso">
++          <div class="SwipeReveal-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for quick actions</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <a href="/order-online?item=dark-roast-espresso" class="action-order">Add to Order</a>
++            <a href="/menu/espresso#customize" class="action-customize">Customize</a>
++            <button type="button" class="action-save" aria-pressed="false">Save</button>
++          </div>
++        </article>
++        <article class="card SwipeReveal" aria-label="Cold Brew">
++          <div class="SwipeReveal-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <span class="swipe-hint" aria-hidden="true">&larr; Swipe for quick actions</span>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <a href="/order-online?item=cold-brew" class="action-order">Add to Order</a>
++            <a href="/menu/cold-brew#customize" class="action-customize">Customize</a>
++            <button type="button" class="action-save" aria-pressed="false">Save</button>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +304,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Tabbing back into a card's content snaps its action panel closed.
++    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
++      content.addEventListener('focusin', (event) => {
++        if (event.target.matches(':focus-visible')) {
++          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++        }
++      });
++    }
++
++    // "Save" toggles a favorite; it only runs when explicitly tapped, never on swipe.
++    for (const btn of document.querySelectorAll('.action-save')) {
++      btn.addEventListener('click', () => {
++        const saved = btn.getAttribute('aria-pressed') !== 'true';
++        btn.setAttribute('aria-pressed', String(saved));
++        btn.textContent = saved ? 'Saved' : 'Save';
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

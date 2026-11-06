@@ -1,0 +1,279 @@
+diff --git a/README.md b/README.md
+index 4479b53..5f981c5 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,16 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++Client navigation keeps the five most recently used inactive page views in a
++hidden, inert container. Returning to a cached URL restores the original DOM and
++React island state, including unfinished form input. Query strings identify
++separate views; hash links share a view. Astro still fetches each destination and
++updates its head, history, and scroll position normally. Cached page content stays
++as it was left until eviction or a full reload; it is not refreshed from that fetch.
++
++Run `pnpm test` for automated DOM cache checks and `pnpm build` for the production
++build.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index 2e1f2e8..d79e86a 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -23,7 +24,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "happy-dom": "^21.0.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..d5c8b45 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,11 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import { installViewCache } from "../scripts/view-cache";
++
++      installViewCache(document);
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,11 +50,12 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main class="bg-white relative" data-page-view>
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <div id="page-view-cache" hidden inert transition:persist="page-view-cache"></div>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..ef51901
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,76 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++const VIEW = "main[data-page-view]";
++const CACHE = "page-view-cache";
++
++// Hash changes share a view; query strings can identify different page content.
++const viewKey = (url: URL) => url.origin + url.pathname + url.search;
++
++function move(parent: ParentNode & Node, node: Node, before: Node | null = null) {
++  // Atomic moves preserve browser-managed state where supported. Astro islands
++  // also survive the fallback because they are connected at astro:after-swap.
++  const target = parent as typeof parent & {
++    moveBefore?: (node: Node, before: Node | null) => void;
++  };
++  if (target.moveBefore) target.moveBefore(node, before);
++  else parent.insertBefore(node, before);
++}
++
++export function installViewCache(doc: Document, limit = 5) {
++  const views = new Map<string, HTMLElement>();
++  const clear = () => {
++    for (const view of views.values()) view.remove();
++    views.clear();
++  };
++
++  const beforeSwap = (rawEvent: Event) => {
++    const event = rawEvent as TransitionBeforeSwapEvent;
++    const swap = event.swap;
++    event.swap = () => {
++      const host = doc.getElementById(CACHE);
++      const outgoing = doc.querySelector<HTMLElement>(VIEW);
++      const incoming = event.newDocument.querySelector<HTMLElement>(VIEW);
++      if (
++        !host || !outgoing || !incoming || limit < 1 ||
++        !event.newDocument.getElementById(CACHE)
++      ) {
++        clear();
++        swap();
++        return;
++      }
++      if (viewKey(event.from) === viewKey(event.to)) {
++        swap();
++        return;
++      }
++
++      // Keep inactive islands connected, but isolate their IDs, scripts, and
++      // landmarks from document queries. The hidden host persists with Astro.
++      const storage = host.shadowRoot ?? host.attachShadow({ mode: "open" });
++      const key = viewKey(event.to);
++      const cached = views.get(key);
++      views.delete(key);
++
++      move(storage, outgoing);
++      views.set(viewKey(event.from), outgoing);
++      while (views.size > limit) {
++        const oldest = views.keys().next().value!;
++        views.get(oldest)!.remove();
++        views.delete(oldest);
++      }
++
++      // Keep Astro's fresh head, scripts, history, and scroll handling. Restore
++      // the actual visited nodes before astro:after-swap can unmount islands.
++      swap();
++      if (cached) {
++        move(incoming.parentNode!, cached, incoming);
++        incoming.remove();
++      }
++    };
++  };
++
++  doc.addEventListener("astro:before-swap", beforeSwap);
++  return () => {
++    doc.removeEventListener("astro:before-swap", beforeSwap);
++    clear();
++  };
++}
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..3669eb7
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,118 @@
++import assert from "node:assert/strict";
++import { test } from "node:test";
++import { Window } from "happy-dom";
++import { installViewCache } from "../src/scripts/view-cache.ts";
++
++const markup = (name) => `<main data-page-view><h1>${name}</h1>
++  <input id="draft"><button>Click</button><test-island></test-island></main>
++  <div id="page-view-cache" hidden inert data-astro-transition-persist="page-view-cache"></div>`;
++
++function setup(limit) {
++  const window = new Window({ url: "https://example.com/a" });
++  const doc = window.document;
++  // Match Astro's deferred unmount: disconnected islands are cleaned up only
++  // if they are still disconnected when astro:after-swap fires.
++  window.customElements.define("test-island", class extends window.HTMLElement {
++    unmounts = 0;
++    disconnectedCallback() {
++      doc.addEventListener("astro:after-swap", () => {
++        if (!this.isConnected) this.unmounts++;
++      }, { once: true });
++    }
++  });
++  doc.body.innerHTML = markup("a");
++  const dispose = installViewCache(doc, limit);
++  let current = new URL(window.location.href);
++
++  function navigate(path, html = markup(path)) {
++    const next = new window.DOMParser().parseFromString(html, "text/html");
++    const event = new window.Event("astro:before-swap");
++    const to = new URL(path, current);
++    Object.assign(event, {
++      from: current, to, newDocument: next,
++      swap() {
++        // Model Astro's persistent-element transfer around its body swap.
++        const host = doc.getElementById("page-view-cache");
++        const target = next.getElementById("page-view-cache");
++        if (host && target) doc.documentElement.append(host);
++        doc.body.replaceWith(next.body);
++        if (host && target) target.replaceWith(host);
++      },
++    });
++    doc.dispatchEvent(event);
++    event.swap();
++    doc.dispatchEvent(new window.Event("astro:after-swap"));
++    current = to;
++    return doc.querySelector("main");
++  }
++  return { window, doc, navigate, dispose };
++}
++
++test("return visits restore the same nodes, form values, listeners, and islands", () => {
++  const { doc, navigate, dispose } = setup();
++  const first = doc.querySelector("main");
++  const input = first.querySelector("input");
++  const island = first.querySelector("test-island");
++  const button = first.querySelector("button");
++  input.value = "unfinished draft";
++  let clicks = 0;
++  button.addEventListener("click", () => clicks++);
++
++  const second = navigate("/b");
++  assert.equal(first.isConnected, true);
++  assert.equal(island.unmounts, 0);
++  // Cached IDs and landmarks must not interfere with the active view.
++  assert.equal(doc.getElementById("draft"), second.querySelector("input"));
++  assert.equal(doc.querySelectorAll("main").length, 1);
++  assert.equal(doc.getElementById("page-view-cache").hidden, true);
++  assert.equal(doc.getElementById("page-view-cache").hasAttribute("inert"), true);
++
++  assert.equal(navigate("/a#section"), first);
++  assert.equal(input.value, "unfinished draft");
++  button.click();
++  assert.equal(clicks, 1);
++  assert.equal(island.unmounts, 0);
++  assert.equal(navigate("/b"), second);
++  dispose();
++});
++
++test("least recently used views are evicted and their islands can unmount", () => {
++  const { doc, navigate, dispose } = setup(2);
++  const first = doc.querySelector("main");
++  const island = first.querySelector("test-island");
++  const second = navigate("/b");
++  navigate("/c");
++  assert.equal(navigate("/a"), first);
++  navigate("/d");
++  assert.equal(second.isConnected, false);
++  navigate("/e");
++  assert.equal(first.isConnected, true);
++  navigate("/f");
++  assert.equal(first.isConnected, false);
++  assert.equal(island.unmounts, 1);
++  assert.notEqual(navigate("/a"), first);
++  dispose();
++});
++
++test("query strings identify distinct views", () => {
++  const { navigate, dispose } = setup();
++  const first = navigate("/search?q=one");
++  const second = navigate("/search?q=two");
++  assert.notEqual(first, second);
++  assert.equal(navigate("/search?q=one#results"), first);
++  dispose();
++});
++
++test("same-view refreshes and destinations without the cache use the normal swap", () => {
++  const { doc, navigate, dispose } = setup();
++  const first = doc.querySelector("main");
++  assert.notEqual(navigate("/a"), first);
++  const cached = navigate("/b");
++  navigate("/c");
++  navigate("/other", "<main>Uncached layout</main>");
++  assert.equal(doc.querySelector("main").textContent, "Uncached layout");
++  assert.equal(doc.getElementById("page-view-cache"), null);
++  navigate("/a");
++  assert.notEqual(navigate("/b"), cached);
++  dispose();
++});

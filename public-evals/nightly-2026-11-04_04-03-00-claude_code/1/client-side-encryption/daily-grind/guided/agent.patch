@@ -1,0 +1,648 @@
+diff --git a/delivery-notes.js b/delivery-notes.js
+new file mode 100644
+index 0000000..0c13b3d
+--- /dev/null
++++ b/delivery-notes.js
+@@ -0,0 +1,420 @@
++// Encrypted delivery notes for The Daily Grind.
++//
++// Notes such as gate codes, buzzer numbers or "key is under the mat" are
++// sealed in the browser to the courier's public key before they leave the
++// page. The plaintext never touches the network or storage.
++//
++// Protection suites, chosen by feature detection:
++//   1. Hybrid post-quantum KEM: MLKEM768-X25519 -> ChaCha20-Poly1305 (preferred)
++//   2. Classical fallback: ephemeral-static X25519 -> HKDF-SHA-256 -> AES-GCM
++//
++// Every envelope binds its header (version, suite, courier key ID, timestamp)
++// as AEAD associated data, so tampering with either the ciphertext or the
++// metadata makes decryption fail.
++
++const ENVELOPE_VERSION = 'dg-note-v1';
++const SUITE_PQ = 'MLKEM768-X25519+ChaCha20-Poly1305';
++const SUITE_CLASSICAL = 'X25519+HKDF-SHA256+AES-GCM';
++const SUITE_LABELS = {
++  [SUITE_PQ]: 'Hybrid post-quantum · ML-KEM-768 + X25519 · ChaCha20-Poly1305',
++  [SUITE_CLASSICAL]: 'Classical · X25519 + HKDF-SHA-256 · AES-256-GCM',
++};
++// Public key sizes identify the algorithm when a key is supplied by the server.
++const PUBLIC_KEY_SUITES = { 1216: SUITE_PQ, 32: SUITE_CLASSICAL };
++const PENDING_NOTE_KEY = 'dg:pending-delivery-note';
++const DB_NAME = 'daily-grind-secure';
++const STORE = 'keys';
++const COURIER_KEY_ID = 'courier-recipient-key';
++
++const utf8 = new TextEncoder();
++
++// ---------------------------------------------------------------------------
++// Encoding helpers
++// ---------------------------------------------------------------------------
++
++function toBase64(bytes) {
++  if (typeof bytes.toBase64 === 'function') return bytes.toBase64();
++  let binary = '';
++  for (const b of bytes) binary += String.fromCharCode(b);
++  return btoa(binary);
++}
++
++function fromBase64(text) {
++  if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(text);
++  return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
++}
++
++function concatBytes(...parts) {
++  const out = new Uint8Array(parts.reduce((n, p) => n + p.byteLength, 0));
++  let offset = 0;
++  for (const p of parts) {
++    out.set(p, offset);
++    offset += p.byteLength;
++  }
++  return out;
++}
++
++async function keyFingerprint(publicKeyBytes) {
++  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', publicKeyBytes));
++  return Array.from(digest.slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++// ---------------------------------------------------------------------------
++// Feature detection
++// ---------------------------------------------------------------------------
++
++function supportsPostQuantum() {
++  return (
++    typeof globalThis.SubtleCrypto?.supports === 'function' &&
++    SubtleCrypto.supports('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305') &&
++    SubtleCrypto.supports('decapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')
++  );
++}
++
++async function supportsX25519() {
++  try {
++    await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++// ---------------------------------------------------------------------------
++// IndexedDB persistence (non-extractable CryptoKeyPairs are structured-cloneable)
++// ---------------------------------------------------------------------------
++
++function withStore(mode, operation) {
++  return new Promise((resolve, reject) => {
++    const open = indexedDB.open(DB_NAME, 1);
++    open.onupgradeneeded = () => open.result.createObjectStore(STORE);
++    open.onerror = () => reject(open.error);
++    open.onsuccess = () => {
++      const db = open.result;
++      const tx = db.transaction(STORE, mode);
++      const request = operation(tx.objectStore(STORE));
++      tx.oncomplete = () => {
++        db.close();
++        resolve(request.result);
++      };
++      tx.onerror = tx.onabort = () => {
++        db.close();
++        reject(tx.error);
++      };
++    };
++  });
++}
++
++// ---------------------------------------------------------------------------
++// Recipient (courier) keys
++// ---------------------------------------------------------------------------
++
++async function generateCourierKeys(suite) {
++  if (suite === SUITE_PQ) {
++    const keyPair = await crypto.subtle.generateKey('MLKEM768-X25519', false, [
++      'encapsulateKey',
++      'decapsulateKey',
++    ]);
++    const publicKeyBytes = new Uint8Array(
++      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++    );
++    return { suite, keyPair, publicKeyBytes };
++  }
++  const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++  const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
++  return { suite, keyPair, publicKeyBytes };
++}
++
++/**
++ * Production path: the courier's public key is published by the server in
++ * <meta name="dg-courier-public-key" content="BASE64">. Only the courier app
++ * holds the private key, so the page can seal but not open notes.
++ *
++ * Demo path: with no published key, a courier key pair is generated once and
++ * persisted (non-extractable) in IndexedDB so the "courier preview" can open notes.
++ */
++async function loadCourierKeys(bestSuite) {
++  const published = document.querySelector('meta[name="dg-courier-public-key"]')?.content.trim();
++  if (published) {
++    const publicKeyBytes = fromBase64(published);
++    const suite = PUBLIC_KEY_SUITES[publicKeyBytes.byteLength];
++    if (!suite) throw new Error('Unrecognized courier public key.');
++    if (suite === SUITE_PQ && bestSuite !== SUITE_PQ) {
++      throw new Error('This browser cannot seal notes to the post-quantum courier key.');
++    }
++    return { suite, keyPair: null, publicKeyBytes };
++  }
++
++  const stored = await withStore('readonly', (s) => s.get(COURIER_KEY_ID)).catch(() => undefined);
++  if (stored?.suite === bestSuite) {
++    return stored;
++  }
++  const fresh = await generateCourierKeys(bestSuite);
++  await withStore('readwrite', (s) => s.put(fresh, COURIER_KEY_ID)).catch(() => {
++    // Private browsing may block IndexedDB; the key then lives for this session only.
++  });
++  return fresh;
++}
++
++// ---------------------------------------------------------------------------
++// Envelope sealing / opening
++// ---------------------------------------------------------------------------
++
++function classicalInfo(ephemeralPublic, recipientPublic) {
++  // Domain separation: bind the derived key to the protocol and both public keys.
++  return concatBytes(utf8.encode(`${ENVELOPE_VERSION}|${SUITE_CLASSICAL}|`), ephemeralPublic, recipientPublic);
++}
++
++async function deriveClassicalKey(privateKey, peerPublicKey, info, usages) {
++  const sharedSecret = await crypto.subtle.deriveBits(
++    { name: 'X25519', public: peerPublicKey },
++    privateKey,
++    256,
++  );
++  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++  return crypto.subtle.deriveKey(
++    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info },
++    hkdfKey,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    usages,
++  );
++}
++
++async function sealNote(courier, plaintext) {
++  const header = {
++    v: ENVELOPE_VERSION,
++    suite: courier.suite,
++    kid: await keyFingerprint(courier.publicKeyBytes),
++    createdAt: new Date().toISOString(),
++  };
++  const additionalData = utf8.encode(JSON.stringify(header));
++
++  let sharedKey;
++  let capsule;
++  if (courier.suite === SUITE_PQ) {
++    const recipientKey = await crypto.subtle.importKey(
++      'raw-public',
++      courier.publicKeyBytes,
++      'MLKEM768-X25519',
++      true,
++      ['encapsulateKey'],
++    );
++    const result = await crypto.subtle.encapsulateKey(
++      'MLKEM768-X25519',
++      recipientKey,
++      'ChaCha20-Poly1305',
++      false,
++      ['encrypt'],
++    );
++    sharedKey = result.sharedKey;
++    capsule = new Uint8Array(result.ciphertext);
++  } else {
++    const recipientKey = await crypto.subtle.importKey('raw', courier.publicKeyBytes, 'X25519', true, []);
++    const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++    capsule = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++    sharedKey = await deriveClassicalKey(
++      ephemeral.privateKey,
++      recipientKey,
++      classicalInfo(capsule, courier.publicKeyBytes),
++      ['encrypt'],
++    );
++  }
++
++  // Fresh 96-bit IV per message; the one-time key is never reused anyway.
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const ciphertext = new Uint8Array(
++    await crypto.subtle.encrypt(
++      { name: sharedKey.algorithm.name, iv, additionalData },
++      sharedKey,
++      utf8.encode(plaintext),
++    ),
++  );
++
++  return {
++    header,
++    capsule: toBase64(capsule),
++    iv: toBase64(iv),
++    ciphertext: toBase64(ciphertext),
++  };
++}
++
++async function openNote(courier, envelope) {
++  const { header } = envelope;
++  if (header.v !== ENVELOPE_VERSION || header.suite !== courier.suite) {
++    throw new Error('Unsupported envelope.');
++  }
++  if (header.kid !== (await keyFingerprint(courier.publicKeyBytes))) {
++    throw new Error('Envelope was sealed to a different courier key.');
++  }
++  const additionalData = utf8.encode(JSON.stringify(header));
++  const capsule = fromBase64(envelope.capsule);
++
++  let sharedKey;
++  if (courier.suite === SUITE_PQ) {
++    sharedKey = await crypto.subtle.decapsulateKey(
++      'MLKEM768-X25519',
++      courier.keyPair.privateKey,
++      capsule,
++      'ChaCha20-Poly1305',
++      false,
++      ['decrypt'],
++    );
++  } else {
++    const ephemeralPublic = await crypto.subtle.importKey('raw', capsule, 'X25519', true, []);
++    sharedKey = await deriveClassicalKey(
++      courier.keyPair.privateKey,
++      ephemeralPublic,
++      classicalInfo(capsule, courier.publicKeyBytes),
++      ['decrypt'],
++    );
++  }
++
++  const plaintext = await crypto.subtle.decrypt(
++    { name: sharedKey.algorithm.name, iv: fromBase64(envelope.iv), additionalData },
++    sharedKey,
++    fromBase64(envelope.ciphertext),
++  );
++  return new TextDecoder().decode(plaintext);
++}
++
++// ---------------------------------------------------------------------------
++// UI wiring
++// ---------------------------------------------------------------------------
++
++async function init() {
++  const root = document.getElementById('delivery-notes');
++  if (!root) return;
++
++  const form = root.querySelector('#delivery-note-form');
++  const textarea = root.querySelector('#delivery-note');
++  const submitButton = form.querySelector('button[type="submit"]');
++  const status = root.querySelector('#delivery-note-status');
++  const suiteLabel = root.querySelector('#delivery-note-suite');
++  const fingerprint = root.querySelector('#delivery-note-kid');
++  const result = root.querySelector('#delivery-note-result');
++  const envelopeOutput = root.querySelector('#delivery-note-envelope');
++  const sizeOutput = root.querySelector('#delivery-note-size');
++  const copyButton = root.querySelector('#delivery-note-copy');
++  const previewButton = root.querySelector('#delivery-note-preview');
++  const previewOutput = root.querySelector('#delivery-note-plaintext');
++  const discardButton = root.querySelector('#delivery-note-discard');
++
++  const setStatus = (message, tone = 'info') => {
++    status.textContent = message;
++    status.dataset.tone = tone;
++  };
++
++  if (!globalThis.crypto?.subtle) {
++    setStatus('Encrypted notes need a secure (HTTPS) connection and a modern browser.', 'error');
++    form.inert = true;
++    return;
++  }
++
++  let bestSuite;
++  if (supportsPostQuantum()) bestSuite = SUITE_PQ;
++  else if (await supportsX25519()) bestSuite = SUITE_CLASSICAL;
++  else {
++    setStatus('Your browser does not support the encryption needed for secure notes.', 'error');
++    form.inert = true;
++    return;
++  }
++
++  let courier;
++  try {
++    courier = await loadCourierKeys(bestSuite);
++  } catch (error) {
++    setStatus(error.message, 'error');
++    form.inert = true;
++    return;
++  }
++
++  suiteLabel.textContent = SUITE_LABELS[courier.suite];
++  fingerprint.textContent = (await keyFingerprint(courier.publicKeyBytes)).match(/.{4}/g).join(' ');
++  root.dataset.suite = courier.suite === SUITE_PQ ? 'pq' : 'classical';
++  previewButton.hidden = !courier.keyPair;
++
++  const showEnvelope = (envelope) => {
++    const json = JSON.stringify(envelope, null, 2);
++    envelopeOutput.textContent = json;
++    sizeOutput.textContent = `${utf8.encode(json).byteLength.toLocaleString()} bytes`;
++    previewOutput.textContent = '';
++    previewOutput.hidden = true;
++    result.hidden = false;
++  };
++
++  const existing = localStorage.getItem(PENDING_NOTE_KEY);
++  if (existing) {
++    try {
++      showEnvelope(JSON.parse(existing));
++      setStatus('A sealed note is attached to your next order.', 'success');
++    } catch {
++      localStorage.removeItem(PENDING_NOTE_KEY);
++    }
++  }
++
++  textarea.addEventListener('input', () => textarea.setCustomValidity(''));
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    const note = textarea.value.trim();
++    if (!note) {
++      textarea.setCustomValidity('Write a note for your courier first.');
++      textarea.reportValidity();
++      return;
++    }
++
++    submitButton.disabled = true;
++    setStatus('Sealing your note…');
++    try {
++      const envelope = await sealNote(courier, note);
++      // Only the sealed envelope is kept; checkout uploads it with the order.
++      localStorage.setItem(PENDING_NOTE_KEY, JSON.stringify(envelope));
++      textarea.value = '';
++      showEnvelope(envelope);
++      setStatus('Note sealed. Only your courier can read it, and it is attached to your next order.', 'success');
++    } catch (error) {
++      console.error(error);
++      setStatus('Something went wrong while encrypting. Your note was not saved.', 'error');
++    } finally {
++      submitButton.disabled = false;
++    }
++  });
++
++  copyButton.addEventListener('click', async () => {
++    try {
++      await navigator.clipboard.writeText(envelopeOutput.textContent);
++      setStatus('Sealed envelope copied to clipboard.', 'success');
++    } catch {
++      setStatus('Copy failed. Select the envelope text to copy it manually.', 'error');
++    }
++  });
++
++  previewButton.addEventListener('click', async () => {
++    try {
++      const envelope = JSON.parse(envelopeOutput.textContent);
++      previewOutput.textContent = await openNote(courier, envelope);
++      previewOutput.hidden = false;
++      setStatus('Decrypted and authenticated with the courier key.', 'success');
++    } catch (error) {
++      previewOutput.hidden = true;
++      setStatus(
++        error.name === 'OperationError'
++          ? 'Authentication failed: the envelope was modified or sealed to another key.'
++          : error.message,
++        'error',
++      );
++    }
++  });
++
++  discardButton.addEventListener('click', () => {
++    localStorage.removeItem(PENDING_NOTE_KEY);
++    envelopeOutput.textContent = '';
++    previewOutput.textContent = '';
++    result.hidden = true;
++    setStatus('Sealed note removed.');
++    textarea.focus();
++  });
++}
++
++init();
+diff --git a/index.html b/index.html
+index 66c9173..c103923 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Production: set content to the courier service's base64 'raw-public' key (1216-byte MLKEM768-X25519 or 32-byte X25519). Empty = local demo key. -->
++  <meta name="dg-courier-public-key" content="">
++  <script type="module" src="/delivery-notes.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +138,151 @@
+       background: #3e2723;
+     }
+ 
++    /* Encrypted Delivery Notes */
++    .secure-notes {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    .secure-notes__intro h2 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .secure-notes__intro img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-top: 1rem;
++    }
++
++    .secure-notes__meta {
++      margin-top: 1rem;
++      font-size: 0.9rem;
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 0.75rem;
++    }
++
++    .secure-notes__meta dt {
++      font-weight: 600;
++    }
++
++    .secure-notes__meta code {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      overflow-wrap: anywhere;
++    }
++
++    .secure-notes__panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .secure-notes label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++    }
++
++    .secure-notes .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 0.5rem;
++    }
++
++    .secure-notes textarea {
++      width: 100%;
++      min-height: 7rem;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      resize: vertical;
++    }
++
++    .secure-notes textarea:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .secure-notes button {
++      font: inherit;
++      min-height: 48px;
++      padding: 10px 20px;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      background: white;
++      color: var(--primary);
++    }
++
++    .secure-notes button[type="submit"] {
++      background: var(--primary);
++      color: white;
++      margin-top: 1rem;
++    }
++
++    .secure-notes button:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .secure-notes :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .secure-notes__status {
++      margin-top: 1rem;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
++    .secure-notes__status[data-tone="success"]::before { content: "✔ "; }
++    .secure-notes__status[data-tone="error"] { color: #b71c1c; }
++    .secure-notes__status[data-tone="error"]::before { content: "⚠ "; }
++
++    .secure-notes__result {
++      margin-top: 1.5rem;
++      border-top: 1px solid var(--secondary);
++      padding-top: 1rem;
++    }
++
++    .secure-notes__result pre {
++      background: #2b1d19;
++      color: #f5e9e2;
++      padding: 1rem;
++      border-radius: 5px;
++      font-size: 0.75rem;
++      max-height: 14rem;
++      overflow: auto;
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      margin-block: 0.5rem;
++    }
++
++    .secure-notes__actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++    }
++
++    .secure-notes__plaintext {
++      display: block;
++      margin-top: 1rem;
++      padding: 0.75rem;
++      background: #fff8e1;
++      border-left: 4px solid var(--accent);
++      white-space: pre-wrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,6 +311,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#delivery-notes">Delivery Notes</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +344,47 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="delivery-notes" class="secure-notes" aria-labelledby="delivery-notes-title">
++      <div class="secure-notes__intro">
++        <h2 id="delivery-notes-title">Encrypted Delivery Notes</h2>
++        <p>Gate codes, buzzer numbers, or where the spare key lives: your note is encrypted on your device
++          before it goes anywhere. Only your courier can read it. We store and send only the sealed copy.</p>
++        <dl class="secure-notes__meta">
++          <dt>Protection</dt>
++          <dd id="delivery-note-suite">Checking browser support…</dd>
++          <dt>Courier key</dt>
++          <dd><code id="delivery-note-kid">—</code></dd>
++        </dl>
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++          alt="A fresh cup of coffee on a wooden table" width="800" height="600" loading="lazy" decoding="async">
++      </div>
++
++      <div class="secure-notes__panel">
++        <!-- The textarea has no name on purpose: plaintext is never submitted. Only the sealed envelope leaves this page. -->
++        <form id="delivery-note-form" novalidate>
++          <label for="delivery-note">Note for your courier</label>
++          <span id="delivery-note-hint" class="hint">Up to 500 characters. Encrypted before saving.</span>
++          <textarea id="delivery-note" maxlength="500" required autocomplete="off" spellcheck="false"
++            aria-describedby="delivery-note-hint delivery-note-status"
++            placeholder="e.g. Gate code 4821, leave at the side door"></textarea>
++          <button type="submit">Encrypt &amp; attach to my order</button>
++        </form>
++
++        <p id="delivery-note-status" class="secure-notes__status" role="status" aria-live="polite"></p>
++
++        <div id="delivery-note-result" class="secure-notes__result" hidden>
++          <h3>Sealed envelope <small id="delivery-note-size"></small></h3>
++          <pre id="delivery-note-envelope" tabindex="0" aria-label="Sealed envelope JSON"></pre>
++          <div class="secure-notes__actions">
++            <button type="button" id="delivery-note-copy">Copy envelope</button>
++            <button type="button" id="delivery-note-preview">Preview as courier</button>
++            <button type="button" id="delivery-note-discard">Remove note</button>
++          </div>
++          <output id="delivery-note-plaintext" class="secure-notes__plaintext" for="delivery-note-envelope" hidden></output>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+index 66c9173..274b78a 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,110 @@
+       margin-top: 20px;
+     }
+ 
++    #favorites-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      width: fit-content;
++      margin: 20px auto 0;
++      padding: 6px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++    }
++
++    .action-group {
++      display: flex;
++      gap: 4px;
++    }
++
++    .action-group + .action-group {
++      border-left: 1px solid var(--secondary);
++      padding-left: 8px;
++    }
++
++    .icon-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 44px;
++      height: 44px;
++      border: 0;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .icon-button:hover {
++      background: var(--secondary);
++    }
++
++    .icon-button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .icon-button:focus-visible,
++    #favorites-filters select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .icon-button svg {
++      width: 20px;
++      height: 20px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.8;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    #favorites-filters {
++      margin-top: 16px;
++      padding: 12px 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    #favorites-filters select {
++      margin-left: 8px;
++      padding: 6px;
++      color: var(--text);
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      font: inherit;
++    }
++
++    #favorites-cards.list-view {
++      grid-template-columns: 1fr;
++    }
++
++    #favorites-cards.list-view .card {
++      text-align: left;
++    }
++
++    #favorites-cards.details-hidden .drink-detail,
++    [hidden] {
++      display: none !important;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,23 +279,55 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div id="favorites-actions" role="toolbar" aria-label="Seasonal favorites actions">
++        <div class="action-group" role="group" aria-label="Drink layout">
++          <button type="button" class="icon-button" id="favorites-grid" aria-label="Grid view" title="Grid view" aria-pressed="true" aria-controls="favorites-cards">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
++          </button>
++          <button type="button" class="icon-button" id="favorites-list" aria-label="List view" title="List view" aria-pressed="false" aria-controls="favorites-cards" tabindex="-1">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></svg>
++          </button>
++        </div>
++        <div class="action-group" role="group" aria-label="Display options">
++          <button type="button" class="icon-button" id="favorites-details" aria-label="Show drink details" title="Show drink details" aria-pressed="true" aria-controls="favorites-cards" tabindex="-1">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
++          </button>
++          <button type="button" class="icon-button" id="favorites-filter-toggle" aria-label="Show drink filters" title="Show drink filters" aria-pressed="false" aria-expanded="false" aria-controls="favorites-filters" tabindex="-1">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></svg>
++          </button>
++        </div>
++        <div class="action-group" role="group" aria-label="Copy drinks">
++          <button type="button" class="icon-button" id="favorites-copy" aria-label="Copy featured drinks list" title="Copy featured drinks list" tabindex="-1">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
++          </button>
++        </div>
++      </div>
++      <div id="favorites-filters" hidden>
++        <label for="favorites-temperature">Drink temperature</label>
++        <select id="favorites-temperature">
++          <option value="all">All drinks</option>
++          <option value="hot">Hot drinks</option>
++          <option value="cold">Cold drinks</option>
++        </select>
++      </div>
++      <p id="favorites-status" class="sr-only" role="status"></p>
++      <div class="grid" id="favorites-cards">
++        <div class="card" data-temperature="hot">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="drink-detail">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn drink-detail">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-temperature="hot">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="drink-detail">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn drink-detail">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-temperature="cold">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="drink-detail">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn drink-detail">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +343,77 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const toolbar = document.getElementById('favorites-actions');
++    const cards = document.getElementById('favorites-cards');
++    const gridButton = document.getElementById('favorites-grid');
++    const listButton = document.getElementById('favorites-list');
++    const detailsButton = document.getElementById('favorites-details');
++    const filterButton = document.getElementById('favorites-filter-toggle');
++    const filters = document.getElementById('favorites-filters');
++    const temperature = document.getElementById('favorites-temperature');
++    const status = document.getElementById('favorites-status');
++    const buttons = [...toolbar.querySelectorAll('button')];
++
++    // Keep one tab stop in the toolbar; arrow keys move between its controls.
++    toolbar.addEventListener('focusin', (event) => {
++      if (!buttons.includes(event.target)) return;
++      buttons.forEach((button) => button.tabIndex = button === event.target ? 0 : -1);
++    });
++    toolbar.addEventListener('keydown', (event) => {
++      const index = buttons.indexOf(document.activeElement);
++      if (index < 0) return;
++      let next;
++      if (event.key === 'ArrowRight') next = (index + 1) % buttons.length;
++      if (event.key === 'ArrowLeft') next = (index - 1 + buttons.length) % buttons.length;
++      if (event.key === 'Home') next = 0;
++      if (event.key === 'End') next = buttons.length - 1;
++      if (next === undefined) return;
++      event.preventDefault();
++      buttons[next].focus();
++    });
++
++    function setLayout(list) {
++      cards.classList.toggle('list-view', list);
++      gridButton.setAttribute('aria-pressed', String(!list));
++      listButton.setAttribute('aria-pressed', String(list));
++    }
++    gridButton.addEventListener('click', () => setLayout(false));
++    listButton.addEventListener('click', () => setLayout(true));
++    detailsButton.addEventListener('click', () => {
++      const hidden = cards.classList.toggle('details-hidden');
++      detailsButton.setAttribute('aria-pressed', String(!hidden));
++    });
++
++    function applyFilters() {
++      let count = 0;
++      cards.querySelectorAll('.card').forEach((card) => {
++        card.hidden = !filters.hidden && temperature.value !== 'all' &&
++          card.dataset.temperature !== temperature.value;
++        if (!card.hidden) count++;
++      });
++      status.textContent = `${count} featured drinks shown.`;
++    }
++    filterButton.addEventListener('click', () => {
++      filters.hidden = !filters.hidden;
++      filterButton.setAttribute('aria-pressed', String(!filters.hidden));
++      filterButton.setAttribute('aria-expanded', String(!filters.hidden));
++      applyFilters();
++    });
++    temperature.addEventListener('change', applyFilters);
++
++    document.getElementById('favorites-copy').addEventListener('click', async () => {
++      const drinks = [...cards.querySelectorAll('.card')].map((card) =>
++        `${card.querySelector('h3').textContent} — ${card.querySelector('p').textContent}`
++      );
++      try {
++        await navigator.clipboard.writeText(`Seasonal Favorites\n${drinks.join('\n')}`);
++        status.textContent = 'Featured drinks list copied.';
++      } catch {
++        status.textContent = 'Could not copy the list. Please allow clipboard access and try again.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,43 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .sequencer { margin-top: 56px; background: #f0ede6; border: 1px solid #e1dbcf; border-radius: 16px; overflow: hidden; }
++    .sequencer-intro { padding: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
++    .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #68725e; }
++    .sequencer h2 { font-size: 1.9rem; letter-spacing: -.04em; margin: 5px 0; }
++    .sequencer-intro p { font-size: .9rem; max-width: 470px; color: #756b60; }
++    .simulate { border: 0; background: #354b3b; color: #fff; border-radius: 7px; padding: 14px 20px; cursor: pointer; font: 600 .9rem inherit; white-space: nowrap; }
++    .simulate:hover { background: #233829; }
++    button:focus-visible { outline: 3px solid #ffab40; outline-offset: 4px; }
++    .console { background: #19251f; color: #dce6dc; padding: 24px 28px; }
++    .console-top { display: flex; justify-content: space-between; gap: 16px; align-items: center; border-bottom: 1px solid #364139; padding-bottom: 18px; }
++    .console-title { font-size: .85rem; font-weight: 600; }
++    .live { font-size: .7rem; letter-spacing: .1em; color: #a7c69c; }
++    .live::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #a7c69c; }
++    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 22px 0; }
++    .metric-label { display: block; color: #9caba0; font-size: .72rem; margin-bottom: 3px; }
++    .metric-value { font-family: ui-monospace, monospace; font-size: 1.15rem; overflow-wrap: anywhere; }
++    .trace-scroll { overflow: auto; max-height: 320px; border: 1px solid #364139; border-radius: 6px; }
++    .trace-table { border-collapse: collapse; width: 100%; text-align: left; font-family: ui-monospace, monospace; font-size: .75rem; white-space: nowrap; }
++    .trace-table th { background: #223027; color: #a8b5a9; font-weight: 400; position: sticky; top: 0; }
++    .trace-table th, .trace-table td { padding: 12px 15px; border-bottom: 1px solid #303d33; }
++    .trace-table td:nth-child(3) { color: #c8dfb5; }
++    .trace-table .empty { text-align: center; padding: 32px; color: #96a598; white-space: normal; }
++    .console-note { margin-top: 14px; color: #99a99c; font-size: .72rem; }
++    #telemetry-status { margin-top: 12px; font-size: .8rem; color: #c8dfb5; min-height: 1.6em; }
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .sequencer-intro { padding: 24px; flex-direction: column; align-items: flex-start; }
++      .console { padding: 20px 16px; }
++      .metrics { grid-template-columns: 1fr; gap: 12px; }
++      .console-top { align-items: flex-start; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +229,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="sequencer" aria-labelledby="sequencer-title">
++      <div class="sequencer-intro">
++        <div>
++          <span class="eyebrow">Behind the counter · Order telemetry</span>
++          <h2 id="sequencer-title">Every coffee. In order.</h2>
++          <p>A little coffee, a lot of precision. Send an order through our simulated services and watch each operation fall into place.</p>
++        </div>
++        <button class="simulate" id="simulate-order" type="button">+ Simulate coffee order</button>
++      </div>
++      <div class="console">
++        <div class="console-top"><span class="console-title">Order sequence / live trace</span><span class="live">NANOSECOND CLOCK</span></div>
++        <div class="metrics">
++          <div><span class="metric-label">Orders this session</span><span class="metric-value" id="order-count">0</span></div>
++          <div><span class="metric-label">Latest order</span><span class="metric-value" id="latest-order">—</span></div>
++          <div><span class="metric-label">Between click arrivals</span><span class="metric-value" id="click-delta">— ns</span></div>
++        </div>
++        <div class="trace-scroll">
++          <table class="trace-table">
++            <thead><tr><th scope="col">Order</th><th scope="col">Operation</th><th scope="col">Timestamp · epoch ns</th><th scope="col">Click interval · ns</th></tr></thead>
++            <tbody id="trace-body"><tr><td colspan="4" class="empty">The queue is quiet. Simulate your first coffee order to start tracing.</td></tr></tbody>
++          </table>
++        </div>
++        <p id="telemetry-status" role="status" aria-live="polite">Ready for your first order.</p>
++        <p class="console-note">Chronological · oldest first · simulated gateway → orders → barista<br>Server monotonic clock, nanosecond resolution. Intervals measure request arrivals; network timing is included. Epoch timestamps are approximate UTC, not synchronized distributed clocks. Showing the latest 100 orders.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +268,53 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const orders = [];
++    let completed = 0;
++    let pending = 0;
++    const formatNs = value => BigInt(value).toLocaleString('en-US');
++    document.getElementById('simulate-order').addEventListener('click', async () => {
++      const status = document.getElementById('telemetry-status');
++      pending++;
++      status.textContent = `Sequencing ${pending} pending order${pending === 1 ? '' : 's'}…`;
++      try {
++        const response = await fetch('/api/orders', { method: 'POST' });
++        if (!response.ok) throw new Error('Order service unavailable');
++        const trace = await response.json();
++        console.log('Coffee order telemetry', trace);
++        completed++;
++        orders.push(trace);
++        orders.sort((a, b) => a.sequence - b.sequence);
++        if (orders.length > 100) orders.splice(0, orders.length - 100);
++        const latest = orders[orders.length - 1];
++        document.getElementById('order-count').textContent = completed;
++        document.getElementById('latest-order').textContent = latest.orderId;
++        document.getElementById('click-delta').textContent = latest.deltaNs === null ? 'First order' : `${formatNs(latest.deltaNs)} ns`;
++        const events = orders.flatMap(order => order.events.map(event => ({ ...event, order })));
++        events.sort((a, b) => BigInt(a.timestampNs) < BigInt(b.timestampNs) ? -1 : BigInt(a.timestampNs) > BigInt(b.timestampNs) ? 1 : a.order.sequence - b.order.sequence);
++        const body = document.getElementById('trace-body');
++        body.replaceChildren(...events.map(event => {
++          const row = document.createElement('tr');
++          [event.order.orderId, event.operation, event.timestampNs, event.operation === 'gateway.received' ? (event.order.deltaNs === null ? '—' : formatNs(event.order.deltaNs)) : '—'].forEach(value => {
++            const cell = document.createElement('td');
++            cell.textContent = value;
++            row.appendChild(cell);
++          });
++          return row;
++        }));
++        const scroll = document.querySelector('.trace-scroll');
++        scroll.scrollTop = scroll.scrollHeight;
++        status.textContent = `${trace.orderId} queued. Three operations recorded.`;
++      } catch (error) {
++        status.textContent = 'Could not record this order. Please try again.';
++        console.error('Coffee order telemetry failed', error);
++      } finally {
++        pending--;
++        if (pending > 0) status.textContent += ` ${pending} still pending.`;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

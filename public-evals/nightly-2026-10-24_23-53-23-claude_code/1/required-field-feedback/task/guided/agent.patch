@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .mailing-list {
++      margin-bottom: 24px;
++    }
++
++    .mailing-list h3 {
++      margin: 0 0 12px;
++      color: var(--primary);
++    }
++
++    .mailing-list .field {
++      display: inline-block;
++      text-align: left;
++      vertical-align: top;
++    }
++
++    .mailing-list input[type="email"] {
++      padding: 10px 12px;
++      border: 2px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      min-width: 240px;
++    }
++
++    .mailing-list button {
++      padding: 10px 18px;
++      background: var(--primary);
++      color: var(--light);
++      border: 2px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      cursor: pointer;
++      vertical-align: top;
++    }
++
++    .mailing-list .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.85rem;
++      margin-top: 4px;
++    }
++
++    /* Only shown after the user interacts with the field (or tries to submit) */
++    .mailing-list input:user-invalid {
++      border-color: #b3261e;
++      background-color: #fce8e6;
++    }
++
++    .mailing-list input:user-invalid + .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +248,28 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="mailing-list" id="mailing-list-form" action="/subscribe" method="post">
++      <h3>Join our mailing list</h3>
++      <div class="field">
++        <input
++          type="email"
++          id="mailing-email"
++          name="email"
++          placeholder="you@example.com"
++          aria-label="Email address"
++          autocomplete="email"
++          required
++          aria-errormessage="mailing-email-error"
++        >
++        <div id="mailing-email-error" class="error-msg">
++          <span aria-hidden="true">⚠</span> Please enter your email address.
++        </div>
++      </div>
++      <button type="submit">Subscribe</button>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +277,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Mirror the visual :user-invalid state to assistive tech
++    const mailingForm = document.getElementById('mailing-list-form');
++    const mailingEmail = document.getElementById('mailing-email');
++
++    const syncAriaInvalid = () => {
++      if (mailingEmail.matches(':user-invalid')) {
++        mailingEmail.setAttribute('aria-invalid', 'true');
++      } else {
++        mailingEmail.removeAttribute('aria-invalid');
++      }
++    };
++
++    mailingEmail.addEventListener('blur', syncAriaInvalid);
++    mailingEmail.addEventListener('input', () => {
++      if (mailingEmail.hasAttribute('aria-invalid')) syncAriaInvalid();
++    });
++    mailingForm.addEventListener('invalid', syncAriaInvalid, true);
++  </script>
++
+ </body>
+ 
+ </html>

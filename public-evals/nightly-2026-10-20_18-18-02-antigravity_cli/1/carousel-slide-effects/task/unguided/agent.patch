@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,104 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product Carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      margin-bottom: 20px;
++      color: #5d4037;
++    }
++
++    @keyframes scale-in-center {
++      0%,
++      100% {
++        transform: scale(0.8);
++        opacity: 0.7;
++      }
++      50% {
++        transform: scale(1.1);
++        opacity: 1;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      padding: 40px calc(50% - 140px);
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++      outline-offset: 4px;
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      border-radius: 8px;
++    }
++
++    .scroller .product-card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      background: white;
++      padding: 20px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      view-timeline-name: --card-timeline;
++      view-timeline-axis: inline;
++      animation: scale-in-center linear both;
++      animation-timeline: --card-timeline;
++      animation-range: entry 0% exit 100%;
++    }
++
++    .product-card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 15px;
++    }
++
++    .product-card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .scroller .product-card {
++        animation: none;
++        transform: none;
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +290,81 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="featured-products-heading">
++      <h2 id="featured-products-heading">Featured Coffee Beans &amp; Gear</h2>
++      <p class="carousel-subtitle">Scroll horizontally to explore our curated selection.</p>
++      <ul class="scroller" tabindex="0" role="region" aria-label="Featured products carousel">
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Floral and bright with notes of bergamot and jasmine.</p>
++          </div>
++          <div>
++            <p class="price">$18.00</p>
++            <a href="/shop/ethiopian-yirgacheffe" class="btn" aria-label="Buy Ethiopian Yirgacheffe">Buy Now</a>
++          </div>
++        </li>
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed Colombian Supremo coffee in a ceramic cup">
++            <h3>Colombian Supremo</h3>
++            <p>Rich medium roast with caramel sweetness and a nutty finish.</p>
++          </div>
++          <div>
++            <p class="price">$16.50</p>
++            <a href="/shop/colombian-supremo" class="btn" aria-label="Buy Colombian Supremo">Buy Now</a>
++          </div>
++        </li>
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Glass pour-over coffee maker with wooden collar">
++            <h3>Artisan Pour-Over Kit</h3>
++            <p>Borosilicate glass carafe for a clean, flavorful extraction.</p>
++          </div>
++          <div>
++            <p class="price">$34.00</p>
++            <a href="/shop/pour-over-kit" class="btn" aria-label="Buy Artisan Pour-Over Kit">Buy Now</a>
++          </div>
++        </li>
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Dark roasted Sumatra Mandheling coffee beans">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied dark roast with earthy tones and low acidity.</p>
++          </div>
++          <div>
++            <p class="price">$19.00</p>
++            <a href="/shop/sumatra-mandheling" class="btn" aria-label="Buy Sumatra Mandheling">Buy Now</a>
++          </div>
++        </li>
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=600&q=80" alt="Stainless steel manual burr coffee grinder">
++            <h3>Precision Burr Grinder</h3>
++            <p>Stainless steel conical burrs for a consistent grind every time.</p>
++          </div>
++          <div>
++            <p class="price">$45.00</p>
++            <a href="/shop/burr-grinder" class="btn" aria-label="Buy Precision Burr Grinder">Buy Now</a>
++          </div>
++        </li>
++        <li class="product-card card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Handcrafted speckled ceramic espresso mug">
++            <h3>Ceramic Tasting Mug</h3>
++            <p>Hand-thrown stoneware designed to retain heat and aroma.</p>
++          </div>
++          <div>
++            <p class="price">$22.00</p>
++            <a href="/shop/ceramic-mug" class="btn" aria-label="Buy Ceramic Tasting Mug">Buy Now</a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

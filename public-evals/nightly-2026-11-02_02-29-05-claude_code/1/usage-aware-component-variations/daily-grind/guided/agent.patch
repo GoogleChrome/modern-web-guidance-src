@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+index 66c9173..89bc898 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,73 @@
+       background: #3e2723;
+     }
+ 
++    /* Contextual card variations: sections declare a semantic --surface,
++       cards opt in to reacting to it. */
++    .seasonal {
++      --surface: seasonal;
++    }
++
++    .card-badge {
++      display: none;
++    }
++
++    /* Fallback for browsers without container style queries */
++    :where(.seasonal) .card {
++      position: relative;
++      background: linear-gradient(160deg, #fff8ef, #fbe9d7);
++      border-top: 4px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++    }
++
++    :where(.seasonal) .card-badge {
++      display: inline-block;
++    }
++
++    :where(.seasonal) .card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    :where(.seasonal) .card .btn:hover {
++      background: #ff9100;
++    }
++
++    @container style(--surface: seasonal) {
++      .card {
++        position: relative;
++        background: linear-gradient(160deg, #fff8ef, #fbe9d7);
++        border-top: 4px solid var(--accent);
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .card-badge {
++        display: inline-block;
++      }
++
++      .card .btn {
++        background: var(--accent);
++        color: var(--text);
++      }
++
++      .card .btn:hover {
++        background: #ff9100;
++      }
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,20 +242,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

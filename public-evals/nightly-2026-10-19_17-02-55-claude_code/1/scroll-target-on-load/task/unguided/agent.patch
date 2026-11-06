@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical scroll container */
++    .media-scroll {
++      position: relative; /* makes offsetTop of children relative to this box */
++      height: 480px;
++      margin-top: 20px;
++      overflow-y: auto;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      display: flex;
++      align-items: center;
++      gap: 20px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      flex: none;
++      width: 240px;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        flex-direction: column;
++        align-items: flex-start;
++      }
++
++      .media-card img {
++        width: 100%;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +245,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">From the Roastery</h2>
++      <div class="media-scroll" id="media-scroll">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=480&h=320&q=80"
++            width="240" height="160" alt="A steaming cup of black coffee">
++          <div>
++            <h3>Single Origin Pour-Over</h3>
++            <p>Bright, floral, and brewed by hand to order.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=480&h=320&q=80"
++            width="240" height="160" alt="Roasted coffee beans">
++          <div>
++            <h3>Small-Batch Roasting</h3>
++            <p>Every batch is roasted in-house within days of shipping.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=480&h=320&q=80"
++            width="240" height="160" alt="Coffee cup on a wooden table">
++          <div>
++            <h3>The Daily Ritual</h3>
++            <p>Our featured pick: a smooth, balanced cup for every morning.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=480&h=320&q=80"
++            width="240" height="160" alt="Coffee being poured into a cup">
++          <div>
++            <h3>Barista Favorites</h3>
++            <p>Seasonal specials crafted by our team.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=480&h=320&q=80"
++            width="240" height="160" alt="Latte with art on top">
++          <div>
++            <h3>Latte Art</h3>
++            <p>Silky microfoam, poured with care.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously right after the container is parsed, before first paint,
++        // so the target is already in view with no visible scroll or flash.
++        (function () {
++          var box = document.getElementById('media-scroll');
++          var target = box.querySelector('.target');
++          box.scrollTop = target.offsetTop - box.clientHeight / 2 + target.offsetHeight / 2;
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

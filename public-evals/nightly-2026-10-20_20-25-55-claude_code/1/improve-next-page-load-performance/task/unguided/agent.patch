@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Prefetch internal pages when the user shows intent (hover, focus, touch).
++    // Links are skipped if they have data-no-prefetch or point at a
++    // state-changing URL such as /logout.
++    (function () {
++      var NEVER_PREFETCH = /^\/(logout|signout|log-out|sign-out)(\/|$)/i;
++      var prefetched = new Set();
++
++      function shouldPrefetch(a) {
++        if (!a || !a.href || a.hasAttribute('data-no-prefetch') || a.hasAttribute('download')) return false;
++        if (a.target && a.target !== '_self') return false;
++        var url = new URL(a.href, location.href);
++        if (url.origin !== location.origin) return false;
++        if (NEVER_PREFETCH.test(url.pathname)) return false;
++        if (url.pathname === location.pathname && url.search === location.search) return false;
++        return !prefetched.has(url.href);
++      }
++
++      function prefetch(e) {
++        var a = e.target.closest && e.target.closest('a');
++        if (!shouldPrefetch(a)) return;
++        var href = new URL(a.href, location.href).href;
++        prefetched.add(href);
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = href;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      document.addEventListener('mouseover', prefetch, { passive: true });
++      document.addEventListener('focusin', prefetch);
++      document.addEventListener('touchstart', prefetch, { passive: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,276 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..a8d2516
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,149 @@
++(() => {
++  'use strict';
++
++  const drinks = [
++    { id: 'maple-oat-latte', name: 'Maple Oat Latte', description: 'Creamy oat milk with a hint of Vermont maple syrup.', price: 550, milk: 'oat' },
++    { id: 'dark-roast-espresso', name: 'Dark Roast Espresso', description: 'Bold, smokey, and perfect for a morning boost.', price: 350, milk: 'none' },
++    { id: 'cold-brew', name: 'Cold Brew', description: 'Steeped for 18 hours for maximum smoothness.', price: 450, milk: 'none' }
++  ];
++  const sizes = { small: 0, medium: 75, large: 125 };
++  const milks = ['none', 'whole', 'oat', 'almond'];
++  const order = [];
++  let nextId = 1;
++  const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++  const status = message => { document.querySelector('#status').textContent = message; };
++  const quantityValue = value => {
++    const number = Number(value);
++    return Number.isInteger(number) && number >= 1 && number <= 20 ? number : null;
++  };
++
++  document.querySelector('#drink-menu').innerHTML = drinks.map(drink => `
++    <article class="card" data-drink-id="${drink.id}">
++      <h3>${drink.name}</h3>
++      <p>${drink.description}</p>
++      <p class="price">From ${money(drink.price)}</p>
++      <form aria-label="Add ${drink.name} to order" toolname="add_${drink.id.replaceAll('-', '_')}" toolautosubmit tooldescription="Add ${drink.name} with the selected size, milk, and quantity to the local order.">
++        <input type="hidden" name="drink_id" value="${drink.id}">
++        <label for="${drink.id}-size">Size</label>
++        <select id="${drink.id}-size" name="size">
++          <option value="small">Small — ${money(drink.price)}</option>
++          <option value="medium">Medium — ${money(drink.price + sizes.medium)}</option>
++          <option value="large">Large — ${money(drink.price + sizes.large)}</option>
++        </select>
++        <label for="${drink.id}-milk">Milk (included)</label>
++        <select id="${drink.id}-milk" name="milk">
++          ${milks.map(milk => `<option value="${milk}" ${milk === drink.milk ? 'selected' : ''}>${milk === 'none' ? 'No milk' : milk[0].toUpperCase() + milk.slice(1)}</option>`).join('')}
++        </select>
++        <label for="${drink.id}-quantity">Quantity</label>
++        <input id="${drink.id}-quantity" name="quantity" toolparamdescription="Number of drinks, from 1 to 20." type="number" min="1" max="20" value="1" required>
++        <button type="submit" class="btn">Add to order</button>
++      </form>
++    </article>`).join('');
++
++  function renderOrder() {
++    const items = document.querySelector('#order-items');
++    items.replaceChildren();
++    if (!order.length) {
++      const empty = document.createElement('p');
++      empty.textContent = 'Your order is empty. Choose a drink above to get started.';
++      items.append(empty);
++    }
++    for (const item of order) {
++      const drink = drinks.find(drink => drink.id === item.drinkId);
++      const row = document.createElement('div');
++      row.className = 'order-item';
++      // Every interpolated value is from the fixed menu or validated numeric state.
++      row.innerHTML = `
++        <h3>${drink.name}</h3>
++        <p>${item.size[0].toUpperCase() + item.size.slice(1)} · ${item.milk === 'none' ? 'No milk' : item.milk + ' milk'} · ${money(item.unitPrice)} each</p>
++        <p>Subtotal: ${money(item.unitPrice * item.quantity)}</p>
++        `;
++      items.append(row);
++    }
++    const itemSelect = document.querySelector('#order-item-id');
++    itemSelect.replaceChildren();
++    for (const item of order) {
++      const drink = drinks.find(drink => drink.id === item.drinkId);
++      itemSelect.add(new Option(`${drink.name} · ${item.size} · ${item.milk} milk (quantity ${item.quantity})`, item.id));
++    }
++    document.querySelector('#update-order').hidden = order.length === 0;
++    document.querySelector('#order-total').textContent = `Order total: ${money(order.reduce((total, item) => total + item.unitPrice * item.quantity, 0))}`;
++    document.querySelector('#clear-button').disabled = order.length === 0;
++  }
++
++  function result(event, value) {
++    if (event.agentInvoked && typeof event.respondWith === 'function') {
++      event.respondWith(Promise.resolve(value));
++    }
++  }
++  const orderResult = () => ({ items: order.map(item => ({ ...item })), totalCents: order.reduce((total, item) => total + item.unitPrice * item.quantity, 0), currency: 'USD' });
++
++  document.querySelector('#search-menu').addEventListener('submit', event => {
++    event.preventDefault();
++    const query = new FormData(event.currentTarget).get('query').trim().toLowerCase();
++    let count = 0;
++    for (const drink of drinks) {
++      const matches = `${drink.name} ${drink.description}`.toLowerCase().includes(query);
++      document.querySelector(`[data-drink-id="${drink.id}"]`).hidden = !matches;
++      if (matches) count++;
++    }
++    result(event, { drinks: drinks.filter(drink => `${drink.name} ${drink.description}`.toLowerCase().includes(query)) });
++    document.querySelector('#search-result').textContent = `${count} ${count === 1 ? 'drink' : 'drinks'} found.`;
++  });
++
++  document.querySelector('#drink-menu').addEventListener('submit', event => {
++    event.preventDefault();
++    const form = event.target;
++    if (!form.reportValidity()) return;
++    const data = new FormData(form);
++    const drink = drinks.find(drink => drink.id === data.get('drink_id'));
++    const size = data.get('size');
++    const milk = data.get('milk');
++    const quantity = quantityValue(data.get('quantity'));
++    if (!drink || !Object.hasOwn(sizes, size) || !milks.includes(milk) || quantity === null) {
++      result(event, { error: 'Invalid drink options or quantity.' });
++      status('Choose a valid drink, size, milk, and quantity from 1 to 20.');
++      return;
++    }
++    const existing = order.find(item => item.drinkId === drink.id && item.size === size && item.milk === milk);
++    if (existing && existing.quantity + quantity > 20) {
++      result(event, { error: 'Maximum quantity is 20 per drink combination.' });
++      status('Each drink combination can have up to 20 items. Update its quantity in your order.');
++      return;
++    }
++    if (existing) existing.quantity += quantity;
++    else order.push({ id: nextId++, drinkId: drink.id, size, milk, quantity, unitPrice: drink.price + sizes[size] });
++    result(event, orderResult());
++    renderOrder();
++    status(`Added ${quantity} ${drink.name} to your order.`);
++  });
++
++  document.querySelector('#update-order').addEventListener('submit', event => {
++    event.preventDefault();
++    const data = new FormData(event.target);
++    const index = order.findIndex(item => item.id === Number(data.get('item_id')));
++    if (index < 0) { result(event, { error: 'Order item not found.' }); return; }
++    if (data.get('action') === 'remove') {
++      order.splice(index, 1);
++      status('Item removed from your order.');
++    } else {
++      if (!event.target.reportValidity()) return;
++      const quantity = quantityValue(data.get('quantity'));
++      if (quantity === null) return;
++      order[index].quantity = quantity;
++      status('Order quantity updated.');
++    }
++    result(event, orderResult());
++    renderOrder();
++  });
++
++  document.querySelector('#clear-order').addEventListener('submit', event => {
++    event.preventDefault();
++    order.length = 0;
++    result(event, orderResult());
++    renderOrder();
++    status('Your order has been cleared.');
++  });
++
++  renderOrder();
++})();
+diff --git a/index.html b/index.html
+index 66c9173..05e0f0f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,38 @@
+       background: #3e2723;
+     }
+ 
++    button, input, select { font: inherit; }
++    button { cursor: pointer; border: 0; }
++    .btn:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
++      outline: 3px solid var(--accent); outline-offset: 3px;
++    }
++    .card form { text-align: left; }
++    label { display: block; font-weight: 600; margin-top: 12px; }
++    input, select { width: 100%; padding: 8px; border: 1px solid #b5a49e; border-radius: 4px; background: white; color: var(--text); }
++    .menu-search { max-width: 520px; margin: 20px auto; }
++    .form-row { display: flex; gap: 12px; align-items: end; }
++    .form-row > div { flex: 1; }
++    .form-row .btn { margin: 0; }
++    .card .btn { width: 100%; }
++    .price { font-weight: 700; margin-top: 8px; }
++    .order-panel { margin-top: 40px; padding: 24px; background: #eee7e3; border-radius: 8px; scroll-margin-top: 90px; }
++    .order-item { padding: 16px 0; border-bottom: 1px solid #c6b9b2; }
++    .order-item form { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
++    .order-item input { width: 80px; }
++    .order-item .btn { margin: 0; }
++    .secondary { background: white; color: var(--primary); border: 1px solid var(--primary); }
++    .secondary:hover { background: var(--secondary); }
++    #order-total { font-size: 1.2rem; font-weight: 700; margin-top: 20px; }
++    #status { min-height: 26px; margin-top: 16px; }
++    [hidden] { display: none !important; }
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .form-row { flex-wrap: wrap; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,7 +192,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -171,29 +203,41 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <form id="search-menu" toolname="search_menu" toolautosubmit class="menu-search" aria-label="Search drinks" tooldescription="Filter the menu by drink name or description. Submit an empty query to show all drinks.">
++        <label for="query">Find your next favorite</label>
++        <div class="form-row">
++          <div><input id="query" name="query" type="search" placeholder="Search drinks"></div>
++          <button class="btn" type="submit">Search menu</button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      </form>
++      <p id="search-result" role="status" style="text-align: center;"></p>
++      <div class="grid" id="drink-menu"></div>
++    </section>
++
++    <section id="order" class="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your order</h2>
++      <p>Build your coffee order here. This is a local demo; no payment or order is sent to a café.</p>
++      <div id="order-items"></div>
++      <p id="order-total"></p>
++      <form id="update-order" toolname="update_order_item" toolautosubmit tooldescription="Change the quantity of an existing local order item or remove it. Select its item_id and action." aria-label="Update an order item" hidden>
++        <label for="order-item-id">Order item</label>
++        <select id="order-item-id" name="item_id" required></select>
++        <label for="order-action">Action</label>
++        <select id="order-action" name="action"><option value="update">Update quantity</option><option value="remove">Remove item</option></select>
++        <label for="order-quantity">New quantity (for updates)</label>
++        <input id="order-quantity" name="quantity" type="number" min="1" max="20" value="1" required>
++        <button class="btn" type="submit">Apply change</button>
++      </form>
++      <form id="clear-order" toolname="clear_order" toolautosubmit aria-label="Clear order" tooldescription="Remove every item from the current order.">
++        <button type="submit" class="btn secondary" id="clear-button" disabled>Clear order</button>
++      </form>
++      <p id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +251,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>

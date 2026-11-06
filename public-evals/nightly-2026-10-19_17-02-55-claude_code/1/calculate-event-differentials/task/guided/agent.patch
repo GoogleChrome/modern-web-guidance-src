@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,24 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .promo-timer {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .promo-timer p+p {
++      margin-top: 2px;
++      font-size: 0.8rem;
++      opacity: 0.8;
++    }
++
++    .promo-timer .remaining {
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +196,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Local wall-clock times (no offset): resolved in the visitor's time zone by the script below -->
++          <div class="promo-timer" data-start="2025-09-01T00:00" data-end="2026-03-01T00:00" hidden>
++            <p class="remaining" role="timer"></p>
++            <p class="elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +227,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script type="module">
++    // Temporal is not in Safari yet; load the reference polyfill when missing.
++    if (typeof Temporal === 'undefined') {
++      ({ Temporal: globalThis.Temporal } = await import('https://esm.sh/@js-temporal/polyfill'));
++    }
++
++    const formatDuration = (duration) => {
++      if (typeof Intl.DurationFormat !== 'undefined') {
++        return new Intl.DurationFormat(navigator.language, { style: 'long' }).format(duration);
++      }
++      const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
++      return `${plural(duration.days, 'day')} and ${plural(duration.hours, 'hour')}`;
++    };
++
++    const options = { largestUnit: 'days', smallestUnit: 'hours', roundingMode: 'floor' };
++
++    // Runs once per page load (no live ticking).
++    for (const timer of document.querySelectorAll('.promo-timer')) {
++      const tz = Temporal.Now.timeZoneId();
++      const start = Temporal.PlainDateTime.from(timer.dataset.start).toZonedDateTime(tz);
++      const end = Temporal.PlainDateTime.from(timer.dataset.end).toZonedDateTime(tz);
++      const now = Temporal.Now.zonedDateTimeISO(tz);
++
++      const remaining = timer.querySelector('.remaining');
++      const elapsed = timer.querySelector('.elapsed');
++
++      if (Temporal.ZonedDateTime.compare(now, end) >= 0) {
++        remaining.textContent = 'This offer has ended.';
++      } else {
++        remaining.textContent = `Ends in ${formatDuration(now.until(end, options))}`;
++      }
++
++      if (Temporal.ZonedDateTime.compare(now, start) >= 0) {
++        const ended = Temporal.ZonedDateTime.compare(now, end) >= 0;
++        elapsed.textContent = ended
++          ? `Ran for ${formatDuration(start.until(end, options))}`
++          : `Started ${formatDuration(start.until(now, options))} ago`;
++      }
++      timer.hidden = false;
++    }
++  </script>
+ </body>
+ 
+ </html>

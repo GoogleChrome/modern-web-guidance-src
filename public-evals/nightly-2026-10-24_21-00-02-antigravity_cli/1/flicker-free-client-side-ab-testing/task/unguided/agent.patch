@@ -1,0 +1,380 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,376 @@
++<!DOCTYPE html>
++<html lang="en" class="async-hide anti-flicker" data-experiment-loading="true">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>PulseFlow — Modern Product Analytics &amp; Experimentation</title>
++
++  <!-- Preconnect to the experiment CDN to minimize connection latency -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++  <link rel="dns-prefetch" href="https://cdn.example.com">
++
++  <!-- Anti-flicker stylesheet: prevents Flash of Original Content (FOOC) before A/B variant is applied -->
++  <style id="anti-flicker-style">
++    html.async-hide,
++    html.anti-flicker,
++    html[data-experiment-loading="true"] body {
++      opacity: 0 !important;
++      visibility: hidden !important;
++    }
++  </style>
++
++  <!-- Anti-flicker controller & early-DOM mutation bridge -->
++  <script>
++    (function () {
++      var docEl = document.documentElement;
++      docEl.classList.add('async-hide', 'anti-flicker');
++      docEl.setAttribute('data-experiment-loading', 'true');
++
++      var revealed = false;
++      var pendingSelectors = [];
++      var origQuerySelector = document.querySelector.bind(document);
++      var origGetElementById = document.getElementById.bind(document);
++
++      function flushPendingMutations() {
++        for (var i = 0; i < pendingSelectors.length; i++) {
++          var item = pendingSelectors[i];
++          var target = item.byId
++            ? origGetElementById(item.selector)
++            : origQuerySelector(item.selector);
++          if (target) {
++            if (item.proxy.__textSet) {
++              target.textContent = item.proxy.textContent;
++            } else if (item.proxy.__htmlSet) {
++              target.innerHTML = item.proxy.innerHTML;
++            }
++            for (var j = 0; j < item.proxy.attributes.length; j++) {
++              var attr = item.proxy.attributes[j];
++              target.setAttribute(attr.name, attr.value);
++            }
++          }
++        }
++        pendingSelectors.length = 0;
++      }
++
++      // Bridge synchronous DOM queries executed in <head> before <body> is parsed
++      document.querySelector = function (selector) {
++        var found = origQuerySelector(selector);
++        if (found || document.body) return found;
++        var dummy = document.createElement('div');
++        Object.defineProperty(dummy, 'textContent', {
++          get: function () { return this._text || ''; },
++          set: function (v) { this._text = v; this.__textSet = true; }
++        });
++        Object.defineProperty(dummy, 'innerText', {
++          get: function () { return this._text || ''; },
++          set: function (v) { this._text = v; this.__textSet = true; }
++        });
++        Object.defineProperty(dummy, 'innerHTML', {
++          get: function () { return this._html || ''; },
++          set: function (v) { this._html = v; this.__htmlSet = true; }
++        });
++        pendingSelectors.push({ selector: selector, proxy: dummy, byId: false });
++        return dummy;
++      };
++
++      document.getElementById = function (id) {
++        var found = origGetElementById(id);
++        if (found || document.body) return found;
++        var dummy = document.createElement('div');
++        Object.defineProperty(dummy, 'textContent', {
++          get: function () { return this._text || ''; },
++          set: function (v) { this._text = v; this.__textSet = true; }
++        });
++        Object.defineProperty(dummy, 'innerText', {
++          get: function () { return this._text || ''; },
++          set: function (v) { this._text = v; this.__textSet = true; }
++        });
++        Object.defineProperty(dummy, 'innerHTML', {
++          get: function () { return this._html || ''; },
++          set: function (v) { this._html = v; this.__htmlSet = true; }
++        });
++        pendingSelectors.push({ selector: id, proxy: dummy, byId: true });
++        return dummy;
++      };
++
++      function revealPage() {
++        if (revealed) return;
++        revealed = true;
++        flushPendingMutations();
++        document.querySelector = origQuerySelector;
++        document.getElementById = origGetElementById;
++        docEl.classList.remove('async-hide', 'anti-flicker');
++        docEl.removeAttribute('data-experiment-loading');
++      }
++
++      function scheduleReveal() {
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', revealPage, { once: true });
++        } else {
++          revealPage();
++        }
++      }
++
++      // Fallback timeout ensures the page never remains hidden if the CDN hangs
++      var fallbackTimer = setTimeout(revealPage, 2000);
++
++      window.__finishExperimentSetup = function () {
++        clearTimeout(fallbackTimer);
++        scheduleReveal();
++      };
++    })();
++  </script>
++
++  <!-- Synchronous A/B testing script in <head> blocks initial paint until variant logic executes -->
++  <script src="https://cdn.example.com/experiment-sdk.js" onload="window.__finishExperimentSetup && window.__finishExperimentSetup()" onerror="window.__finishExperimentSetup && window.__finishExperimentSetup()"></script>
++
++  <style>
++    :root {
++      --bg-primary: #0b0f19;
++      --bg-secondary: #111827;
++      --bg-card: rgba(30, 41, 59, 0.7);
++      --text-primary: #f8fafc;
++      --text-secondary: #94a3b8;
++      --accent: #6366f1;
++      --accent-hover: #4f46e5;
++      --accent-glow: rgba(99, 102, 241, 0.35);
++      --border: rgba(148, 163, 184, 0.15);
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
++      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-primary) 60%);
++      color: var(--text-primary);
++      line-height: 1.6;
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .container {
++      width: 100%;
++      max-width: 1160px;
++      margin: 0 auto;
++      padding: 0 1.5rem;
++    }
++
++    header {
++      border-bottom: 1px solid var(--border);
++      backdrop-filter: blur(12px);
++    }
++
++    .nav {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      height: 4.5rem;
++    }
++
++    .brand {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--text-primary);
++      text-decoration: none;
++      letter-spacing: -0.02em;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .brand-dot {
++      width: 0.65rem;
++      height: 0.65rem;
++      border-radius: 50%;
++      background: var(--accent);
++      box-shadow: 0 0 12px var(--accent);
++    }
++
++    .nav-links {
++      display: flex;
++      gap: 2rem;
++      list-style: none;
++    }
++
++    .nav-links a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.95rem;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover {
++      color: var(--text-primary);
++    }
++
++    main {
++      flex: 1;
++    }
++
++    .hero {
++      padding: 6rem 0 5rem;
++      text-align: center;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.35rem 0.9rem;
++      border-radius: 9999px;
++      background: rgba(99, 102, 241, 0.12);
++      border: 1px solid rgba(99, 102, 241, 0.3);
++      color: #a5b4fc;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-bottom: 1.75rem;
++    }
++
++    .hero-title {
++      font-size: clamp(2.5rem, 5vw, 4rem);
++      font-weight: 800;
++      letter-spacing: -0.03em;
++      line-height: 1.12;
++      max-width: 820px;
++      margin: 0 auto 1.5rem;
++    }
++
++    .hero-subtitle {
++      font-size: clamp(1.1rem, 2vw, 1.3rem);
++      color: var(--text-secondary);
++      max-width: 640px;
++      margin: 0 auto 2.5rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 1rem;
++      flex-wrap: wrap;
++    }
++
++    .cta-button {
++      appearance: none;
++      border: none;
++      background: var(--accent);
++      color: #ffffff;
++      font-size: 1.05rem;
++      font-weight: 600;
++      padding: 0.95rem 2rem;
++      border-radius: 0.6rem;
++      cursor: pointer;
++      box-shadow: 0 10px 25px -5px var(--accent-glow);
++      transition: background-color 0.15s ease, transform 0.15s ease;
++    }
++
++    .cta-button:hover {
++      background: var(--accent-hover);
++      transform: translateY(-1px);
++    }
++
++    .cta-button:active {
++      transform: translateY(0);
++    }
++
++    .features {
++      padding: 3rem 0 6rem;
++    }
++
++    .features-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 1.5rem;
++    }
++
++    .feature-card {
++      background: var(--bg-card);
++      border: 1px solid var(--border);
++      border-radius: 0.85rem;
++      padding: 1.75rem;
++    }
++
++    .feature-card h3 {
++      font-size: 1.15rem;
++      margin-bottom: 0.6rem;
++    }
++
++    .feature-card p {
++      color: var(--text-secondary);
++      font-size: 0.95rem;
++    }
++
++    footer {
++      border-top: 1px solid var(--border);
++      padding: 2rem 0;
++      text-align: center;
++      color: var(--text-secondary);
++      font-size: 0.875rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <div class="container nav">
++      <a href="/" class="brand">
++        <span class="brand-dot" aria-hidden="true"></span>
++        <span>PulseFlow</span>
++      </a>
++      <nav aria-label="Primary Navigation">
++        <ul class="nav-links">
++          <li><a href="#features">Features</a></li>
++          <li><a href="#experiments">Experiments</a></li>
++          <li><a href="#pricing">Pricing</a></li>
++        </ul>
++      </nav>
++    </div>
++  </header>
++
++  <main>
++    <section id="hero" class="hero" data-experiment="hero-variant">
++      <div class="container">
++        <div class="hero-badge">Real-Time Experimentation Engine</div>
++        <h1 id="hero-title" class="hero-title" data-experiment-target="headline">
++          Ship high-converting product experiences with confidence
++        </h1>
++        <p id="hero-subtitle" class="hero-subtitle" data-experiment-target="subheadline">
++          Run flicker-free A/B tests, measure user impact in real time, and roll out winning variants across every customer touchpoint.
++        </p>
++        <div class="hero-actions">
++          <button type="button" id="cta-button" class="cta-button cta" data-experiment-target="cta">
++            Start Free Trial
++          </button>
++        </div>
++      </div>
++    </section>
++
++    <section id="features" class="features">
++      <div class="container features-grid">
++        <article class="feature-card">
++          <h3>Zero-Flicker Delivery</h3>
++          <p>Synchronous head evaluation with anti-flicker protection ensures users never see unstyled or pre-variant content.</p>
++        </article>
++        <article class="feature-card">
++          <h3>Instant Variant Targeting</h3>
++          <p>Deterministic bucketing assigns visitors to consistent experiment cohorts from the very first page view.</p>
++        </article>
++        <article class="feature-card">
++          <h3>Actionable Metrics</h3>
++          <p>Track conversion lift, statistical significance, and retention curves in a unified real-time dashboard.</p>
++        </article>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="container">
++      &copy; 2026 PulseFlow Inc. All rights reserved.
++    </div>
++  </footer>
++</body>
++</html>

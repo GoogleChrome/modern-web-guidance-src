@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,31 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!--
++    Speculative prefetching: when a user hovers (or starts tapping) a same-origin
++    link, the browser fetches the next page in advance so navigation feels instant.
++    State-changing URLs (logout) and anything marked .no-prefetch are never fetched.
++    Unsupported browsers simply ignore this block.
++  -->
++  <script type="speculationrules">
++    {
++      "prefetch": [{
++        "tag": "site-link-prefetch",
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": ["/logout", "/logout/*", "/logout\\?*", "/logout/*\\?*"] } },
++            { "not": { "selector_matches": ".no-prefetch" } },
++            { "not": { "selector_matches": "[rel~=nofollow]" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -163,9 +186,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link no-prefetch" rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">

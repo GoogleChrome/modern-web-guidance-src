@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets preview */
++    .paywall-container {
++      margin-top: 56px;
++      padding-top: 36px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .secrets-heading {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .secrets-eyebrow {
++      display: inline-block;
++      margin-bottom: 10px;
++      padding: 4px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 20px;
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 1.5px;
++      text-transform: uppercase;
++    }
++
++    .secrets-heading h2 {
++      margin-bottom: 8px;
++      font-size: 2rem;
++    }
++
++    .secrets-preview {
++      max-width: 720px;
++      max-height: 320px;
++      margin: 0 auto;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
++      mask-mode: alpha;
++    }
++
++    .secrets-preview article {
++      margin-bottom: 24px;
++    }
++
++    .secrets-preview h3 {
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .secrets-access {
++      margin-top: 12px;
++      text-align: center;
++    }
++
++    .secrets-access p {
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="secrets-title">
++      <div class="secrets-heading">
++        <span class="secrets-eyebrow">Exclusive · Members only</span>
++        <h2 id="secrets-title">Roaster's Secrets</h2>
++        <p>A little inside knowledge. A better cup of coffee.</p>
++      </div>
++
++      <div class="secrets-preview">
++        <article>
++          <h3>01 / Let your beans breathe</h3>
++          <p>Fresh from the roaster isn't always the sweet spot. As beans rest, they release gases that can make extraction uneven. Give your next bag a little time, then notice how the flavors open up from cup to cup.</p>
++        </article>
++        <article>
++          <h3>02 / Change one thing at a time</h3>
++          <p>Keep your coffee dose and water consistent while you fine-tune your grind. A small adjustment can reveal a sweeter, more balanced brew. Taste, take a note, and let your palate guide the next cup.</p>
++        </article>
++        <article>
++          <h3>03 / Find the story in the roast</h3>
++          <p>Origin is only the beginning. Behind every batch are decisions about time, heat, and when to finish the roast. Follow our roasters behind the scenes to discover how those choices shape what's in your cup.</p>
++        </article>
++      </div>
++
++      <div class="secrets-access">
++        <p>There's more brewing for our members.</p>
++        <a href="/rewards" class="btn">Explore Member Rewards <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

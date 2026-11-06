@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,8 +106,60 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .promo-badge-slot {
++      display: grid;
++      place-items: center;
++      padding: 32px 40px;
++    }
++
++    .target {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      width: 112px;
++      height: 112px;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.18);
++      /* Independent properties keep hover scaling from replacing either animation.
++         Identity transforms establish a stable stacking context before hover. */
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      animation: promo-spin 12s linear infinite,
++        promo-slide 2.8s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.15;
++    }
++
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -24px 0; }
++      to { translate: 24px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation-duration: 60s, 24s;
++        transition-duration: 0s;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -176,8 +228,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge-slot">
++        <p class="target"><strong>Featured</strong><span>Seasonal sips</span></p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+index 66c9173..95fc83a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,110 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Auth dialog */
++    .signin-link {
++      background: none;
++      border: 1px solid var(--accent);
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .signin-link:hover {
++      color: var(--accent);
++    }
++
++    dialog.auth {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 28px;
++      width: min(420px, 92vw);
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog.auth::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .auth-tabs {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 18px;
++    }
++
++    .auth-tabs button {
++      flex: 1;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      background: white;
++      color: var(--text);
++      border-radius: 4px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .auth-tabs button[aria-selected="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .auth label {
++      display: block;
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++    }
++
++    .auth input[type="email"] {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      margin-bottom: 14px;
++    }
++
++    .auth-help {
++      font-size: 0.85rem;
++      margin-bottom: 14px;
++    }
++
++    #auth-button {
++      min-height: 44px;
++      display: flex;
++      justify-content: center;
++    }
++
++    #auth-status {
++      margin-top: 14px;
++      font-size: 0.85rem;
++      min-height: 1.3em;
++    }
++
++    #auth-status.error {
++      color: #b71c1c;
++    }
++
++    #auth-status.ok {
++      color: #1b5e20;
++    }
++
++    .auth-close {
++      margin-top: 16px;
++      background: none;
++      border: none;
++      color: var(--text);
++      text-decoration: underline;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.8rem;
++    }
+   </style>
+ </head>
+ 
+@@ -164,7 +268,8 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="signin-link" id="signin-open">Sign in</button></li>
++      <li><a href="/logout" class="logout-link" id="logout-link" hidden>Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +312,188 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="auth" id="auth" aria-labelledby="auth-title">
++    <h2 id="auth-title" style="margin-bottom: 14px;">Your account</h2>
++    <div class="auth-tabs" role="tablist">
++      <button type="button" role="tab" data-intent="signup" aria-selected="true">Create account</button>
++      <button type="button" role="tab" data-intent="signin" aria-selected="false">Sign in</button>
++      <button type="button" role="tab" data-intent="recover" aria-selected="false">Recover</button>
++    </div>
++    <p class="auth-help" id="auth-help"></p>
++    <label for="auth-email">Email address</label>
++    <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com" required>
++    <div id="auth-button"></div>
++    <p id="auth-status" role="status" aria-live="polite"></p>
++    <button type="button" class="auth-close" id="auth-close">Close</button>
++  </dialog>
++
++  <script>
++    /*
++     * Email ownership is proven with a Google-signed ID token whose
++     * `email_verified` claim is true. No code or link is emailed.
++     *
++     * Configure before shipping:
++     *   googleClientId  - OAuth Web client ID from Google Cloud Console
++     *   verifyEndpoint  - your server route. It receives
++     *                     { credential, nonce, intent, email }, MUST validate the
++     *                     token signature (Google JWKS), iss, aud, exp, nonce and
++     *                     email_verified, then create the session / account.
++     *                     It responds { email } on success.
++     * Without verifyEndpoint the page falls back to a client-side DEMO that only
++     * decodes the token. That is NOT secure: anyone can forge it in devtools.
++     */
++    window.DAILY_GRIND_AUTH = window.DAILY_GRIND_AUTH || {
++      googleClientId: '',
++      verifyEndpoint: ''
++    };
++
++    (function () {
++      const cfg = window.DAILY_GRIND_AUTH;
++      const dlg = document.getElementById('auth');
++      const emailInput = document.getElementById('auth-email');
++      const statusEl = document.getElementById('auth-status');
++      const helpEl = document.getElementById('auth-help');
++      const buttonEl = document.getElementById('auth-button');
++      const tabs = dlg.querySelectorAll('[data-intent]');
++      const signinBtn = document.getElementById('signin-open');
++      const logoutLink = document.getElementById('logout-link');
++      const HELP = {
++        signup: 'Enter your email, then confirm you own it with Google. We never email you a code.',
++        signin: 'Confirm your email with Google to sign in. No code or link needed.',
++        recover: 'Lost access? Prove you still own your email with Google to get back in.'
++      };
++      const USERS_KEY = 'dg_users', SESSION_KEY = 'dg_session';
++      let intent = 'signup', nonce = '', gsiLoaded = false;
++
++      const norm = e => e.trim().toLowerCase();
++      const users = () => JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
++      const say = (msg, cls) => { statusEl.textContent = msg; statusEl.className = cls || ''; };
++
++      function renderSession() {
++        const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
++        signinBtn.textContent = s ? s.email : 'Sign in';
++        logoutLink.hidden = !s;
++      }
++
++      logoutLink.addEventListener('click', e => {
++        e.preventDefault();
++        localStorage.removeItem(SESSION_KEY);
++        renderSession();
++      });
++
++      function randomNonce() {
++        const a = new Uint8Array(16);
++        crypto.getRandomValues(a);
++        return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
++      }
++
++      function decodeJwt(t) {
++        const part = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
++        return JSON.parse(decodeURIComponent(escape(atob(part))));
++      }
++
++      // Returns the verified email, or throws.
++      async function verify(credential, typedEmail) {
++        if (cfg.verifyEndpoint) {
++          const res = await fetch(cfg.verifyEndpoint, {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            credentials: 'include',
++            body: JSON.stringify({ credential, nonce, intent, email: typedEmail })
++          });
++          if (!res.ok) throw new Error('Verification failed.');
++          return norm((await res.json()).email);
++        }
++        // DEMO ONLY: claims are checked but the signature is not.
++        const c = decodeJwt(credential);
++        if (!['accounts.google.com', 'https://accounts.google.com'].includes(c.iss)) throw new Error('Unexpected issuer.');
++        if (c.aud !== cfg.googleClientId) throw new Error('Token was issued for a different app.');
++        if (c.exp * 1000 < Date.now()) throw new Error('Token expired.');
++        if (c.nonce !== nonce) throw new Error('Nonce mismatch. Please try again.');
++        if (c.email_verified !== true) throw new Error('Google has not verified this email address.');
++        return norm(c.email);
++      }
++
++      async function onCredential(resp) {
++        const typed = norm(emailInput.value);
++        try {
++          const email = await verify(resp.credential, typed);
++          if (email !== typed) throw new Error('That Google account is ' + email + ', not ' + typed + '.');
++          if (!cfg.verifyEndpoint) {
++            const list = users(), exists = list.includes(email);
++            if (intent === 'signup' && exists) throw new Error('An account already exists. Use Sign in.');
++            if (intent !== 'signup' && !exists) throw new Error('No account found for this email. Create one first.');
++            if (intent === 'signup') localStorage.setItem(USERS_KEY, JSON.stringify([...list, email]));
++            localStorage.setItem(SESSION_KEY, JSON.stringify({ email }));
++          }
++          renderSession();
++          say('Email verified. You are signed in as ' + email + '.', 'ok');
++          setTimeout(() => dlg.close(), 1200);
++        } catch (err) {
++          say(err.message, 'error');
++          mountButton();
++        }
++      }
++
++      function loadGsi() {
++        return gsiLoaded || (gsiLoaded = new Promise((resolve, reject) => {
++          const s = document.createElement('script');
++          s.src = 'https://accounts.google.com/gsi/client';
++          s.onload = resolve;
++          s.onerror = () => { gsiLoaded = false; reject(new Error('Could not load Google sign-in.')); };
++          document.head.appendChild(s);
++        }));
++      }
++
++      async function mountButton() {
++        buttonEl.textContent = '';
++        if (!cfg.googleClientId) {
++          say('Email verification is not configured (set DAILY_GRIND_AUTH.googleClientId).', 'error');
++          return;
++        }
++        try {
++          await loadGsi();
++        } catch (err) { say(err.message, 'error'); return; }
++        nonce = randomNonce();
++        google.accounts.id.initialize({
++          client_id: cfg.googleClientId,
++          callback: onCredential,
++          nonce,
++          auto_select: false
++        });
++        google.accounts.id.renderButton(buttonEl, {
++          theme: 'outline',
++          size: 'large',
++          text: intent === 'signup' ? 'signup_with' : 'signin_with',
++          width: 300
++        });
++      }
++
++      function setIntent(next) {
++        intent = next;
++        tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.intent === next)));
++        helpEl.textContent = HELP[next];
++        say('');
++        mountButton();
++      }
++
++      // Don't let the button run until the typed address looks valid.
++      emailInput.addEventListener('input', () => {
++        buttonEl.style.pointerEvents = emailInput.validity.valid && emailInput.value ? '' : 'none';
++        buttonEl.style.opacity = emailInput.validity.valid && emailInput.value ? '' : '0.5';
++      });
++
++      tabs.forEach(t => t.addEventListener('click', () => setIntent(t.dataset.intent)));
++      signinBtn.addEventListener('click', () => {
++        dlg.showModal();
++        setIntent(intent);
++        emailInput.dispatchEvent(new Event('input'));
++      });
++      document.getElementById('auth-close').addEventListener('click', () => dlg.close());
++      renderSession();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

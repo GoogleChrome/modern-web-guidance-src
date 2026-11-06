@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,45 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    @function --linear-gradient(--start: #e0eafc, --end: #cfdef3, --angle: 135deg) {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --gradient(--start: #e0eafc, --end: #cfdef3, --angle: 135deg) {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --columns(--small: 1, --large: 2) {
++      result: repeat(var(--small), 1fr);
++      @media (min-width: 768px) {
++        result: repeat(var(--large), 1fr);
++      }
++    }
++
++    @function --responsive-columns(--small: 1, --large: 2) {
++      result: repeat(var(--small), 1fr);
++      @media (min-width: 768px) {
++        result: repeat(var(--large), 1fr);
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background: --gradient();
++      min-height: 100vh;
+     }
+ 
++    h2 {
++      background: --gradient();
++      padding: 10px 20px;
++      border-radius: 8px;
++      margin-bottom: 20px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,11 +129,13 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .grid,
++    main .grid,
++    main section .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: --columns(1, 2);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

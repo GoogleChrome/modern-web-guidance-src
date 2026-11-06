@@ -1,0 +1,287 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,197 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* ==========================================================
++       Dynamic index/count plumbing
++       Uses native CSS sibling-index() / sibling-count() so every
++       layout below recalculates automatically when items are
++       added or removed. A tiny script (bottom of page) supplies
++       --i / --n only in browsers lacking these functions.
++       NOTE: items must be the only element children of their parent.
++       ========================================================== */
++    .spectrum-card,
++    .fan-card,
++    .circle-orb {
++      --_i: calc(sibling-index() - 1);
++      --_n: sibling-count();
++    }
++
++    @supports not (order: sibling-index()) {
++      .spectrum-card,
++      .fan-card,
++      .circle-orb {
++        --_i: var(--i, 0);
++        --_n: var(--n, 1);
++      }
++    }
++
++    /* Spectrum cards: hues evenly distributed over the full wheel */
++    .spectrum-card {
++      --_hue: calc(360deg / var(--_n) * var(--_i) + 30deg);
++      background: linear-gradient(160deg,
++          oklch(95% 0.06 var(--_hue)),
++          oklch(86% 0.11 var(--_hue)));
++      border-top: 4px solid oklch(60% 0.15 var(--_hue));
++    }
++
++    .spectrum-card h3 {
++      color: oklch(35% 0.1 var(--_hue));
++    }
++
++    .section-title {
++      text-align: center;
++      margin-top: 60px;
++    }
++
++    .section-sub {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    /* Fan of loyalty cards — symmetric around the centre */
++    .fan-container {
++      --card-w: 160px;
++      --card-h: 230px;
++      --max-spread: 70deg;  /* total arc used by the whole fan */
++      --max-step: 16deg;    /* cap so few cards don't splay too wide */
++      position: relative;
++      height: calc(var(--card-h) + 80px);
++      margin: 20px auto 0;
++      list-style: none;
++    }
++
++    .fan-card {
++      --_step: min(var(--max-step), var(--max-spread) / max(var(--_n) - 1, 1));
++      --_offset: calc(var(--_i) - (var(--_n) - 1) / 2); /* -2,-1,0,1,2 for 5 */
++      --_hue: calc(25deg + 50deg / max(var(--_n) - 1, 1) * var(--_i));
++      position: absolute;
++      left: 50%;
++      bottom: 20px;
++      width: var(--card-w);
++      height: var(--card-h);
++      margin-left: calc(var(--card-w) / -2);
++      padding: 18px 14px;
++      border-radius: 14px;
++      color: white;
++      background: linear-gradient(155deg,
++          oklch(55% 0.12 var(--_hue)),
++          oklch(30% 0.07 var(--_hue)));
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      transform-origin: 50% 120%;
++      transform: rotate(calc(var(--_step) * var(--_offset)));
++      transition: transform 0.35s ease, box-shadow 0.35s ease;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: left;
++    }
++
++    .fan-card:hover,
++    .fan-card:focus-within {
++      z-index: 10;
++      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
++      transform: rotate(calc(var(--_step) * var(--_offset))) translateY(-30px);
++    }
++
++    .fan-card .tier {
++      font-size: 0.7rem;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      opacity: 0.8;
++    }
++
++    .fan-card h4 {
++      font-size: 1.15rem;
++      line-height: 1.2;
++    }
++
++    .fan-card .perk {
++      font-size: 0.8rem;
++      opacity: 0.9;
++    }
++
++    /* Circle of coffee origin badges
++       The orbit has a fixed responsive size; orb diameter and radius are
++       derived from the item count so orbs never overlap, whatever n is. */
++    .circle-container {
++      margin: 20px auto 0;
++      display: grid;
++      place-items: center;
++      position: relative;
++    }
++
++    .circle-orbit {
++      --max-orb: 100px;
++      position: relative;
++      width: min(90vw, 460px);
++      aspect-ratio: 1;
++      list-style: none;
++      container-type: inline-size;
++    }
++
++    .circle-center {
++      position: absolute;
++      inset: 0;
++      margin: auto;
++      width: min(30vw, 140px);
++      height: min(30vw, 140px);
++      border-radius: 50%;
++      display: grid;
++      place-content: center;
++      text-align: center;
++      background: var(--primary);
++      color: white;
++      font-weight: bold;
++      line-height: 1.2;
++      pointer-events: none;
++    }
++
++    .circle-orb {
++      /* o <= k*pi*S / (n + k*pi), k = 0.8 gap factor, S = orbit size */
++      --orb: min(var(--max-orb), 100cqi * 2.513 / (var(--_n) + 2.513));
++      --_radius: calc((100cqi - var(--orb)) / 2);
++      --_angle: calc(360deg / var(--_n) * var(--_i) - 90deg);
++      --_hue: calc(360deg / var(--_n) * var(--_i));
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      width: var(--orb);
++      height: var(--orb);
++      margin: calc(var(--orb) / -2) 0 0 calc(var(--orb) / -2);
++      border-radius: 50%;
++      display: grid;
++      place-content: center;
++      text-align: center;
++      font-size: clamp(0.6rem, calc(var(--orb) * 0.13), 0.85rem);
++      font-weight: 600;
++      line-height: 1.15;
++      color: oklch(28% 0.08 var(--_hue));
++      background: radial-gradient(circle at 30% 30%,
++          oklch(97% 0.04 var(--_hue)),
++          oklch(82% 0.12 var(--_hue)));
++      border: 3px solid oklch(60% 0.14 var(--_hue));
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      transform: rotate(var(--_angle)) translate(var(--_radius)) rotate(calc(-1 * var(--_angle)));
++      transition: scale 0.3s ease;
++    }
++
++    .circle-orb:hover {
++      scale: 1.12;
++    }
++
++    .circle-orb .flag {
++      font-size: 1.4rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .fan-card,
++      .circle-orb {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,25 +366,53 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 class="section-title">Loyalty Rewards</h2>
++      <p class="section-sub">Climb the tiers and unlock more perks with every cup.</p>
++      <ul class="fan-container">
++        <li class="fan-card"><span class="tier">Tier 1</span><h4>Bean Starter</h4><span class="perk">Free drink on your birthday</span></li>
++        <li class="fan-card"><span class="tier">Tier 2</span><h4>Daily Sipper</h4><span class="perk">10% off pastries</span></li>
++        <li class="fan-card"><span class="tier">Tier 3</span><h4>Roast Regular</h4><span class="perk">Free size upgrades</span></li>
++        <li class="fan-card"><span class="tier">Tier 4</span><h4>Brew Master</h4><span class="perk">Monthly free bag of beans</span></li>
++        <li class="fan-card"><span class="tier">Tier 5</span><h4>Grind Legend</h4><span class="perk">Exclusive cupping events</span></li>
++      </ul>
++    </section>
++
++    <section>
++      <h2 class="section-title">Our Coffee Origins</h2>
++      <p class="section-sub">Single-origin beans sourced from farms around the world.</p>
++      <div class="circle-container">
++        <div class="circle-center">Sourced<br>Worldwide</div>
++        <ul class="circle-orbit">
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇪🇹</span>Ethiopia</li>
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇨🇴</span>Colombia</li>
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇬🇹</span>Guatemala</li>
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇰🇪</span>Kenya</li>
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇮🇩</span>Sumatra</li>
++          <li class="circle-orb"><span class="flag" aria-hidden="true">🇧🇷</span>Brazil</li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +423,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* Fallback for browsers without CSS sibling-index()/sibling-count():
++       exposes --i / --n on each item and keeps them in sync on DOM changes. */
++    (() => {
++      if (CSS.supports('order', 'sibling-index()')) return;
++      const SEL = '.spectrum-card, .fan-card, .circle-orb';
++      const sync = () => {
++        const parents = new Set([...document.querySelectorAll(SEL)].map(el => el.parentElement));
++        parents.forEach(parent => {
++          const kids = [...parent.children];
++          kids.forEach((el, i) => {
++            el.style.setProperty('--i', i);
++            el.style.setProperty('--n', kids.length);
++          });
++        });
++      };
++      sync();
++      new MutationObserver(sync).observe(document.body, { childList: true, subtree: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

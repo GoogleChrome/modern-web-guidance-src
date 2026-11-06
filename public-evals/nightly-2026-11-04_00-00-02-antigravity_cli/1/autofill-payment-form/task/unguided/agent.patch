@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form Section */
++    .payment-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 550px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .payment-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++      font-family: inherit;
++      transition: border-color 0.3s;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .payment-section .btn-submit {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 20px;
++      margin-top: 10px;
++    }
++
++    .payment-message {
++      margin-top: 15px;
++      padding: 10px;
++      border-radius: 5px;
++      text-align: center;
++      font-weight: 600;
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +267,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="payment" class="payment-section">
++      <h2>Payment Details</h2>
++      <form id="payment-form">
++        <div class="form-group">
++          <label for="card-name">Name on Card</label>
++          <input type="text" id="card-name" name="cardName" placeholder="Jane Doe" autocomplete="cc-name" required>
++        </div>
++        <div class="form-group">
++          <label for="card-number">Card Number</label>
++          <input type="text" id="card-number" name="cardNumber" inputmode="numeric" placeholder="1234 5678 9012 3456" maxlength="19" autocomplete="cc-number" required>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="expiry-date">Expiry Date</label>
++            <input type="text" id="expiry-date" name="expiryDate" inputmode="numeric" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp" required>
++          </div>
++          <div class="form-group">
++            <label for="security-code">Security Code (CVV/CVC)</label>
++            <input type="text" id="security-code" name="securityCode" inputmode="numeric" placeholder="123" maxlength="4" autocomplete="cc-csc" required>
++          </div>
++        </div>
++        <button type="submit" class="btn btn-submit">Submit Payment</button>
++        <div id="payment-message" class="payment-message" role="status">Payment details submitted successfully!</div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    document.getElementById('payment-form').addEventListener('submit', function (e) {
++      e.preventDefault();
++      var msg = document.getElementById('payment-message');
++      msg.style.display = 'block';
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

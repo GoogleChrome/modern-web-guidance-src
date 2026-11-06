@@ -1,0 +1,202 @@
+diff --git a/index.html b/index.html
+index 66c9173..55e63f8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,55 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Inline Auth Status & Modal */
++    .auth-banner {
++      background: #efebe9;
++      color: var(--primary);
++      text-align: center;
++      padding: 10px 20px;
++      font-size: 0.95rem;
++      border-bottom: 1px solid var(--secondary);
++      display: none;
++    }
++
++    .auth-banner.visible {
++      display: block;
++    }
++
++    .inline-login-panel {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      max-width: 420px;
++      margin: 20px auto;
++      padding: 20px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      display: none;
++    }
++
++    .inline-login-panel.visible {
++      display: block;
++    }
++
++    .inline-login-panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .inline-login-panel input {
++      width: 100%;
++      padding: 10px;
++      margin-bottom: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .inline-login-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: flex-end;
++    }
+   </style>
+ </head>
+ 
+@@ -168,12 +217,26 @@
+     </ul>
+   </nav>
+ 
++  <div id="auth-status-banner" class="auth-banner" role="status" aria-live="polite"></div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section id="inline-login-panel" class="inline-login-panel" aria-label="Inline Sign In">
++    <h3>Sign In to Continue</h3>
++    <form id="inline-login-form">
++      <input type="text" name="username" autocomplete="username webauthn" placeholder="Email or username" required>
++      <input type="password" name="password" autocomplete="current-password webauthn" placeholder="Password" required>
++      <div class="inline-login-actions">
++        <button type="button" id="inline-login-dismiss" class="btn" style="background: #8d6e63; border: none; cursor: pointer;">Continue Browsing</button>
++        <button type="submit" class="btn" style="border: none; cursor: pointer;">Sign In</button>
++      </div>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +270,114 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const statusBanner = document.getElementById('auth-status-banner');
++      const inlineLoginPanel = document.getElementById('inline-login-panel');
++      const inlineLoginForm = document.getElementById('inline-login-form');
++      const inlineLoginDismiss = document.getElementById('inline-login-dismiss');
++
++      function showStatus(message) {
++        if (!statusBanner) return;
++        statusBanner.textContent = message;
++        statusBanner.classList.add('visible');
++      }
++
++      function handleAuthenticatedCredential(credential, targetHref) {
++        if (!credential) return;
++        if (inlineLoginPanel) {
++          inlineLoginPanel.classList.remove('visible');
++        }
++        const label = credential.id || 'Returning Customer';
++        const method = credential.type === 'password' ? 'saved password' : 'passkey';
++        showStatus(`Signed in as ${label} via ${method}. Continuing to ${targetHref || 'page'}...`);
++      }
++
++      async function attemptImmediateSignIn(event) {
++        const link = event.currentTarget;
++        const targetHref = link ? link.getAttribute('href') : '';
++        event.preventDefault();
++
++        if (window.PublicKeyCredential && typeof window.PublicKeyCredential.getClientCapabilities === 'function') {
++          try {
++            await window.PublicKeyCredential.getClientCapabilities();
++          } catch (_) {
++            // Continue even if capability check fails
++          }
++        }
++
++        try {
++          const challenge = new Uint8Array(32);
++          if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
++            window.crypto.getRandomValues(challenge);
++          }
++
++          const credential = await navigator.credentials.get({
++            publicKey: {
++              challenge: challenge,
++              rpId: window.location.hostname || 'localhost'
++            },
++            password: true,
++            mediation: 'immediate'
++          });
++
++          if (credential) {
++            handleAuthenticatedCredential(credential, targetHref);
++          }
++        } catch (error) {
++          if (error && error.name === 'NotAllowedError') {
++            // No saved local passkey or password available (or user dismissed).
++            // Keep the customer on the current page without redirecting to a separate login screen.
++            if (inlineLoginPanel && (targetHref === '/rewards' || targetHref === '/account' || targetHref === '/order-online')) {
++              inlineLoginPanel.classList.add('visible');
++            }
++          } else {
++            console.error('Immediate sign-in error:', error);
++          }
++        }
++      }
++
++      // Attach immediate sign-in to browsing and customer action links,
++      // excluding the logout link and informational/legal footer links.
++      const browsingLinks = document.querySelectorAll(
++        'nav a:not(.logout-link):not([href="/logout"]), .hero a, main a'
++      );
++      browsingLinks.forEach((link) => {
++        link.addEventListener('click', attemptImmediateSignIn);
++      });
++
++      // Handle logout and footer links in-page without triggering credential prompts
++      const nonAuthLinks = document.querySelectorAll('a.logout-link, a[href="/logout"], footer a');
++      nonAuthLinks.forEach((link) => {
++        link.addEventListener('click', (event) => {
++          event.preventDefault();
++          if (link.classList.contains('logout-link') || link.getAttribute('href') === '/logout') {
++            if (statusBanner) {
++              statusBanner.textContent = '';
++              statusBanner.classList.remove('visible');
++            }
++          }
++        });
++      });
++
++      if (inlineLoginDismiss && inlineLoginPanel) {
++        inlineLoginDismiss.addEventListener('click', () => {
++          inlineLoginPanel.classList.remove('visible');
++        });
++      }
++
++      if (inlineLoginForm && inlineLoginPanel) {
++        inlineLoginForm.addEventListener('submit', (event) => {
++          event.preventDefault();
++          const formData = new FormData(inlineLoginForm);
++          const username = formData.get('username') || 'Customer';
++          inlineLoginPanel.classList.remove('visible');
++          showStatus(`Signed in as ${username}.`);
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,101 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // fetchLater() polyfill for browsers without native support (Firefox, Safari).
++    // Falls back to fetch keepalive / sendBeacon when the page becomes hidden.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    // Latest value of each metric, keyed by metric name. The whole snapshot is
++    // sent in a single beacon when the user leaves the page.
++    const vitalsData = {
++      pageUrl: location.href,
++      metrics: {},
++    };
++
++    let fetchLaterController = null;
++
++    function queueBeacon() {
++      // Replace the pending beacon with one carrying the updated snapshot.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify(vitalsData),
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Quota exceeded or unsupported request; drop this snapshot.
++      }
++    }
++
++    function handleMetric({ name, value, rating, delta, id, navigationType }) {
++      vitalsData.metrics[name] = { value, rating, delta, id, navigationType };
++      queueBeacon();
++    }
++
++    // reportAllChanges keeps the queued payload current as CLS/INP/LCP change,
++    // so the beacon sent on unload always holds the final values.
++    const options = { reportAllChanges: true };
++    onCLS(handleMetric, options);
++    onINP(handleMetric, options);
++    onLCP(handleMetric, options);
++    onFCP(handleMetric, options);
++    onTTFB(handleMetric, options);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

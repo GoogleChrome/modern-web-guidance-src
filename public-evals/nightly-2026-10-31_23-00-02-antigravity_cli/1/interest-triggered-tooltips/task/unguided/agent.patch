@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip / Popover Styles */
++    .tooltip-container {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      margin-top: 15px;
++    }
++
++    .tooltip-container .btn {
++      margin-top: 0;
++    }
++
++    .tooltip {
++      display: none;
++      visibility: hidden;
++      opacity: 0;
++      position: absolute;
++      left: calc(100% + 10px);
++      top: 50%;
++      transform: translateY(-50%);
++      width: 175px;
++      background: var(--text);
++      color: var(--light);
++      text-align: left;
++      padding: 10px 12px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-size: 0.8rem;
++      line-height: 1.4;
++      z-index: 100;
++      pointer-events: none;
++    }
++
++    .tooltip::before {
++      content: "";
++      position: absolute;
++      right: 100%;
++      top: 50%;
++      transform: translateY(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: transparent var(--text) transparent transparent;
++    }
++
++    .tooltip strong {
++      display: block;
++      color: var(--accent);
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++    }
++
++    .tooltip span {
++      display: block;
++      color: var(--secondary);
++      font-size: 0.75rem;
++    }
++
++    .tooltip-container:hover .tooltip,
++    .btn:hover + .tooltip,
++    .btn:focus + .tooltip,
++    .tooltip.visible {
++      display: block;
++      visibility: visible;
++      opacity: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +246,40 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-container">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tooltip-maple-latte">View Details</a>
++            <div id="tooltip-maple-latte" class="tooltip popover" role="tooltip">
++              <strong>210 Calories</strong>
++              <span>16 oz • 150mg Caffeine</span>
++              <span>Oat milk &amp; pure maple</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-container">
++            <a href="/menu/espresso" class="btn" aria-describedby="tooltip-espresso">View Details</a>
++            <div id="tooltip-espresso" class="tooltip popover" role="tooltip">
++              <strong>15 Calories</strong>
++              <span>2 oz • 180mg Caffeine</span>
++              <span>Double shot • 0g Sugar</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-container">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tooltip-cold-brew">View Details</a>
++            <div id="tooltip-cold-brew" class="tooltip popover" role="tooltip">
++              <strong>5 Calories</strong>
++              <span>16 oz • 200mg Caffeine</span>
++              <span>Unsweetened • Smooth</span>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +293,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.tooltip-container').forEach((container) => {
++      const btn = container.querySelector('.btn');
++      const tooltip = container.querySelector('.tooltip');
++      if (!btn || !tooltip) return;
++
++      const show = () => tooltip.classList.add('visible');
++      const hide = () => tooltip.classList.remove('visible');
++
++      btn.addEventListener('mouseenter', show);
++      btn.addEventListener('mouseleave', hide);
++      btn.addEventListener('focus', show);
++      btn.addEventListener('blur', hide);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

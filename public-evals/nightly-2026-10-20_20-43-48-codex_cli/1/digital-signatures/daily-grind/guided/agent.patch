@@ -1,0 +1,361 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..3ff38cc
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++dist/
++.vite/
+diff --git a/crypto.js b/crypto.js
+new file mode 100644
+index 0000000..d38ef46
+--- /dev/null
++++ b/crypto.js
+@@ -0,0 +1,29 @@
++import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
++export const encode = value => { let str=''; for (const byte of new Uint8Array(value)) str+=String.fromCharCode(byte); return btoa(str); };
++export const decode = value => Uint8Array.from(atob(value.replace(/\s/g,'')), c=>c.charCodeAt(0));
++export async function generateKey(algorithm, name='My signing key') {
++  const material = algorithm==='Ed25519' ? await crypto.subtle.generateKey({name:'Ed25519'}, true, ['sign','verify']) : ml_dsa65.keygen();
++  const publicBytes = algorithm==='Ed25519' ? new Uint8Array(await crypto.subtle.exportKey('raw',material.publicKey)) : material.publicKey;
++  return {id:crypto.randomUUID(), name, algorithm, material, publicBytes, created:new Date()};
++}
++export async function signContent(key, bytes) {
++  return key.algorithm==='Ed25519' ? new Uint8Array(await crypto.subtle.sign('Ed25519',key.material.privateKey,bytes)) : ml_dsa65.sign(bytes,key.material.secretKey);
++}
++export async function verifyContent(algorithm,publicBytes,signature,bytes) {
++  if(algorithm==='Ed25519') { const key=await crypto.subtle.importKey('raw',publicBytes,{name:'Ed25519'},false,['verify']);return crypto.subtle.verify('Ed25519',key,signature,bytes); }
++  if(algorithm==='ML-DSA-65') return ml_dsa65.verify(signature,bytes,publicBytes);
++  throw new Error('Unsupported signature algorithm.');
++}
++export async function exportPair(key) {
++  const secret=key.algorithm==='Ed25519' ? new Uint8Array(await crypto.subtle.exportKey('pkcs8',key.material.privateKey)) : key.material.secretKey;
++  return {format:'cipher-key-v1',name:key.name,algorithm:key.algorithm,publicKey:encode(key.publicBytes),privateKey:encode(secret)};
++}
++export async function importPair(data) {
++  if(data.format!=='cipher-key-v1'||!['Ed25519','ML-DSA-65'].includes(data.algorithm)) throw new Error('Choose a Cipher key-pair JSON file.');
++  const publicBytes=decode(data.publicKey),secret=decode(data.privateKey);
++  const material=data.algorithm==='Ed25519' ? {publicKey:await crypto.subtle.importKey('raw',publicBytes,{name:'Ed25519'},true,['verify']),privateKey:await crypto.subtle.importKey('pkcs8',secret,{name:'Ed25519'},true,['sign'])} : {publicKey:publicBytes,secretKey:secret};
++  const key={id:crypto.randomUUID(),name:String(data.name||'Imported key').slice(0,60),algorithm:data.algorithm,publicBytes,material,created:new Date()};
++  const probe=new TextEncoder().encode('cipher-key-pair-check');
++  if(!await verifyContent(key.algorithm,publicBytes,await signContent(key,probe),probe)) throw new Error('The public and private keys do not match.');
++  return key;
++}
+diff --git a/crypto.test.js b/crypto.test.js
+new file mode 100644
+index 0000000..51d52ce
+--- /dev/null
++++ b/crypto.test.js
+@@ -0,0 +1,17 @@
++import {test} from 'node:test';
++import assert from 'node:assert/strict';
++import {generateKey,signContent,verifyContent,encode,decode,exportPair,importPair} from './crypto.js';
++for(const algorithm of ['Ed25519','ML-DSA-65']) {
++ test(`${algorithm}: text and artifact signatures verify and reject changes`, async()=>{
++  const key=await generateKey(algorithm);const other=await generateKey(algorithm);
++  for(const content of [new TextEncoder().encode('An authentic message'),new Uint8Array([0,255,3,9,128])]){
++   const signature=await signContent(key,content);
++   assert.equal(await verifyContent(algorithm,key.publicBytes,decode(encode(signature)),content),true);
++   const tampered=content.slice();tampered[0]^=1;
++   assert.equal(await verifyContent(algorithm,key.publicBytes,signature,tampered),false);
++   assert.equal(await verifyContent(algorithm,other.publicBytes,signature,content),false);
++  }
++  const restored=await importPair(await exportPair(key));const bytes=new TextEncoder().encode('Round trip');
++  assert.equal(await verifyContent(algorithm,key.publicBytes,await signContent(restored,bytes),bytes),true);
++ });
++}
+diff --git a/index.html b/index.html
+index 66c9173..029ceb6 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,11 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
+-</head>
+-
+-<body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<!doctype html>
++<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#f8fafc"><title>Cipher — Sign with confidence</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"></head><body>
++<aside class="sidebar"><a class="brand" href="/" aria-label="Cipher home"><span class="brand-icon"><i data-lucide="layers-2"></i></span>cipher<span class="brand-dot">.</span></a><div class="workspace-switch"><span class="workspace-avatar">P</span><span>Personal workspace<small>Free plan</small></span><i data-lucide="chevrons-up-down"></i></div><div class="nav-label">WORKSPACE</div><nav><button class="nav-item active" data-page="workspace"><i data-lucide="pen-line"></i>Sign & verify</button><button class="nav-item" data-page="keys"><i data-lucide="key-round"></i>Key vault<span id="key-count" class="nav-count">1</span></button><button class="nav-item" data-page="activity"><i data-lucide="history"></i>Activity</button></nav><div class="nav-label resources-label">RESOURCES</div><nav><button class="nav-item" data-page="guide"><i data-lucide="book-open"></i>Documentation<i class="nav-external" data-lucide="arrow-up-right"></i></button><button class="nav-item" data-page="algorithms"><i data-lucide="boxes"></i>Algorithms</button></nav><div class="sidebar-bottom"><div class="privacy-card"><span class="privacy-icon"><i data-lucide="shield-check"></i></span><strong>Your keys. Your control.</strong><p>Cryptography happens locally.<br>Your private keys never leave<br>your browser.</p><span><span class="dot"></span> 100% client-side</span></div><button class="profile" id="profile"><span class="profile-avatar">JD</span><span>Local workspace<small>No account needed</small></span><i data-lucide="chevron-down"></i></button></div></aside>
++<div class="app"><header class="topbar"><div class="breadcrumb">Workspace <i data-lucide="chevron-right"></i><span id="breadcrumb-current">Sign & verify</span></div><div class="topbar-right"><span class="local-pill"><span class="dot"></span>Running locally</span><span class="top-divider"></span><button class="icon-button" id="help" aria-label="Open help"><i data-lucide="circle-help"></i></button><span class="mini-avatar">JD</span></div></header>
++<main><div class="page-heading"><div><div class="eyebrow">A LITTLE PROOF. A LOT OF TRUST.</div><h1>Sign with confidence.</h1><p>Sign and verify anything. Keep authenticity in your hands.</p></div><button class="button secondary" id="manage-keys"><i data-lucide="key-round"></i>Manage keys<i data-lucide="arrow-up-right"></i></button></div>
++<div id="workspace-page"><section class="algorithm-section"><div class="section-label">CHOOSE YOUR CRYPTOGRAPHY <span>Switch anytime</span></div><div class="algorithm-grid"><button class="algorithm-card selected" data-alg="Ed25519"><span class="algorithm-symbol classical"><i data-lucide="shield-check"></i></span><span class="algorithm-copy"><strong>Classical <span class="badge blue">ESTABLISHED</span></strong><span>Fast, reliable, and widely supported.</span><small>Ed25519 <span>·</span> Elliptic-curve cryptography</small></span><span class="radio"></span></button><button class="algorithm-card" data-alg="ML-DSA-65"><span class="algorithm-symbol quantum"><i data-lucide="atom"></i></span><span class="algorithm-copy"><strong>Post-quantum <span class="badge purple">FUTURE-READY</span></strong><span>Built for the next era of security.</span><small>ML-DSA <span>·</span> Quantum-resistant cryptography</small></span><span class="radio"></span></button></div></section>
++<div class="work-grid"><section class="panel signing-panel"><div class="tabs" role="tablist" aria-label="Operation"><button class="tab active" id="sign-tab" role="tab" aria-selected="true"><i data-lucide="pen-line"></i>Sign</button><button class="tab" id="verify-tab" role="tab" aria-selected="false"><i data-lucide="badge-check"></i>Verify</button><span class="tab-caption"><i data-lucide="lock-keyhole"></i>Private by design</span></div><div class="panel-body"><div class="form-heading"><h2 id="form-title">Create a signature</h2><p id="form-desc">Turn your message into something you can trust.</p></div><div class="label-row"><label for="message">Your content</label><div class="input-toggle"><button class="active" data-input="text"><i data-lucide="align-left"></i>Text</button><button data-input="file"><i data-lucide="paperclip"></i>File</button></div></div><div id="text-input"><div class="textarea-wrap"><textarea id="message" placeholder="Enter a message, token, or any content to sign…" spellcheck="false"></textarea><div class="textarea-footer"><span>Plain text · UTF-8</span><span id="byte-count">0 bytes</span></div></div></div><label class="file-drop" id="file-drop" hidden><i data-lucide="cloud-upload"></i><strong id="file-label">Choose a file or drop it here</strong><span>Sign the original bytes of any artifact</span><input type="file" id="artifact"></label><div class="under-input"><span><i data-lucide="info"></i>Your content stays on this device.</span><button class="text-button" id="sample">Try an example<i data-lucide="arrow-up-right"></i></button></div><div id="sign-fields"><div class="label-row key-label"><label for="signing-key">Signing key</label><button class="text-button" id="new-key"><i data-lucide="plus"></i>New key</button></div><div class="select-wrap"><i data-lucide="key-round"></i><select id="signing-key" aria-label="Signing key"></select></div></div><div id="verify-fields" hidden><label for="verify-signature">Signature or Cipher signature package</label><textarea class="verify-input" id="verify-signature" placeholder="Paste a base64 signature or exported JSON package"></textarea><label for="verify-public">Public key (base64)</label><textarea class="verify-input short" id="verify-public" placeholder="Paste the signer's public key"></textarea></div><button class="button primary action-button" id="run-operation"><i data-lucide="pen-line"></i><span>Sign content</span><i data-lucide="arrow-right"></i></button><p class="action-note"><i data-lucide="fingerprint"></i><span id="action-note">Signed with Ed25519. Verifiable by anyone with your public key.</span></p><div id="result" hidden aria-live="polite"></div></div></section>
++<aside class="details-column"><section class="panel key-panel"><div class="card-title"><h2>Key details</h2><span class="badge green"><span class="dot"></span>Ready to sign</span></div><div class="key-identity"><span class="key-icon"><i data-lucide="key-round"></i></span><div><strong id="key-name">My signing key</strong><span id="key-created">Created just now</span></div><button class="icon-button" id="key-options" aria-label="Manage selected key"><i data-lucide="ellipsis"></i></button></div><dl><div><dt>Algorithm</dt><dd id="detail-alg">Ed25519</dd></div><div><dt>Security level</dt><dd id="detail-security">128-bit</dd></div><div><dt>Key type</dt><dd>Asymmetric <i data-lucide="arrow-up-right"></i></dd></div></dl><div class="public-key-label">PUBLIC KEY <button class="icon-button" id="copy-key" aria-label="Copy public key"><i data-lucide="copy"></i></button></div><div class="public-key" id="public-key">Generating your local key…</div><button class="button secondary export-button" id="export-key"><i data-lucide="download"></i>Export public key</button><div class="key-footer"><i data-lucide="lock-keyhole"></i>Private key is stored in this session only.</div></section><section class="trust-card"><div class="trust-heading"><span><i data-lucide="sparkles"></i></span><h3>Trust, without the middleman.</h3></div><p>A signature proves your content came from you and hasn’t changed. Anyone can verify it. Only you can create it.</p><button class="text-button" id="learn">How signing works<i data-lucide="arrow-up-right"></i></button><div class="trust-art" aria-hidden="true"><div class="art-line"></div><span><i data-lucide="file-text"></i></span><b>·······</b><span class="art-shield"><i data-lucide="shield-check"></i></span><b>·······</b><span><i data-lucide="badge-check"></i></span></div></section></aside></div>
++<section class="panel activity-panel"><div class="activity-heading"><div><h2>Recent activity <span id="activity-count">0</span></h2><p>A little history of the trust you create.</p></div><button class="text-button" id="view-activity">View all activity<i data-lucide="arrow-right"></i></button></div><div id="recent-list" class="activity-list"><div class="empty-activity"><i data-lucide="history"></i><span>Your next signature starts the story. Activity will appear here.</span><span class="session-badge">THIS SESSION</span></div></div></section></div>
++<section id="secondary-page" hidden></section><footer class="footer"><span><i data-lucide="shield-check"></i>Built on open standards. Designed for your privacy.</span><span>Local first. Always. <span class="footer-dot">•</span> <span class="version">v1.0</span></span></footer></main></div>
++<dialog id="key-dialog"><form id="key-form"><div class="dialog-heading"><h2>Create a signing key</h2><button type="button" class="icon-button" id="close-dialog" aria-label="Close"><i data-lucide="x"></i></button></div><p>Generate an asymmetric key pair on your device.</p><label for="new-key-name">Key name</label><input id="new-key-name" required value="My signing key" maxlength="60"><label for="new-key-alg">Algorithm</label><select id="new-key-alg"><option>Ed25519</option><option>ML-DSA-65</option></select><p class="dialog-note">Keys are kept in memory for this session. Export your key pair from the vault if you need it later.</p><button class="button primary" type="submit">Generate key pair<i data-lucide="plus"></i></button></form></dialog><div id="toast" role="status"></div><script type="module" src="/main.js"></script></body></html>
+diff --git a/main.js b/main.js
+new file mode 100644
+index 0000000..46d8fe3
+--- /dev/null
++++ b/main.js
+@@ -0,0 +1,36 @@
++import { createIcons, icons } from 'lucide';
++import {generateKey,signContent,verifyContent,encode,decode,exportPair,importPair} from './crypto.js';
++const $=id=>document.getElementById(id);
++const state={algorithm:'Ed25519',mode:'sign',input:'text',keys:[],selected:null,file:null,activities:[],page:'workspace',package:null};
++const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++const iconize=()=>createIcons({icons});
++let toastTimer;
++function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3200);}
++function download(data,name){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
++async function copy(text){try{await navigator.clipboard.writeText(text);toast('Copied to clipboard');}catch{toast('Clipboard unavailable. Use the export option.');}}
++function selectedKey(){return state.keys.find(k=>k.id===state.selected);}
++function refreshKeys(){const keys=state.keys.filter(k=>k.algorithm===state.algorithm);$('signing-key').replaceChildren(...keys.map(k=>{const option=document.createElement('option');option.value=k.id;option.textContent=`${k.name}  ·  ${k.algorithm}`;return option;}));if(!keys.some(k=>k.id===state.selected))state.selected=keys[0]?.id;$('signing-key').value=state.selected||'';$('key-count').textContent=state.keys.length;const key=selectedKey();$('key-name').textContent=key?.name||'No key selected';$('key-created').textContent=key?'Created '+key.created.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'Generate a key to start';$('detail-alg').textContent=state.algorithm;$('detail-security').textContent=state.algorithm==='Ed25519'?'128-bit':'NIST Level 3';$('public-key').textContent=key?encode(key.publicBytes):'Create a key pair to see its public key.';$('action-note').textContent=`${state.mode==='sign'?'Signed':'Verified'} with ${state.algorithm}. ${state.mode==='sign'?'Verifiable by anyone with your public key.':'Checks content integrity and key ownership.'}`;}
++async function setAlgorithm(algorithm){state.algorithm=algorithm;document.querySelectorAll('[data-alg]').forEach(el=>el.classList.toggle('selected',el.dataset.alg===algorithm));$('result').hidden=true;if(!state.keys.some(k=>k.algorithm===algorithm)){ $('run-operation').disabled=true;try{const key=await generateKey(algorithm,algorithm==='Ed25519'?'My signing key':'My post-quantum key');state.keys.push(key);state.selected=key.id;}catch(e){toast(e.message);}finally{$('run-operation').disabled=false;}}refreshKeys();}
++function setMode(mode){state.mode=mode;for(const m of ['sign','verify']){$(`${m}-tab`).classList.toggle('active',m===mode);$(`${m}-tab`).setAttribute('aria-selected',String(m===mode));}$('form-title').textContent=mode==='sign'?'Create a signature':'Verify a signature';$('form-desc').textContent=mode==='sign'?'Turn your message into something you can trust.':'Check that content is authentic and hasn’t been changed.';$('sign-fields').hidden=mode!=='sign';$('verify-fields').hidden=mode!=='verify';$('result').hidden=true;$('run-operation').innerHTML=`<i data-lucide="${mode==='sign'?'pen-line':'badge-check'}"></i><span>${mode==='sign'?'Sign content':'Verify signature'}</span><i data-lucide="arrow-right"></i>`;refreshKeys();iconize();}
++function showResult(title,description,error=false,signature=null){$('result').hidden=false;$('result').className=error?'error':'';$('result').innerHTML=`<strong><i data-lucide="${error?'circle-x':'circle-check'}"></i>${escapeHtml(title)}</strong><p>${escapeHtml(description)}</p>${signature?'<textarea readonly aria-label="Generated signature"></textarea><div class="result-actions"><button class="text-button" id="copy-signature"><i data-lucide="copy"></i>Copy signature</button><button class="text-button" id="download-signature"><i data-lucide="download"></i>Export package</button><button class="text-button" id="test-signature">Verify it<i data-lucide="arrow-right"></i></button></div>':''}`;if(signature){$('result').querySelector('textarea').value=signature;$('copy-signature').onclick=()=>copy(signature);$('download-signature').onclick=()=>download(state.package,'cipher-signature.json');$('test-signature').onclick=()=>{setMode('verify');$('verify-signature').value=state.package.signature;$('verify-public').value=state.package.publicKey;};}iconize();}
++async function contentBytes(){if(state.input==='file'){if(!state.file)throw new Error('Choose an artifact to continue.');return new Uint8Array(await state.file.arrayBuffer());}if(!$('message').value.length)throw new Error('Enter content to continue, or try an example.');return new TextEncoder().encode($('message').value);}
++function addActivity(action,valid){state.activities.unshift({action,valid,algorithm:state.algorithm,name:state.input==='file'?state.file?.name:($('message').value.slice(0,45)||'Message'),time:new Date()});renderActivities();}
++function activityMarkup(items){return items.map(a=>`<div class="activity-row"><i data-lucide="${a.valid?'badge-check':'circle-x'}"></i><div>${escapeHtml(a.action)}<small>${escapeHtml(a.name)}</small></div><span class="activity-alg">${escapeHtml(a.algorithm)}</span><time>${a.time.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>`).join('');}
++function renderActivities(){ $('activity-count').textContent=state.activities.length;if(state.activities.length)$('recent-list').innerHTML=activityMarkup(state.activities.slice(0,3));if(state.page==='activity')renderPage();iconize();}
++$('run-operation').onclick=async()=>{const button=$('run-operation');button.disabled=true;try{let signatureInput=$('verify-signature').value.trim();let publicInput=$('verify-public').value.trim();if(state.mode==='verify'&&signatureInput.startsWith('{')){const pkg=JSON.parse(signatureInput);if(pkg.format!=='cipher-signature-v1')throw new Error('Unsupported signature package.');if(!['Ed25519','ML-DSA-65'].includes(pkg.algorithm))throw new Error('Unsupported signature algorithm.');await setAlgorithm(pkg.algorithm);signatureInput=pkg.signature;publicInput=pkg.publicKey;}
++const bytes=await contentBytes();if(state.mode==='sign'){const key=selectedKey();if(!key)throw new Error('Create a signing key first.');const signature=await signContent(key,bytes);state.package={format:'cipher-signature-v1',algorithm:key.algorithm,publicKey:encode(key.publicBytes),signature:encode(signature),contentType:state.input==='file'?'artifact':'text',filename:state.file?.name||null};showResult('Signature created','Your content is signed. Share the signature and public key alongside the original content.',false,state.package.signature);addActivity('Content signed',true);}else{if(!signatureInput||!publicInput)throw new Error('Enter both a signature and the signer’s public key.');const valid=await verifyContent(state.algorithm,decode(publicInput),decode(signatureInput),bytes);showResult(valid?'Signature verified':'Signature does not match',valid?'This content is unchanged and matches the supplied public key. Trust the signer only if you independently trust that key.':'The content, signature, or public key does not match. Check all three and try again.',!valid);addActivity(valid?'Signature verified':'Verification failed',valid);}}catch(error){showResult('Unable to '+(state.mode==='sign'?'sign':'verify'),error.message||'Check your content and key format.',true);}finally{button.disabled=false;}};
++$('message').oninput=()=>{$('byte-count').textContent=new TextEncoder().encode($('message').value).length+' bytes';$('result').hidden=true;};
++$('sample').onclick=()=>{setInput('text');$('message').value='A little proof. A lot of trust.\n\nThis message was signed with Cipher.';$('message').dispatchEvent(new Event('input'));};
++function setInput(input){state.input=input;document.querySelectorAll('[data-input]').forEach(e=>e.classList.toggle('active',e.dataset.input===input));$('text-input').hidden=input!=='text';$('file-drop').hidden=input!=='file';$('result').hidden=true;}
++document.querySelectorAll('[data-input]').forEach(e=>e.onclick=()=>setInput(e.dataset.input));
++function setFile(file){if(file){state.file=file;$('file-label').textContent=file.name+' · '+file.size.toLocaleString()+' bytes';$('result').hidden=true;}}
++$('artifact').onchange=e=>setFile(e.target.files[0]);$('file-drop').ondragover=e=>e.preventDefault();$('file-drop').ondrop=e=>{e.preventDefault();setFile(e.dataTransfer.files[0]);};
++$('sign-tab').onclick=()=>setMode('sign');$('verify-tab').onclick=()=>setMode('verify');document.querySelectorAll('[data-alg]').forEach(e=>e.onclick=()=>setAlgorithm(e.dataset.alg));$('signing-key').onchange=e=>{state.selected=e.target.value;refreshKeys();};
++function openKeyDialog(){$('new-key-alg').value=state.algorithm;$('key-dialog').showModal();}
++$('new-key').onclick=openKeyDialog;$('close-dialog').onclick=()=>$('key-dialog').close();$('key-dialog').onclick=e=>{if(e.target===$('key-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}};
++$('key-form').onsubmit=async e=>{e.preventDefault();const button=e.submitter;button.disabled=true;try{const key=await generateKey($('new-key-alg').value,$('new-key-name').value.trim()||'My signing key');state.keys.push(key);state.selected=key.id;await setAlgorithm(key.algorithm);$('key-dialog').close();toast('Key pair generated on your device');if(state.page==='keys')renderPage();}catch(error){toast(error.message);}finally{button.disabled=false;}};
++$('copy-key').onclick=()=>{const key=selectedKey();if(key)copy(encode(key.publicBytes));};$('export-key').onclick=()=>{const key=selectedKey();if(key)download({format:'cipher-public-key-v1',name:key.name,algorithm:key.algorithm,publicKey:encode(key.publicBytes)},'cipher-public-key.json');};
++function navigate(page){state.page=page;document.querySelectorAll('[data-page]').forEach(e=>e.classList.toggle('active',e.dataset.page===page));$('workspace-page').hidden=page!=='workspace';$('secondary-page').hidden=page==='workspace';$('breadcrumb-current').textContent={workspace:'Sign & verify',keys:'Key vault',activity:'Activity',guide:'Documentation',algorithms:'Algorithms'}[page];renderPage();}
++function renderPage(){const page=$('secondary-page');if(state.page==='keys'){page.innerHTML=`<div class="panel secondary-card"><div class="activity-heading"><h2>Your key vault</h2><button class="button primary" id="vault-new"><i data-lucide="plus"></i>New key</button></div><p>Local key pairs for this session. Export a key pair to keep it for later.</p>${state.keys.map(k=>`<div class="vault-key"><i data-lucide="key-round"></i><div><strong>${escapeHtml(k.name)}</strong><small>${k.algorithm} · Session only</small></div><button class="button secondary" data-use="${k.id}">Use key</button><button class="button secondary" data-export="${k.id}"><i data-lucide="download"></i>Export pair</button></div>`).join('')}<label class="file-drop" style="margin-top:16px"><i data-lucide="upload"></i><strong>Import a Cipher key pair</strong><input type="file" id="import-key" accept="application/json,.json"></label><p style="font-size:10px;margin-top:15px">Exported key-pair files contain your private key. Keep them somewhere only you can access.</p></div>`;$('vault-new').onclick=openKeyDialog;page.querySelectorAll('[data-use]').forEach(e=>e.onclick=async()=>{const key=state.keys.find(k=>k.id===e.dataset.use);state.selected=key.id;await setAlgorithm(key.algorithm);navigate('workspace');});page.querySelectorAll('[data-export]').forEach(e=>e.onclick=async()=>{try{const key=state.keys.find(k=>k.id===e.dataset.export);download(await exportPair(key),'cipher-key-pair.json');toast('Key pair exported. Keep this file private.');}catch(error){toast(error.message);}});$('import-key').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;const key=await importPair(JSON.parse(await file.text()));state.keys.push(key);state.selected=key.id;await setAlgorithm(key.algorithm);renderPage();toast('Key pair imported');}catch(error){toast('Import failed: '+error.message);}};}else if(state.page==='activity'){page.innerHTML=`<section class="panel secondary-card"><h2>Session activity</h2><p>Signing and verification operations from this browser session.</p>${state.activities.length?activityMarkup(state.activities):'<div class="empty-activity">No activity yet. Sign your first message to get started.</div>'}</section>`;}else if(state.page==='guide'){page.innerHTML=`<section class="panel secondary-card"><h2>A signature is a proof of authenticity.</h2><p>1. Choose classical or post-quantum cryptography and generate your key pair.<br>2. Enter your exact message, token, or file, then choose Sign content.<br>3. Share the original content, public key, and signature package.<br>4. The recipient opens Verify, enters the original content and signature package, then verifies it.</p></section><section class="panel secondary-card"><h2>Your private key is yours.</h2><p>Keys and content stay in your browser. Keys are held in memory and disappear when this page is reloaded; export a key pair in the vault to retain it. A public key can be shared freely. Keep exported private keys secure.</p></section><section class="panel secondary-card"><h2>What verification tells you</h2><p>A valid signature establishes that the content matches the provided public key. Establish the key owner’s identity through a trusted channel. Tokens are signed as exact UTF-8 text; Cipher produces detached signatures, not JWTs. Artifact signatures cover the original file bytes.</p></section>`;}else if(state.page==='algorithms'){page.innerHTML=`<section class="panel secondary-card"><h2>Ed25519 · Classical</h2><p>An elliptic-curve digital signature algorithm using the browser’s native Web Crypto API. 32-byte public keys, 64-byte signatures, and approximately 128-bit classical security.</p><p><a class="text-button" href="https://www.rfc-editor.org/rfc/rfc8032" target="_blank" rel="noreferrer">Read RFC 8032 ↗</a></p></section><section class="panel secondary-card"><h2>ML-DSA-65 · Post-quantum</h2><p>A lattice-based digital signature algorithm standardized in NIST FIPS 204. Cipher uses the @noble/post-quantum implementation. NIST security category 3, 1,952-byte public keys, and 3,309-byte signatures.</p><p><a class="text-button" href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank" rel="noreferrer">Read FIPS 204 ↗</a></p></section>`;}iconize();}
++document.querySelectorAll('[data-page]').forEach(e=>e.onclick=()=>navigate(e.dataset.page));$('manage-keys').onclick=()=>navigate('keys');$('key-options').onclick=()=>navigate('keys');$('view-activity').onclick=()=>navigate('activity');$('help').onclick=()=>navigate('guide');$('learn').onclick=()=>navigate('guide');$('profile').onclick=()=>toast('Your workspace runs locally. No account is required.');
++iconize();setAlgorithm('Ed25519');
+diff --git a/package.json b/package.json
+index 2bd4d77..908e6aa 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1 @@
+-{
+-  "name": "daily-grind",
+-  "version": "1.0.0",
+-  "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
+-  },
+-  "pnpm": {
+-    "onlyBuiltDependencies": []
+-  }
+-}
++{"name":"cipher-workspace","version":"1.0.0","type":"module","scripts":{"start":"vite --host 0.0.0.0 --port ${PORT:-11222}","build":"vite build","test":"node --test crypto.test.js"},"dependencies":{"@noble/post-quantum":"0.7.1","lucide":"1.60.0","vite":"8.3.4"}}
+diff --git a/style.css b/style.css
+new file mode 100644
+index 0000000..f534c6f
+--- /dev/null
++++ b/style.css
+@@ -0,0 +1,2 @@
++:root{font-family:'DM Sans',sans-serif;color:#253047;background:#f8fafc;font-synthesis:none;--blue:#315de7;--muted:#8390a3;--line:#e8ecf2;--ink:#1e2b41}*{box-sizing:border-box}body{margin:0;font-size:13px}button,input,select,textarea{font:inherit}button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button{color:inherit}button:focus-visible,a:focus-visible{outline:3px solid #92b4ff;outline-offset:3px}button{transition:background .18s,border-color .18s,box-shadow .18s}button:hover{filter:brightness(.98)}a{text-decoration:none;color:inherit}svg{width:18px;height:18px;stroke-width:1.7;flex-shrink:0}button svg{pointer-events:none}button{border:0;background:none}h1,h2,h3,p{margin:0}h1,h2,h3,.brand{font-family:'Manrope',sans-serif}h2{font-size:15px;font-weight:750}button:disabled{opacity:.5;cursor:wait}[hidden]{display:none!important}.sidebar{position:fixed;inset:0 auto 0 0;width:228px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:33px 18px 0;z-index:10}.brand{display:flex;align-items:center;font-size:30px;letter-spacing:-1.6px;font-weight:800;padding-left:13px}.brand-icon{height:32px;width:32px;display:grid;place-items:center;background:var(--blue);border-radius:9px;margin-right:10px;color:white;box-shadow:0 3px 5px #315de71a}.brand-icon svg{width:22px;height:22px;stroke-width:2}.brand-dot{color:var(--blue)}.workspace-switch{margin:32px 0 31px;display:flex;align-items:center;padding:11px 9px;border:1px solid var(--line);border-radius:7px;font-size:11px;font-weight:600;gap:9px}.workspace-switch>svg{margin-left:auto;width:13px;color:#8c96a6}.workspace-avatar{background:#eff2f8;color:#66748c;border:1px solid #e4e9f1;border-radius:5px;width:29px;height:30px;display:grid;place-items:center;font-size:13px}.workspace-switch small,.profile small{display:block;color:#94a0b1;font-size:10px;font-weight:400;margin-top:3px}.nav-label{font-size:9px;color:#929cad;font-weight:600;letter-spacing:1.5px;padding-left:13px;margin-bottom:12px}.nav-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:12px 13px;font-size:12px;color:#6e7b90;border-radius:6px;margin:3px 0}.nav-item.active{background:#edf2ff;color:var(--blue);font-weight:600}.nav-count{margin-left:auto;font-size:10px;color:#8692a6;background:#f0f3f7;border-radius:4px;padding:1px 6px}.resources-label{margin-top:34px}.nav-external{margin-left:auto;width:13px}.sidebar-bottom{margin-top:auto}.privacy-card{background:#f7f9fc;border:1px solid #e9edf4;border-radius:8px;padding:16px 13px;margin:28px 3px 22px}.privacy-icon{display:block;color:#607bab;margin-bottom:10px}.privacy-card strong{font-size:11px;font-weight:600}.privacy-card p{font-size:11px;line-height:1.8;color:#8c97a8;margin-top:7px}.privacy-card>span:last-child{display:flex;align-items:center;gap:6px;font-size:9px;color:#6d8198;margin-top:15px}.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#34ae87;flex-shrink:0}.profile{display:flex;align-items:center;text-align:left;gap:9px;border-top:1px solid var(--line);padding:20px 0;width:100%;font-size:11px}.profile-avatar,.mini-avatar{background:#edeaf8;color:#77718e;border:3px solid #f6f4fc;border-radius:50%;display:grid;place-items:center;font-size:10px;width:33px;height:33px}.profile>svg{margin-left:auto;width:14px;color:#8c97a8}.app{margin-left:228px}.topbar{height:76px;background:#fff;border-bottom:1px solid var(--line);padding:0 40px;display:flex;align-items:center;justify-content:space-between}.breadcrumb{display:flex;align-items:center;gap:12px;font-size:11px;color:#8d97a7}.breadcrumb svg{width:12px}.breadcrumb span{color:#4d5c73}.topbar-right{display:flex;align-items:center;gap:21px}.local-pill{display:flex;align-items:center;gap:7px;color:#6e7e88;font-size:10px}.top-divider{height:19px;width:1px;background:var(--line)}.icon-button{padding:3px;display:inline-flex;align-items:center;justify-content:center;color:#8692a4}.icon-button svg{width:17px;height:17px}.mini-avatar{width:29px;height:29px}main{max-width:1450px;margin:auto;padding:36px 40px 0}.page-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}.eyebrow{color:#8a95a8;font-size:9px;font-weight:600;letter-spacing:1.7px;margin-bottom:10px}h1{font-size:clamp(27px,2.3vw,36px);letter-spacing:-1.3px;font-weight:750;color:#202d43;line-height:1.35}.page-heading p{color:#8a95a6;font-size:12px;margin-top:8px}.button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;font-size:11px;font-weight:600;min-height:37px;padding:0 14px}.button svg{width:15px;height:15px}.secondary{background:white;border:1px solid #dfe5ed;box-shadow:0 2px 2px #26394d03}.page-heading .button{margin-top:15px}.page-heading .button svg:last-child{width:12px;margin-left:4px}.section-label{display:flex;justify-content:space-between;font-size:9px;font-weight:600;letter-spacing:1.2px;color:#7f8b9e;margin-bottom:12px}.section-label>span{font-size:10px;letter-spacing:0;font-weight:400;color:#9aa3b3}.algorithm-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.algorithm-card{border:1px solid #e1e6ef;background:white;border-radius:9px;display:flex;align-items:center;padding:20px;gap:14px;text-align:left;min-height:116px;position:relative}.algorithm-card.selected{border-color:#6182ee;background:#f7f9ff;box-shadow:0 0 0 2px #315de707}.algorithm-symbol{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}.algorithm-symbol svg{width:24px;height:24px}.classical{color:#4b72e4;background:#eaf0ff}.quantum{background:#f1edfc;color:#9979ce}.algorithm-copy{display:flex;flex-direction:column;gap:6px}.algorithm-copy strong{font-size:14px;font-weight:650;display:flex;align-items:center;gap:10px}.algorithm-copy>span{font-size:11px;color:#8b95a7}.algorithm-copy small{font-size:9px;color:#97a1b2;margin-top:2px}.algorithm-copy small span{margin:0 4px}.badge{font-size:7px;font-weight:600;letter-spacing:.6px;padding:4px 6px;border-radius:4px;white-space:nowrap}.blue{color:#6381ce;background:#eaf0ff}.purple{color:#a183c9;background:#f4effa}.radio{margin-left:auto;align-self:flex-start;width:15px;height:15px;border:1.5px solid #d9e0ea;border-radius:50%;margin-top:2px;flex-shrink:0}.selected .radio{border:4px solid var(--blue);background:#fff}.work-grid{display:grid;grid-template-columns:minmax(0,1.78fr) minmax(280px,1fr);gap:22px;margin-top:26px}.panel{background:white;border:1px solid #e2e7ef;border-radius:9px;box-shadow:0 2px 4px #1e2b4102}.tabs{display:flex;align-items:center;border-bottom:1px solid var(--line);height:57px;padding:0 24px;gap:27px}.tab{height:100%;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:#96a0b0;border-bottom:2px solid transparent;padding:0 2px}.tab.active{color:var(--blue);border-bottom-color:var(--blue)}.tab svg{width:16px}.tab-caption{display:flex;align-items:center;gap:5px;margin-left:auto;font-size:9px;color:#9aa5b5}.tab-caption svg{width:11px}.panel-body{padding:24px}.form-heading h2{font-size:16px;letter-spacing:-.4px}.form-heading p{color:#929bad;font-size:11px;margin-top:6px}.label-row{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}label{font-size:11px;font-weight:550}.input-toggle{display:flex;gap:3px;background:#f3f5f8;padding:3px;border-radius:5px}.input-toggle button{font-size:9px;display:flex;align-items:center;gap:4px;padding:4px 8px;color:#97a1b0;border-radius:3px}.input-toggle button.active{background:#fff;box-shadow:0 1px 3px #1e2b4115;color:#53617a}.input-toggle svg{width:11px;height:11px}.textarea-wrap{border:1px solid #dfe5ed;border-radius:6px;overflow:hidden}.textarea-wrap:focus-within{border-color:#7895ec;box-shadow:0 0 0 3px #315de70b}textarea{display:block;resize:vertical;width:100%;border:0;outline:0;color:#40516b;font-size:11px;line-height:1.8;padding:14px;min-height:133px;background:#fdfefe}textarea::placeholder{color:#a2acba}.textarea-footer{display:flex;justify-content:space-between;padding:8px 12px;background:#fafbfd;border-top:1px solid #f0f2f7;font-size:9px;color:#9ca7b6}.under-input{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:9px;gap:6px}.under-input>span{display:flex;align-items:center;gap:5px;color:#9ca5b3}.under-input>span svg{width:11px;height:11px}.text-button{display:flex;align-items:center;gap:6px;font-size:10px;color:#5779ce;padding:0}.text-button svg{width:12px;height:12px}.key-label{margin-top:24px}.select-wrap{position:relative}.select-wrap>svg{position:absolute;left:13px;top:13px;width:15px;height:15px;color:#95a1b2}select{width:100%;height:41px;background:#fff;border:1px solid #dfe5ed;border-radius:6px;padding:0 13px;outline-offset:2px;color:#5a6880;font-size:11px}.select-wrap select{padding-left:37px}.primary{background:var(--blue);color:#fff;border:1px solid #2f56d3;box-shadow:0 3px 5px #315de71a}.action-button{width:100%;margin-top:22px;min-height:43px;font-size:12px}.action-button>svg:last-child{margin-left:auto;width:15px}.action-button>svg:first-child{margin-right:auto}.action-note{margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:8px;color:#9ba5b6;line-height:1.6}.action-note svg{width:12px;height:12px}.details-column{display:flex;flex-direction:column;gap:17px}.key-panel{padding:20px 19px 0}.card-title{display:flex;align-items:center;justify-content:space-between}.card-title h2{font-size:12px}.green{color:#4b9d84;background:#eff9f4;font-size:7px;letter-spacing:0;display:flex;align-items:center;gap:4px}.green .dot{width:4px;height:4px}.key-identity{display:flex;align-items:center;gap:10px;margin-top:23px}.key-icon{height:37px;width:37px;border:1px solid #e7ecf3;border-radius:8px;display:grid;place-items:center;background:#f8fafc;color:#7a8ca8}.key-identity strong{font-size:11px;font-weight:600}.key-identity>div>span{display:block;font-size:9px;color:#9aa5b6;margin-top:4px}.key-identity>.icon-button{margin-left:auto}dl{display:flex;flex-direction:column;gap:14px;margin:22px 0 17px;font-size:10px}dl>div{display:flex;justify-content:space-between}dt{color:#98a2b2}dd{margin:0;color:#66758e;display:flex;align-items:center;gap:4px}dd svg{width:11px;height:11px}.public-key-label{border-top:1px solid var(--line);padding-top:13px;display:flex;align-items:center;justify-content:space-between;color:#9aa4b3;font-size:8px;letter-spacing:1px}.public-key-label .icon-button svg{width:12px;height:12px}.public-key{background:#f7f9fc;border:1px solid #eaf0f5;border-radius:5px;margin-top:7px;padding:10px 11px;font-family:monospace;font-size:9px;line-height:1.7;color:#8c9ab0;overflow-wrap:anywhere;max-height:52px;overflow:hidden}.export-button{width:100%;min-height:33px;margin-top:12px;color:#74829a;font-size:10px;box-shadow:none}.export-button svg{width:12px}.key-footer{margin:16px -19px 0;border-top:1px solid var(--line);background:#fcfdfe;display:flex;align-items:center;justify-content:center;gap:5px;padding:12px 4px;font-size:8px;color:#a1aab7;border-radius:0 0 9px 9px}.key-footer svg{width:10px;height:10px}.trust-card{background:#f0f4fe;border:1px solid #e4ebfa;border-radius:9px;padding:19px 18px 0;overflow:hidden}.trust-heading{display:flex;align-items:center;gap:8px}.trust-heading>span{background:#e4ebff;display:grid;place-items:center;color:#7793db;width:25px;height:25px;border-radius:6px}.trust-heading svg{width:14px;height:14px}.trust-heading h3{font-size:11px;font-weight:700;color:#53688f;letter-spacing:-.2px}.trust-card p{font-size:10px;line-height:1.9;color:#8b9bb5;margin-top:11px}.trust-card .text-button{margin-top:12px;font-size:9px}.trust-art{position:relative;display:flex;align-items:center;justify-content:center;gap:11px;margin-top:16px;padding-bottom:16px;color:#b3c5eb}.trust-art>span{background:#f6f8fe;border:1px solid #dee7fa;border-radius:7px;width:32px;height:36px;display:grid;place-items:center;transform:rotate(-7deg)}.trust-art>span:last-child{transform:rotate(8deg)}.trust-art .art-shield{width:40px;height:42px;border-radius:10px;transform:none;background:#e1eaff;color:#779be7;border-color:#d4e1fc}.art-shield svg{width:23px;height:23px}.trust-art>b{font-size:12px;letter-spacing:1px;font-weight:400}.activity-panel{margin-top:25px;padding:20px 24px 0}.activity-heading{display:flex;align-items:center;justify-content:space-between}.activity-heading h2{font-size:12px;display:flex;align-items:center;gap:8px}.activity-heading h2>span{font:9px 'DM Sans',sans-serif;background:#f3f5f8;color:#98a3b4;padding:2px 6px;border-radius:4px}.activity-heading p{font-size:10px;color:#97a2b1;margin-top:5px}.activity-heading .text-button{font-size:9px}.activity-list{margin-top:18px;border-top:1px solid var(--line)}.empty-activity{display:flex;align-items:center;gap:10px;min-height:61px;font-size:10px;color:#9aa6b7}.empty-activity>svg{width:16px;color:#aab6c9}.session-badge{font-size:7px;letter-spacing:1px;color:#a8b2c0;margin-left:auto}.footer{display:flex;justify-content:space-between;align-items:center;color:#a3adbc;font-size:9px;padding:23px 0 22px}.footer>span{display:flex;align-items:center;gap:6px}.footer svg{width:12px;height:12px}.footer-dot{color:#bdc5d1;margin:0 3px}.version{font-size:8px}.file-drop{min-height:166px;border:1px dashed #c1cfee;background:#f9fbff;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;color:#6e85ab}.file-drop span{font-size:10px;color:#99a5b9}.file-drop input{max-width:210px;font-size:9px}.verify-input{border:1px solid #dfe5ed;border-radius:5px;min-height:85px;margin:9px 0 15px}.verify-input.short{min-height:65px}#verify-fields{margin-top:20px}#result{margin-top:20px;background:#f0f9f5;border:1px solid #d8eee3;border-radius:6px;padding:13px;overflow:hidden}#result.error{background:#fff4f3;border-color:#f4d6d3}#result strong{display:flex;gap:7px;align-items:center;font-size:12px;color:#33866a}#result.error strong{color:#b45e54}#result p{font-size:10px;color:#7e958c;margin:8px 0;line-height:1.6}#result textarea{min-height:65px;max-height:100px;border:1px solid #dcebe4;border-radius:4px;font-family:monospace;font-size:9px}#result .result-actions{display:flex;gap:15px;margin-top:12px}.activity-row{display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0f2f6;padding:14px 0;font-size:11px}.activity-row:last-child{border:0}.activity-row>svg{width:16px;color:#6e9d8b}.activity-row small{display:block;color:#a0aaba;font-size:9px;margin-top:4px}.activity-row .activity-alg{margin-left:auto;color:#8f9ab0;font-size:9px}.activity-row time{font-size:9px;color:#9ca6b5;margin-left:10px}.secondary-card{padding:25px;margin-bottom:18px}.secondary-card h2{font-size:19px;margin-bottom:12px}.secondary-card p{color:#8b97aa;font-size:12px;line-height:1.9}.vault-key{border-top:1px solid var(--line);display:flex;align-items:center;gap:15px;padding:20px 0;margin-top:15px}.vault-key>svg{color:#7190cd}.vault-key small{display:block;margin-top:5px;color:#93a1b4;font-size:10px}.vault-key .button{margin-left:auto}.vault-key .button+.button{margin-left:0}dialog{border:1px solid #e0e6f1;border-radius:13px;width:min(440px,calc(100% - 32px));padding:26px;box-shadow:0 25px 100px #152d5033;color:var(--ink)}dialog::backdrop{background:#182b4866;backdrop-filter:blur(3px)}.dialog-heading{display:flex;align-items:center;justify-content:space-between}.dialog-heading h2{font-size:19px}dialog p{color:#8b98ad;line-height:1.7;margin:12px 0 20px;font-size:12px}dialog label{display:block;margin:18px 0 8px}dialog input{width:100%;border:1px solid #dfe5ef;border-radius:6px;padding:12px;font-size:12px}.dialog-note{font-size:10px!important}dialog .primary{width:100%;margin-top:4px}#toast{position:fixed;bottom:25px;left:50%;transform:translate(-50%,15px);padding:13px 22px;border-radius:7px;background:#263751;color:#fff;font-size:12px;box-shadow:0 7px 30px #24395822;opacity:0;pointer-events:none;transition:.2s;z-index:100}#toast.visible{opacity:1;transform:translate(-50%,0)}
++@media(min-width:1450px){main{padding-top:43px}.page-heading{margin-bottom:38px}.work-grid{gap:25px}.algorithm-card{padding:24px}.panel-body{padding:27px}.textarea-wrap textarea{min-height:155px}.key-panel{padding:24px 23px 0}.key-footer{margin-left:-23px;margin-right:-23px}.trust-card{padding:20px 22px 0}.trust-art{padding-bottom:18px}.activity-panel{margin-top:28px}}@media(max-width:1150px){.sidebar{width:198px;padding-left:13px;padding-right:13px}.app{margin-left:198px}main{padding:28px 26px 0}.topbar{padding:0 26px}.algorithm-card{padding:16px 13px;gap:10px}.algorithm-symbol{width:36px;height:38px}.algorithm-copy strong{font-size:12px;gap:6px}.algorithm-copy>span{font-size:10px}.badge{font-size:6px}.work-grid{grid-template-columns:minmax(0,1.6fr) minmax(250px,1fr);gap:17px}.panel-body{padding:20px}.tabs{padding:0 20px;gap:22px}.tab-caption{font-size:8px}.trust-heading h3{font-size:10px}.action-note{font-size:7px}.under-input{font-size:8px}.under-input .text-button{font-size:9px}.privacy-card{padding:15px 10px}}@media(max-width:940px){.sidebar{width:180px}.app{margin-left:180px}.workspace-switch{font-size:9px}.workspace-avatar{width:24px}.algorithm-symbol{display:none}.algorithm-card{min-height:106px}.algorithm-copy strong{display:block}.algorithm-copy .badge{display:inline-block;margin-left:5px}.work-grid{grid-template-columns:1fr}.details-column{display:grid;grid-template-columns:1fr 1fr;gap:17px}.trust-card{display:flex;flex-direction:column;justify-content:center}.trust-art{margin-top:25px}.panel-body textarea{min-height:130px}.page-heading p{font-size:11px}.page-heading .button{font-size:10px;padding:0 9px}.page-heading .button svg:last-child{display:none}.footer{font-size:8px}}@media(max-width:680px){.sidebar{width:64px;padding:24px 9px}.brand{padding:0;justify-content:center;font-size:0;letter-spacing:0}.brand-icon{margin:0}.workspace-switch,.nav-label,.privacy-card,.profile,.brand-dot{display:none}.sidebar nav{margin-top:30px}.nav-item{font-size:0;padding:13px;gap:0}.nav-count,.nav-external{display:none}.sidebar nav+nav{margin-top:0}.app{margin-left:64px}.topbar{height:62px;padding:0 17px}.topbar-right{gap:12px}.local-pill{font-size:8px}.top-divider,.topbar .icon-button{display:none}.breadcrumb{font-size:9px;gap:5px}.breadcrumb svg{width:9px}main{padding:26px 17px 0}.page-heading{align-items:flex-start;margin-bottom:25px;gap:8px}.eyebrow{font-size:7px;letter-spacing:1px}h1{font-size:26px}.page-heading p{font-size:10px;line-height:1.7;max-width:210px}.page-heading .button{min-height:30px;font-size:0;padding:0 8px;margin-top:25px}.page-heading .button svg{width:16px}.algorithm-grid{grid-template-columns:1fr;gap:10px}.algorithm-symbol{display:grid}.algorithm-card{min-height:90px;padding:14px}.algorithm-copy strong{font-size:13px}.algorithm-copy>span{font-size:10px}.algorithm-copy small{font-size:8px}.algorithm-copy .badge{font-size:6px}.section-label{font-size:7px;letter-spacing:1px}.section-label>span{font-size:8px}.work-grid{margin-top:18px}.tabs{padding:0 16px;gap:23px}.tab-caption{font-size:7px}.panel-body{padding:19px 16px}.under-input{flex-wrap:wrap;gap:10px}.details-column{grid-template-columns:1fr}.trust-art{margin-top:20px}.trust-heading h3{font-size:12px}.trust-card{padding:20px}.trust-art{padding:0}.activity-panel{padding:19px 16px 0}.activity-heading .text-button{font-size:8px}.activity-heading p{font-size:9px}.empty-activity{font-size:9px;line-height:1.7;gap:8px}.session-badge{display:none}.footer{align-items:flex-start;gap:15px;line-height:1.6}.footer>span:first-child{max-width:190px}.footer>span:last-child{display:none}.vault-key{flex-wrap:wrap}.vault-key .button{margin:0}.secondary-card{padding:20px}.action-note{font-size:7px}dialog{max-height:90dvh;overflow:auto}}

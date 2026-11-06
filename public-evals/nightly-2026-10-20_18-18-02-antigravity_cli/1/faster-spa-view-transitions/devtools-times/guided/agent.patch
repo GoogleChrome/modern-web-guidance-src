@@ -1,0 +1,400 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..e1a3007 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -20,6 +20,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list-updated'));
+   };
+ 
+   return (
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..07b41f7 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -10,6 +10,8 @@ interface BottomNavProps {
+ 
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [mountedCategories, setMountedCategories] = useState<string[]>([]);
++    const viewRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,23 +20,29 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
+-    const handleMouseLeave = () => {
+-        setActiveCategory(null);
++    const switchToView = (categoryName: string | null) => {
++        setActiveCategory(categoryName);
++        if (categoryName) {
++            setMountedCategories(prev => prev.includes(categoryName) ? prev : [...prev, categoryName]);
++            setTimeout(() => {
++                viewRefs.current[categoryName]?.focus({ preventScroll: true });
++            }, 0);
++        }
+     };
+ 
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+-    const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+-    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
++    const handleMouseLeave = () => {
++        switchToView(null);
++    };
+ 
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                    {Object.entries(groupedCategories).map(([groupName]) => {
+                         return (
+                             <div 
+                                 key={groupName}
+-                                onMouseEnter={() => setActiveCategory(groupName)}
++                                onMouseEnter={() => switchToView(groupName)}
+                                 className="h-full flex items-center"
+                             >
+                                 <a 
+@@ -51,13 +59,32 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                     })}
+                 </nav>
+             </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+-                categories={activeSubCategories.filter(c => categories.includes(c))}
+-                articles={articles}
+-                reports={filteredReports}
+-                multimedia={filteredMultimedia}
+-            />
++            {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                if (!mountedCategories.includes(groupName)) {
++                    return null;
++                }
++                const isViewActive = activeCategory === groupName;
++                const filteredReports = reports.filter(r => r.data.category === groupName);
++                const filteredMultimedia = multimedia.filter(m => m.data.category === groupName);
++
++                return (
++                    <div
++                        key={groupName}
++                        ref={el => { viewRefs.current[groupName] = el; }}
++                        className={`spa-view ${isViewActive ? '' : 'inactive'}`}
++                        aria-hidden={isViewActive ? 'false' : 'true'}
++                        tabIndex={-1}
++                    >
++                        <FlyoutMenu 
++                            isOpen={true} 
++                            categories={subCategories.filter(c => categories.includes(c))}
++                            articles={articles}
++                            reports={filteredReports}
++                            multimedia={filteredMultimedia}
++                        />
++                    </div>
++                );
++            })}
+         </div>
+     );
+ };
+diff --git a/src/components/CategoryNavItem.tsx b/src/components/CategoryNavItem.tsx
+index 847fef0..60d7b17 100644
+--- a/src/components/CategoryNavItem.tsx
++++ b/src/components/CategoryNavItem.tsx
+@@ -8,13 +8,17 @@ interface CategoryNavItemProps {
+ 
+ const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategories, currentPath }) => {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
++    const [hasOpened, setHasOpened] = useState(false);
+ 
+     const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
+ 
+     return (
+         <div 
+             className="relative"
+-            onMouseEnter={() => setIsFlyoutOpen(true)}
++            onMouseEnter={() => {
++                setHasOpened(true);
++                setIsFlyoutOpen(true);
++            }}
+             onMouseLeave={() => setIsFlyoutOpen(false)}
+         >
+             <a 
+@@ -26,8 +30,12 @@ const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategor
+                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                 </svg>
+             </a>
+-            {isFlyoutOpen && (
+-                <div className="absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4">
++            {hasOpened && (
++                <div
++                    className={`spa-view absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4 ${isFlyoutOpen ? '' : 'inactive'}`}
++                    aria-hidden={isFlyoutOpen ? 'false' : 'true'}
++                    tabIndex={-1}
++                >
+                     <div className="grid grid-cols-1 gap-x-8">
+                         <ul className="space-y-2 text-sm">
+                             {subCategories.map(category => (
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..071dd4b 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -11,7 +11,9 @@ interface Article {
+ 
+ export default function ReadingListButton() {
+   const [isOpen, setIsOpen] = useState(false);
++  const [hasOpened, setHasOpened] = useState(false);
+   const [articles, setArticles] = useState<Article[]>([]);
++  const viewRef = React.useRef<HTMLDivElement>(null);
+ 
+   useEffect(() => {
+     const fetchArticles = async () => {
+@@ -22,9 +24,17 @@ export default function ReadingListButton() {
+     fetchArticles();
+   }, []);
+ 
++  const openReadingList = () => {
++    setHasOpened(true);
++    setIsOpen(true);
++    setTimeout(() => {
++      viewRef.current?.focus({ preventScroll: true });
++    }, 0);
++  };
++
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button onClick={openReadingList} className="p-1">
+         <svg
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+@@ -40,7 +50,16 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      {hasOpened && (
++        <div
++          ref={viewRef}
++          className={`spa-view ${isOpen ? '' : 'inactive'}`}
++          aria-hidden={isOpen ? 'false' : 'true'}
++          tabIndex={-1}
++        >
++          <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />
++        </div>
++      )}
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..1e501b3 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -30,10 +30,15 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         onClose();
+       }
+     };
++    const handleReadingListUpdated = () => {
++      fetchReadingList();
++    };
+     window.addEventListener('keydown', handleKeyDown);
++    window.addEventListener('reading-list-updated', handleReadingListUpdated);
+ 
+     return () => {
+       window.removeEventListener('keydown', handleKeyDown);
++      window.removeEventListener('reading-list-updated', handleReadingListUpdated);
+     };
+   }, [onClose]);
+ 
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..e6dccb4 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -10,13 +10,19 @@ interface Article {
+ 
+ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
++    const [hasOpened, setHasOpened] = useState(false);
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
++    const viewRef = React.useRef<HTMLDivElement>(null);
+ 
+     const openSearch = async () => {
+         try {
+             setArticles([]);
++            setHasOpened(true);
+             setIsFlyoutOpen(true);
++            setTimeout(() => {
++                viewRef.current?.focus({ preventScroll: true });
++            }, 0);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+         } finally {
+@@ -43,7 +49,16 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {hasOpened && (
++                <div
++                    ref={viewRef}
++                    className={`spa-view ${isFlyoutOpen ? '' : 'inactive'}`}
++                    aria-hidden={isFlyoutOpen ? 'false' : 'true'}
++                    tabIndex={-1}
++                >
++                    <SearchFlyout articles={articles} onClose={closeSearch} />
++                </div>
++            )}
+         </>
+     );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..da7c63f 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -38,18 +38,115 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="fireplace-ads" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main
++          id="spa-view-container"
++          class="bg-white relative"
++          transition:persist="spa-view-container"
++        >
++          <div
++            class="spa-view"
++            data-view-path={Astro.url.pathname}
++            aria-hidden="false"
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <Footer transition:persist="site-footer" />
++
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      const MAX_CACHED_VIEWS = 5;
++      const viewCacheOrder: string[] = [];
++
++      function touchCachedView(path: string) {
++        const existingIdx = viewCacheOrder.indexOf(path);
++        if (existingIdx !== -1) {
++          viewCacheOrder.splice(existingIdx, 1);
++        }
++        viewCacheOrder.push(path);
++      }
++
++      function evictOldViews(container: HTMLElement, activePath: string) {
++        while (viewCacheOrder.length > MAX_CACHED_VIEWS) {
++          const oldestPath = viewCacheOrder.shift();
++          if (oldestPath && oldestPath !== activePath) {
++            const oldView = container.querySelector<HTMLElement>(
++              `.spa-view[data-view-path="${CSS.escape(oldestPath)}"]`
++            );
++            oldView?.remove();
++          }
++        }
++      }
++
++      function activateView(container: HTMLElement, targetView: HTMLElement) {
++        container.querySelectorAll<HTMLElement>(".spa-view").forEach((view) => {
++          if (view === targetView) {
++            view.classList.remove("inactive");
++            view.setAttribute("aria-hidden", "false");
++          } else {
++            view.classList.add("inactive");
++            view.setAttribute("aria-hidden", "true");
++          }
++        });
++        targetView.focus({ preventScroll: true });
++      }
++
++      // Record the initial server-rendered view in our LRU cache
++      const initialView = document.querySelector<HTMLElement>(
++        "#spa-view-container > .spa-view[data-view-path]"
++      );
++      if (initialView?.dataset.viewPath) {
++        touchCachedView(initialView.dataset.viewPath);
++      }
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        const currentContainer = document.getElementById("spa-view-container");
++        const incomingView = event.newDocument.querySelector(
++          "#spa-view-container > .spa-view"
++        ) as HTMLElement | null;
++
++        if (!currentContainer || !incomingView) {
++          return;
++        }
++
++        const targetPath =
++          incomingView.dataset.viewPath || window.location.pathname;
++
++        event.swap = () => {
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          swapFunctions.swapHeadElements(event.newDocument);
++          const restoreFocusFunction = swapFunctions.saveFocus();
++
++          let targetView = currentContainer.querySelector<HTMLElement>(
++            `.spa-view[data-view-path="${CSS.escape(targetPath)}"]`
++          );
++
++          if (!targetView) {
++            targetView = document.adoptNode(incomingView);
++            targetView.dataset.viewPath = targetPath;
++            currentContainer.appendChild(targetView);
++          }
++
++          touchCachedView(targetPath);
++          activateView(currentContainer, targetView);
++          evictOldViews(currentContainer, targetPath);
++
++          restoreFocusFunction();
++          targetView.focus({ preventScroll: true });
++        };
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..fb2ac21 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,15 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

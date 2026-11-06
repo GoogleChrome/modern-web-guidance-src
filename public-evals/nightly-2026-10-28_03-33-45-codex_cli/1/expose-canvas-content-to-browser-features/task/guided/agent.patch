@@ -1,0 +1,294 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .customizer {
++      margin-top: 48px;
++      padding: 32px 12px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: #f3ece5;
++      text-align: center;
++    }
++
++    .customizer > p { margin: 8px auto 0; max-width: 520px; }
++    .coffee-stage {
++      position: relative;
++      max-width: 680px;
++      margin: 0 auto;
++      padding: 120px 0 90px;
++      isolation: isolate;
++    }
++
++    #canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++    }
++
++    .coffee-form {
++      position: relative;
++      width: 68%;
++      margin-left: 14%;
++      text-align: left;
++      color: var(--text);
++      /* Also keeps the form legible when canvas or scripting is unavailable. */
++      background: #fffaf3;
++      border-radius: 8px;
++      padding: 16px;
++      overflow-wrap: anywhere;
++    }
++
++    .coffee-form h3 { text-align: center; margin-bottom: 16px; }
++    .coffee-form label { display: block; font-weight: 600; margin-bottom: 5px; }
++    .coffee-form input, .coffee-form select {
++      display: block;
++      width: 100%;
++      min-height: 44px;
++      margin-bottom: 14px;
++      padding: 9px;
++      border: 1px solid #967c70;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .coffee-form button { border: 0; cursor: pointer; font: inherit; width: 100%; }
++    .coffee-form :focus-visible { outline: 3px solid #9a4a08; outline-offset: 3px; }
++    .coffee-summary { border-top: 1px solid var(--secondary); padding-top: 12px; }
++    .coffee-confirmation { margin-top: 12px; }
++    .coffee-confirmation:empty { display: none; }
++
++    @media print {
++      #canvas { display: none; }
++      .coffee-stage { height: auto !important; padding: 20px 0; }
++      .coffee-form { width: 100% !important; margin: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +259,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-heading">
++      <h2 id="customizer-heading">Your Cup, Your Way</h2>
++      <p>A little more you in every sip. Make your perfect latte below.</p>
++      <div class="coffee-stage">
++        <canvas id="canvas" content="drawable"></canvas>
++        <!-- One real form: moved into the canvas only when HTML-in-canvas is supported. -->
++        <form id="coffee-form" class="coffee-form" drawable aria-labelledby="cup-heading">
++          <h3 id="cup-heading">Make it yours</h3>
++          <label for="coffee-name">Name on your cup</label>
++          <input id="coffee-name" name="name" type="text" autocomplete="given-name"
++            placeholder="Your name" maxlength="60">
++          <label for="coffee-milk">Milk</label>
++          <select id="coffee-milk" name="milk">
++            <option value="oat">Oat milk</option>
++            <option value="whole">Whole milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="none">No milk</option>
++          </select>
++          <label for="coffee-syrup">Syrup</label>
++          <select id="coffee-syrup" name="syrup">
++            <option value="maple">Maple</option>
++            <option value="vanilla">Vanilla</option>
++            <option value="caramel">Caramel</option>
++            <option value="none">No syrup</option>
++          </select>
++          <p class="coffee-summary">Your latte: <span id="milk-summary">Oat milk</span>
++            &middot; <span id="syrup-summary">Maple</span></p>
++          <button type="submit" class="btn">Confirm my cup</button>
++          <p id="coffee-confirmation" class="coffee-confirmation" role="status" aria-atomic="true"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +304,174 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = canvas.parentElement;
++      const form = document.getElementById('coffee-form');
++      const milk = document.getElementById('coffee-milk');
++      const syrup = document.getElementById('coffee-syrup');
++      const confirmation = document.getElementById('coffee-confirmation');
++      const ctx = canvas.getContext('2d');
++      let nativeHTML = Boolean(ctx && 'content' in HTMLCanvasElement.prototype &&
++        typeof ctx.drawElementImage === 'function' && typeof canvas.requestPaint === 'function');
++      let width = 0;
++      let height = 0;
++
++      function useOverlay() {
++        nativeHTML = false;
++        canvas.onpaint = null;
++        canvas.removeAttribute('content');
++        canvas.setAttribute('aria-hidden', 'true');
++        stage.append(form);
++        stage.style.removeProperty('height');
++        form.style.removeProperty('width');
++      }
++
++      if (nativeHTML) {
++        canvas.append(form);
++      } else {
++        useOverlay();
++      }
++
++      function draw() {
++        if (!ctx || !width || !height) return;
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++        // All drawing coordinates use CSS pixels; the backing store uses device pixels.
++        ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
++
++        ctx.fillStyle = '#e2d3c5';
++        ctx.beginPath();
++        ctx.ellipse(width * .49, height - 35, width * .44, 18, 0, 0, Math.PI * 2);
++        ctx.fill();
++        // Handle, then cup body so the handle joins sit behind the ceramic.
++        ctx.strokeStyle = '#c9ae96';
++        ctx.lineWidth = 18;
++        ctx.beginPath();
++        ctx.ellipse(width * .86, height * .47, width * .105, height * .14, 0, 0, Math.PI * 2);
++        ctx.stroke();
++        const body = ctx.createLinearGradient(width * .07, 0, width * .9, 0);
++        body.addColorStop(0, '#e7d5c0');
++        body.addColorStop(.25, '#fffaf3');
++        body.addColorStop(.75, '#fffaf3');
++        body.addColorStop(1, '#dec6ae');
++        ctx.fillStyle = body;
++        ctx.beginPath();
++        ctx.moveTo(width * .07, 92);
++        ctx.lineTo(width * .9, 92);
++        ctx.lineTo(width * .85, height - 75);
++        ctx.quadraticCurveTo(width * .85, height - 40, width * .48, height - 40);
++        ctx.quadraticCurveTo(width * .12, height - 40, width * .12, height - 75);
++        ctx.closePath();
++        ctx.fill();
++        ctx.lineWidth = 3;
++        ctx.stroke();
++        ctx.fillStyle = '#c9ae96';
++        ctx.beginPath();
++        ctx.ellipse(width * .485, 92, width * .415, 25, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = { oat: '#bb8a5a', whole: '#c69b70', almond: '#b18051', none: '#563426' }[milk.value];
++        ctx.beginPath();
++        ctx.ellipse(width * .485, 90, width * .39, 17, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        if (nativeHTML) {
++          try {
++            // This 2D call also synchronizes hit testing, selection and accessibility bounds.
++            ctx.drawElementImage(form, width * .14, 120);
++          } catch (error) {
++            // Preserve the same live controls if a partial implementation cannot draw them.
++            useOverlay();
++            resize();
++          }
++        }
++      }
++
++      function requestDraw() {
++        if (nativeHTML) canvas.requestPaint();
++        else draw();
++      }
++
++      function resize(entry) {
++        if (!ctx) return;
++        if (nativeHTML) {
++          form.style.width = `${stage.clientWidth * .68}px`;
++          stage.style.height = `${form.offsetHeight + 210}px`;
++        }
++        const rect = canvas.getBoundingClientRect();
++        width = rect.width;
++        height = rect.height;
++        const pixels = entry?.target === canvas && entry.devicePixelContentBoxSize?.[0];
++        const ratio = window.devicePixelRatio || 1;
++        const pixelWidth = Math.max(1, pixels?.inlineSize || Math.round(width * ratio));
++        const pixelHeight = Math.max(1, pixels?.blockSize || Math.round(height * ratio));
++        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
++        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
++        requestDraw();
++      }
++
++      if (nativeHTML) canvas.onpaint = draw;
++      if (typeof ResizeObserver !== 'undefined') {
++        const observer = new ResizeObserver(entries => {
++          resize(entries.find(entry => entry.target === canvas));
++        });
++        observer.observe(form);
++        const deviceBox = typeof ResizeObserverEntry !== 'undefined' &&
++          'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++        try {
++          observer.observe(canvas, deviceBox ? { box: 'device-pixel-content-box' } : {});
++        } catch (error) {
++          observer.observe(canvas);
++        }
++      }
++      // Re-arm the query whenever zooming or moving between displays changes pixel density.
++      let densityQuery;
++      function watchDensity() {
++        densityQuery?.removeEventListener('change', watchDensity);
++        densityQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
++        densityQuery.addEventListener('change', watchDensity);
++        resize();
++      }
++      window.addEventListener('resize', () => resize());
++      watchDensity();
++
++      form.addEventListener('input', () => {
++        document.getElementById('milk-summary').textContent = milk.selectedOptions[0].textContent;
++        document.getElementById('syrup-summary').textContent = syrup.selectedOptions[0].textContent;
++        confirmation.replaceChildren();
++        requestDraw();
++      });
++      form.addEventListener('submit', event => {
++        event.preventDefault();
++        const name = document.getElementById('coffee-name').value.trim();
++        // Keep message text in the DOM so the browser can translate and search it.
++        confirmation.replaceChildren();
++        const message = document.createElement('span');
++        message.textContent = 'Cup customized';
++        confirmation.append(message, name ? `, ${name}!` : '!');
++        resize();
++      });
++      // Printed output uses the live form even on browsers with native canvas HTML.
++      let restoreNativeAfterPrint = false;
++      window.addEventListener('beforeprint', () => {
++        restoreNativeAfterPrint = nativeHTML;
++        if (nativeHTML) useOverlay();
++      });
++      window.addEventListener('afterprint', () => {
++        if (restoreNativeAfterPrint) {
++          nativeHTML = true;
++          canvas.removeAttribute('aria-hidden');
++          canvas.setAttribute('content', 'drawable');
++          canvas.append(form);
++          canvas.onpaint = draw;
++          resize();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

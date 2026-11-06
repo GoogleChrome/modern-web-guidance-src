@@ -1,0 +1,380 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -92,8 +92,209 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast picker (select dropdown with grid options menu) */
++    .roast-picker {
++      position: relative;
++      margin-top: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .roast-picker__label {
++      font-size: 0.8rem;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      opacity: 0.9;
++    }
++
++    .roast-picker__trigger {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      min-width: 260px;
++      padding: 8px 14px 8px 8px;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: var(--light);
++      border: 2px solid transparent;
++      border-radius: 8px;
++      cursor: pointer;
++      text-align: left;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .roast-picker__trigger:hover,
++    .roast-picker__trigger:focus-visible {
++      border-color: var(--accent);
++      outline: none;
++    }
++
++    .roast-picker__trigger[aria-expanded="true"] {
++      border-color: var(--accent);
++      border-bottom-left-radius: 0;
++      border-bottom-right-radius: 0;
++    }
++
++    .roast-picker__thumb {
++      width: 40px;
++      height: 40px;
++      border-radius: 6px;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    .roast-picker__value {
++      flex: 1;
++      font-weight: 600;
++    }
++
++    .roast-picker__chevron {
++      width: 12px;
++      height: 12px;
++      border-right: 2px solid var(--primary);
++      border-bottom: 2px solid var(--primary);
++      transform: translateY(-3px) rotate(45deg);
++      transition: transform 0.2s;
++      flex-shrink: 0;
++    }
++
++    .roast-picker__trigger[aria-expanded="true"] .roast-picker__chevron {
++      transform: translateY(3px) rotate(225deg);
++    }
++
++    /* Options menu: rich-media 3-column grid instead of a vertical list */
++    .roast-picker__menu {
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      z-index: 20;
++      width: min(600px, calc(100vw - 40px));
++      padding: 12px;
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 12px;
++      list-style: none;
++      background: var(--light);
++      border: 2px solid var(--accent);
++      border-radius: 10px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++      text-align: left;
++      color: var(--text);
++    }
++
++    .roast-picker__menu[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      border-radius: 8px;
++      overflow: hidden;
++      background: white;
++      border: 2px solid var(--secondary);
++      cursor: pointer;
++      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
++    }
++
++    .roast-option:hover,
++    .roast-option:focus-visible {
++      transform: translateY(-2px);
++      border-color: var(--primary);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
++      outline: none;
++    }
++
++    .roast-option[aria-selected="true"] {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.35);
++    }
++
++    .roast-option__img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .roast-option__body {
++      padding: 10px;
++      line-height: 1.3;
++    }
++
++    .roast-option__name {
++      display: block;
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .roast-option__note {
++      display: block;
++      font-size: 0.78rem;
++      opacity: 0.8;
++      margin-top: 4px;
++    }
++
++    .roast-option__level {
++      display: flex;
++      gap: 4px;
++      margin-top: 8px;
++    }
++
++    .roast-option__level span {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: var(--secondary);
++    }
++
++    .roast-option__level span.on {
++      background: var(--primary);
++    }
++
++    .roast-option__check {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.85rem;
++      font-weight: 700;
++      line-height: 24px;
++      text-align: center;
++      display: none;
++    }
++
++    .roast-option[aria-selected="true"] .roast-option__check {
++      display: block;
++    }
++
++    @media (max-width: 480px) {
++      .roast-picker__trigger {
++        min-width: 220px;
++      }
++
++      .roast-option__body {
++        padding: 6px;
++      }
++
++      .roast-option__note {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +371,60 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++
++    <div class="roast-picker" id="roast-picker">
++      <span class="roast-picker__label" id="roast-label">Choose your roast</span>
++      <button type="button" class="roast-picker__trigger" id="roast-trigger" role="combobox"
++        aria-haspopup="listbox" aria-expanded="false" aria-controls="roast-menu" aria-labelledby="roast-label roast-value">
++        <img class="roast-picker__thumb" id="roast-thumb" alt=""
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=120&h=120&q=70">
++        <span class="roast-picker__value" id="roast-value">Medium Roast</span>
++        <span class="roast-picker__chevron" aria-hidden="true"></span>
++      </button>
++
++      <ul class="roast-picker__menu" id="roast-menu" role="listbox" aria-labelledby="roast-label" hidden>
++        <li class="roast-option" role="option" id="roast-opt-light" data-value="light" data-label="Light Roast"
++          data-img="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=120&h=120&q=70"
++          aria-selected="false" tabindex="-1">
++          <img class="roast-option__img" alt="Light roast coffee beans in a white cup"
++            src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=400&h=300&q=75">
++          <span class="roast-option__body">
++            <span class="roast-option__name">Light Roast</span>
++            <span class="roast-option__note">Bright, floral, citrusy</span>
++            <span class="roast-option__level" aria-hidden="true"><span class="on"></span><span></span><span></span></span>
++          </span>
++          <span class="roast-option__check" aria-hidden="true">&#10003;</span>
++        </li>
++        <li class="roast-option" role="option" id="roast-opt-medium" data-value="medium" data-label="Medium Roast"
++          data-img="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=120&h=120&q=70"
++          aria-selected="true" tabindex="-1">
++          <img class="roast-option__img" alt="Medium roast coffee beans"
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=400&h=300&q=75">
++          <span class="roast-option__body">
++            <span class="roast-option__name">Medium Roast</span>
++            <span class="roast-option__note">Balanced, caramel, nutty</span>
++            <span class="roast-option__level" aria-hidden="true"><span class="on"></span><span class="on"></span><span></span></span>
++          </span>
++          <span class="roast-option__check" aria-hidden="true">&#10003;</span>
++        </li>
++        <li class="roast-option" role="option" id="roast-opt-dark" data-value="dark" data-label="Dark Roast"
++          data-img="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=120&h=120&q=70"
++          aria-selected="false" tabindex="-1">
++          <img class="roast-option__img" alt="Dark roast coffee with rich crema"
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&h=300&q=75">
++          <span class="roast-option__body">
++            <span class="roast-option__name">Dark Roast</span>
++            <span class="roast-option__note">Bold, smoky, chocolatey</span>
++            <span class="roast-option__level" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="on"></span></span>
++          </span>
++          <span class="roast-option__check" aria-hidden="true">&#10003;</span>
++        </li>
++      </ul>
++    </div>
++
++    <a href="/order-online?roast=medium" class="btn" id="order-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +458,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var picker = document.getElementById('roast-picker');
++      var trigger = document.getElementById('roast-trigger');
++      var menu = document.getElementById('roast-menu');
++      var valueEl = document.getElementById('roast-value');
++      var thumb = document.getElementById('roast-thumb');
++      var orderBtn = document.getElementById('order-btn');
++      var options = Array.prototype.slice.call(menu.querySelectorAll('[role="option"]'));
++
++      function selectedIndex() {
++        for (var i = 0; i < options.length; i++) {
++          if (options[i].getAttribute('aria-selected') === 'true') return i;
++        }
++        return 0;
++      }
++
++      function open() {
++        menu.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        options[selectedIndex()].focus();
++      }
++
++      function close(refocus) {
++        if (menu.hidden) return;
++        menu.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        if (refocus) trigger.focus();
++      }
++
++      function select(opt) {
++        options.forEach(function (o) { o.setAttribute('aria-selected', String(o === opt)); });
++        trigger.setAttribute('aria-activedescendant', opt.id);
++        valueEl.textContent = opt.getAttribute('data-label');
++        thumb.src = opt.getAttribute('data-img');
++        var url = new URL(orderBtn.getAttribute('href'), location.href);
++        url.searchParams.set('roast', opt.getAttribute('data-value'));
++        orderBtn.setAttribute('href', url.pathname + url.search);
++        close(true);
++      }
++
++      trigger.addEventListener('click', function () {
++        menu.hidden ? open() : close(false);
++      });
++
++      trigger.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Enter') {
++          e.preventDefault();
++          open();
++        }
++      });
++
++      options.forEach(function (opt, i) {
++        opt.addEventListener('click', function () { select(opt); });
++        opt.addEventListener('keydown', function (e) {
++          var next = null;
++          switch (e.key) {
++            case 'ArrowRight':
++            case 'ArrowDown': next = options[(i + 1) % options.length]; break;
++            case 'ArrowLeft':
++            case 'ArrowUp': next = options[(i - 1 + options.length) % options.length]; break;
++            case 'Home': next = options[0]; break;
++            case 'End': next = options[options.length - 1]; break;
++            case 'Enter':
++            case ' ': e.preventDefault(); select(opt); return;
++            case 'Escape': e.preventDefault(); close(true); return;
++            case 'Tab': close(false); return;
++            default: return;
++          }
++          e.preventDefault();
++          next.focus();
++        });
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!picker.contains(e.target)) close(false);
++      });
++
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape') close(true);
++      });
++
++      trigger.setAttribute('aria-activedescendant', options[selectedIndex()].id);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

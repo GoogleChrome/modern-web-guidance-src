@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,36 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++  </head>
++  <body>
++    <button type="button" id="load">Load data</button>
++    <output id="result" aria-live="polite"></output>
++    <script>
++      const result = document.getElementById('result');
++
++      document.getElementById('load').addEventListener('click', () => {
++        result.textContent = 'Loading…';
++
++        // Start the critical request first, with a high-priority hint.
++        fetch('/api/data', { priority: 'high' })
++          .then(response => {
++            if (!response.ok) throw new Error(`Data request failed (${response.status})`);
++            return response.json();
++          })
++          .then(data => { result.textContent = JSON.stringify(data); })
++          .catch(error => { result.textContent = error.message; });
++
++        // Run independently so analytics never delays displaying the data.
++        fetch('/api/analytics', {
++          method: 'POST',
++          priority: 'low',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 })
++        }).catch(error => console.error('Analytics request failed:', error));
++      });
++    </script>
++  </body>
++</html>

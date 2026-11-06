@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,119 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const ANALYTICS_ENDPOINT = '/api/analytics';
++    const BATCH_WINDOW = 10 * 1000;
++    const MAX_QUEUE_SIZE = 100;
++
++    const eventQueue = [];
++    let fetchLaterResult;
++    let fetchLaterController;
++
++    function serializeElement(element) {
++      if (!(element instanceof Element)) {
++        return null;
++      }
++      const interactiveTarget = element.closest('a, button, [role="button"]') || element;
++      return {
++        tagName: interactiveTarget.tagName.toLowerCase(),
++        id: interactiveTarget.id || undefined,
++        className: typeof interactiveTarget.className === 'string' && interactiveTarget.className ? interactiveTarget.className : undefined,
++        href: interactiveTarget.getAttribute('href') || undefined,
++        text: interactiveTarget.textContent?.trim().slice(0, 100) || undefined,
++      };
++    }
++
++    function trackEvent(eventData) {
++      if (fetchLaterResult?.activated || eventQueue.length > MAX_QUEUE_SIZE) {
++        fetchLaterController = null;
++        fetchLaterResult = null;
++        eventQueue.length = 0;
++      }
++
++      eventQueue.push({
++        ...eventData,
++        timestamp: Date.now(),
++        path: window.location.pathname,
++      });
++
++      if (fetchLaterController) {
++        fetchLaterController.abort();
++      }
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body: JSON.stringify(eventQueue),
++          signal: fetchLaterController.signal,
++          activateAfter: BATCH_WINDOW,
++        });
++      } catch (error) {
++        // Handle quota or scheduling errors gracefully without disrupting user interactions.
++      }
++    }
++
++    window.addEventListener('load', () => {
++      trackEvent({ type: 'page_load' });
++    });
++
++    window.addEventListener('click', (event) => {
++      trackEvent({
++        type: 'click',
++        target: serializeElement(event.target),
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

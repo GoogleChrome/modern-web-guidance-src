@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .paywall-container {
++      margin-top: 60px;
++      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
++    }
++
++    .paywall-container .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +221,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <div style="text-align: center; margin-bottom: 20px;">
++        <span class="badge">Exclusive</span>
++        <h2>Roaster's Secrets</h2>
++        <p style="color: #6d4c41; margin-top: 5px;">Behind-the-scenes techniques, roast profiles, and extraction secrets from our head roasters.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Roasting Coffee Beans in Drum">
++          <h3>The First Crack Curve</h3>
++          <p>Mastering the Development Time Ratio (DTR) between 16% and 20% to unlock delicate stone-fruit aromatics without baking the bean.</p>
++          <a href="/secrets/first-crack" class="btn">Read Preview</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1518832553480-cd0e625ed3e6?auto=format&fit=crop&w=600&q=80" alt="Pour Over Coffee Brew">
++          <h3>Water Mineralogy Calibration</h3>
++          <p>Why balancing calcium and magnesium ions at 130ppm total hardness unlocks unprecedented clarity in light single-origin roasts.</p>
++          <a href="/secrets/water-mineralogy" class="btn">Read Preview</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="High Altitude Coffee Cherries">
++          <h3>High Altitude Density</h3>
++          <p>Charge temperature adjustments and airflow dynamics when profiling dense Strictly Hard Beans (SHB) grown above 1,900m.</p>
++          <a href="/secrets/altitude-density" class="btn">Read Preview</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

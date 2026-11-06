@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,50 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Spring: overshoots the target scale, then settles */
++    .card.spring {
++      transition: transform 0.7s cubic-bezier(0.34, 1.9, 0.5, 1),
++                  box-shadow 0.7s ease-out;
++      transition-timing-function: linear(
++        0, 0.25 4%, 0.65 8%, 1 12%, 1.18 16%, 1.24 20%, 1.2 24%, 1.08 32%,
++        0.98 40%, 0.96 46%, 0.99 56%, 1.01 66%, 1.005 78%, 1
++      ), ease-out;
++    }
++
++    .card.spring:hover {
++      transform: scale(1.12);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
++    }
++
++    /* Bounce: lifts up and lands with decaying rebounds */
++    .card.bounce {
++      transition: transform 0.8s cubic-bezier(0.28, 0.84, 0.42, 1),
++                  box-shadow 0.8s ease-out;
++      transition-timing-function: linear(
++        0, 0.06 3%, 0.25 7%, 0.56 12%, 1 18%, 0.8 24%, 0.72 27%, 0.8 30%,
++        1 38%, 0.93 43%, 0.91 45%, 0.93 47%, 1 54%, 0.98 58%, 1 64%, 1
++      ), ease-out;
++    }
++
++    .card.bounce:hover {
++      transform: translateY(-16px);
++      box-shadow: 0 20px 24px -8px rgba(0, 0, 0, 0.2);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce {
++        transition: none;
++      }
++
++      .card.spring:hover,
++      .card.bounce:hover {
++        transform: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +219,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

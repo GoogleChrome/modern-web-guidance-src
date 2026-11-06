@@ -1,0 +1,604 @@
+diff --git a/index.html b/index.html
+index 66c9173..eb75c2e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,114 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Section */
++    .feedback-section {
++      margin-top: 60px;
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .feedback-subtitle {
++      text-align: center;
++      margin-bottom: 25px;
++      color: #6d4c41;
++    }
++
++    .feedback-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 25px;
++      margin-bottom: 20px;
++    }
++
++    .feedback-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 10px;
++      font-size: 1.1rem;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++    }
++
++    .form-group:last-child {
++      margin-bottom: 0;
++    }
++
++    .form-group label,
++    .form-group .group-label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .form-group textarea {
++      resize: vertical;
++      min-height: 100px;
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 15px;
++      justify-content: flex-end;
++      align-items: center;
++    }
++
++    .btn-submit,
++    .btn-reset {
++      cursor: pointer;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      margin-top: 0;
++    }
++
++    .btn-reset {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-reset:hover {
++      background: #bcaaa4;
++    }
++
++    .feedback-result {
++      margin-top: 20px;
++      padding: 15px;
++      border-radius: 6px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      display: none;
++    }
++
++    .feedback-result.visible {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +303,51 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" id="feedback">
++      <h2>Coffee Feedback</h2>
++      <p class="feedback-subtitle">Tell us how we did on your latest cup!</p>
++
++      <form id="coffee-feedback-form" class="feedback-form" action="/feedback" method="post">
++        <fieldset id="feedback-fieldset">
++          <legend>Rate Your Experience</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Your Name</label>
++            <input type="text" id="customer-name" name="name" placeholder="Jane Doe">
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-drink">Beverage Ordered</label>
++            <select id="coffee-drink" name="beverage" required>
++              <option value="">Select a beverage...</option>
++              <option value="Maple Oat Latte">Maple Oat Latte</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++              <option value="Cold Brew">Cold Brew</option>
++              <option value="Pour Over">House Pour Over</option>
++              <option value="Cappuccino">Cappuccino</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label class="group-label" id="rating-label" for="coffee-rating">Overall Rating *</label>
++            <star-rating id="coffee-rating" name="rating" required max="5" aria-labelledby="rating-label"></star-rating>
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-comments">Tasting Notes &amp; Comments</label>
++            <textarea id="coffee-comments" name="comments" placeholder="How was the aroma, body, and flavor?"></textarea>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="reset" class="btn btn-reset">Reset</button>
++          <button type="submit" class="btn btn-submit">Submit Feedback</button>
++        </div>
++      </form>
++
++      <div id="feedback-result" class="feedback-result" role="status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +360,432 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class StarRating extends HTMLElement {
++      static formAssociated = true;
++
++      static get observedAttributes() {
++        return ['value', 'required', 'disabled', 'max'];
++      }
++
++      constructor() {
++        super();
++        this._internals = this.attachInternals();
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++
++        this._value = '';
++        this._defaultValue = '';
++        this._hoverValue = 0;
++        this._disabled = false;
++        this._required = false;
++        this._max = 5;
++        this._initialized = false;
++
++        this._render();
++      }
++
++      connectedCallback() {
++        if (!this._initialized) {
++          if (this.hasAttribute('value')) {
++            this._defaultValue = this.getAttribute('value') || '';
++            this._value = this._defaultValue;
++          }
++          this._initialized = true;
++        }
++        this._required = this.hasAttribute('required');
++        this._disabled = this.hasAttribute('disabled') || this.matches(':disabled');
++        if (this.hasAttribute('max')) {
++          const parsedMax = parseInt(this.getAttribute('max'), 10);
++          if (!Number.isNaN(parsedMax) && parsedMax > 0) {
++            this._max = parsedMax;
++          }
++        }
++
++        if (!this.hasAttribute('role')) {
++          this.setAttribute('role', 'radiogroup');
++        }
++
++        this._syncFormState();
++        this._updateStars();
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++
++        if (name === 'value') {
++          this._defaultValue = newValue !== null ? String(newValue) : '';
++          this.value = this._defaultValue;
++        } else if (name === 'required') {
++          this._required = newValue !== null;
++          this._updateValidity();
++          this._updateStars();
++        } else if (name === 'disabled') {
++          this._disabled = newValue !== null || this.matches(':disabled');
++          this._updateValidity();
++          this._updateStars();
++        } else if (name === 'max') {
++          const parsed = parseInt(newValue, 10);
++          this._max = !Number.isNaN(parsed) && parsed > 0 ? parsed : 5;
++          this._renderStars();
++          this._syncFormState();
++          this._updateStars();
++        }
++      }
++
++      /* Form-associated lifecycle callbacks */
++      formAssociatedCallback(form) {
++        this._syncFormState();
++      }
++
++      formDisabledCallback(disabled) {
++        this._disabled = Boolean(disabled) || this.hasAttribute('disabled');
++        this._updateValidity();
++        this._updateStars();
++      }
++
++      formResetCallback() {
++        const defaultAttr = this.getAttribute('value');
++        this._value = defaultAttr !== null ? String(defaultAttr) : '';
++        this._hoverValue = 0;
++        this._syncFormState();
++        this._updateStars();
++      }
++
++      formStateRestoreCallback(state, mode) {
++        this._value = state !== null && state !== undefined ? String(state) : '';
++        this._syncFormState();
++        this._updateStars();
++      }
++
++      /* Properties & Constraint Validation API */
++      get value() {
++        return this._value;
++      }
++
++      set value(val) {
++        const normalized = val === null || val === undefined || val === '' || val === 0 || val === '0'
++          ? ''
++          : String(val);
++        this._value = normalized;
++        this._syncFormState();
++        this._updateStars();
++      }
++
++      get defaultValue() {
++        return this.getAttribute('value') || this._defaultValue || '';
++      }
++
++      set defaultValue(val) {
++        const str = val === null || val === undefined ? '' : String(val);
++        this._defaultValue = str;
++        if (str === '') {
++          this.removeAttribute('value');
++        } else {
++          this.setAttribute('value', str);
++        }
++      }
++
++      get name() {
++        return this.getAttribute('name') || '';
++      }
++
++      set name(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('name');
++        } else {
++          this.setAttribute('name', String(val));
++        }
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get form() {
++        return this._internals.form;
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(val) {
++        if (val) {
++          this.setAttribute('required', '');
++        } else {
++          this.removeAttribute('required');
++        }
++      }
++
++      get disabled() {
++        return this._disabled;
++      }
++
++      set disabled(val) {
++        if (val) {
++          this.setAttribute('disabled', '');
++        } else {
++          this.removeAttribute('disabled');
++        }
++      }
++
++      get max() {
++        return this._max;
++      }
++
++      set max(val) {
++        this.setAttribute('max', String(val));
++      }
++
++      get validity() {
++        return this._internals.validity;
++      }
++
++      get validationMessage() {
++        return this._internals.validationMessage;
++      }
++
++      get willValidate() {
++        return this._internals.willValidate;
++      }
++
++      checkValidity() {
++        return this._internals.checkValidity();
++      }
++
++      reportValidity() {
++        return this._internals.reportValidity();
++      }
++
++      setCustomValidity(message) {
++        if (message) {
++          const anchor = this.shadowRoot.querySelector('.star-btn') || undefined;
++          this._internals.setValidity({ customError: true }, message, anchor);
++        } else {
++          this._updateValidity();
++        }
++      }
++
++      _syncFormState() {
++        const formValue = this._value ? this._value : null;
++        this._internals.setFormValue(formValue, this._value);
++        this._updateValidity();
++      }
++
++      _updateValidity() {
++        const anchor = this.shadowRoot && this.shadowRoot.querySelector('.star-btn');
++        if (this._required && !this._value) {
++          this._internals.setValidity(
++            { valueMissing: true },
++            'Please select a star rating.',
++            anchor || undefined
++          );
++        } else {
++          this._internals.setValidity({});
++        }
++      }
++
++      _selectRating(ratingNum) {
++        if (this._disabled) return;
++        const nextVal = String(ratingNum);
++        const changed = this._value !== nextVal;
++        this.value = nextVal;
++        if (changed) {
++          this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++          this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++        }
++      }
++
++      _handleKeyDown(e) {
++        if (this._disabled) return;
++        const current = parseInt(this._value, 10) || 0;
++        let next = current;
++
++        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
++          e.preventDefault();
++          next = Math.min(this._max, current + 1);
++          if (next === 0) next = 1;
++        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
++          e.preventDefault();
++          next = Math.max(1, current - 1);
++        } else if (e.key === 'Home') {
++          e.preventDefault();
++          next = 1;
++        } else if (e.key === 'End') {
++          e.preventDefault();
++          next = this._max;
++        } else if (e.key >= '1' && e.key <= String(this._max)) {
++          e.preventDefault();
++          next = parseInt(e.key, 10);
++        } else {
++          return;
++        }
++
++        this._selectRating(next);
++        const targetBtn = this.shadowRoot.querySelector(`.star-btn[data-value="${next}"]`);
++        if (targetBtn) {
++          targetBtn.focus();
++        }
++      }
++
++      _render() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: inline-block;
++              user-select: none;
++              vertical-align: middle;
++            }
++            :host([disabled]),
++            :host(:disabled) {
++              opacity: 0.55;
++              pointer-events: none;
++              cursor: not-allowed;
++            }
++            .stars-container {
++              display: inline-flex;
++              align-items: center;
++              gap: 6px;
++            }
++            .star-btn {
++              background: transparent;
++              border: none;
++              padding: 4px;
++              font-size: 2rem;
++              line-height: 1;
++              cursor: pointer;
++              color: #d7ccc8;
++              transition: color 0.15s ease, transform 0.1s ease;
++              border-radius: 4px;
++            }
++            .star-btn:focus-visible {
++              outline: 2px solid #4e342e;
++              outline-offset: 2px;
++            }
++            .star-btn.active {
++              color: #ffab40;
++            }
++            .star-btn.hover {
++              color: #ffca28;
++              transform: scale(1.1);
++            }
++            .star-btn:disabled {
++              cursor: not-allowed;
++              transform: none;
++            }
++            .rating-status {
++              margin-left: 10px;
++              font-size: 0.9rem;
++              color: #6d4c41;
++              font-weight: 500;
++            }
++          </style>
++          <div class="stars-container" part="container"></div>
++        `;
++        this._renderStars();
++      }
++
++      _renderStars() {
++        const container = this.shadowRoot.querySelector('.stars-container');
++        if (!container) return;
++        container.innerHTML = '';
++
++        for (let i = 1; i <= this._max; i++) {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          btn.className = 'star-btn';
++          btn.dataset.value = String(i);
++          btn.setAttribute('role', 'radio');
++          btn.setAttribute('aria-label', `${i} ${i === 1 ? 'star' : 'stars'}`);
++          btn.setAttribute('aria-checked', 'false');
++          btn.textContent = '★';
++
++          btn.addEventListener('click', () => {
++            this._selectRating(i);
++          });
++
++          btn.addEventListener('mouseenter', () => {
++            if (this._disabled) return;
++            this._hoverValue = i;
++            this._updateStars();
++          });
++
++          btn.addEventListener('mouseleave', () => {
++            if (this._disabled) return;
++            this._hoverValue = 0;
++            this._updateStars();
++          });
++
++          btn.addEventListener('keydown', (e) => this._handleKeyDown(e));
++
++          container.appendChild(btn);
++        }
++
++        const status = document.createElement('span');
++        status.className = 'rating-status';
++        status.setAttribute('aria-live', 'polite');
++        container.appendChild(status);
++      }
++
++      _updateStars() {
++        const container = this.shadowRoot && this.shadowRoot.querySelector('.stars-container');
++        if (!container) return;
++
++        const currentVal = parseInt(this._value, 10) || 0;
++        const buttons = container.querySelectorAll('.star-btn');
++
++        buttons.forEach((btn, idx) => {
++          const starNum = idx + 1;
++          const isActive = starNum <= currentVal;
++          const isHover = this._hoverValue > 0 && starNum <= this._hoverValue;
++
++          btn.classList.toggle('active', isActive);
++          btn.classList.toggle('hover', isHover);
++          btn.disabled = this._disabled;
++          btn.setAttribute('aria-checked', String(starNum === currentVal));
++
++          if (this._disabled) {
++            btn.tabIndex = -1;
++          } else if (currentVal > 0) {
++            btn.tabIndex = starNum === currentVal ? 0 : -1;
++          } else {
++            btn.tabIndex = starNum === 1 ? 0 : -1;
++          }
++        });
++
++        const status = container.querySelector('.rating-status');
++        if (status) {
++          status.textContent = currentVal > 0 ? `${currentVal} / ${this._max} stars` : 'No rating selected';
++        }
++      }
++    }
++
++    if (!customElements.get('star-rating')) {
++      customElements.define('star-rating', StarRating);
++    }
++
++    const feedbackForm = document.getElementById('coffee-feedback-form');
++    const feedbackResult = document.getElementById('feedback-result');
++
++    if (feedbackForm && feedbackResult) {
++      feedbackForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const formData = new FormData(feedbackForm);
++        const name = formData.get('name') || 'Coffee Lover';
++        const beverage = formData.get('beverage') || 'Coffee';
++        const rating = formData.get('rating');
++        const comments = formData.get('comments');
++
++        feedbackResult.textContent = `Thank you, ${name}! Your ${rating}-star rating for ${beverage}${comments ? ` ("${comments}")` : ''} has been submitted.`;
++        feedbackResult.classList.add('visible');
++      });
++
++      feedbackForm.addEventListener('reset', () => {
++        feedbackResult.textContent = '';
++        feedbackResult.classList.remove('visible');
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

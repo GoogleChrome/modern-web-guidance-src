@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,29 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Cards containing an image switch to a side-by-side layout */
++    .card:has(> img) {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 20px;
++      text-align: left;
++    }
++
++    .card:has(> img) > img {
++      flex: 1 1 120px;
++      min-width: 0;
++      aspect-ratio: 1;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .card:has(> img) > .card-content {
++      flex: 999 1 160px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -178,11 +199,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=400&q=80"
++            alt="Latte with foam art in a ceramic cup" width="400" height="400" loading="lazy">
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

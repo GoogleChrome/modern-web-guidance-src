@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+index 66c9173..6761262 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,9 @@
+ <html lang="en">
+ 
+ <head>
++  <!-- First child of <head>: enforce Trusted Types so DOM XSS sinks (innerHTML, etc.) reject raw strings. -->
++  <meta http-equiv="Content-Security-Policy"
++    content="require-trusted-types-for 'script'; trusted-types daily-grind-html dompurify; object-src 'none'; base-uri 'none'">
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -115,6 +118,16 @@
+       text-align: center;
+     }
+ 
++    .card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -177,23 +190,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites" aria-live="polite"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +204,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- DOMPurify is only downloaded in browsers without the native Sanitizer API; pinned + SRI-verified. -->
++  <script type="importmap">
++    {
++      "imports": {
++        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.4.17/dist/purify.es.mjs"
++      },
++      "integrity": {
++        "https://cdn.jsdelivr.net/npm/dompurify@3.4.17/dist/purify.es.mjs": "sha384-BL58nOFQzaquDpMkbuU2wPuzK53BYxRB4AUTPJekFOA6woO0vIOBxW6Qe4kwM1HH"
++      }
++    }
++  </script>
++
++  <script type="module">
++    // Seasonal Favorites card markup. Treat these strings as untrusted: in production
++    // they may come from a CMS or API, so every one is sanitized before it hits the DOM.
++    const seasonalFavorites = [
++      `<article class="card">
++        <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++          alt="Latte with foam art in a ceramic cup" width="600" height="400" loading="lazy">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </article>`,
++      `<article class="card">
++        <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++          alt="Espresso shot being pulled into a small cup" width="600" height="400" loading="lazy">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </article>`,
++      `<article class="card">
++        <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++          alt="Iced cold brew coffee in a glass" width="600" height="400" loading="lazy">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </article>`,
++    ];
++
++    // Strict allowlist shared by the native Sanitizer and the DOMPurify fallback.
++    const ALLOWED_ELEMENTS = ['article', 'div', 'h3', 'p', 'a', 'img', 'strong', 'em', 'span'];
++    const ALLOWED_ATTRIBUTES = ['class', 'href', 'src', 'alt', 'width', 'height', 'loading'];
++
++    // Trusted Types tinyfill: older browsers still run the sanitizing policy, just without enforcement.
++    if (!('trustedTypes' in window)) {
++      window.trustedTypes = { createPolicy: (_name, rules) => rules };
++    }
++
++    let policyPromise;
++    function loadFallbackPolicy() {
++      policyPromise ??= import('dompurify').then((mod) => {
++        const DOMPurify = mod.default ?? mod;
++        // The only policy allowed (besides DOMPurify's own) by the CSP `trusted-types` directive.
++        return trustedTypes.createPolicy('daily-grind-html', {
++          createHTML: (input) =>
++            DOMPurify.sanitize(input, {
++              ALLOWED_TAGS: [...ALLOWED_ELEMENTS, '#text'],
++              ALLOWED_ATTR: ALLOWED_ATTRIBUTES,
++              // Match native Sanitizer behaviour.
++              ALLOW_ARIA_ATTR: false,
++              ALLOW_DATA_ATTR: false,
++              KEEP_CONTENT: false,
++              RETURN_TRUSTED_TYPE: false,
++            }),
++        });
++      });
++      return policyPromise;
++    }
++
++    async function safeSetHTML(el, html) {
++      if ('setHTML' in Element.prototype) {
++        // Native Sanitizer API: always strips scripts, event handlers and javascript: URLs,
++        // and needs no Trusted Types policy.
++        el.setHTML(html, {
++          sanitizer: { elements: ALLOWED_ELEMENTS, attributes: ALLOWED_ATTRIBUTES },
++        });
++      } else {
++        const policy = await loadFallbackPolicy();
++        el.innerHTML = policy.createHTML(html); // TrustedHTML, so the enforced sink accepts it
++      }
++    }
++
++    const grid = document.getElementById('seasonal-favorites');
++    try {
++      await safeSetHTML(grid, seasonalFavorites.join(''));
++    } catch (err) {
++      console.error('Unable to render Seasonal Favorites safely:', err);
++      const msg = document.createElement('p');
++      msg.textContent = 'Seasonal favorites are unavailable right now. Please check our full menu.';
++      grid.replaceChildren(msg);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

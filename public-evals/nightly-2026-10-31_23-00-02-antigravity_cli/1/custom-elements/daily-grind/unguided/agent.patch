@@ -1,0 +1,420 @@
+diff --git a/index.html b/index.html
+index 66c9173..18abdb2 100644
+--- a/index.html
++++ b/index.html
+@@ -107,12 +107,51 @@
+       margin-top: 20px;
+     }
+ 
++    coffee-card {
++      display: block;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      height: 100%;
++      border: 2px solid transparent;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++    }
++
++    coffee-card[featured] .card {
++      border-color: var(--accent);
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.25);
++    }
++
++    coffee-card[sold-out] .card {
++      opacity: 0.75;
++    }
++
++    .badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 3px 8px;
++      border-radius: 12px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .badge.sold-out-badge {
++      background: #9e9e9e;
++      color: white;
+     }
+ 
+     .card h3 {
+@@ -120,6 +159,28 @@
+       color: var(--primary);
+     }
+ 
++    .card-meta {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: #5d4037;
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      align-items: center;
++      font-weight: 600;
++    }
++
++    .card-price {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .card-calories {
++      color: #795548;
++      font-weight: normal;
++      font-size: 0.85rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +196,12 @@
+       background: #3e2723;
+     }
+ 
++    .btn.disabled {
++      background: #bdbdbd;
++      pointer-events: none;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,21 +245,28 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          price="5.50"
++          calories="210"
++          featured>
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"
++          price="3.75"
++          calories="15">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"
++          price="4.50"
++          calories="5">
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +281,277 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class CoffeeCard extends HTMLElement {
++      static get observedAttributes() {
++        return [
++          'name',
++          'description',
++          'href',
++          'cta-text',
++          'price',
++          'calories',
++          'featured',
++          'sold-out',
++        ];
++      }
++
++      constructor() {
++        super();
++        this._isConnected = false;
++        this._handleClick = this._handleClick.bind(this);
++      }
++
++      connectedCallback() {
++        this._isConnected = true;
++        this._upgradeProperty('name');
++        this._upgradeProperty('description');
++        this._upgradeProperty('href');
++        this._upgradeProperty('ctaText');
++        this._upgradeProperty('price');
++        this._upgradeProperty('calories');
++        this._upgradeProperty('featured');
++        this._upgradeProperty('soldOut');
++
++        this.addEventListener('click', this._handleClick);
++        this.render();
++      }
++
++      disconnectedCallback() {
++        this._isConnected = false;
++        this.removeEventListener('click', this._handleClick);
++      }
++
++      adoptedCallback() {
++        if (this._isConnected) {
++          this.render();
++        }
++      }
++
++      attributeChangedCallback(attrName, oldValue, newValue) {
++        if (oldValue === newValue) return;
++        if (this._isConnected) {
++          this.render();
++        }
++      }
++
++      _upgradeProperty(prop) {
++        if (Object.prototype.hasOwnProperty.call(this, prop)) {
++          const value = this[prop];
++          delete this[prop];
++          this[prop] = value;
++        }
++      }
++
++      _handleClick(event) {
++        const link = event.target.closest('a.btn');
++        if (!link) return;
++        if (this.soldOut) {
++          event.preventDefault();
++          return;
++        }
++        this.dispatchEvent(
++          new CustomEvent('coffee-select', {
++            bubbles: true,
++            composed: true,
++            detail: {
++              name: this.name,
++              href: this.href,
++              price: this.price,
++              calories: this.calories,
++              featured: this.featured,
++              soldOut: this.soldOut,
++            },
++          })
++        );
++      }
++
++      // String attributes/properties
++      get name() {
++        return this.getAttribute('name') || '';
++      }
++
++      set name(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('name');
++        } else {
++          this.setAttribute('name', String(value));
++        }
++      }
++
++      get description() {
++        return this.getAttribute('description') || '';
++      }
++
++      set description(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('description');
++        } else {
++          this.setAttribute('description', String(value));
++        }
++      }
++
++      get href() {
++        return this.getAttribute('href') || '#';
++      }
++
++      set href(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('href');
++        } else {
++          this.setAttribute('href', String(value));
++        }
++      }
++
++      get ctaText() {
++        return this.getAttribute('cta-text') || 'View Details';
++      }
++
++      set ctaText(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('cta-text');
++        } else {
++          this.setAttribute('cta-text', String(value));
++        }
++      }
++
++      // Numeric attributes/properties
++      get price() {
++        const val = this.getAttribute('price');
++        if (val === null || val.trim() === '') return 0;
++        const num = Number(val);
++        return Number.isFinite(num) ? num : 0;
++      }
++
++      set price(value) {
++        if (value === null || value === undefined || value === '') {
++          this.removeAttribute('price');
++        } else {
++          const num = Number(value);
++          if (Number.isFinite(num)) {
++            this.setAttribute('price', String(num));
++          } else {
++            this.removeAttribute('price');
++          }
++        }
++      }
++
++      get calories() {
++        const val = this.getAttribute('calories');
++        if (val === null || val.trim() === '') return 0;
++        const num = Number(val);
++        return Number.isFinite(num) ? num : 0;
++      }
++
++      set calories(value) {
++        if (value === null || value === undefined || value === '') {
++          this.removeAttribute('calories');
++        } else {
++          const num = Number(value);
++          if (Number.isFinite(num)) {
++            this.setAttribute('calories', String(num));
++          } else {
++            this.removeAttribute('calories');
++          }
++        }
++      }
++
++      // Boolean attributes/properties
++      get featured() {
++        return this.hasAttribute('featured');
++      }
++
++      set featured(value) {
++        if (Boolean(value)) {
++          this.setAttribute('featured', '');
++        } else {
++          this.removeAttribute('featured');
++        }
++      }
++
++      get soldOut() {
++        return this.hasAttribute('sold-out');
++      }
++
++      set soldOut(value) {
++        if (Boolean(value)) {
++          this.setAttribute('sold-out', '');
++        } else {
++          this.removeAttribute('sold-out');
++        }
++      }
++
++      render() {
++        const card = document.createElement('div');
++        card.className = 'card';
++
++        if (this.soldOut) {
++          const badge = document.createElement('span');
++          badge.className = 'badge sold-out-badge';
++          badge.textContent = 'Sold Out';
++          card.appendChild(badge);
++        } else if (this.featured) {
++          const badge = document.createElement('span');
++          badge.className = 'badge';
++          badge.textContent = 'Featured';
++          card.appendChild(badge);
++        }
++
++        const content = document.createElement('div');
++
++        const title = document.createElement('h3');
++        title.textContent = this.name;
++        content.appendChild(title);
++
++        const desc = document.createElement('p');
++        desc.textContent = this.description;
++        content.appendChild(desc);
++
++        const hasPrice = this.hasAttribute('price') && this.price > 0;
++        const hasCalories = this.hasAttribute('calories') && this.calories > 0;
++
++        if (hasPrice || hasCalories) {
++          const meta = document.createElement('div');
++          meta.className = 'card-meta';
++
++          if (hasPrice) {
++            const priceEl = document.createElement('span');
++            priceEl.className = 'card-price';
++            priceEl.textContent = `$${this.price.toFixed(2)}`;
++            meta.appendChild(priceEl);
++          }
++
++          if (hasCalories) {
++            const calEl = document.createElement('span');
++            calEl.className = 'card-calories';
++            calEl.textContent = `${this.calories} cal`;
++            meta.appendChild(calEl);
++          }
++
++          content.appendChild(meta);
++        }
++
++        card.appendChild(content);
++
++        const link = document.createElement('a');
++        link.href = this.href;
++        link.className = this.soldOut ? 'btn disabled' : 'btn';
++        if (this.soldOut) {
++          link.setAttribute('aria-disabled', 'true');
++          link.textContent = 'Unavailable';
++        } else {
++          link.textContent = this.ctaText;
++        }
++        card.appendChild(link);
++
++        this.replaceChildren(card);
++      }
++    }
++
++    if (!customElements.get('coffee-card')) {
++      customElements.define('coffee-card', CoffeeCard);
++    }
++  </script>
+ </body>
+ 
+ </html>

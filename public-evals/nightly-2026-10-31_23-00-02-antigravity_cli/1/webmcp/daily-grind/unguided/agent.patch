@@ -1,0 +1,902 @@
+diff --git a/index.html b/index.html
+index 66c9173..1ed4e7b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,161 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive & WebMCP Order UI */
++    .card {
++      position: relative;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++      border: 2px solid transparent;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card.highlighted {
++      border-color: var(--accent);
++      box-shadow: 0 6px 16px rgba(255, 171, 64, 0.35);
++      transform: translateY(-4px);
++    }
++
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.15rem;
++      margin: 10px 0 5px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++      align-self: center;
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: center;
++      margin-top: 15px;
++      flex-wrap: wrap;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++      cursor: pointer;
++      border: none;
++      font-size: 0.9rem;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .order-section {
++      margin-top: 40px;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 24px;
++    }
++
++    @media (max-width: 768px) {
++      .order-section {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel h3 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .form-group select,
++    .form-group input {
++      width: 100%;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .cart-list {
++      list-style: none;
++      margin-bottom: 16px;
++    }
++
++    .cart-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 0;
++      border-bottom: 1px solid #eee;
++      font-size: 0.95rem;
++    }
++
++    .cart-total {
++      font-weight: bold;
++      font-size: 1.1rem;
++      text-align: right;
++      margin-top: 12px;
++      color: var(--primary);
++    }
++
++    .status-banner {
++      margin-top: 20px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #fff8e1;
++      border-left: 4px solid var(--accent);
++      color: var(--text);
++      font-weight: 500;
++      display: none;
++    }
++
++    .status-banner.visible {
++      display: block;
++    }
++
++    .nav-cart-badge {
++      background: var(--accent);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-weight: bold;
++      font-size: 0.8rem;
++      margin-left: 4px;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +318,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#order-panel">Cart <span id="nav-cart-count" class="nav-cart-badge">0</span></a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,27 +327,99 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-panel" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <div id="agent-status-banner" class="status-banner" role="status" aria-live="polite"></div>
++
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="menu-grid">
++        <div class="card" data-drink-id="maple-oat-latte" data-name="Maple Oat Latte" data-price="5.50" data-category="seasonal" data-calories="210">
++          <span class="badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="price-tag">$5.50</div>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="btn btn-accent" onclick="window.DailyGrindApp.quickOrder('Maple Oat Latte')">Quick Order</button>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" data-name="Dark Roast Espresso" data-price="3.75" data-category="espresso" data-calories="15">
++          <span class="badge">Espresso</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="price-tag">$3.75</div>
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="btn btn-accent" onclick="window.DailyGrindApp.quickOrder('Dark Roast Espresso')">Quick Order</button>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" data-name="Cold Brew" data-price="4.50" data-category="cold-brew" data-calories="25">
++          <span class="badge">Cold Brew</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="price-tag">$4.50</div>
++          <div class="card-actions">
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="btn btn-accent" onclick="window.DailyGrindApp.quickOrder('Cold Brew')">Quick Order</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section id="order-panel" class="order-section">
++      <div class="panel">
++        <h3>Interactive Drink Order</h3>
++        <form id="drink-order-form" toolname="order_seasonal_drink_form" tooldescription="Place a custom drink order from the Seasonal Favorites coffee menu.">
++          <div class="form-group">
++            <label for="order-drink">Select Drink</label>
++            <select id="order-drink" name="drinkName" toolparamdescription="Name of the seasonal favorite coffee drink to order" required>
++              <option value="Maple Oat Latte">Maple Oat Latte ($5.50)</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso ($3.75)</option>
++              <option value="Cold Brew">Cold Brew ($4.50)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-size">Size</label>
++            <select id="order-size" name="size" toolparamdescription="Cup size: Small, Medium, or Large">
++              <option value="Small">Small</option>
++              <option value="Medium" selected>Medium</option>
++              <option value="Large">Large (+$0.75)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-milk">Milk Option</label>
++            <select id="order-milk" name="milk" toolparamdescription="Milk preference: Oat, Whole, Almond, Skim, or None">
++              <option value="Oat">Oat Milk</option>
++              <option value="Whole">Whole Milk</option>
++              <option value="Almond">Almond Milk</option>
++              <option value="Skim">Skim Milk</option>
++              <option value="None">None / Black</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-quantity">Quantity</label>
++            <input type="number" id="order-quantity" name="quantity" min="1" max="20" value="1" toolparamdescription="Number of cups to order" required>
++          </div>
++          <div class="form-group">
++            <label for="order-customer">Customer Name / Notes (Optional)</label>
++            <input type="text" id="order-customer" name="customerName" placeholder="e.g., Alex - Extra hot" toolparamdescription="Optional customer name or special instructions">
++          </div>
++          <button type="submit" class="btn btn-accent" style="width: 100%;">Add to Order</button>
++        </form>
++      </div>
++
++      <div class="panel">
++        <h3>Current Order Summary</h3>
++        <ul id="cart-items" class="cart-list">
++          <li class="cart-empty" style="color: #777; font-style: italic;">No drinks ordered yet.</li>
++        </ul>
++        <div id="cart-total" class="cart-total">Total: $0.00</div>
++        <div style="display: flex; gap: 10px; margin-top: 15px;">
++          <button type="button" id="checkout-btn" class="btn" style="flex: 1;" onclick="window.DailyGrindApp.checkoutOrder()">Complete Checkout</button>
++          <button type="button" id="clear-cart-btn" class="btn" style="background: #8d6e63;" onclick="window.DailyGrindApp.clearOrders()">Clear</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +435,618 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const SEASONAL_MENU = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          category: 'seasonal',
++          price: 5.50,
++          calories: 210,
++          defaultMilk: 'Oat',
++          sizes: ['Small', 'Medium', 'Large'],
++          available: true,
++          url: '/menu/seasonal'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          category: 'espresso',
++          price: 3.75,
++          calories: 15,
++          defaultMilk: 'None',
++          sizes: ['Small', 'Medium', 'Large'],
++          available: true,
++          url: '/menu/espresso'
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          category: 'cold-brew',
++          price: 4.50,
++          calories: 25,
++          defaultMilk: 'None',
++          sizes: ['Small', 'Medium', 'Large'],
++          available: true,
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      const state = {
++        menu: SEASONAL_MENU,
++        orders: [],
++        lastOrderConfirmation: null
++      };
++
++      function showStatusBanner(message) {
++        const banner = document.getElementById('agent-status-banner');
++        if (!banner) return;
++        banner.textContent = message;
++        banner.classList.add('visible');
++      }
++
++      function findDrink(query) {
++        if (!query) return null;
++        const normalized = String(query).trim().toLowerCase();
++        return (
++          state.menu.find(
++            (item) =>
++              item.id.toLowerCase() === normalized ||
++              item.name.toLowerCase() === normalized ||
++              item.category.toLowerCase() === normalized
++          ) ||
++          state.menu.find(
++            (item) =>
++              item.name.toLowerCase().includes(normalized) ||
++              item.description.toLowerCase().includes(normalized)
++          ) ||
++          null
++        );
++      }
++
++      function renderCart() {
++        const listEl = document.getElementById('cart-items');
++        const totalEl = document.getElementById('cart-total');
++        const badgeEl = document.getElementById('nav-cart-count');
++
++        if (!listEl || !totalEl || !badgeEl) return;
++
++        const totalCups = state.orders.reduce((sum, item) => sum + item.quantity, 0);
++        badgeEl.textContent = String(totalCups);
++
++        if (state.orders.length === 0) {
++          listEl.innerHTML = '<li class="cart-empty" style="color: #777; font-style: italic;">No drinks ordered yet.</li>';
++          totalEl.textContent = 'Total: $0.00';
++          return;
++        }
++
++        listEl.innerHTML = state.orders
++          .map(
++            (order) => `
++            <li class="cart-item" data-order-id="${order.orderId}">
++              <div>
++                <strong>${order.quantity}x ${order.drinkName}</strong> (${order.size}, ${order.milk} Milk)
++                ${order.customerName ? `<div style="font-size: 0.8rem; color: #666;">Note: ${order.customerName}</div>` : ''}
++              </div>
++              <span>$${order.subtotal.toFixed(2)}</span>
++            </li>
++          `
++          )
++          .join('');
++
++        const totalCost = state.orders.reduce((sum, item) => sum + item.subtotal, 0);
++        totalEl.textContent = `Total: $${totalCost.toFixed(2)}`;
++      }
++
++      function highlightDrinkCard(drinkIdOrName, statusMessage) {
++        const drink = findDrink(drinkIdOrName);
++        const cards = document.querySelectorAll('.card[data-drink-id]');
++        cards.forEach((card) => card.classList.remove('highlighted'));
++
++        if (drink) {
++          const targetCard = document.querySelector(`.card[data-drink-id="${drink.id}"]`);
++          if (targetCard) {
++            targetCard.classList.add('highlighted');
++          }
++          const drinkSelect = document.getElementById('order-drink');
++          if (drinkSelect) {
++            drinkSelect.value = drink.name;
++          }
++        }
++
++        if (statusMessage) {
++          showStatusBanner(statusMessage);
++        } else if (drink) {
++          showStatusBanner(`Selected "${drink.name}" — ${drink.description} ($${drink.price.toFixed(2)})`);
++        }
++
++        return drink;
++      }
++
++      function placeDrinkOrder({ drinkName, size = 'Medium', milk, quantity = 1, customerName = '' }) {
++        const drink = findDrink(drinkName);
++        if (!drink) {
++          const availableNames = state.menu.map((d) => d.name).join(', ');
++          throw new Error(`Drink "${drinkName}" not found on the Seasonal Favorites menu. Available drinks: ${availableNames}`);
++        }
++
++        const normalizedSize = ['Small', 'Medium', 'Large'].find(
++          (s) => s.toLowerCase() === String(size || 'Medium').toLowerCase()
++        ) || 'Medium';
++
++        const resolvedMilk = milk || drink.defaultMilk || 'Oat';
++        const qty = Math.max(1, parseInt(quantity, 10) || 1);
++        const sizeUpcharge = normalizedSize === 'Large' ? 0.75 : 0;
++        const unitPrice = drink.price + sizeUpcharge;
++        const subtotal = Number((unitPrice * qty).toFixed(2));
++
++        const orderItem = {
++          orderId: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
++          drinkId: drink.id,
++          drinkName: drink.name,
++          size: normalizedSize,
++          milk: resolvedMilk,
++          quantity: qty,
++          customerName: customerName ? String(customerName).trim() : '',
++          unitPrice,
++          subtotal,
++          timestamp: new Date().toISOString()
++        };
++
++        state.orders.push(orderItem);
++
++        // Sync form inputs & UI
++        const drinkSelect = document.getElementById('order-drink');
++        const sizeSelect = document.getElementById('order-size');
++        const milkSelect = document.getElementById('order-milk');
++        const qtyInput = document.getElementById('order-quantity');
++        const customerInput = document.getElementById('order-customer');
++
++        if (drinkSelect) drinkSelect.value = drink.name;
++        if (sizeSelect) sizeSelect.value = normalizedSize;
++        if (milkSelect && ['Oat', 'Whole', 'Almond', 'Skim', 'None'].includes(resolvedMilk)) {
++          milkSelect.value = resolvedMilk;
++        }
++        if (qtyInput) qtyInput.value = String(qty);
++        if (customerInput && customerName !== undefined) customerInput.value = String(customerName);
++
++        highlightDrinkCard(drink.id, `Added ${qty}x ${normalizedSize} ${drink.name} (${resolvedMilk}) to your order ($${subtotal.toFixed(2)}).`);
++        renderCart();
++
++        return orderItem;
++      }
++
++      function checkoutOrder(customerName) {
++        if (state.orders.length === 0) {
++          showStatusBanner('Your cart is empty! Add a seasonal favorite drink before checking out.');
++          return {
++            success: false,
++            message: 'Cart is empty. Please add a drink order first.'
++          };
++        }
++
++        const totalAmount = Number(
++          state.orders.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)
++        );
++        const totalCups = state.orders.reduce((sum, item) => sum + item.quantity, 0);
++        const confirmationId = `DG-${Math.floor(100000 + Math.random() * 900000)}`;
++
++        const confirmation = {
++          success: true,
++          confirmationId,
++          customerName: customerName || state.orders[0]?.customerName || 'Guest',
++          items: [...state.orders],
++          totalCups,
++          totalAmount,
++          status: 'Preparing',
++          message: `Order ${confirmationId} confirmed! Preparing ${totalCups} drink(s) — Total: $${totalAmount.toFixed(2)}.`
++        };
++
++        state.lastOrderConfirmation = confirmation;
++        state.orders = [];
++        renderCart();
++        showStatusBanner(confirmation.message);
++
++        return confirmation;
++      }
++
++      function clearOrders() {
++        state.orders = [];
++        renderCart();
++        showStatusBanner('Order cart has been cleared.');
++        return { success: true, message: 'Order cart cleared.', orders: [] };
++      }
++
++      function quickOrder(drinkName) {
++        return placeDrinkOrder({ drinkName, size: 'Medium', quantity: 1 });
++      }
++
++      // Wire up interactive form submission
++      const orderForm = document.getElementById('drink-order-form');
++      if (orderForm) {
++        orderForm.addEventListener('submit', function (event) {
++          event.preventDefault();
++          const formData = new FormData(orderForm);
++          placeDrinkOrder({
++            drinkName: formData.get('drinkName'),
++            size: formData.get('size'),
++            milk: formData.get('milk'),
++            quantity: Number(formData.get('quantity') || 1),
++            customerName: formData.get('customerName') || ''
++          });
++        });
++      }
++
++      // Define WebMCP Tools
++      const webMcpTools = [
++        {
++          name: 'get_seasonal_favorites_menu',
++          description: 'Query The Daily Grind "Seasonal Favorites" coffee menu. Returns drink names, descriptions, prices, calories, categories, and available options.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              search: {
++                type: 'string',
++                description: 'Optional keyword or drink name filter (e.g., "maple", "espresso", "cold brew").'
++              },
++              category: {
++                type: 'string',
++                enum: ['all', 'seasonal', 'espresso', 'cold-brew'],
++                description: 'Optional category filter.'
++              },
++              maxPrice: {
++                type: 'number',
++                description: 'Optional maximum price filter in USD.'
++              }
++            }
++          },
++          execute: async (args = {}) => {
++            const { search, category, maxPrice } = args || {};
++            let items = [...state.menu];
++
++            if (category && category !== 'all') {
++              items = items.filter((item) => item.category.toLowerCase() === String(category).toLowerCase());
++            }
++
++            if (search) {
++              const q = String(search).trim().toLowerCase();
++              items = items.filter(
++                (item) =>
++                  item.name.toLowerCase().includes(q) ||
++                  item.description.toLowerCase().includes(q) ||
++                  item.id.toLowerCase().includes(q)
++              );
++            }
++
++            if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) {
++              items = items.filter((item) => item.price <= maxPrice);
++            }
++
++            const payload = {
++              success: true,
++              count: items.length,
++              items
++            };
++
++            return {
++              ...payload,
++              content: [
++                {
++                  type: 'text',
++                  text: JSON.stringify(payload, null, 2)
++                }
++              ]
++            };
++          }
++        },
++        {
++          name: 'order_drink',
++          description: 'Trigger an interactive drink order on the page from the Seasonal Favorites coffee menu, updating the order form and cart UI.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              drinkName: {
++                type: 'string',
++                description: 'Name or ID of the drink to order (e.g., "Maple Oat Latte", "Dark Roast Espresso", "Cold Brew").'
++              },
++              size: {
++                type: 'string',
++                enum: ['Small', 'Medium', 'Large'],
++                description: 'Cup size (Small, Medium, or Large). Defaults to Medium.'
++              },
++              milk: {
++                type: 'string',
++                enum: ['Oat', 'Whole', 'Almond', 'Skim', 'None'],
++                description: 'Milk choice for the drink.'
++              },
++              quantity: {
++                type: 'number',
++                description: 'Number of drinks to order (defaults to 1).'
++              },
++              customerName: {
++                type: 'string',
++                description: 'Optional customer name or special order note.'
++              },
++              autoCheckout: {
++                type: 'boolean',
++                description: 'If true, immediately completes checkout after adding the drink to the cart.'
++              }
++            },
++            required: ['drinkName']
++          },
++          execute: async (args = {}) => {
++            try {
++              const orderItem = placeDrinkOrder({
++                drinkName: args.drinkName,
++                size: args.size || 'Medium',
++                milk: args.milk,
++                quantity: args.quantity || 1,
++                customerName: args.customerName || ''
++              });
++
++              let checkoutResult = null;
++              if (args.autoCheckout) {
++                checkoutResult = checkoutOrder(args.customerName);
++              }
++
++              const totalAmount = Number(
++                state.orders.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)
++              );
++
++              const payload = {
++                success: true,
++                order: orderItem,
++                checkout: checkoutResult,
++                cartOrders: [...state.orders],
++                cartTotal: totalAmount,
++                message: checkoutResult
++                  ? checkoutResult.message
++                  : `Ordered ${orderItem.quantity}x ${orderItem.size} ${orderItem.drinkName} ($${orderItem.subtotal.toFixed(2)}).`
++              };
++
++              return {
++                ...payload,
++                content: [
++                  {
++                    type: 'text',
++                    text: JSON.stringify(payload, null, 2)
++                  }
++                ]
++              };
++            } catch (err) {
++              const errorPayload = {
++                success: false,
++                error: err.message
++              };
++              return {
++                ...errorPayload,
++                content: [
++                  {
++                    type: 'text',
++                    text: JSON.stringify(errorPayload, null, 2)
++                  }
++                ]
++              };
++            }
++          }
++        },
++        {
++          name: 'update_page_ui',
++          description: 'Trigger interactive UI updates on The Daily Grind homepage, such as highlighting a specific seasonal drink card, filtering visible menu cards, displaying a status banner message, or completing/clearing the order cart.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              action: {
++                type: 'string',
++                enum: ['highlight_drink', 'filter_menu', 'show_banner', 'checkout', 'clear_cart', 'reset_ui'],
++                description: 'The UI update action to perform on the page.'
++              },
++              drinkName: {
++                type: 'string',
++                description: 'Drink name or ID to highlight or select (used with highlight_drink).'
++              },
++              category: {
++                type: 'string',
++                enum: ['all', 'seasonal', 'espresso', 'cold-brew'],
++                description: 'Category of menu cards to display (used with filter_menu).'
++              },
++              message: {
++                type: 'string',
++                description: 'Custom status message to display in the page banner.'
++              }
++            },
++            required: ['action']
++          },
++          execute: async (args = {}) => {
++            const { action, drinkName, category, message } = args || {};
++            let result = { success: true, action };
++
++            if (action === 'highlight_drink') {
++              const drink = highlightDrinkCard(drinkName, message);
++              if (!drink) {
++                result = {
++                  success: false,
++                  action,
++                  error: `Could not find drink matching "${drinkName}" to highlight.`
++                };
++              } else {
++                result.highlightedDrink = drink;
++                result.message = message || `Highlighted ${drink.name} on the page.`;
++              }
++            } else if (action === 'filter_menu') {
++              const targetCategory = (category || 'all').toLowerCase();
++              const cards = document.querySelectorAll('.card[data-drink-id]');
++              let visibleCount = 0;
++              cards.forEach((card) => {
++                const cardCat = (card.getAttribute('data-category') || '').toLowerCase();
++                const show = targetCategory === 'all' || cardCat === targetCategory;
++                card.style.display = show ? '' : 'none';
++                if (show) visibleCount++;
++              });
++              const statusMsg = message || `Filtered Seasonal Favorites menu to "${targetCategory}" (${visibleCount} item(s) shown).`;
++              showStatusBanner(statusMsg);
++              result.category = targetCategory;
++              result.visibleCount = visibleCount;
++              result.message = statusMsg;
++            } else if (action === 'show_banner') {
++              const bannerText = message || 'Welcome to The Daily Grind!';
++              showStatusBanner(bannerText);
++              result.message = bannerText;
++            } else if (action === 'checkout') {
++              result = { ...result, ...checkoutOrder(message) };
++            } else if (action === 'clear_cart') {
++              result = { ...result, ...clearOrders() };
++            } else if (action === 'reset_ui') {
++              const cards = document.querySelectorAll('.card[data-drink-id]');
++              cards.forEach((card) => {
++                card.classList.remove('highlighted');
++                card.style.display = '';
++              });
++              const banner = document.getElementById('agent-status-banner');
++              if (banner) {
++                banner.textContent = '';
++                banner.classList.remove('visible');
++              }
++              result.message = 'Page UI reset to default state.';
++            } else {
++              result = {
++                success: false,
++                error: `Unsupported UI action: ${action}`
++              };
++            }
++
++            return {
++              ...result,
++              content: [
++                {
++                  type: 'text',
++                  text: JSON.stringify(result, null, 2)
++                }
++              ]
++            };
++          }
++        },
++        {
++          name: 'get_order_status',
++          description: 'Get the current drink order cart items, total price, and most recent order confirmation on the page.',
++          inputSchema: {
++            type: 'object',
++            properties: {}
++          },
++          execute: async () => {
++            const totalAmount = Number(
++              state.orders.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)
++            );
++            const payload = {
++              success: true,
++              orders: [...state.orders],
++              totalCups: state.orders.reduce((sum, item) => sum + item.quantity, 0),
++              totalAmount,
++              lastOrderConfirmation: state.lastOrderConfirmation
++            };
++            return {
++              ...payload,
++              content: [
++                {
++                  type: 'text',
++                  text: JSON.stringify(payload, null, 2)
++                }
++              ]
++            };
++          }
++        }
++      ];
++
++      // Expose application state & helpers globally
++      window.DailyGrindApp = {
++        state,
++        getMenu: () => [...state.menu],
++        quickOrder,
++        placeDrinkOrder,
++        highlightDrinkCard,
++        checkoutOrder,
++        clearOrders,
++        tools: webMcpTools
++      };
++
++      // Register WebMCP tools on navigator.modelContext (with fallback polyfill if not natively present)
++      function initWebMCP() {
++        const toolRegistry = new Map();
++
++        if (!('modelContext' in navigator) || !navigator.modelContext) {
++          const fallbackModelContext = {
++            get tools() {
++              return Array.from(toolRegistry.values());
++            },
++            registerTool(tool) {
++              if (tool && tool.name) {
++                toolRegistry.set(tool.name, tool);
++              }
++            },
++            unregisterTool(name) {
++              toolRegistry.delete(name);
++            },
++            provideContext(context) {
++              toolRegistry.clear();
++              if (context && Array.isArray(context.tools)) {
++                context.tools.forEach((tool) => {
++                  if (tool && tool.name) {
++                    toolRegistry.set(tool.name, tool);
++                  }
++                });
++              }
++            },
++            clearContext() {
++              toolRegistry.clear();
++            },
++            executeTool: async (name, args) => {
++              const tool = toolRegistry.get(name);
++              if (!tool || typeof tool.execute !== 'function') {
++                throw new Error(`WebMCP tool "${name}" is not registered.`);
++              }
++              return await tool.execute(args);
++            }
++          };
++
++          try {
++            Object.defineProperty(navigator, 'modelContext', {
++              value: fallbackModelContext,
++              configurable: true,
++              writable: true
++            });
++          } catch (e) {
++            navigator.modelContext = fallbackModelContext;
++          }
++        }
++
++        const mc = navigator.modelContext;
++        if (mc) {
++          if (typeof mc.provideContext === 'function') {
++            try {
++              mc.provideContext({ tools: webMcpTools });
++            } catch (e) {
++              // If provideContext fails or has different signature, fall back to registerTool
++            }
++          }
++          if (typeof mc.registerTool === 'function') {
++            webMcpTools.forEach((tool) => {
++              try {
++                mc.registerTool(tool);
++              } catch (e) {
++                // Ignore duplicate registration errors if provideContext already registered the tool
++              }
++            });
++          }
++        }
++      }
++
++      initWebMCP();
++    })();
++  </script>
+ </body>
+ 
+ </html>

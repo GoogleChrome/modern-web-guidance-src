@@ -1,0 +1,494 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,163 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Barista Order Board */
++    .board-section {
++      margin-top: 60px;
++    }
++
++    .board-section > p {
++      text-align: center;
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .board {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    /* Fixed-size, fully contained columns: nothing inside can reflow the page */
++    .board-column {
++      contain: strict;
++      height: 520px;
++      display: flex;
++      flex-direction: column;
++      background: #efebe9;
++      border-radius: 10px;
++      border-top: 4px solid var(--column-color, var(--primary));
++    }
++
++    .board-column[data-status="queued"] { --column-color: #8d6e63; }
++    .board-column[data-status="brewing"] { --column-color: var(--accent); }
++    .board-column[data-status="ready"] { --column-color: #66bb6a; }
++
++    .board-column.is-over {
++      background: #e4dcd8;
++    }
++
++    .board-column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 16px;
++      font-weight: bold;
++      text-transform: capitalize;
++      color: var(--primary);
++    }
++
++    .board-count {
++      min-width: 28px;
++      padding: 0 8px;
++      border-radius: 999px;
++      background: white;
++      font-size: 0.8rem;
++      text-align: center;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .board-list {
++      position: relative;
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      padding: 4px 12px 12px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      contain: strict;
++    }
++
++    .board .card {
++      flex-shrink: 0;
++      padding: 12px 14px;
++      text-align: left;
++      cursor: grab;
++      touch-action: none;
++      user-select: none;
++      -webkit-user-select: none;
++      border-left: 3px solid var(--column-color, var(--primary));
++      /* Skip rendering work for off-screen orders in long queues */
++      content-visibility: auto;
++      contain-intrinsic-size: auto 66px;
++    }
++
++    .board .card:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .board .card h3 {
++      font-size: 1rem;
++      margin-bottom: 2px;
++    }
++
++    .board .card p {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .board .card.is-placeholder {
++      background: transparent;
++      box-shadow: none;
++      outline: 2px dashed #a1887f;
++      outline-offset: -2px;
++    }
++
++    .board .card.is-placeholder > * {
++      visibility: hidden;
++    }
++
++    .drag-ghost {
++      position: fixed;
++      top: 0;
++      left: 0;
++      z-index: 2000;
++      pointer-events: none;
++      will-change: transform;
++      contain: layout paint style;
++      background: white;
++      padding: 12px 14px;
++      border-radius: 8px;
++      border-left: 3px solid var(--accent);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
++      cursor: grabbing;
++    }
++
++    .drag-ghost[hidden] {
++      display: none;
++    }
++
++    .drag-ghost h3 {
++      font-size: 1rem;
++      margin-bottom: 2px;
++      color: var(--primary);
++    }
++
++    .drag-ghost p {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    body.is-dragging,
++    body.is-dragging * {
++      cursor: grabbing !important;
++    }
++
++    @media (max-width: 720px) {
++      .board {
++        grid-template-columns: 1fr;
++      }
++
++      .board-column {
++        height: 360px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +349,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="board-section" aria-labelledby="board-title">
++      <h2 id="board-title" style="text-align: center;">Barista Order Board</h2>
++      <p>Drag orders between columns, or focus a card and use the arrow keys.</p>
++      <div class="board" id="order-board">
++        <div class="board-column" data-status="queued">
++          <div class="board-column-header">
++            <span>queued</span>
++            <span class="board-count" aria-label="3 orders">3</span>
++          </div>
++          <div class="board-list" role="list" aria-label="queued orders">
++            <div class="card" role="listitem" tabindex="0" data-order-id="1042">
++              <h3>Maple Oat Latte</h3>
++              <p>#1042 &middot; Priya</p>
++            </div>
++            <div class="card" role="listitem" tabindex="0" data-order-id="1043">
++              <h3>Cortado</h3>
++              <p>#1043 &middot; Sam</p>
++            </div>
++            <div class="card" role="listitem" tabindex="0" data-order-id="1044">
++              <h3>Chai Latte</h3>
++              <p>#1044 &middot; Elena</p>
++            </div>
++          </div>
++        </div>
++        <div class="board-column" data-status="brewing">
++          <div class="board-column-header">
++            <span>brewing</span>
++            <span class="board-count" aria-label="2 orders">2</span>
++          </div>
++          <div class="board-list" role="list" aria-label="brewing orders">
++            <div class="card" role="listitem" tabindex="0" data-order-id="1040">
++              <h3>Dark Roast Espresso</h3>
++              <p>#1040 &middot; Marcus</p>
++            </div>
++            <div class="card" role="listitem" tabindex="0" data-order-id="1041">
++              <h3>Flat White</h3>
++              <p>#1041 &middot; Jo</p>
++            </div>
++          </div>
++        </div>
++        <div class="board-column" data-status="ready">
++          <div class="board-column-header">
++            <span>ready</span>
++            <span class="board-count" aria-label="1 orders">1</span>
++          </div>
++          <div class="board-list" role="list" aria-label="ready orders">
++            <div class="card" role="listitem" tabindex="0" data-order-id="1039">
++              <h3>Cold Brew</h3>
++              <p>#1039 &middot; Aiko</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +416,262 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const board = document.getElementById('order-board');
++      if (!board) return;
++
++      const DRAG_THRESHOLD = 4;
++      const AUTOSCROLL_EDGE = 40;
++      const AUTOSCROLL_SPEED = 12;
++
++      const columns = [...board.querySelectorAll('.board-column')].map((el) => {
++        const list = el.querySelector('.board-list');
++        return {
++          el,
++          list,
++          status: el.dataset.status,
++          countEl: el.querySelector('.board-count'),
++          count: list.children.length,
++          rect: null
++        };
++      });
++      const columnByList = new Map(columns.map((c) => [c.list, c]));
++
++      // A single reusable ghost element, moved only via transform (compositor-only).
++      const ghost = document.createElement('div');
++      ghost.className = 'drag-ghost';
++      ghost.hidden = true;
++      ghost.setAttribute('aria-hidden', 'true');
++      document.body.appendChild(ghost);
++
++      let pending = null; // pointerdown that hasn't crossed the drag threshold yet
++      let drag = null;    // active drag state
++      let rafId = 0;
++
++      function setCount(col, delta) {
++        col.count += delta;
++        col.countEl.textContent = col.count;
++        col.countEl.setAttribute('aria-label', col.count + ' orders');
++      }
++
++      function measureColumns() {
++        for (const col of columns) col.rect = col.list.getBoundingClientRect();
++      }
++
++      function hitColumn(x, y) {
++        for (const col of columns) {
++          const r = col.rect;
++          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return col;
++        }
++        return null;
++      }
++
++      // Read card midpoints for a column once, normalised to a layout without the
++      // placeholder, so later index lookups are pure arithmetic (no layout reads).
++      function measureTarget(col) {
++        const card = drag.card;
++        const cards = [];
++        const mids = [];
++        let afterPlaceholder = false;
++        for (const el of col.list.children) {
++          if (el === card) { afterPlaceholder = true; continue; }
++          const top = el.offsetTop - (afterPlaceholder ? drag.step : 0);
++          cards.push(el);
++          mids.push(top + el.offsetHeight / 2);
++        }
++        drag.target = { col, cards, mids };
++      }
++
++      function placeholderIndexIn(target) {
++        if (drag.card.parentNode !== target.col.list) return -1;
++        const i = target.cards.indexOf(drag.card.nextElementSibling);
++        return i === -1 ? target.cards.length : i;
++      }
++
++      function startDrag(e) {
++        const card = pending.card;
++        const rect = card.getBoundingClientRect();
++        measureColumns();
++
++        const fromCol = columnByList.get(card.parentNode);
++        drag = {
++          card,
++          fromCol,
++          fromNext: card.nextElementSibling,
++          pointerId: e.pointerId,
++          offsetX: pending.x - rect.left,
++          offsetY: pending.y - rect.top,
++          x: e.clientX,
++          y: e.clientY,
++          step: rect.height + 8, // card height + list gap
++          target: null,
++          overCol: null
++        };
++
++        ghost.innerHTML = card.innerHTML;
++        ghost.style.width = rect.width + 'px';
++        ghost.hidden = false;
++        card.classList.add('is-placeholder');
++        card.setAttribute('aria-grabbed', 'true');
++        document.body.classList.add('is-dragging');
++        pending = null;
++        schedule();
++      }
++
++      function schedule() {
++        if (!rafId) rafId = requestAnimationFrame(frame);
++      }
++
++      function frame() {
++        rafId = 0;
++        if (!drag) return;
++        const { x, y } = drag;
++
++        // --- reads ---
++        const col = hitColumn(x, y);
++        let index = -1;
++        let scrollDelta = 0;
++        if (col) {
++          if (!drag.target || drag.target.col !== col) measureTarget(col);
++          const t = drag.target;
++          const r = col.rect;
++          const localY = y - r.top + col.list.scrollTop;
++          const current = placeholderIndexIn(t);
++          index = 0;
++          for (let i = 0; i < t.mids.length; i++) {
++            const mid = t.mids[i] + (current !== -1 && i >= current ? drag.step : 0);
++            if (mid < localY) index = i + 1; else break;
++          }
++          if (y < r.top + AUTOSCROLL_EDGE) scrollDelta = -AUTOSCROLL_SPEED;
++          else if (y > r.bottom - AUTOSCROLL_EDGE) scrollDelta = AUTOSCROLL_SPEED;
++        }
++
++        // --- writes ---
++        ghost.style.transform =
++          `translate3d(${x - drag.offsetX}px, ${y - drag.offsetY}px, 0) rotate(2deg)`;
++
++        if (col !== drag.overCol) {
++          if (drag.overCol) drag.overCol.el.classList.remove('is-over');
++          if (col) col.el.classList.add('is-over');
++          drag.overCol = col;
++        }
++
++        if (col) {
++          const t = drag.target;
++          const ref = t.cards[index] || null;
++          if (drag.card.parentNode !== col.list || drag.card.nextElementSibling !== ref) {
++            col.list.insertBefore(drag.card, ref);
++          }
++          if (scrollDelta) {
++            col.list.scrollTop += scrollDelta;
++            schedule(); // keep auto-scrolling while held near the edge
++          }
++        }
++      }
++
++      function finishDrag(cancelled) {
++        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
++        const { card, fromCol, fromNext, overCol } = drag;
++        if (overCol) overCol.el.classList.remove('is-over');
++
++        if (cancelled) fromCol.list.insertBefore(card, fromNext);
++        const toCol = columnByList.get(card.parentNode);
++
++        ghost.hidden = true;
++        ghost.style.transform = '';
++        ghost.textContent = '';
++        card.classList.remove('is-placeholder');
++        card.removeAttribute('aria-grabbed');
++        document.body.classList.remove('is-dragging');
++        drag = null;
++
++        if (!cancelled) commitMove(card, fromCol, toCol, fromNext);
++      }
++
++      function commitMove(card, fromCol, toCol, fromNext) {
++        if (fromCol === toCol && card.nextElementSibling === fromNext) return;
++        if (fromCol !== toCol) {
++          setCount(fromCol, -1);
++          setCount(toCol, 1);
++        }
++        board.dispatchEvent(new CustomEvent('order:moved', {
++          detail: {
++            orderId: card.dataset.orderId,
++            from: fromCol.status,
++            to: toCol.status,
++            index: Array.prototype.indexOf.call(toCol.list.children, card)
++          }
++        }));
++      }
++
++      board.addEventListener('pointerdown', (e) => {
++        if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
++        const card = e.target.closest('.card');
++        if (!card || !board.contains(card)) return;
++        pending = { card, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
++        board.setPointerCapture(e.pointerId);
++      });
++
++      board.addEventListener('pointermove', (e) => {
++        if (pending && e.pointerId === pending.pointerId) {
++          if (Math.abs(e.clientX - pending.x) + Math.abs(e.clientY - pending.y) < DRAG_THRESHOLD) return;
++          startDrag(e);
++        }
++        if (!drag || e.pointerId !== drag.pointerId) return;
++        drag.x = e.clientX;
++        drag.y = e.clientY;
++        schedule();
++      }, { passive: true });
++
++      const endPointer = (cancelled) => (e) => {
++        if (pending && e.pointerId === pending.pointerId) pending = null;
++        if (drag && e.pointerId === drag.pointerId) finishDrag(cancelled);
++      };
++      board.addEventListener('pointerup', endPointer(false));
++      board.addEventListener('pointercancel', endPointer(true));
++      board.addEventListener('lostpointercapture', endPointer(false));
++
++      // Cached rects go stale if the page or a column scrolls mid-drag.
++      const invalidate = (e) => {
++        if (!drag) return;
++        if (e.target === document || !columnByList.has(e.target)) measureColumns();
++        schedule();
++      };
++      window.addEventListener('scroll', invalidate, { passive: true, capture: true });
++      window.addEventListener('resize', invalidate, { passive: true });
++
++      document.addEventListener('keydown', (e) => {
++        if (e.key === 'Escape' && drag) finishDrag(true);
++      });
++
++      // Keyboard support: arrows move the focused card between/within columns.
++      board.addEventListener('keydown', (e) => {
++        const card = e.target.closest('.card');
++        if (!card || drag) return;
++        const fromCol = columnByList.get(card.parentNode);
++        const fromNext = card.nextElementSibling;
++        const i = columns.indexOf(fromCol);
++        let toCol = fromCol;
++
++        if (e.key === 'ArrowLeft' && i > 0) toCol = columns[i - 1];
++        else if (e.key === 'ArrowRight' && i < columns.length - 1) toCol = columns[i + 1];
++        else if (e.key === 'ArrowUp' && card.previousElementSibling) {
++          fromCol.list.insertBefore(card, card.previousElementSibling);
++        } else if (e.key === 'ArrowDown' && fromNext) {
++          fromCol.list.insertBefore(card, fromNext.nextElementSibling);
++        } else return;
++
++        e.preventDefault();
++        if (toCol !== fromCol) toCol.list.appendChild(card);
++        card.focus({ preventScroll: true });
++        card.scrollIntoView({ block: 'nearest' });
++        commitMove(card, fromCol, toCol, fromNext);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

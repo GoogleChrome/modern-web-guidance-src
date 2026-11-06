@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,226 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo Alert (dismissible, CSS-only) */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    #promo-alert {
++      /* grid-template-rows 1fr -> 0fr animates to/from the content's
++         intrinsic height without hard-coding a max-height */
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition:
++        grid-template-rows 0.4s ease,
++        opacity 0.3s ease,
++        visibility 0s linear 0s;
++    }
++
++    #promo-alert .promo-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    #promo-alert .promo-body {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.75rem 3.5rem;
++      position: relative;
++      text-align: center;
++      font-size: 0.95rem;
++    }
++
++    #promo-alert a {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      right: 1rem;
++      top: 50%;
++      transform: translateY(-50%);
++      width: 2rem;
++      height: 2rem;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.2s;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.12);
++    }
++
++    /* Show a focus ring on the visible "button" when the hidden checkbox has keyboard focus */
++    #promo-dismissed:focus-visible + #promo-alert #alert-dismiss {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Dismissed state: collapse to zero height, then hide from AT / tab order */
++    #promo-dismissed:checked + #promo-alert {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      transition:
++        grid-template-rows 0.4s ease,
++        opacity 0.3s ease,
++        visibility 0s linear 0.4s;
++    }
++
++    #promo-dismissed:checked {
++      visibility: hidden;
++    }
++
++    /* FAQ Accordion (native <details>, CSS-only animation) */
++    :root {
++      /* lets height transition to/from `auto` in supporting browsers */
++      interpolate-size: allow-keywords;
++    }
++
++    .faq {
++      margin-top: 50px;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding: 1rem 1.25rem;
++      font-weight: bold;
++      font-size: 1.05rem;
++      color: var(--primary);
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger:hover {
++      background: #f5f0ee;
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    #faq-trigger::after {
++      content: "";
++      flex-shrink: 0;
++      width: 0.6rem;
++      height: 0.6rem;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: translateY(-25%) rotate(45deg);
++      transition: transform 0.35s ease;
++    }
++
++    .faq-item[open] #faq-trigger::after {
++      transform: translateY(25%) rotate(-135deg);
++    }
++
++    /* Animate the details content wrapper's height (open AND close) */
++    .faq-item::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition:
++        block-size 0.35s ease,
++        content-visibility 0.35s allow-discrete;
++    }
++
++    .faq-item[open]::details-content {
++      block-size: auto;
++    }
++
++    /* Fallback for browsers without interpolate-size support */
++    @supports not (interpolate-size: allow-keywords) {
++      .faq-item[open]::details-content {
++        block-size: calc-size(auto, size);
++      }
++    }
++
++    #faq-content {
++      padding: 0 1.25rem 1.25rem;
++      opacity: 0;
++      transform: translateY(-6px);
++      transition: opacity 0.35s ease, transform 0.35s ease;
++    }
++
++    .faq-item[open] #faq-content {
++      opacity: 1;
++      transform: none;
++    }
++
++    #faq-content dt {
++      font-weight: bold;
++      margin-top: 1rem;
++    }
++
++    #faq-content dd {
++      margin-top: 0.25rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #promo-dismissed:checked + #promo-alert,
++      .faq-item::details-content,
++      #faq-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Promo alert: the hidden checkbox holds the dismissed state (no JS) -->
++  <input type="checkbox" id="promo-dismissed" class="visually-hidden" aria-label="Dismiss promotion">
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-inner">
++      <div class="promo-body">
++        <p>&#9749; Fall special: <strong>20% off</strong> all seasonal drinks this week. <a href="/menu/seasonal">See the menu</a></p>
++        <label id="alert-dismiss" for="promo-dismissed" title="Dismiss" aria-hidden="true">&times;</label>
++      </div>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +407,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">FAQ</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger">Frequently Asked Questions</summary>
++        <div id="faq-content">
++          <dl>
++            <dt>Where do you source your beans?</dt>
++            <dd>We buy directly from small farms in Ethiopia, Colombia, and Guatemala, and roast every batch in-house.</dd>
++            <dt>Do you offer dairy-free milk?</dt>
++            <dd>Yes &mdash; oat, almond, and soy milk are available at no extra charge.</dd>
++            <dt>How do rewards work?</dt>
++            <dd>Earn one star per dollar spent. Collect 50 stars for a free drink of your choice.</dd>
++            <dt>Can I order ahead?</dt>
++            <dd>Absolutely. Use our online ordering to skip the line and pick up at your nearest location.</dd>
++          </dl>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

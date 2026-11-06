@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,90 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts and Theme Normalization</title>
++  <style>
++    :root {
++      --primary-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      --code-font: "Courier New", Courier, monospace;
++      --theme-font: "Georgia", Times, serif;
++    }
++
++    body {
++      font-family: var(--primary-font);
++      line-height: 1.6;
++      padding: 2rem;
++      max-width: 800px;
++      margin: 0 auto;
++      color: #1f2937;
++      background-color: #f9fafb;
++    }
++
++    /* Paragraph element containing mixed font families normalized automatically */
++    #mixed-fonts-container {
++      font-family: var(--primary-font);
++      font-size: 1.125rem;
++      /* Automatically match font size in nested elements to the proportions of the primary font */
++      font-size-adjust: from-font;
++      margin-bottom: 2rem;
++    }
++
++    #mixed-fonts-container code {
++      font-family: var(--code-font);
++      background-color: #e5e7eb;
++      padding: 0.2em 0.4em;
++      border-radius: 4px;
++    }
++
++    /* Separate container element representing an independent theme with numeric aspect-ratio override */
++    #independent-theme-container {
++      font-family: var(--theme-font);
++      font-size: 1.125rem;
++      /* Specific numeric aspect-ratio override value to normalize proportions independently */
++      font-size-adjust: 0.5;
++      background-color: #ffffff;
++      border: 1px solid #e5e7eb;
++      border-radius: 8px;
++      padding: 1.5rem;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
++    }
++
++    #independent-theme-container code {
++      font-family: var(--code-font);
++      background-color: #f3f4f6;
++      padding: 0.2em 0.4em;
++      border-radius: 4px;
++    }
++
++    /* Fallback strategy for browsers that do not support font-size-adjust */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container {
++        line-height: 1.6;
++      }
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++      #independent-theme-container code {
++        font-size: 0.9em;
++      }
++    }
++  </style>
++</head>
++<body>
++  <h1>Mixed Fonts &amp; Independent Theme Normalization</h1>
++
++  <!-- Paragraph containing mixed font families (regular text and inline code) -->
++  <p id="mixed-fonts-container">
++    This paragraph contains regular text mixed with inline code like <code>const answer = 42;</code> and functions such as <code>Array.prototype.map()</code>. The visual height of the mixed fonts is normalized automatically.
++  </p>
++
++  <!-- Container representing an independent theme -->
++  <div id="independent-theme-container">
++    <h2>Independent Theme Section</h2>
++    <p>
++      This container uses an independent serif font theme alongside code snippets like <code>SELECT id, name FROM users;</code>. Its visual proportions are locked down using a numeric font aspect-ratio override.
++    </p>
++  </div>
++</body>
++</html>

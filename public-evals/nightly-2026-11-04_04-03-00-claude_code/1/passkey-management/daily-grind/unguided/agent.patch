@@ -1,0 +1,1010 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..8c1b6fb
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,540 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --muted: #6d5d58;
++      --danger: #b3261e;
++      --success: #2e7d32;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++    }
++
++    /* Navigation (matches home page) */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    .logo a {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Page header */
++    .page-header {
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 60px 5%;
++      text-align: center;
++    }
++
++    .page-header h1 {
++      font-size: 2.4rem;
++    }
++
++    main {
++      flex: 1;
++    }
++
++    .container {
++      max-width: 860px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px;
++    }
++
++    .panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      margin-bottom: 8px;
++    }
++
++    .panel h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++    }
++
++    .panel-intro {
++      color: var(--muted);
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--primary);
++      padding: 8px 16px;
++      font: inherit;
++      font-size: 0.9rem;
++      border-radius: 5px;
++      cursor: pointer;
++      text-decoration: none;
++      transition: background 0.2s, color 0.2s, border-color 0.2s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    .btn:focus-visible,
++    input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn[disabled] {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-danger {
++      background: white;
++      color: var(--danger);
++      border-color: var(--danger);
++    }
++
++    .btn-danger:hover {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger.solid {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger.solid:hover {
++      background: #8c1d18;
++    }
++
++    .btn-sm {
++      padding: 5px 12px;
++      font-size: 0.85rem;
++    }
++
++    /* Passkey list */
++    .passkey-list {
++      list-style: none;
++      border-top: 1px solid #eee;
++    }
++
++    .passkey {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      padding: 16px 0;
++      border-bottom: 1px solid #eee;
++    }
++
++    .passkey-icon {
++      flex: none;
++      width: 44px;
++      height: 44px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++      display: grid;
++      place-items: center;
++    }
++
++    .passkey-icon svg {
++      width: 22px;
++      height: 22px;
++    }
++
++    .passkey-body {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      color: var(--primary);
++      overflow-wrap: anywhere;
++    }
++
++    .passkey-meta {
++      color: var(--muted);
++      font-size: 0.85rem;
++    }
++
++    .passkey-meta span+span::before {
++      content: "·";
++      margin: 0 6px;
++    }
++
++    .badge {
++      display: inline-block;
++      font-size: 0.72rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 1px 8px;
++      border-radius: 999px;
++      margin-left: 8px;
++      vertical-align: middle;
++    }
++
++    .badge-current {
++      background: #fff3e0;
++      color: #8a4b00;
++    }
++
++    .badge-synced {
++      background: #e8f5e9;
++      color: var(--success);
++    }
++
++    .passkey-actions {
++      flex: none;
++      display: flex;
++      gap: 8px;
++    }
++
++    .state {
++      text-align: center;
++      padding: 32px 16px;
++      color: var(--muted);
++    }
++
++    .state strong {
++      display: block;
++      color: var(--text);
++      margin-bottom: 4px;
++    }
++
++    .state .btn {
++      margin-top: 12px;
++    }
++
++    .note {
++      margin-top: 20px;
++      font-size: 0.85rem;
++      color: var(--muted);
++    }
++
++    /* Status message */
++    .status {
++      margin-bottom: 16px;
++      padding: 10px 14px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++    }
++
++    .status[hidden] {
++      display: none;
++    }
++
++    .status.success {
++      background: #e8f5e9;
++      color: var(--success);
++    }
++
++    .status.error {
++      background: #fdecea;
++      color: var(--danger);
++    }
++
++    /* Dialogs */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      width: min(440px, calc(100vw - 32px));
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++      margin: auto;
++    }
++
++    dialog::backdrop {
++      background: rgba(30, 20, 15, 0.55);
++    }
++
++    dialog form {
++      padding: 24px;
++    }
++
++    dialog h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    dialog p {
++      font-size: 0.95rem;
++      margin-bottom: 12px;
++    }
++
++    dialog label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++    }
++
++    dialog input[type="text"] {
++      width: 100%;
++      padding: 9px 12px;
++      font: inherit;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++    }
++
++    .field-hint {
++      font-size: 0.8rem;
++      color: var(--muted);
++      margin-top: 4px;
++    }
++
++    .field-error {
++      font-size: 0.85rem;
++      color: var(--danger);
++      margin-top: 6px;
++      min-height: 1.2em;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .warning {
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      padding: 8px 12px;
++      font-size: 0.88rem;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-direction: column;
++        gap: 10px;
++      }
++
++      nav ul li {
++        margin: 0 8px;
++      }
++
++      .passkey {
++        flex-wrap: wrap;
++      }
++
++      .passkey-actions {
++        width: 100%;
++        padding-left: 60px;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="page-header">
++    <h1>My Account</h1>
++    <p id="greeting">Manage how you sign in to The Daily Grind.</p>
++  </header>
++
++  <main class="container">
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <div class="panel-header">
++        <h2 id="passkeys-heading">Passkeys</h2>
++      </div>
++      <p class="panel-intro">
++        Passkeys let you sign in with your fingerprint, face, screen lock, or security key instead of a password.
++        Rename them so they're easy to recognize, and remove any you no longer use.
++      </p>
++
++      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
++
++      <div id="passkeys-region" aria-busy="true">
++        <div class="state" id="passkeys-loading">Loading your passkeys…</div>
++      </div>
++
++      <p class="note">
++        When you remove a passkey here, we also let your browser or password manager know so it can stop offering
++        it at sign-in (on supported browsers). On other browsers you may need to delete it from your device's
++        password manager yourself.
++      </p>
++    </section>
++  </main>
++
++  <!-- Rename dialog -->
++  <dialog id="rename-dialog" aria-labelledby="rename-title">
++    <form method="dialog" id="rename-form" novalidate>
++      <h3 id="rename-title">Rename passkey</h3>
++      <label for="rename-input">Passkey name</label>
++      <input type="text" id="rename-input" name="name" maxlength="64" autocomplete="off" required
++        aria-describedby="rename-hint rename-error">
++      <p class="field-hint" id="rename-hint">e.g. “Work laptop” or “Pixel phone”. Up to 64 characters.</p>
++      <p class="field-error" id="rename-error" aria-live="assertive"></p>
++      <div class="dialog-actions">
++        <button type="button" class="btn btn-secondary" data-close>Cancel</button>
++        <button type="submit" class="btn" id="rename-submit">Save</button>
++      </div>
++    </form>
++  </dialog>
++
++  <!-- Delete dialog -->
++  <dialog id="delete-dialog" aria-labelledby="delete-title">
++    <form method="dialog" id="delete-form">
++      <h3 id="delete-title">Remove passkey?</h3>
++      <p>
++        <strong id="delete-name"></strong> will no longer be able to sign in to your Daily Grind account.
++      </p>
++      <p class="warning" id="delete-current-warning" hidden>
++        This is the passkey you used to sign in on this device. You'll need another passkey or your password
++        next time.
++      </p>
++      <p class="warning" id="delete-last-warning" hidden>
++        This is your only passkey. You'll need to sign in with your password until you add a new one.
++      </p>
++      <p class="field-error" id="delete-error" aria-live="assertive"></p>
++      <div class="dialog-actions">
++        <button type="button" class="btn btn-secondary" data-close>Cancel</button>
++        <button type="submit" class="btn btn-danger solid" id="delete-submit">Remove passkey</button>
++      </div>
++    </form>
++  </dialog>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script src="/account/passkeys.js" defer></script>
++</body>
++
++</html>
+diff --git a/account/passkeys.js b/account/passkeys.js
+new file mode 100644
+index 0000000..d72cf51
+--- /dev/null
++++ b/account/passkeys.js
+@@ -0,0 +1,458 @@
++/*
++ * My Account → Passkey management
++ *
++ * Expected backend contract (all same-origin, cookie-authenticated, JSON):
++ *
++ *   GET    /api/account/passkeys
++ *     200 → {
++ *       rpId: "dailygrind.example",
++ *       user: { id: "<base64url user handle>", name: "jane@example.com", displayName: "Jane" },
++ *       passkeys: [{
++ *         id: "<base64url credential ID>",
++ *         name: "MacBook Air",
++ *         createdAt: "2026-01-02T10:00:00Z",
++ *         lastUsedAt: "2026-10-30T08:12:00Z" | null,
++ *         provider: "iCloud Keychain" | null,   // e.g. resolved from the AAGUID
++ *         backedUp: true,                        // BS flag (synced passkey)
++ *         current: false                         // used for this session's sign-in
++ *       }]
++ *     }
++ *   PATCH  /api/account/passkeys/:id   body { name }  → 200 { passkey }
++ *   DELETE /api/account/passkeys/:id                  → 204
++ *
++ *   401 on any call → user is redirected to /login.
++ *
++ * Browser sync uses the WebAuthn Signal API (where supported) so the user's
++ * authenticator / password manager drops credentials the server no longer
++ * accepts and shows up-to-date account details.
++ */
++(() => {
++  'use strict';
++
++  const API_BASE = '/api/account/passkeys';
++  const MAX_NAME_LENGTH = 64;
++
++  const els = {
++    greeting: document.getElementById('greeting'),
++    region: document.getElementById('passkeys-region'),
++    status: document.getElementById('status'),
++    renameDialog: document.getElementById('rename-dialog'),
++    renameForm: document.getElementById('rename-form'),
++    renameInput: document.getElementById('rename-input'),
++    renameError: document.getElementById('rename-error'),
++    renameSubmit: document.getElementById('rename-submit'),
++    deleteDialog: document.getElementById('delete-dialog'),
++    deleteForm: document.getElementById('delete-form'),
++    deleteName: document.getElementById('delete-name'),
++    deleteError: document.getElementById('delete-error'),
++    deleteSubmit: document.getElementById('delete-submit'),
++    deleteCurrentWarning: document.getElementById('delete-current-warning'),
++    deleteLastWarning: document.getElementById('delete-last-warning'),
++  };
++
++  const state = {
++    rpId: null,
++    user: null,
++    passkeys: [],
++    activeId: null,      // passkey targeted by an open dialog
++    returnFocus: null,   // element to refocus after a dialog closes
++  };
++
++  // ---------------------------------------------------------------------------
++  // API helpers
++  // ---------------------------------------------------------------------------
++
++  class ApiError extends Error {
++    constructor(message, status) {
++      super(message);
++      this.status = status;
++    }
++  }
++
++  function csrfToken() {
++    const meta = document.querySelector('meta[name="csrf-token"]');
++    return meta ? meta.content : null;
++  }
++
++  async function api(path, { method = 'GET', body } = {}) {
++    const headers = { Accept: 'application/json' };
++    if (body !== undefined) headers['Content-Type'] = 'application/json';
++    if (method !== 'GET') {
++      // Custom header forces a CORS preflight for cross-site requests.
++      headers['X-Requested-With'] = 'fetch';
++      const token = csrfToken();
++      if (token) headers['X-CSRF-Token'] = token;
++    }
++
++    let res;
++    try {
++      res = await fetch(API_BASE + path, {
++        method,
++        headers,
++        credentials: 'same-origin',
++        cache: 'no-store',
++        body: body === undefined ? undefined : JSON.stringify(body),
++      });
++    } catch {
++      throw new ApiError('We couldn’t reach the server. Check your connection and try again.', 0);
++    }
++
++    if (res.status === 401) {
++      window.location.assign('/login?next=' + encodeURIComponent('/account'));
++      throw new ApiError('Your session has expired. Please sign in again.', 401);
++    }
++
++    let data = null;
++    if (res.status !== 204) {
++      try { data = await res.json(); } catch { /* non-JSON body */ }
++    }
++
++    if (!res.ok) {
++      const msg = (data && typeof data.error === 'string' && data.error) ||
++        (res.status === 404 ? 'That passkey no longer exists.' : 'Something went wrong. Please try again.');
++      throw new ApiError(msg, res.status);
++    }
++    return data;
++  }
++
++  const encodeId = (id) => '/' + encodeURIComponent(id);
++
++  // ---------------------------------------------------------------------------
++  // WebAuthn Signal API — keep the browser's authenticator in sync
++  // ---------------------------------------------------------------------------
++
++  const PKC = window.PublicKeyCredential;
++
++  async function signalAcceptedCredentials() {
++    if (!PKC || typeof PKC.signalAllAcceptedCredentials !== 'function') return;
++    if (!state.rpId || !state.user || !state.user.id) return;
++    try {
++      await PKC.signalAllAcceptedCredentials({
++        rpId: state.rpId,
++        userId: state.user.id,
++        allAcceptedCredentialIds: state.passkeys.map((p) => p.id),
++      });
++    } catch (err) {
++      // Non-fatal: the server is the source of truth.
++      console.warn('signalAllAcceptedCredentials failed', err);
++    }
++  }
++
++  async function signalUserDetails() {
++    if (!PKC || typeof PKC.signalCurrentUserDetails !== 'function') return;
++    if (!state.rpId || !state.user || !state.user.id || !state.user.name) return;
++    try {
++      await PKC.signalCurrentUserDetails({
++        rpId: state.rpId,
++        userId: state.user.id,
++        name: state.user.name,
++        displayName: state.user.displayName || state.user.name,
++      });
++    } catch (err) {
++      console.warn('signalCurrentUserDetails failed', err);
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Rendering
++  // ---------------------------------------------------------------------------
++
++  const dateFmt = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
++  const relFmt = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
++
++  function formatDate(iso) {
++    const d = iso ? new Date(iso) : null;
++    return d && !isNaN(d) ? dateFmt.format(d) : null;
++  }
++
++  function formatRelative(iso) {
++    const d = iso ? new Date(iso) : null;
++    if (!d || isNaN(d)) return null;
++    const days = Math.round((d - Date.now()) / 86400000);
++    if (days > -1) return 'today';
++    if (days > -30) return relFmt.format(days, 'day');
++    return formatDate(iso);
++  }
++
++  function el(tag, props = {}, children = []) {
++    const node = document.createElement(tag);
++    for (const [k, v] of Object.entries(props)) {
++      if (k === 'class') node.className = v;
++      else if (k === 'text') node.textContent = v;
++      else if (k === 'dataset') Object.assign(node.dataset, v);
++      else node.setAttribute(k, v);
++    }
++    for (const c of [].concat(children)) if (c) node.append(c);
++    return node;
++  }
++
++  const KEY_ICON_SVG =
++    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
++    'stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/>' +
++    '<path d="M10.85 12.15 19 4M18 5l2 2M15 8l2 2"/></svg>';
++
++  function renderPasskey(p) {
++    const icon = el('div', { class: 'passkey-icon' });
++    icon.innerHTML = KEY_ICON_SVG; // static, trusted markup
++
++    const nameLine = el('div', { class: 'passkey-name' }, [
++      document.createTextNode(p.name || 'Unnamed passkey'),
++      p.current ? el('span', { class: 'badge badge-current', text: 'This device' }) : null,
++      p.backedUp ? el('span', { class: 'badge badge-synced', text: 'Synced' }) : null,
++    ]);
++
++    const meta = el('div', { class: 'passkey-meta' });
++    if (p.provider) meta.append(el('span', { text: p.provider }));
++    const created = formatDate(p.createdAt);
++    if (created) meta.append(el('span', { text: 'Added ' + created }));
++    const used = formatRelative(p.lastUsedAt);
++    meta.append(el('span', { text: used ? 'Last used ' + used : 'Never used' }));
++
++    const label = p.name || 'Unnamed passkey';
++    const actions = el('div', { class: 'passkey-actions' }, [
++      el('button', {
++        type: 'button', class: 'btn btn-secondary btn-sm',
++        dataset: { action: 'rename', id: p.id }, 'aria-label': 'Rename ' + label,
++      }, 'Rename'),
++      el('button', {
++        type: 'button', class: 'btn btn-danger btn-sm',
++        dataset: { action: 'delete', id: p.id }, 'aria-label': 'Remove ' + label,
++      }, 'Remove'),
++    ]);
++
++    return el('li', { class: 'passkey', dataset: { id: p.id } }, [
++      icon,
++      el('div', { class: 'passkey-body' }, [nameLine, meta]),
++      actions,
++    ]);
++  }
++
++  function render() {
++    els.region.setAttribute('aria-busy', 'false');
++    els.region.replaceChildren();
++
++    if (state.passkeys.length === 0) {
++      els.region.append(el('div', { class: 'state' }, [
++        el('strong', { text: 'No passkeys yet' }),
++        document.createTextNode('You haven’t registered any passkeys for this account.'),
++      ]));
++      return;
++    }
++
++    const list = el('ul', { class: 'passkey-list', 'aria-label': 'Registered passkeys' });
++    // Most recently used first; never-used keys sorted by creation date.
++    const sorted = [...state.passkeys].sort((a, b) =>
++      (Date.parse(b.lastUsedAt || b.createdAt) || 0) - (Date.parse(a.lastUsedAt || a.createdAt) || 0));
++    for (const p of sorted) list.append(renderPasskey(p));
++    els.region.append(list);
++  }
++
++  function renderLoadError(message) {
++    els.region.setAttribute('aria-busy', 'false');
++    const retry = el('button', { type: 'button', class: 'btn btn-secondary' }, 'Try again');
++    retry.addEventListener('click', load);
++    els.region.replaceChildren(el('div', { class: 'state' }, [
++      el('strong', { text: 'We couldn’t load your passkeys' }),
++      document.createTextNode(message),
++      el('div', {}, retry),
++    ]));
++  }
++
++  let statusTimer;
++  function showStatus(message, type = 'success') {
++    clearTimeout(statusTimer);
++    els.status.textContent = message;
++    els.status.className = 'status ' + type;
++    els.status.hidden = false;
++    if (type === 'success') statusTimer = setTimeout(() => { els.status.hidden = true; }, 6000);
++  }
++
++  // ---------------------------------------------------------------------------
++  // Load
++  // ---------------------------------------------------------------------------
++
++  async function load() {
++    els.region.setAttribute('aria-busy', 'true');
++    els.region.replaceChildren(el('div', { class: 'state', text: 'Loading your passkeys…' }));
++    try {
++      const data = await api('');
++      state.rpId = data && data.rpId ? data.rpId : window.location.hostname;
++      state.user = data && data.user ? data.user : null;
++      state.passkeys = Array.isArray(data && data.passkeys) ? data.passkeys : [];
++
++      if (state.user && (state.user.displayName || state.user.name)) {
++        els.greeting.textContent = 'Signed in as ' + (state.user.displayName || state.user.name);
++      }
++      render();
++
++      // Reconcile the authenticator with the server's list on every visit, so
++      // keys deleted on another device also disappear from this browser.
++      signalAcceptedCredentials();
++      signalUserDetails();
++    } catch (err) {
++      if (err.status !== 401) renderLoadError(err.message);
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Dialog helpers
++  // ---------------------------------------------------------------------------
++
++  function openDialog(dialog, id, trigger) {
++    state.activeId = id;
++    state.returnFocus = trigger;
++    dialog.showModal();
++  }
++
++  function closeDialog(dialog) {
++    if (dialog.open) dialog.close();
++  }
++
++  for (const dialog of [els.renameDialog, els.deleteDialog]) {
++    dialog.addEventListener('click', (e) => {
++      if (e.target.closest('[data-close]') || e.target === dialog) closeDialog(dialog);
++    });
++    dialog.addEventListener('close', () => {
++      state.activeId = null;
++      const target = state.returnFocus;
++      state.returnFocus = null;
++      if (target && document.contains(target)) return target.focus();
++      // The list re-rendered: refocus the same control on the new row, if it still exists.
++      const replacement = target && [...els.region.querySelectorAll('button[data-action]')]
++        .find((b) => b.dataset.action === target.dataset.action && b.dataset.id === target.dataset.id);
++      (replacement || els.region.querySelector('button') || els.status).focus?.();
++    });
++  }
++
++  const findPasskey = (id) => state.passkeys.find((p) => p.id === id);
++
++  // ---------------------------------------------------------------------------
++  // Rename
++  // ---------------------------------------------------------------------------
++
++  function openRename(id, trigger) {
++    const p = findPasskey(id);
++    if (!p) return;
++    els.renameInput.value = p.name || '';
++    els.renameError.textContent = '';
++    els.renameInput.removeAttribute('aria-invalid');
++    setBusy(els.renameSubmit, false, 'Save');
++    openDialog(els.renameDialog, id, trigger);
++    els.renameInput.select();
++  }
++
++  function validateName(raw) {
++    const name = raw.replace(/\s+/g, ' ').trim();
++    if (!name) return { error: 'Please enter a name.' };
++    if (name.length > MAX_NAME_LENGTH) return { error: `Use ${MAX_NAME_LENGTH} characters or fewer.` };
++    if (/[\u0000-\u001f\u007f]/.test(name)) return { error: 'The name contains invalid characters.' };
++    return { name };
++  }
++
++  els.renameForm.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const id = state.activeId;
++    const p = findPasskey(id);
++    if (!p) return closeDialog(els.renameDialog);
++
++    const { name, error } = validateName(els.renameInput.value);
++    if (error) {
++      els.renameError.textContent = error;
++      els.renameInput.setAttribute('aria-invalid', 'true');
++      els.renameInput.focus();
++      return;
++    }
++    if (name === p.name) return closeDialog(els.renameDialog);
++
++    setBusy(els.renameSubmit, true, 'Saving…');
++    els.renameError.textContent = '';
++    try {
++      const data = await api(encodeId(id), { method: 'PATCH', body: { name } });
++      const updated = data && data.passkey ? data.passkey : { name };
++      Object.assign(p, updated, { id });
++      render();
++      closeDialog(els.renameDialog);
++      showStatus(`Passkey renamed to “${p.name}”.`);
++    } catch (err) {
++      if (err.status === 404) {
++        await handleVanished(id, els.renameDialog);
++      } else {
++        els.renameError.textContent = err.message;
++        setBusy(els.renameSubmit, false, 'Save');
++      }
++    }
++  });
++
++  // ---------------------------------------------------------------------------
++  // Delete
++  // ---------------------------------------------------------------------------
++
++  function openDelete(id, trigger) {
++    const p = findPasskey(id);
++    if (!p) return;
++    els.deleteName.textContent = p.name || 'This passkey';
++    els.deleteError.textContent = '';
++    els.deleteCurrentWarning.hidden = !p.current;
++    els.deleteLastWarning.hidden = state.passkeys.length !== 1;
++    setBusy(els.deleteSubmit, false, 'Remove passkey');
++    openDialog(els.deleteDialog, id, trigger);
++    // Default focus on the safe action.
++    els.deleteDialog.querySelector('[data-close]').focus();
++  }
++
++  els.deleteForm.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const id = state.activeId;
++    const p = findPasskey(id);
++    if (!p) return closeDialog(els.deleteDialog);
++
++    setBusy(els.deleteSubmit, true, 'Removing…');
++    els.deleteError.textContent = '';
++    try {
++      await api(encodeId(id), { method: 'DELETE' });
++      removeLocal(id);
++      closeDialog(els.deleteDialog);
++      showStatus(`“${p.name || 'Passkey'}” was removed.`);
++    } catch (err) {
++      if (err.status === 404) {
++        await handleVanished(id, els.deleteDialog);
++      } else {
++        els.deleteError.textContent = err.message;
++        setBusy(els.deleteSubmit, false, 'Remove passkey');
++      }
++    }
++  });
++
++  function removeLocal(id) {
++    state.passkeys = state.passkeys.filter((p) => p.id !== id);
++    render();
++    // Tell the browser/password manager this credential is gone so it stops
++    // offering it in sign-in prompts.
++    signalAcceptedCredentials();
++  }
++
++  // The passkey was already removed elsewhere (another tab/device).
++  async function handleVanished(id, dialog) {
++    closeDialog(dialog);
++    showStatus('That passkey had already been removed. Your list has been refreshed.', 'error');
++    await load();
++  }
++
++  // ---------------------------------------------------------------------------
++  // Wiring
++  // ---------------------------------------------------------------------------
++
++  function setBusy(button, busy, label) {
++    button.disabled = busy;
++    button.textContent = label;
++  }
++
++  els.region.addEventListener('click', (e) => {
++    const btn = e.target.closest('button[data-action]');
++    if (!btn) return;
++    if (btn.dataset.action === 'rename') openRename(btn.dataset.id, btn);
++    else if (btn.dataset.action === 'delete') openDelete(btn.dataset.id, btn);
++  });
++
++  load();
++})();

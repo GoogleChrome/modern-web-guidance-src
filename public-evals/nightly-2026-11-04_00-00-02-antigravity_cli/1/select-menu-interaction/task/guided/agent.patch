@@ -1,0 +1,232 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,119 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    /* Order Section & Form Controls */
++    .order-section {
++      margin-top: 40px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin-inline: auto;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-section p.subtitle {
++      text-align: center;
++      margin-bottom: 24px;
++      color: #5d4037;
++    }
++
++    .field {
++      margin-block-end: 1.5rem;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.5rem;
++      color: var(--text);
++    }
++
++    .required-indicator {
++      color: #d93025;
++      margin-inline-start: 2px;
++    }
++
++    .field select {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 0.75rem 1rem;
++      min-height: 48px;
++      border: 1.5px solid #8d6e63;
++      border-radius: 6px;
++      background-color: #ffffff;
++      color: var(--text);
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    @media (pointer: coarse) {
++      .field select {
++        min-height: 52px;
++      }
++    }
++
++    .field select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.375rem;
++      font-weight: 500;
++    }
++
++    /*
++      Only show validation error after the user interacts with the select menu
++      or attempts to submit the form.
++    */
++    select:user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    select:user-invalid + .error-msg,
++    select:user-invalid ~ .error-msg {
++      display: block;
++    }
++
++    select:required:user-valid {
++      border-color: #188038;
++      border-width: 2px;
++    }
++
++    .form-status {
++      margin-top: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 6px;
++      background-color: #e6f4ea;
++      color: #137333;
++      font-weight: 500;
++      display: none;
++    }
++
++    .form-status.visible {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +281,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +305,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Order Ahead for Pickup</h2>
++      <p class="subtitle">Choose your local shop to start your order and skip the line.</p>
++      <form id="order-form" action="/order-online" method="GET">
++        <div class="field">
++          <label for="local-shop">
++            Local Shop <span class="required-indicator" aria-hidden="true">*</span>
++          </label>
++          <select
++            id="local-shop"
++            name="shop"
++            required
++            aria-errormessage="local-shop-error"
++            aria-describedby="local-shop-error"
++          >
++            <option value="" disabled selected>Select a local shop...</option>
++            <option value="downtown-roastery">Downtown Roastery — 124 Main St</option>
++            <option value="riverside-cafe">Riverside Cafe — 450 River Rd</option>
++            <option value="uptown-espresso">Uptown Espresso Bar — 882 Oak Ave</option>
++            <option value="harborview-market">Harborview Market — 19 Pier Way</option>
++            <option value="university-commons">University Commons — 310 College Blvd</option>
++            <option value="westside-station">Westside Station — 705 Sunset Pkwy</option>
++          </select>
++          <div id="local-shop-error" class="error-msg" aria-live="polite">
++            <span aria-hidden="true">❌</span> Please select a local shop for pickup.
++          </div>
++        </div>
++        <button type="submit" class="btn">Start Order</button>
++        <div id="order-status" class="form-status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +349,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const orderForm = document.getElementById('order-form');
++    const orderStatus = document.getElementById('order-status');
++
++    // Sync aria-invalid with the CSS :user-invalid state so screen readers
++    // only announce errors after user interaction or submission attempt.
++    const updateAriaState = (event) => {
++      const control = event.target;
++      if (!control.matches?.('input, textarea, select')) return;
++
++      if (control.matches(':user-invalid')) {
++        control.setAttribute('aria-invalid', 'true');
++      } else {
++        control.removeAttribute('aria-invalid');
++      }
++    };
++
++    document.addEventListener('blur', updateAriaState, true);
++    document.addEventListener('focus', updateAriaState, true);
++    document.addEventListener('invalid', updateAriaState, true);
++    document.addEventListener('change', updateAriaState, true);
++
++    document.addEventListener('input', (event) => {
++      const control = event.target;
++      if (!control.matches?.('input, textarea, select')) return;
++
++      if (control.getAttribute('aria-invalid') === 'true') {
++        updateAriaState(event);
++      }
++    });
++
++    orderForm?.addEventListener('submit', (event) => {
++      event.preventDefault();
++      orderForm.querySelectorAll('select[required], input[required], textarea[required]').forEach((el) => {
++        if (el.matches(':user-invalid')) {
++          el.setAttribute('aria-invalid', 'true');
++        } else if (el.matches(':user-valid')) {
++          el.removeAttribute('aria-invalid');
++        }
++      });
++
++      if (orderForm.checkValidity()) {
++        const shopSelect = document.getElementById('local-shop');
++        const selectedOption = shopSelect.options[shopSelect.selectedIndex]?.text || shopSelect.value;
++        orderStatus.textContent = `Shop selected: ${selectedOption}. Preparing your menu...`;
++        orderStatus.classList.add('visible');
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

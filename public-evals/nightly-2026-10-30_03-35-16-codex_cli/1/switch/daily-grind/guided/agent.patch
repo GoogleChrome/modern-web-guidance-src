@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..00a2006 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,72 @@
+       margin-top: 20px;
+     }
+ 
++    .section-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .description-switch {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .description-switch[hidden] {
++      display: none;
++    }
++
++    .description-switch input {
++      appearance: none;
++      flex: 0 0 auto;
++      width: 48px;
++      height: 28px;
++      border: 2px solid var(--primary);
++      border-radius: 20px;
++      background: white;
++      padding: 3px;
++      cursor: pointer;
++    }
++
++    .description-switch input::before {
++      content: "";
++      display: block;
++      width: 18px;
++      height: 18px;
++      border-radius: 50%;
++      background: var(--primary);
++    }
++
++    .description-switch input:checked {
++      background: var(--primary);
++    }
++
++    .description-switch input:checked::before {
++      background: white;
++      transform: translateX(20px);
++    }
++
++    .description-switch input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    @media (forced-colors: active) {
++      .description-switch input {
++        appearance: auto;
++      }
++
++      .description-switch input::before {
++        display: none;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -176,21 +242,28 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-heading">
++        <h2>Seasonal Favorites</h2>
++        <label class="description-switch" for="show-descriptions" hidden>
++          <span>Show drink descriptions</span>
++          <input type="checkbox" role="switch" id="show-descriptions" checked
++            aria-controls="maple-description espresso-description cold-brew-description">
++        </label>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p id="maple-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p id="espresso-description">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p id="cold-brew-description">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +280,22 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const descriptionSwitch = document.getElementById('show-descriptions');
++    const descriptions = descriptionSwitch.getAttribute('aria-controls')
++      .split(' ').map(id => document.getElementById(id));
++
++    function updateDescriptions() {
++      descriptions.forEach(description => {
++        description.hidden = !descriptionSwitch.checked;
++      });
++    }
++
++    descriptionSwitch.addEventListener('change', updateDescriptions);
++    window.addEventListener('pageshow', updateDescriptions);
++    updateDescriptions();
++    descriptionSwitch.closest('label').hidden = false;
++  </script>
+ </body>
+ 
+ </html>

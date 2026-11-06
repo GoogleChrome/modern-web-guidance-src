@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,33 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .passkey-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .passkey-status.error {
++      color: #b71c1c;
++    }
++
++    .passkey-status.success {
++      color: #1b5e20;
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +219,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card" style="margin-top: 40px;">
++      <h2>Skip the password</h2>
++      <p>Create a passkey to sign in faster and more securely on this device.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button">Create passkey</button>
++      <p class="passkey-status" id="passkey-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +238,114 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const button = document.getElementById('register-button');
++      const status = document.getElementById('passkey-status');
++
++      function setStatus(message, kind) {
++        status.textContent = message;
++        status.className = 'passkey-status' + (kind ? ' ' + kind : '');
++      }
++
++      function b64urlToBuffer(value) {
++        const b64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
++        const bin = atob(padded);
++        const bytes = new Uint8Array(bin.length);
++        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buffer) {
++        const bytes = new Uint8Array(buffer);
++        let bin = '';
++        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      // Convert server JSON options into WebAuthn options (binary fields as ArrayBuffers).
++      function parseCreationOptions(json) {
++        if (window.PublicKeyCredential && PublicKeyCredential.parseCreationOptionsFromJSON) {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        const options = Object.assign({}, json);
++        options.challenge = b64urlToBuffer(json.challenge);
++        options.user = Object.assign({}, json.user, { id: b64urlToBuffer(json.user.id) });
++        if (json.excludeCredentials) {
++          options.excludeCredentials = json.excludeCredentials.map(function (c) {
++            return Object.assign({}, c, { id: b64urlToBuffer(c.id) });
++          });
++        }
++        return options;
++      }
++
++      // Serialize the created credential for the server.
++      function credentialToJSON(cred) {
++        if (typeof cred.toJSON === 'function') return cred.toJSON();
++        const response = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment || undefined,
++          clientExtensionResults: cred.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToB64url(response.clientDataJSON),
++            attestationObject: bufferToB64url(response.attestationObject),
++            transports: typeof response.getTransports === 'function' ? response.getTransports() : []
++          }
++        };
++      }
++
++      async function postJSON(url, body) {
++        const res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body)
++        });
++        if (!res.ok) throw new Error('Request to ' + url + ' failed (' + res.status + ')');
++        return res.json();
++      }
++
++      async function registerPasskey() {
++        if (!window.PublicKeyCredential || !navigator.credentials) {
++          setStatus('Passkeys are not supported in this browser.', 'error');
++          return;
++        }
++        button.disabled = true;
++        setStatus('Waiting for your device…');
++        try {
++          // The server generates the challenge, RP ID, and user info; the client never invents them.
++          const optionsJSON = await postJSON('/api/register/options', { promotion: true });
++          const publicKey = parseCreationOptions(optionsJSON.publicKey || optionsJSON);
++          const credential = await navigator.credentials.create({ publicKey: publicKey });
++          if (!credential) throw new Error('No credential was created.');
++
++          // The server must validate challenge, origin, RP ID hash, and attestation.
++          const result = await postJSON('/api/register/verify', credentialToJSON(credential));
++          if (result && result.verified === false) throw new Error('Verification failed.');
++          setStatus('Passkey created successfully!', 'success');
++        } catch (err) {
++          if (err && err.name === 'NotAllowedError') {
++            setStatus('Passkey creation was cancelled or timed out.', 'error');
++          } else if (err && err.name === 'InvalidStateError') {
++            setStatus('A passkey already exists for this account on this device.', 'error');
++          } else {
++            setStatus('Could not create passkey. Please try again.', 'error');
++          }
++          console.error('Passkey registration failed:', err);
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      button.addEventListener('click', registerPasskey);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,425 @@
+diff --git a/README.md b/README.md
+index 4479b53..553e7f1 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,27 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Client-side view cache (keep-alive)
++
++Navigation uses Astro's `<ClientRouter />`. By default it replaces the whole
++`<body>` on every navigation, so going back to a page you already visited
++refetches, re-parses, re-renders and re-hydrates it from scratch.
++
++`src/scripts/view-cache.ts` keeps recently visited views alive instead:
++
++- When you navigate away, the page's `<main data-view-root>` is moved into a
++  hidden `[data-view-cache-store]` container at the end of `<body>`. The store is
++  `transition:persist`ed, so the parked DOM never leaves the document and its
++  React islands keep their state.
++- When you navigate to a URL whose view is parked, the network request is
++  skipped and the parked element is moved back into place (title and any
++  page-specific head styles are restored too).
++
++Details:
++
++- Up to 10 views are kept (LRU) for at most 10 minutes.
++- Form submissions always hit the server and drop the target's cached view.
++- Opt a page out with `<Layout keepAlive={false}>`.
++- `window.viewCache` exposes `has(url)`, `invalidate(url?)`, `clear()`, `keys()`
++  and `size`; `view-cache:park` / `view-cache:restore` events fire on `document`.
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..f81c2df 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,9 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    /** Keep-alive cache for visited views, see src/scripts/view-cache.ts */
++    viewCache: typeof import('./src/scripts/view-cache').viewCache;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..454ca54 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,15 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  /**
++   * Keep this view's DOM alive after navigating away so returning to it is
++   * instant (see src/scripts/view-cache.ts). Set to false for pages whose
++   * markup must be re-rendered by the server on every visit.
++   */
++  keepAlive?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, keepAlive = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +41,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,11 +54,26 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main
++          class="bg-white relative"
++          data-view-root
++          data-view-cache={keepAlive ? undefined : "false"}
++        >
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <!--
++      Parking area for views the user navigated away from. Persisted across
++      client-side navigations so the parked DOM (and its islands) stays
++      connected; see src/scripts/view-cache.ts.
++    -->
++    <div
++      data-view-cache-store
++      transition:persist="view-cache"
++      aria-hidden="true"
++      inert
++    ></div>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..2a5e7c4
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,280 @@
++/**
++ * View keep-alive for Astro's `<ClientRouter />`.
++ *
++ * Out of the box the client router replaces the whole `<body>` on every
++ * navigation. Returning to a view you already visited therefore refetches the
++ * HTML, parses it, rebuilds the DOM, re-decodes images and re-hydrates every
++ * island from scratch.
++ *
++ * This module keeps the structural DOM of recently visited views alive instead:
++ *
++ * 1. Right before a view is swapped out, its `[data-view-root]` element is moved
++ *    into a hidden container (`[data-view-cache-store]`) that is carried across
++ *    navigations with `transition:persist`. The subtree never leaves the
++ *    document, so Astro does not unmount its islands and React state survives.
++ * 2. When a navigation targets a URL whose view is parked, the network request
++ *    is skipped and the parked element is moved back into place.
++ *
++ * Opt a page out with `<Layout keepAlive={false}>` (renders
++ * `data-view-cache="false"` on the view root). Entries are evicted LRU-style
++ * once `MAX_ENTRIES` is exceeded and ignored once older than `MAX_AGE_MS`.
++ * Form submissions always go to the server and drop the target's cached view.
++ *
++ * A small `window.viewCache` API (`has`, `invalidate`, `clear`, `keys`) is
++ * exposed for debugging and programmatic invalidation.
++ */
++import type {
++  TransitionBeforePreparationEvent,
++  TransitionBeforeSwapEvent,
++} from 'astro:transitions/client';
++
++const VIEW_ROOT_SELECTOR = '[data-view-root]';
++const STORE_SELECTOR = '[data-view-cache-store]';
++const MAX_ENTRIES = 10;
++const MAX_AGE_MS = 10 * 60 * 1000;
++
++interface CacheEntry {
++  key: string;
++  view: HTMLElement;
++  title: string;
++  /** `href`s of `<link rel="stylesheet">` present in `<head>` when parked. */
++  stylesheets: string[];
++  /** Clones of inline `<style>` elements present in `<head>` when parked. */
++  inlineStyles: HTMLStyleElement[];
++  parkedAt: number;
++}
++
++/** Insertion order doubles as recency: re-inserted on every park. */
++const entries = new Map<string, CacheEntry>();
++
++const keyFor = (url: URL | Location): string => url.pathname + url.search;
++
++const toKey = (input: string | URL): string => keyFor(new URL(String(input), location.href));
++
++const getStore = (): HTMLElement | null => document.querySelector<HTMLElement>(STORE_SELECTOR);
++
++/** The view that is currently displayed, i.e. the view root that is not parked. */
++function getActiveView(): HTMLElement | null {
++  for (const el of document.querySelectorAll<HTMLElement>(VIEW_ROOT_SELECTOR)) {
++    if (!el.closest(STORE_SELECTOR)) return el;
++  }
++  return null;
++}
++
++/**
++ * Move `node` without a disconnect/connect cycle where the platform supports it
++ * (`Node.moveBefore`, Chrome 133+). Falls back to a regular insert, which still
++ * keeps islands alive because they are reconnected before `astro:after-swap`.
++ */
++function move(node: Node, parent: Node, before: Node | null): void {
++  const mover = (parent as Node & { moveBefore?: (n: Node, b: Node | null) => void }).moveBefore;
++  if (typeof mover === 'function') {
++    try {
++      mover.call(parent, node, before);
++      return;
++    } catch {
++      /* fall through: e.g. parent/node connectedness mismatch */
++    }
++  }
++  parent.insertBefore(node, before);
++}
++
++function pauseMedia(view: HTMLElement): void {
++  for (const media of view.querySelectorAll<HTMLMediaElement>('video, audio')) {
++    if (!media.paused) media.pause();
++  }
++}
++
++function snapshotHeadStyles(): Pick<CacheEntry, 'stylesheets' | 'inlineStyles'> {
++  const stylesheets: string[] = [];
++  for (const link of document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')) {
++    stylesheets.push(link.getAttribute('href')!);
++  }
++  const inlineStyles: HTMLStyleElement[] = [];
++  for (const style of document.head.querySelectorAll('style')) {
++    inlineStyles.push(style.cloneNode(true) as HTMLStyleElement);
++  }
++  return { stylesheets, inlineStyles };
++}
++
++/**
++ * Re-add any head styles the parked view relied on that an intermediate
++ * navigation may have swapped out (Astro diffs `<head>` on every swap).
++ */
++function restoreHeadStyles(entry: CacheEntry): void {
++  for (const href of entry.stylesheets) {
++    if (document.head.querySelector(`link[rel="stylesheet"][href="${CSS.escape(href)}"]`)) continue;
++    const link = document.createElement('link');
++    link.rel = 'stylesheet';
++    link.href = href;
++    document.head.append(link);
++  }
++  if (entry.inlineStyles.length === 0) return;
++  const present = new Set(Array.from(document.head.querySelectorAll('style'), (s) => s.textContent));
++  for (const style of entry.inlineStyles) {
++    if (present.has(style.textContent)) continue;
++    document.head.append(style.cloneNode(true));
++  }
++}
++
++function evict(entry: CacheEntry): void {
++  entries.delete(entry.key);
++  // Detached islands are unmounted by Astro on the next `astro:after-swap`.
++  entry.view.remove();
++}
++
++function prune(): void {
++  while (entries.size > MAX_ENTRIES) {
++    const oldest = entries.values().next().value;
++    if (!oldest) break;
++    evict(oldest);
++  }
++}
++
++/** Return a fresh enough entry for `key`, evicting it if it has expired. */
++function lookup(key: string): CacheEntry | undefined {
++  const entry = entries.get(key);
++  if (!entry) return undefined;
++  if (Date.now() - entry.parkedAt > MAX_AGE_MS) {
++    evict(entry);
++    return undefined;
++  }
++  return entry;
++}
++
++const isCacheable = (view: HTMLElement): boolean => view.dataset.viewCache !== 'false';
++
++/**
++ * Park the currently displayed view under `key`. Returns `false` when the view
++ * is not cacheable; the caller then decides whether to drop it.
++ */
++function park(view: HTMLElement, key: string): boolean {
++  const store = getStore();
++  if (!store || !isCacheable(view)) return false;
++
++  const existing = entries.get(key);
++  if (existing && existing.view !== view) evict(existing);
++  entries.delete(key);
++
++  pauseMedia(view);
++  move(view, store, null);
++  entries.set(key, {
++    key,
++    view,
++    title: document.title,
++    parkedAt: Date.now(),
++    ...snapshotHeadStyles(),
++  });
++  prune();
++  document.dispatchEvent(new CustomEvent('view-cache:park', { detail: { key } }));
++  return true;
++}
++
++function restore(entry: CacheEntry, parent: Node, before: Node | null): void {
++  entries.delete(entry.key);
++  move(entry.view, parent, before);
++  document.title = entry.title;
++  restoreHeadStyles(entry);
++  document.dispatchEvent(new CustomEvent('view-cache:restore', { detail: { key: entry.key } }));
++}
++
++/* ------------------------------------------------------------------------- */
++/* Router integration                                                         */
++/* ------------------------------------------------------------------------- */
++
++document.addEventListener('astro:before-preparation', (ev) => {
++  const e = ev as TransitionBeforePreparationEvent;
++  const target = keyFor(e.to);
++
++  // Submissions mutate server state: always load the response and forget the
++  // stale copy of the target.
++  if (e.formData) {
++    const stale = entries.get(target);
++    if (stale) evict(stale);
++    return;
++  }
++
++  // Can only restore into a page that has a view root and a store to park the
++  // outgoing view in; otherwise let the default loader fetch.
++  if (!getActiveView() || !getStore()) return;
++  if (!lookup(target)) return;
++
++  // Cache hit: skip the network round trip entirely. `newDocument` stays
++  // `window.document`, which is how the swap handler recognises the hit.
++  e.loader = async () => {};
++});
++
++document.addEventListener('astro:before-swap', (ev) => {
++  const e = ev as TransitionBeforeSwapEvent;
++  const fromKey = keyFor(e.from);
++  const target = keyFor(e.to);
++  const defaultSwap = e.swap;
++  const hit = e.newDocument === document;
++
++  e.swap = () => {
++    const current = getActiveView();
++
++    if (!hit || !current) {
++      // Regular navigation: park the outgoing view, then let Astro swap the
++      // body. The store is `transition:persist`ed, so parked views (and their
++      // mounted islands) travel into the new body untouched.
++      // A navigation to the page we are already on is an explicit refresh, so
++      // the outgoing copy is dropped rather than kept alongside the fresh one.
++      if (current && fromKey !== target) park(current, fromKey);
++      defaultSwap();
++      return;
++    }
++
++    // Take the entry first so parking the outgoing view can never evict it
++    // (relevant when `fromKey === target`).
++    const entry = entries.get(target);
++    entries.delete(target);
++
++    const parent = current.parentNode!;
++    const before = current.nextSibling;
++    if (!park(current, fromKey)) current.remove();
++
++    if (entry) {
++      restore(entry, parent, before);
++    } else {
++      // Entry vanished between preparation and swap (should not happen). We
++      // already skipped the fetch, so fall back to a full load of the target.
++      location.href = e.to.href;
++    }
++  };
++});
++
++// If a page without the store ever loads, parked views are discarded together
++// with the old body. Drop their bookkeeping so they can be garbage collected.
++document.addEventListener('astro:after-swap', () => {
++  for (const entry of entries.values()) {
++    if (!entry.view.isConnected) entries.delete(entry.key);
++  }
++});
++
++/* ------------------------------------------------------------------------- */
++/* Public API                                                                 */
++/* ------------------------------------------------------------------------- */
++
++export const viewCache = {
++  /** Whether a (non-expired) view is cached for `url`. */
++  has: (url: string | URL): boolean => lookup(toKey(url)) !== undefined,
++  /** Drop the cached view for `url`, or every cached view when omitted. */
++  invalidate(url?: string | URL): void {
++    if (url === undefined) {
++      for (const entry of Array.from(entries.values())) evict(entry);
++      return;
++    }
++    const entry = entries.get(toKey(url));
++    if (entry) evict(entry);
++  },
++  clear(): void {
++    viewCache.invalidate();
++  },
++  keys: (): string[] => Array.from(entries.keys()),
++  get size(): number {
++    return entries.size;
++  },
++};
++
++window.viewCache = viewCache;
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..24b6d7c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,25 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/*
++ * Views parked by the client-side view cache (src/scripts/view-cache.ts).
++ * `content-visibility: hidden` skips rendering while preserving the subtree's
++ * rendering state, so re-showing a parked view is cheaper than display: none.
++ */
++[data-view-cache-store] {
++  position: fixed;
++  top: 0;
++  left: 0;
++  width: 0;
++  height: 0;
++  overflow: hidden;
++  pointer-events: none;
++  content-visibility: hidden;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-view-cache-store] {
++    display: none;
++  }
++}

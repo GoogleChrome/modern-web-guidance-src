@@ -1,0 +1,203 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..48c8645
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,156 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++{articles.length > 0 && (
++    <top-stories-slider class="block bg-white border-b border-gray-300" role="region" aria-label="Top stories" aria-roledescription="carousel">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="story-viewport">
++                {articles.map((article, index) => (
++                    <div
++                        class="story-slide"
++                        data-state={index === 0 ? 'active' : undefined}
++                        role="group"
++                        aria-roledescription="slide"
++                        aria-label={`${index + 1} of ${articles.length}`}
++                        aria-hidden={index !== 0}
++                        inert={index !== 0}
++                    >
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++            {articles.length > 1 && (
++                <div class="flex items-center gap-3 mt-3">
++                    <button type="button" data-direction="previous" class="story-button">Previous</button>
++                    <span data-count class="text-xs text-gray-500" aria-hidden="true">1 / {articles.length}</span>
++                    <button type="button" data-direction="next" class="story-button">Next</button>
++                </div>
++            )}
++            <p data-status class="sr-only" role="status" aria-atomic="true"></p>
++        </div>
++    </top-stories-slider>
++)}
++
++<script>
++    class TopStoriesSlider extends HTMLElement {
++        private currentIndex = 0;
++        private transitionVersion = 0;
++
++        connectedCallback() {
++            this.addEventListener('click', this.onClick);
++        }
++
++        disconnectedCallback() {
++            this.removeEventListener('click', this.onClick);
++        }
++
++        private onClick = (event: MouseEvent) => {
++            const button = (event.target as Element).closest<HTMLButtonElement>('button[data-direction]');
++            if (!button) return;
++
++            const slides = Array.from(this.querySelectorAll<HTMLElement>('.story-slide'));
++            if (slides.length < 2) return;
++
++            const direction = button.dataset.direction === 'next' ? 1 : -1;
++            const version = ++this.transitionVersion;
++            const outgoing = slides[this.currentIndex];
++            this.currentIndex = (this.currentIndex + direction + slides.length) % slides.length;
++            const incoming = slides[this.currentIndex];
++
++            // Finish interrupted transitions before starting the next button press.
++            for (const slide of slides) {
++                slide.getAnimations().forEach(animation => animation.cancel());
++                slide.removeAttribute('data-state');
++                slide.setAttribute('aria-hidden', 'true');
++                slide.inert = true;
++            }
++
++            incoming.dataset.state = 'active';
++            incoming.setAttribute('aria-hidden', 'false');
++            incoming.inert = false;
++
++            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && incoming.animate) {
++                outgoing.dataset.state = 'exiting';
++                const options: KeyframeAnimationOptions = { duration: 300, easing: 'ease-in-out' };
++                const exit = outgoing.animate([
++                    { transform: 'translateX(0)' },
++                    { transform: `translateX(${-direction * 100}%)` },
++                ], options);
++                const enter = incoming.animate([
++                    { transform: `translateX(${direction * 100}%)` },
++                    { transform: 'translateX(0)' },
++                ], options);
++
++                // Also stop an in-flight transition if the preference changes.
++                const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
++                const stopMotion = () => {
++                    if (preference.matches) {
++                        exit.cancel();
++                        enter.cancel();
++                    }
++                };
++                preference.addEventListener('change', stopMotion);
++                Promise.allSettled([exit.finished, enter.finished]).then(() => {
++                    // An older transition must not change a newer transition's state.
++                    if (this.transitionVersion === version) outgoing.removeAttribute('data-state');
++                    preference.removeEventListener('change', stopMotion);
++                });
++            }
++
++            const count = this.querySelector('[data-count]');
++            if (count) count.textContent = `${this.currentIndex + 1} / ${slides.length}`;
++            const status = this.querySelector('[data-status]');
++            if (status) status.textContent = `Story ${this.currentIndex + 1} of ${slides.length}: ${incoming.querySelector('h3')?.textContent}`;
++        };
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
++
++<style>
++    .story-viewport {
++        display: grid;
++        overflow: hidden;
++    }
++
++    .story-slide {
++        grid-area: 1 / 1;
++        min-width: 0;
++        visibility: hidden;
++    }
++
++    .story-slide[data-state='active'],
++    .story-slide[data-state='exiting'] {
++        visibility: visible;
++    }
++
++    .story-button {
++        border: 1px solid var(--color-gray-300);
++        border-radius: 0.25rem;
++        padding: 0.375rem 0.75rem;
++        font-size: 0.875rem;
++        font-weight: 600;
++        cursor: pointer;
++    }
++
++    .story-button:hover {
++        background: var(--color-gray-100);
++    }
++
++    .story-button:focus-visible {
++        outline: 2px solid var(--color-amber-800);
++        outline-offset: 2px;
++    }
++</style>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0fc9912 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -39,20 +40,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +69,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

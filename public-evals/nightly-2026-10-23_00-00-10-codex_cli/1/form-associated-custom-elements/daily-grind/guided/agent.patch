@@ -1,0 +1,514 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..1b4a7df
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,210 @@
++const ROASTS = [
++  { value: 'light', title: 'Light roast', note: 'Bright & lively', detail: 'Citrus · Floral', color: '#ba8c55', intensity: 1 },
++  { value: 'medium', title: 'Medium roast', note: 'Smooth & balanced', detail: 'Caramel · Cocoa', color: '#8b5b39', intensity: 2 },
++  { value: 'dark', title: 'Dark roast', note: 'Bold & rich', detail: 'Chocolate · Toast', color: '#574030', intensity: 3 },
++];
++const bean = (color) => `<svg viewBox="0 0 50 46" aria-hidden="true"><g transform="rotate(-34 25 23)"><ellipse cx="25" cy="23" rx="13" ry="19" fill="${color}"/><path d="M27 5c-12 13 8 21-4 36" fill="none" stroke="#fff5df" stroke-opacity=".65" stroke-width="1.5" stroke-linecap="round"/></g></svg>`;
++
++class RoastSelector extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['required', 'disabled', 'value'];
++  #internals;
++  #value = '';
++  #dirty = false;
++  #disabled = false;
++  #customError = '';
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.innerHTML = `<style>
++      :host{display:block}*{box-sizing:border-box}.options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}label{display:flex;position:relative;flex-direction:column;align-items:center;border:1px solid #e3e7dc;border-radius:6px;cursor:pointer;padding:17px 3px 13px;background:#fff;transition:border-color .15s,background .15s;min-width:0}label:hover{border-color:#a8b89a;background:#fafbf7}label:has(input:checked){border-color:#718b5c;background:#f5f8ef;box-shadow:0 0 0 .5px #718b5c}label:has(input:focus-visible){outline:3px solid #a1b78f;outline-offset:3px}input{appearance:none;position:absolute;right:8px;top:8px;margin:0;width:11px;height:11px;border:1px solid #d8dfce;border-radius:50%;background:#fff}input:checked{background:#718b5c;border-color:#718b5c}input:checked:after{content:'✓';display:block;color:white;font-size:8px;line-height:9px;text-align:center}svg{width:44px;height:44px;margin-bottom:10px}.title{font-size:10px;font-weight:600;color:#59634e;white-space:nowrap}.note{font-size:7px;color:#9ba28d;margin-top:5px;white-space:nowrap}.intensity{display:flex;gap:3px;margin-top:12px}.intensity i{height:3px;width:12px;background:#e8ecdf;border-radius:2px}.intensity i.filled{background:#aab394}.detail{font-size:6px;color:#b0b69e;margin-top:6px;white-space:nowrap}:host(:disabled) label{opacity:.5;cursor:not-allowed;background:#f5f6f1}:host([data-show-error]:invalid) label{border-color:#c28b71}@media(max-width:400px){.options{gap:5px}.title{font-size:9px}.note{font-size:6px}.detail{font-size:5px}label{padding-top:20px}svg{width:35px;height:35px}}
++    </style><div class="options" role="radiogroup" aria-label="Choose your roast">${ROASTS.map(r => `<label><input type="radio" name="roast-choice" value="${r.value}" aria-label="${r.title}, ${r.note}">${bean(r.color)}<span class="title">${r.title}</span><span class="note">${r.note}</span><span class="intensity" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=r.intensity?'filled':''}"></i>`).join('')}</span><span class="detail">${r.detail}</span></label>`).join('')}</div>`;
++    root.addEventListener('change', (event) => {
++      if (event.target instanceof HTMLInputElement && !this.#disabled) {
++        event.stopPropagation();
++        this.value = event.target.value;
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText' }));
++        this.dispatchEvent(new Event('change', { bubbles: true }));
++      }
++    });
++    // Internal radio input events are replaced with the host's value event above.
++    root.addEventListener('input', event => event.stopPropagation());
++    this.addEventListener('invalid', () => this.setAttribute('data-show-error', ''));
++  }
++  connectedCallback() {
++    if (!this.#dirty) this.#setValue(this.defaultValue);
++    this.#validate();
++  }
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    if (name === 'value' && !this.#dirty) this.#setValue(newValue ?? '');
++    this.#validate();
++  }
++  get value() { return this.#value; }
++  set value(value) { this.#dirty = true; this.#setValue(String(value ?? '')); }
++  get defaultValue() { return this.getAttribute('value') ?? ''; }
++  set defaultValue(value) { this.setAttribute('value', String(value)); }
++  get required() { return this.hasAttribute('required'); }
++  set required(value) { this.toggleAttribute('required', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  get form() { return this.#internals.form; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  get labels() { return this.#internals.labels; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++  setCustomValidity(message) { this.#customError = String(message); this.#validate(); }
++  focus(options) { (this.shadowRoot.querySelector('input:checked') ?? this.shadowRoot.querySelector('input')).focus(options); }
++  #setValue(value) {
++    this.#value = ROASTS.some(r => r.value === value) ? value : '';
++    this.#internals.setFormValue(this.#value || null, this.#value);
++    for (const input of this.shadowRoot.querySelectorAll('input')) input.checked = input.value === this.#value;
++    this.#validate();
++  }
++  #validate() {
++    const missing = this.required && !this.#value;
++    const message = this.#customError || (missing ? 'Please choose your roast.' : '');
++    this.#internals.setValidity(this.#customError ? { customError: true } : missing ? { valueMissing: true } : {}, message, this.shadowRoot.querySelector('input'));
++    this.shadowRoot.querySelector('.options').setAttribute('aria-required', String(this.required));
++    this.shadowRoot.querySelector('.options').setAttribute('aria-invalid', String(Boolean(message)));
++  }
++  #notify(hook, message) { this.dispatchEvent(new CustomEvent('control-lifecycle', { bubbles: true, detail: { hook, message } })); }
++  formAssociatedCallback(form) { this.#notify('formAssociatedCallback', form ? 'Connected to coffee-form' : 'Disconnected from form'); }
++  formResetCallback() {
++    this.#dirty = false;
++    this.#customError = '';
++    this.removeAttribute('data-show-error');
++    this.#setValue(this.defaultValue);
++    this.#notify('formResetCallback', 'Default selection restored');
++  }
++  formDisabledCallback(disabled) {
++    this.#disabled = disabled;
++    for (const input of this.shadowRoot.querySelectorAll('input')) input.disabled = disabled;
++    this.#notify('formDisabledCallback', disabled ? 'Control disabled by fieldset' : 'Control enabled by fieldset');
++  }
++  formStateRestoreCallback(state, mode) {
++    this.value = typeof state === 'string' ? state : '';
++    this.#notify('formStateRestoreCallback', `Selection restored · ${mode}`);
++  }
++}
++
++const form = document.querySelector('#coffee-form');
++let roast = document.querySelector('roast-selector');
++const fields = document.querySelector('#preferences');
++const nameInput = document.querySelector('#customer-name');
++const sizeInput = document.querySelector('#size');
++const milkInput = form.querySelector('[name=oat_milk]');
++let snapshot = null;
++const events = document.querySelector('#event-list');
++function logEvent(hook, message) {
++  const li = document.createElement('li');
++  const dot = document.createElement('span'); dot.className = 'event-dot';
++  const content = document.createElement('div');
++  const code = document.createElement('code'); code.textContent = hook;
++  const description = document.createElement('p'); description.textContent = message;
++  content.append(code, description);
++  const time = document.createElement('time'); time.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
++  li.append(dot, content, time); events.prepend(li);
++  while (events.children.length > 12) events.lastElementChild.remove();
++}
++function updateInspector() {
++  const disabled = fields.disabled || roast.disabled;
++  document.querySelector('#current-value').textContent = roast.value ? `"${roast.value}"` : 'null';
++  document.querySelector('#value-type').textContent = roast.value ? 'String · ready to submit' : 'No roast selected';
++  const validity = document.querySelector('#validity-status');
++  validity.textContent = disabled ? '— Not validated' : roast.validity.valid ? '✓ Valid' : '○ Value missing';
++  validity.className = `status-pill ${disabled ? 'neutral' : roast.validity.valid ? 'green' : 'amber'}`;
++  document.querySelector('#control-status').textContent = disabled ? 'Disabled' : 'Enabled';
++  document.querySelector('#form-data').textContent = JSON.stringify(Object.fromEntries(new FormData(form)), null, 2);
++  document.querySelector('#roast-error').textContent = !disabled && roast.hasAttribute('data-show-error') && !roast.validity.valid ? roast.validationMessage : '';
++}
++function rememberState() {
++  snapshot = { roast: roast.value, name: nameInput.value, size: sizeInput.value, milk: milkInput.checked };
++}
++form.addEventListener('control-lifecycle', event => { logEvent(event.detail.hook, event.detail.message); queueMicrotask(updateInspector); });
++const supportsFACE = 'attachInternals' in HTMLElement.prototype && 'ElementInternals' in window && 'setFormValue' in ElementInternals.prototype;
++if (supportsFACE) {
++  customElements.define('roast-selector', RoastSelector);
++} else {
++  const select = document.createElement('select');
++  select.name = 'roast'; select.required = true; select.setAttribute('aria-label', 'Choose your roast');
++  select.innerHTML = '<option value="">Choose a roast</option>' + ROASTS.map(r=>`<option value="${r.value}">${r.title} · ${r.note}</option>`).join('');
++  roast.replaceWith(select); roast = select;
++  document.querySelector('.element-code').textContent = 'Native select · compatibility mode';
++  document.querySelector('.inspector-bottom').textContent = 'Native select fallback for this browser.';
++  logEvent('native fallback', 'Form-associated custom elements unavailable');
++}
++form.addEventListener('input', event => {
++  rememberState(); updateInspector();
++  document.querySelector('#submission').hidden = true;
++  if (event.target === roast) logEvent('input → setFormValue', `Roast updated to "${roast.value}"`);
++});
++form.addEventListener('invalid', event => {
++  if (event.target === roast) roast.setAttribute('data-show-error', '');
++  updateInspector();
++  logEvent('invalid', event.target === roast ? 'A roast is required before submitting' : 'Please enter your name');
++}, true);
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  const data = Object.fromEntries(new FormData(form));
++  logEvent('submit', `${Object.keys(data).length} fields submitted with native FormData`);
++  const output = document.querySelector('#submission');
++  output.textContent = fields.disabled ? 'Form submitted with an empty payload. Disabled fields are excluded from FormData.' : `Preferences saved for ${data.customer_name}. ${ROASTS.find(r=>r.value===data.roast)?.title ?? 'No roast'} · ${data.size} cup${data.oat_milk ? ' · oat milk' : ''}. This is a local demo; nothing was sent.`;
++  output.hidden = false;
++  rememberState(); updateInspector();
++});
++form.addEventListener('reset', () => {
++  document.querySelector('#submission').hidden = true;
++  roast.removeAttribute('data-show-error');
++  queueMicrotask(updateInspector);
++});
++document.querySelector('#reset-control').addEventListener('click', () => {
++  form.reset();
++  document.querySelector('#lifecycle-hint').textContent = 'Form reset. Defaults are back; your last edited state is available to restore.';
++});
++document.querySelector('#disable-control').addEventListener('click', event => {
++  fields.disabled = !fields.disabled;
++  const button = event.currentTarget;
++  button.setAttribute('aria-pressed', String(fields.disabled));
++  button.innerHTML = fields.disabled ? '<span>⊘</span> Enable fields' : '<span>⊘</span> Disable fields';
++  document.querySelector('#lifecycle-hint').textContent = fields.disabled ? 'The fieldset is disabled. Its controls are excluded from submission and validation.' : 'Fields enabled. The custom control is participating in the form again.';
++  updateInspector();
++});
++document.querySelector('#restore-control').addEventListener('click', () => {
++  if (!snapshot) {
++    document.querySelector('#lifecycle-hint').textContent = 'Choose a roast first. Edit your preferences, reset, then restore the last edited state.';
++    logEvent('restore demo', 'No saved state yet · make a selection first');
++    return;
++  }
++  if (supportsFACE) roast.formStateRestoreCallback(snapshot.roast, 'restore');
++  else { roast.value = snapshot.roast; logEvent('restore demo', 'Native select selection restored'); }
++  nameInput.value = snapshot.name; sizeInput.value = snapshot.size; milkInput.checked = snapshot.milk;
++  document.querySelector('#lifecycle-hint').textContent = 'Last edited preferences restored. This button simulates the browser’s state-restore callback.';
++  document.querySelector('#submission').hidden = true;
++  updateInspector();
++});
++document.querySelector('#clear-events').addEventListener('click', () => { events.replaceChildren(); });
++function showView(view) {
++  if (!['playground', 'implementation'].includes(view)) return;
++  for (const id of ['playground', 'implementation']) {
++    document.querySelector(`#${id}`).hidden = id !== view;
++    const tab = document.querySelector(`#${id}-tab`);
++    tab.setAttribute('aria-selected', String(id === view)); tab.tabIndex = id === view ? 0 : -1;
++  }
++  document.querySelectorAll('.nav-item[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view));
++  document.querySelector('.topbar>div>span:last-child').textContent = view === 'playground' ? 'Form playground' : 'Component API';
++}
++document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
++document.querySelector('[href="#activity"]').addEventListener('click', () => showView('playground'));
++document.querySelector('.tabbar').addEventListener('keydown', event => {
++  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++  event.preventDefault();
++  const view = event.key === 'Home' ? 'playground' : event.key === 'End' ? 'implementation' : document.querySelector('#playground-tab').getAttribute('aria-selected') === 'true' ? 'implementation' : 'playground';
++  showView(view); document.querySelector(`#${view}-tab`).focus();
++});
++showView(location.hash === '#implementation' ? 'implementation' : 'playground');
++updateInspector();
++logEvent('connectedCallback', 'Custom control is ready to brew');
+diff --git a/index.html b/index.html
+index 66c9173..5384ee1 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,84 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f7f8fa">
++  <title>Form Studio — The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <aside class="sidebar">
++    <a class="brand" href="./" aria-label="The Daily Grind home"><span class="brand-mark">dg<span>↗</span></span><span>the daily grind<span class="brand-sub">A LITTLE BETTER, EVERY DAY.</span></span></a>
++    <div class="workspace"><span class="workspace-icon">D</span><span>Developer workspace<small>Personal workspace</small></span><span class="chevrons">⌃<br>⌄</span></div>
++    <p class="nav-label">WORKSPACE</p>
++    <nav aria-label="Workspace navigation">
++      <a class="nav-item active" href="#playground" data-view="playground"><span class="nav-icon">▧</span>Form playground<span class="nav-count">01</span></a>
++      <a class="nav-item" href="#implementation" data-view="implementation"><span class="nav-icon code-icon">〈〉</span>Component API<span class="arrow-small">↗</span></a>
++      <a class="nav-item" href="#activity"><span class="nav-icon">◷</span>Event activity<span class="activity-dot"></span></a>
++    </nav>
++    <div class="sidebar-note"><span class="note-icon">⌘</span><h3>Custom by design.<br>Native by nature.</h3><p>A better way to build controls that feel right at home in a form.</p><a href="https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals" target="_blank" rel="noreferrer">Explore the platform <span>↗</span></a></div>
++    <div class="sidebar-bottom"><span class="avatar">JD</span><span>Jamie Davis<small>Personal account</small></span><span class="account-dot"></span></div>
++  </aside>
++  <div class="shell">
++    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span><span>Form playground</span></div><a class="github-link" href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals" target="_blank" rel="noreferrer"><span>◈</span> Documentation <span>↗</span></a></header>
++    <main>
++      <div class="page-heading"><div><div class="eyebrow"><span></span> THE NATIVE WEB, WITH A PERSONAL TOUCH</div><h1>Small control. Full participation.</h1><p>A custom coffee selector with all the good things a native form can do.</p></div><span class="version"><span></span> Web Components <span class="version-divider">/</span> v1.0</span></div>
++      <div class="tabbar" role="tablist" aria-label="Studio views"><button id="playground-tab" role="tab" aria-selected="true" aria-controls="playground" data-view="playground"><span>▧</span> Playground</button><button id="implementation-tab" role="tab" aria-selected="false" aria-controls="implementation" data-view="implementation" tabindex="-1"><span class="code-icon">〈〉</span> Implementation</button><span class="tab-note"><span></span> Powered by ElementInternals</span></div>
++      <section id="playground" role="tabpanel" aria-labelledby="playground-tab">
++        <div class="studio-grid">
++          <div class="left-column">
++            <section class="panel form-panel">
++              <div class="coffee-banner"><div class="banner-overlay"><span class="banner-kicker">THE DAILY GRIND / BREW LAB</span><h2>Find your daily ritual.</h2><p>A little preference. A better cup.</p></div><span class="banner-label">ROASTED WITH INTENTION</span></div>
++              <form id="coffee-form">
++                <div class="form-heading"><div><h2>Make it your own</h2><p>Tell us how you like your coffee.</p></div><span class="step">01 <span>/ 02</span></span></div>
++                <fieldset id="preferences">
++                  <div class="field-label"><label for="customer-name">Your name <span>*</span></label><span>Required</span></div>
++                  <input id="customer-name" name="customer_name" placeholder="e.g. Jamie Davis" autocomplete="given-name" required>
++                  <div class="field-label roast-label"><span id="roast-label">Choose your roast <span>*</span></span><span class="custom-tag">✧ Custom control</span></div>
++                  <p class="field-help" id="roast-help">Three distinct personalities. One perfect match.</p>
++                  <roast-selector name="roast" required aria-labelledby="roast-label" aria-describedby="roast-help"></roast-selector>
++                  <div class="field-error" id="roast-error" aria-live="polite"></div>
++                  <div class="field-label size-label"><label for="size">Cup size</label><span>Every cup is a fresh start</span></div>
++                  <div class="select-wrap"><span class="cup-icon">♧</span><select id="size" name="size"><option value="regular">Regular · 12 oz</option><option value="small">Small · 8 oz</option><option value="large">Large · 16 oz</option></select><span>⌄</span></div>
++                  <label class="checkbox-label"><input type="checkbox" name="oat_milk" value="yes"><span>Make it with oat milk</span><span class="optional">Optional</span></label>
++                </fieldset>
++                <div class="form-footer"><span><span class="lock-icon">♧</span> Just a demo. No coffee will be ordered.</span><button class="primary-button" type="submit">Save my preferences <span>↗</span></button></div>
++              </form>
++            </section>
++            <section class="panel lifecycle-panel"><div class="section-heading"><span class="section-icon">↻</span><div><h3>Give it a little life</h3><p>Try the native form lifecycle in action.</p></div><span class="tiny-badge">INTERACTIVE</span></div><div class="lifecycle-actions"><button id="reset-control"><span>↺</span> Reset form</button><button id="disable-control" aria-pressed="false"><span>⊘</span> Disable fields</button><button id="restore-control"><span>◷</span> Restore state</button></div><div class="lifecycle-foot"><span class="info-icon">i</span><span id="lifecycle-hint">Select a roast, then reset, disable, or restore your preferences.</span></div></section>
++          </div>
++          <div class="right-column">
++            <section class="panel inspector"><div class="panel-title"><h2><span>⌘</span> Form inspector</h2><span class="live-label"><span></span> LIVE</span></div><div class="inspector-intro">A custom element. A first-class form citizen.</div><div class="element-code">&lt;<span>roast-selector</span> name=<em>"roast"</em>&gt;</div><div class="status-list"><div><span>Form associated</span><strong class="status-pill green">✓ Connected</strong></div><div><span>Constraint validation</span><strong class="status-pill amber" id="validity-status">○ Value missing</strong></div><div><span>Control state</span><strong class="status-pill neutral" id="control-status">Enabled</strong></div></div><div class="value-block"><span class="micro-label">CURRENT VALUE</span><div><code id="current-value">null</code><span id="value-type">No roast selected</span></div></div><div class="payload-heading"><span class="micro-label">FORM DATA</span><span class="preview-badge">Preview</span></div><pre id="form-data" class="json-output" aria-label="Current form data"></pre><div class="inspector-bottom"><span>↳</span> Real FormData. No hidden inputs.</div></section>
++            <section class="panel activity" id="activity"><div class="panel-title"><h2><span>◷</span> Event activity</h2><button id="clear-events" class="text-button">Clear</button></div><ol id="event-list" aria-live="polite"></ol><div class="activity-footer"><span class="activity-dot"></span> Listening for native lifecycle events</div></section>
++            <div class="native-note"><span class="check-seal">✓</span><div><strong>Built on the platform</strong><p>No form library. No workarounds.<br>Just web standards doing their thing.</p></div></div>
++          </div>
+         </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++        <div id="submission" class="submission" role="status" hidden></div>
++      </section>
++      <section id="implementation" class="panel implementation" role="tabpanel" aria-labelledby="implementation-tab" hidden><div class="section-heading"><span class="section-icon">〈〉</span><div><h2>A native contract, a custom interface.</h2><p>The roast selector uses the form-associated custom element API.</p></div></div><pre><code>class RoastSelector extends HTMLElement {
++  static formAssociated = true;
++  #internals = this.attachInternals();
++
++  // Submit a value and keep the same state for browser restoration.
++  set value(value) {
++    this.#internals.setFormValue(value || null, value);
++    this.#internals.setValidity(
++      this.required &amp;&amp; !value ? { valueMissing: true } : {},
++      this.required &amp;&amp; !value ? 'Please choose your roast.' : ''
++    );
++  }
++
++  formResetCallback() { this.value = this.defaultValue; }
++  formDisabledCallback(disabled) { /* disable internal radios */ }
++  formStateRestoreCallback(state, mode) { this.value = state; }
++}</code></pre><div class="api-grid"><div><h3>Submission</h3><p><code>setFormValue()</code> includes the selected roast directly in the owning form’s FormData.</p></div><div><h3>Validation</h3><p><code>setValidity()</code> prevents submission until a required roast is selected.</p></div><div><h3>Lifecycle</h3><p>Reset returns the default value. A disabled fieldset disables the control. Browser restoration brings the selection back.</p></div></div></section>
++      <footer class="page-footer"><span>Made for the way the web works.</span><span><span class="footer-dot"></span> Native forms, thoughtfully extended <span class="footer-flower">✳</span></span></footer>
++    </main>
++  </div>
+ </body>
+-
+ </html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..86fe9b4
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{font-family:'DM Sans',sans-serif;color:#2b3430;background:#f7f8fa;font-synthesis:none;font-size:14px;--green:#3e6455;--line:#e7eae7;--muted:#8a908d}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}a{color:inherit;text-decoration:none}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #99b5a7;outline-offset:3px}button{color:inherit}button,select,input{transition:background .15s,border-color .15s}button:hover{filter:brightness(.97)}.sidebar{width:244px;position:fixed;inset:0 auto 0 0;background:#fff;border-right:1px solid var(--line);padding:33px 20px 0;display:flex;flex-direction:column;z-index:5}.brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:750;letter-spacing:-.7px;padding:0 4px}.brand-mark{display:flex;align-items:center;justify-content:center;border-radius:12px;background:#365b4a;color:white;width:43px;height:43px;font-size:24px;letter-spacing:-2px;font-weight:600}.brand-mark span{font-size:13px;align-self:flex-start;margin-top:8px;letter-spacing:-2px}.brand-sub{display:block;font-size:6.7px;letter-spacing:1.4px;color:#8c928e;margin-top:5px;font-weight:600}.workspace{margin-top:39px;display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:7px;padding:11px 9px;font-size:10.5px;font-weight:600}.workspace-icon{display:grid;place-items:center;background:#f2f0eb;width:28px;height:29px;border:1px solid #e6e2d8;border-radius:6px;color:#80755f;font-size:12px}.workspace small,.sidebar-bottom small{display:block;font-size:9.5px;color:#939893;font-weight:400;margin-top:4px}.chevrons{margin-left:auto;color:#8c918b;line-height:7px;font-size:12px}.nav-label{font-size:9px;letter-spacing:1.5px;color:#969c96;font-weight:600;margin:30px 12px 13px}.nav-item{display:flex;align-items:center;gap:11px;padding:12px 12px;margin:4px 0;border-radius:6px;font-size:11.5px;font-weight:500;color:#858c86}.nav-item:hover{background:#f5f7f4}.nav-item.active{color:#41624e;background:#edf2ec;font-weight:650}.nav-icon{font-size:18px;width:18px;line-height:16px}.code-icon{font-size:15px;letter-spacing:-4px;padding-right:4px}.nav-count{margin-left:auto;background:#e0e8dd;border-radius:4px;padding:2px 5px;font-size:9px}.arrow-small{margin-left:auto}.activity-dot{display:inline-block;width:6px;height:6px;background:#88a68f;border-radius:50%}.nav-item .activity-dot{margin-left:auto}.sidebar-note{margin-top:auto;margin-bottom:34px;background:#f7f8f4;border:1px solid #e9ebe3;border-radius:8px;padding:19px 16px 15px}.note-icon{font-size:21px;color:#7f9573}.sidebar-note h3{font-family:Manrope,sans-serif;font-size:14px;line-height:1.7;letter-spacing:-.2px;font-weight:650;margin:12px 0 8px}.sidebar-note p{font-size:10px;color:#8b9388;line-height:1.8;margin:0}.sidebar-note a{display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:#566c50;border-top:1px solid #e6e9df;margin-top:18px;padding-top:12px}.sidebar-bottom{border-top:1px solid var(--line);margin:0 -20px;padding:20px;display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600}.avatar{border-radius:50%;width:32px;height:32px;display:grid;place-items:center;background:#eee5dc;color:#866f58;font-size:10px;border:3px solid #f7f2ec}.account-dot{margin-left:auto;width:5px;height:5px;background:#929991;border-radius:50%}.shell{margin-left:244px}.topbar{height:74px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 39px;font-size:11px}.breadcrumb{color:#939b96}.slash{margin:0 15px;color:#c3c9c5}.github-link{display:flex;gap:9px;align-items:center;color:#768078;font-size:10px}.github-link>span:first-child{font-size:17px;color:#515f55}.github-link>span:last-child{margin-left:8px}main{max-width:1410px;margin:auto;padding:37px 39px 0}.page-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}.eyebrow{font-size:8px;letter-spacing:1.5px;color:#849083;font-weight:600;display:flex;align-items:center;gap:7px}.eyebrow>span{width:5px;height:5px;background:#829b75;border-radius:50%}h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.2px;font-weight:750;margin:10px 0 8px}.page-heading p{font-size:11px;color:#939a95;margin:0}.version{font-size:8px;display:flex;gap:6px;align-items:center;border:1px solid #dfe5de;border-radius:5px;padding:7px 9px;color:#7f887c;background:#f1f4ef;white-space:nowrap}.version>span:first-child{width:5px;height:5px;border-radius:50%;background:#8b9f80}.version-divider{color:#c6ccbf;margin:0 3px}.tabbar{margin:31px 0 25px;border-bottom:1px solid #e0e5e0;display:flex;align-items:center;gap:24px;height:42px}.tabbar button{border:0;background:transparent;font-size:11px;color:#939b93;padding:0 0 15px;display:flex;align-items:center;gap:7px;height:42px;position:relative}.tabbar button[aria-selected=true]{color:#476650;font-weight:650}.tabbar button[aria-selected=true]:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#4d7059}.tabbar button>span{font-size:15px}.tab-note{margin-left:auto;font-size:8px;color:#9ba298;padding-bottom:12px;display:flex;align-items:center;gap:6px}.tab-note>span{width:5px;height:5px;background:#8da181;border-radius:50%}.studio-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(275px,1fr);gap:23px}.left-column,.right-column{min-width:0}.panel{background:#fff;border:1px solid #e3e7e1;border-radius:9px;overflow:hidden;box-shadow:0 2px 3px #23342602}.coffee-banner{height:167px;position:relative;background:#35332b url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=85') center 46%/cover;color:white}.banner-overlay{position:absolute;inset:0;padding:27px 27px;background:linear-gradient(90deg,#20271feb,#20271f82 60%,#20271f10)}.banner-kicker{font-size:7px;letter-spacing:1.9px;color:#d3d8c4}.coffee-banner h2{font-family:Manrope,sans-serif;font-size:25px;letter-spacing:-.8px;font-weight:500;margin:18px 0 7px}.coffee-banner p{font-size:10px;color:#d0d3c7;margin:0}.banner-label{position:absolute;right:17px;bottom:15px;font-size:6px;letter-spacing:1.4px;opacity:.7}form{padding:25px 27px 0}.form-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.form-heading h2{font-family:Manrope,sans-serif;font-size:17px;letter-spacing:-.5px;margin:0 0 7px;font-weight:700}.form-heading p{font-size:10px;color:#939b91;margin:0}.step{font-size:10px;color:#617857}.step span{color:#c0c7bb;font-size:9px;margin-left:3px}fieldset{border:0;padding:0;margin:0;min-width:0}.field-label{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:600;margin-bottom:9px}.field-label>span:last-child{font-size:8px;font-weight:400;color:#a0a69c}.field-label label>span,#roast-label>span{color:#939e83;margin-left:2px}input:not([type=checkbox]){width:100%;border:1px solid #e1e5dc;border-radius:5px;height:38px;padding:0 12px;font-size:10px;background:#fff;color:#384438}input::placeholder{color:#b0b5ab}input:disabled,select:disabled{background:#f4f5f1;color:#a6aaa2}.roast-label{margin-top:23px;margin-bottom:7px}.field-label>.custom-tag{color:#7c8d6a;background:#f1f4eb;border:1px solid #e5eadb;border-radius:4px;padding:3px 6px;font-size:7px}.field-help{font-size:9px;color:#9ba195;margin:0 0 13px}roast-selector{display:block}.field-error{color:#b5684d;font-size:9px;min-height:0;margin-top:6px}.field-error:empty{display:none}.size-label{margin-top:22px}.select-wrap{border:1px solid #e1e5dc;border-radius:5px;display:flex;align-items:center;height:38px;padding:0 11px;gap:9px}.select-wrap select{appearance:none;flex:1;min-width:0;border:0;background:transparent;height:100%;font-size:10px;color:#65705e;outline-offset:0}.select-wrap>span{color:#919a85}.cup-icon{font-size:18px}.checkbox-label{display:flex;align-items:center;gap:8px;font-size:9px;color:#626d5b;margin:18px 0 24px}.checkbox-label input{accent-color:#4e6b50;width:13px;height:13px;margin:0}.optional{margin-left:auto;font-size:8px;color:#a5ac9e}.form-footer{margin:0 -27px;border-top:1px solid #eef0e9;padding:17px 27px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fdfefb}.form-footer>span{font-size:7px;color:#9ca591;display:flex;align-items:center;gap:5px}.lock-icon{font-size:13px}.primary-button{border:1px solid #3f5d43;border-radius:5px;background:#48664b;color:#fff;padding:11px 14px;font-size:9px;display:flex;align-items:center;gap:21px;box-shadow:0 2px 2px #27362516}.primary-button span{font-size:14px;line-height:10px}.lifecycle-panel{margin-top:20px;padding:20px 21px 0}.section-heading{display:flex;align-items:center;gap:11px}.section-icon{width:31px;height:31px;border-radius:7px;background:#f5f6f0;border:1px solid #e9ecdf;display:grid;place-items:center;font-size:20px;color:#7f8d6c}.section-heading h3{font-size:11px;margin:0 0 5px;font-weight:600}.section-heading p{font-size:9px;color:#9da593;margin:0}.tiny-badge{margin-left:auto;font-size:6px;letter-spacing:1px;color:#a2a992}.lifecycle-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:19px 0 17px}.lifecycle-actions button{border:1px solid #e2e7d9;background:white;padding:10px 6px;border-radius:5px;font-size:9px;white-space:nowrap;display:flex;gap:7px;align-items:center;justify-content:center}.lifecycle-actions button>span{font-size:14px;color:#879779;line-height:10px}.lifecycle-actions button[aria-pressed=true]{background:#f4eddf;border-color:#dbc9a8}.lifecycle-foot{border-top:1px solid #eef0e8;background:#fcfdf9;margin:0 -21px;padding:10px 21px;display:flex;align-items:center;gap:7px;color:#9ca58d;font-size:7px;line-height:1.7}.info-icon{border:1px solid #b3bda6;display:inline-grid;place-items:center;border-radius:50%;width:10px;height:10px;font-size:7px;font-family:serif;flex-shrink:0}.panel-title{display:flex;align-items:center;justify-content:space-between;padding:19px 20px 0;gap:10px}.panel-title h2{font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;margin:0}.panel-title h2>span{font-size:15px;color:#7d8975}.live-label{font-size:6px;color:#73916d;letter-spacing:1px;display:flex;align-items:center;gap:5px;background:#f0f5ed;border:1px solid #e4eddf;padding:4px 5px;border-radius:4px}.live-label>span{width:4px;height:4px;background:#7b9d70;border-radius:50%}.inspector-intro{font-size:8px;color:#a0a897;padding:10px 20px 16px}.element-code{margin:0 20px;background:#f6f7f3;border:1px solid #eceee7;border-radius:5px;padding:11px 10px;font-family:monospace;font-size:9px;color:#a3aa98;white-space:nowrap}.element-code span{color:#6e8364}.element-code em{font-style:normal;color:#a88e60}.status-list{margin:17px 20px 0;padding-bottom:16px;border-bottom:1px solid #ecf0e7}.status-list>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;gap:5px}.status-list>div:last-child{margin-bottom:0}.status-list>div>span{font-size:9px;color:#8f9986}.status-pill{font-size:7px;border-radius:4px;padding:4px 6px;font-weight:500;white-space:nowrap}.green{background:#edf4e9;color:#749461}.amber{background:#fcf5e7;color:#bb9b56}.neutral{background:#f1f3ed;color:#8d9980}.value-block{margin:17px 20px 0}.micro-label{font-size:7px;font-weight:500;letter-spacing:1.1px;color:#9da88f}.value-block>div{display:flex;align-items:center;justify-content:space-between;margin-top:10px}.value-block code{font-size:11px;color:#a1aa98}.value-block div>span{font-size:7px;color:#acb3a3}.payload-heading{display:flex;align-items:center;justify-content:space-between;margin:24px 20px 10px}.preview-badge{font-size:6px;border:1px solid #e8ecdf;border-radius:3px;padding:2px 4px;color:#a9b198}.json-output{margin:0 20px 17px;border:1px solid #e9ede1;background:#fafbf7;border-radius:5px;padding:13px;font-size:9px;line-height:2;color:#77866a;white-space:pre-wrap;overflow-wrap:anywhere;min-height:106px}.json-key{color:#89967c}.json-string{color:#b49466}.inspector-bottom{padding:11px 20px;background:#fcfdf9;border-top:1px solid #edf0e5;color:#a7af99;font-size:7px}.inspector-bottom>span{margin-right:5px;color:#91a77b}.activity{margin-top:20px}.text-button{font-size:8px;background:none;border:0;color:#99a48a;padding:0}#event-list{list-style:none;padding:0 20px;margin:18px 0 13px;display:flex;flex-direction:column;gap:15px;max-height:126px;overflow:auto;min-height:85px}#event-list li{display:flex;align-items:flex-start;gap:8px;font-size:8px}#event-list .event-dot{width:5px;height:5px;flex-shrink:0;border-radius:50%;background:#94a782;margin-top:3px}#event-list code{font-size:8px;color:#829572}#event-list p{font-size:7px;color:#a6af9a;margin:4px 0 0}#event-list time{margin-left:auto;color:#b1b8a6;font-size:6px;white-space:nowrap}.activity-footer{border-top:1px solid #edf0e5;padding:11px 20px;color:#a7af99;font-size:7px;display:flex;gap:7px;align-items:center}.activity-footer .activity-dot{width:4px;height:4px}.native-note{display:flex;justify-content:center;align-items:flex-start;gap:12px;margin-top:24px;color:#a1ab93}.check-seal{font-size:15px;background:#eef2e7;border:1px solid #e4eada;border-radius:50%;width:24px;height:24px;display:grid;place-items:center}.native-note strong{font-size:9px;font-weight:500;color:#88977a}.native-note p{font-size:8px;line-height:1.8;margin:5px 0}.page-footer{display:flex;justify-content:space-between;border-top:1px solid #e6eadf;margin-top:30px;padding:17px 0 22px;font-size:7px;color:#a9b09e}.page-footer>span:last-child{display:flex;align-items:center;gap:6px}.footer-dot{width:4px;height:4px;border-radius:50%;background:#a3b38f}.footer-flower{font-size:17px;margin-left:12px;color:#91a57b}.submission{margin-top:20px;border:1px solid #cfdcc6;background:#edf5e8;color:#547345;border-radius:7px;padding:17px;font-size:11px}.implementation{padding:28px}.implementation .section-heading h2{font-size:18px;margin:0 0 8px}.implementation pre{background:#f5f7f1;border:1px solid #e5eadd;padding:25px;overflow:auto;border-radius:7px;font-size:12px;line-height:1.9;color:#566c4b;margin-top:26px}.api-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:25px}.api-grid h3{font-size:13px}.api-grid p{font-size:11px;line-height:1.9;color:#8b9682}[hidden]{display:none!important}@media(min-width:1500px){main{padding-top:48px}.coffee-banner{height:195px}.studio-grid{gap:28px}.form-heading{margin-bottom:28px}form{padding-top:30px}.form-footer{padding-top:20px;padding-bottom:20px}}@media(max-width:1150px){.sidebar{width:210px;padding-left:15px;padding-right:15px}.sidebar-bottom{margin:0 -15px;padding:20px 15px}.shell{margin-left:210px}main{padding:30px 25px 0}.topbar{padding:0 25px}.page-heading .version{display:none}.studio-grid{gap:17px;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr)}form{padding:22px 20px 0}.form-footer{margin:0 -20px;padding:15px 20px;flex-wrap:wrap}.form-footer .primary-button{margin-left:auto}.brand{font-size:14px}.brand-sub{font-size:6px}.brand-mark{width:37px;height:39px}.workspace{font-size:9px}.nav-item{font-size:10px}.lifecycle-actions{gap:5px}.lifecycle-actions button{font-size:8px}h1{font-size:26px}.tab-note{font-size:7px}.element-code{font-size:8px}}@media(max-width:900px){.sidebar{width:180px}.shell{margin-left:180px}.workspace{padding:8px 6px;gap:6px}.workspace-icon{width:23px;height:25px}.workspace small{font-size:8px}.brand{font-size:12px;gap:7px}.brand-sub{font-size:5px;letter-spacing:1px}.brand-mark{width:30px;height:33px;font-size:20px}.sidebar-note{padding:14px 10px}.studio-grid{grid-template-columns:1fr}.right-column{display:grid;grid-template-columns:1fr 1fr;gap:17px;align-items:start}.activity{margin:0}.native-note{grid-column:2;margin-top:-110px}.tab-note{display:none}h1{font-size:25px}.coffee-banner{height:180px}.form-footer{flex-wrap:nowrap}.page-heading p{line-height:1.8}.api-grid{grid-template-columns:1fr}}@media(max-width:620px){.sidebar{width:66px;padding:22px 10px}.brand{padding:0;justify-content:center}.brand>span:last-child,.workspace,.nav-label,.nav-item .nav-count,.nav-item .arrow-small,.nav-item .activity-dot,.sidebar-note,.sidebar-bottom{display:none}.brand-mark{width:38px;height:39px}.sidebar nav{margin-top:40px}.nav-item{font-size:0;justify-content:center;padding:14px 10px;gap:0;margin-bottom:12px}.nav-icon{font-size:20px;width:auto}.nav-icon.code-icon{font-size:17px}.shell{margin-left:66px}.topbar{height:62px;padding:0 18px;font-size:9px}.github-link{font-size:0;gap:0}.github-link>span:first-child{font-size:17px}.github-link>span:last-child{font-size:10px;margin-left:6px}main{padding:26px 16px 0}.eyebrow{font-size:6px;letter-spacing:1px}h1{font-size:24px;line-height:1.35;margin:12px 0 10px}.page-heading p{font-size:10px}.tabbar{margin-top:22px;gap:22px}.tabbar button{font-size:10px}.right-column{display:flex;flex-direction:column;gap:17px}.right-column>.panel{width:100%}.native-note{margin:3px auto}.coffee-banner{height:157px}.banner-overlay{padding:25px 20px}.coffee-banner h2{font-size:23px}.banner-label{font-size:5px}form{padding:20px 16px 0}.form-footer{margin:0 -16px;padding:15px 16px;flex-direction:column;gap:13px;align-items:stretch}.form-footer>span{justify-content:center;font-size:7px}.form-footer .primary-button{margin:0;justify-content:center;gap:25px;font-size:10px}.lifecycle-panel{padding:17px 14px 0}.lifecycle-foot{margin:0 -14px;padding:10px 14px}.lifecycle-actions{grid-template-columns:1fr;gap:8px}.lifecycle-actions button{font-size:10px}.tiny-badge{display:none}.page-footer{gap:12px;font-size:6px;line-height:1.7}.page-footer>span:last-child{max-width:130px}.footer-flower{display:none}.implementation{padding:18px}.implementation .section-heading h2{font-size:15px}.implementation pre{font-size:10px;padding:15px}.field-label.size-label>span{font-size:7px}}

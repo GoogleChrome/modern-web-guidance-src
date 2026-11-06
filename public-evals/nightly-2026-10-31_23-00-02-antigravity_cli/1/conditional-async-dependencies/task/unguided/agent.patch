@@ -1,0 +1,316 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,25 +48,208 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    nav button.nav-btn {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      background: transparent;
++      border: none;
++      font-family: inherit;
++      cursor: pointer;
++      padding: 0;
++      line-height: inherit;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav button.nav-btn:hover,
++    nav button.nav-btn.active {
+       color: var(--accent);
+     }
+ 
++    /* Rewards Popover Card */
++    [popover] {
++      display: none;
++    }
++
++    [popover]:popover-open {
++      display: block;
++    }
++
++    [popover].popover-open,
++    [popover][data-popover-open="true"] {
++      display: block;
++    }
++
++    #rewards-popover {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(92vw, 420px);
++      max-width: 420px;
++      background: white;
++      color: var(--text);
++      border: 2px solid var(--secondary);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 14px 36px rgba(62, 39, 35, 0.28);
++      text-align: left;
++      z-index: 2000;
++    }
++
++    #rewards-popover::backdrop {
++      background: rgba(62, 39, 35, 0.45);
++      backdrop-filter: blur(2px);
++    }
++
++    .rewards-popover-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      margin-bottom: 14px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .rewards-tier-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-bottom: 4px;
++    }
++
++    .rewards-popover-header h3 {
++      margin: 0;
++      color: var(--primary);
++      font-size: 1.35rem;
++    }
++
++    .popover-close-btn {
++      background: transparent;
++      border: none;
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 2px 6px;
++      border-radius: 4px;
++    }
++
++    .popover-close-btn:hover {
++      background: var(--secondary);
++    }
++
++    .rewards-points-summary {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 14px;
++      margin-bottom: 16px;
++    }
++
++    .rewards-points-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 8px;
++    }
++
++    .rewards-points-number {
++      font-size: 1.75rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .rewards-points-goal {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .rewards-progress-track {
++      width: 100%;
++      height: 10px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++      margin-bottom: 8px;
++    }
++
++    .rewards-progress-fill {
++      height: 100%;
++      width: 88%;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      border-radius: 999px;
++      transition: width 0.3s ease;
++    }
++
++    .rewards-perks-list {
++      list-style: none;
++      margin: 0 0 16px 0;
++      padding: 0;
++      font-size: 0.9rem;
++    }
++
++    .rewards-perks-list li {
++      padding: 6px 0;
++      border-bottom: 1px dashed var(--secondary);
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .rewards-perks-list li:last-child {
++      border-bottom: none;
++    }
++
++    .rewards-actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++    }
++
++    .rewards-actions .btn {
++      margin-top: 0;
++      flex: 1;
++      text-align: center;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .rewards-status-msg {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +344,75 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button
++          type="button"
++          id="rewards-btn"
++          class="nav-btn rewards-btn"
++          popovertarget="rewards-popover"
++          popovertargetaction="toggle"
++          aria-controls="rewards-popover"
++          aria-expanded="false"
++        >
++          Rewards
++        </button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div
++    id="rewards-popover"
++    class="rewards-popover rewards-card card"
++    popover="auto"
++    role="dialog"
++    aria-labelledby="rewards-popover-title"
++  >
++    <div class="rewards-popover-header">
++      <div>
++        <span class="rewards-tier-badge">Gold Bean Member</span>
++        <h3 id="rewards-popover-title">Daily Grind Rewards</h3>
++      </div>
++      <button
++        type="button"
++        class="popover-close-btn"
++        popovertarget="rewards-popover"
++        popovertargetaction="hide"
++        data-rewards-close
++        aria-label="Close rewards card"
++      >
++        &times;
++      </button>
++    </div>
++
++    <div class="rewards-points-summary">
++      <div class="rewards-points-row">
++        <span><span id="rewards-points-value" class="rewards-points-number">175</span> Bean Points</span>
++        <span class="rewards-points-goal">Goal: 200 pts</span>
++      </div>
++      <div class="rewards-progress-track" aria-hidden="true">
++        <div id="rewards-progress-fill" class="rewards-progress-fill"></div>
++      </div>
++      <p id="rewards-points-remaining">25 Bean Points away from your next free handcrafted drink.</p>
++    </div>
++
++    <ul class="rewards-perks-list">
++      <li><span>Free Espresso Shot</span><strong>50 pts</strong></li>
++      <li><span>Artisanal Pastry</span><strong>100 pts</strong></li>
++      <li><span>Any Handcrafted Drink</span><strong>200 pts</strong></li>
++      <li><span>Whole Bean Coffee Bag</span><strong>400 pts</strong></li>
++    </ul>
++
++    <div class="rewards-actions">
++      <button type="button" id="claim-bonus-btn" class="btn">Claim +25 Daily Bonus</button>
++      <a href="/rewards" class="btn btn-secondary">All Rewards</a>
++    </div>
++    <p id="rewards-status-msg" class="rewards-status-msg" hidden></p>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +450,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const supportsPopover =
++      typeof HTMLElement !== 'undefined' &&
++      'popover' in HTMLElement.prototype &&
++      typeof HTMLElement.prototype.showPopover === 'function' &&
++      typeof HTMLElement.prototype.hidePopover === 'function' &&
++      typeof HTMLElement.prototype.togglePopover === 'function';
++
++    if (!supportsPopover) {
++      const { applyPopoverPolyfill } = await import('./popover-polyfill.js');
++      await applyPopoverPolyfill();
++    }
++
++    const { initRewardsPopover } = await import('./rewards.js');
++    initRewardsPopover();
++  </script>
++
+ </body>
+ 
+ </html>

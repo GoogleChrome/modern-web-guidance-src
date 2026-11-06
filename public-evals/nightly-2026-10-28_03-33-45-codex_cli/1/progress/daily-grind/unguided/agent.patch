@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+index 66c9173..9af79ef 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,101 @@
+       padding: 0 20px;
+     }
+ 
++    .progress-panel {
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 24px;
++      margin-bottom: 36px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
++    }
++
++    .progress-panel > p {
++      margin: 4px 0 24px;
++    }
++
++    .progress-items {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: 28px;
++    }
++
++    .progress-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 4px 16px;
++      margin-bottom: 10px;
++    }
++
++    .progress-heading label {
++      font-weight: 600;
++    }
++
++    .progress-heading span,
++    .progress-description {
++      font-size: 0.875rem;
++    }
++
++    .progress-description {
++      margin-top: 8px;
++    }
++
++    .progress-bar {
++      display: block;
++      appearance: none;
++      -webkit-appearance: none;
++      width: 100%;
++      height: 10px;
++      border: 0;
++      border-radius: 999px;
++      overflow: hidden;
++      background: #eee7e2;
++      accent-color: var(--primary);
++    }
++
++    .progress-bar::-webkit-progress-bar {
++      background: #eee7e2;
++      border-radius: 999px;
++    }
++
++    .progress-bar::-webkit-progress-value {
++      background: var(--primary);
++      border-radius: 999px;
++    }
++
++    .progress-bar::-moz-progress-bar {
++      background: var(--primary);
++      border-radius: 999px;
++    }
++
++    .progress-bar:indeterminate {
++      background: linear-gradient(90deg, transparent, var(--accent), transparent)
++        left / 45% 100% no-repeat, #eee7e2;
++      animation: brewing 1.8s ease-in-out infinite alternate;
++    }
++
++    .progress-bar:indeterminate::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    .progress-bar:indeterminate::-moz-progress-bar {
++      background: transparent;
++    }
++
++    @keyframes brewing {
++      from { background-position: left; }
++      to { background-position: right; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-bar:indeterminate {
++        animation: none;
++        background-position: center;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -175,6 +270,30 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-title">
++      <h2 id="progress-title">Your Daily Grind</h2>
++      <p>A little closer to your next coffee moment.</p>
++      <div class="progress-items">
++        <div>
++          <div class="progress-heading">
++            <label for="rewards-progress">Your next free coffee</label>
++            <span>3 of 5 coffees · 60%</span>
++          </div>
++          <progress class="progress-bar" id="rewards-progress" value="3" max="5"
++            aria-describedby="rewards-description">60%</progress>
++          <p class="progress-description" id="rewards-description">Just 2 more coffees until your next reward.</p>
++        </div>
++        <div>
++          <div class="progress-heading">
++            <label for="order-progress">Order progress</label>
++            <span>Preparing your coffee</span>
++          </div>
++          <progress class="progress-bar" id="order-progress"
++            aria-describedby="order-description">In progress</progress>
++          <p class="progress-description" id="order-description">Our baristas are on it. Completion time is not yet available.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

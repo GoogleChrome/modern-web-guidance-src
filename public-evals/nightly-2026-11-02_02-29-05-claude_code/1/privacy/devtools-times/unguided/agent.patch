@@ -1,0 +1,470 @@
+diff --git a/public/fonts/grenze-500-latin-ext.woff2 b/public/fonts/grenze-500-latin-ext.woff2
+new file mode 100644
+index 0000000..7a18f1d
+Binary files /dev/null and b/public/fonts/grenze-500-latin-ext.woff2 differ
+diff --git a/public/fonts/grenze-500-latin.woff2 b/public/fonts/grenze-500-latin.woff2
+new file mode 100644
+index 0000000..37fde00
+Binary files /dev/null and b/public/fonts/grenze-500-latin.woff2 differ
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..9d2cace 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <button type="button" data-privacy-preferences data-skip-tracking="true" class="hover:underline">Manage Privacy Preferences</button>
+         </div>
+     </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4947cc3 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -28,6 +28,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
++          data-astro-reload
+           class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+         >
+           Sign up
+@@ -35,6 +36,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         <a
+           href={`${baseUrl}signin`}
+           data-skip-tracking="true"
++          data-astro-reload
+           class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+         >
+           Sign in
+diff --git a/src/components/PrivacyConsent.tsx b/src/components/PrivacyConsent.tsx
+new file mode 100644
+index 0000000..432ade5
+--- /dev/null
++++ b/src/components/PrivacyConsent.tsx
+@@ -0,0 +1,130 @@
++import React, { useEffect, useState } from 'react';
++
++// Analytics is opt-in: nothing is loaded until the reader explicitly agrees,
++// and it is never loaded on pages that handle credentials.
++const CONSENT_KEY = 'dt-privacy-consent';
++const ANALYTICS_SRC = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js';
++const ANALYTICS_EXCLUDED_PATHS = ['/signin', '/signup'];
++
++type Consent = 'granted' | 'denied';
++
++function readConsent(): Consent | null {
++  try {
++    const value = localStorage.getItem(CONSENT_KEY);
++    return value === 'granted' || value === 'denied' ? value : null;
++  } catch {
++    return null;
++  }
++}
++
++function writeConsent(value: Consent) {
++  try {
++    localStorage.setItem(CONSENT_KEY, value);
++  } catch {
++    // Storage unavailable: the choice applies to this page view only.
++  }
++}
++
++// Honor browser-level opt-out signals (Global Privacy Control / Do Not Track).
++function hasOptOutSignal(): boolean {
++  const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
++  return nav.globalPrivacyControl === true || nav.doNotTrack === '1';
++}
++
++function isExcludedPage(): boolean {
++  const path = window.location.pathname.replace(/\/$/, '');
++  return ANALYTICS_EXCLUDED_PATHS.some((excluded) => path.endsWith(excluded));
++}
++
++function loadAnalytics() {
++  if (isExcludedPage() || document.querySelector(`script[src="${ANALYTICS_SRC}"]`)) return;
++  const script = document.createElement('script');
++  script.src = ANALYTICS_SRC;
++  script.defer = true;
++  script.referrerPolicy = 'no-referrer';
++  document.head.appendChild(script);
++}
++
++export default function PrivacyConsent() {
++  const [open, setOpen] = useState(false);
++
++  useEffect(() => {
++    const consent = readConsent();
++    if (consent === 'granted') {
++      loadAnalytics();
++    } else if (consent === null && !hasOptOutSignal()) {
++      setOpen(true);
++    }
++
++    // Any element with data-privacy-preferences (e.g. the footer link) reopens the dialog.
++    const onClick = (event: MouseEvent) => {
++      const trigger = (event.target as Element | null)?.closest('[data-privacy-preferences]');
++      if (!trigger) return;
++      event.preventDefault();
++      setOpen(true);
++    };
++    document.addEventListener('click', onClick);
++    return () => document.removeEventListener('click', onClick);
++  }, []);
++
++  const choose = (value: Consent) => {
++    const previous = readConsent();
++    writeConsent(value);
++    setOpen(false);
++    if (value === 'granted') {
++      loadAnalytics();
++    } else if (previous === 'granted') {
++      // The analytics script cannot be unloaded once running; reload to stop it.
++      window.location.reload();
++    }
++  };
++
++  if (!open) return null;
++
++  return (
++    <div
++      role="dialog"
++      aria-labelledby="privacy-consent-title"
++      aria-describedby="privacy-consent-description"
++      className="fixed inset-x-0 bottom-0 z-[60] p-4"
++    >
++      <div className="max-w-3xl mx-auto bg-white border border-gray-300 rounded-lg shadow-lg p-5 text-sm text-gray-700">
++        <h2 id="privacy-consent-title" className="text-base font-bold text-gray-900 mb-2">
++          Your privacy choices
++        </h2>
++        <p id="privacy-consent-description" className="mb-4">
++          With your permission, we use a third-party analytics service to count which links and
++          buttons are clicked (the element's label and a timestamp). It is never active on the
++          sign-in or sign-up pages, and we don't use it for advertising. You can change your choice
++          at any time via "Manage Privacy Preferences" in the footer. See our{' '}
++          <a
++            href={`${import.meta.env.BASE_URL}legal/privacy`}
++            data-skip-tracking="true"
++            className="underline"
++          >
++            Privacy Policy
++          </a>{' '}
++          for details.
++        </p>
++        <div className="flex flex-wrap gap-3 justify-end">
++          <button
++            type="button"
++            data-skip-tracking="true"
++            onClick={() => choose('denied')}
++            className="py-2 px-4 rounded-md text-sm font-medium border border-gray-900 text-white bg-gray-900 hover:bg-gray-800"
++          >
++            Reject analytics
++          </button>
++          <button
++            type="button"
++            data-skip-tracking="true"
++            onClick={() => choose('granted')}
++            className="py-2 px-4 rounded-md text-sm font-medium border border-gray-900 text-white bg-gray-900 hover:bg-gray-800"
++          >
++            Allow analytics
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..624e74a 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -19,6 +19,10 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Send only what the request needs: no ambient cookies, no referring URL, no caching.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -30,7 +34,7 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        setPassword('');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -55,7 +59,8 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      {/* method="post" keeps credentials out of the URL if submitted before hydration. */}
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +68,9 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +85,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -87,6 +96,7 @@ export default function SignInForm() {
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -94,6 +104,14 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <p className="text-xs text-gray-500 mt-4">
++        We only use your username and password to sign you in. Your password is sent over an encrypted connection and is never shared with analytics or advertising partners. Learn more in our{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline hover:text-gray-700">
++          Privacy Policy
++        </a>
++        .
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..961aa95 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -19,6 +19,10 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Send only what the request needs: no ambient cookies, no referring URL, no caching.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -56,7 +60,8 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      {/* method="post" keeps credentials out of the URL if submitted before hydration. */}
++      <form method="post" onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +69,9 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,12 +86,16 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="new-password"
++            minLength={8}
++            pattern="(?=.*\d).{8,}"
++            aria-describedby="password-requirements"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-requirements" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+@@ -99,6 +111,14 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <p className="text-xs text-gray-500 mt-4">
++        We only ask for a username and password — no email, name, or other personal details. They are used solely to create and secure your account and are never shared with analytics or advertising partners. Learn more in our{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline hover:text-gray-700">
++          Privacy Policy
++        </a>
++        .
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cf008b3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import PrivacyConsent from "../components/PrivacyConsent.tsx";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -12,25 +13,40 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++
++// Self-hosted brand font: avoids sending every visitor's IP address to Google Fonts.
++const fontFaces = `
++@font-face {
++  font-family: 'Grenze';
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url(${baseUrl}fonts/grenze-500-latin-ext.woff2) format('woff2');
++  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
++}
++@font-face {
++  font-family: 'Grenze';
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url(${baseUrl}fonts/grenze-500-latin.woff2) format('woff2');
++  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
++}
++`;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
++    <link rel="preload" href={`${baseUrl}fonts/grenze-500-latin.woff2`} as="font" type="font/woff2" crossorigin />
++    <style is:inline set:html={fontFaces}></style>
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Third-party analytics is loaded by PrivacyConsent only after opt-in. -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+@@ -51,5 +67,6 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <PrivacyConsent client:load transition:persist />
+   </body>
+ </html>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..5fe4c92 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,48 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++// Pages that handle credentials get stricter caching and referrer rules.
++const AUTH_PATHS = ['/signin', '/signup'];
++
++const PRIVACY_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  // Opt out of browser features and ad-targeting APIs the site doesn't use.
++  'Permissions-Policy':
++    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=(), interest-cohort=(), attribution-reporting=(), join-ad-interest-group=(), run-ad-auction=()',
++  'X-Content-Type-Options': 'nosniff',
++  'Content-Security-Policy': "base-uri 'self'; object-src 'none'; form-action 'self'",
++};
++
++const AUTH_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'no-referrer',
++  'Cache-Control': 'no-store',
++};
++
++function isAuthPath(pathname: string) {
++  const path = pathname.replace(/\/$/, '');
++  return AUTH_PATHS.some((authPath) => path.endsWith(authPath));
++}
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
++  // The reading list session is created lazily on first bookmark, so readers who
++  // never use it don't get a session cookie.
++  let response = await next();
++
++  const headers = {
++    ...PRIVACY_HEADERS,
++    ...(isAuthPath(context.url.pathname) ? AUTH_HEADERS : {}),
++  };
++
++  try {
++    for (const [name, value] of Object.entries(headers)) {
++      response.headers.set(name, value);
++    }
++  } catch {
++    // Some responses (e.g. Response.redirect) have immutable headers; copy them.
++    response = new Response(response.body, response);
++    for (const [name, value] of Object.entries(headers)) {
++      response.headers.set(name, value);
+     }
+   }
+-  return next();
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..86d8a4a 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -14,4 +14,15 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+     <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p>We only set a session cookie once you add an article to your reading list. It stores the list of saved articles and nothing else. If you never use the reading list, no session cookie is set.</p>
++    <p>Your privacy choice (whether you allowed or rejected analytics) is stored in your browser's local storage so we don't have to ask again. It is never sent to our servers.</p>
++
++    <p><strong>Analytics (only with your consent)</strong></p>
++    <p>If you choose "Allow analytics", we load a third-party analytics script that records the label of the link or button you clicked and a timestamp. It does not record form input, and it never runs on the sign-in or sign-up pages. We don't load the script if you reject analytics, haven't made a choice yet, or your browser sends a Global Privacy Control or Do Not Track signal. You can change or withdraw your consent at any time via "Manage Privacy Preferences" in the footer.</p>
++
++    <p><strong>Account registration and sign-in</strong></p>
++    <p>To create an account we only ask for a username and a password. We don't ask for your email address, real name, or any other personal details. These credentials are sent over an encrypted connection to our authentication service and are used only to create and secure your account.</p>
++
++    <p><strong>Fonts and external requests</strong></p>
++    <p>Our fonts are hosted on our own servers, so loading a page doesn't send your IP address to a font provider. Our servers tell your browser to send only our domain name, not the full page address, when you follow links to other websites. They also disable browser features we don't use, such as camera, microphone, location, and interest-based advertising APIs.</p>
+ </LegalLayout>

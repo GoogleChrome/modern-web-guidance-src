@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+index 66c9173..85c0210 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script';">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -177,23 +178,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +192,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function sanitizeHTML(unsafeHTML) {
++      let clean = String(unsafeHTML);
++      // Remove dangerous paired elements and their content
++      clean = clean.replace(/<(script|style|iframe|object|embed|applet|svg|math|form|base|meta|link)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
++      // Remove self-closing or unclosed dangerous tags
++      clean = clean.replace(/<\/?(script|style|iframe|object|embed|applet|svg|math|form|base|meta|link)\b[^>]*\/?>/gi, '');
++      // Strip inline event handlers (on*)
++      clean = clean.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
++      // Neutralize javascript:, vbscript:, and data: URIs in href/src/action attributes
++      clean = clean.replace(
++        /(\s+(?:href|src|xlink:href|action|formaction)\s*=\s*)(?:"\s*(?:javascript|vbscript|data):[^"]*"|'\s*(?:javascript|vbscript|data):[^']*'|(?:\s*(?:javascript|vbscript|data):[^\s>]+))/gi,
++        '$1"#"',
++      );
++      return clean;
++    }
++
++    const htmlPolicy = window.trustedTypes
++      ? window.trustedTypes.createPolicy('dailyGrindHTML', {
++          createHTML: (input) => sanitizeHTML(input),
++        })
++      : {
++          createHTML: (input) => sanitizeHTML(input),
++        };
++
++    const seasonalFavoritesHTML = [
++      `<div class="card">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>`,
++    ];
++
++    const gridContainer = document.querySelector('.grid');
++    if (gridContainer) {
++      gridContainer.innerHTML = htmlPolicy.createHTML(seasonalFavoritesHTML.join('\n'));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+index 1bacf96..d1293ab 100644
+--- a/index.html
++++ b/index.html
+@@ -14,6 +14,43 @@
+       --light: #fafafa;
+     }
+ 
++    /*
++     * Auto-contrast text colors.
++     * Each themed surface declares the background it paints in --surface-bg,
++     * and --on-surface resolves to pure black or white, whichever contrasts
++     * more with that background. Because the variables are declared on the
++     * surface elements themselves (not on :root), they re-resolve whenever
++     * --primary / --secondary change at any level of the cascade.
++     *
++     * Fallback chain:
++     *   1. static colors (matching the default theme) for old browsers
++     *   2. relative color syntax: LCH lightness ~49.44 is the point where
++     *      black and white have equal WCAG contrast; multiplying the distance
++     *      by a huge number clamps the result to L=0 (black) or L=100 (white)
++     *   3. native contrast-color() where supported
++     */
++    nav,
++    .btn,
++    footer {
++      --on-surface: var(--surface-fallback-text);
++    }
++
++    @supports (color: lch(from white l c h)) {
++      nav,
++      .btn,
++      footer {
++        --on-surface: lch(from var(--surface-bg) calc((49.44 - l) * 1000) 0 0);
++      }
++    }
++
++    @supports (color: contrast-color(white)) {
++      nav,
++      .btn,
++      footer {
++        --on-surface: contrast-color(var(--surface-bg));
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -29,8 +66,10 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      --surface-bg: var(--primary);
++      --surface-fallback-text: white;
++      background: var(--surface-bg);
++      color: var(--on-surface);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,18 +95,23 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: text-decoration-color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    /* Keep link text at full contrast on hover; signal hover with an accent underline */
++    nav a:hover,
++    nav a:focus-visible {
++      text-decoration: underline;
++      text-decoration-color: var(--accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid currentColor;
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -121,21 +165,37 @@
+     }
+ 
+     .btn {
++      --surface-bg: var(--primary);
++      --surface-fallback-text: white;
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--surface-bg);
++      color: var(--on-surface);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    /* Darken the current primary on hover; text re-resolves against the new background */
++    .btn:hover,
++    .btn:focus-visible {
++      filter: brightness(0.85);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    @supports (color: color-mix(in oklab, red, blue)) {
++      .btn:hover,
++      .btn:focus-visible {
++        filter: none;
++        --surface-bg: color-mix(in oklab, var(--primary), black 20%);
++      }
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      --surface-bg: var(--secondary);
++      --surface-fallback-text: var(--text);
++      background: var(--surface-bg);
++      color: var(--on-surface);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +207,15 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 

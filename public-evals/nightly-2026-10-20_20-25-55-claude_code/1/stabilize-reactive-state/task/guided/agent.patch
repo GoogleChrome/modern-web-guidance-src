@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,12 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .deadline-tracker {
++      margin-top: 40px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -194,8 +198,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card deadline-tracker" aria-labelledby="deadline-heading">
++      <h2 id="deadline-heading">Event Deadline Tracker</h2>
++      <p>Deadline: <strong id="temporal-value"></strong></p>
++      <button type="button" id="extend-temporal-btn" class="btn">Extend by 7 days</button>
++      <p>State reference changed: <span id="temporal-ref-changed">No</span></p>
++      <p>Render count: <span id="temporal-render-count">0</span></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +218,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Native Temporal isn't in Safari yet; load the polyfill when missing.
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const valueEl = document.getElementById('temporal-value');
++    const btn = document.getElementById('extend-temporal-btn');
++    const refChangedEl = document.getElementById('temporal-ref-changed');
++    const renderCountEl = document.getElementById('temporal-render-count');
++
++    // PlainDate: a calendar deadline that must read the same in every time zone.
++    let state = { deadline: Temporal.PlainDate.from('2026-12-01') };
++    let renderCount = 0;
++
++    function render(refChanged) {
++      renderCount++;
++      valueEl.textContent = state.deadline.toLocaleString('en-US', { dateStyle: 'long' });
++      refChangedEl.textContent = refChanged ? 'Yes' : 'No';
++      renderCountEl.textContent = String(renderCount);
++    }
++
++    btn.addEventListener('click', () => {
++      const prev = state;
++      // Temporal objects are immutable: add() returns a new instance, and state is replaced, not mutated.
++      state = { ...state, deadline: state.deadline.add({ days: 7 }) };
++      render(prev !== state);
++    });
++
++    render(false);
++  </script>
++
+ </body>
+ 
+ </html>

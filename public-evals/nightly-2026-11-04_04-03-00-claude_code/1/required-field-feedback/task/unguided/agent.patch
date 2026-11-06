@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,91 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.95rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 10px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 2px solid transparent;
++      border-radius: 5px;
++    }
++
++    .newsletter input[type="email"]:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .newsletter input[type="email"][aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      font: inherit;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-error {
++      color: #c62828;
++      font-size: 0.85rem;
++      text-align: left;
++      margin-top: 6px;
++    }
++
++    .newsletter-success {
++      color: var(--primary);
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    @media (max-width: 480px) {
++      .newsletter-row {
++        flex-direction: column;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +280,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" novalidate>
++      <h3>Join Our Mailing List</h3>
++      <p>Get seasonal drops, roaster notes, and member-only offers.</p>
++      <div class="newsletter-row">
++        <label for="newsletter-email" class="visually-hidden">Email address</label>
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          autocomplete="email" required aria-describedby="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error" aria-live="polite" hidden></p>
++      <p class="newsletter-success" id="newsletter-success" role="status" hidden></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +301,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const input = document.getElementById('newsletter-email');
++      const error = document.getElementById('newsletter-error');
++      const success = document.getElementById('newsletter-success');
++      let touched = false;
++
++      function validate() {
++        let message = '';
++        if (input.validity.valueMissing) {
++          message = 'Please enter your email address.';
++        } else if (input.validity.typeMismatch) {
++          message = 'Please enter a valid email address.';
++        }
++        // Only reveal the error once the user has interacted with the field.
++        const show = touched && message !== '';
++        error.textContent = show ? message : '';
++        error.hidden = !show;
++        input.setAttribute('aria-invalid', show ? 'true' : 'false');
++        return message === '';
++      }
++
++      // Mark as touched when the user leaves the field.
++      input.addEventListener('blur', function () {
++        touched = true;
++        validate();
++      });
++
++      // Once touched, update live so the error clears as soon as it's fixed.
++      input.addEventListener('input', function () {
++        success.hidden = true;
++        if (touched) validate();
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        touched = true;
++        if (!validate()) {
++          input.focus();
++          return;
++        }
++        // TODO: send to your email provider here.
++        success.textContent = "Thanks! You're on the list.";
++        success.hidden = false;
++        form.reset();
++        touched = false;
++        validate();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

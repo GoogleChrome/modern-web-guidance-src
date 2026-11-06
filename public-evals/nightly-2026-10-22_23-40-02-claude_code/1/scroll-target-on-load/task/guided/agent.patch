@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,47 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Media Feed */
++    .feed {
++      height: 480px;
++      max-width: 420px;
++      margin: 20px auto 0;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 10px;
++      border-radius: 8px;
++      background: var(--secondary);
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++    }
++
++    .media-card h3 {
++      padding: 12px 16px;
++      color: var(--primary);
++    }
++
++    /* Start with the featured card in view, instantly */
++    .media-card.target {
++      scroll-initial-target: nearest;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +233,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">From Our Feed</h2>
++      <div class="feed">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&h=480&q=80" alt="Morning Pour" width="400" height="240">
++          <h3>Morning Pour</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&h=480&q=80" alt="Latte Art" width="400" height="240">
++          <h3>Latte Art</h3>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&h=480&q=80" alt="Roasted Beans" width="400" height="240">
++          <h3>Roasted Beans</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&h=480&q=80" alt="Cozy Corner" width="400" height="240">
++          <h3>Cozy Corner</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&h=480&q=80" alt="Barista's Choice" width="400" height="240">
++          <h3>Barista's Choice</h3>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +270,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target; runs before first paint, no animation
++    if (!CSS.supports("scroll-initial-target", "nearest")) {
++      const feed = document.querySelector(".feed");
++      const target = feed.querySelector(".target");
++      feed.scrollTop = target.offsetTop - feed.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,13 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
++      min-height: 400px;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -87,8 +92,57 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero-shape-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    .shaped-element {
++      position: absolute;
++      right: -2%;
++      top: 50%;
++      width: clamp(240px, 42vw, 580px);
++      aspect-ratio: 1.15;
++      transform: translateY(-50%) rotate(-12deg);
++      pointer-events: none;
++      /* A self-contained painted surface also works without the SVG clip. */
++      background:
++        radial-gradient(ellipse at 30% 25%, #efd0a0 0%, transparent 55%),
++        radial-gradient(ellipse at 75% 80%, #7b462b 0%, transparent 65%),
++        #bd8752;
++      opacity: 0.65;
++      border-radius: 63% 37% 58% 42% / 45% 62% 38% 55%;
++    }
++
++    @supports (clip-path: url("#coffee-splash")) {
++      .shaped-element {
++        clip-path: url("#coffee-splash");
++      }
++    }
++
++    .hero > h1,
++    .hero > p,
++    .hero > .btn {
++      position: relative;
++      z-index: 1;
++    }
++
++    .hero > h1,
++    .hero > p {
++      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        right: -100px;
++        opacity: 0.4;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +222,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <svg class="hero-shape-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M .08 .47 C .02 .39 .12 .32 .19 .30 C .24 .27 .16 .13 .25 .10 C .34 .06 .37 .20 .44 .16 C .51 .12 .56 .01 .64 .05 C .73 .09 .64 .21 .73 .23 C .81 .25 .94 .17 .97 .26 C 1 .35 .85 .39 .89 .47 C .93 .54 1 .60 .95 .67 C .90 .74 .78 .67 .76 .76 C .74 .85 .79 .96 .68 .98 C .58 1 .56 .85 .48 .86 C .39 .87 .35 .98 .27 .93 C .19 .88 .28 .76 .21 .72 C .14 .68 .04 .73 .02 .64 C 0 .56 .14 .55 .08 .47 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

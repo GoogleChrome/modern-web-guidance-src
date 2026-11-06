@@ -1,0 +1,268 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,125 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .shopping-cart {
++      margin-top: 48px;
++    }
++
++    .shopping-cart > h2,
++    .cart-hint {
++      text-align: center;
++    }
++
++    .cart-hint {
++      margin: 6px 0 20px;
++      color: #705c55;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 760px;
++      margin: 0 auto;
++    }
++
++    .SwipeableList-item {
++      overflow: hidden;
++      padding-bottom: 12px;
++      transition: height 280ms ease, padding-bottom 280ms ease, opacity 280ms ease;
++    }
++
++    .SwipeableList-track {
++      position: relative;
++      overflow: hidden;
++      border-radius: 8px;
++      background: #8c5145;
++      transition: background-color 150ms ease;
++    }
++
++    .SwipeableList-track::before,
++    .SwipeableList-track::after {
++      content: 'Remove';
++      position: absolute;
++      top: 50%;
++      transform: translateY(-50%);
++      color: white;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .SwipeableList-track::before { left: 20px; }
++    .SwipeableList-track::after { right: 20px; }
++
++    .SwipeableList-content {
++      position: relative;
++      z-index: 1;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      touch-action: pan-y;
++      transition: transform 220ms ease, background-color 150ms ease, color 150ms ease;
++    }
++
++    .SwipeableList-content p {
++      color: #705c55;
++      font-size: 0.9rem;
++    }
++
++    .SwipeableList-item.is-dragging .SwipeableList-content {
++      transition: background-color 150ms ease, color 150ms ease;
++      cursor: grabbing;
++      user-select: none;
++    }
++
++    .SwipeableList-item.is-ready .SwipeableList-track,
++    .SwipeableList-item.is-ready .SwipeableList-content {
++      background: #a63232;
++      color: white;
++      border-color: #a63232;
++    }
++
++    .SwipeableList-item.is-ready .SwipeableList-content p,
++    .SwipeableList-item.is-ready .cart-remove {
++      color: white;
++    }
++
++    .cart-remove {
++      flex-shrink: 0;
++      padding: 8px 10px;
++      background: transparent;
++      border: 1px solid currentColor;
++      border-radius: 5px;
++      color: #943b32;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .cart-remove:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .cart-status {
++      text-align: center;
++      margin-top: 8px;
++      color: #705c55;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .SwipeableList-item,
++      .SwipeableList-track,
++      .SwipeableList-content {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +311,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="shopping-cart" aria-labelledby="cart-heading">
++      <h2 id="cart-heading">Your Shopping Cart</h2>
++      <p class="cart-hint" id="cart-instructions">Swipe an item left or right to remove it, or use its Remove button.</p>
++      <ul class="SwipeableList" aria-describedby="cart-instructions">
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div><h3>Maple Oat Latte</h3><p>Quantity: 1</p></div>
++              <button class="cart-remove" type="button" aria-label="Remove Maple Oat Latte">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div><h3>Dark Roast Espresso</h3><p>Quantity: 1</p></div>
++              <button class="cart-remove" type="button" aria-label="Remove Dark Roast Espresso">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div><h3>Cold Brew</h3><p>Quantity: 1</p></div>
++              <button class="cart-remove" type="button" aria-label="Remove Cold Brew">Remove</button>
++            </div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-status" role="status" aria-live="polite" aria-atomic="true">3 items in your cart.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +354,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const cart = document.querySelector('.SwipeableList');
++    const cartStatus = document.querySelector('.cart-status');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++    function removeItem(item, direction = -1) {
++      if (item.classList.contains('is-removing')) return;
++      const content = item.querySelector('.SwipeableList-content');
++      const name = item.querySelector('h3').textContent;
++      const hadFocus = item.contains(document.activeElement);
++      item.style.height = `${item.getBoundingClientRect().height}px`;
++      item.classList.remove('is-dragging');
++      item.classList.add('is-ready', 'is-removing');
++      item.querySelector('button').disabled = true;
++
++      requestAnimationFrame(() => {
++        content.style.transform = `translateX(${direction * 100}%)`;
++        requestAnimationFrame(() => {
++          item.style.height = '0px';
++          item.style.paddingBottom = '0px';
++          item.style.opacity = '0';
++        });
++      });
++
++      window.setTimeout(() => {
++        const nextButton = item.nextElementSibling?.querySelector('button:not(:disabled)')
++          || item.previousElementSibling?.querySelector('button:not(:disabled)');
++        item.remove();
++        const count = cart.children.length;
++        cartStatus.textContent = `${name} removed. ${count ? `${count} item${count === 1 ? '' : 's'} in your cart.` : 'Your cart is empty.'}`;
++        if (hadFocus) {
++          if (nextButton) nextButton.focus();
++          else {
++            const heading = document.querySelector('#cart-heading');
++            heading.tabIndex = -1;
++            heading.focus();
++          }
++        }
++      }, reducedMotion.matches ? 0 : 320);
++    }
++
++    cart.querySelectorAll('.SwipeableList-item').forEach((item) => {
++      const content = item.querySelector('.SwipeableList-content');
++      let gesture = null;
++      const threshold = () => Math.min(100, content.clientWidth * 0.3);
++
++      function resetGesture() {
++        gesture = null;
++        item.classList.remove('is-dragging', 'is-ready');
++        content.style.transform = '';
++      }
++
++      content.addEventListener('pointerdown', (event) => {
++        if (!event.isPrimary || event.button !== 0 || event.target.closest('button') || item.classList.contains('is-removing')) return;
++        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, delta: 0, horizontal: false };
++        content.setPointerCapture(event.pointerId);
++      });
++
++      content.addEventListener('pointermove', (event) => {
++        if (!gesture || event.pointerId !== gesture.id) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        if (!gesture.horizontal) {
++          if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
++            resetGesture();
++            return;
++          }
++          if (Math.abs(dx) < 8) return;
++          gesture.horizontal = true;
++          item.classList.add('is-dragging');
++        }
++        gesture.delta = dx;
++        content.style.transform = `translateX(${dx}px)`;
++        item.classList.toggle('is-ready', Math.abs(dx) >= threshold());
++      });
++
++      content.addEventListener('pointerup', (event) => {
++        if (!gesture || event.pointerId !== gesture.id) return;
++        const { delta, horizontal } = gesture;
++        gesture = null;
++        if (horizontal && Math.abs(delta) >= threshold()) removeItem(item, Math.sign(delta));
++        else resetGesture();
++      });
++
++      content.addEventListener('pointercancel', resetGesture);
++      content.addEventListener('lostpointercapture', () => {
++        if (gesture) resetGesture();
++      });
++      item.querySelector('button').addEventListener('click', () => removeItem(item));
++    });
++  </script>
+ </body>
+ 
+ </html>

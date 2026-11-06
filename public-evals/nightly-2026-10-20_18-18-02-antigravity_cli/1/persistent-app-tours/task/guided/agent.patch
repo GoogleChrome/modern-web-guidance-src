@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,14 +13,30 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    li {
+       margin: 0;
+       padding: 0;
+     }
+ 
++    *,
++    *::before,
++    *::after {
++      box-sizing: border-box;
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -99,8 +115,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -151,8 +171,74 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding Tour */
++    #feature {
++      anchor-name: --feature;
++    }
++
++    #tour-step {
++      position-anchor: --feature;
++      position-area: bottom center;
++      top: anchor(bottom);
++      left: anchor(center);
++      inset: auto;
++      margin: 0.75rem 0;
++      padding: 1rem 1.25rem;
++      max-width: 280px;
++      border: 2px solid var(--accent);
++      border-radius: 0.5rem;
++      background: var(--light);
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++    }
++
++    #tour-step:where(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    #tour-step h2 {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-bottom: 0.75rem;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 0.5rem 1rem;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      border-radius: 0.25rem;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover:not(:disabled) {
++      background: var(--text);
++    }
++
++    @supports not (anchor-name: --feature) {
++      #tour-step {
++        position: fixed;
++        bottom: 0;
++        left: 0;
++        right: 0;
++        width: 100%;
++        max-width: none;
++        margin: 0;
++        border-radius: 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,23 +247,29 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
++    <h2 id="tour-title">Rewards Program</h2>
++    <p>Earn points on every cup of coffee and redeem them for free drinks and pastries!</p>
++    <button type="button" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +298,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!CSS.supports("anchor-name: --feature")) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++
++    const tourStep = document.getElementById("tour-step");
++    const featureLink = document.getElementById("feature");
++
++    tourStep.showPopover();
++    tourStep.querySelector("button").focus();
++
++    featureLink.addEventListener("click", (event) => {
++      if (tourStep.matches(":popover-open, .\\:popover-open")) {
++        event.preventDefault();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

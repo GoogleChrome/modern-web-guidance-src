@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,59 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts and Independent Theme</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      margin: 2rem;
++    }
++
++    /* font-size-adjust: from-font scales every fallback/other font in the
++       element to match the x-height of the first available font. */
++    #mixed-fonts-container {
++      font-family: Georgia, serif;
++      font-size: 1.25rem;
++      font-size-adjust: from-font;
++      line-height: 1.6;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Courier New", monospace;
++      /* Inherits the same adjustment so the monospace x-height matches
++         the surrounding text instead of looking smaller or larger. */
++      font-size-adjust: from-font;
++      font-size: 1em; /* avoid the UA default monospace size shrink */
++      background: #eee;
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++    }
++
++    /* Independent theme: its own color-scheme, unaffected by the page's. */
++    #independent-theme-container {
++      color-scheme: dark;
++      background: light-dark(#fafafa, #1b1f2a);
++      color: light-dark(#111, #f0f0f0);
++      aspect-ratio: 16 / 9;
++      width: min(100%, 40rem);
++      margin-top: 2rem;
++      padding: 1rem;
++      box-sizing: border-box;
++      border-radius: 0.5rem;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text mixed with inline code like <code>const x = 42;</code>
++    and another snippet <code>document.querySelector("#app")</code> keeps a
++    consistent visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    <h2>Independent theme</h2>
++    <p>This container keeps a locked 16 / 9 aspect ratio.</p>
++  </div>
++</body>
++</html>

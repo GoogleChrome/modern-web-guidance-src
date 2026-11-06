@@ -1,0 +1,676 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,230 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* 3D Bean Box */
++    .box-builder {
++      display: grid;
++      grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.4fr);
++      gap: 30px;
++      align-items: center;
++      margin-bottom: 60px;
++    }
++
++    .box-builder-copy h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .box-builder-copy p {
++      margin-bottom: 10px;
++    }
++
++    .box-builder-copy button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .box-stage {
++      position: relative;
++      height: 560px;
++      border-radius: 8px;
++      background: radial-gradient(circle at 50% 40%, #fff 0%, var(--secondary) 75%);
++      overflow: hidden;
++    }
++
++    .box-stage canvas {
++      position: relative;
++      display: block;
++      width: 100%;
++      height: 100%;
++    }
++
++    .box-overlay {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      overflow: hidden;
++    }
++
++    /* Front face of the box: real, interactive HTML */
++    .box-form {
++      position: absolute;
++      left: 0;
++      top: 0;
++      width: 320px;
++      height: 400px;
++      padding: 18px 20px;
++      transform-origin: 0 0;
++      background: #f6ead8;
++      border: 8px solid var(--primary);
++      color: var(--text);
++      font-size: 14px;
++      line-height: 1.3;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      pointer-events: auto;
++    }
++
++    .box-overlay .box-form {
++      visibility: hidden;
++    }
++
++    .box-form .box-form-brand {
++      font-weight: bold;
++      letter-spacing: 2px;
++      font-size: 13px;
++      color: var(--primary);
++      border-bottom: 2px solid var(--primary);
++      padding-bottom: 6px;
++    }
++
++    .box-form .box-form-brand span {
++      display: block;
++      font-size: 20px;
++      letter-spacing: 1px;
++    }
++
++    .box-form fieldset {
++      border: none;
++    }
++
++    .box-form legend,
++    .box-form label.box-form-label {
++      font-weight: 600;
++      font-size: 12px;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-bottom: 4px;
++      display: block;
++    }
++
++    .box-form .pills {
++      display: flex;
++      gap: 4px;
++    }
++
++    .box-form .pills input {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .box-form .pills label {
++      flex: 1;
++      text-align: center;
++      padding: 5px 0;
++      border: 2px solid var(--primary);
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 12px;
++      background: #fff;
++    }
++
++    .box-form .pills label:hover {
++      background: var(--secondary);
++    }
++
++    .box-form .pills input:checked+label {
++      background: var(--primary);
++      color: #fff;
++    }
++
++    .box-form .pills input:focus-visible+label {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .box-form .qty {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .box-form .qty button {
++      width: 30px;
++      height: 30px;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: #fff;
++      color: var(--primary);
++      font-size: 18px;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .box-form .qty button:hover {
++      background: var(--accent);
++    }
++
++    .box-form .qty output {
++      min-width: 70px;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    .box-form input[type="email"] {
++      width: 100%;
++      padding: 7px 8px;
++      border: 2px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++      background: #fff;
++    }
++
++    .box-form input[type="email"]:focus {
++      outline: 2px solid var(--accent);
++    }
++
++    .box-form button[type="submit"] {
++      margin-top: auto;
++      padding: 9px;
++      border: none;
++      border-radius: 4px;
++      background: var(--primary);
++      color: #fff;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .box-form button[type="submit"]:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-form .box-form-status {
++      min-height: 1.3em;
++      font-size: 12px;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .box-stage.no-webgl canvas {
++      display: none;
++    }
++
++    .box-stage.no-webgl .box-overlay {
++      position: static;
++      height: 100%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++    }
++
++    .box-stage.no-webgl .box-form {
++      position: static;
++      visibility: visible;
++    }
++
++    @media (max-width: 760px) {
++      .box-builder {
++        grid-template-columns: 1fr;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +396,64 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="box-builder" aria-labelledby="box-builder-title">
++      <div class="box-builder-copy">
++        <h2 id="box-builder-title">Build Your Bean Box</h2>
++        <p>Pick a roast and grind right on the box. The label is a real HTML form, so you can click, type and tab
++          through it while the box spins.</p>
++        <p>Hover over the box or focus a field and it slows to a stop.</p>
++        <button type="button" id="box-spin-toggle" class="btn" aria-pressed="false">Pause spin</button>
++      </div>
++      <div class="box-stage" id="box-stage">
++        <canvas id="box-canvas" layoutsubtree aria-label="Spinning 3D Daily Grind coffee box">
++          <form id="box-form" class="box-form" autocomplete="on">
++            <div class="box-form-brand">THE DAILY GRIND<span>Bean Box Subscription</span></div>
++            <fieldset>
++              <legend>Roast</legend>
++              <div class="pills">
++                <input type="radio" name="roast" id="roast-light" value="Light">
++                <label for="roast-light">Light</label>
++                <input type="radio" name="roast" id="roast-medium" value="Medium" checked>
++                <label for="roast-medium">Medium</label>
++                <input type="radio" name="roast" id="roast-dark" value="Dark">
++                <label for="roast-dark">Dark</label>
++              </div>
++            </fieldset>
++            <fieldset>
++              <legend>Grind</legend>
++              <div class="pills">
++                <input type="radio" name="grind" id="grind-whole" value="Whole bean" checked>
++                <label for="grind-whole">Whole</label>
++                <input type="radio" name="grind" id="grind-espresso" value="Espresso">
++                <label for="grind-espresso">Espresso</label>
++                <input type="radio" name="grind" id="grind-drip" value="Drip">
++                <label for="grind-drip">Drip</label>
++                <input type="radio" name="grind" id="grind-press" value="French press">
++                <label for="grind-press">Press</label>
++              </div>
++            </fieldset>
++            <fieldset>
++              <legend>Bags per month</legend>
++              <div class="qty">
++                <button type="button" data-step="-1" aria-label="Fewer bags">&minus;</button>
++                <output id="box-qty" aria-live="polite">2 bags</output>
++                <button type="button" data-step="1" aria-label="More bags">+</button>
++              </div>
++            </fieldset>
++            <div>
++              <label class="box-form-label" for="box-email">Email</label>
++              <input type="email" id="box-email" name="email" placeholder="you@example.com" required>
++            </div>
++            <button type="submit">Subscribe</button>
++            <div class="box-form-status" id="box-status" role="status"></div>
++          </form>
++        </canvas>
++        <div class="box-overlay" id="box-overlay"></div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +484,376 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const stage = document.getElementById('box-stage');
++      const canvas = document.getElementById('box-canvas');
++      const overlay = document.getElementById('box-overlay');
++      const form = document.getElementById('box-form');
++      const toggle = document.getElementById('box-spin-toggle');
++      const qtyOut = document.getElementById('box-qty');
++      const status = document.getElementById('box-status');
++
++      // --- Form behaviour -------------------------------------------------
++      let bags = 2;
++      form.querySelectorAll('[data-step]').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          bags = Math.min(10, Math.max(1, bags + Number(btn.dataset.step)));
++          qtyOut.textContent = bags + (bags === 1 ? ' bag' : ' bags');
++        });
++      });
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const data = new FormData(form);
++        status.textContent = `Thanks! ${bags} × ${data.get('roast')} (${data.get('grind')}) on its way.`;
++      });
++
++      // --- WebGL setup ----------------------------------------------------
++      const gl = canvas.getContext('webgl', { antialias: true, alpha: true });
++      if (!gl) {
++        canvas.removeAttribute('layoutsubtree');
++        overlay.append(form);
++        stage.classList.add('no-webgl');
++        return;
++      }
++
++      // HTML-in-Canvas: children of <canvas layoutsubtree> are laid out and
++      // hit-tested but rendered only via texElementImage2D. Without support,
++      // the form is overlaid in the DOM using the same projection matrix.
++      const htmlInCanvas = typeof gl.texElementImage2D === 'function';
++      if (!htmlInCanvas) {
++        canvas.removeAttribute('layoutsubtree');
++        overlay.append(form);
++      }
++
++      const vs = `
++        attribute vec3 aPos;
++        attribute vec3 aNormal;
++        attribute vec2 aUV;
++        uniform mat4 uMVP;
++        uniform mat4 uModel;
++        varying vec2 vUV;
++        varying float vDiffuse;
++        void main() {
++          vec3 n = normalize((uModel * vec4(aNormal, 0.0)).xyz);
++          vDiffuse = max(dot(n, normalize(vec3(0.4, 0.6, 0.8))), 0.0);
++          vUV = aUV;
++          gl_Position = uMVP * vec4(aPos, 1.0);
++        }`;
++      const fs = `
++        precision mediump float;
++        uniform sampler2D uTex;
++        uniform float uMinLight;
++        varying vec2 vUV;
++        varying float vDiffuse;
++        void main() {
++          vec4 c = texture2D(uTex, vUV);
++          gl_FragColor = vec4(c.rgb * mix(uMinLight, 1.0, vDiffuse), c.a);
++        }`;
++
++      function compile(type, src) {
++        const sh = gl.createShader(type);
++        gl.shaderSource(sh, src);
++        gl.compileShader(sh);
++        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
++        return sh;
++      }
++      const prog = gl.createProgram();
++      gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
++      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
++      gl.linkProgram(prog);
++      gl.useProgram(prog);
++      const loc = {
++        aPos: gl.getAttribLocation(prog, 'aPos'),
++        aNormal: gl.getAttribLocation(prog, 'aNormal'),
++        aUV: gl.getAttribLocation(prog, 'aUV'),
++        uMVP: gl.getUniformLocation(prog, 'uMVP'),
++        uModel: gl.getUniformLocation(prog, 'uModel'),
++        uTex: gl.getUniformLocation(prog, 'uTex'),
++        uMinLight: gl.getUniformLocation(prog, 'uMinLight'),
++      };
++
++      // --- Box geometry ---------------------------------------------------
++      // Front face aspect (1.6 : 2.0) matches the 320×400 form.
++      const HX = 0.8, HY = 1.0, HZ = 0.5;
++      // Each face: top-left, top-right, bottom-right corners as seen from outside.
++      const faces = {
++        front: [[-HX, HY, HZ], [HX, HY, HZ], [HX, -HY, HZ]],
++        back: [[HX, HY, -HZ], [-HX, HY, -HZ], [-HX, -HY, -HZ]],
++        right: [[HX, HY, HZ], [HX, HY, -HZ], [HX, -HY, -HZ]],
++        left: [[-HX, HY, -HZ], [-HX, HY, HZ], [-HX, -HY, HZ]],
++        top: [[-HX, HY, -HZ], [HX, HY, -HZ], [HX, HY, HZ]],
++        bottom: [[-HX, -HY, HZ], [HX, -HY, HZ], [HX, -HY, -HZ]],
++      };
++      const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
++      const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
++      const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
++      const verts = [];
++      const faceOrder = Object.keys(faces);
++      for (const name of faceOrder) {
++        const [tl, tr, br] = faces[name];
++        const bl = add(tl, sub(br, tr));
++        const n = cross(sub(bl, tl), sub(tr, tl)).map((v) => Math.sign(v));
++        const corners = [[tl, 0, 0], [bl, 0, 1], [br, 1, 1], [tl, 0, 0], [br, 1, 1], [tr, 1, 0]];
++        for (const [p, u, v] of corners) verts.push(...p, ...n, u, v);
++      }
++      const vbo = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
++      gl.enableVertexAttribArray(loc.aPos);
++      gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 32, 0);
++      gl.enableVertexAttribArray(loc.aNormal);
++      gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 32, 12);
++      gl.enableVertexAttribArray(loc.aUV);
++      gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 32, 24);
++
++      // --- Textures -------------------------------------------------------
++      function createTexture() {
++        const tex = gl.createTexture();
++        gl.bindTexture(gl.TEXTURE_2D, tex);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 162, 122, 255]));
++        return tex;
++      }
++
++      const beans = new Image();
++      beans.crossOrigin = 'anonymous';
++      beans.src = 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80';
++
++      function kraft(w, h) {
++        const c = document.createElement('canvas');
++        c.width = w;
++        c.height = h;
++        const ctx = c.getContext('2d');
++        ctx.fillStyle = '#c8a27a';
++        ctx.fillRect(0, 0, w, h);
++        let seed = 7;
++        const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
++        for (let i = 0; i < w * h / 40; i++) {
++          ctx.fillStyle = `rgba(${rand() > 0.5 ? '90,60,30' : '255,240,220'},${rand() * 0.15})`;
++          ctx.fillRect(rand() * w, rand() * h, 2, 2);
++        }
++        ctx.strokeStyle = '#4e342e';
++        ctx.lineWidth = Math.max(6, w / 40);
++        ctx.strokeRect(0, 0, w, h);
++        ctx.fillStyle = '#4e342e';
++        ctx.textAlign = 'center';
++        ctx.textBaseline = 'middle';
++        return { c, ctx };
++      }
++
++      function photoBand(ctx, x, y, w, h) {
++        if (!beans.complete || !beans.naturalWidth) return;
++        const scale = Math.max(w / beans.naturalWidth, h / beans.naturalHeight);
++        const sw = w / scale, sh = h / scale;
++        ctx.drawImage(beans, (beans.naturalWidth - sw) / 2, (beans.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
++        ctx.strokeRect(x, y, w, h);
++      }
++
++      const painters = {
++        front() {
++          const { c, ctx } = kraft(640, 800);
++          ctx.font = 'bold 48px Segoe UI, sans-serif';
++          ctx.fillText('THE DAILY GRIND', 320, 360);
++          ctx.font = '32px Segoe UI, sans-serif';
++          ctx.fillText('Bean Box', 320, 430);
++          return c;
++        },
++        side() {
++          const { c, ctx } = kraft(256, 512);
++          photoBand(ctx, 28, 150, 200, 212);
++          ctx.font = 'bold 26px Segoe UI, sans-serif';
++          ctx.fillText('THE DAILY', 128, 60);
++          ctx.fillText('GRIND', 128, 95);
++          ctx.font = '18px Segoe UI, sans-serif';
++          ctx.fillText('Locally roasted', 128, 410);
++          ctx.fillText('Ethically sourced', 128, 440);
++          return c;
++        },
++        back() {
++          const { c, ctx } = kraft(640, 800);
++          photoBand(ctx, 60, 60, 520, 300);
++          ctx.font = 'bold 40px Segoe UI, sans-serif';
++          ctx.fillText('Single Origin', 320, 440);
++          ctx.font = '26px Segoe UI, sans-serif';
++          ['Roasted in small batches', 'Shipped within 48 hours', 'Compostable packaging'].forEach((t, i) =>
++            ctx.fillText(t, 320, 520 + i * 50));
++          return c;
++        },
++        top() {
++          const { c, ctx } = kraft(512, 320);
++          ctx.lineWidth = 6;
++          ctx.beginPath();
++          ctx.arc(256, 160, 110, 0, Math.PI * 2);
++          ctx.stroke();
++          ctx.font = 'bold 30px Segoe UI, sans-serif';
++          ctx.fillText('THE DAILY', 256, 140);
++          ctx.fillText('GRIND', 256, 180);
++          return c;
++        },
++        bottom() {
++          return kraft(512, 320).c;
++        },
++      };
++      const faceTextures = {
++        front: createTexture(), back: createTexture(), right: createTexture(),
++        left: createTexture(), top: createTexture(), bottom: createTexture(),
++      };
++      const formTexture = createTexture();
++      let formReady = false;
++
++      function paintBoxTextures() {
++        const map = {
++          front: painters.front(), back: painters.back(), right: painters.side(),
++          left: painters.side(), top: painters.top(), bottom: painters.bottom(),
++        };
++        for (const name of faceOrder) {
++          gl.bindTexture(gl.TEXTURE_2D, faceTextures[name]);
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, map[name]);
++        }
++      }
++      paintBoxTextures();
++      beans.addEventListener('load', paintBoxTextures);
++
++      if (htmlInCanvas) {
++        // The paint event fires whenever the canvas children's rendering
++        // changes (typing, hover, checked state...), so re-snapshot the form.
++        canvas.addEventListener('paint', () => {
++          gl.bindTexture(gl.TEXTURE_2D, formTexture);
++          try {
++            gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++            formReady = true;
++          } catch (err) {
++            console.warn('texElementImage2D failed', err);
++          }
++        });
++        if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
++      }
++
++      // --- Matrix helpers (column-major, like WebGL and CSS matrix3d) -----
++      function mul(a, b) {
++        const out = new Float32Array(16);
++        for (let c = 0; c < 4; c++) {
++          for (let r = 0; r < 4; r++) {
++            let s = 0;
++            for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
++            out[c * 4 + r] = s;
++          }
++        }
++        return out;
++      }
++      const mat = (...v) => new Float32Array(v);
++      function perspective(fovy, aspect, near, far) {
++        const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
++        return mat(f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0);
++      }
++      const translate = (x, y, z) => mat(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
++      const rotX = (a) => mat(1, 0, 0, 0, 0, Math.cos(a), Math.sin(a), 0, 0, -Math.sin(a), Math.cos(a), 0, 0, 0, 0, 1);
++      const rotY = (a) => mat(Math.cos(a), 0, -Math.sin(a), 0, 0, 1, 0, 0, Math.sin(a), 0, Math.cos(a), 0, 0, 0, 0, 1);
++
++      // --- Sizing ---------------------------------------------------------
++      let cssW = 0, cssH = 0;
++      function resize() {
++        const dpr = Math.min(window.devicePixelRatio || 1, 2);
++        cssW = canvas.clientWidth;
++        cssH = canvas.clientHeight;
++        canvas.width = Math.round(cssW * dpr);
++        canvas.height = Math.round(cssH * dpr);
++      }
++      new ResizeObserver(resize).observe(canvas);
++      resize();
++
++      // --- Spin state -----------------------------------------------------
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      const SPIN_SPEED = 0.6; // rad/s
++      let userPaused = reduceMotion;
++      let hovering = false, focused = false;
++      let yaw = reduceMotion ? -0.4 : 0, speed = userPaused ? 0 : SPIN_SPEED;
++
++      function syncToggle() {
++        toggle.textContent = userPaused ? 'Resume spin' : 'Pause spin';
++        toggle.setAttribute('aria-pressed', String(userPaused));
++      }
++      syncToggle();
++      toggle.addEventListener('click', () => {
++        userPaused = !userPaused;
++        syncToggle();
++      });
++      form.addEventListener('pointerenter', () => (hovering = true));
++      form.addEventListener('pointerleave', () => (hovering = false));
++      form.addEventListener('focusin', () => (focused = true));
++      form.addEventListener('focusout', () => (focused = form.matches(':focus-within')));
++
++      // --- Render loop ----------------------------------------------------
++      gl.enable(gl.DEPTH_TEST);
++      gl.enable(gl.CULL_FACE);
++      gl.uniform1i(loc.uTex, 0);
++      gl.activeTexture(gl.TEXTURE0);
++
++      const FOV = Math.PI / 6;
++      let last = performance.now();
++
++      function frame(now) {
++        const dt = Math.min((now - last) / 1000, 0.1);
++        last = now;
++        const target = userPaused || hovering || focused ? 0 : SPIN_SPEED;
++        speed += (target - speed) * Math.min(1, dt * 4);
++        yaw = (yaw + speed * dt) % (Math.PI * 2);
++
++        if (cssW && cssH) {
++          const aspect = cssW / cssH;
++          const t = Math.tan(FOV / 2);
++          const dist = Math.max(1.3 / t + HZ, 1.0 / (t * aspect) + HZ);
++          const bob = reduceMotion ? 0 : Math.sin(now / 900) * 0.04;
++
++          const model = mul(translate(0, bob, 0), mul(rotX(0.18), rotY(yaw)));
++          const view = translate(0, 0, -dist);
++          const proj = perspective(FOV, aspect, 0.1, 50);
++          const mvp = mul(proj, mul(view, model));
++
++          gl.viewport(0, 0, canvas.width, canvas.height);
++          gl.clearColor(0, 0, 0, 0);
++          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++          gl.uniformMatrix4fv(loc.uMVP, false, mvp);
++          gl.uniformMatrix4fv(loc.uModel, false, model);
++
++          faceOrder.forEach((name, i) => {
++            const isForm = name === 'front' && htmlInCanvas && formReady;
++            gl.bindTexture(gl.TEXTURE_2D, isForm ? formTexture : faceTextures[name]);
++            gl.uniform1f(loc.uMinLight, isForm ? 0.85 : 0.55);
++            gl.drawArrays(gl.TRIANGLES, i * 6, 6);
++          });
++
++          // Map form-local CSS pixels onto the front face, then through the
++          // same MVP into canvas CSS pixels. Applying this as the form's CSS
++          // transform keeps hit testing aligned with what's drawn.
++          const elW = form.offsetWidth, elH = form.offsetHeight;
++          const sx = (2 * HX) / elW, sy = (2 * HY) / elH;
++          const toFace = mat(sx, 0, 0, 0, 0, -sy, 0, 0, 0, 0, sx, 0, -HX, HY, HZ, 1);
++          const toScreen = mat(cssW / 2, 0, 0, 0, 0, -cssH / 2, 0, 0, 0, 0, 1, 0, cssW / 2, cssH / 2, 0, 1);
++          const m = mul(toScreen, mul(mvp, toFace));
++          form.style.transform = `matrix3d(${Array.from(m, (v) => +v.toFixed(6)).join(',')})`;
++
++          // Front face normal vs. direction to camera: disable interaction
++          // when the form is facing away.
++          const mv = mul(view, model);
++          const nx = mv[8], ny = mv[9], nz = mv[10];
++          const px = mv[8] * HZ + mv[12], py = mv[9] * HZ + mv[13], pz = mv[10] * HZ + mv[14];
++          const facing = -(nx * px + ny * py + nz * pz) > 0;
++          form.style.pointerEvents = facing ? 'auto' : 'none';
++          if (!htmlInCanvas) form.style.visibility = facing ? 'visible' : 'hidden';
++          if (!facing && form.contains(document.activeElement)) document.activeElement.blur();
++        }
++        requestAnimationFrame(frame);
++      }
++      requestAnimationFrame(frame);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

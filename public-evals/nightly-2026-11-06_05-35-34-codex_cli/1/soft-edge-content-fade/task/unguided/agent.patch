@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the preview itself so the page background shows through. */
++    .roasters-secrets {
++      margin-top: 60px;
++    }
++
++    .paywall-container {
++      padding: 32px 24px 0;
++      border-radius: 8px;
++      background: var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++    }
++
++    .preview-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 12px;
++    }
++
++    .secrets-preview {
++      max-width: 700px;
++      padding-bottom: 32px;
++    }
++
++    .secrets-preview h3 {
++      margin: 20px 0 8px;
++      color: var(--primary);
++    }
++
++    .preview-access {
++      text-align: center;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +235,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets" aria-labelledby="roasters-secrets-title">
++      <div class="paywall-container">
++        <p class="preview-label">Exclusive member preview</p>
++        <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++        <p>A peek inside our roasting room, from the first crack to your first sip.</p>
++        <div class="secrets-preview">
++          <h3>Let your beans tell their story</h3>
++          <p>Every origin brings something different to the cup. Our roasters taste each batch
++            to find the balance of sweetness, body, and aroma that makes it shine.</p>
++          <h3>The pause that makes a difference</h3>
++          <p>Freshly roasted coffee needs a little time to rest. As the beans release gas,
++            their flavors settle and your next brew becomes more balanced.</p>
++          <h3>Dial in your daily ritual</h3>
++          <p>Start with a consistent coffee-to-water ratio, then adjust your grind one step
++            at a time. Small changes can reveal a whole new side of your favorite beans.</p>
++        </div>
++      </div>
++      <div class="preview-access">
++        <p>There’s more brewing for our members.</p>
++        <a href="/rewards" class="btn">Explore Member Rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

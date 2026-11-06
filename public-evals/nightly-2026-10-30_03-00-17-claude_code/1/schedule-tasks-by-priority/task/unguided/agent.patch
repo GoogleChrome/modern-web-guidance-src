@@ -1,0 +1,420 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,167 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops {
++      margin-top: 50px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .ops h2 {
++      text-align: center;
++      margin-bottom: 5px;
++    }
++
++    .ops-intro {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++    }
++
++    .ops-controls button {
++      font: inherit;
++      font-size: 0.9rem;
++      border: none;
++      border-radius: 5px;
++      padding: 10px 16px;
++      cursor: pointer;
++      color: white;
++      transition: opacity 0.2s, transform 0.1s;
++    }
++
++    .ops-controls button:hover {
++      opacity: 0.9;
++    }
++
++    .ops-controls button:active {
++      transform: scale(0.97);
++    }
++
++    .ops-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .prio-urgent { background: #c62828; }
++    .prio-standard { background: var(--primary); }
++    .prio-background { background: #78909c; }
++    .ops-batch { background: #ef6c00; }
++    .ops-clear { background: transparent !important; color: var(--text) !important; border: 1px solid var(--secondary) !important; }
++
++    .ops-status {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++      align-items: center;
++      margin: 20px 0;
++      font-size: 0.85rem;
++    }
++
++    .heartbeat {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .heartbeat-dot {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--accent);
++      animation: pulse 1s ease-in-out infinite;
++    }
++
++    @keyframes pulse {
++      0%, 100% { transform: scale(0.7); opacity: 0.6; }
++      50% { transform: scale(1.1); opacity: 1; }
++    }
++
++    .ops-panels {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++    }
++
++    .ops-panel h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .ops-queue, .ops-log {
++      list-style: none;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      height: 260px;
++      overflow-y: auto;
++      padding: 8px;
++      font-size: 0.82rem;
++    }
++
++    .ops-queue li {
++      background: white;
++      border-left: 4px solid var(--secondary);
++      border-radius: 4px;
++      padding: 6px 8px;
++      margin-bottom: 6px;
++    }
++
++    .ops-queue li.urgent { border-left-color: #c62828; }
++    .ops-queue li.standard { border-left-color: var(--primary); }
++    .ops-queue li.background { border-left-color: #78909c; }
++
++    .ops-queue .task-head {
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .ops-queue .task-state {
++      color: #8d6e63;
++      white-space: nowrap;
++    }
++
++    .ops-queue progress {
++      width: 100%;
++      height: 6px;
++      margin-top: 4px;
++      accent-color: var(--primary);
++    }
++
++    .ops-log li {
++      padding: 2px 0;
++      border-bottom: 1px dashed var(--secondary);
++      font-family: Consolas, Menlo, monospace;
++    }
++
++    .ops-log time {
++      color: #8d6e63;
++      margin-right: 6px;
++    }
++
++    .ops-empty {
++      color: #a1887f;
++      text-align: center;
++      padding: 20px 0;
++      background: none !important;
++      border: none !important;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +353,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p class="ops-intro">
++        Long-running store operations are split into small slices and run by priority.
++        The page yields between slices, so it stays responsive and urgent work can jump ahead of tasks already in progress.
++      </p>
++
++      <div class="ops-controls">
++        <button type="button" class="prio-urgent" data-task="checkout">Run Urgent Checkout</button>
++        <button type="button" class="prio-standard" data-task="menu">Run Menu Update</button>
++        <button type="button" class="prio-background" data-task="telemetry">Log Telemetry</button>
++        <button type="button" class="ops-batch" id="ops-batch">Run Mixed Batch</button>
++        <button type="button" class="ops-clear" id="ops-clear">Clear Log</button>
++      </div>
++
++      <div class="ops-status">
++        <span class="heartbeat"><span class="heartbeat-dot" aria-hidden="true"></span>UI heartbeat</span>
++        <span>Longest frame gap: <strong id="ops-jank">0 ms</strong></span>
++        <span>Pending: <strong id="ops-pending">0</strong></span>
++        <span>Completed: <strong id="ops-done">0</strong></span>
++        <span>Scheduler: <strong id="ops-mode">-</strong></span>
++      </div>
++
++      <div class="ops-panels">
++        <div class="ops-panel">
++          <h3>Task Queue</h3>
++          <ul class="ops-queue" id="ops-queue" aria-live="polite"></ul>
++        </div>
++        <div class="ops-panel">
++          <h3>Activity Log</h3>
++          <ol class="ops-log" id="ops-log"></ol>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +400,204 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const PRIORITIES = ['urgent', 'standard', 'background'];
++      const SLICE_BUDGET_MS = 8;
++
++      const TASK_TYPES = {
++        checkout: { priority: 'urgent', label: 'Checkout', units: 40, names: ['Process card payment', 'Confirm mobile order', 'Apply rewards at checkout'] },
++        menu: { priority: 'standard', label: 'Menu update', units: 120, names: ['Sync seasonal menu', 'Update espresso prices', 'Refresh pastry stock'] },
++        telemetry: { priority: 'background', label: 'Telemetry', units: 200, names: ['Upload POS metrics', 'Log grinder diagnostics', 'Archive footfall stats'] }
++      };
++
++      const queueEl = document.getElementById('ops-queue');
++      const logEl = document.getElementById('ops-log');
++      const pendingEl = document.getElementById('ops-pending');
++      const doneEl = document.getElementById('ops-done');
++      const jankEl = document.getElementById('ops-jank');
++      const modeEl = document.getElementById('ops-mode');
++
++      const queues = { urgent: [], standard: [], background: [] };
++      let nextId = 1;
++      let completed = 0;
++      let running = false;
++
++      // Yield control back to the browser so input and rendering can happen.
++      const hasSchedulerYield = typeof globalThis.scheduler?.yield === 'function';
++      const channel = new MessageChannel();
++      const pendingResolves = [];
++      channel.port1.onmessage = () => pendingResolves.shift()?.();
++      const yieldToMain = hasSchedulerYield
++        ? () => globalThis.scheduler.yield()
++        : () => new Promise(resolve => { pendingResolves.push(resolve); channel.port2.postMessage(null); });
++      modeEl.textContent = hasSchedulerYield ? 'scheduler.yield()' : 'MessageChannel';
++
++      // One unit of simulated CPU-bound work (~1ms).
++      function doWorkUnit() {
++        const end = performance.now() + 1;
++        let x = 0;
++        while (performance.now() < end) x += Math.sqrt(Math.random());
++        return x;
++      }
++
++      function nextTask() {
++        for (const p of PRIORITIES) {
++          if (queues[p].length) return queues[p][0];
++        }
++        return null;
++      }
++
++      function pendingCount() {
++        return PRIORITIES.reduce((n, p) => n + queues[p].length, 0);
++      }
++
++      function log(message) {
++        const li = document.createElement('li');
++        const time = document.createElement('time');
++        time.textContent = new Date().toLocaleTimeString([], { hour12: false });
++        li.append(time, message);
++        logEl.prepend(li);
++        while (logEl.children.length > 100) logEl.lastChild.remove();
++      }
++
++      function renderQueue() {
++        queueEl.replaceChildren();
++        const all = PRIORITIES.flatMap(p => queues[p]);
++        if (!all.length) {
++          const li = document.createElement('li');
++          li.className = 'ops-empty';
++          li.textContent = 'Queue is empty';
++          queueEl.append(li);
++        }
++        for (const task of all) {
++          const li = document.createElement('li');
++          li.className = task.priority;
++          const head = document.createElement('div');
++          head.className = 'task-head';
++          const name = document.createElement('span');
++          name.textContent = `#${task.id} ${task.name}`;
++          const state = document.createElement('span');
++          state.className = 'task-state';
++          state.textContent = `${task.priority} · ${task.started ? `${Math.round(task.done / task.units * 100)}%` : 'waiting'}`;
++          head.append(name, state);
++          const bar = document.createElement('progress');
++          bar.max = task.units;
++          bar.value = task.done;
++          task.bar = bar;
++          task.stateEl = state;
++          li.append(head, bar);
++          queueEl.append(li);
++        }
++        pendingEl.textContent = pendingCount();
++        doneEl.textContent = completed;
++      }
++
++      function updateProgress(task) {
++        if (!task.bar) return;
++        task.bar.value = task.done;
++        task.stateEl.textContent = `${task.priority} · ${Math.round(task.done / task.units * 100)}%`;
++      }
++
++      function enqueue(type) {
++        const def = TASK_TYPES[type];
++        const task = {
++          id: nextId++,
++          type,
++          priority: def.priority,
++          name: def.names[Math.floor(Math.random() * def.names.length)],
++          units: def.units,
++          done: 0,
++          started: false,
++          queuedAt: performance.now()
++        };
++        queues[task.priority].push(task);
++        log(`Queued #${task.id} ${task.name} [${task.priority}]`);
++        renderQueue();
++        run();
++        return task;
++      }
++
++      // Cooperative scheduler: always works on the highest-priority task, in time-boxed
++      // slices, yielding between slices so newly queued urgent tasks preempt lower ones.
++      async function run() {
++        if (running) return;
++        running = true;
++        let current = null;
++        try {
++          while (true) {
++            const task = nextTask();
++            if (!task) break;
++
++            if (current && current !== task && current.done < current.units) {
++              log(`Paused #${current.id} for higher-priority #${task.id}`);
++            }
++            if (!task.started) {
++              task.started = true;
++              task.startedAt = performance.now();
++              log(`Started #${task.id} ${task.name} (waited ${Math.round(task.startedAt - task.queuedAt)} ms)`);
++              renderQueue();
++            } else if (current !== task) {
++              log(`Resumed #${task.id} ${task.name}`);
++            }
++            current = task;
++
++            const sliceEnd = performance.now() + SLICE_BUDGET_MS;
++            while (task.done < task.units && performance.now() < sliceEnd) {
++              doWorkUnit();
++              task.done++;
++            }
++            updateProgress(task);
++
++            if (task.done >= task.units) {
++              queues[task.priority].shift();
++              completed++;
++              log(`Completed #${task.id} ${task.name} in ${Math.round(performance.now() - task.startedAt)} ms`);
++              renderQueue();
++              current = null;
++            }
++
++            await yieldToMain();
++          }
++        } finally {
++          running = false;
++        }
++      }
++
++      // Mixed batch queued in a jumbled order; the scheduler executes it by priority.
++      function runBatch() {
++        const batch = ['telemetry', 'menu', 'checkout', 'telemetry', 'menu', 'checkout', 'menu', 'telemetry', 'checkout'];
++        log(`Batch submitted: ${batch.length} mixed tasks`);
++        batch.forEach(enqueue);
++      }
++
++      document.querySelectorAll('.ops-controls [data-task]').forEach(btn => {
++        btn.addEventListener('click', () => enqueue(btn.dataset.task));
++      });
++      document.getElementById('ops-batch').addEventListener('click', runBatch);
++      document.getElementById('ops-clear').addEventListener('click', () => logEl.replaceChildren());
++
++      // Track main-thread responsiveness via the longest gap between animation frames.
++      let lastFrame = performance.now();
++      let worstGap = 0;
++      let windowStart = lastFrame;
++      function frame(now) {
++        worstGap = Math.max(worstGap, now - lastFrame);
++        lastFrame = now;
++        if (now - windowStart > 1000) {
++          jankEl.textContent = `${Math.round(worstGap)} ms`;
++          worstGap = 0;
++          windowStart = now;
++        }
++        requestAnimationFrame(frame);
++      }
++      requestAnimationFrame(frame);
++
++      renderQueue();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

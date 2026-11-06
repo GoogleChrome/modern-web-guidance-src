@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,176 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Every layout derives its distribution from the current sibling count.
++       Custom properties are populated by the fallback below in older browsers. */
++    :is(.spectrum-card, .fan-card, .circle-orb) {
++      --item-index: 1;
++      --item-count: 1;
++      --progress: calc((var(--item-index) - 1) / max(1, var(--item-count) - 1));
++    }
++
++    @supports (order: sibling-index()) {
++      :is(.spectrum-card, .fan-card, .circle-orb) {
++        --item-index: sibling-index();
++        --item-count: sibling-count();
++      }
++    }
++
++    .spectrum-card {
++      background: hsl(calc(25 + var(--progress) * 270) 65% 90%);
++      border: 1px solid hsl(calc(25 + var(--progress) * 270) 40% 80%);
++      padding: 30px 24px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
++      box-shadow: 0 8px 24px #4e342e08;
++    }
++
++    .spectrum-card .btn { margin-top: auto; }
++    .spectrum-card p { margin-bottom: 14px; }
++
++    .experience {
++      margin-top: 64px;
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 24px;
++    }
++
++    .feature {
++      overflow: hidden;
++      border: 1px solid #e5dfd4;
++      border-radius: 20px;
++      padding: 32px 20px 20px;
++      background: #f5f2ea;
++      text-align: center;
++    }
++
++    .eyebrow {
++      font-size: .68rem;
++      font-weight: 700;
++      letter-spacing: .2em;
++      text-transform: uppercase;
++      color: #75634e;
++      margin-bottom: 8px;
++    }
++
++    .feature h2 { font-family: Georgia, serif; font-size: 1.9rem; font-weight: 400; }
++    .feature > p:not(.eyebrow) { font-size: .9rem; color: #796d5f; margin-top: 8px; }
++
++    .fan-container {
++      display: grid;
++      place-items: center;
++      height: 335px;
++      isolation: isolate;
++    }
++
++    .fan-card {
++      --center: calc((var(--item-index) - (var(--item-count) + 1) / 2) / max(1, var(--item-count) - 1));
++      grid-area: 1 / 1;
++      width: min(168px, 34vw);
++      height: 224px;
++      padding: 20px 16px;
++      border-radius: 12px;
++      border: 1px solid #ffffff40;
++      background: hsl(calc(105 + var(--progress) * 65) 23% calc(43% - var(--progress) * 24%));
++      color: #fff9e8;
++      box-shadow: 0 10px 24px #20392a30;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transform: translate(
++        calc(var(--center) * min(280px, 42vw)),
++        calc(var(--center) * var(--center) * 110px)
++      ) rotate(calc(var(--center) * 56deg));
++      transition: translate .25s ease, box-shadow .25s ease;
++    }
++
++    .fan-card:hover {
++      translate: 0 -16px;
++      z-index: 1;
++      box-shadow: 0 18px 32px #20392a40;
++    }
++
++    .fan-card .brand { font-size: .55rem; letter-spacing: .12em; }
++    .fan-card .card-symbol { font-size: 2rem; line-height: 1; }
++    .fan-card h3 { font-family: Georgia, serif; font-size: 1.15rem; font-weight: 400; }
++    .fan-card .perk { font-size: .65rem; opacity: .8; }
++    .feature-link { color: #31523b; text-underline-offset: 5px; font-size: .85rem; }
++
++    .circle-container {
++      position: relative;
++      width: 100%;
++      max-width: 450px;
++      aspect-ratio: 1;
++      margin: 0 auto;
++      container-type: inline-size;
++      isolation: isolate;
++    }
++
++    .circle-container::before {
++      content: "A world of flavor";
++      position: absolute;
++      inset: 0;
++      display: grid;
++      place-items: center;
++      font: italic 1.1rem Georgia, serif;
++      color: #85765d;
++      z-index: -1;
++    }
++
++    .circle-container::after {
++      content: "";
++      position: absolute;
++      width: 72%;
++      aspect-ratio: 1;
++      border: 1px dashed #c9c3b1;
++      border-radius: 50%;
++      top: 50%;
++      left: 50%;
++      transform: translate(-50%, -50%);
++      z-index: -1;
++    }
++
++    .circle-orb {
++      --angle: calc(-90deg + (var(--item-index) - 1) * 360deg / var(--item-count));
++      --radius: 36cqi;
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      width: 24%;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: hsl(calc(30 + var(--progress) * 110) 27% 84%);
++      border: 5px solid #f5f2ea;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--radius)) rotate(calc(-1 * var(--angle)));
++      text-align: center;
++    }
++
++    .circle-orb h3 { font-size: clamp(.6rem, 2.6cqi, .8rem); font-weight: 600; }
++    .circle-orb span { font-size: clamp(.5rem, 2.1cqi, .65rem); color: #6b6956; }
++    .circle-orb .origin-mark { font-size: clamp(1rem, 5cqi, 1.5rem); line-height: 1.2; margin-bottom: 4px; }
++
++    @media (max-width: 720px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.4rem; }
++      .experience { grid-template-columns: 1fr; gap: 24px; margin-top: 40px; }
++      .feature { padding-inline: 16px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .fan-card { transition: none; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +345,74 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div class="experience">
++      <section class="feature" aria-labelledby="rewards-title">
++        <p class="eyebrow">Good coffee. Great perks.</p>
++        <h2 id="rewards-title">Your daily ritual, rewarded.</h2>
++        <p>There’s a little more to love with every cup.</p>
++        <div class="fan-container" aria-label="Loyalty rewards">
++          <article class="fan-card">
++            <span class="brand">THE DAILY GRIND</span>
++            <span class="card-symbol" aria-hidden="true">✳</span>
++            <div><h3>First Sip</h3><p class="perk">A welcome treat</p></div>
++          </article>
++          <article class="fan-card">
++            <span class="brand">THE DAILY GRIND</span>
++            <span class="card-symbol" aria-hidden="true">✧</span>
++            <div><h3>Daily Regular</h3><p class="perk">Points with every cup</p></div>
++          </article>
++          <article class="fan-card">
++            <span class="brand">THE DAILY GRIND</span>
++            <span class="card-symbol" aria-hidden="true">☕</span>
++            <div><h3>House Favorite</h3><p class="perk">Your next cup is on us</p></div>
++          </article>
++          <article class="fan-card">
++            <span class="brand">THE DAILY GRIND</span>
++            <span class="card-symbol" aria-hidden="true">✺</span>
++            <div><h3>Birthday Brew</h3><p class="perk">Celebrate with a free sip</p></div>
++          </article>
++          <article class="fan-card">
++            <span class="brand">THE DAILY GRIND</span>
++            <span class="card-symbol" aria-hidden="true">✦</span>
++            <div><h3>Inner Circle</h3><p class="perk">First taste of new roasts</p></div>
++          </article>
++        </div>
++        <a href="/rewards" class="feature-link">Explore the rewards →</a>
++      </section>
++      <section class="feature" aria-labelledby="origins-title">
++        <p class="eyebrow">Rooted in something good</p>
++        <h2 id="origins-title">Around the world in a cup.</h2>
++        <p>Distinct origins. Endless reasons to take a sip.</p>
++        <div class="circle-container" aria-label="Our coffee origins">
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">✺</span><h3>Ethiopia</h3><span>Floral &amp; bright</span></article>
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">❋</span><h3>Colombia</h3><span>Sweet &amp; balanced</span></article>
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">✹</span><h3>Brazil</h3><span>Nutty &amp; smooth</span></article>
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">✷</span><h3>Guatemala</h3><span>Cocoa &amp; spice</span></article>
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">✳</span><h3>Kenya</h3><span>Juicy &amp; vibrant</span></article>
++          <article class="circle-orb"><span class="origin-mark" aria-hidden="true">✽</span><h3>Sumatra</h3><span>Earthy &amp; rich</span></article>
++        </div>
++        <a href="/menu" class="feature-link">Find your favorite origin →</a>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +423,26 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Native sibling functions recalculate automatically. Older browsers receive
++    // the same inputs whenever children are inserted, removed, or reordered.
++    if (!CSS.supports('order', 'sibling-index()')) {
++      const main = document.querySelector('main');
++      const updateDistributions = () => {
++        main.querySelectorAll('.grid, .fan-container, .circle-container').forEach(container => {
++          const items = [...container.children].filter(item =>
++            item.matches('.card, .fan-card, .circle-orb'));
++          items.forEach((item, index) => {
++            item.style.setProperty('--item-index', index + 1);
++            item.style.setProperty('--item-count', items.length);
++          });
++        });
++      };
++      updateDistributions();
++      new MutationObserver(updateDistributions).observe(main, { childList: true, subtree: true });
++    }
++  </script>
+ </body>
+ 
+ </html>

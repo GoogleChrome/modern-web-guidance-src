@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interactive demo (declarative button commands) */
++    .action-demo {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .action-demo h2 {
++      margin-bottom: 20px;
++    }
++
++    .action-stage {
++      display: grid;
++      place-items: center;
++      min-height: 240px;
++      margin-bottom: 20px;
++    }
++
++    .action-target {
++      width: 120px;
++      height: 120px;
++      display: grid;
++      place-items: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      border-radius: 8px;
++      transform: rotate(0deg) scale(1);
++      transition: transform 0.5s ease, border-radius 0.5s ease;
++    }
++
++    .action-target.is-spun {
++      transform: rotate(360deg) scale(1);
++    }
++
++    .action-target.is-grown {
++      transform: rotate(0deg) scale(1.5);
++    }
++
++    .action-target.is-spun.is-grown {
++      transform: rotate(360deg) scale(1.5);
++    }
++
++    .action-target.is-rounded {
++      border-radius: 50%;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .action-target {
++        transition: none;
++      }
++    }
++
++    .action-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .action-controls button {
++      font: inherit;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 10px 20px;
++      border-radius: 5px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .action-controls button:hover,
++    .action-controls button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .action-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +275,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="action-demo">
++      <h2>Play With Our Logo</h2>
++      <div class="action-stage">
++        <div id="action-target" class="action-target">Grind</div>
++      </div>
++      <div class="action-controls">
++        <button type="button" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +300,60 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const target = document.getElementById('action-target');
++      const toggleClass = (className) => (el, source) => {
++        const isOn = el.classList.toggle(className);
++        source?.setAttribute('aria-pressed', String(isOn));
++      };
++
++      const commandRegistry = {
++        '--spin': toggleClass('is-spun'),
++        '--grow': toggleClass('is-grown'),
++        '--round': toggleClass('is-rounded'),
++        '--reset': (el) => {
++          el.classList.remove('is-spun', 'is-grown', 'is-rounded');
++          document
++            .querySelectorAll(`button[commandfor="${el.id}"][aria-pressed]`)
++            .forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
++        },
++      };
++
++      // The native 'command' event does not bubble, so listen on the target itself.
++      target.addEventListener('command', (event) => {
++        const action = commandRegistry[event.command];
++        if (action) action(event.target, event.source);
++      });
++
++      // Fallback for browsers without the Invoker Commands API:
++      // dispatch a synthetic 'command' event from a delegated click handler.
++      const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
++      if (!hasNativeSupport) {
++        if (!globalThis.CommandEvent) {
++          globalThis.CommandEvent = class CommandEvent extends Event {
++            constructor(type, { source, command, ...options } = {}) {
++              super(type, options);
++              this.source = source;
++              this.command = command;
++            }
++          };
++        }
++
++        document.addEventListener('click', (event) => {
++          const button = event.composedPath().find((el) => el.matches?.('button[commandfor]'));
++          if (!button) return;
++          const el = document.getElementById(button.getAttribute('commandfor'));
++          const command = button.getAttribute('command');
++          if (el && command) {
++            el.dispatchEvent(new CommandEvent('command', { command, source: button }));
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

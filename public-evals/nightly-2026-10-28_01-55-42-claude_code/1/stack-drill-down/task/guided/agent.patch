@@ -1,0 +1,997 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,9 +2,9 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -19,16 +19,113 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      height: 100%;
++      /* The stack is the only scroller; the document itself must not scroll
++         or the horizontal swipe can rubber-band the whole page. */
++      overflow: hidden;
++      overscroll-behavior: none;
++    }
++
++    body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* ------------------------------------------------------------------
++       Navigation stack
++       A horizontal scroll-snap container: each child view is one snap stop.
++       Swiping right-to-left back to the previous view is native scrolling,
++       so the gesture has momentum and can be interrupted.
++       ------------------------------------------------------------------ */
++    .Stack {
++      height: 100dvh;
++      display: grid;
++      grid-auto-flow: column;
++      grid-auto-columns: 100%;
++      grid-template-rows: 100%;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      /* Keep the swipe from chaining into the browser's own back gesture. */
++      overscroll-behavior-x: none;
++      scrollbar-width: none;
++      background: var(--primary);
++    }
++
++    .Stack::-webkit-scrollbar {
++      display: none;
++    }
++
++    /* Smooth programmatic scrolling only when the OS allows motion. JS always
++       scrolls with behavior:'auto' so this rule is the single switch. */
++    @media (prefers-reduced-motion: no-preference) {
++      .Stack {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .Stack-view {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      min-width: 0;
++    }
++
++    /* Inner wrapper: holds the content, scrolls vertically, and carries the
++       parallax transform (never transform the snap target itself). */
++    .Stack-viewContent {
++      width: 100%;
++      height: 100%;
++      background-color: var(--light);
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      -webkit-overflow-scrolling: touch;
++    }
++
++    /* Stack effect: the covered view slides back and dims in lock-step with the
++       user's finger; incoming views cast a shadow on their left edge. */
++    @supports (animation-timeline: view()) {
++      .Stack-viewContent {
++        animation: parallax linear both;
++        animation-timeline: view(inline);
++        animation-range: exit 0% exit 100%;
++      }
++
++      .Stack-view:not(:first-child) .Stack-viewContent {
++        animation: parallax linear both, shadow-fade linear both;
++        animation-timeline: view(inline), view(inline);
++        animation-range: exit 0% exit 100%, entry 0% exit 100%;
++      }
++
++      @keyframes parallax {
++        to {
++          transform: translateX(60%);
++          filter: brightness(0.75);
++        }
++      }
++
++      @keyframes shadow-fade {
++
++        0%,
++        100% {
++          box-shadow: 0 0 2rem #0000;
++        }
++
++        25%,
++        75% {
++          box-shadow: 0 0 2rem #0006;
++        }
++      }
++    }
++
++    /* ------------------------------------------------------------------
++       Root view (the original homepage)
++       ------------------------------------------------------------------ */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -48,8 +145,10 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      flex-wrap: wrap;
++      justify-content: flex-end;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -71,9 +170,8 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+@@ -92,9 +190,8 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
+-    /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+@@ -112,15 +209,31 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 14px;
++      background: var(--secondary);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card p {
++      flex: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,14 +241,27 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn--accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn--accent:hover {
++      background: #ffbd66;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,62 +277,731 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       Drill-down views
++       ------------------------------------------------------------------ */
++    .View-header {
++      position: sticky;
++      top: 0;
++      z-index: 10;
++      display: grid;
++      grid-template-columns: 1fr auto 1fr;
++      align-items: center;
++      gap: 8px;
++      min-height: 56px;
++      padding: 8px 12px;
++      padding-top: calc(8px + env(safe-area-inset-top));
++      background: var(--primary);
++      color: white;
++    }
++
++    .View-header h1 {
++      font-size: 1.05rem;
++      font-weight: 600;
++      letter-spacing: 0.3px;
++      text-align: center;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .back {
++      justify-self: start;
++      display: inline-flex;
++      align-items: center;
++      gap: 2px;
++      min-height: 44px;
++      padding: 0 10px 0 4px;
++      border: 0;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--accent);
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .back svg {
++      width: 22px;
++      height: 22px;
++    }
++
++    .back:hover {
++      background: rgba(255, 255, 255, 0.08);
++    }
++
++    .back:focus-visible,
++    .btn:focus-visible,
++    .More-link:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .View-body {
++      max-width: 760px;
++      margin: 0 auto;
++      padding: 0 20px 48px;
++    }
++
++    .View-figure {
++      margin: 0 -20px;
++      position: relative;
++      background: var(--secondary);
++    }
++
++    .View-figure img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++    }
++
++    .View-badge {
++      position: absolute;
++      top: 14px;
++      left: 14px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .View-title {
++      font-size: 2rem;
++      line-height: 1.2;
++      color: var(--primary);
++      margin: 24px 0 6px;
++    }
++
++    .View-tagline {
++      font-size: 1.1rem;
++      color: #6d4c41;
++      margin-bottom: 18px;
++    }
++
++    .View-body h2 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin: 28px 0 10px;
++    }
++
++    .Notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      list-style: none;
++    }
++
++    .Notes li {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 999px;
++      padding: 4px 12px;
++      font-size: 0.9rem;
++    }
++
++    .Sizes {
++      width: 100%;
++      border-collapse: collapse;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .Sizes th,
++    .Sizes td {
++      text-align: left;
++      padding: 10px 14px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .Sizes th {
++      font-weight: 600;
++      color: var(--primary);
++      background: #f5f0ee;
++    }
++
++    .Sizes tr:last-child td {
++      border-bottom: 0;
++    }
++
++    .Sizes td:last-child,
++    .Sizes th:last-child {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .More-link {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 28px;
++      padding: 16px 18px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      color: var(--text);
++      text-decoration: none;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .More-link strong {
++      display: block;
++      color: var(--primary);
++    }
++
++    .More-link small {
++      color: #6d4c41;
++    }
++
++    .More-link svg {
++      flex: none;
++      width: 20px;
++      height: 20px;
++      color: var(--primary);
++    }
++
++    .Actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .Actions .btn {
++      margin-top: 0;
++    }
++
++    .Facts {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++    }
++
++    .Facts div {
++      background: white;
++      border-radius: 8px;
++      padding: 14px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .Facts dt {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      color: #6d4c41;
++    }
++
++    .Facts dd {
++      font-size: 1.1rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .Sourcing p {
++      margin-bottom: 12px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <div class="Stack">
++    <!-- Root view: the homepage. Rendered statically so it works before (and
++         without) JavaScript; drill-down views are appended by the script. -->
++    <div class="Stack-view" data-title="The Daily Grind | Artisanal Coffee">
++      <div class="Stack-viewContent">
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++        <nav>
++          <div class="logo">THE DAILY GRIND</div>
++          <ul>
++            <li><a href="/menu">Menu</a></li>
++            <li><a href="/locations">Locations</a></li>
++            <li><a href="/rewards">Rewards</a></li>
++            <li><a href="/account">My Account</a></li>
++            <li><a href="/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++        <header class="hero">
++          <h1>Wake Up Your Senses</h1>
++          <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++          <a href="/order-online" class="btn">Order Now</a>
++        </header>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++        <main class="container">
++          <section aria-labelledby="seasonal-heading">
++            <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++            <div class="grid">
++              <div class="card">
++                <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=70"
++                  alt="" width="600" height="400" loading="lazy" decoding="async">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="#/menu/seasonal" class="btn" aria-label="View details: Maple Oat Latte">View Details</a>
++              </div>
++              <div class="card">
++                <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=70"
++                  alt="" width="600" height="400" loading="lazy" decoding="async">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="#/menu/espresso" class="btn" aria-label="View details: Dark Roast Espresso">View Details</a>
++              </div>
++              <div class="card">
++                <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=70"
++                  alt="" width="600" height="400" loading="lazy" decoding="async">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="#/menu/cold-brew" class="btn" aria-label="View details: Cold Brew">View Details</a>
++              </div>
++            </div>
++          </section>
++        </main>
++
++        <footer>
++          <div class="footer-links">
++            <a href="/about">Our Story</a> |
++            <a href="/careers">Join the Team</a> |
++            <a href="/contact">Contact Us</a> |
++            <a href="/privacy-policy">Privacy</a>
++          </div>
++          <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++        </footer>
++
++      </div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </div>
+ 
++  <script type="module">
++    /* ==================================================================
++       Content
++       ================================================================== */
++    const DRINKS = {
++      'seasonal': {
++        name: 'Maple Oat Latte',
++        badge: 'Seasonal',
++        tagline: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1200&q=75',
++        alt: 'A latte with leaf-shaped milk art in a white ceramic cup',
++        description: 'Our autumn signature. A double shot of our medium-roast house espresso is folded into steamed oat milk and finished with a spoonful of grade-A Vermont maple syrup, then dusted with cinnamon. Sweet, round and velvety without being heavy.',
++        notes: ['Maple', 'Brown butter', 'Cinnamon', 'Oat cream'],
++        sizes: [['Small', '12 oz', '$4.75'], ['Medium', '16 oz', '$5.50'], ['Large', '20 oz', '$6.25']],
++        facts: [['Calories', '210 kcal'], ['Caffeine', '150 mg'], ['Sugar', '14 g'], ['Dairy', 'None']],
++        sourcing: [
++          'The espresso base is our Daybreak blend: washed Colombian Huila beans paired with natural-process Brazilian Cerrado, roasted in small batches at our Portland roastery every Tuesday and Thursday.',
++          'Maple syrup comes from a family sugarbush in Franklin County, Vermont, tapped each February and March. We buy the whole season up front so the farm can plan ahead.',
++          'The oat milk is barista-grade and fortified with calcium. It contains no nuts, soy or dairy, though it is made in a facility that handles tree nuts.'
++        ]
++      },
++      'espresso': {
++        name: 'Dark Roast Espresso',
++        badge: 'House favorite',
++        tagline: 'Bold, smokey, and perfect for a morning boost.',
++        image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1200&q=75',
++        alt: 'A shot of espresso with thick crema in a small cup',
++        description: 'Pulled as a ristretto-leaning double from our Midnight blend. Expect dark chocolate and toasted hazelnut up front, a smoky finish, and a dense, tiger-striped crema. Served as a straight shot or as the base for any milk drink.',
++        notes: ['Dark chocolate', 'Toasted hazelnut', 'Smoke', 'Molasses'],
++        sizes: [['Single', '1 oz', '$2.50'], ['Double', '2 oz', '$3.25'], ['Triple', '3 oz', '$4.00']],
++        facts: [['Calories', '5 kcal'], ['Caffeine', '128 mg'], ['Sugar', '0 g'], ['Dairy', 'None']],
++        sourcing: [
++          'Midnight is a two-origin blend built around Sumatran Mandheling, wet-hulled for its signature earthy body, with a smaller share of Guatemalan Antigua for sweetness and structure.',
++          'We roast to just past second crack, then rest the beans five days before they reach the bar so the shots stay balanced rather than ashy.',
++          'Both farms are paid above Fair Trade minimums under multi-year contracts, and we publish the price paid per pound every quarter on our Our Story page.'
++        ]
++      },
++      'cold-brew': {
++        name: 'Cold Brew',
++        badge: 'Slow steeped',
++        tagline: 'Steeped for 18 hours for maximum smoothness.',
++        image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1200&q=75',
++        alt: 'Iced coffee in a tall glass on a wooden table',
++        description: 'Coarse-ground Ethiopian and Peruvian beans are steeped in cold filtered water for a full 18 hours, then double-filtered. The result is naturally sweet, almost tea-like, with very low acidity. Served over ice, black or with a splash of your choice.',
++        notes: ['Cocoa nib', 'Blueberry', 'Caramel', 'Silky finish'],
++        sizes: [['Medium', '16 oz', '$4.25'], ['Large', '20 oz', '$4.95'], ['Growler', '64 oz', '$18.00']],
++        facts: [['Calories', '15 kcal'], ['Caffeine', '205 mg'], ['Sugar', '0 g'], ['Dairy', 'Optional']],
++        sourcing: [
++          'The blend pairs a washed Ethiopian Yirgacheffe, which gives the blueberry and floral top notes, with an organic Peruvian Cajamarca lot that fills in the cocoa and caramel body.',
++          'Every batch is brewed overnight in our shops and kept for no more than 48 hours. Anything left after that becomes the base for our coffee ice cubes.',
++          'Growlers are refillable. Bring yours back and the refill is a dollar off.'
++        ]
++      }
++    };
++
++    /* ==================================================================
++       Navigation stack
++       Views are pushed onto a horizontal scroll-snap stack. History and the
++       URL hash are kept in sync so back/forward, deep links and refresh work.
++       ================================================================== */
++    const stack = document.querySelector('.Stack');
++
++    // The root (home) view is rendered statically in the HTML. It may be
++    // dropped on a deep-link load and recreated later by synthesizeRootEntry().
++    let rootView = stack.querySelector('.Stack-view');
++    const rootTemplate = rootView.cloneNode(true);
++
++    // Element to return focus to when the user comes back to a view.
++    const returnFocus = new WeakMap();
++    // history depth -> {urlPath, view}. The History API only exposes state for
++    // the current entry, so we remember what each depth represents ourselves.
++    const entriesByDepth = new Map();
++    let currentDepth = 0;
++    let activeView = rootView;
++
++    /* ---------- URL helpers (hash-based routes: /#/menu/cold-brew) ---------- */
++    function getCurrentUrlPath() {
++      return location.hash.startsWith('#/') ? location.hash.slice(1) : '/';
++    }
++
++    function toHref(urlPath) {
++      return urlPath === '/' ? location.pathname + location.search : '#' + urlPath;
++    }
++
++    // Returns the in-app route for a link, or null if the browser should
++    // handle it (other pages, external sites, plain fragment anchors).
++    function linkUrlPath(link) {
++      const url = new URL(link.href);
++      if (url.origin !== location.origin || url.pathname !== location.pathname) return null;
++      return url.hash.startsWith('#/') ? url.hash.slice(1) : null;
++    }
++
++    /* ---------- Routing ---------- */
++    function resolveUrl(urlPath) {
++      const match = urlPath.match(/^\/menu\/([a-z-]+)(?:\/(sourcing))?\/?$/);
++      if (!match) return null;
++      const drink = DRINKS[match[1]];
++      if (!drink) return null;
++      return { kind: match[2] ? 'sourcing' : 'drink', slug: match[1], drink };
++    }
++
++    /* ---------- View builders ---------- */
++    function escapeHtml(value) {
++      return String(value).replace(/[&<>"']/g, (c) => ({
++        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
++      })[c]);
++    }
++
++    const BACK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
++    const CHEVRON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
++
++    function createRootView() {
++      return rootTemplate.cloneNode(true);
++    }
++
++    function viewShell(title, docTitle, bodyHtml) {
++      const view = document.createElement('div');
++      view.className = 'Stack-view';
++      view.dataset.title = docTitle;
++      view.innerHTML = `
++        <div class="Stack-viewContent">
++          <header class="View-header">
++            <button class="back" type="button">${BACK_ICON}<span>Back</span></button>
++            <h1>${escapeHtml(title)}</h1>
++            <span></span>
++          </header>
++          <main class="View-body">${bodyHtml}</main>
++        </div>`;
++      return view;
++    }
++
++    function createDrinkView({ slug, drink }) {
++      const body = `
++        <figure class="View-figure">
++          <img src="${drink.image}" alt="${escapeHtml(drink.alt)}" width="1200" height="675" decoding="async">
++          <span class="View-badge">${escapeHtml(drink.badge)}</span>
++        </figure>
++        <h2 class="View-title">${escapeHtml(drink.name)}</h2>
++        <p class="View-tagline">${escapeHtml(drink.tagline)}</p>
++        <p>${escapeHtml(drink.description)}</p>
++
++        <h2>Tasting notes</h2>
++        <ul class="Notes">${drink.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
++
++        <h2>Sizes</h2>
++        <table class="Sizes">
++          <thead><tr><th scope="col">Size</th><th scope="col">Volume</th><th scope="col">Price</th></tr></thead>
++          <tbody>${drink.sizes.map(([s, v, p]) =>
++            `<tr><td>${escapeHtml(s)}</td><td>${escapeHtml(v)}</td><td>${escapeHtml(p)}</td></tr>`).join('')}</tbody>
++        </table>
++
++        <a class="More-link" href="#/menu/${slug}/sourcing">
++          <span><strong>Sourcing &amp; nutrition</strong><small>Where the beans come from and what's in your cup</small></span>
++          ${CHEVRON_ICON}
++        </a>
++
++        <div class="Actions">
++          <a href="/order-online" class="btn btn--accent">Order for pickup</a>
++          <a href="/menu" class="btn">Full menu</a>
++        </div>`;
++      return viewShell(drink.name, `${drink.name} | The Daily Grind`, body);
++    }
++
++    function createSourcingView({ drink }) {
++      const body = `
++        <h2 class="View-title">Sourcing &amp; nutrition</h2>
++        <p class="View-tagline">${escapeHtml(drink.name)}</p>
++
++        <h2>Per medium serving</h2>
++        <dl class="Facts">${drink.facts.map(([k, v]) =>
++          `<div><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
++
++        <h2>Where it comes from</h2>
++        <div class="Sourcing">${drink.sourcing.map((p) => `<p>${escapeHtml(p)}</p>`).join('')}</div>`;
++      return viewShell('Sourcing & nutrition', `${drink.name} sourcing | The Daily Grind`, body);
++    }
++
++    function createDrillDownView(routeData) {
++      return routeData.kind === 'sourcing' ? createSourcingView(routeData) : createDrinkView(routeData);
++    }
++
++    /* ---------- Drill down ---------- */
++    function drillDown(urlPath) {
++      const routeData = resolveUrl(urlPath);
++      if (!routeData) return;
++
++      const newDepth = currentDepth + 1;
++      history.pushState({ depth: newDepth }, '', toHref(urlPath));
++
++      // pushState discards forward entries; mirror that in our depth map.
++      for (const d of [...entriesByDepth.keys()]) {
++        if (d >= newDepth) entriesByDepth.delete(d);
++      }
++      currentDepth = newDepth;
++
++      const newView = createDrillDownView(routeData);
++      stack.appendChild(newView);
++      entriesByDepth.set(newDepth, { urlPath, view: newView });
++
++      // behavior:'auto' defers to the CSS scroll-behavior (smooth unless the
++      // user prefers reduced motion).
++      stack.scrollBy({ left: stack.clientWidth, behavior: 'auto' });
++    }
++
++    /* ---------- Clicks and back ---------- */
++    stack.addEventListener('click', (e) => {
++      if (e.target.closest('.back')) {
++        goBack();
++        return;
++      }
++
++      const link = e.target.closest('a');
++      if (!link || !stack.contains(link)) return;
++      // Preserve open-in-new-tab behaviour.
++      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
++
++      const urlPath = linkUrlPath(link);
++      const parentView = link.closest('.Stack-view');
++      if (!urlPath || !resolveUrl(urlPath) || !parentView) return;
++
++      e.preventDefault();
++      returnFocus.set(parentView, link);
++      drillDown(urlPath);
++    });
++
++    document.addEventListener('keydown', (e) => {
++      if (e.key === 'Escape' && activeView && activeView !== rootView && !e.defaultPrevented) {
++        goBack();
++      }
++    });
++
++    function goBack() {
++      // On a deep-link load there is no in-app entry behind the current one;
++      // history.back() would leave the site. Push a root entry instead.
++      const atDeepLinkRoot = currentDepth === 0 && entriesByDepth.get(0)?.view !== rootView;
++      if (atDeepLinkRoot) {
++        synthesizeRootEntry();
++      } else {
++        history.back();
++      }
++    }
++
++    function synthesizeRootEntry() {
++      const newDepth = currentDepth + 1;
++      history.pushState({ depth: newDepth }, '', toHref('/'));
++
++      if (!rootView) {
++        rootView = createRootView();
++        stack.prepend(rootView);
++        // Keep the deep-linked view on screen until the scroll below runs.
++        // Explicitly instant: assigning scrollLeft would honour the CSS
++        // scroll-behavior and animate the compensation.
++        stack.scrollTo({ left: stack.scrollLeft + stack.clientWidth, behavior: 'instant' });
++      }
++      entriesByDepth.set(newDepth, { urlPath: '/', view: rootView });
++      updateFromHistoryState(history.state);
++    }
++
++    /* ---------- History -> stack ---------- */
++    window.addEventListener('popstate', (event) => {
++      updateFromHistoryState(event.state);
++    });
++
++    function updateFromHistoryState(state, behaviorOverride) {
++      const newDepth = state?.depth ?? 0;
++      const urlPath = getCurrentUrlPath();
++
++      const entry = entriesByDepth.get(newDepth) ?? { view: null };
++      if (entry.urlPath !== urlPath) {
++        entry.urlPath = urlPath;
++        entry.view = urlPath === '/' ? rootView : null;
++      }
++      entriesByDepth.set(newDepth, entry);
++
++      // Rebuild views that were pruned after a swipe-back, so forward
++      // navigation has something to scroll to.
++      for (let d = 0; d <= newDepth; d++) {
++        const e = entriesByDepth.get(d);
++        if (!e || e.view) continue;
++        if (e.urlPath === '/') {
++          if (!rootView) {
++            rootView = createRootView();
++            stack.prepend(rootView);
++            // Explicitly instant: assigning scrollLeft would honour the CSS
++            // scroll-behavior and animate the compensation.
++            stack.scrollTo({ left: stack.scrollLeft + stack.clientWidth, behavior: 'instant' });
++          }
++          e.view = rootView;
++          continue;
++        }
++        const routeData = resolveUrl(e.urlPath);
++        if (!routeData) continue;
++        const rebuilt = createDrillDownView(routeData);
++        stack.appendChild(rebuilt);
++        e.view = rebuilt;
++      }
++
++      currentDepth = newDepth;
++
++      const targetView = entriesByDepth.get(newDepth)?.view;
++      if (!targetView) return;
++
++      const toIdx = [...stack.children].indexOf(targetView);
++      const fromIdx = Math.round(stack.scrollLeft / stack.clientWidth);
++      if (fromIdx === toIdx) return;
++
++      // Back (leftward, single step) animates; forward and multi-step jumps
++      // snap instantly so intermediate views don't each fire a snap change.
++      const forward = toIdx > fromIdx;
++      const multiStep = Math.abs(toIdx - fromIdx) > 1;
++      const behavior = behaviorOverride ?? (forward || multiStep ? 'instant' : 'auto');
++      stack.scrollTo({ left: toIdx * stack.clientWidth, behavior });
++    }
++
++    /* ---------- Snap change: single source of truth ---------- */
++    function onActiveViewChanged(currentView) {
++      if (!currentView || !stack.contains(currentView)) return;
++      activeView = currentView;
++
++      let seenCurrent = false;
++      for (const view of [...stack.children]) {
++        if (seenCurrent) {
++          // Swiped past: drop from the DOM; the URL stays cached for rebuild.
++          for (const e of entriesByDepth.values()) {
++            if (e.view === view) e.view = null;
++          }
++          view.remove();
++        } else {
++          view.toggleAttribute('inert', view !== currentView);
++          if (view === currentView) seenCurrent = true;
++        }
++      }
++
++      // A swipe-back changed the visible view without touching history;
++      // move the history cursor to match.
++      let currentViewDepth;
++      for (const [d, e] of entriesByDepth) {
++        if (e.view === currentView) currentViewDepth = d;
++      }
++      if (currentViewDepth !== undefined && currentViewDepth !== currentDepth) {
++        history.go(currentViewDepth - currentDepth);
++      }
++
++      if (currentView.dataset.title) document.title = currentView.dataset.title;
++
++      const stored = returnFocus.get(currentView);
++      if (stored && stored.isConnected) {
++        stored.focus({ preventScroll: true });
++        returnFocus.delete(currentView);
++      } else if (currentView !== rootView) {
++        currentView.querySelector('.back')?.focus({ preventScroll: true });
++      }
++    }
++
++    if ('onscrollsnapchange' in HTMLElement.prototype) {
++      stack.addEventListener('scrollsnapchange', (event) => {
++        onActiveViewChanged(event.snapTargetInline);
++      });
++    } else {
++      // Fallback for browsers without scroll snap events: a view becoming fully
++      // visible inside the stack is the snap-commit moment.
++      const viewObserver = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.intersectionRatio === 1) onActiveViewChanged(entry.target);
++        }
++      }, { root: stack, threshold: 1 });
++
++      new MutationObserver((mutations) => {
++        for (const m of mutations) {
++          for (const node of m.addedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.observe(node);
++          }
++          for (const node of m.removedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.unobserve(node);
++          }
++        }
++      }).observe(stack, { childList: true });
++
++      for (const view of stack.children) viewObserver.observe(view);
++    }
++
++    // Parallax fallback for browsers without scroll-driven animations.
++    if (!CSS.supports('animation-timeline: view()')) {
++      stack.addEventListener('scroll', () => {
++        const viewWidth = stack.clientWidth;
++        for (const view of stack.children) {
++          const offsetLeft = view.offsetLeft - stack.scrollLeft;
++          const progress = Math.min(1, Math.max(0, -offsetLeft / viewWidth));
++          const content = view.firstElementChild;
++          content.style.transform = progress ? `translateX(${progress * 60}%)` : '';
++          content.style.filter = progress ? `brightness(${1 - progress * 0.25})` : '';
++        }
++      }, { passive: true });
++    }
++
++    /* ---------- Init (handles deep links) ---------- */
++    const initialUrlPath = getCurrentUrlPath();
++    const initialRouteData = resolveUrl(initialUrlPath);
++
++    let initialView;
++    if (initialRouteData) {
++      // Deep link: show only the linked view. The root is created on demand
++      // when the user navigates back to it.
++      rootView.remove();
++      rootView = null;
++      initialView = createDrillDownView(initialRouteData);
++      stack.appendChild(initialView);
++      entriesByDepth.set(0, { urlPath: initialUrlPath, view: initialView });
++      history.replaceState({ depth: 0 }, '');
++    } else {
++      initialView = rootView;
++      entriesByDepth.set(0, { urlPath: '/', view: rootView });
++      // Normalise unknown hashes (e.g. #/menu/nope) back to the root URL.
++      history.replaceState({ depth: 0 }, '', initialUrlPath === '/' ? location.href : toHref('/'));
++    }
++    activeView = initialView;
++    if (initialView.dataset.title) document.title = initialView.dataset.title;
++
++    updateFromHistoryState(history.state, 'instant');
++  </script>
++
+ </body>
+ 
+ </html>

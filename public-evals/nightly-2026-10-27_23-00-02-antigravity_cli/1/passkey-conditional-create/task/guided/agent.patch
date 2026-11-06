@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-In Section */
++    .signin-section {
++      max-width: 440px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin-section h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      box-sizing: border-box;
++      color: var(--text);
++    }
++
++    .form-group input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .password-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .toggle-password {
++      background: none;
++      border: none;
++      color: var(--primary);
++      font-size: 0.85rem;
++      cursor: pointer;
++      text-decoration: underline;
++      padding: 4px 0;
++    }
++
++    .signin-submit {
++      width: 100%;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .forgot-password {
++      display: block;
++      text-align: center;
++      margin-top: 16px;
++      font-size: 0.9rem;
++      color: var(--primary);
++      text-decoration: none;
++    }
++
++    .forgot-password:hover {
++      text-decoration: underline;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +256,55 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin-section" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" action="/api/login" method="POST" novalidate>
++        <div class="form-group">
++          <label for="email">Email</label>
++          <input
++            type="email"
++            id="email"
++            name="email"
++            autocomplete="username webauthn"
++            autocorrect="off"
++            autocapitalize="off"
++            spellcheck="false"
++            enterkeyhint="next"
++            required
++          >
++        </div>
++        <div class="form-group">
++          <div class="password-header">
++            <label for="password">Password</label>
++            <button
++              type="button"
++              id="toggle-password"
++              class="toggle-password"
++              aria-pressed="false"
++              aria-label="Show password"
++            >Show</button>
++          </div>
++          <input
++            type="password"
++            id="password"
++            name="password"
++            autocomplete="current-password"
++            enterkeyhint="done"
++            required
++          >
++        </div>
++        <button
++          type="submit"
++          id="signin-button"
++          data-testid="signin-button"
++          class="btn signin-submit"
++        >Sign In</button>
++        <a href="/forgot-password" class="forgot-password">Forgot password?</a>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +335,202 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const loginAbortController = new AbortController();
++
++    function base64UrlToUint8Array(base64Url) {
++      const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
++      const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
++      const rawData = atob(base64);
++      const outputArray = new Uint8Array(rawData.length);
++      for (let i = 0; i < rawData.length; ++i) {
++        outputArray[i] = rawData.charCodeAt(i);
++      }
++      return outputArray;
++    }
++
++    function arrayBufferToBase64Url(buffer) {
++      const bytes = new Uint8Array(buffer);
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function parseCreationOptions(optionsJSON) {
++      if (typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++      }
++      return {
++        ...optionsJSON,
++        challenge: typeof optionsJSON.challenge === 'string'
++          ? base64UrlToUint8Array(optionsJSON.challenge)
++          : optionsJSON.challenge,
++        user: {
++          ...optionsJSON.user,
++          id: typeof optionsJSON.user.id === 'string'
++            ? base64UrlToUint8Array(optionsJSON.user.id)
++            : optionsJSON.user.id
++        },
++        excludeCredentials: Array.isArray(optionsJSON.excludeCredentials)
++          ? optionsJSON.excludeCredentials.map((cred) => ({
++              ...cred,
++              id: typeof cred.id === 'string' ? base64UrlToUint8Array(cred.id) : cred.id
++            }))
++          : []
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') {
++        return credential.toJSON();
++      }
++      const response = credential.response;
++      return {
++        id: credential.id,
++        rawId: credential.rawId ? arrayBufferToBase64Url(credential.rawId) : credential.id,
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment || null,
++        clientExtensionResults: typeof credential.getClientExtensionResults === 'function'
++          ? credential.getClientExtensionResults()
++          : {},
++        response: {
++          clientDataJSON: response && response.clientDataJSON
++            ? arrayBufferToBase64Url(response.clientDataJSON)
++            : undefined,
++          attestationObject: response && response.attestationObject
++            ? arrayBufferToBase64Url(response.attestationObject)
++            : undefined,
++          transports: response && typeof response.getTransports === 'function'
++            ? response.getTransports()
++            : []
++        }
++      };
++    }
++
++    async function triggerConditionalCreate() {
++      if (
++        typeof window.PublicKeyCredential === 'undefined' ||
++        typeof PublicKeyCredential.getClientCapabilities !== 'function'
++      ) {
++        return;
++      }
++
++      let capabilities;
++      try {
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++      } catch (err) {
++        return;
++      }
++
++      if (!capabilities || capabilities.conditionalCreate !== true) {
++        return;
++      }
++
++      // 1. Abort any active autofill conditional-get controllers to clear the WebAuthn pipeline
++      loginAbortController.abort();
++
++      // 2. Fetch creation options from POST /api/register/options
++      let creationOptionsJSON;
++      try {
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ conditional: true })
++        });
++        if (!optionsResponse.ok) {
++          return;
++        }
++        creationOptionsJSON = await optionsResponse.json();
++      } catch (err) {
++        return;
++      }
++
++      const rpId = (creationOptionsJSON.rp && creationOptionsJSON.rp.id) || window.location.hostname;
++      let publicKey;
++      try {
++        publicKey = parseCreationOptions(creationOptionsJSON);
++      } catch (err) {
++        return;
++      }
++
++      // 3. Invoke silent credentials creation prompt with mediation: 'conditional'
++      let credential;
++      try {
++        credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional'
++        });
++      } catch (e) {
++        // 4. Silently swallow common WebAuthn browser exceptions without rendering any error UI
++        if (e && ['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
++          return;
++        }
++        return;
++      }
++
++      if (!credential) {
++        return;
++      }
++
++      // 5. Server verification step at POST /api/register/verify
++      const encodedResponse = serializeCredential(credential);
++      try {
++        const verifyResponse = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encodedResponse)
++        });
++        if (!verifyResponse.ok) {
++          if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encodedResponse.id
++            });
++          }
++        }
++      } catch (serverErr) {
++        if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: encodedResponse.id
++            });
++          } catch (_) {
++            // Silently ignore cleanup errors
++          }
++        }
++      }
++    }
++
++    const togglePasswordBtn = document.getElementById('toggle-password');
++    const passwordInput = document.getElementById('password');
++    if (togglePasswordBtn && passwordInput) {
++      togglePasswordBtn.addEventListener('click', () => {
++        const isPassword = passwordInput.type === 'password';
++        passwordInput.type = isPassword ? 'text' : 'password';
++        togglePasswordBtn.textContent = isPassword ? 'Hide' : 'Show';
++        togglePasswordBtn.setAttribute('aria-pressed', String(isPassword));
++        togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
++      });
++    }
++
++    const signinForm = document.getElementById('signin-form');
++    const signinButton = document.querySelector('[data-testid="signin-button"]');
++
++    async function handlePasswordSignIn(event) {
++      if (event) {
++        event.preventDefault();
++      }
++      await triggerConditionalCreate();
++    }
++
++    if (signinForm) {
++      signinForm.addEventListener('submit', handlePasswordSignIn);
++    }
++  </script>
+ </body>
+ 
+ </html>

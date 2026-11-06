@@ -1,0 +1,508 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,504 @@
++<!DOCTYPE html>
++<html lang="en" class="async-hide">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <meta name="description" content="Ship faster with automated workflow intelligence, real-time analytics, and instant cloud deployments." />
++  <title>PulseFlow — Intelligent Workflow Automation</title>
++
++  <!-- Early connection hints to reduce A/B testing script latency -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="dns-prefetch" href="https://cdn.example.com" />
++  <link rel="preload" href="https://cdn.example.com/experiment-sdk.js" as="script" />
++
++  <!-- Anti-flicker snippet: hides experiment content (preserving layout to avoid CLS) until variant is applied or fallback triggers -->
++  <style id="ab-antiflicker-style">
++    html.async-hide body {
++      opacity: 0 !important;
++      visibility: hidden !important;
++    }
++  </style>
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var revealed = false;
++      var domReady = false;
++
++      document.addEventListener('DOMContentLoaded', function () {
++        domReady = true;
++      });
++
++      function revealContent() {
++        if (revealed) return;
++        revealed = true;
++        root.classList.remove('async-hide');
++        var sdkScript = document.getElementById('experiment-sdk');
++        if (sdkScript && sdkScript.hasAttribute('blocking')) {
++          sdkScript.removeAttribute('blocking');
++        }
++      }
++
++      // Expose reveal helper globally and setup failsafe timeout so a slow/failed CDN never leaves the page blank
++      window.__revealABContent = revealContent;
++      var fallbackTimer = setTimeout(revealContent, 1000);
++
++      window.__onExperimentLoaded = function () {
++        clearTimeout(fallbackTimer);
++        if (!domReady && document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', revealContent, { once: true });
++        } else {
++          // Queue after any DOMContentLoaded listeners registered by the experiment SDK
++          document.addEventListener('DOMContentLoaded', revealContent, { once: true });
++          setTimeout(revealContent, 0);
++        }
++      };
++
++      window.__onExperimentError = function () {
++        clearTimeout(fallbackTimer);
++        revealContent();
++      };
++    })();
++  </script>
++
++  <!-- Load A/B testing SDK with defer + blocking="render" + fetchpriority="high"
++       so HTML parsing is not blocked, the DOM is ready when the SDK runs,
++       and initial paint waits until the variant is applied. -->
++  <script
++    id="experiment-sdk"
++    src="https://cdn.example.com/experiment-sdk.js"
++    defer
++    blocking="render"
++    fetchpriority="high"
++    onload="window.__onExperimentLoaded && window.__onExperimentLoaded()"
++    onerror="window.__onExperimentError && window.__onExperimentError()"
++  ></script>
++
++  <style>
++    :root {
++      --bg-primary: #0b0f19;
++      --bg-surface: #111827;
++      --bg-card: #1e293b;
++      --text-primary: #f8fafc;
++      --text-secondary: #cbd5e1;
++      --text-muted: #94a3b8;
++      --accent-primary: #6366f1;
++      --accent-hover: #4f46e5;
++      --accent-glow: rgba(99, 102, 241, 0.28);
++      --border-subtle: rgba(148, 163, 184, 0.16);
++      --success: #10b981;
++    }
++
++    *,
++    *::before,
++    *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.6;
++      -webkit-font-smoothing: antialiased;
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .container {
++      width: 100%;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 0 1.5rem;
++    }
++
++    /* Navigation */
++    .site-header {
++      border-bottom: 1px solid var(--border-subtle);
++      background: rgba(11, 15, 25, 0.85);
++    }
++
++    .nav-bar {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      height: 4.5rem;
++    }
++
++    .brand {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.625rem;
++      font-weight: 700;
++      font-size: 1.25rem;
++      color: var(--text-primary);
++      text-decoration: none;
++      letter-spacing: -0.02em;
++    }
++
++    .brand-icon {
++      width: 2rem;
++      height: 2rem;
++      border-radius: 0.5rem;
++      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      color: #ffffff;
++      font-weight: 800;
++    }
++
++    .nav-links {
++      display: flex;
++      align-items: center;
++      gap: 2rem;
++      list-style: none;
++    }
++
++    .nav-links a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.95rem;
++      font-weight: 500;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover {
++      color: var(--text-primary);
++    }
++
++    /* Hero Section */
++    .hero {
++      padding: 5.5rem 0 4.5rem;
++      position: relative;
++      overflow: hidden;
++    }
++
++    .hero-grid {
++      display: grid;
++      grid-template-columns: 1.1fr 0.9fr;
++      gap: 3.5rem;
++      align-items: center;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.375rem 0.875rem;
++      border-radius: 9999px;
++      background: rgba(99, 102, 241, 0.12);
++      border: 1px solid rgba(99, 102, 241, 0.35);
++      color: #a5b4fc;
++      font-size: 0.875rem;
++      font-weight: 600;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-badge-dot {
++      width: 0.5rem;
++      height: 0.5rem;
++      border-radius: 50%;
++      background-color: var(--success);
++    }
++
++    .hero-title {
++      font-size: clamp(2.25rem, 4.5vw, 3.75rem);
++      font-weight: 800;
++      line-height: 1.12;
++      letter-spacing: -0.03em;
++      color: var(--text-primary);
++      margin-bottom: 1.25rem;
++    }
++
++    .hero-subtitle {
++      font-size: 1.175rem;
++      color: var(--text-secondary);
++      max-width: 38rem;
++      margin-bottom: 2.25rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem;
++      margin-bottom: 2rem;
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.625rem;
++      padding: 0.95rem 1.85rem;
++      font-size: 1.05rem;
++      font-weight: 600;
++      color: #ffffff;
++      background: var(--accent-primary);
++      border: none;
++      border-radius: 0.625rem;
++      cursor: pointer;
++      box-shadow: 0 10px 25px -5px var(--accent-glow);
++      transition: background-color 0.15s ease, transform 0.15s ease;
++      text-decoration: none;
++    }
++
++    .cta-button:hover {
++      background: var(--accent-hover);
++      transform: translateY(-1px);
++    }
++
++    .cta-button:focus-visible {
++      outline: 2px solid #a5b4fc;
++      outline-offset: 3px;
++    }
++
++    .secondary-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0.95rem 1.5rem;
++      font-size: 1rem;
++      font-weight: 600;
++      color: var(--text-primary);
++      background: rgba(30, 41, 59, 0.75);
++      border: 1px solid var(--border-subtle);
++      border-radius: 0.625rem;
++      text-decoration: none;
++      transition: background-color 0.15s ease;
++    }
++
++    .secondary-button:hover {
++      background: var(--bg-card);
++    }
++
++    .hero-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1.5rem;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++    }
++
++    .hero-meta span {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++    }
++
++    .cta-feedback {
++      margin-top: 1rem;
++      font-size: 0.95rem;
++      color: #34d399;
++      font-weight: 500;
++      min-height: 1.5rem;
++    }
++
++    /* Hero Visual Preview Card */
++    .hero-visual {
++      background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(17, 24, 39, 0.95) 100%);
++      border: 1px solid var(--border-subtle);
++      border-radius: 1rem;
++      padding: 1.5rem;
++      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
++    }
++
++    .hero-visual svg {
++      width: 100%;
++      height: auto;
++      display: block;
++      border-radius: 0.5rem;
++    }
++
++    /* Features Grid */
++    .features {
++      padding: 4rem 0 5rem;
++      border-top: 1px solid var(--border-subtle);
++      background: var(--bg-surface);
++    }
++
++    .features-header {
++      text-align: center;
++      max-width: 40rem;
++      margin: 0 auto 3rem;
++    }
++
++    .features-header h2 {
++      font-size: 1.875rem;
++      font-weight: 700;
++      margin-bottom: 0.75rem;
++    }
++
++    .features-header p {
++      color: var(--text-secondary);
++    }
++
++    .features-grid {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 1.75rem;
++    }
++
++    .feature-card {
++      background: var(--bg-card);
++      border: 1px solid var(--border-subtle);
++      border-radius: 0.875rem;
++      padding: 1.75rem;
++    }
++
++    .feature-card h3 {
++      font-size: 1.15rem;
++      font-weight: 700;
++      margin-bottom: 0.5rem;
++      color: var(--text-primary);
++    }
++
++    .feature-card p {
++      color: var(--text-secondary);
++      font-size: 0.95rem;
++    }
++
++    .site-footer {
++      margin-top: auto;
++      border-top: 1px solid var(--border-subtle);
++      padding: 2rem 0;
++      text-align: center;
++      color: var(--text-muted);
++      font-size: 0.875rem;
++    }
++
++    @media (max-width: 900px) {
++      .hero-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .features-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .nav-links {
++        display: none;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <nav class="container nav-bar" aria-label="Main Navigation">
++      <a href="#hero" class="brand">
++        <span class="brand-icon" aria-hidden="true">P</span>
++        <span>PulseFlow</span>
++      </a>
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#hero">Solutions</a></li>
++        <li><a href="#hero">Pricing</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section id="hero" class="hero" data-experiment="hero-section" data-variant="control">
++      <div class="container hero-grid">
++        <div class="hero-content" data-experiment-container="hero">
++          <div class="hero-badge" data-experiment-target="badge">
++            <span class="hero-badge-dot" aria-hidden="true"></span>
++            <span>New: Automated Release Pipelines 2.0</span>
++          </div>
++          <h1 id="hero-title" class="hero-title" data-experiment-target="headline">
++            Ship resilient software at twice the speed
++          </h1>
++          <p id="hero-subtitle" class="hero-subtitle" data-experiment-target="subheadline">
++            Unify your CI/CD pipelines, real-time telemetry, and progressive rollouts in a single developer platform built for high-velocity teams.
++          </p>
++          <div class="hero-actions">
++            <button
++              id="cta-button"
++              class="cta-button"
++              type="button"
++              data-experiment-target="cta"
++            >
++              Start Your Free Trial
++            </button>
++            <a href="#features" class="secondary-button" data-experiment-target="secondary-cta">
++              Explore Platform
++            </a>
++          </div>
++          <div class="hero-meta">
++            <span>&#10003; 14-day free trial</span>
++            <span>&#10003; No credit card required</span>
++            <span>&#10003; SOC2 Type II certified</span>
++          </div>
++          <p id="cta-feedback" class="cta-feedback" role="status" aria-live="polite"></p>
++        </div>
++
++        <div class="hero-visual" aria-hidden="true">
++          <svg viewBox="0 0 520 360" width="520" height="360" fill="none" xmlns="http://www.w3.org/2000/svg">
++            <rect width="520" height="360" rx="12" fill="#0F172A" />
++            <rect x="20" y="20" width="480" height="44" rx="8" fill="#1E293B" />
++            <circle cx="42" cy="42" r="6" fill="#EF4444" />
++            <circle cx="62" cy="42" r="6" fill="#F59E0B" />
++            <circle cx="82" cy="42" r="6" fill="#10B981" />
++            <rect x="115" y="34" width="160" height="16" rx="4" fill="#334155" />
++            <!-- Metric cards -->
++            <rect x="20" y="80" width="150" height="86" rx="8" fill="#1E293B" />
++            <rect x="36" y="96" width="70" height="10" rx="3" fill="#94A3B8" />
++            <rect x="36" y="118" width="95" height="24" rx="4" fill="#6366F1" />
++            <rect x="185" y="80" width="150" height="86" rx="8" fill="#1E293B" />
++            <rect x="201" y="96" width="80" height="10" rx="3" fill="#94A3B8" />
++            <rect x="201" y="118" width="105" height="24" rx="4" fill="#10B981" />
++            <rect x="350" y="80" width="150" height="86" rx="8" fill="#1E293B" />
++            <rect x="366" y="96" width="65" height="10" rx="3" fill="#94A3B8" />
++            <rect x="366" y="118" width="90" height="24" rx="4" fill="#8B5CF6" />
++            <!-- Chart area -->
++            <rect x="20" y="182" width="480" height="158" rx="8" fill="#1E293B" />
++            <path d="M44 305 L120 265 L195 280 L270 225 L345 240 L420 198 L476 210" stroke="#6366F1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
++            <path d="M44 320 L120 298 L195 302 L270 272 L345 268 L420 242 L476 234" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 6" />
++          </svg>
++        </div>
++      </div>
++    </section>
++
++    <section id="features" class="features">
++      <div class="container">
++        <div class="features-header">
++          <h2>Built for mission-critical engineering</h2>
++          <p>Everything your team needs to test, deploy, and observe production workloads with confidence.</p>
++        </div>
++        <div class="features-grid">
++          <article class="feature-card">
++            <h3>Instant Rollbacks</h3>
++            <p>Automatically detect anomalies in key metrics and revert deployments in sub-second timeframes.</p>
++          </article>
++          <article class="feature-card">
++            <h3>Zero-Flicker Experimentation</h3>
++            <p>Run deterministic A/B tests and feature flags at the edge without degrading Core Web Vitals.</p>
++          </article>
++          <article class="feature-card">
++            <h3>Unified Observability</h3>
++            <p>Correlate build logs, distributed traces, and user conversion metrics in one real-time view.</p>
++          </article>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <div class="container">
++      <p>&copy; 2026 PulseFlow Inc. All rights reserved.</p>
++    </div>
++  </footer>
++
++  <script>
++    document.getElementById('cta-button').addEventListener('click', function () {
++      var feedback = document.getElementById('cta-feedback');
++      if (feedback) {
++        feedback.textContent = 'Your free trial workspace is ready! Redirecting to onboarding...';
++      }
++    });
++  </script>
++</body>
++</html>

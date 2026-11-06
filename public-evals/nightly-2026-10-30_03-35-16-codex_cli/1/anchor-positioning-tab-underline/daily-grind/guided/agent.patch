@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..6a61a7e 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,26 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav ul::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: -6px;
++      width: 1px;
++      height: 2px;
++      background: var(--accent);
++      pointer-events: none;
++      transform-origin: left;
++      transform: translateX(var(--indicator-x, 0px)) scaleX(var(--indicator-width, 0));
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul[data-indicator-ready]::after {
++        transition: transform 0.3s ease;
++      }
+     }
+ 
+     nav ul li {
+@@ -56,13 +76,15 @@
+     }
+ 
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current] {
+       color: var(--accent);
+     }
+ 
+@@ -160,7 +182,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +229,46 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    const navLinks = [...navList.querySelectorAll('a:not(.logout-link)')];
++    const currentPath = window.location.pathname.replace(/\/$/, '');
++    let activeLink = navLinks.find(link =>
++      currentPath === link.pathname || currentPath.startsWith(`${link.pathname}/`)
++    ) || navLinks[0];
++
++    function positionIndicator() {
++      const listBounds = navList.getBoundingClientRect();
++      const linkBounds = activeLink.getBoundingClientRect();
++      navList.style.setProperty('--indicator-x', `${linkBounds.left - listBounds.left}px`);
++      navList.style.setProperty('--indicator-width', linkBounds.width);
++    }
++
++    function selectLink(link) {
++      navLinks.forEach(item => item.removeAttribute('aria-current'));
++      activeLink = link;
++      activeLink.setAttribute('aria-current', 'page');
++      positionIndicator();
++    }
++
++    navLinks.forEach(link => {
++      link.addEventListener('click', event => {
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        event.preventDefault();
++        selectLink(link);
++      });
++    });
++
++    selectLink(activeLink);
++    requestAnimationFrame(() => {
++      requestAnimationFrame(() => {
++        navList.setAttribute('data-indicator-ready', '');
++      });
++    });
++    window.addEventListener('resize', positionIndicator);
++    document.fonts.ready.then(positionIndicator);
++  </script>
++
+ </body>
+ 
+ </html>

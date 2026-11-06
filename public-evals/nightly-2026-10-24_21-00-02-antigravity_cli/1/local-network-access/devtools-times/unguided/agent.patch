@@ -1,0 +1,266 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..3e76fcb 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,31 @@
++type IPAddressSpace = 'local' | 'loopback' | 'public';
++
++type LocalNetworkPermissionName =
++  | 'local-network'
++  | 'loopback-network'
++  | 'local-network-access';
++
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    localNetworkAccess?: {
++      fetchLocalResource: (
++        input: RequestInfo | URL,
++        init?: RequestInit & { targetAddressSpace?: IPAddressSpace }
++      ) => Promise<Response>;
++      fetchLoopbackResource: (
++        input: RequestInfo | URL,
++        init?: RequestInit & { targetAddressSpace?: IPAddressSpace }
++      ) => Promise<Response>;
++      queryPermission: (
++        name?: LocalNetworkPermissionName
++      ) => Promise<PermissionStatus | null>;
++    };
++  }
++
++  interface RequestInit {
++    targetAddressSpace?: IPAddressSpace;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..89ca383 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -32,6 +32,22 @@ const baseUrl = import.meta.env.BASE_URL;
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
++    <script>
++      import {
++        fetchLocalNetworkResource,
++        fetchLoopbackResource,
++        queryLocalNetworkPermission,
++      } from "../utils/localNetworkAccess";
++
++      if (typeof window !== "undefined") {
++        window.localNetworkAccess = {
++          fetchLocalResource: fetchLocalNetworkResource,
++          fetchLoopbackResource: fetchLoopbackResource,
++          queryPermission: queryLocalNetworkPermission,
++        };
++      }
++    </script>
++
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..628e04d 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,12 @@
+ 
+ import { defineMiddleware } from 'astro:middleware';
+ 
++const LOCAL_NETWORK_PERMISSIONS_POLICY = [
++  'local-network=(self "https://chrome.dev" "https://astro-news-pytrpecapa-uc.a.run.app" "https://astro-news-1026410574114.us-central1.run.app")',
++  'loopback-network=(self "https://chrome.dev" "https://astro-news-pytrpecapa-uc.a.run.app" "https://astro-news-1026410574114.us-central1.run.app")',
++  'local-network-access=(self "https://chrome.dev" "https://astro-news-pytrpecapa-uc.a.run.app" "https://astro-news-1026410574114.us-central1.run.app")',
++].join(', ');
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +15,44 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  if (
++    context.request.method === 'OPTIONS' &&
++    context.request.headers.get('Access-Control-Request-Private-Network') === 'true'
++  ) {
++    const origin = context.request.headers.get('Origin') || '*';
++    return new Response(null, {
++      status: 204,
++      headers: {
++        'Access-Control-Allow-Origin': origin,
++        'Access-Control-Allow-Private-Network': 'true',
++        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
++        'Access-Control-Allow-Headers':
++          context.request.headers.get('Access-Control-Request-Headers') || 'Content-Type',
++        'Permissions-Policy': LOCAL_NETWORK_PERMISSIONS_POLICY,
++      },
++    });
++  }
++
++  const response = await next();
++  const headers = new Headers(response.headers);
++
++  const existingPolicy = headers.get('Permissions-Policy');
++  headers.set(
++    'Permissions-Policy',
++    existingPolicy
++      ? `${existingPolicy}, ${LOCAL_NETWORK_PERMISSIONS_POLICY}`
++      : LOCAL_NETWORK_PERMISSIONS_POLICY
++  );
++
++  if (context.request.headers.get('Access-Control-Request-Private-Network') === 'true') {
++    headers.set('Access-Control-Allow-Private-Network', 'true');
++  }
++
++  return new Response(response.body, {
++    status: response.status,
++    statusText: response.statusText,
++    headers,
++  });
+ });
++
+diff --git a/src/utils/localNetworkAccess.ts b/src/utils/localNetworkAccess.ts
+new file mode 100644
+index 0000000..ec24327
+--- /dev/null
++++ b/src/utils/localNetworkAccess.ts
+@@ -0,0 +1,132 @@
++export type TargetAddressSpace = 'local' | 'loopback' | 'public';
++
++export type LocalNetworkPermissionName =
++  | 'local-network'
++  | 'loopback-network'
++  | 'local-network-access';
++
++export interface LocalNetworkRequestInit extends RequestInit {
++  targetAddressSpace?: TargetAddressSpace;
++}
++
++const LOOPBACK_HOSTS = new Set([
++  'localhost',
++  '127.0.0.1',
++  '[::1]',
++  '::1',
++]);
++
++/**
++ * Infers the target IP address space ('loopback', 'local', or 'public') for a URL.
++ */
++export function inferTargetAddressSpace(input: RequestInfo | URL): TargetAddressSpace {
++  try {
++    const rawUrl =
++      typeof input === 'string'
++        ? input
++        : input instanceof URL
++          ? input.href
++          : input.url;
++    const base =
++      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
++    const parsed = new URL(rawUrl, base);
++    const hostname = parsed.hostname.toLowerCase();
++
++    if (
++      LOOPBACK_HOSTS.has(hostname) ||
++      hostname.endsWith('.localhost') ||
++      /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)
++    ) {
++      return 'loopback';
++    }
++
++    if (
++      hostname.endsWith('.local') ||
++      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
++      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
++      /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
++      /^169\.254\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
++      /^\[?(fc|fd|fe80)[0-9a-f:]*\]?$/i.test(hostname)
++    ) {
++      return 'local';
++    }
++  } catch {
++    // Fallback to 'local' when explicitly invoked via local network helper
++  }
++  return 'local';
++}
++
++/**
++ * Queries the browser Permissions API for Local Network Access permissions:
++ * 'local-network', 'loopback-network', or 'local-network-access'.
++ */
++export async function queryLocalNetworkPermission(
++  name: LocalNetworkPermissionName = 'local-network-access'
++): Promise<PermissionStatus | null> {
++  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
++    return null;
++  }
++
++  const candidates: LocalNetworkPermissionName[] = [
++    name,
++    'local-network',
++    'loopback-network',
++    'local-network-access',
++  ];
++
++  for (const permissionName of new Set(candidates)) {
++    try {
++      return await navigator.permissions.query({
++        name: permissionName as PermissionName,
++      });
++    } catch {
++      // Try next supported permission descriptor
++    }
++  }
++
++  return null;
++}
++
++/**
++ * Fetches a resource on the user's local network (`targetAddressSpace: 'local'`).
++ */
++export async function fetchLocalNetworkResource(
++  input: RequestInfo | URL,
++  init: LocalNetworkRequestInit = {}
++): Promise<Response> {
++  const targetAddressSpace = init.targetAddressSpace ?? 'local';
++  return fetch(input, {
++    ...init,
++    targetAddressSpace,
++  });
++}
++
++/**
++ * Fetches a resource on the user's loopback interface (`targetAddressSpace: 'loopback'`).
++ */
++export async function fetchLoopbackResource(
++  input: RequestInfo | URL,
++  init: LocalNetworkRequestInit = {}
++): Promise<Response> {
++  const targetAddressSpace = init.targetAddressSpace ?? 'loopback';
++  return fetch(input, {
++    ...init,
++    targetAddressSpace,
++  });
++}
++
++/**
++ * Fetches a resource on either the local network or loopback interface,
++ * automatically setting `targetAddressSpace` to `'local'` or `'loopback'`.
++ */
++export async function fetchPrivateResource(
++  input: RequestInfo | URL,
++  init: LocalNetworkRequestInit = {}
++): Promise<Response> {
++  const targetAddressSpace =
++    init.targetAddressSpace ?? inferTargetAddressSpace(input);
++  return fetch(input, {
++    ...init,
++    targetAddressSpace,
++  });
++}

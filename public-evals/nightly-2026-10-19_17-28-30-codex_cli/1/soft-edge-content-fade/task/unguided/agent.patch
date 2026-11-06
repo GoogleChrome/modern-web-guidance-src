@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .paywall-container {
++      margin-top: 48px;
++      padding: clamp(24px, 5vw, 48px);
++      border-radius: 8px;
++      background: #f0eae6;
++      /* Mask the content itself so the page background shows through. */
++      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++    }
++
++    .paywall-container .exclusive-label {
++      display: inline-block;
++      margin-bottom: 12px;
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container p {
++      max-width: 720px;
++      margin-bottom: 20px;
++    }
++
++    .paywall-container h3 {
++      margin: 24px 0 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +229,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="exclusive-label">Exclusive · A peek inside the roastery</span>
++      <h2 id="roasters-secrets-title">Roaster’s Secrets</h2>
++      <p>Great coffee has a story. Get a taste of the craft behind your daily cup with a preview from our roaster’s notebook.</p>
++      <h3>Let the beans lead the way</h3>
++      <p>Every batch begins with a conversation about flavor. Before we choose a roast profile, we taste for the bean’s natural sweetness, acidity, and character. The goal is to bring those qualities into focus, one small adjustment at a time.</p>
++      <h3>The quiet art of resting</h3>
++      <p>Fresh from the roaster isn’t always ready for the cup. Giving beans time to rest lets their flavors settle and makes brewing more consistent. We revisit each batch over the following days to find the moment when its character shines.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

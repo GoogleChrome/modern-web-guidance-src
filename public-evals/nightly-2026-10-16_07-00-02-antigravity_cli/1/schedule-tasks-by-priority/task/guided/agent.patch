@@ -1,0 +1,1006 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,473 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator Styles */
++    .simulator-card {
++      margin-top: 50px;
++      background: #ffffff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(78, 52, 46, 0.09);
++      padding: 28px;
++    }
++
++    .simulator-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 16px;
++      padding-bottom: 20px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .simulator-header h2 {
++      color: var(--primary);
++      font-size: 1.7rem;
++      margin-bottom: 4px;
++    }
++
++    .simulator-desc {
++      color: #5d4037;
++      font-size: 0.95rem;
++      max-width: 620px;
++    }
++
++    .responsiveness-monitor {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: #efebe9;
++      padding: 8px 14px;
++      border-radius: 30px;
++      border: 1px solid #d7ccc8;
++    }
++
++    .monitor-pulse {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    .pulse-dot {
++      width: 12px;
++      height: 12px;
++      border-radius: 50%;
++      background-color: #2e7d32;
++      box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7);
++      animation: pulse-ring 1.5s infinite;
++      display: inline-block;
++    }
++
++    @keyframes pulse-ring {
++      0% {
++        box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7);
++      }
++      70% {
++        box-shadow: 0 0 0 8px rgba(46, 125, 50, 0);
++      }
++      100% {
++        box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
++      }
++    }
++
++    .btn-interactive {
++      background: #2e7d32;
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      font-weight: 600;
++      transition: transform 0.1s, background-color 0.2s;
++      white-space: nowrap;
++    }
++
++    .btn-interactive:active {
++      transform: scale(0.95);
++    }
++
++    .btn-interactive.flash-success {
++      background: #1b5e20;
++      transform: scale(1.05);
++    }
++
++    /* Controls Toolbar */
++    .controls-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin: 24px 0;
++    }
++
++    .btn-op {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 16px;
++      border-radius: 8px;
++      border: 1px solid #d7ccc8;
++      background: #faf8f7;
++      cursor: pointer;
++      font-family: inherit;
++      text-align: left;
++      transition: all 0.2s ease;
++      flex: 1 1 200px;
++    }
++
++    .btn-op:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    .btn-op:active {
++      transform: translateY(0);
++    }
++
++    .btn-op .op-icon {
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    .btn-op .op-label {
++      display: flex;
++      flex-direction: column;
++      gap: 3px;
++    }
++
++    .btn-op .op-label strong {
++      font-size: 0.95rem;
++      color: var(--primary);
++    }
++
++    .btn-op-urgent {
++      border-color: #ef9a9a;
++      background: #fff8f8;
++    }
++    .btn-op-urgent:hover {
++      border-color: #c62828;
++      background: #ffebee;
++    }
++
++    .btn-op-standard {
++      border-color: #90caf9;
++      background: #f8fbff;
++    }
++    .btn-op-standard:hover {
++      border-color: #1976d2;
++      background: #e3f2fd;
++    }
++
++    .btn-op-background {
++      border-color: #b0bec5;
++      background: #f7f9fa;
++    }
++    .btn-op-background:hover {
++      border-color: #455a64;
++      background: #eceff1;
++    }
++
++    .btn-op-batch {
++      border-color: #ce93d8;
++      background: #faf5fc;
++    }
++    .btn-op-batch:hover {
++      border-color: #7b1fa2;
++      background: #f3e5f5;
++    }
++
++    .btn-op-clear {
++      flex: 0 0 auto;
++      background: #f5f5f5;
++      border-color: #e0e0e0;
++    }
++    .btn-op-clear:hover {
++      background: #eeeeee;
++    }
++
++    /* Badges */
++    .priority-tag, .badge {
++      display: inline-block;
++      font-size: 0.72rem;
++      font-weight: 700;
++      padding: 2px 8px;
++      border-radius: 4px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      width: fit-content;
++    }
++
++    .tag-urgent, .badge-urgent {
++      background: #ffebee;
++      color: #c62828;
++      border: 1px solid #ffcdd2;
++    }
++
++    .tag-standard, .badge-standard {
++      background: #e3f2fd;
++      color: #1565c0;
++      border: 1px solid #bbdefb;
++    }
++
++    .tag-background, .badge-background {
++      background: #eceff1;
++      color: #455a64;
++      border: 1px solid #cfd8dc;
++    }
++
++    .tag-batch {
++      background: #f3e5f5;
++      color: #6a1b9a;
++      border: 1px solid #e1bee7;
++    }
++
++    /* Simulator Grid */
++    .simulator-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++    }
++
++    @media (max-width: 860px) {
++      .simulator-grid {
++        grid-template-columns: 1fr;
++      }
++      .responsiveness-monitor {
++        width: 100%;
++        justify-content: space-between;
++      }
++    }
++
++    .sim-panel {
++      background: #faf8f7;
++      border: 1px solid #efebe9;
++      border-radius: 8px;
++      padding: 18px;
++      display: flex;
++      flex-direction: column;
++      min-height: 380px;
++    }
++
++    .panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 14px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid #d7ccc8;
++    }
++
++    .panel-header h3 {
++      font-size: 1.05rem;
++      color: var(--primary);
++    }
++
++    .stats-badge, .api-status {
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: #5d4037;
++      padding: 3px 8px;
++      border-radius: 4px;
++      font-weight: 600;
++    }
++
++    .api-status {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    /* Active Task View */
++    .active-task-box {
++      background: white;
++      border: 1px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 16px;
++      margin-bottom: 16px;
++      min-height: 112px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .idle-message {
++      color: #8d6e63;
++      font-size: 0.9rem;
++      text-align: center;
++      padding: 12px;
++    }
++
++    .active-task-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 10px;
++    }
++
++    .active-task-title-group {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .active-task-pct {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .progress-bar-track {
++      height: 10px;
++      background: #efebe9;
++      border-radius: 5px;
++      overflow: hidden;
++      margin-bottom: 8px;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      background: linear-gradient(90deg, #ffab40, #e65100);
++      width: 0%;
++      transition: width 0.08s linear;
++      border-radius: 5px;
++    }
++
++    .active-task-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.8rem;
++      color: #5d4037;
++    }
++
++    .yields-counter {
++      background: #fff8e1;
++      color: #e65100;
++      padding: 2px 7px;
++      border-radius: 4px;
++      font-weight: 600;
++      border: 1px solid #ffe082;
++    }
++
++    .subpanel-title {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      font-weight: 600;
++    }
++
++    .pending-queue-list {
++      flex: 1;
++      overflow-y: auto;
++      max-height: 200px;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .queue-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: white;
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 8px 12px;
++      font-size: 0.85rem;
++      animation: fadeIn 0.2s ease;
++    }
++
++    .queue-item-info {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      overflow: hidden;
++    }
++
++    .queue-item-pos {
++      font-weight: bold;
++      color: #8d6e63;
++      font-size: 0.78rem;
++    }
++
++    .queue-item-name {
++      font-weight: 500;
++      color: var(--text);
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      max-width: 240px;
++    }
++
++    .empty-queue-note {
++      color: #8d6e63;
++      font-size: 0.85rem;
++      text-align: center;
++      padding: 24px 0;
++      font-style: italic;
++    }
++
++    /* Log Stream Terminal */
++    .log-stream {
++      flex: 1;
++      background: #211a18;
++      border-radius: 6px;
++      padding: 12px;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.78rem;
++      color: #d7ccc8;
++      overflow-y: auto;
++      max-height: 320px;
++      line-height: 1.6;
++    }
++
++    .log-line {
++      margin-bottom: 4px;
++      word-break: break-word;
++    }
++
++    .log-line .timestamp {
++      color: #8d6e63;
++      margin-right: 6px;
++    }
++
++    .log-urgent {
++      color: #ff8a80;
++    }
++
++    .log-standard {
++      color: #80d8ff;
++    }
++
++    .log-background {
++      color: #cfd8dc;
++    }
++
++    .log-yield {
++      color: #ffd54f;
++    }
++
++    .log-completed {
++      color: #69f0ae;
++    }
++
++    .log-system {
++      color: #ffab40;
++    }
++
++    @keyframes fadeIn {
++      from { opacity: 0; transform: translateY(-3px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +659,528 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Operations Queue Simulator -->
++    <section id="operations-queue-simulator" class="simulator-card" aria-labelledby="simulator-heading">
++      <div class="simulator-header">
++        <div>
++          <h2 id="simulator-heading">Operations Queue Simulator</h2>
++          <p class="simulator-desc">
++            Simulate cafe back-office and transactional workloads with task prioritization and cooperative yielding to maintain main thread responsiveness during heavy computation.
++          </p>
++        </div>
++        <div class="responsiveness-monitor" aria-label="Responsiveness Monitor">
++          <div class="monitor-pulse">
++            <span class="pulse-dot" id="pulse-dot" aria-hidden="true"></span>
++            <span class="monitor-text">UI Thread: <strong id="ui-thread-status">Fluid &amp; Responsive</strong></span>
++          </div>
++          <button type="button" id="btn-test-responsiveness" class="btn-interactive" aria-label="Test responsiveness by clicking">
++            ⚡ Click to Test UI Responsiveness (<span id="click-counter">0 clicks</span>)
++          </button>
++        </div>
++      </div>
++
++      <!-- Controls Toolbar -->
++      <div class="controls-toolbar" role="toolbar" aria-label="Simulator Controls">
++        <button type="button" id="btn-urgent-checkout" class="btn-op btn-op-urgent" title="Run urgent checkout with high priority">
++          <span class="op-icon">⚡</span>
++          <span class="op-label">
++            <strong>Run Urgent Checkout</strong>
++            <span class="priority-tag tag-urgent">user-blocking</span>
++          </span>
++        </button>
++
++        <button type="button" id="btn-menu-update" class="btn-op btn-op-standard" title="Run standard menu catalog update">
++          <span class="op-icon">📋</span>
++          <span class="op-label">
++            <strong>Standard Menu Update</strong>
++            <span class="priority-tag tag-standard">user-visible</span>
++          </span>
++        </button>
++
++        <button type="button" id="btn-telemetry-log" class="btn-op btn-op-background" title="Run background telemetry logging">
++          <span class="op-icon">📡</span>
++          <span class="op-label">
++            <strong>Background Telemetry</strong>
++            <span class="priority-tag tag-background">background</span>
++          </span>
++        </button>
++
++        <button type="button" id="btn-mixed-batch" class="btn-op btn-op-batch" title="Queue mixed tasks and execute in priority order">
++          <span class="op-icon">🔀</span>
++          <span class="op-label">
++            <strong>Execute Mixed Batch</strong>
++            <span class="priority-tag tag-batch">Priority Order</span>
++          </span>
++        </button>
++
++        <button type="button" id="btn-clear-history" class="btn-op btn-op-clear" title="Clear completed tasks and reset logs">
++          <span class="op-icon">🧹</span>
++          <span class="op-label">
++            <strong>Clear Completed</strong>
++          </span>
++        </button>
++      </div>
++
++      <!-- Dashboard Grid: Execution Status & Real-time Operations Log -->
++      <div class="simulator-grid">
++        <!-- Column 1: Queue and Current Execution -->
++        <div class="sim-panel">
++          <div class="panel-header">
++            <h3>Execution Status</h3>
++            <div class="stats-badge" id="queue-stats">0 pending | 0 completed</div>
++          </div>
++
++          <!-- Active Task Display -->
++          <div class="active-task-box" id="active-task-box">
++            <div class="idle-message" id="idle-message">
++              <span>💤 Queue idle. Click any button above to enqueue operations.</span>
++            </div>
++            <div class="active-task-content" id="active-task-content" style="display: none;">
++              <div class="active-task-header">
++                <div class="active-task-title-group">
++                  <span class="badge" id="active-task-badge">user-blocking</span>
++                  <strong id="active-task-title">Processing...</strong>
++                </div>
++                <span class="active-task-pct" id="active-task-pct">0%</span>
++              </div>
++              <div class="progress-bar-track">
++                <div class="progress-bar-fill" id="active-task-progress-fill" style="width: 0%;"></div>
++              </div>
++              <div class="active-task-meta">
++                <span id="active-task-step">Initializing task...</span>
++                <span id="active-task-yields" class="yields-counter">Yields: 0</span>
++              </div>
++            </div>
++          </div>
++
++          <!-- Pending Queue List -->
++          <h4 class="subpanel-title">Pending Queue (Prioritized Order)</h4>
++          <div class="pending-queue-list" id="pending-queue-list">
++            <div class="empty-queue-note" id="empty-queue-note">No tasks waiting in queue.</div>
++          </div>
++        </div>
++
++        <!-- Column 2: Operations Log Terminal -->
++        <div class="sim-panel">
++          <div class="panel-header">
++            <h3>Operations Log</h3>
++            <span class="api-status" id="api-status">Scheduler API: Ready</span>
++          </div>
++          <div class="log-stream" id="log-stream" role="log" aria-live="polite">
++            <div class="log-line log-system">
++              <span class="timestamp">[Init]</span> Operations Queue Simulator initialized. Task prioritization &amp; cooperative yielding ready.
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <script>
++      (function () {
++        // Configuration & Priority definitions
++        const PRIORITIES = {
++          URGENT: {
++            key: 'user-blocking',
++            label: 'user-blocking',
++            weight: 1,
++            tagClass: 'tag-urgent',
++            badgeClass: 'badge-urgent',
++            logClass: 'log-urgent'
++          },
++          STANDARD: {
++            key: 'user-visible',
++            label: 'user-visible',
++            weight: 2,
++            tagClass: 'tag-standard',
++            badgeClass: 'badge-standard',
++            logClass: 'log-standard'
++          },
++          BACKGROUND: {
++            key: 'background',
++            label: 'background',
++            weight: 3,
++            tagClass: 'tag-background',
++            badgeClass: 'badge-background',
++            logClass: 'log-background'
++          }
++        };
++
++        // State
++        let orderIdSeq = 101;
++        let isQueueRunning = false;
++        let activeTask = null;
++        const pendingQueue = [];
++        const completedTasks = [];
++        let clickCount = 0;
++
++        // DOM references
++        const uiThreadStatus = document.getElementById('ui-thread-status');
++        const clickCounter = document.getElementById('click-counter');
++        const btnTest = document.getElementById('btn-test-responsiveness');
++        const queueStats = document.getElementById('queue-stats');
++        const idleMessage = document.getElementById('idle-message');
++        const activeTaskContent = document.getElementById('active-task-content');
++        const activeTaskBadge = document.getElementById('active-task-badge');
++        const activeTaskTitle = document.getElementById('active-task-title');
++        const activeTaskPct = document.getElementById('active-task-pct');
++        const activeTaskProgressFill = document.getElementById('active-task-progress-fill');
++        const activeTaskStep = document.getElementById('active-task-step');
++        const activeTaskYields = document.getElementById('active-task-yields');
++        const pendingQueueList = document.getElementById('pending-queue-list');
++        const emptyQueueNote = document.getElementById('empty-queue-note');
++        const logStream = document.getElementById('log-stream');
++        const apiStatus = document.getElementById('api-status');
++
++        // Detect Scheduler API
++        const hasPostTask = typeof window.scheduler !== 'undefined' && typeof window.scheduler.postTask === 'function';
++        const hasYield = typeof window.scheduler !== 'undefined' && typeof window.scheduler.yield === 'function';
++        if (hasPostTask && hasYield) {
++          apiStatus.textContent = 'Native Scheduler API (postTask + yield)';
++        } else if (hasPostTask) {
++          apiStatus.textContent = 'Scheduler.postTask + Fallback Yield';
++        } else {
++          apiStatus.textContent = 'Prioritized Scheduler (Fallback Mode)';
++        }
++
++        // Format current timestamp
++        function getTimestamp() {
++          const now = new Date();
++          const hh = String(now.getHours()).padStart(2, '0');
++          const mm = String(now.getMinutes()).padStart(2, '0');
++          const ss = String(now.getSeconds()).padStart(2, '0');
++          const ms = String(now.getMilliseconds()).padStart(3, '0');
++          return `${hh}:${mm}:${ss}.${ms}`;
++        }
++
++        // Append log entry
++        function logMessage(text, type = 'system') {
++          const line = document.createElement('div');
++          line.className = `log-line log-${type}`;
++          line.innerHTML = `<span class="timestamp">[${getTimestamp()}]</span> ${text}`;
++          logStream.appendChild(line);
++          logStream.scrollTop = logStream.scrollHeight;
++        }
++
++        // Responsive test button
++        btnTest.addEventListener('click', () => {
++          clickCount++;
++          clickCounter.textContent = `${clickCount} click${clickCount === 1 ? '' : 's'}`;
++          btnTest.classList.add('flash-success');
++          setTimeout(() => btnTest.classList.remove('flash-success'), 120);
++        });
++
++        // Synchronous CPU work simulation
++        function burnCpu(ms) {
++          const end = performance.now() + ms;
++          let x = 0;
++          while (performance.now() < end) {
++            x += Math.sqrt(x + 1.234) * 0.99;
++          }
++          return x;
++        }
++
++        // Yield back to main thread periodically
++        async function yieldControl() {
++          if ('scheduler' in window && typeof window.scheduler.yield === 'function') {
++            await window.scheduler.yield();
++          } else {
++            await new Promise(resolve => setTimeout(resolve, 0));
++          }
++        }
++
++        // Post task with priority
++        async function postPrioritizedTask(taskFn, priorityKey) {
++          if ('scheduler' in window && typeof window.scheduler.postTask === 'function') {
++            return window.scheduler.postTask(taskFn, { priority: priorityKey });
++          } else {
++            return new Promise((resolve, reject) => {
++              setTimeout(async () => {
++                try {
++                  const res = await taskFn();
++                  resolve(res);
++                } catch (e) {
++                  reject(e);
++                }
++              }, 0);
++            });
++          }
++        }
++
++        // Task execution with 50ms budget deadline
++        async function runTaskWork(task) {
++          let deadline = performance.now() + 50; // 50ms long task threshold
++          const totalSteps = task.steps.length;
++
++          for (let i = 0; i < totalSteps; i++) {
++            // Perform synchronous chunk of computation
++            burnCpu(16);
++
++            task.currentStepIndex = i;
++            task.progress = Math.round(((i + 1) / totalSteps) * 100);
++            renderActiveTaskUI(task);
++
++            // Cooperative yield when 50ms deadline exceeded
++            if (performance.now() >= deadline) {
++              task.yields++;
++              renderActiveTaskUI(task);
++              logMessage(`Task "${task.name}" yielded main thread at ${task.progress}% (yield #${task.yields})`, 'yield');
++              await yieldControl();
++              deadline = performance.now() + 50;
++            }
++          }
++        }
++
++        // Render Active Task
++        function renderActiveTaskUI(task) {
++          if (!task) {
++            idleMessage.style.display = 'block';
++            activeTaskContent.style.display = 'none';
++            return;
++          }
++
++          idleMessage.style.display = 'none';
++          activeTaskContent.style.display = 'block';
++
++          activeTaskBadge.className = `badge ${task.priority.badgeClass}`;
++          activeTaskBadge.textContent = task.priority.label;
++          activeTaskTitle.textContent = task.name;
++          activeTaskPct.textContent = `${task.progress}%`;
++          activeTaskProgressFill.style.width = `${task.progress}%`;
++          activeTaskStep.textContent = task.steps[task.currentStepIndex] || 'Finishing...';
++          activeTaskYields.textContent = `Yields: ${task.yields}`;
++        }
++
++        // Render Pending Queue & Stats
++        function updateQueueUI() {
++          queueStats.textContent = `${pendingQueue.length} pending | ${completedTasks.length} completed`;
++
++          if (pendingQueue.length === 0) {
++            emptyQueueNote.style.display = 'block';
++            pendingQueueList.innerHTML = '';
++            pendingQueueList.appendChild(emptyQueueNote);
++            return;
++          }
++
++          emptyQueueNote.style.display = 'none';
++          pendingQueueList.innerHTML = '';
++
++          pendingQueue.forEach((task, idx) => {
++            const item = document.createElement('div');
++            item.className = 'queue-item';
++            item.innerHTML = `
++              <div class="queue-item-info">
++                <span class="queue-item-pos">#${idx + 1}</span>
++                <span class="badge ${task.priority.badgeClass}">${task.priority.label}</span>
++                <span class="queue-item-name" title="${task.name}">${task.name}</span>
++              </div>
++              <span style="font-size: 0.75rem; color: #8d6e63;">Priority Rank ${task.priority.weight}</span>
++            `;
++            pendingQueueList.appendChild(item);
++          });
++        }
++
++        // Enqueue task and maintain priority order
++        function enqueueTask(task, silent = false) {
++          pendingQueue.push(task);
++
++          // Sort pending tasks:
++          // Primary: priority weight (1 = user-blocking, 2 = user-visible, 3 = background)
++          // Secondary: arrival time (FIFO within same priority)
++          pendingQueue.sort((a, b) => {
++            if (a.priority.weight !== b.priority.weight) {
++              return a.priority.weight - b.priority.weight;
++            }
++            return a.createdAt - b.createdAt;
++          });
++
++          if (!silent) {
++            logMessage(`Enqueued [${task.priority.label.toUpperCase()}] "${task.name}"`, task.priority.logClass);
++          }
++
++          updateQueueUI();
++          processQueue();
++        }
++
++        // Process Queue Loop
++        async function processQueue() {
++          if (isQueueRunning || pendingQueue.length === 0) return;
++          isQueueRunning = true;
++
++          while (pendingQueue.length > 0) {
++            // Highest priority pending task is always at index 0
++            activeTask = pendingQueue.shift();
++            updateQueueUI();
++            renderActiveTaskUI(activeTask);
++
++            logMessage(`Started [${activeTask.priority.label.toUpperCase()}] "${activeTask.name}"`, activeTask.priority.logClass);
++            const startTime = performance.now();
++
++            // Dispatch with Scheduler API postTask
++            await postPrioritizedTask(async () => {
++              await runTaskWork(activeTask);
++            }, activeTask.priority.key);
++
++            const durationMs = Math.round(performance.now() - startTime);
++            logMessage(`Completed "${activeTask.name}" in ${durationMs}ms with ${activeTask.yields} cooperative yields`, 'completed');
++
++            completedTasks.push(activeTask);
++            activeTask = null;
++            renderActiveTaskUI(null);
++            updateQueueUI();
++          }
++
++          isQueueRunning = false;
++          renderActiveTaskUI(null);
++          updateQueueUI();
++        }
++
++        // Task factory helpers
++        function createUrgentCheckoutTask(customId) {
++          const id = customId || orderIdSeq++;
++          return {
++            id: `checkout-${id}`,
++            name: `Urgent Checkout #ORD-${id}`,
++            priority: PRIORITIES.URGENT,
++            createdAt: performance.now(),
++            progress: 0,
++            currentStepIndex: 0,
++            yields: 0,
++            steps: [
++              'Verifying customer payment token',
++              'Applying discount vouchers & taxes',
++              'Authorizing credit card gateway',
++              'Reserving fresh espresso beans in stock',
++              'Allocating espresso machine queue slot',
++              'Generating encrypted order hash',
++              'Broadcasting pickup beacon to barista POS',
++              'Finalizing invoice & dispatching push receipt'
++            ]
++          };
++        }
++
++        function createMenuUpdateTask(name) {
++          const titles = [
++            'Seasonal Maple Spice Price Indexing',
++            'Single-Origin Roast Catalog Refresh',
++            'Allergen & Nutrition Tag Re-render',
++            'Barista Specials Stock Sync'
++          ];
++          const title = name || titles[Math.floor(Math.random() * titles.length)];
++          return {
++            id: `menu-${Date.now()}-${Math.random()}`,
++            name: `Menu Catalog: ${title}`,
++            priority: PRIORITIES.STANDARD,
++            createdAt: performance.now(),
++            progress: 0,
++            currentStepIndex: 0,
++            yields: 0,
++            steps: [
++              'Fetching remote menu manifest',
++              'Parsing milk alternative matrix',
++              'Calculating dynamic rush-hour surcharges',
++              'Generating thumbnail image lookup map',
++              'Invalidating client cache buckets',
++              'Synchronizing digital counter displays',
++              'Verifying nutritional disclosure tags',
++              'Committing menu revision to database'
++            ]
++          };
++        }
++
++        function createTelemetryLogTask(name) {
++          const titles = [
++            'Espresso Grouphead Temp Sensors',
++            'Grinder RPM & Vibration Telemetry',
++            'Store Wi-Fi Foot-Traffic Aggregation',
++            'Cold Brew Tank Pressure Telemetry'
++          ];
++          const title = name || titles[Math.floor(Math.random() * titles.length)];
++          return {
++            id: `telemetry-${Date.now()}-${Math.random()}`,
++            name: `Telemetry Flush: ${title}`,
++            priority: PRIORITIES.BACKGROUND,
++            createdAt: performance.now(),
++            progress: 0,
++            currentStepIndex: 0,
++            yields: 0,
++            steps: [
++              'Collecting sensor time-series packets',
++              'Running statistical outlier detection',
++              'Compressing diagnostic payload buffer',
++              'Encrypting telemetry transport channel',
++              'Buffering telemetry records locally',
++              'Sending telemetry payload to analytics pipeline',
++              'Logging heartbeat latency benchmarks',
++              'Cleaning temporary diagnostic dump files'
++            ]
++          };
++        }
++
++        // Event Listeners for Buttons
++        document.getElementById('btn-urgent-checkout').addEventListener('click', () => {
++          enqueueTask(createUrgentCheckoutTask());
++        });
++
++        document.getElementById('btn-menu-update').addEventListener('click', () => {
++          enqueueTask(createMenuUpdateTask());
++        });
++
++        document.getElementById('btn-telemetry-log').addEventListener('click', () => {
++          enqueueTask(createTelemetryLogTask());
++        });
++
++        document.getElementById('btn-mixed-batch').addEventListener('click', () => {
++          logMessage('Enqueuing mixed batch of 6 tasks in scrambled order...', 'system');
++          
++          // Mixed tasks created in non-priority order
++          const batchTasks = [
++            createTelemetryLogTask('POS Network Diagnostics'),
++            createMenuUpdateTask('Cold Brew Restock'),
++            createUrgentCheckoutTask(orderIdSeq++),
++            createTelemetryLogTask('Grinder Burr Wear Sensor'),
++            createUrgentCheckoutTask(orderIdSeq++),
++            createMenuUpdateTask('Pastry Shelf Inventory')
++          ];
++
++          // Enqueue each task into the priority queue
++          batchTasks.forEach(task => enqueueTask(task, true));
++
++          logMessage(
++            '🔀 Batch queued! Task prioritization sorted execution order: 2 Urgent Checkouts (user-blocking) -> 2 Menu Updates (user-visible) -> 2 Telemetry Logs (background).',
++            'system'
++          );
++        });
++
++        document.getElementById('btn-clear-history').addEventListener('click', () => {
++          completedTasks.length = 0;
++          updateQueueUI();
++          logStream.innerHTML = '';
++          logMessage('Completed tasks and logs cleared.', 'system');
++        });
++
++        // Frame rate / responsiveness monitor loop
++        let lastFrameTime = performance.now();
++        function checkFrameHealth() {
++          const now = performance.now();
++          const delta = now - lastFrameTime;
++          lastFrameTime = now;
++
++          if (delta > 100) {
++            uiThreadStatus.textContent = 'Yielding to Events...';
++            uiThreadStatus.style.color = '#e65100';
++          } else {
++            uiThreadStatus.textContent = 'Fluid & Responsive';
++            uiThreadStatus.style.color = '#2e7d32';
++          }
++          requestAnimationFrame(checkFrameHealth);
++        }
++        requestAnimationFrame(checkFrameHealth);
++
++      })();
++    </script>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

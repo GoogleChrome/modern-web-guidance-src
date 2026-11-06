@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,66 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 460px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .newsletter p {
++      margin-bottom: 12px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border: 2px solid #8b1e16;
++    }
++
++    .newsletter .newsletter-error {
++      color: #8b1e16;
++      font-weight: 600;
++    }
++
++    .newsletter-error:not(:empty),
++    .newsletter-status:not(:empty) {
++      margin-top: 8px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +255,21 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh from the Grind</h2>
++      <p>Get coffee news, seasonal favorites, and updates in your inbox.</p>
++      <form id="newsletter-form" novalidate>
++        <label for="newsletter-email">Email address (required)</label>
++        <div class="newsletter-controls">
++          <input id="newsletter-email" name="email" type="email" autocomplete="email" required>
++          <button class="btn" type="submit">Subscribe</button>
++        </div>
++        <p id="newsletter-error" class="newsletter-error" aria-live="polite" aria-atomic="true"></p>
++        <p id="newsletter-status" class="newsletter-status" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +277,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletterForm = document.getElementById('newsletter-form');
++    const newsletterEmail = document.getElementById('newsletter-email');
++    const newsletterError = document.getElementById('newsletter-error');
++    const newsletterStatus = document.getElementById('newsletter-status');
++    let emailInteracted = false;
++
++    function updateNewsletterError() {
++      const showError = emailInteracted && !newsletterEmail.validity.valid;
++      const message = showError
++        ? (newsletterEmail.validity.valueMissing
++          ? 'Please enter your email address.'
++          : 'Please enter a valid email address.')
++        : '';
++
++      // Keep the visible error and live announcement in the same DOM node.
++      if (newsletterError.textContent !== message) {
++        newsletterError.textContent = message;
++      }
++      newsletterEmail.setAttribute('aria-invalid', String(showError));
++      if (showError) {
++        newsletterEmail.setAttribute('aria-describedby', 'newsletter-error');
++      } else {
++        newsletterEmail.removeAttribute('aria-describedby');
++      }
++      return !showError;
++    }
++
++    newsletterEmail.addEventListener('blur', () => {
++      emailInteracted = true;
++      updateNewsletterError();
++    });
++
++    newsletterEmail.addEventListener('input', () => {
++      newsletterStatus.textContent = '';
++      updateNewsletterError();
++    });
++
++    newsletterForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      emailInteracted = true;
++      newsletterStatus.textContent = '';
++      if (!updateNewsletterError()) {
++        newsletterEmail.focus();
++        return;
++      }
++      newsletterStatus.textContent = 'Thanks for your interest in The Daily Grind newsletter.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

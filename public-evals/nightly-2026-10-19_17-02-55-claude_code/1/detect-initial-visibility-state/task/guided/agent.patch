@@ -1,0 +1,59 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Detects whether the page was initially loaded in a background tab and
++    // when it was first backgrounded (ms, relative to navigation start).
++    (() => {
++      const log = (info) => console.log({
++        isBackground: info.isBackground,
++        backgroundTime: info.backgroundTime,
++        source: info.source,
++        reliable: info.reliable,
++      });
++
++      // Accurate path: VisibilityStateEntry (Chrome/Edge 115+) records visibility
++      // changes on the performance timeline even if this script runs late.
++      if ('VisibilityStateEntry' in window) {
++        const entries = performance.getEntriesByType('visibility-state');
++        if (entries.length > 0) {
++          const firstHidden = entries.find((entry) => entry.name === 'hidden');
++          log({
++            isBackground: entries[0].name === 'hidden',
++            backgroundTime: firstHidden ? firstHidden.startTime : null,
++            source: 'VisibilityStateEntry',
++            reliable: true,
++          });
++          return;
++        }
++      }
++
++      // ⚠️ LEGACY FALLBACK ACTIVE (Firefox/Safari, older browsers) ⚠️
++      // POTENTIALLY UNRELIABLE: if the page opened in a background tab and the user
++      // foregrounded it before this script ran, document.visibilityState reads
++      // 'visible' and the initial hidden state is missed (false negative).
++      // Timestamps are also only approximate (performance.now() at event dispatch).
++      console.warn('[background-detection] Fallback detection active: results may be inaccurate.');
++
++      let isBackground = document.visibilityState === 'hidden';
++      // If hidden now, assume it was hidden since load (time 0).
++      let backgroundTime = isBackground ? 0 : null;
++      log({ isBackground, backgroundTime, source: 'document.visibilityState (fallback)', reliable: false });
++
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && backgroundTime === null) {
++          // Not an initial-background case; this is the first time hidden after load.
++          backgroundTime = performance.now();
++          log({ isBackground, backgroundTime, source: 'visibilitychange (fallback)', reliable: false });
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

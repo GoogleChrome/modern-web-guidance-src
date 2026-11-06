@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,56 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #tour-step {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: min(300px, calc(100vw - 24px));
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 30px rgba(62, 39, 35, 0.22);
++      font-size: 0.95rem;
++      z-index: 1001;
++    }
++
++    #tour-step[hidden] {
++      display: none;
++    }
++
++    @supports (anchor-name: --rewards-link) and (top: anchor(bottom)) {
++      #tour-step {
++        position-anchor: --rewards-link;
++        top: calc(anchor(bottom) + 12px);
++        left: clamp(12px, calc(anchor(center) - 150px), calc(100vw - 312px));
++      }
++    }
++
++    #tour-step h2 {
++      font-size: 1.1rem;
++      margin-bottom: 6px;
++    }
++
++    #tour-step button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +209,21 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a id="feature" href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title"
++    aria-describedby="tour-description" hidden>
++    <h2 id="tour-title">Your coffee, more rewarding</h2>
++    <p id="tour-description">Earn points with every purchase and turn your daily coffee into rewards.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +261,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTour = tourStep.querySelector('button');
++    const supportsPopover = 'popover' in HTMLElement.prototype;
++    let tourOpen = true;
++
++    // Keep normal link behavior available once the tour has been dismissed.
++    for (const eventName of ['click', 'auxclick']) {
++      rewardsLink.addEventListener(eventName, (event) => {
++        if (tourOpen) event.preventDefault();
++      });
++    }
++
++    closeTour.addEventListener('click', () => {
++      tourOpen = false;
++      if (!supportsPopover) tourStep.hidden = true;
++      rewardsLink.focus({ preventScroll: true });
++    });
++
++    tourStep.hidden = false;
++    if (supportsPopover) tourStep.showPopover();
++
++    if (!CSS.supports('anchor-name: --rewards-link') || !CSS.supports('top: anchor(bottom)')) {
++      // Follow scrolling, resizing, and layout shifts where CSS anchors are unavailable.
++      function trackRewards() {
++        if (!tourOpen) return;
++        const rect = rewardsLink.getBoundingClientRect();
++        const left = Math.max(12, Math.min(
++          rect.left + rect.width / 2 - tourStep.offsetWidth / 2,
++          document.documentElement.clientWidth - tourStep.offsetWidth - 12
++        ));
++        tourStep.style.top = `${rect.bottom + 12}px`;
++        tourStep.style.left = `${left}px`;
++        requestAnimationFrame(trackRewards);
++      }
++      trackRewards();
++    }
++
++    closeTour.focus({ preventScroll: true });
++  </script>
+ </body>
+ 
+ </html>

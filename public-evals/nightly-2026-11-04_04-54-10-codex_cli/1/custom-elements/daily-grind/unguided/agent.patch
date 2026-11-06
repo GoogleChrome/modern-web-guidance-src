@@ -1,0 +1,269 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..02e5452
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,55 @@
++# The Daily Grind
++
++The static page loads `coffee-card.js` as a JavaScript module, registering the
++autonomous `<coffee-card>` custom element. Each card owns its markup and styles
++in an open shadow root. Existing CSS variables such as `--primary` still apply.
++
++```html
++<coffee-card
++  name="Maple Oat Latte"
++  description="Creamy oat milk with a hint of Vermont maple syrup."
++  href="/menu/seasonal"
++  price="5.50"
++></coffee-card>
++```
++
++| Attribute | Property | Type / default |
++| --- | --- | --- |
++| `name` | `name` | String, `''` |
++| `description` | `description` | String, `''` |
++| `href` | `href` | String, `''` |
++| `price` | `price` | Non-negative finite number, `null` when absent or invalid |
++| `sold-out` | `soldOut` | Boolean, `false` |
++
++Property changes reflect to attributes, and attribute changes immediately update
++the properties and rendered content. Assigning `null` or `undefined` removes a
++string attribute. The `price` property accepts numbers or numeric strings;
++`null`, `undefined`, and `''` remove it, while negative or non-finite values throw
++a `TypeError`. Invalid numeric attributes hide the price. Prices display in USD.
++
++Boolean attributes follow HTML presence semantics: even `sold-out="false"` means
++sold out. Use `card.soldOut = false` or remove the attribute to clear it. A sold-out
++card displays “Sold Out” and disables its details link. A missing `href` also
++disables navigation.
++
++```js
++const card = document.querySelector('coffee-card');
++card.price = 5.5;       // Reflects price="5.5" and displays $5.50.
++card.soldOut = true;   // Adds sold-out.
++card.removeAttribute('sold-out'); // Updates soldOut to false.
++```
++
++The connection callback restores any properties set before registration, renders
++current state, and attaches a click listener. The disconnection callback removes
++that listener, allowing the same element to be removed and reinserted safely.
++
++Available cards emit a bubbling, composed, cancelable `coffee-select` event when
++their details link is clicked. Its `detail` contains `{ name, price, href }`.
++Calling `preventDefault()` on this event prevents the original link navigation.
++Without a handler, links navigate normally.
++
++There is no build step. A JavaScript syntax check can be run without a server:
++
++```sh
++node --check coffee-card.js
++```
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..dc3db57
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,139 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++    *, *::before, *::after { box-sizing: border-box; }
++    h3, p { margin: 0; padding: 0; }
++    h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++    .price { margin-top: 10px; }
++    a {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++    a:hover { background: #3e2723; }
++    a[aria-disabled="true"] { opacity: 0.6; cursor: default; }
++  </style>
++  <article aria-labelledby="name">
++    <h3 id="name"></h3>
++    <p class="description"></p>
++    <p class="price" hidden></p>
++    <a>View Details</a>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'description', 'href', 'price', 'sold-out'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this._name = this.shadowRoot.querySelector('h3');
++    this._description = this.shadowRoot.querySelector('.description');
++    this._price = this.shadowRoot.querySelector('.price');
++    this._link = this.shadowRoot.querySelector('a');
++    this._handleClick = this._handleClick.bind(this);
++  }
++
++  connectedCallback() {
++    // Recover properties assigned before the browser registered this element.
++    for (const property of ['name', 'description', 'href', 'price', 'soldOut']) {
++      if (Object.prototype.hasOwnProperty.call(this, property)) {
++        const value = this[property];
++        delete this[property];
++        this[property] = value;
++      }
++    }
++    this._render();
++    this._link.addEventListener('click', this._handleClick);
++  }
++
++  disconnectedCallback() {
++    this._link.removeEventListener('click', this._handleClick);
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this._render();
++  }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this._setString('name', value); }
++  get description() { return this.getAttribute('description') ?? ''; }
++  set description(value) { this._setString('description', value); }
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(value) { this._setString('href', value); }
++
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const value = Number(raw);
++    return Number.isFinite(value) && value >= 0 ? value : null;
++  }
++
++  set price(value) {
++    if (value === null || value === undefined || value === '') {
++      this.removeAttribute('price');
++      return;
++    }
++    const numeric = Number(value);
++    if (!Number.isFinite(numeric) || numeric < 0) {
++      throw new TypeError('price must be a finite, non-negative number');
++    }
++    this.setAttribute('price', String(numeric));
++  }
++
++  get soldOut() { return this.hasAttribute('sold-out'); }
++  set soldOut(value) { this.toggleAttribute('sold-out', Boolean(value)); }
++
++  _setString(attribute, value) {
++    if (value === null || value === undefined) this.removeAttribute(attribute);
++    else this.setAttribute(attribute, String(value));
++  }
++
++  _render() {
++    this._name.textContent = this.name;
++    this._description.textContent = this.description;
++    this._price.hidden = this.price === null;
++    this._price.textContent = this.price === null ? '' : `$${this.price.toFixed(2)}`;
++    this._link.textContent = this.soldOut ? 'Sold Out' : 'View Details';
++    if (this.soldOut || !this.href) {
++      this._link.removeAttribute('href');
++      this._link.setAttribute('aria-disabled', 'true');
++      this._link.setAttribute('role', 'link');
++    } else {
++      this._link.setAttribute('href', this.href);
++      this._link.removeAttribute('aria-disabled');
++      this._link.removeAttribute('role');
++    }
++  }
++
++  _handleClick(event) {
++    if (this.soldOut || !this.href) {
++      event.preventDefault();
++      return;
++    }
++    // Consumers may cancel selection to handle navigation themselves.
++    if (!this.dispatchEvent(new CustomEvent('coffee-select', {
++      bubbles: true,
++      composed: true,
++      cancelable: true,
++      detail: { name: this.name, price: this.price, href: this.href },
++    }))) event.preventDefault();
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..a2fe9e6 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./coffee-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -107,19 +108,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +166,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"></coffee-card>
++        <coffee-card name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"></coffee-card>
++        <coffee-card name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"></coffee-card>
+       </div>
+     </section>
+   </main>

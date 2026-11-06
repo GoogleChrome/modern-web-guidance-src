@@ -1,0 +1,316 @@
+diff --git a/index.html b/index.html
+index 66c9173..8465e3b 100644
+--- a/index.html
++++ b/index.html
+@@ -100,39 +100,233 @@
+       padding: 0 20px;
+     }
+ 
++    /* Section Context & Theme Variables */
++    section {
++      --section-bg: transparent;
++      --section-accent: var(--accent);
++      --card-bg: #ffffff;
++      --card-border: #eceff1;
++      --card-title: var(--primary);
++      --card-text: var(--text);
++      --card-btn-bg: var(--primary);
++      --card-btn-hover: #3e2723;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: var(--secondary);
++      --card-badge-text: var(--primary);
++      --card-shadow: rgba(0, 0, 0, 0.08);
++      --card-highlight: var(--primary);
++      padding: 30px 25px;
++      border-radius: 16px;
++      background: var(--section-bg);
++      transition: all 0.3s ease;
++    }
++
++    /* Autumn / Seasonal Theme Context */
++    section[data-theme="seasonal"],
++    section[data-theme="autumn"],
++    section.theme-seasonal {
++      --section-bg: linear-gradient(135deg, #fff8f0 0%, #fbe9e7 100%);
++      --section-accent: #d84315;
++      --card-bg: #fffdf9;
++      --card-border: #ffccbc;
++      --card-title: #bf360c;
++      --card-text: #4e342e;
++      --card-btn-bg: #d84315;
++      --card-btn-hover: #bf360c;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #ffe0b2;
++      --card-badge-text: #bf360c;
++      --card-shadow: rgba(216, 67, 21, 0.12);
++      --card-highlight: #ff9800;
++      border: 1px solid #ffe0b2;
++    }
++
++    /* Winter / Holiday Theme Context */
++    section[data-theme="winter"],
++    section.theme-winter {
++      --section-bg: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
++      --section-accent: #2e7d32;
++      --card-bg: #ffffff;
++      --card-border: #c8e6c9;
++      --card-title: #1b5e20;
++      --card-text: #263238;
++      --card-btn-bg: #2e7d32;
++      --card-btn-hover: #1b5e20;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #c8e6c9;
++      --card-badge-text: #1b5e20;
++      --card-shadow: rgba(46, 125, 50, 0.12);
++      --card-highlight: #4caf50;
++      border: 1px solid #c8e6c9;
++    }
++
++    /* Roast / Bold Espresso Category Context */
++    section[data-theme="roast"],
++    section[data-category="espresso"],
++    section.theme-roast {
++      --section-bg: linear-gradient(135deg, #2d1e18 0%, #3e2723 100%);
++      --section-accent: #ffab40;
++      --card-bg: #38241e;
++      --card-border: #5d4037;
++      --card-title: #ffab40;
++      --card-text: #efebe9;
++      --card-btn-bg: #ffab40;
++      --card-btn-hover: #ff9100;
++      --card-btn-text: #2d1e18;
++      --card-badge-bg: #4e342e;
++      --card-badge-text: #ffab40;
++      --card-shadow: rgba(0, 0, 0, 0.35);
++      --card-highlight: #ffab40;
++      color: #efebe9;
++    }
++
++    /* Refreshers / Cold Brew Category Context */
++    section[data-theme="refreshers"],
++    section[data-category="cold-craft"],
++    section.theme-refreshers {
++      --section-bg: linear-gradient(135deg, #e0f7fa 0%, #e1f5fe 100%);
++      --section-accent: #0277bd;
++      --card-bg: #ffffff;
++      --card-border: #b3e5fc;
++      --card-title: #01579b;
++      --card-text: #37474f;
++      --card-btn-bg: #0277bd;
++      --card-btn-hover: #01579b;
++      --card-btn-text: #ffffff;
++      --card-badge-bg: #b3e5fc;
++      --card-badge-text: #01579b;
++      --card-shadow: rgba(2, 119, 189, 0.12);
++      --card-highlight: #00bcd4;
++      border: 1px solid #b3e5fc;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--card-title);
++      margin-bottom: 6px;
++    }
++
++    .section-subtitle {
++      font-size: 0.95rem;
++      opacity: 0.85;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--card-bg);
++      color: var(--card-text);
++      padding: 0 0 24px 0;
++      border-radius: 12px;
++      border: 1px solid var(--card-border);
++      border-top: 4px solid var(--card-highlight);
++      box-shadow: 0 4px 12px var(--card-shadow);
+       text-align: center;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
++      position: relative;
++    }
++
++    .card:hover {
++      transform: translateY(-5px);
++      box-shadow: 0 8px 20px var(--card-shadow);
++      border-color: var(--section-accent);
++    }
++
++    .card-image-wrapper {
++      position: relative;
++      width: 100%;
++      height: 190px;
++      overflow: hidden;
++    }
++
++    .card-image {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-image {
++      transform: scale(1.05);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: var(--card-badge-bg);
++      color: var(--card-badge-text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 4px 10px;
++      border-radius: 20px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++    }
++
++    .card-body {
++      padding: 20px 20px 0;
++      flex-grow: 1;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-title);
++      font-size: 1.25rem;
++    }
++
++    .card p {
++      font-size: 0.95rem;
++      margin-bottom: 15px;
++      color: var(--card-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      background: var(--card-btn-bg, var(--primary));
++      color: var(--card-btn-text, white);
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
++      font-weight: 600;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      align-self: center;
++      transition: background 0.3s, transform 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--card-btn-hover, #3e2723);
++    }
++
++    /* Card-level category refinement inside themed sections */
++    section[data-theme="seasonal"] .card[data-category="espresso"] {
++      --card-highlight: #6d4c41;
++      --card-badge-bg: #d7ccc8;
++      --card-badge-text: #3e2723;
++    }
++
++    section[data-theme="seasonal"] .card[data-category="cold-brew"] {
++      --card-highlight: #0288d1;
++      --card-badge-bg: #b3e5fc;
++      --card-badge-text: #01579b;
+     }
+ 
+     footer {
+@@ -175,23 +369,50 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="theme-seasonal" data-theme="seasonal" data-category="seasonal-favorites">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p class="section-subtitle">Handcrafted selections curated for the season</p>
++      </div>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card" data-category="seasonal">
++          <div class="card-image-wrapper">
++            <img class="card-image" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <span class="card-badge">Autumn Special</span>
++          </div>
++          <div class="card-body">
++            <div>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </div>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" data-category="espresso">
++          <div class="card-image-wrapper">
++            <img class="card-image" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <span class="card-badge">Signature Roast</span>
++          </div>
++          <div class="card-body">
++            <div>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++            </div>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card" data-category="cold-brew">
++          <div class="card-image-wrapper">
++            <img class="card-image" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <span class="card-badge">Slow Steeped</span>
++          </div>
++          <div class="card-body">
++            <div>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++            </div>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

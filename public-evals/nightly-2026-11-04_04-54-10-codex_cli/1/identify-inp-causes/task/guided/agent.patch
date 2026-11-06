@@ -1,0 +1,74 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,69 @@
++# The Daily Grind: field INP monitoring
++
++The homepage loads the self-hosted `assets/inp.js` module, built from `src/inp.js`
++with Google's `web-vitals/attribution`. No third-party runtime CDN is required.
++Run `pnpm install --frozen-lockfile`, `pnpm test`, and `pnpm build` after changes.
++The generated bundle is committed so the existing static hosting setup works
++without a build step. Deploy `index.html` and `assets/` together.
++
++## Collector configuration
++
++The `inp-endpoint` meta tag in `index.html` defaults to `/analytics/inp`.
++**This repository has no backend.** Configure your hosting platform to route
++`POST /analytics/inp` to your analytics ingestion service, or change the meta tag
++to an existing collector URL. That collector must accept JSON POST bodies,
++persist them, and return a successful status (for example, 204). An external
++collector also needs to allow the site's origin with CORS and be permitted by
++the site's CSP `connect-src`. An empty endpoint disables monitoring.
++
++Reports are deferred using `fetchLater` where available; the compatibility layer
++sends on document hidden with `sendBeacon`, then keepalive fetch if the beacon
++queue declines. Native deferred-request quota errors also use that fallback.
++Delivery is best effort; there is no response-dependent retry or local storage.
++No `unload`/`beforeunload` handlers or polling are installed.
++
++## Reading reports
++
++All durations and timestamps are milliseconds. Each report is a current INP
++snapshot, with `id`, `value`, `delta`, `rating`, and `navigationType`. Reports
++cover good and slow visits so the collector can calculate population p75.
++Upsert by metric `id` using the highest `sequence` (to handle out-of-order
++delivery); do not sum `value` or
++average the callbacks. Pending snapshots for the same ID are replaced before
++delivery, so `delta` alone is not suitable for aggregation. Back/forward cache
++restores receive distinct IDs from web-vitals. No report means no measurable
++interaction or an unsupported browser, not a zero INP score.
++
++- `inputDelay`, `processingDuration`, and `presentationDelay` separate main-thread
++  blocking before handlers, handler processing, and waiting for the next paint.
++- `interactionTarget` uses authored `data-inp-target` labels to identify homepage
++  links, falling back to a tag name. No text, form values, or page query strings
++  are collected.
++- `longestScript` identifies the biggest overlapping script, including its URL,
++  function, character position, invoker type, overlap duration, and INP `subpart`.
++  `scripts` contains up to five overlapping script entries sorted by overlap;
++  `scriptCount` indicates when the list was truncated. URLs omit credentials,
++  queries, and fragments. Raw performance entries and DOM nodes are never sent.
++- `forcedStyleDuration` and `forcedLayoutDuration` describe synchronous work
++  inside a script. Older implementations expose only the combined
++  `forcedStyleAndLayoutDuration` fallback.
++- `renderStyleDuration` and `renderLayoutDuration` sum frame rendering work
++  across the interaction's Long Animation Frames. They describe whole frames,
++  which may extend beyond the interaction. `totalStyleAndLayoutDuration` is the
++  library's combined attribution, including forced work; it is a fallback,
++  not another duration to add to those fields. `totalScriptDuration`,
++  `totalPaintDuration`, and `totalUnattributedDuration` provide further context.
++
++INP selection, interaction grouping, lifecycle reporting, and bfcache handling
++are delegated to web-vitals. `reportAllChanges` tracks updates throughout the
++visit; it does not report every slow interaction. Event Timing is required;
++unsupported browsers skip monitoring. Long Animation Frames are optional:
++basic INP reporting still works without them. Missing timing fields are `null`,
++distinct from measured zero, and `longAnimationFramesSupported` distinguishes
++an unsupported API from a visit with no matching long frame. LoAF attribution
++only includes long frames (over 50 ms) and eligible scripts (over 5 ms); browser
++security restrictions can also limit attribution. Treat it as diagnostic
++evidence rather than a complete performance trace.
++
++References: [web-vitals](https://github.com/GoogleChrome/web-vitals) and
++[Identify INP causes](https://developer.chrome.com/docs/modern-web-guidance/guides/performance/identify-inp-causes).

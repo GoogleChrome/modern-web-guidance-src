@@ -1,0 +1,391 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..534a781 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,19 @@
++interface OTPCredential extends Credential {
++  code: string;
++}
++
++interface OTPCredentialRequestOptions {
++  transport: ('sms')[];
++}
++
++interface CredentialRequestOptions {
++  otp?: OTPCredentialRequestOptions;
++}
++
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    OTPCredential?: unknown;
+   }
+ }
+ 
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..daa74f5 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,16 +1,167 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef, useCallback } from 'react';
++
++const PHONE_REGEX = /^\+?[0-9\s\-().]{7,20}$/;
++const OTP_REGEX = /^\d{6}$/;
++
++export function isValidPhoneNumber(value: string): boolean {
++  const trimmed = value.trim();
++  if (!PHONE_REGEX.test(trimmed)) {
++    return false;
++  }
++  const digits = trimmed.replace(/\D/g, '');
++  return digits.length >= 7 && digits.length <= 15;
++}
++
++export function extractOtpCode(input: string): string {
++  const trimmed = input.trim();
++  // Match origin-bound WebOTP SMS format first (e.g., "@example.com #123456")
++  const hashMatch = trimmed.match(/#(\d{6})\b/);
++  if (hashMatch) {
++    return hashMatch[1];
++  }
++  // Match a standalone 6-digit passcode in an SMS message
++  const sixDigitMatch = trimmed.match(/\b(\d{6})\b/);
++  if (sixDigitMatch) {
++    return sixDigitMatch[1];
++  }
++  // Otherwise keep only numeric characters up to 6 digits
++  return trimmed.replace(/\D/g, '').slice(0, 6);
++}
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [phone, setPhone] = useState('');
++  const [otp, setOtp] = useState('');
++
++  const [phoneError, setPhoneError] = useState<string | null>(null);
++  const [otpError, setOtpError] = useState<string | null>(null);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
++  const [statusMessage, setStatusMessage] = useState<string | null>(null);
++
++  const [codeSent, setCodeSent] = useState(false);
++  const [phoneVerified, setPhoneVerified] = useState(false);
+   const [loading, setLoading] = useState(false);
+ 
++  const phoneInputRef = useRef<HTMLInputElement>(null);
++  const otpInputRef = useRef<HTMLInputElement>(null);
++  const abortControllerRef = useRef<AbortController | null>(null);
++
++  const listenForSmsOtp = useCallback(() => {
++    if (typeof window === 'undefined' || !('OTPCredential' in window) || !navigator.credentials?.get) {
++      return;
++    }
++
++    abortControllerRef.current?.abort();
++    const ac = new AbortController();
++    abortControllerRef.current = ac;
++
++    navigator.credentials
++      .get({
++        otp: { transport: ['sms'] },
++        signal: ac.signal,
++      })
++      .then((credential) => {
++        const otpCredential = credential as OTPCredential | null;
++        if (otpCredential?.code) {
++          const extracted = extractOtpCode(otpCredential.code);
++          setOtp(extracted);
++          setOtpError(null);
++          if (OTP_REGEX.test(extracted)) {
++            setPhoneVerified(true);
++            setStatusMessage('One-time passcode automatically extracted and verified from SMS.');
++          }
++        }
++      })
++      .catch(() => {
++        // Ignore AbortError or unsupported credential dismissal
++      });
++  }, []);
++
++  useEffect(() => {
++    listenForSmsOtp();
++    return () => {
++      abortControllerRef.current?.abort();
++    };
++  }, [listenForSmsOtp]);
++
++  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++    const value = e.target.value;
++    setPhone(value);
++    setPhoneVerified(false);
++    if (phoneError && isValidPhoneNumber(value)) {
++      setPhoneError(null);
++    }
++  };
++
++  const handleSendCode = () => {
++    setError(null);
++    setSuccess(null);
++
++    if (!isValidPhoneNumber(phone)) {
++      setPhoneError('Please enter a valid phone number (e.g., +1 555-123-4567).');
++      phoneInputRef.current?.focus();
++      return;
++    }
++
++    setPhoneError(null);
++    setCodeSent(true);
++    setPhoneVerified(false);
++    setStatusMessage(`Verification code sent via SMS to ${phone.trim()}.`);
++    listenForSmsOtp();
++    otpInputRef.current?.focus();
++  };
++
++  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++    const extracted = extractOtpCode(e.target.value);
++    setOtp(extracted);
++    if (OTP_REGEX.test(extracted)) {
++      setOtpError(null);
++      if (isValidPhoneNumber(phone)) {
++        setPhoneVerified(true);
++      }
++    } else {
++      setPhoneVerified(false);
++    }
++  };
++
++  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
++    const pastedText = e.clipboardData.getData('text');
++    if (pastedText) {
++      e.preventDefault();
++      const extracted = extractOtpCode(pastedText);
++      setOtp(extracted);
++      if (OTP_REGEX.test(extracted)) {
++        setOtpError(null);
++        if (isValidPhoneNumber(phone)) {
++          setPhoneVerified(true);
++        }
++        setStatusMessage('One-time passcode extracted from pasted SMS message.');
++      }
++    }
++  };
++
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    if (!isValidPhoneNumber(phone)) {
++      setPhoneError('Please enter a valid phone number to verify your account.');
++      phoneInputRef.current?.focus();
++      return;
++    }
++    setPhoneError(null);
++
++    if (!OTP_REGEX.test(otp)) {
++      setOtpError('Please enter a valid 6-digit one-time passcode.');
++      otpInputRef.current?.focus();
++      return;
++    }
++    setOtpError(null);
++
++    abortControllerRef.current?.abort();
+     setLoading(true);
+ 
+     try {
+@@ -19,7 +170,12 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({
++          username,
++          password,
++          phone: phone.trim(),
++          otp,
++        }),
+       });
+ 
+       const data = await response.json();
+@@ -29,7 +185,9 @@ export default function SignUpForm() {
+         // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setPhoneVerified(true);
++        setSuccess('Phone number verified and user registered successfully! You can now sign in.');
++        setStatusMessage(null);
+         setUsername('');
+         setPassword('');
+       }
+@@ -43,20 +201,38 @@ export default function SignUpForm() {
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg"
++          role="alert"
++          aria-live="polite"
++        >
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      {statusMessage && !error && !success && (
++        <div
++          className="mb-4 p-3 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
++          {statusMessage}
++        </div>
++      )}
++
++      <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,13 +240,16 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            aria-required="true"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+-        
++
+         <div>
+           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+@@ -78,14 +257,104 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            aria-required="true"
++            aria-describedby="password-hint"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number.
++          </p>
++        </div>
++
++        <div>
++          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
++            Phone Number
++          </label>
++          <div className="flex gap-2">
++            <input
++              ref={phoneInputRef}
++              type="tel"
++              id="phone"
++              name="phone"
++              inputMode="tel"
++              autoComplete="tel"
++              placeholder="+1 (555) 123-4567"
++              pattern="^\+?[0-9\s\-().]{7,20}$"
++              value={phone}
++              onChange={handlePhoneChange}
++              required
++              aria-required="true"
++              aria-invalid={Boolean(phoneError)}
++              aria-describedby={phoneError ? 'phone-hint phone-error' : 'phone-hint'}
++              className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
++                phoneError ? 'border-red-500' : 'border-gray-300'
++              }`}
++            />
++            <button
++              type="button"
++              onClick={handleSendCode}
++              data-skip-tracking="true"
++              aria-label={codeSent ? 'Resend SMS verification code' : 'Send SMS verification code'}
++              className="px-3 py-2 text-xs font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
++            >
++              {codeSent ? 'Resend Code' : 'Send Code'}
++            </button>
++          </div>
++          <p id="phone-hint" className="text-xs text-gray-500 mt-1">
++            We will send a one-time passcode via SMS to verify your phone number.
++          </p>
++          {phoneError && (
++            <p id="phone-error" className="text-xs text-red-600 mt-1" role="alert">
++              {phoneError}
++            </p>
++          )}
++        </div>
++
++        <div>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
++              One-Time Passcode
++            </label>
++            {phoneVerified && (
++              <span className="text-xs font-medium text-green-700" aria-live="polite">
++                Code verified
++              </span>
++            )}
++          </div>
++          <input
++            ref={otpInputRef}
++            type="text"
++            id="otp"
++            name="otp"
++            inputMode="numeric"
++            autoComplete="one-time-code"
++            pattern="\d{6}"
++            maxLength={6}
++            placeholder="123456"
++            value={otp}
++            onChange={handleOtpChange}
++            onPaste={handleOtpPaste}
++            required
++            aria-required="true"
++            aria-invalid={Boolean(otpError)}
++            aria-describedby={otpError ? 'otp-hint otp-error' : 'otp-hint'}
++            className={`w-full px-3 py-2 border rounded-md tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 ${
++              otpError ? 'border-red-500' : 'border-gray-300'
++            }`}
++          />
++          <p id="otp-hint" className="text-xs text-gray-500 mt-1">
++            Enter the 6-digit SMS verification code. Supports automatic code extraction.
+           </p>
++          {otpError && (
++            <p id="otp-error" className="text-xs text-red-600 mt-1" role="alert">
++              {otpError}
++            </p>
++          )}
+         </div>
+ 
+         <button

@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+index 66c9173..25bedb2 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -56,13 +57,15 @@
+     }
+ 
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 180ms ease, transform 180ms var(--motion-ease);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -128,10 +131,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 180ms ease, transform 200ms var(--motion-ease);
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+@@ -147,10 +151,88 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      text-underline-offset: 4px;
++      transition: color 180ms ease, transform 180ms var(--motion-ease);
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      text-decoration: underline;
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    @keyframes enter {
++      from {
++        opacity: 0;
++        translate: 0 16px;
++      }
++      to {
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .logo,
++      nav li,
++      .hero > * {
++        animation: enter 650ms var(--motion-ease) both;
++      }
++
++      nav li:nth-child(1) { animation-delay: 40ms; }
++      nav li:nth-child(2) { animation-delay: 80ms; }
++      nav li:nth-child(3) { animation-delay: 120ms; }
++      nav li:nth-child(4) { animation-delay: 160ms; }
++      nav li:nth-child(5) { animation-delay: 200ms; }
++      .hero h1 { animation-delay: 100ms; }
++      .hero p { animation-delay: 200ms; }
++      .hero .btn { animation-delay: 300ms; }
++
++      .card {
++        transition: transform 240ms var(--motion-ease);
++      }
++
++      a:active {
++        transform: scale(0.97);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) and (hover: hover) {
++      .card:hover,
++      .card:focus-within {
++        transform: translateY(-4px);
++      }
++
++      .btn:hover {
++        transform: translateY(-2px);
++      }
++
++      nav a:hover,
++      .footer-links a:hover {
++        transform: translateY(-1px);
++      }
++
++      a:active {
++        transform: scale(0.97);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav a,
++      .btn,
++      .footer-links a {
++        transition: none;
++      }
+     }
+   </style>
+ </head>
+@@ -207,6 +289,64 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Content stays visible if JavaScript or the animation APIs are unavailable.
++    (() => {
++      if (!('IntersectionObserver' in window) || !Element.prototype.animate) return;
++
++      const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const targets = document.querySelectorAll('main h2, .card, footer > *');
++      const revealed = new WeakSet();
++      const running = new Map();
++      let observer;
++
++      function updateMotion() {
++        observer?.disconnect();
++        running.forEach(animation => animation.cancel());
++        running.clear();
++        if (preference.matches) return;
++
++        observer = new IntersectionObserver(entries => {
++          entries.forEach(entry => {
++            if (!entry.isIntersecting) return;
++            const element = entry.target;
++            revealed.add(element);
++            observer.unobserve(element);
++            const index = element.classList.contains('card')
++              ? Array.from(element.parentElement.children).indexOf(element) : 0;
++            const animation = element.animate([
++              { opacity: 0, translate: '0 18px' },
++              { opacity: 1, translate: '0 0' }
++            ], {
++              duration: 600,
++              delay: Math.min(index, 4) * 80,
++              easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
++              fill: 'backwards'
++            });
++            running.set(element, animation);
++            animation.onfinish = () => running.delete(element);
++          });
++        }, { threshold: 0.12 });
++
++        targets.forEach(element => {
++          if (!revealed.has(element)) observer.observe(element);
++        });
++      }
++
++      // Keyboard navigation should never land on a partially revealed element.
++      document.addEventListener('focusin', event => {
++        running.forEach((animation, element) => {
++          if (element.contains(event.target)) {
++            animation.cancel();
++            running.delete(element);
++          }
++        });
++      });
++      preference.addEventListener('change', updateMotion);
++      updateMotion();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,233 @@
++<!doctype html>
++<html lang="en" class="exp-pending">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Launchpad — Ship faster with less effort</title>
++  <meta name="description" content="Launchpad helps teams plan, build and ship products faster." />
++
++  <!-- Open the connection to the experiment CDN as early as possible. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="dns-prefetch" href="https://cdn.example.com" />
++
++  <!--
++    Anti-flicker guard.
++    This must stay inline and come before any content renders. While <html>
++    has the "exp-pending" class, every element marked [data-experiment] is
++    hidden so the original content never flashes before a variant is applied.
++    Only experiment regions are hidden (not the whole page), and the guard is
++    always removed after a timeout so a slow or failed CDN never leaves the
++    page blank.
++  -->
++  <style>
++    .exp-pending [data-experiment] { opacity: 0 !important; }
++    [data-experiment] { transition: opacity 150ms ease-out; }
++  </style>
++  <script>
++    (function (w, d) {
++      var TIMEOUT_MS = 2500;
++      var root = d.documentElement;
++      var revealed = false;
++
++      function reveal() {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        root.classList.remove('exp-pending');
++      }
++
++      // Safety net: never hide content longer than TIMEOUT_MS.
++      var timer = setTimeout(reveal, TIMEOUT_MS);
++
++      // The SDK (or its config) can call this once variants are applied.
++      // It is idempotent, so calling it more than once is harmless.
++      w.revealExperiment = reveal;
++
++      var s = d.createElement('script');
++      s.src = 'https://cdn.example.com/experiment-sdk.js';
++      s.async = true;
++      s.crossOrigin = 'anonymous';
++      s.onload = function () {
++        // If the SDK exposes a readiness promise, wait for it; otherwise its
++        // synchronous DOM changes are already done when onload fires.
++        var sdk = w.ExperimentSDK || w.experimentSDK;
++        var ready = sdk && sdk.ready;
++        if (typeof ready === 'function') ready = ready.call(sdk);
++        if (ready && typeof ready.then === 'function') {
++          ready.then(reveal, reveal);
++        } else {
++          // Let any DOM mutations queued by the SDK flush before revealing.
++          w.requestAnimationFrame(reveal);
++        }
++      };
++      s.onerror = reveal;
++      d.head.appendChild(s);
++    })(window, document);
++  </script>
++  <noscript>
++    <style>.exp-pending [data-experiment] { opacity: 1 !important; }</style>
++  </noscript>
++
++  <style>
++    :root {
++      --bg: #0b1020;
++      --fg: #f5f7fb;
++      --muted: #b6bdd0;
++      --accent: #6c5ce7;
++      --accent-hover: #5a4bd6;
++      --radius: 12px;
++    }
++    * { box-sizing: border-box; }
++    html, body { margin: 0; }
++    body {
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      color: var(--fg);
++      background: var(--bg);
++      line-height: 1.5;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    .nav {
++      position: absolute;
++      inset: 0 0 auto 0;
++      z-index: 2;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.25rem 1.5rem;
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; color: var(--fg); text-decoration: none; }
++    .nav a.link { color: var(--muted); text-decoration: none; margin-left: 1.5rem; font-size: 0.95rem; }
++    .nav a.link:hover { color: var(--fg); }
++
++    .hero {
++      position: relative;
++      min-height: 100vh;
++      display: grid;
++      place-items: center;
++      padding: 7rem 1.5rem 4rem;
++      overflow: hidden;
++      isolation: isolate;
++    }
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(180deg, rgba(11,16,32,0.72) 0%, rgba(11,16,32,0.85) 60%, var(--bg) 100%);
++    }
++    .hero-content { max-width: 760px; text-align: center; }
++    .eyebrow {
++      display: inline-block;
++      padding: 0.35rem 0.85rem;
++      border: 1px solid rgba(255,255,255,0.18);
++      border-radius: 999px;
++      font-size: 0.85rem;
++      color: var(--muted);
++      margin-bottom: 1.5rem;
++      background: rgba(255,255,255,0.04);
++    }
++    .hero h1 {
++      font-size: clamp(2.4rem, 6vw, 4.25rem);
++      line-height: 1.08;
++      letter-spacing: -0.03em;
++      margin: 0 0 1.25rem;
++    }
++    .hero p.lead {
++      font-size: clamp(1.05rem, 2vw, 1.3rem);
++      color: var(--muted);
++      margin: 0 auto 2.25rem;
++      max-width: 600px;
++    }
++    .cta-group { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.95rem 1.75rem;
++      border-radius: var(--radius);
++      font-weight: 600;
++      font-size: 1.05rem;
++      text-decoration: none;
++      transition: background-color 150ms, transform 150ms, box-shadow 150ms;
++    }
++    .btn-primary {
++      background: var(--accent);
++      color: #fff;
++      box-shadow: 0 10px 30px -10px rgba(108,92,231,0.7);
++    }
++    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
++    .btn-secondary {
++      color: var(--fg);
++      border: 1px solid rgba(255,255,255,0.22);
++      background: rgba(255,255,255,0.04);
++    }
++    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
++    .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .fine-print { margin-top: 1rem; font-size: 0.85rem; color: var(--muted); }
++
++    .photo-credit {
++      position: absolute;
++      right: 1rem;
++      bottom: 0.75rem;
++      font-size: 0.7rem;
++      color: rgba(255,255,255,0.5);
++    }
++    .photo-credit a { color: inherit; }
++
++    @media (prefers-reduced-motion: reduce) {
++      [data-experiment], .btn { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <a class="logo" href="/">Launchpad</a>
++    <nav aria-label="Primary">
++      <a class="link" href="#features">Features</a>
++      <a class="link" href="#pricing">Pricing</a>
++      <a class="link" href="#login">Log in</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" id="hero" data-experiment="hero">
++      <img
++        class="hero-bg"
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=75"
++        alt=""
++        fetchpriority="high"
++      />
++      <div class="hero-content">
++        <span class="eyebrow" data-exp-id="hero-eyebrow">New: Launchpad 2.0 is here</span>
++        <h1 data-exp-id="hero-headline">Ship your next big idea in days, not months</h1>
++        <p class="lead" data-exp-id="hero-subheadline">
++          Launchpad brings planning, building and launching into one workspace,
++          so your team can focus on what matters.
++        </p>
++        <div class="cta-group">
++          <a class="btn btn-primary" id="cta-primary" data-exp-id="hero-cta" href="#signup">
++            Start free trial
++            <span aria-hidden="true">&rarr;</span>
++          </a>
++          <a class="btn btn-secondary" href="#demo">Watch demo</a>
++        </div>
++        <p class="fine-print" data-exp-id="hero-fineprint">No credit card required &middot; Cancel anytime</p>
++      </div>
++      <span class="photo-credit">
++        Photo: <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a>
++      </span>
++    </section>
++  </main>
++</body>
++</html>

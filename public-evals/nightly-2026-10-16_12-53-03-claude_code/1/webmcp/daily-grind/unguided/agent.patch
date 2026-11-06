@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+index 66c9173..bd464d3 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,117 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose client-side functionality to in-browser AI agents as tools.
++    (function () {
++      if (!('modelContext' in navigator)) return;
++
++      const text = (content) => ({ content: [{ type: 'text', text: typeof content === 'string' ? content : JSON.stringify(content) }] });
++      const error = (message) => ({ isError: true, ...text(message) });
++
++      const abs = (href) => new URL(href, location.href).href;
++      const linkInfo = (a) => ({ label: a.textContent.trim(), path: a.getAttribute('href') });
++
++      const drinks = () => Array.from(document.querySelectorAll('.card')).map((card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        path: card.querySelector('a').getAttribute('href'),
++      }));
++
++      const navLinks = () => Array.from(document.querySelectorAll('nav a:not(.logout-link)')).map(linkInfo);
++      const footerLinks = () => Array.from(document.querySelectorAll('.footer-links a')).map(linkInfo);
++
++      const tools = [
++        {
++          name: 'get_page_info',
++          description: 'Get an overview of The Daily Grind home page: headline, tagline, navigation links, footer links and seasonal favorites.',
++          inputSchema: { type: 'object', properties: {} },
++          annotations: { readOnlyHint: true },
++          execute: async () => text({
++            title: document.title,
++            headline: document.querySelector('.hero h1').textContent.trim(),
++            tagline: document.querySelector('.hero p').textContent.trim(),
++            navigation: navLinks(),
++            footer: footerLinks(),
++            seasonalFavorites: drinks(),
++          }),
++        },
++        {
++          name: 'list_seasonal_favorites',
++          description: 'List the seasonal favorite drinks shown on the home page, with descriptions and detail page paths.',
++          inputSchema: { type: 'object', properties: {} },
++          annotations: { readOnlyHint: true },
++          execute: async () => text(drinks()),
++        },
++        {
++          name: 'view_drink_details',
++          description: 'Open the detail page for a seasonal favorite drink.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              name: { type: 'string', description: 'Drink name, e.g. "Cold Brew". Case-insensitive; partial matches allowed.' },
++            },
++            required: ['name'],
++          },
++          execute: async ({ name }) => {
++            const q = String(name || '').trim().toLowerCase();
++            const match = drinks().find((d) => d.name.toLowerCase().includes(q));
++            if (!q || !match) return error(`No drink matching "${name}". Available: ${drinks().map((d) => d.name).join(', ')}`);
++            location.href = abs(match.path);
++            return text(`Navigating to ${match.name} details at ${match.path}`);
++          },
++        },
++        {
++          name: 'navigate',
++          description: 'Navigate to a section of the site: menu, locations, rewards, account, order online, or an informational page (about, careers, contact, privacy).',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              destination: {
++                type: 'string',
++                enum: ['menu', 'locations', 'rewards', 'account', 'order-online', 'about', 'careers', 'contact', 'privacy-policy'],
++                description: 'Where to go.',
++              },
++            },
++            required: ['destination'],
++          },
++          execute: async ({ destination }) => {
++            const allowed = ['menu', 'locations', 'rewards', 'account', 'order-online', 'about', 'careers', 'contact', 'privacy-policy'];
++            if (!allowed.includes(destination)) return error(`Unknown destination "${destination}". Options: ${allowed.join(', ')}`);
++            location.href = abs('/' + destination);
++            return text(`Navigating to /${destination}`);
++          },
++        },
++        {
++          name: 'start_order',
++          description: 'Start an online order by opening the order page (same as clicking "Order Now").',
++          inputSchema: { type: 'object', properties: {} },
++          execute: async () => {
++            location.href = abs(document.querySelector('.hero .btn').getAttribute('href'));
++            return text('Navigating to the online ordering page.');
++          },
++        },
++        {
++          name: 'logout',
++          description: 'Log the current user out of their account. Only use when the user explicitly asks to log out.',
++          inputSchema: { type: 'object', properties: {} },
++          annotations: { destructiveHint: true },
++          execute: async () => {
++            location.href = abs(document.querySelector('.logout-link').getAttribute('href'));
++            return text('Logging out.');
++          },
++        },
++      ];
++
++      if (typeof navigator.modelContext.registerTool === 'function') {
++        tools.forEach((tool) => {
++          try { navigator.modelContext.registerTool(tool); } catch (e) { console.warn('WebMCP: failed to register', tool.name, e); }
++        });
++      } else if (typeof navigator.modelContext.provideContext === 'function') {
++        navigator.modelContext.provideContext({ tools });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,43 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Tracks time the page is in the foreground (tab visible and window focused).
++    const foregroundTimer = (() => {
++      let total = 0;
++      let startedAt = null;
++
++      const isForeground = () => document.visibilityState === 'visible' && document.hasFocus();
++
++      function sync() {
++        if (isForeground()) {
++          if (startedAt === null) startedAt = performance.now();
++        } else if (startedAt !== null) {
++          total += performance.now() - startedAt;
++          startedAt = null;
++        }
++      }
++
++      document.addEventListener('visibilitychange', sync);
++      window.addEventListener('focus', sync);
++      window.addEventListener('blur', sync);
++      window.addEventListener('pagehide', sync);
++      sync();
++
++      // Total foreground time so far, in milliseconds.
++      return () => total + (startedAt !== null ? performance.now() - startedAt : 0);
++    })();
++
++    function getForegroundTime() {
++      return foregroundTimer();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

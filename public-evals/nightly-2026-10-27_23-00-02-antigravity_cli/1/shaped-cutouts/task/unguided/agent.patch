@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,146 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Hidden SVG Definitions */
++    .svg-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    /* 1) Featured Barista Section & Shaped Avatar */
++    .barista-section {
++      display: flex;
++      align-items: center;
++      gap: 32px;
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      margin-top: 40px;
++    }
++
++    .shaped-avatar {
++      width: 200px;
++      height: 200px;
++      object-fit: cover;
++      flex-shrink: 0;
++      display: block;
++      -webkit-clip-path: url(#paint-splat-clip);
++      clip-path: url(#paint-splat-clip);
++    }
++
++    .barista-info h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .barista-role {
++      color: var(--accent);
++      font-weight: 600;
++      text-transform: uppercase;
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      margin-bottom: 12px;
++    }
++
++    /* 2) Loyalty Banner (.unified-card) */
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      margin-top: 40px;
++      -webkit-filter: drop-shadow(0 8px 20px rgba(62, 39, 35, 0.22));
++      filter: drop-shadow(0 8px 20px rgba(62, 39, 35, 0.22));
++    }
++
++    .card-body {
++      flex: 1;
++      background: var(--primary);
++      color: white;
++      padding: 32px 36px;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .card-body h2 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    .card-accent {
++      width: 140px;
++      min-height: 160px;
++      flex-shrink: 0;
++      background: var(--accent);
++      border-radius: 0 12px 12px 0;
++      -webkit-clip-path: url(#card-cutout-clip);
++      clip-path: url(#card-cutout-clip);
++      -webkit-mask-image: radial-gradient(circle 40px at 100% 50%, transparent 98%, #000 100%);
++      mask-image: radial-gradient(circle 40px at 100% 50%, transparent 98%, #000 100%);
++    }
++
++    /* 3) Promo Card (.gradient-masked-card) */
++    .promo-section {
++      margin-top: 40px;
++      display: flex;
++      justify-content: center;
++    }
++
++    .gradient-masked-card {
++      width: 100%;
++      max-width: 540px;
++      background: linear-gradient(135deg, #4e342e 0%, #6d4c41 100%);
++      color: white;
++      padding: 48px 32px 32px;
++      border-radius: 12px;
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle 30px at 50% 0, transparent 98%, #000 100%);
++      mask-image: radial-gradient(circle 30px at 50% 0, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      font-size: 1.5rem;
++      margin-bottom: 10px;
++    }
++
++    .promo-code {
++      display: inline-block;
++      margin-top: 14px;
++      padding: 6px 16px;
++      border: 1px dashed var(--accent);
++      border-radius: 4px;
++      font-family: monospace;
++      font-size: 1.1rem;
++      letter-spacing: 2px;
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <svg class="svg-defs" aria-hidden="true">
++    <defs>
++      <clipPath id="paint-splat-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0.50,0.04 C 0.62,0.02 0.72,0.12 0.82,0.10 C 0.92,0.08 0.96,0.20 0.90,0.32 C 0.85,0.42 0.98,0.52 0.94,0.64 C 0.90,0.75 0.80,0.74 0.76,0.84 C 0.72,0.94 0.58,0.98 0.48,0.92 C 0.38,0.86 0.26,0.96 0.16,0.88 C 0.06,0.80 0.14,0.68 0.06,0.56 C -0.02,0.44 0.08,0.30 0.16,0.24 C 0.24,0.18 0.22,0.06 0.34,0.06 C 0.42,0.06 0.44,0.05 0.50,0.04 Z" />
++      </clipPath>
++      <clipPath id="card-cutout-clip" clipPathUnits="objectBoundingBox">
++        <path d="M 0,0 L 1,0 L 1,0.28 C 0.55,0.28 0.55,0.72 1,0.72 L 1,1 L 0,1 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +327,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-section">
++      <img
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Mateo Rivera"
++        class="shaped-avatar"
++      >
++      <div class="barista-info">
++        <div class="barista-role">Featured Barista</div>
++        <h2>Meet Mateo Rivera</h2>
++        <p>With over eight years of specialty roasting and latte art mastery, Mateo crafts our signature seasonal pours and leads our weekend tasting workshops.</p>
++      </div>
++    </section>
++
++    <section class="unified-card">
++      <div class="card-body">
++        <h2>Daily Grind Rewards</h2>
++        <p>Join our loyalty club today—earn beans with every cup and unlock complimentary handcrafted drinks, birthday treats, and early access to single-origin reserves.</p>
++        <a href="/rewards" class="btn">Join the Club</a>
++      </div>
++      <div class="card-accent"></div>
++    </section>
++
++    <section class="promo-section">
++      <div class="gradient-masked-card">
++        <h3>First Bag On Us</h3>
++        <p>Subscribe to our bi-weekly roast delivery and get 50% off your first bag of whole-bean artisanal coffee.</p>
++        <div class="promo-code">FRESHGRIND50</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

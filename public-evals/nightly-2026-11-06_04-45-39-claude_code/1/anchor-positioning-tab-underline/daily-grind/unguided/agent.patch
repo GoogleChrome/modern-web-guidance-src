@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+index 66c9173..435b926 100644
+--- a/index.html
++++ b/index.html
+@@ -48,7 +48,9 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -62,10 +64,38 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    /* Sliding active indicator */
++    .nav-indicator {
++      position: absolute;
++      left: 0;
++      bottom: -6px;
++      height: 2px;
++      width: 0;
++      background: var(--accent);
++      border-radius: 2px;
++      opacity: 0;
++      pointer-events: none;
++      transform: translateX(0);
++      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
++        opacity 0.2s ease;
++    }
++
++    .nav-indicator.no-transition {
++      transition: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-indicator {
++        transition: none;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,11 +190,12 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-nav-item>Menu</a></li>
++      <li><a href="/locations" data-nav-item>Locations</a></li>
++      <li><a href="/rewards" data-nav-item>Rewards</a></li>
++      <li><a href="/account" data-nav-item>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-indicator" aria-hidden="true"></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +238,82 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('nav ul');
++      var indicator = list.querySelector('.nav-indicator');
++      var items = Array.prototype.slice.call(list.querySelectorAll('[data-nav-item]'));
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      var active = null;
++
++      function moveIndicator(link, animate) {
++        if (!link) {
++          indicator.style.opacity = '0';
++          return;
++        }
++        if (!animate) indicator.classList.add('no-transition');
++        indicator.style.width = link.offsetWidth + 'px';
++        indicator.style.transform = 'translateX(' + link.offsetLeft + 'px)';
++        indicator.style.opacity = '1';
++        if (!animate) {
++          void indicator.offsetWidth; // flush styles before re-enabling transitions
++          indicator.classList.remove('no-transition');
++        }
++      }
++
++      function setActive(link, animate) {
++        items.forEach(function (item) {
++          var isActive = item === link;
++          item.classList.toggle('active', isActive);
++          if (isActive) item.setAttribute('aria-current', 'page');
++          else item.removeAttribute('aria-current');
++        });
++        active = link;
++        moveIndicator(link, animate);
++      }
++
++      // Initial state: match the current URL (e.g. /menu or /menu/seasonal)
++      var path = window.location.pathname.replace(/\/+$/, '');
++      var initial = items.filter(function (item) {
++        var href = item.getAttribute('href');
++        return path === href || path.indexOf(href + '/') === 0;
++      })[0] || null;
++      setActive(initial, false);
++
++      items.forEach(function (item) {
++        item.addEventListener('click', function (e) {
++          // Let modified clicks (new tab/window) behave normally
++          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          if (item === active) return;
++
++          e.preventDefault();
++          var href = item.href;
++          setActive(item, true);
++
++          // Navigate once the slide has finished so the transition is visible
++          var done = false;
++          function go() {
++            if (done) return;
++            done = true;
++            indicator.removeEventListener('transitionend', onEnd);
++            window.location.href = href;
++          }
++          function onEnd(ev) { if (ev.propertyName === 'transform') go(); }
++
++          if (reduceMotion) { go(); return; }
++          indicator.addEventListener('transitionend', onEnd);
++          setTimeout(go, 400); // fallback (e.g. first activation with no movement)
++        });
++      });
++
++      // Keep the indicator aligned when layout changes
++      window.addEventListener('resize', function () { moveIndicator(active, false); });
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(function () { moveIndicator(active, false); });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

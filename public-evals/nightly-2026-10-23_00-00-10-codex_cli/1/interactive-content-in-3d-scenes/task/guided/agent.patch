@@ -1,0 +1,262 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,60 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f6f3eb">
++  <meta name="description" content="A little ritual. A better day. Discover freshly roasted specialty coffee at The Daily Grind.">
++  <title>The Daily Grind — A better kind of daily.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="/style.css">
++  <script src="/scene.js" defer></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <div class="announcement">Good mornings start here. <span>Free shipping on orders $35+</span> <span aria-hidden="true">↗</span></div>
++  <header class="site-header">
++    <a class="logo" href="/" aria-label="The Daily Grind home"><span class="logo-mark" aria-hidden="true">☕</span><span>the daily grind<span class="logo-sub">COFFEE & GOOD COMPANY</span></span></a>
++    <nav aria-label="Main navigation"><a href="#coffee">Our coffee</a><a href="#story">Our story</a><a href="#visit">Visit us <span>↗</span></a></nav>
++    <button class="bag" id="bag-button" type="button">Your bag <span id="bag-count">0</span><svg width="17" height="20" viewBox="0 0 20 22" fill="none" aria-hidden="true"><path d="M3 7h14l1 13H2L3 7Z M6 8V5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.4"/></svg></button>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <div class="hero-copy"><div class="eyebrow"><span class="little-star">✳</span> SMALL BATCH. BIG FEELINGS.</div><h1 id="hero-title">Good coffee.<br>Great <em>mornings.</em></h1><p>For slow starts, big ideas, and everything in between.<br class="desktop"> Thoughtfully sourced. Freshly roasted. Always worth it.</p><a class="primary-link" href="#coffee">Find your daily grind <span>↗</span></a><div class="hero-footnote"><span class="sun-icon" aria-hidden="true">☼</span><span>A little ritual.<br><strong>A better kind of daily.</strong></span></div></div>
++      <div class="scene-panel">
++        <div class="scene-top"><span><span class="live-dot"></span> YOUR NEXT MORNING, IN 3D</span><span>01 / DAILY ESSENTIALS</span></div>
++        <div class="scene" id="scene">
++          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
++          <span class="roast-stamp">FRESHLY<br><strong>ROASTED</strong><br>HAPPINESS <span>✳</span></span>
++          <div class="box-shadow"></div>
++          <canvas id="coffee-canvas" content="drawable" aria-label="Rotating three-dimensional Daily Blend coffee box">
++            <form id="coffee-form" class="coffee-form" drawable>
++              <div class="package-brand">the daily grind<span>GOOD COFFEE. GOOD COMPANY.</span></div>
++              <div class="package-sun" aria-hidden="true">✳</div>
++              <div class="package-title">The Daily<br>Blend<span>YOUR EVERYDAY, ELEVATED.</span></div>
++              <div class="package-details"><span>CHOCOLATE · CARAMEL · COMFORT</span><span>MEDIUM ROAST <b>250g</b></span></div>
++              <div class="package-order"><div class="order-heading"><span>Make it your morning.</span><strong>$18</strong></div><label for="grind">Your grind</label><select id="grind" name="grind"><option>Whole bean</option><option>Filter / Pour over</option><option>French press</option><option>Espresso</option></select><div class="order-row"><div class="quantity"><button type="button" id="minus" aria-label="Decrease quantity">−</button><input id="quantity" name="quantity" aria-label="Number of bags" type="number" value="1" min="1" max="10"><button type="button" id="plus" aria-label="Increase quantity">+</button></div><button class="add-button" type="submit">Add to bag <span>↗</span></button></div></div>
++            </form>
++          </canvas>
++          <div id="html-layer" class="html-layer"></div>
++          <div class="scene-note"><span aria-hidden="true">↖</span> Go on, make it yours.<br><span class="note-small">Yes, you can click the box.</span></div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <div class="scene-controls"><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 10a7 7 0 1 0 2-5M3 2v5h5" stroke="currentColor" stroke-width="1.2"/></svg> A fresh perspective on your daily ritual</span><button id="rotation" type="button" aria-pressed="false"><span id="rotation-icon">Ⅱ</span> <span id="rotation-label">Pause rotation</span></button></div>
+       </div>
+     </section>
++    <div class="values-strip"><span><span aria-hidden="true">◉</span> Ethically sourced</span><span><span aria-hidden="true">♧</span> Roasted in small batches</span><span><span aria-hidden="true">☼</span> Fresh to your doorstep</span><span><span aria-hidden="true">♡</span> Made for your everyday</span></div>
++    <section class="coffee-section" id="coffee"><div class="section-heading"><div><div class="eyebrow">MEET YOUR MORNING PEOPLE</div><h2>A cup for every kind of day.</h2></div><a href="#coffee" id="explore">Explore the favorites <span>↗</span></a></div>
++      <div class="coffee-grid">
++        <article class="coffee-card"><div class="card-photo"><img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=800&q=85" width="800" height="600" alt="Creamy latte with delicate latte art" loading="lazy"><span class="photo-tag">THE SLOW MORNING ONE</span><button type="button" class="product-button" data-product="Maple Oat Latte" data-price="5.50" aria-label="Add Maple Oat Latte to bag">↗</button></div><div class="card-caption"><h3>Maple Oat Latte</h3><span>$5.50</span></div><p>A little maple. A lot to love.</p></article>
++        <article class="coffee-card"><div class="card-photo"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=85" width="800" height="600" alt="Rich espresso in a ceramic cup" loading="lazy"><span class="photo-tag">THE GET-THINGS-DONE ONE</span><button type="button" class="product-button" data-product="House Espresso" data-price="3.50" aria-label="Add House Espresso to bag">↗</button></div><div class="card-caption"><h3>House Espresso</h3><span>$3.50</span></div><p>Small cup. Main character energy.</p></article>
++        <article class="coffee-card"><div class="card-photo"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=85" width="800" height="600" alt="Refreshing iced coffee in a tall glass" loading="lazy"><span class="photo-tag">THE KEEP-IT-COOL ONE</span><button type="button" class="product-button" data-product="Slow Steep Cold Brew" data-price="4.50" aria-label="Add Slow Steep Cold Brew to bag">↗</button></div><div class="card-caption"><h3>Slow Steep Cold Brew</h3><span>$4.50</span></div><p>18 hours of patience. Pure smoothness.</p></article>
++      </div>
++    </section>
++    <section class="story" id="story"><span class="little-star" aria-hidden="true">✳</span><div><div class="eyebrow">MORE THAN A MORNING FIX</div><h2>Good days start with good roots.</h2><p>We believe the best coffee brings people together. That’s why we source thoughtfully, roast in small batches, and put a little care into every cup.</p></div><a href="mailto:hello@dailygrind.coffee" id="visit">Say hello <span>↗</span></a></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><a class="footer-logo" href="/">the daily grind</a><span>Make yourself a good day.</span><span>© 2026 The Daily Grind Coffee Co.</span></footer>
++  <div class="toast" id="toast" role="status"></div>
++  <dialog id="bag-dialog"><div class="dialog-top"><h2>Your daily essentials</h2><button id="close-bag" type="button" aria-label="Close bag">✕</button></div><div id="bag-items"></div><div class="bag-total">Subtotal <strong id="subtotal">$0.00</strong></div><p class="bag-disclaimer">Your bag is saved on this device. Online checkout is coming soon — visit us for your next cup.</p><button id="keep-shopping" class="primary-link" type="button">Keep exploring <span>↗</span></button></dialog>
+ </body>
+-
+ </html>

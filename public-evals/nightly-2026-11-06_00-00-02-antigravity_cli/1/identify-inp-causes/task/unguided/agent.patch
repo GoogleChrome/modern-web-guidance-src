@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Telemetry HUD */
++    .inp-hud {
++      position: fixed;
++      bottom: 20px;
++      right: 20px;
++      width: 360px;
++      background: #1e1e1e;
++      color: #f5f5f5;
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.78rem;
++      z-index: 9999;
++      overflow: hidden;
++      border: 1px solid #333;
++    }
++
++    .inp-hud-header {
++      background: #2b2b2b;
++      padding: 8px 12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #3d3d3d;
++    }
++
++    .inp-hud-title {
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      color: var(--accent);
++    }
++
++    .inp-badge {
++      padding: 2px 8px;
++      border-radius: 999px;
++      font-weight: 700;
++      font-size: 0.72rem;
++    }
++
++    .inp-badge.good {
++      background: #1b5e20;
++      color: #a5d6a7;
++    }
++
++    .inp-badge.needs-improvement {
++      background: #e65100;
++      color: #ffcc80;
++    }
++
++    .inp-badge.poor {
++      background: #b71c1c;
++      color: #ef9a9a;
++    }
++
++    .inp-hud-body {
++      padding: 10px 12px;
++      max-height: 280px;
++      overflow-y: auto;
++    }
++
++    .inp-row {
++      display: flex;
++      justify-content: space-between;
++      margin-bottom: 4px;
++    }
++
++    .inp-phases {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++      margin: 8px 0;
++      background: #262626;
++      padding: 6px;
++      border-radius: 4px;
++      text-align: center;
++    }
++
++    .inp-phase-label {
++      display: block;
++      font-size: 0.65rem;
++      color: #aaa;
++    }
++
++    .inp-phase-val {
++      font-weight: bold;
++      color: #fff;
++    }
++
++    .inp-scripts {
++      margin-top: 8px;
++      border-top: 1px solid #333;
++      padding-top: 6px;
++    }
++
++    .inp-script-item {
++      background: #262626;
++      padding: 4px 6px;
++      border-radius: 4px;
++      margin-top: 4px;
++      word-break: break-all;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -206,7 +308,54 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Real-User Monitoring (RUM) INP & Script Attribution HUD -->
++  <aside class="inp-hud" id="inp-telemetry-hud" aria-label="INP Field Monitor">
++    <div class="inp-hud-header">
++      <span class="inp-hud-title">INP FIELD MONITOR</span>
++      <span class="inp-badge good" id="inp-hud-badge">WAITING</span>
++    </div>
++    <div class="inp-hud-body">
++      <div class="inp-row">
++        <span>Worst / p98 INP:</span>
++        <strong id="inp-hud-value">— ms</strong>
++      </div>
++      <div class="inp-row">
++        <span>Target Element:</span>
++        <span id="inp-hud-target">—</span>
++      </div>
++      <div class="inp-row">
++        <span>Dominant Phase:</span>
++        <strong id="inp-hud-dominant">—</strong>
++      </div>
++      <div class="inp-phases">
++        <div>
++          <span class="inp-phase-label">Input Delay</span>
++          <span class="inp-phase-val" id="inp-phase-input">0ms</span>
++        </div>
++        <div>
++          <span class="inp-phase-label">Processing</span>
++          <span class="inp-phase-val" id="inp-phase-processing">0ms</span>
++        </div>
++        <div>
++          <span class="inp-phase-label">Presentation</span>
++          <span class="inp-phase-val" id="inp-phase-presentation">0ms</span>
++        </div>
++      </div>
++      <div class="inp-row">
++        <span>Style &amp; Layout (LoAF):</span>
++        <span id="inp-phase-style-layout">0ms</span>
++      </div>
++      <div class="inp-scripts">
++        <div class="inp-phase-label">Attributed Scripts (LoAF):</div>
++        <div id="inp-hud-scripts">
++          <div class="inp-script-item">Interact with the page to capture attribution</div>
++        </div>
++      </div>
++    </div>
++  </aside>
++
++  <script src="/inp-monitor.js"></script>
+ </body>
+ 
+ </html>

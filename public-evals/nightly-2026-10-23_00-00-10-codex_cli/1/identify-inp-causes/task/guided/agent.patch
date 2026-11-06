@@ -1,0 +1,54 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,49 @@
++# INP diagnostics
++
++The page loads the self-hosted `assets/inp-diagnostics.js`, built from
++`src/inp-diagnostics.js` using Google's `web-vitals/attribution` library.
++After editing the source, run `pnpm install --frozen-lockfile` and `pnpm build`.
++Commit the generated assets as well: the existing static server serves the
++repository directly, with no build step at startup.
++
++## Reporting
++
++Set the `inp-report-endpoint` meta tag's `content` in `index.html` to your real
++analytics collector URL. The collector must accept JSON encoded as a
++`text/plain` POST body. Reporting uses `sendBeacon`, with a keepalive fetch
++fallback when beacon queuing is unavailable or rejected. Cross-origin
++collectors need appropriate CORS configuration for the fetch fallback.
++Delivery is best effort; configure CSP `connect-src` to allow the collector.
++No collector or server route is included in this static site, so the empty
++setting sends no network reports.
++
++Alternatively, existing analytics can subscribe to the `inp-diagnostic`
++window event and read `event.detail`. Add `?inp-debug` to a page URL to log
++reports with `console.debug` and report changes to the INP candidate while
++interacting. Production reports when the page becomes hidden. This measures
++page-level INP, not a log of every slow interaction; no interaction means no
++INP report. Repeated reports with the same `id` update the same metric:
++store the latest `value`, rather than counting each report as another visit.
++The library manages page lifecycle and back/forward cache restores.
++
++## Interpreting a report
++
++All durations are in milliseconds. `rating` identifies good, needs-improvement,
++and poor INP. Start with `dominantPhase` and the three phase durations:
++
++- `inputDelay`: inspect work already blocking the main thread before handlers.
++- `processingDuration`: inspect the interaction's event handlers.
++- `presentationDelay`: inspect rendering, layout, and work before the next paint.
++
++`interactionTarget` uses stable `data-inp-target` labels on the page's links.
++Add static labels to future controls; otherwise only the tag name is reported.
++No element text, input values, query strings, or URL fragments are collected.
++
++Where Long Animation Frames are available, `longestScript` includes the script
++URL, function, source character position, invoker type, forced layout duration,
++and the phase it overlaps most. Rendering and script totals provide additional
++clues. These are correlations to investigate, not proof that one script caused
++the entire delay. A null `longestScript` means no script attribution was available,
++not that JavaScript was absent. Event Timing support is required to measure INP;
++unsupported browsers do nothing. Long Animation Frames are optional: phase
++timings remain useful without them.

@@ -1,0 +1,530 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,217 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-simulator {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--primary);
++    }
++
++    .ops-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .ops-header h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .ops-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++      margin-bottom: 24px;
++    }
++
++    .ops-btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 10px 18px;
++      border-radius: 5px;
++      color: white;
++      transition: transform 0.1s, opacity 0.2s, background 0.3s;
++    }
++
++    .ops-btn:active {
++      transform: scale(0.98);
++    }
++
++    .ops-btn-urgent {
++      background: #c62828;
++    }
++
++    .ops-btn-urgent:hover {
++      background: #b71c1c;
++    }
++
++    .ops-btn-standard {
++      background: var(--primary);
++    }
++
++    .ops-btn-standard:hover {
++      background: #3e2723;
++    }
++
++    .ops-btn-background {
++      background: #546e7a;
++    }
++
++    .ops-btn-background:hover {
++      background: #455a64;
++    }
++
++    .ops-btn-batch {
++      background: #ef6c00;
++    }
++
++    .ops-btn-batch:hover {
++      background: #e65100;
++    }
++
++    .ops-btn-clear {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .ops-btn-clear:hover {
++      background: #bcaaa4;
++    }
++
++    .ops-status-bar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 16px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .ops-metrics {
++      display: flex;
++      gap: 18px;
++      flex-wrap: wrap;
++    }
++
++    .ops-metric strong {
++      color: var(--primary);
++    }
++
++    .responsiveness-probe {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .pulse-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      display: inline-block;
++      animation: pulseAnim 1s infinite alternate;
++    }
++
++    @keyframes pulseAnim {
++      from { transform: scale(0.85); opacity: 0.6; }
++      to { transform: scale(1.25); opacity: 1; }
++    }
++
++    .ops-log-container {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fdfcfb;
++      max-height: 320px;
++      overflow-y: auto;
++      padding: 12px;
++    }
++
++    .ops-log-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .ops-log-empty {
++      text-align: center;
++      color: #8d6e63;
++      padding: 20px;
++      font-style: italic;
++    }
++
++    .ops-log-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      border-radius: 5px;
++      background: white;
++      border-left: 4px solid var(--primary);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
++      font-size: 0.9rem;
++    }
++
++    .ops-log-item[data-priority="user-blocking"] {
++      border-left-color: #c62828;
++    }
++
++    .ops-log-item[data-priority="user-visible"] {
++      border-left-color: var(--primary);
++    }
++
++    .ops-log-item[data-priority="background"] {
++      border-left-color: #546e7a;
++    }
++
++    .ops-badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      color: white;
++      margin-right: 8px;
++      text-transform: uppercase;
++    }
++
++    .ops-badge-urgent {
++      background: #c62828;
++    }
++
++    .ops-badge-standard {
++      background: var(--primary);
++    }
++
++    .ops-badge-background {
++      background: #546e7a;
++    }
++
++    .ops-task-meta {
++      color: #6d4c41;
++      font-size: 0.82rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +403,54 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="operations-queue-simulator" class="ops-simulator" aria-labelledby="ops-simulator-title">
++      <div class="ops-header">
++        <h2 id="ops-simulator-title">Operations Queue Simulator</h2>
++        <p>Prioritized task scheduling keeps the UI responsive during heavy store operations.</p>
++      </div>
++
++      <div class="ops-controls">
++        <button type="button" id="btn-urgent-checkout" class="ops-btn ops-btn-urgent" data-priority="user-blocking">
++          Urgent Checkout Task
++        </button>
++        <button type="button" id="btn-standard-menu" class="ops-btn ops-btn-standard" data-priority="user-visible">
++          Standard Menu Update
++        </button>
++        <button type="button" id="btn-background-telemetry" class="ops-btn ops-btn-background" data-priority="background">
++          Background Telemetry Logging
++        </button>
++        <button type="button" id="btn-batch-mixed" class="ops-btn ops-btn-batch" data-action="batch">
++          Run Mixed Tasks Batch
++        </button>
++        <button type="button" id="btn-clear-queue" class="ops-btn ops-btn-clear" data-action="clear">
++          Clear Log
++        </button>
++      </div>
++
++      <div class="ops-status-bar">
++        <div class="ops-metrics">
++          <span class="ops-metric">Status: <strong id="ops-status-text">Idle</strong></span>
++          <span class="ops-metric">Pending: <strong id="ops-pending-count">0</strong></span>
++          <span class="ops-metric">Completed: <strong id="ops-completed-count">0</strong></span>
++        </div>
++        <div class="responsiveness-probe">
++          <span class="pulse-dot" aria-hidden="true"></span>
++          <span>UI Responsive</span>
++          <button type="button" id="btn-ui-ping" class="ops-btn ops-btn-clear" style="padding: 4px 10px; font-size: 0.8rem;">
++            Test UI Click (<span id="ui-ping-count">0</span>)
++          </button>
++        </div>
++      </div>
++
++      <div class="ops-log-container" role="region" aria-label="Task Execution Log">
++        <ul id="ops-log-list" class="ops-log-list">
++          <li id="ops-log-empty" class="ops-log-empty">No operations executed yet. Select a task or run a mixed batch above.</li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +461,253 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const PRIORITY_WEIGHTS = {
++        'user-blocking': 1,
++        'user-visible': 2,
++        'background': 3
++      };
++
++      const TASK_CONFIGS = {
++        checkout: {
++          name: 'Urgent Checkout Task',
++          category: 'Checkout',
++          priority: 'user-blocking',
++          badgeClass: 'ops-badge-urgent',
++          label: 'user-blocking',
++          workMs: 24,
++          chunks: 3
++        },
++        menu: {
++          name: 'Standard Menu Update',
++          category: 'Menu Update',
++          priority: 'user-visible',
++          badgeClass: 'ops-badge-standard',
++          label: 'user-visible',
++          workMs: 24,
++          chunks: 3
++        },
++        telemetry: {
++          name: 'Background Telemetry Logging',
++          category: 'Telemetry',
++          priority: 'background',
++          badgeClass: 'ops-badge-background',
++          label: 'background',
++          workMs: 24,
++          chunks: 3
++        }
++      };
++
++      const statusTextEl = document.getElementById('ops-status-text');
++      const pendingCountEl = document.getElementById('ops-pending-count');
++      const completedCountEl = document.getElementById('ops-completed-count');
++      const logListEl = document.getElementById('ops-log-list');
++      const pingCountEl = document.getElementById('ui-ping-count');
++
++      let taskSequence = 0;
++      let pendingCount = 0;
++      let completedCount = 0;
++      let executionOrder = 0;
++      let uiPingCount = 0;
++
++      // Fallback priority queue when scheduler.postTask is unavailable
++      const fallbackQueue = [];
++      let fallbackScheduled = false;
++
++      function updateMetrics() {
++        pendingCountEl.textContent = String(pendingCount);
++        completedCountEl.textContent = String(completedCount);
++        statusTextEl.textContent = pendingCount > 0 ? 'Processing Queue...' : 'Idle';
++      }
++
++      function yieldToMain(priority) {
++        if (typeof window !== 'undefined' && window.scheduler) {
++          if (typeof window.scheduler.yield === 'function') {
++            return window.scheduler.yield();
++          }
++          if (typeof window.scheduler.postTask === 'function') {
++            return window.scheduler.postTask(() => {}, { priority: priority || 'user-visible' });
++          }
++        }
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      function schedulePrioritizedTask(callback, priority) {
++        if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.postTask === 'function') {
++          return window.scheduler.postTask(callback, { priority });
++        }
++
++        return new Promise((resolve, reject) => {
++          fallbackQueue.push({
++            callback,
++            priority,
++            weight: PRIORITY_WEIGHTS[priority] || 2,
++            seq: ++taskSequence,
++            resolve,
++            reject
++          });
++
++          fallbackQueue.sort((a, b) => (a.weight - b.weight) || (a.seq - b.seq));
++
++          if (!fallbackScheduled) {
++            fallbackScheduled = true;
++            setTimeout(processFallbackQueue, 0);
++          }
++        });
++      }
++
++      async function processFallbackQueue() {
++        while (fallbackQueue.length > 0) {
++          const next = fallbackQueue.shift();
++          try {
++            const result = await next.callback();
++            next.resolve(result);
++          } catch (err) {
++            next.reject(err);
++          }
++        }
++        fallbackScheduled = false;
++      }
++
++      function performCpuChunk(durationMs) {
++        const start = performance.now();
++        let acc = 0;
++        while (performance.now() - start < durationMs) {
++          acc += Math.sqrt(start + acc);
++        }
++        return acc;
++      }
++
++      function createLogEntry(task, orderIndex) {
++        const emptyEl = document.getElementById('ops-log-empty');
++        if (emptyEl) {
++          emptyEl.remove();
++        }
++
++        const li = document.createElement('li');
++        li.className = 'ops-log-item';
++        li.setAttribute('data-priority', task.priority);
++        li.setAttribute('data-task-type', task.type);
++        li.setAttribute('data-order', String(orderIndex));
++
++        const left = document.createElement('div');
++        const badge = document.createElement('span');
++        badge.className = 'ops-badge ' + task.badgeClass;
++        badge.textContent = task.priority;
++
++        const title = document.createElement('strong');
++        title.textContent = '#' + orderIndex + ' ' + task.name;
++
++        left.appendChild(badge);
++        left.appendChild(title);
++
++        const right = document.createElement('span');
++        right.className = 'ops-task-meta';
++        right.textContent = 'Running...';
++
++        li.appendChild(left);
++        li.appendChild(right);
++        logListEl.appendChild(li);
++
++        return { li, right };
++      }
++
++      function enqueueTask(type, customLabel) {
++        const config = TASK_CONFIGS[type];
++        if (!config) return Promise.resolve();
++
++        const task = {
++          type,
++          name: customLabel || config.name,
++          priority: config.priority,
++          badgeClass: config.badgeClass,
++          workMs: config.workMs,
++          chunks: config.chunks
++        };
++
++        pendingCount++;
++        updateMetrics();
++
++        return schedulePrioritizedTask(async () => {
++          const currentOrder = ++executionOrder;
++          const startTime = performance.now();
++          const { li, right } = createLogEntry(task, currentOrder);
++
++          const chunkDuration = Math.max(2, Math.floor(task.workMs / task.chunks));
++          for (let i = 0; i < task.chunks; i++) {
++            performCpuChunk(chunkDuration);
++            if (i < task.chunks - 1) {
++              await yieldToMain(task.priority);
++            }
++          }
++
++          const elapsed = Math.max(1, Math.round(performance.now() - startTime));
++          right.textContent = 'Completed (' + elapsed + 'ms)';
++          li.setAttribute('data-status', 'completed');
++
++          pendingCount = Math.max(0, pendingCount - 1);
++          completedCount++;
++          updateMetrics();
++
++          return {
++            order: currentOrder,
++            name: task.name,
++            priority: task.priority,
++            elapsed
++          };
++        }, task.priority);
++      }
++
++      function runMixedBatch() {
++        // Queue mixed tasks in non-priority order so the scheduler executes them in priority order:
++        // 1. user-blocking (Urgent Checkout Task)
++        // 2. user-visible (Standard Menu Update)
++        // 3. background (Background Telemetry Logging)
++        return Promise.all([
++          enqueueTask('telemetry', 'Background Telemetry Logging (Batch)'),
++          enqueueTask('menu', 'Standard Menu Update (Batch)'),
++          enqueueTask('checkout', 'Urgent Checkout Task (Batch)'),
++          enqueueTask('telemetry', 'Background Telemetry Sync (Batch)'),
++          enqueueTask('menu', 'Standard Menu Price Refresh (Batch)'),
++          enqueueTask('checkout', 'Urgent Express Checkout (Batch)')
++        ]);
++      }
++
++      function clearQueueLog() {
++        executionOrder = 0;
++        completedCount = 0;
++        logListEl.innerHTML = '<li id="ops-log-empty" class="ops-log-empty">No operations executed yet. Select a task or run a mixed batch above.</li>';
++        updateMetrics();
++      }
++
++      document.getElementById('btn-urgent-checkout').addEventListener('click', () => {
++        enqueueTask('checkout');
++      });
++
++      document.getElementById('btn-standard-menu').addEventListener('click', () => {
++        enqueueTask('menu');
++      });
++
++      document.getElementById('btn-background-telemetry').addEventListener('click', () => {
++        enqueueTask('telemetry');
++      });
++
++      document.getElementById('btn-batch-mixed').addEventListener('click', () => {
++        runMixedBatch();
++      });
++
++      document.getElementById('btn-clear-queue').addEventListener('click', () => {
++        clearQueueLog();
++      });
++
++      document.getElementById('btn-ui-ping').addEventListener('click', () => {
++        uiPingCount++;
++        pingCountEl.textContent = String(uiPingCount);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

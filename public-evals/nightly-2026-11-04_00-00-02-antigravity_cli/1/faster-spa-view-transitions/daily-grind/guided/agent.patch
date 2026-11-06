@@ -1,0 +1,529 @@
+diff --git a/index.html b/index.html
+index 66c9173..54fd14e 100644
+--- a/index.html
++++ b/index.html
+@@ -62,16 +62,160 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      font-weight: 600;
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* SPA View Management */
++    .views-wrapper {
++      position: relative;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++      /* Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++      width: 0;
++      height: 0;
++      padding: 0;
++      margin: 0;
++      border: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    /* View Content Helpers */
++    .view-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .view-header p {
++      color: #6d4c41;
++      margin-top: 6px;
++    }
++
++    .filter-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin-bottom: 24px;
++    }
++
++    .filter-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 8px 16px;
++      border-radius: 20px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: all 0.2s;
++    }
++
++    .filter-btn.active,
++    .filter-btn:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .search-input,
++    .form-control {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 12px;
++      margin-bottom: 10px;
++    }
++
++    .rewards-banner {
++      background: var(--primary);
++      color: white;
++      padding: 24px;
++      border-radius: 8px;
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .progress-track {
++      background: rgba(255, 255, 255, 0.2);
++      height: 12px;
++      border-radius: 6px;
++      max-width: 420px;
++      margin: 14px auto 6px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      background: var(--accent);
++      height: 100%;
++      width: 68%;
++      transition: width 0.3s ease;
++    }
++
++    .account-form {
++      max-width: 600px;
++      margin: 0 auto;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group .form-control {
++      width: 100%;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -157,13 +301,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-view="menu" class="active" aria-current="page">Menu</a></li>
++      <li><a href="/locations" data-view="locations">Locations</a></li>
++      <li><a href="/rewards" data-view="rewards">Rewards</a></li>
++      <li><a href="/account" data-view="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,30 +315,188 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/menu" data-view="menu" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++  <main class="container views-wrapper">
++    <!-- Menu View -->
++    <section id="menu" class="spa-view" data-view-panel="menu" tabindex="-1" aria-hidden="false" aria-labelledby="menu-heading">
++      <div class="view-header">
++        <h2 id="menu-heading">Seasonal Favorites &amp; Full Menu</h2>
++        <p>Handcrafted beverages and freshly baked goods made to order.</p>
++      </div>
++
++      <div class="filter-bar" role="group" aria-label="Menu Category Filter">
++        <button type="button" class="filter-btn active" data-category="all">All Items</button>
++        <button type="button" class="filter-btn" data-category="seasonal">Seasonal</button>
++        <button type="button" class="filter-btn" data-category="espresso">Espresso</button>
++        <button type="button" class="filter-btn" data-category="cold-brew">Cold Brew</button>
++        <input type="search" id="menu-search" class="search-input" placeholder="Search drinks..." aria-label="Search menu items">
++      </div>
++
++      <div class="grid" id="menu-grid">
++        <div class="card" data-category="seasonal">
++          <span class="badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p style="margin-top: 8px; font-weight: 600;">$5.75</p>
++          <a href="/menu/seasonal" class="btn" data-action="toggle-details">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="espresso">
++          <span class="badge">Espresso</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p style="margin-top: 8px; font-weight: 600;">$3.50</p>
++          <a href="/menu/espresso" class="btn" data-action="toggle-details">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="cold-brew">
++          <span class="badge">Cold Brew</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p style="margin-top: 8px; font-weight: 600;">$4.75</p>
++          <a href="/menu/cold-brew" class="btn" data-action="toggle-details">View Details</a>
++        </div>
++        <div class="card" data-category="seasonal">
++          <span class="badge">Seasonal</span>
++          <h3>Cardamom Honey Cortado</h3>
++          <p>Double ristretto balanced with steamed milk and wildflower honey.</p>
++          <p style="margin-top: 8px; font-weight: 600;">$5.25</p>
++          <a href="/menu/cortado" class="btn" data-action="toggle-details">View Details</a>
++        </div>
++        <div class="card" data-category="espresso">
++          <span class="badge">Espresso</span>
++          <h3>Velvet Flat White</h3>
++          <p>Micro-foamed whole milk poured over two signature espresso shots.</p>
++          <p style="margin-top: 8px; font-weight: 600;">$4.95</p>
++          <a href="/menu/flat-white" class="btn" data-action="toggle-details">View Details</a>
++        </div>
++        <div class="card" data-category="cold-brew">
++          <span class="badge">Cold Brew</span>
++          <h3>Vanilla Sweet Cream Nitro</h3>
++          <p>Cascading nitrogen-infused cold brew topped with house vanilla cream.</p>
++          <p style="margin-top: 8px; font-weight: 600;">$5.50</p>
++          <a href="/menu/nitro" class="btn" data-action="toggle-details">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Locations View -->
++    <section id="locations" class="spa-view inactive" data-view-panel="locations" tabindex="-1" aria-hidden="true" inert="inert" aria-labelledby="locations-heading">
++      <div class="view-header">
++        <h2 id="locations-heading">Our Coffeehouse Locations</h2>
++        <p>Find your neighborhood roastery, check seating availability, or order ahead.</p>
++      </div>
++
++      <div class="filter-bar">
++        <input type="search" id="location-search" class="search-input" placeholder="Filter by neighborhood or amenity..." aria-label="Filter locations">
++      </div>
++
++      <div class="grid" id="locations-grid">
++        <div class="card">
++          <span class="badge">Flagship Roastery</span>
++          <h3>Downtown Roastery</h3>
++          <p>412 Bean Blossom Ave, Suite 100</p>
++          <p style="margin-top: 6px; font-size: 0.9rem;">Mon–Sun: 6:00 AM – 8:00 PM</p>
++          <p style="margin-top: 6px; font-size: 0.85rem; color: #6d4c41;">Patio • Pour-Over Bar • High-Speed Wi-Fi</p>
++          <button type="button" class="btn select-store-btn" data-store="Downtown Roastery">Set as Pickup Store</button>
++        </div>
++        <div class="card">
++          <span class="badge">Express &amp; Patio</span>
++          <h3>Riverside Cafe</h3>
++          <p>88 Harborfront Walk</p>
++          <p style="margin-top: 6px; font-size: 0.9rem;">Mon–Fri: 6:30 AM – 7:00 PM</p>
++          <p style="margin-top: 6px; font-size: 0.85rem; color: #6d4c41;">Waterfront Seating • Dog Friendly • Wi-Fi</p>
++          <button type="button" class="btn select-store-btn" data-store="Riverside Cafe">Set as Pickup Store</button>
++        </div>
++        <div class="card">
++          <span class="badge">Study Lounge</span>
++          <h3>University Corner</h3>
++          <p>1205 Collegiate Way</p>
++          <p style="margin-top: 6px; font-size: 0.9rem;">Daily: 5:30 AM – 11:00 PM</p>
++          <p style="margin-top: 6px; font-size: 0.85rem; color: #6d4c41;">Late Night Hours • Quiet Pods • Bakery</p>
++          <button type="button" class="btn select-store-btn" data-store="University Corner">Set as Pickup Store</button>
++        </div>
++      </div>
++    </section>
++
++    <!-- Rewards View -->
++    <section id="rewards" class="spa-view inactive" data-view-panel="rewards" tabindex="-1" aria-hidden="true" inert="inert" aria-labelledby="rewards-heading">
++      <div class="view-header">
++        <h2 id="rewards-heading">Daily Grind Rewards</h2>
++        <p>Earn 10 Golden Beans for every $1 spent and unlock handcrafted perks.</p>
++      </div>
++
++      <div class="rewards-banner">
++        <h3>Gold Roaster Status — <span id="bean-balance">340</span> Golden Beans</h3>
++        <div class="progress-track" role="progressbar" aria-valuenow="340" aria-valuemin="0" aria-valuemax="500" aria-label="Progress toward next reward">
++          <div class="progress-fill" id="bean-progress"></div>
++        </div>
++        <p>160 Beans until your next Free Signature Bagged Coffee (500 Beans)</p>
++      </div>
++
++      <div class="grid">
++        <div class="card">
++          <span class="badge">100 Beans</span>
++          <h3>Extra Espresso Shot or Milk Upgrade</h3>
++          <p>Add an extra organic espresso shot or swap in oat/almond milk on the house.</p>
++          <button type="button" class="btn redeem-btn" data-cost="100">Redeem (100 Beans)</button>
++        </div>
++        <div class="card">
++          <span class="badge">200 Beans</span>
++          <h3>Artisanal Bakery Pastry</h3>
++          <p>Choose any freshly baked croissant, morning bun, or seasonal scone.</p>
++          <button type="button" class="btn redeem-btn" data-cost="200">Redeem (200 Beans)</button>
++        </div>
++        <div class="card">
++          <span class="badge">300 Beans</span>
++          <h3>Any Handcrafted Drink</h3>
++          <p>Enjoy your favorite seasonal latte, cold brew, or pour-over in any size.</p>
++          <button type="button" class="btn redeem-btn" data-cost="300">Redeem (300 Beans)</button>
+         </div>
+       </div>
+     </section>
++
++    <!-- My Account View -->
++    <section id="account" class="spa-view inactive" data-view-panel="account" tabindex="-1" aria-hidden="true" inert="inert" aria-labelledby="account-heading">
++      <div class="view-header">
++        <h2 id="account-heading">My Account &amp; Coffee Preferences</h2>
++        <p>Customize your default order profile and pickup settings.</p>
++      </div>
++
++      <form class="account-form" id="account-preferences-form">
++        <div class="form-group">
++          <label for="account-name">Full Name</label>
++          <input type="text" id="account-name" class="form-control" value="Alex Morgan">
++        </div>
++        <div class="form-group">
++          <label for="account-email">Email Address</label>
++          <input type="email" id="account-email" class="form-control" value="alex.morgan@example.com">
++        </div>
++        <div class="form-group">
++          <label for="account-milk">Default Milk Preference</label>
++          <select id="account-milk" class="form-control">
++            <option value="oat" selected>Barista Oat Milk</option>
++            <option value="whole">Organic Whole Milk</option>
++            <option value="almond">Toasted Almond Milk</option>
++            <option value="none">Black / No Milk</option>
++          </select>
++        </div>
++        <div class="form-group">
++          <label for="account-roast">Preferred Roast Profile</label>
++          <select id="account-roast" class="form-control">
++            <option value="medium" selected>House Medium Roast (Balanced &amp; Nutty)</option>
++            <option value="light">Single-Origin Light Roast (Bright &amp; Floral)</option>
++            <option value="dark">Signature Dark Roast (Bold &amp; Smokey)</option>
++          </select>
++        </div>
++        <div class="form-group">
++          <label for="account-notes">Barista Order Notes</label>
++          <input type="text" id="account-notes" class="form-control" placeholder="e.g., Extra hot, light ice...">
++        </div>
++        <button type="submit" class="btn">Save Preferences</button>
++        <p id="account-save-status" style="margin-top: 12px; font-weight: 600; color: var(--primary);" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +509,143 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const VALID_VIEWS = new Set(['menu', 'locations', 'rewards', 'account']);
++
++    function normalizeViewId(rawViewId) {
++      if (!rawViewId) return 'menu';
++      const cleaned = String(rawViewId).replace(/^(\/|#|view-)+/, '').trim().toLowerCase();
++      return VALID_VIEWS.has(cleaned) ? cleaned : 'menu';
++    }
++
++    function switchToView(viewId, { updateHistory = true, moveFocus = true } = {}) {
++      const targetId = normalizeViewId(viewId);
++      const activeView = document.getElementById(targetId);
++      if (!activeView) return;
++
++      // Hide all views while preserving their rendered DOM state in memory via content-visibility: hidden
++      document.querySelectorAll('.spa-view').forEach(view => {
++        view.classList.add('inactive');
++        view.setAttribute('aria-hidden', 'true');
++        view.setAttribute('inert', 'inert');
++      });
++
++      // Show the target view
++      activeView.classList.remove('inactive');
++      activeView.setAttribute('aria-hidden', 'false');
++      activeView.removeAttribute('inert');
++
++      // Update active navigation link styling and aria-current state
++      document.querySelectorAll('nav a[data-view]').forEach(link => {
++        const isCurrent = link.dataset.view === targetId;
++        link.classList.toggle('active', isCurrent);
++        if (isCurrent) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++
++      if (updateHistory) {
++        const targetPath = `/${targetId}`;
++        if (window.location.pathname !== targetPath) {
++          window.history.pushState({ viewId: targetId }, '', targetPath);
++        }
++      }
++
++      if (moveFocus) {
++        // Move focus to the newly revealed view to ensure a logical keyboard tab order
++        activeView.focus({ preventScroll: true });
++      }
++    }
++
++    // Intercept clicks on SPA navigation links
++    document.addEventListener('click', event => {
++      const navLink = event.target.closest('a[data-view]');
++      if (navLink) {
++        event.preventDefault();
++        switchToView(navLink.dataset.view);
++        return;
++      }
++
++      // Interactive state inside Menu view
++      const filterBtn = event.target.closest('.filter-btn[data-category]');
++      if (filterBtn) {
++        const selectedCategory = filterBtn.dataset.category;
++        document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
++          btn.classList.toggle('active', btn === filterBtn);
++        });
++        filterMenuCards();
++        return;
++      }
++
++      const detailsLink = event.target.closest('a[data-action="toggle-details"]');
++      if (detailsLink) {
++        event.preventDefault();
++        const isExpanded = detailsLink.dataset.expanded === 'true';
++        detailsLink.dataset.expanded = String(!isExpanded);
++        detailsLink.textContent = isExpanded ? 'View Details' : 'Added to Favorites ✓';
++        return;
++      }
++
++      // Interactive state inside Locations view
++      const storeBtn = event.target.closest('.select-store-btn');
++      if (storeBtn) {
++        document.querySelectorAll('.select-store-btn').forEach(btn => {
++          const selected = btn === storeBtn;
++          btn.textContent = selected ? 'Selected Pickup Store ✓' : 'Set as Pickup Store';
++        });
++        return;
++      }
++
++      // Interactive state inside Rewards view
++      const redeemBtn = event.target.closest('.redeem-btn');
++      if (redeemBtn && !redeemBtn.disabled) {
++        redeemBtn.disabled = true;
++        redeemBtn.textContent = 'Reward Claimed ✓';
++      }
++    });
++
++    function filterMenuCards() {
++      const activeBtn = document.querySelector('.filter-btn.active');
++      const category = activeBtn ? activeBtn.dataset.category : 'all';
++      const query = (document.getElementById('menu-search')?.value || '').trim().toLowerCase();
++
++      document.querySelectorAll('#menu-grid .card').forEach(card => {
++        const matchesCategory = category === 'all' || card.dataset.category === category;
++        const matchesQuery = !query || card.textContent.toLowerCase().includes(query);
++        card.hidden = !(matchesCategory && matchesQuery);
++      });
++    }
++
++    document.getElementById('menu-search')?.addEventListener('input', filterMenuCards);
++
++    document.getElementById('location-search')?.addEventListener('input', event => {
++      const query = event.target.value.trim().toLowerCase();
++      document.querySelectorAll('#locations-grid .card').forEach(card => {
++        card.hidden = Boolean(query) && !card.textContent.toLowerCase().includes(query);
++      });
++    });
++
++    document.getElementById('account-preferences-form')?.addEventListener('submit', event => {
++      event.preventDefault();
++      const statusEl = document.getElementById('account-save-status');
++      if (statusEl) {
++        statusEl.textContent = 'Preferences saved for your next order!';
++      }
++    });
++
++    // Sync view state with browser Back/Forward navigation
++    window.addEventListener('popstate', event => {
++      const targetView = event.state?.viewId || normalizeViewId(window.location.pathname || window.location.hash);
++      switchToView(targetView, { updateHistory: false });
++    });
++
++    // Initialize view from current URL path or hash on load without stealing initial focus
++    const initialView = normalizeViewId(window.location.hash || window.location.pathname);
++    switchToView(initialView, { updateHistory: false, moveFocus: false });
++  </script>
++
+ </body>
+ 
+ </html>

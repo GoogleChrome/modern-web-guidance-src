@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,53 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      margin-bottom: 16px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .signin input {
++      width: 100%;
++      margin-top: 4px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin button.btn {
++      width: 100%;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      text-align: center;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +219,20 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" action="/api/signin" method="post">
++        <label for="username">Email or username</label>
++        <input id="username" name="username" type="text" autocomplete="username" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++        <p class="signin-status" id="signin-status" role="status"></p>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +263,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import 'https://esm.sh/webauthn-polyfills@0.1.7';
++
++    const form = document.getElementById('signin-form');
++    const status = document.getElementById('signin-status');
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const button = form.querySelector('[data-testid="signin-button"]');
++      button.disabled = true;
++      status.textContent = '';
++
++      try {
++        const response = await fetch(form.action, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({
++            username: form.username.value,
++            password: form.password.value,
++          }),
++        });
++        if (!response.ok) {
++          status.textContent = 'Sign-in failed. Please check your credentials.';
++          return;
++        }
++        status.textContent = 'Signed in. Welcome back!';
++        form.reset();
++        // Fire and forget: passkey promotion must never affect the sign-in UI.
++        promotePasskey();
++      } catch {
++        status.textContent = 'Sign-in failed. Please try again.';
++      } finally {
++        button.disabled = false;
++      }
++    });
++
++    // Silently register a passkey after a successful password sign-in.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential?.getClientCapabilities) return;
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ conditional: true }),
++        });
++        if (!optionsResponse.ok) return;
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsResponse.json());
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey, mediation: 'conditional' });
++        } catch (e) {
++          if (!['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
++            console.error('Unexpected conditional create error:', e);
++          }
++          return;
++        }
++        if (!credential) return;
++
++        const encoded = credential.toJSON();
++        let verified = false;
++        try {
++          const verifyResponse = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            credentials: 'same-origin',
++            body: JSON.stringify(encoded),
++          });
++          verified = verifyResponse.ok;
++        } catch (e) {
++          console.error('Passkey verification network failure:', e);
++        }
++
++        // Drop the orphaned credential from the passkey provider if the server rejected it.
++        if (!verified && PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rp.id ?? location.hostname,
++            credentialId: encoded.id,
++          });
++        }
++      } catch (e) {
++        console.error('Passkey promotion failed:', e);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

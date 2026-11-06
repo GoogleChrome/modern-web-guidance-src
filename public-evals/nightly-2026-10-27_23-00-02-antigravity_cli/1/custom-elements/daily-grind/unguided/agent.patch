@@ -1,0 +1,436 @@
+diff --git a/index.html b/index.html
+index 66c9173..f92bf61 100644
+--- a/index.html
++++ b/index.html
+@@ -107,12 +107,25 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    .card,
++    coffee-card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    coffee-card[featured] {
++      border: 2px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.25);
++    }
++
++    coffee-card[sold-out] {
++      opacity: 0.75;
+     }
+ 
+     .card h3 {
+@@ -120,6 +133,55 @@
+       color: var(--primary);
+     }
+ 
++    .card-badges {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      margin-bottom: 10px;
++      min-height: 24px;
++    }
++
++    .badge {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 12px;
++      letter-spacing: 0.5px;
++    }
++
++    .badge-featured {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .badge-iced {
++      background: #e1f5fe;
++      color: #0277bd;
++    }
++
++    .badge-sold-out {
++      background: #ffcdd2;
++      color: #c62828;
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin: 12px 0;
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .card-price {
++      font-weight: bold;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,12 +191,23 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not([disabled]):not(.disabled) {
+       background: #3e2723;
+     }
+ 
++    .btn.disabled,
++    .btn[disabled] {
++      background: var(--secondary);
++      color: #795548;
++      cursor: not-allowed;
++      pointer-events: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -178,21 +251,32 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          price="5.50"
++          roast-level="3"
++          calories="210"
++          featured>
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"
++          price="3.75"
++          roast-level="5"
++          calories="15">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"
++          price="4.50"
++          roast-level="4"
++          calories="5"
++          iced>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +291,275 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class CoffeeCard extends HTMLElement {
++      static get observedAttributes() {
++        return [
++          'name',
++          'description',
++          'href',
++          'cta-text',
++          'price',
++          'roast-level',
++          'calories',
++          'featured',
++          'iced',
++          'sold-out'
++        ];
++      }
++
++      constructor() {
++        super();
++        this._isConnected = false;
++        this._handleActionClick = this._handleActionClick.bind(this);
++      }
++
++      connectedCallback() {
++        this._isConnected = true;
++        this._upgradeProperties();
++        if (!this.hasAttribute('role')) {
++          this.setAttribute('role', 'article');
++        }
++        this.render();
++        this.addEventListener('click', this._handleActionClick);
++      }
++
++      disconnectedCallback() {
++        this._isConnected = false;
++        this.removeEventListener('click', this._handleActionClick);
++      }
++
++      adoptedCallback() {
++        if (this._isConnected) {
++          this.render();
++        }
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++        if (this._isConnected) {
++          this.render();
++        }
++      }
++
++      _upgradeProperties() {
++        const props = [
++          'name',
++          'description',
++          'href',
++          'ctaText',
++          'price',
++          'roastLevel',
++          'calories',
++          'featured',
++          'iced',
++          'soldOut'
++        ];
++        for (const prop of props) {
++          if (Object.prototype.hasOwnProperty.call(this, prop)) {
++            const value = this[prop];
++            delete this[prop];
++            this[prop] = value;
++          }
++        }
++      }
++
++      // --- String attribute/property reflections ---
++      get name() {
++        return this.getAttribute('name') ?? '';
++      }
++
++      set name(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('name');
++        } else {
++          this.setAttribute('name', String(value));
++        }
++      }
++
++      get description() {
++        return this.getAttribute('description') ?? '';
++      }
++
++      set description(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('description');
++        } else {
++          this.setAttribute('description', String(value));
++        }
++      }
++
++      get href() {
++        return this.getAttribute('href') ?? '#';
++      }
++
++      set href(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('href');
++        } else {
++          this.setAttribute('href', String(value));
++        }
++      }
++
++      get ctaText() {
++        return this.getAttribute('cta-text') ?? 'View Details';
++      }
++
++      set ctaText(value) {
++        if (value === null || value === undefined) {
++          this.removeAttribute('cta-text');
++        } else {
++          this.setAttribute('cta-text', String(value));
++        }
++      }
++
++      // --- Numeric attribute/property reflections ---
++      get price() {
++        const val = Number(this.getAttribute('price'));
++        return this.hasAttribute('price') && Number.isFinite(val) ? val : 0;
++      }
++
++      set price(value) {
++        const num = Number(value);
++        if (value === null || value === undefined || value === '' || !Number.isFinite(num)) {
++          this.removeAttribute('price');
++        } else {
++          this.setAttribute('price', String(num));
++        }
++      }
++
++      get roastLevel() {
++        const val = Number(this.getAttribute('roast-level'));
++        return this.hasAttribute('roast-level') && Number.isFinite(val) ? val : 0;
++      }
++
++      set roastLevel(value) {
++        const num = Number(value);
++        if (value === null || value === undefined || value === '' || !Number.isFinite(num)) {
++          this.removeAttribute('roast-level');
++        } else {
++          this.setAttribute('roast-level', String(num));
++        }
++      }
++
++      get calories() {
++        const val = Number(this.getAttribute('calories'));
++        return this.hasAttribute('calories') && Number.isFinite(val) ? val : 0;
++      }
++
++      set calories(value) {
++        const num = Number(value);
++        if (value === null || value === undefined || value === '' || !Number.isFinite(num)) {
++          this.removeAttribute('calories');
++        } else {
++          this.setAttribute('calories', String(num));
++        }
++      }
++
++      // --- Boolean attribute/property reflections ---
++      get featured() {
++        return this.hasAttribute('featured');
++      }
++
++      set featured(value) {
++        this.toggleAttribute('featured', Boolean(value));
++      }
++
++      get iced() {
++        return this.hasAttribute('iced');
++      }
++
++      set iced(value) {
++        this.toggleAttribute('iced', Boolean(value));
++      }
++
++      get soldOut() {
++        return this.hasAttribute('sold-out');
++      }
++
++      set soldOut(value) {
++        this.toggleAttribute('sold-out', Boolean(value));
++      }
++
++      _handleActionClick(event) {
++        const link = event.target.closest('.btn');
++        if (!link) return;
++        if (this.soldOut) {
++          event.preventDefault();
++          return;
++        }
++        this.dispatchEvent(
++          new CustomEvent('coffee-select', {
++            bubbles: true,
++            composed: true,
++            detail: {
++              name: this.name,
++              price: this.price,
++              roastLevel: this.roastLevel,
++              calories: this.calories,
++              featured: this.featured,
++              iced: this.iced,
++              soldOut: this.soldOut,
++              href: this.href
++            }
++          })
++        );
++      }
++
++      _escapeHtml(str) {
++        const div = document.createElement('div');
++        div.textContent = str;
++        return div.innerHTML;
++      }
++
++      render() {
++        this.classList.add('card');
++
++        const badges = [];
++        if (this.featured) {
++          badges.push('<span class="badge badge-featured">Seasonal Favorite</span>');
++        }
++        if (this.iced) {
++          badges.push('<span class="badge badge-iced">Iced</span>');
++        }
++        if (this.soldOut) {
++          badges.push('<span class="badge badge-sold-out">Sold Out</span>');
++        }
++
++        const metaParts = [];
++        if (this.hasAttribute('price') && this.price > 0) {
++          metaParts.push(`<span class="card-price">$${this.price.toFixed(2)}</span>`);
++        }
++        if (this.roastLevel > 0) {
++          const level = Math.min(5, Math.max(1, Math.round(this.roastLevel)));
++          const beans = '●'.repeat(level) + '○'.repeat(5 - level);
++          metaParts.push(`<span class="card-roast" title="Roast Level ${level}/5">Roast: ${beans}</span>`);
++        }
++        if (this.hasAttribute('calories') && this.calories >= 0) {
++          metaParts.push(`<span class="card-calories">${this.calories} cal</span>`);
++        }
++
++        const nameHtml = this._escapeHtml(this.name);
++        const descHtml = this._escapeHtml(this.description);
++        const hrefAttr = this._escapeHtml(this.href);
++        const ctaLabel = this.soldOut ? 'Unavailable' : this._escapeHtml(this.ctaText);
++        const disabledClass = this.soldOut ? ' disabled' : '';
++        const ariaDisabled = this.soldOut ? ' aria-disabled="true" tabindex="-1"' : '';
++
++        this.innerHTML = `
++          ${badges.length ? `<div class="card-badges">${badges.join('')}</div>` : ''}
++          <h3>${nameHtml}</h3>
++          <p>${descHtml}</p>
++          ${metaParts.length ? `<div class="card-meta">${metaParts.join('<span>•</span>')}</div>` : ''}
++          <a href="${hrefAttr}" class="btn${disabledClass}"${ariaDisabled}>${ctaLabel}</a>
++        `;
++      }
++    }
++
++    if (!customElements.get('coffee-card')) {
++      customElements.define('coffee-card', CoffeeCard);
++    }
++  </script>
+ </body>
+ 
+ </html>

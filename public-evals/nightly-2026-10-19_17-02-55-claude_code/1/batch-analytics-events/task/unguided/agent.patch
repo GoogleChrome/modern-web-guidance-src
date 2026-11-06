@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@4?module';
++
++    // Metrics are queued and sent together in a single request when the page
++    // is hidden/unloaded, which is when LCP, INP and CLS reach their final values.
++    const queue = new Map();
++
++    function flush() {
++      if (!queue.size) return;
++      const body = JSON.stringify({
++        url: location.href,
++        metrics: [...queue.values()],
++      });
++      queue.clear();
++      // sendBeacon survives page unload; fall back to keepalive fetch.
++      if (!(navigator.sendBeacon && navigator.sendBeacon('/collect', body))) {
++        fetch('/collect', { method: 'POST', body, keepalive: true });
++      }
++    }
++
++    function enqueue({ name, value, rating, delta, id, navigationType }) {
++      // Keep only the latest report per metric (id is unique per page load).
++      queue.set(name, { name, value, rating, delta, id, navigationType });
++    }
++
++    onCLS(enqueue);
++    onINP(enqueue);
++    onLCP(enqueue);
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flush();
++    });
++    addEventListener('pagehide', flush);
++  </script>
++
+ </body>
+ 
+ </html>

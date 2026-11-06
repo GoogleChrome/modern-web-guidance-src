@@ -1,0 +1,304 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,108 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    /* Distributed Order Trace Section */
++    .trace-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .trace-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .trace-header h2 {
++      color: var(--primary);
++    }
++
++    .trace-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .trace-table-wrapper {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .trace-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .trace-table th,
++    .trace-table td {
++      padding: 12px 14px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .trace-table th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    .trace-table tbody tr:hover {
++      background: #fdfbf9;
++    }
++
++    .mono {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.85rem;
++    }
++
++    .service-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-weight: 600;
++      font-size: 0.8rem;
++    }
++
++    .interval-badge {
++      display: inline-block;
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid var(--accent);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-weight: 600;
++      font-size: 0.82rem;
++    }
++
++    .trace-summary {
++      margin-top: 15px;
++      padding: 12px 16px;
++      background: #f5f0ee;
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +294,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="trace-section" aria-labelledby="trace-heading">
++      <div class="trace-header">
++        <div>
++          <h2 id="trace-heading">Distributed Order Event Trace</h2>
++          <p>Inspect nanosecond-precision UTC order telemetry collected across backend microservices, sorted chronologically with exact inter-event intervals.</p>
++        </div>
++        <button id="load-order-events-btn" type="button" class="btn" style="margin-top: 0;">Load &amp; Sequence Order Events</button>
++      </div>
++      <div id="trace-output" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,171 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Out-of-order coffee order events collected from distributed backend services
++    // with nanosecond-precision UTC timestamps measured against a synchronized clock.
++    const rawOrderEvents = [
++      {
++        orderId: 'ORD-8492',
++        service: 'roastery-inventory-db',
++        eventType: 'inventory.beans_reserved',
++        detail: 'Reserved 18g Ethiopian Yirgacheffe & 240ml Oat Milk',
++        ts: '2026-10-22T08:15:30.104512890Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'barista-queue-worker',
++        eventType: 'barista.ticket_dispatched',
++        detail: 'Routed Maple Oat Latte ticket to Espresso Bar #2',
++        ts: '2026-10-22T08:15:30.105004120Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'edge-api-gateway',
++        eventType: 'order.request_received',
++        detail: 'POST /v2/orders (Maple Oat Latte, Grande)',
++        ts: '2026-10-22T08:15:30.104100000Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'payment-ledger-svc',
++        eventType: 'payment.authorized',
++        detail: 'Card token auth completed ($6.45)',
++        ts: '2026-10-22T08:15:30.104519345Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'loyalty-rewards-svc',
++        eventType: 'rewards.points_accrued',
++        detail: '+65 Bean Points credited to customer ledger',
++        ts: '2026-10-22T08:15:30.104512955Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'auth-token-verifier',
++        eventType: 'auth.session_verified',
++        detail: 'Validated customer session JWT',
++        ts: '2026-10-22T08:15:30.104100450Z'
++      },
++      {
++        orderId: 'ORD-8492',
++        service: 'push-notifier-svc',
++        eventType: 'notification.order_confirmed',
++        detail: 'Dispatched push notification & receipt email',
++        ts: '2026-10-22T08:15:30.105004120Z'
++      }
++    ];
++
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++      }
++    }
++
++    function parseOrderEvents(rawBatch) {
++      return rawBatch.map((evt, originalIndex) => ({
++        ...evt,
++        originalIndex: originalIndex + 1,
++        timestamp: Temporal.Instant.from(evt.ts)
++      }));
++    }
++
++    function sequenceEvents(events) {
++      return [...events].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
++    }
++
++    function analyzeSequencedEvents(sortedEvents) {
++      return sortedEvents.map((curr, index) => {
++        if (index === 0) {
++          return {
++            ...curr,
++            intervalDuration: null,
++            isSimultaneous: false,
++            formattedInterval: '— (Initial Event)'
++          };
++        }
++
++        const prev = sortedEvents[index - 1];
++        const isSimultaneous = curr.timestamp.equals(prev.timestamp);
++        const gap = curr.timestamp.since(prev.timestamp);
++
++        return {
++          ...curr,
++          intervalDuration: gap,
++          isSimultaneous,
++          formattedInterval: isSimultaneous
++            ? '0ns (Simultaneous)'
++            : `+${gap.toLocaleString('en-US', { style: 'narrow' })}`
++        };
++      });
++    }
++
++    const loadBtn = document.getElementById('load-order-events-btn');
++    const outputEl = document.getElementById('trace-output');
++
++    loadBtn.addEventListener('click', async () => {
++      loadBtn.disabled = true;
++      loadBtn.textContent = 'Sequencing Events...';
++
++      try {
++        await ensureTemporal();
++
++        const parsedEvents = parseOrderEvents(rawOrderEvents);
++        const sortedEvents = sequenceEvents(parsedEvents);
++        const analyzedEvents = analyzeSequencedEvents(sortedEvents);
++
++        const firstInstant = analyzedEvents[0].timestamp;
++        const lastInstant = analyzedEvents[analyzedEvents.length - 1].timestamp;
++        const totalSpan = lastInstant.since(firstInstant);
++
++        const rowsHtml = analyzedEvents.map((evt, idx) => `
++          <tr>
++            <td><strong>#${idx + 1}</strong> <span style="color: #8d6e63; font-size: 0.8rem;">(raw #${evt.originalIndex})</span></td>
++            <td><span class="service-badge">${evt.service}</span></td>
++            <td>
++              <div><strong>${evt.eventType}</strong></div>
++              <div style="color: #5d4037; font-size: 0.82rem;">${evt.detail}</div>
++            </td>
++            <td class="mono">${evt.timestamp.toString()}</td>
++            <td><span class="interval-badge mono">${evt.formattedInterval}</span></td>
++          </tr>
++        `).join('');
++
++        outputEl.innerHTML = `
++          <div class="trace-summary">
++            <div><strong>Order ID:</strong> ORD-8492 (Maple Oat Latte)</div>
++            <div><strong>Events Sequenced:</strong> ${analyzedEvents.length} distributed events</div>
++            <div><strong>Total End-to-End Span:</strong> <span class="mono">${totalSpan.toLocaleString('en-US', { style: 'narrow' })}</span></div>
++          </div>
++          <div class="trace-table-wrapper">
++            <table class="trace-table">
++              <thead>
++                <tr>
++                  <th>Seq</th>
++                  <th>Backend Service</th>
++                  <th>Order Event</th>
++                  <th>UTC Timestamp (Nanosecond Precision)</th>
++                  <th>Interval Since Previous</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${rowsHtml}
++              </tbody>
++            </table>
++          </div>
++        `;
++
++        loadBtn.textContent = 'Reload & Sequence Order Events';
++      } catch (err) {
++        outputEl.innerHTML = `<p style="color: #b71c1c; margin-top: 10px;">Failed to sequence order events: ${err.message}</p>`;
++        loadBtn.textContent = 'Load & Sequence Order Events';
++      } finally {
++        loadBtn.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

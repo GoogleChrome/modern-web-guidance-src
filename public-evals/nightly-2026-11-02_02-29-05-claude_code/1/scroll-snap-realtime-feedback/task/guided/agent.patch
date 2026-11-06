@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,108 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Photo Gallery */
++    .gallery-section {
++      margin-bottom: 50px;
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      gap: 16px;
++      margin-top: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      overscroll-behavior-x: contain;
++      border-radius: 8px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #gallery {
++        scroll-behavior: smooth;
++      }
++    }
++
++    #gallery:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .gallery-item {
++      flex: 0 0 min(85%, 720px);
++      scroll-snap-align: center;
++      position: relative;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .gallery-item img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .gallery-item p {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 30px 16px 12px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++      color: white;
++    }
++
++    .thumbnails {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++    }
++
++    .thumbnail {
++      width: 72px;
++      aspect-ratio: 3 / 2;
++      padding: 0;
++      border: 3px solid transparent;
++      border-radius: 6px;
++      overflow: hidden;
++      background: var(--secondary);
++      cursor: pointer;
++      opacity: 0.6;
++      transition: opacity 0.2s, border-color 0.2s;
++    }
++
++    .thumbnail img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .thumbnail:hover,
++    .thumbnail:focus-visible {
++      opacity: 1;
++    }
++
++    .thumbnail:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .thumbnail.pending {
++      opacity: 0.85;
++      border-color: var(--secondary);
++    }
++
++    .thumbnail.active {
++      opacity: 1;
++      border-color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +274,70 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="gallery-section">
++      <h2 style="text-align: center;">The Daily Grind Vibe</h2>
++      <div id="gallery" tabindex="0" role="region" aria-label="Cafe photo gallery">
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80"
++            alt="Bright cafe interior with white chairs, potted plants, and a chalkboard menu behind the counter"
++            width="1200" height="800" loading="lazy">
++          <p>Sunlit seats for slow mornings</p>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80"
++            alt="Three lattes with heart latte art on a wooden table surrounded by small potted plants"
++            width="1200" height="800" loading="lazy">
++          <p>Latte art, poured with love</p>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80"
++            alt="Barista pouring hot water from a gooseneck kettle into pour-over coffee brewers"
++            width="1200" height="800" loading="lazy">
++          <p>Hand-crafted pour-overs</p>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80"
++            alt="Glowing CAFE sign on a brick wall above pendant lamps and chalkboard menus"
++            width="1200" height="800" loading="lazy">
++          <p>Your neighborhood hangout</p>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1200&q=80"
++            alt="Spacious cafe with wooden floors, long communal tables, and guests working on laptops"
++            width="1200" height="800" loading="lazy">
++          <p>Room to work, read, and linger</p>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
++            alt="Close-up of freshly roasted coffee beans"
++            width="1200" height="800" loading="lazy">
++          <p>Locally roasted, every week</p>
++        </div>
++      </div>
++      <div class="thumbnails" role="group" aria-label="Choose a photo">
++        <button type="button" class="thumbnail" aria-label="Photo 1: Sunlit seats">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Photo 2: Latte art">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Photo 3: Pour-overs">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Photo 4: Cafe sign">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Photo 5: Communal tables">
++          <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Photo 6: Coffee beans">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=160&q=60" alt="" width="160" height="107" loading="lazy">
++        </button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +368,91 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const container = document.getElementById('gallery');
++      const items = [...container.querySelectorAll('.gallery-item')];
++      const thumbnails = [...document.querySelectorAll('.thumbnail')];
++
++      const setPending = (index) => {
++        if (!thumbnails[index]) return;
++        thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
++        thumbnails[index].classList.add('pending');
++      };
++
++      const setActive = (index) => {
++        if (!thumbnails[index]) return;
++        thumbnails.forEach((thumb) => {
++          thumb.classList.remove('pending', 'active');
++          thumb.removeAttribute('aria-current');
++        });
++        thumbnails[index].classList.add('active');
++        thumbnails[index].setAttribute('aria-current', 'true');
++      };
++
++      // Items use scroll-snap-align: center, and #gallery is position: relative
++      // so offsetLeft is measured from the container.
++      const findClosestItemIndex = () => {
++        const containerCenter = container.scrollLeft + container.clientWidth / 2;
++        let closestIndex = 0;
++        let minDistance = Infinity;
++        items.forEach((item, index) => {
++          const distance = Math.abs(containerCenter - (item.offsetLeft + item.offsetWidth / 2));
++          if (distance < minDistance) {
++            minDistance = distance;
++            closestIndex = index;
++          }
++        });
++        return closestIndex;
++      };
++
++      thumbnails.forEach((thumb, index) => {
++        thumb.addEventListener('click', () => {
++          const item = items[index];
++          // Smoothness is controlled by CSS scroll-behavior (respects reduced motion).
++          container.scrollTo({ left: item.offsetLeft - (container.clientWidth - item.offsetWidth) / 2 });
++        });
++      });
++
++      if ('onscrollsnapchanging' in Element.prototype) {
++        container.addEventListener('scrollsnapchanging', (event) => {
++          setPending(items.indexOf(event.snapTargetInline));
++        });
++        container.addEventListener('scrollsnapchange', (event) => {
++          setActive(items.indexOf(event.snapTargetInline));
++        });
++      } else {
++        // Fallback: emulate snap prediction with scroll + rAF, settle on scrollend.
++        let rafId = null;
++        let scrollTimeout;
++        container.addEventListener('scroll', () => {
++          if (!rafId) {
++            rafId = requestAnimationFrame(() => {
++              rafId = null;
++              setPending(findClosestItemIndex());
++            });
++          }
++          // Debounce for browsers without scrollend.
++          clearTimeout(scrollTimeout);
++          scrollTimeout = setTimeout(() => setActive(findClosestItemIndex()), 100);
++        }, { passive: true });
++        container.addEventListener('scrollend', () => {
++          clearTimeout(scrollTimeout);
++          setActive(findClosestItemIndex());
++        });
++      }
++
++      // Sync with any restored scroll position; snap events don't fire on load.
++      const initActiveItem = () => setActive(findClosestItemIndex());
++      if (document.readyState === 'complete') {
++        initActiveItem();
++      } else {
++        window.addEventListener('load', initActiveItem, { once: true });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

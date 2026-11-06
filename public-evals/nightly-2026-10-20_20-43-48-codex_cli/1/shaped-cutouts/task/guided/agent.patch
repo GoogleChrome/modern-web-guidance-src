@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,159 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shape definitions stay available without taking up layout space. */
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    .coffee-community {
++      margin-top: 64px;
++    }
++
++    .barista-profile {
++      display: flex;
++      align-items: center;
++      gap: clamp(24px, 5vw, 64px);
++      padding: 32px;
++      background: #f1eae5;
++      border-radius: 16px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: clamp(160px, 24vw, 240px);
++      max-width: 100%;
++      height: auto;
++      aspect-ratio: 1;
++      flex-shrink: 0;
++      object-fit: cover;
++      object-position: center 35%;
++      -webkit-mask-image: url(#barista-splat);
++      mask-image: url(#barista-splat);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .eyebrow {
++      margin-bottom: 8px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .barista-profile h2 {
++      margin-bottom: 12px;
++      font-size: clamp(1.6rem, 3vw, 2rem);
++      line-height: 1.25;
++    }
++
++    .barista-profile p:not(.eyebrow) {
++      max-width: 54ch;
++    }
++
++    .community-offers {
++      display: grid;
++      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
++      align-items: stretch;
++      gap: 28px;
++      margin-top: 28px;
++    }
++
++    .unified-card {
++      display: flex;
++      /* Shadow follows the combined silhouette, including the side cutout. */
++      filter: drop-shadow(0 8px 10px rgb(62 39 35 / 16%));
++    }
++
++    .card-body,
++    .card-accent {
++      background-color: var(--primary);
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      padding: 32px;
++      color: white;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body .eyebrow {
++      color: var(--accent);
++    }
++
++    .card-body h3,
++    .gradient-masked-card h3 {
++      margin-bottom: 10px;
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .card-body .btn:hover {
++      background: #ffc170;
++    }
++
++    .card-accent {
++      flex: 0 0 56px;
++      border-radius: 0 16px 16px 0;
++      -webkit-mask-image: url(#loyalty-curve);
++      mask-image: url(#loyalty-curve);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      padding: 44px 32px 32px;
++      background: #f4d7aa;
++      border-radius: 16px;
++      text-align: center;
++      /* The transparent circle removes a semicircle from the top edge. */
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, #000 21px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, #000 21px);
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .promo-note {
++      margin-top: 16px;
++      font-size: 0.8rem;
++    }
++
++    @media (max-width: 640px) {
++      .barista-profile {
++        flex-direction: column;
++        text-align: center;
++        padding: 28px 24px;
++      }
++
++      .community-offers {
++        grid-template-columns: minmax(0, 1fr);
++      }
++
++      .card-body {
++        padding: 28px 24px;
++      }
++
++      .card-accent {
++        flex-basis: 40px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +307,23 @@
+ </head>
+ 
+ <body>
+ 
++  <svg class="shape-definitions" width="0" height="0" aria-hidden="true" focusable="false">
++    <defs>
++      <mask id="barista-splat" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <path fill="white" d="M .5 .07 C .58 .07 .58 .2 .67 .17 C .76 .14 .79 .08 .85 .15 C .91 .22 .82 .32 .88 .38 C .94 .44 1 .45 .97 .55 C .94 .65 .82 .62 .8 .72 C .78 .82 .88 .91 .8 .96 C .71 1 .64 .87 .55 .92 C .46 .97 .44 1 .36 .97 C .27 .94 .31 .8 .22 .78 C .13 .76 .02 .86 .02 .76 C .02 .65 .16 .62 .14 .52 C .12 .42 .01 .39 .05 .29 C .09 .19 .23 .27 .29 .19 C .35 .11 .31 .02 .4 .02 C .48 .02 .43 .07 .5 .07 Z" />
++      </mask>
++      <mask id="loyalty-curve" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <rect width="1" height="1" fill="white" />
++        <!-- Extend past the edge so the cutout leaves no stray sliver. -->
++        <path d="M 1.1 0 C .25 .15 .25 .85 1.1 1 L 1.2 1 L 1.2 0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +360,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-community" aria-labelledby="barista-heading">
++      <div class="barista-profile">
++        <img class="shaped-avatar"
++          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&amp;fit=crop&amp;w=600&amp;h=600&amp;q=85"
++          alt="Maya, our featured barista" width="600" height="600" loading="lazy" decoding="async">
++        <div>
++          <p class="eyebrow">The people behind your pour</p>
++          <h2 id="barista-heading">Meet Maya, your morning person.</h2>
++          <p>Great coffee starts with a little care. Our featured barista brings a love of latte art and a knack for remembering your favorite order to every cup.</p>
++          <a href="/about" class="btn">Meet the team</a>
++        </div>
++      </div>
++
++      <div class="community-offers">
++        <article class="unified-card" aria-labelledby="loyalty-heading">
++          <div class="card-body">
++            <p class="eyebrow">The Daily Grind Rewards</p>
++            <h3 id="loyalty-heading">Good coffee. Even better perks.</h3>
++            <p>Make your daily ritual a little more rewarding. Collect points with every cup and enjoy member-only treats along the way.</p>
++            <a href="/rewards" class="btn">Explore rewards</a>
++          </div>
++          <div class="card-accent" aria-hidden="true"></div>
++        </article>
++
++        <article class="gradient-masked-card" aria-labelledby="promo-heading">
++          <p class="eyebrow">Your next favorite</p>
++          <h3 id="promo-heading">A little maple magic.</h3>
++          <p>Cozy up with our Maple Oat Latte. Smooth espresso, creamy oat milk, and a hint of Vermont maple.</p>
++          <a href="/menu/seasonal" class="btn">Find your seasonal sip</a>
++          <p class="promo-note">Made for slow mornings. Available this season.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

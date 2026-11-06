@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+index 66c9173..cfc1467 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,135 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Range slider */
++    .slider-field {
++      max-width: 480px;
++      margin: 30px auto 0;
++      text-align: left;
++    }
++
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    input[type="range"] {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.5rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--accent);
++      --slider-direction: to right;
++
++      /* Synced from the input by script; defaults match the markup. */
++      --attr-min: 0;
++      --attr-max: 100;
++      --control-value: 50;
++      --slider-progress: calc((var(--control-value) - var(--attr-min)) / (var(--attr-max) - var(--attr-min)) * 100%);
++
++      accent-color: var(--primary);
++      appearance: none;
++      inline-size: 100%;
++      block-size: 2.5rem;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      border-radius: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    input[type="range"]:dir(rtl) {
++      --slider-direction: to left;
++    }
++
++    /* WebKit/Blink */
++    input[type="range"]::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(var(--slider-direction),
++          var(--slider-fill-color) var(--slider-progress),
++          var(--slider-track-color) var(--slider-progress));
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
++      border: 3px solid var(--slider-fill-color);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++      transition: transform 0.15s;
++    }
++
++    /* Firefox */
++    input[type="range"]::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    input[type="range"]::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      box-sizing: border-box;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 3px solid var(--slider-fill-color);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++      transition: transform 0.15s;
++    }
++
++    input[type="range"]:hover::-webkit-slider-thumb,
++    input[type="range"]:active::-webkit-slider-thumb {
++      transform: scale(1.15);
++    }
++
++    input[type="range"]:hover::-moz-range-thumb,
++    input[type="range"]:active::-moz-range-thumb {
++      transform: scale(1.15);
++    }
++
++    input[type="range"]:focus-visible {
++      outline: 2px solid var(--slider-fill-color);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    input[type="range"]:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      input[type="range"]::-webkit-slider-thumb,
++      input[type="range"]::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      input[type="range"] {
++        --slider-track-color: GrayText;
++        --slider-fill-color: Highlight;
++        --slider-thumb-color: ButtonText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,6 +323,14 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="slider-field">
++        <div class="slider-header">
++          <label for="strength">Brew strength</label>
++          <output for="strength" id="strength-output">Medium</output>
++        </div>
++        <input type="range" id="strength" min="0" max="100" step="25" value="50">
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +344,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const slider = document.querySelector('#strength');
++    const output = document.querySelector('#strength-output');
++    const labels = ['Mild', 'Light', 'Medium', 'Strong', 'Extra bold'];
++
++    function syncSliderValue() {
++      slider.style.setProperty('--attr-min', slider.min || 0);
++      slider.style.setProperty('--attr-max', slider.max || 100);
++      slider.style.setProperty('--control-value', slider.value);
++      const text = labels[Math.round((slider.value - slider.min) / slider.step)] ?? slider.value;
++      output.textContent = text;
++      slider.setAttribute('aria-valuetext', text);
++    }
++
++    syncSliderValue();
++    slider.addEventListener('input', syncSliderValue);
++  </script>
++
+ </body>
+ 
+ </html>

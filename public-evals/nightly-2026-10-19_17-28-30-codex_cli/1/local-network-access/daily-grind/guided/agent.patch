@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+index 66c9173..1b8dbb0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,49 @@
+       background: #3e2723;
+     }
+ 
++    .local-resource {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .local-resource label {
++      display: block;
++      margin-top: 16px;
++      font-weight: 600;
++    }
++
++    .local-resource input,
++    .local-resource select {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .local-resource button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .local-resource button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    #connection-status { margin-top: 16px; }
++
++    #resource-response {
++      margin-top: 16px;
++      padding: 16px;
++      background: var(--light);
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      max-height: 320px;
++      overflow: auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +238,23 @@
+         </div>
+       </div>
+     </section>
++    <section class="card local-resource" aria-labelledby="local-resource-heading">
++      <h2 id="local-resource-heading">Connect to a local resource</h2>
++      <p>Read a resource from a device on your network or an app running on this computer. Your browser may ask for permission when you connect.</p>
++      <form id="local-resource-form">
++        <label for="address-space">Resource location</label>
++        <select id="address-space" name="address-space">
++          <option value="local">Local network device</option>
++          <option value="loopback">This computer (loopback)</option>
++        </select>
++        <label for="resource-url">Resource URL</label>
++        <input id="resource-url" name="resource-url" type="url" placeholder="http://device.local:8080/status" aria-describedby="resource-help" required>
++        <p id="resource-help">Use an HTTP or HTTPS URL. The resource must allow this website to read its response through CORS.</p>
++        <button id="connect-resource" class="btn" type="submit">Connect</button>
++      </form>
++      <p id="connection-status" role="status" aria-live="polite"></p>
++      <pre id="resource-response" aria-label="Resource response" hidden></pre>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +267,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/local-network.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/local-network.js b/local-network.js
+new file mode 100644
+index 0000000..3ae173a
+--- /dev/null
++++ b/local-network.js
+@@ -0,0 +1,107 @@
++const form = document.querySelector('#local-resource-form');
++const locationSelect = document.querySelector('#address-space');
++const urlInput = document.querySelector('#resource-url');
++const button = document.querySelector('#connect-resource');
++const status = document.querySelector('#connection-status');
++const output = document.querySelector('#resource-response');
++const permissions = new Map();
++
++function showDenied() {
++  status.textContent = 'Access is blocked. Allow Local network or Loopback network access in your browser’s site settings, then connect again.';
++}
++
++async function checkPermission(name) {
++  if (!navigator.permissions?.query) return 'prompt';
++  try {
++    if (!permissions.has(name)) {
++      const permission = await navigator.permissions.query({ name });
++      permissions.set(name, permission);
++      permission.addEventListener('change', () => {
++        if (name !== `${locationSelect.value}-network`) return;
++        if (permission.state === 'denied') showDenied();
++        else status.textContent = 'Permission updated. Connect to read the resource.';
++      });
++    }
++    return permissions.get(name).state;
++  } catch {
++    // Unsupported permission names still allow a user-triggered connection attempt.
++    return 'prompt';
++  }
++}
++
++locationSelect.addEventListener('change', () => {
++  urlInput.placeholder = locationSelect.value === 'loopback'
++    ? 'http://localhost:8080/status'
++    : 'http://device.local:8080/status';
++  status.textContent = '';
++  output.hidden = true;
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (button.disabled) return;
++  output.hidden = true;
++  output.textContent = '';
++
++  if (!window.isSecureContext) {
++    status.textContent = 'Open this website over HTTPS (or localhost for development) to connect to local resources.';
++    return;
++  }
++
++  let url;
++  try {
++    url = new URL(urlInput.value);
++    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++      throw new Error('Invalid resource URL');
++    }
++  } catch {
++    status.textContent = 'Enter a valid HTTP or HTTPS URL without embedded credentials.';
++    return;
++  }
++
++  const targetAddressSpace = locationSelect.value;
++  const permissionName = `${targetAddressSpace}-network`;
++  button.disabled = true;
++  locationSelect.disabled = true;
++  status.textContent = 'Checking permission…';
++  try {
++    if (await checkPermission(permissionName) === 'denied') {
++      showDenied();
++      return;
++    }
++
++    status.textContent = 'Connecting… Allow access if your browser asks.';
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 30000);
++    let response;
++    let body;
++    try {
++      response = await fetch(url.href, {
++        method: 'GET',
++        mode: 'cors',
++        credentials: 'omit',
++        targetAddressSpace,
++        signal: controller.signal,
++      });
++      if (!response.ok) throw new Error(`Resource returned HTTP ${response.status}.`);
++      body = await response.text();
++    } finally {
++      clearTimeout(timeout);
++    }
++    output.textContent = body || '(Empty response)';
++    output.hidden = false;
++    status.textContent = 'Connected. Resource response received.';
++  } catch (error) {
++    if (await checkPermission(permissionName) === 'denied') showDenied();
++    else if (error.name === 'AbortError') {
++      status.textContent = 'Connection timed out. Check that the device or local app is running and try again.';
++    } else if (error.message.startsWith('Resource returned HTTP ')) {
++      status.textContent = error.message;
++    } else {
++      status.textContent = 'Could not connect. Check the URL, resource location, device or local app, browser permissions, and the resource’s CORS settings. Browsers without local network access support may also block HTTP resources from HTTPS pages.';
++    }
++  } finally {
++    button.disabled = false;
++    locationSelect.disabled = false;
++  }
++});

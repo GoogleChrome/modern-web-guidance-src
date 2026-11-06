@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,61 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
++      flex-direction: row;
++      flex-wrap: wrap;
+       justify-content: center;
+       align-items: center;
++      gap: 40px;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero-content {
++      max-width: 550px;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .shaped-element {
++      width: 280px;
++      height: 280px;
++      flex-shrink: 0;
++      background-color: var(--accent);
++      background-image: linear-gradient(135deg, rgba(78, 52, 46, 0.25), rgba(255, 171, 64, 0.35)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80');
++      background-size: cover;
++      background-position: center;
++      /* Fallback organic shape if SVG/mask fails or isn't supported */
++      border-radius: 64% 36% 47% 53% / 58% 44% 56% 42%;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++      /* Free-form fluid vector clip & mask (coffee splash / organic brush stroke) */
++      clip-path: path('M 140 15 C 205 5, 265 45, 270 115 C 275 185, 235 255, 165 268 C 95 280, 25 245, 12 175 C -2 105, 45 65, 85 35 C 105 20, 120 18, 140 15 Z');
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cpath fill='%23000' d='M152,18 C218,8 276,52 282,122 C288,192 244,264 172,278 C100,292 28,254 14,182 C0,110 48,68 90,36 C112,20 130,21 152,18 Z M245,35 C258,32 270,42 266,55 C262,68 246,66 240,54 C236,45 238,37 245,35 Z M35,235 C46,232 54,244 48,254 C42,264 28,260 26,248 C25,241 29,237 35,235 Z'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cpath fill='%23000' d='M152,18 C218,8 276,52 282,122 C288,192 244,264 172,278 C100,292 28,254 14,182 C0,110 48,68 90,36 C112,20 130,21 152,18 Z M245,35 C258,32 270,42 266,55 C262,68 246,66 240,54 C236,45 238,37 245,35 Z M35,235 C46,232 54,244 48,254 C42,264 28,260 26,248 C25,241 29,237 35,235 Z'/%3E%3C/svg%3E");
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++      z-index: 1;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +202,14 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" role="img" aria-label="Artisanal coffee splash decoration"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,58 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order-form {
++      max-width: 450px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .field select {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.25rem;
++    }
++
++    /* Only shown after the user interacts or tries to submit, never on load */
++    .field select:user-invalid,
++    .field select.user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .field select:user-invalid + .error-msg,
++    .field select.user-invalid-fallback + .error-msg {
++      display: block;
++    }
++
++    .order-form button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +244,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order">
++      <h2 style="text-align: center; margin-top: 40px;">Place an Order</h2>
++      <form class="order-form" id="order-form" action="/order-online" method="post">
++        <div class="field">
++          <label for="local-shop">Select your local shop <span aria-hidden="true">*</span></label>
++          <select id="local-shop" name="local-shop" required aria-errormessage="shop-error">
++            <option value="" selected>Choose a shop…</option>
++            <option value="downtown">Downtown</option>
++            <option value="riverside">Riverside</option>
++            <option value="university">University District</option>
++            <option value="old-town">Old Town</option>
++          </select>
++          <div id="shop-error" class="error-msg">
++            <span aria-hidden="true">❌</span> Please select your local shop.
++          </div>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('order-form');
++
++    const syncAriaInvalid = (el) => {
++      if (el.checkValidity()) el.removeAttribute('aria-invalid');
++      else el.setAttribute('aria-invalid', 'true');
++    };
++
++    form.addEventListener('blur', (e) => {
++      if (e.target.matches('select[required]')) syncAriaInvalid(e.target);
++    }, true);
++
++    form.addEventListener('change', (e) => {
++      if (e.target.matches('select[required]')) syncAriaInvalid(e.target);
++    });
++
++    // Runs on invalid submit attempts too, since the browser blocks 'submit'
++    form.addEventListener('invalid', (e) => syncAriaInvalid(e.target), true);
++
++    // Fallback for browsers without :user-invalid
++    if (!CSS.supports('selector(:user-invalid)')) {
++      const select = form.querySelector('select');
++      let interacted = false;
++      const update = () => select.classList.toggle('user-invalid-fallback', !select.checkValidity());
++      select.addEventListener('change', () => { interacted = true; update(); });
++      select.addEventListener('blur', () => { if (interacted) update(); });
++      form.addEventListener('invalid', update, true);
++    }
++  </script>
+ </body>
+ 
+ </html>

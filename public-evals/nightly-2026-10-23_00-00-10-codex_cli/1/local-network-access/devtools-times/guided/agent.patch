@@ -1,0 +1,113 @@
+diff --git a/README.md b/README.md
+index 4479b53..da3e370 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,34 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Local network and loopback resources
++
++The app permits same-origin scripts to request local network and loopback access.
++Use `fetchLocalResource` from `src/utils/localNetwork.ts` in browser code, from an
++explicit user action after explaining which device or service will be contacted:
++
++```ts
++import { fetchLocalResource } from './utils/localNetwork';
++
++connectButton.addEventListener('click', async () => {
++  try {
++    const response = await fetchLocalResource('http://localhost:45678/health', 'loopback');
++    statusElement.textContent = await response.text();
++  } catch (error) {
++    statusElement.textContent = error instanceof Error ? error.message : 'Connection failed.';
++  }
++});
++```
++
++Use `'local'` for LAN devices (including private IPs and `.local` names), and
++`'loopback'` for services on the user's own machine (`localhost`, `127.0.0.1`, or
++`[::1]`). The helper declares the target address space for HTTP requests from
++HTTPS pages, queries granular permissions when supported, and reports denied
++permissions or connection errors. Unsupported permission queries fall back to a
++normal connection attempt; browser security restrictions still apply.
++
++Deploy the app over HTTPS. Users must grant browser permission when prompted,
++and the target service must allow the app's origin through standard CORS headers.
++Requests run in the user's browser, so loopback refers to their machine. No
++connection is attempted automatically on page load.
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..50c16d2 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self)',
++  );
++  return response;
+ });
+diff --git a/src/utils/localNetwork.ts b/src/utils/localNetwork.ts
+new file mode 100644
+index 0000000..44de9a7
+--- /dev/null
++++ b/src/utils/localNetwork.ts
+@@ -0,0 +1,52 @@
++export type LocalAddressSpace = 'local' | 'loopback';
++
++/** Call from a user action, such as a click, after explaining the connection. */
++export async function fetchLocalResource(
++  url: string | URL,
++  addressSpace: LocalAddressSpace,
++  options: Omit<RequestInit, 'mode'> = {},
++): Promise<Response> {
++  if (typeof window === 'undefined' || !window.isSecureContext) {
++    throw new Error('Local connections require a secure browser context. Open this app over HTTPS.');
++  }
++
++  const endpoint = new URL(url);
++  if (!['http:', 'https:'].includes(endpoint.protocol)) {
++    throw new Error('Local resources must use an HTTP or HTTPS URL.');
++  }
++
++  let permission: PermissionState = 'prompt';
++  try {
++    const status = await navigator.permissions.query({
++      name: `${addressSpace === 'local' ? 'local' : 'loopback'}-network` as PermissionName,
++    });
++    permission = status.state;
++  } catch {
++    // Older browsers may not recognize these permissions. Try on user action.
++  }
++
++  if (permission === 'denied') {
++    throw new Error(`Allow ${addressSpace === 'local' ? 'Local network' : 'Loopback network'} access in browser site settings, then try again.`);
++  }
++
++  const requestOptions: RequestInit & { targetAddressSpace: LocalAddressSpace } = {
++    ...options,
++    mode: 'cors',
++    targetAddressSpace: addressSpace,
++  };
++
++  let response: Response;
++  try {
++    response = await fetch(endpoint, requestOptions);
++  } catch (cause) {
++    if (options.signal?.aborted) throw cause;
++    throw new Error(
++      'Could not connect. Check that the device or local service is running, network access is allowed in browser site settings, and the service permits this app’s origin through CORS.',
++      { cause },
++    );
++  }
++  if (!response.ok) {
++    throw new Error(`Local resource returned HTTP ${response.status}.`);
++  }
++  return response;
++}

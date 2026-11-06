@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,200 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling Section (Pure CSS Scroll-Driven Animations) */
++    .scrollytelling {
++      margin-top: 60px;
++      timeline-scope: --section-1, --section-2, --section-3, --section-4;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-content {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      position: relative;
++    }
++
++    #tracked {
++      display: flex;
++      flex-direction: column;
++      gap: 30vh;
++      padding: 15vh 0 25vh;
++    }
++
++    #tracked section {
++      min-height: 60vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.08);
++      border-left: 5px solid var(--accent);
++    }
++
++    #tracked section:nth-child(1) {
++      view-timeline-name: --section-1;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(2) {
++      view-timeline-name: --section-2;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(3) {
++      view-timeline-name: --section-3;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(4) {
++      view-timeline-name: --section-4;
++      view-timeline-axis: block;
++    }
++
++    .step-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    #tracked section h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    #animated {
++      position: sticky;
++      top: 100px;
++      height: calc(100vh - 140px);
++      min-height: 420px;
++      max-height: 640px;
++      display: grid;
++      grid-template-areas: "stack";
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.18);
++      background: var(--primary);
++    }
++
++    #animated section {
++      grid-area: stack;
++      position: relative;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      padding: 32px;
++      color: white;
++      opacity: 0;
++      transform: translateY(24px) scale(0.96);
++      will-change: opacity, transform;
++      animation: reveal-section linear both;
++    }
++
++    #animated section:nth-child(1) {
++      animation-timeline: --section-1;
++      animation-range: entry 10% exit 90%;
++    }
++
++    #animated section:nth-child(2) {
++      animation-timeline: --section-2;
++      animation-range: entry 10% exit 90%;
++    }
++
++    #animated section:nth-child(3) {
++      animation-timeline: --section-3;
++      animation-range: entry 10% exit 90%;
++    }
++
++    #animated section:nth-child(4) {
++      animation-timeline: --section-4;
++      animation-range: entry 10% exit 90%;
++    }
++
++    @keyframes reveal-section {
++      0% {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++      25%, 75% {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++      100% {
++        opacity: 0;
++        transform: translateY(-24px) scale(1.03);
++      }
++    }
++
++    #animated section img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    #animated section::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(to top, rgba(30, 18, 15, 0.85) 0%, rgba(30, 18, 15, 0.2) 60%, transparent 100%);
++      z-index: 1;
++    }
++
++    .animated-caption {
++      position: relative;
++      z-index: 2;
++    }
++
++    .animated-caption h4 {
++      font-size: 1.5rem;
++      margin-bottom: 6px;
++      color: var(--accent);
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-content {
++        grid-template-columns: 1fr;
++      }
++
++      #animated {
++        position: sticky;
++        top: 70px;
++        height: 45vh;
++        min-height: 280px;
++        order: -1;
++        z-index: 10;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +386,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrollytelling" aria-label="From Bean to Cup Journey">
++      <div class="scrollytelling-header">
++        <h2>From Bean to Cup</h2>
++        <p>Scroll through our artisanal process to see how every cup comes to life.</p>
++      </div>
++      <div class="scrollytelling-content">
++        <div id="tracked">
++          <section>
++            <span class="step-badge">Step 01</span>
++            <h3>Ethical High-Altitude Sourcing</h3>
++            <p>We partner directly with sustainable micro-lot farms across Colombia, Ethiopia, and Guatemala. Grown in rich volcanic soil at high altitudes, only the ripest red coffee cherries are hand-picked at peak sweetness.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 02</span>
++            <h3>Small-Batch Artisanal Roasting</h3>
++            <p>Back at our local roastery, master roasters carefully profile each harvest. Using cast-iron drum roasters, we coax out complex notes of dark chocolate, toasted hazelnut, and bright citrus.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 03</span>
++            <h3>Precision Grinding &amp; Extraction</h3>
++            <p>Freshly roasted beans are ground to order down to the micron. Calibrated water temperature and pressure extract a rich, syrupy espresso topped with velvety golden crema.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 04</span>
++            <h3>Crafted &amp; Poured for You</h3>
++            <p>Silky micro-foam milk is hand-poured by our baristas, uniting aroma, texture, and flavor into an unforgettable daily ritual.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1000&q=80" alt="Fresh coffee beans harvested from ethical farms">
++            <div class="animated-caption">
++              <h4>01. Single-Origin Harvest</h4>
++              <p>100% Specialty Grade Arabica Cherries</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80" alt="Artisanal small-batch coffee roasting">
++            <div class="animated-caption">
++              <h4>02. Precision Drum Roasting</h4>
++              <p>Roasted daily in small batches for peak aroma</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1000&q=80" alt="Rich espresso extraction">
++            <div class="animated-caption">
++              <h4>03. Golden Crema Extraction</h4>
++              <p>9 bars of pressure at 93°C</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1000&q=80" alt="Finished latte art poured in a ceramic cup">
++            <div class="animated-caption">
++              <h4>04. The Perfect Pour</h4>
++              <p>Served fresh in our café or delivered to your door</p>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Container & Media Cards */
++    .media-section {
++      margin-top: 50px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      position: relative;
++      max-width: 640px;
++      height: 400px;
++      margin: 0 auto;
++      overflow-y: scroll;
++      scroll-behavior: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++    }
++
++    .media-card {
++      background: white;
++      border-bottom: 1px solid var(--secondary);
++      padding: 16px;
++      flex-shrink: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 600px;
++      height: 240px;
++      max-width: 100%;
++      object-fit: cover;
++      border-radius: 6px;
++      background-color: var(--secondary);
++    }
++
++    .media-card h3 {
++      margin-top: 12px;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .media-card p {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .target {
++      scroll-initial-target: nearest;
++      scroll-start-target: nearest;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <h2>Behind the Scenes</h2>
++      <div class="scroll-container">
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" width="600" height="240" alt="Freshly brewed coffee cup on table">
++          <h3>Artisanal Pour Over</h3>
++          <p>Precision brewing brings out delicate floral and citrus notes in every single-origin cup.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" width="600" height="240" alt="Roasted coffee beans in burlap sack">
++          <h3>Small-Batch Roasting</h3>
++          <p>Our master roasters monitor every batch closely to achieve the ideal flavor profile.</p>
++        </div>
++        <div class="media-card target">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" width="600" height="240" alt="Latte art being poured by barista">
++          <h3>Signature Latte Art</h3>
++          <p>Silky microfoam poured with care by our experienced baristas for a velvety finish.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" width="600" height="240" alt="Espresso machine extracting coffee">
++          <h3>Perfect Espresso Extraction</h3>
++          <p>Dialed in every morning to deliver rich crema and balanced sweetness.</p>
++        </div>
++        <div class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" width="600" height="240" alt="Cozy coffee shop interior">
++          <h3>Community Gathering Space</h3>
++          <p>A warm, welcoming atmosphere designed for conversation, creativity, and relaxation.</p>
++        </div>
++      </div>
++      <script>
++        (function () {
++          const container = document.querySelector('.scroll-container');
++          const target = container && container.querySelector('.target');
++          if (container && target) {
++            container.scrollTop = target.offsetTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

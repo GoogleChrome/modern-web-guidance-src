@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+index 66c9173..0ba767a 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,13 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
++      --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -27,6 +30,17 @@
+       background-color: var(--light);
+     }
+ 
++    @keyframes fadeInUp {
++      from {
++        opacity: 0;
++        transform: translate3d(0, 20px, 0);
++      }
++      to {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -48,6 +62,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,20 +71,67 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 4px 0;
++      will-change: transform, opacity;
++      transition:
++        color 0.25s var(--ease-out-quart),
++        transform 0.25s var(--ease-out-quart),
++        opacity 0.25s var(--ease-out-quart);
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: 0;
++      width: 100%;
++      height: 2px;
++      background-color: var(--accent);
++      border-radius: 2px;
++      transform: scaleX(0);
++      transform-origin: left center;
++      opacity: 0;
++      will-change: transform, opacity;
++      transition:
++        transform 0.28s var(--ease-spring),
++        opacity 0.28s var(--ease-spring);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      transform: translate3d(0, -2px, 0);
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++      opacity: 1;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition:
++        color 0.25s var(--ease-out-quart),
++        background-color 0.25s var(--ease-out-quart),
++        transform 0.25s var(--ease-spring);
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: rgba(255, 171, 64, 0.15);
++      transform: translate3d(0, -2px, 0);
++    }
++
++    .logout-link:active {
++      transform: translate3d(0, 0, 0) scale(0.98);
+     }
+ 
+     /* Hero Section */
+@@ -91,6 +153,29 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      animation: fadeInUp 0.7s var(--ease-spring) both;
++    }
++
++    .hero p {
++      animation: fadeInUp 0.7s var(--ease-spring) 0.12s both;
++    }
++
++    .hero .btn {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 600;
++      padding: 12px 28px;
++      animation: fadeInUp 0.7s var(--ease-spring) 0.24s both;
++    }
++
++    .hero .btn:hover,
++    .hero .btn:focus-visible {
++      background: #ffbc66;
++      transform: translate3d(0, -3px, 0) scale(1.03);
++    }
++
++    .hero .btn:active {
++      transform: translate3d(0, -1px, 0) scale(0.99);
+     }
+ 
+     /* Content Sections */
+@@ -108,19 +193,65 @@
+     }
+ 
+     .card {
++      position: relative;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      will-change: transform, opacity;
++      transform: translate3d(0, 0, 0);
++      transition: transform 0.35s var(--ease-spring);
++      animation: fadeInUp 0.65s var(--ease-spring) both;
++    }
++
++    .card:nth-child(1) {
++      animation-delay: 0.1s;
++    }
++
++    .card:nth-child(2) {
++      animation-delay: 0.2s;
++    }
++
++    .card:nth-child(3) {
++      animation-delay: 0.3s;
++    }
++
++    .card::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++      box-shadow: 0 14px 28px rgba(62, 39, 35, 0.16), 0 6px 12px rgba(62, 39, 35, 0.08);
++      opacity: 0;
++      pointer-events: none;
++      will-change: opacity;
++      transition: opacity 0.35s var(--ease-spring);
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translate3d(0, -6px, 0);
++    }
++
++    .card:hover::after,
++    .card:focus-within::after {
++      opacity: 1;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      transition: transform 0.3s var(--ease-out-quart), color 0.3s var(--ease-out-quart);
++    }
++
++    .card:hover h3,
++    .card:focus-within h3 {
++      transform: translate3d(0, -2px, 0);
+     }
+ 
+     .btn {
++      position: relative;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,11 +259,39 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      will-change: transform, opacity;
++      transform: translate3d(0, 0, 0);
++      transition:
++        background-color 0.25s var(--ease-out-quart),
++        color 0.25s var(--ease-out-quart),
++        transform 0.25s var(--ease-spring);
++    }
++
++    .btn::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++      box-shadow: 0 6px 16px rgba(62, 39, 35, 0.28);
++      opacity: 0;
++      pointer-events: none;
++      will-change: opacity;
++      transition: opacity 0.25s var(--ease-out-quart);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      transform: translate3d(0, -2px, 0) scale(1.02);
++    }
++
++    .btn:hover::after,
++    .btn:focus-visible::after {
++      opacity: 1;
++    }
++
++    .btn:active {
++      transform: translate3d(0, 0, 0) scale(0.98);
+     }
+ 
+     footer {
+@@ -147,10 +306,53 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition:
++        color 0.25s var(--ease-out-quart),
++        transform 0.25s var(--ease-out-quart),
++        opacity 0.25s var(--ease-out-quart);
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      transform: translate3d(0, -2px, 0);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        animation-delay: 0ms !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      nav a:hover,
++      nav a:focus-visible,
++      .logout-link:hover,
++      .logout-link:focus-visible,
++      .logout-link:active,
++      .hero .btn:hover,
++      .hero .btn:focus-visible,
++      .hero .btn:active,
++      .card:hover,
++      .card:focus-within,
++      .card:hover h3,
++      .card:focus-within h3,
++      .btn:hover,
++      .btn:focus-visible,
++      .btn:active,
++      .footer-links a:hover,
++      .footer-links a:focus-visible {
++        transform: none !important;
++      }
+     }
+   </style>
+ </head>

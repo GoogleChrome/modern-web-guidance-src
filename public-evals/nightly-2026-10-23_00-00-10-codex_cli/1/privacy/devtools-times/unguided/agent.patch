@@ -1,0 +1,452 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..180dc46 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,6 +1,9 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ 
+ export default function SignInForm() {
++  const [ready, setReady] = useState(false);
++  useEffect(() => setReady(true), []);
++
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+@@ -9,6 +12,7 @@ export default function SignInForm() {
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (!ready || loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,25 +20,24 @@ export default function SignInForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+         method: 'POST',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError('Login failed. Please check your details and try again.');
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -50,49 +53,68 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
++      <p id="account-privacy" className="mb-4 text-sm text-gray-600">
++        Submitting sends only your username and password as form data to our account service
++        at us-central1-web-devrel-apps.cloudfunctions.net to sign you in.
++        The service also receives connection information such as your IP address.
++        This page does not save your credentials in browser storage.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read our privacy notice</a>.
++      </p>
++      <noscript><p className="mb-4 text-sm text-gray-600">JavaScript is required to submit this form securely.</p></noscript>
++      <form method="post" onSubmit={handleSubmit} aria-describedby="account-privacy" data-skip-tracking="true">
++        <fieldset disabled={!ready || loading} className="space-y-4">
++          <legend className="sr-only">Account credentials</legend>
++          <div>
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++              Username
++            </label>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              autoComplete="username"
++              autoCapitalize="none"
++              spellCheck={false}
++              data-skip-tracking="true"
++              value={username}
++              onChange={(e) => setUsername(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++          </div>
+         
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
++          <div>
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++              Password
++            </label>
++            <input
++              type="password"
++              id="password"
++              name="password"
++              autoComplete="current-password"
++              data-skip-tracking="true"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++          </div>
+ 
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
++          <button
++            type="submit"
++            disabled={!ready || loading}
++            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++              loading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {loading ? 'Signing in...' : 'Sign In'}
++          </button>
++        </fieldset>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3720be1 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,6 +1,9 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ 
+ export default function SignUpForm() {
++  const [ready, setReady] = useState(false);
++  useEffect(() => setReady(true), []);
++
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+@@ -9,6 +12,7 @@ export default function SignUpForm() {
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (!ready || loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,26 +20,25 @@ export default function SignUpForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+         method: 'POST',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        setError('Registration failed. Please check your details and try again.');
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+-        setPassword('');
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -51,53 +54,76 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
++      <p id="account-privacy" className="mb-4 text-sm text-gray-600">
++        Submitting sends only your username and password as form data to our account service
++        at us-central1-web-devrel-apps.cloudfunctions.net to create your account.
++        The service also receives connection information such as your IP address.
++        This page does not save your credentials in browser storage.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read our privacy notice</a>.
++      </p>
++      <p className="mb-4 text-sm text-gray-600">Choose a username that does not identify you. No email address or real name is required.</p>
++      <noscript><p className="mb-4 text-sm text-gray-600">JavaScript is required to submit this form securely.</p></noscript>
++      <form method="post" onSubmit={handleSubmit} aria-describedby="account-privacy" data-skip-tracking="true">
++        <fieldset disabled={!ready || loading} className="space-y-4">
++          <legend className="sr-only">Account credentials</legend>
++          <div>
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
++              Username
++            </label>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              autoComplete="username"
++              autoCapitalize="none"
++              spellCheck={false}
++              data-skip-tracking="true"
++              value={username}
++              onChange={(e) => setUsername(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++          </div>
+         
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
++          <div>
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++              Password
++            </label>
++            <input
++              type="password"
++              id="password"
++              name="password"
++              autoComplete="new-password"
++              minLength={8}
++              pattern=".*[0-9].*"
++              aria-describedby="password-requirements"
++              data-skip-tracking="true"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              required
++              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            />
++            <p id="password-requirements" className="text-xs text-gray-500 mt-1">
++               Must be at least 8 characters and contain a number.
++            </p>
++          </div>
+ 
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
++          <button
++            type="submit"
++            disabled={!ready || loading}
++            data-skip-tracking="true"
++            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++              loading ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {loading ? 'Signing up...' : 'Sign Up'}
++          </button>
++        </fieldset>
+       </form>
+     </div>
+   );
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..31df7b1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,20 +17,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Keep document metadata ahead of any resource requests. -->
++    <meta name="referrer" content="no-referrer" />
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..0d4fcb3 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,12 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+-export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
+-  }
+-  return next();
++export const onRequest = defineMiddleware(async (_context, next) => {
++  // Reading-list storage is created by an explicit bookmark action, not a visit.
++  const response = await next();
++  response.headers.set('Referrer-Policy', 'no-referrer');
++  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  // Responses can contain account pages or a visitor's reading-list state.
++  response.headers.set('Cache-Control', 'private, no-store');
++  return response;
+ });
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..dae00ef 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -67,7 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width="1200"
+                     height="675"
+                     class="w-full h-auto"
+-                    crossorigin="use-credentials"
++                    crossorigin="anonymous"
++                    referrerpolicy="no-referrer"
+                 />
+             ) : (
+                 <Image 
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..cbd343f 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -2,16 +2,17 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <h2>Account information</h2>
++    <p>Signing up and signing in are optional. You can read the site without an account. The forms ask only for a username and password; no email address, real name, or profile information is required. Choose a username that does not identify you.</p>
++    <p>When you submit a form, your browser sends those two fields over HTTPS to our account service at <code>us-central1-web-devrel-apps.cloudfunctions.net</code>, using <code>/times_cdn/api/register</code> for registration or <code>/times_cdn/api/login</code> for sign-in. The service also receives connection information, including your IP address. The requests omit cookies and referrer information and ask browsers not to cache the exchange.</p>
++    <p>The forms do not save credentials or account tokens in browser storage. Password fields are cleared after each request completes. Your browser or password manager may separately offer to remember credentials under your settings.</p>
++    <p>This site's code does not establish the account service's retention period, password-storage practices, or account-deletion process. Those details require confirmation from the service operator; this notice does not promise a retention or deletion policy for that service.</p>
++
++    <h2>Scripts and external resources</h2>
++    <p>The shared page layout does not load third-party analytics or advertising scripts. It does not contact an external font provider. Account submission does not opt you into analytics or marketing.</p>
++    <p>Some articles and media reference external images or other resources. Loading these resources can disclose connection information to their hosts. Pages use a no-referrer policy so outgoing requests do not include the page address.</p>
++
++    <h2>Reading lists and site requests</h2>
++    <p>When you choose to bookmark an article, the reading-list feature stores article identifiers in a server session and may use a session cookie to associate that list with your browser. Simply visiting a page does not initialize a reading list. Clearing site cookies can remove your browser's association with that list.</p>
++    <p>Page and API responses ask browsers and shared caches not to store them. Hosting and account services may process request information to deliver the site; their logging and retention settings are outside the controls implemented by these forms.</p>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce4e27d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,7 @@
+ @import "tailwindcss";
+ 
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: Georgia, "Times New Roman", serif;
+   font-weight: 500;
+   font-style: normal;
+ }
+\ No newline at end of file

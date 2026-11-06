@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,178 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo Alert (dismissible, CSS-only) */
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, visibility 0.4s;
++    }
++
++    #promo-alert:has(#alert-dismiss:checked) {
++      grid-template-rows: 0fr;
++      visibility: hidden;
++    }
++
++    .promo-alert__inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .promo-alert__body {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.6rem 5%;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    .promo-alert__body a {
++      color: inherit;
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      appearance: none;
++      flex-shrink: 0;
++      width: 1.75rem;
++      height: 1.75rem;
++      border-radius: 50%;
++      background: transparent;
++      cursor: pointer;
++      display: grid;
++      place-content: center;
++      transition: background 0.2s;
++    }
++
++    #alert-dismiss::before {
++      content: "\2715";
++      font-size: 0.9rem;
++      line-height: 1;
++      color: var(--text);
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.1);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    /* FAQ Accordion (native <details>, CSS-only animation) */
++    .faq {
++      margin-top: 60px;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "";
++      width: 0.6rem;
++      height: 0.6rem;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 0.3s ease;
++    }
++
++    .faq-item[open] #faq-trigger::after {
++      transform: rotate(-135deg);
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    /* Animate the details content slot from 0fr to 1fr. Transitioning
++       content-visibility keeps the content rendered while it collapses. */
++    .faq-item::details-content {
++      display: grid;
++      grid-template-rows: 0fr;
++      transition: grid-template-rows 0.35s ease, content-visibility 0.35s allow-discrete;
++    }
++
++    .faq-item[open]::details-content {
++      grid-template-rows: 1fr;
++    }
++
++    #faq-content {
++      min-height: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: opacity 0.35s ease;
++    }
++
++    .faq-item[open] #faq-content {
++      opacity: 1;
++    }
++
++    .faq-content__body {
++      padding: 0 1.25rem 1.25rem;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .faq-content__body h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-top: 1rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #faq-trigger::after,
++      .faq-item::details-content,
++      #faq-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-alert__inner">
++      <div class="promo-alert__body">
++        <p>&#9749; Fall special: get 20% off all seasonal drinks this week. <a href="/menu/seasonal">See the menu</a></p>
++        <input type="checkbox" id="alert-dismiss" role="button" aria-label="Dismiss promotion">
++      </div>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +359,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2>FAQ</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger">Frequently Asked Questions</summary>
++        <div id="faq-content">
++          <div class="faq-content__body">
++            <h3>Where do you source your beans?</h3>
++            <p>We partner directly with small farms in Colombia, Ethiopia, and Guatemala, paying above fair-trade prices.</p>
++            <h3>Do you offer dairy-free milk?</h3>
++            <p>Yes. Oat, almond, and soy milk are available at no extra charge.</p>
++            <h3>How do rewards work?</h3>
++            <p>Earn one star per dollar spent. Collect 100 stars for a free drink of your choice.</p>
++            <h3>Can I order ahead?</h3>
++            <p>Absolutely. Order online and pick up at any of our locations without waiting in line.</p>
++          </div>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

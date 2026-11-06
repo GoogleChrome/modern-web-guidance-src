@@ -1,0 +1,311 @@
+diff --git a/index.html b/index.html
+index 7400c85..dec465c 100644
+--- a/index.html
++++ b/index.html
+@@ -27,8 +27,18 @@
+       background-color: var(--light);
+     }
+ 
++    img {
++      display: block;
++      max-inline-size: 100%;
++    }
++
+     /* Navigation */
+-    nav {
++    .site-nav {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.5rem 1.5rem;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -37,41 +47,37 @@
+       z-index: 1000;
+     }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
+-
+     .logo {
+-      float: left;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
+-      float: right;
++    .site-nav ul {
++      display: flex;
++      flex-wrap: wrap;
++      flex-wrap: balance;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav ul a {
++      font-size: 0.9rem;
++    }
++
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      display: inline-block;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -79,19 +85,29 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      display: grid;
++      place-content: center;
++      justify-items: center;
++      gap: 1rem;
++      min-block-size: 60dvh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 1rem + 4vw, 3rem);
++      line-height: 1.2;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      max-inline-size: 40ch;
++      text-wrap: balance;
+     }
+ 
+     /* Content Sections */
+@@ -101,30 +117,96 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
++    .section-title {
++      text-align: center;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    /* Each card spans four shared row tracks (media, heading, content,
++       footer) so regions line up across every card in a row. */
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: 20px;
++      margin-top: 20px;
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
++      container: card / inline-size;
++      display: grid;
++      grid-row: span 4;
++      grid-template-columns: auto 1fr;
++      grid-template-rows: auto auto 1fr auto;
++      grid-template-rows: subgrid;
++      row-gap: 0.75rem;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: clip;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card > img {
++      grid-column: 1 / -1;
++      grid-row: 1;
++      inline-size: 100%;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .card > :not(img) {
++      grid-column: 1 / -1;
++      padding-inline: 20px;
++    }
++
++    .card > :first-child:not(img) {
++      padding-block-start: 20px;
++    }
++
++    .card > h3 {
++      grid-row: 2;
+       color: var(--primary);
++      text-wrap: balance;
++    }
++
++    .card > :not(img, h3, footer) {
++      grid-row: 3;
++    }
++
++    .card > footer {
++      grid-row: 4;
++      padding-block-end: 20px;
++    }
++
++    /* Wide cards with media place the image beside the text. */
++    @container card (inline-size > 30rem) {
++      .card > img {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        inline-size: 40cqi;
++        /* Fill the card's height without inflating the text rows. */
++        block-size: 0;
++        min-block-size: 100%;
++        aspect-ratio: auto;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++        text-align: start;
++      }
++
++      .card:has(> img) > h3 {
++        padding-block-start: 20px;
++        align-self: end;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
+     }
+ 
+     .btn {
+@@ -134,7 +216,6 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+@@ -142,7 +223,11 @@
+       background: #3e2723;
+     }
+ 
+-    footer {
++    .hero .btn {
++      margin-top: 0.5rem;
++    }
++
++    .site-footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -164,8 +249,8 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav class="site-nav" aria-label="Main">
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -182,29 +267,44 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            alt="Milk being poured into a latte, forming latte art" width="600" height="400" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++            alt="A cup of espresso with golden crema on a dark table" width="600" height="400" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="A tall glass of iced cold brew swirled with cream" width="600" height="400" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,109 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Teamwork, simplified</title>
++
++  <!-- Anti-flicker fallback, only for browsers without blocking="render" (e.g. Firefox). -->
++  <script>
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      const root = document.documentElement;
++      root.classList.add('ab-loading');
++      const reveal = () => root.classList.remove('ab-loading');
++      // Reveal once the SDK has run (or failed), with a hard timeout as a safety net.
++      window.addEventListener('experiment-sdk-settled', reveal, { once: true });
++      setTimeout(reveal, 4000);
++    }
++  </script>
++
++  <!-- Render-blocking experiment SDK: nothing paints until it has applied the variant. -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="dispatchEvent(new Event('experiment-sdk-settled'))"
++    onerror="dispatchEvent(new Event('experiment-sdk-settled'))"
++  ></script>
++
++  <style>
++    .ab-loading { opacity: 0 !important; }
++
++    :root {
++      --ink: #14213d;
++      --accent: #f77f00;
++      --accent-ink: #1b1200;
++    }
++
++    * { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      font-family: system-ui, sans-serif;
++      color: var(--ink);
++      line-height: 1.5;
++    }
++
++    .hero {
++      position: relative;
++      min-height: 100svh;
++      display: grid;
++      place-items: center;
++      padding: 2rem 1.5rem;
++      color: #fff;
++      background: #14213d url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80") center / cover no-repeat;
++      isolation: isolate;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(to bottom, rgb(20 33 61 / 0.7), rgb(20 33 61 / 0.85));
++      z-index: -1;
++    }
++
++    .hero-content {
++      max-width: 40rem;
++      text-align: center;
++    }
++
++    h1 {
++      margin: 0 0 1rem;
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.1;
++    }
++
++    .hero p {
++      margin: 0 0 2rem;
++      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 2rem;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--accent-ink);
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-decoration: none;
++      transition: transform 0.15s ease, filter 0.15s ease;
++    }
++
++    .cta-button:hover { filter: brightness(1.1); transform: translateY(-2px); }
++    .cta-button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++  </style>
++</head>
++<body>
++  <main>
++    <section class="hero">
++      <div class="hero-content">
++        <h1 data-experiment="headline">Teamwork, simplified</h1>
++        <p data-experiment="subhead">Plan, track, and ship projects together in one place, with no more scattered tools.</p>
++        <a class="cta-button" id="cta" data-experiment="cta" href="#signup">Get started free</a>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

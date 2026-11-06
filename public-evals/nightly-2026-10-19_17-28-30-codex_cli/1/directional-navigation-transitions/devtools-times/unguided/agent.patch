@@ -1,0 +1,131 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..cc080b7
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,84 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-slider class="block bg-white border-b border-gray-300" role="region" aria-label="Top Stories" aria-roledescription="carousel">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="flex items-center justify-between gap-4 mb-3">
++            <h2 class="text-sm font-bold uppercase tracking-wide">Top Stories</h2>
++            <div class="flex items-center gap-3" hidden={articles.length < 2}>
++                <button type="button" data-previous class="text-sm font-semibold px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Previous</button>
++                <span data-status class="text-xs text-gray-500 whitespace-nowrap" aria-live="polite" aria-atomic="true">1 / {articles.length}</span>
++                <button type="button" data-next class="text-sm font-semibold px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Next</button>
++            </div>
++        </div>
++        <div class="overflow-hidden">
++            {articles.map((article, index) => (
++                <div data-story hidden={index !== 0} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`}>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                </div>
++            ))}
++        </div>
++    </div>
++</top-stories-slider>
++
++<script>
++    class TopStoriesSlider extends HTMLElement {
++        private cleanup?: AbortController;
++
++        connectedCallback() {
++            this.cleanup?.abort();
++            this.cleanup = new AbortController();
++            const { signal } = this.cleanup;
++            const stories = Array.from(this.querySelectorAll<HTMLElement>('[data-story]'));
++            const status = this.querySelector<HTMLElement>('[data-status]');
++            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++            let current = Math.max(0, stories.findIndex(story => !story.hidden));
++            let animation: Animation | undefined;
++
++            const move = (direction: number) => {
++                if (stories.length < 2) return;
++                animation?.cancel();
++                stories[current].hidden = true;
++                current = (current + direction + stories.length) % stories.length;
++                const story = stories[current];
++                story.hidden = false;
++                if (status) status.textContent = `${current + 1} / ${stories.length}`;
++
++                if (!reducedMotion.matches) {
++                    animation = story.animate(
++                        [
++                            { transform: `translateX(${direction > 0 ? '100%' : '-100%'})` },
++                            { transform: 'translateX(0)' },
++                        ],
++                        { duration: 300, easing: 'ease-out' },
++                    );
++                }
++            };
++
++            this.querySelector('[data-previous]')?.addEventListener('click', () => move(-1), { signal });
++            this.querySelector('[data-next]')?.addEventListener('click', () => move(1), { signal });
++            reducedMotion.addEventListener('change', () => {
++                if (reducedMotion.matches) animation?.cancel();
++            }, { signal });
++            signal.addEventListener('abort', () => animation?.cancel(), { once: true });
++        }
++
++        disconnectedCallback() {
++            this.cleanup?.abort();
++        }
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0fc9912 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -39,20 +40,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +69,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

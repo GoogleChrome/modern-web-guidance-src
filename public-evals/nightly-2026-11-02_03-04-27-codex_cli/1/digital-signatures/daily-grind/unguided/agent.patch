@@ -1,0 +1,494 @@
+diff --git a/app.mjs b/app.mjs
+new file mode 100644
+index 0000000..3ef5ecf
+--- /dev/null
++++ b/app.mjs
+@@ -0,0 +1,134 @@
++import { createKeys, exportPublic, importPublic, fingerprint, signDocument, verifyDocument } from './crypto.mjs';
++const $ = id => document.getElementById(id);
++let type = 'receipt', keys, trustedKey, pendingKey;
++const date = new Date();
++const today = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
++$('issue-date').value = today;
++$('expiry').min = today;
++function message(title, detail, error = false) {
++  const box = $('status'); box.replaceChildren();
++  const heading = document.createElement('strong'); heading.textContent = title;
++  const text = document.createElement('span'); text.textContent = detail;
++  box.append(heading, text); box.className = error ? 'error' : ''; box.hidden = false;
++}
++function download(value, filename) {
++  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], {type:'application/json'}));
++  const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++function amountText() {
++  return new Intl.NumberFormat('en-US', {style:'currency',currency:$('currency').value}).format(Number($('amount').value) || 0);
++}
++function updatePreview() {
++  $('preview-reference').textContent = $('reference').value || 'Document number';
++  $('preview-date').textContent = $('issue-date').value;
++  $('preview-customer').textContent = $('customer').value || 'Your name here';
++  $('preview-description').textContent = $('description').value || 'A little something to make your day.';
++  $('preview-amount').textContent = amountText();
++  $('preview-expiry').textContent = type === 'voucher' && $('expiry').value ? `Valid until ${$('expiry').value}` : '';
++  $('preview-seal').textContent = '◇  Ready for your digital signature';
++}
++function switchTab(name) {
++  for (const button of document.querySelectorAll('[data-tab]')) {
++    const active = button.dataset.tab === name;
++    button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1;
++    $(button.dataset.tab + '-panel').hidden = !active;
++  }
++  $('status').hidden = true;
++}
++for (const button of document.querySelectorAll('[data-tab]')) {
++  button.addEventListener('click', () => switchTab(button.dataset.tab));
++  button.addEventListener('keydown', e => {
++    const tabs = [...document.querySelectorAll('[data-tab]')]; let index = tabs.indexOf(button);
++    if (!['ArrowRight','ArrowLeft','Home','End'].includes(e.key)) return;
++    e.preventDefault();
++    index = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length-1 : (index + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++    switchTab(tabs[index].dataset.tab); tabs[index].focus();
++  });
++}
++for (const button of document.querySelectorAll('[data-type]')) button.addEventListener('click', () => {
++  type = button.dataset.type;
++  for (const b of document.querySelectorAll('[data-type]')) { b.classList.toggle('selected', b === button); b.setAttribute('aria-pressed', String(b === button)); }
++  const voucher = type === 'voucher';
++  $('reference-label').textContent = voucher ? 'Voucher number' : 'Receipt number';
++  $('customer-label').textContent = voucher ? 'Recipient name' : 'Customer name';
++  $('description-label').textContent = voucher ? 'Gift message' : 'Order details';
++  $('description').placeholder = voucher ? 'e.g. A little coffee, with a lot of love.' : 'e.g. 2 × Oat milk latte, 1 × Almond croissant';
++  $('amount-label').textContent = voucher ? 'Gift value' : 'Total amount';
++  $('preview-title').textContent = voucher ? 'GIFT VOUCHER' : 'COFFEE RECEIPT';
++  $('preview-customer-label').textContent = voucher ? 'A LITTLE GIFT FOR' : 'PREPARED FOR';
++  $('preview-total-label').textContent = voucher ? 'Gift value' : 'Total paid';
++  $('expiry-field').hidden = !voucher; $('expiry').required = voucher;
++  $('sign-button').firstElementChild.textContent = `◇  Sign & download ${type}`;
++  $('status').hidden = true; updatePreview();
++});
++$('sign-form').addEventListener('input', updatePreview);
++async function ensureKeys() {
++  if (!globalThis.isSecureContext || !crypto.subtle) throw new Error('Signing requires HTTPS or localhost and a browser with Web Crypto support.');
++  if (!keys) keys = await createKeys();
++  $('key-state').textContent = 'Your session signing key is ready. SHA-256 public-key fingerprint:';
++  $('key-fingerprint').textContent = await fingerprint(keys.publicKey); $('key-fingerprint').hidden = false;
++  $('export-key').disabled = false; $('generate-key').disabled = true; $('generate-key').textContent = 'Signing key ready';
++  return keys;
++}
++$('generate-key').addEventListener('click', async () => {
++  try { await ensureKeys(); message('Signing key created', 'Export the public key so recipients can verify your documents. Save it before closing this page.'); }
++  catch(e) { message('Could not create key', e.message, true); }
++});
++$('export-key').addEventListener('click', async () => {
++  try { download(await exportPublic(keys.publicKey), 'daily-grind-public-key.json'); }
++  catch(e) { message('Could not export public key', e.message, true); }
++});
++$('sign-form').addEventListener('submit', async e => {
++  e.preventDefault(); const button = $('sign-button'); button.disabled = true;
++  try {
++    if (!$('reference').value.trim() || !$('customer').value.trim() || !$('description').value.trim()) throw new Error('Please fill in each document detail.');
++    if ($('issue-date').value > today) throw new Error('The issue date cannot be in the future.');
++    if (type === 'voucher' && ($('expiry').value < today || $('expiry').value < $('issue-date').value)) throw new Error('Choose an expiry date on or after today and the issue date.');
++    const document = { type, issuer: 'The Daily Grind', reference: $('reference').value.trim(), issuedOn: $('issue-date').value, customer: $('customer').value.trim(), description: $('description').value.trim(), amountMinor: Math.round(Number($('amount').value)*100), currency: $('currency').value, signedAt: new Date().toISOString() };
++    if (type === 'voucher') document.expiresOn = $('expiry').value;
++    const envelope = await signDocument(document, await ensureKeys());
++    download(envelope, `daily-grind-${type}-${document.reference.replace(/[^a-zA-Z0-9_-]/g,'_')}.json`);
++    $('preview-seal').textContent = '✓  Digitally signed · ECDSA P-256';
++    message('Signed document downloaded', 'Export your public key from Your keys and share it through a trusted channel so recipients can verify this document. The private key is kept only for this page session.');
++  } catch(e) { message('Could not sign document', e.message, true); }
++  finally { button.disabled = false; }
++});
++async function readJSON(file) {
++  if (!file) throw new Error('Choose a JSON file first.');
++  if (file.size > 1024*1024) throw new Error('Please choose a JSON file smaller than 1 MB.');
++  try { return JSON.parse(await file.text()); } catch { throw new Error('The file does not contain valid JSON.'); }
++}
++$('document-file').addEventListener('change', async () => {
++  try { $('document-json').value = JSON.stringify(await readJSON($('document-file').files[0]), null, 2); $('status').hidden = true; }
++  catch(e) { $('document-json').value = ''; message('Could not read document', e.message, true); }
++});
++$('verify-form').addEventListener('submit', async e => {
++  e.preventDefault(); const button = e.submitter; button.disabled = true;
++  try {
++    const raw = $('document-json').value;
++    if (!raw.trim()) throw new Error('Upload a signed document or paste its JSON.');
++    if (raw.length > 1024*1024) throw new Error('Document is too large. The limit is 1 MB.');
++    let envelope; try { envelope = JSON.parse(raw); } catch { throw new Error('The document does not contain valid JSON.'); }
++    let key;
++    if (keys && envelope?.keyId === await fingerprint(keys.publicKey)) key = keys.publicKey;
++    else if (trustedKey) key = trustedKey;
++    if (!key) throw new Error('No trusted key available. Import and confirm the issuer’s public key under Your keys.');
++    if (!await verifyDocument(envelope, key)) throw new Error('Signature mismatch. This document was changed or its signature is invalid.');
++    const expired = envelope.document.type === 'voucher' && envelope.document.expiresOn && envelope.document.expiresOn < today;
++    message(expired ? 'Valid signature · voucher expired' : 'Signature verified', `${envelope.document.type === 'voucher' ? 'Gift voucher' : 'Coffee receipt'} ${envelope.document.reference}: signature matches the trusted key and the signed content is unchanged.${expired ? ' This voucher has passed its expiry date.' : ''} Payment and redemption status are not checked.`);
++  } catch(e) { message('Verification failed', e.message, true); }
++  finally { button.disabled = false; }
++});
++$('public-key-file').addEventListener('change', async () => {
++  pendingKey = undefined; $('pending-key').hidden = true;
++  try { pendingKey = await importPublic(await readJSON($('public-key-file').files[0])); $('pending-fingerprint').textContent = await fingerprint(pendingKey); $('pending-key').hidden = false; }
++  catch(e) { message('Could not import key', e.message, true); }
++});
++$('trust-key').addEventListener('click', async () => {
++  if (!pendingKey) return;
++  trustedKey = pendingKey; pendingKey = undefined; $('pending-key').hidden = true;
++  $('trusted-key-state').textContent = `Trusted public key: ${await fingerprint(trustedKey)}`;
++  message('Public key trusted for this session', 'Documents signed by the matching private key can now be verified.');
++});
++updatePreview();
+diff --git a/crypto.mjs b/crypto.mjs
+new file mode 100644
+index 0000000..ea1c35f
+--- /dev/null
++++ b/crypto.mjs
+@@ -0,0 +1,37 @@
++const encoder = new TextEncoder();
++export const algorithm = { name: 'ECDSA', namedCurve: 'P-256' };
++export const signingAlgorithm = { name: 'ECDSA', hash: 'SHA-256' };
++export function canonical(value) {
++  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
++  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + canonical(value[k])).join(',') + '}';
++  return JSON.stringify(value);
++}
++export function encode(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))); }
++export function decode(value) {
++  if (typeof value !== 'string' || value.length > 10000) throw new Error('Invalid encoded key or signature.');
++  return Uint8Array.from(atob(value), c => c.charCodeAt(0));
++}
++export async function fingerprint(key) {
++  const raw = await crypto.subtle.exportKey('spki', key);
++  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', raw)), b => b.toString(16).padStart(2, '0')).join('');
++}
++export async function createKeys() { return crypto.subtle.generateKey(algorithm, false, ['sign', 'verify']); }
++export async function exportPublic(key) {
++  return { format: 'daily-grind-public-key-v1', algorithm: 'ECDSA-P256-SHA256', publicKey: encode(await crypto.subtle.exportKey('spki', key)) };
++}
++export async function importPublic(value) {
++  if (value.format !== 'daily-grind-public-key-v1' || value.algorithm !== 'ECDSA-P256-SHA256') throw new Error('Choose a Daily Grind P-256 public key file.');
++  return crypto.subtle.importKey('spki', decode(value.publicKey), algorithm, true, ['verify']);
++}
++export async function signDocument(document, keys) {
++  const envelope = { format: 'daily-grind-signed-document-v1', algorithm: 'ECDSA-P256-SHA256', keyId: await fingerprint(keys.publicKey), document };
++  const signature = await crypto.subtle.sign(signingAlgorithm, keys.privateKey, encoder.encode(canonical(envelope)));
++  return { ...envelope, signature: encode(signature) };
++}
++export async function verifyDocument(envelope, trustedKey) {
++  if (!envelope || envelope.format !== 'daily-grind-signed-document-v1' || envelope.algorithm !== 'ECDSA-P256-SHA256' || !envelope.document || !['receipt', 'voucher'].includes(envelope.document.type)) throw new Error('This is not a supported signed receipt or gift voucher.');
++  if (Object.keys(envelope).sort().join(',') !== 'algorithm,document,format,keyId,signature') throw new Error('The signed file contains unexpected fields.');
++  if (envelope.keyId !== await fingerprint(trustedKey)) throw new Error('Unknown signing key. Import the issuer’s public key from a trusted source, then try again.');
++  const { signature, ...payload } = envelope;
++  return crypto.subtle.verify(signingAlgorithm, trustedKey, decode(signature), encoder.encode(canonical(payload)));
++}
+diff --git a/crypto.test.mjs b/crypto.test.mjs
+new file mode 100644
+index 0000000..c384994
+--- /dev/null
++++ b/crypto.test.mjs
+@@ -0,0 +1,47 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { createKeys, exportPublic, importPublic, fingerprint, signDocument, verifyDocument } from './crypto.mjs';
++const keys = await createKeys();
++const document = { type: 'receipt', reference: 'DG-001', customer: 'Alex', amountMinor: 1250, currency: 'USD', issuedOn: '2026-11-02' };
++test('receipt and voucher signatures survive JSON export and public-key import', async () => {
++  const publicKey = await importPublic(JSON.parse(JSON.stringify(await exportPublic(keys.publicKey))));
++  assert.equal(await fingerprint(publicKey), await fingerprint(keys.publicKey));
++  for (const type of ['receipt', 'voucher']) {
++    const envelope = await signDocument({ ...document, type }, keys);
++    assert.equal(await verifyDocument(JSON.parse(JSON.stringify(envelope)), publicKey), true);
++  }
++});
++test('changes to signed content are rejected', async () => {
++  const envelope = await signDocument(document, keys);
++  for (const field of ['customer','amountMinor','reference','type','issuedOn']) {
++    const changed = structuredClone(envelope);
++    changed.document[field] = field === 'amountMinor' ? 1 : field === 'type' ? 'voucher' : 'altered';
++    assert.equal(await verifyDocument(changed, keys.publicKey), false);
++  }
++  const changed = structuredClone(envelope);
++  changed.document.extra = 'unsigned addition';
++  assert.equal(await verifyDocument(changed, keys.publicKey), false);
++});
++test('another signer cannot impersonate the trusted key', async () => {
++  const attacker = await createKeys();
++  const envelope = await signDocument(document, attacker);
++  await assert.rejects(verifyDocument(envelope, keys.publicKey), /Unknown signing key/);
++  envelope.keyId = await fingerprint(keys.publicKey);
++  assert.equal(await verifyDocument(envelope, keys.publicKey), false);
++});
++test('malformed files, unsupported algorithms and extra fields fail closed', async () => {
++  for (const value of [null, {}, { format: 'other' }]) await assert.rejects(verifyDocument(value, keys.publicKey));
++  const envelope = await signDocument(document, keys);
++  await assert.rejects(verifyDocument({ ...envelope, algorithm: 'RSA' }, keys.publicKey));
++  await assert.rejects(verifyDocument({ ...envelope, extra: 'unsigned' }, keys.publicKey));
++  await assert.rejects(importPublic({ format: 'unknown' }));
++});
++test('private key is not exportable', async () => {
++  assert.equal(keys.privateKey.extractable, false);
++  await assert.rejects(crypto.subtle.exportKey('jwk', keys.privateKey));
++});
++test('object property ordering does not invalidate a signature', async () => {
++  const envelope = await signDocument(document, keys);
++  envelope.document = Object.fromEntries(Object.entries(envelope.document).reverse());
++  assert.equal(await verifyDocument(envelope, keys.publicKey), true);
++});
+diff --git a/index.html b/index.html
+index 66c9173..785f873 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,25 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#f6f5ef"><meta name="description" content="A little coffee, a lot of confidence. Create and verify digitally signed Daily Grind receipts and gift vouchers in your browser.">
++<title>The Daily Grind — Good coffee. Genuine moments.</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="styles.css">
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<header class="site-header"><a class="brand" href="#" aria-label="The Daily Grind home"><span class="brand-icon">♨</span><span>the daily grind<span class="brand-sub">COFFEE & GOOD COMPANY</span></span></a><nav aria-label="Main navigation"><a href="#favorites">Our coffee</a><a href="#workspace">Receipts & vouchers</a><a href="#story">Our story</a></nav><a class="header-link" href="#workspace">Your daily, verified <span>↗</span></a></header>
++<main>
++<section class="hero"><div class="hero-copy"><div class="eyebrow"><span></span> GOOD COFFEE. GENUINE MOMENTS.</div><h1>A little coffee.<br>A lot of <em>confidence.</em></h1><p>From your first sip to a thoughtful gift, make every<br class="desktop"> Daily Grind moment one you can trust.</p><a class="button dark" href="#workspace">Explore receipts & vouchers <span>↗</span></a><div class="hero-note"><span class="small-shield">✓</span> Digitally signed. Authentically yours.</div></div><div class="hero-image"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=85" alt="A warm cup of freshly brewed coffee on a rustic café table"><div class="image-label"><span class="label-star">✳</span><span>Thoughtfully roasted.<br>Wholeheartedly shared.</span></div><span class="photo-tag">YOUR EVERYDAY, A LITTLE BETTER.</span></div></section>
++<section class="trust-strip" aria-label="Our commitments"><span>✧ <b>Ethically sourced</b> <span>From people who care</span></span><span>♨ <b>Locally roasted</b> <span>Freshness in every cup</span></span><span>◇ <b>Digitally protected</b> <span>Confidence in every detail</span></span></section>
++<section id="workspace" class="workspace-section"><div class="section-intro"><div><div class="eyebrow">A LITTLE PEACE OF MIND</div><h2>Good things come with proof.</h2><p>Create a signed receipt or gift voucher, or check one you’ve received.</p></div><span class="browser-badge"><span></span> Securely in your browser</span></div>
++<div class="workspace"><div class="workspace-top"><div class="tabs" role="tablist" aria-label="Document tools"><button role="tab" id="create-tab" aria-selected="true" aria-controls="create-panel" data-tab="create"><span>▧</span> Create & sign</button><button role="tab" id="verify-tab" aria-selected="false" aria-controls="verify-panel" data-tab="verify" tabindex="-1"><span>◇</span> Verify a document</button><button role="tab" id="keys-tab" aria-selected="false" aria-controls="keys-panel" data-tab="keys" tabindex="-1"><span>⚿</span> Your keys</button></div><span class="algorithm-badge">ECDSA P-256 <span>·</span> SHA-256</span></div>
++<div id="create-panel" role="tabpanel" aria-labelledby="create-tab" class="panel"><div class="editor"><div class="step-title"><span class="step-number">01</span><div><h3>Make it official.</h3><p>Choose a document and fill in the little details.</p></div></div><div class="type-switch" role="group" aria-label="Document type"><button class="selected" type="button" data-type="receipt" aria-pressed="true">▧ &nbsp; Coffee receipt</button><button type="button" data-type="voucher" aria-pressed="false">♧ &nbsp; Gift voucher</button></div><form id="sign-form"><div class="field-row"><label><span id="reference-label">Receipt number</span><input id="reference" required maxlength="60" value="DG-2026-001" placeholder="DG-2026-001"></label><label>Issued on<input id="issue-date" type="date" required></label></div><label><span id="customer-label">Customer name</span><input id="customer" required maxlength="100" placeholder="e.g. Alex Morgan"></label><label><span id="description-label">Order details</span><input id="description" required maxlength="240" placeholder="e.g. 2 × Oat milk latte, 1 × Almond croissant"></label><div class="field-row"><label><span id="amount-label">Total amount</span><div class="money-input"><span>$</span><input id="amount" type="number" min="0.01" max="99999.99" step="0.01" placeholder="0.00" required></div></label><label>Currency<select id="currency"><option value="USD">USD — US Dollar</option><option value="GBP">GBP — British Pound</option><option value="EUR">EUR — Euro</option></select></label></div><label id="expiry-field" hidden>Valid until<input id="expiry" type="date"></label><button class="button dark sign-button" id="sign-button" type="submit"><span>◇ &nbsp; Sign & download receipt</span><span>↗</span></button><p class="form-note">Your private key stays in this browser session.</p></form></div><aside class="preview-area"><div class="preview-label"><span>DOCUMENT PREVIEW</span><span>↗</span></div><div class="paper"><div class="receipt-brand">♨<br><b>the daily grind</b><small>COFFEE & GOOD COMPANY</small></div><div class="receipt-divider"></div><div class="receipt-title" id="preview-title">COFFEE RECEIPT</div><div class="receipt-meta"><span id="preview-reference">DG-2026-001</span><span id="preview-date"></span></div><div class="receipt-divider"></div><span class="paper-label" id="preview-customer-label">PREPARED FOR</span><p class="preview-name" id="preview-customer">Your name here</p><p id="preview-description" class="preview-description">A little something to make your day.</p><div class="receipt-divider"></div><div class="receipt-total"><span id="preview-total-label">Total paid</span><b id="preview-amount">$0.00</b></div><p id="preview-expiry" class="preview-description"></p><div class="preview-seal" id="preview-seal">◇ &nbsp; Ready for your digital signature</div><p class="receipt-thanks">Thanks for making us part of your daily.</p></div><div class="preview-caption"><span>↳</span> All the details. A verifiable signature.</div></aside></div>
++<div id="verify-panel" class="panel utility-panel" role="tabpanel" aria-labelledby="verify-tab" hidden><div class="utility-copy"><div class="eyebrow">CHECK THE LITTLE DETAILS</div><h3>Confidence, confirmed.</h3><p>Upload a signed JSON receipt or voucher. We check its signature against your current signing key or a public key you’ve explicitly trusted.</p><div class="info-card">A valid signature proves the document is unchanged and matches the trusted key. Confirm the issuer’s public-key fingerprint through a separate trusted channel.</div></div><form id="verify-form"><label class="upload-zone">↥<strong>Choose a signed document</strong><span>Daily Grind JSON file · up to 1 MB</span><input id="document-file" type="file" accept=".json,application/json"></label><label>Or paste the signed JSON<textarea id="document-json" rows="6" placeholder='{"format": "daily-grind-signed-document-v1", …}'></textarea></label><button class="button dark" type="submit">◇ &nbsp; Verify document <span>↗</span></button></form></div>
++<div id="keys-panel" class="panel utility-panel" role="tabpanel" aria-labelledby="keys-tab" hidden><div class="utility-copy"><div class="eyebrow">YOUR KEYS, YOUR CONTROL</div><h3>A signature that’s yours.</h3><p>Classical asymmetric cryptography, powered by your browser. Your private key cannot be exported and is discarded when this page closes or reloads.</p><div class="info-card">This is a local signing workspace. These keys are not certified Daily Grind issuer keys. Merchant authenticity requires a public key obtained directly from the merchant.</div></div><div class="key-controls"><h4>Your session signing key</h4><p id="key-state">No signing key yet. One is created when you first sign.</p><code id="key-fingerprint" hidden></code><div class="key-buttons"><button id="generate-key" class="button dark" type="button">Create signing key</button><button id="export-key" class="button secondary" type="button" disabled>Export public key ↗</button></div><hr><h4>Trust an issuer’s public key</h4><p>Import a public key only after confirming its origin. Imported trust lasts for this session.</p><label class="public-key-label">Choose public key JSON<input type="file" id="public-key-file" accept=".json,application/json"></label><div id="pending-key" hidden><p>Compare this SHA-256 fingerprint with the issuer:</p><code id="pending-fingerprint"></code><button id="trust-key" class="button secondary" type="button">Trust this public key</button></div><p id="trusted-key-state">No external public key trusted.</p></div></div>
++<div id="status" role="status" aria-live="polite" hidden></div><div class="workspace-bottom"><span>⌑ &nbsp; Your documents never leave your browser.</span><span>Built on the Web Crypto API <span class="tiny-dot">●</span></span></div></div><p class="trust-footnote">A signature protects authenticity and integrity relative to a trusted key. It does not confirm payment or prevent a voucher from being redeemed twice.</p></section>
++<section id="favorites" class="favorites"><div class="favorites-heading"><div><div class="eyebrow">FIND YOUR NEXT DAILY</div><h2>Worth taking a moment for.</h2></div><span class="season-label">THE SEASONAL EDIT &nbsp; ↙</span></div><div class="coffee-grid"><article><div class="coffee-photo"><img loading="lazy" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80" alt="Iced latte with creamy milk"><span>THE COMFORT CUP</span></div><h3>Maple Oat Latte <span>↗</span></h3><p>Velvety oat milk. A touch of maple. Pure comfort.</p></article><article><div class="coffee-photo"><img loading="lazy" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=700&q=80" alt="Rich espresso in a small coffee cup"><span>SMALL BUT MIGHTY</span></div><h3>Dark Roast Espresso <span>↗</span></h3><p>Bold, beautifully balanced, and unapologetically rich.</p></article><article><div class="coffee-photo"><img loading="lazy" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=700&q=80" alt="Cold coffee served over ice"><span>TAKE IT SLOW</span></div><h3>Signature Cold Brew <span>↗</span></h3><p>Steeped for 18 hours. Smooth from the first sip.</p></article></div></section>
++<section class="story" id="story"><span>✳</span><p>Good coffee connects us.<br><b>Trust keeps us coming back.</b></p><div>Ethically sourced. Locally roasted.<br>Made for your everyday.</div></section>
++</main><footer><a class="footer-brand" href="#">the daily grind<span>®</span></a><p>© 2026 The Daily Grind Coffee Co.</p><a href="#workspace">Made with care. Verified with confidence. ↗</a></footer>
++<script type="module" src="app.mjs"></script>
++</body></html>
+diff --git a/package.json b/package.json
+index 2bd4d77..ef46d3d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test crypto.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..3a609e3
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--ink:#253b2e;--olive:#5c6c42;--cream:#f7f6f0;--muted:#777b70;--line:#e1e3d9;--white:#fff;--sand:#eeeee4}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;color:var(--ink);background:var(--cream);font:14px 'DM Sans',sans-serif}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #8caa68;outline-offset:3px}[hidden]{display:none!important}.site-header{height:100px;max-width:1400px;margin:auto;padding:0 5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;gap:11px;align-items:center;font-family:'Manrope',sans-serif;font-size:23px;font-weight:800;letter-spacing:-1px}.brand-icon{font-size:38px;font-weight:400}.brand-sub{display:block;font:8px 'DM Sans',sans-serif;letter-spacing:2px;margin-top:5px}.site-header nav{display:flex;gap:32px;font-size:12px}.site-header nav a:nth-child(2){color:var(--olive)}.header-link{font-size:12px;border:1px solid #c6ccbc;border-radius:6px;padding:12px 15px}.header-link span{margin-left:18px}.hero{max-width:1400px;display:grid;grid-template-columns:1fr 1fr;margin:auto;padding:46px 5% 42px;gap:50px;align-items:center}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:700;display:flex;gap:9px;align-items:center}.eyebrow>span{width:6px;height:6px;background:var(--olive);border-radius:50%}h1,h2,h3,p{margin:0}h1{font-family:'Manrope',sans-serif;font-size:clamp(38px,4vw,59px);letter-spacing:-2.8px;line-height:1.16;font-weight:500;margin:24px 0 20px}h1 em{font-family:Georgia,serif;font-weight:400;color:var(--olive)}.hero-copy>p{color:#777c70;font-size:14px;line-height:1.9}.button{display:inline-flex;align-items:center;justify-content:center;gap:24px;border:0;border-radius:5px;padding:15px 21px;font-size:12px;font-weight:500;transition:background .2s,transform .2s}.button:hover{transform:translateY(-1px)}.dark{background:var(--ink);color:white}.dark:hover{background:#3b5039}.hero .button{margin-top:27px}.hero-note{display:flex;align-items:center;gap:8px;margin-top:19px;font-size:10px;color:var(--muted)}.small-shield{color:var(--olive);border:1px solid var(--olive);border-radius:3px 3px 6px 6px;font-size:9px;padding:1px 3px}.hero-image{height:359px;position:relative;border-radius:8px;overflow:hidden;background:#65523c}.hero-image>img{width:100%;height:100%;object-fit:cover;object-position:50% 55%}.hero-image:after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#18271b60,transparent 60%);pointer-events:none}.image-label{position:absolute;z-index:1;left:20px;bottom:25px;display:flex;gap:13px;align-items:center;background:#f8f6edeb;border-radius:5px;padding:14px 21px;font-size:11px;line-height:1.6}.label-star{font-size:30px}.photo-tag{position:absolute;right:19px;top:20px;writing-mode:vertical-rl;font-size:8px;letter-spacing:2px;color:white;z-index:1}.trust-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);max-width:1260px;margin:0 auto;display:flex;justify-content:space-around;padding:20px 25px;gap:25px}.trust-strip>span{display:flex;align-items:center;gap:11px;color:var(--olive);font-size:18px}.trust-strip b{font-size:11px;font-weight:500;color:var(--ink)}.trust-strip span span{font-size:10px;color:var(--muted);margin-left:4px}.workspace-section,.favorites{max-width:1260px;margin:64px auto 0;padding:0 30px}.section-intro{display:flex;align-items:center;justify-content:space-between;margin-bottom:27px}.section-intro h2,.favorites h2{font:500 30px 'Manrope',sans-serif;letter-spacing:-1.1px;margin:12px 0 10px}.section-intro p{color:var(--muted);font-size:12px}.browser-badge{display:flex;gap:7px;align-items:center;font-size:10px;color:var(--olive);background:#eceedf;border:1px solid #dce2d0;border-radius:20px;padding:9px 12px}.browser-badge span{width:5px;height:5px;background:#72834f;border-radius:50%}.workspace{background:white;border:1px solid #dce0d4;border-radius:8px;overflow:hidden;box-shadow:0 8px 25px #2d3b2810}.workspace-top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:0 27px;background:#fcfcf9}.tabs{display:flex;gap:27px}.tabs button{border:0;background:none;color:#818679;font-size:12px;padding:23px 0 19px;border-bottom:3px solid transparent;display:flex;gap:8px;align-items:center}.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--olive);font-weight:700}.tabs button>span{font-size:17px}.algorithm-badge{font-family:monospace;font-size:9px;color:#77826b;background:#eff2e9;padding:6px 9px;border-radius:4px}.algorithm-badge span{margin:0 5px}.panel{display:grid;grid-template-columns:1.15fr 1fr}.editor{padding:31px 34px}.step-title{display:flex;gap:12px;align-items:center;margin-bottom:25px}.step-number{font-size:10px;color:var(--olive);border:1px solid var(--line);padding:9px;border-radius:50%}.step-title h3{font-family:'Manrope',sans-serif;font-size:18px;font-weight:600;letter-spacing:-.4px}.step-title p{font-size:11px;color:var(--muted);margin-top:5px}.type-switch{display:flex;border:1px solid var(--line);background:#f7f8f3;border-radius:5px;padding:4px;margin-bottom:23px}.type-switch button{width:50%;border:0;background:transparent;padding:10px 5px;color:var(--muted);font-size:11px;border-radius:3px}.type-switch .selected{background:white;color:var(--ink);box-shadow:0 1px 4px #26391d15;font-weight:600}form label{display:block;margin-bottom:17px;font-size:10px;font-weight:500}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:17px}input:not([type=file]),select,textarea{width:100%;border:1px solid #dfe3d8;border-radius:4px;padding:12px;margin-top:8px;color:var(--ink);background:#fff;font-size:11px;min-width:0}input::placeholder,textarea::placeholder{color:#a2a59b}textarea{resize:vertical}.money-input{display:flex;align-items:center;position:relative}.money-input>span{position:absolute;left:12px;top:20px;color:#8d9385;font-size:12px}.money-input input{padding-left:27px}.sign-button{width:100%;margin-top:3px;justify-content:space-between;padding:15px 18px}.form-note{text-align:center;font-size:9px;color:var(--muted);margin-top:12px}.preview-area{padding:29px 44px 23px;background:#f3f4ed;border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center}.preview-label{width:100%;display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.6px;color:#8a9080;margin-bottom:22px}.paper{width:100%;max-width:310px;background:#fffefa;padding:23px 25px 21px;position:relative;filter:drop-shadow(0 5px 7px #202d2010)}.paper:after{content:'';position:absolute;bottom:-7px;left:0;width:100%;height:8px;background:linear-gradient(135deg,#fffefa 50%,transparent 50%) 0 0/12px 12px,linear-gradient(225deg,#fffefa 50%,transparent 50%) 0 0/12px 12px}.receipt-brand{text-align:center;font-size:25px;line-height:1.3}.receipt-brand b{font:800 18px 'Manrope',sans-serif;letter-spacing:-.7px}.receipt-brand small{font-size:6px;letter-spacing:1.6px;display:block;margin-top:6px}.receipt-divider{border-top:1px dashed #dfe1d5;margin:19px 0}.receipt-title{text-align:center;font-size:9px;letter-spacing:1.6px;font-weight:700}.receipt-meta{display:flex;justify-content:space-between;font-size:8px;color:#919585;margin-top:13px;gap:10px;overflow-wrap:anywhere}.paper-label{font-size:7px;letter-spacing:1.2px;color:#8b9080}.preview-name{font-size:12px;font-weight:600;margin-top:7px;overflow-wrap:anywhere}.preview-description{font-size:10px;color:#8d9283;line-height:1.6;margin-top:12px;overflow-wrap:anywhere}.receipt-total{display:flex;align-items:center;justify-content:space-between;gap:15px;font-size:10px}.receipt-total b{font:600 24px 'Manrope',sans-serif;letter-spacing:-1px}.preview-seal{font-size:8px;text-align:center;color:#7e8b67;border:1px solid #e0e5d6;background:#f5f7ee;border-radius:3px;padding:11px 4px;margin-top:23px}.receipt-thanks{font-size:8px;color:#909584;text-align:center;margin-top:20px}.preview-caption{font-size:9px;color:#88917b;margin-top:27px}.preview-caption>span{margin-right:5px}.workspace-bottom{border-top:1px solid var(--line);display:flex;justify-content:space-between;padding:14px 27px;font-size:9px;color:#8b917f;background:#fcfcf9}.tiny-dot{font-size:7px;color:#8e9e76;margin-left:7px}.trust-footnote{font-size:9px;text-align:center;color:#929787;margin-top:16px;line-height:1.7}.favorites{margin-top:66px}.favorites-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.season-label{font-size:9px;color:#858c7b;letter-spacing:1.5px}.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.coffee-photo{height:220px;border-radius:6px;overflow:hidden;position:relative;background:#e9e5d9}.coffee-photo img{width:100%;height:100%;object-fit:cover;transition:transform .5s}.coffee-grid article:hover img{transform:scale(1.04)}.coffee-photo>span{position:absolute;bottom:14px;left:14px;background:#fffdf1ed;padding:7px 10px;border-radius:3px;font-size:7px;letter-spacing:1.3px}.coffee-grid h3{display:flex;justify-content:space-between;font-size:14px;font-weight:500;margin:16px 0 7px}.coffee-grid h3 span{color:#7d8b6e}.coffee-grid p{font-size:10px;color:var(--muted);line-height:1.8}.story{max-width:1200px;margin:55px auto 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:32px 0;display:flex;align-items:center;gap:26px}.story>span{font-size:45px;color:var(--olive)}.story>p{font:400 23px 'Manrope',sans-serif;letter-spacing:-.7px;line-height:1.5}.story b{font-weight:400;color:#899278}.story>div{margin-left:auto;font-size:11px;line-height:1.9;color:#888f7f}footer{max-width:1260px;margin:auto;padding:30px;display:flex;justify-content:space-between;align-items:center;color:#8d9383;font-size:9px}.footer-brand{font:800 17px 'Manrope',sans-serif;letter-spacing:-.7px;color:var(--ink)}.footer-brand>span{font-size:9px;margin-left:4px;vertical-align:top}.utility-panel{padding:38px;gap:45px;min-height:460px}.utility-copy h3{font:500 26px 'Manrope',sans-serif;margin:16px 0}.utility-copy>p{font-size:13px;line-height:1.9;color:var(--muted)}.info-card{padding:18px;background:#f1f3e9;border:1px solid #e0e5d5;border-radius:5px;margin-top:25px;font-size:11px;line-height:1.9;color:#69765a}.upload-zone{padding:20px;border:1px dashed #b6c1a6;border-radius:5px;background:#f9faf5;text-align:center;font-size:23px}.upload-zone strong,.upload-zone span{display:block;font-size:12px;margin:8px 0}.upload-zone span{font-size:10px;color:var(--muted)}input[type=file]{max-width:100%;font-size:10px;padding:8px}form .button{width:100%}.key-controls h4{margin:0 0 12px}.key-controls p{font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0}.key-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.secondary{background:#eef1e6;color:var(--ink);border:1px solid #d9dfcb}.key-controls hr{border:0;border-top:1px solid var(--line);margin:22px 0}code{display:block;padding:13px;background:#f3f5ed;border:1px solid var(--line);font-size:10px;overflow-wrap:anywhere;line-height:1.8;border-radius:4px}.public-key-label{display:block;font-size:11px}.public-key-label input{display:block;padding-left:0;margin-top:8px}#status{margin:0 30px 25px;padding:16px;border-radius:5px;font-size:12px;line-height:1.7;background:#eff5e9;border:1px solid #cddbbf;overflow-wrap:anywhere}#status.error{background:#fff1ec;border-color:#ebc8b9;color:#9d4933}#status strong{display:block;font-size:14px;margin-bottom:4px}@media(min-width:1500px){.hero{padding-top:65px;padding-bottom:65px}.hero-image{height:400px}}@media(max-width:1000px){.site-header{padding:0 4%;height:85px}.site-header nav{gap:18px}.header-link{display:none}.hero{gap:25px;padding:35px 4%}.hero-image{height:330px}.trust-strip span span{display:none}.workspace-section,.favorites{padding:0 4%;margin-top:45px}.editor{padding:25px}.preview-area{padding:27px}.algorithm-badge{display:none}.story{margin:40px 4% 0}.tabs{gap:24px}.coffee-photo{height:190px}.section-intro h2,.favorites h2{font-size:26px}}@media(max-width:650px){.site-header{height:77px}.brand{font-size:20px}.brand-icon{font-size:30px}.brand-sub{font-size:6px}.site-header nav a:not(:nth-child(2)){display:none}.site-header nav{font-size:10px}.hero{grid-template-columns:1fr;gap:28px;padding-top:32px}.hero h1{font-size:43px;letter-spacing:-2px;margin-top:18px}.hero-copy>p{font-size:13px}.hero-image{height:255px}.hero .button{margin-top:20px}.hero-note{margin-top:14px}.trust-strip{padding:18px 12px;gap:10px}.trust-strip>span{gap:6px;font-size:14px}.trust-strip b{font-size:9px}.section-intro{display:block}.section-intro h2,.favorites h2{font-size:25px}.section-intro p{font-size:11px;line-height:1.7}.browser-badge{display:inline-flex;margin-top:16px}.workspace-top{padding:0 15px}.tabs{width:100%;justify-content:space-between;gap:10px}.tabs button{font-size:10px;gap:5px;padding-top:18px;padding-bottom:15px}.tabs button>span{font-size:14px}.panel{grid-template-columns:1fr}.editor{padding:23px 20px}.preview-area{border-left:0;border-top:1px solid var(--line);padding:25px 35px 30px}.workspace-bottom{padding:13px 17px;font-size:8px;gap:14px}.workspace-bottom>span:last-child{display:none}.trust-footnote{font-size:8px;padding:0 7px}.favorites-heading{display:block}.season-label{display:block;margin-top:15px}.coffee-grid{grid-template-columns:1fr;gap:27px}.coffee-photo{height:250px}.coffee-grid h3{font-size:15px}.coffee-grid p{font-size:12px}.story{gap:15px;padding:25px 0}.story>span{font-size:35px}.story>p{font-size:18px}.story>div{display:none}footer{padding:24px 4%;flex-wrap:wrap;gap:18px}footer>a:last-child{width:100%;font-size:9px}.utility-panel{padding:25px 20px;gap:25px}#status{margin:0 20px 20px}.field-row{gap:10px}.eyebrow{font-size:8px}}

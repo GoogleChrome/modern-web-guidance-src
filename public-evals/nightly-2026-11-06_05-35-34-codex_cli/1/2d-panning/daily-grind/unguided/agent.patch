@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+index 66c9173..fff5794 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,39 @@
+       background: #3e2723;
+     }
+ 
++    .locations { margin-top: 64px; }
++    .locations-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 22px; }
++    .eyebrow { color: #8d6749; font-size: .75rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
++    .locations h2 { font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1.25; margin: 6px 0 10px; }
++    .locations-heading p:last-child { color: #79665c; max-width: 510px; }
++    .map-reset { background: white; border: 1px solid #d7ccc1; border-radius: 6px; color: var(--primary); padding: 10px 16px; font: inherit; cursor: pointer; white-space: nowrap; }
++    .map-reset:hover { background: #f5eee6; }
++    .map-frame { position: relative; border: 1px solid #ded5c8; border-radius: 12px; overflow: hidden; background: #eee9dc; }
++    .map-viewport { height: 510px; overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; scrollbar-color: #bba78e #eee9dc; scrollbar-width: thin; }
++    .map-viewport.is-dragging { cursor: grabbing; user-select: none; }
++    .map-viewport:focus-visible { outline: 3px solid var(--accent); outline-offset: -4px; }
++    .map-surface { position: relative; width: 1800px; height: 1300px; }
++    .map-art { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
++    .map-pin { position: absolute; display: flex; align-items: center; gap: 9px; background: #fffdf8; border: 1px solid #d9c8b3; border-radius: 28px; padding: 7px 14px 7px 7px; box-shadow: 0 4px 14px #614b3320; color: var(--primary); font: 600 14px 'Segoe UI', sans-serif; cursor: pointer; white-space: nowrap; }
++    .map-pin span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; font-size: 13px; }
++    .map-pin[aria-pressed="true"] { border: 2px solid #91613b; background: #fff4df; }
++    .map-pin:focus-visible, .map-reset:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .map-compass { position: absolute; right: 20px; top: 18px; display: grid; place-items: center; width: 38px; height: 54px; background: #fffdf8e8; border-radius: 20px; font-size: 11px; pointer-events: none; }
++    .map-compass span { font-size: 21px; line-height: 1; }
++    .map-caption { display: flex; justify-content: space-between; gap: 12px; padding: 13px 18px; background: #fffdf8; border-top: 1px solid #ded5c8; color: #79665c; font-size: .78rem; }
++    .location-detail { display: flex; align-items: center; gap: 18px; padding: 22px 0; border-bottom: 1px solid #e7ded4; }
++    .location-number { display: grid; place-items: center; flex-shrink: 0; width: 46px; height: 46px; background: #eee5d9; border-radius: 50%; font-weight: 700; }
++    .location-detail h3 { font-size: 1.05rem; }
++    .location-detail p { color: #79665c; font-size: .9rem; }
++    .location-tag { margin-left: auto; color: #716347; background: #eeeadd; padding: 6px 12px; border-radius: 20px; font-size: .75rem; white-space: nowrap; }
++    @media (max-width: 600px) {
++      .locations-heading { align-items: start; flex-direction: column; gap: 14px; }
++      .map-viewport { height: 440px; }
++      .map-caption { flex-direction: column; gap: 3px; }
++      .location-detail { flex-wrap: wrap; gap: 12px; }
++      .location-tag { margin-left: 58px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +228,68 @@
+         </div>
+       </div>
+     </section>
++    <section class="locations" aria-labelledby="locations-title">
++      <div class="locations-heading">
++        <div>
++          <p class="eyebrow">Good coffee, around the corner</p>
++          <h2 id="locations-title">Find your daily spot.</h2>
++          <p>Take a look around our neighborhood. There's a cozy corner and a fresh cup waiting for you.</p>
++        </div>
++        <button class="map-reset" id="map-reset" type="button">↺ Reset view</button>
++      </div>
++      <div class="map-frame">
++        <div class="map-viewport" id="cafe-map" tabindex="0" role="region" aria-label="Coffee shop neighborhood map" aria-describedby="map-help">
++          <div class="map-surface">
++            <svg class="map-art" viewBox="0 0 1800 1300" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
++              <defs>
++                <pattern id="blocks" width="240" height="200" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
++                  <rect width="240" height="200" fill="#eee9dc"/>
++                  <rect x="20" y="20" width="84" height="65" rx="7" fill="#e3dac9"/>
++                  <rect x="119" y="20" width="100" height="65" rx="7" fill="#e6ddce"/>
++                  <rect x="20" y="100" width="199" height="78" rx="7" fill="#e3dac9"/>
++                  <path d="M0 0H240 M0 0V200" stroke="#fffdf5" stroke-width="22"/>
++                </pattern>
++              </defs>
++              <rect width="1800" height="1300" fill="url(#blocks)"/>
++              <path d="M1330 -70 C1080 180 1530 310 1260 550 S1070 850 1350 1030 S1420 1190 1300 1390" stroke="#c4d8d5" stroke-width="155" fill="none"/>
++              <path d="M1330 -70 C1080 180 1530 310 1260 550 S1070 850 1350 1030 S1420 1190 1300 1390" stroke="#b4cecb" stroke-width="2" stroke-dasharray="5 12" fill="none"/>
++              <path d="M-40 780L1840 380 M680 -40L960 1340" stroke="#d5cab6" stroke-width="48"/>
++              <path d="M-40 780L1840 380 M680 -40L960 1340" stroke="#fffdf4" stroke-width="38"/>
++              <path d="M-40 780L1840 380 M680 -40L960 1340" stroke="#e8dac0" stroke-width="2" stroke-dasharray="10 10"/>
++              <path d="M330 285L575 235 628 440 380 493Z" fill="#cdd5b7" stroke="#bec9a5" stroke-width="2"/>
++              <path d="M355 390Q450 290 605 350 M460 262L510 466" stroke="#e9e9cf" stroke-width="9" fill="none"/>
++              <path d="M1000 865L1170 830 1260 1035 1055 1080Z" fill="#cdd5b7"/>
++              <g fill="#b4c29d">
++                <circle cx="375" cy="320" r="16"/><circle cx="405" cy="305" r="13"/><circle cx="553" cy="400" r="18"/><circle cx="570" cy="420" r="12"/>
++                <circle cx="1050" cy="930" r="20"/><circle cx="1110" cy="990" r="18"/><circle cx="1160" cy="950" r="15"/>
++              </g>
++              <g fill="#968979" font-family="Segoe UI, sans-serif" text-anchor="middle">
++                <text x="470" y="388" font-size="15" letter-spacing="2">COMMON GARDENS</text>
++                <text x="960" y="305" font-size="22" letter-spacing="5">OLD TOWN</text>
++                <text x="490" y="950" font-size="22" letter-spacing="5">WEST END</text>
++                <text x="1550" y="790" font-size="22" letter-spacing="5">RIVERSIDE</text>
++                <text x="870" y="610" font-size="13" transform="rotate(-12 870 610)" letter-spacing="3">MARKET STREET</text>
++                <text x="754" y="430" font-size="13" transform="rotate(78 754 430)" letter-spacing="3">CENTRAL AVENUE</text>
++                <text x="1105" y="1030" font-size="13">RIVER PARK</text>
++                <text x="1325" y="740" font-size="14" fill="#7a9b98" transform="rotate(65 1325 740)" letter-spacing="4">WILLOW RIVER</text>
++              </g>
++            </svg>
++            <button class="map-pin" type="button" style="left: 790px; top: 460px" data-location="0" aria-pressed="true"><span>01</span> Old Town</button>
++            <button class="map-pin" type="button" style="left: 460px; top: 740px" data-location="1" aria-pressed="false"><span>02</span> West End</button>
++            <button class="map-pin" type="button" style="left: 1390px; top: 690px" data-location="2" aria-pressed="false"><span>03</span> Riverside</button>
++            <button class="map-pin" type="button" style="left: 540px; top: 190px" data-location="3" aria-pressed="false"><span>04</span> Garden House</button>
++            <button class="map-pin" type="button" style="left: 980px; top: 1100px" data-location="4" aria-pressed="false"><span>05</span> Parkside</button>
++          </div>
++        </div>
++        <div class="map-compass" aria-hidden="true">N<span>↑</span></div>
++        <div class="map-caption"><span id="map-help">Drag or scroll in any direction to explore · Arrow keys to pan · Select a café</span><span>Illustrated neighborhood guide</span></div>
++      </div>
++      <div class="location-detail" aria-live="polite" aria-atomic="true">
++        <span class="location-number" id="location-number">01</span>
++        <div><h3 id="location-name">The Daily Grind · Old Town</h3><p id="location-description">Our original coffee house. Come for an espresso, stay for the company.</p></div>
++        <span class="location-tag" id="location-tag">The original</span>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +302,92 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const map = document.getElementById('cafe-map');
++      const pins = [...map.querySelectorAll('.map-pin')];
++      const locations = [
++        ['Old Town', 'Our original coffee house. Come for an espresso, stay for the company.', 'The original'],
++        ['West End', 'A laid-back neighborhood stop for a slow morning and your favorite roast.', 'Neighborhood favorite'],
++        ['Riverside', 'Enjoy a fresh cup and a little quiet beside the river.', 'Coffee with a view'],
++        ['Garden House', 'A cozy retreat beside the gardens, made for your afternoon coffee break.', 'A greener corner'],
++        ['Parkside', 'Pick up your daily brew before a leisurely walk through the park.', 'Walks welcome']
++      ];
++      function resetView() {
++        map.scrollLeft = 880 - map.clientWidth / 2;
++        map.scrollTop = 490 - map.clientHeight / 2;
++      }
++      document.getElementById('map-reset').addEventListener('click', resetView);
++      resetView();
++
++      // Consume both wheel deltas together so trackpads never lock to one axis.
++      map.addEventListener('wheel', (event) => {
++        if (event.ctrlKey) return; // Preserve browser pinch-to-zoom.
++        event.preventDefault();
++        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? map.clientHeight : 1;
++        const horizontal = event.shiftKey && event.deltaX === 0;
++        map.scrollLeft += (horizontal ? event.deltaY : event.deltaX) * unit;
++        map.scrollTop += (horizontal ? 0 : event.deltaY) * unit;
++      }, { passive: false });
++
++      let gesture = null;
++      let suppressClick = false;
++      map.addEventListener('pointerdown', (event) => {
++        if (!event.isPrimary || event.button !== 0 || gesture) return;
++        suppressClick = false;
++        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY,
++          left: map.scrollLeft, top: map.scrollTop, dragged: false };
++      });
++      map.addEventListener('pointermove', (event) => {
++        if (!gesture || event.pointerId !== gesture.id) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        if (!gesture.dragged && Math.hypot(dx, dy) < 4) return;
++        gesture.dragged = true;
++        map.setPointerCapture(event.pointerId);
++        map.classList.add('is-dragging');
++        map.scrollLeft = gesture.left - dx;
++        map.scrollTop = gesture.top - dy;
++        gesture.x = event.clientX;
++        gesture.y = event.clientY;
++        gesture.left = map.scrollLeft;
++        gesture.top = map.scrollTop;
++      });
++      function finishGesture(event) {
++        if (!gesture || event.pointerId !== gesture.id) return;
++        suppressClick = gesture.dragged;
++        gesture = null;
++        map.classList.remove('is-dragging');
++        if (map.hasPointerCapture(event.pointerId)) map.releasePointerCapture(event.pointerId);
++      }
++      window.addEventListener('pointerup', finishGesture);
++      window.addEventListener('pointercancel', finishGesture);
++      map.addEventListener('lostpointercapture', finishGesture);
++      map.addEventListener('click', (event) => {
++        if (suppressClick && event.detail !== 0) {
++          event.preventDefault();
++          event.stopPropagation();
++          suppressClick = false;
++          return;
++        }
++        const pin = event.target.closest('.map-pin');
++        if (!pin) return;
++        const index = Number(pin.dataset.location);
++        pins.forEach((item) => item.setAttribute('aria-pressed', String(item === pin)));
++        document.getElementById('location-number').textContent = String(index + 1).padStart(2, '0');
++        document.getElementById('location-name').textContent = 'The Daily Grind · ' + locations[index][0];
++        document.getElementById('location-description').textContent = locations[index][1];
++        document.getElementById('location-tag').textContent = locations[index][2];
++      });
++      map.addEventListener('keydown', (event) => {
++        const directions = { ArrowLeft: [-60, 0], ArrowRight: [60, 0], ArrowUp: [0, -60], ArrowDown: [0, 60] };
++        if (!directions[event.key]) return;
++        event.preventDefault();
++        map.scrollLeft += directions[event.key][0];
++        map.scrollTop += directions[event.key][1];
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,14 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -21,8 +21,10 @@
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      /* Keep lowercase text size consistent across font swaps and fallbacks. */
++      font-size-adjust: 0.52;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }

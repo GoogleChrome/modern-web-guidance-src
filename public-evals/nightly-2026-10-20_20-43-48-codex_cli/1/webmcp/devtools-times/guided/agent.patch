@@ -1,0 +1,630 @@
+diff --git a/README.md b/README.md
+index 4479b53..2187f04 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,33 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## WebMCP tools
++
++The app exposes tools through `document.modelContext` using Chrome's
++`use-webmcp-tool` React hook. The integration persists across Astro client-side
++navigation and does nothing in browsers without WebMCP. Use a WebMCP-enabled
++browser in a secure context (HTTPS or localhost).
++
++| Tool | Action |
++| --- | --- |
++| `search_articles` | Search titles and summaries with `query` and optional `limit` (default 10, maximum 50). |
++| `get_reading_list` | Retrieve the current session's saved articles and links. |
++| `set_article_saved` | Set an article's saved state using `slug` and `saved`; repeated requests preserve the requested state. |
++| `open_article` | Navigate to a known article using its `slug`. |
++
++Find slugs with `search_articles`. Tools use the same session API as the UI;
++reading-list changes update mounted bookmarks and the reading-list flyout.
++Arguments are validated at execution time, network calls honor cancellation,
++and recoverable failures return an `error` field. Only known article slugs can
++be saved or opened. No cross-origin tool exposure is configured.
++
++Tool registration lives in `src/components/AgentTools.tsx`, definitions in
++`src/lib/news-tools.ts`, and shared client operations in `src/lib/news-client.ts`.
++See the [WebMCP imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api).
++
++Run automated tool checks with `pnpm test` (Node 22.18+), and build with
++`pnpm build`.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index 2e1f2e8..d93c96b 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.ts",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -20,10 +21,12 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "use-webmcp-tool": "^0.3.0"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/AgentTools.tsx b/src/components/AgentTools.tsx
+new file mode 100644
+index 0000000..86da6a6
+--- /dev/null
++++ b/src/components/AgentTools.tsx
+@@ -0,0 +1,14 @@
++import { useWebMCP } from 'use-webmcp-tool';
++import { navigate } from 'astro:transitions/client';
++import { news } from '../lib/news';
++import { createNewsTools } from '../lib/news-tools';
++
++const tools = createNewsTools(news, navigate);
++
++export default function AgentTools() {
++  useWebMCP(tools.search);
++  useWebMCP(tools.readingList);
++  useWebMCP(tools.save);
++  useWebMCP(tools.open);
++  return null;
++}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..d56b1ae 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { news } from '../lib/news';
++import { READING_LIST_CHANGED } from '../lib/news-client';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -10,21 +12,33 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  const [error, setError] = useState('');
++  const [isSaving, setIsSaving] = useState(false);
++  useEffect(() => {
++    const update = (event: Event) => setIsBookmarked((event as CustomEvent<string[]>).detail.includes(slug));
++    window.addEventListener(READING_LIST_CHANGED, update);
++    const controller = new AbortController();
++    news.readingList(controller.signal).then(list => setIsBookmarked(list.includes(slug))).catch(() => {});
++    return () => { controller.abort(); window.removeEventListener(READING_LIST_CHANGED, update); };
++  }, [slug]);
++
+   const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    setIsSaving(true);
++    setError('');
++    try {
++      const list = await news.setSaved(slug, !isBookmarked);
++      setIsBookmarked(list.includes(slug));
++    } catch {
++      setError('Unable to update reading list. Please try again.');
++    } finally { setIsSaving(false); }
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <>
++    <button onClick={handleClick} disabled={isSaving} aria-pressed={isBookmarked} aria-label={isBookmarked ? "Remove from reading list" : "Save to reading list"} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
++    {error && <span role="alert">{error}</span>}
++    </>
+   );
+ }
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..356e471 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import { news } from '../lib/news';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+ interface Article {
+@@ -14,12 +15,9 @@ export default function ReadingListButton() {
+   const [articles, setArticles] = useState<Article[]>([]);
+ 
+   useEffect(() => {
+-    const fetchArticles = async () => {
+-      const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-      const data = await response.json();
+-      setArticles(data);
+-    };
+-    fetchArticles();
++    const controller = new AbortController();
++    news.articles(controller.signal).then(setArticles).catch(() => {});
++    return () => controller.abort();
+   }, []);
+ 
+   return (
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..3561e92 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,4 +1,6 @@
+ 
++import { news } from '../lib/news';
++import { READING_LIST_CHANGED } from '../lib/news-client';
+ import React, { useState, useEffect } from 'react';
+ 
+ interface Article {
+@@ -16,14 +18,14 @@ interface Props {
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+-  const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
+-  };
+-
++  const [error, setError] = useState('');
+   useEffect(() => {
+-    fetchReadingList();
++    const controller = new AbortController();
++    news.readingList(controller.signal).then(setReadingList).catch(() => {
++      if (!controller.signal.aborted) setError('Unable to load reading list. Please reopen to try again.');
++    });
++    const update = (event: Event) => setReadingList((event as CustomEvent<string[]>).detail);
++    window.addEventListener(READING_LIST_CHANGED, update);
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+@@ -33,19 +35,16 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     window.addEventListener('keydown', handleKeyDown);
+ 
+     return () => {
++      controller.abort();
++      window.removeEventListener(READING_LIST_CHANGED, update);
+       window.removeEventListener('keydown', handleKeyDown);
+     };
+   }, [onClose]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
++    setError('');
++    try { setReadingList(await news.setSaved(slug, false)); }
++    catch { setError('Unable to remove article. Please try again.'); }
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+@@ -60,6 +59,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         </button>
+         <div className="p-4">
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          {error && <p role="alert">{error}</p>}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..29e92cb 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,5 +1,6 @@
+ 
+ import React, { useState } from 'react';
++import { news } from '../lib/news';
+ import SearchFlyout from './SearchFlyout';
+ 
+ interface Article {
+@@ -11,14 +12,17 @@ interface Article {
+ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+     const [articles, setArticles] = useState<Article[]>([]);
++    const [error, setError] = useState('');
+     const [isLoading, setIsLoading] = useState(false);
+ 
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
++            setError('');
++            setIsLoading(true);
++            setArticles(await news.articles());
+             setIsFlyoutOpen(true);
+         } catch (error) {
+-            console.error('Failed to fetch articles:', error);
++            setError('Unable to load search. Please try again.');
+         } finally {
+             setIsLoading(false);
+         }
+@@ -34,6 +38,7 @@ export default function SearchButton() {
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
+                 disabled={isLoading}
++                aria-label="Search articles"
+             >
+                 {isLoading ? (
+                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+@@ -43,7 +48,8 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {error && <span role="alert">{error}</span>}
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..bd952fa 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -30,23 +30,12 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+         window.addEventListener('keydown', handleKeyDown);
+         
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
+-            }
+-        };
+-
+-        fetchSuggestions();
++        setSuggestions(getShuffledItems(articles, 3));
+ 
+         return () => {
+             window.removeEventListener('keydown', handleKeyDown);
+         };
+-    }, [onClose]);
++    }, [onClose, articles]);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6a2c6e3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
++import AgentTools from "../components/AgentTools";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+@@ -37,6 +38,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <AgentTools client:load transition:persist />
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+diff --git a/src/lib/news-client.ts b/src/lib/news-client.ts
+new file mode 100644
+index 0000000..1328be0
+--- /dev/null
++++ b/src/lib/news-client.ts
+@@ -0,0 +1,34 @@
++export interface Article {
++  slug: string;
++  title: string;
++  summary: string;
++  image: string;
++}
++
++export const READING_LIST_CHANGED = 'reading-list-changed';
++
++export function createNewsClient(baseUrl: string, request: typeof fetch = fetch, onReadingListChange?: (slugs: string[]) => void) {
++  const base = `${baseUrl.replace(/\/$/, '')}/`;
++  async function json<T>(path: string, options: RequestInit = {}): Promise<T> {
++    const response = await request(`${base}api/${path}`, { ...options, credentials: 'same-origin' });
++    if (!response.ok) throw new Error(`Request failed (${response.status}). Please try again.`);
++    return response.json();
++  }
++  return {
++    articleUrl: (slug: string) => `${base}articles/${encodeURIComponent(slug)}`,
++    articles: (signal?: AbortSignal) => json<Article[]>('articles.json', { signal }),
++    async readingList(signal?: AbortSignal) {
++      return (await json<{ readingList: string[] }>('reading-list.json', { signal, cache: 'no-store' })).readingList;
++    },
++    async setSaved(slug: string, saved: boolean, signal?: AbortSignal) {
++      const { readingList } = await json<{ readingList: string[] }>('reading-list.json', {
++        method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ slug, saved }),
++      });
++      onReadingListChange?.(readingList);
++      return readingList;
++    },
++  };
++}
++
++export type NewsClient = ReturnType<typeof createNewsClient>;
+diff --git a/src/lib/news-tools.ts b/src/lib/news-tools.ts
+new file mode 100644
+index 0000000..3cb979e
+--- /dev/null
++++ b/src/lib/news-tools.ts
+@@ -0,0 +1,52 @@
++import type { NewsClient } from './news-client';
++
++export function createNewsTools(news: NewsClient, navigate: (url: string) => Promise<void>) {
++  const schema = (properties: object, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
++  const slug = { type: 'string', minLength: 1, description: 'Article identifier returned by article search.' };
++  function tool(name: string, description: string, inputSchema: object, readOnlyHint: boolean, run: WebMCP.ToolExecuteCallback): WebMCP.ModelContextTool {
++    return {
++      name, description, inputSchema, annotations: { readOnlyHint },
++      async execute(input, { signal }) {
++        try {
++          signal.throwIfAborted();
++          if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Provide an object of tool arguments.' };
++          const properties = (inputSchema as { properties: object }).properties;
++          if (Object.keys(input).some(key => !Object.hasOwn(properties, key))) return { error: 'Unexpected tool argument.' };
++          return await run(input, { signal });
++        } catch (error) {
++          if (signal.aborted) throw error;
++          return { error: error instanceof Error ? error.message : 'Unable to complete the request.' };
++        }
++      },
++    };
++  }
++  return {
++    search: tool('search_articles', 'Find news articles by words in their title or summary. Returns article identifiers and links.', schema({
++      query: { type: 'string', minLength: 1, maxLength: 200, description: 'Words to find in article titles and summaries.' },
++      limit: { type: 'integer', minimum: 1, maximum: 50, default: 10, description: 'Maximum number of matching articles to return.' },
++    }, ['query']), true, async ({ query, limit = 10 }, { signal }) => {
++      if (typeof query !== 'string' || !query.trim() || query.length > 200 || !Number.isInteger(limit) || Number(limit) < 1 || Number(limit) > 50) return { error: 'Provide a nonempty query up to 200 characters and an integer limit from 1 to 50.' };
++      const term = query.trim().toLowerCase();
++      const matches = (await news.articles(signal)).filter(a => `${a.title}\n${a.summary}`.toLowerCase().includes(term));
++      return { total: matches.length, articles: matches.slice(0, Number(limit)).map(a => ({ ...a, url: news.articleUrl(a.slug) })) };
++    }),
++    readingList: tool('get_reading_list', 'Retrieve articles saved in the current browser session reading list.', schema({}), true, async (_, { signal }) => {
++      const slugs = await news.readingList(signal);
++      const articles = await news.articles(signal);
++      return { articles: articles.filter(a => slugs.includes(a.slug)).map(a => ({ ...a, url: news.articleUrl(a.slug) })) };
++    }),
++    save: tool('set_article_saved', 'Save an article to or remove it from the current session reading list. Repeating the request preserves the requested state.', schema({ slug, saved: { type: 'boolean', description: 'Whether the article should be in the reading list.' } }, ['slug', 'saved']), false, async ({ slug, saved }, { signal }) => {
++      if (typeof slug !== 'string' || !slug.trim() || typeof saved !== 'boolean') return { error: 'Provide an article slug and a saved boolean.' };
++      if (!(await news.articles(signal)).some(a => a.slug === slug)) return { error: 'Article not found. Use search_articles to find a valid slug.' };
++      return { slug, saved, readingList: await news.setSaved(slug, saved, signal) };
++    }),
++    open: tool('open_article', 'Open a news article in the current tab so the user can read it.', schema({ slug }, ['slug']), false, async ({ slug }, { signal }) => {
++      if (typeof slug !== 'string' || !slug.trim()) return { error: 'Provide an article slug.' };
++      if (!(await news.articles(signal)).some(a => a.slug === slug)) return { error: 'Article not found. Use search_articles to find a valid slug.' };
++      signal.throwIfAborted();
++      const url = news.articleUrl(slug);
++      await navigate(url);
++      return { url };
++    }),
++  };
++}
+diff --git a/src/lib/news.ts b/src/lib/news.ts
+new file mode 100644
+index 0000000..a288186
+--- /dev/null
++++ b/src/lib/news.ts
+@@ -0,0 +1,5 @@
++import { createNewsClient, READING_LIST_CHANGED } from './news-client';
++
++export const news = createNewsClient(import.meta.env.BASE_URL, fetch, (readingList) => {
++  window.dispatchEvent(new CustomEvent(READING_LIST_CHANGED, { detail: readingList }));
++});
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..18c35bc 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,24 +1,33 @@
+ 
+ import type { APIRoute } from 'astro';
++import { getEntry } from 'astro:content';
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  let input;
++  try {
++    input = await request.json();
++  } catch {
++    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+   }
+-
+-  let readingList = await session?.get('readingList') || [];
+-
+-  if (readingList.includes(slug)) {
+-    readingList = readingList.filter((item: string) => item !== slug);
+-  } else {
+-    readingList.push(slug);
++  const { slug, saved } = input ?? {};
++  if (typeof slug !== 'string' || !slug.trim() || (saved !== undefined && typeof saved !== 'boolean')) {
++    return Response.json({ error: 'A slug and optional saved boolean are required' }, { status: 400 });
+   }
++  if (!await getEntry('articles', slug)) {
++    return Response.json({ error: 'Article not found' }, { status: 404 });
++  }
++  if (!session) return Response.json({ error: 'Session unavailable' }, { status: 503 });
++
++  let readingList: string[] = await session.get('readingList') || [];
++  // Keep the existing toggle API while allowing agents to request an idempotent state.
++  const shouldSave = saved ?? !readingList.includes(slug);
++  readingList = readingList.filter(item => item !== slug);
++  if (shouldSave) readingList.push(slug);
+ 
+   await session?.set('readingList', readingList);
+ 
+   return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
++    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+   });
+ };
+ 
+@@ -26,6 +35,6 @@ export const GET: APIRoute = async ({ session }) => {
+   const readingList = await session?.get('readingList') || [];
+ 
+   return new Response(JSON.stringify({ readingList }), {
+-    headers: { 'Content-Type': 'application/json' },
++    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+   });
+ };
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..3a8cee7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -32,7 +32,7 @@ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3)
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -99,7 +99,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+diff --git a/tests/webmcp.test.ts b/tests/webmcp.test.ts
+new file mode 100644
+index 0000000..809601f
+--- /dev/null
++++ b/tests/webmcp.test.ts
+@@ -0,0 +1,88 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createNewsClient } from '../src/lib/news-client.ts';
++import { createNewsTools } from '../src/lib/news-tools.ts';
++
++const article = { slug: 'coffee', title: 'Coffee Alchemy', summary: 'Better brewing', image: '/coffee.jpg' };
++function setup() {
++  const requests: { url: string; options: RequestInit }[] = [];
++  let saved: string[] = [];
++  let changes = 0;
++  const request = (async (url: string, options: RequestInit = {}) => {
++    requests.push({ url, options });
++    options.signal?.throwIfAborted();
++    if (url.endsWith('articles.json')) return Response.json([article]);
++    if (options.method === 'POST') {
++      const { slug, saved: shouldSave } = JSON.parse(String(options.body));
++      saved = saved.filter(s => s !== slug);
++      if (shouldSave) saved.push(slug);
++    }
++    return Response.json({ readingList: saved });
++  }) as typeof fetch;
++  const news = createNewsClient('/devtools-times/', request, () => changes++);
++  const navigated: string[] = [];
++  const tools = createNewsTools(news, async url => { navigated.push(url); });
++  const options = { signal: new AbortController().signal };
++  return { tools, options, requests, navigated, changes: () => changes };
++}
++
++test('search returns matching articles with deployment-base links and bounded results', async () => {
++  const { tools, options } = setup();
++  const result = await tools.search.execute({ query: 'BREWING', limit: 1 }, options) as any;
++  assert.equal(result.total, 1);
++  assert.equal(result.articles[0].url, '/devtools-times/articles/coffee');
++  assert.deepEqual(await tools.search.execute({ query: 'missing' }, options), { total: 0, articles: [] });
++});
++
++test('invalid inputs and unknown articles cannot mutate or navigate', async () => {
++  const { tools, options, requests, navigated } = setup();
++  for (const input of [{ query: '' }, { query: 'coffee', limit: 51 }, { query: 'coffee', limit: 1.5 }, { query: 'coffee', unexpected: true }, null]) {
++    assert.ok((await tools.search.execute(input as any, options) as any).error);
++  }
++  assert.equal(requests.length, 0);
++  assert.ok((await tools.save.execute({ slug: 'coffee', saved: 'true' }, options) as any).error);
++  assert.ok((await tools.save.execute({ slug: 'missing', saved: true }, options) as any).error);
++  assert.ok((await tools.open.execute({ slug: '../signin' }, options) as any).error);
++  assert.equal(requests.some(r => r.options.method === 'POST'), false);
++  assert.deepEqual(navigated, []);
++});
++
++test('explicit save requests are idempotent and notify UI subscribers', async () => {
++  const { tools, options, changes } = setup();
++  await tools.save.execute({ slug: 'coffee', saved: true }, options);
++  await tools.save.execute({ slug: 'coffee', saved: true }, options);
++  assert.equal((await tools.readingList.execute({}, options) as any).articles.length, 1);
++  await tools.save.execute({ slug: 'coffee', saved: false }, options);
++  await tools.save.execute({ slug: 'coffee', saved: false }, options);
++  assert.deepEqual(await tools.readingList.execute({}, options), { articles: [] });
++  assert.equal(changes(), 4);
++});
++
++test('open only navigates to a known article and requests honor execution signals', async () => {
++  const { tools, options, requests, navigated } = setup();
++  await tools.open.execute({ slug: 'coffee' }, options);
++  assert.deepEqual(navigated, ['/devtools-times/articles/coffee']);
++  assert.equal(requests[0].options.signal, options.signal);
++  const controller = new AbortController();
++  controller.abort();
++  await assert.rejects(async () => tools.save.execute({ slug: 'coffee', saved: true }, { signal: controller.signal }), { name: 'AbortError' });
++  assert.equal(requests.length, 1);
++});
++
++test('HTTP errors return actionable tool results', async () => {
++  const news = createNewsClient('/', (async () => new Response('', { status: 503 })) as typeof fetch);
++  const tools = createNewsTools(news, async () => {});
++  const result = await tools.search.execute({ query: 'coffee' }, { signal: new AbortController().signal }) as any;
++  assert.match(result.error, /503/);
++});
++
++test('cancelling an in-flight request stops execution before mutation', async () => {
++  const controller = new AbortController();
++  const news = createNewsClient('/', ((_url, { signal }: RequestInit) => new Promise((_resolve, reject) => {
++    signal!.addEventListener('abort', () => reject(signal!.reason), { once: true });
++  })) as typeof fetch);
++  const tools = createNewsTools(news, async () => assert.fail('Cancelled tool navigated'));
++  const pending = tools.save.execute({ slug: 'coffee', saved: true }, { signal: controller.signal });
++  controller.abort();
++  await assert.rejects(async () => pending, { name: 'AbortError' });
++});
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..7ae048c 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -8,7 +8,8 @@
+     "dist"
+   ],
+   "compilerOptions": {
++    "types": ["webmcp-types"],
+     "jsx": "react-jsx",
+     "jsxImportSource": "react"
+   }
+-}
+\ No newline at end of file
++}

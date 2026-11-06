@@ -1,0 +1,33 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,29 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Scroll-driven reveal: cards grow in on entry and shrink on exit */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes card-grow {
++          from { scale: 0.5; }
++        }
++
++        @keyframes card-shrink {
++          to { scale: 0.5; }
++        }
++
++        .card {
++          animation:
++            card-grow auto linear backwards,
++            card-shrink auto linear forwards;
++          animation-timeline: view();
++          animation-range: entry, exit;
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;

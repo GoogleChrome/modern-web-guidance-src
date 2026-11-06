@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Foreground-time tracking: how long the page has actually been visible
++    // to the user, excluding time spent in a background tab or minimized window.
++    (() => {
++      const supportsVisibilityEntries = 'VisibilityStateEntry' in window;
++
++      // Fallback for browsers without VisibilityStateEntry (Firefox, Safari):
++      // accumulate visible time ourselves from visibilitychange events. This
++      // script is inline and parser-blocking, so it runs early enough that
++      // treating "visible now" as "visible since navigation start" is a close
++      // approximation.
++      let fallbackAccumulated = 0;
++      let fallbackVisibleSince =
++        document.visibilityState === 'visible' ? 0 : null;
++
++      if (!supportsVisibilityEntries) {
++        document.addEventListener('visibilitychange', () => {
++          const now = performance.now();
++          if (document.visibilityState === 'hidden') {
++            if (fallbackVisibleSince !== null) {
++              fallbackAccumulated += now - fallbackVisibleSince;
++              fallbackVisibleSince = null;
++            }
++          } else if (fallbackVisibleSince === null) {
++            fallbackVisibleSince = now;
++          }
++        });
++      }
++
++      /**
++       * Calculates the total time the page has been in the visible state.
++       *
++       * @returns {number} Total foreground time in milliseconds.
++       */
++      function getTotalForegroundTime() {
++        const now = performance.now();
++        const entries = supportsVisibilityEntries
++          ? performance.getEntriesByType('visibility-state')
++          : [];
++
++        if (entries.length === 0) {
++          return fallbackAccumulated +
++            (fallbackVisibleSince !== null ? now - fallbackVisibleSince : 0);
++        }
++
++        let total = 0;
++        for (let i = 0; i < entries.length; i++) {
++          if (entries[i].name !== 'visible') continue;
++          // A visible period ends at the next state change, or now if it's
++          // the latest entry.
++          const end = i + 1 < entries.length ? entries[i + 1].startTime : now;
++          total += end - entries[i].startTime;
++        }
++        return total;
++      }
++
++      window.getTotalForegroundTime = getTotalForegroundTime;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

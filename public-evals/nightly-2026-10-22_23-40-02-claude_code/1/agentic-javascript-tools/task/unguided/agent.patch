@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose a menu lookup tool to AI assistants (client-side).
++    (function () {
++      // Details mirror what the Seasonal Favorites cards on this page show.
++      const MENU = [
++        {
++          name: 'Maple Oat Latte',
++          category: 'Seasonal Favorites',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          url: '/menu/seasonal'
++        },
++        {
++          name: 'Dark Roast Espresso',
++          category: 'Seasonal Favorites',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          url: '/menu/espresso'
++        },
++        {
++          name: 'Cold Brew',
++          category: 'Seasonal Favorites',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      const normalize = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++      function findItem(query) {
++        const q = normalize(query);
++        if (!q) return null;
++        return (
++          MENU.find((item) => normalize(item.name) === q) ||
++          MENU.find((item) => normalize(item.name).includes(q) || q.includes(normalize(item.name))) ||
++          null
++        );
++      }
++
++      const reply = (payload, isError) => ({
++        content: [{ type: 'text', text: JSON.stringify(payload) }],
++        ...(isError ? { isError: true } : {})
++      });
++
++      const TOOL_NAME = 'get_menu_item_details';
++      const tool = {
++        name: TOOL_NAME,
++        description:
++          'Look up details (description, category, and page link) for a single item on The Daily Grind coffee shop menu by its name, ' +
++          'e.g. "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew". Matching is case-insensitive. ' +
++          'If no item matches, the result lists the available item names.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description: 'Name of the menu item to look up, e.g. "Maple Oat Latte". Case-insensitive; partial names are accepted.'
++            }
++          },
++          required: ['name']
++        },
++        annotations: { readOnlyHint: true },
++        async execute({ name } = {}) {
++          const item = findItem(name);
++          if (!item) {
++            return reply({
++              error: `No menu item found matching "${name}".`,
++              availableItems: MENU.map((i) => i.name)
++            }, true);
++          }
++          return reply(item);
++        }
++      };
++
++      const mc = navigator.modelContext;
++      if (!mc || typeof mc.registerTool !== 'function') return; // WebMCP not supported
++
++      // Registration is tied to this controller; aborting it unregisters the tool.
++      const controller = new AbortController();
++      try {
++        mc.registerTool(tool, { signal: controller.signal });
++      } catch (err) {
++        console.warn('Failed to register ' + TOOL_NAME, err);
++        return;
++      }
++
++      function unregister() {
++        controller.abort();
++        // Fallback for implementations that predate AbortSignal support.
++        if (typeof mc.unregisterTool === 'function') {
++          try { mc.unregisterTool(TOOL_NAME); } catch (e) { /* already unregistered */ }
++        }
++      }
++
++      // pagehide also covers bfcache navigations, where unload may not fire.
++      window.addEventListener('pagehide', unregister, { once: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

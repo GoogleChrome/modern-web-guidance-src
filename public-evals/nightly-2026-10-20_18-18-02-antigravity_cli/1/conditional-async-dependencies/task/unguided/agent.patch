@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,14 +65,152 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .nav-btn {
++      background: none;
++      border: none;
++      color: white;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++      padding: 0;
++    }
++
++    .nav-btn:hover {
++      color: var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Rewards Popover */
++    #rewards-popover {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: 90%;
++      max-width: 440px;
++      margin: auto;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    #rewards-popover::backdrop {
++      background: rgba(62, 39, 35, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    .popover-header {
++      background: var(--primary);
++      color: white;
++      padding: 20px 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .popover-header h2 {
++      font-size: 1.35rem;
++      margin: 0;
++    }
++
++    .popover-close {
++      background: none;
++      border: none;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      opacity: 0.85;
++      transition: opacity 0.2s;
++    }
++
++    .popover-close:hover {
++      opacity: 1;
++      color: var(--accent);
++    }
++
++    .popover-body {
++      padding: 24px;
++    }
++
++    .points-banner {
++      background: var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .points-count {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.2;
++    }
++
++    .points-subtitle {
++      font-size: 0.85rem;
++      margin-top: 4px;
++    }
++
++    .tiers-title {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 6px;
++    }
++
++    .tier-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .tier-item {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 14px;
++      background: var(--light);
++    }
++
++    .tier-item.active-tier {
++      border-color: var(--accent);
++      background: #fff8e1;
++    }
++
++    .tier-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .tier-badge {
++      font-size: 0.75rem;
++      background: var(--primary);
++      color: white;
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    .tier-benefits {
++      font-size: 0.85rem;
++      padding-left: 18px;
++      margin-top: 6px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +299,60 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="nav-btn" popovertarget="rewards-popover" popovertargetaction="toggle">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" popover="auto" role="dialog" aria-labelledby="rewards-popover-title">
++    <div class="popover-header">
++      <h2 id="rewards-popover-title">Daily Grind Rewards</h2>
++      <button type="button" class="popover-close" popovertarget="rewards-popover" popovertargetaction="hide" aria-label="Close rewards popover">&times;</button>
++    </div>
++    <div class="popover-body">
++      <div class="points-banner">
++        <div class="points-count">340 Beans</div>
++        <div class="points-subtitle">Current Points &bull; Silver Roaster Member (160 Beans to Gold)</div>
++      </div>
++      <h3 class="tiers-title">Membership Tiers &amp; Benefits</h3>
++      <ul class="tier-list">
++        <li class="tier-item">
++          <div class="tier-header">
++            <span>Bronze Bean (0 - 199 Beans)</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>Earn 2 Beans per $1 spent</li>
++            <li>Free birthday brewed coffee or pastry</li>
++          </ul>
++        </li>
++        <li class="tier-item active-tier">
++          <div class="tier-header">
++            <span>Silver Roaster (200 - 499 Beans)</span>
++            <span class="tier-badge">Current Tier</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>Earn 3 Beans per $1 spent</li>
++            <li>Complimentary milk alternatives &amp; flavor shots</li>
++            <li>Early access to seasonal single-origin roasts</li>
++          </ul>
++        </li>
++        <li class="tier-item">
++          <div class="tier-header">
++            <span>Gold Barista (500+ Beans)</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>Earn 5 Beans per $1 spent</li>
++            <li>Free handcrafted drink every 100 Beans</li>
++            <li>Monthly complimentary bag of artisan whole bean coffee</li>
++          </ul>
++        </li>
++      </ul>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +390,12 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')) {
++      import('https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++  </script>
+ </body>
+ 
+ </html>

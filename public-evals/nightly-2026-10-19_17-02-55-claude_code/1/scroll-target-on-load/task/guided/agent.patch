@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Media Feed */
++    .feed {
++      height: 480px;
++      max-width: 420px;
++      margin: 20px auto 0;
++      overflow-y: auto;
++      position: relative; /* makes the feed the offsetParent for the JS fallback */
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: none;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .media-card h3 {
++      padding: 12px 16px;
++      color: var(--primary);
++    }
++
++    /* Starts in view on initial render (instant, no animation) */
++    .media-card.target {
++      scroll-initial-target: nearest;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +235,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">From the Roastery</h2>
++      <div class="feed">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&h=400&q=80"
++            alt="A cup of black coffee on a saucer" width="600" height="400">
++          <h3>Morning Pour</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&h=400&q=80"
++            alt="Roasted coffee beans in a bag" width="600" height="400">
++          <h3>Fresh Roasted Beans</h3>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&h=400&q=80"
++            alt="Latte with art in a white cup" width="600" height="400">
++          <h3>Latte Art</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=80"
++            alt="Coffee cup held in two hands" width="600" height="400">
++          <h3>Cozy Corner</h3>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=400&q=80"
++            alt="Espresso being brewed" width="600" height="400">
++          <h3>Espresso Bar</h3>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +278,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target. Runs at end of body,
++    // before first paint, so there is no visible jump.
++    if (!CSS.supports("scroll-initial-target", "nearest")) {
++      const feed = document.querySelector(".feed");
++      const target = feed.querySelector(".target");
++      // Scroll only the feed (not the page) so the window doesn't jump.
++      feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++    }
++  </script>
+ </body>
+ 
+ </html>

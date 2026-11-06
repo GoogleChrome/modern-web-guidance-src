@@ -1,0 +1,944 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..18d4475
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,28 @@
++# Privacy & Security Headers Configuration
++
++Referrer-Policy: strict-origin-when-cross-origin
++Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()
++Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++X-Content-Type-Options: nosniff
++X-Frame-Options: SAMEORIGIN
++Cross-Origin-Opener-Policy: same-origin-allow-popups
++Cross-Origin-Resource-Policy: same-origin
++Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*"); report-to=main-endpoint
++Reporting-Endpoints: default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main"
++Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; report-to main-endpoint;
++
++/*
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()
++  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: SAMEORIGIN
++  Cross-Origin-Opener-Policy: same-origin-allow-popups
++  Cross-Origin-Resource-Policy: same-origin
++  Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*"); report-to=main-endpoint
++  Reporting-Endpoints: default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main"
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; report-to main-endpoint;
++
++/logout
++  Clear-Site-Data: "*"
++  Set-Cookie: __Host-session_id=; Max-Age=0; Secure; HttpOnly; SameSite=Lax; Path=/
+diff --git a/index.html b/index.html
+index 66c9173..f63c5c7 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,25 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta http-equiv="Permissions-Policy" content="geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()">
++  <!--
++    Recommended Server / Edge HTTP Security & Privacy Headers:
++    Referrer-Policy: strict-origin-when-cross-origin
++    Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=(), focus-without-user-activation=()
++    Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
++    X-Content-Type-Options: nosniff
++    X-Frame-Options: SAMEORIGIN
++    Cross-Origin-Opener-Policy: same-origin-allow-popups
++    Cross-Origin-Resource-Policy: same-origin
++    Connection-Allowlist: (response-origin "https://images.unsplash.com/*" "https://img.youtube.com/*" "https://www.youtube-nocookie.com/*"); report-to=main-endpoint
++    Reporting-Endpoints: default="https://reports.dailygrind.example/default", main-endpoint="https://reports.dailygrind.example/main"
++    Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; report-to main-endpoint;
++    Set-Cookie: __Host-session_id=xyz123; Secure; HttpOnly; SameSite=Lax; Path=/
++    Set-Cookie: theme_pref=warm; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
++    Clear-Site-Data: "*" (or Clear-Site-Data: "cookies", "storage", "cache" on /logout endpoint)
++  -->
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'report-sample'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com https://img.youtube.com data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none';">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +31,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #bcaaa4;
++      --muted: #5d4037;
+     }
+ 
+     * {
+@@ -49,6 +71,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -70,13 +93,23 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      background: transparent;
++      color: white;
++      cursor: pointer;
++      font-size: 0.9rem;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section with CSS url() request modifiers & cascading fallback */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -100,6 +133,24 @@
+       padding: 0 20px;
+     }
+ 
++    section {
++      margin-bottom: 48px;
++    }
++
++    section h2 {
++      text-align: center;
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--muted);
++      max-width: 680px;
++      margin: 0 auto 24px;
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,13 +159,17 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .card-left {
++      text-align: left;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -129,12 +184,137 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++    }
++
++    .btn-danger {
++      background: #b71c1c;
++    }
++
++    .btn-danger:hover {
++      background: #7f0000;
++    }
++
++    /* Forms & Inline Transparency */
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="tel"],
++    .form-group select {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .inline-explanation {
++      font-size: 0.85rem;
++      color: var(--muted);
++      background: #efebe9;
++      padding: 8px 12px;
++      border-left: 3px solid var(--primary);
++      border-radius: 0 4px 4px 0;
++      margin-top: 6px;
++    }
++
++    .why-link {
++      font-size: 0.82rem;
++      color: var(--primary);
++      margin-left: 6px;
++      text-decoration: underline;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
++    .checkbox-group input {
++      margin-top: 4px;
++    }
++
++    /* Video Façade */
++    .video-facade {
++      position: relative;
++      max-width: 680px;
++      margin: 0 auto;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #1b0f0d;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++    }
++
++    .video-facade img {
++      width: 100%;
++      height: auto;
++      display: block;
++      opacity: 0.85;
++    }
++
++    .video-facade-overlay {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      background: rgba(0, 0, 0, 0.4);
++      color: white;
++      padding: 20px;
++      text-align: center;
++    }
++
++    .video-facade iframe {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      border: 0;
++      display: block;
++    }
++
++    .status-banner {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 4px;
++      background: #efebe9;
++      color: var(--text);
++      font-size: 0.9rem;
++      min-height: 2.5rem;
++    }
++
++    .share-links {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,26 +337,29 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#order-online">Guest Order</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">Privacy &amp; Data Rights</a></li>
++      <li><a href="/logout" id="logout-link" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup with privacy by default.</p>
++    <a href="#order-online" class="btn">Order Now (No Account Required)</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Seasonal Menu -->
++    <section id="menu">
++      <h2>Seasonal Favorites</h2>
++      <p class="section-subtitle">Explore our seasonal menu with zero third-party tracking scripts.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,18 +378,607 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Data Minimization, Guest Checkout, Purpose Limitation, and Inline Transparency -->
++    <section id="order-online">
++      <h2>Express Guest Order &amp; Rewards</h2>
++      <p class="section-subtitle">
++        We practice strict data minimization: order as a guest without creating an account, and we automatically delete pickup details as soon as your coffee is handed off.
++      </p>
++      <div class="grid">
++        <!-- Guest Checkout Card -->
++        <div class="card card-left">
++          <h3>Guest Pickup Order</h3>
++          <form id="guest-order-form" action="/order-online" method="POST">
++            <div class="form-group">
++              <label for="pickup-alias">Pickup Name or Alias (Required)</label>
++              <input id="pickup-alias" name="pickupAlias" type="text" required autocomplete="nickname" placeholder="e.g., Alex or Order #42">
++              <aside class="inline-explanation">
++                Used only to call out your drink at the counter and deleted immediately after order fulfillment.
++              </aside>
++            </div>
++
++            <div class="form-group">
++              <label for="drink-choice">Select Beverage</label>
++              <select id="drink-choice" name="drinkChoice">
++                <option value="maple-oat-latte">Maple Oat Latte</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++              </select>
++            </div>
++
++            <!-- Inline Transparency for optional phone number -->
++            <div class="form-group">
++              <label for="phone">
++                Phone Number (Optional)
++                <a href="#phone-help" class="why-link">Why do we ask for this?</a>
++              </label>
++              <input id="phone" type="tel" name="phone" autocomplete="tel" placeholder="Optional SMS ready alert">
++              <aside id="phone-help" class="inline-explanation">
++                We only use your phone number to send a one-time SMS when your order is ready or for two-factor authentication codes for account security. It is never reused for marketing.
++              </aside>
++            </div>
++
++            <!-- Purpose Limitation: Separate explicit consent for any secondary purpose -->
++            <div class="form-group">
++              <div class="checkbox-group">
++                <input id="marketing-opt-in" name="marketingOptIn" type="checkbox" value="yes">
++                <label for="marketing-opt-in">
++                  Optional: Send me seasonal roast announcements (separate from order notifications; uncheck by default).
++                </label>
++              </div>
++            </div>
++
++            <button type="submit" class="btn">Place Guest Order</button>
++          </form>
++          <div id="order-status" class="status-banner" role="status" aria-live="polite">
++            Guest checkout active — no account or persistent profile created.
++          </div>
++        </div>
++
++        <!-- Low-Granularity / Fuzzed Data Collection & FedCM Sign-In Card -->
++        <div class="card card-left" id="rewards">
++          <h3>Optional Roast Survey &amp; Sign-In</h3>
++          <form id="survey-form" action="/rewards" method="POST">
++            <!-- Coarsened / fuzzed age bracket instead of exact Date of Birth -->
++            <div class="form-group">
++              <label for="age-bracket">Age Bracket (Optional):</label>
++              <select id="age-bracket" name="age-bracket">
++                <option value="">Prefer not to say</option>
++                <option value="18-34">18-34</option>
++                <option value="35-49">35-49</option>
++                <option value="50+">50+</option>
++              </select>
++              <aside class="inline-explanation">
++                We ask for a coarse age bracket instead of your exact date of birth to verify eligibility and understand broad roast preferences using randomized differential-privacy noise.
++              </aside>
++            </div>
++
++            <button type="submit" class="btn btn-secondary">Submit Anonymous Preference</button>
++          </form>
++
++          <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
++
++          <h3>Privacy-Preserving Sign-In (FedCM)</h3>
++          <p style="font-size: 0.9rem; color: var(--muted);">
++            Returning rewards members can sign in via the browser-mediated Federated Credential Management API (FedCM) without loading third-party Identity Provider tracking scripts.
++          </p>
++          <button type="button" id="fedcm-signin-btn" class="btn">Sign In with FedCM</button>
++          <div id="auth-status" class="status-banner" role="status" aria-live="polite">
++            Not signed in. Browsing privately as a guest.
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Store Locator with Context Before Permission & Declarative <permission> (PEPC) -->
++    <section id="locations">
++      <h2>Find a Local Roastery</h2>
++      <p class="section-subtitle">
++        Search by postal code prefix, or optionally share your coarse location only when you choose.
++      </p>
++      <div class="card card-left">
++        <div class="grid">
++          <div>
++            <h3>Lookup by 3-Digit ZIP Prefix</h3>
++            <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 12px;">
++              Enter only the first 3 digits of your postal code to find nearby cafes without revealing your street address.
++            </p>
++            <form id="zip-lookup-form" style="display: flex; gap: 10px; align-items: center;">
++              <label for="zip-prefix" style="font-weight: 600;">ZIP Prefix:</label>
++              <input id="zip-prefix" name="zipPrefix" type="text" maxlength="3" pattern="[0-9]{3}" placeholder="e.g. 054" style="max-width: 120px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
++              <button type="submit" class="btn" style="margin-top: 0;">Find Cafes</button>
++            </form>
++          </div>
++
++          <div>
++            <h3>Coarse Geolocation (Optional)</h3>
++            <p class="inline-explanation" style="margin-bottom: 12px;">
++              <strong>Why we ask for location:</strong> Only if you click below, we read a one-time, coarse (city-level) coordinate in your browser to list the closest cafe. Coordinates are rounded locally and never stored on our servers.
++            </p>
++            <!-- Declarative Page Embedded Permission Control (PEPC) element with fallback -->
++            <permission id="location-pepc" type="geolocation">
++              <button type="button" id="use-location-btn" class="btn btn-secondary">
++                Use my coarse location
++              </button>
++            </permission>
++          </div>
++        </div>
++        <div id="location-status" class="status-banner" role="status" aria-live="polite">
++          Showing default roasteries: Burlington Downtown &amp; Portland Old Port.
++        </div>
++      </div>
++    </section>
++
++    <!-- Third-Party Audits & Mitigations: Video Façade + Static Social Share Links -->
++    <section id="roastery-tour">
++      <h2>Behind the Roast (Zero-Tracker Media)</h2>
++      <p class="section-subtitle">
++        Third-party video embeds and social widgets often track visitors automatically. We use a click-to-load Video Façade with <code>youtube-nocookie.com</code> and static HTML share links so no third-party code runs without your action.
++      </p>
++
++      <div id="video-container" class="video-facade" data-video-id="dQw4w9WgXcQ">
++        <img
++          src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80"
++          alt="Roastery tour preview thumbnail"
++          crossorigin="anonymous"
++          referrerpolicy="no-referrer"
++          loading="lazy"
++        >
++        <div class="video-facade-overlay">
++          <h3>Watch Our Ethical Sourcing Story</h3>
++          <p style="font-size: 0.85rem; max-width: 460px; margin-bottom: 8px;">
++            Clicking "Play Video" loads an embedded player from <code>youtube-nocookie.com</code>. No requests are sent to YouTube until you click.
++          </p>
++          <button type="button" id="play-btn" class="btn">Play Video (youtube-nocookie.com)</button>
++        </div>
++      </div>
++
++      <!-- Static Social Sharing without Third-Party SDKs -->
++      <div class="share-links" aria-label="Privacy-preserving social share links">
++        <a
++          href="https://x.com/intent/tweet?text=Enjoying%20ethical%20coffee%20at%20The%20Daily%20Grind&amp;url=https%3A%2F%2Fdailygrind.example"
++          rel="noopener noreferrer"
++          referrerpolicy="no-referrer"
++          target="_blank"
++          class="btn btn-secondary"
++        >
++          Share on X (No SDK)
++        </a>
++        <a
++          href="https://bsky.app/intent/compose?text=Enjoying%20ethical%20coffee%20at%20The%20Daily%20Grind%20https%3A%2F%2Fdailygrind.example"
++          rel="noopener noreferrer"
++          referrerpolicy="no-referrer"
++          target="_blank"
++          class="btn btn-secondary"
++        >
++          Share on Bluesky (No SDK)
++        </a>
++      </div>
++    </section>
++
++    <!-- Data Rights & User Control + Transparency Report -->
++    <section id="account">
++      <h2>Your Data Rights &amp; Privacy Controls</h2>
++      <p class="section-subtitle">
++        You have full agency over your personal data. Access, correct, or permanently delete your information with a single click—no dark patterns or support tickets required.
++      </p>
++
++      <div class="grid">
++        <div class="card card-left">
++          <h3>Access, Correct, or Delete Your Data</h3>
++          <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 12px;">
++            Inspect all in-memory session preferences, update your display alias, or erase all local and session data immediately.
++          </p>
++          <div class="form-group">
++            <label for="correction-alias">Correct Display Alias:</label>
++            <input id="correction-alias" type="text" placeholder="Update your preferred alias">
++          </div>
++          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++            <button type="button" id="access-data-btn" class="btn">Export / View My Data</button>
++            <button type="button" id="correct-data-btn" class="btn btn-secondary">Save Correction</button>
++            <button type="button" id="delete-data-btn" class="btn btn-danger">Delete All My Data</button>
++          </div>
++          <pre id="data-rights-output" class="status-banner" style="white-space: pre-wrap; font-family: monospace; font-size: 0.82rem;" aria-live="polite">No personal data stored in localStorage or unpartitioned cookies.</pre>
++        </div>
++
++        <div class="card card-left" id="privacy-policy">
++          <h3>Technical Privacy &amp; Security Audit Summary</h3>
++          <ul style="padding-left: 18px; font-size: 0.88rem; color: var(--text);">
++            <li><strong>Zero LocalStorage PII:</strong> Sensitive tokens and PII are never written to <code>localStorage</code> or <code>sessionStorage</code>.</li>
++            <li><strong>PII Log Scrubbing:</strong> Diagnostic logs automatically mask emails, phone numbers, and tokens before output.</li>
++            <li><strong>No Fingerprinting:</strong> Uses standard feature detection (<code>CSS.supports</code>, <code>'IntersectionObserver' in window</code>) and optional User-Agent Client Hints (<code>navigator.userAgentData</code>) instead of canvas/font fingerprinting or full <code>navigator.userAgent</code> sniffing.</li>
++            <li><strong>Clear-Site-Data on Logout:</strong> Logging out clears browser state and triggers a subresource clear request so UI rendering is never blocked.</li>
++          </ul>
++          <div id="capability-audit" class="status-banner" style="font-size: 0.82rem;"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#roastery-tour">Our Story</a> |
++      <a href="#locations">Locations</a> |
++      <a href="#account">Data Rights &amp; Erasure</a> |
++      <a href="#privacy-policy">Privacy Architecture</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 The Daily Grind Coffee Co. Built with Privacy by Design.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // ============================================================================
++      // 1. Secure Data Handling: Ephemeral In-Memory State & Zero localStorage PII
++      // ============================================================================
++      // Never store tokens or PII in localStorage/sessionStorage. Proactively purge
++      // any legacy keys if they exist from older versions.
++      function purgeBrowserStorage() {
++        try {
++          window.localStorage.clear();
++          window.sessionStorage.clear();
++        } catch (_) {
++          // Ignore storage access errors in restricted/sandboxed contexts
++        }
++      }
++      purgeBrowserStorage();
++
++      // Ephemeral in-memory state that disappears as soon as the tab closes or logs out
++      const ephemeralState = {
++        pickupAlias: null,
++        drinkChoice: null,
++        marketingOptIn: false,
++        fuzzedAgeBracket: null,
++        coarseLocation: null,
++        fedcmAuthenticated: false,
++      };
++
++      // ============================================================================
++      // 2. PII-Scrubbing Logger & Rate Limiting (Security & Data Handling)
++      // ============================================================================
++      const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
++      const PHONE_PATTERN = /\+?\d[\d\s().-]{7,}\d/g;
++      const TOKEN_PATTERN = /\b(bearer\s+|token[=:]\s*|session_id[=:]\s*)[a-zA-Z0-9._~+/=-]+/gi;
++
++      function scrubPII(input) {
++        return String(input)
++          .replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
++          .replace(PHONE_PATTERN, '[REDACTED_PHONE]')
++          .replace(TOKEN_PATTERN, '$1[REDACTED_TOKEN]');
++      }
++
++      function safeAuditLog(eventLabel, details) {
++        const sanitizedDetails = details ? scrubPII(JSON.stringify(details)) : '';
++        console.info(`[PrivacyAudit] ${scrubPII(eventLabel)}`, sanitizedDetails);
++      }
++
++      // Client-side rate limiter helper to prevent rapid automated form/endpoint abuse
++      const rateLimitBuckets = new Map();
++      function checkRateLimit(actionKey, maxAttempts = 5, windowMs = 10000) {
++        const now = Date.now();
++        const history = (rateLimitBuckets.get(actionKey) || []).filter((ts) => now - ts < windowMs);
++        if (history.length >= maxAttempts) {
++          return false;
++        }
++        history.push(now);
++        rateLimitBuckets.set(actionKey, history);
++        return true;
++      }
++
++      // ============================================================================
++      // 3. Differential Privacy / Data Fuzzing Helper
++      // ============================================================================
++      // Adds randomized response noise (epsilon-differential privacy coin flip)
++      // before aggregating non-essential survey statistics.
++      function fuzzCategoricalChoice(selectedValue, allowedBuckets) {
++        if (!selectedValue) return null;
++        const randomBuffer = new Uint32Array(2);
++        window.crypto.getRandomValues(randomBuffer);
++        const coinFlip = (randomBuffer[0] / 0xffffffff) < 0.75;
++        if (coinFlip) {
++          return selectedValue;
++        }
++        const randomIndex = randomBuffer[1] % allowedBuckets.length;
++        return allowedBuckets[randomIndex];
++      }
++
++      // ============================================================================
++      // 4. Feature Detection & User-Agent Client Hints (Anti-Fingerprinting)
++      // ============================================================================
++      // Avoid navigator.userAgent sniffing or canvas/font/device fingerprinting.
++      function runPrivacyPreservingCapabilityCheck() {
++        const supportsIntersectionObserver = 'IntersectionObserver' in window;
++        const supportsCssUrlModifiers =
++          typeof CSS !== 'undefined' &&
++          typeof CSS.supports === 'function' &&
++          CSS.supports(
++            'background-image',
++            'url("https://images.unsplash.com/a.jpg" cross-origin(anonymous) referrer-policy(no-referrer))'
++          );
++        const supportsPermissionsElement =
++          typeof HTMLPermissionElement !== 'undefined' ||
++          document.createElement('permission').constructor !== HTMLElement;
++
++        const auditEl = document.getElementById('capability-audit');
++        let uaSummary = 'UA-CH: standard low-entropy hints';
++
++        if (navigator.userAgentData && typeof navigator.userAgentData.platform === 'string') {
++          uaSummary = `UA-CH platform: ${navigator.userAgentData.platform} (mobile: ${Boolean(navigator.userAgentData.mobile)})`;
++        }
++
++        if (auditEl) {
++          auditEl.textContent =
++            `Feature Detection Active — IntersectionObserver: ${supportsIntersectionObserver ? 'yes' : 'no'}, ` +
++            `CSS url() Modifiers: ${supportsCssUrlModifiers ? 'yes' : 'fallback'}, ` +
++            `PEPC <permission>: ${supportsPermissionsElement ? 'supported' : 'button fallback'}, ` +
++            `${uaSummary}.`;
++        }
++      }
++      runPrivacyPreservingCapabilityCheck();
++
++      // ============================================================================
++      // 5. Guest Order Form & Immediate Data Ephemerality
++      // ============================================================================
++      const guestOrderForm = document.getElementById('guest-order-form');
++      const orderStatus = document.getElementById('order-status');
++
++      if (guestOrderForm && orderStatus) {
++        guestOrderForm.addEventListener('submit', function (event) {
++          event.preventDefault();
++          if (!checkRateLimit('guest-order', 3, 10000)) {
++            orderStatus.textContent = 'Rate limit reached: Please wait a moment before submitting another order.';
++            return;
++          }
++
++          const aliasInput = document.getElementById('pickup-alias');
++          const drinkInput = document.getElementById('drink-choice');
++          const phoneInput = document.getElementById('phone');
++          const marketingInput = document.getElementById('marketing-opt-in');
++
++          const alias = aliasInput ? aliasInput.value.trim() : 'Guest';
++          const drink = drinkInput ? drinkInput.value : 'maple-oat-latte';
++          const rawPhone = phoneInput ? phoneInput.value.trim() : '';
++          const marketingOptIn = Boolean(marketingInput && marketingInput.checked);
++
++          ephemeralState.pickupAlias = alias;
++          ephemeralState.drinkChoice = drink;
++          ephemeralState.marketingOptIn = marketingOptIn;
++
++          // Scrub any phone number before logging
++          safeAuditLog('GuestOrderSubmitted', {
++            drink,
++            phone: rawPhone || 'none',
++            marketingOptIn,
++          });
++
++          orderStatus.textContent =
++            `Order placed for "${alias}" (${drink}). ` +
++            (rawPhone
++              ? 'One-time SMS alert scheduled; phone number scrubbed from logs and never used for marketing. '
++              : 'No phone number provided. ') +
++            'Order data will auto-purge upon pickup.';
++
++          // Reset sensitive input field immediately
++          if (phoneInput) phoneInput.value = '';
++        });
++      }
++
++      // ============================================================================
++      // 6. Fuzzed Survey Submission (Data Minimization)
++      // ============================================================================
++      const surveyForm = document.getElementById('survey-form');
++      const authStatus = document.getElementById('auth-status');
++
++      if (surveyForm && authStatus) {
++        surveyForm.addEventListener('submit', function (event) {
++          event.preventDefault();
++          const bracketSelect = document.getElementById('age-bracket');
++          const rawBracket = bracketSelect ? bracketSelect.value : '';
++          const fuzzedBracket = fuzzCategoricalChoice(rawBracket, ['18-34', '35-49', '50+']);
++          ephemeralState.fuzzedAgeBracket = fuzzedBracket;
++
++          safeAuditLog('SurveyBracketFuzzed', { fuzzedBracket });
++          authStatus.textContent = fuzzedBracket
++            ? `Recorded coarsened, differentially-private age bracket: ${fuzzedBracket}.`
++            : 'No age bracket recorded (opted out).';
++        });
++      }
++
++      // ============================================================================
++      // 7. Federated Credential Management (FedCM) Sign-In Flow
++      // ============================================================================
++      const fedcmBtn = document.getElementById('fedcm-signin-btn');
++      if (fedcmBtn && authStatus) {
++        fedcmBtn.addEventListener('click', async function () {
++          if (!('IdentityCredential' in window) || !navigator.credentials || !navigator.credentials.get) {
++            authStatus.textContent =
++              'FedCM is not available in this browser context; continuing safely with guest checkout.';
++            return;
++          }
++
++          try {
++            const nonceBytes = new Uint8Array(16);
++            window.crypto.getRandomValues(nonceBytes);
++            const nonce = Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('');
++
++            const credential = await navigator.credentials.get({
++              identity: {
++                providers: [
++                  {
++                    configURL: 'https://idp.dailygrind.example/fedcm.json',
++                    clientId: 'daily-grind-rp-client',
++                    nonce: nonce,
++                  },
++                ],
++              },
++            });
++
++            if (credential && credential.token) {
++              ephemeralState.fedcmAuthenticated = true;
++              safeAuditLog('FedCMSignInSuccess', { token: credential.token });
++              authStatus.textContent = 'Signed in via browser-mediated FedCM without third-party IdP scripts.';
++            }
++          } catch (_) {
++            authStatus.textContent =
++              'FedCM sign-in canceled or unavailable; you remain in privacy-preserving guest mode.';
++          }
++        });
++      }
++
++      // ============================================================================
++      // 8. Coarse Geolocation & Declarative <permission> (PEPC) Mediation
++      // ============================================================================
++      const locationStatus = document.getElementById('location-status');
++      const useLocationBtn = document.getElementById('use-location-btn');
++      const locationPepc = document.getElementById('location-pepc');
++      const zipLookupForm = document.getElementById('zip-lookup-form');
++
++      function updateMapWithCoarsePosition() {
++        if (!navigator.geolocation || !locationStatus) {
++          if (locationStatus) {
++            locationStatus.textContent = 'Geolocation is disabled or unavailable. Please use the 3-digit ZIP prefix lookup.';
++          }
++          return;
++        }
++
++        locationStatus.textContent = 'Requesting coarse city-level coordinates...';
++        navigator.geolocation.getCurrentPosition(
++          function (position) {
++            // Coarsen coordinates to 1 decimal place (~11 km resolution) for data minimization
++            const coarseLat = Math.round(position.coords.latitude * 10) / 10;
++            const coarseLon = Math.round(position.coords.longitude * 10) / 10;
++            ephemeralState.coarseLocation = `${coarseLat}, ${coarseLon}`;
++            locationStatus.textContent =
++              `Nearest Roastery matched using coarsened coordinates (${coarseLat}, ${coarseLon}): Burlington Roastery (0.8 mi). Exact coordinates discarded.`;
++          },
++          function () {
++            locationStatus.textContent =
++              'Location permission declined or blocked by Permissions-Policy. Use the 3-digit ZIP prefix lookup instead.';
++          },
++          {
++            enableHighAccuracy: false,
++            timeout: 5000,
++            maximumAge: 600000,
++          }
++        );
++      }
++
++      if (locationPepc) {
++        locationPepc.addEventListener('promptdismiss', updateMapWithCoarsePosition);
++      }
++      if (useLocationBtn) {
++        useLocationBtn.addEventListener('click', updateMapWithCoarsePosition);
++      }
++
++      if (zipLookupForm && locationStatus) {
++        zipLookupForm.addEventListener('submit', function (event) {
++          event.preventDefault();
++          const zipInput = document.getElementById('zip-prefix');
++          const prefix = zipInput ? zipInput.value.trim() : '';
++          if (/^[0-9]{3}$/.test(prefix)) {
++            locationStatus.textContent = `Roasteries serving ZIP region ${prefix}xx: Downtown Reserve & Riverside Cafe.`;
++          } else {
++            locationStatus.textContent = 'Please enter a valid 3-digit ZIP prefix (e.g., 054).';
++          }
++        });
++      }
++
++      // ============================================================================
++      // 9. Third-Party Video Façade Pattern (youtube-nocookie.com via safe DOM API)
++      // ============================================================================
++      const playBtn = document.getElementById('play-btn');
++      const videoContainer = document.getElementById('video-container');
++
++      if (playBtn && videoContainer) {
++        playBtn.addEventListener('click', function () {
++          const videoId = videoContainer.dataset.videoId || '';
++          if (!/^[a-zA-Z0-9_-]{6,20}$/.test(videoId)) return;
++
++          // Build iframe safely with document.createElement instead of innerHTML
++          const iframe = document.createElement('iframe');
++          iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`;
++          iframe.title = 'The Daily Grind Ethical Sourcing Video';
++          iframe.allow = "fullscreen; focus-without-user-activation 'none'";
++          iframe.setAttribute('allowfullscreen', '');
++          iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
++          iframe.setAttribute('loading', 'lazy');
++
++          videoContainer.replaceChildren(iframe);
++          safeAuditLog('VideoFacadeActivated', { host: 'www.youtube-nocookie.com' });
++        });
++      }
++
++      // ============================================================================
++      // 10. User Data Rights (Access, Correction, Deletion) & Clear-Site-Data Logout
++      // ============================================================================
++      const dataRightsOutput = document.getElementById('data-rights-output');
++      const accessDataBtn = document.getElementById('access-data-btn');
++      const correctDataBtn = document.getElementById('correct-data-btn');
++      const deleteDataBtn = document.getElementById('delete-data-btn');
++      const correctionAliasInput = document.getElementById('correction-alias');
++      const logoutLink = document.getElementById('logout-link');
++
++      function renderDataRightsSnapshot(prefixMessage) {
++        if (!dataRightsOutput) return;
++        const snapshot = JSON.stringify(ephemeralState, null, 2);
++        dataRightsOutput.textContent = `${prefixMessage}\n${snapshot}`;
++      }
++
++      if (accessDataBtn) {
++        accessDataBtn.addEventListener('click', function () {
++          renderDataRightsSnapshot('Current ephemeral session data held in memory:');
++        });
++      }
++
++      if (correctDataBtn && correctionAliasInput) {
++        correctDataBtn.addEventListener('click', function () {
++          const updatedAlias = correctionAliasInput.value.trim();
++          ephemeralState.pickupAlias = updatedAlias || null;
++          renderDataRightsSnapshot('Updated pickup alias in memory:');
++        });
++      }
++
++      function clearAllUserData(reason) {
++        ephemeralState.pickupAlias = null;
++        ephemeralState.drinkChoice = null;
++        ephemeralState.marketingOptIn = false;
++        ephemeralState.fuzzedAgeBracket = null;
++        ephemeralState.coarseLocation = null;
++        ephemeralState.fedcmAuthenticated = false;
++        purgeBrowserStorage();
++        renderDataRightsSnapshot(reason);
++      }
++
++      if (deleteDataBtn) {
++        deleteDataBtn.addEventListener('click', function () {
++          clearAllUserData('All user data and browser storage erased immediately:');
++        });
++      }
++
++      if (logoutLink) {
++        logoutLink.addEventListener('click', async function (event) {
++          event.preventDefault();
++          clearAllUserData('Logged out — session state and browser storage cleared:');
++          if (authStatus) {
++            authStatus.textContent = 'Logged out. Clear-Site-Data subresource request dispatched.';
++          }
++          // Trigger logout via a background subresource request so a server responding with
++          // `Clear-Site-Data: "*"` (or `"cookies", "storage", "cache"`) does not block main-thread UI rendering.
++          try {
++            await fetch('/logout', {
++              method: 'POST',
++              credentials: 'same-origin',
++              referrerPolicy: 'same-origin',
++            });
++          } catch (_) {
++            // Static environment fallback: local ephemeral state and storage are already purged
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,70 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured promo badge: rotate, translate and scale are independent
++       properties, so the hover transition on scale never restarts or
++       overrides the running spin/slide animations. */
++    .target {
++      display: grid;
++      place-items: center;
++      width: 110px;
++      aspect-ratio: 1;
++      margin: 20px auto 0;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      line-height: 1.2;
++      text-align: center;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      cursor: default;
++      /* Establish the base scale (and an explicit stacking context) up front so
++         hovering doesn't create a new stacking context mid-transition. */
++      scale: 1;
++      isolation: isolate;
++      transition: scale 0.3s ease;
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 3s ease-in-out infinite alternate;
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++      }
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -60px 0; }
++      to { translate: 60px 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +224,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="target" role="note">Featured<br>Promo<br>20% Off</div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

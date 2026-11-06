@@ -1,0 +1,350 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,10 +86,36 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
++    #hero-canvas {
++      width: 100%;
++      height: 100%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++    }
++
++    #hero-content {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: 20px 30px;
++    }
++
++    .hero-fallback #hero-canvas {
++      position: relative;
++    }
++
++    .hero-fallback #hero-content {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,11 +195,15 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <canvas id="hero-canvas" content="drawable">
++      <div id="hero-content" drawable>
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </div>
++    </canvas>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +237,280 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="https://cdn.jsdelivr.net/npm/three-html-render/dist/polyfill.js"></script>
++  <script>
++    const heroSection = document.querySelector('.hero');
++    const canvas = document.getElementById('hero-canvas');
++    const uiElement = document.getElementById('hero-content');
++
++    // Returns the element's size in canvas grid pixels, or null if the element
++    // has no paint record yet.
++    function getElementImageSize(canvas, element) {
++      let elementImage;
++      try {
++        elementImage = canvas.captureElementImage(element);
++      } catch (err) {
++        canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++        return null;
++      }
++      const width = Math.ceil(elementImage.width);
++      const height = Math.ceil(elementImage.height);
++      elementImage.close();
++      return width > 0 && height > 0 ? { width, height } : null;
++    }
++
++    // Binds the texture, and allocates its storage on the first upload, and when
++    // the element size changes. `state` stores the allocated size.
++    function allocateElementTexture(gl, texture, state, width, height) {
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      if (state.width === width && state.height === height) return;
++
++      gl.texImage2D(
++        gl.TEXTURE_2D,
++        0,                // Mipmap level
++        gl.RGBA8,         // Internal format: 8 bits per RGBA channel
++        width,            // Size in canvas grid pixels
++        height,
++        0,                // Border: must be 0
++        gl.RGBA,          // Format and type that match RGBA8
++        gl.UNSIGNED_BYTE,
++        null              // null reserves GPU memory without uploading pixels
++      );
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      state.width = width;
++      state.height = height;
++    }
++
++    // Uploads the element into the texture. Returns false if the element has no
++    // paint record yet. In that case, it's uploaded on the next paint event.
++    function uploadElementWebGL(gl, canvas, texture, element, state) {
++      const size = getElementImageSize(canvas, element);
++      if (!size) return false;
++      const { width, height } = size;
++
++      // Bind the texture, and reallocate it if the size changed.
++      allocateElementTexture(gl, texture, state, width, height);
++      gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++      return true;
++    }
++
++    // Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
++    // quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
++    function computeCanvasTransform(canvas, element, mvp) {
++      const width = element.offsetWidth;
++      const height = element.offsetHeight;
++
++      // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
++      const toGLModel = new DOMMatrix()
++        // Scale pixels to 1 unit, flip Y (as in CSS it points down, and in WebGL it points up)
++        .scale(1 / width, -1 / height, 1 / height)
++        // Center the origin: (0,0) becomes (-width/2, -height/2) before scaling
++        .translate(-width / 2, -height / 2);
++
++      // 2. Convert WebGL MVP Matrix to DOM Matrix
++      const mvpDOM = new DOMMatrix(Array.from(mvp));
++
++      // 3. Map to the canvas viewport, in CSS pixels
++      const clipToCanvasViewport = new DOMMatrix()
++        // Move center (0,0) to center of canvas
++        .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++        // Scale normalized clip (-1..1) to viewport size, and flip Y back
++        .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++
++      // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
++      return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++    }
++
++    function createShader(gl, type, source) {
++      const shader = gl.createShader(type);
++      gl.shaderSource(shader, source);
++      gl.compileShader(shader);
++      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++        console.error('Shader compile error:', gl.getShaderInfoLog(shader));
++        gl.deleteShader(shader);
++        return null;
++      }
++      return shader;
++    }
++
++    function initHeroWebGL() {
++      if (!('content' in HTMLCanvasElement.prototype) && typeof installHtmlInCanvasPolyfill === 'function') {
++        installHtmlInCanvasPolyfill();
++      }
++
++      if ('content' in HTMLCanvasElement.prototype) {
++        const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
++        if (!gl) {
++          heroSection.classList.add('hero-fallback');
++          return;
++        }
++
++        const observer = new ResizeObserver(([entry]) => {
++          const dpc = entry.devicePixelContentBoxSize;
++          canvas.width = dpc
++            ? dpc[0].inlineSize
++            : Math.round(entry.contentRect.width * window.devicePixelRatio);
++          canvas.height = dpc
++            ? dpc[0].blockSize
++            : Math.round(entry.contentRect.height * window.devicePixelRatio);
++          if (typeof canvas.requestPaint === 'function') {
++            canvas.requestPaint();
++          }
++        });
++
++        const supportsDevicePixelContentBox =
++          typeof ResizeObserverEntry !== "undefined" &&
++          "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
++        const options = supportsDevicePixelContentBox
++          ? { box: "device-pixel-content-box" }
++          : {};
++        observer.observe(canvas, options);
++
++        const vsSource = `#version 300 es
++          in vec2 a_position;
++          in vec2 a_texCoord;
++          uniform mat4 u_mvp;
++          out vec2 v_texCoord;
++          void main() {
++            gl_Position = u_mvp * vec4(a_position, 0.0, 1.0);
++            v_texCoord = a_texCoord;
++          }
++        `;
++
++        const fsSource = `#version 300 es
++          precision highp float;
++          in vec2 v_texCoord;
++          uniform sampler2D u_texture;
++          uniform float u_time;
++          uniform vec2 u_pointer;
++          out vec4 outColor;
++          void main() {
++            vec2 uv = v_texCoord;
++            float dist = distance(uv, u_pointer);
++            float ripple = sin(dist * 28.0 - u_time * 4.5) * 0.008 * smoothstep(0.6, 0.0, dist);
++            float ambientWaveX = sin(uv.y * 12.0 + u_time * 2.5) * 0.003;
++            float ambientWaveY = cos(uv.x * 10.0 + u_time * 2.0) * 0.004;
++            vec2 dir = dist > 0.0001 ? normalize(uv - u_pointer) : vec2(0.0);
++            vec2 displacedUv = clamp(uv + dir * ripple + vec2(ambientWaveX, ambientWaveY), 0.0, 1.0);
++            outColor = texture(u_texture, displacedUv);
++          }
++        `;
++
++        const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
++        const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
++        const program = gl.createProgram();
++        gl.attachShader(program, vs);
++        gl.attachShader(program, fs);
++        gl.linkProgram(program);
++
++        const posLoc = gl.getAttribLocation(program, 'a_position');
++        const texLoc = gl.getAttribLocation(program, 'a_texCoord');
++        const mvpLoc = gl.getUniformLocation(program, 'u_mvp');
++        const timeLoc = gl.getUniformLocation(program, 'u_time');
++        const pointerLoc = gl.getUniformLocation(program, 'u_pointer');
++        const texUniformLoc = gl.getUniformLocation(program, 'u_texture');
++
++        // Quad spanning -0.5 to 0.5 in model space
++        const quadVertices = new Float32Array([
++          -0.5, -0.5,  0.0, 1.0,
++           0.5, -0.5,  1.0, 1.0,
++          -0.5,  0.5,  0.0, 0.0,
++          -0.5,  0.5,  0.0, 0.0,
++           0.5, -0.5,  1.0, 1.0,
++           0.5,  0.5,  1.0, 0.0,
++        ]);
++
++        const vao = gl.createVertexArray();
++        gl.bindVertexArray(vao);
++        const vbo = gl.createBuffer();
++        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
++        gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
++        gl.enableVertexAttribArray(posLoc);
++        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 16, 0);
++        gl.enableVertexAttribArray(texLoc);
++        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 16, 8);
++
++        const texture = gl.createTexture();
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        const textureState = { width: 0, height: 0 };
++        let hasUploadedOnce = false;
++        let pointerUV = [0.5, 0.5];
++
++        canvas.addEventListener('pointermove', (e) => {
++          const rect = uiElement.getBoundingClientRect();
++          if (rect.width > 0 && rect.height > 0) {
++            pointerUV = [
++              (e.clientX - rect.left) / rect.width,
++              (e.clientY - rect.top) / rect.height,
++            ];
++          }
++        });
++
++        canvas.onpaint = (event) => {
++          if (!hasUploadedOnce || (event && event.changedElements && event.changedElements.length > 0)) {
++            try {
++              if (uploadElementWebGL(gl, canvas, texture, uiElement, textureState)) {
++                hasUploadedOnce = true;
++              }
++            } catch (err) {
++              console.error('texElementSubImage2D copy failed:', err);
++            }
++          }
++
++          const cw = canvas.clientWidth || 1;
++          const ch = canvas.clientHeight || 1;
++          const ew = uiElement.offsetWidth || 1;
++          const eh = uiElement.offsetHeight || 1;
++
++          // Scale the -0.5..0.5 model quad so its clip-space bounds match the element's CSS size
++          const sx = (2 * ew) / cw;
++          const sy = (2 * eh) / ch;
++          const htmlElementMVP = new Float32Array([
++            sx,  0, 0, 0,
++             0, sy, 0, 0,
++             0,  0, 1, 0,
++             0,  0, 0, 1,
++          ]);
++
++          gl.viewport(0, 0, canvas.width, canvas.height);
++          gl.clearColor(0, 0, 0, 0);
++          gl.clear(gl.COLOR_BUFFER_BIT);
++          gl.enable(gl.BLEND);
++          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
++
++          gl.useProgram(program);
++          gl.bindVertexArray(vao);
++          gl.activeTexture(gl.TEXTURE0);
++          gl.bindTexture(gl.TEXTURE_2D, texture);
++          gl.uniform1i(texUniformLoc, 0);
++          gl.uniformMatrix4fv(mvpLoc, false, htmlElementMVP);
++          gl.uniform1f(timeLoc, performance.now() * 0.001);
++          gl.uniform2f(pointerLoc, pointerUV[0], pointerUV[1]);
++          gl.drawArrays(gl.TRIANGLES, 0, 6);
++
++          // Sync DOM position, hit testing, and accessibility bounds with 3D scene
++          canvas.updateElementGeometry(uiElement, {
++            canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
++          });
++        };
++
++        function render() {
++          canvas.requestPaint();
++          requestAnimationFrame(render);
++        }
++        requestAnimationFrame(render);
++      } else {
++        // Fallback strategy when HTML-in-Canvas is not supported
++        heroSection.classList.add('hero-fallback');
++      }
++    }
++
++    initHeroWebGL();
++  </script>
+ </body>
+ 
+ </html>

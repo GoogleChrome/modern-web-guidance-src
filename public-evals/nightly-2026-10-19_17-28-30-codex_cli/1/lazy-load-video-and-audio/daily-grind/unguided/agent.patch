@@ -1,0 +1,353 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..9ae5d75
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,16 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the static homepage. Run `pnpm test` for the media loading checks.
++
++All players begin with `preload="none"` and only inert `data-src` / `data-poster` URLs. `media.js` attaches their sources and posters and enables metadata preloading when they are within 200px of the viewport. An IntersectionObserver handles this once per player; a scroll/resize fallback preserves deferral in older browsers. No media resource hints or CSS background images fetch the posters ahead of the players.
++
++The hero is muted and loops, with a play/pause button. Reduced-motion and data-saving preferences disable automatic playback. The roasting video and podcast use native controls and never autoplay. Layout dimensions reserve space before media loads.
++
++## Media sources
++
++- Hero: [Pouring coffee in a cup, Mixkit](https://mixkit.co/free-stock-video/pouring-coffee-in-a-cup-43941/).
++- Roasting: [Roasting coffee, Mixkit](https://mixkit.co/free-stock-video/roasting-coffee-12479/). This sample is under the Mixkit Restricted License (personal use only); replace it with owned or commercially licensed roasting footage before commercial publication.
++- Posters: Unsplash photos `1495474472287-4d71bcdd2085` and `1447933601403-0c6688de566e`.
++- Podcast: [Home Coffee Roasting, part 1, by dnt, Hacker Public Radio #3563](https://hackerpublicradio.org/eps/hpr3563/index.html), CC BY-SA 4.0; used unchanged with attribution beside the player.
++
++Media remains hosted by third parties. Tests cover initial source/poster deferral, viewport activation, activation only once, autoplay preferences, and the observer fallback. No manual browser verification was performed.
+diff --git a/index.html b/index.html
+index 66c9173..49859f1 100644
+--- a/index.html
++++ b/index.html
+@@ -75,10 +75,6 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -152,6 +148,60 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    body { background: #f8f5ef; }
++    nav { padding: 1.2rem 6%; }
++    .logo { font-size: 1.1rem; letter-spacing: 2px; }
++    .hero {
++      position: relative;
++      min-height: 580px;
++      height: 72vh;
++      isolation: isolate;
++      overflow: hidden;
++      background: #30251f;
++    }
++    .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
++    .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(30,20,14,.75), rgba(30,20,14,.3)); z-index: -1; }
++    .eyebrow { text-transform: uppercase; letter-spacing: 3px; font-size: .72rem; font-weight: 600; margin-bottom: 18px; }
++    .hero h1 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(3rem, 6vw, 5.5rem); line-height: 1.08; max-width: 750px; }
++    .hero > p:not(.eyebrow) { color: #eee2d3; max-width: 430px; }
++    .hero .btn { background: #e8c39a; color: #30251f; padding: 12px 26px; margin-top: 28px; }
++    .hero-toggle { position: absolute; right: 24px; bottom: 22px; background: #30251fcc; border: 1px solid #ffffff66; color: white; padding: 8px 14px; border-radius: 30px; cursor: pointer; }
++    .container { max-width: 1180px; margin: 0 auto; padding: 76px 28px 0; }
++    h2 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.2; margin-bottom: 18px; }
++    .section-heading { text-align: center; }
++    .section-heading .eyebrow { color: #8b6745; margin-bottom: 12px; }
++    .grid { gap: 24px; margin-top: 32px; }
++    .card { padding: 32px 24px; background: #fffcf7; border: 1px solid #e7ded2; box-shadow: none; border-radius: 2px; }
++    .card h3 { font-family: Georgia, serif; font-size: 1.35rem; font-weight: 400; }
++    .card .btn { background: transparent; color: #644a35; border-bottom: 1px solid #bda58a; border-radius: 0; padding: 4px 0; font-size: .85rem; }
++    .media-section { display: grid; grid-template-columns: 1.25fr 1fr; align-items: center; gap: 64px; margin-top: 100px; }
++    .media-section .eyebrow { color: #8b6745; margin-bottom: 14px; }
++    .media-copy > p:not(.eyebrow) { color: #76675c; }
++    .roasting-video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #30251f; border-radius: 3px; }
++    .media-caption { font-size: .75rem; color: #89786b; margin-top: 12px; }
++    .podcast-section { background: #eae2d6; border: 1px solid #dfd4c5; padding: 46px; display: grid; grid-template-columns: 140px 1fr; gap: 36px; margin-top: 80px; }
++    .podcast-art { aspect-ratio: 1; background: #4e342e; color: #e8c39a; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 18px; }
++    .podcast-art span { font-size: 2.8rem; line-height: 1.2; }
++    .podcast-art strong { font-family: Georgia, serif; font-weight: 400; font-size: 1.15rem; line-height: 1.3; margin-top: 10px; }
++    .podcast-section h2 { font-size: 2rem; margin-bottom: 10px; }
++    .podcast-section .eyebrow { margin-bottom: 10px; color: #8b6745; }
++    audio { width: 100%; margin-top: 22px; display: block; }
++    .source-credit { font-size: .75rem; color: #76675c; margin-top: 12px; }
++    .source-credit a { color: inherit; }
++    footer { background: #e9e1d5; margin-top: 80px; }
++    a:focus-visible, button:focus-visible { outline: 3px solid #bf8447; outline-offset: 5px; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; justify-content: center; gap: 14px; padding: 16px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin: 0; }
++      nav a { font-size: .8rem; }
++      .hero { min-height: 520px; }
++      .media-section { grid-template-columns: 1fr; gap: 28px; margin-top: 64px; }
++      .podcast-section { grid-template-columns: 1fr; gap: 24px; padding: 28px; margin-top: 56px; }
++      .podcast-art { width: 130px; }
++      .container { padding: 56px 22px 0; }
++    }
+   </style>
+ </head>
+ 
+@@ -169,14 +219,24 @@
+   </nav>
+ 
+   <header class="hero">
++    <video class="hero-video" id="hero-video" data-lazy-media data-autoplay muted loop playsinline preload="none"
++      data-poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1600&amp;q=80" aria-hidden="true">
++      <source data-src="https://assets.mixkit.co/videos/43941/43941-720.mp4" type="video/mp4">
++    </video>
++    <p class="eyebrow">Good mornings start here</p>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn">Order Your Daily Cup &rarr;</a>
++    <button type="button" class="hero-toggle" aria-controls="hero-video">Play background video</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-heading">
++        <p class="eyebrow">A little something to look forward to</p>
++        <h2>Seasonal Favorites</h2>
++        <p>Familiar comforts. Fresh new favorites. Always made with care.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +255,38 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <figure>
++        <video class="roasting-video" data-lazy-media controls playsinline preload="none"
++          data-poster="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1000&amp;q=80" aria-label="Coffee beans turning in a roasting machine">
++          <source data-src="https://assets.mixkit.co/videos/12479/12479-720.mp4" type="video/mp4">
++          Your browser does not support video playback.
++        </video>
++        <figcaption class="media-caption">A closer look at the craft &middot; A silent roasting film</figcaption>
++      </figure>
++      <div class="media-copy">
++        <p class="eyebrow">From bean to daily ritual</p>
++        <h2 id="roasting-title">Great coffee takes<br>a little patience.</h2>
++        <p>The warmth. The movement. That unmistakable aroma. Step into the world of roasting and see where a beautiful cup begins.</p>
++        <a class="btn" href="/about">Get to Know Our Story &rarr;</a>
++      </div>
++    </section>
++
++    <section class="podcast-section" aria-labelledby="podcast-title">
++      <div class="podcast-art" aria-hidden="true"><span>♨</span><strong>Coffee<br>&amp; Conversation</strong></div>
++      <div>
++        <p class="eyebrow">The listening corner &middot; Guest episode</p>
++        <h2 id="podcast-title">Home Coffee Roasting</h2>
++        <p>Pour a cup and settle in. Join dnt from Hacker Public Radio for a conversation about what it takes to roast coffee at home.</p>
++        <audio data-lazy-media controls preload="none" aria-label="Home Coffee Roasting, part 1, by dnt">
++          <source data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3" type="audio/mpeg">
++          Your browser does not support audio playback.
++        </audio>
++        <p class="source-credit">18 min &middot; <a href="https://hackerpublicradio.org/eps/hpr3563/index.html">Hacker Public Radio #3563</a> &middot; dnt &middot; CC BY-SA 4.0</p>
++      </div>
++    </section>
++    <noscript><p class="media-caption">Enable JavaScript to load the films and podcast player.</p></noscript>
+   </main>
+ 
+   <footer>
+@@ -207,6 +299,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="media.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..0496656
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,65 @@
++(() => {
++  const players = [...document.querySelectorAll('[data-lazy-media]')];
++  const hero = document.querySelector('#hero-video');
++  const toggle = document.querySelector('.hero-toggle');
++  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++  const saveData = navigator.connection?.saveData;
++
++  function activate(player) {
++    if (player.dataset.loaded) return;
++    player.dataset.loaded = 'true';
++    // data-* keeps both the preload scanner and media element from fetching early.
++    if (player.dataset.poster) player.poster = player.dataset.poster;
++    player.querySelectorAll('source[data-src]').forEach(source => {
++      source.src = source.dataset.src;
++    });
++    player.preload = 'metadata';
++    player.load();
++    if (player.hasAttribute('data-autoplay') && !reduceMotion && !saveData) {
++      player.play().catch(() => { /* The play button remains available if autoplay is blocked. */ });
++    }
++  }
++
++  if ('IntersectionObserver' in window) {
++    const observer = new IntersectionObserver(entries => {
++      entries.forEach(entry => {
++        if (!entry.isIntersecting) return;
++        activate(entry.target);
++        observer.unobserve(entry.target);
++      });
++    }, { rootMargin: '200px 0px', threshold: 0 });
++    players.forEach(player => observer.observe(player));
++  } else {
++    // Preserve deferral in older browsers instead of eagerly loading every player.
++    const pending = new Set(players);
++    function checkViewport() {
++      pending.forEach(player => {
++        const rect = player.getBoundingClientRect();
++        if (rect.top <= window.innerHeight + 200 && rect.bottom >= -200) {
++          activate(player);
++          pending.delete(player);
++        }
++      });
++      if (!pending.size) {
++        window.removeEventListener('scroll', checkViewport);
++        window.removeEventListener('resize', checkViewport);
++      }
++    }
++    window.addEventListener('scroll', checkViewport, { passive: true });
++    window.addEventListener('resize', checkViewport);
++    checkViewport();
++  }
++
++  if (hero && toggle) {
++    hero.addEventListener('play', () => { toggle.textContent = 'Pause background video'; });
++    hero.addEventListener('pause', () => { toggle.textContent = 'Play background video'; });
++    toggle.addEventListener('click', () => {
++      if (hero.paused) {
++        activate(hero);
++        hero.play().catch(() => { toggle.textContent = 'Try playing again'; });
++      } else {
++        hero.pause();
++      }
++    });
++  }
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..3721549 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/*.test.cjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/media.test.cjs b/tests/media.test.cjs
+new file mode 100644
+index 0000000..fe2365c
+--- /dev/null
++++ b/tests/media.test.cjs
+@@ -0,0 +1,90 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++const script = readFileSync('media.js', 'utf8');
++
++function setup({ observer = true, reduced = false, saveData = false } = {}) {
++  function player(top, autoplay = false) {
++    const source = { dataset: { src: 'https://example.com/media' } };
++    return {
++      dataset: { poster: 'https://example.com/poster.jpg' }, source,
++      preload: 'none', loads: 0, plays: 0,
++      querySelectorAll: () => [source], hasAttribute: () => autoplay,
++      load() { this.loads++; }, play() { this.plays++; return Promise.resolve(); },
++      getBoundingClientRect: () => ({ top, bottom: top + 300 }),
++    };
++  }
++  const players = [player(0, true), player(2000), player(3000)];
++  const listeners = {};
++  let callback, options;
++  const unobserved = [];
++  const window = {
++    innerHeight: 800, matchMedia: () => ({ matches: reduced }),
++    addEventListener: (event, fn) => { listeners[event] = fn; },
++    removeEventListener: event => { delete listeners[event]; },
++  };
++  if (observer) window.IntersectionObserver = class {
++    constructor(cb, opts) { callback = cb; options = opts; }
++    observe() {} unobserve(target) { unobserved.push(target); }
++  };
++  runInNewContext(script, {
++    window, navigator: { connection: { saveData } },
++    IntersectionObserver: window.IntersectionObserver,
++    document: { querySelectorAll: () => players, querySelector: () => null },
++  });
++  return { players, callback, options, unobserved, listeners };
++}
++
++test('HTML exposes no eager media or poster URLs to the browser', () => {
++  const html = readFileSync('index.html', 'utf8');
++  const tags = html.match(/<(?:video|audio|source)\b[^>]*>/g);
++  assert.equal(tags.filter(tag => /^<(?:video|audio)\b/.test(tag)).length, 3);
++  for (const tag of tags) {
++    assert.doesNotMatch(tag, /\s(?:src|poster|autoplay)=?/);
++    if (/^<(?:video|audio)\b/.test(tag)) assert.match(tag, /preload="none"/);
++  }
++  assert.doesNotMatch(html, /url\(|rel="preload"/);
++});
++
++test('only intersecting players receive posters, sources, and metadata preload', () => {
++  const { players, callback, options, unobserved } = setup();
++  assert.equal(options.rootMargin, '200px 0px');
++  for (const p of players) { assert.equal(p.source.src, undefined); assert.equal(p.poster, undefined); assert.equal(p.loads, 0); }
++  callback([{ target: players[1], isIntersecting: false }]);
++  assert.equal(players[1].loads, 0);
++  callback([{ target: players[1], isIntersecting: true }]);
++  assert.equal(players[1].poster, players[1].dataset.poster);
++  assert.equal(players[1].source.src, players[1].source.dataset.src);
++  assert.equal(players[1].preload, 'metadata');
++  assert.equal(players[1].loads, 1);
++  assert.equal(players[1].plays, 0);
++  assert.equal(players[2].loads, 0);
++  assert.deepEqual(unobserved, [players[1]]);
++  callback([{ target: players[1], isIntersecting: true }]);
++  assert.equal(players[1].loads, 1);
++});
++
++test('hero autoplay honors reduced motion and data saving', () => {
++  for (const config of [{}, { reduced: true }, { saveData: true }]) {
++    const { players, callback } = setup(config);
++    callback([{ target: players[0], isIntersecting: true }]);
++    assert.equal(players[0].plays, config.reduced || config.saveData ? 0 : 1);
++  }
++});
++
++test('fallback also defers offscreen players until they approach', () => {
++  const { players, listeners } = setup({ observer: false });
++  assert.equal(players[0].loads, 1);
++  assert.equal(players[1].loads, 0);
++  assert.equal(players[2].loads, 0);
++  players[1].getBoundingClientRect = () => ({ top: 950, bottom: 1250 });
++  listeners.scroll();
++  assert.equal(players[1].loads, 1);
++  assert.equal(players[2].loads, 0);
++  players[2].getBoundingClientRect = () => ({ top: 500, bottom: 800 });
++  listeners.resize();
++  assert.equal(players[2].loads, 1);
++  assert.equal(listeners.scroll, undefined);
++  assert.equal(listeners.resize, undefined);
++});

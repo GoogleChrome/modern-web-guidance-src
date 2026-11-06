@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -203,10 +203,67 @@
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <p id="card-expiry" aria-live="polite"></p>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Cards are valid through the last day of the expiry month, so the card
++    // expires at the start of the following month (Jan 1, 2028 for 12/2027).
++    // All math uses calendar fields and UTC day numbers, never "365 days" or
++    // millisecond division, so leap years and DST can't skew the result.
++    (function () {
++      var EXPIRY_YEAR = 2027;
++      var EXPIRY_MONTH = 12; // 1-12
++
++      function dayNumber(y, m, d) { // m is 0-based; days since epoch, UTC
++        return Date.UTC(y, m, d) / 86400000;
++      }
++
++      function daysInMonth(y, m) { // m is 0-based; day 0 of next month
++        return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
++      }
++
++      var now = new Date();
++      var y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
++
++      // First instant the card is no longer valid (0-based month, may be 12).
++      var endY = EXPIRY_YEAR, endM = EXPIRY_MONTH; // = month after expiry, 0-based
++      if (endM === 12) { endY += 1; endM = 0; }
++
++      var el = document.getElementById('card-expiry');
++      if (dayNumber(y, m, d) >= dayNumber(endY, endM, 1)) {
++        el.textContent = 'Your card on file has expired. Please update your payment method.';
++        return;
++      }
++
++      // Whole calendar months from today to the expiry date.
++      var months = (endY - y) * 12 + (endM - m);
++      if (d > 1) months -= 1; // expiry day is the 1st; a partial month remains
++
++      // Anchor = today advanced by that many months, clamped to month length
++      // (e.g. Jan 31 + 1 month -> Feb 28/29).
++      var total = m + months;
++      var ay = y + Math.floor(total / 12);
++      var am = ((total % 12) + 12) % 12;
++      var ad = Math.min(d, daysInMonth(ay, am));
++      var days = dayNumber(endY, endM, 1) - dayNumber(ay, am, ad);
++
++      var years = Math.floor(months / 12);
++      months = months % 12;
++
++      function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
++      var parts = [];
++      if (years) parts.push(plural(years, 'year'));
++      if (months) parts.push(plural(months, 'month'));
++      if (days || !parts.length) parts.push(plural(days, 'day'));
++
++      el.textContent = 'Your card on file expires in ' + parts.join(', ') +
++        ' (12/' + EXPIRY_YEAR + ').';
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

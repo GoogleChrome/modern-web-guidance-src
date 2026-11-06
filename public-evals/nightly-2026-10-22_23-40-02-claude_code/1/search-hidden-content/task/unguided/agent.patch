@@ -1,0 +1,182 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,103 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .layout {
++      display: grid;
++      grid-template-columns: 1fr 260px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 760px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .reveal-coupon {
++      appearance: none;
++      background: var(--accent);
++      color: var(--text);
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      padding: 10px 20px;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .reveal-coupon:hover:not(:disabled) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .reveal-coupon:disabled {
++      opacity: 0.6;
++      cursor: default;
++    }
++
++    .coupon-panel {
++      margin-top: 40px;
++      padding: 20px;
++      text-align: center;
++      background: white;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++    }
++
++    .coupon-code {
++      font-size: 2rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      color: var(--primary);
++    }
++
++    .wholesale {
++      margin-top: 40px;
++    }
++
++    .wholesale h2 {
++      margin-bottom: 15px;
++    }
++
++    .wholesale-tab {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 10px;
++    }
++
++    .wholesale-tab summary {
++      cursor: pointer;
++      padding: 12px 20px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--secondary);
++      border-radius: 8px 8px 0 0;
++    }
++
++    .tab-body {
++      padding: 15px 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +268,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++  <main class="content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +290,62 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Hidden with until-found so find-in-page can match the code and auto-reveal it -->
++    <section id="coupon-panel" class="coupon-panel" hidden="until-found">
++      <h2>Your Discount Code</h2>
++      <p>Use this code at checkout:</p>
++      <p class="coupon-code">GRIND15</p>
++    </section>
++
++    <section class="wholesale">
++      <h2>Wholesale &amp; Catering</h2>
++      <!-- Shared name makes the details elements mutually exclusive; closed content stays find-in-page searchable -->
++      <details class="wholesale-tab" name="wholesale-info" open>
++        <summary>Wholesale</summary>
++        <div class="tab-body">
++          <p>Stock your cafe or shop with our small-batch roasts. Wholesale accounts get volume pricing, weekly roast-to-order delivery, and free barista training.</p>
++          <p>Minimum order: 10 lbs per week.</p>
++        </div>
++      </details>
++      <details class="wholesale-tab" name="wholesale-info">
++        <summary>Catering</summary>
++        <div class="tab-body">
++          <p>Fuel your next event with our mobile espresso bar. We serve offices, weddings, and private parties with fully staffed catering packages.</p>
++          <p>Book at least two weeks in advance.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
++  <aside class="sidebar">
++    <h3>Today's Deals</h3>
++    <button type="button" id="reveal-coupon" class="reveal-coupon">Reveal Coupon</button>
++  </aside>
++  </div>
++
++  <script>
++    (function () {
++      var panel = document.getElementById('coupon-panel');
++      var button = document.getElementById('reveal-coupon');
++
++      function markRevealed() {
++        button.disabled = true;
++        button.textContent = 'Coupon Revealed';
++      }
++
++      button.addEventListener('click', function () {
++        panel.hidden = false;
++        markRevealed();
++      });
++
++      // Find-in-page reveals the panel itself; keep the button in sync
++      panel.addEventListener('beforematch', markRevealed);
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

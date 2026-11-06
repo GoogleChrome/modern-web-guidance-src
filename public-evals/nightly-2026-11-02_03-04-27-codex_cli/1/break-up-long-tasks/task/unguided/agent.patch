@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .blend-lab { margin-top: 64px; border: 1px solid #dfd7cd; border-radius: 16px; overflow: hidden; background: #f5f0e8; }
++    .lab-heading { padding: 30px 32px 24px; border-bottom: 1px solid #dfd7cd; }
++    .eyebrow { color: #826342; font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
++    .lab-heading h2 { font-family: Georgia, serif; font-size: 2rem; font-weight: 400; margin: 5px 0 8px; }
++    .lab-heading p:last-child { color: #75675b; max-width: 620px; font-size: .92rem; }
++    .lab-layout { display: grid; grid-template-columns: 320px 1fr; }
++    .lab-controls { padding: 28px 32px; border-right: 1px solid #dfd7cd; }
++    .field { margin-bottom: 22px; }
++    .field label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 8px; }
++    .field select { width: 100%; padding: 11px 12px; border: 1px solid #d2c6b8; border-radius: 6px; background: #fffdf9; color: var(--text); font: inherit; font-size: .87rem; }
++    .field small { display: block; color: #75675b; margin-top: 6px; font-size: .74rem; }
++    .lab-actions { display: flex; gap: 8px; }
++    .lab-actions button { cursor: pointer; border: 0; font: inherit; font-size: .85rem; font-weight: 600; padding: 12px 14px; border-radius: 6px; }
++    .run-button { background: var(--primary); color: white; flex: 1; }
++    .cancel-button { background: #e7dfd4; color: var(--text); }
++    .lab-actions button:disabled { opacity: .5; cursor: default; }
++    :focus-visible { outline: 3px solid #b47a32; outline-offset: 4px; }
++    .lab-results { padding: 28px 32px; min-width: 0; background: #fffdf9; }
++    .result-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
++    .result-heading h3 { font-size: 1rem; }
++    .lab-badge { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; background: #eee8df; border-radius: 20px; padding: 4px 10px; white-space: nowrap; }
++    .lab-badge[data-state="complete"] { background: #e5ecdf; color: #48613b; }
++    .progress-meta { display: flex; justify-content: space-between; font-size: .75rem; color: #75675b; gap: 10px; }
++    .lab-progress { width: 100%; height: 6px; appearance: none; border: 0; display: block; margin: 9px 0 18px; border-radius: 5px; overflow: hidden; background: #eae3d9; }
++    .lab-progress::-webkit-progress-bar { background: #eae3d9; }
++    .lab-progress::-webkit-progress-value { background: #986d41; }
++    .lab-progress::-moz-progress-bar { background: #986d41; }
++    .lab-empty { padding: 28px 10px; text-align: center; }
++    .lab-empty .bean { display: inline-block; width: 24px; height: 34px; border: 2px solid #aa8d6d; border-radius: 50%; transform: rotate(35deg); margin-bottom: 12px; }
++    .lab-empty .bean::after { content: ''; display: block; height: 28px; width: 10px; border-right: 2px solid #aa8d6d; border-radius: 50%; }
++    .lab-empty h4 { font-family: Georgia, serif; font-size: 1.25rem; font-weight: 400; }
++    .lab-empty p { color: #827568; font-size: .83rem; margin-top: 6px; }
++    .profile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin: 16px 0 22px; }
++    .flavor-label { display: flex; justify-content: space-between; font-size: .75rem; margin-bottom: 4px; }
++    .flavor-track { height: 5px; border-radius: 5px; background: #eee7dd; overflow: hidden; }
++    .flavor-fill { height: 100%; background: #a78056; border-radius: 5px; }
++    .blend-list { list-style: none; }
++    .blend-list li { padding: 12px 0; border-top: 1px solid #eae3d9; display: flex; gap: 12px; align-items: center; }
++    .blend-rank { color: #9c866e; font-family: Georgia, serif; font-size: 1.15rem; }
++    .blend-name { font-size: .82rem; font-weight: 600; }
++    .blend-recipe { color: #827568; font-size: .72rem; }
++    .blend-score { margin-left: auto; font-size: .86rem; font-weight: 600; white-space: nowrap; }
++    .lab-note { color: #827568; font-size: .7rem; margin-top: 18px; }
++    [hidden] { display: none !important; }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      .lab-layout { grid-template-columns: 1fr; }
++      .lab-controls { border-right: 0; border-bottom: 1px solid #dfd7cd; }
++      .lab-heading, .lab-controls, .lab-results { padding: 24px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="blend-lab" aria-labelledby="lab-title">
++      <div class="lab-heading">
++        <p class="eyebrow">The roaster’s workbench</p>
++        <h2 id="lab-title">Find your perfect blend.</h2>
++        <p>A little curiosity. Thousands of possibilities. Explore simulated coffee recipes to discover a balanced flavor profile.</p>
++      </div>
++      <div class="lab-layout">
++        <form class="lab-controls" id="blend-form">
++          <div class="field">
++            <label for="roast">Roast level</label>
++            <select id="roast" name="roast"><option value="light">Light · bright &amp; lively</option><option value="medium" selected>Medium · smooth &amp; balanced</option><option value="dark">Dark · rich &amp; bold</option></select>
++          </div>
++          <div class="field">
++            <label for="brew">Brew method</label>
++            <select id="brew" name="brew"><option value="pour">Pour-over</option><option value="espresso">Espresso</option><option value="cold">Cold brew</option></select>
++          </div>
++          <div class="field">
++            <label for="batch">Recipes to explore</label>
++            <select id="batch" name="batch"><option value="10000">10,000 recipes</option><option value="50000" selected>50,000 recipes</option><option value="250000">250,000 recipes</option></select>
++            <small>Brazil, Ethiopia &amp; Colombia in every mix.</small>
++          </div>
++          <div class="lab-actions">
++            <button type="submit" class="run-button" id="run-blends">Simulate blends <span aria-hidden="true">↗</span></button>
++            <button type="button" class="cancel-button" id="cancel-blends" hidden>Cancel</button>
++          </div>
++          <p class="lab-note">An exploration of flavor, based on a simplified model. Your cup may tell a different story.</p>
++        </form>
++        <div class="lab-results" id="lab-results" aria-busy="false">
++          <div class="result-heading"><h3>Your flavor discovery</h3><span class="lab-badge" id="lab-badge">Ready to explore</span></div>
++          <div class="progress-meta"><span id="recipe-count">0 recipes explored</span><span id="progress-percent">0%</span></div>
++          <progress class="lab-progress" id="blend-progress" max="100" value="0" aria-label="Recipes processed"></progress>
++          <p id="lab-status" class="lab-note" role="status">Choose your preferences, then start a simulation.</p>
++          <div class="lab-empty" id="lab-empty"><span class="bean" aria-hidden="true"></span><h4>A good cup starts with curiosity.</h4><p>Your top recipes and flavor notes will appear here.</p></div>
++          <div id="blend-output" hidden>
++            <div class="profile" id="flavor-profile" aria-label="Best blend flavor intensity out of 100"></div>
++            <h4 class="eyebrow">Top recipes · balance score / 100</h4>
++            <ol class="blend-list" id="blend-list"></ol>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +301,129 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (() => {
++      const form = document.getElementById('blend-form');
++      const runButton = document.getElementById('run-blends');
++      const cancelButton = document.getElementById('cancel-blends');
++      const status = document.getElementById('lab-status');
++      const badge = document.getElementById('lab-badge');
++      const results = document.getElementById('lab-results');
++      const progress = document.getElementById('blend-progress');
++      const count = document.getElementById('recipe-count');
++      const percent = document.getElementById('progress-percent');
++      const output = document.getElementById('blend-output');
++      const empty = document.getElementById('lab-empty');
++      const profile = document.getElementById('flavor-profile');
++      const list = document.getElementById('blend-list');
++      const flavorNames = ['Chocolate', 'Fruit', 'Sweetness', 'Body', 'Acidity', 'Bitterness'];
++      // Representative intensities, not measured tasting or quality predictions.
++      const beans = [[85, 25, 70, 80, 30, 45], [25, 95, 65, 35, 90, 20], [60, 60, 85, 60, 60, 30]];
++      const roastEffects = { light: [-10, 10, -5, -10, 15, -10], medium: [0, 0, 5, 0, 0, 0], dark: [15, -20, -10, 15, -20, 25] };
++      const brewEffects = { pour: [0, 5, 0, -5, 5, 0], espresso: [5, 0, 0, 15, 0, 10], cold: [5, -5, 10, 5, -20, -10] };
++      let running = false;
++      let cancelled = false;
++      const yieldToMain = () => typeof globalThis.scheduler?.yield === 'function'
++        ? globalThis.scheduler.yield() : new Promise(resolve => setTimeout(resolve, 0));
++
++      cancelButton.addEventListener('click', () => { cancelled = true; cancelButton.disabled = true; });
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        if (running) return;
++        running = true;
++        cancelled = false;
++        const total = Number(form.elements.batch.value);
++        const roast = roastEffects[form.elements.roast.value];
++        const brew = brewEffects[form.elements.brew.value];
++        const fields = [...form.querySelectorAll('select')];
++        fields.forEach(field => { field.disabled = true; });
++        runButton.disabled = true;
++        cancelButton.hidden = false;
++        cancelButton.disabled = false;
++        results.setAttribute('aria-busy', 'true');
++        output.hidden = true;
++        empty.hidden = false;
++        badge.textContent = 'Simulating';
++        badge.dataset.state = 'running';
++        status.textContent = 'Exploring recipes. You can keep browsing while we blend.';
++        let completed = 0;
++        let best = [];
++        let seed = 42;
++        const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
++        const updateProgress = () => {
++          const value = Math.floor(completed / total * 100);
++          progress.value = value;
++          count.textContent = `${completed.toLocaleString()} / ${total.toLocaleString()} recipes`;
++          percent.textContent = `${value}%`;
++        };
++        updateProgress();
++        try {
++          // Yield before starting, then cap each slice by both time and recipe count.
++          await yieldToMain();
++          while (completed < total && !cancelled) {
++            const deadline = performance.now() + 6;
++            let chunk = 0;
++            do {
++              // Exponentials give varied, normalized three-origin proportions.
++              const weights = beans.map(() => -Math.log(Math.max(random(), 1e-9)));
++              const sum = weights.reduce((a, b) => a + b, 0);
++              const ratios = weights.map(weight => weight / sum);
++              const flavors = flavorNames.map((_, i) => Math.max(0, Math.min(100,
++                beans.reduce((value, bean, j) => value + bean[i] * ratios[j], 0) + roast[i] + brew[i])));
++              const target = [65, 60, 80, 65, 50, 30];
++              const score = Math.max(0, 100 - Math.sqrt(flavors.reduce((error, value, i) => error + (value - target[i]) ** 2, 0) / flavors.length));
++              // Retain only three leaders so even large batches use bounded memory.
++              if (best.length < 3 || score > best[best.length - 1].score) {
++                best.push({ ratios, flavors, score });
++                best.sort((a, b) => b.score - a.score);
++                best.length = Math.min(best.length, 3);
++              }
++              completed++;
++              chunk++;
++            } while (completed < total && chunk < 500 && performance.now() < deadline);
++            updateProgress();
++            await yieldToMain();
++          }
++          badge.textContent = cancelled ? 'Cancelled' : 'Complete';
++          badge.dataset.state = cancelled ? 'cancelled' : 'complete';
++          status.textContent = cancelled
++            ? `Stopped after ${completed.toLocaleString()} recipes. Start again to explore a new batch.`
++            : `${total.toLocaleString()} recipes explored. Meet your three most balanced blends.`;
++          if (best.length) {
++            profile.replaceChildren();
++            best[0].flavors.forEach((value, i) => {
++              const item = document.createElement('div');
++              item.innerHTML = `<div class="flavor-label"><span>${flavorNames[i]}</span><span>${Math.round(value)}</span></div><div class="flavor-track"><div class="flavor-fill" style="width:${value}%"></div></div>`;
++              profile.append(item);
++            });
++            list.replaceChildren();
++            best.forEach((blend, i) => {
++              const brazil = Math.round(blend.ratios[0] * 100);
++              const ethiopia = Math.min(100 - brazil, Math.round(blend.ratios[1] * 100));
++              const item = document.createElement('li');
++              item.innerHTML = `<span class="blend-rank">0${i + 1}</span><div><div class="blend-name">${['The balanced cup', 'A close contender', 'One more to savor'][i]}</div><div class="blend-recipe">${brazil}% Brazil · ${ethiopia}% Ethiopia · ${100 - brazil - ethiopia}% Colombia</div></div><span class="blend-score">${blend.score.toFixed(1)}</span>`;
++              list.append(item);
++            });
++            empty.hidden = true;
++            output.hidden = false;
++          }
++        } catch (error) {
++          badge.textContent = 'Try again';
++          badge.dataset.state = 'error';
++          status.textContent = 'The simulation could not finish. Please try again.';
++          console.error('Blend simulation failed:', error);
++        } finally {
++          running = false;
++          fields.forEach(field => { field.disabled = false; });
++          runButton.disabled = false;
++          cancelButton.hidden = true;
++          results.setAttribute('aria-busy', 'false');
++          if (document.activeElement === cancelButton) runButton.focus();
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

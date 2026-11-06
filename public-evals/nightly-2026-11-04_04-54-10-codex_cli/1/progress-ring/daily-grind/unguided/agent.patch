@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+index 66c9173..406cb71 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,89 @@
+       color: var(--primary);
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 32px;
++      margin-top: 32px;
++      padding: 32px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .rewards-copy {
++      max-width: 560px;
++    }
++
++    .rewards h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .rewards-eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .rewards-progress {
++      --progress: 70%;
++      display: grid;
++      place-items: center;
++      width: 200px;
++      height: 200px;
++      flex-shrink: 0;
++      border-radius: 50%;
++      background: conic-gradient(var(--accent) var(--progress), var(--secondary) 0);
++    }
++
++    .rewards-progress-center {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      width: 172px;
++      height: 172px;
++      border-radius: 50%;
++      background: var(--light);
++      text-align: center;
++    }
++
++    .rewards-count {
++      color: var(--primary);
++      font-size: 2.5rem;
++      font-weight: 700;
++      line-height: 1.2;
++    }
++
++    .rewards-count span {
++      font-size: 1.1rem;
++      font-weight: 400;
++    }
++
++    .rewards-progress-center p {
++      font-size: 0.85rem;
++    }
++
++    .rewards-remaining {
++      margin-top: 6px;
++      font-weight: 700;
++    }
++
++    @media (max-width: 600px) {
++      .rewards {
++        flex-direction: column;
++        padding: 24px;
++        text-align: center;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -195,6 +278,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-title">
++      <div class="rewards-copy">
++        <p class="rewards-eyebrow">A little thanks, on us</p>
++        <h2 id="rewards-title">Loyalty Rewards</h2>
++        <p>Your daily ritual comes with a perk. Collect 10 drinks and enjoy your next one on the house.</p>
++        <a href="/rewards" class="btn">View My Rewards</a>
++      </div>
++      <div class="rewards-progress" role="progressbar" aria-label="Progress toward your next free drink"
++        aria-valuemin="0" aria-valuemax="10" aria-valuenow="7"
++        aria-valuetext="7 of 10 drinks collected. 3 more drinks until your free drink.">
++        <div class="rewards-progress-center" aria-hidden="true">
++          <div class="rewards-count">7 <span>/ 10</span></div>
++          <p>drinks collected</p>
++          <p class="rewards-remaining">3 to your free drink</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

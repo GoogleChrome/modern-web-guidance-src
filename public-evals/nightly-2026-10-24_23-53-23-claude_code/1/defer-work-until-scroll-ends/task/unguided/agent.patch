@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,47 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Beans Scroller */
++    #scroller {
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      margin-top: 20px;
++      padding: 10px 4px 16px;
++      scroll-snap-type: x proximity;
++      -webkit-overflow-scrolling: touch;
++    }
++
++    .bean {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      border-top: 6px solid var(--accent);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .bean h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .bean .notes {
++      font-size: 0.85rem;
++      font-style: italic;
++      margin-top: 8px;
++    }
++
++    #status {
++      margin-top: 8px;
++      text-align: center;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +233,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Coffee Beans by Origin</h2>
++      <div id="scroller" tabindex="0" aria-label="Coffee bean origins">
++        <article class="bean" data-origin="Ethiopia Yirgacheffe">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Light roast with bright, floral aromatics and a tea-like body.</p>
++          <p class="notes">Notes: jasmine, bergamot, lemon</p>
++        </article>
++        <article class="bean" data-origin="Colombia Huila">
++          <h3>Colombia Huila</h3>
++          <p>Balanced and sweet, a crowd-pleasing medium roast.</p>
++          <p class="notes">Notes: caramel, red apple, cocoa</p>
++        </article>
++        <article class="bean" data-origin="Guatemala Antigua">
++          <h3>Guatemala Antigua</h3>
++          <p>Grown in volcanic soil for a rich, full-bodied cup.</p>
++          <p class="notes">Notes: dark chocolate, spice, orange peel</p>
++        </article>
++        <article class="bean" data-origin="Kenya AA">
++          <h3>Kenya AA</h3>
++          <p>Bold and juicy with a vibrant, wine-like acidity.</p>
++          <p class="notes">Notes: blackcurrant, grapefruit, brown sugar</p>
++        </article>
++        <article class="bean" data-origin="Sumatra Mandheling">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy and low-acid with a heavy, syrupy body.</p>
++          <p class="notes">Notes: cedar, tobacco, dark cocoa</p>
++        </article>
++      </div>
++      <div id="status" role="status" aria-live="polite">Scroll to explore our origins.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +277,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var scroller = document.getElementById('scroller');
++      var status = document.getElementById('status');
++      var beans = scroller.querySelectorAll('.bean');
++      var scrolling = false;
++      var timer = null;
++      var hasScrollEnd = 'onscrollend' in window;
++
++      // Only layout reads happen here, once per scroll gesture.
++      function mostVisibleOrigin() {
++        var box = scroller.getBoundingClientRect();
++        var best = null;
++        var bestVisible = -1;
++        for (var i = 0; i < beans.length; i++) {
++          var r = beans[i].getBoundingClientRect();
++          var visible = Math.min(r.right, box.right) - Math.max(r.left, box.left);
++          if (visible > bestVisible) {
++            bestVisible = visible;
++            best = beans[i];
++          }
++        }
++        return best.dataset.origin;
++      }
++
++      function onScrollEnd() {
++        scrolling = false;
++        status.textContent = 'Scroll ended. Visible: ' + mostVisibleOrigin();
++      }
++
++      // Per-event work is a flag check (DOM is written only on the first event),
++      // plus a debounce timer for browsers without the scrollend event.
++      scroller.addEventListener('scroll', function () {
++        if (!scrolling) {
++          scrolling = true;
++          status.textContent = 'Scrolling...';
++        }
++        if (!hasScrollEnd) {
++          clearTimeout(timer);
++          timer = setTimeout(onScrollEnd, 150);
++        }
++      }, { passive: true });
++
++      if (hasScrollEnd) {
++        scroller.addEventListener('scrollend', onScrollEnd);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

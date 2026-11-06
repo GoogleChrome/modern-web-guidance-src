@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+index 66c9173..10c53c1 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,126 @@
+       color: var(--primary);
+     }
+ 
++    /* Keep the native inputs interactive; customize only their presentation. */
++    .customizations {
++      min-inline-size: 0;
++      margin-block-start: 20px;
++      padding: 0;
++      border: 0;
++      text-align: start;
++    }
++
++    .customizations legend {
++      margin-block-end: 8px;
++      color: var(--primary);
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 0.04em;
++    }
++
++    .customization {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      min-block-size: 48px;
++      margin-block-start: 6px;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fcf9f6;
++      cursor: pointer;
++    }
++
++    .customization:hover {
++      border-color: var(--primary);
++    }
++
++    .customization:has(input:checked) {
++      border-color: var(--primary);
++      background: #fff3e0;
++    }
++
++    .customization input {
++      flex: 0 0 auto;
++      inline-size: 1.375rem;
++      block-size: 1.375rem;
++      margin: 0;
++      accent-color: var(--primary);
++      cursor: inherit;
++    }
++
++    .customization input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .customization:has(input:disabled) {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    @supports (appearance: none) and (mask: url("")) {
++      .customization input {
++        appearance: none;
++        display: inline-grid;
++        place-items: center;
++        border: 2px solid var(--primary);
++        border-radius: 5px;
++        background: white;
++        color: var(--accent);
++      }
++
++      .customization input::before {
++        content: "";
++        inline-size: 0.875rem;
++        block-size: 0.875rem;
++        background: currentColor;
++        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E") center / contain no-repeat;
++        opacity: 0;
++        transform: scale(0.4) rotate(-15deg);
++      }
++
++      .customization input:checked,
++      .customization input:indeterminate {
++        background: var(--primary);
++      }
++
++      .customization input:checked::before,
++      .customization input:indeterminate::before {
++        opacity: 1;
++        transform: scale(1) rotate(0deg);
++      }
++
++      .customization input:indeterminate::before {
++        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .customization,
++      .customization input {
++        transition: background-color 180ms ease, border-color 180ms ease;
++      }
++
++      .customization input::before {
++        transition: transform 180ms ease, opacity 180ms ease;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization input {
++        appearance: auto;
++      }
++
++      .customization input::before {
++        content: none;
++      }
++
++      .customization input:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -179,18 +299,63 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="maple-title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations" aria-labelledby="maple-title maple-customize">
++            <legend id="maple-customize">Make it yours</legend>
++            <label class="customization" for="maple-shot">
++              <input type="checkbox" id="maple-shot" name="maple-customizations" value="extra-shot">
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="maple-syrup">
++              <input type="checkbox" id="maple-syrup" name="maple-customizations" value="extra-maple">
++              <span>Extra maple syrup</span>
++            </label>
++            <label class="customization" for="maple-iced">
++              <input type="checkbox" id="maple-iced" name="maple-customizations" value="iced">
++              <span>Make it iced</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="espresso-title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations" aria-labelledby="espresso-title espresso-customize">
++            <legend id="espresso-customize">Make it yours</legend>
++            <label class="customization" for="espresso-shot">
++              <input type="checkbox" id="espresso-shot" name="espresso-customizations" value="extra-shot">
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="espresso-oat">
++              <input type="checkbox" id="espresso-oat" name="espresso-customizations" value="oat-milk">
++              <span>Splash of oat milk</span>
++            </label>
++            <label class="customization" for="espresso-iced">
++              <input type="checkbox" id="espresso-iced" name="espresso-customizations" value="iced">
++              <span>Make it iced</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="cold-brew-title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations" aria-labelledby="cold-brew-title cold-brew-customize">
++            <legend id="cold-brew-customize">Make it yours</legend>
++            <label class="customization" for="cold-brew-oat">
++              <input type="checkbox" id="cold-brew-oat" name="cold-brew-customizations" value="oat-milk">
++              <span>Splash of oat milk</span>
++            </label>
++            <label class="customization" for="cold-brew-vanilla">
++              <input type="checkbox" id="cold-brew-vanilla" name="cold-brew-customizations" value="vanilla">
++              <span>Vanilla syrup</span>
++            </label>
++            <label class="customization" for="cold-brew-ice">
++              <input type="checkbox" id="cold-brew-ice" name="cold-brew-customizations" value="light-ice">
++              <span>Light ice</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

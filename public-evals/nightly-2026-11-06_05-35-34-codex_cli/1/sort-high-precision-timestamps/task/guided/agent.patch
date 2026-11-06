@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible, .event-table-wrap:focus-visible {
++      outline: 3px solid #a45300;
++      outline-offset: 4px;
++    }
++
++    button.btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .order-timeline {
++      margin-top: 48px;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .timeline-status {
++      margin-top: 12px;
++    }
++
++    .event-table-wrap {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .event-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .event-table caption {
++      text-align: left;
++      margin-bottom: 10px;
++      font-weight: 600;
++    }
++
++    .event-table th, .event-table td {
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .event-table th {
++      background: #f5f0ed;
++    }
++
++    .event-table time, .event-table .interval {
++      white-space: nowrap;
++      font-family: ui-monospace, monospace;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .timeline-note {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +260,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-timeline" aria-labelledby="timeline-heading">
++      <h2 id="timeline-heading">Behind Your Cup</h2>
++      <p>Follow a sample batch of coffee order events from our distributed services, from checkout to pickup.</p>
++      <button type="button" class="btn" id="load-events" aria-controls="event-results">Load sample order events</button>
++      <p class="timeline-status" id="event-status" role="status">Load the batch to see events in chronological order and the time between each step.</p>
++      <div id="event-results" hidden>
++        <div class="event-table-wrap" role="region" aria-label="Chronological coffee order events" tabindex="0">
++          <table class="event-table">
++            <caption>Sample batch · earliest to latest · timestamps in UTC</caption>
++            <thead>
++              <tr>
++                <th scope="col">Arrival #</th>
++                <th scope="col">Order</th>
++                <th scope="col">Event</th>
++                <th scope="col">Service</th>
++                <th scope="col">Timestamp (UTC)</th>
++                <th scope="col">Since previous event</th>
++              </tr>
++            </thead>
++            <tbody id="event-rows"></tbody>
++          </table>
++        </div>
++        <p class="timeline-note">Arrival # shows the original batch order. All nine fractional digits are preserved; equal timestamps keep arrival order. Intervals span consecutive events across all orders. Source clock differences can affect event ordering.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +298,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./order-events.js"></script>
++
+ </body>
+ 
+ </html>

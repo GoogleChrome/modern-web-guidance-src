@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,109 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script>
++    // Minimal fetchLater() polyfill for browsers without native support
++    // (falls back to fetch keepalive / sendBeacon when the page is hidden).
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, {keepalive: true}));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++  </script>
++
++  <script type="module">
++    import {onCLS, onINP, onLCP} from 'https://unpkg.com/web-vitals@5.3.0/dist/web-vitals.js';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    const sessionData = {
++      id: crypto.randomUUID(),
++      url: location.href,
++      metrics: {},
++    };
++
++    let fetchLaterController = null;
++
++    // Replace any pending beacon with one containing the latest snapshot.
++    // The browser sends the most recent one when the user leaves the page.
++    function queueBeacon() {
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      try {
++        fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: {'content-type': 'application/json'},
++          body: JSON.stringify(sessionData),
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Quota exceeded or request rejected; drop this snapshot.
++      }
++    }
++
++    function handleMetric({name, value, rating, delta, id, navigationType}) {
++      sessionData.metrics[name] = {value, rating, delta, id, navigationType};
++      queueBeacon();
++    }
++
++    // reportAllChanges keeps the queued payload current as values update;
++    // only the final snapshot is actually sent on unload.
++    onCLS(handleMetric, {reportAllChanges: true});
++    onINP(handleMetric, {reportAllChanges: true});
++    onLCP(handleMetric, {reportAllChanges: true});
++
++    // A pending fetchLater is sent when the page enters the bfcache, so a
++    // restored page starts a fresh snapshot (web-vitals resets metrics too).
++    window.addEventListener('pageshow', (event) => {
++      if (event.persisted) {
++        fetchLaterController = null;
++        sessionData.metrics = {};
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,87 @@
++<!doctype html>
++<html lang="en" class="experiment-pending">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f6f6f0">
++  <title>Forma — A little structure. A lot of possibility.</title>
++  <style>
++    /* Runs before the page can paint. Keep layout space while variants are applied. */
++    .experiment-pending [data-experiment] { visibility: hidden !important; }
++  </style>
++  <script>
++    (() => {
++      let finished = false;
++      let timer;
++      const reveal = () => {
++        if (finished) return;
++        finished = true;
++        clearTimeout(timer);
++        document.documentElement.classList.remove('experiment-pending');
++        document.removeEventListener('experiment:ready', reveal);
++      };
++      // The SDK must dispatch this event AFTER its DOM changes are committed.
++      document.addEventListener('experiment:ready', reveal);
++      const fallback = () => {
++        if (finished) return;
++        const apply = () => {
++          if (finished) return;
++          // Apply a complete local fallback variant before revealing any content.
++          document.querySelector('[data-experiment-heading]').innerHTML = 'A little structure.<br>A lot of <em>possibility.</em>';
++          document.querySelector('[data-experiment-cta]').textContent = 'Find your flow';
++          document.documentElement.dataset.experimentStatus = 'fallback';
++          reveal();
++        };
++        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
++        else apply();
++      };
++      window.formaExperiment = { ready: reveal, fallback };
++      timer = setTimeout(fallback, 3000);
++    })();
++  </script>
++  <script async src="https://cdn.example.com/experiment-sdk.js" onerror="window.formaExperiment.fallback()"></script>
++  <noscript><style>.experiment-pending [data-experiment] {visibility: visible !important;}</style></noscript>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
++  <style>
++    :root{--ink:#20362e;--paper:#f6f6f0;--green:#355c44;--muted:#73796d;--line:#dbded3}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button{font:inherit}header{max-width:1440px;margin:auto;height:110px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.logo{font-family:Manrope,sans-serif;font-size:31px;font-weight:800;letter-spacing:-1.8px;display:flex;gap:9px;align-items:center}.logo svg{width:31px;height:34px}nav{display:flex;gap:34px;font-size:14px}nav a:hover{color:#7f8c59}.nav-actions{display:flex;gap:25px;align-items:center;font-size:14px}.small-button{background:var(--ink);color:white;padding:13px 22px;border-radius:6px}.main{max-width:1440px;margin:auto;padding:0 6%}.hero{display:grid;grid-template-columns:1.08fr 1fr;gap:50px;align-items:center;padding:72px 0 65px}.eyebrow{display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:2px;font-weight:600;margin-bottom:29px}.eyebrow span{width:7px;height:7px;border-radius:50%;background:#849568}h1{font-family:Manrope,sans-serif;font-weight:500;font-size:clamp(42px,4.7vw,69px);line-height:1.14;letter-spacing:-3.3px;margin:0 0 25px}h1 em{font-family:Georgia,serif;font-weight:400;color:#7f8c59;letter-spacing:-2px}.hero-description{font-size:16px;line-height:1.8;color:#73796d;max-width:390px;margin:0 0 30px}.cta{display:inline-flex;align-items:center;justify-content:space-between;gap:40px;padding:17px 23px;border-radius:5px;background:var(--green);color:#fff;font-size:14px;transition:background .2s,transform .2s}.cta:hover{background:#244b33;transform:translateY(-2px)}.cta svg{width:18px;height:18px}.note{font-size:11px;color:#878b80;margin:13px 0 35px}.social-proof{display:flex;align-items:center;gap:12px}.avatars{display:flex;padding-left:0}.avatar{width:30px;height:30px;border-radius:50%;border:2px solid var(--paper);margin-left:-7px;object-fit:cover;background:#dad9cc}.avatar:first-child{margin-left:0}.proof-text{font-size:10px;line-height:1.7;color:#7c8275}.stars{letter-spacing:2px;color:#748553;font-size:11px}.proof-text strong{color:#364837;font-weight:600}.hero-art{position:relative;height:510px;min-width:0}.photo{height:100%;width:100%;object-fit:cover;border-radius:130px 8px 8px 8px;filter:saturate(.72);object-position:center}.image-label{position:absolute;bottom:22px;right:20px;color:white;font-size:9px;letter-spacing:1.5px}.task-card{position:absolute;top:64px;left:-37px;width:241px;background:#fffffff2;box-shadow:0 14px 45px #23332915;border:1px solid #fff;border-radius:10px;padding:20px}.card-eyebrow{font-size:9px;letter-spacing:1.7px;color:#828a7d}.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.card-header svg{width:16px;color:#7a8970}.task-card h3{font-size:15px;font-weight:500;margin:0 0 16px}.task{display:flex;align-items:center;gap:9px;font-size:10px;margin:13px 0;color:#596250}.check{width:15px;height:15px;border:1px solid #dce2d5;border-radius:50%;display:grid;place-items:center;flex-shrink:0}.done .check{background:#7f946d;border:0;color:#fff}.done .task-text{text-decoration:line-through;color:#9a9e93}.tag{margin-left:auto;padding:4px 7px;background:#eef0e6;color:#7e896c;border-radius:3px;font-size:8px}.progress{height:4px;background:#e9eddf;border-radius:5px;margin-top:20px}.progress span{display:block;width:66%;background:#8c9e73;height:100%;border-radius:5px}.progress-label{display:flex;justify-content:space-between;font-size:8px;color:#8a9282;margin-top:7px}.focus-card{position:absolute;right:-20px;bottom:73px;background:#f6f6ee;box-shadow:0 8px 30px #19271c15;border:1px solid #ffffffb0;border-radius:9px;padding:17px 20px;display:flex;align-items:center;gap:14px;width:229px}.focus-icon{background:#e5e9db;width:37px;height:37px;border-radius:50%;display:grid;place-items:center}.focus-icon svg{width:18px}.focus-card h4{font-size:12px;margin:0 0 5px;font-weight:500}.focus-card p{font-size:9px;color:#868d7c;margin:0}.focus-dot{width:6px;height:6px;background:#829666;border-radius:50%;margin-left:auto}.partners{padding:25px 0 34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}.partners p{font-size:10px;letter-spacing:1.6px;color:#858b7d;margin:0 0 24px}.partner-logos{display:flex;justify-content:center;align-items:center;gap:69px;color:#8e9485}.partner-logos span{font-size:21px;font-weight:700;letter-spacing:-.8px}.partner-logos .acme{font-style:italic;font-size:26px}.partner-logos .caps{font-size:15px;letter-spacing:2px}.benefits{padding:47px 0 36px;display:grid;grid-template-columns:1.12fr 1fr 1fr 1fr;gap:36px}.benefits-intro .eyebrow{font-size:9px;margin-bottom:14px;letter-spacing:1.6px}.benefits-intro h2{font-family:Manrope,sans-serif;font-size:24px;line-height:1.35;font-weight:500;letter-spacing:-.7px;margin:0}.benefit{padding-left:23px;border-left:1px solid var(--line)}.benefit svg{width:22px;height:22px;color:#748561;margin:0 0 13px}.benefit h3{font-size:13px;margin:0 0 9px;font-weight:500}.benefit p{font-size:11px;line-height:1.8;color:#858b7d;margin:0;max-width:190px}.footer{display:flex;justify-content:space-between;padding:21px 0;color:#8c9185;font-size:10px;border-top:1px solid var(--line)}.footer span:last-child{display:flex;align-items:center;gap:6px}.footer i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#859566}dialog{border:1px solid var(--line);border-radius:12px;padding:35px;background:var(--paper);color:var(--ink);max-width:420px;width:calc(100% - 40px)}dialog::backdrop{background:#20362e66;backdrop-filter:blur(4px)}dialog h2{font-size:26px;font-weight:500;letter-spacing:-1px}dialog p{font-size:14px;color:var(--muted);line-height:1.6}dialog input{width:100%;padding:14px;border:1px solid var(--line);border-radius:5px;background:white;font:inherit;margin:9px 0 14px}dialog button{cursor:pointer;border:0}.close{position:absolute;right:15px;top:12px;background:none;font-size:24px;color:var(--muted)}dialog label{font-size:12px}a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #7f8c59;outline-offset:4px}@media(min-width:1500px){.hero{padding-top:85px;padding-bottom:85px}.hero-art{height:570px}}@media(max-width:1050px){header{padding:0 5%;height:90px}.main{padding:0 5%}.hero{gap:30px}.hero-art{height:460px}h1{font-size:48px;letter-spacing:-2px}.task-card{left:-16px;width:215px}.focus-card{right:-10px;width:210px}.partner-logos{gap:40px}.benefits{gap:22px}.benefit{padding-left:16px}}@media(max-width:760px){header{height:80px}nav{display:none}.nav-actions{gap:14px}.nav-actions>a:first-child{display:none}.logo{font-size:28px}.hero{grid-template-columns:1fr;gap:40px;padding:45px 0}.hero-copy{max-width:520px}h1{font-size:clamp(42px,8vw,60px)}.hero-description{max-width:420px}.hero-art{height:450px;margin:0 12px}.task-card{left:-12px;top:40px}.focus-card{right:-12px;bottom:40px}.partner-logos{gap:25px;flex-wrap:wrap}.partner-logos span{font-size:18px}.benefits{grid-template-columns:1fr 1fr;gap:32px;padding:35px 0}.benefit{padding-left:18px}.benefits-intro h2{font-size:23px}.footer{font-size:9px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
++  </style>
++</head>
++<body>
++  <header>
++    <a class="logo" href="#" aria-label="Forma home"><svg viewBox="0 0 32 36" fill="none"><path d="M3 33V15C3 7 8 3 16 3h13v9H17c-4 0-5 2-5 6v15H3Z" fill="currentColor"/><path d="M17 18h12v8H17z" fill="#83916a"/></svg>forma</a>
++    <nav aria-label="Main navigation"><a href="#why-forma">Why Forma</a><a href="#features">Features</a><a href="#start" data-start>Pricing</a><a href="#why-forma">Our philosophy</a></nav>
++    <div class="nav-actions"><a href="#start" data-start>Log in <span aria-hidden="true">↗</span></a><a class="small-button" href="#start" data-start>Get started</a></div>
++  </header>
++  <main class="main">
++    <section class="hero" aria-label="Introducing Forma">
++      <div class="hero-copy" data-experiment>
++        <div class="eyebrow"><span></span> MAKE ROOM FOR WHAT MATTERS</div>
++        <h1 data-experiment-heading>A little structure.<br>A lot of <em>possibility.</em></h1>
++        <p class="hero-description">Your days, a little more intentional. Forma brings your tasks, habits, and ideas together — so you can focus on living, not just doing.</p>
++        <a class="cta" href="#start" data-start><span data-experiment-cta>Find your flow</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
++        <p class="note">Free to start. Space to grow. No credit card needed.</p>
++        <div class="social-proof"><div class="avatars"><img class="avatar" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=60&h=60&fit=crop&crop=faces" alt=""><img class="avatar" src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=60&h=60&fit=crop&crop=faces" alt=""><img class="avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=60&h=60&fit=crop&crop=faces" alt=""><img class="avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=faces" alt=""></div><div class="proof-text"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div>Join <strong>12,000+</strong> people finding their flow</div></div>
++      </div>
++      <div class="hero-art">
++        <img class="photo" src="https://images.unsplash.com/photo-1449247709967-d4461a6a6103?auto=format&fit=crop&w=1100&q=85" alt="A calm, sunlit workspace with plants and natural materials" fetchpriority="high">
++        <div class="task-card"><div class="card-header"><span class="card-eyebrow">TODAY, AT YOUR PACE</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></svg></div><h3>A good day starts small.</h3><div class="task done"><span class="check">✓</span><span class="task-text">A moment for yourself</span></div><div class="task done"><span class="check">✓</span><span class="task-text">Plan the day ahead</span></div><div class="task"><span class="check"></span><span class="task-text">Make something meaningful</span><span class="tag">Focus</span></div><div class="progress"><span></span></div><div class="progress-label"><span>A little progress, every day</span><span>2 / 3</span></div></div>
++        <div class="focus-card"><div class="focus-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 19v-8m0 5C3 17 3 8 3 8s9-1 9 8Zm0-3c0-8 9-9 9-9s1 10-9 9Z"/></svg></div><div><h4>More present. Less busy.</h4><p>You're right where you need to be.</p></div><span class="focus-dot"></span></div>
++        <span class="image-label">A LITTLE SPACE TO BREATHE.</span>
++      </div>
++    </section>
++    <section class="partners" aria-label="Our community"><p>FOR MINDS THAT MAKE THINGS HAPPEN. AT PLACES LIKE</p><div class="partner-logos"><span>Layers</span><span>◒ Quotient</span><span class="caps">CIRCØOLES</span><span class="acme">Acme.</span><span>⌘ Nietzsche</span></div></section>
++    <section class="benefits" id="why-forma"><div class="benefits-intro"><div class="eyebrow">LESS FRICTION. MORE LIVING.</div><h2>Built for your life.<br>Not the other way around.</h2></div><div class="benefit" id="features"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="4" width="16" height="17" rx="3"/><path d="M8 2v5m8-5v5M4 10h16m-11 5 2 2 4-4"/></svg><h3>Everything, in its place.</h3><p>Tasks, notes, and habits. One calm space for everything on your mind.</p></div><div class="benefit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><h3>Focus on the meaningful.</h3><p>Find clarity in the everyday and give your energy to what matters most.</p></div><div class="benefit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 17c4 0 4-10 8-10s4 10 10 10M3 12h3m12 0h3"/></svg><h3>A rhythm that's yours.</h3><p>No rigid systems. Just gentle structure that grows and flows with you.</p></div></section>
++    <footer class="footer"><span>Less overwhelm. More possibility.</span><span><i></i> Thoughtfully designed for a fuller life.</span></footer>
++  </main>
++  <dialog id="start"><button class="close" aria-label="Close">×</button><h2>A little space for you.</h2><p>Be the first to know when Forma opens its doors. Leave your email to join the waitlist.</p><form><label for="email">Your email</label><input id="email" type="email" placeholder="you@example.com" required autocomplete="email"><button class="cta" type="submit">Join the waitlist <span aria-hidden="true">↗</span></button><p id="form-status" role="status"></p></form></dialog>
++  <script>
++    const modal = document.querySelector('dialog');
++    document.querySelectorAll('[data-start]').forEach(link => link.addEventListener('click', event => { event.preventDefault(); modal.showModal(); }));
++    modal.querySelector('.close').addEventListener('click', () => modal.close());
++    modal.addEventListener('click', event => { if (event.target === modal) { const bounds = modal.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) modal.close(); } });
++    modal.querySelector('form').addEventListener('submit', event => { event.preventDefault(); document.querySelector('#form-status').textContent = 'Thanks for your interest! This is a preview; email signups are not yet connected.'; });
++  </script>
++</body>
++</html>

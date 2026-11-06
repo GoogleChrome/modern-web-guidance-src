@@ -1,0 +1,915 @@
+diff --git a/SECURITY.md b/SECURITY.md
+new file mode 100644
+index 0000000..76070ff
+--- /dev/null
++++ b/SECURITY.md
+@@ -0,0 +1,74 @@
++# Security policy for The Daily Grind site
++
++This document records the client-side security audit of the site and how the
++resulting policies are deployed and maintained.
++
++## Audit summary (2026-10-28)
++
++| Area | Finding | Fix |
++| --- | --- | --- |
++| Scripts | No `<script>` tags, inline handlers, or DOM sinks exist. | Strict nonce-based CSP so none can be injected. |
++| Styles | One inline `<style>` block and one `style=""` attribute. | Moved to `/styles.css`; `style-src 'self'`. |
++| Images | Hero background hot-links `images.unsplash.com`. | `img-src` limited to that origin; referrer stripped. |
++| Logout | `/logout` was a GET link, triggerable cross-site. | POST-only form, `Clear-Site-Data`, Fetch Metadata. |
++| Headers | Server sent no security headers at all. | Full header set below on every response. |
++| Server | Every path, including `/styles.css`, returned the HTML page. | Explicit static allowlist with correct `Content-Type`. |
++
++## Response headers
++
++Every response from `server.js` carries (see `security-headers.js`):
++
++```http
++Content-Security-Policy: default-src 'none'; script-src 'nonce-<random>' 'strict-dynamic' 'report-sample'; style-src 'self'; img-src 'self' https://images.unsplash.com; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; report-to csp-endpoint; report-uri /csp-report
++Reporting-Endpoints: csp-endpoint="/csp-report"
++Cross-Origin-Opener-Policy: same-origin-allow-popups
++Cross-Origin-Resource-Policy: same-origin
++X-Frame-Options: SAMEORIGIN
++X-Content-Type-Options: nosniff
++Referrer-Policy: strict-origin-when-cross-origin
++Permissions-Policy: camera=(), geolocation=(), microphone=(), focus-without-user-activation=()
++Strict-Transport-Security: max-age=300; includeSubDomains
++Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site
++```
++
++Additionally, `/logout` responds with `Clear-Site-Data: "cookies", "storage", "cache"`,
++and the server rejects cross-site requests that are not plain top-level
++navigations (Fetch Metadata resource isolation) before any other handling.
++
++## Rules for changing the site
++
++- **Scripts**: must be same-origin and carry `nonce="{{CSP_NONCE}}"`. The
++  server swaps in a per-request value. Scripts loaded by a nonced script
++  inherit trust through `'strict-dynamic'`. Never add host or `https:`
++  allowlists to `script-src`.
++- **DOM sinks**: Trusted Types is enforced. Use `textContent`, `setHTML()`, or
++  a named `trustedTypes.createPolicy()` that actually sanitises. Add the policy
++  name to a `trusted-types` directive when you add one.
++- **Styles**: edit `styles.css`. No `<style>` blocks or `style=""` attributes.
++- **New third-party origins**: add them to the matching directive in
++  `security-headers.js` and, for versioned scripts or stylesheets, pin the URL
++  and add `integrity` + `crossorigin="anonymous"`.
++- **State-changing endpoints**: POST only. Set session cookies as
++  `__Host-<name>=...; Secure; HttpOnly; SameSite=Lax; Path=/`.
++
++## Rollout notes
++
++1. **HSTS**: `HSTS_MAX_AGE` defaults to 300 seconds. After confirming HTTPS
++   works for every subdomain, raise it in steps to `31536000`; `preload` is
++   appended automatically at that value.
++2. **CSP reports**: violations are logged by the `/csp-report` handler with
++   query strings removed and samples truncated to 40 characters. Review the
++   logs after deploying; ignore low-volume noise from extensions and old
++   browsers, and investigate repeated reports from modern user agents.
++3. **Trying a stricter change**: duplicate the header as
++   `Content-Security-Policy-Report-Only` with the proposed value, watch
++   reports, then promote it.
++4. **Production over HTTPS**: consider adding `upgrade-insecure-requests` to
++   the CSP once the site is only ever served over TLS.
++
++## Verification
++
++```sh
++npm run build   # syntax checks
++npm test        # policy unit tests, no server is started
++```
+diff --git a/index.html b/index.html
+index 66c9173..283c097 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,16 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <!--
++    Security notes for this template (see SECURITY.md):
++    - All CSS lives in /styles.css. Do not add <style> blocks or style=""
++      attributes: the Content-Security-Policy only allows same-origin styles.
++    - Any future <script> must be same-origin and carry nonce="{{CSP_NONCE}}".
++      The server replaces that placeholder with a fresh per-request value and
++      the CSP (script-src 'nonce-...' 'strict-dynamic') rejects everything else.
++    - Never interpolate user-controlled data into this file on the server.
++  -->
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+ 
+ <body>
+@@ -164,7 +26,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form class="logout-form" method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +42,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index cffdc93..a3b5af1 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,8 @@
+   "version": "1.0.0",
+   "scripts": {
+     "start": "node server.js",
+-    "build": "node --check server.js"
++    "build": "node --check server.js && node --check security-headers.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/security-headers.js b/security-headers.js
+new file mode 100644
+index 0000000..d0cbe82
+--- /dev/null
++++ b/security-headers.js
+@@ -0,0 +1,135 @@
++'use strict';
++
++// Pure helpers for the response security policy. This module has no side
++// effects (no server, no filesystem) so it can be unit-tested without
++// starting the app.
++
++const crypto = require('node:crypto');
++
++const CSP_REPORT_PATH = '/csp-report';
++const CSP_REPORT_GROUP = 'csp-endpoint';
++const ONE_YEAR_SECONDS = 31536000;
++
++// Only third-party origin the page loads from: the hero background image.
++const IMAGE_ORIGINS = ['https://images.unsplash.com'];
++
++/** Fresh 128-bit CSP nonce. Must be generated once per response. */
++function createNonce() {
++  return crypto.randomBytes(16).toString('base64');
++}
++
++/**
++ * Strict, nonce-based CSP. There are currently no scripts on the site, so the
++ * nonce authorises nothing today; it exists so a future `<script
++ * nonce="{{CSP_NONCE}}">` can be added without weakening the policy to a
++ * host allowlist or 'unsafe-inline'.
++ */
++function buildContentSecurityPolicy(nonce) {
++  if (!/^[A-Za-z0-9+/=]{22,}$/.test(nonce)) {
++    throw new TypeError('CSP nonce must be a base64 string');
++  }
++  return [
++    "default-src 'none'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "style-src 'self'",
++    `img-src 'self' ${IMAGE_ORIGINS.join(' ')}`,
++    "font-src 'self'",
++    "connect-src 'self'",
++    "form-action 'self'",
++    "base-uri 'none'",
++    "object-src 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    `report-to ${CSP_REPORT_GROUP}`,
++    `report-uri ${CSP_REPORT_PATH}`,
++  ].join('; ');
++}
++
++/**
++ * Headers applied to every response.
++ * @param {string} nonce per-response CSP nonce
++ * @param {{ hstsMaxAge?: number }} [options]
++ */
++function buildSecurityHeaders(nonce, options = {}) {
++  const hstsMaxAge = Number.isInteger(options.hstsMaxAge) && options.hstsMaxAge >= 0
++    ? options.hstsMaxAge
++    : 300;
++  // `preload` is only valid (and only safe) once max-age is a full year.
++  const hsts = `max-age=${hstsMaxAge}; includeSubDomains${hstsMaxAge >= ONE_YEAR_SECONDS ? '; preload' : ''}`;
++
++  return {
++    'Content-Security-Policy': buildContentSecurityPolicy(nonce),
++    'Reporting-Endpoints': `${CSP_REPORT_GROUP}="${CSP_REPORT_PATH}"`,
++    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'X-Frame-Options': 'SAMEORIGIN',
++    'X-Content-Type-Options': 'nosniff',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()',
++    'Strict-Transport-Security': hsts,
++    // Decisions below depend on Sec-Fetch-* so caches must key on them.
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++  };
++}
++
++/**
++ * Fetch Metadata resource-isolation policy. Returns true when the request may
++ * proceed. Cross-site requests are only allowed when they are plain top-level
++ * navigations (link clicks), which is what the public pages need. Cross-site
++ * form POSTs, fetches, and embeds are rejected before any other handling.
++ *
++ * `same-site` is deliberately not trusted: every subdomain would otherwise be
++ * able to issue state-changing requests. Add it only if a sibling subdomain
++ * legitimately needs to.
++ */
++function isAllowedByFetchMetadata(method, headers) {
++  const site = headers['sec-fetch-site'];
++  if (!site) return true; // legacy browser / non-browser client: no signal
++  if (site === 'same-origin' || site === 'none') return true;
++
++  const mode = headers['sec-fetch-mode'];
++  const dest = headers['sec-fetch-dest'];
++  const isSafeMethod = method === 'GET' || method === 'HEAD';
++  return mode === 'navigate' && isSafeMethod && dest !== 'object' && dest !== 'embed';
++}
++
++/** Strip query string, fragment and credentials from a URL before logging. */
++function redactUrl(value) {
++  if (typeof value !== 'string' || value === '') return undefined;
++  try {
++    const url = new URL(value);
++    return `${url.origin}${url.pathname}`;
++  } catch {
++    // Non-URL values such as "inline", "eval", "data" are safe as-is.
++    return value.slice(0, 64);
++  }
++}
++
++/**
++ * Normalise a CSP violation report (Reporting API array or legacy
++ * `csp-report` object) into a minimal, redacted record suitable for logs.
++ * Query strings, fragments and anything beyond the 40-character
++ * 'report-sample' snippet are discarded so no PII or tokens reach the log.
++ */
++function summariseCspReports(payload) {
++  const entries = Array.isArray(payload)
++    ? payload.filter((r) => r && r.type === 'csp-violation' && r.body).map((r) => r.body)
++    : payload && payload['csp-report'] ? [payload['csp-report']] : [];
++
++  return entries.map((body) => ({
++    documentUrl: redactUrl(body.documentURL ?? body['document-uri']),
++    directive: String(body.effectiveDirective ?? body['violated-directive'] ?? '').slice(0, 64),
++    blockedUrl: redactUrl(body.blockedURL ?? body['blocked-uri']),
++    sample: String(body.sample ?? body['script-sample'] ?? '').slice(0, 40),
++    disposition: String(body.disposition ?? 'enforce').slice(0, 16),
++  }));
++}
++
++module.exports = {
++  CSP_REPORT_PATH,
++  createNonce,
++  buildContentSecurityPolicy,
++  buildSecurityHeaders,
++  isAllowedByFetchMetadata,
++  summariseCspReports,
++};
+diff --git a/security-headers.test.js b/security-headers.test.js
+new file mode 100644
+index 0000000..97ebce7
+--- /dev/null
++++ b/security-headers.test.js
+@@ -0,0 +1,154 @@
++'use strict';
++
++// Unit tests for the pure policy module. Runs with `node --test`; it never
++// starts the HTTP server.
++
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const {
++  createNonce,
++  buildContentSecurityPolicy,
++  buildSecurityHeaders,
++  isAllowedByFetchMetadata,
++  summariseCspReports,
++} = require('./security-headers');
++
++test('nonce is 128 bits of base64 and unique per call', () => {
++  const a = createNonce();
++  const b = createNonce();
++  assert.notEqual(a, b);
++  assert.equal(Buffer.from(a, 'base64').length, 16);
++});
++
++test('CSP contains the mandatory strict directives and no weak tokens', () => {
++  const csp = buildContentSecurityPolicy(createNonce());
++  for (const directive of [
++    "default-src 'none'",
++    "'strict-dynamic'",
++    "'report-sample'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "form-action 'self'",
++    "require-trusted-types-for 'script'",
++    'report-to csp-endpoint',
++    'report-uri /csp-report',
++  ]) {
++    assert.ok(csp.includes(directive), `missing ${directive}`);
++  }
++  assert.match(csp, /script-src 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
++  assert.ok(!csp.includes("'unsafe-inline'"));
++  assert.ok(!csp.includes("'unsafe-eval'"));
++  assert.ok(!/script-src[^;]*https:/.test(csp), 'script-src must not use scheme allowlists');
++});
++
++test('CSP rejects a malformed nonce', () => {
++  assert.throws(() => buildContentSecurityPolicy("abc' 'unsafe-inline"), TypeError);
++});
++
++test('every companion header is present with the expected value', () => {
++  const headers = buildSecurityHeaders(createNonce(), { hstsMaxAge: 300 });
++  assert.equal(headers['Cross-Origin-Opener-Policy'], 'same-origin-allow-popups');
++  assert.equal(headers['Cross-Origin-Resource-Policy'], 'same-origin');
++  assert.equal(headers['X-Frame-Options'], 'SAMEORIGIN');
++  assert.equal(headers['X-Content-Type-Options'], 'nosniff');
++  assert.equal(headers['Referrer-Policy'], 'strict-origin-when-cross-origin');
++  assert.equal(headers['Reporting-Endpoints'], 'csp-endpoint="/csp-report"');
++  assert.match(headers['Permissions-Policy'], /camera=\(\)/);
++  assert.equal(headers['Strict-Transport-Security'], 'max-age=300; includeSubDomains');
++  assert.equal(headers['Vary'], 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++});
++
++test('HSTS only adds preload at a one-year max-age', () => {
++  assert.equal(
++    buildSecurityHeaders(createNonce(), { hstsMaxAge: 31536000 })['Strict-Transport-Security'],
++    'max-age=31536000; includeSubDomains; preload',
++  );
++  assert.equal(buildSecurityHeaders(createNonce())['Strict-Transport-Security'], 'max-age=300; includeSubDomains');
++});
++
++test('Fetch Metadata allows same-origin, direct, and cross-site link navigations', () => {
++  assert.ok(isAllowedByFetchMetadata('POST', {}));
++  assert.ok(isAllowedByFetchMetadata('POST', { 'sec-fetch-site': 'same-origin' }));
++  assert.ok(isAllowedByFetchMetadata('GET', { 'sec-fetch-site': 'none' }));
++  assert.ok(isAllowedByFetchMetadata('GET', {
++    'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document',
++  }));
++});
++
++test('Fetch Metadata rejects cross-site POSTs, fetches, embeds, and same-site requests', () => {
++  assert.ok(!isAllowedByFetchMetadata('POST', {
++    'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document',
++  }));
++  assert.ok(!isAllowedByFetchMetadata('GET', {
++    'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'empty',
++  }));
++  assert.ok(!isAllowedByFetchMetadata('GET', {
++    'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'object',
++  }));
++  assert.ok(!isAllowedByFetchMetadata('POST', { 'sec-fetch-site': 'same-site' }));
++});
++
++test('CSP report summary redacts query strings and truncates samples', () => {
++  const [modern] = summariseCspReports([{
++    type: 'csp-violation',
++    body: {
++      documentURL: 'https://shop.example/account?token=SECRET#frag',
++      effectiveDirective: 'script-src-elem',
++      blockedURL: 'https://evil.example/x.js?sid=123',
++      sample: 'x'.repeat(100),
++      disposition: 'enforce',
++    },
++  }]);
++  assert.deepEqual(modern, {
++    documentUrl: 'https://shop.example/account',
++    directive: 'script-src-elem',
++    blockedUrl: 'https://evil.example/x.js',
++    sample: 'x'.repeat(40),
++    disposition: 'enforce',
++  });
++
++  const [legacy] = summariseCspReports({
++    'csp-report': {
++      'document-uri': 'https://shop.example/?q=1',
++      'violated-directive': 'style-src',
++      'blocked-uri': 'inline',
++      'script-sample': 'color:red',
++    },
++  });
++  assert.equal(legacy.documentUrl, 'https://shop.example/');
++  assert.equal(legacy.blockedUrl, 'inline');
++  assert.equal(legacy.directive, 'style-src');
++
++  assert.deepEqual(summariseCspReports(null), []);
++  assert.deepEqual(summariseCspReports([{ type: 'deprecation', body: {} }]), []);
++});
++
++test('index.html contains nothing the CSP would block', () => {
++  // Comments are never parsed as markup, so they are stripped before checking.
++  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
++  assert.doesNotMatch(html, /<style[\s>]/i, 'inline <style> blocks are blocked by style-src');
++  assert.doesNotMatch(html, /\sstyle\s*=/i, 'style attributes are blocked by style-src');
++  assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'inline event handlers are blocked by script-src');
++  assert.doesNotMatch(html, /javascript:/i);
++  assert.doesNotMatch(html, /<base[\s>]/i);
++  for (const tag of html.match(/<script\b[^>]*>/gi) || []) {
++    assert.match(tag, /nonce="\{\{CSP_NONCE\}\}"/, `script tag lacks nonce placeholder: ${tag}`);
++    assert.doesNotMatch(tag, /src=["']?(https?:)?\/\//i, 'only same-origin scripts are expected');
++  }
++  assert.match(html, /<form[^>]*method="post"[^>]*action="\/logout"/i, 'logout must be a POST form');
++  assert.doesNotMatch(html, /href="\/logout/i, 'logout must not be a GET link');
++});
++
++test('styles.css only references the allow-listed image origin', () => {
++  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
++  const csp = buildContentSecurityPolicy(createNonce());
++  const imgSrc = csp.split('; ').find((d) => d.startsWith('img-src '));
++  for (const [, url] of css.matchAll(/url\(\s*["']?(https?:\/\/[^"')\s]+)/g)) {
++    assert.ok(imgSrc.includes(new URL(url).origin), `${url} is not in ${imgSrc}`);
++  }
++  assert.doesNotMatch(css, /@import/);
++  assert.doesNotMatch(css, /expression\(|javascript:/i);
++});
+diff --git a/server.js b/server.js
+index 52c2fd5..f4289fb 100644
+--- a/server.js
++++ b/server.js
+@@ -1,30 +1,131 @@
++'use strict';
++
+ const http = require('node:http');
+-const fs = require('node:fs');
++const fs = require('node:fs/promises');
+ const path = require('node:path');
++const {
++  CSP_REPORT_PATH,
++  createNonce,
++  buildSecurityHeaders,
++  isAllowedByFetchMetadata,
++  summariseCspReports,
++} = require('./security-headers');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
++// Start small and raise toward 31536000 once HTTPS is confirmed everywhere.
++const HSTS_MAX_AGE = parseInt(process.env.HSTS_MAX_AGE || '300', 10);
+ const WORK_DIR = __dirname;
++const MAX_REPORT_BYTES = 64 * 1024;
++
++// Explicit allowlist of servable files: no path joins from user input.
++const STATIC_FILES = {
++  '/': { file: 'index.html', type: 'text/html; charset=utf-8', cache: 'no-store', template: true },
++  '/index.html': { file: 'index.html', type: 'text/html; charset=utf-8', cache: 'no-store', template: true },
++  '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8', cache: 'public, max-age=3600' },
++};
++
++function send(res, status, headers, body, isHead) {
++  res.writeHead(status, headers);
++  res.end(isHead ? undefined : body);
++}
++
++function sendText(res, status, baseHeaders, text, extra = {}) {
++  send(res, status, { ...baseHeaders, 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...extra }, text);
++}
++
++function readBody(req, limit) {
++  return new Promise((resolve, reject) => {
++    const chunks = [];
++    let size = 0;
++    req.on('data', (chunk) => {
++      size += chunk.length;
++      if (size > limit) {
++        reject(new RangeError('payload too large'));
++        req.destroy();
++        return;
++      }
++      chunks.push(chunk);
++    });
++    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
++    req.on('error', reject);
++  });
++}
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++async function handleCspReport(req, res, baseHeaders) {
++  if (req.method !== 'POST') {
++    return sendText(res, 405, baseHeaders, 'Method Not Allowed', { Allow: 'POST' });
++  }
++  const type = String(req.headers['content-type'] || '');
++  if (!/^application\/(reports\+json|csp-report|json)\b/.test(type)) {
++    return sendText(res, 415, baseHeaders, 'Unsupported Media Type');
++  }
++  let payload;
++  try {
++    payload = JSON.parse(await readBody(req, MAX_REPORT_BYTES));
++  } catch (err) {
++    return sendText(res, err instanceof RangeError ? 413 : 400, baseHeaders, 'Bad Report');
++  }
++  for (const report of summariseCspReports(payload)) {
++    console.warn('[csp-violation]', JSON.stringify(report));
++  }
++  send(res, 204, { ...baseHeaders, 'Cache-Control': 'no-store' });
++}
+ 
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
++function handleLogout(req, res, baseHeaders) {
++  // Logout is a state change: POST only, so a cross-site GET navigation can
++  // never trigger it (cross-site POSTs are already rejected by Fetch Metadata).
++  if (req.method !== 'POST') {
++    return sendText(res, 405, baseHeaders, 'Method Not Allowed', { Allow: 'POST' });
+   }
++  send(res, 200, {
++    ...baseHeaders,
++    'Content-Type': 'text/html; charset=utf-8',
++    'Cache-Control': 'no-store',
++    // Wipes cookies, storage and cache for the origin (honoured over HTTPS).
++    'Clear-Site-Data': '"cookies", "storage", "cache"',
++  }, 'Logged out');
++}
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
++async function handleStatic(req, res, baseHeaders, nonce, pathname) {
++  const isHead = req.method === 'HEAD';
++  if (req.method !== 'GET' && !isHead) {
++    return sendText(res, 405, baseHeaders, 'Method Not Allowed', { Allow: 'GET, HEAD' });
++  }
++  // Unknown paths fall back to the home page, matching the original behaviour.
++  const entry = STATIC_FILES[pathname] || STATIC_FILES['/'];
++  try {
++    let body = await fs.readFile(path.join(WORK_DIR, entry.file), 'utf8');
++    if (entry.template) {
++      // The template is static developer-authored HTML with no user data, so
++      // substituting the nonce placeholder cannot authorise injected content.
++      body = body.replaceAll('{{CSP_NONCE}}', nonce);
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
+-  });
++    send(res, 200, { ...baseHeaders, 'Content-Type': entry.type, 'Cache-Control': entry.cache }, body, isHead);
++  } catch {
++    sendText(res, 500, baseHeaders, 'Server error');
++  }
++}
++
++const server = http.createServer(async (req, res) => {
++  const nonce = createNonce();
++  const baseHeaders = buildSecurityHeaders(nonce, { hstsMaxAge: HSTS_MAX_AGE });
++
++  // Resource isolation runs before anything else so rejected requests leak no
++  // information about the resource.
++  if (!isAllowedByFetchMetadata(req.method, req.headers)) {
++    return sendText(res, 403, baseHeaders, 'Forbidden');
++  }
++
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    return sendText(res, 400, baseHeaders, 'Bad Request');
++  }
++
++  if (pathname === CSP_REPORT_PATH) return handleCspReport(req, res, baseHeaders);
++  if (pathname === '/logout' || pathname === '/logout/') return handleLogout(req, res, baseHeaders);
++  return handleStatic(req, res, baseHeaders, nonce, pathname);
+ });
+ 
+ server.listen(PORT, () => {
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..8b88541
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,170 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  align-items: center;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a,
++nav .logout-link {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover,
++nav .logout-link:hover {
++  color: var(--accent);
++}
++
++/* Logout is a POST form (not a GET link) so it cannot be triggered by a
++   cross-site navigation; the button is styled to match the nav links. */
++.logout-form {
++  display: inline;
++}
++
++.logout-link {
++  background: none;
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++  font: inherit;
++  font-size: 0.9rem;
++  line-height: inherit;
++  cursor: pointer;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  /* Third-party image (allow-listed in CSP img-src). The second declaration
++     adds a per-request referrer policy in browsers that support CSS url()
++     request modifiers; others keep the first declaration and fall back to the
++     document-level Referrer-Policy header. */
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" referrer-policy(no-referrer));
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}

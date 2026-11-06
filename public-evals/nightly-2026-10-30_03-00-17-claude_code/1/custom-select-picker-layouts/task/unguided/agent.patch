@@ -1,0 +1,330 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,163 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Picker */
++    .roast-picker {
++      position: relative;
++      margin-top: 1.5rem;
++      text-align: left;
++    }
++
++    .roast-picker label {
++      display: block;
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++      text-align: center;
++    }
++
++    .roast-picker select {
++      font: inherit;
++      padding: 8px 12px;
++      border-radius: 5px;
++      border: none;
++      min-width: 220px;
++    }
++
++    .roast-picker.enhanced select {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      min-width: 0;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .roast-trigger {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      min-width: 240px;
++      padding: 6px 12px 6px 6px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      border: 2px solid transparent;
++      border-radius: 6px;
++      font: inherit;
++      cursor: pointer;
++      transition: border-color 0.2s;
++    }
++
++    .roast-trigger:hover,
++    .roast-trigger:focus-visible,
++    .roast-trigger[aria-expanded="true"] {
++      border-color: var(--accent);
++      outline: none;
++    }
++
++    .roast-trigger img {
++      width: 36px;
++      height: 36px;
++      border-radius: 4px;
++      object-fit: cover;
++    }
++
++    .roast-trigger .roast-trigger-label {
++      flex: 1;
++      font-weight: 600;
++    }
++
++    .roast-trigger::after {
++      content: "";
++      border: 5px solid transparent;
++      border-top-color: var(--primary);
++      margin-top: 5px;
++      transition: transform 0.2s;
++    }
++
++    .roast-trigger[aria-expanded="true"]::after {
++      transform: rotate(180deg) translateY(5px);
++    }
++
++    .roast-grid {
++      position: absolute;
++      top: calc(100% + 8px);
++      left: 50%;
++      transform: translateX(-50%);
++      z-index: 100;
++      width: min(540px, 92vw);
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
++      list-style: none;
++    }
++
++    .roast-grid[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      display: flex;
++      flex-direction: column;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      overflow: hidden;
++      color: var(--text);
++      cursor: pointer;
++      transition: border-color 0.2s, transform 0.2s;
++    }
++
++    .roast-option img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      display: block;
++    }
++
++    .roast-option-body {
++      padding: 8px;
++      text-align: center;
++    }
++
++    .roast-option-name {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .roast-option-notes {
++      font-size: 0.75rem;
++      line-height: 1.3;
++    }
++
++    .roast-option:hover,
++    .roast-option.active {
++      border-color: var(--accent);
++      transform: translateY(-2px);
++    }
++
++    .roast-option[aria-selected="true"] {
++      border-color: var(--primary);
++      background: #efebe9;
++    }
++
++    @media (max-width: 480px) {
++      .roast-grid {
++        gap: 6px;
++        padding: 6px;
++      }
++
++      .roast-option-notes {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +325,23 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select id="roast" name="roast">
++        <option value="light"
++          data-img="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=300&h=225&q=70"
++          data-notes="Bright, citrusy &amp; floral">Light Roast</option>
++        <option value="medium" selected
++          data-img="https://images.unsplash.com/photo-1580933073521-dc49ac0d4e6a?auto=format&fit=crop&w=300&h=225&q=70"
++          data-notes="Balanced, caramel &amp; nutty">Medium Roast</option>
++        <option value="dark"
++          data-img="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&h=225&q=70"
++          data-notes="Bold, smoky &amp; chocolatey">Dark Roast</option>
++      </select>
++    </div>
++    <a href="/order-online?roast=medium" class="btn" id="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +375,137 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Enhance the native roast <select> into a 3-column image grid picker.
++    (function () {
++      var picker = document.querySelector('.roast-picker');
++      var select = document.getElementById('roast');
++      var orderLink = document.getElementById('order-now');
++      var options = Array.prototype.slice.call(select.options);
++      var activeIndex = select.selectedIndex;
++
++      var trigger = document.createElement('button');
++      trigger.type = 'button';
++      trigger.className = 'roast-trigger';
++      trigger.id = 'roast-trigger';
++      trigger.setAttribute('aria-haspopup', 'listbox');
++      trigger.setAttribute('aria-expanded', 'false');
++      trigger.setAttribute('aria-controls', 'roast-grid');
++      trigger.setAttribute('aria-labelledby', 'roast-label roast-trigger');
++      var triggerImg = document.createElement('img');
++      triggerImg.alt = '';
++      var triggerLabel = document.createElement('span');
++      triggerLabel.className = 'roast-trigger-label';
++      trigger.append(triggerImg, triggerLabel);
++
++      var grid = document.createElement('ul');
++      grid.className = 'roast-grid';
++      grid.id = 'roast-grid';
++      grid.setAttribute('role', 'listbox');
++      grid.setAttribute('aria-labelledby', 'roast-label');
++      grid.tabIndex = -1;
++      grid.hidden = true;
++
++      var items = options.map(function (opt, i) {
++        var li = document.createElement('li');
++        li.className = 'roast-option';
++        li.id = 'roast-option-' + opt.value;
++        li.setAttribute('role', 'option');
++        li.innerHTML =
++          '<img src="' + opt.dataset.img + '" alt="" loading="lazy">' +
++          '<div class="roast-option-body">' +
++          '<div class="roast-option-name"></div>' +
++          '<div class="roast-option-notes"></div>' +
++          '</div>';
++        li.querySelector('.roast-option-name').textContent = opt.text;
++        li.querySelector('.roast-option-notes').textContent = opt.dataset.notes;
++        li.addEventListener('click', function () { choose(i); close(); });
++        li.addEventListener('mousemove', function () { setActive(i); });
++        grid.appendChild(li);
++        return li;
++      });
++
++      var label = picker.querySelector('label');
++      label.id = 'roast-label';
++      label.htmlFor = 'roast-trigger';
++      select.tabIndex = -1;
++      select.setAttribute('aria-hidden', 'true');
++      picker.classList.add('enhanced');
++      picker.append(trigger, grid);
++
++      function render() {
++        var opt = options[select.selectedIndex];
++        triggerImg.src = opt.dataset.img;
++        triggerLabel.textContent = opt.text;
++        items.forEach(function (li, i) {
++          li.setAttribute('aria-selected', i === select.selectedIndex ? 'true' : 'false');
++        });
++        orderLink.href = '/order-online?roast=' + encodeURIComponent(opt.value);
++      }
++
++      function setActive(i) {
++        activeIndex = (i + items.length) % items.length;
++        items.forEach(function (li, j) { li.classList.toggle('active', j === activeIndex); });
++        grid.setAttribute('aria-activedescendant', items[activeIndex].id);
++      }
++
++      function choose(i) {
++        if (select.selectedIndex !== i) {
++          select.selectedIndex = i;
++          select.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++        render();
++      }
++
++      function open() {
++        grid.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        setActive(select.selectedIndex);
++        grid.focus();
++      }
++
++      function close(restoreFocus) {
++        if (grid.hidden) return;
++        grid.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        if (restoreFocus !== false) trigger.focus();
++      }
++
++      trigger.addEventListener('click', function () {
++        grid.hidden ? open() : close();
++      });
++
++      trigger.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
++          e.preventDefault();
++          open();
++        }
++      });
++
++      grid.addEventListener('keydown', function (e) {
++        switch (e.key) {
++          case 'ArrowRight': case 'ArrowDown': setActive(activeIndex + 1); break;
++          case 'ArrowLeft': case 'ArrowUp': setActive(activeIndex - 1); break;
++          case 'Home': setActive(0); break;
++          case 'End': setActive(items.length - 1); break;
++          case 'Enter': case ' ': choose(activeIndex); close(); break;
++          case 'Escape': close(); break;
++          case 'Tab': close(false); return;
++          default: return;
++        }
++        e.preventDefault();
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!picker.contains(e.target)) close(false);
++      });
++
++      select.addEventListener('change', render);
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,27 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px;
++      border: 1px dashed var(--accent);
++      border-radius: 6px;
++      background: #fff8ee;
++      font-size: 0.9rem;
++    }
++
++    .promo-remaining {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-elapsed {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +199,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Dates are wall-clock times, interpreted in the visitor's local time zone. -->
++          <div class="promo-timer" id="maple-promo" data-start="2025-11-01T00:00" data-end="2026-03-01T00:00">
++            <p class="promo-remaining" aria-live="polite">Limited time offer</p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +230,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Seasonal promo countdown. Runs once on page load.
++    // Uses Temporal where available (DST-aware calendar days in the visitor's zone);
++    // falls back to Date, since Safari/iOS have not shipped Temporal yet.
++    (function () {
++      const el = document.getElementById('maple-promo');
++      if (!el) return;
++
++      // Each clock exposes now(), at(localIsoString) and diff(a, b) -> whole
++      // { days, hours } from a to b, or null if a is after b.
++      function temporalClock() {
++        const tz = Temporal.Now.timeZoneId();
++        return {
++          now: () => Temporal.Now.zonedDateTimeISO(tz),
++          at: (s) => Temporal.PlainDateTime.from(s).toZonedDateTime(tz),
++          diff(a, b) {
++            if (Temporal.ZonedDateTime.compare(a, b) > 0) return null;
++            const d = a.until(b, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++            return { days: d.days, hours: d.hours };
++          },
++        };
++      }
++
++      function dateClock() {
++        return {
++          now: () => new Date(),
++          // ISO date-time strings without an offset are parsed as local time.
++          at: (s) => new Date(s),
++          diff(a, b) {
++            if (a > b) return null;
++            // Count calendar days, so 23/25-hour DST days still count as one day.
++            const addDays = (n) => { const x = new Date(a); x.setDate(x.getDate() + n); return x; };
++            let days = Math.floor((b - a) / 864e5);
++            while (days > 0 && addDays(days) > b) days--;
++            while (addDays(days + 1) <= b) days++;
++            return { days, hours: Math.floor((b - addDays(days)) / 36e5) };
++          },
++        };
++      }
++
++      // Check the shipped API shape: older pre-standard builds (behind flags) lack timeZoneId.
++      const hasTemporal = typeof Temporal !== 'undefined' && typeof Temporal.Now?.timeZoneId === 'function';
++      const clock = hasTemporal ? temporalClock() : dateClock();
++
++      function format({ days, hours }) {
++        if (typeof Intl.DurationFormat === 'function') {
++          return new Intl.DurationFormat(undefined, { style: 'long' }).format({ days, hours });
++        }
++        const unit = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
++        return `${unit(days, 'day')}, ${unit(hours, 'hour')}`;
++      }
++
++      const now = clock.now();
++      const start = clock.at(el.dataset.start);
++      const end = clock.at(el.dataset.end);
++      const remainingEl = el.querySelector('.promo-remaining');
++      const elapsedEl = el.querySelector('.promo-elapsed');
++
++      const untilStart = clock.diff(now, start);
++      const remaining = clock.diff(now, end);
++      if (untilStart) {
++        remainingEl.textContent = `Coming soon: starts in ${format(untilStart)}`;
++      } else if (remaining) {
++        remainingEl.textContent = `Offer ends in ${format(remaining)}`;
++        elapsedEl.textContent = `${format(clock.diff(start, now))} since the promotion started`;
++      } else {
++        remainingEl.textContent = 'This offer has ended';
++        elapsedEl.textContent = `${format(clock.diff(start, now))} since the promotion started ` +
++          `(ended ${format(clock.diff(end, now))} ago)`;
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

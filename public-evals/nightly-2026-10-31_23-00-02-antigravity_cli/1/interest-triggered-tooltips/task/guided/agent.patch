@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,12 +130,96 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:is(:interest-source, .interest-source) {
+       background: #3e2723;
+     }
+ 
++    /* Interest Invoker & Popover Tooltip Styles */
++    [interestfor] {
++      --interest-delay-start: 0.2s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.1s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .btn[interestfor]::after {
++      content: " ⓘ";
++      font-size: 0.85em;
++      opacity: 0.85;
++    }
++
++    [interestfor="tooltip-maple"] {
++      anchor-name: --tooltip-maple;
++    }
++
++    #tooltip-maple {
++      position-anchor: --tooltip-maple;
++    }
++
++    [interestfor="tooltip-espresso"] {
++      anchor-name: --tooltip-espresso;
++    }
++
++    #tooltip-espresso {
++      position-anchor: --tooltip-espresso;
++    }
++
++    [interestfor="tooltip-cold-brew"] {
++      anchor-name: --tooltip-cold-brew;
++    }
++
++    #tooltip-cold-brew {
++      position-anchor: --tooltip-cold-brew;
++    }
++
++    .nutrition-tooltip {
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(right);
++      position-try-fallbacks: flip-block, flip-inline;
++      margin: unset;
++      background: var(--primary);
++      color: var(--light);
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      padding: 10px 14px;
++      font-size: 0.85rem;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      max-inline-size: 220px;
++    }
++
++    [popover]:is(:popover-open, .\:popover-open),
++    .nutrition-tooltip:is(:interest-target, .interest-target) {
++      display: block;
++    }
++
++    .nutrition-tooltip strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++      font-size: 0.9rem;
++    }
++
++    .nutrition-tooltip dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++      margin: 0;
++    }
++
++    .nutrition-tooltip dt {
++      opacity: 0.85;
++    }
++
++    .nutrition-tooltip dd {
++      font-weight: 600;
++      text-align: right;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +264,52 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="tooltip-maple">View Details</a>
++          <div popover="hint" id="tooltip-maple" class="nutrition-tooltip">
++            <strong>Nutrition &amp; Info (12 oz)</strong>
++            <dl>
++              <dt>Calories</dt>
++              <dd>210 kcal</dd>
++              <dt>Sugar</dt>
++              <dd>18g</dd>
++              <dt>Caffeine</dt>
++              <dd>150 mg</dd>
++            </dl>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="tooltip-espresso">View Details</a>
++          <div popover="hint" id="tooltip-espresso" class="nutrition-tooltip">
++            <strong>Nutrition &amp; Info (Double)</strong>
++            <dl>
++              <dt>Calories</dt>
++              <dd>10 kcal</dd>
++              <dt>Sugar</dt>
++              <dd>0g</dd>
++              <dt>Caffeine</dt>
++              <dd>185 mg</dd>
++            </dl>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="tooltip-cold-brew">View Details</a>
++          <div popover="hint" id="tooltip-cold-brew" class="nutrition-tooltip">
++            <strong>Nutrition &amp; Info (16 oz)</strong>
++            <dl>
++              <dt>Calories</dt>
++              <dd>5 kcal</dd>
++              <dt>Sugar</dt>
++              <dd>0g</dd>
++              <dt>Caffeine</dt>
++              <dd>205 mg</dd>
++            </dl>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +323,19 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++    if (!("anchorName" in document.documentElement.style)) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
++
+ </body>
+ 
+ </html>

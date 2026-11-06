@@ -1,0 +1,55 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -74,12 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      isolation: isolate;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +85,25 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .weathered-bg::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      pointer-events: none;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover;
++      -webkit-mask-image: url('grunge-texture.svg');
++      mask-image: url('grunge-texture.svg');
++      -webkit-mask-size: 320px 320px;
++      mask-size: 320px 320px;
++      -webkit-mask-repeat: repeat;
++      mask-repeat: repeat;
++      mask-mode: alpha;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +182,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

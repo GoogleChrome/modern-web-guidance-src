@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,103 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad – Ship your ideas faster</title>
++
++  <!--
++    Experiment SDK: async + blocking="render" keeps parsing going but holds the
++    first paint until the script has run, so users never see the original content.
++  -->
++  <script src="https://cdn.example.com/experiment-sdk.js" async blocking="render"></script>
++
++  <script>
++    // Fallback for browsers without blocking="render" (e.g. Firefox): hide the page
++    // until the SDK is ready, or 4s at most.
++    window.onExperimentReady = function () {
++      document.documentElement.classList.remove('ab-loading');
++    };
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++      setTimeout(window.onExperimentReady, 4000);
++    }
++  </script>
++
++  <style>
++    .ab-loading { opacity: 0 !important; }
++
++    :root {
++      --ink: #14172b;
++      --brand: #5b4bff;
++      --brand-dark: #4535e0;
++    }
++    * { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
++      color: var(--ink);
++      line-height: 1.5;
++    }
++    header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem clamp(1rem, 5vw, 4rem);
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; }
++    .hero {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
++      gap: 3rem;
++      align-items: center;
++      padding: clamp(2rem, 8vw, 6rem) clamp(1rem, 5vw, 4rem);
++      max-width: 75rem;
++      margin-inline: auto;
++    }
++    .hero h1 {
++      font-size: clamp(2.25rem, 5vw, 3.75rem);
++      line-height: 1.1;
++      margin: 0 0 1rem;
++    }
++    .hero p { font-size: 1.2rem; margin: 0 0 2rem; max-width: 34rem; }
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 2rem;
++      border-radius: 0.5rem;
++      background: var(--brand);
++      color: #fff;
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-decoration: none;
++    }
++    .cta-button:hover, .cta-button:focus-visible { background: var(--brand-dark); }
++    .hero img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 1rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero" id="hero">
++      <div>
++        <h1 data-experiment="headline">Ship your ideas faster</h1>
++        <p data-experiment="subhead">Launchpad gives your team everything it needs to go from first draft to live product in days, not months.</p>
++        <a class="cta-button" id="cta" data-experiment="cta" href="#signup">Get started</a>
++      </div>
++      <img
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++        alt="A team collaborating around a table with laptops"
++        width="1200" height="900"
++        fetchpriority="high">
++    </section>
++  </main>
++</body>
++</html>

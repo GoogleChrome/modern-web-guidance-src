@@ -1,0 +1,366 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b5f82a9
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,18 @@
++# Daily Grind origin transfer
++
++This repository initially contained only a static page: no existing manifest, account backend, IndexedDB stores, or preference keys. The migration code therefore supplies a configurable deployment pair. It does not move an already installed app until both bundles are deployed with its real identity.
++
++1. Fill in `oldOrigin` and `newOrigin` in `migration.config.json`. Both must be HTTPS origins on the same registrable domain. The build uses the Public Suffix List (including private suffixes) to reject unrelated sites. `OLD_ORIGIN` and `NEW_ORIGIN` can override these values during a build.
++2. Set `oldId` to the **exact existing manifest ID**, resolved against its origin. For a legacy manifest without an explicit ID, use its resolved `start_url`. Set `newId` to a stable destination identity. The `/` defaults are assumptions, not discovered installed identities. Preserve the existing app's name, icons, start URL, scope, and manifest shortcuts in `manifest.json` before building; this repository has no previous manifest to recover them from. The supplied start URL and scope assume root-hosted apps.
++3. Inventory real preference storage and list only its localStorage keys in `localStorageKeys`. `daily-grind:preferences` is a proposed key, not an existing setting found in this page. Never add authentication tokens or session data. Cookies, IndexedDB, service-worker caches and browser permissions are **not** copied by this implementation; add an app-specific data adapter or server-side account sync if the installed app uses them. Users sign in and grant permissions again as needed.
++4. Run `pnpm install --frozen-lockfile` and `pnpm build`. Deploy `dist/new` to the new origin, then `dist/old` to the old origin. Both origins must remain under your control and use the same configuration. This project has no deployment credentials or hosting configuration.
++
++The new manifest claims the predecessor with `migrate_from`; the old manifest signals `migrate_to`. The old bundle serves `/.well-known/web-app-origin-association` with the exact destination app ID as its key. Keep that extensionless file accessible as JSON with no authentication or redirect, and make manifest/config responses revalidate during the rollout. Ensure the host publishes hidden directories. Keep the original manifest URL available and update any existing service-worker cache so installed clients can receive the new files. Avoid blanket redirects: the old manifest page and `/transfer.html` must remain accessible.
++
++On the new site, **Copy saved settings** opens a first-party window on the old site. The user approves a transfer of allowlisted preferences through `postMessage`. Each message validates an exact origin, window reference and random per-attempt nonce. No settings enter a URL. Destination values win on conflicts, failed writes are rolled back where storage permits, and originals are never deleted. A blocked popup, denied storage or timeout leaves the copy retryable. Do not use `Cross-Origin-Opener-Policy: same-origin` on these pages: it would sever the cross-origin opener needed by the handoff. Both origins must be trusted; any other deployment headers should retain this relationship.
++
++Supporting browsers offer an installation migration that retains OS integration after user approval. This cannot be guaranteed across browsers; the banner provides a visit/install fallback for browsers without origin migration. Settings can still be copied using the handoff. The app never tells a user to remove their original installation before copying their settings.
++
++The build follows the [manifest incubation specification](https://wicg.github.io/manifest-incubations/#migrate_to-member): `migrate_to` is an object, and the association key is the complete destination app ID (including its path). Some early guidance examples use a different shape.
++
++No development/preview server or browser verification is required to generate the bundles. A successful build checks configuration and produces files; it does not prove an installed browser's update behavior or a host's headers.
+diff --git a/icon.svg b/icon.svg
+new file mode 100644
+index 0000000..521124a
+--- /dev/null
++++ b/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="32" fill="#4e342e"/><path d="M48 65h78v48a32 32 0 0 1-32 32H80a32 32 0 0 1-32-32zm78 9h12a20 20 0 0 1 0 40h-12" fill="none" stroke="#ffab40" stroke-width="10"/><path d="M73 48V30m28 18V30M40 160h104" stroke="#ffab40" stroke-width="8" stroke-linecap="round"/></svg>
+diff --git a/index.html b/index.html
+index 66c9173..4037c76 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
++  <meta name="theme-color" content="#4e342e">
++  <script src="/migration-config.js" defer></script>
++  <script src="/migration.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -20,6 +24,10 @@
+       padding: 0;
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -175,6 +183,13 @@
+   </header>
+ 
+   <main class="container">
++    <section id="app-migration" hidden aria-labelledby="migration-heading" class="card">
++      <h2 id="migration-heading">The Daily Grind is moving</h2>
++      <p id="migration-description"></p>
++      <a id="migration-link" class="btn" hidden>Visit our new home</a>
++      <button id="migration-copy" class="btn" type="button" hidden>Copy saved settings</button>
++      <p id="migration-status" role="status"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..7b4f1c3
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,11 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "theme_color": "#4e342e",
++  "background_color": "#fafafa",
++  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
++}
+diff --git a/migration-config.js b/migration-config.js
+new file mode 100644
+index 0000000..3baa0b3
+--- /dev/null
++++ b/migration-config.js
+@@ -0,0 +1,2 @@
++// The build replaces this with the exact, validated deployment origins.
++window.dailyGrindMigration = null;
+diff --git a/migration.config.json b/migration.config.json
+new file mode 100644
+index 0000000..d71180d
+--- /dev/null
++++ b/migration.config.json
+@@ -0,0 +1,7 @@
++{
++  "oldOrigin": null,
++  "newOrigin": null,
++  "oldId": "/",
++  "newId": "/",
++  "localStorageKeys": ["daily-grind:preferences"]
++}
+diff --git a/migration.js b/migration.js
+new file mode 100644
+index 0000000..fee975f
+--- /dev/null
++++ b/migration.js
+@@ -0,0 +1,129 @@
++(() => {
++  'use strict';
++  const config = window.dailyGrindMigration;
++  if (!config || ![config.oldOrigin, config.newOrigin].includes(location.origin)) return;
++  const status = document.getElementById('migration-status');
++  const report = (message) => { status.textContent = message; };
++  const maxSize = 128 * 1024;
++  const isSettings = (entries) => Array.isArray(entries) &&
++    entries.length <= config.localStorageKeys.length &&
++    entries.every((entry) => Array.isArray(entry) && entry.length === 2 &&
++      config.localStorageKeys.includes(entry[0]) && typeof entry[1] === 'string') &&
++    new Set(entries.map(([key]) => key)).size === entries.length &&
++    JSON.stringify(entries).length <= maxSize;
++
++  // Runs on the old origin in a user-opened popup, so storage is first-party.
++  if (document.body.hasAttribute('data-settings-transfer')) {
++    const nonce = new URLSearchParams(location.hash.slice(1)).get('nonce');
++    if (location.origin !== config.oldOrigin || !window.opener || !/^[a-f0-9]{32}$/.test(nonce || '')) return;
++    history.replaceState(null, '', location.pathname);
++    const target = window.opener;
++    const button = document.getElementById('transfer-send');
++    document.getElementById('transfer-description').textContent =
++      `Copy your saved preferences to ${config.newOrigin}. Existing preferences there will be kept. Your originals stay here.`;
++    button.hidden = false;
++    let awaitingReply = false;
++    let timer;
++    window.addEventListener('message', (event) => {
++      if (!awaitingReply || event.origin !== config.newOrigin || event.source !== target ||
++          event.data?.type !== 'daily-grind:settings-received' || event.data.nonce !== nonce) return;
++      clearTimeout(timer);
++      awaitingReply = false;
++      report('Settings copied. You can close this window and return to the new app.');
++      button.hidden = true;
++    });
++    button.addEventListener('click', () => {
++      try {
++        const entries = config.localStorageKeys.flatMap((key) => {
++          const value = localStorage.getItem(key);
++          return value === null ? [] : [[key, value]];
++        });
++        if (!isSettings(entries)) throw new Error('Settings are too large.');
++        awaitingReply = true;
++        button.disabled = true;
++        target.postMessage({ type: 'daily-grind:settings', nonce, entries }, config.newOrigin);
++        report('Waiting for the new app to save your settings…');
++        timer = setTimeout(() => {
++          awaitingReply = false;
++          button.disabled = false;
++          report('The new app did not confirm the copy. Return there and try again. Your originals are safe.');
++        }, 10000);
++      } catch {
++        report('Could not read your saved settings. Allow site storage, then try again. Your originals are safe.');
++      }
++    });
++    return;
++  }
++
++  const panel = document.getElementById('app-migration');
++  if (!panel) return;
++  panel.hidden = false;
++  const description = document.getElementById('migration-description');
++  if (location.origin === config.oldOrigin) {
++    description.textContent =
++      'Visit our new home to copy your saved settings. If your browser offers an app update, accept it to keep your installed shortcuts. Otherwise, install the new site from your browser after copying your settings.';
++    const link = document.getElementById('migration-link');
++    link.href = `${config.newOrigin}/`;
++    link.hidden = false;
++    return;
++  }
++
++  document.getElementById('migration-heading').textContent = 'Welcome to our new home';
++  description.textContent =
++    'Bring your saved preferences from the previous site. Existing preferences here will be kept. A window will ask you to approve the copy. If your browser offers an app update, accept it to keep your shortcuts; otherwise install this site from your browser. You may need to sign in and grant permissions again.';
++  const button = document.getElementById('migration-copy');
++  button.hidden = false;
++  button.addEventListener('click', () => {
++    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)),
++      (byte) => byte.toString(16).padStart(2, '0')).join('');
++    let popup;
++    let timer;
++    const cleanup = () => {
++      clearTimeout(timer);
++      window.removeEventListener('message', receive);
++      button.disabled = false;
++    };
++    const receive = (event) => {
++      if (event.origin !== config.oldOrigin || event.source !== popup ||
++          event.data?.type !== 'daily-grind:settings' || event.data.nonce !== nonce) return;
++      if (!isSettings(event.data.entries)) {
++        report('The settings could not be validated. Your existing settings were kept.');
++        cleanup();
++        return;
++      }
++      const written = [];
++      try {
++        // Never overwrite preferences already saved on the destination.
++        for (const [key, value] of event.data.entries) {
++          if (localStorage.getItem(key) === null) {
++            localStorage.setItem(key, value);
++            written.push(key);
++          }
++        }
++        popup.postMessage({ type: 'daily-grind:settings-received', nonce }, config.oldOrigin);
++        report(`Settings transfer complete. Copied ${written.length} saved preference group(s); existing preferences were kept.`);
++      } catch {
++        // Roll back partial writes on quota or storage errors; retain the old copy.
++        for (const key of written) {
++          try { localStorage.removeItem(key); } catch { /* Storage may have been disabled. */ }
++        }
++        report('Could not save your settings. Allow site storage and try again. The originals remain on the previous site.');
++      }
++      cleanup();
++    };
++    window.addEventListener('message', receive);
++    // An opener is deliberately retained for the origin-checked handoff.
++    popup = window.open(`${config.oldOrigin}/transfer.html#nonce=${nonce}`, '_blank', 'popup,width=520,height=420');
++    if (!popup) {
++      cleanup();
++      report('Allow popups for this site, then select Copy saved settings again.');
++      return;
++    }
++    button.disabled = true;
++    report('Approve the copy in the window from the previous site.');
++    timer = setTimeout(() => {
++      cleanup();
++      report('The copy timed out or the window was closed. You can try again; the originals remain on the previous site.');
++    }, 120000);
++  });
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..969fdaf 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node scripts/build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "tldts": "^7.4.19"
+   }
+ }
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..2bebb19
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,65 @@
++import { mkdir, readFile, writeFile, copyFile, rm } from 'node:fs/promises';
++import { getDomain } from 'tldts';
++import { Script } from 'node:vm';
++
++const root = new URL('../', import.meta.url);
++const read = (name) => readFile(new URL(name, root), 'utf8');
++const config = JSON.parse(await read('migration.config.json'));
++// Parse client scripts without executing browser code or importing a server.
++new Script(await read('migration.js'), { filename: 'migration.js' });
++
++function origin(value, label) {
++  if (!value) throw new Error(`Set ${label} in migration.config.json or the environment.`);
++  const url = new URL(value);
++  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
++    throw new Error(`${label} must be an HTTPS origin with no credentials, path, query or fragment.`);
++  }
++  return url.origin;
++}
++
++config.oldOrigin = origin(process.env.OLD_ORIGIN || config.oldOrigin, 'OLD_ORIGIN');
++config.newOrigin = origin(process.env.NEW_ORIGIN || config.newOrigin, 'NEW_ORIGIN');
++const domain = (value) => getDomain(new URL(value).hostname, { allowPrivateDomains: true });
++if (!domain(config.oldOrigin) || domain(config.oldOrigin) !== domain(config.newOrigin)) {
++  throw new Error('Origins must share a registrable domain (including private suffix boundaries).');
++}
++if (config.oldOrigin === config.newOrigin) throw new Error('Set distinct old and new origins.');
++for (const side of ['old', 'new']) {
++  const id = config[`${side}Id`];
++  if (typeof id !== 'string' || !id) throw new Error(`${side}Id is required.`);
++  const url = new URL(id, config[`${side}Origin`]);
++  if (url.origin !== config[`${side}Origin`] || url.hash || url.username || url.password) {
++    throw new Error(`${side}Id must identify an app on its configured origin without a fragment.`);
++  }
++  config[`${side}Id`] = url.href;
++}
++if (!Array.isArray(config.localStorageKeys) || !config.localStorageKeys.length ||
++    config.localStorageKeys.some((key) => typeof key !== 'string' || !key) ||
++    new Set(config.localStorageKeys).size !== config.localStorageKeys.length) {
++  throw new Error('List unique, nonempty configuration keys in localStorageKeys. Never include credentials.');
++}
++
++const base = JSON.parse(await read('manifest.json'));
++// Always generate separate origin bundles; never authorize a destination on the new origin.
++for (const side of ['old', 'new']) {
++  const destination = new URL(`dist/${side}/`, root);
++  await rm(destination, { recursive: true, force: true });
++  await mkdir(destination, { recursive: true });
++  for (const name of ['index.html', 'transfer.html', 'migration.js', 'icon.svg']) {
++    await copyFile(new URL(name, root), new URL(name, destination));
++  }
++  const manifest = { ...base, id: config[`${side}Id`] };
++  if (side === 'old') {
++    // The current manifest incubation defines migrate_to as an object, not an array.
++    manifest.migrate_to = { id: config.newId, install_url: `${config.newOrigin}/` };
++    await mkdir(new URL('.well-known/', destination));
++    await writeFile(new URL('.well-known/web-app-origin-association', destination),
++      JSON.stringify({ [config.newId]: { allow_migration: true } }, null, 2) + '\n');
++  } else {
++    manifest.migrate_from = [{ id: config.oldId, install_url: `${config.oldOrigin}/`, behavior: 'suggest' }];
++  }
++  await writeFile(new URL('manifest.json', destination), JSON.stringify(manifest, null, 2) + '\n');
++  await writeFile(new URL('migration-config.js', destination),
++    `window.dailyGrindMigration = ${JSON.stringify(config)};\n`);
++}
++console.log('Built dist/old and dist/new. Deploy each bundle to its configured origin.');
+diff --git a/transfer.html b/transfer.html
+new file mode 100644
+index 0000000..0180172
+--- /dev/null
++++ b/transfer.html
+@@ -0,0 +1,19 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="referrer" content="no-referrer">
++  <title>Copy your Daily Grind settings</title>
++  <script src="/migration-config.js" defer></script>
++  <script src="/migration.js" defer></script>
++</head>
++<body data-settings-transfer>
++  <main>
++    <h1>Copy your saved settings</h1>
++    <p id="transfer-description">Open the new Daily Grind site to start copying your settings.</p>
++    <button id="transfer-send" type="button" hidden>Copy settings</button>
++    <p id="migration-status" role="status"></p>
++  </main>
++</body>
++</html>

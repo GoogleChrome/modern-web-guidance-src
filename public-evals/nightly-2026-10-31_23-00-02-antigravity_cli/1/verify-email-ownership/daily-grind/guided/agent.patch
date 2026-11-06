@@ -1,0 +1,670 @@
+diff --git a/index.html b/index.html
+index 66c9173..a5b6b8e 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="origin-trial" content="ORIGIN_TRIAL_TOKEN_PLACEHOLDER">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -135,6 +136,154 @@
+       background: #3e2723;
+     }
+ 
++    /* Rewards Sign-up Form */
++    .rewards-section {
++      background: white;
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 500px;
++      margin: 40px auto 0;
++    }
++
++    .rewards-section h2 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++      text-align: center;
++    }
++
++    .rewards-section p.subtitle {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-top: -10px;
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="password"] {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      box-sizing: border-box;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input[type="text"],
++      .form-group input[type="email"],
++      .form-group input[type="password"] {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .password-toggle:focus-visible,
++    .submit-btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .password-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .password-toggle {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 4px;
++      padding: 0.25rem 0.6rem;
++      font-size: 0.85rem;
++      min-height: 36px;
++      cursor: pointer;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    .submit-btn {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      font-size: 1rem;
++      font-weight: bold;
++      padding: 0.75rem 1.25rem;
++      min-height: 48px;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .submit-btn:hover {
++      background: #3e2723;
++    }
++
++    .submit-btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .form-status {
++      margin-block-start: 1rem;
++      padding: 0.75rem;
++      border-radius: 5px;
++      font-size: 0.95rem;
++    }
++
++    .form-status:empty {
++      display: none;
++    }
++
++    .form-status.success {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #2e7d32;
++    }
++
++    .form-status.error {
++      background-color: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #c62828;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +344,84 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards-section" aria-labelledby="rewards-signup-heading">
++      <h2 id="rewards-signup-heading">Join Daily Grind Rewards</h2>
++      <p class="subtitle">Earn free coffee and exclusive perks. Sign up in seconds with instant browser-assisted email verification.</p>
++
++      <form id="rewards-signup-form" method="POST" action="/api/rewards/signup">
++        <div class="form-group">
++          <label for="full-name">Full name (required)</label>
++          <input
++            type="text"
++            id="full-name"
++            name="name"
++            autocomplete="name"
++            enterkeyhint="next"
++            maxlength="100"
++            required
++          />
++        </div>
++
++        <div class="form-group">
++          <label for="email">Email address (required)</label>
++          <input
++            type="email"
++            id="email"
++            name="email"
++            autocomplete="email"
++            spellcheck="false"
++            autocorrect="off"
++            autocapitalize="off"
++            enterkeyhint="next"
++            aria-describedby="email-hint"
++            required
++          />
++          <span id="email-hint" class="field-hint">We verify your email ownership directly with your browser when supported.</span>
++        </div>
++
++        <div class="form-group">
++          <div class="password-header">
++            <label for="new-password">Password (required)</label>
++            <button
++              type="button"
++              id="toggle-password"
++              class="password-toggle"
++              aria-pressed="false"
++              aria-label="Show password"
++              aria-describedby="toggle-warning"
++            >
++              Show password
++            </button>
++            <span id="toggle-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
++          </div>
++          <input
++            type="password"
++            id="new-password"
++            name="new-password"
++            autocomplete="new-password"
++            minlength="8"
++            enterkeyhint="done"
++            aria-describedby="password-constraints"
++            required
++          />
++          <span id="password-constraints" class="field-hint">At least 8 characters.</span>
++        </div>
++
++        <!-- MANDATORY: Must be in the same <form> as the email input.
++             The nonce value must be freshly generated on the server per form render. -->
++        <input
++          type="hidden"
++          id="email-verification-token"
++          name="token"
++          nonce="__SERVER_GENERATED_NONCE__"
++          autocomplete="email-verification-token"
++        />
++
++        <button type="submit" id="signup-submit-btn" class="submit-btn">Create Rewards Account</button>
++        <div id="signup-status" class="form-status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +434,73 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('rewards-signup-form');
++      const passwordInput = document.getElementById('new-password');
++      const toggleBtn = document.getElementById('toggle-password');
++      const submitBtn = document.getElementById('signup-submit-btn');
++      const statusBox = document.getElementById('signup-status');
++
++      if (toggleBtn && passwordInput) {
++        toggleBtn.addEventListener('click', () => {
++          const isMasked = passwordInput.type === 'password';
++          passwordInput.type = isMasked ? 'text' : 'password';
++          toggleBtn.setAttribute('aria-pressed', String(isMasked));
++          toggleBtn.setAttribute('aria-label', isMasked ? 'Hide password' : 'Show password');
++          toggleBtn.textContent = isMasked ? 'Hide password' : 'Show password';
++        });
++      }
++
++      if (form) {
++        const inputs = form.querySelectorAll('input:not([type="hidden"])');
++        inputs.forEach((input) => {
++          input.addEventListener('input', () => {
++            input.setCustomValidity('');
++          });
++          input.addEventListener('blur', () => {
++            if (input.value) {
++              input.checkValidity();
++            }
++          });
++        });
++
++        form.addEventListener('submit', async (e) => {
++          if (!form.checkValidity()) {
++            return;
++          }
++          e.preventDefault();
++          submitBtn.disabled = true;
++          statusBox.className = 'form-status';
++          statusBox.textContent = '';
++
++          try {
++            const formData = new FormData(form);
++            const response = await fetch(form.action, {
++              method: 'POST',
++              body: new URLSearchParams(formData),
++              headers: {
++                'Accept': 'application/json',
++              },
++            });
++            const result = await response.json();
++            if (response.ok) {
++              statusBox.className = 'form-status success';
++              statusBox.textContent = result.message || 'Rewards account created!';
++            } else {
++              statusBox.className = 'form-status error';
++              statusBox.textContent = result.error || 'Could not complete registration.';
++              submitBtn.disabled = false;
++            }
++          } catch {
++            // If fetch fails, allow standard form submission fallback
++            form.submit();
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..727b4fd 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,15 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.24.1",
++    "jose": "^6.2.14"
+   }
+ }
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..4b71f20
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,317 @@
++import http from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { createHash, randomBytes } from 'node:crypto';
++import dns from 'node:dns/promises';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { decodeSdJwtSync, SDJwtInstance } from '@sd-jwt/core';
++import { createRemoteJWKSet, importJWK, jwtVerify } from 'jose';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const PORT = Number(process.env.PORT || 11222);
++const RP_ORIGIN = process.env.RP_ORIGIN || `http://localhost:${PORT}`;
++const ORIGIN_TRIAL_TOKEN = process.env.ORIGIN_TRIAL_TOKEN || 'ORIGIN_TRIAL_TOKEN_PLACEHOLDER';
++
++// Server-side session store mapping session ID -> single-use cryptographic nonce
++// Never store the expected nonce value directly inside a client cookie.
++const sessionNonces = new Map();
++
++// IETF draft-hardt-email-verification-02 (§3.3, §5.1.1) specifies RFC 9864 'Ed25519' and 'ES256'.
++// Include 'EdDSA' while live issuers (e.g. Gmail) and Chrome Origin Trial builds finish
++// transitioning from 'EdDSA' (with crv: 'Ed25519') to 'Ed25519'.
++const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
++const normalizeAlg = (alg) => (alg === 'Ed25519' ? 'EdDSA' : alg);
++
++const hasher = (data, alg) =>
++  createHash(alg === 'sha-256' ? 'sha256' : alg).update(data).digest();
++
++/**
++ * Generates a fresh 256-bit (32-byte) cryptographic nonce per form render
++ * and stores it in server-side session state keyed by an HttpOnly, Secure, SameSite=Lax cookie.
++ */
++export function issueSessionNonce(sessionId = randomBytes(16).toString('base64url')) {
++  const nonce = randomBytes(32).toString('base64url');
++  sessionNonces.set(sessionId, nonce);
++  return { sessionId, nonce };
++}
++
++/**
++ * Atomically reads and deletes the single-use nonce from server-side session state
++ * so an intercepted token cannot be replayed.
++ */
++export function consumeSessionNonce(sessionId) {
++  if (!sessionId || !sessionNonces.has(sessionId)) {
++    return null;
++  }
++  const expectedNonce = sessionNonces.get(sessionId);
++  sessionNonces.delete(sessionId);
++  return expectedNonce;
++}
++
++/**
++ * Verifies an Email Verification Token (EVT + KB-JWT) presentation on the server.
++ */
++export async function verifyEmailVerificationToken({
++  rawToken,
++  submittedEmail,
++  expectedNonce,
++  expectedAudience = RP_ORIGIN,
++}) {
++  // Step 1: Parse the SD-JWT claims and validate the email address
++  const decoded = decodeSdJwtSync(rawToken, hasher);
++  const evtPayload = decoded.jwt?.payload;
++  const iss = evtPayload?.iss;
++
++  if (!expectedNonce || !decoded.kbJwt || !iss || evtPayload.email_verified !== true) {
++    throw new Error('Missing nonce, KB-JWT, issuer, or email_verified !== true.');
++  }
++
++  // MANDATORY: Compare email addresses case-insensitively while preserving the submitted email string
++  if (evtPayload.email?.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Submitted email does not match the EVT email claim.');
++  }
++
++  // Step 2: Validate DNS TXT delegation and load the issuer JWKS
++  const domain = submittedEmail.split('@')[1];
++  if (!domain) {
++    throw new Error('Invalid email domain.');
++  }
++
++  const txtRecords = (await dns.resolveTxt(`_email-verification.${domain}`)).map((r) =>
++    r.join('')
++  );
++  if (
++    !txtRecords.some(
++      (txt) => txt.startsWith('iss=') && `https://${txt.slice(4).trim()}` === iss
++    )
++  ) {
++    throw new Error(`Issuer "${iss}" is not delegated via DNS for "${domain}".`);
++  }
++
++  const discoveryUrl = new URL('/.well-known/email-verification', iss);
++  if (discoveryUrl.protocol !== 'https:') {
++    throw new Error('Issuer must use HTTPS.');
++  }
++
++  const metadata = await (await fetch(discoveryUrl)).json();
++  if (metadata.issuer !== iss || !metadata.jwks_uri?.startsWith('https://')) {
++    throw new Error('Invalid issuer metadata or non-HTTPS jwks_uri.');
++  }
++
++  const issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
++
++  // Step 3: Verify the EVT signature and Key Binding JWT (KB-JWT)
++  const evtOptions = {
++    typ: 'ev+sd-jwt',
++    issuer: iss,
++    algorithms: ALLOWED_ALGS,
++    maxTokenAge: '5m',
++    clockTolerance: '1m',
++  };
++
++  const sdJwt = new SDJwtInstance({
++    hasher,
++    verifier: async (data, sig) => {
++      const compactEvt = `${data}.${sig}`;
++      try {
++        await jwtVerify(compactEvt, issuerJwks, evtOptions);
++      } catch (err) {
++        // When `kid` is omitted (e.g. Gmail) and multiple keys match in the JWKS,
++        // jose throws ERR_JWKS_MULTIPLE_MATCHING_KEYS, which yields each matching CryptoKey.
++        if (err?.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw err;
++        let matched = false;
++        for await (const publicKey of err) {
++          try {
++            await jwtVerify(compactEvt, publicKey, evtOptions);
++            matched = true;
++            break;
++          } catch {}
++        }
++        if (!matched) throw err;
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig) => {
++      const holderJwk = evtPayload.cnf?.jwk;
++      const holderAlg = holderJwk?.alg;
++      const kbAlg = decoded.kbJwt.header.alg;
++      if (
++        !holderAlg ||
++        !kbAlg ||
++        !ALLOWED_ALGS.includes(holderAlg) ||
++        !ALLOWED_ALGS.includes(kbAlg) ||
++        normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
++      ) {
++        throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
++      }
++      const holderKey = await importJWK(holderJwk, kbAlg);
++      await jwtVerify(`${data}.${sig}`, holderKey, {
++        typ: 'kb+jwt',
++        audience: expectedAudience,
++        algorithms: [kbAlg],
++        maxTokenAge: '5m',
++        clockTolerance: '1m',
++      });
++      return true;
++    },
++  });
++
++  const verified = await sdJwt.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified'],
++    keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience,
++    keyBindingMaxAgeSeconds: 300,
++    skewSeconds: 60,
++  });
++
++  return verified;
++}
++
++function parseCookies(cookieHeader = '') {
++  const cookies = {};
++  for (const part of cookieHeader.split(';')) {
++    const [key, ...rest] = part.trim().split('=');
++    if (key) {
++      cookies[key] = decodeURIComponent(rest.join('='));
++    }
++  }
++  return cookies;
++}
++
++function completeAccountCreation(submittedEmail, name) {
++  return {
++    verified: true,
++    method: 'email-verification-protocol',
++    email: submittedEmail,
++    name,
++    message: `Welcome to Daily Grind Rewards, ${name || submittedEmail}! Your email ownership was verified instantly without needing a passcode email.`,
++  };
++}
++
++function sendTraditionalVerificationEmail(submittedEmail, name) {
++  return {
++    verified: false,
++    method: 'fallback-email-otp',
++    email: submittedEmail,
++    name,
++    message: `Almost done! We sent a verification link to ${submittedEmail} to complete your Daily Grind Rewards registration.`,
++  };
++}
++
++/**
++ * Web-standard Request/Response handler for rewards sign-up and email verification.
++ */
++export async function handleSignupSubmission(request) {
++  const formData = await request.formData();
++  const submittedName = String(formData.get('name') || '').trim();
++  const submittedEmail = String(formData.get('email') || '').trim();
++  const rawToken = String(formData.get('token') || '').trim();
++
++  const cookies = parseCookies(request.headers.get('cookie') || '');
++  const expectedNonce = consumeSessionNonce(cookies.dg_evp_sid);
++
++  if (rawToken && expectedNonce) {
++    try {
++      await verifyEmailVerificationToken({
++        rawToken,
++        submittedEmail,
++        expectedNonce,
++        expectedAudience: RP_ORIGIN,
++      });
++      // Fast path: email ownership is cryptographically verified; skip OTP email.
++      return completeAccountCreation(submittedEmail, submittedName);
++    } catch (err) {
++      // Log token verification failures before falling back to standard email verification.
++      console.error('Email verification token check failed:', err);
++    }
++  }
++
++  // Fallback path: send standard OTP code or magic link email to submittedEmail.
++  return sendTraditionalVerificationEmail(submittedEmail, submittedName);
++}
++
++/**
++ * Node HTTP server serving the Daily Grind homepage with per-render nonces and verification endpoint.
++ */
++export function createAppServer() {
++  return http.createServer(async (req, res) => {
++    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++
++    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
++      const cookies = parseCookies(req.headers.cookie || '');
++      const { sessionId, nonce } = issueSessionNonce(cookies.dg_evp_sid);
++      const rawHtml = await readFile(path.join(__dirname, 'index.html'), 'utf8');
++      const renderedHtml = rawHtml
++        .replace('__SERVER_GENERATED_NONCE__', nonce)
++        .replace('ORIGIN_TRIAL_TOKEN_PLACEHOLDER', ORIGIN_TRIAL_TOKEN);
++
++      res.writeHead(200, {
++        'Content-Type': 'text/html; charset=utf-8',
++        'Cache-Control': 'no-store',
++        'Origin-Trial': ORIGIN_TRIAL_TOKEN,
++        'Set-Cookie': `dg_evp_sid=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; Secure; SameSite=Lax`,
++      });
++      res.end(renderedHtml);
++      return;
++    }
++
++    if (
++      req.method === 'POST' &&
++      (url.pathname === '/api/rewards/signup' || url.pathname === '/api/verify-email')
++    ) {
++      const chunks = [];
++      for await (const chunk of req) {
++        chunks.push(chunk);
++      }
++      const rawBody = Buffer.concat(chunks).toString('utf8');
++      const params = new URLSearchParams(rawBody);
++      const submittedName = (params.get('name') || '').trim();
++      const submittedEmail = (params.get('email') || '').trim();
++      const rawToken = (params.get('token') || '').trim();
++
++      if (!submittedEmail) {
++        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
++        res.end(JSON.stringify({ error: 'Please provide a valid email address.' }));
++        return;
++      }
++
++      const cookies = parseCookies(req.headers.cookie || '');
++      const expectedNonce = consumeSessionNonce(cookies.dg_evp_sid);
++
++      let result;
++      if (rawToken && expectedNonce) {
++        try {
++          await verifyEmailVerificationToken({
++            rawToken,
++            submittedEmail,
++            expectedNonce,
++            expectedAudience: RP_ORIGIN,
++          });
++          result = completeAccountCreation(submittedEmail, submittedName);
++        } catch (err) {
++          console.error('Email verification token check failed:', err);
++          result = sendTraditionalVerificationEmail(submittedEmail, submittedName);
++        }
++      } else {
++        result = sendTraditionalVerificationEmail(submittedEmail, submittedName);
++      }
++
++      res.writeHead(200, {
++        'Content-Type': 'application/json; charset=utf-8',
++        'Cache-Control': 'no-store',
++      });
++      res.end(JSON.stringify(result));
++      return;
++    }
++
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Not Found');
++  });
++}
++
++if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
++  const server = createAppServer();
++  server.listen(PORT, () => {
++    console.log(`Daily Grind server listening on http://localhost:${PORT}`);
++  });
++}

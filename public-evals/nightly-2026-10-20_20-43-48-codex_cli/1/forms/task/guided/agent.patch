@@ -1,0 +1,34 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,29 @@
++# Accessibility and security audit
++
++## Scope and result
++
++Reviewed the original single-page HTML, its navigation and document structure, and the new rewards registration flow. The original page had no forms or backend. The updated page implements a clearly labeled three-step registration preview. It does not create accounts, subscribe users, or make network requests with form data.
++
++## Fixed
++
++- Added a skip link, focusable main target, named navigation landmarks, sequential headings, visible keyboard focus indicators, wrapping mobile layouts, reduced-motion support, and forced-colors borders.
++- Replaced generic, repeated “View Details” links with individually named native disclosures. Removed navigation to nonexistent application routes and the GET `/logout` link. State changes must not be implemented with GET requests.
++- Added visible labels, autocomplete hints, native input types and constraints, fieldsets and legends, labeled progress, optional preference fields, and separate, unchecked marketing consent.
++- Validate when leaving required fields and when continuing; clear stale errors during correction. Connect inline errors to fields and focus a linked error summary after unsuccessful submission. Move focus to the heading after changing steps. Disable and hide inactive fieldsets while preserving entries.
++- Allow password managers and paste. Accept long passphrases, offer an accessible visibility toggle, conceal passwords on navigation, and never include passwords in the review. Do not request a full birth date or phone number.
++- Render all review values with `textContent`. No unsafe HTML insertion, inline scripts, third-party JavaScript, browser-storage persistence, analytics, or logging of entries.
++- Added a restrictive CSP, including `form-action 'none'`, `connect-src 'none'`, and `base-uri 'none'`, plus a no-referrer policy. Styles and scripts are local. Unsplash is the only permitted remote image host.
++- Keep the form hidden until script initialization and provide a no-script notice, so script failure cannot accidentally submit credentials. Clear values and review content on completion, reset, and page leave, including before back-forward caching.
++- Provide linked, expandable preview terms and privacy information. Explain that no account is created and that stock image requests expose the visitor's IP to the image host.
++
++## Automated validation
++
++Run `pnpm test` for ten Node/jsdom integration tests, including axe-core checks on all three steps, the error state, and completion. Tests cover invalid submissions, linked error focus, backward navigation, preserved entries, progress state, injection-safe review, opt-in consent, revalidation of earlier steps, password visibility, duplicate completion, reset, and page-leave cleanup.
++
++Run `node --check rewards.js` for script syntax validation. Contrast ratios for the principal text and control-border pairs were calculated independently from their sRGB values. No manual browser verification was performed, as requested. jsdom cannot evaluate rendered layout, browser autofill, visual contrast, or actual assistive-technology behavior; automated results do not establish complete WCAG conformance.
++
++## Live enrollment integration
++
++A production registration service is not present in this repository. Before enabling actual enrollment, provide an HTTPS POST endpoint with independent server-side validation, secure password hashing, email verification, rate limiting, duplicate-account handling, CSRF protection appropriate to the session/authentication design, secure session cookies, and explicit consent records. Replace preview copy and terms with approved program information. Add submission pending, server-error, retry, and verified-success states. Only then update CSP `connect-src`/`form-action` to allow the exact destination and provide a server-rendered no-JavaScript fallback.
++
++At the hosting layer, configure CSP as an HTTP header (including `frame-ancestors 'none'`, which is unsupported in a meta policy), `X-Content-Type-Options: nosniff`, and HTTPS/HSTS as appropriate for the deployment. These cannot be enforced by this static document. Browser/password-manager behavior is outside page-memory control and is disclosed in the privacy notice.

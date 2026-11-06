@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,102 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment {
++      max-width: 480px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment h2 {
++      text-align: center;
++      margin-block-end: 1.5rem;
++    }
++
++    .payment fieldset {
++      border: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .form-row {
++      display: flex;
++      gap: 20px;
++    }
++
++    .form-row .form-group {
++      flex: 1;
++    }
++
++    .payment label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.25rem;
++    }
++
++    .payment .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-block-end: 0.25rem;
++    }
++
++    .payment input {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .payment input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .payment input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .payment button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      background: var(--primary);
++      color: white;
++      padding: 0.75rem 1rem;
++      min-height: 48px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .payment button:hover {
++      background: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +288,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment" id="payment">
++      <h2>Payment Details</h2>
++      <form action="/payment" method="POST">
++        <fieldset>
++          <legend class="visually-hidden">Card details</legend>
++
++          <div class="form-group">
++            <label for="cc-number">Card number</label>
++            <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric"
++              maxlength="23" pattern="[\d ]{13,23}" autocorrect="off" spellcheck="false" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-name">Name on card</label>
++            <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50"
++              pattern="[\p{L} \-\.]+" autocorrect="off" spellcheck="false" enterkeyhint="next" required>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="cc-exp">Expiry date</label>
++              <span id="exp-hint" class="hint">Format: MM/YY</span>
++              <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" inputmode="numeric" maxlength="5"
++                pattern="(0[1-9]|1[0-2])\/\d{2}" aria-describedby="exp-hint" enterkeyhint="next" required>
++            </div>
++
++            <div class="form-group">
++              <label for="cc-csc">Security code</label>
++              <span id="csc-hint" class="hint">3 or 4 digits</span>
++              <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric" maxlength="4"
++                pattern="[0-9]{3,4}" aria-describedby="csc-hint" enterkeyhint="done" required>
++            </div>
++          </div>
++
++          <button type="submit">Pay Now</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

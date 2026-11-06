@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,42 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++  </head>
++  <body>
++    <button type="button" id="load" aria-live="polite">Load data</button>
++    <script>
++      const button = document.getElementById('load');
++
++      button.addEventListener('click', async () => {
++        button.disabled = true;
++        button.textContent = 'Loading…';
++
++        const dataRequest = fetch('/api/data', { priority: 'high' });
++        fetch('/api/analytics', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 }),
++          priority: 'low',
++        }).then(response => {
++          if (!response.ok) throw new Error(`Analytics failed: ${response.status}`);
++        }).catch(console.error);
++
++        try {
++          const response = await dataRequest;
++          if (!response.ok) throw new Error(`Data failed: ${response.status}`);
++          const data = await response.json();
++          console.log(data);
++          button.textContent = 'Data loaded — load again';
++        } catch (error) {
++          console.error(error);
++          button.textContent = 'Load failed — try again';
++        } finally {
++          button.disabled = false;
++        }
++      });
++    </script>
++  </body>
++</html>

@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee customizer */
++    .customizer { margin-top: 48px; }
++    .customizer-heading { text-align: center; margin-bottom: 24px; }
++    .customizer-heading p { color: #795548; margin-top: 6px; }
++    .eyebrow { color: #895b32; font-size: .75rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
++    .coffee-stage { position: relative; border: 1px solid #e7dbd0; border-radius: 16px; background: #f7f0e8; }
++    #canvas { display: block; width: 100%; height: 480px; border-radius: 16px; }
++    .coffee-ui { width: 100%; padding: 28px; background: #fffdf9; border: 1px solid #e7dbd0; border-radius: 12px; }
++    .coffee-ui h3 { font-size: 1.25rem; margin-bottom: 16px; }
++    .coffee-ui label { display: block; font-weight: 600; font-size: .85rem; margin-bottom: 5px; }
++    .coffee-ui input, .coffee-ui select { display: block; width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #cdbbae; border-radius: 6px; background: white; color: var(--text); font: inherit; font-size: 1rem; }
++    .coffee-ui input:focus-visible, .coffee-ui select:focus-visible { outline: 3px solid #a36b2c; outline-offset: 3px; }
++    .coffee-field { margin-bottom: 14px; }
++    .coffee-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
++    .coffee-summary { border-top: 1px solid #e7dbd0; padding-top: 14px; margin-top: 4px; }
++    .coffee-summary .eyebrow { display: block; margin-bottom: 5px; }
++    #order-summary { display: block; font-size: .9rem; overflow-wrap: anywhere; }
++    .cup-label { width: 180px; text-align: center; color: #fff9ed; }
++    .cup-label small { display: block; font-size: 9px; letter-spacing: .18em; margin-bottom: 8px; }
++    #cup-preview { display: block; font: italic 25px Georgia, serif; overflow-wrap: anywhere; line-height: 1.2; }
++    .coffee-stage > .coffee-ui, .coffee-stage > .cup-label { position: absolute; }
++    .coffee-stage.no-context > .cup-label { display: none; }
++    @media (max-width: 700px) {
++      #canvas { height: 800px; }
++      .coffee-ui { padding: 20px; }
++    }
++    @media (max-width: 380px) {
++      .coffee-options { grid-template-columns: 1fr; gap: 0; }
++      #canvas { height: 900px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +225,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <div class="customizer-heading">
++        <span class="eyebrow">A little more you</span>
++        <h2 id="customizer-title">Make It Your Daily Grind</h2>
++        <p>Your name. Your favorites. Your perfect cup.</p>
++      </div>
++      <div class="coffee-stage" id="coffee-stage">
++        <canvas id="canvas" content="drawable" width="1060" height="480" aria-label="Customize your coffee">
++          <div class="cup-label" id="cup-label" drawable>
++            <small>THE DAILY GRIND</small>
++            <span id="cup-preview">Your daily cup</span>
++          </div>
++          <form class="coffee-ui" id="coffee-form" drawable aria-label="Coffee preferences">
++            <h3>A cup with your name on it.</h3>
++            <div class="coffee-field">
++              <label for="cup-name">Name on your cup</label>
++              <input id="cup-name" name="cupName" type="text" maxlength="24" placeholder="e.g. Alex" autocomplete="given-name">
++            </div>
++            <div class="coffee-options">
++              <div class="coffee-field">
++                <label for="milk">Milk</label>
++                <select id="milk" name="milk">
++                  <option value="oat">Oat milk</option>
++                  <option value="whole">Whole milk</option>
++                  <option value="almond">Almond milk</option>
++                  <option value="none">No milk</option>
++                </select>
++              </div>
++              <div class="coffee-field">
++                <label for="syrup">Syrup</label>
++                <select id="syrup" name="syrup">
++                  <option value="maple">Maple</option>
++                  <option value="vanilla">Vanilla</option>
++                  <option value="caramel">Caramel</option>
++                  <option value="none">No syrup</option>
++                </select>
++              </div>
++            </div>
++            <div class="coffee-summary">
++              <span class="eyebrow">Your signature sip</span>
++              <output id="order-summary" for="cup-name milk syrup" aria-live="polite" aria-atomic="true">Your daily cup · Oat milk · Maple syrup</output>
++            </div>
++          </form>
++        </canvas>
++      </div>
++      <noscript><p>Enable JavaScript to preview and customize your coffee.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +285,150 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = document.getElementById('coffee-stage');
++      const form = document.getElementById('coffee-form');
++      const cupLabel = document.getElementById('cup-label');
++      const cupName = document.getElementById('cup-name');
++      const milk = document.getElementById('milk');
++      const syrup = document.getElementById('syrup');
++      const preview = document.getElementById('cup-preview');
++      const summary = document.getElementById('order-summary');
++      const ctx = canvas.getContext('2d');
++      const nativeHTML = Boolean(ctx && 'content' in HTMLCanvasElement.prototype &&
++        typeof ctx.drawElementImage === 'function' && typeof canvas.requestPaint === 'function');
++      let layout;
++      let cssWidth = 0;
++      let cssHeight = 0;
++
++      // Keep the same real controls, labels, and keyboard behavior in older browsers.
++      if (!nativeHTML) {
++        stage.append(cupLabel, form);
++        canvas.removeAttribute('content');
++        canvas.setAttribute('aria-hidden', 'true');
++      }
++      if (!ctx) stage.classList.add('no-context');
++
++      function position(element, x, y, width) {
++        element.style.width = `${width}px`;
++        if (!nativeHTML) {
++          element.style.left = `${x}px`;
++          element.style.top = `${y}px`;
++        }
++      }
++
++      function draw() {
++        if (!ctx || !layout) return;
++        const sx = canvas.width / cssWidth;
++        const sy = canvas.height / cssHeight;
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++        ctx.setTransform(sx, 0, 0, sy, 0, 0);
++        const { cupX, cupY, cupScale } = layout;
++        ctx.save();
++        ctx.translate(cupX, cupY);
++        ctx.scale(cupScale, cupScale);
++        // A soft backdrop and saucer ground the hand-drawn takeaway cup.
++        ctx.fillStyle = '#eee1d2';
++        ctx.beginPath(); ctx.arc(0, 185, 170, 0, Math.PI * 2); ctx.fill();
++        ctx.fillStyle = '#dcc8b6';
++        ctx.beginPath(); ctx.ellipse(0, 354, 134, 14, 0, 0, Math.PI * 2); ctx.fill();
++        ctx.strokeStyle = '#b7987c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
++        for (const x of [-44, 0, 44]) {
++          ctx.beginPath(); ctx.moveTo(x, 39);
++          ctx.bezierCurveTo(x - 16, 24, x + 16, 15, x, 0); ctx.stroke();
++        }
++        const cupGradient = ctx.createLinearGradient(-115, 0, 115, 0);
++        cupGradient.addColorStop(0, '#e7d3ba'); cupGradient.addColorStop(.45, '#fff9ec'); cupGradient.addColorStop(1, '#e7d3ba');
++        ctx.fillStyle = cupGradient;
++        ctx.beginPath(); ctx.moveTo(-115, 94); ctx.lineTo(115, 94);
++        ctx.lineTo(86, 340); ctx.quadraticCurveTo(0, 364, -86, 340); ctx.closePath(); ctx.fill();
++        ctx.fillStyle = '#71503e';
++        ctx.beginPath(); ctx.moveTo(-106, 164); ctx.lineTo(106, 164);
++        ctx.lineTo(94, 286); ctx.quadraticCurveTo(0, 307, -94, 286); ctx.closePath(); ctx.fill();
++        ctx.fillStyle = '#3e2723';
++        ctx.beginPath(); ctx.roundRect(-125, 70, 250, 35, 10); ctx.fill();
++        ctx.fillStyle = '#5f4033';
++        ctx.beginPath(); ctx.ellipse(0, 71, 115, 21, 0, 0, Math.PI * 2); ctx.fill();
++        ctx.fillStyle = { oat: '#bf9268', whole: '#d9b38c', almond: '#b1845e', none: '#513124' }[milk.value];
++        ctx.beginPath(); ctx.ellipse(0, 68, 100, 13, 0, 0, Math.PI * 2); ctx.fill();
++        if (syrup.value !== 'none') {
++          ctx.strokeStyle = { maple: '#88502c', vanilla: '#f6e3b5', caramel: '#b66b24' }[syrup.value];
++          ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 68, 55, 6, 0, 0, Math.PI * 1.7); ctx.stroke();
++        }
++        ctx.restore();
++        if (nativeHTML) {
++          // Explicit destination sizes avoid double DPR scaling of DOM snapshots.
++          // drawElementImage also updates native hit testing and focus geometry.
++          ctx.drawElementImage(cupLabel, layout.labelX, layout.labelY, cupLabel.offsetWidth, cupLabel.offsetHeight);
++          ctx.drawElementImage(form, layout.formX, layout.formY, form.offsetWidth, form.offsetHeight);
++        }
++      }
++
++      function requestDraw() {
++        if (nativeHTML) canvas.requestPaint();
++        else draw();
++      }
++
++      function resize(entry) {
++        const rect = entry ? entry.contentRect : canvas.getBoundingClientRect();
++        cssWidth = rect.width;
++        cssHeight = rect.height;
++        if (!cssWidth || !cssHeight) return;
++        const narrow = cssWidth <= 660;
++        const cupScale = Math.min(1, (narrow ? cssWidth - 32 : cssWidth * .47) / 350);
++        const cupX = narrow ? cssWidth / 2 : cssWidth * .25;
++        const cupY = narrow ? 24 : 48;
++        layout = {
++          cupX, cupY, cupScale,
++          labelX: cupX - 90,
++          labelY: cupY + 195 * cupScale,
++          formX: narrow ? 20 : cssWidth * .5,
++          formY: narrow ? 408 : 52,
++          formWidth: narrow ? cssWidth - 40 : cssWidth * .5 - 32
++        };
++        position(cupLabel, layout.labelX, layout.labelY, 180);
++        position(form, layout.formX, layout.formY, layout.formWidth);
++        const pixels = entry?.devicePixelContentBoxSize?.[0];
++        const pixelWidth = pixels?.inlineSize ?? Math.round(cssWidth * window.devicePixelRatio);
++        const pixelHeight = pixels?.blockSize ?? Math.round(cssHeight * window.devicePixelRatio);
++        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
++        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
++        requestDraw();
++      }
++
++      function update() {
++        const name = cupName.value.trim() || 'Your daily cup';
++        preview.textContent = name;
++        const milkText = milk.options[milk.selectedIndex].text;
++        const syrupText = syrup.value === 'none' ? 'No syrup' : `${syrup.options[syrup.selectedIndex].text} syrup`;
++        summary.textContent = `${name} · ${milkText} · ${syrupText}`;
++        requestDraw();
++      }
++      form.addEventListener('submit', event => event.preventDefault());
++      form.addEventListener('input', update);
++      form.addEventListener('change', update);
++      if (nativeHTML) canvas.onpaint = draw;
++      const observer = new ResizeObserver(([entry]) => resize(entry));
++      const deviceBox = 'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      observer.observe(canvas, deviceBox ? { box: 'device-pixel-content-box' } : {});
++      window.addEventListener('resize', () => resize());
++      // Re-arm the query so display changes also redraw when CSS dimensions stay equal.
++      let resolutionQuery;
++      function watchResolution() {
++        resolutionQuery?.removeEventListener('change', onResolutionChange);
++        resolutionQuery = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
++        resolutionQuery.addEventListener('change', onResolutionChange);
++      }
++      function onResolutionChange() { resize(); watchResolution(); }
++      watchResolution();
++      resize();
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

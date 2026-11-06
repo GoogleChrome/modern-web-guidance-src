@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,36 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Load data</title>
++  <style>
++    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fafafa; font-family: system-ui, sans-serif; }
++    button { padding: 12px 24px; border: 1px solid #222; border-radius: 6px; background: #222; color: white; font: inherit; cursor: pointer; }
++    button:focus-visible { outline: 3px solid #888; outline-offset: 4px; }
++  </style>
++</head>
++<body>
++  <button type="button">Load data</button>
++  <script>
++    document.querySelector('button').addEventListener('click', () => {
++      // Start critical data first; analytics never blocks its completion.
++      fetch('/api/data', { priority: 'high' })
++        .then(response => {
++          if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
++          return response.json();
++        })
++        .then(data => console.log('Data loaded:', data))
++        .catch(error => console.error(error));
++
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      }).catch(error => console.error('Analytics request failed:', error));
++    });
++  </script>
++</body>
++</html>

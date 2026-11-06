@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Menu search */
++    .search-box {
++      max-width: 400px;
++      margin: 20px auto 0;
++    }
++
++    .search-box label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      text-align: center;
++    }
++
++    #search-input {
++      width: 100%;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++    }
++
++    #search-input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--accent);
++    }
++
++    ::highlight(menu-search) {
++      background-color: gold;
++      color: #000;
++    }
++
++    /* Fallback for browsers without the CSS Custom Highlight API */
++    mark.menu-search-match {
++      background-color: gold;
++      color: #000;
++      padding: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,9 +217,13 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="search-box" role="search">
++        <label for="search-input">Search the menu</label>
++        <input type="search" id="search-input" placeholder="e.g. latte, cold brew…" autocomplete="off">
++      </div>
++      <div class="grid" id="menu-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +251,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const input = document.getElementById('search-input');
++      const grid = document.getElementById('menu-grid');
++      const supportsHighlights = 'highlights' in CSS && typeof Highlight === 'function';
++      const HIGHLIGHT_NAME = 'menu-search';
++
++      // Collect text nodes inside the menu cards (skip whitespace-only nodes).
++      const getTextNodes = () => {
++        const nodes = [];
++        const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT, {
++          acceptNode: (n) => (n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
++        });
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
++        return nodes;
++      };
++
++      // Yields [start, end] offsets of every case-insensitive match of term in text.
++      function* findMatches(text, term) {
++        const haystack = text.toLowerCase();
++        let pos = haystack.indexOf(term);
++        while (pos !== -1) {
++          yield [pos, pos + term.length];
++          pos = haystack.indexOf(term, pos + term.length);
++        }
++      }
++
++      // Text nodes are cached; the DOM is never modified in the Highlight API path.
++      const cachedNodes = supportsHighlights ? getTextNodes() : null;
++
++      const highlightWithApi = (term) => {
++        CSS.highlights.delete(HIGHLIGHT_NAME);
++        if (!term) return;
++        const ranges = [];
++        for (const node of cachedNodes) {
++          for (const [start, end] of findMatches(node.nodeValue, term)) {
++            const range = new Range();
++            range.setStart(node, start);
++            range.setEnd(node, end);
++            ranges.push(range);
++          }
++        }
++        if (ranges.length) CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(...ranges));
++      };
++
++      const clearMarks = () => {
++        const parents = new Set();
++        for (const mark of grid.querySelectorAll('mark.menu-search-match')) {
++          parents.add(mark.parentNode);
++          mark.replaceWith(mark.textContent);
++        }
++        // Merge adjacent text nodes back together so later searches match across old split points.
++        parents.forEach((p) => p.normalize());
++      };
++
++      const highlightWithMarks = (term) => {
++        clearMarks();
++        if (!term) return;
++        for (const node of getTextNodes()) {
++          const text = node.nodeValue;
++          const matches = [...findMatches(text, term)];
++          if (!matches.length) continue;
++          const frag = document.createDocumentFragment();
++          let last = 0;
++          for (const [start, end] of matches) {
++            frag.append(text.slice(last, start));
++            const mark = document.createElement('mark');
++            mark.className = 'menu-search-match';
++            mark.textContent = text.slice(start, end);
++            frag.append(mark);
++            last = end;
++          }
++          frag.append(text.slice(last));
++          node.replaceWith(frag);
++        }
++      };
++
++      const highlight = supportsHighlights ? highlightWithApi : highlightWithMarks;
++
++      input.addEventListener('input', () => {
++        highlight(input.value.trim().toLowerCase());
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

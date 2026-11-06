@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,20 +54,25 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    nav button {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav button:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-button {
++      background: transparent;
++      font-family: inherit;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -120,8 +125,11 @@
+       color: var(--primary);
+     }
+ 
+     .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -134,8 +142,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    dialog,
++    [popover] {
++      margin: auto;
++      width: min(420px, calc(100% - 40px));
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2,
++    [popover] h3 {
++      margin-bottom: 12px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .nutrition {
++      margin: 12px 0;
++      padding-left: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,12 +203,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-button" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn" commandfor="logout-dialog" command="close" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +229,39 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="maple-nutrition" popovertargetaction="toggle">View Details</button>
++          <div id="maple-nutrition" popover aria-labelledby="maple-nutrition-title">
++            <h3 id="maple-nutrition-title">Maple Oat Latte Nutrition</h3>
++            <p>Estimated per 12 fl oz serving:</p>
++            <ul class="nutrition">
++              <li>Calories: 180</li>
++              <li>Total fat: 5 g</li>
++              <li>Carbohydrates: 30 g</li>
++              <li>Total sugars: 20 g</li>
++              <li>Protein: 3 g</li>
++            </ul>
++            <p>Values vary with milk and syrup choices.</p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="espresso-nutrition" popovertargetaction="show">Show Nutrition</button>
++          <div id="espresso-nutrition" popover aria-labelledby="espresso-nutrition-title">
++            <h3 id="espresso-nutrition-title">Dark Roast Espresso Nutrition</h3>
++            <p>Estimated per 1 fl oz shot, without milk or sugar:</p>
++            <ul class="nutrition">
++              <li>Calories: 5</li>
++              <li>Total fat: 0 g</li>
++              <li>Carbohydrates: 1 g</li>
++              <li>Total sugars: 0 g</li>
++              <li>Protein: 0 g</li>
++            </ul>
++            <button type="button" class="btn" popovertarget="espresso-nutrition" popovertargetaction="hide">Hide Nutrition</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

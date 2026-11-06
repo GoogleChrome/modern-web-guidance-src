@@ -1,0 +1,41 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,36 @@
++# Daily Grind – Web Performance Audit (2026-10-28)
++
++Static single-page site (`index.html`, no JavaScript, inline CSS) served by `statikk`.
++Audit was done by static analysis of the markup and network waterfall reasoning; no
++browser run was performed.
++
++## Findings and fixes
++
++| # | Metric | Finding (before) | Fix (after) |
++|---|--------|------------------|-------------|
++| 1 | **LCP** | Hero photo was a CSS `background-image`. The browser only discovers it after CSSOM build + layout, and CSS background images get **low** network priority. | Hero is now a real `<picture>`/`<img>` in the HTML with `fetchpriority="high"`, so the preload scanner requests it at the top of the document at high priority. |
++| 2 | **LCP** | Image came from `images.unsplash.com`: an extra DNS + TCP + TLS handshake on the critical path, with no `preconnect`. | Images are self-hosted under `/images/`, served on the same origin and connection as the HTML. |
++| 3 | **LCP / bytes** | One fixed 1350 px JPEG (~158 KB) for every device, including phones. On portrait phones `background-size: cover` also upscaled it heavily. | AVIF → WebP → JPEG negotiation via `<source type>`, five landscape widths (480–1920 w) and three portrait 3:4 crops (480–1080 w) with `srcset`/`sizes="100vw"`. Typical payloads: 1440 px desktop AVIF ≈ 64 KB, 1920 px AVIF ≈ 97 KB, 3× phone portrait AVIF ≈ 86 KB. |
++| 4 | **CLS** | No risk from the background image, but the new `<img>` could have introduced one. | `width`/`height` attributes plus absolute positioning (`inset: 0; object-fit: cover`) inside an isolated `.hero`, so the photo occupies no flow space and can never shift the heading or CTA. `min-height: 60svh` (with `60vh` fallback) avoids mobile URL-bar height jumps. |
++| 5 | **Perceived load** | Hero area was blank until the photo arrived. | Solid dark `--hero-placeholder` background behind the image and overlay. |
++| 6 | **Fonts** | `Segoe UI, Tahoma, …` stack, no web fonts (already good). | Leads with `system-ui` so every OS gets its native UI font; still zero font bytes and no swap-related shift. |
++| 7 | **Requests** | No favicon declared → browsers request `/favicon.ico` and get a 404 on every load. | Inline SVG `data:` favicon; zero extra requests. |
++| 8 | **INP** | No JavaScript, no long tasks. Nothing to fix. | Added `prefers-reduced-motion` guard for the hover transitions. |
++| 9 | **Rendering** | Page is small; `content-visibility`/containment would add overhead without benefit. | Intentionally **not** applied. |
++| 10 | **Hygiene** | Inline `style=""` on the section heading; no `meta description`/`theme-color`. | Moved to a class; added both meta tags. |
++
++## Not changed (needs server/infra, outside this repo)
++
++- **Cache headers**: serve `/images/*` with `Cache-Control: public, max-age=31536000, immutable`
++  and the HTML with `no-cache` (not `no-store`, which disables bfcache).
++- **Compression**: enable Brotli/gzip for HTML on the production server.
++- **Speculation Rules** prefetch for `/menu`, `/locations`, etc. was skipped because those
++  routes do not exist in this repo; add once they do.
++
++## Verification performed
++
++- Every `images/…` path referenced in `index.html` exists on disk (18 files, ~1.5 MB total,
++  but any single visitor downloads exactly one of them).
++- Tag-balance check of the HTML passed. `html-validate` could not be installed in the
++  sandbox, so full validation was not run.
++- No dev/preview server was started, per instructions.

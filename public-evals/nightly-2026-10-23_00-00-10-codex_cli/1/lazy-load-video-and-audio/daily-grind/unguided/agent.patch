@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..4dbd5a6 100644
+--- a/index.html
++++ b/index.html
+@@ -74,18 +74,15 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: var(--primary);
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px max(20px, calc((100vw - 1060px) / 2));
+     }
+ 
+     .hero h1 {
+@@ -135,6 +132,74 @@
+       background: #3e2723;
+     }
+ 
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .media-section {
++      margin-top: 80px;
++    }
++
++    .media-section > p {
++      margin: 8px 0 24px;
++      max-width: 65ch;
++    }
++
++    .media-player {
++      min-width: 0;
++      text-align: left;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: contain;
++      background: #241a16;
++      border-radius: 8px;
++    }
++
++    audio {
++      display: block;
++      width: 100%;
++      margin: 24px 0 16px;
++    }
++
++    figcaption, .media-credit {
++      font-size: 0.85rem;
++      margin-top: 10px;
++    }
++
++    .media-credit a, figcaption a {
++      color: inherit;
++      text-underline-offset: 3px;
++    }
++
++    .podcast {
++      background: var(--secondary);
++      padding: 32px;
++      border-radius: 8px;
++    }
++
++    .eyebrow {
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 8px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero { grid-template-columns: 1fr; gap: 24px; }
++      .hero h1 { font-size: 2.3rem; }
++      .media-section { margin-top: 56px; }
++      .podcast { padding: 24px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,9 +234,21 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <p class="eyebrow">A little ritual. A better morning.</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure class="media-player">
++      <video controls muted playsinline preload="none" width="1920" height="1080"
++        aria-label="A moment of coffee craft" data-lazy-media
++        data-poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;q=80">
++        <source data-src="https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4" type="video/mp4">
++        Your browser does not support video playback.
++      </video>
++      <figcaption>A moment of coffee craft. Silent stock footage from <a href="https://www.pexels.com/video/3195394/">Pexels</a>.</figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +272,32 @@
+         </div>
+       </div>
+     </section>
++    <section class="media-section" aria-labelledby="roasting-title">
++      <p class="eyebrow">From bean to brew</p>
++      <h2 id="roasting-title">The art of the roast</h2>
++      <p>Go a little closer. Watch coffee beans turn in the roaster, where time and heat bring out their character.</p>
++      <figure class="media-player">
++        <video controls muted playsinline preload="none" width="1080" height="1920"
++          aria-label="Close-up of coffee beans turning in a roaster" data-lazy-media
++          data-poster="https://images.pexels.com/videos/18173447/arabica-coffee-coffee-beans-coffee-roasters-colombia-18173447.jpeg?auto=compress&amp;w=960">
++          <source data-src="https://videos.pexels.com/video-files/18173447/18173447-hd_1080_1920_60fps.mp4" type="video/mp4">
++          Your browser does not support video playback.
++        </video>
++        <figcaption>Silent footage of coffee roasting by <a href="https://www.pexels.com/video/coffee-roasting-18173447/">Christian Dala / Pexels</a>.</figcaption>
++      </figure>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <p class="eyebrow">The coffee break · Featured podcast</p>
++      <h2 id="podcast-title">Home Coffee Roasting, part 1</h2>
++      <p>Pour a cup and join dnt for a conversation about what it’s like to roast coffee at home, from Hacker Public Radio.</p>
++      <audio controls preload="none" aria-labelledby="podcast-title" data-lazy-media>
++        <source data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=/eps/hpr3563/hpr3563.mp3" type="audio/mpeg">
++        Your browser does not support audio playback.
++      </audio>
++      <p class="media-credit"><a href="https://hackerpublicradio.org/eps/hpr3563/index.html">Episode notes &amp; original recording</a> · By dnt, Hacker Public Radio · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></p>
++    </section>
++    <noscript><p>Enable JavaScript to use these media players, or follow the video credits and episode link to watch and listen on the original sites.</p></noscript>
+   </main>
+ 
+   <footer>
+@@ -207,6 +310,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const players = [...document.querySelectorAll('[data-lazy-media]')];
++      const loadPlayer = (player) => {
++        if (!player.hasAttribute('data-lazy-media')) return;
++        player.removeAttribute('data-lazy-media');
++        if (player.dataset.poster) {
++          player.poster = player.dataset.poster;
++          delete player.dataset.poster;
++        }
++        player.querySelectorAll('source[data-src]').forEach((source) => {
++          source.src = source.dataset.src;
++          delete source.dataset.src;
++        });
++        // Metadata is allowed only after the player approaches the viewport.
++        player.preload = 'metadata';
++        player.load();
++      };
++
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              loadPlayer(entry.target);
++              observer.unobserve(entry.target);
++            }
++          });
++        }, { rootMargin: '200px 0px', threshold: 0 });
++        players.forEach((player) => observer.observe(player));
++      } else {
++        // Retain deferred downloads in browsers without IntersectionObserver.
++        const checkPosition = () => {
++          players.filter((player) => player.hasAttribute('data-lazy-media')).forEach((player) => {
++            const rect = player.getBoundingClientRect();
++            if (rect.bottom >= -200 && rect.top <= window.innerHeight + 200) loadPlayer(player);
++          });
++          if (players.every((player) => !player.hasAttribute('data-lazy-media'))) {
++            window.removeEventListener('scroll', checkPosition);
++            window.removeEventListener('resize', checkPosition);
++          }
++        };
++        window.addEventListener('scroll', checkPosition, { passive: true });
++        window.addEventListener('resize', checkPosition);
++        checkPosition();
++      }
++      // Keyboard users can activate a focused player before its observer fires.
++      players.forEach((player) => player.addEventListener('focus', () => loadPlayer(player), { once: true }));
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,82 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Script performance profiler. Keep this first in <head> so it observes everything.
++    // Results: console groups "[perf]" plus window.__scriptPerf.report() for a summary table.
++    (function () {
++      var SLOW_LOAD_MS = 200;
++      var data = { resources: [], longTasks: [], frames: [] };
++      window.__scriptPerf = data;
++
++      function observe(type, cb, opts) {
++        try {
++          new PerformanceObserver(function (list) { list.getEntries().forEach(cb); })
++            .observe(Object.assign({ type: type, buffered: true }, opts));
++        } catch (e) { /* entry type unsupported in this browser */ }
++      }
++
++      // 1. Network/load cost of each script file
++      observe('resource', function (e) {
++        if (e.initiatorType !== 'script') return;
++        var row = {
++          url: e.name,
++          thirdParty: new URL(e.name, location.href).origin !== location.origin,
++          durationMs: Math.round(e.duration),
++          transferKB: +(e.transferSize / 1024).toFixed(1),
++          blocking: e.renderBlockingStatus === 'blocking'
++        };
++        data.resources.push(row);
++        if (row.durationMs > SLOW_LOAD_MS || row.blocking) {
++          console.warn('[perf] slow/blocking script', row);
++        }
++      });
++
++      // 2. Main-thread blocking (>50ms tasks)
++      observe('longtask', function (e) {
++        data.longTasks.push({ startMs: Math.round(e.startTime), durationMs: Math.round(e.duration) });
++      });
++
++      // 3. Long Animation Frames: attributes jank to specific script URLs/functions (Chromium)
++      observe('long-animation-frame', function (e) {
++        e.scripts.forEach(function (s) {
++          var row = {
++            source: s.sourceURL || '(inline)',
++            fn: s.sourceFunctionName || '(anonymous)',
++            trigger: s.invoker,
++            durationMs: Math.round(s.duration),
++            forcedLayoutMs: Math.round(s.forcedStyleAndLayoutDuration)
++          };
++          data.frames.push(row);
++          console.warn('[perf] script blocking a frame', row);
++        });
++      }, {});
++
++      // Summarize per-script cost; call __scriptPerf.report() any time, or it runs after load.
++      data.report = function () {
++        var byScript = {};
++        data.frames.forEach(function (f) {
++          var r = byScript[f.source] || (byScript[f.source] = { script: f.source, blockingMs: 0, calls: 0 });
++          r.blockingMs += f.durationMs;
++          r.calls++;
++        });
++        var blocking = Object.keys(byScript).map(function (k) { return byScript[k]; })
++          .sort(function (a, b) { return b.blockingMs - a.blockingMs; });
++        console.group('[perf] script report');
++        console.log('Slowest script loads');
++        console.table(data.resources.slice().sort(function (a, b) { return b.durationMs - a.durationMs; }));
++        console.log('Scripts blocking the main thread (worst first)');
++        console.table(blocking);
++        console.log('Long tasks: ' + data.longTasks.length +
++          ', total ' + data.longTasks.reduce(function (n, t) { return n + t.durationMs; }, 0) + 'ms');
++        console.groupEnd();
++        return blocking;
++      };
++      window.addEventListener('load', function () { setTimeout(data.report, 3000); });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

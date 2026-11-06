@@ -1,0 +1,336 @@
+diff --git a/README.md b/README.md
+index 4479b53..d9a7c42 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,18 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Navigation cache
++
++The client router retains up to five recently visited views, including the active
++view. Inactive views use `content-visibility: hidden`, `inert`, and `aria-hidden`
++to preserve their DOM and component state while skipping rendering and interaction.
++Browsers without `content-visibility` fall back to `display: none`.
++
++Routes are keyed by pathname and query string; fragments share a view. Astro still
++fetches navigation responses and manages titles, history, and scroll restoration.
++Revisiting a retained view reuses its content and local state until eviction or a
++full reload. The least recently used view is removed when the limit is exceeded.
++Sign-in and sign-up use `cacheView={false}` to discard form state on departure.
++
++Run `pnpm test` for automated DOM tests and `pnpm build` for the production build.
+diff --git a/package.json b/package.json
+index 2e1f2e8..cfd3868 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -23,7 +24,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "jsdom": "^30.1.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..f3b1dab 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -45,11 +46,21 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-cache transition:persist="view-cache">
++          <div
++            class="spa-view"
++            data-view-key={Astro.url.pathname + Astro.url.search}
++            data-cache-view={String(cacheView)}
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..5456064
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,64 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Includes the active view. Map insertion order tracks least-recently-used views.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++
++function remember(view: HTMLElement) {
++  const key = view.dataset.viewKey!;
++  views.delete(key);
++  views.set(key, view);
++}
++
++const initialView = document.querySelector<HTMLElement>("[data-view-cache] > .spa-view");
++if (initialView) remember(initialView);
++
++document.addEventListener("astro:before-swap", (event: TransitionBeforeSwapEvent) => {
++  const host = document.querySelector<HTMLElement>("[data-view-cache]");
++  const incoming = event.newDocument.querySelector<HTMLElement>("[data-view-cache] > .spa-view");
++  if (!host || !incoming) {
++    // Other layouts use Astro's normal swap and end this cache's lifetime.
++    views.clear();
++    return;
++  }
++  const current = host.querySelector<HTMLElement>(".spa-view:not([data-inactive])");
++  if (current) remember(current);
++
++  const swap = event.swap;
++  event.swap = () => {
++    // The normal Astro swap preserves the host and its islands, and handles
++    // document metadata, scripts, history, and route announcements as usual.
++    swap();
++
++    const key = incoming.dataset.viewKey!;
++    const target = views.get(key) ?? incoming;
++    for (const view of views.values()) {
++      if (view === target) continue;
++      if (view.dataset.cacheView === "false") {
++        views.delete(view.dataset.viewKey!);
++        view.remove();
++        continue;
++      }
++      view.setAttribute("data-inactive", "");
++      view.setAttribute("aria-hidden", "true");
++      view.inert = true;
++      // Retained media should not continue playing while its view is inactive.
++      view.querySelectorAll<HTMLMediaElement>("audio, video").forEach((media) => media.pause());
++    }
++
++    if (target === incoming) host.append(target);
++    target.removeAttribute("data-inactive");
++    target.removeAttribute("aria-hidden");
++    target.inert = false;
++    remember(target);
++
++    while (views.size > MAX_VIEWS) {
++      const oldestKey = views.keys().next().value!;
++      views.get(oldestKey)!.remove();
++      views.delete(oldestKey);
++    }
++
++    // Astro restores scroll after this callback, including Back/Forward and hashes.
++    target.focus({ preventScroll: true });
++  };
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ee5515e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,20 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Retain inactive views' DOM and rendering state without reserving page space. */
++.spa-view[data-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++  block-size: 0;
++  overflow: clip;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view[data-inactive] {
++    display: none;
++  }
++}
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..f56719c
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,122 @@
++import assert from "node:assert/strict";
++import { afterEach, test } from "node:test";
++import { JSDOM } from "jsdom";
++
++let dom;
++let instance = 0;
++afterEach(() => {
++  dom?.window.close();
++  delete globalThis.document;
++});
++
++function markup(key, cache = true) {
++  return `<main data-view-cache data-astro-transition-persist="view-cache">
++    <div class="spa-view" data-view-key="${key}" data-cache-view="${cache}" tabindex="-1">
++      <input aria-label="Draft"><button>Count</button>
++    </div>
++  </main>`;
++}
++
++async function setup(key = "/devtools-times/") {
++  dom = new JSDOM(markup(key), { url: "https://example.com/devtools-times/" });
++  globalThis.document = dom.window.document;
++  // Isolate each cache instance while importing the production implementation.
++  await import(`../src/scripts/view-cache.ts?test=${instance++}`);
++}
++
++function navigate(key, cache = true) {
++  const newDocument = new dom.window.DOMParser().parseFromString(markup(key, cache), "text/html");
++  const fresh = newDocument.querySelector(".spa-view");
++  const event = new dom.window.Event("astro:before-swap");
++  event.newDocument = newDocument;
++  let swaps = 0;
++  // Model Astro's documented persistence contract: the old host replaces the
++  // fetched placeholder, retaining its existing subtree during the body swap.
++  event.swap = () => {
++    swaps++;
++    const host = document.querySelector("[data-view-cache]");
++    newDocument.querySelector("[data-view-cache]").replaceWith(host);
++    document.body.replaceWith(newDocument.body);
++  };
++  document.dispatchEvent(event);
++  event.swap();
++  assert.equal(swaps, 1, "Astro's original swap still runs exactly once");
++  return { fresh, active: document.querySelector(".spa-view:not([data-inactive])") };
++}
++
++test("revisiting restores the exact nodes, input values, and event listeners", async () => {
++  await setup();
++  const original = document.querySelector(".spa-view");
++  const input = original.querySelector("input");
++  input.value = "Keep this draft";
++  let clicks = 0;
++  original.querySelector("button").addEventListener("click", () => clicks++);
++
++  const { active: next } = navigate("/devtools-times/reports");
++  assert.equal(original.isConnected, true);
++  assert.equal(original.inert, true);
++  assert.equal(original.getAttribute("aria-hidden"), "true");
++  assert.equal(document.activeElement, next);
++
++  const { active, fresh } = navigate("/devtools-times/");
++  assert.equal(active, original);
++  assert.equal(active.inert, false);
++  assert.equal(active.hasAttribute("aria-hidden"), false);
++  assert.equal(document.activeElement, original);
++  assert.equal(input.value, "Keep this draft");
++  active.querySelector("button").click();
++  assert.equal(clicks, 1);
++  assert.equal(fresh.isConnected, false);
++  assert.equal(document.querySelectorAll(".spa-view:not([data-inactive])").length, 1);
++});
++
++test("evicts the least recently used view and rebuilds it on its next visit", async () => {
++  await setup("/a");
++  const oldest = document.querySelector(".spa-view");
++  const b = navigate("/b").active;
++  navigate("/c");
++  navigate("/d");
++  navigate("/e");
++  navigate("/b"); // Refresh B's recency, so A is evicted first.
++  navigate("/f");
++  assert.equal(document.querySelectorAll(".spa-view").length, 5);
++  assert.equal(oldest.isConnected, false);
++  assert.equal(b.isConnected, true);
++  const { active, fresh } = navigate("/a");
++  assert.equal(active, fresh);
++  assert.notEqual(active, oldest);
++});
++
++test("keeps query variants separate and reuses the same route for fragment navigation", async () => {
++  await setup("/reports?sort=new");
++  const first = document.querySelector(".spa-view");
++  assert.notEqual(navigate("/reports?sort=old").active, first);
++  assert.equal(navigate("/reports?sort=new").active, first);
++  assert.equal(navigate("/reports?sort=new").active, first);
++  assert.equal(document.querySelectorAll(".spa-view").length, 2);
++});
++
++test("discards opted-out forms after leaving and pauses inactive media", async () => {
++  await setup("/a");
++  const original = document.querySelector(".spa-view");
++  const video = document.createElement("video");
++  let paused = 0;
++  video.pause = () => paused++;
++  original.append(video);
++  const form = navigate("/signin", false).active;
++  form.querySelector("input").value = "secret";
++  assert.equal(paused, 1);
++  navigate("/a");
++  assert.equal(form.isConnected, false);
++  assert.notEqual(navigate("/signin", false).active, form);
++});
++
++test("leaves Astro's swap untouched for pages without a cache host", async () => {
++  await setup();
++  const event = new dom.window.Event("astro:before-swap");
++  event.newDocument = new dom.window.DOMParser().parseFromString("<p>Other layout</p>", "text/html");
++  const swap = () => {};
++  event.swap = swap;
++  document.dispatchEvent(event);
++  assert.equal(event.swap, swap);
++});

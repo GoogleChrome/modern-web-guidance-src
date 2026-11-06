@@ -1,0 +1,59 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..5216af8 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,26 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    /* Lock page scroll while a modal dialog is open. The viewport scroller
++       is the root element, so overflow must be set on <html>, not just <body>.
++       scrollbar-gutter keeps the layout from shifting when the scrollbar hides. */
++    html {
++      scrollbar-gutter: stable;
++    }
++
++    html.modal-open,
++    html:has(dialog[open]:modal) {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
++    /* Stop scroll chaining from the dialog to the page on touch/trackpad. */
+     dialog {
+-      overflow: visible;
++      overscroll-behavior: contain;
++      max-height: 90vh;
++      overflow: auto;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -230,10 +239,20 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNotice = document.getElementById("close-notice");
++
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      // Release the scroll lock however the dialog closes (button, Esc, form).
++      noticeDialog.addEventListener("close", () => {
++        document.documentElement.classList.remove("modal-open");
++      });
++
++      closeNotice?.addEventListener("click", () => noticeDialog.close());
++
++      // showModal() makes the dialog truly modal: backdrop, focus trap, inert page.
++      noticeDialog.showModal();
++      // Class fallback for browsers without :has() support.
++      document.documentElement.classList.add("modal-open");
+     }
+   </script>
+ </body>

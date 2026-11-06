@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,136 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f7f8f4">
++  <title>TypeLab — A little harmony for your type</title>
++  <style>
++    :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #252d28; background: #f7f8f4; }
++    * { box-sizing: border-box; }
++    body { margin: 0; }
++    button, select, input { font: inherit; }
++    button, select, input[type="range"] { cursor: pointer; }
++    button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #79ac80; outline-offset: 4px; }
++    .shell { width: min(1120px, calc(100% - 64px)); margin-inline: auto; }
++    header { display: flex; align-items: center; justify-content: space-between; height: 96px; border-bottom: 1px solid #dfe3da; }
++    .brand { display: flex; gap: 10px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -1px; }
++    .brand-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: #2c4934; color: white; font: 22px Georgia, serif; }
++    .header-note { color: #798077; font-size: 12px; }
++    .header-note span { display: inline-block; width: 7px; height: 7px; background: #74947a; border-radius: 50%; margin-right: 7px; }
++    main { padding-block: 62px 45px; }
++    .eyebrow { display: flex; align-items: center; gap: 9px; color: #58705a; font-size: 11px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; }
++    .eyebrow::before { content: ''; width: 20px; height: 1px; background: currentColor; }
++    h1 { font-size: clamp(38px, 5vw, 62px); line-height: 1.08; letter-spacing: -3px; font-weight: 500; margin: 22px 0 18px; }
++    h1 em { font-family: Georgia, serif; font-weight: 400; color: #59725b; }
++    .intro { max-width: 535px; color: #737a71; font-size: 15px; line-height: 1.75; margin: 0; }
++    .workspace-heading { display: flex; align-items: center; justify-content: space-between; margin: 45px 0 15px; }
++    .workspace-heading h2 { font-size: 13px; font-weight: 600; margin: 0; }
++    .badge { font: 10px 'Courier New', monospace; padding: 6px 9px; border: 1px solid #dce2d7; border-radius: 5px; color: #6e7869; }
++    .grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 22px; }
++    .card { background: #fff; border: 1px solid #dfe3da; border-radius: 12px; overflow: hidden; }
++    .card-top { padding: 23px 25px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
++    .card h3 { margin: 0 0 7px; font-size: 15px; letter-spacing: -.3px; font-weight: 600; }
++    .card-subtitle { margin: 0; font-size: 12px; color: #81877d; }
++    .number { color: #92998c; font: 11px 'Courier New', monospace; padding-top: 3px; }
++    .preview { margin: 0 15px; min-height: 229px; padding: 34px 28px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; background: #f1f4ed; }
++    .preview-label { display: flex; gap: 7px; align-items: center; color: #74816c; font-size: 9px; letter-spacing: 1.6px; font-weight: 600; text-transform: uppercase; margin-bottom: 24px; }
++    .preview-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #7c956c; }
++    #mixed-fonts-container { font-family: Arial, Helvetica, sans-serif; font-size: 24px; line-height: 1.8; font-size-adjust: from-font; margin: 0; letter-spacing: -.6px; }
++    #mixed-fonts-container code { font-family: 'Courier New', Courier, monospace; padding: 3px 6px; border-radius: 4px; background: #dfe7d9; color: #395737; font-size: 1em; letter-spacing: -1px; box-decoration-break: clone; }
++    #independent-theme-container { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-size-adjust: 0.5; color: #eceddf; background: #273d30; }
++    #independent-theme-container .preview-label { color: #a3b69a; font-family: Arial, sans-serif; }
++    #independent-theme-container .preview-label::before { background: #b5cb9d; }
++    .theme-sample { font-size: 1.25em; line-height: 1.55; margin: 0; letter-spacing: -.5px; }
++    .theme-caption { font: 11px Arial, sans-serif; color: #a5b39e; margin: 17px 0 0; }
++    .controls { display: flex; justify-content: space-between; gap: 14px; padding: 21px 25px; align-items: center; min-height: 81px; }
++    .control { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #737a6e; }
++    select { max-width: 150px; border: 1px solid #dce2d6; border-radius: 5px; padding: 7px 9px; background: white; color: #4b5648; font-size: 11px; }
++    .switch-label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #66725f; cursor: pointer; }
++    .switch-label input { appearance: none; width: 28px; height: 16px; border-radius: 20px; background: #b9c1b4; margin: 0; position: relative; cursor: pointer; }
++    .switch-label input:checked { background: #52744b; }
++    .switch-label input::after { content: ''; position: absolute; width: 10px; height: 10px; top: 3px; left: 3px; background: white; border-radius: 50%; transition: transform .15s; }
++    .switch-label input:checked::after { transform: translateX(12px); }
++    input[type="range"] { accent-color: #56734c; width: 100px; }
++    output { color: #3f5538; font: 11px 'Courier New', monospace; min-width: 27px; }
++    .code-strip { margin: 0; padding: 17px 25px; border-top: 1px solid #eef0eb; color: #737c70; font: 11px/1.5 'Courier New', monospace; background: #fcfcfa; overflow-x: auto; }
++    .code-strip span { color: #41693e; }
++    .explainer { display: flex; gap: 16px; margin-top: 24px; padding: 23px 25px; border: 1px solid #dfe3da; border-radius: 9px; }
++    .info-icon { display: grid; place-items: center; border: 1px solid #a9b59e; border-radius: 50%; width: 18px; height: 18px; flex: 0 0 18px; font: italic 12px Georgia, serif; color: #64795a; }
++    .explainer h2 { font-size: 12px; font-weight: 600; margin: 2px 0 8px; }
++    .explainer p { color: #7c8376; font-size: 12px; line-height: 1.8; margin: 0; max-width: 870px; }
++    .explainer code { font-size: 11px; color: #5e7055; }
++    footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #dfe3da; padding: 23px 0 28px; font-size: 11px; color: #8b9186; }
++    .footer-mark { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: #6b7a60; }
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container { line-height: 1.85; }
++      #mixed-fonts-container code { font-size: .95em; }
++    }
++    @supports not (font-size-adjust: 0.5) {
++      #independent-theme-container { font-size: 25px; line-height: 1.6; }
++    }
++    @media (max-width: 760px) {
++      .shell { width: calc(100% - 36px); }
++      header { height: 76px; }
++      main { padding-top: 40px; }
++      h1 { letter-spacing: -1.8px; }
++      .grid { grid-template-columns: 1fr; }
++      .header-note { font-size: 10px; }
++      .controls { flex-wrap: wrap; }
++      .preview { padding: 30px 22px; }
++      footer { gap: 15px; font-size: 10px; }
++    }
++    @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; } }
++  </style>
++</head>
++<body>
++  <div class="shell">
++    <header>
++      <div class="brand"><span class="brand-icon" aria-hidden="true">t</span>typelab<span style="color:#829077">.</span></div>
++      <div class="header-note"><span></span>A small experiment in better type</div>
++    </header>
++    <main>
++      <div class="eyebrow">The typography playground</div>
++      <h1>Different fonts.<br><em>Same rhythm.</em></h1>
++      <p class="intro">Give every font a common ground. Explore how a little optical balance makes mixed type feel right at home.</p>
++      <div class="workspace-heading"><h2>Your font workspace</h2><span class="badge">CSS / font-size-adjust</span></div>
++      <div class="grid">
++        <section class="card" aria-labelledby="mixed-title">
++          <div class="card-top"><div><h3 id="mixed-title">A natural pairing</h3><p class="card-subtitle">Regular text meets inline code.</p></div><span class="number">01</span></div>
++          <div class="preview"><div class="preview-label">Mixed fonts · live preview</div><p id="mixed-fonts-container">Good ideas start with a little <code>hello, world</code> and grow from there.</p></div>
++          <div class="controls">
++            <label class="control">Typeface <select id="font-select"><option value="Arial, Helvetica, sans-serif">Sans serif</option><option value="Georgia, 'Times New Roman', serif">Serif</option><option value="Verdana, sans-serif">Verdana</option></select></label>
++            <label class="switch-label"><input id="normalize-toggle" type="checkbox" checked>Normalize height</label>
++          </div>
++          <pre class="code-strip">font-size-adjust: <span id="mixed-value">from-font</span>;</pre>
++        </section>
++        <section class="card" aria-labelledby="theme-title">
++          <div class="card-top"><div><h3 id="theme-title">A world of its own</h3><p class="card-subtitle">An independent theme. A consistent presence.</p></div><span class="number">02</span></div>
++          <div class="preview" id="independent-theme-container"><div class="preview-label">Independent theme</div><p class="theme-sample">A different character.<br>The same quiet balance.</p><p class="theme-caption">Serif, with a little more intention.</p></div>
++          <div class="controls"><label class="control" for="ratio">x-height ratio <input type="range" id="ratio" min="0.4" max="0.7" step="0.01" value="0.5"></label><output id="ratio-output" for="ratio">0.50</output></div>
++          <pre class="code-strip">font-size-adjust: <span id="theme-value">0.5</span>;</pre>
++        </section>
++      </div>
++      <aside class="explainer"><span class="info-icon" aria-hidden="true">i</span><div><h2>It's all in the x-height.</h2><p>Fonts at the same size don't always look the same size. <code>font-size-adjust</code> aligns their lowercase letter heights. Use <code>from-font</code> to follow the primary font automatically, or a number like <code>0.5</code> to give an independent theme its own proportions.</p></div></aside>
++    </main>
++    <footer><span>A little CSS. A lot more harmony.</span><span class="footer-mark">Made for the details.</span></footer>
++  </div>
++  <script>
++    const mixed = document.getElementById('mixed-fonts-container');
++    document.getElementById('font-select').addEventListener('change', (event) => {
++      mixed.style.fontFamily = event.target.value;
++    });
++    document.getElementById('normalize-toggle').addEventListener('change', (event) => {
++      const value = event.target.checked ? 'from-font' : 'none';
++      mixed.style.fontSizeAdjust = value;
++      document.getElementById('mixed-value').textContent = value;
++    });
++    document.getElementById('ratio').addEventListener('input', (event) => {
++      const value = event.target.value;
++      document.getElementById('independent-theme-container').style.fontSizeAdjust = value;
++      document.getElementById('ratio-output').value = Number(value).toFixed(2);
++      document.getElementById('theme-value').textContent = value;
++    });
++  </script>
++</body>
++</html>

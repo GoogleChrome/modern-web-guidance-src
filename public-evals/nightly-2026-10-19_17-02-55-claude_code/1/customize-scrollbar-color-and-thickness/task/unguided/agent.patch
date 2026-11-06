@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,51 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-log {
++      max-height: 300px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 6px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 3px;
++    }
++
++    .feedback-item {
++      padding: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++    }
++
++    .feedback-author {
++      display: block;
++      margin-top: 5px;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +237,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Customer Feedback</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-label="Customer feedback log">
++        <article class="feedback-item">
++          <p>"The Maple Oat Latte is the best thing to happen to my mornings. Cozy in a cup!"</p>
++          <span class="feedback-author">— Priya S.</span>
++        </article>
++        <article class="feedback-item">
++          <p>"Friendly baristas and the dark roast espresso really does deliver a morning boost."</p>
++          <span class="feedback-author">— Marcus T.</span>
++        </article>
++        <article class="feedback-item">
++          <p>"I'm obsessed with the cold brew. Smooth, never bitter, and worth the 18-hour wait."</p>
++          <span class="feedback-author">— Elena R.</span>
++        </article>
++        <article class="feedback-item">
++          <p>"Love that the beans are ethically sourced. My go-to spot for remote work."</p>
++          <span class="feedback-author">— Jamal W.</span>
++        </article>
++        <article class="feedback-item">
++          <p>"The rewards program is generous and the mobile ordering saves me so much time."</p>
++          <span class="feedback-author">— Hannah L.</span>
++        </article>
++        <article class="feedback-item">
++          <p>"Great atmosphere, even better coffee. I bring every visitor here."</p>
++          <span class="feedback-author">— Diego M.</span>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

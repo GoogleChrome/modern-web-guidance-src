@@ -1,0 +1,664 @@
+diff --git a/index.html b/index.html
+index 66c9173..7fd6776 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,426 @@
+       background: #3e2723;
+     }
+ 
++    /* ===== Seasonal Favorites: drink cards ===== */
++    .drink-grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
++      gap: 24px;
++    }
++
++    /* The outer element is the size container; everything inside reacts to
++       the card's own width rather than the viewport. */
++    .drink-card {
++      container: drink / inline-size;
++    }
++
++    /* Featured card spans the full row when the grid has room for 2+ columns. */
++    @media (min-width: 600px) {
++      .drink-card--featured {
++        grid-column: 1 / -1;
++      }
++    }
++
++    .drink {
++      --pad: clamp(12px, 5cqi, 24px);
++      height: 100%;
++      display: grid;
++      grid-template-rows: auto 1fr;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      border: 2px solid transparent;
++      transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
++    }
++
++    .drink:hover,
++    .drink:focus-within {
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.15);
++      transform: translateY(-2px);
++    }
++
++    .drink__media {
++      position: relative;
++      aspect-ratio: 4 / 3;
++      background: var(--secondary);
++      overflow: hidden;
++    }
++
++    .drink__media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s;
++    }
++
++    .drink:hover .drink__media img {
++      transform: scale(1.04);
++    }
++
++    .drink__badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.05em;
++      text-transform: uppercase;
++      padding: 3px 10px;
++      border-radius: 999px;
++    }
++
++    .drink__body {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      padding: var(--pad);
++    }
++
++    .drink__header {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: baseline;
++      justify-content: space-between;
++      gap: 4px 12px;
++    }
++
++    .drink__title {
++      color: var(--primary);
++      font-size: clamp(1.05rem, 4.5cqi, 1.5rem);
++      line-height: 1.25;
++    }
++
++    .drink__price {
++      font-weight: 700;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++      white-space: nowrap;
++    }
++
++    .drink__desc {
++      font-size: 0.95rem;
++      color: #5d4037;
++    }
++
++    .drink__notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++    }
++
++    .drink__notes li {
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    .drink__form {
++      margin-top: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    /* Size picker: segmented control built from radio buttons */
++    .size-picker {
++      border: 0;
++      min-width: 0;
++    }
++
++    .size-picker legend {
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .size-picker__options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 4px;
++      background: #efebe9;
++      padding: 4px;
++      border-radius: 8px;
++    }
++
++    .size-option {
++      position: relative;
++    }
++
++    .size-option input {
++      position: absolute;
++      opacity: 0;
++      inset: 0;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .size-option span {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 6px 4px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      line-height: 1.2;
++      transition: background 0.2s, color 0.2s;
++      pointer-events: none;
++    }
++
++    .size-option small {
++      font-weight: 400;
++      font-size: 0.72rem;
++      opacity: 0.8;
++    }
++
++    .size-option .size-short {
++      display: none;
++    }
++
++    .size-option input:hover + span {
++      background: rgba(255, 255, 255, 0.6);
++    }
++
++    .size-option input:checked + span {
++      background: var(--primary);
++      color: white;
++    }
++
++    .size-option input:focus-visible + span {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .drink__add {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      width: 100%;
++      margin-top: 0;
++      padding: 10px 16px;
++      border-radius: 8px;
++    }
++
++    .drink__add:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .drink__add.is-added {
++      background: #2e7d32;
++    }
++
++    .drink__link {
++      font-size: 0.85rem;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    /* --- Container-size adaptations --- */
++
++    /* Very narrow cards: shorter image, abbreviated size labels, hide extras */
++    @container drink (max-width: 239px) {
++      .drink__media {
++        aspect-ratio: 16 / 9;
++      }
++
++      .size-option small {
++        display: none;
++      }
++
++      /* visually hidden but still announced by screen readers */
++      .size-option .size-long {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        overflow: hidden;
++        clip: rect(0 0 0 0);
++        white-space: nowrap;
++      }
++
++      .size-option .size-short {
++        display: inline;
++      }
++
++      .drink__notes {
++        display: none;
++      }
++
++      .drink__header {
++        flex-direction: column;
++      }
++    }
++
++    /* Medium cards: put size picker and add button side by side */
++    @container drink (min-width: 360px) and (max-width: 519px) {
++      .drink__form {
++        display: grid;
++        grid-template-columns: 1fr auto;
++        align-items: end;
++      }
++
++      .drink__add {
++        width: auto;
++        height: 100%;
++        max-height: 52px;
++      }
++
++      .drink__link {
++        grid-column: 1 / -1;
++      }
++    }
++
++    /* Wide cards: horizontal layout, photo on the left */
++    @container drink (min-width: 520px) {
++      .drink {
++        grid-template-columns: minmax(200px, 40%) 1fr;
++        grid-template-rows: 1fr;
++      }
++
++      .drink__media {
++        aspect-ratio: auto;
++        min-height: 100%;
++      }
++
++      .drink__desc {
++        font-size: 1rem;
++      }
++
++      .drink__form {
++        display: grid;
++        grid-template-columns: 1fr auto;
++        align-items: end;
++      }
++
++      .drink__add {
++        width: auto;
++        padding-inline: 24px;
++        height: 100%;
++        max-height: 52px;
++      }
++
++      .drink__link {
++        grid-column: 1 / -1;
++        text-align: left;
++      }
++    }
++
++    /* Extra-wide cards: more generous photo and spacing */
++    @container drink (min-width: 820px) {
++      .drink {
++        grid-template-columns: 45% 1fr;
++      }
++
++      .drink__body {
++        gap: 14px;
++        justify-content: center;
++      }
++    }
++
++    /* --- Content-based adaptations --- */
++
++    /* Cards that carry a badge get an accent outline */
++    .drink:has(.drink__badge) {
++      border-color: var(--accent);
++    }
++
++    /* If the photo is missing or fails to load, collapse the media area */
++    .drink:not(:has(.drink__media img)) {
++      grid-template-columns: 1fr;
++      grid-template-rows: auto 1fr;
++    }
++
++    .drink:not(:has(.drink__media img)) .drink__media {
++      aspect-ratio: auto;
++      min-height: 0;
++      background: linear-gradient(135deg, var(--primary), #6d4c41);
++      padding: 14px var(--pad);
++    }
++
++    .drink:not(:has(.drink__media img)) .drink__badge {
++      position: static;
++    }
++
++    .drink:not(:has(.drink__media img)):not(:has(.drink__badge)) .drink__media {
++      display: none;
++    }
++
++    /* Cards with tasting notes keep the description tighter */
++    .drink:has(.drink__notes) .drink__desc {
++      margin-bottom: -2px;
++    }
++
++    /* Highlight the large size with a subtle "best value" cue */
++    .drink:has(.size-option input[value="large"]:checked) .drink__price::after {
++      content: " · best value";
++      font-weight: 400;
++      font-size: 0.75rem;
++      color: #2e7d32;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .drink,
++      .drink__media img {
++        transition: none;
++      }
++
++      .drink:hover,
++      .drink:focus-within {
++        transform: none;
++      }
++
++      .drink:hover .drink__media img {
++        transform: none;
++      }
++    }
++
++    /* Order count in nav + toast */
++    .order-count {
++      display: inline-block;
++      min-width: 1.4em;
++      padding: 0 6px;
++      margin-left: 4px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-align: center;
++    }
++
++    .order-toast {
++      position: fixed;
++      left: 50%;
++      bottom: 24px;
++      transform: translate(-50%, 20px);
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      opacity: 0;
++      pointer-events: none;
++      transition: opacity 0.25s, transform 0.25s;
++      z-index: 1100;
++    }
++
++    .order-toast.is-visible {
++      opacity: 1;
++      transform: translate(-50%, 0);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,6 +583,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/order-online">My Order <span class="order-count" data-order-count aria-label="items in order">0</span></a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -177,22 +598,120 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="grid drink-grid">
++        <article class="drink-card drink-card--featured">
++          <div class="drink">
++            <div class="drink__media">
++              <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=800&q=75"
++                alt="Latte with leaf latte art in a white cup on a saucer" loading="lazy" width="800" height="600">
++              <span class="drink__badge">Seasonal</span>
++            </div>
++            <div class="drink__body">
++              <header class="drink__header">
++                <h3 class="drink__title" id="drink-maple-oat-latte">Maple Oat Latte</h3>
++                <span class="drink__price" data-price-display aria-live="polite">$5.25</span>
++              </header>
++              <p class="drink__desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <ul class="drink__notes" aria-label="Tasting notes"><li>Maple</li><li>Toasted oat</li><li>Vanilla</li></ul>
++              <form class="drink__form" action="/order/add" method="post" aria-labelledby="drink-maple-oat-latte">
++                <input type="hidden" name="item" value="maple-oat-latte">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                  <label class="size-option">
++                    <input type="radio" name="size" value="small" data-price="4.75">
++                    <span><span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span><small>12 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="medium" data-price="5.25" checked>
++                    <span><span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span><small>16 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="large" data-price="5.95">
++                    <span><span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span><small>20 oz</small></span>
++                  </label>
++                  </div>
++                </fieldset>
++                <button type="submit" class="btn drink__add">Add to Order</button>
++                <a href="/menu/seasonal" class="drink__link">View details</a>
++              </form>
++            </div>
++          </div>
++        </article>
++        <article class="drink-card">
++          <div class="drink">
++            <div class="drink__media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=75"
++                alt="Espresso with rich crema in a white cup" loading="lazy" width="800" height="600">
++            </div>
++            <div class="drink__body">
++              <header class="drink__header">
++                <h3 class="drink__title" id="drink-dark-roast-espresso">Dark Roast Espresso</h3>
++                <span class="drink__price" data-price-display aria-live="polite">$3.75</span>
++              </header>
++              <p class="drink__desc">Bold, smokey, and perfect for a morning boost.</p>
++              <form class="drink__form" action="/order/add" method="post" aria-labelledby="drink-dark-roast-espresso">
++                <input type="hidden" name="item" value="dark-roast-espresso">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                  <label class="size-option">
++                    <input type="radio" name="size" value="small" data-price="3.25">
++                    <span><span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span><small>12 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="medium" data-price="3.75" checked>
++                    <span><span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span><small>16 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="large" data-price="4.25">
++                    <span><span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span><small>20 oz</small></span>
++                  </label>
++                  </div>
++                </fieldset>
++                <button type="submit" class="btn drink__add">Add to Order</button>
++                <a href="/menu/espresso" class="drink__link">View details</a>
++              </form>
++            </div>
++          </div>
++        </article>
++        <article class="drink-card">
++          <div class="drink">
++            <div class="drink__media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=75"
++                alt="Glass of iced cold brew coffee with cream swirling in" loading="lazy" width="800" height="600">
++            </div>
++            <div class="drink__body">
++              <header class="drink__header">
++                <h3 class="drink__title" id="drink-cold-brew">Cold Brew</h3>
++                <span class="drink__price" data-price-display aria-live="polite">$4.75</span>
++              </header>
++              <p class="drink__desc">Steeped for 18 hours for maximum smoothness.</p>
++              <form class="drink__form" action="/order/add" method="post" aria-labelledby="drink-cold-brew">
++                <input type="hidden" name="item" value="cold-brew">
++                <fieldset class="size-picker">
++                  <legend>Size</legend>
++                  <div class="size-picker__options">
++                  <label class="size-option">
++                    <input type="radio" name="size" value="small" data-price="4.25">
++                    <span><span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span><small>12 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="medium" data-price="4.75" checked>
++                    <span><span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span><small>16 oz</small></span>
++                  </label>
++                  <label class="size-option">
++                    <input type="radio" name="size" value="large" data-price="5.25">
++                    <span><span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span><small>20 oz</small></span>
++                  </label>
++                  </div>
++                </fieldset>
++                <button type="submit" class="btn drink__add">Add to Order</button>
++                <a href="/menu/cold-brew" class="drink__link">View details</a>
++              </form>
++            </div>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +726,87 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="order-toast" role="status" aria-live="polite" data-order-toast></div>
++
++  <script>
++    (function () {
++      var STORAGE_KEY = 'dailyGrindOrder';
++      var countEl = document.querySelector('[data-order-count]');
++      var toast = document.querySelector('[data-order-toast]');
++      var toastTimer;
++
++      function loadOrder() {
++        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
++        catch (e) { return []; }
++      }
++
++      function saveOrder(order) {
++        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)); } catch (e) { /* storage unavailable */ }
++      }
++
++      function updateCount(order) {
++        var total = order.reduce(function (n, line) { return n + line.qty; }, 0);
++        if (countEl) countEl.textContent = total;
++      }
++
++      function showToast(msg) {
++        if (!toast) return;
++        toast.textContent = msg;
++        toast.classList.add('is-visible');
++        clearTimeout(toastTimer);
++        toastTimer = setTimeout(function () { toast.classList.remove('is-visible'); }, 2500);
++      }
++
++      function selected(form) {
++        return form.querySelector('input[name="size"]:checked');
++      }
++
++      function refreshCard(form) {
++        var input = selected(form);
++        if (!input) return;
++        var price = Number(input.dataset.price).toFixed(2);
++        var sizeName = input.value.charAt(0).toUpperCase() + input.value.slice(1);
++        form.closest('.drink').querySelector('[data-price-display]').textContent = '$' + price;
++        var btn = form.querySelector('.drink__add');
++        btn.textContent = 'Add ' + sizeName + ' \u00b7 $' + price;
++      }
++
++      updateCount(loadOrder());
++
++      // Drop broken images so the card's :has() fallback layout kicks in.
++      document.querySelectorAll('.drink__media img').forEach(function (img) {
++        function drop() { img.remove(); }
++        if (img.complete && img.naturalWidth === 0) drop();
++        else img.addEventListener('error', drop);
++      });
++
++      document.querySelectorAll('.drink__form').forEach(function (form) {
++        refreshCard(form);
++        form.addEventListener('change', function () { refreshCard(form); });
++
++        form.addEventListener('submit', function (e) {
++          e.preventDefault();
++          var input = selected(form);
++          if (!input) return;
++          var item = form.elements.item.value;
++          var name = form.closest('.drink').querySelector('.drink__title').textContent;
++          var order = loadOrder();
++          var line = order.find(function (l) { return l.item === item && l.size === input.value; });
++          if (line) line.qty += 1;
++          else order.push({ item: item, name: name, size: input.value, price: Number(input.dataset.price), qty: 1 });
++          saveOrder(order);
++          updateCount(order);
++
++          var btn = form.querySelector('.drink__add');
++          btn.classList.add('is-added');
++          btn.textContent = 'Added \u2713';
++          setTimeout(function () { btn.classList.remove('is-added'); refreshCard(form); }, 1200);
++          showToast(input.value.charAt(0).toUpperCase() + input.value.slice(1) + ' ' + name + ' added to your order');
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

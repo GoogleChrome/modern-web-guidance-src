@@ -1,0 +1,529 @@
+diff --git a/index.html b/index.html
+index 66c9173..1577178 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,170 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
++
++      /* Brand & Core Palette (Light Mode Default) */
++      --brand-coffee: #4e342e;
++      --brand-coffee-deep: #3e2723;
++      --brand-coffee-rich: #5d4037;
++      --brand-crema: #d7ccc8;
++      --brand-caramel: #ffab40;
++      --brand-amber: #e68a00;
++
++      /* Legacy & Semantic Variables */
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --primary-hover: #3e2723;
++      --secondary: #ebe1d9;
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: #2d1b17;
++      --text-muted: #654941;
++      --light: #faf6f2;
++
++      /* Component Tokens - Light Mode */
++      --bg-page: #faf6f2;
++      --bg-surface: #ffffff;
++      --bg-surface-hover: #fdfaf7;
++      --border-card: #e5d9d0;
++      --shadow-card: 0 6px 18px rgba(62, 39, 35, 0.08), 0 1px 3px rgba(62, 39, 35, 0.06);
++      --shadow-card-hover: 0 12px 26px rgba(62, 39, 35, 0.14), 0 2px 6px rgba(62, 39, 35, 0.08);
++
++      /* Navigation */
++      --nav-bg: #4e342e;
++      --nav-border: rgba(255, 255, 255, 0.1);
++      --nav-text: #fdfaf7;
++      --nav-link: #f3eae4;
++      --nav-link-hover: #ffab40;
++      --nav-logout-bg: rgba(255, 171, 64, 0.12);
++      --nav-logout-border: #ffab40;
++      --nav-logout-text: #fff8f0;
++
++      /* Hero */
++      --hero-overlay: linear-gradient(
++        180deg,
++        rgba(45, 27, 23, 0.62) 0%,
++        rgba(78, 52, 46, 0.72) 100%
++      );
++      --hero-text: #fffaf5;
++      --hero-subtext: #f3e5dc;
++      --hero-btn-bg: #ffab40;
++      --hero-btn-text: #2d1b17;
++      --hero-btn-hover: #ffc06b;
++
++      /* Typography & Cards */
++      --section-heading: #3e2723;
++      --card-heading: #4e342e;
++      --card-body: #5c433b;
++
++      /* Buttons */
++      --btn-bg: #4e342e;
++      --btn-text: #fffaf5;
++      --btn-border: transparent;
++      --btn-hover-bg: #3e2723;
++      --btn-hover-text: #ffffff;
++      --btn-muted-bg: #efe6df;
++      --btn-muted-text: #5c433b;
++      --btn-muted-border: #d7c7bc;
++      --btn-muted-hover-bg: #e4d6cc;
++
++      /* Status Badges */
++      --badge-new-bg: #fff2de;
++      --badge-new-text: #8c4303;
++      --badge-new-border: #f3c27e;
++      --badge-new-dot: #d96b06;
++
++      --badge-soldout-bg: #f3e9e6;
++      --badge-soldout-text: #6e3b35;
++      --badge-soldout-border: #d9c3bd;
++      --badge-soldout-dot: #9e5850;
++
++      /* Footer */
++      --footer-bg: #ebe1d9;
++      --footer-border: #dbcdc2;
++      --footer-text: #4e342e;
++      --footer-link: #3e2723;
++      --footer-link-hover: #8c4303;
++      --footer-divider: #bfa99b;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --primary: #795548;
++        --primary-hover: #8d6e63;
++        --secondary: #221916;
++        --accent: #ffab40;
++        --text: #f5ebe6;
++        --text-muted: #c7b4ac;
++        --light: #16100e;
++
++        /* Component Tokens - Dark Mode */
++        --bg-page: #16100e;
++        --bg-surface: #231a17;
++        --bg-surface-hover: #2a1f1c;
++        --border-card: #3b2c27;
++        --shadow-card: 0 8px 22px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
++        --shadow-card-hover: 0 12px 28px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
++
++        /* Navigation */
++        --nav-bg: #261a17;
++        --nav-border: #3d2b26;
++        --nav-text: #f7ede8;
++        --nav-link: #e6d7cf;
++        --nav-link-hover: #ffab40;
++        --nav-logout-bg: rgba(255, 171, 64, 0.14);
++        --nav-logout-border: #ffab40;
++        --nav-logout-text: #ffcf8b;
++
++        /* Hero */
++        --hero-overlay: linear-gradient(
++          180deg,
++          rgba(18, 12, 10, 0.72) 0%,
++          rgba(46, 30, 26, 0.82) 100%
++        );
++        --hero-text: #fbf3ee;
++        --hero-subtext: #e6d5cc;
++        --hero-btn-bg: #ffab40;
++        --hero-btn-text: #241511;
++        --hero-btn-hover: #ffc270;
++
++        /* Typography & Cards */
++        --section-heading: #f5ebe6;
++        --card-heading: #f3e3da;
++        --card-body: #cbb8b0;
++
++        /* Buttons */
++        --btn-bg: #6d4c41;
++        --btn-text: #fff9f5;
++        --btn-border: #876256;
++        --btn-hover-bg: #825c50;
++        --btn-hover-text: #ffffff;
++        --btn-muted-bg: #2e2320;
++        --btn-muted-text: #c9b7af;
++        --btn-muted-border: #4a3833;
++        --btn-muted-hover-bg: #392b27;
++
++        /* Status Badges */
++        --badge-new-bg: rgba(255, 171, 64, 0.16);
++        --badge-new-text: #ffc87a;
++        --badge-new-border: rgba(255, 171, 64, 0.42);
++        --badge-new-dot: #ffab40;
++
++        --badge-soldout-bg: rgba(215, 204, 200, 0.12);
++        --badge-soldout-text: #e2c5be;
++        --badge-soldout-border: rgba(226, 197, 190, 0.32);
++        --badge-soldout-dot: #d49b91;
++
++        /* Footer */
++        --footer-bg: #1e1513;
++        --footer-border: #362722;
++        --footer-text: #cbb8b0;
++        --footer-link: #f0dfd6;
++        --footer-link-hover: #ffab40;
++        --footer-divider: #59433c;
++      }
+     }
+ 
+     * {
+@@ -24,13 +180,15 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg-page);
++      transition: background-color 0.25s ease, color 0.25s ease;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,16 +196,19 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--nav-text);
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,26 +217,37 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-link);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      font-weight: 500;
++      transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a:hover,
++    nav a:focus-visible {
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      background: var(--nav-logout-bg);
++      border: 1px solid var(--nav-logout-border);
++      color: var(--nav-logout-text);
++      padding: 6px 14px;
++      border-radius: 6px;
++      font-weight: 600;
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background: var(--accent);
++      color: #241511;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: var(--hero-overlay),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,74 +255,202 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      border-bottom: 1px solid var(--border-card);
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.25rem, 5vw, 3.25rem);
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.01em;
++      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
++    }
++
++    .hero p {
++      font-size: 1.125rem;
++      color: var(--hero-subtext);
++      max-width: 560px;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero .btn {
++      background: var(--hero-btn-bg);
++      color: var(--hero-btn-text);
++      border-color: transparent;
++      font-weight: 700;
++      padding: 12px 26px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++    }
++
++    .hero .btn:hover,
++    .hero .btn:focus-visible {
++      background: var(--hero-btn-hover);
++      color: #1b0f0c;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 48px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--section-heading);
++      font-size: 1.85rem;
++      margin-bottom: 8px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--bg-surface);
++      border: 1px solid var(--border-card);
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: var(--shadow-card);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
++    }
++
++    .card:hover {
++      transform: translateY(-2px);
++      box-shadow: var(--shadow-card-hover);
++      background: var(--bg-surface-hover);
++    }
++
++    .card-badge-row {
++      width: 100%;
++      display: flex;
++      justify-content: center;
++      margin-bottom: 12px;
++      min-height: 26px;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.04em;
++      text-transform: uppercase;
++      padding: 4px 12px;
++      border-radius: 999px;
++      line-height: 1.2;
++    }
++
++    .badge::before {
++      content: "";
++      width: 6px;
++      height: 6px;
++      border-radius: 50%;
++      display: inline-block;
++    }
++
++    .badge-new {
++      background-color: var(--badge-new-bg);
++      color: var(--badge-new-text);
++      border: 1px solid var(--badge-new-border);
++    }
++
++    .badge-new::before {
++      background-color: var(--badge-new-dot);
++    }
++
++    .badge-sold-out {
++      background-color: var(--badge-soldout-bg);
++      color: var(--badge-soldout-text);
++      border: 1px solid var(--badge-soldout-border);
++    }
++
++    .badge-sold-out::before {
++      background-color: var(--badge-soldout-dot);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++      font-size: 1.25rem;
++    }
++
++    .card p {
++      color: var(--card-body);
++      font-size: 0.96rem;
++      margin-bottom: 6px;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1px solid var(--btn-border);
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 16px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--btn-hover-bg);
++      color: var(--btn-hover-text);
++    }
++
++    .btn-sold-out {
++      background: var(--btn-muted-bg);
++      color: var(--btn-muted-text);
++      border-color: var(--btn-muted-border);
++    }
++
++    .btn-sold-out:hover,
++    .btn-sold-out:focus-visible {
++      background: var(--btn-muted-hover-bg);
++      color: var(--card-heading);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
++      border-top: 1px solid var(--footer-border);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 56px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 18px;
++      color: var(--footer-divider);
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-link);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++      transition: color 0.2s ease;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--footer-link-hover);
++      text-decoration: underline;
+     }
+   </style>
+ </head>
+@@ -176,22 +476,31 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-badge-row">
++            <span class="badge badge-new">New</span>
++          </div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-badge-row">
++            <span class="badge badge-new">New</span>
++          </div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card-sold-out">
++          <div class="card-badge-row">
++            <span class="badge badge-sold-out">Sold out</span>
++          </div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn-sold-out">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,76 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..9ac9ef8
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,23 @@
++# The Daily Grind
++
++Run `pnpm install` and `pnpm start`. The server uses port 11222 by default;
++set `PORT` to override it.
++
++The server sends a `Permissions-Policy` header allowing this app's origin to
++request resources on the user's local network and loopback interface. It also
++includes the legacy `local-network-access` directive for older browsers.
++
++In production, serve the app over HTTPS. Users must grant any local-network
++permissions requested by their browser, and local services must allow the app's
++origin through CORS when the app reads cross-origin responses. Requests must run
++in the user's browser so that loopback addresses refer to their device.
++
++If the app is embedded in a cross-origin iframe, the parent must also delegate
++these permissions using the iframe's `allow` attribute:
++
++```html
++allow="local-network; loopback-network; local-network-access"
++```
++
++Any production host or reverse proxy serving the HTML must preserve the header
++configured in `server.mjs` (or configure the same header itself).
+diff --git a/package.json b/package.json
+index 2bd4d77..ac59f85 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "statikk": "3.1.0"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..d29db8c
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,16 @@
++import statikk from 'statikk';
++import { fileURLToPath } from 'node:url';
++
++const { url } = await statikk({
++  root: fileURLToPath(new URL('.', import.meta.url)),
++  port: Number(process.env.PORT || 11222),
++  setHeaders(response) {
++    // Include the legacy directive for browsers predating the split permissions.
++    response.setHeader(
++      'Permissions-Policy',
++      'local-network=(self), loopback-network=(self), local-network-access=(self)',
++    );
++  },
++});
++
++console.log(`Serving The Daily Grind at ${url}`);

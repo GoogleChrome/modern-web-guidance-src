@@ -1,0 +1,989 @@
+diff --git a/assets/site.css b/assets/site.css
+new file mode 100644
+index 0000000..640a7ac
+--- /dev/null
++++ b/assets/site.css
+@@ -0,0 +1,240 @@
++/* The Daily Grind – shared site styles.
++   Loaded with <link rel="stylesheet" blocking="render"> from every page so layout is
++   fully applied before the cross-document view transition captures the new page.
++   Design tokens, theme overrides and the @view-transition opt-in live in each page's
++   inline critical <style blocking="render"> block so they are available even earlier. */
++
++/* ---------- Navigation (shared chrome; view-transition-name: site-nav) ---------- */
++nav {
++  background: var(--primary);
++  color: #fff;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 1rem;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  color: #fff;
++  text-decoration: none;
++}
++
++nav ul {
++  display: flex;
++  flex-wrap: wrap;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav ul a {
++  color: #fff;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav ul a:hover,
++nav ul a[aria-current="page"] {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++.theme-toggle {
++  background: transparent;
++  border: 1px solid rgba(255, 255, 255, 0.5);
++  color: #fff;
++  border-radius: 999px;
++  width: 2rem;
++  height: 2rem;
++  cursor: pointer;
++  font-size: 1rem;
++  line-height: 1;
++}
++
++.theme-toggle:hover {
++  border-color: var(--accent);
++  color: var(--accent);
++}
++
++/* Narrow layout. data-layout is set by the inline init script before first paint
++   (so the transition never snapshots a half-laid-out nav) and kept in sync by site.js. */
++[data-layout="narrow"] nav {
++  flex-wrap: wrap;
++}
++
++[data-layout="narrow"] nav ul {
++  width: 100%;
++  order: 3;
++  margin-top: 0.5rem;
++}
++
++[data-layout="narrow"] nav ul li {
++  margin: 0 16px 0 0;
++}
++
++/* ---------- Hero (view-transition-name: hero; morphs between page sizes) ---------- */
++.hero {
++  min-height: 60vh;
++  background:
++    linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    var(--hero-image) center / cover no-repeat;
++  background-color: var(--primary);
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: #fff;
++  text-align: center;
++  padding: 40px 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++.hero--compact {
++  min-height: 36vh;
++}
++
++.hero--compact h1 {
++  font-size: 2.4rem;
++  margin-bottom: 0.5rem;
++}
++
++[data-layout="narrow"] .hero h1 {
++  font-size: 2.2rem;
++}
++
++/* Stock photography (Unsplash). Each page preloads its own hero image in <head>. */
++.hero--home {
++  --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++}
++
++.hero--menu {
++  --hero-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80');
++}
++
++.hero--locations {
++  --hero-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1350&q=80');
++}
++
++/* ---------- Content ---------- */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title {
++  text-align: center;
++}
++
++.eyebrow {
++  text-align: center;
++  color: var(--accent);
++  text-transform: uppercase;
++  letter-spacing: 2px;
++  font-size: 0.8rem;
++  font-weight: bold;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: var(--surface);
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++:root[data-theme="dark"] .card h3 {
++  color: var(--accent);
++}
++
++.price {
++  display: block;
++  margin-top: 10px;
++  font-weight: bold;
++  color: var(--accent);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: #fff;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: var(--primary-hover);
++}
++
++/* Menu page: each drink family is its own section so the homepage cards can deep-link to it. */
++.menu-section {
++  scroll-margin-top: 90px; /* clear the sticky nav when arriving via #fragment */
++}
++
++.menu-section + .menu-section {
++  margin-top: 60px;
++}
++
++/* Locations page */
++.card address {
++  font-style: normal;
++  margin-bottom: 10px;
++}
++
++.hours {
++  font-size: 0.9rem;
++  opacity: 0.85;
++}
++
++/* ---------- Footer (deliberately NOT a render-blocking target) ---------- */
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
+diff --git a/assets/site.js b/assets/site.js
+new file mode 100644
+index 0000000..b5a660f
+--- /dev/null
++++ b/assets/site.js
+@@ -0,0 +1,26 @@
++// Non-critical behaviour for The Daily Grind.
++// Loaded with `defer`, so it never delays first paint or an incoming view transition.
++// The theme/layout *initialisation* happens in the inline render-blocking script in
++// each page's <head>; this file only wires up interaction and keeps state in sync.
++(() => {
++  const root = document.documentElement;
++  const toggle = document.querySelector('.theme-toggle');
++
++  const syncToggle = () => {
++    if (toggle) toggle.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));
++  };
++  syncToggle();
++
++  toggle?.addEventListener('click', () => {
++    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
++    root.dataset.theme = next;
++    try { localStorage.setItem('dg-theme', next); } catch { /* storage unavailable */ }
++    syncToggle();
++  });
++
++  // Keep data-layout current if the viewport crosses the breakpoint after load.
++  const narrow = matchMedia('(max-width: 47.99em)');
++  narrow.addEventListener('change', () => {
++    root.dataset.layout = narrow.matches ? 'narrow' : 'wide';
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..87d32ad 100644
+--- a/index.html
++++ b/index.html
+@@ -5,198 +5,176 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++
++  <!--
++    Render-blocking order matters here. Everything below with blocking="render" must be
++    in <head>, and together it guarantees that when the browser lifts the render block
++    (which is also the moment a cross-document view transition captures this page as
++    the "new" state) the page is styled, themed, laid out, and parsed through the
++    above-the-fold content. The footer is parsed afterwards and never blocks.
++  -->
++
++  <!-- 1. Critical styles: design tokens, theme, and the view-transition opt-in.
++          Identical on every page so both the outgoing and incoming documents match. -->
++  <style blocking="render">
+     :root {
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      color-scheme: light;
+     }
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    :root[data-theme="dark"] {
++      --primary: #3e2723;
++      --primary-hover: #4e342e;
++      --secondary: #241816;
++      --accent: #ffab40;
++      --text: #efebe9;
++      --light: #1b1210;
++      --surface: #2a1e1b;
++      color-scheme: dark;
+     }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++    /* Opt this document into cross-document (MPA) view transitions. The browser only
++       runs one when BOTH the old and new same-origin pages carry this rule. */
++    @view-transition {
++      navigation: auto;
+     }
+ 
+-    /* Navigation */
++    /* Persistent chrome gets its own snapshot so it stays in place while the rest of
++       the page cross-fades. The hero morphs between its full and compact sizes. */
+     nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      view-transition-name: site-nav;
+     }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      view-transition-name: hero;
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++    ::view-transition-old(root) {
++      animation: 220ms ease-out both vt-fade-out;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    ::view-transition-new(root) {
++      animation: 260ms ease-in both vt-fade-in;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    ::view-transition-group(hero) {
++      animation-duration: 320ms;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes vt-fade-out {
++      to { opacity: 0; }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++    @keyframes vt-fade-in {
++      from { opacity: 0; }
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    /* Minimal base so the very first frame already has the right colours. */
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    html {
++      background: var(--light);
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
+       color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      background-color: var(--light);
+     }
+   </style>
++
++  <!-- 2. Initial theme/layout script. Runs synchronously before first paint so the
++          transition never snapshots a page mid theme-switch or mid nav-reflow. -->
++  <script blocking="render">
++    (function () {
++      var root = document.documentElement;
++      var stored = null;
++      try { stored = localStorage.getItem('dg-theme'); } catch (e) { /* storage unavailable */ }
++      root.dataset.theme = (stored === 'dark' || stored === 'light')
++        ? stored
++        : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
++      root.dataset.layout = matchMedia('(max-width: 47.99em)').matches ? 'narrow' : 'wide';
++    })();
++  </script>
++
++  <!-- 3. Shared stylesheet, explicitly render-blocking so layout is final before capture. -->
++  <link rel="stylesheet" href="/assets/site.css" blocking="render">
++
++  <!-- 4. Hero image: start fetching immediately (not render-blocking; parse is what we wait on). -->
++  <link rel="preload" as="image" fetchpriority="high"
++        href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
++
++  <!-- 5. Hold rendering, and therefore the incoming view transition, until the parser has
++          reached the END of #seasonal-favorites. That covers the nav, the hero and the
++          Seasonal Favorites grid. The footer comes after this element and is NOT waited on. -->
++  <link rel="expect" href="#seasonal-favorites" blocking="render">
++
++  <script src="/assets/site.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <a class="logo" href="/" aria-current="page">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
++      <li><a href="/menu/">Menu</a></li>
++      <li><a href="/locations/">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <button type="button" class="theme-toggle" aria-pressed="false" aria-label="Toggle dark theme">&#9681;</button>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero hero--home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-favorites-title">
++      <h2 id="seasonal-favorites-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/#seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/#espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/#cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Below the fold. Parsed after the render block lifts; never delays a transition. -->
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/locations/index.html b/locations/index.html
+new file mode 100644
+index 0000000..8cd8a2c
+--- /dev/null
++++ b/locations/index.html
+@@ -0,0 +1,177 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Locations | The Daily Grind</title>
++
++  <!-- See index.html for a full explanation of the render-blocking sequence below. -->
++
++  <!-- 1. Critical styles (identical to the homepage so the transition matches both ways). -->
++  <style blocking="render">
++    :root {
++      --primary: #4e342e;
++      --primary-hover: #3e2723;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --surface: #ffffff;
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --primary: #3e2723;
++      --primary-hover: #4e342e;
++      --secondary: #241816;
++      --accent: #ffab40;
++      --text: #efebe9;
++      --light: #1b1210;
++      --surface: #2a1e1b;
++      color-scheme: dark;
++    }
++
++    @view-transition {
++      navigation: auto;
++    }
++
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    .hero {
++      view-transition-name: hero;
++    }
++
++    ::view-transition-old(root) {
++      animation: 220ms ease-out both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 260ms ease-in both vt-fade-in;
++    }
++
++    ::view-transition-group(hero) {
++      animation-duration: 320ms;
++    }
++
++    @keyframes vt-fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes vt-fade-in {
++      from { opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html {
++      background: var(--light);
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++
++  <!-- 2. Initial theme/layout script. -->
++  <script blocking="render">
++    (function () {
++      var root = document.documentElement;
++      var stored = null;
++      try { stored = localStorage.getItem('dg-theme'); } catch (e) { /* storage unavailable */ }
++      root.dataset.theme = (stored === 'dark' || stored === 'light')
++        ? stored
++        : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
++      root.dataset.layout = matchMedia('(max-width: 47.99em)').matches ? 'narrow' : 'wide';
++    })();
++  </script>
++
++  <!-- 3. Shared stylesheet, explicitly render-blocking. -->
++  <link rel="stylesheet" href="/assets/site.css" blocking="render">
++
++  <!-- 4. Hero image preload. -->
++  <link rel="preload" as="image" fetchpriority="high"
++        href="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1350&q=80">
++
++  <!-- 5. Wait for the hero and the locations grid; the footer is not waited on. -->
++  <link rel="expect" href="#locations" blocking="render">
++
++  <script src="/assets/site.js" defer></script>
++</head>
++
++<body>
++
++  <nav aria-label="Primary">
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu/">Menu</a></li>
++      <li><a href="/locations/" aria-current="page">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++    <button type="button" class="theme-toggle" aria-pressed="false" aria-label="Toggle dark theme">&#9681;</button>
++  </nav>
++
++  <header class="hero hero--compact hero--locations">
++    <h1>Find a Café</h1>
++    <p>Three neighbourhood roasteries, one obsession with the perfect cup.</p>
++  </header>
++
++  <main class="container">
++    <section id="locations" aria-labelledby="locations-title">
++      <p class="eyebrow">Now pouring</p>
++      <h2 id="locations-title" class="section-title">Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <address>128 Market Street<br>Portland, OR 97209</address>
++          <p class="hours">Mon–Fri 6:30am–7pm<br>Sat–Sun 7am–6pm</p>
++          <a href="/order-online" class="btn">Order Ahead</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Café</h3>
++          <address>4410 Willamette Avenue<br>Portland, OR 97214</address>
++          <p class="hours">Daily 7am–5pm</p>
++          <a href="/order-online" class="btn">Order Ahead</a>
++        </div>
++        <div class="card">
++          <h3>Hawthorne Corner</h3>
++          <address>3605 SE Hawthorne Blvd<br>Portland, OR 97214</address>
++          <p class="hours">Mon–Sat 6am–8pm<br>Sun 7am–6pm</p>
++          <a href="/order-online" class="btn">Order Ahead</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/index.html b/menu/index.html
+new file mode 100644
+index 0000000..e747d82
+--- /dev/null
++++ b/menu/index.html
+@@ -0,0 +1,220 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Menu | The Daily Grind</title>
++
++  <!-- See index.html for a full explanation of the render-blocking sequence below. -->
++
++  <!-- 1. Critical styles (identical to the homepage so the transition matches both ways). -->
++  <style blocking="render">
++    :root {
++      --primary: #4e342e;
++      --primary-hover: #3e2723;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --surface: #ffffff;
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --primary: #3e2723;
++      --primary-hover: #4e342e;
++      --secondary: #241816;
++      --accent: #ffab40;
++      --text: #efebe9;
++      --light: #1b1210;
++      --surface: #2a1e1b;
++      color-scheme: dark;
++    }
++
++    @view-transition {
++      navigation: auto;
++    }
++
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    .hero {
++      view-transition-name: hero;
++    }
++
++    ::view-transition-old(root) {
++      animation: 220ms ease-out both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 260ms ease-in both vt-fade-in;
++    }
++
++    ::view-transition-group(hero) {
++      animation-duration: 320ms;
++    }
++
++    @keyframes vt-fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes vt-fade-in {
++      from { opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html {
++      background: var(--light);
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++  </style>
++
++  <!-- 2. Initial theme/layout script. -->
++  <script blocking="render">
++    (function () {
++      var root = document.documentElement;
++      var stored = null;
++      try { stored = localStorage.getItem('dg-theme'); } catch (e) { /* storage unavailable */ }
++      root.dataset.theme = (stored === 'dark' || stored === 'light')
++        ? stored
++        : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
++      root.dataset.layout = matchMedia('(max-width: 47.99em)').matches ? 'narrow' : 'wide';
++    })();
++  </script>
++
++  <!-- 3. Shared stylesheet, explicitly render-blocking. -->
++  <link rel="stylesheet" href="/assets/site.css" blocking="render">
++
++  <!-- 4. Hero image preload. -->
++  <link rel="preload" as="image" fetchpriority="high"
++        href="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80">
++
++  <!-- 5. Wait for the hero and the first (above-the-fold) menu section only.
++          Later sections and the footer stream in after the transition starts. -->
++  <link rel="expect" href="#seasonal" blocking="render">
++
++  <script src="/assets/site.js" defer></script>
++</head>
++
++<body>
++
++  <nav aria-label="Primary">
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu/" aria-current="page">Menu</a></li>
++      <li><a href="/locations/">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++    <button type="button" class="theme-toggle" aria-pressed="false" aria-label="Toggle dark theme">&#9681;</button>
++  </nav>
++
++  <header class="hero hero--compact hero--menu">
++    <h1>Our Menu</h1>
++    <p>Small-batch roasts, house-made syrups, and a few seasonal surprises.</p>
++  </header>
++
++  <main class="container">
++    <section id="seasonal" class="menu-section" aria-labelledby="seasonal-title">
++      <p class="eyebrow">Limited time</p>
++      <h2 id="seasonal-title" class="section-title">Seasonal</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <span class="price">$5.75</span>
++        </div>
++        <div class="card">
++          <h3>Pumpkin Cortado</h3>
++          <p>Double espresso cut with spiced pumpkin milk.</p>
++          <span class="price">$4.95</span>
++        </div>
++        <div class="card">
++          <h3>Cardamom Honey Chai</h3>
++          <p>Slow-steeped black tea, raw honey, and fresh cardamom.</p>
++          <span class="price">$5.25</span>
++        </div>
++      </div>
++    </section>
++
++    <section id="espresso" class="menu-section" aria-labelledby="espresso-title">
++      <p class="eyebrow">Classics</p>
++      <h2 id="espresso-title" class="section-title">Espresso</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <span class="price">$3.25</span>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and velvety foam.</p>
++          <span class="price">$4.50</span>
++        </div>
++        <div class="card">
++          <h3>Americano</h3>
++          <p>Our signature shot lengthened with hot filtered water.</p>
++          <span class="price">$3.75</span>
++        </div>
++      </div>
++    </section>
++
++    <section id="cold-brew" class="menu-section" aria-labelledby="cold-brew-title">
++      <p class="eyebrow">Served over ice</p>
++      <h2 id="cold-brew-title" class="section-title">Cold Brew</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <span class="price">$4.75</span>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Infused with nitrogen for a creamy, cascading pour.</p>
++          <span class="price">$5.50</span>
++        </div>
++        <div class="card">
++          <h3>Cold Brew Tonic</h3>
++          <p>Cold brew concentrate over tonic water and a twist of orange.</p>
++          <span class="price">$5.25</span>
++        </div>
++      </div>
++      <p class="section-title"><a href="/order-online" class="btn">Order Now</a></p>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>

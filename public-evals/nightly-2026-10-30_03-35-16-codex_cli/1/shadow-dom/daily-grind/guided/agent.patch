@@ -1,0 +1,162 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..cfd1177
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,86 @@
++const template = document.createElement('template');
++
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      color: var(--text, #3e2723);
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++    }
++
++    *, ::slotted(*) {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    h3 {
++      margin-bottom: 10px;
++      color: var(--primary, #4e342e);
++    }
++
++    .badge {
++      display: inline-block;
++      margin-bottom: 10px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--accent, #ffab40);
++      color: #3e2723;
++      font-size: 0.75rem;
++      font-weight: bold;
++    }
++
++    .badge[hidden] {
++      display: none;
++    }
++
++    ::slotted([slot="action"]) {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    ::slotted([slot="action"]:hover) {
++      background: #3e2723;
++    }
++  </style>
++  <article>
++    <div class="badge" hidden><slot name="badge"></slot></div>
++    <h3><slot name="title"></slot></h3>
++    <p><slot name="description"></slot></p>
++    <slot name="action"></slot>
++  </article>
++`;
++
++// Supply title, description, and a native action link through named slots.
++// Add or remove an element with slot="badge" at any time to toggle the badge.
++class DrinkCard extends HTMLElement {
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++
++    const badge = root.querySelector('.badge');
++    const badgeSlot = root.querySelector('slot[name="badge"]');
++    badgeSlot.addEventListener('slotchange', () => {
++      badge.hidden = badgeSlot.assignedElements().length === 0;
++    });
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..2e5d758 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +140,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +166,22 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card>
++          <span slot="badge">Limited</span>
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++        </drink-card>
++        <drink-card>
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </drink-card>
++        <drink-card>
++          <span slot="title">Cold Brew</span>
++          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </drink-card>
+       </div>
+     </section>
+   </main>

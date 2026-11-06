@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,13 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Pull-to-reveal: the search bar sits above the nav and is scrolled out of view on load */
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -37,10 +42,47 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
+     }
+ 
++    .search-bar {
++      height: 60px;
++      background: var(--secondary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 0 5%;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      display: flex;
++      gap: 8px;
++      width: 100%;
++      max-width: 500px;
++    }
++
++    .search-bar input[type="search"] {
++      flex: 1;
++      padding: 8px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .search-bar button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 4px;
++      padding: 8px 16px;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -156,8 +198,15 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar" role="search">
++    <form action="/search">
++      <input type="search" name="q" placeholder="Search drinks, beans, locations" aria-label="Search">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +255,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Fallback for browsers without scroll-initial-target support
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      document.addEventListener('DOMContentLoaded', () => {
++        document.querySelector('nav').scrollIntoView({ behavior: 'instant', block: 'start' });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

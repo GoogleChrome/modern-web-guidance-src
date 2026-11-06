@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+index 66c9173..c708796 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,84 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Switch */
++    .preference {
++      display: flex;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .switch-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Fallback for browsers without native switch support (added via JS) */
++    input[type="checkbox"].switch-fallback {
++      appearance: none;
++      position: relative;
++      width: 2.75em;
++      height: 1.5em;
++      border-radius: 1.5em;
++      background: #8d6e63;
++      transition: background 0.2s;
++    }
++
++    input[type="checkbox"].switch-fallback::before {
++      content: "";
++      position: absolute;
++      top: 0.2em;
++      left: 0.2em;
++      width: 1.1em;
++      height: 1.1em;
++      border-radius: 50%;
++      background: white;
++      transition: transform 0.2s;
++    }
++
++    input[type="checkbox"].switch-fallback:checked {
++      background: var(--primary);
++    }
++
++    input[type="checkbox"].switch-fallback:checked::before {
++      transform: translateX(1.25em);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      input[type="checkbox"].switch-fallback,
++      input[type="checkbox"].switch-fallback::before {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      input[type="checkbox"].switch-fallback {
++        border: 1px solid ButtonText;
++      }
++
++      input[type="checkbox"].switch-fallback::before {
++        background: ButtonText;
++      }
++
++      input[type="checkbox"].switch-fallback:checked {
++        background: Highlight;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -177,6 +255,12 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="preference">
++        <label class="switch-label">
++          <input id="oat-milk" type="checkbox" switch>
++          Make my drinks with oat milk
++        </label>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +291,16 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Without native <input switch> support, expose switch semantics and apply the styled fallback.
++    if (!('switch' in HTMLInputElement.prototype)) {
++      document.querySelectorAll('input[type="checkbox"][switch]').forEach((input) => {
++        input.setAttribute('role', 'switch');
++        input.classList.add('switch-fallback');
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

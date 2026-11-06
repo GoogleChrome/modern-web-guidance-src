@@ -1,0 +1,26 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,22 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Fetch</title>
++</head>
++<body>
++  <button type="button" id="load">Load</button>
++  <script>
++    document.getElementById('load').addEventListener('click', () => {
++      fetch('/api/data', { priority: 'high' });
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low'
++      });
++    });
++  </script>
++</body>
++</html>

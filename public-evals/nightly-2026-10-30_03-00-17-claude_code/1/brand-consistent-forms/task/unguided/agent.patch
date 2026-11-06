@@ -1,0 +1,454 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,316 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Subscription Form */
++    .subscribe {
++      --form-surface: #ffffff;
++      --form-text: #3e2723;
++      --form-muted: #6d5a54;
++      --control-border: #6d5a54;
++      --control-bg: #ffffff;
++      --control-checked: var(--primary);
++      --control-mark: var(--accent);
++      --accent-strong: #b45309;
++      --track-bg: #efe7e3;
++      --focus-ring: #b45309;
++
++      max-width: 720px;
++      margin: 60px auto 0;
++      background: var(--form-surface);
++      color: var(--form-text);
++      padding: 32px;
++      border-radius: 12px;
++      border-top: 6px solid var(--accent);
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++    }
++
++    .subscribe h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .subscribe .intro {
++      color: var(--form-muted);
++      margin-bottom: 24px;
++    }
++
++    .progress-wrap {
++      margin-bottom: 28px;
++    }
++
++    .progress-wrap label {
++      display: flex;
++      justify-content: space-between;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .field {
++      margin-bottom: 22px;
++    }
++
++    .field > label,
++    .subscribe legend {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .subscribe fieldset {
++      border: none;
++    }
++
++    .subscribe input[type="text"],
++    .subscribe input[type="email"] {
++      width: 100%;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--form-text);
++      background: var(--control-bg);
++      border: 2px solid var(--control-border);
++      border-radius: 6px;
++    }
++
++    .subscribe :focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: var(--form-muted);
++    }
++
++    /* Checkbox & radio */
++    .option {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 8px;
++    }
++
++    .option label {
++      cursor: pointer;
++    }
++
++    .subscribe input[type="checkbox"],
++    .subscribe input[type="radio"] {
++      appearance: none;
++      -webkit-appearance: none;
++      flex-shrink: 0;
++      width: 22px;
++      height: 22px;
++      margin: 0;
++      background: var(--control-bg);
++      border: 2px solid var(--control-border);
++      display: grid;
++      place-content: center;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .subscribe input[type="checkbox"] {
++      border-radius: 5px;
++    }
++
++    .subscribe input[type="radio"] {
++      border-radius: 50%;
++    }
++
++    .subscribe input[type="checkbox"]::before {
++      content: "";
++      width: 11px;
++      height: 6px;
++      border-left: 3px solid var(--control-mark);
++      border-bottom: 3px solid var(--control-mark);
++      transform: translateY(-2px) rotate(-45deg) scale(0);
++      transition: transform 0.15s;
++    }
++
++    .subscribe input[type="radio"]::before {
++      content: "";
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: var(--control-mark);
++      transform: scale(0);
++      transition: transform 0.15s;
++    }
++
++    .subscribe input[type="checkbox"]:checked,
++    .subscribe input[type="radio"]:checked {
++      background: var(--control-checked);
++      border-color: var(--control-checked);
++    }
++
++    .subscribe input[type="checkbox"]:checked::before {
++      transform: translateY(-2px) rotate(-45deg) scale(1);
++    }
++
++    .subscribe input[type="radio"]:checked::before {
++      transform: scale(1);
++    }
++
++    .frequency-options {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px 24px;
++    }
++
++    /* Range slider */
++    .subscribe input[type="range"] {
++      --fill: 50%;
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 28px;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    .subscribe input[type="range"]::-webkit-slider-runnable-track {
++      height: 10px;
++      border-radius: 5px;
++      border: 1px solid var(--control-border);
++      background: linear-gradient(to right,
++          var(--control-checked) 0 var(--fill),
++          var(--track-bg) var(--fill) 100%);
++    }
++
++    .subscribe input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      width: 24px;
++      height: 24px;
++      margin-top: -8px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++    }
++
++    .subscribe input[type="range"]::-moz-range-track {
++      height: 10px;
++      border-radius: 5px;
++      border: 1px solid var(--control-border);
++      background: var(--track-bg);
++    }
++
++    .subscribe input[type="range"]::-moz-range-progress {
++      height: 10px;
++      border-radius: 5px;
++      background: var(--control-checked);
++    }
++
++    .subscribe input[type="range"]::-moz-range-thumb {
++      width: 18px;
++      height: 18px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++    }
++
++    .range-scale {
++      display: flex;
++      justify-content: space-between;
++    }
++
++    /* Progress bar */
++    .subscribe progress {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 14px;
++      border: 1px solid var(--control-border);
++      border-radius: 7px;
++      background: var(--track-bg);
++      overflow: hidden;
++    }
++
++    .subscribe progress::-webkit-progress-bar {
++      background: var(--track-bg);
++    }
++
++    .subscribe progress::-webkit-progress-value {
++      background: var(--accent-strong);
++      transition: width 0.3s;
++    }
++
++    .subscribe progress::-moz-progress-bar {
++      background: var(--accent-strong);
++    }
++
++    .subscribe .btn {
++      border: none;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .form-status {
++      margin-top: 16px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    /* Dark mode */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --secondary: #3a2a25;
++        --text: #f5ebe6;
++        --light: #1c1311;
++        color-scheme: dark;
++      }
++
++      nav {
++        background: #2b1d19;
++      }
++
++      .card {
++        background: #2b1d19;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++      }
++
++      .card h3 {
++        color: var(--accent);
++      }
++
++      .btn {
++        background: var(--accent);
++        color: #2b1d19;
++      }
++
++      .btn:hover {
++        background: #ffc067;
++      }
++
++      .subscribe {
++        --form-surface: #2b1d19;
++        --form-text: #f5ebe6;
++        --form-muted: #c9b8b1;
++        --control-border: #a08880;
++        --control-bg: #1c1311;
++        --control-checked: var(--accent);
++        --control-mark: #2b1d19;
++        --accent-strong: var(--accent);
++        --track-bg: #1c1311;
++        --focus-ring: var(--accent);
++        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
++      }
++
++      .subscribe h2,
++      .form-status {
++        color: var(--accent);
++      }
++
++      .subscribe input[type="range"]::-webkit-slider-thumb {
++        border-color: #f5ebe6;
++      }
++
++      .subscribe input[type="range"]::-moz-range-thumb {
++        border-color: #f5ebe6;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +502,69 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="subscribe" aria-labelledby="subscribe-title">
++      <h2 id="subscribe-title">Build Your Coffee Subscription</h2>
++      <p class="intro">Tell us how you like it and we'll roast and ship fresh beans to your door.</p>
++
++      <div class="progress-wrap">
++        <label for="setup-progress">
++          <span>Setup progress</span>
++          <span id="progress-text">0 of 4 steps</span>
++        </label>
++        <progress id="setup-progress" max="4" value="0">0 of 4 steps</progress>
++      </div>
++
++      <form id="subscribe-form" novalidate>
++        <div class="field">
++          <label for="sub-name">Full name</label>
++          <input type="text" id="sub-name" name="name" autocomplete="name" required>
++        </div>
++
++        <div class="field">
++          <label for="sub-email">Email address</label>
++          <input type="email" id="sub-email" name="email" autocomplete="email" required>
++        </div>
++
++        <fieldset class="field">
++          <legend>Delivery frequency</legend>
++          <div class="frequency-options">
++            <div class="option">
++              <input type="radio" id="freq-weekly" name="frequency" value="weekly" required>
++              <label for="freq-weekly">Weekly</label>
++            </div>
++            <div class="option">
++              <input type="radio" id="freq-biweekly" name="frequency" value="biweekly">
++              <label for="freq-biweekly">Every 2 weeks</label>
++            </div>
++            <div class="option">
++              <input type="radio" id="freq-monthly" name="frequency" value="monthly">
++              <label for="freq-monthly">Monthly</label>
++            </div>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="sub-roast">Roast preference: <span id="roast-value">Medium</span></label>
++          <input type="range" id="sub-roast" name="roast" min="1" max="5" step="1" value="3"
++            aria-describedby="roast-scale" aria-valuetext="Medium">
++          <div class="range-scale hint" id="roast-scale">
++            <span>Light</span>
++            <span>Dark</span>
++          </div>
++        </div>
++
++        <div class="field option">
++          <input type="checkbox" id="sub-emails" name="emails" value="yes">
++          <label for="sub-emails">Email me brewing tips, new roasts, and subscriber offers</label>
++        </div>
++
++        <button type="submit" class="btn">Start My Subscription</button>
++        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +575,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('subscribe-form');
++      const name = document.getElementById('sub-name');
++      const email = document.getElementById('sub-email');
++      const roast = document.getElementById('sub-roast');
++      const roastValue = document.getElementById('roast-value');
++      const progress = document.getElementById('setup-progress');
++      const progressText = document.getElementById('progress-text');
++      const status = document.getElementById('form-status');
++      const roastLabels = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark'];
++      let roastTouched = false;
++
++      function updateRoast() {
++        const label = roastLabels[roast.value - 1];
++        roastValue.textContent = label;
++        roast.setAttribute('aria-valuetext', label);
++        const pct = (roast.value - roast.min) / (roast.max - roast.min) * 100;
++        roast.style.setProperty('--fill', pct + '%');
++      }
++
++      function updateProgress() {
++        const steps = [
++          name.value.trim() !== '',
++          email.validity.valid && email.value !== '',
++          form.querySelector('input[name="frequency"]:checked') !== null,
++          roastTouched
++        ];
++        const done = steps.filter(Boolean).length;
++        progress.value = done;
++        progress.textContent = progressText.textContent = done + ' of ' + steps.length + ' steps';
++        return done === steps.length;
++      }
++
++      roast.addEventListener('input', function () {
++        roastTouched = true;
++        updateRoast();
++      });
++      form.addEventListener('input', updateProgress);
++      form.addEventListener('change', updateProgress);
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        roastTouched = true;
++        if (updateProgress()) {
++          status.textContent = 'Thanks, ' + name.value.trim() + '! Your subscription is set up.';
++        } else {
++          status.textContent = 'Please enter your name, a valid email, and a delivery frequency.';
++        }
++      });
++
++      updateRoast();
++      updateProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

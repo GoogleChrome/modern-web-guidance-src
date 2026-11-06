@@ -1,0 +1,204 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..efec1b9 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,12 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a
++          href={`${baseUrl}translate`}
++          class="text-xs font-semibold py-2 px-3 text-gray-700 hover:text-amber-400"
++        >
++          Translate
++        </a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/TranslateTool.tsx b/src/components/TranslateTool.tsx
+new file mode 100644
+index 0000000..efc7f64
+--- /dev/null
++++ b/src/components/TranslateTool.tsx
+@@ -0,0 +1,161 @@
++import React, { useEffect, useRef, useState } from 'react';
++
++const LANGUAGES: Record<string, string> = {
++    ar: 'Arabic', bg: 'Bulgarian', bn: 'Bengali', cs: 'Czech', da: 'Danish',
++    de: 'German', el: 'Greek', en: 'English', es: 'Spanish', fi: 'Finnish',
++    fr: 'French', he: 'Hebrew', hi: 'Hindi', hr: 'Croatian', hu: 'Hungarian',
++    id: 'Indonesian', it: 'Italian', ja: 'Japanese', kn: 'Kannada', ko: 'Korean',
++    lt: 'Lithuanian', mr: 'Marathi', nl: 'Dutch', no: 'Norwegian', pl: 'Polish',
++    pt: 'Portuguese', ro: 'Romanian', ru: 'Russian', sk: 'Slovak', sl: 'Slovenian',
++    sv: 'Swedish', ta: 'Tamil', te: 'Telugu', th: 'Thai', tr: 'Turkish',
++    uk: 'Ukrainian', vi: 'Vietnamese', zh: 'Chinese', 'zh-Hant': 'Chinese (Traditional)',
++};
++
++type Status = 'idle' | 'checking' | 'downloading' | 'translating';
++
++export default function TranslateTool() {
++    const [supported, setSupported] = useState<boolean | null>(null);
++    const [text, setText] = useState('');
++    const [source, setSource] = useState('en');
++    const [target, setTarget] = useState('es');
++    const [result, setResult] = useState('');
++    const [status, setStatus] = useState<Status>('idle');
++    const [progress, setProgress] = useState(0);
++    const [error, setError] = useState('');
++    const runId = useRef(0);
++
++    useEffect(() => {
++        setSupported('Translator' in self);
++    }, []);
++
++    const swap = () => {
++        setSource(target);
++        setTarget(source);
++        if (result) {
++            setText(result);
++            setResult('');
++        }
++    };
++
++    const translate = async (e: React.FormEvent) => {
++        e.preventDefault();
++        if (!text.trim()) return;
++        const id = ++runId.current;
++        setError('');
++        setResult('');
++        setProgress(0);
++        setStatus('checking');
++        try {
++            if (source === target) {
++                setResult(text);
++                return;
++            }
++            const options = { sourceLanguage: source, targetLanguage: target };
++            const availability = await (self as any).Translator.availability(options);
++            if (availability === 'unavailable') {
++                setError(`Translating ${LANGUAGES[source]} to ${LANGUAGES[target]} isn't available on this device.`);
++                return;
++            }
++            if (availability !== 'available') setStatus('downloading');
++            const translator = await (self as any).Translator.create({
++                ...options,
++                monitor(m: EventTarget) {
++                    m.addEventListener('downloadprogress', (ev: any) => setProgress(ev.loaded));
++                },
++            });
++            setStatus('translating');
++            let output = '';
++            for await (const chunk of translator.translateStreaming(text)) {
++                output += chunk;
++                if (id === runId.current) setResult(output);
++            }
++            translator.destroy?.();
++        } catch (err) {
++            console.error(err);
++            setError(err instanceof Error ? err.message : 'Translation failed.');
++        } finally {
++            setStatus('idle');
++        }
++    };
++
++    const busy = status !== 'idle';
++    const options = Object.entries(LANGUAGES).map(([code, name]) => (
++        <option key={code} value={code}>{name}</option>
++    ));
++    const selectClass = 'border border-gray-300 rounded px-2 py-2 text-sm bg-white';
++
++    if (supported === false) {
++        return (
++            <p role="status" className="bg-amber-50 border border-amber-300 rounded p-4 text-sm">
++                Client-side translation is currently unsupported in this browser. Try desktop Chrome 138+ or Edge 148+.
++            </p>
++        );
++    }
++
++    return (
++        <form onSubmit={translate} className="space-y-4">
++            <div className="flex flex-wrap items-end gap-3">
++                <label className="flex flex-col text-xs font-semibold gap-1">
++                    From
++                    <select className={selectClass} value={source} onChange={(e) => setSource(e.target.value)}>
++                        {options}
++                    </select>
++                </label>
++                <button
++                    type="button"
++                    onClick={swap}
++                    aria-label="Swap languages"
++                    className="border border-gray-300 rounded px-3 py-2 text-sm hover:bg-gray-100"
++                >
++                    ⇄
++                </button>
++                <label className="flex flex-col text-xs font-semibold gap-1">
++                    To
++                    <select className={selectClass} value={target} onChange={(e) => setTarget(e.target.value)}>
++                        {options}
++                    </select>
++                </label>
++            </div>
++
++            <div className="grid md:grid-cols-2 gap-4">
++                <label className="flex flex-col text-xs font-semibold gap-1">
++                    Text
++                    <textarea
++                        className="border border-gray-300 rounded p-3 text-base font-normal min-h-48"
++                        value={text}
++                        onChange={(e) => setText(e.target.value)}
++                        placeholder="Type or paste text to translate"
++                    />
++                </label>
++                <div className="flex flex-col text-xs font-semibold gap-1">
++                    Translation
++                    <output
++                        aria-live="polite"
++                        lang={target}
++                        className="border border-gray-200 bg-gray-50 rounded p-3 text-base font-normal min-h-48 whitespace-pre-wrap"
++                    >
++                        {result}
++                    </output>
++                </div>
++            </div>
++
++            <div className="flex items-center gap-4">
++                <button
++                    type="submit"
++                    disabled={busy || supported === null || !text.trim()}
++                    className="bg-gray-800 text-white text-sm font-semibold py-2 px-4 rounded hover:bg-gray-700 disabled:opacity-50"
++                >
++                    {busy ? 'Translating…' : 'Translate'}
++                </button>
++                {status === 'downloading' && (
++                    <label className="text-xs flex items-center gap-2">
++                        Downloading language pack
++                        <progress value={progress} max={1} />
++                    </label>
++                )}
++            </div>
++
++            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
++        </form>
++    );
++}
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..fd0cd1e
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,14 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TranslateTool from '../components/TranslateTool';
++---
++
++<Layout title="Translate | The DevTools Times">
++  <div class="max-w-4xl mx-auto px-4 py-8 md:py-12">
++    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Translate</h1>
++    <p class="text-gray-600 mb-6">
++      Translate text between languages. Translation runs on your device; your text is never sent to a server.
++    </p>
++    <TranslateTool client:load />
++  </div>
++</Layout>

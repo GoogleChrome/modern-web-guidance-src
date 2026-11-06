@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..ac9b09c 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,99 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Preferences & Accessible Switch Controls */
++    .preferences-card {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .preferences-card h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .preferences-intro {
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    .switch-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px 20px;
++    }
++
++    .switch-fieldset legend {
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .switch-row {
++      display: flex;
++      flex-direction: column;
++      padding: 12px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .switch-row:last-child {
++      border-bottom: none;
++    }
++
++    .switch-label {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      min-block-size: 44px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .switch-description {
++      font-size: 0.9rem;
++      color: var(--text);
++      margin-top: 2px;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--accent-color, var(--primary));
++      margin: 0;
++      cursor: pointer;
++      min-inline-size: 24px;
++      min-block-size: 24px;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--focus-color, #d84315);
++      outline-offset: 4px;
++    }
++
++    input[type="checkbox"][switch]:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .switch-status {
++      margin-top: 16px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++      min-block-size: 1.5em;
++    }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "input-switch-polyfill": "./node_modules/input-switch-polyfill/input-switch-polyfill.js"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -195,6 +287,63 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences-card" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Order &amp; Notification Preferences</h2>
++      <p class="preferences-intro">Customize your coffee ordering experience and alert settings.</p>
++      <form id="preferences-form" action="/account/preferences" method="POST">
++        <fieldset class="switch-fieldset">
++          <legend>Quick Toggles</legend>
++          <div class="switch-row">
++            <label for="notifications" class="switch-label">
++              Enable order pickup notifications
++              <input
++                id="notifications"
++                name="notifications"
++                type="checkbox"
++                switch
++                checked
++                aria-describedby="notifications-desc"
++              >
++            </label>
++            <p id="notifications-desc" class="switch-description">
++              Receive an instant alert as soon as your barista finishes crafting your drink.
++            </p>
++          </div>
++          <div class="switch-row">
++            <label for="oat-milk-default" class="switch-label">
++              Default to oat milk for espresso drinks
++              <input
++                id="oat-milk-default"
++                name="oat_milk_default"
++                type="checkbox"
++                switch
++                aria-describedby="oat-milk-desc"
++              >
++            </label>
++            <p id="oat-milk-desc" class="switch-description">
++              Automatically substitute steamed oat milk in lattes, cappuccinos, and cortados.
++            </p>
++          </div>
++          <div class="switch-row">
++            <label for="reusable-cup" class="switch-label">
++              Bring my own reusable cup ($0.25 discount)
++              <input
++                id="reusable-cup"
++                name="reusable_cup"
++                type="checkbox"
++                switch
++                aria-describedby="reusable-cup-desc"
++              >
++            </label>
++            <p id="reusable-cup-desc" class="switch-description">
++              Let our baristas know you'll bring a personal tumbler at pickup.
++            </p>
++          </div>
++        </fieldset>
++        <p id="preferences-status" class="switch-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +356,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('input-switch-polyfill');
++    }
++
++    const statusEl = document.getElementById('preferences-status');
++    const switches = document.querySelectorAll('input[type="checkbox"][switch]');
++
++    switches.forEach((switchInput) => {
++      switchInput.addEventListener('change', (event) => {
++        const target = event.currentTarget;
++        const isChecked = target.checked;
++        const label = document.querySelector(`label[for="${target.id}"]`);
++        const labelText = label ? label.textContent.trim() : target.name;
++        if (statusEl) {
++          statusEl.textContent = `${labelText}: ${isChecked ? 'Enabled' : 'Disabled'}`;
++        }
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..2c1f499 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "input-switch-polyfill": "^1.12.0"
+   }
+ }

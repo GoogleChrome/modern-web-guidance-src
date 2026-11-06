@@ -1,0 +1,1671 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..658c915 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -19,6 +19,10 @@ export default defineConfig({
+   output: "server",
+ 
+   image: {
++    remotePatterns: [
++      { protocol: 'https', hostname: 'i.imgur.com', pathname: '/*' },
++      { protocol: 'https', hostname: 'cinemai-1026410574114.us-central1.run.app', pathname: '/cinemai/_next/image' },
++    ],
+     service: {
+        entrypoint: 'astro/assets/services/sharp',
+        config: {
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..3906344 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -8,23 +8,25 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+     large?: boolean;
++    headingLevel?: 2 | 3;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const { article, large = false, headingLevel = 3 } = Astro.props;
++const Heading = `h${headingLevel}`;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <Heading class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+-                    </h1>
++                    </Heading>
+                     <p class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+@@ -38,27 +40,36 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} aria-label={article.data.title}>
+                     <Image 
+                         src={image} 
+                         alt=""
+-                        width={800}
+-                        height={533}
++                        width={1200}
++                        height={800}
++                        widths={[400, 640, 800, 1200]}
++                        sizes="(min-width: 1152px) 640px, (min-width: 1024px) 56vw, calc(100vw - 6rem)"
++                        loading="eager"
++                        fetchpriority="high"
++                        decoding="async"
+                         format="webp"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+     <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} aria-label={article.data.title}>
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
++                widths={[320, 400, 640, 800]}
++                sizes="(min-width: 1152px) 352px, (min-width: 768px) 30vw, calc(100vw - 2rem)"
++                loading="lazy"
++                decoding="async"
+                 format="webp"
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+@@ -66,9 +77,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <Heading class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+-                </h3>
++                </Heading>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..45f6038 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -23,7 +23,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <button type="button" aria-label={isBookmarked ? "Remove from reading list" : "Save to reading list"} aria-pressed={isBookmarked} onClick={handleClick} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..15aa846 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,65 +1,35 @@
+-import React, { useState } from 'react';
+-import FlyoutMenu from './FlyoutMenu';
++import CategoryNavItem from './CategoryNavItem';
+ 
+-interface BottomNavProps {
+-    categories: string[];
+-    articles: any[];
+-    reports: any[];
+-    multimedia: any[];
+-}
+-
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+-    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+-
+-    const groupedCategories = {
+-        'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+-        'Arts & Culture': ['Culture', 'Media'],
+-        'Science & Tech': ['science'],
+-        'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+-    };
+-
+-    const handleMouseLeave = () => {
+-        setActiveCategory(null);
+-    };
++interface NavigationEntry { id: string; data: { title: string; category: string } }
+ 
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+-    const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+-    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+-
+-    return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+-                        return (
+-                            <div 
+-                                key={groupName}
+-                                onMouseEnter={() => setActiveCategory(groupName)}
+-                                className="h-full flex items-center"
+-                            >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+-                                >
+-                                    <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                                    </svg>
+-                                </a>
+-                            </div>
+-                        );
+-                    })}
+-                </nav>
+-            </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+-                categories={activeSubCategories.filter(c => categories.includes(c))}
+-                articles={articles}
+-                reports={filteredReports}
+-                multimedia={filteredMultimedia}
+-            />
+-        </div>
+-    );
+-};
++interface Props {
++  categories: string[];
++  articles: NavigationEntry[];
++  reports: NavigationEntry[];
++  multimedia: NavigationEntry[];
++}
+ 
+-export default BottomNav;
++export default function BottomNav({ categories, articles, reports, multimedia }: Props) {
++  const groups = {
++    'News & Politics': ['news', 'national', 'politics', 'economy', 'labor', 'business'],
++    'Arts & Culture': ['culture', 'media'],
++    'Science & Tech': ['science', 'web development'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'urban development'],
++  };
++  return (
++    <div className="border-t border-b border-gray-900">
++      <nav aria-label="Sections" className="container mx-auto px-4 flex justify-start sm:justify-center items-center text-sm font-semibold gap-6 h-10 overflow-x-auto">
++        {Object.entries(groups).map(([name, members]) => (
++          <CategoryNavItem
++            key={name}
++            groupName={name}
++            subCategories={categories.filter(category => members.includes(category.toLowerCase()))}
++            articles={articles.filter(article => members.includes(article.data.category.toLowerCase()))}
++            reports={reports.filter(report => report.data.category === name)}
++            multimedia={multimedia.filter(item => item.data.category === name)}
++          />
++        ))}
++      </nav>
++    </div>
++  );
++}
+diff --git a/src/components/CategoryNavItem.tsx b/src/components/CategoryNavItem.tsx
+index 847fef0..d03cb42 100644
+--- a/src/components/CategoryNavItem.tsx
++++ b/src/components/CategoryNavItem.tsx
+@@ -1,48 +1,36 @@
+-import React, { useState } from 'react';
++import { useId, useState } from 'react';
++import FlyoutMenu, { type FlyoutMenuProps } from './FlyoutMenu';
+ 
+-interface CategoryNavItemProps {
+-    groupName: string;
+-    subCategories: string[];
+-    currentPath: string;
++interface Props extends Omit<FlyoutMenuProps, 'categories'> {
++  groupName: string;
++  subCategories: string[];
++  currentPath?: string;
+ }
+ 
+-const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategories, currentPath }) => {
+-    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
++export default function CategoryNavItem({ groupName, subCategories, currentPath = '', ...content }: Props) {
++  const id = useId();
++  const [open, setOpen] = useState(false);
++  const [top, setTop] = useState(0);
++  const active = subCategories.some(category => currentPath.includes(`/category/${encodeURIComponent(category.toLowerCase())}`));
+ 
+-    const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
+-
+-    return (
+-        <div 
+-            className="relative"
+-            onMouseEnter={() => setIsFlyoutOpen(true)}
+-            onMouseLeave={() => setIsFlyoutOpen(false)}
+-        >
+-            <a 
+-                href="#" 
+-                className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
+-            >
+-                <span>{groupName}</span>
+-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+-                </svg>
+-            </a>
+-            {isFlyoutOpen && (
+-                <div className="absolute top-full left-0 bg-white border-b border-gray-300 shadow-sm z-10 mt-2 py-6 px-4">
+-                    <div className="grid grid-cols-1 gap-x-8">
+-                        <ul className="space-y-2 text-sm">
+-                            {subCategories.map(category => (
+-                                <li key={category}>
+-                                    <a href={`/category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                                        {category.charAt(0).toUpperCase() + category.slice(1)}
+-                                    </a>
+-                                </li>
+-                            ))}
+-                        </ul>
+-                    </div>
+-                </div>
+-            )}
+-        </div>
+-    );
+-};
+-
+-export default CategoryNavItem;
++  return (
++    <div className="h-full flex items-center">
++      <button
++        type="button"
++        popoverTarget={id}
++        aria-controls={id}
++        aria-expanded={open}
++        className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${active ? 'text-amber-800' : ''}`}
++        onClick={event => setTop((event.currentTarget.closest('nav') || event.currentTarget).getBoundingClientRect().bottom)}
++      >
++        <span>{groupName}</span>
++        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
++        </svg>
++      </button>
++      <div id={id} popover="auto" role="region" aria-label={groupName} className="nav-popover bg-white border border-gray-300 shadow-lg p-6" style={{ top }} onToggle={event => setOpen(event.newState === 'open')}>
++        <FlyoutMenu categories={subCategories} {...content} />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..23ad7b0 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,111 +1,45 @@
+-import React from 'react';
++interface Entry {
++  id: string;
++  data: { title: string; description?: string };
++}
+ 
+-interface FlyoutMenuProps {
+-  isOpen: boolean;
++export interface FlyoutMenuProps {
+   categories: string[];
+-  articles: any[];
+-  reports: any[];
+-  multimedia: any[];
++  articles?: Entry[];
++  reports?: Entry[];
++  multimedia?: Entry[];
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
+-
+-  // Intentionally failing method to demonstrate debugging
+-  const calculateTrendingScore = (article: any) => {
+-    const getScore = article.getScore;
+-    return getScore();
+-  };
+-
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
+-
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
+-
++export default function FlyoutMenu({ categories, articles = [], reports = [], multimedia = [] }: FlyoutMenuProps) {
++  const base = import.meta.env.BASE_URL;
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
+-      <div className="container mx-auto px-4 py-6">
+-        <div className="grid grid-cols-4 gap-x-8">
+-          
+-          {/* Column 1: SECTIONS */}
+-          <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
+-            <ul className="space-y-2 text-sm">
+-              {categories.map(category => (
+-                <li key={category}>
+-                  <a href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+-                  </a>
+-                </li>
+-              ))}
+-            </ul>
+-          </div>
+-
+-          {/* Column 2: TOP STORIES */}
+-          <div>
+-            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
+-            <ul className="space-y-2 text-sm">
+-                {topStories.map(article => (
+-                    <li key={article.id}>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline">{article.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-          </div>
+-
+-          {/* Column 3: REPORTS */}
+-          <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
+-              <ul className="space-y-4 text-sm">
+-                  {reports.map(report => (
+-                      <li key={report.slug}>
+-                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
+-                              <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+-                                  <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
+-                              </div>
+-                              <div>
+-                                  <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
+-                                  <p className="text-xs text-gray-600">{report.data.description}</p>
+-                              </div>
+-                          </a>
+-                      </li>
+-                  ))}
+-                  <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
+-                  </li>
+-              </ul>
+-          </div>
+-
+-          {/* Column 4: MULTIMEDIA */}
+-          <div>
+-              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
+-              <ul className="space-y-4 text-sm">
+-                    {multimedia.map(item => (
+-                        <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+-                                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+-                                    <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+-                                </div>
+-                                <div>
+-                                    <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
+-                                    <p className="text-xs text-gray-600">{item.data.description}</p>
+-                                </div>
+-                            </a>
+-                        </li>
+-                    ))}
+-                  <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
+-                  </li>
+-              </ul>
+-          </div>
+-
+-        </div>
++    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
++      <div>
++        <h2 className="text-xs font-semibold tracking-wider text-gray-600 uppercase mb-3">Sections</h2>
++        <ul className="space-y-2 text-sm">
++          {categories.map(category => <li key={category}><a href={`${base}category/${encodeURIComponent(category.toLowerCase())}`} className="hover:underline capitalize">{category}</a></li>)}
++        </ul>
++      </div>
++      <div>
++        <h2 className="text-xs font-semibold tracking-wider text-gray-600 uppercase mb-3">Top Stories</h2>
++        <ul className="space-y-2 text-sm">
++          {articles.slice(0, 3).map(article => <li key={article.id}><a href={`${base}articles/${article.id}`} className="hover:underline">{article.data.title}</a></li>)}
++        </ul>
++      </div>
++      <div>
++        <h2 className="text-xs font-semibold tracking-wider text-gray-600 uppercase mb-3">Reports</h2>
++        <ul className="space-y-4 text-sm">
++          {reports.map(report => <li key={report.id}><a href={`${base}reports#${report.id}`} className="hover:underline">{report.data.title}</a></li>)}
++          <li><a href={`${base}reports`} className="font-semibold hover:underline">See all reports</a></li>
++        </ul>
++      </div>
++      <div>
++        <h2 className="text-xs font-semibold tracking-wider text-gray-600 uppercase mb-3">Multimedia</h2>
++        <ul className="space-y-4 text-sm">
++          {multimedia.map(item => <li key={item.id}><a href={`${base}multimedia#${item.id}`} className="hover:underline">{item.data.title}</a></li>)}
++          <li><a href={`${base}multimedia`} className="font-semibold hover:underline">See all multimedia</a></li>
++        </ul>
+       </div>
+     </div>
+   );
+-};
+-
+-export default FlyoutMenu;
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..da62263 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -7,50 +7,54 @@ const baseUrl = import.meta.env.BASE_URL;
+     <div class="border-b border-gray-300 pb-6 mb-6">
+         <a href={baseUrl}>
+             <img
+-                src=`${baseUrl}logo.svg`
++                src={`${baseUrl}logo.svg`}
++                width="872"
++                height="102"
++                loading="lazy"
++                decoding="async"
+                 alt="The DevTools Times"
+-                class="h-10"
++                class="h-auto w-full max-w-80"
+             />
+         </a>
+     </div>
+ 
+     <!-- Middle section: Main navigation links -->
+-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
++    <nav aria-label="Footer sections" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+         
+         <!-- Column 1: NEWS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">News</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+-                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+-                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
++                <li><a href={`${baseUrl}category/national`} class="text-sm hover:underline">National</a></li>
++                <li><a href={`${baseUrl}category/politics`} class="text-sm hover:underline">Politics</a></li>
++                <li><a href={`${baseUrl}category/business`} class="text-sm hover:underline">Business</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 2: ARTS -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+-                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
++                <li><a href={`${baseUrl}category/culture`} class="text-sm hover:underline">Culture</a></li>
++                <li><a href={`${baseUrl}category/media`} class="text-sm hover:underline">Media</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 3: LIFESTYLE -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+-                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+-                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
++                <li><a href={`${baseUrl}category/lifestyle`} class="text-sm hover:underline">Lifestyle</a></li>
++                <li><a href={`${baseUrl}category/sports`} class="text-sm hover:underline">Sports</a></li>
++                <li><a href={`${baseUrl}category/urban%20development`} class="text-sm hover:underline">Urban Development</a></li>
+             </ul>
+         </div>
+ 
+         <!-- Column 4: SCIENCE & TECH -->
+         <div>
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h2>
+             <ul class="space-y-2">
+-                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href={`${baseUrl}category/science`} class="text-sm hover:underline">Science</a></li>
+             </ul>
+         </div>
+ 
+@@ -60,7 +64,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+         <!-- Column 7: ACCOUNT -->
+         <div class="col-span-2 sm:col-span-1">
+-            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
++            <h2 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h2>
+             <ul class="space-y-2 mb-4">
+                 <li>
+                     <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+@@ -82,19 +86,19 @@ const baseUrl = import.meta.env.BASE_URL;
+             </ul>
+         </div>
+ 
+-    </div>
++    </nav>
+ 
+     <!-- Bottom section: Legal, copyright, and privacy -->
+     <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+         <!-- Copyright and legal links -->
+-        <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
++        <nav aria-label="Legal" class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+             <span>© 2025 The DevTools Times Company</span>
+             <a href="#" class="hover:underline">Contact Us</a>
+             <a href="#" class="hover:underline">Work with us</a>
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+-        </div>
++        </nav>
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..205962d 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -9,6 +9,10 @@ const reports = await getCollection("reports");
+ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
++const navigationArticles = articles.map(({ id, data }) => ({ id, data: { title: data.title, category: data.category } }));
++const navigationReports = reports.map(({ id, data }) => ({ id, data: { title: data.title, category: data.category } }));
++const navigationMultimedia = multimedia.map(({ id, data }) => ({ id, data: { title: data.title, category: data.category } }));
++
+ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+@@ -48,13 +52,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     <div class="grid grid-cols-3 items-center">
+       <!-- Left Section: Date -->
+       <div class="text-xs">
+-        <p class="font-semibold">{todaysDate}</p>
++        <time datetime={new Date().toISOString().slice(0, 10)} class="font-semibold">{todaysDate}</time>
+       </div>
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src={`${baseUrl}logo.svg`} alt="The DevTools Times" width="872" height="102" decoding="async" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+@@ -65,5 +69,5 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+   </div>
+ 
+   <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
++  <BottomNav client:load categories={categories} articles={navigationArticles} reports={navigationReports} multimedia={navigationMultimedia} />
+ </header>
+diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
+index 4e6592b..d8b9017 100644
+--- a/src/components/MenuButton.tsx
++++ b/src/components/MenuButton.tsx
+@@ -1,29 +1,5 @@
+-import React, { useState } from 'react';
+-import FlyoutMenu from './FlyoutMenu';
++import CategoryNavItem from './CategoryNavItem';
+ 
+-interface Props {
+-  categories: string[];
+-}
+-
+-export default function MenuButton({ categories }: Props) {
+-  const [isOpen, setIsOpen] = useState(false);
+-
+-  const toggleMenu = () => {
+-    setIsOpen(!isOpen);
+-  };
+-
+-  const closeMenu = () => {
+-    setIsOpen(false);
+-  };
+-
+-  return (
+-    <>
+-      <button className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
+-        <svg className="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+-        </svg>
+-      </button>
+-      <FlyoutMenu isOpen={isOpen} onClose={closeMenu} categories={categories} />
+-    </>
+-  );
++export default function MenuButton({ categories }: { categories: string[] }) {
++  return <CategoryNavItem groupName="All sections" subCategories={categories} />;
+ }
+diff --git a/src/components/Modal.tsx b/src/components/Modal.tsx
+new file mode 100644
+index 0000000..5b139a3
+--- /dev/null
++++ b/src/components/Modal.tsx
+@@ -0,0 +1,50 @@
++import { useEffect, useRef, type ReactNode } from 'react';
++
++interface Props {
++  id: string;
++  title: string;
++  open: boolean;
++  onClose: () => void;
++  children: ReactNode;
++}
++
++/** The native modal provides focus containment, Escape dismissal and an inert background. */
++export default function Modal({ id, title, open, onClose, children }: Props) {
++  const dialogRef = useRef<HTMLDialogElement>(null);
++
++  useEffect(() => {
++    const dialog = dialogRef.current;
++    if (!dialog || !open) return;
++    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
++    dialog.showModal();
++    return () => {
++      dialog.close();
++      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
++    };
++  }, [open]);
++
++  return (
++    <dialog
++      ref={dialogRef}
++      id={id}
++      aria-labelledby={`${id}-title`}
++      className="overlay-dialog bg-white shadow-xl w-full max-w-2xl"
++      onClose={onClose}
++      onClick={event => {
++        if (event.target !== event.currentTarget) return;
++        const bounds = event.currentTarget.getBoundingClientRect();
++        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
++          event.currentTarget.close();
++        }
++      }}
++    >
++      <div className="flex items-center justify-between gap-4 p-4 border-b border-gray-200">
++        <h2 id={`${id}-title`} className="text-lg font-semibold text-gray-800">{title}</h2>
++        <button type="button" autoFocus={title !== 'Search articles'} onClick={() => dialogRef.current?.close()} aria-label={`Close ${title.toLowerCase()}`} className="p-2 text-gray-600 hover:text-amber-700">
++          <span aria-hidden="true">✕</span>
++        </button>
++      </div>
++      {open && children}
++    </dialog>
++  );
++}
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..ed72dae 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,46 +1,17 @@
+-
+-import React, { useState, useEffect } from 'react';
++import { useId, useState } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
+ 
+-interface Article {
+-  slug: string;
+-  title: string;
+-  summary: string;
+-  image: string;
+-}
+-
+ export default function ReadingListButton() {
+   const [isOpen, setIsOpen] = useState(false);
+-  const [articles, setArticles] = useState<Article[]>([]);
+-
+-  useEffect(() => {
+-    const fetchArticles = async () => {
+-      const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-      const data = await response.json();
+-      setArticles(data);
+-    };
+-    fetchArticles();
+-  }, []);
+-
++  const id = useId();
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
+-        <svg
+-          xmlns="http://www.w3.org/2000/svg"
+-          className="h-6 w-6 text-gray-600"
+-          fill="none"
+-          viewBox="0 0 24 24"
+-          stroke="currentColor"
+-        >
+-          <path
+-            strokeLinecap="round"
+-            strokeLinejoin="round"
+-            strokeWidth={2}
+-            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+-          />
++      <button type="button" aria-label="Open reading list" aria-haspopup="dialog" aria-controls={id} aria-expanded={isOpen} onClick={() => setIsOpen(true)} className="p-1">
++        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout id={id} open={isOpen} onClose={() => setIsOpen(false)} />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..972604c 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,87 +1,88 @@
++import { useEffect, useRef, useState } from 'react';
++import Modal from './Modal';
+ 
+-import React, { useState, useEffect } from 'react';
++interface Article { slug: string; title: string; summary: string }
++interface Props { id: string; open: boolean; onClose: () => void }
+ 
+-interface Article {
+-  slug: string;
+-  title: string;
+-  summary: string;
+-  image: string;
+-}
+-
+-interface Props {
+-  articles: Article[];
+-  onClose: () => void;
+-}
+-
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++function ReadingListContent() {
++  const [articles, setArticles] = useState<Article[]>([]);
+   const [readingList, setReadingList] = useState<string[]>([]);
+-
+-  const fetchReadingList = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+-    const data = await response.json();
+-    setReadingList(data.readingList);
+-  };
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState('');
++  const [removing, setRemoving] = useState<string | null>(null);
++  const listRef = useRef<HTMLUListElement>(null);
++  const statusRef = useRef<HTMLParagraphElement>(null);
+ 
+   useEffect(() => {
+-    fetchReadingList();
+-
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
++    const controller = new AbortController();
++    async function load() {
++      try {
++        const responses = await Promise.all([
++          fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal: controller.signal }),
++          fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, { signal: controller.signal }),
++        ]);
++        if (responses.some(response => !response.ok)) throw new Error('Could not load reading list.');
++        const [articles, list] = await Promise.all(responses.map(response => response.json()));
++        setArticles(articles);
++        setReadingList(list.readingList);
++      } catch (error) {
++        if (!controller.signal.aborted) setError('Your reading list could not be loaded. Please reopen it to try again.');
++      } finally {
++        if (!controller.signal.aborted) setLoading(false);
+       }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
+-
+-    return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
+-    };
+-  }, [onClose]);
+-
+-  const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    fetchReadingList();
+-  };
++    }
++    load();
++    return () => controller.abort();
++  }, []);
+ 
+-  const readingListArticles = articles.filter(article => readingList.includes(article.slug));
++  const savedArticles = articles.filter(article => readingList.includes(article.slug));
++  async function remove(slug: string, index: number) {
++    setRemoving(slug);
++    setError('');
++    try {
++      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug }),
++      });
++      if (!response.ok) throw new Error('Could not remove article.');
++      const data = await response.json();
++      setReadingList(data.readingList);
++      // Move focus to a surviving item when the focused remove button disappears.
++      requestAnimationFrame(() => {
++        const links = listRef.current?.querySelectorAll('a');
++        const next = links?.[Math.min(index, links.length - 1)];
++        (next || statusRef.current)?.focus();
++      });
++    } catch {
++      setError('The article could not be removed. Please try again.');
++    } finally {
++      setRemoving(null);
++    }
++  }
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
+-        </div>
+-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+-          {readingListArticles.length === 0 && (
+-            <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+-          )}
+-          <ul className="space-y-2">
+-            {readingListArticles.map(article => (
+-              <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                  <p className="text-sm text-gray-600">{article.summary}</p>
+-                </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+-                    </svg>
+-                </button>
+-              </li>
+-            ))}
+-          </ul>
+-        </div>
+-      </div>
++    <div className="p-4">
++      <p ref={statusRef} tabIndex={-1} role="status" className="text-gray-600 mb-3">
++        {loading ? 'Loading reading list…' : error || (savedArticles.length ? `${savedArticles.length} saved articles` : 'Your reading list is empty.')}
++      </p>
++      <ul ref={listRef} className="space-y-2">
++        {savedArticles.map((article, index) => (
++          <li key={article.slug} className="flex items-center">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md flex-grow">
++              <h3 className="font-bold text-lg text-gray-800">{article.title}</h3>
++              <p className="text-sm text-gray-600">{article.summary}</p>
++            </a>
++            <button type="button" disabled={removing !== null} aria-label={`Remove ${article.title} from reading list`} onClick={() => remove(article.slug, index)} className="p-2 text-gray-600 hover:text-amber-700">
++              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++              </svg>
++            </button>
++          </li>
++        ))}
++      </ul>
+     </div>
+   );
+ }
++
++export default function ReadingListFlyout({ id, open, onClose }: Props) {
++  return <Modal id={id} title="Your Reading List" open={open} onClose={onClose}><ReadingListContent /></Modal>;
++}
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..ec2ced4 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,49 +1,17 @@
+-
+-import React, { useState } from 'react';
++import { useId, useState } from 'react';
+ import SearchFlyout from './SearchFlyout';
+ 
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-}
+-
+ export default function SearchButton() {
+-    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+-    const [articles, setArticles] = useState<Article[]>([]);
+-    const [isLoading, setIsLoading] = useState(false);
+-
+-    const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
+-        }
+-    };
+-
+-    const closeSearch = () => {
+-        setIsFlyoutOpen(false);
+-    };
+-
+-    return (
+-        <>
+-            <button
+-                className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+-                onClick={openSearch}
+-                disabled={isLoading}
+-            >
+-                {isLoading ? (
+-                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+-                ) : (
+-                    <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+-                    </svg>
+-                )}
+-            </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
+-        </>
+-    );
++  const [isOpen, setIsOpen] = useState(false);
++  const id = useId();
++  return (
++    <>
++      <button type="button" aria-label="Search articles" aria-haspopup="dialog" aria-controls={id} aria-expanded={isOpen} onClick={() => setIsOpen(true)} className="text-gray-700 hover:text-amber-700 w-6 h-6 flex items-center justify-center">
++        <svg aria-hidden="true" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
++          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
++        </svg>
++      </button>
++      <SearchFlyout id={id} open={isOpen} onClose={() => setIsOpen(false)} />
++    </>
++  );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..f5c1ddf 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,118 +1,60 @@
+-
+-import React, { useState, useMemo, useEffect } from 'react';
+-
+-interface Article {
+-    slug: string;
+-    title: string;
+-    summary: string;
+-    image?: string;
++import { useEffect, useMemo, useState } from 'react';
++import Modal from './Modal';
++
++interface Article { slug: string; title: string; summary: string }
++interface Props { id: string; open: boolean; onClose: () => void }
++
++function SearchContent() {
++  const [searchTerm, setSearchTerm] = useState('');
++  const [articles, setArticles] = useState<Article[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState('');
++
++  useEffect(() => {
++    const controller = new AbortController();
++    async function load() {
++      try {
++        const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`, { signal: controller.signal });
++        if (!response.ok) throw new Error('Could not load articles.');
++        setArticles(await response.json());
++      } catch (error) {
++        if (!controller.signal.aborted) setError('Articles could not be loaded. Please reopen search to try again.');
++      } finally {
++        if (!controller.signal.aborted) setLoading(false);
++      }
++    }
++    load();
++    return () => controller.abort();
++  }, []);
++
++  const results = useMemo(() => {
++    const term = searchTerm.trim().toLowerCase();
++    return term ? articles.filter(article => `${article.title} ${article.summary}`.toLowerCase().includes(term)) : articles.slice(0, 3);
++  }, [articles, searchTerm]);
++
++  return (
++    <div className="p-4">
++      <form role="search" onSubmit={event => event.preventDefault()}>
++        <label htmlFor="article-search" className="block text-sm font-semibold mb-2">Search articles</label>
++        <input id="article-search" name="q" type="search" autoComplete="off" autoFocus placeholder="Search for articles…" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
++      </form>
++      <p role="status" className="text-sm text-gray-600 my-3">
++        {loading ? 'Loading articles…' : error || (searchTerm.trim() ? `${results.length} results found.` : 'Featured articles')}
++      </p>
++      <ul className="space-y-2">
++        {results.map(article => (
++          <li key={article.slug}>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md">
++              <h3 className="font-bold text-lg text-gray-800">{article.title}</h3>
++              <p className="text-sm text-gray-600">{article.summary}</p>
++            </a>
++          </li>
++        ))}
++      </ul>
++    </div>
++  );
+ }
+ 
+-interface Props {
+-    articles: Article[];
+-    onClose: () => void;
+-}
+-
+-// Function to shuffle an array and get the first N items
+-const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+-    return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+-};
+-
+-export default function SearchFlyout({ articles, onClose }: Props) {
+-    const [searchTerm, setSearchTerm] = useState('');
+-    const [suggestions, setSuggestions] = useState<Article[]>([]);
+-
+-    useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
+-            }
+-        };
+-
+-        fetchSuggestions();
+-
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
+-        };
+-    }, [onClose]);
+-
+-    const filteredArticles = useMemo(() => {
+-        if (!searchTerm) {
+-            return [];
+-        }
+-        return articles.filter(article =>
+-            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+-            article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+-        );
+-    }, [articles, searchTerm]);
+-
+-    return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                <div className="p-4">
+-                    {!searchTerm && suggestions.length > 0 && (
+-                        <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+-                            <ul className="grid grid-cols-3 gap-4 mb-4">
+-                                {suggestions.map(article => {
+-                                    const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+-                                    return (
+-                                        <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                            </a>
+-                                        </li>
+-                                    );
+-                                })}
+-                            </ul>
+-                        </div>
+-                    )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
+-                </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
+-                    {searchTerm && filteredArticles.length === 0 && (
+-                        <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+-                    )}
+-                    {searchTerm && (
+-                        <ul className="space-y-2">
+-                            {filteredArticles.map(article => (
+-                                <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
+-                                    </a>
+-                                </li>
+-                            ))}
+-                        </ul>
+-                    )}
+-                </div>
+-            </div>
+-        </div>
+-    );
++export default function SearchFlyout({ id, open, onClose }: Props) {
++  return <Modal id={id} title="Search articles" open={open} onClose={onClose}><SearchContent /></Modal>;
+ }
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..55f861c 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -41,7 +41,7 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -50,12 +50,12 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form aria-busy={loading} onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +63,10 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +81,8 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..3d2d20d 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -42,7 +42,7 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -51,12 +51,12 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form aria-busy={loading} onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +64,10 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,12 +82,17 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            minLength={8}
++            pattern="(?=.*[0-9]).{8,}"
++            aria-describedby="password-hint"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-hint" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..710659a 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,7 +32,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <article class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+@@ -55,11 +55,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             </div>
+             <div class="w-full order-first lg:order-last">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width={800} height={450} widths={[400, 640, 800, 1200]} sizes="(min-width: 1152px) 552px, (min-width: 1024px) 48vw, calc(100vw - 2rem)" loading="lazy" decoding="async" format="webp" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,10 +67,10 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                            <Image width={400} height={225} widths={[320, 400, 640, 800]} sizes="(min-width: 1152px) 352px, (min-width: 768px) 30vw, calc(100vw - 2rem)" loading="lazy" decoding="async" format="webp" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+@@ -95,7 +95,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+-                </div>
++                </article>
+             )
+         })}
+     </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..57b7460 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,13 +17,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+@@ -32,20 +31,19 @@ const baseUrl = import.meta.env.BASE_URL;
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <a href="#main-content" class="skip-link">Skip to content</a>
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:idle />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
+-        <main class="bg-white relative">
++        <Header />
++        <main id="main-content" tabindex="-1" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..e59b39b 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -30,9 +30,10 @@ const allArticles = await getCollection('articles');
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+-const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+-const isBookmarked = readingList.includes(article.slug);
++const isBookmarked = readingList.includes(article.id);
++const shareUrl = encodeURIComponent(Astro.url.href);
++const shareTitle = encodeURIComponent(article.data.title);
+ ---
+ 
+ <Layout title={article.data.title}>
+@@ -54,31 +55,24 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Author / Date -->
+         <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            By <span class="font-semibold text-gray-700">{article.data.author}</span> | <time datetime={article.data.date.toISOString()}>{article.data.date.toDateString()}</time>
+         </div>
+ 
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
++            <Image
++                src={articleImage}
++                alt={article.data.title}
++                width={1200}
++                height={675}
++                widths={[400, 640, 800, 1200, 1600]}
++                sizes="(min-width: 768px) 736px, calc(100vw - 2rem)"
++                loading="eager"
++                fetchpriority="high"
++                decoding="async"
++                format="webp"
++                class="w-full h-auto"
++            />
+             {article.data.image_caption && (
+                 <figcaption class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+@@ -88,18 +82,18 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+-            <!-- Social Share Icons (Placeholders) -->
++            <!-- Article sharing -->
+             <div class="flex space-x-3 items-center">
+                 <span class="text-sm font-semibold text-gray-800">Share:</span>
+-                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
++                <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} aria-label="Share on Facebook" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
++                <a href={`https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareTitle}`} aria-label="Share on X" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
++                <a href={`https://wa.me/?text=${shareTitle}%20${shareUrl}`} aria-label="Share on WhatsApp" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                 </a>
+-                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
++                <a href={`mailto:?subject=${shareTitle}&body=${shareUrl}`} aria-label="Share by email" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                 </a>
+-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
++                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
+         </div>
+@@ -110,13 +104,14 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- ADVERTISEMENT -->
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:load />
+-        </section>
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </aside>
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section aria-labelledby="related-heading" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <h2 id="related-heading" class="text-2xl font-bold mb-6">Related articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..3296384 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -44,7 +44,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+-                    alt={`Background for ${capitalizedCategory}`} 
++                    alt=""
++                    widths={[480, 768, 1200]}
++                    sizes="(min-width: 1152px) 1104px, calc(100vw - 3rem)"
++                    loading="eager"
++                    decoding="async"
+                     width={1200}
+                     height={400}
+                     format="webp"
+@@ -73,6 +77,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             alt={featuredArticle.data.title} 
+                             width={1200}
+                             height={675}
++                            widths={[400, 640, 800, 1200]}
++                            sizes="(min-width: 1152px) 1104px, calc(100vw - 3rem)"
++                            loading="eager"
++                            fetchpriority="high"
++                            decoding="async"
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+@@ -89,7 +98,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    {otherArticles.map(article => <ArticleTeaser article={article} headingLevel={2} />)}
+                 </div>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..acd02e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -26,7 +26,7 @@ politicsArticles[2] = {
+       author: 'Chrome DevTools Team',
+       date: new Date('2025-09-16T00:00:00.000Z'),
+       category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=1200&q=75',
+       image_caption: '',
+       readingTime: 3
+     },
+@@ -38,6 +38,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <h1 class="sr-only">The DevTools Times — Latest news</h1>
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -45,7 +46,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h2 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h2>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+@@ -55,27 +56,27 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} headingLevel={2} />
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Top News" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
++        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+-        </section>
++        </aside>
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..a5b25b7 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -11,8 +11,9 @@ const multimedia = await getCollection('multimedia');
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+                 {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
++                    <li id={item.id}>
++                        <h2>{item.data.title}</h2>
++                        <p>{item.data.description}</p>
+                     </li>
+                 ))}
+             </ul>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..69489bd 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -11,8 +11,9 @@ const reports = await getCollection('reports');
+             <p>Read our latest reports.</p>
+             <ul>
+                 {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
++                    <li id={report.id}>
++                        <h2>{report.data.title}</h2>
++                        <p>{report.data.description}</p>
+                     </li>
+                 ))}
+             </ul>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..919ddbc 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,47 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++:focus-visible {
++  outline: 3px solid #92400e;
++  outline-offset: 3px;
++}
++
++.skip-link {
++  position: fixed;
++  top: 0.5rem;
++  left: 0.5rem;
++  z-index: 100;
++  padding: 0.75rem 1rem;
++  background: white;
++  color: #111827;
++  transform: translateY(-200%);
++}
++
++.skip-link:focus { transform: translateY(0); }
++
++.overlay-dialog {
++  margin: 15vh auto auto;
++  max-width: min(42rem, calc(100vw - 2rem));
++  max-height: 75dvh;
++  padding: 0;
++  overflow-y: auto;
++  border: 0;
++}
++
++.overlay-dialog::backdrop {
++  background: rgb(255 255 255 / 30%);
++  backdrop-filter: blur(4px);
++}
++
++body:has(dialog[open]) { overflow: hidden; }
++
++.nav-popover {
++  position: fixed;
++  inset-inline: 0;
++  margin: 0 auto;
++  width: min(72rem, calc(100vw - 2rem));
++  max-height: 65dvh;
++  overflow-y: auto;
++  color: #111827;
++}

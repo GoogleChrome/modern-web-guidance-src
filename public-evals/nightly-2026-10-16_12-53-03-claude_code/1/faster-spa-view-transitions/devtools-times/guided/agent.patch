@@ -1,0 +1,110 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..118e74d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -46,10 +46,80 @@ const baseUrl = import.meta.env.BASE_URL;
+           <Header />
+         </div>
+         <main class="bg-white relative">
++          <div id="view-cache" transition:persist></div>
+           <slot />
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      // Keeps recently visited views alive (hidden via content-visibility)
++      // inside the persisted #view-cache so revisiting them skips rebuilding.
++      const MAX_VIEWS = 5;
++      const MAX_AGE_MS = 5 * 60 * 1000;
++      const UNCACHEABLE = /\/(signin|signup)\/?$/;
++
++      type View = { el: HTMLElement; time: number };
++      const views = new Map<string, View>(); // insertion order = LRU order
++      let currentKey = keyFor(location);
++      let active: View | null = null;
++
++      function keyFor(url: URL | Location) {
++        return url.pathname + url.search;
++      }
++
++      function setActive(view: View, isActive: boolean) {
++        view.el.classList.toggle("inactive", !isActive);
++        view.el.toggleAttribute("inert", !isActive);
++        view.el.setAttribute("aria-hidden", String(!isActive));
++      }
++
++      function evict(key: string) {
++        views.get(key)?.el.remove();
++        views.delete(key);
++      }
++
++      document.addEventListener("astro:before-swap", () => {
++        if (active) {
++          setActive(active, false);
++          active = null;
++          return;
++        }
++        const container = document.getElementById("view-cache");
++        const main = document.querySelector("main");
++        if (!container || !main || UNCACHEABLE.test(currentKey)) return;
++
++        const el = document.createElement("div");
++        el.className = "spa-view";
++        el.tabIndex = -1;
++        // Everything in <main> except the cache container itself
++        el.append(...[...main.childNodes].filter((n) => n !== container));
++        container.append(el);
++
++        evict(currentKey);
++        const view = { el, time: Date.now() };
++        setActive(view, false);
++        views.set(currentKey, view);
++        while (views.size > MAX_VIEWS) evict(views.keys().next().value!);
++      });
++
++      document.addEventListener("astro:after-swap", () => {
++        currentKey = keyFor(location);
++        const view = views.get(currentKey);
++        if (!view) return;
++        if (Date.now() - view.time > MAX_AGE_MS) return evict(currentKey);
++
++        // Drop the freshly rendered copy and reveal the cached one
++        const container = document.getElementById("view-cache");
++        const main = document.querySelector("main");
++        main?.querySelectorAll(":scope > :not(#view-cache)").forEach((n) => n.remove());
++        views.delete(currentKey);
++        views.set(currentKey, view); // mark most recently used
++        view.time = Date.now();
++        setActive(view, true);
++        active = view;
++        container && view.el.focus({ preventScroll: true });
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..27c4946 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,18 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Cached SPA views: keep rendering state in memory without painting */
++.spa-view.inactive {
++  content-visibility: hidden;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}
++
++.spa-view:focus {
++  outline: none;
++}

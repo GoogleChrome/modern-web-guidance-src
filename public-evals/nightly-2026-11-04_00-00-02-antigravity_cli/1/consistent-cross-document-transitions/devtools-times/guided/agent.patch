@@ -1,0 +1,228 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cad9aa7 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,12 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  expectId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, expectId = "main-content" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,18 +22,17 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
++    <link rel="expect" href={`#${expectId}`} blocking="render" />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +43,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id={expectId === "main-content" ? "main-content" : undefined} class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..0655e31 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,56 +35,58 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} expectId="article-hero">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++        <div id="article-hero">
++            <!-- Breadcrumbs/Category -->
++            <div class="text-base text-gray-600 font-semibold mb-2">
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            </div>
+ 
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+-        </div>
++            <!-- Headline -->
++            <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++                {article.data.title}
++            </h1>
++            
++            <!-- Sub-headline / Lead Paragraph -->
++            <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++                {article.data.summary}
++            </p>
++
++            <!-- Author / Date -->
++            <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            </div>
+ 
+-        <!-- Main Article Image -->
+-        <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
+-            {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+-                    {article.data.image_caption}
+-                </figcaption>
+-            )}
+-        </figure>
++            <!-- Main Article Image -->
++            <figure class="mb-5">
++                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
++                {article.data.prompt_comment ? (
++                    <img 
++                        src={article.data.image}
++                        alt={article.data.title}
++                        width="1200"
++                        height="675"
++                        class="w-full h-auto"
++                        crossorigin="use-credentials"
++                    />
++                ) : (
++                    <Image 
++                        src={articleImage} 
++                        alt={article.data.title} 
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        class="w-full h-auto"
++                    />
++                )}
++                {article.data.image_caption && (
++                    <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                        {article.data.image_caption}
++                    </figcaption>
++                )}
++            </figure>
++        </div>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..1d701be 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,10 +37,10 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} expectId={featuredArticle && featuredArticleImage ? "featured-article" : "category-header"}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="category-header" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="featured-article" class="mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..bb72390 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" expectId="hero">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="hero" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..519deb6 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,15 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

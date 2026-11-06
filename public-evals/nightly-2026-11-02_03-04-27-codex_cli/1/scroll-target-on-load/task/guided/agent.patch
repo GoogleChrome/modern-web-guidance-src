@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,14 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Keep the fallback hidden until its initial scroll position is set.
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('scroll-fallback');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +105,50 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-feed {
++      position: relative;
++      height: 480px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      max-width: 640px;
++      margin: 20px auto 0;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f0ebe8;
++    }
++
++    .scroll-fallback .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .media-feed .card + .card {
+       margin-top: 20px;
+     }
+ 
++    .media-feed .target {
++      scroll-initial-target: nearest;
++      scroll-margin-block: 12px;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +216,50 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="seasonal-heading" tabindex="0">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=800&amp;h=450&amp;q=80" width="800" height="450" alt="A creamy iced latte in a tall glass">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=800&amp;h=450&amp;q=80" width="800" height="450" alt="Freshly brewed espresso in a small cup">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=800&amp;h=450&amp;q=80" width="800" height="450" alt="Cold coffee served over ice in a glass">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=800&amp;h=450&amp;q=80" width="800" height="450" alt="A cup of coffee topped with latte art">
++          <h3>Honey Cinnamon Cappuccino</h3>
++          <p>A little honey, a dusting of cinnamon, and velvety foam.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=800&amp;h=450&amp;q=80" width="800" height="450" alt="Fresh coffee prepared with a pour-over brewer">
++          <h3>Single Origin Pour Over</h3>
++          <p>Slowly brewed to bring out every bright, balanced note.</p>
++          <a href="/menu/coffee" class="btn">View Details</a>
++        </article>
+       </div>
++      <script>
++        if (document.documentElement.classList.contains('scroll-fallback')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          // Only move this container; leave the page and keyboard focus in place.
++          feed.scrollTop = target.offsetTop - 12;
++          document.documentElement.classList.remove('scroll-fallback');
++        }
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

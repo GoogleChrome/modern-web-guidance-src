@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,35 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    @keyframes card-reveal {
++      0%, 100% {
++        transform: scale(0.5);
++      }
++
++      25%, 75% {
++        transform: scale(1);
++      }
++    }
++
++    /* Keep cards full-size unless scroll animation and motion are supported. */
++    @supports (animation-timeline: view()) and (animation-range: cover 0% cover 100%) {
++      .grid > .card {
++        @media (prefers-reduced-motion: no-preference) {
++          animation: card-reveal 1ms linear both;
++          /* Set the timeline after the shorthand, which resets it. */
++          animation-timeline: view();
++          animation-range: cover 0% cover 100%;
++        }
++      }
++
++      /* Keep focused links and their cards at a readable, stable size. */
++      .grid > .card:focus-within {
++        animation: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

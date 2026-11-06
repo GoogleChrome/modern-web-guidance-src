@@ -1,0 +1,507 @@
+diff --git a/index.html b/index.html
+index 66c9173..8446510 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,95 @@
+       border-radius: 4px;
+     }
+ 
++    .nav-controls {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++      flex-wrap: wrap;
++    }
++
++    .language-selector {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      background: rgba(255, 255, 255, 0.12);
++      padding: 4px 10px;
++      border-radius: 6px;
++      border: 1px solid rgba(255, 171, 64, 0.45);
++    }
++
++    .language-selector label {
++      font-size: 0.82rem;
++      color: var(--secondary);
++      white-space: nowrap;
++    }
++
++    .language-selector select {
++      background: var(--primary);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      border-radius: 4px;
++      padding: 4px 8px;
++      font-size: 0.85rem;
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    .language-selector select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .translation-banner {
++      max-width: 1100px;
++      margin: 16px auto 0;
++      padding: 0 20px;
++    }
++
++    .translation-status-bar {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      background: white;
++      border-left: 4px solid var(--accent);
++      padding: 10px 16px;
++      border-radius: 6px;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
++      font-size: 0.9rem;
++    }
++
++    .translation-status-bar[hidden] {
++      display: none;
++    }
++
++    .translation-progress {
++      width: 160px;
++      height: 8px;
++      accent-color: var(--primary);
++    }
++
++    .story-section {
++      margin-top: 48px;
++    }
++
++    .story-card {
++      background: white;
++      padding: 28px 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .story-card p + p {
++      margin-top: 14px;
++    }
++
++    .translating {
++      opacity: 0.65;
++      transition: opacity 0.2s ease;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -159,42 +248,73 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-controls">
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++      <div class="language-selector">
++        <label for="language-select">Language</label>
++        <select id="language-select" name="language" aria-label="Language selector">
++          <option value="en">English (EN)</option>
++          <option value="es">Español (ES)</option>
++          <option value="fr">Français (FR)</option>
++          <option value="de">Deutsch (DE)</option>
++          <option value="it">Italiano (IT)</option>
++          <option value="pt">Português (PT)</option>
++          <option value="ja">日本語 (JA)</option>
++          <option value="zh">中文 (ZH)</option>
++          <option value="ko">한국어 (KO)</option>
++        </select>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <p class="story-text" data-translate="hero-story">Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <div class="translation-banner">
++    <div id="translation-status-bar" class="translation-status-bar" hidden>
++      <span id="translation-status" role="status" aria-live="polite"></span>
++      <progress id="translation-progress" class="translation-progress" max="100" value="0" hidden></progress>
++    </div>
++  </div>
++
+   <main class="container">
+-    <section>
++    <section id="menu-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="menu-description" data-translate="menu-maple-oat">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p class="menu-description" data-translate="menu-espresso">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p class="menu-description" data-translate="menu-cold-brew">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="our-story" class="story-section">
++      <h2 style="text-align: center;">Our Story</h2>
++      <div class="story-card">
++        <p class="story-text" data-translate="story-origin">Born in a small neighborhood roastery, The Daily Grind was founded with a passion for artisanal craft and community connection. We partner directly with sustainable farms to source the finest single-origin beans and roast them in small batches every morning.</p>
++        <p class="story-text" data-translate="story-craft">Whether you are stopping by for a velvety Maple Oat Latte or a slow-steeped Cold Brew, every cup tells the story of the growers, roasters, and baristas who made it possible.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +327,320 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const LANGUAGE_NAMES = {
++        en: 'English',
++        es: 'Español',
++        fr: 'Français',
++        de: 'Deutsch',
++        it: 'Italiano',
++        pt: 'Português',
++        ja: '日本語',
++        zh: '中文',
++        ko: '한국어'
++      };
++
++      const FALLBACK_TRANSLATIONS = {
++        es: {
++          'hero-story': 'De origen ético, tostado localmente y entregado directo a tu taza.',
++          'menu-maple-oat': 'Cremosa leche de avena con un toque de jarabe de arce de Vermont.',
++          'menu-espresso': 'Intenso, ahumado y perfecto para empezar la mañana con energía.',
++          'menu-cold-brew': 'Infusionado en frío durante 18 horas para una suavidad máxima.',
++          'story-origin': 'Nacido en una pequeña tostadora de barrio, The Daily Grind se fundó con una pasión por el café artesanal y la conexión comunitaria. Nos asociamos directamente con fincas sostenibles para obtener los mejores granos de origen único y tostarlos en pequeños lotes cada mañana.',
++          'story-craft': 'Ya sea que pases por un suave Maple Oat Latte o un Cold Brew de infusión lenta, cada taza cuenta la historia de los caficultores, tostadores y baristas que lo hicieron posible.'
++        },
++        fr: {
++          'hero-story': 'Issu du commerce éthique, torréfié localement, servi dans votre tasse.',
++          'menu-maple-oat': 'Lait d’avoine crémeux avec une touche de sirop d’érable du Vermont.',
++          'menu-espresso': 'Corsé, fumé et parfait pour un coup de fouet matinal.',
++          'menu-cold-brew': 'Infusé à froid pendant 18 heures pour une douceur maximale.',
++          'story-origin': 'Né dans une petite brûlerie de quartier, The Daily Grind a été fondé avec une passion pour l’artisanat et le lien communautaire. Nous travaillons directement avec des fermes durables pour sélectionner les meilleurs grains d’origine unique et les torréfier en petits lots chaque matin.',
++          'story-craft': 'Que vous passiez pour un Maple Oat Latte velouté ou un Cold Brew infusé lentement, chaque tasse raconte l’histoire des producteurs, torréfacteurs et baristas qui l’ont rendue possible.'
++        },
++        de: {
++          'hero-story': 'Ethisch bezogen, lokal geröstet, direkt in Ihre Tasse geliefert.',
++          'menu-maple-oat': 'Cremige Hafermilch mit einem Hauch von Ahornsirup aus Vermont.',
++          'menu-espresso': 'Kräftig, rauchig und perfekt für den morgendlichen Energieschub.',
++          'menu-cold-brew': '18 Stunden lang kalt gezogen für maximale Milde.',
++          'story-origin': 'Geboren in einer kleinen Nachbarschaftsrösterei, wurde The Daily Grind aus Leidenschaft für handwerkliche Röstkunst und Gemeinschaft gegründet. Wir arbeiten direkt mit nachhaltigen Farmen zusammen, um die besten Single-Origin-Bohnen zu beziehen und sie jeden Morgen in kleinen Chargen frisch zu rösten.',
++          'story-craft': 'Ob Sie für einen samtigen Maple Oat Latte oder einen langsam gezogenen Cold Brew vorbeischauen – jede Tasse erzählt die Geschichte der Bauern, Röster und Baristas, die sie möglich gemacht haben.'
++        },
++        it: {
++          'hero-story': 'Di provenienza etica, tostato localmente, servito nella tua tazza.',
++          'menu-maple-oat': 'Cremoso latte d’avena con una nota di sciroppo d’acero del Vermont.',
++          'menu-espresso': 'Deciso, affumicato e perfetto per una carica mattutina.',
++          'menu-cold-brew': 'In infusione a freddo per 18 ore per la massima morbidezza.',
++          'story-origin': 'Nato in una piccola torrefazione di quartiere, The Daily Grind è stato fondato con la passione per l’artigianalità e il legame con la comunità. Collaboriamo direttamente con aziende agricole sostenibili per selezionare i migliori chicchi monorigine e tostarli in piccoli lotti ogni mattina.',
++          'story-craft': 'Che tu ti fermi per un vellutato Maple Oat Latte o un Cold Brew a lenta infusione, ogni tazza racconta la storia dei coltivatori, tostatori e baristi che l’hanno resa possibile.'
++        },
++        pt: {
++          'hero-story': 'De origem ética, torrado localmente e entregue na sua xícara.',
++          'menu-maple-oat': 'Leite de aveia cremoso com um toque de xarope de bordo de Vermont.',
++          'menu-espresso': 'Encorpado, defumado e perfeito para dar energia pela manhã.',
++          'menu-cold-brew': 'Infusionado a frio por 18 horas para máxima suavidade.',
++          'story-origin': 'Nascido em uma pequena torrefação de bairro, o The Daily Grind foi fundado com paixão pelo café artesanal e pela conexão com a comunidade. Fazemos parceria direta com fazendas sustentáveis para obter os melhores grãos de origem única e torrá-los em pequenos lotes todas as manhãs.',
++          'story-craft': 'Seja para um aveludado Maple Oat Latte ou um Cold Brew de infusão lenta, cada xícara conta a história dos produtores, mestres de torra e baristas que a tornaram possível.'
++        },
++        ja: {
++          'hero-story': '倫理的に調達し、地元で焙煎した一杯をあなたのカップへ。',
++          'menu-maple-oat': 'クリーミーなオーツミルクにバーモント産メープルシロップをほんのり効かせました。',
++          'menu-espresso': '力強くスモーキーな味わいで、朝の目覚めにぴったりの一杯。',
++          'menu-cold-brew': '18時間じっくり水出しし、極上のなめらかさを実現しました。',
++          'story-origin': '小さな街角の焙煎所から生まれたThe Daily Grindは、職人技と地域とのつながりへの情熱から始まりました。持続可能な農園と直接提携し、厳選されたシングルオリジン豆を毎朝少量ずつ丁寧に自家焙煎しています。',
++          'story-craft': 'なめらかなメープルオーツラテでも、じっくり抽出したコールドブリューでも、すべての一杯に生産者、焙煎士、バリスタの物語が込められています。'
++        },
++        zh: {
++          'hero-story': '道德采购，本地烘焙，新鲜直达您的杯中。',
++          'menu-maple-oat': '丝滑燕麦奶搭配一抹佛蒙特州枫糖浆。',
++          'menu-espresso': '浓郁醇厚、带有烟熏风味，是清晨提神的完美选择。',
++          'menu-cold-brew': '低温慢萃 18 小时，口感极致顺滑。',
++          'story-origin': 'The Daily Grind 诞生于一家小型社区烘焙工坊，源于对匠心工艺与社区联结的热爱。我们与可持续农场直接合作，采购优质单一产地咖啡豆，并每天早晨进行小批量新鲜烘焙。',
++          'story-craft': '无论您是来品尝丝滑的枫糖燕麦拿铁，还是慢萃冷萃咖啡，每一杯都诉说着咖啡农、烘焙师与咖啡师共同谱写的故事。'
++        },
++        ko: {
++          'hero-story': '윤리적으로 공급받고 지역에서 로스팅하여 당신의 잔으로 전달합니다.',
++          'menu-maple-oat': '버몬트 메이플 시럽의 은은한 풍미를 더한 부드러운 오트 밀크 라떼.',
++          'menu-espresso': '진하고 스모키한 풍미로 아침의 활력을 깨워주는 에스프레소.',
++          'menu-cold-brew': '18시간 동안 천천히 우려내어 극강의 부드러움을 선사하는 콜드 브루.',
++          'story-origin': '작은 동네 로스터리에서 시작된 The Daily Grind는 장인 정신과 지역 사회와의 연결에 대한 열정으로 설립되었습니다. 지속 가능한 농장과 직접 협력하여 최상급 싱글 오리진 원두를 공수하고 매일 아침 소량씩 직접 로스팅합니다.',
++          'story-craft': '부드러운 메이플 오트 라떼부터 천천히 우려낸 콜드 브루까지, 모든 커피 한 잔에는 재배자, 로스터, 바리스타의 이야기가 담겨 있습니다.'
++        }
++      };
++
++      const selectEl = document.getElementById('language-select');
++      const statusBarEl = document.getElementById('translation-status-bar');
++      const statusTextEl = document.getElementById('translation-status');
++      const progressEl = document.getElementById('translation-progress');
++      const translatableElements = Array.from(document.querySelectorAll('[data-translate]'));
++
++      translatableElements.forEach((el) => {
++        el.dataset.originalText = el.textContent.trim();
++      });
++
++      let activeTranslator = null;
++      let currentLanguage = 'en';
++      let activeRequestId = 0;
++
++      function cleanupTranslator() {
++        if (activeTranslator && typeof activeTranslator.destroy === 'function') {
++          try {
++            activeTranslator.destroy();
++          } catch (_) {
++            // Ignore cleanup errors
++          }
++        }
++        activeTranslator = null;
++      }
++
++      function updateStatus(message, statusType, progressPercent = null) {
++        if (!message) {
++          statusBarEl.hidden = true;
++          statusTextEl.textContent = '';
++          delete statusTextEl.dataset.status;
++          progressEl.hidden = true;
++          return;
++        }
++        statusBarEl.hidden = false;
++        statusTextEl.textContent = message;
++        statusTextEl.dataset.status = statusType || 'info';
++        if (typeof progressPercent === 'number') {
++          progressEl.hidden = false;
++          progressEl.value = Math.max(0, Math.min(100, progressPercent));
++        } else {
++          progressEl.hidden = true;
++        }
++      }
++
++      function applyFallbackTranslations(targetLang) {
++        const dict = FALLBACK_TRANSLATIONS[targetLang];
++        if (!dict) return false;
++        translatableElements.forEach((el) => {
++          const key = el.dataset.translate;
++          if (dict[key]) {
++            el.textContent = dict[key];
++            el.setAttribute('lang', targetLang);
++          }
++        });
++        document.documentElement.lang = targetLang;
++        currentLanguage = targetLang;
++        return true;
++      }
++
++      function restoreOriginalEnglish() {
++        cleanupTranslator();
++        translatableElements.forEach((el) => {
++          if (el.dataset.originalText) {
++            el.textContent = el.dataset.originalText;
++          }
++          el.setAttribute('lang', 'en');
++        });
++        document.documentElement.lang = 'en';
++        currentLanguage = 'en';
++      }
++
++      async function createBrowserTranslator(sourceLanguage, targetLanguage, requestId) {
++        cleanupTranslator();
++
++        const monitorCallback = (monitor) => {
++          if (monitor && typeof monitor.addEventListener === 'function') {
++            monitor.addEventListener('downloadprogress', (event) => {
++              if (requestId !== activeRequestId) return;
++              const raw = event.total ? event.loaded / event.total : event.loaded;
++              const pct = Math.round(Math.min(1, Math.max(0, Number(raw) || 0)) * 100);
++              updateStatus(
++                `Downloading on-device ${LANGUAGE_NAMES[targetLanguage] || targetLanguage} language model (${pct}%)...`,
++                'downloading',
++                pct
++              );
++            });
++          }
++        };
++
++        // 1. Standard Web Translator API (self.Translator)
++        if ('Translator' in self && self.Translator) {
++          let availability = 'available';
++          if (typeof self.Translator.availability === 'function') {
++            availability = await self.Translator.availability({
++              sourceLanguage,
++              targetLanguage
++            });
++          }
++          if (availability === 'unavailable' || availability === 'no') {
++            return { translator: null, state: 'unavailable' };
++          }
++          if (
++            availability === 'downloadable' ||
++            availability === 'downloading' ||
++            availability === 'after-download'
++          ) {
++            updateStatus(
++              `Downloading on-device ${LANGUAGE_NAMES[targetLanguage] || targetLanguage} language model...`,
++              'downloading',
++              0
++            );
++          }
++          const translator = await self.Translator.create({
++            sourceLanguage,
++            targetLanguage,
++            monitor: monitorCallback
++          });
++          activeTranslator = translator;
++          return { translator, state: availability };
++        }
++
++        // 2. Legacy Chrome Built-in AI namespace (self.ai.translator)
++        if (self.ai && self.ai.translator && typeof self.ai.translator.create === 'function') {
++          if (typeof self.ai.translator.capabilities === 'function') {
++            const caps = await self.ai.translator.capabilities();
++            if (caps && typeof caps.languagePairAvailable === 'function') {
++              const avail = caps.languagePairAvailable(sourceLanguage, targetLanguage);
++              if (avail === 'no' || avail === 'unavailable') {
++                return { translator: null, state: 'unavailable' };
++              }
++            }
++          }
++          const translator = await self.ai.translator.create({
++            sourceLanguage,
++            targetLanguage,
++            monitor: monitorCallback
++          });
++          activeTranslator = translator;
++          return { translator, state: 'available' };
++        }
++
++        // 3. Early prototype namespace (self.translation)
++        if (self.translation && typeof self.translation.createTranslator === 'function') {
++          if (typeof self.translation.canTranslate === 'function') {
++            const avail = await self.translation.canTranslate({
++              sourceLanguage,
++              targetLanguage
++            });
++            if (avail === 'no' || avail === 'unavailable') {
++              return { translator: null, state: 'unavailable' };
++            }
++          }
++          const translator = await self.translation.createTranslator({
++            sourceLanguage,
++            targetLanguage
++          });
++          activeTranslator = translator;
++          return { translator, state: 'available' };
++        }
++
++        return { translator: null, state: 'unsupported' };
++      }
++
++      async function translatePage(targetLanguage) {
++        const requestId = ++activeRequestId;
++        const langName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
++
++        if (targetLanguage === 'en') {
++          restoreOriginalEnglish();
++          updateStatus('Showing original English text.', 'ready');
++          return;
++        }
++
++        translatableElements.forEach((el) => el.classList.add('translating'));
++        updateStatus(`Translating menu descriptions and story to ${langName} on-device...`, 'translating');
++
++        try {
++          const { translator, state } = await createBrowserTranslator('en', targetLanguage, requestId);
++          if (requestId !== activeRequestId) return;
++
++          if (translator && typeof translator.translate === 'function') {
++            for (const el of translatableElements) {
++              const sourceText = el.dataset.originalText || el.textContent.trim();
++              const translated = await translator.translate(sourceText);
++              if (requestId !== activeRequestId) return;
++              if (typeof translated === 'string' && translated.trim()) {
++                el.textContent = translated;
++                el.setAttribute('lang', targetLanguage);
++              }
++            }
++            document.documentElement.lang = targetLanguage;
++            currentLanguage = targetLanguage;
++            updateStatus(`Translated to ${langName} using browser on-device AI.`, 'ready');
++            return;
++          }
++
++          if (state === 'unavailable') {
++            applyFallbackTranslations(targetLanguage);
++            updateStatus(
++              `On-device Translator model is unavailable for ${langName}; showing built-in on-device translations.`,
++              'unavailable'
++            );
++            return;
++          }
++
++          // Browser does not expose the native Translator API; use built-in on-device translations
++          applyFallbackTranslations(targetLanguage);
++          updateStatus(
++            `Translated to ${langName} (on-device fallback — browser Translator API not supported).`,
++            'fallback'
++          );
++        } catch (error) {
++          if (requestId !== activeRequestId) return;
++          applyFallbackTranslations(targetLanguage);
++          updateStatus(
++            `On-device Translator API error (${error && error.message ? error.message : 'unavailable'}); showing built-in translations for ${langName}.`,
++            'error'
++          );
++        } finally {
++          if (requestId === activeRequestId) {
++            translatableElements.forEach((el) => el.classList.remove('translating'));
++          }
++        }
++      }
++
++      selectEl.addEventListener('change', (event) => {
++        translatePage(event.target.value);
++      });
++
++      window.translatePage = translatePage;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,124 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product carousel */
++    .carousel {
++      margin: 60px 0 0;
++    }
++
++    .carousel-header {
++      max-width: 1100px;
++      margin: 0 auto;
++      padding: 0 20px;
++      text-align: center;
++    }
++
++    .carousel-header p {
++      color: #6d4c41;
++    }
++
++    .scroller {
++      --card-width: min(260px, 72vw);
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      scroll-snap-type: inline mandatory;
++      /* Let the first and last cards reach the center of the viewport */
++      padding: 40px calc(50% - var(--card-width) / 2);
++      scroll-padding-inline: calc(50% - var(--card-width) / 2);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .scroller > li {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      /* Each item tracks its own visibility within the scroller */
++      view-timeline: --product-card inline;
++    }
++
++    .product-card {
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      transform-origin: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .card-body {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      padding: 16px 18px 20px;
++      text-align: center;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      color: #6d4c41;
++      margin-bottom: 6px;
++    }
++
++    .product-card .btn {
++      margin-top: auto;
++      align-self: center;
++    }
++
++    .product-card .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /*
++     * Scale cards up as they approach the center of the scroller and down as
++     * they move away, driven purely by CSS scroll-driven animations.
++     * Browsers without support simply show static, full-size cards, and users
++     * who prefer reduced motion never get the effect.
++     */
++    @keyframes card-focus {
++      0%, 100% {
++        transform: scale(0.8);
++        opacity: 0.7;
++      }
++
++      50% {
++        transform: scale(1.08);
++        opacity: 1;
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .product-card {
++          animation: card-focus linear both;
++          animation-timeline: --product-card;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +289,101 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="carousel" aria-labelledby="carousel-heading">
++    <div class="carousel-header">
++      <h2 id="carousel-heading">Shop Our Bestsellers</h2>
++      <p id="carousel-hint">Scroll sideways or use the arrow keys to browse.</p>
++    </div>
++    <ul class="scroller" tabindex="0" aria-labelledby="carousel-heading" aria-describedby="carousel-hint">
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=520&h=390&q=75" alt="A latte with leaf-shaped latte art, seen from above"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Signature Latte</h3>
++              <p class="price">$4.75</p>
++              <p>Velvety steamed milk over a double shot of our house espresso.</p>
++              <a href="/menu/latte" class="btn" aria-label="View details for Signature Latte">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=520&h=390&q=75" alt="Glasses of iced coffee on a table"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Iced Coffee</h3>
++              <p class="price">$4.25</p>
++              <p>Chilled, smooth, and lightly sweet for warm afternoons.</p>
++              <a href="/menu/iced-coffee" class="btn" aria-label="View details for Iced Coffee">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=520&h=390&q=75" alt="A cup of coffee with latte art"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Flat White</h3>
++              <p class="price">$4.50</p>
++              <p>Micro-foamed milk with a ristretto for a rich, silky sip.</p>
++              <a href="/menu/flat-white" class="btn" aria-label="View details for Flat White">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=520&h=390&q=75" alt="A cappuccino in a ceramic cup"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Cappuccino</h3>
++              <p class="price">$4.25</p>
++              <p>Equal parts espresso, steamed milk, and airy foam.</p>
++              <a href="/menu/cappuccino" class="btn" aria-label="View details for Cappuccino">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=520&h=390&q=75" alt="A cup of black coffee on a café table"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>House Drip</h3>
++              <p class="price">$2.95</p>
++              <p>Our everyday medium roast, brewed fresh every 30 minutes.</p>
++              <a href="/menu/drip" class="btn" aria-label="View details for House Drip">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=520&h=390&q=75" alt="Freshly roasted coffee beans"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Whole Bean Blend</h3>
++              <p class="price">$16.00</p>
++              <p>Take home 12 oz of our signature roast, whole bean.</p>
++              <a href="/shop/whole-bean" class="btn" aria-label="View details for Whole Bean Blend">View Details</a>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=520&h=390&q=75" alt="Coffee being prepared in a café"
++              width="520" height="390" loading="lazy">
++            <div class="card-body">
++              <h3>Single Origin Pour Over</h3>
++              <p class="price">$5.50</p>
++              <p>A rotating single-origin coffee, hand-poured to order.</p>
++              <a href="/menu/pour-over" class="btn" aria-label="View details for Single Origin Pour Over">View Details</a>
++            </div>
++          </article>
++        </li>
++    </ul>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

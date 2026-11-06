@@ -1,0 +1,265 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,153 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Layout with Sidebar */
++    .page-layout {
++      display: grid;
++      grid-template-columns: 280px 1fr;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 768px) {
++      .page-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .sidebar p {
++      font-size: 0.95rem;
++      margin-bottom: 15px;
++    }
++
++    .reveal-coupon-btn {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 12px 20px;
++      font-size: 1rem;
++      font-weight: bold;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.3s, transform 0.2s;
++    }
++
++    .reveal-coupon-btn:hover {
++      background: var(--text);
++      transform: translateY(-1px);
++    }
++
++    .reveal-coupon-btn:disabled {
++      opacity: 0.6;
++      cursor: default;
++      transform: none;
++    }
++
++    /* Coupon Panel */
++    #coupon-panel:not([hidden]) {
++      background: linear-gradient(135deg, var(--primary), var(--text));
++      color: white;
++      padding: 25px;
++      border-radius: 8px;
++      margin-bottom: 30px;
++      border-left: 6px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++    }
++
++    .coupon-code-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-family: monospace;
++      font-size: 1.4rem;
++      font-weight: bold;
++      padding: 8px 18px;
++      border-radius: 4px;
++      letter-spacing: 2px;
++    }
++
++    /* Wholesale & Catering Accordion / Tabs */
++    .wholesale-section {
++      margin-top: 50px;
++    }
++
++    .wholesale-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .wholesale-tabs-container {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    details.wholesale-tab {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      border: 1px solid var(--secondary);
++    }
++
++    details.wholesale-tab summary {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 16px 20px;
++      font-weight: bold;
++      font-size: 1.1rem;
++      cursor: pointer;
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    details.wholesale-tab summary::-webkit-details-marker {
++      display: none;
++    }
++
++    details.wholesale-tab summary::after {
++      content: '+';
++      font-size: 1.3rem;
++      font-weight: bold;
++    }
++
++    details.wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++    }
++
++    details.wholesale-tab[open] summary::after {
++      content: '−';
++    }
++
++    .wholesale-tab-content {
++      padding: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,31 +318,88 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <div class="container page-layout">
++    <aside class="sidebar">
++      <h3>Special Offer</h3>
++      <p>Planning your next coffee run or stocking up on whole-bean bags? Unlock our exclusive seasonal promo code below.</p>
++      <button type="button" id="reveal-coupon-btn" class="reveal-coupon-btn" aria-controls="coupon-panel" aria-expanded="false">
++        Reveal Coupon
++      </button>
++    </aside>
++
++    <main>
++      <div id="coupon-panel" hidden="until-found">
++        <div>
++          <h3>Exclusive Member Discount Unlocked!</h3>
++          <p>Use this discount code at checkout for 20% off your entire artisanal roast or catering order:</p>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="coupon-code-badge">ROAST20</div>
++      </div>
++
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++
++      <section class="wholesale-section">
++        <h2>Wholesale &amp; Catering Services</h2>
++        <div class="wholesale-tabs-container">
++          <details name="wholesale-catering" class="wholesale-tab" open>
++            <summary>Wholesale Roastery Partnerships</summary>
++            <div class="wholesale-tab-content">
++              <p>Partner with The Daily Grind to bring freshly roasted, ethically sourced specialty coffee to your cafe, restaurant, or office. We offer flexible bulk pricing starting at 25 lbs per week, complimentary barista training, and commercial espresso equipment consultation.</p>
++            </div>
++          </details>
++          <details name="wholesale-catering" class="wholesale-tab">
++            <summary>Event &amp; Office Catering</summary>
++            <div class="wholesale-tab-content">
++              <p>Elevate your next corporate meeting, wedding, or private event with our full-service mobile espresso bar and insulated traveler totes. Packages include house-made syrups, organic dairy and oat milk options, and assorted artisanal pastries.</p>
++            </div>
++          </details>
++          <details name="wholesale-catering" class="wholesale-tab">
++            <summary>Custom Private Label Blends</summary>
++            <div class="wholesale-tab-content">
++              <p>Work directly with our master roasters to craft a signature roast profile tailored to your brand. Available in custom-printed 12oz retail bags or 5lb bulk valve bags with rapid turnaround times.</p>
++            </div>
++          </details>
+         </div>
+-      </div>
+-    </section>
+-  </main>
++      </section>
++    </main>
++  </div>
+ 
++  <script>
++    const revealBtn = document.getElementById('reveal-coupon-btn');
++    const couponPanel = document.getElementById('coupon-panel');
++
++    function handleCouponReveal() {
++      couponPanel.removeAttribute('hidden');
++      revealBtn.setAttribute('aria-expanded', 'true');
++      revealBtn.disabled = true;
++      revealBtn.textContent = 'Coupon Revealed';
++    }
++
++    revealBtn.addEventListener('click', handleCouponReveal);
++    couponPanel.addEventListener('beforematch', handleCouponReveal);
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+index 66c9173..75b16eb 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: max(60vh, 28rem);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,36 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(100%, 36rem);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.75rem;
++      font-size: clamp(1rem, 0.75rem + 2vw, 2.5rem);
++      font-weight: 900;
++      line-height: 1;
++      letter-spacing: normal;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 400%;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero h1 > span {
++      display: block;
++      width: 100%;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
++    @supports not (text-fit: grow per-line-all 400%) {
++      .hero h1 > span {
++        width: fit-content;
++        font-size: clamp(100%, calc(var(--text-fit-scale, 1) * 1em), 400%);
++      }
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +193,7 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="hero-lockup"><span>Wake Up</span> <span>Your Senses</span></h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +231,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('text-fit', 'grow per-line-all 400%')) {
++      const lockup = document.querySelector('.hero-lockup');
++      const lines = [...lockup.querySelectorAll(':scope > span')];
++
++      const fitHeading = () => {
++        // Reset together, then measure together to avoid a reflow for each line.
++        lines.forEach(line => line.style.removeProperty('--text-fit-scale'));
++        const width = lockup.getBoundingClientRect().width;
++        const scales = lines.map(line => width / line.getBoundingClientRect().width);
++        lines.forEach((line, index) => {
++          line.style.setProperty('--text-fit-scale', scales[index]);
++        });
++      };
++
++      fitHeading();
++      new ResizeObserver(fitHeading).observe(lockup);
++      document.fonts.ready.then(fitHeading);
++      document.fonts.addEventListener('loadingdone', fitHeading);
++    }
++  </script>
+ </body>
+ 
+ </html>

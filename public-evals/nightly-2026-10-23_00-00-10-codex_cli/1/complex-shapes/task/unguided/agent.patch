@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,13 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +88,49 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
++    /* A rounded organic fallback remains when vector clipping is unsupported.
++       Absolute positioning keeps decoration failures out of the text layout. */
++    .shaped-element {
++      position: absolute;
++      z-index: -1;
++      right: -3rem;
++      bottom: -4rem;
++      width: clamp(16rem, 42vw, 36rem);
++      aspect-ratio: 1;
++      border-radius: 43% 57% 64% 36% / 56% 38% 62% 44%;
++      background: radial-gradient(ellipse at 30% 25%, #d7b48a, #9b633c 55%, #4e342e);
++      opacity: 0.65;
++      transform: rotate(-12deg);
++      pointer-events: none;
++    }
++
++    @supports (clip-path: url("#coffee-splash")) {
++      .shaped-element {
++        border-radius: 0;
++        clip-path: url("#coffee-splash");
++      }
++    }
++
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        right: -6rem;
++        bottom: -6rem;
++        opacity: 0.4;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +210,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <svg class="shape-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M .12,.24 C .03,.14 .19,.05 .31,.1 C .4,.14 .44,.01 .53,.05 C .62,.09 .57,.18 .7,.15 C .87,.08 .98,.23 .89,.35 C .82,.44 1,.49 .94,.6 C .9,.69 .77,.64 .8,.77 C .84,.94 .65,1 .55,.88 C .48,.8 .41,.99 .3,.92 C .2,.86 .29,.75 .16,.73 C .01,.71 .02,.56 .1,.49 C .18,.42 .01,.36 .12,.24 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

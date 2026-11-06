@@ -1,0 +1,646 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,215 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++      color: var(--text);
++    }
++
++    /* Telemetry / Distributed Event Section */
++    .telemetry-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 10px;
++      padding: 30px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .telemetry-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 18px;
++    }
++
++    .telemetry-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .telemetry-subtitle {
++      font-size: 0.92rem;
++      color: #5d4037;
++    }
++
++    .telemetry-controls {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .telemetry-btn {
++      margin-top: 0;
++      padding: 12px 22px;
++    }
++
++    .telemetry-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 14px;
++      margin-bottom: 24px;
++    }
++
++    .metric-box {
++      background: #f8f5f4;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 14px 16px;
++    }
++
++    .metric-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.6px;
++      color: #6d4c41;
++      margin-bottom: 4px;
++      font-weight: 600;
++    }
++
++    .metric-value {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 1.05rem;
++      font-weight: bold;
++      color: var(--primary);
++      word-break: break-all;
++    }
++
++    .telemetry-panels {
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++    }
++
++    .panel-title {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 3px 9px;
++      border-radius: 12px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .badge-service {
++      background: #efebe9;
++      border: 1px solid #bcaaa4;
++      font-family: 'Courier New', Courier, monospace;
++    }
++
++    .badge-subms {
++      background: #fff3e0;
++      color: #e65100;
++      border: 1px solid #ffb74d;
++    }
++
++    .event-table-wrapper {
++      overflow-x: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .event-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.88rem;
++      text-align: left;
++    }
++
++    .event-table th,
++    .event-table td {
++      padding: 11px 13px;
++      border-bottom: 1px solid #efebe9;
++      vertical-align: top;
++    }
++
++    .event-table th {
++      background: #efebe9;
++      color: var(--primary);
++      font-weight: 700;
++      white-space: nowrap;
++    }
++
++    .event-table tbody tr:hover {
++      background: #fcfaf9;
++    }
++
++    .mono {
++      font-family: 'Courier New', Courier, monospace;
++    }
++
++    .ts-subms {
++      color: #d84315;
++      font-weight: bold;
++      background: #fbe9e7;
++      padding: 1px 3px;
++      border-radius: 3px;
++    }
++
++    .interval-pill {
++      display: inline-block;
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-family: 'Courier New', Courier, monospace;
++      font-weight: 600;
++      font-size: 0.84rem;
++    }
++
++    .interval-baseline {
++      background: #eceff1;
++      color: #455a64;
++      border-color: #cfd8dc;
++    }
++
++    .interval-detail {
++      display: block;
++      font-size: 0.76rem;
++      color: #5d4037;
++      margin-top: 3px;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 32px 20px;
++      background: #faf7f5;
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +401,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="telemetry-section" id="order-events-section" aria-labelledby="telemetry-heading">
++      <div class="telemetry-header">
++        <div>
++          <h2 id="telemetry-heading">Distributed Order Event Telemetry</h2>
++          <p class="telemetry-subtitle">
++            Reconstruct coffee order timelines across microservices with nanosecond UTC precision (<code class="mono">Temporal.Instant</code>).
++          </p>
++        </div>
++        <div class="telemetry-controls">
++          <button type="button" id="load-events-btn" class="btn btn-accent telemetry-btn">
++            Load &amp; Sort Order Events
++          </button>
++        </div>
++      </div>
++
++      <div id="telemetry-empty" class="empty-state">
++        <p>Click <strong>Load &amp; Sort Order Events</strong> to ingest out-of-order distributed service events, sort them chronologically at nanosecond precision, and measure consecutive event intervals.</p>
++      </div>
++
++      <div id="telemetry-results" hidden>
++        <div class="telemetry-summary" id="telemetry-summary"></div>
++
++        <div class="telemetry-panels">
++          <div>
++            <div class="panel-title">
++              <span>Chronologically Sorted Events &amp; Consecutive Intervals</span>
++              <span class="badge badge-subms">Nanosecond Precision Preserved</span>
++            </div>
++            <div class="event-table-wrapper">
++              <table class="event-table" id="sorted-events-table" aria-label="Chronologically sorted coffee order events">
++                <thead>
++                  <tr>
++                    <th># (Sorted)</th>
++                    <th>Raw Index</th>
++                    <th>Order &amp; Event</th>
++                    <th>Backend Service</th>
++                    <th>Nanosecond UTC Timestamp</th>
++                    <th>Epoch Nanoseconds</th>
++                    <th>Interval From Previous (&Delta;)</th>
++                  </tr>
++                </thead>
++                <tbody id="sorted-events-tbody"></tbody>
++              </table>
++            </div>
++          </div>
++
++          <div>
++            <div class="panel-title">
++              <span>Raw Out-of-Order Batch (As Collected from Distributed Services)</span>
++              <span class="badge">Unsorted Ingestion Stream</span>
++            </div>
++            <div class="event-table-wrapper">
++              <table class="event-table" id="raw-events-table" aria-label="Raw out-of-order coffee order events">
++                <thead>
++                  <tr>
++                    <th>RawArrival #</th>
++                    <th>Event ID</th>
++                    <th>Backend Service</th>
++                    <th>Order Stage</th>
++                    <th>Raw Nanosecond UTC Timestamp</th>
++                  </tr>
++                </thead>
++                <tbody id="raw-events-tbody"></tbody>
++              </table>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +483,347 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Out-of-order coffee order events collected from distributed backend services with nanosecond UTC timestamps.
++    // Several events occur within the exact same millisecond (.318s and .320s), requiring full nanosecond precision.
++    const RAW_ORDER_EVENTS = [
++      {
++        id: 'evt-704',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'inventory-ledger-svc',
++        node: 'us-east-1c',
++        stage: 'Oat Milk & Espresso Beans Reserved',
++        timestamp: '2026-11-06T08:42:15.318940625Z'
++      },
++      {
++        id: 'evt-701',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'edge-api-gateway',
++        node: 'us-east-1a',
++        stage: 'Order Payload Ingested',
++        timestamp: '2026-11-06T08:42:15.318102400Z'
++      },
++      {
++        id: 'evt-707',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'barista-queue-svc',
++        node: 'us-east-1b',
++        stage: 'Grinder & Grouphead Ticket Dispatched',
++        timestamp: '2026-11-06T08:42:15.321004510Z'
++      },
++      {
++        id: 'evt-703',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'payment-settlement-svc',
++        node: 'us-east-1b',
++        stage: 'Contactless Token Authorized',
++        timestamp: '2026-11-06T08:42:15.318495880Z'
++      },
++      {
++        id: 'evt-708',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'customer-notify-svc',
++        node: 'us-east-1a',
++        stage: 'Order Confirmation Push Emitted',
++        timestamp: '2026-11-06T08:42:15.322450890Z'
++      },
++      {
++        id: 'evt-702',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'auth-session-svc',
++        node: 'us-east-1a',
++        stage: 'Member Signature Verified',
++        timestamp: '2026-11-06T08:42:15.318102950Z'
++      },
++      {
++        id: 'evt-706',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'roaster-telemetry-svc',
++        node: 'us-east-1c',
++        stage: 'Batch Profile Matched (Vermont Roast #14)',
++        timestamp: '2026-11-06T08:42:15.320412330Z'
++      },
++      {
++        id: 'evt-705',
++        orderId: 'ORD-8821',
++        item: 'Maple Oat Latte (Large)',
++        service: 'loyalty-rewards-svc',
++        node: 'us-east-1b',
++        stage: 'Bean Stars Balance Credited (+15)',
++        timestamp: '2026-11-06T08:42:15.320411985Z'
++      }
++    ];
++
++    /**
++     * Parses a nanosecond UTC ISO timestamp into a Temporal.Instant (with BigInt fallback if needed).
++     */
++    function parseNanosecondInstant(utcTimestamp) {
++      if (typeof Temporal !== 'undefined' && Temporal.Instant) {
++        return Temporal.Instant.from(utcTimestamp);
++      }
++      // Fallback shim preserving exact nanosecond arithmetic via BigInt if Temporal is unavailable
++      const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d{1,9})Z$/.exec(utcTimestamp);
++      const baseMs = BigInt(Date.parse(match ? match[1] + 'Z' : utcTimestamp));
++      const fracNs = match ? BigInt(match[2].padEnd(9, '0')) : 0n;
++      const epochNanoseconds = baseMs * 1000000n + fracNs;
++      return {
++        epochNanoseconds,
++        epochMicroseconds: epochNanoseconds / 1000n,
++        epochMilliseconds: Number(epochNanoseconds / 1000000n),
++        toString() {
++          return utcTimestamp;
++        },
++        since(other) {
++          const diffNs = epochNanoseconds - other.epochNanoseconds;
++          const totalNs = Number(diffNs);
++          const absNs = diffNs < 0n ? -diffNs : diffNs;
++          const seconds = Number(absNs / 1000000000n);
++          const milliseconds = Number((absNs / 1000000n) % 1000n);
++          const microseconds = Number((absNs / 1000n) % 1000n);
++          const nanoseconds = Number(absNs % 1000n);
++          const fracStr = (absNs % 1000000000n).toString().padStart(9, '0').replace(/0+$/, '');
++          return {
++            seconds,
++            milliseconds,
++            microseconds,
++            nanoseconds,
++            total(unitOrOpts) {
++              const unit = typeof unitOrOpts === 'string' ? unitOrOpts : unitOrOpts.unit;
++              if (unit === 'nanoseconds' || unit === 'nanosecond') return totalNs;
++              if (unit === 'microseconds' || unit === 'microsecond') return totalNs / 1e3;
++              if (unit === 'milliseconds' || unit === 'millisecond') return totalNs / 1e6;
++              return totalNs / 1e9;
++            },
++            toString() {
++              return `PT${seconds}${fracStr ? '.' + fracStr : ''}S`;
++            }
++          };
++        }
++      };
++    }
++
++    /**
++     * Compares two Temporal.Instant instances chronologically without losing sub-millisecond precision.
++     */
++    function compareInstants(instantA, instantB) {
++      if (typeof Temporal !== 'undefined' && Temporal.Instant) {
++        return Temporal.Instant.compare(instantA, instantB);
++      }
++      if (instantA.epochNanoseconds < instantB.epochNanoseconds) return -1;
++      if (instantA.epochNanoseconds > instantB.epochNanoseconds) return 1;
++      return 0;
++    }
++
++    /**
++     * Formats a sub-millisecond duration into a clear human-readable breakdown (s, ms, μs, ns).
++     */
++    function formatDurationBreakdown(duration, diffNsBigInt) {
++      if (diffNsBigInt === 0n) {
++        return '0 ns (Initial Event)';
++      }
++      const parts = [];
++      if (duration.seconds) parts.push(`${duration.seconds} s`);
++      if (duration.milliseconds) parts.push(`${duration.milliseconds} ms`);
++      if (duration.microseconds) parts.push(`${duration.microseconds} μs`);
++      if (duration.nanoseconds) parts.push(`${duration.nanoseconds} ns`);
++      return '+' + parts.join(' ');
++    }
++
++    /**
++     * Highlights the sub-millisecond microsecond + nanosecond digits of an ISO timestamp string.
++     */
++    function formatHighlightedTimestamp(isoString) {
++      const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3})(\d{6})(Z)$/.exec(isoString);
++      if (!match) return isoString;
++      const [, prefixMs, subMsDigits, suffix] = match;
++      const us = subMsDigits.slice(0, 3);
++      const ns = subMsDigits.slice(3, 6);
++      return `${prefixMs}<span class="ts-subms" title="Sub-millisecond: ${us} μs ${ns} ns">${us}${ns}</span>${suffix}`;
++    }
++
++    /**
++     * Sorts raw events chronologically using Temporal.Instant and measures consecutive intervals.
++     */
++    function sortAndMeasureOrderEvents(rawEvents = RAW_ORDER_EVENTS) {
++      const annotated = rawEvents.map((event, index) => {
++        const instant = parseNanosecondInstant(event.timestamp);
++        const formattedInstant = instant.toString({ fractionalSecondDigits: 9 });
++        return {
++          ...event,
++          rawIndex: index + 1,
++          instant,
++          formattedTimestamp: formattedInstant,
++          epochNanoseconds: instant.epochNanoseconds
++        };
++      });
++
++      const sorted = [...annotated].sort((a, b) => compareInstants(a.instant, b.instant));
++
++      const processed = sorted.map((event, sortedIdx) => {
++        if (sortedIdx === 0) {
++          return {
++            ...event,
++            sortedIndex: 1,
++            intervalDuration: null,
++            intervalNanoseconds: 0n,
++            intervalMicroseconds: 0,
++            intervalMilliseconds: 0,
++            intervalIso: 'PT0S',
++            intervalFormatted: '0 ns (Initial Event)'
++          };
++        }
++
++        const prevEvent = sorted[sortedIdx - 1];
++        const duration = event.instant.since(prevEvent.instant);
++        const diffNs = event.epochNanoseconds - prevEvent.epochNanoseconds;
++        const totalNs = duration.total({ unit: 'nanoseconds' });
++        const totalUs = duration.total({ unit: 'microseconds' });
++        const totalMs = duration.total({ unit: 'milliseconds' });
++
++        return {
++          ...event,
++          sortedIndex: sortedIdx + 1,
++          intervalDuration: duration,
++          intervalNanoseconds: diffNs,
++          intervalTotalNanoseconds: totalNs,
++          intervalMicroseconds: totalUs,
++          intervalMilliseconds: totalMs,
++          intervalIso: duration.toString(),
++          intervalFormatted: formatDurationBreakdown(duration, diffNs)
++        };
++      });
++
++      const firstInstant = processed[0].instant;
++      const lastInstant = processed[processed.length - 1].instant;
++      const totalSpanDuration = lastInstant.since(firstInstant);
++      const totalSpanNs = lastInstant.epochNanoseconds - firstInstant.epochNanoseconds;
++
++      const intervalsNs = processed.slice(1).map((e) => e.intervalNanoseconds);
++      const minIntervalNs = intervalsNs.reduce((min, v) => (v < min ? v : min), intervalsNs[0]);
++      const maxIntervalNs = intervalsNs.reduce((max, v) => (v > max ? v : max), intervalsNs[0]);
++      const avgIntervalNs = intervalsNs.reduce((sum, v) => sum + v, 0n) / BigInt(intervalsNs.length);
++
++      return {
++        rawEvents: annotated,
++        sortedEvents: processed,
++        summary: {
++          totalEvents: processed.length,
++          totalSpanDuration,
++          totalSpanNanoseconds: totalSpanNs,
++          totalSpanFormatted: formatDurationBreakdown(totalSpanDuration, totalSpanNs).replace(/^\+/, ''),
++          minIntervalNanoseconds: minIntervalNs,
++          maxIntervalNanoseconds: maxIntervalNs,
++          avgIntervalNanoseconds: avgIntervalNs
++        }
++      };
++    }
++
++    function renderOrderEventsTelemetry() {
++      const result = sortAndMeasureOrderEvents(RAW_ORDER_EVENTS);
++
++      const emptyEl = document.getElementById('telemetry-empty');
++      const resultsEl = document.getElementById('telemetry-results');
++      const summaryEl = document.getElementById('telemetry-summary');
++      const sortedTbody = document.getElementById('sorted-events-tbody');
++      const rawTbody = document.getElementById('raw-events-tbody');
++      const btn = document.getElementById('load-events-btn');
++
++      emptyEl.hidden = true;
++      resultsEl.hidden = false;
++      btn.textContent = 'Reload & Sort Order Events';
++
++      const { summary, sortedEvents, rawEvents } = result;
++
++      summaryEl.innerHTML = `
++        <div class="metric-box">
++          <div class="metric-label">Events Sorted</div>
++          <div class="metric-value" id="metric-total-events">${summary.totalEvents} Events</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Total End-to-End Span</div>
++          <div class="metric-value" id="metric-total-span">${summary.totalSpanFormatted} (${summary.totalSpanNanoseconds.toLocaleString()} ns)</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Shortest Interval (&Delta; min)</div>
++          <div class="metric-value" id="metric-min-interval">+${summary.minIntervalNanoseconds.toLocaleString()} ns</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Longest Interval (&Delta; max)</div>
++          <div class="metric-value" id="metric-max-interval">+${summary.maxIntervalNanoseconds.toLocaleString()} ns</div>
++        </div>
++      `;
++
++      sortedTbody.innerHTML = sortedEvents
++        .map((evt) => {
++          const isBaseline = evt.sortedIndex === 1;
++          const intervalPillClass = isBaseline ? 'interval-pill interval-baseline' : 'interval-pill';
++          const intervalDetails = isBaseline
++            ? '<span class="interval-detail">Baseline event (t = 0 ns)</span>'
++            : `<span class="interval-detail">+${evt.intervalNanoseconds.toLocaleString()} ns | +${evt.intervalMicroseconds.toFixed(3)} &mu;s | ${evt.intervalIso}</span>`;
++
++          return `
++            <tr class="sorted-event-row"
++                data-event-id="${evt.id}"
++                data-raw-index="${evt.rawIndex}"
++                data-sorted-index="${evt.sortedIndex}"
++                data-timestamp="${evt.formattedTimestamp}"
++                data-epoch-ns="${evt.epochNanoseconds.toString()}"
++                data-interval-ns="${evt.intervalNanoseconds.toString()}"
++                data-interval-iso="${evt.intervalIso}">
++              <td class="mono"><strong>#${evt.sortedIndex}</strong></td>
++              <td class="mono">Was #${evt.rawIndex}</td>
++              <td>
++                <strong>${evt.stage}</strong>
++                <div style="font-size: 0.78rem; color: #6d4c41;">${evt.orderId} &bull; ${evt.item} (${evt.id})</div>
++              </td>
++              <td>
++                <span class="badge badge-service">${evt.service}</span>
++                <div class="mono" style="font-size: 0.75rem; color: #6d4c41; margin-top: 2px;">${evt.node}</div>
++              </td>
++              <td class="mono">${formatHighlightedTimestamp(evt.formattedTimestamp)}</td>
++              <td class="mono">${evt.epochNanoseconds.toString()}</td>
++              <td>
++                <span class="${intervalPillClass}">${evt.intervalFormatted}</span>
++                ${intervalDetails}
++              </td>
++            </tr>
++          `;
++        })
++        .join('');
++
++      rawTbody.innerHTML = rawEvents
++        .map(
++          (evt) => `
++            <tr class="raw-event-row" data-event-id="${evt.id}" data-timestamp="${evt.timestamp}">
++              <td class="mono">#${evt.rawIndex}</td>
++              <td class="mono">${evt.id}</td>
++              <td><span class="badge badge-service">${evt.service}</span></td>
++              <td>${evt.stage}</td>
++              <td class="mono">${formatHighlightedTimestamp(evt.timestamp)}</td>
++            </tr>
++          `
++        )
++        .join('');
++
++      return result;
++    }
++
++    window.RAW_ORDER_EVENTS = RAW_ORDER_EVENTS;
++    window.sortAndMeasureOrderEvents = sortAndMeasureOrderEvents;
++    window.renderOrderEventsTelemetry = renderOrderEventsTelemetry;
++
++    document.getElementById('load-events-btn').addEventListener('click', () => {
++      renderOrderEventsTelemetry();
++    });
++  </script>
+ </body>
+ 
+ </html>

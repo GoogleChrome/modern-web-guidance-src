@@ -1,0 +1,217 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..8759345
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,181 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++export interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++const total = articles.length;
++---
++<top-stories-slider class="block">
++    <section aria-roledescription="carousel" aria-label="Top stories" class="flex items-center gap-3 sm:gap-4">
++        <button
++            type="button"
++            data-prev
++            aria-label="Previous story"
++            class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-300 text-gray-700 hover:border-amber-400 hover:text-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 transition-colors cursor-pointer"
++        >
++            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
++                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
++            </svg>
++        </button>
++
++        <div data-viewport class="slider-viewport flex-1 min-w-0" aria-live="polite">
++            {articles.map((article, index) => (
++                <div
++                    data-slide
++                    data-active={index === 0 ? '' : undefined}
++                    role="group"
++                    aria-roledescription="slide"
++                    aria-label={`${index + 1} of ${total}`}
++                    class="slide min-w-0"
++                >
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                </div>
++            ))}
++        </div>
++
++        <span data-counter class="shrink-0 text-xs text-gray-500 tabular-nums" aria-hidden="true">1 / {total}</span>
++
++        <button
++            type="button"
++            data-next
++            aria-label="Next story"
++            class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-300 text-gray-700 hover:border-amber-400 hover:text-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 transition-colors cursor-pointer"
++        >
++            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
++                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
++            </svg>
++        </button>
++    </section>
++</top-stories-slider>
++
++<style>
++    /* All slides share one grid cell, so the bar keeps the height of the
++       tallest story and the page below never shifts while sliding. */
++    .slider-viewport {
++        display: grid;
++        overflow: clip;
++    }
++
++    .slide {
++        grid-area: 1 / 1;
++    }
++
++    /* Inactive slides stay in the layout but are invisible, unfocusable and
++       hidden from assistive tech. Slides that are mid-animation stay visible. */
++    .slide:not([data-active]):not([data-motion]) {
++        visibility: hidden;
++    }
++
++    /* Only `transform` is animated so the motion stays on the compositor.
++       Each rule carries the full shorthand: a nameless shared shorthand gets
++       minified down to `animation: none` by the CSS optimizer. */
++    .slide[data-motion='enter-from-right'] { animation: slide-from-right 300ms ease-in-out both; }
++    .slide[data-motion='enter-from-left']  { animation: slide-from-left 300ms ease-in-out both; }
++    .slide[data-motion='exit-to-left']     { animation: slide-to-left 300ms ease-in-out both; }
++    .slide[data-motion='exit-to-right']    { animation: slide-to-right 300ms ease-in-out both; }
++
++    /* Reduced motion: no animation at all, the next story simply appears.
++       Same specificity as the rules above, so this must come last. */
++    .slide[data-motion] {
++        @media (prefers-reduced-motion: reduce) {
++            animation: none;
++        }
++    }
++
++    @keyframes slide-from-right {
++        from { transform: translateX(100%); }
++    }
++
++    @keyframes slide-from-left {
++        from { transform: translateX(-100%); }
++    }
++
++    @keyframes slide-to-left {
++        to { transform: translateX(-100%); }
++    }
++
++    @keyframes slide-to-right {
++        to { transform: translateX(100%); }
++    }
++</style>
++
++<script>
++    type Direction = 1 | -1;
++
++    class TopStoriesSlider extends HTMLElement {
++        #slides: HTMLElement[] = [];
++        #counter: HTMLElement | null = null;
++        #index = 0;
++        // Finishes the in-flight transition immediately; null when idle.
++        #settle: (() => void) | null = null;
++
++        connectedCallback() {
++            this.#slides = Array.from(this.querySelectorAll<HTMLElement>('[data-slide]'));
++            this.#counter = this.querySelector<HTMLElement>('[data-counter]');
++            this.#index = Math.max(0, this.#slides.findIndex((slide) => slide.hasAttribute('data-active')));
++
++            const prev = this.querySelector<HTMLButtonElement>('[data-prev]');
++            const next = this.querySelector<HTMLButtonElement>('[data-next]');
++
++            if (this.#slides.length < 2) {
++                if (prev) prev.disabled = true;
++                if (next) next.disabled = true;
++                return;
++            }
++
++            prev?.addEventListener('click', () => this.#go(-1));
++            next?.addEventListener('click', () => this.#go(1));
++        }
++
++        #go(direction: Direction) {
++            // A rapid second click lands the previous story first, then continues.
++            this.#settle?.();
++
++            const count = this.#slides.length;
++            const from = this.#slides[this.#index];
++            const toIndex = (this.#index + direction + count) % count;
++            const to = this.#slides[toIndex];
++            const forward = direction === 1;
++
++            // Next: the new story arrives from the right while the old one
++            // leaves to the left. Previous: the mirror image.
++            from.dataset.motion = forward ? 'exit-to-left' : 'exit-to-right';
++            to.dataset.motion = forward ? 'enter-from-right' : 'enter-from-left';
++            from.removeAttribute('data-active');
++            to.setAttribute('data-active', '');
++
++            this.#index = toIndex;
++            if (this.#counter) this.#counter.textContent = `${toIndex + 1} / ${count}`;
++
++            const finish = () => {
++                if (this.#settle !== finish) return;
++                this.#settle = null;
++                delete from.dataset.motion;
++                delete to.dataset.motion;
++            };
++            this.#settle = finish;
++
++            // getAnimations() flushes style, so CSS animations started by the
++            // attribute change above are already present. When the user prefers
++            // reduced motion the stylesheet disables them, the list is empty and
++            // the new story is simply shown in place.
++            const animations = [...from.getAnimations(), ...to.getAnimations()];
++            if (animations.length === 0) {
++                finish();
++                return;
++            }
++
++            Promise.allSettled(animations.map((animation) => animation.finished)).then(finish);
++        }
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..6183d43 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -41,16 +42,7 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider articles={topStories} />
+         </div>
+     </div>
+ 

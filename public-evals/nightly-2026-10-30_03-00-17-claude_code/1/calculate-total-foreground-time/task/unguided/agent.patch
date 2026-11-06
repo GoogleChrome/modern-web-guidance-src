@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Foreground time tracking: accumulates time while the tab is visible.
++    (function () {
++      let accumulatedMs = 0;
++      let visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
++
++      function pause() {
++        if (visibleSince !== null) {
++          accumulatedMs += performance.now() - visibleSince;
++          visibleSince = null;
++        }
++      }
++
++      function resume() {
++        if (visibleSince === null) {
++          visibleSince = performance.now();
++        }
++      }
++
++      document.addEventListener('visibilitychange', function () {
++        if (document.visibilityState === 'visible') {
++          resume();
++        } else {
++          pause();
++        }
++      });
++
++      // Restored from the back/forward cache: the page is visible again.
++      window.addEventListener('pageshow', function (event) {
++        if (event.persisted) resume();
++      });
++      window.addEventListener('pagehide', pause);
++
++      // Returns total foreground time in milliseconds, including the current visible stretch.
++      window.getForegroundTime = function () {
++        const current = visibleSince !== null ? performance.now() - visibleSince : 0;
++        return accumulatedMs + current;
++      };
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

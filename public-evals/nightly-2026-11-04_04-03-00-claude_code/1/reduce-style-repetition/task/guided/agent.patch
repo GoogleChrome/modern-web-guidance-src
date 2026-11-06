@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,20 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* Reusable CSS custom functions (fallbacks are declared before each use) */
++    @function --brand-gradient(--start <color>, --end <color>, --angle: 135deg) returns <image> {
++      result: linear-gradient(in oklab var(--angle), var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--count <integer>: 2) {
++      result: 1fr; /* Default: single stacked column */
++      @media (width >= 700px) {
++        result: repeat(var(--count), minmax(0, 1fr)); /* Equal-width columns */
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,10 +36,20 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background-image: --brand-gradient(var(--light), var(--secondary), 160deg);
++      background-attachment: fixed;
+     }
+ 
++    h2 {
++      background-color: var(--primary);
++      background-image: --brand-gradient(var(--primary), var(--accent));
++      color: white;
++      padding: 0.5rem 1rem;
++      border-radius: 6px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,8 +121,23 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main {
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-columns: --responsive-columns(2);
++      gap: 40px;
++    }
++
++    .feature-img {
++      width: 100%;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-top: 20px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -194,8 +231,16 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center;">Visit Our Roastery</h2>
++      <img class="feature-img"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80"
++        alt="Freshly roasted coffee beans" width="900" height="600" loading="lazy">
++      <p style="margin-top: 15px;">Watch our beans go from green to golden brown in small batches, every morning.</p>
++      <a href="/locations" class="btn">Find a Location</a>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

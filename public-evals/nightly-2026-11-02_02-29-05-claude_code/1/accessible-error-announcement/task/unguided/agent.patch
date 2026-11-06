@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,92 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 10px;
++      justify-content: center;
++    }
++
++    .newsletter-form input {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter-form input:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter-form input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .newsletter-form button {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 6px;
++      min-height: 1.4em;
++    }
++
++    .field-error:empty {
++      visibility: hidden;
++    }
++
++    .newsletter-success {
++      color: #1b5e20;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    @media (max-width: 480px) {
++      .newsletter-row {
++        flex-direction: column;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +281,23 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join Our Newsletter</h2>
++      <p>Get roasting news, seasonal drops, and member-only offers.</p>
++      <form class="newsletter-form" id="newsletter-form" novalidate>
++        <label for="newsletter-email">Email address <span aria-hidden="true">(required)</span></label>
++        <div class="newsletter-row">
++          <input type="email" id="newsletter-email" name="email" autocomplete="email" required
++            aria-required="true" aria-invalid="false">
++          <button type="submit" class="btn">Subscribe</button>
++        </div>
++        <!-- Live region stays in the DOM (empty) so text insertions are reliably announced. -->
++        <p class="field-error" id="newsletter-email-error" aria-live="assertive" aria-atomic="true"></p>
++        <p class="newsletter-success" id="newsletter-success" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +305,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-email-error');
++      var success = document.getElementById('newsletter-success');
++      var ERROR_ID = 'newsletter-email-error';
++      // Errors only appear after the user has interacted (blurred the field or submitted).
++      var touched = false;
++
++      function getErrorMessage() {
++        var value = input.value.trim();
++        if (!value) return 'Please enter your email address.';
++        if (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
++          return 'Please enter a valid email address, like name@example.com.';
++        }
++        return '';
++      }
++
++      // Visual message, aria-invalid, aria-describedby and the live region all change together,
++      // so assistive tech announces exactly what is shown and nothing more.
++      function showError(message, forceAnnounce) {
++        if (error.textContent === message && !forceAnnounce) return;
++        input.setAttribute('aria-invalid', 'true');
++        input.setAttribute('aria-describedby', ERROR_ID);
++        if (forceAnnounce && error.textContent === message) {
++          // Re-announce an unchanged message on repeated submits.
++          error.textContent = '';
++          requestAnimationFrame(function () { error.textContent = message; });
++        } else {
++          error.textContent = message;
++        }
++      }
++
++      function clearError() {
++        input.setAttribute('aria-invalid', 'false');
++        input.removeAttribute('aria-describedby');
++        error.textContent = '';
++      }
++
++      function validate(forceAnnounce) {
++        var message = getErrorMessage();
++        if (message) {
++          showError(message, forceAnnounce);
++        } else {
++          clearError();
++        }
++        return !message;
++      }
++
++      input.addEventListener('blur', function () {
++        // Don't flag an untouched, empty field just because focus passed through it.
++        if (!touched && input.value.trim() === '') return;
++        touched = true;
++        validate(false);
++      });
++
++      input.addEventListener('input', function () {
++        success.textContent = '';
++        if (!touched) return;
++        // Clear immediately once valid; keep the error (updated if needed) while invalid.
++        validate(false);
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        touched = true;
++        if (!validate(true)) {
++          input.focus();
++          return;
++        }
++        success.textContent = 'Thanks for subscribing! Check your inbox to confirm.';
++        form.reset();
++        touched = false;
++        clearError();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

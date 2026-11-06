@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+index 66c9173..3c650e7 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,25 @@
+       color: var(--accent);
+     }
+ 
++    nav ul {
++      scroll-target-group: auto;
++    }
++
++    nav a:is(:target-current, .\:target-current):not(.logout-link) {
++      color: var(--accent);
++      font-weight: bold;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    html {
++      scroll-padding-top: 4rem;
++    }
++
++    main section {
++      min-height: 70vh;
++      padding: 20px 0;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,10 +179,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,7 +194,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -195,6 +214,29 @@
+         </div>
+       </div>
+     </section>
++    <section id="locations">
++      <h2 style="text-align: center;">Locations</h2>
++      <div class="grid">
++        <div class="card"><h3>Downtown</h3><p>12 Main Street. Open daily 6am&ndash;8pm.</p></div>
++        <div class="card"><h3>Riverside</h3><p>48 Water Lane. Open daily 7am&ndash;7pm.</p></div>
++        <div class="card"><h3>University</h3><p>5 College Ave. Open weekdays 6am&ndash;10pm.</p></div>
++      </div>
++    </section>
++    <section id="rewards">
++      <h2 style="text-align: center;">Rewards</h2>
++      <div class="grid">
++        <div class="card"><h3>Earn Points</h3><p>Collect a point for every dollar you spend.</p></div>
++        <div class="card"><h3>Free Drinks</h3><p>Redeem 100 points for any drink on the menu.</p></div>
++        <div class="card"><h3>Member Perks</h3><p>Birthday treats and early access to seasonal blends.</p></div>
++      </div>
++    </section>
++    <section id="account">
++      <h2 style="text-align: center;">My Account</h2>
++      <div class="grid">
++        <div class="card"><h3>Orders</h3><p>Review past orders and reorder your favorites.</p></div>
++        <div class="card"><h3>Profile</h3><p>Update your details and payment methods.</p></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +249,33 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script type="module">
++    const links = document.querySelectorAll('nav a[href^="#"]');
++    if (CSS.supports('scroll-target-group: auto')) {
++      const syncAriaCurrent = () => {
++        const current = document.querySelector('nav a:target-current');
++        links.forEach(link => {
++          if (link === current) link.setAttribute('aria-current', 'true');
++          else link.removeAttribute('aria-current');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const observer = new IntersectionObserver(entries => {
++        entries.forEach(entry => {
++          if (!entry.isIntersecting) return;
++          links.forEach(link => {
++            const active = link.getAttribute('href') === `#${entry.target.id}`;
++            link.classList.toggle(':target-current', active);
++            if (active) link.setAttribute('aria-current', 'true');
++            else link.removeAttribute('aria-current');
++          });
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++      document.querySelectorAll('main section[id]').forEach(s => observer.observe(s));
++    }
++  </script>
+ </body>
+ 
+ </html>

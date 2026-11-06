@@ -1,0 +1,395 @@
+diff --git a/index.html b/index.html
+index 66c9173..53cb83b 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,17 @@
+       padding: 0;
+     }
+ 
++    html {
++      /* Keep anchored sections clear of the sticky nav */
++      scroll-padding-top: 5rem;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -48,9 +59,14 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
++    .nav-sections > li:first-child {
++      margin-left: 0;
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+@@ -66,6 +82,25 @@
+       color: var(--accent);
+     }
+ 
++    /* Scrollspy: the browser tracks which fragment link's target is in view */
++    .nav-sections {
++      scroll-target-group: auto;
++    }
++
++    .nav-sections a {
++      display: inline-block;
++      padding-bottom: 2px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    /* :is() is forgiving, so unsupported :target-current won't drop the fallback class */
++    .nav-sections a:is(:target-current, .target-current) {
++      color: var(--accent);
++      border-bottom-color: var(--accent);
++      font-weight: 600;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -135,6 +170,125 @@
+       background: #3e2723;
+     }
+ 
++    .page-section {
++      min-height: 50vh;
++      padding: 60px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .page-section:last-child {
++      border-bottom: none;
++    }
++
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++      font-size: 2rem;
++    }
++
++    .section-title:focus {
++      outline: none;
++    }
++
++    .section-intro {
++      text-align: center;
++      max-width: 600px;
++      margin: 0.5rem auto 0;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      margin-top: 40px;
++      color: var(--primary);
++    }
++
++    .card img {
++      width: calc(100% + 40px);
++      margin: -20px -20px 15px;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++      display: block;
++    }
++
++    .price {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .menu-list {
++      list-style: none;
++      max-width: 600px;
++      margin: 20px auto 0;
++    }
++
++    .menu-list li {
++      display: flex;
++      justify-content: space-between;
++      padding: 10px 0;
++      border-bottom: 1px dashed var(--secondary);
++    }
++
++    .card address {
++      font-style: normal;
++    }
++
++    .hours {
++      font-size: 0.9rem;
++      margin-top: 8px;
++      color: #6d4c41;
++    }
++
++    .tier {
++      border-top: 4px solid var(--accent);
++    }
++
++    .tier .points {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #6d4c41;
++    }
++
++    .account-summary {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--primary);
++      color: white;
++      padding: 25px 30px;
++      border-radius: 8px;
++      margin-top: 20px;
++    }
++
++    .account-summary strong {
++      font-size: 2rem;
++      color: var(--accent);
++      display: block;
++      line-height: 1.1;
++    }
++
++    .progress {
++      width: 100%;
++      max-width: 300px;
++      accent-color: var(--accent);
++    }
++
++    .order-list {
++      list-style: none;
++      text-align: left;
++    }
++
++    .order-list li {
++      padding: 6px 0;
++      border-bottom: 1px solid var(--secondary);
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,10 +314,14 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li>
++        <ul class="nav-sections">
++          <li><a href="#menu">Menu</a></li>
++          <li><a href="#locations">Locations</a></li>
++          <li><a href="#rewards">Rewards</a></li>
++          <li><a href="#account">My Account</a></li>
++        </ul>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,25 +333,132 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="page-section" aria-labelledby="menu-title">
++      <h2 id="menu-title" class="section-title" tabindex="-1">Menu</h2>
++      <p class="section-intro">Small-batch roasts and house-made syrups, crafted to order every day.</p>
++
++      <h3 class="section-subtitle">Seasonal Favorites</h3>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="Latte with foam art in a white cup" width="600" height="400" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <span class="price">$5.75</span>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++            alt="Espresso being poured into a small cup" width="600" height="400" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <span class="price">$3.25</span>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="Iced coffee in a tall glass" width="600" height="400" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <span class="price">$4.50</span>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 class="section-subtitle">Everyday Classics</h3>
++      <ul class="menu-list">
++        <li><span>Drip Coffee</span><span>$2.75</span></li>
++        <li><span>Cappuccino</span><span>$4.50</span></li>
++        <li><span>Flat White</span><span>$4.75</span></li>
++        <li><span>Chai Latte</span><span>$4.95</span></li>
++        <li><span>Butter Croissant</span><span>$3.50</span></li>
++      </ul>
++    </section>
++
++    <section id="locations" class="page-section" aria-labelledby="locations-title">
++      <h2 id="locations-title" class="section-title" tabindex="-1">Locations</h2>
++      <p class="section-intro">Stop by one of our neighborhood cafés — free Wi-Fi and a warm welcome included.</p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Cozy café interior with wooden tables" width="600" height="400" loading="lazy">
++          <h3>Downtown</h3>
++          <address>128 Main Street<br>Portland, OR 97204</address>
++          <p class="hours">Mon–Fri 6am–7pm · Sat–Sun 7am–6pm</p>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
++            alt="Bright café seating area with large windows" width="600" height="400" loading="lazy">
++          <h3>Riverside</h3>
++          <address>45 Waterfront Avenue<br>Portland, OR 97209</address>
++          <p class="hours">Daily 7am–8pm</p>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80"
++            alt="Barista counter with coffee equipment" width="600" height="400" loading="lazy">
++          <h3>Hawthorne</h3>
++          <address>2210 SE Hawthorne Blvd<br>Portland, OR 97214</address>
++          <p class="hours">Mon–Sat 6:30am–6pm · Sun 8am–4pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section" aria-labelledby="rewards-title">
++      <h2 id="rewards-title" class="section-title" tabindex="-1">Rewards</h2>
++      <p class="section-intro">Earn 10 beans for every dollar you spend and redeem them for free drinks, treats, and more.</p>
++      <div class="grid">
++        <div class="card tier">
++          <p class="points">0–499 beans</p>
++          <h3>Bronze</h3>
++          <p>Free birthday drink and member-only offers.</p>
++        </div>
++        <div class="card tier">
++          <p class="points">500–1,499 beans</p>
++          <h3>Silver</h3>
++          <p>Free syrup or milk swaps plus a monthly bonus-bean day.</p>
++        </div>
++        <div class="card tier">
++          <p class="points">1,500+ beans</p>
++          <h3>Gold</h3>
++          <p>A free drink every 10 visits and early access to seasonal launches.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section" aria-labelledby="account-title">
++      <h2 id="account-title" class="section-title" tabindex="-1">My Account</h2>
++      <div class="account-summary">
++        <div>
++          <p>Welcome back, Alex</p>
++          <strong>1,120 beans</strong>
++          <span>Silver member</span>
++        </div>
++        <div>
++          <label for="tier-progress">380 beans to Gold</label><br>
++          <progress id="tier-progress" class="progress" max="1500" value="1120">1,120 of 1,500 beans</progress>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <ul class="order-list">
++            <li>Nov 4 — Maple Oat Latte</li>
++            <li>Nov 2 — Cold Brew, Butter Croissant</li>
++            <li>Oct 29 — Flat White</li>
++          </ul>
++          <a href="/account/orders" class="btn">Order History</a>
++        </div>
++        <div class="card">
++          <h3>Payment &amp; Gift Cards</h3>
++          <p>Visa ending in 4242<br>Gift card balance: $18.50</p>
++          <a href="/account/payment" class="btn">Manage Payment</a>
++        </div>
++        <div class="card">
++          <h3>Profile Settings</h3>
++          <p>Update your email, favorite store, and notification preferences.</p>
++          <a href="/account/settings" class="btn">Edit Profile</a>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +472,51 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const navLinks = [...document.querySelectorAll('.nav-sections a')];
++
++    const setCurrent = (activeLink) => {
++      navLinks.forEach((link) => {
++        if (link === activeLink) {
++          link.setAttribute('aria-current', 'true');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    };
++
++    if (CSS.supports('scroll-target-group: auto')) {
++      // Native scrollspy handles the visuals; mirror the state for assistive tech.
++      const syncAriaCurrent = () => setCurrent(document.querySelector('.nav-sections a:target-current'));
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      // Fallback: watch a thin band just below the sticky nav.
++      const sections = navLinks
++        .map((link) => document.querySelector(link.getAttribute('href')))
++        .filter(Boolean);
++      const visible = new Set();
++
++      const update = () => {
++        // Pick the first section (in document order) inside the band.
++        const current = sections.find((section) => visible.has(section));
++        const activeLink = current ? navLinks.find((link) => link.hash === `#${current.id}`) : null;
++        navLinks.forEach((link) => link.classList.toggle('target-current', link === activeLink));
++        setCurrent(activeLink);
++      };
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          if (entry.isIntersecting) visible.add(entry.target);
++          else visible.delete(entry.target);
++        });
++        update();
++      }, { rootMargin: '-35% 0px -60% 0px', threshold: 0 });
++
++      sections.forEach((section) => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

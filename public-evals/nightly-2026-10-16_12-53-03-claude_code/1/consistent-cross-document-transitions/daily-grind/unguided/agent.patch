@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+index 66c9173..5669165 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,81 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!--
++    Page transitions: cross-document View Transitions. The incoming page is only
++    revealed once everything below is ready:
++      - the inline <style> (critical styles) is render-blocking by default,
++      - the synchronous inline <script> in <head> runs before first render,
++      - the "expect" link holds rendering until #main-content is parsed, so the
++        transition never animates to a half-parsed page.
++  -->
++  <link rel="expect" href="#main-content" blocking="render">
++  <script>
++    // Critical script: runs synchronously before first render on every page.
++    document.documentElement.classList.add('js');
++    window.addEventListener('pagereveal', (event) => {
++      // Skip the animation if the user prefers reduced motion.
++      if (event.viewTransition && matchMedia('(prefers-reduced-motion: reduce)').matches) {
++        event.viewTransition.skipTransition();
++      }
++    });
++  </script>
+   <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    /* Persistent chrome stays put; only the page body cross-fades. */
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    /* Names must be unique per page, so the hero and main each get their own. */
++    .hero {
++      view-transition-name: page-hero;
++    }
++
++    #main-content {
++      view-transition-name: page-content;
++    }
++
++    ::view-transition-group(site-nav) {
++      animation-duration: 0s;
++    }
++
++    ::view-transition-old(page-hero),
++    ::view-transition-old(page-content) {
++      animation: 200ms ease-in both page-out;
++    }
++
++    ::view-transition-new(page-hero),
++    ::view-transition-new(page-content) {
++      animation: 350ms ease-out 100ms both page-in;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -174,7 +248,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

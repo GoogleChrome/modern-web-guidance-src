@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+index 66c9173..b2a6354 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,53 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep the baseline layout when newer at-rules are unavailable. */
++    @supports at-rule(@container) {
++      .grid {
++        container-type: inline-size;
++      }
++
++      @container (min-width: 800px) {
++        .card {
++          padding: 30px;
++          display: flex;
++          flex-direction: column;
++          align-items: center;
++        }
++
++        .card .btn {
++          margin-top: auto;
++        }
++
++        .card p {
++          margin-bottom: 15px;
++        }
++      }
++    }
++
++    @supports at-rule(@starting-style) {
++      @media (prefers-reduced-motion: no-preference) {
++        .hero {
++          transition: opacity 0.6s ease-out;
++        }
++
++        @starting-style {
++          .hero {
++            opacity: 0;
++          }
++        }
++      }
++    }
++
++    @supports at-rule(@scope) {
++      @scope (nav) {
++        a:focus-visible {
++          outline: 2px solid var(--accent);
++          outline-offset: 4px;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

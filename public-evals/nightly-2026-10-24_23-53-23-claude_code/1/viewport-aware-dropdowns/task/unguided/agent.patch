@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn[aria-expanded="true"] {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    /* Rendered in the top layer via the Popover API, so no z-index/overflow clipping */
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      /* Directly below the trigger, left edges aligned */
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin: 4px 0 0;
++      /* Flip vertically/horizontally when it would overflow the viewport */
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 200px;
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++    }
++
++    #action-panel button {
++      background: none;
++      border: 0;
++      font: inherit;
++      font-size: 0.9rem;
++      color: inherit;
++      text-align: left;
++      padding: 8px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -164,11 +226,21 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel" aria-expanded="false"
++          aria-controls="action-panel">Options</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" popover="auto">
++    <button type="button" data-action="seasonal-offers">Seasonal Offers</button>
++    <button type="button" data-action="account-settings">Account Settings</button>
++    <button type="button" data-action="support">Support</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +278,46 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var trigger = document.getElementById('trigger-btn');
++      var panel = document.getElementById('action-panel');
++
++      // Keep aria-expanded in sync and close after an action is chosen
++      panel.addEventListener('toggle', function (e) {
++        trigger.setAttribute('aria-expanded', String(e.newState === 'open'));
++      });
++      panel.addEventListener('click', function (e) {
++        if (e.target.closest('button')) panel.hidePopover();
++      });
++
++      // Fallback for browsers without CSS anchor positioning: place below the
++      // trigger, left-aligned, flipping when it would leave the viewport.
++      if (!CSS.supports('anchor-name', '--a')) {
++        var place = function () {
++          var t = trigger.getBoundingClientRect();
++          var p = panel.getBoundingClientRect();
++          var vw = document.documentElement.clientWidth;
++          var vh = document.documentElement.clientHeight;
++          var top = t.bottom + 4;
++          if (top + p.height > vh && t.top - 4 - p.height >= 0) top = t.top - 4 - p.height;
++          var left = t.left;
++          if (left + p.width > vw && t.right - p.width >= 0) left = t.right - p.width;
++          panel.style.inset = 'auto';
++          panel.style.margin = '0';
++          panel.style.top = Math.max(0, top) + 'px';
++          panel.style.left = Math.max(0, left) + 'px';
++        };
++        panel.addEventListener('toggle', function (e) {
++          if (e.newState === 'open') place();
++        });
++        window.addEventListener('resize', function () {
++          if (panel.matches(':popover-open')) place();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,196 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..81f4020 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,15 +41,41 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++            <div class="flex items-center justify-between gap-4">
++                <button
++                    type="button"
++                    id="top-stories-prev"
++                    class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer shrink-0"
++                >
++                    Previous
++                </button>
++
++                <div
++                    id="top-stories-slider"
++                    class="top-story-slider flex-1 min-w-0 overflow-hidden text-center"
++                    aria-live="polite"
++                >
++                    {topStories.map((article, index) => (
++                        <div
++                            class:list={["top-story-item", { hidden: index !== 0 }]}
++                            data-story-index={index}
++                            hidden={index !== 0}
++                        >
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++
++                <button
++                    type="button"
++                    id="top-stories-next"
++                    class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer shrink-0"
++                >
++                    Next
++                </button>
+             </div>
+         </div>
+     </div>
+@@ -81,4 +107,65 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
++
++    <script>
++        function navigate(updateDOM: () => void, direction: 'forward' | 'backward') {
++            // Feature detect for browsers that do not support View Transitions
++            if (!document.startViewTransition) {
++                updateDOM();
++                return;
++            }
++
++            // Start transition with the specific navigation type
++            const transition = document.startViewTransition({
++                update: updateDOM,
++                types: [direction], // Matches the CSS :active-view-transition-type() selectors
++            });
++
++            transition.ready.catch(() => {});
++        }
++
++        function initTopStoriesSlider() {
++            const slider = document.getElementById('top-stories-slider');
++            const prevButton = document.getElementById('top-stories-prev');
++            const nextButton = document.getElementById('top-stories-next');
++
++            if (!slider || !prevButton || !nextButton || slider.dataset.initialized === 'true') {
++                return;
++            }
++            slider.dataset.initialized = 'true';
++
++            const items = Array.from(slider.querySelectorAll<HTMLElement>('.top-story-item'));
++            if (items.length === 0) return;
++
++            let currentIndex = items.findIndex((item) => !item.hidden);
++            if (currentIndex === -1) currentIndex = 0;
++
++            const showStory = (nextIndex: number, direction: 'forward' | 'backward') => {
++                const updateDOM = () => {
++                    currentIndex = nextIndex;
++                    items.forEach((item, index) => {
++                        const isActive = index === currentIndex;
++                        item.hidden = !isActive;
++                        item.classList.toggle('hidden', !isActive);
++                    });
++                };
++
++                navigate(updateDOM, direction);
++            };
++
++            nextButton.addEventListener('click', () => {
++                const nextIndex = (currentIndex + 1) % items.length;
++                showStory(nextIndex, 'forward');
++            });
++
++            prevButton.addEventListener('click', () => {
++                const prevIndex = (currentIndex - 1 + items.length) % items.length;
++                showStory(prevIndex, 'backward');
++            });
++        }
++
++        initTopStoriesSlider();
++        document.addEventListener('astro:page-load', initTopStoriesSlider);
++    </script>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9c71897 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,67 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.top-story-slider {
++  view-transition-name: top-story;
++}
++
++/* Slide an element out to the left */
++@keyframes slide-to-left {
++  /* Mandatory: animate `transform` instead of inset properties for better performance. */
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++/* Slide an element in from the right */
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element out to the right */
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element in from the left */
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++::view-transition-group(top-story) {
++  animation: 0.4s ease-in-out both;
++  overflow: clip;
++}
++
++/* MANDATORY: Apply forward animations when the 'forward' type is active */
++html:active-view-transition-type(forward)::view-transition-old(top-story) {
++  animation-name: slide-to-left;
++}
++html:active-view-transition-type(forward)::view-transition-new(top-story) {
++  animation-name: slide-from-right;
++}
++
++/* MANDATORY: Apply backward animations when the 'backward' type is active */
++html:active-view-transition-type(backward)::view-transition-old(top-story) {
++  animation-name: slide-to-right;
++}
++html:active-view-transition-type(backward)::view-transition-new(top-story) {
++  animation-name: slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(top-story),
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

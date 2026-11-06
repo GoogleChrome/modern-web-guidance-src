@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+index 66c9173..a7c8683 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,15 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Apply saved theme before first paint to avoid a flash of the wrong theme.
++    (function () {
++      var stored = null;
++      try { stored = localStorage.getItem('theme'); } catch (e) { }
++      var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
++      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,6 +21,26 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --btn-hover: #3e2723;
++      --footer-bg: var(--secondary);
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --primary: #3e2723;
++      --text: #efebe9;
++      --light: #1b1412;
++      --surface: #2a201d;
++      --btn-hover: #5d4037;
++      --footer-bg: #261c19;
++      color-scheme: dark;
++    }
++
++    body,
++    .card,
++    footer {
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     * {
+@@ -72,6 +101,67 @@
+       border-radius: 4px;
+     }
+ 
++    /* Preference toggle (switch) */
++    nav ul {
++      align-items: center;
++    }
++
++    .theme-toggle {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
++    }
++
++    .theme-toggle .track {
++      position: relative;
++      width: 40px;
++      height: 22px;
++      border-radius: 11px;
++      background: rgba(255, 255, 255, 0.3);
++      transition: background 0.3s;
++      flex-shrink: 0;
++    }
++
++    .theme-toggle .thumb {
++      position: absolute;
++      top: 3px;
++      left: 3px;
++      width: 16px;
++      height: 16px;
++      border-radius: 50%;
++      background: white;
++      transition: transform 0.3s;
++    }
++
++    .theme-toggle[aria-checked="true"] .track {
++      background: var(--accent);
++    }
++
++    .theme-toggle[aria-checked="true"] .thumb {
++      transform: translateX(18px);
++    }
++
++    .theme-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      .theme-toggle .thumb,
++      .theme-toggle .track {
++        transition: none !important;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,7 +198,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -120,6 +210,10 @@
+       color: var(--primary);
+     }
+ 
++    :root[data-theme="dark"] .card h3 {
++      color: var(--accent);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -132,11 +226,11 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -164,6 +258,12 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false">
++          <span class="track" aria-hidden="true"><span class="thumb"></span></span>
++          <span>Dark mode</span>
++        </button>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +307,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var toggle = document.getElementById('theme-toggle');
++
++      function apply(dark) {
++        root.setAttribute('data-theme', dark ? 'dark' : 'light');
++        toggle.setAttribute('aria-checked', String(dark));
++      }
++
++      apply(root.getAttribute('data-theme') === 'dark');
++
++      toggle.addEventListener('click', function () {
++        var dark = toggle.getAttribute('aria-checked') !== 'true';
++        apply(dark);
++        try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) { }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

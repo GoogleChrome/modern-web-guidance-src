@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+index 66c9173..f2843bb 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,19 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <link rel="expect" href="#main-content" blocking="render">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation-duration: 0.3s;
++      animation-timing-function: ease-in-out;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -153,6 +164,9 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script blocking="render">
++    document.documentElement.dataset.ready = "true";
++  </script>
+ </head>
+ 
+ <body>
+@@ -174,7 +188,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main id="main-content" class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

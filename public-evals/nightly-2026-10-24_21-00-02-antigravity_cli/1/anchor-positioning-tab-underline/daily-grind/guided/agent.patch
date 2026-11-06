@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+index 66c9173..92e0260 100644
+--- a/index.html
++++ b/index.html
+@@ -51,8 +51,35 @@
+       list-style: none;
+     }
+ 
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      inset-block-start: calc(anchor(bottom) + 0.1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 0.25lh;
++      background: var(--accent);
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset 0.2s;
++      }
++    }
++
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
++    }
++
++    nav ul li.active {
++      anchor-name: --active;
++
++      @supports not (position-anchor: auto) {
++        border-bottom: 0.25lh var(--accent) solid;
++      }
++    }
++
++    nav ul li.active a {
++      color: var(--accent);
+     }
+ 
+     nav a {
+@@ -157,10 +184,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +234,28 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    navList.addEventListener('click', (event) => {
++      const link = event.target.closest('a:not(.logout-link)');
++      if (!link) return;
++
++      event.preventDefault();
++
++      const prevActiveItem = navList.querySelector('li.active');
++      if (prevActiveItem) {
++        prevActiveItem.classList.remove('active');
++        prevActiveItem.querySelector('a')?.removeAttribute('aria-current');
++      }
++
++      const nextActiveItem = link.closest('li');
++      if (nextActiveItem) {
++        nextActiveItem.classList.add('active');
++        link.setAttribute('aria-current', 'page');
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

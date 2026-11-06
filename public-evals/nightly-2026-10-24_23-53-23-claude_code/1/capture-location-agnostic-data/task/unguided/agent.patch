@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,27 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      max-width: 420px;
++      margin: 40px auto 0;
++    }
++
++    .preferences form {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      text-align: left;
++    }
++
++    .preferences input {
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +213,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="card preferences">
++      <h2>Your Coffee Details</h2>
++      <form id="prefs-form">
++        <label for="pickup-time">Daily pickup reminder</label>
++        <input type="time" id="pickup-time" name="pickupTime" required>
++        <label for="coffee-anniversary">Coffee anniversary</label>
++        <input type="date" id="coffee-anniversary" name="coffeeAnniversary" required>
++        <button type="submit" class="btn">Save</button>
++        <p id="prefs-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +236,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // The pickup time ("HH:MM") and anniversary ("YYYY-MM-DD") are floating,
++    // location-agnostic values. They are stored and restored as the exact strings
++    // the user picked and never converted through Date, so time zone changes
++    // (travel, DST) cannot shift them.
++    (function () {
++      var KEY = 'dailyGrindPrefs';
++      var form = document.getElementById('prefs-form');
++      var time = document.getElementById('pickup-time');
++      var date = document.getElementById('coffee-anniversary');
++      var status = document.getElementById('prefs-status');
++
++      try {
++        var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
++        if (saved.pickupTime) time.value = saved.pickupTime;
++        if (saved.coffeeAnniversary) date.value = saved.coffeeAnniversary;
++      } catch (e) { }
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        try {
++          localStorage.setItem(KEY, JSON.stringify({
++            pickupTime: time.value,
++            coffeeAnniversary: date.value
++          }));
++          status.textContent = 'Saved: pickup at ' + time.value + ' daily, anniversary ' + date.value + '.';
++        } catch (err) {
++          status.textContent = 'Could not save your settings.';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

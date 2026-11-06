@@ -1,0 +1,279 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..73c2054 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,10 @@
+       padding: 0;
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -164,7 +168,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-full-navigation>Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +211,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/navigation.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/navigation.js b/navigation.js
+new file mode 100644
+index 0000000..830a082
+--- /dev/null
++++ b/navigation.js
+@@ -0,0 +1,102 @@
++(() => {
++  const main = document.querySelector('body > main');
++  if (!main) return;
++
++  // Keep the actual nodes, including form values and event listeners, alive.
++  const views = new Map();
++  const keyFor = (url) => url.pathname + url.search;
++  let activeKey = keyFor(new URL(location.href));
++  let pending;
++  let sequence = 0;
++
++  function makeView(page, title) {
++    const element = document.createElement('div');
++    element.dataset.view = '';
++    const header = page.querySelector('body > header');
++    if (header) element.append(header);
++    element.append(page.querySelector('body > main'));
++    return { element, title, x: 0, y: 0 };
++  }
++
++  const initial = makeView(document, document.title);
++  document.querySelector('body > nav').after(initial.element);
++  views.set(activeKey, initial);
++  history.scrollRestoration = 'manual';
++
++  async function navigate(url, push) {
++    const request = ++sequence;
++    pending?.abort();
++    pending = new AbortController();
++    const key = keyFor(url);
++    let view = views.get(key);
++
++    try {
++      if (!view) {
++        const response = await fetch(url.href, {
++          signal: pending.signal,
++          headers: { Accept: 'text/html' },
++        });
++        if (!response.ok || response.redirected ||
++            !response.headers.get('content-type')?.includes('text/html')) {
++          throw new Error('This destination needs a full navigation.');
++        }
++        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
++        // Only enhance pages using this same shell. Page-specific scripts need
++        // their normal document lifecycle, so let the browser load those pages.
++        if (!page.querySelector('body > main') ||
++            !page.querySelector('script[src="/navigation.js"]') ||
++            [...page.scripts].some((script) => script.getAttribute('src') !== '/navigation.js')) {
++          throw new Error('This destination needs a full navigation.');
++        }
++        if (request !== sequence) return;
++        view = makeView(page, page.title);
++        view.element.hidden = true;
++        initial.element.parentNode.insertBefore(view.element, initial.element.nextSibling);
++        views.set(key, view);
++      }
++      if (request !== sequence) return;
++
++      const previous = views.get(activeKey);
++      previous.x = window.scrollX;
++      previous.y = window.scrollY;
++      previous.element.hidden = true;
++      if (push) history.pushState(null, '', url.href);
++      activeKey = key;
++      view.element.hidden = false;
++      document.title = view.title;
++      document.querySelectorAll('nav a').forEach((link) => {
++        if (keyFor(new URL(link.href)) === key) link.setAttribute('aria-current', 'page');
++        else link.removeAttribute('aria-current');
++      });
++      if (url.hash) {
++        document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
++      } else {
++        window.scrollTo(view.x, view.y);
++      }
++    } catch (error) {
++      if (request !== sequence || error.name === 'AbortError') return;
++      location.assign(url.href);
++    }
++  }
++
++  document.addEventListener('click', (event) => {
++    const link = event.target.closest?.('a[href]');
++    if (!link || event.defaultPrevented || event.button !== 0 ||
++        event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
++        link.hasAttribute('download') || link.hasAttribute('data-full-navigation') ||
++        (link.target && link.target !== '_self')) return;
++
++    const url = new URL(link.href);
++    if (url.origin !== location.origin) return;
++    if (keyFor(url) === keyFor(new URL(location.href))) {
++      // A link back to the current page also cancels an in-flight departure.
++      ++sequence;
++      pending?.abort();
++      return;
++    }
++    event.preventDefault();
++    navigate(url, true);
++  });
++
++  window.addEventListener('popstate', () => navigate(new URL(location.href), false));
++})();
+diff --git a/navigation.test.cjs b/navigation.test.cjs
+new file mode 100644
+index 0000000..905c69a
+--- /dev/null
++++ b/navigation.test.cjs
+@@ -0,0 +1,107 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const { JSDOM } = require('jsdom');
++
++const html = fs.readFileSync('index.html', 'utf8');
++const script = fs.readFileSync('navigation.js', 'utf8');
++const settle = () => new Promise((resolve) => setImmediate(resolve));
++
++function setup(t) {
++  const dom = new JSDOM(html, { url: 'https://coffee.test/', runScripts: 'outside-only' });
++  t.after(() => dom.window.close());
++  const { window } = dom;
++  const requests = [];
++  const scrolls = [];
++  window.scrollTo = (x, y) => scrolls.push([x, y]);
++  window.fetch = async (url) => {
++    requests.push(url);
++    return {
++      ok: true,
++      redirected: false,
++      headers: new Headers({ 'Content-Type': 'text/html' }),
++      text: async () => html.replace('The Daily Grind | Artisanal Coffee', 'Menu')
++        .replace(/<main class="container">[\s\S]*?<\/main>/,
++          '<main class="container"><input id="order" value=""><button id="add">Add</button></main>'),
++    };
++  };
++  window.eval(script);
++  const click = (selector, options = {}) => window.document.querySelector(selector)
++    .dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...options }));
++  return { window, requests, scrolls, click };
++}
++
++test('revisiting a view preserves node identity, input values, listeners and scroll without fetching', async (t) => {
++  const { window, requests, scrolls, click } = setup(t);
++  const home = window.document.querySelector('main');
++  window.scrollY = 125;
++  click('a[href="/menu"]');
++  await settle();
++  assert.equal(window.location.pathname, '/menu');
++  assert.equal(home.parentNode.hidden, true);
++  const input = window.document.querySelector('#order');
++  input.value = 'Oat latte';
++  let count = 0;
++  window.document.querySelector('#add').addEventListener('click', () => count++);
++  await new Promise((resolve) => {
++    window.addEventListener('popstate', resolve, { once: true });
++    window.history.back();
++  });
++  await settle();
++  assert.equal(home.parentNode.hidden, false);
++  assert.equal(window.document.title, 'The Daily Grind | Artisanal Coffee');
++  assert.deepEqual(scrolls.at(-1), [0, 125]);
++  click('a[href="/menu"]');
++  await settle();
++  assert.equal(window.document.querySelector('#order'), input);
++  assert.equal(input.value, 'Oat latte');
++  click('#add');
++  assert.equal(count, 1);
++  assert.equal(requests.length, 1);
++  assert.equal(window.document.querySelectorAll('[data-view]:not([hidden])').length, 1);
++  assert.equal(window.document.querySelector('nav a').getAttribute('aria-current'), 'page');
++});
++
++test('Forward navigation reuses the mounted view', async (t) => {
++  const { window, requests, click } = setup(t);
++  click('a[href="/menu"]');
++  await settle();
++  const menu = window.document.querySelector('#order').parentNode;
++  for (const direction of ['back', 'forward']) {
++    await new Promise((resolve) => {
++      window.addEventListener('popstate', resolve, { once: true });
++      window.history[direction]();
++    });
++  }
++  assert.equal(window.location.pathname, '/menu');
++  assert.equal(menu.parentNode.hidden, false);
++  assert.equal(requests.length, 1);
++});
++
++test('modified clicks and logout are left to normal browser navigation', async (t) => {
++  const { requests, click } = setup(t);
++  assert.equal(click('a[href="/menu"]', { ctrlKey: true }), true);
++  assert.equal(click('a[href="/logout"]'), true);
++  await settle();
++  assert.equal(requests.length, 0);
++});
++
++test('a superseded response cannot replace or cache the latest destination', async (t) => {
++  const { window, click } = setup(t);
++  let resolveFirst;
++  const response = {
++    ok: true, redirected: false,
++    headers: new Headers({ 'Content-Type': 'text/html' }),
++    text: async () => html,
++  };
++  window.fetch = (url) => url.endsWith('/menu')
++    ? new Promise((resolve) => { resolveFirst = resolve; })
++    : Promise.resolve(response);
++  click('a[href="/menu"]');
++  click('a[href="/locations"]');
++  await settle();
++  resolveFirst(response);
++  await settle();
++  assert.equal(window.location.pathname, '/locations');
++  assert.equal(window.document.querySelectorAll('[data-view]').length, 2);
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..efc2c12 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test navigation.test.cjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.2"
+   }
+ }

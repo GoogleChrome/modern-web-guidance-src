@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,83 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-selector {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      margin-top: 1.25rem;
++    }
++
++    .roast-selector label {
++      font-weight: 600;
++      font-size: 1rem;
++      color: var(--light);
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-select {
++      font-family: inherit;
++      font-size: 1rem;
++      min-width: 220px;
++      min-height: 48px;
++      padding: 0.65rem 1rem;
++      background-color: var(--primary, #4e342e);
++      color: var(--accent, #ffab40);
++      border: 2px solid var(--accent, #ffab40);
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .roast-select::picker(select) {
++      font-family: inherit;
++      background-color: var(--primary, #4e342e);
++      color: var(--accent, #ffab40);
++      border: 2px solid var(--accent, #ffab40);
++      border-radius: 5px;
++      padding: 0.4rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
++    }
++
++    .roast-select::picker-icon {
++      color: var(--accent, #ffab40);
++    }
++
++    .roast-select option {
++      padding: 0.5rem 0.75rem;
++      border-radius: 4px;
++      background-color: var(--primary, #4e342e);
++      color: var(--accent, #ffab40);
++      cursor: pointer;
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus-visible {
++      background-color: var(--accent, #ffab40);
++      color: var(--primary, #4e342e);
++    }
++
++    .roast-select option::checkmark {
++      color: var(--accent, #ffab40);
++    }
++
++    .roast-select option:hover::checkmark,
++    .roast-select option:focus-visible::checkmark {
++      color: var(--primary, #4e342e);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +245,19 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector">
++      <label for="roast-select">Choose Your Roast</label>
++      <select class="roast-select" id="roast-select" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">Light Roast</option>
++        <option value="medium" selected>Medium Roast</option>
++        <option value="dark">Dark Roast</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

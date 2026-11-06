@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,141 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert: collapses from its natural height to 0 by animating a grid row.
++       The dismiss button toggles the hidden #alert-state popover (no JS needed),
++       and :has() reads that state. */
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, visibility 0s 0s;
++    }
++
++    #promo-alert .alert-inner {
++      min-height: 0;
++      overflow: hidden;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 5%;
++      transition: padding 0.4s ease;
++    }
++
++    #alert-dismiss {
++      background: none;
++      border: 0;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      color: inherit;
++    }
++
++    #alert-state {
++      display: none;
++    }
++
++    body:has(#alert-state:popover-open) #promo-alert {
++      grid-template-rows: 0fr;
++      visibility: hidden;
++      /* delay hiding until the collapse finishes so it stays out of the tab order */
++      transition: grid-template-rows 0.4s ease, visibility 0s 0.4s;
++    }
++
++    body:has(#alert-state:popover-open) #promo-alert .alert-inner {
++      padding-block: 0;
++    }
++
++    /* FAQ accordion: animates height via ::details-content (modern browsers;
++       others simply open/close instantly). */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    .faq {
++      max-width: 700px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.4rem;
++      transition: transform 0.3s ease;
++    }
++
++    .faq details[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 0.3s ease, content-visibility 0.3s allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #promo-alert,
++      #promo-alert .alert-inner,
++      #faq-trigger::after,
++      .faq details::details-content {
++        transition-duration: 0s !important;
++        transition-delay: 0s !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="alert-inner">
++      <span>Free pastry with any large drink this week!</span>
++      <button id="alert-dismiss" type="button" aria-label="Dismiss promotion" popovertarget="alert-state"
++        popovertargetaction="show">&times;</button>
++    </div>
++  </div>
++  <!-- Invisible state holder: opening it marks the promo as dismissed -->
++  <div id="alert-state" popover="manual"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +322,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2>FAQ</h2>
++      <details>
++        <summary id="faq-trigger">Do you offer non-dairy milk?</summary>
++        <div id="faq-content">
++          <p>Yes! Oat, almond, and soy milk are available for every drink at no extra charge.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

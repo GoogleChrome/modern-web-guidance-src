@@ -1,0 +1,505 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0252e0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,117 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Path tracer section */
++    .render-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .render-section > p {
++      max-width: 640px;
++      margin: 10px auto 0;
++    }
++
++    .render-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      margin: 20px auto 0;
++      max-width: 680px;
++    }
++
++    #smallpt-canvas {
++      display: block;
++      width: 100%;
++      max-width: 640px;
++      aspect-ratio: 4 / 3;
++      margin: 0 auto;
++      background: #1b1b1b;
++      border-radius: 4px;
++    }
++
++    .render-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++      align-items: center;
++      margin-top: 15px;
++    }
++
++    .render-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .render-controls .btn.secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .render-controls select {
++      font: inherit;
++      padding: 8px;
++      border-radius: 5px;
++      border: 1px solid var(--secondary);
++    }
++
++    .render-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      min-height: 1.4em;
++    }
++
++    .progress {
++      height: 4px;
++      background: var(--secondary);
++      border-radius: 2px;
++      overflow: hidden;
++      margin-top: 10px;
++    }
++
++    .progress > div {
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++      transition: width 0.1s linear;
++    }
++
++    .swatches {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      justify-content: center;
++      margin-top: 12px;
++      font-size: 0.75rem;
++    }
++
++    .swatch {
++      display: flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .swatch span {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      border: 1px solid rgba(0, 0, 0, 0.2);
++    }
++
++    .credit {
++      font-size: 0.8rem;
++      margin-top: 12px;
++      color: #6d4c41;
++    }
++
++    .credit a {
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +306,30 @@
+         </div>
+       </div>
+     </section>
++    <section class="render-section" id="path-tracer">
++      <h2>Brewed in Your Browser</h2>
++      <p>Like a good pour-over, great light takes patience. This scene is rendered right on your device by
++        <a href="http://www.kevinbeason.com/smallpt/">smallpt</a>, a tiny C++ path tracer compiled to WebAssembly.
++        Want a new blend? Roll some fresh colors.</p>
++      <div class="render-card">
++        <canvas id="smallpt-canvas" width="400" height="300" aria-label="Path traced scene rendered by smallpt"></canvas>
++        <div class="progress"><div id="smallpt-progress"></div></div>
++        <div class="render-controls">
++          <button type="button" class="btn" id="smallpt-random">Randomize Sphere Colors</button>
++          <button type="button" class="btn secondary" id="smallpt-original">Original Colors</button>
++          <label>Quality
++            <select id="smallpt-spp">
++              <option value="16">16 spp (fast)</option>
++              <option value="64" selected>64 spp</option>
++              <option value="256">256 spp (slow)</option>
++            </select>
++          </label>
++        </div>
++        <div class="render-status" id="smallpt-status">Loading WebAssembly…</div>
++        <div class="swatches" id="smallpt-swatches"></div>
++        <p class="credit">smallpt &copy; 2008 Kevin Beason, used under the MIT license.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +342,134 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const W = 400, H = 300;
++      // Indices into smallpt's spheres[] array (see wasm/smallpt.cpp).
++      const SPHERES = [
++        { i: 0, name: 'Left wall', def: [.75, .25, .25] },
++        { i: 1, name: 'Right wall', def: [.25, .25, .75] },
++        { i: 2, name: 'Back wall', def: [.75, .75, .75] },
++        { i: 4, name: 'Floor', def: [.75, .75, .75] },
++        { i: 5, name: 'Ceiling', def: [.75, .75, .75] },
++        { i: 6, name: 'Mirror ball', def: [.999, .999, .999] },
++        { i: 7, name: 'Glass ball', def: [.999, .999, .999] },
++      ];
++
++      const canvas = document.getElementById('smallpt-canvas');
++      const ctx = canvas.getContext('2d');
++      const statusEl = document.getElementById('smallpt-status');
++      const progressEl = document.getElementById('smallpt-progress');
++      const randomBtn = document.getElementById('smallpt-random');
++      const originalBtn = document.getElementById('smallpt-original');
++      const sppSel = document.getElementById('smallpt-spp');
++      const swatchesEl = document.getElementById('smallpt-swatches');
++
++      if (typeof WebAssembly !== 'object' || typeof Worker !== 'function') {
++        statusEl.textContent = 'Sorry, your browser does not support WebAssembly workers.';
++        return;
++      }
++
++      // HSL (0..1) -> RGB (0..1)
++      function hsl(h, s, l) {
++        const f = (n) => {
++          const k = (n + h * 12) % 12;
++          return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
++        };
++        return [f(0), f(8), f(4)];
++      }
++      const rand = (a, b) => a + Math.random() * (b - a);
++
++      function randomColors() {
++        const colors = [];
++        for (const sp of SPHERES) {
++          let c;
++          if (sp.i <= 1) c = hsl(Math.random(), rand(.5, .9), rand(.3, .55));       // bold side walls
++          else if (sp.i <= 5) c = hsl(Math.random(), rand(.1, .5), rand(.55, .75)); // softer room surfaces
++          else c = hsl(Math.random(), rand(.3, 1), rand(.6, .8));                    // tinted balls
++          colors[sp.i] = c.map((v) => Math.min(.999, Math.max(0, v)));
++        }
++        return colors;
++      }
++
++      const toCss = (c) => `rgb(${c.map((v) => Math.round(Math.pow(v, 1 / 2.2) * 255)).join(',')})`;
++      function showSwatches(colors) {
++        swatchesEl.innerHTML = '';
++        for (const sp of SPHERES) {
++          const c = (colors && colors[sp.i]) || sp.def;
++          const el = document.createElement('div');
++          el.className = 'swatch';
++          el.innerHTML = `<span style="background:${toCss(c)}"></span>${sp.name}`;
++          swatchesEl.appendChild(el);
++        }
++      }
++
++      // Pool of workers, each running its own copy of the wasm module.
++      const nWorkers = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 8));
++      const workers = [];
++      let job = null;       // current render job
++      let jobCounter = 0;
++      let readyCount = 0;
++      let pending = null;   // render requested before workers were ready
++
++      function dispatch(w) {
++        if (!job || job.next >= H) { w.busy = false; return; }
++        const y = job.next++;
++        w.busy = true;
++        w.postMessage({ type: 'row', job: job.id, y });
++      }
++
++      function onMessage(w, data) {
++        if (data.type === 'ready') {
++          if (++readyCount === nWorkers && pending) { const p = pending; pending = null; render(p); }
++          return;
++        }
++        if (data.type !== 'row') return;
++        if (job && data.job === job.id) {
++          ctx.putImageData(new ImageData(new Uint8ClampedArray(data.pixels.buffer), W, 1), 0, data.row);
++          job.done++;
++          progressEl.style.width = (100 * job.done / H).toFixed(1) + '%';
++          if (job.done === H) {
++            const secs = ((performance.now() - job.start) / 1000).toFixed(1);
++            statusEl.textContent = `Rendered ${W}×${H} at ${job.spp} samples/pixel in ${secs}s using ${nWorkers} worker${nWorkers > 1 ? 's' : ''}.`;
++          } else if (job.done % 10 === 0) {
++            statusEl.textContent = `Rendering… ${Math.floor(100 * job.done / H)}%`;
++          }
++        }
++        dispatch(w);
++      }
++
++      for (let k = 0; k < nWorkers; k++) {
++        const w = new Worker('smallpt/worker.js');
++        w.busy = false;
++        w.onmessage = (e) => onMessage(w, e.data);
++        w.onerror = (e) => { statusEl.textContent = 'Renderer failed to load: ' + (e.message || 'unknown error'); };
++        workers.push(w);
++      }
++
++      let lastColors = null;
++      function render(colors) {
++        lastColors = colors;
++        showSwatches(colors);
++        if (readyCount < nWorkers) { pending = colors; return; }
++        const spp = parseInt(sppSel.value, 10);
++        job = { id: ++jobCounter, next: 0, done: 0, spp, start: performance.now() };
++        progressEl.style.width = '0%';
++        statusEl.textContent = 'Rendering… 0%';
++        for (const w of workers) {
++          w.postMessage({ type: 'setup', job: job.id, w: W, h: H, spp, colors });
++          if (!w.busy) dispatch(w);
++        }
++      }
++
++      randomBtn.addEventListener('click', () => render(randomColors()));
++      originalBtn.addEventListener('click', () => render(null));
++      sppSel.addEventListener('change', () => render(lastColors));
++
++      render(null);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..9fc94f5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build:wasm": "sh wasm/build.sh"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/smallpt/smallpt.js b/smallpt/smallpt.js
+new file mode 100644
+index 0000000..c2391bc
+--- /dev/null
++++ b/smallpt/smallpt.js
+@@ -0,0 +1,2 @@
++var createSmallpt=(()=>{var _scriptName=globalThis.document?.currentScript?.src;return async function(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["d"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("smallpt.wasm")}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var __abort_js=()=>abort("");var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}var _sphere_count,_set_sphere_color,_reset_sphere_colors,_setup,_render_row,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_sphere_count=Module["_sphere_count"]=wasmExports["e"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["f"];_reset_sphere_colors=Module["_reset_sphere_colors"]=wasmExports["g"];_setup=Module["_setup"]=wasmExports["h"];_render_row=Module["_render_row"]=wasmExports["i"];memory=wasmMemory=wasmExports["c"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={a:__abort_js,b:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}})();if(typeof exports==="object"&&typeof module==="object"){module.exports=createSmallpt;module.exports.default=createSmallpt}else if(typeof define==="function"&&define["amd"])define([],()=>createSmallpt);
+diff --git a/smallpt/smallpt.wasm b/smallpt/smallpt.wasm
+new file mode 100755
+index 0000000..cac868c
+Binary files /dev/null and b/smallpt/smallpt.wasm differ
+diff --git a/smallpt/worker.js b/smallpt/worker.js
+new file mode 100644
+index 0000000..9d55709
+--- /dev/null
++++ b/smallpt/worker.js
+@@ -0,0 +1,23 @@
++// Web Worker that hosts one instance of the smallpt WebAssembly module and
++// renders individual image rows on request.
++importScripts('smallpt.js');
++
++let M = null, ptr = 0, width = 0, setupKey = '';
++const ready = createSmallpt().then((m) => { M = m; postMessage({ type: 'ready' }); });
++
++onmessage = async ({ data }) => {
++  await ready;
++  if (data.type === 'setup') {
++    // colors: array of [r,g,b] per sphere, or null for the original scene
++    M._reset_sphere_colors();
++    if (data.colors) data.colors.forEach((c, i) => c && M._set_sphere_color(i, c[0], c[1], c[2]));
++    ptr = M._setup(data.w, data.h, data.spp);
++    width = data.w;
++    setupKey = data.job;
++  } else if (data.type === 'row' && data.job === setupKey) {
++    const row = M._render_row(data.y);
++    const start = ptr + row * width * 4;
++    const pixels = M.HEAPU8.slice(start, start + width * 4); // copy out of wasm memory
++    postMessage({ type: 'row', job: data.job, row, pixels }, [pixels.buffer]);
++  }
++};
+diff --git a/wasm/build.sh b/wasm/build.sh
+new file mode 100755
+index 0000000..43208c2
+--- /dev/null
++++ b/wasm/build.sh
+@@ -0,0 +1,9 @@
++#!/bin/sh
++# Builds smallpt.cpp -> smallpt/smallpt.js + smallpt/smallpt.wasm (requires Emscripten).
++set -e
++cd "$(dirname "$0")/.."
++emcc -O3 -Wno-dangling-else wasm/smallpt.cpp -o smallpt/smallpt.js \
++  -sMODULARIZE=1 -sEXPORT_NAME=createSmallpt -sENVIRONMENT=web,worker \
++  -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 -sSTACK_SIZE=8MB \
++  -sEXPORTED_FUNCTIONS=_setup,_render_row,_set_sphere_color,_reset_sphere_colors,_sphere_count \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8
+diff --git a/wasm/smallpt.cpp b/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..8d31e61
+--- /dev/null
++++ b/wasm/smallpt.cpp
+@@ -0,0 +1,141 @@
++// smallpt by Kevin Beason (http://www.kevinbeason.com/smallpt/), MIT license.
++// Original renderer unchanged; main() replaced by a WebAssembly API at the bottom.
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++#include <emscripten/emscripten.h> // WebAssembly port: see bottom of file
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// ---------------------------------------------------------------------------
++// WebAssembly interface (replaces main()). The renderer above is unchanged
++// from Kevin Beason's original smallpt; below, main()'s loop is split up so
++// JavaScript can render one row at a time and display progress.
++// ---------------------------------------------------------------------------
++static const int NSPHERES = sizeof(spheres)/sizeof(Sphere);
++static const Vec defaultColors[NSPHERES] = {
++  spheres[0].c, spheres[1].c, spheres[2].c, spheres[3].c, spheres[4].c,
++  spheres[5].c, spheres[6].c, spheres[7].c, spheres[8].c };
++static int W = 0, H = 0, samps = 1;
++static Vec *c = 0;
++static unsigned char *rgba = 0;  // final 8-bit image, top row first
++static Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++static Vec cx, cy;
++
++extern "C" {
++EMSCRIPTEN_KEEPALIVE int sphere_count(){ return NSPHERES; }
++
++EMSCRIPTEN_KEEPALIVE void set_sphere_color(int i, double r, double g, double b){
++  if (i >= 0 && i < NSPHERES) spheres[i].c = Vec(r, g, b);
++}
++
++EMSCRIPTEN_KEEPALIVE void reset_sphere_colors(){
++  for (int i = 0; i < NSPHERES; i++) spheres[i].c = defaultColors[i];
++}
++
++// Allocate the image; spp is total samples per pixel (as in "./smallpt spp").
++EMSCRIPTEN_KEEPALIVE unsigned char *setup(int w, int h, int spp){
++  delete[] c; delete[] rgba;
++  W = w; H = h; samps = spp/4 > 0 ? spp/4 : 1;
++  c = new Vec[w*h];
++  rgba = new unsigned char[w*h*4];
++  for (int i = 0; i < w*h*4; i++) rgba[i] = (i & 3) == 3 ? 255 : 0;
++  cx = Vec(w*.5135/h); cy = (cx%cam.d).norm()*.5135;
++  return rgba;
++}
++
++// Render image row y (0 = bottom, as in the original loop). Returns the
++// index of the corresponding row in the top-down RGBA buffer.
++EMSCRIPTEN_KEEPALIVE int render_row(int y){
++  int w = W, h = H; Vec r;
++  for (unsigned short x=0, Xi[3]={0,0,(unsigned short)(y*y*y)}; x<w; x++){
++    int i=(h-y-1)*w+x;
++    c[i] = Vec();
++    for (int sy=0; sy<2; sy++)                     // 2x2 subpixel rows
++      for (int sx=0; sx<2; sx++, r=Vec()){         // 2x2 subpixel cols
++        for (int s=0; s<samps; s++){
++          double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++          double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++          Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                  cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++          r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++        } // Camera rays are pushed ^^^^^ forward to start in interior
++        c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++      }
++    rgba[i*4+0] = toInt(c[i].x);
++    rgba[i*4+1] = toInt(c[i].y);
++    rgba[i*4+2] = toInt(c[i].z);
++    rgba[i*4+3] = 255;
++  }
++  return h-y-1;
++}
++}

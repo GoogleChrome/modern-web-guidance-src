@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,23 +24,44 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      padding-top: 100px;
+     }
+ 
+     /* Navigation */
++    @keyframes shrink {
++      to {
++        height: 50px;
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
++      }
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: 100px;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
+     }
+ 
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav {
++          animation: shrink auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 50px;
++        }
++      }
++    }
++
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -206,7 +227,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers that don't support scroll-driven animations
++    if (
++      !CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)') &&
++      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
++    ) {
++      const nav = document.querySelector('nav');
++
++      const initialHeight = 100;
++      const finalHeight = 50;
++      const scrollDistance = 50;
++
++      window.addEventListener('scroll', () => {
++        const scrollY = window.scrollY;
++        const scrollPercent = Math.min(1, scrollY / scrollDistance);
++        const newHeight = initialHeight - (initialHeight - finalHeight) * scrollPercent;
++
++        nav.style.height = `${newHeight}px`;
++        nav.style.boxShadow = scrollPercent > 0 ? `0 2px 10px rgba(0, 0, 0, ${0.3 * scrollPercent})` : 'none';
++      }, { passive: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

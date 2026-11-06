@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,36 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll progress stays above the sticky navigation. */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 4px;
++      z-index: 1001;
++      background: var(--accent);
++      pointer-events: none;
++      transform: scaleX(0);
++      transform-origin: left center;
++    }
++
++    @keyframes scroll-progress {
++      from { transform: scaleX(0); }
++      to { transform: scaleX(1); }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: scroll(root block)) {
++        .scroll-progress {
++          animation: scroll-progress auto linear;
++          animation-timeline: scroll(root block);
++        }
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +183,9 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroll-progress" aria-hidden="true"></div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +235,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const progress = document.querySelector('.scroll-progress');
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const nativeProgress = window.CSS && CSS.supports('animation-timeline', 'scroll(root block)');
++      let frame = null;
++
++      function updateProgress() {
++        frame = null;
++        const root = document.scrollingElement || document.documentElement;
++        const distance = root.scrollHeight - root.clientHeight;
++        const fraction = distance > 0 ? root.scrollTop / distance : 0;
++        progress.style.transform = `scaleX(${Math.min(1, Math.max(0, fraction))})`;
++      }
++
++      function scheduleUpdate() {
++        if (frame === null) frame = requestAnimationFrame(updateProgress);
++      }
++
++      function configureProgress() {
++        const useNative = nativeProgress && !reducedMotion.matches;
++        window.removeEventListener('scroll', scheduleUpdate);
++        window.removeEventListener('resize', scheduleUpdate);
++        window.removeEventListener('pageshow', scheduleUpdate);
++        if (frame !== null) cancelAnimationFrame(frame);
++        frame = null;
++        if (useNative) {
++          progress.style.removeProperty('transform');
++          return;
++        }
++
++        // Direct position updates avoid easing or extra motion in reduced-motion mode.
++        updateProgress();
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++        window.addEventListener('resize', scheduleUpdate);
++        window.addEventListener('pageshow', scheduleUpdate);
++      }
++
++      if ('ResizeObserver' in window) {
++        const observer = new ResizeObserver(() => {
++          if (!nativeProgress || reducedMotion.matches) scheduleUpdate();
++        });
++        observer.observe(document.body);
++        observer.observe(document.documentElement);
++      }
++      if (reducedMotion.addEventListener) {
++        reducedMotion.addEventListener('change', configureProgress);
++      } else {
++        reducedMotion.addListener(configureProgress);
++      }
++      configureProgress();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

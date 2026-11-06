@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,109 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Info button + anchored tooltip (no JavaScript) */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      anchor-name: --maple-info;
++      display: inline-grid;
++      place-items: center;
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .info-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* The popover itself is a transparent, anchored query container.
++       The visible bubble is its child so the anchored() container query
++       can restyle it (a container can't style itself, only descendants). */
++    .tooltip {
++      position: fixed;
++      position-anchor: --maple-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      overflow: visible;
++      width: max-content;
++      max-width: 240px;
++    }
++
++    .tooltip-bubble {
++      --arrow-size: 8px;
++      position: relative;
++      margin: 0 0 calc(var(--arrow-size) + 4px);
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      border-radius: 10px 10px 10px 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    /* Arrow: default state (tooltip above trigger) points down */
++    .tooltip-bubble::before {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      translate: -50% 0;
++      border: var(--arrow-size) solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-width: 0;
++    }
++
++    /* Flipped below the trigger: arrow points up, shape + spacing adjust */
++    @container anchored(fallback: flip-block) {
++      .tooltip-bubble {
++        margin: calc(var(--arrow-size) + 4px) 0 0;
++        border-radius: 4px 4px 10px 10px;
++      }
++
++      .tooltip-bubble::before {
++        top: auto;
++        bottom: 100%;
++        border-top-width: 0;
++        border-top-color: transparent;
++        border-bottom-width: var(--arrow-size);
++        border-bottom-color: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +281,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="maple-tooltip"
++              interestfor="maple-tooltip" aria-describedby="maple-tooltip"
++              aria-label="Maple Oat Latte info">i</button>
++            <div id="maple-tooltip" class="tooltip" popover="auto" role="tooltip">
++              <div class="tooltip-bubble">
++                Dairy-free &amp; vegan. Contains oats. Available hot or iced through the fall season.
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

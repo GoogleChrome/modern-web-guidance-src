@@ -1,0 +1,282 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,114 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Gift card designer */
++    .designer {
++      margin-top: 60px;
++    }
++
++    .designer-layout {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 30px;
++      justify-content: center;
++      align-items: flex-start;
++      margin-top: 20px;
++    }
++
++    .designer-controls {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      width: 280px;
++    }
++
++    .designer-controls label {
++      font-weight: 600;
++      margin-top: 8px;
++    }
++
++    .designer-controls input[type="text"],
++    .designer-controls textarea {
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .designer-controls input[type="color"] {
++      width: 60px;
++      height: 36px;
++      border: none;
++      padding: 0;
++      background: none;
++    }
++
++    .designer-controls .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .designer-note {
++      font-size: 0.85rem;
++      min-height: 1.4em;
++    }
++
++    /* Canvas is displayed at 500x300 CSS px; its bitmap is 2x for a crisp export */
++    #gc-canvas {
++      width: 500px;
++      height: 300px;
++      max-width: 100%;
++      border-radius: 12px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
++    }
+   </style>
++  <!-- Styles for the card itself live in their own block so the fallback renderer can embed them verbatim. -->
++  <style id="card-css">
++    #export_element {
++      width: 500px;
++      height: 300px;
++      padding: 28px 32px;
++      display: flex;
++      flex-direction: column;
++      box-sizing: border-box;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.4;
++      overflow: hidden;
++      border: 6px double #ffab40;
++    }
++
++    #export_element .gc-brand {
++      font-size: 18px;
++      font-weight: bold;
++      letter-spacing: 3px;
++    }
++
++    #export_element .gc-to {
++      margin-top: 28px;
++      font-size: 26px;
++      font-weight: 600;
++    }
++
++    #export_element .gc-msg {
++      margin-top: 10px;
++      font-size: 20px;
++      font-style: italic;
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      flex: 1;
++      overflow: hidden;
++    }
++
++    #export_element .gc-foot {
++      font-size: 12px;
++      letter-spacing: 1px;
++      opacity: 0.8;
++    }
++  </style>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +299,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="gift-card-designer" class="designer">
++      <h2 style="text-align: center;">Design a Custom Gift Card</h2>
++      <p style="text-align: center;">Add a name or message, pick a color, and download your card as an image.</p>
++
++      <div class="designer-layout">
++        <form class="designer-controls" id="designer-form" onsubmit="return false">
++          <label for="gc-name">Name</label>
++          <input id="gc-name" type="text" maxlength="30" value="Alex">
++
++          <label for="gc-message">Message</label>
++          <textarea id="gc-message" rows="4" maxlength="140">Enjoy a coffee on me!</textarea>
++
++          <label for="gc-color">Background color</label>
++          <input id="gc-color" type="color" value="#4e342e">
++
++          <button type="button" class="btn" id="gc-export">Download card (PNG)</button>
++          <p class="designer-note" id="gc-status" role="status" aria-live="polite"></p>
++        </form>
++
++        <!-- `layoutsubtree` lets the canvas lay out its children so they can be drawn with drawElementImage().
++             Where it's unsupported, the child is ignored by the browser and we use an SVG foreignObject fallback. -->
++        <canvas id="gc-canvas" layoutsubtree width="1000" height="600" aria-label="Gift card preview">
++          <div id="export_element">
++            <div class="gc-brand">THE DAILY GRIND</div>
++            <div class="gc-to">For <span id="gc-name-out">Alex</span></div>
++            <div class="gc-msg" id="gc-message-out">Enjoy a coffee on me!</div>
++            <div class="gc-foot">Artisanal Coffee &middot; Gift Card</div>
++          </div>
++        </canvas>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +343,122 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('gc-canvas');
++      const card = document.getElementById('export_element');
++      const ctx = canvas.getContext('2d');
++      const status = document.getElementById('gc-status');
++      const CARD_W = 500, CARD_H = 300;
++
++      // HTML-in-Canvas: needs the `layoutsubtree` attribute, drawElementImage() and the `paint` event.
++      const supportsHtmlInCanvas =
++        'layoutSubtree' in canvas &&
++        typeof ctx.drawElementImage === 'function' &&
++        typeof canvas.requestPaint === 'function';
++
++      let paintWaiters = [];
++
++      function drawNative() {
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++        ctx.setTransform(canvas.width / CARD_W, 0, 0, canvas.height / CARD_H, 0, 0);
++        // Keep the DOM element's hit-test position in sync with where it was drawn.
++        const transform = ctx.drawElementImage(card, 0, 0);
++        if (transform) card.style.transform = transform.toString();
++      }
++
++      // Resolves once the canvas bitmap reflects the current card state.
++      function render() {
++        if (supportsHtmlInCanvas) {
++          return new Promise((resolve) => {
++            paintWaiters.push(resolve);
++            canvas.requestPaint();
++          });
++        }
++        return renderFallback();
++      }
++
++      if (supportsHtmlInCanvas) {
++        // The browser fires `paint` after the children's rendering is up to date, so drawing here is never stale.
++        canvas.addEventListener('paint', () => {
++          drawNative();
++          const waiters = paintWaiters;
++          paintWaiters = [];
++          waiters.forEach((resolve) => resolve());
++        });
++      }
++
++      // Fallback: serialize the card + its CSS into an SVG <foreignObject> and draw that image.
++      function renderFallback() {
++        const clone = card.cloneNode(true);
++        clone.style.transform = '';
++        clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
++        const css = document.getElementById('card-css').textContent;
++        const svg =
++          `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${CARD_W} ${CARD_H}">` +
++          `<foreignObject width="${CARD_W}" height="${CARD_H}"><style xmlns="http://www.w3.org/1999/xhtml">${css}</style>` +
++          new XMLSerializer().serializeToString(clone) +
++          '</foreignObject></svg>';
++        return new Promise((resolve, reject) => {
++          const img = new Image();
++          img.onload = () => {
++            ctx.setTransform(1, 0, 0, 1, 0, 0);
++            ctx.clearRect(0, 0, canvas.width, canvas.height);
++            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
++            resolve();
++          };
++          img.onerror = () => reject(new Error('Could not render card'));
++          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
++        });
++      }
++
++      // Form -> card
++      const nameIn = document.getElementById('gc-name');
++      const msgIn = document.getElementById('gc-message');
++      const colorIn = document.getElementById('gc-color');
++
++      function textColorFor(hex) {
++        const n = parseInt(hex.slice(1), 16);
++        const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
++        return lum > 0.6 ? '#3e2723' : '#ffffff';
++      }
++
++      function update() {
++        document.getElementById('gc-name-out').textContent = nameIn.value.trim() || 'a coffee lover';
++        document.getElementById('gc-message-out').textContent = msgIn.value;
++        card.style.backgroundColor = colorIn.value;
++        card.style.color = textColorFor(colorIn.value);
++        render().catch(() => { status.textContent = 'Preview failed to render.'; });
++      }
++
++      [nameIn, msgIn, colorIn].forEach((el) => el.addEventListener('input', update));
++
++      // Export
++      document.getElementById('gc-export').addEventListener('click', async () => {
++        status.textContent = '';
++        try {
++          await render(); // make sure the bitmap is current before reading it
++          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
++          if (!blob) throw new Error('toBlob returned null');
++          const url = URL.createObjectURL(blob);
++          const a = document.createElement('a');
++          a.href = url;
++          a.download = 'daily-grind-gift-card.png';
++          document.body.appendChild(a);
++          a.click();
++          a.remove();
++          setTimeout(() => URL.revokeObjectURL(url), 1000);
++          status.textContent = 'Card downloaded!';
++        } catch (e) {
++          status.textContent = 'Sorry, the card could not be exported in this browser.';
++        }
++      });
++
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

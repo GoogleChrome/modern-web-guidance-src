@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -186,8 +186,57 @@
+       margin: 2rem auto;
+       text-align: center;
+       color: #64748b;
+     }
++
++    /* Cards outside the initial viewport: the browser skips layout/paint
++       (including the expensive filters) until they approach the viewport.
++       contain-intrinsic-size reserves an estimated height so the scrollbar
++       stays stable; `auto` remembers the real size once rendered. */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 340px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem 1.5rem;
++      box-sizing: border-box;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.75rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++      contain: layout paint style;
++    }
++
++    .debug-panel h2 {
++      margin: 0 0 0.5rem;
++      font-size: 0.95rem;
++      color: #93c5fd;
++    }
++
++    .debug-panel dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 1rem;
++      margin: 0;
++    }
++
++    .debug-panel dd {
++      margin: 0;
++    }
++
++    /* Hidden state: content-visibility keeps the panel's rendering state
++       cached, so toggling back on is instant (no re-layout from scratch
++       like display:none would require). Box chrome collapses to nothing. */
++    .debug-panel.is-hidden {
++      content-visibility: hidden;
++      contain-intrinsic-size: 0 0;
++      padding: 0;
++      margin: 0 auto;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -207,8 +256,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off" aria-controls="debug-panel" aria-expanded="false">Debug: Off</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +269,40 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel is-hidden" aria-label="Debug panel">
++    <h2>Debug</h2>
++    <dl>
++      <dt>Total cards</dt><dd id="dbg-total">0</dd>
++      <dt>Deferred (.off-screen-card)</dt><dd id="dbg-deferred">0</dd>
++      <dt>Eagerly rendered</dt><dd id="dbg-eager">0</dd>
++      <dt>Last render</dt><dd id="dbg-render">–</dd>
++      <dt>Viewport</dt><dd id="dbg-viewport">–</dd>
++    </dl>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Approximate rendered card height (incl. margin), used to decide how many
++    // cards are visible on first paint. Anything past that is deferred.
++    const estimatedCardHeight = 300;
++    let lastRenderMs = null;
+ 
+ 
+ 
+-    function createCard(index) {
++    function getEagerCount() {
++      // +1 buffer so a partially visible card at the fold is never deferred.
++      return Math.ceil(window.innerHeight / estimatedCardHeight) + 1;
++    }
++
++    function createCard(index, deferred) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = deferred ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -264,8 +334,10 @@
+     function measureRender(startTime, suffix = '') {
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
++          lastRenderMs = duration;
++          updateDebugPanel();
+           timerSpan.textContent = `${duration}ms${suffix}`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+@@ -284,23 +356,58 @@
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
++      const eagerCount = getEagerCount();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        fragment.appendChild(createCard(i, i >= eagerCount));
+       }
+       feed.appendChild(fragment);
+ 
+       measureRender(startTime);
++      updateDebugPanel();
+     }
+ 
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    // --- Debug panel ---------------------------------------------------
++    const debugPanel = document.getElementById('debug-panel');
++    const debugBtn = document.getElementById('toggle-debug');
++    const dbg = {
++      total: document.getElementById('dbg-total'),
++      deferred: document.getElementById('dbg-deferred'),
++      eager: document.getElementById('dbg-eager'),
++      render: document.getElementById('dbg-render'),
++      viewport: document.getElementById('dbg-viewport'),
++    };
+ 
++    function updateDebugPanel() {
++      // Skip DOM work entirely while hidden; refreshed when shown.
++      if (debugPanel.classList.contains('is-hidden')) return;
++      const total = feed.getElementsByClassName('card').length;
++      const deferred = feed.getElementsByClassName('off-screen-card').length;
++      dbg.total.textContent = total;
++      dbg.deferred.textContent = deferred;
++      dbg.eager.textContent = total - deferred;
++      dbg.render.textContent = lastRenderMs === null ? '–' : `${lastRenderMs}ms`;
++      dbg.viewport.textContent = `${window.innerWidth}×${window.innerHeight}`;
++    }
++
++    debugBtn.addEventListener('click', () => {
++      // Toggling a class that switches content-visibility is cheap: the
++      // panel's subtree keeps its rendering state while hidden.
++      const show = debugPanel.classList.toggle('is-hidden') === false;
++      debugBtn.textContent = show ? 'Debug: On' : 'Debug: Off';
++      debugBtn.classList.toggle('off', !show);
++      debugBtn.setAttribute('aria-expanded', String(show));
++      if (show) updateDebugPanel();
++    });
++
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

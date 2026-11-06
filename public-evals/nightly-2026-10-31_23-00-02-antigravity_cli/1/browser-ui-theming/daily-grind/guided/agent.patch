@@ -1,0 +1,664 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b3e7cb 100644
+--- a/index.html
++++ b/index.html
+@@ -12,10 +12,53 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #8d6e63;
++      --error: #c62828;
++      --success: #2e7d32;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    ::selection {
++      background-color: var(--accent);
++      color: var(--text);
+     }
+ 
+-    * {
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 6px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
++    }
++
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    fieldset {
+       margin: 0;
+       padding: 0;
+     }
+@@ -131,10 +174,402 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    /* Main Layout: Seasonal Favorites + Order Customization */
++    .main-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 2.5rem;
++      align-items: start;
++    }
++
++    @media (min-width: 860px) {
++      .main-layout {
++        grid-template-columns: 1.1fr 1fr;
++      }
++    }
++
++    .section-title {
++      font-size: 1.75rem;
++      color: var(--primary);
++      margin-block-end: 1rem;
++    }
++
++    /* Order Customization Card & Form Controls */
++    .order-card {
++      background: var(--surface);
++      padding: 1.75rem;
++      border-radius: 12px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.08);
++    }
++
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      gap: 1.25rem;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 0.35rem;
++    }
++
++    .form-group > label,
++    fieldset > legend {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    fieldset {
++      border: 0;
++      display: flex;
++      flex-direction: column;
++      gap: 0.5rem;
++    }
++
++    fieldset > legend {
++      margin-block-end: 0.35rem;
++    }
++
++    .required-indicator {
++      color: var(--error);
++      margin-inline-start: 0.15rem;
++    }
++
++    .field-hint {
++      font-size: 0.825rem;
++      color: #5d4037;
++    }
++
++    /* Textual inputs, native pickers, and textarea */
++    input:not([type="checkbox"], [type="radio"], [type="range"]),
++    select,
++    textarea {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      padding: 0.65rem 0.85rem;
++      min-block-size: 48px;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    @media (pointer: coarse) {
++      input:not([type="checkbox"], [type="radio"], [type="range"]),
++      select,
++      textarea {
++        min-block-size: 52px;
++      }
++    }
++
++    input::placeholder,
++    textarea::placeholder {
++      color: #795548;
++      opacity: 0.85;
++    }
++
++    input:placeholder-shown,
++    textarea:placeholder-shown {
++      background-color: var(--surface);
++    }
++
++    /* Auto-sizing text/textarea controls with safe constraints */
++    input[type="text"] {
++      field-sizing: content;
++      inline-size: 100%;
++      min-inline-size: 15ch;
++      max-inline-size: 100%;
++    }
++
++    textarea {
++      field-sizing: content;
++      inline-size: 100%;
++      block-size: auto;
++      min-block-size: 3lh;
++      max-block-size: 8lh;
++      resize: vertical;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    /* User-interaction-aware validity styling (excluding range sliders) */
++    input:not([type="range"]):user-invalid,
++    select:user-invalid,
++    textarea:user-invalid {
++      border-color: var(--error);
++      background-color: #ffebee;
++    }
++
++    input:not([type="range"]):user-valid,
++    select:user-valid,
++    textarea:user-valid {
++      border-color: var(--primary);
++    }
++
++    /* Focus states */
++    input:focus-visible,
++    select:focus-visible,
++    textarea:focus-visible,
++    button:focus-visible,
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Customizable Native Select & Picker (appearance: base-select) */
++    .brand-select,
++    .brand-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .brand-select {
++      inline-size: 100%;
++      max-inline-size: 100%;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      background-color: var(--light);
++    }
++
++    .brand-select::picker(select) {
++      background-color: var(--surface);
++      color: var(--text);
++      border: 2px solid var(--primary);
++      border-radius: 8px;
++      padding: 0.4rem;
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.18);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++    }
++
++    .brand-select::picker-icon {
++      color: var(--primary);
++    }
++
++    .brand-select option {
++      padding: 0.55rem 0.75rem;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .brand-select option:hover,
++    .brand-select option:focus-visible {
++      background-color: var(--secondary);
++    }
++
++    .brand-select option:checked {
++      background-color: #efebe9;
++      font-weight: 600;
++    }
++
++    .brand-select option::checkmark {
++      color: var(--primary);
++    }
++
++    /* Inline Radio & Checkbox Option Pills with :has(:checked) */
++    .choice-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
++      gap: 0.6rem;
++    }
++
++    .choice-label {
++      --choice-bg: var(--light);
++      --choice-border: var(--secondary);
++      --choice-text: var(--text);
++
++      display: inline-flex;
++      align-items: center;
++      gap: 0.55rem;
++      padding: 0.55rem 0.8rem;
++      min-block-size: 48px;
++      border: 1.5px solid var(--choice-border);
++      border-radius: 8px;
++      background-color: var(--choice-bg);
++      color: var(--choice-text);
++      cursor: pointer;
++      font-size: 0.925rem;
++      transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .choice-label:hover {
++      border-color: var(--border);
++    }
++
++    .choice-label:has(:checked) {
++      --choice-bg: #fff8e1;
++      --choice-border: var(--primary);
++      font-weight: 600;
++      box-shadow: 0 0 0 1px var(--primary);
++    }
++
++    @supports not selector(:has(*)) {
++      .choice-label.is-checked {
++        --choice-bg: #fff8e1;
++        --choice-border: var(--primary);
++        font-weight: 600;
++        box-shadow: 0 0 0 1px var(--primary);
++      }
++    }
++
++    .choice-label input[type="radio"],
++    .choice-label input[type="checkbox"] {
++      accent-color: var(--primary);
++      inline-size: 1.15em;
++      aspect-ratio: 1;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    /* Native Range Slider with Brand Track & Thumb */
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++    }
++
++    .slider-output {
++      font-weight: 600;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 0.1rem 0.55rem;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
++    input[type="range"] {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.25rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--accent);
++      --slider-direction: to right;
++      --attr-min: attr(min type(<number>), 1);
++      --attr-max: attr(max type(<number>), 4);
++      --control-value: attr(value type(<number>), 2);
++      --slider-progress: calc(
++        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
++      );
++
++      appearance: none;
++      accent-color: var(--primary);
++      inline-size: 100%;
++      block-size: 2.5rem;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    input[type="range"]:dir(rtl) {
++      --slider-direction: to left;
++    }
++
++    @supports not (opacity: progress(1, 0, 100)) {
++      input[type="range"] {
++        --slider-progress: calc(
++          (var(--control-value) - var(--attr-min)) /
++          (var(--attr-max) - var(--attr-min)) * 100%
++        );
++      }
++    }
++
++    input[type="range"]::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(
++        var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress),
++        var(--slider-track-color) var(--slider-progress)
++      );
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc(
++        (var(--slider-track-size) - var(--slider-thumb-size)) / 2
++      );
++      border: 2px solid var(--primary);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    input[type="range"]::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    input[type="range"]::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 2px solid var(--primary);
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    /* Submit button & feedback */
++    .btn-submit {
++      font: inherit;
++      font-weight: 600;
++      font-size: 1rem;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--primary);
++      padding: 0.75rem 1.5rem;
++      border-radius: 6px;
++      min-block-size: 48px;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .btn-submit:hover:not(:disabled) {
++      background: var(--text);
++      border-color: var(--text);
++    }
++
++    .btn-submit:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .order-status {
++      font-size: 0.9rem;
++      padding: 0.75rem 1rem;
++      border-radius: 6px;
++      background-color: #efebe9;
++      border-inline-start: 4px solid var(--accent);
++      color: var(--text);
++    }
++
++    .order-status:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,26 +610,117 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <div class="main-layout">
++      <section aria-labelledby="seasonal-heading">
++        <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-      </div>
+-    </section>
++      </section>
++
++      <section id="customize-order" class="order-card" aria-labelledby="customize-heading">
++        <h2 id="customize-heading" class="section-title">Customize Your Order</h2>
++        <form class="order-form" action="/order-online" method="POST" id="coffee-order-form">
++          <div class="form-group">
++            <label for="customer-name">Name for the Cup <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="text" id="customer-name" name="customer_name" autocomplete="name" required minlength="2" maxlength="50" placeholder="e.g., Alex" aria-describedby="name-hint">
++            <span id="name-hint" class="field-hint">Required so our barista can call your drink.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="drink-base">Signature Drink Base <span class="required-indicator" aria-hidden="true">*</span></label>
++            <select id="drink-base" name="drink_base" class="brand-select" required>
++              <button type="button">
++                <selectedcontent></selectedcontent>
++              </button>
++              <option value="maple-oat-latte" selected>Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++              <option value="honey-cinnamon-cortado">Honey Cinnamon Cortado</option>
++              <option value="brown-sugar-shaken-espresso">Brown Sugar Shaken Espresso</option>
++              <option value="pour-over-single-origin">Single-Origin Pour Over</option>
++              <option value="velvet-flat-white">Velvet Flat White</option>
++            </select>
++          </div>
++
++          <fieldset>
++            <legend>Cup Size</legend>
++            <div class="choice-grid">
++              <label class="choice-label">
++                <input type="radio" name="cup_size" value="small">
++                <span>Small (8 oz)</span>
++              </label>
++              <label class="choice-label">
++                <input type="radio" name="cup_size" value="medium" checked>
++                <span>Medium (12 oz)</span>
++              </label>
++              <label class="choice-label">
++                <input type="radio" name="cup_size" value="large">
++                <span>Large (16 oz)</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <div class="slider-header">
++              <label for="espresso-shots">Espresso Shots</label>
++              <output id="shots-output" for="espresso-shots" class="slider-output">2 shots</output>
++            </div>
++            <input type="range" id="espresso-shots" name="espresso_shots" min="1" max="4" step="1" value="2" aria-valuetext="2 shots">
++          </div>
++
++          <fieldset>
++            <legend>Customizations &amp; Add-ins</legend>
++            <div class="choice-grid">
++              <label class="choice-label">
++                <input type="checkbox" name="addons" value="oat-milk" checked>
++                <span>Oat Milk</span>
++              </label>
++              <label class="choice-label">
++                <input type="checkbox" name="addons" value="maple-drizzle">
++                <span>Maple Drizzle</span>
++              </label>
++              <label class="choice-label">
++                <input type="checkbox" name="addons" value="cinnamon-dust">
++                <span>Cinnamon Dust</span>
++              </label>
++              <label class="choice-label">
++                <input type="checkbox" name="addons" value="whipped-cream">
++                <span>Whipped Cream</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <label for="pickup-time">Preferred Pickup Time <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input type="time" id="pickup-time" name="pickup_time" min="06:30" max="20:00" value="08:30" required aria-describedby="pickup-hint">
++            <span id="pickup-hint" class="field-hint">Cafe hours: 6:30 AM – 8:00 PM daily.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="barista-notes">Special Instructions</label>
++            <textarea id="barista-notes" name="barista_notes" rows="3" maxlength="250" placeholder="Extra hot, light ice, allergy notes, or sleeve preferences..."></textarea>
++          </div>
++
++          <button type="submit" class="btn-submit">Place Custom Order</button>
++          <div id="order-status" class="order-status" role="status" aria-live="polite"></div>
++        </form>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+@@ -207,6 +733,63 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const slider = document.querySelector('#espresso-shots');
++    const shotsOutput = document.querySelector('#shots-output');
++
++    if (slider) {
++      function syncSliderValue() {
++        slider.style.setProperty('--attr-min', slider.min || 1);
++        slider.style.setProperty('--attr-max', slider.max || 4);
++        slider.style.setProperty('--control-value', slider.value);
++        const label = `${slider.value} ${Number(slider.value) === 1 ? 'shot' : 'shots'}`;
++        slider.setAttribute('aria-valuetext', label);
++        if (shotsOutput) {
++          shotsOutput.textContent = label;
++        }
++      }
++
++      syncSliderValue();
++      slider.addEventListener('input', syncSliderValue);
++    }
++
++    if (!CSS.supports('selector(:has(*))')) {
++      document.querySelectorAll('.choice-label input').forEach((input) => {
++        const updateChoiceState = () => {
++          if (input.type === 'radio' && input.name) {
++            document.querySelectorAll(`input[type="radio"][name="${input.name}"]`).forEach((radio) => {
++              const label = radio.closest('.choice-label');
++              if (label) label.classList.toggle('is-checked', radio.checked);
++            });
++          } else {
++            const label = input.closest('.choice-label');
++            if (label) label.classList.toggle('is-checked', input.checked);
++          }
++        };
++        updateChoiceState();
++        input.addEventListener('change', updateChoiceState);
++      });
++    }
++
++    const orderForm = document.querySelector('#coffee-order-form');
++    const orderStatus = document.querySelector('#order-status');
++    if (orderForm && orderStatus) {
++      orderForm.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const data = new FormData(orderForm);
++        const name = data.get('customer_name');
++        const drinkSelect = orderForm.querySelector('#drink-base');
++        const drinkName = drinkSelect && drinkSelect.selectedOptions[0]
++          ? drinkSelect.selectedOptions[0].textContent
++          : data.get('drink_base');
++        const size = data.get('cup_size');
++        const shots = data.get('espresso_shots');
++        const pickup = data.get('pickup_time');
++        orderStatus.textContent = `Order received for ${name}: ${size} ${drinkName} (${shots} ${Number(shots) === 1 ? 'shot' : 'shots'}) ready at ${pickup}.`;
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

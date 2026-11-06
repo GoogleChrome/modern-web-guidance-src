@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+index 66c9173..d8006c0 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,110 @@
+       margin-top: 20px;
+     }
+ 
++    /* Rewards and order progress previews */
++    .progress-panel {
++      margin-bottom: 40px;
++      padding: 28px;
++      background: #fff8ef;
++      border: 1px solid #e8d9cb;
++      border-radius: 12px;
++    }
++
++    .progress-heading,
++    .progress-label {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 8px 16px;
++    }
++
++    .progress-heading {
++      margin-bottom: 24px;
++    }
++
++    .progress-eyebrow {
++      color: #795548;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .preview-badge {
++      padding: 4px 12px;
++      border: 1px solid #d9c6b5;
++      border-radius: 20px;
++      color: #6d4c41;
++      font-size: 0.75rem;
++    }
++
++    .progress-items {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 28px;
++    }
++
++    .progress-label {
++      margin-bottom: 10px;
++    }
++
++    .progress-label h3 {
++      font-size: 1rem;
++    }
++
++    .progress-value {
++      color: #795548;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .progress-track {
++      height: 10px;
++      overflow: hidden;
++      background: #e9ddd1;
++      border-radius: 10px;
++    }
++
++    .progress-fill {
++      height: 100%;
++      border-radius: inherit;
++      background: var(--primary);
++    }
++
++    .progress-fill--rewards {
++      width: 60%;
++    }
++
++    .progress-fill--pending {
++      width: 40%;
++      background: #a85b19;
++      animation: brewing 1.8s ease-in-out infinite alternate;
++    }
++
++    .progress-description {
++      margin-top: 10px;
++      color: #6d4c41;
++      font-size: 0.85rem;
++    }
++
++    @keyframes brewing {
++      from { transform: translateX(-100%); }
++      to { transform: translateX(250%); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill--pending {
++        animation: none;
++        transform: translateX(75%);
++      }
++    }
++
++    @media (max-width: 600px) {
++      .progress-panel { padding: 20px; }
++      .progress-items { grid-template-columns: 1fr; }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +279,40 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-title">
++      <div class="progress-heading">
++        <div>
++          <p class="progress-eyebrow">Good things are brewing</p>
++          <h2 id="progress-title">A little closer to your next cup.</h2>
++        </div>
++        <span class="preview-badge">Progress preview</span>
++      </div>
++      <div class="progress-items">
++        <div>
++          <div class="progress-label">
++            <h3 id="rewards-label">Your next reward</h3>
++            <span class="progress-value">3 of 5 cups · 60%</span>
++          </div>
++          <div class="progress-track" role="progressbar" aria-labelledby="rewards-label"
++            aria-describedby="rewards-description" aria-valuemin="0" aria-valuemax="5"
++            aria-valuenow="3" aria-valuetext="3 of 5 cups, 60 percent complete">
++            <div class="progress-fill progress-fill--rewards"></div>
++          </div>
++          <p class="progress-description" id="rewards-description">Two more cups until a little treat on us.</p>
++        </div>
++        <div>
++          <div class="progress-label">
++            <h3 id="order-label">Preparing your order</h3>
++            <span class="progress-value">In progress</span>
++          </div>
++          <div class="progress-track" role="progressbar" aria-labelledby="order-label"
++            aria-describedby="order-description">
++            <div class="progress-fill progress-fill--pending"></div>
++          </div>
++          <p class="progress-description" id="order-description">Good coffee takes a moment. Hang tight while we brew.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

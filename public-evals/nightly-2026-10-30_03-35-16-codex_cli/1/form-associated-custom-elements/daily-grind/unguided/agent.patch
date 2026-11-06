@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+index 66c9173..55260dd 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,53 @@
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 64px;
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      overflow: hidden;
++      border: 1px solid #e8dfda;
++      border-radius: 16px;
++      background: white;
++    }
++
++    .feedback-intro {
++      padding: 40px 32px;
++      background: #eee5dc;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
++    .feedback h2 { font-size: 2rem; line-height: 1.2; margin: 16px 0; }
++    .feedback-intro p:last-child { margin-top: 24px; font-size: .85rem; }
++    .feedback form { padding: 32px; }
++    .feedback fieldset { border: 0; min-width: 0; }
++    .feedback legend { font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; }
++    .form-label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: 8px; }
++    .form-label span, .form-hint { font-weight: 400; color: #75635b; font-size: .8rem; }
++    .form-hint { margin: 6px 0 22px; }
++    .feedback select, .feedback textarea {
++      width: 100%; padding: 12px; font: inherit; color: var(--text);
++      border: 1px solid #d7ccc8; border-radius: 6px; background: #fffdfb;
++    }
++    .feedback select { margin-bottom: 20px; }
++    .feedback textarea { resize: vertical; min-height: 100px; }
++    .feedback :is(select, textarea, button):focus-visible { outline: 3px solid #bc7622; outline-offset: 3px; }
++    .form-actions { display: flex; align-items: center; gap: 20px; margin-top: 20px; }
++    .feedback button { font: inherit; cursor: pointer; }
++    .feedback .btn { border: 0; margin: 0; }
++    .reset-button { border: 0; background: none; color: var(--primary); text-decoration: underline; padding: 10px 0; }
++    .feedback-status { margin-top: 16px; font-size: .9rem; }
++    @media (max-width: 640px) {
++      .feedback { grid-template-columns: 1fr; }
++      .feedback-intro, .feedback form { padding: 24px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +242,41 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <div class="feedback-intro">
++        <span class="eyebrow">A little feedback. A better brew.</span>
++        <h2 id="feedback-heading">How was your cup?</h2>
++        <p>From the first sip to the last drop, we’d love to know what you think.</p>
++        <p>Your daily ritual helps us fine-tune ours.</p>
++      </div>
++      <form id="coffee-feedback">
++        <fieldset>
++          <legend>Your coffee, your say</legend>
++          <label class="form-label" for="coffee">What were you sipping?</label>
++          <select id="coffee" name="coffee" required>
++            <option value="">Choose your coffee</option>
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Something else</option>
++          </select>
++
++          <label class="form-label" id="rating-label" for="coffee-rating">How did we do? <span>(required)</span></label>
++          <star-rating id="coffee-rating" name="rating" required aria-labelledby="rating-label" aria-describedby="rating-hint"></star-rating>
++          <p class="form-hint" id="rating-hint">Choose 1 to 5 stars. Use arrow keys to adjust.</p>
++
++          <label class="form-label" for="comments">Anything to add? <span>(optional)</span></label>
++          <textarea id="comments" name="comments" maxlength="2000" placeholder="Tell us what made your cup special…"></textarea>
++          <div class="form-actions">
++            <button class="btn" type="submit">Share feedback</button>
++            <button class="reset-button" type="reset">Start fresh</button>
++          </div>
++          <p class="form-hint" style="margin-bottom: 0;">Saved on this device only; feedback isn’t sent to the café.</p>
++        </fieldset>
++        <p class="feedback-status" id="feedback-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +289,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./star-rating.js"></script>
++  <script>
++    const feedbackForm = document.getElementById('coffee-feedback');
++    const feedbackStatus = document.getElementById('feedback-status');
++    feedbackForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const feedback = Object.fromEntries(new FormData(feedbackForm));
++      try {
++        localStorage.setItem('daily-grind-feedback', JSON.stringify({ ...feedback, savedAt: new Date().toISOString() }));
++        feedbackStatus.textContent = 'Thanks for sharing! Your feedback has been saved on this device.';
++      } catch {
++        feedbackStatus.textContent = 'Your browser couldn’t save your feedback. Please enable local storage and try again.';
++      }
++    });
++    feedbackForm.addEventListener('reset', () => { feedbackStatus.textContent = ''; });
++    feedbackForm.addEventListener('input', () => { feedbackStatus.textContent = ''; });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..02619c5
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,128 @@
++class StarRating extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required', 'disabled'];
++
++  #internals = this.attachInternals();
++  #value = '';
++  #dirty = false;
++  #disabled = false;
++  #showError = false;
++  #radios;
++  #error;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.innerHTML = `
++      <style>
++        :host { display: block; }
++        .stars { display: flex; gap: 8px; width: max-content; max-width: 100%; }
++        label { position: relative; display: grid; place-items: center; cursor: pointer; }
++        input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: inherit; }
++        .star { font-size: 38px; line-height: 1.3; color: #b7a69c; transition: color .15s; }
++        .filled .star { color: #a56318; }
++        input:focus-visible + .star { outline: 3px solid #bc7622; outline-offset: 2px; border-radius: 4px; }
++        label:hover .star { color: #a56318; }
++        .disabled { opacity: .45; }
++        .disabled label { cursor: not-allowed; }
++        .error { color: #a52822; font: .85rem/1.5 'Segoe UI', sans-serif; margin: 6px 0 0; }
++        [hidden] { display: none; }
++      </style>
++      <div class="stars" role="radiogroup" aria-label="Coffee rating" aria-describedby="error">
++        ${[1, 2, 3, 4, 5].map(value => `
++          <label><input type="radio" name="stars" value="${value}" aria-label="${value} ${value === 1 ? 'star' : 'stars'}"><span class="star" aria-hidden="true">☆</span></label>
++        `).join('')}
++      </div>
++      <p class="error" id="error" hidden>Please choose a star rating.</p>`;
++    this.#radios = [...root.querySelectorAll('input')];
++    this.#error = root.querySelector('.error');
++    root.addEventListener('input', event => {
++      event.stopPropagation();
++      this.value = event.target.value;
++      this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++    });
++    root.addEventListener('change', event => {
++      event.stopPropagation();
++      this.dispatchEvent(new Event('change', { bubbles: true }));
++    });
++    this.addEventListener('invalid', () => {
++      this.#showError = true;
++      this.#render();
++    });
++  }
++
++  connectedCallback() { this.#render(); }
++
++  attributeChangedCallback(name) {
++    if (name === 'value' && !this.#dirty) this.#value = this.#normalize(this.getAttribute('value'));
++    this.#render();
++  }
++
++  get value() { return this.#value; }
++  set value(value) {
++    this.#dirty = true;
++    this.#value = this.#normalize(value);
++    this.#render();
++  }
++  get name() { return this.getAttribute('name') || ''; }
++  set name(value) { this.setAttribute('name', value); }
++  get required() { return this.hasAttribute('required'); }
++  set required(value) { this.toggleAttribute('required', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  get form() { return this.#internals.form; }
++  get labels() { return this.#internals.labels; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++
++  formDisabledCallback(disabled) {
++    this.#disabled = disabled;
++    this.#render();
++  }
++
++  formResetCallback() {
++    this.#dirty = false;
++    this.#value = this.#normalize(this.getAttribute('value'));
++    this.#showError = false;
++    this.#render();
++  }
++
++  formStateRestoreCallback(state) {
++    this.#dirty = true;
++    this.#value = this.#normalize(state);
++    this.#showError = false;
++    this.#render();
++  }
++
++  #normalize(value) { return /^[1-5]$/.test(String(value)) ? String(value) : ''; }
++
++  #render() {
++    if (!this.#radios) return;
++    const disabled = this.#disabled || this.disabled;
++    const missing = this.required && !this.#value;
++    this.#internals.setFormValue(this.#value || null, this.#value);
++    this.#internals.setValidity(
++      missing ? { valueMissing: true } : {},
++      missing ? 'Please choose a star rating.' : '',
++      this.#radios[0]
++    );
++    this.#radios.forEach(radio => {
++      radio.checked = radio.value === this.#value;
++      radio.disabled = disabled;
++      const filled = Number(radio.value) <= Number(this.#value);
++      radio.parentElement.classList.toggle('filled', filled);
++      radio.nextElementSibling.textContent = filled ? '★' : '☆';
++    });
++    const group = this.shadowRoot.querySelector('.stars');
++    group.classList.toggle('disabled', disabled);
++    group.setAttribute('aria-required', String(this.required));
++    group.setAttribute('aria-disabled', String(disabled));
++    group.setAttribute('aria-invalid', String(missing && this.#showError && !disabled));
++    this.#error.hidden = !missing || !this.#showError || disabled;
++  }
++}
++
++customElements.define('star-rating', StarRating);

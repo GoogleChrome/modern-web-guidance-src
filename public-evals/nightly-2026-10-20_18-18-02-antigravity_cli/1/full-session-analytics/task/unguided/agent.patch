@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,16 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Demo</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals": "./node_modules/web-vitals/dist/web-vitals.js",
++        "web-vitals/attribution": "./node_modules/web-vitals/dist/web-vitals.attribution.js"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #2563eb;
+       --bg: #f8fafc;
+@@ -300,7 +308,67 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'web-vitals';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++    const queue = new Set();
++    let fetchLaterController;
++    let fetchLaterResult;
++
++    function updateQueue(metric) {
++      if (fetchLaterResult?.activated) {
++        queue.clear();
++      }
++
++      queue.add(metric);
++      const body = JSON.stringify([...queue]);
++
++      if ('fetchLater' in window) {
++        fetchLaterController?.abort();
++        fetchLaterController = new AbortController();
++        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          signal: fetchLaterController.signal,
++          activateAfter: 60 * 60 * 1000,
++        });
++      }
++    }
++
++    function flushQueue() {
++      if (queue.size > 0 && !fetchLaterResult?.activated) {
++        const body = JSON.stringify([...queue]);
++        if (navigator.sendBeacon) {
++          navigator.sendBeacon(ANALYTICS_ENDPOINT, body);
++        } else {
++          fetch(ANALYTICS_ENDPOINT, {
++            body,
++            method: 'POST',
++            keepalive: true,
++          });
++        }
++        queue.clear();
++      }
++    }
++
++    onCLS(updateQueue);
++    onINP(updateQueue);
++    onLCP(updateQueue);
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden' && !fetchLaterResult) {
++        flushQueue();
++      }
++    });
++
++    addEventListener('pagehide', () => {
++      if (!fetchLaterResult) {
++        flushQueue();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

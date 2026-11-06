@@ -1,0 +1,480 @@
+diff --git a/index.html b/index.html
+index 66c9173..69e4b0c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,217 @@
+       background: #3e2723;
+     }
+ 
++    /* Quick Order */
++    .quick-order {
++      scroll-margin-top: 90px;
++      max-width: 720px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 2rem;
++      border-radius: 12px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      border-block-start: 6px solid var(--primary);
++    }
++
++    .quick-order h2 {
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .quick-order > p {
++      margin-bottom: 1.5rem;
++      color: #5d4037;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 1.5rem;
++      border-radius: 8px;
++      transition: outline-color 0.2s, background-color 0.2s;
++    }
++
++    /* Highlight while an AI agent is filling in the form (WebMCP) */
++    .order-form:tool-form-active {
++      outline: 3px dashed var(--accent);
++      outline-offset: 8px;
++      background-color: #fff8e1;
++    }
++
++    .order-form button[type="submit"]:tool-submit-active {
++      outline: 3px dashed #bf360c;
++      outline-offset: 3px;
++      animation: pulse 1.6s ease-in-out infinite;
++    }
++
++    @keyframes pulse {
++      50% { transform: scale(1.03); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .order-form button[type="submit"]:tool-submit-active { animation: none; }
++    }
++
++    .field {
++      display: grid;
++      gap: 0.35rem;
++    }
++
++    .field label,
++    .order-form legend {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .required-mark {
++      color: #b71c1c;
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .order-form input:not([type="radio"]),
++    .order-form select,
++    .order-form textarea {
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.7rem 0.8rem;
++      min-height: 48px;
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      width: 100%;
++    }
++
++    .order-form textarea {
++      min-height: 5rem;
++      resize: vertical;
++    }
++
++    .order-form :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form fieldset {
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      padding: 0.75rem 1rem 1rem;
++    }
++
++    .order-form legend {
++      padding-inline: 0.4rem;
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++    }
++
++    .choices label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++      min-height: 48px;
++      padding: 0.5rem 0.9rem;
++      border: 2px solid var(--secondary);
++      border-radius: 999px;
++      cursor: pointer;
++      font-weight: 500;
++      color: var(--text);
++    }
++
++    .choices label:has(:checked) {
++      border-color: var(--primary);
++      background: #efebe9;
++    }
++
++    .choices input {
++      accent-color: var(--primary);
++      inline-size: 1.1rem;
++      block-size: 1.1rem;
++    }
++
++    .two-col {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 1.5rem;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b71c1c;
++      font-size: 0.875rem;
++    }
++
++    .order-form input:user-invalid,
++    .order-form select:user-invalid {
++      border-color: #b71c1c;
++      background-color: #ffebee;
++    }
++
++    .order-form :user-invalid ~ .error-msg {
++      display: block;
++    }
++
++    .order-summary {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding-block-start: 1rem;
++      border-block-start: 1px solid var(--secondary);
++    }
++
++    .order-total {
++      font-size: 1.15rem;
++    }
++
++    .order-total output {
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .order-form button[type="submit"] {
++      font: inherit;
++      font-weight: 600;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.7rem 1.6rem;
++      border: none;
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .order-form button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .order-form button[type="submit"]:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .order-status:not(:empty) {
++      margin-block-start: 1.25rem;
++      padding: 1rem;
++      border-radius: 8px;
++      background: #e8f5e9;
++      border-inline-start: 5px solid #2e7d32;
++    }
++
++    .order-status.is-error:not(:empty) {
++      background: #ffebee;
++      border-inline-start-color: #b71c1c;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +382,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +406,124 @@
+         </div>
+       </div>
+     </section>
++    <section class="quick-order" id="quick-order" aria-labelledby="quick-order-title">
++      <h2 id="quick-order-title">Quick Order</h2>
++      <p>Build your drink and we'll have it ready for pickup at your favorite Daily Grind.</p>
++
++      <form class="order-form" id="order-form" action="/order-online" method="POST"
++        toolname="place_coffee_order"
++        tooldescription="Place a coffee pickup order at The Daily Grind for the user. Use when the user wants to order a drink for pickup; the user reviews and confirms before the order is sent.">
++
++        <div class="field">
++          <label for="drink">Drink <span class="required-mark" aria-hidden="true">*</span></label>
++          <select id="drink" name="drink" required aria-errormessage="drink-error">
++            <option value="">Choose a drink…</option>
++            <option value="maple-oat-latte" data-price="5.25">Maple Oat Latte — $5.25</option>
++            <option value="dark-roast-espresso" data-price="3.25">Dark Roast Espresso — $3.25</option>
++            <option value="cold-brew" data-price="4.50">Cold Brew — $4.50</option>
++            <option value="cappuccino" data-price="4.25">Cappuccino — $4.25</option>
++            <option value="flat-white" data-price="4.50">Flat White — $4.50</option>
++            <option value="mocha" data-price="4.95">Mocha — $4.95</option>
++            <option value="house-drip" data-price="2.75">House Drip Coffee — $2.75</option>
++            <option value="chai-latte" data-price="4.75">Chai Latte — $4.75</option>
++          </select>
++          <span class="error-msg" id="drink-error"><span aria-hidden="true">⚠</span> Please choose a drink.</span>
++        </div>
++
++        <div class="two-col">
++          <fieldset toolparamdescription="Cup size. Small is 8 oz, medium 12 oz, large 16 oz.">
++            <legend>Size</legend>
++            <div class="choices">
++              <label><input type="radio" name="size" value="small" data-price="0"> Small</label>
++              <label><input type="radio" name="size" value="medium" data-price="0.50" checked> Medium (+$0.50)</label>
++              <label><input type="radio" name="size" value="large" data-price="1.00"> Large (+$1.00)</label>
++            </div>
++          </fieldset>
++
++          <fieldset>
++            <legend>Temperature</legend>
++            <div class="choices">
++              <label><input type="radio" name="temperature" value="hot" checked> Hot</label>
++              <label><input type="radio" name="temperature" value="iced"> Iced</label>
++            </div>
++          </fieldset>
++        </div>
++
++        <fieldset toolparamdescription="Milk to use in the drink. Choose 'none' for black coffee or straight espresso.">
++          <legend>Milk</legend>
++          <div class="choices">
++            <label><input type="radio" name="milk" value="whole" data-price="0" checked> Whole</label>
++            <label><input type="radio" name="milk" value="skim" data-price="0"> Skim</label>
++            <label><input type="radio" name="milk" value="oat" data-price="0.75"> Oat (+$0.75)</label>
++            <label><input type="radio" name="milk" value="almond" data-price="0.75"> Almond (+$0.75)</label>
++            <label><input type="radio" name="milk" value="none" data-price="0"> None</label>
++          </div>
++        </fieldset>
++
++        <div class="two-col">
++          <div class="field">
++            <label for="extra-shots">Extra espresso shots</label>
++            <span class="hint" id="extra-shots-hint">$1.00 each, up to 4.</span>
++            <input type="number" id="extra-shots" name="extra_shots" value="0" min="0" max="4" step="1"
++              inputmode="numeric" aria-describedby="extra-shots-hint" aria-errormessage="extra-shots-error"
++              toolparamdescription="Number of additional espresso shots to add, e.g. 0 for none or 2 for a double boost.">
++            <span class="error-msg" id="extra-shots-error"><span aria-hidden="true">⚠</span> Choose between 0 and 4 extra shots.</span>
++          </div>
++
++          <div class="field">
++            <label for="quantity">Quantity</label>
++            <input type="number" id="quantity" name="quantity" value="1" min="1" max="10" step="1"
++              inputmode="numeric" required aria-errormessage="quantity-error"
++              toolparamdescription="How many of this exact drink to order.">
++            <span class="error-msg" id="quantity-error"><span aria-hidden="true">⚠</span> Order between 1 and 10 drinks.</span>
++          </div>
++        </div>
++
++        <div class="two-col">
++          <div class="field">
++            <label for="location">Pickup location <span class="required-mark" aria-hidden="true">*</span></label>
++            <select id="location" name="location" required aria-errormessage="location-error">
++              <option value="">Choose a café…</option>
++              <option value="downtown">Downtown — 120 Main St</option>
++              <option value="riverside">Riverside — 48 Harbor Ave</option>
++              <option value="university">University District — 9 College Rd</option>
++              <option value="westgate">Westgate Mall — Level 1</option>
++            </select>
++            <span class="error-msg" id="location-error"><span aria-hidden="true">⚠</span> Please choose a pickup location.</span>
++          </div>
++
++          <fieldset toolparamdescription="When the user wants to pick the order up, relative to when it is placed.">
++            <legend>Pickup time</legend>
++            <div class="choices">
++              <label><input type="radio" name="pickup_time" value="asap" checked> ASAP</label>
++              <label><input type="radio" name="pickup_time" value="15min"> In 15 min</label>
++              <label><input type="radio" name="pickup_time" value="30min"> In 30 min</label>
++            </div>
++          </fieldset>
++        </div>
++
++        <div class="field">
++          <label for="customer-name">Name for the cup <span class="required-mark" aria-hidden="true">*</span></label>
++          <input type="text" id="customer-name" name="customer_name" required maxlength="40"
++            autocomplete="given-name" enterkeyhint="next" aria-errormessage="customer-name-error"
++            toolparamdescription="The name the barista writes on the cup and calls out at pickup, e.g. 'Sam'.">
++          <span class="error-msg" id="customer-name-error"><span aria-hidden="true">⚠</span> Please enter a name for the cup.</span>
++        </div>
++
++        <div class="field">
++          <label for="notes">Special instructions <span class="hint">(optional)</span></label>
++          <textarea id="notes" name="notes" maxlength="200" rows="2"
++            toolparamdescription="Free-text requests for the barista, e.g. 'extra hot', 'light ice', 'half sweet'."></textarea>
++        </div>
++
++        <div class="order-summary">
++          <p class="order-total">Estimated total: <output id="order-total" for="drink extra-shots quantity" aria-live="polite">$0.00</output></p>
++          <button type="submit">Place pickup order</button>
++        </div>
++      </form>
++
++      <div class="order-status" id="order-status" role="status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +536,123 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('order-form');
++      const totalOutput = document.getElementById('order-total');
++      const status = document.getElementById('order-status');
++      const submitButton = form.querySelector('button[type="submit"]');
++      const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++      const PICKUP_LABELS = { asap: 'as soon as possible', '15min': 'in about 15 minutes', '30min': 'in about 30 minutes' };
++
++      const priceOf = (el) => Number(el?.dataset.price ?? 0);
++
++      const calculateTotal = () => {
++        const drink = form.elements.drink.selectedOptions[0];
++        if (!drink || !drink.value) return 0;
++        const size = form.querySelector('input[name="size"]:checked');
++        const milk = form.querySelector('input[name="milk"]:checked');
++        const shots = Math.min(Math.max(Number(form.elements.extra_shots.value) || 0, 0), 4);
++        const quantity = Math.min(Math.max(Number(form.elements.quantity.value) || 1, 1), 10);
++        return (priceOf(drink) + priceOf(size) + priceOf(milk) + shots * 1.0) * quantity;
++      };
++
++      const updateTotal = () => {
++        totalOutput.value = currency.format(calculateTotal());
++      };
++
++      // Keep aria-invalid in sync with the visual :user-invalid state.
++      const syncAria = (el) => {
++        if (!el.matches?.('input, select, textarea') || el.type === 'radio') return;
++        el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
++      };
++      form.addEventListener('focusout', (e) => syncAria(e.target));
++      form.addEventListener('input', (e) => {
++        if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++        updateTotal();
++      });
++      form.addEventListener('change', updateTotal);
++
++      const collectErrors = () =>
++        [...form.elements]
++          .filter((el) => el.willValidate && !el.checkValidity())
++          .map((el) => {
++            const label = el.labels?.[0]?.textContent.replace('*', '').trim() || el.name;
++            return `${label} (${el.validationMessage})`;
++          });
++
++      // Simulated order submission — replace with a real fetch() to the ordering API.
++      const submitOrder = async (data) => {
++        await new Promise((resolve) => setTimeout(resolve, 600));
++        return {
++          orderNumber: `DG-${Math.floor(1000 + Math.random() * 9000)}`,
++          total: calculateTotal(),
++          data,
++        };
++      };
++
++      const describeOrder = ({ orderNumber, total, data }) => {
++        const drinkLabel = form.elements.drink.selectedOptions[0].textContent.split('—')[0].trim();
++        const locationLabel = form.elements.location.selectedOptions[0].textContent.split('—')[0].trim();
++        const shots = Number(data.get('extra_shots')) || 0;
++        const milk = data.get('milk') === 'none' ? 'no milk' : `${data.get('milk')} milk`;
++        const extras = shots ? `, ${shots} extra shot${shots > 1 ? 's' : ''}` : '';
++        return `Order ${orderNumber} confirmed: ${data.get('quantity')} × ${data.get('size')} ${data.get('temperature')} ` +
++          `${drinkLabel} with ${milk}${extras} for ${data.get('customer_name')}. ` +
++          `Pick up at ${locationLabel} ${PICKUP_LABELS[data.get('pickup_time')]}. Total: ${currency.format(total)}.`;
++      };
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        status.classList.remove('is-error');
++
++        const errors = collectErrors();
++        if (errors.length > 0) {
++          const message = `Please fix the following: ${errors.join(', ')}`;
++          if (event.agentInvoked) {
++            event.respondWith(Promise.resolve(`Validation failed: ${errors.join(', ')}`));
++          }
++          status.classList.add('is-error');
++          status.textContent = message;
++          form.querySelector(':invalid')?.focus();
++          return;
++        }
++
++        submitButton.disabled = true;
++        status.textContent = 'Placing your order…';
++
++        const resultPromise = submitOrder(new FormData(form))
++          .then((result) => {
++            const summary = describeOrder(result);
++            status.textContent = summary;
++            form.reset();
++            updateTotal();
++            return summary;
++          })
++          .catch(() => {
++            const message = 'Sorry, we could not place your order. Please try again.';
++            status.classList.add('is-error');
++            status.textContent = message;
++            return message;
++          })
++          .finally(() => {
++            submitButton.disabled = false;
++          });
++
++        if (event.agentInvoked) {
++          event.respondWith(resultPromise);
++        }
++      });
++
++      form.addEventListener('reset', () => {
++        for (const el of form.elements) el.removeAttribute('aria-invalid');
++      });
++
++      updateTotal();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

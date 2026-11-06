@@ -1,0 +1,1527 @@
+diff --git a/components.js b/components.js
+new file mode 100644
+index 0000000..0582e0b
+--- /dev/null
++++ b/components.js
+@@ -0,0 +1,1375 @@
++// Web Components for The Daily Grind Homepage
++// Using Custom Elements, Shadow DOM, HTML Templates, Constructable Stylesheets, and ElementInternals
++
++// ============================================================================
++// 1. <coffee-card> — Reusable Coffee Item Card with Encapsulated Styling & Interactive State
++// ============================================================================
++
++const coffeeCardSheet = new CSSStyleSheet();
++coffeeCardSheet.replaceSync(`
++  @layer base, state;
++
++  @layer base {
++    :host {
++      display: block;
++      container-type: inline-size;
++      --_card-bg: var(--card-bg, #ffffff);
++      --_card-fg: var(--card-fg, var(--text, #3e2723));
++      --_card-primary: var(--card-primary, var(--primary, #4e342e));
++      --_card-secondary: var(--card-secondary, var(--secondary, #d7ccc8));
++      --_card-accent: var(--card-accent, var(--accent, #ffab40));
++      --_card-radius: var(--card-radius, 12px);
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    :host([disabled]) {
++      opacity: 0.6;
++      pointer-events: none;
++    }
++
++    article {
++      background: var(--_card-bg);
++      color: var(--_card-fg);
++      border-radius: var(--_card-radius);
++      box-shadow: 0 3px 10px rgba(62, 39, 35, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
++    }
++
++    article:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.14);
++    }
++
++    .media {
++      position: relative;
++      aspect-ratio: 16 / 10;
++      background: var(--_card-secondary);
++      overflow: hidden;
++    }
++
++    .media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    article:hover .media img {
++      transform: scale(1.03);
++    }
++
++    .badge-row {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      right: 12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      pointer-events: none;
++    }
++
++    .badge {
++      background: rgba(62, 39, 35, 0.88);
++      color: #ffffff;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      backdrop-filter: blur(4px);
++    }
++
++    .fav-btn {
++      pointer-events: auto;
++      font: inherit;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--_card-primary);
++      border: 1px solid rgba(78, 52, 46, 0.15);
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
++    }
++
++    .fav-btn:hover {
++      transform: scale(1.08);
++      background: #ffffff;
++    }
++
++    .fav-btn:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    .fav-icon {
++      width: 18px;
++      height: 18px;
++      fill: transparent;
++      stroke: currentColor;
++      stroke-width: 2;
++      transition: fill 0.2s ease, stroke 0.2s ease;
++    }
++
++    .content {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      text-align: left;
++    }
++
++    .header-line {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .title-wrapper {
++      color: var(--_card-primary);
++      font-size: 1.2rem;
++      font-weight: 700;
++      margin: 0;
++    }
++
++    ::slotted([slot="title"]) {
++      margin: 0;
++      color: inherit;
++      font-size: inherit;
++    }
++
++    .price {
++      font-weight: 700;
++      font-size: 1.1rem;
++      color: var(--_card-primary);
++      background: rgba(215, 204, 200, 0.45);
++      padding: 2px 8px;
++      border-radius: 6px;
++      white-space: nowrap;
++    }
++
++    .description {
++      color: var(--_card-fg);
++      font-size: 0.95rem;
++      margin-bottom: 16px;
++      flex: 1;
++    }
++
++    ::slotted(p) {
++      margin: 0;
++    }
++
++    .meta-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-bottom: 16px;
++      font-size: 0.78rem;
++    }
++
++    .meta-pill {
++      background: #f5f0ee;
++      color: var(--_card-primary);
++      padding: 3px 9px;
++      border-radius: 4px;
++      font-weight: 500;
++    }
++
++    .options-bar {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 8px;
++      margin-bottom: 16px;
++      padding-top: 12px;
++      border-top: 1px solid rgba(78, 52, 46, 0.1);
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      color: var(--_card-primary);
++    }
++
++    select {
++      font: inherit;
++      color: inherit;
++      background: #fafafa;
++      border: 1px solid rgba(78, 52, 46, 0.25);
++      border-radius: 6px;
++      padding: 6px 8px;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    select:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 1px;
++    }
++
++    .actions {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: auto;
++    }
++
++    .order-btn {
++      flex: 1;
++      font: inherit;
++      font-weight: 600;
++      font-size: 0.9rem;
++      background: var(--_card-primary);
++      color: #ffffff;
++      border: none;
++      padding: 10px 16px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s ease, transform 0.1s ease;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
++    }
++
++    .order-btn:hover {
++      background: #3e2723;
++    }
++
++    .order-btn:active {
++      transform: scale(0.98);
++    }
++
++    .order-btn:focus-visible,
++    .details-link:focus-visible,
++    .notes-toggle:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    .details-link {
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--_card-primary);
++      text-decoration: none;
++      padding: 9px 12px;
++      border: 1px solid rgba(78, 52, 46, 0.28);
++      border-radius: 6px;
++      transition: background 0.2s ease, border-color 0.2s ease;
++      white-space: nowrap;
++    }
++
++    .details-link:hover {
++      background: rgba(215, 204, 200, 0.35);
++      border-color: var(--_card-primary);
++    }
++
++    .notes-section {
++      margin-top: 12px;
++      border-top: 1px dashed rgba(78, 52, 46, 0.15);
++      padding-top: 10px;
++    }
++
++    .notes-toggle {
++      font: inherit;
++      background: none;
++      border: none;
++      color: var(--_card-primary);
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++      padding: 2px 4px;
++      border-radius: 4px;
++    }
++
++    .notes-toggle:hover {
++      text-decoration: underline;
++    }
++
++    .notes-panel {
++      margin-top: 8px;
++      font-size: 0.83rem;
++      background: #fdfcfb;
++      border-left: 3px solid var(--_card-accent);
++      padding: 8px 10px;
++      border-radius: 0 6px 6px 0;
++      color: var(--_card-fg);
++    }
++
++    .notes-panel[hidden] {
++      display: none;
++    }
++
++    @container (min-width: 34rem) {
++      article {
++        flex-direction: row;
++      }
++      .media {
++        width: 42%;
++        aspect-ratio: auto;
++      }
++      .content {
++        width: 58%;
++      }
++    }
++  }
++
++  @layer state {
++    :host(:state(favorited)) .fav-btn {
++      background: #fff3e0;
++      color: #d84315;
++      border-color: #ffab40;
++    }
++
++    :host(:state(favorited)) .fav-icon {
++      fill: currentColor;
++    }
++
++    :host(:state(in-cart)) article {
++      border-color: var(--_card-accent);
++    }
++  }
++`);
++
++const coffeeCardTemplate = document.createElement('template');
++coffeeCardTemplate.innerHTML = `
++  <article part="card">
++    <div class="media" part="media">
++      <img id="card-img" src="" alt="" loading="lazy" />
++      <div class="badge-row">
++        <span class="badge" id="category-badge" part="badge">Seasonal</span>
++        <button type="button" class="fav-btn" id="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Save to favorites">
++          <svg class="fav-icon" viewBox="0 0 24 24" aria-hidden="true">
++            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
++          </svg>
++        </button>
++      </div>
++    </div>
++
++    <div class="content" part="content">
++      <div class="header-line">
++        <div class="title-wrapper">
++          <slot name="title"><h3 id="fallback-title">Coffee Selection</h3></slot>
++        </div>
++        <span class="price" id="price-display" part="price">$4.50</span>
++      </div>
++
++      <div class="description">
++        <slot><p id="fallback-desc">Freshly roasted artisanal coffee.</p></slot>
++      </div>
++
++      <div class="meta-tags" id="meta-tags" aria-label="Coffee characteristics">
++        <span class="meta-pill" id="roast-pill">Medium Roast</span>
++        <span class="meta-pill" id="caffeine-pill">150mg Caffeine</span>
++      </div>
++
++      <div class="options-bar">
++        <label class="field">
++          <span>Size</span>
++          <select id="size-select" part="size-select" name="size">
++            <option value="small" data-delta="-0.50">Small (8 oz)</option>
++            <option value="medium" data-delta="0" selected>Medium (12 oz)</option>
++            <option value="large" data-delta="0.75">Large (16 oz)</option>
++          </select>
++        </label>
++        <label class="field">
++          <span>Milk</span>
++          <select id="milk-select" part="milk-select" name="milk">
++            <option value="Whole Milk">Whole Milk</option>
++            <option value="Oat Milk">Oat Milk</option>
++            <option value="Almond Milk">Almond Milk</option>
++            <option value="Black / None">Black / None</option>
++          </select>
++        </label>
++      </div>
++
++      <div class="actions" part="actions">
++        <button type="button" class="order-btn" id="order-btn" part="order-button">
++          <span id="order-btn-label">Add to Order</span>
++        </button>
++        <a href="/menu" class="details-link" id="details-link" part="details-link">View Details</a>
++      </div>
++
++      <div class="notes-section">
++        <button type="button" class="notes-toggle" id="notes-toggle" aria-expanded="false" aria-controls="notes-panel">
++          <span id="notes-toggle-text">+ Tasting &amp; Origin Notes</span>
++        </button>
++        <div class="notes-panel" id="notes-panel" role="region" aria-label="Tasting and origin notes" hidden>
++          <slot name="notes">
++            <p id="fallback-notes">Ethically sourced single-origin beans roasted in small batches.</p>
++          </slot>
++        </div>
++      </div>
++    </div>
++  </article>
++`;
++
++const SIZE_DELTAS = {
++  small: -0.5,
++  medium: 0,
++  large: 0.75,
++};
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = [
++    'name',
++    'price',
++    'category',
++    'roast',
++    'caffeine',
++    'image',
++    'href',
++    'notes',
++    'favorited',
++    'default-milk',
++    'disabled',
++  ];
++
++  #internals;
++  #orderCount = 0;
++  #size = 'medium';
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals ? this.attachInternals() : null;
++
++    if (!this.shadowRoot) {
++      this.attachShadow({ mode: 'open' });
++      this.shadowRoot.append(coffeeCardTemplate.content.cloneNode(true));
++    }
++    this.shadowRoot.adoptedStyleSheets = [coffeeCardSheet];
++
++    // Hydrate / wire listeners once on shadow root construction
++    const favBtn = this.shadowRoot.getElementById('fav-btn');
++    const orderBtn = this.shadowRoot.getElementById('order-btn');
++    const sizeSelect = this.shadowRoot.getElementById('size-select');
++    const notesToggle = this.shadowRoot.getElementById('notes-toggle');
++    const titleSlot = this.shadowRoot.querySelector('slot[name="title"]');
++
++    favBtn?.addEventListener('click', () => {
++      this.favorited = !this.favorited;
++      this.dispatchEvent(
++        new CustomEvent('coffee-favorite', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.coffeeTitle,
++            favorited: this.favorited,
++          },
++        })
++      );
++    });
++
++    sizeSelect?.addEventListener('change', (e) => {
++      this.#size = e.target.value;
++      this.#updatePriceDisplay();
++    });
++
++    orderBtn?.addEventListener('click', () => {
++      this.#orderCount += 1;
++      this.#setCustomState('in-cart', true);
++      const milkSelect = this.shadowRoot.getElementById('milk-select');
++      const selectedSize = sizeSelect ? sizeSelect.value : 'medium';
++      const selectedMilk = milkSelect ? milkSelect.value : 'Oat Milk';
++      const computedPrice = this.computedPrice;
++
++      const labelEl = this.shadowRoot.getElementById('order-btn-label');
++      if (labelEl) {
++        labelEl.textContent = `Added (${this.#orderCount})`;
++      }
++
++      this.dispatchEvent(
++        new CustomEvent('coffee-order', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.coffeeTitle,
++            category: this.category,
++            size: selectedSize,
++            milk: selectedMilk,
++            unitPrice: computedPrice,
++            count: this.#orderCount,
++          },
++        })
++      );
++    });
++
++    notesToggle?.addEventListener('click', () => {
++      const panel = this.shadowRoot.getElementById('notes-panel');
++      if (!panel) return;
++      const isExpanded = notesToggle.getAttribute('aria-expanded') === 'true';
++      const nextState = !isExpanded;
++      notesToggle.setAttribute('aria-expanded', String(nextState));
++      panel.hidden = !nextState;
++      this.#setCustomState('expanded', nextState);
++      const textSpan = this.shadowRoot.getElementById('notes-toggle-text');
++      if (textSpan) {
++        textSpan.textContent = nextState ? '− Hide Tasting Notes' : '+ Tasting & Origin Notes';
++      }
++    });
++
++    titleSlot?.addEventListener('slotchange', () => {
++      this.#syncAccessibilityLabels();
++    });
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) {
++      this.#render();
++    }
++  }
++
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++  set name(val) {
++    val ? this.setAttribute('name', val) : this.removeAttribute('name');
++  }
++
++  get coffeeTitle() {
++    if (this.name) return this.name;
++    const titleSlot = this.shadowRoot?.querySelector('slot[name="title"]');
++    const assigned = titleSlot?.assignedElements?.() ?? [];
++    if (assigned.length > 0) {
++      return assigned[0].textContent.trim();
++    }
++    return 'Coffee Selection';
++  }
++
++  get price() {
++    return Number(this.getAttribute('price')) || 4.5;
++  }
++  set price(val) {
++    this.setAttribute('price', String(val));
++  }
++
++  get computedPrice() {
++    const delta = SIZE_DELTAS[this.#size] ?? 0;
++    return Math.max(0, this.price + delta);
++  }
++
++  get category() {
++    return this.getAttribute('category') ?? 'seasonal';
++  }
++  set category(val) {
++    val ? this.setAttribute('category', val) : this.removeAttribute('category');
++  }
++
++  get roast() {
++    return this.getAttribute('roast') ?? 'Medium Roast';
++  }
++  set roast(val) {
++    val ? this.setAttribute('roast', val) : this.removeAttribute('roast');
++  }
++
++  get caffeine() {
++    return this.getAttribute('caffeine') ?? '150mg Caffeine';
++  }
++  set caffeine(val) {
++    val ? this.setAttribute('caffeine', val) : this.removeAttribute('caffeine');
++  }
++
++  get image() {
++    return (
++      this.getAttribute('image') ??
++      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=700&q=80'
++    );
++  }
++  set image(val) {
++    val ? this.setAttribute('image', val) : this.removeAttribute('image');
++  }
++
++  get href() {
++    return this.getAttribute('href') ?? '/menu';
++  }
++  set href(val) {
++    val ? this.setAttribute('href', val) : this.removeAttribute('href');
++  }
++
++  get favorited() {
++    return this.hasAttribute('favorited');
++  }
++  set favorited(on) {
++    this.toggleAttribute('favorited', Boolean(on));
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++  set disabled(on) {
++    this.toggleAttribute('disabled', Boolean(on));
++  }
++
++  #setCustomState(stateName, active) {
++    if (!this.#internals?.states) return;
++    if (active) {
++      this.#internals.states.add(stateName);
++    } else {
++      this.#internals.states.delete(stateName);
++    }
++  }
++
++  #updatePriceDisplay() {
++    const priceEl = this.shadowRoot?.getElementById('price-display');
++    if (priceEl) {
++      priceEl.textContent = `$${this.computedPrice.toFixed(2)}`;
++    }
++  }
++
++  #syncAccessibilityLabels() {
++    const title = this.coffeeTitle;
++    const favBtn = this.shadowRoot?.getElementById('fav-btn');
++    const detailsLink = this.shadowRoot?.getElementById('details-link');
++    const imgEl = this.shadowRoot?.getElementById('card-img');
++
++    if (favBtn) {
++      favBtn.setAttribute(
++        'aria-label',
++        this.favorited ? `Remove ${title} from favorites` : `Save ${title} to favorites`
++      );
++      favBtn.setAttribute('aria-pressed', String(this.favorited));
++    }
++    if (detailsLink) {
++      detailsLink.setAttribute('aria-label', `View details for ${title}`);
++    }
++    if (imgEl) {
++      imgEl.alt = `${title} served in a ceramic cup`;
++    }
++  }
++
++  #render() {
++    if (!this.shadowRoot) return;
++
++    const fallbackTitle = this.shadowRoot.getElementById('fallback-title');
++    if (fallbackTitle && this.name) {
++      fallbackTitle.textContent = this.name;
++    }
++
++    const badgeEl = this.shadowRoot.getElementById('category-badge');
++    if (badgeEl) {
++      badgeEl.textContent = this.category.replace('-', ' ');
++    }
++
++    const roastEl = this.shadowRoot.getElementById('roast-pill');
++    if (roastEl) {
++      roastEl.textContent = this.roast;
++    }
++
++    const caffeineEl = this.shadowRoot.getElementById('caffeine-pill');
++    if (caffeineEl) {
++      caffeineEl.textContent = this.caffeine;
++    }
++
++    const imgEl = this.shadowRoot.getElementById('card-img');
++    if (imgEl && imgEl.getAttribute('src') !== this.image) {
++      imgEl.src = this.image;
++    }
++
++    const detailsLink = this.shadowRoot.getElementById('details-link');
++    if (detailsLink) {
++      detailsLink.href = this.href;
++    }
++
++    const fallbackNotes = this.shadowRoot.getElementById('fallback-notes');
++    if (fallbackNotes && this.hasAttribute('notes')) {
++      fallbackNotes.textContent = this.getAttribute('notes');
++    }
++
++    const defaultMilk = this.getAttribute('default-milk');
++    const milkSelect = this.shadowRoot.getElementById('milk-select');
++    if (defaultMilk && milkSelect && !milkSelect.dataset.userTouched) {
++      milkSelect.value = defaultMilk;
++    }
++
++    this.#setCustomState('favorited', this.favorited);
++    this.#updatePriceDisplay();
++    this.#syncAccessibilityLabels();
++  }
++}
++
++// ============================================================================
++// 2. <grind-menu-section> — Interactive Filterable Menu & Order Summary Tray
++// ============================================================================
++
++const menuSectionSheet = new CSSStyleSheet();
++menuSectionSheet.replaceSync(`
++  :host {
++    display: block;
++    --_primary: var(--primary, #4e342e);
++    --_secondary: var(--secondary, #d7ccc8);
++    --_accent: var(--accent, #ffab40);
++    --_text: var(--text, #3e2723);
++  }
++
++  .section-header {
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    text-align: center;
++    gap: 12px;
++    margin-bottom: 24px;
++  }
++
++  ::slotted([slot="heading"]) {
++    margin: 0;
++    color: var(--_primary);
++    font-size: 2rem;
++  }
++
++  .controls-bar {
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: space-between;
++    align-items: center;
++    gap: 16px;
++    width: 100%;
++    background: #ffffff;
++    padding: 12px 16px;
++    border-radius: 10px;
++    box-shadow: 0 2px 8px rgba(62, 39, 35, 0.07);
++    border: 1px solid rgba(78, 52, 46, 0.1);
++  }
++
++  .filter-group {
++    display: flex;
++    flex-wrap: wrap;
++    gap: 8px;
++  }
++
++  .filter-btn {
++    font: inherit;
++    font-size: 0.88rem;
++    font-weight: 600;
++    background: #f5f0ee;
++    color: var(--_text);
++    border: 1px solid transparent;
++    padding: 7px 14px;
++    border-radius: 999px;
++    cursor: pointer;
++    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++  }
++
++  .filter-btn:hover {
++    background: var(--_secondary);
++  }
++
++  .filter-btn[aria-pressed="true"] {
++    background: var(--_primary);
++    color: #ffffff;
++  }
++
++  .filter-btn:focus-visible,
++  .search-input:focus-visible,
++  .clear-btn:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 2px;
++  }
++
++  .search-order-wrap {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    gap: 12px;
++  }
++
++  .search-label {
++    display: flex;
++    align-items: center;
++    gap: 6px;
++    font-size: 0.85rem;
++    font-weight: 600;
++    color: var(--_primary);
++  }
++
++  .search-input {
++    font: inherit;
++    color: inherit;
++    font-size: 0.88rem;
++    padding: 6px 12px;
++    border-radius: 999px;
++    border: 1px solid rgba(78, 52, 46, 0.28);
++    background: #fafafa;
++    min-width: 190px;
++  }
++
++  .status-pill {
++    display: inline-flex;
++    align-items: center;
++    gap: 8px;
++    background: #fff8e1;
++    color: var(--_primary);
++    border: 1px solid var(--_accent);
++    padding: 6px 12px;
++    border-radius: 999px;
++    font-size: 0.85rem;
++    font-weight: 600;
++  }
++
++  .clear-btn {
++    font: inherit;
++    font-size: 0.75rem;
++    font-weight: 700;
++    background: var(--_primary);
++    color: #ffffff;
++    border: none;
++    padding: 3px 8px;
++    border-radius: 999px;
++    cursor: pointer;
++  }
++
++  .clear-btn[hidden] {
++    display: none;
++  }
++
++  .cards-grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
++    gap: 24px;
++    margin-top: 20px;
++  }
++
++  .empty-state {
++    text-align: center;
++    padding: 32px;
++    background: #ffffff;
++    border-radius: 10px;
++    color: var(--_primary);
++    font-weight: 600;
++    margin-top: 16px;
++    border: 1px dashed rgba(78, 52, 46, 0.25);
++  }
++
++  .empty-state[hidden] {
++    display: none;
++  }
++`);
++
++const menuSectionTemplate = document.createElement('template');
++menuSectionTemplate.innerHTML = `
++  <section part="section" aria-labelledby="section-title-anchor">
++    <div class="section-header">
++      <div id="section-title-anchor">
++        <slot name="heading"><h2>Seasonal Favorites</h2></slot>
++      </div>
++      <slot name="subheading"></slot>
++    </div>
++
++    <div class="controls-bar" part="controls">
++      <div class="filter-group" role="group" aria-label="Filter coffee menu by category">
++        <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">All Drinks</button>
++        <button type="button" class="filter-btn" data-filter="seasonal" aria-pressed="false">Seasonal</button>
++        <button type="button" class="filter-btn" data-filter="espresso" aria-pressed="false">Espresso</button>
++        <button type="button" class="filter-btn" data-filter="cold-brew" aria-pressed="false">Cold Brew</button>
++        <button type="button" class="filter-btn" data-filter="favorites" aria-pressed="false">Saved Favorites</button>
++      </div>
++
++      <div class="search-order-wrap">
++        <label class="search-label">
++          <span>Search</span>
++          <input type="search" class="search-input" id="search-input" placeholder="Filter by flavor or roast..." />
++        </label>
++
++        <div class="status-pill" role="status" aria-live="polite" aria-atomic="true">
++          <span id="order-summary-text">Bag: 0 items ($0.00)</span>
++          <button type="button" class="clear-btn" id="clear-bag-btn" hidden aria-label="Clear shopping bag">Reset</button>
++        </div>
++      </div>
++    </div>
++
++    <div class="cards-grid" part="grid">
++      <slot></slot>
++    </div>
++
++    <p class="empty-state" id="empty-state" role="status" hidden>
++      No drinks match your current filter. Try selecting "All Drinks" or clearing your search.
++    </p>
++  </section>
++`;
++
++export class GrindMenuSection extends HTMLElement {
++  static observedAttributes = ['active-filter'];
++
++  #activeFilter = 'all';
++  #searchQuery = '';
++  #bagItems = 0;
++  #bagTotal = 0;
++
++  constructor() {
++    super();
++    if (!this.shadowRoot) {
++      this.attachShadow({ mode: 'open' });
++      this.shadowRoot.append(menuSectionTemplate.content.cloneNode(true));
++    }
++    this.shadowRoot.adoptedStyleSheets = [menuSectionSheet];
++
++    const filterBtns = this.shadowRoot.querySelectorAll('.filter-btn');
++    filterBtns.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        this.activeFilter = btn.dataset.filter || 'all';
++      });
++    });
++
++    const searchInput = this.shadowRoot.getElementById('search-input');
++    searchInput?.addEventListener('input', (e) => {
++      this.#searchQuery = e.target.value.trim().toLowerCase();
++      this.#applyFilters();
++    });
++
++    const clearBtn = this.shadowRoot.getElementById('clear-bag-btn');
++    clearBtn?.addEventListener('click', () => {
++      this.#bagItems = 0;
++      this.#bagTotal = 0;
++      this.#updateBagStatus();
++    });
++
++    const defaultSlot = this.shadowRoot.querySelector('slot:not([name])');
++    defaultSlot?.addEventListener('slotchange', () => {
++      this.#applyFilters();
++    });
++
++    this.addEventListener('coffee-order', (e) => {
++      this.#bagItems += 1;
++      this.#bagTotal += Number(e.detail?.unitPrice) || 0;
++      this.#updateBagStatus(e.detail?.name);
++    });
++
++    this.addEventListener('coffee-favorite', () => {
++      if (this.#activeFilter === 'favorites') {
++        this.#applyFilters();
++      }
++    });
++  }
++
++  connectedCallback() {
++    if (this.hasAttribute('active-filter')) {
++      this.#activeFilter = this.getAttribute('active-filter') || 'all';
++    }
++    this.#syncFilterButtons();
++    this.#applyFilters();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (name === 'active-filter' && oldVal !== newVal) {
++      this.#activeFilter = newVal || 'all';
++      this.#syncFilterButtons();
++      this.#applyFilters();
++    }
++  }
++
++  get activeFilter() {
++    return this.#activeFilter;
++  }
++  set activeFilter(val) {
++    this.setAttribute('active-filter', val);
++  }
++
++  #syncFilterButtons() {
++    const filterBtns = this.shadowRoot?.querySelectorAll('.filter-btn') ?? [];
++    filterBtns.forEach((btn) => {
++      const matches = btn.dataset.filter === this.#activeFilter;
++      btn.setAttribute('aria-pressed', String(matches));
++    });
++  }
++
++  #updateBagStatus(lastAddedName) {
++    const summaryEl = this.shadowRoot?.getElementById('order-summary-text');
++    const clearBtn = this.shadowRoot?.getElementById('clear-bag-btn');
++    if (summaryEl) {
++      const itemWord = this.#bagItems === 1 ? 'item' : 'items';
++      const prefix = lastAddedName ? `Added ${lastAddedName} · ` : '';
++      summaryEl.textContent = `${prefix}Bag: ${this.#bagItems} ${itemWord} ($${this.#bagTotal.toFixed(2)})`;
++    }
++    if (clearBtn) {
++      clearBtn.hidden = this.#bagItems === 0;
++    }
++  }
++
++  #applyFilters() {
++    const defaultSlot = this.shadowRoot?.querySelector('slot:not([name])');
++    const cards = (defaultSlot?.assignedElements?.() ?? []).filter(
++      (el) => el.tagName.toLowerCase() === 'coffee-card'
++    );
++
++    let visibleCount = 0;
++
++    cards.forEach((card) => {
++      const cat = (card.getAttribute('category') || '').toLowerCase();
++      const isFav = card.hasAttribute('favorited');
++      const textContent = `${card.getAttribute('name') || ''} ${card.getAttribute('roast') || ''} ${card.textContent || ''}`.toLowerCase();
++
++      const matchesCategory =
++        this.#activeFilter === 'all' ||
++        (this.#activeFilter === 'favorites' ? isFav : cat === this.#activeFilter);
++
++      const matchesSearch = !this.#searchQuery || textContent.includes(this.#searchQuery);
++
++      const shouldShow = matchesCategory && matchesSearch;
++      card.hidden = !shouldShow;
++      if (shouldShow) visibleCount += 1;
++    });
++
++    const emptyEl = this.shadowRoot?.getElementById('empty-state');
++    if (emptyEl) {
++      emptyEl.hidden = visibleCount > 0 || cards.length === 0;
++    }
++  }
++}
++
++// ============================================================================
++// 3. <grind-brew-finder> — Interactive Brew Guide & Ratio Calculator Component
++// ============================================================================
++
++const brewFinderSheet = new CSSStyleSheet();
++brewFinderSheet.replaceSync(`
++  :host {
++    display: block;
++    margin-top: 48px;
++    --_primary: var(--primary, #4e342e);
++    --_secondary: var(--secondary, #d7ccc8);
++    --_accent: var(--accent, #ffab40);
++    --_text: var(--text, #3e2723);
++  }
++
++  .finder-shell {
++    background: #ffffff;
++    border-radius: 14px;
++    padding: 28px;
++    box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++    border: 1px solid rgba(78, 52, 46, 0.12);
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++    gap: 28px;
++    align-items: center;
++  }
++
++  .intro h2 {
++    color: var(--_primary);
++    font-size: 1.7rem;
++    margin: 0 0 8px 0;
++  }
++
++  .intro p {
++    margin: 0 0 20px 0;
++    color: var(--_text);
++    font-size: 0.95rem;
++  }
++
++  .method-tabs {
++    display: flex;
++    flex-wrap: wrap;
++    gap: 8px;
++    margin-bottom: 18px;
++  }
++
++  .method-btn {
++    font: inherit;
++    font-size: 0.88rem;
++    font-weight: 600;
++    padding: 8px 14px;
++    border-radius: 8px;
++    border: 1px solid rgba(78, 52, 46, 0.22);
++    background: #fafafa;
++    color: var(--_primary);
++    cursor: pointer;
++    transition: background 0.2s ease, color 0.2s ease;
++  }
++
++  .method-btn[aria-pressed="true"] {
++    background: var(--_primary);
++    color: #ffffff;
++    border-color: var(--_primary);
++  }
++
++  .method-btn:focus-visible,
++  .cups-range:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 2px;
++  }
++
++  .slider-row {
++    display: flex;
++    flex-direction: column;
++    gap: 6px;
++  }
++
++  .slider-label {
++    display: flex;
++    justify-content: space-between;
++    font-weight: 600;
++    font-size: 0.9rem;
++    color: var(--_primary);
++  }
++
++  .cups-range {
++    font: inherit;
++    width: 100%;
++    accent-color: var(--_primary);
++    cursor: pointer;
++  }
++
++  .recipe-card {
++    background: #fdfaf7;
++    border: 1px solid var(--_secondary);
++    border-radius: 12px;
++    padding: 20px;
++  }
++
++  .recipe-title {
++    margin: 0 0 12px 0;
++    color: var(--_primary);
++    font-size: 1.2rem;
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++  }
++
++  .grind-badge {
++    font-size: 0.78rem;
++    background: var(--_secondary);
++    color: var(--_primary);
++    padding: 3px 10px;
++    border-radius: 999px;
++  }
++
++  .metrics-grid {
++    display: grid;
++    grid-template-columns: repeat(3, 1fr);
++    gap: 10px;
++    margin-bottom: 14px;
++    text-align: center;
++  }
++
++  .metric-box {
++    background: #ffffff;
++    padding: 10px;
++    border-radius: 8px;
++    border: 1px solid rgba(78, 52, 46, 0.1);
++  }
++
++  .metric-val {
++    display: block;
++    font-size: 1.15rem;
++    font-weight: 700;
++    color: var(--_primary);
++  }
++
++  .metric-label {
++    font-size: 0.75rem;
++    color: var(--_text);
++  }
++
++  .brew-tip {
++    margin: 0;
++    font-size: 0.88rem;
++    color: var(--_text);
++  }
++`);
++
++const BREW_METHODS = {
++  'pour-over': {
++    title: 'Pour-Over (V60 / Chemex)',
++    grind: 'Medium-Fine',
++    gramsPerCup: 15,
++    waterPerCup: 240,
++    time: '3:00 min',
++    tip: 'Pair with our Maple Oat Latte espresso roast or single-origin Ethiopian beans for bright floral clarity.',
++  },
++  'french-press': {
++    title: 'French Press Immersion',
++    grind: 'Coarse',
++    gramsPerCup: 17,
++    waterPerCup: 250,
++    time: '4:00 min',
++    tip: 'Ideal for our Dark Roast Espresso blend—full-bodied oils and rich smoky cocoa notes shine through.',
++  },
++  'cold-brew': {
++    title: 'Artisanal Cold Steep',
++    grind: 'Extra Coarse',
++    gramsPerCup: 28,
++    waterPerCup: 220,
++    time: '18 hrs',
++    tip: 'Steep in cool filtered water overnight for velvety sweetness and low acidity.',
++  },
++};
++
++const brewFinderTemplate = document.createElement('template');
++brewFinderTemplate.innerHTML = `
++  <section class="finder-shell" part="brew-finder" aria-labelledby="brew-finder-heading">
++    <div class="intro">
++      <h2 id="brew-finder-heading">Interactive Brew &amp; Ratio Calculator</h2>
++      <p>Dial in your morning ritual at home. Choose your brewing method and cup count to calculate the exact coffee-to-water ratio.</p>
++
++      <div class="method-tabs" role="group" aria-label="Select brewing method">
++        <button type="button" class="method-btn" data-method="pour-over" aria-pressed="true">Pour-Over</button>
++        <button type="button" class="method-btn" data-method="french-press" aria-pressed="false">French Press</button>
++        <button type="button" class="method-btn" data-method="cold-brew" aria-pressed="false">Cold Brew</button>
++      </div>
++
++      <label class="slider-row" for="cups-slider">
++        <span class="slider-label">
++          <span>Servings to Brew</span>
++          <output id="cups-output" for="cups-slider">2 cups</output>
++        </span>
++        <input type="range" id="cups-slider" class="cups-range" min="1" max="8" value="2" step="1" />
++      </label>
++    </div>
++
++    <div class="recipe-card" part="recipe-card" aria-live="polite">
++      <h3 class="recipe-title">
++        <span id="method-title">Pour-Over (V60 / Chemex)</span>
++        <span class="grind-badge" id="method-grind">Medium-Fine</span>
++      </h3>
++      <div class="metrics-grid">
++        <div class="metric-box">
++          <span class="metric-val" id="coffee-grams">30g</span>
++          <span class="metric-label">Whole Bean</span>
++        </div>
++        <div class="metric-box">
++          <span class="metric-val" id="water-ml">480ml</span>
++          <span class="metric-label">Water (93°C)</span>
++        </div>
++        <div class="metric-box">
++          <span class="metric-val" id="steep-time">3:00 min</span>
++          <span class="metric-label">Target Steep</span>
++        </div>
++      </div>
++      <p class="brew-tip" id="brew-tip">
++        Pair with our Maple Oat Latte espresso roast or single-origin Ethiopian beans for bright floral clarity.
++      </p>
++    </div>
++  </section>
++`;
++
++export class GrindBrewFinder extends HTMLElement {
++  static observedAttributes = ['method', 'cups'];
++
++  #method = 'pour-over';
++  #cups = 2;
++
++  constructor() {
++    super();
++    if (!this.shadowRoot) {
++      this.attachShadow({ mode: 'open' });
++      this.shadowRoot.append(brewFinderTemplate.content.cloneNode(true));
++    }
++    this.shadowRoot.adoptedStyleSheets = [brewFinderSheet];
++
++    const methodBtns = this.shadowRoot.querySelectorAll('.method-btn');
++    methodBtns.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        this.method = btn.dataset.method || 'pour-over';
++      });
++    });
++
++    const slider = this.shadowRoot.getElementById('cups-slider');
++    slider?.addEventListener('input', (e) => {
++      this.cups = Number(e.target.value) || 2;
++    });
++  }
++
++  connectedCallback() {
++    if (this.hasAttribute('method')) {
++      this.#method = this.getAttribute('method') || 'pour-over';
++    }
++    if (this.hasAttribute('cups')) {
++      this.#cups = Number(this.getAttribute('cups')) || 2;
++    }
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'method' && newVal && BREW_METHODS[newVal]) {
++      this.#method = newVal;
++    }
++    if (name === 'cups') {
++      this.#cups = Math.min(8, Math.max(1, Number(newVal) || 2));
++    }
++    this.#render();
++  }
++
++  get method() {
++    return this.#method;
++  }
++  set method(val) {
++    this.setAttribute('method', val);
++  }
++
++  get cups() {
++    return this.#cups;
++  }
++  set cups(val) {
++    this.setAttribute('cups', String(val));
++  }
++
++  #render() {
++    if (!this.shadowRoot) return;
++    const config = BREW_METHODS[this.#method] || BREW_METHODS['pour-over'];
++
++    const methodBtns = this.shadowRoot.querySelectorAll('.method-btn');
++    methodBtns.forEach((btn) => {
++      btn.setAttribute('aria-pressed', String(btn.dataset.method === this.#method));
++    });
++
++    const slider = this.shadowRoot.getElementById('cups-slider');
++    if (slider && Number(slider.value) !== this.#cups) {
++      slider.value = String(this.#cups);
++    }
++
++    const cupsOut = this.shadowRoot.getElementById('cups-output');
++    if (cupsOut) {
++      cupsOut.textContent = `${this.#cups} ${this.#cups === 1 ? 'cup' : 'cups'}`;
++    }
++
++    const titleEl = this.shadowRoot.getElementById('method-title');
++    const grindEl = this.shadowRoot.getElementById('method-grind');
++    const gramsEl = this.shadowRoot.getElementById('coffee-grams');
++    const waterEl = this.shadowRoot.getElementById('water-ml');
++    const timeEl = this.shadowRoot.getElementById('steep-time');
++    const tipEl = this.shadowRoot.getElementById('brew-tip');
++
++    if (titleEl) titleEl.textContent = config.title;
++    if (grindEl) grindEl.textContent = config.grind;
++    if (gramsEl) gramsEl.textContent = `${config.gramsPerCup * this.#cups}g`;
++    if (waterEl) waterEl.textContent = `${config.waterPerCup * this.#cups}ml`;
++    if (timeEl) timeEl.textContent = config.time;
++    if (tipEl) tipEl.textContent = config.tip;
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
++if (!customElements.get('grind-menu-section')) {
++  customElements.define('grind-menu-section', GrindMenuSection);
++}
++if (!customElements.get('grind-brew-finder')) {
++  customElements.define('grind-brew-finder', GrindBrewFinder);
++}
+diff --git a/index.html b/index.html
+index 66c9173..e86b54c 100644
+--- a/index.html
++++ b/index.html
+@@ -100,26 +100,6 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +115,25 @@
+       background: #3e2723;
+     }
+ 
++    /* Fail-open FOUC guard for custom elements */
++    coffee-card:not(:defined),
++    grind-menu-section:not(:defined),
++    grind-brew-finder:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
++    /* Consumer-side custom state hook via :state() */
++    coffee-card:state(favorited) {
++      filter: drop-shadow(0 4px 12px rgba(255, 171, 64, 0.25));
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,11 +152,12 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -175,26 +175,54 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++    <grind-menu-section active-filter="all">
++      <h2 slot="heading">Seasonal Favorites</h2>
++      <p slot="subheading">Customize your cup size and milk, save your favorites, or explore tasting notes.</p>
++
++      <coffee-card
++        name="Maple Oat Latte"
++        price="5.25"
++        category="seasonal"
++        roast="Medium Roast"
++        caffeine="150mg Caffeine"
++        default-milk="Oat Milk"
++        image="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80"
++        href="/menu/seasonal">
++        <h3 slot="title">Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <p slot="notes">Tasting notes: Amber grade-A Vermont maple, toasted oats, and warm cinnamon finish. Espresso pulled from washed Guatemalan highland beans.</p>
++      </coffee-card>
++
++      <coffee-card
++        name="Dark Roast Espresso"
++        price="3.75"
++        category="espresso"
++        roast="Dark Roast"
++        caffeine="185mg Caffeine"
++        default-milk="Black / None"
++        image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80"
++        href="/menu/espresso">
++        <h3 slot="title">Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <p slot="notes">Tasting notes: Bittersweet dark chocolate, charred cedar, and molasses crema. Slow-roasted Sumatra Mandheling &amp; Colombian blend.</p>
++      </coffee-card>
++
++      <coffee-card
++        name="Cold Brew"
++        price="4.75"
++        category="cold-brew"
++        roast="Medium-Dark"
++        caffeine="210mg Caffeine"
++        default-milk="Black / None"
++        image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80"
++        href="/menu/cold-brew">
++        <h3 slot="title">Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <p slot="notes">Tasting notes: Velvety caramel, roasted hazelnut, and zero bitter aftertaste. Coarse-ground Ethiopian Yirgacheffe steeped in cold filtered water.</p>
++      </coffee-card>
++    </grind-menu-section>
++
++    <grind-brew-finder method="pour-over" cups="2"></grind-brew-finder>
+   </main>
+ 
+   <footer>

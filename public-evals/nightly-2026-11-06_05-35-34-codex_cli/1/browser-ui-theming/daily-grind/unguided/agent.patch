@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+index 66c9173..4b46b6c 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,24 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
++    }
++
++    ::selection {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    /* Fallback for browsers without standard scrollbar colors. */
++    ::-webkit-scrollbar { width: 12px; height: 12px; }
++    ::-webkit-scrollbar-track { background: var(--secondary); }
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 12px;
+     }
+ 
+     * {
+@@ -135,6 +153,92 @@
+       background: #3e2723;
+     }
+ 
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .order-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
++      gap: 32px;
++      align-items: start;
++    }
++
++    .order-layout .grid {
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++    }
++
++    .customize {
++      padding: 24px;
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .customize h2 { color: var(--primary); }
++    .form-intro { margin: 4px 0 20px; }
++    .field { margin-bottom: 18px; }
++    .field > label, legend { font-weight: 600; }
++    .field > label { display: block; margin-bottom: 6px; }
++    fieldset { border: 0; min-width: 0; }
++    legend { margin-bottom: 6px; }
++
++    input, select, button {
++      font: inherit;
++      color: var(--text);
++      accent-color: var(--primary);
++    }
++
++    select, input[type="date"], input[type="time"] {
++      width: 100%;
++      min-width: 0;
++      min-height: 44px;
++      padding: 9px 10px;
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    select option { background: var(--light); color: var(--text); }
++    input[type="range"] { width: 100%; }
++    input[type="checkbox"], input[type="radio"] { margin-right: 5px; }
++    .choices { display: flex; flex-wrap: wrap; gap: 8px 16px; }
++    .choices label, .check-label { cursor: pointer; }
++    .range-labels { display: flex; justify-content: space-between; font-size: 0.8rem; }
++    .pickup-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
++    .customize .btn { border: 0; cursor: pointer; width: 100%; margin-top: 0; }
++    .order-summary { display: block; margin-top: 14px; font-size: 0.9rem; }
++    .order-summary:empty { display: none; }
++
++    /* Enhance the browser's select picker where supported; retain native
++       select behavior everywhere else. Date/time dialogs stay browser-owned. */
++    @supports (appearance: base-select) {
++      select, select::picker(select) { appearance: base-select; }
++      select::picker(select) {
++        color: var(--text);
++        background: var(--light);
++        border: 1px solid var(--secondary);
++        border-radius: 5px;
++      }
++      select::picker-icon { color: var(--primary); }
++      select option { padding: 8px 12px; }
++      select option:checked { background: var(--secondary); }
++      select option:hover, select option:focus-visible {
++        background: var(--accent);
++        color: var(--text);
++      }
++      select option::checkmark { color: var(--primary); }
++    }
++
++    @media (max-width: 800px) {
++      .order-layout { grid-template-columns: 1fr; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 8px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,8 +278,8 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main class="container order-layout">
++    <section aria-label="Seasonal favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -195,6 +299,61 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customize" aria-labelledby="customize-title">
++      <h2 id="customize-title">Make It Your Own</h2>
++      <p class="form-intro">Your daily ritual, just the way you like it.</p>
++      <form id="coffee-order">
++        <div class="field">
++          <label for="drink">Your coffee</label>
++          <select id="drink" name="drink">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++          </select>
++        </div>
++        <fieldset class="field">
++          <legend>Cup size</legend>
++          <div class="choices">
++            <label><input type="radio" name="size" value="Small" required>Small</label>
++            <label><input type="radio" name="size" value="Medium" checked>Medium</label>
++            <label><input type="radio" name="size" value="Large">Large</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="milk">Milk preference</label>
++          <select id="milk" name="milk">
++            <option>Oat milk</option>
++            <option>Whole milk</option>
++            <option>Almond milk</option>
++            <option>No milk</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="sweetness">Sweetness · <output id="sweetness-value" for="sweetness">2</output> of 4</label>
++          <input id="sweetness" name="sweetness" type="range" min="0" max="4" step="1" value="2" aria-describedby="sweetness-hint">
++          <div id="sweetness-hint" class="range-labels"><span>Unsweetened</span><span>Extra sweet</span></div>
++        </div>
++        <div class="field">
++          <label class="check-label"><input type="checkbox" name="extra-shot">Add an extra espresso shot</label>
++        </div>
++        <fieldset>
++          <legend>Pickup</legend>
++          <div class="pickup-fields">
++            <div class="field">
++              <label for="pickup-date">Date</label>
++              <input id="pickup-date" name="pickup-date" type="date" required>
++            </div>
++            <div class="field">
++              <label for="pickup-time">Time</label>
++              <input id="pickup-time" name="pickup-time" type="time" required>
++            </div>
++          </div>
++        </fieldset>
++        <button class="btn" type="submit">Review My Coffee</button>
++        <output id="order-summary" class="order-summary" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +366,32 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.querySelector('#coffee-order');
++    const sweetness = document.querySelector('#sweetness');
++    const summary = document.querySelector('#order-summary');
++    const date = document.querySelector('#pickup-date');
++    const today = new Date();
++    const localDate = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'),
++      String(today.getDate()).padStart(2, '0')].join('-');
++    date.min = localDate;
++    date.value = localDate;
++
++    form.addEventListener('input', () => {
++      document.querySelector('#sweetness-value').value = sweetness.value;
++      summary.textContent = '';
++    });
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const order = new FormData(form);
++      const pickup = new Date(`${order.get('pickup-date')}T${order.get('pickup-time')}`);
++      summary.textContent = `${order.get('size')} ${order.get('drink')} with ${order.get('milk').toLowerCase()}, ` +
++        `sweetness ${order.get('sweetness')}/4${order.has('extra-shot') ? ', plus an extra shot' : ''}. ` +
++        `Pickup: ${pickup.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}. ` +
++        'This is a preview; no order has been placed.';
++    });
++  </script>
+ </body>
+ 
+ </html>

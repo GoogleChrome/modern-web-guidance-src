@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+index 66c9173..6392279 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,28 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --supports-atproperty: ;
++    }
++
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --hero-glow-stop {
++      syntax: "<percentage>";
++      inherits: false;
++      initial-value: 20%;
++    }
++
++    @keyframes hero-glow-shift {
++      to {
++        --hero-glow-stop: 80%;
++      }
++    }
++
++    @function --card-elevation(--depth <length>: 5px) {
++      result: 0 2px var(--depth) rgba(0, 0, 0, 0.12);
+     }
+ 
+     * {
+@@ -38,6 +60,15 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++
++      @supports (container-type: scroll-state) {
++        container-type: scroll-state;
++        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
++      }
++
++      @supports at-rule(@media) {
++        border-bottom: 1px solid rgba(255, 171, 64, 0.25);
++      }
+     }
+ 
+     .logo {
+@@ -86,6 +117,19 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++
++      /* Conditionally apply animated custom-property gradient when @property is supported (including pre-at-rule() fallback) */
++      background-image: var(--supports-atproperty,
++        radial-gradient(circle at var(--hero-glow-stop) 50%, rgba(255, 171, 64, 0.25), rgba(0, 0, 0, 0.6)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++      animation: var(--supports-atproperty, hero-glow-shift 6s ease-in-out infinite alternate);
++
++      @supports at-rule(@property) {
++        background-image:
++          radial-gradient(circle at var(--hero-glow-stop) 50%, rgba(255, 171, 64, 0.25), rgba(0, 0, 0, 0.6)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        animation: hero-glow-shift 6s ease-in-out infinite alternate;
++      }
+     }
+ 
+     .hero h1 {
+@@ -105,6 +149,7 @@
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      --card-theme: warm;
+     }
+ 
+     .card {
+@@ -113,6 +158,20 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      @supports (box-shadow: --card-elevation()) or at-rule(@function) {
++        box-shadow: --card-elevation(12px);
++      }
++
++      @supports at-rule(@scope) {
++        border: 1px solid var(--secondary);
++      }
++    }
++
++    @container style(--card-theme: warm) or (not (style(--card-theme: warm))) {
++      .card {
++        border-top: 3px solid var(--accent);
++      }
+     }
+ 
+     .card h3 {

@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,48 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      margin-top: 56px;
++      padding: 32px 0 0;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++    }
++
++    .secrets-label {
++      display: inline-block;
++      margin-bottom: 12px;
++      padding: 4px 10px;
++      border-radius: 4px;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 8px;
++    }
++
++    .secrets-preview {
++      max-width: 720px;
++      margin-top: 24px;
++    }
++
++    .secrets-preview h3 {
++      margin-bottom: 6px;
++      font-size: 1.05rem;
++    }
++
++    .secrets-preview p {
++      margin-bottom: 24px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +234,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="secrets-label">Exclusive · Members' preview</span>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>A little knowledge. A better cup. Step behind the scenes with our roasting team.</p>
++      <div class="secrets-preview">
++        <h3>01 / Let your beans rest</h3>
++        <p>Fresh from the roaster doesn't always mean ready to brew. Giving beans time to release trapped gas helps water extract their flavors more evenly. Start with the roast date and notice how your cup changes over the next few days.</p>
++        <h3>02 / Follow the flavor</h3>
++        <p>A bright, sharp cup and a dry, bitter finish tell different stories. Our roasters taste each batch as it cools, looking for sweetness and balance. At home, adjust one brewing variable at a time and let your palate guide you.</p>
++        <h3>03 / Find your morning ritual</h3>
++        <p>Keep a simple record of your dose, grind, and brew time. The secret to a repeatable favorite is paying attention to the little details, one delicious cup at a time.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

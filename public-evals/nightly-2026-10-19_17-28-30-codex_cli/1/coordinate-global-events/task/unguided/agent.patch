@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Global tasting planner */
++    .tasting-section {
++      margin-top: 56px;
++      border: 1px solid #e5dcd5;
++      border-radius: 16px;
++      overflow: hidden;
++      background: #f5f0eb;
++    }
++
++    .tasting-intro {
++      padding: 30px 32px;
++      background: var(--primary);
++      color: #fff8f1;
++    }
++
++    .tasting-eyebrow {
++      color: #f1c58e;
++      font-size: 0.72rem;
++      font-weight: 600;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .tasting-intro h2 { font-size: 1.8rem; margin-bottom: 8px; }
++    .tasting-intro p:last-child { color: #e4d7cf; max-width: 670px; }
++    .tasting-body { padding: 28px 32px 30px; }
++
++    .planner-controls {
++      display: grid;
++      grid-template-columns: 1fr 1fr 1.35fr;
++      gap: 18px;
++      border: 0;
++      min-width: 0;
++    }
++
++    .planner-controls label { display: block; font-size: 0.85rem; font-weight: 600; }
++    .planner-controls input, .planner-controls select {
++      display: block;
++      width: 100%;
++      min-width: 0;
++      min-height: 48px;
++      margin-top: 7px;
++      padding: 10px 12px;
++      border: 1px solid #d5c6ba;
++      border-radius: 6px;
++      background: #fffdf9;
++      color: var(--text);
++      font: inherit;
++      font-weight: 400;
++    }
++
++    .planner-controls input:focus-visible, .planner-controls select:focus-visible {
++      outline: 2px solid #9b642e;
++      outline-offset: 3px;
++    }
++
++    .planner-note { margin-top: 12px; font-size: 0.8rem; color: #735e52; }
++    .host-warning { margin-top: 18px; padding: 12px 16px; border-left: 3px solid #ac6a23; background: #ffecd1; border-radius: 4px; font-size: 0.88rem; }
++    .host-warning[hidden] { display: none; }
++    .tasting-results-heading { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-top: 28px; }
++    .tasting-results-heading h3 { font-size: 1rem; }
++    .tasting-results-heading span { font-size: 0.75rem; color: #735e52; }
++    .timezone-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
++    .timezone-card { padding: 18px 16px; background: #fffdf9; border: 1px solid #e5dcd5; border-radius: 8px; }
++    .timezone-card.is-host { border-color: #9b7552; box-shadow: inset 0 3px #9b7552; }
++    .timezone-city { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
++    .timezone-city h4 { font-size: 0.9rem; font-weight: 600; }
++    .host-badge { font-size: 0.6rem; letter-spacing: 0.7px; text-transform: uppercase; color: #79512e; background: #f0e4d5; border-radius: 3px; padding: 2px 5px; }
++    .timezone-time { font-size: 1.65rem; font-weight: 600; letter-spacing: -0.8px; margin-top: 10px; white-space: nowrap; }
++    .timezone-date { font-size: 0.8rem; color: #735e52; }
++    .timezone-offset { font-size: 0.7rem; color: #735e52; border-top: 1px solid #eee5dd; margin-top: 14px; padding-top: 10px; }
++
++    @media (max-width: 700px) {
++      .planner-controls { grid-template-columns: 1fr 1fr; }
++      .planner-controls label:last-child { grid-column: 1 / -1; }
++      .timezone-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
++      .tasting-intro, .tasting-body { padding: 24px 20px; }
++      .tasting-results-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +275,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="tasting-section" aria-labelledby="tastingTitle">
++      <div class="tasting-intro">
++        <p class="tasting-eyebrow">Different time zones. One shared cup.</p>
++        <h2 id="tastingTitle">Global Tasting Coordinator</h2>
++        <p>Bring coffee lovers together, wherever they are. Choose a date, time, and host time zone to plan your next virtual coffee tasting around the world.</p>
++      </div>
++      <div class="tasting-body">
++        <fieldset class="planner-controls" id="plannerControls" disabled aria-label="Tasting date and host time zone" aria-describedby="plannerNote hostWarning">
++          <label for="dateInput">Tasting date<input type="date" id="dateInput" required></label>
++          <label for="timeInput">Host's local time<input type="time" id="timeInput" value="15:00" step="60" required></label>
++          <label for="hostTzSelect">Host time zone
++            <select id="hostTzSelect">
++              <option value="America/New_York">New York — America/New_York</option>
++              <option value="Europe/London">London — Europe/London</option>
++              <option value="Asia/Tokyo">Tokyo — Asia/Tokyo</option>
++              <option value="UTC">UTC — Coordinated Universal Time</option>
++            </select>
++          </label>
++        </fieldset>
++        <p class="planner-note" id="plannerNote">Local times update automatically. Daylight saving adjustments are included.</p>
++        <p id="hostWarning" class="host-warning" role="status" aria-live="polite" hidden></p>
++        <div class="tasting-results-heading"><h3>Your tasting, around the world</h3><span>One moment, four local times</span></div>
++        <div id="grid" class="timezone-grid" aria-live="polite" aria-atomic="true" aria-label="Equivalent tasting times">Loading local times…</div>
++        <noscript><p>Enable JavaScript to calculate local tasting times.</p></noscript>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +313,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./tasting-planner.mjs"></script>
++
+ </body>
+ 
+ </html>

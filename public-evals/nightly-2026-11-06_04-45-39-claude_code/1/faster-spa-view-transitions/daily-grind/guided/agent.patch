@@ -1,0 +1,644 @@
+diff --git a/index.html b/index.html
+index 66c9173..275ed96 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,218 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    /* ---------- SPA views ---------- */
++    #app {
++      position: relative;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    /* Inactive views keep their DOM + cached rendering state, but skip
++       layout/paint and are pulled out of flow. */
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 0 auto 0;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .view-header {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .view-header p {
++      color: #6d4c41;
++    }
++
++    .page-banner {
++      height: 28vh;
++      min-height: 180px;
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: white;
++      text-align: center;
++    }
++
++    .page-banner h1 {
++      font-size: 2.4rem;
++      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
++    }
++
++    .card img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    /* Menu filters */
++    .filters {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .filters button {
++      font: inherit;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 6px 16px;
++      border-radius: 999px;
++      cursor: pointer;
++    }
++
++    .filters button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .card.is-hidden {
++      display: none;
++    }
++
++    .add-btn {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .order-summary {
++      margin-top: 30px;
++      text-align: center;
++      font-weight: bold;
++    }
++
++    /* Locations */
++    .search-box {
++      display: block;
++      width: 100%;
++      max-width: 420px;
++      margin: 20px auto 0;
++      padding: 10px 14px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .card address {
++      font-style: normal;
++    }
++
++    .hours {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-top: 6px;
++    }
++
++    /* Rewards */
++    .rewards-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      text-align: center;
++      margin-top: 20px;
++    }
++
++    .stars {
++      font-size: 2.5rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    progress {
++      width: 100%;
++      max-width: 420px;
++      height: 14px;
++      accent-color: var(--accent);
++      margin: 10px 0;
++    }
++
++    .card button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    /* Account */
++    .account-form {
++      max-width: 520px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      gap: 16px;
++    }
++
++    .account-form label {
++      display: grid;
++      gap: 4px;
++      font-weight: 600;
++    }
++
++    .account-form input,
++    .account-form select {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .account-form .checkbox {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: normal;
++    }
++
++    .account-form .btn {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      justify-self: start;
++    }
++
++    .form-status {
++      min-height: 1.6em;
++      color: #2e7d32;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -168,34 +380,205 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <div id="app">
++    <!-- Home view is server-rendered; other views are rendered lazily on first visit
++         and then kept alive (offscreen) for fast return navigation. -->
++    <div class="spa-view" id="view-home" data-route="/" tabindex="-1" aria-label="Home">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
++
++    <main class="container">
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </div>
++      </section>
++    </main>
++    </div>
++  </div>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <!-- View templates: cloned into #app the first time each view is visited. -->
++  <template id="tpl-menu">
++    <section class="page-banner" style="background-image: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80');">
++      <h1>Our Menu</h1>
++    </section>
++    <main class="container">
++      <div class="view-header">
++        <h2>Crafted Daily</h2>
++        <p>Pick a category, add a few favorites, and come back anytime &mdash; your picks stay put.</p>
++      </div>
++      <div class="filters" role="group" aria-label="Filter menu">
++        <button type="button" data-filter="all" aria-pressed="true">All</button>
++        <button type="button" data-filter="seasonal" aria-pressed="false">Seasonal</button>
++        <button type="button" data-filter="espresso" aria-pressed="false">Espresso</button>
++        <button type="button" data-filter="cold-brew" aria-pressed="false">Cold Brew</button>
++        <button type="button" data-filter="bakery" aria-pressed="false">Bakery</button>
++      </div>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-category="seasonal">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&q=70" alt="Latte with foam art" loading="lazy" width="600" height="450">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="price">$5.75</p>
++          <button type="button" class="btn add-btn" data-item="Maple Oat Latte">Add</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="seasonal">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=70" alt="Spiced coffee drink" loading="lazy" width="600" height="450">
++          <h3>Cinnamon Chai</h3>
++          <p>House-brewed chai with warming spices and steamed milk.</p>
++          <p class="price">$5.25</p>
++          <button type="button" class="btn add-btn" data-item="Cinnamon Chai">Add</button>
++        </div>
++        <div class="card" data-category="espresso">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=70" alt="Espresso shot" loading="lazy" width="600" height="450">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="price">$3.25</p>
++          <button type="button" class="btn add-btn" data-item="Dark Roast Espresso">Add</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="espresso">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=70" alt="Cappuccino" loading="lazy" width="600" height="450">
++          <h3>Classic Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and velvety foam.</p>
++          <p class="price">$4.50</p>
++          <button type="button" class="btn add-btn" data-item="Classic Cappuccino">Add</button>
++        </div>
++        <div class="card" data-category="cold-brew">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70" alt="Iced cold brew" loading="lazy" width="600" height="450">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="price">$4.75</p>
++          <button type="button" class="btn add-btn" data-item="Cold Brew">Add</button>
++        </div>
++        <div class="card" data-category="bakery">
++          <img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=70" alt="Fresh croissants" loading="lazy" width="600" height="450">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked every morning in-house.</p>
++          <p class="price">$3.50</p>
++          <button type="button" class="btn add-btn" data-item="Butter Croissant">Add</button>
++        </div>
++      </div>
++      <p class="order-summary" aria-live="polite">Your order is empty.</p>
++    </main>
++  </template>
++
++  <template id="tpl-locations">
++    <section class="page-banner" style="background-image: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1350&q=80');">
++      <h1>Find a Caf&eacute;</h1>
++    </section>
++    <main class="container">
++      <div class="view-header">
++        <h2>Our Locations</h2>
++        <p>Stop by for a cup &mdash; every shop roasts in small batches.</p>
++      </div>
++      <label for="location-search" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);">Search locations</label>
++      <input id="location-search" class="search-box" type="search" placeholder="Search by neighborhood or street&hellip;" autocomplete="off">
++      <div class="grid">
++        <div class="card" data-search="downtown main street">
++          <h3>Downtown</h3>
++          <address>120 Main Street</address>
++          <p class="hours">Mon&ndash;Fri 6am&ndash;7pm &middot; Sat&ndash;Sun 7am&ndash;6pm</p>
++        </div>
++        <div class="card" data-search="riverside harbor way">
++          <h3>Riverside</h3>
++          <address>45 Harbor Way</address>
++          <p class="hours">Daily 7am&ndash;8pm</p>
++        </div>
++        <div class="card" data-search="university college avenue campus">
++          <h3>University</h3>
++          <address>890 College Avenue</address>
++          <p class="hours">Mon&ndash;Fri 6:30am&ndash;10pm &middot; Sat&ndash;Sun 8am&ndash;8pm</p>
++        </div>
++        <div class="card" data-search="old town maple lane">
++          <h3>Old Town</h3>
++          <address>12 Maple Lane</address>
++          <p class="hours">Daily 6am&ndash;5pm</p>
+         </div>
+       </div>
++      <p class="no-results" hidden style="text-align:center;margin-top:20px;">No locations match your search.</p>
++    </main>
++  </template>
++
++  <template id="tpl-rewards">
++    <section class="page-banner" style="background-image: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1350&q=80');">
++      <h1>Grind Rewards</h1>
+     </section>
+-  </main>
++    <main class="container">
++      <div class="rewards-panel">
++        <p>Your balance</p>
++        <p class="stars"><span data-stars>120</span> &#9733;</p>
++        <progress max="150" value="120" data-progress></progress>
++        <p data-next>30 stars until your next free drink.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Extra Shot</h3>
++          <p>Add a shot to any drink.</p>
++          <button type="button" class="btn add-btn" data-cost="25">Redeem &middot; 25&#9733;</button>
++        </div>
++        <div class="card">
++          <h3>Bakery Item</h3>
++          <p>Any pastry from the case.</p>
++          <button type="button" class="btn add-btn" data-cost="75">Redeem &middot; 75&#9733;</button>
++        </div>
++        <div class="card">
++          <h3>Handcrafted Drink</h3>
++          <p>Any size, any customization.</p>
++          <button type="button" class="btn add-btn" data-cost="150">Redeem &middot; 150&#9733;</button>
++        </div>
++      </div>
++      <p class="order-summary" data-reward-status aria-live="polite"></p>
++    </main>
++  </template>
++
++  <template id="tpl-account">
++    <main class="container">
++      <div class="view-header">
++        <h2>My Account</h2>
++        <p>Manage your profile and preferences.</p>
++      </div>
++      <form class="account-form">
++        <label>Full name
++          <input name="name" autocomplete="name" value="Alex Barista">
++        </label>
++        <label>Email
++          <input name="email" type="email" autocomplete="email" value="alex@example.com">
++        </label>
++        <label>Home caf&eacute;
++          <select name="home">
++            <option>Downtown</option>
++            <option>Riverside</option>
++            <option>University</option>
++            <option>Old Town</option>
++          </select>
++        </label>
++        <label>Usual order
++          <input name="usual" placeholder="e.g. Oat milk cappuccino">
++        </label>
++        <label class="checkbox"><input type="checkbox" name="news" checked> Email me seasonal offers</label>
++        <button type="submit" class="btn">Save changes</button>
++        <p class="form-status" aria-live="polite"></p>
++      </form>
++    </main>
++  </template>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +590,199 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const ROUTES = {
++        '/': { id: 'home', title: 'The Daily Grind | Artisanal Coffee' },
++        '/menu': { id: 'menu', title: 'Menu | The Daily Grind', init: initMenu },
++        '/locations': { id: 'locations', title: 'Locations | The Daily Grind', init: initLocations },
++        '/rewards': { id: 'rewards', title: 'Rewards | The Daily Grind', init: initRewards },
++        '/account': { id: 'account', title: 'My Account | The Daily Grind', init: initAccount },
++      };
++
++      const app = document.getElementById('app');
++      const navLinks = document.querySelectorAll('nav a[href]');
++      const views = new Map([['home', document.getElementById('view-home')]]);
++      const scrollPositions = new Map();
++      let currentId = null;
++
++      function normalize(pathname) {
++        const clean = pathname.replace(/\/index\.html$/, '/').replace(/\/+$/, '') || '/';
++        if (ROUTES[clean]) return { path: clean, sub: null };
++        // Sub-routes like /menu/espresso map onto their parent view.
++        const [, base, sub] = clean.match(/^(\/[^/]+)\/(.+)$/) || [];
++        if (base && ROUTES[base]) return { path: base, sub };
++        return null;
++      }
++
++      // Lazily create a view the first time it is visited; afterwards it is reused.
++      function getView(route) {
++        let view = views.get(route.id);
++        if (view) return view;
++        view = document.createElement('div');
++        view.className = 'spa-view inactive';
++        view.id = `view-${route.id}`;
++        view.tabIndex = -1;
++        view.setAttribute('aria-label', route.title.split(' | ')[0]);
++        view.inert = true;
++        view.append(document.getElementById(`tpl-${route.id}`).content.cloneNode(true));
++        app.append(view);
++        route.init?.(view);
++        views.set(route.id, view);
++        return view;
++      }
++
++      function render({ path, sub }, { focus = true, restoreScroll = false } = {}) {
++        const route = ROUTES[path];
++        const next = getView(route);
++
++        if (route.id !== currentId) {
++          if (currentId) scrollPositions.set(currentId, window.scrollY);
++          // Deactivate (but keep) every other view: content-visibility: hidden
++          // retains its rendering state so returning is near-instant.
++          for (const [id, view] of views) {
++            if (view === next) continue;
++            view.classList.add('inactive');
++            view.inert = true;
++            view.setAttribute('aria-hidden', 'true');
++          }
++          next.classList.remove('inactive');
++          next.inert = false;
++          next.removeAttribute('aria-hidden');
++          currentId = route.id;
++          window.scrollTo(0, restoreScroll ? scrollPositions.get(route.id) ?? 0 : 0);
++          if (focus) next.focus({ preventScroll: true });
++        }
++
++        next.dispatchEvent(new CustomEvent('viewshow', { detail: { sub } }));
++        document.title = route.title;
++        for (const a of navLinks) {
++          const target = normalize(new URL(a.href).pathname);
++          if (target && target.path === path) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        }
++      }
++
++      function transition(update) {
++        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
++        if (!document.startViewTransition || reduce) return update();
++        document.startViewTransition(update);
++      }
++
++      function navigate(url, { replace = false } = {}) {
++        const match = normalize(url.pathname);
++        if (!match) return false;
++        if (url.href !== location.href) history[replace ? 'replaceState' : 'pushState'](null, '', url);
++        transition(() => render(match));
++        return true;
++      }
++
++      // Intercept same-origin clicks on links that map to an SPA view.
++      document.addEventListener('click', (e) => {
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        const a = e.target.closest('a[href]');
++        if (!a || a.target || a.hasAttribute('download')) return;
++        const url = new URL(a.href);
++        if (url.origin !== location.origin || !normalize(url.pathname)) return;
++        e.preventDefault();
++        navigate(url);
++      });
++
++      window.addEventListener('popstate', () => {
++        const match = normalize(location.pathname) || { path: '/', sub: null };
++        transition(() => render(match, { restoreScroll: true }));
++      });
++
++      history.scrollRestoration = 'manual';
++      render(normalize(location.pathname) || { path: '/', sub: null }, { focus: false });
++
++      // ---------- Per-view behavior (runs once, state then persists) ----------
++      function initMenu(view) {
++        const buttons = view.querySelectorAll('[data-filter]');
++        const cards = view.querySelectorAll('.card[data-category]');
++        const summary = view.querySelector('.order-summary');
++        const order = [];
++
++        function applyFilter(filter) {
++          for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
++          for (const c of cards) c.classList.toggle('is-hidden', filter !== 'all' && c.dataset.category !== filter);
++        }
++
++        view.querySelector('.filters').addEventListener('click', (e) => {
++          const b = e.target.closest('[data-filter]');
++          if (b) applyFilter(b.dataset.filter);
++        });
++
++        view.addEventListener('click', (e) => {
++          const b = e.target.closest('[data-item]');
++          if (!b) return;
++          order.push(b.dataset.item);
++          summary.textContent = `Your order (${order.length}): ${order.join(', ')}`;
++        });
++
++        // Deep links like /menu/espresso preselect a category.
++        view.addEventListener('viewshow', (e) => {
++          const sub = e.detail.sub;
++          if (sub && view.querySelector(`[data-filter="${CSS.escape(sub)}"]`)) applyFilter(sub);
++        });
++      }
++
++      function initLocations(view) {
++        const input = view.querySelector('#location-search');
++        const cards = view.querySelectorAll('.card[data-search]');
++        const empty = view.querySelector('.no-results');
++        input.addEventListener('input', () => {
++          const q = input.value.trim().toLowerCase();
++          let shown = 0;
++          for (const c of cards) {
++            const match = !q || c.dataset.search.includes(q) || c.textContent.toLowerCase().includes(q);
++            c.classList.toggle('is-hidden', !match);
++            if (match) shown++;
++          }
++          empty.hidden = shown > 0;
++        });
++      }
++
++      function initRewards(view) {
++        const GOAL = 150;
++        let stars = 120;
++        const starsEl = view.querySelector('[data-stars]');
++        const progress = view.querySelector('[data-progress]');
++        const next = view.querySelector('[data-next]');
++        const status = view.querySelector('[data-reward-status]');
++        const buttons = view.querySelectorAll('[data-cost]');
++
++        function update() {
++          starsEl.textContent = stars;
++          progress.value = Math.min(stars, GOAL);
++          next.textContent = stars >= GOAL
++            ? 'You have enough stars for a free drink!'
++            : `${GOAL - stars} stars until your next free drink.`;
++          for (const b of buttons) b.disabled = Number(b.dataset.cost) > stars;
++        }
++
++        view.addEventListener('click', (e) => {
++          const b = e.target.closest('[data-cost]');
++          if (!b || b.disabled) return;
++          stars -= Number(b.dataset.cost);
++          status.textContent = `Redeemed: ${b.closest('.card').querySelector('h3').textContent}. Enjoy!`;
++          update();
++        });
++        update();
++      }
++
++      function initAccount(view) {
++        const form = view.querySelector('form');
++        const status = view.querySelector('.form-status');
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          status.textContent = 'Changes saved.';
++        });
++        form.addEventListener('input', () => { status.textContent = ''; });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,101 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-launcher {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .feedback-dialog {
++      margin: auto;
++      width: min(92vw, 28rem);
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .feedback-dialog h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .feedback-dialog label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 5rem;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-dialog fieldset {
++      margin-top: 16px;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-dialog legend {
++      padding: 0 6px;
++      font-size: 0.85rem;
++    }
++
++    .feedback-dialog .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .feedback-dialog button {
++      padding: 8px 14px;
++      font: inherit;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .feedback-dialog button:hover {
++      background: #3e2723;
++    }
++
++    .feedback-dialog .close {
++      margin-top: 16px;
++      color: var(--text);
++      background: var(--secondary);
++    }
++
++    .feedback-dialog .close:hover {
++      background: #bcaaa4;
++    }
++
++    #dialog-location {
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -206,7 +299,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launcher" id="feedback-open">Feedback</button>
++
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
++    <h2 id="feedback-title">Send us feedback</h2>
++    <p>Currently inside: <span id="dialog-location" aria-live="polite">body</span></p>
++    <label>
++      Your thoughts
++      <textarea name="message" placeholder="Tell us about your visit..."></textarea>
++    </label>
++    <fieldset>
++      <legend>Move this dialog to</legend>
++      <div class="actions">
++        <button type="button" data-move-to="nav">Nav</button>
++        <button type="button" data-move-to=".hero">Hero</button>
++        <button type="button" data-move-to="main">Main</button>
++        <button type="button" data-move-to="footer">Footer</button>
++      </div>
++    </fieldset>
++    <button type="button" class="close" id="feedback-close">Close</button>
++  </dialog>
++
++  <script>
++    const dialog = document.getElementById('feedback-dialog');
++    const locationLabel = document.getElementById('dialog-location');
++
++    document.getElementById('feedback-open').addEventListener('click', () => dialog.showModal());
++    document.getElementById('feedback-close').addEventListener('click', () => dialog.close());
++
++    function moveDialog(target) {
++      const active = document.activeElement;
++      const focusInDialog = dialog.contains(active) ? active : null;
++
++      if ('moveBefore' in Element.prototype) {
++        // Atomic move: the dialog stays open and keeps focus.
++        target.moveBefore(dialog, null);
++      } else {
++        // Fallback: a plain reparent closes the dialog, so re-open it
++        // and restore the user's place manually.
++        const wasOpen = dialog.open;
++        const scroll = dialog.querySelector('textarea').scrollTop;
++        const textarea = dialog.querySelector('textarea');
++        const selection = [textarea.selectionStart, textarea.selectionEnd];
++        target.append(dialog);
++        if (wasOpen) {
++          dialog.showModal();
++          textarea.scrollTop = scroll;
++          if (focusInDialog) {
++            focusInDialog.focus({ preventScroll: true });
++            if (focusInDialog === textarea) textarea.setSelectionRange(...selection);
++          }
++        }
++      }
++      locationLabel.textContent = target.localName + (target.className ? '.' + target.className : '');
++    }
++
++    dialog.addEventListener('click', (event) => {
++      const button = event.target.closest('[data-move-to]');
++      if (!button) return;
++      moveDialog(document.querySelector(button.dataset.moveTo));
++      // Clicking a button in Safari/Firefox may not focus it; keep focus on it.
++      button.focus({ preventScroll: true });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

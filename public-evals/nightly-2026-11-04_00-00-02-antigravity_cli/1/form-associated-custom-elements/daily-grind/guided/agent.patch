@@ -1,0 +1,624 @@
+diff --git a/index.html b/index.html
+index 66c9173..90f283f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,178 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Form Section */
++    .feedback-section {
++      margin-block-start: 3rem;
++      background: white;
++      padding: 2rem;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 640px;
++      margin-inline: auto;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++    }
++
++    .feedback-intro {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      font-size: 0.95rem;
++    }
++
++    .feedback-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 1.5rem;
++      margin-block-end: 1.25rem;
++    }
++
++    .feedback-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding-inline: 0.5rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding-block: 6px;
++      margin-block-start: -6px;
++    }
++
++    .required-indicator {
++      color: #b71c1c;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    .form-control {
++      display: block;
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      background-color: #fff;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .form-control {
++        min-height: 52px;
++      }
++    }
++
++    textarea.form-control {
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .form-control:focus-visible,
++    .btn-action:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .form-control:invalid:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    star-rating:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem;
++      align-items: center;
++    }
++
++    .btn-action {
++      font-family: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.65rem 1.25rem;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-primary:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    .btn-action:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .feedback-status {
++      margin-block-start: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 4px;
++      font-weight: 500;
++    }
++
++    .feedback-status:empty {
++      display: none;
++    }
++
++    .feedback-status[data-status="success"] {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .feedback-status[data-status="error"] {
++      background-color: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +367,90 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Coffee Feedback</h2>
++      <p class="feedback-intro">Tell us how your latest cup measured up.</p>
++
++      <form id="coffee-feedback-form" action="/feedback" method="POST">
++        <fieldset id="feedback-fieldset" class="feedback-fieldset">
++          <legend>Your Tasting Experience</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full name <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input
++              type="text"
++              id="customer-name"
++              name="customer_name"
++              class="form-control"
++              autocomplete="name"
++              maxlength="100"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="customer-email">Email <span class="required-indicator" aria-hidden="true">*</span></label>
++            <input
++              type="email"
++              id="customer-email"
++              name="customer_email"
++              class="form-control"
++              autocomplete="email"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-selection">Coffee Ordered <span class="required-indicator" aria-hidden="true">*</span></label>
++            <select id="coffee-selection" name="coffee" class="form-control" required>
++              <option value="">Select your drink...</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="pour-over">Single-Origin Pour Over</option>
++              <option value="cappuccino">Artisanal Cappuccino</option>
++              <option value="cortado">Honey Cinnamon Cortado</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-rating">Overall Rating <span class="required-indicator" aria-hidden="true">*</span></label>
++            <star-rating
++              id="coffee-rating"
++              name="rating"
++              max="5"
++              required
++              aria-describedby="rating-hint"
++            ></star-rating>
++            <span id="rating-hint" class="field-hint">Select 1 to 5 stars (required).</span>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Tasting Notes &amp; Comments</label>
++            <textarea
++              id="tasting-notes"
++              name="comments"
++              class="form-control"
++              maxlength="500"
++              aria-describedby="notes-hint"
++            ></textarea>
++            <span id="notes-hint" class="field-hint">Share your thoughts on aroma, flavor, or service (up to 500 characters).</span>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="submit" id="submit-feedback-btn" class="btn-action btn-primary" enterkeyhint="send">Submit Feedback</button>
++          <button type="reset" id="reset-feedback-btn" class="btn-action btn-secondary">Reset Form</button>
++          <button type="button" id="toggle-fieldset-btn" class="btn-action btn-secondary" aria-pressed="false">Disable Fieldset</button>
++        </div>
++
++        <div id="feedback-status" class="feedback-status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +463,349 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    class StarRating extends HTMLElement {
++      static formAssociated = true;
++      static observedAttributes = ['value', 'max', 'required', 'disabled'];
++
++      #internals;
++      #value = '';
++      #disabled = false;
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++        this.#render();
++      }
++
++      connectedCallback() {
++        if (this.hasAttribute('value') && !this.#value) {
++          this.#value = this.getAttribute('value') ?? '';
++        }
++        this.#internals.setFormValue(this.#value);
++        this.#syncUI();
++        this.#validate();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal === newVal) return;
++        if (name === 'value') {
++          this.value = newVal ?? '';
++        } else if (name === 'max') {
++          this.#render();
++          this.#syncUI();
++          this.#validate();
++        } else if (name === 'required') {
++          this.#validate();
++        } else if (name === 'disabled') {
++          this.formDisabledCallback(this.hasAttribute('disabled'));
++        }
++      }
++
++      get value() {
++        return this.#value;
++      }
++
++      set value(v) {
++        const next = v == null ? '' : String(v);
++        if (this.#value === next) {
++          this.#internals.setFormValue(this.#value);
++          this.#validate();
++          return;
++        }
++        this.#value = next;
++        this.#internals.setFormValue(this.#value);
++        this.#syncUI();
++        this.#validate();
++      }
++
++      get max() {
++        return Number(this.getAttribute('max')) || 5;
++      }
++
++      set max(v) {
++        this.setAttribute('max', String(v));
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(on) {
++        this.toggleAttribute('required', !!on);
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++
++      set disabled(on) {
++        this.toggleAttribute('disabled', !!on);
++      }
++
++      get form() {
++        return this.#internals.form;
++      }
++
++      get name() {
++        return this.getAttribute('name') ?? '';
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get validity() {
++        return this.#internals.validity;
++      }
++
++      get validationMessage() {
++        return this.#internals.validationMessage;
++      }
++
++      get willValidate() {
++        return this.#internals.willValidate;
++      }
++
++      checkValidity() {
++        return this.#internals.checkValidity();
++      }
++
++      reportValidity() {
++        return this.#internals.reportValidity();
++      }
++
++      #validate() {
++        if (this.hasAttribute('required') && !this.#value) {
++          const anchor =
++            this.shadowRoot.querySelector('button[tabindex="0"]') ||
++            this.shadowRoot.querySelector('button');
++          this.#internals.setValidity(
++            { valueMissing: true },
++            'Please choose a star rating.',
++            anchor ?? undefined,
++          );
++        } else {
++          this.#internals.setValidity({});
++        }
++      }
++
++      formResetCallback() {
++        this.value = this.getAttribute('value') ?? '';
++      }
++
++      formDisabledCallback(disabled) {
++        this.#disabled = disabled;
++        for (const btn of this.shadowRoot.querySelectorAll('button')) {
++          btn.disabled = disabled;
++        }
++        this.#syncTabOrder();
++      }
++
++      formStateRestoreCallback(state, _mode) {
++        this.value = state ?? '';
++      }
++
++      #selectRating(ratingValue) {
++        if (this.#disabled) return;
++        this.value = String(ratingValue);
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++      }
++
++      #syncTabOrder() {
++        const buttons = Array.from(this.shadowRoot.querySelectorAll('button'));
++        if (!buttons.length) return;
++        const activeVal = Number(this.#value);
++        const focusTargetIndex = activeVal >= 1 && activeVal <= buttons.length ? activeVal - 1 : 0;
++        buttons.forEach((btn, idx) => {
++          if (this.#disabled) {
++            btn.removeAttribute('tabindex');
++          } else {
++            btn.setAttribute('tabindex', idx === focusTargetIndex ? '0' : '-1');
++          }
++        });
++      }
++
++      #syncUI() {
++        const numericValue = Number(this.#value) || 0;
++        const buttons = this.shadowRoot.querySelectorAll('button');
++        for (const btn of buttons) {
++          const starVal = Number(btn.dataset.value);
++          const isFilled = starVal <= numericValue;
++          const isSelected = starVal === numericValue;
++          btn.classList.toggle('filled', isFilled);
++          btn.setAttribute('aria-pressed', String(isSelected));
++          btn.disabled = this.#disabled;
++        }
++        if (numericValue > 0) {
++          this.#internals.states?.add('rated');
++        } else {
++          this.#internals.states?.delete('rated');
++        }
++        const statusEl = this.shadowRoot.querySelector('.rating-readout');
++        if (statusEl) {
++          statusEl.textContent = numericValue > 0 ? `${numericValue} / ${this.max} stars` : 'No rating selected';
++        }
++        this.#syncTabOrder();
++      }
++
++      #render() {
++        const maxStars = this.max;
++        const starsHtml = Array.from({ length: maxStars }, (_, i) => {
++          const val = i + 1;
++          const label = val === 1 ? '1 star' : `${val} stars`;
++          return `<button type="button" part="star" data-value="${val}" aria-label="${label}" aria-pressed="false" tabindex="${i === 0 ? '0' : '-1'}"><span aria-hidden="true">&#9733;</span></button>`;
++        }).join('');
++
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: inline-flex;
++              align-items: center;
++              gap: 0.75rem;
++              --_star-color: var(--star-color, #ffab40);
++              --_star-inactive: var(--star-inactive, #d7ccc8);
++              --_star-focus: var(--star-focus, #4e342e);
++            }
++
++            :host(:disabled) {
++              opacity: 0.55;
++              cursor: not-allowed;
++            }
++
++            .stars {
++              display: inline-flex;
++              gap: 0.25rem;
++            }
++
++            button {
++              font: inherit;
++              color: var(--_star-inactive);
++              background: transparent;
++              border: 2px solid transparent;
++              border-radius: 6px;
++              min-width: 48px;
++              min-height: 48px;
++              padding: 0.25rem;
++              font-size: 1.75rem;
++              line-height: 1;
++              cursor: pointer;
++              display: inline-flex;
++              align-items: center;
++              justify-content: center;
++              transition: transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
++            }
++
++            @media (pointer: coarse) {
++              button {
++                min-width: 52px;
++                min-height: 52px;
++              }
++            }
++
++            button.filled {
++              color: var(--_star-color);
++            }
++
++            button:hover:not(:disabled) {
++              transform: scale(1.1);
++              border-color: var(--_star-color);
++            }
++
++            button:focus-visible {
++              outline: 3px solid var(--_star-focus);
++              outline-offset: 2px;
++            }
++
++            button:disabled {
++              cursor: not-allowed;
++            }
++
++            .rating-readout {
++              font-size: 0.9rem;
++              color: inherit;
++              font-weight: 500;
++            }
++          </style>
++          <div class="stars" part="stars">${starsHtml}</div>
++          <span class="rating-readout" part="readout" aria-live="polite">No rating selected</span>
++        `;
++
++        const container = this.shadowRoot.querySelector('.stars');
++        container.addEventListener('click', (e) => {
++          const btn = e.target.closest('button[data-value]');
++          if (!btn || btn.disabled) return;
++          this.#selectRating(Number(btn.dataset.value));
++        });
++
++        container.addEventListener('keydown', (e) => {
++          if (this.#disabled) return;
++          const buttons = Array.from(this.shadowRoot.querySelectorAll('button'));
++          const currentBtn = e.target.closest('button[data-value]');
++          const currentIndex = currentBtn ? buttons.indexOf(currentBtn) : 0;
++          const currentVal = Number(this.#value);
++          let nextIndex = -1;
++
++          if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
++            e.preventDefault();
++            nextIndex = currentVal > 0 ? Math.min(buttons.length - 1, currentVal) : currentIndex;
++          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
++            e.preventDefault();
++            nextIndex = currentVal > 0 ? Math.max(0, currentVal - 2) : currentIndex;
++          } else if (e.key === 'Home') {
++            e.preventDefault();
++            nextIndex = 0;
++          } else if (e.key === 'End') {
++            e.preventDefault();
++            nextIndex = buttons.length - 1;
++          }
++
++          if (nextIndex >= 0 && buttons[nextIndex]) {
++            this.#selectRating(nextIndex + 1);
++            buttons[nextIndex].focus();
++          }
++        });
++      }
++    }
++
++    customElements.define('star-rating', StarRating);
++
++    const form = document.getElementById('coffee-feedback-form');
++    const fieldset = document.getElementById('feedback-fieldset');
++    const toggleBtn = document.getElementById('toggle-fieldset-btn');
++    const statusBox = document.getElementById('feedback-status');
++
++    toggleBtn?.addEventListener('click', () => {
++      const nextDisabled = !fieldset.disabled;
++      fieldset.disabled = nextDisabled;
++      toggleBtn.setAttribute('aria-pressed', String(nextDisabled));
++      toggleBtn.textContent = nextDisabled ? 'Enable Fieldset' : 'Disable Fieldset';
++    });
++
++    form?.addEventListener('reset', () => {
++      if (statusBox) {
++        statusBox.textContent = '';
++        delete statusBox.dataset.status;
++      }
++    });
++
++    form?.addEventListener('submit', (e) => {
++      e.preventDefault();
++      if (!form.reportValidity()) return;
++
++      const data = new FormData(form);
++      const name = data.get('customer_name');
++      const coffee = data.get('coffee');
++      const rating = data.get('rating');
++
++      if (statusBox) {
++        statusBox.dataset.status = 'success';
++        statusBox.textContent = `Thank you, ${name}! Your ${rating}-star review for ${coffee} has been recorded.`;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,48 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,43 @@
++# The Daily Grind
++
++Run `pnpm install` then `pnpm start`. After editing diagnostics, run `pnpm build`
++and commit the generated `assets/inp-diagnostics.js` with the source. The bundle
++is included so the static page needs no CDN or runtime bundler.
++Run `pnpm test` for diagnostic serialization and transport checks.
++
++## INP diagnostics
++
++The page uses `web-vitals/attribution` to measure INP. It emits an
++`inp-diagnostic` event on `window` when the INP candidate changes and when the
++library finalizes a changed measurement as the page becomes hidden.
++Needs-improvement and poor results also produce console warnings.
++No interaction means there may be no INP report.
++
++For field collection, set `data-report-url` on the script in `index.html` to an
++existing analytics ingestion endpoint. This repository has no analytics server;
++the empty default keeps reports local. The endpoint must accept POST bodies
++containing JSON with a `text/plain` content type. Delivery uses `sendBeacon`,
++falling back to `fetch` with `keepalive`; delivery is best effort. Cross-origin
++endpoints must permit this origin for the fetch fallback.
++
++Reports contain the metric ID, value and rating, all three delay phases, the
++interaction target and type, document load state, and available script/layout/
++paint attribution. Store the latest report per metric ID rather than summing
++values: updates revise the page's INP, not separate interactions.
++
++Use `largestDelayPhase` to start investigating:
++
++- `inputDelay`: inspect work occupying the main thread before handlers run.
++- `processingDuration`: inspect interaction event handlers.
++- `presentationDelay`: inspect rendering, layout, and work before the next paint.
++
++`longestScript` identifies an overlapping script with its source location,
++function, forced-layout time, and overlapping delay phase when available.
++These are clues, not proof that the script caused the full delay.
++Browsers without Long Animation Frames still report INP and its phases, with
++`longestScript: null`. Browsers without Event Timing skip instrumentation.
++
++Targets use static `data-inp-target` labels, falling back to element tag names.
++Do not put visitor data in these labels. Reports exclude input values, DOM text,
++page URLs, and script URL queries/fragments. Script paths and function names
++remain available to locate problematic code.

@@ -1,0 +1,28 @@
+diff --git a/index.html b/index.html
+index 66c9173..3d4b3fa 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Optional enhancements; the rules above provide the baseline styling.
++       @media is universal, so this also detects support for at-rule() itself.
++       Use another at-rule name here to gate styles on that rule's support. */
++    @supports at-rule(@media) {
++      nav {
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      }
++
++      .hero h1 {
++        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
++      }
++
++      .card {
++        border-top: 3px solid var(--accent);
++      }
++    }
+   </style>
+ </head>
+ 

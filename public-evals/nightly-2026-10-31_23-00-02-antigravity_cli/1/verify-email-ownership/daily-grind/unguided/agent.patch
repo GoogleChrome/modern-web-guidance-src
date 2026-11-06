@@ -1,0 +1,1005 @@
+diff --git a/index.html b/index.html
+index 66c9173..cb47c6b 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --success-bg: #e8f5e9;
++      --success-text: #2e7d32;
++      --error-bg: #ffebee;
++      --error-text: #c62828;
+     }
+ 
+     * {
+@@ -93,6 +97,23 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -129,12 +150,205 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Rewards Sign-Up Section */
++    .rewards-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px rgba(78, 52, 46, 0.12);
++      overflow: hidden;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      border: 1px solid var(--secondary);
++    }
++
++    @media (max-width: 768px) {
++      .rewards-section {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .rewards-promo {
++      background: linear-gradient(135deg, rgba(78, 52, 46, 0.92), rgba(62, 39, 35, 0.95)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 40px 35px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .rewards-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 16px;
++    }
++
++    .rewards-promo h2 {
++      font-size: 2rem;
++      margin-bottom: 12px;
++      line-height: 1.25;
++    }
++
++    .rewards-promo p {
++      color: var(--secondary);
++      margin-bottom: 24px;
++      font-size: 0.98rem;
++    }
++
++    .perks-list {
++      list-style: none;
++    }
++
++    .perks-list li {
++      margin-bottom: 12px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.95rem;
++    }
++
++    .perks-list li span.perk-icon {
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      width: 26px;
++      height: 26px;
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: bold;
++      flex-shrink: 0;
++    }
++
++    .rewards-form-wrapper {
++      padding: 40px 35px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .rewards-form-wrapper h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .rewards-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 22px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="tel"],
++    .form-group select {
++      width: 100%;
++      padding: 11px 14px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: #fff;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .evp-hint {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 6px;
++      font-size: 0.8rem;
++      color: #5d4037;
++    }
++
++    .evp-hint-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--accent);
++      display: inline-block;
++      flex-shrink: 0;
++    }
++
++    .evp-hint-dot.verified {
++      background: var(--success-text);
++    }
++
++    .submit-btn {
++      width: 100%;
++      padding: 12px 20px;
++      font-weight: 600;
++      margin-top: 6px;
++    }
++
++    .submit-btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .status-banner {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      display: none;
++    }
++
++    .status-banner.success {
++      display: block;
++      background: var(--success-bg);
++      color: var(--success-text);
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-banner.error {
++      display: block;
++      background: var(--error-bg);
++      color: var(--error-text);
++      border: 1px solid #ef9a9a;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -162,7 +376,7 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards-signup">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,7 +385,10 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#rewards-signup" class="btn btn-accent">Join Rewards</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +412,79 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="rewards-signup" class="rewards-section" aria-labelledby="rewards-heading">
++      <div class="rewards-promo">
++        <span class="rewards-badge">Daily Grind Rewards</span>
++        <h2 id="rewards-heading">Sip, Earn &amp; Enjoy Free Coffee</h2>
++        <p>Sign up in seconds with instant browser-assisted email verification—no waiting for one-time passcodes or magic links in your inbox.</p>
++        <ul class="perks-list">
++          <li><span class="perk-icon">✓</span> 100 bonus points immediately upon verified sign-up</li>
++          <li><span class="perk-icon">✓</span> Free handcrafted drink on your birthday</li>
++          <li><span class="perk-icon">✓</span> Exclusive early access to seasonal single-origin roasts</li>
++        </ul>
++      </div>
++
++      <div class="rewards-form-wrapper">
++        <h3>Create Your Rewards Account</h3>
++        <p class="rewards-subtitle">Select your email with browser autofill to verify ownership automatically.</p>
++
++        <form id="rewards-signup-form" action="/api/rewards/signup" method="POST">
++          <div class="form-group">
++            <label for="rewards-name">Full Name</label>
++            <input
++              type="text"
++              id="rewards-name"
++              name="name"
++              autocomplete="name"
++              placeholder="Alex Rivera"
++              required
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="rewards-email">Email Address</label>
++            <input
++              type="email"
++              id="rewards-email"
++              name="email"
++              autocomplete="email"
++              placeholder="alex@example.com"
++              required
++            >
++            <div class="evp-hint" id="evp-status-hint">
++              <span class="evp-hint-dot" id="evp-status-dot"></span>
++              <span id="evp-status-text">Instant browser-assisted verification enabled (no OTP or magic link needed)</span>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="rewards-drink">Favorite Coffee Order (Optional)</label>
++            <select id="rewards-drink" name="favoriteDrink">
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++              <option value="pour-over">Single-Origin Pour Over</option>
++            </select>
++          </div>
++
++          <!-- Browser-Assisted Email Verification Protocol (EVP) Hidden Input -->
++          <input
++            type="hidden"
++            id="evt-token-input"
++            name="evt_token"
++            autocomplete="email-verification-token"
++            nonce="__SERVER_NONCE__"
++          >
++
++          <button type="submit" class="btn submit-btn" id="rewards-submit-btn">
++            Join Daily Grind Rewards
++          </button>
++
++          <div id="rewards-status-banner" class="status-banner" role="status" aria-live="polite"></div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +497,119 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('rewards-signup-form');
++      const emailInput = document.getElementById('rewards-email');
++      const tokenInput = document.getElementById('evt-token-input');
++      const submitBtn = document.getElementById('rewards-submit-btn');
++      const statusBanner = document.getElementById('rewards-status-banner');
++      const statusDot = document.getElementById('evp-status-dot');
++      const statusText = document.getElementById('evp-status-text');
++
++      // Ensure a fresh server-generated nonce is present on the hidden input
++      async function ensureNonce() {
++        const currentNonce = tokenInput.getAttribute('nonce');
++        if (!currentNonce || currentNonce === '__SERVER_NONCE__') {
++          try {
++            const res = await fetch('/api/rewards/nonce', { credentials: 'same-origin' });
++            if (res.ok) {
++              const data = await res.json();
++              if (data.nonce) {
++                tokenInput.setAttribute('nonce', data.nonce);
++                tokenInput.nonce = data.nonce;
++              }
++            }
++          } catch (_) {
++            // Fallback if offline/static
++          }
++        }
++      }
++
++      ensureNonce();
++
++      // Support declarative EmailVerifiedEvent if fired by the browser
++      emailInput.addEventListener('emailverified', (e) => {
++        const token = e.presentationToken || e.verificationToken || (e.detail && e.detail.token);
++        if (token) {
++          tokenInput.value = token;
++          statusDot.classList.add('verified');
++          statusText.textContent = 'Email ownership token ready from browser';
++        }
++      });
++
++      // Observe value changes on the email-verification-token input
++      tokenInput.addEventListener('change', () => {
++        if (tokenInput.value) {
++          statusDot.classList.add('verified');
++          statusText.textContent = 'Email ownership token bound by browser';
++        }
++      });
++
++      form.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        statusBanner.className = 'status-banner';
++        statusBanner.textContent = '';
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Verifying Email Ownership...';
++
++        const payload = {
++          name: document.getElementById('rewards-name').value.trim(),
++          email: emailInput.value.trim(),
++          favoriteDrink: document.getElementById('rewards-drink').value,
++          evt_token: tokenInput.value,
++          nonce: tokenInput.getAttribute('nonce') || tokenInput.nonce || '',
++        };
++
++        try {
++          const response = await fetch(form.action, {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++              'Accept': 'application/json',
++            },
++            credentials: 'same-origin',
++            body: JSON.stringify(payload),
++          });
++
++          const result = await response.json();
++
++          if (response.ok && result.verified) {
++            statusDot.classList.add('verified');
++            statusText.textContent = 'Email ownership cryptographically verified!';
++            statusBanner.className = 'status-banner success';
++            statusBanner.innerHTML =
++              '<strong>Welcome to Daily Grind Rewards, ' +
++              escapeHtml(result.account.name) +
++              '!</strong><br>Your email (<code>' +
++              escapeHtml(result.account.email) +
++              '</code>) was verified immediately without an OTP or magic link. You have <strong>' +
++              escapeHtml(String(result.account.points)) +
++              ' points</strong> ready to use.';
++          } else {
++            statusBanner.className = 'status-banner error';
++            statusBanner.textContent =
++              result.error || 'Could not verify email ownership token. Please use a browser supporting the Email Verification Protocol.';
++            // Refresh nonce for retry
++            tokenInput.removeAttribute('nonce');
++            await ensureNonce();
++          }
++        } catch (err) {
++          statusBanner.className = 'status-banner error';
++          statusBanner.textContent = 'Network error while verifying your rewards account. Please try again.';
++        } finally {
++          submitBtn.disabled = false;
++          submitBtn.textContent = 'Join Daily Grind Rewards';
++        }
++      });
++
++      function escapeHtml(str) {
++        const div = document.createElement('div');
++        div.textContent = str;
++        return div.innerHTML;
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..62316d1 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,14 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "jose": "^6.2.14"
+   }
+ }
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..a8963ac
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,513 @@
++import http from "node:http";
++import fs from "node:fs";
++import path from "node:path";
++import { randomBytes, createHash } from "node:crypto";
++import { resolveTxt } from "node:dns/promises";
++import { fileURLToPath } from "node:url";
++import {
++  createRemoteJWKSet,
++  decodeJwt,
++  decodeProtectedHeader,
++  importJWK,
++  jwtVerify,
++} from "jose";
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++
++const PORT = process.env.PORT || 11222;
++
++// Store valid nonces and registered accounts in memory
++const validNonces = new Set();
++const sessions = new Map();
++const registeredAccounts = new Map();
++
++function generateNonce() {
++  const nonce = randomBytes(16).toString("base64url");
++  validNonces.add(nonce);
++  return nonce;
++}
++
++function parseCookies(cookieHeader) {
++  const cookies = {};
++  if (!cookieHeader) return cookies;
++  for (const part of cookieHeader.split(";")) {
++    const [k, ...v] = part.trim().split("=");
++    if (k) {
++      cookies[k.trim()] = decodeURIComponent(v.join("=").trim());
++    }
++  }
++  return cookies;
++}
++
++/**
++ * Verifies an Email Verification Protocol (EVP) token (<EVT>~<KB-JWT>)
++ * according to the WICG Email Verification API / draft-hardt-email-verification spec.
++ */
++export async function verifyEmailVerificationToken({
++  token,
++  submittedEmail,
++  expectedNonce,
++  expectedOrigin,
++}) {
++  if (!token || typeof token !== "string") {
++    return { verified: false, error: "Missing email verification token." };
++  }
++  if (!submittedEmail || typeof submittedEmail !== "string") {
++    return { verified: false, error: "Missing email address." };
++  }
++
++  // 1. Parse the token (<EVT>~<KB-JWT>)
++  const [evt, kb, ...rest] = token.split("~");
++  if (!evt || !kb || rest.length > 0) {
++    return { verified: false, error: "Malformed email verification token format." };
++  }
++
++  let evtHeader, kbHeader, evtClaims, kbClaims;
++  try {
++    evtHeader = decodeProtectedHeader(evt);
++    kbHeader = decodeProtectedHeader(kb);
++    evtClaims = decodeJwt(evt);
++    kbClaims = decodeJwt(kb);
++  } catch (err) {
++    return { verified: false, error: "Failed to decode JWT headers or claims." };
++  }
++
++  // Check token types
++  if (evtHeader.typ !== "evt+jwt" || kbHeader.typ !== "kb+jwt") {
++    return { verified: false, error: "Invalid token type headers (expected evt+jwt and kb+jwt)." };
++  }
++
++  if (!evtHeader.alg || !kbHeader.alg) {
++    return { verified: false, error: "Missing algorithm in JWT header." };
++  }
++
++  // 2. Validate expected values and claims
++  if (evtClaims.email_verified !== true) {
++    return { verified: false, error: "Email is not marked as verified in token." };
++  }
++
++  if (
++    typeof evtClaims.email !== "string" ||
++    evtClaims.email.toLowerCase() !== submittedEmail.trim().toLowerCase()
++  ) {
++    return { verified: false, error: "Token email does not match submitted email address." };
++  }
++
++  // Validate Nonce
++  if (!kbClaims.nonce || typeof kbClaims.nonce !== "string") {
++    return { verified: false, error: "Missing nonce in Key Binding JWT." };
++  }
++  if (expectedNonce) {
++    if (kbClaims.nonce !== expectedNonce) {
++      return { verified: false, error: "Nonce mismatch." };
++    }
++  } else if (validNonces.size > 0 && !validNonces.has(kbClaims.nonce)) {
++    return { verified: false, error: "Invalid or expired nonce." };
++  }
++
++  // Validate Audience (Origin)
++  if (!kbClaims.aud) {
++    return { verified: false, error: "Missing aud claim in Key Binding JWT." };
++  }
++  if (expectedOrigin) {
++    const audList = Array.isArray(kbClaims.aud) ? kbClaims.aud : [kbClaims.aud];
++    const normalizedExpected = expectedOrigin.replace(/\/$/, "").toLowerCase();
++    const audMatches = audList.some(
++      (a) => typeof a === "string" && a.replace(/\/$/, "").toLowerCase() === normalizedExpected
++    );
++    if (!audMatches) {
++      return { verified: false, error: "Audience (origin) mismatch in Key Binding JWT." };
++    }
++  }
++
++  // Validate timestamps (iat / exp)
++  const nowSec = Math.floor(Date.now() / 1000);
++  const maxAgeSec = 300; // 5 minutes window
++  const clockSkewSec = 60;
++
++  if (typeof evtClaims.iat !== "number" || typeof kbClaims.iat !== "number") {
++    return { verified: false, error: "Missing iat timestamp claim." };
++  }
++  if (
++    evtClaims.iat > nowSec + clockSkewSec ||
++    nowSec - evtClaims.iat > maxAgeSec + clockSkewSec
++  ) {
++    return { verified: false, error: "EVT iat timestamp is outside acceptable window." };
++  }
++  if (
++    kbClaims.iat > nowSec + clockSkewSec ||
++    nowSec - kbClaims.iat > maxAgeSec + clockSkewSec
++  ) {
++    return { verified: false, error: "KB-JWT iat timestamp is outside acceptable window." };
++  }
++
++  // 3. Validate Key Binding (sd_hash & KB-JWT signature)
++  const expectedSdHash = createHash("sha256").update(evt + "~").digest("base64url");
++  if (kbClaims.sd_hash !== expectedSdHash) {
++    return { verified: false, error: "Key Binding sd_hash mismatch." };
++  }
++
++  if (!evtClaims.cnf || !evtClaims.cnf.jwk) {
++    return { verified: false, error: "Missing cnf.jwk holder public key in EVT." };
++  }
++
++  try {
++    const holderKey = await importJWK(evtClaims.cnf.jwk, kbHeader.alg);
++    await jwtVerify(kb, holderKey, {
++      typ: "kb+jwt",
++      clockTolerance: clockSkewSec,
++    });
++  } catch (err) {
++    return { verified: false, error: `Key Binding signature verification failed: ${err.message}` };
++  }
++
++  // 4. Validate DNS Delegation Record (_email-verification.<domain>)
++  const domain = submittedEmail.trim().split("@").pop()?.toLowerCase();
++  if (!domain) {
++    return { verified: false, error: "Invalid email domain." };
++  }
++
++  let issuer;
++  try {
++    const txtRecords = await resolveTxt(`_email-verification.${domain}`);
++    const records = txtRecords
++      .map((chunks) => (Array.isArray(chunks) ? chunks.join("") : String(chunks)).trim())
++      .filter((r) => r.startsWith("iss="));
++
++    if (records.length !== 1) {
++      return {
++        verified: false,
++        error: "DNS delegation lookup failed: expected a single iss= TXT record.",
++      };
++    }
++    issuer = records[0].slice(4).trim();
++  } catch (err) {
++    return {
++      verified: false,
++      error: `DNS delegation lookup failed for _email-verification.${domain}: ${err.message}`,
++    };
++  }
++
++  if (!issuer || evtClaims.iss !== issuer) {
++    return {
++      verified: false,
++      error: `Token issuer (${evtClaims.iss}) does not match authoritative DNS issuer (${issuer}).`,
++    };
++  }
++
++  // 5. Discover Issuer Metadata & Verify EVT Signature
++  try {
++    const metaUrl = issuer.startsWith("http://") || issuer.startsWith("https://")
++      ? `${issuer.replace(/\/$/, "")}/.well-known/email-verification`
++      : `https://${issuer}/.well-known/email-verification`;
++
++    const metaRes = await fetch(metaUrl);
++    if (!metaRes.ok) {
++      return {
++        verified: false,
++        error: `Failed to fetch issuer metadata from ${metaUrl} (HTTP ${metaRes.status}).`,
++      };
++    }
++    const meta = await metaRes.json();
++    if (!meta || !meta.jwks_uri) {
++      return { verified: false, error: "Issuer metadata is missing jwks_uri." };
++    }
++
++    if (
++      Array.isArray(meta.signing_alg_values_supported) &&
++      !meta.signing_alg_values_supported.includes(evtHeader.alg)
++    ) {
++      return {
++        verified: false,
++        error: `Algorithm ${evtHeader.alg} is not supported by issuer.`,
++      };
++    }
++
++    const jwks = createRemoteJWKSet(new URL(meta.jwks_uri));
++    await jwtVerify(evt, jwks, {
++      issuer: evtClaims.iss,
++      algorithms: Array.isArray(meta.signing_alg_values_supported)
++        ? meta.signing_alg_values_supported
++        : undefined,
++      typ: "evt+jwt",
++      clockTolerance: clockSkewSec,
++    });
++  } catch (err) {
++    return { verified: false, error: `EVT signature verification failed: ${err.message}` };
++  }
++
++  // Consume nonce to prevent replay
++  if (kbClaims.nonce) {
++    validNonces.delete(kbClaims.nonce);
++  }
++
++  return {
++    verified: true,
++    email: evtClaims.email,
++    issuer: evtClaims.iss,
++    isPrivateEmail: Boolean(evtClaims.is_private_email),
++  };
++}
++
++function readRequestBody(req) {
++  return new Promise((resolve, reject) => {
++    const chunks = [];
++    req.on("data", (chunk) => chunks.push(chunk));
++    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
++    req.on("error", reject);
++  });
++}
++
++function parseFormOrJson(body, contentType = "") {
++  if (contentType.includes("application/json")) {
++    try {
++      return JSON.parse(body);
++    } catch {
++      return {};
++    }
++  }
++  if (contentType.includes("application/x-www-form-urlencoded")) {
++    const params = new URLSearchParams(body);
++    return Object.fromEntries(params.entries());
++  }
++  // Try JSON first, fallback to URLSearchParams
++  try {
++    return JSON.parse(body);
++  } catch {
++    const params = new URLSearchParams(body);
++    return Object.fromEntries(params.entries());
++  }
++}
++
++function getExpectedOrigin(req) {
++  if (req.headers.origin) {
++    return req.headers.origin;
++  }
++  const proto = req.headers["x-forwarded-proto"] || "http";
++  const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${PORT}`;
++  return `${proto}://${host}`;
++}
++
++async function handleSignupVerification(req, res) {
++  const rawBody = await readRequestBody(req);
++  const contentType = req.headers["content-type"] || "";
++  const data = parseFormOrJson(rawBody, contentType);
++  const cookies = parseCookies(req.headers.cookie);
++
++  const email = (
++    data.email ||
++    data["email-address"] ||
++    data.emailAddress ||
++    ""
++  ).trim();
++
++  const name = (
++    data.name ||
++    data.fullName ||
++    data["full-name"] ||
++    [data.firstName, data.lastName].filter(Boolean).join(" ") ||
++    ""
++  ).trim();
++
++  const token =
++    data.evt_token ||
++    data.evt ||
++    data.token ||
++    data["email-verification-token"] ||
++    data.verificationToken ||
++    data.boundToken ||
++    "";
++
++  const sessionNonce = cookies.evp_nonce || data.nonce || undefined;
++  const expectedOrigin = getExpectedOrigin(req);
++
++  const verificationResult = await verifyEmailVerificationToken({
++    token,
++    submittedEmail: email,
++    expectedNonce: sessionNonce && validNonces.has(sessionNonce) ? sessionNonce : undefined,
++    expectedOrigin,
++  });
++
++  const wantsHtml =
++    (req.headers.accept || "").includes("text/html") &&
++    !contentType.includes("application/json");
++
++  if (!verificationResult.verified) {
++    if (wantsHtml) {
++      res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
++      res.end(`<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Verification Failed | The Daily Grind Rewards</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #fafafa; color: #3e2723; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
++    .box { background: white; padding: 32px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 480px; text-align: center; }
++    h1 { color: #c62828; margin-bottom: 12px; }
++    a { display: inline-block; margin-top: 20px; background: #4e342e; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; }
++  </style>
++</head>
++<body>
++  <div class="box">
++    <h1>Email Verification Failed</h1>
++    <p>${verificationResult.error}</p>
++    <a href="/">Return to Homepage</a>
++  </div>
++</body>
++</html>`);
++      return;
++    }
++
++    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
++    res.end(
++      JSON.stringify({
++        ok: false,
++        verified: false,
++        error: verificationResult.error,
++      })
++    );
++    return;
++  }
++
++  const account = {
++    name: name || email.split("@")[0],
++    email: verificationResult.email,
++    issuer: verificationResult.issuer,
++    points: 100, // Welcome bonus points
++    joinedAt: new Date().toISOString(),
++  };
++  registeredAccounts.set(verificationResult.email.toLowerCase(), account);
++
++  if (wantsHtml) {
++    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
++    res.end(`<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Welcome to Rewards! | The Daily Grind</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #fafafa; color: #3e2723; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
++    .box { background: white; padding: 32px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 480px; text-align: center; }
++    h1 { color: #2e7d32; margin-bottom: 12px; }
++    .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 6px 12px; border-radius: 20px; font-weight: 600; margin: 12px 0; }
++    a { display: inline-block; margin-top: 20px; background: #4e342e; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; }
++  </style>
++</head>
++<body>
++  <div class="box">
++    <h1>Welcome to Daily Grind Rewards!</h1>
++    <div class="badge">✓ Email Ownership Verified (${account.email})</div>
++    <p>Hi <strong>${account.name}</strong>, your rewards account is active and credited with <strong>${account.points} welcome points</strong>!</p>
++    <a href="/">Back to Homepage</a>
++  </div>
++</body>
++</html>`);
++    return;
++  }
++
++  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
++  res.end(
++    JSON.stringify({
++      ok: true,
++      verified: true,
++      message: "Rewards account created with browser-assisted email verification.",
++      account,
++    })
++  );
++}
++
++const MIME_TYPES = {
++  ".html": "text/html; charset=utf-8",
++  ".css": "text/css; charset=utf-8",
++  ".js": "application/javascript; charset=utf-8",
++  ".mjs": "application/javascript; charset=utf-8",
++  ".json": "application/json; charset=utf-8",
++  ".png": "image/png",
++  ".jpg": "image/jpeg",
++  ".jpeg": "image/jpeg",
++  ".svg": "image/svg+xml",
++  ".ico": "image/x-icon",
++};
++
++export function createAppServer() {
++  return http.createServer(async (req, res) => {
++    try {
++      const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
++      const pathname = url.pathname;
++
++      // Endpoint to fetch a fresh server-generated nonce
++      if (req.method === "GET" && (pathname === "/api/nonce" || pathname === "/api/rewards/nonce")) {
++        const nonce = generateNonce();
++        res.writeHead(200, {
++          "Content-Type": "application/json; charset=utf-8",
++          "Set-Cookie": `evp_nonce=${encodeURIComponent(nonce)}; Path=/; HttpOnly; SameSite=Lax`,
++          "Cache-Control": "no-store",
++        });
++        res.end(JSON.stringify({ nonce }));
++        return;
++      }
++
++      // Server verification endpoints for rewards sign-up
++      if (
++        req.method === "POST" &&
++        [
++          "/api/rewards/signup",
++          "/api/rewards/verify",
++          "/api/verify-email",
++          "/rewards/signup",
++          "/signup",
++          "/verify",
++        ].includes(pathname)
++      ) {
++        await handleSignupVerification(req, res);
++        return;
++      }
++
++      // Serve index.html with injected server-generated nonce
++      if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
++        const indexPath = path.join(__dirname, "index.html");
++        let html = fs.readFileSync(indexPath, "utf8");
++        const nonce = generateNonce();
++        html = html.replace(/__SERVER_NONCE__/g, nonce);
++        res.writeHead(200, {
++          "Content-Type": "text/html; charset=utf-8",
++          "Set-Cookie": `evp_nonce=${encodeURIComponent(nonce)}; Path=/; HttpOnly; SameSite=Lax`,
++          "Cache-Control": "no-store",
++        });
++        res.end(html);
++        return;
++      }
++
++      // Static file fallback
++      if (req.method === "GET" || req.method === "HEAD") {
++        const safePath = path.normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, "");
++        const filePath = path.join(__dirname, safePath);
++        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
++          const ext = path.extname(filePath).toLowerCase();
++          const contentType = MIME_TYPES[ext] || "application/octet-stream";
++          res.writeHead(200, { "Content-Type": contentType });
++          if (req.method === "HEAD") {
++            res.end();
++          } else {
++            fs.createReadStream(filePath).pipe(res);
++          }
++          return;
++        }
++      }
++
++      res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
++      res.end(JSON.stringify({ error: "Not Found" }));
++    } catch (err) {
++      res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
++      res.end(JSON.stringify({ error: "Internal Server Error", details: err.message }));
++    }
++  });
++}
++
++if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
++  const server = createAppServer();
++  server.listen(PORT, () => {
++    console.log(`The Daily Grind server listening on http://localhost:${PORT}`);
++  });
++}

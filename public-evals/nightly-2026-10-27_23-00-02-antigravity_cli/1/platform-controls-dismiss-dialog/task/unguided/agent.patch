@@ -1,0 +1,323 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,113 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Modal Dialog */
++    dialog.coffee-modal {
++      margin: auto;
++      border: none;
++      border-radius: 12px;
++      max-width: 520px;
++      width: calc(100% - 32px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      padding: 0;
++      overflow: hidden;
++    }
++
++    dialog.coffee-modal::backdrop {
++      background: rgba(62, 39, 35, 0.65);
++      backdrop-filter: blur(3px);
++    }
++
++    .modal-image {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .modal-body {
++      padding: 24px;
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 12px;
++    }
++
++    .modal-header h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++    }
++
++    .modal-price {
++      font-weight: bold;
++      font-size: 1.2rem;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 10px;
++      border-radius: 16px;
++      white-space: nowrap;
++    }
++
++    .modal-description {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .modal-meta {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .modal-meta p + p {
++      margin-top: 6px;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,30 +273,52 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn details-trigger" data-coffee="maple-oat-latte" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn details-trigger" data-coffee="dark-roast-espresso" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn details-trigger" data-coffee="cold-brew" aria-haspopup="dialog" aria-controls="coffee-details-modal">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-details-modal" class="coffee-modal" closedby="any" aria-labelledby="modal-title" aria-describedby="modal-description">
++    <img id="modal-image" class="modal-image" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Maple Oat Latte">
++    <div class="modal-body">
++      <div class="modal-header">
++        <h3 id="modal-title">Maple Oat Latte</h3>
++        <span id="modal-price" class="modal-price">$5.75</span>
++      </div>
++      <p id="modal-description" class="modal-description">
++        Velvety steamed barista-grade oat milk blended with our signature double-shot espresso and pure Grade-A Vermont amber maple syrup, finished with a light dusting of cinnamon.
++      </p>
++      <div class="modal-meta">
++        <p><strong>Tasting Notes:</strong> <span id="modal-notes">Toasted oats, warm maple, subtle cinnamon spice</span></p>
++        <p><strong>Origin &amp; Roast:</strong> <span id="modal-roast">Medium-Dark Espresso Blend (Colombia &amp; Ethiopia)</span></p>
++        <p><strong>Dietary Info:</strong> <span id="modal-dietary">100% Plant-Based / Dairy-Free (190 kcal, 12oz)</span></p>
++      </div>
++      <form method="dialog" class="modal-actions">
++        <button type="submit" class="btn btn-secondary" aria-label="Close details dialog">Close</button>
++        <a id="modal-order-link" href="/order-online?item=maple-oat-latte" class="btn">Order This Drink</a>
++      </form>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +327,147 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const COFFEE_DATA = {
++        'maple-oat-latte': {
++          title: 'Maple Oat Latte',
++          price: '$5.75',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Warm Maple Oat Latte with latte art in a ceramic cup',
++          description: 'Velvety steamed barista-grade oat milk blended with our signature double-shot espresso and pure Grade-A Vermont amber maple syrup, finished with a light dusting of cinnamon.',
++          notes: 'Toasted oats, warm maple, subtle cinnamon spice',
++          roast: 'Medium-Dark Espresso Blend (Colombia & Ethiopia)',
++          dietary: '100% Plant-Based / Dairy-Free (190 kcal, 12oz)',
++          orderUrl: '/order-online?item=maple-oat-latte'
++        },
++        'dark-roast-espresso': {
++          title: 'Dark Roast Espresso',
++          price: '$3.50',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Rich Dark Roast Espresso shot with thick golden crema',
++          description: 'Full-bodied and intensely aromatic, our signature dark roast espresso is slow-roasted in small batches to bring out deep caramelized sugars and a lingering, velvety crema.',
++          notes: 'Bittersweet dark chocolate, roasted walnut, smoky cedar',
++          roast: 'Dark Roast Single-Origin (Sumatra Mandheling)',
++          dietary: 'Vegan / Gluten-Free (5 kcal, double shot)',
++          orderUrl: '/order-online?item=dark-roast-espresso'
++        },
++        'cold-brew': {
++          title: 'Cold Brew',
++          price: '$4.75',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80',
++          imageAlt: 'Chilled glass of artisanal Cold Brew coffee poured over ice',
++          description: 'Coarsely ground specialty beans steeped in filtered cold water for 18 hours, yielding an ultra-smooth, naturally sweet coffee concentrate with low acidity served over crystal-clear ice.',
++          notes: 'Molasses, smooth cocoa nibs, crisp caramel finish',
++          roast: 'Medium Roast Artisanal Blend (Guatemala & Brazil)',
++          dietary: 'Unsweetened / Dairy-Free (10 kcal, 16oz)',
++          orderUrl: '/order-online?item=cold-brew'
++        }
++      };
++
++      const modal = document.getElementById('coffee-details-modal');
++      const modalTitle = document.getElementById('modal-title');
++      const modalPrice = document.getElementById('modal-price');
++      const modalImage = document.getElementById('modal-image');
++      const modalDescription = document.getElementById('modal-description');
++      const modalNotes = document.getElementById('modal-notes');
++      const modalRoast = document.getElementById('modal-roast');
++      const modalDietary = document.getElementById('modal-dietary');
++      const modalOrderLink = document.getElementById('modal-order-link');
++      const triggers = document.querySelectorAll('.details-trigger');
++
++      let lastFocusedTrigger = null;
++      let closeWatcher = null;
++      let pushedHistoryState = false;
++
++      function cleanupCloseWatcher() {
++        if (closeWatcher) {
++          const watcher = closeWatcher;
++          closeWatcher = null;
++          watcher.destroy();
++        }
++      }
++
++      function populateModal(coffeeKey) {
++        const item = COFFEE_DATA[coffeeKey];
++        if (!item) return;
++
++        modalTitle.textContent = item.title;
++        modalPrice.textContent = item.price;
++        modalImage.src = item.image;
++        modalImage.alt = item.imageAlt;
++        modalDescription.textContent = item.description;
++        modalNotes.textContent = item.notes;
++        modalRoast.textContent = item.roast;
++        modalDietary.textContent = item.dietary;
++        modalOrderLink.href = item.orderUrl;
++      }
++
++      function openModal(coffeeKey, triggerElement) {
++        populateModal(coffeeKey);
++        lastFocusedTrigger = triggerElement || document.activeElement;
++
++        if (!modal.open) {
++          if (typeof modal.showModal === 'function') {
++            modal.showModal();
++          } else {
++            modal.setAttribute('open', '');
++          }
++        }
++
++        cleanupCloseWatcher();
++        if ('CloseWatcher' in window) {
++          closeWatcher = new window.CloseWatcher();
++          closeWatcher.onclose = function () {
++            closeWatcher = null;
++            if (modal.open) {
++              modal.close();
++            }
++          };
++        } else if (window.history && typeof window.history.pushState === 'function') {
++          window.history.pushState({ coffeeModalOpen: true, coffeeKey: coffeeKey }, '');
++          pushedHistoryState = true;
++        }
++      }
++
++      triggers.forEach(function (button) {
++        button.addEventListener('click', function () {
++          openModal(button.getAttribute('data-coffee'), button);
++        });
++      });
++
++      // Fallback light-dismiss when clicking the dialog backdrop directly
++      modal.addEventListener('click', function (event) {
++        if (event.target === modal) {
++          modal.close();
++        }
++      });
++
++      modal.addEventListener('close', function () {
++        cleanupCloseWatcher();
++        if (pushedHistoryState) {
++          pushedHistoryState = false;
++          if (window.history.state && window.history.state.coffeeModalOpen) {
++            window.history.back();
++          }
++        }
++        if (lastFocusedTrigger && typeof lastFocusedTrigger.focus === 'function') {
++          lastFocusedTrigger.focus();
++        }
++      });
++
++      window.addEventListener('popstate', function () {
++        if (pushedHistoryState) {
++          pushedHistoryState = false;
++          if (modal.open) {
++            modal.close();
++          }
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

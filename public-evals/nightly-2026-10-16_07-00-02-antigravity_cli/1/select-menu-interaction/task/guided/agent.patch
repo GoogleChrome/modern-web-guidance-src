@@ -1,0 +1,282 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order-section {
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-top: 50px;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 30px;
++    }
++
++    .order-form {
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      margin-bottom: 22px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 8px;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .required-marker {
++      color: #d93025;
++      font-weight: bold;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 12px 14px;
++      border: 1px solid #ccc;
++      border-radius: 6px;
++      font-size: 1rem;
++      background-color: #fff;
++      font-family: inherit;
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    /* Error Message */
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 6px;
++      font-weight: 500;
++    }
++
++    /*
++      Error styling only after user interaction or submit attempt (not on page load)
++    */
++    select:user-invalid,
++    select.user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    select:user-invalid:focus,
++    select.user-invalid-fallback:focus {
++      outline: none;
++      border-color: #d93025;
++      box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.2);
++    }
++
++    select:user-invalid + .error-msg,
++    select.user-invalid-fallback + .error-msg {
++      display: block;
++    }
++
++    select:user-valid,
++    select.user-valid-fallback {
++      border-color: #188038;
++    }
++
++    .order-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1.05rem;
++      font-weight: bold;
++      padding: 14px;
++    }
++
++    .order-success {
++      margin-top: 20px;
++      padding: 14px 18px;
++      background-color: #e6f4ea;
++      color: #137333;
++      border: 1px solid #ceead6;
++      border-radius: 6px;
++      text-align: center;
++      font-weight: 500;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -161,8 +276,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
++      <li><a href="#order">Order Online</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -170,9 +286,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,10 +310,133 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Order Section -->
++    <section id="order" class="order-section">
++      <h2>Order Online</h2>
++      <p class="order-subtitle">Select your pickup shop and place your order ahead.</p>
++
++      <form id="order-form" class="order-form" action="#" method="post">
++        <div class="form-group">
++          <label for="shop-select">Select your local shop <span class="required-marker" aria-hidden="true">*</span></label>
++          <select
++            id="shop-select"
++            name="shop"
++            required
++            aria-required="true"
++            aria-errormessage="shop-error"
++            class="form-control"
++          >
++            <option value="" disabled selected>Select your local shop...</option>
++            <option value="downtown">Downtown Roastery — 123 Main St</option>
++            <option value="uptown">Uptown Arts District — 456 Elm St</option>
++            <option value="westside">Westside Espresso Bar — 789 Oak Ave</option>
++            <option value="waterfront">Waterfront Harbor Cafe — 101 Pier View</option>
++          </select>
++          <div id="shop-error" class="error-msg" role="alert">
++            <span aria-hidden="true">⚠️</span> Please select your local shop to continue.
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="item-select">Choose your coffee</label>
++          <select id="item-select" name="item" class="form-control">
++            <option value="maple-oat">Maple Oat Latte</option>
++            <option value="espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="drip">Signature House Drip</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="order-notes">Special Instructions (optional)</label>
++          <input type="text" id="order-notes" name="notes" placeholder="e.g., Oat milk, extra hot, no foam" class="form-control">
++        </div>
++
++        <button type="submit" class="btn order-btn">Submit Order</button>
++
++        <div id="order-success" class="order-success" style="display: none;" role="status">
++          ✓ Order submitted successfully! We'll start brewing for your pickup.
++        </div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('order-form');
++      const shopSelect = document.getElementById('shop-select');
++      const orderSuccess = document.getElementById('order-success');
++      const dirtyState = new WeakMap();
++
++      const updateValidationState = (el) => {
++        if (!el || !el.checkValidity) return;
++        const isValid = el.checkValidity();
++        el.classList.toggle('user-invalid-fallback', !isValid);
++        el.classList.toggle('user-valid-fallback', isValid);
++
++        if (!isValid) {
++          el.setAttribute('aria-invalid', 'true');
++        } else {
++          el.removeAttribute('aria-invalid');
++        }
++      };
++
++      // Native :user-invalid pseudo-class handles standard visual styling without errors on page load.
++      // This script provides accessibility sync (aria-invalid) and fallback compatibility for interaction tracking.
++      shopSelect.addEventListener('change', () => {
++        const state = dirtyState.get(shopSelect) || { hasInteracted: false, hasBlurred: false };
++        state.hasInteracted = true;
++        dirtyState.set(shopSelect, state);
++        if (state.hasBlurred || shopSelect.value !== '') {
++          updateValidationState(shopSelect);
++        }
++      });
++
++      shopSelect.addEventListener('blur', () => {
++        const state = dirtyState.get(shopSelect) || { hasInteracted: false, hasBlurred: false };
++        state.hasBlurred = true;
++        dirtyState.set(shopSelect, state);
++        // If user interacted with the select or visited it and left without a valid choice
++        if (state.hasInteracted || shopSelect.value === '') {
++          updateValidationState(shopSelect);
++        }
++      });
++
++      // Catch submit attempts when form controls are invalid
++      form.addEventListener('invalid', (e) => {
++        const state = dirtyState.get(e.target) || { hasInteracted: false, hasBlurred: false };
++        state.hasInteracted = true;
++        state.hasBlurred = true;
++        dirtyState.set(e.target, state);
++        updateValidationState(e.target);
++      }, true);
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const state = dirtyState.get(shopSelect) || { hasInteracted: false, hasBlurred: false };
++        state.hasInteracted = true;
++        state.hasBlurred = true;
++        dirtyState.set(shopSelect, state);
++
++        const isValid = form.checkValidity();
++        updateValidationState(shopSelect);
++
++        if (!isValid) {
++          shopSelect.focus();
++          return;
++        }
++
++        if (orderSuccess) {
++          orderSuccess.style.display = 'block';
++          orderSuccess.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++        }
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

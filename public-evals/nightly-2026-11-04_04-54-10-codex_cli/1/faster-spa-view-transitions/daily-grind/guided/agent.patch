@@ -1,0 +1,267 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..49d5135
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,64 @@
++(() => {
++  const host = document.getElementById('views');
++  // This bounded cache contains only the home view and four navigation views.
++  // Never remove or replace a visited view: inputs, disclosures, and listeners survive.
++  const views = new Map([['/', document.getElementById('view-home')]]);
++  const routes = new Map([
++    ['/', 'Home'],
++    ['/menu', 'Menu'],
++    ['/locations', 'Locations'],
++    ['/rewards', 'Rewards'],
++    ['/account', 'My Account'],
++  ]);
++  const scrollPositions = new Map();
++  let currentRoute;
++
++  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++  function render() {
++    const requestedRoute = location.hash.slice(1) || '/';
++    const route = routes.has(requestedRoute) ? requestedRoute : '/';
++    if (route === currentRoute) return;
++
++    if (currentRoute !== undefined) {
++      scrollPositions.set(currentRoute, window.scrollY);
++    }
++
++    let nextView = views.get(route);
++    if (!nextView) {
++      const template = document.getElementById(`template-${route.slice(1)}`);
++      nextView = template.content.firstElementChild.cloneNode(true);
++      nextView.classList.add('inactive');
++      nextView.inert = true;
++      host.append(nextView);
++      views.set(route, nextView);
++    }
++
++    // Release focus before making its former ancestor inert/aria-hidden.
++    if (currentRoute !== undefined && host.contains(document.activeElement)) {
++      document.activeElement.blur();
++    }
++    for (const [viewRoute, view] of views) {
++      const inactive = viewRoute !== route;
++      view.classList.toggle('inactive', inactive);
++      view.inert = inactive;
++      view.setAttribute('aria-hidden', String(inactive));
++    }
++
++    for (const link of document.querySelectorAll('nav a[href^="#/"]')) {
++      if (link.getAttribute('href') === `#${route}`) {
++        link.setAttribute('aria-current', 'page');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    }
++    document.title = `${routes.get(route)} | The Daily Grind`;
++    if (currentRoute !== undefined) nextView.focus();
++    currentRoute = route;
++    window.scrollTo({ top: scrollPositions.get(route) || 0, behavior: 'instant' });
++  }
++
++  // Native hash links retain modified-click behavior and browser Back/Forward.
++  window.addEventListener('hashchange', render);
++  render();
++})();
+diff --git a/index.html b/index.html
+index 66c9173..bc7eaa8 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,50 @@
+       background: #3e2723;
+     }
+ 
++    #views { position: relative; }
++
++    /* Keep visited DOM and rendering state; remove inactive wrappers from flow. */
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      top: 0;
++      width: 100%;
++      height: 0;
++      overflow: clip;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive { display: none; }
++    }
++
++    nav a[aria-current="page"] { color: var(--accent); text-decoration: underline; }
++    a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++    .spa-view:focus { outline: none; }
++    .view-heading { margin-bottom: 12px; }
++    .view-intro { margin-bottom: 24px; }
++    .preferences { max-width: 480px; }
++    .preferences label { display: block; margin-top: 18px; }
++    .preferences input, .preferences select {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      color: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++    details { margin-top: 16px; }
++    summary { cursor: pointer; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,44 +201,48 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="#/">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu">Menu</a></li>
++      <li><a href="#/locations">Locations</a></li>
++      <li><a href="#/rewards">Rewards</a></li>
++      <li><a href="#/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <main id="views">
++  <div id="view-home" class="spa-view" tabindex="-1" aria-label="Home">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#/menu" class="btn">Explore Menu</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++  </div>
++  </div>
+   </main>
+ 
+   <footer>
+@@ -207,6 +255,81 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <template id="template-menu">
++    <section id="view-menu" class="spa-view" tabindex="-1" aria-labelledby="menu-heading">
++      <div class="container">
++        <h1 id="menu-heading" class="view-heading">Our Menu</h1>
++        <p class="view-intro">Find your daily favorite, freshly brewed.</p>
++        <div class="grid">
++          <article class="card">
++            <h2>Maple Oat Latte</h2>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <details><summary>Drink details</summary><p>Espresso, steamed oat milk, and maple syrup. Available hot or iced.</p></details>
++          </article>
++          <article class="card">
++            <h2>Dark Roast Espresso</h2>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <details><summary>Drink details</summary><p>A rich shot of our locally roasted dark blend.</p></details>
++          </article>
++          <article class="card">
++            <h2>Cold Brew</h2>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <details><summary>Drink details</summary><p>Slow-steeped coffee served over ice. Add your favorite milk.</p></details>
++          </article>
++        </div>
++      </div>
++    </section>
++  </template>
++
++  <template id="template-locations">
++    <section id="view-locations" class="spa-view" tabindex="-1" aria-labelledby="locations-heading">
++      <div class="container">
++        <h1 id="locations-heading" class="view-heading">Locations</h1>
++        <p class="view-intro">Make The Daily Grind part of your neighborhood routine.</p>
++        <article class="card">
++          <h2>Your neighborhood coffee stop</h2>
++          <p>Visit us for freshly roasted coffee and seasonal favorites.</p>
++          <details><summary>Plan your visit</summary><p>Store addresses and opening hours are coming soon. Contact our team for current location information.</p></details>
++        </article>
++      </div>
++    </section>
++  </template>
++
++  <template id="template-rewards">
++    <section id="view-rewards" class="spa-view" tabindex="-1" aria-labelledby="rewards-heading">
++      <div class="container">
++        <h1 id="rewards-heading" class="view-heading">Daily Grind Rewards</h1>
++        <p class="view-intro">A little more to look forward to with every cup.</p>
++        <article class="card">
++          <h2>Your next daily ritual</h2>
++          <p>Ask our team about rewards enrollment and available perks on your next visit.</p>
++          <details><summary>About rewards</summary><p>Online rewards balances and redemption are not available yet.</p></details>
++          <a class="btn" href="#/account">My Account</a>
++        </article>
++      </div>
++    </section>
++  </template>
++
++  <template id="template-account">
++    <section id="view-account" class="spa-view" tabindex="-1" aria-labelledby="account-heading">
++      <div class="container">
++        <h1 id="account-heading" class="view-heading">My Account</h1>
++        <p class="view-intro">Set your coffee preferences while you explore. These stay here as you switch views, until you reload the page.</p>
++        <div class="preferences">
++          <label for="account-name">Preferred name</label>
++          <input id="account-name" name="name" autocomplete="given-name" placeholder="Your name">
++          <label for="favorite-drink">Favorite drink</label>
++          <select id="favorite-drink" name="favorite-drink">
++            <option value="">Choose a drink</option>
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++          </select>
++        </div>
++      </div>
++    </section>
++  </template>
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>

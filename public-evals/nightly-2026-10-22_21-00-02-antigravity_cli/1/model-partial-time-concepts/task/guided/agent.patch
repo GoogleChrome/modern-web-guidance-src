@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .perks-section {
++      margin-top: 50px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 12px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .status-text {
++      margin-top: 10px;
++      font-weight: 500;
++    }
++
++    .form-inline {
++      display: flex;
++      gap: 8px;
++      justify-content: center;
++      align-items: center;
++      margin-top: 12px;
++      flex-wrap: wrap;
++    }
++
++    .form-inline input,
++    .form-inline select {
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      color: var(--text);
++    }
++
++    .form-inline button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 7px 14px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .form-inline button:hover {
++      background: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="perks-section">
++      <h2 style="text-align: center;">Member Perks &amp; Store Hours</h2>
++      <div class="grid">
++        <div class="card" id="rewards-card">
++          <h3>Rewards Card Expiration</h3>
++          <p>Check your Daily Grind Rewards card validity by month and year.</p>
++          <div class="form-inline">
++            <label for="expiry-month" class="sr-only">Month</label>
++            <input type="number" id="expiry-month" min="1" max="12" value="12" aria-label="Expiration month">
++            <label for="expiry-year" class="sr-only">Year</label>
++            <input type="number" id="expiry-year" min="2020" max="2035" value="2027" aria-label="Expiration year">
++            <button type="button" id="check-expiry-btn">Check</button>
++          </div>
++          <p class="badge" id="expiry-display">12/2027</p>
++          <p class="status-text" id="expiry-status">Loading expiration status...</p>
++        </div>
++
++        <div class="card" id="birthday-card">
++          <h3>Customer Birthday Perks</h3>
++          <p>Enjoy a complimentary handcrafted drink on your birthday each year.</p>
++          <div class="form-inline">
++            <input type="number" id="bday-month" min="1" max="12" value="10" aria-label="Birthday month">
++            <input type="number" id="bday-day" min="1" max="31" value="31" aria-label="Birthday day">
++            <button type="button" id="check-bday-btn">Update</button>
++          </div>
++          <p class="badge" id="birthday-display">10-31</p>
++          <p class="status-text" id="birthday-status">Loading birthday perk status...</p>
++        </div>
++
++        <div class="card" id="hours-card">
++          <h3>Daily Shop Opening Hours</h3>
++          <p>Freshly brewed daily on our regular wall-clock schedule.</p>
++          <p class="badge" id="hours-display">06:30 – 19:00</p>
++          <p class="status-text" id="hours-status">Loading store hours...</p>
++          <p class="status-text" id="roast-schedule" style="font-size: 0.9rem; color: #5d4037;"></p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +297,117 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initializeApp() {
++      // 1. Rewards Card Expiration Month-Year using Temporal.PlainYearMonth
++      const expiryMonthInput = document.getElementById('expiry-month');
++      const expiryYearInput = document.getElementById('expiry-year');
++      const expiryDisplay = document.getElementById('expiry-display');
++      const expiryStatus = document.getElementById('expiry-status');
++      const checkExpiryBtn = document.getElementById('check-expiry-btn');
++
++      function updateRewardsExpiration() {
++        const year = Number(expiryYearInput.value) || 2027;
++        const month = Number(expiryMonthInput.value) || 12;
++
++        // Create a PlainYearMonth with explicit calendar for polyfill safety
++        const expiry = Temporal.PlainYearMonth.from({ year, month, calendar: 'iso8601' });
++        const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
++
++        // Calculate duration until expiry using largestUnit: 'years'
++        const duration = currentMonth.until(expiry, { largestUnit: 'years' });
++
++        expiryDisplay.textContent = `Expires: ${expiry.toString()}`;
++
++        if (duration.sign < 0) {
++          expiryStatus.textContent = 'Card Expired — please renew in your account.';
++        } else if (duration.sign === 0) {
++          expiryStatus.textContent = 'Expires this month — use your bonus beans soon!';
++        } else {
++          expiryStatus.textContent = `Active — expires in ${duration.years} year(s) and ${duration.months} month(s).`;
++        }
++      }
++
++      checkExpiryBtn.addEventListener('click', updateRewardsExpiration);
++
++      // 2. Customer Birthday Perks using Temporal.PlainMonthDay
++      const bdayMonthInput = document.getElementById('bday-month');
++      const bdayDayInput = document.getElementById('bday-day');
++      const birthdayDisplay = document.getElementById('birthday-display');
++      const birthdayStatus = document.getElementById('birthday-status');
++      const checkBdayBtn = document.getElementById('check-bday-btn');
++
++      function updateBirthdayPerks() {
++        const month = Number(bdayMonthInput.value) || 10;
++        const day = Number(bdayDayInput.value) || 31;
++
++        // Create a PlainMonthDay with explicit calendar for polyfill safety
++        const birthday = Temporal.PlainMonthDay.from({ month, day, calendar: 'iso8601' });
++        const today = Temporal.Now.plainDateISO();
++        const isBirthdayToday = birthday.equals(today.toPlainMonthDay());
++
++        birthdayDisplay.textContent = `Birthday: ${birthday.toString()}`;
++
++        if (isBirthdayToday) {
++          birthdayStatus.textContent = 'Happy Birthday! Your free drink reward is ready to redeem today!';
++        } else {
++          // Convert PlainMonthDay to a full PlainDate with a specific year before performing arithmetic
++          let nextBirthday = birthday.toPlainDate({ year: today.year });
++          if (Temporal.PlainDate.compare(nextBirthday, today) < 0) {
++            nextBirthday = birthday.toPlainDate({ year: today.year + 1 });
++          }
++          const daysUntil = today.until(nextBirthday, { largestUnit: 'days' }).days;
++          birthdayStatus.textContent = `Your next birthday perk unlocks in ${daysUntil} day(s) (${nextBirthday.toString()}).`;
++        }
++      }
++
++      checkBdayBtn.addEventListener('click', updateBirthdayPerks);
++
++      // 3. Daily Shop Opening Hours using Temporal.PlainTime
++      const hoursDisplay = document.getElementById('hours-display');
++      const hoursStatus = document.getElementById('hours-status');
++      const roastSchedule = document.getElementById('roast-schedule');
++
++      function updateShopHours() {
++        const openingTime = Temporal.PlainTime.from('06:30:00');
++        const closingTime = Temporal.PlainTime.from('19:00:00');
++        // Add a duration to PlainTime for morning pastry warm-up / fresh batch schedule
++        const freshPastryTime = openingTime.add({ minutes: 30 });
++        const afternoonRushTime = openingTime.add({ hours: 8 });
++
++        hoursDisplay.textContent = `${openingTime.toString({ smallestUnit: 'minute' })} – ${closingTime.toString({ smallestUnit: 'minute' })}`;
++
++        const nowTime = Temporal.Now.plainTimeISO();
++        const isOpen =
++          Temporal.PlainTime.compare(nowTime, openingTime) >= 0 &&
++          Temporal.PlainTime.compare(nowTime, closingTime) < 0;
++
++        if (isOpen) {
++          const untilClose = nowTime.until(closingTime, { largestUnit: 'hours' });
++          hoursStatus.textContent = `We're Open! Closing in ${untilClose.hours}h ${untilClose.minutes}m.`;
++        } else {
++          hoursStatus.textContent = `Currently Closed — doors open daily at ${openingTime.toString({ smallestUnit: 'minute' })}.`;
++        }
++
++        roastSchedule.textContent = `Fresh pastries out at ${freshPastryTime.toString({ smallestUnit: 'minute' })} · Afternoon cold brew tap at ${afternoonRushTime.toString({ smallestUnit: 'minute' })}`;
++      }
++
++      updateRewardsExpiration();
++      updateBirthdayPerks();
++      updateShopHours();
++    }
++
++    // Check if Temporal is supported natively; load @js-temporal/polyfill fallback if needed
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/@js-temporal/polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      initializeApp();
++    })();
++  </script>
+ </body>
+ 
+ </html>

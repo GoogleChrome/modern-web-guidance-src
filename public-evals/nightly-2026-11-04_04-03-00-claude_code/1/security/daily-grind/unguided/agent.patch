@@ -1,0 +1,324 @@
+diff --git a/index.html b/index.html
+index 66c9173..fc2c4b4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -66,12 +67,31 @@
+       color: var(--accent);
+     }
+ 
++    .logout-form {
++      display: inline;
++    }
++
+     .logout-link {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      color: var(--accent);
++    }
++
++    .section-title {
++      text-align: center;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -164,7 +184,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form action="/logout" method="post" class="logout-form">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +200,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..920b186 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,239 @@
++'use strict';
++
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++// ---------------------------------------------------------------------------
++// Deployment knobs
++//
++// CSP_MODE:
++//   "enforce"     (default) send Content-Security-Policy.
++//   "report-only" send Content-Security-Policy-Report-Only instead. Use this
++//                 while rolling out policy changes: violations get reported to
++//                 /csp-report but nothing is blocked.
++// HTTPS=1: set when the site is served over TLS (directly or behind a proxy).
++//          Turns on HSTS and upgrade-insecure-requests, which would break
++//          plain-HTTP local development.
++// ---------------------------------------------------------------------------
++const CSP_MODE = process.env.CSP_MODE === 'report-only' ? 'report-only' : 'enforce';
++const IS_HTTPS = process.env.HTTPS === '1';
++const REPORT_PATH = '/csp-report';
++const MAX_REPORT_BYTES = 16 * 1024;
+ 
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
++// Load the page once at startup. If it fails to load, crash now instead of
++// failing on every request.
++const INDEX_HTML = fs.readFileSync(path.join(WORK_DIR, 'index.html'));
++
++// Hash every inline <style> block so CSP can allow exactly those blocks and
++// no others, without needing 'unsafe-inline'. The hashes are recomputed from
++// the file on each start, so editing the CSS can't silently break the policy.
++function inlineStyleHashes(html) {
++  const hashes = [];
++  const re = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi;
++  let m;
++  while ((m = re.exec(html)) !== null) {
++    const digest = crypto.createHash('sha256').update(m[1], 'utf8').digest('base64');
++    hashes.push(`'sha256-${digest}'`);
++  }
++  return hashes;
++}
++
++const STYLE_HASHES = inlineStyleHashes(INDEX_HTML.toString('utf8'));
++
++const cspDirectives = [
++  "default-src 'none'",
++  // The page has no JavaScript. Block all scripts, and require Trusted Types
++  // so DOM XSS sinks (innerHTML, etc.) stay locked if scripts are ever added.
++  "script-src 'none'",
++  "require-trusted-types-for 'script'",
++  "trusted-types 'none'",
++  `style-src ${STYLE_HASHES.join(' ') || "'none'"}`,
++  "style-src-attr 'none'",
++  "img-src 'self' https://images.unsplash.com",
++  "font-src 'none'",
++  "connect-src 'none'",
++  "object-src 'none'",
++  "base-uri 'none'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  "manifest-src 'self'",
++  `report-uri ${REPORT_PATH}`,
++  'report-to csp-endpoint',
++];
++if (IS_HTTPS) cspDirectives.push('upgrade-insecure-requests');
++
++const CSP_VALUE = cspDirectives.join('; ');
++const CSP_HEADER =
++  CSP_MODE === 'report-only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
++
++// Headers sent on every response.
++const BASE_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy':
++    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), ' +
++    'microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++  'Origin-Agent-Cluster': '?1',
++};
++if (IS_HTTPS) {
++  BASE_HEADERS['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains';
++}
++
++// Headers for HTML documents.
++const HTML_HEADERS = {
++  ...BASE_HEADERS,
++  'Content-Type': 'text/html; charset=utf-8',
++  [CSP_HEADER]: CSP_VALUE,
++  'Reporting-Endpoints': `csp-endpoint="${REPORT_PATH}"`,
++  // The page is shown to logged-in users, so don't let shared caches or
++  // back/forward navigation show it after logout.
++  'Cache-Control': 'no-store',
++};
++
++function send(res, status, headers, body) {
++  res.writeHead(status, headers);
++  res.end(body);
++}
++
++function sendText(res, status, text, extra = {}) {
++  send(res, status, { ...BASE_HEADERS, 'Content-Type': 'text/plain; charset=utf-8', ...extra }, text);
++}
++
++// Treat a state-changing request as same-origin only if the browser says so.
++// Uses Sec-Fetch-Site when available, and falls back to comparing Origin with Host.
++function isSameOrigin(req) {
++  const site = req.headers['sec-fetch-site'];
++  if (site) return site === 'same-origin';
++  const origin = req.headers.origin;
++  const host = req.headers.host;
++  if (!origin || !host) return false;
++  try {
++    return new URL(origin).host === host;
++  } catch {
++    return false;
++  }
++}
++
++function handleLogout(req, res) {
++  // Logout changes state, so it must be POST and same-origin. Otherwise a
++  // cross-site <img src="/logout"> or link could sign users out (logout CSRF).
++  if (req.method !== 'POST') {
++    sendText(res, 405, 'Method Not Allowed', { Allow: 'POST' });
+     return;
+   }
++  if (!isSameOrigin(req)) {
++    sendText(res, 403, 'Forbidden');
++    return;
++  }
++  req.resume(); // the body isn't used; drain it
++  send(
++    res,
++    200,
++    {
++      ...HTML_HEADERS,
++      // Ask the browser to wipe cookies, storage and cached copies of the
++      // logged-in pages.
++      'Clear-Site-Data': '"cache", "cookies", "storage"',
++    },
++    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Logged out</title></head>' +
++      '<body><p>Logged out. <a href="/">Return home</a></p></body></html>'
++  );
++}
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
++function handleCspReport(req, res) {
++  if (req.method !== 'POST') {
++    sendText(res, 405, 'Method Not Allowed', { Allow: 'POST' });
++    return;
++  }
++  const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
++  if (!['application/csp-report', 'application/reports+json', 'application/json'].includes(type)) {
++    sendText(res, 415, 'Unsupported Media Type');
++    return;
++  }
++
++  let size = 0;
++  const chunks = [];
++  let aborted = false;
++  req.on('data', (chunk) => {
++    if (aborted) return;
++    size += chunk.length;
++    if (size > MAX_REPORT_BYTES) {
++      aborted = true;
++      sendText(res, 413, 'Payload Too Large', { Connection: 'close' });
++      req.destroy();
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    chunks.push(chunk);
+   });
++  req.on('end', () => {
++    if (aborted) return;
++    try {
++      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      const reports = Array.isArray(parsed) ? parsed : [parsed];
++      for (const r of reports.slice(0, 20)) {
++        const body = r['csp-report'] || r.body || {};
++        // Log only selected, length-capped fields as JSON, so a crafted
++        // report can't inject extra lines into the logs.
++        const cap = (v) => (typeof v === 'string' ? v.slice(0, 300) : undefined);
++        console.warn(
++          'CSP violation',
++          JSON.stringify({
++            mode: CSP_MODE,
++            documentURL: cap(body['document-uri'] || body.documentURL),
++            directive: cap(body['effective-directive'] || body.effectiveDirective || body['violated-directive']),
++            blockedURL: cap(body['blocked-uri'] || body.blockedURL),
++            sourceFile: cap(body['source-file'] || body.sourceFile),
++            line: Number.isFinite(body['line-number'] ?? body.lineNumber)
++              ? body['line-number'] ?? body.lineNumber
++              : undefined,
++          })
++        );
++      }
++    } catch {
++      // Ignore malformed reports.
++    }
++    send(res, 204, BASE_HEADERS);
++  });
++}
++
++const server = http.createServer((req, res) => {
++  // Parse against a fixed base. Building it from the client-supplied Host
++  // header let a malformed Host make `new URL` throw, crashing the process.
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    sendText(res, 400, 'Bad Request');
++    return;
++  }
++
++  if (pathname === '/logout' || pathname === '/logout/') {
++    handleLogout(req, res);
++    return;
++  }
++
++  if (pathname === REPORT_PATH) {
++    handleCspReport(req, res);
++    return;
++  }
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    sendText(res, 405, 'Method Not Allowed', { Allow: 'GET, HEAD' });
++    return;
++  }
++
++  send(res, 200, HTML_HEADERS, req.method === 'HEAD' ? undefined : INDEX_HTML);
+ });
+ 
+ server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
++  console.log(`Server running on port ${PORT} (CSP ${CSP_MODE}${IS_HTTPS ? ', HTTPS' : ''})`);
+ });

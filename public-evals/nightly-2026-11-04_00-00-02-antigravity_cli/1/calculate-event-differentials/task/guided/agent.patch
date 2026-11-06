@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin: 12px 0;
++      padding: 10px 12px;
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-timer .timer-label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .promo-timer .timer-status {
++      display: inline-block;
++      margin-top: 4px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--text);
++      background: var(--secondary);
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,11 +208,16 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="maple-oat-latte-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-oat-countdown" aria-live="polite">
++            <p><span class="timer-label">Time left:</span> <time id="promo-remaining">Calculating...</time></p>
++            <p><span class="timer-label">Running for:</span> <time id="promo-elapsed">Calculating...</time></p>
++            <span class="timer-status" id="promo-status">Seasonal Offer</span>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +242,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function updateMapleOatCountdown() {
++      const remainingEl = document.getElementById('promo-remaining');
++      const elapsedEl = document.getElementById('promo-elapsed');
++      const statusEl = document.getElementById('promo-status');
++      if (!remainingEl || !elapsedEl || !statusEl) return;
++
++      const now = Temporal.Now.zonedDateTimeISO();
++      const userTimeZone = now.timeZoneId;
++
++      const startDateStr = '2026-01-01';
++      const startTimeStr = '00:00:00';
++      const endDateStr = '2026-03-01';
++      const endTimeStr = '00:00:00';
++
++      const promoStart = Temporal.PlainDate.from(startDateStr)
++        .toPlainDateTime(startTimeStr)
++        .toZonedDateTime(userTimeZone);
++      const promoEnd = Temporal.PlainDate.from(endDateStr)
++        .toPlainDateTime(endTimeStr)
++        .toZonedDateTime(userTimeZone);
++
++      const timeElapsed = now.since(promoStart, { largestUnit: 'day', smallestUnit: 'hour' });
++      const timeRemaining = now.until(promoEnd, { largestUnit: 'day', smallestUnit: 'hour' });
++
++      elapsedEl.setAttribute('datetime', timeElapsed.toString());
++      elapsedEl.textContent = timeElapsed.toLocaleString('en-US', { style: 'long' });
++
++      remainingEl.setAttribute('datetime', timeRemaining.toString());
++      remainingEl.textContent = timeRemaining.toLocaleString('en-US', { style: 'long' });
++
++      const isExpired = timeRemaining.sign < 0;
++      const isPastHalfway = Temporal.Duration.compare(timeElapsed, timeRemaining, { relativeTo: now }) > 0;
++
++      if (isExpired) {
++        statusEl.textContent = 'Offer Ended';
++      } else {
++        statusEl.textContent = isPastHalfway ? 'Ending Soon' : 'Seasonal Offer Active';
++      }
++    }
++
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', updateMapleOatCountdown, { once: true });
++      } else {
++        updateMapleOatCountdown();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Layout with sidebar */
++    .layout {
++      display: grid;
++      grid-template-columns: 240px 1fr;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 700px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    /* Coupon button: a plain <button>, so it is fully stylable */
++    .coupon-btn {
++      font: inherit;
++      font-weight: 600;
++      width: 100%;
++      background: var(--accent);
++      color: var(--text);
++      border: 2px solid var(--primary);
++      padding: 10px 20px;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .coupon-btn:hover:not(:disabled) {
++      background: #ff9100;
++    }
++
++    .coupon-btn:disabled {
++      opacity: 0.6;
++      cursor: default;
++    }
++
++    /* Box styling only applies once revealed: a hidden="until-found" element
++       still renders its border/padding while its content is hidden. */
++    #coupon-panel:not([hidden]) {
++      background: white;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++      padding: 20px;
++      margin-bottom: 30px;
++      text-align: center;
++    }
++
++    #coupon-panel .coupon-code {
++      font-size: 1.8rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      color: var(--primary);
++    }
++
++    /* Wholesale / catering tabs: <details> elements sharing a name are
++       mutually exclusive, and closed content stays find-in-page searchable. */
++    .wholesale-tabs {
++      margin-top: 40px;
++    }
++
++    .wholesale-tab {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      margin-top: 10px;
++    }
++
++    .wholesale-tab summary {
++      cursor: pointer;
++      padding: 12px 20px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++      border-radius: 7px 7px 0 0;
++    }
++
++    .wholesale-tab .tab-body {
++      padding: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +270,21 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++  <aside class="sidebar">
++    <h3>Special Offer</h3>
++    <button type="button" class="coupon-btn" id="reveal-coupon" aria-controls="coupon-panel">Reveal Coupon</button>
++  </aside>
++
++  <main>
++    <div id="coupon-panel" hidden="until-found">
++      <h3>Your Discount Code</h3>
++      <p class="coupon-code">GRIND15</p>
++      <p>Use this code at checkout for 15% off your order.</p>
++    </div>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +303,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="wholesale-tabs">
++      <h2 style="text-align: center;">Wholesale &amp; Catering</h2>
++      <details class="wholesale-tab" name="wholesale-catering" open>
++        <summary>Wholesale</summary>
++        <div class="tab-body">
++          <p>Stock your cafe or shop with our small-batch roasts. Wholesale orders start at 10 lbs, with volume pricing, free delivery on weekly standing orders, and complimentary barista training.</p>
++        </div>
++      </details>
++      <details class="wholesale-tab" name="wholesale-catering">
++        <summary>Catering</summary>
++        <div class="tab-body">
++          <p>Bring the coffee cart to your next event. Our catering packages serve 25 to 500 guests and include a barista, signature drinks, and full setup and cleanup.</p>
++        </div>
++      </details>
++    </section>
+   </main>
++  </div>
+ 
++  <script>
++    // Reveal the coupon once; it can't be hidden again. Find-in-page can also
++    // reveal it (hidden="until-found"), so the button state follows the panel.
++    const couponPanel = document.getElementById('coupon-panel');
++    const couponBtn = document.getElementById('reveal-coupon');
++
++    function revealCoupon() {
++      couponPanel.removeAttribute('hidden');
++      couponBtn.disabled = true;
++      couponBtn.textContent = 'Coupon Revealed';
++    }
++
++    couponBtn.addEventListener('click', revealCoupon);
++    couponPanel.addEventListener('beforematch', revealCoupon);
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

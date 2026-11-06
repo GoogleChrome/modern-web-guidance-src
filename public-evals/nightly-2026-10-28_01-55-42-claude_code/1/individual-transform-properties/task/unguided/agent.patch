@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,72 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Favorites section + featured promo badge */
++    .seasonal {
++      position: relative;
++      padding-top: 10px;
++    }
++
++    .promo-badge {
++      position: absolute;
++      top: 0;
++      right: 20px;
++      z-index: 2;
++      /* Stacking context lives here permanently (not only on hover),
++         so hovering never creates/destroys one. No will-change needed. */
++      isolation: isolate;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 88px;
++      height: 88px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.8rem;
++      font-weight: bold;
++      line-height: 1.2;
++      text-align: center;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      cursor: pointer;
++      user-select: none;
++      /* Each motion uses its own individual transform property so the
++         two animations and the hover scale never override one another. */
++      rotate: 0deg;
++      translate: 0 0;
++      scale: 1;
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 2.5s ease-in-out infinite alternate;
++      /* Only `scale` transitions; `rotate`/`translate` stay animation-driven. */
++      transition: scale 0.3s ease;
++    }
++
++    .promo-badge:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to   { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -20px 0; }
++      to   { translate: 20px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .promo-badge {
++        animation: none;
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,9 +238,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
++      <span class="promo-badge target" aria-label="Featured promotion">Featured<br>Promo</span>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

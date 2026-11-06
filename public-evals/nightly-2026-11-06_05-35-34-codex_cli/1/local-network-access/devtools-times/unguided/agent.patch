@@ -1,0 +1,288 @@
+diff --git a/README.md b/README.md
+index 4479b53..08e3de5 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,25 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Developer diagnostics
++
++The homepage has independent, user-initiated browser connection checks for a private
++Wi-Fi device and a loopback companion CLI. Replace the example URLs with your
++services' read-only health endpoints; no particular CLI or device API is assumed.
++A successful HTTP 2xx response verifies reachability at that moment. No service
++requests run on page load, and no application-server proxy is involved.
++
++Serve the site over HTTPS (localhost is also a secure context). Services must allow
++the site's origin via `Access-Control-Allow-Origin`. The device must listen on its
++LAN interface; the CLI should bind to loopback. Requests omit credentials and use
++`targetAddressSpace: 'local'` for the device and `'loopback'` for the CLI. Browser
++network permissions and HTTP mixed-content support vary; see the
++[Chrome Local Network Access guide](https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access).
++The widget provides permission, CORS, and connectivity troubleshooting inline.
++
++Run the isolated connection helper checks with Node 22.18+:
++
++```sh
++node --test tests/diagnostics.test.mjs
++```
+diff --git a/src/components/DiagnosticsConnections.tsx b/src/components/DiagnosticsConnections.tsx
+new file mode 100644
+index 0000000..3392879
+--- /dev/null
++++ b/src/components/DiagnosticsConnections.tsx
+@@ -0,0 +1,106 @@
++import { useEffect, useRef, useState } from 'react';
++import { diagnosticEndpoint, probeEndpoint, type ConnectionTarget } from '../utils/diagnostics';
++
++type State = { phase: 'idle' | 'connecting' | 'success' | 'error'; message: string };
++
++function ConnectionCard({ target, title, description, initialUrl }: {
++  target: ConnectionTarget; title: string; description: string; initialUrl: string;
++}) {
++  const [endpoint, setEndpoint] = useState(initialUrl);
++  const [state, setState] = useState<State>({ phase: 'idle', message: 'Ready when you are.' });
++  const active = useRef<AbortController | null>(null);
++  useEffect(() => () => active.current?.abort(), []);
++  const busy = state.phase === 'connecting';
++
++  async function connect(event: React.FormEvent) {
++    event.preventDefault();
++    if (active.current) return;
++    let url: URL;
++    try {
++      url = diagnosticEndpoint(endpoint, target);
++      if (!window.isSecureContext) throw new Error('Open The DevTools Times over HTTPS (or localhost) to connect to local services.');
++    } catch (error) {
++      setState({ phase: 'error', message: (error as Error).message });
++      return;
++    }
++    const controller = new AbortController();
++    active.current = controller;
++    setState({ phase: 'connecting', message: 'Connecting… Allow browser network access if prompted.' });
++    let timedOut = false;
++    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 20000);
++    try {
++      const result = await probeEndpoint(url, target, controller.signal);
++      if (active.current === controller) {
++        setState({ phase: 'success', message: `Connection verified · HTTP ${result.status} · ${result.elapsed} ms · ${new Date().toLocaleTimeString()}` });
++      }
++    } catch (error) {
++      if (active.current === controller) {
++        const message = timedOut ? 'Timed out after 20 seconds. Check the service and address, then retry.'
++          : error instanceof TypeError ? 'Could not connect. Check the service, CORS, and browser network permissions. See connection help below.'
++          : error instanceof Error ? error.message : 'Connection failed. Please retry.';
++        setState({ phase: 'error', message });
++      }
++    } finally {
++      window.clearTimeout(timeout);
++      if (active.current === controller) active.current = null;
++    }
++  }
++
++  function cancel() {
++    active.current?.abort();
++    active.current = null;
++    setState({ phase: 'idle', message: 'Connection attempt canceled.' });
++  }
++
++  return (
++    <form onSubmit={connect} className="rounded-lg border border-gray-300 bg-white p-5">
++      <div className="mb-3 flex items-center justify-between gap-3">
++        <h3 className="font-bold text-gray-900">{title}</h3>
++        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${state.phase === 'success' ? 'bg-emerald-100 text-emerald-800' : state.phase === 'error' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}`}>
++          {state.phase === 'success' ? 'Verified' : state.phase === 'connecting' ? 'Connecting' : state.phase === 'error' ? 'Needs attention' : 'Not checked'}
++        </span>
++      </div>
++      <p className="mb-4 text-sm text-gray-600">{description}</p>
++      <label htmlFor={`diagnostic-${target}`} className="mb-1.5 block text-xs font-semibold text-gray-700">Health-check endpoint</label>
++      <input id={`diagnostic-${target}`} type="url" required value={endpoint} disabled={busy}
++        onChange={event => { setEndpoint(event.target.value); setState({ phase: 'idle', message: 'Ready when you are.' }); }}
++        spellCheck={false} autoCapitalize="none" autoComplete="off" aria-describedby={`diagnostic-${target}-status`}
++        className="w-full min-w-0 rounded border border-gray-300 bg-gray-50 px-3 py-2.5 font-mono text-sm text-gray-900 outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-200 disabled:opacity-60" />
++      <div className="mt-3 flex gap-2">
++        <button type="submit" disabled={busy} className="rounded bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-50">
++          {busy ? 'Connecting…' : state.phase === 'success' ? 'Check again' : 'Connect'}
++        </button>
++        {busy && <button type="button" onClick={cancel} className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100">Cancel</button>}
++      </div>
++      <p id={`diagnostic-${target}-status`} role="status" aria-live="polite" aria-atomic="true"
++        className={`mt-3 min-h-10 text-xs leading-5 ${state.phase === 'error' ? 'text-red-700' : state.phase === 'success' ? 'text-emerald-800' : 'text-gray-600'}`}>{state.message}</p>
++    </form>
++  );
++}
++
++export default function DiagnosticsConnections() {
++  return (
++    <section aria-labelledby="diagnostics-heading" className="mx-4 my-6 rounded-lg border border-gray-300 bg-gray-50 p-4 sm:mx-6 sm:p-6">
++      <div className="mb-5 border-b border-gray-300 pb-4">
++        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-amber-800">Developer workspace</p>
++        <h2 id="diagnostics-heading" className="font-brand text-3xl text-gray-950">Diagnostics connections</h2>
++        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Connect your test bench to your browser. Check a device on your Wi-Fi and a companion CLI on this machine, independently.</p>
++      </div>
++      <div className="grid gap-4 md:grid-cols-2">
++        <ConnectionCard target="local" title="Hardware test device" description="Join the same Wi-Fi as your device and enter its private LAN endpoint." initialUrl="http://192.168.1.100:8080/health" />
++        <ConnectionCard target="loopback" title="Local companion CLI" description="Start your companion CLI on this machine and enter its local endpoint." initialUrl="http://127.0.0.1:3001/health" />
++      </div>
++      <p className="mt-4 text-xs leading-5 text-gray-600">Only clicking Connect or Check again sends a request. Each check sends one GET directly from your browser; no credentials are sent and no diagnostic data is stored. A successful check is a snapshot, not a live connection.</p>
++      <details className="mt-4 border-t border-gray-300 pt-3 text-sm text-gray-700">
++        <summary className="cursor-pointer font-semibold hover:text-amber-800">Connection help &amp; service setup</summary>
++        <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-5">
++          <li>Replace the example port and /health path with a read-only endpoint that returns HTTP 2xx. Both services can be checked separately.</li>
++          <li>The device must listen on its LAN interface; the CLI should listen on loopback. Check Wi-Fi client isolation, VPN routing, and firewall rules if a service is unreachable.</li>
++          <li>Serve this page over HTTPS. Allow Local network access for the device and Loopback network access for the CLI when your browser prompts. If blocked, update this site’s permissions in browser site settings and retry. Permission names and support vary by browser.</li>
++          <li>Both services must allow this page’s origin with the Access-Control-Allow-Origin response header. Browser permission does not replace CORS. Browsers that block HTTP local endpoints may require a trusted HTTPS endpoint or a browser with Local Network Access support.</li>
++        </ul>
++        <a href="https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access" target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs underline hover:text-amber-800">Browser local-network access guide ↗</a>
++      </details>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f2aa37f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import DiagnosticsConnections from '../components/DiagnosticsConnections';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -54,6 +55,8 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <DiagnosticsConnections client:load />
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+@@ -81,4 +84,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/utils/diagnostics.ts b/src/utils/diagnostics.ts
+new file mode 100644
+index 0000000..e9eb38e
+--- /dev/null
++++ b/src/utils/diagnostics.ts
+@@ -0,0 +1,48 @@
++export type ConnectionTarget = 'local' | 'loopback';
++
++/** Keep each connection card scoped to its advertised address space. */
++export function diagnosticEndpoint(value: string, target: ConnectionTarget): URL {
++  let url: URL;
++  try {
++    url = new URL(value.trim());
++  } catch {
++    throw new Error('Enter a complete endpoint URL, including http:// or https://.');
++  }
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++    throw new Error('Use an HTTP or HTTPS URL without credentials or a fragment.');
++  }
++  const host = url.hostname;
++  const octets = host.split('.').map(Number);
++  const ipv4 = octets.length === 4 && octets.every(n => Number.isInteger(n) && n >= 0 && n <= 255);
++  const loopback = host === 'localhost' || host === '[::1]' || (ipv4 && octets[0] === 127);
++  const privateLan = ipv4 && (octets[0] === 10 ||
++    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
++    (octets[0] === 192 && octets[1] === 168));
++  if (target === 'loopback' ? !loopback : !privateLan) {
++    throw new Error(target === 'loopback'
++      ? 'Use 127.0.0.1, localhost, or [::1] for the CLI on this machine.'
++      : 'Use a private Wi-Fi IPv4 address: 192.168.x.x, 10.x.x.x, or 172.16–31.x.x.');
++  }
++  return url;
++}
++
++export async function probeEndpoint(url: URL, target: ConnectionTarget, signal: AbortSignal) {
++  // Explicit address spaces let supporting browsers apply Local Network Access
++  // permissions to HTTP endpoints even when this page is served over HTTPS.
++  const options: RequestInit & { targetAddressSpace: ConnectionTarget } = {
++    method: 'GET',
++    mode: 'cors',
++    credentials: 'omit',
++    cache: 'no-store',
++    redirect: 'error',
++    referrerPolicy: 'no-referrer',
++    targetAddressSpace: target,
++    signal,
++  };
++  const start = performance.now();
++  const response = await fetch(url.href, options);
++  // The widget only checks connectivity; never download or render diagnostic data.
++  void response.body?.cancel().catch(() => {});
++  if (!response.ok) throw new Error(`Endpoint responded with HTTP ${response.status}. Check the port and health-check path.`);
++  return { status: response.status, elapsed: Math.round(performance.now() - start) };
++}
+diff --git a/tests/diagnostics.test.mjs b/tests/diagnostics.test.mjs
+new file mode 100644
+index 0000000..2e4cfeb
+--- /dev/null
++++ b/tests/diagnostics.test.mjs
+@@ -0,0 +1,58 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { diagnosticEndpoint, probeEndpoint } from '../src/utils/diagnostics.ts';
++
++test('accepts private LAN ranges and keeps loopback separate', () => {
++  for (const host of ['192.168.1.42', '10.0.0.2', '172.16.0.1', '172.31.255.254']) {
++    assert.equal(diagnosticEndpoint(`http://${host}:8080/health`, 'local').hostname, host);
++    assert.throws(() => diagnosticEndpoint(`http://${host}/health`, 'loopback'));
++  }
++  for (const host of ['127.0.0.1', 'localhost', '[::1]']) {
++    assert.equal(diagnosticEndpoint(`http://${host}:3001/health`, 'loopback').hostname, host);
++    assert.throws(() => diagnosticEndpoint(`http://${host}/health`, 'local'));
++  }
++});
++
++test('rejects public addresses, invalid URLs, credentials and fragments', () => {
++  for (const value of ['192.168.1.1', 'https://example.com/health', 'http://172.32.0.1/',
++    'http://192.168.1.999/', 'ftp://192.168.1.1/', 'http://user:secret@192.168.1.1/',
++    'http://192.168.1.1/#status']) {
++    assert.throws(() => diagnosticEndpoint(value, 'local'));
++  }
++});
++
++test('checks each address space with readable, credential-free browser requests', async () => {
++  const originalFetch = globalThis.fetch;
++  try {
++    for (const target of ['local', 'loopback']) {
++      const controller = new AbortController();
++      const url = new URL(target === 'local' ? 'http://192.168.1.42/health' : 'http://127.0.0.1:3001/health');
++      globalThis.fetch = async (input, options) => {
++        assert.equal(input, url.href);
++        assert.equal(options.targetAddressSpace, target);
++        assert.equal(options.mode, 'cors');
++        assert.equal(options.method, 'GET');
++        assert.equal(options.credentials, 'omit');
++        assert.equal(options.redirect, 'error');
++        assert.equal(options.signal, controller.signal);
++        return new Response(null, { status: 204 });
++      };
++      assert.equal((await probeEndpoint(url, target, controller.signal)).status, 204);
++    }
++  } finally { globalThis.fetch = originalFetch; }
++});
++
++test('never treats HTTP errors or blocked network requests as a successful connection', async () => {
++  const originalFetch = globalThis.fetch;
++  const url = new URL('http://127.0.0.1:3001/health');
++  try {
++    globalThis.fetch = async () => new Response(null, { status: 503 });
++    await assert.rejects(probeEndpoint(url, 'loopback', new AbortController().signal), /HTTP 503/);
++    globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
++    await assert.rejects(probeEndpoint(url, 'loopback', new AbortController().signal), TypeError);
++    globalThis.fetch = async (_url, { signal }) => { signal.throwIfAborted(); };
++    const controller = new AbortController();
++    controller.abort();
++    await assert.rejects(probeEndpoint(url, 'loopback', controller.signal), { name: 'AbortError' });
++  } finally { globalThis.fetch = originalFetch; }
++});

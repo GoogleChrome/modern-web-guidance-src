@@ -1,0 +1,280 @@
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..800fb4f
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,177 @@
++import React, { useCallback, useEffect, useState } from 'react';
++
++interface Passkey {
++  id: string;
++  name: string;
++  aaguid: string;
++  providerIcon?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++interface PasskeyList {
++  rpId: string;
++  userId: string;
++  credentials: Passkey[];
++}
++
++const endpoint = `${import.meta.env.BASE_URL}api/passkeys`;
++const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++// Keep the user's password managers in sync with what the server accepts.
++async function signalAcceptedCredentials({ rpId, userId, credentials }: PasskeyList) {
++  const pkc = window.PublicKeyCredential as any;
++  if (!pkc?.signalAllAcceptedCredentials) return;
++  try {
++    await pkc.signalAllAcceptedCredentials({
++      rpId,
++      userId,
++      allAcceptedCredentialIds: credentials.map((c) => c.id),
++    });
++  } catch (e) {
++    console.error('signalAllAcceptedCredentials failed:', e);
++  }
++}
++
++export default function PasskeyManager() {
++  const [data, setData] = useState<PasskeyList | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [editingId, setEditingId] = useState<string | null>(null);
++  const [draftName, setDraftName] = useState('');
++
++  const load = useCallback(async () => {
++    const response = await fetch(endpoint);
++    if (response.status === 401) {
++      setError('Sign in to manage your passkeys.');
++      return null;
++    }
++    if (!response.ok) throw new Error('Could not load passkeys.');
++    const list: PasskeyList = await response.json();
++    setData(list);
++    return list;
++  }, []);
++
++  useEffect(() => {
++    load()
++      .then((list) => list && signalAcceptedCredentials(list))
++      .catch((e) => setError(e.message))
++      .finally(() => setLoading(false));
++  }, [load]);
++
++  const rename = async (e: React.FormEvent, id: string) => {
++    e.preventDefault();
++    setError(null);
++    try {
++      const response = await fetch(`${endpoint}/${encodeURIComponent(id)}`, {
++        method: 'PUT',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ name: draftName }),
++      });
++      if (!response.ok) throw new Error('Could not rename passkey.');
++      setEditingId(null);
++      await load(); // A nickname is a server-side label, so no signal is needed.
++    } catch (err) {
++      setError((err as Error).message);
++    }
++  };
++
++  const remove = async (passkey: Passkey) => {
++    if (!window.confirm(`Delete "${passkey.name}"? You won't be able to sign in with it anymore.`)) return;
++    setError(null);
++    try {
++      const response = await fetch(`${endpoint}/${encodeURIComponent(passkey.id)}`, { method: 'DELETE' });
++      if (!response.ok) throw new Error('Could not delete passkey.');
++      const list = await load();
++      if (list) await signalAcceptedCredentials(list);
++    } catch (err) {
++      setError((err as Error).message);
++    }
++  };
++
++  return (
++    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-2 text-gray-800">Your passkeys</h2>
++      <p className="text-sm text-gray-600 mb-6">
++        Passkeys let you sign in with your fingerprint, face, or screen lock instead of a password.
++      </p>
++
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++
++      {loading ? (
++        <p className="text-sm text-gray-500">Loading…</p>
++      ) : data && data.credentials.length === 0 ? (
++        <p className="text-sm text-gray-500">No passkeys found.</p>
++      ) : (
++        <ul className="divide-y divide-gray-200">
++          {data?.credentials.map((passkey) => (
++            <li key={passkey.id} className="py-4 flex items-start gap-4">
++              {passkey.providerIcon ? (
++                <img src={passkey.providerIcon} alt="" width={32} height={32} className="mt-1" />
++              ) : (
++                <div className="w-8 h-8 mt-1 rounded bg-gray-200 shrink-0" aria-hidden="true" />
++              )}
++              <div className="flex-1 min-w-0">
++                {editingId === passkey.id ? (
++                  <form onSubmit={(e) => rename(e, passkey.id)} className="flex gap-2">
++                    <label className="sr-only" htmlFor={`name-${passkey.id}`}>Passkey name</label>
++                    <input
++                      id={`name-${passkey.id}`}
++                      value={draftName}
++                      onChange={(e) => setDraftName(e.target.value)}
++                      maxLength={100}
++                      required
++                      autoFocus
++                      className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
++                    />
++                    <button type="submit" className="px-3 py-1 text-sm text-white bg-gray-900 rounded-md hover:bg-gray-800">
++                      Save
++                    </button>
++                    <button type="button" onClick={() => setEditingId(null)} className="px-3 py-1 text-sm text-gray-700 hover:underline">
++                      Cancel
++                    </button>
++                  </form>
++                ) : (
++                  <>
++                    <p className="font-medium text-gray-900 truncate">{passkey.name}</p>
++                    <p className="text-xs text-gray-500">
++                      Created {dateFormat.format(passkey.registeredAt)}
++                      {passkey.lastUsedAt && ` · Last used ${dateFormat.format(passkey.lastUsedAt)}`}
++                    </p>
++                  </>
++                )}
++              </div>
++              {editingId !== passkey.id && (
++                <div className="flex gap-3 text-sm">
++                  <button
++                    type="button"
++                    onClick={() => {
++                      setEditingId(passkey.id);
++                      setDraftName(passkey.name);
++                    }}
++                    className="text-gray-700 hover:underline"
++                    aria-label={`Rename ${passkey.name}`}
++                  >
++                    Rename
++                  </button>
++                  <button
++                    type="button"
++                    onClick={() => remove(passkey)}
++                    className="text-red-700 hover:underline"
++                    aria-label={`Delete ${passkey.name}`}
++                  >
++                    Delete
++                  </button>
++                </div>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/account/passkeys.astro b/src/pages/account/passkeys.astro
+new file mode 100644
+index 0000000..f98a851
+--- /dev/null
++++ b/src/pages/account/passkeys.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeyManager from '../../components/PasskeyManager';
++---
++
++<Layout title="Passkeys | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load />
++  </div>
++</Layout>
+diff --git a/src/pages/api/passkeys/[id].ts b/src/pages/api/passkeys/[id].ts
+new file mode 100644
+index 0000000..8235378
+--- /dev/null
++++ b/src/pages/api/passkeys/[id].ts
+@@ -0,0 +1,29 @@
++import type { APIRoute } from 'astro';
++import { getPasskeys, getPasskeyUserId, json } from '../../../utils/passkeys';
++
++export const PUT: APIRoute = async ({ params, request, session }) => {
++  if (!(await getPasskeyUserId(session))) return json({ error: 'Not signed in.' }, 401);
++
++  const { name } = await request.json().catch(() => ({}));
++  if (typeof name !== 'string' || !name.trim() || name.length > 100) {
++    return json({ error: 'A name of 1-100 characters is required.' }, 400);
++  }
++
++  const passkeys = await getPasskeys(session);
++  const passkey = passkeys.find((p) => p.id === params.id);
++  if (!passkey) return json({ error: 'Credential not found.' }, 404);
++
++  passkey.name = name.trim();
++  await session?.set('passkeys', passkeys);
++  return json(passkey);
++};
++
++export const DELETE: APIRoute = async ({ params, session }) => {
++  if (!(await getPasskeyUserId(session))) return json({ error: 'Not signed in.' }, 401);
++
++  const passkeys = await getPasskeys(session);
++  if (!passkeys.some((p) => p.id === params.id)) return json({ error: 'Credential not found.' }, 404);
++
++  await session?.set('passkeys', passkeys.filter((p) => p.id !== params.id));
++  return json({ success: true });
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..0c9b7c2
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,13 @@
++import type { APIRoute } from 'astro';
++import { getPasskeys, getPasskeyUserId, json } from '../../../utils/passkeys';
++
++export const GET: APIRoute = async ({ session, url }) => {
++  const userId = await getPasskeyUserId(session);
++  if (!userId) return json({ error: 'Not signed in.' }, 401);
++
++  return json({
++    rpId: url.hostname,
++    userId,
++    credentials: await getPasskeys(session),
++  });
++};
+diff --git a/src/utils/passkeys.ts b/src/utils/passkeys.ts
+new file mode 100644
+index 0000000..9ac8abd
+--- /dev/null
++++ b/src/utils/passkeys.ts
+@@ -0,0 +1,21 @@
++import type { AstroSession } from 'astro';
++
++export interface StoredPasskey {
++  id: string; // Base64URL credential ID
++  name: string;
++  aaguid: string;
++  providerIcon?: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++
++export async function getPasskeys(session: AstroSession | undefined): Promise<StoredPasskey[]> {
++  return (await session?.get('passkeys')) || [];
++}
++
++export async function getPasskeyUserId(session: AstroSession | undefined): Promise<string | null> {
++  return (await session?.get('passkeyUserId')) || null;
++}
++
++export const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

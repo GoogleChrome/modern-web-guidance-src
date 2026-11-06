@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,170 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean Selection */
++    :root {
++      /* Only the bean cards transition; skip the full-page root snapshot */
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      /* Keep the rest of the page interactive while beans animate */
++      pointer-events: none;
++    }
++
++    .bean-section {
++      margin-top: 60px;
++    }
++
++    .bean-section > h2,
++    .bean-section > p {
++      text-align: center;
++    }
++
++    .bean-columns {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    .bean-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++    }
++
++    .bean-panel h3 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++    }
++
++    .bean-count {
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: #795548;
++    }
++
++    .bean-list {
++      list-style: none;
++      display: grid;
++      gap: 12px;
++    }
++
++    .bean-list:empty::before {
++      content: attr(data-empty);
++      display: block;
++      padding: 30px 10px;
++      text-align: center;
++      color: #8d6e63;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++    }
++
++    .bean {
++      view-transition-class: bean;
++      display: grid;
++      grid-template-columns: 64px 1fr auto;
++      gap: 15px;
++      align-items: center;
++      padding: 10px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .bean img {
++      width: 64px;
++      height: 64px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .bean h4 {
++      color: var(--primary);
++    }
++
++    .bean p {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .bean button {
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++      border: none;
++      border-radius: 5px;
++      padding: 8px 14px;
++      background: var(--primary);
++      color: white;
++      transition: background 0.3s;
++    }
++
++    .bean button:hover {
++      background: #3e2723;
++    }
++
++    #selected-beans .bean button {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    #selected-beans .bean button:hover {
++      background: var(--secondary);
++    }
++
++    .bean-total {
++      margin-top: 15px;
++      text-align: right;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    /* Shared transition logic for every bean card */
++    ::view-transition-group(.bean) {
++      animation-duration: 0.45s;
++      animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
++    }
++
++    ::view-transition-new(.bean):only-child {
++      animation: bean-in 0.35s ease-out both;
++    }
++
++    ::view-transition-old(.bean):only-child {
++      animation: bean-out 0.3s ease-in both;
++    }
++
++    @keyframes bean-in {
++      from {
++        opacity: 0;
++        scale: 0.85;
++      }
++    }
++
++    @keyframes bean-out {
++      to {
++        opacity: 0;
++        scale: 0.85;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +356,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-section" aria-labelledby="bean-heading">
++      <h2 id="bean-heading">Build Your Bean Box</h2>
++      <p>Pick your favorite single-origin beans for this month's delivery.</p>
++      <div class="bean-columns">
++        <div class="bean-panel">
++          <h3>Available Beans <span class="bean-count" id="available-count"></span></h3>
++          <ul class="bean-list" id="available-beans" data-empty="You've picked every bean we have!"></ul>
++        </div>
++        <div class="bean-panel">
++          <h3>Your Bean Box <span class="bean-count" id="selected-count"></span></h3>
++          <ul class="bean-list" id="selected-beans" data-empty="Your box is empty. Add some beans to get started."></ul>
++          <p class="bean-total" id="bean-total" aria-live="polite"></p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +384,79 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=160&h=160&q=70`;
++
++    const beans = [
++      { id: 'ethiopia', name: 'Ethiopia Yirgacheffe', notes: 'Floral, bergamot, lemon', price: 18, image: img('photo-1559056199-641a0ac8b55e') },
++      { id: 'colombia', name: 'Colombia Huila', notes: 'Caramel, red apple, cocoa', price: 16, image: img('photo-1447933601403-0c6688de566e') },
++      { id: 'sumatra', name: 'Sumatra Mandheling', notes: 'Earthy, cedar, dark chocolate', price: 17, image: img('photo-1611854779393-1b2da9d400fe') },
++      { id: 'guatemala', name: 'Guatemala Antigua', notes: 'Toffee, spice, orange peel', price: 17, image: img('photo-1587734195503-904fca47e0e9') },
++      { id: 'kenya', name: 'Kenya AA', notes: 'Blackcurrant, grapefruit, wine', price: 20, image: img('photo-1442512595331-e89e73853f31') },
++      { id: 'brazil', name: 'Brazil Santos', notes: 'Nutty, milk chocolate, low acid', price: 15, image: img('photo-1610632380989-680fe40816c6') },
++    ];
++
++    const selected = new Set(['colombia']);
++
++    const availableList = document.getElementById('available-beans');
++    const selectedList = document.getElementById('selected-beans');
++
++    // Build each card once so the same element moves between lists
++    const cards = new Map(beans.map((bean) => {
++      const li = document.createElement('li');
++      li.className = 'bean';
++      // Each card needs a unique name; shared animation comes from view-transition-class
++      li.style.viewTransitionName = `bean-${bean.id}`;
++      li.innerHTML = `
++        <img src="${bean.image}" alt="" width="64" height="64" loading="lazy">
++        <div>
++          <h4>${bean.name}</h4>
++          <p>${bean.notes} &middot; $${bean.price}/bag</p>
++        </div>
++        <button type="button" data-id="${bean.id}"></button>`;
++      return [bean.id, li];
++    }));
++
++    function render() {
++      let total = 0;
++      for (const bean of beans) {
++        const card = cards.get(bean.id);
++        const isSelected = selected.has(bean.id);
++        const button = card.querySelector('button');
++        button.textContent = isSelected ? 'Remove' : 'Add';
++        button.setAttribute('aria-label', `${isSelected ? 'Remove' : 'Add'} ${bean.name}`);
++        (isSelected ? selectedList : availableList).append(card);
++        if (isSelected) total += bean.price;
++      }
++      document.getElementById('available-count').textContent = `${beans.length - selected.size} left`;
++      document.getElementById('selected-count').textContent = `${selected.size} selected`;
++      document.getElementById('bean-total').textContent = selected.size ? `Total: $${total}` : '';
++    }
++
++    function toggleBean(id) {
++      const update = () => {
++        selected.has(id) ? selected.delete(id) : selected.add(id);
++        render();
++        // Moving the card drops focus; restore it on the card's button
++        cards.get(id).querySelector('button').focus();
++      };
++      if (document.startViewTransition) {
++        document.startViewTransition(update);
++      } else {
++        update();
++      }
++    }
++
++    document.querySelector('.bean-columns').addEventListener('click', (event) => {
++      const button = event.target.closest('button[data-id]');
++      if (!button) return;
++      toggleBean(button.dataset.id);
++    });
++
++    render();
++  </script>
++
+ </body>
+ 
+ </html>

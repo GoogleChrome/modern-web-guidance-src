@@ -1,0 +1,557 @@
+diff --git a/index.html b/index.html
+index 7400c85..e1c5de9 100644
+--- a/index.html
++++ b/index.html
+@@ -5,167 +5,327 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer base, components;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer base {
++      :root {
++        --primary: #4e342e;
++        --primary-hover: #3e2723;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --text: #3e2723;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++      }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++      body,
++      h1,
++      h2,
++      h3,
++      p,
++      ul {
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++        min-block-size: 100dvh;
++        display: grid;
++        grid-template-rows: auto auto 1fr auto;
++      }
+ 
+-    .logo {
+-      float: left;
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      img {
++        display: block;
++        max-inline-size: 100%;
++        block-size: auto;
++      }
+ 
+-    nav ul {
+-      float: right;
+-      list-style: none;
+-    }
++      h1,
++      h2,
++      h3 {
++        line-height: 1.25;
++        text-wrap: balance;
++      }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
++      p {
++        text-wrap: pretty;
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      :where(a:any-link, button):focus-visible {
++        outline: 3px solid var(--accent);
++        outline-offset: 3px;
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++      .visually-hidden:where(:not(:focus-within, :active)) {
++        position: absolute !important;
++        clip-path: inset(50%) !important;
++        overflow: hidden !important;
++        inline-size: 1px !important;
++        block-size: 1px !important;
++        margin: -1px !important;
++        padding: 0 !important;
++        border: 0 !important;
++        white-space: nowrap !important;
++      }
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 1rem;
++        padding-inline: 5%;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
++        display: flex;
++        flex-wrap: wrap;
++        align-items: safe center;
++        justify-content: space-between;
++        gap: 1rem;
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      color: white;
+-      text-align: center;
+-      padding: 15vh 20px 0;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: 700;
++        letter-spacing: 0.05em;
++        color: inherit;
++        text-decoration: none;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      nav ul {
++        display: flex;
++        flex-wrap: wrap;
++        flex-wrap: balance;
++        align-items: safe center;
++        gap: 1.25rem;
++        list-style: none;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      nav a {
++        color: inherit;
++        text-decoration: none;
++        font-size: 0.95rem;
++        transition: color 0.3s ease;
++      }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
+-    }
++      nav a:hover {
++        color: var(--accent);
++      }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding-block: 0.35rem;
++        padding-inline: 0.85rem;
++        border-radius: 4px;
++      }
+ 
+-    .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      /* Hero Section */
++      .hero {
++        min-block-size: 60dvh;
++        background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover no-repeat;
++        color: var(--surface);
++        text-align: center;
++        padding-block: 4rem;
++        padding-inline: 1.25rem;
++        display: grid;
++        place-content: center;
++        justify-items: center;
++        gap: 1rem;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++      .hero h1 {
++        font-size: clamp(2rem, 1.25rem + 3.5vw, 3.5rem);
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .hero p {
++        font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
++        max-inline-size: 60ch;
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++      /* Content Sections */
++      .container {
++        inline-size: min(100% - 2.5rem, 1100px);
++        margin-inline: auto;
++        margin-block: 2.5rem;
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      .section-heading {
++        text-align: center;
++        font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
++        color: var(--primary);
++        margin-block-end: 1.5rem;
++      }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
++      /* Seasonal Favorites Card Grid */
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++        column-gap: 1.5rem;
++        row-gap: 0;
++      }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      .card {
++        container: card / inline-size;
++        grid-row: span 4;
++        display: grid;
++        /* Same-cascade fallback when subgrid is unsupported */
++        grid-template-rows: auto auto 1fr auto;
++        grid-template-rows: subgrid;
++        background: var(--surface);
++        border-radius: 8px;
++        box-shadow: var(--shadow);
++        overflow: clip;
++        text-align: center;
++        margin-block-end: 1.5rem;
++      }
++
++      /* Card Regions placed by element selector across shared subgrid tracks */
++      .card > :is(img, picture, video, svg, .media) {
++        grid-row: 1;
++        inline-size: 100%;
++        aspect-ratio: 16 / 10;
++        object-fit: cover;
++      }
++
++      .card > :is(h2, h3, h4, hgroup, header) {
++        grid-row: 2;
++        color: var(--primary);
++        font-size: clamp(1.15rem, 4cqi, 1.4rem);
++        padding-block-start: 1.25rem;
++        padding-inline: 1.25rem;
++      }
++
++      .card > :not(:is(img, picture, video, svg, .media, h2, h3, h4, hgroup, header, footer)) {
++        grid-row: 3;
++        padding-block: 0.75rem;
++        padding-inline: 1.25rem;
++        max-inline-size: 65ch;
++        justify-self: center;
++      }
++
++      .card > footer {
++        grid-row: 4;
++        padding-block-start: 0.5rem;
++        padding-block-end: 1.5rem;
++        padding-inline: 1.25rem;
++        align-self: end;
++      }
++
++      /* Adapt card layout when an individual card has ample horizontal space */
++      @container card (inline-size > 440px) {
++        .card:has(> :is(img, picture, video, svg, .media)) {
++          grid-template-columns: minmax(160px, 38%) 1fr;
++          text-align: start;
++        }
++
++        .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
++          grid-column: 1;
++          grid-row: 1 / -1;
++          block-size: 100%;
++          aspect-ratio: auto;
++        }
++
++        .card:has(> :is(img, picture, video, svg, .media)) > :not(:is(img, picture, video, svg, .media)) {
++          grid-column: 2;
++          justify-self: start;
++        }
++      }
++
++      /* Fallback for browsers without :has() support */
++      @supports not selector(:has(*)) {
++        @container card (inline-size > 440px) {
++          .card.has-image {
++            grid-template-columns: minmax(160px, 38%) 1fr;
++            text-align: start;
++          }
++
++          .card.has-image > img {
++            grid-column: 1;
++            grid-row: 1 / -1;
++            block-size: 100%;
++            aspect-ratio: auto;
++          }
++
++          .card.has-image > :not(img) {
++            grid-column: 2;
++            justify-self: start;
++          }
++        }
++      }
++
++      .btn {
++        display: inline-flex;
++        align-items: safe center;
++        justify-content: center;
++        inline-size: fit-content;
++        inline-size: calc-size(fit-content, size);
++        min-block-size: 2.5rem;
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 0.6rem;
++        padding-inline: 1.25rem;
++        text-decoration: none;
++        border-radius: 5px;
++        font-weight: 600;
++        transition: background-color 0.3s ease;
++      }
++
++      .btn:hover {
++        background: var(--primary-hover);
++      }
++
++      /* Site Footer */
++      body > footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: 2.5rem;
++        padding-inline: 1.25rem;
++        margin-block-start: 2.5rem;
++      }
++
++      .footer-links {
++        display: flex;
++        flex-wrap: wrap;
++        flex-wrap: balance;
++        justify-content: center;
++        gap: 0.75rem 1.5rem;
++        list-style: none;
++        margin-block-end: 1.25rem;
++      }
++
++      .footer-links a {
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.9rem;
++      }
++
++      .footer-links a:hover {
++        text-decoration: underline;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -182,38 +342,76 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            alt="Maple oat latte with latte art in a ceramic cup"
++            width="600"
++            height="375"
++            loading="lazy"
++          >
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
++          </footer>
++        </article>
++
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            alt="Freshly pulled shot of dark roast espresso"
++            width="600"
++            height="375"
++            loading="lazy"
++          >
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++            alt="Iced cold brew coffee being poured into a glass"
++            width="600"
++            height="375"
++            loading="lazy"
++          >
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> for Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <ul class="footer-links" role="list">
++      <li><a href="/about">Our Story</a></li>
++      <li><a href="/careers">Join the Team</a></li>
++      <li><a href="/contact">Contact Us</a></li>
++      <li><a href="/privacy-policy">Privacy</a></li>
++    </ul>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('selector(:has(*))')) {
++      document.querySelectorAll('.card').forEach((card) => {
++        if (card.querySelector('img, picture, video, svg, .media')) {
++          card.classList.add('has-image');
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

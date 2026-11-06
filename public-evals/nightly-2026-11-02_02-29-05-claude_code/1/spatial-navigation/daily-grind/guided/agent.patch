@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..28f44ac 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,20 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,8 +190,10 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="seasonal-hint" class="visually-hidden">Use the arrow keys to move between items.</p>
++      <div class="grid" data-spatial-nav role="group" aria-labelledby="seasonal-heading"
++        aria-describedby="seasonal-hint">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +223,105 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Arrow-key spatial navigation with a roving tabindex. Targets are picked
++    // from live geometry, so it follows whatever layout the grid currently has.
++    const TOLERANCE = 1;
++    const FALLBACK_WEIGHT = 2;
++    const DIRECTIONS = {
++      ArrowUp: 'up',
++      ArrowDown: 'down',
++      ArrowLeft: 'left',
++      ArrowRight: 'right',
++    };
++
++    function getCandidates(container) {
++      return [...container.querySelectorAll('.card .btn')]
++        .filter((el) => el.checkVisibility());
++    }
++
++    function findNext(current, candidates, direction) {
++      const from = current.getBoundingClientRect();
++      const horizontal = direction === 'left' || direction === 'right';
++      const aligned = [];
++      const others = [];
++
++      for (const el of candidates) {
++        if (el === current) continue;
++        const to = el.getBoundingClientRect();
++
++        let gap;
++        if (direction === 'right') gap = to.left - from.right;
++        else if (direction === 'left') gap = from.left - to.right;
++        else if (direction === 'down') gap = to.top - from.bottom;
++        else gap = from.top - to.bottom;
++        if (gap < -TOLERANCE) continue;
++        gap = Math.max(gap, 0);
++
++        const offset = horizontal
++          ? Math.abs((to.top + to.bottom) / 2 - (from.top + from.bottom) / 2)
++          : Math.abs((to.left + to.right) / 2 - (from.left + from.right) / 2);
++        const overlaps = horizontal
++          ? to.top < from.bottom && to.bottom > from.top
++          : to.left < from.right && to.right > from.left;
++
++        (overlaps ? aligned : others).push({ el, gap, offset });
++      }
++
++      if (aligned.length) {
++        aligned.sort((a, b) => a.gap - b.gap || a.offset - b.offset);
++        return aligned[0].el;
++      }
++      let best = null;
++      let bestScore = Infinity;
++      for (const c of others) {
++        const score = c.gap + FALLBACK_WEIGHT * c.offset;
++        if (score < bestScore) {
++          bestScore = score;
++          best = c.el;
++        }
++      }
++      return best;
++    }
++
++    function setActive(candidates, active) {
++      for (const el of candidates) el.tabIndex = el === active ? 0 : -1;
++    }
++
++    for (const container of document.querySelectorAll('[data-spatial-nav]')) {
++      const initial = getCandidates(container);
++      setActive(initial, initial[0]);
++
++      // Keep the single tab stop on whichever item last received focus
++      // (e.g. via mouse click), so Tab returns the user there.
++      container.addEventListener('focusin', (e) => {
++        const candidates = getCandidates(container);
++        if (candidates.includes(e.target)) setActive(candidates, e.target);
++      });
++
++      container.addEventListener('keydown', (e) => {
++        const direction = DIRECTIONS[e.key];
++        if (!direction || e.defaultPrevented) return;
++        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++        const target = e.composedPath()[0];
++        if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++
++        const candidates = getCandidates(container);
++        if (!candidates.includes(target)) return;
++
++        const next = findNext(target, candidates, direction);
++        // No candidate in that direction: let the browser scroll natively.
++        if (!next) return;
++
++        e.preventDefault();
++        setActive(candidates, next);
++        next.focus();
++        next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

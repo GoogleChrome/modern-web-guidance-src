@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+index 66c9173..33610cf 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,21 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="referrer" content="no-referrer">
++  <!-- Version-pinned code assets; update their SHA-384 digests with their URLs. -->
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
++    integrity="sha384-M86HUGbBFILBBZ9ykMAbT3nVb0+2C7yZlF8X2CiKNpDOQjKroMJqIeGZ/Le8N2Qp" crossorigin="anonymous" referrerpolicy="no-referrer">
++  <script defer src="https://cdn.jsdelivr.net/npm/focus-visible@5.2.0/dist/focus-visible.min.js"
++    integrity="sha384-xRa5B8rCDfdg0npZcxAh+RXswrbFk3g6dlHVeABeluN8EIwdyljz/LqJgc2R3KNA" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+   <style>
++    @font-face {
++      font-family: 'Inter';
++      src: url("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.2.5/files/inter-latin-400-normal.woff2" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-gijdfLnskrcqcIndQ6U0wywZhUSIKgq2K0bDl2N/4Plpfkgl7oO1RicuX/dbCo8B")) format("woff2");
++      font-weight: 400;
++      font-style: normal;
++      font-display: swap;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -21,7 +35,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -75,8 +89,9 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        var(--hero-image, none);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -115,6 +130,38 @@
+       text-align: center;
+     }
+ 
++    /* Never fall back to unverified remote URLs. Older browsers use verified blobs below. */
++    @supports (background-image: url("" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-test"))) {
++      .hero {
++        --hero-image: url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"));
++      }
++      .photo-latte {
++        --card-image: url("https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=640&h=400&q=80" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-zHW16lrqFcJDJcbN22LSZ0o3rRDZaj90VcTfUyb6bqh/yFiYfdsof/imLvEJEOCW"));
++      }
++      .photo-espresso {
++        --card-image: url("https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=640&h=400&q=80" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-EEftMd10cMRgzhCIO8Du5dZrC4a9WoM6OLPm8gMjJzz7GzPE3PmXhk+DEGEPq+lO"));
++      }
++      .photo-coldbrew {
++        --card-image: url("https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=640&h=400&q=80" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-hI7RYGmB16YukMy3u3zUGXrmafIjWjLH1ZDm1OZ2QOSvedWTL6REDfOsnetLUqz1"));
++      }
++    }
++
++    .card-photo {
++      aspect-ratio: 8 / 5;
++      margin-bottom: 16px;
++      border-radius: 5px;
++      background-color: var(--secondary);
++      background-image: var(--card-image, none);
++      background-position: center;
++      background-size: cover;
++    }
++
++    a:focus-visible,
++    a.focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -179,16 +226,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-photo photo-latte" role="img" aria-label="Latte with milk foam in a ceramic cup"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-photo photo-espresso" role="img" aria-label="Freshly poured espresso in a small cup"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-photo photo-coldbrew" role="img" aria-label="Iced coffee served in a glass"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +257,68 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // CSS request modifiers are not supported everywhere. Fetch SRI protects the fallback too.
++    // Digests are release-time constants, never calculated from runtime CDN responses.
++    // Stock-photo endpoints can change: review new bytes before updating a blocked image digest.
++    if (!CSS.supports('background-image', 'url("" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-test"))')) {
++      const assets = {
++        "font": {
++          "url": "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.2.5/files/inter-latin-400-normal.woff2",
++          "integrity": "sha384-gijdfLnskrcqcIndQ6U0wywZhUSIKgq2K0bDl2N/4Plpfkgl7oO1RicuX/dbCo8B"
++        },
++        "hero": {
++          "url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80",
++          "integrity": "sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"
++        },
++        "latte": {
++          "url": "https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=640&h=400&q=80",
++          "integrity": "sha384-zHW16lrqFcJDJcbN22LSZ0o3rRDZaj90VcTfUyb6bqh/yFiYfdsof/imLvEJEOCW"
++        },
++        "espresso": {
++          "url": "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=640&h=400&q=80",
++          "integrity": "sha384-EEftMd10cMRgzhCIO8Du5dZrC4a9WoM6OLPm8gMjJzz7GzPE3PmXhk+DEGEPq+lO"
++        },
++        "coldbrew": {
++          "url": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=640&h=400&q=80",
++          "integrity": "sha384-hI7RYGmB16YukMy3u3zUGXrmafIjWjLH1ZDm1OZ2QOSvedWTL6REDfOsnetLUqz1"
++        }
++      };
++
++      async function loadVerifiedAsset(name, asset) {
++        try {
++          const response = await fetch(asset.url, {
++            integrity: asset.integrity,
++            mode: 'cors',
++            credentials: 'omit',
++            referrerPolicy: 'no-referrer',
++          });
++          if (!response.ok) throw new Error(`HTTP ${response.status}`);
++          if (name === 'font') {
++            const font = new FontFace('Inter', await response.arrayBuffer(), {
++              weight: '400', style: 'normal', display: 'swap',
++            });
++            document.fonts.add(await font.load());
++          } else {
++            const objectURL = URL.createObjectURL(await response.blob());
++            const target = document.querySelector(name === 'hero' ? '.hero' : `.photo-${name}`);
++            const property = name === 'hero' ? '--hero-image' : '--card-image';
++            target.style.setProperty(property, `url("${objectURL}")`);
++            // Keep blobs alive while displayed, including across back/forward cache restores.
++            window.addEventListener('pagehide', (event) => {
++              if (!event.persisted) URL.revokeObjectURL(objectURL);
++            });
++          }
++        } catch (error) {
++          // Fail closed: retain the system font or solid image placeholder on any failure.
++          console.warn(`Could not load verified ${name} asset.`, error);
++        }
++      }
++
++      for (const [name, asset] of Object.entries(assets)) loadVerifiedAsset(name, asset);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

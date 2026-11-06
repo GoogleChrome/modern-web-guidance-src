@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..70b1cd8 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,51 @@
+       color: var(--accent);
+     }
+ 
++    /* Active nav indicator: an underline tethered to the active item via
++       anchor positioning, so it slides between items when the anchor moves. */
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active-nav;
++      /* Inset + anchor() (not position-area) so the position can transition. */
++      inset-block-start: calc(anchor(bottom) + .1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 3px;
++      border-radius: 3px;
++      background: var(--accent);
++      pointer-events: none;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset .3s ease;
++      }
++    }
++
++    nav ul:not(:has(li.active))::before {
++      display: none;
++    }
++
++    nav ul li.active {
++      anchor-name: --active-nav;
++    }
++
++    nav ul li.active a {
++      color: var(--accent);
++    }
++
++    /* Fallback: static underline where anchor positioning is unsupported. */
++    @supports not (position-anchor: auto) {
++      nav ul::before {
++        display: none;
++      }
++
++      nav ul li.active {
++        border-bottom: 3px solid var(--accent);
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,10 +202,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +252,34 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Move the active state (and its sliding underline) to the clicked nav item.
++    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
++
++    function setActive(item) {
++      navItems.forEach((li) => {
++        const isActive = li === item;
++        li.classList.toggle('active', isActive);
++        const link = li.querySelector('a');
++        if (isActive) link.setAttribute('aria-current', 'page');
++        else link.removeAttribute('aria-current');
++      });
++    }
++
++    // Reflect the current URL on load, if it matches a nav item.
++    const current = [...navItems].find(
++      (li) => li.querySelector('a').getAttribute('href') === location.pathname
++    );
++    if (current) setActive(current);
++
++    navItems.forEach((li) => {
++      li.querySelector('a').addEventListener('click', (event) => {
++        event.preventDefault();
++        setActive(li);
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

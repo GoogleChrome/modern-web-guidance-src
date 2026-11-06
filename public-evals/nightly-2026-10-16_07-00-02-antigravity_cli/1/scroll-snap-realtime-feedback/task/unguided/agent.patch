@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,118 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Cafe Vibe Photo Carousel */
++    .vibe-section {
++      margin-bottom: 50px;
++    }
++
++    .vibe-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    #gallery {
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      -webkit-overflow-scrolling: touch;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++      scrollbar-width: none;
++    }
++
++    #gallery::-webkit-scrollbar {
++      display: none;
++    }
++
++    .gallery-item {
++      flex: 0 0 100%;
++      min-width: 100%;
++      width: 100%;
++      height: 420px;
++      scroll-snap-align: start;
++      scroll-snap-stop: normal;
++      position: relative;
++    }
++
++    .gallery-item img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .gallery-item .caption {
++      position: absolute;
++      bottom: 0;
++      left: 0;
++      right: 0;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++      color: white;
++      padding: 24px 20px 16px;
++      font-size: 1.1rem;
++      font-weight: 500;
++    }
++
++    .thumbnails {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 16px;
++      flex-wrap: wrap;
++    }
++
++    .thumbnail {
++      width: 80px;
++      height: 56px;
++      padding: 0;
++      border: 3px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
++      background: white;
++      overflow: hidden;
++      transition: border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s;
++      opacity: 0.6;
++    }
++
++    .thumbnail:hover {
++      opacity: 0.85;
++    }
++
++    .thumbnail img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      border-style: dashed;
++      opacity: 0.95;
++      transform: scale(1.08);
++      box-shadow: 0 0 10px rgba(255, 171, 64, 0.6);
++    }
++
++    .thumbnail.active {
++      border-color: var(--primary);
++      border-style: solid;
++      opacity: 1;
++      transform: scale(1.08);
++      box-shadow: 0 2px 8px rgba(78, 52, 46, 0.35);
++    }
++
++    .thumbnail.pending.active {
++      border-color: var(--accent);
++      border-style: dashed;
++      box-shadow: 0 0 10px rgba(255, 171, 64, 0.6);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +284,51 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="vibe-section">
++      <h2>Our Cafe Vibe</h2>
++      <div id="gallery">
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80" alt="Cozy cafe seating area with warm ambient lighting">
++          <div class="caption">Cozy Cafe Seating</div>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=1200&q=80" alt="Barista carefully preparing pour-over coffee">
++          <div class="caption">Handcrafted Pour-Over</div>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80" alt="Artisanal espresso with rich golden crema">
++          <div class="caption">Artisanal Espresso</div>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80" alt="Sunlit cafe interior with green house plants">
++          <div class="caption">Sunlit Corner & Plants</div>
++        </div>
++        <div class="gallery-item">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80" alt="Freshly baked pastries and warm morning brews">
++          <div class="caption">Fresh Pastries & Brews</div>
++        </div>
++      </div>
++      <div class="thumbnails">
++        <button type="button" class="thumbnail active" aria-current="true" aria-label="Slide 1: Cozy Cafe Seating">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=200&q=80" alt="Thumbnail 1">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Slide 2: Handcrafted Pour-Over">
++          <img src="https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=200&q=80" alt="Thumbnail 2">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Slide 3: Artisanal Espresso">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80" alt="Thumbnail 3">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Slide 4: Sunlit Corner & Plants">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=200&q=80" alt="Thumbnail 4">
++        </button>
++        <button type="button" class="thumbnail" aria-label="Slide 5: Fresh Pastries & Brews">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=200&q=80" alt="Thumbnail 5">
++        </button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +359,127 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const gallery = document.getElementById('gallery');
++      if (!gallery) return;
++
++      const items = Array.from(gallery.querySelectorAll('.gallery-item'));
++      const thumbnails = Array.from(document.querySelectorAll('.thumbnail'));
++
++      let lastSnapChangingTime = 0;
++      let scrollTimeout = null;
++
++      function getItemFromTarget(target) {
++        if (!target) return null;
++        if (items.includes(target)) return target;
++        if (target.closest) {
++          const closest = target.closest('.gallery-item');
++          if (closest && items.includes(closest)) return closest;
++        }
++        return null;
++      }
++
++      function getSnapTarget(event) {
++        if (!event) return null;
++        const target = event.snapTargetInline ||
++                       (event.detail && event.detail.snapTargetInline) ||
++                       event.snapTargetBlock ||
++                       (event.detail && event.detail.snapTargetBlock) ||
++                       (event.target && event.target !== gallery ? event.target : null);
++        return getItemFromTarget(target);
++      }
++
++      function getClosestIndexFromScroll() {
++        const scrollLeft = gallery.scrollLeft;
++        let closestIndex = 0;
++        let minDiff = Infinity;
++        items.forEach((item, index) => {
++          const itemOffset = item.offsetLeft - gallery.offsetLeft;
++          const diff = Math.abs(itemOffset - scrollLeft);
++          if (diff < minDiff) {
++            minDiff = diff;
++            closestIndex = index;
++          }
++        });
++        return closestIndex;
++      }
++
++      function setPending(index) {
++        if (index < 0 || index >= thumbnails.length) return;
++        thumbnails.forEach((thumb, i) => {
++          if (i === index) {
++            thumb.classList.add('pending');
++          } else {
++            thumb.classList.remove('pending');
++          }
++        });
++      }
++
++      function setActive(index) {
++        if (index < 0 || index >= thumbnails.length) return;
++        thumbnails.forEach((thumb, i) => {
++          thumb.classList.remove('pending');
++          if (i === index) {
++            thumb.classList.add('active');
++            thumb.setAttribute('aria-current', 'true');
++          } else {
++            thumb.classList.remove('active');
++            thumb.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      // 1. scrollsnapchanging event (CSS Scroll Snap Events)
++      gallery.addEventListener('scrollsnapchanging', (event) => {
++        lastSnapChangingTime = performance.now();
++        const targetItem = getSnapTarget(event);
++        const index = targetItem ? items.indexOf(targetItem) : getClosestIndexFromScroll();
++        setPending(index);
++      });
++
++      // 2. scrollsnapchange event (CSS Scroll Snap Events)
++      gallery.addEventListener('scrollsnapchange', (event) => {
++        clearTimeout(scrollTimeout);
++        const targetItem = getSnapTarget(event);
++        const index = targetItem ? items.indexOf(targetItem) : getClosestIndexFromScroll();
++        setActive(index);
++      });
++
++      // 3. scrollend event
++      gallery.addEventListener('scrollend', (event) => {
++        clearTimeout(scrollTimeout);
++        const targetItem = getSnapTarget(event);
++        const index = targetItem ? items.indexOf(targetItem) : getClosestIndexFromScroll();
++        setActive(index);
++      });
++
++      // 4. Fallback for manual scroll events
++      gallery.addEventListener('scroll', () => {
++        if (performance.now() - lastSnapChangingTime < 500) {
++          return;
++        }
++        const pendingIndex = getClosestIndexFromScroll();
++        setPending(pendingIndex);
++
++        clearTimeout(scrollTimeout);
++        scrollTimeout = setTimeout(() => {
++          const finalIndex = getClosestIndexFromScroll();
++          setActive(finalIndex);
++        }, 150);
++      }, { passive: true });
++
++      // Thumbnail click navigation
++      thumbnails.forEach((thumb, index) => {
++        thumb.addEventListener('click', () => {
++          if (items[index]) {
++            items[index].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
++          }
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,38 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Logout dialog */
++    .logout-dialog {
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
++    }
++
++    .logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .logout-dialog-body {
++      padding: 24px 28px;
++      text-align: center;
++    }
++
++    .logout-dialog-actions {
++      display: flex;
++      gap: 12px;
++      justify-content: center;
++    }
++
++    .logout-dialog-actions .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +193,47 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" aria-labelledby="logout-dialog-title">
++    <div class="logout-dialog-body">
++      <h2 id="logout-dialog-title">Are you sure?</h2>
++      <p>You will be logged out of your account.</p>
++      <div class="logout-dialog-actions">
++        <button type="button" class="btn logout-cancel">Cancel</button>
++        <a href="/logout" class="btn logout-confirm">Logout</a>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    (function () {
++      var dialog = document.getElementById('logout-dialog');
++      var trigger = document.querySelector('.test-dialog-trigger');
++
++      trigger.addEventListener('click', function (e) {
++        e.preventDefault();
++        dialog.showModal();
++      });
++
++      dialog.querySelector('.logout-cancel').addEventListener('click', function () {
++        dialog.close();
++      });
++
++      // The dialog has no padding, so a click whose target is the dialog
++      // itself landed on the backdrop.
++      dialog.addEventListener('click', function (e) {
++        if (e.target === dialog) {
++          dialog.close();
++        }
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

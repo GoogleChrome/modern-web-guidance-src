@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,25 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="expect" href="#main-content" blocking="render">
++  <script blocking="render">
++    // Pick a directional view transition type from the pages being navigated between.
++    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const pageOf = (url) => Number(new URL(url).searchParams.get('page')) || 1;
++
++      window.addEventListener('pagereveal', (e) => {
++        const activation = window.navigation?.activation;
++        if (!e.viewTransition || !activation?.from) return;
++
++        const from = pageOf(activation.from.url);
++        const to = pageOf(activation.entry.url);
++        if (from === to) return;
++        e.viewTransition.types.add(to > from ? 'next' : 'previous');
++      });
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +168,78 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 30px;
++    }
++
++    .pagination a[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    /* Page transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root) {
++        animation: 0.35s ease-in both fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation: 0.35s ease-out both fade-in;
++      }
++
++      :active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-next;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-next;
++        }
++      }
++
++      :active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-previous;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-previous;
++        }
++      }
++    }
++
++    @keyframes fade-out {
++      to { opacity: 0; }
++    }
++
++    @keyframes fade-in {
++      from { opacity: 0; }
++    }
++
++    @keyframes slide-out-next {
++      to { transform: translateX(-20%); opacity: 0; }
++    }
++
++    @keyframes slide-in-next {
++      from { transform: translateX(20%); opacity: 0; }
++    }
++
++    @keyframes slide-out-previous {
++      to { transform: translateX(20%); opacity: 0; }
++    }
++
++    @keyframes slide-in-previous {
++      from { transform: translateX(-20%); opacity: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,29 +260,54 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="grid" id="favorites"></div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" class="btn" rel="prev">Previous</a>
++        <a id="next" class="btn" rel="next">Next</a>
+       </div>
+     </section>
++    <script>
++      const items = [
++        ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', '/menu/seasonal'],
++        ['Dark Roast Espresso', 'Bold, smokey, and perfect for a morning boost.', '/menu/espresso'],
++        ['Cold Brew', 'Steeped for 18 hours for maximum smoothness.', '/menu/cold-brew'],
++        ['Pumpkin Spice Latte', 'Roasted pumpkin, cinnamon, and nutmeg over silky espresso.', '/menu/pumpkin-spice'],
++        ['Honey Cinnamon Cortado', 'Equal parts espresso and steamed milk, sweetened with local honey.', '/menu/cortado'],
++        ['Peppermint Mocha', 'Dark chocolate and cool peppermint, topped with whipped cream.', '/menu/peppermint-mocha'],
++        ['Vanilla Bean Flat White', 'Velvety microfoam with real Madagascar vanilla.', '/menu/flat-white'],
++        ['Nitro Cold Brew', 'Cold brew infused with nitrogen for a creamy, cascading pour.', '/menu/nitro'],
++        ['Caramel Macchiato', 'Layers of vanilla, steamed milk, espresso, and buttery caramel.', '/menu/macchiato'],
++      ];
++      const perPage = 3;
++      const pages = Math.ceil(items.length / perPage);
++      const page = Math.min(Math.max(Number(new URLSearchParams(location.search).get('page')) || 1, 1), pages);
++
++      document.getElementById('favorites').replaceChildren(
++        ...items.slice((page - 1) * perPage, page * perPage).map(([title, text, href]) => {
++          const card = document.createElement('div');
++          card.className = 'card';
++          card.innerHTML = '<h3></h3><p></p><a class="btn">View Details</a>';
++          card.querySelector('h3').textContent = title;
++          card.querySelector('p').textContent = text;
++          card.querySelector('a').href = href;
++          return card;
++        })
++      );
++
++      for (const [id, target] of [['previous', page - 1], ['next', page + 1]]) {
++        const link = document.getElementById(id);
++        if (target < 1 || target > pages) {
++          link.setAttribute('aria-disabled', 'true');
++        } else {
++          link.href = `?page=${target}`;
++        }
++      }
++    </script>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

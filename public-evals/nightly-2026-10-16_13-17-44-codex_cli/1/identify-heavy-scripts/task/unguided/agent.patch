@@ -1,0 +1,25 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,20 @@
++# The Daily Grind
++
++Run the site with `pnpm start`.
++
++## Find slow scripts
++
++Open the page with `?script-debug=1` (for example, `http://localhost:11222/?script-debug=1`). Collection begins in the document head. Use the site normally, then select **Refresh report** in the diagnostics panel. Ordinary visits do not start observers or show the panel.
++
++The table ranks script URLs by execution time observed in slow frames, then by their slowest resource load. Expand **Function entry points** to see the browser-reported function, source character position and invoker. High load time suggests a network or payload investigation; high execution or forced-layout time identifies code to investigate with a profiler. The diagnostics script itself may appear in the report.
++
++- **Slowest load** measures resource fetch duration, including waiting; it does not measure JavaScript execution.
++- **Execution in slow frames** totals script durations reported by the Long Animation Frames API. It is partial coverage, not total CPU time. Forced layout is included in that duration.
++- **Longest call** is the largest individual reported script entry duration.
++- **Long-task blocking** sums the portion of tasks exceeding 50 ms across the recording. It is not a Lighthouse Total Blocking Time score and is not attributed to script URLs.
++
++Browser capability messages explain missing APIs. Long animation frame attribution is not supported everywhere, and cross-origin frames, workers and some scripts may be unattributed. An empty report does not prove that scripts are fast. The current page originally contained no JavaScript; this tool records actual observations, without sample results. See [MDN's Long Animation Frames documentation](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing) for API coverage and attribution limits.
++
++**Export JSON** downloads a snapshot. From the console, `window.scriptDiagnostics.report()` returns the same data; `window.scriptDiagnostics.stop()` drains pending records and disconnects observers. **Close** also stops collection. Reload with the flag to restart, or remove the flag to disable diagnostics. Records remain in memory in the current tab; nothing is uploaded or persisted. Exported script URLs and function names may contain sensitive data; review before sharing. Storage is bounded to 200 script sources and 20 function entry points per source. The report includes a count of omitted source observations when the cap is exceeded.
++
++Run automated checks with `node --test` and `node --check script-diagnostics.js`. These checks use mocked performance entries; they do not verify browser-specific attribution or the panel's rendering.

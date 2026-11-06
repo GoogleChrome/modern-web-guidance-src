@@ -1,0 +1,474 @@
+diff --git a/index.html b/index.html
+index 66c9173..f779909 100644
+--- a/index.html
++++ b/index.html
+@@ -113,6 +113,7 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
+     }
+ 
+     .card h3 {
+@@ -135,6 +136,241 @@
+       background: #3e2723;
+     }
+ 
++    /* Hovercard Preview Component */
++    .hovercard {
++      position: absolute;
++      left: 50%;
++      bottom: calc(100% - 10px);
++      transform: translateX(-50%) translateY(8px);
++      width: 320px;
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.22), 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++      text-align: left;
++      z-index: 900;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
++    }
++
++    /* Hover bridge so moving cursor from link to hovercard stays open */
++    .hovercard::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      top: 100%;
++      height: 18px;
++    }
++
++    .hovercard::before {
++      content: '';
++      position: absolute;
++      bottom: -8px;
++      left: 50%;
++      transform: translateX(-50%) rotate(45deg);
++      width: 14px;
++      height: 14px;
++      background: #ffffff;
++      border-right: 1px solid var(--secondary);
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .card .btn:hover + .hovercard,
++    .card .btn:focus + .hovercard,
++    .card .btn:focus-visible + .hovercard,
++    .card .hovercard:hover,
++    .card .hovercard:focus-within,
++    .card .hovercard.active {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translateX(-50%) translateY(0);
++    }
++
++    .hovercard-urlbar {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 8px 12px;
++      background: #f5f0ee;
++      border-bottom: 1px solid var(--secondary);
++      border-radius: 12px 12px 0 0;
++      font-size: 0.75rem;
++      color: #6d4c41;
++    }
++
++    .hovercard-url {
++      font-family: monospace;
++      background: rgba(78, 52, 46, 0.08);
++      padding: 2px 6px;
++      border-radius: 4px;
++    }
++
++    .hovercard-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      padding: 2px 8px;
++      border-radius: 999px;
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .hovercard-media {
++      position: relative;
++      height: 130px;
++      overflow: hidden;
++    }
++
++    .hovercard-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .hovercard-price-tag {
++      position: absolute;
++      bottom: 8px;
++      right: 10px;
++      background: rgba(62, 39, 35, 0.9);
++      color: #fff;
++      font-weight: bold;
++      padding: 3px 10px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
++    .hovercard-body {
++      padding: 14px;
++    }
++
++    .hovercard-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 4px;
++    }
++
++    .hovercard-title {
++      font-size: 1.05rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .hovercard-rating {
++      font-size: 0.8rem;
++      color: #e65100;
++      font-weight: 600;
++    }
++
++    .hovercard-desc {
++      font-size: 0.82rem;
++      color: #5d4037;
++      margin-bottom: 10px;
++      line-height: 1.4;
++    }
++
++    .hovercard-stats {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++      background: var(--light);
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 6px 8px;
++      margin-bottom: 10px;
++      text-align: center;
++    }
++
++    .hovercard-stat-label {
++      display: block;
++      font-size: 0.68rem;
++      color: #8d6e63;
++      text-transform: uppercase;
++    }
++
++    .hovercard-stat-value {
++      font-size: 0.82rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .hovercard-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 5px;
++      margin-bottom: 10px;
++    }
++
++    .hovercard-tag {
++      font-size: 0.72rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .hovercard-sizes {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 12px;
++    }
++
++    .hovercard-size-btn {
++      flex: 1;
++      border: 1px solid var(--secondary);
++      background: #fff;
++      color: var(--text);
++      padding: 4px 6px;
++      font-size: 0.74rem;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: all 0.15s;
++    }
++
++    .hovercard-size-btn:hover {
++      border-color: var(--primary);
++    }
++
++    .hovercard-size-btn.selected {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++      font-weight: 600;
++    }
++
++    .hovercard-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding-top: 8px;
++      border-top: 1px solid #efebe9;
++    }
++
++    .hovercard-cta {
++      display: inline-block;
++      width: 100%;
++      text-align: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 0.82rem;
++      padding: 7px 12px;
++      border-radius: 6px;
++      text-decoration: none;
++      transition: filter 0.2s;
++    }
++
++    .hovercard-cta:hover {
++      filter: brightness(0.95);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +417,149 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-describedby="hovercard-seasonal" aria-expanded="false">View Details</a>
++          <div class="hovercard" id="hovercard-seasonal" role="dialog" aria-label="Maple Oat Latte Page Preview" aria-hidden="true">
++            <div class="hovercard-urlbar">
++              <span class="hovercard-url">/menu/seasonal</span>
++              <span class="hovercard-badge">Seasonal Menu</span>
++            </div>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++              <span class="hovercard-price-tag" data-role="price">$5.75</span>
++            </div>
++            <div class="hovercard-body">
++              <div class="hovercard-title-row">
++                <h4 class="hovercard-title">Maple Oat Latte</h4>
++                <span class="hovercard-rating">&#9733; 4.9 (142)</span>
++              </div>
++              <p class="hovercard-desc">Velvety steamed barista oat milk blended with double-shot espresso, pure Grade A Vermont maple syrup, and a dash of cinnamon.</p>
++              <div class="hovercard-stats">
++                <div>
++                  <span class="hovercard-stat-label">Calories</span>
++                  <span class="hovercard-stat-value" data-role="calories">210 kcal</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Caffeine</span>
++                  <span class="hovercard-stat-value" data-role="caffeine">150 mg</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Temp</span>
++                  <span class="hovercard-stat-value">Hot / Iced</span>
++                </div>
++              </div>
++              <div class="hovercard-tags">
++                <span class="hovercard-tag">Dairy-Free</span>
++                <span class="hovercard-tag">Vermont Maple</span>
++                <span class="hovercard-tag">Oat Milk</span>
++              </div>
++              <div class="hovercard-sizes" role="group" aria-label="Select drink size">
++                <button type="button" class="hovercard-size-btn" data-price="$5.25" data-calories="160 kcal" data-caffeine="75 mg">12 oz</button>
++                <button type="button" class="hovercard-size-btn selected" data-price="$5.75" data-calories="210 kcal" data-caffeine="150 mg">16 oz</button>
++                <button type="button" class="hovercard-size-btn" data-price="$6.25" data-calories="260 kcal" data-caffeine="225 mg">20 oz</button>
++              </div>
++              <div class="hovercard-footer">
++                <a href="/menu/seasonal" class="hovercard-cta">Open Drink Page &rarr;</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-describedby="hovercard-espresso" aria-expanded="false">View Details</a>
++          <div class="hovercard" id="hovercard-espresso" role="dialog" aria-label="Dark Roast Espresso Page Preview" aria-hidden="true">
++            <div class="hovercard-urlbar">
++              <span class="hovercard-url">/menu/espresso</span>
++              <span class="hovercard-badge">Signature Roast</span>
++            </div>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++              <span class="hovercard-price-tag" data-role="price">$3.50</span>
++            </div>
++            <div class="hovercard-body">
++              <div class="hovercard-title-row">
++                <h4 class="hovercard-title">Dark Roast Espresso</h4>
++                <span class="hovercard-rating">&#9733; 4.8 (218)</span>
++              </div>
++              <p class="hovercard-desc">Full-bodied single-origin Sumatra &amp; Colombian blend pulled with rich golden crema and notes of dark cocoa and toasted walnut.</p>
++              <div class="hovercard-stats">
++                <div>
++                  <span class="hovercard-stat-label">Calories</span>
++                  <span class="hovercard-stat-value" data-role="calories">10 kcal</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Caffeine</span>
++                  <span class="hovercard-stat-value" data-role="caffeine">150 mg</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Roast</span>
++                  <span class="hovercard-stat-value">Full Dark</span>
++                </div>
++              </div>
++              <div class="hovercard-tags">
++                <span class="hovercard-tag">Dark Cocoa</span>
++                <span class="hovercard-tag">Smokey</span>
++                <span class="hovercard-tag">Organic Beans</span>
++              </div>
++              <div class="hovercard-sizes" role="group" aria-label="Select shot size">
++                <button type="button" class="hovercard-size-btn" data-price="$2.95" data-calories="5 kcal" data-caffeine="75 mg">Single</button>
++                <button type="button" class="hovercard-size-btn selected" data-price="$3.50" data-calories="10 kcal" data-caffeine="150 mg">Double</button>
++                <button type="button" class="hovercard-size-btn" data-price="$4.10" data-calories="15 kcal" data-caffeine="225 mg">Triple</button>
++              </div>
++              <div class="hovercard-footer">
++                <a href="/menu/espresso" class="hovercard-cta">Open Drink Page &rarr;</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-describedby="hovercard-cold-brew" aria-expanded="false">View Details</a>
++          <div class="hovercard" id="hovercard-cold-brew" role="dialog" aria-label="Cold Brew Page Preview" aria-hidden="true">
++            <div class="hovercard-urlbar">
++              <span class="hovercard-url">/menu/cold-brew</span>
++              <span class="hovercard-badge">Cold Crafted</span>
++            </div>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++              <span class="hovercard-price-tag" data-role="price">$4.95</span>
++            </div>
++            <div class="hovercard-body">
++              <div class="hovercard-title-row">
++                <h4 class="hovercard-title">18-Hour Cold Brew</h4>
++                <span class="hovercard-rating">&#9733; 4.9 (305)</span>
++              </div>
++              <p class="hovercard-desc">Small-batch coarse-ground Ethiopian &amp; Guatemalan beans slow-steeped in filtered cold water for silky, low-acid sweetness.</p>
++              <div class="hovercard-stats">
++                <div>
++                  <span class="hovercard-stat-label">Calories</span>
++                  <span class="hovercard-stat-value" data-role="calories">15 kcal</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Caffeine</span>
++                  <span class="hovercard-stat-value" data-role="caffeine">200 mg</span>
++                </div>
++                <div>
++                  <span class="hovercard-stat-label">Steep Time</span>
++                  <span class="hovercard-stat-value">18 Hours</span>
++                </div>
++              </div>
++              <div class="hovercard-tags">
++                <span class="hovercard-tag">Low Acidity</span>
++                <span class="hovercard-tag">Caramel Finish</span>
++                <span class="hovercard-tag">Small Batch</span>
++              </div>
++              <div class="hovercard-sizes" role="group" aria-label="Select drink size">
++                <button type="button" class="hovercard-size-btn" data-price="$4.45" data-calories="10 kcal" data-caffeine="155 mg">12 oz</button>
++                <button type="button" class="hovercard-size-btn selected" data-price="$4.95" data-calories="15 kcal" data-caffeine="200 mg">16 oz</button>
++                <button type="button" class="hovercard-size-btn" data-price="$5.45" data-calories="20 kcal" data-caffeine="260 mg">24 oz</button>
++              </div>
++              <div class="hovercard-footer">
++                <a href="/menu/cold-brew" class="hovercard-cta">Open Drink Page &rarr;</a>
++              </div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +575,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.card').forEach((card) => {
++      const trigger = card.querySelector('a.btn');
++      const hovercard = card.querySelector('.hovercard');
++      if (!trigger || !hovercard) return;
++
++      let hideTimeout = null;
++
++      const showHovercard = () => {
++        clearTimeout(hideTimeout);
++        document.querySelectorAll('.hovercard.active').forEach((other) => {
++          if (other !== hovercard) {
++            other.classList.remove('active');
++            other.setAttribute('aria-hidden', 'true');
++          }
++        });
++        hovercard.classList.add('active');
++        hovercard.setAttribute('aria-hidden', 'false');
++        trigger.setAttribute('aria-expanded', 'true');
++      };
++
++      const scheduleHide = () => {
++        clearTimeout(hideTimeout);
++        hideTimeout = setTimeout(() => {
++          hovercard.classList.remove('active');
++          hovercard.setAttribute('aria-hidden', 'true');
++          trigger.setAttribute('aria-expanded', 'false');
++        }, 120);
++      };
++
++      trigger.addEventListener('mouseenter', showHovercard);
++      trigger.addEventListener('focus', showHovercard);
++      trigger.addEventListener('mouseleave', scheduleHide);
++      trigger.addEventListener('blur', scheduleHide);
++
++      hovercard.addEventListener('mouseenter', showHovercard);
++      hovercard.addEventListener('focusin', showHovercard);
++      hovercard.addEventListener('mouseleave', scheduleHide);
++      hovercard.addEventListener('focusout', (e) => {
++        if (!hovercard.contains(e.relatedTarget) && e.relatedTarget !== trigger) {
++          scheduleHide();
++        }
++      });
++
++      const priceEl = hovercard.querySelector('[data-role="price"]');
++      const caloriesEl = hovercard.querySelector('[data-role="calories"]');
++      const caffeineEl = hovercard.querySelector('[data-role="caffeine"]');
++      const sizeButtons = hovercard.querySelectorAll('.hovercard-size-btn');
++
++      sizeButtons.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          sizeButtons.forEach((b) => b.classList.remove('selected'));
++          btn.classList.add('selected');
++          if (priceEl && btn.dataset.price) priceEl.textContent = btn.dataset.price;
++          if (caloriesEl && btn.dataset.calories) caloriesEl.textContent = btn.dataset.calories;
++          if (caffeineEl && btn.dataset.caffeine) caffeineEl.textContent = btn.dataset.caffeine;
++        });
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

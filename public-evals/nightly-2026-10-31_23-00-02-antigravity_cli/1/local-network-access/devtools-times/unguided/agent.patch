@@ -1,0 +1,343 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..9990c96 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -41,6 +41,12 @@ export default defineConfig({
+       {
+         hostname: 'astro-news-pytrpecapa-uc.a.run.app',
+         protocol: 'https',
++      },
++      {
++        hostname: 'localhost',
++      },
++      {
++        hostname: '127.0.0.1',
+       }
+     ]
+   }
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..cb386cb 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,58 @@
++export type TargetAddressSpace = 'local' | 'loopback' | 'public' | 'unknown';
++
++export type LocalNetworkPermissionName =
++  | 'local-network-access'
++  | 'local-network'
++  | 'loopback-network';
++
+ declare global {
++  interface RequestInit {
++    targetAddressSpace?: 'local' | 'loopback';
++  }
++
++  interface Request {
++    readonly targetAddressSpace?: TargetAddressSpace;
++  }
++
++  interface LocalNetworkPermissionDescriptor {
++    name: LocalNetworkPermissionName;
++  }
++
++  interface Permissions {
++    query(
++      permissionDesc: PermissionDescriptor | LocalNetworkPermissionDescriptor
++    ): Promise<PermissionStatus>;
++  }
++
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    localNetworkAccess?: {
++      queryPermission: (
++        name?: LocalNetworkPermissionName
++      ) => Promise<PermissionState | 'unsupported'>;
++      checkPermissions: () => Promise<
++        Record<LocalNetworkPermissionName, PermissionState | 'unsupported'>
++      >;
++      createRequest: (
++        input: RequestInfo | URL,
++        targetAddressSpace: 'local' | 'loopback',
++        init?: RequestInit
++      ) => Request;
++      fetchResource: (
++        input: RequestInfo | URL,
++        targetAddressSpace: 'local' | 'loopback',
++        init?: RequestInit
++      ) => Promise<Response>;
++      fetchLocalNetwork: (
++        input: RequestInfo | URL,
++        init?: RequestInit
++      ) => Promise<Response>;
++      fetchLoopback: (
++        input: RequestInfo | URL,
++        init?: RequestInit
++      ) => Promise<Response>;
++    };
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b249f55 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,13 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import { initLocalNetworkAccess } from "../utils/localNetworkAccess";
++
++      initLocalNetworkAccess();
++      document.addEventListener("astro:page-load", () => {
++        initLocalNetworkAccess();
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..8fd1038 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,9 @@
+ 
+ import { defineMiddleware } from 'astro:middleware';
+ 
++const LNA_PERMISSIONS_POLICY =
++  'local-network-access=*, local-network=*, loopback-network=*';
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +12,49 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  if (
++    context.request.method === 'OPTIONS' &&
++    context.request.headers.get('Access-Control-Request-Private-Network') ===
++      'true'
++  ) {
++    const origin = context.request.headers.get('Origin') || '*';
++    return new Response(null, {
++      status: 204,
++      headers: {
++        'Access-Control-Allow-Origin': origin,
++        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
++        'Access-Control-Allow-Headers':
++          context.request.headers.get('Access-Control-Request-Headers') ||
++          'Content-Type',
++        'Access-Control-Allow-Private-Network': 'true',
++        'Permissions-Policy': LNA_PERMISSIONS_POLICY,
++      },
++    });
++  }
++
++  const response = await next();
++  const headers = new Headers(response.headers);
++
++  const existingPolicy = headers.get('Permissions-Policy');
++  headers.set(
++    'Permissions-Policy',
++    existingPolicy
++      ? `${existingPolicy}, ${LNA_PERMISSIONS_POLICY}`
++      : LNA_PERMISSIONS_POLICY
++  );
++
++  if (
++    context.request.headers.get('Access-Control-Request-Private-Network') ===
++    'true'
++  ) {
++    headers.set('Access-Control-Allow-Private-Network', 'true');
++  }
++
++  return new Response(response.body, {
++    status: response.status,
++    statusText: response.statusText,
++    headers,
++  });
+ });
++
+diff --git a/src/utils/localNetworkAccess.ts b/src/utils/localNetworkAccess.ts
+new file mode 100644
+index 0000000..3a808e9
+--- /dev/null
++++ b/src/utils/localNetworkAccess.ts
+@@ -0,0 +1,172 @@
++import type { LocalNetworkPermissionName, TargetAddressSpace } from '../../global';
++
++export const LNA_ALLOW_DIRECTIVES =
++  'local-network-access; local-network; loopback-network';
++
++/**
++ * Queries the browser Permissions API for a Local Network Access permission:
++ * - 'local-network-access'
++ * - 'local-network'
++ * - 'loopback-network'
++ */
++export async function queryLocalNetworkPermission(
++  name: LocalNetworkPermissionName = 'local-network-access'
++): Promise<PermissionState | 'unsupported'> {
++  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
++    return 'unsupported';
++  }
++
++  try {
++    const status = await navigator.permissions.query({ name });
++    return status.state;
++  } catch {
++    return 'unsupported';
++  }
++}
++
++/**
++ * Queries all three Local Network Access permissions:
++ * `local-network-access`, `local-network`, and `loopback-network`.
++ */
++export async function checkLocalNetworkPermissions(): Promise<
++  Record<LocalNetworkPermissionName, PermissionState | 'unsupported'>
++> {
++  const [localNetworkAccess, localNetwork, loopbackNetwork] = await Promise.all([
++    queryLocalNetworkPermission('local-network-access'),
++    queryLocalNetworkPermission('local-network'),
++    queryLocalNetworkPermission('loopback-network'),
++  ]);
++
++  return {
++    'local-network-access': localNetworkAccess,
++    'local-network': localNetwork,
++    'loopback-network': loopbackNetwork,
++  };
++}
++
++/**
++ * Creates a Request configured with `targetAddressSpace` ('local' or 'loopback').
++ */
++export function createLocalNetworkRequest(
++  input: RequestInfo | URL,
++  targetAddressSpace: 'local' | 'loopback',
++  init?: RequestInit
++): Request {
++  return new Request(input, {
++    ...init,
++    targetAddressSpace,
++  });
++}
++
++/**
++ * Returns the `targetAddressSpace` property of a Request instance.
++ */
++export function getRequestTargetAddressSpace(
++  request: Request
++): TargetAddressSpace {
++  return request.targetAddressSpace ?? 'unknown';
++}
++
++/**
++ * Fetches a resource on the user's local network or loopback interface
++ * by specifying `targetAddressSpace` in the fetch options.
++ */
++export async function fetchFromAddressSpace(
++  input: RequestInfo | URL,
++  targetAddressSpace: 'local' | 'loopback',
++  init?: RequestInit
++): Promise<Response> {
++  const request = createLocalNetworkRequest(input, targetAddressSpace, init);
++  return fetch(request, {
++    ...init,
++    targetAddressSpace,
++  });
++}
++
++/**
++ * Fetches a resource on the user's local network (`targetAddressSpace: 'local'`).
++ */
++export async function fetchLocalNetwork(
++  input: RequestInfo | URL,
++  init?: RequestInit
++): Promise<Response> {
++  return fetch(input, {
++    ...init,
++    targetAddressSpace: 'local',
++  });
++}
++
++/**
++ * Fetches a resource on the user's loopback interface (`targetAddressSpace: 'loopback'`).
++ */
++export async function fetchLoopback(
++  input: RequestInfo | URL,
++  init?: RequestInit
++): Promise<Response> {
++  return fetch(input, {
++    ...init,
++    targetAddressSpace: 'loopback',
++  });
++}
++
++/**
++ * Ensures an iframe has the `allow` attribute configured with
++ * `local-network-access`, `local-network`, and `loopback-network` directives.
++ */
++export function enableIframeLocalNetworkAccess(iframe: HTMLIFrameElement): void {
++  const existingAllow = iframe.getAttribute('allow') || '';
++  const directives = new Set(
++    existingAllow
++      .split(';')
++      .map((d) => d.trim())
++      .filter(Boolean)
++  );
++  directives.add('local-network-access');
++  directives.add('local-network');
++  directives.add('loopback-network');
++  iframe.setAttribute('allow', Array.from(directives).join('; '));
++}
++
++/**
++ * Initializes Local Network Access client utilities on `window.localNetworkAccess`
++ * and configures embedded iframes to delegate local network / loopback permissions.
++ */
++export function initLocalNetworkAccess(): void {
++  if (typeof window === 'undefined') return;
++
++  window.localNetworkAccess = {
++    queryPermission: queryLocalNetworkPermission,
++    checkPermissions: checkLocalNetworkPermissions,
++    createRequest: createLocalNetworkRequest,
++    fetchResource: fetchFromAddressSpace,
++    fetchLocalNetwork,
++    fetchLoopback,
++  };
++
++  // Query permissions on startup so the browser registers permission state readiness
++  void checkLocalNetworkPermissions();
++
++  if (typeof document !== 'undefined') {
++    document
++      .querySelectorAll<HTMLIFrameElement>('iframe')
++      .forEach(enableIframeLocalNetworkAccess);
++
++    const observer = new MutationObserver((mutations) => {
++      for (const mutation of mutations) {
++        for (const node of mutation.addedNodes) {
++          if (node instanceof HTMLIFrameElement) {
++            enableIframeLocalNetworkAccess(node);
++          } else if (node instanceof HTMLElement) {
++            node
++              .querySelectorAll<HTMLIFrameElement>('iframe')
++              .forEach(enableIframeLocalNetworkAccess);
++          }
++        }
++      }
++    });
++
++    if (document.body) {
++      observer.observe(document.body, { childList: true, subtree: true });
++    }
++  }
++}

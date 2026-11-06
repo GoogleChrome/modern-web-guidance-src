@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,65 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Roaster's Secrets Preview */
++    .paywall-container {
++      margin-top: 60px;
++      background: white;
++      padding: 40px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      -webkit-mask-image: linear-gradient(to bottom, #000000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000000 45%, transparent 100%);
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .paywall-badge {
++      display: block;
++      width: fit-content;
++      margin: 0 auto 20px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 12px;
++    }
++
++    .secrets-content {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .secrets-content p {
++      margin-bottom: 16px;
++    }
++
++    .secrets-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++      margin-top: 24px;
++    }
++
++    .secret-item {
++      border-left: 3px solid var(--accent);
++      padding-left: 15px;
++    }
++
++    .secret-item h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +251,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <span class="paywall-badge">Members Exclusive Preview</span>
++      <h2>Roaster's Secrets</h2>
++      <div class="secrets-content">
++        <p>Unlocking the hidden flavor notes of single-origin beans requires precision at every stage of the roasting curve. Before the first crack begins at 196°C, our master roasters carefully modulate airflow and drum speed to preserve delicate floral aromatics while building a rich, caramelized foundation.</p>
++        <div class="secrets-grid">
++          <div class="secret-item">
++            <h4>1. The Maillard Window</h4>
++            <p>Extending the browning phase by just 18 seconds enhances stone-fruit sweetness without introducing bitter roast notes.</p>
++          </div>
++          <div class="secret-item">
++            <h4>2. Water Chemistry</h4>
++            <p>Target 65 ppm total hardness with a 2:1 magnesium-to-calcium ratio to extract complex berry and cacao undertones.</p>
++          </div>
++          <div class="secret-item">
++            <h4>3. Bloom Degassing</h4>
++            <p>Rest freshly roasted Ethiopian heirloom beans for exactly 9 days before dialing in a 1:2.2 espresso extraction ratio.</p>
++          </div>
++        </div>
++        <p style="margin-top: 20px;">In our full masterclass guide, we break down the exact temperature drop temperatures, charge weights, and refractometer targets used across our reserve micro-lots...</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

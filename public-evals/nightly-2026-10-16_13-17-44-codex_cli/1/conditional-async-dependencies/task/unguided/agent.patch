@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,19 +54,100 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a, .rewards-trigger {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .rewards-trigger {
++      border: 0;
++      background: none;
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    nav a:hover, .rewards-trigger:hover, .rewards-trigger[aria-expanded="true"] {
+       color: var(--accent);
+     }
+ 
++    .rewards-trigger:focus-visible, .rewards-close:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    #rewards-popover {
++      display: none;
++      position: fixed;
++      inset: 78px 5% auto auto;
++      margin: 0;
++      width: 360px;
++      max-width: calc(100vw - 32px);
++      max-height: calc(100dvh - 96px);
++      overflow-y: auto;
++      padding: 0;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 40px rgb(62 39 35 / 22%);
++      z-index: 1001;
++    }
++
++    #rewards-popover:popover-open {
++      display: block;
++    }
++
++    #rewards-popover.is-open {
++      display: block;
++    }
++
++    .rewards-header {
++      display: flex;
++      align-items: flex-start;
++      justify-content: space-between;
++      padding: 20px 24px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .rewards-header h2 { font-size: 1.25rem; }
++    .rewards-header p { color: var(--secondary); font-size: 0.85rem; }
++    .rewards-close {
++      border: 0;
++      background: transparent;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      padding: 4px;
++      cursor: pointer;
++    }
++
++    .rewards-body { padding: 24px; }
++    .rewards-balance {
++      padding-bottom: 20px;
++      margin-bottom: 20px;
++      border-bottom: 1px solid var(--secondary);
++    }
++    .rewards-balance strong { font-size: 2rem; }
++    .rewards-balance p, .rewards-tiers p { font-size: 0.85rem; }
++    .rewards-body h3 { font-size: 0.9rem; margin-bottom: 12px; }
++    .rewards-tiers { list-style: none; display: grid; gap: 12px; }
++    .rewards-tiers li { padding: 12px; border: 1px solid var(--secondary); border-radius: 6px; }
++    .rewards-tiers .current-tier { background: #fbf5ee; border-color: #bd8b54; }
++    .tier-label { display: flex; justify-content: space-between; gap: 8px; font-size: 0.9rem; }
++    .tier-label span { font-size: 0.75rem; }
++
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      #rewards-popover { inset: 130px 16px auto auto; max-height: calc(100dvh - 146px); }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +242,46 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="rewards-trigger" popovertarget="rewards-popover" aria-controls="rewards-popover" aria-expanded="false" aria-haspopup="dialog">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" popover="auto" role="dialog" aria-labelledby="rewards-title">
++    <div class="rewards-header">
++      <div>
++        <h2 id="rewards-title">A little more rewarding</h2>
++        <p>Your Daily Grind membership</p>
++      </div>
++      <button type="button" class="rewards-close" popovertarget="rewards-popover" popovertargetaction="hide" aria-label="Close rewards">&times;</button>
++    </div>
++    <div class="rewards-body">
++      <div class="rewards-balance">
++        <h3>Current points</h3>
++        <strong>0</strong> points
++        <p>Bronze member &middot; 500 points to Silver</p>
++      </div>
++      <h3>Membership tiers &amp; benefits</h3>
++      <ul class="rewards-tiers">
++        <li class="current-tier">
++          <div class="tier-label"><strong>Bronze</strong><span>0–499 pts &middot; Current tier</span></div>
++          <p>Earn 1 point per $1 &middot; Birthday treat</p>
++        </li>
++        <li>
++          <div class="tier-label"><strong>Silver</strong><span>500–999 pts</span></div>
++          <p>All Bronze benefits &middot; Free flavor upgrades</p>
++        </li>
++        <li>
++          <div class="tier-label"><strong>Gold</strong><span>1,000+ pts</span></div>
++          <p>All Silver benefits &middot; A free drink every month</p>
++        </li>
++      </ul>
++    </div>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +319,21 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const popover = document.getElementById('rewards-popover');
++    const trigger = document.querySelector('.rewards-trigger');
++
++    // Modern browsers make no additional script requests.
++    if (!('showPopover' in HTMLElement.prototype)) {
++      const { setupRewardsFallback } = await import('./rewards-popover-fallback.js');
++      setupRewardsFallback(popover, trigger);
++    } else {
++      popover.addEventListener('toggle', (event) => {
++        trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

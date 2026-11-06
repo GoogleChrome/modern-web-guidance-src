@@ -1,0 +1,283 @@
+diff --git a/index.html b/index.html
+index 66c9173..66940b7 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,99 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* In-page navigation targets */
++    .scroll-target {
++      scroll-margin-top: 80px;
++      margin-top: 60px;
++      border-radius: 8px;
++      outline: none;
++    }
++
++    .scroll-target:first-child {
++      margin-top: 0;
++    }
++
++    .scroll-target > h2 {
++      text-align: center;
++    }
++
++    .scroll-target:focus-visible {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    nav a.active {
++      color: var(--accent);
++    }
++
++    /* Applied only once the smooth scroll has settled on the target */
++    .scroll-target.arrived {
++      animation: arrive-glow 1.4s ease-out;
++    }
++
++    .scroll-target.arrived > h2 {
++      animation: arrive-heading 0.6s ease-out;
++    }
++
++    .scroll-target.arrived .card {
++      animation: arrive-card 0.6s ease-out backwards;
++    }
++
++    .scroll-target.arrived .card:nth-child(2) {
++      animation-delay: 0.1s;
++    }
++
++    .scroll-target.arrived .card:nth-child(3) {
++      animation-delay: 0.2s;
++    }
++
++    @keyframes arrive-glow {
++      0% {
++        background-color: rgba(255, 171, 64, 0.35);
++        box-shadow: 0 0 0 12px rgba(255, 171, 64, 0.35);
++      }
++
++      100% {
++        background-color: transparent;
++        box-shadow: 0 0 0 12px rgba(255, 171, 64, 0);
++      }
++    }
++
++    @keyframes arrive-heading {
++      from {
++        opacity: 0;
++        transform: translateY(-10px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes arrive-card {
++      from {
++        opacity: 0;
++        transform: translateY(16px) scale(0.97);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++
++      .scroll-target.arrived,
++      .scroll-target.arrived > h2,
++      .scroll-target.arrived .card {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,9 +253,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +268,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="scroll-target" tabindex="-1">
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +288,48 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="scroll-target" tabindex="-1">
++      <h2>Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>142 Main Street. Open daily 6am &ndash; 8pm.</p>
++          <a href="/locations/downtown" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>8 Harbor Walk. Open daily 7am &ndash; 6pm.</p>
++          <a href="/locations/riverside" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>University Quarter</h3>
++          <p>301 College Ave. Open weekdays 6am &ndash; 10pm.</p>
++          <a href="/locations/university" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="scroll-target" tabindex="-1">
++      <h2>Grind Rewards</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect one bean for every dollar you spend in store or online.</p>
++          <a href="/rewards" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <h3>Free Drinks</h3>
++          <p>Redeem 100 beans for any handcrafted drink, any size.</p>
++          <a href="/rewards/redeem" class="btn">Redeem</a>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>Members get a free pastry and drink during their birthday week.</p>
++          <a href="/rewards/join" class="btn">Join Now</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +342,105 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var navLinks = document.querySelectorAll('nav a[href^="#"]');
++      var pending = null; // cancels the in-flight navigation, if any
++
++      // Resolve once scrolling has actually stopped. Uses the native
++      // `scrollend` event where supported, with a fallback that watches for
++      // the scroll position to stay put across several frames (this also
++      // covers the case where no scroll is needed at all).
++      function waitForScrollEnd(onDone) {
++        var done = false;
++        var lastY = window.scrollY;
++        var stableFrames = 0;
++        var rafId;
++
++        function finish() {
++          if (done) return;
++          done = true;
++          cancelAnimationFrame(rafId);
++          window.removeEventListener('scrollend', finish);
++          onDone();
++        }
++
++        function check() {
++          var y = window.scrollY;
++          stableFrames = y === lastY ? stableFrames + 1 : 0;
++          lastY = y;
++          // ~100ms without movement means the scroll is done (or never began)
++          if (stableFrames >= 6) finish();
++          else rafId = requestAnimationFrame(check);
++        }
++
++        window.addEventListener('scrollend', finish);
++        rafId = requestAnimationFrame(check);
++
++        return function cancel() {
++          done = true;
++          cancelAnimationFrame(rafId);
++          window.removeEventListener('scrollend', finish);
++        };
++      }
++
++      function setActive(hash) {
++        navLinks.forEach(function (link) {
++          link.classList.toggle('active', link.getAttribute('href') === hash);
++        });
++      }
++
++      function onArrive(target) {
++        target.focus({ preventScroll: true });
++        target.classList.remove('arrived');
++        void target.offsetWidth; // restart the animation on repeat visits
++        target.classList.add('arrived');
++      }
++
++      function navigateTo(target, hash) {
++        if (pending) pending();
++        document.querySelectorAll('.scroll-target.arrived').forEach(function (el) {
++          el.classList.remove('arrived');
++        });
++
++        setActive(hash);
++        if (location.hash !== hash) history.pushState(null, '', hash);
++
++        target.scrollIntoView({
++          behavior: reducedMotion.matches ? 'auto' : 'smooth',
++          block: 'start'
++        });
++
++        pending = waitForScrollEnd(function () {
++          pending = null;
++          onArrive(target);
++        });
++      }
++
++      navLinks.forEach(function (link) {
++        link.addEventListener('click', function (event) {
++          var hash = link.getAttribute('href');
++          var target = document.getElementById(hash.slice(1));
++          if (!target) return;
++          event.preventDefault();
++          navigateTo(target, hash);
++        });
++      });
++
++      window.addEventListener('popstate', function () {
++        var target = location.hash && document.getElementById(location.hash.slice(1));
++        if (target) navigateTo(target, location.hash);
++      });
++
++      document.addEventListener('animationend', function (event) {
++        if (event.animationName === 'arrive-glow') {
++          event.target.classList.remove('arrived');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

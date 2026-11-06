@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,51 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-In Section */
++    .signin-section {
++      max-width: 420px;
++      margin: 0 auto 40px auto;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin-section h2 {
++      margin-bottom: 16px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +217,23 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin-section" aria-label="Sign In">
++      <h2>Sign In</h2>
++      <form id="signin-form" novalidate>
++        <div class="form-group">
++          <label for="username">Email or Username</label>
++          <input type="text" id="username" name="username" autocomplete="username webauthn" placeholder="you@example.com" value="coffee.lover@example.com">
++        </div>
++        <div class="form-group">
++          <label for="password">Password</label>
++          <input type="password" id="password" name="password" autocomplete="current-password" placeholder="••••••••" value="••••••••">
++        </div>
++        <button type="submit" id="signin-button" data-testid="signin-button" class="btn signin-btn">Sign In</button>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +264,151 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function base64UrlToUint8Array(input) {
++      if (input instanceof Uint8Array) return input;
++      if (input instanceof ArrayBuffer) return new Uint8Array(input);
++      if (ArrayBuffer.isView(input)) {
++        return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
++      }
++      if (Array.isArray(input)) return new Uint8Array(input);
++      if (typeof input !== 'string') return new Uint8Array();
++      try {
++        const padding = '='.repeat((4 - (input.length % 4)) % 4);
++        const base64 = (input + padding).replace(/-/g, '+').replace(/_/g, '/');
++        const raw = atob(base64);
++        const bytes = new Uint8Array(raw.length);
++        for (let i = 0; i < raw.length; i++) {
++          bytes[i] = raw.charCodeAt(i);
++        }
++        return bytes;
++      } catch {
++        return new TextEncoder().encode(input);
++      }
++    }
++
++    function bufferToBase64Url(buf) {
++      if (!buf) return buf;
++      if (typeof buf === 'string') return buf;
++      const bytes = buf instanceof ArrayBuffer
++        ? new Uint8Array(buf)
++        : ArrayBuffer.isView(buf)
++          ? new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
++          : Array.isArray(buf)
++            ? new Uint8Array(buf)
++            : null;
++      if (!bytes) return buf;
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    async function promotePasskeySilently(username) {
++      try {
++        if (
++          typeof window.PublicKeyCredential === 'undefined' ||
++          typeof PublicKeyCredential.getClientCapabilities !== 'function'
++        ) {
++          return;
++        }
++
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities || !capabilities.conditionalCreate) {
++          return;
++        }
++
++        const optionsRes = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ username }),
++        });
++
++        if (!optionsRes.ok) {
++          return;
++        }
++
++        const optionsData = await optionsRes.json();
++        const rawOptions = optionsData.publicKey || optionsData.options || optionsData;
++
++        const publicKey = {
++          ...rawOptions,
++          challenge: rawOptions.challenge !== undefined
++            ? base64UrlToUint8Array(rawOptions.challenge)
++            : new Uint8Array(16),
++          user: rawOptions.user
++            ? {
++                ...rawOptions.user,
++                id: rawOptions.user.id !== undefined
++                  ? base64UrlToUint8Array(rawOptions.user.id)
++                  : new Uint8Array(16),
++              }
++            : undefined,
++        };
++
++        if (Array.isArray(rawOptions.excludeCredentials)) {
++          publicKey.excludeCredentials = rawOptions.excludeCredentials.map((cred) => ({
++            ...cred,
++            id: cred.id !== undefined ? base64UrlToUint8Array(cred.id) : cred.id,
++          }));
++        }
++
++        const credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional',
++        });
++
++        if (!credential) {
++          return;
++        }
++
++        let verifyPayload;
++        if (typeof credential.toJSON === 'function') {
++          verifyPayload = credential.toJSON();
++        } else {
++          const resp = credential.response || {};
++          verifyPayload = {
++            ...credential,
++            id: credential.id,
++            rawId: bufferToBase64Url(credential.rawId ?? credential.id),
++            type: credential.type || 'public-key',
++            authenticatorAttachment: credential.authenticatorAttachment,
++            clientExtensionResults:
++              typeof credential.getClientExtensionResults === 'function'
++                ? credential.getClientExtensionResults()
++                : credential.clientExtensionResults || {},
++            response: {
++              ...resp,
++              clientDataJSON: bufferToBase64Url(resp.clientDataJSON),
++              attestationObject: bufferToBase64Url(resp.attestationObject),
++              ...(typeof resp.getTransports === 'function'
++                ? { transports: resp.getTransports() }
++                : {}),
++            },
++          };
++        }
++
++        await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(verifyPayload),
++        });
++      } catch {
++        // Silently ignore any errors during conditional background passkey creation
++      }
++    }
++
++    const signinForm = document.getElementById('signin-form');
++    const usernameInput = document.getElementById('username');
++
++    signinForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const username = usernameInput ? usernameInput.value : '';
++      promotePasskeySilently(username);
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,304 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,226 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling (pure CSS, scroll-driven animations) */
++    .scrolly-intro {
++      text-align: center;
++      margin: 80px 0 20px;
++    }
++
++    .scrolly {
++      /* Hoist the named view timelines declared on the #tracked sections
++         so siblings in the #animated branch can reference them. */
++      timeline-scope: --step-1, --step-2, --step-3, --step-4;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      grid-template-areas: "tracked animated";
++      gap: 40px;
++    }
++
++    #tracked {
++      grid-area: tracked;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 0;
++    }
++
++    #tracked .step-card {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      border-left: 4px solid var(--accent);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    #tracked .step-num {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++      margin-bottom: 6px;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.5rem;
++    }
++
++    #tracked section:nth-child(1) { view-timeline-name: --step-1; }
++    #tracked section:nth-child(2) { view-timeline-name: --step-2; }
++    #tracked section:nth-child(3) { view-timeline-name: --step-3; }
++    #tracked section:nth-child(4) { view-timeline-name: --step-4; }
++
++    #animated {
++      grid-area: animated;
++      display: grid;
++      gap: 20px;
++    }
++
++    #animated section {
++      position: relative;
++      aspect-ratio: 4 / 5;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++      background: var(--secondary);
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    #animated figure {
++      height: 100%;
++    }
++
++    #animated figcaption {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      padding: 16px 20px;
++      color: white;
++      font-weight: bold;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++    }
++
++    @supports (animation-timeline: view()) {
++      #animated {
++        position: sticky;
++        top: calc(50vh - min(35vh, 260px) + 30px);
++        align-self: start;
++        height: min(70vh, 520px);
++        gap: 0;
++      }
++
++      /* Stack every animated panel in the same cell */
++      #animated section {
++        grid-area: 1 / 1;
++        height: 100%;
++        aspect-ratio: auto;
++        opacity: 0;
++        /* Only compositor-friendly properties are animated */
++        will-change: opacity, transform;
++        animation: scrolly-reveal linear both;
++        animation-range: cover 15% cover 85%;
++      }
++
++      #animated img {
++        animation: scrolly-zoom linear both;
++        animation-range: cover 0% cover 100%;
++      }
++
++      /* animation-timeline must come after the animation shorthand */
++      #animated section:nth-child(1),
++      #animated section:nth-child(1) img { animation-timeline: --step-1; }
++      #animated section:nth-child(2),
++      #animated section:nth-child(2) img { animation-timeline: --step-2; }
++      #animated section:nth-child(3),
++      #animated section:nth-child(3) img { animation-timeline: --step-3; }
++      #animated section:nth-child(4),
++      #animated section:nth-child(4) img { animation-timeline: --step-4; }
++
++      /* Keep the first panel visible before scrolling starts
++         and the last one visible after the story ends */
++      #animated section:first-child { animation-name: scrolly-reveal-first; }
++      #animated section:last-child { animation-name: scrolly-reveal-last; }
++
++      @keyframes scrolly-reveal {
++        0% { opacity: 0; transform: translateY(40px) scale(0.96); }
++        25%, 75% { opacity: 1; transform: none; }
++        100% { opacity: 0; transform: translateY(-40px) scale(0.96); }
++      }
++
++      @keyframes scrolly-reveal-first {
++        0%, 75% { opacity: 1; transform: none; }
++        100% { opacity: 0; transform: translateY(-40px) scale(0.96); }
++      }
++
++      @keyframes scrolly-reveal-last {
++        0% { opacity: 0; transform: translateY(40px) scale(0.96); }
++        25%, 100% { opacity: 1; transform: none; }
++      }
++
++      @keyframes scrolly-zoom {
++        from { transform: scale(1.15); }
++        to { transform: scale(1); }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        @keyframes scrolly-reveal {
++          0% { opacity: 0; }
++          25%, 75% { opacity: 1; }
++          100% { opacity: 0; }
++        }
++
++        @keyframes scrolly-reveal-first {
++          0%, 75% { opacity: 1; }
++          100% { opacity: 0; }
++        }
++
++        @keyframes scrolly-reveal-last {
++          0% { opacity: 0; }
++          25%, 100% { opacity: 1; }
++        }
++
++        #animated img { animation: none; }
++      }
++    }
++
++    @media (max-width: 768px) {
++      .scrolly {
++        grid-template-columns: 1fr;
++        grid-template-areas: "content";
++        gap: 0;
++      }
++
++      /* Overlay layout: imagery sticks behind, text scrolls over it */
++      #tracked,
++      #animated {
++        grid-area: content;
++      }
++
++      #tracked {
++        position: relative;
++        z-index: 1;
++      }
++
++      #tracked .step-card {
++        background: rgba(255, 255, 255, 0.94);
++      }
++    }
++
++    @media (max-width: 768px) {
++      @supports (animation-timeline: view()) {
++        #animated {
++          top: 90px;
++          height: calc(100vh - 110px);
++        }
++      }
++    }
++
++    @supports not (animation-timeline: view()) {
++      @media (max-width: 768px) {
++        /* Without scroll timelines, show text then images in sequence */
++        .scrolly { grid-template-areas: "tracked" "animated"; gap: 20px; }
++        #tracked { grid-area: tracked; }
++        #animated { grid-area: animated; }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +412,73 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrolly-intro">
++      <h2>From Farm to Cup</h2>
++      <p>Scroll through the journey of every bean we roast.</p>
++    </section>
++
++    <div class="scrolly">
++      <div id="tracked">
++        <section>
++          <div class="step-card">
++            <span class="step-num">Step 1</span>
++            <h3>Grown at Altitude</h3>
++            <p>Our beans come from small family farms in Ethiopia, Colombia, and Guatemala, grown on high slopes where cool nights slow ripening and build complex flavor.</p>
++          </div>
++        </section>
++        <section>
++          <div class="step-card">
++            <span class="step-num">Step 2</span>
++            <h3>Hand-Picked &amp; Processed</h3>
++            <p>Only the ripest cherries are picked by hand, then washed or sun-dried on raised beds. We pay well above fair-trade prices for this care.</p>
++          </div>
++        </section>
++        <section>
++          <div class="step-card">
++            <span class="step-num">Step 3</span>
++            <h3>Roasted in Small Batches</h3>
++            <p>Every week we roast in small batches right here in town, dialing in each origin's profile to bring out its natural sweetness.</p>
++          </div>
++        </section>
++        <section>
++          <div class="step-card">
++            <span class="step-num">Step 4</span>
++            <h3>Brewed with Care</h3>
++            <p>Our baristas grind to order and pull every shot by hand, so the cup in front of you tastes exactly the way the farmer intended.</p>
++          </div>
++        </section>
++      </div>
++
++      <div id="animated">
++        <section>
++          <figure>
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80" alt="Coffee beans spilling across a table" loading="lazy">
++            <figcaption>Grown at altitude</figcaption>
++          </figure>
++        </section>
++        <section>
++          <figure>
++            <img src="https://images.unsplash.com/photo-1442550528053-c431ecb55509?auto=format&fit=crop&w=800&q=80" alt="Handful of freshly harvested coffee" loading="lazy">
++            <figcaption>Hand-picked &amp; processed</figcaption>
++          </figure>
++        </section>
++        <section>
++          <figure>
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=800&q=80" alt="Freshly roasted coffee beans" loading="lazy">
++            <figcaption>Roasted in small batches</figcaption>
++          </figure>
++        </section>
++        <section>
++          <figure>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="Barista pouring latte art" loading="lazy">
++            <figcaption>Brewed with care</figcaption>
++          </figure>
++        </section>
++      </div>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

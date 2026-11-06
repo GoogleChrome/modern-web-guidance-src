@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,63 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Brand — Watch the film</title>
++<meta name="description" content="Watch the film.">
++
++<!-- LCP: poster is not an <img>, so the preload scanner can't find it without this -->
++<link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++<!-- Critical header font -->
++<link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++<!-- Secondary font: start early but don't compete with poster/brand font -->
++<link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++<style>
++@font-face{
++  font-family:"Brand";
++  src:url(brand-font.woff2) format("woff2");
++  font-display:swap;
++}
++@font-face{
++  font-family:"Secondary";
++  src:url(secondary-font.woff2) format("woff2");
++  font-display:optional;
++}
++*{box-sizing:border-box}
++body{
++  margin:0;
++  background:#000;
++  color:#fff;
++  font:1rem/1.5 "Secondary",system-ui,sans-serif;
++}
++header{padding:1rem}
++h1{
++  margin:0;
++  font:700 1.75rem/1.2 "Brand",system-ui,sans-serif;
++}
++main{max-width:1200px;margin:0 auto;padding:0 1rem}
++video{
++  display:block;
++  width:100%;
++  height:auto;
++  aspect-ratio:16/9;
++  background:#111;
++  object-fit:cover;
++}
++nav{padding:1rem 0}
++a{color:inherit}
++</style>
++</head>
++<body>
++<header>
++  <h1>Brand</h1>
++</header>
++<main>
++  <video controls playsinline preload="none" poster="poster.jpg" width="1280" height="720">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++  <nav><a href="#">Share</a> · <a href="#">Contact</a></nav>
++</main>
++</body>
++</html>

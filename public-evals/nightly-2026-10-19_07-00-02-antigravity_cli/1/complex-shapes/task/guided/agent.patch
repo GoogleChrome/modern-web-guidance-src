@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,102 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 65vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
++      flex-direction: row;
+       justify-content: center;
+       align-items: center;
++      gap: 3.5rem;
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      text-align: left;
++      padding: 50px 5%;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero-content {
++      max-width: 550px;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      line-height: 1.15;
+     }
+ 
++    .hero p {
++      font-size: 1.15rem;
++      margin-bottom: 0.5rem;
++      opacity: 0.95;
++    }
++
++    /* Decorative Organic Shaped Visual Block */
++    .shaped-element {
++      width: min(320px, 85vw);
++      height: min(320px, 85vw);
++      max-width: 100%;
++      aspect-ratio: 1;
++      flex-shrink: 0;
++      overflow: hidden;
++      border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
++      background-color: var(--primary);
++      background: var(--primary) linear-gradient(135deg, #4e342e 0%, #795548 50%, #3e2723 100%);
++      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
++
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url('splash-mask.svg');
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++
++      /* Standard property for modern browsers */
++      mask-image: url('splash-mask.svg');
++      mask-size: cover;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      pointer-events: none;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        /* Use a simple rounded rectangle as fallback */
++        clip-path: inset(5% round 15px);
++      }
++    }
++
++    @media (max-width: 768px) {
++      .hero {
++        flex-direction: column-reverse;
++        text-align: center;
++        padding: 40px 20px;
++        gap: 2rem;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++
++      .shaped-element {
++        width: min(240px, 65vw);
++        height: min(240px, 65vw);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +243,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="shaped-element" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="" />
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>

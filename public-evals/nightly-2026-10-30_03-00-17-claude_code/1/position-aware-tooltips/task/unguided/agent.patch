@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,97 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Info tooltip (anchor positioning + anchored container queries) */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      anchor-name: --maple-info;
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .tooltip {
++      /* Reset UA popover styles; this element is only the positioned shell */
++      inset: auto;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      overflow: visible;
++
++      position-anchor: --maple-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      width: max-content;
++      max-width: 240px;
++    }
++
++    .tooltip-body {
++      --arrow-size: 8px;
++      position: relative;
++      margin-bottom: 12px;
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      border-radius: 10px 10px 4px 4px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    /* Arrow: points down at the trigger by default (tooltip above) */
++    .tooltip-body::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      translate: -50% 0;
++      border: var(--arrow-size) solid transparent;
++      border-top-color: var(--primary);
++    }
++
++    /* Flipped below the trigger: arrow points up, radius/margins mirror */
++    @container anchored(fallback: flip-block) {
++      .tooltip-body {
++        margin-bottom: 0;
++        margin-top: 12px;
++        border-radius: 4px 4px 10px 10px;
++      }
++
++      .tooltip-body::after {
++        top: auto;
++        bottom: 100%;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +269,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="maple-tooltip"
++              aria-describedby="maple-tooltip" aria-label="Maple Oat Latte info">i</button>
++          </div>
++          <div id="maple-tooltip" class="tooltip" role="tooltip" popover>
++            <div class="tooltip-body">Contains oats. Made with pure Vermont maple syrup &mdash; 190 calories (12 oz).</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

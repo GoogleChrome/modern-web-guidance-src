@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .journal {
++      margin-top: 56px;
++      padding: clamp(24px, 5vw, 48px);
++      background: #f2ebe5;
++      border-top: 3px solid var(--accent);
++      border-radius: 8px;
++    }
++
++    .journal-kicker {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++    }
++
++    .journal h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 5vw, 2.75rem);
++      margin: 8px 0;
++    }
++
++    .journal-intro {
++      font-size: 1.1rem;
++      margin-bottom: 24px;
++    }
++
++    .journal-copy {
++      max-width: 72ch;
++    }
++
++    .journal-copy p + p {
++      margin-top: 18px;
++    }
++
++    .journal button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 24px;
++    }
++
++    .journal button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .journal button:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .journal-note, #summary-status {
++      font-size: 0.85rem;
++      margin-top: 10px;
++    }
++
++    .journal-summary {
++      margin-top: 24px;
++      padding: 24px;
++      background: white;
++      border-radius: 6px;
++    }
++
++    .journal-summary ul {
++      padding-left: 24px;
++      margin-top: 12px;
++    }
++
++    .journal-summary li + li {
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +266,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="journal" aria-labelledby="journal-title">
++      <p class="journal-kicker">From the farm to your first sip</p>
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <p class="journal-intro">Good coffee begins long before we light the roaster.</p>
++      <div class="journal-copy" id="journal-text">
++        <p>Every coffee we bring into The Daily Grind starts with a question: who grew it, and what makes this harvest worth sharing? We look for beans with a clear sense of place, shaped by the soil, elevation, weather, and care of the people who tend them. Our sourcing process begins with conversations with producers, cooperatives, and importers who can trace a coffee back to its origin. A beautiful cup matters to us, but so does understanding the work behind it.</p>
++        <p>We ask our sourcing partners about harvesting practices, how cherries are sorted, and how the beans are processed and dried. Was the fruit washed away before drying, or left on the seed to develop a sweeter, fruit-forward character? How is water managed at the mill, and what steps are farmers taking to protect their soil and shade trees? These details help us understand both the flavor of a lot and the decisions that sustain a farm over time. We favor partners who share that information openly and treat quality as an ongoing collaboration.</p>
++        <p>Before choosing a coffee, we roast small samples and taste them side by side in a process called cupping. We consider sweetness, acidity, body, and finish, looking for balance and distinctive flavors rather than intensity alone. We revisit promising samples as they cool, when subtle notes become easier to notice. We also discuss pricing and traceability with our partners, seeking purchasing relationships that recognize the skill and resources a good harvest requires. Our aim is to build lasting relationships and return to coffees we love across seasons.</p>
++        <p>Once a shipment arrives, we compare it with the approved sample and develop a roast profile that lets its character shine. A delicate, floral coffee may need a different approach from one with deep cocoa sweetness. We record each batch, taste the results, and make small adjustments as the beans age. Seasonal changes are part of the story: when one harvest ends, another brings something new to discover. By sourcing thoughtfully and roasting with attention, we carry the producer's work all the way to your cup.</p>
++      </div>
++      <button class="btn" id="summarize-journal" type="button" aria-controls="journal-summary" aria-describedby="summary-note">Summarize</button>
++      <p class="journal-note" id="summary-note">Short on time? Get a few key points with your browser's built-in AI. First use may download an AI model.</p>
++      <p id="summary-status" role="status" aria-live="polite"></p>
++      <div class="journal-summary" id="journal-summary" aria-labelledby="summary-title" hidden>
++        <h3 id="summary-title">Our sourcing, at a glance</h3>
++        <ul id="summary-points"></ul>
++        <p class="journal-note">AI-generated from this journal entry.</p>
++      </div>
++      <noscript><p>Enable JavaScript to use the summary feature. You can read the full journal entry above.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +298,65 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeButton = document.getElementById('summarize-journal');
++    const summaryStatus = document.getElementById('summary-status');
++    const summaryPanel = document.getElementById('journal-summary');
++    const summaryPoints = document.getElementById('summary-points');
++
++    summarizeButton.addEventListener('click', async () => {
++      if (!window.isSecureContext || !('Summarizer' in window)) {
++        summaryStatus.textContent = 'Built-in AI summarization is not available in this browser. Try a supported browser with on-device AI enabled over HTTPS or localhost. The full journal is available above.';
++        return;
++      }
++
++      let summarizer;
++      summarizeButton.disabled = true;
++      summarizeButton.textContent = 'Summarizing…';
++      summaryPanel.setAttribute('aria-busy', 'true');
++      summaryStatus.textContent = 'Preparing your browser’s AI… First use may take a moment.';
++
++      try {
++        // Create directly in the click handler to preserve user activation for model downloads.
++        summarizer = await window.Summarizer.create({
++          type: 'key-points',
++          format: 'plain-text',
++          length: 'short',
++          expectedInputLanguages: ['en'],
++          outputLanguage: 'en',
++          monitor(monitor) {
++            monitor.addEventListener('downloadprogress', (event) => {
++              summaryStatus.textContent = `Downloading browser AI model: ${Math.round(event.loaded * 100)}%`;
++            });
++          }
++        });
++        summaryStatus.textContent = 'Summarizing the journal…';
++        const result = await summarizer.summarize(document.getElementById('journal-text').innerText);
++        const points = result.split(/\n+/)
++          .map((line) => line.replace(/^\s*(?:[-*•‣]\s*|\d+[.)]\s+)/, '').trim())
++          .filter(Boolean);
++        if (!points.length) throw new Error('Empty summary');
++
++        summaryPoints.replaceChildren(...points.map((point) => {
++          const item = document.createElement('li');
++          item.textContent = point;
++          return item;
++        }));
++        summaryPanel.hidden = false;
++        summaryStatus.textContent = 'Summary ready below.';
++      } catch (error) {
++        summaryStatus.textContent = error.name === 'NotSupportedError'
++          ? 'Your browser’s AI model is not available on this device or for this language. You can still read the full journal above.'
++          : 'Your browser could not generate a summary. Check that built-in AI is available and that any model download can finish, then try again.';
++      } finally {
++        summarizer?.destroy();
++        summaryPanel.removeAttribute('aria-busy');
++        summarizeButton.disabled = false;
++        summarizeButton.textContent = 'Summarize';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

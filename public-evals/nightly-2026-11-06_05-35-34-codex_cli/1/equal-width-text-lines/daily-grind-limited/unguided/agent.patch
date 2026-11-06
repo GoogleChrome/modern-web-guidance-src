@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+index 66c9173..4516fc3 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,25 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(100%, 26rem);
++      margin-bottom: 1.5rem;
++      font-family: Impact, 'Arial Black', sans-serif;
++      font-size: clamp(2.5rem, 10vw, 5rem);
++      font-weight: 900;
++      line-height: 0.9;
++      letter-spacing: normal;
++      text-transform: uppercase;
++    }
++
++    .hero h1 span {
++      display: block;
++      width: max-content;
++      margin-inline: auto;
++      white-space: nowrap;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +182,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span aria-hidden="true">Wake Up</span>
++      <span aria-hidden="true">Your</span>
++      <span aria-hidden="true">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +224,28 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const heroHeading = document.querySelector('.hero h1');
++    const headingLines = [...heroHeading.querySelectorAll('span')];
++    let previousWidth = 0;
++
++    function fitHeadingLines(force = false) {
++      const width = heroHeading.getBoundingClientRect().width;
++      if (!width || (!force && width === previousWidth)) return;
++      previousWidth = width;
++
++      // Measure each line at the same size, then scale the font itself to fit.
++      headingLines.forEach(line => { line.style.fontSize = '100px'; });
++      const lineWidths = headingLines.map(line => line.getBoundingClientRect().width);
++      headingLines.forEach((line, index) => {
++        line.style.fontSize = `${100 * width / lineWidths[index]}px`;
++      });
++    }
++
++    fitHeadingLines();
++    new ResizeObserver(() => fitHeadingLines()).observe(heroHeading);
++    document.fonts.ready.then(() => fitHeadingLines(true));
++  </script>
+ </body>
+ 
+ </html>

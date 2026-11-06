@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+index 66c9173..484fa08 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,38 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    /* Active indicator: tethered to the active item, slides between items */
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      inset-block-start: calc(anchor(bottom) + 0.1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 0.15lh;
++      background: var(--accent);
++      border-radius: 2px;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset 0.3s ease;
++      }
++    }
++
++    nav ul li.active {
++      anchor-name: --active;
++    }
++
++    @supports not (position-anchor: auto) {
++      nav ul::before {
++        display: none;
++      }
++
++      nav ul li.active a {
++        border-bottom: 0.15lh solid var(--accent);
++      }
+     }
+ 
+     nav ul li {
+@@ -160,7 +192,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +239,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Move the active indicator when a nav item is selected
++    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
++    navItems.forEach((li) => {
++      li.addEventListener('click', (e) => {
++        e.preventDefault();
++        navItems.forEach((item) => {
++          item.classList.toggle('active', item === li);
++          const a = item.querySelector('a');
++          if (item === li) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        });
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

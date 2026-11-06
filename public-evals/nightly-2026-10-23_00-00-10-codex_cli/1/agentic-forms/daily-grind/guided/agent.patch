@@ -1,0 +1,166 @@
+diff --git a/app.mjs b/app.mjs
+new file mode 100644
+index 0000000..59b911c
+--- /dev/null
++++ b/app.mjs
+@@ -0,0 +1,45 @@
++const searchForm = document.querySelector('#menu-search');
++const cards = [...document.querySelectorAll('[data-drink]')];
++const drinks = cards.map(card => ({
++  id: card.dataset.drink,
++  name: card.querySelector('h3').textContent.trim(),
++  description: card.querySelector('p').textContent.trim(),
++  detailsUrl: card.querySelector('form').getAttribute('action'),
++}));
++
++// Native forms remain usable in browsers that ignore the WebMCP attributes.
++// Both people and agents execute these same handlers and update the same UI.
++function respond(event, result) {
++  if (event.agentInvoked && typeof event.respondWith === 'function') {
++    event.respondWith(Promise.resolve(JSON.stringify(result)));
++  }
++}
++
++searchForm.addEventListener('submit', event => {
++  event.preventDefault();
++  if (!searchForm.checkValidity()) {
++    searchForm.reportValidity();
++    respond(event, { error: 'Search must contain at most 100 characters.' });
++    return;
++  }
++
++  const query = new FormData(searchForm).get('query').trim().toLowerCase();
++  const matches = drinks.filter(drink =>
++    `${drink.name} ${drink.description}`.toLowerCase().includes(query));
++  const matchingIds = new Set(matches.map(drink => drink.id));
++  cards.forEach(card => { card.hidden = !matchingIds.has(card.dataset.drink); });
++  document.querySelector('#menu-status').textContent = matches.length
++    ? `${matches.length} ${matches.length === 1 ? 'drink' : 'drinks'} found.`
++    : 'No drinks found. Try another search or leave the field blank to show all drinks.';
++  respond(event, { drinks: matches, count: matches.length });
++});
++
++document.querySelectorAll('[data-drink-details]').forEach(form => {
++  form.addEventListener('submit', event => {
++    event.preventDefault();
++    const drink = drinks.find(item => item.id === form.dataset.drinkDetails);
++    const card = form.closest('[data-drink]');
++    card.querySelector('.drink-details').textContent = `${drink.name}: ${drink.description}`;
++    respond(event, { drink });
++  });
++});
+diff --git a/index.html b/index.html
+index 66c9173..f0b67d4 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,51 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .menu-search {
++      max-width: 600px;
++      margin: 20px auto;
++    }
++
++    .menu-search label {
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .search-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .search-controls input {
++      flex: 1;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid #82716c;
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .search-controls .btn { margin-top: 0; }
++    input, button { min-height: 48px; }
++    :focus-visible { outline: 3px solid #a34e00; outline-offset: 4px; }
++    .menu-status { text-align: center; }
++    .drink-details:not(:empty) { margin-top: 15px; text-align: left; }
++    [hidden] { display: none !important; }
++
++    @supports selector(form:tool-form-active) {
++      form:tool-form-active { outline: 2px dashed var(--primary); outline-offset: 6px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,21 +216,44 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <form class="menu-search" id="menu-search" action="/" method="get"
++        toolname="search-menu" tooldescription="Find seasonal coffee drinks by name or description." toolautosubmit>
++        <label for="menu-query">Search seasonal favorites</label>
++        <div class="search-controls">
++          <input id="menu-query" name="query" type="search" maxlength="100" placeholder="Try oat milk or cold brew"
++            aria-describedby="search-help" autocorrect="off" autocapitalize="off" spellcheck="false">
++          <button class="btn" type="submit">Search menu</button>
++        </div>
++        <p id="search-help">Leave blank to show all drinks.</p>
++      </form>
++      <p id="menu-status" class="menu-status" role="status"></p>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal" method="get" toolname="get-maple-oat-latte-details"
++            tooldescription="Read the details of the seasonal Maple Oat Latte." toolautosubmit data-drink-details="maple-oat-latte">
++            <button type="submit" class="btn">View Details</button>
++          </form>
++          <p class="drink-details" role="status"></p>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso" method="get" toolname="get-dark-roast-espresso-details"
++            tooldescription="Read the details of the Dark Roast Espresso." toolautosubmit data-drink-details="dark-roast-espresso">
++            <button type="submit" class="btn">View Details</button>
++          </form>
++          <p class="drink-details" role="status"></p>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew" method="get" toolname="get-cold-brew-details"
++            tooldescription="Read the details of the Cold Brew." toolautosubmit data-drink-details="cold-brew">
++            <button type="submit" class="btn">View Details</button>
++          </form>
++          <p class="drink-details" role="status"></p>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +269,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/app.mjs"></script>
+ </body>
+ 
+ </html>

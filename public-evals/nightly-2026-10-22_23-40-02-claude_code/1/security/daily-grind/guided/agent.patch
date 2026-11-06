@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..c6c609c 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..5b1336b 100644
+--- a/server.js
++++ b/server.js
+@@ -1,16 +1,89 @@
+ const http = require('node:http');
++const crypto = require('node:crypto');
+ const fs = require('node:fs');
+ const path = require('node:path');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++const REPORT_PATH = '/csp-report';
++
++// The page has no scripts and a single <style> block, so allow that block by hash
++// and block everything else. Recomputed per request so edits to index.html stay valid.
++function styleHashes(html) {
++  const hashes = [];
++  for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
++    hashes.push(`'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
++  }
++  return hashes;
++}
++
++// Directives that are safe to enforce immediately (no breakage risk for this page).
++const ENFORCED_CSP = [
++  "object-src 'none'",
++  "base-uri 'none'",
++  "frame-ancestors 'self'",
++  "form-action 'self'",
++].join('; ');
++
++// Full policy, deployed report-only until violation reports are clean.
++function reportOnlyCsp(html) {
++  return [
++    "default-src 'self'",
++    "script-src 'none'",
++    `style-src ${['\'self\'', ...styleHashes(html)].join(' ')}`,
++    "img-src 'self' https://images.unsplash.com",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "form-action 'self'",
++    "require-trusted-types-for 'script'",
++    'report-to csp',
++  ].join('; ');
++}
++
++const BASE_HEADERS = {
++  'Reporting-Endpoints': `csp="${REPORT_PATH}"`,
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'SAMEORIGIN',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()',
++  'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  // Short max-age while rolling out; raise to 31536000 once confirmed. Ignored over plain HTTP.
++  'Strict-Transport-Security': 'max-age=300',
++};
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  if (pathname === REPORT_PATH && req.method === 'POST') {
++    // Log only violation metadata; never query strings or other potentially sensitive data.
++    let body = '';
++    req.on('data', (c) => { if (body.length < 16384) body += c; });
++    req.on('end', () => {
++      try {
++        for (const r of [].concat(JSON.parse(body))) {
++          const v = r['csp-report'] || r.body || {};
++          const strip = (u) => String(u || '').split(/[?#]/)[0];
++          console.warn('[csp-report]', v.effectiveDirective || v['effective-directive'],
++            strip(v.blockedURL || v['blocked-uri']), strip(v.documentURL || v['document-uri']));
++        }
++      } catch {}
++      res.writeHead(204, BASE_HEADERS);
++      res.end();
++    });
++    return;
++  }
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      ...BASE_HEADERS,
++      'Content-Type': 'text/html; charset=utf-8',
++      'Cache-Control': 'no-store',
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++    });
+     res.end('Logged out');
+     return;
+   }
+@@ -22,7 +95,12 @@ const server = http.createServer((req, res) => {
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, {
++      ...BASE_HEADERS,
++      'Content-Type': 'text/html; charset=utf-8',
++      'Content-Security-Policy': ENFORCED_CSP,
++      'Content-Security-Policy-Report-Only': reportOnlyCsp(data.toString('utf8')),
++    });
+     res.end(data);
+   });
+ });

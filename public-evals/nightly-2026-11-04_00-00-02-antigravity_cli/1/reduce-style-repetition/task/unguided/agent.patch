@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,19 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @function --cool-gradient(--start: #fdfcfb, --end: #e2d1c3) {
++      result: linear-gradient(135deg, var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--sm: 1fr, --lg: 1fr 1fr) {
++      result: var(--sm);
++      @media (min-width: 700px) {
++        result: var(--lg);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,10 +35,19 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background: --cool-gradient(#fdfcfb, #e2d1c3);
++      background-image: --cool-gradient(#fdfcfb, #e2d1c3);
+     }
+ 
++    h2 {
++      background: --cool-gradient(#ffab40, #d7ccc8);
++      background-image: --cool-gradient(#ffab40, #d7ccc8);
++      padding: 10px 16px;
++      border-radius: 6px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,12 +119,23 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main,
++    main section,
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: --responsive-columns();
+       gap: 20px;
++    }
++
++    main > section,
++    main section > h2,
++    main section > .grid {
++      grid-column: 1 / -1;
++    }
++
++    .grid {
+       margin-top: 20px;
+     }
+ 
+     .card {

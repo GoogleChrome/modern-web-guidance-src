@@ -1,0 +1,768 @@
+diff --git a/MIGRATION.md b/MIGRATION.md
+new file mode 100644
+index 0000000..b8d54da
+--- /dev/null
++++ b/MIGRATION.md
+@@ -0,0 +1,51 @@
++# Moving The Daily Grind to a new origin
++
++Browsers tie an installed web app's identity (manifest `id`), its storage, and its
++OS-level shortcuts to the origin it was installed from. Nothing can move that record
++across origins, so the migration works in two parts:
++
++1. **User configuration** travels with the visitor. The old origin packages every
++   `localStorage` entry under the `dg:` prefix into the URL fragment of a redirect to
++   the new origin. Fragments are never sent to a server. The new origin imports the
++   entries (existing values there win) and remembers where they came from.
++2. **OS-level shortcuts** are redeclared, not copied. `manifest.json` ships the same
++   `shortcuts` list on both origins. Once the visitor reinstalls from the new origin,
++   the jump-list / long-press shortcuts reappear pointing at the new address. The new
++   origin shows a one-time "Reinstall app" banner (driven by `beforeinstallprompt`)
++   to make that a single click.
++
++## Cutover steps
++
++1. Edit `config.js`:
++   - `newOrigin`: the new origin, e.g. `"https://app.thedailygrind.coffee"`.
++   - `previousOrigins`: every old origin, e.g. `["https://www.dailygrind.example"]`.
++     Visitors arriving from a listed origin are imported silently; anyone else who
++     shows up with a payload in the URL is asked to confirm first.
++   - Optionally bump `cacheVersion`.
++2. Deploy the **same build to both origins**. The code picks its role from
++   `location.origin`:
++   - old origin → *sender*: redirects immediately, carrying the configuration.
++   - new origin → *receiver*: imports, strips the fragment, offers reinstall.
++3. Keep the old origin serving this build for as long as you want installed copies
++   to keep forwarding. The old install cannot be removed programmatically; the user
++   uninstalls it when they no longer need it.
++4. If you later add a Content-Security-Policy or `X-Frame-Options`, nothing here
++   needs an exception: the hand-off is a top-level navigation, not an iframe. (An
++   iframe + `postMessage` hand-off was deliberately avoided because third-party
++   storage partitioning would hide anything written in the frame.)
++
++## What counts as "user configuration"
++
++Any `localStorage` key starting with `storagePrefix` (`dg:`). New features that store
++preferences should use that prefix and they are migrated automatically. Payloads are
++capped at ~200 KB; for anything larger (IndexedDB, cookies, server-side state), move
++it server-side keyed by account instead of through the hand-off.
++
++## Verifying
++
++```
++npm test
++```
++
++runs the pure migration logic (`migration.js`) under `node:test`: role detection,
++payload encoding/decoding, import rules, and the end-to-end sender→receiver flow.
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..ae0dedb
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,146 @@
++// Browser glue: origin migration hand-off, service worker, and reinstall prompt.
++(function () {
++  const cfg = globalThis.DAILY_GRIND_CONFIG;
++  const M = globalThis.DailyGrindMigration;
++  const prefix = cfg.storagePrefix;
++  const metaFrom = prefix + M.META_KEYS.from;
++  const metaAt = prefix + M.META_KEYS.at;
++
++  const role = M.determineRole(location.origin, cfg);
++
++  if (role === "sender" && sendToNewOrigin()) {
++    return; // the page is about to unload; skip SW registration on the retired origin
++  }
++
++  receiveFromOldOrigin();
++  registerServiceWorker();
++  setupReinstallBanner();
++
++  // ---- old origin -----------------------------------------------------------
++
++  function sendToNewOrigin() {
++    // Guard against a misconfigured newOrigin that bounces back here.
++    const hopsKey = prefix + "handoffs";
++    const hops = Number(sessionStorage.getItem(hopsKey) || 0) + 1;
++    sessionStorage.setItem(hopsKey, String(hops));
++    if (hops > 3) {
++      console.error("[migration] aborting hand-off: redirect loop between", location.origin, "and", cfg.newOrigin);
++      return;
++    }
++
++    let encoded = "";
++    try {
++      encoded = M.encodePayload({
++        from: location.origin,
++        config: M.collectConfig(localStorage, prefix),
++      });
++    } catch (err) {
++      console.warn("[migration] hand-off without configuration:", err);
++    }
++    const target = encoded
++      ? M.buildHandoffUrl(cfg.newOrigin, location, encoded)
++      : M.normalizeOrigin(cfg.newOrigin) + location.pathname + location.search;
++    location.replace(target);
++    return true;
++  }
++
++  // ---- new origin -----------------------------------------------------------
++
++  function receiveFromOldOrigin() {
++    const encoded = M.parseHandoffHash(location.hash);
++    if (!encoded) return;
++
++    // Always drop the payload from the address bar, even if we reject it.
++    history.replaceState(null, "", location.pathname + location.search);
++
++    const payload = M.decodePayload(encoded);
++    if (!payload) return;
++
++    const trusted = M.isTrustedReferrer(document.referrer, cfg.previousOrigins);
++    if (!trusted) {
++      const ok = confirm(
++        "Import your saved Daily Grind settings from " + payload.from + "?"
++      );
++      if (!ok) return;
++    }
++
++    const result = M.applyConfig(localStorage, payload.config, prefix);
++    localStorage.setItem(metaFrom, payload.from);
++    localStorage.setItem(metaAt, new Date().toISOString());
++    console.info("[migration] imported", result.imported.length, "setting(s) from", payload.from);
++  }
++
++  // ---- installability -------------------------------------------------------
++
++  function registerServiceWorker() {
++    if (!("serviceWorker" in navigator)) return;
++    navigator.serviceWorker.register("/sw.js").catch((err) => {
++      console.warn("[sw] registration failed:", err);
++    });
++  }
++
++  function isStandalone() {
++    return (
++      matchMedia("(display-mode: standalone)").matches ||
++      matchMedia("(display-mode: window-controls-overlay)").matches ||
++      navigator.standalone === true
++    );
++  }
++
++  // After a migration the install on the old origin still exists, but it now just
++  // forwards here. Offer a fresh install so the app icon and its OS-level shortcuts
++  // (jump list / long-press menu, declared in manifest.json) point at this origin.
++  function setupReinstallBanner() {
++    const migratedFrom = localStorage.getItem(metaFrom);
++    const dismissedKey = prefix + "reinstallDismissed";
++    if (!migratedFrom || isStandalone() || localStorage.getItem(dismissedKey)) return;
++
++    let deferredPrompt = null;
++
++    addEventListener("beforeinstallprompt", (event) => {
++      event.preventDefault();
++      deferredPrompt = event;
++      showBanner();
++    });
++
++    addEventListener("appinstalled", () => {
++      localStorage.setItem(dismissedKey, "installed");
++      removeBanner();
++    });
++
++    function showBanner() {
++      if (document.getElementById("dg-reinstall")) return;
++      const banner = document.createElement("div");
++      banner.id = "dg-reinstall";
++      banner.className = "reinstall-banner";
++      banner.setAttribute("role", "status");
++      banner.innerHTML =
++        '<span>The Daily Grind has moved to <strong></strong>. ' +
++        "Reinstall to put the app and its shortcuts back on your device.</span>" +
++        '<span class="reinstall-actions">' +
++        '<button type="button" class="btn" data-action="install">Reinstall app</button>' +
++        '<button type="button" class="btn btn-quiet" data-action="dismiss">Not now</button>' +
++        "</span>";
++      banner.querySelector("strong").textContent = location.host;
++      banner.addEventListener("click", async (event) => {
++        const action = event.target.closest("[data-action]");
++        if (!action) return;
++        if (action.dataset.action === "install" && deferredPrompt) {
++          deferredPrompt.prompt();
++          const choice = await deferredPrompt.userChoice;
++          deferredPrompt = null;
++          if (choice.outcome === "accepted") removeBanner();
++        } else if (action.dataset.action === "dismiss") {
++          localStorage.setItem(dismissedKey, "1");
++          removeBanner();
++        }
++      });
++      document.body.prepend(banner);
++    }
++
++    function removeBanner() {
++      const banner = document.getElementById("dg-reinstall");
++      if (banner) banner.remove();
++    }
++  }
++})();
+diff --git a/config.js b/config.js
+new file mode 100644
+index 0000000..28d4ee2
+--- /dev/null
++++ b/config.js
+@@ -0,0 +1,25 @@
++// Deployment configuration for The Daily Grind web app.
++//
++// Origin migration: deploy this SAME build to both the old and the new origin.
++// The code decides its role from location.origin:
++//   - on an origin that is NOT newOrigin  -> "sender": packages user configuration
++//     and hands the visitor off to newOrigin (nothing happens while newOrigin is "").
++//   - on newOrigin                        -> "receiver": imports the hand-off payload
++//     and offers to reinstall the app so OS-level shortcuts come back.
++//
++// Example:
++//   newOrigin: "https://app.thedailygrind.coffee",
++//   previousOrigins: ["https://www.dailygrind.example"],
++globalThis.DAILY_GRIND_CONFIG = {
++  // Fill in the new origin (scheme + host, no trailing slash) to start the migration.
++  newOrigin: "",
++
++  // Origins the receiver trusts to import configuration from without asking the user.
++  previousOrigins: [],
++
++  // Only localStorage keys with this prefix are treated as user configuration.
++  storagePrefix: "dg:",
++
++  // Bump to force the service worker to refresh its app-shell cache.
++  cacheVersion: "v1",
++};
+diff --git a/icons/apple-touch-icon.png b/icons/apple-touch-icon.png
+new file mode 100644
+index 0000000..e50b3c0
+Binary files /dev/null and b/icons/apple-touch-icon.png differ
+diff --git a/icons/icon-192.png b/icons/icon-192.png
+new file mode 100644
+index 0000000..a57adee
+Binary files /dev/null and b/icons/icon-192.png differ
+diff --git a/icons/icon-512.png b/icons/icon-512.png
+new file mode 100644
+index 0000000..2915c67
+Binary files /dev/null and b/icons/icon-512.png differ
+diff --git a/icons/icon-96.png b/icons/icon-96.png
+new file mode 100644
+index 0000000..198adbe
+Binary files /dev/null and b/icons/icon-96.png differ
+diff --git a/icons/icon-maskable-192.png b/icons/icon-maskable-192.png
+new file mode 100644
+index 0000000..3470b16
+Binary files /dev/null and b/icons/icon-maskable-192.png differ
+diff --git a/icons/icon-maskable-512.png b/icons/icon-maskable-512.png
+new file mode 100644
+index 0000000..8bb03c7
+Binary files /dev/null and b/icons/icon-maskable-512.png differ
+diff --git a/icons/icon-maskable.svg b/icons/icon-maskable.svg
+new file mode 100644
+index 0000000..7641413
+--- /dev/null
++++ b/icons/icon-maskable.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <g transform="translate(256 256) scale(0.72) translate(-256 -256)">
++    <rect x="185" y="88" width="22" height="80" rx="11" fill="#ffab40"/>
++    <rect x="245" y="72" width="22" height="80" rx="11" fill="#ffab40"/>
++    <rect x="305" y="88" width="22" height="80" rx="11" fill="#ffab40"/>
++    <circle cx="392" cy="272" r="62" fill="#d7ccc8"/>
++    <circle cx="392" cy="272" r="38" fill="#4e342e"/>
++    <path d="M132 196h248v96c0 68-56 124-124 124s-124-56-124-124z" fill="#d7ccc8"/>
++    <rect x="100" y="428" width="312" height="24" rx="12" fill="#d7ccc8"/>
++  </g>
++</svg>
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..582bdbc
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,10 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <rect x="185" y="88" width="22" height="80" rx="11" fill="#ffab40"/>
++  <rect x="245" y="72" width="22" height="80" rx="11" fill="#ffab40"/>
++  <rect x="305" y="88" width="22" height="80" rx="11" fill="#ffab40"/>
++  <circle cx="392" cy="272" r="62" fill="#d7ccc8"/>
++  <circle cx="392" cy="272" r="38" fill="#4e342e"/>
++  <path d="M132 196h248v96c0 68-56 124-124 124s-124-56-124-124z" fill="#d7ccc8"/>
++  <rect x="100" y="428" width="312" height="24" rx="12" fill="#d7ccc8"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..27f63e9 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,16 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="Ethically sourced, locally roasted coffee. Order ahead, find locations, track rewards.">
++  <meta name="theme-color" content="#4e342e">
++  <meta name="mobile-web-app-capable" content="yes">
++  <meta name="apple-mobile-web-app-title" content="Daily Grind">
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
++  <!-- Loaded early (not deferred) so an origin hand-off happens before the page paints. -->
++  <script src="/config.js"></script>
++  <script src="/migration.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,6 +162,38 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shown on the new origin after a migration until the app is reinstalled */
++    .reinstall-banner {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--accent);
++      color: var(--text);
++      padding: 12px 5%;
++      font-size: 0.95rem;
++    }
++
++    .reinstall-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .reinstall-banner .btn {
++      margin-top: 0;
++      padding: 6px 14px;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-quiet {
++      background: transparent;
++      color: var(--text);
++      border: 1px solid var(--text);
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +249,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..e6a81f0
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,51 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Artisanal coffee: order ahead, find locations, and track rewards.",
++  "start_url": "/?source=pwa",
++  "scope": "/",
++  "display": "standalone",
++  "orientation": "any",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "lang": "en",
++  "categories": ["food", "shopping"],
++  "icons": [
++    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
++    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
++    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
++    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Online",
++      "short_name": "Order",
++      "description": "Start a pickup or delivery order",
++      "url": "/order-online?source=shortcut",
++      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
++    },
++    {
++      "name": "Menu",
++      "short_name": "Menu",
++      "description": "Browse drinks and food",
++      "url": "/menu?source=shortcut",
++      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your rewards balance",
++      "url": "/rewards?source=shortcut",
++      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
++    },
++    {
++      "name": "My Account",
++      "short_name": "Account",
++      "description": "Manage your account",
++      "url": "/account?source=shortcut",
++      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
++    }
++  ]
++}
+diff --git a/migration.js b/migration.js
+new file mode 100644
+index 0000000..7e960ac
+--- /dev/null
++++ b/migration.js
+@@ -0,0 +1,144 @@
++// Origin-migration logic for The Daily Grind.
++// Pure functions only (no DOM access) so they run in the browser and under node:test.
++(function (root, factory) {
++  const api = factory();
++  root.DailyGrindMigration = api;
++  if (typeof module === "object" && module.exports) module.exports = api;
++})(typeof globalThis !== "undefined" ? globalThis : this, function () {
++  const PAYLOAD_VERSION = 1;
++  const HASH_KEY = "dg-migrate";
++  const MAX_PAYLOAD_CHARS = 200 * 1024; // keep well inside browser URL limits
++  const META_KEYS = { from: "migratedFrom", at: "migratedAt" };
++
++  function normalizeOrigin(value) {
++    if (typeof value !== "string" || value === "") return "";
++    try {
++      return new URL(value).origin;
++    } catch {
++      return "";
++    }
++  }
++
++  function determineRole(currentOrigin, cfg) {
++    const target = normalizeOrigin(cfg && cfg.newOrigin);
++    const here = normalizeOrigin(currentOrigin);
++    if (!target || !here) return "none";
++    return here === target ? "receiver" : "sender";
++  }
++
++  // Snapshot every localStorage entry that belongs to the app.
++  function collectConfig(storage, prefix) {
++    const out = {};
++    for (let i = 0; i < storage.length; i++) {
++      const key = storage.key(i);
++      if (key && key.startsWith(prefix)) out[key] = storage.getItem(key);
++    }
++    return out;
++  }
++
++  // Write imported entries; existing values on the new origin win unless overwrite is set.
++  function applyConfig(storage, config, prefix, options) {
++    const overwrite = Boolean(options && options.overwrite);
++    const result = { imported: [], skipped: [] };
++    for (const key of Object.keys(config)) {
++      if (!key.startsWith(prefix) || typeof config[key] !== "string") {
++        result.skipped.push(key);
++        continue;
++      }
++      if (!overwrite && storage.getItem(key) !== null) {
++        result.skipped.push(key);
++        continue;
++      }
++      storage.setItem(key, config[key]);
++      result.imported.push(key);
++    }
++    return result;
++  }
++
++  function toBase64Url(text) {
++    const bytes = new TextEncoder().encode(text);
++    let binary = "";
++    for (let i = 0; i < bytes.length; i += 0x8000) {
++      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
++    }
++    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
++  }
++
++  function fromBase64Url(text) {
++    const b64 = text.replace(/-/g, "+").replace(/_/g, "/");
++    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
++    const binary = atob(padded);
++    const bytes = new Uint8Array(binary.length);
++    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++    return new TextDecoder().decode(bytes);
++  }
++
++  function encodePayload(payload) {
++    const body = {
++      v: PAYLOAD_VERSION,
++      from: normalizeOrigin(payload.from),
++      at: payload.at || new Date().toISOString(),
++      config: payload.config || {},
++    };
++    const encoded = toBase64Url(JSON.stringify(body));
++    if (encoded.length > MAX_PAYLOAD_CHARS) {
++      throw new Error("Migration payload too large for a URL hand-off");
++    }
++    return encoded;
++  }
++
++  function decodePayload(encoded) {
++    if (typeof encoded !== "string" || encoded === "" || encoded.length > MAX_PAYLOAD_CHARS) {
++      return null;
++    }
++    let body;
++    try {
++      body = JSON.parse(fromBase64Url(encoded));
++    } catch {
++      return null;
++    }
++    if (!body || body.v !== PAYLOAD_VERSION) return null;
++    if (!normalizeOrigin(body.from)) return null;
++    if (!body.config || typeof body.config !== "object" || Array.isArray(body.config)) return null;
++    for (const value of Object.values(body.config)) {
++      if (typeof value !== "string") return null;
++    }
++    return { v: body.v, from: normalizeOrigin(body.from), at: String(body.at || ""), config: body.config };
++  }
++
++  // Same path and query on the new origin; the payload rides in the fragment,
++  // which browsers never send to the server.
++  function buildHandoffUrl(newOrigin, location, encodedPayload) {
++    const base = normalizeOrigin(newOrigin);
++    return base + location.pathname + location.search + "#" + HASH_KEY + "=" + encodedPayload;
++  }
++
++  function parseHandoffHash(hash) {
++    if (typeof hash !== "string") return null;
++    const raw = hash.startsWith("#") ? hash.slice(1) : hash;
++    const params = new URLSearchParams(raw);
++    const value = params.get(HASH_KEY);
++    return value && value !== "" ? value : null;
++  }
++
++  function isTrustedReferrer(referrer, previousOrigins) {
++    const origin = normalizeOrigin(referrer);
++    if (!origin || !Array.isArray(previousOrigins)) return false;
++    return previousOrigins.some((candidate) => normalizeOrigin(candidate) === origin);
++  }
++
++  return {
++    PAYLOAD_VERSION,
++    HASH_KEY,
++    META_KEYS,
++    normalizeOrigin,
++    determineRole,
++    collectConfig,
++    applyConfig,
++    encodePayload,
++    decodePayload,
++    buildHandoffUrl,
++    parseHandoffHash,
++    isTrustedReferrer,
++  };
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..28e1470 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,9 @@
+ {
+   "name": "daily-grind",
+-  "version": "1.0.0",
++  "version": "1.1.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..607c21b
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,59 @@
++// Service worker: caches the app shell so the installed app opens offline.
++importScripts("/config.js");
++
++const CACHE = "daily-grind-" + self.DAILY_GRIND_CONFIG.cacheVersion;
++const APP_SHELL = [
++  "/",
++  "/index.html",
++  "/manifest.json",
++  "/config.js",
++  "/migration.js",
++  "/app.js",
++  "/icons/icon.svg",
++  "/icons/icon-96.png",
++  "/icons/icon-192.png",
++  "/icons/icon-512.png",
++  "/icons/icon-maskable-192.png",
++  "/icons/icon-maskable-512.png",
++];
++
++self.addEventListener("install", (event) => {
++  event.waitUntil(
++    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
++  );
++});
++
++self.addEventListener("activate", (event) => {
++  event.waitUntil(
++    caches
++      .keys()
++      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
++      .then(() => self.clients.claim())
++  );
++});
++
++// Network first, cache fallback, for everything on this origin. The app shell is tiny,
++// and this guarantees a freshly deployed config.js (which may switch on the origin
++// migration) is picked up on the next launch instead of being served stale.
++self.addEventListener("fetch", (event) => {
++  const { request } = event;
++  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
++
++  event.respondWith(
++    fetch(request)
++      .then((response) => {
++        if (response.ok) {
++          const copy = response.clone();
++          caches.open(CACHE).then((cache) => cache.put(request, copy));
++        }
++        return response;
++      })
++      .catch(() =>
++        caches.match(request).then((hit) => {
++          if (hit) return hit;
++          if (request.mode === "navigate") return caches.match("/index.html");
++          return Response.error();
++        })
++      )
++  );
++});
+diff --git a/test/migration.test.mjs b/test/migration.test.mjs
+new file mode 100644
+index 0000000..c4261f9
+--- /dev/null
++++ b/test/migration.test.mjs
+@@ -0,0 +1,108 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import { createRequire } from "node:module";
++
++const require = createRequire(import.meta.url);
++const M = require("../migration.js");
++
++class MemoryStorage {
++  #map = new Map();
++  get length() { return this.#map.size; }
++  key(i) { return [...this.#map.keys()][i] ?? null; }
++  getItem(k) { return this.#map.has(k) ? this.#map.get(k) : null; }
++  setItem(k, v) { this.#map.set(k, String(v)); }
++  removeItem(k) { this.#map.delete(k); }
++}
++
++const cfg = {
++  newOrigin: "https://app.thedailygrind.coffee",
++  previousOrigins: ["https://www.dailygrind.example"],
++  storagePrefix: "dg:",
++};
++
++test("determineRole picks sender on the old origin and receiver on the new one", () => {
++  assert.equal(M.determineRole("https://www.dailygrind.example", cfg), "sender");
++  assert.equal(M.determineRole("https://app.thedailygrind.coffee", cfg), "receiver");
++  assert.equal(M.determineRole("https://app.thedailygrind.coffee", { newOrigin: "https://app.thedailygrind.coffee/" }), "receiver", "trailing slash is normalized");
++  assert.equal(M.determineRole("https://anything.example", { newOrigin: "" }), "none", "migration is off until newOrigin is set");
++  assert.equal(M.determineRole("https://anything.example", { newOrigin: "not a url" }), "none");
++});
++
++test("collectConfig only snapshots keys under the app prefix", () => {
++  const s = new MemoryStorage();
++  s.setItem("dg:theme", "dark");
++  s.setItem("dg:favoriteDrink", "Maple Oat Latte");
++  s.setItem("other:thing", "ignored");
++  assert.deepEqual(M.collectConfig(s, "dg:"), { "dg:theme": "dark", "dg:favoriteDrink": "Maple Oat Latte" });
++});
++
++test("payload round-trips through base64url, including unicode", () => {
++  const config = { "dg:name": "Zoë ☕ café", "dg:store": "Ünïcode/+=?" };
++  const encoded = M.encodePayload({ from: "https://www.dailygrind.example/path", config, at: "2026-10-28T00:00:00.000Z" });
++  assert.match(encoded, /^[A-Za-z0-9_-]+$/, "URL-safe alphabet, no padding");
++  const decoded = M.decodePayload(encoded);
++  assert.deepEqual(decoded, { v: 1, from: "https://www.dailygrind.example", at: "2026-10-28T00:00:00.000Z", config });
++});
++
++test("decodePayload rejects malformed or hostile input", () => {
++  assert.equal(M.decodePayload(""), null);
++  assert.equal(M.decodePayload("!!!not-base64!!!"), null);
++  assert.equal(M.decodePayload(btoa("null")), null);
++  assert.equal(M.decodePayload(btoa(JSON.stringify({ v: 2, from: "https://x.example", config: {} }))), null, "unknown version");
++  assert.equal(M.decodePayload(btoa(JSON.stringify({ v: 1, from: "garbage", config: {} }))), null, "bad origin");
++  assert.equal(M.decodePayload(btoa(JSON.stringify({ v: 1, from: "https://x.example", config: [] }))), null, "array config");
++  assert.equal(M.decodePayload(btoa(JSON.stringify({ v: 1, from: "https://x.example", config: { "dg:a": { nested: true } } }))), null, "non-string value");
++  assert.equal(M.decodePayload("a".repeat(300 * 1024)), null, "oversized");
++});
++
++test("encodePayload refuses payloads too large for a URL", () => {
++  assert.throws(() => M.encodePayload({ from: "https://x.example", config: { "dg:big": "x".repeat(400 * 1024) } }), /too large/);
++});
++
++test("applyConfig imports new keys, keeps existing values, and ignores foreign keys", () => {
++  const s = new MemoryStorage();
++  s.setItem("dg:theme", "light");
++  const result = M.applyConfig(s, { "dg:theme": "dark", "dg:favoriteDrink": "Cold Brew", "evil:key": "x" }, "dg:");
++  assert.deepEqual(result, { imported: ["dg:favoriteDrink"], skipped: ["dg:theme", "evil:key"] });
++  assert.equal(s.getItem("dg:theme"), "light");
++  assert.equal(s.getItem("dg:favoriteDrink"), "Cold Brew");
++  assert.equal(s.getItem("evil:key"), null);
++
++  M.applyConfig(s, { "dg:theme": "dark" }, "dg:", { overwrite: true });
++  assert.equal(s.getItem("dg:theme"), "dark");
++});
++
++test("hand-off URL keeps path and query on the new origin and carries the payload in the fragment", () => {
++  const location = { pathname: "/menu/seasonal", search: "?source=pwa", hash: "#ignored" };
++  const url = M.buildHandoffUrl("https://app.thedailygrind.coffee/", location, "PAYLOAD");
++  assert.equal(url, "https://app.thedailygrind.coffee/menu/seasonal?source=pwa#dg-migrate=PAYLOAD");
++  const parsed = new URL(url);
++  assert.equal(M.parseHandoffHash(parsed.hash), "PAYLOAD");
++  assert.equal(M.parseHandoffHash("#section-2"), null);
++  assert.equal(M.parseHandoffHash(""), null);
++  assert.equal(M.parseHandoffHash("#dg-migrate="), null);
++});
++
++test("full sender -> receiver flow preserves configuration", () => {
++  const oldStorage = new MemoryStorage();
++  oldStorage.setItem("dg:theme", "dark");
++  oldStorage.setItem("dg:favoriteLocation", "Downtown");
++  oldStorage.setItem("analytics:id", "not-config");
++
++  const encoded = M.encodePayload({ from: "https://www.dailygrind.example", config: M.collectConfig(oldStorage, "dg:") });
++  const url = M.buildHandoffUrl(cfg.newOrigin, { pathname: "/", search: "?source=pwa" }, encoded);
++
++  const newStorage = new MemoryStorage();
++  const payload = M.decodePayload(M.parseHandoffHash(new URL(url).hash));
++  const result = M.applyConfig(newStorage, payload.config, "dg:");
++  assert.deepEqual(result.imported.sort(), ["dg:favoriteLocation", "dg:theme"]);
++  assert.equal(newStorage.getItem("analytics:id"), null);
++});
++
++test("isTrustedReferrer accepts only listed previous origins", () => {
++  assert.equal(M.isTrustedReferrer("https://www.dailygrind.example/", cfg.previousOrigins), true);
++  assert.equal(M.isTrustedReferrer("https://www.dailygrind.example/some/page?x=1", cfg.previousOrigins), true);
++  assert.equal(M.isTrustedReferrer("https://evil.example/", cfg.previousOrigins), false);
++  assert.equal(M.isTrustedReferrer("", cfg.previousOrigins), false);
++  assert.equal(M.isTrustedReferrer("https://www.dailygrind.example/", undefined), false);
++});

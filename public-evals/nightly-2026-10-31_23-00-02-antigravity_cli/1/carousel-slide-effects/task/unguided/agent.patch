@@ -1,0 +1,281 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,136 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Horizontal Product Carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin-bottom: 15px;
++    }
++
++    .scroller {
++      display: flex;
++      gap: 28px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      padding: 45px calc(50% - 140px);
++      margin: 0 auto;
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++      -webkit-overflow-scrolling: touch;
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller::-webkit-scrollbar {
++      height: 10px;
++    }
++
++    .scroller::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-radius: 5px;
++    }
++
++    .scroller::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border-radius: 5px;
++    }
++
++    @keyframes scale-on-scroll {
++      0% {
++        transform: scale(0.78);
++        opacity: 0.65;
++      }
++      50% {
++        transform: scale(1.1);
++        opacity: 1;
++      }
++      100% {
++        transform: scale(0.78);
++        opacity: 0.65;
++      }
++    }
++
++    .scroller .card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++      padding: 0 0 20px 0;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
++      transition: box-shadow 0.3s ease;
++      view-timeline-name: --card-timeline;
++      view-timeline-axis: inline;
++      animation: scale-on-scroll linear both;
++      animation-timeline: view(inline);
++      animation-range: cover 0% cover 100%;
++    }
++
++    .scroller .card:focus-within {
++      box-shadow: 0 8px 24px rgba(78, 52, 46, 0.3);
++      outline: 2px solid var(--accent);
++    }
++
++    .scroller .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++      margin-bottom: 15px;
++    }
++
++    .scroller .card-body {
++      padding: 0 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
++    }
++
++    .scroller .price {
++      font-weight: bold;
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .scroller .card {
++        animation: none;
++        transform: none;
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +322,140 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading" class="carousel-header">Signature Coffee &amp; Merch</h2>
++      <p id="carousel-instructions" class="carousel-subtitle">Scroll horizontally or use Left and Right arrow keys to browse products.</p>
++      <div
++        class="scroller"
++        role="region"
++        aria-labelledby="carousel-heading"
++        aria-describedby="carousel-instructions"
++        tabindex="0"
++      >
++        <article class="card product-card" aria-label="Ethiopian Yirgacheffe Whole Bean">
++          <img
++            src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80"
++            alt="Bag of Ethiopian Yirgacheffe whole coffee beans surrounded by roasted beans"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p>Bright floral aroma with notes of bergamot, jasmine, and sweet peach.</p>
++            </div>
++            <div>
++              <p class="price">$19.50</p>
++              <a href="/products/ethiopian-yirgacheffe" class="btn" aria-label="Shop Ethiopian Yirgacheffe for $19.50">Shop Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card" aria-label="Colombian Supremo Roast">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt="Freshly brewed cup of Colombian Supremo coffee on a wooden saucer"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>Colombian Supremo</h3>
++              <p>Medium-bodied roast featuring rich caramel sweetness and toasted walnut finish.</p>
++            </div>
++            <div>
++              <p class="price">$18.00</p>
++              <a href="/products/colombian-supremo" class="btn" aria-label="Shop Colombian Supremo for $18.00">Shop Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card" aria-label="House Espresso Blend">
++          <img
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            alt="Shot of rich House Espresso Blend with golden crema in a demitasse cup"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>House Espresso Blend</h3>
++              <p>Velvety dark chocolate notes with a thick, syrupy crema crafted for lattes.</p>
++            </div>
++            <div>
++              <p class="price">$20.00</p>
++              <a href="/products/house-espresso" class="btn" aria-label="Shop House Espresso Blend for $20.00">Shop Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card" aria-label="Copper Pour-Over Kettle">
++          <img
++            src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80"
++            alt="Gooseneck pour-over kettle brewing specialty coffee into a glass carafe"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>Gooseneck Kettle</h3>
++              <p>Precision pour spout and ergonomic handle for the ultimate pour-over extraction.</p>
++            </div>
++            <div>
++              <p class="price">$54.00</p>
++              <a href="/products/gooseneck-kettle" class="btn" aria-label="Shop Gooseneck Kettle for $54.00">Shop Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card" aria-label="Ceramic Pour-Over Dripper">
++          <img
++            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80"
++            alt="Artisanal ceramic coffee dripper and mugs on a cafe counter"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>Ceramic V60 Dripper</h3>
++              <p>Hand-glazed stoneware with spiral ribs designed for clean, flavorful brewing.</p>
++            </div>
++            <div>
++              <p class="price">$28.00</p>
++              <a href="/products/ceramic-dripper" class="btn" aria-label="Shop Ceramic V60 Dripper for $28.00">Shop Now</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card" aria-label="Conical Burr Hand Grinder">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="Specialty coffee cup with latte art beside roasted beans"
++            width="280"
++            height="180"
++            loading="lazy"
++          >
++          <div class="card-body">
++            <div>
++              <h3>Burr Hand Grinder</h3>
++              <p>Stainless steel conical burrs with 30 click settings from espresso to French press.</p>
++            </div>
++            <div>
++              <p class="price">$65.00</p>
++              <a href="/products/burr-grinder" class="btn" aria-label="Shop Burr Hand Grinder for $65.00">Shop Now</a>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

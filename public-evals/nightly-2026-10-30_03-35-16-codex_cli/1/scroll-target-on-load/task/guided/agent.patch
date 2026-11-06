@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('initial-scroll-pending');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +104,44 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-feed {
++      height: 500px;
++      max-height: 75vh;
++      max-width: 700px;
++      margin: 20px auto 0;
++      padding: 16px;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #efebe9;
++    }
++
++    .initial-scroll-pending .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed .card + .card {
+       margin-top: 20px;
+     }
+ 
++    .media-feed .target {
++      scroll-initial-target: nearest;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 2 / 1;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++      background: var(--secondary);
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +209,53 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" tabindex="0" role="region" aria-labelledby="favorites-heading">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&h=320&q=80" width="640" height="320" alt="Iced latte served in a tall glass">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&h=320&q=80" width="640" height="320" alt="Freshly brewed espresso in a ceramic cup">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&h=320&q=80" width="640" height="320" alt="Cold coffee served over ice">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=640&h=320&q=80" width="640" height="320" alt="Cappuccino topped with delicate latte art">
++          <h3>Classic Cappuccino</h3>
++          <p>Rich espresso finished with silky steamed milk and foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&h=320&q=80" width="640" height="320" alt="Fresh coffee prepared with a pour-over brewer">
++          <h3>Single Origin Pour Over</h3>
++          <p>Carefully brewed to bring out every bright, balanced note.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++        </article>
+       </div>
++      <script>
++        if (document.documentElement.classList.contains('initial-scroll-pending')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          // Position only the feed, leaving the page's scroll position intact.
++          // Reserved image dimensions make this independent of image loading.
++          feed.scrollTop = target.getBoundingClientRect().top
++            - feed.getBoundingClientRect().top - feed.clientTop
++            + feed.scrollTop - parseFloat(getComputedStyle(feed).paddingTop);
++          document.documentElement.classList.remove('initial-scroll-pending');
++        }
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

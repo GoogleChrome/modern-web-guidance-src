@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,31 @@
++<!doctype html>
++<html lang="en">
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Load data</title>
++  <button type="button" id="load">Load data</button>
++  <pre id="result" aria-live="polite"></pre>
++  <script>
++    const result = document.querySelector('#result');
++
++    document.querySelector('#load').addEventListener('click', () => {
++      result.textContent = 'Loading…';
++
++      fetch('/api/data', { priority: 'high' })
++        .then(response => {
++          if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
++          return response.text();
++        })
++        .then(data => { result.textContent = data; })
++        .catch(error => { result.textContent = error.message; });
++
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      }).catch(error => console.error('Analytics request failed:', error));
++    });
++  </script>
++</html>

@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="gift-card.css">
++  <script src="vendor/html2canvas.min.js" defer></script>
++  <script src="gift-card.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +197,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-heading">
++      <div class="gift-intro">
++        <span class="gift-eyebrow">A LITTLE COFFEE. A LOT OF LOVE.</span>
++        <h2 id="gift-heading">Make their day, your way.</h2>
++        <p>A thoughtful little pick-me-up, with your personal touch.</p>
++      </div>
++      <div class="gift-workspace">
++        <form id="gift-form" class="gift-controls">
++          <span class="gift-step">01 <span>MAKE IT PERSONAL</span></span>
++          <label for="gift-name">Who’s the lucky one?</label>
++          <input id="gift-name" name="recipient" type="text" maxlength="30" placeholder="e.g. Alex" autocomplete="off">
++          <div class="gift-label-row"><label for="gift-message">Your message</label><span id="message-count">0 / 90</span></div>
++          <textarea id="gift-message" name="message" rows="3" maxlength="90" placeholder="A little coffee, just for you." aria-describedby="message-count"></textarea>
++          <fieldset class="gift-colors">
++            <legend><span class="gift-step">02 <span>PICK A PALETTE</span></span></legend>
++            <div class="gift-swatches">
++              <label title="Oat milk"><input type="radio" name="palette" value="oat" checked><span style="--swatch: #eddfc9"></span><span class="sr-only">Oat milk</span></label>
++              <label title="Sage"><input type="radio" name="palette" value="sage"><span style="--swatch: #cbd3bc"></span><span class="sr-only">Sage</span></label>
++              <label title="Rose"><input type="radio" name="palette" value="rose"><span style="--swatch: #e8c6bd"></span><span class="sr-only">Rose</span></label>
++              <label title="Sky"><input type="radio" name="palette" value="sky"><span style="--swatch: #c6d8df"></span><span class="sr-only">Sky</span></label>
++              <label title="Espresso"><input type="radio" name="palette" value="espresso"><span style="--swatch: #4e342e"></span><span class="sr-only">Espresso</span></label>
++            </div>
++            <p id="palette-name">Oat milk</p>
++          </fieldset>
++          <button type="submit" id="gift-download" class="gift-download"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>Download your card</span></button>
++          <p class="gift-download-note">Made with love. Saved as a PNG.</p>
++          <p id="gift-status" class="gift-status" role="status" aria-live="polite"></p>
++        </form>
++        <div class="gift-preview-panel">
++          <div class="gift-preview-heading"><span>YOUR LITTLE WORK OF HEART</span><span class="gift-live">Live preview</span></div>
++          <div id="gift-stage" class="gift-stage">
++            <div id="gift-html-preview">
++              <div id="export_element" class="gift-art" drawable>
++                <div class="gift-art-border"></div>
++                <div class="gift-art-brand">THE DAILY GRIND<span>GOOD COFFEE. GOOD COMPANY.</span></div>
++                <span class="gift-art-tag">A COFFEE GIFT FOR YOU</span>
++                <div class="gift-art-message" id="card-message">A little coffee,<br>just for you.</div>
++                <div class="gift-art-recipient" id="card-recipient">For someone special</div>
++                <div class="gift-cup-art" aria-hidden="true"><div class="gift-steam steam-one"></div><div class="gift-steam steam-two"></div><div class="gift-steam steam-three"></div><div class="gift-saucer"></div><div class="gift-cup-handle"></div><div class="gift-cup"><span>♥</span></div><div class="gift-coffee"></div></div>
++                <div class="gift-art-footer"><span>HAPPINESS, ONE CUP AT A TIME.</span><span>Made just for you ♡</span></div>
++              </div>
++            </div>
++            <canvas id="gift-canvas" width="1280" height="800" layoutsubtree content="drawable" hidden aria-label="Your custom coffee gift card"></canvas>
++          </div>
++          <p class="gift-preview-note">A small gesture. A warmer day.</p>
++          <p class="gift-fine-print">A personal greeting card — no stored value or purchase included.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,69 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Modal Styles */
++    dialog.coffee-modal {
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 10px;
++      max-width: 480px;
++      width: 90%;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog.coffee-modal::backdrop {
++      background: rgba(0, 0, 0, 0.55);
++    }
++
++    .modal-box {
++      padding: 28px;
++      text-align: left;
++    }
++
++    .modal-box h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      margin-bottom: 12px;
++    }
++
++    .modal-box p {
++      margin-bottom: 12px;
++    }
++
++    .modal-details {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++      margin: 16px 0;
++      font-size: 0.95rem;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      margin-top: 20px;
++    }
++
++    .modal-actions .btn {
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +235,35 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn show-details-btn" data-coffee="maple-oat-latte" aria-haspopup="dialog">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn show-details-btn" data-coffee="dark-roast-espresso" aria-haspopup="dialog">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn show-details-btn" data-coffee="cold-brew" aria-haspopup="dialog">Show Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-modal" class="coffee-modal" aria-labelledby="coffee-modal-title" aria-describedby="coffee-modal-description" closedby="any">
++    <div class="modal-box">
++      <h3 id="coffee-modal-title">Coffee Details</h3>
++      <p id="coffee-modal-description"></p>
++      <div class="modal-details" id="coffee-modal-extra"></div>
++      <div class="modal-actions">
++        <button type="button" class="btn" id="close-modal-btn">Close</button>
++      </div>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +272,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const coffeeData = {
++      'maple-oat-latte': {
++        title: 'Maple Oat Latte',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup, paired with our signature double-shot espresso and topped with a light dusting of cinnamon.',
++        extra: 'Tasting Notes: Warm maple, toasted oats, sweet spice • Calories: 180 • Price: $5.50'
++      },
++      'dark-roast-espresso': {
++        title: 'Dark Roast Espresso',
++        description: 'Bold, smokey, and perfect for a morning boost. Roasted in small batches from high-altitude Arabica beans for a rich crema and full-bodied finish.',
++        extra: 'Tasting Notes: Dark chocolate, roasted walnut, smoky caramel • Calories: 10 • Price: $3.75'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        description: 'Steeped in cool filtered water for 18 hours for maximum smoothness and naturally low acidity. Served over artisanal ice.',
++        extra: 'Tasting Notes: Cocoa nibs, molasses, velvety finish • Calories: 15 • Price: $4.50'
++      }
++    };
++
++    const modal = document.getElementById('coffee-modal');
++    const modalTitle = document.getElementById('coffee-modal-title');
++    const modalDescription = document.getElementById('coffee-modal-description');
++    const modalExtra = document.getElementById('coffee-modal-extra');
++    const closeBtn = document.getElementById('close-modal-btn');
++
++    document.querySelectorAll('.show-details-btn').forEach((button) => {
++      button.addEventListener('click', () => {
++        const key = button.getAttribute('data-coffee');
++        const details = coffeeData[key];
++        if (details) {
++          modalTitle.textContent = details.title;
++          modalDescription.textContent = details.description;
++          modalExtra.textContent = details.extra;
++          modal.showModal();
++        }
++      });
++    });
++
++    closeBtn.addEventListener('click', () => {
++      modal.close();
++    });
++
++    // Light-dismiss when clicking outside the modal box
++    modal.addEventListener('click', (event) => {
++      if (event.target === modal) {
++        modal.close();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

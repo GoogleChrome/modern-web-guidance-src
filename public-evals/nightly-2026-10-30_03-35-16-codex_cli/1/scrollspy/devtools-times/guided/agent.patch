@@ -1,0 +1,205 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..ab7fab7
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,129 @@
++---
++const sections = [
++    ['latest', 'Latest'],
++    ['top-news', 'Top News'],
++    ['world', 'World'],
++    ['politics', 'Politics'],
++];
++---
++
++<nav class="section-nav" aria-label="On this page" data-section-nav>
++    <ul>
++        {sections.map(([id, label]) => (
++            <li><a href={`#${id}`}>{label}</a></li>
++        ))}
++    </ul>
++</nav>
++
++<style>
++    .section-nav {
++        position: sticky;
++        top: 0;
++        z-index: 20;
++        background: white;
++        border-bottom: 1px solid #d1d5db;
++        scroll-target-group: auto;
++    }
++    ul {
++        display: flex;
++        justify-content: center;
++        gap: clamp(0.25rem, 3vw, 2rem);
++        margin: 0;
++        padding: 0 0.5rem;
++        list-style: none;
++    }
++    a {
++        display: block;
++        padding: 0.875rem 0.5rem;
++        border-bottom: 3px solid transparent;
++        color: #4b5563;
++        font-size: 0.875rem;
++        font-weight: 600;
++        white-space: nowrap;
++    }
++    a:hover { color: #111827; }
++    a:is(:target-current, .target-current) {
++        color: #92400e;
++        border-bottom-color: currentColor;
++        background: #fffbeb;
++    }
++    a:focus-visible {
++        outline: 2px solid #92400e;
++        outline-offset: -4px;
++    }
++</style>
++
++<script>
++    function setupSectionNav() {
++        const nav = document.querySelector<HTMLElement>('[data-section-nav]');
++        if (!nav) return;
++
++        const links = [...nav.querySelectorAll<HTMLAnchorElement>('a')];
++        const targets = links.map(link => document.getElementById(link.hash.slice(1)));
++        const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++            CSS.supports('selector(:target-current)');
++        const controller = new AbortController();
++        const { signal } = controller;
++        let frame = 0;
++        const readingLine = () => Math.max(nav.offsetHeight + 1, innerHeight * 0.2);
++
++        function update() {
++            let current: HTMLAnchorElement | undefined;
++            if (nativeTracking) {
++                current = links.find(link => link.matches(':target-current'));
++            } else {
++                // Choose one section in document order, including gaps between sections.
++                const line = readingLine();
++                current = links[0];
++                targets.forEach((target, index) => {
++                    if (target && target.getBoundingClientRect().top <= line) {
++                        current = links[index];
++                    }
++                });
++            }
++            links.forEach(link => {
++                const active = link === current;
++                link.classList.toggle('target-current', !nativeTracking && active);
++                if (active) link.setAttribute('aria-current', 'true');
++                else link.removeAttribute('aria-current');
++            });
++        }
++
++        function scheduleUpdate() {
++            cancelAnimationFrame(frame);
++            frame = requestAnimationFrame(update);
++        }
++
++        // Native CSS handles highlighting; JS mirrors its state for assistive tech.
++        let observer: IntersectionObserver | undefined;
++        function observeTargets() {
++            observer?.disconnect();
++            const line = readingLine();
++            observer = new IntersectionObserver(update, {
++                rootMargin: `${-line}px 0px ${-Math.max(0, innerHeight - line - 1)}px 0px`,
++                threshold: 0,
++            });
++            targets.forEach(target => { if (target) observer!.observe(target); });
++        }
++        if (nativeTracking) {
++            document.addEventListener('scroll', scheduleUpdate, { passive: true, signal });
++        } else {
++            observeTargets();
++        }
++        document.addEventListener('scrollend', scheduleUpdate, { signal });
++        window.addEventListener('resize', () => {
++            if (!nativeTracking) observeTargets();
++            scheduleUpdate();
++        }, { signal });
++        window.addEventListener('hashchange', scheduleUpdate, { signal });
++        scheduleUpdate();
++
++        document.addEventListener('astro:before-swap', () => {
++            controller.abort();
++            observer?.disconnect();
++            cancelAnimationFrame(frame);
++        }, { once: true, signal });
++    }
++
++    document.addEventListener('astro:page-load', setupSectionNav);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9fc24d0 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import SectionNav from '../components/SectionNav.astro';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -38,6 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav />
++    <div id="latest" class="page-section">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +58,10 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +69,30 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <div id="top-news" class="page-section">
++            <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        </div>
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <div id="world" class="page-section">
++            <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        </div>
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <div id="politics" class="page-section">
++            <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        </div>
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<style>
++    .page-section { scroll-margin-top: 4rem; }
++</style>

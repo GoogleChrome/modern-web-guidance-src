@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,38 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Passkey promotion */
++    .passkey-card {
++      max-width: 640px;
++      margin: 40px auto 0;
++    }
++
++    .passkey-card button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .passkey-card button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .passkey-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .passkey-status.success {
++      color: #2e7d32;
++    }
++
++    .passkey-status.error {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +224,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card passkey-card" aria-labelledby="passkey-heading">
++      <h3 id="passkey-heading">Sign in faster with a passkey</h3>
++      <p>Use your fingerprint, face, or screen lock instead of a password. Passkeys are phishing-resistant and never leave your device.</p>
++      <button type="button" class="btn" id="register-button" data-testid="register-button">Create passkey</button>
++      <p class="passkey-status" id="passkey-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +243,196 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const button = document.getElementById('register-button');
++      const statusEl = document.getElementById('passkey-status');
++
++      function setStatus(message, type = '') {
++        // textContent only: never inject server/error strings as HTML.
++        statusEl.textContent = message;
++        statusEl.className = 'passkey-status' + (type ? ' ' + type : '');
++      }
++
++      // --- base64url helpers (fallback for browsers without the JSON WebAuthn helpers) ---
++      function base64urlToBuffer(value) {
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
++        const binary = atob(padded);
++        const bytes = new Uint8Array(binary.length);
++        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToBase64url(buffer) {
++        const bytes = new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function parseCreationOptions(json) {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: base64urlToBuffer(json.challenge),
++          user: { ...json.user, id: base64urlToBuffer(json.user.id) },
++          excludeCredentials: (json.excludeCredentials || []).map((cred) => ({
++            ...cred,
++            id: base64urlToBuffer(cred.id),
++          })),
++        };
++      }
++
++      function credentialToJSON(credential) {
++        if (typeof credential.toJSON === 'function') {
++          try {
++            return credential.toJSON();
++          } catch (_) {
++            // Some password managers return objects whose toJSON throws; fall through.
++          }
++        }
++        const response = credential.response;
++        return {
++          id: credential.id,
++          rawId: bufferToBase64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || undefined,
++          clientExtensionResults: credential.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToBase64url(response.clientDataJSON),
++            attestationObject: bufferToBase64url(response.attestationObject),
++            transports: typeof response.getTransports === 'function' ? response.getTransports() : [],
++            publicKeyAlgorithm:
++              typeof response.getPublicKeyAlgorithm === 'function' ? response.getPublicKeyAlgorithm() : undefined,
++            publicKey:
++              typeof response.getPublicKey === 'function' && response.getPublicKey()
++                ? bufferToBase64url(response.getPublicKey())
++                : undefined,
++            authenticatorData:
++              typeof response.getAuthenticatorData === 'function'
++                ? bufferToBase64url(response.getAuthenticatorData())
++                : undefined,
++          },
++        };
++      }
++
++      async function postJSON(url, body) {
++        const res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          cache: 'no-store',
++          headers: {
++            'Content-Type': 'application/json',
++            Accept: 'application/json',
++          },
++          body: JSON.stringify(body),
++        });
++        if (!res.ok) {
++          const err = new Error(`Request to ${url} failed with status ${res.status}`);
++          err.status = res.status;
++          throw err;
++        }
++        return res.json();
++      }
++
++      function isWebAuthnSupported() {
++        return (
++          window.isSecureContext &&
++          typeof window.PublicKeyCredential === 'function' &&
++          navigator.credentials &&
++          typeof navigator.credentials.create === 'function'
++        );
++      }
++
++      let inFlight = false;
++
++      async function registerPasskey() {
++        if (inFlight) return;
++
++        if (!isWebAuthnSupported()) {
++          setStatus('Passkeys are not supported in this browser or connection.', 'error');
++          return;
++        }
++
++        inFlight = true;
++        button.disabled = true;
++        button.setAttribute('aria-busy', 'true');
++        setStatus('Preparing your passkey…');
++
++        let credential;
++        let rpId;
++        try {
++          // 1. Fetch fresh, server-generated options (challenge, rp, user, excludeCredentials, …).
++          //    The server is the source of truth for security parameters; we do not override them.
++          const optionsJSON = await postJSON('/api/register/options', { promotion: true });
++          const publicKey = parseCreationOptions(optionsJSON);
++          rpId = optionsJSON.rp && optionsJSON.rp.id ? optionsJSON.rp.id : location.hostname;
++
++          // 2. Ask the authenticator to create the credential.
++          setStatus('Follow your device’s prompt to create a passkey…');
++          credential = await navigator.credentials.create({ publicKey });
++          if (!credential) throw new Error('No credential was returned.');
++
++          // 3. Send the attestation to the server for verification.
++          setStatus('Verifying your passkey…');
++          const result = await postJSON('/api/register/verify', credentialToJSON(credential));
++
++          if (result && (result.verified === true || result.success === true)) {
++            setStatus('Passkey created! You can now sign in with it.', 'success');
++            button.textContent = 'Passkey created';
++            return; // keep the button disabled after success
++          }
++          throw new Error('Server did not verify the passkey.');
++        } catch (error) {
++          // If a credential was created but the server rejected it, tell the
++          // passkey provider so it can remove the orphaned passkey.
++          if (credential && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            PublicKeyCredential.signalUnknownCredential({
++              rpId,
++              credentialId: credential.id,
++            }).catch(() => {});
++          }
++
++          let message = 'Something went wrong creating your passkey. Please try again.';
++          switch (error && error.name) {
++            case 'NotAllowedError':
++              message = 'Passkey creation was cancelled or timed out.';
++              break;
++            case 'InvalidStateError':
++              message = 'A passkey for this account already exists on this device.';
++              break;
++            case 'NotSupportedError':
++              message = 'Your device doesn’t support the required passkey options.';
++              break;
++            case 'SecurityError':
++              message = 'Passkey creation was blocked for security reasons.';
++              break;
++            case 'AbortError':
++              message = 'Passkey creation was cancelled.';
++              break;
++          }
++          if (error && (error.status === 401 || error.status === 403)) {
++            message = 'Please sign in again before creating a passkey.';
++          }
++          console.error('Passkey registration failed:', error);
++          setStatus(message, 'error');
++          button.disabled = false;
++        } finally {
++          inFlight = false;
++          button.removeAttribute('aria-busy');
++        }
++      }
++
++      button.addEventListener('click', registerPasskey);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,419 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..dd950c9
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++data/
++node_modules/
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..5740ab4
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,45 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root { --primary: #4e342e; --secondary: #d7ccc8; --accent: #ffab40; --text: #3e2723; --light: #fafafa; }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--text); background: var(--light); }
++    nav { background: var(--primary); color: white; padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; }
++    nav a { color: white; text-decoration: none; }
++    nav .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    .logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; font-size: .9rem; }
++    main { max-width: 520px; margin: 48px auto; padding: 0 20px; }
++    .panel { background: white; padding: 28px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
++    h1 { color: var(--primary); margin-bottom: 12px; }
++    .ok { background: #e8f5e9; color: #1b5e20; padding: 10px 12px; border-radius: 5px; margin-bottom: 16px; }
++    dt { font-size: .85rem; color: #6d4c41; }
++    dd { margin-bottom: 12px; }
++  </style>
++</head>
++<body>
++  <nav><a class="logo" href="/">THE DAILY GRIND</a><a class="logout-link" href="/logout">Logout</a></nav>
++  <main>
++    <div class="panel">
++      <h1>My Account</h1>
++      <div class="ok" id="recovered" hidden>Access recovered. All other sessions were signed out.</div>
++      <dl>
++        <dt>Name</dt><dd id="name"></dd>
++        <dt>Verified email</dt><dd id="email"></dd>
++        <dt>Member since</dt><dd id="since"></dd>
++      </dl>
++    </div>
++  </main>
++  <script>
++    if (new URLSearchParams(location.search).has('recovered')) document.getElementById('recovered').hidden = false;
++    fetch('/api/me').then((r) => { if (!r.ok) throw 0; return r.json(); }).then((u) => {
++      document.getElementById('name').textContent = u.name;
++      document.getElementById('email').textContent = u.email;
++      document.getElementById('since').textContent = new Date(u.createdAt).toLocaleDateString();
++    }).catch(() => { location.href = '/login'; });
++  </script>
++</body>
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..7927a91 100644
+--- a/index.html
++++ b/index.html
+@@ -164,7 +164,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/login" class="logout-link">Sign in</a></li>
+     </ul>
+   </nav>
+ 
+diff --git a/login.html b/login.html
+new file mode 100644
+index 0000000..d6b326a
+--- /dev/null
++++ b/login.html
+@@ -0,0 +1,81 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Sign in | The Daily Grind</title>
++  <style>
++    :root { --primary: #4e342e; --secondary: #d7ccc8; --accent: #ffab40; --text: #3e2723; --light: #fafafa; }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--text); background: var(--light); }
++    nav { background: var(--primary); color: white; padding: 1rem 5%; }
++    nav a { color: white; text-decoration: none; font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    main { max-width: 440px; margin: 48px auto; padding: 0 20px; }
++    .panel { background: white; padding: 28px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
++    h1 { color: var(--primary); margin-bottom: 4px; }
++    .lede { margin-bottom: 20px; }
++    [role=tablist] { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--secondary); }
++    [role=tab] { flex: 1; background: none; border: 0; padding: 10px 4px; font: inherit; cursor: pointer; color: var(--text); border-bottom: 3px solid transparent; margin-bottom: -2px; }
++    [role=tab][aria-selected=true] { border-color: var(--accent); font-weight: 600; }
++    label { display: block; font-size: .9rem; margin-bottom: 4px; }
++    input[type=email] { width: 100%; padding: 10px; border: 1px solid #bcaaa4; border-radius: 5px; font: inherit; margin-bottom: 16px; }
++    button.go { width: 100%; background: var(--primary); color: white; border: 0; padding: 12px; border-radius: 5px; font: inherit; cursor: pointer; }
++    button.go:hover { background: #3e2723; }
++    button.go:disabled { opacity: .5; cursor: not-allowed; }
++    .note { font-size: .85rem; margin-top: 14px; color: #6d4c41; }
++    .error { background: #ffebee; color: #b71c1c; padding: 10px 12px; border-radius: 5px; margin-bottom: 16px; }
++  </style>
++</head>
++<body>
++  <nav><a href="/">THE DAILY GRIND</a></nav>
++  <main>
++    <div class="panel">
++      <h1>Welcome</h1>
++      <p class="lede" id="lede"></p>
++      <div id="error" class="error" role="alert" hidden></div>
++      <div role="tablist" aria-label="Account action">
++        <button role="tab" id="tab-signin" aria-selected="true" data-intent="signin">Sign in</button>
++        <button role="tab" id="tab-signup" aria-selected="false" data-intent="signup">Create account</button>
++        <button role="tab" id="tab-recover" aria-selected="false" data-intent="recover">Recover</button>
++      </div>
++      <form id="form" action="/auth/start" method="get" role="tabpanel">
++        <input type="hidden" name="intent" id="intent" value="signin">
++        <label for="email">Email address (optional)</label>
++        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@gmail.com">
++        <button class="go" id="go" type="submit">Continue with Google</button>
++      </form>
++      <p class="note" id="note"></p>
++    </div>
++  </main>
++  <script>
++    const COPY = {
++      signin: ['Sign in by confirming your email with Google. No code or link to wait for.', 'Continue with Google'],
++      signup: ['Create your account. We confirm you own the address through Google, with nothing to type or click in an inbox.', 'Sign up with Google'],
++      recover: ['Lost access? Prove you own your email with Google and we will sign you back in and sign out all other devices.', 'Recover my account'],
++    };
++    const ERRORS = {
++      not_configured: 'Sign-in is not configured on this server yet.',
++      bad_request: 'That request was not valid. Please try again.',
++      cancelled: 'Sign-in was cancelled.',
++      bad_state: 'Your sign-in session expired. Please try again.',
++      exchange_failed: 'Google could not complete the sign-in. Please try again.',
++      email_unverified: 'We could not verify ownership of that email. Use a Gmail or Google Workspace address.',
++      no_account: 'No account exists for that email. Create one first.',
++      server_error: 'Something went wrong. Please try again.',
++    };
++    const $ = (id) => document.getElementById(id);
++    function select(intent) {
++      for (const t of document.querySelectorAll('[role=tab]')) t.setAttribute('aria-selected', String(t.dataset.intent === intent));
++      $('intent').value = intent;
++      $('lede').textContent = COPY[intent][0];
++      $('go').textContent = COPY[intent][1];
++      $('note').textContent = 'The email you choose must be verified by Google. We never send you an email.';
++    }
++    for (const t of document.querySelectorAll('[role=tab]')) t.addEventListener('click', () => select(t.dataset.intent));
++    const err = new URLSearchParams(location.search).get('error');
++    if (err) { $('error').textContent = ERRORS[err] || ERRORS.server_error; $('error').hidden = false; }
++    fetch('/api/config').then((r) => r.json()).then((c) => { if (!c.configured) { $('go').disabled = true; $('note').textContent = ERRORS.not_configured; } });
++    select(err === 'no_account' ? 'signup' : 'signin');
++  </script>
++</body>
++</html>
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..c42df5a
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,241 @@
++// Daily Grind server: static pages + email-ownership verification via OpenID Connect.
++// No emails are sent. The identity provider (Google) has already verified the mailbox;
++// we validate its signed ID token and trust the `email_verified` claim.
++const http = require('node:http');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
++const path = require('node:path');
++
++const PORT = Number(process.env.PORT || 11222);
++const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
++const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
++const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
++const SECURE = BASE_URL.startsWith('https://');
++const REDIRECT_URI = `${BASE_URL}/auth/callback`;
++const DATA_FILE = path.join(__dirname, 'data', 'accounts.json');
++
++const GOOGLE = {
++  auth: 'https://accounts.google.com/o/oauth2/v2/auth',
++  token: 'https://oauth2.googleapis.com/token',
++  jwks: 'https://www.googleapis.com/oauth2/v3/certs',
++  issuers: ['https://accounts.google.com', 'accounts.google.com'],
++};
++
++const PAGES = {
++  '/': 'index.html',
++  '/login': 'login.html',
++  '/account': 'account.html',
++};
++
++// ---- storage ---------------------------------------------------------------
++let accounts = {};
++try { accounts = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { /* first run */ }
++function saveAccounts() {
++  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
++  fs.writeFileSync(DATA_FILE, JSON.stringify(accounts, null, 2));
++}
++
++const pending = new Map();  // state -> { verifier, nonce, intent, exp }
++const sessions = new Map(); // sid -> { email, version, exp }
++const SESSION_TTL = 7 * 24 * 3600e3;
++const PENDING_TTL = 10 * 60e3;
++
++setInterval(() => {
++  const now = Date.now();
++  for (const [k, v] of pending) if (v.exp < now) pending.delete(k);
++  for (const [k, v] of sessions) if (v.exp < now) sessions.delete(k);
++}, 60e3).unref();
++
++// ---- helpers ---------------------------------------------------------------
++const b64url = (buf) => Buffer.from(buf).toString('base64url');
++const rand = (n = 32) => b64url(crypto.randomBytes(n));
++
++function parseCookies(req) {
++  const out = {};
++  for (const part of (req.headers.cookie || '').split(';')) {
++    const i = part.indexOf('=');
++    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
++  }
++  return out;
++}
++
++function cookie(name, value, maxAgeSec) {
++  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}${SECURE ? '; Secure' : ''}`;
++}
++
++function redirect(res, location, cookies = []) {
++  res.writeHead(302, { Location: location, 'Set-Cookie': cookies, 'Cache-Control': 'no-store' });
++  res.end();
++}
++
++function json(res, status, body) {
++  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
++  res.end(JSON.stringify(body));
++}
++
++function currentUser(req) {
++  const sid = parseCookies(req).sid;
++  const s = sid && sessions.get(sid);
++  if (!s || s.exp < Date.now()) return null;
++  const acct = accounts[s.email];
++  // Recovery bumps the version, which revokes older sessions.
++  if (!acct || acct.sessionVersion !== s.version) return null;
++  return { email: s.email, name: acct.name, createdAt: acct.createdAt };
++}
++
++let jwksCache = { keys: null, at: 0 };
++async function getKey(kid) {
++  if (!jwksCache.keys || Date.now() - jwksCache.at > 3600e3 || !jwksCache.keys.some((k) => k.kid === kid)) {
++    const r = await fetch(GOOGLE.jwks);
++    if (!r.ok) throw new Error('Could not fetch signing keys');
++    jwksCache = { keys: (await r.json()).keys, at: Date.now() };
++  }
++  const jwk = jwksCache.keys.find((k) => k.kid === kid);
++  if (!jwk) throw new Error('Unknown signing key');
++  return crypto.createPublicKey({ key: jwk, format: 'jwk' });
++}
++
++async function verifyIdToken(idToken, nonce) {
++  const [h, p, s] = String(idToken).split('.');
++  if (!h || !p || !s) throw new Error('Malformed ID token');
++  const header = JSON.parse(Buffer.from(h, 'base64url'));
++  if (header.alg !== 'RS256') throw new Error('Unexpected signing algorithm');
++  const key = await getKey(header.kid);
++  const ok = crypto.verify('RSA-SHA256', Buffer.from(`${h}.${p}`), key, Buffer.from(s, 'base64url'));
++  if (!ok) throw new Error('Bad ID token signature');
++  const c = JSON.parse(Buffer.from(p, 'base64url'));
++  if (!GOOGLE.issuers.includes(c.iss)) throw new Error('Wrong issuer');
++  if (c.aud !== CLIENT_ID) throw new Error('Wrong audience');
++  if (!c.exp || c.exp * 1000 < Date.now()) throw new Error('ID token expired');
++  if (c.nonce !== nonce) throw new Error('Nonce mismatch');
++  return c;
++}
++
++// Google is only authoritative for an address if it is a gmail.com address or the
++// address belongs to the Workspace domain in the `hd` claim. Anything else could be
++// a Google account that merely lists a third-party email.
++function emailIsProven(c) {
++  if (!(c.email_verified === true || c.email_verified === 'true') || typeof c.email !== 'string') return false;
++  const domain = c.email.toLowerCase().split('@')[1];
++  return domain === 'gmail.com' || (!!c.hd && c.hd.toLowerCase() === domain);
++}
++
++const INTENTS = new Set(['signup', 'signin', 'recover']);
++
++// ---- routes ----------------------------------------------------------------
++function authStart(req, res, url) {
++  if (!CLIENT_ID || !CLIENT_SECRET) return redirect(res, '/login?error=not_configured');
++  const intent = url.searchParams.get('intent');
++  if (!INTENTS.has(intent)) return redirect(res, '/login?error=bad_request');
++
++  const state = rand(), nonce = rand(), verifier = rand(48);
++  pending.set(state, { verifier, nonce, intent, exp: Date.now() + PENDING_TTL });
++
++  const q = new URLSearchParams({
++    client_id: CLIENT_ID,
++    redirect_uri: REDIRECT_URI,
++    response_type: 'code',
++    scope: 'openid email profile',
++    state,
++    nonce,
++    code_challenge: b64url(crypto.createHash('sha256').update(verifier).digest()),
++    code_challenge_method: 'S256',
++    prompt: 'select_account',
++  });
++  const hint = url.searchParams.get('email');
++  if (hint && hint.length < 255) q.set('login_hint', hint);
++  // Bind the flow to this browser so a leaked state value is useless elsewhere.
++  redirect(res, `${GOOGLE.auth}?${q}`, [cookie('oauth_state', state, 600)]);
++}
++
++async function authCallback(req, res, url) {
++  const clear = cookie('oauth_state', '', 0);
++  const fail = (code) => redirect(res, `/login?error=${code}`, [clear]);
++  try {
++    const state = url.searchParams.get('state') || '';
++    const flow = pending.get(state);
++    pending.delete(state);
++    if (url.searchParams.get('error')) return fail('cancelled');
++    if (!flow || flow.exp < Date.now() || parseCookies(req).oauth_state !== state) return fail('bad_state');
++
++    const r = await fetch(GOOGLE.token, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
++      body: new URLSearchParams({
++        code: url.searchParams.get('code') || '',
++        client_id: CLIENT_ID,
++        client_secret: CLIENT_SECRET,
++        redirect_uri: REDIRECT_URI,
++        grant_type: 'authorization_code',
++        code_verifier: flow.verifier,
++      }),
++    });
++    if (!r.ok) return fail('exchange_failed');
++    const claims = await verifyIdToken((await r.json()).id_token, flow.nonce);
++    if (!emailIsProven(claims)) return fail('email_unverified');
++
++    const email = claims.email.toLowerCase();
++    let acct = accounts[email];
++
++    if (flow.intent === 'signin' && !acct) return fail('no_account');
++    if (flow.intent === 'recover' && !acct) return fail('no_account');
++
++    if (!acct) {
++      acct = accounts[email] = {
++        email, name: claims.name || email, sub: claims.sub,
++        createdAt: new Date().toISOString(), sessionVersion: 1,
++      };
++    } else if (flow.intent === 'recover') {
++      // Proof of email ownership is the recovery credential: re-bind the identity
++      // and sign out every other session.
++      acct.sub = claims.sub;
++      acct.sessionVersion += 1;
++    }
++    saveAccounts();
++
++    const sid = rand();
++    sessions.set(sid, { email, version: acct.sessionVersion, exp: Date.now() + SESSION_TTL });
++    redirect(res, flow.intent === 'recover' ? '/account?recovered=1' : '/account', [clear, cookie('sid', sid, SESSION_TTL / 1000)]);
++  } catch (err) {
++    console.error('auth callback failed:', err.message);
++    fail('server_error');
++  }
++}
++
++function logout(req, res) {
++  const sid = parseCookies(req).sid;
++  if (sid) sessions.delete(sid);
++  redirect(res, '/', [cookie('sid', '', 0)]);
++}
++
++const server = http.createServer((req, res) => {
++  const url = new URL(req.url, BASE_URL);
++  const { pathname } = url;
++
++  if (req.method === 'GET' || req.method === 'HEAD') {
++    if (pathname === '/auth/start') return authStart(req, res, url);
++    if (pathname === '/auth/callback') return authCallback(req, res, url);
++    if (pathname === '/logout') return logout(req, res);
++    if (pathname === '/api/me') {
++      const u = currentUser(req);
++      return u ? json(res, 200, u) : json(res, 401, { error: 'signed_out' });
++    }
++    if (pathname === '/account' && !currentUser(req)) return redirect(res, '/login');
++    if (pathname === '/api/config') return json(res, 200, { configured: !!(CLIENT_ID && CLIENT_SECRET) });
++    const file = PAGES[pathname];
++    if (file) {
++      return fs.readFile(path.join(__dirname, file), (err, buf) => {
++        if (err) { res.writeHead(404); return res.end('Not found'); }
++        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff' });
++        res.end(buf);
++      });
++    }
++  }
++  res.writeHead(404, { 'Content-Type': 'text/plain' });
++  res.end('Not found');
++});
++
++server.listen(PORT, () => {
++  console.log(`Daily Grind on ${BASE_URL}`);
++  if (!CLIENT_ID || !CLIENT_SECRET) console.warn('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set: sign-in is disabled.');
++});

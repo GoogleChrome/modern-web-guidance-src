@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+index 66c9173..5db6cc2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,156 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew strength: the input retains all native keyboard and touch behavior. */
++    .brew-panel {
++      margin-block-end: 40px;
++      padding: clamp(24px, 5vw, 40px);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f4eeea;
++    }
++
++    .brew-panel h2 {
++      color: var(--primary);
++      margin-block-end: 4px;
++    }
++
++    .brew-control {
++      max-inline-size: 620px;
++      margin-block-start: 24px;
++    }
++
++    .brew-label-row {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      font-weight: 600;
++    }
++
++    .brew-value {
++      padding: 3px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 999px;
++      background: white;
++      font-size: 0.9rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .brew-range {
++      --slider-track-size: 8px;
++      --slider-thumb-size: 26px;
++      --slider-track-color: #a18a80;
++      --slider-fill-color: var(--primary);
++      --slider-direction: to right;
++      display: block;
++      inline-size: 100%;
++      min-block-size: 48px;
++      margin: 0;
++      padding: 0;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .brew-range:dir(rtl) {
++      --slider-direction: to left;
++    }
++
++    /* Enhance after value synchronization; without JS, keep the native slider. */
++    .brew-range.is-enhanced {
++      -webkit-appearance: none;
++      appearance: none;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++    }
++
++    .brew-range.is-enhanced::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: 999px;
++      background: linear-gradient(var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress),
++        var(--slider-track-color) var(--slider-progress));
++    }
++
++    .brew-range.is-enhanced::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      box-shadow: 0 2px 4px #4e342e26;
++    }
++
++    /* Keep vendor pseudo-elements separate so unsupported selectors cannot
++       invalidate the other browser's styles. */
++    .brew-range.is-enhanced::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: 999px;
++      background: var(--slider-track-color);
++    }
++
++    .brew-range.is-enhanced::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: 999px;
++      background: var(--slider-fill-color);
++    }
++
++    .brew-range.is-enhanced::-moz-range-thumb {
++      box-sizing: border-box;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      box-shadow: 0 2px 4px #4e342e26;
++    }
++
++    .brew-range:hover {
++      --slider-fill-color: #2d1c18;
++    }
++
++    .brew-range:active {
++      --slider-thumb-size: 28px;
++    }
++
++    .brew-range:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .brew-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .brew-hint {
++      margin-block-start: 12px;
++      font-size: 0.85rem;
++    }
++
++    @media (forced-colors: active) {
++      .brew-range.is-enhanced {
++        --primary: CanvasText;
++        --accent: Canvas;
++        --slider-track-color: CanvasText;
++        --slider-fill-color: Highlight;
++        forced-color-adjust: none;
++      }
++
++      .brew-range:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +325,24 @@
+   </header>
+ 
+   <main class="container">
++    <section class="brew-panel">
++      <h2>Find your perfect brew</h2>
++      <p>From easy mornings to a bold start. How do you like your coffee?</p>
++      <div class="brew-control">
++        <div class="brew-label-row">
++          <label for="brew-strength">Brew strength</label>
++          <span class="brew-value" id="brew-strength-value" hidden></span>
++        </div>
++        <input class="brew-range" id="brew-strength" name="brew-strength" type="range"
++          min="1" max="5" step="1" value="3" aria-describedby="brew-strength-hint">
++        <div class="brew-scale" aria-hidden="true">
++          <span>1 · Mellow</span>
++          <span>5 · Intense</span>
++        </div>
++        <p class="brew-hint" id="brew-strength-hint">Choose from 1 (Mellow) to 5 (Intense). Use the arrow keys or drag to adjust.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +375,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const brewStrength = document.getElementById('brew-strength');
++    const brewValue = document.getElementById('brew-strength-value');
++    const strengthNames = ['Mellow', 'Smooth', 'Balanced', 'Bold', 'Intense'];
++
++    function syncBrewStrength() {
++      const value = brewStrength.valueAsNumber;
++      const min = Number(brewStrength.min);
++      const max = Number(brewStrength.max);
++      // Compute a percentage here so fill also works without CSS attr()/progress().
++      const progress = ((value - min) / (max - min)) * 100;
++      const label = `${strengthNames[value - min]} · ${value} / ${max}`;
++      brewStrength.style.setProperty('--slider-progress', `${progress}%`);
++      brewStrength.setAttribute('aria-valuetext', `${strengthNames[value - min]}, ${value} of ${max}`);
++      brewValue.textContent = label;
++    }
++
++    syncBrewStrength();
++    brewStrength.classList.add('is-enhanced');
++    brewValue.hidden = false;
++    brewStrength.addEventListener('input', syncBrewStrength);
++    window.addEventListener('pageshow', syncBrewStrength);
++  </script>
++
+ </body>
+ 
+ </html>

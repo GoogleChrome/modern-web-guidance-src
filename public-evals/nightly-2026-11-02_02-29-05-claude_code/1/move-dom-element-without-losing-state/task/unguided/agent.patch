@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,84 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting Video */
++    .video-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .video-section p {
++      margin-bottom: 20px;
++    }
++
++    .video-slot {
++      position: relative;
++      width: 100%;
++      max-width: 800px;
++      margin: 0 auto;
++      aspect-ratio: 16 / 9;
++      border-radius: 8px;
++      overflow: hidden;
++      background: #000;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .video-slot iframe {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .video-placeholder {
++      display: none;
++      max-width: 800px;
++      margin: 0 auto;
++      padding: 40px 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      color: var(--primary);
++    }
++
++    .theater-toggle {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .theater-toggle[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    /* Theater mode: hero grows to hold the video */
++    .hero .video-slot {
++      display: none;
++      max-width: 1100px;
++      margin-top: 30px;
++    }
++
++    .hero.theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero.theater .video-slot {
++      display: block;
++    }
++
++    .video-section.theater .video-slot {
++      display: none;
++    }
++
++    .video-section.theater .video-placeholder {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -171,8 +247,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="video-slot" id="hero-video-slot"></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +271,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" id="roasting">
++      <h2>From Green Bean to Your Cup</h2>
++      <p>Take a peek at how coffee roasting works.</p>
++      <div class="video-slot" id="main-video-slot">
++        <iframe id="roasting-video"
++          src="https://www.youtube.com/embed/0UCm9ID-Iz4?enablejsapi=1&amp;rel=0&amp;playsinline=1"
++          title="Learn Everything You Need to Know About Coffee Roasting"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++      </div>
++      <div class="video-placeholder">Now playing in theater mode above.</div>
++      <button type="button" class="btn theater-toggle" id="theater-toggle" aria-pressed="false"
++        aria-controls="roasting-video">Theater Mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +298,83 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var frame = document.getElementById('roasting-video');
++      var toggle = document.getElementById('theater-toggle');
++      var hero = document.querySelector('.hero');
++      var section = document.getElementById('roasting');
++      var mainSlot = document.getElementById('main-video-slot');
++      var heroSlot = document.getElementById('hero-video-slot');
++
++      // Element.moveBefore() keeps an iframe's browsing context alive across a move.
++      // Plain appendChild() detaches the iframe, which makes it reload from scratch.
++      var canMoveAtomically = typeof Element.prototype.moveBefore === 'function';
++
++      // The fallback path uses the YouTube IFrame API to read the playback position
++      // before a move and restore it after the reload.
++      var player = null;
++      if (!canMoveAtomically) {
++        window.onYouTubeIframeAPIReady = function () {
++          player = new YT.Player(frame);
++        };
++        var api = document.createElement('script');
++        api.src = 'https://www.youtube.com/iframe_api';
++        document.head.appendChild(api);
++      }
++
++      function moveFrame(slot) {
++        if (frame.parentNode === slot) return;
++
++        if (canMoveAtomically) {
++          try {
++            slot.moveBefore(frame, null);
++            return;
++          } catch (e) {
++            // moveBefore() throws if the move isn't allowed (e.g. across documents).
++            // Fall through to the reload path.
++          }
++        }
++
++        var resumeAt = 0;
++        var wasPlaying = false;
++        if (player && typeof player.getCurrentTime === 'function') {
++          resumeAt = player.getCurrentTime() || 0;
++          wasPlaying = player.getPlayerState() === YT.PlayerState.PLAYING;
++        }
++
++        slot.appendChild(frame); // the iframe reloads here
++
++        if (window.YT && YT.Player) {
++          // The old player is bound to the discarded document, so attach a new one.
++          player = new YT.Player(frame, {
++            events: {
++              onReady: function (e) {
++                if (resumeAt > 0) e.target.seekTo(resumeAt, true);
++                if (wasPlaying) {
++                  e.target.playVideo();
++                } else if (resumeAt > 0) {
++                  e.target.pauseVideo();
++                }
++              }
++            }
++          });
++        }
++      }
++
++      toggle.addEventListener('click', function () {
++        var entering = frame.parentNode !== heroSlot;
++        moveFrame(entering ? heroSlot : mainSlot);
++        hero.classList.toggle('theater', entering);
++        section.classList.toggle('theater', entering);
++        toggle.setAttribute('aria-pressed', String(entering));
++        toggle.textContent = entering ? 'Exit Theater Mode' : 'Theater Mode';
++        (entering ? hero : section).scrollIntoView({ behavior: 'smooth', block: 'start' });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

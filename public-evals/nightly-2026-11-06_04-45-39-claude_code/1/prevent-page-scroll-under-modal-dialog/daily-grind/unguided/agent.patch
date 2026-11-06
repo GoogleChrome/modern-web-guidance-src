@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..c7bd198 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,30 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    /* Scroll lock while a modal dialog is open. Applied to <html> (the
++       viewport scroller) so the page keeps its scroll position. */
++    html.modal-open,
++    html:has(dialog:modal) {
+       overflow: hidden;
+-      position: fixed;
++    }
++
++    html.modal-open body {
++      /* Compensate for the removed scrollbar to avoid layout shift. */
++      padding-right: var(--scrollbar-compensation, 0px);
+     }
+ 
+     dialog {
+-      overflow: visible;
++      margin: auto;
++      padding: 24px;
++      border: none;
++      border-radius: 8px;
++      max-width: min(90vw, 420px);
++      max-height: 85vh;
++      overflow: auto;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -229,11 +242,37 @@
+   </footer>
+ 
+   <script>
++    const root = document.documentElement;
++
++    function lockScroll() {
++      const scrollbarWidth = window.innerWidth - root.clientWidth;
++      root.style.setProperty("--scrollbar-compensation", scrollbarWidth + "px");
++      root.classList.add("modal-open");
++    }
++
++    function unlockScroll() {
++      // Keep the lock if another modal dialog is still open.
++      if (document.querySelector("dialog[open]:modal")) return;
++      root.classList.remove("modal-open");
++      root.style.removeProperty("--scrollbar-compensation");
++    }
++
++    function openModal(dialog) {
++      if (dialog.open) return;
++      lockScroll();
++      dialog.showModal();
++    }
++
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      // "close" fires for the Close button, Escape key, and dialog.close().
++      noticeDialog.addEventListener("close", unlockScroll);
++
++      document.getElementById("close-notice")?.addEventListener("click", () => {
++        noticeDialog.close();
++      });
++
++      openModal(noticeDialog);
+     }
+   </script>
+ </body>

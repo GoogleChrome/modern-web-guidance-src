@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Link prefetching. Same-origin links are prefetched when the user hovers
++    (or starts touching) them. Logout, and any link marked with
++    class="no-prefetch" or rel="nofollow", is never prefetched, because
++    fetching it would have side effects.
++  -->
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": { "pathname": "/logout*" } } },
++              { "not": { "selector_matches": ".no-prefetch, .logout-link, [rel~=nofollow], [href*=logout i]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
++  <script>
++    // Fallback for browsers without Speculation Rules support (Safari, Firefox).
++    (function () {
++      if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) return;
++
++      var link = document.createElement('link');
++      if (!(link.relList && link.relList.supports && link.relList.supports('prefetch'))) return;
++
++      var prefetched = new Set();
++
++      function shouldPrefetch(a) {
++        if (!a.href || a.target === '_blank' || a.hasAttribute('download')) return false;
++        if (a.matches('.no-prefetch, .logout-link, [rel~=nofollow], [href*=logout i]')) return false;
++        var url = new URL(a.href, location.href);
++        if (url.origin !== location.origin) return false;
++        if (url.pathname.indexOf('/logout') === 0) return false;
++        if (url.pathname === location.pathname && url.search === location.search) return false;
++        return true;
++      }
++
++      function onIntent(e) {
++        var a = e.target.closest && e.target.closest('a[href]');
++        if (!a || !shouldPrefetch(a)) return;
++        var url = new URL(a.href, location.href);
++        url.hash = '';
++        if (prefetched.has(url.href)) return;
++        prefetched.add(url.href);
++        var l = document.createElement('link');
++        l.rel = 'prefetch';
++        l.href = url.href;
++        document.head.appendChild(l);
++      }
++
++      document.addEventListener('mouseover', onIntent, { passive: true });
++      document.addEventListener('touchstart', onIntent, { passive: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

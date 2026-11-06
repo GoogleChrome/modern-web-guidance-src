@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,8 +6,9 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -134,8 +135,113 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Native disclosure controls work without JavaScript. */
++    summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    summary::-webkit-details-marker {
++      display: none;
++    }
++
++    summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Keep the closing content rendered until its height transition ends. */
++    details::details-content {
++      height: 0;
++      overflow: clip;
++      transition: height 350ms ease, content-visibility 350ms allow-discrete;
++    }
++
++    details[open]::details-content {
++      height: auto;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++    }
++
++    .promo-message {
++      padding: 14px 64px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      top: 50%;
++      right: 20px;
++      transform: translateY(-50%);
++      display: grid;
++      place-items: center;
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    #promo-alert:not([open]) > summary {
++      visibility: hidden;
++    }
++
++    .faq-section {
++      margin-top: 48px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      padding: 20px;
++      font-weight: 600;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      line-height: 1;
++      transition: transform 350ms ease;
++    }
++
++    .faq-item[open] > #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      padding: 0 20px 20px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      details::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +262,15 @@
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion">
++      <span aria-hidden="true">&times;</span>
++    </summary>
++    <p class="promo-message"><strong>A little sweetness for your day.</strong> Discover our seasonal Maple Oat Latte.</p>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +307,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger" aria-controls="faq-content">Do you have a drink made with oat milk?</summary>
++        <div id="faq-content">
++          <p>Yes! Our seasonal Maple Oat Latte pairs creamy oat milk with a hint of Vermont maple syrup. Explore our seasonal favorites above to find your next cup.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

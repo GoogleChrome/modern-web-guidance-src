@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,78 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Visually Stable Mixed Fonts</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      max-inline-size: 65ch;
++      margin: 2rem auto;
++      padding-inline: 1rem;
++      font-family: Georgia, "Times New Roman", serif;
++      line-height: 1.5;
++    }
++
++    /* Mixed fonts: inline code inherits the x-height ratio of the
++       paragraph's primary font, so both fonts look the same size. */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++      background: color-mix(in srgb, currentColor 10%, transparent);
++    }
++
++    /* Independent theme: not a descendant of the primary font, so lock its
++       proportions with an explicit x-height / font-size aspect ratio. */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, sans-serif;
++      font-size-adjust: 0.5;
++      margin-block-start: 1.5rem;
++      padding: 1rem 1.25rem;
++      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
++      border-radius: 0.5rem;
++    }
++
++    /* Fallback for browsers without font-size-adjust support:
++       manually shrink the monospace/sans fonts, which have larger x-heights. */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.875em;
++      }
++
++      #independent-theme-container {
++        font-size: 0.9em;
++        line-height: 1.6;
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <h1>Visually Stable Mixed Fonts</h1>
++
++    <p id="mixed-fonts-container">
++      To list the files in a directory, run <code>ls -la</code> in your terminal,
++      then open one with <code>cat README.md</code>. The inline code is normalized
++      to match the x-height of the surrounding serif text.
++    </p>
++
++    <div id="independent-theme-container">
++      <p>
++        This container represents an independent theme. Its font proportions are
++        locked to a fixed x-height aspect ratio of <strong>0.5</strong>, regardless
++        of which font family ends up rendering.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

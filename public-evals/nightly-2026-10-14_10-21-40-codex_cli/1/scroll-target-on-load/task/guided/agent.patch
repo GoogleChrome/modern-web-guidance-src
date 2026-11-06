@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +100,51 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-feed {
++      height: 440px;
++      max-width: 680px;
++      margin: 20px auto 0;
++      padding: 16px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      background: var(--secondary);
++      border-radius: 12px;
++    }
++
++    .media-feed .card + .card {
+       margin-top: 20px;
+     }
+ 
++    .media-feed img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 16px;
++      background: var(--secondary);
++    }
++
++    .media-feed .target {
++      scroll-initial-target: nearest;
++    }
++
++    @supports not (scroll-initial-target: nearest) {
++      /* Keep the fallback's unpositioned contents out of the first paint. */
++      .js .media-feed:not([data-ready]) {
++        visibility: hidden;
++      }
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +212,53 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="favorites-heading" tabindex="0">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&h=220&q=80" width="640" height="220" alt="A warm latte with delicate latte art">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&h=220&q=80" width="640" height="220" alt="A freshly prepared cup of espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card target">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&h=220&q=80" width="640" height="220" alt="Chilled coffee served over ice">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&h=220&q=80" width="640" height="220" alt="Freshly brewed coffee ready to enjoy">
++          <h3>House Pour Over</h3>
++          <p>A slow brew that brings out every bright, balanced note.</p>
++          <a href="/menu/pour-over" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&h=220&q=80" width="640" height="220" alt="A creamy coffee in a ceramic cup">
++          <h3>Classic Cappuccino</h3>
++          <p>Rich espresso topped with silky milk and airy foam.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
+       </div>
++      <script>
++        (() => {
++          const feed = document.querySelector('.media-feed');
++          if (!CSS.supports('scroll-initial-target', 'nearest')) {
++            const target = feed.querySelector('.target');
++            // Scroll only this container, synchronously, before revealing it.
++            feed.scrollTop += target.getBoundingClientRect().top
++              - feed.getBoundingClientRect().top - feed.clientTop - 16;
++          }
++          feed.dataset.ready = '';
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

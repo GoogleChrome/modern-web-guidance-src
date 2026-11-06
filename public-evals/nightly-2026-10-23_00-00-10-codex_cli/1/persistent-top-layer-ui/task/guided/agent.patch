@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,90 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .feedback-launcher {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1001;
++      border: 0;
++      box-shadow: 0 4px 18px #3e272333;
++    }
++
++    .feedback-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(480px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow: auto;
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: var(--light);
++      color: var(--text);
++      text-align: left;
++      box-shadow: 0 24px 80px #24141040;
++    }
++
++    .feedback-dialog::backdrop { background: #24141099; }
++    .feedback-dialog button { cursor: pointer; font: inherit; }
++    .feedback-dialog .btn { border: 0; margin: 0; }
++    .feedback-heading, .feedback-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++    }
++    .feedback-eyebrow {
++      color: #72574e;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++    .feedback-close {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      min-width: 44px;
++      min-height: 44px;
++      font-size: 1.5rem !important;
++    }
++    .feedback-description { margin: 16px 0 24px; }
++    .feedback-dialog label { display: block; margin-bottom: 8px; font-weight: 600; }
++    .feedback-dialog textarea {
++      display: block;
++      width: 100%;
++      min-height: 140px;
++      padding: 12px;
++      border: 1px solid #a58b80;
++      border-radius: 8px;
++      color: var(--text);
++      background: white;
++      font: inherit;
++      resize: vertical;
++    }
++    .feedback-hint { margin: 8px 0 24px; color: #72574e; font-size: 0.85rem; }
++    .feedback-move {
++      padding: 10px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      background: transparent;
++    }
++    .feedback-status { margin-top: 20px; font-size: 0.85rem; color: #72574e; }
++    .feedback-launcher { cursor: pointer; font: inherit; }
++    .feedback-launcher:focus-visible, .feedback-dialog :focus-visible {
++      outline: 3px solid #b45c00;
++      outline-offset: 4px;
++    }
++    @media (max-width: 420px) {
++      .feedback-dialog { padding: 20px; }
++      .feedback-actions { flex-wrap: wrap; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +276,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div id="feedback-main-host">
++      <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-description">
++        <div class="feedback-heading">
++          <div>
++            <p class="feedback-eyebrow">A better daily grind</p>
++            <h2 id="feedback-title">How are we doing?</h2>
++          </div>
++          <button type="button" class="feedback-close" id="feedback-close" aria-label="Close feedback">&times;</button>
++        </div>
++        <p id="feedback-description" class="feedback-description">Good coffee starts with listening. Tell us what you love or what we could do better.</p>
++        <form id="feedback-form">
++          <label for="feedback-message">Your feedback</label>
++          <textarea id="feedback-message" name="feedback" maxlength="5000" placeholder="What's on your mind?" aria-describedby="feedback-hint" autofocus></textarea>
++          <p id="feedback-hint" class="feedback-hint">Save a draft on this device. Your feedback is not sent.</p>
++          <div class="feedback-actions">
++            <button type="button" id="feedback-move" class="feedback-move">Move to footer</button>
++            <button type="submit" class="btn">Save draft</button>
++          </div>
++        </form>
++        <p id="feedback-status" class="feedback-status" role="status">Your draft stays with you when you move this window.</p>
++      </dialog>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +308,83 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div id="feedback-footer-host"></div>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launcher" id="feedback-open" aria-haspopup="dialog" aria-controls="feedback-dialog">Give feedback</button>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const feedbackOpen = document.getElementById('feedback-open');
++    const feedbackMove = document.getElementById('feedback-move');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const feedbackStatus = document.getElementById('feedback-status');
++    const mainHost = document.getElementById('feedback-main-host');
++    const footerHost = document.getElementById('feedback-footer-host');
++    const draftKey = 'daily-grind-feedback-draft';
++
++    try {
++      feedbackMessage.value = localStorage.getItem(draftKey) || '';
++    } catch {
++      // Storage may be unavailable; the draft still survives moves and closing.
++    }
++
++    feedbackOpen.addEventListener('click', () => {
++      if (!feedbackDialog.open) feedbackDialog.showModal();
++    });
++    document.getElementById('feedback-close').addEventListener('click', () => feedbackDialog.close());
++    feedbackDialog.addEventListener('close', () => {
++      // Fallback reparenting queues a close event before reopening the dialog.
++      if (!feedbackDialog.open) feedbackOpen.focus({ preventScroll: true });
++    });
++
++    feedbackMove.addEventListener('click', () => {
++      const target = feedbackDialog.parentElement === mainHost ? footerHost : mainHost;
++      if (typeof target.moveBefore === 'function') {
++        // Atomic reparenting preserves the top layer, modal state and focus.
++        target.moveBefore(feedbackDialog, null);
++      } else {
++        const wasOpen = feedbackDialog.open;
++        const wasModal = feedbackDialog.matches(':modal');
++        const focused = feedbackDialog.contains(document.activeElement) ? document.activeElement : null;
++        const selection = focused instanceof HTMLTextAreaElement || focused instanceof HTMLInputElement
++          ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null;
++        const dialogScroll = [feedbackDialog.scrollLeft, feedbackDialog.scrollTop];
++        const messageScroll = [feedbackMessage.scrollLeft, feedbackMessage.scrollTop];
++        const returnValue = feedbackDialog.returnValue;
++
++        // Explicitly close first: some engines retain `open` after detaching,
++        // but lose top-layer membership, so showModal() alone cannot restore it.
++        if (wasOpen) feedbackDialog.close();
++        target.insertBefore(feedbackDialog, null);
++        if (wasOpen) {
++          if (wasModal) feedbackDialog.showModal();
++          else feedbackDialog.show();
++        }
++        feedbackDialog.returnValue = returnValue;
++        focused?.focus({ preventScroll: true });
++        if (selection && selection[0] !== null) focused.setSelectionRange(...selection);
++        feedbackDialog.scrollLeft = dialogScroll[0];
++        feedbackDialog.scrollTop = dialogScroll[1];
++        feedbackMessage.scrollLeft = messageScroll[0];
++        feedbackMessage.scrollTop = messageScroll[1];
++      }
++      const inFooter = target === footerHost;
++      feedbackMove.textContent = inFooter ? 'Move to main content' : 'Move to footer';
++      feedbackStatus.textContent = `Moved to ${inFooter ? 'the footer' : 'main content'}. Your feedback is preserved.`;
++    });
++
++    document.getElementById('feedback-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(draftKey, feedbackMessage.value);
++        feedbackStatus.textContent = 'Draft saved on this device. Your feedback has not been sent.';
++      } catch {
++        feedbackStatus.textContent = 'Device storage is unavailable. Your draft will stay here until you reload.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

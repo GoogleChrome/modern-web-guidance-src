@@ -1,0 +1,87 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,82 @@
++# Daily Grind performance audit
++
++## Scope and evidence
++
++Audited the entire supplied site: `index.html`, package scripts, resource loading,
++layout, and navigation. This repository contains one static page, no JavaScript,
++no dependencies, and no build script. No browser, development/preview server,
++server entrypoint, or Lighthouse session was used. This is a source and asset
++audit; it does not establish measured Core Web Vitals or a Lighthouse score.
++
++## Findings and changes
++
++| Area | Finding | Implemented optimization |
++| --- | --- | --- |
++| Largest Contentful Paint (LCP) | The full-width hero used a CSS background, discovered after CSS processing, with a single remote 1350px JPEG for every device. | Use a parser-discoverable image with `fetchpriority="high"`, eager loading, and three responsive WebP candidates hosted locally. This removes the image's cross-origin connection and third-party availability dependency. |
++| Transfer size | The original Unsplash response was 157,969 bytes. | Reuse the same stock photo, compressed to 32,258–100,138 bytes. |
++| Cumulative Layout Shift (CLS) | The hero already reserved height, and system fonts avoided font swapping. Mobile viewport changes could resize its `vh` height. | Preserve reserved space, add intrinsic image dimensions, and use stable `svh` units with a `vh` fallback. The image remains absolutely positioned so loading cannot push content down. |
++| Interaction to Next Paint (INP) | No scripts, event handlers, hydration, long tasks, or interaction libraries exist in the supplied page. | Preserve native link interactions and zero JavaScript. No script-driven interaction delay could be identified from source. |
++| Mobile interactions | Navigation could overflow because neither flex row wrapped. Small links were harder to tap. | Wrap navigation, provide 44px-tall navigation links, and keep the card grid within narrow viewports. |
++| Rendering and accessibility | Small inline CSS and system fonts already kept the critical path short. | Retain that architecture; add visible keyboard focus and honor reduced-motion preferences. |
++
++An image preload was intentionally omitted: the image is already in the initial
++HTML after a small inline stylesheet. A second resource declaration adds
++maintenance overhead without an established benefit for this page.
++
++## Asset results
++
++| Asset | Bytes | Reduction vs original |
++| --- | ---: | ---: |
++| Original remote JPEG, 1350 × 900 | 157,969 | — |
++| Local WebP, 640 × 427 | 32,258 | 79.6% |
++| Local WebP, 960 × 640 | 56,230 | 64.4% |
++| Local WebP, 1350 × 900 | 100,138 | 36.6% |
++
++The HTML is 5,576 bytes before transport compression. A cold load transfers one
++HTML document and one selected image: approximately 37.8–105.7 kB uncompressed,
++excluding headers. Browsers select the image using viewport width and pixel
++density; small screens with high pixel density can select the larger candidates.
++The maximum image resolution remains equal to the original site's resolution.
++
++Photo source: the existing site's [Unsplash stock image](https://images.unsplash.com/photo-1495474472287-4d71bcdd2085).
++The local variants were fetched from that image service using WebP output and
++quality 60. No new image generation service or runtime image transformation is
++required.
++
++## Validation performed
++
++- Parsed the HTML and confirmed all image source references resolve locally.
++- Inspected WebP binary headers and confirmed that actual dimensions match every
++  `srcset` width descriptor.
++- Confirmed intrinsic dimensions, eager loading, and high fetch priority for the
++  hero; no duplicate CSS background request remains.
++- Checked budgets of less than 10 kB for HTML and 110 kB for each image.
++- Confirmed zero JavaScript, external render resources, and blocking external
++  stylesheets.
++- Ran `git diff --check` successfully. There is no build script to run.
++
++Responsive behavior, visual quality, keyboard focus appearance, and real loading
++and interaction timings have not been verified in a browser, as requested.
++
++## Deployment follow-up
++
++These items depend on the production host and cannot be established from this
++repository:
++
++1. Enable Brotli or gzip for HTML. Serve the WebP files as `image/webp`; they are
++   already compressed and do not need additional transport compression.
++2. Use HTML revalidation (`Cache-Control: no-cache`) and a suitable image cache
++   lifetime. Use content-versioned filenames before enabling year-long immutable
++   image caching. The current descriptive filenames must be invalidated or
++   changed when replacing their contents.
++3. Serve static assets through the site's CDN and verify cache hits, TLS, and
++   response times. TTFB and production caching were not measured here.
++4. Confirm the existing navigation destinations are served by production. The
++   repository contains no `/menu`, `/locations`, account, checkout, or other
++   linked route implementations; their response and interaction performance
++   cannot be audited from this page.
++5. After deployment, use existing field data (CrUX, Search Console, or your real
++   user monitoring) to evaluate the 75th percentile separately for mobile and
++   desktop: LCP ≤ 2.5 seconds, INP ≤ 200 milliseconds, and CLS ≤ 0.1. These are
++   acceptance targets, not claimed results. Use field evidence to decide whether
++   any further optimization or instrumentation is necessary.

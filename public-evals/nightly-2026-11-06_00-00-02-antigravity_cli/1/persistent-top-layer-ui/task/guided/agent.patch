@@ -1,0 +1,293 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,138 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Modal Dialog & Relocation Containers */
++    dialog:modal {
++      overscroll-behavior: contain;
++      border: none;
++      border-radius: 10px;
++      padding: 24px;
++      max-width: 480px;
++      width: calc(100% - 32px);
++      margin: auto;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(62, 39, 35, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++    }
++
++    .dialog-header h2 {
++      color: var(--primary);
++      font-size: 1.35rem;
++    }
++
++    .dialog-location-badge {
++      display: inline-block;
++      font-size: 0.8rem;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 16px;
++    }
++
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      text-align: left;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form-group select,
++    .form-group textarea,
++    .form-group input {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .dialog-actions-end {
++      display: flex;
++      gap: 8px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .modal-host-section {
++      margin-top: 32px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 16px;
++    }
++
++    .host-container {
++      background: white;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      text-align: center;
++    }
++
++    .host-container[data-active-host="true"] {
++      border-color: var(--primary);
++      background: #fff8f1;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +300,12 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; justify-content: center;">
++      <a href="/order-online" class="btn" style="margin-top: 0;">Order Now</a>
++      <button type="button" class="btn" commandfor="feedback-modal" command="show-modal">Leave Feedback</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,19 +327,134 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="modal-host-section" aria-label="Feedback widget host containers">
++      <div id="primary-modal-container" class="host-container" data-active-host="true" data-container-label="Primary Container (Main Section)">
++        <h3>Primary Feedback Host</h3>
++        <p>Default DOM container for the feedback modal.</p>
++        <dialog id="feedback-modal" aria-labelledby="feedback-modal-title" closedby="any">
++          <div class="dialog-header">
++            <h2 id="feedback-modal-title">Share Your Feedback</h2>
++            <button type="button" class="btn btn-secondary" commandfor="feedback-modal" command="close" aria-label="Close feedback modal">Close</button>
++          </div>
++          <p id="modal-location-status" class="dialog-location-badge" role="status" aria-live="polite">
++            Current container: Primary Container (Main Section)
++          </p>
++          <form method="dialog" class="feedback-form">
++            <div class="form-group">
++              <label for="feedback-name">Your Name</label>
++              <input id="feedback-name" name="name" type="text" autocomplete="name" placeholder="Alex Rivera" autofocus>
++            </div>
++            <div class="form-group">
++              <label for="feedback-rating">Experience Rating</label>
++              <select id="feedback-rating" name="rating">
++                <option value="5">5 - Excellent</option>
++                <option value="4">4 - Great</option>
++                <option value="3">3 - Good</option>
++                <option value="2">2 - Fair</option>
++                <option value="1">1 - Needs Improvement</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="feedback-comments">Comments</label>
++              <textarea id="feedback-comments" name="comments" rows="3" placeholder="Tell us about your coffee..."></textarea>
++            </div>
++            <div class="dialog-actions">
++              <button type="button" id="move-modal-btn" class="btn btn-outline">Move</button>
++              <div class="dialog-actions-end">
++                <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++                <button type="submit" value="submit" class="btn">Submit Feedback</button>
++              </div>
++            </div>
++          </form>
++        </dialog>
++      </div>
++
++      <div id="secondary-modal-container" class="host-container" data-active-host="false" data-container-label="Secondary Container (Sidebar Slot)">
++        <h3>Secondary Feedback Host</h3>
++        <p>Alternate DOM container for relocating the open modal.</p>
++      </div>
++    </section>
+   </main>
+ 
+-  <footer>
++  <footer id="footer-modal-container" data-container-label="Footer Container">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <button type="button" class="btn" commandfor="feedback-modal" command="show-modal">Give Feedback</button>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Feature detect Invoker Commands and conditionally load polyfill when missing
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++
++    const feedbackDialog = document.getElementById('feedback-modal');
++    const moveModalBtn = document.getElementById('move-modal-btn');
++    const locationStatus = document.getElementById('modal-location-status');
++    const containers = [
++      document.getElementById('primary-modal-container'),
++      document.getElementById('secondary-modal-container'),
++      document.getElementById('footer-modal-container')
++    ];
++
++    // Fallback for closedby="any" light-dismiss in browsers without native dialog closedBy support
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
++        dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
++      }
++    }
++
++    // Reset returnValue on close to avoid leaking stale values across dismissals
++    feedbackDialog.addEventListener('close', () => {
++      feedbackDialog.returnValue = '';
++    });
++
++    // Move the open <dialog> to the next container in the DOM while preserving top-layer & focus state
++    moveModalBtn.addEventListener('click', () => {
++      const currentParent = feedbackDialog.parentElement;
++      const currentIndex = containers.indexOf(currentParent);
++      const targetParent = containers[(currentIndex + 1) % containers.length];
++      const activeBeforeMove = document.activeElement;
++
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(feedbackDialog, null);
++      } else {
++        const wasOpen = feedbackDialog.hasAttribute('open') || feedbackDialog.matches(':popover-open');
++        targetParent.insertBefore(feedbackDialog, null);
++        if (wasOpen && typeof feedbackDialog.showModal === 'function') {
++          feedbackDialog.showModal();
++        } else if (wasOpen && typeof feedbackDialog.showPopover === 'function') {
++          feedbackDialog.showPopover();
++        }
++        if (activeBeforeMove instanceof HTMLElement && feedbackDialog.contains(activeBeforeMove)) {
++          activeBeforeMove.focus();
++        }
++      }
++
++      for (const container of containers) {
++        if (container.classList.contains('host-container')) {
++          container.dataset.activeHost = String(container === targetParent);
++        }
++      }
++
++      const label = targetParent.dataset.containerLabel || targetParent.id;
++      locationStatus.textContent = `Current container: ${label}`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

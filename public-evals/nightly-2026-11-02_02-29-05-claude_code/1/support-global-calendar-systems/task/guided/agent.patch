@@ -1,0 +1,393 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,125 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* World Calendars */
++    .calendar-tool {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .calendar-tool .intro {
++      max-width: 60ch;
++      margin: 0.5rem auto 0;
++    }
++
++    .calendar-picker {
++      display: inline-flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: center;
++      margin-top: 20px;
++      font-weight: 600;
++    }
++
++    .calendar-picker input {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++    }
++
++    .calendar-picker input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .calendar-status {
++      margin-top: 10px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card {
++      text-align: start;
++    }
++
++    .calendar-card .formatted {
++      font-size: 1.25rem;
++      font-weight: 600;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 12px;
++      font-size: 0.9rem;
++    }
++
++    .calendar-card dt {
++      font-weight: 600;
++    }
++
++    .calendar-card dd {
++      font-variant-numeric: tabular-nums;
++    }
++
++    .timeline {
++      display: inline-block;
++      padding: 0 8px;
++      border-radius: 999px;
++      background: var(--secondary);
++      font-weight: 600;
++    }
++
++    .timeline[data-timeline="Today"] {
++      background: var(--accent);
++    }
++
++    .calendar-card details {
++      margin-top: 12px;
++    }
++
++    .calendar-card summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .calendar-card table {
++      width: 100%;
++      margin-top: 8px;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .calendar-card th,
++    .calendar-card td {
++      padding: 2px 6px;
++      text-align: start;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .calendar-card tr[aria-current] {
++      background: #fff3e0;
++      font-weight: 600;
++    }
++
++    .calendar-card .note {
++      margin-top: 10px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .calendar-card .note:empty {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +311,110 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-tool" aria-labelledby="calendar-tool-title">
++      <h2 id="calendar-tool-title">World Calendars</h2>
++      <p class="intro">Celebrating with us from around the world? Pick any date to see it in the Islamic (Umm al-Qura), Hebrew, and Japanese calendars.</p>
++      <div class="calendar-picker">
++        <label for="calendar-date">Choose a date</label>
++        <input type="date" id="calendar-date" name="calendar-date" required>
++      </div>
++      <p class="calendar-status" id="calendar-status" role="status"></p>
++      <div class="grid" id="calendar-results" aria-live="polite">
++        <article class="card calendar-card" data-calendar="islamic-umalqura" aria-labelledby="cal-islamic-umalqura-title">
++          <h3 id="cal-islamic-umalqura-title">Islamic (Umm al-Qura)</h3>
++          <p class="formatted" id="islamic-date">&mdash;</p>
++          <dl>
++            <dt>Year</dt>
++            <dd data-field="year">&mdash;</dd>
++            <dt>Month</dt>
++            <dd data-field="month">&mdash;</dd>
++            <dt>Month code</dt>
++            <dd data-field="monthCode">&mdash;</dd>
++            <dt>Months in year</dt>
++            <dd data-field="monthsInYear">&mdash;</dd>
++            <dt>Timeline</dt>
++            <dd><span class="timeline" data-field="timeline">&mdash;</span></dd>
++          </dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr>
++                  <th scope="col">#</th>
++                  <th scope="col">Code</th>
++                  <th scope="col">Days</th>
++                </tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++          <p class="note"></p>
++        </article>
++        <article class="card calendar-card" data-calendar="hebrew" aria-labelledby="cal-hebrew-title">
++          <h3 id="cal-hebrew-title">Hebrew</h3>
++          <p class="formatted">&mdash;</p>
++          <dl>
++            <dt>Year</dt>
++            <dd data-field="year">&mdash;</dd>
++            <dt>Month</dt>
++            <dd data-field="month">&mdash;</dd>
++            <dt>Month code</dt>
++            <dd data-field="monthCode">&mdash;</dd>
++            <dt>Months in year</dt>
++            <dd data-field="monthsInYear">&mdash;</dd>
++            <dt>Timeline</dt>
++            <dd><span class="timeline" data-field="timeline">&mdash;</span></dd>
++          </dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr>
++                  <th scope="col">#</th>
++                  <th scope="col">Code</th>
++                  <th scope="col">Days</th>
++                </tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++          <p class="note"></p>
++        </article>
++        <article class="card calendar-card" data-calendar="japanese" aria-labelledby="cal-japanese-title">
++          <h3 id="cal-japanese-title">Japanese</h3>
++          <p class="formatted">&mdash;</p>
++          <dl>
++            <dt>Year</dt>
++            <dd data-field="year">&mdash;</dd>
++            <dt>Month</dt>
++            <dd data-field="month">&mdash;</dd>
++            <dt>Month code</dt>
++            <dd data-field="monthCode">&mdash;</dd>
++            <dt>Months in year</dt>
++            <dd data-field="monthsInYear">&mdash;</dd>
++            <dt>Timeline</dt>
++            <dd><span class="timeline" data-field="timeline">&mdash;</span></dd>
++          </dl>
++          <details>
++            <summary>Month breakdown</summary>
++            <table>
++              <thead>
++                <tr>
++                  <th scope="col">#</th>
++                  <th scope="col">Code</th>
++                  <th scope="col">Days</th>
++                </tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </details>
++          <p class="note"></p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +425,152 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script type="module">
++    // Progressive enhancement: use native Temporal when present, otherwise load the polyfill.
++    if (typeof globalThis.Temporal === 'undefined') {
++      try {
++        const module = await import('https://esm.sh/temporal-polyfill@0.3');
++        globalThis.Temporal = module.Temporal;
++      } catch {
++        // Handled below: the tool reports that it is unavailable.
++      }
++    }
++
++    const input = document.getElementById('calendar-date');
++    const status = document.getElementById('calendar-status');
++    const cards = document.querySelectorAll('.calendar-card');
++
++    // Era names matter for era-based calendars such as Japanese (Reiwa, Heisei, ...).
++    const FORMAT_OPTIONS = {
++      'islamic-umalqura': { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' },
++      hebrew: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' },
++      japanese: { era: 'long', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' },
++    };
++
++    const supportedCalendars = (() => {
++      try {
++        return new Set(Intl.supportedValuesOf('calendar'));
++      } catch {
++        return new Set();
++      }
++    })();
++
++    // Locale for formatting: the visitor's language with the target calendar extension.
++    // Temporal requires the formatter's calendar to match the date's calendar.
++    function localeFor(calendarId) {
++      try {
++        return new Intl.Locale(navigator.language || 'en', { calendar: calendarId }).toString();
++      } catch {
++        return `en-u-ca-${calendarId}`;
++      }
++    }
++
++    function setField(card, name, value) {
++      const el = card.querySelector(`[data-field="${name}"]`);
++      el.textContent = value;
++      if (name === 'timeline') el.dataset.timeline = value;
++    }
++
++    function resetCard(card, note) {
++      card.querySelector('.formatted').textContent = '\u2014';
++      for (const el of card.querySelectorAll('[data-field]')) {
++        el.textContent = '\u2014';
++        delete el.dataset.timeline;
++      }
++      card.querySelector('tbody').replaceChildren();
++      card.querySelector('.note').textContent = note;
++    }
++
++    function renderCard(card, isoDate, todayISO) {
++      const calendarId = card.dataset.calendar;
++
++      if (!supportedCalendars.has(calendarId)) {
++        resetCard(card, `The ${calendarId} calendar isn't supported by this browser.`);
++        return;
++      }
++
++      const date = isoDate.withCalendar(calendarId);
++      if (date.calendar.id !== calendarId) {
++        resetCard(card, `The ${calendarId} calendar isn't supported by this browser.`);
++        return;
++      }
++
++      card.querySelector('.formatted').textContent =
++        date.toLocaleString(localeFor(calendarId), FORMAT_OPTIONS[calendarId]);
++
++      setField(card, 'year', String(date.year));
++      setField(card, 'month', String(date.month));
++      setField(card, 'monthCode', date.monthCode);
++      setField(card, 'monthsInYear', String(date.monthsInYear));
++
++      const comparison = Temporal.PlainDate.compare(date, todayISO.withCalendar(calendarId));
++      setField(card, 'timeline', comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today');
++
++      // Never assume 12 months or fixed month lengths; ask the calendar.
++      const rows = [];
++      for (let m = 1; m <= date.monthsInYear; m++) {
++        const monthStart = date.with({ month: m, day: 1 });
++        const row = document.createElement('tr');
++        if (monthStart.monthCode === date.monthCode) row.setAttribute('aria-current', 'date');
++        for (const value of [m, monthStart.monthCode, monthStart.daysInMonth]) {
++          const cell = document.createElement('td');
++          cell.textContent = String(value);
++          row.append(cell);
++        }
++        rows.push(row);
++      }
++      card.querySelector('tbody').replaceChildren(...rows);
++
++      const notes = [];
++      if (date.inLeapYear) {
++        notes.push(date.monthsInYear > 12
++          ? `Leap year: ${date.monthsInYear} months, with an added leap month.`
++          : `Leap year: ${date.daysInYear} days.`);
++      }
++      if (calendarId === 'islamic-umalqura') {
++        notes.push('Calculated dates; local moon sightings may differ by a day.');
++      }
++      card.querySelector('.note').textContent = notes.join(' ');
++    }
++
++    function render() {
++      if (!input.value) {
++        status.textContent = 'Choose a date to see it in other calendars.';
++        cards.forEach((card) => resetCard(card, ''));
++        return;
++      }
++
++      let isoDate;
++      try {
++        isoDate = Temporal.PlainDate.from(input.value, { overflow: 'reject' });
++      } catch {
++        status.textContent = 'Please enter a valid date.';
++        cards.forEach((card) => resetCard(card, ''));
++        return;
++      }
++
++      status.textContent = '';
++      const todayISO = Temporal.Now.plainDateISO();
++      for (const card of cards) {
++        try {
++          renderCard(card, isoDate, todayISO);
++        } catch {
++          resetCard(card, 'This date is outside the range this calendar can display.');
++        }
++      }
++    }
++
++    if (typeof globalThis.Temporal === 'undefined') {
++      input.disabled = true;
++      status.textContent = 'Calendar conversion is unavailable right now. Please try again later.';
++    } else {
++      input.value = Temporal.Now.plainDateISO().toString();
++      input.addEventListener('input', render);
++      render();
++    }
++  </script>
+ </body>
+ 
+ </html>

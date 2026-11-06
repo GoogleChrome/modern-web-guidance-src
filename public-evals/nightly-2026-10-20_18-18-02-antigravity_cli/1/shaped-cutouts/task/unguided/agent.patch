@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shaped Elements */
++    .barista-section {
++      display: flex;
++      align-items: center;
++      gap: 30px;
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 12px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shaped-avatar {
++      width: 180px;
++      height: 180px;
++      object-fit: cover;
++      flex-shrink: 0;
++      display: block;
++      clip-path: url(#paint-splat-clip);
++      -webkit-clip-path: url(#paint-splat-clip);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50,6 C64,2 78,12 85,25 C94,40 98,58 88,74 C78,89 62,96 45,94 C28,92 12,82 7,65 C2,48 8,28 22,16 C32,7 40,9 50,6 Z' fill='black'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50,6 C64,2 78,12 85,25 C94,40 98,58 88,74 C78,89 62,96 45,94 C28,92 12,82 7,65 C2,48 8,28 22,16 C32,7 40,9 50,6 Z' fill='black'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      margin-top: 50px;
++      filter: drop-shadow(0 8px 20px rgba(62, 39, 35, 0.2));
++    }
++
++    .card-body {
++      flex: 1;
++      background: white;
++      padding: 30px;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .card-accent {
++      width: 140px;
++      background: linear-gradient(135deg, var(--accent), var(--primary));
++      border-radius: 0 12px 12px 0;
++      clip-path: url(#card-accent-clip);
++      -webkit-clip-path: url(#card-accent-clip);
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L100,0 L100,20 C65,35 65,65 100,80 L100,100 L0,100 Z' fill='black'/%3E%3C/svg%3E");
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L100,0 L100,20 C65,35 65,65 100,80 L100,100 L0,100 Z' fill='black'/%3E%3C/svg%3E");
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      margin-top: 50px;
++      background: var(--primary);
++      color: white;
++      padding: 45px 30px 30px;
++      border-radius: 12px;
++      text-align: center;
++      mask-image: radial-gradient(circle 28px at 50% 0, transparent 28px, black 29px);
++      -webkit-mask-image: radial-gradient(circle 28px at 50% 0, transparent 28px, black 29px);
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++      <defs>
++        <clipPath id="paint-splat-clip" clipPathUnits="objectBoundingBox">
++          <path d="M0.5,0.06 C0.64,0.02 0.78,0.12 0.85,0.25 C0.94,0.40 0.98,0.58 0.88,0.74 C0.78,0.89 0.62,0.96 0.45,0.94 C0.28,0.92 0.12,0.82 0.07,0.65 C0.02,0.48 0.08,0.28 0.22,0.16 C0.32,0.07 0.40,0.09 0.5,0.06 Z" />
++        </clipPath>
++        <clipPath id="card-accent-clip" clipPathUnits="objectBoundingBox">
++          <path d="M0,0 L1,0 L1,0.2 C0.65,0.35 0.65,0.65 1,0.8 L1,1 L0,1 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++
++    <section class="barista-section">
++      <img
++        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Featured Barista Mateo"
++        class="shaped-avatar"
++      />
++      <div>
++        <h2>Featured Barista: Mateo Rivera</h2>
++        <p>Master roaster and latte art champion with 8 years of specialty coffee craft. Ask Mateo about our single-origin Ethiopian pour-over!</p>
++      </div>
++    </section>
++
++    <section class="unified-card">
++      <div class="card-body">
++        <h2>Daily Grind Loyalty Perks</h2>
++        <p>Earn beans with every cup! Collect 10 beans and enjoy any handcrafted seasonal beverage on the house, plus complimentary birthday treats.</p>
++        <a href="/rewards" class="btn">Join Rewards</a>
++      </div>
++      <div class="card-accent"></div>
++    </section>
++
++    <section class="gradient-masked-card">
++      <h2>Weekend Morning Promo</h2>
++      <p>Use code <strong>EARLYBIRD</strong> for 20% off all artisanal espresso drinks and fresh pastries before 9 AM.</p>
++      <a href="/order-online" class="btn">Claim Offer</a>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

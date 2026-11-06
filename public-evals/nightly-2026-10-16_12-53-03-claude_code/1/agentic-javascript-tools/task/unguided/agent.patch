@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,99 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Menu data used by the WebMCP "get_menu_item_details" tool.
++    const MENU_ITEMS = [
++      {
++        name: 'Maple Oat Latte',
++        category: 'Seasonal Favorites',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        url: '/menu/seasonal'
++      },
++      {
++        name: 'Dark Roast Espresso',
++        category: 'Seasonal Favorites',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        url: '/menu/espresso'
++      },
++      {
++        name: 'Cold Brew',
++        category: 'Seasonal Favorites',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        url: '/menu/cold-brew'
++      }
++    ];
++
++    const normalize = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++    function findMenuItem(query) {
++      const q = normalize(query);
++      if (!q) return undefined;
++      return MENU_ITEMS.find((i) => normalize(i.name) === q)
++        || MENU_ITEMS.find((i) => normalize(i.name).includes(q) || q.includes(normalize(i.name)));
++    }
++
++    const textResult = (text, isError = false) => ({
++      content: [{ type: 'text', text }],
++      ...(isError && { isError: true })
++    });
++
++    const menuItemTool = {
++      name: 'get_menu_item_details',
++      description: 'Look up details (category, description, and page link) for a single item on The Daily Grind '
++        + 'coffee shop menu by its name, e.g. "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew". '
++        + 'Matching is case-insensitive and tolerates partial names.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          name: {
++            type: 'string',
++            description: 'The name of the menu item to look up, such as "Maple Oat Latte", '
++              + '"Dark Roast Espresso", or "Cold Brew".'
++          }
++        },
++        required: ['name']
++      },
++      annotations: { readOnlyHint: true },
++      async execute({ name } = {}) {
++        const item = findMenuItem(name);
++        if (!item) {
++          const available = MENU_ITEMS.map((i) => i.name).join(', ');
++          return textResult(`No menu item found matching "${name}". Available items: ${available}.`, true);
++        }
++        return textResult(JSON.stringify(item));
++      }
++    };
++
++    // Register with the browser's WebMCP API (when available) and unregister when the page is unloaded.
++    (function registerMenuTool() {
++      const modelContext = navigator.modelContext;
++      if (!modelContext || typeof modelContext.registerTool !== 'function') return;
++
++      const controller = new AbortController();
++      try {
++        modelContext.registerTool(menuItemTool, { signal: controller.signal });
++      } catch (err) {
++        console.warn('Failed to register menu tool:', err);
++        return;
++      }
++
++      let active = true;
++      const unregister = () => {
++        if (!active) return;
++        active = false;
++        controller.abort(); // newer WebMCP: signal-based unregistration
++        try {
++          modelContext.unregisterTool?.(menuItemTool.name); // older WebMCP: explicit unregistration
++        } catch (_) { /* already unregistered */ }
++      };
++
++      // pagehide fires reliably on navigation and tab close (including bfcache); unload is a fallback.
++      window.addEventListener('pagehide', unregister);
++      window.addEventListener('unload', unregister);
++    })();
++  </script>
+ </body>
+ 
+ </html>

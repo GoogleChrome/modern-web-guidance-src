@@ -1,0 +1,238 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      view-transition-name: none;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,8 +152,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* The bean collection shares one transition recipe, with a name per card. */
++    .bean-card { view-transition-class: coffee-bean; }
++    ::view-transition { pointer-events: none; }
++    ::view-transition-group(.coffee-bean) {
++      animation-duration: 450ms;
++      animation-timing-function: cubic-bezier(.22, 1, .36, 1);
++    }
++    ::view-transition-new(.coffee-bean):only-child {
++      animation: bean-in 450ms ease both;
++    }
++    ::view-transition-old(.coffee-bean):only-child {
++      animation: bean-out 300ms ease both;
++    }
++    @keyframes bean-in {
++      from { opacity: 0; transform: translateY(20px) scale(.96); }
++    }
++    @keyframes bean-out {
++      to { opacity: 0; transform: translateY(-12px) scale(.96); }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) { animation: none !important; }
++    }
++
++    .bean-section {
++      margin: 64px 0;
++      padding: 40px;
++      background: #f3efe7;
++      border: 1px solid #e5ded1;
++      border-radius: 12px;
++    }
++    .bean-heading { display: flex; justify-content: space-between; gap: 24px; align-items: end; }
++    .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #78624d; }
++    .bean-heading h2 { font-family: Georgia, serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 400; line-height: 1.2; margin: 10px 0; }
++    .bean-intro { color: #76675b; font-size: .9rem; max-width: 470px; }
++    .roast-note { white-space: nowrap; font-size: .72rem; color: #76675b; padding-bottom: 4px; }
++    .roast-note::before { content: ''; display: inline-block; width: 7px; height: 7px; background: #748162; border-radius: 50%; margin-right: 8px; }
++    .bean-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; list-style: none; margin: 28px 0 24px; }
++    .bean-card { position: relative; overflow: hidden; border: 1px solid #e6dfd5; border-radius: 8px; background: #fffdf9; }
++    .bean-art { background: var(--bean-bg); height: 210px; display: grid; place-items: center; }
++    .coffee-bag { position: relative; width: 112px; height: 154px; background: #e0c6a0; border-radius: 4px 4px 8px 8px; box-shadow: 8px 12px 15px #43321e20, inset -10px 0 12px #9e7b4b20; transform: rotate(-6deg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
++    .coffee-bag::before { content: ''; position: absolute; top: 7px; left: 5px; right: 5px; border-top: 3px double #ac8e67; }
++    .coffee-bag::after { content: ''; position: absolute; bottom: 7px; left: 7px; right: 7px; border-top: 1px solid #b49771; }
++    .bag-label { background: var(--bean-ink); color: #fffdf6; width: 88px; min-height: 93px; padding: 11px 5px; text-align: center; }
++    .bag-brand { display: block; font-size: 7px; letter-spacing: .12em; }
++    .bag-icon { display: block; font-family: Georgia, serif; font-size: 29px; line-height: 1.4; }
++    .bag-origin { display: block; font-family: Georgia, serif; font-size: 12px; }
++    .bag-weight { font-size: 7px; margin-top: 7px; color: #594631; }
++    .remove-bean { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 1px solid #ffffffb3; background: #fffdf9cc; color: #4e342e; border-radius: 50%; font-size: 21px; line-height: 1; cursor: pointer; }
++    .remove-bean:hover { background: #fff; }
++    .bean-details { padding: 20px; }
++    .bean-roast { color: #76675b; font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; }
++    .bean-details h3 { font-family: Georgia, serif; font-weight: 400; font-size: 1.4rem; margin: 4px 0; }
++    .bean-tasting { color: #76675b; font-size: .8rem; }
++    .bean-price { display: flex; align-items: baseline; gap: 7px; margin-top: 16px; font-weight: 600; }
++    .bean-price span { color: #897a6d; font-size: .72rem; font-weight: 400; }
++    .bean-toolbar { display: flex; justify-content: space-between; align-items: end; gap: 24px; padding-top: 22px; border-top: 1px solid #ddd5c8; }
++    .bean-toolbar[hidden] { display: none; }
++    .bean-picker label { display: block; font-size: .72rem; font-weight: 600; margin-bottom: 7px; }
++    .bean-picker-row { display: flex; gap: 8px; }
++    .bean-picker select { max-width: 100%; min-width: 180px; border: 1px solid #d5cabc; border-radius: 5px; padding: 11px; background: #fffdf9; color: var(--text); font: inherit; font-size: .8rem; }
++    .add-bean { border: 0; background: var(--primary); color: #fff; border-radius: 5px; padding: 11px 16px; font: inherit; font-size: .8rem; cursor: pointer; white-space: nowrap; }
++    .add-bean:hover { background: #34251f; }
++    .add-bean:disabled, .bean-picker select:disabled { opacity: .5; cursor: default; }
++    .bean-summary { text-align: right; font-size: .8rem; color: #76675b; white-space: nowrap; }
++    .bean-summary strong { display: block; color: var(--text); font-family: Georgia, serif; font-size: 1.6rem; font-weight: 400; }
++    .bean-empty { grid-column: 1 / -1; padding: 44px 20px; text-align: center; border: 1px dashed #cbbfad; border-radius: 8px; color: #76675b; }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
++    button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #b57427; outline-offset: 4px; }
++    @media (max-width: 760px) {
++      .bean-section { padding: 24px; margin: 40px 0; }
++      .bean-heading { display: block; }
++      .roast-note { display: block; margin-top: 16px; }
++      .bean-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
++      .bean-toolbar { align-items: start; flex-direction: column; }
++      .bean-summary { text-align: left; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++    @media (max-width: 480px) {
++      .bean-grid { grid-template-columns: minmax(0, 1fr); }
++      .bean-picker { width: 100%; }
++      .bean-picker-row { flex-wrap: wrap; }
++      .bean-picker select { flex: 1; min-width: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +263,31 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="bean-section" aria-labelledby="bean-title">
++      <div class="bean-heading">
++        <div>
++          <p class="eyebrow">Good mornings start here</p>
++          <h2 id="bean-title">Find your daily ritual.</h2>
++          <p class="bean-intro">A world of flavor, one bag at a time. Pick your favorite beans and make a little room for something new.</p>
++        </div>
++        <span class="roast-note">Small batch. Freshly roasted.</span>
++      </div>
++      <ul class="bean-grid" id="bean-grid" aria-label="Your coffee bean selection"></ul>
++      <noscript><p>Enable JavaScript to build your coffee bean selection.</p></noscript>
++      <form class="bean-toolbar" id="bean-form" hidden>
++        <div class="bean-picker">
++          <label for="bean-choice">Make it your own</label>
++          <div class="bean-picker-row">
++            <select id="bean-choice" name="bean" aria-label="Coffee beans to add"></select>
++            <button class="add-bean" type="submit" id="add-bean">+ Add beans</button>
++          </div>
++        </div>
++        <p class="bean-summary"><span id="bean-count"></span><strong id="bean-total"></strong></p>
++      </form>
++      <p class="sr-only" id="bean-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +318,95 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const beans = [
++      { id: 'house', name: 'House Blend', origin: 'The everyday favorite', roast: 'Medium roast', notes: 'Chocolate · Caramel · Almond', price: 16, color: '#6b765d', background: '#e4e8dc', mark: '☀' },
++      { id: 'ethiopia', name: 'Ethiopia Sidamo', origin: 'Ethiopia', roast: 'Light roast', notes: 'Blueberry · Bergamot · Honey', price: 20, color: '#ac694e', background: '#f0dfd2', mark: '✳' },
++      { id: 'colombia', name: 'Colombia Huila', origin: 'Colombia', roast: 'Medium roast', notes: 'Orange · Brown sugar · Cocoa', price: 18, color: '#b28a45', background: '#eee5d1', mark: '◈' },
++      { id: 'sumatra', name: 'Sumatra Mandheling', origin: 'Indonesia', roast: 'Dark roast', notes: 'Cedar · Dark chocolate · Spice', price: 19, color: '#526b68', background: '#dfe7e3', mark: '❋' },
++      { id: 'brazil', name: 'Brazil Cerrado', origin: 'Brazil', roast: 'Medium roast', notes: 'Hazelnut · Toffee · Chocolate', price: 17, color: '#8c674d', background: '#e9ddd0', mark: '◉' },
++      { id: 'decaf', name: 'Slow Sunday Decaf', origin: 'All the ritual. No rush.', roast: 'Medium roast · Decaf', notes: 'Cocoa · Walnut · Caramel', price: 18, color: '#7e708d', background: '#e6e0eb', mark: '☾' }
++    ];
++    let selected = ['house', 'ethiopia', 'colombia'];
++    const grid = document.getElementById('bean-grid');
++    const form = document.getElementById('bean-form');
++    const choice = document.getElementById('bean-choice');
++    const addButton = document.getElementById('add-bean');
++    const status = document.getElementById('bean-status');
++    const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let updates = Promise.resolve();
++
++    function renderSelection() {
++      const currentChoice = choice.value;
++      grid.innerHTML = selected.map(id => {
++        const bean = beans.find(item => item.id === id);
++        return `<li class="bean-card" style="view-transition-name: bean-${bean.id}; --bean-bg: ${bean.background}; --bean-ink: ${bean.color}">
++          <div class="bean-art" aria-hidden="true">
++            <div class="coffee-bag"><div class="bag-label"><span class="bag-brand">THE DAILY GRIND</span><span class="bag-icon">${bean.mark}</span><span class="bag-origin">${bean.name}</span></div><span class="bag-weight">WHOLE BEAN / 250 G</span></div>
++          </div>
++          <button type="button" class="remove-bean" data-remove="${bean.id}" aria-label="Remove ${bean.name}">×</button>
++          <div class="bean-details"><p class="bean-roast">${bean.roast}</p><h3>${bean.name}</h3><p class="bean-tasting">${bean.notes}</p><p class="bean-price">${currency.format(bean.price)} <span>/ 250g bag</span></p></div>
++        </li>`;
++      }).join('') || '<li class="bean-empty">Your next favorite is waiting. Add some beans to get started.</li>';
++      const available = beans.filter(bean => !selected.includes(bean.id));
++      choice.replaceChildren(...available.map(bean => new Option(`${bean.name} — ${currency.format(bean.price)}`, bean.id)));
++      if (available.some(bean => bean.id === currentChoice)) choice.value = currentChoice;
++      if (!available.length) choice.add(new Option('You’ve selected every roast', ''));
++      choice.disabled = addButton.disabled = available.length === 0;
++      document.getElementById('bean-count').textContent = `${selected.length} ${selected.length === 1 ? 'bag' : 'bags'} in your selection`;
++      document.getElementById('bean-total').textContent = currency.format(selected.reduce((sum, id) => sum + beans.find(bean => bean.id === id).price, 0));
++    }
++
++    // Serialize updates so even quick clicks get their own complete transition.
++    function changeSelection(update) {
++      updates = updates.then(async () => {
++        if (!document.startViewTransition || reducedMotion.matches) {
++          update();
++          return;
++        }
++        const transition = document.startViewTransition(update);
++        // A skipped animation must never prevent the selection from updating.
++        await transition.finished.catch(() => {});
++      });
++    }
++
++    form.addEventListener('submit', event => {
++      event.preventDefault();
++      const id = choice.value;
++      if (!id) return;
++      changeSelection(() => {
++        if (selected.includes(id)) return;
++        selected.push(id);
++        renderSelection();
++        status.textContent = `${beans.find(bean => bean.id === id).name} added. ${selected.length} bags selected.`;
++        if (addButton.disabled) grid.querySelector(`[data-remove="${id}"]`).focus({ preventScroll: true });
++      });
++    });
++
++    grid.addEventListener('click', event => {
++      const button = event.target.closest('[data-remove]');
++      if (!button) return;
++      const id = button.dataset.remove;
++      changeSelection(() => {
++        const index = selected.indexOf(id);
++        if (index < 0) return;
++        const needsFocus = grid.contains(document.activeElement);
++        selected.splice(index, 1);
++        renderSelection();
++        status.textContent = `${beans.find(bean => bean.id === id).name} removed. ${selected.length} bags selected.`;
++        if (needsFocus) {
++          const buttons = grid.querySelectorAll('[data-remove]');
++          (buttons[Math.min(index, buttons.length - 1)] || choice).focus({ preventScroll: true });
++        }
++      });
++    });
++
++    renderSelection();
++    form.hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

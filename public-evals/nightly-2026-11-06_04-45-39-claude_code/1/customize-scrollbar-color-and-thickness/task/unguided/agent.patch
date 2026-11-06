@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++    }
++
++    .feedback-log {
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 15px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Firefox */
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    /* WebKit / Blink */
++    .feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb:hover {
++      background: #ff9100;
++    }
++
++    .testimonial {
++      border-left: 4px solid var(--accent);
++      background: var(--light);
++      padding: 12px 16px;
++      margin-bottom: 12px;
++      border-radius: 4px;
++    }
++
++    .testimonial:last-child {
++      margin-bottom: 0;
++    }
++
++    .testimonial p {
++      font-style: italic;
++    }
++
++    .testimonial .author {
++      display: block;
++      margin-top: 6px;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +259,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" tabindex="0" role="log" aria-label="Customer testimonials">
++        <blockquote class="testimonial">
++          <p>&ldquo;The Maple Oat Latte is my new autumn ritual. Perfectly sweet without being overpowering!&rdquo;</p>
++          <span class="author">&mdash; Sarah M., Portland, OR</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;Best cold brew in town, hands down. Smooth, strong, and never bitter.&rdquo;</p>
++          <span class="author">&mdash; James T., Austin, TX</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;The baristas remember my order every single morning. That kind of service is rare.&rdquo;</p>
++          <span class="author">&mdash; Priya K., Chicago, IL</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;Dark Roast Espresso got me through finals week. Bold and rich every time.&rdquo;</p>
++          <span class="author">&mdash; Daniel R., Boston, MA</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;Love that the beans are ethically sourced. You can taste the care in every cup.&rdquo;</p>
++          <span class="author">&mdash; Emily W., Denver, CO</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;Online ordering is quick and my drink is always ready when I arrive. Five stars.&rdquo;</p>
++          <span class="author">&mdash; Marcus L., Seattle, WA</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;Cozy atmosphere, great pastries, and even better coffee. My go-to work spot.&rdquo;</p>
++          <span class="author">&mdash; Hannah B., Minneapolis, MN</span>
++        </blockquote>
++        <blockquote class="testimonial">
++          <p>&ldquo;The rewards program actually feels rewarding. Free drinks add up fast!&rdquo;</p>
++          <span class="author">&mdash; Carlos G., San Diego, CA</span>
++        </blockquote>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

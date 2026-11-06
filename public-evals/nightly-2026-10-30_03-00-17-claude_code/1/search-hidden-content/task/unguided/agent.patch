@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,170 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Main + sidebar layout */
++    .layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 280px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: sticky;
++      top: 90px;
++    }
++
++    .sidebar h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .coupon-btn {
++      appearance: none;
++      width: 100%;
++      margin-top: 15px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: var(--accent);
++      border: 2px dashed var(--primary);
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .coupon-btn:hover,
++    .coupon-btn:focus-visible {
++      background: var(--primary);
++      color: var(--accent);
++    }
++
++    .coupon-btn:disabled {
++      cursor: default;
++      opacity: 0.6;
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    /* #coupon-panel uses hidden="until-found" (content-visibility: hidden),
++       so keep box styling on the inner card to avoid an empty visible box. */
++    .coupon-card {
++      margin-top: 30px;
++      padding: 20px;
++      text-align: center;
++      background: #fff8e1;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      margin: 10px 0;
++      padding: 6px 16px;
++      font-family: monospace;
++      font-size: 1.6rem;
++      letter-spacing: 3px;
++      color: var(--primary);
++      background: white;
++      border-radius: 4px;
++    }
++
++    /* Wholesale & catering tabs: exclusive <details name> stay find-in-page searchable */
++    .info-tabs {
++      margin-top: 40px;
++    }
++
++    .info-tabs h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .wholesale-tab {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 10px;
++    }
++
++    .wholesale-tab summary {
++      list-style: none;
++      cursor: pointer;
++      padding: 12px 20px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .wholesale-tab summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++      border-radius: 8px 8px 0 0;
++    }
++
++    .tab-body {
++      padding: 20px;
++    }
++
++    .tab-body ul {
++      margin: 10px 0 0 20px;
++    }
++
++    /* Render as real tabs where ::details-content is supported; otherwise falls back to an accordion */
++    @supports selector(::details-content) {
++      .tab-group {
++        display: grid;
++        grid-template-columns: auto auto 1fr;
++        background: white;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        overflow: hidden;
++      }
++
++      .wholesale-tab {
++        display: contents;
++      }
++
++      .wholesale-tab summary {
++        grid-row: 1;
++        border-bottom: 3px solid var(--secondary);
++      }
++
++      .tab-group::after {
++        content: "";
++        grid-row: 1;
++        grid-column: -2;
++        border-bottom: 3px solid var(--secondary);
++      }
++
++      .wholesale-tab[open] summary {
++        border-radius: 0;
++        border-bottom-color: var(--accent);
++      }
++
++      .wholesale-tab::details-content {
++        grid-row: 2;
++        grid-column: 1 / -1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +335,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +357,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <div id="coupon-panel" hidden="until-found">
++      <div class="coupon-card">
++        <h3>Your Exclusive Discount</h3>
++        <p>Enjoy 20% off your next online order. Use this code at checkout:</p>
++        <span class="coupon-code">GRIND20</span>
++        <p><small>Valid on online orders only. One use per customer.</small></p>
++      </div>
++    </div>
++
++    <section class="info-tabs">
++      <h2>Wholesale &amp; Catering</h2>
++      <div class="tab-group">
++        <details class="wholesale-tab" name="business-info" open>
++          <summary>Wholesale</summary>
++          <div class="tab-body">
++            <p>Serve The Daily Grind at your cafe, office, or restaurant. Our wholesale program offers freshly roasted beans delivered on your schedule.</p>
++            <ul>
++              <li>Minimum order of 5 lbs per delivery</li>
++              <li>Weekly or bi-weekly roasting and delivery</li>
++              <li>Free barista training and equipment consultation</li>
++            </ul>
++            <a href="/wholesale" class="btn">Apply for Wholesale</a>
++          </div>
++        </details>
++        <details class="wholesale-tab" name="business-info">
++          <summary>Catering</summary>
++          <div class="tab-body">
++            <p>Fuel your next meeting or event with a full coffee bar. We bring the brew, cups, and condiments so you can focus on your guests.</p>
++            <ul>
++              <li>Coffee boxes serving 10&ndash;12 cups each</li>
++              <li>Full-service espresso bar for events of 50+ guests</li>
++              <li>Please book at least 48 hours in advance</li>
++            </ul>
++            <a href="/catering" class="btn">Request a Catering Quote</a>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
++  <aside class="sidebar">
++    <h3>Members-Only Deal</h3>
++    <p>Unlock a special discount for your next online order.</p>
++    <button type="button" class="coupon-btn" aria-controls="coupon-panel" aria-expanded="false">Reveal Coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +415,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Coupon: once revealed (by click or by find-in-page), it stays revealed.
++    const couponPanel = document.getElementById('coupon-panel');
++    const couponBtn = document.querySelector('.coupon-btn');
++
++    function markCouponRevealed() {
++      couponBtn.disabled = true;
++      couponBtn.textContent = 'Coupon Revealed';
++      couponBtn.setAttribute('aria-expanded', 'true');
++    }
++
++    couponBtn.addEventListener('click', () => {
++      couponPanel.hidden = false;
++      markCouponRevealed();
++      couponPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
++    });
++
++    // Fired when find-in-page reveals the panel (the browser removes `hidden` itself).
++    couponPanel.addEventListener('beforematch', markCouponRevealed);
++
++    // Tabs: keep one tab open at all times (clicking the active tab won't close it).
++    document.querySelectorAll('.wholesale-tab summary').forEach((summary) => {
++      summary.addEventListener('click', (event) => {
++        if (summary.parentElement.open) event.preventDefault();
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

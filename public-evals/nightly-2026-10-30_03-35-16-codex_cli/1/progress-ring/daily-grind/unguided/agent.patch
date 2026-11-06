@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+index 66c9173..5fd5ab6 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,97 @@
+       color: var(--primary);
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 40px;
++      padding: 32px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 32px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .rewards-copy {
++      max-width: 520px;
++    }
++
++    .rewards h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .rewards-kicker {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .rewards-progress {
++      position: relative;
++      width: 200px;
++      height: 200px;
++      flex: 0 0 200px;
++    }
++
++    .rewards-progress svg {
++      display: block;
++      width: 100%;
++      height: 100%;
++      transform: rotate(-90deg);
++    }
++
++    .rewards-track,
++    .rewards-fill {
++      fill: none;
++      stroke-width: 12;
++    }
++
++    .rewards-track {
++      stroke: var(--secondary);
++    }
++
++    .rewards-fill {
++      stroke: var(--accent);
++      stroke-linecap: round;
++    }
++
++    .rewards-progress-details {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      font-size: 0.85rem;
++    }
++
++    .rewards-progress-details strong {
++      color: var(--primary);
++      font-size: 2rem;
++      line-height: 1.2;
++    }
++
++    .rewards-progress-details span:last-child {
++      margin-top: 6px;
++      font-weight: 600;
++    }
++
++    @media (max-width: 600px) {
++      .rewards {
++        flex-direction: column;
++        text-align: center;
++        padding: 24px;
++        gap: 24px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -195,6 +286,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <div class="rewards-copy">
++        <p class="rewards-kicker">Every cup counts</p>
++        <h2 id="rewards-heading">Loyalty Rewards</h2>
++        <p>Your daily ritual comes with a little extra. Collect 10 drinks and enjoy your next one on us.</p>
++        <a href="/rewards" class="btn">View My Rewards</a>
++      </div>
++      <!-- Sample progress: replace these values with the customer's rewards balance. -->
++      <div class="rewards-progress" role="progressbar" aria-label="Drinks collected toward your next free drink"
++        aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 drinks collected. 3 drinks to go until your free drink.">
++        <svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">
++          <circle class="rewards-track" cx="100" cy="100" r="86" />
++          <circle class="rewards-fill" cx="100" cy="100" r="86" pathLength="100" stroke-dasharray="70 100" />
++        </svg>
++        <div class="rewards-progress-details" aria-hidden="true">
++          <strong>7 / 10</strong>
++          <span>drinks collected</span>
++          <span>3 drinks to go</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

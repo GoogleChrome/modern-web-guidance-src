@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,43 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .seasonal-card {
++      --card-bg: white;
++      --card-border: transparent;
++      --card-heading: var(--primary);
++      background: var(--card-bg);
++      border: 2px solid var(--card-border);
++    }
++
++    .seasonal-card:has(.iced-toggle:checked) {
++      --card-bg: #eaf6fc;
++      --card-border: #287a9e;
++      --card-heading: #19536d;
++    }
++
++    .seasonal-card h3 {
++      color: var(--card-heading);
++    }
++
++    .iced-option {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      width: fit-content;
++      min-block-size: 44px;
++      margin: 12px auto 0;
++      cursor: pointer;
++    }
++
++    .iced-toggle {
++      inline-size: 1.25em;
++      block-size: 1.25em;
++      accent-color: #19536d;
++      cursor: pointer;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,21 +212,33 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="maple-oat-iced">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="espresso-iced">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card seasonal-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-option">
++            <input type="checkbox" class="iced-toggle" name="cold-brew-iced">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,50 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script id="initial-background-detection">
++    (() => {
++      let initialVisibility;
++
++      try {
++        // Unlike document.hidden, this history is reliable even for async scripts.
++        // https://html.spec.whatwg.org/multipage/interaction.html#the-visibilitystateentry-interface
++        initialVisibility = performance.getEntriesByType('visibility-state').find(
++          (entry) => entry.startTime === 0 &&
++            (entry.name === 'hidden' || entry.name === 'visible')
++        );
++      } catch {
++        // Older browsers may not expose visibility performance entries.
++      }
++
++      if (initialVisibility) {
++        const isBackground = initialVisibility.name === 'hidden';
++        console.log({
++          isBackground,
++          // Milliseconds relative to navigation start, at browser timing precision.
++          // Initially hidden means 0; null means the page was initially visible.
++          // This cannot date a tab being hidden before this document existed.
++          backgroundTime: isBackground ? initialVisibility.startTime : null,
++          fallbackActive: false
++        });
++        return;
++      }
++
++      // UNRELIABLE LEGACY FALLBACK: this samples visibility NOW, not at navigation.
++      // An async/delayed script may miss earlier transitions in either direction.
++      // The original background timestamp cannot be recovered; do not invent one.
++      console.warn(
++        'Background detection fallback active: current visibility may not match ' +
++        'initial visibility, especially for async scripts. Background time is unknown.'
++      );
++      console.log({
++        isBackground: document.visibilityState === 'hidden',
++        backgroundTime: null,
++        fallbackActive: true
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

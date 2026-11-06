@@ -1,0 +1,614 @@
+diff --git a/index.html b/index.html
+index 66c9173..33efffe 100644
+--- a/index.html
++++ b/index.html
+@@ -4,160 +4,448 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++    @layer reset {
++      body, h1, h2, h3, p, ul, li {
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++    @layer theme {
++      :root {
++        /* Brand core tokens */
++        --primary: #4e342e;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Explicit light and dark mode palette tokens derived from --primary (#4e342e) */
++        --bg-page-light: #faf7f5;
++        --bg-page-dark: #191210;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --bg-surface-light: #ffffff;
++        --bg-surface-dark: #261b18;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        --border-surface-light: #e6dad5;
++        --border-surface-dark: #43302b;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --text-main-light: #3e2723;
++        --text-main-dark: #f5ebe6;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        --text-muted-light: #5d4037;
++        --text-muted-dark: #d7ccc8;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        --heading-card-light: #4e342e;
++        --heading-card-dark: #efebe9;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++        --nav-bg-light: #4e342e;
++        --nav-bg-dark: #211613;
++        --nav-border-light: #3e2723;
++        --nav-border-dark: #3b2823;
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++        --btn-bg-light: #4e342e;
++        --btn-bg-dark: #d7a17c;
++        --btn-bg-hover-light: #3e2723;
++        --btn-bg-hover-dark: #e6b694;
++        --btn-text-light: #ffffff;
++        --btn-text-dark: #1f1411;
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++        --footer-bg-light: #d7ccc8;
++        --footer-bg-dark: #211613;
++        --footer-border-light: #c4b5b0;
++        --footer-border-dark: #3b2823;
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++        --badge-new-bg-light: #4e342e;
++        --badge-new-bg-dark: #ffab40;
++        --badge-new-text-light: #ffffff;
++        --badge-new-text-dark: #1f1411;
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        --badge-sold-out-bg-light: #d7ccc8;
++        --badge-sold-out-bg-dark: #3d2b26;
++        --badge-sold-out-text-light: #3e2723;
++        --badge-sold-out-text-dark: #e6dad5;
++        --badge-sold-out-border-light: #8d6e63;
++        --badge-sold-out-border-dark: #795548;
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        /* Active theme variables (Light mode default) */
++        --bg-page: var(--bg-page-light);
++        --bg-surface: var(--bg-surface-light);
++        --border-surface: var(--border-surface-light);
++        --text-main: var(--text-main-light);
++        --text-muted: var(--text-muted-light);
++        --heading-card: var(--heading-card-light);
++        --nav-bg: var(--nav-bg-light);
++        --nav-border: var(--nav-border-light);
++        --btn-bg: var(--btn-bg-light);
++        --btn-bg-hover: var(--btn-bg-hover-light);
++        --btn-text: var(--btn-text-light);
++        --footer-bg: var(--footer-bg-light);
++        --footer-border: var(--footer-border-light);
++        --badge-new-bg: var(--badge-new-bg-light);
++        --badge-new-text: var(--badge-new-text-light);
++        --badge-sold-out-bg: var(--badge-sold-out-bg-light);
++        --badge-sold-out-text: var(--badge-sold-out-text-light);
++        --badge-sold-out-border: var(--badge-sold-out-border-light);
++        --shadow-card: 0 4px 12px rgba(78, 52, 46, 0.08);
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        /* Fallback for browsers without light-dark() support */
++        @media (prefers-color-scheme: dark) {
++          --bg-page: var(--bg-page-dark);
++          --bg-surface: var(--bg-surface-dark);
++          --border-surface: var(--border-surface-dark);
++          --text-main: var(--text-main-dark);
++          --text-muted: var(--text-muted-dark);
++          --heading-card: var(--heading-card-dark);
++          --nav-bg: var(--nav-bg-dark);
++          --nav-border: var(--nav-border-dark);
++          --btn-bg: var(--btn-bg-dark);
++          --btn-bg-hover: var(--btn-bg-hover-dark);
++          --btn-text: var(--btn-text-dark);
++          --footer-bg: var(--footer-bg-dark);
++          --footer-border: var(--footer-border-dark);
++          --badge-new-bg: var(--badge-new-bg-dark);
++          --badge-new-text: var(--badge-new-text-dark);
++          --badge-sold-out-bg: var(--badge-sold-out-bg-dark);
++          --badge-sold-out-text: var(--badge-sold-out-text-dark);
++          --badge-sold-out-border: var(--badge-sold-out-border-dark);
++          --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.45);
++        }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        /* Progressive enhancement with light-dark() and color-mix() in oklab */
++        @supports (color: light-dark(white, black)) {
++          --bg-page: light-dark(
++            color-mix(in oklab, var(--primary) 4%, #ffffff),
++            color-mix(in oklab, var(--primary) 32%, #0d0908)
++          );
++          --bg-surface: light-dark(
++            #ffffff,
++            color-mix(in oklab, var(--primary) 48%, #120d0c)
++          );
++          --border-surface: light-dark(
++            color-mix(in oklab, var(--primary) 18%, #ffffff),
++            color-mix(in oklab, var(--primary) 70%, #2a1f1d)
++          );
++          --text-main: light-dark(var(--text-main-light), var(--text-main-dark));
++          --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++          --heading-card: light-dark(var(--heading-card-light), var(--heading-card-dark));
++          --nav-bg: light-dark(
++            var(--primary),
++            color-mix(in oklab, var(--primary) 42%, #0d0908)
++          );
++          --nav-border: light-dark(var(--nav-border-light), var(--nav-border-dark));
++          --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++          --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++          --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++          --footer-bg: light-dark(
++            var(--secondary),
++            color-mix(in oklab, var(--primary) 42%, #0d0908)
++          );
++          --footer-border: light-dark(var(--footer-border-light), var(--footer-border-dark));
++          --badge-new-bg: light-dark(var(--badge-new-bg-light), var(--badge-new-bg-dark));
++          --badge-new-text: light-dark(var(--badge-new-text-light), var(--badge-new-text-dark));
++          --badge-sold-out-bg: light-dark(var(--badge-sold-out-bg-light), var(--badge-sold-out-bg-dark));
++          --badge-sold-out-text: light-dark(var(--badge-sold-out-text-light), var(--badge-sold-out-text-dark));
++          --badge-sold-out-border: light-dark(var(--badge-sold-out-border-light), var(--badge-sold-out-border-dark));
++        }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        /* Forced Colors Mode accessibility support */
++        @media (forced-colors: active) {
++          --bg-page: Canvas;
++          --bg-surface: Canvas;
++          --border-surface: CanvasText;
++          --text-main: CanvasText;
++          --text-muted: CanvasText;
++          --heading-card: CanvasText;
++          --nav-bg: Canvas;
++          --nav-border: CanvasText;
++          --btn-bg: ButtonFace;
++          --btn-bg-hover: Highlight;
++          --btn-text: ButtonText;
++          --footer-bg: Canvas;
++          --footer-border: CanvasText;
++          --badge-new-bg: Highlight;
++          --badge-new-text: HighlightText;
++          --badge-sold-out-bg: Canvas;
++          --badge-sold-out-text: GrayText;
++          --badge-sold-out-border: GrayText;
++        }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++        color-scheme: light dark;
++        accent-color: var(--btn-bg);
++      }
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    @layer base {
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text-main);
++        background-color: var(--bg-page);
++      }
++
++      :where(a:any-link, button):focus-visible {
++        outline: 3px solid var(--accent);
++        outline-offset: 3px;
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer components {
++      /* Navigation */
++      nav {
++        background-color: var(--nav-bg);
++        color: #ffffff;
++        padding-block: 1rem;
++        padding-inline: 5%;
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
++        border-block-end: 1px solid var(--nav-border);
++      }
++
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
++
++      nav ul {
++        display: flex;
++        align-items: center;
++        list-style: none;
++        gap: 20px;
++      }
++
++      nav a {
++        color: #ffffff;
++        text-decoration: none;
++        font-size: 0.9rem;
++        transition: color 0.3s, background-color 0.3s;
++      }
++
++      nav a:hover {
++        color: var(--accent);
++      }
++
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding-block: 5px;
++        padding-inline: 12px;
++        border-radius: 4px;
++      }
++
++      /* Hero Section */
++      .hero {
++        min-block-size: 60vh;
++        background:
++          linear-gradient(
++            180deg,
++            rgba(38, 22, 18, 0.72) 0%,
++            rgba(78, 52, 46, 0.68) 100%
++          ),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: #ffffff;
++        text-align: center;
++        padding-block: 40px;
++        padding-inline: 20px;
++      }
++
++      .hero h1 {
++        font-size: 3rem;
++        margin-block-end: 1rem;
++      }
++
++      .hero p {
++        font-size: 1.15rem;
++        max-inline-size: 55ch;
++      }
++
++      .hero .btn {
++        --btn-bg: var(--accent);
++        --btn-bg-hover: #ffc470;
++        --btn-text: #261612;
++      }
++
++      /* Content Sections */
++      .container {
++        max-inline-size: 1100px;
++        margin-block: 40px;
++        margin-inline: auto;
++        padding-inline: 20px;
++      }
++
++      .section-title {
++        text-align: center;
++        color: var(--heading-card);
++        font-size: 2rem;
++        margin-block-end: 8px;
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++        gap: 20px;
++        margin-block-start: 20px;
++      }
++
++      .card {
++        background-color: var(--bg-surface);
++        border: 1px solid var(--border-surface);
++        padding: 24px 20px;
++        border-radius: 8px;
++        box-shadow: var(--shadow-card);
++        text-align: center;
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++      }
++
++      .card-header {
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 8px;
++        margin-block-end: 10px;
++      }
++
++      .card h3 {
++        color: var(--heading-card);
++      }
++
++      .card p {
++        color: var(--text-muted);
++        flex-grow: 1;
++      }
++
++      /* Status Badges */
++      .badge {
++        --badge-bg: var(--badge-new-bg);
++        --badge-color: var(--badge-new-text);
++        display: inline-flex;
++        align-items: center;
++        gap: 6px;
++        padding-block: 5px;
++        padding-inline: 11px;
++        border-radius: 999px;
++        font-size: 0.75rem;
++        font-weight: 700;
++        letter-spacing: 0.04em;
++        text-transform: uppercase;
++        background-color: var(--badge-bg);
++        color: var(--badge-color);
++        border: 1px solid transparent;
++        text-box: trim-both cap alphabetic;
++      }
++
++      @supports (color: oklch(from red l c h)) {
++        .badge {
++          --threshold: 0.623;
++          --l: max(0, sign(var(--threshold) - l));
++          color: oklch(from var(--badge-bg) var(--l) 0 h);
++        }
++      }
++
++      @supports (color: contrast-color(red)) {
++        .badge {
++          color: contrast-color(var(--badge-bg));
++        }
++      }
++
++      .badge--new {
++        --badge-bg: var(--badge-new-bg);
++        --badge-color: var(--badge-new-text);
++      }
++
++      .badge--sold-out {
++        --badge-bg: var(--badge-sold-out-bg);
++        --badge-color: var(--badge-sold-out-text);
++        border-color: var(--badge-sold-out-border);
++      }
++
++      /* Style card when containing a sold-out badge */
++      .card:has(.badge--sold-out) {
++        background-color: color-mix(in oklab, var(--bg-surface) 92%, var(--bg-page));
++      }
++
++      /* Buttons */
++      .btn {
++        display: inline-block;
++        background-color: var(--btn-bg);
++        color: var(--btn-text);
++        padding-block: 10px;
++        padding-inline: 20px;
++        text-decoration: none;
++        font-weight: 600;
++        border-radius: 5px;
++        border: 1px solid transparent;
++        margin-block-start: 15px;
++        transition: background-color 0.3s, color 0.3s, border-color 0.3s;
++      }
++
++      @supports (color: contrast-color(red)) {
++        .btn:not([aria-disabled="true"]) {
++          color: contrast-color(var(--btn-bg));
++        }
++      }
++
++      .btn:hover:not(:disabled, [aria-disabled="true"]) {
++        background-color: var(--btn-bg-hover);
++      }
++
++      .btn[aria-disabled="true"] {
++        background-color: var(--badge-sold-out-bg);
++        color: var(--badge-sold-out-text);
++        border-color: var(--badge-sold-out-border);
++        cursor: not-allowed;
++        opacity: 0.85;
++      }
++
++      /* Footer */
++      footer {
++        background-color: var(--footer-bg);
++        color: var(--text-main);
++        border-block-start: 1px solid var(--footer-border);
++        text-align: center;
++        padding-block: 40px;
++        padding-inline: 20px;
++        margin-block-start: 40px;
++      }
++
++      .footer-links {
++        margin-block-end: 20px;
++      }
++
++      .footer-links a {
++        margin-inline: 10px;
++        color: var(--text-main);
++        text-decoration: underline;
++        text-underline-offset: 3px;
++        font-size: 0.85rem;
++        transition: color 0.3s;
++      }
++
++      .footer-links a:hover {
++        color: var(--btn-bg);
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,22 +464,30 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <div class="card-header">
++            <span class="badge badge--new"><span aria-hidden="true">✦</span> New</span>
++            <h3 id="card-maple-latte">Maple Oat Latte</h3>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-describedby="card-maple-latte">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <div class="card-header">
++            <h3 id="card-dark-espresso">Dark Roast Espresso</h3>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-describedby="card-dark-espresso">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <div class="card-header">
++            <span class="badge badge--sold-out"><span aria-hidden="true">⊘</span> Sold out</span>
++            <h3 id="card-cold-brew">Cold Brew</h3>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-describedby="card-cold-brew">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,256 @@
+diff --git a/index.html b/index.html
+index 66c9173..197e2f6 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,60 @@
+       border-radius: 4px;
+     }
+ 
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++      flex-wrap: wrap;
++    }
++
++    .language-picker {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .language-picker[hidden] { display: none; }
++
++    .language-picker select {
++      font: inherit;
++      color: var(--primary);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 7px 10px;
++      cursor: pointer;
++    }
++
++    a:focus-visible, select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .translation-note {
++      text-align: center;
++      color: #705b54;
++      font-size: 0.85rem;
++      margin-bottom: 28px;
++    }
++
++    .story {
++      max-width: 720px;
++      margin: 56px auto 0;
++      text-align: center;
++    }
++
++    .story p { margin-top: 12px; }
++
++    @media (max-width: 900px) {
++      nav { flex-wrap: wrap; gap: 16px; }
++      .nav-actions { gap: 16px; }
++      nav ul { flex-wrap: wrap; gap: 12px 20px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -153,58 +207,75 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script src="./translations.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
++    <div class="nav-actions">
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-i18n="menu">Menu</a></li>
++      <li><a href="/locations" data-i18n="locations">Locations</a></li>
++      <li><a href="/rewards" data-i18n="rewards">Rewards</a></li>
++      <li><a href="/account" data-i18n="account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-i18n="logout">Logout</a></li>
+     </ul>
++    <div class="language-picker" hidden>
++      <label for="language" data-i18n="language">Language</label>
++      <select id="language" aria-describedby="translation-note">
++        <option value="en" lang="en">English</option>
++        <option value="es" lang="es">Español</option>
++        <option value="fr" lang="fr">Français</option>
++        <option value="de" lang="de">Deutsch</option>
++      </select>
++    </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-i18n="heroTitle">Wake Up Your Senses</h1>
++    <p data-i18n="heroText">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn" data-i18n="order">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <p id="translation-note" class="translation-note" role="status" aria-live="polite" data-i18n="translationNote" hidden>Translations stay on your device. Choose your language above.</p>
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;" data-i18n="favorites">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 data-i18n="mapleTitle">Maple Oat Latte</h3>
++          <p data-i18n="mapleText">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 data-i18n="espressoTitle">Dark Roast Espresso</h3>
++          <p data-i18n="espressoText">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 data-i18n="coldTitle">Cold Brew</h3>
++          <p data-i18n="coldText">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-i18n="details">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story" aria-labelledby="story-heading">
++      <h2 id="story-heading" data-i18n="storyTitle">Our Story</h2>
++      <p data-i18n="storyText">At The Daily Grind, we believe a great day starts with a thoughtfully made cup. We bring ethically sourced beans and local roasting together, making space for a quiet morning, a friendly conversation, and your next favorite coffee.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-i18n="storyTitle">Our Story</a> |
++      <a href="/careers" data-i18n="careers">Join the Team</a> |
++      <a href="/contact" data-i18n="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-i18n="privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p data-i18n="copyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
+ </body>
+diff --git a/translations.js b/translations.js
+new file mode 100644
+index 0000000..af0f6a5
+--- /dev/null
++++ b/translations.js
+@@ -0,0 +1,86 @@
++(() => {
++  'use strict';
++
++  const selector = document.getElementById('language');
++  const textElements = document.querySelectorAll('[data-i18n]');
++  const english = Object.fromEntries(
++    Array.from(textElements, element => [element.dataset.i18n, element.textContent])
++  );
++  // Bundled translations keep the language switch instant and entirely on-device.
++  const translations = {
++    en: english,
++    es: {
++      language: 'Idioma', menu: 'Menú', locations: 'Locales', rewards: 'Recompensas',
++      account: 'Mi cuenta', logout: 'Cerrar sesión', heroTitle: 'Despierta tus sentidos',
++      heroText: 'De origen ético, tostado localmente y servido en tu taza.', order: 'Pedir ahora',
++      translationNote: 'Las traducciones se realizan en tu dispositivo. Elige tu idioma arriba.',
++      favorites: 'Favoritos de temporada', mapleTitle: 'Latte de avena y arce',
++      mapleText: 'Cremosa leche de avena con un toque de sirope de arce de Vermont.',
++      espressoTitle: 'Espresso de tueste oscuro',
++      espressoText: 'Intenso, ahumado y perfecto para empezar la mañana con energía.',
++      coldTitle: 'Café de extracción en frío', coldText: 'Infusionado durante 18 horas para una máxima suavidad.',
++      details: 'Ver detalles', storyTitle: 'Nuestra historia',
++      storyText: 'En The Daily Grind, creemos que un gran día empieza con una taza preparada con esmero. Combinamos granos de origen ético con un tueste local para crear un espacio donde disfrutar de una mañana tranquila, una conversación cercana y tu próximo café favorito.',
++      careers: 'Únete al equipo', contact: 'Contáctanos', privacy: 'Privacidad',
++      copyright: '© 2026 The Daily Grind Coffee Co. Todos los derechos reservados.'
++    },
++    fr: {
++      language: 'Langue', menu: 'Carte', locations: 'Nos cafés', rewards: 'Fidélité',
++      account: 'Mon compte', logout: 'Déconnexion', heroTitle: 'Éveillez vos sens',
++      heroText: 'Un café issu de sources éthiques, torréfié localement et servi dans votre tasse.', order: 'Commander',
++      translationNote: 'Les traductions restent sur votre appareil. Choisissez votre langue ci-dessus.',
++      favorites: 'Les favoris de saison', mapleTitle: 'Latte à l’avoine et à l’érable',
++      mapleText: 'Un lait d’avoine onctueux avec une touche de sirop d’érable du Vermont.',
++      espressoTitle: 'Espresso à torréfaction foncée',
++      espressoText: 'Intense et fumé, idéal pour faire le plein d’énergie le matin.',
++      coldTitle: 'Café infusé à froid', coldText: 'Infusé pendant 18 heures pour une douceur incomparable.',
++      details: 'Voir les détails', storyTitle: 'Notre histoire',
++      storyText: 'Chez The Daily Grind, nous pensons qu’une belle journée commence par une tasse préparée avec soin. Nous associons des grains issus de sources éthiques à une torréfaction locale pour vous offrir un moment de calme, une conversation chaleureuse et votre prochain café préféré.',
++      careers: 'Rejoignez l’équipe', contact: 'Contactez-nous', privacy: 'Confidentialité',
++      copyright: '© 2026 The Daily Grind Coffee Co. Tous droits réservés.'
++    },
++    de: {
++      language: 'Sprache', menu: 'Speisekarte', locations: 'Standorte', rewards: 'Treueprogramm',
++      account: 'Mein Konto', logout: 'Abmelden', heroTitle: 'Wecke deine Sinne',
++      heroText: 'Ethisch bezogen, lokal geröstet und frisch in deiner Tasse.', order: 'Jetzt bestellen',
++      translationNote: 'Die Übersetzungen bleiben auf deinem Gerät. Wähle oben deine Sprache.',
++      favorites: 'Saisonale Favoriten', mapleTitle: 'Hafer-Latte mit Ahornsirup',
++      mapleText: 'Cremige Hafermilch mit einem Hauch Ahornsirup aus Vermont.',
++      espressoTitle: 'Dunkel gerösteter Espresso',
++      espressoText: 'Kräftig, rauchig und perfekt für einen schwungvollen Start in den Morgen.',
++      coldTitle: 'Cold Brew', coldText: 'Für besonders milden Geschmack 18 Stunden kalt gezogen.',
++      details: 'Mehr erfahren', storyTitle: 'Unsere Geschichte',
++      storyText: 'Bei The Daily Grind glauben wir, dass ein schöner Tag mit einer sorgfältig zubereiteten Tasse Kaffee beginnt. Wir verbinden ethisch bezogene Bohnen mit lokaler Röstung und schaffen Raum für einen ruhigen Morgen, ein nettes Gespräch und deinen nächsten Lieblingskaffee.',
++      careers: 'Werde Teil des Teams', contact: 'Kontakt', privacy: 'Datenschutz',
++      copyright: '© 2026 The Daily Grind Coffee Co. Alle Rechte vorbehalten.'
++    }
++  };
++  const storageKey = 'daily-grind-language';
++
++  function applyLanguage(language) {
++    const selected = Object.hasOwn(translations, language) ? language : 'en';
++    textElements.forEach(element => {
++      element.textContent = translations[selected][element.dataset.i18n] ?? english[element.dataset.i18n];
++    });
++    document.documentElement.lang = selected;
++    selector.value = selected;
++  }
++
++  let savedLanguage = 'en';
++  try {
++    savedLanguage = localStorage.getItem(storageKey) || 'en';
++  } catch {
++    // The selector still works when browser privacy settings block storage.
++  }
++  applyLanguage(savedLanguage);
++  selector.addEventListener('change', () => {
++    applyLanguage(selector.value);
++    try {
++      localStorage.setItem(storageKey, selector.value);
++    } catch {
++      // Persistence is optional; translating never depends on storage access.
++    }
++  });
++  document.querySelector('.language-picker').hidden = false;
++  document.getElementById('translation-note').hidden = false;
++})();

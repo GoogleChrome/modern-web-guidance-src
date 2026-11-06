@@ -1,0 +1,593 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,199 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* 3D Coffee Box */
++    .box-section {
++      background: linear-gradient(135deg, #3e2723 0%, #5d4037 100%);
++      color: white;
++      padding: 60px 5%;
++    }
++
++    .box-inner {
++      max-width: 1100px;
++      margin: 0 auto;
++      display: grid;
++      grid-template-columns: 1fr 1.2fr;
++      gap: 40px;
++      align-items: center;
++    }
++
++    .box-copy h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++    }
++
++    .box-copy p {
++      color: var(--secondary);
++      margin-bottom: 1rem;
++    }
++
++    .box-stage {
++      position: relative;
++      height: 560px;
++    }
++
++    #coffee-box-canvas,
++    .box-overlay {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++    }
++
++    #coffee-box-canvas {
++      display: block;
++      touch-action: pan-y;
++    }
++
++    /* Fallback overlay for browsers without HTML-in-canvas support */
++    .box-overlay {
++      pointer-events: none;
++      overflow: hidden;
++    }
++
++    .box-overlay .box-form {
++      pointer-events: auto;
++      position: absolute;
++      top: 0;
++      left: 0;
++      backface-visibility: hidden;
++    }
++
++    /* The form is the front face of the box. Its size must stay fixed:
++       the WebGL face geometry is built from this aspect ratio. */
++    .box-form {
++      display: block;
++      width: 360px;
++      height: 440px;
++      padding: 26px 28px;
++      background: #f3e5d0;
++      color: var(--text);
++      border: 6px solid var(--primary);
++      transform-origin: 0 0;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    }
++
++    .box-form h3 {
++      font-size: 1.35rem;
++      color: var(--primary);
++      letter-spacing: 1px;
++      text-align: center;
++    }
++
++    .box-form .tagline {
++      text-align: center;
++      font-size: 0.8rem;
++      margin-bottom: 14px;
++      color: #6d4c41;
++    }
++
++    .box-form label {
++      display: block;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin: 10px 0 4px;
++    }
++
++    .box-form input[type="email"],
++    .box-form select {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++      background: white;
++      font: inherit;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .box-form .roasts {
++      display: flex;
++      gap: 6px;
++    }
++
++    .box-form .roasts button {
++      flex: 1;
++      padding: 7px 0;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .box-form .roasts button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .box-form .qty {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .box-form .qty button {
++      width: 32px;
++      height: 32px;
++      border: none;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 1.1rem;
++      font-weight: bold;
++      cursor: pointer;
++    }
++
++    .box-form .qty output {
++      min-width: 70px;
++      text-align: center;
++      font-weight: bold;
++    }
++
++    .box-form .submit {
++      display: block;
++      width: 100%;
++      margin-top: 18px;
++      padding: 11px;
++      border: none;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++    }
++
++    .box-form .submit:hover,
++    .box-form .roasts button:hover {
++      background: #3e2723;
++      color: white;
++    }
++
++    .box-form .thanks {
++      text-align: center;
++      margin-top: 90px;
++    }
++
++    .box-form .thanks p {
++      margin: 10px 0;
++    }
++
++    @media (max-width: 800px) {
++      .box-inner {
++        grid-template-columns: 1fr;
++      }
++
++      .box-stage {
++        height: 480px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +364,57 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="box-section" aria-labelledby="box-heading">
++    <div class="box-inner">
++      <div class="box-copy">
++        <h2 id="box-heading">Build Your Daily Box</h2>
++        <p>Fresh-roasted beans, packed the day they're roasted and delivered to your door on your schedule.</p>
++        <p>Pick a roast and grind right on the box &mdash; give it a spin, it's fully interactive.</p>
++      </div>
++      <div class="box-stage">
++        <!-- layoutsubtree: the form is laid out and hit-tested as real DOM,
++             then drawn into the WebGL scene as the front face of the box. -->
++        <canvas id="coffee-box-canvas" layoutsubtree>
++          <form class="box-form" id="box-form">
++            <h3>THE DAILY GRIND</h3>
++            <p class="tagline">Subscription Box &middot; Roasted to Order</p>
++
++            <label for="box-email">Email</label>
++            <input type="email" id="box-email" name="email" placeholder="you@example.com" required>
++
++            <label id="roast-label">Roast</label>
++            <div class="roasts" role="group" aria-labelledby="roast-label">
++              <button type="button" data-roast="light" aria-pressed="false">Light</button>
++              <button type="button" data-roast="medium" aria-pressed="true">Medium</button>
++              <button type="button" data-roast="dark" aria-pressed="false">Dark</button>
++            </div>
++            <input type="hidden" name="roast" value="medium">
++
++            <label for="box-grind">Grind</label>
++            <select id="box-grind" name="grind">
++              <option>Whole Bean</option>
++              <option>Espresso</option>
++              <option selected>Drip</option>
++              <option>French Press</option>
++            </select>
++
++            <label id="qty-label">Bags per month</label>
++            <div class="qty" role="group" aria-labelledby="qty-label">
++              <button type="button" data-step="-1" aria-label="Fewer bags">&minus;</button>
++              <output name="qty-display" aria-live="polite">2 bags</output>
++              <button type="button" data-step="1" aria-label="More bags">+</button>
++            </div>
++            <input type="hidden" name="qty" value="2">
++
++            <button type="submit" class="submit">Start My Subscription</button>
++          </form>
++        </canvas>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +446,331 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // ---------- Form behaviour (event delegation survives content swaps) ----------
++      const form = document.getElementById('box-form');
++      const formMarkup = form.innerHTML;
++
++      form.addEventListener('click', (e) => {
++        const roastBtn = e.target.closest('[data-roast]');
++        if (roastBtn) {
++          form.querySelectorAll('[data-roast]').forEach((b) =>
++            b.setAttribute('aria-pressed', String(b === roastBtn)));
++          form.elements.roast.value = roastBtn.dataset.roast;
++          return;
++        }
++        const stepBtn = e.target.closest('[data-step]');
++        if (stepBtn) {
++          const qty = Math.min(6, Math.max(1, Number(form.elements.qty.value) + Number(stepBtn.dataset.step)));
++          form.elements.qty.value = qty;
++          form.elements['qty-display'].value = `${qty} bag${qty === 1 ? '' : 's'}`;
++          return;
++        }
++        if (e.target.closest('[data-reset]')) {
++          form.innerHTML = formMarkup;
++        }
++      });
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const data = new FormData(form);
++        const qty = Number(data.get('qty'));
++        const thanks = document.createElement('div');
++        thanks.className = 'thanks';
++        thanks.innerHTML = '<h3>You\'re all set!</h3><p></p><button type="button" class="submit" data-reset>Edit Order</button>';
++        thanks.querySelector('p').textContent =
++          `${qty} bag${qty === 1 ? '' : 's'} of ${data.get('roast')} roast (${data.get('grind')}) will ship to ${data.get('email')} each month.`;
++        form.replaceChildren(thanks);
++      });
++
++      // ---------- WebGL scene ----------
++      const canvas = document.getElementById('coffee-box-canvas');
++      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
++      if (!gl) {
++        // No WebGL at all: show the form as a plain, flat card.
++        canvas.replaceWith(form);
++        form.style.margin = '60px auto';
++        return;
++      }
++
++      // HTML-in-canvas (WICG proposal): children of <canvas layoutsubtree> are
++      // laid out and hit-tested but only rendered when drawn into the canvas.
++      const htmlInCanvas = typeof gl.texElementImage2D === 'function' && 'requestPaint' in canvas;
++
++      if (!htmlInCanvas) {
++        // Fallback: the form lives in a DOM overlay and is projected with the
++        // same matrix the WebGL face uses, so it still rides along on the box.
++        const overlay = document.createElement('div');
++        overlay.className = 'box-overlay';
++        overlay.appendChild(form);
++        canvas.after(overlay);
++      }
++
++      // Box dimensions in world units. Front face aspect matches the form (360x440).
++      const FW = 1.8, FH = 2.2, FD = 1.1;
++      const hw = FW / 2, hh = FH / 2, hd = FD / 2;
++
++      // ---- Minimal column-major mat4 helpers ----
++      const mul = (a, b) => {
++        const o = new Float32Array(16);
++        for (let c = 0; c < 4; c++)
++          for (let r = 0; r < 4; r++)
++            o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
++        return o;
++      };
++      const perspective = (fovy, aspect, near, far) => {
++        const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
++        return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
++      };
++      const translate = (x, y, z) => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
++      const rotY = (a) => {
++        const c = Math.cos(a), s = Math.sin(a);
++        return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
++      };
++      const rotX = (a) => {
++        const c = Math.cos(a), s = Math.sin(a);
++        return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]);
++      };
++
++      // ---- Geometry: 6 faces, each 2 triangles with position/normal/uv ----
++      // Order matters: face 0 is the front (form) face.
++      const faces = [
++        { n: [0, 0, 1], v: [[-hw, -hh, hd], [hw, -hh, hd], [hw, hh, hd], [-hw, hh, hd]] },      // front
++        { n: [0, 0, -1], v: [[hw, -hh, -hd], [-hw, -hh, -hd], [-hw, hh, -hd], [hw, hh, -hd]] },  // back
++        { n: [1, 0, 0], v: [[hw, -hh, hd], [hw, -hh, -hd], [hw, hh, -hd], [hw, hh, hd]] },        // right
++        { n: [-1, 0, 0], v: [[-hw, -hh, -hd], [-hw, -hh, hd], [-hw, hh, hd], [-hw, hh, -hd]] },  // left
++        { n: [0, 1, 0], v: [[-hw, hh, hd], [hw, hh, hd], [hw, hh, -hd], [-hw, hh, -hd]] },        // top
++        { n: [0, -1, 0], v: [[-hw, -hh, -hd], [hw, -hh, -hd], [hw, -hh, hd], [-hw, -hh, hd]] },  // bottom
++      ];
++      const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
++      const verts = [];
++      for (const f of faces)
++        for (const i of [0, 1, 2, 0, 2, 3]) verts.push(...f.v[i], ...f.n, ...uvs[i]);
++
++      const vsSrc = `
++        attribute vec3 aPos; attribute vec3 aNormal; attribute vec2 aUv;
++        uniform mat4 uMvp; uniform mat4 uModel;
++        varying vec2 vUv; varying float vLight;
++        void main() {
++          vec3 n = normalize((uModel * vec4(aNormal, 0.0)).xyz);
++          vLight = 0.55 + 0.45 * max(dot(n, normalize(vec3(0.4, 0.6, 1.0))), 0.0);
++          vUv = aUv;
++          gl_Position = uMvp * vec4(aPos, 1.0);
++        }`;
++      const fsSrc = `
++        precision mediump float;
++        uniform sampler2D uTex; uniform float uMinLight;
++        varying vec2 vUv; varying float vLight;
++        void main() {
++          vec4 c = texture2D(uTex, vUv);
++          gl_FragColor = vec4(c.rgb * max(vLight, uMinLight), 1.0);
++        }`;
++      const compile = (type, src) => {
++        const sh = gl.createShader(type);
++        gl.shaderSource(sh, src);
++        gl.compileShader(sh);
++        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
++        return sh;
++      };
++      const prog = gl.createProgram();
++      gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsSrc));
++      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsSrc));
++      gl.linkProgram(prog);
++      gl.useProgram(prog);
++
++      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
++      const attr = (name, size, offset) => {
++        const loc = gl.getAttribLocation(prog, name);
++        gl.enableVertexAttribArray(loc);
++        gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 32, offset);
++      };
++      attr('aPos', 3, 0);
++      attr('aNormal', 3, 12);
++      attr('aUv', 2, 24);
++      const uMvp = gl.getUniformLocation(prog, 'uMvp');
++      const uModel = gl.getUniformLocation(prog, 'uModel');
++      const uMinLight = gl.getUniformLocation(prog, 'uMinLight');
++
++      // ---- Textures ----
++      const makeTexture = () => {
++        const t = gl.createTexture();
++        gl.bindTexture(gl.TEXTURE_2D, t);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([243, 229, 208, 255]));
++        return t;
++      };
++      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
++
++      const formTex = makeTexture();
++      const sideTex = makeTexture();
++      const capTex = makeTexture();
++
++      // Packaging art: kraft paper + stock photo of beans + brand label.
++      const beans = new Image();
++      beans.crossOrigin = 'anonymous';
++      const paintPackaging = () => {
++        const art = (w, h, draw) => {
++          const c = document.createElement('canvas');
++          c.width = w; c.height = h;
++          const ctx = c.getContext('2d');
++          ctx.fillStyle = '#c8a27a';
++          ctx.fillRect(0, 0, w, h);
++          ctx.globalAlpha = 0.06;
++          for (let i = 0; i < 1500; i++) {
++            ctx.fillStyle = Math.random() < 0.5 ? '#000' : '#fff';
++            ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
++          }
++          ctx.globalAlpha = 1;
++          draw(ctx, w, h);
++          return c;
++        };
++        const side = art(320, 640, (ctx, w, h) => {
++          if (beans.complete && beans.naturalWidth) {
++            const band = h * 0.42, s = Math.max(w / beans.naturalWidth, band / beans.naturalHeight);
++            ctx.drawImage(beans, (w - beans.naturalWidth * s) / 2, h * 0.3 + (band - beans.naturalHeight * s) / 2,
++              beans.naturalWidth * s, beans.naturalHeight * s);
++            ctx.fillStyle = '#c8a27a';
++            ctx.fillRect(0, 0, w, h * 0.3);
++            ctx.fillRect(0, h * 0.72, w, h * 0.28);
++          }
++          ctx.fillStyle = '#4e342e';
++          ctx.fillRect(0, h * 0.06, w, 70);
++          ctx.fillStyle = '#ffab40';
++          ctx.font = 'bold 30px Segoe UI, sans-serif';
++          ctx.textAlign = 'center';
++          ctx.fillText('THE DAILY', w / 2, h * 0.06 + 32);
++          ctx.fillText('GRIND', w / 2, h * 0.06 + 62);
++          ctx.fillStyle = '#4e342e';
++          ctx.font = '22px Segoe UI, sans-serif';
++          ctx.fillText('Fresh Roasted', w / 2, h * 0.8);
++          ctx.fillText('Coffee Beans', w / 2, h * 0.8 + 30);
++          ctx.font = 'bold 18px Segoe UI, sans-serif';
++          ctx.fillText('NET WT 12 OZ (340 g)', w / 2, h * 0.93);
++        });
++        const cap = art(512, 320, (ctx, w, h) => {
++          ctx.strokeStyle = '#4e342e';
++          ctx.lineWidth = 10;
++          ctx.strokeRect(20, 20, w - 40, h - 40);
++          ctx.fillStyle = '#4e342e';
++          ctx.font = 'bold 44px Segoe UI, sans-serif';
++          ctx.textAlign = 'center';
++          ctx.fillText('THE DAILY GRIND', w / 2, h / 2 + 15);
++        });
++        for (const [tex, src] of [[sideTex, side], [capTex, cap]]) {
++          gl.bindTexture(gl.TEXTURE_2D, tex);
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
++        }
++      };
++      beans.onload = beans.onerror = paintPackaging;
++      beans.src = 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80';
++      paintPackaging();
++
++      if (htmlInCanvas) {
++        // Re-snapshot the live form whenever its rendering changes
++        // (typing, focus rings, hover states, content swaps...).
++        canvas.addEventListener('paint', () => {
++          gl.bindTexture(gl.TEXTURE_2D, formTex);
++          gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++        });
++        canvas.requestPaint();
++      }
++
++      // ---- Sizing ----
++      let cssW = 0, cssH = 0;
++      const resize = () => {
++        const dpr = Math.min(window.devicePixelRatio || 1, 2);
++        cssW = canvas.clientWidth;
++        cssH = canvas.clientHeight;
++        canvas.width = Math.round(cssW * dpr);
++        canvas.height = Math.round(cssH * dpr);
++        gl.viewport(0, 0, canvas.width, canvas.height);
++      };
++      new ResizeObserver(resize).observe(canvas);
++      resize();
++
++      // ---- Interaction ----
++      // Hovering slows the spin (the form stays clickable while it turns);
++      // focusing a field parks the box so typing isn't a moving target.
++      const stage = canvas.parentElement;
++      let hovering = false, focused = false;
++      stage.addEventListener('pointerenter', () => { hovering = true; });
++      stage.addEventListener('pointerleave', () => { hovering = false; });
++      form.addEventListener('focusin', () => { focused = true; });
++      form.addEventListener('focusout', () => { focused = false; });
++
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      let angle = -0.5, speed = 0.5, last = performance.now();
++      let lastFacing = null;
++
++      gl.enable(gl.DEPTH_TEST);
++      gl.enable(gl.CULL_FACE);
++      gl.clearColor(0, 0, 0, 0);
++
++      const frame = (now) => {
++        const dt = Math.min((now - last) / 1000, 0.1);
++        last = now;
++        const target = reducedMotion.matches || focused ? 0 : hovering ? 0.06 : 0.5;
++        speed += (target - speed) * Math.min(1, dt * 3);
++        angle += speed * dt;
++
++        const aspect = cssW / Math.max(cssH, 1);
++        const proj = perspective(Math.PI / 5, aspect, 0.1, 50);
++        const dist = Math.max(6.2, 6.2 / Math.min(aspect, 1));
++        const view = translate(0, 0, -dist);
++        const model = mul(rotX(0.18 + Math.sin(now / 2400) * 0.05), rotY(angle));
++        const viewModel = mul(view, model);
++        const mvp = mul(proj, viewModel);
++
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++        gl.uniformMatrix4fv(uMvp, false, mvp);
++        gl.uniformMatrix4fv(uModel, false, model);
++        for (let i = 0; i < 6; i++) {
++          gl.bindTexture(gl.TEXTURE_2D, i === 0 ? formTex : i >= 4 ? capTex : sideTex);
++          // Keep the form readable even when lit at a glancing angle.
++          gl.uniform1f(uMinLight, i === 0 ? 0.85 : 0);
++          gl.drawArrays(gl.TRIANGLES, i * 6, 6);
++        }
++
++        // Project the form's layout box onto the front face so the real DOM
++        // element sits exactly where it is drawn: hit testing, focus, caret
++        // and text selection all line up with the rotating face.
++        const W = form.offsetWidth, H = form.offsetHeight;
++        const faceFromPx = new Float32Array([
++          FW / W, 0, 0, 0,
++          0, -FH / H, 0, 0,
++          0, 0, FW / W, 0,
++          -hw, hh, hd, 1,
++        ]);
++        const screenFromClip = new Float32Array([
++          cssW / 2, 0, 0, 0,
++          0, -cssH / 2, 0, 0,
++          0, 0, 1, 0,
++          cssW / 2, cssH / 2, 0, 1,
++        ]);
++        const m = mul(screenFromClip, mul(mvp, faceFromPx));
++        form.style.transform = `matrix3d(${Array.from(m, (v) => +v.toFixed(6)).join(',')})`;
++
++        // Front face normal in view space; the camera looks down -z.
++        const facing = viewModel[10] > 0.08;
++        if (facing !== lastFacing) {
++          lastFacing = facing;
++          form.inert = !facing;
++          form.style.visibility = facing || htmlInCanvas ? '' : 'hidden';
++          if (!facing && form.contains(document.activeElement)) document.activeElement.blur();
++        }
++
++        requestAnimationFrame(frame);
++      };
++      requestAnimationFrame(frame);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

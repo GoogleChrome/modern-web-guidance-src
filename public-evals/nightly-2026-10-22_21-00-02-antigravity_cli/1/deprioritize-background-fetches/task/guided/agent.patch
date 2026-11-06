@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,31 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Fetch Data</title>
++</head>
++<body>
++  <main>
++    <h1>Data Loader</h1>
++    <button type="button" id="load-btn">Load Data</button>
++  </main>
++
++  <script type="module">
++    const loadBtn = document.getElementById('load-btn');
++
++    loadBtn.addEventListener('click', () => {
++      // Trigger mission-critical data request with default (high) priority
++      fetch('/api/data');
++
++      // Concurrently trigger analytics POST request with low priority to avoid network contention
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low'
++      });
++    });
++  </script>
++</body>
++</html>

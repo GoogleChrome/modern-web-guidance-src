@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal preview: driven by interestfor (hover/focus) via :interest-source, no JS.
++       Each rule is kept separate so browsers lacking the pseudo-class ignore only that rule. */
++    #seasonal-preview {
++      margin-top: 20px;
++      padding: 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      background: white;
++      text-align: center;
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: var(--primary);
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #seasonal-preview .preview-drink {
++      display: none;
++    }
++
++    main:has(.btn:interest-source) #seasonal-preview .preview-default {
++      display: none;
++    }
++
++    main:has([data-drink="maple"]:interest-source) #seasonal-preview .preview-maple,
++    main:has([data-drink="espresso"]:interest-source) #seasonal-preview .preview-espresso,
++    main:has([data-drink="cold-brew"]:interest-source) #seasonal-preview .preview-cold-brew {
++      display: inline;
++    }
++
++    main:has([data-drink="maple"]:interest-source) #seasonal-preview {
++      background: #ffe0b2;
++    }
++
++    main:has([data-drink="espresso"]:interest-source) #seasonal-preview {
++      background: var(--primary);
++      color: white;
++    }
++
++    main:has([data-drink="cold-brew"]:interest-source) #seasonal-preview {
++      background: #cfd8dc;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,21 +222,28 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-drink="maple" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-drink="espresso" interestfor="seasonal-preview">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-drink="cold-brew" interestfor="seasonal-preview">View Details</a>
+         </div>
+       </div>
++      <!-- Passive preview: intentionally no role="status" / aria-live so it is not announced -->
++      <div id="seasonal-preview">
++        <span class="preview-default">Select a drink to preview</span>
++        <span class="preview-drink preview-maple">Maple Oat Latte</span>
++        <span class="preview-drink preview-espresso">Dark Roast Espresso</span>
++        <span class="preview-drink preview-cold-brew">Cold Brew</span>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

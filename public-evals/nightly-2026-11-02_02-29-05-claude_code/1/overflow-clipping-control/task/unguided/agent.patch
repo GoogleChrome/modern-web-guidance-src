@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,93 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 40px;
++      align-items: start;
++    }
++
++    /* Card wrapper: children are clipped at the content box, and the clip
++       corners follow the concentric inner radius (28px - 14px = 14px). */
++    .nested-curve-parent {
++      background: var(--primary);
++      padding: 14px;
++      border-radius: 28px;
++      overflow: hidden;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++    }
++
++    .nested-curve-body {
++      background: white;
++      padding: 18px 20px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .nested-curve-footer {
++      background: var(--accent);
++      color: var(--text);
++      padding: 12px 20px;
++      font-weight: bold;
++      font-size: 0.9rem;
++    }
++
++    /* Promos: overflowing text is clipped, but the clip edge sits 15px
++       outside the padding box so the button's glow can bleed out. */
++    .safety-zone-parent {
++      overflow: hidden;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .promo-ticker {
++      white-space: nowrap;
++      font-size: 1.1rem;
++      color: var(--text);
++      margin-bottom: 16px;
++    }
++
++    .glow-btn {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 12px 28px;
++      border-radius: 999px;
++      text-decoration: none;
++      /* Glow extends 15px (10px blur + 5px spread), matching the safety zone */
++      box-shadow: 0 0 10px 5px rgba(255, 171, 64, 0.75);
++      transition: box-shadow 0.3s;
++    }
++
++    .glow-btn:hover {
++      box-shadow: 0 0 10px 5px rgba(255, 171, 64, 1);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +258,26 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase">
++    <div class="nested-curve-parent">
++      <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="Latte art in a ceramic cup">
++      <div class="nested-curve-body">
++        <h3>Single-Origin Spotlight</h3>
++        <p>This month: a washed Ethiopian Yirgacheffe with notes of jasmine, bergamot, and honey.</p>
++      </div>
++      <div class="nested-curve-footer">Roasted fresh every Tuesday</div>
++    </div>
++
++    <div class="safety-zone-parent">
++      <h2>Today's Promos</h2>
++      <p class="promo-ticker">Buy one, get one half off all lattes &bull; Double rewards points before 9am &bull; Free pastry with any bag of beans &bull; Student discount all week long</p>
++      <a href="/rewards" class="glow-btn">Claim Your Offer</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

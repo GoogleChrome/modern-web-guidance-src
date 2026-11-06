@@ -1,0 +1,294 @@
+diff --git a/index.html b/index.html
+index 66c9173..ccff91f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,47 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order status + widget */
++    .order-status {
++      max-width: 1100px;
++      margin: 20px auto 0;
++      padding: 12px 20px;
++      border-left: 4px solid var(--accent);
++      background: #fff8e1;
++      border-radius: 4px;
++      display: none;
++    }
++
++    .order-status.visible {
++      display: block;
++    }
++
++    .widget-section {
++      text-align: center;
++    }
++
++    .widget-section iframe {
++      width: 100%;
++      max-width: 420px;
++      height: 190px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      margin-top: 15px;
++    }
++
++    .widget-points {
++      margin-top: 10px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .link-blocked {
++      opacity: 0.5;
++      pointer-events: none;
++      text-decoration: line-through !important;
++    }
+   </style>
+ </head>
+ 
+@@ -171,9 +212,11 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" id="order-now">Order Now</a>
+   </header>
+ 
++  <div class="order-status" id="order-status" role="status" aria-live="polite"></div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -195,6 +238,14 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-section" style="margin-top: 50px;">
++      <h2>Rewards Tracker</h2>
++      <p>Check how close you are to your next free drink.</p>
++      <iframe id="rewards-widget" title="Rewards tracker widget" sandbox="allow-scripts" referrerpolicy="no-referrer"
++        srcdoc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Segoe UI,Tahoma,sans-serif;color:#3e2723;text-align:center;padding:12px;margin:0}button{background:#4e342e;color:#fff;border:0;padding:8px 16px;border-radius:5px;cursor:pointer;margin:4px}.bar{height:12px;background:#d7ccc8;border-radius:6px;overflow:hidden;margin:10px 0}.fill{height:100%;background:#ffab40;width:0}</style></head><body><strong>Daily Grind Rewards</strong><div class='bar'><div class='fill' id='fill'></div></div><div id='label'>0 / 10 stamps</div><button id='add'>Log a visit</button><button id='redeem'>Redeem</button><script>(function(){var stamps=0;var GOAL=10;function render(){document.getElementById('fill').style.width=Math.min(stamps/GOAL,1)*100+'%';document.getElementById('label').textContent=stamps+' / '+GOAL+' stamps';}function send(msg){parent.postMessage(msg,'*');}document.getElementById('add').addEventListener('click',function(){if(stamps<GOAL){stamps++;}render();send({type:'widget-points',stamps:stamps,goal:GOAL});});document.getElementById('redeem').addEventListener('click',function(){if(stamps>=GOAL){stamps=0;render();send({type:'widget-redeem'});}});render();send({type:'widget-init',version:1});})();</script></body></html>"></iframe>
++      <div class="widget-points" id="widget-points"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -204,9 +255,213 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <div class="footer-links">
++      <a href="https://www.instagram.com/thedailygrind" data-external>Instagram</a> |
++      <a href="https://www.facebook.com/thedailygrind" data-external>Facebook</a> |
++      <a href="https://shop.thedailygrind.com/beans" data-external>Shop Beans</a>
++    </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // ---- Configuration -------------------------------------------------
++      // Exact origin of the trusted online-ordering app (scheme + host + port).
++      var TRUSTED_ORDER_ORIGIN = 'https://order.thedailygrind.com';
++      // Registrable domain that defines "same site" for redirects.
++      var SITE_DOMAIN = 'thedailygrind.com';
++      // Third-party hosts we are willing to link out to.
++      var ALLOWED_EXTERNAL_HOSTS = ['instagram.com', 'facebook.com'];
++      var SAFE_PROTOCOLS = ['https:', 'http:'];
++
++      // ---- URL helpers (always parse with URL, never split strings) -------
++      function parseUrl(raw) {
++        if (typeof raw !== 'string' || raw.length === 0 || raw.length > 2048) return null;
++        // Reject control characters / whitespace tricks that browsers strip.
++        if (/[\u0000-\u001F\u007F\s\\]/.test(raw)) return null;
++        try {
++          return new URL(raw, window.location.href);
++        } catch (e) {
++          return null;
++        }
++      }
++
++      // True if `host` equals `domain` or is a subdomain of it (label-aligned).
++      function hostMatchesDomain(host, domain) {
++        host = host.toLowerCase().replace(/\.$/, '');
++        domain = domain.toLowerCase();
++        return host === domain || host.endsWith('.' + domain);
++      }
++
++      function isSameSiteUrl(url) {
++        if (!url || SAFE_PROTOCOLS.indexOf(url.protocol) === -1) return false;
++        if (url.username || url.password) return false;
++        if (url.origin === window.location.origin) return true;
++        return url.protocol === 'https:' && hostMatchesDomain(url.hostname, SITE_DOMAIN);
++      }
++
++      function isAllowedExternalUrl(url) {
++        if (!url || url.protocol !== 'https:') return false;
++        if (url.username || url.password) return false;
++        return ALLOWED_EXTERNAL_HOSTS.some(function (d) {
++          return hostMatchesDomain(url.hostname, d);
++        });
++      }
++
++      // Returns a safe absolute href for a same-site redirect, or null.
++      function validateRedirect(raw) {
++        var url = parseUrl(raw);
++        return isSameSiteUrl(url) ? url.href : null;
++      }
++
++      function safeRedirect(raw) {
++        var target = validateRedirect(raw);
++        if (target) {
++          window.location.assign(target);
++        } else {
++          console.warn('[DailyGrind] Blocked redirect to untrusted URL:', raw);
++        }
++      }
++
++      // ---- External link hardening ---------------------------------------
++      function hardenLinks() {
++        var links = document.querySelectorAll('a[href]');
++        Array.prototype.forEach.call(links, function (a) {
++          var url = parseUrl(a.getAttribute('href'));
++          if (isSameSiteUrl(url)) {
++            if (url.origin !== window.location.origin) a.setAttribute('rel', 'noopener');
++            return;
++          }
++          if (isAllowedExternalUrl(url)) {
++            a.href = url.href;
++            a.target = '_blank';
++            a.setAttribute('rel', 'noopener noreferrer external');
++            return;
++          }
++          // Unknown host or dangerous scheme (javascript:, data:, ...): neutralise.
++          a.removeAttribute('href');
++          a.classList.add('link-blocked');
++          a.setAttribute('aria-disabled', 'true');
++          a.title = 'Link blocked: untrusted destination';
++        });
++      }
++
++      // ---- UI helpers ----------------------------------------------------
++      var statusEl = document.getElementById('order-status');
++      var pointsEl = document.getElementById('widget-points');
++
++      function showStatus(text) {
++        statusEl.textContent = text; // textContent only: never inject HTML
++        statusEl.classList.add('visible');
++      }
++
++      var ORDER_STATES = {
++        received: 'Order received — we are on it!',
++        brewing: 'Your order is brewing…',
++        ready: 'Your order is ready for pickup!',
++        cancelled: 'Your order was cancelled.'
++      };
++
++      // ---- Trusted ordering window ---------------------------------------
++      var orderWindow = null;
++
++      document.getElementById('order-now').addEventListener('click', function (e) {
++        e.preventDefault();
++        orderWindow = window.open(TRUSTED_ORDER_ORIGIN + '/', 'dailygrind-order', 'width=480,height=720');
++        if (!orderWindow) safeRedirect(this.getAttribute('href'));
++      });
++
++      function handleOrderMessage(data) {
++        switch (data.type) {
++          case 'order-status':
++            if (Object.prototype.hasOwnProperty.call(ORDER_STATES, data.status)) {
++              var label = ORDER_STATES[data.status];
++              if (typeof data.orderId === 'string' && /^[A-Za-z0-9-]{1,32}$/.test(data.orderId)) {
++                label += ' (Order #' + data.orderId + ')';
++              }
++              showStatus(label);
++            }
++            break;
++          case 'redirect':
++            safeRedirect(data.url);
++            break;
++        }
++      }
++
++      // ---- Sandboxed rewards widget (opaque "null" origin) ----------------
++      var widgetFrame = document.getElementById('rewards-widget');
++      var pinnedWidgetSource = null;
++
++      function handleWidgetMessage(event) {
++        var data = event.data;
++        if (pinnedWidgetSource === null) {
++          // Pin only on the init handshake, and only if it really comes from
++          // our own iframe's browsing context.
++          if (data.type !== 'widget-init') return false;
++          if (!widgetFrame || event.source !== widgetFrame.contentWindow) return false;
++          pinnedWidgetSource = event.source;
++          pointsEl.textContent = '0 / 10 stamps';
++          return true;
++        }
++        // After pinning: accept only the exact same window object.
++        if (event.source !== pinnedWidgetSource) return false;
++        switch (data.type) {
++          case 'widget-init':
++            pointsEl.textContent = '0 / 10 stamps';
++            break;
++          case 'widget-points':
++            var stamps = Number(data.stamps), goal = Number(data.goal);
++            if (Number.isInteger(stamps) && Number.isInteger(goal) && goal > 0 && stamps >= 0 && stamps <= goal) {
++              pointsEl.textContent = stamps + ' / ' + goal + ' stamps' + (stamps === goal ? ' — free drink unlocked!' : '');
++            }
++            break;
++          case 'widget-redeem':
++            pointsEl.textContent = 'Enjoy your free drink! ☕';
++            break;
++        }
++        return true;
++      }
++
++      // ---- Single message dispatcher -------------------------------------
++      window.addEventListener('message', function (event) {
++        var data = event.data;
++        if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
++
++        // Exact origin comparison — no indexOf/startsWith/endsWith on origins.
++        if (event.origin === TRUSTED_ORDER_ORIGIN) {
++          handleOrderMessage(data);
++          return;
++        }
++
++        // Sandboxed iframes without allow-same-origin report origin "null".
++        // Origin alone cannot distinguish them, so identity is pinned by source.
++        if (event.origin === 'null') {
++          if (!handleWidgetMessage(event)) {
++            console.warn('[DailyGrind] Rejected message from unrecognised sandboxed frame.');
++          }
++          return;
++        }
++
++        console.warn('[DailyGrind] Rejected message from untrusted origin:', event.origin);
++      });
++
++      // ---- Same-site ?next= redirect support ------------------------------
++      var next = new URLSearchParams(window.location.search).get('next');
++      if (next !== null) safeRedirect(next);
++
++      hardenLinks();
++
++      // Expose validators for other scripts / tests.
++      window.DailyGrindSecurity = Object.freeze({
++        validateRedirect: validateRedirect,
++        isSameSiteUrl: function (raw) { return isSameSiteUrl(parseUrl(raw)); },
++        isAllowedExternalUrl: function (raw) { return isAllowedExternalUrl(parseUrl(raw)); }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

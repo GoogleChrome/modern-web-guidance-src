@@ -1,0 +1,345 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,143 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Navigation stack: each screen fills the viewport and scrolls on its own */
++    html,
++    body {
++      height: 100%;
++      overflow: hidden;
++    }
++
++    .screen {
++      position: fixed;
++      inset: 0;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      background: var(--light);
++    }
++
++    .screen[hidden] {
++      display: none;
++    }
++
++    nav {
++      position: sticky;
++    }
++
++    .card h3,
++    .detail-body h1 {
++      width: fit-content;
++    }
++
++    .card h3 {
++      margin-inline: auto;
++    }
++
++    .card.selected h3,
++    .detail-body h1 {
++      view-transition-name: item-title;
++    }
++
++    /* Detail screen */
++    .detail-bar {
++      position: sticky;
++      top: 0;
++      z-index: 10;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 0.75rem 5%;
++      background: var(--primary);
++      color: white;
++    }
++
++    .back-btn {
++      font: inherit;
++      color: white;
++      background: transparent;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      padding: 5px 12px;
++      cursor: pointer;
++    }
++
++    .back-btn:hover,
++    .back-btn:focus-visible {
++      color: var(--accent);
++    }
++
++    .detail-hero {
++      height: 45vh;
++      background-color: var(--secondary);
++      background-size: cover;
++      background-position: center;
++    }
++
++    .detail-body {
++      max-width: 720px;
++      margin: 0 auto;
++      padding: 30px 20px 60px;
++    }
++
++    .detail-body h1 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .detail-body h1:focus {
++      outline: none;
++    }
++
++    .detail-meta {
++      list-style: none;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin: 1rem 0;
++    }
++
++    .detail-meta li {
++      background: var(--secondary);
++      border-radius: 999px;
++      padding: 2px 12px;
++      font-size: 0.85rem;
++    }
++
++    /* Directional drill-down transitions */
++    @keyframes slide-to-left { to { transform: translateX(-30%); opacity: 0.6; } }
++    @keyframes slide-from-right { from { transform: translateX(100%); } }
++    @keyframes slide-to-right { to { transform: translateX(100%); } }
++    @keyframes slide-from-left { from { transform: translateX(-30%); opacity: 0.6; } }
++
++    ::view-transition-group(root) {
++      animation-duration: 0.35s;
++      animation-timing-function: ease-in-out;
++      animation-fill-mode: both;
++    }
++
++    html:active-view-transition-type(forward)::view-transition-old(root) { animation-name: slide-to-left; }
++    html:active-view-transition-type(forward)::view-transition-new(root) { animation-name: slide-from-right; }
++    html:active-view-transition-type(backward)::view-transition-old(root) { animation-name: slide-to-right; }
++    html:active-view-transition-type(backward)::view-transition-new(root) { animation-name: slide-from-left; }
++    html:active-view-transition-type(backward)::view-transition-old(root) { z-index: 1; }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <section id="home" class="screen" aria-label="Home">
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -175,24 +305,24 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 tabindex="-1" style="text-align: center; outline: none;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-slug="seasonal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu/seasonal" class="btn" data-route>View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-slug="espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu/espresso" class="btn" data-route>View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-slug="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu/cold-brew" class="btn" data-route>View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -205,8 +335,165 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </section>
+ 
++  <section id="detail" class="screen" aria-label="Item details" hidden>
++    <div class="detail-bar">
++      <button type="button" class="back-btn" id="back">&larr; Back</button>
++      <span class="logo">THE DAILY GRIND</span>
++    </div>
++    <div class="detail-hero" id="detail-hero" role="img" aria-label=""></div>
++    <article class="detail-body">
++      <h1 id="detail-title" tabindex="-1"></h1>
++      <p id="detail-desc"></p>
++      <ul class="detail-meta" id="detail-meta"></ul>
++      <p id="detail-long"></p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </article>
++  </section>
++
++
++
++  <script>
++    const ITEMS = {
++      seasonal: {
++        title: 'Maple Oat Latte',
++        desc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        long: 'Two shots of our house espresso, steamed barista-style oat milk and a drizzle of small-batch Vermont maple syrup. Cozy, lightly sweet and dairy-free.',
++        meta: ['Hot or iced', 'Dairy-free', '12 / 16 oz'],
++        img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80'
++      },
++      espresso: {
++        title: 'Dark Roast Espresso',
++        desc: 'Bold, smokey, and perfect for a morning boost.',
++        long: 'Our darkest roast, pulled as a rich double shot with a thick crema and notes of cocoa and toasted oak. Enjoy it straight or as the base for any drink.',
++        meta: ['Single or double', 'Vegan', 'Dark roast'],
++        img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1350&q=80'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        desc: 'Steeped for 18 hours for maximum smoothness.',
++        long: 'Coarsely ground beans steeped in cold water for 18 hours, then filtered and served over ice. Low acidity, naturally sweet and extra smooth.',
++        meta: ['Served iced', 'Vegan', '16 / 24 oz'],
++        img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1350&q=80'
++      }
++    };
++
++    const home = document.getElementById('home');
++    const detail = document.getElementById('detail');
++    const titleEl = document.getElementById('detail-title');
++    let current = { depth: 0, slug: null };
++    let homeScroll = 0;
++
++    // Routes live in the hash so deep links work on any static host.
++    function parseRoute() {
++      const m = location.hash.match(/^#\/menu\/([\w-]+)$/);
++      return m && Object.hasOwn(ITEMS, m[1]) ? m[1] : null;
++    }
++
++    function show(slug) {
++      if (slug) {
++        const item = ITEMS[slug];
++        homeScroll = home.scrollTop;
++        home.hidden = true;
++        detail.hidden = false;
++        detail.scrollTop = 0;
++        titleEl.textContent = item.title;
++        document.title = item.title + ' | The Daily Grind';
++        document.getElementById('detail-desc').textContent = item.desc;
++        document.getElementById('detail-long').textContent = item.long;
++        const hero = document.getElementById('detail-hero');
++        hero.style.backgroundImage = `url('${item.img}')`;
++        hero.setAttribute('aria-label', item.title);
++        document.getElementById('detail-meta').replaceChildren(
++          ...item.meta.map(t => Object.assign(document.createElement('li'), { textContent: t }))
++        );
++      } else {
++        detail.hidden = true;
++        home.hidden = false;
++        home.scrollTop = homeScroll;
++        document.title = 'The Daily Grind | Artisanal Coffee';
++      }
++    }
++
++    // Renders the route matching the URL, animating in the direction of travel.
++    function render() {
++      const slug = parseRoute();
++      const next = { depth: slug ? 1 : 0, slug };
++      const prev = current;
++      if (slug === prev.slug) return;
++      current = next;
++
++      const update = () => show(slug);
++      const settle = () => {
++        (slug ? titleEl : home.querySelector('h2')).focus({ preventScroll: true });
++        document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
++      };
++
++      if (!document.startViewTransition) {
++        update();
++        settle();
++        return;
++      }
++
++      // Shared title morphs between the card and the detail heading.
++      const shared = slug || prev.slug;
++      document.querySelector(`.card[data-slug="${shared}"]`)?.classList.add('selected');
++      const transition = document.startViewTransition({
++        update,
++        types: [next.depth >= prev.depth ? 'forward' : 'backward']
++      });
++      transition.finished.finally(settle);
++    }
++
++    function go(hash) {
++      if (location.hash === hash) return;
++      history.pushState({ app: true }, '', hash);
++      render();
++    }
++
++    function back() {
++      if (history.state?.app) history.back();
++      else {
++        // Deep link entry: no in-app history to pop, so replace with home.
++        history.replaceState({ app: true }, '', location.pathname + location.search);
++        render();
++      }
++    }
++
++    document.addEventListener('click', e => {
++      const a = e.target.closest('a[data-route]');
++      if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      e.preventDefault();
++      go(a.getAttribute('href'));
++    });
++
++    document.getElementById('back').addEventListener('click', back);
++    addEventListener('popstate', render);
++    addEventListener('keydown', e => { if (e.key === 'Escape' && !detail.hidden) back(); });
++
++    // Edge swipe (left edge, rightwards) pops the detail screen.
++    let swipe = null;
++    detail.addEventListener('touchstart', e => {
++      const t = e.touches[0];
++      swipe = t.clientX < 32 ? { x: t.clientX, y: t.clientY } : null;
++    }, { passive: true });
++    detail.addEventListener('touchend', e => {
++      if (!swipe) return;
++      const t = e.changedTouches[0];
++      const dx = t.clientX - swipe.x, dy = Math.abs(t.clientY - swipe.y);
++      swipe = null;
++      if (dx > 70 && dy < dx / 2) back();
++    }, { passive: true });
++
++    // Initial render (deep link).
++    if (parseRoute()) {
++      history.replaceState({ app: false }, '');
++      show(parseRoute());
++      current = { depth: 1, slug: parseRoute() };
++    }
++  </script>
+ </body>
+ 
+ </html>

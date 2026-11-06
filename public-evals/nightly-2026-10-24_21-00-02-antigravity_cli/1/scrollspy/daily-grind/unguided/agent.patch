@@ -1,0 +1,359 @@
+diff --git a/index.html b/index.html
+index 66c9173..497b6d5 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,10 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -38,6 +42,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+     }
+ 
+     .logo {
+@@ -49,6 +54,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +65,23 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 6px 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    nav a.active,
++    nav a[aria-current="true"],
++    nav a[aria-current="location"] {
++      color: var(--accent);
++      font-weight: 600;
++      border-bottom-color: var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +116,29 @@
+       padding: 0 20px;
+     }
+ 
++    main section {
++      padding: 60px 0;
++      scroll-margin-top: 70px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    main section:last-child {
++      border-bottom: none;
++    }
++
++    main section h2 {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 30px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -109,7 +148,7 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -120,6 +159,26 @@
+       color: var(--primary);
+     }
+ 
++    .price {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++      font-size: 1.1rem;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 3px 10px;
++      border-radius: 12px;
++      margin-bottom: 10px;
++      text-transform: uppercase;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,10 +219,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" data-section="menu">Menu</a></li>
++      <li><a href="#locations" data-section="locations">Locations</a></li>
++      <li><a href="#rewards" data-section="rewards">Rewards</a></li>
++      <li><a href="#account" data-section="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,30 +230,106 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu">
++      <h2>Seasonal Favorites &amp; Menu</h2>
++      <p class="section-subtitle">Handcrafted beverages brewed fresh to order.</p>
+       <div class="grid">
+         <div class="card">
++          <span class="badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <span class="price">$5.50</span>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Signature</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <span class="price">$3.75</span>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Popular</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <span class="price">$4.75</span>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="locations">
++      <h2>Our Locations</h2>
++      <p class="section-subtitle">Visit one of our neighborhood cafes for a warm cup and cozy atmosphere.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>124 Main Street, Suite A<br>Open Daily: 6:00 AM &ndash; 7:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>450 Riverwalk Blvd<br>Open Daily: 6:30 AM &ndash; 6:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <h3>University Corner</h3>
++          <p>88 College Ave<br>Open Daily: 7:00 AM &ndash; 9:00 PM</p>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards">
++      <h2>Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn beans with every sip and unlock free drinks, pastries, and exclusive perks.</p>
++      <div class="grid">
++        <div class="card">
++          <span class="badge">50 Beans</span>
++          <h3>Free Espresso Shot</h3>
++          <p>Add an extra shot of our signature roast or flavored syrup to any drink.</p>
++          <a href="#rewards" class="btn">Redeem</a>
++        </div>
++        <div class="card">
++          <span class="badge">150 Beans</span>
++          <h3>Handcrafted Drink</h3>
++          <p>Enjoy any standard or seasonal handcrafted beverage on the house.</p>
++          <a href="#rewards" class="btn">Redeem</a>
++        </div>
++        <div class="card">
++          <span class="badge">300 Beans</span>
++          <h3>Take-Home Whole Bean Bag</h3>
++          <p>Bring the cafe home with a 12oz bag of our freshly roasted coffee beans.</p>
++          <a href="#rewards" class="btn">Redeem</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account">
++      <h2>My Account</h2>
++      <p class="section-subtitle">Manage your membership, saved orders, and coffee subscription settings.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Member Status</h3>
++          <p>Gold Roaster Tier &bull; 215 Beans Available</p>
++          <a href="#account" class="btn">View History</a>
++        </div>
++        <div class="card">
++          <h3>Usual Order</h3>
++          <p>Medium Maple Oat Latte (Extra Hot) &bull; Downtown Roastery</p>
++          <a href="#account" class="btn">Quick Reorder</a>
++        </div>
++        <div class="card">
++          <h3>Bean Subscription</h3>
++          <p>House Blend Whole Bean &bull; Delivered Every 2 Weeks</p>
++          <a href="#account" class="btn">Manage Plan</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +342,111 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      const navLinks = Array.from(document.querySelectorAll('nav ul a:not(.logout-link)'));
++      const sections = navLinks
++        .map((link) => {
++          const href = link.getAttribute('href') || '';
++          const id = link.dataset.section || (href.startsWith('#') ? href.slice(1) : href.replace(/^\//, ''));
++          return id ? document.getElementById(id) : null;
++        })
++        .filter(Boolean);
++
++      function setActiveSection(activeId) {
++        navLinks.forEach((link) => {
++          const href = link.getAttribute('href') || '';
++          const id = link.dataset.section || (href.startsWith('#') ? href.slice(1) : href.replace(/^\//, ''));
++          const isActive = Boolean(activeId && id === activeId);
++          link.classList.toggle('active', isActive);
++          if (isActive) {
++            link.setAttribute('aria-current', 'location');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function updateActiveSectionOnScroll() {
++        if (!sections.length) return;
++
++        const navHeight = nav ? nav.offsetHeight : 0;
++        const viewportHeight = window.innerHeight;
++        const scrollBottom = window.scrollY + viewportHeight;
++        const docHeight = document.documentElement.scrollHeight;
++
++        // If scrolled to the very bottom of the page, highlight the last section if visible
++        if (docHeight - scrollBottom <= 10) {
++          const lastSection = sections[sections.length - 1];
++          const rect = lastSection.getBoundingClientRect();
++          if (rect.top < viewportHeight && rect.bottom > navHeight) {
++            setActiveSection(lastSection.id);
++            return;
++          }
++        }
++
++        // Determine the section occupying the largest visible portion or crossing the trigger line
++        const triggerLine = navHeight + Math.min(160, (viewportHeight - navHeight) * 0.35);
++        let currentSectionId = null;
++
++        for (const section of sections) {
++          const rect = section.getBoundingClientRect();
++          if (rect.top <= triggerLine && rect.bottom > navHeight + 20) {
++            currentSectionId = section.id;
++          }
++        }
++
++        // Fallback: if no section crossed the trigger line yet, pick the section with the most visible height
++        if (!currentSectionId) {
++          let maxVisibleHeight = 0;
++          for (const section of sections) {
++            const rect = section.getBoundingClientRect();
++            const visibleTop = Math.max(rect.top, navHeight);
++            const visibleBottom = Math.min(rect.bottom, viewportHeight);
++            const visibleHeight = Math.max(0, visibleBottom - visibleTop);
++            if (visibleHeight > maxVisibleHeight && visibleHeight > 60) {
++              maxVisibleHeight = visibleHeight;
++              currentSectionId = section.id;
++            }
++          }
++        }
++
++        setActiveSection(currentSectionId);
++      }
++
++      if ('IntersectionObserver' in window && sections.length > 0) {
++        const observer = new IntersectionObserver(
++          () => {
++            updateActiveSectionOnScroll();
++          },
++          {
++            root: null,
++            rootMargin: '-10% 0px -25% 0px',
++            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1]
++          }
++        );
++
++        sections.forEach((section) => observer.observe(section));
++      }
++
++      navLinks.forEach((link) => {
++        link.addEventListener('click', () => {
++          const href = link.getAttribute('href') || '';
++          const id = link.dataset.section || (href.startsWith('#') ? href.slice(1) : href.replace(/^\//, ''));
++          if (id) {
++            setActiveSection(id);
++          }
++        });
++      });
++
++      window.addEventListener('scroll', updateActiveSectionOnScroll, { passive: true });
++      window.addEventListener('resize', updateActiveSectionOnScroll);
++      window.addEventListener('hashchange', updateActiveSectionOnScroll);
++      window.addEventListener('DOMContentLoaded', updateActiveSectionOnScroll);
++      updateActiveSectionOnScroll();
++    })();
++  </script>
+ </body>
+ 
+ </html>

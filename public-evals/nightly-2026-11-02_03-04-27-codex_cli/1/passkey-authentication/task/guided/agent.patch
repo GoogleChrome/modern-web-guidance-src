@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,51 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signin {
++      max-width: 420px;
++      margin: 40px auto;
++      text-align: left;
++    }
++
++    .signin label,
++    .signin input {
++      display: block;
++      width: 100%;
++    }
++
++    .signin label {
++      margin-top: 16px;
++    }
++
++    .signin input {
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button:disabled {
++      opacity: 0.6;
++      cursor: default;
++    }
++
++    .signin :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #auth-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +217,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in to your account</h2>
++      <form id="signin-form">
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn"
++          autocapitalize="none" spellcheck="false" data-testid="username-field">
++        <button class="btn" type="submit" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p id="auth-status" data-testid="auth-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +259,141 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import './assets/passkey-polyfills.js';
++
++    const form = document.querySelector('#signin-form');
++    const button = document.querySelector('[data-testid="auth-button"]');
++    const status = document.querySelector('[data-testid="auth-status"]');
++    let activeController;
++    let activeRequest;
++    let explicitPending = false;
++    let authenticated = false;
++
++    const supported = window.isSecureContext &&
++      typeof PublicKeyCredential !== 'undefined' && navigator.credentials?.get;
++
++    async function authenticate(mediation, controller) {
++      const { signal } = controller;
++      const conditional = mediation === 'conditional';
++
++      try {
++        // The server must generate and retain a fresh challenge in this session.
++        // It must also persist the requested verification policy for verification.
++        const optionsResponse = await fetch('/api/login/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          cache: 'no-store',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ userVerification: conditional ? 'preferred' : 'required' }),
++          signal,
++        });
++        if (!optionsResponse.ok) throw new Error('Could not start passkey sign-in. Please try again.');
++
++        const options = await optionsResponse.json();
++        if (signal.aborted) return;
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON({
++          ...options,
++          // Discoverable passkeys let the user choose an account without typing.
++          allowCredentials: [],
++          userVerification: conditional ? (options.userVerification ?? 'preferred') : 'required',
++        });
++        const credential = await navigator.credentials.get({ publicKey, mediation, signal });
++        if (!credential || signal.aborted) return;
++
++        button.disabled = true;
++        status.textContent = 'Verifying your passkey…';
++        const encoded = credential.toJSON();
++        const verification = await fetch('/api/login/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encoded),
++          signal,
++        });
++        if (signal.aborted) return;
++        if (!verification.ok) {
++          if (verification.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            // Synchronization is optional and must not hide the sign-in error.
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: publicKey.rpId ?? window.location.hostname,
++                credentialId: encoded.id,
++              });
++            } catch { /* The password manager may not support synchronization. */ }
++          }
++          throw new Error('Passkey verification failed. Please try again.');
++        }
++        // The server must only return 2xx after validating the assertion and
++        // establishing the authenticated session, including its secure cookie.
++        authenticated = true;
++        status.textContent = 'Signed in successfully.';
++      } catch (error) {
++        if (signal.aborted || error.name === 'AbortError') return;
++        if (error.name === 'NotAllowedError') {
++          if (!conditional) status.textContent = 'Sign-in was cancelled or timed out. Please try again.';
++        } else {
++          status.textContent = error instanceof TypeError
++            ? 'Could not connect to sign in. Please try again.'
++            : error.message || 'Could not sign in with your passkey. Please try again.';
++        }
++      } finally {
++        if (!authenticated && !explicitPending) button.disabled = false;
++      }
++    }
++
++    function startRequest(mediation) {
++      const controller = new AbortController();
++      activeController = controller;
++      const request = authenticate(mediation, controller);
++      activeRequest = request;
++      return request.finally(() => {
++        if (activeController === controller) {
++          activeController = undefined;
++          activeRequest = undefined;
++        }
++      });
++    }
++
++    async function initializeAutofill() {
++      if (!supported || authenticated || explicitPending || activeRequest) return;
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalGet && !authenticated && !explicitPending && !activeRequest) {
++          // Register silently on load so focusing the username offers passkeys.
++          await startRequest('conditional');
++        }
++      } catch {
++        // The explicit button remains available without conditional UI support.
++      }
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (!supported || authenticated || explicitPending || button.disabled) return;
++      explicitPending = true;
++      button.disabled = true;
++      status.textContent = 'Use your device to confirm your passkey.';
++      // Finish cancelling autofill before starting the modal authentication UI.
++      activeController?.abort();
++      await activeRequest;
++      try {
++        await startRequest('required');
++      } finally {
++        explicitPending = false;
++        button.disabled = authenticated;
++        if (!authenticated) void initializeAutofill();
++      }
++    });
++
++    if (supported) {
++      void initializeAutofill();
++    } else {
++      button.disabled = true;
++      status.textContent = 'Passkey sign-in requires a supported browser and HTTPS (or localhost).';
++    }
++  </script>
+ </body>
+ 
+ </html>

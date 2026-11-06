@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..f575bd4 100644
+--- a/index.html
++++ b/index.html
+@@ -108,16 +108,32 @@
+     }
+ 
+     .card {
++      container-type: inline-size;
++      container-name: card;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      flex: 1 1 100%;
++      width: 100%;
++      margin-bottom: 6px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 4.5cqi, 1.6rem);
++    }
++
++    .card p {
++      flex: 1 1 100%;
++      width: 100%;
++      font-size: clamp(0.875rem, 3.2cqi, 1.1rem);
+     }
+ 
+     .btn {
+@@ -135,6 +151,52 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      flex: 0 0 auto;
++      padding: clamp(8px, 2.5cqi, 12px) clamp(16px, 4.5cqi, 24px);
++      font-size: clamp(0.85rem, 3cqi, 1rem);
++    }
++
++    @container (max-width: 280px) {
++      .card h3 {
++        font-size: 1.05rem;
++        margin-bottom: 4px;
++      }
++
++      .card p {
++        font-size: 0.85rem;
++      }
++
++      .card .btn {
++        flex: 1 1 100%;
++        width: 100%;
++        margin-top: 8px;
++        padding: 8px 12px;
++      }
++    }
++
++    @container (min-width: 420px) {
++      .card h3 {
++        text-align: left;
++        font-size: 1.4rem;
++        margin-bottom: 4px;
++      }
++
++      .card p {
++        flex: 1 1 55%;
++        width: auto;
++        text-align: left;
++        font-size: 1.05rem;
++      }
++
++      .card .btn {
++        flex: 0 0 auto;
++        margin-top: 0;
++        margin-left: auto;
++        align-self: center;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;

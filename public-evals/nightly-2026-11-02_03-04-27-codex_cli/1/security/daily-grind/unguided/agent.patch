@@ -1,0 +1,302 @@
+diff --git a/SECURITY.md b/SECURITY.md
+new file mode 100644
+index 0000000..9aa96ea
+--- /dev/null
++++ b/SECURITY.md
+@@ -0,0 +1,30 @@
++# Daily Grind security audit and deployment
++
++## Findings and changes
++
++- The HTML has no client scripts, event handlers, DOM injection sinks, forms, third-party scripts, or external links opening new windows. No client JavaScript dependency is necessary. Scripts are blocked entirely, including inline handlers and evaluated code.
++- The single inline `style` attribute was moved into the stylesheet without changing its appearance. The stylesheet is allowed by an exact SHA-256 CSP hash computed from the same HTML snapshot served to visitors. Arbitrary style attributes and additional stylesheets are blocked. Restart the service after updating HTML so the document and policy change together.
++- The existing HTTPS Unsplash background is the only external resource. CSP permits images from `https://images.unsplash.com`; other fetches are denied by default. The referrer policy prevents sending page URLs to that image service.
++- Previously responses had no security headers. All application responses now carry CSP, MIME sniffing protection, framing protection, referrer and permissions restrictions, opener isolation, and same-origin resource protection. HTML and policies use `no-store` to avoid stale rollout responses.
++- CSP prohibits plugins, base URL overrides, forms, frames embedding this site, and network connections from scripts. Trusted Types enforcement blocks string-based DOM injection sinks in supporting browsers; no Trusted Types policies can be created. Other browsers retain the rest of CSP.
++- Routing no longer parses the untrusted Host header. Malformed URLs receive a protected 400 response. Unsupported methods receive 405, and HEAD responses omit bodies.
++
++The `/logout` response is an existing placeholder: there are no sessions, cookies, authentication, or logout state changes in this application. If authentication is added, implement logout using POST with CSRF protection, update its markup, and narrowly revise `form-action`. Existing page routes continue to serve the landing page.
++
++## Safe policy deployment
++
++The default is **enforcement** (`CSP_MODE=enforce`). An unrecognized mode stops startup rather than silently weakening protection.
++
++For a staged deployment, set `CSP_MODE=report-only` in the deployment environment. This sends the same policy through `Content-Security-Policy-Report-Only`; it diagnoses CSP violations without blocking resources or DOM operations. The other protective headers remain active. This mode does **not** provide CSP enforcement. There is no reporting collector or report endpoint configured: diagnostics are browser-local, and no violation data is transmitted to an external service. Centralized telemetry requires a separately configured, reviewed collector and reporting directives.
++
++After reviewing deployment diagnostics, remove the override or set `CSP_MODE=enforce` and redeploy. If a future resource breaks, temporarily use report-only mode and adjust the narrow source list or hash generation as needed. Do not add `unsafe-inline`, `unsafe-eval`, wildcard sources, or broad script access. Static validation below confirms compatibility for the current page; it does not claim browser or production validation.
++
++Terminate HTTPS and redirect HTTP at the hosting edge. Set `ENABLE_HSTS=1` only when this deployment is exclusively exposed over HTTPS (including behind a trusted TLS terminator). This opts into one year of HSTS for this host, without subdomain or preload commitments. HSTS is absent by default to preserve local HTTP access. The application intentionally does not infer HTTPS from client-controlled forwarding headers. Configure the edge to emit HSTS only on HTTPS responses.
++
++Keep these response headers intact at the proxy/CDN, including on edge-generated errors. Serving `index.html` through unrelated static hosting bypasses this application’s header logic; configure equivalent headers on that host. Do not inject scripts or alter stylesheet bytes at the edge without updating the policy.
++
++## Validation
++
++Run `npm test` and `npm run build`. Tests import only the pure policy module and request handler and use simulated requests/responses; they do not listen on ports or import `server.js`. They verify policy restrictions, exact stylesheet hash, markup compatibility, staging configuration, HTTPS opt-in, and headers across response paths. The build performs syntax checks only. No browser verification, dev server, preview server, or server entrypoint execution is required.
++
++References: [MDN CSP guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP), [style attribute restrictions](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/style-src-attr), [HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security).
+diff --git a/handler.js b/handler.js
+new file mode 100644
+index 0000000..3245ce7
+--- /dev/null
++++ b/handler.js
+@@ -0,0 +1,39 @@
++const { createSecurityHeaders } = require('./security');
++
++// Separated from the listening entrypoint so tests never open a socket.
++function createHandler(html, options) {
++  const securityHeaders = createSecurityHeaders(html, options);
++  return (req, res) => {
++    const send = (status, body, headers = {}) => {
++      res.writeHead(status, {
++        ...securityHeaders,
++        'Content-Type': 'text/plain; charset=utf-8',
++        ...headers,
++      });
++      res.end(req.method === 'HEAD' ? undefined : body);
++    };
++
++    let pathname;
++    try {
++      // Request Host is untrusted and is unnecessary for routing.
++      pathname = new URL(req.url, 'http://localhost').pathname;
++    } catch {
++      send(400, 'Bad request');
++      return;
++    }
++
++    if (!['GET', 'HEAD'].includes(req.method)) {
++      send(405, 'Method not allowed', { Allow: 'GET, HEAD' });
++      return;
++    }
++
++    if (pathname === '/logout' || pathname === '/logout/') {
++      send(200, 'Logged out');
++      return;
++    }
++
++    send(200, html, { 'Content-Type': 'text/html; charset=utf-8' });
++  };
++}
++
++module.exports = { createHandler };
+diff --git a/index.html b/index.html
+index 66c9173..a4a65fd 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index cffdc93..8a39250 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,8 @@
+   "version": "1.0.0",
+   "scripts": {
+     "start": "node server.js",
+-    "build": "node --check server.js"
++    "build": "node --check server.js && node --check handler.js && node --check security.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/security.js b/security.js
+new file mode 100644
+index 0000000..000f8d1
+--- /dev/null
++++ b/security.js
+@@ -0,0 +1,43 @@
++const { createHash } = require('node:crypto');
++
++function createSecurityHeaders(html, { cspMode = 'enforce', hsts = false } = {}) {
++  if (!['enforce', 'report-only'].includes(cspMode)) {
++    throw new Error('CSP_MODE must be enforce or report-only');
++  }
++
++  // Hash the exact bytes served, including whitespace. No unsafe-inline fallback.
++  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)];
++  const hashes = styles.map(([, css]) =>
++    `'sha256-${createHash('sha256').update(css).digest('base64')}'`);
++  const policy = [
++    "default-src 'none'",
++    "script-src 'none'",
++    `style-src ${hashes.length ? hashes.join(' ') : "'none'"}`,
++    "style-src-attr 'none'",
++    'img-src https://images.unsplash.com',
++    "connect-src 'none'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "form-action 'none'",
++    "frame-ancestors 'none'",
++    "require-trusted-types-for 'script'",
++    "trusted-types 'none'",
++  ].join('; ');
++
++  const headers = {
++    [cspMode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only']: policy,
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'no-referrer',
++    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    // Avoid serving stale policy/document pairs during rollout or rollback.
++    'Cache-Control': 'no-store',
++  };
++  // Enable only behind an HTTPS-only deployment; never trust forwarded headers.
++  if (hsts) headers['Strict-Transport-Security'] = 'max-age=31536000';
++  return headers;
++}
++
++module.exports = { createSecurityHeaders };
+diff --git a/security.test.js b/security.test.js
+new file mode 100644
+index 0000000..ad5d24d
+--- /dev/null
++++ b/security.test.js
+@@ -0,0 +1,84 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { createHash } = require('node:crypto');
++const { createSecurityHeaders } = require('./security');
++const { createHandler } = require('./handler');
++
++const html = readFileSync(`${__dirname}/index.html`, 'utf8');
++
++function request(handler, url = '/', method = 'GET') {
++  const response = {};
++  handler({ url, method, headers: { host: '[invalid-host' } }, {
++    writeHead(status, headers) { Object.assign(response, { status, headers }); },
++    end(body) { response.body = body; },
++  });
++  return response;
++}
++
++test('enforced policy blocks injection and permits only the actual stylesheet and image host', () => {
++  const headers = createSecurityHeaders(html);
++  const policy = headers['Content-Security-Policy'];
++  const directives = new Map(policy.split('; ').map(value => {
++    const [name, ...sources] = value.split(' ');
++    return [name, sources.join(' ')];
++  }));
++  for (const name of ['default-src', 'script-src', 'style-src-attr', 'connect-src',
++    'object-src', 'base-uri', 'form-action', 'frame-ancestors', 'trusted-types']) {
++    assert.equal(directives.get(name), "'none'", name);
++  }
++  assert.equal(directives.get('require-trusted-types-for'), "'script'");
++  assert.equal(directives.get('img-src'), 'https://images.unsplash.com');
++  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)];
++  assert.equal(styles.length, 1);
++  const hash = createHash('sha256').update(styles[0][1]).digest('base64');
++  assert.equal(directives.get('style-src'), `'sha256-${hash}'`);
++  assert.doesNotMatch(policy, /unsafe-inline|unsafe-eval|\*/);
++  assert.equal(headers['Content-Security-Policy-Report-Only'], undefined);
++  assert.notEqual(createSecurityHeaders(html.replace('--primary:', '--updated:'))['Content-Security-Policy'], policy);
++});
++
++test('markup stays compatible with the restrictive policy', () => {
++  assert.doesNotMatch(html, /<script\b|\son\w+\s*=|\sstyle\s*=|javascript\s*:|<base\b|<iframe\b|<object\b|<form\b/i);
++  const remoteUrls = [...html.matchAll(/https?:\/\/[^\s'"<>]+/g)];
++  assert.ok(remoteUrls.length > 0);
++  for (const [url] of remoteUrls) assert.equal(new URL(url).origin, 'https://images.unsplash.com');
++});
++
++test('report-only rollout is explicit and invalid modes fail closed', () => {
++  const headers = createSecurityHeaders(html, { cspMode: 'report-only' });
++  assert.equal(headers['Content-Security-Policy'], undefined);
++  assert.equal(headers['Content-Security-Policy-Report-Only'], createSecurityHeaders(html)['Content-Security-Policy']);
++  assert.equal(headers['X-Frame-Options'], 'DENY');
++  assert.throws(() => createSecurityHeaders(html, { cspMode: 'disabled' }), /CSP_MODE/);
++});
++
++test('HSTS requires explicit HTTPS deployment configuration', () => {
++  assert.equal(createSecurityHeaders(html)['Strict-Transport-Security'], undefined);
++  assert.equal(createSecurityHeaders(html, { hsts: true })['Strict-Transport-Security'], 'max-age=31536000');
++});
++
++test('security headers cover pages, logout, HEAD, bad URLs and unsupported methods', () => {
++  const handler = createHandler(html);
++  for (const [url, method, status] of [
++    ['/', 'GET', 200], ['/menu', 'GET', 200], ['/logout', 'GET', 200],
++    ['/logout/', 'GET', 200], ['/', 'HEAD', 200],
++    ['http://[invalid', 'GET', 400], ['/', 'POST', 405],
++  ]) {
++    const response = request(handler, url, method);
++    assert.equal(response.status, status);
++    for (const [name, value] of Object.entries(createSecurityHeaders(html))) {
++      assert.equal(response.headers[name], value, `${method} ${url}: ${name}`);
++    }
++    assert.equal(response.headers['X-Content-Type-Options'], 'nosniff');
++    assert.equal(response.headers['Referrer-Policy'], 'no-referrer');
++    assert.equal(response.headers['Cross-Origin-Opener-Policy'], 'same-origin');
++    assert.equal(response.headers['Cross-Origin-Resource-Policy'], 'same-origin');
++    assert.match(response.headers['Permissions-Policy'], /camera=\(\), microphone=\(\)/);
++    if (method === 'HEAD') assert.equal(response.body, undefined);
++    if (status === 405) assert.equal(response.headers.Allow, 'GET, HEAD');
++  }
++  assert.equal(request(handler).body, html);
++  assert.equal(request(handler).headers['Content-Type'], 'text/html; charset=utf-8');
++  assert.equal(request(handler, '/logout').body, 'Logged out');
++});
+diff --git a/server.js b/server.js
+index 52c2fd5..c921753 100644
+--- a/server.js
++++ b/server.js
+@@ -1,31 +1,18 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const { createHandler } = require('./handler');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
+-
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
+-    return;
+-  }
+-
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
+-    }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
+-  });
+-});
++// Load one snapshot so the CSP hash always matches the document it protects.
++// Invalid configuration or unreadable HTML fails startup before accepting traffic.
++const html = fs.readFileSync(path.join(WORK_DIR, 'index.html'), 'utf8');
++const server = http.createServer(createHandler(html, {
++  cspMode: process.env.CSP_MODE || 'enforce',
++  hsts: process.env.ENABLE_HSTS === '1',
++}));
+ 
+ server.listen(PORT, () => {
+   console.log(`Server running on port ${PORT}`);

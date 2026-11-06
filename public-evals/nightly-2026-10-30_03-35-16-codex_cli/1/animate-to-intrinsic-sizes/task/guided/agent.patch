@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,8 +6,9 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -151,13 +152,113 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep padding inside the animated containers so they can reach zero. */
++    #promo-alert {
++      position: static;
++      display: none;
++      inline-size: 100%;
++      max-inline-size: none;
++      max-block-size: none;
++      block-size: 0;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++      background: var(--accent);
++      color: var(--text);
++      opacity: 0;
++      transition: block-size 400ms ease, opacity 400ms ease,
++        display 400ms allow-discrete;
++    }
++
++    #promo-alert[open] {
++      display: block;
++      block-size: auto;
++      opacity: 1;
++    }
++
++    .promo-inner {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      padding: 0.75rem 5%;
++    }
++
++    #alert-dismiss {
++      flex-shrink: 0;
++      min-inline-size: 44px;
++      min-block-size: 44px;
++      border: 1px solid currentColor;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    .faq {
++      margin-top: 3rem;
++    }
++
++    .faq details {
++      margin-top: 1rem;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #faq-trigger {
++      padding: 1rem 1.25rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    #faq-content {
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    /* Native details manages expanded state and hides collapsed content
++       from keyboard navigation and assistive technology. */
++    .faq details::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 400ms ease,
++        content-visibility 400ms allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq details::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- An in-flow, non-modal dialog can be dismissed by a native form. -->
++  <dialog id="promo-alert" open aria-label="Seasonal promotion">
++    <form method="dialog" class="promo-inner">
++      <p><strong>A little something seasonal.</strong> Discover your next favorite on our seasonal menu.</p>
++      <button id="alert-dismiss" type="submit" aria-label="Dismiss promotion">&times;</button>
++    </form>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +295,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details>
++        <summary id="faq-trigger" aria-controls="faq-content">Where can I find your seasonal drinks?</summary>
++        <div id="faq-content">
++          <p>Explore our seasonal menu to discover what’s brewing, from a creamy Maple Oat Latte to a smooth Cold Brew.</p>
++          <a href="/menu/seasonal" class="btn">Explore the seasonal menu</a>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

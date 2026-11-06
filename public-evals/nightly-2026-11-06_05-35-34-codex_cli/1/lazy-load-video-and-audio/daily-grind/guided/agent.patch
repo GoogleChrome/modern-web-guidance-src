@@ -1,0 +1,400 @@
+diff --git a/index.html b/index.html
+index 66c9173..4d79b99 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="media/hero-poster.jpg" fetchpriority="high">
++  <script type="module" src="media.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,18 +76,14 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: var(--primary);
++      display: grid;
++      grid-template-columns: 1fr 1.2fr;
++      gap: 40px;
+       align-items: center;
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 56px 5%;
+     }
+ 
+     .hero h1 {
+@@ -93,6 +91,77 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .eyebrow {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: #271c18;
++      border-radius: 8px;
++    }
++
++    figcaption, .media-note {
++      margin-top: 10px;
++      font-size: 0.85rem;
++    }
++
++    .media-section {
++      margin-top: 80px;
++      display: grid;
++      grid-template-columns: 1fr 1.25fr;
++      gap: 36px;
++      align-items: center;
++    }
++
++    .media-section h2, .podcast h2 {
++      font-size: 2rem;
++      line-height: 1.2;
++      margin-bottom: 16px;
++    }
++
++    .podcast {
++      margin-top: 64px;
++      padding: 36px;
++      border-radius: 8px;
++      background: #eee7e0;
++    }
++
++    audio {
++      display: block;
++      width: 100%;
++      margin-top: 24px;
++    }
++
++    details { margin-top: 20px; }
++    summary { cursor: pointer; padding: 6px 0; }
++    details p { margin-top: 12px; }
++    .media-link { color: inherit; }
++    .media-error { margin-top: 12px; color: #8a270d; }
++
++    @media (max-width: 700px) {
++      nav { position: static; flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero, .media-section { grid-template-columns: 1fr; gap: 24px; }
++      .hero { padding: 40px 20px; }
++      .hero h1 { font-size: 2.5rem; }
++      .media-section { margin-top: 56px; }
++      .podcast { padding: 24px; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +238,21 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <p class="eyebrow">A little craft in every cup</p>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure>
++      <!-- The visible hero is eager; only offscreen players are lazy. -->
++      <video controls playsinline width="1280" height="720" preload="metadata"
++        poster="media/hero-poster.jpg" aria-label="The coffee ritual" aria-describedby="hero-description">
++        <source src="media/hero-coffee.mp4" type="video/mp4">
++        Your browser does not support video. <a href="media/hero-coffee.mp4">Download the coffee video</a>.
++      </video>
++      <figcaption id="hero-description">The coffee ritual, up close. A silent look at coffee preparation.</figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +276,47 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section">
++      <div>
++        <p class="eyebrow">Behind the roast</p>
++        <h2 id="roasting-title">Good coffee takes its time.</h2>
++        <p>Follow the beans behind the scenes. Heat, movement, and a little patience bring out the character in every roast.</p>
++        <p class="media-note" id="roasting-description">Silent stock footage: a close-up of coffee beans moving through the roasting process.</p>
++      </div>
++      <figure>
++        <!-- Inert URLs prevent speculative poster and metadata requests, even
++             in browsers without native media lazy loading. -->
++        <video controls playsinline loading="lazy" width="960" height="540" preload="none"
++          data-lazy-media data-preload="metadata" data-poster="media/roasting-poster.jpg"
++          aria-labelledby="roasting-title" aria-describedby="roasting-description">
++          <source data-src="media/coffee-roasting.mp4" type="video/mp4">
++          Your browser does not support video. <a href="media/coffee-roasting.mp4">Download the roasting video</a>.
++        </video>
++        <figcaption>From bean to brew · <a class="media-link" href="media/coffee-roasting.mp4" download>Download the clip</a></figcaption>
++        <p class="media-error" role="status" hidden>We couldn’t load this video. Try the download link above.</p>
++      </figure>
++    </section>
++
++    <section class="podcast">
++      <p class="eyebrow">The Daily Grind podcast · Episode 01</p>
++      <h2 id="podcast-title">Find your morning ritual.</h2>
++      <p>A short coffee break for your ears: fresh beans, a better grind, and a slower start to the day.</p>
++      <figure>
++        <audio controls loading="lazy" preload="none" data-lazy-media data-preload="metadata"
++          aria-labelledby="podcast-title" aria-details="podcast-transcript">
++          <source data-src="media/morning-ritual.mp3" type="audio/mpeg">
++          Your browser does not support audio. <a href="media/morning-ritual.mp3">Download the episode</a>.
++        </audio>
++        <figcaption>A narrated coffee mini episode · <a class="media-link" href="media/morning-ritual.mp3" download>Download the audio</a></figcaption>
++        <p class="media-error" role="status" hidden>We couldn’t load this episode. Try the download link above.</p>
++      </figure>
++      <details id="podcast-transcript">
++        <summary>Read the episode transcript</summary>
++        <p>Welcome to The Daily Grind. Today, we are finding a little more joy in the morning coffee ritual. Start with whole beans, and grind only what you need just before brewing. The aroma is part of the experience. For a pour over, try a medium grind, and adjust from there. If your cup tastes bitter, a slightly coarser grind can help. If it tastes sour, try grinding a little finer. Change one thing at a time, and let your taste guide you. Store your beans in an airtight container, away from heat and direct sunlight. Above all, give yourself a moment to enjoy the cup you have made. Great coffee is a daily practice, and every morning is another chance to find your favorite. Thanks for taking a coffee break with The Daily Grind.</p>
++      </details>
++      <noscript><p>You can listen using the download link above, or read the full transcript.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..933c27d
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,58 @@
++// Keep URLs out of fetch-triggering attributes until the player is nearby.
++// preload="none" alone does not prevent a video poster from downloading.
++const players = [...document.querySelectorAll('[data-lazy-media]')];
++
++function loadMedia(player) {
++  if (!player.hasAttribute('data-lazy-media')) return;
++  player.removeAttribute('data-lazy-media');
++
++  if (player.dataset.poster) {
++    player.setAttribute('poster', player.dataset.poster);
++    delete player.dataset.poster;
++  }
++  player.preload = player.dataset.preload || 'metadata';
++  delete player.dataset.preload;
++
++  for (const source of player.querySelectorAll('source[data-src]')) {
++    source.src = source.dataset.src;
++    delete source.dataset.src;
++  }
++  player.load();
++}
++
++for (const player of document.querySelectorAll('video, audio')) {
++  player.addEventListener('error', () => {
++    const message = player.closest('figure').querySelector('.media-error');
++    if (message) message.hidden = false;
++  });
++}
++
++if ('IntersectionObserver' in window) {
++  const observer = new IntersectionObserver((entries) => {
++    for (const entry of entries) {
++      if (!entry.isIntersecting) continue;
++      loadMedia(entry.target);
++      observer.unobserve(entry.target);
++    }
++  }, { rootMargin: '200px 0px', threshold: 0 });
++  players.forEach((player) => observer.observe(player));
++} else {
++  // Preserve strict deferral in older browsers rather than loading everything.
++  const pending = new Set(players);
++  function loadNearbyMedia() {
++    for (const player of pending) {
++      const rect = player.getBoundingClientRect();
++      if (rect.top <= window.innerHeight + 200 && rect.bottom >= -200) {
++        loadMedia(player);
++        pending.delete(player);
++      }
++    }
++    if (!pending.size) {
++      window.removeEventListener('scroll', loadNearbyMedia);
++      window.removeEventListener('resize', loadNearbyMedia);
++    }
++  }
++  window.addEventListener('scroll', loadNearbyMedia, { passive: true });
++  window.addEventListener('resize', loadNearbyMedia);
++  loadNearbyMedia();
++}
+diff --git a/media/README.md b/media/README.md
+new file mode 100644
+index 0000000..bac0a95
+--- /dev/null
++++ b/media/README.md
+@@ -0,0 +1,13 @@
++Media sources
++=============
++
++- `hero-coffee.mp4`: [A Person Pouring Coffee on the Cup, Ketut Subiyanto / Pexels](https://www.pexels.com/video/a-person-pouring-coffee-on-the-cup-4392069/).
++- `coffee-roasting.mp4`: [Roasting Coffee Beans / Pexels](https://www.pexels.com/video/roasting-coffee-beans-7174275/).
++- Videos are resized, compressed, and stripped of audio. Posters are still frames from the corresponding stock videos. Footage is illustrative, not footage of The Daily Grind's facilities.
++- Stock footage is provided under the [Pexels license](https://www.pexels.com/license/).
++- `morning-ritual.mp3`: original mini episode, synthesized locally with FFmpeg's Flite `slt` voice. `morning-ritual.txt` is the verbatim transcript, also included in the homepage.
++
++Loading behavior
++================
++
++The hero poster is preloaded and its video requests metadata normally. Below-the-fold video and audio use `loading="lazy"` plus inert `data-poster` / `data-src` attributes and `preload="none"`. `media.js` restores URLs and metadata preloading once the player is within 200px of the viewport, then stops observing it. Using inert attributes from the initial HTML prevents the preload scanner from fetching posters before JavaScript runs, including in browsers without native media lazy loading. An older-browser fallback checks viewport distance on scroll and resize. No player autoplays. Download links and the transcript remain available without JavaScript.
+diff --git a/media/coffee-roasting.mp4 b/media/coffee-roasting.mp4
+new file mode 100644
+index 0000000..c2354ca
+Binary files /dev/null and b/media/coffee-roasting.mp4 differ
+diff --git a/media/hero-coffee.mp4 b/media/hero-coffee.mp4
+new file mode 100644
+index 0000000..c834bab
+Binary files /dev/null and b/media/hero-coffee.mp4 differ
+diff --git a/media/hero-poster.jpg b/media/hero-poster.jpg
+new file mode 100644
+index 0000000..a0f5e3e
+Binary files /dev/null and b/media/hero-poster.jpg differ
+diff --git a/media/morning-ritual.mp3 b/media/morning-ritual.mp3
+new file mode 100644
+index 0000000..3535d27
+Binary files /dev/null and b/media/morning-ritual.mp3 differ
+diff --git a/media/morning-ritual.txt b/media/morning-ritual.txt
+new file mode 100644
+index 0000000..225e1d0
+--- /dev/null
++++ b/media/morning-ritual.txt
+@@ -0,0 +1 @@
++Welcome to The Daily Grind. Today, we are finding a little more joy in the morning coffee ritual. Start with whole beans, and grind only what you need just before brewing. The aroma is part of the experience. For a pour over, try a medium grind, and adjust from there. If your cup tastes bitter, a slightly coarser grind can help. If it tastes sour, try grinding a little finer. Change one thing at a time, and let your taste guide you. Store your beans in an airtight container, away from heat and direct sunlight. Above all, give yourself a moment to enjoy the cup you have made. Great coffee is a daily practice, and every morning is another chance to find your favorite. Thanks for taking a coffee break with The Daily Grind.
+diff --git a/media/roasting-poster.jpg b/media/roasting-poster.jpg
+new file mode 100644
+index 0000000..e44792b
+Binary files /dev/null and b/media/roasting-poster.jpg differ
+diff --git a/tests/media.test.cjs b/tests/media.test.cjs
+new file mode 100644
+index 0000000..842c708
+--- /dev/null
++++ b/tests/media.test.cjs
+@@ -0,0 +1,95 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++const script = readFileSync(new URL('../media.js', `file://${__filename}`), 'utf8');
++
++function player(poster = false) {
++  const attributes = new Set(['data-lazy-media']);
++  const source = { dataset: { src: 'episode.mp4' } };
++  return {
++    dataset: { preload: 'metadata', ...(poster ? { poster: 'poster.jpg' } : {}) },
++    preload: 'none', source, loads: 0,
++    hasAttribute: (name) => attributes.has(name),
++    removeAttribute: (name) => attributes.delete(name),
++    setAttribute(name, value) { this[name] = value; },
++    querySelectorAll: () => [source],
++    addEventListener() {},
++    getBoundingClientRect() { return { top: this.top, bottom: this.top + 300 }; },
++    top: 2000,
++    load() { this.loads++; },
++  };
++}
++
++function run(players, observer) {
++  const listeners = new Map();
++  const window = {
++    innerHeight: 800,
++    addEventListener: (event, callback) => listeners.set(event, callback),
++    removeEventListener: (event) => listeners.delete(event),
++    ...(observer ? { IntersectionObserver: observer } : {}),
++  };
++  vm.runInNewContext(script, {
++    window, IntersectionObserver: observer,
++    document: { querySelectorAll: () => players },
++  });
++  return listeners;
++}
++
++test('offscreen media stays inert until intersection, then loads exactly once', () => {
++  const video = player(true);
++  const audio = player();
++  let notify;
++  const observed = new Set();
++  class Observer {
++    constructor(callback, options) {
++      notify = callback;
++      assert.equal(options.rootMargin, '200px 0px');
++    }
++    observe(element) { observed.add(element); }
++    unobserve(element) { observed.delete(element); }
++  }
++  run([video, audio], Observer);
++  notify([{ target: video, isIntersecting: false }]);
++  for (const item of [video, audio]) {
++    assert.equal(item.loads, 0);
++    assert.equal(item.source.src, undefined);
++    assert.equal(item.poster, undefined);
++    assert.equal(item.preload, 'none');
++  }
++  notify([{ target: video, isIntersecting: true }]);
++  assert.equal(video.poster, 'poster.jpg');
++  assert.equal(video.source.src, 'episode.mp4');
++  assert.equal(video.preload, 'metadata');
++  assert.equal(video.loads, 1);
++  assert.equal(audio.loads, 0);
++  assert.equal(observed.has(video), false);
++  notify([{ target: video, isIntersecting: true }, { target: audio, isIntersecting: true }]);
++  assert.equal(video.loads, 1);
++  assert.equal(audio.loads, 1);
++});
++
++test('fallback defers offscreen players and removes listeners after loading', () => {
++  const video = player(true);
++  const listeners = run([video]);
++  assert.equal(video.loads, 0);
++  video.top = 999;
++  listeners.get('scroll')();
++  assert.equal(video.loads, 1);
++  assert.equal(video.poster, 'poster.jpg');
++  assert.equal(listeners.size, 0);
++});
++
++test('initial HTML has no fetch-triggering URLs on lazy players', () => {
++  const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++  const lazy = [...html.matchAll(/<(video|audio)\b[^>]*data-lazy-media[^>]*>[\s\S]*?<\/\1>/g)];
++  assert.equal(lazy.length, 2);
++  for (const [markup] of lazy) {
++    assert.doesNotMatch(markup, /\s(?:src|poster)\s*=/);
++    assert.match(markup, /loading="lazy"/);
++    assert.match(markup, /preload="none"/);
++    assert.match(markup, /\scontrols\b/);
++    assert.match(markup, /data-src=/);
++  }
++  assert.match(lazy[0][0], /data-poster=/);
++});

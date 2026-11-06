@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast picker */
++    .roast-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.4rem;
++      margin: 0.5rem 0 1rem;
++    }
++
++    .roast-picker label {
++      font-size: 0.9rem;
++    }
++
++    select.roast-select,
++    select.roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    select.roast-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.5rem;
++      inline-size: 12rem;
++      padding: 0.6rem 0.9rem;
++      background: white;
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    select.roast-select::picker(select) {
++      inline-size: 24rem;
++      max-inline-size: calc(100vw - 2rem);
++      padding: 0.6rem;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++    }
++
++    select.roast-select:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 0.6rem;
++    }
++
++    select.roast-select option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.3rem;
++      padding: 0.8rem 0.4rem;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      background: var(--light);
++      cursor: pointer;
++    }
++
++    select.roast-select option:hover,
++    select.roast-select option:focus-visible {
++      background: var(--secondary);
++    }
++
++    select.roast-select option svg {
++      inline-size: 2.5rem;
++      block-size: 2.5rem;
++    }
++
++    select.roast-select .roast-name {
++      font-weight: 600;
++    }
++
++    select.roast-select .roast-desc {
++      font-size: 0.75rem;
++      opacity: 0.75;
++    }
++
++    select.roast-select option::checkmark {
++      display: none;
++    }
++
++    select.roast-select option:checked {
++      position: relative;
++      border-color: var(--primary);
++      background: oklab(from var(--accent) l a b / 20%);
++    }
++
++    select.roast-select option:checked .roast-name {
++      font-weight: 800;
++    }
++
++    select.roast-select option:checked::after {
++      content: "✓";
++      position: absolute;
++      inset-block-start: -0.4rem;
++      inset-inline-end: -0.4rem;
++      display: grid;
++      place-items: center;
++      inline-size: 1.4rem;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++    }
++
++    select.roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    select.roast-select selectedcontent svg,
++    select.roast-select selectedcontent .roast-desc {
++      display: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +290,29 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker">
++      <label for="roast">Choose your roast</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button><selectedcontent></selectedcontent></button>
++        <option value="light" aria-label="Light roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#c8935a"/><path d="M8 3c5 5-3 13 8 18" transform="rotate(0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>
++          <span class="roast-name">Light</span>
++          <span class="roast-desc">Bright &amp; fruity</span>
++        </option>
++        <option value="medium" aria-label="Medium roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#8d5a34"/><path d="M8 3c5 5-3 13 8 18" transform="rotate(0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>
++          <span class="roast-name">Medium</span>
++          <span class="roast-desc">Smooth &amp; balanced</span>
++        </option>
++        <option value="dark" aria-label="Dark roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#3e2318"/><path d="M8 3c5 5-3 13 8 18" transform="rotate(0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>
++          <span class="roast-name">Dark</span>
++          <span class="roast-desc">Bold &amp; smoky</span>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

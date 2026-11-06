@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      margin-top: 48px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .secrets-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin: 8px 0 12px;
++      color: var(--primary);
++    }
++
++    .secrets-preview {
++      max-width: 720px;
++    }
++
++    .secrets-preview h3 {
++      margin: 24px 0 8px;
++      color: var(--primary);
++    }
++
++    .secrets-preview p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +229,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="secrets-label">Exclusive · Member preview</p>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <div class="secrets-preview">
++        <p>Step behind the roaster with us. Explore the small decisions that bring out the sweetness,
++          depth, and character in every cup of The Daily Grind.</p>
++        <h3>A sweeter cup starts before the first sip</h3>
++        <p>Every bean has a story to tell. As a roast develops, we listen for the first crack and follow
++          the changing aroma, looking for the moment when bright fruit gives way to caramel sweetness.
++          Our favorite profiles leave room for both.</p>
++        <p>At the brew bar, we start with freshly ground coffee and a measured pour. A little patience
++          during the bloom lets the grounds release gas before the rest of the water draws out those
++          delicate flavors.</p>
++        <p>Inside our members' notebook, we share the roast notes, brewing ratios, and tasting rituals
++          behind our seasonal favorites—plus the experiments that inspire our next blend.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

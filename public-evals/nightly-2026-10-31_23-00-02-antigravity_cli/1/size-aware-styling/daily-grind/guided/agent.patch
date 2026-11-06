@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..8a363fb 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,16 +112,84 @@
+     }
+ 
+     .card {
++      container: card / inline-size;
++      display: grid;
++      grid-auto-columns: 1fr;
++      gap: 1rem;
+       background: white;
+-      padding: 20px;
++      padding: 1.25rem;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      align-items: center;
++    }
++
++    .card:has(> img) {
++      grid-auto-columns: minmax(140px, 1fr) 1.5fr;
++    }
++
++    .card > img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++      border-radius: 6px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.15rem, 4vw, 1.6rem);
++    }
++
++    .card p {
++      font-size: clamp(0.95rem, 2.5vw, 1.05rem);
++    }
++
++    @supports (font-size: 1cqi) {
++      .card {
++        gap: clamp(0.75rem, 3cqi, 1.25rem);
++        padding: clamp(1rem, 4cqi, 1.5rem);
++      }
++
++      .card h3 {
++        font-size: clamp(1.15rem, 4.5cqi, 1.6rem);
++      }
++
++      .card p {
++        font-size: clamp(0.95rem, 3cqi, 1.05rem);
++      }
++    }
++
++    .card footer .btn {
++      margin-block-start: 0;
++    }
++
++    @container (min-width: 400px) {
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / span 3;
++        aspect-ratio: 1 / 1;
++        block-size: 100%;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++        text-align: start;
++        justify-self: start;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: clip;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
+     }
+ 
+     .btn {
+@@ -135,7 +207,7 @@
+       background: #3e2723;
+     }
+ 
+-    footer {
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,23 +248,50 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            alt="Warm maple oat latte topped with steamed milk foam art"
++            width="600"
++            height="400"
++            loading="lazy"
++          >
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            alt="Rich dark roast espresso shot with golden crema in a ceramic cup"
++            width="600"
++            height="400"
++            loading="lazy"
++          >
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            alt="Chilled cold brew coffee poured over ice in a glass"
++            width="600"
++            height="400"
++            loading="lazy"
++          >
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

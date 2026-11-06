@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,87 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      height: 280px;
++      max-height: 280px;
++      overflow-y: scroll;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      background-color: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      background-color: #ffab40;
++      border-radius: 4px;
++    }
++
++    .testimonial-item {
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 14px;
++    }
++
++    .testimonial-item:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .testimonial-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .testimonial-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .testimonial-rating {
++      color: var(--accent);
++      font-size: 0.95rem;
++      letter-spacing: 1px;
++    }
++
++    .testimonial-date {
++      font-size: 0.8rem;
++      color: #795548;
++    }
++
++    .testimonial-text {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +273,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-log" id="feedback-log" role="region" aria-label="Customer Feedback Log" tabindex="0">
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Elena R.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"The Maple Oat Latte is hands down the best autumn drink in town. Not overly sweet, and the espresso roast really shines through!"</p>
++          <span class="testimonial-date">October 27, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Marcus T.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"I grab the 18-hour Cold Brew every morning before my commute. Consistently smooth, never bitter, and the staff always remembers my order."</p>
++          <span class="testimonial-date">October 25, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Priya K.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"Love knowing the beans are ethically sourced and roasted locally. The Dark Roast Espresso makes the richest cortado I've ever had."</p>
++          <span class="testimonial-date">October 22, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">David L.</span>
++            <span class="testimonial-rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++          </div>
++          <p class="testimonial-text">"Cozy atmosphere, fast Wi-Fi, and incredible pastries to pair with a pour-over. My favorite neighborhood spot for remote work."</p>
++          <span class="testimonial-date">October 19, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Sophia M.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"Bought a bag of whole-bean Dark Roast for my home espresso machine and the crema is unbelievable. Highly recommend!"</p>
++          <span class="testimonial-date">October 15, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">James W.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"Ordering ahead online is super convenient. My Maple Oat Latte is always hot and waiting on the counter right when I walk in."</p>
++          <span class="testimonial-date">October 11, 2026</span>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Hannah B.</span>
++            <span class="testimonial-rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++          </div>
++          <p class="testimonial-text">"Best artisanal coffee shop in the city. Every seasonal menu brings something creative and delicious without losing focus on quality coffee."</p>
++          <span class="testimonial-date">October 8, 2026</span>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

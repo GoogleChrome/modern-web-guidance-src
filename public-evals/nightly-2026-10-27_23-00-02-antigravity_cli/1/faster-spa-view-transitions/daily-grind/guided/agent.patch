@@ -1,0 +1,790 @@
+diff --git a/index.html b/index.html
+index 66c9173..7396eb1 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
+     }
+ 
+     * {
+@@ -25,6 +27,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -44,11 +49,15 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,19 +68,57 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-bottom-color 0.3s;
++      padding-bottom: 4px;
++      border-bottom: 2px solid transparent;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      border-bottom-color: var(--accent);
++      font-weight: 600;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* SPA View Container Management */
++    .views-wrapper {
++      position: relative;
++      flex: 1;
++    }
++
++    .spa-view {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++      /* Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      overflow: hidden;
++      height: 0;
++      margin: 0;
++      padding: 0;
++      border: 0;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -100,6 +147,21 @@
+       padding: 0 20px;
+     }
+ 
++    .view-header {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .view-header h1 {
++      font-size: 2.25rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .view-header p {
++      color: #6d4c41;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,11 +170,22 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -120,6 +193,13 @@
+       color: var(--primary);
+     }
+ 
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,12 +209,140 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover,
++    .btn-outline.active {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Filter & Interactive Controls */
++    .filter-bar {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-bottom: 25px;
++    }
++
++    .search-bar {
++      display: flex;
++      max-width: 500px;
++      margin: 0 auto 25px;
++      gap: 10px;
++    }
++
++    .search-bar input,
++    .form-group input,
++    .form-group select {
++      width: 100%;
++      padding: 10px 14px;
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    /* Rewards Progress */
++    .rewards-banner {
++      background: var(--primary);
++      color: white;
++      padding: 30px;
++      border-radius: 8px;
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .points-display {
++      font-size: 2.5rem;
++      font-weight: bold;
++      color: var(--accent);
++      margin: 10px 0;
++    }
++
++    .progress-bar {
++      background: rgba(255, 255, 255, 0.2);
++      border-radius: 999px;
++      height: 12px;
++      max-width: 450px;
++      margin: 15px auto;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      background: var(--accent);
++      height: 100%;
++      width: 72%;
++      transition: width 0.3s ease;
++    }
++
++    /* Account Layout */
++    .account-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 25px;
++    }
++
++    .panel {
++      background: var(--surface);
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      font-size: 1.35rem;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .order-item {
++      display: flex;
++      justify-content: space-between;
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++      font-size: 0.95rem;
++    }
++
++    .order-item:last-child {
++      border-bottom: none;
++    }
++
++    .status-msg {
++      margin-top: 10px;
++      font-size: 0.9rem;
++      color: #2e7d32;
++      font-weight: 600;
++      min-height: 1.4em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -158,44 +366,294 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" data-spa-link="view-home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-spa-link="view-menu">Menu</a></li>
++      <li><a href="/locations" data-spa-link="view-locations">Locations</a></li>
++      <li><a href="/rewards" data-spa-link="view-rewards">Rewards</a></li>
++      <li><a href="/account" data-spa-link="view-account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <div class="views-wrapper">
++    <!-- Home View -->
++    <div id="view-home" class="spa-view" tabindex="-1" aria-hidden="false">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu" data-spa-link="view-menu" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              </div>
++              <a href="/menu" data-spa-link="view-menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++              </div>
++              <a href="/menu" data-spa-link="view-menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++              </div>
++              <a href="/menu" data-spa-link="view-menu" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++
++    <!-- Menu View -->
++    <section id="view-menu" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Our Artisanal Menu</h1>
++          <p>Handcrafted beverages and freshly baked goods made daily.</p>
++        </div>
++
++        <div class="filter-bar" role="group" aria-label="Menu category filter">
++          <button type="button" class="btn btn-outline active" data-category="all">All Items</button>
++          <button type="button" class="btn btn-outline" data-category="espresso">Espresso</button>
++          <button type="button" class="btn btn-outline" data-category="cold">Cold Brew &amp; Iced</button>
++          <button type="button" class="btn btn-outline" data-category="bakery">Bakery</button>
++        </div>
++
++        <div class="grid" id="menu-grid">
++          <div class="card" data-category="espresso">
++            <div>
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" width="600" height="400" loading="lazy">
++              <h3>Maple Oat Latte</h3>
++              <p>Rich double-shot espresso with steamed oat milk and pure Vermont maple.</p>
++              <p class="price">$5.75</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++          <div class="card" data-category="espresso">
++            <div>
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" width="600" height="400" loading="lazy">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey single-origin espresso with dark chocolate undertones.</p>
++              <p class="price">$3.50</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++          <div class="card" data-category="cold">
++            <div>
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="18-Hour Cold Brew" width="600" height="400" loading="lazy">
++              <h3>18-Hour Cold Brew</h3>
++              <p>Slow-steeped Colombian beans served over artisanal ice.</p>
++              <p class="price">$4.75</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++          <div class="card" data-category="cold">
++            <div>
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Vanilla Sweet Cream Nitro" width="600" height="400" loading="lazy">
++              <h3>Vanilla Sweet Cream Nitro</h3>
++              <p>Velvety nitrogen-infused cold brew topped with house-made vanilla cream.</p>
++              <p class="price">$5.50</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++          <div class="card" data-category="bakery">
++            <div>
++              <img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80" alt="Butter Croissant" width="600" height="400" loading="lazy">
++              <h3>Artisanal Butter Croissant</h3>
++              <p>Flaky, golden pastry laminated with cultured French butter.</p>
++              <p class="price">$4.25</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++          <div class="card" data-category="bakery">
++            <div>
++              <img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" alt="Cardamom Morning Bun" width="600" height="400" loading="lazy">
++              <h3>Cardamom Morning Bun</h3>
++              <p>Brioche swirl dusted with freshly ground cardamom and orange zest sugar.</p>
++              <p class="price">$4.50</p>
++            </div>
++            <button type="button" class="btn add-to-order">Add to Order</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Locations View -->
++    <section id="view-locations" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Find a Cafe Near You</h1>
++          <p>Stop by for a freshly pulled shot or relax in our neighborhood lounges.</p>
++        </div>
++
++        <div class="search-bar">
++          <input type="search" id="location-search" placeholder="Filter by neighborhood or city (e.g., Downtown, Roastery)..." aria-label="Filter locations">
++        </div>
++
++        <div class="grid" id="locations-grid">
++          <div class="card" data-location="downtown flagship seattle">
++            <div>
++              <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown Flagship Cafe" width="600" height="400" loading="lazy">
++              <h3>Downtown Flagship</h3>
++              <p>412 Pike Street, Suite 100</p>
++              <p><strong>Hours:</strong> 6:00 AM – 8:00 PM Daily</p>
++              <p>Patio Seating • Pour-Over Bar • High-Speed Wi-Fi</p>
++            </div>
++            <button type="button" class="btn select-store-btn">Set as Preferred Store</button>
++          </div>
++          <div class="card" data-location="capitol hill roastery">
++            <div>
++              <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Capitol Hill Roastery" width="600" height="400" loading="lazy">
++              <h3>Capitol Hill Roastery</h3>
++              <p>1108 E Pine Street</p>
++              <p><strong>Hours:</strong> 6:30 AM – 9:00 PM Daily</p>
++              <p>Roastery Tours • Cupping Room • Bakery Kitchen</p>
++            </div>
++            <button type="button" class="btn select-store-btn">Set as Preferred Store</button>
++          </div>
++          <div class="card" data-location="ballard waterfront market">
++            <div>
++              <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=600&q=80" alt="Ballard Commons" width="600" height="400" loading="lazy">
++              <h3>Ballard Commons</h3>
++              <p>5420 Ballard Ave NW</p>
++              <p><strong>Hours:</strong> 7:00 AM – 6:00 PM Daily</p>
++              <p>Dog Friendly • Walk-Up Window • Local Art Wall</p>
++            </div>
++            <button type="button" class="btn select-store-btn">Set as Preferred Store</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Rewards View -->
++    <section id="view-rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Daily Grind Rewards</h1>
++          <p>Earn 10 Beans for every $1 spent and unlock complimentary craft drinks.</p>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <div class="rewards-banner">
++          <h2>Gold Roaster Status</h2>
++          <div class="points-display"><span id="rewards-points">360</span> Beans</div>
++          <p id="rewards-status-text">140 Beans until your next free handcrafted beverage (500 Beans)</p>
++          <div class="progress-bar" role="progressbar" aria-valuenow="360" aria-valuemin="0" aria-valuemax="500">
++            <div class="progress-fill" id="rewards-progress"></div>
++          </div>
++        </div>
++
++        <div class="grid">
++          <div class="card">
++            <div>
++              <h3>100 Beans</h3>
++              <p><strong>Extra Espresso Shot or Syrup</strong></p>
++              <p>Customize your morning cup with a single-origin shot or house-made syrup.</p>
++            </div>
++            <button type="button" class="btn redeem-btn" data-cost="100">Redeem (100 Beans)</button>
++          </div>
++          <div class="card">
++            <div>
++              <h3>250 Beans</h3>
++              <p><strong>Freshly Baked Pastry</strong></p>
++              <p>Enjoy any croissant, morning bun, or seasonal scone from our bakery case.</p>
++            </div>
++            <button type="button" class="btn redeem-btn" data-cost="250">Redeem (250 Beans)</button>
++          </div>
++          <div class="card">
++            <div>
++              <h3>500 Beans</h3>
++              <p><strong>Any Handcrafted Beverage</strong></p>
++              <p>Your favorite signature latte, nitro cold brew, or pour-over on the house.</p>
++            </div>
++            <button type="button" class="btn redeem-btn" data-cost="500">Redeem (500 Beans)</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- My Account View -->
++    <section id="view-account" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>My Account</h1>
++          <p>Manage your coffee preferences, saved baristas notes, and recent orders.</p>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <div class="account-grid">
++          <div class="panel">
++            <h2>Profile &amp; Drink Preferences</h2>
++            <form id="account-form">
++              <div class="form-group">
++                <label for="account-name">Full Name</label>
++                <input type="text" id="account-name" value="Alex Rivera">
++              </div>
++              <div class="form-group">
++                <label for="account-email">Email Address</label>
++                <input type="email" id="account-email" value="alex.rivera@example.com">
++              </div>
++              <div class="form-group">
++                <label for="account-milk">Default Milk Choice</label>
++                <select id="account-milk">
++                  <option value="oat" selected>Barista Oat Milk</option>
++                  <option value="whole">Organic Whole Milk</option>
++                  <option value="almond">Unsweetened Almond</option>
++                  <option value="none">Black / No Milk</option>
++                </select>
++              </div>
++              <div class="form-group">
++                <label for="account-roast">Preferred Roast Profile</label>
++                <select id="account-roast">
++                  <option value="light">Light Single-Origin</option>
++                  <option value="medium" selected>House Medium Blend</option>
++                  <option value="dark">Smokey Dark Roast</option>
++                </select>
++              </div>
++              <button type="submit" class="btn">Save Preferences</button>
++              <p class="status-msg" id="account-status" aria-live="polite"></p>
++            </form>
++          </div>
++
++          <div class="panel">
++            <h2>Recent Orders</h2>
++            <div id="order-history">
++              <div class="order-item">
++                <div>
++                  <strong>Maple Oat Latte &amp; Butter Croissant</strong>
++                  <div>Downtown Flagship • Yesterday, 8:15 AM</div>
++                </div>
++                <strong>$10.00</strong>
++              </div>
++              <div class="order-item">
++                <div>
++                  <strong>18-Hour Cold Brew (Large)</strong>
++                  <div>Capitol Hill Roastery • Oct 23, 2:40 PM</div>
++                </div>
++                <strong>$5.25</strong>
++              </div>
++              <div class="order-item">
++                <div>
++                  <strong>Dark Roast Espresso &amp; Cardamom Bun</strong>
++                  <div>Downtown Flagship • Oct 19, 7:50 AM</div>
++                </div>
++                <strong>$8.00</strong>
++              </div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+-  </main>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +665,166 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const ROUTE_TO_VIEW = {
++      '/': 'view-home',
++      '/menu': 'view-menu',
++      '/locations': 'view-locations',
++      '/rewards': 'view-rewards',
++      '/account': 'view-account'
++    };
++
++    const VIEW_TO_ROUTE = {
++      'view-home': '/',
++      'view-menu': '/menu',
++      'view-locations': '/locations',
++      'view-rewards': '/rewards',
++      'view-account': '/account'
++    };
++
++    function switchToView(viewId, options = { pushHistory: true, manageFocus: true }) {
++      const targetView = document.getElementById(viewId);
++      if (!targetView) return;
++
++      // Hide all views while preserving their DOM & rendering state
++      document.querySelectorAll('.spa-view').forEach(view => {
++        view.classList.add('inactive');
++        view.setAttribute('aria-hidden', 'true');
++      });
++
++      // Show the target view
++      targetView.classList.remove('inactive');
++      targetView.setAttribute('aria-hidden', 'false');
++
++      // Update active navigation link styling
++      document.querySelectorAll('nav a[data-spa-link]').forEach(link => {
++        if (link.getAttribute('data-spa-link') === viewId && !link.classList.contains('logo')) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++
++      // Sync URL in browser history if applicable
++      const route = VIEW_TO_ROUTE[viewId];
++      if (options.pushHistory && route && window.location.pathname !== route) {
++        try {
++          window.history.pushState({ viewId }, '', route);
++        } catch (err) {
++          // Ignore pushState restrictions in sandboxed/file contexts
++        }
++      }
++
++      // MANDATORY: Move focus to the new view to ensure a logical tab-order
++      if (options.manageFocus) {
++        targetView.focus();
++      }
++    }
++
++    // Intercept SPA navigation clicks
++    document.addEventListener('click', (event) => {
++      const link = event.target.closest('a[data-spa-link]');
++      if (!link) return;
++
++      // Allow modified clicks (new tab, etc.) to behave normally
++      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
++        return;
++      }
++
++      event.preventDefault();
++      const viewId = link.getAttribute('data-spa-link');
++      switchToView(viewId, { pushHistory: true, manageFocus: true });
++    });
++
++    // Support browser Back/Forward navigation
++    window.addEventListener('popstate', (event) => {
++      const stateViewId = event.state && event.state.viewId;
++      const routeViewId = ROUTE_TO_VIEW[window.location.pathname] || 'view-home';
++      switchToView(stateViewId || routeViewId, { pushHistory: false, manageFocus: true });
++    });
++
++    // Initialize view based on current pathname if deep-linked
++    const initialViewId = ROUTE_TO_VIEW[window.location.pathname] || 'view-home';
++    if (initialViewId !== 'view-home') {
++      switchToView(initialViewId, { pushHistory: false, manageFocus: false });
++    }
++
++    // Interactive state within views (preserved across navigations without re-rendering)
++    // 1. Menu Category Filtering & Add to Order
++    document.querySelectorAll('.filter-bar button[data-category]').forEach(btn => {
++      btn.addEventListener('click', () => {
++        const category = btn.getAttribute('data-category');
++        document.querySelectorAll('.filter-bar button[data-category]').forEach(b => {
++          b.classList.toggle('active', b === btn);
++        });
++        document.querySelectorAll('#menu-grid .card').forEach(card => {
++          const match = category === 'all' || card.getAttribute('data-category') === category;
++          card.style.display = match ? '' : 'none';
++        });
++      });
++    });
++
++    document.querySelectorAll('.add-to-order').forEach(btn => {
++      btn.addEventListener('click', () => {
++        const currentCount = Number(btn.getAttribute('data-count') || 0) + 1;
++        btn.setAttribute('data-count', String(currentCount));
++        btn.textContent = `Added (${currentCount})`;
++      });
++    });
++
++    // 2. Locations Search & Preferred Store Selection
++    const locationSearch = document.getElementById('location-search');
++    if (locationSearch) {
++      locationSearch.addEventListener('input', () => {
++        const query = locationSearch.value.trim().toLowerCase();
++        document.querySelectorAll('#locations-grid .card').forEach(card => {
++          const text = (card.textContent + ' ' + (card.getAttribute('data-location') || '')).toLowerCase();
++          card.style.display = text.includes(query) ? '' : 'none';
++        });
++      });
++    }
++
++    document.querySelectorAll('.select-store-btn').forEach(btn => {
++      btn.addEventListener('click', () => {
++        document.querySelectorAll('.select-store-btn').forEach(b => {
++          b.textContent = b === btn ? 'Preferred Store ✓' : 'Set as Preferred Store';
++        });
++      });
++    });
++
++    // 3. Rewards Redemption
++    let currentBeans = 360;
++    const pointsEl = document.getElementById('rewards-points');
++    const progressEl = document.getElementById('rewards-progress');
++    const statusTextEl = document.getElementById('rewards-status-text');
++
++    document.querySelectorAll('.redeem-btn').forEach(btn => {
++      btn.addEventListener('click', () => {
++        const cost = Number(btn.getAttribute('data-cost') || 0);
++        if (currentBeans >= cost) {
++          currentBeans -= cost;
++          pointsEl.textContent = String(currentBeans);
++          const pct = Math.min(100, Math.round((currentBeans / 500) * 100));
++          progressEl.style.width = `${pct}%`;
++          statusTextEl.textContent = `Redeemed ${cost} Beans! ${Math.max(0, 500 - currentBeans)} Beans until your next 500-Bean reward.`;
++        } else {
++          statusTextEl.textContent = `Need ${cost - currentBeans} more Beans to redeem that reward.`;
++        }
++      });
++    });
++
++    // 4. My Account Form State
++    const accountForm = document.getElementById('account-form');
++    const accountStatus = document.getElementById('account-status');
++    if (accountForm) {
++      accountForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const name = document.getElementById('account-name').value;
++        accountStatus.textContent = `Preferences saved for ${name}.`;
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

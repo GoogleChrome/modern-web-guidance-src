@@ -1,0 +1,354 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,281 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Parallax Section */
++    .parallax-section {
++      position: relative;
++      background-color: var(--primary);
++    }
++
++    .parallax-wrapper {
++      position: relative;
++      overflow: clip;
++      height: 80vh;
++      min-height: 580px;
++      max-height: 850px;
++      display: flex;
++      align-items: center;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    /* Layer 1: Background Landscape */
++    .layer-bg {
++      z-index: 1;
++      height: 130%;
++      top: -15%;
++    }
++
++    .layer-bg img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center 30%;
++      display: block;
++    }
++
++    .layer-bg .layer-overlay {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(
++        135deg,
++        rgba(30, 20, 18, 0.88) 0%,
++        rgba(30, 20, 18, 0.70) 50%,
++        rgba(30, 20, 18, 0.55) 100%
++      );
++    }
++
++    /* Layer 2: Midground Roasting / Beans */
++    .layer-mid {
++      z-index: 2;
++      display: flex;
++      align-items: center;
++      justify-content: flex-end;
++      padding-right: 8%;
++    }
++
++    .mid-feature-card {
++      width: 320px;
++      height: 400px;
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
++      border: 2px solid rgba(255, 255, 255, 0.15);
++    }
++
++    .mid-feature-card img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    /* Layer 3: Accent Badges */
++    .layer-accent {
++      z-index: 3;
++    }
++
++    .floating-pill {
++      position: absolute;
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 20px;
++      border-radius: 9999px;
++      background: rgba(46, 31, 28, 0.9);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      color: var(--light);
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
++      backdrop-filter: blur(8px);
++    }
++
++    .pill-altitude {
++      top: 18%;
++      right: 32%;
++    }
++
++    .pill-roast {
++      bottom: 18%;
++      right: 12%;
++    }
++
++    /* Layer 4: Foreground Content Card */
++    .layer-content {
++      z-index: 4;
++      display: flex;
++      align-items: center;
++      justify-content: flex-start;
++      padding-left: 8%;
++      pointer-events: auto;
++    }
++
++    .parallax-card {
++      max-width: 520px;
++      background: rgba(30, 20, 18, 0.88);
++      padding: 40px;
++      border-radius: 16px;
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
++      color: var(--light);
++      backdrop-filter: blur(12px);
++    }
++
++    .card-eyebrow {
++      display: inline-block;
++      text-transform: uppercase;
++      font-size: 0.8rem;
++      letter-spacing: 2px;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 12px;
++    }
++
++    .parallax-card h2 {
++      font-size: 2.2rem;
++      line-height: 1.2;
++      margin-bottom: 16px;
++      color: #ffffff;
++    }
++
++    .parallax-card p {
++      color: var(--secondary);
++      font-size: 1rem;
++      margin-bottom: 24px;
++      line-height: 1.6;
++    }
++
++    .card-stats {
++      display: flex;
++      gap: 28px;
++      margin-bottom: 24px;
++      padding-top: 20px;
++      border-top: 1px solid rgba(255, 255, 255, 0.12);
++    }
++
++    .stat-item {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .stat-value {
++      font-size: 1.6rem;
++      font-weight: 700;
++      color: var(--accent);
++      line-height: 1.1;
++    }
++
++    .stat-label {
++      font-size: 0.8rem;
++      color: var(--secondary);
++      margin-top: 4px;
++    }
++
++    .parallax-card .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      margin-top: 0;
++    }
++
++    .parallax-card .btn:hover {
++      background: #ffb74d;
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 900px) {
++      .layer-mid {
++        display: none;
++      }
++
++      .pill-altitude {
++        top: 10%;
++        right: 10%;
++      }
++
++      .pill-roast {
++        bottom: 10%;
++        right: 10%;
++      }
++
++      .layer-content {
++        padding-left: 20px;
++        padding-right: 20px;
++        justify-content: center;
++      }
++
++      .parallax-card {
++        max-width: 100%;
++        padding: 30px;
++      }
++    }
++
++    /* CSS Scroll-Driven Parallax Implementation */
++    @keyframes parallax {
++      from {
++        transform: translateY(var(--offset));
++      }
++      to {
++        transform: translateY(calc(var(--offset) * -1));
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .parallax-wrapper {
++        view-timeline: --parallax-wrapper;
++      }
++
++      .parallax-layer {
++        animation: parallax linear both;
++        animation-timeline: --parallax-wrapper;
++      }
++
++      .parallax-layer:nth-child(1) {
++        --offset: 50px;
++        animation-range: entry 25% exit 50%;
++      }
++
++      .parallax-layer:nth-child(2) {
++        --offset: 110px;
++        animation-range: entry 25% exit 75%;
++      }
++
++      .parallax-layer:nth-child(3) {
++        --offset: 170px;
++        animation-range: entry 25% exit 100%;
++      }
++
++      .parallax-layer:nth-child(4) {
++        --offset: 230px;
++        animation-range: entry 25% exit 125%;
++      }
++
++      @supports (animation-range: exit calc(100% / sibling-count() * sibling-index())) {
++        .parallax-layer {
++          animation-range: entry 25% exit calc(100% / sibling-count() * sibling-index());
++        }
++      }
++    }
++
++    /* Accessibility: Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer {
++        animation: none !important;
++        transform: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +446,68 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <!-- Parallax Section -->
++  <section class="parallax-section" aria-labelledby="craft-journey-heading">
++    <div class="parallax-wrapper">
++      <!-- Layer 1: Background Landscape (Highland Coffee Plantation) -->
++      <div class="parallax-layer layer-bg" aria-hidden="true">
++        <img
++          src="https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?auto=format&fit=crop&w=1600&q=80"
++          alt=""
++          loading="lazy"
++          decoding="async"
++        >
++        <div class="layer-overlay"></div>
++      </div>
++
++      <!-- Layer 2: Midground (Artisanal Coffee Roasting & Fresh Beans) -->
++      <div class="parallax-layer layer-mid" aria-hidden="true">
++        <div class="mid-feature-card">
++          <img
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++            alt=""
++            loading="lazy"
++            decoding="async"
++          >
++        </div>
++      </div>
++
++      <!-- Layer 3: Accent Details -->
++      <div class="parallax-layer layer-accent" aria-hidden="true">
++        <div class="floating-pill pill-altitude">
++          <span>⛰️ 1,850m Highland Origin</span>
++        </div>
++        <div class="floating-pill pill-roast">
++          <span>🔥 Small-Batch Roasting</span>
++        </div>
++      </div>
++
++      <!-- Layer 4: Foreground Content Card -->
++      <div class="parallax-layer layer-content">
++        <div class="parallax-card">
++          <span class="card-eyebrow">The Craft & Origin</span>
++          <h2 id="craft-journey-heading">Elevated From Soil to Cup</h2>
++          <p>
++            Grown in high-altitude volcanic soils, hand-harvested by generational farmers, and slow-roasted in micro-batches to preserve nuanced notes of cocoa, honeycomb, and citrus.
++          </p>
++          <div class="card-stats">
++            <div class="stat-item">
++              <span class="stat-value">100%</span>
++              <span class="stat-label">Arabica Specialty</span>
++            </div>
++            <div class="stat-item">
++              <span class="stat-value">48 hr</span>
++              <span class="stat-label">Roast-to-Door</span>
++            </div>
++          </div>
++          <a href="/about" class="btn">Explore Our Roastery</a>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

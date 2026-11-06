@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,111 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 50px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 40px;
++      align-items: start;
++    }
++
++    .showcase h2 {
++      grid-column: 1 / -1;
++      text-align: center;
++    }
++
++    /* Card wrapper: children are clipped at the inner content box.
++       overflow-clip-margin: content-box makes the clip edge follow the
++       content box, and the browser derives the concentric inner radius
++       (outer radius minus border + padding) automatically. */
++    .nested-curve-parent {
++      padding: 14px;
++      border: 2px solid var(--secondary);
++      border-radius: 32px;
++      background: var(--primary);
++      box-shadow: 0 10px 30px rgba(62, 39, 35, 0.25);
++      overflow: hidden; /* fallback: clips at padding box */
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++    }
++
++    .nested-curve-parent .showcase-body {
++      background: white;
++      padding: 18px 20px;
++    }
++
++    .nested-curve-parent .showcase-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .nested-curve-parent .showcase-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 12px 20px;
++    }
++
++    /* Promos block: overflowing text is clipped, but anything painted
++       within 15px outside the padding box (e.g. the button glow) stays visible. */
++    .safety-zone-parent {
++      position: relative;
++      padding: 24px;
++      border-radius: 16px;
++      background: linear-gradient(135deg, #3e2723, #6d4c41);
++      color: white;
++      overflow: hidden; /* fallback */
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent .promo-ticker {
++      white-space: nowrap;
++      font-size: 1.1rem;
++      opacity: 0.9;
++      margin-bottom: 18px;
++    }
++
++    .glow-btn {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 12px 26px;
++      border-radius: 999px;
++      text-decoration: none;
++      box-shadow:
++        0 0 12px 4px rgba(255, 171, 64, 0.8),
++        0 0 28px 10px rgba(255, 171, 64, 0.45);
++      transition: box-shadow 0.3s;
++    }
++
++    .glow-btn:hover {
++      box-shadow:
++        0 0 16px 6px rgba(255, 171, 64, 0.9),
++        0 0 30px 12px rgba(255, 171, 64, 0.55);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +276,31 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase" aria-labelledby="showcase-title">
++    <h2 id="showcase-title">Showcase</h2>
++
++    <article class="nested-curve-parent">
++      <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="Latte art in a ceramic cup" loading="lazy">
++      <div class="showcase-body">
++        <h3>Roaster's Reserve</h3>
++        <p>Single-origin Ethiopian Yirgacheffe with notes of jasmine, bergamot, and honey.</p>
++      </div>
++      <div class="showcase-footer">
++        <span>Limited batch</span>
++        <span>$18 / 12oz</span>
++      </div>
++    </article>
++
++    <aside class="safety-zone-parent">
++      <h3>This Week's Promos</h3>
++      <p class="promo-ticker">☕ Buy one, get one half off all lattes &middot; Free pastry with any cold brew before 9am &middot; Double rewards points every Friday &middot; 20% off whole-bean bags</p>
++      <a href="/rewards" class="glow-btn">Claim Offer</a>
++    </aside>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

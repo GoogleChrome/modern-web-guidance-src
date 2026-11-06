@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,101 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section
++       Pure CSS scroll-driven animation: each layer is translated along the
++       section's view() timeline by a different distance (--shift), so deeper
++       layers move less than nearer ones. Only transforms are animated, which
++       keeps it on the compositor. Static layout is the default; the motion is
++       opt-in for browsers that support it and users who haven't requested
++       reduced motion. */
++    .parallax {
++      position: relative;
++      height: 80vh;
++      min-height: 420px;
++      overflow: clip;
++      isolation: isolate;
++      display: grid;
++      place-items: center;
++      color: white;
++      background: var(--primary);
++    }
++
++    .parallax-layer {
++      position: absolute;
++      /* Oversized vertically so translation never reveals the edges */
++      inset: calc(var(--shift) * -1) 0;
++      pointer-events: none;
++      will-change: auto;
++    }
++
++    .parallax-back {
++      --shift: 15vh;
++      z-index: -3;
++      background: linear-gradient(rgba(30, 15, 10, 0.55), rgba(30, 15, 10, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .parallax-mid,
++    .parallax-front {
++      color: var(--accent);
++    }
++
++    .parallax-mid {
++      --shift: 30vh;
++      z-index: -2;
++      opacity: 0.35;
++    }
++
++    .parallax-front {
++      --shift: 50vh;
++      z-index: -1;
++      opacity: 0.7;
++    }
++
++    .bean {
++      position: absolute;
++      fill: currentColor;
++    }
++
++    .parallax-mid .bean:nth-child(1) { width: 90px; left: 8%; top: 25%; transform: rotate(20deg); }
++    .parallax-mid .bean:nth-child(2) { width: 120px; left: 78%; top: 40%; transform: rotate(-35deg); }
++    .parallax-mid .bean:nth-child(3) { width: 70px; left: 45%; top: 75%; transform: rotate(70deg); }
++    .parallax-front .bean:nth-child(1) { width: 170px; left: -3%; top: 62%; transform: rotate(-20deg); }
++    .parallax-front .bean:nth-child(2) { width: 200px; left: 88%; top: 18%; transform: rotate(50deg); }
++
++    .parallax-content {
++      position: relative;
++      max-width: 640px;
++      padding: 0 20px;
++      text-align: center;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 0.75rem;
++    }
++
++    @keyframes parallax-shift {
++      from { transform: translate3d(0, calc(var(--shift) * -1), 0); }
++      to { transform: translate3d(0, var(--shift), 0); }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          will-change: transform;
++          animation: parallax-shift linear both;
++          animation-timeline: view();
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +266,26 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-back" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true">
++      <svg class="bean" viewBox="0 0 100 60"><path d="M50 0C80 0 100 14 100 30S80 60 50 60 0 46 0 30 20 0 50 0Zm-2 6C30 20 34 40 46 54c-14-2-30-12-30-24S32 8 48 6Z"/></svg>
++      <svg class="bean" viewBox="0 0 100 60"><path d="M50 0C80 0 100 14 100 30S80 60 50 60 0 46 0 30 20 0 50 0Zm-2 6C30 20 34 40 46 54c-14-2-30-12-30-24S32 8 48 6Z"/></svg>
++      <svg class="bean" viewBox="0 0 100 60"><path d="M50 0C80 0 100 14 100 30S80 60 50 60 0 46 0 30 20 0 50 0Zm-2 6C30 20 34 40 46 54c-14-2-30-12-30-24S32 8 48 6Z"/></svg>
++    </div>
++    <div class="parallax-layer parallax-front" aria-hidden="true">
++      <svg class="bean" viewBox="0 0 100 60"><path d="M50 0C80 0 100 14 100 30S80 60 50 60 0 46 0 30 20 0 50 0Zm-2 6C30 20 34 40 46 54c-14-2-30-12-30-24S32 8 48 6Z"/></svg>
++      <svg class="bean" viewBox="0 0 100 60"><path d="M50 0C80 0 100 14 100 30S80 60 50 60 0 46 0 30 20 0 50 0Zm-2 6C30 20 34 40 46 54c-14-2-30-12-30-24S32 8 48 6Z"/></svg>
++    </div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch is small, slow-roasted, and traced back to the farmers who grew it.</p>
++      <a href="/our-story" class="btn">Our Story</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

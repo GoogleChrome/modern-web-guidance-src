@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,160 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const MENU_ITEMS = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        price: "$5.50",
++        calories: 210,
++        ingredients: ["Espresso", "Steamed Oat Milk", "Pure Vermont Maple Syrup", "Cinnamon Dusting"],
++        dietary: ["Vegan", "Dairy-Free"],
++        url: "/menu/seasonal"
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        price: "$3.25",
++        calories: 5,
++        ingredients: ["100% Arabica Dark Roast Coffee Beans", "Filtered Water"],
++        dietary: ["Vegan", "Dairy-Free", "Gluten-Free", "Sugar-Free"],
++        url: "/menu/espresso"
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Brew",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        price: "$4.75",
++        calories: 10,
++        ingredients: ["Coarse-Ground Artisanal Coffee Beans", "Cold Filtered Water"],
++        dietary: ["Vegan", "Dairy-Free", "Gluten-Free", "Sugar-Free"],
++        url: "/menu/cold-brew"
++      }
++    ];
++
++    function getMenuItemsFromDOM() {
++      const cards = document.querySelectorAll('.card');
++      const domItems = [];
++      cards.forEach((card) => {
++        const titleEl = card.querySelector('h3');
++        const descEl = card.querySelector('p');
++        const linkEl = card.querySelector('a');
++        if (titleEl) {
++          const name = titleEl.textContent.trim();
++          const staticMatch = MENU_ITEMS.find(
++            (item) => item.name.toLowerCase() === name.toLowerCase()
++          );
++          domItems.push({
++            ...(staticMatch || {}),
++            name,
++            description: descEl ? descEl.textContent.trim() : (staticMatch ? staticMatch.description : ""),
++            url: linkEl ? linkEl.getAttribute('href') : (staticMatch ? staticMatch.url : "")
++          });
++        }
++      });
++      return domItems.length > 0 ? domItems : MENU_ITEMS;
++    }
++
++    function lookupMenuItem(queryName) {
++      if (!queryName || typeof queryName !== 'string') {
++        return {
++          found: false,
++          error: "Please provide a valid menu item name to look up.",
++          availableItems: MENU_ITEMS.map((i) => i.name)
++        };
++      }
++
++      const normalizedQuery = queryName.trim().toLowerCase();
++      const items = getMenuItemsFromDOM();
++
++      const match = items.find(
++        (item) =>
++          item.name.toLowerCase() === normalizedQuery ||
++          item.name.toLowerCase().includes(normalizedQuery) ||
++          normalizedQuery.includes(item.name.toLowerCase())
++      );
++
++      if (!match) {
++        return {
++          found: false,
++          message: `No menu item found matching "${queryName}".`,
++          availableItems: items.map((i) => i.name)
++        };
++      }
++
++      return {
++        found: true,
++        item: match
++      };
++    }
++
++    const TOOL_NAME = "get_menu_item_details";
++    const toolAbortController = new AbortController();
++
++    const menuLookupTool = {
++      name: TOOL_NAME,
++      description: "Look up details for a coffee shop menu item (such as the Maple Oat Latte, Dark Roast Espresso, or Cold Brew) by its name, returning its description, price, ingredients, dietary information, and link.",
++      inputSchema: {
++        type: "object",
++        properties: {
++          name: {
++            type: "string",
++            description: "The name of the menu item to look up (e.g., 'Maple Oat Latte', 'Dark Roast Espresso', or 'Cold Brew')."
++          }
++        },
++        required: ["name"]
++      },
++      async execute(input) {
++        const query = input?.name || input?.itemName || input?.query || "";
++        const result = lookupMenuItem(query);
++        return {
++          ...result,
++          content: [
++            {
++              type: "text",
++              text: JSON.stringify(result, null, 2)
++            }
++          ]
++        };
++      }
++    };
++
++    const modelContext = navigator.modelContext || document.modelContext;
++
++    if (modelContext && typeof modelContext.registerTool === "function") {
++      try {
++        modelContext.registerTool(menuLookupTool, {
++          signal: toolAbortController.signal
++        });
++      } catch (err) {
++        // Fallback if the implementation does not accept a second options argument
++        modelContext.registerTool(menuLookupTool);
++      }
++    }
++
++    function cleanupToolRegistration() {
++      toolAbortController.abort();
++      const ctx = navigator.modelContext || document.modelContext;
++      if (ctx) {
++        if (typeof ctx.unregisterTool === "function") {
++          try {
++            ctx.unregisterTool(TOOL_NAME);
++          } catch (e) {
++            // Ignore errors during unload cleanup
++          }
++        }
++      }
++    }
++
++    window.addEventListener("pagehide", cleanupToolRegistration);
++    window.addEventListener("beforeunload", cleanupToolRegistration);
++    window.addEventListener("unload", cleanupToolRegistration);
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+index 66c9173..fbd2c0b 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,15 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      const savedTheme = localStorage.getItem('daily-grind-theme');
++      if (savedTheme === 'light' || savedTheme === 'dark') {
++        document.querySelector('meta[name="color-scheme"]').content = savedTheme;
++      }
++    } catch { /* The preference still works when storage is unavailable. */ }
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +21,36 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: white;
++      --heading: var(--primary);
++      --border: #b8a9a3;
++      color-scheme: light dark;
++    }
++
++    :root:has(meta[name="color-scheme"][content="light"]) {
++      color-scheme: light;
++    }
++
++    :root:has(meta[name="color-scheme"][content="dark"]) {
++      color-scheme: dark;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(:has(meta[name="color-scheme"][content="light"])) {
++        --secondary: #332824;
++        --text: #f0e6e1;
++        --light: #211a17;
++        --surface: #302622;
++        --heading: #f0d1ba;
++      }
++    }
++
++    :root:has(meta[name="color-scheme"][content="dark"]) {
++      --secondary: #332824;
++      --text: #f0e6e1;
++      --light: #211a17;
++      --surface: #302622;
++      --heading: #f0d1ba;
+     }
+ 
+     * {
+@@ -108,7 +147,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +156,83 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .preferences {
++      margin-top: 40px;
++      padding: 24px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .preference-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-top: 12px;
++    }
++
++    .preference-control {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    #dark-mode {
++      accent-color: var(--primary);
++      cursor: pointer;
++      margin: 0;
++      width: 52px;
++      height: 30px;
++    }
++
++    /* Keep native switch rendering where available; style the checkbox fallback. */
++    #dark-mode.switch-fallback {
++      appearance: none;
++      border: 2px solid var(--border);
++      border-radius: 20px;
++      background: #756962;
++      position: relative;
++    }
++
++    #dark-mode.switch-fallback::before {
++      content: '';
++      position: absolute;
++      width: 20px;
++      height: 20px;
++      top: 3px;
++      left: 3px;
++      border-radius: 50%;
++      background: white;
++    }
++
++    #dark-mode.switch-fallback:checked {
++      background: var(--primary);
++    }
++
++    #dark-mode.switch-fallback:checked::before {
++      left: 25px;
++    }
++
++    #dark-mode:focus-visible {
++      outline: 3px solid var(--heading);
++      outline-offset: 4px;
++    }
++
++    .preference-state {
++      min-width: 2em;
++    }
++
++    @media (forced-colors: active) {
++      #dark-mode.switch-fallback { appearance: auto; }
++      #dark-mode.switch-fallback::before { display: none; }
+     }
+ 
+     .btn {
+@@ -195,6 +310,21 @@
+         </div>
+       </div>
+     </section>
++    <section class="preferences" hidden>
++      <h2>Preferences</h2>
++      <div class="preference-row">
++        <div>
++          <strong>Make yourself comfortable</strong>
++          <p id="dark-mode-description">Choose a darker look for your next coffee break.</p>
++        </div>
++        <label class="preference-control" for="dark-mode">
++          Dark mode
++          <input id="dark-mode" type="checkbox" switch aria-describedby="dark-mode-description">
++          <span class="preference-state" aria-hidden="true">Off</span>
++        </label>
++      </div>
++      <p id="preference-feedback" role="status"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +337,51 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeMeta = document.querySelector('meta[name="color-scheme"]');
++    const themeToggle = document.getElementById('dark-mode');
++    const themeState = document.querySelector('.preference-state');
++    const themeFeedback = document.getElementById('preference-feedback');
++    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
++    const themeKey = 'daily-grind-theme';
++
++    if (!('switch' in HTMLInputElement.prototype)) {
++      themeToggle.classList.add('switch-fallback');
++      themeToggle.setAttribute('role', 'switch');
++    }
++
++    function syncThemeToggle() {
++      themeToggle.checked = themeMeta.content === 'dark' ||
++        (themeMeta.content === 'light dark' && systemTheme.matches);
++      themeState.textContent = themeToggle.checked ? 'On' : 'Off';
++    }
++
++    themeToggle.addEventListener('change', () => {
++      const theme = themeToggle.checked ? 'dark' : 'light';
++      const followsSystem = themeToggle.checked === systemTheme.matches;
++      themeMeta.content = followsSystem ? 'light dark' : theme;
++      syncThemeToggle();
++      try {
++        if (followsSystem) localStorage.removeItem(themeKey);
++        else localStorage.setItem(themeKey, theme);
++        themeFeedback.textContent = 'Preference saved for this browser.';
++      } catch {
++        themeFeedback.textContent = 'Preference applied for this visit. Browser storage is unavailable.';
++      }
++    });
++
++    systemTheme.addEventListener('change', syncThemeToggle);
++    window.addEventListener('storage', (event) => {
++      if (event.key !== themeKey && event.key !== null) return;
++      themeMeta.content = event.newValue === 'light' || event.newValue === 'dark'
++        ? event.newValue : 'light dark';
++      syncThemeToggle();
++      themeFeedback.textContent = '';
++    });
++    syncThemeToggle();
++    document.querySelector('.preferences').hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

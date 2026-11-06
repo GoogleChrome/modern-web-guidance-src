@@ -1,0 +1,51 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,10 +194,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="deadline-tracker" style="margin-top: 40px; text-align: center;">
++      <h2>Event Deadline Tracker</h2>
++      <div class="card" style="max-width: 400px; margin: 20px auto;">
++        <p>Deadline: <strong id="temporal-value"></strong></p>
++        <button id="extend-temporal-btn" class="btn" type="button" style="border: none; cursor: pointer;">Extend Deadline (+1 day)</button>
++        <p>Reference changed: <span id="temporal-ref-changed">No</span></p>
++        <p>Render count: <span id="temporal-render-count">0</span></p>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    // Deadline state is immutable: extending produces a new Temporal.PlainDate
++    // (PlainDate.add never mutates), and the reference comparison proves it.
++    (function () {
++      var state = { deadline: Temporal.PlainDate.from('2026-12-01'), renders: 0 };
++
++      var valueEl = document.getElementById('temporal-value');
++      var changedEl = document.getElementById('temporal-ref-changed');
++      var countEl = document.getElementById('temporal-render-count');
++
++      function render() {
++        valueEl.textContent = state.deadline.toString();
++        countEl.textContent = String(state.renders);
++      }
++
++      document.getElementById('extend-temporal-btn').addEventListener('click', function () {
++        var previous = state.deadline;
++        var next = previous.add({ days: 1 });
++        state = { deadline: next, renders: state.renders + 1 };
++        changedEl.textContent = next !== previous ? 'Yes' : 'No';
++        render();
++      });
++
++      render();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

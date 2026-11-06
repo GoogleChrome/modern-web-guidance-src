@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting video / theater mode */
++    .video-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .video-frame {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      margin-top: 20px;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: #000;
++    }
++
++    .video-section button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .theater-slot {
++      width: min(100%, 1100px);
++    }
++
++    .theater-slot .video-frame {
++      margin: 0 0 1.5rem;
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
++    }
++
++    .hero.theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,8 +207,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div id="theater-slot" class="theater-slot" hidden></div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -194,8 +232,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" id="video-section">
++      <h2>From Green Bean to Your Cup</h2>
++      <p>See what happens inside the roaster before your coffee reaches the counter.</p>
++      <iframe id="roast-video" class="video-frame"
++        src="https://www.youtube.com/embed/N6BJVM5tvnw?enablejsapi=1&amp;rel=0"
++        title="Coffee Roasting Explained (YouTube video)"
++        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++        referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++      <button type="button" class="btn" id="theater-toggle" aria-pressed="false">Theater Mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +255,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const video = document.getElementById('roast-video');
++      const toggle = document.getElementById('theater-toggle');
++      const hero = document.querySelector('.hero');
++      const theaterSlot = document.getElementById('theater-slot');
++      const homeSlot = document.getElementById('video-section');
++      const homeNext = toggle; // the iframe lives just before the button
++      const YT_ORIGIN = 'https://www.youtube.com';
++      const canMoveAtomically = 'moveBefore' in Element.prototype;
++
++      // Fallback: without moveBefore(), moving the iframe reloads it. Track the
++      // player's time/state via the YouTube embed postMessage protocol so the
++      // reloaded player can resume where it left off.
++      const player = { currentTime: 0, playerState: -1 };
++      if (!canMoveAtomically) {
++        const listen = () => video.contentWindow.postMessage(
++          JSON.stringify({ event: 'listening', id: video.id, channel: 'widget' }), YT_ORIGIN);
++        video.addEventListener('load', listen);
++        listen();
++        window.addEventListener('message', (e) => {
++          if (e.origin !== YT_ORIGIN || e.source !== video.contentWindow) return;
++          let data;
++          try { data = JSON.parse(e.data); } catch { return; }
++          if (data && data.info && typeof data.info === 'object') {
++            if (typeof data.info.currentTime === 'number') player.currentTime = data.info.currentTime;
++            if (typeof data.info.playerState === 'number') player.playerState = data.info.playerState;
++          }
++        });
++      }
++
++      function moveVideo(parent, before) {
++        if (canMoveAtomically) {
++          // Atomic move: keeps the iframe's browsing context, so playback continues.
++          parent.moveBefore(video, before);
++          return;
++        }
++        const url = new URL(video.src);
++        url.searchParams.set('start', String(Math.floor(player.currentTime)));
++        // 1 = playing, 3 = buffering
++        url.searchParams.set('autoplay', [1, 3].includes(player.playerState) ? '1' : '0');
++        video.remove(); // detach first so changing src doesn't trigger an extra load
++        video.src = url.href;
++        parent.insertBefore(video, before);
++      }
++
++      toggle.addEventListener('click', () => {
++        const entering = toggle.getAttribute('aria-pressed') !== 'true';
++        if (entering) {
++          theaterSlot.hidden = false;
++          moveVideo(theaterSlot, null);
++          hero.classList.add('theater');
++          window.scrollTo({ top: 0, behavior: 'smooth' }); // hero sits at the top, under the sticky nav
++        } else {
++          moveVideo(homeSlot, homeNext);
++          theaterSlot.hidden = true;
++          hero.classList.remove('theater');
++        }
++        toggle.setAttribute('aria-pressed', String(entering));
++        toggle.textContent = entering ? 'Exit Theater Mode' : 'Theater Mode';
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,99 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font: inherit;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    dialog:modal {
++      overscroll-behavior: contain;
++      margin: auto;
++      max-width: 480px;
++      width: calc(100% - 40px);
++      padding: 28px;
++      border: none;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      text-align: left;
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background-color: rgba(0, 0, 0, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .dialog-header h3 {
++      color: var(--primary);
++      font-size: 1.4rem;
++    }
++
++    .dialog-price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++    }
++
++    .dialog-meta {
++      margin: 16px 0;
++      padding: 12px;
++      background: var(--light);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .dialog-meta dt {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 6px;
++    }
++
++    .dialog-meta dt:first-child {
++      margin-top: 0;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,24 +260,90 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="card-maple-title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-maple-oat-latte" aria-labelledby="btn-maple-text card-maple-title">
++            <span id="btn-maple-text">View Details</span>
++          </button>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="card-espresso-title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-dark-roast-espresso" aria-labelledby="btn-espresso-text card-espresso-title">
++            <span id="btn-espresso-text">View Details</span>
++          </button>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="card-cold-brew-title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-cold-brew" aria-labelledby="btn-cold-brew-text card-cold-brew-title">
++            <span id="btn-cold-brew-text">View Details</span>
++          </button>
+         </div>
+       </div>
+     </section>
++
++    <dialog id="dialog-maple-oat-latte" closedby="any" aria-labelledby="dialog-maple-title">
++      <div class="dialog-header">
++        <h3 id="dialog-maple-title">Maple Oat Latte</h3>
++        <span class="dialog-price">$5.75</span>
++      </div>
++      <p>Our signature autumn latte pairs velvety steamed barista oat milk with rich double-shot espresso and pure Grade A Vermont amber maple syrup, finished with a light dusting of cinnamon.</p>
++      <dl class="dialog-meta">
++        <dt>Tasting Notes</dt>
++        <dd>Toasted oats, warm maple, caramel, and sweet spice</dd>
++        <dt>Origin &amp; Roast</dt>
++        <dd>Single-origin Colombian espresso, medium-dark roast</dd>
++        <dt>Dietary Info</dt>
++        <dd>100% Plant-Based / Dairy-Free (210 kcal, 12 oz)</dd>
++      </dl>
++      <form method="dialog" class="dialog-actions">
++        <button type="submit" value="close" class="btn btn-secondary" command="close" commandfor="dialog-maple-oat-latte" autofocus>Close</button>
++        <a href="/order-online?item=maple-oat-latte" class="btn">Order Now</a>
++      </form>
++    </dialog>
++
++    <dialog id="dialog-dark-roast-espresso" closedby="any" aria-labelledby="dialog-espresso-title">
++      <div class="dialog-header">
++        <h3 id="dialog-espresso-title">Dark Roast Espresso</h3>
++        <span class="dialog-price">$3.50</span>
++      </div>
++      <p>Slow-roasted in small batches to bring out deep, intense aromatics and a full-bodied crema with low acidity and a lingering bittersweet cocoa finish.</p>
++      <dl class="dialog-meta">
++        <dt>Tasting Notes</dt>
++        <dd>Dark chocolate, roasted walnut, and smoky cedar</dd>
++        <dt>Origin &amp; Roast</dt>
++        <dd>Sumatra Mandheling &amp; Brazil Cerrado blend, dark roast</dd>
++        <dt>Dietary Info</dt>
++        <dd>Unsweetened (5 kcal, double shot 2 oz)</dd>
++      </dl>
++      <form method="dialog" class="dialog-actions">
++        <button type="submit" value="close" class="btn btn-secondary" command="close" commandfor="dialog-dark-roast-espresso" autofocus>Close</button>
++        <a href="/order-online?item=dark-roast-espresso" class="btn">Order Now</a>
++      </form>
++    </dialog>
++
++    <dialog id="dialog-cold-brew" closedby="any" aria-labelledby="dialog-cold-brew-title">
++      <div class="dialog-header">
++        <h3 id="dialog-cold-brew-title">Cold Brew</h3>
++        <span class="dialog-price">$4.75</span>
++      </div>
++      <p>Coarsely ground Ethiopian and Guatemalan beans steeped in filtered cold water for 18 hours, yielding an ultra-smooth, naturally sweet concentrate served over ice.</p>
++      <dl class="dialog-meta">
++        <dt>Tasting Notes</dt>
++        <dd>Milk chocolate, molasses, and subtle stone fruit</dd>
++        <dt>Origin &amp; Roast</dt>
++        <dd>Ethiopia Yirgacheffe &amp; Huehuetenango blend, medium roast</dd>
++        <dt>Dietary Info</dt>
++        <dd>Unsweetened, high caffeine (15 kcal, 16 oz)</dd>
++      </dl>
++      <form method="dialog" class="dialog-actions">
++        <button type="submit" value="close" class="btn btn-secondary" command="close" commandfor="dialog-cold-brew" autofocus>Close</button>
++        <a href="/order-online?item=cold-brew" class="btn">Order Now</a>
++      </form>
++    </dialog>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +354,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => {
++          pressedOutside = outside(e, dialog);
++        });
++        dialog.addEventListener('pointerup', (e) => {
++          if (pressedOutside && outside(e, dialog)) dialog.close();
++        });
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+index 66c9173..a673c52 100644
+--- a/index.html
++++ b/index.html
+@@ -120,8 +120,95 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
++    .drink-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 0.65rem;
++    }
++
++    .drink-heading::after {
++      content: "";
++      flex-basis: 100%;
++      height: 3px;
++      background: linear-gradient(to right, transparent, var(--accent), transparent);
++    }
++
++    /* Empty, aria-hidden spans carry decoration only; visible text supplies names.
++       CSS shapes need no alt text (unlike an informative image). */
++    .decoration {
+       display: inline-block;
++      position: relative;
++      flex-shrink: 0;
++      width: 1.2em;
++      height: 1.2em;
++      pointer-events: none;
++    }
++
++    .decoration::before,
++    .decoration::after {
++      content: "";
++      position: absolute;
++    }
++
++    .decoration--leaf::before {
++      inset: 0.05em 0.15em;
++      border: 2px solid currentColor;
++      border-radius: 80% 0 80% 0;
++      transform: rotate(15deg);
++      background: var(--accent);
++    }
++
++    .decoration--leaf::after {
++      width: 2px;
++      height: 0.9em;
++      background: currentColor;
++      left: 50%;
++      top: 0.2em;
++      transform: rotate(40deg);
++    }
++
++    .decoration--bean::before {
++      inset: 0.05em 0.2em;
++      border: 2px solid currentColor;
++      border-radius: 50%;
++      transform: rotate(35deg);
++      background: var(--secondary);
++    }
++
++    .decoration--bean::after {
++      inset: 0.15em 0.5em;
++      border-left: 2px solid currentColor;
++      border-radius: 50%;
++      transform: rotate(35deg);
++    }
++
++    .decoration--ice::before,
++    .decoration--ice::after {
++      width: 0.65em;
++      height: 0.65em;
++      border: 2px solid currentColor;
++      border-radius: 3px;
++      background: var(--light);
++      transform: rotate(15deg);
++    }
++
++    .decoration--ice::before {
++      top: 0.05em;
++      right: 0;
++    }
++
++    .decoration--ice::after {
++      bottom: 0;
++      left: 0;
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.6em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +222,44 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .decoration--cup::before {
++      inset: 0.25em 0.3em 0.1em 0;
++      border: 2px solid currentColor;
++      border-radius: 0 0 0.3em 0.3em;
++    }
++
++    .decoration--cup::after {
++      top: 0.35em;
++      right: 0;
++      width: 0.35em;
++      height: 0.45em;
++      border: 2px solid currentColor;
++      border-left: 0;
++      border-radius: 0 50% 50% 0;
++    }
++
++    .decoration--arrow::before {
++      width: 0.9em;
++      top: 50%;
++      left: 0;
++      border-top: 2px solid currentColor;
++    }
++
++    .decoration--arrow::after {
++      width: 0.45em;
++      height: 0.45em;
++      top: 50%;
++      right: 0.15em;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: translateY(-50%) rotate(45deg);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +296,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="decoration decoration--cup" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +304,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink-heading"><span class="decoration decoration--leaf" aria-hidden="true"></span>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="decoration decoration--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink-heading"><span class="decoration decoration--bean" aria-hidden="true"></span>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="decoration decoration--arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink-heading"><span class="decoration decoration--ice" aria-hidden="true"></span>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="decoration decoration--arrow" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,528 @@
+diff --git a/index.html b/index.html
+index 66c9173..7021039 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ 
+ <head>
++  <script>document.documentElement.classList.add('js');</script>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -152,6 +153,256 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Hovercard: link previews for drink pages */
++    .hc {
++      position: relative;
++      display: inline-block;
++    }
++
++    .hc-card {
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      z-index: 900;
++      width: 320px;
++      max-width: calc(100vw - 24px);
++      padding-top: 12px; /* transparent hover bridge between link and card */
++      transform: translate(calc(-50% + var(--hc-shift, 0px)), 6px);
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      text-align: left;
++      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
++    }
++
++    .hc-card.hc-above {
++      top: auto;
++      bottom: 100%;
++      padding-top: 0;
++      padding-bottom: 12px;
++      transform: translate(calc(-50% + var(--hc-shift, 0px)), -6px);
++    }
++
++    .hc.is-open .hc-card,
++    html:not(.js) .hc:hover .hc-card,
++    html:not(.js) .hc:focus-within .hc-card {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translate(calc(-50% + var(--hc-shift, 0px)), 0);
++      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s;
++    }
++
++    .hc-panel {
++      position: relative;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      border: 1px solid rgba(78, 52, 46, 0.12);
++    }
++
++    .hc-media {
++      position: relative;
++      height: 130px;
++      background: var(--secondary);
++    }
++
++    .hc-media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .hc-badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      padding: 3px 8px;
++      border-radius: 999px;
++    }
++
++    .hc-body {
++      padding: 14px 16px 16px;
++    }
++
++    .hc-url {
++      font-size: 0.72rem;
++      color: #8d6e63;
++      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
++    }
++
++    .hc-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin: 2px 0 4px;
++    }
++
++    .hc-title {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .hc-price {
++      font-weight: 700;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    .hc-rating {
++      font-size: 0.78rem;
++      color: #8d6e63;
++    }
++
++    .hc-rating span {
++      color: #f59e0b;
++      letter-spacing: 1px;
++    }
++
++    .hc-desc {
++      font-size: 0.85rem;
++      margin: 8px 0 10px;
++      line-height: 1.45;
++    }
++
++    .hc-stats {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++      margin-bottom: 10px;
++    }
++
++    .hc-stats div {
++      background: var(--light);
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 6px 4px;
++      text-align: center;
++    }
++
++    .hc-stats dt {
++      font-size: 0.65rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++    }
++
++    .hc-stats dd {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .hc-notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 5px;
++      list-style: none;
++      margin-bottom: 12px;
++    }
++
++    .hc-notes li {
++      font-size: 0.72rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .hc-sizes {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 12px;
++      border: 0;
++    }
++
++    .hc-sizes legend {
++      font-size: 0.72rem;
++      color: #8d6e63;
++      margin-bottom: 4px;
++      float: left;
++      width: 100%;
++    }
++
++    .hc-size {
++      flex: 1;
++      font: inherit;
++      font-size: 0.78rem;
++      padding: 5px 0;
++      border: 1px solid var(--secondary);
++      background: white;
++      color: var(--text);
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .hc-size:hover {
++      border-color: var(--primary);
++    }
++
++    .hc-size[aria-pressed="true"] {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .hc-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .hc-actions a {
++      flex: 1;
++      text-align: center;
++      font-size: 0.82rem;
++      font-weight: 600;
++      text-decoration: none;
++      padding: 8px 10px;
++      border-radius: 5px;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .hc-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .hc-primary:hover {
++      background: #3e2723;
++    }
++
++    .hc-secondary {
++      border: 1px solid var(--primary);
++      color: var(--primary);
++    }
++
++    .hc-secondary:hover {
++      background: #efebe9;
++    }
++
++    .hc a:focus-visible,
++    .hc button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hc-card,
++      .hc.is-open .hc-card {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -181,17 +432,122 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="hc" data-hovercard>
++            <a href="/menu/seasonal" class="btn hc-trigger" aria-describedby="hc-maple-summary">View Details</a>
++            <div class="hc-card" id="hc-maple" role="group" aria-label="Preview of Maple Oat Latte">
++              <div class="hc-panel">
++                <div class="hc-media">
++                  <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=70" alt="Latte with foam art in a ceramic cup" loading="lazy" width="320" height="130">
++                  <span class="hc-badge">Seasonal</span>
++                </div>
++                <div class="hc-body">
++                  <div class="hc-url">/menu/seasonal</div>
++                  <div class="hc-head">
++                    <h4 class="hc-title">Maple Oat Latte</h4>
++                    <span class="hc-price" aria-live="polite">$5.25</span>
++                  </div>
++                  <div class="hc-rating"><span aria-hidden="true">★★★★★</span> 4.8 &middot; 312 reviews</div>
++                  <p class="hc-desc" id="hc-maple-summary">Double shot of our house espresso, steamed oat milk and pure Vermont maple syrup, finished with a dusting of cinnamon.</p>
++                  <dl class="hc-stats">
++                  <div><dt>Caffeine</dt><dd>150 mg</dd></div>
++                  <div><dt>Calories</dt><dd>190</dd></div>
++                  <div><dt>Dairy</dt><dd>Free</dd></div>
++                  </dl>
++                  <ul class="hc-notes" aria-label="Tasting notes"><li>Maple</li><li>Toasted oat</li><li>Cinnamon</li><li>Vegan</li></ul>
++                  <fieldset class="hc-sizes">
++                    <legend>Size</legend>
++                  <button type="button" class="hc-size" data-price="4.75" aria-pressed="false">Small</button>
++                  <button type="button" class="hc-size" data-price="5.25" aria-pressed="true">Medium</button>
++                  <button type="button" class="hc-size" data-price="5.75" aria-pressed="false">Large</button>
++                  </fieldset>
++                  <div class="hc-actions">
++                    <a href="/menu/seasonal" class="hc-primary">Full details</a>
++                    <a href="/order-online?item=maple" class="hc-secondary">Add to order</a>
++                  </div>
++                </div>
++              </div>
++            </div>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="hc" data-hovercard>
++            <a href="/menu/espresso" class="btn hc-trigger" aria-describedby="hc-espresso-summary">View Details</a>
++            <div class="hc-card" id="hc-espresso" role="group" aria-label="Preview of Dark Roast Espresso">
++              <div class="hc-panel">
++                <div class="hc-media">
++                  <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=640&q=70" alt="Espresso being pulled into a small cup" loading="lazy" width="320" height="130">
++                  <span class="hc-badge">Signature</span>
++                </div>
++                <div class="hc-body">
++                  <div class="hc-url">/menu/espresso</div>
++                  <div class="hc-head">
++                    <h4 class="hc-title">Dark Roast Espresso</h4>
++                    <span class="hc-price" aria-live="polite">$3.50</span>
++                  </div>
++                  <div class="hc-rating"><span aria-hidden="true">★★★★★</span> 4.7 &middot; 528 reviews</div>
++                  <p class="hc-desc" id="hc-espresso-summary">Single-origin Sumatran beans roasted dark in-house for a bold, smoky shot with a thick, lingering crema.</p>
++                  <dl class="hc-stats">
++                  <div><dt>Caffeine</dt><dd>130 mg</dd></div>
++                  <div><dt>Calories</dt><dd>5</dd></div>
++                  <div><dt>Roast</dt><dd>Dark</dd></div>
++                  </dl>
++                  <ul class="hc-notes" aria-label="Tasting notes"><li>Smoky</li><li>Dark cocoa</li><li>Cedar</li><li>Bold</li></ul>
++                  <fieldset class="hc-sizes">
++                    <legend>Size</legend>
++                  <button type="button" class="hc-size" data-price="2.75" aria-pressed="false">Single</button>
++                  <button type="button" class="hc-size" data-price="3.50" aria-pressed="true">Double</button>
++                  <button type="button" class="hc-size" data-price="4.25" aria-pressed="false">Triple</button>
++                  </fieldset>
++                  <div class="hc-actions">
++                    <a href="/menu/espresso" class="hc-primary">Full details</a>
++                    <a href="/order-online?item=espresso" class="hc-secondary">Add to order</a>
++                  </div>
++                </div>
++              </div>
++            </div>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="hc" data-hovercard>
++            <a href="/menu/cold-brew" class="btn hc-trigger" aria-describedby="hc-coldbrew-summary">View Details</a>
++            <div class="hc-card" id="hc-coldbrew" role="group" aria-label="Preview of Cold Brew">
++              <div class="hc-panel">
++                <div class="hc-media">
++                  <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&q=70" alt="Iced coffee in a tall glass" loading="lazy" width="320" height="130">
++                  <span class="hc-badge">Iced</span>
++                </div>
++                <div class="hc-body">
++                  <div class="hc-url">/menu/cold-brew</div>
++                  <div class="hc-head">
++                    <h4 class="hc-title">Cold Brew</h4>
++                    <span class="hc-price" aria-live="polite">$4.75</span>
++                  </div>
++                  <div class="hc-rating"><span aria-hidden="true">★★★★★</span> 4.9 &middot; 441 reviews</div>
++                  <p class="hc-desc" id="hc-coldbrew-summary">Coarse-ground Colombian beans steeped in cold filtered water for 18 hours, served over ice for a naturally sweet, low-acid sip.</p>
++                  <dl class="hc-stats">
++                  <div><dt>Caffeine</dt><dd>200 mg</dd></div>
++                  <div><dt>Calories</dt><dd>10</dd></div>
++                  <div><dt>Steep</dt><dd>18 hrs</dd></div>
++                  </dl>
++                  <ul class="hc-notes" aria-label="Tasting notes"><li>Chocolate</li><li>Caramel</li><li>Low acid</li><li>Smooth</li></ul>
++                  <fieldset class="hc-sizes">
++                    <legend>Size</legend>
++                  <button type="button" class="hc-size" data-price="4.25" aria-pressed="false">Small</button>
++                  <button type="button" class="hc-size" data-price="4.75" aria-pressed="true">Medium</button>
++                  <button type="button" class="hc-size" data-price="5.25" aria-pressed="false">Large</button>
++                  </fieldset>
++                  <div class="hc-actions">
++                    <a href="/menu/cold-brew" class="hc-primary">Full details</a>
++                    <a href="/order-online?item=coldbrew" class="hc-secondary">Add to order</a>
++                  </div>
++                </div>
++              </div>
++            </div>
++          </span>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +563,132 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var OPEN_DELAY = 250;
++      var CLOSE_DELAY = 200;
++      var VIEWPORT_PAD = 12;
++      var current = null;
++
++      function position(wrap) {
++        var card = wrap.querySelector('.hc-card');
++        card.style.setProperty('--hc-shift', '0px');
++        card.classList.remove('hc-above');
++
++        var trigger = wrap.querySelector('.hc-trigger').getBoundingClientRect();
++        var height = card.offsetHeight;
++        var width = card.offsetWidth;
++        var vw = document.documentElement.clientWidth;
++        var vh = window.innerHeight;
++        var navH = (document.querySelector('nav') || { offsetHeight: 0 }).offsetHeight;
++
++        // Flip above the link when there isn't room below but there is above.
++        if (trigger.bottom + height > vh && trigger.top - height > navH) {
++          card.classList.add('hc-above');
++        }
++
++        // Keep the card horizontally inside the viewport.
++        var center = trigger.left + trigger.width / 2;
++        var left = center - width / 2;
++        var shift = 0;
++        if (left < VIEWPORT_PAD) shift = VIEWPORT_PAD - left;
++        else if (left + width > vw - VIEWPORT_PAD) shift = vw - VIEWPORT_PAD - (left + width);
++        card.style.setProperty('--hc-shift', shift + 'px');
++      }
++
++      function open(wrap) {
++        clearTimeout(wrap._hcClose);
++        if (current && current !== wrap) close(current);
++        if (wrap.classList.contains('is-open')) return;
++        position(wrap);
++        wrap.classList.add('is-open');
++        wrap.querySelector('.hc-trigger').setAttribute('aria-expanded', 'true');
++        current = wrap;
++      }
++
++      function close(wrap) {
++        clearTimeout(wrap._hcOpen);
++        clearTimeout(wrap._hcClose);
++        wrap.classList.remove('is-open');
++        wrap.querySelector('.hc-trigger').setAttribute('aria-expanded', 'false');
++        if (current === wrap) current = null;
++      }
++
++      function scheduleOpen(wrap, delay) {
++        clearTimeout(wrap._hcClose);
++        clearTimeout(wrap._hcOpen);
++        wrap._hcOpen = setTimeout(function () { open(wrap); }, delay);
++      }
++
++      function scheduleClose(wrap) {
++        clearTimeout(wrap._hcOpen);
++        clearTimeout(wrap._hcClose);
++        wrap._hcClose = setTimeout(function () { close(wrap); }, CLOSE_DELAY);
++      }
++
++      document.querySelectorAll('[data-hovercard]').forEach(function (wrap) {
++        var trigger = wrap.querySelector('.hc-trigger');
++        var card = wrap.querySelector('.hc-card');
++        trigger.setAttribute('aria-controls', card.id);
++        trigger.setAttribute('aria-expanded', 'false');
++
++        // Mouse / pen hover (ignore touch so taps simply navigate).
++        wrap.addEventListener('pointerenter', function (e) {
++          if (e.pointerType === 'touch') return;
++          scheduleOpen(wrap, wrap.classList.contains('is-open') ? 0 : OPEN_DELAY);
++        });
++        wrap.addEventListener('pointerleave', function (e) {
++          if (e.pointerType === 'touch') return;
++          if (wrap.contains(document.activeElement) && document.activeElement !== trigger) return;
++          scheduleClose(wrap);
++        });
++
++        // Keyboard: open on focus, keep open while focus is inside the card.
++        wrap.addEventListener('focusin', function () {
++          if (trigger.matches(':focus-visible') || card.contains(document.activeElement)) {
++            scheduleOpen(wrap, 0);
++          }
++        });
++        wrap.addEventListener('focusout', function (e) {
++          if (!wrap.contains(e.relatedTarget)) scheduleClose(wrap);
++        });
++
++        wrap.addEventListener('keydown', function (e) {
++          if (e.key === 'Escape' && wrap.classList.contains('is-open')) {
++            e.preventDefault();
++            close(wrap);
++            trigger.focus();
++          }
++        });
++
++        // Interactive size selector updates the previewed price.
++        var price = wrap.querySelector('.hc-price');
++        var sizes = wrap.querySelectorAll('.hc-size');
++        sizes.forEach(function (btn) {
++          btn.addEventListener('click', function () {
++            sizes.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
++            price.textContent = '$' + btn.dataset.price;
++            var order = wrap.querySelector('.hc-secondary');
++            var url = new URL(order.href, location.href);
++            url.searchParams.set('size', btn.textContent.trim().toLowerCase());
++            order.href = url.pathname + url.search;
++          });
++        });
++
++        // Hide the image area gracefully if the photo fails to load.
++        var img = wrap.querySelector('.hc-media img');
++        if (img) img.addEventListener('error', function () { img.style.visibility = 'hidden'; });
++      });
++
++      // Dismiss on outside click and reposition/close on viewport changes.
++      document.addEventListener('pointerdown', function (e) {
++        if (current && !current.contains(e.target)) close(current);
++      });
++      window.addEventListener('resize', function () { if (current) position(current); });
++      window.addEventListener('scroll', function () { if (current) position(current); }, { passive: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

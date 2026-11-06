@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+index 66c9173..df69ccc 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,123 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutrition & Pricing Table */
++    .table-heading {
++      margin-top: 40px;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .table-intro {
++      text-align: center;
++      font-size: 0.95rem;
++      margin: 8px auto 16px;
++      max-width: 60ch;
++    }
++
++    .table-scroll {
++      overflow-x: auto;
++      -webkit-overflow-scrolling: touch;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      width: 100%;
++      min-width: 560px;
++      border-collapse: collapse;
++      font-size: 0.95rem;
++    }
++
++    .nutrition-table caption {
++      caption-side: top;
++      text-align: left;
++      font-weight: bold;
++      padding: 12px 16px;
++      color: var(--primary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 12px 16px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: right;
++      white-space: nowrap;
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++      vertical-align: bottom;
++    }
++
++    .nutrition-table th[scope="row"],
++    .nutrition-table thead th:first-child {
++      text-align: left;
++    }
++
++    /* Keep the drink name visible while scrolling sideways on narrow screens */
++    .nutrition-table th[scope="row"] {
++      position: sticky;
++      left: 0;
++      background: #efebe9;
++      color: var(--primary);
++      z-index: 1;
++    }
++
++    .nutrition-table thead th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 2;
++    }
++
++    .nutrition-table tbody tr:nth-child(even) td {
++      background: #faf7f6;
++    }
++
++    .nutrition-table tbody tr:last-child th,
++    .nutrition-table tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    .unit {
++      display: block;
++      font-size: 0.75rem;
++      font-weight: normal;
++      opacity: 0.85;
++    }
++
++    .table-hint,
++    .table-note {
++      font-size: 0.8rem;
++      margin-top: 8px;
++      text-align: center;
++    }
++
++    @media (min-width: 640px) {
++      .table-hint {
++        display: none;
++      }
++    }
++
++    @media (max-width: 480px) {
++      .nutrition-table {
++        font-size: 0.875rem;
++      }
++
++      .nutrition-table th,
++      .nutrition-table td {
++        padding: 10px 12px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +292,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,6 +311,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 id="nutrition-heading" class="table-heading">Nutrition &amp; Pricing</h3>
++      <p class="table-intro">Compare our seasonal drinks side by side. Values are for a standard 12&nbsp;oz (355&nbsp;ml) serving; espresso is a double shot.</p>
++      <p class="table-hint" aria-hidden="true">Swipe the table sideways to see all columns &rarr;</p>
++      <div class="table-scroll" role="region" aria-labelledby="nutrition-heading" tabindex="0">
++        <table class="nutrition-table">
++          <caption>Price, calories, caffeine, sugar, fat, and protein for each Seasonal Favorites drink</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Price <span class="unit">(USD)</span></th>
++              <th scope="col">Calories <span class="unit">(kcal)</span></th>
++              <th scope="col">Caffeine <span class="unit">(mg)</span></th>
++              <th scope="col">Sugar <span class="unit">(g)</span></th>
++              <th scope="col">Fat <span class="unit">(g)</span></th>
++              <th scope="col">Protein <span class="unit">(g)</span></th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>$5.75</td>
++              <td>190</td>
++              <td>130</td>
++              <td>18</td>
++              <td>7</td>
++              <td>3</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>$3.25</td>
++              <td>5</td>
++              <td>150</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>$4.50</td>
++              <td>5</td>
++              <td>205</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p class="table-note">Nutritional values are approximate and may vary with milk or sweetener substitutions. Prices exclude tax.</p>
+     </section>
+   </main>
+ 

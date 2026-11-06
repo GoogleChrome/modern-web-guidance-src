@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,116 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section
++       Layers are positioned statically by default (no motion). Scroll-driven
++       animations are only layered on when the browser supports them and the
++       user hasn't asked for reduced motion. Only transforms are animated, so
++       the work stays on the compositor. */
++    .parallax {
++      position: relative;
++      min-height: 80vh;
++      overflow: hidden;
++      display: grid;
++      place-items: center;
++      isolation: isolate;
++      color: white;
++      background: var(--primary);
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: -15% 0;
++      pointer-events: none;
++      will-change: transform;
++    }
++
++    .parallax-back {
++      z-index: -3;
++      background: linear-gradient(rgba(30, 15, 10, 0.55), rgba(30, 15, 10, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=70');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .parallax-mid,
++    .parallax-front {
++      inset: -30% 0;
++    }
++
++    .parallax-mid {
++      z-index: -2;
++    }
++
++    .parallax-front {
++      z-index: -1;
++    }
++
++    .parallax-disc {
++      position: absolute;
++      border-radius: 50%;
++      background-size: cover;
++      background-position: center;
++      border: 4px solid rgba(255, 255, 255, 0.25);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
++    }
++
++    .parallax-mid .parallax-disc {
++      width: clamp(120px, 22vw, 260px);
++      aspect-ratio: 1;
++      top: 35%;
++      left: 8%;
++      background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&q=70');
++    }
++
++    .parallax-front .parallax-disc {
++      width: clamp(70px, 12vw, 150px);
++      aspect-ratio: 1;
++      top: 55%;
++      right: 10%;
++      background-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300&q=70');
++    }
++
++    .parallax-content {
++      max-width: 600px;
++      padding: 40px 20px;
++      text-align: center;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          animation: parallax-shift linear both;
++          animation-timeline: view();
++          animation-range: cover;
++        }
++
++        /* Slowest layer = farthest away; fastest = closest */
++        .parallax-back  { --shift: 8%; }
++        .parallax-mid   { --shift: 22%; }
++        .parallax-front { --shift: 45%; }
++
++        .parallax-content {
++          animation: parallax-shift linear both;
++          animation-timeline: view();
++          animation-range: cover;
++          --shift: -6%;
++        }
++
++        @keyframes parallax-shift {
++          from { transform: translate3d(0, calc(var(--shift) * -1), 0); }
++          to   { transform: translate3d(0, var(--shift), 0); }
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +281,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-back" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true">
++      <div class="parallax-disc"></div>
++    </div>
++    <div class="parallax-layer parallax-front" aria-hidden="true">
++      <div class="parallax-disc"></div>
++    </div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>We work directly with small farms, roast in small batches every morning, and brew each cup to order.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,633 @@
+diff --git a/index.html b/index.html
+index 66c9173..7ce8134 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,214 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* Quick Order & Coffee Finder Form Section */
++    .order-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border: 2px solid transparent;
++      transition: border-color 0.25s, box-shadow 0.25s;
++    }
++
++    .order-section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .order-section-header h2 {
++      color: var(--primary);
++      font-size: 1.9rem;
++      margin-bottom: 6px;
++    }
++
++    .order-section-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .tool-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.6px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .finder-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      align-items: center;
++      background: #f5f0ee;
++      padding: 12px 16px;
++      border-radius: 8px;
++      margin-bottom: 24px;
++    }
++
++    .finder-bar span {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .finder-chip {
++      background: white;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 6px 12px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .finder-chip:hover,
++    .finder-chip.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .order-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 18px;
++      padding: 16px;
++      border-radius: 8px;
++      border: 2px solid transparent;
++      transition: all 0.2s ease;
++    }
++
++    /* WebMCP Declarative Tool Active States */
++    .order-form:is(:tool-form-active),
++    .order-form.agent-active {
++      border-color: var(--accent);
++      background-color: #fff8e1;
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.2);
++    }
++
++    .order-form button[type="submit"]:is(:tool-submit-active) {
++      outline: 3px solid var(--accent);
++      background: #ff9100;
++      color: var(--text);
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group.full-width {
++      grid-column: 1 / -1;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.15);
++    }
++
++    .order-footer {
++      grid-column: 1 / -1;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-top: 8px;
++      padding-top: 16px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .price-preview {
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .price-preview small {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: 400;
++      color: #6d4c41;
++    }
++
++    .order-result {
++      margin-top: 24px;
++      padding: 20px;
++      border-radius: 8px;
++      background: #efebe9;
++      border-left: 5px solid var(--primary);
++      display: none;
++    }
++
++    .order-result.visible {
++      display: block;
++    }
++
++    .order-result h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-result-details {
++      list-style: none;
++      margin: 10px 0;
++      font-size: 0.95rem;
++    }
++
++    .order-result-details li {
++      margin-bottom: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +373,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -181,20 +383,177 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#quick-order" class="btn" data-select-drink="maple-oat-latte">Quick Order</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#quick-order" class="btn" data-select-drink="dark-roast-espresso">Quick Order</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#quick-order" class="btn" data-select-drink="cold-brew">Quick Order</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="quick-order" class="order-section" aria-labelledby="quick-order-heading">
++      <div class="order-section-header">
++        <span class="tool-badge">Express Pickup &amp; AI Quick-Order</span>
++        <h2 id="quick-order-heading">Coffee Finder &amp; Quick Order</h2>
++        <p>Customize your perfect cup below or ask your browser AI assistant to place an order for you.</p>
++      </div>
++
++      <div class="finder-bar" role="group" aria-label="Coffee Finder Mood Presets">
++        <span>Match my vibe:</span>
++        <button type="button" class="finder-chip" data-preset="cozy-sweet">Cozy &amp; Sweet (Maple Oat Latte)</button>
++        <button type="button" class="finder-chip" data-preset="morning-boost">Strong Morning Boost (Dark Espresso)</button>
++        <button type="button" class="finder-chip" data-preset="smooth-chilled">Smooth &amp; Chilled (Cold Brew)</button>
++        <button type="button" class="finder-chip" data-preset="earthy-zen">Earthy &amp; Zen (Matcha Oat)</button>
++      </div>
++
++      <form
++        id="coffee-order-form"
++        class="order-form"
++        action="/order"
++        method="post"
++        toolname="order_coffee"
++        tooldescription="Find and place a customized coffee or artisanal beverage quick-order from The Daily Grind for in-store pickup. Supports selecting the drink, cup size, temperature, milk option, sweetness/flavoring, extra espresso shots, customer name, and special instructions."
++        toolautosubmit
++      >
++        <div class="form-group">
++          <label for="drink">Coffee / Beverage</label>
++          <select
++            id="drink"
++            name="drink"
++            required
++            toolparamtitle="Beverage Selection"
++            toolparamdescription="The coffee or beverage to order. Allowed values: 'maple-oat-latte' (Maple Oat Latte), 'dark-roast-espresso' (Dark Roast Espresso), 'cold-brew' (18-Hour Cold Brew), 'caramel-macchiato' (Caramel Macchiato), 'cappuccino' (Classic Cappuccino), 'pour-over' (Single-Origin Pour Over), or 'matcha-latte' (Ceremonial Matcha Latte)."
++          >
++            <option value="maple-oat-latte" data-price="5.50">Maple Oat Latte ($5.50)</option>
++            <option value="dark-roast-espresso" data-price="3.75">Dark Roast Espresso ($3.75)</option>
++            <option value="cold-brew" data-price="4.75">18-Hour Cold Brew ($4.75)</option>
++            <option value="caramel-macchiato" data-price="5.25">Caramel Macchiato ($5.25)</option>
++            <option value="cappuccino" data-price="4.50">Classic Cappuccino ($4.50)</option>
++            <option value="pour-over" data-price="4.25">Single-Origin Pour Over ($4.25)</option>
++            <option value="matcha-latte" data-price="5.50">Ceremonial Matcha Latte ($5.50)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="size">Cup Size</label>
++          <select
++            id="size"
++            name="size"
++            required
++            toolparamtitle="Cup Size"
++            toolparamdescription="Size of the drink: 'small' (8 oz), 'medium' (12 oz, default), or 'large' (16 oz)."
++          >
++            <option value="small">Small (8 oz)</option>
++            <option value="medium" selected>Medium (12 oz)</option>
++            <option value="large">Large (16 oz, +$0.75)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="temperature">Temperature</label>
++          <select
++            id="temperature"
++            name="temperature"
++            required
++            toolparamtitle="Drink Temperature"
++            toolparamdescription="Whether the beverage should be served 'hot' or 'iced'."
++          >
++            <option value="hot" selected>Hot</option>
++            <option value="iced">Iced</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="milk">Milk Preference</label>
++          <select
++            id="milk"
++            name="milk"
++            toolparamtitle="Milk Option"
++            toolparamdescription="Choice of milk: 'oat' (Oat Milk), 'whole' (Whole Milk), 'almond' (Almond Milk), 'soy' (Soy Milk), 'skim' (Skim Milk), or 'none' (Black / No Milk)."
++          >
++            <option value="oat" selected>Oat Milk</option>
++            <option value="whole">Whole Milk</option>
++            <option value="almond">Almond Milk</option>
++            <option value="soy">Soy Milk</option>
++            <option value="skim">Skim Milk</option>
++            <option value="none">No Milk (Black)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="sweetness">Sweetness &amp; Flavor</label>
++          <select
++            id="sweetness"
++            name="sweetness"
++            toolparamtitle="Sweetness and Flavoring"
++            toolparamdescription="Sweetness level or flavor syrup: 'standard' (Standard recipe sweetness), 'unsweetened' (No added sugar), 'half-sweet' (Lightly sweetened), 'maple' (Vermont Maple Syrup), 'vanilla' (Madagascar Vanilla Syrup), or 'caramel' (Salted Caramel)."
++          >
++            <option value="standard" selected>Standard Sweetness</option>
++            <option value="unsweetened">Unsweetened</option>
++            <option value="half-sweet">Half Sweet</option>
++            <option value="maple">Vermont Maple Syrup</option>
++            <option value="vanilla">Madagascar Vanilla</option>
++            <option value="caramel">Salted Caramel</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="extra_shots">Extra Espresso Shots (+$1.00 each)</label>
++          <input
++            type="number"
++            id="extra_shots"
++            name="extra_shots"
++            min="0"
++            max="4"
++            value="0"
++            toolparamtitle="Extra Espresso Shots"
++            toolparamdescription="Number of additional espresso shots to add to the beverage (integer from 0 to 4)."
++          />
++        </div>
++
++        <div class="form-group">
++          <label for="customer_name">Name for Pickup</label>
++          <input
++            type="text"
++            id="customer_name"
++            name="customer_name"
++            placeholder="e.g., Alex Rivera"
++            required
++            toolparamtitle="Customer Name"
++            toolparamdescription="Full name or first name of the customer placing the coffee order for pickup."
++          />
++        </div>
++
++        <div class="form-group">
++          <label for="notes">Special Instructions (Optional)</label>
++          <input
++            type="text"
++            id="notes"
++            name="notes"
++            placeholder="e.g., Extra foam, light ice, cinnamon dusting"
++            toolparamtitle="Special Instructions"
++            toolparamdescription="Optional preparation notes or dietary requests (e.g., extra hot, light ice, oat whip, cinnamon on top)."
++          />
++        </div>
++
++        <div class="order-footer">
++          <div class="price-preview" id="price-preview" aria-live="polite">
++            Estimated Total: <span id="total-price">$5.50</span>
++            <small id="drink-summary">Medium Hot Maple Oat Latte with Oat Milk</small>
++          </div>
++          <button type="submit" class="btn btn-accent" style="margin-top: 0;">Place Quick Order</button>
++        </div>
++      </form>
++
++      <div id="order-result" class="order-result" role="status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +566,223 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('coffee-order-form');
++      const drinkSelect = document.getElementById('drink');
++      const sizeSelect = document.getElementById('size');
++      const tempSelect = document.getElementById('temperature');
++      const milkSelect = document.getElementById('milk');
++      const sweetnessSelect = document.getElementById('sweetness');
++      const extraShotsInput = document.getElementById('extra_shots');
++      const customerNameInput = document.getElementById('customer_name');
++      const notesInput = document.getElementById('notes');
++      const totalPriceEl = document.getElementById('total-price');
++      const drinkSummaryEl = document.getElementById('drink-summary');
++      const orderResultEl = document.getElementById('order-result');
++
++      const DRINK_PRICES = {
++        'maple-oat-latte': { name: 'Maple Oat Latte', price: 5.50 },
++        'dark-roast-espresso': { name: 'Dark Roast Espresso', price: 3.75 },
++        'cold-brew': { name: '18-Hour Cold Brew', price: 4.75 },
++        'caramel-macchiato': { name: 'Caramel Macchiato', price: 5.25 },
++        'cappuccino': { name: 'Classic Cappuccino', price: 4.50 },
++        'pour-over': { name: 'Single-Origin Pour Over', price: 4.25 },
++        'matcha-latte': { name: 'Ceremonial Matcha Latte', price: 5.50 }
++      };
++
++      const PRESETS = {
++        'cozy-sweet': {
++          drink: 'maple-oat-latte',
++          size: 'medium',
++          temperature: 'hot',
++          milk: 'oat',
++          sweetness: 'maple',
++          extra_shots: 0
++        },
++        'morning-boost': {
++          drink: 'dark-roast-espresso',
++          size: 'medium',
++          temperature: 'hot',
++          milk: 'none',
++          sweetness: 'unsweetened',
++          extra_shots: 1
++        },
++        'smooth-chilled': {
++          drink: 'cold-brew',
++          size: 'large',
++          temperature: 'iced',
++          milk: 'oat',
++          sweetness: 'half-sweet',
++          extra_shots: 0
++        },
++        'earthy-zen': {
++          drink: 'matcha-latte',
++          size: 'medium',
++          temperature: 'iced',
++          milk: 'oat',
++          sweetness: 'standard',
++          extra_shots: 0
++        }
++      };
++
++      function calculateOrder() {
++        const drinkInfo = DRINK_PRICES[drinkSelect.value] || { name: drinkSelect.value, price: 4.50 };
++        const size = sizeSelect.value;
++        const sizeUpcharge = size === 'large' ? 0.75 : (size === 'small' ? -0.50 : 0);
++        const shots = Math.max(0, Math.min(4, parseInt(extraShotsInput.value || '0', 10) || 0));
++        const total = Math.max(2.50, drinkInfo.price + sizeUpcharge + shots * 1.00);
++
++        const sizeLabel = size.charAt(0).toUpperCase() + size.slice(1);
++        const tempLabel = tempSelect.value === 'iced' ? 'Iced' : 'Hot';
++        const milkOption = milkSelect.options[milkSelect.selectedIndex];
++        const milkLabel = milkSelect.value === 'none' ? 'Black' : 'with ' + (milkOption ? milkOption.text : milkSelect.value);
++
++        totalPriceEl.textContent = '$' + total.toFixed(2);
++        drinkSummaryEl.textContent =
++          sizeLabel + ' ' + tempLabel + ' ' + drinkInfo.name + ' (' + milkLabel + (shots > 0 ? ', +' + shots + ' shot' + (shots > 1 ? 's' : '') : '') + ')';
++
++        return {
++          drinkId: drinkSelect.value,
++          drinkName: drinkInfo.name,
++          size: size,
++          temperature: tempSelect.value,
++          milk: milkSelect.value,
++          sweetness: sweetnessSelect.value,
++          extraShots: shots,
++          customerName: (customerNameInput.value || 'Guest').trim(),
++          notes: (notesInput.value || '').trim(),
++          totalPrice: '$' + total.toFixed(2)
++        };
++      }
++
++      form.addEventListener('input', calculateOrder);
++      form.addEventListener('change', calculateOrder);
++
++      // Preset finder chips
++      document.querySelectorAll('.finder-chip').forEach((chip) => {
++        chip.addEventListener('click', () => {
++          const preset = PRESETS[chip.dataset.preset];
++          if (!preset) return;
++          document.querySelectorAll('.finder-chip').forEach((c) => c.classList.remove('active'));
++          chip.classList.add('active');
++
++          drinkSelect.value = preset.drink;
++          sizeSelect.value = preset.size;
++          tempSelect.value = preset.temperature;
++          milkSelect.value = preset.milk;
++          sweetnessSelect.value = preset.sweetness;
++          extraShotsInput.value = String(preset.extra_shots);
++          calculateOrder();
++        });
++      });
++
++      // Quick-select buttons on Seasonal Favorites cards
++      document.querySelectorAll('[data-select-drink]').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const targetDrink = btn.getAttribute('data-select-drink');
++          if (targetDrink && DRINK_PRICES[targetDrink]) {
++            drinkSelect.value = targetDrink;
++            if (targetDrink === 'cold-brew') {
++              tempSelect.value = 'iced';
++            }
++            calculateOrder();
++          }
++        });
++      });
++
++      // Listen for WebMCP Declarative Tool lifecycle events
++      const modelCtxTargets = [window, document, document.modelContext, navigator.modelContext].filter(Boolean);
++      modelCtxTargets.forEach((target) => {
++        if (typeof target.addEventListener === 'function') {
++          target.addEventListener('toolactivated', (event) => {
++            if (!event.toolName || event.toolName === 'order_coffee') {
++              form.classList.add('agent-active');
++              calculateOrder();
++            }
++          });
++          target.addEventListener('toolcancel', (event) => {
++            if (!event.toolName || event.toolName === 'order_coffee') {
++              form.classList.remove('agent-active');
++            }
++          });
++        }
++      });
++
++      // Handle form submission for both human users and AI agents
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        form.classList.remove('agent-active');
++
++        const summary = calculateOrder();
++        const orderId = 'DG-' + Math.floor(1000 + Math.random() * 9000);
++        const confirmationPayload = {
++          status: 'confirmed',
++          orderId: orderId,
++          customerName: summary.customerName,
++          item: summary.drinkName,
++          size: summary.size,
++          temperature: summary.temperature,
++          milk: summary.milk,
++          sweetness: summary.sweetness,
++          extraShots: summary.extraShots,
++          notes: summary.notes || 'None',
++          total: summary.totalPrice,
++          estimatedPickupMinutes: 5,
++          message:
++            'Order ' +
++            orderId +
++            ' confirmed for ' +
++            summary.customerName +
++            ': ' +
++            summary.size +
++            ' ' +
++            summary.temperature +
++            ' ' +
++            summary.drinkName +
++            ' (' +
++            summary.totalPrice +
++            '). Ready for pickup in ~5 minutes.'
++        };
++
++        orderResultEl.innerHTML =
++          '<h3>Order Confirmed! (' +
++          confirmationPayload.orderId +
++          ')</h3>' +
++          '<p>Thanks, <strong>' +
++          summary.customerName.replace(/[<>&"']/g, '') +
++          '</strong>! We are preparing your handcrafted beverage now.</p>' +
++          '<ul class="order-result-details">' +
++          '<li><strong>Beverage:</strong> ' +
++          summary.size +
++          ' ' +
++          summary.temperature +
++          ' ' +
++          summary.drinkName +
++          '</li>' +
++          '<li><strong>Customizations:</strong> Milk: ' +
++          summary.milk +
++          ', Sweetness: ' +
++          summary.sweetness +
++          ', Extra Shots: ' +
++          summary.extraShots +
++          '</li>' +
++          (summary.notes ? '<li><strong>Notes:</strong> ' + summary.notes.replace(/[<>&"']/g, '') + '</li>' : '') +
++          '<li><strong>Total Due at Pickup:</strong> ' +
++          summary.totalPrice +
++          ' (Ready in ~5 mins)</li>' +
++          '</ul>';
++        orderResultEl.classList.add('visible');
++
++        // Return structured tool response when submitted by a browser AI agent (WebMCP)
++        if (typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(confirmationPayload));
++        }
++      });
++
++      calculateOrder();
++    })();
++  </script>
+ </body>
+ 
+ </html>

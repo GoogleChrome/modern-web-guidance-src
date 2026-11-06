@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,118 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 50px;
++    }
++
++    .showcase-heading {
++      text-align: center;
++      margin-bottom: 24px;
++      color: var(--primary);
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      align-items: stretch;
++    }
++
++    .nested-curve-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 28px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .nested-curve-media {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-body {
++      padding: 16px 4px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-parent .card-footer {
++      background: var(--primary);
++      color: white;
++      padding: 14px 20px;
++      margin-top: 12px;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    .safety-zone-parent {
++      background: linear-gradient(135deg, #3e2723, #4e342e);
++      color: white;
++      padding: 24px;
++      border-radius: 16px;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++      font-size: 1.4rem;
++    }
++
++    .promo-overflow-text {
++      white-space: nowrap;
++      opacity: 0.2;
++      font-size: 1.75rem;
++      font-weight: 800;
++      letter-spacing: 2px;
++      margin: 12px 0;
++      pointer-events: none;
++    }
++
++    .promo-actions {
++      margin-top: auto;
++      padding-top: 16px;
++      display: flex;
++      justify-content: flex-start;
++      align-items: flex-end;
++    }
++
++    .promo-glow-btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      border: none;
++      cursor: pointer;
++      padding: 12px 24px;
++      border-radius: 8px;
++      font-size: 1rem;
++      box-shadow: 0 0 24px 10px rgba(255, 171, 64, 0.85);
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .promo-glow-btn:hover {
++      background: #ffd180;
++      box-shadow: 0 0 30px 12px rgba(255, 171, 64, 0.95);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +284,41 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <h2 class="showcase-heading">Roaster's Showcase &amp; Exclusive Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++            alt="Artisanal Pour Over Coffee"
++            class="nested-curve-media"
++          >
++          <div class="nested-curve-body">
++            <h3>Single-Origin Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with hints of bergamot, jasmine, and sweet stone fruit roasted in small batches.</p>
++          </div>
++          <footer class="card-footer">
++            Limited Micro-Lot Release &bull; Roasted Fresh Daily
++          </footer>
++        </div>
++
++        <div class="safety-zone-parent">
++          <div>
++            <h3>Golden Hour Espresso Pass</h3>
++            <p>Unlock unlimited afternoon espresso shots and double rewards points all month long when you join our club.</p>
++            <div class="promo-overflow-text">
++              FRESH ROASTED DAILY &bull; DOUBLE REWARDS &bull; ARTISANAL ESPRESSO &bull; LIMITED OFFER
++            </div>
++          </div>
++          <div class="promo-actions">
++            <button type="button" class="btn promo-glow-btn">Claim 50% Off Pass</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

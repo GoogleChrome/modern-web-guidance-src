@@ -1,0 +1,298 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,218 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* ===== Scrollytelling (pure CSS: scroll-driven animations) ===== */
++    .story {
++      --nav-h: 3.75rem;
++      margin-top: 80px;
++    }
++
++    .story-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 0 auto 40px;
++    }
++
++    .story-intro p {
++      color: #6d4c41;
++    }
++
++    .scrolly {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++    }
++
++    #tracked,
++    #animated {
++      grid-row: 1;
++    }
++
++    #tracked {
++      grid-column: 1;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 2rem 0;
++    }
++
++    #tracked .step {
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    #tracked h3 {
++      font-size: 1.8rem;
++      color: var(--primary);
++      margin: 0.25rem 0 0.75rem;
++    }
++
++    #animated {
++      grid-column: 2;
++      display: grid;
++      gap: 20px;
++    }
++
++    #animated section {
++      position: relative;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++      background: var(--secondary);
++      aspect-ratio: 4 / 3;
++    }
++
++    #animated figure {
++      height: 100%;
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    #animated figcaption {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      padding: 1.5rem 1.25rem 1rem;
++      color: white;
++      font-weight: bold;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
++    }
++
++    /*
++     * Enhancement: link panels in #animated to text sections in #tracked.
++     * - Each #tracked section exposes a named view-timeline.
++     * - `timeline-scope` on the shared ancestor hoists those names so the
++     *   sibling branch (#animated) can reference them.
++     * - Only opacity/transform are animated, so it runs on the compositor
++     *   thread, off the main thread, with zero JavaScript.
++     */
++    @supports (animation-timeline: view()) and (timeline-scope: --a) {
++      .scrolly {
++        timeline-scope: --step-1, --step-2, --step-3, --step-4;
++      }
++
++      #tracked section:nth-child(1) { view-timeline-name: --step-1; }
++      #tracked section:nth-child(2) { view-timeline-name: --step-2; }
++      #tracked section:nth-child(3) { view-timeline-name: --step-3; }
++      #tracked section:nth-child(4) { view-timeline-name: --step-4; }
++
++      #animated {
++        position: sticky;
++        top: calc(var(--nav-h) + 20px);
++        align-self: start;
++        height: calc(100vh - var(--nav-h) - 40px);
++        display: block;
++      }
++
++      #animated section {
++        position: absolute;
++        inset: 0;
++        aspect-ratio: auto;
++        opacity: 0;
++        will-change: opacity, transform;
++        animation: reveal linear both;
++        animation-range: cover;
++      }
++
++      #animated section:nth-child(1) { animation-name: reveal-first; animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++      #animated section:nth-child(4) { animation-name: reveal-last; animation-timeline: --step-4; }
++
++      /* Dim text sections that are not in focus (also scroll-driven) */
++      #tracked section > * {
++        animation: focus linear both;
++        animation-timeline: view();
++        animation-range: cover;
++      }
++    }
++
++    @keyframes reveal {
++      0% { opacity: 0; transform: translateY(40px) scale(0.96); }
++      30%, 70% { opacity: 1; transform: none; }
++      100% { opacity: 0; transform: translateY(-40px) scale(0.96); }
++    }
++
++    @keyframes reveal-first {
++      0%, 70% { opacity: 1; transform: none; }
++      100% { opacity: 0; transform: translateY(-40px) scale(0.96); }
++    }
++
++    @keyframes reveal-last {
++      0% { opacity: 0; transform: translateY(40px) scale(0.96); }
++      30%, 100% { opacity: 1; transform: none; }
++    }
++
++    @keyframes focus {
++      0%, 100% { opacity: 0.25; }
++      35%, 65% { opacity: 1; }
++    }
++
++    /* Mobile: overlay both columns in one grid cell; visuals stick on top */
++    @media (max-width: 760px) {
++      .scrolly {
++        grid-template-columns: 1fr;
++      }
++
++      #tracked,
++      #animated {
++        grid-column: 1;
++      }
++
++      @supports (animation-timeline: view()) and (timeline-scope: --a) {
++        #animated {
++          height: 40vh;
++          z-index: 1;
++          background: var(--light);
++          box-shadow: 0 0 0 20px var(--light);
++        }
++
++        #tracked {
++          padding-top: calc(40vh + 20px);
++        }
++
++        #tracked section {
++          min-height: 60vh;
++          justify-content: flex-end;
++        }
++      }
++
++      @supports not ((animation-timeline: view()) and (timeline-scope: --a)) {
++        #animated { grid-row: 2; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @keyframes reveal {
++        0%, 100% { opacity: 0; }
++        30%, 70% { opacity: 1; }
++      }
++
++      @keyframes reveal-first {
++        0%, 70% { opacity: 1; }
++        100% { opacity: 0; }
++      }
++
++      @keyframes reveal-last {
++        0% { opacity: 0; }
++        30%, 100% { opacity: 1; }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +404,75 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" aria-labelledby="story-title">
++      <div class="story-intro">
++        <h2 id="story-title">From Farm to Cup</h2>
++        <p>Every cup of The Daily Grind takes a journey. Scroll to follow it.</p>
++      </div>
++
++      <div class="scrolly">
++        <div id="tracked">
++          <section>
++            <span class="step">Step 1</span>
++            <h3>Sourced at Origin</h3>
++            <p>We partner directly with smallholder farms in Ethiopia, Colombia, and Guatemala, paying well above
++              fair-trade prices for hand-picked, perfectly ripe cherries.</p>
++          </section>
++          <section>
++            <span class="step">Step 2</span>
++            <h3>Roasted in Small Batches</h3>
++            <p>Green beans arrive at our local roastery, where each origin gets its own roast profile, developed to
++              bring out its natural sweetness and character.</p>
++          </section>
++          <section>
++            <span class="step">Step 3</span>
++            <h3>Brewed with Care</h3>
++            <p>Our baristas dial in every grinder each morning and weigh every shot, so the cup you get at noon tastes
++              just like the first one of the day.</p>
++          </section>
++          <section>
++            <span class="step">Step 4</span>
++            <h3>Served to You</h3>
++            <p>Finished with velvety milk and a little latte art, your coffee is ready. Enjoy it in our café or
++              take it with you.</p>
++          </section>
++        </div>
++
++        <div id="animated" aria-hidden="true">
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=75"
++                alt="" loading="lazy" decoding="async">
++              <figcaption>Origin</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=900&q=75"
++                alt="" loading="lazy" decoding="async">
++              <figcaption>Roast</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=75"
++                alt="" loading="lazy" decoding="async">
++              <figcaption>Brew</figcaption>
++            </figure>
++          </section>
++          <section>
++            <figure>
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=75"
++                alt="" loading="lazy" decoding="async">
++              <figcaption>Serve</figcaption>
++            </figure>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

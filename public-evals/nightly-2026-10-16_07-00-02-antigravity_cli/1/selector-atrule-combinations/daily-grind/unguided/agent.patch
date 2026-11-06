@@ -1,0 +1,534 @@
+diff --git a/index.html b/index.html
+index 66c9173..e28b191 100644
+--- a/index.html
++++ b/index.html
+@@ -6,15 +6,32 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* CSS Custom Properties & Theme Configuration */
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
++
++      /* Conditional @-rule nested in :root to adapt theme tokens without repeating properties */
++      @media (prefers-color-scheme: dark) {
++        --primary: #2d1e18;
++        --secondary: #3e2723;
++        --accent: #ffb74d;
++        --text: #f5f5f5;
++        --light: #181514;
++        --card-bg: #241d1a;
++        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
++      }
+     }
+ 
+-    * {
++    /* Base Reset using Union of Pseudo-elements */
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -25,9 +42,18 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+-    /* Navigation */
++    /* 
++      Navigation Component
++      Demonstrates:
++      - Nesting hierarchy to eliminate selector repetition
++      - Union of pseudo-classes (OR): &:hover, &:focus-visible
++      - Intersection of selectors (AND): &.logout-link on <a>
++      - Nested conditional @-rule with union: @supports (backdrop-filter) or (-webkit-backdrop-filter)
++      - Nested conditional @-rule: @media (max-width: 768px) with further nested child selectors
++    */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -38,44 +64,86 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
++      transition: background-color 0.3s ease, padding 0.3s ease;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      /* Conditional @-rule with union of conditions */
++      @supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
++        background: color-mix(in srgb, var(--primary) 88%, transparent);
++        backdrop-filter: blur(10px);
++        -webkit-backdrop-filter: blur(10px);
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      ul {
++        display: flex;
++        list-style: none;
++        align-items: center;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        li {
++          margin-left: 20px;
++        }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        a {
++          color: white;
++          text-decoration: none;
++          font-size: 0.9rem;
++          transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
++
++          /* Union of selectors/states (matches :hover OR :focus-visible) */
++          &:hover,
++          &:focus-visible {
++            color: var(--accent);
++            outline: none;
++          }
++
++          /* Intersection of selectors (matches <a> AND .logout-link) */
++          &.logout-link {
++            border: 1px solid var(--accent);
++            padding: 5px 12px;
++            border-radius: 4px;
++
++            /* Union of states on intersection */
++            &:hover,
++            &:focus-visible {
++              background-color: var(--accent);
++              color: var(--primary);
++            }
++          }
++        }
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      /* Conditional @-rule nested directly inside nav - no repetition of parent selector */
++      @media (max-width: 768px) {
++        flex-direction: column;
++        padding: 0.85rem 1rem;
++        gap: 0.75rem;
++
++        ul {
++          flex-wrap: wrap;
++          justify-content: center;
++          gap: 12px;
++
++          li {
++            margin-left: 0;
++          }
++        }
++      }
+     }
+ 
+-    /* Hero Section */
++    /* 
++      Hero Section
++      Demonstrates:
++      - Direct nesting of descendants (h1, p)
++      - Nested conditional @-rules tailoring typography responsively
++    */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,72 +153,283 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
+-    }
++      padding: 3rem 20px;
++
++      h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++        line-height: 1.2;
++
++        /* Conditional @-rule nested inside heading */
++        @media (max-width: 768px) {
++          font-size: 2.1rem;
++        }
++      }
++
++      p {
++        font-size: 1.15rem;
++        max-width: 600px;
++        margin-bottom: 1.5rem;
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++        /* Conditional @-rule nested inside paragraph */
++        @media (max-width: 768px) {
++          font-size: 1rem;
++        }
++      }
+     }
+ 
+-    /* Content Sections */
++    /* 
++      Content Layout & Grid
++      Demonstrates:
++      - Nested child selector (> h2)
++      - Intersection of media query conditions (min-width AND orientation)
++    */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++
++      section {
++        > h2 {
++          text-align: center;
++          font-size: 2rem;
++          margin-bottom: 25px;
++          color: var(--primary);
++
++          /* Conditional @-rule inside section title */
++          @media (prefers-color-scheme: dark) {
++            color: var(--accent);
++          }
++        }
++      }
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 25px;
++
++      /* Conditional @-rule: Intersection of media conditions (AND) */
++      @media (max-width: 600px) and (orientation: portrait) {
++        grid-template-columns: 1fr;
++        gap: 20px;
++      }
+     }
+ 
++    /* 
++      Card Component
++      Demonstrates:
++      - Union of interaction states (&:hover, &:focus-within)
++      - Intersection of classes (&.featured)
++      - Nested contextual styles (.card:hover &)
++      - Nested elements without repeating .card prefix
++    */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--card-bg);
++      border-radius: 12px;
++      box-shadow: var(--card-shadow);
+       text-align: center;
+-    }
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      /* Union of pseudo-class states (OR) */
++      &:hover,
++      &:focus-within {
++        transform: translateY(-4px);
++        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
++      }
++
++      /* Intersection of selectors (AND): .card that also has .featured class */
++      &.featured {
++        border: 2px solid var(--accent);
++        position: relative;
++
++        &::before {
++          content: "Popular";
++          position: absolute;
++          top: 12px;
++          right: 12px;
++          background: var(--accent);
++          color: #3e2723;
++          font-size: 0.75rem;
++          font-weight: 700;
++          padding: 3px 10px;
++          border-radius: 9999px;
++          text-transform: uppercase;
++          letter-spacing: 0.5px;
++          z-index: 1;
++        }
++      }
++
++      .card-img {
++        width: 100%;
++        height: 200px;
++        object-fit: cover;
++        display: block;
++        transition: transform 0.5s ease;
++
++        /* Contextual parent nesting */
++        .card:hover & {
++          transform: scale(1.04);
++        }
++      }
++
++      .card-content {
++        padding: 24px 20px;
++        display: flex;
++        flex-direction: column;
++        flex-grow: 1;
++        justify-content: space-between;
++
++        h3 {
++          margin-bottom: 10px;
++          color: var(--primary);
++          font-size: 1.25rem;
++
++          @media (prefers-color-scheme: dark) {
++            color: var(--text);
++          }
++        }
++
++        p {
++          color: var(--text);
++          opacity: 0.85;
++          font-size: 0.95rem;
++          margin-bottom: 16px;
++          flex-grow: 1;
++        }
++      }
+     }
+ 
++    /* 
++      Button Component
++      Demonstrates:
++      - Union of interaction states (&:hover, &:focus-visible)
++      - Intersection of classes (&.btn-outline)
++      - Nested conditional @-rule adapting button colors for dark mode
++    */
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      border-radius: 6px;
++      font-weight: 500;
++      border: 1px solid transparent;
++      transition: background-color 0.3s ease, transform 0.15s ease, box-shadow 0.3s ease;
++
++      /* Union of states */
++      &:hover,
++      &:focus-visible {
++        background: #3e2723;
++        outline: none;
++        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
++      }
++
++      &:active {
++        transform: scale(0.98);
++      }
++
++      /* Intersection of selectors: .btn that is also .btn-outline */
++      &.btn-outline {
++        background: transparent;
++        border-color: var(--primary);
++        color: var(--primary);
++
++        &:hover,
++        &:focus-visible {
++          background: var(--primary);
++          color: white;
++        }
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      /* Nested conditional @-rule inside button */
++      @media (prefers-color-scheme: dark) {
++        background: var(--accent);
++        color: #1e1e1e;
++        font-weight: 600;
++
++        &:hover,
++        &:focus-visible {
++          background: #ffa726;
++          color: #1e1e1e;
++        }
++
++        &.btn-outline {
++          border-color: var(--accent);
++          color: var(--accent);
++
++          &:hover,
++          &:focus-visible {
++            background: var(--accent);
++            color: #1e1e1e;
++          }
++        }
++      }
+     }
+ 
++    /* 
++      Footer Component
++      Demonstrates:
++      - Nested descendant hierarchy (.footer-links > a)
++      - Union of link pseudo-classes
++      - Nested conditional @-rule for mobile spacing
++    */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      margin-top: 50px;
++      transition: background-color 0.3s ease;
++
++      .footer-links {
++        margin-bottom: 20px;
++
++        a {
++          margin: 0 10px;
++          color: var(--text);
++          text-decoration: none;
++          font-size: 0.85rem;
++          transition: color 0.2s ease;
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++          /* Union of states */
++          &:hover,
++          &:focus-visible {
++            color: var(--primary);
++            text-decoration: underline;
++          }
++        }
++      }
++
++      p {
++        font-size: 0.85rem;
++        opacity: 0.8;
++      }
++
++      /* Conditional @-rule inside footer */
++      @media (max-width: 600px) {
++        padding: 30px 15px;
++
++        .footer-links a {
++          display: inline-block;
++          margin: 6px 8px;
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* Accessibility: conditional @-rule for reduced motion */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
+     }
+   </style>
+ </head>
+@@ -176,22 +455,31 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card featured">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img" loading="lazy">
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img" loading="lazy">
++          <div class="card-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img" loading="lazy">
++          <div class="card-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

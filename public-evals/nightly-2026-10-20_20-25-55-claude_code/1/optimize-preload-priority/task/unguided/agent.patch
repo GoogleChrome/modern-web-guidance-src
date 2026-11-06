@@ -1,0 +1,37 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,33 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand — Watch the film</title>
++<meta name="description" content="Watch the film.">
++
++<!-- LCP image: discovered immediately, top priority -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++<!-- Critical header font only; the secondary font is deliberately not preloaded -->
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++
++<style>
++@font-face{font-family:"Brand";src:url(brand-font.woff2) format("woff2");font-display:swap}
++@font-face{font-family:"Secondary";src:url(secondary-font.woff2) format("woff2");font-display:optional}
++*{box-sizing:border-box;margin:0}
++body{background:#000;color:#fff;font:16px/1.4 "Secondary",system-ui,sans-serif}
++h1{font:700 clamp(1.75rem,5vw,3rem)/1.1 "Brand",system-ui,sans-serif;padding:1rem}
++.v{display:block;width:100%;max-height:80vh;aspect-ratio:1280/763;object-fit:cover;background:#000}
++.cta{display:inline-block;margin:1rem;padding:.6rem 1.2rem;border:1px solid #fff;color:#fff;text-decoration:none}
++</style>
++</head>
++<body>
++<header><h1>Brand</h1></header>
++<main>
++  <video class="v" poster="poster.jpg" width="1280" height="763" controls playsinline preload="none">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++  <a class="cta" href="#">Get started</a>
++</main>
++</body>
++</html>

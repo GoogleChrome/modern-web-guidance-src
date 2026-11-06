@@ -1,0 +1,18 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,13 @@
++# Forma landing page
++
++Static, responsive landing page. Open `index.html` through your usual static host. No build step or dependencies are required.
++
++## Experiment integration
++
++`index.html` loads `https://cdn.example.com/experiment-sdk.js` in the document head with `async` and `blocking="render"`. The browser can parse HTML while withholding its first paint until SDK execution finishes. A feature-detected visibility gate covers browsers without render-blocking script support; it reveals the page after script execution and DOM readiness. A network error reveals the control page because no SDK can then apply a late variant. There is deliberately no fallback timer that could expose control content before a slow variant arrives.
++
++The supplied URL is a placeholder; no SDK API or variant configuration was provided. Configure the real SDK to select and apply its initial variant synchronously during script execution. Since an async head script can execute before the body is parsed, it should set an attribute on the document element and use variant CSS, or arrange its DOM mutations before releasing rendering. The hero has `data-experiment="hero-title"` and `data-experiment="hero-cta"` integration targets. `blocking="render"` does not await asynchronous work started by an SDK: such an SDK needs its documented readiness integration before it can guarantee flicker-free rendering. Do not release a visibility gate on script load if your chosen SDK applies variants later.
++
++The signup dialog is an interactive local preview, with native form validation and a confirmation state. It does not create a server account or transmit form data.
++
++Fonts are loaded from Google Fonts; avatar photos are loaded from Pravatar. The product illustration is HTML/CSS.

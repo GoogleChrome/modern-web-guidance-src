@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -108,14 +108,36 @@
+     }
+ 
+     .card {
+       background: white;
++      border: 2px solid transparent;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .card:has(.iced-option input:checked) {
++      background: #e8f5fc;
++      border-color: #28759b;
++      box-shadow: 0 2px 8px rgba(40, 117, 155, 0.2);
++    }
++
++    .iced-option {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-top: 15px;
++      cursor: pointer;
++    }
++
++    .iced-option input {
++      width: 18px;
++      height: 18px;
++      accent-color: #28759b;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -180,18 +202,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="maple-oat-latte-iced">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="dark-roast-espresso-iced">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-option">
++            <input type="checkbox" name="cold-brew-iced">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,103 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .feedback-launcher {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1001;
++      box-shadow: 0 4px 18px #3e272333;
++    }
++
++    .feedback-launcher, .feedback-dialog button {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++    }
++
++    .feedback-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto 24px auto auto;
++      width: min(440px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow: auto;
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: var(--light);
++      color: var(--text);
++      box-shadow: 0 24px 80px #27120d40;
++    }
++
++    #feedback-left .feedback-dialog {
++      margin: auto auto auto 24px;
++    }
++
++    .feedback-dialog:modal { overscroll-behavior: contain; }
++
++    .feedback-dialog::backdrop {
++      background: #24171380;
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .feedback-heading, .feedback-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .feedback-dialog h2 { font-size: 1.5rem; }
++    .feedback-dialog p { margin: 12px 0 20px; }
++    .feedback-dialog label { display: block; font-weight: 600; }
++
++    .feedback-dialog textarea {
++      display: block;
++      width: 100%;
++      min-height: 140px;
++      margin-top: 8px;
++      padding: 12px;
++      border: 1px solid #927b73;
++      border-radius: 8px;
++      resize: vertical;
++      font: inherit;
++      color: inherit;
++      background: white;
++    }
++
++    .feedback-dialog .feedback-close {
++      background: transparent;
++      color: var(--primary);
++      padding: 6px 10px;
++      border-radius: 5px;
++    }
++
++    .feedback-dialog .feedback-move {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .feedback-dialog .feedback-location {
++      font-size: 0.85rem;
++      margin-bottom: 0;
++    }
++
++    .feedback-launcher:focus-visible, .feedback-dialog :focus-visible {
++      outline: 3px solid #b76800;
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 520px) {
++      .feedback-dialog, #feedback-left .feedback-dialog { margin: auto; }
++      .feedback-dialog { padding: 20px; }
++      .feedback-launcher { right: 16px; bottom: 16px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -206,7 +301,85 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launcher" id="open-feedback"
++    aria-haspopup="dialog" aria-controls="feedback-dialog">Feedback</button>
++
++  <div id="feedback-right">
++    <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title"
++      aria-describedby="feedback-description">
++      <div class="feedback-heading">
++        <h2 id="feedback-title">How was your visit?</h2>
++        <form method="dialog">
++          <button class="feedback-close" aria-label="Close feedback">✕</button>
++        </form>
++      </div>
++      <p id="feedback-description">A little feedback makes a better brew. Your draft stays here while you move or close this panel.</p>
++      <label for="feedback-message">Your feedback</label>
++      <textarea id="feedback-message" placeholder="Tell us what’s on your mind…" autofocus></textarea>
++      <div class="feedback-actions">
++        <button type="button" class="btn feedback-move" id="move-feedback">Move to left</button>
++        <form method="dialog"><button class="btn">Done</button></form>
++      </div>
++      <p class="feedback-location" id="feedback-location" role="status">Panel on the right · Draft only, not submitted</p>
++    </dialog>
++  </div>
++  <div id="feedback-left"></div>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const feedbackLeft = document.getElementById('feedback-left');
++    const feedbackRight = document.getElementById('feedback-right');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const moveFeedback = document.getElementById('move-feedback');
++
++    document.getElementById('open-feedback').addEventListener('click', () => {
++      if (!feedbackDialog.open) feedbackDialog.showModal();
++    });
++
++    moveFeedback.addEventListener('click', () => {
++      const target = feedbackDialog.parentElement === feedbackRight ? feedbackLeft : feedbackRight;
++
++      if (typeof target.moveBefore === 'function') {
++        // Both parents are connected to the same document. The atomic move keeps
++        // the dialog in the top layer with native modal and focus state intact.
++        target.moveBefore(feedbackDialog, null);
++      } else {
++        const wasOpen = feedbackDialog.open;
++        const wasModal = feedbackDialog.matches(':modal');
++        const focused = document.activeElement;
++        const returnValue = feedbackDialog.returnValue;
++        const selection = [feedbackMessage.selectionStart, feedbackMessage.selectionEnd,
++          feedbackMessage.selectionDirection];
++        const scrollPositions = [feedbackDialog, feedbackMessage].map(element =>
++          [element, element.scrollTop, element.scrollLeft]);
++
++        // Explicitly close first: a traditional move can leave `open` set while
++        // dropping modal/top-layer state, making showModal() alone insufficient.
++        if (wasOpen) feedbackDialog.close();
++        target.insertBefore(feedbackDialog, null);
++        if (wasOpen) {
++          if (wasModal) feedbackDialog.showModal();
++          else feedbackDialog.show();
++        }
++        feedbackDialog.returnValue = returnValue;
++        if (wasOpen && focused instanceof HTMLElement && feedbackDialog.contains(focused)) {
++          focused.focus({ preventScroll: true });
++        }
++        feedbackMessage.setSelectionRange(...selection);
++        for (const [element, top, left] of scrollPositions) {
++          element.scrollTop = top;
++          element.scrollLeft = left;
++        }
++      }
++
++      const side = target === feedbackLeft ? 'left' : 'right';
++      moveFeedback.textContent = `Move to ${side === 'left' ? 'right' : 'left'}`;
++      document.getElementById('feedback-location').textContent =
++        `Panel on the ${side} · Draft only, not submitted`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

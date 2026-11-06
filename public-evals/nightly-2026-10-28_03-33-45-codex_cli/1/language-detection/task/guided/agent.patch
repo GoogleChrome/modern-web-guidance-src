@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,63 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .feedback label {
++      display: block;
++      margin-top: 20px;
++      font-weight: 600;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      margin-top: 8px;
++      padding: 12px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      resize: vertical;
++    }
++
++    .feedback button {
++      border: 0;
++      min-height: 48px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .feedback button:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .feedback :is(textarea, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .feedback-status,
++    .feedback-download {
++      margin-top: 16px;
++    }
++
++    .feedback progress {
++      display: block;
++      width: 100%;
++      margin-top: 8px;
++      accent-color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +249,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback">
++      <h2>Feedback</h2>
++      <p>Tell us about your daily grind, then detect the language of your message.</p>
++      <form id="feedback-form">
++        <label for="feedback-message">Message (required)</label>
++        <p id="feedback-hint">Write a full sentence for a more reliable result. Detection happens in your browser.</p>
++        <textarea id="feedback-message" name="message" rows="5" required
++          aria-describedby="feedback-hint" dir="auto" placeholder="How was your coffee today?"></textarea>
++        <button class="btn" id="detect-button" type="submit" disabled>Detect</button>
++      </form>
++      <div class="feedback-download" id="feedback-download" hidden>
++        <label for="model-progress">Downloading language model: <span id="download-percentage">0%</span></label>
++        <progress id="model-progress" max="100" value="0">0%</progress>
++      </div>
++      <p class="feedback-status" id="feedback-status" role="status" aria-atomic="true">Checking language detection availability…</p>
++      <noscript><p>Enable JavaScript to detect the language of your message.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +278,116 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const feedbackForm = document.getElementById('feedback-form');
++    const message = document.getElementById('feedback-message');
++    const detectButton = document.getElementById('detect-button');
++    const feedbackStatus = document.getElementById('feedback-status');
++    const download = document.getElementById('feedback-download');
++    const modelProgress = document.getElementById('model-progress');
++    const downloadPercentage = document.getElementById('download-percentage');
++    let availability = 'unavailable';
++    let busy = false;
++
++    async function checkLanguageDetection() {
++      if (!('LanguageDetector' in window)) {
++        feedbackStatus.textContent = 'Built-in language detection is not supported in this browser. Try a supported desktop browser over HTTPS.';
++        return;
++      }
++
++      try {
++        availability = await LanguageDetector.availability();
++        if (availability === 'unavailable') {
++          feedbackStatus.textContent = 'Built-in language detection is unavailable on this device or is blocked by browser policy.';
++          return;
++        }
++
++        detectButton.disabled = false;
++        feedbackStatus.textContent = availability === 'available'
++          ? 'Ready to detect your message’s language.'
++          : 'Click Detect to download the language model and analyze your message.';
++      } catch {
++        feedbackStatus.textContent = 'Unable to check language detection availability. Reload the page to try again.';
++      }
++    }
++
++    message.addEventListener('input', () => {
++      message.setCustomValidity('');
++      if (!busy && availability !== 'unavailable') {
++        feedbackStatus.textContent = 'Click Detect to analyze your message.';
++        download.hidden = true;
++      }
++    });
++
++    feedbackForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (busy || availability === 'unavailable') return;
++
++      const text = message.value.trim();
++      if (!text) {
++        message.setCustomValidity('Please enter a message to detect its language.');
++        message.reportValidity();
++        return;
++      }
++
++      busy = true;
++      detectButton.disabled = true;
++      message.readOnly = true;
++      download.hidden = availability === 'available';
++      modelProgress.value = 0;
++      downloadPercentage.textContent = '0%';
++      feedbackStatus.textContent = 'Preparing language detection…';
++      let detector;
++
++      try {
++        // Create directly from the submission gesture, after the initial availability check.
++        detector = await LanguageDetector.create({
++          monitor(monitor) {
++            monitor.addEventListener('downloadprogress', (event) => {
++              const percentage = Math.min(100, Math.max(0, Math.floor(event.loaded * 100)));
++              download.hidden = false;
++              modelProgress.value = percentage;
++              modelProgress.textContent = `${percentage}%`;
++              downloadPercentage.textContent = `${percentage}%`;
++            });
++          },
++        });
++        availability = 'available';
++        if (!download.hidden) {
++          modelProgress.value = 100;
++          modelProgress.textContent = '100%';
++          downloadPercentage.textContent = '100%';
++        }
++        feedbackStatus.textContent = 'Detecting language…';
++        const [result] = await detector.detect(text);
++
++        if (!result || result.detectedLanguage === 'und' || !Number.isFinite(result.confidence)) {
++          feedbackStatus.textContent = 'Unable to identify a language. Try a longer message with a full sentence.';
++          return;
++        }
++
++        let language = result.detectedLanguage;
++        try {
++          language = new Intl.DisplayNames(['en'], { type: 'language' }).of(language) || language;
++        } catch {
++          // Keep the language code if localized display names are unavailable.
++        }
++        const confidence = (Math.min(1, Math.max(0, result.confidence)) * 100).toFixed(1);
++        feedbackStatus.textContent = `Language: ${language}. AI confidence: ${confidence}%.`;
++      } catch {
++        download.hidden = true;
++        feedbackStatus.textContent = 'Language detection failed. Check your connection and browser permissions, then click Detect to retry.';
++      } finally {
++        detector?.destroy();
++        busy = false;
++        message.readOnly = false;
++        detectButton.disabled = false;
++      }
++    });
++
++    checkLanguageDetection();
++  </script>
+ </body>
+ 
+ </html>

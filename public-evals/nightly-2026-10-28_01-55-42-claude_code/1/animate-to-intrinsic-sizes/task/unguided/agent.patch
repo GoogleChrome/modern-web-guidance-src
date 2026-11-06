@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,19 +151,198 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo Alert (dismissible, no JS) */
++    .promo-toggle {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      opacity: 1;
++      transition: grid-template-rows 0.4s ease, opacity 0.3s ease, visibility 0s linear 0s;
++    }
++
++    .promo-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .promo-body {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 5%;
++      font-size: 0.95rem;
++      text-align: center;
++    }
++
++    .promo-body a {
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 28px;
++      height: 28px;
++      flex-shrink: 0;
++      margin-left: auto;
++      border-radius: 50%;
++      font-size: 1.3rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.12);
++    }
++
++    .promo-toggle:focus-visible ~ #promo-alert #alert-dismiss {
++      outline: 2px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    .promo-toggle:checked ~ #promo-alert {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      transition: grid-template-rows 0.4s ease, opacity 0.3s ease, visibility 0s linear 0.4s;
++    }
++
++    /* FAQ Accordion (native <details>, no JS) */
++    .faq {
++      max-width: 760px;
++      margin: 0 auto;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 12px;
++    }
++
++    .faq-item summary {
++      list-style: none;
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      border-radius: 8px;
++    }
++
++    .faq-item summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq-item summary::after {
++      content: '+';
++      font-size: 1.4rem;
++      line-height: 1;
++      color: var(--accent);
++      transition: transform 0.3s ease;
++    }
++
++    .faq-item[open] summary::after {
++      transform: rotate(45deg);
++    }
++
++    .faq-item summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .faq-body,
++    .faq-text {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .faq-text p {
++      padding: 0 20px 16px;
++    }
++
++    /* Modern browsers: transition the details content box both ways */
++    @supports selector(::details-content) {
++      .faq-item::details-content {
++        display: grid;
++        grid-template-rows: 0fr;
++        transition: grid-template-rows 0.3s ease, content-visibility 0.3s allow-discrete;
++      }
++
++      .faq-item[open]::details-content {
++        grid-template-rows: 1fr;
++      }
++    }
++
++    /* Fallback: animate the open only */
++    @supports not selector(::details-content) {
++      .faq-item[open] .faq-body {
++        display: grid;
++        animation: faq-open 0.3s ease;
++      }
++
++      @keyframes faq-open {
++        from { grid-template-rows: 0fr; }
++        to { grid-template-rows: 1fr; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq-item::details-content,
++      .faq-item summary::after {
++        transition: none;
++      }
++
++      .faq-item[open] .faq-body {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <input type="checkbox" id="alert-dismiss-toggle" class="promo-toggle" aria-label="Dismiss promotion">
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-inner">
++      <div class="promo-body">
++        <span>&#9749; Fall special: get <strong>20% off</strong> any seasonal latte this week. <a href="/menu/seasonal">See the menu</a></span>
++        <label id="alert-dismiss" for="alert-dismiss-toggle" title="Dismiss" aria-hidden="true">&times;</label>
++      </div>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#faq">FAQ</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +373,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="faq" class="faq">
++      <h2 style="text-align: center; margin-top: 40px;">Frequently Asked Questions</h2>
++
++      <details class="faq-item" name="faq">
++        <summary id="faq-trigger">Where do you source your beans?</summary>
++        <div id="faq-content" class="faq-body">
++          <div class="faq-text">
++            <p>We work directly with small farms in Colombia, Ethiopia, and Guatemala, paying above fair-trade rates. Every bag is roasted in-house within a week of arriving.</p>
++          </div>
++        </div>
++      </details>
++
++      <details class="faq-item" name="faq">
++        <summary>Do you offer dairy-free options?</summary>
++        <div class="faq-body">
++          <div class="faq-text">
++            <p>Yes. Oat, almond, and soy milk are available on every drink at no extra charge.</p>
++          </div>
++        </div>
++      </details>
++
++      <details class="faq-item" name="faq">
++        <summary>How do rewards points work?</summary>
++        <div class="faq-body">
++          <div class="faq-text">
++            <p>You earn one point per dollar spent. Every 100 points gets you a free drink of any size, redeemable in-store or online.</p>
++          </div>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

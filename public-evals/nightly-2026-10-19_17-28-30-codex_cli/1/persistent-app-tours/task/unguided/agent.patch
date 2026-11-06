@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,62 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature[aria-expanded="true"] {
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 7px;
++      border-radius: 2px;
++    }
++
++    #tour-step {
++      position: fixed;
++      z-index: 1001;
++      width: 290px;
++      max-width: calc(100vw - 32px);
++      padding: 22px;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 8px 30px rgba(62, 39, 35, 0.22);
++    }
++
++    #tour-step::before {
++      content: '';
++      position: absolute;
++      top: -7px;
++      left: var(--arrow-left, 50%);
++      width: 12px;
++      height: 12px;
++      background: white;
++      border-top: 1px solid var(--secondary);
++      border-left: 1px solid var(--secondary);
++      transform: translateX(-50%) rotate(45deg);
++    }
++
++    #tour-step h2 {
++      font-size: 1.1rem;
++      margin-bottom: 8px;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++    }
++
++    #tour-step button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 16px; }
++      nav ul { flex-wrap: wrap; gap: 14px 20px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +215,56 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a id="feature" href="/rewards" aria-controls="tour-step" aria-expanded="true" aria-describedby="tour-message">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <aside id="tour-step" aria-labelledby="tour-title">
++    <h2 id="tour-title">Your coffee comes with perks</h2>
++    <p id="tour-message">Earn points with every order and turn your daily coffee into delicious rewards.</p>
++    <button type="button" class="btn" id="close-tour">Got it</button>
++  </aside>
++
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTour = document.getElementById('close-tour');
++    let trackingFrame;
++
++    // Track the actual link on every frame, including scroll, resize and layout shifts.
++    function positionTour() {
++      if (tourStep.hidden) return;
++      const link = rewardsLink.getBoundingClientRect();
++      const width = tourStep.getBoundingClientRect().width;
++      const center = link.left + link.width / 2;
++      const left = Math.max(16, Math.min(center - width / 2, document.documentElement.clientWidth - width - 16));
++      tourStep.style.left = `${left}px`;
++      tourStep.style.top = `${link.bottom + 18}px`;
++      tourStep.style.setProperty('--arrow-left', `${Math.max(14, Math.min(width - 14, center - left))}px`);
++      trackingFrame = requestAnimationFrame(positionTour);
++    }
++
++    rewardsLink.addEventListener('click', (event) => {
++      if (!tourStep.hidden) event.preventDefault();
++    });
++    rewardsLink.addEventListener('auxclick', (event) => {
++      if (!tourStep.hidden) event.preventDefault();
++    });
++    closeTour.addEventListener('click', () => {
++      tourStep.hidden = true;
++      rewardsLink.setAttribute('aria-expanded', 'false');
++      rewardsLink.removeAttribute('aria-describedby');
++      cancelAnimationFrame(trackingFrame);
++      rewardsLink.focus({ preventScroll: true });
++    });
++
++    positionTour();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

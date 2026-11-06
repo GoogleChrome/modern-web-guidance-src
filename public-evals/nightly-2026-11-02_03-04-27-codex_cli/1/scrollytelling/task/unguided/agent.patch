@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,204 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* A readable, static layout is the default, including reduced motion. */
++    .coffee-story {
++      margin-top: 90px;
++      padding-top: 36px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .story-heading {
++      max-width: 620px;
++      margin-bottom: 48px;
++    }
++
++    .eyebrow {
++      color: #886443;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++
++    .story-heading h2 {
++      margin: 12px 0 16px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.4rem, 5vw, 4rem);
++      font-weight: 400;
++      line-height: 1.1;
++      letter-spacing: -0.04em;
++    }
++
++    .story-heading > p:last-child,
++    .story-step > p:last-child {
++      color: #74645e;
++      max-width: 36ch;
++    }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: 0.9fr 1.1fr;
++      column-gap: clamp(24px, 6vw, 80px);
++      row-gap: 36px;
++    }
++
++    /* Keep each text and photo paired in the static fallback. */
++    #tracked,
++    #animated {
++      display: contents;
++    }
++
++    .story-step {
++      grid-column: 1;
++      align-self: center;
++      padding: 36px 0;
++    }
++
++    .story-photo {
++      grid-column: 2;
++      position: relative;
++      min-height: 420px;
++      overflow: hidden;
++      border-radius: 8px;
++      background: var(--primary);
++      color: #fff;
++      isolation: isolate;
++    }
++
++    #tracked > section:nth-child(1),
++    #animated > section:nth-child(1) { grid-row: 1; }
++    #tracked > section:nth-child(2),
++    #animated > section:nth-child(2) { grid-row: 2; }
++    #tracked > section:nth-child(3),
++    #animated > section:nth-child(3) { grid-row: 3; }
++
++    .step-number {
++      display: block;
++      margin-bottom: 24px;
++      color: #967552;
++      font-size: 0.8rem;
++      letter-spacing: 0.1em;
++    }
++
++    .story-step h3 {
++      margin: 12px 0 20px;
++      font: 400 clamp(1.8rem, 3vw, 2.7rem)/1.15 Georgia, 'Times New Roman', serif;
++      letter-spacing: -0.03em;
++    }
++
++    .story-photo img {
++      position: absolute;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -2;
++    }
++
++    .story-photo::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(transparent 45%, rgb(30 20 13 / 75%));
++      z-index: -1;
++    }
++
++    .photo-caption {
++      position: absolute;
++      inset: auto 28px 28px;
++      display: flex;
++      align-items: end;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .photo-caption h3 {
++      font: 400 1.5rem Georgia, 'Times New Roman', serif;
++    }
++
++    .photo-caption p {
++      margin-top: 6px;
++      font-size: 0.75rem;
++      color: #e8ddd4;
++    }
++
++    .photo-caption > span {
++      font-size: 0.7rem;
++      white-space: nowrap;
++      letter-spacing: 0.08em;
++    }
++
++    @media (max-width: 640px) {
++      .coffee-story { margin-top: 60px; }
++      .story-layout { grid-template-columns: 1fr; row-gap: 0; }
++      .story-step { padding: 32px 0; }
++      .story-photo { grid-column: 1; min-height: 340px; margin-bottom: 24px; }
++      #tracked > section:nth-child(1) { grid-row: 1; }
++      #animated > section:nth-child(1) { grid-row: 2; }
++      #tracked > section:nth-child(2) { grid-row: 3; }
++      #animated > section:nth-child(2) { grid-row: 4; }
++      #tracked > section:nth-child(3) { grid-row: 5; }
++      #animated > section:nth-child(3) { grid-row: 6; }
++    }
++
++    @supports (timeline-scope: --origin) and (animation-timeline: --origin) and (animation-range: cover 0% cover 35%) {
++      @media (prefers-reduced-motion: no-preference) {
++        /* Hoist the text timelines to the two branches' shared ancestor. */
++        .story-layout { timeline-scope: --origin, --roast, --ritual; }
++        #tracked { display: block; grid-column: 1; grid-row: 1; }
++        #tracked > section { min-height: 75vh; display: flex; flex-direction: column; justify-content: center; }
++        #tracked > section:nth-child(1) { view-timeline: --origin block; }
++        #tracked > section:nth-child(2) { view-timeline: --roast block; }
++        #tracked > section:nth-child(3) { view-timeline: --ritual block; }
++
++        #animated {
++          display: grid;
++          grid-column: 2;
++          grid-row: 1;
++          position: sticky;
++          top: 100px;
++          align-self: start;
++          height: min(580px, calc(100svh - 130px));
++          min-height: 300px;
++        }
++
++        #animated > section:nth-child(n) {
++          grid-area: 1 / 1;
++          min-height: 0;
++          margin: 0;
++          /* Animate compositor-friendly properties only. Set timeline after shorthand. */
++          animation: story-reveal linear both;
++          animation-timeline: --origin;
++          animation-range: cover 0% cover 35%;
++        }
++
++        #animated > section:nth-child(2) { animation-timeline: --roast; }
++        #animated > section:nth-child(3) { animation-timeline: --ritual; }
++
++        @keyframes story-reveal {
++          from { opacity: 0; transform: translateY(24px) scale(0.98); }
++          to { opacity: 1; transform: translateY(0) scale(1); }
++        }
++
++        @media (max-width: 640px) {
++          #animated {
++            grid-column: 1;
++            grid-row: 1;
++            top: 80px;
++            height: 34svh;
++            min-height: 200px;
++            z-index: 1;
++            background: var(--light);
++          }
++          #tracked { grid-row: 2; }
++          #tracked > section { min-height: 70svh; padding: 48px 0; }
++          .photo-caption { inset: auto 20px 20px; }
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +390,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-story" aria-labelledby="story-title">
++      <div class="story-heading">
++        <p class="eyebrow">Behind every good morning</p>
++        <h2>A little care.<br>A remarkable cup.</h2>
++        <p>From the first harvest to your first sip, follow the small moments that make our coffee special.</p>
++      </div>
++
++      <div class="story-layout">
++        <div id="tracked">
++          <section class="story-step" aria-labelledby="origin-title">
++            <span class="step-number">01 — THE ORIGIN</span>
++            <p class="eyebrow">Good coffee starts here</p>
++            <h3 id="origin-title">Rooted in something good.</h3>
++            <p>Rich soil. Mountain air. A farmer's patient hands. We source our beans from growers who put as much care into their land as we put into your cup.</p>
++          </section>
++          <section class="story-step" aria-labelledby="roast-title">
++            <span class="step-number">02 — THE ROAST</span>
++            <p class="eyebrow">Time, temperature & a little instinct</p>
++            <h3 id="roast-title">Small batches.<br>Full character.</h3>
++            <p>We roast locally, in small batches, giving every bean the time it needs to find its voice. Sweet, rich, bright or bold. Always worth slowing down for.</p>
++          </section>
++          <section class="story-step" aria-labelledby="ritual-title">
++            <span class="step-number">03 — THE RITUAL</span>
++            <p class="eyebrow">Made for your everyday</p>
++            <h3 id="ritual-title">Your moment,<br>freshly brewed.</h3>
++            <p>The comforting aroma. That first warm sip. A familiar face across the counter. This is where our journey becomes part of yours.</p>
++          </section>
++        </div>
++
++        <div id="animated" aria-label="The journey from bean to cup">
++          <section class="story-photo" aria-labelledby="origin-photo-title">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1000&q=85" alt="Fresh green coffee plants growing in warm sunlight" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="photo-caption">
++              <div><h3 id="origin-photo-title">Thoughtfully sourced.</h3><p>Care begins long before the first cup.</p></div>
++              <span>01 / 03</span>
++            </div>
++          </section>
++          <section class="story-photo" aria-labelledby="roast-photo-title">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1000&q=85" alt="Rich brown roasted coffee beans" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="photo-caption">
++              <div><h3 id="roast-photo-title">Patiently perfected.</h3><p>Roasted close to home. Full of character.</p></div>
++              <span>02 / 03</span>
++            </div>
++          </section>
++          <section class="story-photo" aria-labelledby="ritual-photo-title">
++            <img src="https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&fit=crop&w=1000&q=85" alt="A freshly prepared cup of coffee with latte art" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="photo-caption">
++              <div><h3 id="ritual-photo-title">Made for this moment.</h3><p>A little everyday ritual, just for you.</p></div>
++              <span>03 / 03</span>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+index 66c9173..0b2cf35 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,94 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native decorations follow glyph contours and skip descenders. Inline
++       padding leaves adjustable, undecorated space at both horizontal ends. */
++    .decorated {
++      --line-color: var(--accent);
++      --line-offset: 0.3em;
++      --line-inset: 0.12em;
++      --line-width: 0.08em;
++      --line-style: solid;
++    }
++
++    .decorated > .line-text {
++      padding-inline: var(--line-inset);
++      text-decoration-line: underline;
++      text-decoration-style: var(--line-style);
++      text-decoration-color: var(--line-color);
++      text-decoration-thickness: var(--line-width);
++      text-underline-offset: var(--line-offset);
++      text-decoration-skip-ink: auto;
++      transition: text-decoration-color 300ms ease,
++        text-decoration-thickness 300ms ease;
++      animation: line-reveal 900ms ease backwards;
++      -webkit-box-decoration-break: clone;
++      box-decoration-break: clone;
++    }
++
++    nav .decorated {
++      --line-offset: 0.4em;
++      --line-inset: 0.18em;
++    }
++
++    nav .logout-link {
++      padding: 5px 12px;
++    }
++
++    a.decorated:hover > .line-text,
++    a.decorated:focus-visible > .line-text,
++    .card:hover .line-text,
++    .card:focus-within .line-text {
++      text-decoration-thickness: 0.14em;
++      text-decoration-color: currentColor;
++    }
++
++    a.decorated:focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 6px;
++      border-radius: 2px;
++    }
++
++    .seasonal-heading {
++      text-align: center;
++      padding-bottom: 0.5em;
++      --line-style: wavy;
++      --line-offset: 0.35em;
++      --line-inset: 0.4em;
++    }
++
++    .card .decorated {
++      --line-color: #a66a2b;
++      --line-offset: 0.24em;
++      --line-inset: 0.2em;
++    }
++
++    .card:nth-child(2) .decorated {
++      --line-style: double;
++    }
++
++    .card:nth-child(3) .decorated {
++      --line-style: wavy;
++    }
++
++    .footer-links .decorated {
++      --line-color: var(--primary);
++      --line-offset: 0.35em;
++      --line-inset: 0.25em;
++    }
++
++    @keyframes line-reveal {
++      from { text-decoration-color: transparent; text-decoration-thickness: 0; }
++      to { text-decoration-color: var(--line-color); text-decoration-thickness: var(--line-width); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .decorated > .line-text {
++        animation: none;
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,11 +248,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="decorated"><span class="line-text">Menu</span></a></li>
++      <li><a href="/locations" class="decorated"><span class="line-text">Locations</span></a></li>
++      <li><a href="/rewards" class="decorated"><span class="line-text">Rewards</span></a></li>
++      <li><a href="/account" class="decorated"><span class="line-text">My Account</span></a></li>
++      <li><a href="/logout" class="logout-link decorated"><span class="line-text">Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,20 +264,20 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="seasonal-heading decorated"><span class="line-text">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="decorated"><span class="line-text">Maple Oat Latte</span></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="decorated"><span class="line-text">Dark Roast Espresso</span></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="decorated"><span class="line-text">Cold Brew</span></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -199,10 +287,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" class="decorated"><span class="line-text">Our Story</span></a> |
++      <a href="/careers" class="decorated"><span class="line-text">Join the Team</span></a> |
++      <a href="/contact" class="decorated"><span class="line-text">Contact Us</span></a> |
++      <a href="/privacy-policy" class="decorated"><span class="line-text">Privacy</span></a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

@@ -1,0 +1,288 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,147 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Dynamic spectrum cards */
++    .spectrum-card {
++      --index: var(--sibling-index, 1);
++      --count: var(--sibling-count, 1);
++      background-color: hsl(calc(360deg / var(--count) * var(--index)), 70%, 50%);
++      color: #ffffff;
++    }
++
++    .spectrum-card h3 {
++      color: #ffffff;
++      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
++    }
++
++    .spectrum-card p {
++      color: rgba(255, 255, 255, 0.95);
++    }
++
++    .spectrum-card .btn {
++      background: rgba(0, 0, 0, 0.3);
++      border: 1px solid rgba(255, 255, 255, 0.5);
++    }
++
++    .spectrum-card .btn:hover {
++      background: rgba(0, 0, 0, 0.55);
++    }
++
++    /* Fan layout section */
++    .fan-container {
++      display: grid;
++      place-items: center;
++      position: relative;
++      height: 320px;
++      margin: 40px auto;
++      perspective: 1000px;
++    }
++
++    .fan-card {
++      grid-area: 1 / 1;
++      width: 190px;
++      height: 260px;
++      padding: 24px 18px;
++      border-radius: 12px;
++      background: linear-gradient(145deg, #4e342e, #2d1e1a);
++      color: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      text-align: center;
++      transform-origin: bottom center;
++
++      --index: var(--sibling-index, 1);
++      --count: var(--sibling-count, 1);
++      --center: calc((var(--count) + 1) / 2);
++      transform: rotate(calc(10deg * (var(--index) - var(--center))));
++      z-index: var(--index);
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .fan-card:hover {
++      transform: rotate(calc(10deg * (var(--index) - var(--center)))) translateY(-15px);
++      z-index: 50;
++      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
++    }
++
++    /* Circular layout section */
++    .circle-container {
++      display: grid;
++      place-items: center;
++      position: relative;
++      width: 360px;
++      height: 360px;
++      margin: 50px auto;
++      border: 2px dashed var(--secondary);
++      border-radius: 50%;
++    }
++
++    .circle-orb {
++      --radius: 140px;
++      --index: var(--sibling-index, 1);
++      --count: var(--sibling-count, 1);
++      --angle: calc(360deg / var(--count) * var(--index));
++
++      position: absolute;
++      place-self: center;
++      width: 76px;
++      height: 76px;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      font-size: 0.75rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      border: 2px solid var(--accent);
++      text-align: center;
++      padding: 6px;
++      transition: transform 0.3s ease;
++
++      transform: translate(
++        calc(cos(var(--angle)) * var(--radius)),
++        calc(sin(var(--angle)) * var(--radius))
++      );
++    }
++
++    @supports (top: calc(sibling-index() * 1px)) {
++      .spectrum-card {
++        --index: sibling-index();
++        --count: sibling-count();
++        background-color: hsl(calc(360deg / sibling-count() * sibling-index()), 70%, 50%);
++      }
++
++      .fan-card {
++        --index: sibling-index();
++        --count: sibling-count();
++        --center: calc((sibling-count() + 1) / 2);
++        transform: rotate(calc(10deg * (sibling-index() - var(--center))));
++        z-index: sibling-index();
++      }
++
++      .fan-card:hover {
++        transform: rotate(calc(10deg * (sibling-index() - var(--center)))) translateY(-15px);
++      }
++
++      .circle-orb {
++        --index: sibling-index();
++        --count: sibling-count();
++        --angle: calc(360deg / sibling-count() * sibling-index());
++        transform: translate(
++          calc(cos(calc(360deg / sibling-count() * sibling-index())) * var(--radius)),
++          calc(sin(calc(360deg / sibling-count() * sibling-index())) * var(--radius))
++        );
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,25 +316,93 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Loyalty Rewards</h2>
++      <p style="text-align: center; color: #666; margin-top: 5px;">Unlock tiered rewards with every cup</p>
++      <div class="fan-container">
++        <div class="fan-card">
++          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">Tier 1</div>
++          <h4 style="margin: 8px 0; font-size: 1.2rem;">Bronze</h4>
++          <p style="font-size: 0.85rem; opacity: 0.9;">100 Pts</p>
++          <p style="font-size: 0.8rem; margin-top: auto;">Free Drip Coffee</p>
++        </div>
++        <div class="fan-card">
++          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">Tier 2</div>
++          <h4 style="margin: 8px 0; font-size: 1.2rem;">Silver</h4>
++          <p style="font-size: 0.85rem; opacity: 0.9;">250 Pts</p>
++          <p style="font-size: 0.8rem; margin-top: auto;">Free Fresh Pastry</p>
++        </div>
++        <div class="fan-card">
++          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">Tier 3</div>
++          <h4 style="margin: 8px 0; font-size: 1.2rem;">Gold</h4>
++          <p style="font-size: 0.85rem; opacity: 0.9;">500 Pts</p>
++          <p style="font-size: 0.8rem; margin-top: auto;">Specialty Latte</p>
++        </div>
++        <div class="fan-card">
++          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">Tier 4</div>
++          <h4 style="margin: 8px 0; font-size: 1.2rem;">Platinum</h4>
++          <p style="font-size: 0.85rem; opacity: 0.9;">750 Pts</p>
++          <p style="font-size: 0.8rem; margin-top: auto;">Cold Brew Growler</p>
++        </div>
++        <div class="fan-card">
++          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);">Tier 5</div>
++          <h4 style="margin: 8px 0; font-size: 1.2rem;">Diamond</h4>
++          <p style="font-size: 0.85rem; opacity: 0.9;">1000 Pts</p>
++          <p style="font-size: 0.8rem; margin-top: auto;">Whole Bean Bag</p>
++        </div>
++      </div>
++    </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Single-Origin Coffee</h2>
++      <p style="text-align: center; color: #666; margin-top: 5px;">Ethically harvested from six renowned coffee regions</p>
++      <div class="circle-container">
++        <div class="circle-orb">
++          <strong>Ethiopia</strong>
++          <span>Floral</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Colombia</strong>
++          <span>Caramel</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Guatemala</strong>
++          <span>Cocoa</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Costa Rica</strong>
++          <span>Citrus</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Kenya</strong>
++          <span>Berry</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Sumatra</strong>
++          <span>Earthy</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +413,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* Fallback strategy for browsers without native sibling-index() and sibling-count() */
++    /* MANDATORY: Check for native support before applying fallback */
++    if (!CSS.supports('top: calc(sibling-index() * 1px)')) {
++      function updateDynamicSiblings() {
++        const selectors = ['.spectrum-card', '.fan-card', '.circle-orb'];
++        selectors.forEach(selector => {
++          const elements = document.querySelectorAll(selector);
++          const parents = new Set(Array.from(elements, el => el.parentElement).filter(Boolean));
++          parents.forEach(parent => {
++            const items = parent.querySelectorAll(`:scope > ${selector}`);
++            items.forEach((item, index) => {
++              /* MANDATORY: Injected index must be 1-based to match native function */
++              item.style.setProperty('--sibling-index', index + 1);
++              item.style.setProperty('--sibling-count', items.length);
++            });
++          });
++        });
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', updateDynamicSiblings);
++      } else {
++        updateDynamicSiblings();
++      }
++
++      /* Dynamically adapt if items are added or removed in the future */
++      const observer = new MutationObserver(updateDynamicSiblings);
++      observer.observe(document.body, { childList: true, subtree: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

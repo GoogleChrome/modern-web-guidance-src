@@ -1,0 +1,672 @@
+diff --git a/index.html b/index.html
+index 66c9173..65d6bc5 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,498 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* =========================================================
++       Built-in browser UI theming
++       ========================================================= */
++    :root {
++      /* Keep native pickers, spin buttons and system UI in light mode */
++      color-scheme: light;
++      /* Brown (not the orange accent) so checkmarks/thumbs keep >= 3:1 contrast on white */
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++      --field-border: #8d6e63;
++      --focus-ring: 3px solid var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    ::selection {
++      background-color: var(--accent);
++      color: var(--text);
++    }
++
++    /* Legacy WebKit/Blink scrollbar fallback */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 3px solid var(--scrollbar-track);
++        border-radius: 6px;
++      }
++    }
++
++    /* =========================================================
++       Menu layout: favorites + order customization side by side
++       ========================================================= */
++    .menu-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
++      gap: 32px;
++      align-items: start;
++    }
++
++    @media (max-width: 860px) {
++      .menu-layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
++    .menu-layout h2 {
++      color: var(--primary);
++    }
++
++    .favorites .grid {
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++    }
++
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 6px solid var(--accent);
++      padding: 24px;
++      position: sticky;
++      top: 90px;
++      max-height: calc(100vh - 110px);
++      overflow-y: auto;
++      overscroll-behavior: contain;
++    }
++
++    @media (max-width: 860px) {
++      .order-panel {
++        position: static;
++        max-height: none;
++      }
++    }
++
++    .order-panel h2 {
++      margin-bottom: 4px;
++    }
++
++    .order-panel .intro {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++    }
++
++    /* =========================================================
++       Native form controls
++       ========================================================= */
++    .order-form {
++      display: grid;
++      gap: 18px;
++    }
++
++    .field {
++      display: grid;
++      gap: 6px;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
++      gap: 14px;
++    }
++
++    .order-form label,
++    .order-form legend {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .order-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px 14px;
++    }
++
++    .order-form legend {
++      padding: 0 6px;
++    }
++
++    .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .order-form input:not([type="checkbox"], [type="radio"], [type="range"]),
++    .order-form select,
++    .order-form textarea {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: white;
++      border: 2px solid var(--field-border);
++      border-radius: 6px;
++      padding: 0.6rem 0.75rem;
++      min-height: 48px;
++      width: 100%;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .order-form textarea {
++      min-height: 80px;
++      resize: vertical;
++      field-sizing: content;
++      max-height: 200px;
++    }
++
++    .order-form ::placeholder {
++      color: #8d6e63;
++      opacity: 1;
++    }
++
++    .order-form input:not([type="checkbox"], [type="radio"], [type="range"]):hover,
++    .order-form select:hover,
++    .order-form textarea:hover {
++      border-color: var(--primary);
++      background-color: #fffaf5;
++    }
++
++    .order-form :focus-visible {
++      outline: var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    /* Validity styling only after interaction */
++    .order-form input:not([type="range"]):user-invalid,
++    .order-form textarea:user-invalid {
++      border-color: #b3261e;
++      background-color: #fff5f4;
++    }
++
++    .order-form input:not([type="range"]):user-invalid + .error {
++      display: block;
++    }
++
++    .error {
++      display: none;
++      font-size: 0.8rem;
++      color: #b3261e;
++    }
++
++    /* Date & time picker trigger icons, tinted brown */
++    .order-form input::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      border-radius: 4px;
++      padding: 4px;
++      background-color: transparent;
++      /* Recolors Chromium's black icon to roughly #4e342e */
++      filter: invert(20%) sepia(25%) saturate(900%) hue-rotate(335deg) brightness(90%);
++      transition: background-color 0.2s;
++    }
++
++    .order-form input::-webkit-calendar-picker-indicator:hover {
++      background-color: var(--secondary);
++    }
++
++    .order-form input[type="number"] {
++      font-variant-numeric: tabular-nums;
++    }
++
++    /* Radios & checkboxes: native inputs tinted via accent-color */
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .order-form .choice {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 44px;
++      padding: 6px 12px;
++      border: 2px solid var(--secondary);
++      border-radius: 999px;
++      cursor: pointer;
++      font-weight: 500;
++      color: var(--text);
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .choice:hover {
++      border-color: var(--field-border);
++    }
++
++    .choice:has(:checked) {
++      border-color: var(--primary);
++      background-color: #fff3e0;
++    }
++
++    .choice:has(:focus-visible) {
++      outline: var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    .choice input:focus-visible {
++      outline: none;
++    }
++
++    .choice input {
++      width: 1.15rem;
++      height: 1.15rem;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .choice small {
++      color: #6d4c41;
++    }
++
++    /* Range slider + progress tinted via accent-color */
++    .order-form input[type="range"] {
++      width: 100%;
++      cursor: pointer;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.75rem;
++      color: #6d4c41;
++    }
++
++    .order-form output {
++      font-weight: 700;
++      color: var(--text);
++    }
++
++    .rewards {
++      display: grid;
++      gap: 4px;
++      font-size: 0.85rem;
++    }
++
++    .rewards progress {
++      width: 100%;
++      height: 10px;
++    }
++
++    .order-summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      border-top: 1px dashed var(--secondary);
++      padding-top: 14px;
++    }
++
++    .order-summary .total {
++      font-size: 1.4rem;
++    }
++
++    .order-form button[type="submit"] {
++      font: inherit;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      min-height: 48px;
++      border-radius: 5px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .order-form button[type="submit"]:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    /* =========================================================
++       Customizable <select> (falls back to the OS dropdown)
++       ========================================================= */
++    .order-form select {
++      appearance: base-select;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++    }
++
++    .order-form select::picker(select) {
++      appearance: base-select;
++    }
++
++    .order-form select::picker(select) {
++      font-family: inherit;
++      background-color: white;
++      color: var(--text);
++      border: 2px solid var(--primary);
++      border-radius: 8px;
++      padding: 6px;
++      margin-block: 4px;
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.25);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: thin;
++      max-height: 18rem;
++    }
++
++    .order-form select::picker-icon {
++      color: var(--primary);
++      transition: rotate 0.2s;
++    }
++
++    .order-form select:open::picker-icon {
++      rotate: 180deg;
++    }
++
++    .order-form select:open {
++      border-color: var(--primary);
++    }
++
++    .order-form option {
++      padding: 8px 10px;
++      border-radius: 5px;
++      cursor: pointer;
++      gap: 8px;
++    }
++
++    .order-form option:hover,
++    .order-form option:focus-visible {
++      background-color: var(--secondary);
++      outline: none;
++    }
++
++    .order-form option:checked {
++      background-color: #fff3e0;
++      font-weight: 600;
++    }
++
++    .order-form option::checkmark {
++      color: var(--primary);
++    }
++
++    .order-form option .price {
++      margin-inline-start: auto;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    /* =========================================================
++       Fallback for browsers without accent-color
++       ========================================================= */
++    @supports not (accent-color: red) {
++      .order-form input[type="checkbox"],
++      .order-form input[type="radio"] {
++        -webkit-appearance: none;
++        appearance: none;
++        display: inline-grid;
++        place-content: center;
++        border: 2px solid var(--primary);
++        border-radius: 4px;
++        background: white;
++      }
++
++      .order-form input[type="radio"] {
++        border-radius: 50%;
++      }
++
++      .order-form input[type="checkbox"]:checked {
++        background: var(--primary);
++      }
++
++      .order-form input[type="checkbox"]:checked::before {
++        content: "";
++        width: 0.55rem;
++        height: 0.3rem;
++        border: solid white;
++        border-width: 0 0 2px 2px;
++        transform: translate(0, -1px) rotate(-45deg);
++      }
++
++      .order-form input[type="radio"]:checked {
++        box-shadow: inset 0 0 0 3px white;
++        background: var(--primary);
++      }
++
++      .order-form input[type="range"] {
++        -webkit-appearance: none;
++        appearance: none;
++        background: transparent;
++        height: 20px;
++      }
++
++      .order-form input[type="range"]::-webkit-slider-runnable-track {
++        height: 8px;
++        border-radius: 4px;
++        background: linear-gradient(to right, var(--primary) var(--progress, 50%), var(--secondary) var(--progress, 50%));
++      }
++
++      .order-form input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        appearance: none;
++        width: 18px;
++        height: 18px;
++        margin-top: -5px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 2px solid white;
++      }
++
++      .order-form input[type="range"]::-moz-range-track {
++        height: 8px;
++        border-radius: 4px;
++        background: var(--secondary);
++      }
++
++      .order-form input[type="range"]::-moz-range-progress {
++        height: 8px;
++        border-radius: 4px;
++        background: var(--primary);
++      }
++
++      .order-form input[type="range"]::-moz-range-thumb {
++        width: 18px;
++        height: 18px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 2px solid white;
++      }
++
++      .rewards progress {
++        -webkit-appearance: none;
++        appearance: none;
++        border: none;
++        border-radius: 5px;
++        background: var(--secondary);
++      }
++
++      .rewards progress::-webkit-progress-bar {
++        background: var(--secondary);
++        border-radius: 5px;
++      }
++
++      .rewards progress::-webkit-progress-value {
++        background: var(--primary);
++        border-radius: 5px;
++      }
++
++      .rewards progress::-moz-progress-bar {
++        background: var(--primary);
++        border-radius: 5px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -174,9 +666,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container menu-layout">
++    <section class="favorites" aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +687,115 @@
+         </div>
+       </div>
+     </section>
++
++    <aside class="order-panel" id="customize" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Customize Your Order</h2>
++      <p class="intro">Build your perfect cup and schedule a pickup.</p>
++
++      <form class="order-form" action="/order-online" method="POST">
++        <div class="field">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink">
++            <option value="maple-oat-latte" data-price="5.25" selected>Maple Oat Latte <span class="price">$5.25</span></option>
++            <option value="dark-roast-espresso" data-price="3.50">Dark Roast Espresso <span class="price">$3.50</span></option>
++            <option value="cold-brew" data-price="4.75">Cold Brew <span class="price">$4.75</span></option>
++            <option value="cappuccino" data-price="4.50">Cappuccino <span class="price">$4.50</span></option>
++            <option value="flat-white" data-price="4.75">Flat White <span class="price">$4.75</span></option>
++            <option value="chai-latte" data-price="4.95">Chai Latte <span class="price">$4.95</span></option>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choice-group">
++            <label class="choice"><input type="radio" name="size" value="small" data-price="0"> Small <small>12oz</small></label>
++            <label class="choice"><input type="radio" name="size" value="medium" data-price="0.50" checked> Medium <small>16oz</small></label>
++            <label class="choice"><input type="radio" name="size" value="large" data-price="1.00"> Large <small>20oz</small></label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="milk">Milk</label>
++          <select id="milk" name="milk">
++            <option value="whole" data-price="0">Whole milk</option>
++            <option value="skim" data-price="0">Skim milk</option>
++            <option value="oat" data-price="0.70" selected>Oat milk <span class="price">+$0.70</span></option>
++            <option value="almond" data-price="0.70">Almond milk <span class="price">+$0.70</span></option>
++            <option value="soy" data-price="0.60">Soy milk <span class="price">+$0.60</span></option>
++            <option value="none" data-price="0">No milk</option>
++          </select>
++        </div>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="shots">Extra shots</label>
++            <input type="number" id="shots" name="shots" min="0" max="4" step="1" value="0" inputmode="numeric" aria-describedby="shots-hint">
++            <span class="hint" id="shots-hint">$0.75 each, up to 4</span>
++          </div>
++          <div class="field">
++            <label for="sweetness">Sweetness: <output for="sweetness" id="sweetness-value">50%</output></label>
++            <input type="range" id="sweetness" name="sweetness" min="0" max="100" step="25" value="50" list="sweetness-marks">
++            <datalist id="sweetness-marks">
++              <option value="0"></option>
++              <option value="25"></option>
++              <option value="50"></option>
++              <option value="75"></option>
++              <option value="100"></option>
++            </datalist>
++            <div class="range-labels" aria-hidden="true"><span>None</span><span>Extra</span></div>
++          </div>
++        </div>
++
++        <fieldset>
++          <legend>Extras</legend>
++          <div class="choice-group">
++            <label class="choice"><input type="checkbox" name="extras" value="whipped-cream" data-price="0.50"> Whipped cream</label>
++            <label class="choice"><input type="checkbox" name="extras" value="cinnamon" data-price="0"> Cinnamon dust</label>
++            <label class="choice"><input type="checkbox" name="extras" value="vanilla" data-price="0.60"> Vanilla syrup</label>
++            <label class="choice"><input type="checkbox" name="extras" value="caramel" data-price="0.60"> Caramel drizzle</label>
++          </div>
++        </fieldset>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input type="date" id="pickup-date" name="pickup_date" required>
++            <span class="error">Choose a pickup date.</span>
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input type="time" id="pickup-time" name="pickup_time" min="07:00" max="19:00" step="900" required aria-describedby="time-hint">
++            <span class="error">Pick a time between 7:00 AM and 7:00 PM.</span>
++            <span class="hint" id="time-hint">Open 7 AM – 7 PM</span>
++          </div>
++        </div>
++
++        <div class="field">
++          <label for="order-name">Name for the cup</label>
++          <input type="text" id="order-name" name="name" autocomplete="given-name" maxlength="40" placeholder="e.g. Sam" required>
++          <span class="error">Tell us who this cup is for.</span>
++        </div>
++
++        <div class="field">
++          <label for="notes">Barista notes <span class="hint">(optional)</span></label>
++          <textarea id="notes" name="notes" maxlength="200" placeholder="Extra hot, light ice, latte art request…"></textarea>
++        </div>
++
++        <div class="rewards">
++          <label for="rewards-progress">Rewards: 7 of 10 stamps</label>
++          <progress id="rewards-progress" max="10" value="7">7 of 10</progress>
++          <span class="hint">3 more drinks until your next free coffee.</span>
++        </div>
++
++        <div class="order-summary">
++          <div>
++            <span class="hint">Estimated total</span><br>
++            <output class="total" id="order-total" name="total" for="drink milk shots">$6.45</output>
++          </div>
++          <button type="submit">Place Order</button>
++        </div>
++      </form>
++    </aside>
+   </main>
+ 
+   <footer>
+@@ -207,6 +808,39 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.querySelector('.order-form');
++    const sweetness = form.elements.sweetness;
++    const sweetnessOut = document.getElementById('sweetness-value');
++    const totalOut = document.getElementById('order-total');
++    const dateInput = form.elements.pickup_date;
++
++    // Default pickup date: today (local), no past dates
++    const now = new Date();
++    const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
++    dateInput.min = today;
++    dateInput.value = today;
++
++    const price = (el) => Number(el?.dataset.price ?? 0);
++
++    function update() {
++      sweetnessOut.value = `${sweetness.value}%`;
++      sweetness.style.setProperty('--progress', `${sweetness.value}%`);
++
++      const shots = Math.min(Math.max(Number(form.elements.shots.value) || 0, 0), 4);
++      let total = price(form.elements.drink.selectedOptions[0])
++        + price(form.querySelector('[name="size"]:checked'))
++        + price(form.elements.milk.selectedOptions[0])
++        + shots * 0.75;
++      form.querySelectorAll('[name="extras"]:checked').forEach((el) => { total += price(el); });
++      totalOut.value = `$${total.toFixed(2)}`;
++    }
++
++    form.addEventListener('input', update);
++    form.addEventListener('change', update);
++    update();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,72 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 460px;
++      margin: 0 auto 32px;
++      text-align: left;
++    }
++
++    .mailing-list h2,
++    .mailing-list > p {
++      text-align: center;
++      margin-bottom: 12px;
++    }
++
++    .mailing-list label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .mailing-list input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++      color: var(--text);
++    }
++
++    .mailing-list .btn {
++      width: 100%;
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .email-error {
++      display: none;
++      margin-top: 6px;
++      color: #8b1e16;
++      font-size: 0.875rem;
++    }
++
++    .mailing-list input:user-invalid:not(:focus),
++    .mailing-list input[aria-invalid="true"] {
++      border: 2px solid #8b1e16;
++      background: #fff5f4;
++    }
++
++    .mailing-list input:user-invalid:not(:focus) + .email-error,
++    .mailing-list input[aria-invalid="true"] + .email-error {
++      display: block;
++    }
++
++    #mailing-list-status:not(:empty) {
++      margin-top: 12px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +261,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="mailing-list" id="mailing-list" method="post" aria-labelledby="mailing-list-heading">
++      <h2 id="mailing-list-heading">Join our mailing list</h2>
++      <p>Get the latest coffee news and seasonal favorites.</p>
++      <label for="mailing-list-email">Email address (required)</label>
++      <input type="email" id="mailing-list-email" name="email" required autocomplete="email"
++        autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="you@example.com"
++        aria-describedby="mailing-list-email-error">
++      <p class="email-error" id="mailing-list-email-error" aria-live="polite">Please enter a valid email address.</p>
++      <button class="btn" type="submit">Join our mailing list</button>
++      <p id="mailing-list-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +281,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingList = document.getElementById('mailing-list');
++    const email = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('mailing-list-email-error');
++    const mailingListStatus = document.getElementById('mailing-list-status');
++
++    function validateEmail() {
++      emailError.textContent = email.validity.valueMissing
++        ? 'Please enter your email address.'
++        : 'Please enter a valid email address.';
++      if (email.validity.valid) {
++        email.removeAttribute('aria-invalid');
++      } else {
++        email.setAttribute('aria-invalid', 'true');
++      }
++    }
++
++    email.addEventListener('blur', validateEmail);
++    email.addEventListener('input', () => {
++      email.removeAttribute('aria-invalid');
++      mailingListStatus.textContent = '';
++    });
++    email.addEventListener('invalid', (event) => {
++      event.preventDefault();
++      validateEmail();
++      email.focus();
++    });
++    mailingList.addEventListener('submit', (event) => {
++      event.preventDefault();
++      mailingListStatus.textContent = 'Mailing list sign-ups are not available yet. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

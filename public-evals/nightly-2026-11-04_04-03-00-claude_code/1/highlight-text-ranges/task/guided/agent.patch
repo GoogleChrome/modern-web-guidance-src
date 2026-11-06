@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,41 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Menu search */
++    .search-box {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 0;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++    }
++
++    .search-box:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--accent);
++    }
++
++    ::highlight(menu-search) {
++      background-color: gold;
++      color: #000;
++    }
++
++    /* Fallback for browsers without the CSS Custom Highlight API */
++    mark.menu-search-mark {
++      background-color: gold;
++      color: #000;
++      padding: 0;
++      margin: 0;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,9 +209,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <input type="search" id="search-input" class="search-box" placeholder="Search the menu..."
++        aria-label="Search the menu" autocomplete="off">
++      <div class="grid" id="menu-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +241,88 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const input = document.getElementById("search-input");
++      const grid = document.getElementById("menu-grid");
++      const HIGHLIGHT_NAME = "menu-search";
++      const supportsHighlights = typeof CSS !== "undefined" && "highlights" in CSS;
++
++      // Collect text nodes inside the menu cards (cached; menu content is static).
++      const getTextNodes = () => {
++        const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT, {
++          acceptNode: (node) => node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
++        });
++        const nodes = [];
++        for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
++        return nodes;
++      };
++
++      let textNodes = getTextNodes();
++
++      const highlightWithApi = (term) => {
++        CSS.highlights.delete(HIGHLIGHT_NAME);
++        if (!term) return;
++        const ranges = [];
++        for (const node of textNodes) {
++          const text = node.nodeValue.toLowerCase();
++          let pos = text.indexOf(term);
++          while (pos !== -1) {
++            const range = new Range();
++            range.setStart(node, pos);
++            range.setEnd(node, pos + term.length);
++            ranges.push(range);
++            pos = text.indexOf(term, pos + term.length);
++          }
++        }
++        if (ranges.length) CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(...ranges));
++      };
++
++      const clearMarks = () => {
++        const marks = grid.querySelectorAll("mark.menu-search-mark");
++        if (!marks.length) return;
++        const parents = new Set();
++        for (const mark of marks) {
++          parents.add(mark.parentNode);
++          mark.replaceWith(document.createTextNode(mark.textContent));
++        }
++        // Merge adjacent text nodes back together.
++        for (const parent of parents) parent.normalize();
++      };
++
++      const highlightWithMarks = (term) => {
++        clearMarks();
++        if (!term) return;
++        for (const node of getTextNodes()) {
++          const text = node.nodeValue;
++          const lower = text.toLowerCase();
++          let pos = lower.indexOf(term);
++          if (pos === -1) continue;
++          const frag = document.createDocumentFragment();
++          let last = 0;
++          while (pos !== -1) {
++            frag.append(text.slice(last, pos));
++            const mark = document.createElement("mark");
++            mark.className = "menu-search-mark";
++            mark.textContent = text.slice(pos, pos + term.length);
++            frag.append(mark);
++            last = pos + term.length;
++            pos = lower.indexOf(term, last);
++          }
++          frag.append(text.slice(last));
++          node.replaceWith(frag);
++        }
++      };
++
++      input.addEventListener("input", () => {
++        const term = input.value.trim().toLowerCase();
++        if (supportsHighlights) highlightWithApi(term);
++        else highlightWithMarks(term);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

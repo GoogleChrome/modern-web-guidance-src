@@ -1,0 +1,626 @@
+diff --git a/index.html b/index.html
+index 66c9173..6885b1c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -44,6 +46,9 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      cursor: pointer;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+@@ -115,6 +120,14 @@
+       text-align: center;
+     }
+ 
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -129,12 +142,80 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++      margin-left: 8px;
++    }
++
++    .interaction-panel {
++      margin-top: 24px;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    /* Telemetry Panel */
++    .telemetry-panel {
++      max-width: 1100px;
++      margin: 20px auto;
++      padding: 20px;
++      background: #fff8e1;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      contain: layout style paint;
++    }
++
++    .telemetry-panel h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .telemetry-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 16px;
++    }
++
++    .telemetry-box {
++      background: white;
++      padding: 12px 16px;
++      border-radius: 6px;
++      border: 1px solid #e0e0e0;
++      font-size: 0.85rem;
++    }
++
++    .telemetry-box h3 {
++      font-size: 0.95rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++      border-bottom: 1px solid #eee;
++      padding-bottom: 4px;
++    }
++
++    .telemetry-log {
++      list-style: none;
++      max-height: 180px;
++      overflow-y: auto;
++    }
++
++    .telemetry-log li {
++      padding: 6px 0;
++      border-bottom: 1px dashed #eee;
++      font-family: monospace;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -158,55 +239,340 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="/" class="logo" data-soft-nav>THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-soft-nav>Menu</a></li>
++      <li><a href="/locations" data-soft-nav>Locations</a></li>
++      <li><a href="/rewards" data-soft-nav>Rewards</a></li>
++      <li><a href="/account" data-soft-nav>My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-soft-nav>Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero-section">
++    <h1 id="hero-title">Wake Up Your Senses</h1>
++    <p id="hero-subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div>
++      <a href="/order-online" class="btn" data-soft-nav>Order Now</a>
++      <button type="button" class="btn btn-secondary" id="toggle-special-btn">Reveal Barista's Tasting Notes</button>
++    </div>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="app-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-soft-nav>View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-soft-nav>View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-soft-nav>View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <aside class="telemetry-panel" aria-label="Paint Timing Telemetry">
++    <h2>Interaction &amp; Soft-Navigation Paint Timing</h2>
++    <p style="font-size: 0.85rem; margin-bottom: 12px;">
++      Measures contentful paint latency from user interactions (<code>interaction-contentful-paint</code>) and client-side route transitions (<code>soft-navigation</code>).
++    </p>
++    <div class="telemetry-grid">
++      <div class="telemetry-box">
++        <h3>Interaction Contentful Paints (ICP)</h3>
++        <ul class="telemetry-log" id="icp-log">
++          <li id="icp-placeholder">Interact with the page or navigate to measure contentful paint duration...</li>
++        </ul>
++      </div>
++      <div class="telemetry-box">
++        <h3>Soft Navigation FCP &amp; LCP</h3>
++        <ul class="telemetry-log" id="soft-nav-log">
++          <li id="soft-nav-placeholder">Click any navigation link to track soft-navigation FCP and LCP...</li>
++        </ul>
++      </div>
++    </div>
++  </aside>
++
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-soft-nav>Our Story</a> |
++      <a href="/careers" data-soft-nav>Join the Team</a> |
++      <a href="/contact" data-soft-nav>Contact Us</a> |
++      <a href="/privacy-policy" data-soft-nav>Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {
++      observeInteractionPaints,
++      trackSoftNavigationLCP,
++      observeStandardHardNavMetrics,
++    } from './performance-metrics.js';
++
++    const icpLog = document.getElementById('icp-log');
++    const softNavLog = document.getElementById('soft-nav-log');
++    const appContent = document.getElementById('app-content');
++
++    window.__interactionPaintEntries = [];
++    window.__softNavigationReports = [];
++    window.__hardNavMetrics = [];
++
++    function appendLogItem(listEl, placeholderId, text) {
++      const placeholder = document.getElementById(placeholderId);
++      if (placeholder) placeholder.remove();
++      const li = document.createElement('li');
++      li.textContent = text;
++      listEl.prepend(li);
++    }
++
++    // 1. Observe contentful paints triggered by any user interaction
++    observeInteractionPaints((entry) => {
++      const lcpDetails = entry.largestContentfulPaint;
++      const elTag = lcpDetails?.element ? lcpDetails.element.tagName.toLowerCase() : 'element';
++      const size = lcpDetails?.size ?? 0;
++
++      // entry.duration is (entry.presentationTime - entry.startTime)
++      const record = {
++        interactionId: entry.interactionId,
++        startTime: entry.startTime,
++        paintTime: entry.paintTime,
++        presentationTime: entry.presentationTime,
++        duration: entry.duration,
++        element: lcpDetails?.element ?? null,
++        size,
++        url: lcpDetails?.url ?? '',
++      };
++      window.__interactionPaintEntries.push(record);
++
++      appendLogItem(
++        icpLog,
++        'icp-placeholder',
++        `[Interaction #${entry.interactionId}] Contentful paint (${elTag}, size: ${size}) rendered in ${entry.duration.toFixed(1)}ms`
++      );
++    });
++
++    // 2. Measure FCP and LCP for client-side SPA soft navigations
++    const softNavTracker = trackSoftNavigationLCP((report) => {
++      window.__softNavigationReports.push(report);
++      const lcpText = report.lcpDuration !== null ? `${report.lcpDuration.toFixed(1)}ms` : 'N/A';
++      appendLogItem(
++        softNavLog,
++        'soft-nav-placeholder',
++        `[Route ${report.url}] FCP: ${report.fcpDuration.toFixed(1)}ms | LCP: ${lcpText} (size: ${report.lcpSize ?? 0})`
++      );
++    });
++
++    // 3. Keep standard hard-navigation observers active as baseline / fallback
++    observeStandardHardNavMetrics((type, entry) => {
++      window.__hardNavMetrics.push({ type, entry });
++    });
++
++    // Route definitions for client-side soft navigations
++    const routes = {
++      '/': {
++        title: 'Seasonal Favorites',
++        description: 'Handcrafted seasonal beverages roasted fresh daily.',
++        items: [
++          {
++            name: 'Maple Oat Latte',
++            desc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++            href: '/menu/seasonal',
++            img: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80',
++          },
++          {
++            name: 'Dark Roast Espresso',
++            desc: 'Bold, smokey, and perfect for a morning boost.',
++            href: '/menu/espresso',
++            img: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80',
++          },
++          {
++            name: 'Cold Brew',
++            desc: 'Steeped for 18 hours for maximum smoothness.',
++            href: '/menu/cold-brew',
++            img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80',
++          },
++        ],
++      },
++      '/menu': {
++        title: 'Full Artisanal Menu',
++        description: 'Explore our single-origin pour-overs, espresso classics, and pastries.',
++        items: [
++          {
++            name: 'Ethiopian Yirgacheffe Pour-Over',
++            desc: 'Bright floral aroma with notes of bergamot and jasmine.',
++            href: '/menu/seasonal',
++            img: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
++          },
++          {
++            name: 'Velvet Flat White',
++            desc: 'Double ristretto topped with silky microfoam.',
++            href: '/menu/espresso',
++            img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80',
++          },
++          {
++            name: 'Nitro Cold Brew Reserve',
++            desc: 'Infused with nitrogen for a cascading, velvety finish.',
++            href: '/menu/cold-brew',
++            img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80',
++          },
++        ],
++      },
++      '/locations': {
++        title: 'Our Coffee Houses',
++        description: 'Visit one of our neighborhood roasteries and tasting bars.',
++        items: [
++          {
++            name: 'Downtown Roastery & Lab',
++            desc: '142 Roaster Lane — Open daily 6:30 AM to 7:00 PM.',
++            href: '/order-online',
++            img: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80',
++          },
++          {
++            name: 'Harborfront Cafe',
++            desc: '88 Pier Avenue — Waterfront seating and slow-bar tastings.',
++            href: '/order-online',
++            img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80',
++          },
++        ],
++      },
++      '/rewards': {
++        title: 'Daily Grind Rewards',
++        description: 'Earn beans on every cup and unlock complimentary single-origin bags.',
++        items: [
++          {
++            name: 'Gold Tier Member Perks',
++            desc: 'Double points on seasonal releases and free oat milk upgrades.',
++            href: '/account',
++            img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
++          },
++        ],
++      },
++    };
++
++    function renderRoute(path) {
++      const routeData = routes[path] || {
++        title: `The Daily Grind — ${path.replace(/^\//, '').replace(/-/g, ' ').toUpperCase() || 'HOME'}`,
++        description: 'Freshly brewed experiences crafted for every coffee lover.',
++        items: routes['/'].items,
++      };
++
++      const section = document.createElement('section');
++      const heading = document.createElement('h2');
++      heading.style.textAlign = 'center';
++      heading.textContent = routeData.title;
++
++      const subtitle = document.createElement('p');
++      subtitle.style.textAlign = 'center';
++      subtitle.style.marginTop = '8px';
++      subtitle.textContent = routeData.description;
++
++      const grid = document.createElement('div');
++      grid.className = 'grid';
++
++      for (const item of routeData.items) {
++        const card = document.createElement('div');
++        card.className = 'card';
++
++        if (item.img) {
++          const img = document.createElement('img');
++          img.src = item.img;
++          img.alt = item.name;
++          img.width = 600;
++          img.height = 360;
++          img.loading = 'eager';
++          card.appendChild(img);
++        }
++
++        const h3 = document.createElement('h3');
++        h3.textContent = item.name;
++
++        const p = document.createElement('p');
++        p.textContent = item.desc;
++
++        const link = document.createElement('a');
++        link.href = item.href;
++        link.className = 'btn';
++        link.setAttribute('data-soft-nav', '');
++        link.textContent = 'Explore';
++
++        card.append(h3, p, link);
++        grid.appendChild(card);
++      }
++
++      section.append(heading, subtitle, grid);
++      appContent.replaceChildren(section);
++    }
++
++    // Intercept client-side route clicks to trigger soft navigations
++    document.addEventListener('click', (event) => {
++      const link = event.target.closest('a[data-soft-nav]');
++      if (!link) return;
++
++      const url = new URL(link.href, window.location.origin);
++      if (url.origin !== window.location.origin) return;
++
++      event.preventDefault();
++      // Paint new contentful DOM update and update URL for soft navigation
++      renderRoute(url.pathname);
++      history.pushState({ path: url.pathname }, '', url.pathname);
++    });
++
++    window.addEventListener('popstate', () => {
++      renderRoute(window.location.pathname);
++    });
++
++    // Interactive non-navigation contentful update (triggers interaction-contentful-paint)
++    const toggleSpecialBtn = document.getElementById('toggle-special-btn');
++    toggleSpecialBtn.addEventListener('click', () => {
++      const existing = document.getElementById('tasting-notes-panel');
++      if (existing) {
++        existing.remove();
++        toggleSpecialBtn.textContent = "Reveal Barista's Tasting Notes";
++        return;
++      }
++
++      const panel = document.createElement('section');
++      panel.id = 'tasting-notes-panel';
++      panel.className = 'interaction-panel';
++
++      const title = document.createElement('h3');
++      title.textContent = "Roaster's Limited Reserve: Panama Geisha Lot #14";
++
++      const description = document.createElement('p');
++      description.style.marginTop = '8px';
++      description.textContent =
++        'Harvested at 1,850 meters in Boquete. Expect vibrant notes of white peach, honeysuckle, and toasted cacao nibs with a lingering citrus finish. Brewed to order at 93°C.';
++
++      const img = document.createElement('img');
++      img.src = 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80';
++      img.alt = 'Freshly roasted coffee beans';
++      img.width = 900;
++      img.height = 320;
++      img.style.width = '100%';
++      img.style.height = '220px';
++      img.style.objectFit = 'cover';
++      img.style.borderRadius = '6px';
++      img.style.marginTop = '12px';
++
++      panel.append(title, description, img);
++      appContent.prepend(panel);
++      toggleSpecialBtn.textContent = 'Hide Tasting Notes';
++    });
++
++    // Expose softNavTracker for manual finalization if needed
++    window.__softNavTracker = softNavTracker;
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/performance-metrics.js b/performance-metrics.js
+new file mode 100644
+index 0000000..85aad84
+--- /dev/null
++++ b/performance-metrics.js
+@@ -0,0 +1,142 @@
++/**
++ * Observes contentful paints caused by user interactions and invokes a callback
++ * whenever an interaction produces a larger contentful paint.
++ *
++ * @param {(entry: PerformanceEntry) => void} onInteractionPaint
++ */
++export function observeInteractionPaints(onInteractionPaint) {
++  // Feature-detect support before calling observe() so unsupported browsers
++  // do not throw or log console warnings.
++  if (
++    typeof PerformanceObserver === 'undefined' ||
++    !PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint')
++  ) {
++    return null;
++  }
++
++  const observer = new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // entry.duration is already calculated as (entry.presentationTime - entry.startTime),
++      // giving the total time from the user interaction to this contentful paint.
++      onInteractionPaint(entry);
++    }
++  });
++
++  // MANDATORY: Pass buffered: true to capture interaction paints that occurred
++  // before this observer was registered.
++  observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++  return observer;
++}
++
++/**
++ * Tracks FCP and LCP for each client-side soft navigation and reports finalized
++ * route metrics when the user navigates to a new route or hides the page.
++ *
++ * @param {(report: {
++ *   url: string,
++ *   navigationId: number,
++ *   interactionId: number,
++ *   fcpDuration: number,
++ *   lcpDuration: number | null,
++ *   lcpElement: Element | null,
++ *   lcpSize: number | null
++ * }) => void} onSoftNavReport
++ */
++export function trackSoftNavigationLCP(onSoftNavReport) {
++  const supported =
++    typeof PerformanceObserver !== 'undefined' &&
++    PerformanceObserver.supportedEntryTypes?.includes('soft-navigation') &&
++    PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint');
++
++  if (!supported) {
++    return null;
++  }
++
++  let activeSoftNav = null;
++  let activeLcpEntry = null;
++
++  function finalizeCurrentSoftNav() {
++    if (!activeSoftNav) return;
++
++    onSoftNavReport({
++      // activeSoftNav.name holds the destination URL of the soft navigation.
++      url: activeSoftNav.name,
++      navigationId: activeSoftNav.navigationId,
++      interactionId: activeSoftNav.interactionId,
++      // activeSoftNav.duration is (activeSoftNav.presentationTime - activeSoftNav.startTime),
++      // which represents First Contentful Paint (FCP) relative to interaction start.
++      fcpDuration: activeSoftNav.duration,
++      // activeLcpEntry.duration is (activeLcpEntry.presentationTime - activeSoftNav.startTime),
++      // representing the soft navigation's LCP duration relative to interaction start.
++      lcpDuration: activeLcpEntry ? activeLcpEntry.duration : null,
++      lcpElement: activeLcpEntry?.largestContentfulPaint?.element ?? null,
++      lcpSize: activeLcpEntry?.largestContentfulPaint?.size ?? null,
++    });
++
++    activeSoftNav = null;
++    activeLcpEntry = null;
++  }
++
++  const softNavObserver = new PerformanceObserver((list) => {
++    for (const softNavEntry of list.getEntries()) {
++      // Finalize the previous route's metrics before resetting state for the new route.
++      finalizeCurrentSoftNav();
++
++      activeSoftNav = softNavEntry;
++      // MANDATORY: Seed the LCP candidate with getLargestInteractionContentfulPaint()
++      // to capture any attributed contentful paints that occurred before the URL updated.
++      activeLcpEntry = softNavEntry.getLargestInteractionContentfulPaint();
++    }
++  });
++
++  const icpObserver = new PerformanceObserver((list) => {
++    for (const icpEntry of list.getEntries()) {
++      // MANDATORY: Match by interactionId (not navigationId) so only paints caused
++      // by the soft navigation's initiating interaction update the route's LCP.
++      if (activeSoftNav && icpEntry.interactionId === activeSoftNav.interactionId) {
++        activeLcpEntry = icpEntry;
++      }
++    }
++  });
++
++  softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++  icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++
++  // Finalize the active route's LCP when the page is backgrounded or unloaded.
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') {
++      finalizeCurrentSoftNav();
++    }
++  });
++
++  return { softNavObserver, icpObserver, finalizeCurrentSoftNav };
++}
++
++/**
++ * Fallback / companion observer for standard hard-navigation metrics ('largest-contentful-paint',
++ * 'event', and 'layout-shift') across all browsers.
++ *
++ * @param {(type: string, entry: PerformanceEntry) => void} onStandardEntry
++ */
++export function observeStandardHardNavMetrics(onStandardEntry) {
++  if (typeof PerformanceObserver === 'undefined') {
++    return [];
++  }
++
++  const supportedTypes = PerformanceObserver.supportedEntryTypes || [];
++  const observers = [];
++
++  for (const type of ['largest-contentful-paint', 'event', 'layout-shift']) {
++    if (supportedTypes.includes(type)) {
++      const observer = new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) {
++          onStandardEntry(type, entry);
++        }
++      });
++      observer.observe({ type, buffered: true });
++      observers.push(observer);
++    }
++  }
++
++  return observers;
++}

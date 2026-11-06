@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+index 1bacf96..18881ab 100644
+--- a/index.html
++++ b/index.html
+@@ -14,6 +14,39 @@
+       --light: #fafafa;
+     }
+ 
++    /*
++     * Auto-contrast text for themed surfaces.
++     * --on-*  : black or white, whichever contrasts most with the background.
++     *           L* 49.44 is the lightness where black and white text give
++     *           equal WCAG contrast, so anything darker gets white text.
++     * --off-* : the opposite extreme, used to push hover states further
++     *           away from the text color (raising contrast, never lowering).
++     * Declared on the elements themselves (not :root) so they recompute
++     * whenever --primary / --secondary change, at any level of the tree.
++     * Fallbacks below cover browsers without relative color syntax.
++     */
++    nav,
++    .btn {
++      --on-primary: white;
++      --off-primary: black;
++    }
++
++    footer {
++      --on-secondary: var(--text);
++    }
++
++    @supports (color: lch(from red l c h)) {
++      nav,
++      .btn {
++        --on-primary: lch(from var(--primary) clamp(0, (49.44 - l) * infinity, 100) 0 0);
++        --off-primary: lch(from var(--primary) clamp(0, (l - 49.44) * infinity, 100) 0 0);
++      }
++
++      footer {
++        --on-secondary: lch(from var(--secondary) clamp(0, (49.44 - l) * infinity, 100) 0 0);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -30,7 +63,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +89,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: 2px;
++      text-underline-offset: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
++    /* Accent as an underline rather than text color, so it stays legible
++       whether the nav background is light or dark. */
+     nav a:hover {
+-      color: var(--accent);
++      text-decoration-line: underline;
+     }
+ 
+     .logout-link {
+@@ -123,6 +160,7 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: var(--on-primary);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -131,11 +169,12 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: color-mix(in srgb, var(--primary) 80%, var(--off-primary));
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--on-secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +186,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

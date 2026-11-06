@@ -1,0 +1,212 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..6d47ca9
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,25 @@
++# Local resource access
++
++The Local resources form sends a GET request directly from the user's browser to
++the supplied device or companion app URL. Choose the network device option for
++LAN addresses (including `.local` names), or the computer option for `localhost`,
++`127.0.0.1`, or `[::1]`. No request is sent until Connect is clicked.
++
++Deploy the site over HTTPS. The local service must return a standard
++`Access-Control-Allow-Origin` header allowing the deployed site's origin. Browser
++permission does not replace CORS. The service must support requests without
++cookies or embedded URL credentials. Redirects are deliberately rejected.
++
++Requests declare `targetAddressSpace` as `local` or `loopback`. Browsers supporting
++Local Network Access prompt for permission; unsupported permission queries fall
++back to connecting on click, subject to that browser's security restrictions.
++Browsers without the HTTP mixed-content exemption may require the resource to
++use HTTPS. Deprecated Private Network Access preflight headers are not needed.
++
++If hosting policies are configured, allow this origin to use
++`local-network=(self), loopback-network=(self)` in the `Permissions-Policy` header
++and allow the intended endpoints in CSP `connect-src`. These permissions default
++to self when no policy overrides them. When embedding this site cross-origin,
++the parent must also delegate `local-network; loopback-network` through the
++iframe's `allow` attribute and its own response policy. The child cannot override
++a restrictive parent policy.
+diff --git a/index.html b/index.html
+index 66c9173..350e547 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="local-network.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,6 +153,21 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .local-resources { margin-top: 40px; text-align: left; }
++    .local-resources form { display: grid; gap: 12px; margin-top: 20px; }
++    .local-resources input, .local-resources select {
++      width: 100%; padding: 10px; border: 1px solid var(--primary);
++      border-radius: 5px; font: inherit; background: white; color: var(--text);
++    }
++    .local-resources button { font: inherit; border: 0; cursor: pointer; justify-self: start; }
++    .local-resources button:disabled { opacity: 0.6; cursor: wait; }
++    .local-resources :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .local-resources pre {
++      max-height: 320px; overflow: auto; white-space: pre-wrap;
++      overflow-wrap: anywhere; padding: 16px; background: var(--light);
++    }
++    #network-status { margin-top: 16px; }
+   </style>
+ </head>
+ 
+@@ -195,6 +211,28 @@
+         </div>
+       </div>
+     </section>
++    <section class="card local-resources" aria-labelledby="local-resources-title">
++      <h2 id="local-resources-title">Local resources</h2>
++      <p>Load a resource from a device on your network or an app running on this computer.
++        Your browser may ask for permission when you connect.</p>
++      <form id="network-form">
++        <label for="network-space">Connect to</label>
++        <select id="network-space" name="space">
++          <option value="local">A device on my network</option>
++          <option value="loopback">An app on this computer</option>
++        </select>
++        <label for="network-url">Resource URL</label>
++        <input id="network-url" name="url" type="url" required
++          placeholder="http://device.local/status" aria-describedby="network-help"
++          autocomplete="off" spellcheck="false">
++        <p id="network-help">Enter the full HTTP or HTTPS address supplied by your device or app.</p>
++        <button type="submit" class="btn" id="network-connect">Connect</button>
++      </form>
++      <p id="network-permission" role="status"></p>
++      <p id="network-status" role="status" aria-live="polite">No connection yet.</p>
++      <pre id="network-result" aria-label="Resource response" hidden></pre>
++      <noscript>Enable JavaScript to connect to local resources.</noscript>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/local-network.js b/local-network.js
+new file mode 100644
+index 0000000..026c1bb
+--- /dev/null
++++ b/local-network.js
+@@ -0,0 +1,112 @@
++(() => {
++  const form = document.getElementById('network-form');
++  const space = document.getElementById('network-space');
++  const input = document.getElementById('network-url');
++  const button = document.getElementById('network-connect');
++  const permission = document.getElementById('network-permission');
++  const status = document.getElementById('network-status');
++  const result = document.getElementById('network-result');
++  const permissions = new Map();
++  const permissionName = () => `${space.value}-network`;
++
++  function showPermission() {
++    const state = permissions.get(permissionName())?.state;
++    permission.textContent = state === 'denied'
++      ? 'Access blocked. Open browser site settings, allow Local network or Loopback network access, then try again.'
++      : state === 'granted'
++        ? 'Network permission granted.'
++        : 'Click Connect to request access to this resource.';
++  }
++
++  async function checkPermission(name) {
++    if (!permissions.has(name)) {
++      try {
++        // Older browsers may not recognize the granular permission names.
++        const state = await navigator.permissions.query({ name });
++        permissions.set(name, state);
++        state.addEventListener('change', showPermission);
++      } catch {
++        // Keep the connection behind a user gesture when querying is unsupported.
++        return 'prompt';
++      }
++    }
++    showPermission();
++    return permissions.get(name).state;
++  }
++
++  space.addEventListener('change', () => {
++    input.placeholder = space.value === 'local'
++      ? 'http://device.local/status'
++      : 'http://localhost:8080/status';
++    showPermission();
++    void checkPermission(permissionName());
++  });
++
++  if (!window.isSecureContext) {
++    status.textContent = 'Open this site over HTTPS to connect to local resources.';
++    button.disabled = true;
++    return;
++  }
++
++  showPermission();
++  void checkPermission(permissionName());
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    if (button.disabled) return;
++    result.hidden = true;
++    result.textContent = '';
++
++    let url;
++    try {
++      url = new URL(input.value.trim());
++      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++        throw new Error('Invalid resource URL');
++      }
++    } catch {
++      status.textContent = 'Enter a full HTTP or HTTPS URL without a username or password.';
++      return;
++    }
++
++    const targetAddressSpace = space.value;
++    button.disabled = true;
++    input.disabled = true;
++    space.disabled = true;
++    status.textContent = 'Connecting… Allow access if your browser asks.';
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 30000);
++    try {
++      const state = await checkPermission(`${targetAddressSpace}-network`);
++      if (state === 'denied') {
++        status.textContent = 'Connection blocked. Allow network access in browser site settings and try again.';
++        return;
++      }
++      const response = await fetch(url.href, {
++        method: 'GET',
++        mode: 'cors',
++        credentials: 'omit',
++        redirect: 'error',
++        referrerPolicy: 'no-referrer',
++        targetAddressSpace,
++        signal: controller.signal,
++      });
++      if (!response.ok) {
++        status.textContent = `The resource returned HTTP ${response.status}. Check the resource URL and try again.`;
++        return;
++      }
++      // Display remote content as text, never as executable HTML.
++      result.textContent = await response.text();
++      result.hidden = false;
++      status.textContent = `Connected. Resource loaded (HTTP ${response.status}).`;
++    } catch (error) {
++      status.textContent = error.name === 'AbortError'
++        ? 'Connection timed out. Check that the device or app is running and try again.'
++        : 'Could not load the resource. Check its address, that the device or app is running, and browser network permissions. The service must allow connections from this site (CORS). Your browser may require an HTTPS resource.';
++    } finally {
++      clearTimeout(timeout);
++      button.disabled = false;
++      input.disabled = false;
++      space.disabled = false;
++    }
++  });
++})();

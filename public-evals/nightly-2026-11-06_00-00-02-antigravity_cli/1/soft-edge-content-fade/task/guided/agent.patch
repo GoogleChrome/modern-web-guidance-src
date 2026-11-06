@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Preview / Paywall Section */
++    .roasters-secrets-section {
++      margin-block-start: 60px;
++    }
++
++    .roasters-secrets-header {
++      text-align: center;
++      margin-block-end: 24px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-block-end: 8px;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-height: 320px;
++      overflow: hidden;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++    }
++
++    /* Fallback using an overlay for browsers that do not support masking */
++    @supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
++      .paywall-container {
++        position: relative;
++      }
++
++      .paywall-container::after {
++        content: '';
++        position: absolute;
++        bottom: 0;
++        left: 0;
++        right: 0;
++        height: 45%;
++        background: linear-gradient(to bottom, rgba(250, 250, 250, 0), rgba(250, 250, 250, 1));
++        pointer-events: none;
++      }
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-block-end: 12px;
++    }
++
++    .paywall-container p {
++      margin-block-end: 16px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-block-start: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets-section">
++      <div class="roasters-secrets-header">
++        <span class="badge">Members Exclusive</span>
++        <h2>Roaster's Secrets</h2>
++        <p>Peek inside our master roaster's notebook for single-origin profiles and dialing-in formulas.</p>
++      </div>
++      <div class="paywall-container">
++        <h3>Mastering the First Crack: Thermal Momentum &amp; Maillard Precision</h3>
++        <p>Every exceptional roast hinges on the delicate transition between the drying phase and the onset of Maillard reactions. When our high-altitude Ethiopian Yirgacheffe beans reach 155°C in the drum, we begin tapering heat application by 15% every thirty seconds while opening airflow dampers to preserve delicate floral jasmine and bergamot aromatics.</p>
++        <p>Most home and commercial roasters make the mistake of maintaining static gas pressure right into first crack, causing an exothermic spike that scorches the chaff and flattens acidity. By riding the thermal momentum built during the mid-phase, we stretch the caramelization window by an extra 22 seconds without baking the bean core.</p>
++        <p>To replicate our signature honey-processed sweetness at home on a flat-burr grinder, set your brew water to 93.5°C with a 65 ppm magnesium-forward mineral profile. Begin with a 45-second bloom at a 1:3 coffee-to-water ratio, swirling gently at the 10-second mark to saturate micro-fines evenly before commencing your main spiral pour...</p>
++        <p>In the next section of this guide, we reveal our exact drum RPM curves, charge temperatures for anaerobic naturals, and the three-stage cooling tray agitation schedule that locks in volatile esters for up to six weeks post-roast.</p>
++      </div>
++      <div class="paywall-cta">
++        <p>Want the full roasting curves and brewing recipes?</p>
++        <a href="/rewards" class="btn">Unlock Full Access</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

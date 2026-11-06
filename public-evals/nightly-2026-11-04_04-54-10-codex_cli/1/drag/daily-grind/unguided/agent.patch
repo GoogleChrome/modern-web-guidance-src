@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+index 66c9173..a293382 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,74 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    :root { --primary: #293e34; --text: #342d26; --light: #f7f5ef; --accent: #d5ad74; }
++    body { font-family: 'Segoe UI', sans-serif; }
++    nav { background: #f7f5ef; color: var(--text); padding: 22px 5%; border-bottom: 1px solid #e5e0d6; }
++    .logo { font-family: Georgia, serif; font-size: 21px; letter-spacing: 2px; }
++    .logo::before { content: '◉'; color: #7e8a6a; margin-right: 12px; }
++    nav a { color: var(--text); font-size: 13px; }
++    nav ul li { margin-left: 28px; }
++    .logout-link { border-color: #c7c9bc; border-radius: 0; }
++    .hero { height: 570px; align-items: flex-start; text-align: left; padding: 70px 8%; background-image: linear-gradient(90deg, rgba(20,25,20,.78), rgba(20,25,20,.12)), url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=2000&q=85'); }
++    .hero::before { content: 'GOOD COFFEE. BETTER MORNINGS.'; font-size: 11px; letter-spacing: 3px; color: #dfc69f; margin-bottom: 20px; }
++    .hero h1 { font-family: Georgia, serif; font-size: clamp(42px, 5vw, 72px); font-weight: 400; max-width: 550px; line-height: 1.08; }
++    .hero p { max-width: 360px; font-size: 15px; color: #e4dfd6; margin: 8px 0; }
++    .hero .btn { background: #ece8dc; color: #293e34; padding: 12px 26px; border-radius: 2px; font-size: 13px; }
++    .container { margin: 52px auto; }
++    .container h2 { font-family: Georgia, serif; font-size: 32px; font-weight: 400; }
++    .section-note { text-align: center; color: #7d7b6e; font-size: 13px; margin: 6px 0 28px; }
++    .card { border: 1px solid #e4dfd5; box-shadow: none; padding: 26px; border-radius: 3px; }
++    .card h3 { font-family: Georgia, serif; font-weight: 400; font-size: 23px; }
++    .card p { font-size: 13px; color: #777266; }
++    .card .btn { background: transparent; color: #293e34; border-bottom: 1px solid #a8b0a1; padding: 4px 0; border-radius: 0; font-size: 12px; }
++    footer { background: #eeeae0; color: #787568; font-size: 12px; }
++    button, select { font: inherit; }
++    button { cursor: pointer; }
++    button:focus-visible, select:focus-visible, a:focus-visible, .drag-handle:focus-visible { outline: 3px solid #ba8e51; outline-offset: 4px; }
++    .coffee-cart { position: fixed; z-index: 1100; right: 36px; top: 140px; width: 354px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); background: #fffcf5; border: 1px solid #e4ddce; border-radius: 12px; box-shadow: 0 18px 65px #151f1838; overflow: auto; }
++    .cart-header { display: flex; align-items: center; background: #293e34; color: #f9f5e9; border-radius: 10px 10px 0 0; }
++    .drag-handle { display: flex; align-items: center; gap: 12px; flex: 1; padding: 17px 0 17px 20px; cursor: grab; touch-action: none; user-select: none; }
++    .drag-handle:active { cursor: grabbing; }
++    .grip { font-size: 22px; color: #9ca99b; letter-spacing: -3px; padding-right: 3px; }
++    .cart-title { font-size: 14px; font-weight: 600; letter-spacing: .2px; }
++    .cart-subtitle { display: block; color: #b8c2b6; font-size: 10px; font-weight: 400; margin-top: 1px; }
++    .collapse-cart { border: 0; background: transparent; color: #f9f5e9; font-size: 23px; width: 48px; height: 48px; margin-right: 7px; }
++    .cart-body { padding: 22px; }
++    .cart-eyebrow { display: flex; justify-content: space-between; align-items: center; font-size: 10px; letter-spacing: 1.6px; color: #827b6d; margin-bottom: 15px; }
++    .pickup-badge { color: #52664d; background: #edf0e5; padding: 3px 7px; border-radius: 4px; letter-spacing: 0; }
++    .drink-preview { display: flex; gap: 14px; align-items: center; margin-bottom: 19px; }
++    .drink-photo { width: 65px; height: 72px; border-radius: 6px; object-fit: cover; }
++    .drink-preview h2 { font: 23px/1.25 Georgia, serif; }
++    .drink-preview p { color: #8a8174; font-size: 11px; margin-top: 5px; }
++    .field-label { display: block; font-size: 11px; font-weight: 600; margin: 14px 0 7px; }
++    .drink-select { width: 100%; padding: 10px; background: #fffdf8; border: 1px solid #ded9ce; border-radius: 5px; color: #453f35; font-size: 12px; }
++    .size-options { display: flex; gap: 7px; }
++    .size-options button { flex: 1; border: 1px solid #ded9ce; border-radius: 5px; background: transparent; color: #7a7469; font-size: 11px; padding: 9px 0; }
++    .size-options button[aria-pressed="true"] { background: #edf0e6; border-color: #65765e; color: #293e34; }
++    .quantity-row { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; font-size: 12px; }
++    .stepper { display: flex; align-items: center; border: 1px solid #ded9ce; border-radius: 5px; }
++    .stepper button { width: 32px; height: 30px; border: 0; background: transparent; color: #293e34; font-size: 18px; }
++    .stepper button:disabled { color: #c8c3b8; cursor: default; }
++    .stepper output { min-width: 24px; text-align: center; font-size: 12px; }
++    .cart-total { border-top: 1px dashed #dbd4c7; padding: 15px 0; display: flex; justify-content: space-between; font-size: 12px; }
++    .cart-total strong { font-size: 21px; font-weight: 600; }
++    .cart-total small { display: block; font-size: 10px; color: #93897c; margin-top: 2px; }
++    .order-button { width: 100%; background: #293e34; color: #fffaf0; border: 0; border-radius: 5px; padding: 13px 15px; font-size: 12px; display: flex; justify-content: space-between; }
++    .order-button:hover { background: #3e5546; }
++    .cart-footnote { text-align: center; font-size: 10px; color: #9a9182; margin-top: 12px; }
++    .order-summary { font-size: 12px; color: #40583e; background: #edf0e6; padding: 10px; border-radius: 4px; margin-top: 12px; }
++    [hidden] { display: none !important; }
++    @media (max-width: 760px) {
++      nav { padding: 18px 5%; flex-wrap: wrap; gap: 15px; }
++      nav ul { flex-wrap: wrap; gap: 14px; }
++      nav ul li { margin: 0; }
++      nav a { font-size: 11px; }
++      .hero { height: 510px; padding: 45px 7%; justify-content: flex-start; }
++      .hero h1 { max-width: 340px; }
++      .coffee-cart { top: auto; bottom: 16px; right: 12px; width: 320px; }
++      .cart-body { padding: 16px 20px; }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +244,8 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;">A little something to look forward to.</h2>
++      <p class="section-note">Meet your new favorites, crafted with the season in mind.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +276,126 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="coffee-cart" id="coffee-cart" aria-label="Quick coffee order">
++    <div class="cart-header">
++      <div class="drag-handle" id="cart-handle" tabindex="0" role="button" aria-label="Move coffee cart. Drag or use arrow keys; hold Shift for larger steps.">
++        <span class="grip" aria-hidden="true">⠿</span>
++        <div class="cart-title">Your daily pick-me-up<span class="cart-subtitle">Drag me anywhere</span></div>
++      </div>
++      <button class="collapse-cart" id="collapse-cart" aria-label="Minimize coffee cart" aria-expanded="true" aria-controls="cart-body">−</button>
++    </div>
++    <div class="cart-body" id="cart-body">
++      <div class="cart-eyebrow">THE QUICK CUP <span class="pickup-badge">Made for pickup</span></div>
++      <div class="drink-preview">
++        <img class="drink-photo" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=160&q=80" alt="A freshly poured cup of coffee">
++        <div><h2>A good day starts here.</h2><p>Your favorite coffee, just a few taps away.</p></div>
++      </div>
++      <label class="field-label" for="drink">Choose your coffee</label>
++      <select id="drink" class="drink-select">
++        <option value="latte">Maple Oat Latte</option>
++        <option value="espresso">Dark Roast Espresso</option>
++        <option value="coldbrew">Cold Brew</option>
++      </select>
++      <span class="field-label" id="size-label">Make it your size</span>
++      <div class="size-options" role="group" aria-labelledby="size-label">
++        <button type="button" data-size="small" aria-pressed="false">Small · 8 oz</button>
++        <button type="button" data-size="regular" aria-pressed="true">Regular · 12 oz</button>
++        <button type="button" data-size="large" aria-pressed="false">Large · 16 oz</button>
++      </div>
++      <div class="quantity-row"><span id="quantity-label">How many?</span><div class="stepper" role="group" aria-labelledby="quantity-label"><button id="decrease" aria-label="Decrease quantity" disabled>−</button><output id="quantity" aria-live="polite">1</output><button id="increase" aria-label="Increase quantity">+</button></div></div>
++      <div class="cart-total"><div>Subtotal<small>Taxes calculated at checkout</small></div><strong id="total" aria-live="polite">$5.50</strong></div>
++      <button class="order-button" id="prepare-order"><span>Prepare pickup order</span><span aria-hidden="true">↗</span></button>
++      <p class="order-summary" id="order-summary" role="status" hidden></p>
++      <p class="cart-footnote">Locally roasted. Always made with love.</p>
++    </div>
++  </aside>
++  <script>
++    (() => {
++      const cart = document.getElementById('coffee-cart');
++      const handle = document.getElementById('cart-handle');
++      const body = document.getElementById('cart-body');
++      const collapse = document.getElementById('collapse-cart');
++      const drink = document.getElementById('drink');
++      const sizes = [...document.querySelectorAll('[data-size]')];
++      const decrease = document.getElementById('decrease');
++      const increase = document.getElementById('increase');
++      const summary = document.getElementById('order-summary');
++      const prices = { latte: 5.5, espresso: 3.5, coldbrew: 4.5 };
++      const sizePrices = { small: -0.75, regular: 0, large: 0.75 };
++      let quantity = 1;
++      let size = 'regular';
++      let drag = null;
++      let moved = false;
++      const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
++      const total = () => (prices[drink.value] + sizePrices[size]) * quantity;
++      function update() {
++        document.getElementById('quantity').value = quantity;
++        document.getElementById('total').textContent = money(total());
++        decrease.disabled = quantity === 1;
++        increase.disabled = quantity === 20;
++        summary.hidden = true;
++      }
++      drink.addEventListener('change', update);
++      sizes.forEach(button => button.addEventListener('click', () => {
++        size = button.dataset.size;
++        sizes.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
++        update();
++      }));
++      decrease.addEventListener('click', () => { quantity = Math.max(1, quantity - 1); update(); });
++      increase.addEventListener('click', () => { quantity = Math.min(20, quantity + 1); update(); });
++      document.getElementById('prepare-order').addEventListener('click', () => {
++        summary.textContent = `${quantity} × ${size} ${drink.selectedOptions[0].text} — ${money(total())}. Your order summary is ready. Online checkout is coming soon; please place your order at the café.`;
++        summary.hidden = false;
++        keepInView();
++      });
++      function moveTo(x, y) {
++        const bounds = cart.getBoundingClientRect();
++        cart.style.left = `${Math.max(12, Math.min(x, window.innerWidth - bounds.width - 12))}px`;
++        cart.style.top = `${Math.max(12, Math.min(y, window.innerHeight - bounds.height - 12))}px`;
++        cart.style.right = 'auto';
++        cart.style.bottom = 'auto';
++      }
++      function keepInView() {
++        const bounds = cart.getBoundingClientRect();
++        moveTo(bounds.left, bounds.top);
++      }
++      collapse.addEventListener('click', () => {
++        body.hidden = !body.hidden;
++        collapse.setAttribute('aria-expanded', String(!body.hidden));
++        collapse.setAttribute('aria-label', body.hidden ? 'Expand coffee cart' : 'Minimize coffee cart');
++        collapse.textContent = body.hidden ? '+' : '−';
++        keepInView();
++      });
++      handle.addEventListener('pointerdown', event => {
++        if (!event.isPrimary || event.button !== 0) return;
++        const bounds = cart.getBoundingClientRect();
++        drag = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
++        handle.setPointerCapture(event.pointerId);
++        handle.focus({ preventScroll: true });
++      });
++      handle.addEventListener('pointermove', event => {
++        if (!drag) return;
++        moved = true;
++        moveTo(event.clientX - drag.x, event.clientY - drag.y);
++      });
++      const endDrag = () => { drag = null; };
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++      handle.addEventListener('lostpointercapture', endDrag);
++      handle.addEventListener('keydown', event => {
++        const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
++        if (!directions[event.key]) return;
++        event.preventDefault();
++        const bounds = cart.getBoundingClientRect();
++        const step = event.shiftKey ? 40 : 10;
++        moved = true;
++        moveTo(bounds.left + directions[event.key][0] * step, bounds.top + directions[event.key][1] * step);
++      });
++      window.addEventListener('resize', () => { if (moved || cart.style.left) keepInView(); });
++      // Start compact on small screens so the homepage remains easy to browse.
++      if (window.matchMedia('(max-width: 760px)').matches) collapse.click();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,77 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s, opacity 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    /* Feedback Section */
++    .feedback-section {
++      margin-top: 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      text-align: center;
++    }
++
++    .feedback-label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .feedback-textarea {
++      width: 100%;
++      min-height: 120px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      resize: vertical;
++    }
++
++    .feedback-textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .detection-status {
++      margin-top: 15px;
++      padding: 12px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.95rem;
++    }
++
++    .detection-status:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +254,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Share Your Feedback</h2>
++      <label for="feedback-message" class="feedback-label">Your Message</label>
++      <textarea id="feedback-message" class="feedback-textarea" placeholder="Tell us what you think about our coffee in any language..."></textarea>
++      <div>
++        <button id="detect-btn" type="button" class="btn">Detect</button>
++      </div>
++      <div id="detection-result" class="detection-status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +276,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (async () => {
++      const detectBtn = document.getElementById('detect-btn');
++      const feedbackInput = document.getElementById('feedback-message');
++      const resultOutput = document.getElementById('detection-result');
++
++      // Check if the LanguageDetector API is supported in the global scope
++      if (!('LanguageDetector' in self)) {
++        detectBtn.disabled = true;
++        resultOutput.textContent = 'Language detection is not supported in this browser.';
++        return;
++      }
++
++      // Check if the model is available or downloadable
++      let availability;
++      try {
++        availability = await LanguageDetector.availability();
++      } catch (error) {
++        detectBtn.disabled = true;
++        resultOutput.textContent = 'Unable to check language detection availability.';
++        return;
++      }
++
++      if (availability === 'unavailable') {
++        detectBtn.disabled = true;
++        resultOutput.textContent = 'Language detection model is unavailable on this device.';
++        return;
++      }
++
++      const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
++      let detector = null;
++
++      detectBtn.addEventListener('click', async () => {
++        const text = feedbackInput.value.trim();
++        if (!text) {
++          resultOutput.textContent = 'Please enter a message to detect its language.';
++          return;
++        }
++
++        detectBtn.disabled = true;
++        try {
++          if (!detector) {
++            resultOutput.textContent = 'Preparing language detector...';
++            detector = await LanguageDetector.create({
++              monitor(m) {
++                m.addEventListener('downloadprogress', (e) => {
++                  const percent = Math.round(e.loaded * 100);
++                  resultOutput.textContent = `Downloading language model: ${percent}%`;
++                });
++              },
++            });
++          }
++
++          resultOutput.textContent = 'Detecting language...';
++          const results = await detector.detect(text);
++
++          if (!results || results.length === 0) {
++            resultOutput.textContent = 'Could not determine the language.';
++            return;
++          }
++
++          const topResult = results[0];
++          const languageCode = topResult.detectedLanguage;
++          let languageName = languageCode;
++          try {
++            languageName = displayNames.of(languageCode) || languageCode;
++          } catch {
++            // Fall back to raw code if Intl.DisplayNames cannot format the tag
++          }
++
++          const confidencePercent = (topResult.confidence * 100).toFixed(1);
++          resultOutput.textContent = `Detected Language: ${languageName} (${confidencePercent}% confidence)`;
++        } catch (error) {
++          resultOutput.textContent = `Error detecting language: ${error.message || 'Unknown error'}`;
++        } finally {
++          detectBtn.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

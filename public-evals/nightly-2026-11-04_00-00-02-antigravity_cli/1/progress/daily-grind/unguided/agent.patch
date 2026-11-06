@@ -1,0 +1,337 @@
+diff --git a/index.html b/index.html
+index 66c9173..cfaa71e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,180 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Bar Section */
++    .progress-section {
++      background: white;
++      padding: 28px 30px;
++      border-radius: 10px;
++      box-shadow: 0 4px 14px rgba(78, 52, 46, 0.1);
++      margin-bottom: 40px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 22px;
++      padding-bottom: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .progress-title-group h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 4px;
++    }
++
++    .progress-title-group p {
++      font-size: 0.92rem;
++      color: #6d4c41;
++    }
++
++    .progress-controls {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .state-btn {
++      background: var(--light);
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 6px 13px;
++      border-radius: 20px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.25s ease;
++    }
++
++    .state-btn:hover {
++      border-color: var(--accent);
++      background: #fff8e1;
++    }
++
++    .state-btn.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++    }
++
++    .progress-item {
++      background: var(--light);
++      padding: 18px 20px;
++      border-radius: 8px;
++      border: 1px solid #efebe9;
++    }
++
++    .progress-label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 10px;
++      font-weight: 600;
++      font-size: 0.95rem;
++      color: var(--primary);
++    }
++
++    .progress-badge {
++      font-size: 0.78rem;
++      padding: 3px 10px;
++      border-radius: 12px;
++      background: var(--secondary);
++      color: var(--text);
++      font-weight: 700;
++    }
++
++    .progress-badge.badge-accent {
++      background: #ffe0b2;
++      color: #e65100;
++    }
++
++    .progress-track {
++      position: relative;
++      width: 100%;
++      height: 16px;
++      background-color: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
++    }
++
++    .progress-track progress {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .progress-fill {
++      height: 100%;
++      border-radius: 999px;
++      background: linear-gradient(90deg, var(--primary) 0%, #8d6e63 55%, var(--accent) 100%);
++      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
++      position: relative;
++    }
++
++    .progress-track.indeterminate .progress-fill,
++    .progress-fill.indeterminate {
++      width: 40% !important;
++      position: absolute;
++      top: 0;
++      bottom: 0;
++      left: 0;
++      background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
++      animation: indeterminate-bar 1.6s infinite ease-in-out;
++    }
++
++    @keyframes indeterminate-bar {
++      0% {
++        left: -40%;
++        width: 35%;
++      }
++      50% {
++        left: 30%;
++        width: 50%;
++      }
++      100% {
++        left: 100%;
++        width: 35%;
++      }
++    }
++
++    .progress-meta {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #5d4037;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .progress-steps {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 12px;
++      font-size: 0.78rem;
++      color: #795548;
++    }
++
++    .progress-step.completed {
++      color: var(--primary);
++      font-weight: 700;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +349,83 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-label="Order and Reward Progress">
++      <div class="progress-header">
++        <div class="progress-title-group">
++          <h2>Order &amp; Rewards Tracker</h2>
++          <p>Real-time coffee preparation status and Bean Rewards milestone completion.</p>
++        </div>
++        <div class="progress-controls" role="group" aria-label="Progress state controls">
++          <button type="button" class="state-btn active" id="btn-determinate" onclick="setProgressState('determinate', 75)">Determinate (75%)</button>
++          <button type="button" class="state-btn" id="btn-indeterminate" onclick="setProgressState('indeterminate')">Indeterminate (Syncing)</button>
++          <button type="button" class="state-btn" id="btn-complete" onclick="setProgressState('determinate', 100)">Complete (100%)</button>
++        </div>
++      </div>
++
++      <div class="progress-grid">
++        <!-- Determinate Progress Bar: Reward & Order Completion -->
++        <div class="progress-item" id="primary-progress-card">
++          <div class="progress-label-row">
++            <span id="primary-progress-label">Free Drink Reward Progress</span>
++            <span class="progress-badge" id="primary-progress-value">75% (75 / 100 Beans)</span>
++          </div>
++          <div
++            class="progress-track determinate"
++            id="primary-progress-track"
++            role="progressbar"
++            aria-label="Reward and order completion progress"
++            aria-valuemin="0"
++            aria-valuemax="100"
++            aria-valuenow="75"
++            data-state="determinate"
++          >
++            <div class="progress-fill" id="primary-progress-fill" style="width: 75%;"></div>
++            <progress id="primary-native-progress" value="75" max="100">75%</progress>
++          </div>
++          <div class="progress-meta">
++            <span id="primary-progress-status">25 more beans until your next complimentary artisanal beverage!</span>
++            <span id="primary-state-indicator">State: Determinate</span>
++          </div>
++          <div class="progress-steps" aria-hidden="true">
++            <span class="progress-step completed">1. Order Placed</span>
++            <span class="progress-step completed">2. Grinding</span>
++            <span class="progress-step completed">3. Brewing (75%)</span>
++            <span class="progress-step" id="step-ready">4. Ready</span>
++          </div>
++        </div>
++
++        <!-- Indeterminate Progress Bar: Active Order Processing -->
++        <div class="progress-item">
++          <div class="progress-label-row">
++            <span>Live Barista Queue &amp; Order Sync</span>
++            <span class="progress-badge badge-accent">In Progress...</span>
++          </div>
++          <div
++            class="progress-track indeterminate"
++            id="secondary-progress-track"
++            role="progressbar"
++            aria-label="Active order processing in indeterminate state"
++            aria-valuemin="0"
++            aria-valuemax="100"
++            aria-busy="true"
++            data-state="indeterminate"
++          >
++            <div class="progress-fill indeterminate"></div>
++            <progress id="secondary-native-progress" max="100">Processing order...</progress>
++          </div>
++          <div class="progress-meta">
++            <span>Steaming oat milk &amp; syncing loyalty points with roasting station...</span>
++            <span>State: Indeterminate</span>
++          </div>
++          <div class="progress-steps" aria-hidden="true">
++            <span class="progress-step completed">Barista Assigned</span>
++            <span class="progress-step completed">Espresso Shot Pulled</span>
++            <span class="progress-step">Estimating Pickup Time...</span>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +458,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function setProgressState(state, value) {
++      const track = document.getElementById('primary-progress-track');
++      const fill = document.getElementById('primary-progress-fill');
++      const nativeProgress = document.getElementById('primary-native-progress');
++      const valueBadge = document.getElementById('primary-progress-value');
++      const statusText = document.getElementById('primary-progress-status');
++      const stateIndicator = document.getElementById('primary-state-indicator');
++      const stepReady = document.getElementById('step-ready');
++
++      const btnDet = document.getElementById('btn-determinate');
++      const btnInd = document.getElementById('btn-indeterminate');
++      const btnComp = document.getElementById('btn-complete');
++
++      btnDet.classList.remove('active');
++      btnInd.classList.remove('active');
++      btnComp.classList.remove('active');
++
++      if (state === 'indeterminate') {
++        btnInd.classList.add('active');
++        track.classList.remove('determinate');
++        track.classList.add('indeterminate');
++        track.setAttribute('data-state', 'indeterminate');
++        track.removeAttribute('aria-valuenow');
++        track.setAttribute('aria-busy', 'true');
++        fill.classList.add('indeterminate');
++        nativeProgress.removeAttribute('value');
++        valueBadge.textContent = 'Syncing Rewards...';
++        valueBadge.classList.add('badge-accent');
++        statusText.textContent = 'Verifying order rewards and updating live barista progress...';
++        stateIndicator.textContent = 'State: Indeterminate';
++        stepReady.classList.remove('completed');
++      } else {
++        const pct = typeof value === 'number' ? value : 75;
++        if (pct === 100) {
++          btnComp.classList.add('active');
++        } else {
++          btnDet.classList.add('active');
++        }
++        track.classList.remove('indeterminate');
++        track.classList.add('determinate');
++        track.setAttribute('data-state', 'determinate');
++        track.setAttribute('aria-valuenow', String(pct));
++        track.removeAttribute('aria-busy');
++        fill.classList.remove('indeterminate');
++        fill.style.width = pct + '%';
++        nativeProgress.setAttribute('value', String(pct));
++        valueBadge.textContent = pct + '% (' + pct + ' / 100 Beans)';
++        valueBadge.classList.remove('badge-accent');
++        statusText.textContent = pct === 100
++          ? 'Reward unlocked! Your complimentary artisanal drink is ready to redeem.'
++          : (100 - pct) + ' more beans until your next complimentary artisanal beverage!';
++        stateIndicator.textContent = 'State: Determinate';
++        if (pct === 100) {
++          stepReady.classList.add('completed');
++        } else {
++          stepReady.classList.remove('completed');
++        }
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

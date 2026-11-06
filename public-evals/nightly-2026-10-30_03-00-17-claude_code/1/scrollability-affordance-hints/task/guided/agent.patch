@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,119 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews */
++    .reviews {
++      margin-top: 60px;
++    }
++
++    .reviews-scroller {
++      position: relative;
++      height: 420px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      container-type: scroll-state;
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reviews-scroller:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .review-list {
++      list-style: none;
++      padding: 0 20px;
++    }
++
++    .review {
++      padding: 20px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .review:last-child {
++      border-bottom: none;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin-bottom: 6px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-rating {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .review time {
++      display: block;
++      font-size: 0.8rem;
++      color: #8d6e63;
++      margin-top: 6px;
++    }
++
++    /* Scroll indicators: sticky so they stay pinned to the scrollport edges,
++       negative margins so they overlay content instead of taking up space */
++    .indicator-top,
++    .indicator-bottom {
++      position: sticky;
++      left: 0;
++      right: 0;
++      z-index: 1;
++      height: 40px;
++      opacity: 0;
++      transition: opacity 0.2s;
++      pointer-events: none;
++    }
++
++    .indicator-top {
++      top: 0;
++      margin-bottom: -40px;
++      background: linear-gradient(to bottom, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      margin-top: -40px;
++      background: linear-gradient(to top, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    @container scroll-state(scrollable: top) {
++      .indicator-top {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: bottom) {
++      .indicator-bottom {
++        opacity: 1;
++      }
++    }
++
++    /* Fallback for browsers without scroll-state queries (toggled via JS) */
++    .reviews-scroller.scrolled-down .indicator-top,
++    .reviews-scroller.can-scroll-down .indicator-bottom {
++      opacity: 1;
++    }
++
++    .sentinel-top,
++    .sentinel-bottom {
++      height: 1px;
++      visibility: hidden;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +305,83 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="reviews" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading" style="text-align: center;">Customer Reviews</h2>
++      <div class="reviews-scroller" tabindex="0" role="region" aria-labelledby="reviews-heading">
++        <div class="indicator-top" aria-hidden="true"></div>
++        <div class="sentinel-top" aria-hidden="true"></div>
++        <ul class="review-list">
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Sarah M.</span>
++                <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              </div>
++              <p>The Maple Oat Latte is everything I want in a fall drink. Not too sweet, perfectly creamy.</p>
++              <time datetime="2026-10-21">October 21, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">James T.</span>
++                <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              </div>
++              <p>Best cold brew in town, hands down. Smooth with zero bitterness.</p>
++              <time datetime="2026-10-18">October 18, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Priya K.</span>
++                <span class="review-rating" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++              </div>
++              <p>Cozy atmosphere and friendly baristas. The dark roast is bold in the best way.</p>
++              <time datetime="2026-10-14">October 14, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Diego R.</span>
++                <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              </div>
++              <p>I order online every morning and it's always ready on time. Rewards program is a nice bonus.</p>
++              <time datetime="2026-10-09">October 9, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Emily W.</span>
++                <span class="review-rating" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++              </div>
++              <p>Lovely espresso and great pastries. Can get busy on weekends, but worth the wait.</p>
++              <time datetime="2026-10-02">October 2, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Marcus L.</span>
++                <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              </div>
++              <p>You can taste the difference with locally roasted beans. My new go-to spot.</p>
++              <time datetime="2026-09-27">September 27, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Hannah B.</span>
++                <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              </div>
++              <p>The staff remembered my order after two visits. That kind of service keeps me coming back.</p>
++              <time datetime="2026-09-20">September 20, 2026</time>
++            </li>
++            <li class="review">
++              <div class="review-header">
++                <span class="review-author">Owen P.</span>
++                <span class="review-rating" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++              </div>
++              <p>Great oat milk options and the seasonal menu is always creative.</p>
++              <time datetime="2026-09-12">September 12, 2026</time>
++            </li>
++        </ul>
++        <div class="sentinel-bottom" aria-hidden="true"></div>
++        <div class="indicator-bottom" aria-hidden="true"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +392,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without container scroll-state queries
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const scroller = document.querySelector('.reviews-scroller');
++      const topSentinel = scroller.querySelector('.sentinel-top');
++      const bottomSentinel = scroller.querySelector('.sentinel-bottom');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          if (entry.target === topSentinel) {
++            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
++          } else if (entry.target === bottomSentinel) {
++            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
++          }
++        });
++      }, { root: scroller });
++
++      observer.observe(topSentinel);
++      observer.observe(bottomSentinel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,75 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dashboard</title>
++  <link rel="preload" href="/js/app.js" as="script" fetchpriority="high">
++  <script src="/js/app.js" async fetchpriority="high"></script>
++  <script src="/js/legacy-widgets.js" defer></script>
++  <script src="/js/tracker.js" async fetchpriority="low"></script>
++  <style>
++    :root {
++      --bg: #f8fafc;
++      --surface: #ffffff;
++      --border: #e2e8f0;
++      --text: #0f172a;
++      --muted: #64748b;
++    }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    body {
++      font-family: system-ui, -apple-system, sans-serif;
++      background: var(--bg);
++      color: var(--text);
++      padding: 2rem;
++    }
++    header {
++      margin-bottom: 1.5rem;
++    }
++    h1 {
++      font-size: 1.5rem;
++      font-weight: 600;
++    }
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 1rem;
++    }
++    .card {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 0.5rem;
++      padding: 1.25rem;
++    }
++    .card h2 {
++      font-size: 0.875rem;
++      color: var(--muted);
++      font-weight: 500;
++      margin-bottom: 0.5rem;
++    }
++    .metric {
++      font-size: 1.75rem;
++      font-weight: 700;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Dashboard</h1>
++  </header>
++  <main id="app" class="grid">
++    <section class="card">
++      <h2>Active Users</h2>
++      <p class="metric">1,284</p>
++    </section>
++    <section class="card">
++      <h2>System Uptime</h2>
++      <p class="metric">99.98%</p>
++    </section>
++    <section class="card" id="legacy-widgets">
++      <h2>Widgets</h2>
++      <p class="metric">Ready</p>
++    </section>
++  </main>
++</body>
++</html>

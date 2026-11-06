@@ -1,0 +1,556 @@
+diff --git a/index.html b/index.html
+index 66c9173..3c22319 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,49 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --primary-dark: #3e2723;
++      --accent-dark: #e69526;
++      --cream: #efebe9;
++    }
++
++    /* Built-in browser UI: tint native widgets, scrollbars, and selection */
++    html {
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    ::selection {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    ::-webkit-scrollbar {
++      width: 12px;
++      height: 12px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background: var(--accent-dark);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--secondary);
++    }
++
++    :focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
+     }
+ 
+     * {
+@@ -135,6 +178,353 @@
+       background: #3e2723;
+     }
+ 
++    /* Favorites + order layout */
++    .menu-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
++      gap: 30px;
++      align-items: start;
++    }
++
++    .menu-layout h2 {
++      text-align: center;
++    }
++
++    @media (max-width: 860px) {
++      .menu-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Order customization form */
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .order-panel h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .order-panel .subtitle {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 16px;
++    }
++
++    .order-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px 12px;
++    }
++
++    .order-form legend,
++    .order-form .field > label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++      padding: 0 4px;
++    }
++
++    .order-form .field {
++      display: grid;
++      gap: 6px;
++    }
++
++    .order-form .field > label {
++      padding: 0;
++    }
++
++    .choice-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px 16px;
++    }
++
++    .choice-row label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .field-pair {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    /* Native text-like inputs, select, and textarea */
++    .order-form input:is([type="text"], [type="number"], [type="date"], [type="time"]),
++    .order-form select,
++    .order-form textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 10px;
++      caret-color: var(--accent-dark);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .order-form input:hover,
++    .order-form select:hover,
++    .order-form textarea:hover {
++      border-color: var(--primary);
++    }
++
++    .order-form input:focus-visible,
++    .order-form select:focus-visible,
++    .order-form textarea:focus-visible {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.45);
++    }
++
++    .order-form input:user-invalid {
++      border-color: #c62828;
++    }
++
++    .order-form ::placeholder {
++      color: #8d6e63;
++      opacity: 1;
++    }
++
++    .order-form textarea {
++      resize: vertical;
++      min-height: 70px;
++      field-sizing: content;
++      max-height: 160px;
++    }
++
++    /* Date/time picker trigger icons (Chromium/WebKit) */
++    .order-form ::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      border-radius: 3px;
++      padding: 2px;
++      filter: invert(22%) sepia(14%) saturate(1400%) hue-rotate(330deg) brightness(92%);
++    }
++
++    .order-form ::-webkit-calendar-picker-indicator:hover {
++      background-color: var(--cream);
++    }
++
++    .order-form ::-webkit-datetime-edit-fields-wrapper {
++      color: var(--text);
++    }
++
++    .order-form ::-webkit-datetime-edit-text {
++      color: #8d6e63;
++    }
++
++    .order-form ::-webkit-datetime-edit-hour-field:focus,
++    .order-form ::-webkit-datetime-edit-minute-field:focus,
++    .order-form ::-webkit-datetime-edit-ampm-field:focus,
++    .order-form ::-webkit-datetime-edit-month-field:focus,
++    .order-form ::-webkit-datetime-edit-day-field:focus,
++    .order-form ::-webkit-datetime-edit-year-field:focus {
++      background-color: var(--accent);
++      color: var(--primary-dark);
++      border-radius: 2px;
++    }
++
++    /* Number spinner */
++    .order-form input[type="number"]::-webkit-inner-spin-button {
++      opacity: 1;
++      cursor: pointer;
++    }
++
++    /* Customizable native <select> and its picker where supported */
++    @supports (appearance: base-select) {
++      .order-form select,
++      .order-form ::picker(select) {
++        appearance: base-select;
++      }
++
++      .order-form select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++      }
++
++      .order-form select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .order-form select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .order-form ::picker(select) {
++        background: white;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        box-shadow: 0 8px 20px rgba(62, 39, 35, 0.2);
++        padding: 4px;
++        margin-top: 4px;
++        scrollbar-color: var(--primary) var(--cream);
++      }
++
++      .order-form option {
++        padding: 6px 10px;
++        border-radius: 4px;
++        color: var(--text);
++      }
++
++      .order-form option:hover,
++      .order-form option:focus-visible {
++        background: var(--cream);
++        outline: none;
++      }
++
++      .order-form option:checked {
++        background: var(--primary);
++        color: white;
++        font-weight: 600;
++      }
++
++      .order-form option::checkmark {
++        color: var(--accent);
++      }
++
++      .order-form optgroup {
++        font-weight: 700;
++        color: var(--primary);
++        font-size: 0.8rem;
++        text-transform: uppercase;
++        letter-spacing: 0.5px;
++      }
++    }
++
++    /* Radios and checkboxes stay native; accent-color tints them */
++    .order-form input:is([type="radio"], [type="checkbox"]) {
++      width: 1.05rem;
++      height: 1.05rem;
++      cursor: pointer;
++    }
++
++    /* Range slider */
++    .range-wrap {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .order-form input[type="range"] {
++      flex: 1;
++      cursor: pointer;
++    }
++
++    @supports (appearance: none) {
++      .order-form input[type="range"] {
++        appearance: none;
++        height: 6px;
++        border-radius: 3px;
++        background: var(--secondary);
++      }
++
++      .order-form input[type="range"]::-webkit-slider-thumb {
++        appearance: none;
++        width: 18px;
++        height: 18px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 3px solid var(--accent);
++      }
++
++      .order-form input[type="range"]::-moz-range-thumb {
++        width: 12px;
++        height: 12px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 3px solid var(--accent);
++      }
++
++      .order-form input[type="range"]::-moz-range-progress {
++        height: 6px;
++        border-radius: 3px;
++        background: var(--primary);
++      }
++    }
++
++    .order-form output {
++      min-width: 3.5em;
++      text-align: right;
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    /* Meter for strength */
++    .order-form meter {
++      width: 100%;
++      height: 10px;
++    }
++
++    .order-form meter::-webkit-meter-bar {
++      background: var(--cream);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .order-form meter::-webkit-meter-optimum-value,
++    .order-form meter::-webkit-meter-suboptimum-value,
++    .order-form meter::-webkit-meter-even-less-good-value {
++      background: var(--primary);
++      border-radius: 5px;
++    }
++
++    .order-form meter::-moz-meter-bar {
++      background: var(--primary);
++      border-radius: 5px;
++    }
++
++    .order-form button {
++      font: inherit;
++      font-weight: 600;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 12px 20px;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .order-form button:hover {
++      background: var(--primary-dark);
++    }
++
++    .order-form button[type="reset"] {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++    }
++
++    .order-form button[type="reset"]:hover {
++      background: var(--cream);
++    }
++
++    .form-actions {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,9 +564,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container menu-layout">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +585,100 @@
+         </div>
+       </div>
+     </section>
++
++    <aside class="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Customize Your Order</h2>
++      <p class="subtitle">Build your cup, then pick it up fresh.</p>
++      <form class="order-form" action="/order-online" method="post">
++        <div class="field">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink" required>
++            <optgroup label="Seasonal">
++              <option value="maple-oat-latte" selected>Maple Oat Latte</option>
++              <option value="pumpkin-spice-latte">Pumpkin Spice Latte</option>
++            </optgroup>
++            <optgroup label="Espresso">
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cappuccino">Cappuccino</option>
++              <option value="flat-white">Flat White</option>
++            </optgroup>
++            <optgroup label="Cold">
++              <option value="cold-brew">Cold Brew</option>
++              <option value="iced-americano">Iced Americano</option>
++            </optgroup>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choice-row">
++            <label><input type="radio" name="size" value="small"> Small</label>
++            <label><input type="radio" name="size" value="medium" checked> Medium</label>
++            <label><input type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="milk">Milk</label>
++          <input type="text" id="milk" name="milk" list="milk-options" placeholder="Oat, almond, whole...">
++          <datalist id="milk-options">
++            <option value="Whole"></option>
++            <option value="2%"></option>
++            <option value="Skim"></option>
++            <option value="Oat"></option>
++            <option value="Almond"></option>
++            <option value="Soy"></option>
++            <option value="None"></option>
++          </datalist>
++        </div>
++
++        <div class="field">
++          <label for="shots">Espresso shots</label>
++          <input type="number" id="shots" name="shots" min="0" max="4" value="2">
++          <meter id="strength" min="0" max="4" low="1" high="3" optimum="2" value="2"
++            aria-label="Strength">2 of 4</meter>
++        </div>
++
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <div class="range-wrap">
++            <input type="range" id="sweetness" name="sweetness" min="0" max="100" step="25" value="50">
++            <output for="sweetness" id="sweetness-out">50%</output>
++          </div>
++        </div>
++
++        <fieldset>
++          <legend>Extras</legend>
++          <div class="choice-row">
++            <label><input type="checkbox" name="extras" value="whipped-cream"> Whipped cream</label>
++            <label><input type="checkbox" name="extras" value="cinnamon"> Cinnamon</label>
++            <label><input type="checkbox" name="extras" value="caramel-drizzle"> Caramel drizzle</label>
++            <label><input type="checkbox" name="extras" value="extra-hot"> Extra hot</label>
++          </div>
++        </fieldset>
++
++        <div class="field-pair">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input type="date" id="pickup-date" name="pickup-date" required>
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input type="time" id="pickup-time" name="pickup-time" min="06:00" max="20:00" step="300" required>
++          </div>
++        </div>
++
++        <div class="field">
++          <label for="notes">Notes for your barista</label>
++          <textarea id="notes" name="notes" rows="3" placeholder="Anything else we should know?"></textarea>
++        </div>
++
++        <div class="form-actions">
++          <button type="submit">Add to Order</button>
++          <button type="reset">Reset</button>
++        </div>
++      </form>
++    </aside>
+   </main>
+ 
+   <footer>
+@@ -207,6 +691,34 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.querySelector('.order-form');
++      const sweetness = form.elements.sweetness;
++      const sweetnessOut = document.getElementById('sweetness-out');
++      const shots = form.elements.shots;
++      const strength = document.getElementById('strength');
++      const pickupDate = form.elements['pickup-date'];
++
++      const sync = () => {
++        sweetnessOut.value = `${sweetness.value}%`;
++        strength.value = shots.value;
++        strength.textContent = `${shots.value} of 4`;
++      };
++
++      const today = new Date();
++      today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
++      pickupDate.min = today.toISOString().slice(0, 10);
++      pickupDate.value = pickupDate.min;
++
++      form.addEventListener('input', sync);
++      form.addEventListener('reset', () => setTimeout(() => {
++        pickupDate.value = pickupDate.min;
++        sync();
++      }));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

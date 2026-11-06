@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Field INP diagnostics: reports the INP subparts and the longest script
++    // (via Long Animation Frames, where supported) for the slowest interaction.
++    import { onINP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.js';
++
++    onINP((metric) => {
++      const { attribution } = metric;
++      const script = attribution.longestScript?.entry;
++      navigator.sendBeacon('/analytics', JSON.stringify({
++        name: 'INP',
++        value: metric.value,
++        rating: metric.rating,
++        inputDelay: attribution.inputDelay,
++        processingDuration: attribution.processingDuration,
++        presentationDelay: attribution.presentationDelay,
++        interactionTarget: attribution.interactionTarget,
++        interactionType: attribution.interactionType,
++        invokerType: script?.invokerType,
++        sourceURL: script?.sourceURL,
++        sourceFunctionName: script?.sourceFunctionName,
++        sourceCharPosition: script?.sourceCharPosition,
++        subpart: attribution.longestScript?.subpart,
++        intersectingDuration: attribution.longestScript?.intersectingDuration
++      }));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

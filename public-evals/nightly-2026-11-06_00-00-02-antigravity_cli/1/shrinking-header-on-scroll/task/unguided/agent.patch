@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,32 +24,42 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 180vh;
+     }
+ 
+     /* Navigation */
+     nav {
++      --scroll-progress: 0;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
++      padding-top: calc(1rem - (0.55rem * var(--scroll-progress, 0)));
++      padding-bottom: calc(1rem - (0.55rem * var(--scroll-progress, 0)));
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 0)));
++      transition: padding 0.15s ease-out, box-shadow 0.15s ease-out;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
++      font-size: calc(1.5rem - (0.4rem * var(--scroll-progress, 0)));
++      line-height: calc(1.6 - (0.25 * var(--scroll-progress, 0)));
+       font-weight: bold;
+       letter-spacing: 1px;
++      transition: font-size 0.15s ease-out, line-height 0.15s ease-out;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -58,9 +68,10 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: calc(0.9rem - (0.05rem * var(--scroll-progress, 0)));
++      transition: color 0.3s, font-size 0.15s ease-out, padding 0.15s ease-out;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+@@ -68,11 +79,112 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
++      padding-top: calc(5px - (2px * var(--scroll-progress, 0)));
++      padding-bottom: calc(5px - (2px * var(--scroll-progress, 0)));
+       border-radius: 4px;
+     }
+ 
++    /* Fallback class for older browsers */
++    nav.scrolled {
++      padding: 0.45rem 5%;
++      padding-top: calc(1rem - (0.55rem * var(--scroll-progress, 1)));
++      padding-bottom: calc(1rem - (0.55rem * var(--scroll-progress, 1)));
++      box-shadow: 0 4px 12px rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled .logo {
++      font-size: 1.1rem;
++      font-size: calc(1.5rem - (0.4rem * var(--scroll-progress, 1)));
++      line-height: calc(1.6 - (0.25 * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled a {
++      font-size: 0.85rem;
++      font-size: calc(0.9rem - (0.05rem * var(--scroll-progress, 1)));
++    }
++
++    nav.scrolled .logout-link {
++      padding: 3px 12px;
++      padding-top: calc(5px - (2px * var(--scroll-progress, 1)));
++      padding-bottom: calc(5px - (2px * var(--scroll-progress, 1)));
++    }
++
++    /* Scroll-driven animations for modern browsers */
++    @keyframes shrink-nav {
++      from {
++        padding-top: 1rem;
++        padding-bottom: 1rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0);
++      }
++      to {
++        padding-top: 0.45rem;
++        padding-bottom: 0.45rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      }
++    }
++
++    @keyframes shrink-logo {
++      from {
++        font-size: 1.5rem;
++        line-height: 1.6;
++      }
++      to {
++        font-size: 1.1rem;
++        line-height: 1.35;
++      }
++    }
++
++    @keyframes shrink-nav-link {
++      from {
++        font-size: 0.9rem;
++      }
++      to {
++        font-size: 0.85rem;
++      }
++    }
++
++    @keyframes shrink-logout-link {
++      from {
++        padding-top: 5px;
++        padding-bottom: 5px;
++      }
++      to {
++        padding-top: 3px;
++        padding-bottom: 3px;
++      }
++    }
++
++    @supports (animation-timeline: scroll()) {
++      nav {
++        animation: shrink-nav linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      .logo {
++        animation: shrink-logo linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      nav a {
++        animation: shrink-nav-link linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++        transition: color 0.3s;
++      }
++
++      .logout-link {
++        animation: shrink-logout-link linear both;
++        animation-timeline: scroll();
++        animation-range: 0px 150px;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -206,7 +318,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++
++      var scrollRange = 150;
++      var supportsScrollTimeline =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('animation-timeline', 'scroll()');
++      var supportsCustomProps =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('--scroll-progress', '0');
++
++      function updateNavOnScroll() {
++        var scrollY = window.scrollY !== undefined ? window.scrollY : (document.documentElement.scrollTop || document.body.scrollTop || 0);
++        var progress = Math.min(Math.max(scrollY / scrollRange, 0), 1);
++
++        nav.style.setProperty('--scroll-progress', progress.toFixed(4));
++
++        if (scrollY > 20) {
++          nav.classList.add('scrolled');
++        } else {
++          nav.classList.remove('scrolled');
++        }
++
++        if (!supportsScrollTimeline && !supportsCustomProps) {
++          var padRem = 1 - 0.55 * progress;
++          nav.style.paddingTop = padRem + 'rem';
++          nav.style.paddingBottom = padRem + 'rem';
++        }
++      }
++
++      window.addEventListener('scroll', updateNavOnScroll, { passive: true });
++      window.addEventListener('resize', updateNavOnScroll, { passive: true });
++      updateNavOnScroll();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

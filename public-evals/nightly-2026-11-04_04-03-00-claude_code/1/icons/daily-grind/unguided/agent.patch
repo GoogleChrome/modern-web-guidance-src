@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..2d15cc0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,149 @@
+       background: #3e2723;
+     }
+ 
++    /* ==========================================================
++       Icon system
++       - Icons are inline SVG data URIs applied as CSS masks: no extra
++         HTTP requests, vector-sharp at any pixel density, and painted
++         with `currentColor` so they follow the surrounding text color.
++       - Assign an icon purely in CSS by setting `--icon` (e.g. via an
++         `.icon--name` modifier or any selector of your own).
++       - Customize per instance with `--icon-size` and `color`.
++       - Icon elements are decorative: mark them `aria-hidden="true"` and
++         let the adjacent text carry the meaning. When text is hidden
++         visually, keep it available with `.visually-hidden`.
++       ========================================================== */
++    .icon {
++      --icon-size: 1.15em;
++      display: inline-block;
++      flex-shrink: 0;
++      width: var(--icon-size);
++      height: var(--icon-size);
++      vertical-align: -0.2em;
++      background-color: currentColor;
++      -webkit-mask: var(--icon) center / contain no-repeat;
++      mask: var(--icon) center / contain no-repeat;
++    }
++
++    /* Keep icons visible in Windows High Contrast / forced-colors mode */
++    @media (forced-colors: active) {
++      .icon {
++        forced-color-adjust: none;
++        background-color: CanvasText;
++      }
++
++      a .icon {
++        background-color: LinkText;
++      }
++    }
++
++    /* Icon library (paths adapted from Lucide, ISC license) */
++    .icon--coffee {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 2v2M14 2v2M6 2v2'/%3E%3Cpath d='M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/%3E%3C/svg%3E");
++    }
++
++    .icon--map-pin {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++    }
++
++    .icon--gift {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='8' width='18' height='4' rx='1'/%3E%3Cpath d='M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7'/%3E%3Cpath d='M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5'/%3E%3C/svg%3E");
++    }
++
++    .icon--user {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
++    }
++
++    .icon--log-out {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpath d='m16 17 5-5-5-5M21 12H9'/%3E%3C/svg%3E");
++    }
++
++    .icon--shopping-bag {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++    }
++
++    .icon--arrow-right {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E");
++    }
++
++    .icon--leaf {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12'/%3E%3C/svg%3E");
++    }
++
++    .icon--bean {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.2 6.6C10 7.5 9.6 8.4 9 9s-1.5 1-2.4 1.2A6 6 0 0 0 8 22c7.7 0 14-6.3 14-14a6 6 0 0 0-11.8-1.4Z'/%3E%3Cpath d='M5.3 10.6a4 4 0 1 0 5.3-5.3'/%3E%3C/svg%3E");
++    }
++
++    .icon--snowflake {
++      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1'/%3E%3Cpath d='m9 4 3 3 3-3M9 20l3-3 3 3M4 9l3 3-3 3M20 9l-3 3 3 3'/%3E%3C/svg%3E");
++    }
++
++    /* Accessible text that is hidden visually but still announced */
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Icon placement in components */
++    nav a,
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.45em;
++    }
++
++    .card-icon {
++      --icon-size: 2.5rem;
++      display: block;
++      margin: 0 auto 12px;
++      color: var(--accent);
++    }
++
++    .btn .icon--arrow-right {
++      transition: transform 0.3s;
++    }
++
++    .btn:hover .icon--arrow-right,
++    .btn:focus-visible .icon--arrow-right {
++      transform: translateX(3px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn .icon--arrow-right {
++        transition: none;
++      }
++    }
++
++    /* On small screens, nav collapses to icon-only; labels stay
++       available to assistive technologies via .visually-hidden. */
++    @media (max-width: 640px) {
++      nav ul li {
++        margin-left: 14px;
++      }
++
++      nav .nav-label {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        margin: -1px;
++        overflow: hidden;
++        clip-path: inset(50%);
++        white-space: nowrap;
++      }
++
++      nav .icon {
++        --icon-size: 1.35rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,21 +300,21 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="icon icon--coffee" aria-hidden="true"></span><span class="nav-label">Menu</span></a></li>
++      <li><a href="/locations"><span class="icon icon--map-pin" aria-hidden="true"></span><span class="nav-label">Locations</span></a></li>
++      <li><a href="/rewards"><span class="icon icon--gift" aria-hidden="true"></span><span class="nav-label">Rewards</span></a></li>
++      <li><a href="/account"><span class="icon icon--user" aria-hidden="true"></span><span class="nav-label">My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span class="icon icon--log-out" aria-hidden="true"></span><span class="nav-label">Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="icon icon--shopping-bag" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +322,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="icon icon--leaf card-icon" aria-hidden="true"></span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span><span class="icon icon--arrow-right" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <span class="icon icon--bean card-icon" aria-hidden="true"></span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span><span class="icon icon--arrow-right" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <span class="icon icon--snowflake card-icon" aria-hidden="true"></span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span><span class="icon icon--arrow-right" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

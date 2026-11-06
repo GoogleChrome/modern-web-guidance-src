@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,122 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean Selection */
++    :root {
++      /* Only the bean cards transition, not the whole page. */
++      view-transition-name: none;
++    }
++
++    .bean-picker {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .bean-option {
++      font: inherit;
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 6px 14px;
++      border-radius: 999px;
++      cursor: pointer;
++    }
++
++    .bean-option:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    .bean-option:disabled {
++      opacity: 0.4;
++      cursor: not-allowed;
++    }
++
++    .bean-grid {
++      list-style: none;
++      min-height: 140px;
++    }
++
++    .bean-card {
++      view-transition-class: bean;
++    }
++
++    .bean-card .origin {
++      font-size: 0.85rem;
++      opacity: 0.8;
++    }
++
++    .bean-card button {
++      font: inherit;
++      margin-top: 12px;
++      background: none;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      padding: 4px 12px;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .bean-card button:hover {
++      background: var(--secondary);
++    }
++
++    .bean-empty {
++      text-align: center;
++      margin-top: 20px;
++      opacity: 0.7;
++    }
++
++    .bean-empty[hidden] {
++      display: none;
++    }
++
++    ::view-transition {
++      /* Keep the rest of the page interactive during the transition. */
++      pointer-events: none;
++    }
++
++    /* Shared transition logic for every bean card */
++    ::view-transition-group(.bean) {
++      animation-duration: 0.45s;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-new(.bean):only-child {
++      animation-name: bean-in;
++    }
++
++    ::view-transition-old(.bean):only-child {
++      animation-name: bean-out;
++    }
++
++    @keyframes bean-in {
++      from {
++        opacity: 0;
++        scale: 0.7;
++      }
++    }
++
++    @keyframes bean-out {
++      to {
++        opacity: 0;
++        scale: 0.7;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +308,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="beans" style="margin-top: 60px;">
++      <h2 style="text-align: center;">Build Your Bean Selection</h2>
++      <p style="text-align: center;">Pick the beans you'd like in your next bag.</p>
++      <div class="bean-picker" id="bean-picker" role="group" aria-label="Available beans"></div>
++      <p class="bean-empty" id="bean-empty">No beans selected yet. Add some above!</p>
++      <ul class="grid bean-grid" id="bean-grid" aria-label="Your selected beans"></ul>
++      <p class="bean-empty" id="bean-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +329,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const BEANS = [
++      { id: 'ethiopia', name: 'Ethiopia Yirgacheffe', origin: 'Floral, citrus, light roast' },
++      { id: 'colombia', name: 'Colombia Supremo', origin: 'Caramel, nutty, medium roast' },
++      { id: 'sumatra', name: 'Sumatra Mandheling', origin: 'Earthy, bold, dark roast' },
++      { id: 'kenya', name: 'Kenya AA', origin: 'Berry, bright, medium roast' },
++      { id: 'brazil', name: 'Brazil Santos', origin: 'Chocolate, low acidity, medium roast' },
++      { id: 'guatemala', name: 'Guatemala Antigua', origin: 'Cocoa, spice, medium-dark roast' },
++    ];
++
++    const selected = ['colombia', 'ethiopia'];
++    const picker = document.getElementById('bean-picker');
++    const grid = document.getElementById('bean-grid');
++    const empty = document.getElementById('bean-empty');
++    const status = document.getElementById('bean-status');
++    const beanById = (id) => BEANS.find((b) => b.id === id);
++
++    function render() {
++      picker.replaceChildren(...BEANS.map((bean) => {
++        const btn = document.createElement('button');
++        btn.type = 'button';
++        btn.className = 'bean-option';
++        btn.dataset.add = bean.id;
++        btn.disabled = selected.includes(bean.id);
++        btn.textContent = `+ ${bean.name}`;
++        return btn;
++      }));
++
++      grid.replaceChildren(...selected.map((id) => {
++        const bean = beanById(id);
++        const li = document.createElement('li');
++        li.className = 'card bean-card';
++        // Unique name per element; the shared look lives in view-transition-class.
++        li.style.viewTransitionName = `bean-${id}`;
++        li.innerHTML = '<h3></h3><p class="origin"></p><button type="button">Remove</button>';
++        li.querySelector('h3').textContent = bean.name;
++        li.querySelector('.origin').textContent = bean.origin;
++        const remove = li.querySelector('button');
++        remove.dataset.remove = id;
++        remove.setAttribute('aria-label', `Remove ${bean.name}`);
++        return li;
++      }));
++
++      empty.hidden = selected.length > 0;
++    }
++
++    // Wrap the DOM update so all cards animate together with shared logic.
++    function update(change, message) {
++      const apply = () => {
++        change();
++        render();
++        status.textContent = message;
++      };
++      if (document.startViewTransition) {
++        document.startViewTransition(apply);
++      } else {
++        apply();
++      }
++    }
++
++    picker.addEventListener('click', (e) => {
++      const id = e.target.closest('[data-add]')?.dataset.add;
++      if (!id || selected.includes(id)) return;
++      update(() => selected.push(id), `${beanById(id).name} added.`);
++    });
++
++    grid.addEventListener('click', (e) => {
++      const id = e.target.closest('[data-remove]')?.dataset.remove;
++      if (!id) return;
++      update(() => selected.splice(selected.indexOf(id), 1), `${beanById(id).name} removed.`);
++    });
++
++    render();
++  </script>
+ </body>
+ 
+ </html>

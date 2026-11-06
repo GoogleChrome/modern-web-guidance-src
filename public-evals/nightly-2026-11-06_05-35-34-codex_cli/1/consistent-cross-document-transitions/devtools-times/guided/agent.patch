@@ -1,0 +1,357 @@
+diff --git a/README.md b/README.md
+index 4479b53..7f0f933 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,24 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Page transitions
++
++The shared layout uses native cross-document view transitions. Unsupported browsers
++use ordinary navigation, and reduced-motion preferences disable the animation.
++The global stylesheet is emitted in the head, and the masthead font stylesheet is
++render-blocking. `rel="expect"` waits for `#masthead` and a page's opening content
++(`transitionReadyId`, defaulting to `page-intro`), without waiting for the footer,
++ads, analytics, or the article body. New pages must include their matching target.
++
++There is currently no theme or layout bootstrap script. If one is added, put it in
++the shared head or the layout's `head` slot and mark it `blocking="render"` (and
++`is:inline` for Astro to preserve the script attributes). Keep it small; never
++apply render blocking to third-party analytics or ad loaders.
++
++Readiness targets guarantee parsed HTML, not downloaded image pixels. Opening
++story images load eagerly with high fetch priority and explicit dimensions to
++preserve their layout while loading.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..0a4e2bf 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -45,6 +45,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         width={800}
+                         height={533}
+                         format="webp"
++                        loading="eager"
++                        fetchpriority="high"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+@@ -80,4 +82,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..9055197 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="masthead" class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+@@ -54,7 +54,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="872" height="102" fetchpriority="high" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..c9ebb6d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,13 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  /** ID at the end of the initial viewport content, never the footer. */
++  transitionReadyId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, transitionReadyId = "page-intro" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,18 +23,23 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Wait for the masthead and opening content, not the rest of the page. -->
++    <link rel="expect" href="#masthead" blocking="render" />
++    <link rel="expect" href={`#${transitionReadyId}`} blocking="render" />
++
++    <!-- Initial theme/layout scripts belong here with blocking="render". -->
++    <slot name="head" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..3eec0aa 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -9,7 +9,7 @@ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++        <h1 id="page-intro" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+         </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..6b462bb 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div id="page-intro" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..2c92875 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} transitionReadyId="article-intro">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+@@ -58,7 +58,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Main Article Image -->
+-        <figure class="mb-5">
++        <figure id="article-intro" class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+                 <img 
+@@ -67,6 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width="1200"
+                     height="675"
+                     class="w-full h-auto"
++                    loading="eager"
++                    fetchpriority="high"
+                     crossorigin="use-credentials"
+                 />
+             ) : (
+@@ -76,6 +78,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
++                    loading="eager"
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                 />
+             )}
+@@ -123,4 +127,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..8771755 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -40,7 +40,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ <Layout title={`Category: ${capitalizedCategory}`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id={featuredArticle ? undefined : 'page-intro'} class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="page-intro" class="mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -74,6 +74,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
++                            loading="eager"
++                            fetchpriority="high"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..58669e7 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" transitionReadyId="lead-story">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +55,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="lead-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +81,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..901c953 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -6,7 +6,7 @@ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++        <h1 id="page-intro" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+@@ -18,4 +18,4 @@ const multimedia = await getCollection('multimedia');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..b2e6979 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -6,7 +6,7 @@ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++        <h1 id="page-intro" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
+             <ul>
+@@ -18,4 +18,4 @@ const reports = await getCollection('reports');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..b55d793 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="page-intro" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..63e8843 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="page-intro" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d7b3eda 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,29 @@
+ @import "tailwindcss";
+ 
++/* Native navigation remains available when view transitions are unsupported. */
++@view-transition {
++  navigation: auto;
++}
++
++::view-transition-old(root),
++::view-transition-new(root) {
++  animation-duration: 220ms;
++  animation-timing-function: ease-in-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++
++  ::view-transition-old(root),
++  ::view-transition-new(root) {
++    animation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

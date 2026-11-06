@@ -1,0 +1,369 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..b437225
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,207 @@
++import React, { useState, useEffect } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
++
++export interface Story {
++  id: string;
++  title: string;
++  date: string;
++  url: string;
++  category?: string;
++}
++
++export interface TopStoriesSliderProps {
++  stories: Story[];
++}
++
++export default function TopStoriesSlider({ stories }: TopStoriesSliderProps) {
++  if (!stories || stories.length === 0) return null;
++
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [animatingState, setAnimatingState] = useState<{
++    outgoingIndex: number;
++    incomingIndex: number;
++    direction: 'next' | 'prev';
++  } | null>(null);
++
++  // Safety timer to clear animating state if onAnimationEnd does not trigger
++  useEffect(() => {
++    if (!animatingState) return;
++
++    const timer = setTimeout(() => {
++      setCurrentIndex(animatingState.incomingIndex);
++      setAnimatingState(null);
++    }, 350);
++
++    return () => clearTimeout(timer);
++  }, [animatingState]);
++
++  const switchStory = (direction: 'next' | 'prev') => {
++    if (stories.length <= 1) return;
++
++    // Respect reduced-motion preferences
++    const prefersReducedMotion =
++      typeof window !== 'undefined' &&
++      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++    const fromIndex = animatingState ? animatingState.incomingIndex : currentIndex;
++    const toIndex =
++      direction === 'next'
++        ? (fromIndex + 1) % stories.length
++        : (fromIndex - 1 + stories.length) % stories.length;
++
++    if (prefersReducedMotion) {
++      setCurrentIndex(toIndex);
++      setAnimatingState(null);
++      return;
++    }
++
++    setAnimatingState({
++      outgoingIndex: fromIndex,
++      incomingIndex: toIndex,
++      direction,
++    });
++  };
++
++  const handlePrev = () => switchStory('prev');
++  const handleNext = () => switchStory('next');
++
++  const activeStory = animatingState
++    ? stories[animatingState.incomingIndex]
++    : stories[currentIndex];
++
++  const outgoingStory = animatingState
++    ? stories[animatingState.outgoingIndex]
++    : null;
++
++  return (
++    <div
++      className="bg-white border-b border-gray-300"
++      role="region"
++      aria-roledescription="carousel"
++      aria-label="Top stories slider"
++    >
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
++        <div className="flex items-center justify-between gap-3 sm:gap-6">
++          {/* Left / Center: Top Stories label and animated slide */}
++          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
++            <span className="shrink-0 text-xs font-bold tracking-wider uppercase text-gray-900 bg-gray-100 border border-gray-300 px-2.5 py-1 rounded">
++              Top Story
++            </span>
++
++            {/* Slider track viewport */}
++            <div
++              className="relative overflow-hidden flex-1 min-w-0 h-10 flex items-center top-story-slide"
++              aria-live="polite"
++            >
++              {animatingState && outgoingStory ? (
++                <>
++                  {/* Outgoing Story */}
++                  <div
++                    key={`outgoing-${animatingState.outgoingIndex}`}
++                    className={`absolute inset-0 w-full flex items-center pointer-events-none ${
++                      animatingState.direction === 'next'
++                        ? 'animate-slide-out-to-left'
++                        : 'animate-slide-out-to-right'
++                    }`}
++                    aria-hidden="true"
++                  >
++                    <div className="flex items-baseline gap-2 sm:gap-3 min-w-0 w-full truncate">
++                      <a
++                        href={outgoingStory.url}
++                        tabIndex={-1}
++                        className="truncate"
++                      >
++                        <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer text-sm sm:text-base truncate transition-colors">
++                          {outgoingStory.title}
++                        </h3>
++                      </a>
++                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
++                        {outgoingStory.date}
++                      </span>
++                    </div>
++                  </div>
++
++                  {/* Incoming Story */}
++                  <div
++                    key={`incoming-${animatingState.incomingIndex}`}
++                    className={`w-full flex items-center ${
++                      animatingState.direction === 'next'
++                        ? 'animate-slide-in-from-right'
++                        : 'animate-slide-in-from-left'
++                    }`}
++                    onAnimationEnd={() => {
++                      setCurrentIndex(animatingState.incomingIndex);
++                      setAnimatingState(null);
++                    }}
++                  >
++                    <div className="flex items-baseline gap-2 sm:gap-3 min-w-0 w-full truncate">
++                      <a
++                        href={activeStory.url}
++                        className="truncate"
++                      >
++                        <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer text-sm sm:text-base truncate transition-colors">
++                          {activeStory.title}
++                        </h3>
++                      </a>
++                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
++                        {activeStory.date}
++                      </span>
++                    </div>
++                  </div>
++                </>
++              ) : (
++                /* Static Story */
++                <div
++                  key={`static-${currentIndex}`}
++                  className="w-full flex items-center"
++                >
++                  <div className="flex items-baseline gap-2 sm:gap-3 min-w-0 w-full truncate">
++                    <a
++                      href={activeStory.url}
++                      className="truncate"
++                    >
++                      <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer text-sm sm:text-base truncate transition-colors">
++                        {activeStory.title}
++                      </h3>
++                    </a>
++                    <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
++                      {activeStory.date}
++                    </span>
++                  </div>
++                </div>
++              )}
++            </div>
++          </div>
++
++          {/* Right: Controls (Previous & Next buttons) */}
++          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
++            <span
++              className="text-xs text-gray-500 font-medium mr-1 hidden md:inline"
++              aria-label={`Story ${(animatingState ? animatingState.incomingIndex : currentIndex) + 1} of ${stories.length}`}
++            >
++              {(animatingState ? animatingState.incomingIndex : currentIndex) + 1} / {stories.length}
++            </span>
++            <button
++              type="button"
++              onClick={handlePrev}
++              aria-label="Previous"
++              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 active:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer shadow-xs"
++            >
++              <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++              <span>Previous</span>
++            </button>
++            <button
++              type="button"
++              onClick={handleNext}
++              aria-label="Next"
++              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 active:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer shadow-xs"
++            >
++              <span>Next</span>
++              <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++            </button>
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..a813baa 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -17,6 +18,14 @@ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new gri
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+ 
++const topStoriesData = topStories.map(article => ({
++  id: article.id,
++  title: article.data.title,
++  date: article.data.date.toLocaleDateString(),
++  url: `${import.meta.env.BASE_URL}articles/${article.id}`,
++  category: article.data.category,
++}));
++
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+     id: 'public-transit-overhaul',
+@@ -39,20 +48,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider client:load stories={topStoriesData} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..c090653 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,101 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Directional Slide Keyframes */
++@keyframes slide-to-left {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-to-right {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++/* Slider animation classes */
++.animate-slide-in-from-right {
++  animation: slide-from-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
++}
++
++.animate-slide-out-to-left {
++  animation: slide-to-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
++}
++
++.animate-slide-in-from-left {
++  animation: slide-from-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
++}
++
++.animate-slide-out-to-right {
++  animation: slide-to-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
++}
++
++/* View transitions support for directional navigation */
++.top-story-slide {
++  view-transition-name: top-story-slide;
++}
++
++::view-transition-group(top-story-slide) {
++  animation-duration: 0.3s;
++  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
++  overflow: clip;
++}
++
++html:active-view-transition-type(forward)::view-transition-old(top-story-slide) {
++  animation-name: slide-to-left;
++}
++html:active-view-transition-type(forward)::view-transition-new(top-story-slide) {
++  animation-name: slide-from-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-old(top-story-slide) {
++  animation-name: slide-to-right;
++}
++html:active-view-transition-type(backward)::view-transition-new(top-story-slide) {
++  animation-name: slide-from-left;
++}
++
++html:active-view-transition-type(forward)::view-transition-group(root),
++html:active-view-transition-type(backward)::view-transition-group(root) {
++  animation: none !important;
++}
++
++/* Disable animation for users who prefer reduced motion */
++@media (prefers-reduced-motion: reduce) {
++  .animate-slide-in-from-right,
++  .animate-slide-out-to-left,
++  .animate-slide-in-from-left,
++  .animate-slide-out-to-right,
++  ::view-transition-group(top-story-slide) {
++    animation: none !important;
++    transform: none !important;
++    transition: none !important;
++  }
+ }
+\ No newline at end of file

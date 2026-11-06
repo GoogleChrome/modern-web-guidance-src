@@ -1,0 +1,405 @@
+diff --git a/index.html b/index.html
+index 66c9173..9e84b2a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,160 @@
+       background: #3e2723;
+     }
+ 
++
++    /* SMS verification */
++    .otp-section {
++      margin-bottom: 48px;
++    }
++
++    .otp-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px 24px;
++      max-width: 520px;
++      margin: 20px auto 0;
++    }
++
++    .otp-card h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .otp-card > p {
++      margin-bottom: 20px;
++    }
++
++    .otp-card fieldset {
++      border: 0;
++      margin-bottom: 20px;
++    }
++
++    .otp-card legend {
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .otp-purpose {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px 20px;
++    }
++
++    .otp-purpose label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .otp-purpose input {
++      width: 20px;
++      height: 20px;
++      accent-color: var(--primary);
++    }
++
++    .otp-field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .otp-hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 10px;
++    }
++
++    .otp-input {
++      width: 100%;
++      font: inherit;
++      font-size: 1.75rem;
++      letter-spacing: 0.5em;
++      text-align: center;
++      padding: 12px 8px 12px calc(8px + 0.5em);
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .otp-input:focus-visible,
++    .otp-card button:focus-visible,
++    .otp-purpose input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .otp-input[aria-invalid="true"] {
++      border-color: #b00020;
++    }
++
++    .otp-error {
++      color: #b00020;
++      font-weight: 600;
++      margin-top: 8px;
++      min-height: 1.5em;
++    }
++
++    .otp-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      margin-top: 20px;
++    }
++
++    .otp-card .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      min-height: 44px;
++    }
++
++    .otp-card .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .otp-card .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .otp-card .btn[aria-disabled="true"] {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .otp-status {
++      margin-top: 14px;
++      min-height: 1.5em;
++      color: #1b5e20;
++      font-weight: 600;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn,
++      nav a {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +329,61 @@
+   </header>
+ 
+   <main class="container">
++    <!--
++      SMS one-time passcode verification.
++      Automatic code extraction uses the WebOTP API, which requires the text
++      message to end with an origin-bound line, e.g.:
++
++        Your Daily Grind code is 123456.
++
++        @dailygrind.example #123456
++
++      Browsers without WebOTP still get keyboard/autofill support through
++      autocomplete="one-time-code" and the paste handler below.
++    -->
++    <section class="otp-section" aria-labelledby="otp-heading">
++      <div class="otp-card">
++        <h2 id="otp-heading">Verify your phone number</h2>
++        <p id="otp-intro">We texted a 6-digit code to the mobile number on your account. Enter it to
++          sign in to Rewards or finish your online order.</p>
++
++        <form id="otp-form" method="post" action="/api/sms-otp/verify" novalidate
++          data-verify-url="/api/sms-otp/verify" data-resend-url="/api/sms-otp/send">
++          <fieldset>
++            <legend>What are you verifying for?</legend>
++            <div class="otp-purpose">
++              <label>
++                <input type="radio" name="purpose" value="rewards" checked>
++                Sign in to Rewards
++              </label>
++              <label>
++                <input type="radio" name="purpose" value="order">
++                Place an online order
++              </label>
++            </div>
++          </fieldset>
++
++          <div class="otp-field">
++            <label for="otp-code">6-digit verification code</label>
++            <p id="otp-hint" class="otp-hint">On supported phones the code fills in automatically when the text
++              message arrives. You can also type or paste it.</p>
++            <input id="otp-code" class="otp-input" name="code" type="text" inputmode="numeric"
++              autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" minlength="6" required
++              autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="••••••"
++              aria-describedby="otp-hint otp-error" aria-invalid="false">
++            <p id="otp-error" class="otp-error" aria-live="assertive"></p>
++          </div>
++
++          <div class="otp-actions">
++            <button type="submit" id="otp-submit" class="btn">Verify code</button>
++            <button type="button" id="otp-resend" class="btn btn-secondary" aria-disabled="false">Resend
++              code</button>
++          </div>
++          <p id="otp-status" class="otp-status" role="status" aria-live="polite"></p>
++        </form>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +416,177 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('otp-form');
++      if (!form) return;
++
++      var input = document.getElementById('otp-code');
++      var errorEl = document.getElementById('otp-error');
++      var statusEl = document.getElementById('otp-status');
++      var submitBtn = document.getElementById('otp-submit');
++      var resendBtn = document.getElementById('otp-resend');
++      var CODE_LENGTH = 6;
++      var RESEND_COOLDOWN = 30; // seconds
++      var busy = false;
++
++      function digitsOnly(value) {
++        return (value || '').replace(/\D/g, '').slice(0, CODE_LENGTH);
++      }
++
++      function purpose() {
++        var checked = form.querySelector('input[name="purpose"]:checked');
++        return checked ? checked.value : 'rewards';
++      }
++
++      function setError(message) {
++        errorEl.textContent = message || '';
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++        if (message) input.focus();
++      }
++
++      function setStatus(message) {
++        statusEl.textContent = message || '';
++      }
++
++      // Pre-select purpose from the URL, e.g. /?for=order
++      try {
++        var params = new URLSearchParams(window.location.search);
++        var wanted = params.get('for') || params.get('purpose');
++        var radio = wanted && form.querySelector('input[name="purpose"][value="' + wanted + '"]');
++        if (radio) radio.checked = true;
++      } catch (e) { /* ignore */ }
++
++      // Keep the field numeric and clear stale errors while typing.
++      input.addEventListener('input', function () {
++        var cleaned = digitsOnly(input.value);
++        if (cleaned !== input.value) input.value = cleaned;
++        if (errorEl.textContent) setError('');
++      });
++
++      // Extract the code from pasted text such as "Your code is 123456".
++      input.addEventListener('paste', function (event) {
++        var text = (event.clipboardData || window.clipboardData).getData('text');
++        var match = text && text.match(/\d{6}/);
++        if (match) {
++          event.preventDefault();
++          input.value = match[0];
++          setError('');
++          setStatus('Code pasted. Press Verify code to continue.');
++        }
++      });
++
++      // Automatic extraction from incoming SMS via the WebOTP API.
++      var otpAbort = null;
++      if ('OTPCredential' in window && navigator.credentials && navigator.credentials.get) {
++        otpAbort = new AbortController();
++        navigator.credentials.get({ otp: { transport: ['sms'] }, signal: otpAbort.signal })
++          .then(function (credential) {
++            if (!credential || !credential.code) return;
++            input.value = digitsOnly(credential.code);
++            setError('');
++            setStatus('Code filled in from your text message. Verifying…');
++            form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true }));
++          })
++          .catch(function () { /* user dismissed, timed out, or aborted */ });
++      }
++
++      function setBusy(state) {
++        busy = state;
++        submitBtn.setAttribute('aria-disabled', state ? 'true' : 'false');
++        submitBtn.textContent = state ? 'Verifying…' : 'Verify code';
++      }
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        if (busy) return;
++
++        var code = digitsOnly(input.value);
++        if (!code) {
++          setError('Enter the 6-digit code from your text message.');
++          return;
++        }
++        if (code.length !== CODE_LENGTH) {
++          setError('The code must be exactly 6 digits. You entered ' + code.length + '.');
++          return;
++        }
++
++        if (otpAbort) otpAbort.abort();
++        setError('');
++        setBusy(true);
++        setStatus('Verifying your code…');
++
++        fetch(form.getAttribute('data-verify-url'), {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ code: code, purpose: purpose() })
++        })
++          .then(function (response) {
++            if (!response.ok) throw new Error('status ' + response.status);
++            return response.json().catch(function () { return {}; });
++          })
++          .then(function (data) {
++            var next = data.redirect || (purpose() === 'order' ? '/order-online' : '/rewards');
++            setStatus('Phone number verified. Taking you to ' +
++              (purpose() === 'order' ? 'your order' : 'Rewards') + '…');
++            window.location.assign(next);
++          })
++          .catch(function () {
++            setBusy(false);
++            setStatus('');
++            setError('We couldn’t verify that code. Check the digits and try again, or request a new code.');
++          });
++      });
++
++      // Resend with a cooldown. aria-disabled keeps the button focusable so
++      // screen-reader users can still hear the countdown.
++      var cooldownTimer = null;
++      function startCooldown() {
++        var remaining = RESEND_COOLDOWN;
++        resendBtn.setAttribute('aria-disabled', 'true');
++        resendBtn.textContent = 'Resend code (' + remaining + 's)';
++        cooldownTimer = setInterval(function () {
++          remaining -= 1;
++          if (remaining <= 0) {
++            clearInterval(cooldownTimer);
++            cooldownTimer = null;
++            resendBtn.setAttribute('aria-disabled', 'false');
++            resendBtn.textContent = 'Resend code';
++            return;
++          }
++          resendBtn.textContent = 'Resend code (' + remaining + 's)';
++        }, 1000);
++      }
++
++      resendBtn.addEventListener('click', function () {
++        if (resendBtn.getAttribute('aria-disabled') === 'true') {
++          setStatus('Please wait before requesting another code.');
++          return;
++        }
++        startCooldown();
++        setStatus('Sending a new code…');
++        fetch(form.getAttribute('data-resend-url'), {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ purpose: purpose() })
++        })
++          .then(function (response) {
++            if (!response.ok) throw new Error('status ' + response.status);
++            setStatus('A new code is on its way. It can take up to a minute to arrive.');
++            input.value = '';
++            setError('');
++            input.focus();
++          })
++          .catch(function () {
++            setStatus('');
++            setError('We couldn’t send a new code right now. Please try again in a moment.');
++          });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

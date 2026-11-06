@@ -1,0 +1,252 @@
+diff --git a/public/smallpt/index.html b/public/smallpt/index.html
+new file mode 100644
+index 0000000..cf8f524
+--- /dev/null
++++ b/public/smallpt/index.html
+@@ -0,0 +1,67 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>smallpt in WebAssembly</title>
++  <style>
++    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
++    body { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; text-align: center; }
++    canvas { width: 100%; height: auto; aspect-ratio: 4 / 3; background: #111; border-radius: .5rem; }
++    button { font: inherit; padding: .6rem 1.2rem; margin-top: 1rem; cursor: pointer; }
++    progress { width: 100%; margin-top: .5rem; }
++  </style>
++</head>
++<body>
++  <h1>smallpt in WebAssembly</h1>
++  <p><a href="http://www.kevinbeason.com/smallpt/">smallpt</a>, Kevin Beason's 99-line C++ path tracer, compiled with Emscripten and rendered in your browser (512×384, 100 samples per pixel).</p>
++  <canvas id="canvas" width="512" height="384" role="img" aria-label="Path-traced Cornell box with a mirror ball and a glass ball"></canvas>
++  <progress id="progress" max="1" value="0"></progress>
++  <p id="status" role="status" aria-live="polite">Loading…</p>
++  <button id="rerun" type="button" disabled>Re-render with random colors</button>
++
++  <script type="module">
++    const canvas = document.getElementById('canvas');
++    const ctx = canvas.getContext('2d');
++    const button = document.getElementById('rerun');
++    const progress = document.getElementById('progress');
++    const status = document.getElementById('status');
++    const worker = new Worker('./worker.js', { type: 'module' });
++
++    // Original smallpt colors: left, right, back, floor, ceiling, mirror, glass.
++    const original = [.75,.25,.25, .25,.25,.75, .75,.75,.75, .75,.75,.75, .75,.75,.75, .999,.999,.999, .999,.999,.999];
++    const randomColor = () => {
++      // Random hue, kept fairly saturated and bright enough to light the room.
++      const h = Math.random() * 6, c = .55 + Math.random() * .35, m = .1 + Math.random() * .15;
++      const x = c * (1 - Math.abs(h % 2 - 1));
++      const [r, g, b] = [[c,x,0],[x,c,0],[0,c,x],[0,x,c],[x,0,c],[c,0,x]][Math.floor(h)];
++      return [r + m, g + m, b + m].map(v => Math.min(v, .95));
++    };
++
++    let runId = 0, startTime = 0;
++    function render(colors) {
++      button.disabled = true;
++      progress.value = 0;
++      status.textContent = 'Rendering…';
++      startTime = performance.now();
++      worker.postMessage({ id: ++runId, colors });
++    }
++
++    worker.onmessage = ({ data }) => {
++      if (data.id !== runId) return;
++      if (data.done) {
++        status.textContent = `Rendered in ${((performance.now() - startTime) / 1000).toFixed(1)}s.`;
++        button.disabled = false;
++        return;
++      }
++      const rows = data.pixels.length / (canvas.width * 4);
++      ctx.putImageData(new ImageData(data.pixels, canvas.width, rows), 0, data.y);
++      progress.value = data.progress;
++    };
++    worker.onerror = () => { status.textContent = 'Failed to load the WebAssembly renderer.'; };
++
++    button.addEventListener('click', () => render(Array.from({ length: 7 }, randomColor).flat()));
++    render(original);
++  </script>
++</body>
++</html>
+diff --git a/public/smallpt/smallpt.js b/public/smallpt/smallpt.js
+new file mode 100644
+index 0000000..f99f12f
+--- /dev/null
++++ b/public/smallpt/smallpt.js
+@@ -0,0 +1,2 @@
++async function createSmallpt(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=false;var ENVIRONMENT_IS_WORKER=true;var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);Module["HEAPF64"]=HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{noExitRuntime=false;runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>noExitRuntime||runtimeKeepaliveCounter>0;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){Module["onExit"]?.(code);ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}var _set_colors,_init,_render_rows,__emscripten_timeout,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_set_colors=Module["_set_colors"]=wasmExports["h"];_init=Module["_init"]=wasmExports["i"];_render_rows=Module["_render_rows"]=wasmExports["j"];__emscripten_timeout=wasmExports["k"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={d:__abort_js,b:__emscripten_runtime_keepalive_clear,c:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default createSmallpt;
+diff --git a/public/smallpt/smallpt.wasm b/public/smallpt/smallpt.wasm
+new file mode 100755
+index 0000000..bae1e77
+Binary files /dev/null and b/public/smallpt/smallpt.wasm differ
+diff --git a/public/smallpt/worker.js b/public/smallpt/worker.js
+new file mode 100644
+index 0000000..e954cde
+--- /dev/null
++++ b/public/smallpt/worker.js
+@@ -0,0 +1,22 @@
++import createSmallpt from './smallpt.js';
++
++const W = 512, H = 384, SPP = 100, BAND = 8;
++const modulePromise = createSmallpt();
++
++self.onmessage = async ({ data: { id, colors } }) => {
++  const m = await modulePromise;
++  // Pass the scene colors (7 rgb triples) into wasm memory.
++  const buf = m._malloc(colors.length * 8);
++  m.HEAPF64.set(colors, buf / 8);
++  m._set_colors(buf);
++  m._free(buf);
++
++  const ptr = m._init(W, H, SPP);
++  for (let y = 0; y < H; y += BAND) {
++    m._render_rows(y, Math.min(y + BAND, H));
++    // Copy, as the wasm heap may be detached if memory grows.
++    const pixels = m.HEAPU8.slice(ptr + y * W * 4, ptr + Math.min(y + BAND, H) * W * 4);
++    self.postMessage({ id, y, pixels, progress: Math.min(y + BAND, H) / H }, [pixels.buffer]);
++  }
++  self.postMessage({ id, done: true });
++};
+diff --git a/wasm/build.sh b/wasm/build.sh
+new file mode 100644
+index 0000000..97add5d
+--- /dev/null
++++ b/wasm/build.sh
+@@ -0,0 +1,8 @@
++#!/bin/sh
++# Builds smallpt to WebAssembly (requires Emscripten). Usage: sh wasm/build.sh
++set -e
++cd "$(dirname "$0")/.."
++em++ -O3 -flto wasm/smallpt.cpp -o public/smallpt/smallpt.js \
++  -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=createSmallpt \
++  -sEXPORTED_FUNCTIONS=_set_colors,_init,_render_rows \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF64 -sNO_DISABLE_EXCEPTION_CATCHING=0 -fno-exceptions
+diff --git a/wasm/smallpt.cpp b/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..73e1bf1
+--- /dev/null
++++ b/wasm/smallpt.cpp
+@@ -0,0 +1,119 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008 (adapted for WebAssembly)
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// ---- WebAssembly entry points (replace the original main) ----
++#include <emscripten.h>
++#include <stdint.h>
++static int W, H, SAMPS;
++static Vec *film;
++static uint8_t *rgba;
++
++extern "C" {
++// Sets the colors of the scene: 5 walls + mirror + glass, as r,g,b triples in [0,1].
++EMSCRIPTEN_KEEPALIVE void set_colors(const double *c){
++  const int ids[7] = {0,1,2,4,5,6,7};
++  for (int i=0;i<7;i++) spheres[ids[i]].c = Vec(c[i*3],c[i*3+1],c[i*3+2]);
++}
++EMSCRIPTEN_KEEPALIVE uint8_t* init(int w, int h, int spp){
++  delete[] film; delete[] rgba;
++  W=w; H=h; SAMPS=spp/4 < 1 ? 1 : spp/4;
++  film = new Vec[w*h]; rgba = new uint8_t[w*h*4];
++  return rgba;
++}
++// Renders rows [y0,y1) into the RGBA buffer.
++EMSCRIPTEN_KEEPALIVE void render_rows(int y0, int y1){
++  int w=W, h=H, samps=SAMPS;
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++  for (int y=y0; y<y1; y++){
++    for (unsigned short x=0, Xi[3]={0,0,(unsigned short)(y*y*y)}; x<w; x++)
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)
++        for (int sx=0; sx<2; sx++, r=Vec()){
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          }
++          film[i] = film[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++    for (int x=0; x<w; x++){
++      int i=(h-y-1)*w+x, o=(y*w+x)*4;
++      rgba[o]=toInt(film[i].x); rgba[o+1]=toInt(film[i].y); rgba[o+2]=toInt(film[i].z); rgba[o+3]=255;
++    }
++  }
++}
++}

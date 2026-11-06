@@ -1,0 +1,220 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..29ab473
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,146 @@
++/**
++ * <drink-card> — reusable, style-isolated card for menu items.
++ *
++ * Attributes (all reactive, so the page can change them at any time):
++ *   heading      Card title (e.g. "Cold Brew")
++ *   description  Short body copy
++ *   href         Destination of the action link
++ *   link-text    Label for the action link (default: "View Details")
++ *   limited      Boolean; when present a "Limited" badge is shown
++ *   badge-text   Optional override for the badge label (default: "Limited")
++ *
++ * Example:
++ *   <drink-card heading="Cold Brew" description="..." href="/menu/cold-brew" limited></drink-card>
++ *
++ * Toggle the badge from page script:
++ *   card.limited = false;            // or card.removeAttribute('limited')
++ *   card.toggleAttribute('limited'); // flip it
++ *
++ * Layout and styles live in a Shadow DOM, so page CSS can't leak in and
++ * the card's CSS can't leak out. All text is set via textContent (no HTML
++ * injection from attribute values).
++ */
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      all: initial;
++      display: block;
++      contain: content;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: #3e2723;
++    }
++    :host([hidden]) { display: none; }
++
++    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
++
++    .card {
++      position: relative;
++      height: 100%;
++      background: #fff;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: #ffab40;
++      color: #3e2723;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++    .badge[hidden] { display: none; }
++
++    h3 {
++      font-size: 1.17em;
++      font-weight: bold;
++      margin-bottom: 10px;
++      color: #4e342e;
++    }
++
++    .btn {
++      display: inline-block;
++      background: #4e342e;
++      color: #fff;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++    .btn:hover, .btn:focus-visible { background: #3e2723; }
++    .btn:focus-visible { outline: 2px solid #ffab40; outline-offset: 2px; }
++  </style>
++  <article class="card" part="card">
++    <span class="badge" part="badge" hidden></span>
++    <h3 part="heading"></h3>
++    <p part="description"></p>
++    <a class="btn" part="link"></a>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['heading', 'description', 'href', 'link-text', 'limited', 'badge-text'];
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.appendChild(template.content.cloneNode(true));
++    this._els = {
++      badge: root.querySelector('.badge'),
++      heading: root.querySelector('h3'),
++      description: root.querySelector('p'),
++      link: root.querySelector('a'),
++    };
++  }
++
++  connectedCallback() {
++    this._render();
++  }
++
++  attributeChangedCallback() {
++    this._render();
++  }
++
++  get limited() {
++    return this.hasAttribute('limited');
++  }
++
++  set limited(value) {
++    this.toggleAttribute('limited', Boolean(value));
++  }
++
++  _render() {
++    const { badge, heading, description, link } = this._els;
++    heading.textContent = this.getAttribute('heading') ?? '';
++    description.textContent = this.getAttribute('description') ?? '';
++    link.textContent = this.getAttribute('link-text') || 'View Details';
++
++    const href = this.getAttribute('href');
++    if (href) {
++      link.setAttribute('href', href);
++      link.hidden = false;
++    } else {
++      link.removeAttribute('href');
++      link.hidden = true;
++    }
++
++    badge.textContent = this.getAttribute('badge-text') || 'Limited';
++    badge.hidden = !this.limited;
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
++
++export { DrinkCard };
+diff --git a/index.html b/index.html
+index 66c9173..b6a9607 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,12 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    /* Card visuals live inside <drink-card>'s Shadow DOM (components/drink-card.js). */
++    drink-card:not(:defined) {
++      min-height: 180px;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+     }
+ 
+     .btn {
+@@ -153,6 +148,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +174,19 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card
++          heading="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          limited></drink-card>
++        <drink-card
++          heading="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"></drink-card>
++        <drink-card
++          heading="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"></drink-card>
+       </div>
+     </section>
+   </main>

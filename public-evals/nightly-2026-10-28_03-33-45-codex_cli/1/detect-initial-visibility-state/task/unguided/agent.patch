@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,48 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      function detectInitialBackgroundState() {
++        if (
++          typeof PerformanceObserver !== 'undefined' &&
++          PerformanceObserver.supportedEntryTypes?.includes('visibility-state')
++        ) {
++          const entries = performance.getEntriesByType('visibility-state');
++          const initialEntry = entries.find((entry) => entry.startTime === 0);
++
++          if (initialEntry) {
++            const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++            return {
++              initiallyBackgrounded: initialEntry.name === 'hidden',
++              // Browser-recorded milliseconds relative to performance.timeOrigin.
++              // Zero means hidden at load; null means no hidden entry so far.
++              timeBackgrounded: firstHiddenEntry?.startTime ?? null,
++              fallbackActive: false,
++            };
++          }
++        }
++
++        // LEGACY FALLBACK: potentially unreliable, especially for async scripts.
++        // This reads the current state and cannot reconstruct earlier transitions.
++        // If hidden now, time 0 is only an estimate, not an exact timestamp.
++        const hiddenNow = document.visibilityState === 'hidden';
++        console.warn(
++          'Background detection fallback active: initial visibility and timing are estimates; async scripts may miss earlier visibility changes.'
++        );
++        return {
++          initiallyBackgrounded: hiddenNow,
++          timeBackgrounded: hiddenNow ? 0 : null,
++          fallbackActive: true,
++        };
++      }
++
++      // One snapshot at script execution; browser timer precision limits apply.
++      console.log(detectInitialBackgroundState());
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

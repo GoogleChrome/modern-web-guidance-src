@@ -1,0 +1,349 @@
+diff --git a/index.html b/index.html
+index 66c9173..84122a5 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,63 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee feedback */
++    .feedback {
++      margin-top: 64px;
++      padding: clamp(24px, 5vw, 48px);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f4efeb;
++      display: grid;
++      grid-template-columns: 1fr 1.3fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    .feedback .eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .feedback h2 { font-size: 2rem; line-height: 1.2; margin-bottom: 16px; }
++    .feedback-intro p { max-width: 32ch; }
++    .feedback-intro .feedback-note { font-size: 0.85rem; margin-top: 24px; }
++    .feedback fieldset { border: 0; min-width: 0; }
++    .feedback legend { font-weight: 700; margin-bottom: 20px; }
++    .feedback .field { margin-bottom: 24px; }
++    .feedback label { display: block; font-weight: 600; margin-bottom: 8px; }
++    .feedback .optional { font-weight: 400; font-size: 0.85rem; }
++    .feedback select, .feedback textarea {
++      width: 100%;
++      min-height: 48px;
++      padding: 12px;
++      border: 1px solid #89746c;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++    .feedback textarea { resize: vertical; }
++    .feedback .actions { display: flex; gap: 12px; flex-wrap: wrap; }
++    .feedback button { font: inherit; cursor: pointer; min-height: 48px; margin: 0; border: 1px solid var(--primary); }
++    .feedback .reset { color: var(--primary); background: transparent; }
++    .feedback :where(button, select, textarea):focus-visible { outline: 3px solid #8b4a12; outline-offset: 3px; }
++    .feedback fieldset:disabled { opacity: 0.6; }
++    .feedback :disabled { cursor: not-allowed; }
++    .feedback .preview { margin-top: 20px; }
++    .feedback .preview:not(:empty) { padding: 16px; border-inline-start: 3px solid var(--primary); background: white; }
++    .feedback .preview p { overflow-wrap: anywhere; white-space: pre-wrap; }
++    star-rating { display: block; }
++    @media (max-width: 700px) {
++      .feedback { grid-template-columns: 1fr; gap: 28px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +252,53 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" id="coffee-feedback">
++      <div class="feedback-intro">
++        <p class="eyebrow">A better cup starts with you</p>
++        <h2>How was your cup?</h2>
++        <p>From the first sip to the last drop, we’d love to hear what you think. Help us make your next coffee even better.</p>
++        <p class="feedback-note">Fields marked “required” need an answer.<br>This is a preview form; feedback isn’t sent.</p>
++      </div>
++      <form id="feedback-form" action="/feedback" method="post">
++        <fieldset>
++          <legend>Your coffee experience</legend>
++          <div class="field">
++            <label for="coffee">What did you try? <span class="optional">(required)</span></label>
++            <select id="coffee" name="coffee" required>
++              <option value="">Choose your coffee</option>
++              <option>Maple Oat Latte</option>
++              <option>Dark Roast Espresso</option>
++              <option>Cold Brew</option>
++              <option>Something else</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="coffee-rating">Your rating <span class="optional">(required)</span></label>
++            <star-rating id="coffee-rating" name="rating" required>
++              <select name="rating" aria-label="Your rating (required)" required data-rating-fallback>
++                <option value="">Choose a rating</option>
++                <option value="1">1 star — Not for me</option>
++                <option value="2">2 stars — Could be better</option>
++                <option value="3">3 stars — Pretty good</option>
++                <option value="4">4 stars — Loved it</option>
++                <option value="5">5 stars — My new favorite</option>
++              </select>
++            </star-rating>
++          </div>
++          <div class="field">
++            <label for="coffee-comments">Anything to add? <span class="optional">(optional)</span></label>
++            <textarea id="coffee-comments" name="comments" rows="3" maxlength="1000" placeholder="The flavor, the roast, that little extra…"></textarea>
++          </div>
++          <div class="actions">
++            <button class="btn" id="feedback-submit" type="submit" disabled>Preview feedback</button>
++            <button class="btn reset" type="reset">Start over</button>
++          </div>
++        </fieldset>
++        <div class="preview" id="feedback-preview" role="status" aria-live="polite" aria-atomic="true"></div>
++        <noscript><p>The feedback preview needs JavaScript. Feedback won’t be sent.</p></noscript>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +311,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./star-rating.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..173b167
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,213 @@
++// Native form association owns submission, validation, and form lifecycle state.
++// Older browsers retain the visible, native select supplied in the light DOM.
++if ('attachInternals' in HTMLElement.prototype &&
++    'ElementInternals' in window && 'setFormValue' in ElementInternals.prototype) {
++  class StarRating extends HTMLElement {
++    static formAssociated = true;
++    static observedAttributes = ['required', 'value'];
++
++    #internals;
++    #value = '';
++    #dirty = false;
++    #disabled = false;
++    #initialized = false;
++    #showError = false;
++    #customError = '';
++    #radios;
++    #group;
++    #summary;
++    #error;
++
++    constructor() {
++      super();
++      this.#internals = this.attachInternals();
++      const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++      const descriptions = ['Not for me', 'Could be better', 'Pretty good', 'Loved it', 'My new favorite'];
++      root.innerHTML = `
++        <style>
++          :host { display: block; color: #3e2723; }
++          * { box-sizing: border-box; }
++          .stars { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; }
++          label { position: relative; display: grid; place-items: center; min-width: 48px; min-height: 48px;
++            border: 1px solid #89746c; border-radius: 5px; background: #fff; cursor: pointer; }
++          input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
++            border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
++          svg { width: 28px; height: 28px; fill: transparent; stroke: #775335; stroke-width: 1.5; }
++          label:has(input:checked) svg, label:has(~ label input:checked) svg { fill: #ffab40; }
++          label:has(input:checked) { border: 2px solid #4e342e; }
++          label:has(input:focus-visible) { outline: 3px solid #8b4a12; outline-offset: 3px; }
++          @media (hover: hover) {
++            label:not(:has(input:disabled)):hover { background: #fff0dc; }
++          }
++          label:has(input:disabled) { cursor: not-allowed; background: #e7e0da; }
++          :host(:disabled) { opacity: 0.6; }
++          p { font: inherit; font-size: 0.85rem; line-height: 1.6; margin: 8px 0 0; }
++          .error { color: #9b2424; font-weight: 600; }
++          [hidden] { display: none; }
++          @media (forced-colors: active) {
++            svg { stroke: ButtonText; }
++            label:has(input:checked) svg, label:has(~ label input:checked) svg { fill: Highlight; }
++            label:has(input:checked) { border-color: Highlight; }
++          }
++        </style>
++        <div role="radiogroup" aria-label="Your rating" aria-describedby="hint error">
++          <div class="stars">
++            ${descriptions.map((description, index) => `
++              <label for="star-${index + 1}">
++                <input id="star-${index + 1}" type="radio" name="stars" value="${index + 1}"
++                  aria-label="${index + 1} ${index === 0 ? 'star' : 'stars'} — ${description}">
++                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1Z"/></svg>
++              </label>`).join('')}
++          </div>
++          <p id="summary">Choose a rating</p>
++          <p id="hint">1 is “Not for me”, 5 is “My new favorite”.</p>
++          <p id="error" class="error" hidden></p>
++        </div>`;
++      this.#radios = [...root.querySelectorAll('input')];
++      this.#group = root.querySelector('[role="radiogroup"]');
++      this.#summary = root.querySelector('#summary');
++      this.#error = root.querySelector('#error');
++
++      // Replace the shadow-internal events with one pair on the public control.
++      root.addEventListener('input', event => event.stopPropagation());
++      root.addEventListener('change', event => {
++        event.stopPropagation();
++        if (this.#disabled || !this.#radios.includes(event.target)) return;
++        this.value = event.target.value;
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++        this.dispatchEvent(new Event('change', { bubbles: true }));
++      });
++      this.addEventListener('invalid', () => {
++        this.#showError = true;
++        this.#renderError();
++      });
++    }
++
++    connectedCallback() {
++      if (!this.#initialized) {
++        // Honor properties assigned before customElements.define upgraded this node.
++        for (const property of ['value', 'required', 'disabled', 'name']) {
++          if (Object.hasOwn(this, property)) {
++            const value = this[property];
++            delete this[property];
++            this[property] = value;
++          }
++        }
++        if (!this.#dirty) this.#value = this.#normalize(this.defaultValue);
++        this.querySelector('[data-rating-fallback]')?.remove();
++        this.#initialized = true;
++      }
++      // ID references cannot cross a shadow boundary; copy the label text instead.
++      this.#group.setAttribute('aria-label',
++        [...this.labels].map(label => label.textContent.trim()).join(' ') || 'Your rating');
++      this.formDisabledCallback(this.matches(':disabled'));
++      this.#sync();
++    }
++
++    attributeChangedCallback(name, oldValue, newValue) {
++      if (oldValue === newValue) return;
++      if (name === 'value' && !this.#dirty) this.#value = this.#normalize(newValue);
++      this.#sync();
++    }
++
++    get value() { return this.#value; }
++    set value(value) {
++      this.#dirty = true;
++      this.#value = this.#normalize(value);
++      this.#sync();
++    }
++    get defaultValue() { return this.getAttribute('value') ?? ''; }
++    set defaultValue(value) { this.setAttribute('value', String(value ?? '')); }
++    get name() { return this.getAttribute('name') ?? ''; }
++    set name(value) { this.setAttribute('name', String(value)); }
++    get required() { return this.hasAttribute('required'); }
++    set required(value) { this.toggleAttribute('required', Boolean(value)); }
++    get disabled() { return this.hasAttribute('disabled'); }
++    set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++    get form() { return this.#internals.form; }
++    get labels() { return this.#internals.labels; }
++    get type() { return this.localName; }
++    get validity() { return this.#internals.validity; }
++    get validationMessage() { return this.#internals.validationMessage; }
++    get willValidate() { return this.#internals.willValidate; }
++    checkValidity() { return this.#internals.checkValidity(); }
++    reportValidity() { return this.#internals.reportValidity(); }
++    setCustomValidity(message) {
++      this.#customError = String(message);
++      this.#sync();
++    }
++
++    formResetCallback() {
++      this.#dirty = false;
++      this.#showError = false;
++      this.#value = this.#normalize(this.defaultValue);
++      this.#sync();
++    }
++
++    formDisabledCallback(disabled) {
++      // Never reflect this onto the host: that would trap a re-enabled fieldset.
++      this.#disabled = disabled;
++      for (const radio of this.#radios) radio.disabled = disabled;
++      this.#group.setAttribute('aria-disabled', String(disabled));
++      this.#renderError();
++    }
++
++    formStateRestoreCallback(state, _mode) {
++      // Both history restoration and autofill restore the submitted scalar value.
++      this.#showError = false;
++      this.value = typeof state === 'string' ? state : '';
++    }
++
++    #normalize(value) {
++      const string = String(value ?? '');
++      return /^[1-5]$/.test(string) ? string : '';
++    }
++
++    #sync() {
++      for (const radio of this.#radios) radio.checked = radio.value === this.#value;
++      // The second argument is the browser-restorable state, including empty state.
++      this.#internals.setFormValue(this.#value || null, this.#value);
++      const missing = this.required && !this.#value;
++      const message = this.#customError || (missing ? 'Please choose a coffee rating.' : '');
++      this.#internals.setValidity(
++        { valueMissing: missing, customError: Boolean(this.#customError) },
++        message,
++        this.#radios.find(radio => radio.checked) || this.#radios[0],
++      );
++      this.#group.setAttribute('aria-required', String(this.required));
++      this.#summary.textContent = this.#value
++        ? this.#radios[Number(this.#value) - 1].getAttribute('aria-label')
++        : 'Choose a rating';
++      this.#renderError();
++    }
++
++    #renderError() {
++      const show = this.#showError && !this.#disabled && !this.validity.valid;
++      this.#error.hidden = !show;
++      this.#error.textContent = show ? this.validationMessage : '';
++      this.#group.setAttribute('aria-invalid', String(show));
++    }
++  }
++
++  customElements.define('star-rating', StarRating);
++}
++
++const form = document.querySelector('#feedback-form');
++const preview = document.querySelector('#feedback-preview');
++
++form.addEventListener('submit', event => {
++  // Native validation has already run, including the custom element's validity.
++  event.preventDefault();
++  const data = new FormData(form);
++  const heading = document.createElement('strong');
++  heading.textContent = 'Your feedback preview';
++  const details = document.createElement('p');
++  details.textContent = `${data.get('coffee')} · ${data.get('rating')} out of 5 stars`;
++  const comments = document.createElement('p');
++  comments.textContent = data.get('comments') || 'No additional comments.';
++  preview.replaceChildren(heading, details, comments);
++});
++
++form.addEventListener('reset', () => preview.replaceChildren());
++form.addEventListener('input', () => preview.replaceChildren());
++document.querySelector('#feedback-submit').disabled = false;

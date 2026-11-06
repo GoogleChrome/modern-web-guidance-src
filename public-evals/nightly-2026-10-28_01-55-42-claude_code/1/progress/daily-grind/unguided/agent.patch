@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+index 66c9173..fa422b2 100644
+--- a/index.html
++++ b/index.html
+@@ -142,6 +142,115 @@
+       margin-top: 40px;
+     }
+ 
++    /* Progress Bars (order / rewards status) */
++    .progress-section {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++      margin-bottom: 40px;
++    }
++
++    .progress-card {
++      background: white;
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-left: 4px solid var(--accent);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .progress-header h3 {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .progress-value {
++      font-weight: bold;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++      white-space: nowrap;
++    }
++
++    .progress-track {
++      position: relative;
++      width: 100%;
++      height: 12px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 0;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      border-radius: 999px;
++      transition: width 0.6s ease;
++    }
++
++    .progress-track.is-indeterminate .progress-fill {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 40%;
++      animation: progress-slide 1.6s ease-in-out infinite;
++    }
++
++    @keyframes progress-slide {
++      0%   { transform: translateX(-100%); }
++      100% { transform: translateX(260%); }
++    }
++
++    .progress-note {
++      margin-top: 8px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .progress-note .status-dot {
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--accent);
++      margin-right: 6px;
++      vertical-align: middle;
++      animation: progress-pulse 1.2s ease-in-out infinite;
++    }
++
++    @keyframes progress-pulse {
++      0%, 100% { opacity: 1; }
++      50% { opacity: 0.3; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      .progress-track.is-indeterminate .progress-fill {
++        animation: none;
++        width: 100%;
++        background: repeating-linear-gradient(
++          45deg,
++          var(--accent) 0 10px,
++          var(--primary) 10px 20px
++        );
++        transform: none;
++      }
++
++      .progress-note .status-dot {
++        animation: none;
++      }
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -175,6 +284,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-label="Your order and rewards status">
++      <div class="progress-card">
++        <div class="progress-header">
++          <h3 id="rewards-heading">Rewards Progress</h3>
++          <span class="progress-value" id="rewards-value">7 / 10 stamps</span>
++        </div>
++        <div class="progress-track" role="progressbar" aria-labelledby="rewards-heading" aria-describedby="rewards-label"
++          aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps">
++          <div class="progress-fill" style="width: 70%;"></div>
++        </div>
++        <p class="progress-note" id="rewards-label">3 more drinks until your next free coffee.</p>
++      </div>
++
++      <div class="progress-card">
++        <div class="progress-header">
++          <h3 id="order-heading">Current Order</h3>
++          <span class="progress-value">Preparing&hellip;</span>
++        </div>
++        <div class="progress-track is-indeterminate" role="progressbar" aria-labelledby="order-heading" aria-describedby="order-label" aria-busy="true">
++          <div class="progress-fill"></div>
++        </div>
++        <p class="progress-note" id="order-label"><span class="status-dot" aria-hidden="true"></span>Your Maple Oat Latte is being made. We'll let you know when it's ready.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

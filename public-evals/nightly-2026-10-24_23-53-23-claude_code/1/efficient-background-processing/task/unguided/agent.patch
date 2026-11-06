@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,45 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Widget */
++    #roasting-widget {
++      max-width: 1100px;
++      height: 400px;
++      margin: 40px auto 0;
++      padding: 20px;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 10px;
++    }
++
++    #roasting-widget h2 {
++      font-size: 1.3rem;
++    }
++
++    #roast-canvas {
++      flex: 1;
++      min-height: 0;
++      width: 100%;
++      background: #2a1a16;
++      border-radius: 6px;
++    }
++
++    .roast-temp {
++      font-size: 1.1rem;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-weight: bold;
++      font-variant-numeric: tabular-nums;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +233,14 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Live roasting simulator">
++    <h2>Live Roast Simulator</h2>
++    <canvas id="roast-canvas" aria-hidden="true"></canvas>
++    <p class="roast-temp">Drum temperature: <span id="roast-temp-value">200</span>&deg;C</p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +249,157 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var ctx = canvas.getContext('2d');
++      if (!ctx) return;
++
++      var raf = typeof window.requestAnimationFrame === 'function'
++        ? function (cb) { return window.requestAnimationFrame(cb); }
++        : function (cb) { return window.setTimeout(function () { cb(Date.now()); }, 16); };
++      var caf = typeof window.cancelAnimationFrame === 'function'
++        ? function (id) { window.cancelAnimationFrame(id); }
++        : function (id) { window.clearTimeout(id); };
++
++      // Beans
++      var beans = [];
++      var BEAN_COUNT = 40;
++      function sizeCanvas() {
++        var dpr = window.devicePixelRatio || 1;
++        var w = canvas.clientWidth, h = canvas.clientHeight;
++        canvas.width = Math.max(1, Math.round(w * dpr));
++        canvas.height = Math.max(1, Math.round(h * dpr));
++        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++      }
++      function initBeans() {
++        beans = [];
++        for (var i = 0; i < BEAN_COUNT; i++) {
++          beans.push({
++            x: Math.random() * canvas.clientWidth,
++            y: Math.random() * canvas.clientHeight,
++            vx: (Math.random() - 0.5) * 1.5,
++            vy: (Math.random() - 0.5) * 1.5,
++            r: 10 + Math.random() * 6,
++            angle: Math.random() * Math.PI * 2,
++            spin: (Math.random() - 0.5) * 0.06
++          });
++        }
++      }
++
++      // Roast progress 0..1 (green -> dark), driven by simulated temperature
++      var temp = 200, tempDir = 1;
++      var MIN_TEMP = 200, MAX_TEMP = 240;
++      function progress() { return (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP); }
++
++      function beanColor(p) {
++        var r = Math.round(150 - 110 * p), g = Math.round(120 - 90 * p), b = Math.round(60 - 40 * p);
++        return 'rgb(' + r + ',' + g + ',' + b + ')';
++      }
++
++      function draw() {
++        var w = canvas.clientWidth, h = canvas.clientHeight;
++        ctx.clearRect(0, 0, w, h);
++        var color = beanColor(progress());
++        for (var i = 0; i < beans.length; i++) {
++          var b = beans[i];
++          b.x += b.vx; b.y += b.vy; b.angle += b.spin;
++          if (b.x < b.r || b.x > w - b.r) b.vx *= -1;
++          if (b.y < b.r || b.y > h - b.r) b.vy *= -1;
++          b.x = Math.min(Math.max(b.x, b.r), Math.max(b.r, w - b.r));
++          b.y = Math.min(Math.max(b.y, b.r), Math.max(b.r, h - b.r));
++
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.angle);
++          ctx.fillStyle = color;
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.r, b.r * 0.65, 0, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.moveTo(-b.r * 0.8, 0);
++          ctx.quadraticCurveTo(0, b.r * 0.25, b.r * 0.8, 0);
++          ctx.stroke();
++          ctx.restore();
++        }
++      }
++
++      function tick() {
++        temp += tempDir * (0.3 + Math.random() * 0.7);
++        if (temp >= MAX_TEMP) { temp = MAX_TEMP; tempDir = -1; }
++        else if (temp <= MIN_TEMP) { temp = MIN_TEMP; tempDir = 1; }
++        tempEl.textContent = temp.toFixed(1);
++      }
++
++      // Loop control
++      var rafId = null, intervalId = null;
++      var inView = false, pageVisible = !document.hidden;
++
++      function frame() {
++        draw();
++        rafId = raf(frame);
++      }
++      function start() {
++        if (rafId === null) rafId = raf(frame);
++        if (intervalId === null) intervalId = window.setInterval(tick, 500);
++      }
++      function stop() {
++        if (rafId !== null) { caf(rafId); rafId = null; }
++        if (intervalId !== null) { window.clearInterval(intervalId); intervalId = null; }
++      }
++      function update() {
++        if (inView && pageVisible) start(); else stop();
++      }
++      function setInView(v) {
++        inView = v;
++        update();
++      }
++
++      // Pause when the tab is hidden too
++      document.addEventListener('visibilitychange', function () {
++        pageVisible = !document.hidden;
++        update();
++      });
++
++      window.addEventListener('resize', function () {
++        sizeCanvas();
++        if (rafId === null) draw();
++      });
++
++      sizeCanvas();
++      initBeans();
++      draw();
++
++      // Visibility detection: IntersectionObserver, with scroll/resize fallback
++      if ('IntersectionObserver' in window) {
++        new IntersectionObserver(function (entries) {
++          // Last entry reflects the latest state
++          setInView(entries[entries.length - 1].isIntersecting);
++        }).observe(widget);
++      } else {
++        var checkQueued = false;
++        var check = function () {
++          checkQueued = false;
++          var rect = widget.getBoundingClientRect();
++          var vh = window.innerHeight || document.documentElement.clientHeight;
++          var vw = window.innerWidth || document.documentElement.clientWidth;
++          setInView(rect.bottom > 0 && rect.right > 0 && rect.top < vh && rect.left < vw);
++        };
++        var schedule = function () {
++          if (!checkQueued) { checkQueued = true; window.setTimeout(check, 100); }
++        };
++        window.addEventListener('scroll', schedule, { passive: true });
++        window.addEventListener('resize', schedule);
++        window.addEventListener('load', check);
++        check();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

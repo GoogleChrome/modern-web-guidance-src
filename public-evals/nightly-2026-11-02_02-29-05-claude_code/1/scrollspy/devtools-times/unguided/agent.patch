@@ -1,0 +1,102 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..19e83a2 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -6,12 +6,93 @@ export interface Props {
+ }
+ 
+ const { title } = Astro.props;
++
++// Give every <h2> an id so it can be linked to from the "On this page" navigation
++const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
++const sections: { id: string; text: string }[] = [];
++const content = (await Astro.slots.render('default')).replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/g, (match, attrs: string, inner: string) => {
++    if (/\sid=/.test(attrs)) return match;
++    const text = inner.replace(/<[^>]+>/g, '').trim();
++    let id = slugify(text) || 'section';
++    while (sections.some(section => section.id === id)) id += '-1';
++    sections.push({ id, text });
++    return `<h2${attrs} id="${id}">${inner}</h2>`;
++});
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
+-            <slot />
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 lg:flex lg:gap-10">
++        <div class="min-w-0 flex-1">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            <div class="prose max-w-none [&_h2]:scroll-mt-6">
++                <Fragment set:html={content} />
++            </div>
+         </div>
++        {sections.length > 0 && (
++            <aside class="hidden lg:block w-56 shrink-0 order-first">
++                <nav data-section-nav aria-label="On this page" class="sticky top-6">
++                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">On this page</p>
++                    <ul class="border-l border-gray-200 text-sm">
++                        {sections.map(section => (
++                            <li>
++                                <a
++                                    href={`#${section.id}`}
++                                    class="block -ml-px border-l-2 border-transparent py-1.5 pl-4 text-gray-600 hover:text-gray-900 hover:border-gray-400 aria-[current=location]:border-amber-400 aria-[current=location]:text-gray-900 aria-[current=location]:font-semibold"
++                                >
++                                    {section.text}
++                                </a>
++                            </li>
++                        ))}
++                    </ul>
++                </nav>
++            </aside>
++        )}
+     </div>
+ </Layout>
++
++<script>
++    // Highlight the section navigation link for the section currently in view
++    let controller: AbortController | undefined;
++
++    document.addEventListener('astro:page-load', () => {
++        controller?.abort();
++        const nav = document.querySelector<HTMLElement>('[data-section-nav]');
++        if (!nav) return;
++
++        controller = new AbortController();
++        const links = [...nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
++        const headings = links
++            .map(link => document.getElementById(decodeURIComponent(link.hash.slice(1))))
++            .filter((heading): heading is HTMLElement => heading !== null);
++        if (headings.length === 0) return;
++
++        const update = () => {
++            // The active section is the last one whose heading has scrolled past the top third of the viewport
++            const threshold = window.innerHeight / 3;
++            const scrolledToBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++            let active = headings[0];
++            for (const heading of headings) {
++                if (heading.getBoundingClientRect().top <= threshold) active = heading;
++            }
++            if (scrolledToBottom) active = headings[headings.length - 1];
++
++            for (const link of links) {
++                if (link.hash === `#${active.id}`) {
++                    link.setAttribute('aria-current', 'location');
++                } else {
++                    link.removeAttribute('aria-current');
++                }
++            }
++        };
++
++        let frame = 0;
++        const onScroll = () => {
++            cancelAnimationFrame(frame);
++            frame = requestAnimationFrame(update);
++        };
++
++        window.addEventListener('scroll', onScroll, { passive: true, signal: controller.signal });
++        window.addEventListener('resize', onScroll, { passive: true, signal: controller.signal });
++        document.addEventListener('astro:before-swap', () => controller?.abort(), { once: true, signal: controller.signal });
++        update();
++    });
++</script>

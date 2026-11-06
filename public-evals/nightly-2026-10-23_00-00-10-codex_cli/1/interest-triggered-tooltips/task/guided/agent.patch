@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card .btn[interestfor] {
++      --interest-delay-start: 0.2s;
++      --interest-delay-end: 0.15s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .details-tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: 230px;
++      max-width: calc(100vw - 24px);
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++      font-size: 0.85rem;
++      line-height: 1.5;
++      text-align: left;
++    }
++
++    .details-tooltip strong,
++    .details-tooltip small {
++      display: block;
++    }
++
++    .details-tooltip strong {
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .details-tooltip small {
++      margin-top: 6px;
++      color: var(--secondary);
++    }
++
++    @supports (position-area: right) and (anchor-name: --details) {
++      .details-tooltip {
++        position-area: right;
++        position-try-fallbacks: flip-inline, top, bottom;
++        margin: 8px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +232,37 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-details" style="anchor-name: --maple-details;">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="maple-details" class="details-tooltip" popover="hint" style="position-anchor: --maple-details;">
++            <strong>Maple Oat Latte</strong>
++            <p>Approx. 240 calories · 12 fl oz</p>
++            <p>Espresso, oat milk &amp; maple syrup.</p>
++            <small>Estimated; varies with customization.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="espresso-details" style="anchor-name: --espresso-details;">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="espresso-details" class="details-tooltip" popover="hint" style="position-anchor: --espresso-details;">
++            <strong>Dark Roast Espresso</strong>
++            <p>Approx. 5 calories · 2 fl oz</p>
++            <p>Double shot, served without milk or sugar.</p>
++            <small>Estimated; varies with customization.</small>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-details" style="anchor-name: --cold-brew-details;">View Details <span aria-hidden="true">ⓘ</span></a>
++          <div id="cold-brew-details" class="details-tooltip" popover="hint" style="position-anchor: --cold-brew-details;">
++            <strong>Cold Brew</strong>
++            <p>Approx. 5 calories · 16 fl oz</p>
++            <p>Steeped for 18 hours; served black over ice.</p>
++            <small>Estimated; varies with customization.</small>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +276,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load compatibility support only for browsers that need it.
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js");
++    }
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@1.0.10/src/interestfor.min.js");
++    }
++
++    // Keep each tooltip beside its button when CSS anchors are unavailable.
++    if (!CSS.supports("position-area: right") || !CSS.supports("anchor-name: --details")) {
++      document.querySelectorAll(".card [interestfor]").forEach((trigger) => {
++        const tooltip = document.getElementById(trigger.getAttribute("interestfor"));
++        let open = false;
++        const position = () => {
++          if (!open) return;
++          const button = trigger.getBoundingClientRect();
++          const { width, height } = tooltip.getBoundingClientRect();
++          const gap = 8;
++          const edge = 12;
++          let left = button.right + gap;
++          let top = button.top + (button.height - height) / 2;
++          if (left + width > window.innerWidth - edge) {
++            left = button.left - width - gap;
++          }
++          if (left < edge) {
++            left = button.left + (button.width - width) / 2;
++            top = button.top - height - gap;
++            if (top < edge) top = button.bottom + gap;
++          }
++          tooltip.style.left = `${Math.max(edge, Math.min(left, window.innerWidth - width - edge))}px`;
++          tooltip.style.top = `${Math.max(edge, Math.min(top, window.innerHeight - height - edge))}px`;
++        };
++        tooltip.addEventListener("toggle", (event) => {
++          open = event.newState === "open";
++          position();
++        });
++        window.addEventListener("resize", position);
++        document.addEventListener("scroll", position, { capture: true, passive: true });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

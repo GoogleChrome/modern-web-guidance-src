@@ -1,0 +1,317 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -174,8 +174,60 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" style="max-width: 440px; margin: 0 auto 40px auto; padding: 30px; text-align: left;">
++      <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary);">Sign In</h2>
++      <form id="signin-form" style="display: flex; flex-direction: column; gap: 15px;">
++        <div>
++          <label for="username" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text);">Username</label>
++          <input
++            type="text"
++            id="username"
++            name="username"
++            autocomplete="username webauthn"
++            autofocus
++            data-testid="username-field"
++            placeholder="Username"
++            style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
++          />
++        </div>
++        <div>
++          <label for="password" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text);">Password</label>
++          <input
++            type="password"
++            id="password"
++            name="password"
++            autocomplete="current-password"
++            placeholder="Password"
++            style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
++          />
++        </div>
++        <button type="submit" class="btn" style="border: none; cursor: pointer; width: 100%; margin-top: 5px;">
++          Sign In
++        </button>
++        <div style="display: flex; align-items: center; text-align: center; margin: 6px 0;">
++          <hr style="flex: 1; border: none; border-top: 1px solid #ddd;">
++          <span style="padding: 0 10px; color: #888; font-size: 0.85rem;">or</span>
++          <hr style="flex: 1; border: none; border-top: 1px solid #ddd;">
++        </div>
++        <button
++          type="button"
++          id="auth-button"
++          data-testid="auth-button"
++          class="btn"
++          style="border: none; cursor: pointer; width: 100%; margin-top: 0; background: #2e7d32;"
++        >
++          Sign in with passkey
++        </button>
++      </form>
++      <div
++        id="auth-status"
++        data-testid="auth-status"
++        style="margin-top: 15px; text-align: center; font-weight: 600; min-height: 1.5em; color: var(--primary);"
++      ></div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -196,8 +248,252 @@
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    let autofillAbortController = new AbortController();
++
++    async function optionsFetch() {
++      try {
++        const response = await fetch("/api/login/options");
++        if (response.ok) {
++          const data = await response.json();
++          return data.publicKey || data;
++        }
++      } catch (_) {}
++
++      const randomBytes = new Uint8Array(32);
++      if (window.crypto && window.crypto.getRandomValues) {
++        window.crypto.getRandomValues(randomBytes);
++      }
++      const base64UrlChallenge = btoa(String.fromCharCode(...randomBytes))
++        .replace(/\+/g, "-")
++        .replace(/\//g, "_")
++        .replace(/=+$/, "");
++
++      return {
++        challenge: base64UrlChallenge,
++        rpId: window.location.hostname || "localhost",
++        allowCredentials: [],
++        userVerification: "preferred",
++      };
++    }
++
++    function parseRequestOptions(loginOptionsJSON) {
++      const opts = loginOptionsJSON.publicKey || loginOptionsJSON;
++      if (typeof PublicKeyCredential !== "undefined" && typeof PublicKeyCredential.parseRequestOptionsFromJSON === "function") {
++        return PublicKeyCredential.parseRequestOptionsFromJSON(opts);
++      }
++      let challenge = opts.challenge;
++      if (typeof challenge === "string") {
++        const base64 = challenge.replace(/-/g, "+").replace(/_/g, "/");
++        const pad = base64.length % 4;
++        const padded = pad ? base64 + "=".repeat(4 - pad) : base64;
++        const binary = atob(padded);
++        const bytes = new Uint8Array(binary.length);
++        for (let i = 0; i < binary.length; i++) {
++          bytes[i] = binary.charCodeAt(i);
++        }
++        challenge = bytes.buffer;
++      }
++      return {
++        ...opts,
++        challenge,
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === "function") {
++        return credential.toJSON();
++      }
++      const bufferToBase64Url = (buf) => {
++        if (!buf) return null;
++        const bin = String.fromCharCode(...new Uint8Array(buf));
++        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
++      };
++      return {
++        id: credential.id,
++        rawId: bufferToBase64Url(credential.rawId),
++        response: {
++          authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
++          clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
++          signature: bufferToBase64Url(credential.response.signature),
++          userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null,
++        },
++        type: credential.type,
++        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
++        authenticatorAttachment: credential.authenticatorAttachment || null,
++      };
++    }
++
++    async function verifyCredential(credential, rpId) {
++      const encoded = serializeCredential(credential);
++      try {
++        const response = await fetch("/api/login/verify", {
++          method: "POST",
++          headers: {
++            "Content-Type": "application/json",
++          },
++          body: JSON.stringify(encoded),
++        });
++
++        if (!response.ok && response.status === 404) {
++          if (typeof PublicKeyCredential !== "undefined" && PublicKeyCredential.signalUnknownCredential) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: rpId || window.location.hostname || "localhost",
++                credentialId: encoded.id,
++              });
++            } catch (sigErr) {
++              console.error("Signal API error:", sigErr);
++            }
++          }
++          const statusEl = document.querySelector('[data-testid="auth-status"]');
++          if (statusEl) {
++            statusEl.textContent = "Credential not recognized";
++          }
++          return false;
++        }
++
++        if (response.ok) {
++          const statusEl = document.querySelector('[data-testid="auth-status"]');
++          if (statusEl) {
++            let msg = "Success";
++            try {
++              const data = await response.clone().json();
++              if (typeof data === "string") {
++                msg = data;
++              } else if (data && data.message) {
++                msg = data.message;
++              } else if (data && data.status) {
++                msg = data.status;
++              }
++            } catch (_) {
++              try {
++                const text = await response.clone().text();
++                if (text) msg = text;
++              } catch (_) {}
++            }
++            statusEl.textContent = msg;
++          }
++          return true;
++        } else {
++          const statusEl = document.querySelector('[data-testid="auth-status"]');
++          if (statusEl) {
++            statusEl.textContent = "Authentication failed";
++          }
++          return false;
++        }
++      } catch (serverErr) {
++        console.error("Verification request error:", serverErr);
++        const statusEl = document.querySelector('[data-testid="auth-status"]');
++        if (statusEl) {
++          statusEl.textContent = "Error connecting to server";
++        }
++        return false;
++      }
++    }
++
++    async function initializeConditionalAutofill() {
++      let isConditionalAvailable = false;
++      if (typeof PublicKeyCredential !== "undefined") {
++        if (typeof PublicKeyCredential.getClientCapabilities === "function") {
++          try {
++            const capabilities = await PublicKeyCredential.getClientCapabilities();
++            isConditionalAvailable = capabilities && capabilities.conditionalGet === true;
++          } catch (_) {}
++        } else if (typeof PublicKeyCredential.isConditionalMediationAvailable === "function") {
++          try {
++            isConditionalAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
++          } catch (_) {}
++        }
++      }
++
++      if (!isConditionalAvailable) {
++        return;
++      }
++
++      try {
++        const loginOptionsJSON = await optionsFetch();
++        const publicKey = parseRequestOptions(loginOptionsJSON);
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++          mediation: "conditional",
++        });
++
++        if (credential) {
++          await verifyCredential(credential, publicKey.rpId);
++        }
++      } catch (err) {
++        if (["NotAllowedError", "AbortError"].includes(err.name)) {
++          return;
++        }
++        console.error("Unexpected conditional get error:", err);
++      }
++    }
++
++    async function triggerButtonAuthentication() {
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      let loginOptionsJSON;
++      let publicKey;
++      try {
++        loginOptionsJSON = await optionsFetch();
++        publicKey = parseRequestOptions(loginOptionsJSON);
++      } catch (e) {
++        console.error("Error obtaining login options:", e);
++        return;
++      }
++
++      let credential;
++      try {
++        credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++        });
++      } catch (err) {
++        if (err.name === "NotAllowedError") {
++          console.log("User cancelled passkey login.");
++        } else if (err.name === "AbortError") {
++          console.log("The authentication operation was aborted.");
++        } else {
++          console.error("Authentication error:", err);
++        }
++        initializeConditionalAutofill();
++        return;
++      }
++
++      if (credential) {
++        await verifyCredential(credential, publicKey.rpId);
++      }
++    }
++
++    function setup() {
++      initializeConditionalAutofill();
++
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      if (authButton) {
++        authButton.addEventListener("click", triggerButtonAuthentication);
++      }
++
++      const form = document.getElementById("signin-form");
++      if (form) {
++        form.addEventListener("submit", (e) => {
++          e.preventDefault();
++        });
++      }
++    }
++
++    if (document.readyState === "loading") {
++      window.addEventListener("DOMContentLoaded", setup);
++    } else {
++      setup();
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

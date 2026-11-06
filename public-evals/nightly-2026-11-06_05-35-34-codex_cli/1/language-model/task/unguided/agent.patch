@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,23 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .ai-section { margin-top: 32px; padding: 28px; background: white; border: 1px solid var(--secondary); border-radius: 8px; }
++    .ai-section h2 { color: var(--primary); margin-bottom: 8px; }
++    .ai-section p { margin-bottom: 12px; }
++    .ai-section label { display: block; font-weight: 600; margin-top: 16px; }
++    textarea, select { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #a68e85; border-radius: 5px; font: inherit; color: var(--text); background: white; }
++    textarea { min-height: 100px; resize: vertical; }
++    button.btn { border: 0; cursor: pointer; font: inherit; }
++    button:disabled { opacity: .5; cursor: not-allowed; }
++    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
++    .btn.secondary { background: #eee7e3; color: var(--primary); }
++    .ai-output { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 16px; padding: 16px; background: #faf7f5; border-radius: 5px; min-height: 58px; }
++    .ai-status { margin-top: 12px; font-size: .9rem; }
++    progress { width: 100%; accent-color: var(--primary); margin-top: 8px; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    @media (max-width: 600px) { .ai-section { padding: 20px; } nav { flex-wrap: wrap; gap: 10px; } nav ul { flex-wrap: wrap; gap: 8px; } nav ul li { margin-left: 0; margin-right: 10px; } }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +209,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="ai-section" aria-labelledby="barista-heading">
++      <h2 id="barista-heading">Ask the Barista</h2>
++      <p>A little coffee guidance, brewed on your device. Ask about our Maple Oat Latte or Cold Brew.</p>
++      <p>Requires a browser with built-in AI support. The first use may download a model; your questions stay on your device.</p>
++      <label for="barista-question">Your coffee question</label>
++      <textarea id="barista-question" maxlength="4000" placeholder="What makes the Cold Brew so smooth?"></textarea>
++      <div class="actions">
++        <button type="button" id="ask-the-barista" class="btn">Ask the Barista</button>
++        <button type="button" id="stop-ai" class="btn secondary" disabled>Stop</button>
++      </div>
++      <p id="ai-status" class="ai-status" role="status">Ready when you are. Model availability is checked before use.</p>
++      <progress id="model-progress" max="1" value="0" aria-label="Model download progress" hidden></progress>
++      <div id="barista-answer" class="ai-output" role="status" aria-live="polite" aria-atomic="true">Your barista’s answer will appear here.</div>
++    </section>
++
++    <section class="ai-section" aria-labelledby="sentiment-heading">
++      <h2 id="sentiment-heading">Customer Feedback Analyzer</h2>
++      <p>Turn a customer’s feedback into a sentiment score from −1 (negative) to 1 (positive), with a negative, neutral, or positive category.</p>
++      <label for="customer-feedback">Customer feedback</label>
++      <textarea id="customer-feedback" maxlength="4000" placeholder="The Maple Oat Latte was wonderfully creamy!"></textarea>
++      <button type="button" id="sentiment-btn" class="btn">Analyze feedback</button>
++      <pre id="sentiment-answer" class="ai-output" role="status" aria-live="polite">Your structured JSON result will appear here.</pre>
++    </section>
++
++    <section class="ai-section" aria-labelledby="branch-heading">
++      <h2 id="branch-heading">Conversation Branching</h2>
++      <p>Explore another question from the same conversation. A branch copies the current history; new questions go to the selected conversation.</p>
++      <label for="active-session">Active conversation</label>
++      <select id="active-session" disabled><option>No conversation yet</option></select>
++      <div class="actions">
++        <button type="button" id="clone-btn" class="btn" disabled>Branch conversation</button>
++        <button type="button" id="discard-btn" class="btn secondary" disabled>Discard conversation</button>
++        <button type="button" id="reset-ai" class="btn secondary">Clear all sessions</button>
++      </div>
++      <p id="context-usage" class="ai-status" role="status">No active context.</p>
++      <progress id="context-progress" max="1" value="0" aria-label="Active conversation context usage" hidden></progress>
++      <p id="branch-status" class="ai-status" role="status">Up to 3 conversations are kept. The least recently used inactive conversation is released when needed.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +259,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="barista.js" defer></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,57 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..f621de0 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,17 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    /* Lock page scroll while a modal dialog is open */
++    html.modal-open,
++    html:has(dialog:modal) {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -231,9 +231,27 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      const root = document.documentElement;
++
++      const lockScroll = () => {
++        // Keep layout from shifting when the scrollbar disappears
++        const scrollbarWidth = window.innerWidth - root.clientWidth;
++        root.style.paddingRight = scrollbarWidth ? `${scrollbarWidth}px` : "";
++        root.classList.add("modal-open");
++      };
++
++      const unlockScroll = () => {
++        root.classList.remove("modal-open");
++        root.style.paddingRight = "";
++      };
++
++      // "close" fires for the button, the Escape key, and form method="dialog"
++      noticeDialog.addEventListener("close", unlockScroll);
++      document.getElementById("close-notice")
++        ?.addEventListener("click", () => noticeDialog.close());
++
++      lockScroll();
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

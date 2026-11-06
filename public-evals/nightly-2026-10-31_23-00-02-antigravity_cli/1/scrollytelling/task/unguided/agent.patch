@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,167 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling Section */
++    .scrollytelling {
++      margin-top: 80px;
++      padding: 40px 0;
++      timeline-scope: --section-1, --section-2, --section-3, --section-4;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      position: relative;
++    }
++
++    #tracked {
++      display: flex;
++      flex-direction: column;
++      gap: 30vh;
++      padding-bottom: 20vh;
++    }
++
++    #tracked section {
++      min-height: 70vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border-left: 4px solid var(--accent);
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(1) {
++      view-timeline-name: --section-1;
++    }
++
++    #tracked section:nth-child(2) {
++      view-timeline-name: --section-2;
++    }
++
++    #tracked section:nth-child(3) {
++      view-timeline-name: --section-3;
++    }
++
++    #tracked section:nth-child(4) {
++      view-timeline-name: --section-4;
++    }
++
++    #tracked section .step-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    #tracked section h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    #animated {
++      position: sticky;
++      top: 90px;
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 16px;
++      padding: 20px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
++    }
++
++    @keyframes reveal {
++      from {
++        opacity: 0;
++        transform: translateY(24px) scale(0.95);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    #animated section {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      padding: 14px;
++      border-radius: 8px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      opacity: 0;
++      will-change: transform, opacity;
++      animation: reveal linear both;
++      animation-range: entry 20% cover 50%;
++    }
++
++    #animated section:nth-child(1) {
++      animation-timeline: --section-1;
++    }
++
++    #animated section:nth-child(2) {
++      animation-timeline: --section-2;
++    }
++
++    #animated section:nth-child(3) {
++      animation-timeline: --section-3;
++    }
++
++    #animated section:nth-child(4) {
++      animation-timeline: --section-4;
++    }
++
++    #animated section img {
++      width: 80px;
++      height: 80px;
++      object-fit: cover;
++      border-radius: 8px;
++      flex-shrink: 0;
++    }
++
++    #animated section h4 {
++      color: var(--primary);
++      margin-bottom: 4px;
++      font-size: 1.05rem;
++    }
++
++    #animated section p {
++      font-size: 0.85rem;
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +353,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrollytelling">
++      <div class="scrollytelling-header">
++        <h2>From Bean to Cup</h2>
++        <p>Follow the journey of our craft coffee as you scroll through each stage.</p>
++      </div>
++      <div class="scrollytelling-layout">
++        <div id="tracked">
++          <section>
++            <span class="step-badge">Step 01</span>
++            <h3>Ethical Sourcing</h3>
++            <p>We partner directly with sustainable, high-altitude farms across Colombia, Ethiopia, and Guatemala. Every Arabica cherry is hand-picked at peak ripeness to ensure exceptional sweetness and traceability from farm to roastery.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 02</span>
++            <h3>Small-Batch Roasting</h3>
++            <p>Inside our local roastery, master roasters carefully profile each origin in small batches. By balancing heat and airflow, we unlock caramelized sugars, floral aromatics, and deep chocolate undertones.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 03</span>
++            <h3>Precision Grinding</h3>
++            <p>Whole beans preserve volatile aromatics until the very last moment. We burr-grind each dose to exact micron specifications seconds before extraction for uniform particle size and vibrant clarity.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 04</span>
++            <h3>Artisanal Brewing</h3>
++            <p>Whether pulled as a velvety espresso shot or hand-poured over a filter, water temperature and extraction time are calibrated to deliver a balanced, unforgettable cup every morning.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80" alt="Harvested coffee cherries and beans" loading="lazy">
++            <div>
++              <h4>1. Single-Origin Harvest</h4>
++              <p>100% specialty-grade Arabica grown at 1,800m+ elevation.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" alt="Small-batch coffee roasting" loading="lazy">
++            <div>
++              <h4>2. Drum Roasted Daily</h4>
++              <p>Slow-roasted to highlight origin-specific tasting notes.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=400&q=80" alt="Freshly ground coffee" loading="lazy">
++            <div>
++              <h4>3. Freshly Burr-Ground</h4>
++              <p>Dialed-in grind size for optimal flavor extraction.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=400&q=80" alt="Barista pouring latte art" loading="lazy">
++            <div>
++              <h4>4. Crafted to Perfection</h4>
++              <p>Served fresh in our café or delivered straight to your door.</p>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

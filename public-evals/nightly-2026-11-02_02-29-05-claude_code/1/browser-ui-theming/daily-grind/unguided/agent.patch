@@ -1,0 +1,457 @@
+diff --git a/index.html b/index.html
+index 66c9173..cd621dd 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,12 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Tell the browser to render built-in UI (pickers, scrollbars, popups) in light mode,
++         and tint native checkboxes, radios, sliders and progress bars with the brand color. */
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
+     }
+ 
+     * {
+@@ -25,6 +31,42 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      caret-color: var(--primary);
++    }
++
++    /* Native browser UI: text selection */
++    ::selection {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    /* Native browser UI: scrollbars (WebKit fallback; standard scrollbar-color is set on :root) */
++    ::-webkit-scrollbar {
++      width: 12px;
++      height: 12px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background: var(--text);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--secondary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
+     }
+ 
+     /* Navigation */
+@@ -135,6 +177,276 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites + Customize side by side */
++    .menu-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
++      gap: 40px;
++      align-items: start;
++    }
++
++    .menu-layout h2 {
++      text-align: center;
++    }
++
++    .menu-layout .grid {
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++    }
++
++    @media (max-width: 860px) {
++      .menu-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Order customization form (native controls, themed) */
++    .customize {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .customize fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px 16px 16px;
++      margin-bottom: 16px;
++    }
++
++    .customize legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 6px;
++    }
++
++    .customize .field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      margin-bottom: 14px;
++    }
++
++    .customize .field:last-child {
++      margin-bottom: 0;
++    }
++
++    .customize label,
++    .customize .label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .customize .row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    .customize .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px 16px;
++    }
++
++    .customize .choices label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: normal;
++      cursor: pointer;
++    }
++
++    .customize input[type="radio"],
++    .customize input[type="checkbox"] {
++      width: 1.1em;
++      height: 1.1em;
++      cursor: pointer;
++    }
++
++    .customize input:is([type="text"], [type="number"], [type="date"], [type="time"]),
++    .customize select,
++    .customize textarea {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 10px;
++      width: 100%;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .customize input:is([type="text"], [type="number"], [type="date"], [type="time"]):hover,
++    .customize select:hover,
++    .customize textarea:hover {
++      border-color: var(--primary);
++    }
++
++    .customize input:is([type="text"], [type="number"], [type="date"], [type="time"]):focus-visible,
++    .customize select:focus-visible,
++    .customize textarea:focus-visible {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.5);
++    }
++
++    .customize textarea {
++      resize: vertical;
++      min-height: 4.5em;
++    }
++
++    .customize ::placeholder {
++      color: #8d6e63;
++      opacity: 1;
++    }
++
++    .customize input[type="range"] {
++      width: 100%;
++      cursor: pointer;
++    }
++
++    .customize output {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .customize .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    /* Built-in date/time picker trigger icons */
++    .customize ::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      border-radius: 3px;
++      padding: 2px;
++    }
++
++    .customize ::-webkit-calendar-picker-indicator:hover {
++      background-color: var(--secondary);
++    }
++
++    /* Built-in color picker swatch */
++    .customize input[type="color"] {
++      width: 3rem;
++      height: 2.25rem;
++      padding: 2px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      cursor: pointer;
++    }
++
++    .customize input[type="color"]::-webkit-color-swatch-wrapper {
++      padding: 0;
++    }
++
++    .customize input[type="color"]::-webkit-color-swatch {
++      border: none;
++      border-radius: 3px;
++    }
++
++    .customize input[type="color"]::-moz-color-swatch {
++      border: none;
++      border-radius: 3px;
++    }
++
++    .customize .color-field {
++      flex-direction: row;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .customize progress {
++      width: 100%;
++      height: 10px;
++    }
++
++    /* Native select dropdown arrow, drawn with CSS on the native control */
++    .customize select {
++      appearance: none;
++      cursor: pointer;
++      padding-right: 32px;
++      background-image: linear-gradient(45deg, transparent 50%, var(--primary) 50%),
++        linear-gradient(135deg, var(--primary) 50%, transparent 50%);
++      background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
++      background-size: 5px 5px;
++      background-repeat: no-repeat;
++    }
++
++    /* Where supported, style the select's own built-in picker popup as well */
++    @supports (appearance: base-select) {
++      .customize select,
++      .customize select::picker(select) {
++        appearance: base-select;
++      }
++
++      .customize select {
++        background-image: none;
++        padding-right: 10px;
++      }
++
++      .customize select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .customize select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .customize select::picker(select) {
++        border: 1px solid var(--primary);
++        border-radius: 6px;
++        background: white;
++        box-shadow: 0 6px 16px rgba(62, 39, 35, 0.2);
++        margin-top: 4px;
++        padding: 4px 0;
++      }
++
++      .customize option {
++        padding: 6px 12px;
++        color: var(--text);
++      }
++
++      .customize option:hover,
++      .customize option:focus-visible {
++        background: var(--secondary);
++        outline: none;
++      }
++
++      .customize option:checked {
++        background: var(--primary);
++        color: white;
++      }
++
++      .customize option::checkmark {
++        color: var(--accent);
++      }
++    }
++
++    .customize .actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .customize button {
++      font: inherit;
++      border: none;
++      cursor: pointer;
++    }
++
++    .customize button[type="reset"] {
++      background: none;
++      color: var(--primary);
++      text-decoration: underline;
++      margin-top: 15px;
++      padding: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -174,9 +486,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container menu-layout">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +507,107 @@
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Customize Your Order</h2>
++      <form class="customize" action="/order-online" method="post"
++        oninput="strengthOut.value = strength.value; shotsOut.value = shots.value; document.getElementById('shotsMeter').value = shots.value"
++        onreset="document.getElementById('shotsMeter').value = 2">
++        <fieldset>
++          <legend>Your Drink</legend>
++          <div class="field">
++            <label for="drink">Drink</label>
++            <select id="drink" name="drink">
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="house-drip">House Drip</option>
++            </select>
++          </div>
++
++          <div class="field">
++            <span id="size-label" class="label">Size</span>
++            <div class="choices" role="radiogroup" aria-labelledby="size-label">
++              <label><input type="radio" name="size" value="small"> Small</label>
++              <label><input type="radio" name="size" value="medium" checked> Medium</label>
++              <label><input type="radio" name="size" value="large"> Large</label>
++            </div>
++          </div>
++
++          <div class="row">
++            <div class="field">
++              <label for="milk">Milk</label>
++              <input type="text" id="milk" name="milk" list="milk-options" placeholder="e.g. Oat">
++              <datalist id="milk-options">
++                <option value="Whole"></option>
++                <option value="Skim"></option>
++                <option value="Oat"></option>
++                <option value="Almond"></option>
++                <option value="Soy"></option>
++                <option value="None"></option>
++              </datalist>
++            </div>
++            <div class="field">
++              <label for="quantity">Quantity</label>
++              <input type="number" id="quantity" name="quantity" min="1" max="12" value="1">
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Make It Yours</legend>
++          <div class="field">
++            <label for="strength">Roast strength: <output name="strengthOut" for="strength">3</output>/5</label>
++            <input type="range" id="strength" name="strength" min="1" max="5" value="3">
++          </div>
++
++          <div class="field">
++            <label for="shots">Espresso shots: <output name="shotsOut" for="shots">2</output></label>
++            <progress id="shotsMeter" max="4" value="2" aria-hidden="true"></progress>
++            <input type="range" id="shots" name="shots" min="0" max="4" value="2">
++          </div>
++
++          <div class="field">
++            <span id="extras-label" class="label">Extras</span>
++            <div class="choices" role="group" aria-labelledby="extras-label">
++              <label><input type="checkbox" name="extras" value="whipped-cream"> Whipped cream</label>
++              <label><input type="checkbox" name="extras" value="cinnamon"> Cinnamon</label>
++              <label><input type="checkbox" name="extras" value="extra-hot"> Extra hot</label>
++              <label><input type="checkbox" name="extras" value="decaf"> Decaf</label>
++            </div>
++          </div>
++
++          <div class="field color-field">
++            <input type="color" id="sleeve" name="sleeve" value="#ffab40">
++            <label for="sleeve">Cup sleeve color</label>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Pickup</legend>
++          <div class="row">
++            <div class="field">
++              <label for="pickup-date">Date</label>
++              <input type="date" id="pickup-date" name="pickup-date">
++            </div>
++            <div class="field">
++              <label for="pickup-time">Time</label>
++              <input type="time" id="pickup-time" name="pickup-time" min="06:00" max="20:00" step="900">
++            </div>
++          </div>
++          <div class="field">
++            <label for="notes">Special instructions</label>
++            <textarea id="notes" name="notes" rows="3" placeholder="Anything the barista should know?"></textarea>
++            <span class="hint">Open 6:00 AM &ndash; 8:00 PM daily.</span>
++          </div>
++        </fieldset>
++
++        <div class="actions">
++          <button type="submit" class="btn">Add to Order</button>
++          <button type="reset">Reset</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

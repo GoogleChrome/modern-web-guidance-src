@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+index 66c9173..f3804ad 100644
+--- a/index.html
++++ b/index.html
+@@ -103,21 +103,168 @@
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-auto-rows: auto;
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
++      container: card / inline-size;
++      grid-row: span 4;
++      display: grid;
++      grid-template-rows: auto auto 1fr auto;
++      grid-template-rows: subgrid;
++      gap: 0.75rem 1.25rem;
+       background: white;
+-      padding: 20px;
++      padding: clamp(1rem, 4vw, 1.5rem);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      align-items: start;
++      overflow: clip;
++    }
++
++    .card:has(> img) {
++      grid-template-columns: minmax(110px, 38%) 1fr;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card > * {
++      grid-column: 1 / -1;
++    }
++
++    .card > img {
++      display: block;
++      grid-row: 1;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++      grid-row: 2;
++      margin-bottom: 0;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 4vw, 1.4rem);
++    }
++
++    .card a.card-link {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .card a.card-link:focus-visible {
++      outline: none;
++    }
++
++    .card:has(a.card-link) {
++      position: relative;
++      transition: box-shadow 0.2s, transform 0.2s;
++    }
++
++    .card a.card-link::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++    }
++
++    .card:has(a.card-link) :is(a:not(.card-link), button, input) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .card:has(a.card-link:focus-visible) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .card:has(a.card-link:hover) {
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++      grid-row: 3;
++    }
++
++    .card > footer {
++      grid-row: 4;
++      background: transparent;
++      padding: 0;
++      margin-top: 0;
++      align-self: end;
++    }
++
++    @supports (font-size: 1cqi) {
++      .card {
++        padding: clamp(1rem, 4cqi, 1.5rem);
++      }
++
++      .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++        font-size: clamp(1.1rem, 4cqi, 1.4rem);
++      }
++    }
++
++    .card > footer .btn {
++      margin-top: 0;
++    }
++
++    .card > footer .btn > span {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: clip;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Fallback using media queries for older browsers */
++    @media (min-width: 600px) {
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        block-size: 100%;
++        aspect-ratio: 1 / 1;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++        text-align: start;
++      }
++    }
++
++    /* Overwrite with container queries where supported */
++    @supports (container-type: inline-size) {
++      @media (min-width: 600px) {
++        .card:has(> img) > img {
++          grid-column: 1 / -1;
++          grid-row: 1;
++          block-size: auto;
++          aspect-ratio: 4 / 3;
++        }
++
++        .card:has(> img) > :not(img) {
++          grid-column: 1 / -1;
++          text-align: center;
++        }
++      }
++
++      @container (min-width: 360px) {
++        .card:has(> img) > img {
++          grid-column: 1;
++          grid-row: 1 / -1;
++          block-size: 100%;
++          aspect-ratio: 1 / 1;
++        }
++
++        .card:has(> img) > :not(img) {
++          grid-column: 2;
++          text-align: start;
++        }
++      }
+     }
+ 
+     .btn {
+@@ -178,21 +325,30 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte in a ceramic mug with latte art">
++          <h3><a href="/menu/seasonal" class="card-link">Maple Oat Latte</a></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Freshly pulled Dark Roast Espresso shot">
++          <h3><a href="/menu/espresso" class="card-link">Dark Roast Espresso</a></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced Cold Brew coffee in a tall glass">
++          <h3><a href="/menu/cold-brew" class="card-link">Cold Brew</a></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..35e06bc 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      scroll-target-group: auto;
+     }
+ 
+     nav ul li {
+@@ -66,6 +67,17 @@
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, .is-current) {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
++    #home, #menu {
++      scroll-margin-top: var(--nav-height, 80px);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,10 +169,11 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#home">Home</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -168,14 +181,14 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +220,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const navigation = document.querySelector('nav');
++    const links = [...navigation.querySelectorAll('a[href^="#"]')];
++    const sections = links.map(link => document.querySelector(link.hash));
++    const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++      CSS.supports('selector(:target-current)');
++
++    function markCurrent(currentLink) {
++      links.forEach(link => {
++        const isCurrent = link === currentLink;
++        link.classList.toggle('is-current', !nativeTracking && isCurrent);
++        if (isCurrent) {
++          link.setAttribute('aria-current', 'location');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    }
++
++    function syncCurrent() {
++      if (nativeTracking) {
++        markCurrent(navigation.querySelector('a:target-current'));
++        return;
++      }
++
++      // Choose the section occupying the most space below the sticky navigation.
++      const top = navigation.getBoundingClientRect().bottom;
++      let currentIndex = -1;
++      let largestVisibleArea = 0;
++      sections.forEach((section, index) => {
++        const rect = section.getBoundingClientRect();
++        const visibleArea = Math.max(0,
++          Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, top));
++        if (visibleArea > largestVisibleArea) {
++          largestVisibleArea = visibleArea;
++          currentIndex = index;
++        }
++      });
++      markCurrent(links[currentIndex]);
++    }
++
++    let pendingFrame = false;
++    function scheduleSync() {
++      if (pendingFrame) return;
++      pendingFrame = true;
++      requestAnimationFrame(() => {
++        pendingFrame = false;
++        syncCurrent();
++      });
++    }
++
++    // Keep anchor targets below the navigation even when its height changes.
++    const resizeObserver = new ResizeObserver(() => {
++      document.documentElement.style.setProperty('--nav-height',
++        `${navigation.getBoundingClientRect().height + 16}px`);
++      scheduleSync();
++    });
++    resizeObserver.observe(navigation);
++
++    if (!nativeTracking) {
++      const observer = new IntersectionObserver(scheduleSync, {
++        threshold: [0, 0.25, 0.5, 0.75, 1]
++      });
++      sections.forEach(section => observer.observe(section));
++    }
++
++    document.addEventListener('scroll', scheduleSync, { passive: true });
++    document.addEventListener('scrollend', scheduleSync);
++    window.addEventListener('resize', scheduleSync);
++    window.addEventListener('pageshow', scheduleSync);
++    scheduleSync();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,91 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter Signup */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 28px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.2rem;
++    }
++
++    .newsletter p.newsletter-subtitle {
++      font-size: 0.9rem;
++      margin-bottom: 14px;
++      color: var(--text);
++    }
++
++    .newsletter-form {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .newsletter-form input[type="email"] {
++      flex: 1 1 240px;
++      padding: 10px 14px;
++      border: 2px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      background-color: white;
++      color: var(--text);
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    .newsletter-form input[type="email"]:user-invalid,
++    .newsletter-form input[type="email"].is-invalid {
++      border-color: #d32f2f;
++      background-color: #ffebee;
++      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
++    }
++
++    .newsletter-form input[type="email"]:focus:not(.is-invalid) {
++      border-color: var(--primary);
++      background-color: white;
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .newsletter-form .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++    }
++
++    .newsletter-error {
++      flex-basis: 100%;
++      color: #d32f2f;
++      font-size: 0.85rem;
++      margin-top: 4px;
++      display: none;
++    }
++
++    .newsletter-form input[type="email"]:user-invalid:not(:focus) ~ .newsletter-error,
++    .newsletter-form input[type="email"].is-invalid ~ .newsletter-error {
++      display: block;
++    }
++
++    .newsletter-success {
++      flex-basis: 100%;
++      color: #2e7d32;
++      font-size: 0.85rem;
++      margin-top: 4px;
++      display: none;
++    }
++
++    .newsletter-success.is-visible {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +280,30 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <div class="newsletter">
++      <h3>Subscribe to Our Newsletter</h3>
++      <p class="newsletter-subtitle">Get fresh brew tips and exclusive seasonal offers straight to your inbox.</p>
++      <form class="newsletter-form" id="newsletter-form" novalidate>
++        <input
++          type="email"
++          id="newsletter-email"
++          name="email"
++          placeholder="Enter your email address"
++          aria-label="Email address"
++          aria-describedby="newsletter-error"
++          required
++        >
++        <button type="submit" class="btn">Subscribe</button>
++        <p id="newsletter-error" class="newsletter-error" role="alert" aria-live="polite">
++          Please enter a valid email address.
++        </p>
++        <p id="newsletter-success" class="newsletter-success" aria-live="polite">
++          Thanks for subscribing!
++        </p>
++      </form>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +311,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const successMsg = document.getElementById('newsletter-success');
++
++      function isValidEmail(value) {
++        return emailInput.checkValidity() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
++      }
++
++      function validateOnBlur() {
++        const value = emailInput.value.trim();
++        if (value !== '' && !isValidEmail(value)) {
++          emailInput.classList.add('is-invalid');
++          emailInput.setAttribute('aria-invalid', 'true');
++          return false;
++        }
++        emailInput.classList.remove('is-invalid');
++        emailInput.removeAttribute('aria-invalid');
++        return value !== '';
++      }
++
++      emailInput.addEventListener('input', function () {
++        emailInput.classList.remove('is-invalid');
++        emailInput.removeAttribute('aria-invalid');
++        successMsg.classList.remove('is-visible');
++      });
++
++      emailInput.addEventListener('blur', function () {
++        validateOnBlur();
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const value = emailInput.value.trim();
++        if (value === '' || !isValidEmail(value)) {
++          emailInput.classList.add('is-invalid');
++          emailInput.setAttribute('aria-invalid', 'true');
++          successMsg.classList.remove('is-visible');
++          return;
++        }
++        emailInput.classList.remove('is-invalid');
++        emailInput.removeAttribute('aria-invalid');
++        successMsg.classList.add('is-visible');
++        form.reset();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

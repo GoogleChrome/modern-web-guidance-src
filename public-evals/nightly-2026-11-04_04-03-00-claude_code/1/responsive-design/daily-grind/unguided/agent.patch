@@ -1,0 +1,464 @@
+diff --git a/index.html b/index.html
+index 66c9173..90a66aa 100644
+--- a/index.html
++++ b/index.html
+@@ -27,42 +27,66 @@
+       background-color: var(--light);
+     }
+ 
++    /* Fluid type scale (viewport-driven fallbacks) */
++    :root {
++      --step--1: clamp(0.8rem, 0.77rem + 0.15vw, 0.9rem);
++      --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
++      --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
++      --step-2: clamp(1.5rem, 1.3rem + 1vw, 2.25rem);
++      --space-s: clamp(0.75rem, 0.65rem + 0.5vw, 1.125rem);
++      --space-m: clamp(1rem, 0.8rem + 1vw, 1.75rem);
++      --space-l: clamp(2rem, 1.5rem + 2.5vw, 4rem);
++      --radius: clamp(6px, 0.4rem + 0.4vw, 12px);
++    }
++
++    body {
++      font-size: var(--step-0);
++    }
++
++    img {
++      display: block;
++      max-width: 100%;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.75rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.5rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.1rem, 1rem + 0.6vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.35rem clamp(0.75rem, 0.4rem + 1vw, 1.25rem);
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: var(--step--1);
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -72,77 +96,272 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    @media (max-width: 540px) {
++      nav {
++        justify-content: center;
++        text-align: center;
++      }
++
++      nav ul {
++        justify-content: center;
++      }
++    }
++
++    /* Hero Section
++       The <header> is the size container; the inner wrapper responds to it. */
+     .hero {
+-      height: 60vh;
++      container: hero / inline-size;
++      min-height: clamp(22rem, 60vh, 44rem);
++      min-height: clamp(22rem, 60svh, 44rem);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        image-set(url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=75') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=75') 2x);
+       background-size: cover;
+       background-position: center;
+       display: flex;
++      color: white;
++    }
++
++    @media (min-width: 900px) {
++      .hero {
++        background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++          image-set(url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=75') 1x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=2400&q=75') 2x);
++      }
++    }
++
++    .hero-inner {
++      flex: 1;
++      display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
+       text-align: center;
+-      padding: 0 20px;
++      gap: 0.5rem;
++      padding: var(--space-l) 5%;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 1.4rem + 3vw, 3.75rem);
++      line-height: 1.1;
++      text-wrap: balance;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero p {
++      font-size: var(--step-1);
++      max-width: 40ch;
++      text-wrap: balance;
++    }
++
++    @supports (container-type: inline-size) {
++      .hero h1 {
++        font-size: clamp(2rem, 1.25rem + 5cqi, 4rem);
++      }
++
++      .hero p {
++        font-size: clamp(1rem, 0.85rem + 1.2cqi, 1.5rem);
++      }
++    }
++
++    @container hero (max-width: 480px) {
++      .hero-inner {
++        padding-inline: 1.25rem;
++      }
++
++      .hero .btn {
++        align-self: stretch;
++        text-align: center;
++      }
++    }
++
++    @container hero (min-width: 1000px) {
++      .hero-inner {
++        align-items: flex-start;
++        text-align: left;
++        padding-inline: max(5%, calc((100cqi - 1100px) / 2 + 20px));
++      }
++
++      .hero h1 {
++        max-width: 14ch;
++      }
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: var(--space-l) auto;
++      padding: 0 clamp(1rem, 4vw, 20px);
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: var(--step-2);
++      line-height: 1.2;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
++      gap: var(--space-m);
++      margin-top: var(--space-m);
++    }
++
++    /* Each grid cell is a container so cards adapt to their own width */
++    .card-wrap {
++      container: card / inline-size;
++      display: flex;
+     }
+ 
+     .card {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
++      border-radius: var(--radius);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
++    }
++
++    .card-media {
++      aspect-ratio: 4 / 3;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.04);
++    }
++
++    .card-body {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 1rem 1.25rem 1.25rem;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 0.5rem;
+       color: var(--primary);
++      font-size: var(--step-1);
++      line-height: 1.25;
++    }
++
++    .card p {
++      font-size: var(--step-0);
++    }
++
++    .card .btn {
++      margin-top: auto;
++    }
++
++    .card-body > p {
++      margin-bottom: 15px;
++    }
++
++    @supports (container-type: inline-size) {
++      .card h3 {
++        font-size: clamp(1.1rem, 0.9rem + 2.5cqi, 1.6rem);
++      }
++
++      .card p {
++        font-size: clamp(0.92rem, 0.85rem + 0.8cqi, 1.1rem);
++      }
++    }
++
++    /* Narrow card (e.g. small phones): squarer media, tighter padding */
++    @container card (max-width: 300px) {
++      .card-media {
++        aspect-ratio: 1 / 1;
++      }
++
++      .card-body {
++        padding: 0.85rem 1rem 1rem;
++      }
++
++      .card .btn {
++        align-self: stretch;
++      }
++    }
++
++    /* Mid-width card (one column on tablets): cinematic media */
++    @container card (min-width: 420px) {
++      .card-media {
++        aspect-ratio: 16 / 9;
++      }
++    }
++
++    /* Wide card: switch to a horizontal media + text layout */
++    @container card (min-width: 560px) {
++      .card {
++        flex-direction: row;
++        text-align: left;
++      }
++
++      .card-media {
++        position: relative;
++        flex: 0 0 42%;
++        aspect-ratio: auto;
++        min-height: 12rem;
++      }
++
++      .card-media img {
++        position: absolute;
++        inset: 0;
++      }
++
++      .card-body {
++        align-items: flex-start;
++        justify-content: center;
++        padding: 1.5rem 1.75rem;
++      }
++
++      .card .btn {
++        margin-top: 0;
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 0.65em 1.4em;
++      font-size: var(--step--1);
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: var(--space-l) 20px;
++      margin-top: var(--space-l);
++      font-size: var(--step--1);
+     }
+ 
+     .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.25rem 0;
+       margin-bottom: 20px;
+     }
+ 
+@@ -150,7 +369,14 @@
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        transition: none !important;
++      }
+     }
+   </style>
+ </head>
+@@ -169,29 +395,61 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-inner">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-wrap">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=75"
++                srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=75 400w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=960&q=75 960w, https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1280&q=75 1280w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 45vw, 100vw"
++                width="640" height="480" loading="lazy" decoding="async" alt="Latte art being poured into a white cup">
++            </div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-wrap">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&q=75"
++                srcset="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=400&q=75 400w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=960&q=75 960w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=1280&q=75 1280w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 45vw, 100vw"
++                width="640" height="480" loading="lazy" decoding="async" alt="A cup of espresso with golden crema on a dark table">
++            </div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-wrap">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=75"
++                srcset="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&q=75 400w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=960&q=75 960w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1280&q=75 1280w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 45vw, 100vw"
++                width="640" height="480" loading="lazy" decoding="async" alt="A tall glass of iced cold brew swirled with cream">
++            </div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+       </div>
+     </section>

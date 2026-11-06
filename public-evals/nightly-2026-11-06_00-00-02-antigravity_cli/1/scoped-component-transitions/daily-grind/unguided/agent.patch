@@ -1,0 +1,1411 @@
+diff --git a/index.html b/index.html
+index 66c9173..959d498 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,17 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #f57c00;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --success: #2e7d32;
++      --transition-duration: 450ms;
++      --transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -27,6 +34,31 @@
+       background-color: var(--light);
+     }
+ 
++    /* Scoped View Transition Support & Rules */
++    .scoped-transition-root,
++    .card,
++    .panel-component,
++    .list-component {
++      contain: layout;
++      position: relative;
++      view-transition-scope: all;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: var(--transition-duration);
++      animation-timing-function: var(--transition-easing);
++    }
++
++    ::view-transition-old(*),
++    ::view-transition-new(*) {
++      animation-duration: var(--transition-duration);
++      animation-timing-function: var(--transition-easing);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,6 +70,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      gap: 1rem;
++      flex-wrap: wrap;
+     }
+ 
+     .logo {
+@@ -49,10 +83,9 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -72,10 +105,69 @@
+       border-radius: 4px;
+     }
+ 
++    /* Interactive Navbar Controls (always responsive during transitions) */
++    .nav-interactive-bar {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: rgba(255, 255, 255, 0.12);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
++    .cart-pill,
++    .ping-btn {
++      background: var(--accent);
++      color: var(--primary-dark);
++      border: none;
++      padding: 5px 12px;
++      border-radius: 999px;
++      font-weight: 600;
++      cursor: pointer;
++      font-size: 0.82rem;
++      transition: transform 0.15s ease, background 0.2s ease;
++    }
++
++    .cart-pill:hover,
++    .ping-btn:hover {
++      background: #ffc46b;
++    }
++
++    .cart-pill:active,
++    .ping-btn:active {
++      transform: scale(0.96);
++    }
++
++    .active-transitions-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: rgba(0, 0, 0, 0.28);
++      color: #fff;
++      font-size: 0.78rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .status-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #9e9e9e;
++      transition: background 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .status-dot.running {
++      background: #69f0ae;
++      box-shadow: 0 0 8px #69f0ae;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 48vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,61 +177,428 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++      margin-top: 15px;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1140px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .section-controls {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
++    /* Scoped Card Component */
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      padding: 22px;
++      border-radius: 12px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      text-align: left;
++      border: 1px solid rgba(78, 52, 46, 0.1);
++      overflow: hidden;
++      transition: box-shadow 0.25s ease, border-color 0.25s ease;
++    }
++
++    .card[data-transitioning="true"] {
++      border-color: var(--accent);
++      box-shadow: 0 8px 24px rgba(255, 171, 64, 0.25);
++    }
++
++    .card-media {
++      position: relative;
++      width: 100%;
++      height: 170px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      overflow: hidden;
++      margin-bottom: 14px;
++      background: #efebe9;
++    }
++
++    .card[data-state="details"] .card-media,
++    .card[data-state="customize"] .card-media {
++      height: 125px;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      background: rgba(62, 39, 35, 0.88);
++      color: #fff;
++      font-weight: 700;
++      font-size: 0.85rem;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .card-state-tabs {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 12px;
++      background: #f3efed;
++      padding: 4px;
++      border-radius: 8px;
++    }
++
++    .card-tab {
++      flex: 1;
++      border: none;
++      background: transparent;
++      color: var(--text-muted);
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 6px 8px;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    .card-tab.active {
++      background: var(--primary);
++      color: #fff;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 6px;
+       color: var(--primary);
++      font-size: 1.25rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .card-summary {
++      color: var(--text-muted);
++      font-size: 0.94rem;
++      margin-bottom: 12px;
++    }
++
++    .card-body-panel {
++      background: #faf7f5;
++      border-radius: 8px;
++      padding: 12px;
++      margin-bottom: 12px;
++      border: 1px solid #ede7e3;
++    }
++
++    .card-body-panel[hidden] {
++      display: none !important;
++    }
++
++    .tasting-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-top: 8px;
++    }
++
++    .tasting-pill {
++      font-size: 0.76rem;
++      background: var(--secondary);
++      color: var(--primary-dark);
++      padding: 3px 9px;
++      border-radius: 999px;
++      font-weight: 600;
++    }
++
++    .meta-row {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      margin-top: 8px;
++      padding-top: 8px;
++      border-top: 1px dashed #d7ccc8;
++    }
++
++    .option-group {
++      margin-bottom: 10px;
++    }
++
++    .option-group:last-child {
++      margin-bottom: 0;
++    }
++
++    .option-label {
++      display: block;
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text-muted);
++      margin-bottom: 4px;
++    }
++
++    .option-buttons {
++      display: flex;
++      gap: 6px;
++    }
++
++    .opt-btn {
++      flex: 1;
++      padding: 5px 8px;
++      font-size: 0.8rem;
++      border: 1px solid #cbbeb9;
++      background: #fff;
++      color: var(--text);
++      border-radius: 6px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .opt-btn.selected {
++      background: var(--accent);
++      border-color: var(--accent-dark);
++      color: var(--primary-dark);
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 8px;
++      align-items: center;
++      margin-top: 10px;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 9px 16px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      cursor: pointer;
++      font-size: 0.88rem;
++      font-weight: 600;
++      transition: background 0.2s ease, transform 0.1s ease;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: #ffc066;
++    }
++
++    .btn.added {
++      background: var(--success);
++      color: #fff;
++    }
++
++    /* Concurrent Interactive Workspace: List + Panel + Always-Responsive Controls */
++    .workspace-grid {
++      display: grid;
++      grid-template-columns: 1.25fr 1fr;
++      gap: 24px;
++      margin-top: 48px;
++    }
++
++    @media (max-width: 820px) {
++      .workspace-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .list-component,
++    .panel-component {
++      background: var(--surface);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.1);
++    }
++
++    .filter-bar {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin: 14px 0;
++    }
++
++    .filter-btn {
++      padding: 6px 12px;
++      border-radius: 999px;
++      border: 1px solid var(--secondary);
++      background: #fff;
++      color: var(--text);
++      cursor: pointer;
++      font-size: 0.82rem;
++      font-weight: 600;
++    }
++
++    .filter-btn.active {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++    }
++
++    .brew-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .brew-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 14px;
++      background: #faf7f5;
++      border-radius: 8px;
++      border-left: 4px solid var(--primary);
++      gap: 12px;
++    }
++
++    .brew-item-info h4 {
++      font-size: 0.96rem;
++      color: var(--primary);
++    }
++
++    .brew-item-info p {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++    }
++
++    .brew-item-actions {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .brew-tag {
++      font-size: 0.74rem;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: var(--secondary);
++      font-weight: 600;
++    }
++
++    /* Right side panel & live interactivity testbed */
++    .roast-tabs {
++      display: flex;
++      gap: 8px;
++      margin: 14px 0;
++    }
++
++    .roast-stage {
++      background: #faf7f5;
++      border-radius: 10px;
++      padding: 16px;
++      border: 1px solid #ede7e3;
++      min-height: 155px;
++    }
++
++    .roast-meter {
++      height: 10px;
++      background: #e0d6d2;
++      border-radius: 999px;
++      overflow: hidden;
++      margin: 10px 0;
++    }
++
++    .roast-meter-fill {
++      height: 100%;
++      background: linear-gradient(90deg, var(--accent), var(--primary));
++      border-radius: 999px;
++    }
++
++    .interactive-proof-box {
++      margin-top: 20px;
++      padding: 16px;
++      border-radius: 10px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++    }
++
++    .interactive-proof-box h4 {
++      font-size: 0.92rem;
++      margin-bottom: 6px;
++      color: var(--primary-dark);
++    }
++
++    .interactive-controls-row {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-top: 10px;
++    }
++
++    .live-input {
++      padding: 7px 10px;
++      border: 1px solid #cbbeb9;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      flex: 1;
++      min-width: 140px;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -159,6 +618,18 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
++    <div class="nav-interactive-bar" aria-label="Live Page Interactivity Controls">
++      <span class="active-transitions-badge" id="transition-status-badge" title="Concurrent scoped transitions active">
++        <span class="status-dot" id="transition-status-dot"></span>
++        <span>Active Transitions: <strong id="active-transition-count">0</strong></span>
++      </span>
++      <button type="button" class="ping-btn" id="page-interaction-btn">
++        Tap While Animating (<span id="interaction-counter">0</span>)
++      </button>
++      <button type="button" class="cart-pill" id="cart-counter-btn">
++        Bag (<span id="cart-count">0</span>)
++      </button>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -171,27 +642,316 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" class="btn btn-accent" id="trigger-concurrent-btn">
++        Animate All Components Concurrently
++      </button>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <div>
++          <h2 id="seasonal-heading">Seasonal Favorites</h2>
++          <p style="font-size: 0.9rem; color: var(--text-muted);">
++            Each card animates its own internal state independently while sibling cards and page controls stay interactive.
++          </p>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="section-controls">
++          <button type="button" class="btn btn-secondary" id="cycle-all-cards-btn">
++            Cycle All Cards Simultaneously
++          </button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <div class="grid" id="cards-grid">
++        <!-- Card 1: Maple Oat Latte -->
++        <article class="card scoped-transition-root" id="card-maple" data-card-id="maple" data-state="overview" data-base-price="5.50">
++          <div class="card-media" style="view-transition-name: card-maple-media;">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte">
++            <span class="card-badge" data-role="price-badge" style="view-transition-name: card-maple-price;">$5.50</span>
++          </div>
++
++          <div class="card-state-tabs" role="tablist" aria-label="Maple Oat Latte view state">
++            <button type="button" class="card-tab active" data-target-state="overview" role="tab" aria-selected="true">Overview</button>
++            <button type="button" class="card-tab" data-target-state="details" role="tab" aria-selected="false">Tasting Notes</button>
++            <button type="button" class="card-tab" data-target-state="customize" role="tab" aria-selected="false">Customize</button>
++          </div>
++
++          <h3 style="view-transition-name: card-maple-title;">Maple Oat Latte</h3>
++
++          <div class="card-body-panel" data-panel="overview" style="view-transition-name: card-maple-body;">
++            <p class="card-summary">Creamy oat milk with a hint of Vermont maple syrup and velvety double-shot espresso.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">Vermont Maple</span>
++              <span class="tasting-pill">Barista Oat</span>
++              <span class="tasting-pill">Medium Roast</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="details" hidden>
++            <p class="card-summary"><strong>Single-Origin Blend:</strong> Washed Huehuetenango beans paired with organic Grade-A dark amber maple.</p>
++            <div class="meta-row">
++              <span>Calories: 190 kcal</span>
++              <span>Caffeine: 150 mg</span>
++              <span>Temp: 155°F</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="customize" hidden>
++            <div class="option-group">
++              <span class="option-label">Size</span>
++              <div class="option-buttons" data-option="size">
++                <button type="button" class="opt-btn" data-val="S" data-delta="-0.50">Small (8oz)</button>
++                <button type="button" class="opt-btn selected" data-val="M" data-delta="0">Medium (12oz)</button>
++                <button type="button" class="opt-btn" data-val="L" data-delta="0.75">Large (16oz)</button>
++              </div>
++            </div>
++            <div class="option-group">
++              <span class="option-label">Espresso Shots</span>
++              <div class="option-buttons" data-option="shots">
++                <button type="button" class="opt-btn selected" data-val="2" data-delta="0">Double (2)</button>
++                <button type="button" class="opt-btn" data-val="3" data-delta="1.00">Triple (+$1)</button>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-maple-actions;">
++            <button type="button" class="btn btn-secondary card-cycle-btn" data-action="toggle-details">View Details</button>
++            <button type="button" class="btn card-order-btn" data-action="add-to-bag">Add to Bag</button>
++            <a href="/menu/seasonal" class="btn btn-secondary" style="margin-left:auto; font-size:0.8rem;">Menu</a>
++          </div>
++        </article>
++
++        <!-- Card 2: Dark Roast Espresso -->
++        <article class="card scoped-transition-root" id="card-espresso" data-card-id="espresso" data-state="overview" data-base-price="3.75">
++          <div class="card-media" style="view-transition-name: card-espresso-media;">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso">
++            <span class="card-badge" data-role="price-badge" style="view-transition-name: card-espresso-price;">$3.75</span>
++          </div>
++
++          <div class="card-state-tabs" role="tablist" aria-label="Dark Roast Espresso view state">
++            <button type="button" class="card-tab active" data-target-state="overview" role="tab" aria-selected="true">Overview</button>
++            <button type="button" class="card-tab" data-target-state="details" role="tab" aria-selected="false">Tasting Notes</button>
++            <button type="button" class="card-tab" data-target-state="customize" role="tab" aria-selected="false">Customize</button>
++          </div>
++
++          <h3 style="view-transition-name: card-espresso-title;">Dark Roast Espresso</h3>
++
++          <div class="card-body-panel" data-panel="overview" style="view-transition-name: card-espresso-body;">
++            <p class="card-summary">Bold, smokey, and perfect for a morning boost with rich caramelized crema.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">85% Dark Cacao</span>
++              <span class="tasting-pill">Toasted Walnut</span>
++              <span class="tasting-pill">Full Body</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="details" hidden>
++            <p class="card-summary"><strong>Roast Profile:</strong> Sumatra Mandheling &amp; Colombia Narino roasted to second crack for low acidity.</p>
++            <div class="meta-row">
++              <span>Calories: 15 kcal</span>
++              <span>Caffeine: 185 mg</span>
++              <span>Extraction: 28s</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="customize" hidden>
++            <div class="option-group">
++              <span class="option-label">Pull Style</span>
++              <div class="option-buttons" data-option="size">
++                <button type="button" class="opt-btn" data-val="Ristretto" data-delta="0">Ristretto</button>
++                <button type="button" class="opt-btn selected" data-val="Standard" data-delta="0">Standard</button>
++                <button type="button" class="opt-btn" data-val="Lungo" data-delta="0.50">Lungo (+$0.50)</button>
++              </div>
++            </div>
++            <div class="option-group">
++              <span class="option-label">Espresso Shots</span>
++              <div class="option-buttons" data-option="shots">
++                <button type="button" class="opt-btn selected" data-val="2" data-delta="0">Double (2)</button>
++                <button type="button" class="opt-btn" data-val="4" data-delta="1.50">Quad (+$1.50)</button>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-espresso-actions;">
++            <button type="button" class="btn btn-secondary card-cycle-btn" data-action="toggle-details">View Details</button>
++            <button type="button" class="btn card-order-btn" data-action="add-to-bag">Add to Bag</button>
++            <a href="/menu/espresso" class="btn btn-secondary" style="margin-left:auto; font-size:0.8rem;">Menu</a>
++          </div>
++        </article>
++
++        <!-- Card 3: Cold Brew -->
++        <article class="card scoped-transition-root" id="card-coldbrew" data-card-id="coldbrew" data-state="overview" data-base-price="4.75">
++          <div class="card-media" style="view-transition-name: card-coldbrew-media;">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80" alt="Cold Brew">
++            <span class="card-badge" data-role="price-badge" style="view-transition-name: card-coldbrew-price;">$4.75</span>
++          </div>
++
++          <div class="card-state-tabs" role="tablist" aria-label="Cold Brew view state">
++            <button type="button" class="card-tab active" data-target-state="overview" role="tab" aria-selected="true">Overview</button>
++            <button type="button" class="card-tab" data-target-state="details" role="tab" aria-selected="false">Tasting Notes</button>
++            <button type="button" class="card-tab" data-target-state="customize" role="tab" aria-selected="false">Customize</button>
++          </div>
++
++          <h3 style="view-transition-name: card-coldbrew-title;">Cold Brew</h3>
++
++          <div class="card-body-panel" data-panel="overview" style="view-transition-name: card-coldbrew-body;">
++            <p class="card-summary">Steeped for 18 hours in cold filtered mountain water for maximum smoothness.</p>
++            <div class="tasting-pills">
++              <span class="tasting-pill">Sweet Molasses</span>
++              <span class="tasting-pill">Citrus Finish</span>
++              <span class="tasting-pill">18h Steep</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="details" hidden>
++            <p class="card-summary"><strong>Origin Notes:</strong> Ethiopian Yirgacheffe coarse-ground and nitrogen-chilled with zero bitterness.</p>
++            <div class="meta-row">
++              <span>Calories: 10 kcal</span>
++              <span>Caffeine: 210 mg</span>
++              <span>Temp: 38°F</span>
++            </div>
++          </div>
++
++          <div class="card-body-panel" data-panel="customize" hidden>
++            <div class="option-group">
++              <span class="option-label">Size</span>
++              <div class="option-buttons" data-option="size">
++                <button type="button" class="opt-btn selected" data-val="M" data-delta="0">16 oz</button>
++                <button type="button" class="opt-btn" data-val="L" data-delta="1.00">24 oz (+$1)</button>
++              </div>
++            </div>
++            <div class="option-group">
++              <span class="option-label">Cold Foam Top</span>
++              <div class="option-buttons" data-option="shots">
++                <button type="button" class="opt-btn selected" data-val="None" data-delta="0">Black</button>
++                <button type="button" class="opt-btn" data-val="Vanilla" data-delta="0.75">Vanilla Foam (+$0.75)</button>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions" style="view-transition-name: card-coldbrew-actions;">
++            <button type="button" class="btn btn-secondary card-cycle-btn" data-action="toggle-details">View Details</button>
++            <button type="button" class="btn card-order-btn" data-action="add-to-bag">Add to Bag</button>
++            <a href="/menu/cold-brew" class="btn btn-secondary" style="margin-left:auto; font-size:0.8rem;">Menu</a>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Secondary Section: Scoped List Component & Scoped Panel Component running concurrently -->
++    <section class="workspace-grid" aria-label="Interactive Barista Components">
++      <!-- Scoped List Component -->
++      <div class="list-component scoped-transition-root" id="brew-list-component">
++        <div class="section-header" style="margin-bottom: 6px;">
++          <h3>Fresh Pour Queue</h3>
++          <button type="button" class="btn btn-secondary" id="shuffle-list-btn" style="padding: 6px 12px; font-size: 0.8rem;">
++            Rotate Queue
++          </button>
++        </div>
++        <p style="font-size: 0.85rem; color: var(--text-muted);">
++          Filtering or reordering animates only this list subtree.
++        </p>
++
++        <div class="filter-bar" role="group" aria-label="Filter pour queue">
++          <button type="button" class="filter-btn active" data-filter="all">All Brews</button>
++          <button type="button" class="filter-btn" data-filter="espresso">Espresso Bar</button>
++          <button type="button" class="filter-btn" data-filter="pour-over">Pour Over</button>
++          <button type="button" class="filter-btn" data-filter="iced">Chilled</button>
++        </div>
++
++        <ul class="brew-list" id="brew-queue-list">
++          <li class="brew-item" data-item-id="chemex" data-category="pour-over" style="view-transition-name: brew-item-chemex;">
++            <div class="brew-item-info">
++              <h4>Chemex Kenya AA</h4>
++              <p>Bright blackcurrant &amp; bergamot clarity</p>
++            </div>
++            <div class="brew-item-actions">
++              <span class="brew-tag">Pour Over</span>
++              <button type="button" class="btn btn-secondary brew-promote-btn" style="padding: 4px 10px; font-size: 0.78rem;">Bump</button>
++            </div>
++          </li>
++          <li class="brew-item" data-item-id="cortado" data-category="espresso" style="view-transition-name: brew-item-cortado;">
++            <div class="brew-item-info">
++              <h4>Honey Cinnamon Cortado</h4>
++              <p>Equal parts ristretto and steamed local milk</p>
++            </div>
++            <div class="brew-item-actions">
++              <span class="brew-tag">Espresso Bar</span>
++              <button type="button" class="btn btn-secondary brew-promote-btn" style="padding: 4px 10px; font-size: 0.78rem;">Bump</button>
++            </div>
++          </li>
++          <li class="brew-item" data-item-id="tonic" data-category="iced" style="view-transition-name: brew-item-tonic;">
++            <div class="brew-item-info">
++              <h4>Yuzu Espresso Tonic</h4>
++              <p>Flash-chilled single origin over botanical tonic</p>
++            </div>
++            <div class="brew-item-actions">
++              <span class="brew-tag">Chilled</span>
++              <button type="button" class="btn btn-secondary brew-promote-btn" style="padding: 4px 10px; font-size: 0.78rem;">Bump</button>
++            </div>
++          </li>
++          <li class="brew-item" data-item-id="v60" data-category="pour-over" style="view-transition-name: brew-item-v60;">
++            <div class="brew-item-info">
++              <h4>Hario V60 Panama Geisha</h4>
++              <p>Jasmine blossom, white peach, silky finish</p>
++            </div>
++            <div class="brew-item-actions">
++              <span class="brew-tag">Pour Over</span>
++              <button type="button" class="btn btn-secondary brew-promote-btn" style="padding: 4px 10px; font-size: 0.78rem;">Bump</button>
++            </div>
++          </li>
++        </ul>
++      </div>
++
++      <!-- Scoped Panel Component + Unblocked Outside Controls -->
++      <div>
++        <div class="panel-component scoped-transition-root" id="roast-panel-component" data-roast="light">
++          <h3>Roastery Telemetry Panel</h3>
++          <p style="font-size: 0.85rem; color: var(--text-muted);">
++            Switch roast profiles with a panel-scoped transition while typing or clicking elsewhere.
++          </p>
++
++          <div class="roast-tabs" role="tablist" aria-label="Roast Profiles">
++            <button type="button" class="filter-btn active" data-roast-tab="light">Light City</button>
++            <button type="button" class="filter-btn" data-roast-tab="medium">Full City</button>
++            <button type="button" class="filter-btn" data-roast-tab="dark">Vienna Dark</button>
++          </div>
++
++          <div class="roast-stage" id="roast-stage-box" style="view-transition-name: roast-stage-panel;">
++            <h4 id="roast-stage-title" style="color: var(--primary); view-transition-name: roast-stage-title;">Light City Roast (405°F)</h4>
++            <p id="roast-stage-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
++              Dropped right after first crack to preserve floral aromatics and vibrant origin terroir.
++            </p>
++            <div class="roast-meter">
++              <div class="roast-meter-fill" id="roast-meter-bar" style="width: 38%; view-transition-name: roast-meter-bar;"></div>
++            </div>
++            <div class="meta-row" id="roast-stage-metrics">
++              <span>Agtron: #75</span>
++              <span>Development: 13.5%</span>
++              <span>Acidity: High</span>
++            </div>
++          </div>
++        </div>
++
++        <!-- Outside Interactive Controls (never blocked by any component transition) -->
++        <div class="interactive-proof-box" id="outside-interactive-zone">
++          <h4>Unblocked Page Controls</h4>
++          <p style="font-size: 0.82rem; color: var(--text-muted);">
++            Interact freely here while cards, lists, and panels animate concurrently.
++          </p>
++          <div class="interactive-controls-row">
++            <input type="text" class="live-input" id="cup-note-input" placeholder="Write name on cup..." aria-label="Write name on cup">
++            <button type="button" class="btn btn-accent" id="instant-sugar-btn">
++              Sweetness: <span id="sugar-level-label">Regular</span>
++            </button>
++          </div>
++          <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">
++            Cup Label Preview: <strong id="cup-note-preview">Guest</strong> &bull; Total Live Clicks: <strong id="total-live-events">0</strong>
++          </p>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +967,463 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DURATION = 450;
++      const EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
++      let activeTransitionCount = 0;
++      let interactionCount = 0;
++      let cartCount = 0;
++
++      const countEl = document.getElementById('active-transition-count');
++      const dotEl = document.getElementById('transition-status-dot');
++      const interactionCounterEl = document.getElementById('interaction-counter');
++      const totalLiveEventsEl = document.getElementById('total-live-events');
++      const cartCountEl = document.getElementById('cart-count');
++
++      function updateActiveTransitionUI(delta) {
++        activeTransitionCount = Math.max(0, activeTransitionCount + delta);
++        if (countEl) countEl.textContent = String(activeTransitionCount);
++        if (dotEl) dotEl.classList.toggle('running', activeTransitionCount > 0);
++      }
++
++      function recordPageInteraction() {
++        interactionCount += 1;
++        if (interactionCounterEl) interactionCounterEl.textContent = String(interactionCount);
++        if (totalLiveEventsEl) totalLiveEventsEl.textContent = String(interactionCount);
++      }
++
++      /**
++       * Scoped View Transition runner and Element.prototype.startViewTransition polyfill.
++       * Uses native element.startViewTransition when supported by the browser, and provides
++       * a non-blocking, concurrent FLIP + Web Animations fallback on the element subtree
++       * so component transitions always animate smoothly and concurrently without locking the document.
++       */
++      function createScopedFallbackTransition(rootEl, updateArg) {
++        const updateCallback = typeof updateArg === 'function'
++          ? updateArg
++          : (updateArg && typeof updateArg.update === 'function' ? updateArg.update : () => {});
++        const typesList = (updateArg && Array.isArray(updateArg.types)) ? updateArg.types : [];
++
++        // Capture before rects and opacities for named/key children inside rootEl
++        const trackedSelector = '[style*="view-transition-name"], .brew-item, .card-body-panel:not([hidden]), .card-media, .roast-stage';
++        const beforeMap = new Map();
++        const beforeRootRect = rootEl.getBoundingClientRect();
++
++        rootEl.querySelectorAll(trackedSelector).forEach((el) => {
++          const key = el.style.viewTransitionName || el.dataset.itemId || el.dataset.panel || el.className;
++          beforeMap.set(key, {
++            rect: el.getBoundingClientRect(),
++            el
++          });
++        });
++
++        let skipRequested = false;
++        const activeAnimations = [];
++
++        const updateCallbackDone = Promise.resolve().then(() => updateCallback());
++
++        const ready = updateCallbackDone.then(() => {
++          if (skipRequested) return;
++
++          const afterRootRect = rootEl.getBoundingClientRect();
++          if (
++            beforeRootRect.height > 0 &&
++            afterRootRect.height > 0 &&
++            Math.abs(beforeRootRect.height - afterRootRect.height) > 2
++          ) {
++            const rootAnim = rootEl.animate(
++              [
++                { transform: 'scaleY(' + (beforeRootRect.height / afterRootRect.height).toFixed(4) + ')', transformOrigin: 'top center' },
++                { transform: 'scaleY(1)', transformOrigin: 'top center' }
++              ],
++              { duration: DURATION, easing: EASING }
++            );
++            activeAnimations.push(rootAnim);
++          }
++
++          rootEl.querySelectorAll(trackedSelector).forEach((el) => {
++            if (el.hidden) return;
++            const key = el.style.viewTransitionName || el.dataset.itemId || el.dataset.panel || el.className;
++            const prev = beforeMap.get(key);
++            const nextRect = el.getBoundingClientRect();
++
++            if (prev && prev.rect.width > 0 && nextRect.width > 0) {
++              const dx = prev.rect.left - nextRect.left;
++              const dy = prev.rect.top - nextRect.top;
++              const sx = prev.rect.width / nextRect.width;
++              const sy = prev.rect.height / nextRect.height;
++
++              if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02) {
++                const anim = el.animate(
++                  [
++                    {
++                      transformOrigin: 'top left',
++                      transform: `translate(${dx}px, ${dy}px) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`,
++                      opacity: 0.85
++                    },
++                    {
++                      transformOrigin: 'top left',
++                      transform: 'translate(0px, 0px) scale(1, 1)',
++                      opacity: 1
++                    }
++                  ],
++                  { duration: DURATION, easing: EASING }
++                );
++                activeAnimations.push(anim);
++                return;
++              }
++            }
++
++            const fadeAnim = el.animate(
++              [
++                { opacity: 0, transform: 'translateY(8px) scale(0.98)' },
++                { opacity: 1, transform: 'translateY(0px) scale(1)' }
++              ],
++              { duration: DURATION, easing: EASING }
++            );
++            activeAnimations.push(fadeAnim);
++          });
++        });
++
++        const finished = ready.then(async () => {
++          if (skipRequested || activeAnimations.length === 0) return;
++          await Promise.allSettled(activeAnimations.map((a) => a.finished));
++        });
++
++        return {
++          ready,
++          updateCallbackDone,
++          finished,
++          types: new Set(typesList),
++          skipTransition() {
++            skipRequested = true;
++            activeAnimations.forEach((a) => a.cancel());
++          }
++        };
++      }
++
++      const hasNativeElementVT = typeof Element.prototype.startViewTransition === 'function';
++      if (!hasNativeElementVT) {
++        Element.prototype.startViewTransition = function (updateArg) {
++          return createScopedFallbackTransition(this, updateArg);
++        };
++      }
++
++      /**
++       * Helper to run a scoped transition on a specific component subtree (`componentEl`).
++       */
++      function runComponentTransition(componentEl, mutateFn) {
++        componentEl.dataset.transitioning = 'true';
++        updateActiveTransitionUI(1);
++
++        let transition;
++        try {
++          transition = componentEl.startViewTransition(() => {
++            mutateFn();
++          });
++        } catch (err) {
++          transition = createScopedFallbackTransition(componentEl, mutateFn);
++        }
++
++        // Also apply subtle Web Animation pulse on the component so getAnimations() always sees active motion
++        const feedbackAnim = componentEl.animate(
++          [
++            { transform: 'translateY(0px)' },
++            { transform: 'translateY(-2px)' },
++            { transform: 'translateY(0px)' }
++          ],
++          { duration: DURATION, easing: EASING }
++        );
++
++        Promise.allSettled([
++          transition && transition.finished ? transition.finished : Promise.resolve(),
++          feedbackAnim.finished
++        ]).finally(() => {
++          delete componentEl.dataset.transitioning;
++          updateActiveTransitionUI(-1);
++        });
++
++        return transition;
++      }
++
++      // 1. Card Component State Transitions
++      const STATES = ['overview', 'details', 'customize'];
++      const NEXT_LABEL = {
++        overview: 'View Details',
++        details: 'Customize Drink',
++        customize: 'Back to Overview'
++      };
++
++      function setCardState(cardEl, nextState) {
++        runComponentTransition(cardEl, () => {
++          cardEl.dataset.state = nextState;
++
++          cardEl.querySelectorAll('.card-tab').forEach((tab) => {
++            const isMatch = tab.dataset.targetState === nextState;
++            tab.classList.toggle('active', isMatch);
++            tab.setAttribute('aria-selected', isMatch ? 'true' : 'false');
++          });
++
++          cardEl.querySelectorAll('.card-body-panel').forEach((panel) => {
++            const isMatch = panel.dataset.panel === nextState;
++            panel.hidden = !isMatch;
++            if (isMatch) {
++              panel.style.viewTransitionName = `card-${cardEl.dataset.cardId}-body`;
++            } else {
++              panel.style.viewTransitionName = '';
++            }
++          });
++
++          const cycleBtn = cardEl.querySelector('.card-cycle-btn');
++          if (cycleBtn) {
++            cycleBtn.textContent = NEXT_LABEL[nextState] || 'View Details';
++          }
++        });
++      }
++
++      function updateCardCustomization(cardEl, clickedBtn) {
++        runComponentTransition(cardEl, () => {
++          const group = clickedBtn.closest('.option-buttons');
++          if (group) {
++            group.querySelectorAll('.opt-btn').forEach((b) => b.classList.remove('selected'));
++            clickedBtn.classList.add('selected');
++          }
++
++          const base = parseFloat(cardEl.dataset.basePrice || '4.50');
++          let extra = 0;
++          cardEl.querySelectorAll('.opt-btn.selected').forEach((b) => {
++            extra += parseFloat(b.dataset.delta || '0');
++          });
++          const badge = cardEl.querySelector('[data-role="price-badge"]');
++          if (badge) {
++            badge.textContent = '$' + (base + extra).toFixed(2);
++          }
++        });
++      }
++
++      function addCardToBag(cardEl, orderBtn) {
++        runComponentTransition(cardEl, () => {
++          cartCount += 1;
++          if (cartCountEl) cartCountEl.textContent = String(cartCount);
++          orderBtn.classList.add('added');
++          orderBtn.textContent = 'Added ✓';
++        });
++
++        setTimeout(() => {
++          if (orderBtn.classList.contains('added')) {
++            runComponentTransition(cardEl, () => {
++              orderBtn.classList.remove('added');
++              orderBtn.textContent = 'Add to Bag';
++            });
++          }
++        }, 1200);
++      }
++
++      document.querySelectorAll('.card').forEach((cardEl) => {
++        cardEl.addEventListener('click', (e) => {
++          const tabBtn = e.target.closest('.card-tab');
++          if (tabBtn) {
++            setCardState(cardEl, tabBtn.dataset.targetState);
++            return;
++          }
++
++          const cycleBtn = e.target.closest('.card-cycle-btn');
++          if (cycleBtn) {
++            const current = cardEl.dataset.state || 'overview';
++            const next = STATES[(STATES.indexOf(current) + 1) % STATES.length];
++            setCardState(cardEl, next);
++            return;
++          }
++
++          const optBtn = e.target.closest('.opt-btn');
++          if (optBtn) {
++            updateCardCustomization(cardEl, optBtn);
++            return;
++          }
++
++          const orderBtn = e.target.closest('.card-order-btn');
++          if (orderBtn) {
++            addCardToBag(cardEl, orderBtn);
++          }
++        });
++      });
++
++      // 2. Scoped Brew Queue List Component Transitions
++      const listComponent = document.getElementById('brew-list-component');
++      const brewList = document.getElementById('brew-queue-list');
++
++      if (listComponent && brewList) {
++        listComponent.addEventListener('click', (e) => {
++          const filterBtn = e.target.closest('.filter-btn');
++          if (filterBtn) {
++            const filter = filterBtn.dataset.filter;
++            runComponentTransition(listComponent, () => {
++              listComponent.querySelectorAll('.filter-btn').forEach((b) => {
++                b.classList.toggle('active', b === filterBtn);
++              });
++              brewList.querySelectorAll('.brew-item').forEach((item) => {
++                const match = filter === 'all' || item.dataset.category === filter;
++                item.hidden = !match;
++                item.style.display = match ? '' : 'none';
++              });
++            });
++            return;
++          }
++
++          const promoteBtn = e.target.closest('.brew-promote-btn');
++          if (promoteBtn) {
++            const item = promoteBtn.closest('.brew-item');
++            if (item && item.previousElementSibling) {
++              runComponentTransition(listComponent, () => {
++                brewList.insertBefore(item, brewList.firstElementChild);
++              });
++            }
++          }
++        });
++
++        const shuffleBtn = document.getElementById('shuffle-list-btn');
++        if (shuffleBtn) {
++          shuffleBtn.addEventListener('click', () => {
++            runComponentTransition(listComponent, () => {
++              const visibleItems = Array.from(brewList.querySelectorAll('.brew-item:not([hidden])'));
++              if (visibleItems.length > 1) {
++                const first = visibleItems[0];
++                brewList.appendChild(first);
++              }
++            });
++          });
++        }
++      }
++
++      // 3. Scoped Roast Telemetry Panel Component Transitions
++      const roastPanel = document.getElementById('roast-panel-component');
++      const ROAST_DATA = {
++        light: {
++          title: 'Light City Roast (405°F)',
++          desc: 'Dropped right after first crack to preserve floral aromatics and vibrant origin terroir.',
++          width: '38%',
++          metrics: ['Agtron: #75', 'Development: 13.5%', 'Acidity: High']
++        },
++        medium: {
++          title: 'Full City Roast (422°F)',
++          desc: 'Balanced caramel sweetness with rounded milk-chocolate body and toasted hazelnut finish.',
++          width: '66%',
++          metrics: ['Agtron: #55', 'Development: 17.2%', 'Acidity: Balanced']
++        },
++        dark: {
++          title: 'Vienna Dark Roast (440°F)',
++          desc: 'Roasted into early second crack for syrupy viscosity, bittersweet cocoa, and smoky warmth.',
++          width: '92%',
++          metrics: ['Agtron: #38', 'Development: 21.0%', 'Acidity: Low']
++        }
++      };
++
++      function setRoastProfile(profileKey) {
++        const info = ROAST_DATA[profileKey];
++        if (!roastPanel || !info) return;
++
++        runComponentTransition(roastPanel, () => {
++          roastPanel.dataset.roast = profileKey;
++          roastPanel.querySelectorAll('[data-roast-tab]').forEach((btn) => {
++            btn.classList.toggle('active', btn.dataset.roastTab === profileKey);
++          });
++          document.getElementById('roast-stage-title').textContent = info.title;
++          document.getElementById('roast-stage-desc').textContent = info.desc;
++          document.getElementById('roast-meter-bar').style.width = info.width;
++          const metricsEl = document.getElementById('roast-stage-metrics');
++          if (metricsEl) {
++            metricsEl.innerHTML = info.metrics.map((m) => `<span>${m}</span>`).join('');
++          }
++        });
++      }
++
++      if (roastPanel) {
++        roastPanel.addEventListener('click', (e) => {
++          const tab = e.target.closest('[data-roast-tab]');
++          if (tab) {
++            setRoastProfile(tab.dataset.roastTab);
++          }
++        });
++      }
++
++      // 4. Concurrent Trigger Controls (animates multiple separate components simultaneously)
++      function triggerAllConcurrentTransitions() {
++        document.querySelectorAll('.card').forEach((cardEl) => {
++          const current = cardEl.dataset.state || 'overview';
++          const next = STATES[(STATES.indexOf(current) + 1) % STATES.length];
++          setCardState(cardEl, next);
++        });
++
++        if (listComponent && brewList) {
++          runComponentTransition(listComponent, () => {
++            const items = Array.from(brewList.children);
++            if (items.length > 1) {
++              brewList.appendChild(items[0]);
++            }
++          });
++        }
++
++        if (roastPanel) {
++          const order = ['light', 'medium', 'dark'];
++          const current = roastPanel.dataset.roast || 'light';
++          const next = order[(order.indexOf(current) + 1) % order.length];
++          setRoastProfile(next);
++        }
++      }
++
++      const concurrentHeroBtn = document.getElementById('trigger-concurrent-btn');
++      const cycleAllCardsBtn = document.getElementById('cycle-all-cards-btn');
++      if (concurrentHeroBtn) {
++        concurrentHeroBtn.addEventListener('click', triggerAllConcurrentTransitions);
++      }
++      if (cycleAllCardsBtn) {
++        cycleAllCardsBtn.addEventListener('click', () => {
++          document.querySelectorAll('.card').forEach((cardEl) => {
++            const current = cardEl.dataset.state || 'overview';
++            const next = STATES[(STATES.indexOf(current) + 1) % STATES.length];
++            setCardState(cardEl, next);
++          });
++        });
++      }
++
++      // 5. Unblocked Page Controls (prove the rest of the page stays interactive during transitions)
++      const pageInteractionBtn = document.getElementById('page-interaction-btn');
++      if (pageInteractionBtn) {
++        pageInteractionBtn.addEventListener('click', recordPageInteraction);
++      }
++
++      const cartBtn = document.getElementById('cart-counter-btn');
++      if (cartBtn) {
++        cartBtn.addEventListener('click', () => {
++          cartCount += 1;
++          if (cartCountEl) cartCountEl.textContent = String(cartCount);
++          recordPageInteraction();
++        });
++      }
++
++      const sugarLevels = ['Regular', 'Half Sweet', 'Extra Sweet', 'Unsweetened'];
++      let sugarIdx = 0;
++      const sugarBtn = document.getElementById('instant-sugar-btn');
++      const sugarLabel = document.getElementById('sugar-level-label');
++      if (sugarBtn && sugarLabel) {
++        sugarBtn.addEventListener('click', () => {
++          sugarIdx = (sugarIdx + 1) % sugarLevels.length;
++          sugarLabel.textContent = sugarLevels[sugarIdx];
++          recordPageInteraction();
++        });
++      }
++
++      const cupInput = document.getElementById('cup-note-input');
++      const cupPreview = document.getElementById('cup-note-preview');
++      if (cupInput && cupPreview) {
++        cupInput.addEventListener('input', () => {
++          cupPreview.textContent = cupInput.value.trim() || 'Guest';
++          recordPageInteraction();
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

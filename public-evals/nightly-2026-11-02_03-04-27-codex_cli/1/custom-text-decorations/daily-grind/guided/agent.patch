@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+index 66c9173..ca56ed0 100644
+--- a/index.html
++++ b/index.html
+@@ -57,7 +57,6 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -149,9 +148,128 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native decorations follow wrapped text and skip Latin descenders by default. */
++    :where(nav a, .footer-links a, .decorated-title) {
++      --line-color: #a65b20;
++      --line-offset: 0.22em;
++      --line-start: 0.08em;
++      --line-end: 0.08em;
++      text-decoration-line: underline;
++      text-decoration-style: solid;
++      text-decoration-color: var(--line-color);
++      text-decoration-thickness: max(1px, 0.08em);
++      text-underline-offset: var(--line-offset);
++      text-decoration-inset: var(--line-start) var(--line-end);
++    }
++
++    nav a {
++      --line-color: var(--accent);
++      --line-offset: 0.28em;
++      --line-start: 0.04em;
++      --line-end: 0.12em;
++    }
++
++    .footer-links a {
++      --line-color: var(--primary);
++      --line-offset: 0.18em;
++      --line-start: 0.12em;
++      --line-end: 0.12em;
++    }
++
++    nav a:focus-visible,
++    .footer-links a:focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 5px;
++      border-radius: 2px;
++    }
++
++    nav a:focus-visible {
++      color: var(--accent);
++    }
++
++    .seasonal-heading {
++      text-align: center;
++      margin-bottom: 0.5rem;
++    }
++
++    .seasonal-heading .decorated-title {
++      --line-offset: 0.3em;
++      --line-start: 0.5em;
++      --line-end: 0.5em;
++      text-decoration-style: double;
++    }
++
++    .card .decorated-title {
++      --line-offset: 0.23em;
++      --line-start: 0.15em;
++      --line-end: 0.25em;
++      text-decoration-style: wavy;
++      text-decoration-thickness: max(1px, 0.06em);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a,
++      .footer-links a {
++        text-decoration-color: transparent;
++        transition: color 0.25s ease-out,
++          text-decoration-color 0.25s ease-out,
++          text-decoration-inset 0.3s ease-out;
++      }
++
++      nav a:is(:hover, :focus-visible),
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-color: var(--line-color);
++      }
++
++      /* Unsupported browsers still reveal the native line by fading its color. */
++      @supports (text-decoration-inset: 0 100%) {
++        nav a,
++        .footer-links a {
++          text-decoration-inset: var(--line-start) 100%;
++        }
++
++        nav a:is(:hover, :focus-visible),
++        .footer-links a:is(:hover, :focus-visible) {
++          text-decoration-inset: var(--line-start) var(--line-end);
++        }
++      }
++
++      .decorated-title {
++        animation: reveal-decoration 0.7s ease-out 0.1s both;
++      }
++
++      .card .decorated-title {
++        animation-delay: 0.25s;
++      }
++
++      .card:nth-child(2) .decorated-title {
++        animation-delay: 0.4s;
++      }
++
++      .card:nth-child(3) .decorated-title {
++        animation-delay: 0.55s;
++      }
++
++      @keyframes reveal-decoration {
++        from {
++          text-decoration-color: transparent;
++          text-decoration-inset: var(--line-start) 100%;
++        }
++        to {
++          text-decoration-color: var(--line-color);
++          text-decoration-inset: var(--line-start) var(--line-end);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav a {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,20 +294,20 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="seasonal-heading"><span class="decorated-title">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3><span class="decorated-title">Maple Oat Latte</span></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3><span class="decorated-title">Dark Roast Espresso</span></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3><span class="decorated-title">Cold Brew</span></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

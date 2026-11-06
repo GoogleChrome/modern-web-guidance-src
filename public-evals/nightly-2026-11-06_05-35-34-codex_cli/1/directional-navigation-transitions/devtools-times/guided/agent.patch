@@ -1,0 +1,153 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..886d6fc
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,105 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-slider
++    class="block bg-white border-b border-gray-300"
++    role="region"
++    aria-label="Top Stories"
++    aria-roledescription="carousel"
++>
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="overflow-hidden" aria-live="polite" aria-atomic="true">
++            {articles.map((article, index) => (
++                <div
++                    data-story
++                    role="group"
++                    aria-roledescription="slide"
++                    aria-label={`${index + 1} of ${articles.length}`}
++                    hidden={index !== 0}
++                >
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <time class="text-xs text-gray-500" datetime={article.data.date.toISOString()}>
++                        {article.data.date.toLocaleDateString()}
++                    </time>
++                </div>
++            ))}
++        </div>
++        <div data-controls hidden class="mt-3 flex items-center justify-between gap-4 text-sm">
++            <button type="button" data-previous class="rounded border border-gray-300 px-3 py-1.5 font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
++                Previous
++            </button>
++            <span data-position aria-hidden="true" class="text-gray-500">1 / {articles.length}</span>
++            <button type="button" data-next class="rounded border border-gray-300 px-3 py-1.5 font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
++                Next
++            </button>
++        </div>
++    </div>
++</top-stories-slider>
++
++<script>
++    class TopStoriesSlider extends HTMLElement {
++        private initialized = false;
++
++        connectedCallback() {
++            if (this.initialized) return;
++            this.initialized = true;
++
++            const stories = Array.from(this.querySelectorAll<HTMLElement>('[data-story]'));
++            const controls = this.querySelector<HTMLElement>('[data-controls]');
++            const position = this.querySelector<HTMLElement>('[data-position]');
++            if (stories.length < 2 || !controls || !position) return;
++
++            let current = 0;
++            const navigate = (step: number) => {
++                this.dataset.direction = step > 0 ? 'next' : 'previous';
++                stories[current].hidden = true;
++                current = (current + step + stories.length) % stories.length;
++                stories[current].hidden = false;
++                position.textContent = `${current + 1} / ${stories.length}`;
++            };
++
++            this.querySelector('[data-previous]')?.addEventListener('click', () => navigate(-1));
++            this.querySelector('[data-next]')?.addEventListener('click', () => navigate(1));
++            controls.hidden = false;
++        }
++    }
++
++    if (!customElements.get('top-stories-slider')) {
++        customElements.define('top-stories-slider', TopStoriesSlider);
++    }
++</script>
++
++<style>
++    [hidden] {
++        display: none;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++        [data-direction='next'] [data-story]:not([hidden]) {
++            animation: story-from-right 250ms ease-out;
++        }
++
++        [data-direction='previous'] [data-story]:not([hidden]) {
++            animation: story-from-left 250ms ease-out;
++        }
++    }
++
++    @keyframes story-from-right {
++        from { transform: translateX(100%); }
++        to { transform: translateX(0); }
++    }
++
++    @keyframes story-from-left {
++        from { transform: translateX(-100%); }
++        to { transform: translateX(0); }
++    }
++</style>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f4052e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +68,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

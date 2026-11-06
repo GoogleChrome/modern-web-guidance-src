@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,9 +84,9 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+@@ -151,8 +151,151 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast Picker (customizable select) */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .roast-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: stretch;
++      gap: 6px;
++      margin-top: 1.5rem;
++      width: min(100%, 320px);
++      text-align: left;
++    }
++
++    .roast-picker label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    .roast-select {
++      width: 100%;
++      font: inherit;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 8px;
++        padding: 10px 14px;
++        background: rgba(250, 250, 250, 0.95);
++        color: var(--text);
++        border: 2px solid var(--accent);
++        border-radius: 8px;
++        cursor: pointer;
++      }
++
++      .roast-select:focus-visible {
++        outline: 3px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++      }
++
++      .roast-select::picker(select) {
++        width: anchor-size(width);
++        margin-top: 6px;
++        padding: 6px;
++        background: var(--light);
++        border: 1px solid var(--secondary);
++        border-radius: 10px;
++        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++      }
++
++      .roast-select option {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++        padding: 10px;
++        border-radius: 6px;
++        color: var(--text);
++        cursor: pointer;
++      }
++
++      .roast-select option::checkmark {
++        display: none;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: var(--secondary);
++      }
++
++      .roast-select option:focus-visible {
++        outline: 2px solid var(--primary);
++        outline-offset: -2px;
++      }
++
++      .roast-select option:checked {
++        background: var(--primary);
++        color: white;
++      }
++
++      .roast-select option:checked .roast-title {
++        font-weight: 700;
++      }
++
++      .roast-select option:checked .roast-desc {
++        color: var(--secondary);
++      }
++
++      .roast-select svg {
++        flex: none;
++        width: 28px;
++        height: 28px;
++      }
++
++      .roast-text {
++        display: flex;
++        flex-direction: column;
++        line-height: 1.3;
++      }
++
++      .roast-title {
++        font-weight: 600;
++      }
++
++      .roast-desc {
++        font-size: 0.8rem;
++        color: #6d4c41;
++      }
++
++      .roast-select selectedcontent {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .roast-select selectedcontent .roast-desc {
++        display: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +313,52 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-picker">
++      <label for="roast-select">Choose your roast</label>
++      <select id="roast-select" class="roast-select" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Light Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc">Bright, citrusy notes with a crisp finish.</span>
++          </span>
++        </option>
++        <option value="medium" selected>
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="6" ry="9" transform="rotate(30 12 12)"/><path d="M8.5 18c2-3 5-9 7-12"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Medium Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc">Balanced and smooth with caramel sweetness.</span>
++          </span>
++        </option>
++        <option value="dark">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Dark Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc">Bold, smoky, and full-bodied.</span>
++          </span>
++        </option>
++        <option value="espresso">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5V9z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M3 21h15"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Espresso<span class="visually-hidden">.</span></span>
++            <span class="roast-desc">Rich, concentrated shots with thick crema.</span>
++          </span>
++        </option>
++        <option value="cold-brew">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 18h-9z"/><path d="M6.5 9h11"/><rect x="9" y="12" width="3" height="3" rx="0.5"/><rect x="12.5" y="15" width="2.5" height="2.5" rx="0.5"/></svg>
++          <span class="roast-text">
++            <span class="roast-title">Cold Brew<span class="visually-hidden">.</span></span>
++            <span class="roast-desc">Steeped 18 hours for low-acid smoothness.</span>
++          </span>
++        </option>
++      </select>
++    </div>
++    <a href="/order-online?roast=medium" class="btn" id="order-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +392,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Carry the chosen roast through to the order page.
++    const roastSelect = document.getElementById('roast-select');
++    const orderBtn = document.getElementById('order-btn');
++    roastSelect.addEventListener('change', () => {
++      orderBtn.href = `/order-online?roast=${encodeURIComponent(roastSelect.value)}`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

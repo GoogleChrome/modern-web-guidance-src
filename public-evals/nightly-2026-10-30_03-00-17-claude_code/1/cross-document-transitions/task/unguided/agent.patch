@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,119 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 15px;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination .btn[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .page-indicator {
++      font-size: 0.9rem;
++    }
++
++    /* Page transitions (cross-document View Transitions) */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      /* Default: simple cross-fade for regular navigations */
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 0.35s;
++        animation-timing-function: ease-in-out;
++      }
++
++      /* Next: old page slides out to the left, new page slides in from the right */
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation: 0.4s ease-in both slide-out-to-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation: 0.4s ease-out both slide-in-from-right;
++      }
++
++      /* Previous: old page slides out to the right, new page slides in from the left */
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation: 0.4s ease-in both slide-out-to-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation: 0.4s ease-out both slide-in-from-left;
++      }
++    }
++
++    @keyframes slide-out-to-left {
++      to {
++        transform: translateX(-30%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-from-right {
++      from {
++        transform: translateX(30%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-out-to-right {
++      to {
++        transform: translateX(30%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-from-left {
++      from {
++        transform: translateX(-30%);
++        opacity: 0;
++      }
++    }
+   </style>
++  <script>
++    // Apply a "next" / "previous" view transition type based on the pagination
++    // direction. Only set up when the user hasn't asked for reduced motion.
++    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const pageOf = (url) => {
++        const page = parseInt(new URL(url).searchParams.get('page'), 10);
++        return Number.isInteger(page) && page > 0 ? page : 1;
++      };
++
++      window.addEventListener('pagereveal', (e) => {
++        if (!e.viewTransition || !window.navigation || !navigation.activation) return;
++
++        const { from, entry } = navigation.activation;
++        if (!from || !entry) return;
++
++        const fromUrl = new URL(from.url);
++        const toUrl = new URL(entry.url);
++        if (fromUrl.pathname !== toUrl.pathname) return;
++
++        const fromPage = pageOf(from.url);
++        const toPage = pageOf(entry.url);
++        if (toPage > fromPage) {
++          e.viewTransition.types.add('next');
++        } else if (toPage < fromPage) {
++          e.viewTransition.types.add('previous');
++        }
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -193,8 +303,68 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" class="btn" href="/?page=1" rel="prev">&larr; Previous</a>
++        <span class="page-indicator">Page <span id="page-current">1</span> of <span id="page-total">3</span></span>
++        <a id="next" class="btn" href="/?page=2" rel="next">Next &rarr;</a>
++      </div>
++      <script>
++        (() => {
++          const pages = [
++            [
++              { name: 'Maple Oat Latte', desc: 'Creamy oat milk with a hint of Vermont maple syrup.', href: '/menu/seasonal' },
++              { name: 'Dark Roast Espresso', desc: 'Bold, smokey, and perfect for a morning boost.', href: '/menu/espresso' },
++              { name: 'Cold Brew', desc: 'Steeped for 18 hours for maximum smoothness.', href: '/menu/cold-brew' },
++            ],
++            [
++              { name: 'Pumpkin Spice Cappuccino', desc: 'Velvety foam dusted with cinnamon, nutmeg, and clove.', href: '/menu/pumpkin-spice' },
++              { name: 'Honey Lavender Latte', desc: 'Floral lavender balanced with local wildflower honey.', href: '/menu/honey-lavender' },
++              { name: 'Salted Caramel Mocha', desc: 'Rich chocolate and caramel finished with sea salt.', href: '/menu/salted-caramel' },
++            ],
++            [
++              { name: 'Chai Tea Latte', desc: 'Spiced black tea steamed with your choice of milk.', href: '/menu/chai' },
++              { name: 'Nitro Cold Brew', desc: 'Nitrogen-infused for a creamy, cascading pour.', href: '/menu/nitro' },
++              { name: 'Peppermint White Mocha', desc: 'White chocolate and cool peppermint, topped with cream.', href: '/menu/peppermint' },
++            ],
++          ];
++
++          const requested = parseInt(new URLSearchParams(location.search).get('page'), 10);
++          const page = Math.min(Math.max(Number.isInteger(requested) ? requested : 1, 1), pages.length);
++
++          const grid = document.querySelector('main .grid');
++          grid.innerHTML = '';
++          for (const item of pages[page - 1]) {
++            const card = document.createElement('div');
++            card.className = 'card';
++            const h3 = document.createElement('h3');
++            h3.textContent = item.name;
++            const p = document.createElement('p');
++            p.textContent = item.desc;
++            const a = document.createElement('a');
++            a.className = 'btn';
++            a.href = item.href;
++            a.textContent = 'View Details';
++            card.append(h3, p, a);
++            grid.append(card);
++          }
++
++          const setLink = (el, target) => {
++            if (target < 1 || target > pages.length) {
++              el.removeAttribute('href');
++              el.setAttribute('aria-disabled', 'true');
++            } else {
++              el.href = `/?page=${target}`;
++              el.removeAttribute('aria-disabled');
++            }
++          };
++          setLink(document.getElementById('previous'), page - 1);
++          setLink(document.getElementById('next'), page + 1);
++          document.getElementById('page-current').textContent = page;
++          document.getElementById('page-total').textContent = pages.length;
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,523 @@
+diff --git a/index.html b/index.html
+index 66c9173..f38d4c6 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Loaded before parsing so <star-rating> upgrades in place and restores state reliably. -->
++  <script src="star-rating.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +137,135 @@
+       background: #3e2723;
+     }
+ 
++    /* Feedback form */
++    .feedback {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .feedback-photo {
++      min-height: 280px;
++      background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80') center / cover;
++    }
++
++    .feedback form {
++      display: grid;
++      gap: 18px;
++      padding: 30px 30px 30px 0;
++    }
++
++    @media (max-width: 660px) {
++      .feedback form {
++        padding: 0 20px 30px;
++      }
++    }
++
++    .feedback h2 {
++      color: var(--primary);
++    }
++
++    .feedback fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 16px 16px;
++      transition: opacity 0.2s;
++    }
++
++    .feedback fieldset:disabled {
++      opacity: 0.6;
++    }
++
++    .feedback legend {
++      font-weight: 600;
++      padding: 0 6px;
++      color: var(--primary);
++    }
++
++    .feedback label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .feedback .checkbox {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: normal;
++    }
++
++    .feedback select,
++    .feedback textarea {
++      font: inherit;
++      font-weight: normal;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .feedback select:focus-visible,
++    .feedback textarea:focus-visible,
++    .feedback input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .feedback select:user-invalid {
++      border-color: #c62828;
++    }
++
++    .feedback textarea {
++      resize: vertical;
++      min-height: 90px;
++    }
++
++    .rating-hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .feedback .actions {
++      display: flex;
++      gap: 10px;
++    }
++
++    .feedback button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 10px 20px;
++      border: 1px solid var(--primary);
++      transition: background 0.3s;
++    }
++
++    .feedback button[type="submit"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .feedback button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .feedback button[type="reset"] {
++      background: white;
++      color: var(--primary);
++    }
++
++    .feedback output {
++      font-weight: 600;
++      color: #2e7d32;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +326,46 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <div class="feedback-photo" role="img" aria-label="A latte with leaf art beside roasted coffee beans"></div>
++      <form id="feedback-form" action="/feedback" method="post">
++        <h2 id="feedback-heading">How was your coffee?</h2>
++
++        <label>
++          Drink
++          <select name="drink" required>
++            <option value="">Choose a drink…</option>
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Something else</option>
++          </select>
++        </label>
++
++        <label class="checkbox">
++          <input type="checkbox" name="skip-rating" id="skip-rating">
++          I'd rather not leave a star rating
++        </label>
++
++        <fieldset id="rating-fieldset">
++          <legend>Your rating</legend>
++          <star-rating name="rating" label="Coffee rating, out of 5 stars" required></star-rating>
++          <p class="rating-hint" id="rating-hint">Tap a star or use the arrow keys.</p>
++        </fieldset>
++
++        <label>
++          Comments <span style="font-weight: normal;">(optional)</span>
++          <textarea name="comments" maxlength="500" placeholder="Tell us what you loved, or what we can do better."></textarea>
++        </label>
++
++        <div class="actions">
++          <button type="submit">Send feedback</button>
++          <button type="reset">Clear</button>
++        </div>
++        <output for="feedback-form" id="feedback-status" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +378,49 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('feedback-form');
++    const skip = document.getElementById('skip-rating');
++    const ratingFieldset = document.getElementById('rating-fieldset');
++    const rating = ratingFieldset.querySelector('star-rating');
++    const hint = document.getElementById('rating-hint');
++    const status = document.getElementById('feedback-status');
++    const hintText = hint.textContent;
++
++    // A disabled fieldset disables the rating natively: it is skipped by
++    // validation and omitted from the submitted FormData.
++    const syncSkip = () => { ratingFieldset.disabled = skip.checked; };
++    skip.addEventListener('change', syncSkip);
++    // The checkbox may be restored by the browser on back/forward navigation.
++    window.addEventListener('pageshow', syncSkip);
++    syncSkip();
++
++    const syncHint = () => {
++      hint.textContent = rating.value ? `${rating.value} of ${rating.max} stars` : hintText;
++    };
++    rating.addEventListener('input', syncHint);
++    window.addEventListener('pageshow', syncHint);
++
++    form.addEventListener('reset', () => {
++      // Reset updates control values after this event; resync on the next task.
++      setTimeout(() => {
++        syncSkip();
++        syncHint();
++        status.value = '';
++      });
++    });
++
++    form.addEventListener('submit', (event) => {
++      // No feedback backend yet: show what the form would submit natively.
++      event.preventDefault();
++      const data = new FormData(form);
++      const stars = data.get('rating');
++      status.value = stars
++        ? `Thanks! You rated your ${data.get('drink')} ${stars} of ${rating.max} stars.`
++        : `Thanks for your feedback on the ${data.get('drink')}!`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..ec25893
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,271 @@
++/**
++ * <star-rating> — a form-associated star rating control.
++ *
++ * Attributes: name, value (default value used on reset), max (default 5),
++ * required, disabled, label (accessible name for the star group).
++ */
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: inline-block;
++      --star-size: 2rem;
++      --star-empty: #d7ccc8;
++      --star-filled: #ffab40;
++      --star-focus: #4e342e;
++      --star-invalid: #c62828;
++    }
++
++    .stars {
++      display: inline-flex;
++      border-radius: 6px;
++      outline: 2px solid transparent;
++      outline-offset: 2px;
++    }
++
++    button {
++      all: unset;
++      cursor: pointer;
++      font-size: var(--star-size);
++      line-height: 1;
++      padding: 0 0.1em;
++      color: var(--star-empty);
++      transition: color 0.15s, transform 0.15s;
++    }
++
++    button[data-on] { color: var(--star-filled); }
++
++    /* Hover preview: fill every star, then empty those after the hovered one. */
++    .stars:hover button { color: var(--star-filled); }
++    .stars:hover button:hover ~ button { color: var(--star-empty); }
++    button:hover { transform: scale(1.15); }
++
++    button:focus-visible {
++      outline: 2px solid var(--star-focus);
++      outline-offset: 2px;
++      border-radius: 4px;
++    }
++
++    :host(:state(touched):invalid) .stars { outline-color: var(--star-invalid); }
++
++    :host(:disabled) button {
++      cursor: not-allowed;
++      opacity: 0.45;
++      transform: none;
++    }
++    :host(:disabled) .stars:hover button { color: var(--star-empty); }
++    :host(:disabled) .stars:hover button[data-on] { color: var(--star-filled); }
++
++    @media (prefers-reduced-motion: reduce) {
++      button { transition: none; }
++      button:hover { transform: none; }
++    }
++  </style>
++  <div class="stars" role="radiogroup" part="stars"></div>
++`;
++
++class StarRating extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['max', 'value', 'required', 'label'];
++
++  #internals;
++  #group;
++  #value = '';
++  #dirty = false; // true once the value diverges from the `value` attribute
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++    this.#group = root.querySelector('.stars');
++    this.#group.addEventListener('click', (e) => this.#onClick(e));
++    this.#group.addEventListener('keydown', (e) => this.#onKeydown(e));
++    // A failed submit or checkValidity() fires `invalid`; reveal the error styling.
++    this.addEventListener('invalid', () => this.#markTouched());
++    this.#render();
++  }
++
++  connectedCallback() {
++    this.#update();
++  }
++
++  attributeChangedCallback(name) {
++    if (name === 'max') this.#render();
++    else if (name === 'value' && !this.#dirty) this.#setValue(this.defaultValue);
++    else this.#update();
++  }
++
++  // ---- Public API mirroring native controls ----
++
++  get max() {
++    const max = parseInt(this.getAttribute('max'), 10);
++    return Number.isInteger(max) && max > 0 ? max : 5;
++  }
++  set max(v) { this.setAttribute('max', v); }
++
++  get value() { return this.#value; }
++  set value(v) {
++    this.#dirty = true;
++    this.#setValue(v);
++  }
++
++  get defaultValue() { return this.getAttribute('value') ?? ''; }
++  set defaultValue(v) { this.setAttribute('value', v); }
++
++  get name() { return this.getAttribute('name'); }
++  set name(v) { this.setAttribute('name', v); }
++
++  get required() { return this.hasAttribute('required'); }
++  set required(v) { this.toggleAttribute('required', Boolean(v)); }
++
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(v) { this.toggleAttribute('disabled', Boolean(v)); }
++
++  get type() { return this.localName; }
++  get form() { return this.#internals.form; }
++  get labels() { return this.#internals.labels; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() {
++    this.#markTouched();
++    return this.#internals.reportValidity();
++  }
++
++  // ---- Form-associated lifecycle ----
++
++  formResetCallback() {
++    this.#dirty = false;
++    this.#internals.states?.delete('touched');
++    this.#setValue(this.defaultValue);
++  }
++
++  formDisabledCallback(disabled) {
++    // Disable the inner buttons only; never set `disabled` on the host here,
++    // or re-enabling an ancestor <fieldset> would leave the host stuck.
++    for (const star of this.#stars()) star.disabled = disabled;
++    this.#update();
++  }
++
++  formStateRestoreCallback(state) {
++    this.#dirty = true;
++    this.#setValue(state ?? '');
++  }
++
++  // ---- Internals ----
++
++  #stars() {
++    return this.#group.querySelectorAll('button');
++  }
++
++  #render() {
++    const stars = [];
++    for (let i = 1; i <= this.max; i++) {
++      const star = document.createElement('button');
++      star.type = 'button';
++      star.role = 'radio';
++      star.value = String(i);
++      star.ariaLabel = `${i} star${i === 1 ? '' : 's'}`;
++      star.textContent = '★';
++      star.disabled = this.matches(':disabled');
++      stars.push(star);
++    }
++    this.#group.replaceChildren(...stars);
++    // Drop a value that no longer fits the new range.
++    if (Number(this.#value) > this.max) this.#value = '';
++    this.#update();
++  }
++
++  #setValue(v) {
++    const n = parseInt(v, 10);
++    this.#value = Number.isInteger(n) && n >= 1 && n <= this.max ? String(n) : '';
++    this.#update();
++  }
++
++  #update() {
++    const current = Number(this.#value);
++    const stars = [...this.#stars()];
++    for (const star of stars) {
++      const n = Number(star.value);
++      star.toggleAttribute('data-on', n <= current);
++      star.ariaChecked = String(n === current);
++      star.tabIndex = -1;
++    }
++    // Roving tabindex: the checked star, or the first one when empty.
++    const focusTarget = stars[current ? current - 1 : 0];
++    if (focusTarget) focusTarget.tabIndex = 0;
++
++    this.#group.ariaRequired = String(this.required);
++    this.#group.ariaLabel = this.getAttribute('label') || 'Rating';
++
++    // Omit the entry entirely when empty, like an unchecked radio group.
++    this.#internals.setFormValue(this.#value || null, this.#value);
++
++    if (this.required && !this.#value) {
++      this.#internals.setValidity(
++        { valueMissing: true },
++        'Please choose a star rating.',
++        focusTarget,
++      );
++    } else {
++      this.#internals.setValidity({});
++    }
++  }
++
++  #markTouched() {
++    try {
++      this.#internals.states?.add('touched');
++    } catch {
++      // Older CustomStateSet implementations only accept `--` prefixed names.
++    }
++  }
++
++  #commit(v, { focus = false } = {}) {
++    if (this.matches(':disabled')) return;
++    const previous = this.#value;
++    this.value = v;
++    this.#markTouched();
++    if (focus) this.#stars()[Number(this.#value) - 1]?.focus();
++    if (this.#value !== previous) {
++      this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++      this.dispatchEvent(new Event('change', { bubbles: true }));
++    }
++  }
++
++  #onClick(e) {
++    const star = e.target.closest('button');
++    if (star) this.#commit(star.value);
++  }
++
++  #onKeydown(e) {
++    const current = Number(this.#value) || 0;
++    let next;
++    switch (e.key) {
++      case 'ArrowRight':
++      case 'ArrowUp':
++        next = Math.min(current + 1, this.max);
++        break;
++      case 'ArrowLeft':
++      case 'ArrowDown':
++        next = Math.max(current - 1, 1);
++        break;
++      case 'Home':
++        next = 1;
++        break;
++      case 'End':
++        next = this.max;
++        break;
++      case ' ':
++        next = Number(e.target.closest('button')?.value) || 1;
++        break;
++      default:
++        return;
++    }
++    e.preventDefault();
++    this.#commit(next, { focus: true });
++  }
++}
++
++customElements.define('star-rating', StarRating);

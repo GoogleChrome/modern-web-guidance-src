@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Spotlight Reveal Effect */
++    @property --inner-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    .product-card {
++      position: relative;
++      overflow: hidden;
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      transition: --inner-size 0.25s ease-in-out, --outer-size 0.25s ease-in-out;
++    }
++
++    .product-card:hover {
++      --inner-size: 90px;
++      --outer-size: 130px;
++    }
++
++    .product-card > :not(.reveal-layer) {
++      position: relative;
++      z-index: 2;
++    }
++
++    .reveal-layer {
++      position: absolute;
++      inset: 0;
++      z-index: 1;
++      pointer-events: none;
++      user-select: none;
++      transition: --inner-size 0.25s ease-in-out, --outer-size 0.25s ease-in-out;
++      -webkit-mask-image: radial-gradient(
++        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
++        black var(--inner-size, 0px),
++        transparent var(--outer-size, 0px)
++      );
++      mask-image: radial-gradient(
++        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
++        black var(--inner-size, 0px),
++        transparent var(--outer-size, 0px)
++      );
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      background-color: #f3e5db;
++      background-image: radial-gradient(rgba(78, 52, 46, 0.14) 1.5px, transparent 1.5px);
++      background-size: 16px 16px;
++      display: flex;
++      align-items: flex-start;
++      justify-content: flex-end;
++      padding: 12px;
++    }
++
++    .reveal-badge {
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      color: var(--primary);
++      background: rgba(255, 171, 64, 0.35);
++      border: 1px solid var(--accent);
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card,
++      .reveal-layer {
++        transition: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,19 +257,28 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-badge">100% Arabica • 12oz</span>
++          </div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-badge">Single Origin • Double Shot</span>
++          </div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
++          <div class="reveal-layer" aria-hidden="true">
++            <span class="reveal-badge">Small Batch • Nitrogen Infused</span>
++          </div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -206,7 +295,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      let rect = card.getBoundingClientRect();
++
++      const resizeObserver = new ResizeObserver(() => {
++        rect = card.getBoundingClientRect();
++      });
++      resizeObserver.observe(card);
++
++      const updatePointerPosition = (e) => {
++        rect = card.getBoundingClientRect();
++        const x = ((e.clientX - rect.left) / rect.width) * 100;
++        const y = ((e.clientY - rect.top) / rect.height) * 100;
++        card.style.setProperty('--mouse-x', `${x}%`);
++        card.style.setProperty('--mouse-y', `${y}%`);
++      };
++
++      card.addEventListener('pointerenter', updatePointerPosition);
++      card.addEventListener('pointermove', updatePointerPosition);
++      card.addEventListener('mousemove', updatePointerPosition);
++    });
++  </script>
+ </body>
+ 
+ </html>

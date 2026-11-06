@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+index 66c9173..97075f6 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,90 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress */
++    .progress-section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-bottom: 40px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px 40px;
++    }
++
++    .progress-item h3 {
++      font-size: 1rem;
++      color: var(--primary);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin-bottom: 8px;
++    }
++
++    .progress-value {
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .progress-track {
++      position: relative;
++      height: 12px;
++      background: #efebe9;
++      border: 1px solid var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: var(--progress, 0%);
++      background: linear-gradient(90deg, var(--primary), #8d6e63);
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    .progress-track.is-indeterminate .progress-fill {
++      position: absolute;
++      left: 0;
++      width: 35%;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      animation: progress-indeterminate 1.4s ease-in-out infinite;
++    }
++
++    @keyframes progress-indeterminate {
++      from {
++        transform: translateX(-100%);
++      }
++
++      to {
++        transform: translateX(290%);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      .progress-track.is-indeterminate .progress-fill {
++        animation: none;
++        width: 100%;
++        opacity: 0.5;
++      }
++    }
++
++    .progress-note {
++      font-size: 0.85rem;
++      margin-top: 8px;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +259,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-label="Your progress">
++      <div class="progress-item">
++        <div class="progress-header">
++          <h3 id="rewards-progress-label">Rewards: Free Drink</h3>
++          <span class="progress-value">7 of 10 stamps</span>
++        </div>
++        <div class="progress-track" role="progressbar" aria-labelledby="rewards-progress-label"
++          aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps">
++          <div class="progress-fill" style="--progress: 70%;"></div>
++        </div>
++        <p class="progress-note">3 more visits until your next free drink.</p>
++      </div>
++      <div class="progress-item">
++        <div class="progress-header">
++          <h3 id="order-progress-label">Current Order</h3>
++          <span class="progress-value">Preparing&hellip;</span>
++        </div>
++        <div class="progress-track is-indeterminate" role="progressbar" aria-labelledby="order-progress-label"
++          aria-valuetext="Preparing your order">
++          <div class="progress-fill"></div>
++        </div>
++        <p class="progress-note">Your barista is crafting your order. We'll let you know when it's ready.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

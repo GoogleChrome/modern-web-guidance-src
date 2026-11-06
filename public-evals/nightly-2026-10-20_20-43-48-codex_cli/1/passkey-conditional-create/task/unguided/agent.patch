@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,46 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signin {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin label {
++      display: block;
++      margin-top: 16px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    #signin-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +212,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in</h2>
++      <form id="signin-form" action="/api/login" method="post">
++        <label for="username">Email or username</label>
++        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button class="btn" type="submit" data-testid="signin-button">Sign in</button>
++      </form>
++      <p id="signin-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +255,121 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signinForm = document.getElementById('signin-form');
++    const signinButton = signinForm.querySelector('[data-testid="signin-button"]');
++    const signinStatus = document.getElementById('signin-status');
++
++    function decodeBase64url(value) {
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++      const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
++      return Uint8Array.from(binary, character => character.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      const binary = Array.from(new Uint8Array(value), byte => String.fromCharCode(byte)).join('');
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function parseCreationOptions(options) {
++      if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(options);
++      }
++      return {
++        ...options,
++        challenge: decodeBase64url(options.challenge),
++        user: { ...options.user, id: decodeBase64url(options.user.id) },
++        excludeCredentials: (options.excludeCredentials || []).map(credential => ({
++          ...credential,
++          id: decodeBase64url(credential.id)
++        }))
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') return credential.toJSON();
++      return {
++        id: credential.id,
++        rawId: encodeBase64url(credential.rawId),
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment,
++        response: {
++          clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++          attestationObject: encodeBase64url(credential.response.attestationObject),
++          transports: credential.response.getTransports?.() || []
++        },
++        clientExtensionResults: credential.getClientExtensionResults()
++      };
++    }
++
++    async function promotePasskey() {
++      // This is best-effort: never fall back to an interactive registration.
++      try {
++        if (!window.PublicKeyCredential ||
++            typeof PublicKeyCredential.getClientCapabilities !== 'function' ||
++            typeof navigator.credentials?.create !== 'function') return;
++
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        // The authenticated session identifies the existing user on the server.
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({})
++        });
++        if (!optionsResponse.ok) return;
++        const options = await optionsResponse.json();
++        const credential = await navigator.credentials.create({
++          publicKey: parseCreationOptions(options.publicKey || options),
++          mediation: 'conditional'
++        });
++        if (!credential) return;
++
++        const verification = await fetch('/api/register/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(serializeCredential(credential))
++        });
++        if (!verification.ok) return;
++      } catch {
++        // Unsupported providers, existing passkeys, and all failures stay silent.
++      }
++    }
++
++    signinForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (signinButton.disabled) return;
++      signinButton.disabled = true;
++      signinStatus.textContent = '';
++
++      try {
++        const response = await fetch(signinForm.action, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: signinForm.elements.username.value,
++            password: signinForm.elements.password.value
++          })
++        });
++        if (!response.ok) throw new Error('Sign-in failed');
++
++        signinForm.reset();
++        signinForm.hidden = true;
++        signinStatus.textContent = 'You are signed in.';
++        // Do not delay successful sign-in or expose promotion errors in the UI.
++        void promotePasskey();
++      } catch {
++        signinStatus.textContent = 'Unable to sign in. Check your credentials and try again.';
++      } finally {
++        signinButton.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

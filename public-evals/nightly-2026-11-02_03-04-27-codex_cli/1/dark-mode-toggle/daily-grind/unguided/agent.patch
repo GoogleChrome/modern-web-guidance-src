@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+index 66c9173..5eeffd0 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,46 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const root = document.documentElement;
++      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
++      let preference = null;
++
++      try {
++        const saved = localStorage.getItem('daily-grind-theme');
++        if (saved === 'light' || saved === 'dark') preference = saved;
++      } catch {
++        // Theme switching still works when storage is unavailable.
++      }
++
++      function applyTheme(theme) {
++        root.dataset.theme = theme;
++        const toggle = document.getElementById('theme-toggle');
++        if (toggle) toggle.setAttribute('aria-pressed', String(theme === 'dark'));
++      }
++
++      applyTheme(preference || (systemTheme.matches ? 'dark' : 'light'));
++
++      systemTheme.addEventListener('change', (event) => {
++        if (!preference) applyTheme(event.matches ? 'dark' : 'light');
++      });
++
++      document.addEventListener('DOMContentLoaded', () => {
++        const toggle = document.getElementById('theme-toggle');
++        applyTheme(root.dataset.theme);
++        toggle.addEventListener('click', () => {
++          preference = root.dataset.theme === 'dark' ? 'light' : 'dark';
++          applyTheme(preference);
++          try {
++            localStorage.setItem('daily-grind-theme', preference);
++          } catch {
++            // Keep the manual preference for this page session.
++          }
++        });
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,6 +52,22 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --heading: #4e342e;
++      --nav-background: #4e342e;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --secondary: #2c2421;
++      --text: #f2e8e3;
++      --light: #191513;
++      --surface: #302824;
++      --heading: #ffcc80;
++      --nav-background: #241c19;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -29,12 +85,14 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: var(--nav-background);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -48,11 +106,32 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    #theme-toggle {
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      padding: 5px 12px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    #theme-toggle:hover,
++    #theme-toggle[aria-pressed="true"] {
++      background: var(--accent);
++      color: #241c19;
++    }
++
++    #theme-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
+     }
+ 
+     nav a {
+@@ -108,16 +187,16 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+@@ -165,6 +244,7 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button id="theme-toggle" type="button" aria-pressed="false">Dark mode</button></li>
+     </ul>
+   </nav>
+ 

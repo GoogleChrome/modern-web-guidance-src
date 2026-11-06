@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,67 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter p {
++      margin-bottom: 12px;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 10px 12px;
++      font: inherit;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border: 2px solid #9b2525;
++    }
++
++    .newsletter button {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter .newsletter-error {
++      color: #9b2525;
++      margin: 6px 0 0;
++      font-size: 0.9rem;
++    }
++
++    .newsletter .newsletter-status {
++      margin: 6px 0 0;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +256,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" novalidate>
++      <h2>Fresh from the Grind</h2>
++      <p>Get coffee news and seasonal updates in your inbox.</p>
++      <label for="newsletter-email">Email address</label>
++      <div class="newsletter-controls">
++        <input id="newsletter-email" name="email" type="email" autocomplete="email"
++          placeholder="you@example.com" required aria-describedby="newsletter-error">
++        <button class="btn" type="submit">Subscribe</button>
++      </div>
++      <p id="newsletter-error" class="newsletter-error" aria-live="polite"></p>
++      <p class="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +277,38 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = newsletter.elements.email;
++    const error = document.getElementById('newsletter-error');
++    const status = newsletter.querySelector('.newsletter-status');
++
++    email.addEventListener('blur', () => {
++      const valid = email.validity.valid;
++      email.setAttribute('aria-invalid', String(!valid));
++      error.textContent = valid ? '' : email.validity.valueMissing
++        ? 'Please enter your email address.'
++        : 'Please enter a valid email address.';
++    });
++
++    email.addEventListener('input', () => {
++      email.removeAttribute('aria-invalid');
++      error.textContent = '';
++      status.textContent = '';
++    });
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!email.validity.valid) {
++        email.focus();
++        return;
++      }
++      // Replace this message with a request when a signup endpoint is available.
++      status.textContent = 'Newsletter signup is not available yet. Please check back soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

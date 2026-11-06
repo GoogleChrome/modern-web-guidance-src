@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,30 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dashboard</title>
++  <style>
++    body {
++      margin: 0;
++      padding: 1.5rem;
++      font-family: system-ui, sans-serif;
++    }
++  </style>
++  <!-- Elevate the priority of the critical app logic -->
++  <script src="/js/app.js" async fetchpriority="high"></script>
++  <!-- Deprioritize non-essential tracking scripts -->
++  <script src="/js/tracker.js" async fetchpriority="low"></script>
++</head>
++<body>
++  <main>
++    <h1>Dashboard</h1>
++    <section aria-labelledby="widgets-heading">
++      <h2 id="widgets-heading">Overview</h2>
++      <div id="widgets"></div>
++    </section>
++  </main>
++  <!-- Deprioritize late-body scripts to favor critical resources -->
++  <script src="/js/legacy-widgets.js" fetchpriority="low"></script>
++</body>
++</html>

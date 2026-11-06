@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,61 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    @keyframes spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      from {
++        translate: -20px 0;
++      }
++      to {
++        translate: 20px 0;
++      }
++    }
++
++    .target {
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++      width: 130px;
++      height: 130px;
++      margin: 20px auto;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      border: 3px solid var(--primary);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      font-weight: bold;
++      font-size: 0.9rem;
++      line-height: 1.2;
++      padding: 12px;
++      cursor: pointer;
++      user-select: none;
++      scale: 1;
++      rotate: 0deg;
++      translate: 0px 0px;
++      animation:
++        spin 3s linear infinite,
++        slide 2s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -176,8 +229,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="target">Featured Promo</div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

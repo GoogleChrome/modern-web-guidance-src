@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,14 +48,49 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
++    /* Fallback for unsupported browsers */
++    nav ul li.active {
++      border-bottom: 2px solid var(--accent);
++    }
++
++    nav ul li.active {
++      anchor-name: --active-tab;
++    }
++
++    nav ul::before {
++      content: "";
++      position: absolute;
++      position-anchor: --active-tab;
++      left: anchor(left);
++      right: anchor(right);
++      bottom: anchor(bottom);
++      height: 2px;
++      background: var(--accent);
++      pointer-events: none;
++      transition: inset 0.3s ease;
++    }
++
++    @supports (anchor-name: --active-tab) {
++      nav ul li.active {
++        border-bottom: none;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav ul::before {
++        transition: none;
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -159,9 +194,9 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -206,7 +241,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('nav ul li a').forEach(link => {
++      link.addEventListener('click', (e) => {
++        if (link.getAttribute('href')?.startsWith('/')) {
++          e.preventDefault();
++        }
++        document.querySelectorAll('nav ul li').forEach(li => li.classList.remove('active'));
++        link.closest('li').classList.add('active');
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

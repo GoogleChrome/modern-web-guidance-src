@@ -1,0 +1,226 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,14 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-open {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .feedback-dialog {
++      margin: auto;
++      width: min(92vw, 440px);
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .feedback-dialog h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .feedback-dialog label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 90px;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-dialog fieldset {
++      margin-top: 16px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-dialog legend {
++      padding: 0 6px;
++      font-size: 0.85rem;
++    }
++
++    .move-buttons {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .feedback-dialog button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 6px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .feedback-dialog button[type="submit"],
++    .feedback-dialog button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .feedback-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .feedback-status {
++      margin-top: 12px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
+   </style>
+ </head>
+ 
+-<body>
++<body id="move-body">
+ 
+-  <nav>
++  <nav id="move-nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -167,15 +263,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="move-hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="move-main">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -196,9 +292,9 @@
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="move-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +302,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-open" id="feedback-open">Feedback</button>
++
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
++    <form method="dialog">
++      <h2 id="feedback-title">Send us feedback</h2>
++      <p>This dialog stays open while you move it around the page.</p>
++      <label for="feedback-text">Your thoughts</label>
++      <textarea id="feedback-text" name="feedback"></textarea>
++
++      <fieldset>
++        <legend>Move dialog into…</legend>
++        <div class="move-buttons">
++          <button type="button" class="move-btn" data-target="#move-nav" aria-pressed="false">Navigation</button>
++          <button type="button" class="move-btn" data-target="#move-hero" aria-pressed="false">Hero</button>
++          <button type="button" class="move-btn" data-target="#move-main" aria-pressed="false">Main</button>
++          <button type="button" class="move-btn" data-target="#move-footer" aria-pressed="false">Footer</button>
++          <button type="button" class="move-btn" data-target="#move-body" aria-pressed="true">Body</button>
++        </div>
++      </fieldset>
++
++      <p class="feedback-status" id="feedback-status" role="status"></p>
++
++      <div class="feedback-actions">
++        <button type="submit" value="cancel">Close</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-dialog');
++      const status = document.getElementById('feedback-status');
++      const supportsMoveBefore = 'moveBefore' in Element.prototype;
++
++      document.getElementById('feedback-open').addEventListener('click', () => {
++        if (!dialog.open) dialog.showModal();
++      });
++
++      function moveDialog(target, button) {
++        const wasOpen = dialog.open;
++        const text = dialog.querySelector('textarea');
++        const selection = [text.selectionStart, text.selectionEnd];
++        const refocusText = document.activeElement === text;
++
++        if (supportsMoveBefore) {
++          // Atomic move: the dialog stays open, in the top layer, and keeps focus.
++          target.moveBefore(dialog, null);
++        } else {
++          // Fallback: insertion closes the dialog, so re-open it and restore focus.
++          target.append(dialog);
++          if (wasOpen) {
++            dialog.showModal();
++            (refocusText ? text : button).focus();
++            if (refocusText) text.setSelectionRange(...selection);
++          }
++        }
++
++        for (const b of dialog.querySelectorAll('.move-btn')) {
++          b.setAttribute('aria-pressed', String(b === button));
++        }
++        status.textContent = `Moved into <${target.localName}> ` +
++          (supportsMoveBefore ? 'with moveBefore() (state preserved).' : 'using the re-open fallback.');
++      }
++
++      dialog.addEventListener('click', (event) => {
++        const button = event.target.closest('.move-btn');
++        if (!button) return;
++        const target = document.querySelector(button.dataset.target);
++        if (target && target !== dialog.parentElement) moveDialog(target, button);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,388 @@
+diff --git a/index.html b/index.html
+index 66c9173..9d8684c 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,254 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /* 1. Explicit Cascade Layer Architecture */
++    @layer reset, tokens, base, layout, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    /* 2. Design Tokens */
++    @layer tokens {
++      :root {
++        /* Legacy aliases for backwards compatibility */
++        --primary: #4e342e;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --text: #3e2723;
++        --light: #fafafa;
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        /* Color Palette & Semantic Tokens */
++        --color-brand-primary: var(--primary);
++        --color-brand-primary-hover: #3e2723;
++        --color-brand-secondary: var(--secondary);
++        --color-brand-accent: var(--accent);
++        --color-text-main: var(--text);
++        --color-text-inverse: #ffffff;
++        --color-surface-page: var(--light);
++        --color-surface-card: #ffffff;
++        --color-overlay-dark: rgba(0, 0, 0, 0.5);
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Typography Tokens */
++        --font-family-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --font-size-xs: 0.85rem;
++        --font-size-sm: 0.9rem;
++        --font-size-base: 1rem;
++        --font-size-lg: 1.5rem;
++        --font-size-xl: clamp(2rem, 5vw, 3rem);
++        --line-height-base: 1.6;
++        --letter-spacing-wide: 1px;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        /* Spacing & Sizing Scale */
++        --space-2xs: 5px;
++        --space-xs: 10px;
++        --space-sm: 12px;
++        --space-md: 15px;
++        --space-lg: 20px;
++        --space-xl: 40px;
++        --space-fluid-inline: 5%;
++        --size-container-max: 1100px;
++        --size-card-min: 250px;
++        --size-hero-block: 60vh;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++        /* Borders, Radii, Shadows & Transitions */
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
++        --shadow-card: 0 2px 5px rgba(0, 0, 0, 0.1);
++        --transition-fast: 0.3s ease;
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    /* 3. Modern Reset Layer */
++    @layer reset {
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++        margin-block: 0;
++        margin-inline: 0;
++        padding-block: 0;
++        padding-inline: 0;
++      }
+     }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++    /* 4. Base Typography & Document Defaults */
++    @layer base {
++      body {
++        font-family: var(--font-family-sans);
++        line-height: var(--line-height-base);
++        color: var(--color-text-main);
++        background-color: var(--color-surface-page);
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      :is(h1, h2, h3) {
++        line-height: 1.25;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++        transition: color var(--transition-fast), background-color var(--transition-fast);
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    /* 5. Structural Layout & Logical Spacing */
++    @layer layout {
++      /* Sticky Navigation Bar */
++      nav {
++        background-color: var(--color-brand-primary);
++        color: var(--color-text-inverse);
++        padding-block: 1rem;
++        padding-inline: var(--space-fluid-inline);
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++        & ul {
++          display: flex;
++          align-items: center;
++          list-style: none;
++          gap: var(--space-lg);
++        }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++        & li {
++          margin-inline-start: 0;
++        }
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      /* "Wake Up Your Senses" Hero Banner */
++      .hero {
++        min-block-size: var(--size-hero-block);
++        background:
++          linear-gradient(var(--color-overlay-dark), var(--color-overlay-dark)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover no-repeat;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: var(--color-text-inverse);
++        text-align: center;
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      /* Main Content & "Seasonal Favorites" Card Grid */
++      .container {
++        max-inline-size: var(--size-container-max);
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--space-lg);
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        & section > h2 {
++          text-align: center;
++        }
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--size-card-min)), 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      /* Footer */
++      footer {
++        background-color: var(--color-brand-secondary);
++        text-align: center;
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        margin-block-start: var(--space-xl);
++      }
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++    /* 6. UI Components & Grouped Selectors */
++    @layer components {
++      .logo {
++        font-size: var(--font-size-lg);
++        font-weight: 700;
++        letter-spacing: var(--letter-spacing-wide);
++      }
++
++      /* Grouped link states across navigation and footer */
++      :is(nav, .footer-links) a {
++        text-decoration: none;
++      }
++
++      nav a {
++        color: var(--color-text-inverse);
++        font-size: var(--font-size-sm);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-brand-accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--color-brand-accent);
++          padding-block: var(--space-2xs);
++          padding-inline: var(--space-sm);
++          border-radius: var(--radius-sm);
++        }
++      }
++
++      .hero h1 {
++        font-size: var(--font-size-xl);
++        margin-block-end: 1rem;
++      }
++
++      /* Grouped centered surface blocks */
++      :is(.card, .hero, footer) {
++        text-align: center;
++      }
++
++      .card {
++        background-color: var(--color-surface-card);
++        padding-block: var(--space-lg);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-lg);
++        box-shadow: var(--shadow-card);
++
++        & h3 {
++          margin-block-end: var(--space-xs);
++          color: var(--color-brand-primary);
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        background-color: var(--color-brand-primary);
++        color: var(--color-text-inverse);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-md);
++        margin-block-start: var(--space-md);
++
++        &:is(:hover, :focus-visible) {
++          background-color: var(--color-brand-primary-hover);
++        }
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-lg);
++
++        & a {
++          margin-inline: var(--space-xs);
++          color: var(--color-text-main);
++          font-size: var(--font-size-xs);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++          &:is(:hover, :focus-visible) {
++            color: var(--color-brand-primary);
++            text-decoration: underline;
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* 7. Utilities Layer */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +279,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,75 @@
+diff --git a/menu-tool.js b/menu-tool.js
+new file mode 100644
+--- a/menu-tool.js
++++ b/menu-tool.js
+@@ -0,0 +1,70 @@
++(() => {
++  const modelContext = document.modelContext;
++  if (typeof modelContext?.registerTool !== 'function') return;
++
++  let registration;
++
++  const menuItemTool = {
++    name: 'get_menu_item',
++    description: 'Look up a coffee menu item and return its name, description, and details URL. Use when a user asks about a drink on the menu.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        itemName: {
++          type: 'string',
++          minLength: 1,
++          description: 'The menu item name as displayed on the menu, for example Maple Oat Latte. Matching ignores capitalization and surrounding whitespace.',
++        },
++      },
++      required: ['itemName'],
++      additionalProperties: false,
++    },
++    annotations: { readOnlyHint: true },
++    execute(input) {
++      if (
++        !input || typeof input !== 'object' || Array.isArray(input) ||
++        typeof input.itemName !== 'string' || !input.itemName.trim() ||
++        Object.keys(input).some((key) => key !== 'itemName')
++      ) {
++        return { error: 'Provide a non-empty menu item name in itemName, with no additional parameters.' };
++      }
++
++      const items = Array.from(document.querySelectorAll('#menu-items .card'), (card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        detailsUrl: card.querySelector('a').href,
++      }));
++      const requestedName = input.itemName.trim().toLowerCase();
++      const item = items.find((entry) => entry.name.toLowerCase() === requestedName);
++
++      return item || {
++        error: `Menu item "${input.itemName.trim()}" not found.`,
++        availableItems: items.map((entry) => entry.name),
++      };
++    },
++  };
++
++  async function registerMenuTool() {
++    if (registration) return;
++    const controller = new AbortController();
++    registration = controller;
++
++    try {
++      await modelContext.registerTool(menuItemTool, { signal: controller.signal });
++    } catch (error) {
++      controller.abort();
++      if (registration === controller) {
++        registration = undefined;
++        console.warn('Menu lookup tool registration failed.', error);
++      }
++    }
++  }
++
++  // pagehide also covers navigation into the back/forward cache.
++  window.addEventListener('pagehide', () => {
++    registration?.abort();
++    registration = undefined;
++  });
++  window.addEventListener('pageshow', registerMenuTool);
++  registerMenuTool();
++})();

@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,45 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      // Read browser-recorded history so delayed/async execution cannot confuse
++      // the current visibility with the visibility when navigation began.
++      const supportsVisibilityEntries =
++        typeof PerformanceObserver !== 'undefined' &&
++        PerformanceObserver.supportedEntryTypes?.includes('visibility-state');
++      const entries = supportsVisibilityEntries
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++
++      if (entries.length > 0 && entries[0].startTime === 0) {
++        const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++        console.log({
++          initiallyBackgrounded: entries[0].name === 'hidden',
++          // Milliseconds since performance.timeOrigin, at browser precision.
++          // An initially hidden page has time 0; null means no hidden entry yet.
++          timeBackgrounded: firstHiddenEntry ? firstHiddenEntry.startTime : null,
++          fallbackDetection: false
++        });
++        return;
++      }
++
++      // UNRELIABLE LEGACY FALLBACK: this only samples visibility NOW. With
++      // async/delayed scripts it cannot recover the initial state or the exact
++      // background time. Never pass off performance.now() as that timestamp.
++      console.warn(
++        'Legacy visibility fallback active: initial background status may be ' +
++        'inaccurate, especially for async scripts; background time is unknown.'
++      );
++      console.log({
++        initiallyBackgrounded: document.visibilityState === 'hidden',
++        timeBackgrounded: null,
++        fallbackDetection: true
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

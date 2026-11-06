@@ -1,0 +1,536 @@
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..4a8fcc9 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}account/passkeys`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..48043b1 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/passkeys`} class="text-xs font-semibold text-gray-700 hover:underline">My account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -53,7 +54,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+-        <a href={`${import.meta.env.BASE_URL}`}>
++        <a href={`${baseUrl}news`}>
+           <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+diff --git a/src/components/PasskeySettings.tsx b/src/components/PasskeySettings.tsx
+new file mode 100644
+index 0000000..04bedd3
+--- /dev/null
++++ b/src/components/PasskeySettings.tsx
+@@ -0,0 +1,124 @@
++import { useEffect, useRef, useState } from 'react';
++import {
++  ArrowLeftIcon, ArrowRightIcon, ArrowUpRightIcon, BellIcon, BookmarkIcon,
++  CheckIcon, ChevronDownIcon, ChevronRightIcon, CreditCardIcon, DevicePhoneMobileIcon,
++  FingerPrintIcon, KeyIcon, LifebuoyIcon, LockClosedIcon, ComputerDesktopIcon,
++  PencilSquareIcon, PlusIcon, ShieldCheckIcon, TrashIcon, UserIcon, XMarkIcon,
++} from '@heroicons/react/24/outline';
++
++type Passkey = { id: string; name: string; device: 'computer' | 'phone' | 'key'; provider: string; created: string; lastUsed: string; current?: boolean };
++const initialPasskeys: Passkey[] = [
++  { id: 'macbook', name: 'MacBook Pro', device: 'computer', provider: 'iCloud Keychain', created: 'May 12, 2026', lastUsed: 'Just now', current: true },
++  { id: 'iphone', name: 'iPhone 15', device: 'phone', provider: 'iCloud Keychain', created: 'May 12, 2026', lastUsed: '2 days ago' },
++  { id: 'yubikey', name: 'YubiKey 5C', device: 'key', provider: 'Security key', created: 'Apr 28, 2026', lastUsed: '12 days ago' },
++];
++const storageKey = 'devtools-times-passkeys-preview-v1';
++const deviceIcons = { computer: ComputerDesktopIcon, phone: DevicePhoneMobileIcon, key: KeyIcon };
++const navItems = [
++  { name: 'Personal information', icon: UserIcon },
++  { name: 'Sign-in & security', icon: ShieldCheckIcon },
++  { name: 'Subscription & billing', icon: CreditCardIcon },
++  { name: 'Notifications', icon: BellIcon },
++  { name: 'Saved articles', icon: BookmarkIcon },
++];
++
++type Modal = { type: 'rename'; passkey: Passkey } | { type: 'remove'; passkey: Passkey } | { type: 'add' } | { type: 'learn' } | { type: 'section'; name: string } | null;
++
++export default function PasskeySettings({ baseUrl }: { baseUrl: string }) {
++  const [passkeys, setPasskeys] = useState(initialPasskeys);
++  const [ready, setReady] = useState(false);
++  const [message, setMessage] = useState('');
++  const [modal, setModal] = useState<Modal>(null);
++  const [name, setName] = useState('');
++  const [device, setDevice] = useState<Passkey['device']>('computer');
++  const [formError, setFormError] = useState('');
++  const dialog = useRef<HTMLDialogElement>(null);
++
++  useEffect(() => {
++    try {
++      const saved = localStorage.getItem(storageKey);
++      if (saved) {
++        const parsed: unknown = JSON.parse(saved);
++        if (Array.isArray(parsed) && parsed.every(p => p && typeof p.id === 'string' && typeof p.name === 'string' && ['computer', 'phone', 'key'].includes(p.device) && typeof p.provider === 'string' && typeof p.created === 'string' && typeof p.lastUsed === 'string')) setPasskeys(parsed);
++      }
++    } catch { setMessage('Your saved preview could not be loaded. The sample passkeys are shown.'); }
++    setReady(true);
++  }, []);
++
++  useEffect(() => {
++    if (modal) dialog.current?.showModal();
++    else dialog.current?.close();
++  }, [modal]);
++
++  function openModal(next: NonNullable<Modal>) {
++    setName(next.type === 'rename' ? next.passkey.name : '');
++    setDevice('computer');
++    setFormError('');
++    setModal(next);
++  }
++
++  function save(next: Passkey[], success: string) {
++    try {
++      localStorage.setItem(storageKey, JSON.stringify(next));
++      setPasskeys(next);
++      setMessage(success);
++      setModal(null);
++    } catch { setFormError('Changes could not be saved. Please allow browser storage and try again.'); }
++  }
++
++  function submit(event: React.FormEvent) {
++    event.preventDefault();
++    if (!modal) return;
++    if (modal.type === 'remove') {
++      save(passkeys.filter(p => p.id !== modal.passkey.id), `${modal.passkey.name} was removed.`);
++    } else if (modal.type === 'rename' || modal.type === 'add') {
++      const cleanName = name.trim();
++      if (!cleanName) { setFormError('Enter a name for this passkey.'); return; }
++      if (passkeys.some(p => p.name.toLowerCase() === cleanName.toLowerCase() && (modal.type !== 'rename' || p.id !== modal.passkey.id))) {
++        setFormError('A passkey with this name already exists. Choose another name.'); return;
++      }
++      if (modal.type === 'rename') save(passkeys.map(p => p.id === modal.passkey.id ? { ...p, name: cleanName } : p), 'Passkey name updated.');
++      else save([...passkeys, { id: crypto.randomUUID(), name: cleanName, device, provider: device === 'key' ? 'Security key' : 'Device passkey', created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), lastUsed: 'Not used yet' }], 'Sample passkey added to your preview.');
++    }
++  }
++
++  return <>
++    <a className="skip-link" href="#account-content">Skip to content</a>
++    <header className="account-header">
++      <a href={`${baseUrl}news`} className="wordmark" aria-label="The DevTools Times home">The DevTools Times<span className="wordmark-dot">.</span></a>
++      <span className="header-divider" /> <span className="header-account">Your account</span>
++      <div className="header-actions"><a href={`${baseUrl}news`} className="back-to-news"><ArrowLeftIcon /> Back to the news</a><span className="header-rule" /><button className="profile-button" onClick={() => openModal({ type: 'section', name: 'Your account' })} aria-label="View Alex Morgan's account"><span className="avatar">AM</span><span>Alex Morgan</span><ChevronDownIcon /></button></div>
++    </header>
++    <div className="account-shell">
++      <aside className="account-sidebar">
++        <div className="sidebar-label">MY ACCOUNT</div>
++        <nav aria-label="Account settings">{navItems.map(({ name: item, icon: Icon }) => <button key={item} className={`side-nav-item ${item === 'Sign-in & security' ? 'selected' : ''}`} aria-current={item === 'Sign-in & security' ? 'page' : undefined} onClick={() => item === 'Sign-in & security' ? document.getElementById('account-content')?.focus() : item === 'Saved articles' ? window.location.assign(`${baseUrl}news`) : openModal({ type: 'section', name: item })}><Icon /><span>{item}</span>{item === 'Sign-in & security' && <ChevronRightIcon className="nav-chevron" />}</button>)}</nav>
++        <div className="sidebar-support"><span className="support-icon"><LifebuoyIcon /></span><h2>A little help?</h2><p>We're here to make things easy.</p><button onClick={() => openModal({ type: 'section', name: 'Account support' })}>Visit the help center <ArrowUpRightIcon /></button></div>
++        <div className="subscriber"><span className="subscriber-dot" /> Digital subscriber <span>Since 2024</span></div>
++      </aside>
++      <main id="account-content" tabIndex={-1} className="account-main">
++        <nav className="breadcrumbs" aria-label="Breadcrumb"><span>Account</span><ChevronRightIcon /><button onClick={() => openModal({ type: 'section', name: 'Sign-in & security' })}>Sign-in & security</button><ChevronRightIcon /><span aria-current="page">Passkeys</span></nav>
++        <div className="page-heading"><div className="eyebrow">SIGN-IN & SECURITY</div><h1>Your keys. Your peace of mind.</h1><p>A safer, simpler way to sign in. Manage the passkeys connected to your account.</p></div>
++        <section className="passkey-intro" aria-labelledby="intro-heading"><div className="intro-icon"><FingerPrintIcon /></div><div><h2 id="intro-heading">Goodbye passwords. Hello passkeys.</h2><p>Sign in with your fingerprint, face, or device PIN. Passkeys are secure<br className="desktop-break" /> by design and uniquely yours.</p><button onClick={() => openModal({ type: 'learn' })}>Learn how passkeys work <ArrowUpRightIcon /></button></div><div className="intro-art" aria-hidden="true"><span className="art-ring ring-one" /><span className="art-ring ring-two" /><span className="art-ring ring-three" /><span className="art-key"><KeyIcon /></span><span className="art-check"><CheckIcon /></span></div></section>
++        <section className="registered-section" aria-labelledby="passkeys-heading">
++          <div className="section-heading"><div><div className="title-with-count"><h2 id="passkeys-heading">Your passkeys</h2><span className="count">{passkeys.length}</span></div><p>These devices and security keys can sign in to your account.</p></div><button className="primary-button" disabled={!ready} onClick={() => openModal({ type: 'add' })}><PlusIcon /> Add a passkey</button></div>
++          <div className="passkey-list">{passkeys.map(passkey => { const Icon = deviceIcons[passkey.device]; return <article className="passkey-card" key={passkey.id}><div className={`device-icon ${passkey.device}`}><Icon /></div><div className="passkey-info"><div className="passkey-name"><h3>{passkey.name}</h3>{passkey.current && <span className="current-badge"><span /> This device</span>}</div><div className="provider">{passkey.provider}</div><div className="key-metadata"><span>Added {passkey.created}</span><span className="metadata-dot">·</span><span>Last used: <strong>{passkey.lastUsed}</strong></span></div></div><div className="card-actions"><button className="rename-button" disabled={!ready} onClick={() => openModal({ type: 'rename', passkey })} aria-label={`Rename ${passkey.name}`}><PencilSquareIcon /><span>Rename</span></button><span className="action-divider" /><button className="remove-button" disabled={!ready} onClick={() => openModal({ type: 'remove', passkey })} aria-label={`Remove ${passkey.name}`}><TrashIcon /></button></div></article>; })}{passkeys.length === 0 && <div className="empty-state"><KeyIcon /><h3>A fresh start for your security</h3><p>Add a passkey to see it here. You can still sign in with your password.</p><button className="primary-button" onClick={() => openModal({ type: 'add' })}><PlusIcon /> Add your first passkey</button></div>}</div>
++          <div className="security-note"><LockClosedIcon /><p>Your biometric data stays on your device. We never see or store it.</p></div>
++          <div role="status" className={message ? 'status-message' : 'status-empty'}>{message && <><CheckIcon />{message}<button aria-label="Dismiss notification" onClick={() => setMessage('')}><XMarkIcon /></button></>}</div>
++        </section>
++        <div className="tips-grid"><section className="tip-card"><span className="tip-icon"><ShieldCheckIcon /></span><div><h2>Built for your protection</h2><p>Passkeys can't be guessed or reused. They help protect your account from phishing and data breaches.</p></div></section><section className="tip-card"><span className="tip-icon"><DevicePhoneMobileIcon /></span><div><h2>A backup is a good idea</h2><p>Add a passkey on another device or a security key so you always have a way back in.</p></div></section></div>
++        <div className="account-help"><span>Have a question about signing in?</span><button onClick={() => openModal({ type: 'section', name: 'Account support' })}>We're here to help <ArrowRightIcon /></button></div>
++      </main>
++    </div>
++    <footer className="account-footer"><div><span className="footer-brand">The DevTools Times.</span><span>© {new Date().getFullYear()} The DevTools Times Company</span></div><div><span className="preview-label">Account preview</span><a href={`${baseUrl}legal/privacy`}>Privacy policy</a><a href={`${baseUrl}legal/terms`}>Terms of service</a><button onClick={() => openModal({ type: 'section', name: 'Account support' })}>Contact us <ArrowUpRightIcon /></button></div></footer>
++    <dialog ref={dialog} className="passkey-dialog" onCancel={() => setModal(null)} onClose={() => setModal(null)} aria-labelledby="dialog-title">
++      {modal && <><button className="dialog-close" aria-label="Close dialog" onClick={() => setModal(null)}><XMarkIcon /></button><div className={`dialog-icon ${modal.type === 'remove' ? 'danger' : ''}`}>{modal.type === 'remove' ? <TrashIcon /> : modal.type === 'learn' ? <FingerPrintIcon /> : <KeyIcon />}</div>
++      <h2 id="dialog-title">{modal.type === 'rename' ? 'Rename your passkey' : modal.type === 'remove' ? `Remove ${modal.passkey.name}?` : modal.type === 'add' ? 'Add a passkey' : modal.type === 'learn' ? 'A simpler way to sign in' : modal.name}</h2>
++      {(modal.type === 'add' || modal.type === 'rename' || modal.type === 'remove') ? <form onSubmit={submit}>
++        <p className="dialog-description">{modal.type === 'remove' ? `This passkey will be removed from this account preview. Keep another sign-in method available before removing a device.` : modal.type === 'rename' ? 'Choose a name that helps you recognize this device.' : 'Try adding a sample device to this account preview. Live passkey registration is not connected yet.'}</p>
++        {modal.type !== 'remove' && <><label htmlFor="passkey-name">Passkey name</label><input id="passkey-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. My personal laptop" maxLength={60} required autoFocus aria-describedby={formError ? 'passkey-error' : undefined} aria-invalid={!!formError} />{modal.type === 'add' && <><label htmlFor="passkey-device">Device type</label><select id="passkey-device" value={device} onChange={e => setDevice(e.target.value as Passkey['device'])}><option value="computer">Computer</option><option value="phone">Phone or tablet</option><option value="key">Security key</option></select></>}</>}
++        {formError && <p id="passkey-error" className="form-error" role="alert">{formError}</p>}<div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setModal(null)}>Cancel</button><button className={modal.type === 'remove' ? 'danger-button' : 'primary-button'} type="submit">{modal.type === 'remove' ? 'Remove passkey' : modal.type === 'rename' ? 'Save changes' : 'Add sample passkey'}</button></div>
++      </form> : modal.type === 'learn' ? <div className="learn-content"><p>Passkeys use your device's built-in security to make signing in easier.</p><ol><li><strong>Unlock with a touch or a glance.</strong><span>Use your fingerprint, face, or device PIN.</span></li><li><strong>Your information stays private.</strong><span>Your biometric data never leaves your device.</span></li><li><strong>Keep another way to sign in.</strong><span>A second device or security key makes a useful backup.</span></li></ol><button className="primary-button" onClick={() => setModal(null)}>Got it</button></div> : <div className="learn-content"><p>{modal.name === 'Account support' ? 'Need help with a passkey? You can rename a device to recognize it, or remove an entry you no longer use. Keep a backup sign-in method before removing your last passkey.' : 'This account preview focuses on passkey management. You can view, rename, add sample devices, and remove the passkeys listed here.'}</p><button className="primary-button" onClick={() => setModal(null)}>Back to passkeys</button></div>}</>}
++    </dialog>
++  </>;
++}
+diff --git a/src/layouts/AccountLayout.astro b/src/layouts/AccountLayout.astro
+new file mode 100644
+index 0000000..391d710
+--- /dev/null
++++ b/src/layouts/AccountLayout.astro
+@@ -0,0 +1,20 @@
++---
++import '../styles/global.css';
++import '../styles/account.css';
++import PasskeySettings from '../components/PasskeySettings';
++---
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <title>Passkeys · Your account | The DevTools Times</title>
++    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Text:wght@400;700&display=swap" rel="stylesheet" />
++  </head>
++  <body class="account-body">
++    <PasskeySettings client:load baseUrl={import.meta.env.BASE_URL} />
++  </body>
++</html>
+diff --git a/src/pages/account/passkeys.astro b/src/pages/account/passkeys.astro
+new file mode 100644
+index 0000000..444a654
+--- /dev/null
++++ b/src/pages/account/passkeys.astro
+@@ -0,0 +1,4 @@
++---
++import AccountLayout from '../../layouts/AccountLayout.astro';
++---
++<AccountLayout />
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..51f1a0e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,4 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import AccountLayout from '../layouts/AccountLayout.astro';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<AccountLayout />
+diff --git a/src/pages/news.astro b/src/pages/news.astro
+new file mode 100644
+index 0000000..92f6399
+--- /dev/null
++++ b/src/pages/news.astro
+@@ -0,0 +1,84 @@
++---
++import Layout from '../layouts/Layout.astro';
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++<Layout title="The DevTools Times">
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </main>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </div>
++</Layout>
+\ No newline at end of file
+diff --git a/src/styles/account.css b/src/styles/account.css
+new file mode 100644
+index 0000000..a1fc0c4
+--- /dev/null
++++ b/src/styles/account.css
+@@ -0,0 +1,147 @@
++.account-body { margin: 0; color: #282a28; background: #fafaf7; font-family: 'DM Sans', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
++.account-body * { box-sizing: border-box; }
++.account-body button, .account-body input, .account-body select { font: inherit; }
++.account-body button, .account-body a { -webkit-tap-highlight-color: transparent; }
++.account-body button { cursor: pointer; }
++.account-body button:disabled { opacity: .5; cursor: wait; }
++.account-body a { color: inherit; text-decoration: none; }
++.account-body svg { width: 20px; height: 20px; flex-shrink: 0; stroke-width: 1.6; }
++.account-body button { transition: background .16s, color .16s; }
++.account-body :focus-visible { outline: 2px solid #b94e36; outline-offset: 5px; }
++.skip-link { position: fixed; top: -80px; left: 20px; z-index: 100; padding: 12px 20px; background: #fff; }
++.skip-link:focus { top: 10px; }
++.account-header { height: 94px; border-bottom: 1px solid #e2e3dd; display: flex; align-items: center; padding: 0 4.4%; gap: 25px; background: #fff; }
++.wordmark { font-family: 'Libre Caslon Text', Georgia, serif; font-size: 26px; letter-spacing: -1.2px; font-weight: 700; white-space: nowrap; }
++.wordmark-dot { color: #bd553d; }
++.header-divider, .header-rule { width: 1px; height: 25px; background: #dedfd9; }
++.header-account { color: #787970; font-size: 13px; }
++.header-actions { margin-left: auto; display: flex; align-items: center; gap: 25px; }
++.back-to-news { display: flex; align-items: center; gap: 10px; font-size: 13px; }
++.back-to-news:hover { color: #ad4a34; }
++.back-to-news svg { width: 16px; }
++.profile-button { display: flex; align-items: center; gap: 11px; background: transparent; border: 0; padding: 5px 0; font-size: 13px !important; font-weight: 550; }
++.profile-button > svg { width: 14px; margin-left: 4px; }
++.avatar { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 50%; background: #eeeae2; color: #706858; font-size: 11px; letter-spacing: .4px; }
++.account-shell { max-width: 1440px; margin: auto; display: grid; grid-template-columns: 255px minmax(0, 1fr); min-height: calc(100vh - 189px); }
++.account-sidebar { padding: 47px 24px 35px 28px; border-right: 1px solid #e2e3dd; display: flex; flex-direction: column; }
++.sidebar-label { font-size: 10px; font-weight: 650; letter-spacing: 1.7px; color: #96968b; margin: 0 0 22px 17px; }
++.account-sidebar nav { display: grid; gap: 9px; }
++.side-nav-item { border: 0; border-radius: 5px; background: transparent; padding: 13px 13px; display: flex; align-items: center; gap: 12px; color: #696a61; text-align: left; font-size: 12px !important; white-space: nowrap; }
++.side-nav-item svg { width: 18px; height: 18px; }
++.side-nav-item:hover { background: #eeeee8; }
++.side-nav-item.selected { background: #f0e7df; color: #a14b37; font-weight: 600; }
++.side-nav-item .nav-chevron { width: 12px; margin-left: auto; }
++.sidebar-support { margin: 69px 13px 0; padding-top: 27px; border-top: 1px solid #e0e1d9; }
++.support-icon { display: block; color: #757970; margin-bottom: 13px; }
++.sidebar-support h2 { margin: 0 0 7px; font-size: 13px; font-weight: 600; }
++.sidebar-support p { font-size: 11px; color: #8a8b80; margin: 0 0 16px; }
++.sidebar-support button { border: 0; padding: 0; background: none; display: flex; gap: 13px; align-items: center; font-size: 11px !important; font-weight: 550; }
++.sidebar-support button svg { width: 13px; }
++.subscriber { margin: auto 0 0 15px; padding-top: 70px; font-size: 11px; display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #626b5f; }
++.subscriber-dot { width: 6px; height: 6px; background: #7a8c70; border-radius: 50%; }
++.subscriber > span:last-child { color: #939589; flex-basis: 100%; margin-left: 13px; font-size: 10px; }
++.account-main { padding: 34px 57px 30px; min-width: 0; max-width: 1145px; outline: none; }
++.breadcrumbs { display: flex; align-items: center; gap: 12px; font-size: 11px; color: #898b80; }
++.breadcrumbs svg { width: 10px; height: 10px; }
++.breadcrumbs button { border: 0; background: none; padding: 0; color: inherit; font-size: 11px !important; }
++.breadcrumbs [aria-current] { color: #4d5148; }
++.page-heading { margin-top: 36px; margin-bottom: 29px; }
++.eyebrow { color: #a44e38; font-size: 10px; font-weight: 650; letter-spacing: 1.7px; margin-bottom: 12px; }
++.page-heading h1 { font-family: 'Libre Caslon Text', Georgia, serif; font-weight: 400; font-size: clamp(29px, 2.75vw, 39px); line-height: 1.35; letter-spacing: -1.35px; margin: 0 0 12px; }
++.page-heading p { margin: 0; font-size: 12px; color: #838579; line-height: 1.7; }
++.passkey-intro { position: relative; overflow: hidden; display: flex; gap: 21px; align-items: flex-start; border: 1px solid #e3e4d9; border-radius: 8px; background: #f0f1e8; padding: 27px 26px; }
++.intro-icon { background: #e4e8d8; border: 1px solid #dce0ce; width: 49px; height: 49px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: #637154; }
++.intro-icon svg { width: 28px; height: 28px; stroke-width: 1.4; }
++.passkey-intro h2 { font-size: 15px; font-weight: 600; margin: 0 0 8px; letter-spacing: -.2px; }
++.passkey-intro p { font-size: 11.5px; line-height: 1.85; color: #7b806e; margin: 0 0 13px; }
++.passkey-intro button { background: none; border: 0; padding: 0; display: flex; align-items: center; gap: 8px; font-size: 11px !important; font-weight: 600; color: #5c6a4b; }
++.passkey-intro button:hover { color: #303e22; }
++.passkey-intro button svg { width: 13px; height: 13px; }
++.intro-art { position: absolute; width: 220px; height: 220px; top: -15px; right: 1px; display: grid; place-items: center; }
++.art-ring { position: absolute; border: 1px solid #e0e4d4; border-radius: 50%; }
++.ring-one { width: 185px; height: 185px; }.ring-two { width: 143px; height: 143px; }.ring-three { width: 100px; height: 100px; }
++.art-key { width: 68px; height: 68px; display: grid; place-items: center; border: 1px solid #d7ddca; border-radius: 16px; background: #e9ecdf; transform: rotate(-13deg); box-shadow: 0 6px 12px #6c765b09; color: #849270; }
++.art-key svg { width: 34px; height: 34px; stroke-width: 1.4; }
++.art-check { position: absolute; top: 125px; left: 127px; width: 25px; height: 25px; border-radius: 50%; background: #7c8d67; border: 3px solid #f0f1e8; display: grid; place-items: center; color: white; }
++.art-check svg { width: 13px; height: 13px; stroke-width: 2.2; }
++.registered-section { margin-top: 34px; }
++.section-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 21px; gap: 16px; }
++.title-with-count { display: flex; align-items: center; gap: 9px; }
++.title-with-count h2 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.4px; }
++.count { display: grid; place-items: center; background: #eeeee7; border: 1px solid #e1e2d9; border-radius: 6px; min-width: 23px; height: 22px; font-size: 11px; color: #777c6c; }
++.section-heading p { margin: 8px 0 0; font-size: 11.5px; color: #8b8e80; }
++.primary-button { background: #b45038; color: #fff; border: 1px solid #b45038; padding: 11px 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 5px; font-size: 11.5px !important; font-weight: 550; white-space: nowrap; box-shadow: 0 2px 2px #7e36200a; }
++.primary-button:hover { background: #993f2a; border-color: #993f2a; }
++.primary-button svg { width: 15px; height: 15px; stroke-width: 2; }
++.passkey-list { display: grid; gap: 12px; }
++.passkey-card { display: flex; align-items: center; padding: 23px 23px; border: 1px solid #e0e1d9; border-radius: 7px; background: #fff; gap: 19px; box-shadow: 0 2px 3px #28302202; }
++.device-icon { width: 48px; height: 48px; background: #f3f3ee; border: 1px solid #e9eae3; border-radius: 10px; display: grid; place-items: center; color: #74786c; flex-shrink: 0; }
++.device-icon svg { width: 25px; height: 25px; stroke-width: 1.4; }
++.device-icon.phone svg { width: 24px; height: 24px; }
++.passkey-info { min-width: 0; }
++.passkey-name { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
++.passkey-name h3 { font-size: 13px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
++.current-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 4px; background: #edf2e7; color: #688154; font-size: 9px; padding: 3px 6px; }
++.current-badge > span { width: 4px; height: 4px; border-radius: 50%; background: #789460; }
++.provider { font-size: 10.5px; color: #8b8e81; margin-top: 4px; }
++.key-metadata { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 10px; color: #919486; margin-top: 13px; }
++.key-metadata strong { font-weight: 400; color: #777e6d; }
++.metadata-dot { color: #a2a597; }
++.card-actions { margin-left: auto; display: flex; align-items: center; gap: 17px; flex-shrink: 0; }
++.card-actions button { display: flex; align-items: center; justify-content: center; border: 0; background: none; padding: 7px 0; color: #777a6e; }
++.card-actions button:hover { color: #b45038; }
++.card-actions svg { width: 15px; height: 15px; }
++.rename-button { gap: 7px; font-size: 10px !important; }
++.action-divider { width: 1px; height: 16px; background: #e4e6dc; }
++.remove-button { width: 20px; }
++.security-note { display: flex; align-items: center; gap: 7px; margin: 16px 2px 0; color: #96998a; }
++.security-note svg { width: 12px; height: 12px; }
++.security-note p { font-size: 10px; margin: 0; }
++.status-empty { height: 0; }
++.status-message { display: flex; gap: 8px; align-items: center; background: #eaf1e5; color: #506744; font-size: 12px; border-radius: 5px; padding: 12px; margin-top: 16px; }
++.status-message > svg { width: 16px; height: 16px; }
++.status-message button { background: none; border: 0; margin-left: auto; padding: 0; color: inherit; }
++.status-message button svg { width: 15px; height: 15px; }
++.tips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 34px; padding-top: 29px; border-top: 1px solid #e2e3da; }
++.tip-card { display: flex; align-items: flex-start; gap: 12px; }
++.tip-icon { color: #929783; margin-top: 1px; }
++.tip-icon svg { width: 20px; height: 20px; }
++.tip-card h2 { font-size: 11.5px; font-weight: 600; margin: 0 0 8px; }
++.tip-card p { font-size: 10.5px; line-height: 1.9; color: #929686; margin: 0; max-width: 285px; }
++.account-help { display: flex; align-items: center; justify-content: center; gap: 6px; padding-top: 35px; color: #929687; font-size: 10.5px; }
++.account-help button { border: 0; background: none; padding: 0; display: inline-flex; gap: 7px; align-items: center; color: #6e7564; font-size: 10.5px !important; }
++.account-help button svg { width: 13px; height: 13px; }
++.account-footer { max-width: 1440px; margin: auto; border-top: 1px solid #e1e3d9; padding: 25px 4.4%; display: flex; align-items: center; justify-content: space-between; gap: 20px; color: #949689; font-size: 9px; }
++.account-footer > div { display: flex; align-items: center; gap: 23px; }
++.footer-brand { font-family: 'Libre Caslon Text', Georgia, serif; font-size: 14px; color: #656a5a; font-weight: 700; letter-spacing: -.5px; }
++.account-footer button { background: none; border: 0; padding: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 9px !important; color: inherit; }
++.account-footer svg { width: 11px; height: 11px; }
++.account-footer a:hover, .account-footer button:hover { color: #b45038; }
++.preview-label { font-size: 8px; border: 1px solid #dddacf; padding: 3px 5px; border-radius: 3px; }
++.passkey-dialog { width: min(460px, calc(100vw - 32px)); border: 1px solid #dedfd4; border-radius: 12px; padding: 32px; background: #fafaf7; color: #282a28; box-shadow: 0 20px 100px #20271d30; margin: auto; }
++.passkey-dialog::backdrop { background: #252c2359; backdrop-filter: blur(3px); }
++.dialog-close { position: absolute; right: 16px; top: 16px; padding: 5px; border: 0; background: none; color: #777e6d; }
++.dialog-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 10px; background: #e7ecdd; color: #758563; margin-bottom: 20px; }
++.dialog-icon.danger { background: #f3e4dc; color: #b45038; }
++.passkey-dialog h2 { font-family: 'Libre Caslon Text', Georgia, serif; font-weight: 400; font-size: 24px; margin: 0 0 15px; overflow-wrap: anywhere; }
++.dialog-description, .learn-content p { font-size: 13px; color: #7b8071; line-height: 1.8; margin: 0 0 22px; }
++.passkey-dialog label { display: block; margin: 15px 0 8px; font-size: 12px; font-weight: 550; }
++.passkey-dialog input, .passkey-dialog select { width: 100%; background: #fff; color: #383d32; border: 1px solid #d5d9cb; border-radius: 5px; padding: 11px; font-size: 13px; }
++.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
++.secondary-button { border: 1px solid #d8dbcf; color: #676e5e; background: #fff; border-radius: 5px; padding: 11px 16px; font-size: 11.5px !important; }
++.secondary-button:hover { background: #eeefe6; }
++.danger-button { border: 1px solid #a8412c; background: #a8412c; color: #fff; border-radius: 5px; padding: 11px 16px; font-size: 11.5px !important; }
++.danger-button:hover { background: #8b3423; }
++.form-error { color: #a8412c; font-size: 12px; margin-top: 12px; }
++.learn-content ol { margin: 10px 0 28px; padding-left: 21px; }
++.learn-content li { font-size: 12px; padding: 8px 0 8px 5px; }
++.learn-content li strong { font-weight: 550; }
++.learn-content li span { display: block; color: #828877; line-height: 1.8; margin-top: 4px; }
++.empty-state { padding: 35px 20px; text-align: center; border: 1px dashed #d1d8c6; border-radius: 8px; }
++.empty-state > svg { color: #849471; width: 30px; height: 30px; margin: auto; }
++.empty-state h3 { margin-top: 15px; font-size: 15px; }.empty-state p { color: #868d7a; margin: 12px 0 20px; font-size: 12px; }
++@media (min-width: 1500px) { .account-header { padding-left: max(4.4%, calc((100vw - 1310px)/2)); padding-right: max(4.4%, calc((100vw - 1310px)/2)); } }
++@media (max-width: 1100px) { .account-main { padding-left: 32px; padding-right: 32px; }.account-shell { grid-template-columns: 228px minmax(0,1fr); }.account-sidebar { padding-left: 17px; padding-right: 17px; }.intro-art { right: -65px; opacity: .65; }.passkey-intro > div:nth-child(2) { position: relative; z-index: 1; }.account-header { gap: 17px; }.header-actions { gap: 17px; }.account-footer { flex-wrap: wrap; }.account-footer > div { gap: 17px; } }
++@media (max-width: 800px) { .account-header { height: 76px; padding: 0 24px; }.wordmark { font-size: 23px; }.header-divider, .header-account, .header-rule, .profile-button > span:nth-child(2) { display: none; }.header-actions { gap: 20px; }.account-shell { grid-template-columns: 1fr; }.account-sidebar { padding: 14px 20px; border-right: 0; border-bottom: 1px solid #e2e3dd; }.sidebar-label, .sidebar-support, .subscriber { display: none; }.account-sidebar nav { display: flex; gap: 8px; overflow-x: auto; }.side-nav-item { padding: 10px; }.side-nav-item .nav-chevron { display: none; }.account-main { padding: 26px 28px 35px; }.page-heading { margin-top: 30px; }.page-heading h1 { font-size: 34px; }.intro-art { right: -10px; }.account-footer { padding: 23px 28px; }.account-footer > div { flex-wrap: wrap; } }
++@media (max-width: 540px) { .account-header { padding: 0 18px; height: 70px; }.wordmark { font-size: 21px; }.back-to-news { font-size: 0; gap: 0; }.back-to-news svg { width: 18px; }.header-actions { gap: 13px; }.profile-button { gap: 5px; }.account-sidebar { padding: 10px 12px; }.side-nav-item { font-size: 11px !important; gap: 7px; }.account-main { padding: 24px 19px 32px; }.breadcrumbs { font-size: 10px; gap: 9px; }.breadcrumbs button { font-size: 10px !important; }.page-heading h1 { font-size: 31px; letter-spacing: -1px; max-width: 310px; }.page-heading p { font-size: 12px; max-width: 325px; }.passkey-intro { padding: 21px 18px; gap: 13px; }.intro-icon { width: 39px; height: 39px; border-radius: 9px; }.intro-icon svg { width: 24px; }.passkey-intro h2 { font-size: 13px; }.passkey-intro p { font-size: 11px; }.intro-art { display: none; }.desktop-break { display: none; }.section-heading { align-items: flex-start; gap: 10px; }.section-heading p { max-width: 190px; line-height: 1.7; font-size: 10.5px; }.title-with-count h2 { font-size: 17px; }.section-heading .primary-button { padding: 10px; font-size: 10.5px !important; margin-top: 2px; gap: 5px; }.passkey-card { padding: 19px 15px; gap: 13px; flex-wrap: wrap; }.device-icon { width: 41px; height: 41px; }.passkey-info { flex: 1; }.passkey-name { gap: 7px; }.passkey-name h3 { font-size: 12px; }.card-actions { width: 100%; padding-top: 10px; border-top: 1px solid #eeeeea; margin-left: 54px; justify-content: flex-end; gap: 15px; }.card-actions button { padding: 3px; }.key-metadata { font-size: 9px; gap: 5px; margin-top: 10px; }.security-note { align-items: flex-start; }.security-note p { line-height: 1.7; }.security-note svg { margin-top: 2px; }.tips-grid { grid-template-columns: 1fr; gap: 22px; }.tip-card p { max-width: 100%; font-size: 11px; }.account-help { flex-wrap: wrap; padding-top: 27px; }.account-footer { padding: 24px 19px; gap: 16px; }.account-footer > div { gap: 14px; }.account-footer > div:first-child { flex-direction: column; align-items: flex-start; gap: 10px; }.passkey-dialog { padding: 27px; } }
++@media (prefers-reduced-motion: reduce) { .account-body button { transition: none; } }

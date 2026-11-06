@@ -1,0 +1,216 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..74422cc
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,144 @@
++// <drink-card> — reusable menu card with encapsulated layout and styles.
++//
++// Usage:
++//   <drink-card heading="Cold Brew" href="/menu/cold-brew" limited>
++//     Steeped for 18 hours for maximum smoothness.
++//   </drink-card>
++//
++// Attributes:
++//   heading      Card title.
++//   href         Destination for the action link.
++//   action-label Link text (defaults to "View Details").
++//   limited      Boolean; shows the "Limited" badge. Can be toggled at any
++//                time via the attribute or the `limited` property.
++// The description is the element's text content (default slot).
++//
++// Theming hooks: --card-bg, --card-fg, --card-accent, --card-accent-hover,
++// --card-badge-bg, --card-badge-fg, plus ::part(card|title|description|action|badge).
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    --_bg: var(--card-bg, white);
++    --_fg: var(--card-fg, #3e2723);
++    --_accent: var(--card-accent, #4e342e);
++    --_accent-hover: var(--card-accent-hover, #3e2723);
++    --_badge-bg: var(--card-badge-bg, #ffab40);
++    --_badge-fg: var(--card-badge-fg, #3e2723);
++
++    display: block;
++    color: var(--_fg);
++    line-height: 1.6;
++    text-align: center;
++  }
++
++  :host([hidden]) { display: none; }
++
++  *, *::before, *::after { box-sizing: border-box; }
++
++  article {
++    position: relative;
++    height: 100%;
++    margin: 0;
++    padding: 20px;
++    background: var(--_bg);
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  }
++
++  h3 {
++    margin: 0 0 10px;
++    font-size: 1.17em;
++    color: var(--_accent);
++  }
++
++  p { margin: 0; }
++
++  .badge {
++    display: none;
++    position: absolute;
++    top: 12px;
++    right: 12px;
++    padding: 2px 10px;
++    border-radius: 999px;
++    background: var(--_badge-bg);
++    color: var(--_badge-fg);
++    font-size: 0.75rem;
++    font-weight: bold;
++    letter-spacing: 0.5px;
++    text-transform: uppercase;
++  }
++
++  :host([limited]) .badge { display: inline-block; }
++
++  a {
++    display: inline-block;
++    margin-top: 15px;
++    padding: 10px 20px;
++    border-radius: 5px;
++    background: var(--_accent);
++    color: white;
++    font: inherit;
++    text-decoration: none;
++    transition: background 0.3s;
++  }
++
++  a:hover { background: var(--_accent-hover); }
++
++  a:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 2px;
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article part="card">
++    <h3 part="title" id="title"></h3>
++    <span part="badge" class="badge">Limited</span>
++    <p part="description"><slot></slot></p>
++    <a part="action" aria-describedby="title"></a>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['heading', 'href', 'action-label'];
++
++  #title;
++  #link;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++    this.#title = root.querySelector('h3');
++    this.#link = root.querySelector('a');
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  get limited() {
++    return this.hasAttribute('limited');
++  }
++
++  set limited(value) {
++    this.toggleAttribute('limited', Boolean(value));
++  }
++
++  #render() {
++    this.#title.textContent = this.getAttribute('heading') ?? '';
++    this.#link.textContent = this.getAttribute('action-label') || 'View Details';
++    const href = this.getAttribute('href');
++    if (href) this.#link.setAttribute('href', href);
++    else this.#link.removeAttribute('href');
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..f4cb959 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,11 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    /* Theme the encapsulated <drink-card> component via its custom properties */
++    drink-card {
++      --card-fg: var(--text);
++      --card-accent: var(--primary);
++      --card-badge-bg: var(--accent);
+     }
+ 
+     .btn {
+@@ -153,6 +147,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +173,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card heading="Maple Oat Latte" href="/menu/seasonal" limited>
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </drink-card>
++        <drink-card heading="Dark Roast Espresso" href="/menu/espresso">
++          Bold, smokey, and perfect for a morning boost.
++        </drink-card>
++        <drink-card heading="Cold Brew" href="/menu/cold-brew">
++          Steeped for 18 hours for maximum smoothness.
++        </drink-card>
+       </div>
+     </section>
+   </main>

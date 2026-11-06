@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..00b487a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,152 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Theme: dark variant, applied via data-theme on <html> */
++    :root {
++      color-scheme: light;
++      --card-bg: #ffffff;
++      --footer-bg: var(--secondary);
++    }
++
++    html[data-theme="dark"] {
++      color-scheme: dark;
++      --text: #efe6e1;
++      --light: #1b1210;
++      --card-bg: #2a1d19;
++      --footer-bg: #2a1d19;
++    }
++
++    html[data-theme="dark"] .card h3 {
++      color: var(--accent);
++    }
++
++    html[data-theme="dark"] .footer-links a {
++      color: var(--text);
++    }
++
++    .card {
++      background: var(--card-bg);
++    }
++
++    footer {
++      background: var(--footer-bg);
++    }
++
++    /* Accessible switch (WAI-ARIA switch pattern) */
++    .switch-field {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.9rem;
++      color: white;
++    }
++
++    .switch-field label {
++      cursor: pointer;
++    }
++
++    .switch {
++      /* Track */
++      position: relative;
++      flex-shrink: 0;
++      width: 44px;
++      height: 24px;
++      padding: 0;
++      border: 2px solid var(--light, #fafafa);
++      border-radius: 999px;
++      background: var(--light, #fafafa);
++      cursor: pointer;
++      -webkit-appearance: none;
++      appearance: none;
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    html[data-theme="dark"] .switch {
++      border-color: #fafafa;
++      background: #fafafa;
++    }
++
++    .switch .switch-thumb {
++      /* Thumb: position (not only color) conveys state */
++      position: absolute;
++      top: 2px;
++      left: 2px;
++      width: 16px;
++      height: 16px;
++      border-radius: 50%;
++      background: var(--primary);
++      transition: transform 0.2s;
++    }
++
++    .switch[aria-checked="true"] {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .switch[aria-checked="true"] .switch-thumb {
++      transform: translateX(20px);
++    }
++
++    .switch:hover {
++      border-color: var(--accent);
++    }
++
++    .switch:focus-visible {
++      outline: 3px solid #fff;
++      outline-offset: 3px;
++    }
++
++    .switch[disabled],
++    .switch[aria-disabled="true"] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .switch,
++      .switch .switch-thumb {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .switch {
++        border-color: ButtonText;
++        background: Canvas;
++        forced-color-adjust: none;
++      }
++
++      .switch .switch-thumb {
++        background: ButtonText;
++      }
++
++      .switch[aria-checked="true"] {
++        background: Highlight;
++        border-color: Highlight;
++      }
++
++      .switch[aria-checked="true"] .switch-thumb {
++        background: HighlightText;
++      }
++
++      .switch:focus-visible {
++        outline-color: Highlight;
++      }
++    }
+   </style>
++  <script>
++    (function () {
++      try {
++        var saved = localStorage.getItem('theme');
++        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
++        var theme = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
++        document.documentElement.setAttribute('data-theme', theme);
++      } catch (e) {
++        document.documentElement.setAttribute('data-theme', 'light');
++      }
++    })();
++  </script>
+ </head>
+ 
+ <body>
+@@ -165,6 +310,12 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="switch-field">
++        <label for="theme-switch">Dark mode</label>
++        <button type="button" id="theme-switch" class="switch" role="switch" aria-checked="false">
++          <span class="switch-thumb" aria-hidden="true"></span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +358,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var switchEl = document.getElementById('theme-switch');
++      if (!switchEl) return;
++
++      function render() {
++        var isDark = root.getAttribute('data-theme') === 'dark';
++        // aria-checked is the single source of truth screen readers announce
++        switchEl.setAttribute('aria-checked', String(isDark));
++      }
++
++      function setTheme(theme) {
++        root.setAttribute('data-theme', theme);
++        try {
++          localStorage.setItem('theme', theme);
++        } catch (e) {
++          /* storage unavailable (private mode, quota); theme still applies for this page */
++        }
++        render();
++      }
++
++      // Native <button> already handles Enter and Space, so one click handler covers
++      // mouse, touch, keyboard and assistive-technology activation.
++      switchEl.addEventListener('click', function () {
++        var isDark = switchEl.getAttribute('aria-checked') === 'true';
++        setTheme(isDark ? 'light' : 'dark');
++      });
++
++      // Keep multiple open tabs in sync
++      window.addEventListener('storage', function (event) {
++        if (event.key === 'theme' && (event.newValue === 'dark' || event.newValue === 'light')) {
++          root.setAttribute('data-theme', event.newValue);
++          render();
++        }
++      });
++
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    @keyframes spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      from {
++        translate: -30px 0;
++      }
++      to {
++        translate: 30px 0;
++      }
++    }
++
++    .target {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 110px;
++      height: 110px;
++      margin: 24px auto;
++      padding: 12px;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 0.85rem;
++      line-height: 1.2;
++      text-align: center;
++      border-radius: 50%;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
++      cursor: pointer;
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++      scale: 1;
++      transition: scale 0.3s ease;
++      animation: spin 6s linear infinite, slide 2.5s ease-in-out infinite alternate;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +223,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="target">Featured Promo</div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

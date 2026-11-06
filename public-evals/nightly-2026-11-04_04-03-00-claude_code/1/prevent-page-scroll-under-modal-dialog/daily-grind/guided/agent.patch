@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..17d9eb4 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,17 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
+-      overflow: hidden;
+-      position: fixed;
+-    }
+-
+-    dialog {
+-      overflow: visible;
++    /* Keep scroll gestures inside the modal from chaining to the page,
++       even when the dialog's content doesn't overflow. */
++    dialog:modal {
++      overscroll-behavior: contain;
+     }
+ 
++    /* ::backdrop must be a scroll container (overflow: hidden) for
++       overscroll-behavior to trap scrolls performed over it. */
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -215,7 +215,9 @@
+   <dialog id="notice-dialog">
+     <h2>Special Notice</h2>
+     <p>Our patio is open for the season.</p>
+-    <button type="button" id="close-notice" class="btn">Close</button>
++    <form method="dialog">
++      <button id="close-notice" class="btn">Close</button>
++    </form>
+   </dialog>
+ 
+   <footer>
+@@ -231,9 +233,7 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

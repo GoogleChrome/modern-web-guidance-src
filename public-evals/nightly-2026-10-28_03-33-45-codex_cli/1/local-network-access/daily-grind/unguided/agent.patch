@@ -1,0 +1,413 @@
+diff --git a/equipment.js b/equipment.js
+new file mode 100644
+index 0000000..b1136cf
+--- /dev/null
++++ b/equipment.js
+@@ -0,0 +1,149 @@
++(() => {
++  'use strict';
++
++  const isLoopback = host => host === 'localhost' || host === '[::1]' || /^127\./.test(host);
++  const isPrivate = host => {
++    const octets = host.split('.').map(Number);
++    return (octets.length === 4 && (octets[0] === 10 ||
++      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
++      (octets[0] === 192 && octets[1] === 168) ||
++      (octets[0] === 169 && octets[1] === 254))) ||
++      host.endsWith('.local') || /^\[(?:f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/i.test(host);
++  };
++
++  for (const [id, addressSpace, permissionName] of [
++    ['brewer', 'local', 'local-network'],
++    ['utility', 'loopback', 'loopback-network']
++  ]) {
++    const element = suffix => document.getElementById(`${id}-${suffix}`);
++    const input = element('url');
++    const connect = element('connect');
++    const disconnect = element('disconnect');
++    const status = element('state');
++    const message = element('message');
++    let permission;
++    let sharedPermission = false;
++    let controller;
++    let attempt = 0;
++
++    function show(state, detail) {
++      status.dataset.state = state;
++      status.textContent = '● ' + ({ idle: 'Not connected', connecting: 'Connecting…', connected: 'Reachable', error: 'Connection failed' })[state];
++      message.textContent = detail;
++      message.dataset.error = String(state === 'error');
++    }
++
++    function renderPermission() {
++      const labels = { granted: 'Allowed', denied: 'Blocked', prompt: 'Ask on connect' };
++      element('permission').textContent = 'Permission: ' + (permission ? labels[permission.state] : 'Status unavailable') + (sharedPermission ? ' (shared)' : '');
++      if (permission?.state === 'denied' && (controller || status.dataset.state === 'connected')) {
++        reset('Access was blocked. Allow access in this website’s browser site settings, then reconnect.', 'error');
++      }
++    }
++
++    async function observePermission() {
++      if (!window.isSecureContext) {
++        element('permission').textContent = 'Permission: secure page required';
++        connect.disabled = true;
++        show('error', 'Open this page over HTTPS or localhost to connect to equipment.');
++        return;
++      }
++      if (navigator.permissions?.query) {
++        try {
++          permission = await navigator.permissions.query({ name: permissionName });
++        } catch {
++          try {
++            permission = await navigator.permissions.query({ name: 'local-network-access' });
++            sharedPermission = true;
++          } catch { /* Browsers without permission introspection may still support fetch. */ }
++        }
++      }
++      if (permission) permission.addEventListener('change', renderPermission);
++      renderPermission();
++    }
++
++    function reset(detail, state = 'idle') {
++      attempt++;
++      controller?.abort();
++      controller = undefined;
++      input.disabled = false;
++      connect.disabled = !window.isSecureContext;
++      disconnect.disabled = true;
++      show(state, detail);
++    }
++
++    disconnect.addEventListener('click', () => reset('Disconnected. You can reconnect whenever you’re ready.'));
++    input.addEventListener('input', () => {
++      input.removeAttribute('aria-invalid');
++      reset('Address updated. Select Connect to check this endpoint.');
++    });
++
++    element('form').addEventListener('submit', async event => {
++      event.preventDefault();
++      if (controller || !window.isSecureContext) return;
++      let url;
++      try {
++        url = new URL(input.value.trim());
++        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++          throw new Error('Enter an HTTP or HTTPS status URL without credentials or a fragment.');
++        }
++        if (id === 'utility' && !isLoopback(url.hostname)) {
++          throw new Error('The utility must use localhost, a 127.x.x.x address, or [::1] on this device.');
++        }
++        if (id === 'brewer' && (!isPrivate(url.hostname) || isLoopback(url.hostname))) {
++          throw new Error('Use your brewer’s private network IP address or .local hostname.');
++        }
++      } catch (error) {
++        input.setAttribute('aria-invalid', 'true');
++        show('error', error instanceof TypeError ? 'Enter a complete status URL, including http:// or https://.' : error.message);
++        input.focus();
++        return;
++      }
++      input.removeAttribute('aria-invalid');
++      if (permission?.state === 'denied') {
++        show('error', 'Access is blocked. Allow access in this website’s browser site settings, then retry.');
++        return;
++      }
++      const currentAttempt = ++attempt;
++      const requestController = new AbortController();
++      controller = requestController;
++      let timedOut = false;
++      const timeout = setTimeout(() => { timedOut = true; requestController.abort(); }, 10000);
++      input.disabled = true;
++      connect.disabled = true;
++      disconnect.disabled = false;
++      show('connecting', 'Checking your endpoint. Allow the browser’s network permission prompt if one appears.');
++      try {
++        const response = await fetch(url.href, {
++          method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
++          redirect: 'error', targetAddressSpace: addressSpace, signal: requestController.signal
++        });
++        if (currentAttempt !== attempt) return;
++        if (!response.ok) throw new Error(`The endpoint returned HTTP ${response.status}. Check the status URL and service configuration, then retry.`);
++        show('connected', `Endpoint reachable at ${new Date().toLocaleTimeString()}. No brew has been started. Disconnect or check again to refresh.`);
++        // Reachability is confirmed by the headers; no device data is required or retained.
++        if (response.body) response.body.cancel().catch(() => {});
++      } catch (error) {
++        if (currentAttempt !== attempt) return;
++        const detail = permission?.state === 'denied'
++          ? 'Access is blocked. Allow access in this website’s browser site settings, then retry.'
++          : timedOut
++            ? 'No response within 10 seconds. Check the address, network, and that the brewer or utility is running, then retry.'
++            : error instanceof TypeError
++              ? 'Could not reach the endpoint. Check that it is running, the address and network are correct, and browser access and CORS are allowed. See connection help below.'
++              : error.message;
++        show('error', detail);
++        disconnect.disabled = true;
++      } finally {
++        clearTimeout(timeout);
++        if (currentAttempt === attempt) {
++          controller = undefined;
++          input.disabled = false;
++          connect.disabled = false;
++          renderPermission();
++        }
++      }
++    });
++    observePermission();
++  }
++})();
+diff --git a/index.html b/index.html
+index 66c9173..55a3096 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,49 @@
+       background: #3e2723;
+     }
+ 
++    .equipment { margin-top: 48px; padding: 30px; background: #f1ebe7; border: 1px solid #e1d5cf; border-radius: 12px; }
++    .equipment-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 22px; }
++    .eyebrow { color: #72534a; font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
++    .equipment h2 { font-size: 1.8rem; margin: 3px 0 6px; }
++    .equipment-intro { max-width: 650px; color: #69554d; }
++    .equipment-tag { white-space: nowrap; border: 1px solid #cbb7aa; border-radius: 20px; padding: 6px 12px; font-size: .8rem; }
++    .equipment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
++    .connection-card { background: white; border: 1px solid #e1d5cf; border-radius: 9px; padding: 24px; min-width: 0; }
++    .connection-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
++    .equipment-icon { display: grid; place-items: center; width: 42px; height: 42px; background: #f4ede7; border-radius: 10px; color: var(--primary); }
++    .equipment-icon svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
++    .connection-card h3 { font-size: 1.1rem; }
++    .connection-card p { font-size: .9rem; }
++    .connection-card .description { color: #69554d; min-height: 46px; margin-bottom: 18px; }
++    .connection-card label { display: block; font-size: .83rem; font-weight: 600; margin-bottom: 6px; }
++    .connection-card input { width: 100%; padding: 11px 12px; border: 1px solid #bdaaa0; border-radius: 5px; font: inherit; font-size: .9rem; color: var(--text); background: #fffefd; }
++    .connection-card input:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid #be812b; outline-offset: 3px; }
++    .endpoint-hint { display: block; color: #756159; font-size: .76rem; margin: 6px 0 16px; }
++    .connection-state { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid #eee5df; font-size: .78rem; }
++    .state { font-weight: 600; color: #69554d; }
++    .state[data-state="connected"] { color: #286344; }
++    .state[data-state="error"] { color: #a33329; }
++    .state[data-state="connecting"] { color: #805b13; }
++    .connection-message { margin-top: 10px; min-height: 64px; overflow-wrap: anywhere; color: #69554d; }
++    .connection-message[data-error="true"] { color: #a33329; }
++    .connection-actions { display: flex; gap: 10px; }
++    button.btn { border: 0; font: inherit; font-size: .85rem; cursor: pointer; margin-top: 10px; }
++    button.secondary { background: #f3ece8; color: var(--primary); border: 1px solid #dfd0c7; }
++    button:disabled { opacity: .55; cursor: default; }
++    .connection-help { margin-top: 20px; font-size: .85rem; color: #69554d; }
++    .connection-help summary { cursor: pointer; color: var(--primary); font-weight: 600; }
++    .connection-help p { margin-top: 8px; }
++    .connection-help code { overflow-wrap: anywhere; }
++    @media (max-width: 700px) {
++      nav { flex-direction: column; gap: 10px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .equipment { padding: 20px; }
++      .equipment-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
++      .equipment-grid { grid-template-columns: 1fr; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +238,50 @@
+         </div>
+       </div>
+     </section>
++    <section class="equipment" aria-labelledby="equipment-title">
++      <div class="equipment-heading">
++        <div>
++          <p class="eyebrow">Your counter, connected</p>
++          <h2 id="equipment-title">Brew a little smarter.</h2>
++          <p class="equipment-intro">At the café or at home, connect your equipment right from this browser. Choose a device below to get started.</p>
++        </div>
++        <span class="equipment-tag">For baristas &amp; coffee lovers</span>
++      </div>
++      <div class="equipment-grid">
++        <form class="connection-card" id="brewer-form" novalidate>
++          <div class="connection-top">
++            <span class="equipment-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8h12v7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5zM17 9h2a3 3 0 0 1 0 6h-2M4 23h15M7 4a7 7 0 0 1 10 0M10 6a3 3 0 0 1 4 0"/></svg></span>
++            <div><p class="eyebrow">On your Wi-Fi</p><h3>Wi-Fi coffee brewer</h3></div>
++          </div>
++          <p class="description">Join the same network as your brewer, then enter its HTTP status endpoint.</p>
++          <label for="brewer-url">Brewer status URL</label>
++          <input id="brewer-url" type="url" placeholder="http://192.168.1.50/status" aria-describedby="brewer-hint brewer-message" required spellcheck="false" autocapitalize="off" autocomplete="off">
++          <small class="endpoint-hint" id="brewer-hint">Use a private IP address or a .local hostname from your brewer’s setup.</small>
++          <div class="connection-state"><span class="state" id="brewer-state" data-state="idle">● Not connected</span><span id="brewer-permission">Permission: checking…</span></div>
++          <p class="connection-message" id="brewer-message" role="status" aria-live="polite">Your browser may ask to access devices on your local network.</p>
++          <div class="connection-actions"><button class="btn" id="brewer-connect" type="submit">Connect brewer</button><button class="btn secondary" id="brewer-disconnect" type="button" disabled>Disconnect</button></div>
++        </form>
++        <form class="connection-card" id="utility-form" novalidate>
++          <div class="connection-top">
++            <span class="equipment-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5M7 8l3 2-3 2M13 12h4"/></svg></span>
++            <div><p class="eyebrow">On this device</p><h3>Companion brewing utility</h3></div>
++          </div>
++          <p class="description">Open your brewing utility on this computer, then connect to its local endpoint.</p>
++          <label for="utility-url">Utility status URL</label>
++          <input id="utility-url" type="url" value="http://127.0.0.1:8765/status" aria-describedby="utility-hint utility-message" required spellcheck="false" autocapitalize="off" autocomplete="off">
++          <small class="endpoint-hint" id="utility-hint">Use localhost, 127.0.0.1, or [::1] and the port your utility provides.</small>
++          <div class="connection-state"><span class="state" id="utility-state" data-state="idle">● Not connected</span><span id="utility-permission">Permission: checking…</span></div>
++          <p class="connection-message" id="utility-message" role="status" aria-live="polite">Loopback access connects only to software running on this device.</p>
++          <div class="connection-actions"><button class="btn" id="utility-connect" type="submit">Connect utility</button><button class="btn secondary" id="utility-disconnect" type="button" disabled>Disconnect</button></div>
++        </form>
++      </div>
++      <details class="connection-help">
++        <summary>Connection &amp; permission help</summary>
++        <p>Use this page over HTTPS or localhost. When prompted, allow Local network for the brewer and Loopback network for the utility. Some browsers use one shared permission; others do not expose its status. If blocked, update this website’s permissions in your browser’s site settings and retry.</p>
++        <p>Each Connect button sends a read-only GET to the URL you enter. A successful HTTP response confirms reachability at that moment; this panel does not start a brew or maintain a live session. Disconnect clears the connection or cancels a pending check. Nothing connects automatically, and addresses are not saved.</p>
++        <p>The endpoint must support browser requests with CORS, allowing this page’s origin. Check the service’s documented status URL and port; the utility address shown is an editable example. A browser may report the same network error for an offline service, CORS, a certificate issue, or blocked access.</p>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +294,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="equipment.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/tests/equipment.test.cjs b/tests/equipment.test.cjs
+new file mode 100644
+index 0000000..cff3917
+--- /dev/null
++++ b/tests/equipment.test.cjs
+@@ -0,0 +1,139 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++const source = readFileSync(require('node:path').join(__dirname, '../equipment.js'), 'utf8');
++
++function setup({ fetchImpl, permissionState = 'prompt', permissionsSupported = true, secure = true } = {}) {
++  const elements = new Map();
++  const calls = [];
++  const permissions = new Map();
++  const timers = new Map();
++  let timerId = 0;
++  function getElement(id) {
++    if (!elements.has(id)) elements.set(id, {
++      value: '', dataset: {}, disabled: false, handlers: {},
++      addEventListener(name, callback) { this.handlers[name] = callback; },
++      setAttribute(name, value) { this[name] = value; },
++      removeAttribute(name) { delete this[name]; },
++      focus() { this.focused = true; }
++    });
++    return elements.get(id);
++  }
++  vm.runInNewContext(source, {
++    document: { getElementById: getElement }, window: { isSecureContext: secure },
++    navigator: { permissions: { async query({ name }) {
++      if (!permissionsSupported) throw new TypeError('Unsupported permission');
++      const permission = { state: permissionState, addEventListener(_, callback) { this.change = callback; } };
++      permissions.set(name, permission);
++      return permission;
++    } } },
++    URL, AbortController, TypeError, Date,
++    setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
++    clearTimeout(id) { timers.delete(id); },
++    async fetch(url, options) {
++      calls.push({ url, options });
++      return fetchImpl ? fetchImpl(url, options) : { ok: true, body: null };
++    }
++  });
++  return {
++    get: getElement, calls, permissions, timers,
++    async submit(id, url) {
++      getElement(`${id}-url`).value = url;
++      await getElement(`${id}-form`).handlers.submit({ preventDefault() {} });
++    }
++  };
++}
++const ready = () => new Promise(resolve => setImmediate(resolve));
++
++test('local and loopback checks use separate permissions and request address spaces', async () => {
++  const app = setup();
++  await ready();
++  await app.submit('brewer', 'http://192.168.1.50/status');
++  await app.submit('utility', 'http://[::1]:8765/status');
++  assert.deepEqual([...app.permissions.keys()], ['local-network', 'loopback-network']);
++  assert.deepEqual(app.calls.map(call => call.options.targetAddressSpace), ['local', 'loopback']);
++  for (const call of app.calls) {
++    assert.equal(call.options.mode, 'cors');
++    assert.equal(call.options.credentials, 'omit');
++    assert.equal(call.options.redirect, 'error');
++  }
++  assert.equal(app.get('brewer-state').dataset.state, 'connected');
++  assert.equal(app.get('utility-state').dataset.state, 'connected');
++  app.permissions.get('local-network').state = 'denied';
++  app.permissions.get('local-network').change();
++  assert.equal(app.get('brewer-state').dataset.state, 'error');
++  assert.equal(app.get('utility-state').dataset.state, 'connected');
++});
++
++test('rejects wrong network targets and malformed or credential-bearing URLs', async () => {
++  const app = setup();
++  await ready();
++  for (const [id, url] of [
++    ['utility', 'http://192.168.1.50/status'], ['utility', 'http://localhost.example.com/'],
++    ['brewer', 'http://127.0.0.1/'], ['brewer', 'https://example.com/'],
++    ['brewer', 'not a url'], ['brewer', 'http://user:pass@coffee.local/status']
++  ]) {
++    await app.submit(id, url);
++    assert.equal(app.get(`${id}-state`).dataset.state, 'error');
++    assert.equal(app.get(`${id}-url`)['aria-invalid'], 'true');
++  }
++  assert.equal(app.calls.length, 0);
++});
++
++test('denied permission prevents requests; unavailable introspection permits an honest attempt', async () => {
++  const blocked = setup({ permissionState: 'denied' });
++  await ready();
++  await blocked.submit('utility', 'http://localhost:8765/status');
++  assert.equal(blocked.calls.length, 0);
++  assert.match(blocked.get('utility-message').textContent, /blocked/);
++  const unsupported = setup({ permissionsSupported: false });
++  await ready();
++  assert.match(unsupported.get('utility-permission').textContent, /unavailable/);
++  await unsupported.submit('utility', 'http://localhost:8765/status');
++  assert.equal(unsupported.calls.length, 1);
++});
++
++test('HTTP failures and opaque browser network failures have actionable feedback', async () => {
++  for (const fetchImpl of [
++    async () => ({ ok: false, status: 503 }),
++    async () => { throw new TypeError('Failed to fetch'); }
++  ]) {
++    const app = setup({ fetchImpl });
++    await ready();
++    await app.submit('brewer', 'http://coffee.local/status');
++    assert.equal(app.get('brewer-state').dataset.state, 'error');
++    assert.match(app.get('brewer-message').textContent, /HTTP 503|CORS/);
++    assert.equal(app.get('brewer-connect').disabled, false);
++  }
++});
++
++test('disconnect ignores late responses, and timeout makes retry available', async () => {
++  let resolve;
++  const app = setup({ fetchImpl: () => new Promise(done => { resolve = done; }) });
++  await ready();
++  const pending = app.submit('utility', 'http://127.0.0.1:8765/status');
++  app.get('utility-disconnect').handlers.click();
++  assert.equal(app.calls[0].options.signal.aborted, true);
++  resolve({ ok: true, body: null });
++  await pending;
++  assert.equal(app.get('utility-state').dataset.state, 'idle');
++  const timeoutApp = setup({ fetchImpl: (_, { signal }) => new Promise((_, reject) => {
++    signal.addEventListener('abort', () => reject(new Error('Aborted')));
++  }) });
++  await ready();
++  const timed = timeoutApp.submit('brewer', 'http://10.0.0.2/status');
++  [...timeoutApp.timers.values()][0]();
++  await timed;
++  assert.match(timeoutApp.get('brewer-message').textContent, /10 seconds/);
++  assert.equal(timeoutApp.get('brewer-connect').disabled, false);
++});
++
++test('insecure contexts cannot issue requests', async () => {
++  const app = setup({ secure: false });
++  await ready();
++  await app.submit('utility', 'http://localhost:8765/status');
++  assert.equal(app.calls.length, 0);
++  assert.equal(app.get('utility-connect').disabled, true);
++  assert.match(app.get('utility-message').textContent, /HTTPS/);
++});

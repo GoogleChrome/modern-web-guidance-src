@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,51 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-in */
++    .signin {
++      max-width: 380px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .signin form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      gap: 12px;
++    }
++
++    .signin label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++    }
++
++    .signin input {
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 5px;
++      padding: 10px 20px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button:hover {
++      background: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +216,21 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin">
++    <form id="signin-form" method="post" action="/api/signin">
++      <h2>Sign in</h2>
++      <label>Email
++        <input type="email" name="username" autocomplete="username webauthn" required>
++      </label>
++      <label>Password
++        <input type="password" name="password" autocomplete="current-password" required>
++      </label>
++      <button type="submit" data-testid="signin-button">Sign in</button>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +262,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Silently register a passkey right after a successful password sign-in.
++    // Never surfaces UI: every failure is swallowed.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return;
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ conditional: true })
++        });
++        if (!optionsResponse.ok) return;
++        const optionsJSON = await optionsResponse.json();
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey, mediation: 'conditional' });
++        } catch (e) {
++          return; // InvalidStateError, NotAllowedError, AbortError, etc.
++        }
++        if (!credential) return;
++
++        const encoded = credential.toJSON();
++        let verified = false;
++        try {
++          const verifyResponse = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ ...encoded, conditional: true })
++          });
++          verified = verifyResponse.ok;
++        } catch (e) { }
++
++        // Don't leave an orphaned credential in the passkey provider.
++        if (!verified && PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: optionsJSON.rp?.id || optionsJSON.rpId || location.hostname,
++            credentialId: encoded.id
++          });
++        }
++      } catch (e) { }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const form = event.currentTarget;
++      let response;
++      try {
++        response = await fetch(form.action, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(Object.fromEntries(new FormData(form)))
++        });
++      } catch (e) {
++        return;
++      }
++      if (response.ok) promotePasskey(); // background; intentionally not awaited
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,11 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++      interpolate-size: allow-keywords;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -73,9 +76,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +87,145 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store Selector & Customizable Native Select */
++    .store-selector {
++      margin: 1.25rem 0 0.5rem 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      width: 100%;
++      max-width: 340px;
++    }
++
++    .store-label {
++      font-size: 1rem;
++      font-weight: 600;
++      color: #fff;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
++    }
++
++    /* Opt-in to customizable native select */
++    .store-select,
++    .store-select::picker(select),
++    select,
++    select::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 0.75rem 1rem;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #fff;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      cursor: pointer;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .store-select:hover {
++      border-color: var(--accent);
++    }
++
++    .store-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Rotate arrow when open */
++    .store-select::picker-icon,
++    select::picker-icon {
++      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    }
++
++    .store-select:open::picker-icon,
++    select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    /* Smoothly animate native picker menu fading in and out */
++    .store-select::picker(select),
++    select::picker(select) {
++      background: #fff;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.25);
++      padding: 0.5rem;
++      margin-top: 0.35rem;
++      width: anchor-size(width);
++      min-width: 280px;
++
++      transition:
++        display 0.35s allow-discrete,
++        overlay 0.35s allow-discrete,
++        opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
++      opacity: 0;
++    }
++
++    .store-select:open::picker(select),
++    select:open::picker(select) {
++      opacity: 1;
++    }
++
++    @starting-style {
++      .store-select:open::picker(select),
++      select:open::picker(select) {
++        opacity: 0;
++      }
++    }
++
++    .store-select option {
++      padding: 0.6rem 0.8rem;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      transition: background-color 0.15s ease;
++    }
++
++    .store-select option:hover,
++    .store-select option:focus {
++      background-color: #f5ede6;
++    }
++
++    .store-select option:checked {
++      font-weight: 600;
++      background-color: #ece0d6;
++      color: var(--primary);
++    }
++
++    .store-select option::checkmark {
++      color: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .store-select::picker(select),
++      select::picker(select),
++      .store-select::picker-icon,
++      select::picker-icon {
++        transition: none !important;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;

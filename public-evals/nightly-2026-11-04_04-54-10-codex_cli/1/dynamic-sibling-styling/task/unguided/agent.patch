@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,160 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* The index and count are maintained automatically for each collection. */
++    .spectrum-card {
++      --hue: calc(25 + var(--index, 0) * 300 / max(1, var(--count, 1) - 1));
++      background: hsl(var(--hue) 65% 92%);
++      border-top: 4px solid hsl(var(--hue) 45% 48%);
++    }
++
++    .collection-section {
++      margin-top: 72px;
++      text-align: center;
++    }
++
++    .eyebrow {
++      color: #85664e;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .section-description {
++      color: #796b64;
++      max-width: 460px;
++      margin: 10px auto 0;
++    }
++
++    .fan-container {
++      container-type: inline-size;
++      position: relative;
++      height: 340px;
++      margin: 30px auto 0;
++      max-width: 720px;
++      isolation: isolate;
++    }
++
++    .fan-card {
++      --position: calc((var(--index, 0) - (var(--count, 1) - 1) / 2) / max(1, (var(--count, 1) - 1) / 2));
++      --tilt: calc(var(--position) * 24deg);
++      position: absolute;
++      left: 50%;
++      top: 46px;
++      width: clamp(140px, 30cqi, 210px);
++      height: 240px;
++      padding: 22px;
++      border: 1px solid #ffffff50;
++      border-radius: 14px;
++      color: #fff7e8;
++      background: linear-gradient(145deg, #ffffff12, transparent 65%),
++        hsl(calc(24 + var(--index, 0) * 125 / max(1, var(--count, 1) - 1)) 24% 29%);
++      box-shadow: 0 12px 25px #33261d24;
++      text-align: left;
++      transform-origin: 50% 110%;
++      transform: translateX(calc(-50% + var(--position) * min(20cqi, 140px))) rotate(var(--tilt));
++      transition: transform 250ms ease, box-shadow 250ms ease;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .fan-card:hover {
++      z-index: 1;
++      transform: translateX(calc(-50% + var(--position) * min(20cqi, 140px))) translateY(-16px) rotate(var(--tilt));
++      box-shadow: 0 20px 30px #33261d35;
++    }
++
++    .card-brand {
++      font-size: 0.6rem;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .loyalty-symbol {
++      font-size: 2.4rem;
++      line-height: 1;
++      color: #e4c99b;
++    }
++
++    .fan-card h3 { font-size: 1.15rem; }
++    .fan-card p { font-size: 0.75rem; opacity: 0.8; }
++
++    .circle-container {
++      container-type: inline-size;
++      --orb-size: min(100px, calc(220cqi / max(6, var(--count, 1))));
++      --radius: calc(50cqi - var(--orb-size) / 2 - 8px);
++      position: relative;
++      width: min(100%, 460px);
++      aspect-ratio: 1;
++      margin: 28px auto 0;
++      isolation: isolate;
++    }
++
++    .circle-container::before {
++      content: '';
++      position: absolute;
++      inset: 12%;
++      border: 1px dashed #cdbca9;
++      border-radius: 50%;
++      z-index: -1;
++    }
++
++    .circle-center {
++      position: absolute;
++      inset: 35%;
++      display: grid;
++      place-content: center;
++      color: #937353;
++      font-size: 0.65rem;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      pointer-events: none;
++    }
++
++    .circle-center span { font-size: 2rem; letter-spacing: 0; }
++
++    .circle-orb {
++      --angle: calc(var(--index, 0) * 1turn / var(--count, 1) - 0.25turn);
++      position: absolute;
++      left: calc(50% + cos(var(--angle)) * var(--radius));
++      top: calc(50% + sin(var(--angle)) * var(--radius));
++      translate: -50% -50%;
++      width: var(--orb-size);
++      aspect-ratio: 1;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      border-radius: 50%;
++      background: hsl(calc(25 + var(--index, 0) * 35 / max(1, var(--count, 1) - 1)) 35% 90%);
++      border: 1px solid #d8c7b3;
++      box-shadow: 0 5px 15px #4e342e0c;
++      font-size: clamp(0.45rem, 2.6cqi, 0.8rem);
++    }
++
++    .circle-orb span {
++      color: #897565;
++      font-size: 0.75em;
++      margin-top: 2px;
++    }
++
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; justify-content: center; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      .fan-card { height: 210px; padding: 16px; }
++      .fan-container { height: 310px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .fan-card { transition: none; }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,25 +329,72 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="collection-section" aria-labelledby="loyalty-heading">
++      <p class="eyebrow">Good coffee. Great company.</p>
++      <h2 id="loyalty-heading">Every Cup Comes With Perks</h2>
++      <p class="section-description">Find your place in the daily ritual. A little more to love with every visit.</p>
++      <div class="fan-container" role="list" aria-label="Loyalty cards">
++        <article class="fan-card" role="listitem">
++          <span class="card-brand">The Daily Grind · Rewards</span>
++          <span class="loyalty-symbol" aria-hidden="true">✦</span>
++          <div><h3>First Sip</h3><p>Your coffee journey starts here.</p></div>
++        </article>
++        <article class="fan-card" role="listitem">
++          <span class="card-brand">The Daily Grind · Rewards</span>
++          <span class="loyalty-symbol" aria-hidden="true">✦</span>
++          <div><h3>Daily Ritual</h3><p>A warm welcome, every day.</p></div>
++        </article>
++        <article class="fan-card" role="listitem">
++          <span class="card-brand">The Daily Grind · Rewards</span>
++          <span class="loyalty-symbol" aria-hidden="true">✦</span>
++          <div><h3>Golden Hour</h3><p>Make your moments richer.</p></div>
++        </article>
++        <article class="fan-card" role="listitem">
++          <span class="card-brand">The Daily Grind · Rewards</span>
++          <span class="loyalty-symbol" aria-hidden="true">✦</span>
++          <div><h3>Roast Reserve</h3><p>For the endlessly curious.</p></div>
++        </article>
++        <article class="fan-card" role="listitem">
++          <span class="card-brand">The Daily Grind · Rewards</span>
++          <span class="loyalty-symbol" aria-hidden="true">✦</span>
++          <div><h3>Inner Circle</h3><p>Right at home with us.</p></div>
++        </article>
++      </div>
++    </section>
++
++    <section class="collection-section" aria-labelledby="origins-heading">
++      <p class="eyebrow">Rooted in something good</p>
++      <h2 id="origins-heading">A World in Every Cup</h2>
++      <p class="section-description">Distinct origins, countless stories. Explore the places that inspire our roasts.</p>
++      <div class="circle-container" role="list" aria-label="Coffee origins">
++        <div class="circle-center" aria-hidden="true"><span>◎</span>Our origins</div>
++        <div class="circle-orb" role="listitem"><strong>Ethiopia</strong><span>Floral · Citrus</span></div>
++        <div class="circle-orb" role="listitem"><strong>Colombia</strong><span>Caramel · Cocoa</span></div>
++        <div class="circle-orb" role="listitem"><strong>Brazil</strong><span>Nutty · Chocolate</span></div>
++        <div class="circle-orb" role="listitem"><strong>Guatemala</strong><span>Cocoa · Spice</span></div>
++        <div class="circle-orb" role="listitem"><strong>Kenya</strong><span>Berry · Bright</span></div>
++        <div class="circle-orb" role="listitem"><strong>Sumatra</strong><span>Earthy · Herbal</span></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +405,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep CSS geometry in sync with the actual items, including later DOM edits.
++    function updateCollections() {
++      document.querySelectorAll('.card').forEach(card => card.classList.add('spectrum-card'));
++      const spectrumGroups = new Set(
++        [...document.querySelectorAll('.spectrum-card')].map(card => card.parentElement)
++      );
++      const collections = [
++        ...[...spectrumGroups].map(parent => [parent, '.spectrum-card']),
++        ...[...document.querySelectorAll('.fan-container')].map(parent => [parent, '.fan-card']),
++        ...[...document.querySelectorAll('.circle-container')].map(parent => [parent, '.circle-orb'])
++      ];
++      for (const [parent, selector] of collections) {
++        const items = [...parent.children].filter(item => item.matches(selector));
++        parent.style.setProperty('--count', items.length);
++        items.forEach((item, index) => {
++          item.style.setProperty('--index', index);
++          item.style.setProperty('--count', items.length);
++        });
++      }
++    }
++
++    updateCollections();
++    new MutationObserver(updateCollections).observe(document.body, {
++      childList: true,
++      subtree: true
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,881 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8abc93 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,6 +14,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
+     }
+ 
+     * {
+@@ -27,72 +30,164 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Visually hidden utility (visible on focus for skip links) */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link:is(:focus-within, :active) {
++      position: fixed;
++      top: 0.75rem;
++      left: 0.75rem;
++      z-index: 2000;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      padding: 0.6rem 1.2rem;
++      border-radius: 4px;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    /* Accessible Focus Indicators */
++    :where(a:any-link, button, summary, input, select, textarea):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Inert State Styling */
++    [inert], [inert] * {
++      opacity: 0.5;
++      cursor: default;
++      user-select: none;
++    }
++
++    /* Site Header & Navigation */
++    .site-header {
+       background: var(--primary);
+       color: white;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .primary-nav {
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      flex-wrap: wrap;
++      gap: 1rem;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
+     }
+ 
+-    nav ul {
++    .primary-nav ul {
+       display: flex;
++      align-items: center;
++      flex-wrap: wrap;
+       list-style: none;
++      gap: 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
++    .primary-nav a,
++    .nav-action {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-family: inherit;
++      background: transparent;
++      border: none;
++      cursor: pointer;
++      transition: color 0.3s, background-color 0.3s;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+     }
+ 
+-    nav a:hover {
++    .primary-nav a:hover,
++    .nav-action:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-btn {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 6px 14px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    .logout-btn:hover {
++      background: rgba(255, 171, 64, 0.15);
++    }
++
++    /* Hero Section with Discoverable LCP Image */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      min-height: 60vh;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 4rem 20px;
++      overflow: hidden;
++      background-color: #2b1b17;
++    }
++
++    .hero-media {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: brightness(0.5);
++      z-index: 0;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      max-width: 720px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2.2rem, 5vw, 3.2rem);
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      font-size: 1.15rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 1rem;
++      justify-content: center;
++      flex-wrap: wrap;
++      margin-top: 1.25rem;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,113 +195,619 @@
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++      margin-bottom: 1rem;
++      color: var(--primary);
++      font-size: 2rem;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 650px;
++      margin: 0 auto 1.5rem;
++    }
++
++    /* Search Landmark */
++    search {
++      display: block;
++      max-width: 540px;
++      margin: 0 auto 2rem;
++    }
++
++    .search-form {
++      display: flex;
++      gap: 0.5rem;
++      align-items: center;
++    }
++
++    .search-form label {
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .search-form input[type="search"] {
++      flex: 1;
++      padding: 0.6rem 0.9rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--surface);
++    }
++
++    /* Product Cards Grid */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      list-style: none;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-image {
++      width: 100%;
++      height: 190px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 14px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
+       color: var(--primary);
+     }
+ 
++    .card-actions {
++      display: flex;
++      gap: 0.5rem;
++      justify-content: center;
++      flex-wrap: wrap;
++      margin-top: 15px;
++    }
++
++    /* Buttons & Links */
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border: 1px solid transparent;
++      font-size: 0.95rem;
++      font-family: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: background 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border-color: var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    /* Sourcing Story & Figure Quote */
++    .story-section {
++      margin-top: 4rem;
++      padding: 2.5rem;
++      background: var(--surface);
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
++    }
++
++    .quote-figure {
++      max-width: 760px;
++      margin: 1.5rem auto 0;
++      padding: 1.5rem;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .quote-figure blockquote p {
++      font-style: italic;
++      font-size: 1.05rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .quote-figure figcaption {
++      font-size: 0.9rem;
++      color: #5d4037;
++      font-weight: 600;
++    }
++
++    /* Native Disclosures: Details & Summary */
++    .faq-section {
++      margin-top: 4rem;
++    }
++
++    .accordion-group {
++      max-width: 780px;
++      margin: 1.5rem auto 0;
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++    }
++
++    details {
++      background: var(--surface);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 0.85rem 1.25rem;
++      transition: border-color 0.2s;
++    }
++
++    details[open] {
++      border-color: var(--primary);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
++    }
++
++    summary {
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      padding: 0.25rem 0;
++    }
++
++    details::details-content {
++      display: block;
++      padding-top: 0.75rem;
++      color: var(--text);
++      border-top: 1px solid #efebe9;
++      margin-top: 0.5rem;
++    }
++
++    /* Native Overlays: Popover & Dialog */
++    [popover] {
++      margin: auto;
++      padding: 1.5rem;
++      max-width: 400px;
++      width: calc(100% - 2rem);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--surface);
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
++    }
++
++    [popover]:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    [popover]::backdrop {
++      background: rgba(62, 39, 35, 0.35);
++    }
++
++    dialog {
++      margin: auto;
++      padding: 2rem;
++      max-width: 480px;
++      width: calc(100% - 2rem);
++      border: none;
++      border-radius: 10px;
++      background: var(--surface);
++      color: var(--text);
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      background: rgba(30, 18, 15, 0.65);
++      backdrop-filter: blur(2px);
++    }
++
++    .overlay-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 1rem;
++      padding-bottom: 0.5rem;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .overlay-header h2 {
++      font-size: 1.35rem;
++      color: var(--primary);
++    }
++
++    .form-field {
++      margin-bottom: 1rem;
++      text-align: left;
++    }
++
++    .form-field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++    }
++
++    .form-hint {
++      display: block;
++      font-size: 0.82rem;
++      color: #5d4037;
++      margin-bottom: 0.35rem;
++    }
++
++    .form-field input,
++    .form-field select {
++      width: 100%;
++      padding: 0.6rem 0.75rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 0.75rem;
++      margin-top: 1.5rem;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+-    .footer-links {
++    .footer-nav ul {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 1.25rem;
++      list-style: none;
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
++    .footer-nav a {
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++      font-weight: 500;
++    }
++
++    .footer-nav a:hover {
++      text-decoration: underline;
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-heading" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="site-header">
++    <nav class="primary-nav" aria-label="Primary">
++      <a href="/" class="logo">
++        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
++          <path d="M2 21h18v-2H2M20 8h-2V5h2m0-2H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z" />
++        </svg>
++        <span>THE DAILY GRIND</span>
++      </a>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li>
++          <button type="button" class="nav-action" commandfor="rewards-popover" command="toggle-popover" popovertarget="rewards-popover">
++            Rewards
++          </button>
++        </li>
++        <li><a href="/account">My Account</a></li>
++        <li>
++          <button type="button" class="nav-action logout-btn" commandfor="logout-dialog" command="show-modal">
++            Logout
++          </button>
++        </li>
++      </ul>
++    </nav>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <main>
++    <section class="hero" aria-labelledby="main-heading">
++      <img
++        class="hero-media"
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++        srcset="
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80 600w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1000&q=80 1000w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w
++        "
++        sizes="100vw"
++        alt="Freshly poured artisanal latte art on a rustic wooden counter"
++        width="1350"
++        height="900"
++        fetchpriority="high"
++      >
++      <div class="hero-content">
++        <h1 id="main-heading" tabindex="-1">Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <div class="hero-actions">
++          <button type="button" class="btn btn-accent" commandfor="order-dialog" command="show-modal">
++            Order Now
++          </button>
++          <a href="/order-online" class="btn">Full Online Menu</a>
+         </div>
+       </div>
+     </section>
++
++    <div class="container">
++      <section aria-labelledby="seasonal-heading">
++        <h2 id="seasonal-heading" class="section-heading">Seasonal Favorites</h2>
++        <p class="section-subtitle">Explore our small-batch autumn creations, crafted with organic milk alternatives and single-origin espresso.</p>
++
++        <search>
++          <form class="search-form" action="/menu" method="GET">
++            <label for="menu-search">Filter menu:</label>
++            <input type="search" id="menu-search" name="q" list="popular-drinks" placeholder="e.g., Oat Latte, Cold Brew">
++            <datalist id="popular-drinks">
++              <option value="Maple Oat Latte">
++              <option value="Dark Roast Espresso">
++              <option value="Cold Brew">
++            </datalist>
++            <button type="submit" class="btn">Search</button>
++          </form>
++        </search>
++
++        <ul class="grid" role="list">
++          <li>
++            <article class="card">
++              <div>
++                <img
++                  class="card-image"
++                  src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++                  alt="Warm Maple Oat Latte topped with microfoam art"
++                  width="600"
++                  height="400"
++                  loading="lazy"
++                >
++                <h3 id="drink-maple">Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              </div>
++              <div class="card-actions">
++                <a href="/menu/seasonal" class="btn" aria-labelledby="view-maple drink-maple">
++                  <span id="view-maple">View Details</span>
++                </a>
++                <button type="button" class="btn btn-secondary" commandfor="nutrition-maple-popover" command="toggle-popover" popovertarget="nutrition-maple-popover" aria-label="Tasting notes for Maple Oat Latte">
++                  Tasting Notes
++                </button>
++              </div>
++            </article>
++          </li>
++
++          <li>
++            <article class="card">
++              <div>
++                <img
++                  class="card-image"
++                  src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++                  alt="Rich Dark Roast Espresso shot in a ceramic demitasse"
++                  width="600"
++                  height="400"
++                  loading="lazy"
++                >
++                <h3 id="drink-espresso">Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++              </div>
++              <div class="card-actions">
++                <a href="/menu/espresso" class="btn" aria-labelledby="view-espresso drink-espresso">
++                  <span id="view-espresso">View Details</span>
++                </a>
++                <button type="button" class="btn btn-secondary" commandfor="nutrition-espresso-popover" command="toggle-popover" popovertarget="nutrition-espresso-popover" aria-label="Tasting notes for Dark Roast Espresso">
++                  Tasting Notes
++                </button>
++              </div>
++            </article>
++          </li>
++
++          <li>
++            <article class="card">
++              <div>
++                <img
++                  class="card-image"
++                  src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++                  alt="Iced Cold Brew coffee served in a tall glass"
++                  width="600"
++                  height="400"
++                  loading="lazy"
++                >
++                <h3 id="drink-coldbrew">Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++              </div>
++              <div class="card-actions">
++                <a href="/menu/cold-brew" class="btn" aria-labelledby="view-coldbrew drink-coldbrew">
++                  <span id="view-coldbrew">View Details</span>
++                </a>
++                <button type="button" class="btn btn-secondary" commandfor="nutrition-coldbrew-popover" command="toggle-popover" popovertarget="nutrition-coldbrew-popover" aria-label="Tasting notes for Cold Brew">
++                  Tasting Notes
++                </button>
++              </div>
++            </article>
++          </li>
++        </ul>
++      </section>
++
++      <section class="story-section" aria-labelledby="story-heading">
++        <h2 id="story-heading" class="section-heading">Our Roasting Philosophy</h2>
++        <p class="section-subtitle">We partner directly with smallholder farms at high altitudes, roasting every batch to highlight its natural terroir.</p>
++        <figure class="quote-figure">
++          <blockquote cite="https://thedailygrind.example.com/about">
++            <p>"Great coffee isn't rushed. By roasting in small batches and steeping our cold brew for 18 hours, we honor every hand that cultivated the harvest."</p>
++          </blockquote>
++          <figcaption>
++            Elena Rostova, Head Roaster in <cite>The Daily Grind Roastery Journal</cite>
++          </figcaption>
++        </figure>
++      </section>
++
++      <section class="faq-section" aria-labelledby="faq-heading">
++        <h2 id="faq-heading" class="section-heading">Brewing &amp; Sourcing FAQs</h2>
++        <div class="accordion-group">
++          <details name="coffee-faq">
++            <summary>How is your coffee ethically sourced?</summary>
++            <p>We work through direct-trade partnerships with cooperatives in Colombia, Ethiopia, and Guatemala, paying at least 35% above Fair Trade baseline prices.</p>
++          </details>
++          <details name="coffee-faq">
++            <summary>Do you offer organic plant-based milk options?</summary>
++            <p>Yes! All our barista-grade oat, almond, and coconut milks are certified organic and steamed with dedicated pitchers to prevent cross-contact.</p>
++          </details>
++          <details name="coffee-faq">
++            <summary>How does the Rewards program work?</summary>
++            <p>Earn 10 beans for every dollar spent in-store or online. Redeem 150 beans for any handcrafted beverage or single-origin pastry.</p>
++          </details>
++        </div>
++      </section>
++    </div>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <!-- Non-Modal Native Popovers -->
++  <div id="rewards-popover" popover="auto">
++    <div class="overlay-header">
++      <h2>Daily Grind Rewards</h2>
++      <button type="button" class="btn btn-secondary" commandfor="rewards-popover" command="hide-popover" popovertarget="rewards-popover" popovertargetaction="hide">
++        Close
++      </button>
++    </div>
++    <p>You currently have <strong>240 Beans</strong> ready to redeem! Enjoy a complimentary seasonal beverage on your next order.</p>
++    <div class="dialog-actions">
++      <a href="/rewards" class="btn">View Rewards Dashboard</a>
++    </div>
++  </div>
++
++  <div id="nutrition-maple-popover" popover="auto">
++    <div class="overlay-header">
++      <h2>Maple Oat Latte Notes</h2>
++      <button type="button" class="btn btn-secondary" commandfor="nutrition-maple-popover" command="hide-popover" popovertarget="nutrition-maple-popover" popovertargetaction="hide">
++        Close
++      </button>
++    </div>
++    <p><strong>Origin:</strong> Huila, Colombia</p>
++    <p><strong>Notes:</strong> Toasted pecan, pure grade-A amber maple, velvety oat finish (210 kcal).</p>
++  </div>
++
++  <div id="nutrition-espresso-popover" popover="auto">
++    <div class="overlay-header">
++      <h2>Dark Roast Espresso Notes</h2>
++      <button type="button" class="btn btn-secondary" commandfor="nutrition-espresso-popover" command="hide-popover" popovertarget="nutrition-espresso-popover" popovertargetaction="hide">
++        Close
++      </button>
++    </div>
++    <p><strong>Origin:</strong> Sumatra &amp; Brazil Blend</p>
++    <p><strong>Notes:</strong> Bittersweet cacao, cedar smoke, syrupy crema body (15 kcal).</p>
++  </div>
++
++  <div id="nutrition-coldbrew-popover" popover="auto">
++    <div class="overlay-header">
++      <h2>Cold Brew Notes</h2>
++      <button type="button" class="btn btn-secondary" commandfor="nutrition-coldbrew-popover" command="hide-popover" popovertarget="nutrition-coldbrew-popover" popovertargetaction="hide">
++        Close
++      </button>
++    </div>
++    <p><strong>Origin:</strong> Yirgacheffe, Ethiopia</p>
++    <p><strong>Notes:</strong> Dark cherry, milk chocolate, low-acidity crisp finish (10 kcal).</p>
++  </div>
++
++  <!-- Native Modal Dialogs -->
++  <dialog id="order-dialog" closedby="any" aria-labelledby="order-dialog-title">
++    <div class="overlay-header">
++      <h2 id="order-dialog-title">Quick Pickup Order</h2>
++      <button type="button" class="btn btn-secondary" commandfor="order-dialog" command="close">
++        Close
++      </button>
+     </div>
++    <form method="dialog">
++      <div class="form-field">
++        <label for="order-drink">Select Beverage</label>
++        <select id="order-drink" name="drink" required>
++          <option value="maple-oat-latte">Maple Oat Latte</option>
++          <option value="dark-roast-espresso">Dark Roast Espresso</option>
++          <option value="cold-brew">18-Hour Cold Brew</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="customer-name">Pickup Name</label>
++        <input id="customer-name" name="name" type="text" autocomplete="name" required>
++      </div>
++      <div class="form-field">
++        <label for="customer-email">Receipt Email</label>
++        <span id="email-hint" class="form-hint">We will send your pickup confirmation and preparation status here.</span>
++        <input id="customer-email" name="email" type="email" inputmode="email" autocomplete="email" aria-describedby="email-hint" required>
++      </div>
++      <div class="dialog-actions">
++        <button type="submit" formmethod="dialog" formnovalidate value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="confirm" class="btn">Place Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="logout-dialog" closedby="any" aria-labelledby="logout-dialog-title">
++    <div class="overlay-header">
++      <h2 id="logout-dialog-title">Sign Out of Your Account?</h2>
++    </div>
++    <p>Are you sure you want to log out of The Daily Grind? Any unsaved quick-order preferences will be cleared.</p>
++    <form method="dialog" action="/logout">
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Stay Signed In</button>
++        <button type="submit" value="logout" class="btn">Confirm Logout</button>
++      </div>
++    </form>
++  </dialog>
++
++  <footer>
++    <nav class="footer-nav" aria-label="Footer">
++      <ul>
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++    if (!('popover' in HTMLElement.prototype)) {
++      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++  </script>
+ </body>
+ 
+ </html>

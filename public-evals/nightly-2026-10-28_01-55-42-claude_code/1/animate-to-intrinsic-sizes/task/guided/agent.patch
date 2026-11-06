@@ -1,0 +1,217 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Required so block-size can transition to/from auto */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,13 +153,168 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo alert (dismissable, collapses to zero height, no JS) */
++    #promo-alert {
++      position: relative;
++      background: var(--accent);
++      color: var(--text);
++      block-size: auto;
++      overflow: hidden;
++      transition:
++        block-size 0.4s ease-in-out,
++        opacity 0.4s ease,
++        visibility 0.4s;
++    }
++
++    #promo-alert:not([open]) {
++      block-size: 0;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    /* Keep the promo text rendered while the container collapses */
++    #promo-alert::details-content {
++      transition: content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    #promo-alert p {
++      margin: 0;
++      padding: 0.75rem 3.5rem 0.75rem 5%;
++      text-align: center;
++      font-size: 0.95rem;
++    }
++
++    #promo-alert a {
++      color: inherit;
++      font-weight: 600;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 50%;
++      inset-inline-end: 5%;
++      translate: 0 -50%;
++      display: grid;
++      place-items: center;
++      inline-size: 2rem;
++      block-size: 2rem;
++      border-radius: 50%;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      list-style: none;
++      transition: background 0.3s;
++    }
++
++    #alert-dismiss::-webkit-details-marker {
++      display: none;
++    }
++
++    #alert-dismiss:hover,
++    #alert-dismiss:focus-visible {
++      background: rgba(0, 0, 0, 0.12);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    /* FAQ accordion (native <details>, animated to intrinsic height) */
++    .faq {
++      max-width: 760px;
++      margin: 0 auto;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 12px;
++    }
++
++    .faq-item summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++      border-radius: 8px;
++    }
++
++    .faq-item summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq-item summary::after {
++      content: "";
++      flex: none;
++      inline-size: 0.6rem;
++      block-size: 0.6rem;
++      border-inline-end: 2px solid currentColor;
++      border-block-end: 2px solid currentColor;
++      rotate: 45deg;
++      translate: 0 -2px;
++      transition: rotate 0.35s ease, translate 0.35s ease;
++    }
++
++    .faq-item[open] summary::after {
++      rotate: 225deg;
++      translate: 0 2px;
++    }
++
++    .faq-item summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .faq-item::details-content {
++      block-size: 0;
++      overflow: clip;
++      opacity: 0;
++      transition:
++        block-size 0.35s ease-out,
++        opacity 0.35s ease-out,
++        content-visibility 0.35s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq-item[open]::details-content {
++      block-size: auto;
++      opacity: 1;
++    }
++
++    .faq-item .faq-answer {
++      padding: 0 20px 18px;
++      color: var(--text);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #promo-alert::details-content,
++      .faq-item::details-content,
++      .faq-item summary::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion" title="Dismiss">&times;</summary>
++    <p>Autumn special: get <strong>20% off</strong> any Maple Oat Latte this week. <a href="/menu/seasonal">See the offer</a></p>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +351,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading" style="text-align: center; margin-top: 40px;">Frequently Asked Questions</h2>
++
++      <details class="faq-item" name="faq">
++        <summary id="faq-trigger">Where do you source your beans?</summary>
++        <div id="faq-content" class="faq-answer">
++          <p>We partner directly with small farms in Colombia, Ethiopia, and Guatemala, paying above fair-trade rates. Every lot is roasted in small batches at our Portland roastery within days of arrival.</p>
++        </div>
++      </details>
++
++      <details class="faq-item" name="faq">
++        <summary>Do you offer dairy-free milk options?</summary>
++        <div class="faq-answer">
++          <p>Yes. Oat, almond, and soy milk are available at every location at no extra charge.</p>
++        </div>
++      </details>
++
++      <details class="faq-item" name="faq">
++        <summary>How do rewards points work?</summary>
++        <div class="faq-answer">
++          <p>You earn one point for every dollar spent. Every 100 points unlocks a free drink of your choice, redeemable in the app or in store.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

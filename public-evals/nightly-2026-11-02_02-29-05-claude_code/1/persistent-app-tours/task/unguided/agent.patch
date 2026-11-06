@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,70 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #feature.tour-active {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --rewards-link;
++      inset: auto;
++      top: anchor(bottom);
++      justify-self: anchor-center;
++      position-try-fallbacks: flip-block, flip-inline;
++      margin: 14px 0 0;
++      width: 260px;
++      max-width: calc(100vw - 16px);
++      padding: 16px;
++      border: none;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      font-size: 0.9rem;
++      overflow: visible;
++    }
++
++    #tour-step::before {
++      content: "";
++      position: absolute;
++      top: -7px;
++      left: 50%;
++      width: 14px;
++      height: 14px;
++      background: white;
++      transform: translateX(-50%) rotate(45deg);
++    }
++
++    #tour-step h4 {
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    #tour-step button {
++      margin-top: 12px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +223,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature" class="tour-active">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +268,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-step-title">
++    <h4 id="tour-step-title">Earn points with every sip</h4>
++    <p>Join Rewards to earn points on every order and redeem them for free drinks and treats.</p>
++    <button type="button" id="tour-step-close">Got it</button>
++  </div>
++
++  <script>
++    (function () {
++      var link = document.getElementById('feature');
++      var step = document.getElementById('tour-step');
++      var closeBtn = document.getElementById('tour-step-close');
++      var supportsAnchor = window.CSS && CSS.supports('anchor-name: --a');
++      var supportsPopover = typeof step.showPopover === 'function';
++
++      function isOpen() {
++        return supportsPopover ? step.matches(':popover-open') : step.style.display !== 'none';
++      }
++
++      // Fallback positioning for browsers without CSS anchor positioning
++      function reposition() {
++        if (supportsAnchor || !isOpen()) return;
++        var r = link.getBoundingClientRect();
++        var w = step.offsetWidth;
++        var left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
++        step.style.top = (r.bottom) + 'px';
++        step.style.left = left + 'px';
++      }
++
++      function close() {
++        if (supportsPopover) step.hidePopover();
++        else step.style.display = 'none';
++        link.classList.remove('tour-active');
++      }
++
++      if (!supportsAnchor) {
++        step.style.position = 'fixed';
++        window.addEventListener('scroll', reposition, { passive: true });
++        window.addEventListener('resize', reposition);
++        if (window.ResizeObserver) new ResizeObserver(reposition).observe(link);
++      }
++
++      if (supportsPopover) {
++        step.showPopover();
++      } else {
++        step.style.zIndex = '1001';
++      }
++      reposition();
++
++      link.addEventListener('click', function (e) {
++        if (isOpen()) e.preventDefault();
++      });
++      closeBtn.addEventListener('click', close);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

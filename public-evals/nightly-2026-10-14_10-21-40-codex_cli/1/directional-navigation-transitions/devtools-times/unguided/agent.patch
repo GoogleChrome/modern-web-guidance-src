@@ -1,0 +1,138 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..b188fe0
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,90 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<section data-top-stories aria-label="Top stories" aria-roledescription="carousel" class="bg-white border-b border-gray-300">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
++            <h2 class="text-sm font-bold uppercase tracking-wide text-gray-900">Top Stories</h2>
++            <div data-controls hidden>
++                <div class="flex items-center gap-3">
++                    <button type="button" data-previous class="cursor-pointer rounded border border-gray-300 px-3 py-1 text-sm font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Previous</button>
++                    <span data-position class="text-xs text-gray-500" aria-hidden="true">1 / {articles.length}</span>
++                    <button type="button" data-next class="cursor-pointer rounded border border-gray-300 px-3 py-1 text-sm font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Next</button>
++                </div>
++            </div>
++        </div>
++        <div class="overflow-hidden" aria-live="polite" aria-atomic="true">
++            {articles.map((article, index) => (
++                <div data-story hidden={index !== 0} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`}>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <time class="text-xs text-gray-500" datetime={article.data.date.toISOString()}>{article.data.date.toLocaleDateString()}</time>
++                </div>
++            ))}
++        </div>
++    </div>
++</section>
++
++<style>
++    [data-story][data-direction="next"] {
++        animation: slide-from-right 250ms ease-out;
++    }
++
++    [data-story][data-direction="previous"] {
++        animation: slide-from-left 250ms ease-out;
++    }
++
++    @keyframes slide-from-right {
++        from { transform: translateX(100%); }
++        to { transform: translateX(0); }
++    }
++
++    @keyframes slide-from-left {
++        from { transform: translateX(-100%); }
++        to { transform: translateX(0); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++        [data-story][data-direction] {
++            animation: none;
++        }
++    }
++</style>
++
++<script>
++    function initializeTopStories() {
++        document.querySelectorAll<HTMLElement>('[data-top-stories]').forEach((slider) => {
++            if (slider.dataset.initialized) return;
++            slider.dataset.initialized = 'true';
++
++            const stories = Array.from(slider.querySelectorAll<HTMLElement>('[data-story]'));
++            const controls = slider.querySelector<HTMLElement>('[data-controls]');
++            const position = slider.querySelector<HTMLElement>('[data-position]');
++            if (stories.length < 2 || !controls || !position) return;
++
++            let current = 0;
++            function move(direction: 'next' | 'previous') {
++                stories[current].hidden = true;
++                current = (current + (direction === 'next' ? 1 : -1) + stories.length) % stories.length;
++                stories[current].dataset.direction = direction;
++                stories[current].hidden = false;
++                position!.textContent = `${current + 1} / ${stories.length}`;
++            }
++
++            slider.querySelector('[data-next]')?.addEventListener('click', () => move('next'));
++            slider.querySelector('[data-previous]')?.addEventListener('click', () => move('previous'));
++            controls.hidden = false;
++        });
++    }
++
++    initializeTopStories();
++    document.addEventListener('astro:page-load', initializeTopStories);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f4052e2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +68,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

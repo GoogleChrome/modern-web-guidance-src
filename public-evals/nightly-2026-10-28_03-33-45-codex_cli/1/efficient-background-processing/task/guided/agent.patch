@@ -1,0 +1,202 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,34 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++      min-height: 400px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 220px;
++      margin: 16px 0;
++      background: #241713;
++      border-radius: 6px;
++    }
++
++    .roast-temperature {
++      font-size: 1.25rem;
++      font-variant-numeric: tabular-nums;
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +222,19 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-heading">
++    <h2 id="roast-heading">Inside the Roaster</h2>
++    <p>Watch our virtual beans tumble through a simulated roast.</p>
++    <canvas id="roast-canvas" width="960" height="220" role="img"
++      aria-label="Animated coffee beans tumbling in a roasting drum">
++      Coffee beans tumble in a roasting drum. The simulated temperature is shown below.
++    </canvas>
++    <p class="roast-temperature">Simulated temperature: <span id="roast-temp-value">185.0</span> °C</p>
++    <p>Updates pause automatically while this roaster is out of view.</p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +243,143 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const temperature = document.getElementById('roast-temp-value');
++      const context = canvas.getContext('2d');
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const beans = Array.from({ length: 36 }, (_, index) => ({
++        x: (index * 137 + 40) % canvas.width,
++        y: (index * 59 + 30) % canvas.height,
++        angle: index * 0.7,
++        speed: 25 + (index % 5) * 9
++      }));
++      let inView = false;
++      let renderingSkipped = false;
++      let pageActive = true;
++      let running = false;
++      let animationId = null;
++      let intervalId = null;
++      let lastFrame = null;
++      let roastTime = 0;
++
++      function drawBeans(delta) {
++        if (!context) return;
++        context.clearRect(0, 0, canvas.width, canvas.height);
++        beans.forEach(bean => {
++          bean.x = (bean.x + bean.speed * delta) % canvas.width;
++          bean.y = (bean.y + bean.speed * delta * 0.45) % canvas.height;
++          bean.angle += delta;
++          context.save();
++          context.translate(bean.x, bean.y);
++          context.rotate(bean.angle);
++          context.fillStyle = '#a96c40';
++          context.beginPath();
++          context.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2);
++          context.fill();
++          context.strokeStyle = '#4e2d1c';
++          context.lineWidth = 2;
++          context.beginPath();
++          context.moveTo(-11, 0);
++          context.bezierCurveTo(-4, -5, 4, 5, 11, 0);
++          context.stroke();
++          context.restore();
++        });
++      }
++
++      function animate(timestamp) {
++        animationId = null;
++        if (!running || reducedMotion.matches) return;
++        const delta = lastFrame === null ? 0 : Math.min((timestamp - lastFrame) / 1000, 0.05);
++        lastFrame = timestamp;
++        drawBeans(delta);
++        animationId = requestAnimationFrame(animate);
++      }
++
++      function stop() {
++        running = false;
++        if (animationId !== null) cancelAnimationFrame(animationId);
++        if (intervalId !== null) clearInterval(intervalId);
++        animationId = null;
++        intervalId = null;
++        lastFrame = null;
++      }
++
++      function syncActivity() {
++        if (!inView || renderingSkipped || document.hidden || !pageActive) {
++          stop();
++          return;
++        }
++        // Repeated visibility notifications must never create duplicate work.
++        if (running) return;
++        running = true;
++        drawBeans(0);
++        if (context && !reducedMotion.matches) animationId = requestAnimationFrame(animate);
++        intervalId = setInterval(() => {
++          roastTime += 1;
++          temperature.textContent = (185 + 12 * Math.sin(roastTime / 18)).toFixed(1);
++        }, 1000);
++      }
++
++      // Listen directly: rendering-state events do not reliably bubble.
++      if ('oncontentvisibilityautostatechange' in widget) {
++        widget.addEventListener('contentvisibilityautostatechange', event => {
++          renderingSkipped = event.skipped;
++          syncActivity();
++        });
++      }
++
++      function checkViewport() {
++        const rect = widget.getBoundingClientRect();
++        inView = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 &&
++          rect.top < window.innerHeight && rect.left < window.innerWidth;
++        syncActivity();
++      }
++
++      // Also enforce actual viewport visibility: content-visibility may pre-render offscreen.
++      // This observer remains the fallback when native rendering-state events are absent.
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver(entries => {
++          inView = entries[0].isIntersecting;
++          syncActivity();
++        }, { rootMargin: '0px', threshold: 0 });
++        observer.observe(widget);
++      } else {
++        // Very old browsers: coalesce geometry checks without a polling interval.
++        let viewportCheckId = null;
++        const scheduleViewportCheck = () => {
++          if (viewportCheckId !== null) return;
++          viewportCheckId = requestAnimationFrame(() => {
++            viewportCheckId = null;
++            checkViewport();
++          });
++        };
++        window.addEventListener('scroll', scheduleViewportCheck, { passive: true, capture: true });
++        window.addEventListener('resize', scheduleViewportCheck, { passive: true });
++        window.addEventListener('load', scheduleViewportCheck);
++      }
++
++      document.addEventListener('visibilitychange', checkViewport);
++      window.addEventListener('pagehide', () => {
++        pageActive = false;
++        stop();
++      });
++      window.addEventListener('pageshow', () => {
++        pageActive = true;
++        checkViewport();
++      });
++      const onMotionChange = () => {
++        stop();
++        syncActivity();
++      };
++      if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', onMotionChange);
++      else reducedMotion.addListener(onMotionChange);
++      checkViewport();
++    })();
++  </script>
+ </body>
+ 
+ </html>

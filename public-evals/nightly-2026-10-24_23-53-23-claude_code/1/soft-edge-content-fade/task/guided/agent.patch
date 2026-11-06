@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,34 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    /* Roaster's Secrets preview */
++    .paywall-container {
++      margin-top: 20px;
++      padding: 30px;
++      max-height: 260px;
++      overflow: hidden;
++      background: white;
++      border-radius: 8px;
++      /* Mask fades the content itself to transparent so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-container p + h3 {
++      margin-top: 20px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -194,8 +220,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Roaster's Secrets</h2>
++      <div class="paywall-container">
++        <h3>The 4-Minute Pour-Over Ratio</h3>
++        <p>Our head roaster swears by a 1:16 coffee-to-water ratio, but the real trick is the bloom: thirty seconds, twice the weight of the grounds, and water just off the boil.</p>
++        <h3>Why We Rest Our Beans</h3>
++        <p>Freshly roasted beans are loaded with gas that muddies the cup. We rest every batch for exactly seven days before it reaches the shelf, and here is how to tell when yours is ready.</p>
++        <h3>The Blend We Never Put on the Menu</h3>
++        <p>A small-lot Ethiopian natural, a washed Guatemalan, and one surprise ingredient that gives our house espresso its caramel finish.</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

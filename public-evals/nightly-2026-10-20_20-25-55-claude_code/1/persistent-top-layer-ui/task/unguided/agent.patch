@@ -1,0 +1,277 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,103 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-trigger {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .feedback-dialog {
++      margin: auto;
++      width: min(440px, calc(100vw - 32px));
++      border: 0;
++      border-radius: 10px;
++      padding: 24px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(62, 39, 35, 0.55);
++    }
++
++    .feedback-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .feedback-dialog label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .feedback-dialog input,
++    .feedback-dialog select,
++    .feedback-dialog textarea {
++      width: 100%;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-dialog textarea {
++      min-height: 90px;
++      resize: vertical;
++    }
++
++    .feedback-move {
++      margin-top: 16px;
++      padding-top: 12px;
++      border-top: 1px solid var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    .feedback-move-buttons,
++    .feedback-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 8px;
++    }
++
++    .feedback-actions {
++      justify-content: flex-end;
++    }
++
++    .feedback-dialog button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 4px;
++      padding: 6px 12px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++    }
++
++    .feedback-dialog button[type="submit"],
++    .feedback-dialog button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .feedback-status {
++      margin-top: 8px;
++      font-size: 0.8rem;
++      opacity: 0.8;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,15 +262,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="slot-hero" data-slot-label="Hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="slot-main" data-slot-label="Main">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -196,9 +291,9 @@
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="slot-footer" data-slot-label="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +301,140 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-trigger" id="feedback-open">Feedback</button>
++
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
++    <form method="dialog" id="feedback-form">
++      <h2 id="feedback-title">Tell us how we're doing</h2>
++      <p>This overlay stays open while you move it around the page.</p>
++
++      <label for="fb-name">Name
++        <input id="fb-name" name="name" autocomplete="name">
++      </label>
++      <label for="fb-rating">Rating
++        <select id="fb-rating" name="rating">
++          <option>5 - Perfect brew</option>
++          <option>4 - Great</option>
++          <option>3 - Fine</option>
++          <option>2 - Weak</option>
++          <option>1 - Burnt</option>
++        </select>
++      </label>
++      <label for="fb-message">Message
++        <textarea id="fb-message" name="message"></textarea>
++      </label>
++
++      <div class="feedback-move">
++        Move dialog to:
++        <div class="feedback-move-buttons">
++          <button type="button" data-move-to="slot-hero" aria-pressed="false">Hero</button>
++          <button type="button" data-move-to="slot-main" aria-pressed="false">Main</button>
++          <button type="button" data-move-to="slot-footer" aria-pressed="false">Footer</button>
++        </div>
++        <p class="feedback-status" id="feedback-status" role="status"></p>
++      </div>
++
++      <div class="feedback-actions">
++        <button type="button" id="feedback-close">Close</button>
++        <button type="submit">Send</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-dialog');
++      const status = document.getElementById('feedback-status');
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++      const STORE_KEY = 'feedback-dialog-slot';
++
++      function updateStatus(slot, mode) {
++        status.textContent = `Currently inside: ${slot.dataset.slotLabel} (${mode})`;
++        dialog.querySelectorAll('[data-move-to]').forEach((b) => {
++          b.setAttribute('aria-pressed', String(b.dataset.moveTo === slot.id));
++        });
++      }
++
++      // Native path: moveBefore keeps the dialog open, in the top layer, with focus,
++      // form state and scroll position intact.
++      function moveNative(target) {
++        target.moveBefore(dialog, null);
++      }
++
++      // Fallback: insertion removes the node, which closes the dialog and drops focus,
++      // so snapshot the state and re-open it after reparenting.
++      function moveFallback(target) {
++        const wasOpen = dialog.open;
++        const wasModal = wasOpen && dialog.matches(':modal');
++        const active = document.activeElement;
++        const focusEl = dialog.contains(active) ? active : null;
++        const selection = focusEl && 'selectionStart' in focusEl
++          ? [focusEl.selectionStart, focusEl.selectionEnd, focusEl.selectionDirection]
++          : null;
++        const scroll = dialog.scrollTop;
++        const values = new FormData(dialog.querySelector('form'));
++
++        target.appendChild(dialog);
++
++        if (wasOpen) {
++          wasModal ? dialog.showModal() : dialog.show();
++        }
++        // Form control values survive reparenting, but re-apply defensively.
++        for (const [name, value] of values) {
++          const field = dialog.querySelector(`[name="${name}"]`);
++          if (field && field.value !== value) field.value = value;
++        }
++        dialog.scrollTop = scroll;
++        if (focusEl) {
++          focusEl.focus({ preventScroll: true });
++          if (selection) {
++            try { focusEl.setSelectionRange(...selection); } catch { /* not a text control */ }
++          }
++        }
++      }
++
++      function moveTo(slotId) {
++        const target = document.getElementById(slotId);
++        if (!target || target === dialog.parentElement) return;
++        let mode = 'moveBefore';
++        if (supportsMoveBefore) {
++          try {
++            moveNative(target);
++          } catch {
++            // e.g. disconnected/cross-document targets; degrade gracefully.
++            mode = 'fallback';
++            moveFallback(target);
++          }
++        } else {
++          mode = 'fallback';
++          moveFallback(target);
++        }
++        sessionStorage.setItem(STORE_KEY, slotId);
++        updateStatus(target, mode);
++      }
++
++      dialog.addEventListener('click', (e) => {
++        const btn = e.target.closest('[data-move-to]');
++        if (btn) moveTo(btn.dataset.moveTo);
++      });
++
++      document.getElementById('feedback-open').addEventListener('click', () => {
++        if (!dialog.open) dialog.showModal();
++      });
++      document.getElementById('feedback-close').addEventListener('click', () => dialog.close());
++      dialog.querySelector('form').addEventListener('submit', () => {
++        dialog.querySelector('form').reset();
++      });
++
++      // Restore last position (dialog is closed here, so a plain move is safe).
++      const saved = document.getElementById(sessionStorage.getItem(STORE_KEY) || '');
++      const initial = saved || document.getElementById('slot-main');
++      initial.appendChild(dialog);
++      updateStatus(initial, 'initial');
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

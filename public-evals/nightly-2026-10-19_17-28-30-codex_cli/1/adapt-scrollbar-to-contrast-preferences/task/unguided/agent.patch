@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,11 +11,64 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: #4e342e;
++      --scrollbar-track: #f1e9e5;
++      --scrollbar-hover: #3e2723;
+     }
+ 
++    /* Keep page and nested scrollbars visible without reducing their native size. */
+     * {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Fallback for browsers without standard scrollbar color support. */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track,
++      ::-webkit-scrollbar-corner {
++        background: var(--scrollbar-track);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 2px solid var(--scrollbar-track);
++        border-radius: 8px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background: var(--scrollbar-hover);
++      }
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000;
++        --scrollbar-track: #fff;
++        --scrollbar-hover: #000;
++      }
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --scrollbar-thumb: ButtonText;
++        --scrollbar-track: Canvas;
++        --scrollbar-hover: Highlight;
++      }
++
++      * {
++        scrollbar-color: auto;
++      }
++    }
++
++    * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }

@@ -1,0 +1,146 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..9b6302c
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,72 @@
++import React, { useState } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++interface Story {
++  id: string;
++  title: string;
++  href: string;
++  date: string;
++}
++
++interface Props {
++  stories: Story[];
++}
++
++type Direction = 'next' | 'prev';
++
++export default function TopStoriesSlider({ stories }: Props) {
++  const [index, setIndex] = useState(0);
++  // null on first render so the initial story doesn't animate in
++  const [direction, setDirection] = useState<Direction | null>(null);
++
++  if (stories.length === 0) return null;
++
++  const go = (dir: Direction) => {
++    setDirection(dir);
++    setIndex(i => (i + (dir === 'next' ? 1 : -1) + stories.length) % stories.length);
++  };
++
++  const story = stories[index];
++  const animationClass = direction === 'next' ? 'slide-in-from-right' : direction === 'prev' ? 'slide-in-from-left' : '';
++
++  return (
++    <section aria-roledescription="carousel" aria-label="Top stories" className="flex items-center gap-4">
++      <button
++        type="button"
++        onClick={() => go('prev')}
++        className="p-1 rounded-full text-gray-500 hover:text-amber-400 hover:bg-gray-100"
++        aria-label="Previous story"
++      >
++        <ChevronLeftIcon className="h-5 w-5" />
++      </button>
++
++      <div className="flex-1 overflow-hidden" aria-live="polite">
++        <div
++          key={story.id}
++          className={animationClass}
++          role="group"
++          aria-roledescription="slide"
++          aria-label={`${index + 1} of ${stories.length}`}
++        >
++          <a href={story.href}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{story.title}</h3>
++          </a>
++          <span className="text-xs text-gray-500">{story.date}</span>
++        </div>
++      </div>
++
++      <span className="text-xs text-gray-500 tabular-nums" aria-hidden="true">
++        {index + 1} / {stories.length}
++      </span>
++
++      <button
++        type="button"
++        onClick={() => go('next')}
++        className="p-1 rounded-full text-gray-500 hover:text-amber-400 hover:bg-gray-100"
++        aria-label="Next story"
++      >
++        <ChevronRightIcon className="h-5 w-5" />
++      </button>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..b31034a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+@@ -41,16 +42,15 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider
++                client:load
++                stories={topStories.map(article => ({
++                    id: article.id,
++                    title: article.data.title,
++                    href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++                    date: article.data.date.toLocaleDateString(),
++                }))}
++            />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..568c2c9 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,23 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++@keyframes slide-in-from-right {
++  from { transform: translateX(100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++@keyframes slide-in-from-left {
++  from { transform: translateX(-100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++@media (prefers-reduced-motion: no-preference) {
++  .slide-in-from-right {
++    animation: slide-in-from-right 300ms ease-out;
++  }
++
++  .slide-in-from-left {
++    animation: slide-in-from-left 300ms ease-out;
++  }
++}

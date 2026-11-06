@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+index 66c9173..9dffa8d 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Pin versions and hashes together when updating third-party assets. -->
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
++    integrity="sha384-M86HUGbBFILBBZ9ykMAbT3nVb0+2C7yZlF8X2CiKNpDOQjKroMJqIeGZ/Le8N2Qp"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -21,7 +26,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -75,10 +80,10 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +93,42 @@
+       padding: 0 20px;
+     }
+ 
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
++    .hero-image {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -2;
++    }
++
++    [data-external-image] {
++      visibility: hidden;
++    }
++
++    .logo svg {
++      width: 24px;
++      height: 24px;
++      vertical-align: middle;
++      margin-right: 8px;
++    }
++
++    .card-image {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 4px;
++      margin-bottom: 15px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -158,7 +199,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><span data-feather="coffee" aria-hidden="true"></span>THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -169,6 +210,8 @@
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-image" data-external-image="hero" alt="" decoding="async"
++      crossorigin="anonymous" referrerpolicy="no-referrer">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +222,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-image" data-external-image="latte" width="600" height="400"
++            alt="A creamy latte in a glass" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image" data-external-image="espresso" width="600" height="400"
++            alt="A freshly poured espresso" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image" data-external-image="coldbrew" width="600" height="400"
++            alt="An iced coffee served in a glass" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +256,87 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.2/dist/feather.min.js"
++    integrity="sha384-qEqAs1VsN9WH2myXDbiP2wGGIttL9bMRZBKCl54ZnzpDlVqbYANP9vMaoT/wvQcf"
++    crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
++  <script>
++    // Images and CSS font URLs do not support native SRI attributes.
++    // Fetch checks these hashes before any bytes reach an image or FontFace.
++    // Keep fixed JPEG encoding: content-negotiated formats need different hashes.
++    const externalAssets = {
++      "font400": {
++        "url": "https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.3/files/lato-latin-400-normal.woff2",
++        "integrity": "sha384-+chn3xqCWRPSXDBtVEFQn+0J9Gb0SYR2FO1WrXo+L/arnyr8lXLVX2p0BqZIUemc"
++      },
++      "font700": {
++        "url": "https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.3/files/lato-latin-700-normal.woff2",
++        "integrity": "sha384-VMhSnqoWTuTbzD+C/VKMAuMX6GpE7X2E+BiHN4Swi68wjoKZnNf8k07Z2L+ZYHcS"
++      },
++      "hero": {
++        "url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80",
++        "integrity": "sha384-MkCawIXxkhKfMCsafNM9LontDHX3W8n8sYbKwfQ5NE+0xJOWg9RoQMv3OfOjdF4b"
++      },
++      "latte": {
++        "url": "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-x2K/bA51pQugUJAdiAyKc3oWHrr4/9gsaNZcD9LJa6aOD7gBgsdD6mqy1z7Ziqsu"
++      },
++      "espresso": {
++        "url": "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-Yl309C3L1ztIQVEAWthyto6bmQ0NCfR6Fh0FKlo8X3ivrTz/hzKSRVHh4ZXfJ2SX"
++      },
++      "coldbrew": {
++        "url": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-8BVYoeCa4BfhP0cdbKGlxiGxgD6YRYCANIIF9K4gA7wJ+qrwR9xBeHLywbueB0EJ"
++      }
++    };
++
++    async function fetchVerifiedAsset(asset) {
++      const response = await fetch(asset.url, {
++        integrity: asset.integrity,
++        mode: 'cors',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer'
++      });
++      if (!response.ok) throw new Error(`Asset request failed: ${response.status}`);
++      return response;
++    }
++
++    async function loadVerifiedImage(image) {
++      const response = await fetchVerifiedAsset(externalAssets[image.dataset.externalImage]);
++      const objectURL = URL.createObjectURL(await response.blob());
++      try {
++        image.src = objectURL;
++        await image.decode();
++        image.style.visibility = 'visible';
++      } catch (error) {
++        image.removeAttribute('src');
++        throw error;
++      } finally {
++        URL.revokeObjectURL(objectURL);
++      }
++    }
++
++    async function loadVerifiedFont(weight) {
++      const response = await fetchVerifiedAsset(externalAssets[`font${weight}`]);
++      const font = new FontFace('Lato', await response.arrayBuffer(), {
++        weight: String(weight),
++        style: 'normal',
++        display: 'swap'
++      });
++      document.fonts.add(await font.load());
++    }
++
++    document.addEventListener('DOMContentLoaded', () => {
++      if (window.feather) window.feather.replace();
++      const loads = [
++        ...Array.from(document.querySelectorAll('[data-external-image]'), loadVerifiedImage),
++        ...[400, 700].map(loadVerifiedFont)
++      ];
++      // Fail closed: keep fallback colors/fonts; never retry without integrity.
++      loads.forEach(load => load.catch(error => console.warn('External asset unavailable:', error)));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    /* Order Event Timeline */
++    .timeline-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .timeline-status {
++      margin-top: 15px;
++      font-size: 0.9rem;
++    }
++
++    .timeline-status.error {
++      color: #c62828;
++    }
++
++    .table-wrap {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .event-table {
++      width: 100%;
++      border-collapse: collapse;
++      background: white;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 8px;
++      overflow: hidden;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .event-table th,
++    .event-table td {
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .event-table th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .event-table td.mono {
++      font-family: Consolas, 'Courier New', monospace;
++    }
++
++    .event-table td.num {
++      text-align: right;
++    }
++
++    .event-table tr.tie td.interval {
++      color: #c62828;
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="timeline-section">
++      <h2>Order Event Timeline</h2>
++      <p>Replay a batch of order events collected from our backend services, in true chronological order.</p>
++      <button type="button" id="load-events-btn" class="btn">Load &amp; Sort Order Events</button>
++      <p id="timeline-status" class="timeline-status" role="status" aria-live="polite"></p>
++      <div class="table-wrap">
++        <table id="event-table" class="event-table" hidden>
++          <thead>
++            <tr>
++              <th>#</th>
++              <th>Timestamp (UTC)</th>
++              <th>Service</th>
++              <th>Order</th>
++              <th>Event</th>
++              <th>Interval since previous</th>
++            </tr>
++          </thead>
++          <tbody></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +294,115 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const EVENTS_URL = 'data/order-events.json';
++      const NS_PER_SECOND = 1000000000n;
++      // RFC 3339 timestamp with up to nanosecond fractional seconds and Z or ±hh:mm offset.
++      const TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/i;
++
++      // Date only keeps milliseconds, so whole seconds go through Date.UTC and the
++      // fractional part is carried separately as a BigInt nanosecond count.
++      function parseTimestampNs(text) {
++        const m = TIMESTAMP_RE.exec(String(text).trim());
++        if (!m) throw new Error('Unrecognised timestamp: ' + text);
++        const [, y, mo, d, h, mi, sec, frac = '', zone] = m;
++        const epochMs = Date.UTC(+y, +mo - 1, +d, +h, +mi, +sec);
++        if (Number.isNaN(epochMs)) throw new Error('Invalid timestamp: ' + text);
++        let offsetSeconds = 0n;
++        if (zone.toUpperCase() !== 'Z') {
++          const sign = zone[0] === '-' ? -1n : 1n;
++          offsetSeconds = sign * (BigInt(zone.slice(1, 3)) * 3600n + BigInt(zone.slice(4, 6)) * 60n);
++        }
++        const fractionNs = BigInt(frac.padEnd(9, '0') || '0');
++        return (BigInt(epochMs / 1000) - offsetSeconds) * NS_PER_SECOND + fractionNs;
++      }
++
++      function formatUtcNs(ns) {
++        let seconds = ns / NS_PER_SECOND;
++        let fraction = ns % NS_PER_SECOND;
++        if (fraction < 0n) { fraction += NS_PER_SECOND; seconds -= 1n; }
++        const base = new Date(Number(seconds) * 1000).toISOString().slice(0, 19);
++        return base + '.' + fraction.toString().padStart(9, '0') + 'Z';
++      }
++
++      // Exact decimal rendering of a nanosecond duration in the most readable unit.
++      function formatDurationNs(ns) {
++        const units = [[NS_PER_SECOND, 9, 's'], [1000000n, 6, 'ms'], [1000n, 3, 'µs']];
++        for (const [size, digits, label] of units) {
++          if (ns >= size) {
++            const whole = ns / size;
++            const rest = (ns % size).toString().padStart(digits, '0');
++            return whole + '.' + rest + ' ' + label;
++          }
++        }
++        return ns + ' ns';
++      }
++
++      function cell(text, className) {
++        const td = document.createElement('td');
++        td.textContent = text;
++        if (className) td.className = className;
++        return td;
++      }
++
++      const button = document.getElementById('load-events-btn');
++      const status = document.getElementById('timeline-status');
++      const table = document.getElementById('event-table');
++      const tbody = table.querySelector('tbody');
++
++      async function loadAndSort() {
++        button.disabled = true;
++        status.className = 'timeline-status';
++        status.textContent = 'Loading events…';
++        try {
++          const res = await fetch(EVENTS_URL, { cache: 'no-store' });
++          if (!res.ok) throw new Error('Failed to load events (HTTP ' + res.status + ')');
++          const batch = await res.json();
++
++          const events = batch.events.map((e, index) => ({ ...e, ns: parseTimestampNs(e.timestamp), index }));
++          // Compare BigInts directly; fall back to arrival order so ties stay stable.
++          events.sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : a.index - b.index));
++
++          tbody.replaceChildren();
++          let ties = 0;
++          events.forEach((e, i) => {
++            const tr = document.createElement('tr');
++            let interval = '—';
++            if (i > 0) {
++              const delta = e.ns - events[i - 1].ns;
++              interval = formatDurationNs(delta) + ' (' + delta.toLocaleString() + ' ns)';
++              if (delta === 0n) { tr.classList.add('tie'); ties++; }
++            }
++            tr.append(
++              cell(String(i + 1), 'num'),
++              cell(formatUtcNs(e.ns), 'mono'),
++              cell(e.service),
++              cell(e.orderId),
++              cell(e.type),
++              cell(interval, 'mono num interval')
++            );
++            tbody.append(tr);
++          });
++          table.hidden = false;
++
++          const span = events.length > 1 ? events[events.length - 1].ns - events[0].ns : 0n;
++          status.textContent = 'Sorted ' + events.length + ' events from batch ' + batch.batchId +
++            ' — total span ' + formatDurationNs(span) +
++            (ties ? ', ' + ties + ' simultaneous event' + (ties > 1 ? 's' : '') + ' (0 ns interval)' : '') + '.';
++        } catch (err) {
++          status.className = 'timeline-status error';
++          status.textContent = err.message;
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      button.addEventListener('click', loadAndSort);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

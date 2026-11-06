@@ -1,0 +1,178 @@
+diff --git a/index.html b/index.html
+index 66c9173..17e9d24 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,131 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 60px;
++    }
++
++    .rewards h2 {
++      text-align: center;
++    }
++
++    .rewards-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 20px;
++      padding: 40px 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++    }
++
++    .progress-ring {
++      --size: 220px;
++      position: relative;
++      width: var(--size);
++      height: var(--size);
++      flex-shrink: 0;
++    }
++
++    .progress-ring svg {
++      width: 100%;
++      height: 100%;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring circle {
++      fill: none;
++      stroke-width: 14;
++    }
++
++    .progress-ring .ring-track {
++      stroke: var(--secondary);
++    }
++
++    .progress-ring .ring-fill {
++      stroke: var(--accent);
++      stroke-linecap: round;
++      stroke-dasharray: 100;
++      stroke-dashoffset: calc(100 - var(--progress));
++      animation: ring-fill 1.2s ease-out;
++    }
++
++    @keyframes ring-fill {
++      from {
++        stroke-dashoffset: 100;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-ring .ring-fill {
++        animation: none;
++      }
++    }
++
++    .ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      line-height: 1.2;
++    }
++
++    .ring-count {
++      font-size: 2.75rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .ring-count span {
++      font-size: 1.25rem;
++      color: #8d6e63;
++    }
++
++    .ring-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++      margin-top: 4px;
++    }
++
++    .rewards-details {
++      max-width: 380px;
++    }
++
++    .rewards-details h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .stamps {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin: 15px 0;
++      list-style: none;
++    }
++
++    .stamps li {
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      border: 2px solid var(--secondary);
++    }
++
++    .stamps li.earned {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +320,41 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Your Grind Rewards</h2>
++      <div class="rewards-card">
++        <div class="progress-ring" style="--progress: 70;" role="progressbar" aria-valuemin="0" aria-valuemax="10"
++          aria-valuenow="7" aria-label="7 of 10 drinks toward your next free drink">
++          <svg viewBox="0 0 120 120" aria-hidden="true">
++            <circle class="ring-track" cx="60" cy="60" r="52" />
++            <circle class="ring-fill" cx="60" cy="60" r="52" pathLength="100" />
++          </svg>
++          <div class="ring-center" aria-hidden="true">
++            <div class="ring-count">7<span>/10</span></div>
++            <div class="ring-label">drinks</div>
++            <div class="ring-label">70% complete</div>
++          </div>
++        </div>
++        <div class="rewards-details">
++          <h3>Just 3 more drinks until your next one's on us!</h3>
++          <p>Every handcrafted drink earns a stamp. Collect 10 and enjoy any drink on the menu, free.</p>
++          <ul class="stamps" aria-hidden="true">
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li class="earned"></li>
++            <li></li>
++            <li></li>
++            <li></li>
++          </ul>
++          <a href="/rewards" class="btn">View My Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,258 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..8e57e82
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,185 @@
++/**
++ * <drink-card> — reusable, style-isolated card for menu items.
++ *
++ * Attributes (all reflected as properties):
++ *   heading       Card title.
++ *   href          URL for the action link.
++ *   action-label  Text for the action link (default: "View Details").
++ *   limited       Boolean. When present, shows the badge.
++ *   badge-label   Text for the badge (default: "Limited").
++ *
++ * Content:
++ *   Default slot  Description text.
++ *
++ * Theming (inherited custom properties, all optional):
++ *   --drink-card-bg, --drink-card-fg, --drink-card-accent,
++ *   --drink-card-accent-hover, --drink-card-badge-bg, --drink-card-badge-fg
++ *
++ * Parts: card, heading, description, action, badge
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    --_bg: var(--drink-card-bg, #fff);
++    --_fg: var(--drink-card-fg, #3e2723);
++    --_accent: var(--drink-card-accent, #4e342e);
++    --_accent-hover: var(--drink-card-accent-hover, #3e2723);
++    --_badge-bg: var(--drink-card-badge-bg, #ffab40);
++    --_badge-fg: var(--drink-card-badge-fg, #3e2723);
++
++    display: block;
++    /* Pin inherited properties so page typography can't reshape the card. */
++    color: var(--_fg);
++    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    font-size: 1rem;
++    line-height: 1.6;
++    text-align: center;
++  }
++
++  :host([hidden]) { display: none; }
++
++  *, *::before, *::after { box-sizing: border-box; }
++
++  .card {
++    position: relative;
++    height: 100%;
++    margin: 0;
++    padding: 20px;
++    background: var(--_bg);
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  }
++
++  .badge {
++    position: absolute;
++    top: 12px;
++    right: 12px;
++    padding: 2px 10px;
++    border-radius: 999px;
++    background: var(--_badge-bg);
++    color: var(--_badge-fg);
++    font-size: 0.75rem;
++    font-weight: 700;
++    letter-spacing: 0.05em;
++    text-transform: uppercase;
++    line-height: 1.6;
++  }
++
++  .badge[hidden] { display: none; }
++
++  h3 {
++    margin: 0 0 10px;
++    color: var(--_accent);
++    font-size: 1.17em;
++    font-weight: bold;
++  }
++
++  /* Reserve room for the badge so long titles don't collide with it. */
++  :host([limited]) h3 { padding-inline: 4.5rem; }
++
++  .description { margin: 0; }
++
++  ::slotted(*) { margin: 0; }
++
++  .action {
++    display: inline-block;
++    margin-top: 15px;
++    padding: 10px 20px;
++    background: var(--_accent);
++    color: #fff;
++    border-radius: 5px;
++    text-decoration: none;
++    transition: background 0.3s;
++  }
++
++  .action:hover { background: var(--_accent-hover); }
++
++  .action:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 3px;
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article class="card" part="card">
++    <h3 part="heading"></h3>
++    <span class="badge" part="badge" hidden></span>
++    <div class="description" part="description"><slot></slot></div>
++    <a class="action" part="action"></a>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['heading', 'href', 'action-label', 'limited', 'badge-label'];
++
++  #heading;
++  #badge;
++  #action;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++    this.#heading = root.querySelector('h3');
++    this.#badge = root.querySelector('.badge');
++    this.#action = root.querySelector('.action');
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback(_name, oldVal, newVal) {
++    if (oldVal !== newVal) this.#render();
++  }
++
++  get heading() { return this.getAttribute('heading') ?? ''; }
++  set heading(v) { this.#setStringAttr('heading', v); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(v) { this.#setStringAttr('href', v); }
++
++  get actionLabel() { return this.getAttribute('action-label') ?? ''; }
++  set actionLabel(v) { this.#setStringAttr('action-label', v); }
++
++  get badgeLabel() { return this.getAttribute('badge-label') ?? ''; }
++  set badgeLabel(v) { this.#setStringAttr('badge-label', v); }
++
++  get limited() { return this.hasAttribute('limited'); }
++  set limited(on) { this.toggleAttribute('limited', Boolean(on)); }
++
++  #setStringAttr(name, v) {
++    v == null || v === '' ? this.removeAttribute(name) : this.setAttribute(name, String(v));
++  }
++
++  #render() {
++    this.#heading.textContent = this.heading;
++
++    this.#badge.textContent = this.badgeLabel || 'Limited';
++    this.#badge.hidden = !this.limited;
++
++    this.#action.textContent = this.actionLabel || 'View Details';
++    if (this.href) {
++      this.#action.href = this.href;
++      this.#action.hidden = false;
++    } else {
++      this.#action.removeAttribute('href');
++      this.#action.hidden = true;
++    }
++    // Give each link a distinct accessible name ("View Details: Cold Brew").
++    if (this.heading) {
++      this.#action.setAttribute('aria-label', `${this.#action.textContent}: ${this.heading}`);
++    } else {
++      this.#action.removeAttribute('aria-label');
++    }
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
++
++export { DrinkCard };
+diff --git a/index.html b/index.html
+index 66c9173..630ffcc 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,14 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* Fail open: hide un-upgraded cards briefly, then reveal regardless. */
++    drink-card:not(:defined) {
++      opacity: 0;
++      animation: drink-card-reveal 0.2s 2s forwards;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes drink-card-reveal {
++      to { opacity: 1; }
+     }
+ 
+     .btn {
+@@ -153,6 +150,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +176,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card heading="Maple Oat Latte" href="/menu/seasonal" limited>
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </drink-card>
++        <drink-card heading="Dark Roast Espresso" href="/menu/espresso">
++          Bold, smokey, and perfect for a morning boost.
++        </drink-card>
++        <drink-card heading="Cold Brew" href="/menu/cold-brew">
++          Steeped for 18 hours for maximum smoothness.
++        </drink-card>
+       </div>
+     </section>
+   </main>

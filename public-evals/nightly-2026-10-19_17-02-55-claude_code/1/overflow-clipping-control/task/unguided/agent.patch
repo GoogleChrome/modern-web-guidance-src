@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 40px;
++    }
++
++    .showcase h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    /* Clip children at the content box; the inner curve follows the parent's
++       border-radius minus padding automatically. */
++    .nested-curve-parent {
++      --card-radius: 32px;
++      --card-padding: 24px;
++      background: white;
++      padding: var(--card-padding);
++      border-radius: var(--card-radius);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++    }
++
++    .nested-curve-parent .card-body {
++      padding: 20px 0 0;
++    }
++
++    .nested-curve-parent .card-footer {
++      background: var(--primary);
++      color: white;
++      padding: 14px 20px;
++      margin-top: 20px;
++    }
++
++    /* Clip overflowing text, but let the glow bleed up to 15px outside. */
++    .safety-zone-parent {
++      margin-top: 40px;
++      padding: 40px 20px;
++      background: var(--secondary);
++      border-radius: 12px;
++      text-align: center;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent p {
++      white-space: nowrap;
++      margin-bottom: 20px;
++    }
++
++    .glow-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 8px;
++      padding: 14px 32px;
++      font-size: 1rem;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 0 12px 4px rgba(255, 171, 64, 0.9),
++        0 0 15px 0 rgba(255, 171, 64, 0.6);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +244,28 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <h2>Showcase</h2>
++      <div class="nested-curve-parent">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1000&q=80"
++          alt="Freshly roasted coffee beans">
++        <div class="card-body">
++          <h3>Single-Origin Spotlight</h3>
++          <p>Small-batch beans from Ethiopia, roasted weekly with notes of blueberry and jasmine.</p>
++        </div>
++        <div class="card-footer">Limited release &mdash; while supplies last</div>
++      </div>
++
++      <div class="safety-zone-parent">
++        <h3>Weekly Promos</h3>
++        <p>Buy any two seasonal drinks this week and get a free pastry with your order at any location.</p>
++        <button type="button" class="glow-btn">Claim Offer</button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

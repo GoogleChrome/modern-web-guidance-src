@@ -1,0 +1,1051 @@
+diff --git a/index.html b/index.html
+index 66c9173..1736bf6 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,431 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer base, components, transitions;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer base {
++      :root {
++        --primary: #4e342e;
++        --primary-dark: #3e2723;
++        --secondary: #d7ccc8;
++        --accent: #ffab40;
++        --text: #3e2723;
++        --text-muted: #6d4c41;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --surface-subtle: #f5f0ee;
++        --border: #e0d6d2;
++        --danger: #c62828;
++        --danger-bg: #ffebee;
++        --radius: 8px;
++        --radius-sm: 5px;
++      }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++      html,
++      body,
++      h1,
++      h2,
++      h3,
++      p,
++      ul,
++      li,
++      figure,
++      button,
++      input {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++      }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      button {
++        font: inherit;
++        cursor: pointer;
++      }
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 1rem;
++        padding-inline: 5%;
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
++        flex-wrap: wrap;
++        gap: 12px;
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      nav ul {
++        display: flex;
++        align-items: center;
++        list-style: none;
++        flex-wrap: wrap;
++        gap: 20px;
++      }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++      nav a {
++        color: inherit;
++        text-decoration: none;
++        font-size: 0.9rem;
++        transition: color 0.3s;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++      nav a:hover {
++        color: var(--accent);
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding-block: 5px;
++        padding-inline: 12px;
++        border-radius: var(--radius-sm);
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      /* Hero Section */
++      .hero {
++        min-block-size: 50vh;
++        background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: var(--surface);
++        text-align: center;
++        padding-block: 40px;
++        padding-inline: 20px;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      .hero h1 {
++        font-size: clamp(2rem, 4vw, 3rem);
++        margin-block-end: 0.75rem;
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      /* Content Sections */
++      .container {
++        max-inline-size: 1150px;
++        margin-block: 40px;
++        margin-inline: auto;
++        padding-inline: 20px;
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      .section-header {
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: space-between;
++        align-items: center;
++        gap: 16px;
++        margin-block-end: 24px;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++      .section-actions {
++        display: flex;
++        flex-wrap: wrap;
++        gap: 10px;
++        align-items: center;
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++        gap: 24px;
++        align-items: start;
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++      .card-wrapper {
++        min-inline-size: 0;
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      .card {
++        background: var(--surface);
++        padding: 20px;
++        border-radius: var(--radius);
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++        border: 1px solid var(--border);
++        overflow: clip;
++        display: flex;
++        flex-direction: column;
++        gap: 14px;
++      }
++
++      .card-top {
++        display: flex;
++        justify-content: space-between;
++        align-items: flex-start;
++        gap: 12px;
++      }
++
++      .card h3 {
++        color: var(--primary);
++        font-size: 1.25rem;
++      }
++
++      .card-subtitle {
++        color: var(--text-muted);
++        font-size: 0.9rem;
++      }
++
++      .badge {
++        background: var(--surface-subtle);
++        color: var(--primary);
++        border: 1px solid var(--border);
++        border-radius: 999px;
++        padding-block: 2px;
++        padding-inline: 10px;
++        font-size: 0.78rem;
++        font-weight: 600;
++        white-space: nowrap;
++      }
++
++      .card-controls {
++        display: flex;
++        flex-wrap: wrap;
++        gap: 8px;
++      }
++
++      .btn {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        gap: 6px;
++        background: var(--primary);
++        color: var(--surface);
++        padding-block: 8px;
++        padding-inline: 14px;
++        text-decoration: none;
++        border-radius: var(--radius-sm);
++        border: 1px solid transparent;
++        font-size: 0.875rem;
++        font-weight: 500;
++        transition: background 0.2s, border-color 0.2s, color 0.2s;
++      }
++
++      .btn:hover:not(:disabled) {
++        background: var(--primary-dark);
++      }
++
++      .btn-secondary {
++        background: var(--surface-subtle);
++        color: var(--text);
++        border-color: var(--border);
++      }
++
++      .btn-secondary:hover:not(:disabled) {
++        background: var(--secondary);
++      }
++
++      .btn-accent {
++        background: var(--accent);
++        color: var(--primary-dark);
++        font-weight: 600;
++      }
++
++      .btn-accent:hover:not(:disabled) {
++        background: #ff9100;
++      }
++
++      .btn-sm {
++        padding-block: 4px;
++        padding-inline: 10px;
++        font-size: 0.8rem;
++      }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      .btn-danger {
++        background: transparent;
++        color: var(--danger);
++        border-color: var(--border);
++      }
++
++      .btn-danger:hover:not(:disabled) {
++        background: var(--danger-bg);
++        border-color: var(--danger);
++      }
++
++      /* Drink Item List inside Scoped Card */
++      .drink-list {
++        list-style: none;
++        display: flex;
++        flex-direction: column;
++        gap: 8px;
++        max-block-size: 280px;
++        overflow-y: auto;
++        padding-inline-end: 2px;
++      }
++
++      .drink-item {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        gap: 10px;
++        padding-block: 10px;
++        padding-inline: 12px;
++        background: var(--surface-subtle);
++        border: 1px solid var(--border);
++        border-radius: var(--radius-sm);
++      }
++
++      .drink-info {
++        display: flex;
++        flex-direction: column;
++        text-align: start;
++        min-inline-size: 0;
++      }
++
++      .drink-name {
++        font-weight: 600;
++        font-size: 0.92rem;
++      }
++
++      .drink-meta {
++        font-size: 0.78rem;
++        color: var(--text-muted);
++      }
++
++      .drink-actions {
++        display: flex;
++        align-items: center;
++        gap: 6px;
++        flex-shrink: 0;
++      }
++
++      .drink-price {
++        font-weight: 700;
++        font-size: 0.9rem;
++        color: var(--primary);
++        margin-inline-end: 4px;
++      }
++
++      .card-details {
++        background: var(--surface-subtle);
++        border-inline-start: 3px solid var(--accent);
++        padding: 10px 12px;
++        border-radius: var(--radius-sm);
++        font-size: 0.85rem;
++        color: var(--text);
++      }
++
++      .card-details[hidden] {
++        display: none;
++      }
++
++      .card-footer {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        padding-block-start: 10px;
++        border-block-start: 1px solid var(--border);
++        font-size: 0.85rem;
++        color: var(--text-muted);
++      }
++
++      /* Interactive Popover in top-layer */
++      .tasting-popover {
++        margin: auto;
++        inset-block-start: 72px;
++        inset-inline-end: 5%;
++        inset-block-end: auto;
++        inset-inline-start: auto;
++        max-inline-size: 320px;
++        padding: 16px;
++        border: 1px solid var(--border);
++        border-radius: var(--radius);
++        background: var(--surface);
++        color: var(--text);
++        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
++      }
++
++      .tasting-popover h3 {
++        color: var(--primary);
++        margin-block-end: 6px;
++        font-size: 1rem;
++      }
++
++      .tasting-popover p {
++        font-size: 0.85rem;
++        color: var(--text-muted);
++      }
++
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: 40px;
++        padding-inline: 20px;
++        margin-block-start: 40px;
++      }
++
++      .footer-links {
++        margin-block-end: 20px;
++      }
++
++      .footer-links a {
++        margin-inline: 10px;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer transitions {
++      /* Outer wrapper named so outer grid transitions can move cards while inner transitions run */
++      .card-wrapper {
++        view-transition-name: match-element;
++      }
++
++      /* Prevent inner card transition names from leaking into outer transitions */
++      .card {
++        view-transition-scope: all;
++      }
++
++      /* Nested View Transition Group for scrollable list inside a card */
++      .card .drink-list {
++        view-transition-name: match-element;
++        view-transition-group: contain;
++        view-transition-class: drink-list;
++      }
++
++      ::view-transition-group-children(.drink-list) {
++        overflow: clip;
++      }
++
++      /* Participating elements inside each scoped card or list */
++      .card .drink-item,
++      .card .card-details,
++      .card .card-footer {
++        view-transition-name: match-element;
++      }
++
++      ::view-transition-group(*) {
++        animation-duration: 300ms;
++        animation-timing-function: ease-in-out;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(*),
++        ::view-transition-old(*),
++        ::view-transition-new(*) {
++          animation: none !important;
++        }
++      }
+     }
+   </style>
+ </head>
+@@ -164,34 +444,252 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" class="btn btn-sm btn-accent" popovertarget="barista-notes-popover">
++          Barista Notes
++        </button>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="barista-notes-popover" class="tasting-popover" popover="auto">
++    <h3>Roaster's Live Log</h3>
++    <p>Current batch: Single-Origin Ethiopian Yirgacheffe. Hints of bergamot, jasmine, and white peach. Notice how this popover and the sticky header remain unobstructed while menu cards animate concurrently below.</p>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-accent">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <div>
++          <h2 id="seasonal-heading">Seasonal Favorites &amp; Live Menu Stations</h2>
++          <p class="card-subtitle">Each station transitions its own state independently while other cards and page controls stay responsive.</p>
++        </div>
++        <div class="section-actions">
++          <button type="button" class="btn btn-secondary" id="animate-all-concurrently">
++            Sort All Stations Concurrently
++          </button>
++          <button type="button" class="btn btn-secondary" id="rotate-stations">
++            Rotate Station Order
++          </button>
++        </div>
++      </div>
++
++      <div class="grid" id="stations-grid">
++        <!-- Station 1: Seasonal Favorites -->
++        <div class="card-wrapper" data-station-wrapper="seasonal">
++          <section class="card" id="card-seasonal" data-station="seasonal" aria-labelledby="heading-seasonal">
++            <div class="card-top">
++              <div>
++                <h3 id="heading-seasonal">Maple &amp; Autumn Bar</h3>
++                <p class="card-subtitle">Creamy oat milk &amp; spiced seasonal pours.</p>
++              </div>
++              <span class="badge" data-count-badge>3 drinks</span>
++            </div>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-sm btn-secondary" data-action="sort-price">
++                Sort by Price
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="reverse">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="add-special">
++                + Add Special
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="toggle-notes" aria-expanded="false" aria-controls="notes-seasonal">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="card-details" id="notes-seasonal" hidden>
++              <strong>Tasting Profile:</strong> Grade-A Vermont amber maple syrup steamed with barista-blend oat milk and freshly pulled double ristretto.
++            </div>
++
++            <ul class="drink-list" aria-label="Maple and Autumn Bar drinks">
++              <li class="drink-item" data-id="seasonal-1" data-price="5.75">
++                <div class="drink-info">
++                  <span class="drink-name">Maple Oat Latte</span>
++                  <span class="drink-meta">12oz • Oat Milk • Vermont Maple</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$5.75</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Maple Oat Latte">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="seasonal-2" data-price="6.25">
++                <div class="drink-info">
++                  <span class="drink-name">Cardamom Honey Cortado</span>
++                  <span class="drink-meta">8oz • Wildflower Honey • Crushed Cardamom</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$6.25</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Cardamom Honey Cortado">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="seasonal-3" data-price="5.25">
++                <div class="drink-info">
++                  <span class="drink-name">Toasted Pecan Flat White</span>
++                  <span class="drink-meta">10oz • Microfoam • Roasted Pecan Infusion</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$5.25</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Toasted Pecan Flat White">Remove</button>
++                </div>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <span>Station Status: Ready</span>
++              <a href="/menu/seasonal">Full Seasonal Menu &rarr;</a>
++            </div>
++          </section>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <!-- Station 2: Dark Roast Espresso -->
++        <div class="card-wrapper" data-station-wrapper="espresso">
++          <section class="card" id="card-espresso" data-station="espresso" aria-labelledby="heading-espresso">
++            <div class="card-top">
++              <div>
++                <h3 id="heading-espresso">Dark Roast Espresso</h3>
++                <p class="card-subtitle">Bold, smokey, and calibrated for morning clarity.</p>
++              </div>
++              <span class="badge" data-count-badge>3 drinks</span>
++            </div>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-sm btn-secondary" data-action="sort-price">
++                Sort by Price
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="reverse">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="add-special">
++                + Add Special
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="toggle-notes" aria-expanded="false" aria-controls="notes-espresso">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="card-details" id="notes-espresso" hidden>
++              <strong>Tasting Profile:</strong> 85% bittersweet cacao, charred cedar, and a syrupy crema finish pulled at 9 bars for 28 seconds.
++            </div>
++
++            <ul class="drink-list" aria-label="Dark Roast Espresso drinks">
++              <li class="drink-item" data-id="espresso-1" data-price="3.75">
++                <div class="drink-info">
++                  <span class="drink-name">Signature Double Espresso</span>
++                  <span class="drink-meta">2oz • Sumatra &amp; Colombia Blend</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$3.75</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Signature Double Espresso">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="espresso-2" data-price="4.95">
++                <div class="drink-info">
++                  <span class="drink-name">Smoked Brown Sugar Americano</span>
++                  <span class="drink-meta">12oz • Demerara • Double Shot</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$4.95</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Smoked Brown Sugar Americano">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="espresso-3" data-price="4.25">
++                <div class="drink-info">
++                  <span class="drink-name">Traditional Macchiato</span>
++                  <span class="drink-meta">3oz • Dollop of Steamed Whole Milk</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$4.25</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Traditional Macchiato">Remove</button>
++                </div>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <span>Station Status: Pulling Shots</span>
++              <a href="/menu/espresso">Full Espresso Menu &rarr;</a>
++            </div>
++          </section>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- Station 3: Cold Brew Taproom -->
++        <div class="card-wrapper" data-station-wrapper="cold-brew">
++          <section class="card" id="card-cold-brew" data-station="cold-brew" aria-labelledby="heading-cold-brew">
++            <div class="card-top">
++              <div>
++                <h3 id="heading-cold-brew">Cold Brew Taproom</h3>
++                <p class="card-subtitle">Steeped for 18 hours for maximum smoothness.</p>
++              </div>
++              <span class="badge" data-count-badge>3 drinks</span>
++            </div>
++
++            <div class="card-controls">
++              <button type="button" class="btn btn-sm btn-secondary" data-action="sort-price">
++                Sort by Price
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="reverse">
++                Reverse List
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="add-special">
++                + Add Special
++              </button>
++              <button type="button" class="btn btn-sm btn-secondary" data-action="toggle-notes" aria-expanded="false" aria-controls="notes-cold-brew">
++                Tasting Notes
++              </button>
++            </div>
++
++            <div class="card-details" id="notes-cold-brew" hidden>
++              <strong>Tasting Profile:</strong> Coarse-ground Guatemalan Huehuetenango steeped cold in filtered water, yielding low acidity and velvety chocolate notes.
++            </div>
++
++            <ul class="drink-list" aria-label="Cold Brew Taproom drinks">
++              <li class="drink-item" data-id="coldbrew-1" data-price="5.50">
++                <div class="drink-info">
++                  <span class="drink-name">Nitro Cascade Draft</span>
++                  <span class="drink-meta">16oz • Nitrogen Infused • Unsweetened</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$5.50</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Nitro Cascade Draft">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="coldbrew-2" data-price="6.00">
++                <div class="drink-info">
++                  <span class="drink-name">Sweet Cream Cold Brew</span>
++                  <span class="drink-meta">16oz • House Vanilla Bean Cream</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$6.00</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Sweet Cream Cold Brew">Remove</button>
++                </div>
++              </li>
++              <li class="drink-item" data-id="coldbrew-3" data-price="4.75">
++                <div class="drink-info">
++                  <span class="drink-name">Kyoto Slow-Drip Reserve</span>
++                  <span class="drink-meta">12oz • Single Origin • Over Crystal Ice</span>
++                </div>
++                <div class="drink-actions">
++                  <span class="drink-price">$4.75</span>
++                  <button type="button" class="btn btn-sm btn-danger" data-action="remove-item" aria-label="Remove Kyoto Slow-Drip Reserve">Remove</button>
++                </div>
++              </li>
++            </ul>
++
++            <div class="card-footer">
++              <span>Station Status: On Tap</span>
++              <a href="/menu/cold-brew">Full Cold Brew Menu &rarr;</a>
++            </div>
++          </section>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +705,222 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Feature detect specifically on Element.prototype (not document.startViewTransition)
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++
++      const transition = scopeEl.startViewTransition(() => {
++        updateDOM();
++      });
++
++      // Re-triggering startViewTransition() on the same element skips the active transition
++      // and rejects `ready`. Catch the rejection to avoid unhandled promise rejection errors.
++      transition.ready.catch(() => {});
++    }
++
++    const stationSpecials = {
++      seasonal: [
++        { name: 'Cinnamon Fig Oat Cortado', meta: '8oz • Mission Fig • Ceylon Cinnamon', price: 5.95 },
++        { name: 'Spiced Brown Butter Latte', meta: '12oz • Sage & Brown Butter Foam', price: 6.45 },
++      ],
++      espresso: [
++        { name: 'Ethiopian Ristretto Flight', meta: '3oz • Twin Single-Origin Pulls', price: 4.50 },
++        { name: 'Orange Peel Espresso Romano', meta: '2oz • Flamed Valencia Zest', price: 4.10 },
++      ],
++      'cold-brew': [
++        { name: 'Yuzu Tonic Cold Brew', meta: '14oz • Botanical Tonic • Citrus Twist', price: 5.85 },
++        { name: 'Salted Caramel Nitro Float', meta: '16oz • Sea Salt Caramel Whip', price: 6.35 },
++      ],
++    };
++
++    let specialCounter = 100;
++
++    function updateBadgeCount(cardEl) {
++      const listEl = cardEl.querySelector('.drink-list');
++      const badgeEl = cardEl.querySelector('[data-count-badge]');
++      if (!listEl || !badgeEl) return;
++      const count = listEl.children.length;
++      badgeEl.textContent = `${count} ${count === 1 ? 'drink' : 'drinks'}`;
++    }
++
++    // Reorder items by moving existing DOM nodes (required for `view-transition-name: match-element`)
++    // Scoped to `listEl` so controls outside `listEl` remain unaffected while list items animate
++    function reorderItems(listEl, orderedIds) {
++      const existing = new Map(
++        Array.from(listEl.children, (li) => [li.dataset.id, li]),
++      );
++
++      runScopedTransition(listEl, () => {
++        for (const id of orderedIds) {
++          const li = existing.get(id);
++          if (li) listEl.appendChild(li);
++        }
++      });
++    }
++
++    function sortListByPrice(cardEl) {
++      const listEl = cardEl.querySelector('.drink-list');
++      if (!listEl) return;
++
++      const currentOrder = cardEl.dataset.sortOrder === 'asc' ? 'desc' : 'asc';
++      cardEl.dataset.sortOrder = currentOrder;
++
++      const sortedIds = Array.from(listEl.children)
++        .sort((a, b) => {
++          const priceA = Number.parseFloat(a.dataset.price || '0');
++          const priceB = Number.parseFloat(b.dataset.price || '0');
++          return currentOrder === 'asc' ? priceA - priceB : priceB - priceA;
++        })
++        .map((li) => li.dataset.id);
++
++      reorderItems(listEl, sortedIds);
++    }
++
++    function reverseList(cardEl) {
++      const listEl = cardEl.querySelector('.drink-list');
++      if (!listEl) return;
++
++      const reversedIds = Array.from(listEl.children)
++        .reverse()
++        .map((li) => li.dataset.id);
++
++      reorderItems(listEl, reversedIds);
++    }
++
++    // Remove an item while preserving exit animation and keyboard focus
++    // Scoped to the outer `cardEl` so the card itself also transitions its height change
++    function removeItem(cardEl, itemEl) {
++      const hadFocus = itemEl.contains(document.activeElement);
++      const nextFocusTarget =
++        itemEl.nextElementSibling?.querySelector('button') ??
++        itemEl.previousElementSibling?.querySelector('button') ??
++        cardEl.querySelector('button');
++
++      runScopedTransition(cardEl, () => {
++        itemEl.remove();
++        updateBadgeCount(cardEl);
++        if (hadFocus) {
++          nextFocusTarget?.focus();
++        }
++      });
++    }
++
++    // Add an item or toggle details scoped to `cardEl` so the card smoothly animates its own geometry
++    function addSpecialDrink(cardEl) {
++      const stationKey = cardEl.dataset.station || 'seasonal';
++      const pool = stationSpecials[stationKey] || stationSpecials.seasonal;
++      const nextIndex = Number.parseInt(cardEl.dataset.specialIndex || '0', 10) % pool.length;
++      cardEl.dataset.specialIndex = String(nextIndex + 1);
++
++      const special = pool[nextIndex];
++      const listEl = cardEl.querySelector('.drink-list');
++      if (!listEl) return;
++
++      specialCounter += 1;
++      const li = document.createElement('li');
++      li.className = 'drink-item';
++      li.dataset.id = `${stationKey}-special-${specialCounter}`;
++      li.dataset.price = special.price.toFixed(2);
++
++      const infoDiv = document.createElement('div');
++      infoDiv.className = 'drink-info';
++
++      const nameSpan = document.createElement('span');
++      nameSpan.className = 'drink-name';
++      nameSpan.textContent = special.name;
++
++      const metaSpan = document.createElement('span');
++      metaSpan.className = 'drink-meta';
++      metaSpan.textContent = special.meta;
++
++      infoDiv.append(nameSpan, metaSpan);
++
++      const actionsDiv = document.createElement('div');
++      actionsDiv.className = 'drink-actions';
++
++      const priceSpan = document.createElement('span');
++      priceSpan.className = 'drink-price';
++      priceSpan.textContent = `$${special.price.toFixed(2)}`;
++
++      const removeBtn = document.createElement('button');
++      removeBtn.type = 'button';
++      removeBtn.className = 'btn btn-sm btn-danger';
++      removeBtn.dataset.action = 'remove-item';
++      removeBtn.setAttribute('aria-label', `Remove ${special.name}`);
++      removeBtn.textContent = 'Remove';
++
++      actionsDiv.append(priceSpan, removeBtn);
++      li.append(infoDiv, actionsDiv);
++
++      runScopedTransition(cardEl, () => {
++        listEl.prepend(li);
++        updateBadgeCount(cardEl);
++      });
++    }
++
++    function toggleTastingNotes(cardEl, toggleBtn) {
++      const detailsEl = cardEl.querySelector('.card-details');
++      if (!detailsEl) return;
++
++      const willOpen = detailsEl.hidden;
++      runScopedTransition(cardEl, () => {
++        detailsEl.hidden = !willOpen;
++        toggleBtn.setAttribute('aria-expanded', String(willOpen));
++      });
++    }
++
++    const stationsGrid = document.getElementById('stations-grid');
++
++    stationsGrid?.addEventListener('click', (event) => {
++      const button = event.target.closest('button[data-action]');
++      if (!button) return;
++
++      const cardEl = button.closest('.card');
++      if (!cardEl) return;
++
++      const action = button.dataset.action;
++      if (action === 'sort-price') {
++        sortListByPrice(cardEl);
++      } else if (action === 'reverse') {
++        reverseList(cardEl);
++      } else if (action === 'add-special') {
++        addSpecialDrink(cardEl);
++      } else if (action === 'toggle-notes') {
++        toggleTastingNotes(cardEl, button);
++      } else if (action === 'remove-item') {
++        const itemEl = button.closest('.drink-item');
++        if (itemEl) {
++          removeItem(cardEl, itemEl);
++        }
++      }
++    });
++
++    // Demonstrate concurrent transitions across multiple separate component subtrees simultaneously
++    document.getElementById('animate-all-concurrently')?.addEventListener('click', () => {
++      const cards = document.querySelectorAll('#stations-grid .card');
++      for (const cardEl of cards) {
++        sortListByPrice(cardEl);
++      }
++    });
++
++    // Demonstrate an outer transition on the grid container moving `.card-wrapper` elements
++    // without interfering with inner `.card` scopes (`view-transition-scope: all`)
++    document.getElementById('rotate-stations')?.addEventListener('click', () => {
++      if (!stationsGrid) return;
++      const firstWrapper = stationsGrid.firstElementChild;
++      if (!firstWrapper) return;
++
++      runScopedTransition(stationsGrid, () => {
++        stationsGrid.appendChild(firstWrapper);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

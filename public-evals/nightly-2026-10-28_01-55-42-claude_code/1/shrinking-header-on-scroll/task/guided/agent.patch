@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,27 +26,95 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       The bar is fixed and shrinks from --nav-h-start to --nav-h-end over the
++       first --nav-shrink-distance of page scroll. In browsers with CSS
++       scroll-driven animations this is pure CSS (see @supports below); elsewhere
++       a small scroll listener at the bottom of the page drives the same values. */
++    :root {
++      --nav-h-start: 72px;
++      --nav-h-end: 48px;
++      --nav-shrink-distance: 120px;
++      --logo-scale-end: 0.8;
++    }
++
++    body {
++      /* Reserve space for the fixed nav so the hero starts below it */
++      padding-top: var(--nav-h-start);
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      height: var(--nav-h-start);
++      padding: 0 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      transform-origin: left center;
+     }
+ 
++    @keyframes nav-shrink {
++      to {
++        height: var(--nav-h-end);
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
++      }
++    }
++
++    @keyframes logo-shrink {
++      to {
++        transform: scale(var(--logo-scale-end));
++      }
++    }
++
++    /* Modern path: animation progress is linked directly to the scroll position.
++       The animation-range check filters out browsers with only partial support. */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      nav {
++        animation: nav-shrink auto linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px var(--nav-shrink-distance);
++      }
++
++      .logo {
++        animation: logo-shrink auto linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px var(--nav-shrink-distance);
++      }
++    }
++
++    /* Reduced motion: skip the scroll-linked transition and keep the compact
++       bar from the start, so the space saving still applies. */
++    @media (prefers-reduced-motion: reduce) {
++      body {
++        padding-top: var(--nav-h-end);
++      }
++
++      nav {
++        animation: none;
++        height: var(--nav-h-end);
++      }
++
++      .logo {
++        animation: none;
++        transform: scale(var(--logo-scale-end));
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +274,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations (e.g. Firefox,
++    // Safari < 26, Chrome < 115). Recreates the shrink with a scroll listener,
++    // throttled to one update per frame. Written in ES5 so it also runs in
++    // older engines.
++    (function () {
++      var supportsScrollTimeline =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)');
++      if (supportsScrollTimeline) return;
++
++      var reduceMotion =
++        typeof window.matchMedia === 'function' &&
++        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      if (reduceMotion) return; // CSS already renders the static compact bar
++
++      var nav = document.querySelector('nav');
++      var logo = nav && nav.querySelector('.logo');
++      if (!nav || !logo) return;
++
++      // Read the same values the CSS uses, with defaults for very old browsers
++      // that lack custom properties.
++      var rootStyle = window.getComputedStyle(document.documentElement);
++      function readPx(name, fallback) {
++        var v = parseFloat(rootStyle.getPropertyValue(name));
++        return isNaN(v) ? fallback : v;
++      }
++      var startHeight = readPx('--nav-h-start', 72);
++      var endHeight = readPx('--nav-h-end', 48);
++      var distance = readPx('--nav-shrink-distance', 120);
++      var logoScaleEnd = readPx('--logo-scale-end', 0.8);
++
++      var ticking = false;
++      var raf = window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); };
++
++      function update() {
++        ticking = false;
++        var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
++        var progress = Math.min(1, Math.max(0, scrollY / distance));
++        nav.style.height = (startHeight - (startHeight - endHeight) * progress) + 'px';
++        nav.style.boxShadow = '0 2px 8px rgba(0, 0, 0, ' + (0.35 * progress).toFixed(3) + ')';
++        logo.style.transform = 'scale(' + (1 - (1 - logoScaleEnd) * progress).toFixed(4) + ')';
++      }
++
++      function onScroll() {
++        if (ticking) return;
++        ticking = true;
++        raf(update);
++      }
++
++      // Passive listener where supported; falls back to the boolean form.
++      var passive = false;
++      try {
++        window.addEventListener('test', null, Object.defineProperty({}, 'passive', {
++          get: function () { passive = { passive: true }; }
++        }));
++      } catch (e) {}
++      window.addEventListener('scroll', onScroll, passive);
++      window.addEventListener('resize', onScroll, passive);
++
++      update(); // Apply the correct state if the page loads already scrolled
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

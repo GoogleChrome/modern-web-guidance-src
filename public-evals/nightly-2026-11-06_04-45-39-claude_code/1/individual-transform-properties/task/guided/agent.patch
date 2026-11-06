@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,70 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Seasonal Favorites featured promo badge */
++    .seasonal {
++      position: relative;
++    }
++
++    .target {
++      position: absolute;
++      top: -10px;
++      right: 60px;
++      z-index: 1;
++      /* Stable stacking context in every state (no will-change needed) */
++      isolation: isolate;
++      /* Identity values so hover/animation never toggles a new stacking context */
++      translate: 0 0;
++      rotate: 0deg;
++      scale: 1;
++      display: grid;
++      place-items: center;
++      width: 90px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      font-size: 0.75rem;
++      font-weight: bold;
++      line-height: 1.2;
++      text-align: center;
++      text-transform: uppercase;
++      cursor: default;
++
++      @media (prefers-reduced-motion: no-preference) {
++        /* Spin (rotate) and slide (translate) run on separate properties,
++           so they compose and never override each other. */
++        animation:
++          badge-spin 6s linear infinite,
++          badge-slide 3s ease-in-out infinite alternate;
++        /* Only scale transitions; the animations keep running on hover. */
++        transition: scale 0.3s ease;
++      }
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes badge-spin {
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes badge-slide {
++      from {
++        translate: -40px 0;
++      }
++
++      to {
++        translate: 40px 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,10 +236,11 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="target">Featured<br>Fall Promo</div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

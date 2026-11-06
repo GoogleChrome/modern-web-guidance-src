@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,233 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Lumen — Ship faster with confidence</title>
++  <meta name="description" content="Lumen helps product teams plan, build, and ship better software, together.">
++
++  <!-- Open the connection to the experiment CDN as early as possible. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++
++  <!--
++    A/B testing SDK.
++    - async:            doesn't block HTML parsing, so the DOM builds while the script downloads.
++    - blocking="render": the browser won't paint until this script has run, so the user
++                         never sees the original content before the variant is applied.
++    - fetchpriority:    it gates first paint, so fetch it first.
++    The onload/onerror handlers end the fallback hiding (see below) in browsers that
++    don't support blocking="render".
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    fetchpriority="high"
++    onload="window.__abReveal && window.__abReveal()"
++    onerror="window.__abReveal && window.__abReveal()"
++  ></script>
++
++  <!--
++    Fallback for browsers without blocking="render" (Firefox at the moment): hide the page
++    until the SDK has run, with a timeout so a slow or down CDN can't leave it blank.
++    Browsers that support blocking="render" skip this entirely.
++  -->
++  <script>
++    (function () {
++      if (Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) return;
++      var root = document.documentElement;
++      root.classList.add('ab-loading');
++      var timer = setTimeout(reveal, 3000);
++      function reveal() {
++        clearTimeout(timer);
++        root.classList.remove('ab-loading');
++      }
++      // Called by the SDK script's onload/onerror. It can also be called from the SDK's
++      // own "ready" callback if it applies variants asynchronously after loading.
++      window.__abReveal = reveal;
++    })();
++  </script>
++
++  <style>
++    .ab-loading { opacity: 0 !important; }
++
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#ffffff, #0b0d12);
++      --fg: light-dark(#11131a, #eef0f5);
++      --muted: light-dark(#4a5060, #a6adbd);
++      --accent: #4f46e5;
++      --accent-hover: #4338ca;
++      --accent-fg: #ffffff;
++      --radius: 0.75rem;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      line-height: 1.5;
++    }
++
++    *, *::before, *::after { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      background: var(--bg);
++      color: var(--fg);
++    }
++
++    .site-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 1.25rem 1.5rem;
++    }
++
++    .logo {
++      font-weight: 700;
++      font-size: 1.25rem;
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .site-header nav a {
++      color: var(--muted);
++      text-decoration: none;
++      margin-inline-start: 1.5rem;
++    }
++    .site-header nav a:hover { color: var(--fg); }
++
++    .hero {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 3rem;
++      align-items: center;
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: 3rem 1.5rem 5rem;
++    }
++
++    @media (min-width: 56rem) {
++      .hero {
++        grid-template-columns: 1.1fr 1fr;
++        padding-block: 5rem 7rem;
++      }
++    }
++
++    .eyebrow {
++      display: inline-block;
++      margin: 0 0 1rem;
++      padding: 0.25rem 0.75rem;
++      border-radius: 999px;
++      background: color-mix(in srgb, var(--accent) 12%, transparent);
++      color: var(--accent);
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++
++    .hero h1 {
++      margin: 0 0 1.25rem;
++      font-size: clamp(2.25rem, 5vw + 1rem, 4rem);
++      line-height: 1.05;
++      letter-spacing: -0.02em;
++      text-wrap: balance;
++    }
++
++    .hero .lede {
++      margin: 0 0 2rem;
++      max-width: 36rem;
++      font-size: 1.2rem;
++      color: var(--muted);
++      text-wrap: pretty;
++    }
++
++    .cta-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      align-items: center;
++    }
++
++    .cta-button {
++      display: inline-block;
++      padding: 0.9rem 1.75rem;
++      border-radius: var(--radius);
++      background: var(--accent);
++      color: var(--accent-fg);
++      font-weight: 600;
++      font-size: 1.05rem;
++      text-decoration: none;
++      transition: background-color 0.15s, transform 0.15s;
++    }
++    .cta-button:hover { background: var(--accent-hover); }
++    .cta-button:active { transform: translateY(1px); }
++    .cta-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .cta-note {
++      color: var(--muted);
++      font-size: 0.9rem;
++    }
++
++    .hero-media img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: calc(var(--radius) * 1.5);
++      box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.35);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta-button { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <a class="logo" href="/">Lumen</a>
++    <nav aria-label="Primary">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++    </nav>
++  </header>
++
++  <main>
++    <!--
++      data-ab-* attributes give the experiment SDK stable hooks to target,
++      independent of styling class names.
++    -->
++    <section class="hero" data-ab-section="hero" aria-labelledby="hero-title">
++      <div class="hero-copy">
++        <p class="eyebrow" data-ab="hero-eyebrow">New: AI-assisted planning</p>
++        <h1 id="hero-title" data-ab="hero-headline">Ship faster with confidence.</h1>
++        <p class="lede" data-ab="hero-subheadline">
++          Lumen brings planning, code review, and releases into one calm workspace,
++          so your team spends less time coordinating and more time building.
++        </p>
++        <div class="cta-group">
++          <a class="cta-button" href="/signup" data-ab="hero-cta">Start your free trial</a>
++          <span class="cta-note" data-ab="hero-cta-note">No credit card required</span>
++        </div>
++      </div>
++
++      <div class="hero-media">
++        <img
++          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++          srcset="
++            https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80 600w,
++            https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80 900w,
++            https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80 1200w"
++          sizes="(min-width: 56rem) 34rem, 100vw"
++          width="1200"
++          height="900"
++          alt="A team collaborating around laptops at a shared table"
++          fetchpriority="high"
++          data-ab="hero-image"
++        >
++      </div>
++    </section>
++  </main>
++</body>
++</html>

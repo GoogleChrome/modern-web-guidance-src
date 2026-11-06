@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,40 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
+     }
+ 
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        /* Must define base size in WebKit for custom colors to be visual */
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;

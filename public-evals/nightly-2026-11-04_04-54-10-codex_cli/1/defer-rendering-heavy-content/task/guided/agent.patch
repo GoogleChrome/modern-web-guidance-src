@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -86,13 +86,48 @@
+       transition: transform 0.3s ease;
+       /* Stacked expensive drop-shadows */
+       filter:
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+-      will-change: transform;
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      /* Use the measured card content height until the browser remembers it. */
++      contain-intrinsic-size: auto none auto var(--card-content-height, 20rem);
++    }
++
++    .debug-panel {
++      display: none;
++      box-sizing: border-box;
++      max-width: 800px;
++      height: 12rem;
++      margin: 0 auto 2rem;
++      padding: 1.5rem;
++      overflow: auto;
++      border: 1px solid #e2e8f0;
++      border-radius: 1rem;
++      background: var(--card-bg);
++    }
++
++    .debug-panel.is-visible {
++      display: block;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++        visibility: hidden;
++      }
++
++      .debug-panel.is-visible {
++        content-visibility: visible;
++        visibility: visible;
++      }
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -207,8 +242,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-controls="debug-panel"
++      aria-expanded="false">Show Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,13 +256,21 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel" aria-labelledby="debug-heading" aria-hidden="true" inert>
++    <h2 id="debug-heading">Rendering debug</h2>
++    <p>Cards: 500. Below-the-fold cards defer layout and painting until they approach the viewport.</p>
++    <p>Regenerate Cards rebuilds the feed. Initial Render shows the time to the first paint after insertion.</p>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const cardCount = 500;
+ 
+ 
+ 
+@@ -283,24 +328,48 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      // Measure one representative card, never the deferred card subtrees.
++      const firstCard = createCard(0);
++      feed.appendChild(firstCard);
++      const firstCardBounds = firstCard.getBoundingClientRect();
++      const cardStyle = getComputedStyle(firstCard);
++      const cardSpacing = parseFloat(cardStyle.marginBottom);
++      const contentHeight = firstCardBounds.height
++        - parseFloat(cardStyle.paddingTop) - parseFloat(cardStyle.paddingBottom)
++        - parseFloat(cardStyle.borderTopWidth) - parseFloat(cardStyle.borderBottomWidth);
++      const viewportHeight = document.documentElement.clientHeight;
++      feed.style.setProperty('--card-content-height', `${contentHeight}px`);
++      if (firstCardBounds.top >= viewportHeight) {
++        firstCard.classList.add('off-screen-card');
++      }
+       const fragment = document.createDocumentFragment();
+-      for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++      for (let i = 1; i < cardCount; i++) {
++        const card = createCard(i);
++        const cardTop = firstCardBounds.top + i * (firstCardBounds.height + cardSpacing);
++        if (cardTop >= viewportHeight) {
++          card.classList.add('off-screen-card');
++        }
++        fragment.appendChild(card);
+       }
+       feed.appendChild(fragment);
+ 
+       measureRender(startTime);
+     }
+ 
+-    window.addEventListener('load', () => {
+-      setTimeout(renderCards, 500);
+-    });
+-
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const isVisible = debugPanel.classList.toggle('is-visible');
++      debugPanel.inert = !isVisible;
++      debugPanel.setAttribute('aria-hidden', String(!isVisible));
++      debugBtn.setAttribute('aria-expanded', String(isVisible));
++      debugBtn.textContent = isVisible ? 'Hide Debug Panel' : 'Show Debug Panel';
++    });
+ 
++    renderCards();
++
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

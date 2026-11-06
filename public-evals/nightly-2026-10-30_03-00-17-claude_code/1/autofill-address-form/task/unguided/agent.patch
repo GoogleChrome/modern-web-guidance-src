@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,86 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form */
++    .shipping {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .shipping-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 16px 20px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-field.full {
++      grid-column: 1 / -1;
++    }
++
++    .form-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-field .optional {
++      font-weight: normal;
++      color: #8d6e63;
++    }
++
++    .form-field input,
++    .form-field select {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .form-field input:focus,
++    .form-field select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--accent);
++    }
++
++    .shipping button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .form-actions {
++      text-align: center;
++    }
++
++    @media (max-width: 600px) {
++      .form-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +272,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Get Fresh Beans Delivered</h2>
++      <p class="shipping-intro">Tell us where to send your freshly roasted coffee beans.</p>
++      <form action="/shipping-address" method="post" autocomplete="on">
++        <div class="form-grid">
++          <div class="form-field full">
++            <label for="ship-name">Recipient name</label>
++            <input type="text" id="ship-name" name="name" autocomplete="shipping name" required>
++          </div>
++          <div class="form-field full">
++            <label for="ship-address1">Street address</label>
++            <input type="text" id="ship-address1" name="address-line1" autocomplete="shipping address-line1" required>
++          </div>
++          <div class="form-field full">
++            <label for="ship-address2">Apartment, suite, etc. <span class="optional">(optional)</span></label>
++            <input type="text" id="ship-address2" name="address-line2" autocomplete="shipping address-line2">
++          </div>
++          <div class="form-field">
++            <label for="ship-city">City</label>
++            <input type="text" id="ship-city" name="city" autocomplete="shipping address-level2" required>
++          </div>
++          <div class="form-field">
++            <label for="ship-state">State / Province / Region</label>
++            <input type="text" id="ship-state" name="state" autocomplete="shipping address-level1">
++          </div>
++          <div class="form-field">
++            <label for="ship-postal">Postal code</label>
++            <input type="text" id="ship-postal" name="postal-code" autocomplete="shipping postal-code" required>
++          </div>
++          <div class="form-field">
++            <label for="ship-country">Country</label>
++            <select id="ship-country" name="country" autocomplete="shipping country" required>
++              <option value="US" selected>United States</option>
++              <option value="CA">Canada</option>
++              <option value="GB">United Kingdom</option>
++              <option value="AU">Australia</option>
++              <option value="DE">Germany</option>
++              <option value="FR">France</option>
++            </select>
++          </div>
++          <div class="form-field">
++            <label for="ship-email">Email</label>
++            <input type="email" id="ship-email" name="email" autocomplete="shipping email" required>
++          </div>
++          <div class="form-field">
++            <label for="ship-tel">Phone</label>
++            <input type="tel" id="ship-tel" name="tel" autocomplete="shipping tel" required>
++          </div>
++        </div>
++        <div class="form-actions">
++          <button type="submit" class="btn">Save Shipping Address</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

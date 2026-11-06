@@ -1,0 +1,14 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -2,8 +2,10 @@
+ <html lang="en">
+ 
+ <head>
+   <meta charset="UTF-8">
++  <!-- Must load first and synchronously so it can observe every other script. -->
++  <script src="/perf-monitor.js"></script>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {

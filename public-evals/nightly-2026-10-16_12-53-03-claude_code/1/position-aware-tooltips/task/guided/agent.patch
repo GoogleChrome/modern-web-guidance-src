@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,101 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Info tooltip */
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    .info-btn {
++      width: 2.25rem;
++      height: 2.25rem;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    @supports (anchor-name: --a) {
++      [popover].tooltip {
++        inset: auto;
++        margin: unset;
++      }
++    }
++
++    .tooltip {
++      position: fixed;
++      position-area: block-start;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      background: transparent;
++      border: 0;
++      padding: 0;
++      overflow: visible;
++      color: inherit;
++    }
++
++    .tooltip-content {
++      position: relative;
++      max-width: 16rem;
++      padding: 0.6rem 0.9rem;
++      /* Room for the arrow below the bubble (default: tooltip above trigger) */
++      margin-block-end: 0.5rem;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: start;
++      border-radius: 0.5rem;
++    }
++
++    @supports (container-type: anchored) {
++      .tooltip-content::before {
++        /* Down arrow, on the bottom edge */
++        content: "";
++        position: absolute;
++        inset-block-end: -0.5rem;
++        inset-inline-start: 1rem;
++        inline-size: 1rem;
++        block-size: 0.5rem;
++        background: var(--primary);
++        clip-path: polygon(0 0, 100% 0, 50% 100%);
++      }
++
++      /* Flipped below the trigger: arrow points up, bubble gets squared top corners */
++      @container anchored(fallback: flip-block) {
++        .tooltip-content {
++          margin-block-end: 0;
++          margin-block-start: 0.5rem;
++          border-radius: 0 0 0.5rem 0.5rem;
++        }
++
++        .tooltip-content::before {
++          inset-block-end: auto;
++          inset-block-start: -0.5rem;
++          clip-path: polygon(50% 0, 100% 100%, 0 100%);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,9 +273,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" class="info-btn" popovertarget="maple-tooltip"
++              aria-describedby="maple-tooltip" aria-label="More info about the Maple Oat Latte">i</button>
++            <div id="maple-tooltip" class="tooltip" popover role="tooltip">
++              <div class="tooltip-content">Made with oat milk, espresso, and real Vermont maple syrup. Served hot or iced.</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

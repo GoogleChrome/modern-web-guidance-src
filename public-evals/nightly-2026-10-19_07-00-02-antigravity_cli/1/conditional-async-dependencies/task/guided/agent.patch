@@ -1,0 +1,347 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,22 +48,35 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .nav-btn {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .nav-btn {
++      background: none;
++      border: none;
++      font-family: inherit;
++      cursor: pointer;
++      padding: 0;
++      line-height: inherit;
++    }
++
++    nav a:hover,
++    .nav-btn:hover,
++    .nav-btn:focus-visible {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -71,8 +84,212 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Popover Support & Display */
++    [popover]:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    /* Popup Card Popover */
++    #rewards-popover {
++      border: none;
++      border-radius: 16px;
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
++      max-width: 480px;
++      width: calc(100% - 32px);
++      margin: auto;
++      padding: 0;
++      background: white;
++      color: var(--text);
++      overflow: hidden;
++    }
++
++    #rewards-popover::backdrop {
++      background: rgba(30, 15, 10, 0.5);
++      backdrop-filter: blur(3px);
++    }
++
++    .rewards-popover-header {
++      background: linear-gradient(135deg, var(--primary) 0%, #2e1c18 100%);
++      color: white;
++      padding: 24px;
++    }
++
++    .rewards-header-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++    }
++
++    .rewards-header-title-row h2 {
++      font-size: 1.35rem;
++      font-weight: 600;
++      color: white;
++      letter-spacing: 0.5px;
++    }
++
++    .popover-close-btn {
++      background: rgba(255, 255, 255, 0.15);
++      border: none;
++      color: white;
++      font-size: 1.4rem;
++      line-height: 1;
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transition: background-color 0.2s, transform 0.2s;
++    }
++
++    .popover-close-btn:hover {
++      background: rgba(255, 255, 255, 0.3);
++      transform: scale(1.05);
++    }
++
++    .current-points-card {
++      background: rgba(255, 255, 255, 0.1);
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      border-radius: 12px;
++      padding: 14px 18px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .points-info-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      opacity: 0.85;
++      display: block;
++    }
++
++    .points-value {
++      font-size: 1.8rem;
++      font-weight: 700;
++      color: var(--accent);
++      line-height: 1.1;
++    }
++
++    .points-value small {
++      font-size: 0.9rem;
++      font-weight: normal;
++      color: white;
++      margin-left: 2px;
++    }
++
++    .current-tier-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 0.8rem;
++      padding: 6px 12px;
++      border-radius: 20px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .rewards-popover-body {
++      padding: 24px;
++      max-height: 60vh;
++      overflow-y: auto;
++    }
++
++    .tiers-section-title {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 14px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .tier-list {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .tier-card {
++      border: 1px solid #e0d8d4;
++      border-radius: 10px;
++      padding: 14px 16px;
++      background: #fdfbfb;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .tier-card.active-tier {
++      border: 2px solid var(--accent);
++      background: #fffcf8;
++      box-shadow: 0 2px 8px rgba(255, 171, 64, 0.15);
++    }
++
++    .tier-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
++    .tier-name {
++      font-weight: 700;
++      font-size: 0.95rem;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .tier-req {
++      font-size: 0.75rem;
++      color: #795548;
++      background: var(--secondary);
++      padding: 3px 8px;
++      border-radius: 10px;
++      font-weight: 600;
++    }
++
++    .tier-card.active-tier .tier-req {
++      background: #ffe0b2;
++      color: #e65100;
++    }
++
++    .tier-benefits {
++      list-style: none;
++      padding-left: 0;
++      margin: 0;
++      font-size: 0.85rem;
++      color: #4a3834;
++    }
++
++    .tier-benefits li {
++      position: relative;
++      padding-left: 18px;
++      margin-bottom: 4px;
++      line-height: 1.4;
++    }
++
++    .tier-benefits li:last-child {
++      margin-bottom: 0;
++    }
++
++    .tier-benefits li::before {
++      content: "✓";
++      position: absolute;
++      left: 0;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .tier-card.active-tier .tier-benefits li::before {
++      color: #e65100;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +378,73 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="nav-btn" commandfor="rewards-popover" command="toggle-popover">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" popover>
++    <div class="rewards-popover-header">
++      <div class="rewards-header-title-row">
++        <h2>Daily Grind Rewards</h2>
++        <button type="button" class="popover-close-btn" commandfor="rewards-popover" command="hide-popover" aria-label="Close rewards popup">&times;</button>
++      </div>
++      <div class="current-points-card">
++        <div>
++          <span class="points-info-label">Current Balance</span>
++          <div class="points-value">450 <small>PTS</small></div>
++        </div>
++        <span class="current-tier-badge">Gold Member</span>
++      </div>
++    </div>
++    <div class="rewards-popover-body">
++      <h3 class="tiers-section-title">Membership Tiers &amp; Benefits</h3>
++      <div class="tier-list">
++        <div class="tier-card">
++          <div class="tier-card-header">
++            <span class="tier-name">☕ Bronze Tier</span>
++            <span class="tier-req">0 – 199 pts</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>1 point per $1 spent on all handcrafted drinks &amp; food</li>
++            <li>Free drip coffee refills on dine-in visits</li>
++            <li>Complimentary birthday beverage</li>
++          </ul>
++        </div>
++
++        <div class="tier-card">
++          <div class="tier-card-header">
++            <span class="tier-name">✨ Silver Tier</span>
++            <span class="tier-req">200 – 499 pts</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>1.25 points per $1 spent</li>
++            <li>Free oat, almond, or soy milk upgrades &amp; flavor syrup shots</li>
++            <li>10% discount on 12oz &amp; 1lb whole-bean coffee bags</li>
++            <li>All Bronze Tier perks included</li>
++          </ul>
++        </div>
++
++        <div class="tier-card active-tier">
++          <div class="tier-card-header">
++            <span class="tier-name">👑 Gold Tier</span>
++            <span class="tier-req">500+ pts (Current Tier)</span>
++          </div>
++          <ul class="tier-benefits">
++            <li>1.5 points per $1 spent</li>
++            <li>Free freshly baked pastry or treat every 100 points</li>
++            <li>15% discount on all brewing merchandise &amp; drinkware</li>
++            <li>Priority mobile ordering and queue bypass</li>
++            <li>All Silver Tier perks included</li>
++          </ul>
++        </div>
++      </div>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +482,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Protect page load performance by conditionally loading polyfills only when native support is missing
++    if (!('popover' in HTMLElement.prototype)) {
++      await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      await import('https://esm.run/invokers-polyfill');
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,10 +112,49 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      opacity: 1;
++      transform: scale(1);
++      transition: opacity 0.3s ease, transform 0.3s ease, display 0.3s ease allow-discrete;
+     }
+ 
++    @starting-style {
++      .card {
++        opacity: 0;
++        transform: scale(0.8);
++      }
++    }
++
++    .card[hidden],
++    .card.removing {
++      display: none;
++      opacity: 0;
++      transform: scale(0.8);
++    }
++
++    .promo-section {
++      margin-top: 60px;
++      padding: 30px;
++      background: #efeae6;
++      border-radius: 12px;
++    }
++
++    .promo-controls {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin: 20px 0;
++      flex-wrap: wrap;
++    }
++
++    .promo-controls button {
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -194,10 +233,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo-section">
++      <h2 style="text-align: center;">Special Promotions</h2>
++      <div class="promo-controls">
++        <button id="addBtn" class="btn">Add Promo Card</button>
++        <button id="removeBtn" class="btn">Remove Last Promo</button>
++        <button id="toggleBtn" class="btn">Toggle Featured Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <h3>Happy Hour BOGO</h3>
++          <p>Buy one espresso drink, get a second free from 2 PM to 4 PM!</p>
++          <a href="/rewards" class="btn">Claim Offer</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++    const toggleBtn = document.getElementById('toggleBtn');
++    const toggleCard = document.getElementById('toggleCard');
++
++    const promos = [
++      { title: 'Free Pastry Friday', desc: 'Get a complimentary croissant with any large drip coffee.' },
++      { title: 'Double Points Weekend', desc: 'Earn 2x rewards stars on all whole bean coffee bags.' },
++      { title: 'Student Discount', desc: 'Enjoy 15% off your order with a valid student ID.' },
++      { title: 'Bring Your Own Mug', desc: 'Save $0.50 every time you bring a reusable cup.' }
++    ];
++    let promoIndex = 0;
++
++    addBtn.addEventListener('click', () => {
++      const promo = promos[promoIndex % promos.length];
++      promoIndex++;
++
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.innerHTML = `
++        <h3>${promo.title}</h3>
++        <p>${promo.desc}</p>
++        <a href="/rewards" class="btn">Claim Offer</a>
++      `;
++      domContainer.appendChild(card);
++    });
++
++    removeBtn.addEventListener('click', () => {
++      const cards = domContainer.querySelectorAll('.card:not(.removing)');
++      const lastCard = cards[cards.length - 1];
++      if (!lastCard) return;
++
++      lastCard.classList.add('removing');
++      lastCard.addEventListener('transitionend', () => {
++        lastCard.remove();
++      }, { once: true });
++
++      // Fallback removal in case transitions are disabled or hidden
++      setTimeout(() => {
++        if (lastCard.parentNode) {
++          lastCard.remove();
++        }
++      }, 350);
++    });
++
++    toggleBtn.addEventListener('click', () => {
++      toggleCard.hidden = !toggleCard.hidden;
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

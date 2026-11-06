@@ -1,0 +1,322 @@
+diff --git a/index.html b/index.html
+index 66c9173..a82de0f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,121 @@
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-container {
++      margin-top: 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reviews-container h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      text-align: center;
++      font-size: 1.5rem;
++    }
++
++    .reviews-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    .review-form {
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++      max-width: 700px;
++      margin: 0 auto 30px auto;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      text-align: left;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .review-form button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      align-self: flex-start;
++      margin-top: 5px;
++    }
++
++    .reviews-list {
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .no-reviews {
++      text-align: center;
++      color: #8d6e63;
++      font-style: italic;
++    }
++
++    .review-item {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 15px 20px;
++      border-radius: 4px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .review-drink-badge {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 2px 10px;
++      border-radius: 12px;
++      font-size: 0.85rem;
++    }
++
++    .review-content {
++      color: var(--text);
++      line-height: 1.5;
++      word-wrap: break-word;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +309,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="reviews-container" id="customer-reviews">
++        <h3>Customer Reviews</h3>
++        <p class="reviews-subtitle">Share your thoughts on our Seasonal Favorites! Rich HTML formatting (such as <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;strong&gt;</code>, and lists) is supported.</p>
++
++        <form id="review-form" class="review-form">
++          <div class="form-group">
++            <label for="review-drink">Select Drink</label>
++            <select id="review-drink" name="drink">
++              <option value="Maple Oat Latte">Maple Oat Latte</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++              <option value="Cold Brew">Cold Brew</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="review-input">Your Feedback (HTML supported)</label>
++            <textarea id="review-input" name="review" rows="4" placeholder="Write your review here... e.g., &lt;p&gt;The &lt;strong&gt;Maple Oat Latte&lt;/strong&gt; is &lt;em&gt;amazing&lt;/em&gt;!&lt;/p&gt;"></textarea>
++          </div>
++
++          <button type="submit" id="submit-review" class="btn">Submit Review</button>
++        </form>
++
++        <div id="reviews-list" class="reviews-list" aria-live="polite">
++          <p id="no-reviews-msg" class="no-reviews">No reviews yet. Be the first to review a seasonal favorite!</p>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +349,161 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ALLOWED_ELEMENTS = new Set([
++        'a', 'abbr', 'b', 'blockquote', 'br', 'caption', 'cite', 'code',
++        'col', 'colgroup', 'dd', 'del', 'details', 'dfn', 'div', 'dl',
++        'dt', 'em', 'figcaption', 'figure', 'h1', 'h2', 'h3', 'h4', 'h5',
++        'h6', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p',
++        'pre', 'q', 's', 'samp', 'small', 'span', 'strike', 'strong',
++        'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th',
++        'thead', 'time', 'tr', 'u', 'ul', 'var'
++      ]);
++
++      const ALLOWED_ATTRIBUTES = new Set([
++        'alt', 'cite', 'class', 'colspan', 'datetime', 'dir', 'height',
++        'href', 'lang', 'loading', 'rel', 'rowspan', 'src', 'target',
++        'title', 'width'
++      ]);
++
++      function isSafeUrl(urlValue, attrName) {
++        const normalized = String(urlValue ?? '')
++          .replace(/[\u0000-\u0020]+/g, '')
++          .toLowerCase();
++        if (!normalized) return false;
++        const schemeMatch = normalized.match(/^([a-z0-9+.-]+):/);
++        if (schemeMatch) {
++          const scheme = schemeMatch[1];
++          if (attrName === 'href') {
++            return scheme === 'http' || scheme === 'https' || scheme === 'mailto';
++          }
++          return scheme === 'http' || scheme === 'https';
++        }
++        if (normalized.startsWith('//')) {
++          return false;
++        }
++        return true;
++      }
++
++      function cleanDOMSubtree(root) {
++        const children = Array.from(root.childNodes);
++        for (const node of children) {
++          if (node.nodeType === Node.ELEMENT_NODE) {
++            const tagName = node.tagName.toLowerCase();
++            const isHtmlNamespace =
++              !node.namespaceURI || node.namespaceURI === 'http://www.w3.org/1999/xhtml';
++
++            if (!isHtmlNamespace || !ALLOWED_ELEMENTS.has(tagName)) {
++              node.remove();
++              continue;
++            }
++
++            const attrs = Array.from(node.attributes);
++            for (const attr of attrs) {
++              const attrName = attr.name.toLowerCase();
++              if (attrName.startsWith('on') || !ALLOWED_ATTRIBUTES.has(attrName)) {
++                node.removeAttribute(attr.name);
++                continue;
++              }
++              if (attrName === 'href' || attrName === 'src' || attrName === 'cite') {
++                if (!isSafeUrl(attr.value, attrName)) {
++                  node.removeAttribute(attr.name);
++                }
++              }
++            }
++
++            if (tagName === 'a' && node.getAttribute('target') === '_blank') {
++              node.setAttribute('rel', 'noopener noreferrer');
++            }
++
++            cleanDOMSubtree(node);
++          } else if (node.nodeType !== Node.TEXT_NODE) {
++            node.remove();
++          }
++        }
++      }
++
++      function sanitizeAndRenderHTML(container, untrustedHTML) {
++        const markup = String(untrustedHTML ?? '');
++
++        if (typeof container.setHTML === 'function') {
++          try {
++            container.setHTML(markup);
++            cleanDOMSubtree(container);
++            return;
++          } catch (_err) {
++            // Fall through to Document.parseHTML / DOMParser sanitization
++          }
++        }
++
++        let parsedDoc = null;
++        if (typeof Document !== 'undefined' && typeof Document.parseHTML === 'function') {
++          try {
++            parsedDoc = Document.parseHTML(markup);
++          } catch (_err) {
++            parsedDoc = null;
++          }
++        }
++
++        if (!parsedDoc) {
++          const parser = new DOMParser();
++          parsedDoc = parser.parseFromString(markup, 'text/html');
++        }
++
++        cleanDOMSubtree(parsedDoc.body);
++
++        const fragment = document.createDocumentFragment();
++        while (parsedDoc.body.firstChild) {
++          fragment.appendChild(document.adoptNode(parsedDoc.body.firstChild));
++        }
++        container.replaceChildren(fragment);
++      }
++
++      const reviewForm = document.getElementById('review-form');
++      const drinkSelect = document.getElementById('review-drink');
++      const reviewInput = document.getElementById('review-input');
++      const reviewsList = document.getElementById('reviews-list');
++
++      if (reviewForm && drinkSelect && reviewInput && reviewsList) {
++        reviewForm.addEventListener('submit', function (event) {
++          event.preventDefault();
++
++          const rawFeedback = reviewInput.value;
++          if (!rawFeedback || !rawFeedback.trim()) {
++            return;
++          }
++
++          const noReviewsMsg = document.getElementById('no-reviews-msg');
++          if (noReviewsMsg) {
++            noReviewsMsg.remove();
++          }
++
++          const reviewItem = document.createElement('article');
++          reviewItem.className = 'review-item';
++
++          const header = document.createElement('div');
++          header.className = 'review-header';
++
++          const drinkBadge = document.createElement('span');
++          drinkBadge.className = 'review-drink-badge';
++          drinkBadge.textContent = drinkSelect.value || 'Maple Oat Latte';
++
++          header.appendChild(drinkBadge);
++
++          const contentDiv = document.createElement('div');
++          contentDiv.className = 'review-content';
++          sanitizeAndRenderHTML(contentDiv, rawFeedback);
++
++          reviewItem.appendChild(header);
++          reviewItem.appendChild(contentDiv);
++          reviewsList.appendChild(reviewItem);
++
++          reviewInput.value = '';
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

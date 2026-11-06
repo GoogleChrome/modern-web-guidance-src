@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,75 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Interactive motion for seasonal cards */
++    .spring,
++    .bounce {
++      transform-origin: center;
++      will-change: transform;
++    }
++
++    /* Spring: overshoots target scale, then settles like a damped spring */
++    .spring {
++      transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
++                  box-shadow 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
++    }
++
++    @supports (transition-timing-function: linear(0, 1)) {
++      .spring {
++        transition-timing-function: linear(
++          0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%,
++          1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%,
++          1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%,
++          0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1
++        );
++      }
++    }
++
++    .spring:hover,
++    .spring:focus-within {
++      transform: scale(1.06);
++      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
++    }
++
++    /* Bounce: pops up, lands, and bounces a couple of times before resting */
++    .bounce {
++      transition: transform 0.75s cubic-bezier(0.68, -0.55, 0.265, 1.55),
++                  box-shadow 0.75s cubic-bezier(0.68, -0.55, 0.265, 1.55);
++    }
++
++    @supports (transition-timing-function: linear(0, 1)) {
++      .bounce {
++        transition-timing-function: linear(
++          0, 0.004, 0.016, 0.035, 0.063, 0.098, 0.141, 0.191, 0.25, 0.316,
++          0.391 36.8%, 0.563, 0.766, 1 58.8%, 0.946, 0.908 69.1%, 0.895, 0.885,
++          0.879, 0.878, 0.879, 0.885, 0.895, 0.908 89.7%, 0.946, 1
++        );
++      }
++    }
++
++    .bounce:hover,
++    .bounce:focus-within {
++      transform: translateY(-10px) scale(1.04);
++      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .spring,
++      .bounce {
++        transition: none;
++        will-change: auto;
++      }
++
++      .spring:hover,
++      .spring:focus-within,
++      .bounce:hover,
++      .bounce:focus-within {
++        transform: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +244,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

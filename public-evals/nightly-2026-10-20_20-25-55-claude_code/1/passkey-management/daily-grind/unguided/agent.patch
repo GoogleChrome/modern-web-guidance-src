@@ -1,0 +1,348 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..3d3e3d3
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,342 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b71c1c;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav ul a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav ul a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    .container {
++      max-width: 760px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 20px;
++    }
++
++    .panel-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      flex-wrap: wrap;
++    }
++
++    .muted {
++      font-size: 0.9rem;
++      opacity: 0.75;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++    }
++
++    button.primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    button.primary:hover {
++      background: #3e2723;
++    }
++
++    button.danger {
++      border-color: var(--danger);
++      color: var(--danger);
++    }
++
++    button:focus-visible,
++    input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #passkey-list {
++      list-style: none;
++      margin-top: 16px;
++    }
++
++    .passkey {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      flex-wrap: wrap;
++      padding: 14px 0;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .passkey-name {
++      font-weight: 600;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .passkey input {
++      font: inherit;
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .empty {
++      padding: 24px 0 8px;
++      text-align: center;
++    }
++
++    #status {
++      margin-top: 16px;
++      min-height: 1.5em;
++      font-size: 0.9rem;
++    }
++
++    #status.error {
++      color: var(--danger);
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++
++    <section class="panel" aria-labelledby="passkeys-title">
++      <div class="panel-head">
++        <div>
++          <h2 id="passkeys-title">Passkeys</h2>
++          <p class="muted">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a password.</p>
++        </div>
++        <button type="button" id="add-btn" class="primary">Add a passkey</button>
++      </div>
++
++      <ul id="passkey-list" aria-live="polite"></ul>
++      <p id="status" role="status"></p>
++    </section>
++  </main>
++
++  <script>
++    // Passkey metadata is kept in localStorage until a backend exists. Replace
++    // load/save/register with API calls (and verify attestations server-side).
++    const STORAGE_KEY = 'dailygrind.passkeys';
++    const listEl = document.getElementById('passkey-list');
++    const statusEl = document.getElementById('status');
++    const addBtn = document.getElementById('add-btn');
++
++    const load = () => {
++      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
++      catch { return []; }
++    };
++    const save = (keys) => localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
++    let passkeys = load();
++    let editingId = null;
++
++    const say = (msg, isError = false) => {
++      statusEl.textContent = msg;
++      statusEl.className = isError ? 'error' : '';
++    };
++
++    const fmtDate = (iso) =>
++      new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
++
++    const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
++
++    function el(tag, props = {}, ...children) {
++      const node = Object.assign(document.createElement(tag), props);
++      node.append(...children);
++      return node;
++    }
++
++    function render() {
++      listEl.replaceChildren();
++      if (!passkeys.length) {
++        listEl.append(el('li', { className: 'empty muted' }, 'No passkeys registered yet.'));
++        return;
++      }
++      for (const key of passkeys) {
++        const info = el('div');
++        if (editingId === key.id) {
++          const input = el('input', { value: key.name, maxLength: 60, ariaLabel: 'Passkey name' });
++          const commit = () => rename(key.id, input.value);
++          input.addEventListener('keydown', (e) => {
++            if (e.key === 'Enter') commit();
++            if (e.key === 'Escape') { editingId = null; render(); }
++          });
++          info.append(input);
++          var actions = [
++            el('button', { type: 'button', className: 'primary', onclick: commit }, 'Save'),
++            el('button', { type: 'button', onclick: () => { editingId = null; render(); } }, 'Cancel'),
++          ];
++          queueMicrotask(() => input.select());
++        } else {
++          info.append(
++            el('div', { className: 'passkey-name' }, key.name),
++            el('div', { className: 'muted' }, `Added ${fmtDate(key.createdAt)}`)
++          );
++          actions = [
++            el('button', { type: 'button', onclick: () => { editingId = key.id; render(); } }, 'Rename'),
++            el('button', { type: 'button', className: 'danger', onclick: () => remove(key.id) }, 'Delete'),
++          ];
++        }
++        listEl.append(el('li', { className: 'passkey' }, info, el('div', { className: 'passkey-actions' }, ...actions)));
++      }
++    }
++
++    function rename(id, name) {
++      name = name.trim();
++      if (!name) return say('Please enter a name for the passkey.', true);
++      passkeys = passkeys.map((k) => (k.id === id ? { ...k, name } : k));
++      save(passkeys);
++      editingId = null;
++      render();
++      say('Passkey renamed.');
++    }
++
++    function remove(id) {
++      const key = passkeys.find((k) => k.id === id);
++      const last = passkeys.length === 1 ? ' You will no longer be able to sign in with a passkey.' : '';
++      if (!confirm(`Delete passkey "${key.name}"?${last}`)) return;
++      passkeys = passkeys.filter((k) => k.id !== id);
++      save(passkeys);
++      render();
++      say('Passkey deleted.');
++    }
++
++    async function add() {
++      if (!window.PublicKeyCredential) {
++        return say('This browser does not support passkeys.', true);
++      }
++      addBtn.disabled = true;
++      say('');
++      try {
++        const cred = await navigator.credentials.create({
++          publicKey: {
++            // The challenge and user id should come from the server.
++            challenge: crypto.getRandomValues(new Uint8Array(32)),
++            rp: { name: 'The Daily Grind', id: location.hostname },
++            user: {
++              id: crypto.getRandomValues(new Uint8Array(16)),
++              name: 'account',
++              displayName: 'Daily Grind account',
++            },
++            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
++            authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++            excludeCredentials: passkeys.map((k) => ({ type: 'public-key', id: Uint8Array.from(atob(k.id), (c) => c.charCodeAt(0)) })),
++          },
++        });
++        passkeys.push({
++          id: b64(cred.rawId),
++          name: `Passkey ${passkeys.length + 1}`,
++          createdAt: new Date().toISOString(),
++        });
++        save(passkeys);
++        editingId = passkeys[passkeys.length - 1].id;
++        render();
++        say('Passkey added. Give it a name you will recognize.');
++      } catch (err) {
++        say(err.name === 'NotAllowedError' ? 'Passkey setup was cancelled.' : `Could not add passkey: ${err.message}`, true);
++      } finally {
++        addBtn.disabled = false;
++      }
++    }
++
++    addBtn.addEventListener('click', add);
++    render();
++  </script>
++</body>
++
++</html>

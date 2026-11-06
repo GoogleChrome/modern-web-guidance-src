@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,151 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts & Independent Theme</title>
++  <style>
++    :root {
++      --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      --font-code: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
++    }
++
++    body {
++      font-family: var(--font-body);
++      line-height: 1.6;
++      margin: 0;
++      padding: 2rem;
++      background-color: #f8fafc;
++      color: #0f172a;
++    }
++
++    /* Paragraph containing mixed font families with automatic visual height normalization */
++    #mixed-fonts-container {
++      font-family: var(--font-body);
++      font-size: 1.125rem;
++      line-height: 1.6;
++      /* Modern CSS to normalize the visual height of mixed fonts automatically */
++      font-size-adjust: from-font;
++      max-width: 65ch;
++      margin-bottom: 2rem;
++    }
++
++    #mixed-fonts-container code {
++      font-family: var(--font-code);
++      /* Automatically matches the x-height/visual height of the primary font */
++      font-size-adjust: from-font;
++      background-color: #e2e8f0;
++      color: #0f172a;
++      padding: 0.15em 0.4em;
++      border-radius: 4px;
++    }
++
++    /* Separate container element representing an independent theme */
++    #independent-theme-container {
++      /* Independent theme tokens & styling */
++      --theme-bg: #1e1e2e;
++      --theme-card-bg: #181825;
++      --theme-text: #cdd6f4;
++      --theme-subtext: #a6adc8;
++      --theme-accent: #89b4fa;
++      --theme-border: #313244;
++
++      container-type: inline-size;
++      container-name: independent-theme;
++      color-scheme: dark;
++
++      background: linear-gradient(135deg, var(--theme-bg), var(--theme-card-bg));
++      color: var(--theme-text);
++      border: 1px solid var(--theme-border);
++      border-radius: 12px;
++      padding: 1.5rem;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
++
++      /* Modern CSS property with a specific numeric aspect-ratio override to lock down visual proportions */
++      aspect-ratio: 16 / 9;
++      /* Typography aspect-ratio override */
++      font-size-adjust: 0.52;
++
++      max-width: 640px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      box-sizing: border-box;
++      overflow: hidden;
++    }
++
++    #independent-theme-container .theme-header {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++    }
++
++    #independent-theme-container .theme-title {
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: var(--theme-accent);
++      margin: 0;
++    }
++
++    #independent-theme-container .theme-body {
++      display: flex;
++      gap: 1.25rem;
++      align-items: center;
++      flex: 1;
++      margin: 1rem 0;
++    }
++
++    #independent-theme-container .theme-image {
++      width: 40%;
++      height: 100%;
++      max-height: 160px;
++      object-fit: cover;
++      border-radius: 8px;
++      aspect-ratio: 4 / 3;
++    }
++
++    #independent-theme-container .theme-description {
++      flex: 1;
++      margin: 0;
++      font-size: 0.95rem;
++      color: var(--theme-subtext);
++      line-height: 1.5;
++    }
++
++    #independent-theme-container .theme-footer {
++      font-size: 0.85rem;
++      color: var(--theme-subtext);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-top: 1px solid var(--theme-border);
++      padding-top: 0.75rem;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    In modern web development, mixing typefaces such as standard sans-serif text with inline code like <code>const ratio = 16 / 9;</code> and <code>font-size-adjust: from-font;</code> can lead to inconsistent x-heights. Using modern CSS font adjustments ensures all glyphs harmonize visually.
++  </p>
++
++  <div id="independent-theme-container">
++    <div class="theme-header">
++      <h3 class="theme-title">Independent Dark Theme</h3>
++    </div>
++    <div class="theme-body">
++      <img
++        class="theme-image"
++        src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=600&q=80"
++        alt="Abstract gradient theme artwork"
++      />
++      <p class="theme-description">
++        This component encapsulates an independent dark theme with its own design tokens, container query context, and locked-down visual proportions using the CSS aspect-ratio property.
++      </p>
++    </div>
++    <div class="theme-footer">
++      <span>Proportions: 16:9 Aspect Ratio</span>
++      <span>Theme: Encapsulated Dark</span>
++    </div>
++  </div>
++</body>
++</html>

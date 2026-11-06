@@ -1,0 +1,516 @@
+diff --git a/index.html b/index.html
+index 66c9173..e26f0b8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,238 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Hovercard */
++    .card {
++      position: relative;
++    }
++
++    .hovercard {
++      position: fixed;
++      top: 0;
++      left: 0;
++      z-index: 1100;
++      width: 320px;
++      max-width: calc(100vw - 24px);
++      background: white;
++      color: var(--text);
++      text-align: left;
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      opacity: 0;
++      visibility: hidden;
++      transform: translateY(6px);
++      transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
++    }
++
++    .hovercard[data-placement="top"] {
++      transform: translateY(-6px);
++    }
++
++    .hovercard.is-open {
++      opacity: 1;
++      visibility: visible;
++      transform: translateY(0);
++      transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s;
++    }
++
++    .hovercard-media {
++      position: relative;
++      height: 130px;
++      background: var(--secondary);
++    }
++
++    .hovercard-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .hovercard-badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 3px 8px;
++      border-radius: 999px;
++    }
++
++    .hovercard-body {
++      padding: 14px 16px 16px;
++    }
++
++    .hovercard-url {
++      font-size: 0.72rem;
++      color: #8d6e63;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      margin-bottom: 2px;
++    }
++
++    .hovercard-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++    }
++
++    .hovercard-title {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .hovercard-price {
++      font-weight: bold;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    .hovercard-desc {
++      font-size: 0.85rem;
++      margin: 6px 0 10px;
++    }
++
++    .hovercard-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++      margin-bottom: 12px;
++    }
++
++    .hovercard-tags li {
++      font-size: 0.7rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .hovercard-stats {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++      margin-bottom: 12px;
++      text-align: center;
++    }
++
++    .hovercard-stats div {
++      background: var(--light);
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 6px 4px;
++    }
++
++    .hovercard-stats dt {
++      font-size: 0.65rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++    }
++
++    .hovercard-stats dd {
++      font-size: 0.85rem;
++      font-weight: bold;
++    }
++
++    .hovercard-sizes {
++      border: 0;
++      margin-bottom: 14px;
++    }
++
++    .hovercard-sizes legend {
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++      margin-bottom: 4px;
++    }
++
++    .hovercard-size-options {
++      display: flex;
++      gap: 6px;
++    }
++
++    .hovercard-size-options label {
++      flex: 1;
++      position: relative;
++    }
++
++    .hovercard-size-options input {
++      position: absolute;
++      opacity: 0;
++      width: 1px;
++      height: 1px;
++    }
++
++    .hovercard-size-options span {
++      display: block;
++      text-align: center;
++      font-size: 0.8rem;
++      padding: 5px 0;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .hovercard-size-options input:checked + span {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .hovercard-size-options input:focus-visible + span {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .hovercard-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .hovercard-actions a {
++      flex: 1;
++      text-align: center;
++      font-size: 0.85rem;
++      padding: 8px 10px;
++      border-radius: 5px;
++      text-decoration: none;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .hovercard-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .hovercard-primary:hover {
++      background: var(--text);
++    }
++
++    .hovercard-secondary {
++      border: 1px solid var(--primary);
++      color: var(--primary);
++    }
++
++    .hovercard-secondary:hover {
++      background: #efebe9;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hovercard,
++      .hovercard.is-open {
++        transition: none;
++        transform: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -181,17 +413,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-hovercard="maple-oat-latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-hovercard="dark-roast-espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-hovercard="cold-brew">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +439,251 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Structured preview data for each drink detail page.
++      var DRINKS = {
++        'maple-oat-latte': {
++          title: 'Maple Oat Latte',
++          badge: 'Seasonal',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=70',
++          imageAlt: 'Latte with foam art in a ceramic cup',
++          description: 'Double shot of house espresso, steamed oat milk and pure Vermont maple syrup, finished with a dusting of cinnamon.',
++          tags: ['Dairy-free', 'Hot or iced', 'Limited time'],
++          stats: { Caffeine: '150 mg', Calories: '190', Sugar: '18 g' },
++          sizes: { Small: 4.75, Medium: 5.25, Large: 5.75 }
++        },
++        'dark-roast-espresso': {
++          title: 'Dark Roast Espresso',
++          badge: 'House Classic',
++          image: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&q=70',
++          imageAlt: 'Espresso shot in a small cup with rich crema',
++          description: 'Our signature Sumatra and Guatemala blend, roasted dark for notes of cocoa, smoke and toasted walnut.',
++          tags: ['Vegan', 'Single or double', 'Roasted in-house'],
++          stats: { Caffeine: '130 mg', Calories: '5', Sugar: '0 g' },
++          sizes: { Single: 2.95, Double: 3.75, Triple: 4.5 }
++        },
++        'cold-brew': {
++          title: 'Cold Brew',
++          badge: 'Fan Favorite',
++          image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&q=70',
++          imageAlt: 'Iced coffee in a tall glass',
++          description: 'Coarse-ground Colombian beans steeped for 18 hours in cold filtered water for a smooth, low-acid finish.',
++          tags: ['Vegan', 'Low acidity', 'Served over ice'],
++          stats: { Caffeine: '205 mg', Calories: '10', Sugar: '0 g' },
++          sizes: { Small: 4.25, Medium: 4.75, Large: 5.25 }
++        }
++      };
++
++      var OPEN_DELAY = 250;
++      var CLOSE_DELAY = 200;
++      var GAP = 10;
++      var MARGIN = 12;
++      var active = null;
++
++      function el(tag, attrs, children) {
++        var node = document.createElement(tag);
++        Object.keys(attrs || {}).forEach(function (k) {
++          if (k === 'text') node.textContent = attrs[k];
++          else node.setAttribute(k, attrs[k]);
++        });
++        (children || []).forEach(function (c) { if (c) node.appendChild(c); });
++        return node;
++      }
++
++      function formatPrice(n) { return '$' + n.toFixed(2); }
++
++      function buildCard(link, key, data, index) {
++        var id = 'hovercard-' + key;
++        var href = link.getAttribute('href');
++        var sizeNames = Object.keys(data.sizes);
++        var defaultSize = sizeNames[Math.floor(sizeNames.length / 2)];
++
++        var img = el('img', { src: data.image, alt: data.imageAlt, loading: 'lazy', decoding: 'async' });
++        img.addEventListener('error', function () { img.remove(); });
++
++        var price = el('span', { class: 'hovercard-price', 'aria-live': 'polite', text: formatPrice(data.sizes[defaultSize]) });
++        var orderLink = el('a', { class: 'hovercard-secondary', href: '' , text: 'Add to Order' });
++
++        function updateOrder(size) {
++          price.textContent = formatPrice(data.sizes[size]);
++          orderLink.href = '/order-online?item=' + encodeURIComponent(key) + '&size=' + encodeURIComponent(size.toLowerCase());
++        }
++
++        var options = el('div', { class: 'hovercard-size-options' }, sizeNames.map(function (size) {
++          var input = el('input', { type: 'radio', name: id + '-size', value: size });
++          if (size === defaultSize) input.checked = true;
++          input.addEventListener('change', function () { updateOrder(size); });
++          return el('label', {}, [input, el('span', { text: size })]);
++        }));
++        updateOrder(defaultSize);
++
++        var titleId = id + '-title';
++        var card = el('div', {
++          class: 'hovercard',
++          id: id,
++          role: 'dialog',
++          'aria-labelledby': titleId,
++          'aria-hidden': 'true'
++        }, [
++          el('div', { class: 'hovercard-media' }, [img, el('span', { class: 'hovercard-badge', text: data.badge })]),
++          el('div', { class: 'hovercard-body' }, [
++            el('div', { class: 'hovercard-url', text: location.host + href }),
++            el('div', { class: 'hovercard-header' }, [
++              el('h4', { class: 'hovercard-title', id: titleId, text: data.title }),
++              price
++            ]),
++            el('p', { class: 'hovercard-desc', text: data.description }),
++            el('ul', { class: 'hovercard-tags', 'aria-label': 'Highlights' },
++              data.tags.map(function (t) { return el('li', { text: t }); })),
++            el('dl', { class: 'hovercard-stats' }, Object.keys(data.stats).map(function (k) {
++              return el('div', {}, [el('dt', { text: k }), el('dd', { text: data.stats[k] })]);
++            })),
++            el('fieldset', { class: 'hovercard-sizes' }, [el('legend', { text: 'Size' }), options]),
++            el('div', { class: 'hovercard-actions' }, [
++              el('a', { class: 'hovercard-primary', href: href, text: 'Full Details →' }),
++              orderLink
++            ])
++          ])
++        ]);
++
++        // Keep the card out of the tab order while hidden.
++        card.inert = true;
++        link.setAttribute('aria-haspopup', 'dialog');
++        link.setAttribute('aria-expanded', 'false');
++        link.setAttribute('aria-controls', id);
++        // Insert directly after the link so Tab moves naturally into the card.
++        link.insertAdjacentElement('afterend', card);
++        return card;
++      }
++
++      function position(link, card) {
++        var r = link.getBoundingClientRect();
++        var w = card.offsetWidth;
++        var h = card.offsetHeight;
++        var vw = document.documentElement.clientWidth;
++        var vh = window.innerHeight;
++
++        var spaceBelow = vh - r.bottom;
++        var spaceAbove = r.top;
++        var placement = (spaceBelow >= h + GAP + MARGIN || spaceBelow >= spaceAbove) ? 'bottom' : 'top';
++        var top = placement === 'bottom' ? r.bottom + GAP : r.top - h - GAP;
++        top = Math.max(MARGIN, Math.min(top, vh - h - MARGIN));
++
++        var left = r.left + r.width / 2 - w / 2;
++        left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
++
++        card.dataset.placement = placement;
++        card.style.top = Math.round(top) + 'px';
++        card.style.left = Math.round(left) + 'px';
++      }
++
++      function Hovercard(link, card) {
++        this.link = link;
++        this.card = card;
++        this.openTimer = null;
++        this.closeTimer = null;
++        this.isOpen = false;
++      }
++
++      Hovercard.prototype.clearTimers = function () {
++        clearTimeout(this.openTimer);
++        clearTimeout(this.closeTimer);
++      };
++
++      Hovercard.prototype.open = function () {
++        this.clearTimers();
++        if (this.isOpen) return;
++        if (active && active !== this) active.close();
++        active = this;
++        this.isOpen = true;
++        this.card.inert = false;
++        this.card.setAttribute('aria-hidden', 'false');
++        this.link.setAttribute('aria-expanded', 'true');
++        position(this.link, this.card);
++        this.card.classList.add('is-open');
++      };
++
++      Hovercard.prototype.close = function () {
++        this.clearTimers();
++        if (!this.isOpen) return;
++        this.isOpen = false;
++        this.card.classList.remove('is-open');
++        this.card.inert = true;
++        this.card.setAttribute('aria-hidden', 'true');
++        this.link.setAttribute('aria-expanded', 'false');
++        if (active === this) active = null;
++      };
++
++      Hovercard.prototype.scheduleOpen = function () {
++        var self = this;
++        clearTimeout(this.closeTimer);
++        if (this.isOpen) return;
++        clearTimeout(this.openTimer);
++        this.openTimer = setTimeout(function () { self.open(); }, OPEN_DELAY);
++      };
++
++      Hovercard.prototype.scheduleClose = function () {
++        var self = this;
++        clearTimeout(this.openTimer);
++        clearTimeout(this.closeTimer);
++        this.closeTimer = setTimeout(function () {
++          // Stay open while keyboard focus is inside the link or card.
++          var a = document.activeElement;
++          if (a === self.link || self.card.contains(a)) return;
++          self.close();
++        }, CLOSE_DELAY);
++      };
++
++      Hovercard.prototype.bind = function () {
++        var self = this;
++        [this.link, this.card].forEach(function (target) {
++          target.addEventListener('pointerenter', function (e) {
++            if (e.pointerType === 'mouse' || e.pointerType === 'pen') self.scheduleOpen();
++          });
++          target.addEventListener('pointerleave', function (e) {
++            if (e.pointerType === 'mouse' || e.pointerType === 'pen') self.scheduleClose();
++          });
++          target.addEventListener('focusout', function (e) {
++            var next = e.relatedTarget;
++            if (next && (next === self.link || self.card.contains(next))) return;
++            self.close();
++          });
++        });
++
++        this.link.addEventListener('focus', function () {
++          if (self.link.matches(':focus-visible')) self.open();
++        });
++
++        this.card.addEventListener('keydown', onEscape);
++        this.link.addEventListener('keydown', onEscape);
++        function onEscape(e) {
++          if (e.key === 'Escape' && self.isOpen) {
++            e.preventDefault();
++            var hadFocusInside = self.card.contains(document.activeElement);
++            self.close();
++            if (hadFocusInside) self.link.focus({ preventScroll: true });
++          }
++        }
++      };
++
++      document.querySelectorAll('a[data-hovercard]').forEach(function (link, i) {
++        var key = link.getAttribute('data-hovercard');
++        var data = DRINKS[key];
++        if (!data) return;
++        var hc = new Hovercard(link, buildCard(link, key, data, i));
++        hc.bind();
++      });
++
++      function reposition() { if (active) position(active.link, active.card); }
++      window.addEventListener('scroll', reposition, { passive: true });
++      window.addEventListener('resize', reposition);
++      document.addEventListener('pointerdown', function (e) {
++        if (active && !active.card.contains(e.target) && e.target !== active.link) active.close();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

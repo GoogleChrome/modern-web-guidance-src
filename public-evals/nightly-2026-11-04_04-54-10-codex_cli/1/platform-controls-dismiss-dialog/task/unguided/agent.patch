@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,8 +130,40 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .coffee-dialog {
++      margin: auto;
++      width: min(440px, calc(100% - 40px));
++      max-height: calc(100dvh - 40px);
++      overflow-y: auto;
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    .coffee-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.6);
++    }
++
++    .coffee-dialog h2 {
++      margin-bottom: 10px;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+@@ -180,24 +212,32 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee-details aria-haspopup="dialog" aria-controls="coffee-dialog" aria-label="View details for Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee-details aria-haspopup="dialog" aria-controls="coffee-dialog" aria-label="View details for Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-coffee-details aria-haspopup="dialog" aria-controls="coffee-dialog" aria-label="View details for Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-dialog" class="coffee-dialog" closedby="any" aria-labelledby="coffee-dialog-title" aria-describedby="coffee-dialog-description">
++    <h2 id="coffee-dialog-title"></h2>
++    <p id="coffee-dialog-description"></p>
++    <form method="dialog">
++      <button type="submit" class="btn" autofocus>Close</button>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +246,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const coffeeDialog = document.getElementById('coffee-dialog');
++    const coffeeTitle = document.getElementById('coffee-dialog-title');
++    const coffeeDescription = document.getElementById('coffee-dialog-description');
++
++    document.querySelectorAll('[data-coffee-details]').forEach((button) => {
++      button.addEventListener('click', () => {
++        const card = button.closest('.card');
++        coffeeTitle.textContent = card.querySelector('h3').textContent;
++        coffeeDescription.textContent = card.querySelector('p').textContent;
++        // Native modal behavior manages focus and platform close requests,
++        // including Escape and mobile back gestures on supporting browsers.
++        coffeeDialog.showModal();
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

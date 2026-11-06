@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,28 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin: 12px 0 0;
++      padding: 10px;
++      border-radius: 6px;
++      background: var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    .promo-timer strong {
++      display: block;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .promo-timer small {
++      display: block;
++      margin-top: 4px;
++      opacity: 0.8;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +200,14 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Date-times without an offset are parsed as the visitor's local time. -->
++          <div class="promo-timer" id="maple-timer"
++               data-start="2025-12-01T00:00:00" data-end="2026-03-01T00:00:00">
++            <strong id="maple-remaining">&nbsp;</strong>
++            <small id="maple-elapsed"></small>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +232,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Calculates once on page load (no ticking interval), in the visitor's local time zone.
++    (function () {
++      var timer = document.getElementById('maple-timer');
++      var start = new Date(timer.dataset.start);
++      var end = new Date(timer.dataset.end);
++      var now = new Date();
++
++      function plural(n, word) {
++        return n + ' ' + word + (n === 1 ? '' : 's');
++      }
++
++      function span(ms) {
++        var hours = Math.floor(ms / 36e5);
++        return plural(Math.floor(hours / 24), 'day') + ', ' + plural(hours % 24, 'hour');
++      }
++
++      var remaining = document.getElementById('maple-remaining');
++      var elapsed = document.getElementById('maple-elapsed');
++
++      if (now < start) {
++        remaining.textContent = 'Starts in ' + span(start - now);
++        elapsed.textContent = 'Offer ends ' + end.toLocaleDateString(undefined, { dateStyle: 'long' });
++      } else if (now < end) {
++        remaining.textContent = span(end - now) + ' left';
++        elapsed.textContent = span(now - start) + ' since the offer started';
++      } else {
++        remaining.textContent = 'This offer has ended';
++        elapsed.textContent = 'It ran for ' + span(end - start);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+index 66c9173..438a4ed 100644
+--- a/index.html
++++ b/index.html
+@@ -1,5 +1,5 @@
+ <!DOCTYPE html>
+-<html lang="en">
++<html lang="en" data-ordering-origin="https://orders.dailygrind.com">
+ 
+ <head>
+   <meta charset="UTF-8">
+@@ -207,6 +207,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { installPageSecurity } from './page-security.mjs';
++    // Optional sandboxed ordering integrations must use id="ordering-widget"
++    // and sandbox="allow-scripts" (without allow-same-origin). The widget sends
++    // { type: 'widget:init' } before { type: 'widget:update', height: 400 }.
++    // Ordering redirects use { type: 'redirect', url: '/order-confirmation' }.
++    installPageSecurity(window, document);
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/page-security.mjs b/page-security.mjs
+new file mode 100644
+index 0000000..9b0c9e1
+--- /dev/null
++++ b/page-security.mjs
+@@ -0,0 +1,82 @@
++// Parse URLs once so credentials, ports, backslashes and encoded hosts cannot
++// bypass checks through hand-written string manipulation.
++export function webURL(value, base) {
++  if (typeof value !== 'string' || !value.trim()) return null;
++  try {
++    const url = new URL(value, base);
++    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null;
++    return url;
++  } catch {
++    return null;
++  }
++}
++
++export function sameSiteRedirect(value, pageURL) {
++  const page = webURL(pageURL);
++  const destination = webURL(value, pageURL);
++  // A conservative same-site policy: require the exact origin, including port
++  // and scheme. Sibling subdomains are not implicitly trusted.
++  return page && destination?.origin === page.origin ? destination : null;
++}
++
++export function createMessageHandler({ orderingOrigin, pageURL, widget, redirect, resizeWidget }) {
++  const trustedOrigin = webURL(orderingOrigin)?.origin;
++  let widgetSender = null;
++
++  return (event) => {
++    const data = event.data;
++    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
++
++    if (data.type === 'redirect') {
++      // Opaque origins ("null") can never authorize ordering redirects.
++      if (!trustedOrigin || event.origin !== trustedOrigin) return;
++      const destination = sameSiteRedirect(data.url, pageURL);
++      if (destination) redirect(destination.href);
++      return;
++    }
++
++    // Sandboxed frames without allow-same-origin all have origin "null".
++    // Bind to the designated iframe's WindowProxy, never the first null origin.
++    if (!widget || event.origin !== 'null' || !event.source || event.source !== widget.contentWindow) return;
++    if (data.type === 'widget:init') {
++      if (!widgetSender) widgetSender = event.source;
++      return;
++    }
++    if (event.source !== widgetSender) return;
++    if (data.type === 'widget:update' && Number.isInteger(data.height) && data.height >= 100 && data.height <= 2000) {
++      resizeWidget(data.height);
++    }
++  };
++}
++
++export function validateLink(link, pageURL) {
++  const url = webURL(link.getAttribute('href'), pageURL);
++  if (!url) return false;
++  if (url.origin !== new URL(pageURL).origin) {
++    // Preserve existing rel tokens while isolating external browsing contexts.
++    link.relList.add('noopener', 'noreferrer');
++  }
++  return true;
++}
++
++export function installPageSecurity(window, document) {
++  const widget = document.getElementById('ordering-widget');
++  const handler = createMessageHandler({
++    orderingOrigin: document.documentElement.dataset.orderingOrigin,
++    pageURL: window.location.href,
++    widget,
++    redirect: (url) => window.location.assign(url),
++    resizeWidget: (height) => { widget.style.height = `${height}px`; },
++  });
++  window.addEventListener('message', handler);
++  for (const link of document.querySelectorAll('a[href]')) {
++    if (!validateLink(link, window.location.href)) link.removeAttribute('href');
++  }
++  // Check at activation time as well, including links inserted dynamically.
++  const checkLink = (event) => {
++    const link = event.target.closest?.('a[href]');
++    if (link && !validateLink(link, window.location.href)) event.preventDefault();
++  };
++  document.addEventListener('click', checkLink, true);
++  document.addEventListener('auxclick', checkLink, true);
++}
+diff --git a/tests/page-security.test.mjs b/tests/page-security.test.mjs
+new file mode 100644
+index 0000000..2d75fdd
+--- /dev/null
++++ b/tests/page-security.test.mjs
+@@ -0,0 +1,80 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { webURL, sameSiteRedirect, createMessageHandler, validateLink } from '../page-security.mjs';
++
++const pageURL = 'https://dailygrind.com/account';
++const orderingOrigin = 'https://orders.dailygrind.com';
++
++test('redirects resolve relative URLs and require the exact parsed origin', () => {
++  assert.equal(sameSiteRedirect('/menu?next=/rewards', pageURL).href, 'https://dailygrind.com/menu?next=/rewards');
++  assert.equal(sameSiteRedirect('https://DAILYGRIND.com:443/menu', pageURL).origin, 'https://dailygrind.com');
++  for (const url of [
++    '//evil.com', 'https://dailygrind.com.evil.com', 'https://dailygrind.com@evil.com',
++    'https://evil.com@dailygrind.com', 'https://dailygrind.com:444', 'http://dailygrind.com',
++    'https://orders.dailygrind.com', 'https://evil.com\\@dailygrind.com',
++    'javascript:alert(1)', 'data:text/html,hello', 'https://[broken', '', null,
++  ]) {
++    assert.equal(sameSiteRedirect(url, pageURL), null, String(url));
++  }
++  assert.equal(webURL('https://dailygrind.com\\@evil.com', pageURL).origin, 'https://dailygrind.com');
++});
++
++test('only the exact ordering origin can request a validated redirect', () => {
++  const redirects = [];
++  const handle = createMessageHandler({ orderingOrigin, pageURL, redirect: url => redirects.push(url) });
++  for (const origin of ['null', 'https://orders.dailygrind.com.evil.com', 'http://orders.dailygrind.com', 'https://orders.dailygrind.com:444']) {
++    handle({ origin, data: { type: 'redirect', url: '/menu' } });
++  }
++  handle({ origin: orderingOrigin, data: { type: 'redirect', url: '//evil.com' } });
++  handle({ origin: orderingOrigin, data: null });
++  handle({ origin: orderingOrigin, data: { type: 'redirect', url: '/menu' } });
++  assert.deepEqual(redirects, ['https://dailygrind.com/menu']);
++});
++
++test('unconfigured ordering integration fails closed', () => {
++  const handle = createMessageHandler({ pageURL, redirect: () => assert.fail('redirected') });
++  handle({ origin: 'null', data: { type: 'redirect', url: '/menu' } });
++});
++
++test('sandbox initialization pins the designated sender and rejects competing frames', () => {
++  const sender = {};
++  const other = {};
++  const widget = { contentWindow: sender };
++  const heights = [];
++  const handle = createMessageHandler({ orderingOrigin, pageURL, widget, resizeWidget: height => heights.push(height) });
++  const send = (source, type, height = 400, origin = 'null') => handle({ source, origin, data: { type, height } });
++  send(sender, 'widget:update');
++  send(other, 'widget:init');
++  send(other, 'widget:update');
++  send(null, 'widget:init');
++  send(sender, 'widget:init', 400, orderingOrigin);
++  send(sender, 'widget:update');
++  assert.deepEqual(heights, []);
++  send(sender, 'widget:init');
++  send(sender, 'widget:update');
++  send(other, 'widget:init');
++  send(other, 'widget:update');
++  send(sender, 'widget:update', '500');
++  send(sender, 'widget:update', 100000);
++  send(sender, 'widget:update', 500);
++  widget.contentWindow = other;
++  send(other, 'widget:init');
++  send(other, 'widget:update');
++  assert.deepEqual(heights, [400, 500]);
++});
++
++test('external links use parsed URLs and retain existing relationship tokens', () => {
++  function link(href) {
++    const tokens = new Set(['nofollow']);
++    return { getAttribute: () => href, relList: { add: (...values) => values.forEach(value => tokens.add(value)) }, tokens };
++  }
++  const external = link('https://dailygrind.com.evil.com/menu');
++  assert.equal(validateLink(external, pageURL), true);
++  assert.deepEqual([...external.tokens], ['nofollow', 'noopener', 'noreferrer']);
++  const internal = link('/menu');
++  assert.equal(validateLink(internal, pageURL), true);
++  assert.deepEqual([...internal.tokens], ['nofollow']);
++  for (const href of ['javascript:alert(1)', 'data:text/html,test', 'https://dailygrind.com@evil.com', 'https://[', null]) {
++    assert.equal(validateLink(link(href), pageURL), false);
++  }
++});

@@ -1,0 +1,18 @@
+diff --git a/DIAGNOSTICS.md b/DIAGNOSTICS.md
+new file mode 100644
+--- a/DIAGNOSTICS.md
++++ b/DIAGNOSTICS.md
+@@ -0,0 +1,13 @@
++# Script diagnostics
++
++Open any page with `?scriptDiagnostics=1` (or append `&scriptDiagnostics=1` to an existing query). A report appears in the developer console one second after load. Interact with the page, then run `scriptDiagnostics.report()` for updated results. `scriptDiagnostics.snapshot()` returns a plain object for export; `scriptDiagnostics.stop()` disconnects observers and returns the final snapshot. Remove the query parameter and reload to disable collection. Nothing is sent to a server or stored persistently.
++
++The current page has no application scripts. The diagnostic file itself will appear in script load timings.
++
++- **Script contributors:** ranked execution durations for scripts observed in long animation frames, with URL, function, source character offset, invocation count, and forced layout time. Use these as investigation leads; they do not represent all script execution or assign all frame blocking to a script.
++- **Script loads:** ranked resource loading durations, distinct from execution cost. Zero or unavailable byte counts are shown as `null`, since they can reflect caching or cross-origin restrictions.
++- **Frame blocking and long tasks:** separate summaries of potentially unresponsive work. Their times overlap; do not add them together. Long tasks alone cannot identify a responsible script.
++
++The observer APIs are feature-detected. Script attribution requires Long Animation Frames support and can omit cross-origin code and other execution contexts. Resource timing can miss imports reported under other initiator types, failed loads, and entries evicted before observation. Samples are bounded to the latest 500 entries per type, including the browser's available buffered entries. Empty tables are not evidence of good performance.
++
++References: [Long animation frame timing](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing), [Resource timing](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming).

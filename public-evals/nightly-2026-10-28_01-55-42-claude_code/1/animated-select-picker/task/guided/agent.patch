@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,21 +84,145 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero > p {
++      margin-bottom: 1.5rem;
++    }
++
++    /* Store picker (customizable <select>) */
++    .store-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      width: min(100%, 20rem);
++    }
++
++    .store-picker label {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      opacity: 0.9;
++    }
++
++    .store-select,
++    .store-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      width: 100%;
++      padding: 0.75rem 1rem;
++      font: inherit;
++      font-size: 1rem;
++      color: white;
++      background: rgba(255, 255, 255, 0.12);
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      border-radius: 6px;
++      cursor: pointer;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .store-select:hover,
++    .store-select:focus-visible {
++      border-color: var(--accent);
++      background: rgba(255, 255, 255, 0.2);
++    }
++
++    .store-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Fallback for browsers without base-select: keep the native control legible on the dark hero */
++    .store-select option {
++      color: var(--text);
++      background: white;
++    }
++
++    /* Arrow rotates while the picker is open */
++    .store-select::picker-icon {
++      color: var(--accent);
++      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    }
++
++    .store-select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    /* Picker menu fades (and slides) in and out of the top layer */
++    .store-select::picker(select) {
++      width: anchor-size(width);
++      margin-top: 0.35rem;
++      padding: 0.35rem;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
++      text-align: left;
++      opacity: 0;
++      translate: 0 -0.5rem;
++      transition:
++        display 0.25s allow-discrete,
++        overlay 0.25s allow-discrete,
++        opacity 0.25s ease,
++        translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
++    }
++
++    .store-select:open::picker(select) {
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    @starting-style {
++      .store-select:open::picker(select) {
++        opacity: 0;
++        translate: 0 -0.5rem;
++      }
++    }
++
++    .store-select option {
++      padding: 0.6rem 0.75rem;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .store-select option:hover,
++    .store-select option:focus-visible {
++      background: #f3ece9;
++    }
++
++    .store-select option:checked {
++      font-weight: 700;
++      background: var(--secondary);
++    }
++
++    .store-select option::checkmark {
++      color: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .store-select::picker(select),
++      .store-select::picker-icon {
++        transition: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .grid {
+       display: grid;
+@@ -170,8 +294,20 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-picker">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" name="store" class="store-select">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="downtown" selected>Downtown Roastery</option>
++        <option value="riverside">Riverside Cafe</option>
++        <option value="uptown">Uptown Espresso Bar</option>
++        <option value="university">University District</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

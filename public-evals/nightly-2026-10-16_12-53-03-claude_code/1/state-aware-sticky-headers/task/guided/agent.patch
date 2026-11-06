@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -30,9 +31,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -151,8 +153,45 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sticky section headers (sit below the sticky nav) */
++    .info-section {
++      margin-top: 40px;
++      overflow-anchor: none;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.5rem 20px;
++      border-radius: 8px;
++      font-size: 1.5rem;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: #1565c0;
++        color: white;
++        padding: 0.5rem 20px;
++        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    .info-section p {
++      margin: 20px 0;
++      max-width: 70ch;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +233,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="info-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Our Story</h2>
++      </div>
++      <p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells.</p>
++      <p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>We started in a tiny garage with a single roaster and a stubborn belief that coffee should taste as good as it smells. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
++    </section>
++
++    <section class="info-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Our Beans</h2>
++      </div>
++      <p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week.</p>
++      <p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Every bean is sourced directly from small farms we know by name, then roasted in small batches each week. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
++    </section>
++
++    <section class="info-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Brewing Guide</h2>
++      </div>
++      <p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops.</p>
++      <p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Great coffee needs fresh grounds, filtered water, and patience. Here is how we brew at home and in our shops. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
++    </section>
++
++    <section class="info-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Visit Us</h2>
++      </div>
++      <p>Stop by any of our locations for a cup, a pastry, and a seat by the window.</p>
++      <p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>Stop by any of our locations for a cup, a pastry, and a seat by the window. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

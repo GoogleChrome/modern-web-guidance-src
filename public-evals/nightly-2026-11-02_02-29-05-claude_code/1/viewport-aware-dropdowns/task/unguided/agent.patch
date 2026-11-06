@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,67 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown */
++    .options-trigger {
++      anchor-name: --options-trigger;
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .options-trigger:hover,
++    .options-trigger:focus-visible {
++      color: var(--accent);
++    }
++
++    .options-trigger::after {
++      content: " \25BE";
++    }
++
++    /* Rendered in the top layer via the Popover API; anchored below the trigger, left-aligned */
++    .action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin: 6px 0;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 200px;
++      max-width: calc(100vw - 16px);
++      padding: 6px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++    }
++
++    .action-panel button {
++      display: block;
++      width: 100%;
++      padding: 10px 14px;
++      background: none;
++      border: none;
++      border-radius: 5px;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.9rem;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .action-panel button:hover,
++    .action-panel button:focus-visible {
++      background: var(--secondary);
++      outline: none;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +222,22 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" class="options-trigger" popovertarget="action-panel"
++          aria-controls="action-panel">Options</button>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" class="action-panel" popover role="group" aria-label="Options">
++    <button type="button" data-href="/menu/seasonal">Seasonal Offers</button>
++    <button type="button" data-href="/account/settings">Account Settings</button>
++    <button type="button" data-href="/contact">Support</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +275,60 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const trigger = document.getElementById('trigger-btn');
++      const panel = document.getElementById('action-panel');
++
++      panel.addEventListener('click', (e) => {
++        const btn = e.target.closest('button[data-href]');
++        if (!btn) return;
++        panel.hidePopover();
++        window.location.href = btn.dataset.href;
++      });
++
++      // Fallback positioning for browsers without CSS anchor positioning:
++      // place below the trigger, left-aligned, flipping on viewport collision.
++      if (CSS.supports('anchor-name', '--a')) return;
++
++      const GAP = 6;
++      const EDGE = 8;
++
++      function position() {
++        const t = trigger.getBoundingClientRect();
++        const w = panel.offsetWidth;
++        const h = panel.offsetHeight;
++        const vw = document.documentElement.clientWidth;
++        const vh = document.documentElement.clientHeight;
++
++        let top = t.bottom + GAP;
++        if (top + h > vh - EDGE && t.top - GAP - h >= EDGE) top = t.top - GAP - h;
++
++        let left = t.left;
++        if (left + w > vw - EDGE && t.right - w >= EDGE) left = t.right - w;
++
++        top = Math.max(EDGE, Math.min(top, vh - h - EDGE));
++        left = Math.max(EDGE, Math.min(left, vw - w - EDGE));
++
++        panel.style.margin = '0';
++        panel.style.top = `${top}px`;
++        panel.style.left = `${left}px`;
++      }
++
++      panel.addEventListener('toggle', (e) => {
++        if (e.newState === 'open') {
++          position();
++          window.addEventListener('resize', position);
++          window.addEventListener('scroll', position, true);
++        } else {
++          window.removeEventListener('resize', position);
++          window.removeEventListener('scroll', position, true);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

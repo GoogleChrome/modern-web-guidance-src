@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,124 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++
++    /* Parallax Section */
++    .parallax {
++      position: relative;
++      height: 80vh;
++      min-height: 420px;
++      overflow: clip;
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++      display: grid;
++      place-items: center;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: -25% 0;
++      pointer-events: none;
++    }
++
++    .parallax-back {
++      z-index: -3;
++    }
++
++    .parallax-back img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: brightness(0.5);
++    }
++
++    .parallax-mid {
++      z-index: -2;
++      background:
++        radial-gradient(circle at 20% 40%, rgba(255, 171, 64, 0.35), transparent 22%),
++        radial-gradient(circle at 80% 60%, rgba(215, 204, 200, 0.25), transparent 26%);
++    }
++
++    .parallax-front {
++      z-index: -1;
++    }
++
++    .parallax-front img {
++      position: absolute;
++      width: clamp(120px, 20vw, 260px);
++      aspect-ratio: 1;
++      object-fit: cover;
++      border-radius: 50%;
++      border: 4px solid var(--accent);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
++    }
++
++    .parallax-front img:nth-child(1) {
++      left: 8%;
++      top: 45%;
++    }
++
++    .parallax-front img:nth-child(2) {
++      right: 8%;
++      top: 60%;
++    }
++
++    .parallax-content {
++      max-width: 600px;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
++    }
++
++    /* Decorative depth effect: progressive enhancement, static where unsupported */
++    @keyframes parallax-shift {
++      from {
++        transform: translateY(var(--shift-from));
++      }
++
++      to {
++        transform: translateY(var(--shift-to));
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax {
++          view-timeline: --parallax block;
++        }
++
++        .parallax-layer {
++          will-change: transform;
++          animation: parallax-shift linear both;
++          animation-timeline: --parallax;
++          animation-range: entry 0% exit 100%;
++        }
++
++        /* Slower layers sit further back; faster layers feel closer */
++        .parallax-back {
++          --shift-from: -8%;
++          --shift-to: 8%;
++        }
++
++        .parallax-mid {
++          --shift-from: -4%;
++          --shift-to: 4%;
++        }
++
++        .parallax-front {
++          --shift-from: 14%;
++          --shift-to: -14%;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +289,26 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-back" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70" alt=""
++        loading="lazy" decoding="async">
++    </div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-front" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=400&q=70" alt=""
++        loading="lazy" decoding="async">
++      <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=70" alt=""
++        loading="lazy" decoding="async">
++    </div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>We roast in small batches every morning, so every cup tastes as fresh as the day the beans were picked.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

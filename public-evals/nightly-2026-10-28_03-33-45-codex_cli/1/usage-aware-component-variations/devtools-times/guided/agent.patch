@@ -1,0 +1,297 @@
+diff --git a/public/images/editorial/forest.jpg b/public/images/editorial/forest.jpg
+new file mode 100644
+index 0000000..03aaeb1
+Binary files /dev/null and b/public/images/editorial/forest.jpg differ
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..f79f980 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
+ 
+ interface Props {
+@@ -23,7 +23,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
++    <button aria-label={isBookmarked ? "Remove from reading list" : "Save to reading list"} aria-pressed={isBookmarked} onClick={handleClick} className="p-1">
+       <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+diff --git a/src/components/ContextStory.astro b/src/components/ContextStory.astro
+new file mode 100644
+index 0000000..c1ba2be
+--- /dev/null
++++ b/src/components/ContextStory.astro
+@@ -0,0 +1,18 @@
++---
++import type { CollectionEntry } from 'astro:content';
++import BookmarkButton from './BookmarkButton';
++interface Props { article: CollectionEntry<'articles'>; image?: string; label?: string; summary?: string; }
++const { article, image, label, summary } = Astro.props;
++const base = import.meta.env.BASE_URL;
++const saved = await Astro.session?.get('readingList') || [];
++const src = image || (article.data.image.startsWith('http') ? article.data.image : `${base}${article.data.image.replace(/^\//, '')}`);
++---
++<article class="context-story">
++  <a class="story-image" href={`${base}articles/${article.id}`} tabindex="-1" aria-hidden="true"><img src={src} alt="" width="1200" height="800" loading={image ? 'eager' : 'lazy'} /><span class="feature-label">THE BIG PICTURE</span></a>
++  <div class="story-body">
++    <div class="story-kicker">{label || article.data.category}<span class="feature-note"> · EDITOR’S CHOICE</span></div>
++    <a class="story-title" href={`${base}articles/${article.id}`}><h3>{article.data.title}</h3></a>
++    <p class="story-summary">{summary || article.data.summary}</p>
++    <div class="story-meta"><span>{article.data.readingTime} min read<span class="story-author"> · By {article.data.author}</span></span><BookmarkButton client:load slug={article.id} initialIsBookmarked={saved.includes(article.id)} /></div>
++  </div>
++</article>
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..a4daf0b 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -24,7 +24,7 @@ export default function ReadingListButton() {
+ 
+   return (
+     <>
+-      <button onClick={() => setIsOpen(true)} className="p-1">
++      <button aria-label="Open reading list" onClick={() => setIsOpen(true)} className="p-1">
+         <svg
+           xmlns="http://www.w3.org/2000/svg"
+           className="h-6 w-6 text-gray-600"
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..38600e2 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -15,8 +15,11 @@ export default function SearchButton() {
+ 
+     const openSearch = async () => {
+         try {
+-            setArticles([]);
+             setIsFlyoutOpen(true);
++            setIsLoading(true);
++            const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++            if (!response.ok) throw new Error("Search is unavailable");
++            setArticles(await response.json());
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+         } finally {
+@@ -33,6 +36,7 @@ export default function SearchButton() {
+             <button
+                 className="text-gray-700 hover:text-amber-400 w-6 h-6 flex items-center justify-center"
+                 onClick={openSearch}
++                aria-label="Search articles"
+                 disabled={isLoading}
+             >
+                 {isLoading ? (
+@@ -43,7 +47,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..ba50704 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -61,7 +61,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+     return (
+         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+             <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++                <button aria-label="Close search" onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+@@ -76,7 +76,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                                     return (
+                                         <li key={article.slug}>
+                                             <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
++                                                <img src={imagePath.startsWith("http") ? imagePath : `${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+                                                 <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                             </a>
+                                         </li>
+@@ -87,6 +87,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                     )}
+                     <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+                     <input
++                        aria-label="Search articles"
+                         type="text"
+                         placeholder="Search for articles..."
+                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9201081 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,59 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
++import ContextStory from '../components/ContextStory.astro';
++import SearchButton from '../components/SearchButton';
++import ReadingListButton from '../components/ReadingListButton';
++import '../styles/global.css';
++import '../styles/editorial.css';
+ const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++const byId = (id: string) => articles.find(a => a.id === id)!;
++const base = import.meta.env.BASE_URL;
++const picks = ['modern-swan-lake', 'urban-cycling', 'breakthrough-research', 'the-call-of-the-open-water'].map(byId);
++const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
++const categories = [['All stories', 'all'], ['News & Politics', 'news'], ['Arts & Culture', 'culture'], ['Science & Tech', 'science'], ['Lifestyle', 'lifestyle'], ['Sports', 'sports']];
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
++  <meta name="description" content="Independent perspectives on the stories shaping our world. Discover the latest in news, culture, science, and everyday life." />
++  <title>The DevTools Times — A wider perspective</title>
++  <link rel="icon" href={`${base}favicon.svg`} />
++  <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:wght@400;500;600;650;700&display=swap" rel="stylesheet" />
++</head>
++<body class="edition">
++<a class="skip-link" href="#stories">Skip to stories</a>
++<div class="publication">
++  <header>
++    <div class="utility"><span><i class="orange-dot"></i>Independent journalism. A wider perspective.</span><div class="utility-actions"><span class="edition-label">THE DAILY EDITION</span><a href={`${base}signin`}>Sign in <span aria-hidden="true">↗</span></a></div></div>
++    <div class="masthead"><div class="edition-date"><span>{date}</span><span class="muted">Stay curious. Stay informed.</span></div><a href={base} class="wordmark">The DevTools Times<span class="logo-period">.</span></a><a href={`${base}signup`} class="subscribe-button">Become a subscriber <span aria-hidden="true">↗</span></a></div>
++    <nav class="edition-nav" aria-label="Main navigation"><div class="nav-links"><a class="current" href={base} aria-current="page">The front page</a><a href={`${base}category/news`}>News & Politics</a><a href={`${base}category/culture`}>Arts & Culture</a><a href={`${base}category/science`}>Science & Tech</a><a href={`${base}category/lifestyle`}>Lifestyle</a><a href={`${base}category/sports`}>Sports</a></div><div class="nav-tools"><SearchButton client:load /><span class="tool-divider"></span><ReadingListButton client:load /></div></nav>
++  </header>
++  <div class="news-ticker"><span class="ticker-label"><i></i>THE LATEST</span><a href={`${base}articles/manufacturing-boom`}>A new chapter for American manufacturing <span aria-hidden="true">↗</span></a><span class="ticker-separator">/</span><a class="second-ticker" href={`${base}articles/future-of-journalism`}>Finding truth in a changing media landscape <span aria-hidden="true">↗</span></a><span class="ticker-end">Good stories. Every day.</span></div>
++  <main id="stories">
++    <div class="page-intro"><div><p class="eyebrow">A WORLD WORTH UNDERSTANDING</p><h1>Today’s perspective<span>.</span></h1></div><p>The stories that matter.<br />The perspectives that stay with you.</p></div>
++    <div class="lead-grid">
++      <section class="featured-context" aria-label="Featured story"><ContextStory article={byId('silent-architects')} image={`${base}images/editorial/forest.jpg`} label="Science & Nature" summary="They sustain our world in ways we’re only beginning to understand. A closer look at the extraordinary life of plants—and why our future depends on them." /></section>
++      <aside class="latest-rail"><div class="section-top"><h2>In the conversation</h2><span class="tiny-spark" aria-hidden="true">✳</span></div><div class="compact-context">{['manufacturing-boom', 'future-of-journalism', 'olympic-dreams'].map(id => <ContextStory article={byId(id)} />)}</div><a class="text-link rail-link" href="#editors">More worth reading <span aria-hidden="true">↗</span></a></aside>
+     </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++    <section class="editors" id="editors" aria-labelledby="editors-heading"><div class="section-top"><h2 id="editors-heading">The editor’s picks<span class="orange-period">.</span></h2><span class="section-caption">GOOD STORIES, HANDPICKED.</span></div><div class="filter-bar" role="group" aria-label="Filter editor’s picks">{categories.map(([name, value]) => <button type="button" data-filter={value} class:list={['filter', { active: value === 'all' }]} aria-pressed={value === 'all'}>{name}</button>)}<span class="filter-count" aria-live="polite">4 stories to explore</span></div><div class="picks-grid standard-context">{picks.map(article => <div class="pick-item" data-category={article.data.category.toLowerCase()}><ContextStory article={article} /></div>)}</div><p class="empty-state" hidden>No picks in this section today. <a href={`${base}category/news`}>Explore News & Politics ↗</a></p></section>
++    <section class="newsletter"><div class="newsletter-icon" aria-hidden="true">✳</div><div><p class="eyebrow">A LITTLE PERSPECTIVE IN YOUR INBOX</p><h2>Make room for a better read.</h2><p>Our best stories, thoughtful perspectives, and a few good surprises.</p></div><a href={`${base}signup`}>Get the daily edition <span aria-hidden="true">↗</span></a></section>
++    <div class="bottom-note"><span><i class="orange-dot"></i>INDEPENDENT MINDS. SHARED CURIOSITY.</span><span>Thanks for reading with us.</span></div>
++  </main>
++  <footer class="edition-footer"><a href={base}>The DevTools Times<span>.</span></a><span>© {new Date().getFullYear()} The DevTools Times</span><div><a href={`${base}legal/privacy`}>Privacy</a><a href={`${base}legal/terms`}>Terms</a><a href={`${base}legal/imprint`}>About us ↗</a></div></footer>
++</div>
++<script>
++  const filters = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
++  filters.forEach(button => button.addEventListener('click', () => {
++    const category = button.dataset.filter;
++    filters.forEach(filter => { const active = filter === button; filter.classList.toggle('active', active); filter.setAttribute('aria-pressed', String(active)); });
++    let count = 0;
++    document.querySelectorAll<HTMLElement>('.pick-item').forEach(item => { const visible = category === 'all' || item.dataset.category === category; item.hidden = !visible; if (visible) count++; });
++    const counter = document.querySelector('.filter-count');
++    if (counter) counter.textContent = `${count} ${count === 1 ? 'story' : 'stories'} to explore`;
++    const empty = document.querySelector<HTMLElement>('.empty-state');
++    if (empty) empty.hidden = count > 0;
++  }));
++</script>
++</body></html>
+diff --git a/src/styles/editorial.css b/src/styles/editorial.css
+new file mode 100644
+index 0000000..06f8d49
+--- /dev/null
++++ b/src/styles/editorial.css
+@@ -0,0 +1,22 @@
++:root{--paper:#faf9f6;--ink:#222620;--muted:#777971;--line:#dedfd7;--accent:#cf542d;--serif:'Playfair Display',Georgia,serif;--sans:'DM Sans',Arial,sans-serif}
++.edition{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
++.edition a{text-decoration:none;color:inherit}.edition button{font-family:inherit;cursor:pointer}.edition :is(a,button):focus-visible{outline:2px solid var(--accent);outline-offset:5px}.edition a:hover{color:var(--accent)}
++.publication{max-width:1440px;margin-inline:auto;padding-inline:64px}.utility{display:flex;justify-content:space-between;align-items:center;padding-block:17px;border-bottom:1px solid var(--line);font-size:11px}.utility>span{display:flex;align-items:center;gap:9px}.orange-dot{display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;flex-shrink:0}.utility-actions{display:flex;align-items:center;gap:28px}.edition-label{font-size:9px;letter-spacing:1.6px;color:var(--muted)}.utility-actions a{font-weight:600}.utility-actions a span{margin-inline-start:10px}
++.masthead{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-block:29px 31px}.edition-date{font-size:10px;display:grid;gap:5px;min-width:190px}.muted{color:var(--muted)}.wordmark{font-family:var(--serif);font-size:47px;letter-spacing:-2px;font-weight:650;white-space:nowrap}.logo-period{color:var(--accent)}.subscribe-button{padding:12px 17px;background:var(--accent);color:white!important;font-size:11px;font-weight:600;white-space:nowrap}.subscribe-button span{margin-inline-start:14px}.subscribe-button:hover{background:#ae4423}
++.edition-nav{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);display:flex;justify-content:space-between;gap:20px;min-height:54px}.nav-links{display:flex;align-items:stretch;gap:29px}.nav-links a{font-size:11px;white-space:nowrap;display:flex;align-items:center;position:relative;font-weight:550}.nav-links .current{color:var(--accent)}.nav-links .current:after{content:'';height:3px;position:absolute;inset-inline:0;bottom:-1px;background:var(--accent)}.nav-tools{display:flex;align-items:center;gap:17px}.nav-tools button{min-width:24px;min-height:32px}.nav-tools svg{width:18px;height:18px;color:var(--ink)}.tool-divider{height:18px;width:1px;background:var(--line)}
++.news-ticker{display:flex;align-items:center;gap:20px;background:#f0eee8;padding:13px 15px;margin-block:16px 0;font-size:10px;white-space:nowrap}.ticker-label{color:var(--accent);font-size:9px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:7px}.ticker-label i{width:5px;height:5px;background:var(--accent);border-radius:50%}.news-ticker a span{margin-inline-start:10px}.ticker-separator{color:#bcbdb4}.ticker-end{margin-inline-start:auto;font-style:italic;color:var(--muted);font-family:var(--serif)}
++.page-intro{display:flex;justify-content:space-between;align-items:center;padding-block:37px 28px}.eyebrow{font-size:9px;font-weight:600;letter-spacing:1.6px;margin:0 0 10px;color:var(--muted)}.page-intro h1{font-family:var(--serif);font-size:44px;line-height:1.15;letter-spacing:-1.3px;margin:0;font-weight:500}.page-intro h1 span{color:var(--accent)}.page-intro>p{font-size:11px;line-height:1.8;color:var(--muted);margin:14px 0 0}
++.lead-grid{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(0,1fr);gap:32px}.featured-context{--story-context:featured}.compact-context{--story-context:compact}.standard-context{--story-context:standard}.context-story{min-width:0}.story-image{display:block;overflow:hidden;position:relative}.story-image img{width:100%;height:auto;aspect-ratio:1.63;object-fit:cover;display:block;transition:transform .4s}.story-image:hover img{transform:scale(1.025)}.feature-label{display:none;position:absolute;inset-inline-start:20px;bottom:20px;background:var(--paper);padding:8px 11px;color:var(--ink);font-size:8px;letter-spacing:1.5px;font-weight:600}.feature-note{display:none;color:var(--muted);letter-spacing:1px}.story-kicker{color:var(--accent);text-transform:uppercase;font-size:9px;font-weight:650;letter-spacing:1px;margin-block:16px 9px}.story-title h3{font-family:var(--serif);font-size:22px;line-height:1.27;font-weight:500;margin:0;letter-spacing:-.35px}.story-summary{color:#73766e;font-size:11px;line-height:1.8;margin-block:12px 15px}.story-meta{font-size:9px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;min-height:28px}.story-meta button{color:var(--muted);display:grid;place-items:center}.story-meta svg{width:16px;height:16px}.story-author{display:none}
++/* Context fallback keeps the same component usable in older browsers. */
++:where(.featured-context) .feature-label{display:block}:where(.featured-context) .feature-note{display:inline}:where(.featured-context) .story-title h3{font-size:35px;line-height:1.2;letter-spacing:-.8px}:where(.featured-context) .story-summary{max-width:650px;font-size:12px;margin-block:12px}:where(.featured-context) .story-kicker{margin-block-start:21px}:where(.featured-context) .story-author{display:inline}
++:where(.compact-context) .story-image,:where(.compact-context) .story-summary{display:none}:where(.compact-context) .context-story{padding-block:5px 18px;border-bottom:1px solid var(--line)}:where(.compact-context) .story-title h3{font-size:21px;line-height:1.32}:where(.compact-context) .story-meta{margin-block-start:9px}:where(.compact-context) .story-kicker{margin-block:14px 10px}
++@container style(--story-context:featured){.feature-label{display:block}.feature-note{display:inline}.story-title h3{font-size:35px;line-height:1.2;letter-spacing:-.8px}.story-summary{max-width:650px;font-size:12px;margin-block:12px}.story-kicker{margin-block-start:21px}.story-author{display:inline}}
++@container style(--story-context:compact){.story-image,.story-summary{display:none}.context-story{padding-block:5px 18px;border-bottom:1px solid var(--line)}.story-title h3{font-size:21px;line-height:1.32}.story-meta{margin-block-start:9px}.story-kicker{margin-block:14px 10px}}
++.latest-rail{border-inline-start:1px solid var(--line);padding-inline-start:28px}.section-top{display:flex;align-items:center;justify-content:space-between;gap:15px}.section-top h2{font-family:var(--serif);font-weight:500;font-size:25px;letter-spacing:-.6px;margin:0}.latest-rail .section-top{border-bottom:1px solid var(--ink);padding-block:0 15px}.latest-rail h2{font-size:21px}.tiny-spark{color:var(--accent);font-size:24px}.text-link{font-size:10px;font-weight:600;display:flex;justify-content:space-between}.rail-link{margin-block-start:20px}.text-link span{color:var(--accent)}
++.editors{margin-block-start:38px;padding-block-start:24px;border-top:1px solid var(--ink)}.orange-period{color:var(--accent)}.section-caption{font-size:8px;letter-spacing:1.5px;color:var(--muted)}.filter-bar{display:flex;gap:6px;align-items:center;margin-block:20px 24px}.filter{background:transparent;border:1px solid transparent;border-radius:3px;padding:7px 12px;color:#74766f;font-size:10px;white-space:nowrap}.filter.active{border-color:var(--ink);color:var(--ink);background:#f0efe9}.filter:hover{background:#f0efe9}.filter-count{margin-inline-start:auto;color:var(--muted);font-size:9px;white-space:nowrap}.picks-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px}.pick-item{min-width:0}.pick-item[hidden]{display:none}.picks-grid .story-title h3{font-size:20px}.picks-grid .story-image img{aspect-ratio:1.5}.picks-grid .story-summary{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:10px;min-height:36px;margin-block:10px}.picks-grid .story-meta{border-top:1px solid var(--line);padding-block-start:8px;margin-block-start:13px}.empty-state{padding:35px;text-align:center;color:var(--muted)}.empty-state a{text-decoration:underline}
++.newsletter{display:flex;align-items:center;gap:24px;padding:30px 32px;margin-block:40px 0;background:#f0ede4;border:1px solid #e5e1d7}.newsletter-icon{font-size:61px;line-height:1;color:var(--accent);padding-inline-end:8px}.newsletter .eyebrow{color:#8b735c;font-size:8px;margin-block-end:7px}.newsletter h2{font-family:var(--serif);font-size:28px;letter-spacing:-.5px;margin:0;font-weight:500}.newsletter p:last-child{font-size:10px;color:var(--muted);margin:9px 0 0}.newsletter>a{margin-inline-start:auto;background:var(--ink);color:white;padding:14px 19px;white-space:nowrap;font-size:10px}.newsletter>a:hover{background:var(--accent)}.newsletter>a span{margin-inline-start:24px}.bottom-note{display:flex;justify-content:space-between;padding-block:24px 29px;font-size:9px;color:var(--muted)}.bottom-note>span:first-child{letter-spacing:1px;display:flex;align-items:center;gap:7px;font-size:8px}.edition-footer{border-top:1px solid var(--line);display:flex;align-items:center;gap:24px;padding-block:23px 30px;font-size:9px;color:var(--muted)}.edition-footer>a{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-.7px;color:var(--ink)}.edition-footer>a span{color:var(--accent)}.edition-footer>div{margin-inline-start:auto;display:flex;gap:20px}.skip-link{position:absolute;left:15px;top:-100px;background:var(--paper);padding:10px;z-index:100}.skip-link:focus{top:10px}
++@media(min-width:1500px){.publication{padding-inline:60px}.page-intro{padding-block:42px 32px}.story-image img{aspect-ratio:1.8}}
++@media(max-width:1100px){.publication{padding-inline:32px}.wordmark{font-size:38px}.edition-date{min-width:140px;font-size:9px}.nav-links{gap:20px}.ticker-end{display:none}.lead-grid{gap:24px}.latest-rail{padding-inline-start:22px}.latest-rail h2{font-size:19px}.story-title h3{font-size:19px}.compact-context .story-title h3{font-size:19px}.picks-grid{gap:18px}.newsletter{padding:25px}.newsletter h2{font-size:26px}}
++@media(max-width:800px){.publication{padding-inline:24px}.edition-date{display:none}.wordmark{font-size:37px}.masthead{padding-block:22px}.nav-links{gap:22px;overflow-x:auto}.edition-nav{gap:16px}.nav-tools{gap:10px;flex-shrink:0}.news-ticker{gap:14px}.second-ticker,.ticker-separator{display:none}.lead-grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:22px}.page-intro h1{font-size:38px}.page-intro>p{font-size:10px}.featured-context .story-title h3{font-size:29px}.latest-rail{padding-inline-start:20px}.latest-rail h2{font-size:18px}.compact-context .story-title h3{font-size:17px}.compact-context .context-story{padding-block-end:11px}.picks-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:25px}.filter-bar{flex-wrap:wrap}.filter-count{display:none}.newsletter-icon{display:none}.newsletter{gap:20px}.newsletter h2{font-size:23px}.newsletter>a{padding:12px}.newsletter>a span{margin-inline-start:8px}.edition-footer{flex-wrap:wrap}.edition-footer>div{margin-inline-start:auto}}
++@media(max-width:560px){.publication{padding-inline:20px}.utility{font-size:8px;padding-block:12px}.edition-label{display:none}.utility-actions{gap:0}.masthead{gap:10px}.wordmark{font-size:30px;letter-spacing:-1.6px}.subscribe-button{font-size:8px;padding:9px}.subscribe-button span{display:none}.nav-links{gap:20px}.nav-links a{font-size:10px}.nav-tools{gap:9px}.tool-divider{display:none}.edition-nav{min-height:47px}.news-ticker{padding:11px;font-size:8px;gap:10px}.ticker-label{font-size:8px;letter-spacing:.5px}.page-intro{padding-block:29px 23px}.page-intro h1{font-size:35px}.page-intro>p{display:none}.eyebrow{font-size:8px}.lead-grid{grid-template-columns:1fr;gap:26px}.featured-context .story-title h3{font-size:30px}.story-image img{aspect-ratio:1.5}.latest-rail{border-inline-start:0;border-top:1px solid var(--ink);padding-inline-start:0;padding-block-start:20px}.latest-rail h2{font-size:22px}.compact-context .story-title h3{font-size:21px}.compact-context .context-story{padding-block:4px 10px}.compact-context .story-kicker{margin-block-start:13px}.editors{margin-block-start:28px}.section-top h2{font-size:24px}.section-caption{font-size:6px;letter-spacing:1px}.filter{padding:6px 8px;font-size:9px}.filter-bar{gap:4px;margin-block:16px 20px}.picks-grid{gap:22px 16px}.picks-grid .story-title h3{font-size:18px}.picks-grid .story-kicker{font-size:8px}.picks-grid .story-summary{font-size:10px}.newsletter{padding:24px;display:block;margin-block-start:30px}.newsletter h2{font-size:26px}.newsletter>a{display:flex;margin-block-start:20px;justify-content:space-between}.bottom-note{font-size:8px}.bottom-note>span:first-child{font-size:6px;letter-spacing:.7px}.edition-footer{gap:12px;justify-content:space-between}.edition-footer>a{font-size:19px}.edition-footer>div{width:100%;margin-block-start:5px;margin-inline-start:0}.feature-label{font-size:7px;inset-inline-start:15px;bottom:15px}}
++@media(prefers-reduced-motion:reduce){.story-image img{transition:none}}

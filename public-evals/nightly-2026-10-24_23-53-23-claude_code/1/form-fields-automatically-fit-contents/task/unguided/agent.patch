@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 16px;
++      max-width: 600px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .contact-form label {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 4px;
++      max-width: 100%;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .contact-form input,
++    .contact-form textarea,
++    .contact-form select {
++      /* Size each control to fit its content instead of a fixed default */
++      field-sizing: content;
++      min-width: 8ch;
++      max-width: 100%;
++      font: inherit;
++      font-weight: normal;
++      color: var(--text);
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .contact-form textarea {
++      min-height: 2lh;
++      resize: none;
++    }
++
++    .contact-form input:focus,
++    .contact-form textarea:focus,
++    .contact-form select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .contact-form .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Get in Touch</h2>
++      <form class="contact-form" action="/contact" method="post">
++        <label>
++          Name
++          <input type="text" name="name" placeholder="Your name" required>
++        </label>
++        <label>
++          Topic
++          <select name="topic">
++            <option value="order">Order question</option>
++            <option value="feedback">Feedback</option>
++            <option value="catering">Catering</option>
++            <option value="wholesale-beans">Wholesale beans</option>
++          </select>
++        </label>
++        <label>
++          Message
++          <textarea name="message" rows="1" placeholder="How can we help?" required></textarea>
++        </label>
++        <button type="submit" class="btn">Send</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

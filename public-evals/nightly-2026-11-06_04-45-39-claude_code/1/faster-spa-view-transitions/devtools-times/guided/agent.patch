@@ -1,0 +1,293 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ffd450b 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,8 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++// Identifies this page's view in the client-side view cache (see src/scripts/view-cache.ts).
++const viewKey = Astro.url.pathname + Astro.url.search;
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +47,16 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-host>
++          <div class="spa-view" data-view-key={viewKey} tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..ecdfe0a
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,223 @@
++/**
++ * SPA view cache for Astro's <ClientRouter />.
++ *
++ * By default the ClientRouter throws away the whole <body> on every navigation
++ * and rebuilds it from the freshly fetched document. This module keeps the
++ * rendered view (the page-specific content inside <main data-view-host>) of the
++ * last few visited pages alive in the DOM. Inactive views are hidden with
++ * `content-visibility: hidden`, which skips their layout and paint work while
++ * the browser keeps their rendering state. Hydrated islands, form input, scroll
++ * containers and iframes in those views stay as they are.
++ *
++ * When the user goes back or forward (history traversal) to a cached view:
++ *   - no network request is made: the page "skeleton" (head plus layout
++ *     chrome, without the view content) that was stored when the view was
++ *     first rendered is used as the new document, and
++ *   - the cached live view is shown again instead of being rebuilt.
++ *
++ * Regular link clicks (push/replace navigations) and form submissions always
++ * render fresh server content. Fresh content replaces any cached copy of that
++ * URL.
++ *
++ * Live views are carried across the body swap with Astro's own
++ * `transition:persist` mechanism. Astro moves them with `moveBefore()` where
++ * it is supported, so their state is kept during the move.
++ */
++import type {
++  TransitionBeforePreparationEvent,
++  TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++const HOST_SELECTOR = "[data-view-host]";
++const VIEW_SELECTOR = ":scope > [data-view-key]";
++const PERSIST_ATTR = "data-astro-transition-persist";
++const PERSIST_PREFIX = "spa-view-";
++const INACTIVE_ATTR = "data-view-inactive";
++const SKELETON_ATTR = "data-view-skeleton";
++
++/**
++ * Upper bound of views kept alive (including the active one). Hidden views
++ * cost memory (DOM, listeners, framework state), so this is an LRU cache.
++ * The limit is lower on low-memory devices.
++ */
++const MAX_VIEWS =
++  typeof navigator !== "undefined" &&
++  "deviceMemory" in navigator &&
++  (navigator as Navigator & { deviceMemory: number }).deviceMemory <= 2
++    ? 3
++    : 6;
++
++interface CacheEntry {
++  view: HTMLElement;
++  /** Serialized document without the view content; null if unknown. */
++  skeleton: string | null;
++}
++
++/** Insertion order = LRU order (oldest first). */
++const cache = new Map<string, CacheEntry>();
++let persistCounter = 0;
++let parser: DOMParser | undefined;
++
++const normalizeKey = (pathname: string, search = "") =>
++  (pathname.replace(/\/+$/, "") || "/") + search;
++
++const keyOfUrl = (url: URL) => normalizeKey(url.pathname, url.search);
++
++const keyOfView = (view: Element) => {
++  const raw = view.getAttribute("data-view-key") ?? "";
++  const url = new URL(raw, location.origin);
++  return keyOfUrl(url);
++};
++
++const touch = (key: string, entry: CacheEntry) => {
++  cache.delete(key);
++  cache.set(key, entry);
++};
++
++const isLive = (entry: CacheEntry | undefined): entry is CacheEntry =>
++  !!entry && entry.view.isConnected;
++
++/** Serialize `doc` with `view` swapped for an empty placeholder. */
++function serializeSkeleton(doc: Document, view: Element, key: string) {
++  const placeholder = doc.createElement("div");
++  placeholder.setAttribute("data-view-key", key);
++  placeholder.setAttribute(SKELETON_ATTR, "");
++  view.replaceWith(placeholder);
++  const html = "<!doctype html>" + doc.documentElement.outerHTML;
++  placeholder.replaceWith(view);
++  return html;
++}
++
++function setActive(view: HTMLElement, active: boolean) {
++  view.toggleAttribute(INACTIVE_ATTR, !active);
++  view.inert = !active;
++  if (active) view.removeAttribute("aria-hidden");
++  else view.setAttribute("aria-hidden", "true");
++}
++
++/** Mark the view for `key` active and every other view inactive. */
++function applyViewState(focusView: boolean) {
++  const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
++  if (!host) return;
++  const current = keyOfUrl(new URL(location.href));
++  let active: HTMLElement | undefined;
++  for (const view of host.querySelectorAll<HTMLElement>(VIEW_SELECTOR)) {
++    view.removeAttribute(PERSIST_ATTR);
++    const isActive = !active && keyOfView(view) === current;
++    if (isActive) active = view;
++    setActive(view, isActive);
++  }
++  // Redirects can make the URL differ from the server-rendered key.
++  // Fall back to the first view, which is always the incoming one.
++  if (!active) {
++    active = host.querySelector<HTMLElement>(VIEW_SELECTOR) ?? undefined;
++    if (active) setActive(active, true);
++  }
++  // Keep keyboard focus in a logical place after the swap, unless something
++  // (e.g. a persisted element) already holds focus.
++  if (
++    focusView &&
++    active &&
++    (!document.activeElement || document.activeElement === document.body)
++  ) {
++    active.focus({ preventScroll: true });
++  }
++}
++
++/** Register the initially server-rendered view. */
++function init() {
++  const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
++  const view = host?.querySelector<HTMLElement>(VIEW_SELECTOR);
++  if (!view) return;
++  const key = keyOfView(view);
++  if (!cache.has(key)) cache.set(key, { view, skeleton: null });
++  applyViewState(false);
++}
++
++// History traversal to a cached view: skip the network round trip.
++document.addEventListener("astro:before-preparation", (event) => {
++  const e = event as TransitionBeforePreparationEvent;
++  if (e.navigationType !== "traverse" || e.formData) return;
++  const entry = cache.get(keyOfUrl(e.to));
++  if (!isLive(entry) || !entry.skeleton) return;
++  const skeleton = entry.skeleton;
++  e.loader = async () => {
++    parser ??= new DOMParser();
++    e.newDocument = parser.parseFromString(skeleton, "text/html");
++  };
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const e = event as TransitionBeforeSwapEvent;
++  const doc = e.newDocument;
++  const liveHost = document.querySelector(HOST_SELECTOR);
++  const newHost = doc.querySelector(HOST_SELECTOR);
++
++  // The incoming page has no view host: the cache cannot survive this swap.
++  if (!liveHost || !newHost) {
++    cache.clear();
++    return;
++  }
++
++  const incoming = newHost.querySelector<HTMLElement>(VIEW_SELECTOR);
++  if (!incoming) {
++    cache.clear();
++    return;
++  }
++
++  const key = keyOfView(incoming);
++  const cached = cache.get(key);
++  const isSkeleton = incoming.hasAttribute(SKELETON_ATTR);
++  const reuse = isLive(cached) && (isSkeleton || e.navigationType === "traverse");
++
++  if (reuse) {
++    // Show the live cached view in place of whatever was fetched/restored.
++    if (!isSkeleton) {
++      cached.skeleton ??= serializeSkeleton(doc, incoming, key);
++    }
++    touch(key, cached);
++  } else if (isSkeleton) {
++    // Defensive: the skeleton has no content and the cached view is gone
++    // (should not happen, eviction only runs here). Load the page normally.
++    cache.clear();
++    location.href = e.to.href;
++    return;
++  } else {
++    // Fresh content: this replaces any stale cached copy of the same URL.
++    const skeleton = serializeSkeleton(doc, incoming, key);
++    cache.delete(key);
++    cache.set(key, { view: incoming, skeleton });
++  }
++
++  // Evict least recently used views beyond the limit.
++  while (cache.size > MAX_VIEWS) {
++    const oldest = cache.keys().next().value as string;
++    cache.delete(oldest);
++  }
++  // Drop entries whose element is no longer in the live document (e.g. the
++  // previous stale copy of a URL that was just re-rendered).
++  for (const [k, entry] of cache) {
++    if (k !== key && !isLive(entry)) cache.delete(k);
++  }
++
++  // Build placeholders in the incoming host. Astro's swap moves each live
++  // view into the placeholder with the same persist id. The active view is
++  // first in DOM order, so its IDs win over duplicates in hidden views.
++  for (const [k, entry] of cache) {
++    const isTarget = k === key;
++    if (isTarget && !reuse) continue; // the fresh view is already in place
++    const id = `${PERSIST_PREFIX}${++persistCounter}`;
++    entry.view.setAttribute(PERSIST_ATTR, id);
++    const placeholder = doc.createElement("div");
++    placeholder.setAttribute(PERSIST_ATTR, id);
++    if (isTarget) {
++      incoming.replaceWith(placeholder);
++    } else {
++      newHost.append(placeholder);
++    }
++  }
++});
++
++document.addEventListener("astro:after-swap", () => applyViewState(true));
++
++init();
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d2b20b9 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,25 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/*
++ * SPA view cache (src/scripts/view-cache.ts).
++ * Inactive views stay in the DOM. `content-visibility: hidden` skips their
++ * layout and paint but keeps their rendering state, so going back to them is
++ * almost instant. They are also taken out of flow so they don't add height.
++ */
++.spa-view:focus {
++  outline: none;
++}
++
++.spa-view[data-view-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto 0;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view[data-view-inactive] {
++    display: none;
++  }
++}

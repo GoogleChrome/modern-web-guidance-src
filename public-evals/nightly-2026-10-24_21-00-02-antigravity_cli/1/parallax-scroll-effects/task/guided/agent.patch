@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,160 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section */
++    @keyframes parallax {
++      from {
++        transform: translateY(var(--offset, 100px));
++      }
++      to {
++        transform: translateY(calc(var(--offset, 100px) * -0.5));
++      }
++    }
++
++    .parallax-wrapper {
++      position: relative;
++      overflow: clip;
++      height: 85vh;
++      min-height: 520px;
++      display: grid;
++      place-items: center;
++      background-color: #2b1b17;
++      color: var(--light);
++    }
++
++    .parallax-layer {
++      grid-area: 1 / 1;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      pointer-events: none;
++    }
++
++    .parallax-layer:nth-child(1) {
++      --offset: 80px;
++      z-index: 1;
++    }
++
++    .parallax-layer:nth-child(2) {
++      --offset: 180px;
++      z-index: 2;
++      justify-content: space-between;
++      padding: 0 8%;
++    }
++
++    .parallax-layer:nth-child(3) {
++      --offset: 300px;
++      z-index: 3;
++      pointer-events: auto;
++    }
++
++    .parallax-layer:nth-child(4) {
++      --offset: 420px;
++      z-index: 4;
++      align-items: flex-end;
++      justify-content: space-between;
++      padding: 0 12% 4%;
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-wrapper {
++          view-timeline: --parallax-wrapper;
++        }
++
++        .parallax-layer {
++          animation: parallax linear both;
++          animation-timeline: --parallax-wrapper;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer {
++        animation: none;
++        transform: none;
++      }
++    }
++
++    .parallax-bg-img {
++      width: 100%;
++      height: 125%;
++      object-fit: cover;
++      filter: brightness(0.45) contrast(1.05);
++    }
++
++    .parallax-card-img {
++      width: clamp(160px, 22vw, 260px);
++      aspect-ratio: 4 / 5;
++      object-fit: cover;
++      border-radius: 12px;
++      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
++      border: 2px solid rgba(215, 204, 200, 0.25);
++    }
++
++    .parallax-card-img.right {
++      margin-top: 12vh;
++    }
++
++    .parallax-card-img.left {
++      margin-bottom: 12vh;
++    }
++
++    .parallax-badge-img {
++      width: clamp(110px, 14vw, 170px);
++      aspect-ratio: 1;
++      object-fit: cover;
++      border-radius: 50%;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
++      border: 3px solid var(--accent);
++    }
++
++    .parallax-content {
++      max-width: 560px;
++      background: rgba(43, 27, 23, 0.85);
++      backdrop-filter: blur(8px);
++      padding: 2.5rem;
++      border-radius: 12px;
++      text-align: center;
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
++      margin: 0 20px;
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      color: var(--accent);
++      margin-bottom: 0.5rem;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.25rem;
++      margin-bottom: 1rem;
++      color: #fff;
++    }
++
++    .parallax-content p {
++      color: var(--secondary);
++      margin-bottom: 1.25rem;
++      font-size: 1.05rem;
++    }
++
++    @media (max-width: 768px) {
++      .parallax-card-img,
++      .parallax-badge-img {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +325,64 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="parallax-wrapper">
++      <!-- Layer 1: Deep Background -->
++      <div class="parallax-layer">
++        <img
++          class="parallax-bg-img"
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80"
++          alt=""
++          loading="lazy"
++        >
++      </div>
++
++      <!-- Layer 2: Mid-ground Roasting Visuals -->
++      <div class="parallax-layer">
++        <img
++          class="parallax-card-img left"
++          src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++          alt=""
++          loading="lazy"
++        >
++        <img
++          class="parallax-card-img right"
++          src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++          alt=""
++          loading="lazy"
++        >
++      </div>
++
++      <!-- Layer 3: Foreground Story Card -->
++      <div class="parallax-layer">
++        <div class="parallax-content">
++          <span class="parallax-eyebrow">Bean to Cup</span>
++          <h2 id="craft-heading">The Art of the Slow Roast</h2>
++          <p>Every small batch is roasted by hand in cast-iron drums, unlocking rich caramel notes and a velvety finish that elevates your daily ritual.</p>
++          <a href="/about" class="btn">Explore Our Process</a>
++        </div>
++      </div>
++
++      <!-- Layer 4: Fast Foreground Accents -->
++      <div class="parallax-layer">
++        <img
++          class="parallax-badge-img"
++          src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80"
++          alt=""
++          loading="lazy"
++        >
++        <img
++          class="parallax-badge-img"
++          src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=400&q=80"
++          alt=""
++          loading="lazy"
++        >
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

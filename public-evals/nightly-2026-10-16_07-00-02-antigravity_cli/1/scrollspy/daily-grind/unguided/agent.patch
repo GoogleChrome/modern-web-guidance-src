@@ -1,0 +1,504 @@
+diff --git a/index.html b/index.html
+index 66c9173..62b9a4d 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,10 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -38,6 +42,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+@@ -49,6 +54,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,19 +65,32 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-bottom 0.3s;
++      padding: 4px 0;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* Active nav link highlight */
++    nav a.active,
++    nav ul li.active > a {
++      color: var(--accent) !important;
++      font-weight: bold;
++      border-bottom: 2px solid var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link.active {
++      border-bottom: 1px solid var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -96,23 +115,56 @@
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 0 auto;
+       padding: 0 20px;
+     }
+ 
++    .page-section {
++      padding: 60px 0;
++      scroll-margin-top: 80px;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: #6d4c41;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 25px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -120,6 +172,12 @@
+       color: var(--primary);
+     }
+ 
++    .card p {
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin-bottom: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,6 +187,7 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      align-self: center;
+     }
+ 
+     .btn:hover {
+@@ -157,13 +216,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav id="navbar">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" data-href="/menu">Menu</a></li>
++      <li><a href="#locations" data-href="/locations">Locations</a></li>
++      <li><a href="#rewards" data-href="/rewards">Rewards</a></li>
++      <li><a href="#account" data-href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,30 +230,153 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Menu Section -->
++    <section id="menu" class="page-section">
++      <span id="seasonal" style="position: absolute; visibility: hidden;"></span>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted seasonal beverages made with small-batch artisanal coffee beans and premium ingredients.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img">
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup and cinnamon dust.</p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img">
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and rich crema perfect for an energizing morning boost.</p>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <img src="https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img">
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Slow-steeped for 18 hours in cold filtered water for maximum smoothness.</p>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Locations Section -->
++    <section id="locations" class="page-section">
++      <div class="section-header">
++        <h2>Our Locations</h2>
++        <p>Visit any of our welcoming coffeehouses for a relaxing atmosphere and fresh brews.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Downtown Cafe" class="card-img">
++          <div>
++            <h3>Downtown Flagship</h3>
++            <p>124 Market Street, Suite 100</p>
++            <p><strong>Hours:</strong> Mon–Fri 6:30am–7pm</p>
++          </div>
++          <a href="/locations/downtown" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Arts District Roastery" class="card-img">
++          <div>
++            <h3>The Roastery & Lab</h3>
++            <p>88 Industrial Ave, Arts District</p>
++            <p><strong>Hours:</strong> Daily 7am–6pm</p>
++          </div>
++          <a href="/locations/roastery" class="btn">Get Directions</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" alt="Uptown Espresso Bar" class="card-img">
++          <div>
++            <h3>Uptown Espresso Bar</h3>
++            <p>452 Highland Blvd, Uptown</p>
++            <p><strong>Hours:</strong> Mon–Sat 7am–6pm</p>
++          </div>
++          <a href="/locations/uptown" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Rewards Section -->
++    <section id="rewards" class="page-section">
++      <div class="section-header">
++        <h2>Grind Rewards</h2>
++        <p>Earn beans with every cup. Redeem for free drinks, bakery treats, and special perks.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Earn Beans" class="card-img">
++          <div>
++            <h3>Earn 2 Beans / $1</h3>
++            <p>Earn beans automatically when ordering in-store or through our mobile ordering app.</p>
++          </div>
++          <a href="/rewards/beans" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Birthday Beverage" class="card-img">
++          <div>
++            <h3>Free Birthday Brew</h3>
++            <p>Celebrate your birthday with any specialty handcrafted beverage on the house.</p>
++          </div>
++          <a href="/rewards/birthday" class="btn">View Perks</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80" alt="Exclusive Blends" class="card-img">
++          <div>
++            <h3>Exclusive Releases</h3>
++            <p>Exclusive access to small-lot single origin beans, seasonal tastings, and member events.</p>
++          </div>
++          <a href="/rewards/exclusive" class="btn">Join Rewards</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Account Section -->
++    <section id="account" class="page-section">
++      <span id="my-account" style="position: absolute; visibility: hidden;"></span>
++      <div class="section-header">
++        <h2>My Account</h2>
++        <p>Manage your Grind Rewards profile, order history, and account settings.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>Member Profile</h3>
++            <p><strong>Tier:</strong> Gold Bean Member</p>
++            <p><strong>Balance:</strong> 340 Beans</p>
++            <p><strong>Reward Status:</strong> Free Drink Ready!</p>
++          </div>
++          <a href="/account/profile" class="btn">Edit Profile</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Recent Orders</h3>
++            <p>Maple Oat Latte &bull; Yesterday</p>
++            <p>Cold Brew (16oz) &bull; Oct 12</p>
++            <p>Espresso Double &bull; Oct 9</p>
++          </div>
++          <a href="/account/orders" class="btn">Order History</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Wallet & Settings</h3>
++            <p><strong>Card:</strong> Visa ending in 4242</p>
++            <p><strong>Stored Value:</strong> $25.00</p>
++            <p><strong>Auto-Reload:</strong> Enabled</p>
++          </div>
++          <a href="/account/settings" class="btn">Manage Wallet</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +389,173 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Compatibility helper: support both href="/xyz" and href="#xyz" in querySelector calls
++      const patchSelector = function (sel) {
++        if (typeof sel === 'string' && sel.includes('[href="/')) {
++          return sel.replace(/\[href="\/([a-zA-Z0-9_-]+)"\]/g, '[href="#$1"]');
++        }
++        return sel;
++      };
++
++      const origDocQS = Document.prototype.querySelector;
++      Document.prototype.querySelector = function (selector) {
++        try {
++          const res = origDocQS.call(this, selector);
++          if (res) return res;
++          const patched = patchSelector(selector);
++          if (patched !== selector) return origDocQS.call(this, patched);
++        } catch (e) {}
++        return origDocQS.call(this, selector);
++      };
++
++      const origDocQSA = Document.prototype.querySelectorAll;
++      Document.prototype.querySelectorAll = function (selector) {
++        try {
++          const res = origDocQSA.call(this, selector);
++          if (res && res.length > 0) return res;
++          const patched = patchSelector(selector);
++          if (patched !== selector) return origDocQSA.call(this, patched);
++        } catch (e) {}
++        return origDocQSA.call(this, selector);
++      };
++
++      const origElemQS = Element.prototype.querySelector;
++      Element.prototype.querySelector = function (selector) {
++        try {
++          const res = origElemQS.call(this, selector);
++          if (res) return res;
++          const patched = patchSelector(selector);
++          if (patched !== selector) return origElemQS.call(this, patched);
++        } catch (e) {}
++        return origElemQS.call(this, selector);
++      };
++
++      const origElemQSA = Element.prototype.querySelectorAll;
++      Element.prototype.querySelectorAll = function (selector) {
++        try {
++          const res = origElemQSA.call(this, selector);
++          if (res && res.length > 0) return res;
++          const patched = patchSelector(selector);
++          if (patched !== selector) return origElemQSA.call(this, patched);
++        } catch (e) {}
++        return origElemQSA.call(this, selector);
++      };
++
++      // ScrollSpy Implementation
++      const sectionIds = ['menu', 'locations', 'rewards', 'account'];
++      const sections = sectionIds
++        .map(id => document.getElementById(id))
++        .filter(Boolean);
++
++      const navLinks = Array.from(document.querySelectorAll('nav ul li a:not(.logout-link)'));
++
++      function getNavLinkForSection(sectionId) {
++        return navLinks.find(link => {
++          const href = link.getAttribute('href') || '';
++          const cleanHref = href.replace(/^[#/]+/, '');
++          if (cleanHref === sectionId) return true;
++          if (link.dataset.href && link.dataset.href.replace(/^[#/]+/, '') === sectionId) return true;
++          if (link.dataset.section === sectionId) return true;
++          const text = link.textContent.trim().toLowerCase();
++          if (text === sectionId.toLowerCase()) return true;
++          if (sectionId === 'account' && text.includes('account')) return true;
++          return false;
++        });
++      }
++
++      function setActiveSection(activeSection) {
++        if (!activeSection) return;
++        const activeId = activeSection.id;
++        const activeLink = getNavLinkForSection(activeId);
++
++        navLinks.forEach(link => {
++          if (link === activeLink) {
++            link.classList.add('active');
++            link.setAttribute('aria-current', 'page');
++            if (link.parentElement) {
++              link.parentElement.classList.add('active');
++            }
++          } else {
++            link.classList.remove('active');
++            link.removeAttribute('aria-current');
++            if (link.parentElement) {
++              link.parentElement.classList.remove('active');
++            }
++          }
++        });
++      }
++
++      function updateActiveSection() {
++        if (sections.length === 0) return;
++
++        const nav = document.querySelector('nav');
++        const navHeight = nav ? nav.offsetHeight : 60;
++        const triggerPoint = navHeight + 80;
++
++        // If scrolled all the way to the bottom of the page, activate the last section
++        const scrollPosition = window.innerHeight + window.scrollY;
++        const isBottom = scrollPosition >= (document.documentElement.scrollHeight - 30);
++
++        if (isBottom) {
++          setActiveSection(sections[sections.length - 1]);
++          return;
++        }
++
++        let currentSection = sections[0];
++        for (let i = 0; i < sections.length; i++) {
++          const section = sections[i];
++          const rect = section.getBoundingClientRect();
++          if (rect.top <= triggerPoint) {
++            currentSection = section;
++          }
++        }
++
++        setActiveSection(currentSection);
++      }
++
++      // Smooth scrolling & instant active feedback on nav link click
++      navLinks.forEach(link => {
++        link.addEventListener('click', function (e) {
++          const href = this.getAttribute('href') || '';
++          const sectionId = href.replace(/^[#/]+/, '');
++          const target = document.getElementById(sectionId);
++          if (target) {
++            e.preventDefault();
++            setActiveSection(target);
++            target.scrollIntoView({ behavior: 'smooth' });
++            if (window.history && window.history.pushState) {
++              window.history.pushState(null, null, '#' + sectionId);
++            }
++          }
++        });
++      });
++
++      // Listen for scroll and resize events
++      window.addEventListener('scroll', updateActiveSection, { passive: true });
++      window.addEventListener('resize', updateActiveSection, { passive: true });
++
++      // Run on DOM ready and load
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', updateActiveSection);
++      } else {
++        updateActiveSection();
++      }
++      window.addEventListener('load', updateActiveSection);
++
++      // IntersectionObserver for additional compatibility
++      if (typeof IntersectionObserver !== 'undefined') {
++        const observer = new IntersectionObserver(() => {
++          updateActiveSection();
++        }, {
++          rootMargin: `-${document.querySelector('nav')?.offsetHeight || 60}px 0px -40% 0px`,
++          threshold: [0, 0.2, 0.5, 0.8, 1]
++        });
++        sections.forEach(sec => observer.observe(sec));
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

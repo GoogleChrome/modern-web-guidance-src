@@ -1,0 +1,340 @@
+diff --git a/index.html b/index.html
+index 66c9173..dd2e392 100644
+--- a/index.html
++++ b/index.html
+@@ -4,37 +4,92 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --brand: #4e342e;
++      --page: #faf6f1;
++      --surface: #fffdf9;
++      --text: #35251f;
++      --muted: #705b50;
++      --heading: var(--brand);
++      --border: #d9c9bc;
++      --nav-bg: var(--brand);
++      --nav-text: #fff4e6;
++      --nav-accent: #f2c58f;
++      --button-bg: var(--brand);
++      --button-text: #fff8ef;
++      --button-hover: #38231e;
++      --footer-bg: #e8dcd0;
++      --hero-text: #fff8ef;
++      --hero-overlay: rgba(35, 21, 16, 0.78);
++      --new-bg: #efe0c5;
++      --new-text: #60401f;
++      --sold-bg: #e8e1dc;
++      --sold-text: #594b43;
++      --focus: #895731;
++      --shadow: 0 3px 12px rgba(78, 52, 46, 0.08);
+     }
+ 
+-    * {
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --page: #1d1714;
++        --surface: #2b211c;
++        --text: #f2e6d9;
++        --muted: #cbb6a6;
++        --heading: #e5bb91;
++        --border: #5d493d;
++        --nav-bg: #30221d;
++        --nav-text: #f5e9dc;
++        --nav-accent: #edc08d;
++        --button-bg: #dfb287;
++        --button-text: #2c1d16;
++        --button-hover: #f0cba5;
++        --footer-bg: #281e19;
++        --hero-overlay: rgba(27, 17, 12, 0.84);
++        --new-bg: #533c23;
++        --new-text: #f4d3a0;
++        --sold-bg: #443830;
++        --sold-text: #e1cfc0;
++        --focus: #edc08d;
++        --shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
++      }
++    }
++
++    html {
+       box-sizing: border-box;
++      background: var(--page);
++    }
++
++    body, h1, h2, h3, p, ul {
+       margin: 0;
+       padding: 0;
+     }
+ 
++    nav, .hero, .container, .card, .btn, footer {
++      box-sizing: inherit;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 12px 24px;
++      border-bottom: 1px solid var(--border);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -49,33 +104,33 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      flex-wrap: wrap;
++      gap: 12px 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a:is(:hover, :focus-visible) {
++      color: var(--nav-accent);
++      text-decoration: underline;
++      text-underline-offset: 4px;
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,16 +138,30 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
++    /* Keep the hero action warm and readable over the photograph in both modes. */
++    .hero .btn {
++      background: var(--nav-accent);
++      color: #2c1d16;
++    }
++
++    .hero .btn:hover {
++      background: #ffddb5;
++    }
++
++    .hero a:focus-visible, nav a:focus-visible {
++      outline-color: var(--nav-accent);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -102,28 +171,68 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .container h2 {
++      text-align: center;
++      color: var(--heading);
++    }
++
++    .card p {
++      color: var(--muted);
++      flex-grow: 1;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 3px 10px;
++      border: 1px solid currentColor;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      line-height: 1.5;
++      margin-bottom: 12px;
++    }
++
++    .badge-new {
++      background: var(--new-bg);
++      color: var(--new-text);
++    }
++
++    .badge-sold-out {
++      background: var(--sold-bg);
++      color: var(--sold-text);
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 4px;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--button-bg);
++      color: var(--button-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +241,13 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--button-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--muted);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +263,44 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration: underline;
++      text-underline-offset: 4px;
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --page: Canvas;
++        --surface: Canvas;
++        --text: CanvasText;
++        --muted: CanvasText;
++        --heading: CanvasText;
++        --border: CanvasText;
++        --nav-bg: Canvas;
++        --nav-text: LinkText;
++        --nav-accent: LinkText;
++        --button-bg: ButtonFace;
++        --button-text: ButtonText;
++        --button-hover: ButtonFace;
++        --footer-bg: Canvas;
++        --hero-text: CanvasText;
++        --new-bg: Canvas;
++        --new-text: CanvasText;
++        --sold-bg: Canvas;
++        --sold-text: CanvasText;
++        --focus: Highlight;
++      }
++
++      .hero {
++        background: Canvas;
++      }
++
++      .btn, .hero .btn {
++        background: ButtonFace;
++        color: ButtonText;
++        border: 1px solid ButtonText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,9 +325,10 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -189,6 +339,7 @@
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge badge-sold-out">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

@@ -1,0 +1,189 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9fbe18e 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
++import { registerWebMcpTool, textResult } from '../lib/webmcp';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +8,7 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const submit = async (username: string, password: string): Promise<{ ok: boolean; message: string }> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -27,18 +27,54 @@ export default function SignInForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const message = `Login failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return { ok: false, message };
+       } else {
+         setSuccess('Login successful!');
++        return { ok: true, message: 'Login successful!' };
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return { ok: false, message };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    submit(username, password);
++  };
++
++  // Keep the latest submit handler reachable from the tool registered once on mount.
++  const submitRef = useRef(submit);
++  submitRef.current = submit;
++
++  useEffect(() => {
++    return registerWebMcpTool({
++      name: 'sign_in',
++      description:
++        'Sign in to The DevTools Times with a username and password. Fills in and submits the Sign In form on the page and reports the outcome.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          username: { type: 'string', description: 'The account username' },
++          password: { type: 'string', description: 'The account password' },
++        },
++        required: ['username', 'password'],
++      },
++      execute: async (input: { username: string; password: string }) => {
++        setUsername(input.username);
++        setPassword(input.password);
++        const result = await submitRef.current(input.username, input.password);
++        return textResult(result.message);
++      },
++    });
++  }, []);
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..5d57c14 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
++import { registerWebMcpTool, textResult } from '../lib/webmcp';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +8,7 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const submit = async (username: string, password: string): Promise<{ ok: boolean; message: string }> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -27,19 +27,55 @@ export default function SignUpForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const message = `Registration failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return { ok: false, message };
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        return { ok: true, message: 'User registered successfully! You can now sign in.' };
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return { ok: false, message };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    submit(username, password);
++  };
++
++  // Keep the latest submit handler reachable from the tool registered once on mount.
++  const submitRef = useRef(submit);
++  submitRef.current = submit;
++
++  useEffect(() => {
++    return registerWebMcpTool({
++      name: 'sign_up',
++      description:
++        'Create a new account on The DevTools Times. Fills in and submits the Sign Up form on the page and reports the outcome. The password must be at least 8 characters and contain a number.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          username: { type: 'string', description: 'The account username' },
++          password: { type: 'string', description: 'The account password' },
++        },
++        required: ['username', 'password'],
++      },
++      execute: async (input: { username: string; password: string }) => {
++        setUsername(input.username);
++        setPassword(input.password);
++        const result = await submitRef.current(input.username, input.password);
++        return textResult(result.message);
++      },
++    });
++  }, []);
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+diff --git a/src/lib/webmcp.ts b/src/lib/webmcp.ts
+new file mode 100644
+index 0000000..7a1e350
+--- /dev/null
++++ b/src/lib/webmcp.ts
+@@ -0,0 +1,26 @@
++// Minimal WebMCP (navigator.modelContext) helper for exposing page functionality to AI agents.
++export interface WebMcpTool {
++  name: string;
++  description: string;
++  inputSchema: Record<string, unknown>;
++  execute: (input: any) => Promise<{ content: { type: 'text'; text: string }[] }>;
++}
++
++export const textResult = (text: string) => ({ content: [{ type: 'text' as const, text }] });
++
++/** Registers a tool if WebMCP is available. Returns a cleanup function. */
++export function registerWebMcpTool(tool: WebMcpTool): () => void {
++  const ctx = (navigator as any).modelContext;
++  if (!ctx?.registerTool) return () => {};
++  try {
++    ctx.registerTool(tool);
++  } catch (err) {
++    console.warn(`Failed to register WebMCP tool ${tool.name}:`, err);
++    return () => {};
++  }
++  return () => {
++    try {
++      ctx.unregisterTool?.(tool.name);
++    } catch {}
++  };
++}

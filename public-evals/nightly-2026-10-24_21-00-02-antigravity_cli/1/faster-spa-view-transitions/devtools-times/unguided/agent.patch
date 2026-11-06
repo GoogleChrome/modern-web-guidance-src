@@ -1,0 +1,186 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cf85a1c 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -38,18 +38,175 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="fireplace" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
++        <div id="spa-views-root" data-active-view={Astro.url.pathname + Astro.url.search}>
++          <main class="bg-white relative" data-spa-view={Astro.url.pathname + Astro.url.search}>
++            <slot />
++          </main>
++        </div>
+       </div>
+     </div>
+-    <Footer />
++    <div transition:persist="footer">
++      <Footer />
++    </div>
++
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      interface CachedView {
++        mainEl: HTMLElement;
++        title: string;
++        doc?: Document;
++      }
++
++      const viewCache = new Map<string, CachedView>();
++
++      const getViewKey = (url: URL | Location): string => {
++        return url.pathname + url.search;
++      };
++
++      const ensureInitialViewCached = () => {
++        const currentKey = getViewKey(window.location);
++        if (!viewCache.has(currentKey)) {
++          const currentMain =
++            document.querySelector<HTMLElement>(
++              `main[data-spa-view="${CSS.escape(currentKey)}"]`
++            ) || document.querySelector<HTMLElement>("main[data-spa-view], main.bg-white");
++          if (currentMain) {
++            currentMain.dataset.spaView = currentKey;
++            viewCache.set(currentKey, {
++              mainEl: currentMain,
++              title: document.title,
++            });
++          }
++        }
++      };
++
++      ensureInitialViewCached();
++
++      document.addEventListener("astro:before-preparation", (event: any) => {
++        ensureInitialViewCached();
++        const targetKey = getViewKey(event.to);
++        const cached = viewCache.get(targetKey);
++
++        // If we already visited this view and it's not a POST form submission,
++        // skip re-fetching HTML over the network if we already have the view in the DOM.
++        if (cached && !event.formData) {
++          event.loader = async () => {
++            if (cached.doc) {
++              event.newDocument = cached.doc.cloneNode(true) as Document;
++            } else {
++              // Construct a lightweight synthetic Document for the initial page
++              const syntheticDoc = document.implementation.createHTMLDocument(cached.title);
++              for (const attr of Array.from(document.documentElement.attributes)) {
++                syntheticDoc.documentElement.setAttribute(attr.name, attr.value);
++              }
++              syntheticDoc.head.innerHTML = document.head.innerHTML;
++              const titleEl = syntheticDoc.querySelector("title");
++              if (titleEl) {
++                titleEl.textContent = cached.title;
++              } else {
++                const newTitle = syntheticDoc.createElement("title");
++                newTitle.textContent = cached.title;
++                syntheticDoc.head.appendChild(newTitle);
++              }
++              const placeholderMain = syntheticDoc.createElement("main");
++              placeholderMain.dataset.spaView = targetKey;
++              syntheticDoc.body.appendChild(placeholderMain);
++              cached.doc = syntheticDoc;
++              event.newDocument = syntheticDoc.cloneNode(true) as Document;
++            }
++          };
++        } else {
++          const originalLoader = event.loader;
++          event.loader = async () => {
++            await originalLoader();
++            if (event.newDocument && !event.defaultPrevented) {
++              const resolvedKey = getViewKey(event.to);
++              const existing = viewCache.get(resolvedKey);
++              if (existing) {
++                existing.doc = event.newDocument.cloneNode(true) as Document;
++              } else {
++                // Temporarily store the fetched Document to attach once swapped
++                (event as any).__cachedDocClone = event.newDocument.cloneNode(true) as Document;
++              }
++            }
++          };
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        ensureInitialViewCached();
++
++        const fromKey = getViewKey(event.from);
++        const toKey = getViewKey(event.to);
++
++        event.swap = () => {
++          swapFunctions.deselectScripts(event.newDocument);
++          swapFunctions.swapRootAttributes(event.newDocument);
++          swapFunctions.swapHeadElements(event.newDocument);
++          const restoreFocusFunction = swapFunctions.saveFocus();
++
++          const viewsRoot = document.getElementById("spa-views-root");
++          const incomingMain =
++            event.newDocument.querySelector<HTMLElement>("main[data-spa-view]") ||
++            event.newDocument.querySelector<HTMLElement>("main.bg-white");
++
++          if (viewsRoot && incomingMain) {
++            // Save current active view's title before hiding
++            const currentCached = viewCache.get(fromKey);
++            if (currentCached) {
++              currentCached.title = document.title;
++            }
++
++            // Hide all existing views in the container without removing them from the DOM
++            for (const child of Array.from(viewsRoot.children)) {
++              if (child instanceof HTMLElement) {
++                child.hidden = true;
++                child.style.display = "none";
++                child.setAttribute("aria-hidden", "true");
++              }
++            }
++
++            const targetCached = viewCache.get(toKey);
++            if (targetCached && viewsRoot.contains(targetCached.mainEl)) {
++              // Reveal the previously visited DOM structure directly
++              targetCached.mainEl.hidden = false;
++              targetCached.mainEl.style.display = "";
++              targetCached.mainEl.removeAttribute("aria-hidden");
++              if (targetCached.title) {
++                document.title = targetCached.title;
++              }
++            } else {
++              // First time visiting this view: adopt and append the new <main> into the live DOM
++              incomingMain.dataset.spaView = toKey;
++              incomingMain.hidden = false;
++              incomingMain.style.display = "";
++              incomingMain.removeAttribute("aria-hidden");
++              viewsRoot.appendChild(incomingMain);
++
++              viewCache.set(toKey, {
++                mainEl: incomingMain,
++                title: event.newDocument.title || document.title,
++                doc: (event as any).__cachedDocClone,
++              });
++            }
++
++            viewsRoot.dataset.activeView = toKey;
++          } else {
++            // Fallback to standard body swap if layout structure differs
++            swapFunctions.swapBodyElement(event.newDocument.body, document.body);
++          }
++
++          restoreFocusFunction();
++        };
++      });
++    </script>
+   </body>
+ </html>

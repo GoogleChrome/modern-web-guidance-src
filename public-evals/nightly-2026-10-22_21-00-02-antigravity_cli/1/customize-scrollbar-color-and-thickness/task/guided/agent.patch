@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Section */
++    .feedback-section {
++      margin-top: 60px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 280px;
++      overflow-y: auto;
++      background: white;
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--secondary);
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      list-style: none;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        /* Must define base size in WebKit for custom colors to be visual */
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-item {
++      padding: 15px 0;
++    }
++
++    .feedback-item:not(:last-child) {
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .feedback-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .feedback-date {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .feedback-quote {
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <ul class="feedback-log" role="list">
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Elena Rostova</span>
++            <time class="feedback-date" datetime="2026-10-20">Oct 20, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"The Maple Oat Latte is hands down the best seasonal drink in town. Not overly sweet, and the espresso comes through beautifully!"</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Marcus Vance</span>
++            <time class="feedback-date" datetime="2026-10-18">Oct 18, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"Stopped by before my morning commute for the Dark Roast Espresso. Rich crema, bold smoky flavor, and super friendly baristas."</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Priya Patel</span>
++            <time class="feedback-date" datetime="2026-10-15">Oct 15, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"Their 18-hour Cold Brew is velvet in a cup. Zero bitterness and keeps me energized through my entire afternoon design sprint."</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">David Kim</span>
++            <time class="feedback-date" datetime="2026-10-12">Oct 12, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"Love the cozy atmosphere and the attention to ethical sourcing. You can really taste the freshness of the local roast in every pour-over."</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Hannah Abbott</span>
++            <time class="feedback-date" datetime="2026-10-09">Oct 09, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"Ordered beans online for my home espresso machine and they arrived within two days of roasting. My kitchen smells incredible!"</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Lucas Sterling</span>
++            <time class="feedback-date" datetime="2026-10-05">Oct 05, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"The rewards program is great, and the mobile ordering makes picking up a quick cortado between meetings completely effortless."</blockquote>
++        </li>
++        <li class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Sofia Rossi</span>
++            <time class="feedback-date" datetime="2026-10-01">Oct 01, 2026</time>
++          </div>
++          <blockquote class="feedback-quote">"Finally a coffee shop that takes oat milk steaming seriously! Silky microfoam every single time I visit."</blockquote>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

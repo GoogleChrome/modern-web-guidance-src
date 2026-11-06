@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+index 66c9173..996be25 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,147 @@
+       margin-top: 20px;
+     }
+ 
++    /* Brew strength: keep the native input for keyboard and touch support. */
++    .brew-strength {
++      background: #f3eeea;
++      border: 1px solid #ded1c8;
++      border-radius: 16px;
++      padding: clamp(24px, 5vw, 40px);
++      margin-bottom: 40px;
++    }
++
++    .brew-eyebrow {
++      color: #755647;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .brew-strength h2 {
++      font-size: clamp(1.5rem, 4vw, 2rem);
++      line-height: 1.25;
++      margin-bottom: 8px;
++    }
++
++    .brew-description {
++      color: #70594f;
++      margin-bottom: 24px;
++    }
++
++    .strength-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .strength-heading label {
++      font-weight: 600;
++    }
++
++    .strength-value {
++      border: 1px solid #d4bcaa;
++      border-radius: 999px;
++      padding: 4px 14px;
++      background: #fffaf5;
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++
++    .strength-range {
++      --strength-progress: 50%;
++      appearance: none;
++      -webkit-appearance: none;
++      display: block;
++      width: 100%;
++      height: 44px;
++      background: transparent;
++      border-radius: 8px;
++      cursor: pointer;
++      accent-color: var(--primary);
++    }
++
++    .strength-range::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 999px;
++      background: linear-gradient(to right,
++        var(--primary) 0%, #a66b3f var(--strength-progress),
++        #d9cdc4 var(--strength-progress), #d9cdc4 100%);
++    }
++
++    .strength-range::-moz-range-track {
++      height: 8px;
++      border-radius: 999px;
++      background: #d9cdc4;
++    }
++
++    .strength-range::-moz-range-progress {
++      height: 8px;
++      border-radius: 999px;
++      background: linear-gradient(to right, var(--primary), #a66b3f);
++    }
++
++    .strength-range::-webkit-slider-thumb {
++      appearance: none;
++      -webkit-appearance: none;
++      width: 26px;
++      height: 26px;
++      margin-top: -9px;
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: #fffaf5;
++      box-shadow: 0 2px 5px #4e342e26;
++    }
++
++    .strength-range::-moz-range-thumb {
++      width: 20px;
++      height: 20px;
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: #fffaf5;
++      box-shadow: 0 2px 5px #4e342e26;
++    }
++
++    .strength-range:hover::-webkit-slider-thumb {
++      background: #ffe3bf;
++    }
++
++    .strength-range:hover::-moz-range-thumb {
++      background: #ffe3bf;
++    }
++
++    .strength-range:active::-webkit-slider-thumb {
++      background: var(--accent);
++    }
++
++    .strength-range:active::-moz-range-thumb {
++      background: var(--accent);
++    }
++
++    .strength-range:focus-visible {
++      outline: 3px solid #8b5026;
++      outline-offset: 4px;
++    }
++
++    .strength-scale {
++      display: flex;
++      justify-content: space-between;
++      color: #70594f;
++      font-size: 0.8rem;
++      margin-top: 2px;
++    }
++
++    @media (forced-colors: active) {
++      .strength-range {
++        appearance: auto;
++        -webkit-appearance: auto;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +316,21 @@
+   </header>
+ 
+   <main class="container">
++    <section class="brew-strength" aria-labelledby="brew-title">
++      <p class="brew-eyebrow">Made for your mornings</p>
++      <h2 id="brew-title">Find your perfect brew</h2>
++      <p class="brew-description" id="strength-help">From easy sipping to a bold wake-up call. How do you like your coffee?</p>
++      <div class="strength-heading">
++        <label for="brew-strength">Brew strength</label>
++        <output class="strength-value" id="strength-value" for="brew-strength" aria-live="off">Balanced · 3 / 5</output>
++      </div>
++      <input class="strength-range" id="brew-strength" name="brew-strength" type="range"
++        min="1" max="5" step="1" value="3" aria-describedby="strength-help">
++      <div class="strength-scale" aria-hidden="true">
++        <span>Light &amp; mellow</span>
++        <span>Bold &amp; intense</span>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +363,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const strength = document.getElementById('brew-strength');
++    const strengthValue = document.getElementById('strength-value');
++    const strengthNames = ['Light', 'Mellow', 'Balanced', 'Bold', 'Intense'];
++
++    function updateStrength() {
++      const value = Number(strength.value);
++      const progress = ((value - Number(strength.min)) / (Number(strength.max) - Number(strength.min))) * 100;
++      const description = `${strengthNames[value - 1]} · ${value} / ${strength.max}`;
++      strength.style.setProperty('--strength-progress', `${progress}%`);
++      strengthValue.textContent = description;
++      strength.setAttribute('aria-valuetext', `${strengthNames[value - 1]}, ${value} of ${strength.max}`);
++    }
++
++    strength.addEventListener('input', updateStrength);
++    updateStrength();
++  </script>
+ </body>
+ 
+ </html>

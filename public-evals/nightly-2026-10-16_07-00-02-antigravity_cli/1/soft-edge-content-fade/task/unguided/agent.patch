@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,28 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Container / Teaser Preview */
++    .paywall-container {
++      margin-top: 60px;
++      position: relative;
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .preview-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +214,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <p style="text-align: center; color: var(--primary); font-weight: 600; margin-top: 5px; margin-bottom: 25px; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.85rem;">Exclusive Preview &bull; Master Roaster Series</p>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Coffee beans roasting" class="preview-img">
++          <h3>The First Crack Window</h3>
++          <p>Mastering the critical 90-second development phase where delicate origin acidity balances into caramelized sweetness...</p>
++          <a href="/secrets/first-crack" class="btn">Read Guide</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509785307050-d4066910ec1e?auto=format&fit=crop&w=600&q=80" alt="Espresso extraction" class="preview-img">
++          <h3>Water Chemistry & TDS</h3>
++          <p>Why dialing in 150ppm mineral composition and balanced magnesium ratios completely transforms extraction clarity...</p>
++          <a href="/secrets/water-chemistry" class="btn">Read Guide</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Coffee cupping" class="preview-img">
++          <h3>Micro-Lot Cupping Profiles</h3>
++          <p>Direct insider cupping reports from our partner farms in Huila, detailing experimental anaerobic natural lots...</p>
++          <a href="/secrets/cupping-notes" class="btn">Read Guide</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

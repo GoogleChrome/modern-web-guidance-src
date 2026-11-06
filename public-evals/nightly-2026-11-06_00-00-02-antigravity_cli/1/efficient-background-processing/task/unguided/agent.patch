@@ -1,0 +1,360 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,137 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 400px;
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .roasting-card {
++      background: linear-gradient(135deg, #2d1b15 0%, #3e2723 60%, #4e342e 100%);
++      color: var(--light);
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 10px 25px rgba(62, 39, 35, 0.25);
++      display: grid;
++      grid-template-columns: 1.4fr 1fr;
++      gap: 28px;
++      align-items: center;
++      min-height: 360px;
++      border: 1px solid rgba(255, 171, 64, 0.2);
++    }
++
++    @media (max-width: 768px) {
++      .roasting-card {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .roast-canvas-wrap {
++      position: relative;
++      background: #1b0f0c;
++      border-radius: 10px;
++      overflow: hidden;
++      border: 2px solid rgba(255, 171, 64, 0.35);
++      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
++      height: 300px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      height: 100%;
++      display: block;
++    }
++
++    .roast-status-pill {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: rgba(27, 15, 12, 0.85);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      color: var(--accent);
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .roast-status-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #66bb6a;
++      box-shadow: 0 0 8px #66bb6a;
++    }
++
++    .roast-status-dot.paused {
++      background: #ffa726;
++      box-shadow: none;
++    }
++
++    .roast-telemetry {
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .roast-telemetry h2 {
++      font-size: 1.65rem;
++      color: #fff;
++      line-height: 1.2;
++    }
++
++    .roast-telemetry p {
++      font-size: 0.95rem;
++      color: var(--secondary);
++    }
++
++    .temp-readout-box {
++      background: rgba(0, 0, 0, 0.35);
++      border-left: 4px solid var(--accent);
++      padding: 16px 20px;
++      border-radius: 6px;
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++    }
++
++    .temp-label {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--secondary);
++    }
++
++    .temp-value-wrap {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 2.2rem;
++      font-weight: bold;
++      color: var(--accent);
++    }
++
++    .roast-stage-bar {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      color: var(--secondary);
++      padding-top: 6px;
++      border-top: 1px solid rgba(215, 204, 200, 0.15);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +325,33 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" aria-label="Real-Time Coffee Roasting Simulator">
++    <div class="roasting-card">
++      <div class="roast-canvas-wrap">
++        <canvas id="roast-canvas" width="600" height="300"></canvas>
++        <div class="roast-status-pill">
++          <span class="roast-status-dot" id="roast-status-dot"></span>
++          <span id="roast-status-text">Roaster Active</span>
++        </div>
++      </div>
++      <div class="roast-telemetry">
++        <h2>Live Drum Roaster Simulator</h2>
++        <p>Watch our small-batch Arabica beans tumble through Maillard caramelization and first crack in real time. Background work pauses automatically when scrolled out of view.</p>
++        <div class="temp-readout-box">
++          <span class="temp-label">Drum Temperature</span>
++          <span class="temp-value-wrap"><span id="roast-temp-value">385.0°F</span></span>
++        </div>
++        <div class="roast-stage-bar">
++          <span>Stage: <strong id="roast-stage-name">First Crack</strong></span>
++          <span>Airflow: <strong>42 CFM</strong></span>
++          <span>Drum RPM: <strong>54</strong></span>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +360,184 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      const statusDotEl = document.getElementById('roast-status-dot');
++      const statusTextEl = document.getElementById('roast-status-text');
++      const stageNameEl = document.getElementById('roast-stage-name');
++
++      if (!widget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 385.0;
++      let tempDirection = 1;
++
++      const beanCount = 34;
++      const beans = Array.from({ length: beanCount }, (_, i) => ({
++        x: 80 + (i * 17) % (canvas.width - 160),
++        y: 50 + (i * 23) % (canvas.height - 100),
++        vx: (Math.random() - 0.5) * 2.4 + 0.8,
++        vy: (Math.random() - 0.5) * 2.4 - 0.5,
++        rx: 10 + (i % 4),
++        ry: 6 + (i % 3),
++        angle: (i * 0.45) % (Math.PI * 2),
++        spin: (Math.random() - 0.5) * 0.08 + 0.02,
++        roastLevel: (i % 10) / 10
++      }));
++
++      function getBeanColor(temp, offset) {
++        const normalized = Math.min(1, Math.max(0, (temp - 350) / 95 + offset * 0.15));
++        const r = Math.round(165 - normalized * 105);
++        const g = Math.round(115 - normalized * 80);
++        const b = Math.round(70 - normalized * 50);
++        return `rgb(${r}, ${g}, ${b})`;
++      }
++
++      function getStageName(temp) {
++        if (temp < 375) return 'Drying & Yellowing';
++        if (temp < 402) return 'Maillard Reaction';
++        if (temp < 424) return 'First Crack';
++        return 'Medium-Dark Development';
++      }
++
++      function renderFrame() {
++        if (!isRunning) return;
++
++        const w = canvas.width;
++        const h = canvas.height;
++
++        ctx.fillStyle = '#1b0f0c';
++        ctx.fillRect(0, 0, w, h);
++
++        // Subtle heated drum glow
++        const glow = ctx.createRadialGradient(w * 0.5, h * 0.9, 10, w * 0.5, h * 0.6, w * 0.55);
++        glow.addColorStop(0, 'rgba(255, 111, 0, 0.22)');
++        glow.addColorStop(0.6, 'rgba(255, 171, 64, 0.06)');
++        glow.addColorStop(1, 'rgba(27, 15, 12, 0)');
++        ctx.fillStyle = glow;
++        ctx.fillRect(0, 0, w, h);
++
++        // Draw tumbling coffee beans
++        for (let i = 0; i < beans.length; i++) {
++          const b = beans[i];
++          b.x += b.vx;
++          b.y += b.vy;
++          b.angle += b.spin;
++
++          if (b.x < 24 || b.x > w - 24) b.vx *= -1;
++          if (b.y < 24 || b.y > h - 24) b.vy *= -1;
++
++          ctx.save();
++          ctx.translate(b.x, b.y);
++          ctx.rotate(b.angle);
++
++          // Bean body
++          ctx.beginPath();
++          ctx.ellipse(0, 0, b.rx, b.ry, 0, 0, Math.PI * 2);
++          ctx.fillStyle = getBeanColor(currentTemp, b.roastLevel);
++          ctx.fill();
++          ctx.lineWidth = 1;
++          ctx.strokeStyle = 'rgba(20, 10, 5, 0.7)';
++          ctx.stroke();
++
++          // Center crease of the coffee bean
++          ctx.beginPath();
++          ctx.moveTo(-b.rx * 0.75, 0);
++          ctx.quadraticCurveTo(0, b.ry * 0.35, b.rx * 0.75, 0);
++          ctx.strokeStyle = '#1a0d08';
++          ctx.lineWidth = 1.4;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++
++        animationFrameId = requestAnimationFrame(renderFrame);
++      }
++
++      function updateTemperature() {
++        const delta = (Math.random() * 1.4 + 0.4) * tempDirection;
++        currentTemp = Number((currentTemp + delta).toFixed(1));
++
++        if (currentTemp >= 438.0) {
++          currentTemp = 438.0;
++          tempDirection = -1;
++        } else if (currentTemp <= 368.0) {
++          currentTemp = 368.0;
++          tempDirection = 1;
++        }
++
++        tempValueEl.textContent = `${currentTemp.toFixed(1)}°F`;
++        if (stageNameEl) {
++          stageNameEl.textContent = getStageName(currentTemp);
++        }
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++
++        if (statusDotEl) statusDotEl.classList.remove('paused');
++        if (statusTextEl) statusTextEl.textContent = 'Roaster Active';
++
++        if (animationFrameId === null) {
++          animationFrameId = requestAnimationFrame(renderFrame);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = setInterval(updateTemperature, 800);
++        }
++      }
++
++      function pauseSimulation() {
++        if (!isRunning && animationFrameId === null && tempIntervalId === null) return;
++        isRunning = false;
++
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++
++        if (statusDotEl) statusDotEl.classList.add('paused');
++        if (statusTextEl) statusTextEl.textContent = 'Paused (Offscreen)';
++      }
++
++      function handleVisibilityChange(isVisible) {
++        if (isVisible) {
++          startSimulation();
++        } else {
++          pauseSimulation();
++        }
++      }
++
++      // Primary: native rendering state change event (contentvisibilityautostatechange)
++      // Fallback: IntersectionObserver for older browsers lacking native support
++      if ('oncontentvisibilityautostatechange' in widget || 'ContentVisibilityAutoStateChangeEvent' in window) {
++        widget.addEventListener('contentvisibilityautostatechange', (event) => {
++          handleVisibilityChange(!event.skipped);
++        });
++      } else if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            handleVisibilityChange(entry.isIntersecting);
++          });
++        }, { threshold: 0.05 });
++        observer.observe(widget);
++      } else {
++        // Legacy fallback if neither is supported
++        startSimulation();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,1966 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -7,63 +7,229 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #795548;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-dark: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --white: #ffffff;
++      --shadow-sm: 0 2px 8px rgba(62, 39, 35, 0.08);
++      --shadow-md: 0 8px 24px rgba(62, 39, 35, 0.14);
++      --shadow-lg: 0 16px 40px rgba(62, 39, 35, 0.22);
++      --transition-curve: cubic-bezier(0.32, 0.72, 0, 1);
++      --transition-duration: 380ms;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      width: 100%;
++      height: 100%;
++      overflow: hidden;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
++      background-color: #271815;
++      -webkit-font-smoothing: antialiased;
++      user-select: none;
++    }
++
++    /* Full-Screen Hierarchical Navigation Stack */
++    .nav-stack {
++      position: relative;
++      width: 100vw;
++      height: 100vh;
++      overflow: hidden;
++      background-color: #271815;
++    }
++
++    .stack-screen {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      overflow-y: auto;
++      overflow-x: hidden;
+       background-color: var(--light);
++      will-change: transform, opacity;
++      transition: transform var(--transition-duration) var(--transition-curve),
++                  filter var(--transition-duration) var(--transition-curve),
++                  box-shadow var(--transition-duration) var(--transition-curve);
++      -webkit-overflow-scrolling: touch;
+     }
+ 
+-    /* Navigation */
+-    nav {
++    .stack-screen.is-dragging {
++      transition: none !important;
++    }
++
++    /* Root Home Screen State */
++    .screen-home {
++      z-index: 10;
++      transform: translate3d(0, 0, 0) scale(1);
++      filter: brightness(1);
++    }
++
++    .nav-stack.has-detail .screen-home {
++      transform: translate3d(-26%, 0, 0) scale(0.96);
++      filter: brightness(0.72);
++      pointer-events: none;
++    }
++
++    /* Detail Screen State (Level 2) */
++    .screen-detail {
++      z-index: 20;
++      transform: translate3d(100%, 0, 0);
++      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.35);
++      pointer-events: none;
++      visibility: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .nav-stack.has-detail .screen-detail,
++    .screen-detail.is-animating {
++      visibility: visible;
++    }
++
++    .nav-stack.has-detail .screen-detail {
++      transform: translate3d(0, 0, 0);
++      pointer-events: auto;
++    }
++
++    .nav-stack.has-subdetail .screen-detail {
++      transform: translate3d(-26%, 0, 0) scale(0.96);
++      filter: brightness(0.72);
++      pointer-events: none;
++    }
++
++    /* Sub-Detail Screen State (Level 3: Sourcing & Origin Drill-down) */
++    .screen-subdetail {
++      z-index: 30;
++      transform: translate3d(100%, 0, 0);
++      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.4);
++      pointer-events: none;
++      visibility: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .nav-stack.has-subdetail .screen-subdetail,
++    .screen-subdetail.is-animating {
++      visibility: visible;
++    }
++
++    .nav-stack.has-subdetail .screen-subdetail {
++      transform: translate3d(0, 0, 0);
++      pointer-events: auto;
++    }
++
++    /* Edge Swipe Back Gesture Zone & Indicator */
++    .edge-swipe-zone {
++      position: fixed;
++      top: 0;
++      left: 0;
++      bottom: 0;
++      width: 32px;
++      z-index: 50;
++      cursor: grab;
++      display: none;
++      touch-action: pan-y;
++    }
++
++    .nav-stack.has-detail .edge-swipe-zone {
++      display: block;
++    }
++
++    .swipe-hint-pill {
++      position: fixed;
++      left: 12px;
++      top: 50%;
++      transform: translateY(-50%) translateX(-40px);
++      z-index: 60;
++      background: rgba(78, 52, 46, 0.92);
++      color: var(--white);
++      padding: 10px 14px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      box-shadow: var(--shadow-md);
++      pointer-events: none;
++      opacity: 0;
++      transition: transform 0.2s ease, opacity 0.2s ease;
++    }
++
++    .swipe-hint-pill.visible {
++      transform: translateY(-50%) translateX(0);
++      opacity: 1;
++    }
++
++    /* Top Navigation Bar */
++    nav.top-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 100;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      gap: 10px;
+     }
+ 
+-    nav ul {
++    .logo-badge {
++      font-size: 0.7rem;
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      padding: 2px 8px;
++      border-radius: 999px;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++    }
++
++    nav.top-nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+-    nav ul li {
++    nav.top-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav.top-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav.top-nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -71,12 +237,64 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Stack Breadcrumb / Hierarchy Status Bar */
++    .stack-status-bar {
++      background: var(--secondary-light);
++      border-bottom: 1px solid var(--secondary);
++      padding: 8px 5%;
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .breadcrumbs {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .breadcrumb-link {
++      color: var(--primary);
++      text-decoration: none;
++      font-weight: 600;
++      cursor: pointer;
++      padding: 2px 6px;
++      border-radius: 4px;
++      transition: background 0.2s;
++    }
++
++    .breadcrumb-link:hover {
++      background: rgba(78, 52, 46, 0.1);
++    }
++
++    .breadcrumb-current {
++      color: var(--text-muted);
++      font-weight: 500;
++    }
++
++    .gesture-tip {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.78rem;
++      background: var(--white);
++      padding: 3px 10px;
++      border-radius: 999px;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 46vh;
++      background: linear-gradient(rgba(39, 24, 21, 0.62), rgba(39, 24, 21, 0.62)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -84,58 +302,580 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.2rem, 4vw, 3.2rem);
++      margin-bottom: 0.75rem;
++      letter-spacing: -0.5px;
+     }
+ 
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 540px;
++      opacity: 0.92;
++      margin-bottom: 0.5rem;
++    }
++
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1120px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--white);
++      border-radius: 12px;
++      box-shadow: var(--shadow-sm);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++      cursor: pointer;
++      border: 1px solid rgba(215, 204, 200, 0.5);
++      text-align: left;
++      position: relative;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translateY(-4px);
++      box-shadow: var(--shadow-md);
++    }
++
++    .card-media {
++      position: relative;
++      height: 200px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.05);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: rgba(62, 39, 35, 0.85);
++      backdrop-filter: blur(4px);
++      color: var(--accent);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .card-price-tag {
++      position: absolute;
++      bottom: 12px;
++      right: 12px;
++      background: var(--white);
++      color: var(--primary-dark);
++      padding: 4px 10px;
++      border-radius: 6px;
++      font-weight: 700;
++      font-size: 0.9rem;
++      box-shadow: var(--shadow-sm);
++    }
++
++    .card-body {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
+     }
+ 
++    .card-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.25rem;
+     }
+ 
++    .card-chevron {
++      color: var(--primary-light);
++      font-weight: bold;
++      transition: transform 0.2s ease;
++    }
++
++    .card:hover .card-chevron {
++      transform: translateX(4px);
++      color: var(--accent-dark);
++    }
++
++    .card p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      margin-bottom: 16px;
++      flex: 1;
++    }
++
++    .card-meta {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 14px;
++    }
++
++    .meta-pill {
++      font-size: 0.75rem;
++      background: var(--secondary-light);
++      color: var(--primary);
++      padding: 3px 9px;
++      border-radius: 4px;
++      font-weight: 600;
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 0.92rem;
++      border: none;
++      cursor: pointer;
++      transition: background 0.25s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1.5px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary-light);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++    }
++
++    /* Drill-Down Detail View Header (iOS / Mobile Stack Style + Desktop Responsive) */
++    .drilldown-navbar {
++      position: sticky;
++      top: 0;
++      z-index: 100;
++      background: rgba(250, 250, 250, 0.92);
++      backdrop-filter: blur(12px);
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px 5%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .back-nav-btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--white);
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 8px 14px;
++      border-radius: 999px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: var(--shadow-sm);
++      transition: background 0.2s, transform 0.15s;
++      text-decoration: none;
++    }
++
++    .back-nav-btn:hover {
++      background: var(--secondary-light);
++    }
++
++    .back-nav-btn:active {
++      transform: scale(0.96);
++    }
++
++    .drilldown-title-group {
++      text-align: center;
++      flex: 1;
++      min-width: 0;
++    }
++
++    .drilldown-step-label {
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: var(--text-muted);
++      display: block;
++    }
++
++    .drilldown-title {
++      font-size: 1.05rem;
++      font-weight: 700;
++      color: var(--primary-dark);
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .drilldown-actions {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .icon-btn {
++      display: inline-flex;
++      align-items: center;
++       gap: 6px;
++      background: var(--white);
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      padding: 7px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .icon-btn:hover {
++      background: var(--secondary-light);
++    }
++
++    /* Detail Content Layout */
++    .detail-hero {
++      position: relative;
++      height: clamp(240px, 38vh, 360px);
++      width: 100%;
++      overflow: hidden;
++      background: var(--primary-dark);
++    }
++
++    .detail-hero img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      opacity: 0.88;
++    }
++
++    .detail-hero-overlay {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(to top, rgba(39, 24, 21, 0.88) 0%, rgba(39, 24, 21, 0.2) 60%, transparent 100%);
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      padding: 28px 5%;
++      color: var(--white);
++    }
++
++    .detail-hero-overlay .detail-category {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      padding: 3px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++      width: fit-content;
++    }
++
++    .detail-hero-overlay h1 {
++      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
++      line-height: 1.2;
++      margin-bottom: 6px;
++    }
++
++    .detail-hero-overlay p {
++      font-size: 1rem;
++      opacity: 0.92;
++      max-width: 650px;
++    }
++
++    .detail-content-wrapper {
++      max-width: 1040px;
++      width: 100%;
++      margin: 0 auto;
++      padding: 28px 5% 60px;
++      display: grid;
++      grid-template-columns: 1.3fr 0.9fr;
++      gap: 28px;
++    }
++
++    @media (max-width: 820px) {
++      .detail-content-wrapper {
++        grid-template-columns: 1fr;
++      }
++
++      nav.top-nav ul {
++        display: none;
++      }
++    }
++
++    .detail-panel {
++      background: var(--white);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: var(--shadow-sm);
++      border: 1px solid rgba(215, 204, 200, 0.5);
++      margin-bottom: 20px;
++    }
++
++    .detail-panel h3 {
++      color: var(--primary);
++      font-size: 1.15rem;
++      margin-bottom: 14px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    /* Tasting Notes Bars */
++    .tasting-grid {
++      display: grid;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .tasting-row {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .tasting-label {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .tasting-bar-bg {
++      height: 8px;
++      background: var(--secondary-light);
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .tasting-bar-fill {
++      height: 100%;
++      background: linear-gradient(90deg, var(--primary), var(--accent-dark));
++      border-radius: 999px;
++      transition: width 0.5s ease;
++    }
++
++    /* Customization Controls */
++    .option-group {
++      margin-bottom: 18px;
++    }
++
++    .option-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 700;
++      color: var(--text-muted);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-bottom: 8px;
++    }
++
++    .segmented-options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++    }
++
++    .seg-btn {
++      background: var(--secondary-light);
++      border: 1.5px solid transparent;
++      border-radius: 8px;
++      padding: 10px 8px;
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--text);
++      cursor: pointer;
++      text-align: center;
++      transition: all 0.2s;
++    }
++
++    .seg-btn.active {
++      background: var(--white);
++      border-color: var(--primary);
++      color: var(--primary-dark);
++      box-shadow: var(--shadow-sm);
++    }
++
++    /* Drill-Down Sub-Link Row (e.g. Single Origin Sourcing Story) */
++    .drilldown-row-card {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 14px;
++      padding: 16px;
++      background: var(--secondary-light);
++      border-radius: 10px;
++      border: 1px solid var(--secondary);
++      cursor: pointer;
++      text-decoration: none;
++      color: var(--text);
++      transition: background 0.2s, transform 0.2s;
++      margin-top: 12px;
++    }
++
++    .drilldown-row-card:hover {
++      background: #e4dcd9;
++      transform: translateX(3px);
++    }
++
++    .drilldown-row-card strong {
++      display: block;
++      color: var(--primary-dark);
++      font-size: 0.96rem;
++    }
++
++    .drilldown-row-card span {
++      font-size: 0.83rem;
++      color: var(--text-muted);
++    }
++
++    /* Deep Link & History Inspector Bar */
++    .deeplink-bar {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      background: #f3efed;
++      border: 1px dashed var(--secondary);
++      padding: 10px 14px;
++      border-radius: 8px;
++      font-family: monospace;
++      font-size: 0.82rem;
++      color: var(--primary-dark);
++      margin-top: 14px;
++    }
++
++    /* Neighboring Seasonal Items Switcher */
++    .sibling-nav {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .sibling-link {
++      flex: 1;
++      background: var(--white);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 14px;
++      text-decoration: none;
++      color: var(--text);
++      font-size: 0.85rem;
++      transition: border-color 0.2s, background 0.2s;
++    }
++
++    .sibling-link:hover {
++      border-color: var(--primary);
++      background: var(--secondary-light);
++    }
++
++    .sibling-link small {
++      display: block;
++      color: var(--text-muted);
++      font-size: 0.74rem;
++      text-transform: uppercase;
++    }
++
++    .sibling-link strong {
++      color: var(--primary);
++    }
++
++    /* Toast feedback */
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 200;
++      background: var(--primary-dark);
++      color: var(--white);
++      padding: 12px 20px;
++      border-radius: 8px;
++      box-shadow: var(--shadow-lg);
++      font-size: 0.9rem;
++      font-weight: 600;
++      transform: translateY(80px);
++      opacity: 0;
++      transition: transform 0.25s ease, opacity 0.25s ease;
++      pointer-events: none;
++    }
++
++    .toast.show {
++      transform: translateY(0);
++      opacity: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,57 +896,1020 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <!-- Edge swipe gesture zone for touch & pointer dragging back -->
++  <div class="edge-swipe-zone" id="edgeSwipeZone" title="Drag right from edge to navigate back"></div>
++  <div class="swipe-hint-pill" id="swipeHintPill">&#8592; Release to go back</div>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- Full-Screen Hierarchical Drill-Down Stack -->
++  <div class="nav-stack" id="navStack" data-depth="0">
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <!-- LEVEL 1: Root Home Screen -->
++    <section class="stack-screen screen-home" id="screenHome" aria-label="The Daily Grind Home">
++      <nav class="top-nav">
++        <div class="logo" id="homeLogo">
++          THE DAILY GRIND
++          <span class="logo-badge">Seasonal Stack</span>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <ul>
++          <li><a href="/menu" data-nav-root>Menu</a></li>
++          <li><a href="/locations" data-nav-root>Locations</a></li>
++          <li><a href="/rewards" data-nav-root>Rewards</a></li>
++          <li><a href="/account" data-nav-root>My Account</a></li>
++          <li><a href="/logout" class="logout-link" data-nav-root>Logout</a></li>
++        </ul>
++      </nav>
++
++      <div class="stack-status-bar">
++        <div class="breadcrumbs" aria-label="Breadcrumb">
++          <span class="breadcrumb-current">Home &bull; Seasonal Favorites</span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <span class="gesture-tip">Select any seasonal item to drill down &rarr;</span>
++      </div>
++
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu/seasonal" class="btn btn-accent" data-drill-slug="seasonal" style="margin-top: 12px;">
++          Explore Featured Seasonal Roast &rarr;
++        </a>
++      </header>
++
++      <main class="container">
++        <section>
++          <div class="section-header">
++            <h2>Seasonal Favorites</h2>
++            <p>Select an artisanal drink below to drill into tasting notes, customization, and origin details.</p>
++          </div>
++
++          <div class="grid" id="seasonalGrid">
++            <!-- Card 1: Maple Oat Latte -->
++            <article class="card" data-drill-slug="seasonal" tabindex="0" role="button" aria-label="Maple Oat Latte - View Details">
++              <div class="card-media">
++                <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=900&q=80" alt="Maple Oat Latte with latte art">
++                <span class="card-badge">Autumn Exclusive</span>
++                <span class="card-price-tag">$5.75</span>
++              </div>
++              <div class="card-body">
++                <div class="card-title-row">
++                  <h3>Maple Oat Latte</h3>
++                  <span class="card-chevron" aria-hidden="true">&rarr;</span>
++                </div>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <div class="card-meta">
++                  <span class="meta-pill">190 Cal</span>
++                  <span class="meta-pill">Double Ristretto</span>
++                  <span class="meta-pill">Plant-Based</span>
++                </div>
++                <a href="/menu/seasonal" class="btn" data-drill-slug="seasonal">View Details &rarr;</a>
++              </div>
++            </article>
++
++            <!-- Card 2: Dark Roast Espresso -->
++            <article class="card" data-drill-slug="espresso" tabindex="0" role="button" aria-label="Dark Roast Espresso - View Details">
++              <div class="card-media">
++                <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80" alt="Dark Roast Espresso shot">
++                <span class="card-badge">Roaster's Pick</span>
++                <span class="card-price-tag">$3.95</span>
++              </div>
++              <div class="card-body">
++                <div class="card-title-row">
++                  <h3>Dark Roast Espresso</h3>
++                  <span class="card-chevron" aria-hidden="true">&rarr;</span>
++                </div>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <div class="card-meta">
++                  <span class="meta-pill">15 Cal</span>
++                  <span class="meta-pill">Sumatra &amp; Colombia</span>
++                  <span class="meta-pill">Full Body</span>
++                </div>
++                <a href="/menu/espresso" class="btn" data-drill-slug="espresso">View Details &rarr;</a>
++              </div>
++            </article>
++
++            <!-- Card 3: Cold Brew -->
++            <article class="card" data-drill-slug="cold-brew" tabindex="0" role="button" aria-label="Cold Brew - View Details">
++              <div class="card-media">
++                <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=900&q=80" alt="Iced Cold Brew Coffee">
++                <span class="card-badge">18-Hour Steep</span>
++                <span class="card-price-tag">$4.95</span>
++              </div>
++              <div class="card-body">
++                <div class="card-title-row">
++                  <h3>Cold Brew</h3>
++                  <span class="card-chevron" aria-hidden="true">&rarr;</span>
++                </div>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <div class="card-meta">
++                  <span class="meta-pill">5 Cal</span>
++                  <span class="meta-pill">Ethiopian Yirgacheffe</span>
++                  <span class="meta-pill">Low Acidity</span>
++                </div>
++                <a href="/menu/cold-brew" class="btn" data-drill-slug="cold-brew">View Details &rarr;</a>
++              </div>
++            </article>
++          </div>
++        </section>
++      </main>
++
++      <footer>
++        <div class="footer-links">
++          <a href="/about" data-nav-root>Our Story</a> |
++          <a href="/careers" data-nav-root>Join the Team</a> |
++          <a href="/contact" data-nav-root>Contact Us</a> |
++          <a href="/privacy-policy" data-nav-root>Privacy</a>
+         </div>
++        <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++      </footer>
++    </section>
++
++    <!-- LEVEL 2: Seasonal Favorite Detail Screen -->
++    <section class="stack-screen screen-detail" id="screenDetail" aria-label="Seasonal Favorite Detail View" aria-hidden="true">
++      <header class="drilldown-navbar">
++        <a href="/" class="back-nav-btn" id="detailBackBtn" aria-label="Back to Seasonal Favorites">
++          <span aria-hidden="true">&#8592;</span>
++          <span>Seasonal Favorites</span>
++        </a>
++        <div class="drilldown-title-group">
++          <span class="drilldown-step-label">Level 2 &bull; Drink Detail</span>
++          <div class="drilldown-title" id="detailNavTitle">Maple Oat Latte</div>
++        </div>
++        <div class="drilldown-actions">
++          <button type="button" class="icon-btn" id="copyDeepLinkBtn" title="Copy sharable deep link">
++            &#128279; Share Link
++          </button>
++        </div>
++      </header>
++
++      <div class="stack-status-bar">
++        <div class="breadcrumbs" aria-label="Breadcrumb">
++          <a href="/" class="breadcrumb-link" data-action="pop-root">Home</a>
++          <span>/</span>
++          <span class="breadcrumb-current" id="detailBreadcrumbCurrent">Maple Oat Latte</span>
++        </div>
++        <span class="gesture-tip">&#8596; Swipe right anywhere or press Esc / Browser Back</span>
+       </div>
++
++      <div class="detail-hero">
++        <img id="detailHeroImg" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1350&q=80" alt="Drink hero image">
++        <div class="detail-hero-overlay">
++          <span class="detail-category" id="detailCategoryBadge">Autumn Exclusive</span>
++          <h1 id="detailHeading">Maple Oat Latte</h1>
++          <p id="detailSubtitle">Creamy oat milk with a hint of Vermont maple syrup.</p>
++        </div>
++      </div>
++
++      <div class="detail-content-wrapper">
++        <!-- Left Column: Story, Tasting Notes, Origin Drill-Down, Sibling Navigation -->
++        <div>
++          <div class="detail-panel">
++            <h3>
++              <span>Barista's Craft Notes</span>
++              <span id="detailCaloriesBadge" class="meta-pill">190 Calories</span>
++            </h3>
++            <p id="detailLongDescription" style="color: var(--text-muted); margin-bottom: 18px;">
++              Handcrafted with our signature double ristretto espresso, velvety steamed barista-grade oat milk, and Grade-A dark amber maple syrup harvested from family-owned groves in Vermont. Finished with a light dusting of Saigon cinnamon.
++            </p>
++
++            <h3>Flavor Profile &amp; Extraction</h3>
++            <div class="tasting-grid" id="detailTastingGrid">
++              <!-- Populated dynamically -->
++            </div>
++
++            <!-- Level 3 Drill-Down Trigger -->
++            <a href="/menu/seasonal/origin" class="drilldown-row-card" id="originDrilldownLink">
++              <div>
++                <strong id="originTeaserTitle">Roast &amp; Farm Origin: Co-op Santa Elena</strong>
++                <span id="originTeaserSub">Drill down into single-origin harvest data, elevation &amp; roasting curve</span>
++              </div>
++              <span style="font-size: 1.2rem; color: var(--primary); font-weight: bold;">&rarr;</span>
++            </a>
++          </div>
++
++          <div class="detail-panel">
++            <h3>Deep Link &amp; History State</h3>
++            <p style="font-size: 0.88rem; color: var(--text-muted);">
++              This screen is synchronized with browser history and URL routing. Bookmarking or sharing this URL opens directly to this position in the navigation stack.
++            </p>
++            <div class="deeplink-bar">
++              <span id="activeDeepLinkText">/menu/seasonal</span>
++              <button type="button" class="icon-btn" id="inlineCopyBtn">Copy URL</button>
++            </div>
++
++            <div class="sibling-nav" id="siblingNavContainer">
++              <!-- Populated with Prev / Next Seasonal Favorite -->
++            </div>
++          </div>
++        </div>
++
++        <!-- Right Column: Interactive Customization & Order Action -->
++        <div>
++          <div class="detail-panel">
++            <h3>
++              <span>Customize Your Cup</span>
++              <span id="detailLivePrice" style="font-size: 1.35rem; color: var(--primary-dark);">$5.75</span>
++            </h3>
++
++            <div class="option-group">
++              <label>Cup Size</label>
++              <div class="segmented-options" id="sizeOptions">
++                <button type="button" class="seg-btn" data-size="Small (12oz)" data-delta="-0.50">12 oz<br><small>-$0.50</small></button>
++                <button type="button" class="seg-btn active" data-size="Medium (16oz)" data-delta="0">16 oz<br><small>Standard</small></button>
++                <button type="button" class="seg-btn" data-size="Large (20oz)" data-delta="0.75">20 oz<br><small>+$0.75</small></button>
++              </div>
++            </div>
++
++            <div class="option-group">
++              <label>Serving Temperature</label>
++              <div class="segmented-options" id="tempOptions">
++                <button type="button" class="seg-btn active" data-temp="Hot">Steamed Hot</button>
++                <button type="button" class="seg-btn" data-temp="Iced">Over Ice</button>
++                <button type="button" class="seg-btn" data-temp="Extra Hot">Extra Hot (165&deg;F)</button>
++              </div>
++            </div>
++
++            <div class="option-group">
++              <label>Espresso Shot Pull</label>
++              <div class="segmented-options" id="shotOptions">
++                <button type="button" class="seg-btn active" data-shots="Standard" data-delta="0">Standard</button>
++                <button type="button" class="seg-btn" data-shots="Extra Shot" data-delta="1.25">+1 Shot (+$1.25)</button>
++                <button type="button" class="seg-btn" data-shots="Decaf" data-delta="0">Swiss Water Decaf</button>
++              </div>
++            </div>
++
++            <div style="margin-top: 22px; display: flex; flex-direction: column; gap: 10px;">
++              <button type="button" class="btn" id="addToOrderBtn" style="width: 100%; padding: 14px;">
++                Add to Order &bull; <span id="orderBtnPrice">$5.75</span>
++              </button>
++              <button type="button" class="btn btn-outline" id="secondaryBackBtn" style="width: 100%;">
++                &#8592; Return to Seasonal Favorites
++              </button>
++            </div>
++          </div>
++        </div>
++      </div>
+     </section>
+-  </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++    <!-- LEVEL 3: Origin & Roast Lot Sub-Detail Screen -->
++    <section class="stack-screen screen-subdetail" id="screenSubDetail" aria-label="Origin and Roast Specification" aria-hidden="true">
++      <header class="drilldown-navbar">
++        <a href="/menu/seasonal" class="back-nav-btn" id="subDetailBackBtn" aria-label="Back to Drink Detail">
++          <span aria-hidden="true">&#8592;</span>
++          <span id="subDetailBackLabel">Maple Oat Latte</span>
++        </a>
++        <div class="drilldown-title-group">
++          <span class="drilldown-step-label">Level 3 &bull; Single-Origin Lot</span>
++          <div class="drilldown-title" id="subDetailNavTitle">Roast &amp; Farm Origin</div>
++        </div>
++        <div class="drilldown-actions">
++          <a href="/" class="icon-btn" data-action="pop-root" title="Pop to Home Root">
++            &#8962; Home
++          </a>
++        </div>
++      </header>
+ 
++      <div class="stack-status-bar">
++        <div class="breadcrumbs" aria-label="Breadcrumb">
++          <a href="/" class="breadcrumb-link" data-action="pop-root">Home</a>
++          <span>/</span>
++          <a href="/menu/seasonal" class="breadcrumb-link" id="subBreadcrumbParent">Maple Oat Latte</a>
++          <span>/</span>
++          <span class="breadcrumb-current">Origin &amp; Roast Lot</span>
++        </div>
++        <span class="gesture-tip">&#8596; Swipe right or press Back to pop one level</span>
++      </div>
++
++      <div class="detail-content-wrapper" style="grid-template-columns: 1fr; max-width: 820px;">
++        <div class="detail-panel">
++          <span class="meta-pill" id="originRegionPill" style="margin-bottom: 10px; display: inline-block;">Direct Trade Lot #2026-B</span>
++          <h2 id="originFullTitle" style="color: var(--primary-dark); font-size: 1.75rem; margin-bottom: 10px;">
++            Co-op Santa Elena &amp; Vermont Sugarbush
++          </h2>
++          <p id="originStoryText" style="color: var(--text-muted); margin-bottom: 20px;">
++            Every batch is small-lot roasted in our cast-iron drum roasters to highlight caramelized sugars without bitterness.
++          </p>
++
++          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 24px;">
++            <div style="background: var(--secondary-light); padding: 14px; border-radius: 8px;">
++              <small style="color: var(--text-muted); text-transform: uppercase; font-size: 0.72rem; font-weight: 700;">Elevation</small>
++              <div id="originElevation" style="font-weight: 700; color: var(--primary-dark); font-size: 1.05rem;">1,650 - 1,850 MASL</div>
++            </div>
++            <div style="background: var(--secondary-light); padding: 14px; border-radius: 8px;">
++              <small style="color: var(--text-muted); text-transform: uppercase; font-size: 0.72rem; font-weight: 700;">Process Method</small>
++              <div id="originProcess" style="font-weight: 700; color: var(--primary-dark); font-size: 1.05rem;">Honey Washed &amp; Sun Dried</div>
++            </div>
++            <div style="background: var(--secondary-light); padding: 14px; border-radius: 8px;">
++              <small style="color: var(--text-muted); text-transform: uppercase; font-size: 0.72rem; font-weight: 700;">Roast Temp</small>
++              <div id="originRoastTemp" style="font-weight: 700; color: var(--primary-dark); font-size: 1.05rem;">412&deg;F Drop (Medium)</div>
++            </div>
++          </div>
++
++          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
++            <button type="button" class="btn" id="subDetailPopOneBtn">
++              &#8592; Back to Drink Details
++            </button>
++            <button type="button" class="btn btn-outline" data-action="pop-root">
++              &#8962; Pop All to Home
++            </button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++  </div>
++
++  <div class="toast" id="toastNotification" role="status" aria-live="polite"></div>
++
++  <script>
++    (function () {
++      // Rich catalog data for Seasonal Favorites
++      const SEASONAL_ITEMS = {
++        'seasonal': {
++          slug: 'seasonal',
++          path: '/menu/seasonal',
++          title: 'Maple Oat Latte',
++          shortDesc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          longDesc: 'Handcrafted with our signature double ristretto espresso, velvety steamed barista-grade oat milk, and Grade-A dark amber maple syrup harvested from family-owned groves in Vermont. Finished with a light dusting of Saigon cinnamon.',
++          badge: 'Autumn Exclusive',
++          basePrice: 5.75,
++          calories: '190 Calories',
++          defaultTemp: 'Hot',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1350&q=80',
++          tastingNotes: [
++            { label: 'Sweetness (Maple & Oat)', score: 85 },
++            { label: 'Body & Creaminess', score: 90 },
++            { label: 'Roast Intensity', score: 65 },
++            { label: 'Acidity Brightness', score: 35 }
++          ],
++          origin: {
++            lotCode: 'Direct Trade Lot #VT-408',
++            title: 'Co-op Santa Elena & Vermont Sugarbush',
++            story: 'Our espresso base pairs washed Huehuetenango Guatemalan beans with single-estate wood-fired maple syrup from Green Mountain producers.',
++            elevation: '1,650 - 1,850 MASL',
++            process: 'Washed & Wood-Fired Maple',
++            roastTemp: '412°F First Crack + 45s'
++          }
++        },
++        'espresso': {
++          slug: 'espresso',
++          path: '/menu/espresso',
++          title: 'Dark Roast Espresso',
++          shortDesc: 'Bold, smokey, and perfect for a morning boost.',
++          longDesc: 'Pulled at 9 bars of pressure for a rich, tiger-striped crema. Our Dark Roast Espresso blends wet-hulled Sumatra Mandheling with high-altitude Colombian Supremo for deep dark-chocolate undertones and a lingering smoky cedar finish.',
++          badge: "Roaster's Pick",
++          basePrice: 3.95,
++          calories: '15 Calories',
++          defaultTemp: 'Hot',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1350&q=80',
++          tastingNotes: [
++            { label: 'Roast Intensity & Smoke', score: 95 },
++            { label: 'Body & Syrupy Crema', score: 92 },
++            { label: 'Dark Cacao Bittersweet', score: 82 },
++            { label: 'Acidity Brightness', score: 22 }
++          ],
++          origin: {
++            lotCode: 'Micro-Lot #SM-912',
++            title: 'Aceh Gayo Highlands & Huila Reserve',
++            story: 'Traditional Giling Basah (wet-hulling) in northern Sumatra gives this espresso unmistakable earthy complexity, balanced by sweet Colombian caramel notes.',
++            elevation: '1,400 - 1,750 MASL',
++            process: 'Giling Basah (Wet-Hulled)',
++            roastTemp: '434°F Rolling Second Crack'
++          }
++        },
++        'cold-brew': {
++          slug: 'cold-brew',
++          path: '/menu/cold-brew',
++          title: 'Cold Brew',
++          shortDesc: 'Steeped for 18 hours for maximum smoothness.',
++          longDesc: 'Coarse-ground single-origin Ethiopian Yirgacheffe steeped in cold triple-filtered water for 18 hours inside stainless steel tanks. Double-filtered through organic cotton for a silky, low-acid cup bursting with stone-fruit and cocoa nib notes.',
++          badge: '18-Hour Steep',
++          basePrice: 4.95,
++          calories: '5 Calories',
++          defaultTemp: 'Iced',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1350&q=80',
++          tastingNotes: [
++            { label: 'Smoothness (Low Acid)', score: 96 },
++            { label: 'Chocolate & Stone Fruit', score: 88 },
++            { label: 'Body & Refreshment', score: 80 },
++            { label: 'Bitterness', score: 15 }
++          ],
++          origin: {
++            lotCode: 'Single Origin #ET-18H',
++            title: 'Yirgacheffe Kochere Washing Station',
++            story: 'Heirloom Ethiopian varietals dried on raised African beds yield delicate bergamot and dark berry aromatics that shine when cold-extracted.',
++            elevation: '1,950 - 2,150 MASL',
++            process: 'Natural Raised-Bed Dried',
++            roastTemp: '406°F Medium-Light Omni'
++          }
++        }
++      };
++
++      const SLUG_ORDER = ['seasonal', 'espresso', 'cold-brew'];
++      const ALIAS_MAP = {
++        'maple-oat-latte': 'seasonal',
++        'seasonal': 'seasonal',
++        'dark-roast-espresso': 'espresso',
++        'espresso': 'espresso',
++        'cold-brew': 'cold-brew',
++        'coldbrew': 'cold-brew'
++      };
++
++      // DOM Elements
++      const navStack = document.getElementById('navStack');
++      const screenHome = document.getElementById('screenHome');
++      const screenDetail = document.getElementById('screenDetail');
++      const screenSubDetail = document.getElementById('screenSubDetail');
++      const edgeSwipeZone = document.getElementById('edgeSwipeZone');
++      const swipeHintPill = document.getElementById('swipeHintPill');
++      const toastEl = document.getElementById('toastNotification');
++
++      // Current Navigation State
++      let currentRoute = {
++        depth: 0,       // 0 = Home, 1 = Detail, 2 = Origin Sub-Detail
++        slug: null
++      };
++
++      // Customization State
++      let customization = {
++        sizeDelta: 0,
++        shotDelta: 0
++      };
++
++      function showToast(message) {
++        toastEl.textContent = message;
++        toastEl.classList.add('show');
++        clearTimeout(showToast._timer);
++        showToast._timer = setTimeout(() => {
++          toastEl.classList.remove('show');
++        }, 2600);
++      }
++
++      /**
++       * Parse current browser location (pathname, query param, or hash) into a stack route
++       */
++      function parseLocationToRoute(loc) {
++        const pathname = (loc.pathname || '/').replace(/\/+$/, '') || '/';
++        const hash = (loc.hash || '').replace(/^#\/?/, '');
++        const params = new URLSearchParams(loc.search || '');
++
++        // Check query parameters first (?item=seasonal&view=origin)
++        const queryItem = params.get('item') || params.get('drink');
++        if (queryItem && ALIAS_MAP[queryItem.toLowerCase()]) {
++          const slug = ALIAS_MAP[queryItem.toLowerCase()];
++          const isOrigin = params.get('view') === 'origin' || params.get('sub') === 'origin';
++          return { depth: isOrigin ? 2 : 1, slug };
++        }
++
++        // Check pathname e.g. /menu/seasonal or /menu/seasonal/origin
++        const pathMatch = pathname.match(/^\/menu\/([^/]+)(?:\/(origin))?$/i);
++        if (pathMatch) {
++          const rawSlug = pathMatch[1].toLowerCase();
++          const slug = ALIAS_MAP[rawSlug];
++          if (slug) {
++            return { depth: pathMatch[2] ? 2 : 1, slug };
++          }
++        }
++
++        // Check hash e.g. #/menu/seasonal or #seasonal
++        if (hash) {
++          const hashMatch = hash.match(/^(?:menu\/)?([^/]+)(?:\/(origin))?$/i);
++          if (hashMatch) {
++            const rawSlug = hashMatch[1].toLowerCase();
++            const slug = ALIAS_MAP[rawSlug];
++            if (slug) {
++              return { depth: hashMatch[2] ? 2 : 1, slug };
++            }
++          }
++        }
++
++        return { depth: 0, slug: null };
++      }
++
++      /**
++       * Build canonical path for a route
++       */
++      function buildPathForRoute(route) {
++        if (!route || route.depth === 0 || !route.slug) {
++          return '/';
++        }
++        if (route.depth === 2) {
++          return `/menu/${route.slug}/origin`;
++        }
++        return `/menu/${route.slug}`;
++      }
++
++      /**
++       * Render the Level 2 and Level 3 screens for a given Seasonal Favorites item slug
++       */
++      function renderDetailContent(slug) {
++        const item = SEASONAL_ITEMS[slug];
++        if (!item) return;
++
++        // Reset customization deltas on item switch
++        customization.sizeDelta = 0;
++        customization.shotDelta = 0;
++
++        document.getElementById('detailNavTitle').textContent = item.title;
++        document.getElementById('detailBreadcrumbCurrent').textContent = item.title;
++        const heroImg = document.getElementById('detailHeroImg');
++        heroImg.src = item.image;
++        heroImg.alt = item.title;
++
++        document.getElementById('detailCategoryBadge').textContent = item.badge;
++        document.getElementById('detailHeading').textContent = item.title;
++        document.getElementById('detailSubtitle').textContent = item.shortDesc;
++        document.getElementById('detailCaloriesBadge').textContent = item.calories;
++        document.getElementById('detailLongDescription').textContent = item.longDesc;
++
++        // Render Tasting Notes bars
++        const tastingGrid = document.getElementById('detailTastingGrid');
++        tastingGrid.innerHTML = item.tastingNotes.map(note => `
++          <div class="tasting-row">
++            <div class="tasting-label">
++              <span>${note.label}</span>
++              <span>${note.score}%</span>
++            </div>
++            <div class="tasting-bar-bg">
++              <div class="tasting-bar-fill" style="width: ${note.score}%"></div>
++            </div>
++          </div>
++        `).join('');
++
++        // Update Level 3 Origin trigger
++        const originLink = document.getElementById('originDrilldownLink');
++        originLink.setAttribute('href', `/menu/${item.slug}/origin`);
++        document.getElementById('originTeaserTitle').textContent = `Roast & Farm Origin: ${item.origin.title}`;
++
++        // Update Level 3 Screen Content
++        document.getElementById('subDetailBackBtn').setAttribute('href', item.path);
++        document.getElementById('subDetailBackLabel').textContent = item.title;
++        document.getElementById('subBreadcrumbParent').setAttribute('href', item.path);
++        document.getElementById('subBreadcrumbParent').textContent = item.title;
++        document.getElementById('originRegionPill').textContent = item.origin.lotCode;
++        document.getElementById('originFullTitle').textContent = item.origin.title;
++        document.getElementById('originStoryText').textContent = item.origin.story;
++        document.getElementById('originElevation').textContent = item.origin.elevation;
++        document.getElementById('originProcess').textContent = item.origin.process;
++        document.getElementById('originRoastTemp').textContent = item.origin.roastTemp;
++
++        // Reset segmented buttons
++        document.querySelectorAll('#sizeOptions .seg-btn').forEach((btn, idx) => {
++          btn.classList.toggle('active', idx === 1);
++        });
++        document.querySelectorAll('#shotOptions .seg-btn').forEach((btn, idx) => {
++          btn.classList.toggle('active', idx === 0);
++        });
++        document.querySelectorAll('#tempOptions .seg-btn').forEach((btn) => {
++          btn.classList.toggle('active', btn.dataset.temp === item.defaultTemp);
++        });
++
++        updateDisplayedPrice(item.basePrice);
++
++        // Render Prev / Next sibling seasonal items
++        const idx = SLUG_ORDER.indexOf(slug);
++        const prevSlug = SLUG_ORDER[(idx - 1 + SLUG_ORDER.length) % SLUG_ORDER.length];
++        const nextSlug = SLUG_ORDER[(idx + 1) % SLUG_ORDER.length];
++        const prevItem = SEASONAL_ITEMS[prevSlug];
++        const nextItem = SEASONAL_ITEMS[nextSlug];
++
++        const siblingContainer = document.getElementById('siblingNavContainer');
++        siblingContainer.innerHTML = `
++          <a href="${prevItem.path}" class="sibling-link" data-drill-slug="${prevItem.slug}">
++            <small>&larr; Previous Seasonal</small>
++            <strong>${prevItem.title}</strong>
++          </a>
++          <a href="${nextItem.path}" class="sibling-link" data-drill-slug="${nextItem.slug}" style="text-align: right;">
++            <small>Next Seasonal &rarr;</small>
++            <strong>${nextItem.title}</strong>
++          </a>
++        `;
++      }
++
++      function updateDisplayedPrice(basePrice) {
++        const total = (basePrice + customization.sizeDelta + customization.shotDelta).toFixed(2);
++        document.getElementById('detailLivePrice').textContent = `$${total}`;
++        document.getElementById('orderBtnPrice').textContent = `$${total}`;
++      }
++
++      /**
++       * Apply route state to the visual navigation stack
++       */
++      function applyRouteToStack(route, options = { updateHistory: false, replaceHistory: false }) {
++        const prevDepth = currentRoute.depth;
++        const prevSlug = currentRoute.slug;
++
++        if (route.slug && SEASONAL_ITEMS[route.slug]) {
++          if (route.slug !== prevSlug) {
++            renderDetailContent(route.slug);
++          }
++        }
++
++        currentRoute = {
++          depth: route.depth,
++          slug: route.slug
++        };
++
++        // Keep temporary visibility during slide-out transition
++        if (prevDepth >= 1 && route.depth === 0) {
++          screenDetail.classList.add('is-animating');
++          setTimeout(() => screenDetail.classList.remove('is-animating'), 400);
++        }
++        if (prevDepth === 2 && route.depth < 2) {
++          screenSubDetail.classList.add('is-animating');
++          setTimeout(() => screenSubDetail.classList.remove('is-animating'), 400);
++        }
++
++        navStack.dataset.depth = String(route.depth);
++        navStack.classList.toggle('has-detail', route.depth >= 1);
++        navStack.classList.toggle('has-subdetail', route.depth >= 2);
++
++        screenHome.setAttribute('aria-hidden', route.depth > 0 ? 'true' : 'false');
++        screenDetail.setAttribute('aria-hidden', route.depth === 1 ? 'false' : 'true');
++        screenSubDetail.setAttribute('aria-hidden', route.depth === 2 ? 'false' : 'true');
++
++        if (route.depth === 1) {
++          screenDetail.scrollTop = 0;
++        } else if (route.depth === 2) {
++          screenSubDetail.scrollTop = 0;
++        }
++
++        const canonicalPath = buildPathForRoute(route);
++        document.getElementById('activeDeepLinkText').textContent = canonicalPath;
++
++        // Update document title
++        if (route.depth === 0) {
++          document.title = 'The Daily Grind | Artisanal Coffee';
++        } else {
++          const item = SEASONAL_ITEMS[route.slug];
++          const suffix = route.depth === 2 ? 'Origin & Roast' : 'Seasonal Favorites';
++          document.title = `${item.title} (${suffix}) | The Daily Grind`;
++        }
++
++        // Sync with Browser History API
++        if (options.updateHistory) {
++          const statePayload = { depth: route.depth, slug: route.slug, path: canonicalPath };
++          try {
++            if (options.replaceHistory) {
++              window.history.replaceState(statePayload, '', canonicalPath);
++            } else {
++              window.history.pushState(statePayload, '', canonicalPath);
++            }
++          } catch (err) {
++            // Fallback to location.hash if pushState on pathname is restricted
++            window.location.hash = canonicalPath === '/' ? '' : `#${canonicalPath}`;
++          }
++        }
++      }
++
++      /**
++       * Navigate forward/drill-down into a specific route
++       */
++      function navigateTo(route) {
++        if (route.depth === currentRoute.depth && route.slug === currentRoute.slug) {
++          return;
++        }
++        applyRouteToStack(route, { updateHistory: true, replaceHistory: false });
++      }
++
++      /**
++       * Navigate one level back in the hierarchy in sync with browser history
++       */
++      function navigateBackOneLevel() {
++        if (currentRoute.depth === 0) return;
++
++        // If we pushed states inside this session, history.back() keeps browser Forward/Back buttons in exact sync
++        if (window.history.state && window.history.state.fromStackPush) {
++          window.history.back();
++          return;
++        }
++
++        // If user landed directly via a deep link, compute parent route and push/replace
++        if (currentRoute.depth === 2) {
++          applyRouteToStack({ depth: 1, slug: currentRoute.slug }, { updateHistory: true });
++        } else {
++          applyRouteToStack({ depth: 0, slug: null }, { updateHistory: true });
++        }
++      }
++
++      /**
++       * Enhanced push helper that marks internal stack history entries
++       */
++      function drillDownToSlug(slug, depth = 1) {
++        if (!SEASONAL_ITEMS[slug]) return;
++        const route = { depth, slug };
++        const canonicalPath = buildPathForRoute(route);
++        applyRouteToStack(route, { updateHistory: false });
++        try {
++          window.history.pushState(
++            { depth, slug, path: canonicalPath, fromStackPush: true },
++            '',
++            canonicalPath
++          );
++        } catch (e) {
++          window.location.hash = `#${canonicalPath}`;
++        }
++      }
++
++      // Click Delegation for Seasonal Cards, Links, and Back Controls
++      document.addEventListener('click', (e) => {
++        // 1. Check for drill-down item triggers
++        const drillTrigger = e.target.closest('[data-drill-slug]');
++        if (drillTrigger) {
++          e.preventDefault();
++          const slug = drillTrigger.getAttribute('data-drill-slug');
++          drillDownToSlug(slug, 1);
++          return;
++        }
++
++        // 2. Check for Level 3 Origin drill-down trigger
++        const originTrigger = e.target.closest('#originDrilldownLink');
++        if (originTrigger) {
++          e.preventDefault();
++          if (currentRoute.slug) {
++            drillDownToSlug(currentRoute.slug, 2);
++          }
++          return;
++        }
++
++        // 3. Check for Pop to Root triggers
++        const popRootTrigger = e.target.closest('[data-action="pop-root"], #homeLogo');
++        if (popRootTrigger) {
++          e.preventDefault();
++          if (currentRoute.depth > 0) {
++            applyRouteToStack({ depth: 0, slug: null }, { updateHistory: true });
++          }
++          return;
++        }
++
++        // 4. Intercept top-nav / footer standard links so SPA doesn't 404
++        const navRootLink = e.target.closest('[data-nav-root]');
++        if (navRootLink) {
++          e.preventDefault();
++          const label = navRootLink.textContent.trim();
++          showToast(`Viewing ${label} section on The Daily Grind`);
++          return;
++        }
++      });
++
++      // Keyboard Accessibility on Cards (Enter / Space) & Escape to pop back
++      document.addEventListener('keydown', (e) => {
++        if (e.key === 'Escape' && currentRoute.depth > 0) {
++          e.preventDefault();
++          navigateBackOneLevel();
++          return;
++        }
++        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.card[data-drill-slug]')) {
++          e.preventDefault();
++          drillDownToSlug(e.target.getAttribute('data-drill-slug'), 1);
++        }
++      });
++
++      // Back Buttons in Level 2 and Level 3 headers
++      document.getElementById('detailBackBtn').addEventListener('click', (e) => {
++        e.preventDefault();
++        navigateBackOneLevel();
++      });
++
++      document.getElementById('secondaryBackBtn').addEventListener('click', (e) => {
++        e.preventDefault();
++        navigateBackOneLevel();
++      });
++
++      document.getElementById('subDetailBackBtn').addEventListener('click', (e) => {
++        e.preventDefault();
++        navigateBackOneLevel();
++      });
++
++      document.getElementById('subDetailPopOneBtn').addEventListener('click', (e) => {
++        e.preventDefault();
++        navigateBackOneLevel();
++      });
++
++      document.getElementById('subBreadcrumbParent').addEventListener('click', (e) => {
++        e.preventDefault();
++        if (currentRoute.depth === 2) {
++          navigateBackOneLevel();
++        }
++      });
++
++      // Interactive Customization Options
++      document.getElementById('sizeOptions').addEventListener('click', (e) => {
++        const btn = e.target.closest('.seg-btn');
++        if (!btn || !currentRoute.slug) return;
++        document.querySelectorAll('#sizeOptions .seg-btn').forEach(b => b.classList.remove('active'));
++        btn.classList.add('active');
++        customization.sizeDelta = parseFloat(btn.dataset.delta || '0');
++        updateDisplayedPrice(SEASONAL_ITEMS[currentRoute.slug].basePrice);
++      });
++
++      document.getElementById('tempOptions').addEventListener('click', (e) => {
++        const btn = e.target.closest('.seg-btn');
++        if (!btn) return;
++        document.querySelectorAll('#tempOptions .seg-btn').forEach(b => b.classList.remove('active'));
++        btn.classList.add('active');
++      });
++
++      document.getElementById('shotOptions').addEventListener('click', (e) => {
++        const btn = e.target.closest('.seg-btn');
++        if (!btn || !currentRoute.slug) return;
++        document.querySelectorAll('#shotOptions .seg-btn').forEach(b => b.classList.remove('active'));
++        btn.classList.add('active');
++        customization.shotDelta = parseFloat(btn.dataset.delta || '0');
++        updateDisplayedPrice(SEASONAL_ITEMS[currentRoute.slug].basePrice);
++      });
++
++      document.getElementById('addToOrderBtn').addEventListener('click', () => {
++        if (!currentRoute.slug) return;
++        const item = SEASONAL_ITEMS[currentRoute.slug];
++        const size = document.querySelector('#sizeOptions .seg-btn.active')?.dataset.size || 'Medium';
++        const temp = document.querySelector('#tempOptions .seg-btn.active')?.dataset.temp || 'Hot';
++        showToast(`Added ${size} ${temp} ${item.title} to your order!`);
++      });
++
++      // Share / Copy Deep Link buttons
++      function copyCurrentDeepLink() {
++        const url = window.location.href;
++        if (navigator.clipboard && navigator.clipboard.writeText) {
++          navigator.clipboard.writeText(url).then(() => {
++            showToast(`Copied deep link: ${buildPathForRoute(currentRoute)}`);
++          }).catch(() => {
++            showToast(`Deep link ready: ${buildPathForRoute(currentRoute)}`);
++          });
++        } else {
++          showToast(`Deep link ready: ${buildPathForRoute(currentRoute)}`);
++        }
++      }
++
++      document.getElementById('copyDeepLinkBtn').addEventListener('click', copyCurrentDeepLink);
++      document.getElementById('inlineCopyBtn').addEventListener('click', copyCurrentDeepLink);
++
++      // Browser History Popstate & Hashchange Synchronization
++      window.addEventListener('popstate', (event) => {
++        if (event.state && typeof event.state.depth === 'number') {
++          applyRouteToStack(
++            { depth: event.state.depth, slug: event.state.slug },
++            { updateHistory: false }
++          );
++        } else {
++          const parsed = parseLocationToRoute(window.location);
++          applyRouteToStack(parsed, { updateHistory: false });
++        }
++      });
++
++      window.addEventListener('hashchange', () => {
++        const parsed = parseLocationToRoute(window.location);
++        applyRouteToStack(parsed, { updateHistory: false });
++      });
++
++      // Touch & Pointer Swipe-Back Gesture Implementation
++      let gestureState = {
++        active: false,
++        startX: 0,
++        startY: 0,
++        currentX: 0,
++        isHorizontalSwipe: null,
++        activeScreenEl: null,
++        underScreenEl: null
++      };
++
++      function getActiveScreenElements() {
++        if (currentRoute.depth === 2) {
++          return { active: screenSubDetail, under: screenDetail };
++        }
++        if (currentRoute.depth === 1) {
++          return { active: screenDetail, under: screenHome };
++        }
++        return null;
++      }
++
++      function onSwipeStart(clientX, clientY, fromEdgeZone) {
++        if (currentRoute.depth === 0) return;
++        const screens = getActiveScreenElements();
++        if (!screens) return;
++
++        // Allow starting swipe from left edge zone or anywhere if horizontal flick right
++        gestureState.active = true;
++        gestureState.startX = clientX;
++        gestureState.startY = clientY;
++        gestureState.currentX = clientX;
++        gestureState.isHorizontalSwipe = fromEdgeZone ? true : null;
++        gestureState.activeScreenEl = screens.active;
++        gestureState.underScreenEl = screens.under;
++      }
++
++      function onSwipeMove(clientX, clientY) {
++        if (!gestureState.active || !gestureState.activeScreenEl) return;
++
++        const deltaX = clientX - gestureState.startX;
++        const deltaY = clientY - gestureState.startY;
++
++        if (gestureState.isHorizontalSwipe === null) {
++          if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
++          // Only lock as horizontal back-swipe if moving rightward and horizontal > vertical
++          if (deltaX > 12 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35) {
++            gestureState.isHorizontalSwipe = true;
++          } else {
++            gestureState.active = false;
++            return;
++          }
++        }
++
++        if (!gestureState.isHorizontalSwipe) return;
++
++        const clampedX = Math.max(0, deltaX);
++        gestureState.currentX = clientX;
++
++        const viewportWidth = window.innerWidth || 375;
++        const progress = Math.min(1, clampedX / viewportWidth);
++
++        gestureState.activeScreenEl.classList.add('is-dragging');
++        gestureState.underScreenEl.classList.add('is-dragging');
++
++        // Translate active screen rightwards with finger/pointer
++        gestureState.activeScreenEl.style.transform = `translate3d(${clampedX}px, 0, 0)`;
++
++        // Parallax-restore underlying screen smoothly toward 0%
++        const underOffset = -26 * (1 - progress);
++        const underScale = 0.96 + 0.04 * progress;
++        const underBrightness = 0.72 + 0.28 * progress;
++        gestureState.underScreenEl.style.transform = `translate3d(${underOffset}%, 0, 0) scale(${underScale})`;
++        gestureState.underScreenEl.style.filter = `brightness(${underBrightness})`;
++
++        swipeHintPill.classList.toggle('visible', clampedX > 90);
++      }
++
++      function onSwipeEnd() {
++        if (!gestureState.active) return;
++
++        const deltaX = gestureState.currentX - gestureState.startX;
++        const wasHorizontal = gestureState.isHorizontalSwipe;
++        const activeEl = gestureState.activeScreenEl;
++        const underEl = gestureState.underScreenEl;
++
++        gestureState.active = false;
++        swipeHintPill.classList.remove('visible');
++
++        if (activeEl) {
++          activeEl.classList.remove('is-dragging');
++          activeEl.style.transform = '';
++        }
++        if (underEl) {
++          underEl.classList.remove('is-dragging');
++          underEl.style.transform = '';
++          underEl.style.filter = '';
++        }
++
++        const threshold = Math.min(110, (window.innerWidth || 375) * 0.26);
++        if (wasHorizontal && deltaX > threshold) {
++          navigateBackOneLevel();
++        }
++      }
++
++      // Touch Events (Mobile / Tablet / Touchscreens)
++      navStack.addEventListener('touchstart', (e) => {
++        if (e.touches.length !== 1) return;
++        const touch = e.touches[0];
++        onSwipeStart(touch.clientX, touch.clientY, touch.clientX <= 40);
++      }, { passive: true });
++
++      navStack.addEventListener('touchmove', (e) => {
++        if (!gestureState.active || e.touches.length !== 1) return;
++        const touch = e.touches[0];
++        onSwipeMove(touch.clientX, touch.clientY);
++      }, { passive: true });
++
++      navStack.addEventListener('touchend', onSwipeEnd);
++      navStack.addEventListener('touchcancel', onSwipeEnd);
++
++      // Mouse / Pointer Drag from Edge Zone or Detail Screen
++      edgeSwipeZone.addEventListener('pointerdown', (e) => {
++        onSwipeStart(e.clientX, e.clientY, true);
++      });
++
++      navStack.addEventListener('pointerdown', (e) => {
++        if (currentRoute.depth === 0) return;
++        // Ignore interactive controls
++        if (e.target.closest('a, button, input, select, textarea')) return;
++        onSwipeStart(e.clientX, e.clientY, e.clientX <= 40);
++      });
++
++      window.addEventListener('pointermove', (e) => {
++        if (!gestureState.active) return;
++        onSwipeMove(e.clientX, e.clientY);
++      });
++
++      window.addEventListener('pointerup', onSwipeEnd);
++
++      // Initial Deep-Link Bootstrapping on Page Load
++      const initialRoute = parseLocationToRoute(window.location);
++      if (initialRoute.depth > 0 && initialRoute.slug) {
++        // Seed initial state in history so back navigation has state context
++        applyRouteToStack(initialRoute, { updateHistory: true, replaceHistory: true });
++      } else {
++        applyRouteToStack({ depth: 0, slug: null }, { updateHistory: false });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

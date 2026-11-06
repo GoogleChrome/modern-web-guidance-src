@@ -1,0 +1,295 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,203 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* High-Frequency Sequencing & Telemetry Section */
++    .telemetry-section {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      padding: 30px;
++      margin-top: 40px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .telemetry-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .telemetry-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .telemetry-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .telemetry-controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 30px;
++    }
++
++    .btn-simulate {
++      background: var(--primary);
++      color: white;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 24px;
++      border-radius: 6px;
++      transition: all 0.2s ease;
++      box-shadow: 0 2px 6px rgba(78, 52, 46, 0.3);
++    }
++
++    .btn-simulate:hover {
++      background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .btn-secondary {
++      background: var(--accent);
++      color: #3e2723;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 24px;
++      border-radius: 6px;
++      transition: all 0.2s ease;
++    }
++
++    .btn-secondary:hover {
++      background: #ffa000;
++      transform: translateY(-1px);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      font-size: 0.95rem;
++      padding: 12px 20px;
++      border-radius: 6px;
++      transition: all 0.2s ease;
++    }
++
++    .btn-outline:hover {
++      background: #efebe9;
++    }
++
++    .telemetry-metrics {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++      margin-bottom: 30px;
++    }
++
++    .metric-card {
++      background: #fdfbf7;
++      border: 1px solid #e0d7d0;
++      border-radius: 8px;
++      padding: 15px;
++      text-align: center;
++    }
++
++    .metric-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #795548;
++      margin-bottom: 6px;
++    }
++
++    .metric-val {
++      font-size: 1.3rem;
++      font-weight: bold;
++      color: var(--primary);
++      font-family: monospace;
++    }
++
++    .metric-val.highlight {
++      color: #d84315;
++    }
++
++    .telemetry-logs-wrapper, .telemetry-console-wrapper {
++      margin-top: 25px;
++    }
++
++    .telemetry-logs-wrapper h3, .telemetry-console-wrapper h3 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .table-responsive {
++      overflow-x: auto;
++    }
++
++    .telemetry-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    .telemetry-table th {
++      background: #efebe9;
++      color: var(--primary);
++      text-align: left;
++      padding: 10px 14px;
++      font-weight: 600;
++      border-bottom: 2px solid #d7ccc8;
++    }
++
++    .telemetry-table td {
++      padding: 10px 14px;
++      border-bottom: 1px solid #eeeeee;
++      vertical-align: middle;
++    }
++
++    .telemetry-table tr:hover {
++      background: #faf7f5;
++    }
++
++    .timestamp-col code, .diff-col code {
++      background: #f5f5f5;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      color: #bf360c;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 3px 8px;
++      border-radius: 4px;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++    }
++
++    .badge.success {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .telemetry-console-wrapper pre {
++      background: #212121;
++      color: #81c784;
++      font-family: 'Consolas', 'Courier New', monospace;
++      font-size: 0.85rem;
++      padding: 15px;
++      border-radius: 6px;
++      max-height: 160px;
++      overflow-y: auto;
++      white-space: pre-wrap;
++      word-break: break-all;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +389,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- High-Frequency Sequencing System Section -->
++    <section class="telemetry-section" id="high-frequency-sequencing">
++      <div class="telemetry-header">
++        <h2>High-Frequency Order Sequencing &amp; Telemetry</h2>
++        <p>Distributed microservices order sequencing engine with nanosecond-resolution timestamp tracing.</p>
++      </div>
++
++      <div class="telemetry-controls">
++        <button id="simulate-order-btn" class="btn btn-simulate" data-testid="simulate-order-btn">
++          Simulate Coffee Order
++        </button>
++        <button id="simulate-burst-btn" class="btn btn-secondary" data-testid="simulate-burst-btn">
++          Simulate High-Frequency Burst (5 Orders)
++        </button>
++        <button id="reset-telemetry-btn" class="btn btn-outline" data-testid="reset-telemetry-btn">
++          Clear Telemetry Log
++        </button>
++      </div>
++
++      <div class="telemetry-metrics">
++        <div class="metric-card">
++          <div class="metric-label">Total Clicks / Orders</div>
++          <div class="metric-val" id="telemetry-total-clicks">0</div>
++        </div>
++        <div class="metric-card">
++          <div class="metric-label">Last Consecutive Latency</div>
++          <div class="metric-val" id="telemetry-last-diff">0 ns</div>
++        </div>
++        <div class="metric-card">
++          <div class="metric-label">Mean Inter-Arrival Delta</div>
++          <div class="metric-val" id="telemetry-avg-diff">0 ns</div>
++        </div>
++        <div class="metric-card">
++          <div class="metric-label">Timestamp Resolution</div>
++          <div class="metric-val highlight">Nanosecond (ns)</div>
++        </div>
++      </div>
++
++      <div class="telemetry-logs-wrapper">
++        <h3>Sequenced Telemetry Operations</h3>
++        <div class="table-responsive">
++          <table class="telemetry-table" id="telemetry-table">
++            <thead>
++              <tr>
++                <th>Seq</th>
++                <th>Order ID</th>
++                <th>Item</th>
++                <th>Microservice</th>
++                <th>Timestamp (ns)</th>
++                <th>Consecutive Click Diff</th>
++                <th>Status</th>
++              </tr>
++            </thead>
++            <tbody id="telemetry-log-body">
++              <tr>
++                <td colspan="7" style="text-align:center; color:#888;">
++                  No orders sequenced yet. Click "Simulate Coffee Order" above to begin recording telemetry.
++                </td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
++
++      <div class="telemetry-console-wrapper">
++        <h3>Live Telemetry Stream</h3>
++        <pre id="telemetry-console-box">[TELEMETRY] Ready. High-frequency sequencing initialized with nanosecond resolution.</pre>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +471,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="telemetry.js"></script>
+ </body>
+ 
+ </html>

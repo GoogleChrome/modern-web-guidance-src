@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..7baa363 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,28 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
++    /* Nav links: underline that wipes in from the left on hover/focus.
++       Offset clears descenders; the default ink skipping keeps gaps around them. */
++    nav ul a {
++      text-decoration: underline solid currentColor max(1px, 0.1em);
++      text-underline-offset: 0.3em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul a {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav ul a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -118,6 +136,70 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Thick accent underline set close to the baseline so it meets the descenders
++         (the "p" in Espresso, "y" etc.); the default skip-ink carves clean gaps around them.
++         The accent color and lack of hover change keep it from reading as a link. */
++      text-decoration: underline solid var(--accent) max(2px, 0.14em);
++      text-underline-offset: 0.08em;
++      /* Trim both ends slightly for a softer, hand-set look. */
++      text-decoration-inset: 0.15em;
++    }
++
++    /* Grow the underline outward from the centre when the card is hovered or focused. */
++    @media (prefers-reduced-motion: no-preference) {
++      .card h3 {
++        text-decoration-inset: 50%;
++        transition: text-decoration-inset 0.4s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: 0.15em;
++      }
++    }
++
++    /* Section heading: a hand-drawn squiggle underline that draws on when the page loads. */
++    .section-title {
++      position: relative;
++      width: fit-content;
++      margin-inline: auto;
++      padding-block-end: 0.45em;
++      text-wrap: balance;
++    }
++
++    .section-title::after {
++      content: "";
++      position: absolute;
++      /* Horizontal end insets: the line stops short of the text edges. */
++      inset: auto 0.25em 0 0.25em;
++      pointer-events: none;
++      /* Fallback: a straight line (still animated by the clip-path below). */
++      border-block-end: max(2px, 0.08em) solid var(--accent);
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .section-title::after {
++        block-size: 0.35em;
++        border: max(2px, 0.08em) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .section-title::after {
++        clip-path: inset(-1em 100% -1em 0);
++        animation: draw-line 0.9s 0.3s ease-out forwards;
++      }
++    }
++
++    @keyframes draw-line {
++      to {
++        clip-path: inset(-1em 0 -1em 0);
++      }
+     }
+ 
+     .btn {
+@@ -149,8 +231,28 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
++      /* Soft dotted underline that firms up to a solid line on hover/focus. */
++      text-decoration: underline dotted color-mix(in srgb, currentColor 50%, transparent) max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration-style: solid;
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    /* On hover the line also extends slightly past both ends of the word. */
++    @media (prefers-reduced-motion: no-preference) {
++      .footer-links a {
++        text-decoration-inset: 0;
++        transition: text-decoration-inset 0.25s ease-out, text-decoration-color 0.25s;
++      }
++
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-inset: -0.2em;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +278,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

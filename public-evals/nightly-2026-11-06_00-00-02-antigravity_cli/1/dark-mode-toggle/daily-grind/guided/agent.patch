@@ -1,0 +1,357 @@
+diff --git a/index.html b/index.html
+index 66c9173..2449bb2 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,157 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
++    } catch {}
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --color-scheme: light;
++
++      --primary-light: #4e342e;
++      --primary-dark: #3e2723;
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #241815;
++      --accent-light: #ffab40;
++      --accent-dark: #ffca80;
++      --text-light: #3e2723;
++      --text-dark: #f5ebe6;
++      --bg-light: #fafafa;
++      --bg-dark: #1a1210;
++      --card-bg-light: #ffffff;
++      --card-bg-dark: #2b1e1a;
++      --card-heading-light: #4e342e;
++      --card-heading-dark: #ffca80;
++      --card-border-light: rgba(78, 52, 46, 0.12);
++      --card-border-dark: rgba(245, 235, 230, 0.15);
++      --card-shadow-light: rgba(0, 0, 0, 0.1);
++      --card-shadow-dark: rgba(0, 0, 0, 0.45);
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #6d4c41;
++      --btn-hover-light: #3e2723;
++      --btn-hover-dark: #8d6e63;
++
++      /* Fallback for browsers without light-dark() support */
++      --primary: var(--primary-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --text: var(--text-light);
++      --light: var(--bg-light);
++      --card-bg: var(--card-bg-light);
++      --card-heading: var(--card-heading-light);
++      --card-border: var(--card-border-light);
++      --card-shadow: var(--card-shadow-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-hover: var(--btn-hover-light);
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++        --primary: var(--primary-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --card-bg: var(--card-bg-dark);
++        --card-heading: var(--card-heading-dark);
++        --card-border: var(--card-border-dark);
++        --card-shadow: var(--card-shadow-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-hover: var(--btn-hover-dark);
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="dark"]) {
++        color-scheme: dark;
++        --color-scheme: dark;
++        --primary: var(--primary-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --card-bg: var(--card-bg-dark);
++        --card-heading: var(--card-heading-dark);
++        --card-border: var(--card-border-dark);
++        --card-shadow: var(--card-shadow-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-hover: var(--btn-hover-dark);
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="light"]) {
++        color-scheme: light;
++        --color-scheme: light;
++        --primary: var(--primary-light);
++        --secondary: var(--secondary-light);
++        --accent: var(--accent-light);
++        --text: var(--text-light);
++        --light: var(--bg-light);
++        --card-bg: var(--card-bg-light);
++        --card-heading: var(--card-heading-light);
++        --card-border: var(--card-border-light);
++        --card-shadow: var(--card-shadow-light);
++        --btn-bg: var(--btn-bg-light);
++        --btn-hover: var(--btn-hover-light);
++      }
++
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --light: light-dark(var(--bg-light), var(--bg-dark));
++        --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
++        --card-heading: light-dark(var(--card-heading-light), var(--card-heading-dark));
++        --card-border: light-dark(var(--card-border-light), var(--card-border-dark));
++        --card-shadow: light-dark(var(--card-shadow-light), var(--card-shadow-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-hover: light-dark(var(--btn-hover-light), var(--btn-hover-dark));
++      }
++    }
++
++    /* Visually hidden utility for screen reader text */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Fallback visibility branching when container style queries are unsupported */
++    :root:has(> head > meta[name="color-scheme"][content="light"]) .if-dark,
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) .if-light {
++      display: none !important;
++    }
++
++    @media not (prefers-color-scheme: dark) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="dark"])) .if-dark {
++        display: none !important;
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .if-light {
++        display: none !important;
++      }
++    }
++
++    @container not style(--color-scheme: dark) {
++      .if-dark {
++        display: none !important;
++      }
++    }
++
++    @container not style(--color-scheme: light) {
++      .if-light {
++        display: none !important;
++      }
+     }
+ 
+     * {
+@@ -48,6 +191,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -72,6 +216,46 @@
+       border-radius: 4px;
+     }
+ 
++    .theme-toggle {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
++      min-inline-size: 36px;
++      min-block-size: 36px;
++      padding: 6px 10px;
++      background: rgba(255, 255, 255, 0.1);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      border-radius: 6px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.9rem;
++      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .theme-toggle:hover {
++      background: rgba(255, 255, 255, 0.18);
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    .theme-toggle svg {
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      flex-shrink: 0;
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,21 +292,23 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--card-border);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--btn-bg);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -132,11 +318,12 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +339,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -165,6 +356,23 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="theme-toggle" id="theme-toggle">
++          <span class="if-light">
++            <svg aria-hidden="true" viewBox="0 0 24 24">
++              <circle cx="12" cy="12" r="4"></circle>
++              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
++            </svg>
++            <span class="visually-hidden">Switch to dark theme</span>
++          </span>
++          <span class="if-dark">
++            <svg aria-hidden="true" viewBox="0 0 24 24">
++              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
++            </svg>
++            <span class="visually-hidden">Switch to light theme</span>
++          </span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +415,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const meta = document.querySelector('meta[name="color-scheme"]');
++      const toggleBtn = document.getElementById('theme-toggle');
++
++      function getSystemScheme() {
++        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
++      }
++
++      function getStoredScheme() {
++        try {
++          const val = localStorage.getItem('color-scheme');
++          return val === 'light' || val === 'dark' ? val : null;
++        } catch {
++          return null;
++        }
++      }
++
++      function getRenderedScheme() {
++        const stored = getStoredScheme();
++        if (stored) return stored;
++        if (meta.content === 'light' || meta.content === 'dark') return meta.content;
++        return getSystemScheme();
++      }
++
++      toggleBtn.addEventListener('click', () => {
++        const currentScheme = getRenderedScheme();
++        const targetScheme = currentScheme === 'dark' ? 'light' : 'dark';
++        const systemScheme = getSystemScheme();
++
++        if (targetScheme !== systemScheme) {
++          try {
++            localStorage.setItem('color-scheme', targetScheme);
++          } catch {}
++          meta.content = targetScheme;
++        } else {
++          try {
++            localStorage.removeItem('color-scheme');
++          } catch {}
++          meta.content = 'light dark';
++        }
++      });
++
++      window.addEventListener('storage', (e) => {
++        if (e.key === 'color-scheme' || e.key === null) {
++          meta.content = e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : 'light dark';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,117 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..a9a2ea8 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -15,17 +15,20 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++
++// Both variants are size containers (`@container`): their layout and type scale
++// respond to the card's own width via Tailwind `@<size>:` variants, not the viewport.
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
++    <article class="@container bg-white shadow-sm">
++        <div class="grid grid-cols-1 gap-6 p-6 @2xl:p-8 @3xl:grid-cols-3 @3xl:gap-8">
++            <div class="flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="mt-2 text-2xl @md:text-3xl @xl:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p class="mt-4 text-base @md:text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -37,47 +40,47 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="@3xl:col-span-2">
++                <Image 
++                    src={image} 
++                    alt=""
++                    width={800}
++                    height={533}
++                    format="webp"
++                    class="w-full h-auto object-cover"
++                />
++            </a>
+         </div>
+-    </div>
++    </article>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <article class="@container h-full group">
++        <div class="grid grid-cols-1 content-start gap-3 h-full @lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @lg:gap-5 @lg:items-start">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full object-cover rounded-md aspect-[16/9] @lg:aspect-[4/3]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="flex flex-col h-full">
++                <div class="text-amber-800 text-xs @2xs:text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col flex-grow">
++                    <h3 class="text-base @2xs:text-lg @xs:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors">
++                        {article.data.title}
++                    </h3>
++                    <p class="text-gray-600 mt-1 text-sm @xs:text-base line-clamp-3 @sm:line-clamp-none">{article.data.summary}</p>
++                </a>
++                <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}

@@ -1,0 +1,267 @@
+diff --git a/index.html b/index.html
+index 66c9173..067a1f5 100644
+--- a/index.html
++++ b/index.html
+@@ -113,6 +113,8 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     .card h3 {
+@@ -120,6 +122,164 @@
+       color: var(--primary);
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .customizations {
++      border: 0;
++      margin: auto 0 0;
++      padding-top: 22px;
++      text-align: left;
++      min-width: 0;
++    }
++
++    .customizations legend {
++      float: left;
++      width: 100%;
++      margin-bottom: 10px;
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    .customization {
++      position: relative;
++      display: grid;
++      grid-template-columns: 24px minmax(0, 1fr) 20px;
++      align-items: center;
++      gap: 10px;
++      min-height: 48px;
++      padding: 10px 12px;
++      margin-top: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fcf9f6;
++      cursor: pointer;
++      font-size: 0.875rem;
++      transition: background-color 180ms ease, border-color 180ms ease;
++    }
++
++    .customization:hover {
++      border-color: var(--primary);
++      background: #f5eee8;
++    }
++
++    .customization input {
++      position: absolute;
++      left: 12px;
++      top: 50%;
++      transform: translateY(-50%);
++      width: 24px;
++      height: 24px;
++      margin: 0;
++      opacity: 0;
++    }
++
++    .checkbox-mark {
++      display: grid;
++      place-items: center;
++      width: 24px;
++      height: 24px;
++      border: 2px solid #8d7368;
++      border-radius: 6px;
++      background: white;
++      transition: background-color 180ms ease, border-color 180ms ease;
++    }
++
++    .checkbox-mark svg {
++      width: 16px;
++      height: 16px;
++      fill: none;
++      stroke: var(--primary);
++      stroke-width: 2.5;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      stroke-dasharray: 20;
++      stroke-dashoffset: 20;
++      opacity: 0;
++      transform: scale(0.65);
++      transition: stroke-dashoffset 200ms ease, opacity 150ms ease, transform 200ms ease;
++    }
++
++    .customization input:checked + .checkbox-mark {
++      background: var(--accent);
++      border-color: var(--primary);
++    }
++
++    .customization input:checked + .checkbox-mark svg {
++      stroke-dashoffset: 0;
++      opacity: 1;
++      transform: scale(1);
++    }
++
++    .customization:has(input:checked) {
++      background: #fff1dd;
++      border-color: #99601c;
++    }
++
++    .customization:has(input:focus-visible) {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .customization input:focus-visible + .checkbox-mark {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .ingredient-icon {
++      width: 20px;
++      height: 20px;
++      fill: none;
++      stroke: #795548;
++      stroke-width: 1.7;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .icon-library {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .customization,
++      .checkbox-mark,
++      .checkbox-mark svg {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization input {
++        position: static;
++        transform: none;
++        opacity: 1;
++        accent-color: auto;
++      }
++
++      .checkbox-mark {
++        display: none;
++      }
++
++      .ingredient-icon {
++        stroke: CanvasText;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -157,6 +317,26 @@
+ 
+ <body>
+ 
++  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++    <defs>
++      <symbol id="icon-shot" viewBox="0 0 24 24">
++        <path d="M5 9h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5V9Zm12 1h1a3 3 0 0 1 0 6h-1M3 22h17M9 3v3m5-4v4" />
++      </symbol>
++      <symbol id="icon-spice" viewBox="0 0 24 24">
++        <path d="m5 17 9-12a3 3 0 0 1 5 3L10 20a3 3 0 0 1-5-3Zm3 1L18 5M4 4v4M2 6h4m13 10v6m-3-3h6" />
++      </symbol>
++      <symbol id="icon-oat" viewBox="0 0 24 24">
++        <path d="M12 22V4m0 5C6 9 5 5 5 3c5 0 7 3 7 6Zm0 6c-6 0-7-4-7-6 5 0 7 3 7 6Zm0-3c6 0 7-4 7-6-5 0-7 3-7 6Zm0 6c6 0 7-4 7-6-5 0-7 3-7 6Z" />
++      </symbol>
++      <symbol id="icon-vanilla" viewBox="0 0 24 24">
++        <path d="M5 21C5 12 16 13 16 3M9 21C9 14 20 12 20 3M7 5l1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" />
++      </symbol>
++      <symbol id="icon-check" viewBox="0 0 20 20">
++        <path d="m4 10 4 4 8-8" />
++      </symbol>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -181,16 +361,61 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations">
++            <legend>Make it yours<span class="sr-only"> — Maple Oat Latte</span></legend>
++            <label class="customization">
++              <input type="checkbox" name="maple-oat-latte-extras" value="extra-shot">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>Extra espresso shot</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-shot" /></svg>
++            </label>
++            <label class="customization">
++              <input type="checkbox" name="maple-oat-latte-extras" value="cinnamon">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>A dash of cinnamon</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-spice" /></svg>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations">
++            <legend>Make it yours<span class="sr-only"> — Dark Roast Espresso</span></legend>
++            <label class="customization">
++              <input type="checkbox" name="dark-roast-espresso-extras" value="extra-shot">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>Extra espresso shot</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-shot" /></svg>
++            </label>
++            <label class="customization">
++              <input type="checkbox" name="dark-roast-espresso-extras" value="oat-milk">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>A splash of oat milk</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-oat" /></svg>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations">
++            <legend>Make it yours<span class="sr-only"> — Cold Brew</span></legend>
++            <label class="customization">
++              <input type="checkbox" name="cold-brew-extras" value="oat-milk">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>A splash of oat milk</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-oat" /></svg>
++            </label>
++            <label class="customization">
++              <input type="checkbox" name="cold-brew-extras" value="vanilla">
++              <span class="checkbox-mark" aria-hidden="true"><svg focusable="false"><use href="#icon-check" /></svg></span>
++              <span>A touch of vanilla</span>
++              <svg class="ingredient-icon" aria-hidden="true" focusable="false"><use href="#icon-vanilla" /></svg>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

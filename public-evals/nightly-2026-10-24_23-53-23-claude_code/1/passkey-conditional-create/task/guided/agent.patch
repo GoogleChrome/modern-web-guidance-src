@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: 0 auto;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 8px 10px;
++      margin-top: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button.btn {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +206,21 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading" style="text-align: center;">Sign In</h2>
++      <form class="signin" id="signin-form" method="post" action="/api/signin">
++        <label for="username">Email</label>
++        <input id="username" name="username" type="email" autocomplete="username webauthn" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      </form>
++    </section>
++  </main>
++
++  <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +251,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // After a successful password sign-in, silently create a passkey in the background.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return;
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        const optionsRes = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ conditional: true })
++        });
++        if (!optionsRes.ok) return;
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsRes.json());
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey, mediation: 'conditional' });
++        } catch (e) {
++          return; // InvalidStateError, NotAllowedError, AbortError etc.: ignore silently
++        }
++        if (!credential) return;
++
++        const encoded = credential.toJSON();
++        let verified = false;
++        try {
++          const res = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ ...encoded, conditional: true })
++          });
++          verified = res.ok;
++        } catch (e) { /* network failure treated as unverified */ }
++
++        if (!verified && PublicKeyCredential.signalUnknownCredential) {
++          // Remove the orphaned passkey from the provider
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: location.hostname,
++            credentialId: encoded.id
++          });
++        }
++      } catch (e) {
++        // Background promotion must never surface errors to the user
++      }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++      // Password sign-in is treated as successful here; call promotePasskey() only once
++      // the session is established if a real sign-in request is added.
++      promotePasskey();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

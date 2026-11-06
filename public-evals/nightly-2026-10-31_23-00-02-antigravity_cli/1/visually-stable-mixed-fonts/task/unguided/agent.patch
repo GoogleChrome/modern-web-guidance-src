@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,139 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Modern CSS Typography &amp; Font Size Adjustment</title>
++  <style>
++    :root {
++      --bg-primary: #f8fafc;
++      --text-primary: #0f172a;
++      --card-bg: #ffffff;
++      --card-border: #e2e8f0;
++      --code-bg: #f1f5f9;
++      --code-text: #be123c;
++    }
++
++    * {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      padding: 2.5rem 1.5rem;
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.6;
++    }
++
++    main {
++      max-width: 48rem;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      gap: 2rem;
++    }
++
++    section {
++      background: var(--card-bg);
++      border: 1px solid var(--card-border);
++      border-radius: 0.75rem;
++      padding: 1.75rem;
++      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
++    }
++
++    h1 {
++      margin-top: 0;
++      font-size: 1.75rem;
++      letter-spacing: -0.02em;
++    }
++
++    h2 {
++      margin-top: 0;
++      font-size: 1.25rem;
++      margin-bottom: 0.75rem;
++    }
++
++    /* Automatically normalize visual height (x-height) across mixed font families */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", Times, serif;
++      font-size: 1.125rem;
++      font-size-adjust: from-font;
++      line-height: 1.75;
++      margin: 0;
++      color: #1e293b;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      font-size: 1.125rem;
++      font-size-adjust: inherit;
++      background-color: var(--code-bg);
++      color: var(--code-text);
++      padding: 0.15rem 0.4rem;
++      border-radius: 0.25rem;
++    }
++
++    /* Independent theme container with a specific numeric aspect-ratio override */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, Tahoma, sans-serif;
++      font-size: 1.125rem;
++      font-size-adjust: 0.52;
++      line-height: 1.7;
++      background-color: #0f172a;
++      color: #f8fafc;
++      border: 1px solid #334155;
++      border-radius: 0.75rem;
++      padding: 1.75rem;
++      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
++    }
++
++    #independent-theme-container h2 {
++      color: #38bdf8;
++      margin-top: 0;
++    }
++
++    #independent-theme-container p {
++      margin: 0;
++      font-size-adjust: 0.52;
++    }
++
++    #independent-theme-container code {
++      font-family: "Lucida Console", Monaco, monospace;
++      font-size-adjust: 0.52;
++      background-color: #1e293b;
++      color: #7dd3fc;
++      padding: 0.15rem 0.4rem;
++      border-radius: 0.25rem;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>CSS Font Size Adjustment Demo</h1>
++    </header>
++
++    <section aria-labelledby="mixed-fonts-heading">
++      <h2 id="mixed-fonts-heading">Automatic Visual Height Normalization</h2>
++      <p id="mixed-fonts-container">
++        When combining prose set in a classic serif typeface with inline technical snippets like
++        <code>const aspectRatio = "from-font";</code> or
++        <code>font-size-adjust: from-font;</code>, modern CSS automatically normalizes the lowercase
++        visual height (x-height) of both font families so that inline <code>&lt;code&gt;</code>
++        elements align seamlessly with the surrounding paragraph text.
++      </p>
++    </section>
++
++    <div id="independent-theme-container">
++      <h2>Independent Theme Typography</h2>
++      <p>
++        This independent theme container applies a specific numeric aspect-ratio override
++        (<code>font-size-adjust: 0.52</code>) to lock down its visual glyph proportions consistently
++        across primary and fallback fonts regardless of the surrounding document theme.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

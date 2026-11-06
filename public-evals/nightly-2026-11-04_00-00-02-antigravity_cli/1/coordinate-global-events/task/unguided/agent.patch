@@ -1,0 +1,341 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,154 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Global Tasting Coordinator */
++    .tasting-coordinator {
++      margin-top: 50px;
++      background: #3e2723;
++      color: var(--light);
++      padding: 36px 30px;
++      border-radius: 12px;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.25);
++      border: 1px solid #5d4037;
++    }
++
++    .tasting-coordinator h2 {
++      text-align: center;
++      color: var(--light);
++      font-size: 2rem;
++      margin-bottom: 10px;
++      letter-spacing: 0.5px;
++    }
++
++    .coordinator-description {
++      text-align: center;
++      color: var(--secondary);
++      max-width: 720px;
++      margin: 0 auto 28px;
++      font-size: 1rem;
++    }
++
++    .planner-controls {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 18px;
++      background: var(--primary);
++      padding: 22px;
++      border-radius: 8px;
++      border: 1px solid #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .control-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .control-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.6px;
++      color: var(--secondary);
++      margin-bottom: 6px;
++    }
++
++    .control-group input,
++    .control-group select {
++      background: #2b1b17;
++      color: var(--light);
++      border: 1px solid #8d6e63;
++      border-radius: 6px;
++      padding: 10px 12px;
++      font-size: 1rem;
++      font-family: inherit;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++      color-scheme: dark;
++    }
++
++    .control-group input:focus,
++    .control-group select:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.25);
++    }
++
++    .host-warning {
++      display: none;
++      background: rgba(255, 171, 64, 0.14);
++      border-left: 4px solid var(--accent);
++      border-top: 1px solid rgba(255, 171, 64, 0.4);
++      border-right: 1px solid rgba(255, 171, 64, 0.4);
++      border-bottom: 1px solid rgba(255, 171, 64, 0.4);
++      color: #ffe0b2;
++      padding: 14px 18px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    .host-warning.visible {
++      display: block;
++    }
++
++    #grid .card {
++      background: var(--primary);
++      color: var(--light);
++      border: 1px solid #6d4c41;
++      padding: 22px 18px;
++      border-radius: 8px;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      transition: transform 0.2s, border-color 0.2s;
++    }
++
++    #grid .card.is-host {
++      border-color: var(--accent);
++      box-shadow: 0 4px 14px rgba(255, 171, 64, 0.2);
++    }
++
++    #grid .card h3 {
++      color: var(--secondary);
++      margin-bottom: 4px;
++      font-size: 1.2rem;
++    }
++
++    .tz-identifier {
++      font-size: 0.8rem;
++      color: #bcaaa4;
++      margin-bottom: 12px;
++      display: block;
++    }
++
++    .local-time {
++      font-size: 1.9rem;
++      font-weight: 700;
++      color: var(--accent);
++      margin: 8px 0;
++      letter-spacing: 0.5px;
++    }
++
++    .local-date {
++      font-size: 0.9rem;
++      color: var(--secondary);
++    }
++
++    .host-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: #2b1b17;
++      font-size: 0.7rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-left: 6px;
++      vertical-align: middle;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +340,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting-coordinator" aria-labelledby="coordinatorHeading">
++      <h2 id="coordinatorHeading">Global Tasting Coordinator</h2>
++      <p class="coordinator-description">
++        Plan live virtual coffee cupping and tasting events with fellow enthusiasts around the world. Select your host date, time, and timezone below to automatically calculate synchronized local tasting times across our global roasting hubs.
++      </p>
++
++      <div class="planner-controls">
++        <div class="control-group">
++          <label for="dateInput">Tasting Date</label>
++          <input type="date" id="dateInput" value="2026-11-04">
++        </div>
++        <div class="control-group">
++          <label for="timeInput">Tasting Time</label>
++          <input type="time" id="timeInput" value="14:00">
++        </div>
++        <div class="control-group">
++          <label for="hostTzSelect">Host Timezone</label>
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York (America/New_York)</option>
++            <option value="Europe/London">London (Europe/London)</option>
++            <option value="Asia/Tokyo">Tokyo (Asia/Tokyo)</option>
++            <option value="UTC">UTC</option>
++          </select>
++        </div>
++      </div>
++
++      <div id="hostWarning" class="host-warning" role="status" aria-live="polite"></div>
++
++      <div id="grid" class="grid"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +383,142 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const dateInput = document.getElementById('dateInput');
++      const timeInput = document.getElementById('timeInput');
++      const hostTzSelect = document.getElementById('hostTzSelect');
++      const hostWarning = document.getElementById('hostWarning');
++      const grid = document.getElementById('grid');
++
++      const TARGET_TIMEZONES = [
++        { name: 'New York', id: 'America/New_York' },
++        { name: 'London', id: 'Europe/London' },
++        { name: 'Tokyo', id: 'Asia/Tokyo' },
++        { name: 'UTC', id: 'UTC' }
++      ];
++
++      function formatTime12Hour(timeLike) {
++        const hour24 = timeLike.hour;
++        const minute = String(timeLike.minute).padStart(2, '0');
++        const period = hour24 >= 12 ? 'PM' : 'AM';
++        const hour12 = hour24 % 12 || 12;
++        return `${hour12}:${minute} ${period}`;
++      }
++
++      function updateSchedule() {
++        const dateValue = dateInput.value;
++        const timeValue = timeInput.value;
++        const hostTz = hostTzSelect.value;
++
++        if (!dateValue || !timeValue || !hostTz) {
++          return;
++        }
++
++        const plainDate = Temporal.PlainDate.from(dateValue);
++        const plainTime = Temporal.PlainTime.from(timeValue);
++        const requestedPlainDateTime = plainDate.toPlainDateTime(plainTime);
++
++        const earlierZdt = requestedPlainDateTime.toZonedDateTime(hostTz, {
++          disambiguation: 'earlier'
++        });
++        const laterZdt = requestedPlainDateTime.toZonedDateTime(hostTz, {
++          disambiguation: 'later'
++        });
++        const resolvedHostZdt = requestedPlainDateTime.toZonedDateTime(hostTz, {
++          disambiguation: 'compatible'
++        });
++
++        let rejectedByStrictCheck = false;
++        try {
++          requestedPlainDateTime.toZonedDateTime(hostTz, {
++            disambiguation: 'reject'
++          });
++        } catch (_err) {
++          rejectedByStrictCheck = true;
++        }
++
++        const hasDstConflict =
++          rejectedByStrictCheck ||
++          earlierZdt.epochNanoseconds !== laterZdt.epochNanoseconds;
++
++        if (hasDstConflict) {
++          const isGap = !resolvedHostZdt
++            .toPlainDateTime()
++            .equals(requestedPlainDateTime);
++          const requestedFormatted = formatTime12Hour(requestedPlainDateTime);
++          const resolvedFormatted = formatTime12Hour(resolvedHostZdt);
++          const earlierFormatted = formatTime12Hour(earlierZdt);
++          const laterFormatted = formatTime12Hour(laterZdt);
++
++          if (isGap) {
++            hostWarning.textContent =
++              `DST Transition Gap Detected: ${requestedFormatted} on ${plainDate.toString()} does not exist in ${hostTz} because clocks spring forward across a Daylight Saving Time gap. ` +
++              `Using compatible disambiguation, this non-existent time was resolved forward to ${resolvedFormatted} (UTC${resolvedHostZdt.offset}) rather than ${earlierFormatted} (UTC${earlierZdt.offset}).`;
++          } else {
++            hostWarning.textContent =
++              `DST Transition Overlap Detected: ${requestedFormatted} on ${plainDate.toString()} is ambiguous in ${hostTz} because clocks fall back and the time occurs twice (first at UTC${earlierZdt.offset}, then again at UTC${laterZdt.offset}). ` +
++              `Using compatible disambiguation, this conflict was resolved to the earlier occurrence at ${resolvedFormatted} (UTC${resolvedHostZdt.offset}).`;
++          }
++          hostWarning.classList.add('visible');
++        } else {
++          hostWarning.textContent = '';
++          hostWarning.classList.remove('visible');
++        }
++
++        grid.innerHTML = '';
++
++        for (const tz of TARGET_TIMEZONES) {
++          // Temporal.ZonedDateTime is immutable; withTimeZone returns a new instance
++          const targetZdt = resolvedHostZdt.withTimeZone(tz.id);
++          const formattedLocalTime = formatTime12Hour(targetZdt);
++          const formattedDate = targetZdt.toPlainDate().toString();
++          const isHost = tz.id === hostTz;
++
++          const card = document.createElement('div');
++          card.className = isHost ? 'card is-host' : 'card';
++          card.setAttribute('data-tz', tz.id);
++
++          const heading = document.createElement('h3');
++          heading.textContent = tz.name;
++          if (isHost) {
++            const badge = document.createElement('span');
++            badge.className = 'host-badge';
++            badge.textContent = 'Host';
++            heading.appendChild(badge);
++          }
++
++          const tzSpan = document.createElement('span');
++          tzSpan.className = 'tz-identifier';
++          tzSpan.textContent = tz.id;
++
++          const timeDiv = document.createElement('div');
++          timeDiv.className = 'local-time';
++          timeDiv.textContent = formattedLocalTime;
++
++          const dateDiv = document.createElement('div');
++          dateDiv.className = 'local-date';
++          dateDiv.textContent = `${formattedDate} (UTC${targetZdt.offset})`;
++
++          card.appendChild(heading);
++          card.appendChild(tzSpan);
++          card.appendChild(timeDiv);
++          card.appendChild(dateDiv);
++          grid.appendChild(card);
++        }
++      }
++
++      dateInput.addEventListener('change', updateSchedule);
++      dateInput.addEventListener('input', updateSchedule);
++      timeInput.addEventListener('change', updateSchedule);
++      timeInput.addEventListener('input', updateSchedule);
++      hostTzSelect.addEventListener('change', updateSchedule);
++      hostTzSelect.addEventListener('input', updateSchedule);
++
++      updateSchedule();
++    })();
++  </script>
+ </body>
+ 
+ </html>

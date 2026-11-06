@@ -1,0 +1,463 @@
+diff --git a/index.html b/index.html
+index 66c9173..5787a54 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,269 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root { --primary:#49362c; --text:#352b25; --muted:#81756a; --paper:#faf8f4; --line:#e5dfd5; --accent:#b67743; }
++    * { box-sizing:border-box; margin:0; padding:0; }
++    body { font-family:'Segoe UI',sans-serif; color:var(--text); background:var(--paper); line-height:1.6; }
++    button,a { -webkit-tap-highlight-color:transparent; }
++    button { font:inherit; cursor:pointer; }
++    a { color:inherit; text-decoration:none; }
++    button:focus-visible,a:focus-visible { outline:3px solid #bd895a; outline-offset:4px; }
++    nav { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:22px 6%; background:var(--paper); position:relative; z-index:20; border-bottom:1px solid var(--line); }
++    .logo { display:flex; align-items:center; gap:12px; font-size:14px; font-weight:750; letter-spacing:2px; white-space:nowrap; }
++    .logo-mark { border:1px solid var(--primary); border-radius:50%; width:36px; height:36px; display:grid; place-items:center; font-family:Georgia,serif; font-size:22px; font-style:italic; }
++    .nav-links { display:flex; align-items:center; list-style:none; gap:28px; font-size:13px; }
++    .nav-link { border:0; background:none; color:inherit; padding:8px 0; }
++    .nav-link:hover,nav a:hover { color:var(--accent); }
++    .logout-link { border:1px solid var(--line); border-radius:5px; padding:8px 15px; }
++    .chevron { display:inline-block; font-size:11px; margin-left:9px; }
++    .hero { min-height:450px; height:55vh; max-height:650px; padding:60px 8%; color:white; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; background:linear-gradient(90deg,rgba(29,22,16,.76),rgba(29,22,16,.12)),url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=2000&q=85') center 52%/cover; }
++    .eyebrow { font-size:11px; letter-spacing:3px; font-weight:600; text-transform:uppercase; }
++    .hero .eyebrow { color:#e6c5a2; margin-bottom:17px; }
++    h1,h2,h3 { font-family:Georgia,'Times New Roman',serif; font-weight:400; }
++    h1 { font-size:clamp(42px,5.3vw,72px); line-height:1.08; max-width:650px; letter-spacing:-2px; margin-bottom:22px; }
++    .hero p { color:#e4ddd5; font-size:15px; max-width:360px; }
++    .btn { display:inline-flex; align-items:center; justify-content:center; gap:25px; background:var(--primary); border:1px solid var(--primary); color:white; border-radius:4px; padding:12px 20px; font-size:13px; font-weight:500; }
++    .btn:hover { background:#644c3b; }
++    .hero .btn { background:#f2e8da; color:var(--primary); border:0; margin-top:28px; }
++    .hero .btn:hover { background:white; }
++    main { max-width:1240px; padding:60px 40px 64px; margin:auto; }
++    .section-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-bottom:28px; }
++    .section-heading .eyebrow { color:var(--accent); margin-bottom:7px; }
++    h2 { font-size:36px; line-height:1.3; letter-spacing:-.8px; }
++    .section-note { color:var(--muted); font-size:13px; }
++    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:26px; }
++    .card { min-width:0; background:#fff; border:1px solid var(--line); border-radius:7px; }
++    .card-image { position:relative; height:210px; background:#e7ded1; overflow:hidden; border-radius:6px 6px 0 0; }
++    .card-image img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++    .card:hover img { transform:scale(1.035); }
++    .tag { position:absolute; top:15px; left:15px; padding:4px 10px; background:#faf8f0ed; border-radius:3px; font-size:10px; letter-spacing:1px; text-transform:uppercase; }
++    .card-body { padding:23px; }
++    .card-title { display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
++    h3 { font-size:23px; line-height:1.3; }
++    .price { font-size:13px; white-space:nowrap; }
++    .description { color:var(--muted); font-size:13px; margin-top:10px; min-height:43px; }
++    .card-bottom { margin-top:22px; padding-top:17px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px; }
++    .drink-meta { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); }
++    .card .btn { padding:9px 13px; gap:12px; font-size:12px; }
++    .menu-host { position:relative; }
++    .menu-panel { position:absolute; top:calc(100% + 9px); left:0; width:245px; padding:7px; background:#fffefb; color:var(--text); border:1px solid var(--line); border-radius:7px; box-shadow:0 12px 36px #34271c26; z-index:40; text-align:left; }
++    .card .menu-panel { left:auto; right:0; }
++    .menu-panel[hidden] { display:none; }
++    .menu-panel .menu-panel { top:-8px; left:calc(100% + 5px); right:auto; }
++    .menu-panel .menu-panel.flip { left:auto; right:calc(100% + 5px); }
++    .menu-label { display:block; padding:7px 10px; color:var(--muted); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; }
++    .menu-item { position:relative; }
++    .menu-option { display:flex; width:100%; gap:12px; align-items:center; justify-content:space-between; padding:10px; border:0; border-radius:4px; color:var(--text); background:none; text-align:left; font-size:13px; line-height:1.4; }
++    .menu-option:hover,.menu-option:focus,.menu-option[aria-expanded="true"] { background:#f0ebe2; outline:none; }
++    .menu-option[aria-checked="true"]::after { content:'✓'; color:#775a3e; }
++    .menu-divider { height:1px; background:var(--line); margin:6px 3px; }
++    .order-summary { margin-top:26px; border:1px solid var(--line); border-radius:6px; padding:20px 24px; background:#f1ede5; }
++    .order-summary h3 { font-size:22px; margin-bottom:8px; }
++    .order-line { display:flex; justify-content:space-between; align-items:center; gap:16px; font-size:13px; padding:10px 0; border-bottom:1px solid var(--line); }
++    .order-line small { display:block; color:var(--muted); }
++    .remove { background:none; border:0; padding:6px; color:#8e5a37; font-size:12px; }
++    .total { text-align:right; font-size:14px; margin-top:14px; }
++    footer { border-top:1px solid var(--line); padding:30px 6%; display:flex; justify-content:space-between; align-items:center; gap:20px; color:var(--muted); font-size:11px; }
++    .footer-links { display:flex; gap:22px; }
++    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--primary); color:white; padding:13px 22px; border-radius:6px; box-shadow:0 4px 25px #0002; z-index:70; font-size:13px; width:max-content; max-width:90vw; }
++    .toast:empty { display:none; }
++    dialog { margin:auto; width:min(440px,90vw); padding:30px; border:1px solid var(--line); border-radius:10px; color:var(--text); background:var(--paper); }
++    dialog::backdrop { background:#231a13aa; }
++    dialog h2 { font-size:30px; margin-bottom:14px; }
++    dialog p { margin-bottom:14px; color:var(--muted); font-size:14px; }
++    @media(max-width:850px) { nav { flex-wrap:wrap; gap:10px; padding:16px 5%; } .nav-links { gap:20px; flex-wrap:wrap; } .grid { gap:15px; } main { padding:40px 22px; } .card-body { padding:16px; } .card-title { flex-wrap:wrap; gap:5px; } h3 { font-size:21px; } .card-bottom { flex-wrap:wrap; } footer { flex-wrap:wrap; } }
++    @media(max-width:620px) { .logo { font-size:12px; } .nav-links { gap:16px; width:100%; font-size:12px; } .hero { min-height:420px; height:auto; padding:60px 7%; } .grid { grid-template-columns:1fr; gap:24px; } .card-image { height:240px; } .section-heading { display:block; } .section-note { margin-top:10px; } .description { min-height:0; } .card-title,.card-bottom { flex-wrap:nowrap; } .menu-panel { width:210px; } .menu-panel .menu-panel,.menu-panel .menu-panel.flip { position:static; width:100%; box-shadow:none; margin:3px 0; border-color:#e9e2d8; background:#f8f5ee; } .card .menu-panel { right:0; } .footer-links { gap:15px; flex-wrap:wrap; } }
++    @media(prefers-reduced-motion:reduce) { * { transition:none !important; } }
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="#"><span class="logo-mark" aria-hidden="true">g</span>THE DAILY GRIND</a>
++    <ul class="nav-links">
++      <li class="menu-host" id="drink-menu"></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+-
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <span class="eyebrow">Good coffee. A little ritual.</span>
++    <h1>Wake Up<br>Your Senses.</h1>
++    <p>Ethically sourced, locally roasted,<br>and always crafted with care.</p>
++    <a href="#seasonal" class="btn">Find your next favorite <span aria-hidden="true">↗</span></a>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main>
++    <section id="seasonal" aria-labelledby="seasonal-title">
++      <div class="section-heading">
++        <div><p class="eyebrow">Made for the moment</p><h2 id="seasonal-title">Seasonal Favorites</h2></div>
++        <p class="section-note">Familiar comforts. A fresh little twist.</p>
+       </div>
++      <div class="grid" id="drink-cards"></div>
++    </section>
++    <section class="order-summary" id="order" aria-labelledby="order-title" hidden>
++      <h3 id="order-title">Your order</h3>
++      <p class="section-note">Your selections for this visit. Order in store when you’re ready.</p>
++      <div id="order-items"></div><p class="total" id="order-total"></p>
+     </section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><div class="footer-links"><a href="/about">Our Story</a><a href="/careers">Join the Team</a><a href="/contact">Contact Us</a><a href="/privacy-policy">Privacy</a></div><p>© 2026 The Daily Grind Coffee Co.</p></footer>
++  <div class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
++  <dialog aria-labelledby="detail-title"><h2 id="detail-title"></h2><p id="detail-copy"></p><p id="detail-price"></p><form method="dialog"><button class="btn">Close details</button></form></dialog>
++  <script>
++    const drinks = [
++      { name:'Maple Oat Latte', price:5.50, description:'Creamy oat milk with a hint of Vermont maple syrup.', meta:'Smooth · Naturally sweet', tag:'Seasonal special', photo:'photo-1461023058943-07fcbe16d735', alt:'Creamy iced latte in a tall glass', milk:'Oat', details:'Espresso meets steamed oat milk and Vermont maple syrup. Contains oats; ask our team about allergens and cross-contact.' },
++      { name:'Dark Roast Espresso', price:3.50, description:'Bold, smoky, and perfect for a morning boost.', meta:'Rich · Full-bodied', tag:'The daily classic', photo:'photo-1510707577719-ae7c14805e3a', alt:'Fresh espresso served in a ceramic cup', milk:'None', details:'A concentrated dark roast with notes of cocoa and toasted nuts. Served as a double shot; milk and extras are optional.' },
++      { name:'Cold Brew', price:4.50, description:'Steeped for 18 hours for maximum smoothness.', meta:'Slow-steeped · Refreshing', tag:'Keep it cool', photo:'photo-1517701604599-bb29b565090c', alt:'Cold coffee served over ice', milk:'None', details:'Our house blend, steeped in cool water for 18 hours and served over ice. Smooth, low in acidity, and easy to make your own.' }
++    ];
++    let serial = 0, toastTimer;
++    const orders = [];
++    const money = value => '$' + value.toFixed(2);
++    function announce(message) {
++      const toast = document.querySelector('.toast');
++      clearTimeout(toastTimer); toast.textContent = message;
++      toastTimer = setTimeout(() => toast.textContent = '', 4000);
++    }
++    function closeBranch(trigger) {
++      const panel = document.getElementById(trigger.getAttribute('aria-controls'));
++      panel.querySelectorAll('[aria-expanded="true"]').forEach(closeBranch);
++      panel.hidden = true; trigger.setAttribute('aria-expanded','false');
++    }
++    function closeAll() { document.querySelectorAll('[data-root][aria-expanded="true"]').forEach(closeBranch); }
++    function openBranch(trigger) {
++      const panel = document.getElementById(trigger.getAttribute('aria-controls'));
++      const parent = trigger.closest('[role="menu"]');
++      if (parent) {
++        [...parent.children].forEach(row => {
++          const sibling = row.querySelector(':scope > [aria-expanded="true"]');
++          if (sibling && sibling !== trigger) closeBranch(sibling);
++        });
++      } else closeAll();
++      panel.hidden = false; trigger.setAttribute('aria-expanded','true');
++      if (parent && window.innerWidth > 620) {
++        panel.classList.remove('flip');
++        if (panel.getBoundingClientRect().right > window.innerWidth - 12) panel.classList.add('flip');
++      }
++    }
++    function items(panel) { return [...panel.children].map(row => row.querySelector(':scope > .menu-option')).filter(Boolean); }
++    function createPanel(entries, label, owner) {
++      const panel = document.createElement('div');
++      panel.id = 'menu-' + ++serial; panel.className = 'menu-panel'; panel.role = 'menu'; panel.hidden = true;
++      panel.setAttribute('aria-label',label);
++      entries.forEach(entry => {
++        if (entry.label) {
++          const heading = document.createElement('span'); heading.className = 'menu-label'; heading.role = 'presentation'; heading.textContent = entry.label; panel.append(heading); return;
++        }
++        if (entry.divider) { const line = document.createElement('div'); line.className = 'menu-divider'; line.role = 'separator'; panel.append(line); return; }
++        const row = document.createElement('div'); row.className = 'menu-item'; row.role = 'none';
++        const button = document.createElement('button'); button.type = 'button'; button.className = 'menu-option'; button.tabIndex = -1;
++        button.role = entry.group ? 'menuitemradio' : 'menuitem'; button.textContent = entry.text;
++        if (entry.group) { button.dataset.group = entry.group; button.setAttribute('aria-checked',String(entry.selected)); }
++        row.append(button);
++        if (entry.children) {
++          const arrow = document.createElement('span'); arrow.textContent = '›'; arrow.setAttribute('aria-hidden','true'); button.append(arrow);
++          const sub = createPanel(entry.children,entry.text,button); row.append(sub);
++          button.setAttribute('aria-haspopup','menu'); button.setAttribute('aria-controls',sub.id); button.setAttribute('aria-expanded','false');
++          button.addEventListener('click',() => { if (sub.hidden) { openBranch(button); items(sub)[0]?.focus(); } else closeBranch(button); });
++        } else button.addEventListener('click',() => {
++          if (entry.group) {
++            panel.querySelectorAll('[role="menuitemradio"]').forEach(peer => { if (peer.dataset.group === entry.group) peer.setAttribute('aria-checked',String(peer === button)); });
++            entry.action(); closeBranch(owner); owner.focus();
++          } else { closeAll(); panel.closest('.menu-host').querySelector('[data-root]').focus(); entry.action(); }
++        });
++        panel.append(row);
++      });
++      panel.addEventListener('keydown',event => {
++        if (event.target.closest('[role="menu"]') !== panel) return;
++        const options = items(panel), current = options.indexOf(document.activeElement);
++        if (['ArrowDown','ArrowUp','Home','End','ArrowRight','ArrowLeft','Escape','Tab'].includes(event.key)) {
++          if (event.key !== 'Tab') event.preventDefault();
++          event.stopPropagation();
++          if (event.key === 'ArrowDown') options[(current+1)%options.length]?.focus();
++          if (event.key === 'ArrowUp') options[(current-1+options.length)%options.length]?.focus();
++          if (event.key === 'Home') options[0]?.focus();
++          if (event.key === 'End') options.at(-1)?.focus();
++          if (event.key === 'ArrowRight' && event.target.hasAttribute('aria-haspopup')) { openBranch(event.target); items(document.getElementById(event.target.getAttribute('aria-controls')))[0]?.focus(); }
++          if (event.key === 'Escape' || event.key === 'ArrowLeft') { closeBranch(owner); owner.focus(); }
++          if (event.key === 'Tab') closeAll();
++        }
++      });
++      return panel;
++    }
++    function mountMenu(host, text, entries, nav = false) {
++      const trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = nav ? 'nav-link' : 'btn'; trigger.textContent = text;
++      const arrow = document.createElement('span'); arrow.className = 'chevron'; arrow.textContent = '⌄'; arrow.setAttribute('aria-hidden','true'); trigger.append(arrow);
++      const panel = createPanel(entries,text,trigger);
++      trigger.dataset.root = ''; trigger.setAttribute('aria-haspopup','menu'); trigger.setAttribute('aria-expanded','false'); trigger.setAttribute('aria-controls',panel.id);
++      trigger.addEventListener('click',() => { if (panel.hidden) { openBranch(trigger); items(panel)[0]?.focus(); } else closeBranch(trigger); });
++      trigger.addEventListener('keydown',event => {
++        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); openBranch(trigger); (event.key === 'ArrowDown' ? items(panel)[0] : items(panel).at(-1))?.focus(); }
++        if (event.key === 'Escape') closeBranch(trigger);
++      });
++      host.append(trigger,panel);
++    }
++    function details(drink) {
++      document.getElementById('detail-title').textContent = drink.name;
++      document.getElementById('detail-copy').textContent = drink.details;
++      document.getElementById('detail-price').textContent = 'From ' + money(drink.price) + ' · Customization prices shown in the menu.';
++      document.querySelector('dialog').showModal();
++    }
++    function renderOrder() {
++      const container = document.getElementById('order-items'); container.replaceChildren();
++      document.getElementById('order').hidden = orders.length === 0;
++      orders.forEach((order,index) => {
++        const line = document.createElement('div'); line.className = 'order-line';
++        const copy = document.createElement('div'); copy.textContent = order.name + ' · ' + money(order.price);
++        const customization = document.createElement('small'); customization.textContent = order.options; copy.append(customization);
++        const remove = document.createElement('button'); remove.className = 'remove'; remove.textContent = 'Remove'; remove.setAttribute('aria-label','Remove ' + order.name);
++        remove.onclick = () => {
++          orders.splice(index,1); renderOrder(); announce(order.name + ' removed');
++          const buttons = container.querySelectorAll('button');
++          if (buttons.length) buttons[Math.min(index,buttons.length-1)].focus(); else document.querySelector('#drink-cards [data-root]').focus();
++        };
++        line.append(copy,remove); container.append(line);
++      });
++      document.getElementById('order-total').textContent = 'Subtotal · ' + money(orders.reduce((sum,order) => sum + order.price,0));
++    }
++    drinks.forEach(drink => {
++      const state = {size:'Regular',milk:drink.milk,extra:'None'};
++      const card = document.createElement('article'); card.className = 'card';
++      card.innerHTML = `<div class="card-image"><img src="https://images.unsplash.com/${drink.photo}?auto=format&fit=crop&w=800&q=85" alt="${drink.alt}" loading="lazy"><span class="tag">${drink.tag}</span></div><div class="card-body"><div class="card-title"><h3>${drink.name}</h3><span class="price">${money(drink.price)}</span></div><p class="description">${drink.description}</p><div class="card-bottom"><span class="drink-meta">${drink.meta}</span><div class="menu-host"></div></div></div>`;
++      document.getElementById('drink-cards').append(card);
++      const choices = (key,values) => values.map(([value,surcharge]) => ({text:value + (surcharge ? ' (+' + money(surcharge) + ')' : ''),group:key,selected:state[key] === value,action:() => {state[key] = value; announce(drink.name + ': ' + value + ' selected');}}));
++      mountMenu(card.querySelector('.menu-host'),'Choose options',[
++        {label:drink.name}, {text:'View drink details',action:() => details(drink)},
++        {text:'Customize drink',children:[
++          {text:'Size',children:choices('size',[['Regular',0],['Large',.75]])},
++          {text:'Milk',children:choices('milk',[['None',0],['Whole',0],['Oat',0],['Almond',0]])},
++          {text:'Extras',children:choices('extra',[['None',0],['Extra espresso shot',1],['Vanilla syrup',.5],['Maple syrup',.5]])}
++        ]}, {divider:true}, {text:'Add to order',action:() => {
++          const price = drink.price + (state.size === 'Large' ? .75 : 0) + (state.extra === 'Extra espresso shot' ? 1 : state.extra !== 'None' ? .5 : 0);
++          orders.push({name:drink.name,price,options:state.size + ' · ' + (state.milk === 'None' ? 'No milk' : state.milk + ' milk') + ' · ' + (state.extra === 'None' ? 'No extras' : state.extra)});
++          renderOrder(); announce(drink.name + ' added to your order · ' + money(price));
++        }}
++      ]);
++      card.querySelector('[data-root]').setAttribute('aria-label','Choose options for ' + drink.name);
++    });
++    mountMenu(document.getElementById('drink-menu'),'Menu',[
++      {label:'Find your daily ritual'},
++      {text:'Drink categories',children:[
++        {text:'Hot coffee',children:[{text:'Espresso',action:() => details(drinks[1])},{text:'Lattes',children:[{text:'Maple Oat Latte',action:() => details(drinks[0])}]}]},
++        {text:'Cold coffee',children:[{text:'Cold Brew',action:() => details(drinks[2])}]}
++      ]},
++      {text:'Seasonal favorites',action:() => document.getElementById('seasonal').scrollIntoView({behavior:'auto'})},
++      {divider:true},
++      {text:'View your order',action:() => { if (orders.length) document.getElementById('order').scrollIntoView({behavior:'auto'}); else announce('Your order is empty. Choose a favorite to get started.'); }}
++    ],true);
++    document.addEventListener('click',event => { if (!event.target.closest('.menu-host')) closeAll(); });
++    document.addEventListener('focusin',event => {
++      document.querySelectorAll('[data-root][aria-expanded="true"]').forEach(trigger => { if (!trigger.closest('.menu-host').contains(event.target)) closeBranch(trigger); });
++    });
++    window.addEventListener('resize',closeAll);
++  </script>
+ </body>
+-
+ </html>

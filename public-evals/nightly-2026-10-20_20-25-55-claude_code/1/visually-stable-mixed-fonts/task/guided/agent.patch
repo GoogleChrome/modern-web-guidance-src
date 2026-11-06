@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,60 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts</title>
++  <style>
++    body {
++      font-family: Verdana, sans-serif;
++      max-width: 40rem;
++      margin: 2rem auto;
++      padding: 0 1rem;
++    }
++
++    #mixed-fonts-container {
++      font-family: Verdana, sans-serif;
++      /* Take the x-height ratio from the primary font and apply it to nested fonts */
++      font-size-adjust: from-font;
++      line-height: 1.6;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", monospace;
++    }
++
++    #independent-theme-container {
++      font-family: Times, "Times New Roman", serif;
++      /* Not a child of the primary font, so lock to its x-height ratio explicitly */
++      font-size-adjust: 0.51;
++      line-height: 1.6;
++      margin-top: 2rem;
++      padding: 1rem;
++      border: 1px solid currentColor;
++    }
++
++    /* Fallback for browsers without font-size-adjust support */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++
++      #independent-theme-container {
++        font-size: 1.1rem;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular text in Verdana sits beside inline code like
++    <code>const x = document.querySelector("p");</code>
++    and the x-heights stay visually matched.
++  </p>
++
++  <div id="independent-theme-container">
++    This container is an independent theme using a serif font, with its
++    x-height normalized by a fixed numeric <code>font-size-adjust</code> value.
++  </div>
++</body>
++</html>

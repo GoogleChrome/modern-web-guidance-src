@@ -1,0 +1,68 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..9301497 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to make local network / loopback requests (Local Network Access)
++  response.headers.set('Permissions-Policy', 'local-network=(self), loopback-network=(self)');
++  return response;
+ });
+diff --git a/src/utils/local-network.ts b/src/utils/local-network.ts
+new file mode 100644
+index 0000000..38e5bc1
+--- /dev/null
++++ b/src/utils/local-network.ts
+@@ -0,0 +1,48 @@
++export type LocalAddressSpace = 'local' | 'loopback';
++type PermissionState = 'granted' | 'prompt' | 'denied';
++
++const permissionNames = {
++  local: 'local-network',
++  loopback: 'loopback-network',
++} as const;
++
++/**
++ * Queries the Local Network Access permission for the target address space.
++ * Browsers without support throw on unknown names, so treat that as 'prompt'
++ * (the request itself triggers the browser prompt where supported).
++ * Never query the legacy 'local-network-access' name: it crashes older Chrome.
++ */
++export async function queryLocalNetworkPermission(
++  space: LocalAddressSpace,
++  onChange?: (state: PermissionState) => void,
++): Promise<PermissionState> {
++  if (!navigator.permissions?.query) return 'prompt';
++  try {
++    const status = await navigator.permissions.query({
++      name: permissionNames[space] as PermissionName,
++    });
++    if (onChange) status.addEventListener('change', () => onChange(status.state));
++    return status.state;
++  } catch {
++    return 'prompt';
++  }
++}
++
++/**
++ * Fetches JSON from a local network or loopback endpoint. Call from a user
++ * gesture unless permission is already 'granted'. `targetAddressSpace`
++ * exempts http:// targets from mixed content blocking once permission is granted.
++ */
++export async function fetchLocalJson<T = unknown>(
++  url: string,
++  space: LocalAddressSpace,
++  init: RequestInit = {},
++): Promise<T> {
++  const response = await fetch(url, {
++    ...init,
++    mode: 'cors',
++    targetAddressSpace: space,
++  } as RequestInit);
++  if (!response.ok) throw new Error(`Local endpoint responded with HTTP ${response.status}`);
++  return response.json() as Promise<T>;
++}

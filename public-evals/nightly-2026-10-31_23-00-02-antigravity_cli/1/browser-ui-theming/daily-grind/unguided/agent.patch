@@ -1,0 +1,770 @@
+diff --git a/index.html b/index.html
+index 66c9173..ef5a095 100644
+--- a/index.html
++++ b/index.html
+@@ -12,12 +12,55 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    /* Built-in Text Selection Styling */
++    ::selection {
++      background-color: var(--accent);
++      color: var(--text);
++    }
++
++    ::-moz-selection {
++      background-color: var(--accent);
++      color: var(--text);
++    }
++
++    /* Built-in Scrollbar Styling */
++    ::-webkit-scrollbar {
++      width: 10px;
++      height: 10px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-radius: 5px;
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background-color: var(--primary);
++      border-radius: 5px;
++      border: 2px solid var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background-color: var(--text);
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--secondary);
+     }
+ 
+     body {
+@@ -95,14 +138,40 @@
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1180px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .main-content {
++      display: grid;
++      grid-template-columns: 1fr 1.25fr;
++      gap: 32px;
++      align-items: start;
++    }
++
++    @media (max-width: 900px) {
++      .main-content {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .section-title {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.75rem;
++    }
++
++    .section-subtitle {
++      color: var(--text);
++      opacity: 0.85;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+@@ -111,7 +180,8 @@
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--secondary);
++      box-shadow: 0 2px 5px rgba(78, 52, 46, 0.08);
+       text-align: center;
+     }
+ 
+@@ -127,12 +197,389 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
++      border: 1px solid var(--primary);
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s, border-color 0.3s, transform 0.15s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--text);
++      border-color: var(--text);
++    }
++
++    .btn-secondary {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      margin-top: 15px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    /* Coffee Order Customization Panel & Native Browser UI / Form Controls */
++    .customization-section {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.1);
++    }
++
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 14px 16px;
++      background-color: var(--light);
++    }
++
++    legend {
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.9rem;
++      padding: 0 8px;
++      letter-spacing: 0.3px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 14px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    /* Native Form Control Base Styling */
++    input,
++    select,
++    textarea,
++    button,
++    meter,
++    progress {
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      color-scheme: light;
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++    }
++
++    input[type="text"],
++    input[type="number"],
++    input[type="date"],
++    input[type="time"],
++    select,
++    textarea {
++      width: 100%;
++      padding: 9px 12px;
++      background-color: var(--light);
++      color: var(--text);
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    input[type="text"]:hover,
++    input[type="number"]:hover,
++    input[type="date"]:hover,
++    input[type="time"]:hover,
++    select:hover,
++    textarea:hover {
++      border-color: var(--primary);
++    }
++
++    input:focus-visible,
++    select:focus-visible,
++    textarea:focus-visible,
++    button:focus-visible,
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--primary);
++    }
++
++    ::placeholder {
++      color: var(--primary);
++      opacity: 0.6;
++    }
++
++    /* Native Select & Built-in Picker Styling */
++    select {
++      cursor: pointer;
++      background-color: var(--light);
++    }
++
++    @supports (appearance: base-select) {
++      select,
++      ::picker(select) {
++        appearance: base-select;
++      }
++
++      ::picker(select) {
++        background-color: var(--light);
++        color: var(--text);
++        border: 1.5px solid var(--primary);
++        border-radius: 6px;
++        padding: 4px;
++        box-shadow: 0 6px 16px rgba(62, 39, 35, 0.18);
++      }
++
++      select::picker-icon {
++        color: var(--primary);
++      }
++    }
++
++    optgroup {
++      font-weight: 700;
++      color: var(--primary);
++      background-color: var(--secondary);
++    }
++
++    option {
++      color: var(--text);
++      background-color: var(--light);
++      padding: 6px 10px;
++    }
++
++    option:checked {
++      background-color: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    /* Native Radio & Checkbox Controls */
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 18px;
++      margin-top: 4px;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: 500;
++      color: var(--text);
++      cursor: pointer;
++      user-select: none;
++    }
++
++    input[type="radio"],
++    input[type="checkbox"] {
++      width: 1.1rem;
++      height: 1.1rem;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .choice-label:has(input:checked) {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    /* Native Range Input & Track/Thumb Styling */
++    .range-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    output {
++      background-color: var(--secondary);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.85rem;
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      accent-color: var(--primary);
++      background: transparent;
++      cursor: pointer;
++      margin: 4px 0;
++    }
++
++    input[type="range"]::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 4px;
++      background: linear-gradient(90deg, var(--secondary), var(--accent));
++      border: 1px solid var(--primary);
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      background: var(--primary);
++      border: 2px solid var(--light);
++      border-radius: 50%;
++      cursor: pointer;
++    }
++
++    input[type="range"]::-moz-range-track {
++      height: 8px;
++      border-radius: 4px;
++      background: linear-gradient(90deg, var(--secondary), var(--accent));
++      border: 1px solid var(--primary);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      background: var(--primary);
++      border: 2px solid var(--light);
++      border-radius: 50%;
++      cursor: pointer;
++    }
++
++    .range-ticks {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.75rem;
++      color: var(--primary);
++      padding: 0 2px;
++    }
++
++    /* Native Date, Time & Calendar Picker Indicators */
++    input[type="date"],
++    input[type="time"] {
++      cursor: pointer;
++    }
++
++    input[type="date"]::-webkit-calendar-picker-indicator,
++    input[type="time"]::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      padding: 4px;
++      border-radius: 4px;
++      background-color: var(--secondary);
++      transition: background-color 0.2s;
++    }
++
++    input[type="date"]::-webkit-calendar-picker-indicator:hover,
++    input[type="time"]::-webkit-calendar-picker-indicator:hover {
++      background-color: var(--accent);
++    }
++
++    input[type="date"]::-webkit-datetime-edit-fields-wrapper,
++    input[type="time"]::-webkit-datetime-edit-fields-wrapper {
++      color: var(--text);
++    }
++
++    input[type="date"]::-webkit-datetime-edit-month-field:focus,
++    input[type="date"]::-webkit-datetime-edit-day-field:focus,
++    input[type="date"]::-webkit-datetime-edit-year-field:focus,
++    input[type="time"]::-webkit-datetime-edit-hour-field:focus,
++    input[type="time"]::-webkit-datetime-edit-minute-field:focus,
++    input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
++      background-color: var(--accent);
++      color: var(--text);
++      border-radius: 3px;
++    }
++
++    /* Native Color Picker Styling */
++    .color-picker-wrapper {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    input[type="color"] {
++      width: 48px;
++      height: 38px;
++      padding: 3px;
++      background-color: var(--light);
++      border: 1.5px solid var(--primary);
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    input[type="color"]::-webkit-color-swatch-wrapper {
++      padding: 2px;
++    }
++
++    input[type="color"]::-webkit-color-swatch {
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    input[type="color"]::-moz-color-swatch {
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    /* Native Meter & Progress Styling */
++    .meter-group {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    meter,
++    progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--primary);
++    }
++
++    /* Scrollable Textarea & Order Notes */
++    textarea {
++      resize: vertical;
++      min-height: 76px;
++      max-height: 140px;
++      overflow-y: auto;
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    .form-actions .btn,
++    .form-actions .btn-secondary {
++      margin-top: 0;
++    }
++
++    .order-status {
++      margin-top: 8px;
++      padding: 10px 14px;
++      border-radius: 6px;
++      background-color: var(--secondary);
++      color: var(--text);
++      font-size: 0.9rem;
++      border-left: 4px solid var(--accent);
+     }
+ 
+     footer {
+@@ -174,9 +621,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container main-content">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title" style="text-align: center;">Seasonal Favorites</h2>
++      <p class="section-subtitle" style="text-align: center;">Handcrafted small-batch drinks roasted fresh daily.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,8 +643,250 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customization-section" id="order-customizer" aria-labelledby="customize-heading">
++      <h2 id="customize-heading" class="section-title">Customize Your Order</h2>
++      <p class="section-subtitle">Tailor your cup with our native roast, milk, and pickup selectors.</p>
++
++      <form class="order-form" id="coffee-order-form" action="/order-online" method="get">
++        <div class="form-row">
++          <div class="form-group">
++            <label for="drink-select">Base Drink</label>
++            <select id="drink-select" name="drink" required>
++              <optgroup label="Seasonal Favorites">
++                <option value="maple-oat-latte" selected>Maple Oat Latte ($5.50)</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso ($3.75)</option>
++                <option value="cold-brew">18-Hour Cold Brew ($4.75)</option>
++              </optgroup>
++              <optgroup label="House Classics">
++                <option value="cappuccino">Velvet Cappuccino ($4.50)</option>
++                <option value="pour-over">Single-Origin Pour Over ($5.00)</option>
++                <option value="cortado">Honey Cinnamon Cortado ($4.25)</option>
++              </optgroup>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="milk-choice">Milk &amp; Creamer</label>
++            <input type="text" id="milk-choice" name="milk" list="milk-options" value="Barista Oat Milk" placeholder="Choose or type milk...">
++            <datalist id="milk-options">
++              <option value="Barista Oat Milk"></option>
++              <option value="Whole Organic Milk"></option>
++              <option value="Roasted Almond Milk"></option>
++              <option value="Coconut Cream"></option>
++              <option value="Splash of Half &amp; Half"></option>
++              <option value="No Milk (Black)"></option>
++            </datalist>
++          </div>
++        </div>
++
++        <fieldset>
++          <legend>Cup Size &amp; Temperature</legend>
++          <div class="form-row">
++            <div class="form-group">
++              <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">Size</span>
++              <div class="choice-group">
++                <label class="choice-label">
++                  <input type="radio" name="size" value="small">
++                  Small (8 oz)
++                </label>
++                <label class="choice-label">
++                  <input type="radio" name="size" value="medium" checked>
++                  Medium (12 oz)
++                </label>
++                <label class="choice-label">
++                  <input type="radio" name="size" value="large">
++                  Large (16 oz)
++                </label>
++              </div>
++            </div>
++
++            <div class="form-group">
++              <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">Serving Temp</span>
++              <div class="choice-group">
++                <label class="choice-label">
++                  <input type="radio" name="temperature" value="hot" checked>
++                  Hot
++                </label>
++                <label class="choice-label">
++                  <input type="radio" name="temperature" value="iced">
++                  Iced
++                </label>
++                <label class="choice-label">
++                  <input type="radio" name="temperature" value="extra-hot">
++                  Extra Hot
++                </label>
++              </div>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Artisanal Add-Ins &amp; Toppings</legend>
++          <div class="choice-group">
++            <label class="choice-label">
++              <input type="checkbox" name="addons" value="extra-shot" checked>
++              Extra Espresso Shot (+$1.25)
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="addons" value="maple-syrup" checked>
++              Vermont Maple Drizzle (+$0.75)
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="addons" value="vanilla-bean">
++              Vanilla Bean Paste (+$0.75)
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="addons" value="cinnamon-dust">
++              Ceylon Cinnamon Dust
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="addons" value="cold-foam">
++              Salted Caramel Cold Foam (+$1.00)
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-row">
++          <div class="form-group">
++            <div class="range-header">
++              <label for="sweetness-range">Sweetness (Syrup Pumps)</label>
++              <output id="sweetness-output" for="sweetness-range">2 Pumps</output>
++            </div>
++            <input type="range" id="sweetness-range" name="sweetness" min="0" max="5" step="1" value="2" list="sweetness-ticks">
++            <datalist id="sweetness-ticks">
++              <option value="0" label="0"></option>
++              <option value="1" label="1"></option>
++              <option value="2" label="2"></option>
++              <option value="3" label="3"></option>
++              <option value="4" label="4"></option>
++              <option value="5" label="5"></option>
++            </datalist>
++            <div class="range-ticks" aria-hidden="true">
++              <span>Unsweetened</span>
++              <span>Balanced</span>
++              <span>Sweet</span>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <div class="range-header">
++              <label for="roast-intensity">Espresso Roast Intensity</label>
++              <output id="roast-output" for="roast-intensity">Medium-Dark (4/5)</output>
++            </div>
++            <input type="range" id="roast-intensity" name="roast" min="1" max="5" step="1" value="4">
++            <div class="meter-group">
++              <span>Caffeine Level:</span>
++              <meter id="caffeine-meter" min="0" max="300" low="80" high="220" optimum="160" value="185">185 mg</meter>
++            </div>
++          </div>
++        </div>
++
++        <fieldset>
++          <legend>Pickup Schedule &amp; Cup Personalization</legend>
++          <div class="form-row">
++            <div class="form-group">
++              <label for="pickup-date">Pickup Date</label>
++              <input type="date" id="pickup-date" name="pickup_date" value="2026-10-31">
++            </div>
++
++            <div class="form-group">
++              <label for="pickup-time">Pickup Time</label>
++              <input type="time" id="pickup-time" name="pickup_time" value="08:30" min="06:00" max="20:00">
++            </div>
++
++            <div class="form-group">
++              <label for="cup-quantity">Quantity</label>
++              <input type="number" id="cup-quantity" name="quantity" min="1" max="12" value="1">
++            </div>
++
++            <div class="form-group">
++              <label for="sleeve-color">Reusable Sleeve Color</label>
++              <div class="color-picker-wrapper">
++                <input type="color" id="sleeve-color" name="sleeve_color" value="#ffab40">
++                <output id="color-output" for="sleeve-color">#ffab40</output>
++              </div>
++            </div>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="barista-notes">Barista Notes &amp; Dietary Instructions</label>
++          <textarea id="barista-notes" name="notes" rows="3" placeholder="Add custom brewing notes, allergy alerts, or cup label name...">Please steam the oat milk to 145°F with light microfoam and dust extra cinnamon on top. Label cup for Alex.</textarea>
++        </div>
++
++        <div class="form-actions">
++          <button type="submit" class="btn">Add Custom Order to Bag</button>
++          <button type="reset" class="btn-secondary">Reset Defaults</button>
++        </div>
++
++        <div class="order-status" id="order-summary" role="status" aria-live="polite">
++          Ready to brew: <strong>1x Medium Maple Oat Latte</strong> (Hot, 2 pumps, #ffab40 sleeve) for pickup at <strong>08:30</strong>.
++        </div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('coffee-order-form');
++      const sweetnessRange = document.getElementById('sweetness-range');
++      const sweetnessOutput = document.getElementById('sweetness-output');
++      const roastRange = document.getElementById('roast-intensity');
++      const roastOutput = document.getElementById('roast-output');
++      const caffeineMeter = document.getElementById('caffeine-meter');
++      const sleeveColor = document.getElementById('sleeve-color');
++      const colorOutput = document.getElementById('color-output');
++      const summary = document.getElementById('order-summary');
++
++      const roastLabels = {
++        1: 'Light Blonde (1/5)',
++        2: 'City Medium (2/5)',
++        3: 'Full City (3/5)',
++        4: 'Medium-Dark (4/5)',
++        5: 'French Dark (5/5)'
++      };
++
++      function updateOutputs() {
++        const pumps = Number(sweetnessRange.value);
++        sweetnessOutput.textContent = pumps === 1 ? '1 Pump' : pumps + ' Pumps';
++
++        const roast = Number(roastRange.value);
++        roastOutput.textContent = roastLabels[roast] || ('Level ' + roast + '/5');
++
++        const drinkSelect = document.getElementById('drink-select');
++        const drinkName = drinkSelect.options[drinkSelect.selectedIndex].text.replace(/\s*\(\$[\d.]+\)/, '');
++        const sizeInput = form.querySelector('input[name="size"]:checked');
++        const tempInput = form.querySelector('input[name="temperature"]:checked');
++        const extraShot = form.querySelector('input[value="extra-shot"]');
++        const qty = document.getElementById('cup-quantity').value || 1;
++        const time = document.getElementById('pickup-time').value || '08:30';
++
++        const baseCaffeine = 110 + (roast * 10) + (extraShot && extraShot.checked ? 65 : 0);
++        caffeineMeter.value = Math.min(300, baseCaffeine);
++
++        colorOutput.textContent = sleeveColor.value;
++
++        const sizeLabel = sizeInput ? sizeInput.value.charAt(0).toUpperCase() + sizeInput.value.slice(1) : 'Medium';
++        const tempLabel = tempInput ? tempInput.value.replace('-', ' ') : 'hot';
++
++        summary.innerHTML = 'Ready to brew: <strong>' + qty + 'x ' + sizeLabel + ' ' + drinkName +
++          '</strong> (' + tempLabel + ', ' + sweetnessOutput.textContent.toLowerCase() +
++          ', ' + sleeveColor.value + ' sleeve) for pickup at <strong>' + time + '</strong>.';
++      }
++
++      form.addEventListener('input', updateOutputs);
++      form.addEventListener('reset', function () {
++        setTimeout(updateOutputs, 0);
++      });
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        updateOutputs();
++        summary.innerHTML = 'Order confirmed! ' + summary.innerHTML.replace('Ready to brew:', 'Brewing:');
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

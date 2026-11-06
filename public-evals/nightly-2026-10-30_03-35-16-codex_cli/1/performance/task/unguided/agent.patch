@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -34,8 +34,10 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -47,16 +49,17 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.25rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -65,32 +68,63 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      height: 60svh;
++      min-height: 320px;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 20px;
+     }
+ 
++    .hero picture,
++    .hero::after {
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++    }
++
++    .hero picture {
++      z-index: -2;
++    }
++
++    .hero img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .hero::after {
++      content: "";
++      background: rgba(0, 0, 0, 0.5);
++      pointer-events: none;
++    }
++
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+@@ -101,9 +135,9 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+@@ -146,19 +180,39 @@
+       margin-bottom: 20px;
+     }
+ 
+     .footer-links a {
++      display: inline-flex;
++      align-items: center;
++      min-height: 44px;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 700px) {
++      nav {
++        position: static;
++      }
++
++      nav ul {
++        gap: 0.25rem 1rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav a,
++      .btn {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,8 +222,17 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <!-- At 3:2, cover needs at least 1.5 times the hero height in source width.
++         Account for the 320px minimum and the 60vh fallback, as well as 100vw. -->
++    <picture>
++      <source type="image/webp"
++        srcset="/assets/coffee-hero-640.webp 640w, /assets/coffee-hero-960.webp 960w, /assets/coffee-hero-1350.webp 1350w"
++        sizes="max(100vw, 480px, 90vh)">
++      <img src="/assets/coffee-hero-1350.jpg" width="1350" height="900" alt=""
++        fetchpriority="high" loading="eager" decoding="async">
++    </picture>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

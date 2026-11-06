@@ -1,0 +1,503 @@
+diff --git a/index.html b/index.html
+index 66c9173..0e4bfc9 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,138 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Auth state: show only the nav items that match the current session */
++    body:not([data-auth="signed-in"]) .when-signed-in,
++    body[data-auth="signed-in"] .when-signed-out {
++      display: none;
++    }
++
++    .nav-greeting {
++      color: var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    .signin-link {
++      background: none;
++      border: 1px solid var(--accent);
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .signin-link:hover {
++      color: var(--accent);
++    }
++
++    /* Sign-in dialog */
++    .signin-dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      width: min(400px, calc(100% - 40px));
++      margin: auto;
++      color: var(--text);
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    .signin-dialog::backdrop {
++      background: rgba(30, 20, 15, 0.6);
++    }
++
++    .signin-body {
++      padding: 28px;
++      position: relative;
++    }
++
++    .signin-body h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .signin-body .subtitle {
++      font-size: 0.9rem;
++      margin-bottom: 20px;
++    }
++
++    .signin-close {
++      position: absolute;
++      top: 12px;
++      right: 14px;
++      background: none;
++      border: none;
++      font-size: 1.5rem;
++      line-height: 1;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .signin-body label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .signin-body input {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      margin-bottom: 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin-body input:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .signin-body .btn {
++      width: 100%;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .signin-body .btn-outline {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .signin-body .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .signin-divider {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin: 18px 0;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .signin-divider::before,
++    .signin-divider::after {
++      content: "";
++      flex: 1;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .signin-error {
++      color: #c62828;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++      margin-bottom: 10px;
++    }
+   </style>
+ </head>
+ 
+@@ -162,16 +294,18 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-requires-auth>Rewards</a></li>
++      <li><a href="/account" data-requires-auth>My Account</a></li>
++      <li class="when-signed-in"><span class="nav-greeting" id="nav-greeting"></span></li>
++      <li class="when-signed-in"><a href="/logout" class="logout-link" id="logout-link">Logout</a></li>
++      <li class="when-signed-out"><button type="button" class="signin-link" id="signin-open">Sign In</button></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-requires-auth>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +341,336 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="signin-dialog" id="signin-dialog" aria-labelledby="signin-title">
++    <div class="signin-body">
++      <button type="button" class="signin-close" id="signin-close" aria-label="Close">&times;</button>
++      <h2 id="signin-title">Welcome back</h2>
++      <p class="subtitle" id="signin-subtitle">Sign in to pick up right where you left off.</p>
++
++      <button type="button" class="btn" id="passkey-btn" hidden>Sign in with a passkey</button>
++      <div class="signin-divider" id="passkey-divider" hidden>or use your password</div>
++
++      <form id="signin-form" action="/login" method="post">
++        <label for="signin-email">Email</label>
++        <input type="email" id="signin-email" name="email" autocomplete="username webauthn" required>
++        <label for="signin-password">Password</label>
++        <input type="password" id="signin-password" name="password" autocomplete="current-password" required>
++        <p class="signin-error" id="signin-error" role="alert"></p>
++        <button type="submit" class="btn btn-outline" id="signin-submit">Sign In</button>
++      </form>
++    </div>
++  </dialog>
++
++  <script>
++    (() => {
++      // Backend endpoints used for in-page sign-in. All exchange JSON and rely on a same-origin session cookie.
++      //   GET  /api/auth/session            -> 200 { user: { name } } when signed in, 401 otherwise
++      //   POST /api/auth/passkey/options    -> PublicKeyCredentialRequestOptionsJSON (fresh challenge)
++      //   POST /api/auth/passkey/verify     <- assertion JSON          -> { user }
++      //   POST /api/auth/password           <- { email, password }     -> { user }
++      const API = {
++        session: '/api/auth/session',
++        passkeyOptions: '/api/auth/passkey/options',
++        passkeyVerify: '/api/auth/passkey/verify',
++        password: '/api/auth/password',
++      };
++
++      const dialog = document.getElementById('signin-dialog');
++      const form = document.getElementById('signin-form');
++      const emailInput = document.getElementById('signin-email');
++      const passwordInput = document.getElementById('signin-password');
++      const submitBtn = document.getElementById('signin-submit');
++      const errorEl = document.getElementById('signin-error');
++      const subtitleEl = document.getElementById('signin-subtitle');
++      const passkeyBtn = document.getElementById('passkey-btn');
++      const passkeyDivider = document.getElementById('passkey-divider');
++
++      const supportsPasskeys = 'PublicKeyCredential' in window;
++      const supportsPasswordCredential = 'PasswordCredential' in window;
++
++      let pendingDestination = null;
++      let conditionalAbort = null;
++      let busy = false;
++
++      // ---------- Helpers ----------
++
++      async function postJSON(url, body) {
++        const res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: body === undefined ? undefined : JSON.stringify(body),
++        });
++        const data = await res.json().catch(() => ({}));
++        if (!res.ok) throw new Error(data.message || 'Sign-in failed. Please try again.');
++        return data;
++      }
++
++      function b64urlToBuffer(value) {
++        const b64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
++        return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
++      }
++
++      function bufferToB64url(buffer) {
++        let binary = '';
++        for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function parseRequestOptions(json) {
++        if (PublicKeyCredential.parseRequestOptionsFromJSON) {
++          return PublicKeyCredential.parseRequestOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuffer(json.challenge),
++          allowCredentials: (json.allowCredentials || []).map(c => ({ ...c, id: b64urlToBuffer(c.id) })),
++        };
++      }
++
++      function assertionToJSON(cred) {
++        if (typeof cred.toJSON === 'function') return cred.toJSON();
++        const r = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment,
++          clientExtensionResults: cred.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToB64url(r.clientDataJSON),
++            authenticatorData: bufferToB64url(r.authenticatorData),
++            signature: bufferToB64url(r.signature),
++            userHandle: r.userHandle ? bufferToB64url(r.userHandle) : null,
++          },
++        };
++      }
++
++      function showError(message) {
++        errorEl.textContent = message || '';
++      }
++
++      function setBusy(value) {
++        busy = value;
++        submitBtn.disabled = value;
++        passkeyBtn.disabled = value;
++      }
++
++      // ---------- Session state ----------
++
++      function setSignedIn(user) {
++        document.body.dataset.auth = 'signed-in';
++        document.getElementById('nav-greeting').textContent = user && user.name ? `Hi, ${user.name}` : '';
++      }
++
++      function setSignedOut() {
++        document.body.dataset.auth = 'signed-out';
++      }
++
++      const sessionReady = fetch(API.session, { credentials: 'same-origin' })
++        .then(res => (res.ok ? res.json() : null))
++        .catch(() => null)
++        .then(data => {
++          if (data && data.user) setSignedIn(data.user);
++          else setSignedOut();
++        });
++
++      function isSignedIn() {
++        return document.body.dataset.auth === 'signed-in';
++      }
++
++      function completeSignIn(user) {
++        const destination = pendingDestination;
++        setSignedIn(user);
++        dialog.close();
++        // Continue to whatever the customer originally clicked; otherwise stay on this page.
++        if (destination) window.location.assign(destination);
++      }
++
++      // ---------- Passkeys ----------
++
++      async function getPasskeyOptions() {
++        return parseRequestOptions(await postJSON(API.passkeyOptions));
++      }
++
++      async function verifyPasskey(credential) {
++        const { user } = await postJSON(API.passkeyVerify, assertionToJSON(credential));
++        completeSignIn(user);
++      }
++
++      function abortConditional() {
++        if (conditionalAbort) conditionalAbort.abort();
++        conditionalAbort = null;
++      }
++
++      // Passkey autofill: saved passkeys appear in the email field's autofill menu.
++      async function startConditionalPasskey() {
++        if (!supportsPasskeys || !PublicKeyCredential.isConditionalMediationAvailable) return;
++        if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return;
++        abortConditional();
++        const controller = new AbortController();
++        conditionalAbort = controller;
++        let claimedBusy = false;
++        try {
++          const publicKey = await getPasskeyOptions();
++          if (controller.signal.aborted) return;
++          const credential = await navigator.credentials.get({
++            publicKey,
++            mediation: 'conditional',
++            signal: controller.signal,
++          });
++          if (credential) {
++            claimedBusy = true;
++            setBusy(true);
++            await verifyPasskey(credential);
++          }
++        } catch (err) {
++          if (err.name !== 'AbortError' && !controller.signal.aborted) showError(err.message);
++        } finally {
++          if (claimedBusy) setBusy(false);
++        }
++      }
++
++      // Explicit button: opens the browser's passkey picker (incl. phones / security keys).
++      async function signInWithPasskey() {
++        if (busy) return;
++        abortConditional();
++        showError('');
++        setBusy(true);
++        try {
++          const publicKey = await getPasskeyOptions();
++          const credential = await navigator.credentials.get({ publicKey, mediation: 'optional' });
++          await verifyPasskey(credential);
++        } catch (err) {
++          if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') showError(err.message);
++          if (dialog.open) startConditionalPasskey();
++        } finally {
++          setBusy(false);
++        }
++      }
++
++      // ---------- Passwords ----------
++
++      async function signInWithPassword(email, password, { remember }) {
++        const { user } = await postJSON(API.password, { email, password });
++        if (remember && supportsPasswordCredential) {
++          // Offer to save/update the password in the browser's password manager.
++          const cred = new PasswordCredential({ id: email, password, name: user && user.name });
++          await navigator.credentials.store(cred).catch(() => { });
++        }
++        completeSignIn(user);
++      }
++
++      // Browser account chooser for saved passwords (Credential Management API).
++      async function offerSavedPasswords(mediation) {
++        if (!supportsPasswordCredential) return false;
++        try {
++          const cred = await navigator.credentials.get({ password: true, mediation });
++          if (cred && cred.type === 'password') {
++            setBusy(true);
++            await signInWithPassword(cred.id, cred.password, { remember: false });
++            return true;
++          }
++        } catch (err) {
++          if (mediation !== 'silent') showError(err.message);
++        } finally {
++          setBusy(false);
++        }
++        return false;
++      }
++
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        if (busy) return;
++        abortConditional();
++        showError('');
++        setBusy(true);
++        try {
++          await signInWithPassword(emailInput.value.trim(), passwordInput.value, { remember: true });
++        } catch (err) {
++          showError(err.message);
++          passwordInput.select();
++          startConditionalPasskey();
++        } finally {
++          setBusy(false);
++        }
++      });
++
++      // ---------- Dialog ----------
++
++      async function openSignIn(destination, label) {
++        pendingDestination = destination || null;
++        subtitleEl.textContent = label
++          ? `Sign in to continue to ${label}.`
++          : 'Sign in to pick up right where you left off.';
++        showError('');
++        form.reset();
++        dialog.showModal();
++        emailInput.focus();
++
++        // Try the browser's saved-password chooser first, then keep passkey autofill armed for the form.
++        // Skip the chooser if the customer already dismissed it this visit.
++        if (!sessionStorage.getItem('dg-chooser-dismissed')) {
++          const signedIn = await offerSavedPasswords('optional');
++          if (signedIn) return;
++          if (supportsPasswordCredential) sessionStorage.setItem('dg-chooser-dismissed', '1');
++        }
++        if (dialog.open) startConditionalPasskey();
++      }
++
++      dialog.addEventListener('close', () => {
++        abortConditional();
++        pendingDestination = null;
++        setBusy(false);
++      });
++
++      // Close when clicking the backdrop.
++      dialog.addEventListener('click', event => {
++        if (event.target === dialog) dialog.close();
++      });
++
++      document.getElementById('signin-close').addEventListener('click', () => dialog.close());
++      document.getElementById('signin-open').addEventListener('click', () => openSignIn());
++      passkeyBtn.addEventListener('click', signInWithPasskey);
++
++      if (supportsPasskeys) {
++        passkeyBtn.hidden = false;
++        passkeyDivider.hidden = false;
++      }
++
++      // Intercept links that need an account and sign in on this page instead of redirecting to /login.
++      document.addEventListener('click', async event => {
++        const link = event.target.closest('a[data-requires-auth]');
++        if (!link || event.defaultPrevented || event.button !== 0) return;
++        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        if (isSignedIn()) return;
++
++        event.preventDefault();
++        await sessionReady;
++        if (isSignedIn()) {
++          window.location.assign(link.href);
++        } else {
++          openSignIn(link.href, link.textContent.trim());
++        }
++      });
++
++      // Logging out: stop the browser from silently signing the customer back in.
++      document.getElementById('logout-link').addEventListener('click', async event => {
++        event.preventDefault();
++        const href = event.currentTarget.href;
++        if (navigator.credentials && navigator.credentials.preventSilentAccess) {
++          await navigator.credentials.preventSilentAccess().catch(() => { });
++        }
++        window.location.assign(href);
++      });
++
++      // Returning customers who allowed automatic sign-in get signed in quietly as they browse.
++      sessionReady.then(() => {
++        if (!isSignedIn()) offerSavedPasswords('silent');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

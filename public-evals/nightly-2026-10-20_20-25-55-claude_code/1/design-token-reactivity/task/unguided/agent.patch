@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Marker used to feature-check CSS style queries (see #toggle-spacious) */
++      --style-query-check: supported;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -119,8 +121,43 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Layout density toggle: hidden unless the browser supports style queries */
++    #toggle-spacious {
++      display: none;
++      margin: 10px auto 0;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @container style(--style-query-check: supported) {
++      .density-controls {
++        text-align: center;
++      }
++
++      #toggle-spacious {
++        display: inline-block;
++      }
++    }
++
++    /* The card reacts to the ancestor's --density without JS touching it */
++    #target-item {
++      padding: 20px;
++      transition: padding 0.3s;
++    }
++
++    @container style(--density: spacious) {
++      #target-item {
++        padding: 48px 32px;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,10 +213,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="density-controls">
++        <button type="button" id="toggle-spacious" aria-pressed="false">Toggle spacious layout</button>
++      </div>
++      <div id="target-container" style="--density: compact;">
++        <div class="grid">
++        <div class="card" id="target-item">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -192,12 +233,24 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        </div>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    const toggle = document.getElementById('toggle-spacious');
++    const container = document.getElementById('target-container');
++
++    toggle.addEventListener('click', () => {
++      const spacious = container.style.getPropertyValue('--density').trim() !== 'spacious';
++      container.style.setProperty('--density', spacious ? 'spacious' : 'compact');
++      toggle.setAttribute('aria-pressed', String(spacious));
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

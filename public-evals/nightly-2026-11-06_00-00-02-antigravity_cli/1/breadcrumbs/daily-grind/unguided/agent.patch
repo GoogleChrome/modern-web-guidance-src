@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+index 66c9173..71ff0a0 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,55 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumb Navigation */
++    .breadcrumb-nav {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 0.75rem 20px;
++      position: static;
++      display: block;
++      border-bottom: 1px solid rgba(78, 52, 46, 0.15);
++    }
++
++    .breadcrumb {
++      max-width: 1100px;
++      margin: 0 auto;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      list-style: none;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumb-item {
++      display: flex;
++      align-items: center;
++    }
++
++    .breadcrumb-item + .breadcrumb-item::before {
++      content: "/";
++      margin: 0 0.6rem;
++      color: #795548;
++      font-weight: 500;
++    }
++
++    .breadcrumb-nav a {
++      color: var(--primary);
++      text-decoration: none;
++      font-weight: 500;
++      transition: color 0.2s, text-decoration 0.2s;
++    }
++
++    .breadcrumb-nav a:hover {
++      color: var(--text);
++      text-decoration: underline;
++    }
++
++    .breadcrumb-item.active {
++      color: var(--text);
++      font-weight: 600;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -152,6 +201,31 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .detail-view {
++      display: none;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      text-align: center;
++    }
++
++    .detail-view.active {
++      display: block;
++    }
++
++    .detail-view h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .detail-meta {
++      color: #6d4c41;
++      font-weight: 600;
++      margin: 12px 0;
++    }
+   </style>
+ </head>
+ 
+@@ -160,7 +234,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="/menu" data-nav="menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -174,27 +248,42 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <nav aria-label="Breadcrumb" class="breadcrumb-nav">
++    <ol class="breadcrumb" id="breadcrumb-list">
++      <li class="breadcrumb-item"><a href="/" data-breadcrumb="home">Home</a></li>
++      <li class="breadcrumb-item"><a href="/menu" data-breadcrumb="menu">Menu</a></li>
++      <li class="breadcrumb-item active" aria-current="page">Seasonal Favorites</li>
++    </ol>
++  </nav>
++
++  <main class="container" id="main-content">
++    <section id="seasonal-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-item="maple-oat-latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-item="dark-roast-espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-item="cold-brew">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="item-detail" class="detail-view" aria-live="polite">
++      <h2 id="detail-title">Maple Oat Latte</h2>
++      <p id="detail-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <p id="detail-notes" class="detail-meta"> handcrafted with organic espresso &bull; Served hot or iced</p>
++      <a href="/menu/seasonal" class="btn" id="back-to-seasonal">Back to Seasonal Favorites</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +296,122 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const items = {
++        'maple-oat-latte': {
++          title: 'Maple Oat Latte',
++          path: '/menu/seasonal',
++          description: 'Creamy oat milk with a hint of pure Vermont maple syrup and a double shot of our signature espresso.',
++          notes: '16 oz • $5.50 • Available Hot or Iced'
++        },
++        'dark-roast-espresso': {
++          title: 'Dark Roast Espresso',
++          path: '/menu/espresso',
++          description: 'Bold, smokey, and full-bodied single-origin beans roasted to perfection for an intense morning boost.',
++          notes: 'Double Shot • $3.75 • Rich Cocoa & Roasted Nut Notes'
++        },
++        'cold-brew': {
++          title: 'Cold Brew',
++          path: '/menu/cold-brew',
++          description: 'Coarse-ground artisanal beans steeped in cool filtered water for 18 hours for maximum smoothness and low acidity.',
++          notes: '16 oz • $4.75 • Served Over Artisanal Ice'
++        }
++      };
++
++      const breadcrumbList = document.getElementById('breadcrumb-list');
++      const seasonalSection = document.getElementById('seasonal-section');
++      const detailSection = document.getElementById('item-detail');
++      const detailTitle = document.getElementById('detail-title');
++      const detailDescription = document.getElementById('detail-description');
++      const detailNotes = document.getElementById('detail-notes');
++      const backBtn = document.getElementById('back-to-seasonal');
++
++      function renderBreadcrumbs(trail) {
++        breadcrumbList.innerHTML = '';
++        trail.forEach(function (crumb, idx) {
++          const li = document.createElement('li');
++          const isLast = idx === trail.length - 1;
++          li.className = isLast ? 'breadcrumb-item active' : 'breadcrumb-item';
++          if (isLast) {
++            li.setAttribute('aria-current', 'page');
++            li.textContent = crumb.label;
++          } else {
++            const a = document.createElement('a');
++            a.href = crumb.href;
++            a.textContent = crumb.label;
++            a.dataset.level = crumb.level;
++            a.addEventListener('click', function (e) {
++              e.preventDefault();
++              showSeasonalView(crumb.level);
++            });
++            li.appendChild(a);
++          }
++          breadcrumbList.appendChild(li);
++        });
++      }
++
++      function showSeasonalView(level) {
++        detailSection.classList.remove('active');
++        seasonalSection.style.display = 'block';
++        if (level === 'home') {
++          renderBreadcrumbs([
++            { label: 'Home', href: '/', level: 'home' },
++            { label: 'Menu', href: '/menu', level: 'menu' },
++            { label: 'Seasonal Favorites', href: '/menu/seasonal', level: 'seasonal' }
++          ]);
++        } else if (level === 'menu') {
++          renderBreadcrumbs([
++            { label: 'Home', href: '/', level: 'home' },
++            { label: 'Menu', href: '/menu', level: 'menu' },
++            { label: 'Seasonal Favorites', href: '/menu/seasonal', level: 'seasonal' }
++          ]);
++        } else {
++          renderBreadcrumbs([
++            { label: 'Home', href: '/', level: 'home' },
++            { label: 'Menu', href: '/menu', level: 'menu' },
++            { label: 'Seasonal Favorites', href: '/menu/seasonal', level: 'seasonal' }
++          ]);
++        }
++      }
++
++      function showItemDetail(itemKey) {
++        const item = items[itemKey];
++        if (!item) return;
++        seasonalSection.style.display = 'none';
++        detailTitle.textContent = item.title;
++        detailDescription.textContent = item.description;
++        detailNotes.textContent = item.notes;
++        detailSection.classList.add('active');
++
++        renderBreadcrumbs([
++          { label: 'Home', href: '/', level: 'home' },
++          { label: 'Menu', href: '/menu', level: 'menu' },
++          { label: 'Seasonal Favorites', href: '#seasonal-section', level: 'seasonal' },
++          { label: item.title, href: item.path, level: 'item' }
++        ]);
++      }
++
++      document.querySelectorAll('[data-item]').forEach(function (btn) {
++        btn.addEventListener('click', function (e) {
++          e.preventDefault();
++          showItemDetail(btn.getAttribute('data-item'));
++        });
++      });
++
++      document.querySelectorAll('[data-breadcrumb]').forEach(function (link) {
++        link.addEventListener('click', function (e) {
++          e.preventDefault();
++          showSeasonalView(link.getAttribute('data-breadcrumb'));
++        });
++      });
++
++      backBtn.addEventListener('click', function (e) {
++        e.preventDefault();
++        showSeasonalView('seasonal');
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

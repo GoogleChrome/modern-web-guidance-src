@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,45 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      function getInitialVisibilityInfo() {
++        if ('VisibilityStateEntry' in window) {
++          const entries = performance.getEntriesByType('visibility-state');
++
++          if (entries.length > 0) {
++            const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++
++            return {
++              initiallyBackgrounded: entries[0].name === 'hidden',
++              // Browser-recorded milliseconds relative to performance.timeOrigin
++              // (page load), not Unix time. Initial hidden state has time 0.
++              // null means no backgrounding has been recorded as of this query.
++              timeBackgrounded: firstHiddenEntry ? firstHiddenEntry.startTime : null,
++              fallbackActive: false
++            };
++          }
++        }
++
++        // UNRELIABLE FALLBACK: this only samples visibility at script execution.
++        // An async script can miss an initial hidden state or mistake a later
++        // hidden state for the initial one. Time 0 below is only an estimate;
++        // legacy visibility queries cannot recover the exact background time.
++        const initiallyBackgrounded = document.visibilityState === 'hidden';
++        return {
++          initiallyBackgrounded,
++          timeBackgrounded: initiallyBackgrounded ? 0 : null,
++          fallbackActive: true,
++          warning: 'Potentially unreliable initial state and estimated background time; visibility history is unavailable.'
++        };
++      }
++
++      // Log a snapshot of the initial state and first recorded background time.
++      console.log(getInitialVisibilityInfo());
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

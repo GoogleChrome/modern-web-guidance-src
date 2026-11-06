@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,66 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    /* Hero Theater Mode */
++    .hero:has(iframe),
++    .hero.theater-active {
++      min-height: 75vh;
++      height: auto;
++      padding: 40px 20px;
++    }
++
++    /* Video Section */
++    .video-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .video-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      max-width: 800px;
++      margin: 0 auto 20px;
++    }
++
++    .video-header .btn {
++      margin-top: 0;
++    }
++
++    .video-slot {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    #roasting-video {
++      width: 100%;
++      max-width: 800px;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      display: block;
++      margin: 0 auto;
++    }
++
++    .hero #roasting-video {
++      max-width: 960px;
++      margin-top: 24px;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +252,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section">
++      <div class="video-header">
++        <h2>Inside Our Roastery</h2>
++        <button type="button" id="theater-mode-btn" class="btn" aria-pressed="false">Theater Mode</button>
++      </div>
++      <div id="video-container" class="video-slot">
++        <iframe
++          id="roasting-video"
++          width="560"
++          height="315"
++          src="https://www.youtube.com/embed/5a0tWUS2t3k"
++          title="Coffee Roasting Process"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin"
++          allowfullscreen>
++        </iframe>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +283,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const theaterBtn = document.getElementById('theater-mode-btn');
++    const videoIframe = document.getElementById('roasting-video');
++    const heroSection = document.querySelector('.hero');
++    const videoContainer = document.getElementById('video-container');
++
++    function moveElementPreservingState(targetParent, nodeToMove) {
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(nodeToMove, null);
++      } else {
++        targetParent.insertBefore(nodeToMove, null);
++      }
++    }
++
++    theaterBtn.addEventListener('click', () => {
++      const isInHero = heroSection.contains(videoIframe);
++      const targetParent = isInHero ? videoContainer : heroSection;
++
++      moveElementPreservingState(targetParent, videoIframe);
++
++      const nowInHero = !isInHero;
++      heroSection.classList.toggle('theater-active', nowInHero);
++      theaterBtn.setAttribute('aria-pressed', String(nowInHero));
++      theaterBtn.textContent = nowInHero ? 'Exit Theater Mode' : 'Theater Mode';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

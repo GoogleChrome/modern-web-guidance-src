@@ -1,0 +1,3006 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..3475f21
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,753 @@
++/**
++ * app.js
++ * 
++ * Interactive controller for The Daily Grind's Cryptographic Authenticity Studio.
++ * Interfaces with crypto-signatures.js for:
++ * - Messages signing and verification
++ * - Tokens creation, inspection, and verification
++ * - Artifacts hashing, signing, and verification
++ * - Post-Quantum (ML-DSA) and Classical (Ed25519) key management
++ * - In-browser live self-test & latency benchmarks
++ */
++
++import {
++  supportsPostQuantumSignatures,
++  hasSubtleCryptoSupports,
++  detectSupportedSuites,
++  generateSigningKeyPair,
++  exportPublicKey,
++  importPublicKey,
++  signMessage,
++  verifyMessage,
++  createSignedToken,
++  verifySignedToken,
++  hashArtifact,
++  signArtifact,
++  verifyArtifact,
++  bytesToHex,
++  hexToBytes,
++  bytesToBase64,
++  base64ToBytes,
++  bytesToBase64Url,
++  stringToBytes,
++  bytesToString,
++} from './crypto-signatures.js';
++
++// Application state
++const state = {
++  currentSuite: 'ML-DSA-65',
++  keyPairData: null,
++  activeTab: 'tab-messages',
++
++  // Messages state
++  signedMessagePackage: null,
++
++  // Tokens state
++  issuedTokenData: null,
++
++  // Artifacts state
++  currentArtifact: {
++    name: 'artisanal-roast-certificate.jpg',
++    mimeType: 'image/jpeg',
++    bytes: null,
++    previewUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80',
++    envelope: null,
++  },
++};
++
++// DOM references helper
++const $ = (id) => document.getElementById(id);
++
++/**
++ * Initialize studio on page load
++ */
++export async function initApp() {
++  renderDetectionBanner();
++  setupEventListeners();
++  await handleGenerateKeyPair();
++  await loadDefaultArtifact();
++}
++
++/**
++ * Render cryptographic capabilities and quantum readiness
++ */
++function renderDetectionBanner() {
++  const pqSupported = supportsPostQuantumSignatures();
++  const detectionInfo = detectSupportedSuites();
++
++  const statusBadge = $('pqc-status-badge');
++  const detailsEl = $('pqc-details');
++
++  if (pqSupported) {
++    statusBadge.className = 'status-badge status-pq-ready';
++    statusBadge.innerHTML = '🛡️ Post-Quantum Protected (ML-DSA-65 NIST FIPS 204)';
++    detailsEl.textContent = `Native WebCrypto quantum-resistant support detected (${detectionInfo.supportedSuites.join(', ')}).`;
++  } else {
++    statusBadge.className = 'status-badge status-classical';
++    statusBadge.innerHTML = '⚡ Classical Mode Active (Ed25519)';
++    detailsEl.textContent = `ML-DSA not detected natively in this browser; active suites: ${detectionInfo.supportedSuites.join(', ')}.`;
++  }
++
++  // Populate algorithm selector
++  const suiteSelect = $('suite-select');
++  suiteSelect.innerHTML = '';
++
++  const availableOptions = [
++    { value: 'ML-DSA-65', label: 'ML-DSA-65 (NIST FIPS 204 - Recommended Default)', pq: true },
++    { value: 'ML-DSA-44', label: 'ML-DSA-44 (NIST FIPS 204 - Compact 1312B PubKey)', pq: true },
++    { value: 'ML-DSA-87', label: 'ML-DSA-87 (NIST FIPS 204 - High Security Cat 5)', pq: true },
++    { value: 'Ed25519', label: 'Ed25519 (Classical Edwards Curve - RFC 8032)', pq: false },
++    { value: 'ECDSA-P256', label: 'ECDSA P-256 (Classical NIST Curve)', pq: false },
++  ];
++
++  for (const opt of availableOptions) {
++    const isSupported = detectionInfo.supportedSuites.includes(opt.value);
++    const optionEl = document.createElement('option');
++    optionEl.value = opt.value;
++    optionEl.textContent = `${opt.label} ${isSupported ? '✓ Supported' : '(Fallback only)'}`;
++    if (opt.value === detectionInfo.defaultSuite) {
++      optionEl.selected = true;
++      state.currentSuite = opt.value;
++    }
++    suiteSelect.appendChild(optionEl);
++  }
++}
++
++/**
++ * Setup UI Event Listeners
++ */
++function setupEventListeners() {
++  // Navigation tabs
++  document.querySelectorAll('.crypto-tab-btn').forEach((btn) => {
++    btn.addEventListener('click', () => {
++      document.querySelectorAll('.crypto-tab-btn').forEach((b) => b.classList.remove('active'));
++      document.querySelectorAll('.crypto-tab-pane').forEach((p) => p.classList.remove('active'));
++      btn.classList.add('active');
++      const targetPane = $(btn.dataset.target);
++      if (targetPane) targetPane.classList.add('active');
++      state.activeTab = btn.dataset.target;
++    });
++  });
++
++  // Key Pair Management
++  $('suite-select').addEventListener('change', (e) => {
++    state.currentSuite = e.target.value;
++  });
++
++  $('btn-generate-keys').addEventListener('click', handleGenerateKeyPair);
++  $('btn-copy-public-key').addEventListener('click', handleCopyPublicKey);
++  $('btn-download-public-key').addEventListener('click', handleDownloadPublicKey);
++  $('btn-import-public-key').addEventListener('click', handleImportPublicKey);
++
++  // Messages
++  $('btn-sign-message').addEventListener('click', handleSignMessage);
++  $('btn-verify-message').addEventListener('click', handleVerifyMessage);
++  $('btn-tamper-message').addEventListener('click', handleTamperMessage);
++  $('btn-tamper-msg-ctx').addEventListener('click', handleTamperMessageContext);
++
++  // Message Presets
++  $('msg-preset-select').addEventListener('change', (e) => {
++    const val = e.target.value;
++    if (val === 'roaster-cert') {
++      $('msg-input').value = 'Official Certificate of Roast: Batch #8402 Organic Ethiopian Yirgacheffe roasted on Oct 16, 2026. Certified single-origin, cupping score 91.5.';
++      $('msg-context-input').value = 'dailygrind:roaster:batch-cert';
++    } else if (val === 'hours') {
++      $('msg-input').value = 'Notice of Special Holiday Tasting Hours: The Daily Grind Flagship Roastery will open at 6:00 AM on Saturday for live cupping demonstrations.';
++      $('msg-context-input').value = 'dailygrind:notices:public';
++    } else if (val === 'pricing') {
++      $('msg-input').value = 'Master Price Schedule: Batch 2026-X Reserve Beans priced at $24.00 / 12oz bag. Valid through November 30, 2026.';
++      $('msg-context-input').value = 'dailygrind:commerce:pricing';
++    }
++  });
++
++  // Tokens
++  $('btn-issue-token').addEventListener('click', handleIssueToken);
++  $('btn-verify-token').addEventListener('click', handleVerifyToken);
++  $('btn-tamper-token-credits').addEventListener('click', handleTamperTokenCredits);
++  $('btn-tamper-token-sig').addEventListener('click', handleTamperTokenSignature);
++
++  // Artifacts
++  $('artifact-file-input').addEventListener('change', handleCustomArtifactUpload);
++  $('artifact-preset-select').addEventListener('change', handleArtifactPresetChange);
++  $('btn-sign-artifact').addEventListener('click', handleSignArtifact);
++  $('btn-verify-artifact').addEventListener('click', handleVerifyArtifact);
++  $('btn-corrupt-artifact').addEventListener('click', handleCorruptArtifact);
++
++  // In-Browser Benchmark & Self-Test
++  $('btn-run-selftest').addEventListener('click', handleRunSelfTest);
++}
++
++/* ============================================================================
++   Key Management Handlers
++   ============================================================================ */
++
++async function handleGenerateKeyPair() {
++  const statusEl = $('key-gen-status');
++  statusEl.textContent = 'Generating key pair...';
++  const startTime = performance.now();
++
++  try {
++    const keyData = await generateSigningKeyPair(state.currentSuite);
++    state.keyPairData = keyData;
++
++    const elapsed = (performance.now() - startTime).toFixed(2);
++    statusEl.innerHTML = `✓ Generated <strong>${keyData.suite}</strong> key pair in <strong>${elapsed}ms</strong>.`;
++
++    $('pubkey-preview-b64').value = keyData.publicKeyBase64;
++    $('pubkey-preview-hex').value = keyData.publicKeyHex;
++    $('pubkey-suite-badge').textContent = keyData.suite;
++    $('pubkey-size-badge').textContent = `${keyData.publicKeyBytes.byteLength} Bytes`;
++
++    // Clear verification outputs
++    resetStatusBadges();
++  } catch (err) {
++    statusEl.textContent = `Error: ${err.message}`;
++    console.error('Key generation error:', err);
++  }
++}
++
++function handleCopyPublicKey() {
++  const b64 = $('pubkey-preview-b64').value;
++  if (!b64) return;
++  navigator.clipboard.writeText(b64).then(() => {
++    alert('Public key copied to clipboard (Base64)!');
++  }).catch(() => {
++    $('pubkey-preview-b64').select();
++    document.execCommand('copy');
++    alert('Public key copied to clipboard!');
++  });
++}
++
++function handleDownloadPublicKey() {
++  if (!state.keyPairData) return;
++  const content = `-----BEGIN PUBLIC KEY (${state.keyPairData.suite})-----\n${state.keyPairData.publicKeyBase64}\n-----END PUBLIC KEY-----`;
++  const blob = new Blob([content], { type: 'text/plain' });
++  const url = URL.createObjectURL(blob);
++  const a = document.createElement('a');
++  a.href = url;
++  a.download = `daily-grind-${state.keyPairData.suite}.pub`;
++  a.click();
++  URL.revokeObjectURL(url);
++}
++
++async function handleImportPublicKey() {
++  const input = prompt('Paste Public Key (Base64 or Hex):');
++  if (!input) return;
++  try {
++    const importedKey = await importPublicKey(input.trim());
++    alert(`Successfully imported public key! Algorithm: ${importedKey.algorithm.name}`);
++  } catch (err) {
++    alert(`Failed to import public key: ${err.message}`);
++  }
++}
++
++function resetStatusBadges() {
++  const msgResult = $('msg-verify-result');
++  if (msgResult) msgResult.innerHTML = '';
++  const tokenResult = $('token-verify-result');
++  if (tokenResult) tokenResult.innerHTML = '';
++  const artResult = $('artifact-verify-result');
++  if (artResult) artResult.innerHTML = '';
++}
++
++/* ============================================================================
++   1. Messages Handlers
++   ============================================================================ */
++
++async function handleSignMessage() {
++  if (!state.keyPairData) {
++    alert('Please generate a key pair first.');
++    return;
++  }
++
++  const messageText = $('msg-input').value.trim();
++  const context = $('msg-context-input').value.trim();
++
++  if (!messageText) {
++    alert('Please enter a message to sign.');
++    return;
++  }
++
++  const t0 = performance.now();
++  const signedPkg = await signMessage(state.keyPairData.keyPair.privateKey, messageText, {
++    context,
++    signerInfo: {
++      shop: 'The Daily Grind Coffee Co.',
++      author: 'Head Roaster',
++    },
++  });
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  state.signedMessagePackage = signedPkg;
++
++  // Render outputs
++  $('msg-sig-output').value = signedPkg.signature;
++  $('msg-envelope-output').value = JSON.stringify(signedPkg, null, 2);
++  $('msg-sign-bench').innerHTML = `✓ Signed via <strong>${signedPkg.algorithm}</strong> in <strong>${elapsed}ms</strong>.`;
++
++  // Prepopulate verification pane
++  $('msg-verify-text').value = signedPkg.message;
++  $('msg-verify-context').value = signedPkg.context;
++  $('msg-verify-sig').value = signedPkg.signature;
++  $('msg-verify-result').innerHTML = `<div class="alert-info">Ready to verify. Click "Verify Message Authenticity" below.</div>`;
++}
++
++async function handleVerifyMessage() {
++  if (!state.keyPairData) {
++    alert('No active public key. Please generate or import a key pair.');
++    return;
++  }
++
++  const message = $('msg-verify-text').value;
++  const context = $('msg-verify-context').value;
++  const signature = $('msg-verify-sig').value.trim();
++  const resultEl = $('msg-verify-result');
++
++  if (!message || !signature) {
++    resultEl.innerHTML = `<div class="alert-error">Missing message or signature to verify.</div>`;
++    return;
++  }
++
++  const t0 = performance.now();
++  const pkg = {
++    message,
++    context,
++    signature,
++    algorithm: state.keyPairData.suite,
++  };
++
++  const verification = await verifyMessage(state.keyPairData.publicKeyBytes, pkg);
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  if (verification.valid) {
++    resultEl.innerHTML = `
++      <div class="alert-success">
++        <h4>✅ VERIFIED AUTHENTIC</h4>
++        <p>Data integrity guaranteed. The message was signed by the holder of public key <code>${state.keyPairData.suite}</code> and has not been altered.</p>
++        <small>Verification latency: ${elapsed}ms | Domain Context: "${context || '(none)'}"</small>
++      </div>
++    `;
++  } else {
++    resultEl.innerHTML = `
++      <div class="alert-error">
++        <h4>❌ VERIFICATION FAILED / TAMPER DETECTED</h4>
++        <p>The signature is invalid for this message content, domain context, or public key.</p>
++        <small>Error: ${verification.error || 'Signature mismatch'} | Latency: ${elapsed}ms</small>
++      </div>
++    `;
++  }
++}
++
++function handleTamperMessage() {
++  const current = $('msg-verify-text').value;
++  if (!current) {
++    alert('Please sign a message first.');
++    return;
++  }
++  // Flip or alter content
++  $('msg-verify-text').value = current + ' [TAMPERED BY ATTACKER]';
++  handleVerifyMessage();
++}
++
++function handleTamperMessageContext() {
++  const currentCtx = $('msg-verify-context').value;
++  $('msg-verify-context').value = currentCtx ? (currentCtx + '-tampered') : 'forged-context';
++  handleVerifyMessage();
++}
++
++/* ============================================================================
++   2. Tokens Handlers
++   ============================================================================ */
++
++async function handleIssueToken() {
++  if (!state.keyPairData) {
++    alert('Please generate a key pair first.');
++    return;
++  }
++
++  const subject = $('token-sub').value.trim() || 'user_dailygrind_101';
++  const voucherCode = $('token-voucher').value.trim() || 'FREE_MAPLE_OAT';
++  const creditAmount = parseFloat($('token-credits').value) || 25.0;
++  const expiresInSec = parseInt($('token-exp').value, 10) || 3600;
++  const context = $('token-context').value.trim() || 'urn:dailygrind:rewards:v1';
++
++  const claims = {
++    sub: subject,
++    voucher: voucherCode,
++    credits: creditAmount,
++    tier: 'EspressoGold',
++    perks: ['Free Milk Substitutes', 'Double Beans on Tuesdays'],
++  };
++
++  const t0 = performance.now();
++  const tokenData = await createSignedToken(state.keyPairData.keyPair.privateKey, claims, {
++    expiresInSeconds: expiresInSec,
++    context,
++    issuer: 'The Daily Grind Coffee Co.',
++  });
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  state.issuedTokenData = tokenData;
++
++  $('token-output').value = tokenData.token;
++  $('token-header-preview').textContent = JSON.stringify(tokenData.header, null, 2);
++  $('token-payload-preview').textContent = JSON.stringify(tokenData.payload, null, 2);
++  $('token-bench').innerHTML = `✓ Issued <strong>${tokenData.algorithm}</strong> token in <strong>${elapsed}ms</strong>.`;
++
++  // Prepopulate verify pane
++  $('token-verify-input').value = tokenData.token;
++  $('token-verify-result').innerHTML = `<div class="alert-info">Token ready for cryptographic validation.</div>`;
++}
++
++async function handleVerifyToken() {
++  if (!state.keyPairData) {
++    alert('Please generate or import a key pair.');
++    return;
++  }
++
++  const tokenString = $('token-verify-input').value.trim();
++  const resultEl = $('token-verify-result');
++
++  if (!tokenString) {
++    resultEl.innerHTML = `<div class="alert-error">Please paste a token to verify.</div>`;
++    return;
++  }
++
++  const t0 = performance.now();
++  const res = await verifySignedToken(state.keyPairData.publicKeyBytes, tokenString, {
++    expectedIssuer: 'The Daily Grind Coffee Co.',
++  });
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  if (res.valid) {
++    resultEl.innerHTML = `
++      <div class="alert-success">
++        <h4>✅ VALID SIGNED TOKEN</h4>
++        <p>Issuer: <strong>${res.payload.iss}</strong> | Subject: <strong>${res.payload.sub}</strong></p>
++        <p>Voucher: <code>${res.payload.voucher}</code> | Balance Credits: <strong>$${res.payload.credits}</strong></p>
++        <small>Algorithm: ${res.header.alg} | Verified in ${elapsed}ms | Expires: ${new Date(res.payload.exp * 1000).toLocaleTimeString()}</small>
++      </div>
++    `;
++  } else {
++    resultEl.innerHTML = `
++      <div class="alert-error">
++        <h4>❌ INVALID / TAMPERED TOKEN</h4>
++        <p>${res.error || 'Token signature validation failed.'}</p>
++        <small>Latency: ${elapsed}ms</small>
++      </div>
++    `;
++  }
++}
++
++function handleTamperTokenCredits() {
++  const token = $('token-verify-input').value.trim();
++  if (!token) return;
++  const parts = token.split('.');
++  if (parts.length !== 3) return;
++
++  try {
++    const payload = JSON.parse(bytesToString(base64UrlToBytes(parts[1])));
++    payload.credits = 99999.00; // Maliciously inflate credits
++    payload.tier = 'UnlimitedFreeCoffeeForLife';
++    const tamperedPayloadB64 = bytesToBase64Url(stringToBytes(JSON.stringify(payload)));
++    $('token-verify-input').value = `${parts[0]}.${tamperedPayloadB64}.${parts[2]}`;
++    handleVerifyToken();
++  } catch (e) {
++    alert('Failed to parse token payload for tampering demo.');
++  }
++}
++
++function handleTamperTokenSignature() {
++  const token = $('token-verify-input').value.trim();
++  if (!token) return;
++  const parts = token.split('.');
++  if (parts.length !== 3) return;
++
++  // Corrupt signature segment
++  const corruptedSig = parts[2].slice(0, -6) + 'XXXXXX';
++  $('token-verify-input').value = `${parts[0]}.${parts[1]}.${corruptedSig}`;
++  handleVerifyToken();
++}
++
++/* ============================================================================
++   3. Artifacts Handlers
++   ============================================================================ */
++
++async function loadDefaultArtifact() {
++  try {
++    // Fetch default stock photo artifact to have bytes loaded
++    const res = await fetch(state.currentArtifact.previewUrl);
++    const buffer = await res.arrayBuffer();
++    state.currentArtifact.bytes = new Uint8Array(buffer);
++    renderArtifactDetails();
++  } catch (err) {
++    // If offline or blocked, create a sample synthetic binary artifact
++    const sampleText = 'The Daily Grind Single-Origin Artisan Bean Certificate #8402 (Fallback Artifact)';
++    state.currentArtifact.bytes = stringToBytes(sampleText);
++    renderArtifactDetails();
++  }
++}
++
++async function renderArtifactDetails() {
++  const art = state.currentArtifact;
++  $('artifact-name').textContent = art.name;
++  $('artifact-size').textContent = `${(art.bytes.byteLength / 1024).toFixed(2)} KB (${art.bytes.byteLength} bytes)`;
++
++  // Compute SHA-256 hash
++  const hash = await hashArtifact(art.bytes);
++  $('artifact-sha256').textContent = hash.hex;
++
++  // Preview
++  const imgPreview = $('artifact-preview-img');
++  if (art.previewUrl) {
++    imgPreview.src = art.previewUrl;
++    imgPreview.style.display = 'block';
++  } else {
++    imgPreview.style.display = 'none';
++  }
++}
++
++async function handleArtifactPresetChange(e) {
++  const val = e.target.value;
++  if (val === 'roasted-beans') {
++    state.currentArtifact = {
++      name: 'ethiopian-yirgacheffe-roast.jpg',
++      mimeType: 'image/jpeg',
++      previewUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80',
++      bytes: null,
++      envelope: null,
++    };
++    await loadDefaultArtifact();
++  } else if (val === 'latte-art') {
++    state.currentArtifact = {
++      name: 'barista-championship-entry.jpg',
++      mimeType: 'image/jpeg',
++      previewUrl: 'https://images.unsplash.com/photo-1509785307050-d4066910ec1e?auto=format&fit=crop&w=800&q=80',
++      bytes: null,
++      envelope: null,
++    };
++    await loadDefaultArtifact();
++  } else if (val === 'batch-report') {
++    const jsonReport = JSON.stringify({
++      reportId: 'REP-2026-X99',
++      batch: 'Ethiopia Natural Process',
++      moistureContent: '10.8%',
++      density: '710 g/L',
++      roastDegrees: 418.5,
++      firstCrackTime: '8m 42s',
++      dropTemp: '412 F',
++    }, null, 2);
++    state.currentArtifact = {
++      name: 'roast-cupping-report.json',
++      mimeType: 'application/json',
++      previewUrl: null,
++      bytes: stringToBytes(jsonReport),
++      envelope: null,
++    };
++    await renderArtifactDetails();
++  }
++}
++
++function handleCustomArtifactUpload(e) {
++  const file = e.target.files[0];
++  if (!file) return;
++
++  const reader = new FileReader();
++  reader.onload = async () => {
++    state.currentArtifact = {
++      name: file.name,
++      mimeType: file.type || 'application/octet-stream',
++      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
++      bytes: new Uint8Array(reader.result),
++      envelope: null,
++    };
++    await renderArtifactDetails();
++  };
++  reader.readAsArrayBuffer(file);
++}
++
++async function handleSignArtifact() {
++  if (!state.keyPairData) {
++    alert('Please generate a key pair first.');
++    return;
++  }
++  if (!state.currentArtifact.bytes) {
++    alert('No artifact bytes loaded.');
++    return;
++  }
++
++  const t0 = performance.now();
++  const envelope = await signArtifact(state.keyPairData.keyPair.privateKey, state.currentArtifact.bytes, {
++    artifactName: state.currentArtifact.name,
++    mimeType: state.currentArtifact.mimeType,
++    customMetadata: {
++      origin: 'The Daily Grind Roasting Lab',
++      signedBy: 'Lead Quality Inspector',
++    },
++  });
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  state.currentArtifact.envelope = envelope;
++
++  $('artifact-sig-output').value = envelope.signature;
++  $('artifact-manifest-output').value = JSON.stringify(envelope.manifest, null, 2);
++  $('artifact-sign-bench').innerHTML = `✓ Artifact signed using <strong>${envelope.algorithm}</strong> in <strong>${elapsed}ms</strong>.`;
++
++  $('artifact-verify-result').innerHTML = `<div class="alert-info">Artifact envelope signed. Click "Verify Artifact Authenticity" to test integrity and signature.</div>`;
++}
++
++async function handleVerifyArtifact() {
++  if (!state.keyPairData) {
++    alert('Please generate or import a key pair.');
++    return;
++  }
++  if (!state.currentArtifact.bytes || !state.currentArtifact.envelope) {
++    alert('Please sign the artifact first or load an artifact signature envelope.');
++    return;
++  }
++
++  const resultEl = $('artifact-verify-result');
++  const t0 = performance.now();
++
++  const verification = await verifyArtifact(
++    state.keyPairData.publicKeyBytes,
++    state.currentArtifact.bytes,
++    state.currentArtifact.envelope
++  );
++  const elapsed = (performance.now() - t0).toFixed(2);
++
++  if (verification.valid) {
++    resultEl.innerHTML = `
++      <div class="alert-success">
++        <h4>✅ ARTIFACT AUTHENTIC & INTACT</h4>
++        <p>File: <strong>${verification.manifest.artifactName}</strong> (${verification.manifest.sizeBytes} bytes)</p>
++        <p>SHA-256 Digest: <code>${verification.actualHash}</code></p>
++        <small>Algorithm: ${verification.algorithm} | Verified in ${elapsed}ms | Origin: ${verification.manifest.metadata?.origin || 'Verified'}</small>
++      </div>
++    `;
++  } else {
++    resultEl.innerHTML = `
++      <div class="alert-error">
++        <h4>❌ ARTIFACT VERIFICATION FAILED</h4>
++        <p>${verification.error}</p>
++        <p>Integrity (SHA-256 match): <strong>${verification.integrityValid ? 'PASS' : 'FAIL (Bit rot or tampering detected)'}</strong></p>
++        <p>Digital Signature: <strong>${verification.signatureValid ? 'PASS' : 'FAIL (Wrong key or signature)'}</strong></p>
++        <small>Latency: ${elapsed}ms</small>
++      </div>
++    `;
++  }
++}
++
++function handleCorruptArtifact() {
++  if (!state.currentArtifact.bytes) return;
++  // Corrupt the first byte
++  const corrupted = new Uint8Array(state.currentArtifact.bytes);
++  corrupted[0] ^= 0xff;
++  state.currentArtifact.bytes = corrupted;
++  renderArtifactDetails();
++  handleVerifyArtifact();
++}
++
++/* ============================================================================
++   4. Live In-Browser Self-Test & Benchmark Runner
++   ============================================================================ */
++
++async function handleRunSelfTest() {
++  const container = $('selftest-output');
++  container.innerHTML = '<div class="alert-info">Running live cryptographic self-test suite...</div>';
++
++  const log = [];
++  const addLog = (suiteName, testName, passed, timeMs, details = '') => {
++    log.push({ suiteName, testName, passed, timeMs, details });
++    renderSelfTestResults(container, log);
++  };
++
++  try {
++    // 1. ML-DSA or Ed25519 Key Generation
++    const pqSupported = supportsPostQuantumSignatures();
++    const suite = pqSupported ? 'ML-DSA-65' : 'Ed25519';
++
++    let t0 = performance.now();
++    const kp = await generateSigningKeyPair(suite);
++    let dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Key Pair Generation', true, dt, `Public Key size: ${kp.publicKeyBytes.byteLength} bytes`);
++
++    // 2. Export & Re-import
++    t0 = performance.now();
++    const exportedPub = await exportPublicKey(kp.keyPair.publicKey);
++    const importedPub = await importPublicKey(exportedPub.bytes);
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Key Export / Import', importedPub.algorithm.name.includes(suite.replace('-P256', '')), dt);
++
++    // 3. Message Signing & Verification
++    t0 = performance.now();
++    const msgPkg = await signMessage(kp.keyPair.privateKey, 'Daily Grind Self-Test Message', {
++      context: 'selftest:message:v1',
++    });
++    const msgVerified = await verifyMessage(kp.publicKeyBytes, msgPkg);
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Message Sign & Verify (with ContextParams)', msgVerified.valid, dt, `Signature: ${msgPkg.signature.slice(0, 32)}...`);
++
++    // 4. Message Tamper Detection
++    t0 = performance.now();
++    const tamperedMsgPkg = { ...msgPkg, message: 'Daily Grind Tampered Message' };
++    const tamperDetected = !(await verifyMessage(kp.publicKeyBytes, tamperedMsgPkg)).valid;
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Message Tampering Rejection', tamperDetected, dt, 'Tampered payload rejected immediately');
++
++    // 5. Context Domain Separation
++    t0 = performance.now();
++    const wrongContextDetected = !(await verifyMessage(kp.publicKeyBytes, msgPkg, { expectedContext: 'wrong-context' })).valid;
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Domain Separation Enforcement', wrongContextDetected, dt, 'Context mismatch rejected');
++
++    // 6. Token Issuance & Verification
++    t0 = performance.now();
++    const tok = await createSignedToken(kp.keyPair.privateKey, { sub: 'selftest_user', credits: 100 });
++    const tokVerified = await verifySignedToken(kp.publicKeyBytes, tok.token);
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Token Issuance & Verification', tokVerified.valid, dt, `Token length: ${tok.token.length} chars`);
++
++    // 7. Artifact Integrity & Signature
++    t0 = performance.now();
++    const artifactData = stringToBytes('Authentic Batch #100 Sample Raw Beans Data');
++    const envelope = await signArtifact(kp.keyPair.privateKey, artifactData, { artifactName: 'sample.dat' });
++    const artVerified = await verifyArtifact(kp.publicKeyBytes, artifactData, envelope);
++    dt = (performance.now() - t0).toFixed(2);
++    addLog(suite, 'Artifact SHA-256 Digest & Signature', artVerified.valid && artVerified.integrityValid, dt, `SHA-256: ${envelope.manifest.sha256}`);
++
++    // 8. Classical Fallback Verification (Ed25519)
++    if (suite !== 'Ed25519') {
++      t0 = performance.now();
++      const edKp = await generateSigningKeyPair('Ed25519');
++      const edMsg = await signMessage(edKp.keyPair.privateKey, 'Classical fallback message', { context: 'ctx:ed25519' });
++      const edOk = await verifyMessage(edKp.publicKeyBytes, edMsg);
++      dt = (performance.now() - t0).toFixed(2);
++      addLog('Ed25519', 'Classical Ed25519 Fallback Pipeline', edOk.valid, dt, 'Edwards-curve signature verified');
++    }
++  } catch (err) {
++    addLog('SelfTest', 'Suite Execution Error', false, 0, err.message);
++  }
++}
++
++function renderSelfTestResults(container, log) {
++  let html = '<div class="selftest-table-wrapper"><table class="selftest-table"><thead><tr><th>Suite</th><th>Test Action</th><th>Result</th><th>Latency</th><th>Details</th></tr></thead><tbody>';
++  for (const item of log) {
++    html += `
++      <tr>
++        <td><strong>${item.suiteName}</strong></td>
++        <td>${item.testName}</td>
++        <td>${item.passed ? '<span class="badge-pass">PASS ✓</span>' : '<span class="badge-fail">FAIL ✗</span>'}</td>
++        <td>${item.timeMs}ms</td>
++        <td><code>${item.details}</code></td>
++      </tr>
++    `;
++  }
++  html += '</tbody></table></div>';
++  container.innerHTML = html;
++}
++
++// Auto-boot if in browser
++if (typeof window !== 'undefined') {
++  window.addEventListener('DOMContentLoaded', initApp);
++}
+diff --git a/crypto-signatures.js b/crypto-signatures.js
+new file mode 100644
+index 0000000..8446190
+--- /dev/null
++++ b/crypto-signatures.js
+@@ -0,0 +1,897 @@
++/**
++ * crypto-signatures.js
++ * 
++ * Asymmetric digital signature and verification library for WebCrypto supporting:
++ * - Quantum-Resistant / Post-Quantum (PQC): ML-DSA (ML-DSA-65, ML-DSA-44, ML-DSA-87 - NIST FIPS 204)
++ * - Classical: Ed25519 and ECDSA (P-256 with SHA-256)
++ * 
++ * Complies with modern Web Cryptography specifications, including:
++ * - SubtleCrypto.supports() static capability detection
++ * - Domain separation via ContextParams ({ name, context })
++ * - Fallback context framing for classical algorithms
++ * - Standard key formats ('raw-public', 'raw-seed', 'pkcs8', 'spki', 'jwk')
++ * - High-level signing & verification abstractions for:
++ *   1. Messages (plain text and structured notifications)
++ *   2. Tokens (compact post-quantum signed credentials & passes)
++ *   3. Artifacts (files, binaries, manifests, and integrity digests)
++ */
++
++export const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
++  1312: 'ML-DSA-44',
++  1952: 'ML-DSA-65',
++  2592: 'ML-DSA-87',
++};
++
++export const SUITE_INFO = {
++  'ML-DSA-65': {
++    name: 'ML-DSA-65',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204 (ML-DSA)',
++    securityLevel: 'NIST Category 3 (~192-bit security)',
++    recommended: true,
++    publicKeyBytes: 1952,
++    signatureBytes: 3309,
++    publicKeyFormat: 'raw-public',
++    privateKeyFormat: 'raw-seed',
++  },
++  'ML-DSA-44': {
++    name: 'ML-DSA-44',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204 (ML-DSA)',
++    securityLevel: 'NIST Category 2 (~128-bit security)',
++    recommended: false,
++    publicKeyBytes: 1312,
++    signatureBytes: 2420,
++    publicKeyFormat: 'raw-public',
++    privateKeyFormat: 'raw-seed',
++  },
++  'ML-DSA-87': {
++    name: 'ML-DSA-87',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204 (ML-DSA)',
++    securityLevel: 'NIST Category 5 (~256-bit security)',
++    recommended: false,
++    publicKeyBytes: 2592,
++    signatureBytes: 4627,
++    publicKeyFormat: 'raw-public',
++    privateKeyFormat: 'raw-seed',
++  },
++  'Ed25519': {
++    name: 'Ed25519',
++    category: 'classical',
++    standard: 'RFC 8032 / Edwards-curve',
++    securityLevel: 'Classical (~128-bit security)',
++    recommended: false,
++    publicKeyBytes: 32,
++    signatureBytes: 64,
++    publicKeyFormat: 'raw',
++    privateKeyFormat: 'pkcs8',
++  },
++  'ECDSA-P256': {
++    name: 'ECDSA-P256',
++    category: 'classical',
++    standard: 'NIST FIPS 186-4 (P-256)',
++    securityLevel: 'Classical (~128-bit security)',
++    recommended: false,
++    publicKeyBytes: 65,
++    signatureBytes: 64,
++    publicKeyFormat: 'raw',
++    privateKeyFormat: 'pkcs8',
++  },
++};
++
++/**
++ * Check if the current environment supports SubtleCrypto.supports static method.
++ * Call SubtleCrypto.supports() on the SubtleCrypto constructor, not on crypto.subtle.
++ */
++export function hasSubtleCryptoSupports() {
++  return typeof globalThis.SubtleCrypto?.supports === 'function';
++}
++
++/**
++ * Probe whether a specific operation and algorithm are supported.
++ */
++export function supportsAlgorithm(operation, algorithm) {
++  if (hasSubtleCryptoSupports()) {
++    try {
++      return Boolean(globalThis.SubtleCrypto.supports(operation, algorithm));
++    } catch {
++      return false;
++    }
++  }
++  return false;
++}
++
++/**
++ * Detect whether post-quantum ML-DSA signatures are supported natively.
++ */
++export function supportsPostQuantumSignatures() {
++  return supportsAlgorithm('sign', 'ML-DSA-65');
++}
++
++/**
++ * Detect all supported suites in the runtime environment.
++ */
++export function detectSupportedSuites() {
++  const supported = [];
++  const suites = ['ML-DSA-65', 'ML-DSA-44', 'ML-DSA-87', 'Ed25519'];
++
++  for (const s of suites) {
++    if (supportsAlgorithm('sign', s)) {
++      supported.push(s);
++    }
++  }
++
++  if (supportsAlgorithm('sign', { name: 'ECDSA', hash: 'SHA-256' })) {
++    supported.push('ECDSA-P256');
++  }
++
++  const pqAvailable = supported.includes('ML-DSA-65');
++  const defaultSuite = pqAvailable
++    ? 'ML-DSA-65'
++    : (supported.includes('Ed25519') ? 'Ed25519' : (supported[0] || 'ECDSA-P256'));
++
++  return {
++    supportedSuites: supported,
++    isPostQuantumReady: pqAvailable,
++    defaultSuite,
++  };
++}
++
++/* ============================================================================
++   Encoding and Conversion Helpers
++   ============================================================================ */
++
++export function bytesToHex(bytes) {
++  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  let hex = '';
++  for (let i = 0; i < arr.length; i++) {
++    hex += arr[i].toString(16).padStart(2, '0');
++  }
++  return hex;
++}
++
++export function hexToBytes(hex) {
++  const cleanHex = hex.trim().replace(/^0x/i, '').replace(/[\s\r\n]/g, '');
++  if (cleanHex.length % 2 !== 0) {
++    throw new Error('Invalid hex string: odd length');
++  }
++  const bytes = new Uint8Array(cleanHex.length / 2);
++  for (let i = 0; i < cleanHex.length; i += 2) {
++    bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
++  }
++  return bytes;
++}
++
++export function bytesToBase64(bytes) {
++  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  if (typeof Buffer !== 'undefined') {
++    return Buffer.from(arr).toString('base64');
++  }
++  let binary = '';
++  for (let i = 0; i < arr.byteLength; i++) {
++    binary += String.fromCharCode(arr[i]);
++  }
++  return btoa(binary);
++}
++
++export function base64ToBytes(base64) {
++  const clean = base64.trim().replace(/[\s\r\n]/g, '');
++  if (typeof Buffer !== 'undefined') {
++    return new Uint8Array(Buffer.from(clean, 'base64'));
++  }
++  const binary = atob(clean);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes;
++}
++
++export function bytesToBase64Url(bytes) {
++  return bytesToBase64(bytes)
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++}
++
++export function base64UrlToBytes(base64Url) {
++  let b64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
++  while (b64.length % 4 !== 0) {
++    b64 += '=';
++  }
++  return base64ToBytes(b64);
++}
++
++export function stringToBytes(str) {
++  return new TextEncoder().encode(str);
++}
++
++export function bytesToString(bytes) {
++  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  return new TextDecoder().decode(arr);
++}
++
++export function toUint8Array(input) {
++  if (input instanceof Uint8Array) return input;
++  if (input instanceof ArrayBuffer) return new Uint8Array(input);
++  if (ArrayBuffer.isView(input)) return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
++  if (typeof input === 'string') return stringToBytes(input);
++  throw new TypeError('Input must be a Uint8Array, ArrayBuffer, or string');
++}
++
++/**
++ * Prepend a length-prefixed context header to the payload in classical fallback path
++ * so domain separation behaves consistently across both suites.
++ */
++export function frameFallbackInput(payloadBytes, contextBytes) {
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++  const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++  framed[0] = contextBytes.byteLength;
++  framed.set(contextBytes, 1);
++  framed.set(payloadBytes, 1 + contextBytes.byteLength);
++  return framed;
++}
++
++/* ============================================================================
++   Key Pair Generation, Export & Import
++   ============================================================================ */
++
++/**
++ * Generate a new signing key pair using either post-quantum ML-DSA or classical fallback.
++ * 
++ * @param {string} [suite] 'ML-DSA-65', 'ML-DSA-44', 'ML-DSA-87', 'Ed25519', or 'ECDSA-P256'
++ * @param {object} [options]
++ * @param {boolean} [options.extractable=true]
++ * @param {boolean} [options.autoFallback=true] Automatically fallback if requested suite is unsupported
++ * @returns {Promise<{ suite: string, keyPair: CryptoKeyPair, publicKeyBytes: Uint8Array, publicKeyHex: string, publicKeyBase64: string }>}
++ */
++export async function generateSigningKeyPair(suite, options = {}) {
++  const { extractable = true, autoFallback = true } = options;
++
++  let targetSuite = suite;
++  if (!targetSuite) {
++    targetSuite = supportsPostQuantumSignatures() ? 'ML-DSA-65' : 'Ed25519';
++  }
++
++  // Handle fallback if not supported
++  if (targetSuite.startsWith('ML-DSA') && !supportsAlgorithm('sign', targetSuite)) {
++    if (autoFallback) {
++      targetSuite = supportsAlgorithm('sign', 'Ed25519') ? 'Ed25519' : 'ECDSA-P256';
++    } else {
++      throw new Error(`Algorithm ${targetSuite} is not supported in this environment`);
++    }
++  }
++
++  let keyPair;
++  let publicKeyBytes;
++
++  if (targetSuite.startsWith('ML-DSA')) {
++    keyPair = await globalThis.crypto.subtle.generateKey(
++      targetSuite,
++      extractable,
++      ['sign', 'verify']
++    );
++    // Export with 'raw-public' (legacy 'raw' throws NotSupportedError on ML-DSA)
++    publicKeyBytes = new Uint8Array(
++      await globalThis.crypto.subtle.exportKey('raw-public', keyPair.publicKey)
++    );
++  } else if (targetSuite === 'Ed25519') {
++    keyPair = await globalThis.crypto.subtle.generateKey(
++      'Ed25519',
++      extractable,
++      ['sign', 'verify']
++    );
++    publicKeyBytes = new Uint8Array(
++      await globalThis.crypto.subtle.exportKey('raw', keyPair.publicKey)
++    );
++  } else if (targetSuite === 'ECDSA-P256' || targetSuite === 'ECDSA') {
++    keyPair = await globalThis.crypto.subtle.generateKey(
++      { name: 'ECDSA', namedCurve: 'P-256' },
++      extractable,
++      ['sign', 'verify']
++    );
++    publicKeyBytes = new Uint8Array(
++      await globalThis.crypto.subtle.exportKey('raw', keyPair.publicKey)
++    );
++    targetSuite = 'ECDSA-P256';
++  } else {
++    throw new Error(`Unsupported signature suite: ${targetSuite}`);
++  }
++
++  return {
++    suite: targetSuite,
++    keyPair,
++    publicKeyBytes,
++    publicKeyHex: bytesToHex(publicKeyBytes),
++    publicKeyBase64: bytesToBase64(publicKeyBytes),
++  };
++}
++
++/**
++ * Export public key to bytes/hex/base64.
++ */
++export async function exportPublicKey(publicKey, format = null) {
++  if (!(publicKey instanceof CryptoKey)) {
++    throw new TypeError('Expected CryptoKey for publicKey');
++  }
++
++  const algoName = publicKey.algorithm.name;
++  const isMlDsa = algoName.startsWith('ML-DSA');
++  const targetFormat = format || (isMlDsa ? 'raw-public' : 'raw');
++
++  const keyBuffer = await globalThis.crypto.subtle.exportKey(targetFormat, publicKey);
++  const bytes = new Uint8Array(keyBuffer);
++
++  return {
++    format: targetFormat,
++    algorithm: algoName,
++    bytes,
++    hex: bytesToHex(bytes),
++    base64: bytesToBase64(bytes),
++  };
++}
++
++/**
++ * Import a public verification key.
++ * Automatically identifies ML-DSA variant from raw byte length:
++ * 1312 -> ML-DSA-44, 1952 -> ML-DSA-65, 2592 -> ML-DSA-87, 32 -> Ed25519, 65 -> ECDSA P-256
++ * 
++ * @param {Uint8Array|ArrayBuffer|string} keyInput Raw bytes, hex string, or base64 string
++ * @param {string} [suiteHint] Optional suite hint
++ * @returns {Promise<CryptoKey>}
++ */
++export async function importPublicKey(keyInput, suiteHint = null) {
++  let bytes;
++  if (keyInput instanceof Uint8Array || keyInput instanceof ArrayBuffer) {
++    bytes = toUint8Array(keyInput);
++  } else if (typeof keyInput === 'string') {
++    const trimmed = keyInput.trim();
++    if (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0) {
++      bytes = hexToBytes(trimmed);
++    } else {
++      bytes = base64ToBytes(trimmed);
++    }
++  } else {
++    throw new TypeError('keyInput must be Uint8Array, ArrayBuffer, hex string, or base64 string');
++  }
++
++  let suite = suiteHint;
++  if (!suite) {
++    const mlDsaAlgo = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++    if (mlDsaAlgo) {
++      suite = mlDsaAlgo;
++    } else if (bytes.byteLength === 32) {
++      suite = 'Ed25519';
++    } else if (bytes.byteLength === 65) {
++      suite = 'ECDSA-P256';
++    } else {
++      throw new Error(`Unable to infer signature algorithm for public key of length ${bytes.byteLength} bytes`);
++    }
++  }
++
++  if (suite.startsWith('ML-DSA')) {
++    // Usage MUST be ['verify'] only per WebCrypto spec
++    return globalThis.crypto.subtle.importKey(
++      'raw-public',
++      bytes,
++      suite,
++      true,
++      ['verify']
++    );
++  } else if (suite === 'Ed25519') {
++    return globalThis.crypto.subtle.importKey(
++      'raw',
++      bytes,
++      'Ed25519',
++      true,
++      ['verify']
++    );
++  } else if (suite === 'ECDSA-P256' || suite === 'ECDSA') {
++    return globalThis.crypto.subtle.importKey(
++      'raw',
++      bytes,
++      { name: 'ECDSA', namedCurve: 'P-256' },
++      true,
++      ['verify']
++    );
++  } else {
++    throw new Error(`Unsupported suite for importPublicKey: ${suite}`);
++  }
++}
++
++/**
++ * Export a private signing key.
++ * For ML-DSA: uses 'raw-seed' (32 bytes), 'pkcs8', or 'jwk'.
++ */
++export async function exportPrivateKey(privateKey, format = 'pkcs8') {
++  if (!(privateKey instanceof CryptoKey)) {
++    throw new TypeError('Expected CryptoKey for privateKey');
++  }
++  const isMlDsa = privateKey.algorithm.name.startsWith('ML-DSA');
++  const actualFormat = (format === 'raw' && isMlDsa) ? 'raw-seed' : format;
++
++  const exported = await globalThis.crypto.subtle.exportKey(actualFormat, privateKey);
++  if (actualFormat === 'jwk') {
++    return exported;
++  }
++  const bytes = new Uint8Array(exported);
++  return {
++    format: actualFormat,
++    algorithm: privateKey.algorithm.name,
++    bytes,
++    hex: bytesToHex(bytes),
++    base64: bytesToBase64(bytes),
++  };
++}
++
++/**
++ * Import a private signing key.
++ * Usage MUST be ['sign'] only per WebCrypto spec.
++ */
++export async function importPrivateKey(keyInput, suite, format = 'pkcs8') {
++  const actualFormat = (format === 'raw' && suite.startsWith('ML-DSA')) ? 'raw-seed' : format;
++  let data = keyInput;
++  if (typeof keyInput === 'string' && actualFormat !== 'jwk') {
++    data = /^[0-9a-fA-F]+$/.test(keyInput) ? hexToBytes(keyInput) : base64ToBytes(keyInput);
++  }
++
++  const algoParam = suite === 'ECDSA-P256' ? { name: 'ECDSA', namedCurve: 'P-256' } : suite;
++  return globalThis.crypto.subtle.importKey(
++    actualFormat,
++    data,
++    algoParam,
++    true,
++    ['sign']
++  );
++}
++
++/**
++ * Retrieve public CryptoKey from a private signing key using crypto.subtle.getPublicKey
++ * if supported, or fall back to extracting and re-importing.
++ */
++export async function getPublicKeyFromPrivateKey(privateKey) {
++  if (typeof globalThis.crypto.subtle.getPublicKey === 'function') {
++    try {
++      return await globalThis.crypto.subtle.getPublicKey(privateKey, ['verify']);
++    } catch {
++      // Fall through to standard extraction
++    }
++  }
++  throw new Error('Direct public key derivation without keyPair requires crypto.subtle.getPublicKey()');
++}
++
++/* ============================================================================
++   Core Payload Signing & Verification (with Domain Separation Context)
++   ============================================================================ */
++
++/**
++ * Sign payload bytes with optional domain separation context.
++ * 
++ * @param {CryptoKey} privateKey
++ * @param {Uint8Array|ArrayBuffer|string} payload
++ * @param {Uint8Array|ArrayBuffer|string} [context=new Uint8Array(0)] 0 to 255 bytes
++ * @returns {Promise<{ signatureBytes: Uint8Array, signatureHex: string, signatureBase64: string, algorithm: string }>}
++ */
++export async function signPayload(privateKey, payload, context = new Uint8Array(0)) {
++  const payloadBytes = toUint8Array(payload);
++  const contextBytes = toUint8Array(context);
++
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++
++  const algoName = privateKey.algorithm.name;
++  let signatureBuffer;
++
++  if (algoName.startsWith('ML-DSA')) {
++    // Native ContextParams dictionary { name, context }
++    signatureBuffer = await globalThis.crypto.subtle.sign(
++      { name: algoName, context: contextBytes },
++      privateKey,
++      payloadBytes
++    );
++  } else if (algoName === 'Ed25519') {
++    // Classical fallback: length-prefixed context framing
++    const framed = frameFallbackInput(payloadBytes, contextBytes);
++    signatureBuffer = await globalThis.crypto.subtle.sign('Ed25519', privateKey, framed);
++  } else if (algoName === 'ECDSA') {
++    // Classical fallback ECDSA: length-prefixed context framing
++    const framed = frameFallbackInput(payloadBytes, contextBytes);
++    signatureBuffer = await globalThis.crypto.subtle.sign(
++      { name: 'ECDSA', hash: 'SHA-256' },
++      privateKey,
++      framed
++    );
++  } else {
++    throw new Error(`Unsupported private key algorithm: ${algoName}`);
++  }
++
++  const signatureBytes = new Uint8Array(signatureBuffer);
++  return {
++    algorithm: algoName,
++    signatureBytes,
++    signatureHex: bytesToHex(signatureBytes),
++    signatureBase64: bytesToBase64(signatureBytes),
++  };
++}
++
++/**
++ * Verify payload bytes with optional domain separation context.
++ * 
++ * @param {CryptoKey|Uint8Array|string} publicKeyOrBytes
++ * @param {Uint8Array|ArrayBuffer|string} signature
++ * @param {Uint8Array|ArrayBuffer|string} payload
++ * @param {Uint8Array|ArrayBuffer|string} [context=new Uint8Array(0)]
++ * @param {string} [suiteHint]
++ * @returns {Promise<boolean>}
++ */
++export async function verifyPayload(
++  publicKeyOrBytes,
++  signature,
++  payload,
++  context = new Uint8Array(0),
++  suiteHint = null
++) {
++  const payloadBytes = toUint8Array(payload);
++  const contextBytes = toUint8Array(context);
++
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++
++  let signatureBytes;
++  if (signature instanceof Uint8Array || signature instanceof ArrayBuffer) {
++    signatureBytes = toUint8Array(signature);
++  } else if (typeof signature === 'string') {
++    const trimmed = signature.trim();
++    if (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0) {
++      signatureBytes = hexToBytes(trimmed);
++    } else {
++      signatureBytes = base64ToBytes(trimmed);
++    }
++  } else {
++    throw new TypeError('Invalid signature format');
++  }
++
++  const publicKey = (publicKeyOrBytes instanceof CryptoKey)
++    ? publicKeyOrBytes
++    : await importPublicKey(publicKeyOrBytes, suiteHint);
++
++  const algoName = publicKey.algorithm.name;
++
++  if (algoName.startsWith('ML-DSA')) {
++    return globalThis.crypto.subtle.verify(
++      { name: algoName, context: contextBytes },
++      publicKey,
++      signatureBytes,
++      payloadBytes
++    );
++  } else if (algoName === 'Ed25519') {
++    const framed = frameFallbackInput(payloadBytes, contextBytes);
++    return globalThis.crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
++  } else if (algoName === 'ECDSA') {
++    const framed = frameFallbackInput(payloadBytes, contextBytes);
++    return globalThis.crypto.subtle.verify(
++      { name: 'ECDSA', hash: 'SHA-256' },
++      publicKey,
++      signatureBytes,
++      framed
++    );
++  } else {
++    throw new Error(`Unsupported public key algorithm: ${algoName}`);
++  }
++}
++
++/* ============================================================================
++   1. MESSAGES: High-Level Signing & Verification
++   ============================================================================ */
++
++/**
++ * Sign an arbitrary text message with optional domain context and metadata.
++ */
++export async function signMessage(privateKey, message, options = {}) {
++  const { context = '', signerInfo = {} } = options;
++  const messageBytes = stringToBytes(message);
++  const contextBytes = stringToBytes(context);
++
++  const { signatureBase64, algorithm } = await signPayload(
++    privateKey,
++    messageBytes,
++    contextBytes
++  );
++
++  return {
++    version: '1.0',
++    type: 'signed-message',
++    algorithm,
++    message,
++    context,
++    signature: signatureBase64,
++    timestamp: Date.now(),
++    signerInfo,
++  };
++}
++
++/**
++ * Verify a signed message package.
++ */
++export async function verifyMessage(publicKeyOrBytes, messagePackage, options = {}) {
++  try {
++    const {
++      message,
++      context = '',
++      signature,
++      algorithm,
++    } = messagePackage;
++
++    if (!message || !signature) {
++      return { valid: false, error: 'Malformed message package: missing message or signature' };
++    }
++
++    const expectedContext = options.expectedContext !== undefined ? options.expectedContext : context;
++    if (options.expectedContext !== undefined && context !== options.expectedContext) {
++      return { valid: false, error: 'Domain separation context mismatch' };
++    }
++
++    const isValid = await verifyPayload(
++      publicKeyOrBytes,
++      signature,
++      stringToBytes(message),
++      stringToBytes(expectedContext),
++      algorithm
++    );
++
++    return {
++      valid: isValid,
++      message,
++      context: expectedContext,
++      algorithm,
++      error: isValid ? null : 'Digital signature verification failed (tampered content, context, or wrong key)',
++    };
++  } catch (err) {
++    return { valid: false, error: err.message };
++  }
++}
++
++/* ============================================================================
++   2. TOKENS: Post-Quantum & Classical Tamper-Proof Compact Tokens
++   Format: headerBase64Url.payloadBase64Url.signatureBase64Url
++   ============================================================================ */
++
++const DEFAULT_TOKEN_CONTEXT = 'urn:dailygrind:auth-token:v1';
++
++/**
++ * Create a signed structured token (e.g., Coffee Pass, Barista Token, Voucher).
++ */
++export async function createSignedToken(privateKey, claims, options = {}) {
++  const {
++    expiresInSeconds = 3600,
++    context = DEFAULT_TOKEN_CONTEXT,
++    issuer = 'The Daily Grind Coffee Co.',
++    subject = 'customer-rewards-pass',
++  } = options;
++
++  const nowSec = Math.floor(Date.now() / 1000);
++  const algoName = privateKey.algorithm.name;
++
++  const header = {
++    alg: algoName,
++    typ: 'PQC-JWT',
++    ctx: context,
++  };
++
++  const payload = {
++    iss: issuer,
++    sub: subject,
++    iat: nowSec,
++    exp: expiresInSeconds ? (nowSec + expiresInSeconds) : undefined,
++    jti: 'tok_' + Math.random().toString(36).substring(2, 10),
++    ...claims,
++  };
++
++  const headerB64 = bytesToBase64Url(stringToBytes(JSON.stringify(header)));
++  const payloadB64 = bytesToBase64Url(stringToBytes(JSON.stringify(payload)));
++  const signingInput = `${headerB64}.${payloadB64}`;
++
++  const { signatureBytes } = await signPayload(
++    privateKey,
++    stringToBytes(signingInput),
++    stringToBytes(context)
++  );
++
++  const sigB64 = bytesToBase64Url(signatureBytes);
++  const tokenString = `${headerB64}.${payloadB64}.${sigB64}`;
++
++  return {
++    token: tokenString,
++    header,
++    payload,
++    algorithm: algoName,
++  };
++}
++
++/**
++ * Verify a signed token and validate expiration and claims.
++ */
++export async function verifySignedToken(publicKeyOrBytes, tokenString, options = {}) {
++  try {
++    const parts = tokenString.trim().split('.');
++    if (parts.length !== 3) {
++      return { valid: false, error: 'Invalid token structure: expected 3 dot-separated segments' };
++    }
++
++    const [headerB64, payloadB64, sigB64] = parts;
++    const headerJson = bytesToString(base64UrlToBytes(headerB64));
++    const payloadJson = bytesToString(base64UrlToBytes(payloadB64));
++    const signatureBytes = base64UrlToBytes(sigB64);
++
++    const header = JSON.parse(headerJson);
++    const payload = JSON.parse(payloadJson);
++
++    const tokenContext = header.ctx || DEFAULT_TOKEN_CONTEXT;
++    const requiredContext = options.expectedContext || tokenContext;
++
++    if (options.expectedContext && tokenContext !== options.expectedContext) {
++      return { valid: false, error: 'Token domain context mismatch', header, payload };
++    }
++
++    const signingInput = `${headerB64}.${payloadB64}`;
++    const isSigValid = await verifyPayload(
++      publicKeyOrBytes,
++      signatureBytes,
++      stringToBytes(signingInput),
++      stringToBytes(requiredContext),
++      header.alg
++    );
++
++    if (!isSigValid) {
++      return { valid: false, error: 'Cryptographic signature is invalid or payload has been tampered with', header, payload };
++    }
++
++    // Check expiration
++    const nowSec = Math.floor(Date.now() / 1000);
++    const clockTolerance = options.clockToleranceSeconds !== undefined ? options.clockToleranceSeconds : 10;
++
++    if (payload.exp !== undefined && (nowSec - clockTolerance > payload.exp)) {
++      return { valid: false, expired: true, error: 'Token has expired', header, payload };
++    }
++
++    if (payload.nbf !== undefined && (nowSec + clockTolerance < payload.nbf)) {
++      return { valid: false, error: 'Token not yet valid', header, payload };
++    }
++
++    if (options.expectedIssuer && payload.iss !== options.expectedIssuer) {
++      return { valid: false, error: `Issuer mismatch: expected ${options.expectedIssuer}`, header, payload };
++    }
++
++    return {
++      valid: true,
++      header,
++      payload,
++      algorithm: header.alg,
++    };
++  } catch (err) {
++    return { valid: false, error: `Token verification error: ${err.message}` };
++  }
++}
++
++/* ============================================================================
++   3. ARTIFACTS: Signing & Verification of Files, Images, Releases, and Binaries
++   ============================================================================ */
++
++const DEFAULT_ARTIFACT_CONTEXT = 'urn:dailygrind:artifact:manifest:v1';
++
++/**
++ * Calculate SHA-256 digest of arbitrary bytes or ArrayBuffer.
++ */
++export async function hashArtifact(artifactBytes) {
++  const bytes = toUint8Array(artifactBytes);
++  const digestBuffer = await globalThis.crypto.subtle.digest('SHA-256', bytes);
++  const digestBytes = new Uint8Array(digestBuffer);
++  return {
++    bytes: digestBytes,
++    hex: bytesToHex(digestBytes),
++    base64: bytesToBase64(digestBytes),
++  };
++}
++
++/**
++ * Sign an artifact (file, PDF, image, roast report, etc.).
++ * Produces a verifiable manifest containing SHA-256 digest and digital signature.
++ */
++export async function signArtifact(privateKey, artifactData, options = {}) {
++  const {
++    artifactName = 'unnamed-artifact',
++    mimeType = 'application/octet-stream',
++    context = DEFAULT_ARTIFACT_CONTEXT,
++    customMetadata = {},
++  } = options;
++
++  const artifactBytes = toUint8Array(artifactData);
++  const hash = await hashArtifact(artifactBytes);
++
++  const manifest = {
++    artifactName,
++    mimeType,
++    sizeBytes: artifactBytes.byteLength,
++    sha256: hash.hex,
++    timestamp: Date.now(),
++    createdAt: new Date().toISOString(),
++    metadata: customMetadata,
++  };
++
++  // Sign the canonical JSON representation of the manifest
++  const canonicalManifest = JSON.stringify(manifest);
++  const { signatureBase64, signatureHex, algorithm } = await signPayload(
++    privateKey,
++    stringToBytes(canonicalManifest),
++    stringToBytes(context)
++  );
++
++  return {
++    version: '1.0',
++    type: 'artifact-signature-envelope',
++    algorithm,
++    context,
++    manifest,
++    signature: signatureBase64,
++    signatureHex,
++  };
++}
++
++/**
++ * Verify artifact authenticity and data integrity.
++ * Checks:
++ * 1. SHA-256 of the artifact bytes matches the signed manifest hash (data integrity).
++ * 2. Asymmetric digital signature over manifest is valid (authenticity & non-repudiation).
++ */
++export async function verifyArtifact(publicKeyOrBytes, artifactData, envelope, options = {}) {
++  try {
++    const { manifest, signature, algorithm, context = DEFAULT_ARTIFACT_CONTEXT } = envelope;
++
++    if (!manifest || !signature) {
++      return { valid: false, error: 'Malformed artifact signature envelope' };
++    }
++
++    const artifactBytes = toUint8Array(artifactData);
++    const actualHash = await hashArtifact(artifactBytes);
++
++    // 1. Check artifact data integrity against manifest
++    const integrityValid = (actualHash.hex.toLowerCase() === manifest.sha256.toLowerCase());
++    if (!integrityValid) {
++      return {
++        valid: false,
++        integrityValid: false,
++        signatureValid: false,
++        error: `Integrity check failed: artifact hash ${actualHash.hex.slice(0, 16)}... does not match manifest hash ${manifest.sha256.slice(0, 16)}...`,
++        manifest,
++        actualHash: actualHash.hex,
++      };
++    }
++
++    // 2. Check digital signature over manifest
++    const canonicalManifest = JSON.stringify(manifest);
++    const signatureValid = await verifyPayload(
++      publicKeyOrBytes,
++      signature,
++      stringToBytes(canonicalManifest),
++      stringToBytes(context),
++      algorithm
++    );
++
++    return {
++      valid: signatureValid,
++      integrityValid: true,
++      signatureValid,
++      manifest,
++      actualHash: actualHash.hex,
++      algorithm,
++      error: signatureValid ? null : 'Asymmetric digital signature invalid (signature does not match key or manifest)',
++    };
++  } catch (err) {
++    return { valid: false, integrityValid: false, signatureValid: false, error: err.message };
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..79125b4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,24 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Post-Quantum Authenticity</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e65100;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --success: #2e7d32;
++      --success-light: #e8f5e9;
++      --error: #c62828;
++      --error-light: #ffebee;
++      --info: #0277bd;
++      --info-light: #e1f5fe;
++      --border: #bcaaa4;
+     }
+ 
+     * {
+@@ -38,6 +48,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+     }
+ 
+     .logo {
+@@ -49,6 +60,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -66,16 +78,24 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .nav-highlight {
++      background: rgba(255, 171, 64, 0.2);
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-weight: 600;
++    }
++
++    .logout-link {
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 55vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,29 +110,42 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
++    }
++
++    .hero p {
++      font-size: 1.2rem;
++      max-width: 700px;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-buttons {
++      display: flex;
++      gap: 15px;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1160px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--card-bg);
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      border: 1px solid #eee;
+     }
+ 
+     .card h3 {
+@@ -127,12 +160,386 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border: none;
++      font-size: 0.95rem;
++      cursor: pointer;
++      font-weight: 600;
++      transition: background 0.25s, transform 0.1s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++      transform: translateY(-1px);
++    }
++
++    .btn-secondary {
++      background: #795548;
++    }
++
++    .btn-secondary:hover {
++      background: #5d4037;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: #ffa000;
++    }
++
++    .btn-danger {
++      background: var(--error);
++      color: white;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.82rem;
++    }
++
++    /* Authenticity Studio Styles */
++    .crypto-studio {
++      background: white;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--border);
++      margin-top: 50px;
++      margin-bottom: 50px;
++    }
++
++    .studio-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .studio-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .studio-header p {
++      color: #6d4c41;
++      max-width: 800px;
++      margin: 0 auto;
++      font-size: 1.05rem;
++    }
++
++    .pqc-banner {
++      background: #efebe9;
++      border-left: 5px solid var(--accent);
++      padding: 16px 20px;
++      border-radius: 6px;
++      margin-bottom: 25px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++    }
++
++    .status-badge {
++      display: inline-block;
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-weight: bold;
++      font-size: 0.9rem;
++    }
++
++    .status-pq-ready {
++      background: var(--success-light);
++      color: var(--success);
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-classical {
++      background: var(--info-light);
++      color: var(--info);
++      border: 1px solid #81d4fa;
++    }
++
++    /* Key Management Panel */
++    .key-management-panel {
++      background: #fdfbf7;
++      border: 1px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 20px;
++      margin-bottom: 30px;
++    }
++
++    .key-control-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      align-items: center;
++      margin-bottom: 15px;
++    }
++
++    .suite-select-label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .suite-select {
++      padding: 8px 12px;
++      border-radius: 5px;
++      border: 1px solid #8d6e63;
++      background: white;
++      font-size: 0.95rem;
++      font-weight: 500;
++      min-width: 300px;
++    }
++
++    .key-display-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 15px;
++      margin-top: 15px;
++    }
++
++    .key-preview-box {
++      background: #2b2b2b;
++      color: #81c784;
++      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
++      font-size: 0.8rem;
++      padding: 12px;
++      border-radius: 6px;
++      word-break: break-all;
++      height: 100px;
++      overflow-y: auto;
++      border: 1px solid #444;
++      width: 100%;
++      resize: none;
++    }
++
++    /* Tabs */
++    .crypto-tab-bar {
++      display: flex;
++      border-bottom: 2px solid var(--secondary);
++      margin-bottom: 25px;
++      overflow-x: auto;
++    }
++
++    .crypto-tab-btn {
++      padding: 12px 24px;
++      background: none;
++      border: none;
++      border-bottom: 3px solid transparent;
++      font-size: 1.05rem;
++      font-weight: 600;
++      color: #6d4c41;
++      cursor: pointer;
++      white-space: nowrap;
++      transition: all 0.2s;
++    }
++
++    .crypto-tab-btn:hover {
++      color: var(--primary);
++      background: #f5f0ed;
++    }
++
++    .crypto-tab-btn.active {
++      color: var(--primary-dark);
++      border-bottom-color: var(--accent);
++      background: #efebe9;
++    }
++
++    .crypto-tab-pane {
++      display: none;
++    }
++
++    .crypto-tab-pane.active {
++      display: block;
++      animation: fadeIn 0.2s ease-in;
++    }
++
++    @keyframes fadeIn {
++      from { opacity: 0; transform: translateY(4px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    /* Form Fields & Dual Layout */
++    .dual-pane {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 25px;
++    }
++
++    @media (max-width: 850px) {
++      .dual-pane {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .pane-card {
++      background: #ffffff;
++      border: 1px solid #e0d8d4;
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
++    }
++
++    .pane-card h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin-bottom: 15px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid #eee;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: #4e342e;
++      font-size: 0.9rem;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      background: #fff;
++    }
++
++    textarea.form-control {
++      resize: vertical;
++      font-family: inherit;
++    }
++
++    .code-input {
++      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
++      font-size: 0.85rem;
++      background: #f8f9fa;
++    }
++
++    .field-hint {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-top: 4px;
++    }
++
++    .button-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 15px;
++      margin-bottom: 15px;
++    }
++
++    /* Result Alerts */
++    .alert-success {
++      background: var(--success-light);
++      border-left: 4px solid var(--success);
++      color: #1b5e20;
++      padding: 14px 16px;
++      border-radius: 4px;
++      margin-top: 15px;
++    }
++
++    .alert-error {
++      background: var(--error-light);
++      border-left: 4px solid var(--error);
++      color: #b71c1c;
++      padding: 14px 16px;
++      border-radius: 4px;
++      margin-top: 15px;
++    }
++
++    .alert-info {
++      background: var(--info-light);
++      border-left: 4px solid var(--info);
++      color: #01579b;
++      padding: 12px 14px;
++      border-radius: 4px;
++      margin-top: 15px;
++    }
++
++    /* Artifact Preview */
++    .artifact-preview-card {
++      display: flex;
++      gap: 20px;
++      background: #fdfbf7;
++      border: 1px solid #e0d8d4;
++      border-radius: 8px;
++      padding: 16px;
++      margin-bottom: 20px;
++      align-items: center;
++    }
++
++    .artifact-thumb {
++      width: 120px;
++      height: 120px;
++      object-fit: cover;
++      border-radius: 6px;
++      border: 1px solid #bcaaa4;
++    }
++
++    .artifact-meta {
++      flex: 1;
++    }
++
++    .artifact-meta h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .artifact-meta p {
++      font-size: 0.88rem;
++      color: #5d4037;
++      margin-bottom: 4px;
++    }
++
++    /* Self Test Table */
++    .selftest-table-wrapper {
++      overflow-x: auto;
++      margin-top: 15px;
++    }
++
++    .selftest-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.9rem;
++    }
++
++    .selftest-table th, .selftest-table td {
++      border: 1px solid #e0e0e0;
++      padding: 10px 14px;
++      text-align: left;
++    }
++
++    .selftest-table th {
++      background: #eceff1;
++      color: #37474f;
++    }
++
++    .badge-pass {
++      background: #c8e6c9;
++      color: #2e7d32;
++      font-weight: bold;
++      padding: 3px 8px;
++      border-radius: 4px;
++    }
++
++    .badge-fail {
++      background: #ffcdd2;
++      color: #c62828;
++      font-weight: bold;
++      padding: 3px 8px;
++      border-radius: 4px;
+     }
+ 
+     footer {
+@@ -163,6 +570,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#authenticity-hub" class="nav-highlight">Authenticity & Keys</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -170,11 +578,15 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup — with post-quantum asymmetric authenticity verification.</p>
++    <div class="hero-buttons">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#authenticity-hub" class="btn btn-accent">Verify Authenticity</a>
++    </div>
+   </header>
+ 
+   <main class="container">
++    <!-- Seasonal Favorites section -->
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -195,6 +607,299 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Post-Quantum & Classical Authenticity Studio -->
++    <section id="authenticity-hub" class="crypto-studio">
++      <div class="studio-header">
++        <h2>Cryptographic Authenticity Studio</h2>
++        <p>Sign and verify messages, tokens, and digital artifacts in the browser using quantum-resistant (ML-DSA NIST FIPS 204) and classical (Ed25519) asymmetric keys to guarantee data integrity and authentic provenance.</p>
++      </div>
++
++      <!-- Quantum Readiness & Capabilities Banner -->
++      <div class="pqc-banner">
++        <div>
++          <span id="pqc-status-badge" class="status-badge status-pq-ready">Probing WebCrypto capabilities...</span>
++          <p id="pqc-details" style="font-size: 0.9rem; margin-top: 6px; color: #5d4037;">Detecting cryptographic suites...</p>
++        </div>
++        <div>
++          <button id="btn-run-selftest" class="btn btn-sm btn-accent">⚡ Run In-Browser Self-Test</button>
++        </div>
++      </div>
++
++      <!-- Key Pair Control Center -->
++      <div class="key-management-panel">
++        <div class="key-control-bar">
++          <label for="suite-select" class="suite-select-label">Active Cryptographic Suite:</label>
++          <select id="suite-select" class="suite-select">
++            <option value="ML-DSA-65">ML-DSA-65 (NIST FIPS 204 Recommended Default)</option>
++            <option value="ML-DSA-44">ML-DSA-44 (NIST FIPS 204 Compact)</option>
++            <option value="ML-DSA-87">ML-DSA-87 (NIST FIPS 204 High Security)</option>
++            <option value="Ed25519">Ed25519 (Classical Edwards-Curve)</option>
++            <option value="ECDSA-P256">ECDSA P-256 (Classical NIST Curve)</option>
++          </select>
++          <button id="btn-generate-keys" class="btn btn-sm">🔑 Generate Key Pair</button>
++          <button id="btn-copy-public-key" class="btn btn-sm btn-secondary">📋 Copy Public Key</button>
++          <button id="btn-download-public-key" class="btn btn-sm btn-secondary">💾 Download .pub</button>
++          <button id="btn-import-public-key" class="btn btn-sm btn-secondary">📥 Import Public Key</button>
++        </div>
++
++        <div id="key-gen-status" style="font-size: 0.88rem; color: #4e342e; margin-bottom: 10px;"></div>
++
++        <div class="key-display-grid">
++          <div>
++            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
++              <label style="font-weight: 600; font-size: 0.85rem;">Public Key (Base64)</label>
++              <span id="pubkey-suite-badge" class="badge-pass" style="font-size: 0.75rem;">ML-DSA-65</span>
++            </div>
++            <textarea id="pubkey-preview-b64" class="key-preview-box" readonly placeholder="Public key base64 will appear here..."></textarea>
++          </div>
++          <div>
++            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
++              <label style="font-weight: 600; font-size: 0.85rem;">Public Key (Hex)</label>
++              <span id="pubkey-size-badge" class="badge-pass" style="font-size: 0.75rem;">1952 Bytes</span>
++            </div>
++            <textarea id="pubkey-preview-hex" class="key-preview-box" readonly placeholder="Public key hex will appear here..."></textarea>
++          </div>
++        </div>
++      </div>
++
++      <!-- Tab Navigation -->
++      <div class="crypto-tab-bar">
++        <button class="crypto-tab-btn active" data-target="tab-messages">1. Messages</button>
++        <button class="crypto-tab-btn" data-target="tab-tokens">2. Tokens</button>
++        <button class="crypto-tab-btn" data-target="tab-artifacts">3. Artifacts</button>
++        <button class="crypto-tab-btn" data-target="tab-selftest">4. Live Verification Suite</button>
++      </div>
++
++      <!-- Tab 1: Messages -->
++      <div id="tab-messages" class="crypto-tab-pane active">
++        <div class="dual-pane">
++          <!-- Sign Pane -->
++          <div class="pane-card">
++            <h3>✍️ Sign Message</h3>
++            
++            <div class="form-group">
++              <label>Message Presets:</label>
++              <select id="msg-preset-select" class="form-control" style="margin-bottom: 10px;">
++                <option value="roaster-cert">Roaster Batch Certificate</option>
++                <option value="hours">Tasting Event Notice</option>
++                <option value="pricing">Official Price Schedule</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="msg-input">Message Payload:</label>
++              <textarea id="msg-input" class="form-control" rows="4">Official Certificate of Roast: Batch #8402 Organic Ethiopian Yirgacheffe roasted on Oct 16, 2026. Certified single-origin, cupping score 91.5.</textarea>
++            </div>
++
++            <div class="form-group">
++              <label for="msg-context-input">Domain Separation Context (ContextParams):</label>
++              <input type="text" id="msg-context-input" class="form-control code-input" value="dailygrind:roaster:batch-cert">
++              <div class="field-hint">0 to 255 bytes. Prevents cross-protocol signature replay.</div>
++            </div>
++
++            <button id="btn-sign-message" class="btn">Sign Message</button>
++            <span id="msg-sign-bench" style="font-size: 0.85rem; margin-left: 10px; color: #5d4037;"></span>
++
++            <div class="form-group" style="margin-top: 15px;">
++              <label>Digital Signature (Base64):</label>
++              <textarea id="msg-sig-output" class="form-control code-input" rows="2" readonly placeholder="Signature will be generated..."></textarea>
++            </div>
++
++            <div class="form-group">
++              <label>Signed Message Package (JSON):</label>
++              <textarea id="msg-envelope-output" class="form-control code-input" rows="4" readonly placeholder="Envelope will appear here..."></textarea>
++            </div>
++          </div>
++
++          <!-- Verify Pane -->
++          <div class="pane-card">
++            <h3>🔍 Verify Message Authenticity</h3>
++            
++            <div class="form-group">
++              <label for="msg-verify-text">Message to Verify:</label>
++              <textarea id="msg-verify-text" class="form-control" rows="4"></textarea>
++            </div>
++
++            <div class="form-group">
++              <label for="msg-verify-context">Domain Context:</label>
++              <input type="text" id="msg-verify-context" class="form-control code-input" value="dailygrind:roaster:batch-cert">
++            </div>
++
++            <div class="form-group">
++              <label for="msg-verify-sig">Signature:</label>
++              <textarea id="msg-verify-sig" class="form-control code-input" rows="2"></textarea>
++            </div>
++
++            <div class="button-group">
++              <button id="btn-verify-message" class="btn btn-accent">Verify Message Authenticity</button>
++              <button id="btn-tamper-message" class="btn btn-danger btn-sm">⚠️ Tamper Message Demo</button>
++              <button id="btn-tamper-msg-ctx" class="btn btn-danger btn-sm">⚠️ Tamper Context Demo</button>
++            </div>
++
++            <div id="msg-verify-result"></div>
++          </div>
++        </div>
++      </div>
++
++      <!-- Tab 2: Tokens -->
++      <div id="tab-tokens" class="crypto-tab-pane">
++        <div class="dual-pane">
++          <!-- Issue Token Pane -->
++          <div class="pane-card">
++            <h3>🎟️ Issue Asymmetric Signed Token</h3>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              Creates a compact, post-quantum or classical signed token (<code>header.payload.signature</code>) with tamper-proof claims and expiry.
++            </p>
++
++            <div class="form-group">
++              <label for="token-sub">Subject (User / Account ID):</label>
++              <input type="text" id="token-sub" class="form-control" value="cust_latte_4081">
++            </div>
++
++            <div class="form-group">
++              <label for="token-voucher">Voucher / Claim:</label>
++              <input type="text" id="token-voucher" class="form-control" value="FREE_MAPLE_OAT_LATTE">
++            </div>
++
++            <div class="form-group">
++              <label for="token-credits">Stored Coffee Credits ($):</label>
++              <input type="number" id="token-credits" class="form-control" value="25.00" step="0.5">
++            </div>
++
++            <div class="form-group">
++              <label for="token-exp">Valid Duration (Seconds):</label>
++              <input type="number" id="token-exp" class="form-control" value="3600">
++            </div>
++
++            <div class="form-group">
++              <label for="token-context">Domain Separation Context:</label>
++              <input type="text" id="token-context" class="form-control code-input" value="urn:dailygrind:rewards:v1">
++            </div>
++
++            <button id="btn-issue-token" class="btn">Issue Signed Token</button>
++            <span id="token-bench" style="font-size: 0.85rem; margin-left: 10px; color: #5d4037;"></span>
++
++            <div class="form-group" style="margin-top: 15px;">
++              <label>Compact Signed Token String:</label>
++              <textarea id="token-output" class="form-control code-input" rows="3" readonly placeholder="Signed token will appear here..."></textarea>
++            </div>
++
++            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
++              <div>
++                <label style="font-size: 0.8rem; font-weight: 600;">Header Preview:</label>
++                <pre id="token-header-preview" style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 0.75rem; overflow-x: auto; max-height: 120px;">{}</pre>
++              </div>
++              <div>
++                <label style="font-size: 0.8rem; font-weight: 600;">Payload Claims:</label>
++                <pre id="token-payload-preview" style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 0.75rem; overflow-x: auto; max-height: 120px;">{}</pre>
++              </div>
++            </div>
++          </div>
++
++          <!-- Verify Token Pane -->
++          <div class="pane-card">
++            <h3>🔍 Verify Token Authenticity</h3>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              Verifies signature against claims using the issuer's asymmetric public key, checks expiration timestamp, and validates domain context.
++            </p>
++
++            <div class="form-group">
++              <label for="token-verify-input">Token String to Verify (header.payload.sig):</label>
++              <textarea id="token-verify-input" class="form-control code-input" rows="4" placeholder="Paste signed token here..."></textarea>
++            </div>
++
++            <div class="button-group">
++              <button id="btn-verify-token" class="btn btn-accent">Verify Token Authenticity</button>
++              <button id="btn-tamper-token-credits" class="btn btn-danger btn-sm">😈 Tamper Token ($99,999 Hack)</button>
++              <button id="btn-tamper-token-sig" class="btn btn-danger btn-sm">⚠️ Tamper Signature</button>
++            </div>
++
++            <div id="token-verify-result"></div>
++          </div>
++        </div>
++      </div>
++
++      <!-- Tab 3: Artifacts -->
++      <div id="tab-artifacts" class="crypto-tab-pane">
++        <div class="dual-pane">
++          <!-- Sign Artifact Pane -->
++          <div class="pane-card">
++            <h3>📦 Sign Digital Artifact</h3>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              Calculates SHA-256 cryptographic digest of files or images, binds metadata, and signs the manifest with asymmetric keys.
++            </p>
++
++            <div class="form-group">
++              <label>Select Sample Artifact:</label>
++              <select id="artifact-preset-select" class="form-control" style="margin-bottom: 10px;">
++                <option value="roasted-beans">Stock Photo: Single-Origin Roasted Beans Certificate</option>
++                <option value="latte-art">Stock Photo: Barista Latte Art Championship Entry</option>
++                <option value="batch-report">JSON Document: Roast Cupping Quality Report</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label>Or Upload Custom File Artifact:</label>
++              <input type="file" id="artifact-file-input" class="form-control">
++            </div>
++
++            <!-- Current Artifact Preview Card -->
++            <div class="artifact-preview-card">
++              <img id="artifact-preview-img" class="artifact-thumb" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80" alt="Artifact preview">
++              <div class="artifact-meta">
++                <h4 id="artifact-name">ethiopian-yirgacheffe-roast.jpg</h4>
++                <p>Size: <strong id="artifact-size">Calculating...</strong></p>
++                <p style="word-break: break-all; font-family: monospace; font-size: 0.8rem;">
++                  SHA-256: <code id="artifact-sha256">...</code>
++                </p>
++              </div>
++            </div>
++
++            <button id="btn-sign-artifact" class="btn">Sign Artifact Manifest</button>
++            <span id="artifact-sign-bench" style="font-size: 0.85rem; margin-left: 10px; color: #5d4037;"></span>
++
++            <div class="form-group" style="margin-top: 15px;">
++              <label>Artifact Digital Signature:</label>
++              <textarea id="artifact-sig-output" class="form-control code-input" rows="2" readonly placeholder="Artifact signature will appear here..."></textarea>
++            </div>
++
++            <div class="form-group">
++              <label>Signed Manifest (SHA-256 Digest + Metadata):</label>
++              <textarea id="artifact-manifest-output" class="form-control code-input" rows="4" readonly placeholder="Signed manifest will appear here..."></textarea>
++            </div>
++          </div>
++
++          <!-- Verify Artifact Pane -->
++          <div class="pane-card">
++            <h3>🔍 Verify Artifact Integrity & Provenance</h3>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              Recomputes the SHA-256 hash of the artifact to ensure bit-level integrity, then validates the asymmetric digital signature on the manifest.
++            </p>
++
++            <div class="button-group">
++              <button id="btn-verify-artifact" class="btn btn-accent">Verify Artifact Authenticity</button>
++              <button id="btn-corrupt-artifact" class="btn btn-danger btn-sm">💥 Corrupt Artifact File Demo</button>
++            </div>
++
++            <div id="artifact-verify-result"></div>
++          </div>
++        </div>
++      </div>
++
++      <!-- Tab 4: Live In-Browser Self-Test -->
++      <div id="tab-selftest" class="crypto-tab-pane">
++        <div class="pane-card">
++          <h3>⚡ Live In-Browser Cryptographic Self-Test & Benchmark</h3>
++          <p style="color: #5d4037; margin-bottom: 15px;">
++            This automated test executes the complete end-to-end cryptographic pipeline directly in your browser's WebCrypto engine, testing Post-Quantum ML-DSA and Classical Ed25519 for messages, tokens, and artifacts.
++          </p>
++          <div id="selftest-output">
++            <div class="alert-info">Click "Run In-Browser Self-Test" at the top banner or switch tabs to begin.</div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +907,13 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
++      <a href="#authenticity-hub">Authenticity & Keys</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved. Secured with Post-Quantum WebCrypto (NIST FIPS 204).</p>
+   </footer>
+ 
++  <script type="module" src="./app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..bf5edf4 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test test/*.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/test/crypto-security.test.js b/test/crypto-security.test.js
+new file mode 100644
+index 0000000..29403b0
+--- /dev/null
++++ b/test/crypto-security.test.js
+@@ -0,0 +1,98 @@
++import { test, describe } from 'node:test';
++import assert from 'node:assert/strict';
++
++import {
++  generateSigningKeyPair,
++  signPayload,
++  verifyPayload,
++  signMessage,
++  verifyMessage,
++  createSignedToken,
++  verifySignedToken,
++  signArtifact,
++  verifyArtifact,
++  importPublicKey,
++  exportPublicKey,
++} from '../crypto-signatures.js';
++
++describe('Security Edge Cases & Cross-Key Isolation', () => {
++  test('Cross-key verification failure (Signature from Keypair A cannot be verified by Keypair B)', async () => {
++    const keyA = await generateSigningKeyPair('ML-DSA-65');
++    const keyB = await generateSigningKeyPair('ML-DSA-65');
++
++    const message = 'Confidential Blend Recipe #42';
++    const signedPkg = await signMessage(keyA.keyPair.privateKey, message);
++
++    // Verifying with Key A succeeds
++    const validWithA = await verifyMessage(keyA.publicKeyBytes, signedPkg);
++    assert.equal(validWithA.valid, true);
++
++    // Verifying with Key B fails
++    const invalidWithB = await verifyMessage(keyB.publicKeyBytes, signedPkg);
++    assert.equal(invalidWithB.valid, false);
++  });
++
++  test('Unicode, multi-byte, and large payload handling', async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair();
++    const complexMessage = '☕ 🫖 Special Reserve Single-Origin Geisha: 100% 埃塞俄比亚 • 2026. Includes emojis & quotes: "Freshly Ground" / <xml>&json</xml>';
++
++    const signedPkg = await signMessage(keyPair.privateKey, complexMessage, {
++      context: 'unicode:test:v1',
++    });
++
++    const verifyResult = await verifyMessage(publicKeyBytes, signedPkg);
++    assert.equal(verifyResult.valid, true);
++    assert.equal(verifyResult.message, complexMessage);
++  });
++
++  test('Token audience and subject validation', async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair();
++
++    const { token } = await createSignedToken(keyPair.privateKey, {
++      sub: 'barista_alex',
++      aud: 'register_terminal_03',
++      role: 'HeadBarista',
++    }, {
++      issuer: 'The Daily Grind HQ',
++    });
++
++    // Valid
++    const valid = await verifySignedToken(publicKeyBytes, token, {
++      expectedIssuer: 'The Daily Grind HQ',
++    });
++    assert.equal(valid.valid, true);
++    assert.equal(valid.payload.sub, 'barista_alex');
++
++    // Wrong issuer
++    const wrongIssuer = await verifySignedToken(publicKeyBytes, token, {
++      expectedIssuer: 'Fake Coffee Chain',
++    });
++    assert.equal(wrongIssuer.valid, false);
++    assert.ok(wrongIssuer.error.includes('Issuer mismatch'));
++  });
++
++  test('Binary artifact signing with 64KB random buffer', async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair();
++    const largeBuffer = new Uint8Array(65536);
++    for (let i = 0; i < largeBuffer.length; i++) {
++      largeBuffer[i] = (i * 31 + 7) & 0xff;
++    }
++
++    const envelope = await signArtifact(keyPair.privateKey, largeBuffer, {
++      artifactName: 'roast_firmware_v2.bin',
++      mimeType: 'application/octet-stream',
++    });
++
++    assert.equal(envelope.manifest.sizeBytes, 65536);
++
++    const verified = await verifyArtifact(publicKeyBytes, largeBuffer, envelope);
++    assert.equal(verified.valid, true);
++    assert.equal(verified.integrityValid, true);
++
++    // Corrupt one byte in the 64KB binary
++    largeBuffer[32768] ^= 0x01;
++    const corrupted = await verifyArtifact(publicKeyBytes, largeBuffer, envelope);
++    assert.equal(corrupted.valid, false);
++    assert.equal(corrupted.integrityValid, false);
++  });
++});
+diff --git a/test/crypto-signatures.test.js b/test/crypto-signatures.test.js
+new file mode 100644
+index 0000000..8f22b28
+--- /dev/null
++++ b/test/crypto-signatures.test.js
+@@ -0,0 +1,364 @@
++import { test, describe } from 'node:test';
++import assert from 'node:assert/strict';
++
++import {
++  supportsPostQuantumSignatures,
++  hasSubtleCryptoSupports,
++  detectSupportedSuites,
++  generateSigningKeyPair,
++  exportPublicKey,
++  importPublicKey,
++  exportPrivateKey,
++  importPrivateKey,
++  getPublicKeyFromPrivateKey,
++  signPayload,
++  verifyPayload,
++  signMessage,
++  verifyMessage,
++  createSignedToken,
++  verifySignedToken,
++  hashArtifact,
++  signArtifact,
++  verifyArtifact,
++  frameFallbackInput,
++  bytesToHex,
++  hexToBytes,
++  bytesToBase64,
++  base64ToBytes,
++  bytesToBase64Url,
++  base64UrlToBytes,
++  stringToBytes,
++  bytesToString,
++} from '../crypto-signatures.js';
++
++describe('WebCrypto Capabilities and Helpers', () => {
++  test('detects SubtleCrypto.supports static method', () => {
++    assert.equal(typeof hasSubtleCryptoSupports(), 'boolean');
++    assert.equal(hasSubtleCryptoSupports(), true);
++  });
++
++  test('probes post-quantum and classical signature suites', () => {
++    const pqSupported = supportsPostQuantumSignatures();
++    assert.equal(typeof pqSupported, 'boolean');
++    const { supportedSuites, defaultSuite } = detectSupportedSuites();
++    assert.ok(supportedSuites.length > 0);
++    assert.ok(supportedSuites.includes('Ed25519') || supportedSuites.includes('ML-DSA-65'));
++    assert.ok(defaultSuite);
++  });
++
++  test('encoding helpers: hex, base64, base64url, utf8', () => {
++    const raw = new Uint8Array([0, 15, 255, 128, 64]);
++    const hex = bytesToHex(raw);
++    assert.equal(hex, '000fff8040');
++    assert.deepEqual(hexToBytes(hex), raw);
++
++    const b64 = bytesToBase64(raw);
++    assert.deepEqual(base64ToBytes(b64), raw);
++
++    const b64url = bytesToBase64Url(raw);
++    assert.deepEqual(base64UrlToBytes(b64url), raw);
++
++    const str = 'The Daily Grind Artisanal Roast ☕ 2026';
++    const utf8 = stringToBytes(str);
++    assert.equal(bytesToString(utf8), str);
++  });
++
++  test('frameFallbackInput enforces <= 255 bytes limit', () => {
++    const payload = new Uint8Array([1, 2, 3]);
++    const validCtx = new Uint8Array(255);
++    const framed = frameFallbackInput(payload, validCtx);
++    assert.equal(framed[0], 255);
++    assert.equal(framed.length, 1 + 255 + 3);
++
++    const invalidCtx = new Uint8Array(256);
++    assert.throws(() => {
++      frameFallbackInput(payload, invalidCtx);
++    }, (err) => err.name === 'OperationError');
++  });
++});
++
++describe('Post-Quantum Cryptography (ML-DSA)', () => {
++  const pqSupported = supportsPostQuantumSignatures();
++
++  test('ML-DSA-65 Key Pair Generation, Export, and Import', { skip: !pqSupported }, async () => {
++    const { suite, keyPair, publicKeyBytes, publicKeyHex, publicKeyBase64 } =
++      await generateSigningKeyPair('ML-DSA-65');
++
++    assert.equal(suite, 'ML-DSA-65');
++    assert.equal(publicKeyBytes.byteLength, 1952);
++    assert.equal(publicKeyHex.length, 1952 * 2);
++    assert.ok(publicKeyBase64.length > 0);
++
++    // Export raw-public
++    const exportedPub = await exportPublicKey(keyPair.publicKey);
++    assert.equal(exportedPub.format, 'raw-public');
++    assert.deepEqual(exportedPub.bytes, publicKeyBytes);
++
++    // Import from bytes
++    const importedFromBytes = await importPublicKey(publicKeyBytes);
++    assert.equal(importedFromBytes.algorithm.name, 'ML-DSA-65');
++
++    // Import from hex
++    const importedFromHex = await importPublicKey(publicKeyHex);
++    assert.equal(importedFromHex.algorithm.name, 'ML-DSA-65');
++
++    // Import from base64
++    const importedFromB64 = await importPublicKey(publicKeyBase64);
++    assert.equal(importedFromB64.algorithm.name, 'ML-DSA-65');
++
++    // Export & import private key using raw-seed (32 bytes)
++    const exportedPriv = await exportPrivateKey(keyPair.privateKey, 'raw-seed');
++    assert.equal(exportedPriv.format, 'raw-seed');
++    assert.equal(exportedPriv.bytes.byteLength, 32);
++
++    const importedPriv = await importPrivateKey(exportedPriv.bytes, 'ML-DSA-65', 'raw-seed');
++    assert.equal(importedPriv.algorithm.name, 'ML-DSA-65');
++
++    // Derive public key from private key
++    if (typeof crypto.subtle.getPublicKey === 'function') {
++      const derivedPub = await getPublicKeyFromPrivateKey(keyPair.privateKey);
++      assert.equal(derivedPub.algorithm.name, 'ML-DSA-65');
++    }
++  });
++
++  test('ML-DSA-65 Payload Signing and Verification with Domain Separation', { skip: !pqSupported }, async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair('ML-DSA-65');
++    const payload = stringToBytes('Order #8921: 2x Maple Oat Latte');
++    const context = stringToBytes('dailygrind:orders:v1');
++
++    // Sign payload
++    const { signatureBytes, signatureHex, signatureBase64, algorithm } =
++      await signPayload(keyPair.privateKey, payload, context);
++
++    assert.equal(algorithm, 'ML-DSA-65');
++    assert.equal(signatureBytes.byteLength, 3309);
++    assert.ok(signatureHex.length > 0);
++    assert.ok(signatureBase64.length > 0);
++
++    // Verification succeeds with matching context
++    const valid = await verifyPayload(publicKeyBytes, signatureBytes, payload, context);
++    assert.equal(valid, true);
++
++    // Verification fails if context differs
++    const wrongContext = stringToBytes('dailygrind:rewards:v1');
++    const invalidContext = await verifyPayload(publicKeyBytes, signatureBytes, payload, wrongContext);
++    assert.equal(invalidContext, false);
++
++    // Verification fails if payload is tampered
++    const tamperedPayload = stringToBytes('Order #8921: 200x Maple Oat Latte');
++    const invalidPayload = await verifyPayload(publicKeyBytes, signatureBytes, tamperedPayload, context);
++    assert.equal(invalidPayload, false);
++
++    // Verification fails if signature is corrupted
++    const corruptedSignature = new Uint8Array(signatureBytes);
++    corruptedSignature[10] ^= 0xff;
++    const invalidSig = await verifyPayload(publicKeyBytes, corruptedSignature, payload, context);
++    assert.equal(invalidSig, false);
++  });
++
++  test('ML-DSA-44 and ML-DSA-87 Variants', { skip: !pqSupported }, async () => {
++    for (const [algo, expectedPubLen, expectedSigLen] of [
++      ['ML-DSA-44', 1312, 2420],
++      ['ML-DSA-87', 2592, 4627],
++    ]) {
++      const { keyPair, publicKeyBytes } = await generateSigningKeyPair(algo);
++      assert.equal(publicKeyBytes.byteLength, expectedPubLen);
++
++      const payload = stringToBytes(`Testing ${algo}`);
++      const { signatureBytes } = await signPayload(keyPair.privateKey, payload);
++      assert.equal(signatureBytes.byteLength, expectedSigLen);
++
++      const ok = await verifyPayload(publicKeyBytes, signatureBytes, payload);
++      assert.equal(ok, true);
++    }
++  });
++});
++
++describe('Classical Cryptography (Ed25519 & ECDSA Fallbacks)', () => {
++  test('Ed25519 Key Generation, Export, Import, Signing, and Verification', async () => {
++    const { suite, keyPair, publicKeyBytes, publicKeyHex } =
++      await generateSigningKeyPair('Ed25519');
++
++    assert.equal(suite, 'Ed25519');
++    assert.equal(publicKeyBytes.byteLength, 32);
++
++    const exported = await exportPublicKey(keyPair.publicKey);
++    assert.equal(exported.format, 'raw');
++    assert.deepEqual(exported.bytes, publicKeyBytes);
++
++    const imported = await importPublicKey(publicKeyHex);
++    assert.equal(imported.algorithm.name, 'Ed25519');
++
++    const payload = stringToBytes('Artisanal Dark Roast Batch #411');
++    const context = stringToBytes('ctx:batch-roast:v1');
++
++    const { signatureBytes, algorithm } = await signPayload(keyPair.privateKey, payload, context);
++    assert.equal(algorithm, 'Ed25519');
++    assert.equal(signatureBytes.byteLength, 64);
++
++    // Valid
++    const isValid = await verifyPayload(imported, signatureBytes, payload, context);
++    assert.equal(isValid, true);
++
++    // Invalid when context mismatch
++    const badContext = await verifyPayload(imported, signatureBytes, payload, stringToBytes('wrong'));
++    assert.equal(badContext, false);
++
++    // Invalid when payload tampered
++    const badPayload = await verifyPayload(imported, signatureBytes, stringToBytes('Tampered Batch'), context);
++    assert.equal(badPayload, false);
++  });
++});
++
++describe('1. Message Signing and Verification', () => {
++  test('Signs and verifies messages with authenticity and tamper detection', async () => {
++    const { keyPair, publicKeyBytes, suite } = await generateSigningKeyPair();
++    const message = 'Roaster Announcement: New seasonal Geisha lot arrived from Panama.';
++    const context = 'announcement:seasonal:2026';
++
++    const signedPkg = await signMessage(keyPair.privateKey, message, {
++      context,
++      signerInfo: { author: 'Head Roaster Maya' },
++    });
++
++    assert.equal(signedPkg.type, 'signed-message');
++    assert.equal(signedPkg.message, message);
++    assert.equal(signedPkg.context, context);
++    assert.ok(signedPkg.signature);
++
++    // Verify valid message
++    const verifyResult = await verifyMessage(publicKeyBytes, signedPkg);
++    assert.equal(verifyResult.valid, true);
++    assert.equal(verifyResult.message, message);
++
++    // Verify with explicit expectedContext
++    const verifyWithContext = await verifyMessage(publicKeyBytes, signedPkg, {
++      expectedContext: context,
++    });
++    assert.equal(verifyWithContext.valid, true);
++
++    // Verify fails if expectedContext does not match
++    const verifyWrongContext = await verifyMessage(publicKeyBytes, signedPkg, {
++      expectedContext: 'wrong-domain-context',
++    });
++    assert.equal(verifyWrongContext.valid, false);
++
++    // Verify fails if message is tampered
++    const tamperedPkg = { ...signedPkg, message: 'Malicious announcement: Free coffee indefinitely!' };
++    const tamperedResult = await verifyMessage(publicKeyBytes, tamperedPkg);
++    assert.equal(tamperedResult.valid, false);
++    assert.ok(tamperedResult.error);
++
++    // Verify fails if signature is tampered
++    const tamperedSigPkg = { ...signedPkg, signature: signedPkg.signature.slice(0, -4) + 'AAAA' };
++    const tamperedSigResult = await verifyMessage(publicKeyBytes, tamperedSigPkg);
++    assert.equal(tamperedSigResult.valid, false);
++  });
++});
++
++describe('2. Token Signing and Verification', () => {
++  test('Creates and verifies compact post-quantum / classical signed tokens', async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair();
++
++    const claims = {
++      sub: 'cust_8921',
++      voucherCode: 'MAPLE_OAT_FREE',
++      creditAmount: 25.0,
++      tier: 'GoldMember',
++    };
++
++    const { token, header, payload } = await createSignedToken(keyPair.privateKey, claims, {
++      expiresInSeconds: 3600,
++      issuer: 'The Daily Grind Coffee Co.',
++    });
++
++    assert.ok(typeof token === 'string');
++    assert.equal(token.split('.').length, 3);
++    assert.equal(payload.sub, 'cust_8921');
++    assert.equal(payload.voucherCode, 'MAPLE_OAT_FREE');
++
++    // Verify valid token
++    const verifyResult = await verifySignedToken(publicKeyBytes, token, {
++      expectedIssuer: 'The Daily Grind Coffee Co.',
++    });
++    assert.equal(verifyResult.valid, true);
++    assert.equal(verifyResult.payload.creditAmount, 25.0);
++    assert.equal(verifyResult.payload.tier, 'GoldMember');
++
++    // Tampering test: attacker tries to elevate creditAmount to 9999.00
++    const parts = token.split('.');
++    const decodedPayload = JSON.parse(bytesToString(base64UrlToBytes(parts[1])));
++    decodedPayload.creditAmount = 9999.0;
++    const forgedPayloadB64 = bytesToBase64Url(stringToBytes(JSON.stringify(decodedPayload)));
++    const forgedToken = `${parts[0]}.${forgedPayloadB64}.${parts[2]}`;
++
++    const forgedResult = await verifySignedToken(publicKeyBytes, forgedToken);
++    assert.equal(forgedResult.valid, false);
++    assert.ok(forgedResult.error.includes('tampered') || forgedResult.error.includes('invalid'));
++
++    // Expiration test: expired token
++    const expiredTokenData = await createSignedToken(keyPair.privateKey, claims, {
++      expiresInSeconds: -10, // already expired
++    });
++    const expiredResult = await verifySignedToken(publicKeyBytes, expiredTokenData.token, {
++      clockToleranceSeconds: 0,
++    });
++    assert.equal(expiredResult.valid, false);
++    assert.equal(expiredResult.expired, true);
++  });
++});
++
++describe('3. Artifact Signing and Verification', () => {
++  test('Signs and verifies file artifacts with SHA-256 integrity and authenticity', async () => {
++    const { keyPair, publicKeyBytes } = await generateSigningKeyPair();
++
++    // Mock an artisanal batch certificate artifact (e.g. PDF or binary data)
++    const certificateText = `
++      =======================================================
++      THE DAILY GRIND - ARTISANAL BATCH CERTIFICATION #2026-X
++      Origin: Yirgacheffe, Gedeo Zone, Ethiopia
++      Elevation: 2,100m | Variety: Heirloom
++      Roast Profile: City+ (Medium Light)
++      Cupping Score: 91.5
++      Master Roaster: Eleanor Vance
++      =======================================================
++    `;
++    const artifactBytes = stringToBytes(certificateText);
++
++    // Compute hash independently to check helper
++    const hash = await hashArtifact(artifactBytes);
++    assert.equal(hash.hex.length, 64);
++
++    // Sign artifact
++    const envelope = await signArtifact(keyPair.privateKey, artifactBytes, {
++      artifactName: 'batch-certificate-2026-X.txt',
++      mimeType: 'text/plain',
++      customMetadata: { batchId: '2026-X', cuppingScore: 91.5 },
++    });
++
++    assert.equal(envelope.type, 'artifact-signature-envelope');
++    assert.equal(envelope.manifest.artifactName, 'batch-certificate-2026-X.txt');
++    assert.equal(envelope.manifest.sha256, hash.hex);
++    assert.ok(envelope.signature);
++
++    // Verify authentic artifact
++    const result = await verifyArtifact(publicKeyBytes, artifactBytes, envelope);
++    assert.equal(result.valid, true);
++    assert.equal(result.integrityValid, true);
++    assert.equal(result.signatureValid, true);
++
++    // Tamper test 1: Modify a single character in the artifact file bytes
++    const tamperedArtifactBytes = stringToBytes(certificateText.replace('91.5', '99.9'));
++    const tamperedResult = await verifyArtifact(publicKeyBytes, tamperedArtifactBytes, envelope);
++    assert.equal(tamperedResult.valid, false);
++    assert.equal(tamperedResult.integrityValid, false);
++    assert.ok(tamperedResult.error.includes('Integrity check failed'));
++
++    // Tamper test 2: Modify manifest metadata but keep artifact bytes same
++    const forgedEnvelope = JSON.parse(JSON.stringify(envelope));
++    forgedEnvelope.manifest.metadata.cuppingScore = 100.0;
++    const forgedManifestResult = await verifyArtifact(publicKeyBytes, artifactBytes, forgedEnvelope);
++    assert.equal(forgedManifestResult.valid, false);
++    assert.equal(forgedManifestResult.signatureValid, false);
++  });
++});

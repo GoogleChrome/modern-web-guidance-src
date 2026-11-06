@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+index 66c9173..1db5352 100644
+--- a/index.html
++++ b/index.html
+@@ -12,9 +12,44 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --supports-atproperty: ;
+     }
+ 
+-    * {
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --hero-glow-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 135deg;
++    }
++
++    @keyframes hero-glow-shift {
++      to {
++        --hero-glow-angle: 495deg;
++      }
++    }
++
++    @function --tint(--color, --ratio: 20%) {
++      result: color-mix(in oklch, var(--color), white var(--ratio));
++    }
++
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    li,
++    a,
++    nav,
++    header,
++    main,
++    section,
++    footer,
++    div {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -38,6 +73,25 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      container-type: scroll-state;
++
++      /* Progressive enhancement gated on @function support (via value check or @supports at-rule(@function)) */
++      @supports (color: --foo()) or at-rule(@function) {
++        background: linear-gradient(90deg, var(--primary), --tint(var(--primary), 18%));
++        border-block-end: 1px solid --tint(var(--accent), 30%);
++      }
++
++      /* Progressive enhancement when scroll-state @container queries are supported */
++      @supports (container-type: scroll-state) {
++        transition: box-shadow 0.3s ease, backdrop-filter 0.3s ease;
++      }
++    }
++
++    @container scroll-state(stuck: top) {
++      nav {
++        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++        backdrop-filter: blur(8px);
++      }
+     }
+ 
+     .logo {
+@@ -52,7 +106,7 @@
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+@@ -86,11 +140,42 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++
++      /* Progressive enhancement for @property support (works in both pre-at-rule() and at-rule()-capable browsers) */
++      background-image: var(
++        --supports-atproperty,
++        linear-gradient(
++          var(--hero-glow-angle),
++          rgba(78, 52, 46, 0.72),
++          rgba(255, 171, 64, 0.35),
++          rgba(0, 0, 0, 0.65)
++        ),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++      );
++      animation: var(--supports-atproperty, hero-glow-shift 12s linear infinite);
++
++      @supports at-rule(@property) {
++        background-image:
++          linear-gradient(
++            var(--hero-glow-angle),
++            rgba(78, 52, 46, 0.72),
++            rgba(255, 171, 64, 0.35),
++            rgba(0, 0, 0, 0.65)
++          ),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        animation: hero-glow-shift 12s linear infinite;
++      }
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-block-end: 1rem;
++      transition: opacity 0.6s ease-out, translate 0.6s ease-out;
++
++      @starting-style {
++        opacity: 0;
++        translate: 0 12px;
++      }
+     }
+ 
+     /* Content Sections */
+@@ -104,19 +189,51 @@
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+-      margin-top: 20px;
++      margin-block-start: 20px;
++      container-type: inline-size;
+     }
+ 
+     .card {
++      --featured: false;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      /* Progressive enhancement when @scope / @container / at-rule() are supported */
++      @supports at-rule(@scope) {
++        border: 1px solid color-mix(in oklch, var(--secondary), transparent 35%);
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      @supports (container-type: inline-size) {
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++    }
++
++    /* Conditionally apply card progressive-enhancement styles when @container style() queries are supported */
++    @container style(--featured: true) or (not (style(--featured: true))) {
++      .card {
++        border: 1px solid color-mix(in oklch, var(--secondary), transparent 35%);
++        box-shadow: 0 6px 16px rgba(62, 39, 35, 0.12);
++      }
++
++      .card:hover {
++        transform: translateY(-4px);
++        box-shadow: 0 10px 24px rgba(62, 39, 35, 0.18);
++      }
++    }
++
++    @scope (.card) {
++      h3 {
++        margin-block-end: 10px;
++        color: var(--primary);
++      }
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block-end: 10px;
+       color: var(--primary);
+     }
+ 

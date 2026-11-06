@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Media Scroller */
++    .media-scroller {
++      position: relative;
++      height: 520px;
++      max-width: 640px;
++      margin: 20px auto 0;
++      overflow-y: auto;
++      scroll-behavior: auto;
++      overscroll-behavior: contain;
++      scroll-snap-type: y proximity;
++      scroll-padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex-shrink: 0;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-snap-align: start;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 600 / 400;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .media-card .media-body {
++      padding: 15px 20px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +240,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">From the Roastery</h2>
++      <div class="media-scroller" id="media-scroller">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Freshly roasted coffee beans">
++          <div class="media-body">
++            <h3>Small-Batch Roasting</h3>
++            <p>Every bean is roasted in-house, in batches of 12 kilos or less.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Coffee being poured into a cup">
++          <div class="media-body">
++            <h3>The Perfect Pour</h3>
++            <p>Our baristas dial in every shot by taste, not just by timer.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="A cup of coffee on a table">
++          <div class="media-body">
++            <h3>Bean of the Month</h3>
++            <p>Ethiopian Yirgacheffe: bright, floral, with notes of bergamot.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Inside a cozy coffee shop">
++          <div class="media-body">
++            <h3>Your Neighborhood Café</h3>
++            <p>Pull up a chair and stay a while. Wi-Fi is on the house.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=400&q=80"
++            width="600" height="400" alt="Latte art in a ceramic mug">
++          <div class="media-body">
++            <h3>Latte Art Classes</h3>
++            <p>Join us Saturday mornings to learn the rosetta and the tulip.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously right after the scroller is parsed, before first paint,
++        // so the target is already in view with no visible scroll or flash.
++        (function () {
++          var scroller = document.getElementById('media-scroller');
++          var target = scroller.querySelector('.target');
++          scroller.scrollTop = target.offsetTop - parseFloat(getComputedStyle(scroller).paddingTop);
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

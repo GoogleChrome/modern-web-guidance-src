@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,53 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card.spring {
++      transition: transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
++      /* Damped oscillation overshoots the scale, then settles. */
++      transition-timing-function: linear(
++        0, 0.5 12%, 0.95 25%, 1.16 40%, 1.04 58%,
++        0.98 73%, 1.01 88%, 1
++      );
++    }
++
++    .card.spring:hover,
++    .card.spring:focus-within {
++      transform: scale(1.05);
++    }
++
++    .card.bounce {
++      transition: transform 750ms cubic-bezier(0.22, 1, 0.36, 1);
++      /* Each rebound loses energy as the card reaches its raised position. */
++      transition-timing-function: linear(
++        0, 0.06 10%, 0.25 20%, 0.56 30%, 1 40%,
++        0.72 50%, 0.68 56%, 0.76 63%, 1 72%,
++        0.9 80%, 1 88%, 0.97 94%, 1
++      );
++    }
++
++    .card.bounce:hover,
++    .card.bounce:focus-within {
++      transform: translateY(-10px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce,
++      .card.spring *,
++      .card.bounce * {
++        transition: none;
++      }
++
++      .card.spring:hover,
++      .card.spring:focus-within,
++      .card.bounce:hover,
++      .card.bounce:focus-within {
++        transform: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +222,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

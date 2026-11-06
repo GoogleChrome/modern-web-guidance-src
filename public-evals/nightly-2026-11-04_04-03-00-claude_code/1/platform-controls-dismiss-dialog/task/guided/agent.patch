@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,17 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -134,8 +143,109 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible,
++    .dialog-close:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Coffee detail dialogs */
++    .coffee-dialog {
++      margin: auto;
++      width: min(32rem, calc(100% - 2rem));
++      max-height: calc(100dvh - 2rem);
++      padding: 0;
++      border: none;
++      border-radius: 12px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
++    }
++
++    /* Prevent scroll gestures from chaining to the page behind the modal */
++    .coffee-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .coffee-dialog::backdrop {
++      background: rgba(30, 18, 14, 0.6);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding: 1rem 1.25rem;
++      background: var(--primary);
++      color: white;
++    }
++
++    .dialog-close {
++      flex: none;
++      width: 2.25rem;
++      height: 2.25rem;
++      border: none;
++      border-radius: 50%;
++      background: transparent;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .dialog-close:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .dialog-body {
++      padding: 1.25rem;
++    }
++
++    .dialog-body dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.4rem 1rem;
++      margin-top: 1rem;
++    }
++
++    .dialog-body dt {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 0.75rem;
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +290,112 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="maple-oat-latte-dialog">View Details<span class="visually-hidden"> for Maple Oat Latte</span></button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dark-roast-espresso-dialog">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="cold-brew-dialog">View Details<span class="visually-hidden"> for Cold Brew</span></button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Coffee detail dialogs: opened as modals so Esc / mobile back gesture dismiss them natively -->
++  <dialog id="maple-oat-latte-dialog" class="coffee-dialog" aria-labelledby="maple-oat-latte-title">
++    <div class="dialog-header">
++      <h2 id="maple-oat-latte-title">Maple Oat Latte</h2>
++      <button type="button" class="dialog-close" command="close" commandfor="maple-oat-latte-dialog" aria-label="Close">&times;</button>
++    </div>
++    <div class="dialog-body">
++      <p>Our house espresso pulled over steamed oat milk and sweetened with pure Grade A Vermont maple syrup, finished with a dusting of cinnamon.</p>
++      <dl>
++          <dt>Roast</dt>
++          <dd>Medium</dd>
++          <dt>Sizes</dt>
++          <dd>12 oz, 16 oz, 20 oz</dd>
++          <dt>Caffeine</dt>
++          <dd>~130 mg (16 oz)</dd>
++          <dt>Dairy-free</dt>
++          <dd>Yes</dd>
++      </dl>
++    </div>
++    <div class="dialog-actions">
++      <a href="/menu/seasonal" class="btn btn-secondary">Full menu page</a>
++      <button type="button" class="btn" command="close" commandfor="maple-oat-latte-dialog" autofocus>Close</button>
++    </div>
++  </dialog>
++
++  <dialog id="dark-roast-espresso-dialog" class="coffee-dialog" aria-labelledby="dark-roast-espresso-title">
++    <div class="dialog-header">
++      <h2 id="dark-roast-espresso-title">Dark Roast Espresso</h2>
++      <button type="button" class="dialog-close" command="close" commandfor="dark-roast-espresso-dialog" aria-label="Close">&times;</button>
++    </div>
++    <div class="dialog-body">
++      <p>A double shot of our dark-roasted Sumatran and Brazilian blend, with notes of dark chocolate, toasted walnut and a lingering smoky finish.</p>
++      <dl>
++          <dt>Roast</dt>
++          <dd>Dark</dd>
++          <dt>Sizes</dt>
++          <dd>Single, Double</dd>
++          <dt>Caffeine</dt>
++          <dd>~150 mg (double)</dd>
++          <dt>Origin</dt>
++          <dd>Sumatra &amp; Brazil</dd>
++      </dl>
++    </div>
++    <div class="dialog-actions">
++      <a href="/menu/espresso" class="btn btn-secondary">Full menu page</a>
++      <button type="button" class="btn" command="close" commandfor="dark-roast-espresso-dialog" autofocus>Close</button>
++    </div>
++  </dialog>
++
++  <dialog id="cold-brew-dialog" class="coffee-dialog" aria-labelledby="cold-brew-title">
++    <div class="dialog-header">
++      <h2 id="cold-brew-title">Cold Brew</h2>
++      <button type="button" class="dialog-close" command="close" commandfor="cold-brew-dialog" aria-label="Close">&times;</button>
++    </div>
++    <div class="dialog-body">
++      <p>Coarse-ground Colombian beans steeped in cold filtered water for 18 hours, producing a naturally sweet, low-acid brew served over ice.</p>
++      <dl>
++          <dt>Roast</dt>
++          <dd>Medium-dark</dd>
++          <dt>Sizes</dt>
++          <dd>16 oz, 24 oz</dd>
++          <dt>Caffeine</dt>
++          <dd>~200 mg (16 oz)</dd>
++          <dt>Steep time</dt>
++          <dd>18 hours</dd>
++      </dl>
++    </div>
++    <div class="dialog-actions">
++      <a href="/menu/cold-brew" class="btn btn-secondary">Full menu page</a>
++      <button type="button" class="btn" command="close" commandfor="cold-brew-dialog" autofocus>Close</button>
++    </div>
++  </dialog>
++
++  <script type="module">
++    // Fallback for browsers without Invoker Commands (command / commandfor).
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      document.addEventListener('click', (event) => {
++        const button = event.target.closest('button[commandfor]');
++        if (!button) return;
++        const target = document.getElementById(button.getAttribute('commandfor'));
++        if (!(target instanceof HTMLDialogElement)) return;
++        const command = button.getAttribute('command');
++        if (command === 'show-modal' && !target.open) target.showModal();
++        else if (command === 'close' && target.open) target.close();
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

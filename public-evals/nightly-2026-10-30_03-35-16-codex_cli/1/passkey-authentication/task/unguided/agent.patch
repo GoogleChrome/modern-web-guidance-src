@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,37 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sign-in {
++      max-width: 440px;
++      margin: 0 auto 40px;
++    }
++
++    .sign-in label {
++      display: block;
++      margin-top: 15px;
++    }
++
++    .sign-in input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .sign-in button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .sign-in button:disabled {
++      opacity: 0.65;
++      cursor: default;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +203,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="sign-in card" aria-labelledby="sign-in-title">
++      <h2 id="sign-in-title">Sign in to your account</h2>
++      <form id="sign-in-form">
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn"
++          data-testid="username-field" autocapitalize="none" spellcheck="false">
++        <button class="btn" type="submit" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p data-testid="auth-status" role="status" aria-live="polite"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +245,142 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signInForm = document.querySelector('#sign-in-form');
++    const usernameField = document.querySelector('[data-testid="username-field"]');
++    const authButton = document.querySelector('[data-testid="auth-button"]');
++    const authStatus = document.querySelector('[data-testid="auth-status"]');
++    let activeController;
++    let explicitSignIn = false;
++    let signedIn = false;
++
++    function decodeBase64url(value) {
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++      const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
++      return Uint8Array.from(binary, character => character.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      const bytes = new Uint8Array(value);
++      let binary = '';
++      for (const byte of bytes) binary += String.fromCharCode(byte);
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function serializeCredential(credential) {
++      return {
++        id: credential.id,
++        rawId: encodeBase64url(credential.rawId),
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment,
++        response: {
++          clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++          authenticatorData: encodeBase64url(credential.response.authenticatorData),
++          signature: encodeBase64url(credential.response.signature),
++          userHandle: credential.response.userHandle === null
++            ? null : encodeBase64url(credential.response.userHandle),
++        },
++        clientExtensionResults: credential.getClientExtensionResults(),
++      };
++    }
++
++    async function authenticate(mediation) {
++      // A modal request must replace any outstanding conditional request.
++      activeController?.abort();
++      const controller = new AbortController();
++      activeController = controller;
++      const { signal } = controller;
++      try {
++        // The server must issue and retain a fresh, session-bound challenge.
++        const optionsResponse = await fetch('/api/login/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(mediation === 'conditional' ? {} : {
++            username: usernameField.value.trim(),
++          }),
++          signal,
++        });
++        if (!optionsResponse.ok) throw new Error('Could not start passkey sign-in. Please try again.');
++        const options = await optionsResponse.json();
++        if (signal.aborted) return;
++        const publicKey = { ...(options.publicKey || options) };
++        publicKey.challenge = decodeBase64url(publicKey.challenge);
++        publicKey.userVerification = 'required';
++        publicKey.allowCredentials = mediation === 'conditional' ? [] :
++          (publicKey.allowCredentials || []).map(credential => ({
++            ...credential,
++            id: decodeBase64url(credential.id),
++          }));
++
++        const credential = await navigator.credentials.get({ publicKey, mediation, signal });
++        if (signal.aborted || !credential) return;
++        authStatus.textContent = 'Verifying your passkey…';
++        const verification = await fetch('/api/login/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(serializeCredential(credential)),
++          signal,
++        });
++        if (!verification.ok) throw new Error('Passkey verification failed. Please try again.');
++        // A successful response may be JSON or an empty 204 response.
++        const result = verification.status === 204 ? null :
++          await verification.json();
++        if (result?.verified === false || result?.success === false) {
++          throw new Error('Passkey verification failed. Please try again.');
++        }
++        if (signal.aborted) return;
++        signedIn = true;
++        authButton.disabled = true;
++        authStatus.textContent = 'Signed in successfully.';
++      } catch (error) {
++        if (signal.aborted || error.name === 'AbortError') return;
++        authStatus.textContent = error.name === 'NotAllowedError'
++          ? 'Passkey sign-in was canceled or unavailable. Please try again.'
++          : error.message || 'Unable to sign in with a passkey. Please try again.';
++      } finally {
++        if (activeController === controller) activeController = undefined;
++      }
++    }
++
++    async function startPasskeyAutofill() {
++      if (explicitSignIn || signedIn || activeController) return;
++      try {
++        const available = await window.PublicKeyCredential.isConditionalMediationAvailable?.();
++        if (available && !explicitSignIn && !signedIn && !activeController) {
++          await authenticate('conditional');
++        }
++      } catch {
++        // The explicit button remains available without conditional UI support.
++      }
++    }
++
++    signInForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (explicitSignIn || signedIn || authButton.disabled) return;
++      explicitSignIn = true;
++      authButton.disabled = true;
++      authStatus.textContent = 'Use your passkey to sign in…';
++      try {
++        await authenticate('required');
++      } finally {
++        explicitSignIn = false;
++        authButton.disabled = signedIn;
++        if (!signedIn) void startPasskeyAutofill();
++      }
++    });
++
++    if (window.PublicKeyCredential && navigator.credentials?.get) {
++      void startPasskeyAutofill();
++      usernameField.addEventListener('focus', startPasskeyAutofill);
++    } else {
++      authButton.disabled = true;
++      authStatus.textContent = 'Passkey sign-in is not supported in this browser.';
++    }
++  </script>
++
+ </body>
+ 
+ </html>

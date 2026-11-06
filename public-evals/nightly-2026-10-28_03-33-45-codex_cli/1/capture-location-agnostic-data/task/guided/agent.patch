@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .preferences form {
++      max-width: 480px;
++      margin-top: 20px;
++    }
++
++    .preferences label {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 4px;
++    }
++
++    .preferences input {
++      display: block;
++      width: 100%;
++      min-width: 0;
++      min-height: 48px;
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .preferences .field {
++      margin-bottom: 20px;
++    }
++
++    .preferences small {
++      display: block;
++      margin-top: 4px;
++    }
++
++    .preferences button {
++      border: 0;
++      min-height: 48px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .preferences :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #preferences-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="card preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your Coffee Ritual</h2>
++      <p>Keep your daily pickup time and the date your coffee story began.</p>
++      <p id="travel-help">Your chosen clock time and calendar date stay the same wherever you travel.</p>
++      <form id="coffee-preferences" aria-describedby="travel-help">
++        <div class="field">
++          <label for="pickup-time">Daily pickup reminder time</label>
++          <input type="time" id="pickup-time" name="pickupTime" step="60" aria-describedby="pickup-help">
++          <small id="pickup-help">Your preferred local time each day. This saves your preference; it does not send notifications.</small>
++        </div>
++        <div class="field">
++          <label for="coffee-anniversary">Coffee anniversary date</label>
++          <input type="date" id="coffee-anniversary" name="coffeeAnniversary" aria-describedby="anniversary-help">
++          <small id="anniversary-help">Choose the date your coffee tradition started.</small>
++        </div>
++        <button type="submit" class="btn" id="save-preferences" disabled>Save preferences</button>
++        <p id="preferences-status" role="status" aria-live="polite"></p>
++      </form>
++      <noscript>Enable JavaScript to save your coffee preferences in this browser.</noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +280,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const storageKey = 'daily-grind:coffee-preferences:v1';
++      const form = document.getElementById('coffee-preferences');
++      const pickupTime = document.getElementById('pickup-time');
++      const anniversary = document.getElementById('coffee-anniversary');
++      const status = document.getElementById('preferences-status');
++
++      function validateSelection(input, plainType) {
++        if (!input.checkValidity()) return false;
++        // Native inputs validate the plain strings in browsers without Temporal.
++        if (input.value && globalThis.Temporal?.[plainType]) {
++          try {
++            globalThis.Temporal[plainType].from(input.value);
++          } catch {
++            return false;
++          }
++        }
++        return true;
++      }
++
++      try {
++        const saved = JSON.parse(localStorage.getItem(storageKey));
++        if (saved && typeof saved === 'object') {
++          if (typeof saved.pickupTime === 'string') pickupTime.value = saved.pickupTime;
++          if (typeof saved.coffeeAnniversary === 'string') anniversary.value = saved.coffeeAnniversary;
++          if (!validateSelection(pickupTime, 'PlainTime')) pickupTime.value = '';
++          if (!validateSelection(anniversary, 'PlainDate')) anniversary.value = '';
++        }
++      } catch {
++        status.textContent = 'Saved preferences could not be loaded. You can choose them again.';
++      }
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        if (!form.reportValidity()) return;
++        if (!validateSelection(pickupTime, 'PlainTime') || !validateSelection(anniversary, 'PlainDate')) {
++          status.textContent = 'Please choose a valid time and date.';
++          return;
++        }
++
++        try {
++          // Persist wall-clock time and calendar date verbatim, with no zone or
++          // timestamp conversion. Empty strings let users clear either preference.
++          localStorage.setItem(storageKey, JSON.stringify({
++            pickupTime: pickupTime.value,
++            coffeeAnniversary: anniversary.value,
++          }));
++          status.textContent = 'Preferences saved in this browser. Your time and date stay the same when you travel.';
++        } catch {
++          status.textContent = 'Preferences could not be saved. Allow browser storage and try again.';
++        }
++      });
++
++      form.addEventListener('input', () => {
++        status.textContent = 'You have unsaved changes.';
++      });
++      document.getElementById('save-preferences').disabled = false;
++    })();
++  </script>
+ </body>
+ 
+ </html>

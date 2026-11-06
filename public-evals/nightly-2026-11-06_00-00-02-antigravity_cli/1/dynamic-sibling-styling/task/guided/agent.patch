@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,122 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Dynamic Sibling Styling: Base Variables & Native Overrides */
++    .spectrum-card,
++    .fan-card,
++    .circle-orb {
++      --index: var(--sibling-index);
++      --count: var(--sibling-count);
++    }
++
++    @supports (top: calc(sibling-index() * 1px)) {
++      .spectrum-card,
++      .fan-card,
++      .circle-orb {
++        --index: sibling-index();
++        --count: sibling-count();
++      }
++    }
++
++    /* 1. Spectrum Cards */
++    .spectrum-card {
++      background-color: hsl(
++        calc(360deg / var(--count) * var(--index)),
++        70%,
++        85%
++      );
++    }
++
++    /* 2. Fan Container & Loyalty Cards */
++    .fan-container {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-block-size: 280px;
++      margin-block-start: 40px;
++      padding-block: 20px;
++    }
++
++    .fan-card {
++      --center: calc((var(--count) + 1) / 2);
++      inline-size: 160px;
++      block-size: 220px;
++      background: linear-gradient(135deg, var(--primary), #6d4c41);
++      color: var(--light);
++      border: 2px solid var(--accent);
++      border-radius: 12px;
++      padding: 20px 15px;
++      margin-inline: -30px;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: center;
++      transform-origin: bottom center;
++      transform: rotate(calc(10deg * (var(--index) - var(--center))));
++      transition: transform 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .fan-card h3 {
++      font-size: 1.05rem;
++      color: var(--accent);
++    }
++
++    .fan-card p {
++      font-size: 0.85rem;
++    }
++
++    /* 3. Circle Container & Coffee Origin Orbs */
++    .circle-container {
++      position: relative;
++      display: grid;
++      inline-size: 420px;
++      block-size: 420px;
++      max-inline-size: 100%;
++      margin-inline: auto;
++      margin-block-start: 30px;
++    }
++
++    .circle-orb {
++      --angle: calc(360deg / var(--count) * var(--index));
++      --radius: 150px;
++      position: absolute;
++      place-self: center;
++      inline-size: 105px;
++      block-size: 105px;
++      border-radius: 50%;
++      background: var(--primary);
++      color: var(--light);
++      border: 3px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      padding: 10px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transform: translate(
++        calc(cos(var(--angle)) * var(--radius)),
++        calc(sin(var(--angle)) * var(--radius))
++      );
++    }
++
++    .circle-orb span {
++      display: block;
++      font-size: 0.72rem;
++      font-weight: normal;
++      color: var(--secondary);
++      margin-block-start: 2px;
++    }
++
++    section + section {
++      margin-block-start: 60px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,25 +291,81 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Daily Grind Loyalty Tiers</h2>
++      <div class="fan-container">
++        <div class="fan-card">
++          <h3>Green Bean</h3>
++          <p>Earn 1 bean per $1 spent on brewed coffee.</p>
++        </div>
++        <div class="fan-card">
++          <h3>Light Roast</h3>
++          <p>Free size upgrades &amp; birthday drink reward.</p>
++        </div>
++        <div class="fan-card">
++          <h3>Medium Roast</h3>
++          <p>Double bean days &amp; complimentary syrup shots.</p>
++        </div>
++        <div class="fan-card">
++          <h3>Dark Roast</h3>
++          <p>Monthly bag of artisanal whole bean coffee.</p>
++        </div>
++        <div class="fan-card">
++          <h3>Master Roaster</h3>
++          <p>VIP tasting invites &amp; unlimited espresso shots.</p>
++        </div>
++      </div>
++    </section>
++
++    <section>
++      <h2 style="text-align: center;">Single-Origin Coffee Badges</h2>
++      <div class="circle-container">
++        <div class="circle-orb">
++          Ethiopia
++          <span>Floral &amp; Citrus</span>
++        </div>
++        <div class="circle-orb">
++          Colombia
++          <span>Caramel &amp; Nutty</span>
++        </div>
++        <div class="circle-orb">
++          Sumatra
++          <span>Earthy &amp; Bold</span>
++        </div>
++        <div class="circle-orb">
++          Guatemala
++          <span>Cocoa &amp; Spice</span>
++        </div>
++        <div class="circle-orb">
++          Kenya
++          <span>Berry &amp; Bright</span>
++        </div>
++        <div class="circle-orb">
++          Brazil
++          <span>Sweet &amp; Smooth</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +376,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* MANDATORY: Check for native support before applying fallback */
++    if (!CSS.supports('top: calc(sibling-index() * 1px)')) {
++      const groups = [
++        document.querySelectorAll('.spectrum-card'),
++        document.querySelectorAll('.fan-card'),
++        document.querySelectorAll('.circle-orb'),
++      ];
++      groups.forEach((items) => {
++        items.forEach((item, index) => {
++          /* MANDATORY: Injected index must be 1-based to match native function */
++          item.style.setProperty('--sibling-index', index + 1);
++          item.style.setProperty('--sibling-count', items.length);
++        });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

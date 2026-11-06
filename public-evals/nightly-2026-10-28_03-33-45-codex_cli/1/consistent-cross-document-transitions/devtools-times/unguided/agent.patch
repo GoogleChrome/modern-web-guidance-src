@@ -1,0 +1,96 @@
+diff --git a/public/critical-page-ready.js b/public/critical-page-ready.js
+new file mode 100644
+index 0000000..c10367c
+--- /dev/null
++++ b/public/critical-page-ready.js
+@@ -0,0 +1,14 @@
++// The render-blocking head script installs this guard before the first reveal.
++// Stylesheets in the head and rel="expect" handle CSS and HTML readiness.
++window.addEventListener('pagereveal', (event) => {
++  if (!event.viewTransition) return;
++
++  // Render blocking does not wait for asynchronous island hydration. If initial
++  // JavaScript is still pending, show the page normally rather than animate an
++  // unstable snapshot. Lazy islands are not part of the initial view contract.
++  const contentParsed = document.getElementById('page-content-ready');
++  const hydrationPending = document.querySelector('astro-island[client="load"][ssr]');
++  if (!contentParsed || hydrationPending) {
++    event.viewTransition.skipTransition();
++  }
++});
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ced4f15 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -21,12 +19,21 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
++    <!-- This marker follows the initial page content, rather than its opening tag. -->
++    <link rel="expect" blocking="render" href="#page-content-ready" />
++    <script
++      is:inline
++      defer
++      blocking="render"
++      src={`${baseUrl}critical-page-ready.js`}
++    ></script>
++
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+@@ -34,7 +41,6 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -48,6 +54,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <main class="bg-white relative">
+           <slot />
+         </main>
++        <span id="page-content-ready" hidden></span>
+       </div>
+     </div>
+     <Footer />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce3e6ae 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,17 @@
+ @import "tailwindcss";
+ 
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

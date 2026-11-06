@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,43 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
++    /* Decorative coffee-splash block. Absolutely positioned so it never affects
++       layout. The border-radius blob and gradient are the fallback if the
++       clip-path or the photo fails to load. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -12%;
++      width: clamp(180px, 34vw, 460px);
++      aspect-ratio: 1;
++      z-index: -1;
++      pointer-events: none;
++      border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
++      background-color: var(--accent);
++      background-image:
++        linear-gradient(135deg, rgba(255, 171, 64, 0.75), rgba(78, 52, 46, 0.85)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=700&q=80');
++      background-size: cover;
++      background-position: center;
++      opacity: 0.85;
++      -webkit-clip-path: url(#coffee-splash);
++      clip-path: url(#coffee-splash);
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        width: 160px;
++        opacity: 0.5;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +201,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
++    <svg width="0" height="0" style="position: absolute;" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash" clipPathUnits="objectBoundingBox">
++          <path d="M0.50,0.03 C0.62,0.00 0.70,0.10 0.78,0.12 C0.88,0.14 0.99,0.20 0.97,0.34 C0.95,0.45 0.99,0.50 0.96,0.62 C0.93,0.74 0.84,0.74 0.80,0.82 C0.76,0.92 0.68,0.99 0.56,0.97 C0.46,0.95 0.42,0.88 0.32,0.90 C0.20,0.92 0.08,0.84 0.07,0.70 C0.06,0.60 0.12,0.55 0.08,0.45 C0.03,0.32 0.12,0.22 0.24,0.20 C0.34,0.18 0.38,0.06 0.50,0.03 Z M0.90,0.88 C0.93,0.86 0.98,0.89 0.97,0.94 C0.96,0.98 0.90,0.99 0.88,0.95 C0.87,0.92 0.88,0.90 0.90,0.88 Z M0.04,0.14 C0.07,0.11 0.12,0.13 0.11,0.17 C0.10,0.21 0.04,0.21 0.03,0.18 C0.02,0.16 0.03,0.15 0.04,0.14 Z"/>
++        </clipPath>
++      </defs>
++    </svg>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

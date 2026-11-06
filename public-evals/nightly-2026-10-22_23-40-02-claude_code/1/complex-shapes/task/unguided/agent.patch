@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,13 +87,65 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .hero {
++      position: relative;
++      overflow: hidden;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative coffee-splash block.
++       Out of flow (absolute), so it can never push hero content around.
++       Base styles give a soft organic blob via border-radius and a solid
++       amber fill, so it still looks intentional if the mask or photo fails. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -12%;
++      width: clamp(180px, 34vw, 440px);
++      aspect-ratio: 1;
++      z-index: 0;
++      pointer-events: none;
++      opacity: 0.9;
++      border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
++      background-color: var(--accent);
++      background-image: linear-gradient(135deg, rgba(255, 171, 64, 0.85), rgba(78, 52, 46, 0.75)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: 70% center;
++    }
++
++    /* Free-form splash/brush silhouette, only where masks are supported */
++    @supports ((mask-image: none) or (-webkit-mask-image: none)) {
++      .shaped-element {
++        border-radius: 0;
++        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c20-3 31 14 49 18 21 5 44 12 43 36-1 18-17 24-18 40-1 17 14 28 8 46-7 21-30 21-47 28-16 7-24 25-45 22-22-3-26-24-43-33C30 156 5 150 6 125c1-19 20-24 22-41C30 63 10 52 22 34 35 16 62 22 78 14c8-4 15-5 23-6z'/%3E%3Ccircle cx='181' cy='158' r='9'/%3E%3Ccircle cx='15' cy='178' r='6'/%3E%3Ccircle cx='168' cy='184' r='4'/%3E%3C/svg%3E");
++        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c20-3 31 14 49 18 21 5 44 12 43 36-1 18-17 24-18 40-1 17 14 28 8 46-7 21-30 21-47 28-16 7-24 25-45 22-22-3-26-24-43-33C30 156 5 150 6 125c1-19 20-24 22-41C30 63 10 52 22 34 35 16 62 22 78 14c8-4 15-5 23-6z'/%3E%3Ccircle cx='181' cy='158' r='9'/%3E%3Ccircle cx='15' cy='178' r='6'/%3E%3Ccircle cx='168' cy='184' r='4'/%3E%3C/svg%3E");
++        -webkit-mask-size: contain;
++        mask-size: contain;
++        -webkit-mask-repeat: no-repeat;
++        mask-repeat: no-repeat;
++        -webkit-mask-position: center;
++        mask-position: center;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.45;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,8 +220,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

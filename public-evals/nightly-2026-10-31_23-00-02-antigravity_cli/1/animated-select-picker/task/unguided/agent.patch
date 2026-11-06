@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,92 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customizable Select Dropdown */
++    select,
++    ::picker(select) {
++      appearance: base-select;
++    }
++
++    .store-select {
++      margin-top: 15px;
++      padding: 10px 18px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--light);
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      cursor: pointer;
++      min-width: 260px;
++      transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .store-select:hover,
++    .store-select:focus-visible {
++      background: #3e2723;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      outline: none;
++    }
++
++    select::picker-icon {
++      color: var(--accent);
++      transition: rotate 0.3s ease;
++    }
++
++    select:open::picker-icon {
++      rotate: 180deg;
++    }
++
++    ::picker(select) {
++      background: var(--light);
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      padding: 6px;
++      margin-top: 6px;
++      opacity: 0;
++      transition: opacity 0.3s ease, display 0.3s ease allow-discrete, overlay 0.3s ease allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    select:open::picker(select),
++    :open::picker(select) {
++      opacity: 1;
++    }
++
++    @starting-style {
++      select:open::picker(select),
++      :open::picker(select) {
++        opacity: 0;
++      }
++    }
++
++    .store-select option {
++      padding: 10px 14px;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.2s ease, color 0.2s ease;
++    }
++
++    .store-select option:hover,
++    .store-select option:focus {
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .store-select option:checked {
++      background: var(--primary);
++      color: var(--light);
++      font-weight: 600;
++    }
++
++    .store-select option::checkmark {
++      color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,8 +254,15 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <select id="store-select" class="store-select" name="store" aria-label="Choose your store">
++      <option value="">Choose your store</option>
++      <option value="downtown">Downtown Roastery — 123 Main St</option>
++      <option value="westside">Westside Café — 456 Oak Ave</option>
++      <option value="harbor">Harborfront Espresso — 789 Bay Blvd</option>
++      <option value="uptown">Uptown Lounge — 321 Pine Rd</option>
++    </select>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

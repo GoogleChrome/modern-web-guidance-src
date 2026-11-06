@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+index 66c9173..19b900b 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,21 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="location"] {
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="location"] {
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
++    section[id] {
++      scroll-margin-top: var(--nav-height, 80px);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,7 +171,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -175,7 +186,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -207,6 +218,49 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const sectionLinks = Array.from(navigation.querySelectorAll('a[href^="#"]'))
++      .map(link => ({ link, section: document.getElementById(link.hash.slice(1)) }))
++      .filter(({ section }) => section);
++    let updatePending = false;
++
++    function updateActiveSection() {
++      const navBottom = navigation.getBoundingClientRect().bottom;
++      document.documentElement.style.setProperty('--nav-height', `${navBottom + 16}px`);
++      let activeLink = null;
++      let largestVisibleHeight = 0;
++
++      sectionLinks.forEach(({ link, section }) => {
++        const bounds = section.getBoundingClientRect();
++        const visibleHeight = Math.max(0,
++          Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, navBottom));
++        if (visibleHeight > largestVisibleHeight) {
++          largestVisibleHeight = visibleHeight;
++          activeLink = link;
++        }
++      });
++
++      sectionLinks.forEach(({ link }) => {
++        if (link === activeLink) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      });
++      updatePending = false;
++    }
++
++    function scheduleUpdate() {
++      if (updatePending) return;
++      updatePending = true;
++      window.requestAnimationFrame(updateActiveSection);
++    }
++
++    window.addEventListener('scroll', scheduleUpdate, { passive: true });
++    window.addEventListener('resize', scheduleUpdate);
++    window.addEventListener('pageshow', scheduleUpdate);
++    new ResizeObserver(scheduleUpdate).observe(navigation);
++    updateActiveSection();
++  </script>
++
+ </body>
+ 
+ </html>

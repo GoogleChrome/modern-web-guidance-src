@@ -1,0 +1,244 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..ebf55f6 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header class="masthead font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..afa064e 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,20 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  /**
++   * ID of the element that marks the end of the above-the-fold content.
++   * During cross-document view transitions the new page stays
++   * render-blocked (via <link rel="expect" blocking="render">) only until
++   * this element has been parsed, so the transition can start as soon as
++   * the masthead and lead content are ready, without waiting on the footer.
++   * Pages without a dedicated lead story fall back to the end of <main>.
++   */
++  renderBlockUntil?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, renderBlockUntil = "main-content-end" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -34,7 +41,67 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!--
++      Render-blocking until the above-the-fold content is parsed. Stylesheets
++      (header styling) in <head> are render-blocking already; this keeps the
++      first frame (and thus the view transition snapshot) from being taken
++      before the masthead and lead story exist, while not waiting on the
++      rest of the document (e.g. the footer).
++    -->
++    <link rel="expect" href={`#${renderBlockUntil}`} blocking="render" />
++
++    <!--
++      Initial layout / view-transition setup. Classic, synchronous, and
++      explicitly render-blocking so it runs before the first rendering
++      opportunity — required for the `pagereveal` listener to see the
++      incoming view transition.
++    -->
++    <script is:inline blocking="render">
++      (() => {
++        const base = new URL(document.baseURI).origin;
++        const typeFor = (url) => {
++          if (!url) return "page";
++          const path = new URL(url, base).pathname;
++          if (/\/articles\//.test(path)) return "article";
++          if (/\/category\//.test(path)) return "category";
++          return "page";
++        };
++
++        const applyTypes = (transition, from, to, navType) => {
++          if (!transition || !transition.types) return;
++          const fromType = typeFor(from);
++          const toType = typeFor(to);
++          let direction = "forward";
++          if (navType === "traverse") direction = "back";
++          else if (fromType === "article" && toType !== "article") direction = "back";
++          transition.types.add(direction);
++          transition.types.add(`to-${toType}`);
++        };
++
++        // Outgoing page.
++        addEventListener("pageswap", (e) => {
++          if (!e.viewTransition || !e.activation) return;
++          applyTypes(
++            e.viewTransition,
++            location.href,
++            e.activation.entry && e.activation.entry.url,
++            e.activation.navigationType,
++          );
++        });
++
++        // Incoming page.
++        addEventListener("pagereveal", (e) => {
++          if (!e.viewTransition) return;
++          const activation = window.navigation && navigation.activation;
++          applyTypes(
++            e.viewTransition,
++            activation && activation.from && activation.from.url,
++            location.href,
++            activation && activation.navigationType,
++          );
++        });
++      })();
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -47,6 +114,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         </div>
+         <main class="bg-white relative">
+           <slot />
++          <div id="main-content-end" aria-hidden="true"></div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..6c04c77 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} renderBlockUntil="lead-story-end">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+@@ -85,6 +85,8 @@ const isBookmarked = readingList.includes(article.slug);
+                 </figcaption>
+             )}
+         </figure>
++        <!-- End of above-the-fold content: the render-blocking `expect` target -->
++        <div id="lead-story-end" aria-hidden="true"></div>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..06084b1 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" renderBlockUntil="lead-story-end">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -58,6 +58,8 @@ politicsArticles[2] = {
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
++    <!-- End of above-the-fold content: the render-blocking `expect` target -->
++    <div id="lead-story-end" aria-hidden="true"></div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..dbd8da8 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,75 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* -------------------------------------------------------------------------
++ * Cross-document view transitions
++ * ---------------------------------------------------------------------- */
++
++@view-transition {
++  navigation: auto;
++}
++
++/*
++ * Keep the masthead visually stable across navigations. The name is only
++ * applied while a transition is running so the header doesn't become a
++ * permanent stacking context (which would affect its flyout menus).
++ */
++html:active-view-transition .masthead {
++  view-transition-name: masthead;
++}
++
++::view-transition-group(masthead) {
++  animation-duration: 0s;
++}
++
++@keyframes vt-fade-out {
++  to { opacity: 0; }
++}
++@keyframes vt-fade-in {
++  from { opacity: 0; }
++}
++@keyframes vt-slide-out-left {
++  to { transform: translateX(-40px); }
++}
++@keyframes vt-slide-in-right {
++  from { transform: translateX(40px); }
++}
++@keyframes vt-slide-out-right {
++  to { transform: translateX(40px); }
++}
++@keyframes vt-slide-in-left {
++  from { transform: translateX(-40px); }
++}
++
++/* Default: a quick cross-fade with a subtle horizontal slide. */
++::view-transition-old(root) {
++  animation:
++    180ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out,
++    260ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-left;
++}
++::view-transition-new(root) {
++  animation:
++    240ms cubic-bezier(0, 0, 0.2, 1) 60ms both vt-fade-in,
++    260ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-right;
++}
++
++/* Going "back" (history traversal, or leaving an article): reverse direction. */
++html:active-view-transition-type(back)::view-transition-old(root) {
++  animation:
++    180ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out,
++    260ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-right;
++}
++html:active-view-transition-type(back)::view-transition-new(root) {
++  animation:
++    240ms cubic-bezier(0, 0, 0.2, 1) 60ms both vt-fade-in,
++    260ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-in-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

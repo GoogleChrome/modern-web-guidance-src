@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      background: transparent;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn[aria-expanded="true"] {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    /* Popover renders in the top layer, so no z-index/overflow clipping */
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      inset: auto;
++      margin: 4px 0;
++      top: anchor(bottom);
++      left: anchor(left);
++      /* Flip vertically / horizontally when colliding with the viewport */
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 12rem;
++      max-width: calc(100vw - 16px);
++      padding: 6px;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++    }
++
++    #action-panel button {
++      font: inherit;
++      font-size: 0.9rem;
++      text-align: left;
++      color: var(--text);
++      background: transparent;
++      border: 0;
++      padding: 8px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +225,53 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel" aria-expanded="false">Options</button>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" popover>
++    <button type="button" data-action="seasonal-offers">Seasonal Offers</button>
++    <button type="button" data-action="account-settings">Account Settings</button>
++    <button type="button" data-action="support">Support</button>
++  </div>
++
++  <script>
++    (function () {
++      var trigger = document.getElementById('trigger-btn');
++      var panel = document.getElementById('action-panel');
++
++      panel.addEventListener('toggle', function (e) {
++        trigger.setAttribute('aria-expanded', e.newState === 'open');
++        if (e.newState === 'open' && !CSS.supports('anchor-name', '--a')) place();
++      });
++
++      // Fallback for browsers without CSS anchor positioning:
++      // anchor below the trigger's left edge, flipping if it would overflow.
++      function place() {
++        var t = trigger.getBoundingClientRect();
++        var p = panel.getBoundingClientRect();
++        var vw = document.documentElement.clientWidth;
++        var vh = document.documentElement.clientHeight;
++        var gap = 4;
++        var top = t.bottom + gap;
++        var left = t.left;
++        if (top + p.height > vh && t.top - gap - p.height >= 0) top = t.top - gap - p.height;
++        if (left + p.width > vw && t.right - p.width >= 0) left = t.right - p.width;
++        panel.style.top = Math.max(0, top) + 'px';
++        panel.style.left = Math.max(0, left) + 'px';
++      }
++
++      window.addEventListener('resize', function () {
++        if (panel.matches(':popover-open') && !CSS.supports('anchor-name', '--a')) place();
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

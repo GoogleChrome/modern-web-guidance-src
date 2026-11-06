@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -89,11 +89,178 @@
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.5rem;
+     }
+ 
++    .hero > p {
++      margin-bottom: 1.25rem;
++    }
++
++    /* Customizable Select - Rich-Media 3-Column Grid Picker */
++    .roast-picker-group {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .roast-picker-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--secondary);
++    }
++
++    select.roast-select,
++    select.roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    select.roast-select {
++      min-width: 280px;
++      padding: 8px 14px;
++      border-radius: 8px;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      background: rgba(62, 39, 35, 0.85);
++      backdrop-filter: blur(6px);
++      color: white;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: border-color 0.2s, background 0.2s;
++    }
++
++    select.roast-select:hover,
++    select.roast-select:focus-visible {
++      border-color: var(--accent);
++      background: rgba(62, 39, 35, 0.95);
++      outline: none;
++    }
++
++    select.roast-select > button {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      width: 100%;
++      background: none;
++      border: none;
++      color: inherit;
++      font: inherit;
++      padding: 0;
++      cursor: pointer;
++    }
++
++    select.roast-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      text-align: left;
++    }
++
++    select.roast-select selectedcontent img {
++      width: 34px;
++      height: 34px;
++      border-radius: 6px;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    select.roast-select selectedcontent .roast-info {
++      display: flex;
++      flex-direction: column;
++      line-height: 1.2;
++    }
++
++    select.roast-select selectedcontent .roast-name {
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    select.roast-select selectedcontent .roast-desc {
++      font-size: 0.75rem;
++      color: var(--secondary);
++    }
++
++    select.roast-select::picker(select) {
++      grid-template-columns: repeat(3, 1fr);
++      gap: 12px;
++      padding: 14px;
++      margin-top: 8px;
++      width: min(560px, 92vw);
++      background: var(--light);
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
++    }
++
++    select.roast-select:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++    }
++
++    select.roast-select option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: flex-start;
++      text-align: center;
++      gap: 8px;
++      padding: 10px;
++      border: 2px solid #e0d6d2;
++      border-radius: 10px;
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
++    }
++
++    select.roast-select option::checkmark {
++      display: none;
++    }
++
++    select.roast-select option:hover {
++      border-color: var(--accent);
++      transform: translateY(-2px);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++    }
++
++    select.roast-select option:checked {
++      border-color: var(--primary);
++      background: #fbf6f3;
++      box-shadow: 0 4px 14px rgba(78, 52, 46, 0.18);
++    }
++
++    select.roast-select option img {
++      width: 100%;
++      height: 95px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    select.roast-select option .roast-info {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    select.roast-select option .roast-name {
++      font-weight: 700;
++      font-size: 0.95rem;
++      color: var(--primary);
++    }
++
++    select.roast-select option .roast-desc {
++      font-size: 0.78rem;
++      line-height: 1.3;
++      color: #6d4c41;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +337,37 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker-group">
++      <label for="roast-select" class="roast-picker-label">Select Your Roast</label>
++      <select id="roast-select" name="roast" class="roast-select">
++        <button type="button">
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light" selected>
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=300&q=80" alt="Light Roast Coffee">
++          <div class="roast-info">
++            <span class="roast-name">Light Roast</span>
++            <span class="roast-desc">Bright, floral &amp; citrus notes</span>
++          </div>
++        </option>
++        <option value="medium">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=300&q=80" alt="Medium Roast Coffee">
++          <div class="roast-info">
++            <span class="roast-name">Medium Roast</span>
++            <span class="roast-desc">Balanced caramel &amp; nutty finish</span>
++          </div>
++        </option>
++        <option value="dark">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=300&q=80" alt="Dark Roast Coffee">
++          <div class="roast-info">
++            <span class="roast-name">Dark Roast</span>
++            <span class="roast-desc">Bold, smoky &amp; rich dark chocolate</span>
++          </div>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

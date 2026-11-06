@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +84,47 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    .shaped-element {
++      width: 240px;
++      height: 150px;
++      max-width: 100%;
++      margin-bottom: 1.25rem;
++      background: linear-gradient(135deg, rgba(255, 171, 64, 0.85), rgba(78, 52, 46, 0.9)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80') center / cover no-repeat;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 1rem;
++      color: var(--light);
++      font-weight: bold;
++      letter-spacing: 1.5px;
++      text-transform: uppercase;
++      font-size: 0.85rem;
++
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url(#coffee-splash);
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++
++      /* Standard property for modern browsers */
++      mask-image: url(#coffee-splash);
++      mask-size: cover;
++      mask-repeat: no-repeat;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        /* Use a simple rounded rectangle as fallback */
++        clip-path: inset(5% round 15px);
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +203,27 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- White areas reveal content, gray creates semi-transparency, black or transparent hides it -->
++  <svg width="0" height="0" aria-hidden="true">
++    <defs>
++      <!-- objectBoundingBox scales mask coordinates (0 to 1) with the element's size -->
++      <mask id="coffee-splash" maskContentUnits="objectBoundingBox">
++        <!-- Use gray shapes to define semi-transparent/faded organic splash edges -->
++        <path d="M0.06,0.48 C0.02,0.20 0.24,0.04 0.52,0.06 C0.80,0.08 0.96,0.24 0.94,0.52 C0.92,0.80 0.72,0.96 0.44,0.94 C0.16,0.92 0.10,0.76 0.06,0.48 Z" fill="gray" />
++        <circle cx="0.14" cy="0.18" r="0.06" fill="gray" />
++        <circle cx="0.88" cy="0.82" r="0.05" fill="gray" />
++        <!-- Use white shapes to define fully opaque core splash area -->
++        <path d="M0.12,0.50 C0.08,0.26 0.28,0.12 0.52,0.14 C0.76,0.16 0.90,0.30 0.88,0.52 C0.86,0.74 0.68,0.88 0.45,0.86 C0.22,0.84 0.16,0.74 0.12,0.50 Z" fill="white" />
++        <circle cx="0.84" cy="0.20" r="0.04" fill="white" />
++        <circle cx="0.12" cy="0.78" r="0.035" fill="white" />
++      </mask>
++    </defs>
++  </svg>
++
+   <header class="hero">
++    <div class="shaped-element">Small-Batch Roast</div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

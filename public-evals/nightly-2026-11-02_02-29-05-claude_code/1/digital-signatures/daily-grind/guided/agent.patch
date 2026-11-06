@@ -1,0 +1,751 @@
+diff --git a/index.html b/index.html
+index 66c9173..a980cfc 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,197 @@
+       background: #3e2723;
+     }
+ 
++    /* Receipts & Vouchers */
++    .sign-section {
++      margin-top: 60px;
++    }
++
++    .sign-section > h2,
++    .sign-section > .lede {
++      text-align: center;
++    }
++
++    .lede {
++      max-width: 60ch;
++      margin: 0.5rem auto 0;
++    }
++
++    .panel {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .key-panel {
++      margin-top: 20px;
++    }
++
++    .key-panel dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 4px 16px;
++      margin: 10px 0;
++    }
++
++    .key-panel dt {
++      font-weight: bold;
++    }
++
++    .key-panel dd,
++    .mono {
++      font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
++      overflow-wrap: anywhere;
++    }
++
++    .sign-section fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px;
++      margin-bottom: 1rem;
++    }
++
++    .sign-section legend {
++      font-weight: bold;
++      padding: 0 4px;
++    }
++
++    .field {
++      margin-bottom: 1rem;
++    }
++
++    .field label {
++      display: block;
++      margin-bottom: 0.25rem;
++      font-weight: 600;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 32px;
++    }
++
++    .choice small {
++      color: #6d4c41;
++    }
++
++    .sign-section input:not([type="radio"]),
++    .sign-section select,
++    .sign-section textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.6rem;
++      min-height: 44px;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      background: white;
++      color: var(--text);
++    }
++
++    .sign-section textarea.mono {
++      font-size: 0.85rem;
++      min-height: 10rem;
++    }
++
++    .sign-section input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.1rem;
++      height: 1.1rem;
++    }
++
++    .sign-section :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 0.25rem;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      min-height: 44px;
++    }
++
++    button.btn.secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    button.btn.secondary:hover {
++      background: var(--secondary);
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .actions .btn {
++      margin-top: 0;
++    }
++
++    .status {
++      margin-top: 1rem;
++      padding: 12px 14px;
++      border-radius: 6px;
++      border-left: 6px solid transparent;
++    }
++
++    .status:empty {
++      display: none;
++    }
++
++    .status[data-state="ok"] {
++      background: #e8f5e9;
++      border-color: #2e7d32;
++    }
++
++    .status[data-state="warn"] {
++      background: #fff8e1;
++      border-color: #f9a825;
++    }
++
++    .status[data-state="bad"] {
++      background: #ffebee;
++      border-color: #c62828;
++    }
++
++    .status dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 2px 12px;
++      margin-top: 8px;
++    }
++
++    .status dt {
++      font-weight: 600;
++    }
++
++    .output-panel[hidden] {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,6 +354,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#receipts">Receipts &amp; Vouchers</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +387,112 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="receipts" class="sign-section" aria-labelledby="receipts-title">
++      <h2 id="receipts-title">Signed Receipts &amp; Gift Vouchers</h2>
++      <p class="lede">Every receipt and gift voucher we issue is digitally signed right here in your browser, so anyone can
++        check that it really came from us and hasn't been altered.</p>
++
++      <div class="panel key-panel" aria-labelledby="key-title">
++        <h3 id="key-title">Signing key</h3>
++        <form id="key-form">
++          <fieldset>
++            <legend>Signature algorithm</legend>
++            <label class="choice"><input type="radio" name="suite" value="ML-DSA-65"> ML-DSA-65
++              <small>quantum-resistant (FIPS 204)</small></label>
++            <label class="choice"><input type="radio" name="suite" value="Ed25519"> Ed25519
++              <small>classical</small></label>
++            <label class="choice"><input type="radio" name="suite" value="ECDSA-P256"> ECDSA P-256 / SHA-256
++              <small>classical, widest support</small></label>
++          </fieldset>
++          <div class="actions">
++            <button type="submit" class="btn">Generate new key pair</button>
++            <button type="button" class="btn secondary" id="export-key" disabled>Download public key</button>
++          </div>
++        </form>
++        <dl>
++          <dt>Algorithm</dt>
++          <dd id="key-suite">No key yet</dd>
++          <dt>Fingerprint</dt>
++          <dd id="key-fingerprint">—</dd>
++        </dl>
++        <p class="hint">The private key is created as non-extractable and stays in this browser's storage. Generating a
++          new key means documents signed with the old one will no longer be recognised as ours.</p>
++        <div id="key-status" class="status" role="status"></div>
++      </div>
++
++      <div class="grid">
++        <form class="panel" id="receipt-form" aria-labelledby="receipt-title">
++          <h3 id="receipt-title">Issue an order receipt</h3>
++          <div class="field">
++            <label for="receipt-customer">Customer name</label>
++            <input id="receipt-customer" name="customer" autocomplete="name" maxlength="80" required>
++          </div>
++          <div class="field">
++            <label for="receipt-item">Drink</label>
++            <select id="receipt-item" name="item" required>
++              <option value="maple-oat-latte">Maple Oat Latte — $5.75</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso — $3.50</option>
++              <option value="cold-brew">Cold Brew — $4.95</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="receipt-qty">Quantity</label>
++            <input id="receipt-qty" name="quantity" type="text" inputmode="numeric" pattern="[1-9][0-9]?" value="1"
++              aria-describedby="receipt-qty-hint" required>
++            <span id="receipt-qty-hint" class="hint">1–99 cups.</span>
++          </div>
++          <button type="submit" class="btn">Sign receipt</button>
++        </form>
++
++        <form class="panel" id="voucher-form" aria-labelledby="voucher-title">
++          <h3 id="voucher-title">Issue a gift voucher</h3>
++          <div class="field">
++            <label for="voucher-recipient">Recipient name</label>
++            <input id="voucher-recipient" name="recipient" maxlength="80" required>
++          </div>
++          <fieldset>
++            <legend>Amount</legend>
++            <label class="choice"><input type="radio" name="amount" value="10" required> $10</label>
++            <label class="choice"><input type="radio" name="amount" value="25" checked> $25</label>
++            <label class="choice"><input type="radio" name="amount" value="50"> $50</label>
++          </fieldset>
++          <div class="field">
++            <label for="voucher-message">Message <span class="hint">(optional)</span></label>
++            <textarea id="voucher-message" name="message" maxlength="200" rows="2"></textarea>
++          </div>
++          <button type="submit" class="btn">Sign voucher</button>
++        </form>
++      </div>
++
++      <div class="panel output-panel" id="output-panel" hidden aria-labelledby="output-title" style="margin-top: 20px;">
++        <h3 id="output-title">Signed document</h3>
++        <label for="signed-output" class="hint">Share this with the customer. Changing even one character will break the
++          signature.</label>
++        <textarea id="signed-output" class="mono" readonly></textarea>
++        <div class="actions" style="margin-top: 10px;">
++          <button type="button" class="btn" id="download-doc">Download</button>
++          <button type="button" class="btn secondary" id="copy-doc">Copy</button>
++          <button type="button" class="btn secondary" id="send-to-verify">Check it below</button>
++        </div>
++        <div id="output-status" class="status" role="status"></div>
++      </div>
++
++      <form class="panel" id="verify-form" aria-labelledby="verify-title" style="margin-top: 20px;">
++        <h3 id="verify-title">Verify a receipt or voucher</h3>
++        <div class="field">
++          <label for="verify-file">Open a signed file</label>
++          <input id="verify-file" type="file" accept=".json,application/json">
++        </div>
++        <div class="field">
++          <label for="verify-input">…or paste the signed document</label>
++          <textarea id="verify-input" name="document" class="mono" required autocorrect="off" autocapitalize="off"
++            spellcheck="false"></textarea>
++        </div>
++        <button type="submit" class="btn">Verify signature</button>
++        <div id="verify-status" class="status" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +505,427 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Digital signatures for receipts and gift vouchers (WebCrypto).
++    // ML-DSA-65 is preferred; Ed25519 and ECDSA P-256 are classical fallbacks.
++
++    const MENU = {
++      'maple-oat-latte': { name: 'Maple Oat Latte', cents: 575 },
++      'dark-roast-espresso': { name: 'Dark Roast Espresso', cents: 350 },
++      'cold-brew': { name: 'Cold Brew', cents: 495 },
++    };
++
++    // Domain separation: a receipt signature can never be replayed as a voucher.
++    const CONTEXTS = {
++      receipt: 'daily-grind/receipt/v1',
++      voucher: 'daily-grind/voucher/v1',
++    };
++
++    const SUITES = {
++      'ML-DSA-65': {
++        label: 'ML-DSA-65 (quantum-resistant)',
++        keyAlg: 'ML-DSA-65',
++        publicFormat: 'raw-public',
++        nativeContext: true,
++        signAlg: (context) => ({ name: 'ML-DSA-65', context }),
++        supported: () => supportsStatic('sign', 'ML-DSA-65'),
++      },
++      Ed25519: {
++        label: 'Ed25519 (classical)',
++        keyAlg: 'Ed25519',
++        publicFormat: 'raw',
++        nativeContext: false,
++        signAlg: () => 'Ed25519',
++        supported: () => supportsStatic('sign', 'Ed25519') ?? probeGenerate('Ed25519'),
++      },
++      'ECDSA-P256': {
++        label: 'ECDSA P-256 / SHA-256 (classical)',
++        keyAlg: { name: 'ECDSA', namedCurve: 'P-256' },
++        publicFormat: 'raw',
++        nativeContext: false,
++        signAlg: () => ({ name: 'ECDSA', hash: 'SHA-256' }),
++        supported: () => true,
++      },
++    };
++
++    // SubtleCrypto.supports() is static; returns undefined where it doesn't exist yet.
++    function supportsStatic(op, alg) {
++      if (typeof globalThis.SubtleCrypto?.supports !== 'function') return undefined;
++      return SubtleCrypto.supports(op, alg);
++    }
++
++    async function probeGenerate(alg) {
++      try {
++        await crypto.subtle.generateKey(alg, false, ['sign', 'verify']);
++        return true;
++      } catch {
++        return false;
++      }
++    }
++
++    // ---------- encoding helpers ----------
++
++    const encoder = new TextEncoder();
++
++    function toBase64(bytes) {
++      if (typeof bytes.toBase64 === 'function') return bytes.toBase64();
++      let bin = '';
++      for (let i = 0; i < bytes.length; i += 0x8000) {
++        bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
++      }
++      return btoa(bin);
++    }
++
++    function fromBase64(str) {
++      if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(str);
++      return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
++    }
++
++    async function fingerprint(publicKeyBytes) {
++      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', publicKeyBytes));
++      return Array.from(digest.subarray(0, 16), (b) => b.toString(16).padStart(2, '0'))
++        .join('')
++        .match(/.{4}/g)
++        .join(':');
++    }
++
++    function randomId(prefix, bytes = 6) {
++      const raw = crypto.getRandomValues(new Uint8Array(bytes));
++      return prefix + '-' + Array.from(raw, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
++    }
++
++    // Classical algorithms ignore `context`, so frame it into the message instead.
++    function frameWithContext(payloadBytes, contextBytes) {
++      const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++      framed[0] = contextBytes.byteLength;
++      framed.set(contextBytes, 1);
++      framed.set(payloadBytes, 1 + contextBytes.byteLength);
++      return framed;
++    }
++
++    // ---------- sign / verify ----------
++
++    async function signDocument(signer, type, fields) {
++      const suite = SUITES[signer.suite];
++      const payload = JSON.stringify({ type, ...fields });
++      const payloadBytes = encoder.encode(payload);
++      const contextBytes = encoder.encode(CONTEXTS[type]);
++      const message = suite.nativeContext ? payloadBytes : frameWithContext(payloadBytes, contextBytes);
++      const signature = new Uint8Array(
++        await crypto.subtle.sign(suite.signAlg(contextBytes), signer.keyPair.privateKey, message),
++      );
++      // The payload is kept as the exact signed string so no re-serialisation is needed to verify.
++      return {
++        format: 'daily-grind-signed/v1',
++        type,
++        alg: signer.suite,
++        publicKey: toBase64(signer.publicKeyBytes),
++        payload,
++        signature: toBase64(signature),
++      };
++    }
++
++    async function verifyDocument(doc) {
++      if (doc?.format !== 'daily-grind-signed/v1') throw new Error('Not a Daily Grind signed document.');
++      if (!Object.hasOwn(CONTEXTS, doc.type)) throw new Error('Unknown document type.');
++      if (!Object.hasOwn(SUITES, doc.alg)) throw new Error(`Unsupported algorithm "${doc.alg}".`);
++      if (typeof doc.payload !== 'string') throw new Error('Missing payload.');
++
++      const suite = SUITES[doc.alg];
++      const publicKeyBytes = fromBase64(doc.publicKey);
++      const signature = fromBase64(doc.signature);
++      const publicKey = await crypto.subtle.importKey(
++        suite.publicFormat, publicKeyBytes, suite.keyAlg, false, ['verify'],
++      );
++      const payloadBytes = encoder.encode(doc.payload);
++      const contextBytes = encoder.encode(CONTEXTS[doc.type]);
++      const message = suite.nativeContext ? payloadBytes : frameWithContext(payloadBytes, contextBytes);
++      const valid = await crypto.subtle.verify(suite.signAlg(contextBytes), publicKey, signature, message);
++
++      let data = null;
++      if (valid) {
++        data = JSON.parse(doc.payload);
++        // The signed type must agree with the unsigned envelope type.
++        if (data.type !== doc.type) return { valid: false };
++      }
++      return { valid, data, fingerprint: await fingerprint(publicKeyBytes) };
++    }
++
++    // ---------- key storage (IndexedDB keeps the non-extractable CryptoKey) ----------
++
++    function keyStore(mode, action) {
++      return new Promise((resolve, reject) => {
++        const open = indexedDB.open('daily-grind-signing', 1);
++        open.onupgradeneeded = () => open.result.createObjectStore('keys');
++        open.onerror = () => reject(open.error);
++        open.onsuccess = () => {
++          const db = open.result;
++          const tx = db.transaction('keys', mode);
++          const request = action(tx.objectStore('keys'));
++          tx.oncomplete = () => {
++            db.close();
++            resolve(request.result);
++          };
++          tx.onerror = () => reject(tx.error);
++        };
++      });
++    }
++
++    const loadSigner = () => keyStore('readonly', (store) => store.get('issuer'));
++    const saveSigner = (signer) => keyStore('readwrite', (store) => store.put(signer, 'issuer'));
++
++    async function createSigner(suiteName) {
++      const suite = SUITES[suiteName];
++      const keyPair = await crypto.subtle.generateKey(suite.keyAlg, false, ['sign', 'verify']);
++      const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey(suite.publicFormat, keyPair.publicKey));
++      return { suite: suiteName, keyPair, publicKeyBytes, fingerprint: await fingerprint(publicKeyBytes) };
++    }
++
++    // ---------- UI ----------
++
++    const $ = (id) => document.getElementById(id);
++    const keyForm = $('key-form');
++    const outputPanel = $('output-panel');
++    const signedOutput = $('signed-output');
++    const verifyInput = $('verify-input');
++    let signer = null;
++
++    function setStatus(el, state, heading, rows = []) {
++      el.replaceChildren();
++      if (!heading) return;
++      el.dataset.state = state;
++      const strong = document.createElement('strong');
++      strong.textContent = heading;
++      el.append(strong);
++      if (rows.length) {
++        const dl = document.createElement('dl');
++        for (const [term, value] of rows) {
++          const dt = document.createElement('dt');
++          const dd = document.createElement('dd');
++          dt.textContent = term;
++          dd.textContent = value;
++          dl.append(dt, dd);
++        }
++        el.append(dl);
++      }
++    }
++
++    function showSigner() {
++      $('key-suite').textContent = signer ? SUITES[signer.suite].label : 'No key yet';
++      $('key-fingerprint').textContent = signer ? signer.fingerprint : '—';
++      $('export-key').disabled = !signer;
++      if (signer) keyForm.elements.suite.value = signer.suite;
++    }
++
++    function money(cents) {
++      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++    }
++
++    function dateTime(iso) {
++      return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
++    }
++
++    function describe(data) {
++      if (data.type === 'receipt') {
++        return [
++          ['Order', data.orderId],
++          ['Customer', data.customer],
++          ['Item', `${data.quantity} × ${data.item} @ ${money(data.unitCents)}`],
++          ['Total', money(data.totalCents)],
++          ['Issued', dateTime(data.issuedAt)],
++        ];
++      }
++      const rows = [
++        ['Voucher code', data.code],
++        ['Recipient', data.recipient],
++        ['Value', money(data.amountCents)],
++        ['Issued', dateTime(data.issuedAt)],
++        ['Expires', dateTime(data.expiresAt)],
++      ];
++      if (data.message) rows.push(['Message', data.message]);
++      return rows;
++    }
++
++    function download(filename, text) {
++      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
++      const a = document.createElement('a');
++      a.href = url;
++      a.download = filename;
++      a.click();
++      setTimeout(() => URL.revokeObjectURL(url), 0);
++    }
++
++    async function init() {
++      const support = await Promise.all(
++        Object.entries(SUITES).map(async ([name, suite]) => [name, await suite.supported()]),
++      );
++      for (const [name, ok] of support) {
++        const radio = keyForm.querySelector(`input[name="suite"][value="${name}"]`);
++        radio.disabled = !ok;
++        if (!ok) radio.closest('label').querySelector('small').textContent = 'not supported in this browser';
++      }
++      const best = support.find(([, ok]) => ok)?.[0];
++      keyForm.elements.suite.value = best;
++
++      try {
++        signer = (await loadSigner()) ?? null;
++      } catch {
++        signer = null; // Storage unavailable (e.g. private mode); keys will be session-only.
++      }
++      if (signer && !support.find(([name, ok]) => name === signer.suite && ok)) signer = null;
++      showSigner();
++    }
++
++    keyForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const suiteName = keyForm.elements.suite.value;
++      if (signer && !confirm('Replace the current signing key? Documents signed with it will no longer be recognised.')) {
++        return;
++      }
++      const button = event.submitter;
++      button.disabled = true;
++      try {
++        signer = await createSigner(suiteName);
++        try {
++          await saveSigner(signer);
++          setStatus($('key-status'), 'ok', `New ${SUITES[suiteName].label} key pair generated and saved.`);
++        } catch {
++          setStatus($('key-status'), 'warn', 'Key generated, but it could not be saved and will be lost on reload.');
++        }
++        showSigner();
++      } catch (err) {
++        setStatus($('key-status'), 'bad', `Could not generate key: ${err.message}`);
++      } finally {
++        button.disabled = false;
++      }
++    });
++
++    $('export-key').addEventListener('click', () => {
++      download(`daily-grind-public-key-${signer.suite}.json`, JSON.stringify({
++        alg: signer.suite,
++        publicKey: toBase64(signer.publicKeyBytes),
++        fingerprint: signer.fingerprint,
++      }, null, 2));
++    });
++
++    async function issue(event, type, buildFields) {
++      event.preventDefault();
++      const form = event.currentTarget;
++      if (!signer) {
++        outputPanel.hidden = true;
++        setStatus($('key-status'), 'warn', 'Generate a signing key first.');
++        $('key-status').scrollIntoView({ block: 'center' });
++        return;
++      }
++      const button = event.submitter;
++      button.disabled = true;
++      try {
++        const doc = await signDocument(signer, type, buildFields(new FormData(form)));
++        signedOutput.value = JSON.stringify(doc, null, 2);
++        signedOutput.dataset.filename = `${JSON.parse(doc.payload)[type === 'receipt' ? 'orderId' : 'code']}.json`;
++        outputPanel.hidden = false;
++        setStatus($('output-status'), 'ok', `${type === 'receipt' ? 'Receipt' : 'Voucher'} signed with ${SUITES[signer.suite].label}.`,
++          describe(JSON.parse(doc.payload)));
++        form.reset();
++        outputPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
++      } catch (err) {
++        outputPanel.hidden = false;
++        setStatus($('output-status'), 'bad', `Signing failed: ${err.message}`);
++      } finally {
++        button.disabled = false;
++      }
++    }
++
++    $('receipt-form').addEventListener('submit', (event) => issue(event, 'receipt', (data) => {
++      const item = MENU[data.get('item')];
++      const quantity = Number(data.get('quantity'));
++      return {
++        orderId: randomId('ORD'),
++        customer: data.get('customer').trim(),
++        item: item.name,
++        quantity,
++        unitCents: item.cents,
++        totalCents: item.cents * quantity,
++        issuedAt: new Date().toISOString(),
++      };
++    }));
++
++    $('voucher-form').addEventListener('submit', (event) => issue(event, 'voucher', (data) => {
++      const issued = new Date();
++      const expires = new Date(issued);
++      expires.setFullYear(expires.getFullYear() + 1);
++      return {
++        code: randomId('GIFT', 8),
++        recipient: data.get('recipient').trim(),
++        amountCents: Number(data.get('amount')) * 100,
++        message: data.get('message').trim(),
++        issuedAt: issued.toISOString(),
++        expiresAt: expires.toISOString(),
++      };
++    }));
++
++    $('download-doc').addEventListener('click', () => {
++      download(signedOutput.dataset.filename, signedOutput.value);
++    });
++
++    $('copy-doc').addEventListener('click', async () => {
++      try {
++        await navigator.clipboard.writeText(signedOutput.value);
++        setStatus($('output-status'), 'ok', 'Copied to clipboard.');
++      } catch {
++        signedOutput.select();
++        setStatus($('output-status'), 'warn', 'Clipboard unavailable — the text is selected, copy it manually.');
++      }
++    });
++
++    $('send-to-verify').addEventListener('click', () => {
++      verifyInput.value = signedOutput.value;
++      setStatus($('verify-status'));
++      verifyInput.focus();
++    });
++
++    $('verify-file').addEventListener('change', async (event) => {
++      const file = event.target.files[0];
++      if (file) verifyInput.value = await file.text();
++    });
++
++    verifyInput.addEventListener('input', () => setStatus($('verify-status')));
++
++    $('verify-form').addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const status = $('verify-status');
++      let doc;
++      try {
++        doc = JSON.parse(verifyInput.value);
++      } catch {
++        setStatus(status, 'bad', '✗ This is not valid JSON.');
++        return;
++      }
++      try {
++        const result = await verifyDocument(doc);
++        if (!result.valid) {
++          setStatus(status, 'bad', '✗ Invalid signature — this document has been altered or was not signed by this key.');
++          return;
++        }
++        const rows = [...describe(result.data), ['Algorithm', SUITES[doc.alg].label], ['Signer', result.fingerprint]];
++        const expired = result.data.type === 'voucher' && new Date(result.data.expiresAt) < new Date();
++        if (!signer || result.fingerprint !== signer.fingerprint) {
++          setStatus(status, 'warn',
++            '⚠ The signature is mathematically valid, but it was made with a key that is not The Daily Grind\'s. Do not accept it.',
++            rows);
++        } else if (expired) {
++          setStatus(status, 'warn', '⚠ Authentic voucher, but it has expired.', rows);
++        } else {
++          setStatus(status, 'ok', `✓ Authentic ${result.data.type} — signed by The Daily Grind and unaltered.`, rows);
++        }
++      } catch (err) {
++        setStatus(status, 'bad', `✗ Could not verify: ${err.message}`);
++      }
++    });
++
++    init();
++  </script>
++
+ </body>
+ 
+ </html>

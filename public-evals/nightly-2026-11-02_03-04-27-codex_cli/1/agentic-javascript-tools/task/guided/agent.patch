@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -176,9 +176,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="menu-items">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +206,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    let menuToolController;
++
++    async function registerMenuTool() {
++      if (!document.modelContext?.registerTool || menuToolController) return;
++
++      const controller = new AbortController();
++      menuToolController = controller;
++
++      try {
++        await document.modelContext.registerTool({
++          name: 'get_menu_item',
++          description: 'Look up a coffee menu item and return its name, description, and details link. Use when someone asks about a drink on the menu.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemName: {
++                type: 'string',
++                description: 'The menu item to look up. Matching ignores capitalization and surrounding whitespace.',
++                minLength: 1,
++                examples: ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']
++              }
++            },
++            required: ['itemName'],
++            additionalProperties: false
++          },
++          execute(input) {
++            if (!input || typeof input.itemName !== 'string' || !input.itemName.trim()) {
++              return { error: 'Provide a non-empty itemName to look up a menu item.' };
++            }
++
++            const items = Array.from(document.querySelectorAll('#menu-items .card'), (card) => ({
++              name: card.querySelector('h3').textContent.trim(),
++              description: card.querySelector('p').textContent.trim(),
++              detailsUrl: card.querySelector('a').href
++            }));
++            const name = input.itemName.trim().toLowerCase();
++            const item = items.find((entry) => entry.name.toLowerCase() === name);
++
++            return item ?? {
++              error: `Menu item "${input.itemName.trim()}" not found.`,
++              availableItems: items.map((entry) => entry.name)
++            };
++          },
++          annotations: { readOnlyHint: true }
++        }, { signal: controller.signal });
++      } catch (error) {
++        if (menuToolController === controller) menuToolController = undefined;
++        if (!controller.signal.aborted) {
++          console.warn('Could not register the menu lookup tool.', error);
++        }
++      }
++    }
++
++    window.addEventListener('pagehide', () => {
++      menuToolController?.abort();
++      menuToolController = undefined;
++    });
++    // A cached page keeps its scripts; register again when it is restored.
++    window.addEventListener('pageshow', registerMenuTool);
++    registerMenuTool();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,98 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .roasting-section {
++      margin-top: 40px;
++    }
++
++    .video-panel {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
++    }
++
++    .video-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 16px 20px;
++      text-align: left;
++    }
++
++    .video-toolbar p {
++      color: var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    .theater-toggle {
++      border: 1px solid var(--accent);
++      background: transparent;
++      color: white;
++      border-radius: 5px;
++      padding: 10px 16px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .theater-toggle:hover,
++    .theater-toggle[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .theater-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .video-frame {
++      position: relative;
++      height: 0;
++      padding-bottom: 56.25%;
++      background: #000;
++    }
++
++    .video-frame iframe {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .hero.is-theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero-video-slot {
++      width: 100%;
++      max-width: 960px;
++      margin-top: 28px;
++    }
++
++    .hero-video-slot[hidden] {
++      display: none;
++    }
++
++    /* Keep the original ancestor visible in the legacy positioning fallback. */
++    .roasting-section.is-theater {
++      margin-top: 0;
++    }
++
++    .video-panel.is-positioned {
++      position: absolute;
++      z-index: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -171,8 +261,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div id="hero-video-slot" class="hero-video-slot" hidden></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +285,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="roasting-section" aria-label="Coffee roasting video">
++      <div id="video-home">
++        <div id="roasting-player" class="video-panel">
++          <div class="video-toolbar">
++            <div>
++              <h2>From Bean to Roast</h2>
++              <p>Coffee Roasting Explained · James Hoffmann</p>
++            </div>
++            <button id="theater-toggle" class="theater-toggle" type="button"
++              aria-pressed="false" aria-controls="roasting-player" hidden>Theater mode</button>
++          </div>
++          <div class="video-frame">
++            <iframe id="roasting-video" src="https://www.youtube.com/embed/N6BJVM5tvnw"
++              title="Coffee Roasting Explained by James Hoffmann"
++              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const hero = document.querySelector('.hero');
++      const heroSlot = document.getElementById('hero-video-slot');
++      const home = document.getElementById('video-home');
++      const section = document.querySelector('.roasting-section');
++      const player = document.getElementById('roasting-player');
++      const toggle = document.getElementById('theater-toggle');
++      const canMove = typeof heroSlot.moveBefore === 'function';
++      let theater = false;
++      let pendingFrame = null;
++
++      function positionLegacyPlayer() {
++        if (canMove || !theater) return;
++        const bounds = heroSlot.getBoundingClientRect();
++        player.style.left = `${bounds.left + window.scrollX}px`;
++        player.style.top = `${bounds.top + window.scrollY}px`;
++        player.style.width = `${bounds.width}px`;
++        const height = `${player.getBoundingClientRect().height}px`;
++        if (heroSlot.style.height !== height) heroSlot.style.height = height;
++      }
++
++      function schedulePosition() {
++        if (pendingFrame !== null) return;
++        pendingFrame = requestAnimationFrame(() => {
++          pendingFrame = null;
++          positionLegacyPlayer();
++        });
++      }
++
++      toggle.hidden = false;
++      toggle.addEventListener('click', () => {
++        theater = !theater;
++        heroSlot.hidden = !theater;
++        hero.classList.toggle('is-theater', theater);
++        section.classList.toggle('is-theater', theater);
++
++        if (canMove) {
++          // Atomic moves preserve the iframe's browsing context and playback.
++          // Moving its wrapper also keeps the toggle alongside the video.
++          const destination = theater ? heroSlot : home;
++          destination.moveBefore(player, null);
++        } else {
++          // appendChild/insertBefore would reload the iframe. Leave it attached
++          // to its original parent and position it over the hero's reserved slot.
++          player.classList.toggle('is-positioned', theater);
++          if (!theater) {
++            player.style.removeProperty('left');
++            player.style.removeProperty('top');
++            player.style.removeProperty('width');
++            heroSlot.style.removeProperty('height');
++          }
++        }
++
++        toggle.setAttribute('aria-pressed', String(theater));
++        toggle.textContent = theater ? 'Exit theater mode' : 'Theater mode';
++        positionLegacyPlayer();
++        // Keep the relocated control and player in view in either direction.
++        player.scrollIntoView({ block: 'nearest', behavior: 'instant' });
++      });
++
++      if (!canMove) {
++        window.addEventListener('resize', schedulePosition);
++        window.addEventListener('scroll', schedulePosition, { passive: true });
++        window.addEventListener('load', schedulePosition);
++        if (typeof ResizeObserver === 'function') {
++          const observer = new ResizeObserver(schedulePosition);
++          observer.observe(document.body);
++          observer.observe(heroSlot);
++          observer.observe(player);
++        }
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

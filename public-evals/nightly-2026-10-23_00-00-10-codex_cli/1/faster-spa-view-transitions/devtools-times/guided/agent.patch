@@ -1,0 +1,158 @@
+diff --git a/README.md b/README.md
+index 4479b53..16b1f0f 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,20 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Cached navigation views
++
++The shared layout retains up to five recently visited content views in a
++`transition:persist` main element. Returning to a cached path and query string
++reuses its existing DOM and hydrated islands. Inactive views are hidden and inert,
++and the least recently used views are removed when the cache is full. Hash links
++remain within the same view, and Astro continues to manage history, scroll
++restoration, page titles, and document assets.
++
++Navigation still requests the destination document so the surrounding layout and
++head stay current; this cache saves rebuilding the content view. Cached content
++lasts until eviction or a full reload. Use `cacheView={false}` on `Layout` for
++views that should always be fresh, as the sign-in and sign-up pages do.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..04645d4 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +36,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +49,10 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-cache transition:persist="view-cache">
++          <div data-view data-cacheable={cacheView ? "true" : "false"}>
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..260e716
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,62 @@
++// Retain live view nodes inside Astro's persistent main element. Keeping them
++// connected also prevents Astro from unmounting their hydrated React islands.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const viewKey = (url: URL) => url.pathname + url.search;
++
++document.addEventListener("astro:before-swap", (event) => {
++  const container = document.querySelector<HTMLElement>("main[data-view-cache]");
++  const incoming = event.newDocument.querySelector<HTMLElement>(
++    "main[data-view-cache] > [data-view]",
++  );
++
++  // Pages outside the shared layout retain Astro's normal navigation behavior.
++  if (!container || !incoming) {
++    views.clear();
++    return;
++  }
++
++  const swap = event.swap;
++  event.swap = () => {
++    if (event.signal.aborted) return;
++
++    const outgoing = container.querySelector<HTMLElement>(
++      ":scope > [data-view]:not([hidden])",
++    );
++    const fromKey = viewKey(event.from);
++    const toKey = viewKey(event.to);
++
++    if (outgoing) {
++      if (outgoing.dataset.cacheable === "true") {
++        views.delete(fromKey);
++        views.set(fromKey, outgoing);
++        outgoing.hidden = true;
++        outgoing.inert = true;
++      } else {
++        outgoing.remove();
++      }
++    }
++
++    // Non-cacheable destinations always use fresh server content.
++    const cached = incoming.dataset.cacheable === "true" ? views.get(toKey) : undefined;
++    const next = cached ?? incoming;
++
++    // Preserve Astro's head/script handling and its feature-detected atomic
++    // moves for transition:persist. Update content before scroll restoration.
++    swap();
++    if (!cached) container.appendChild(next);
++    next.hidden = false;
++    next.inert = false;
++
++    views.delete(toKey);
++    if (next.dataset.cacheable === "true") views.set(toKey, next);
++
++    // Map insertion order provides least-recently-used eviction. Remove nodes
++    // before astro:after-swap so Astro can clean up evicted React islands.
++    while (views.size > MAX_VIEWS) {
++      const oldestKey = views.keys().next().value!;
++      views.get(oldestKey)!.remove();
++      views.delete(oldestKey);
++    }
++  };
++});

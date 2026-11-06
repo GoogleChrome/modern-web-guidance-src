@@ -1,0 +1,295 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..22118f8 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,22 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface TranslatorOptions {
++    sourceLanguage: string;
++    targetLanguage: string;
++    monitor?: (m: any) => void;
++  }
++
++  interface TranslatorInstance {
++    translate(text: string): Promise<string>;
++    destroy(): void;
++  }
++
++  const Translator: {
++    availability(options: TranslatorOptions): Promise<'available' | 'downloadable' | 'downloading' | 'unavailable'>;
++    create(options: TranslatorOptions): Promise<TranslatorInstance>;
++  };
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..5022bad 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,10 +22,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 data-translatable class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p data-translatable class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -66,10 +66,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 data-translatable class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p data-translatable class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..ce5b15d 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -2,6 +2,7 @@
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
++import TranslateControl from "./TranslateControl.tsx";
+ import BottomNav from "./BottomNav.tsx";
+ 
+ const articles = await getCollection("articles");
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <TranslateControl client:load />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..e9b9283 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -39,11 +39,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 data-translatable class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p data-translatable class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+@@ -78,12 +78,12 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 data-translatable class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                             <p data-translatable class="text-gray-700 mb-4 flex-grow">
+                                 {article.data.summary}
+                             </p>
+                         )}
+diff --git a/src/components/TranslateControl.tsx b/src/components/TranslateControl.tsx
+new file mode 100644
+index 0000000..8775f21
+--- /dev/null
++++ b/src/components/TranslateControl.tsx
+@@ -0,0 +1,149 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++
++const SOURCE_LANGUAGE = 'en';
++const TARGET_LANGUAGES = [
++  'ar', 'bn', 'zh', 'zh-Hant', 'cs', 'da', 'nl', 'fi', 'fr', 'de', 'el', 'he', 'hi', 'hu', 'id',
++  'it', 'ja', 'ko', 'no', 'pl', 'pt', 'ro', 'ru', 'es', 'sv', 'th', 'tr', 'uk', 'vi',
++];
++const SELECTOR = '[data-translatable]';
++
++type Status = 'idle' | 'checking' | 'downloading' | 'translating' | 'done' | 'unavailable' | 'error';
++
++// Original text of every text node we touched, so translation can be reverted or redone from the source.
++const originals = new Map<Text, string>();
++const originalLangs = new Map<Element, string | null>();
++
++function getTextNodes(): Text[] {
++  const nodes: Text[] = [];
++  document.querySelectorAll(SELECTOR).forEach((root) => {
++    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
++    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++      if (n.textContent?.trim()) nodes.push(n as Text);
++    }
++  });
++  return nodes;
++}
++
++function restore() {
++  originals.forEach((text, node) => {
++    node.textContent = text;
++  });
++  originals.clear();
++  originalLangs.forEach((lang, el) => {
++    if (lang === null) el.removeAttribute('lang');
++    else el.setAttribute('lang', lang);
++  });
++  originalLangs.clear();
++}
++
++export default function TranslateControl() {
++  const [supported, setSupported] = useState(false);
++  const [target, setTarget] = useState('');
++  const [status, setStatus] = useState<Status>('idle');
++  const [progress, setProgress] = useState(0);
++  const [names, setNames] = useState<Intl.DisplayNames | null>(null);
++  const runId = useRef(0);
++
++  useEffect(() => {
++    setSupported('Translator' in self);
++    setNames(new Intl.DisplayNames(navigator.languages, { type: 'language' }));
++    // The header is re-rendered on every navigation, so nothing is translated on a fresh page.
++    return () => {
++      runId.current++;
++      originals.clear();
++      originalLangs.clear();
++    };
++  }, []);
++
++  const translate = async (language: string) => {
++    const id = ++runId.current;
++    setTarget(language);
++    setProgress(0);
++
++    if (!language) {
++      restore();
++      setStatus('idle');
++      return;
++    }
++
++    try {
++      const options = { sourceLanguage: SOURCE_LANGUAGE, targetLanguage: language };
++      setStatus('checking');
++      const availability = await Translator.availability(options);
++      if (id !== runId.current) return;
++      if (availability === 'unavailable') {
++        setStatus('unavailable');
++        return;
++      }
++
++      // create() runs inside the click/change gesture handler's async chain; downloads need that user activation.
++      if (availability !== 'available') setStatus('downloading');
++      const translator = await Translator.create({
++        ...options,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => setProgress(e.loaded));
++        },
++      });
++      if (id !== runId.current) {
++        translator.destroy();
++        return;
++      }
++
++      setStatus('translating');
++      for (const node of getTextNodes()) {
++        if (!originals.has(node)) originals.set(node, node.textContent ?? '');
++        const parent = node.parentElement?.closest(SELECTOR);
++        if (parent && !originalLangs.has(parent)) originalLangs.set(parent, parent.getAttribute('lang'));
++        const result = await translator.translate(originals.get(node)!);
++        if (id !== runId.current) {
++          translator.destroy();
++          return;
++        }
++        node.textContent = result;
++        parent?.setAttribute('lang', language);
++      }
++      translator.destroy();
++      setStatus('done');
++    } catch (error) {
++      if (id !== runId.current) return;
++      console.error('Translation failed', error);
++      restore();
++      setStatus('error');
++    }
++  };
++
++  if (!supported) return null;
++
++  const busy = status === 'checking' || status === 'downloading' || status === 'translating';
++
++  return (
++    <div className="flex items-center gap-1 text-xs text-gray-700">
++      <label htmlFor="translate-language" className="flex items-center gap-1">
++        <LanguageIcon className="h-5 w-5" aria-hidden="true" />
++        <span className="sr-only sm:not-sr-only">Translate</span>
++      </label>
++      <select
++        id="translate-language"
++        value={target}
++        onChange={(e) => translate(e.target.value)}
++        className="rounded border border-gray-300 bg-white px-1 py-1 max-w-32"
++      >
++        <option value="">Original (English)</option>
++        {TARGET_LANGUAGES.map((code) => (
++          <option key={code} value={code}>
++            {names?.of(code) ?? code}
++          </option>
++        ))}
++      </select>
++      <span role="status" aria-live="polite" className="text-gray-500 hidden md:inline">
++        {status === 'checking' && 'Checking…'}
++        {status === 'downloading' && `Downloading language pack… ${Math.round(progress * 100)}%`}
++        {status === 'translating' && 'Translating…'}
++        {status === 'unavailable' && 'This language pair isn’t available on your device.'}
++        {status === 'error' && 'Translation failed.'}
++      </span>
++      {busy && <span className="sr-only">Working</span>}
++    </div>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..b5928d4 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -43,12 +43,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translatable class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translatable class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -105,7 +105,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div data-translatable class="prose max-w-none">
+             <Content />
+         </div>
+ 

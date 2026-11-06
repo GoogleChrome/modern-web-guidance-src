@@ -1,0 +1,1141 @@
+diff --git a/index.html b/index.html
+index 66c9173..c41255d 100644
+--- a/index.html
++++ b/index.html
+@@ -5,152 +5,491 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="style.css">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /* ==========================================================================
++       1. Cascade Layer Definition
++       ========================================================================== */
++    @layer reset, tokens, base, layout, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    /* ==========================================================================
++       2. Design Tokens Layer
++       ========================================================================== */
++    @layer tokens {
++      :root {
++        /* Color Primitives (Warm Artisanal Palette) */
++        --color-espresso-950: #1a0f0b;
++        --color-espresso-900: #291811;
++        --color-espresso-800: #3e2723;
++        --color-espresso-700: #4e342e;
++        --color-espresso-600: #6d4c41;
++        --color-caramel-400: #d7ccc8;
++        --color-caramel-300: #efebe9;
++        --color-caramel-200: #f5f0ed;
++        --color-amber-400: #ffb74d;
++        --color-amber-500: #ffab40;
++        --color-amber-600: #ff9100;
++        --color-amber-700: #e65100;
++        --color-neutral-50: #fafafa;
++        --color-neutral-100: #f5f5f5;
++        --color-neutral-200: #eeeeee;
++        --color-neutral-900: #212121;
++        --color-white: #ffffff;
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        /* Semantic Color Tokens */
++        --color-primary: var(--color-espresso-700);
++        --color-primary-hover: var(--color-espresso-800);
++        --color-primary-active: var(--color-espresso-950);
++        --color-secondary: var(--color-caramel-400);
++        --color-secondary-subtle: var(--color-caramel-300);
++        --color-accent: var(--color-amber-500);
++        --color-accent-hover: var(--color-amber-600);
++        --color-accent-active: var(--color-amber-700);
++        --color-background: var(--color-neutral-50);
++        --color-surface: var(--color-white);
++        --color-surface-elevated: var(--color-white);
++        --color-surface-hover: #fdfbf9;
++        --color-text: var(--color-espresso-800);
++        --color-text-muted: #6d5b54;
++        --color-text-inverse: var(--color-white);
++        --color-border: rgba(78, 52, 46, 0.12);
++        --color-border-hover: rgba(78, 52, 46, 0.28);
++        --color-focus-ring: var(--color-amber-600);
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        /* Typography Tokens */
++        --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++        --font-family-serif: 'Georgia', Cambria, 'Times New Roman', serif;
++        --font-size-xs: 0.75rem;
++        --font-size-sm: 0.875rem;
++        --font-size-base: 1rem;
++        --font-size-lg: 1.125rem;
++        --font-size-xl: 1.25rem;
++        --font-size-2xl: 1.75rem;
++        --font-size-3xl: clamp(2rem, 4vw + 1rem, 3.25rem);
++        --font-weight-regular: 400;
++        --font-weight-medium: 500;
++        --font-weight-bold: 700;
++        --line-height-tight: 1.2;
++        --line-height-normal: 1.6;
++        --line-height-relaxed: 1.75;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        /* Spacing Tokens */
++        --space-1: 0.25rem;
++        --space-2: 0.5rem;
++        --space-3: 0.75rem;
++        --space-4: 1rem;
++        --space-5: 1.25rem;
++        --space-6: 1.5rem;
++        --space-8: 2rem;
++        --space-10: 2.5rem;
++        --space-12: 3rem;
++        --space-16: 4rem;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Border Radius Tokens */
++        --radius-sm: 0.25rem;
++        --radius-md: 0.5rem;
++        --radius-lg: 0.75rem;
++        --radius-xl: 1rem;
++        --radius-full: 9999px;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        /* Elevation / Box Shadow Tokens */
++        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
++        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
++        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
++        --shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.12), 0 10px 10px rgba(0, 0, 0, 0.08);
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        /* Transition / Motion Tokens */
++        --transition-duration-fast: 150ms;
++        --transition-duration-base: 250ms;
++        --transition-duration-slow: 400ms;
++        --transition-timing-standard: cubic-bezier(0.4, 0, 0.2, 1);
++        --transition-base: var(--transition-duration-base) var(--transition-timing-standard);
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        /* Layout Tokens */
++        --container-max-width: 1100px;
++        --header-height: 4.5rem;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      /* Adaptive Dark Mode Scheme */
++      @media (prefers-color-scheme: dark) {
++        :root {
++          --color-background: #171210;
++          --color-surface: #241c19;
++          --color-surface-elevated: #2e2421;
++          --color-surface-hover: #382d29;
++          --color-text: #f5ece8;
++          --color-text-muted: #c4b5ae;
++          --color-border: rgba(215, 204, 200, 0.16);
++          --color-secondary: #3e2e28;
++          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
++          --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
++          --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
++          --shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.7);
++        }
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    /* ==========================================================================
++       3. Reset Layer (Zero-specificity baseline with :where)
++       ========================================================================== */
++    @layer reset {
++      :where(*, *::before, *::after) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++      :where(html) {
++        -webkit-text-size-adjust: none;
++        text-size-adjust: none;
++        scroll-behavior: smooth;
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      :where(body) {
++        min-block-size: 100vh;
++        line-height: var(--line-height-normal);
++        -webkit-font-smoothing: antialiased;
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      :where(img, picture, video, canvas, svg) {
++        display: block;
++        max-inline-size: 100%;
++        block-size: auto;
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++      :where(input, button, textarea, select) {
++        font: inherit;
++        color: inherit;
++      }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      :where(ul, ol) {
++        list-style: none;
++      }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++    /* ==========================================================================
++       4. Base Layer (Global typography and accessibility defaults)
++       ========================================================================== */
++    @layer base {
++      body {
++        font-family: var(--font-family-sans);
++        font-size: var(--font-size-base);
++        line-height: var(--line-height-normal);
++        color: var(--color-text);
++        background-color: var(--color-background);
++        transition: background-color var(--transition-base), color var(--transition-base);
++      }
++
++      :is(h1, h2, h3, h4, h5, h6) {
++        font-weight: var(--font-weight-bold);
++        line-height: var(--line-height-tight);
++        color: var(--color-primary);
++      }
++
++      h1 { font-size: var(--font-size-3xl); }
++      h2 { font-size: var(--font-size-2xl); margin-block-end: var(--space-6); }
++      h3 { font-size: var(--font-size-xl); margin-block-end: var(--space-2); }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      p {
++        margin-block-end: var(--space-4);
++      }
++
++      a {
++        color: inherit;
++        text-decoration: none;
++        transition: color var(--transition-base);
++
++        &:focus-visible {
++          outline: 2px solid var(--color-focus-ring);
++          outline-offset: 3px;
++          border-radius: var(--radius-sm);
++        }
++      }
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    /* ==========================================================================
++       5. Layout Layer (Structural containers and responsive grids)
++       ========================================================================== */
++    @layer layout {
++      .container {
++        inline-size: min(100% - var(--space-8), var(--container-max-width));
++        margin-inline: auto;
++        margin-block: var(--space-10);
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++        gap: var(--space-6);
++        margin-block-start: var(--space-6);
++      }
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    /* ==========================================================================
++       6. Components Layer (Component scoping, modern selectors & nesting)
++       ========================================================================== */
++    @layer components {
++
++      /* Navigation Component Scoping */
++      @scope (nav) {
++        :scope {
++          background-color: var(--color-primary);
++          color: var(--color-white);
++          padding-inline: 5%;
++          padding-block: var(--space-4);
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          position: sticky;
++          top: 0;
++          z-index: 1000;
++          box-shadow: var(--shadow-sm);
++        }
++
++        .logo {
++          font-size: var(--font-size-xl);
++          font-weight: var(--font-weight-bold);
++          letter-spacing: 0.05em;
++          color: var(--color-white);
++          text-transform: uppercase;
++        }
++
++        ul {
++          display: flex;
++          align-items: center;
++          gap: var(--space-5);
++
++          & li {
++            display: inline-flex;
++          }
++
++          & a {
++            color: var(--color-white);
++            font-size: var(--font-size-sm);
++            transition: color var(--transition-base);
++
++            &:hover {
++              color: var(--color-accent);
++            }
++
++            &.logout-link {
++              border: 1px solid var(--color-accent);
++              padding: var(--space-1) var(--space-3);
++              border-radius: var(--radius-sm);
++
++              &:hover {
++                background-color: var(--color-accent);
++                color: var(--color-espresso-950);
++              }
++            }
++          }
++        }
++      }
++
++      /* Hero Section Component Scoping */
++      @scope (.hero) {
++        :scope {
++          min-block-size: 60vh;
++          background: linear-gradient(rgba(26, 15, 11, 0.65), rgba(26, 15, 11, 0.65)),
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++          background-size: cover;
++          background-position: center;
++          display: flex;
++          flex-direction: column;
++          justify-content: center;
++          align-items: center;
++          color: var(--color-white);
++          text-align: center;
++          padding-inline: var(--space-5);
++          padding-block: var(--space-12);
++        }
++
++        h1 {
++          font-size: var(--font-size-3xl);
++          color: var(--color-white);
++          margin-block-end: var(--space-4);
++          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
++        }
++
++        p {
++          font-size: var(--font-size-lg);
++          color: var(--color-white);
++          margin-block-end: var(--space-6);
++          max-inline-size: 45ch;
++          opacity: 0.95;
++        }
++      }
++
++      /* Card Component Scoping */
++      @scope (.card) {
++        :scope {
++          background-color: var(--color-surface);
++          border-radius: var(--radius-lg);
++          padding: var(--space-6);
++          box-shadow: var(--shadow-sm);
++          border: 1px solid var(--color-border);
++          text-align: center;
++          display: flex;
++          flex-direction: column;
++          justify-content: space-between;
++          overflow: hidden;
++          transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
++
++          /* Native nesting & pseudo-classes */
++          &:hover {
++            transform: translateY(-4px);
++            box-shadow: var(--shadow-hover);
++            border-color: var(--color-border-hover);
++          }
++
++          &:focus-within {
++            border-color: var(--color-accent);
++          }
++
++          /* Relational selector :has() when card contains image */
++          &:has(img) {
++            padding-top: 0;
++            padding-inline: 0;
++
++            & img {
++              inline-size: 100%;
++              block-size: 200px;
++              object-fit: cover;
++              border-start-start-radius: var(--radius-lg);
++              border-start-end-radius: var(--radius-lg);
++              transition: transform var(--transition-base);
++            }
++
++            &:hover img {
++              transform: scale(1.03);
++            }
++
++            & :is(h3, p, .btn) {
++              margin-inline: var(--space-6);
++            }
++
++            & h3 {
++              margin-block-start: var(--space-5);
++            }
++          }
++        }
++
++        h3 {
++          color: var(--color-primary);
++          font-size: var(--font-size-xl);
++          margin-block-end: var(--space-2);
++        }
++
++        p {
++          color: var(--color-text-muted);
++          font-size: var(--font-size-sm);
++          margin-block-end: var(--space-4);
++          flex-grow: 1;
++        }
++      }
++
++      /* Button Component */
++      .btn {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        align-self: center;
++        background-color: var(--color-primary);
++        color: var(--color-white);
++        padding: var(--space-2) var(--space-5);
++        text-decoration: none;
++        border-radius: var(--radius-md);
++        margin-block-start: var(--space-4);
++        font-size: var(--font-size-sm);
++        font-weight: var(--font-weight-medium);
++        border: 1px solid transparent;
++        cursor: pointer;
++        box-shadow: var(--shadow-sm);
++        transition: background-color var(--transition-base), transform var(--transition-duration-fast) ease, box-shadow var(--transition-base);
++
++        &:hover {
++          background-color: var(--color-primary-hover);
++          transform: translateY(-1px);
++          box-shadow: var(--shadow-md);
++        }
++
++        &:active {
++          background-color: var(--color-primary-active);
++          transform: translateY(0);
++        }
++
++        &:focus-visible {
++          outline: 2px solid var(--color-focus-ring);
++          outline-offset: 2px;
++        }
++      }
++
++      /* Modern Relational Selector on Grid: subtle focus on hovered card */
++      .grid:has(.card:hover) .card:not(:hover) {
++        opacity: 0.88;
++      }
++
++      /* Footer Component Scoping */
++      @scope (footer) {
++        :scope {
++          background-color: var(--color-secondary);
++          text-align: center;
++          padding-block: var(--space-10);
++          padding-inline: var(--space-5);
++          margin-block-start: var(--space-12);
++          color: var(--color-text);
++          border-top: 1px solid var(--color-border);
++        }
++
++        .footer-links {
++          margin-block-end: var(--space-5);
++          display: flex;
++          justify-content: center;
++          align-items: center;
++          flex-wrap: wrap;
++          gap: var(--space-3);
++
++          & a {
++            color: var(--color-text);
++            text-decoration: none;
++            font-size: var(--font-size-sm);
++            padding: var(--space-1) var(--space-2);
++            border-radius: var(--radius-sm);
++
++            &:hover {
++              color: var(--color-accent-active);
++              text-decoration: underline;
++            }
++          }
++        }
++
++        p {
++          color: var(--color-text-muted);
++          font-size: var(--font-size-xs);
++          margin: 0 auto;
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* ==========================================================================
++       7. Utilities Layer
++       ========================================================================== */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
++
++      .sr-only {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        padding: 0;
++        margin: -1px;
++        overflow: hidden;
++        clip: rect(0, 0, 0, 0);
++        white-space: nowrap;
++        border-width: 0;
++      }
+     }
+   </style>
+ </head>
+@@ -176,19 +515,22 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/style.css b/style.css
+new file mode 100644
+index 0000000..c0ee6c0
+--- /dev/null
++++ b/style.css
+@@ -0,0 +1,495 @@
++/**
++ * The Daily Grind - Modern CSS Architecture
++ *
++ * Demonstrating:
++ * 1. The Cascade: Explicit Cascade Layers (@layer)
++ * 2. Design Tokens: CSS Custom Properties for primitives, semantics, typography, spacing, elevation
++ * 3. Selectors: Modern selectors (:is(), :where(), :has(), :not(), :focus-visible)
++ * 4. Scoping: Native CSS Scoping (@scope)
++ * 5. Nesting: Native CSS Nesting (&)
++ */
++
++/* ==========================================================================
++   1. Cascade Layer Definition
++   ========================================================================== */
++@layer reset, tokens, base, layout, components, utilities;
++
++/* ==========================================================================
++   2. Design Tokens Layer
++   ========================================================================== */
++@layer tokens {
++  :root {
++    /* Color Primitives (Warm Artisanal Palette) */
++    --color-espresso-950: #1a0f0b;
++    --color-espresso-900: #291811;
++    --color-espresso-800: #3e2723;
++    --color-espresso-700: #4e342e;
++    --color-espresso-600: #6d4c41;
++    --color-caramel-400: #d7ccc8;
++    --color-caramel-300: #efebe9;
++    --color-caramel-200: #f5f0ed;
++    --color-amber-400: #ffb74d;
++    --color-amber-500: #ffab40;
++    --color-amber-600: #ff9100;
++    --color-amber-700: #e65100;
++    --color-neutral-50: #fafafa;
++    --color-neutral-100: #f5f5f5;
++    --color-neutral-200: #eeeeee;
++    --color-neutral-900: #212121;
++    --color-white: #ffffff;
++
++    /* Semantic Color Tokens */
++    --color-primary: var(--color-espresso-700);
++    --color-primary-hover: var(--color-espresso-800);
++    --color-primary-active: var(--color-espresso-950);
++    --color-secondary: var(--color-caramel-400);
++    --color-secondary-subtle: var(--color-caramel-300);
++    --color-accent: var(--color-amber-500);
++    --color-accent-hover: var(--color-amber-600);
++    --color-accent-active: var(--color-amber-700);
++    --color-background: var(--color-neutral-50);
++    --color-surface: var(--color-white);
++    --color-surface-elevated: var(--color-white);
++    --color-surface-hover: #fdfbf9;
++    --color-text: var(--color-espresso-800);
++    --color-text-muted: #6d5b54;
++    --color-text-inverse: var(--color-white);
++    --color-border: rgba(78, 52, 46, 0.12);
++    --color-border-hover: rgba(78, 52, 46, 0.28);
++    --color-focus-ring: var(--color-amber-600);
++
++    /* Typography Tokens */
++    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++    --font-family-serif: 'Georgia', Cambria, 'Times New Roman', serif;
++    --font-size-xs: 0.75rem;
++    --font-size-sm: 0.875rem;
++    --font-size-base: 1rem;
++    --font-size-lg: 1.125rem;
++    --font-size-xl: 1.25rem;
++    --font-size-2xl: 1.75rem;
++    --font-size-3xl: clamp(2rem, 4vw + 1rem, 3.25rem);
++    --font-weight-regular: 400;
++    --font-weight-medium: 500;
++    --font-weight-bold: 700;
++    --line-height-tight: 1.2;
++    --line-height-normal: 1.6;
++    --line-height-relaxed: 1.75;
++
++    /* Spacing Tokens */
++    --space-1: 0.25rem;
++    --space-2: 0.5rem;
++    --space-3: 0.75rem;
++    --space-4: 1rem;
++    --space-5: 1.25rem;
++    --space-6: 1.5rem;
++    --space-8: 2rem;
++    --space-10: 2.5rem;
++    --space-12: 3rem;
++    --space-16: 4rem;
++
++    /* Border Radius Tokens */
++    --radius-sm: 0.25rem;
++    --radius-md: 0.5rem;
++    --radius-lg: 0.75rem;
++    --radius-xl: 1rem;
++    --radius-full: 9999px;
++
++    /* Elevation / Box Shadow Tokens */
++    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
++    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
++    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
++    --shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.12), 0 10px 10px rgba(0, 0, 0, 0.08);
++
++    /* Transition / Motion Tokens */
++    --transition-duration-fast: 150ms;
++    --transition-duration-base: 250ms;
++    --transition-duration-slow: 400ms;
++    --transition-timing-standard: cubic-bezier(0.4, 0, 0.2, 1);
++    --transition-base: var(--transition-duration-base) var(--transition-timing-standard);
++
++    /* Layout Tokens */
++    --container-max-width: 1100px;
++    --header-height: 4.5rem;
++  }
++
++  /* Adaptive Dark Mode Scheme */
++  @media (prefers-color-scheme: dark) {
++    :root {
++      --color-background: #171210;
++      --color-surface: #241c19;
++      --color-surface-elevated: #2e2421;
++      --color-surface-hover: #382d29;
++      --color-text: #f5ece8;
++      --color-text-muted: #c4b5ae;
++      --color-border: rgba(215, 204, 200, 0.16);
++      --color-secondary: #3e2e28;
++      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
++      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
++      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
++      --shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.7);
++    }
++  }
++}
++
++/* ==========================================================================
++   3. Reset Layer (Zero-specificity baseline with :where)
++   ========================================================================== */
++@layer reset {
++  :where(*, *::before, *::after) {
++    box-sizing: border-box;
++    margin: 0;
++    padding: 0;
++  }
++
++  :where(html) {
++    -webkit-text-size-adjust: none;
++    text-size-adjust: none;
++    scroll-behavior: smooth;
++  }
++
++  :where(body) {
++    min-block-size: 100vh;
++    line-height: var(--line-height-normal);
++    -webkit-font-smoothing: antialiased;
++  }
++
++  :where(img, picture, video, canvas, svg) {
++    display: block;
++    max-inline-size: 100%;
++    block-size: auto;
++  }
++
++  :where(input, button, textarea, select) {
++    font: inherit;
++    color: inherit;
++  }
++
++  :where(ul, ol) {
++    list-style: none;
++  }
++}
++
++/* ==========================================================================
++   4. Base Layer (Global typography and accessibility defaults)
++   ========================================================================== */
++@layer base {
++  body {
++    font-family: var(--font-family-sans);
++    font-size: var(--font-size-base);
++    line-height: var(--line-height-normal);
++    color: var(--color-text);
++    background-color: var(--color-background);
++    transition: background-color var(--transition-base), color var(--transition-base);
++  }
++
++  :is(h1, h2, h3, h4, h5, h6) {
++    font-weight: var(--font-weight-bold);
++    line-height: var(--line-height-tight);
++    color: var(--color-primary);
++  }
++
++  h1 { font-size: var(--font-size-3xl); }
++  h2 { font-size: var(--font-size-2xl); margin-block-end: var(--space-6); }
++  h3 { font-size: var(--font-size-xl); margin-block-end: var(--space-2); }
++
++  p {
++    margin-block-end: var(--space-4);
++  }
++
++  a {
++    color: inherit;
++    text-decoration: none;
++    transition: color var(--transition-base);
++
++    &:focus-visible {
++      outline: 2px solid var(--color-focus-ring);
++      outline-offset: 3px;
++      border-radius: var(--radius-sm);
++    }
++  }
++}
++
++/* ==========================================================================
++   5. Layout Layer (Structural containers and responsive grids)
++   ========================================================================== */
++@layer layout {
++  .container {
++    inline-size: min(100% - var(--space-8), var(--container-max-width));
++    margin-inline: auto;
++    margin-block: var(--space-10);
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++    gap: var(--space-6);
++    margin-block-start: var(--space-6);
++  }
++}
++
++/* ==========================================================================
++   6. Components Layer (Component scoping, modern selectors & nesting)
++   ========================================================================== */
++@layer components {
++
++  /* Navigation Component Scoping */
++  @scope (nav) {
++    :scope {
++      background-color: var(--color-primary);
++      color: var(--color-white);
++      padding-inline: 5%;
++      padding-block: var(--space-4);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      box-shadow: var(--shadow-sm);
++    }
++
++    .logo {
++      font-size: var(--font-size-xl);
++      font-weight: var(--font-weight-bold);
++      letter-spacing: 0.05em;
++      color: var(--color-white);
++      text-transform: uppercase;
++    }
++
++    ul {
++      display: flex;
++      align-items: center;
++      gap: var(--space-5);
++
++      & li {
++        display: inline-flex;
++      }
++
++      & a {
++        color: var(--color-white);
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-base);
++
++        &:hover {
++          color: var(--color-accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--color-accent);
++          padding: var(--space-1) var(--space-3);
++          border-radius: var(--radius-sm);
++
++          &:hover {
++            background-color: var(--color-accent);
++            color: var(--color-espresso-950);
++          }
++        }
++      }
++    }
++  }
++
++  /* Hero Section Component Scoping */
++  @scope (.hero) {
++    :scope {
++      min-block-size: 60vh;
++      background: linear-gradient(rgba(26, 15, 11, 0.65), rgba(26, 15, 11, 0.65)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: var(--color-white);
++      text-align: center;
++      padding-inline: var(--space-5);
++      padding-block: var(--space-12);
++    }
++
++    h1 {
++      font-size: var(--font-size-3xl);
++      color: var(--color-white);
++      margin-block-end: var(--space-4);
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
++    }
++
++    p {
++      font-size: var(--font-size-lg);
++      color: var(--color-white);
++      margin-block-end: var(--space-6);
++      max-inline-size: 45ch;
++      opacity: 0.95;
++    }
++  }
++
++  /* Card Component Scoping */
++  @scope (.card) {
++    :scope {
++      background-color: var(--color-surface);
++      border-radius: var(--radius-lg);
++      padding: var(--space-6);
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--color-border);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++      transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
++
++      /* Native nesting & pseudo-classes */
++      &:hover {
++        transform: translateY(-4px);
++        box-shadow: var(--shadow-hover);
++        border-color: var(--color-border-hover);
++      }
++
++      &:focus-within {
++        border-color: var(--color-accent);
++      }
++
++      /* Relational selector :has() when card contains image */
++      &:has(img) {
++        padding-top: 0;
++        padding-inline: 0;
++
++        & img {
++          inline-size: 100%;
++          block-size: 200px;
++          object-fit: cover;
++          border-start-start-radius: var(--radius-lg);
++          border-start-end-radius: var(--radius-lg);
++          transition: transform var(--transition-base);
++        }
++
++        &:hover img {
++          transform: scale(1.03);
++        }
++
++        & :is(h3, p, .btn) {
++          margin-inline: var(--space-6);
++        }
++
++        & h3 {
++          margin-block-start: var(--space-5);
++        }
++      }
++    }
++
++    h3 {
++      color: var(--color-primary);
++      font-size: var(--font-size-xl);
++      margin-block-end: var(--space-2);
++    }
++
++    p {
++      color: var(--color-text-muted);
++      font-size: var(--font-size-sm);
++      margin-block-end: var(--space-4);
++      flex-grow: 1;
++    }
++  }
++
++  /* Button Component */
++  .btn {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    align-self: center;
++    background-color: var(--color-primary);
++    color: var(--color-white);
++    padding: var(--space-2) var(--space-5);
++    text-decoration: none;
++    border-radius: var(--radius-md);
++    margin-block-start: var(--space-4);
++    font-size: var(--font-size-sm);
++    font-weight: var(--font-weight-medium);
++    border: 1px solid transparent;
++    cursor: pointer;
++    box-shadow: var(--shadow-sm);
++    transition: background-color var(--transition-base), transform var(--transition-duration-fast) ease, box-shadow var(--transition-base);
++
++    &:hover {
++      background-color: var(--color-primary-hover);
++      transform: translateY(-1px);
++      box-shadow: var(--shadow-md);
++    }
++
++    &:active {
++      background-color: var(--color-primary-active);
++      transform: translateY(0);
++    }
++
++    &:focus-visible {
++      outline: 2px solid var(--color-focus-ring);
++      outline-offset: 2px;
++    }
++  }
++
++  /* Modern Relational Selector on Grid: subtle focus on hovered card */
++  .grid:has(.card:hover) .card:not(:hover) {
++    opacity: 0.88;
++  }
++
++  /* Footer Component Scoping */
++  @scope (footer) {
++    :scope {
++      background-color: var(--color-secondary);
++      text-align: center;
++      padding-block: var(--space-10);
++      padding-inline: var(--space-5);
++      margin-block-start: var(--space-12);
++      color: var(--color-text);
++      border-top: 1px solid var(--color-border);
++    }
++
++    .footer-links {
++      margin-block-end: var(--space-5);
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: var(--space-3);
++
++      & a {
++        color: var(--color-text);
++        text-decoration: none;
++        font-size: var(--font-size-sm);
++        padding: var(--space-1) var(--space-2);
++        border-radius: var(--radius-sm);
++
++        &:hover {
++          color: var(--color-accent-active);
++          text-decoration: underline;
++        }
++      }
++    }
++
++    p {
++      color: var(--color-text-muted);
++      font-size: var(--font-size-xs);
++      margin: 0 auto;
++    }
++  }
++}
++
++/* ==========================================================================
++   7. Utilities Layer
++   ========================================================================== */
++@layer utilities {
++  .text-center {
++    text-align: center;
++  }
++
++  .sr-only {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++    border-width: 0;
++  }
++}

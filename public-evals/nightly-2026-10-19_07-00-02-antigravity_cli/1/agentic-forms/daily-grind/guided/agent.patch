@@ -1,0 +1,1503 @@
+diff --git a/index.html b/index.html
+index 66c9173..bc0338f 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,15 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #f57c00;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border: #e0d7d3;
++      --success: #2e7d32;
+     }
+ 
+     * {
+@@ -20,6 +25,10 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -27,6 +36,40 @@
+       background-color: var(--light);
+     }
+ 
++    /* WebMCP Declarative Form Pseudo-classes */
++    form:tool-form-active {
++      outline: 3px dashed var(--accent);
++      outline-offset: 4px;
++      background-color: rgba(255, 171, 64, 0.08);
++      transition: background-color 0.2s ease, outline-color 0.2s ease;
++    }
++
++    button:tool-submit-active {
++      outline: 3px dashed #d32f2f;
++      outline-offset: 2px;
++      animation: pulse 1.8s infinite;
++    }
++
++    @keyframes pulse {
++      0% { transform: scale(1); }
++      50% { transform: scale(1.03); }
++      100% { transform: scale(1); }
++    }
++
++    /* Agent Interaction Banner */
++    .agent-status-banner {
++      background: var(--primary);
++      color: var(--accent);
++      text-align: center;
++      padding: 8px 16px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      position: sticky;
++      top: 0;
++      z-index: 1100;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,27 +81,28 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      gap: 15px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: 0.95rem;
+       transition: color 0.3s;
+     }
+ 
+@@ -66,16 +110,20 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .nav-badge {
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 3px 8px;
++      border-radius: 12px;
++      font-weight: bold;
++      font-size: 0.8rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 380px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,56 +138,299 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
++    }
++
++    .hero p {
++      font-size: 1.25rem;
++      margin-bottom: 1.5rem;
++      max-width: 600px;
++    }
++
++    /* Common Buttons */
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 22px;
++      text-decoration: none;
++      border-radius: 6px;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      transition: background 0.25s, transform 0.15s;
++    }
++
++    .btn:hover {
++      background: var(--primary-dark);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++      color: white;
++    }
++
++    .btn-sm {
++      padding: 6px 14px;
++      font-size: 0.85rem;
+     }
+ 
+-    /* Content Sections */
++    /* Layout Containers */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 30px;
++      font-size: 1.05rem;
++    }
++
++    /* Grid Layouts */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 25px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--card-bg);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      border: 1px solid var(--border);
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++    }
++
++    .card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++    }
++
++    .card-title {
++      font-size: 1.3rem;
+       color: var(--primary);
++      margin-bottom: 6px;
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
++    .card-price {
++      font-weight: 700;
++      color: var(--accent-dark);
++      font-size: 1.1rem;
++      margin-bottom: 8px;
++    }
++
++    .card-desc {
++      font-size: 0.92rem;
++      color: #555;
++      margin-bottom: 15px;
++      flex-grow: 1;
++    }
++
++    .card-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-bottom: 15px;
++    }
++
++    .tag {
++      background: #efebe9;
++      color: #5d4037;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    /* Form Styles */
++    .form-panel {
++      background: var(--card-bg);
++      padding: 28px;
++      border-radius: 10px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--border);
++      margin-bottom: 30px;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 16px;
++      align-items: end;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 14px;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    fieldset {
++      border: 1px solid var(--border);
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 14px;
++    }
++
++    legend {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 6px;
++    }
++
++    .radio-group {
++      display: flex;
++      gap: 18px;
++      flex-wrap: wrap;
++      margin-top: 6px;
++    }
++
++    .radio-label {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    /* Cart & Checkout Layout */
++    .cart-checkout-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 30px;
++      margin-top: 25px;
++    }
++
++    @media (max-width: 800px) {
++      .cart-checkout-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .cart-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 10px;
++      margin-bottom: 15px;
++    }
++
++    .cart-table th,
++    .cart-table td {
++      padding: 10px;
++      text-align: left;
++      border-bottom: 1px solid var(--border);
++      font-size: 0.9rem;
++    }
++
++    .cart-table th {
++      background-color: #efebe9;
++      color: var(--primary);
++    }
++
++    .cart-totals {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      text-align: right;
++      font-size: 0.95rem;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      padding-top: 15px;
++      border-top: 2px solid var(--border);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .total-line {
++      font-weight: bold;
++      font-size: 1.2rem;
++      color: var(--primary);
++    }
++
++    /* Feedback & Notifications */
++    .alert-box {
++      padding: 14px 18px;
++      border-radius: 6px;
++      margin-top: 15px;
++      font-size: 0.95rem;
++      display: none;
++    }
++
++    .alert-box.visible {
++      display: block;
+     }
+ 
++    .alert-success {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .alert-info {
++      background-color: #e3f2fd;
++      color: #0d47a1;
++      border: 1px solid #90caf9;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -150,63 +441,1022 @@
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: 0.9rem;
++    }
++
++    .footer-links a:hover {
++      text-decoration: underline;
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Live Agent Interaction Status Indicator -->
++  <aside id="agent-status-bar" class="agent-status-banner" hidden aria-live="polite">
++    Active Agent Tool Interaction
++  </aside>
++
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="#" class="logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu-section">Menu</a></li>
++      <li><a href="#order-section">Order Online</a></li>
++      <li><a href="#rewards-section">Rewards</a></li>
++      <li><a href="#locations-section">Locations</a></li>
++      <li><a href="#contact-section">Contact</a></li>
++      <li><a href="#cart-section" class="nav-badge" id="cart-nav-badge">Cart (0)</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-section" class="btn btn-accent">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++
++    <!-- 1. Menu Search & Filter Tool Form -->
++    <section id="menu-section">
++      <h2 class="section-title">Artisanal Coffee & Menu</h2>
++      <p class="section-subtitle">Freshly roasted single origins, specialty cold brews, and wholesome pastries.</p>
++
++      <form id="menu-search-form" 
++            class="form-panel" 
++            toolname="search-menu" 
++            tooldescription="Search and filter coffee drinks and food items by keyword, category, or dietary preference" 
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="search-query">Search Menu</label>
++            <input type="search" 
++                   id="search-query" 
++                   name="query" 
++                   placeholder="e.g. Latte, Cold Brew, Espresso..." 
++                   toolparamdescription="Search keyword such as latte, cold brew, or espresso">
++          </div>
++          <div class="form-group">
++            <label for="search-category">Category</label>
++            <select id="search-category" 
++                    name="category" 
++                    toolparamdescription="Menu category to filter by">
++              <option value="all">All Categories</option>
++              <option value="espresso">Espresso & Hot Coffee</option>
++              <option value="cold">Cold Brew & Iced Drinks</option>
++              <option value="seasonal">Seasonal Favorites</option>
++              <option value="pastries">Artisanal Pastries</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="search-dietary">Dietary Option</label>
++            <select id="search-dietary" 
++                    name="dietary" 
++                    toolparamdescription="Dietary preference filter">
++              <option value="all">Any Dietary Option</option>
++              <option value="dairy-free">Dairy-Free Available</option>
++              <option value="vegan">Vegan Friendly</option>
++              <option value="decaf">Decaf Available</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <button type="submit" class="btn">Filter Menu</button>
++          </div>
++        </div>
++      </form>
++
++      <!-- Menu Items Results Grid -->
++      <div id="menu-grid" class="grid">
++        <!-- Rendered dynamically via JavaScript -->
++      </div>
++    </section>
++
++    <!-- 2. Order Online & Customize Item Tool Form -->
++    <section id="order-section" style="margin-top: 60px;">
++      <h2 class="section-title">Order Online & Customize</h2>
++      <p class="section-subtitle">Tailor your drink with custom milks, artisan syrups, and preferred size.</p>
++
++      <form id="add-to-order-form" 
++            class="form-panel" 
++            toolname="add-item-to-order" 
++            tooldescription="Customize a drink or food item and add it to the active order cart" 
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="order-item-select">Select Drink or Food</label>
++            <select id="order-item-select" 
++                    name="item" 
++                    required 
++                    toolparamdescription="Name of the coffee beverage or pastry to order">
++              <option value="Maple Oat Latte">Maple Oat Latte ($5.50)</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso ($3.75)</option>
++              <option value="Cold Brew">Cold Brew ($4.50)</option>
++              <option value="Caramel Macchiato">Caramel Macchiato ($5.25)</option>
++              <option value="Vanilla Bean Latte">Vanilla Bean Latte ($5.00)</option>
++              <option value="Butter Croissant">Butter Croissant ($4.25)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <fieldset toolparamdescription="Cup size selection">
++              <legend>Cup Size</legend>
++              <div class="radio-group">
++                <label class="radio-label">
++                  <input type="radio" name="size" value="Small (12oz)"> Small
++                </label>
++                <label class="radio-label">
++                  <input type="radio" name="size" value="Medium (16oz)" checked> Medium
++                </label>
++                <label class="radio-label">
++                  <input type="radio" name="size" value="Large (20oz)"> Large
++                </label>
++              </div>
++            </fieldset>
++          </div>
++        </div>
++
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="order-milk-select">Milk Preference</label>
++            <select id="order-milk-select" 
++                    name="milk" 
++                    toolparamdescription="Choice of dairy or plant-based milk">
++              <option value="Oat Milk">Oat Milk</option>
++              <option value="Whole Milk">Whole Milk</option>
++              <option value="Almond Milk">Almond Milk</option>
++              <option value="Skim Milk">Skim Milk</option>
++              <option value="No Milk">No Milk (Black)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="order-syrup-select">Syrup & Flavor</label>
++            <select id="order-syrup-select" 
++                    name="syrup" 
++                    toolparamdescription="Flavor syrup option">
++              <option value="None">None</option>
++              <option value="Vermont Maple">Vermont Maple Syrup</option>
++              <option value="Madagascar Vanilla">Madagascar Vanilla</option>
++              <option value="Salted Caramel">Salted Caramel</option>
++              <option value="Sugar-Free Hazelnut">Sugar-Free Hazelnut</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="order-quantity">Quantity</label>
++            <input type="number" 
++                   id="order-quantity" 
++                   name="quantity" 
++                   min="1" 
++                   max="10" 
++                   value="1" 
++                   required 
++                   toolparamdescription="Quantity between 1 and 10">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="order-notes">Special Instructions</label>
++          <input type="text" 
++                 id="order-notes" 
++                 name="notes" 
++                 placeholder="e.g. Extra hot, light ice, decaf shot" 
++                 toolparamdescription="Special requests such as extra hot or decaf espresso shot">
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <button type="submit" class="btn btn-accent">Add to Cart</button>
++        <div id="add-order-feedback" class="alert-box alert-success" role="status"></div>
++      </form>
++    </section>
++
++    <!-- 3. Cart Summary & Transactional Checkout Tool Form -->
++    <section id="cart-section" style="margin-top: 60px;">
++      <h2 class="section-title">Your Order & Checkout</h2>
++      <p class="section-subtitle">Review items in your order and complete pickup checkout.</p>
++
++      <div class="cart-checkout-grid">
++        <!-- Cart Items List Panel -->
++        <div class="form-panel">
++          <h3 style="color: var(--primary); margin-bottom: 12px;">Order Summary</h3>
++          <table class="cart-table" id="cart-table" aria-label="Current Order Cart">
++            <thead>
++              <tr>
++                <th>Item</th>
++                <th>Qty</th>
++                <th>Price</th>
++                <th>Action</th>
++              </tr>
++            </thead>
++            <tbody id="cart-table-body">
++              <tr>
++                <td colspan="4" style="text-align: center; color: #888;">Your cart is empty. Add a drink above!</td>
++              </tr>
++            </tbody>
++          </table>
++
++          <div class="cart-totals">
++            <div>Subtotal: <span id="cart-subtotal">$0.00</span></div>
++            <div>Discount: <span id="cart-discount">-$0.00</span></div>
++            <div>Tax (8%): <span id="cart-tax">$0.00</span></div>
++            <div class="total-line">Total: <span id="cart-total">$0.00</span></div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- Checkout Form (OMITS toolautosubmit because this is a financial and transactional action) -->
++        <form id="checkout-form" 
++              class="form-panel" 
++              toolname="checkout-order" 
++              tooldescription="Submit customer details and payment method to finalize the coffee order for pickup">
++          <h3 style="color: var(--primary); margin-bottom: 12px;">Pickup Details</h3>
++          
++          <div class="form-group">
++            <label for="checkout-name">Customer Name</label>
++            <input type="text" 
++                   id="checkout-name" 
++                   name="customerName" 
++                   required 
++                   autocomplete="name" 
++                   placeholder="Taylor Smith" 
++                   toolparamdescription="Full customer name for pickup callout">
++          </div>
++
++          <div class="form-group">
++            <label for="checkout-phone">Phone Number</label>
++            <input type="tel" 
++                   id="checkout-phone" 
++                   name="customerPhone" 
++                   required 
++                   autocomplete="tel" 
++                   placeholder="(555) 000-0000" 
++                   toolparamdescription="Contact phone number for SMS pickup notifications">
++          </div>
++
++          <div class="form-group">
++            <label for="checkout-email">Email Address</label>
++            <input type="email" 
++                   id="checkout-email" 
++                   name="customerEmail" 
++                   required 
++                   autocomplete="email" 
++                   placeholder="taylor@example.com" 
++                   toolparamdescription="Email address for order confirmation receipt">
++          </div>
++
++          <div class="form-group">
++            <label for="checkout-location">Pickup Location</label>
++            <select id="checkout-location" 
++                    name="pickupLocation" 
++                    required 
++                    toolparamdescription="Coffee shop branch for order pickup">
++              <option value="Downtown Roastery (123 Main St)">Downtown Roastery (123 Main St, Seattle)</option>
++              <option value="Uptown Cafe (456 Elm St)">Uptown Cafe (456 Elm St, Seattle)</option>
++              <option value="Westside Express (789 Oak Ave)">Westside Express (789 Oak Ave, San Francisco)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="checkout-pickup-time">Pickup Time</label>
++            <select id="checkout-pickup-time" 
++                    name="pickupTime" 
++                    toolparamdescription="Desired pickup readiness time">
++              <option value="ASAP (10-15 mins)">ASAP (Ready in ~10-15 mins)</option>
++              <option value="In 30 minutes">In 30 minutes</option>
++              <option value="In 1 hour">In 1 hour</option>
++            </select>
++          </div>
++
++          <fieldset toolparamdescription="Payment method selection">
++            <legend>Payment Option</legend>
++            <div class="radio-group">
++              <label class="radio-label">
++                <input type="radio" name="paymentMethod" value="Credit/Debit Card" checked> Credit/Debit Card
++              </label>
++              <label class="radio-label">
++                <input type="radio" name="paymentMethod" value="Pay at Counter"> Pay at Counter
++              </label>
++            </div>
++          </fieldset>
++
++          <button type="submit" id="checkout-submit-btn" class="btn btn-accent" style="width: 100%; margin-top: 10px;">
++            Place Order
++          </button>
++          
++          <div id="checkout-feedback" class="alert-box alert-success" role="status"></div>
++        </form>
++      </div>
++    </section>
++
++    <!-- 4. Rewards & Discounts Tool Forms -->
++    <section id="rewards-section" style="margin-top: 60px;">
++      <h2 class="section-title">The Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn 10 points for every dollar spent. Redeem for free coffees, syrup upgrades, and pastries.</p>
++
++      <div class="grid" style="grid-template-columns: 1fr 1fr;">
++        <!-- Check Rewards Form -->
++        <form id="rewards-lookup-form" 
++              class="form-panel" 
++              toolname="check-rewards-balance" 
++              tooldescription="Look up a customer's loyalty rewards points balance and eligible perks using a phone number or member ID" 
++              toolautosubmit>
++          <h3 style="color: var(--primary); margin-bottom: 12px;">Check Rewards Points</h3>
++          <div class="form-group">
++            <label for="rewards-member-id">Phone or Member ID</label>
++            <input type="text" 
++                   id="rewards-member-id" 
++                   name="memberId" 
++                   required 
++                   placeholder="e.g. 555-0199 or 555-0123" 
++                   toolparamdescription="10-digit mobile phone number or member ID, e.g. 555-0199">
++          </div>
++          <button type="submit" class="btn">Lookup Points</button>
++          <div id="rewards-feedback" class="alert-box alert-info" role="status"></div>
++        </form>
++
++        <!-- Apply Coupon / Promo Code Form -->
++        <form id="apply-promo-form" 
++              class="form-panel" 
++              toolname="apply-reward-discount" 
++              tooldescription="Apply a rewards coupon code or loyalty perk to the current order" 
++              toolautosubmit>
++          <h3 style="color: var(--primary); margin-bottom: 12px;">Apply Coupon / Promo</h3>
++          <div class="form-group">
++            <label for="promo-code">Promo Code</label>
++            <input type="text" 
++                   id="promo-code" 
++                   name="promoCode" 
++                   required 
++                   placeholder="e.g. FREECOFFEE, STARS100, SAVE10" 
++                   toolparamdescription="Promo or reward coupon code, e.g. FREECOFFEE, STARS100, or SAVE10">
++          </div>
++          <button type="submit" class="btn btn-accent">Apply Code</button>
++          <div id="promo-feedback" class="alert-box alert-success" role="status"></div>
++        </form>
++      </div>
++    </section>
++
++    <!-- 5. Locations & Store Finder Tool Form -->
++    <section id="locations-section" style="margin-top: 60px;">
++      <h2 class="section-title">Find Our Cafes</h2>
++      <p class="section-subtitle">Visit our roasteries and cafes across Seattle and San Francisco.</p>
++
++      <form id="locations-search-form" 
++            class="form-panel" 
++            toolname="find-locations" 
++            tooldescription="Find coffee shop locations, operating hours, and amenities by city or zip code" 
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="location-query">City or Zip Code</label>
++            <input type="text" 
++                   id="location-query" 
++                   name="searchQuery" 
++                   required 
++                   placeholder="e.g. Seattle, 98101, or 94103" 
++                   toolparamdescription="City name or 5-digit zip code, e.g. 98101, Seattle, or 94103">
++          </div>
++
++          <div class="form-group">
++            <label for="location-amenity">Filter by Amenity</label>
++            <select id="location-amenity" 
++                    name="amenity" 
++                    toolparamdescription="Filter locations by amenity such as drive-thru, patio, or wi-fi">
++              <option value="all">All Amenities</option>
++              <option value="drive-thru">Drive-Thru Available</option>
++              <option value="outdoor-seating">Outdoor Patio Seating</option>
++              <option value="free-wifi">Free High-Speed Wi-Fi</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <button type="submit" class="btn">Search Locations</button>
++          </div>
+         </div>
++      </form>
++
++      <div id="locations-grid" class="grid">
++        <!-- Rendered dynamically -->
+       </div>
+     </section>
++
++    <!-- 6. Customer Support & Feedback Tool Form -->
++    <section id="contact-section" style="margin-top: 60px;">
++      <h2 class="section-title">Contact & Catering Inquiries</h2>
++      <p class="section-subtitle">Have a question about our beans, catering an event, or general feedback? Send us a note.</p>
++
++      <form id="contact-form" 
++            class="form-panel" 
++            toolname="send-contact-message" 
++            tooldescription="Send a message or inquiry to customer support">
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="contact-name">Your Name</label>
++            <input type="text" 
++                   id="contact-name" 
++                   name="name" 
++                   required 
++                   autocomplete="name" 
++                   toolparamdescription="Your full name">
++          </div>
++          <div class="form-group">
++            <label for="contact-email">Email Address</label>
++            <input type="email" 
++                   id="contact-email" 
++                   name="email" 
++                   required 
++                   autocomplete="email" 
++                   toolparamdescription="Your contact email address">
++          </div>
++          <div class="form-group">
++            <label for="contact-subject">Inquiry Subject</label>
++            <select id="contact-subject" 
++                    name="subject" 
++                    toolparamdescription="Topic of inquiry">
++              <option value="General Inquiry">General Question</option>
++              <option value="Catering & Events">Catering & Event Services</option>
++              <option value="Wholesale Coffee">Wholesale Coffee Beans</option>
++              <option value="Feedback">Customer Experience Feedback</option>
++            </select>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="contact-message">Message</label>
++          <textarea id="contact-message" 
++                    name="message" 
++                    rows="4" 
++                    required 
++                    placeholder="Tell us how we can help..." 
++                    toolparamdescription="Detailed message or inquiry"></textarea>
++        </div>
++
++        <button type="submit" class="btn">Send Message</button>
++        <div id="contact-feedback" class="alert-box alert-success" role="status"></div>
++      </form>
++    </section>
++
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu-section">Our Menu</a> |
++      <a href="#locations-section">Locations</a> |
++      <a href="#rewards-section">Rewards Program</a> |
++      <a href="#contact-section">Contact & Support</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Application Logic & WebMCP Integration -->
++  <script>
++    // In-memory data catalog
++    const MENU_ITEMS = [
++      {
++        id: 'maple-oat-latte',
++        name: 'Maple Oat Latte',
++        category: 'seasonal',
++        price: 5.50,
++        dietary: ['dairy-free', 'vegan'],
++        description: 'Creamy oat milk with a hint of pure Vermont maple syrup.',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80'
++      },
++      {
++        id: 'dark-roast-espresso',
++        name: 'Dark Roast Espresso',
++        category: 'espresso',
++        price: 3.75,
++        dietary: ['dairy-free', 'vegan', 'decaf'],
++        description: 'Bold, smokey, and perfect for a deep morning boost.',
++        image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++      },
++      {
++        id: 'cold-brew',
++        name: 'Cold Brew',
++        category: 'cold',
++        price: 4.50,
++        dietary: ['dairy-free', 'vegan', 'decaf'],
++        description: 'Slow steeped for 18 hours for maximum smoothness and low acidity.',
++        image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++      },
++      {
++        id: 'caramel-macchiato',
++        name: 'Caramel Macchiato',
++        category: 'espresso',
++        price: 5.25,
++        dietary: ['dairy-free', 'decaf'],
++        description: 'Velvety steamed milk marked with rich espresso and caramel drizzle.',
++        image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=600&q=80'
++      },
++      {
++        id: 'vanilla-bean-latte',
++        name: 'Vanilla Bean Latte',
++        category: 'espresso',
++        price: 5.00,
++        dietary: ['dairy-free', 'decaf'],
++        description: 'Fresh espresso and steamed milk infused with real Madagascar vanilla bean.',
++        image: 'https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80'
++      },
++      {
++        id: 'artisan-croissant',
++        name: 'Butter Croissant',
++        category: 'pastries',
++        price: 4.25,
++        dietary: [],
++        description: 'Flaky, golden, buttery French pastry baked fresh every morning.',
++        image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80'
++      }
++    ];
++
++    const LOCATIONS = [
++      {
++        id: 'downtown-seattle',
++        name: 'Downtown Roastery',
++        address: '123 Main St, Seattle, WA 98101',
++        city: 'seattle',
++        zip: '98101',
++        hours: 'Mon-Sun: 6:00 AM - 7:00 PM',
++        phone: '(206) 555-0142',
++        amenities: ['free-wifi', 'outdoor-seating']
++      },
++      {
++        id: 'uptown-drive-thru',
++        name: 'Uptown Cafe & Drive-Thru',
++        address: '456 Elm St, Seattle, WA 98109',
++        city: 'seattle',
++        zip: '98109',
++        hours: 'Mon-Sat: 5:30 AM - 8:00 PM, Sun: 7:00 AM - 6:00 PM',
++        phone: '(206) 555-0188',
++        amenities: ['drive-thru', 'free-wifi']
++      },
++      {
++        id: 'westside-sf',
++        name: 'Westside Express',
++        address: '789 Oak Ave, San Francisco, CA 94103',
++        city: 'san francisco',
++        zip: '94103',
++        hours: 'Mon-Sun: 6:30 AM - 6:00 PM',
++        phone: '(415) 555-0199',
++        amenities: ['outdoor-seating', 'free-wifi']
++      }
++    ];
++
++    const REWARDS_DB = {
++      '555-0199': { name: 'Alex Johnson', points: 240, tier: 'Gold Bean', perks: ['Free Specialty Drink Upgrade', '10% off whole beans', 'Free Bakery Item at 300 pts'] },
++      '555-0123': { name: 'Taylor Smith', points: 85, tier: 'Silver Roast', perks: ['Free flavor syrup add-on', 'Double points on Tuesdays'] }
++    };
++
++    const PROMO_CODES = {
++      'FREECOFFEE': { type: 'fixed', value: 5.50, description: 'Free coffee item (up to $5.50 off)' },
++      'STARS100': { type: 'fixed', value: 2.00, description: '$2.00 off order' },
++      'SAVE10': { type: 'percent', value: 0.10, description: '10% discount off entire order' }
++    };
++
++    // Client-side cart state
++    let cart = [];
++    let currentDiscount = { code: null, amount: 0, description: '' };
++
++    // --- WebMCP Lifecycle Events ---
++    const targetFor = (type, listener, options) =>
++      (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++        .addEventListener(type, listener, options);
++
++    targetFor('toolactivated', ({ toolName }) => {
++      console.log(`Tool "${toolName}" started execution.`);
++      const banner = document.getElementById('agent-status-bar');
++      if (banner) {
++        banner.textContent = `🤖 Agent interacting with tool: "${toolName}"`;
++        banner.hidden = false;
++      }
++    });
++
++    targetFor('toolcancel', ({ toolName }) => {
++      console.log(`Tool "${toolName}" execution is cancelled.`);
++      const banner = document.getElementById('agent-status-bar');
++      if (banner) {
++        banner.textContent = `Tool "${toolName}" execution was canceled.`;
++        setTimeout(() => { banner.hidden = true; }, 3000);
++      }
++    });
++
++    // Helper: Render menu items
++    function renderMenu(items) {
++      const grid = document.getElementById('menu-grid');
++      if (!grid) return;
++      if (items.length === 0) {
++        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">No coffee or menu items match your search.</p>';
++        return;
++      }
++      grid.innerHTML = items.map(item => `
++        <article class="card">
++          <img src="${item.image}" alt="${item.name}" loading="lazy">
++          <div class="card-body">
++            <h3 class="card-title">${item.name}</h3>
++            <div class="card-price">$${item.price.toFixed(2)}</div>
++            <p class="card-desc">${item.description}</p>
++            <div class="card-tags">
++              ${item.dietary.map(d => `<span class="tag">${d}</span>`).join('')}
++              <span class="tag">${item.category}</span>
++            </div>
++            <button type="button" class="btn btn-sm btn-accent" onclick="selectItemForOrder('${item.name}')">
++              Customize & Order
++            </button>
++          </div>
++        </article>
++      `).join('');
++    }
++
++    // Helper: Render locations
++    function renderLocations(locations) {
++      const grid = document.getElementById('locations-grid');
++      if (!grid) return;
++      if (locations.length === 0) {
++        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">No locations found matching your search criteria.</p>';
++        return;
++      }
++      grid.innerHTML = locations.map(loc => `
++        <article class="card">
++          <div class="card-body">
++            <h3 class="card-title">${loc.name}</h3>
++            <p style="font-weight: 600; margin-bottom: 4px;">${loc.address}</p>
++            <p style="color: #666; font-size: 0.9rem; margin-bottom: 8px;">📞 ${loc.phone}</p>
++            <p style="color: #666; font-size: 0.9rem; margin-bottom: 12px;">🕒 ${loc.hours}</p>
++            <div class="card-tags">
++              ${loc.amenities.map(a => `<span class="tag">${a.replace('-', ' ')}</span>`).join('')}
++            </div>
++          </div>
++        </article>
++      `).join('');
++    }
++
++    // Quick select from menu card
++    window.selectItemForOrder = function(itemName) {
++      const select = document.getElementById('order-item-select');
++      if (select) {
++        select.value = itemName;
++        const orderSection = document.getElementById('order-section');
++        if (orderSection) {
++          orderSection.scrollIntoView({ behavior: 'smooth' });
++        }
++      }
++    };
++
++    // Update Cart UI
++    function updateCartUI() {
++      const tbody = document.getElementById('cart-table-body');
++      const badge = document.getElementById('cart-nav-badge');
++      const subtotalEl = document.getElementById('cart-subtotal');
++      const discountEl = document.getElementById('cart-discount');
++      const taxEl = document.getElementById('cart-tax');
++      const totalEl = document.getElementById('cart-total');
++      const submitBtn = document.getElementById('checkout-submit-btn');
++
++      const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
++      if (badge) badge.textContent = `Cart (${totalItems})`;
++
++      if (cart.length === 0) {
++        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Your cart is empty. Add a drink above!</td></tr>';
++        subtotalEl.textContent = '$0.00';
++        discountEl.textContent = '-$0.00';
++        taxEl.textContent = '$0.00';
++        totalEl.textContent = '$0.00';
++        if (submitBtn) submitBtn.textContent = 'Place Order ($0.00)';
++        return;
++      }
++
++      tbody.innerHTML = cart.map((item, idx) => `
++        <tr>
++          <td>
++            <strong>${item.name}</strong><br>
++            <small style="color: #666;">${item.size}, ${item.milk}, ${item.syrup}${item.notes ? ` (${item.notes})` : ''}</small>
++          </td>
++          <td>${item.quantity}</td>
++          <td>$${(item.price * item.quantity).toFixed(2)}</td>
++          <td>
++            <button type="button" class="btn btn-sm" style="background: #e0e0e0; color: #333;" onclick="removeItemFromCart(${idx})">✕</button>
++          </td>
++        </tr>
++      `).join('');
++
++      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
++      let discountVal = 0;
++      if (currentDiscount.code) {
++        if (currentDiscount.type === 'fixed') {
++          discountVal = Math.min(subtotal, currentDiscount.value);
++        } else if (currentDiscount.type === 'percent') {
++          discountVal = subtotal * currentDiscount.value;
++        }
++      }
++
++      const taxableSubtotal = Math.max(0, subtotal - discountVal);
++      const tax = taxableSubtotal * 0.08;
++      const total = taxableSubtotal + tax;
++
++      subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
++      discountEl.textContent = `-$${discountVal.toFixed(2)}`;
++      taxEl.textContent = `$${tax.toFixed(2)}`;
++      totalEl.textContent = `$${total.toFixed(2)}`;
++      if (submitBtn) submitBtn.textContent = `Place Order ($${total.toFixed(2)})`;
++    }
++
++    window.removeItemFromCart = function(index) {
++      cart.splice(index, 1);
++      updateCartUI();
++    };
++
++    // Generic form validator adhering to WebMCP Declarative standard
++    function validateForm(form, event) {
++      if (!form.checkValidity()) {
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          const errors = Array.from(form.elements)
++            .filter(el => !el.validity.valid)
++            .map(el => `${el.name || el.id} (${el.validationMessage})`)
++            .join(', ');
++          event.respondWith(Promise.resolve(`Validation failed: ${errors}`));
++        }
++        form.reportValidity();
++        return false;
++      }
++      return true;
++    }
++
++    // --- 1. Menu Search Form Submission ---
++    const menuSearchForm = document.getElementById('menu-search-form');
++    menuSearchForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(menuSearchForm, event)) return;
++
++      const formData = new FormData(menuSearchForm);
++      const query = (formData.get('query') || '').toString().toLowerCase().trim();
++      const category = formData.get('category') || 'all';
++      const dietary = formData.get('dietary') || 'all';
++
++      const results = MENU_ITEMS.filter(item => {
++        const matchesQuery = !query || 
++          item.name.toLowerCase().includes(query) || 
++          item.description.toLowerCase().includes(query);
++        const matchesCategory = category === 'all' || item.category === category;
++        const matchesDietary = dietary === 'all' || item.dietary.includes(dietary);
++        return matchesQuery && matchesCategory && matchesDietary;
++      });
++
++      renderMenu(results);
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        const agentResponse = {
++          count: results.length,
++          items: results.map(r => ({
++            name: r.name,
++            price: r.price,
++            category: r.category,
++            dietary: r.dietary,
++            description: r.description
++          }))
++        };
++        event.respondWith(Promise.resolve(JSON.stringify(agentResponse, null, 2)));
++      }
++    });
++
++    // --- 2. Add Item to Order Form Submission ---
++    const addOrderForm = document.getElementById('add-to-order-form');
++    addOrderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(addOrderForm, event)) return;
++
++      const formData = new FormData(addOrderForm);
++      const itemName = formData.get('item');
++      const size = formData.get('size') || 'Medium (16oz)';
++      const milk = formData.get('milk') || 'Oat Milk';
++      const syrup = formData.get('syrup') || 'None';
++      const quantity = parseInt(formData.get('quantity') || '1', 10);
++      const notes = (formData.get('notes') || '').toString().trim();
++
++      const catalogItem = MENU_ITEMS.find(i => i.name === itemName) || { price: 5.00 };
++      
++      const cartItem = {
++        name: itemName,
++        size,
++        milk,
++        syrup,
++        quantity,
++        notes,
++        price: catalogItem.price
++      };
++
++      cart.push(cartItem);
++      updateCartUI();
++
++      const feedback = document.getElementById('add-order-feedback');
++      feedback.textContent = `Added ${quantity}x ${size} ${itemName} to your cart.`;
++      feedback.classList.add('visible');
++      setTimeout(() => { feedback.classList.remove('visible'); }, 4000);
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        const agentResponse = {
++          success: true,
++          added: cartItem,
++          cartTotalCount: cart.reduce((sum, item) => sum + item.quantity, 0)
++        };
++        event.respondWith(Promise.resolve(JSON.stringify(agentResponse)));
++      }
++    });
++
++    // --- 3. Checkout Order Form Submission (Financial / Transactional) ---
++    const checkoutForm = document.getElementById('checkout-form');
++    checkoutForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      if (cart.length === 0) {
++        const errorMsg = 'Validation failed: Cannot checkout with an empty cart. Please add items to your order first.';
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(errorMsg));
++        } else {
++          alert('Your cart is empty! Please add drinks or food before checking out.');
++        }
++        return;
++      }
++
++      if (!validateForm(checkoutForm, event)) return;
++
++      const formData = new FormData(checkoutForm);
++      const customerName = formData.get('customerName');
++      const customerPhone = formData.get('customerPhone');
++      const customerEmail = formData.get('customerEmail');
++      const pickupLocation = formData.get('pickupLocation');
++      const pickupTime = formData.get('pickupTime');
++      const paymentMethod = formData.get('paymentMethod');
++
++      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
++      let discountVal = 0;
++      if (currentDiscount.code) {
++        discountVal = currentDiscount.type === 'fixed' 
++          ? Math.min(subtotal, currentDiscount.value) 
++          : subtotal * currentDiscount.value;
++      }
++      const finalTotal = Math.max(0, subtotal - discountVal) * 1.08;
++
++      const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
++      const orderConfirmation = {
++        orderId,
++        customerName,
++        customerPhone,
++        customerEmail,
++        pickupLocation,
++        pickupTime,
++        paymentMethod,
++        items: [...cart],
++        subtotal: `$${subtotal.toFixed(2)}`,
++        discountApplied: currentDiscount.code ? `$${discountVal.toFixed(2)}` : '$0.00',
++        totalPaid: `$${finalTotal.toFixed(2)}`,
++        status: 'Confirmed - Preparing at Roastery',
++        timestamp: new Date().toISOString()
++      };
++
++      // Reset cart upon successful checkout
++      cart = [];
++      currentDiscount = { code: null, amount: 0, description: '' };
++      updateCartUI();
++      checkoutForm.reset();
++
++      const feedback = document.getElementById('checkout-feedback');
++      feedback.innerHTML = `<strong>Order Confirmed!</strong> (#${orderId})<br>Ready for pickup at <em>${pickupLocation}</em> around <em>${pickupTime}</em>. Total: <strong>${orderConfirmation.totalPaid}</strong>.`;
++      feedback.classList.add('visible');
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve(JSON.stringify(orderConfirmation, null, 2)));
++      }
++    });
++
++    // --- 4. Rewards Lookup Form Submission ---
++    const rewardsForm = document.getElementById('rewards-lookup-form');
++    rewardsForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(rewardsForm, event)) return;
++
++      const formData = new FormData(rewardsForm);
++      const memberId = (formData.get('memberId') || '').toString().trim();
++      const member = REWARDS_DB[memberId] || {
++        name: 'Coffee Lover',
++        points: 50,
++        tier: 'Bronze Bean',
++        perks: ['Free regular drip coffee refill on same visit']
++      };
++
++      const feedback = document.getElementById('rewards-feedback');
++      feedback.innerHTML = `<strong>Welcome back, ${member.name}!</strong><br>Tier: <strong>${member.tier}</strong> | Points Balance: <strong>${member.points} pts</strong><br>Eligible Perks: ${member.perks.join(', ')}`;
++      feedback.classList.add('visible');
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve(JSON.stringify({
++          memberId,
++          ...member
++        }, null, 2)));
++      }
++    });
++
++    // --- 5. Apply Promo / Reward Coupon Form Submission ---
++    const promoForm = document.getElementById('apply-promo-form');
++    promoForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(promoForm, event)) return;
++
++      const formData = new FormData(promoForm);
++      const code = (formData.get('promoCode') || '').toString().trim().toUpperCase();
++      const feedback = document.getElementById('promo-feedback');
++
++      if (PROMO_CODES[code]) {
++        currentDiscount = {
++          code,
++          type: PROMO_CODES[code].type,
++          value: PROMO_CODES[code].value,
++          description: PROMO_CODES[code].description
++        };
++        updateCartUI();
++
++        feedback.className = 'alert-box alert-success visible';
++        feedback.innerHTML = `Promo code <strong>${code}</strong> applied! (${currentDiscount.description})`;
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(JSON.stringify({
++            success: true,
++            code,
++            appliedDescription: currentDiscount.description
++          })));
++        }
++      } else {
++        feedback.className = 'alert-box alert-info visible';
++        feedback.innerHTML = `Promo code <strong>${code}</strong> is invalid or expired. Try FREECOFFEE, STARS100, or SAVE10.`;
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve(`Validation failed: Promo code "${code}" is invalid or expired.`));
++        }
++      }
++    });
++
++    // --- 6. Locations Search Form Submission ---
++    const locationsForm = document.getElementById('locations-search-form');
++    locationsForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(locationsForm, event)) return;
++
++      const formData = new FormData(locationsForm);
++      const query = (formData.get('searchQuery') || '').toString().toLowerCase().trim();
++      const amenity = formData.get('amenity') || 'all';
++
++      const results = LOCATIONS.filter(loc => {
++        const matchesQuery = !query || 
++          loc.city.includes(query) || 
++          loc.zip.includes(query) || 
++          loc.name.toLowerCase().includes(query) ||
++          loc.address.toLowerCase().includes(query);
++        const matchesAmenity = amenity === 'all' || loc.amenities.includes(amenity);
++        return matchesQuery && matchesAmenity;
++      });
++
++      renderLocations(results);
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve(JSON.stringify({
++          count: results.length,
++          locations: results
++        }, null, 2)));
++      }
++    });
++
++    // --- 7. Contact Support Form Submission ---
++    const contactForm = document.getElementById('contact-form');
++    contactForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateForm(contactForm, event)) return;
++
++      const formData = new FormData(contactForm);
++      const ticketId = 'TICK-' + Math.floor(10000 + Math.random() * 90000);
++      const inquiry = {
++        ticketId,
++        name: formData.get('name'),
++        email: formData.get('email'),
++        subject: formData.get('subject'),
++        message: formData.get('message'),
++        status: 'Received by Customer Care',
++        receivedAt: new Date().toISOString()
++      };
++
++      contactForm.reset();
++      const feedback = document.getElementById('contact-feedback');
++      feedback.innerHTML = `Thank you, <strong>${inquiry.name}</strong>! Your inquiry (#${ticketId}) has been received. Our team will get back to you at <em>${inquiry.email}</em> within 24 hours.`;
++      feedback.classList.add('visible');
++
++      if (event.agentInvoked && typeof event.respondWith === 'function') {
++        event.respondWith(Promise.resolve(JSON.stringify(inquiry, null, 2)));
++      }
++    });
++
++    // Initial render on page load
++    document.addEventListener('DOMContentLoaded', () => {
++      renderMenu(MENU_ITEMS);
++      renderLocations(LOCATIONS);
++      updateCartUI();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

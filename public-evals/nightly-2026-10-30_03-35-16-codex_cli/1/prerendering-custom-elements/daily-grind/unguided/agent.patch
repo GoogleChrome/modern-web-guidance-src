@@ -1,0 +1,119 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..5389988
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,29 @@
++// Light DOM keeps the served content and head styles visible before upgrade.
++class DrinkCard extends HTMLElement {
++  #button;
++
++  #toggleFavorite = () => {
++    const pressed = this.#button.getAttribute('aria-pressed') === 'true';
++    this.#button.setAttribute('aria-pressed', String(!pressed));
++  };
++
++  connectedCallback() {
++    // Hydrate the existing button; never recreate the server-rendered children.
++    this.#button = this.querySelector('.favorite-toggle');
++    if (!this.#button) return;
++
++    this.#button.addEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = false;
++  }
++
++  disconnectedCallback() {
++    if (!this.#button) return;
++
++    this.#button.removeEventListener('click', this.#toggleFavorite);
++    this.#button.disabled = true;
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..5dc0cdc 100644
+--- a/index.html
++++ b/index.html
+@@ -108,6 +108,7 @@
+     }
+ 
+     .card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -135,6 +136,32 @@
+       background: #3e2723;
+     }
+ 
++    .favorite-toggle {
++      display: block;
++      margin: 12px auto 0;
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .favorite-toggle[aria-pressed="true"] {
++      background: var(--secondary);
++    }
++
++    .favorite-toggle:disabled {
++      opacity: 0.6;
++      cursor: default;
++    }
++
++    .favorite-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +180,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +206,24 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <drink-card class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <button type="button" class="favorite-toggle" aria-label="Favorite Maple Oat Latte" aria-pressed="false" disabled>Favorite</button>
++        </drink-card>
++        <drink-card class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <button type="button" class="favorite-toggle" aria-label="Favorite Dark Roast Espresso" aria-pressed="false" disabled>Favorite</button>
++        </drink-card>
++        <drink-card class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <button type="button" class="favorite-toggle" aria-label="Favorite Cold Brew" aria-pressed="false" disabled>Favorite</button>
++        </drink-card>
+       </div>
+     </section>
+   </main>

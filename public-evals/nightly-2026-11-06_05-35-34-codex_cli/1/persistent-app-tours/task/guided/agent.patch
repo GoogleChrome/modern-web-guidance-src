@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,60 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards;
++    }
++
++    #feature[aria-describedby] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 5px;
++    }
++
++    #tour-step {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: min(20rem, calc(100vw - 2rem));
++      padding: 1.25rem;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: var(--light);
++      color: var(--text);
++      box-shadow: 0 8px 30px rgb(0 0 0 / 22%);
++      z-index: 1001;
++      max-height: calc(100dvh - 2rem);
++      overflow: auto;
++    }
++
++    @supports (top: anchor(bottom)) and (anchor-name: --rewards) {
++      #tour-step {
++        position-anchor: --rewards;
++        top: calc(anchor(bottom) + 14px);
++        left: clamp(1rem, anchor(left), calc(100vw - 21rem));
++        position-try-fallbacks: flip-block;
++      }
++    }
++
++    #tour-step h2 {
++      font-size: 1.15rem;
++      margin-bottom: 0.5rem;
++    }
++
++    #tour-step button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    #tour-step button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +213,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature" aria-describedby="tour-message">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-message" hidden>
++    <h2 id="tour-title">Your coffee comes with perks</h2>
++    <p id="tour-message">Earn points with every purchase and turn your daily coffee into rewards.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it, close tour</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +264,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTour = tourStep.querySelector('button');
++    const nativePopover = 'popover' in HTMLElement.prototype;
++    const nativeAnchoring = CSS.supports('anchor-name: --rewards') && CSS.supports('top: anchor(bottom)');
++    let tourOpen = true;
++    let trackingFrame;
++
++    // Block mouse, keyboard, and middle-click navigation during this step.
++    const preventTourNavigation = (event) => {
++      if (tourOpen) event.preventDefault();
++    };
++    rewardsLink.addEventListener('click', preventTourNavigation);
++    rewardsLink.addEventListener('auxclick', preventTourNavigation);
++
++    // Track layout shifts as well as scrolling and resizing in older browsers.
++    function trackRewards() {
++      if (!tourOpen) return;
++      const target = rewardsLink.getBoundingClientRect();
++      const width = tourStep.offsetWidth;
++      const height = tourStep.offsetHeight;
++      const left = Math.max(16, Math.min(target.left, window.innerWidth - width - 16));
++      const top = target.bottom + 14 + height <= window.innerHeight - 16
++        ? target.bottom + 14
++        : Math.max(16, target.top - height - 14);
++      tourStep.style.left = `${left}px`;
++      tourStep.style.top = `${top}px`;
++      trackingFrame = requestAnimationFrame(trackRewards);
++    }
++
++    closeTour.addEventListener('click', () => {
++      tourOpen = false;
++      cancelAnimationFrame(trackingFrame);
++      if (nativePopover) tourStep.hidePopover();
++      else tourStep.hidden = true;
++      rewardsLink.removeAttribute('aria-describedby');
++      rewardsLink.focus({ preventScroll: true });
++    });
++
++    tourStep.hidden = false;
++    if (nativePopover) tourStep.showPopover();
++    if (!nativeAnchoring) trackRewards();
++    closeTour.focus({ preventScroll: true });
++  </script>
+ </body>
+ 
+ </html>

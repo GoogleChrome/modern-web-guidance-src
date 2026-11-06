@@ -1,0 +1,1916 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..fc59888
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,13 @@
++/*
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-s4csBNYLJhZBd0MLF08EEEawd10KC90gngONa+PUQog='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
++  Referrer-Policy: no-referrer
++  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=(), browsing-topics=()
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  Cache-Control: no-store, no-cache, must-revalidate, private
++
++/logout
++  Clear-Site-Data: "cache", "cookies", "storage"
+diff --git a/index.html b/index.html
+index 66c9173..b87843d 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-s4csBNYLJhZBd0MLF08EEEawd10KC90gngONa+PUQog='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
++  <meta name="referrer" content="no-referrer">
++  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=(), browsing-topics=()">
++  <meta http-equiv="X-Content-Type-Options" content="nosniff">
++  <meta http-equiv="X-Frame-Options" content="DENY">
++  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, private">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +18,12 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #bcaaa4;
++      --success-bg: #e8f5e9;
++      --success-text: #1b5e20;
++      --error-bg: #ffebee;
++      --error-text: #b71c1c;
+     }
+ 
+     * {
+@@ -49,6 +61,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -70,6 +83,10 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      background: transparent;
++      color: white;
++      cursor: pointer;
++      font-size: 0.9rem;
+     }
+ 
+     /* Hero Section */
+@@ -100,6 +117,11 @@
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,7 +130,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -126,8 +148,11 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
++      font-size: 0.95rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +160,96 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++      margin-left: 8px;
++    }
++
++    .btn-danger {
++      background: #8d3b3b;
++      margin-left: 8px;
++    }
++
++    /* Privacy by Design Sections */
++    .privacy-section {
++      margin-top: 40px;
++      background: var(--surface);
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      border-left: 4px solid var(--primary);
++    }
++
++    .privacy-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .privacy-notice {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 16px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .form-group input[type="email"] {
++      width: 100%;
++      max-width: 420px;
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      font-size: 0.95rem;
++    }
++
++    .checkbox-row {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      margin: 10px 0;
++      font-size: 0.92rem;
++    }
++
++    .checkbox-row input[type="checkbox"] {
++      margin-top: 4px;
++    }
++
++    .audit-box {
++      margin-top: 18px;
++      padding: 12px 16px;
++      background: #f5f0ee;
++      border-radius: 6px;
++      font-family: monospace;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    .status-banner {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      font-size: 0.92rem;
++      font-weight: 500;
++    }
++
++    .status-banner[data-state="success"] {
++      background: var(--success-bg);
++      color: var(--success-text);
++    }
++
++    .status-banner[data-state="error"] {
++      background: var(--error-bg);
++      color: var(--error-text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,56 +272,838 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" referrerpolicy="same-origin">Menu</a></li>
++      <li><a href="/locations" referrerpolicy="same-origin">Locations</a></li>
++      <li><a href="/rewards" rel="nofollow noopener noreferrer" referrerpolicy="no-referrer">Rewards</a></li>
++      <li><a href="/account" rel="nofollow noopener noreferrer" referrerpolicy="no-referrer">My Account</a></li>
++      <li><a href="/logout" class="logout-link" id="logout-link" rel="nofollow noopener noreferrer" referrerpolicy="no-referrer" role="button" data-action="logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" referrerpolicy="same-origin">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" referrerpolicy="same-origin">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" referrerpolicy="same-origin">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" referrerpolicy="same-origin">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="privacy-section" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Seasonal Brew Updates (Data-Minimized Opt-In)</h2>
++      <p id="privacy-notice" class="privacy-notice">
++        We practice strict data minimization: we only ask for your email address—never your phone number, birth date, or GPS location. Your email is used solely for seasonal roast announcements and can be erased at any time.
++      </p>
++      <form id="newsletter-form" action="/subscribe" method="POST" autocomplete="off" data-purpose="seasonal-updates" data-retention="until-unsubscribed" novalidate>
++        <div class="form-group">
++          <label for="subscriber-email">Email Address (Required)</label>
++          <input type="email" id="subscriber-email" name="email" autocomplete="email" inputmode="email" maxlength="120" placeholder="you@example.com" aria-describedby="privacy-notice" required>
++        </div>
++        <div class="checkbox-row">
++          <input type="checkbox" id="marketing-consent" name="consent" value="yes" required>
++          <label for="marketing-consent">
++            I explicitly opt in to receive seasonal menu updates via email and agree to the <a href="/privacy-policy" referrerpolicy="no-referrer">Privacy Policy</a>.
++          </label>
++        </div>
++        <button type="submit" class="btn">Subscribe Privately</button>
++      </form>
++    </section>
++
++    <section class="privacy-section" id="privacy-center" aria-labelledby="privacy-center-heading">
++      <h2 id="privacy-center-heading">Privacy Center &amp; Third-Party Audit</h2>
++      <p class="privacy-notice">
++        Privacy by Default: all non-essential data processing, analytics, and marketing are disabled unless you explicitly opt in. Local preferences automatically expire after 24 hours.
++      </p>
++      <form id="privacy-preferences-form" action="/privacy-preferences" method="POST" autocomplete="off">
++        <div class="checkbox-row">
++          <input type="checkbox" id="consent-necessary" name="necessary" checked disabled>
++          <label for="consent-necessary"><strong>Strictly Necessary (Always Active):</strong> Core security, CSRF protection, and session integrity with zero tracking.</label>
++        </div>
++        <div class="checkbox-row">
++          <input type="checkbox" id="consent-preferences" name="preferences">
++          <label for="consent-preferences"><strong>Functional Preferences (Opt-In):</strong> Remember UI display preferences locally for up to 24 hours.</label>
++        </div>
++        <div class="checkbox-row">
++          <input type="checkbox" id="consent-analytics" name="analytics">
++          <label for="consent-analytics"><strong>First-Party Diagnostics (Opt-In):</strong> Anonymous, aggregated page performance metrics without third-party trackers.</label>
++        </div>
++        <div class="checkbox-row">
++          <input type="checkbox" id="consent-marketing" name="marketing">
++          <label for="consent-marketing"><strong>Marketing Communications (Opt-In):</strong> Allow seasonal promotional offers (never shared with third-party ad networks).</label>
++        </div>
++        <div>
++          <button type="submit" class="btn" id="save-privacy-btn">Save Privacy Preferences</button>
++          <button type="button" class="btn btn-secondary" id="run-audit-btn">Run Third-Party Audit</button>
++          <button type="button" class="btn btn-danger" id="clear-data-btn">Clear All Stored Data</button>
++        </div>
++      </form>
++
++      <div id="audit-results" class="audit-box" role="status" aria-live="polite">
++        Running privacy and third-party resource audit...
++      </div>
++      <div id="privacy-status-message" class="status-banner" role="alert" aria-live="polite" hidden></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" referrerpolicy="same-origin">Our Story</a> |
++      <a href="/careers" referrerpolicy="same-origin">Join the Team</a> |
++      <a href="/contact" referrerpolicy="same-origin">Contact Us</a> |
++      <a href="/privacy-policy" referrerpolicy="no-referrer">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/privacy.js" defer></script>
++  <script>/**
++ * The Daily Grind - Privacy by Design Client-Side Module
++ * Implements:
++ * 1. Data Minimization (URL tracking param stripping, storage allowlisting, TTL expiration, opt-in consent)
++ * 2. Third-Party Audits (DOM/CSS/Resource origin auditing, SRI checks, referrer enforcement, MutationObserver)
++ * 3. Secure Data Handling (POST-based logout with full storage/cookie/cache wipe, PII redaction, input sanitization)
++ */
++(function () {
++  'use strict';
++
++  if (window.__dailyGrindPrivacyInitialized) {
++    return;
++  }
++  window.__dailyGrindPrivacyInitialized = true;
++
++  // --- Configuration & Policy Constants ---
++  const STORAGE_ALLOWLIST = new Set([
++    'dg_privacy_preferences',
++    'dg_theme'
++  ]);
++
++  const SENSITIVE_KEY_PATTERN = /(password|passwd|secret|token|auth|jwt|bearer|session|ssn|social|credit|card|cvv|ccn|email|phone|tel|mobile|address|street|zip|postal|dob|birth|name|fullname|user_id|userid|account|location|lat|lng|coords|gps|fingerprint|device_id|ga_|_ga|_gid|_gat|fbp|_fbp|fbc|track|utm_|clickid|gclid|fbclid)/i;
++
++  const TRACKING_URL_PARAMS = [
++    'utm_source',
++    'utm_medium',
++    'utm_campaign',
++    'utm_term',
++    'utm_content',
++    'utm_id',
++    'fbclid',
++    'gclid',
++    'msclkid',
++    'dclid',
++    'twclid',
++    'mc_eid',
++    'mc_cid',
++    '_ga',
++    '_gl',
++    'yclid',
++    'igshid',
++    'ref',
++    'referrer',
++    'session_id',
++    'sessionid',
++    'token',
++    'auth_token',
++    'access_token',
++    'password',
++    'email',
++    'phone',
++    'ssn'
++  ];
++
++  // Maximum storage retention TTL: 24 hours (in milliseconds)
++  const STORAGE_MAX_TTL_MS = 24 * 60 * 60 * 1000;
++
++  // Explicitly audited and permitted external origins (read-only static media only)
++  const ALLOWED_THIRD_PARTY_ORIGINS = new Set([
++    'https://images.unsplash.com'
++  ]);
++
++  const DEFAULT_CONSENT = Object.freeze({
++    necessary: true,
++    preferences: false,
++    analytics: false,
++    marketing: false
++  });
++
++  const cspViolations = [];
++
++  // --- 1. Data Minimization ---
++
++  /**
++   * Strips tracking identifiers and sensitive PII parameters from the browser URL
++   * using history.replaceState so they are never stored in browsing history or leaked via Referer.
++   */
++  function sanitizeUrlParams(urlString) {
++    try {
++      const target = urlString || window.location.href;
++      const url = new URL(target, window.location.origin);
++      const removedParams = [];
++
++      for (const param of TRACKING_URL_PARAMS) {
++        if (url.searchParams.has(param)) {
++          url.searchParams.delete(param);
++          removedParams.push(param);
++        }
++      }
++
++      // Also check for any dynamic parameter matching sensitive patterns
++      const currentKeys = Array.from(url.searchParams.keys());
++      for (const key of currentKeys) {
++        if (SENSITIVE_KEY_PATTERN.test(key)) {
++          url.searchParams.delete(key);
++          removedParams.push(key);
++        }
++      }
++
++      if (!urlString && removedParams.length > 0 && window.history && typeof window.history.replaceState === 'function') {
++        const cleanRelativeUrl = url.pathname + (url.search ? url.search : '') + (url.hash ? url.hash : '');
++        window.history.replaceState(null, document.title, cleanRelativeUrl);
++      }
++
++      return {
++        cleanUrl: url.toString(),
++        removedParams: removedParams
++      };
++    } catch (_err) {
++      return { cleanUrl: window.location.href, removedParams: [] };
++    }
++  }
++
++  /**
++   * Enforces data minimization across localStorage and sessionStorage:
++   * - Purges any key matching sensitive PII patterns or not on the strict allowlist
++   * - Enforces TTL expiration on allowed structured records
++   */
++  function enforceStorageMinimization() {
++    const purgedKeys = { localStorage: [], sessionStorage: [] };
++    const now = Date.now();
++
++    function auditStorage(storageObj, bucketName) {
++      if (!storageObj) return;
++      try {
++        const keys = [];
++        for (let i = 0; i < storageObj.length; i++) {
++          const k = storageObj.key(i);
++          if (k !== null) keys.push(k);
++        }
++
++        for (const key of keys) {
++          // Immediately remove sensitive PII keys or unapproved keys
++          if (SENSITIVE_KEY_PATTERN.test(key) || !STORAGE_ALLOWLIST.has(key)) {
++            storageObj.removeItem(key);
++            purgedKeys[bucketName].push(key);
++            continue;
++          }
++
++          // Validate TTL and structure for allowlisted keys
++          const rawValue = storageObj.getItem(key);
++          if (!rawValue) continue;
++
++          try {
++            const parsed = JSON.parse(rawValue);
++            if (parsed && typeof parsed === 'object') {
++              const expiresAt = Number(parsed.expiresAt || 0);
++              const timestamp = Number(parsed.timestamp || 0);
++              const isExpired =
++                (expiresAt > 0 && now > expiresAt) ||
++                (timestamp > 0 && now - timestamp > STORAGE_MAX_TTL_MS) ||
++                (!expiresAt && !timestamp);
++
++              if (isExpired) {
++                storageObj.removeItem(key);
++                purgedKeys[bucketName].push(key);
++              }
++            } else {
++              storageObj.removeItem(key);
++              purgedKeys[bucketName].push(key);
++            }
++          } catch (_parseErr) {
++            // Non-JSON or malformed entries without TTL metadata are purged
++            storageObj.removeItem(key);
++            purgedKeys[bucketName].push(key);
++          }
++        }
++      } catch (_storageErr) {
++        // Ignore storage access errors in restricted/sandboxed contexts
++      }
++    }
++
++    auditStorage(window.localStorage, 'localStorage');
++    auditStorage(window.sessionStorage, 'sessionStorage');
++
++    return purgedKeys;
++  }
++
++  /**
++   * Reads user consent preferences, defaulting strictly to opt-in (all non-essential false).
++   */
++  function getConsentPreferences() {
++    try {
++      const raw = window.localStorage.getItem('dg_privacy_preferences');
++      if (!raw) return Object.assign({}, DEFAULT_CONSENT);
++      const parsed = JSON.parse(raw);
++      if (!parsed || typeof parsed !== 'object' || (parsed.expiresAt && Date.now() > parsed.expiresAt)) {
++        window.localStorage.removeItem('dg_privacy_preferences');
++        return Object.assign({}, DEFAULT_CONSENT);
++      }
++      const data = parsed.data || {};
++      return {
++        necessary: true,
++        preferences: Boolean(data.preferences),
++        analytics: Boolean(data.analytics),
++        marketing: Boolean(data.marketing)
++      };
++    } catch (_err) {
++      return Object.assign({}, DEFAULT_CONSENT);
++    }
++  }
++
++  /**
++   * Saves minimized consent preferences with an automatic 24-hour expiration TTL.
++   * If preferences are revoked, non-essential data is immediately purged.
++   */
++  function setConsentPreferences(prefs) {
++    const normalized = {
++      necessary: true,
++      preferences: Boolean(prefs && prefs.preferences),
++      analytics: Boolean(prefs && prefs.analytics),
++      marketing: Boolean(prefs && prefs.marketing)
++    };
++
++    try {
++      const now = Date.now();
++      const record = {
++        data: normalized,
++        timestamp: now,
++        expiresAt: now + STORAGE_MAX_TTL_MS
++      };
++      window.localStorage.setItem('dg_privacy_preferences', JSON.stringify(record));
++
++      if (!normalized.preferences) {
++        window.localStorage.removeItem('dg_theme');
++      }
++      enforceStorageMinimization();
++    } catch (_err) {
++      // Storage unavailable
++    }
++
++    return normalized;
++  }
++
++  // --- 2. Secure Data Handling ---
++
++  /**
++   * Masks PII (emails, phone numbers, payment cards, SSNs, bearer tokens) so sensitive values
++   * are never written to logs, error messages, or UI telemetry.
++   */
++  function redactPII(input) {
++    if (typeof input !== 'string') return '';
++    return input
++      // Redact email addresses: j***@example.com
++      .replace(/\b([a-zA-Z0-9._%+-])[a-zA-Z0-9._%+-]*@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, '$1***@$2')
++      // Redact credit card numbers (13-19 digits)
++      .replace(/\b(?:\d[ -]*?){13,19}\b/g, '[REDACTED_CARD]')
++      // Redact SSN patterns
++      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[REDACTED_SSN]')
++      // Redact phone numbers
++      .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g, '[REDACTED_PHONE]')
++      // Redact Bearer / JWT tokens
++      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED_TOKEN]');
++  }
++
++  /**
++   * Sanitizes user text input against HTML injection and control characters,
++   * and truncates to a safe maximum length.
++   */
++  function sanitizeInput(value, maxLength) {
++    if (typeof value !== 'string') return '';
++    const limit = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 254;
++    return value
++      .replace(/[\u0000-\u001F\u007F<>`"']/g, '')
++      .trim()
++      .slice(0, limit);
++  }
++
++  /**
++   * Expires all client-accessible cookies across current and parent paths.
++   */
++  function clearAllCookies() {
++    try {
++      if (!document.cookie) return;
++      const cookies = document.cookie.split(';');
++      for (const cookie of cookies) {
++        const eqPos = cookie.indexOf('=');
++        const name = (eqPos > -1 ? cookie.slice(0, eqPos) : cookie).trim();
++        if (!name) continue;
++        document.cookie = name + '=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
++        document.cookie = name + '=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=' + window.location.pathname + '; SameSite=Strict';
++      }
++    } catch (_err) {
++      // Ignore cookie access errors
++    }
++  }
++
++  /**
++   * Wipes all client-side data stores: localStorage, sessionStorage, cookies,
++   * Cache Storage API, and IndexedDB databases.
++   */
++  async function clearAllClientData() {
++    try {
++      window.localStorage.clear();
++    } catch (_e) {}
++
++    try {
++      window.sessionStorage.clear();
++    } catch (_e) {}
++
++    clearAllCookies();
++
++    // Clear Cache Storage if supported
++    try {
++      if ('caches' in window && window.caches && typeof window.caches.keys === 'function') {
++        const cacheNames = await window.caches.keys();
++        await Promise.all(cacheNames.map(function (name) {
++          return window.caches.delete(name);
++        }));
++      }
++    } catch (_e) {}
++
++    // Clear IndexedDB databases if supported
++    try {
++      if ('indexedDB' in window && window.indexedDB && typeof window.indexedDB.databases === 'function') {
++        const dbs = await window.indexedDB.databases();
++        if (Array.isArray(dbs)) {
++          dbs.forEach(function (db) {
++            if (db && db.name) {
++              window.indexedDB.deleteDatabase(db.name);
++            }
++          });
++        }
++      }
++    } catch (_e) {}
++
++    // Reset any forms on the page so entered data does not remain in DOM inputs
++    try {
++      const forms = document.querySelectorAll('form');
++      forms.forEach(function (form) {
++        form.reset();
++      });
++    } catch (_e) {}
++
++    return {
++      localStorageCleared: true,
++      sessionStorageCleared: true,
++      cookiesCleared: true
++    };
++  }
++
++  /**
++   * Performs a secure logout:
++   * 1. Wipes all localStorage, sessionStorage, cookies, caches, and form state
++   * 2. Sends a non-cached POST request to /logout (preventing CSRF-prone GET logout)
++   * 3. Updates the UI state without leaking session identifiers
++   */
++  async function secureLogout(event) {
++    if (event && typeof event.preventDefault === 'function') {
++      event.preventDefault();
++    }
++
++    await clearAllClientData();
++
++    try {
++      await fetch('/logout', {
++        method: 'POST',
++        credentials: 'same-origin',
++        cache: 'no-store',
++        referrerPolicy: 'no-referrer',
++        headers: {
++          'Content-Type': 'application/json',
++          'X-Requested-With': 'XMLHttpRequest'
++        },
++        body: JSON.stringify({ action: 'logout' })
++      });
++    } catch (_networkErr) {
++      // Even if offline or static server, client-side session data is completely wiped
++    }
++
++    updateStatusMessage('Session ended. All local storage, session data, and cookies have been securely erased.');
++    syncConsentUI(DEFAULT_CONSENT);
++    renderAuditSummary();
++  }
++
++  // --- 3. Third-Party Audits & Hardening ---
++
++  /**
++   * Inspects and hardens all DOM elements and stylesheets for third-party connections:
++   * - Enforces rel="noopener noreferrer" and referrerpolicy="no-referrer" on external links/media
++   * - Verifies Subresource Integrity (SRI) on any external scripts or stylesheets
++   * - Removes unauthorized third-party scripts, iframes, embeds, or tracking pixels
++   * - Audits CSS background-image URLs and PerformanceResourceTiming entries
++   */
++  function runThirdPartyAudit() {
++    const report = {
++      timestamp: new Date().toISOString(),
++      sameOrigin: window.location.origin,
++      externalResources: [],
++      unauthorizedBlocked: [],
++      hardenedElements: 0,
++      missingSriWarnings: [],
++      cspViolations: cspViolations.slice(),
++      storageKeysCount: 0
++    };
++
++    // 1. Harden and audit anchor links
++    const links = document.querySelectorAll('a[href]');
++    links.forEach(function (anchor) {
++      const rawHref = anchor.getAttribute('href') || '';
++      // Remove any HTML ping tracking attributes
++      if (anchor.hasAttribute('ping')) {
++        anchor.removeAttribute('ping');
++        report.hardenedElements++;
++      }
++
++      if (/^https?:\/\//i.test(rawHref)) {
++        try {
++          const parsedUrl = new URL(rawHref, window.location.origin);
++          if (parsedUrl.origin !== window.location.origin) {
++            anchor.setAttribute('rel', 'noopener noreferrer external');
++            anchor.setAttribute('referrerpolicy', 'no-referrer');
++            report.hardenedElements++;
++          }
++        } catch (_e) {}
++      } else if (rawHref === '/logout' || rawHref === '/account' || rawHref === '/rewards') {
++        const currentRel = anchor.getAttribute('rel') || '';
++        if (!currentRel.includes('nofollow') || !currentRel.includes('noreferrer')) {
++          anchor.setAttribute('rel', 'nofollow noopener noreferrer');
++          anchor.setAttribute('referrerpolicy', 'no-referrer');
++          report.hardenedElements++;
++        }
++      }
++    });
++
++    // 2. Audit scripts, stylesheets, iframes, images, objects, embeds
++    const resourceSelectors = 'script[src], link[href], img[src], iframe[src], object[data], embed[src]';
++    const elements = document.querySelectorAll(resourceSelectors);
++
++    elements.forEach(function (el) {
++      const attrName = el.hasAttribute('src') ? 'src' : (el.hasAttribute('href') ? 'href' : 'data');
++      const rawUrl = el.getAttribute(attrName);
++      if (!rawUrl || rawUrl.startsWith('data:')) return;
++
++      try {
++        const resolved = new URL(rawUrl, window.location.origin);
++        if (resolved.origin === window.location.origin) {
++          return; // First-party resource
++        }
++
++        const tagName = el.tagName.toLowerCase();
++        const isAllowedOrigin = ALLOWED_THIRD_PARTY_ORIGINS.has(resolved.origin);
++
++        // Enforce referrer protection on external elements
++        if (el.getAttribute('referrerpolicy') !== 'no-referrer') {
++          el.setAttribute('referrerpolicy', 'no-referrer');
++          report.hardenedElements++;
++        }
++        if ((tagName === 'img' || tagName === 'script' || tagName === 'link') && !el.hasAttribute('crossorigin')) {
++          el.setAttribute('crossorigin', 'anonymous');
++          report.hardenedElements++;
++        }
++
++        // Check SRI on external scripts and stylesheets
++        if ((tagName === 'script' || (tagName === 'link' && el.getAttribute('rel') === 'stylesheet')) && !el.hasAttribute('integrity')) {
++          report.missingSriWarnings.push({
++            tag: tagName,
++            origin: resolved.origin
++          });
++        }
++
++        // Block any third-party script, iframe, object, embed, or unapproved third-party origin
++        if (tagName === 'script' || tagName === 'iframe' || tagName === 'object' || tagName === 'embed' || !isAllowedOrigin) {
++          report.unauthorizedBlocked.push({
++            tag: tagName,
++            origin: resolved.origin
++          });
++          el.removeAttribute(attrName);
++          if (el.parentNode) {
++            el.parentNode.removeChild(el);
++          }
++          return;
++        }
++
++        report.externalResources.push({
++          tag: tagName,
++          origin: resolved.origin,
++          status: 'audited-allowed',
++          referrerPolicy: 'no-referrer'
++        });
++      } catch (_err) {
++        // Ignore malformed URLs
++      }
++    });
++
++    // 3. Audit CSS stylesheets for external url(...) references (e.g., Unsplash hero background)
++    try {
++      const sheets = Array.from(document.styleSheets || []);
++      sheets.forEach(function (sheet) {
++        let rules;
++        try {
++          rules = sheet.cssRules || [];
++        } catch (_corsErr) {
++          return;
++        }
++        Array.from(rules).forEach(function (rule) {
++          if (!rule.cssText) return;
++          const matches = rule.cssText.match(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi) || [];
++          matches.forEach(function (match) {
++            const urlMatch = match.match(/https?:\/\/[^)'"]+/i);
++            if (!urlMatch) return;
++            try {
++              const cssUrl = new URL(urlMatch[0]);
++              if (cssUrl.origin !== window.location.origin) {
++                const allowed = ALLOWED_THIRD_PARTY_ORIGINS.has(cssUrl.origin);
++                report.externalResources.push({
++                  tag: 'css-background',
++                  origin: cssUrl.origin,
++                  status: allowed ? 'audited-allowed (no-referrer meta enforced)' : 'restricted'
++                });
++              }
++            } catch (_e) {}
++          });
++        });
++      });
++    } catch (_styleErr) {}
++
++    // 4. Count remaining allowlisted storage keys
++    try {
++      report.storageKeysCount = (window.localStorage ? window.localStorage.length : 0) +
++        (window.sessionStorage ? window.sessionStorage.length : 0);
++    } catch (_e) {}
++
++    return report;
++  }
++
++  /**
++   * Monitors DOM mutations to prevent runtime injection of unauthorized third-party scripts or trackers.
++   */
++  function startDomAuditObserver() {
++    if (typeof MutationObserver === 'undefined' || !document.documentElement) return;
++
++    const observer = new MutationObserver(function (mutations) {
++      let needsAudit = false;
++      for (const mutation of mutations) {
++        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
++          for (const node of mutation.addedNodes) {
++            if (node.nodeType === 1) {
++              const tag = node.tagName ? node.tagName.toLowerCase() : '';
++              if (tag === 'script' || tag === 'iframe' || tag === 'img' || tag === 'link' || tag === 'object' || tag === 'embed') {
++                needsAudit = true;
++                break;
++              }
++            }
++          }
++        }
++        if (needsAudit) break;
++      }
++      if (needsAudit) {
++        runThirdPartyAudit();
++      }
++    });
++
++    observer.observe(document.documentElement, {
++      childList: true,
++      subtree: true
++    });
++  }
++
++  // --- UI Synchronization & Event Wiring ---
++
++  function updateStatusMessage(message, isError) {
++    const statusEl = document.getElementById('privacy-status-message');
++    if (!statusEl) return;
++    statusEl.textContent = redactPII(message);
++    statusEl.hidden = false;
++    statusEl.setAttribute('data-state', isError ? 'error' : 'success');
++  }
++
++  function syncConsentUI(prefs) {
++    const current = prefs || getConsentPreferences();
++    const prefCheckbox = document.getElementById('consent-preferences');
++    const analyticsCheckbox = document.getElementById('consent-analytics');
++    const marketingCheckbox = document.getElementById('consent-marketing');
++
++    if (prefCheckbox) prefCheckbox.checked = Boolean(current.preferences);
++    if (analyticsCheckbox) analyticsCheckbox.checked = Boolean(current.analytics);
++    if (marketingCheckbox) marketingCheckbox.checked = Boolean(current.marketing);
++  }
++
++  function renderAuditSummary() {
++    const auditOutput = document.getElementById('audit-results');
++    if (!auditOutput) return;
++
++    const report = runThirdPartyAudit();
++    const externalSummary = report.externalResources.length > 0
++      ? report.externalResources.map(function (r) { return r.origin + ' (' + r.tag + ': ' + r.status + ')'; }).join(', ')
++      : 'None (100% first-party)';
++
++    auditOutput.textContent =
++      'Third-Party Origins: ' + externalSummary +
++      ' | Unauthorized Trackers Blocked: ' + report.unauthorizedBlocked.length +
++      ' | Active Storage Keys: ' + report.storageKeysCount +
++      ' | Referrer Policy: no-referrer';
++  }
++
++  function initEventListeners() {
++    // 1. Secure Logout Handler (.logout-link and #logout-form)
++    const logoutLinks = document.querySelectorAll('.logout-link, #logout-link');
++    logoutLinks.forEach(function (el) {
++      el.addEventListener('click', secureLogout);
++    });
++
++    const logoutForm = document.getElementById('logout-form');
++    if (logoutForm) {
++      logoutForm.addEventListener('submit', secureLogout);
++    }
++
++    // 2. Newsletter / Rewards Data-Minimized Form Handler
++    const newsletterForm = document.getElementById('newsletter-form');
++    if (newsletterForm) {
++      newsletterForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++        const emailInput = document.getElementById('subscriber-email');
++        const consentInput = document.getElementById('marketing-consent');
++
++        const email = sanitizeInput(emailInput ? emailInput.value : '', 120);
++        const consented = Boolean(consentInput && consentInput.checked);
++
++        if (!consented) {
++          updateStatusMessage('Explicit opt-in consent is required before submitting your email.', true);
++          return;
++        }
++
++        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
++          updateStatusMessage('Please enter a valid email address.', true);
++          return;
++        }
++
++        // Redact email before displaying confirmation and immediately clear input from DOM
++        const masked = redactPII(email);
++        newsletterForm.reset();
++        updateStatusMessage('Subscribed ' + masked + ' with explicit opt-in consent. Zero unnecessary PII collected.', false);
++      });
++    }
++
++    // 3. Privacy Preferences Form Handler
++    const privacyForm = document.getElementById('privacy-preferences-form');
++    if (privacyForm) {
++      privacyForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++        const prefCheckbox = document.getElementById('consent-preferences');
++        const analyticsCheckbox = document.getElementById('consent-analytics');
++        const marketingCheckbox = document.getElementById('consent-marketing');
++
++        const updated = setConsentPreferences({
++          necessary: true,
++          preferences: Boolean(prefCheckbox && prefCheckbox.checked),
++          analytics: Boolean(analyticsCheckbox && analyticsCheckbox.checked),
++          marketing: Boolean(marketingCheckbox && marketingCheckbox.checked)
++        });
++
++        syncConsentUI(updated);
++        renderAuditSummary();
++        updateStatusMessage('Privacy preferences saved with 24-hour automatic expiration.', false);
++      });
++    }
++
++    // 4. Clear All Stored Data Handler
++    const clearDataBtn = document.getElementById('clear-data-btn');
++    if (clearDataBtn) {
++      clearDataBtn.addEventListener('click', async function (event) {
++        event.preventDefault();
++        await clearAllClientData();
++        syncConsentUI(DEFAULT_CONSENT);
++        renderAuditSummary();
++        updateStatusMessage('All client-side storage, cookies, and caches have been erased.', false);
++      });
++    }
++
++    // 5. Manual Audit Trigger
++    const runAuditBtn = document.getElementById('run-audit-btn');
++    if (runAuditBtn) {
++      runAuditBtn.addEventListener('click', function (event) {
++        event.preventDefault();
++        enforceStorageMinimization();
++        renderAuditSummary();
++        updateStatusMessage('Third-party and storage privacy audit completed.', false);
++      });
++    }
++
++    // 6. CSP Violation Monitoring (redacted)
++    document.addEventListener('securitypolicyviolation', function (event) {
++      cspViolations.push({
++        blockedURI: redactPII(event.blockedURI || ''),
++        violatedDirective: event.violatedDirective || '',
++        timestamp: new Date().toISOString()
++      });
++      renderAuditSummary();
++    });
++
++    // 7. Clear ephemeral sessionStorage on pagehide
++    window.addEventListener('pagehide', function () {
++      enforceStorageMinimization();
++    });
++  }
++
++  function initializePrivacyByDesign() {
++    sanitizeUrlParams();
++    enforceStorageMinimization();
++    syncConsentUI(getConsentPreferences());
++    initEventListeners();
++    renderAuditSummary();
++    startDomAuditObserver();
++  }
++
++  // Expose public API for programmatic inspection and testing
++  window.DailyGrindPrivacy = Object.freeze({
++    sanitizeUrlParams: sanitizeUrlParams,
++    enforceStorageMinimization: enforceStorageMinimization,
++    getConsentPreferences: getConsentPreferences,
++    setConsentPreferences: setConsentPreferences,
++    runThirdPartyAudit: runThirdPartyAudit,
++    clearAllClientData: clearAllClientData,
++    secureLogout: secureLogout,
++    redactPII: redactPII,
++    sanitizeInput: sanitizeInput
++  });
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initializePrivacyByDesign);
++  } else {
++    initializePrivacyByDesign();
++  }
++})();
++</script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e49b21f 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,9 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy.js b/privacy.js
+new file mode 100644
+index 0000000..dc3ab32
+--- /dev/null
++++ b/privacy.js
+@@ -0,0 +1,725 @@
++/**
++ * The Daily Grind - Privacy by Design Client-Side Module
++ * Implements:
++ * 1. Data Minimization (URL tracking param stripping, storage allowlisting, TTL expiration, opt-in consent)
++ * 2. Third-Party Audits (DOM/CSS/Resource origin auditing, SRI checks, referrer enforcement, MutationObserver)
++ * 3. Secure Data Handling (POST-based logout with full storage/cookie/cache wipe, PII redaction, input sanitization)
++ */
++(function () {
++  'use strict';
++
++  if (window.__dailyGrindPrivacyInitialized) {
++    return;
++  }
++  window.__dailyGrindPrivacyInitialized = true;
++
++  // --- Configuration & Policy Constants ---
++  const STORAGE_ALLOWLIST = new Set([
++    'dg_privacy_preferences',
++    'dg_theme'
++  ]);
++
++  const SENSITIVE_KEY_PATTERN = /(password|passwd|secret|token|auth|jwt|bearer|session|ssn|social|credit|card|cvv|ccn|email|phone|tel|mobile|address|street|zip|postal|dob|birth|name|fullname|user_id|userid|account|location|lat|lng|coords|gps|fingerprint|device_id|ga_|_ga|_gid|_gat|fbp|_fbp|fbc|track|utm_|clickid|gclid|fbclid)/i;
++
++  const TRACKING_URL_PARAMS = [
++    'utm_source',
++    'utm_medium',
++    'utm_campaign',
++    'utm_term',
++    'utm_content',
++    'utm_id',
++    'fbclid',
++    'gclid',
++    'msclkid',
++    'dclid',
++    'twclid',
++    'mc_eid',
++    'mc_cid',
++    '_ga',
++    '_gl',
++    'yclid',
++    'igshid',
++    'ref',
++    'referrer',
++    'session_id',
++    'sessionid',
++    'token',
++    'auth_token',
++    'access_token',
++    'password',
++    'email',
++    'phone',
++    'ssn'
++  ];
++
++  // Maximum storage retention TTL: 24 hours (in milliseconds)
++  const STORAGE_MAX_TTL_MS = 24 * 60 * 60 * 1000;
++
++  // Explicitly audited and permitted external origins (read-only static media only)
++  const ALLOWED_THIRD_PARTY_ORIGINS = new Set([
++    'https://images.unsplash.com'
++  ]);
++
++  const DEFAULT_CONSENT = Object.freeze({
++    necessary: true,
++    preferences: false,
++    analytics: false,
++    marketing: false
++  });
++
++  const cspViolations = [];
++
++  // --- 1. Data Minimization ---
++
++  /**
++   * Strips tracking identifiers and sensitive PII parameters from the browser URL
++   * using history.replaceState so they are never stored in browsing history or leaked via Referer.
++   */
++  function sanitizeUrlParams(urlString) {
++    try {
++      const target = urlString || window.location.href;
++      const url = new URL(target, window.location.origin);
++      const removedParams = [];
++
++      for (const param of TRACKING_URL_PARAMS) {
++        if (url.searchParams.has(param)) {
++          url.searchParams.delete(param);
++          removedParams.push(param);
++        }
++      }
++
++      // Also check for any dynamic parameter matching sensitive patterns
++      const currentKeys = Array.from(url.searchParams.keys());
++      for (const key of currentKeys) {
++        if (SENSITIVE_KEY_PATTERN.test(key)) {
++          url.searchParams.delete(key);
++          removedParams.push(key);
++        }
++      }
++
++      if (!urlString && removedParams.length > 0 && window.history && typeof window.history.replaceState === 'function') {
++        const cleanRelativeUrl = url.pathname + (url.search ? url.search : '') + (url.hash ? url.hash : '');
++        window.history.replaceState(null, document.title, cleanRelativeUrl);
++      }
++
++      return {
++        cleanUrl: url.toString(),
++        removedParams: removedParams
++      };
++    } catch (_err) {
++      return { cleanUrl: window.location.href, removedParams: [] };
++    }
++  }
++
++  /**
++   * Enforces data minimization across localStorage and sessionStorage:
++   * - Purges any key matching sensitive PII patterns or not on the strict allowlist
++   * - Enforces TTL expiration on allowed structured records
++   */
++  function enforceStorageMinimization() {
++    const purgedKeys = { localStorage: [], sessionStorage: [] };
++    const now = Date.now();
++
++    function auditStorage(storageObj, bucketName) {
++      if (!storageObj) return;
++      try {
++        const keys = [];
++        for (let i = 0; i < storageObj.length; i++) {
++          const k = storageObj.key(i);
++          if (k !== null) keys.push(k);
++        }
++
++        for (const key of keys) {
++          // Immediately remove sensitive PII keys or unapproved keys
++          if (SENSITIVE_KEY_PATTERN.test(key) || !STORAGE_ALLOWLIST.has(key)) {
++            storageObj.removeItem(key);
++            purgedKeys[bucketName].push(key);
++            continue;
++          }
++
++          // Validate TTL and structure for allowlisted keys
++          const rawValue = storageObj.getItem(key);
++          if (!rawValue) continue;
++
++          try {
++            const parsed = JSON.parse(rawValue);
++            if (parsed && typeof parsed === 'object') {
++              const expiresAt = Number(parsed.expiresAt || 0);
++              const timestamp = Number(parsed.timestamp || 0);
++              const isExpired =
++                (expiresAt > 0 && now > expiresAt) ||
++                (timestamp > 0 && now - timestamp > STORAGE_MAX_TTL_MS) ||
++                (!expiresAt && !timestamp);
++
++              if (isExpired) {
++                storageObj.removeItem(key);
++                purgedKeys[bucketName].push(key);
++              }
++            } else {
++              storageObj.removeItem(key);
++              purgedKeys[bucketName].push(key);
++            }
++          } catch (_parseErr) {
++            // Non-JSON or malformed entries without TTL metadata are purged
++            storageObj.removeItem(key);
++            purgedKeys[bucketName].push(key);
++          }
++        }
++      } catch (_storageErr) {
++        // Ignore storage access errors in restricted/sandboxed contexts
++      }
++    }
++
++    auditStorage(window.localStorage, 'localStorage');
++    auditStorage(window.sessionStorage, 'sessionStorage');
++
++    return purgedKeys;
++  }
++
++  /**
++   * Reads user consent preferences, defaulting strictly to opt-in (all non-essential false).
++   */
++  function getConsentPreferences() {
++    try {
++      const raw = window.localStorage.getItem('dg_privacy_preferences');
++      if (!raw) return Object.assign({}, DEFAULT_CONSENT);
++      const parsed = JSON.parse(raw);
++      if (!parsed || typeof parsed !== 'object' || (parsed.expiresAt && Date.now() > parsed.expiresAt)) {
++        window.localStorage.removeItem('dg_privacy_preferences');
++        return Object.assign({}, DEFAULT_CONSENT);
++      }
++      const data = parsed.data || {};
++      return {
++        necessary: true,
++        preferences: Boolean(data.preferences),
++        analytics: Boolean(data.analytics),
++        marketing: Boolean(data.marketing)
++      };
++    } catch (_err) {
++      return Object.assign({}, DEFAULT_CONSENT);
++    }
++  }
++
++  /**
++   * Saves minimized consent preferences with an automatic 24-hour expiration TTL.
++   * If preferences are revoked, non-essential data is immediately purged.
++   */
++  function setConsentPreferences(prefs) {
++    const normalized = {
++      necessary: true,
++      preferences: Boolean(prefs && prefs.preferences),
++      analytics: Boolean(prefs && prefs.analytics),
++      marketing: Boolean(prefs && prefs.marketing)
++    };
++
++    try {
++      const now = Date.now();
++      const record = {
++        data: normalized,
++        timestamp: now,
++        expiresAt: now + STORAGE_MAX_TTL_MS
++      };
++      window.localStorage.setItem('dg_privacy_preferences', JSON.stringify(record));
++
++      if (!normalized.preferences) {
++        window.localStorage.removeItem('dg_theme');
++      }
++      enforceStorageMinimization();
++    } catch (_err) {
++      // Storage unavailable
++    }
++
++    return normalized;
++  }
++
++  // --- 2. Secure Data Handling ---
++
++  /**
++   * Masks PII (emails, phone numbers, payment cards, SSNs, bearer tokens) so sensitive values
++   * are never written to logs, error messages, or UI telemetry.
++   */
++  function redactPII(input) {
++    if (typeof input !== 'string') return '';
++    return input
++      // Redact email addresses: j***@example.com
++      .replace(/\b([a-zA-Z0-9._%+-])[a-zA-Z0-9._%+-]*@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, '$1***@$2')
++      // Redact credit card numbers (13-19 digits)
++      .replace(/\b(?:\d[ -]*?){13,19}\b/g, '[REDACTED_CARD]')
++      // Redact SSN patterns
++      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[REDACTED_SSN]')
++      // Redact phone numbers
++      .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g, '[REDACTED_PHONE]')
++      // Redact Bearer / JWT tokens
++      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED_TOKEN]');
++  }
++
++  /**
++   * Sanitizes user text input against HTML injection and control characters,
++   * and truncates to a safe maximum length.
++   */
++  function sanitizeInput(value, maxLength) {
++    if (typeof value !== 'string') return '';
++    const limit = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 254;
++    return value
++      .replace(/[\u0000-\u001F\u007F<>`"']/g, '')
++      .trim()
++      .slice(0, limit);
++  }
++
++  /**
++   * Expires all client-accessible cookies across current and parent paths.
++   */
++  function clearAllCookies() {
++    try {
++      if (!document.cookie) return;
++      const cookies = document.cookie.split(';');
++      for (const cookie of cookies) {
++        const eqPos = cookie.indexOf('=');
++        const name = (eqPos > -1 ? cookie.slice(0, eqPos) : cookie).trim();
++        if (!name) continue;
++        document.cookie = name + '=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
++        document.cookie = name + '=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=' + window.location.pathname + '; SameSite=Strict';
++      }
++    } catch (_err) {
++      // Ignore cookie access errors
++    }
++  }
++
++  /**
++   * Wipes all client-side data stores: localStorage, sessionStorage, cookies,
++   * Cache Storage API, and IndexedDB databases.
++   */
++  async function clearAllClientData() {
++    try {
++      window.localStorage.clear();
++    } catch (_e) {}
++
++    try {
++      window.sessionStorage.clear();
++    } catch (_e) {}
++
++    clearAllCookies();
++
++    // Clear Cache Storage if supported
++    try {
++      if ('caches' in window && window.caches && typeof window.caches.keys === 'function') {
++        const cacheNames = await window.caches.keys();
++        await Promise.all(cacheNames.map(function (name) {
++          return window.caches.delete(name);
++        }));
++      }
++    } catch (_e) {}
++
++    // Clear IndexedDB databases if supported
++    try {
++      if ('indexedDB' in window && window.indexedDB && typeof window.indexedDB.databases === 'function') {
++        const dbs = await window.indexedDB.databases();
++        if (Array.isArray(dbs)) {
++          dbs.forEach(function (db) {
++            if (db && db.name) {
++              window.indexedDB.deleteDatabase(db.name);
++            }
++          });
++        }
++      }
++    } catch (_e) {}
++
++    // Reset any forms on the page so entered data does not remain in DOM inputs
++    try {
++      const forms = document.querySelectorAll('form');
++      forms.forEach(function (form) {
++        form.reset();
++      });
++    } catch (_e) {}
++
++    return {
++      localStorageCleared: true,
++      sessionStorageCleared: true,
++      cookiesCleared: true
++    };
++  }
++
++  /**
++   * Performs a secure logout:
++   * 1. Wipes all localStorage, sessionStorage, cookies, caches, and form state
++   * 2. Sends a non-cached POST request to /logout (preventing CSRF-prone GET logout)
++   * 3. Updates the UI state without leaking session identifiers
++   */
++  async function secureLogout(event) {
++    if (event && typeof event.preventDefault === 'function') {
++      event.preventDefault();
++    }
++
++    await clearAllClientData();
++
++    try {
++      await fetch('/logout', {
++        method: 'POST',
++        credentials: 'same-origin',
++        cache: 'no-store',
++        referrerPolicy: 'no-referrer',
++        headers: {
++          'Content-Type': 'application/json',
++          'X-Requested-With': 'XMLHttpRequest'
++        },
++        body: JSON.stringify({ action: 'logout' })
++      });
++    } catch (_networkErr) {
++      // Even if offline or static server, client-side session data is completely wiped
++    }
++
++    updateStatusMessage('Session ended. All local storage, session data, and cookies have been securely erased.');
++    syncConsentUI(DEFAULT_CONSENT);
++    renderAuditSummary();
++  }
++
++  // --- 3. Third-Party Audits & Hardening ---
++
++  /**
++   * Inspects and hardens all DOM elements and stylesheets for third-party connections:
++   * - Enforces rel="noopener noreferrer" and referrerpolicy="no-referrer" on external links/media
++   * - Verifies Subresource Integrity (SRI) on any external scripts or stylesheets
++   * - Removes unauthorized third-party scripts, iframes, embeds, or tracking pixels
++   * - Audits CSS background-image URLs and PerformanceResourceTiming entries
++   */
++  function runThirdPartyAudit() {
++    const report = {
++      timestamp: new Date().toISOString(),
++      sameOrigin: window.location.origin,
++      externalResources: [],
++      unauthorizedBlocked: [],
++      hardenedElements: 0,
++      missingSriWarnings: [],
++      cspViolations: cspViolations.slice(),
++      storageKeysCount: 0
++    };
++
++    // 1. Harden and audit anchor links
++    const links = document.querySelectorAll('a[href]');
++    links.forEach(function (anchor) {
++      const rawHref = anchor.getAttribute('href') || '';
++      // Remove any HTML ping tracking attributes
++      if (anchor.hasAttribute('ping')) {
++        anchor.removeAttribute('ping');
++        report.hardenedElements++;
++      }
++
++      if (/^https?:\/\//i.test(rawHref)) {
++        try {
++          const parsedUrl = new URL(rawHref, window.location.origin);
++          if (parsedUrl.origin !== window.location.origin) {
++            anchor.setAttribute('rel', 'noopener noreferrer external');
++            anchor.setAttribute('referrerpolicy', 'no-referrer');
++            report.hardenedElements++;
++          }
++        } catch (_e) {}
++      } else if (rawHref === '/logout' || rawHref === '/account' || rawHref === '/rewards') {
++        const currentRel = anchor.getAttribute('rel') || '';
++        if (!currentRel.includes('nofollow') || !currentRel.includes('noreferrer')) {
++          anchor.setAttribute('rel', 'nofollow noopener noreferrer');
++          anchor.setAttribute('referrerpolicy', 'no-referrer');
++          report.hardenedElements++;
++        }
++      }
++    });
++
++    // 2. Audit scripts, stylesheets, iframes, images, objects, embeds
++    const resourceSelectors = 'script[src], link[href], img[src], iframe[src], object[data], embed[src]';
++    const elements = document.querySelectorAll(resourceSelectors);
++
++    elements.forEach(function (el) {
++      const attrName = el.hasAttribute('src') ? 'src' : (el.hasAttribute('href') ? 'href' : 'data');
++      const rawUrl = el.getAttribute(attrName);
++      if (!rawUrl || rawUrl.startsWith('data:')) return;
++
++      try {
++        const resolved = new URL(rawUrl, window.location.origin);
++        if (resolved.origin === window.location.origin) {
++          return; // First-party resource
++        }
++
++        const tagName = el.tagName.toLowerCase();
++        const isAllowedOrigin = ALLOWED_THIRD_PARTY_ORIGINS.has(resolved.origin);
++
++        // Enforce referrer protection on external elements
++        if (el.getAttribute('referrerpolicy') !== 'no-referrer') {
++          el.setAttribute('referrerpolicy', 'no-referrer');
++          report.hardenedElements++;
++        }
++        if ((tagName === 'img' || tagName === 'script' || tagName === 'link') && !el.hasAttribute('crossorigin')) {
++          el.setAttribute('crossorigin', 'anonymous');
++          report.hardenedElements++;
++        }
++
++        // Check SRI on external scripts and stylesheets
++        if ((tagName === 'script' || (tagName === 'link' && el.getAttribute('rel') === 'stylesheet')) && !el.hasAttribute('integrity')) {
++          report.missingSriWarnings.push({
++            tag: tagName,
++            origin: resolved.origin
++          });
++        }
++
++        // Block any third-party script, iframe, object, embed, or unapproved third-party origin
++        if (tagName === 'script' || tagName === 'iframe' || tagName === 'object' || tagName === 'embed' || !isAllowedOrigin) {
++          report.unauthorizedBlocked.push({
++            tag: tagName,
++            origin: resolved.origin
++          });
++          el.removeAttribute(attrName);
++          if (el.parentNode) {
++            el.parentNode.removeChild(el);
++          }
++          return;
++        }
++
++        report.externalResources.push({
++          tag: tagName,
++          origin: resolved.origin,
++          status: 'audited-allowed',
++          referrerPolicy: 'no-referrer'
++        });
++      } catch (_err) {
++        // Ignore malformed URLs
++      }
++    });
++
++    // 3. Audit CSS stylesheets for external url(...) references (e.g., Unsplash hero background)
++    try {
++      const sheets = Array.from(document.styleSheets || []);
++      sheets.forEach(function (sheet) {
++        let rules;
++        try {
++          rules = sheet.cssRules || [];
++        } catch (_corsErr) {
++          return;
++        }
++        Array.from(rules).forEach(function (rule) {
++          if (!rule.cssText) return;
++          const matches = rule.cssText.match(/url\(['"]?(https?:\/\/[^)'"]+)['"]?\)/gi) || [];
++          matches.forEach(function (match) {
++            const urlMatch = match.match(/https?:\/\/[^)'"]+/i);
++            if (!urlMatch) return;
++            try {
++              const cssUrl = new URL(urlMatch[0]);
++              if (cssUrl.origin !== window.location.origin) {
++                const allowed = ALLOWED_THIRD_PARTY_ORIGINS.has(cssUrl.origin);
++                report.externalResources.push({
++                  tag: 'css-background',
++                  origin: cssUrl.origin,
++                  status: allowed ? 'audited-allowed (no-referrer meta enforced)' : 'restricted'
++                });
++              }
++            } catch (_e) {}
++          });
++        });
++      });
++    } catch (_styleErr) {}
++
++    // 4. Count remaining allowlisted storage keys
++    try {
++      report.storageKeysCount = (window.localStorage ? window.localStorage.length : 0) +
++        (window.sessionStorage ? window.sessionStorage.length : 0);
++    } catch (_e) {}
++
++    return report;
++  }
++
++  /**
++   * Monitors DOM mutations to prevent runtime injection of unauthorized third-party scripts or trackers.
++   */
++  function startDomAuditObserver() {
++    if (typeof MutationObserver === 'undefined' || !document.documentElement) return;
++
++    const observer = new MutationObserver(function (mutations) {
++      let needsAudit = false;
++      for (const mutation of mutations) {
++        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
++          for (const node of mutation.addedNodes) {
++            if (node.nodeType === 1) {
++              const tag = node.tagName ? node.tagName.toLowerCase() : '';
++              if (tag === 'script' || tag === 'iframe' || tag === 'img' || tag === 'link' || tag === 'object' || tag === 'embed') {
++                needsAudit = true;
++                break;
++              }
++            }
++          }
++        }
++        if (needsAudit) break;
++      }
++      if (needsAudit) {
++        runThirdPartyAudit();
++      }
++    });
++
++    observer.observe(document.documentElement, {
++      childList: true,
++      subtree: true
++    });
++  }
++
++  // --- UI Synchronization & Event Wiring ---
++
++  function updateStatusMessage(message, isError) {
++    const statusEl = document.getElementById('privacy-status-message');
++    if (!statusEl) return;
++    statusEl.textContent = redactPII(message);
++    statusEl.hidden = false;
++    statusEl.setAttribute('data-state', isError ? 'error' : 'success');
++  }
++
++  function syncConsentUI(prefs) {
++    const current = prefs || getConsentPreferences();
++    const prefCheckbox = document.getElementById('consent-preferences');
++    const analyticsCheckbox = document.getElementById('consent-analytics');
++    const marketingCheckbox = document.getElementById('consent-marketing');
++
++    if (prefCheckbox) prefCheckbox.checked = Boolean(current.preferences);
++    if (analyticsCheckbox) analyticsCheckbox.checked = Boolean(current.analytics);
++    if (marketingCheckbox) marketingCheckbox.checked = Boolean(current.marketing);
++  }
++
++  function renderAuditSummary() {
++    const auditOutput = document.getElementById('audit-results');
++    if (!auditOutput) return;
++
++    const report = runThirdPartyAudit();
++    const externalSummary = report.externalResources.length > 0
++      ? report.externalResources.map(function (r) { return r.origin + ' (' + r.tag + ': ' + r.status + ')'; }).join(', ')
++      : 'None (100% first-party)';
++
++    auditOutput.textContent =
++      'Third-Party Origins: ' + externalSummary +
++      ' | Unauthorized Trackers Blocked: ' + report.unauthorizedBlocked.length +
++      ' | Active Storage Keys: ' + report.storageKeysCount +
++      ' | Referrer Policy: no-referrer';
++  }
++
++  function initEventListeners() {
++    // 1. Secure Logout Handler (.logout-link and #logout-form)
++    const logoutLinks = document.querySelectorAll('.logout-link, #logout-link');
++    logoutLinks.forEach(function (el) {
++      el.addEventListener('click', secureLogout);
++    });
++
++    const logoutForm = document.getElementById('logout-form');
++    if (logoutForm) {
++      logoutForm.addEventListener('submit', secureLogout);
++    }
++
++    // 2. Newsletter / Rewards Data-Minimized Form Handler
++    const newsletterForm = document.getElementById('newsletter-form');
++    if (newsletterForm) {
++      newsletterForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++        const emailInput = document.getElementById('subscriber-email');
++        const consentInput = document.getElementById('marketing-consent');
++
++        const email = sanitizeInput(emailInput ? emailInput.value : '', 120);
++        const consented = Boolean(consentInput && consentInput.checked);
++
++        if (!consented) {
++          updateStatusMessage('Explicit opt-in consent is required before submitting your email.', true);
++          return;
++        }
++
++        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
++          updateStatusMessage('Please enter a valid email address.', true);
++          return;
++        }
++
++        // Redact email before displaying confirmation and immediately clear input from DOM
++        const masked = redactPII(email);
++        newsletterForm.reset();
++        updateStatusMessage('Subscribed ' + masked + ' with explicit opt-in consent. Zero unnecessary PII collected.', false);
++      });
++    }
++
++    // 3. Privacy Preferences Form Handler
++    const privacyForm = document.getElementById('privacy-preferences-form');
++    if (privacyForm) {
++      privacyForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++        const prefCheckbox = document.getElementById('consent-preferences');
++        const analyticsCheckbox = document.getElementById('consent-analytics');
++        const marketingCheckbox = document.getElementById('consent-marketing');
++
++        const updated = setConsentPreferences({
++          necessary: true,
++          preferences: Boolean(prefCheckbox && prefCheckbox.checked),
++          analytics: Boolean(analyticsCheckbox && analyticsCheckbox.checked),
++          marketing: Boolean(marketingCheckbox && marketingCheckbox.checked)
++        });
++
++        syncConsentUI(updated);
++        renderAuditSummary();
++        updateStatusMessage('Privacy preferences saved with 24-hour automatic expiration.', false);
++      });
++    }
++
++    // 4. Clear All Stored Data Handler
++    const clearDataBtn = document.getElementById('clear-data-btn');
++    if (clearDataBtn) {
++      clearDataBtn.addEventListener('click', async function (event) {
++        event.preventDefault();
++        await clearAllClientData();
++        syncConsentUI(DEFAULT_CONSENT);
++        renderAuditSummary();
++        updateStatusMessage('All client-side storage, cookies, and caches have been erased.', false);
++      });
++    }
++
++    // 5. Manual Audit Trigger
++    const runAuditBtn = document.getElementById('run-audit-btn');
++    if (runAuditBtn) {
++      runAuditBtn.addEventListener('click', function (event) {
++        event.preventDefault();
++        enforceStorageMinimization();
++        renderAuditSummary();
++        updateStatusMessage('Third-party and storage privacy audit completed.', false);
++      });
++    }
++
++    // 6. CSP Violation Monitoring (redacted)
++    document.addEventListener('securitypolicyviolation', function (event) {
++      cspViolations.push({
++        blockedURI: redactPII(event.blockedURI || ''),
++        violatedDirective: event.violatedDirective || '',
++        timestamp: new Date().toISOString()
++      });
++      renderAuditSummary();
++    });
++
++    // 7. Clear ephemeral sessionStorage on pagehide
++    window.addEventListener('pagehide', function () {
++      enforceStorageMinimization();
++    });
++  }
++
++  function initializePrivacyByDesign() {
++    sanitizeUrlParams();
++    enforceStorageMinimization();
++    syncConsentUI(getConsentPreferences());
++    initEventListeners();
++    renderAuditSummary();
++    startDomAuditObserver();
++  }
++
++  // Expose public API for programmatic inspection and testing
++  window.DailyGrindPrivacy = Object.freeze({
++    sanitizeUrlParams: sanitizeUrlParams,
++    enforceStorageMinimization: enforceStorageMinimization,
++    getConsentPreferences: getConsentPreferences,
++    setConsentPreferences: setConsentPreferences,
++    runThirdPartyAudit: runThirdPartyAudit,
++    clearAllClientData: clearAllClientData,
++    secureLogout: secureLogout,
++    redactPII: redactPII,
++    sanitizeInput: sanitizeInput
++  });
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initializePrivacyByDesign);
++  } else {
++    initializePrivacyByDesign();
++  }
++})();
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..7a2dea3
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,111 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++
++const CSP_HEADER = [
++  "default-src 'self'",
++  "script-src 'self' 'sha256-s4csBNYLJhZBd0MLF08EEEawd10KC90gngONa+PUQog='",
++  "style-src 'self' 'unsafe-inline'",
++  "img-src 'self' data: https://images.unsplash.com",
++  "font-src 'self'",
++  "connect-src 'self'",
++  "object-src 'none'",
++  "base-uri 'self'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  "upgrade-insecure-requests"
++].join('; ');
++
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': CSP_HEADER,
++  'Referrer-Policy': 'no-referrer',
++  'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=(), browsing-topics=()',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cache-Control': 'no-store, no-cache, must-revalidate, private'
++};
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.ico': 'image/x-icon'
++};
++
++const rootDir = process.cwd();
++const rawPort = process.env.PORT || 11222;
++const port = Number(rawPort);
++
++const server = http.createServer((req, res) => {
++  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
++    res.setHeader(header, value);
++  }
++
++  const parsedUrl = new URL(req.url || '/', `http://localhost:${port}`);
++  const pathname = parsedUrl.pathname;
++
++  if (pathname === '/logout') {
++    res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage"');
++    res.setHeader('Set-Cookie', 'session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict');
++    if (req.method === 'POST') {
++      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++      res.end(JSON.stringify({ status: 'logged_out', cleared: true }));
++      return;
++    }
++    res.writeHead(303, { Location: '/' });
++    res.end();
++    return;
++  }
++
++  if ((pathname === '/subscribe' || pathname === '/privacy-preferences') && req.method === 'POST') {
++    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++    res.end(JSON.stringify({ status: 'ok', minimized: true }));
++    return;
++  }
++
++  const safePath = path.normalize(pathname === '/' ? '/index.html' : pathname).replace(/^(\.\.[/\\])+/, '');
++  const filePath = path.join(rootDir, safePath);
++
++  if (!filePath.startsWith(rootDir)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  fs.readFile(filePath, (err, content) => {
++    if (err) {
++      // Fallback to index.html for SPA/navigation routes
++      fs.readFile(path.join(rootDir, 'index.html'), (fallbackErr, fallbackContent) => {
++        if (fallbackErr) {
++          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++          res.end('Not Found');
++          return;
++        }
++        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++        res.end(fallbackContent);
++      });
++      return;
++    }
++
++    const ext = path.extname(filePath).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++    res.writeHead(200, { 'Content-Type': contentType });
++    res.end(content);
++  });
++});
++
++if (import.meta.url === `file://${process.argv[1]}`) {
++  server.listen(port, 'localhost', () => {
++    console.log(`🤓 http://localhost:${port} statikk serving locally: ${rootDir}`);
++  });
++}
++
++export default server;

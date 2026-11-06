@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -66,13 +66,65 @@
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
++    /* Logout confirmation dialog */
++    .confirm-dialog {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: min(400px, 90vw);
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      text-align: center;
++    }
++
++    .confirm-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .confirm-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .confirm-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -134,8 +186,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    /* Nutrition popovers */
++    .nutrition-popover {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 20px 24px;
++      width: min(320px, 90vw);
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .nutrition-popover h4 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .nutrition-popover dl {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 4px 16px;
++    }
++
++    .nutrition-popover dd {
++      text-align: right;
++      font-weight: 600;
++    }
++
++    .nutrition-popover .btn {
++      width: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,12 +252,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="confirm-dialog" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">Log out?</h2>
++    <p>Are you sure you want to log out of your Daily Grind account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Log Out</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +278,38 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="maple-nutrition" command="toggle-popover">View Details</button>
++          <div id="maple-nutrition" class="nutrition-popover" popover>
++            <h4>Maple Oat Latte &middot; 16 oz</h4>
++            <dl>
++              <dt>Calories</dt><dd>240</dd>
++              <dt>Total Fat</dt><dd>7 g</dd>
++              <dt>Carbohydrates</dt><dd>38 g</dd>
++              <dt>Sugars</dt><dd>24 g</dd>
++              <dt>Protein</dt><dd>3 g</dd>
++              <dt>Caffeine</dt><dd>150 mg</dd>
++            </dl>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="espresso-nutrition" command="show-popover">Nutrition Info</button>
++          <div id="espresso-nutrition" class="nutrition-popover" popover="manual">
++            <h4>Dark Roast Espresso &middot; Double Shot</h4>
++            <dl>
++              <dt>Calories</dt><dd>5</dd>
++              <dt>Total Fat</dt><dd>0 g</dd>
++              <dt>Carbohydrates</dt><dd>1 g</dd>
++              <dt>Sugars</dt><dd>0 g</dd>
++              <dt>Protein</dt><dd>0 g</dd>
++              <dt>Caffeine</dt><dd>150 mg</dd>
++            </dl>
++            <button type="button" class="btn" commandfor="espresso-nutrition" command="hide-popover">Close</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+@@ -206,7 +328,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Fallbacks for older browsers only; native support needs no script.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++    if (!('popover' in HTMLElement.prototype)) {
++      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++  </script>
++
+ </body>
+ 
+ </html>

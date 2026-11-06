@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+index 66c9173..f0ed68c 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,94 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose the page's client-side functionality to AI agents.
++    if ('modelContext' in document) {
++      const controller = new AbortController();
++      const options = { signal: controller.signal };
++      // Tools are removed when the page is torn down.
++      addEventListener('pagehide', () => controller.abort(), { once: true });
++
++      const pageLinks = () => [...document.querySelectorAll('nav a, .footer-links a, header a.btn')]
++        .map((a) => ({ name: a.textContent.trim(), path: a.getAttribute('href') }));
++
++      const menuItems = () => [...document.querySelectorAll('.card')].map((card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        path: card.querySelector('a').getAttribute('href'),
++      }));
++
++      document.modelContext.registerTool({
++        name: 'list-seasonal-favorites',
++        description: 'Lists the seasonal favorite drinks featured on the page. Use when the user asks what is on offer or wants a recommendation.',
++        inputSchema: { type: 'object', properties: {} },
++        execute: () => menuItems(),
++        annotations: { readOnlyHint: true },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'view-menu-item',
++        description: 'Opens the details page for a seasonal favorite drink.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: { type: 'string', description: 'Drink name, as returned by list-seasonal-favorites.' },
++          },
++          required: ['name'],
++        },
++        execute({ name } = {}) {
++          const items = menuItems();
++          const item = typeof name === 'string' && items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
++          if (!item) {
++            return { error: `Drink "${name}" not found.`, availableItems: items.map((i) => i.name) };
++          }
++          location.href = item.path;
++          return { opened: item.name, path: item.path };
++        },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'list-site-pages',
++        description: 'Lists the pages reachable from this page, such as the menu, locations, rewards and account pages.',
++        inputSchema: { type: 'object', properties: {} },
++        execute: () => pageLinks().filter((l) => l.path !== '/logout'),
++        annotations: { readOnlyHint: true },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'go-to-page',
++        description: 'Navigates the browser to a page of The Daily Grind. Use for ordering online, finding locations, rewards, or account access.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            path: { type: 'string', description: 'Page path, as returned by list-site-pages.' },
++          },
++          required: ['path'],
++        },
++        execute({ path } = {}) {
++          const pages = pageLinks().filter((l) => l.path !== '/logout');
++          const page = pages.find((l) => l.path === path);
++          if (!page) {
++            return { error: `Unknown page "${path}".`, availablePages: pages };
++          }
++          location.href = page.path;
++          return { navigatedTo: page };
++        },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'log-out',
++        description: 'Logs the current user out of their account.',
++        inputSchema: { type: 'object', properties: {} },
++        execute() {
++          location.href = '/logout';
++          return { loggedOut: true };
++        },
++        annotations: { readOnlyHint: false, consequentialHint: true },
++      }, options);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

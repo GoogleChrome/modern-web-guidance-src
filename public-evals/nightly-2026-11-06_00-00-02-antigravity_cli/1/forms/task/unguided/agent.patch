@@ -1,0 +1,1991 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,30 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #795548;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-dark: #e65100;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --white: #ffffff;
++      --error: #c62828;
++      --error-bg: #ffebee;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --warning: #ef6c00;
++      --border: #bcaaa4;
++      --focus-ring: #0277bd;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -26,8 +40,51 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Skip Link for Accessibility */
++    .skip-link {
++      position: absolute;
++      top: -40px;
++      left: 0;
++      background: var(--primary);
++      color: var(--white);
++      padding: 8px 16px;
++      z-index: 2000;
++      text-decoration: none;
++      font-weight: 600;
++      border-radius: 0 0 4px 0;
++      transition: top 0.2s;
++    }
++
++    .skip-link:focus {
++      top: 0;
++      outline: 3px solid var(--accent);
++    }
++
++    /* Screen Reader Only Utility */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Honeypot Container */
++    .hp-field {
++      position: absolute;
++      left: -10000px;
++      top: auto;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -61,9 +118,10 @@
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -127,20 +185,741 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.1s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: var(--secondary-light);
++      color: var(--primary);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent-dark);
++      color: var(--white);
++    }
++
++    .btn-accent:hover {
++      background: #bf360c;
++    }
++
++    /* ==========================================
++       Rewards Registration Section Styles
++       ========================================== */
++    .rewards-section {
++      background: linear-gradient(135deg, var(--secondary-light) 0%, #fff8f0 100%);
++      border-top: 1px solid var(--secondary);
++      border-bottom: 1px solid var(--secondary);
++      padding: 60px 20px;
++      margin-top: 60px;
++    }
++
++    .rewards-wrapper {
++      max-width: 780px;
++      margin: 0 auto;
++      background: var(--white);
++      border-radius: 12px;
++      box-shadow: 0 8px 28px rgba(62, 39, 35, 0.12);
++      overflow: hidden;
++      border: 1px solid rgba(188, 170, 164, 0.4);
++    }
++
++    .rewards-header {
++      background: var(--primary);
++      color: var(--white);
++      padding: 32px 36px;
++      text-align: center;
++    }
++
++    .rewards-badge {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      border: 1px solid var(--accent);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1.2px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++    }
++
++    .rewards-header h2 {
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .rewards-header p {
++      color: var(--secondary);
++      font-size: 1rem;
++      max-width: 560px;
++      margin: 0 auto;
++    }
++
++    .perks-strip {
++      display: flex;
++      justify-content: space-around;
++      flex-wrap: wrap;
++      gap: 12px;
++      background: #432c27;
++      color: var(--secondary-light);
++      padding: 14px 24px;
++      font-size: 0.85rem;
++      border-top: 1px solid rgba(255, 255, 255, 0.1);
++    }
++
++    .perk-item {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .perk-icon {
++      color: var(--accent);
++      font-weight: bold;
++    }
++
++    /* Progress Stepper */
++    .stepper-nav {
++      background: var(--white);
++      color: var(--text);
++      padding: 24px 36px 16px;
++      border-bottom: 1px solid var(--secondary-light);
++      position: static;
++      display: block;
++    }
++
++    .stepper-list {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      position: relative;
++      padding: 0;
++      margin: 0;
++    }
++
++    .stepper-list::before {
++      content: "";
++      position: absolute;
++      top: 18px;
++      left: 12%;
++      right: 12%;
++      height: 3px;
++      background: var(--secondary);
++      z-index: 1;
++    }
++
++    .progress-bar-fill {
++      position: absolute;
++      top: 18px;
++      left: 12%;
++      height: 3px;
++      background: var(--primary);
++      z-index: 2;
++      width: 0%;
++      transition: width 0.35s ease;
++    }
++
++    .step-indicator {
++      position: relative;
++      z-index: 3;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      flex: 1;
++      text-align: center;
++      margin: 0;
++    }
++
++    .step-circle {
++      width: 38px;
++      height: 38px;
++      border-radius: 50%;
++      background: var(--white);
++      border: 3px solid var(--secondary);
++      color: var(--text-muted);
++      font-weight: 700;
++      font-size: 0.95rem;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      margin-bottom: 8px;
++      transition: all 0.25s ease;
++    }
++
++    .step-label {
++      font-size: 0.82rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .step-indicator[aria-current="step"] .step-circle {
++      border-color: var(--primary);
++      background: var(--primary);
++      color: var(--white);
++      box-shadow: 0 0 0 4px rgba(78, 52, 46, 0.15);
++    }
++
++    .step-indicator[aria-current="step"] .step-label {
++      color: var(--primary);
++      font-weight: 700;
++    }
++
++    .step-indicator.completed .step-circle {
++      border-color: var(--success);
++      background: var(--success);
++      color: var(--white);
++    }
++
++    .step-indicator.completed .step-label {
++      color: var(--success);
++    }
++
++    /* Form Body */
++    .rewards-form-body {
++      padding: 32px 36px 36px;
++    }
++
++    .required-legend {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      margin-bottom: 20px;
++    }
++
++    .required-marker {
++      color: var(--error);
++      font-weight: bold;
++      margin-left: 2px;
++    }
++
++    /* Validation Error Summary Banner */
++    .error-summary {
++      background: var(--error-bg);
++      border-left: 5px solid var(--error);
++      border-radius: 6px;
++      padding: 16px 20px;
++      margin-bottom: 24px;
++      color: var(--text);
++    }
++
++    .error-summary[hidden] {
++      display: none;
++    }
++
++    .error-summary h3 {
++      color: var(--error);
++      font-size: 1rem;
++      margin-bottom: 8px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .error-summary ul {
++      margin-left: 20px;
++      font-size: 0.9rem;
++    }
++
++    .error-summary a {
++      color: var(--error);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    .error-summary a:hover,
++    .error-summary a:focus {
++      color: var(--primary-dark);
++    }
++
++    /* Fieldsets & Steps */
++    .form-step {
++      border: none;
++      padding: 0;
++      margin: 0;
++      animation: fadeIn 0.25s ease-in-out;
++    }
++
++    .form-step[hidden] {
++      display: none;
++    }
++
++    @keyframes fadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(4px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    .step-legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 6px;
++      width: 100%;
++    }
++
++    .step-description {
++      font-size: 0.92rem;
++      color: var(--text-muted);
++      margin-bottom: 24px;
++    }
++
++    /* Form Controls & Layout */
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++    }
++
++    .form-group {
++      margin-bottom: 22px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-label {
++      font-weight: 600;
++      font-size: 0.95rem;
++      margin-bottom: 6px;
++      color: var(--text);
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .optional-tag {
++      font-size: 0.78rem;
++      font-weight: normal;
++      color: var(--text-muted);
++      background: var(--secondary-light);
++      padding: 1px 8px;
++      border-radius: 4px;
++    }
++
++    .field-hint {
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      margin-bottom: 6px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 11px 14px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--white);
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:hover {
++      border-color: var(--primary-light);
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--focus-ring);
++      box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.2);
++    }
++
++    .form-control[aria-invalid="true"] {
++      border-color: var(--error);
++      background-color: #fffafa;
++    }
++
++    .form-control[aria-invalid="true"]:focus {
++      box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.2);
++    }
++
++    .field-error {
++      color: var(--error);
++      font-size: 0.84rem;
++      font-weight: 600;
++      margin-top: 6px;
++      display: flex;
++      align-items: center;
++      gap: 5px;
++    }
++
++    .field-error[hidden] {
++      display: none;
++    }
++
++    /* Password Input Wrapper & Toggle */
++    .password-input-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++    }
++
++    .password-input-wrapper .form-control {
++      padding-right: 76px;
++    }
++
++    .password-toggle-btn {
++      position: absolute;
++      right: 8px;
++      background: var(--secondary-light);
++      border: 1px solid var(--border);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 5px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .password-toggle-btn:hover {
++      background: var(--secondary);
++    }
++
++    .password-toggle-btn:focus-visible {
++      outline: 2px solid var(--focus-ring);
++      outline-offset: 1px;
++    }
++
++    /* Password Strength Meter & Checklist */
++    .strength-meter-container {
++      margin-top: 10px;
++    }
++
++    .strength-bar-track {
++      height: 6px;
++      background: var(--secondary-light);
++      border-radius: 3px;
++      overflow: hidden;
++      margin-bottom: 6px;
++    }
++
++    .strength-bar-fill {
++      height: 100%;
++      width: 0%;
++      background: var(--error);
++      transition: width 0.3s ease, background-color 0.3s ease;
++    }
++
++    .strength-text {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .password-requirements {
++      list-style: none;
++      margin-top: 8px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 4px 12px;
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      background: var(--light);
++      padding: 10px 12px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary-light);
++    }
++
++    .password-requirements li {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .password-requirements li.met {
++      color: var(--success);
++      font-weight: 600;
++    }
++
++    .req-indicator {
++      font-size: 0.75rem;
++      display: inline-block;
++      width: 14px;
++      text-align: center;
++    }
++
++    /* Radio & Checkbox Sub-fieldsets */
++    .sub-fieldset {
++      border: 1.5px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px 18px;
++      margin-bottom: 22px;
++      background: var(--white);
++    }
++
++    .sub-fieldset[aria-invalid="true"] {
++      border-color: var(--error);
++      background-color: #fffafa;
++    }
++
++    .sub-legend {
++      font-weight: 600;
++      font-size: 0.95rem;
++      padding: 0 6px;
++      color: var(--text);
++    }
++
++    .radio-cards-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-top: 10px;
++    }
++
++    .radio-card {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 14px;
++      border: 1.5px solid var(--border);
++      border-radius: 6px;
++      cursor: pointer;
++      transition: border-color 0.2s, background-color 0.2s;
++      font-size: 0.92rem;
++      font-weight: 500;
++    }
++
++    .radio-card:hover {
++      border-color: var(--primary);
++      background: var(--secondary-light);
++    }
++
++    .radio-card input[type="radio"] {
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .radio-card:has(input[type="radio"]:checked) {
++      border-color: var(--primary);
++      background: var(--secondary-light);
++      font-weight: 600;
++    }
++
++    .radio-card:has(input[type="radio"]:focus-visible) {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    /* Checkbox Options */
++    .checkbox-group {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: 8px;
++    }
++
++    .checkbox-label {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      font-size: 0.92rem;
++      cursor: pointer;
++      line-height: 1.45;
++    }
++
++    .checkbox-label input[type="checkbox"] {
++      width: 18px;
++      height: 18px;
++      margin-top: 2px;
++      accent-color: var(--primary);
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .checkbox-label input[type="checkbox"]:focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    /* Review Summary Card in Step 3 */
++    .review-card {
++      background: var(--secondary-light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      margin-bottom: 24px;
++    }
++
++    .review-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .review-card-header h3 {
++      font-size: 1rem;
++      color: var(--primary);
++    }
++
++    .review-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 12px 20px;
++      font-size: 0.9rem;
++    }
++
++    .review-item dt {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text-muted);
++      font-weight: 600;
++    }
++
++    .review-item dd {
++      font-weight: 600;
++      color: var(--text);
++      word-break: break-word;
++    }
++
++    /* Security Notice Box */
++    .security-notice {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.82rem;
++      color: var(--text-muted);
++      background: var(--light);
++      padding: 10px 14px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++      margin-top: 16px;
++    }
++
++    /* Step Actions Footer */
++    .form-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 28px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary-light);
++      gap: 12px;
++    }
++
++    .form-actions .btn {
++      margin-top: 0;
++      min-width: 140px;
++      text-align: center;
++    }
++
++    .action-spacer {
++      flex: 1;
++    }
++
++    /* Success State Panel */
++    .registration-success {
++      text-align: center;
++      padding: 40px 24px;
++      animation: fadeIn 0.35s ease;
++    }
++
++    .registration-success[hidden] {
++      display: none;
++    }
++
++    .success-icon {
++      width: 68px;
++      height: 68px;
++      border-radius: 50%;
++      background: var(--success-bg);
++      color: var(--success);
++      font-size: 2rem;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      margin: 0 auto 20px;
++      border: 2px solid var(--success);
++    }
++
++    .registration-success h3 {
++      font-size: 1.75rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .loyalty-card-preview {
++      max-width: 400px;
++      margin: 24px auto;
++      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
++      color: var(--white);
++      padding: 22px 24px;
++      border-radius: 12px;
++      text-align: left;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.25);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++    }
++
++    .loyalty-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 18px;
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    .loyalty-member-name {
++      font-size: 1.25rem;
++      font-weight: 700;
++      margin-bottom: 4px;
++    }
++
++    .loyalty-member-meta {
++      font-size: 0.85rem;
++      color: var(--secondary);
++      display: flex;
++      justify-content: space-between;
++      margin-top: 12px;
++      padding-top: 12px;
++      border-top: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,19 +930,53 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      text-decoration: underline;
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 640px) {
++      .rewards-header,
++      .stepper-nav,
++      .rewards-form-body {
++        padding-left: 20px;
++        padding-right: 20px;
++      }
++
++      .form-row {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++
++      .form-actions {
++        flex-direction: column-reverse;
++        align-items: stretch;
++      }
++
++      .form-actions .btn {
++        width: 100%;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#rewards-registration" class="skip-link">Skip to Rewards Registration</a>
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards-registration">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -174,10 +987,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -196,8 +1009,474 @@
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Accessible, Secure Multi-Step Rewards Registration Section -->
++  <section id="rewards-registration" class="rewards-section" aria-labelledby="rewards-title">
++    <div class="rewards-wrapper">
++      <header class="rewards-header">
++        <span class="rewards-badge">Daily Grind Perks</span>
++        <h2 id="rewards-title">Join the Daily Grind Rewards Program</h2>
++        <p id="rewards-subtitle">Earn beans on every craft pour, unlock free birthday drinks, and get early access to single-origin micro-lots.</p>
++      </header>
++
++      <div class="perks-strip" aria-label="Program Highlights">
++        <span class="perk-item"><span class="perk-icon" aria-hidden="true">&#9733;</span> 50 Bonus Beans on Sign-Up</span>
++        <span class="perk-item"><span class="perk-icon" aria-hidden="true">&#9749;</span> Free Birthday Beverage</span>
++        <span class="perk-item"><span class="perk-icon" aria-hidden="true">&#10003;</span> Order Ahead &amp; Skip the Line</span>
++      </div>
++
++      <!-- Multi-Step Progress Indicator -->
++      <nav class="stepper-nav" aria-label="Registration Progress">
++        <ol class="stepper-list">
++          <div class="progress-bar-fill" id="stepper-progress-fill" aria-hidden="true"></div>
++          <li class="step-indicator" id="step-ind-1" aria-current="step">
++            <span class="step-circle" aria-hidden="true">1</span>
++            <span class="step-label">
++              <span class="sr-only" id="step-sr-status-1">Current step: </span>Account Basics
++            </span>
++          </li>
++          <li class="step-indicator" id="step-ind-2">
++            <span class="step-circle" aria-hidden="true">2</span>
++            <span class="step-label">
++              <span class="sr-only" id="step-sr-status-2">Upcoming step: </span>Coffee Profile
++            </span>
++          </li>
++          <li class="step-indicator" id="step-ind-3">
++            <span class="step-circle" aria-hidden="true">3</span>
++            <span class="step-label">
++              <span class="sr-only" id="step-sr-status-3">Upcoming step: </span>Review &amp; Join
++            </span>
++          </li>
++        </ol>
++      </nav>
++
++      <div class="rewards-form-body">
++        <!-- Polite Screen Reader Live Announcement Region -->
++        <div id="form-live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
++
++        <!-- Assertive Error Summary Banner -->
++        <div id="error-summary" class="error-summary" role="alert" aria-labelledby="error-summary-title" tabindex="-1" hidden>
++          <h3 id="error-summary-title">
++            <span aria-hidden="true">&#9888;</span> Please fix the following before continuing:
++          </h3>
++          <ul id="error-summary-list"></ul>
++        </div>
++
++        <form id="rewards-form" action="/api/rewards/register" method="POST" novalidate aria-describedby="rewards-subtitle">
++          <!-- Submission Security Hidden Tokens & Anti-Bot Honeypot -->
++          <input type="hidden" name="csrf_token" id="csrf-token" value="">
++          <input type="hidden" name="form_rendered_at" id="form-rendered-at" value="">
++          <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
++
++          <div class="hp-field" aria-hidden="true">
++            <label for="company-website-hp">Leave this field blank</label>
++            <input type="text" id="company-website-hp" name="company_website_hp" tabindex="-1" autocomplete="off">
++          </div>
++
++          <p class="required-legend">
++            Fields marked with an asterisk (<span class="required-marker" aria-hidden="true">*</span><span class="sr-only">required</span>) are required.
++          </p>
++
++          <!-- ==========================================
++               STEP 1: Account Credentials & Personal Details
++               ========================================== -->
++          <fieldset class="form-step" id="step-1" data-step="1">
++            <legend class="step-legend" tabindex="-1">Step 1 of 3: Account Credentials</legend>
++            <p class="step-description">Create your login credentials so you can earn and track rewards across all locations.</p>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label class="form-label" for="first-name">
++                  <span>First Name <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <input
++                  type="text"
++                  id="first-name"
++                  name="given_name"
++                  class="form-control"
++                  autocomplete="given-name"
++                  required
++                  aria-required="true"
++                  maxlength="60"
++                  pattern="^[A-Za-zÀ-ÖØ-öø-ÿ' \-]{2,60}$"
++                  aria-describedby="first-name-error"
++                  placeholder="e.g., Maya"
++                >
++                <p class="field-error" id="first-name-error" role="status" aria-live="polite" hidden></p>
++              </div>
++
++              <div class="form-group">
++                <label class="form-label" for="last-name">
++                  <span>Last Name <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <input
++                  type="text"
++                  id="last-name"
++                  name="family_name"
++                  class="form-control"
++                  autocomplete="family-name"
++                  required
++                  aria-required="true"
++                  maxlength="60"
++                  pattern="^[A-Za-zÀ-ÖØ-öø-ÿ' \-]{2,60}$"
++                  aria-describedby="last-name-error"
++                  placeholder="e.g., Lin"
++                >
++                <p class="field-error" id="last-name-error" role="status" aria-live="polite" hidden></p>
++              </div>
++            </div>
++
++            <div class="form-group">
++              <label class="form-label" for="email">
++                <span>Email Address <span class="required-marker" aria-hidden="true">*</span></span>
++              </label>
++              <span class="field-hint" id="email-hint">We'll send your digital rewards card and receipts here.</span>
++              <input
++                type="email"
++                id="email"
++                name="email"
++                class="form-control"
++                autocomplete="email"
++                inputmode="email"
++                spellcheck="false"
++                autocapitalize="none"
++                required
++                aria-required="true"
++                maxlength="120"
++                aria-describedby="email-hint email-error"
++                placeholder="maya.lin@example.com"
++              >
++              <p class="field-error" id="email-error" role="status" aria-live="polite" hidden></p>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label class="form-label" for="password">
++                  <span>Create Password <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <span class="field-hint" id="password-hint">At least 12 characters with mixed case, number, and symbol.</span>
++                <div class="password-input-wrapper">
++                  <input
++                    type="password"
++                    id="password"
++                    name="new_password"
++                    class="form-control"
++                    autocomplete="new-password"
++                    required
++                    aria-required="true"
++                    minlength="12"
++                    maxlength="128"
++                    aria-describedby="password-hint password-reqs password-strength-text password-error"
++                  >
++                  <button
++                    type="button"
++                    class="password-toggle-btn"
++                    data-toggle-password="password"
++                    aria-label="Show password"
++                    aria-pressed="false"
++                  >Show</button>
++                </div>
++                <div class="strength-meter-container">
++                  <div class="strength-bar-track" aria-hidden="true">
++                    <div class="strength-bar-fill" id="password-strength-bar"></div>
++                  </div>
++                  <div class="strength-text" id="password-strength-text" aria-live="polite">Password strength: Enter at least 12 characters</div>
++                </div>
++                <p class="field-error" id="password-error" role="status" aria-live="polite" hidden></p>
++              </div>
++
++              <div class="form-group">
++                <label class="form-label" for="confirm-password">
++                  <span>Confirm Password <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <span class="field-hint" id="confirm-password-hint">Re-enter your password to verify.</span>
++                <div class="password-input-wrapper">
++                  <input
++                    type="password"
++                    id="confirm-password"
++                    name="confirm_password"
++                    class="form-control"
++                    autocomplete="new-password"
++                    required
++                    aria-required="true"
++                    minlength="12"
++                    maxlength="128"
++                    aria-describedby="confirm-password-hint confirm-password-error"
++                  >
++                  <button
++                    type="button"
++                    class="password-toggle-btn"
++                    data-toggle-password="confirm-password"
++                    aria-label="Show confirm password"
++                    aria-pressed="false"
++                  >Show</button>
++                </div>
++                <p class="field-error" id="confirm-password-error" role="status" aria-live="polite" hidden></p>
++              </div>
++            </div>
++
++            <ul class="password-requirements" id="password-reqs" aria-label="Password security requirements">
++              <li id="req-length"><span class="req-indicator" aria-hidden="true">&#9675;</span> 12+ characters minimum</li>
++              <li id="req-case"><span class="req-indicator" aria-hidden="true">&#9675;</span> Uppercase &amp; lowercase letters</li>
++              <li id="req-number"><span class="req-indicator" aria-hidden="true">&#9675;</span> At least 1 number</li>
++              <li id="req-symbol"><span class="req-indicator" aria-hidden="true">&#9675;</span> At least 1 symbol (!@#$%^&amp;*)</li>
++            </ul>
++          </fieldset>
++
++          <!-- ==========================================
++               STEP 2: Coffee Profile & Rewards Perks
++               ========================================== -->
++          <fieldset class="form-step" id="step-2" data-step="2" hidden>
++            <legend class="step-legend" tabindex="-1">Step 2 of 3: Your Coffee Profile &amp; Perks</legend>
++            <p class="step-description">Tell us how you take your coffee and where to send your birthday reward.</p>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label class="form-label" for="phone">
++                  <span>Mobile Phone Number <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <span class="field-hint" id="phone-hint">Used for quick lookup at the register (10-digit US format).</span>
++                <input
++                  type="tel"
++                  id="phone"
++                  name="tel"
++                  class="form-control"
++                  autocomplete="tel-national"
++                  inputmode="tel"
++                  required
++                  aria-required="true"
++                  maxlength="20"
++                  placeholder="(555) 234-5678"
++                  aria-describedby="phone-hint phone-error"
++                >
++                <p class="field-error" id="phone-error" role="status" aria-live="polite" hidden></p>
++              </div>
++
++              <div class="form-group">
++                <label class="form-label" for="postal-code">
++                  <span>ZIP / Postal Code <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <span class="field-hint" id="postal-hint">Helps us match you with local seasonal roasts.</span>
++                <input
++                  type="text"
++                  id="postal-code"
++                  name="postal_code"
++                  class="form-control"
++                  autocomplete="postal-code"
++                  inputmode="numeric"
++                  required
++                  aria-required="true"
++                  pattern="^\d{5}(-\d{4})?$"
++                  maxlength="10"
++                  placeholder="98101"
++                  aria-describedby="postal-hint postal-code-error"
++                >
++                <p class="field-error" id="postal-code-error" role="status" aria-live="polite" hidden></p>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label class="form-label" for="birthday">
++                  <span>Birth Date <span class="optional-tag">Optional</span></span>
++                </label>
++                <span class="field-hint" id="birthday-hint">Add your birthday for a complimentary handcrafted drink! (Must be 13+)</span>
++                <input
++                  type="date"
++                  id="birthday"
++                  name="bday"
++                  class="form-control"
++                  autocomplete="bday"
++                  min="1905-01-01"
++                  max="2013-11-06"
++                  aria-describedby="birthday-hint birthday-error"
++                >
++                <p class="field-error" id="birthday-error" role="status" aria-live="polite" hidden></p>
++              </div>
++
++              <div class="form-group">
++                <label class="form-label" for="home-cafe">
++                  <span>Preferred Home Café <span class="required-marker" aria-hidden="true">*</span></span>
++                </label>
++                <span class="field-hint" id="cafe-hint">Select your primary pickup location.</span>
++                <select
++                  id="home-cafe"
++                  name="home_cafe"
++                  class="form-control"
++                  required
++                  aria-required="true"
++                  aria-describedby="cafe-hint home-cafe-error"
++                >
++                  <option value="">-- Choose a Daily Grind location --</option>
++                  <option value="Downtown Roastery & Tasting Room">Downtown Roastery &amp; Tasting Room</option>
++                  <option value="Capitol Hill Espresso Bar">Capitol Hill Espresso Bar</option>
++                  <option value="Ballard Waterfront Café">Ballard Waterfront Café</option>
++                  <option value="Fremont Artisan Bakery & Brew">Fremont Artisan Bakery &amp; Brew</option>
++                  <option value="University District Study Lounge">University District Study Lounge</option>
++                </select>
++                <p class="field-error" id="home-cafe-error" role="status" aria-live="polite" hidden></p>
++              </div>
++            </div>
++
++            <fieldset class="sub-fieldset" id="roast-fieldset" aria-describedby="favorite-roast-error">
++              <legend class="sub-legend">Favorite Craft Brew Style <span class="required-marker" aria-hidden="true">*</span></legend>
++              <div class="radio-cards-grid">
++                <label class="radio-card">
++                  <input type="radio" name="favorite_roast" value="Light Single-Origin" required>
++                  <span>Light Single-Origin</span>
++                </label>
++                <label class="radio-card">
++                  <input type="radio" name="favorite_roast" value="Medium House Blend">
++                  <span>Medium House Blend</span>
++                </label>
++                <label class="radio-card">
++                  <input type="radio" name="favorite_roast" value="Dark Roast Espresso">
++                  <span>Dark Roast Espresso</span>
++                </label>
++                <label class="radio-card">
++                  <input type="radio" name="favorite_roast" value="18-Hour Cold Brew">
++                  <span>18-Hour Cold Brew</span>
++                </label>
++              </div>
++              <p class="field-error" id="favorite-roast-error" role="status" aria-live="polite" hidden></p>
++            </fieldset>
++
++            <div class="form-group">
++              <label class="form-label" for="milk-preference">
++                <span>Default Milk / Creamer Preference <span class="optional-tag">Optional</span></span>
++              </label>
++              <select id="milk-preference" name="milk_preference" class="form-control">
++                <option value="No preference / Black">No preference / Black</option>
++                <option value="Barista Oat Milk">Barista Oat Milk</option>
++                <option value="Organic Whole Milk">Organic Whole Milk</option>
++                <option value="Almond Milk">Almond Milk</option>
++                <option value="Coconut Milk">Coconut Milk</option>
++              </select>
++            </div>
++          </fieldset>
++
++          <!-- ==========================================
++               STEP 3: Review, Preferences & Consent
++               ========================================== -->
++          <fieldset class="form-step" id="step-3" data-step="3" hidden>
++            <legend class="step-legend" tabindex="-1">Step 3 of 3: Review &amp; Complete Registration</legend>
++            <p class="step-description">Verify your details below and choose how you'd like to hear about bonus bean days.</p>
++
++            <div class="review-card" aria-label="Registration Details Summary">
++              <div class="review-card-header">
++                <h3>Your Membership Summary</h3>
++                <button type="button" class="btn btn-secondary" id="edit-details-btn" style="padding: 4px 12px; font-size: 0.82rem; margin-top: 0;">Edit Info</button>
++              </div>
++              <dl class="review-list">
++                <div class="review-item">
++                  <dt>Member Name</dt>
++                  <dd id="review-name">—</dd>
++                </div>
++                <div class="review-item">
++                  <dt>Email Address</dt>
++                  <dd id="review-email">—</dd>
++                </div>
++                <div class="review-item">
++                  <dt>Mobile Phone</dt>
++                  <dd id="review-phone">—</dd>
++                </div>
++                <div class="review-item">
++                  <dt>ZIP Code</dt>
++                  <dd id="review-zip">—</dd>
++                </div>
++                <div class="review-item">
++                  <dt>Home Café</dt>
++                  <dd id="review-cafe">—</dd>
++                </div>
++                <div class="review-item">
++                  <dt>Favorite Brew &amp; Milk</dt>
++                  <dd id="review-brew">—</dd>
++                </div>
++              </dl>
++            </div>
++
++            <fieldset class="sub-fieldset">
++              <legend class="sub-legend">Communication &amp; Perks Notifications <span class="optional-tag">Optional</span></legend>
++              <div class="checkbox-group">
++                <label class="checkbox-label" for="opt-email-offers">
++                  <input type="checkbox" id="opt-email-offers" name="opt_email_offers" value="yes" checked>
++                  <span>Email me weekly Double-Bean Tuesdays, tasting invites, and seasonal menu drops.</span>
++                </label>
++                <label class="checkbox-label" for="opt-sms-alerts">
++                  <input type="checkbox" id="opt-sms-alerts" name="opt_sms_alerts" value="yes">
++                  <span>Send SMS order-ready alerts and flash mobile rewards (standard message rates apply).</span>
++                </label>
++              </div>
++            </fieldset>
++
++            <div class="form-group">
++              <label class="checkbox-label" for="terms-consent">
++                <input
++                  type="checkbox"
++                  id="terms-consent"
++                  name="terms_consent"
++                  value="accepted"
++                  required
++                  aria-required="true"
++                  aria-describedby="terms-consent-error"
++                >
++                <span>
++                  I am at least 13 years of age and agree to the Daily Grind <a href="/rewards" target="_blank" rel="noopener noreferrer">Rewards Program Terms</a> and <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. <span class="required-marker" aria-hidden="true">*</span>
++                </span>
++              </label>
++              <p class="field-error" id="terms-consent-error" role="status" aria-live="polite" hidden></p>
++            </div>
++
++            <div class="security-notice">
++              <span aria-hidden="true">&#128274;</span>
++              <span>Your personal information is encrypted and protected with CSRF &amp; anti-bot verification. We never sell your data.</span>
++            </div>
++          </fieldset>
++
++          <!-- Multi-Step Navigation Buttons -->
++          <div class="form-actions" id="form-actions-bar">
++            <button type="button" class="btn btn-secondary" id="prev-step-btn" hidden>
++              &larr; Previous Step
++            </button>
++            <div class="action-spacer"></div>
++            <button type="button" class="btn" id="next-step-btn">
++              Continue to Coffee Profile &rarr;
++            </button>
++            <button type="submit" class="btn btn-accent" id="submit-form-btn" hidden>
++              Complete Registration &amp; Claim 50 Beans
++            </button>
++          </div>
++        </form>
++
++        <!-- Post-Submission Accessible Confirmation View -->
++        <div id="registration-success" class="registration-success" role="region" aria-labelledby="success-heading" tabindex="-1" hidden>
++          <div class="success-icon" aria-hidden="true">&#10003;</div>
++          <h3 id="success-heading">Welcome to the Daily Grind Family!</h3>
++          <p>Your rewards account is active and <strong>50 Bonus Beans</strong> have been credited to your balance.</p>
++
++          <div class="loyalty-card-preview" aria-label="Digital Rewards Card">
++            <div class="loyalty-card-top">
++              <span>The Daily Grind Perks</span>
++              <span id="card-member-id">ID #DG-000000</span>
++            </div>
++            <div class="loyalty-member-name" id="card-member-name">Member Name</div>
++            <div style="font-size: 0.9rem; color: var(--accent); font-weight: 600;">Balance: 50 Beans (1/3 to Free Drink)</div>
++            <div class="loyalty-member-meta">
++              <span id="card-member-cafe">Home Café</span>
++              <span id="card-member-roast">Favorite Roast</span>
++            </div>
++          </div>
++
++          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
++            A confirmation email has been sent to <strong id="confirm-email-display"></strong>.
++          </p>
++          <a href="/order-online" class="btn">Start Your First Reward Order</a>
++        </div>
++      </div>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +1485,603 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      const form = document.getElementById('rewards-form');
++      if (!form) return;
++
++      const steps = Array.from(form.querySelectorAll('.form-step'));
++      const stepIndicators = [
++        document.getElementById('step-ind-1'),
++        document.getElementById('step-ind-2'),
++        document.getElementById('step-ind-3')
++      ];
++      const stepSrStatuses = [
++        document.getElementById('step-sr-status-1'),
++        document.getElementById('step-sr-status-2'),
++        document.getElementById('step-sr-status-3')
++      ];
++      const progressFill = document.getElementById('stepper-progress-fill');
++      const prevBtn = document.getElementById('prev-step-btn');
++      const nextBtn = document.getElementById('next-step-btn');
++      const submitBtn = document.getElementById('submit-form-btn');
++      const editDetailsBtn = document.getElementById('edit-details-btn');
++      const errorSummary = document.getElementById('error-summary');
++      const errorSummaryList = document.getElementById('error-summary-list');
++      const liveAnnouncer = document.getElementById('form-live-announcer');
++      const successPanel = document.getElementById('registration-success');
++
++      let currentStepIndex = 0;
++      let isSubmitting = false;
++
++      // 1. Initialize Submission Security Tokens (CSRF, Render Timestamp, Idempotency Key)
++      function generateSecureToken(byteLength) {
++        const array = new Uint8Array(byteLength);
++        if (window.crypto && window.crypto.getRandomValues) {
++          window.crypto.getRandomValues(array);
++        } else {
++          for (let i = 0; i < byteLength; i++) {
++            array[i] = Math.floor(Math.random() * 256);
++          }
++        }
++        return Array.from(array, function (b) {
++          return b.toString(16).padStart(2, '0');
++        }).join('');
++      }
++
++      const csrfInput = document.getElementById('csrf-token');
++      const renderedAtInput = document.getElementById('form-rendered-at');
++      const idempotencyInput = document.getElementById('idempotency-key');
++
++      const sessionCsrfToken = generateSecureToken(24);
++      const idempotencyKey = generateSecureToken(16);
++      const formRenderTimestamp = Date.now();
++
++      csrfInput.value = sessionCsrfToken;
++      renderedAtInput.value = String(formRenderTimestamp);
++      idempotencyInput.value = idempotencyKey;
++
++      try {
++        sessionStorage.setItem('dg_rewards_csrf_token', sessionCsrfToken);
++      } catch (e) {
++        // Fallback if sessionStorage is restricted
++      }
++
++      // Dynamic max birthday date (at least 13 years old from today)
++      const birthdayInput = document.getElementById('birthday');
++      if (birthdayInput) {
++        const today = new Date();
++        const maxBirthYear = today.getFullYear() - 13;
++        const month = String(today.getMonth() + 1).padStart(2, '0');
++        const day = String(today.getDate()).padStart(2, '0');
++        birthdayInput.max = maxBirthYear + '-' + month + '-' + day;
++      }
++
++      // 2. Password Visibility Toggles
++      const toggleButtons = form.querySelectorAll('[data-toggle-password]');
++      toggleButtons.forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          const targetId = btn.getAttribute('data-toggle-password');
++          const input = document.getElementById(targetId);
++          if (!input) return;
++          const isHidden = input.type === 'password';
++          input.type = isHidden ? 'text' : 'password';
++          btn.textContent = isHidden ? 'Hide' : 'Show';
++          btn.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
++          btn.setAttribute(
++            'aria-label',
++            (isHidden ? 'Hide ' : 'Show ') + (targetId === 'confirm-password' ? 'confirm password' : 'password')
++          );
++        });
++      });
++
++      // 3. Password Strength & Requirement Checker
++      const passwordInput = document.getElementById('password');
++      const confirmPasswordInput = document.getElementById('confirm-password');
++      const strengthBar = document.getElementById('password-strength-bar');
++      const strengthText = document.getElementById('password-strength-text');
++
++      const reqItems = {
++        length: document.getElementById('req-length'),
++        mixedCase: document.getElementById('req-case'),
++        number: document.getElementById('req-number'),
++        symbol: document.getElementById('req-symbol')
++      };
++
++      function evaluatePassword(val) {
++        const checks = {
++          length: val.length >= 12,
++          mixedCase: /[a-z]/.test(val) && /[A-Z]/.test(val),
++          number: /\d/.test(val),
++          symbol: /[^A-Za-z0-9\s]/.test(val)
++        };
++        let score = 0;
++        Object.keys(checks).forEach(function (k) {
++          if (checks[k]) score++;
++        });
++        return { checks: checks, score: score };
++      }
++
++      function updatePasswordMeter() {
++        const val = passwordInput.value;
++        const result = evaluatePassword(val);
++
++        Object.keys(result.checks).forEach(function (key) {
++          const li = reqItems[key];
++          if (!li) return;
++          const indicator = li.querySelector('.req-indicator');
++          if (result.checks[key]) {
++            li.classList.add('met');
++            if (indicator) indicator.innerHTML = '&#10003;';
++          } else {
++            li.classList.remove('met');
++            if (indicator) indicator.innerHTML = '&#9675;';
++          }
++        });
++
++        const widths = ['0%', '25%', '50%', '75%', '100%'];
++        const colors = ['#c62828', '#c62828', '#ef6c00', '#f9a825', '#2e7d32'];
++        const labels = [
++          'Enter at least 12 characters',
++          'Weak — add more required character types',
++          'Fair — keep going',
++          'Good — almost meets all requirements',
++          'Strong — meets all security requirements'
++        ];
++
++        strengthBar.style.width = val.length === 0 ? '0%' : widths[result.score];
++        strengthBar.style.backgroundColor = colors[result.score];
++        strengthText.textContent = 'Password strength: ' + (val.length === 0 ? labels[0] : labels[result.score]);
++      }
++
++      passwordInput.addEventListener('input', function () {
++        updatePasswordMeter();
++        if (confirmPasswordInput.value) {
++          validateField(confirmPasswordInput);
++        }
++      });
++
++      // 4. Phone Number Auto-Formatting (US 10-digit)
++      const phoneInput = document.getElementById('phone');
++      phoneInput.addEventListener('input', function () {
++        let digits = phoneInput.value.replace(/\D/g, '');
++        if (digits.length > 1 && digits.startsWith('1')) {
++          digits = digits.slice(1);
++        }
++        digits = digits.slice(0, 10);
++        if (digits.length > 6) {
++          phoneInput.value = '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
++        } else if (digits.length > 3) {
++          phoneInput.value = '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
++        } else if (digits.length > 0) {
++          phoneInput.value = '(' + digits;
++        }
++      });
++
++      // 5. Accessible Field Validation Logic
++      function setFieldError(element, errorId, message) {
++        const errorEl = document.getElementById(errorId);
++        if (message) {
++          element.setAttribute('aria-invalid', 'true');
++          if (errorEl) {
++            errorEl.textContent = message;
++            errorEl.hidden = false;
++          }
++          return false;
++        } else {
++          element.setAttribute('aria-invalid', 'false');
++          if (errorEl) {
++            errorEl.textContent = '';
++            errorEl.hidden = true;
++          }
++          return true;
++        }
++      }
++
++      function validateField(field) {
++        const id = field.id;
++        const val = (field.value || '').trim();
++
++        if (id === 'first-name') {
++          if (!val) {
++            return setFieldError(field, 'first-name-error', 'Please enter your first name.');
++          }
++          if (val.length < 2 || !/^[A-Za-zÀ-ÖØ-öø-ÿ' \-]{2,60}$/.test(val)) {
++            return setFieldError(field, 'first-name-error', 'First name must be at least 2 letters and contain only letters, spaces, hyphens, or apostrophes.');
++          }
++          return setFieldError(field, 'first-name-error', '');
++        }
++
++        if (id === 'last-name') {
++          if (!val) {
++            return setFieldError(field, 'last-name-error', 'Please enter your last name.');
++          }
++          if (val.length < 2 || !/^[A-Za-zÀ-ÖØ-öø-ÿ' \-]{2,60}$/.test(val)) {
++            return setFieldError(field, 'last-name-error', 'Last name must be at least 2 letters and contain only letters, spaces, hyphens, or apostrophes.');
++          }
++          return setFieldError(field, 'last-name-error', '');
++        }
++
++        if (id === 'email') {
++          if (!val) {
++            return setFieldError(field, 'email-error', 'Please enter your email address.');
++          }
++          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
++          if (!emailPattern.test(val)) {
++            return setFieldError(field, 'email-error', 'Please enter a valid email address (for example, name@domain.com).');
++          }
++          return setFieldError(field, 'email-error', '');
++        }
++
++        if (id === 'password') {
++          const rawVal = field.value || '';
++          if (!rawVal) {
++            return setFieldError(field, 'password-error', 'Please create a password for your rewards account.');
++          }
++          const evalResult = evaluatePassword(rawVal);
++          if (evalResult.score < 4) {
++            return setFieldError(
++              field,
++              'password-error',
++              'Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.'
++            );
++          }
++          return setFieldError(field, 'password-error', '');
++        }
++
++        if (id === 'confirm-password') {
++          const rawVal = field.value || '';
++          if (!rawVal) {
++            return setFieldError(field, 'confirm-password-error', 'Please confirm your password.');
++          }
++          if (rawVal !== passwordInput.value) {
++            return setFieldError(field, 'confirm-password-error', 'Passwords do not match. Please re-enter your password.');
++          }
++          return setFieldError(field, 'confirm-password-error', '');
++        }
++
++        if (id === 'phone') {
++          const digits = val.replace(/\D/g, '');
++          if (!digits) {
++            return setFieldError(field, 'phone-error', 'Please enter your 10-digit mobile phone number.');
++          }
++          if (digits.length !== 10) {
++            return setFieldError(field, 'phone-error', 'Please enter a valid 10-digit US phone number (e.g., (555) 234-5678).');
++          }
++          return setFieldError(field, 'phone-error', '');
++        }
++
++        if (id === 'postal-code') {
++          if (!val) {
++            return setFieldError(field, 'postal-code-error', 'Please enter your 5-digit ZIP code.');
++          }
++          if (!/^\d{5}(-\d{4})?$/.test(val)) {
++            return setFieldError(field, 'postal-code-error', 'Please enter a valid 5-digit ZIP code (e.g., 98101 or 98101-1234).');
++          }
++          return setFieldError(field, 'postal-code-error', '');
++        }
++
++        if (id === 'birthday') {
++          if (!val) {
++            return setFieldError(field, 'birthday-error', '');
++          }
++          const enteredDate = new Date(val + 'T00:00:00');
++          const minDate = new Date('1905-01-01T00:00:00');
++          const maxDate = new Date(birthdayInput.max + 'T23:59:59');
++          if (isNaN(enteredDate.getTime()) || enteredDate < minDate || enteredDate > maxDate) {
++            return setFieldError(field, 'birthday-error', 'Members must be at least 13 years old. Please enter a valid birth date.');
++          }
++          return setFieldError(field, 'birthday-error', '');
++        }
++
++        if (id === 'home-cafe') {
++          if (!val) {
++            return setFieldError(field, 'home-cafe-error', 'Please select your preferred Daily Grind home café.');
++          }
++          return setFieldError(field, 'home-cafe-error', '');
++        }
++
++        if (field.name === 'favorite_roast') {
++          const roastFieldset = document.getElementById('roast-fieldset');
++          const checkedRoast = form.querySelector('input[name="favorite_roast"]:checked');
++          if (!checkedRoast) {
++            return setFieldError(roastFieldset, 'favorite-roast-error', 'Please choose your favorite craft brew style.');
++          }
++          return setFieldError(roastFieldset, 'favorite-roast-error', '');
++        }
++
++        if (id === 'terms-consent') {
++          if (!field.checked) {
++            return setFieldError(field, 'terms-consent-error', 'You must agree to the Rewards Program Terms and Privacy Policy to join.');
++          }
++          return setFieldError(field, 'terms-consent-error', '');
++        }
++
++        return true;
++      }
++
++      // Attach blur & change listeners for real-time inline validation feedback
++      const allValidatedControls = form.querySelectorAll('input:not([type="hidden"]), select');
++      allValidatedControls.forEach(function (ctrl) {
++        if (ctrl.id === 'company-website-hp') return;
++        ctrl.addEventListener('blur', function () {
++          validateField(ctrl);
++        });
++        ctrl.addEventListener('change', function () {
++          validateField(ctrl);
++        });
++        ctrl.addEventListener('input', function () {
++          if (ctrl.getAttribute('aria-invalid') === 'true') {
++            validateField(ctrl);
++          }
++        });
++      });
++
++      // Validate all fields in a specific step
++      function validateStep(stepIndex) {
++        const errors = [];
++        if (stepIndex === 0) {
++          const step1Fields = [
++            { el: document.getElementById('first-name'), errorId: 'first-name-error' },
++            { el: document.getElementById('last-name'), errorId: 'last-name-error' },
++            { el: document.getElementById('email'), errorId: 'email-error' },
++            { el: document.getElementById('password'), errorId: 'password-error' },
++            { el: document.getElementById('confirm-password'), errorId: 'confirm-password-error' }
++          ];
++          step1Fields.forEach(function (item) {
++            if (!validateField(item.el)) {
++              const msg = document.getElementById(item.errorId).textContent;
++              errors.push({ targetId: item.el.id, message: msg });
++            }
++          });
++        } else if (stepIndex === 1) {
++          const step2Fields = [
++            { el: document.getElementById('phone'), errorId: 'phone-error' },
++            { el: document.getElementById('postal-code'), errorId: 'postal-code-error' },
++            { el: document.getElementById('birthday'), errorId: 'birthday-error' },
++            { el: document.getElementById('home-cafe'), errorId: 'home-cafe-error' }
++          ];
++          step2Fields.forEach(function (item) {
++            if (!validateField(item.el)) {
++              const msg = document.getElementById(item.errorId).textContent;
++              errors.push({ targetId: item.el.id, message: msg });
++            }
++          });
++          const firstRoastRadio = form.querySelector('input[name="favorite_roast"]');
++          if (!validateField(firstRoastRadio)) {
++            const msg = document.getElementById('favorite-roast-error').textContent;
++            firstRoastRadio.id = firstRoastRadio.id || 'favorite-roast-first';
++            errors.push({ targetId: firstRoastRadio.id, message: msg });
++          }
++        } else if (stepIndex === 2) {
++          const termsEl = document.getElementById('terms-consent');
++          if (!validateField(termsEl)) {
++            const msg = document.getElementById('terms-consent-error').textContent;
++            errors.push({ targetId: termsEl.id, message: msg });
++          }
++        }
++
++        renderErrorSummary(errors);
++        return errors.length === 0;
++      }
++
++      function renderErrorSummary(errors) {
++        errorSummaryList.innerHTML = '';
++        if (errors.length === 0) {
++          errorSummary.hidden = true;
++          return;
++        }
++
++        errors.forEach(function (err) {
++          const li = document.createElement('li');
++          const link = document.createElement('a');
++          link.href = '#' + err.targetId;
++          link.textContent = err.message;
++          link.addEventListener('click', function (e) {
++            e.preventDefault();
++            const target = document.getElementById(err.targetId);
++            if (target) {
++              target.focus();
++            }
++          });
++          li.appendChild(link);
++          errorSummaryList.appendChild(li);
++        });
++
++        errorSummary.hidden = false;
++        errorSummary.focus();
++      }
++
++      // Populate Review Summary in Step 3 using textContent (XSS-safe)
++      function populateReviewSummary() {
++        const firstName = document.getElementById('first-name').value.trim();
++        const lastName = document.getElementById('last-name').value.trim();
++        const email = document.getElementById('email').value.trim();
++        const phone = document.getElementById('phone').value.trim();
++        const zip = document.getElementById('postal-code').value.trim();
++        const cafe = document.getElementById('home-cafe').value;
++        const checkedRoast = form.querySelector('input[name="favorite_roast"]:checked');
++        const roast = checkedRoast ? checkedRoast.value : 'Not selected';
++        const milk = document.getElementById('milk-preference').value;
++
++        document.getElementById('review-name').textContent = firstName + ' ' + lastName;
++        document.getElementById('review-email').textContent = email;
++        document.getElementById('review-phone').textContent = phone;
++        document.getElementById('review-zip').textContent = zip;
++        document.getElementById('review-cafe').textContent = cafe;
++        document.getElementById('review-brew').textContent = roast + ' (' + milk + ')';
++      }
++
++      // Step Navigation & Accessibility State Updates
++      function goToStep(targetIndex) {
++        currentStepIndex = targetIndex;
++        errorSummary.hidden = true;
++
++        steps.forEach(function (stepEl, idx) {
++          stepEl.hidden = idx !== currentStepIndex;
++        });
++
++        stepIndicators.forEach(function (ind, idx) {
++          const circle = ind.querySelector('.step-circle');
++          if (idx < currentStepIndex) {
++            ind.removeAttribute('aria-current');
++            ind.classList.add('completed');
++            if (circle) circle.innerHTML = '&#10003;';
++            if (stepSrStatuses[idx]) stepSrStatuses[idx].textContent = 'Completed step: ';
++          } else if (idx === currentStepIndex) {
++            ind.setAttribute('aria-current', 'step');
++            ind.classList.remove('completed');
++            if (circle) circle.textContent = String(idx + 1);
++            if (stepSrStatuses[idx]) stepSrStatuses[idx].textContent = 'Current step: ';
++          } else {
++            ind.removeAttribute('aria-current');
++            ind.classList.remove('completed');
++            if (circle) circle.textContent = String(idx + 1);
++            if (stepSrStatuses[idx]) stepSrStatuses[idx].textContent = 'Upcoming step: ';
++          }
++        });
++
++        // Update progress bar fill width
++        const fillWidths = ['0%', '38%', '76%'];
++        progressFill.style.width = fillWidths[currentStepIndex] || '0%';
++
++        // Update buttons visibility & labels
++        prevBtn.hidden = currentStepIndex === 0;
++        if (currentStepIndex === 0) {
++          nextBtn.hidden = false;
++          nextBtn.textContent = 'Continue to Coffee Profile \u2192';
++          submitBtn.hidden = true;
++        } else if (currentStepIndex === 1) {
++          nextBtn.hidden = false;
++          nextBtn.textContent = 'Review & Preferences \u2192';
++          submitBtn.hidden = true;
++        } else {
++          populateReviewSummary();
++          nextBtn.hidden = true;
++          submitBtn.hidden = false;
++        }
++
++        // Move focus to active step legend and announce for screen readers
++        const activeLegend = steps[currentStepIndex].querySelector('.step-legend');
++        if (activeLegend) {
++          activeLegend.focus();
++          liveAnnouncer.textContent = 'Now on ' + activeLegend.textContent;
++        }
++      }
++
++      nextBtn.addEventListener('click', function () {
++        if (validateStep(currentStepIndex)) {
++          goToStep(currentStepIndex + 1);
++        }
++      });
++
++      prevBtn.addEventListener('click', function () {
++        if (currentStepIndex > 0) {
++          goToStep(currentStepIndex - 1);
++        }
++      });
++
++      editDetailsBtn.addEventListener('click', function () {
++        goToStep(0);
++      });
++
++      // Prevent unintentional Enter key form submission on earlier steps
++      form.addEventListener('keydown', function (e) {
++        if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && currentStepIndex < steps.length - 1) {
++          e.preventDefault();
++          if (validateStep(currentStepIndex)) {
++            goToStep(currentStepIndex + 1);
++          }
++        }
++      });
++
++      // 6. Secure Form Submission Handler
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        if (isSubmitting) return;
++
++        // Validate all steps before submission
++        for (let i = 0; i < steps.length; i++) {
++          if (!validateStep(i)) {
++            if (i !== currentStepIndex) {
++              goToStep(i);
++              validateStep(i);
++            }
++            return;
++          }
++        }
++
++        // Security Check 1: Anti-bot Honeypot verification
++        const honeypot = document.getElementById('company-website-hp');
++        if (honeypot && honeypot.value.trim() !== '') {
++          renderErrorSummary([
++            { targetId: 'rewards-title', message: 'Automated submission detected. Please try again.' }
++          ]);
++          return;
++        }
++
++        // Security Check 2: CSRF Token integrity verification
++        let expectedCsrf = sessionCsrfToken;
++        try {
++          expectedCsrf = sessionStorage.getItem('dg_rewards_csrf_token') || sessionCsrfToken;
++        } catch (err) {
++          // Ignore storage error
++        }
++        if (!csrfInput.value || csrfInput.value !== expectedCsrf) {
++          renderErrorSummary([
++            { targetId: 'rewards-title', message: 'Security session token mismatch. Please refresh the page and try again.' }
++          ]);
++          return;
++        }
++
++        // Security Check 3: Submission rate-limit & idempotency guard
++        isSubmitting = true;
++        submitBtn.disabled = true;
++        prevBtn.disabled = true;
++        submitBtn.setAttribute('aria-busy', 'true');
++        submitBtn.textContent = 'Securing Account & Enrolling...';
++
++        // Sanitize text values safely
++        const firstName = document.getElementById('first-name').value.trim();
++        const lastName = document.getElementById('last-name').value.trim();
++        const email = document.getElementById('email').value.trim();
++        const cafe = document.getElementById('home-cafe').value;
++        const checkedRoast = form.querySelector('input[name="favorite_roast"]:checked');
++        const roast = checkedRoast ? checkedRoast.value : '';
++
++        // Clear sensitive password inputs from memory/DOM immediately
++        passwordInput.value = '';
++        confirmPasswordInput.value = '';
++
++        // Complete stepper UI
++        progressFill.style.width = '76%';
++        stepIndicators.forEach(function (ind, idx) {
++          ind.removeAttribute('aria-current');
++          ind.classList.add('completed');
++          const circle = ind.querySelector('.step-circle');
++          if (circle) circle.innerHTML = '&#10003;';
++          if (stepSrStatuses[idx]) stepSrStatuses[idx].textContent = 'Completed step: ';
++        });
++
++        // Populate Digital Loyalty Card safely via textContent
++        const memberIdSuffix = idempotencyKey.slice(0, 6).toUpperCase();
++        document.getElementById('card-member-id').textContent = 'ID #DG-' + memberIdSuffix;
++        document.getElementById('card-member-name').textContent = firstName + ' ' + lastName;
++        document.getElementById('card-member-cafe').textContent = cafe;
++        document.getElementById('card-member-roast').textContent = roast;
++        document.getElementById('confirm-email-display').textContent = email;
++
++        form.hidden = true;
++        errorSummary.hidden = true;
++        successPanel.hidden = false;
++        successPanel.focus();
++        liveAnnouncer.textContent = 'Registration complete! Welcome to the Daily Grind Rewards Program.';
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

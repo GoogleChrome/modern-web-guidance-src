@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,177 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Static by default; motion is an optional, CSS-only enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      display: grid;
++      align-items: center;
++      min-height: 580px;
++      padding: 100px max(24px, calc((100% - 1060px) / 2));
++      background: #241812;
++      color: #fff8ef;
++      view-timeline-name: --coffee-story;
++      view-timeline-axis: block;
++    }
++
++    .coffee-story__layer {
++      position: absolute;
++      pointer-events: none;
++      user-select: none;
++    }
++
++    .coffee-story__landscape {
++      z-index: -3;
++      inset: -90px 0;
++      background: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center / cover;
++      --drift-start: -70px;
++      --drift-end: 70px;
++    }
++
++    /* A stationary scrim keeps text contrast independent of the moving photo. */
++    .coffee-story::before {
++      content: '';
++      position: absolute;
++      z-index: -2;
++      inset: 0;
++      background: linear-gradient(90deg, rgba(24, 15, 10, .96), rgba(24, 15, 10, .8) 55%, rgba(24, 15, 10, .45));
++      pointer-events: none;
++    }
++
++    .coffee-story__rings {
++      z-index: -1;
++      width: clamp(300px, 48vw, 650px);
++      aspect-ratio: 1;
++      right: -8%;
++      top: 6%;
++      border: 1px solid rgba(255, 202, 139, .3);
++      border-radius: 50%;
++      --drift-start: 100px;
++      --drift-end: -100px;
++    }
++
++    .coffee-story__rings::before,
++    .coffee-story__rings::after {
++      content: '';
++      position: absolute;
++      inset: 40px;
++      border: 1px solid rgba(255, 202, 139, .2);
++      border-radius: inherit;
++    }
++
++    .coffee-story__rings::after {
++      inset: 80px;
++    }
++
++    .coffee-story__foreground {
++      z-index: -1;
++      inset: 0;
++      --drift-start: 150px;
++      --drift-end: -150px;
++    }
++
++    .coffee-story__foreground::before,
++    .coffee-story__foreground::after {
++      content: '';
++      position: absolute;
++      width: 56px;
++      height: 82px;
++      border-radius: 50%;
++      background: linear-gradient(105deg, #865437 43%, #321c12 45%, #321c12 49%, #a36b43 52%, #59351f 90%);
++      box-shadow: 8px 12px 20px rgba(0, 0, 0, .3);
++      transform: rotate(35deg);
++      right: 15%;
++      top: 18%;
++    }
++
++    .coffee-story__foreground::after {
++      width: 38px;
++      height: 56px;
++      right: 29%;
++      top: 74%;
++      transform: rotate(-30deg);
++    }
++
++    .coffee-story__content {
++      max-width: 560px;
++    }
++
++    .coffee-story__eyebrow {
++      color: #ffca8b;
++      font-size: .75rem;
++      font-weight: 700;
++      letter-spacing: .22em;
++      text-transform: uppercase;
++      margin-bottom: 20px;
++    }
++
++    .coffee-story h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 5vw, 4.25rem);
++      font-weight: 400;
++      line-height: 1.12;
++      margin-bottom: 24px;
++      text-wrap: balance;
++    }
++
++    .coffee-story__description {
++      max-width: 420px;
++      color: #f0dfcf;
++      font-size: 1.05rem;
++    }
++
++    .coffee-story__link {
++      display: inline-block;
++      margin-top: 30px;
++      padding: 8px 0;
++      color: #ffca8b;
++      text-underline-offset: 7px;
++    }
++
++    .coffee-story__link:focus-visible {
++      outline: 2px solid #ffca8b;
++      outline-offset: 6px;
++    }
++
++    @keyframes coffee-drift {
++      from { transform: translateY(var(--drift-start)); }
++      to { transform: translateY(var(--drift-end)); }
++    }
++
++    @supports (animation-timeline: --coffee-story) and (animation-range: cover 0% cover 100%) {
++      @media (prefers-reduced-motion: no-preference) {
++        .coffee-story__layer {
++          /* Transform-only motion avoids layout work; all layers share the section timeline. */
++          animation: coffee-drift 1s linear both;
++          animation-timeline: --coffee-story;
++          animation-range: cover 0% cover 100%;
++        }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .coffee-story {
++        min-height: 520px;
++        padding-block: 80px;
++      }
++
++      .coffee-story__foreground::before {
++        right: 6%;
++        top: 8%;
++        width: 32px;
++        height: 48px;
++      }
++
++      .coffee-story__foreground::after {
++        right: 8%;
++        top: 88%;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +342,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <div class="coffee-story__layer coffee-story__landscape" aria-hidden="true"></div>
++      <div class="coffee-story__layer coffee-story__rings" aria-hidden="true"></div>
++      <div class="coffee-story__layer coffee-story__foreground" aria-hidden="true"></div>
++      <div class="coffee-story__content">
++        <p class="coffee-story__eyebrow">Good coffee runs deep</p>
++        <h2 id="coffee-story-title">A little more behind<br>every cup.</h2>
++        <p class="coffee-story__description">From thoughtfully sourced beans to the final, fragrant pour, we take our time with the details. So you can take a moment for yourself.</p>
++        <a href="/about" class="coffee-story__link">Discover our story <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

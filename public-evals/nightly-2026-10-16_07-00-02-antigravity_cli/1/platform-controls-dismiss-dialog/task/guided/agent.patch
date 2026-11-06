@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,78 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Modal Dialog */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: 500px;
++      width: 90%;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      background: white;
++      color: var(--text);
++      margin: auto;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    .modal-dialog-content {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      text-align: center;
++    }
++
++    .modal-dialog-content h2 {
++      color: var(--primary);
++    }
++
++    .modal-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin: 8px 0;
++    }
++
++    .modal-desc {
++      font-weight: 500;
++    }
++
++    .modal-meta {
++      display: flex;
++      justify-content: space-around;
++      background: var(--light);
++      padding: 8px 12px;
++      border-radius: 4px;
++      font-size: 0.95rem;
++    }
++
++    .modal-details {
++      font-size: 0.95rem;
++      color: #5d4037;
++    }
++
++    .close-btn {
++      align-self: center;
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +244,155 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="coffee-modal" command="show-modal" data-coffee="maple-oat-latte">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="coffee-modal" command="show-modal" data-coffee="dark-roast-espresso">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" commandfor="coffee-modal" command="show-modal" data-coffee="cold-brew">Show Details</button>
+         </div>
+       </div>
+     </section>
++
++    <!-- Coffee Details Modal Popup -->
++    <dialog id="coffee-modal" closedby="any" aria-labelledby="coffee-modal-title">
++      <div class="modal-dialog-content">
++        <h2 id="coffee-modal-title">Maple Oat Latte</h2>
++        <img id="coffee-modal-image" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="modal-img">
++        <p id="coffee-modal-desc" class="modal-desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <div class="modal-meta">
++          <p><strong>Roast:</strong> <span id="coffee-modal-roast">Medium Roast</span></p>
++          <p><strong>Price:</strong> <span id="coffee-modal-price">$5.75</span></p>
++        </div>
++        <p id="coffee-modal-details" class="modal-details">Crafted with freshly pulled artisanal espresso, velvety steamed oat milk, and authentic Vermont maple syrup, finished with a delicate dusting of cinnamon.</p>
++        <button type="button" class="btn close-btn" commandfor="coffee-modal" command="close">Close</button>
++      </div>
++    </dialog>
+   </main>
+ 
++  <script>
++    const coffeeData = {
++      'maple-oat-latte': {
++        title: 'Maple Oat Latte',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        details: 'Crafted with freshly pulled artisanal espresso, velvety steamed oat milk, and authentic Vermont maple syrup, finished with a delicate dusting of cinnamon.',
++        price: '$5.75',
++        roast: 'Medium Roast'
++      },
++      'dark-roast-espresso': {
++        title: 'Dark Roast Espresso',
++        image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        details: 'A bold, full-bodied espresso pulled from deeply roasted Arabica beans featuring intense cacao notes, smoky undertones, and a velvety crema.',
++        price: '$4.25',
++        roast: 'Dark Roast'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        details: 'Slowly cold-steeped for 18 hours in filtered water to extract rich flavor while minimizing acidity. Exceptionally smooth with subtle chocolate and caramel undertones.',
++        price: '$4.95',
++        roast: 'Medium-Dark Roast'
++      }
++    };
++
++    const modal = document.getElementById('coffee-modal');
++    const modalTitle = document.getElementById('coffee-modal-title');
++    const modalImage = document.getElementById('coffee-modal-image');
++    const modalDesc = document.getElementById('coffee-modal-desc');
++    const modalRoast = document.getElementById('coffee-modal-roast');
++    const modalPrice = document.getElementById('coffee-modal-price');
++    const modalDetails = document.getElementById('coffee-modal-details');
++
++    function updateModalContent(trigger) {
++      if (!trigger) return;
++      const coffeeKey = trigger.getAttribute('data-coffee');
++      let data = coffeeKey ? coffeeData[coffeeKey] : null;
++      if (!data) {
++        const card = trigger.closest('.card');
++        if (card) {
++          const heading = card.querySelector('h3')?.textContent?.trim();
++          for (const key in coffeeData) {
++            if (coffeeData[key].title.toLowerCase() === heading?.toLowerCase()) {
++              data = coffeeData[key];
++              break;
++            }
++          }
++        }
++      }
++      if (data) {
++        modalTitle.textContent = data.title;
++        modalDesc.textContent = data.description;
++        modalDetails.textContent = data.details;
++        modalRoast.textContent = data.roast;
++        modalPrice.textContent = data.price;
++        modalImage.src = data.image;
++        modalImage.alt = data.title;
++      }
++    }
++
++    const showDetailsButtons = document.querySelectorAll('.card button');
++    showDetailsButtons.forEach(button => {
++      button.addEventListener('click', () => {
++        updateModalContent(button);
++        // Fallback for browsers without native Invoker Commands support
++        if (!('commandForElement' in HTMLButtonElement.prototype)) {
++          if (!modal.open) {
++            modal.showModal();
++          }
++        }
++      });
++    });
++
++    // In case native invoker fires 'command' event
++    modal.addEventListener('command', (event) => {
++      if (event.command === 'show-modal' && event.source) {
++        updateModalContent(event.source);
++      }
++    });
++
++    // Close button handler
++    const closeBtn = modal.querySelector('.close-btn');
++    if (closeBtn) {
++      closeBtn.addEventListener('click', () => {
++        modal.close();
++      });
++    }
++
++    // Fallback for browsers without closedby support
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      modal.addEventListener('click', (event) => {
++        // 1. When clicking the backdrop, the event target is the dialog element itself.
++        // Ignore clicks where the target is a child element inside the dialog.
++        if (event.target !== modal) return;
++
++        // 2. Check if the click coordinates fall within the dialog's content box.
++        // This distinguishes between a click on the backdrop vs a click on the dialog's background/padding.
++        const rect = modal.getBoundingClientRect();
++        const isDialogContent = (
++          rect.top <= event.clientY &&
++          event.clientY <= rect.top + rect.height &&
++          rect.left <= event.clientX &&
++          event.clientX <= rect.left + rect.width
++        );
++
++        if (isDialogContent) return;
++
++        // 3. Since the click was outside the content area (on the backdrop), manually close the dialog.
++        modal.close();
++      });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

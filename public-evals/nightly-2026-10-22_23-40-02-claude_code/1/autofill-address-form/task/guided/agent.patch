@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping form */
++    .shipping h2,
++    .shipping-intro {
++      text-align: center;
++    }
++
++    .shipping-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 16px 20px;
++      max-width: 720px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .field-wide {
++      grid-column: 1 / -1;
++    }
++
++    .field label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .field input,
++    .field textarea {
++      width: 100%;
++      font: inherit;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .field input:focus-visible,
++    .field textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .shipping-form .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +247,50 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container shipping" aria-labelledby="shipping-heading">
++    <h2 id="shipping-heading">Coffee Bean Delivery</h2>
++    <p class="shipping-intro">Tell us where to send your freshly roasted beans.</p>
++    <form class="shipping-form" action="/shipping" method="post">
++      <div class="field field-wide">
++        <label for="ship-name">Recipient name</label>
++        <input type="text" id="ship-name" name="name" autocomplete="shipping name" required>
++      </div>
++      <div class="field field-wide">
++        <label for="ship-address">Street address</label>
++        <textarea id="ship-address" name="address" rows="3" autocomplete="shipping street-address" required></textarea>
++      </div>
++      <div class="field">
++        <label for="ship-city">City</label>
++        <input type="text" id="ship-city" name="city" autocomplete="shipping address-level2" required>
++      </div>
++      <div class="field">
++        <label for="ship-state">State / Province / Region</label>
++        <input type="text" id="ship-state" name="state" autocomplete="shipping address-level1">
++      </div>
++      <div class="field">
++        <label for="ship-postal">Postal code</label>
++        <input type="text" id="ship-postal" name="postal-code" autocomplete="shipping postal-code" required>
++      </div>
++      <div class="field">
++        <label for="ship-country">Country</label>
++        <input type="text" id="ship-country" name="country" autocomplete="shipping country-name" required>
++      </div>
++      <div class="field">
++        <label for="ship-email">Email</label>
++        <input type="email" id="ship-email" name="email" autocomplete="email" required>
++      </div>
++      <div class="field">
++        <label for="ship-phone">Phone</label>
++        <input type="tel" id="ship-phone" name="phone" autocomplete="tel">
++      </div>
++      <div class="field-wide">
++        <button type="submit" class="btn">Ship My Beans</button>
++      </div>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

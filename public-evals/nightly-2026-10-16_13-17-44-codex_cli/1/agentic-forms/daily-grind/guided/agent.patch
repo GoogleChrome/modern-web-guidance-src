@@ -1,0 +1,197 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..7dccd76
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,68 @@
++// The displayed menu is the source of truth for both people and agents.
++const cards = [...document.querySelectorAll('[data-coffee]')];
++const coffees = cards.map(card => ({
++  id: card.dataset.coffee,
++  name: card.querySelector('h3').textContent,
++  description: card.querySelector('p').textContent,
++}));
++const searchForm = document.getElementById('search-coffees');
++const detailsForm = document.getElementById('get-coffee-details');
++const searchStatus = document.getElementById('search-status');
++const details = document.getElementById('coffee-details');
++
++function respond(event, result) {
++  // Ordinary SubmitEvents do not implement the experimental WebMCP API.
++  if (event.agentInvoked && typeof event.respondWith === 'function') {
++    event.respondWith(Promise.resolve(result));
++  }
++}
++
++searchForm.addEventListener('submit', event => {
++  event.preventDefault();
++  const query = new FormData(searchForm).get('query').trim();
++  if (!searchForm.checkValidity() || query.length > 120) {
++    const error = 'Please enter a search of at most 120 characters.';
++    searchStatus.textContent = error;
++    respond(event, { error });
++    return;
++  }
++
++  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
++  const matches = coffees.filter(coffee => {
++    const text = `${coffee.name} ${coffee.description}`.toLowerCase();
++    return words.every(word => text.includes(word));
++  });
++  cards.forEach(card => {
++    card.hidden = !matches.some(coffee => coffee.id === card.dataset.coffee);
++  });
++  searchStatus.textContent = matches.length
++    ? `Showing ${matches.length} featured coffee${matches.length === 1 ? '' : 's'}.`
++    : 'No featured coffees match. Try another search or leave the search blank.';
++  respond(event, { query, count: matches.length, coffees: matches });
++});
++
++detailsForm.addEventListener('submit', event => {
++  event.preventDefault();
++  const id = new FormData(detailsForm).get('coffee');
++  const coffee = coffees.find(item => item.id === id);
++  if (!detailsForm.checkValidity() || !coffee) {
++    const error = 'Please select a featured coffee.';
++    details.textContent = error;
++    respond(event, { error });
++    return;
++  }
++
++  const heading = document.createElement('h3');
++  heading.textContent = coffee.name;
++  const description = document.createElement('p');
++  description.textContent = coffee.description;
++  details.replaceChildren(heading, description);
++  respond(event, { coffee });
++});
++
++document.querySelectorAll('[data-details]').forEach(link => {
++  link.addEventListener('click', () => {
++    detailsForm.elements.coffee.value = link.dataset.details;
++    detailsForm.requestSubmit();
++  });
++});
+diff --git a/index.html b/index.html
+index 66c9173..65bbb1a 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,48 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .menu-form {
++      margin-top: 24px;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .menu-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .menu-form input,
++    .menu-form select {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px;
++      border: 1px solid #78655f;
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .menu-form .btn { min-height: 48px; }
++    .menu-form p { margin-top: 10px; }
++    :focus-visible { outline: 3px solid #a65b00; outline-offset: 3px; }
++    form:tool-form-active { outline: 3px dashed #a65b00; outline-offset: 4px; }
++    button:tool-submit-active { outline: 3px dashed #a65b00; outline-offset: 4px; }
++    #coffee-details { scroll-margin-top: 100px; margin-top: 20px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +211,53 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <form id="search-coffees" class="menu-form" action="#seasonal-favorites" method="get"
++        toolname="search-coffees"
++        tooldescription="Search the featured coffees by name or description and display matching drinks. Use this to browse the seasonal menu."
++        toolautosubmit>
++        <label for="coffee-query">Search featured coffees</label>
++        <input id="coffee-query" name="query" type="search" maxlength="120"
++          toolparamdescription="Words to find in a coffee name or description; leave empty to show all featured coffees."
++          aria-describedby="search-help" enterkeyhint="search" autocorrect="off" autocapitalize="off" spellcheck="false">
++        <p id="search-help">Try “oat” or “cold brew”, or leave blank to see all favorites.</p>
++        <button type="submit" class="btn">Search coffees</button>
++        <p id="search-status" role="status">Showing all 3 featured coffees.</p>
++      </form>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-coffee="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#coffee-details" class="btn" data-details="maple-oat-latte">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-coffee="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#coffee-details" class="btn" data-details="dark-roast-espresso">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-coffee="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#coffee-details" class="btn" data-details="cold-brew">View Details</a>
+         </div>
+       </div>
++      <form id="get-coffee-details" class="menu-form" action="#coffee-details" method="get"
++        toolname="get-coffee-details"
++        tooldescription="Display the published name and description of a featured coffee. Use this to learn about a specific drink."
++        toolautosubmit>
++        <label for="coffee-choice">Choose a coffee (required)</label>
++        <select id="coffee-choice" name="coffee" required>
++          <option value="">Select a coffee</option>
++          <option value="maple-oat-latte">Maple Oat Latte</option>
++          <option value="dark-roast-espresso">Dark Roast Espresso</option>
++          <option value="cold-brew">Cold Brew</option>
++        </select>
++        <button type="submit" class="btn">View coffee details</button>
++        <div id="coffee-details" role="status" aria-atomic="true">
++          <p>Choose a featured coffee to see its details.</p>
++        </div>
++      </form>
+     </section>
+   </main>
+ 
+@@ -207,6 +271,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>

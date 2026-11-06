@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,48 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      margin: 2rem;
++    }
++
++    /* Normalize x-height across body text and inline code using the
++       first available font's aspect value. */
++    #mixed-fonts-container {
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
++    }
++
++    /* Independent theme: its own color scheme, with a fixed numeric
++       font-size-adjust aspect value to lock x-height proportions. */
++    #independent-theme-container {
++      color-scheme: dark;
++      background: Canvas;
++      color: CanvasText;
++      font-size-adjust: 0.5;
++      margin-top: 1.5rem;
++      padding: 1rem 1.5rem;
++      border-radius: 8px;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular prose text sits next to inline code like
++    <code>const answer = 42;</code> and <code>display: grid</code>,
++    and both render with matching visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    This container uses an independent dark theme with a fixed
++    <code>font-size-adjust: 0.5</code> aspect value.
++  </div>
++</body>
++</html>

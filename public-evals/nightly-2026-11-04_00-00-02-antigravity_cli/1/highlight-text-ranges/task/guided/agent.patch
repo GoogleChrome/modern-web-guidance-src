@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Search Box & Custom Highlights */
++    .search-container {
++      max-width: 500px;
++      margin: 20px auto 0;
++    }
++
++    .search-container label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    #search-input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem 1rem;
++      min-height: 48px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      color: var(--text);
++      background-color: white;
++      transition: border-color 0.2s;
++    }
++
++    #search-input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++      border-color: var(--primary);
++    }
++
++    @media (pointer: coarse) {
++      #search-input {
++        min-height: 52px;
++      }
++    }
++
++    ::highlight(search-results) {
++      background-color: #ffd700;
++      color: #000000;
++    }
++
++    mark.search-highlight {
++      background-color: #ffd700;
++      color: #000000;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,9 +223,21 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="search-container">
++        <label for="search-input">Search seasonal menu</label>
++        <input
++          type="search"
++          id="search-input"
++          name="q"
++          placeholder="Search menu items (e.g., maple, espresso, oat)..."
++          autocorrect="off"
++          autocapitalize="off"
++          spellcheck="false"
++        >
++      </div>
++      <div class="grid" id="menu-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -206,7 +265,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const searchInput = document.getElementById("search-input");
++    const menuGrid = document.getElementById("menu-grid");
++
++    // Collect and cache all text nodes in the menu cards using TreeWalker
++    const allTextNodes = [];
++    for (const card of menuGrid.querySelectorAll(".card")) {
++      const treeWalker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++      let currentNode = treeWalker.nextNode();
++      while (currentNode) {
++        if (currentNode.textContent.trim().length > 0) {
++          allTextNodes.push(currentNode);
++        }
++        currentNode = treeWalker.nextNode();
++      }
++    }
++
++    function clearFallbackMarks() {
++      const marks = menuGrid.querySelectorAll("mark.search-highlight");
++      for (const mark of marks) {
++        const parent = mark.parentNode;
++        parent.replaceChild(document.createTextNode(mark.textContent), mark);
++        parent.normalize();
++      }
++    }
++
++    function highlightMatches(query) {
++      const term = query.trim().toLowerCase();
++
++      if (CSS.highlights) {
++        CSS.highlights.clear();
++        if (!term) return;
++
++        const matchingRanges = [];
++        for (const textNode of allTextNodes) {
++          const text = textNode.textContent.toLowerCase();
++          let startPos = 0;
++          while (startPos < text.length) {
++            const index = text.indexOf(term, startPos);
++            if (index === -1) break;
++            const range = new Range();
++            range.setStart(textNode, index);
++            range.setEnd(textNode, index + term.length);
++            matchingRanges.push(range);
++            startPos = index + term.length;
++          }
++        }
++
++        if (matchingRanges.length > 0) {
++          const searchHighlight = new Highlight(...matchingRanges);
++          CSS.highlights.set("search-results", searchHighlight);
++        }
++      } else {
++        clearFallbackMarks();
++        if (!term) return;
++
++        for (const card of menuGrid.querySelectorAll(".card")) {
++          const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++          const nodes = [];
++          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
++            if (n.textContent.trim().length > 0) nodes.push(n);
++          }
++
++          for (const textNode of nodes) {
++            const text = textNode.textContent;
++            let pos = text.toLowerCase().indexOf(term);
++            if (pos === -1) continue;
++
++            const frag = document.createDocumentFragment();
++            let last = 0;
++            while (pos !== -1) {
++              frag.append(text.slice(last, pos));
++              const mark = document.createElement("mark");
++              mark.className = "search-highlight";
++              mark.textContent = text.slice(pos, pos + term.length);
++              frag.append(mark);
++              last = pos + term.length;
++              pos = text.toLowerCase().indexOf(term, last);
++            }
++            frag.append(text.slice(last));
++            textNode.replaceWith(frag);
++          }
++        }
++      }
++    }
++
++    searchInput.addEventListener("input", (e) => {
++      highlightMatches(e.target.value);
++    });
++  </script>
+ </body>
+ 
+ </html>

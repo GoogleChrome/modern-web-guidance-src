@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+index 66c9173..ae4e3e0 100644
+--- a/index.html
++++ b/index.html
+@@ -102,22 +102,113 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
++      container: card / inline-size;
++      container-type: inline-size;
++      container-name: card;
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++
++    .card:hover {
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
++      transform: translateY(-2px);
++    }
++
++    /* Default stacked arrangement for narrow card widths */
++    .card-inner {
++      display: flex;
++      flex-direction: column;
++      height: 100%;
+       text-align: center;
+     }
+ 
++    .card-media {
++      position: relative;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      background-color: var(--secondary);
++      overflow: hidden;
++      flex-shrink: 0;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.04);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .card-body {
++      padding: clamp(1rem, 5cqi, 1.5rem);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++      flex: 1;
++      gap: 12px;
++    }
++
++    .card-text {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 4px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 5.5cqi, 1.35rem);
++      line-height: 1.3;
++    }
++
++    .card p {
++      font-size: clamp(0.9rem, 4cqi, 1rem);
++      color: var(--text);
++    }
++
++    .card-actions {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
++      width: 100%;
++      margin-top: auto;
++    }
++
++    .card-price {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 1.05rem;
+     }
+ 
+     .btn {
+@@ -131,10 +222,77 @@
+       transition: background 0.3s;
+     }
+ 
++    .card .btn {
++      margin-top: 4px;
++      width: 100%;
++      text-align: center;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Side-by-side arrangement when the card itself has sufficient inline width */
++    @container (min-width: 380px) {
++      .card-inner {
++        flex-direction: row;
++        align-items: stretch;
++        text-align: left;
++      }
++
++      .card-media {
++        width: 38%;
++        min-width: 145px;
++        max-width: 220px;
++        aspect-ratio: auto;
++      }
++
++      .card-body {
++        align-items: flex-start;
++        justify-content: center;
++        text-align: left;
++        padding: clamp(1.1rem, 4cqi, 1.5rem);
++      }
++
++      .card-actions {
++        flex-direction: row;
++        justify-content: space-between;
++        align-items: center;
++        margin-top: 8px;
++      }
++
++      .card .btn {
++        width: auto;
++        margin-top: 0;
++      }
++    }
++
++    /* Expanded side-by-side arrangement for extra-wide cards */
++    @container (min-width: 580px) {
++      .card-media {
++        width: 32%;
++        max-width: 240px;
++      }
++
++      .card-body {
++        flex-direction: row;
++        align-items: center;
++        justify-content: space-between;
++        gap: 20px;
++      }
++
++      .card-text {
++        flex: 1;
++      }
++
++      .card-actions {
++        width: auto;
++        flex-shrink: 0;
++        gap: 16px;
++        margin-top: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -179,19 +337,58 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++              <span class="card-badge">Seasonal</span>
++            </div>
++            <div class="card-body">
++              <div class="card-text">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              </div>
++              <div class="card-actions">
++                <span class="card-price">$5.75</span>
++                <a href="/menu/seasonal" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++              <span class="card-badge">Roaster's Pick</span>
++            </div>
++            <div class="card-body">
++              <div class="card-text">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++              </div>
++              <div class="card-actions">
++                <span class="card-price">$3.95</span>
++                <a href="/menu/espresso" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-inner">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++              <span class="card-badge">House Favorite</span>
++            </div>
++            <div class="card-body">
++              <div class="card-text">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++              </div>
++              <div class="card-actions">
++                <span class="card-price">$4.85</span>
++                <a href="/menu/cold-brew" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

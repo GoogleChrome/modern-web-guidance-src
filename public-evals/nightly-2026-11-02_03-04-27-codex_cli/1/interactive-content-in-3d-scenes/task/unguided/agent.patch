@@ -1,0 +1,156 @@
+diff --git a/src/main.js b/src/main.js
+new file mode 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -0,0 +1,151 @@
++import * as THREE from 'three';
++import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
++
++const host = document.querySelector('#scene');
++const form = document.querySelector('#coffee-form');
++const toggle = document.querySelector('#rotation-toggle');
++const quantity = document.querySelector('#quantity');
++const roast = document.querySelector('#roast');
++const prices = { house: 18, light: 20, dark: 19 };
++let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
++let interacting = false;
++let focused = false;
++let revealFront = () => {};
++
++function updateToggle() {
++  toggle.setAttribute('aria-pressed', String(paused));
++  toggle.setAttribute('aria-label', paused ? 'Resume box rotation' : 'Pause box rotation');
++  toggle.textContent = paused ? '▷' : 'Ⅱ';
++}
++updateToggle();
++toggle.addEventListener('click', () => { paused = !paused; updateToggle(); });
++form.addEventListener('pointerenter', () => { interacting = true; });
++form.addEventListener('pointerleave', () => { interacting = false; });
++form.addEventListener('focusin', () => { focused = true; revealFront(); });
++form.addEventListener('focusout', (event) => { focused = form.contains(event.relatedTarget); });
++
++// Both renderers use the same camera and dimensions. CSS3D keeps the original
++// form elements in the DOM so native inputs, focus, and pointer events survive.
++try {
++  const scene = new THREE.Scene();
++  const htmlScene = new THREE.Scene();
++  const camera = new THREE.PerspectiveCamera(38, 1, 1, 5000);
++  camera.position.z = 1000;
++  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
++  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
++  renderer.setClearColor(0x000000, 0);
++  renderer.domElement.setAttribute('aria-hidden', 'true');
++  host.prepend(renderer.domElement);
++  const cssRenderer = new CSS3DRenderer();
++  cssRenderer.domElement.className = 'css-renderer';
++  host.append(cssRenderer.domElement);
++  scene.add(new THREE.AmbientLight(0xffffff, 2.2));
++  const light = new THREE.DirectionalLight(0xfff6dc, 3.2);
++  light.position.set(-500, 700, 900);
++  scene.add(light);
++  const group = new THREE.Group();
++  scene.add(group);
++  const materials = [0x46603c, 0x344e33, 0xd4d1b9, 0x30472f, 0xe7e5d3, 0x3c5637].map(color => new THREE.MeshStandardMaterial({ color, roughness: .88 }));
++  const geometry = new THREE.BoxGeometry(330, 500, 130);
++  const box = new THREE.Mesh(geometry, materials);
++  group.add(box);
++  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: 0x253a26, transparent: true, opacity: .24 }));
++  group.add(edges);
++  // A quiet repeating coffee motif on the side, rendered as actual geometry.
++  for (let row = 0; row < 5; row++) {
++    const bean = new THREE.Mesh(new THREE.SphereGeometry(11, 16, 12), new THREE.MeshStandardMaterial({ color: 0x8a9a6a, roughness: 1 }));
++    bean.scale.set(.09, 1.55, .82);
++    bean.rotation.x = -.45;
++    bean.position.set(165.5, 130 - row * 64, 0);
++    group.add(bean);
++  }
++  const htmlGroup = new THREE.Group();
++  htmlScene.add(htmlGroup);
++  const htmlFace = new CSS3DObject(form);
++  htmlFace.position.z = 65.7;
++  htmlGroup.add(htmlFace);
++  // Back label also stays attached to the carton through a full revolution.
++  const back = document.createElement('div');
++  back.className = 'coffee-face';
++  back.style.cssText = 'background:#3c5637;color:#f2efdb;display:flex;flex-direction:column;justify-content:center;text-align:center;border-color:#536b46;pointer-events:none';
++  back.innerHTML = '<div style="font-size:85px">✳</div><div style="font:600 42px Manrope,sans-serif;line-height:1.15;letter-spacing:-2px">Good coffee.<br>Better days.</div><p style="font-size:11px;line-height:1.8;margin-top:25px">Sourced with care. Roasted with intention.<br>Your little daily dose of good.</p><div style="font-size:10px;margin-top:35px;letter-spacing:2px">THE DAILY GRIND ®</div>';
++  const backFace = new CSS3DObject(back);
++  backFace.position.z = -65.7;
++  backFace.rotation.y = Math.PI;
++  htmlGroup.add(backFace);
++  host.classList.add('ready');
++  function resize() {
++    const { width, height } = host.getBoundingClientRect();
++    camera.aspect = width / height;
++    // Preserve the carton size on small screens without cropping its rotation.
++    camera.position.z = width < 400 ? 1210 : 1090;
++    camera.updateProjectionMatrix();
++    renderer.setSize(width, height);
++    cssRenderer.setSize(width, height);
++  }
++  new ResizeObserver(resize).observe(host);
++  resize();
++  let angle = -.32;
++  let last = 0;
++  let elapsed = 0;
++  revealFront = () => { angle = Math.round(angle / (Math.PI * 2)) * Math.PI * 2 - .15; };
++  const animate = (now) => {
++    const delta = last ? Math.min((now - last) / 1000, .05) : 0;
++    last = now;
++    if (!paused && !interacting && !focused && !document.hidden) {
++      elapsed += delta;
++      // Give visitors time to read the front before each full, gentle turn.
++      const phase = elapsed % 30;
++      if (phase > 9) angle += delta * Math.PI * 2 / 21;
++    }
++    group.rotation.set(.065, angle, -.055);
++    group.position.y = 5 + (paused || focused || interacting ? 0 : Math.sin(elapsed * .7) * 5);
++    htmlGroup.quaternion.copy(group.quaternion);
++    htmlGroup.position.copy(group.position);
++    // CSS backface hiding handles visuals. Disable pointer events while the
++    // front faces away; keyboard focus can still bring the form to the front.
++    form.style.pointerEvents = Math.cos(angle) > .1 ? 'auto' : 'none';
++    renderer.render(scene, camera);
++    cssRenderer.render(htmlScene, camera);
++    requestAnimationFrame(animate);
++  };
++  requestAnimationFrame(animate);
++} catch (error) {
++  // Keep the same usable HTML order form if WebGL is unavailable.
++  host.classList.remove('ready');
++  host.querySelectorAll('canvas,.css-renderer').forEach(element => element.remove());
++  host.append(form);
++  toggle.hidden = true;
++  console.warn('3D rendering unavailable; showing the coffee form.', error);
++}
++
++function updatePrice() {
++  let amount = Number(quantity.value);
++  if (!Number.isFinite(amount)) amount = 1;
++  quantity.value = Math.min(10, Math.max(1, Math.round(amount)));
++  document.querySelector('#price').textContent = `$${(prices[roast.value] * Number(quantity.value)).toFixed(2)} ↗`;
++}
++document.querySelector('#decrease').addEventListener('click', () => { quantity.value = Number(quantity.value) - 1; updatePrice(); });
++document.querySelector('#increase').addEventListener('click', () => { quantity.value = Number(quantity.value) + 1; updatePrice(); });
++quantity.addEventListener('change', updatePrice);
++roast.addEventListener('change', updatePrice);
++let bagCount = 0;
++let toastTimeout;
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  updatePrice();
++  bagCount += Number(quantity.value);
++  document.querySelector('#bag-count').textContent = bagCount;
++  const name = {house:'House Blend',light:'Bright Side',dark:'After Hours'}[roast.value];
++  const toast = document.querySelector('#toast');
++  toast.textContent = `${quantity.value} × ${name} added to your bag. A good day is brewing.`;
++  toast.classList.add('visible');
++  clearTimeout(toastTimeout);
++  toastTimeout = setTimeout(() => toast.classList.remove('visible'), 4500);
++});
++document.querySelectorAll('[data-roast]').forEach(card => card.addEventListener('click', () => {
++  roast.value = card.dataset.roast;
++  updatePrice();
++  revealFront();
++  roast.focus({ preventScroll: true });
++}));

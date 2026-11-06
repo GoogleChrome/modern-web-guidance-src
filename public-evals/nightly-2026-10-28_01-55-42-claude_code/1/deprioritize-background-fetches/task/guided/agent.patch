@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Fetch Demo</title>
++</head>
++<body>
++  <button id="go" type="button">Load</button>
++  <pre id="out" aria-live="polite"></pre>
++
++  <script type="module">
++    const button = document.getElementById('go');
++    const out = document.getElementById('out');
++
++    button.addEventListener('click', async () => {
++      // Non-critical analytics: deprioritized so it doesn't contend with the data fetch.
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true,
++      }).catch(() => {});
++
++      // Mission-critical data: highest priority.
++      try {
++        const res = await fetch('/api/data', { priority: 'high' });
++        if (!res.ok) throw new Error(`HTTP ${res.status}`);
++        out.textContent = JSON.stringify(await res.json(), null, 2);
++      } catch (err) {
++        out.textContent = `Failed to load data: ${err.message}`;
++      }
++    });
++  </script>
++</body>
++</html>

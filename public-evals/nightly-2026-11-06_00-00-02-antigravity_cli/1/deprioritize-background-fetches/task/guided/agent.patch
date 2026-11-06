@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,31 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Fetch Data</title>
++</head>
++<body>
++  <button id="load-btn" type="button">Load Data</button>
++  <pre id="output"></pre>
++
++  <script type="module">
++    const button = document.getElementById('load-btn');
++    const output = document.getElementById('output');
++
++    button.addEventListener('click', async () => {
++      // Explicitly deprioritize background analytics to prevent network contention
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++      });
++
++      // Use high priority (default) for mission-critical UI updates
++      const response = await fetch('/api/data');
++      output.textContent = await response.text();
++    });
++  </script>
++</body>
++</html>

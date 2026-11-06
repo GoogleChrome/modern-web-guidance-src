@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,35 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Watch the Film</title>
++<meta name="description" content="A minimal video landing page.">
++
++<!-- LCP: fetch the poster first, at the highest priority -->
++<link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++<!-- Critical header font: preload (crossorigin is required for font preloads) -->
++<link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++<!-- secondary-font.woff2 is intentionally NOT preloaded so it never competes with the poster -->
++
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-weight:700;font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:optional}
++*{box-sizing:border-box;margin:0}
++body{background:#000;color:#fff;font:16px/1.5 Secondary,system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:1rem;text-align:center}
++main{display:grid;gap:1.5rem;justify-items:center;width:100%}
++h1{font:700 clamp(2rem,6vw,4rem)/1.1 Brand,system-ui,sans-serif}
++video{display:block;width:100%;max-width:1280px;height:auto;aspect-ratio:16/9;background:#111}
++a{color:#000;background:#fff;padding:.75rem 1.5rem;border-radius:2rem;text-decoration:none}
++</style>
++</head>
++<body>
++<main>
++  <h1>Watch the Film</h1>
++  <video controls playsinline preload="none" poster="poster.jpg" width="1280" height="720">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++  <p><a href="#">Get started</a></p>
++</main>
++</body>
++</html>

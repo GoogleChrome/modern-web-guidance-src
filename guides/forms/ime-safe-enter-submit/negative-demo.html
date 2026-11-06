@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <title>Messaging</title>
+  <style>
+    body {
+      font-family: serif;
+      padding: 20px;
+    }
+
+    #display {
+      border: 2px solid black;
+      height: 150px;
+      width: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+    }
+
+    #msg {
+      width: 300px;
+      height: 80px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Chat</h1>
+  <div id="display"></div>
+  <textarea id="msg"></textarea>
+  <script>
+      var d = document.getElementById('display');
+      var m = document.getElementById('msg');
+      m.onkeydown = function (e) {
+        if (e.key === 'Enter') {
+          var s = document.createElement('div');
+          s.innerText = m.value;
+          d.appendChild(s);
+              m.value = '';
+            }
+          };
+        </script>
+</body>
+
+</html>

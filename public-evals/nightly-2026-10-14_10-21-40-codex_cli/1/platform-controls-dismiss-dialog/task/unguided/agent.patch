@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -121,8 +121,11 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -134,8 +137,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .coffee-dialog {
++      margin: auto;
++      width: min(440px, calc(100% - 40px));
++      max-height: calc(100% - 40px);
++      overflow: auto;
++      padding: 28px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    .coffee-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .coffee-dialog h2 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +210,32 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn show-details" aria-haspopup="dialog" aria-controls="coffee-details">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn show-details" aria-haspopup="dialog" aria-controls="coffee-details">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn show-details" aria-haspopup="dialog" aria-controls="coffee-details">Show Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="coffee-details" class="coffee-dialog" aria-labelledby="coffee-details-heading" aria-describedby="coffee-details-description">
++    <h2 id="coffee-details-heading"></h2>
++    <p id="coffee-details-description"></p>
++    <form method="dialog">
++      <button type="submit" class="btn" autofocus>Close</button>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +244,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const coffeeDialog = document.getElementById('coffee-details');
++    const coffeeHeading = document.getElementById('coffee-details-heading');
++    const coffeeDescription = document.getElementById('coffee-details-description');
++
++    document.querySelectorAll('.show-details').forEach((button) => {
++      button.addEventListener('click', () => {
++        const card = button.closest('.card');
++        coffeeHeading.textContent = card.querySelector('h3').textContent;
++        coffeeDescription.textContent = card.querySelector('p').textContent;
++        coffeeDialog.showModal();
++      });
++    });
++
++    // Require both ends of a click to be outside so dragging from inside won't close it.
++    let pointerStartedOutside = false;
++    const isOutsideDialog = (event) => {
++      const bounds = coffeeDialog.getBoundingClientRect();
++      return event.clientX < bounds.left || event.clientX > bounds.right ||
++        event.clientY < bounds.top || event.clientY > bounds.bottom;
++    };
++
++    coffeeDialog.addEventListener('pointerdown', (event) => {
++      pointerStartedOutside = isOutsideDialog(event);
++    });
++
++    coffeeDialog.addEventListener('click', (event) => {
++      if (pointerStartedOutside && isOutsideDialog(event)) {
++        coffeeDialog.close();
++      }
++      pointerStartedOutside = false;
++    });
++    // Native modal dialogs handle Escape, contain focus, and restore it to the opener.
++  </script>
++
+ </body>
+ 
+ </html>

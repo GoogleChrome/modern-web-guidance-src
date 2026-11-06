@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+index 1bacf96..425d7cd 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,31 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++       * Auto-contrast text colors.
++       * These are derived from --primary / --secondary with CSS relative color
++       * syntax, so whenever either background is changed (in this stylesheet,
++       * via JS `style.setProperty`, or in devtools) the matching text color
++       * recomputes on its own. Any OKLCH lightness below the threshold yields
++       * white text; anything at or above it yields near-black text.
++       */
++      --contrast-threshold: 0.575;
++      --primary-contrast: oklch(from var(--primary)
++          clamp(0, (var(--contrast-threshold) - l) * 1000000, 1) 0 h);
++      --secondary-contrast: oklch(from var(--secondary)
++          clamp(0, (var(--contrast-threshold) - l) * 1000000, 1) 0 h);
++
++      /* Hover shade for buttons, also derived from --primary. */
++      --primary-hover: color-mix(in oklch, var(--primary) 85%, black);
++    }
++
++    /* Prefer the native contrast-color() function where the browser has it. */
++    @supports (color: contrast-color(red)) {
++      :root {
++        --primary-contrast: contrast-color(var(--primary));
++        --secondary-contrast: contrast-color(var(--secondary));
++      }
+     }
+ 
+     * {
+@@ -30,7 +55,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--primary-contrast);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +81,15 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      /* Blend the accent toward the contrast color so hover stays legible too. */
++      color: color-mix(in oklch, var(--accent) 60%, var(--primary-contrast));
+     }
+ 
+     .logout-link {
+@@ -123,6 +149,7 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: var(--primary-contrast);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -131,11 +158,12 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--secondary-contrast);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +175,14 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -206,6 +238,68 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS relative color syntax: compute the
++    // contrast colors in JS and keep them in sync when the theme changes.
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(from red calc(l) c h)')) {
++        return; // CSS handles it natively.
++      }
++
++      var root = document.documentElement;
++      var probe = document.createElement('span');
++      probe.style.display = 'none';
++      document.body.appendChild(probe);
++
++      function toRgb(value) {
++        probe.style.color = '';
++        probe.style.color = value;
++        var m = /rgba?\(([^)]+)\)/.exec(getComputedStyle(probe).color);
++        if (!m) return null;
++        var parts = m[1].split(/[\s,\/]+/).map(parseFloat);
++        return parts.length >= 3 ? parts.slice(0, 3) : null;
++      }
++
++      function luminance(rgb) {
++        var c = rgb.map(function (v) {
++          v /= 255;
++          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
++        });
++        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
++      }
++
++      function contrastFor(varName) {
++        var raw = getComputedStyle(root).getPropertyValue(varName).trim();
++        var rgb = raw && toRgb(raw);
++        if (!rgb) return null;
++        // Pick whichever of black / white has the higher WCAG contrast ratio.
++        var L = luminance(rgb);
++        return (1.05 / (L + 0.05)) >= ((L + 0.05) / 0.05) ? '#ffffff' : '#111111';
++      }
++
++      function setIfChanged(name, value) {
++        // Only write when the value differs, so our own writes never
++        // retrigger the observer and cause a loop.
++        if (value && root.style.getPropertyValue(name).trim() !== value) {
++          root.style.setProperty(name, value);
++        }
++      }
++
++      function update() {
++        setIfChanged('--primary-contrast', contrastFor('--primary'));
++        setIfChanged('--secondary-contrast', contrastFor('--secondary'));
++      }
++
++      update();
++
++      // Re-run whenever inline styles or stylesheets change.
++      var observer = new MutationObserver(function () { update(); });
++      observer.observe(root, { attributes: true, attributeFilter: ['style', 'class'] });
++      observer.observe(document.head, { childList: true, subtree: true, characterData: true });
++      window.addEventListener('load', update);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

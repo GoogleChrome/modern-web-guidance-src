@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shipping Address Form */
++    .shipping {
++      max-width: 600px;
++      margin: 60px auto 0;
++    }
++
++    .shipping form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping > p {
++      text-align: center;
++      margin-block: 0.5rem 1.5rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 0 20px;
++    }
++
++    .shipping input,
++    .shipping select,
++    .shipping textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      color: var(--text);
++      background: white;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .shipping textarea {
++      resize: vertical;
++    }
++
++    .shipping input:focus-visible,
++    .shipping select:focus-visible,
++    .shipping textarea:focus-visible,
++    .shipping button:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .shipping :is(input, select, textarea):user-invalid {
++      border-color: #b3261e;
++      border-width: 2px;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      margin-block-start: 0.25rem;
++    }
++
++    .shipping button {
++      width: 100%;
++      min-height: 48px;
++      font: inherit;
++      font-weight: 600;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .shipping button:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +282,71 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading" style="text-align: center;">Shipping Address</h2>
++      <p>Where should we send your beans? Fields marked * are required.</p>
++      <form action="/save-address" method="POST">
++        <div class="form-group">
++          <label for="full-name">Full name *</label>
++          <input type="text" id="full-name" name="full_name" autocomplete="name" maxlength="100" required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="email">Email *</label>
++            <input type="email" id="email" name="email" autocomplete="email" autocapitalize="off" spellcheck="false" required>
++          </div>
++          <div class="form-group">
++            <label for="phone">Phone</label>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" aria-describedby="phone-hint">
++            <span id="phone-hint" class="hint">For delivery updates only.</span>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="address">Street address *</label>
++          <textarea id="address" name="address" rows="3" autocomplete="street-address" maxlength="300" required aria-describedby="address-hint"></textarea>
++          <span id="address-hint" class="hint">Include apartment, suite, or unit if applicable.</span>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="city">City *</label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" maxlength="100" required>
++          </div>
++          <div class="form-group">
++            <label for="region">State / Province / Region</label>
++            <input type="text" id="region" name="region" autocomplete="address-level1" maxlength="100">
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="postal-code">ZIP / Postal code</label>
++            <input type="text" id="postal-code" name="postal_code" autocomplete="postal-code" maxlength="20" autocapitalize="characters">
++          </div>
++          <div class="form-group">
++            <label for="country">Country *</label>
++            <select id="country" name="country" autocomplete="country" required>
++              <option value="" selected disabled>Select a country</option>
++              <option value="US">United States</option>
++              <option value="CA">Canada</option>
++              <option value="GB">United Kingdom</option>
++              <option value="AU">Australia</option>
++              <option value="DE">Germany</option>
++              <option value="FR">France</option>
++              <option value="JP">Japan</option>
++              <option value="OTHER">Other</option>
++            </select>
++          </div>
++        </div>
++
++        <button type="submit">Ship to This Address</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

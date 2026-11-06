@@ -1,0 +1,377 @@
+diff --git a/index.html b/index.html
+index 66c9173..fd3cf41 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,204 @@
+       margin-top: 20px;
+     }
+ 
++    /* Seasonal product cards */
+     .card {
++      container-type: inline-size;
++      display: grid;
++      grid-template-columns: auto 1fr;
++      grid-template-rows: auto auto 1fr auto;
++      column-gap: 1.25rem;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
+       text-align: center;
+     }
+ 
++    .card > * {
++      grid-column: 1 / -1;
++      margin-inline: 20px;
++    }
++
++    .card > img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      margin-inline: 0;
++      background: var(--secondary);
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block: 20px 6px;
+       color: var(--primary);
++      font-size: clamp(1.15rem, 0.9rem + 3cqi, 1.6rem);
++      line-height: 1.25;
++    }
++
++    .card > p {
++      margin-bottom: 16px;
++    }
++
++    .card > footer {
++      margin-bottom: 20px;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 12px;
++    }
++
++    .size-picker {
++      display: flex;
++      border: 0;
++      min-width: 0;
++    }
++
++    .size-picker legend {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .size-picker label {
++      flex: 1;
++      position: relative;
++      display: grid;
++      padding: 6px 4px;
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      font-size: 0.9rem;
++      line-height: 1.3;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .size-picker label + label {
++      margin-left: -1px;
++    }
++
++    .size-picker label:first-of-type {
++      border-radius: 5px 0 0 5px;
++    }
++
++    .size-picker label:last-of-type {
++      border-radius: 0 5px 5px 0;
++    }
++
++    /* Hidden but still focusable and announced as a radio */
++    .size-picker input {
++      position: absolute;
++      inset: 0;
++      opacity: 0;
++      cursor: pointer;
++    }
++
++    .size-picker label:hover {
++      background: var(--secondary);
++    }
++
++    .size-picker label:has(:checked) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .size-picker label:has(:focus-visible) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      z-index: 1;
++    }
++
++    .size-picker .size-short,
++    .size-picker .price {
++      display: none;
++    }
++
++    .size-picker .price {
++      font-size: 0.8rem;
++      opacity: 0.85;
++    }
++
++    .card button.btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .card .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-status {
++      min-height: 1.5em;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    /* Very narrow cards: abbreviate sizes so the picker never wraps */
++    @container (max-width: 14rem) {
++      /* Visually hidden, but still names the radio for screen readers */
++      .size-picker .size-long {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        overflow: hidden;
++        clip-path: inset(50%);
++        white-space: nowrap;
++      }
++
++      .size-picker .size-short {
++        display: inline;
++      }
++    }
++
++    /* Roomier cards: show the price for each size */
++    @container (min-width: 18rem) {
++      .size-picker .price {
++        display: block;
++      }
++    }
++
++    /* Wide cards with a photo: put the photo in a side column */
++    @container (min-width: 34rem) {
++      .card:has(> img) {
++        text-align: start;
++
++        > img {
++          grid-column: 1;
++          grid-row: 1 / -1;
++          width: clamp(10rem, 40cqi, 18rem);
++          height: auto;
++          align-self: stretch;
++          aspect-ratio: auto;
++          min-height: 14rem;
++        }
++
++        > :not(img) {
++          grid-column: 2;
++          margin-inline: 0 24px;
++        }
++
++        .order-form {
++          grid-template-columns: 1fr auto;
++          align-items: center;
++        }
++
++        .order-status {
++          grid-column: 1 / -1;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .size-picker label {
++        transition: none;
++      }
+     }
+ 
+     .btn {
+@@ -163,6 +350,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/order-online">My Order (<span id="order-count">0</span>)</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -178,21 +366,99 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&q=75"
++            alt="Latte with leaf-shaped foam art in a clear double-walled glass" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <form class="order-form" action="/order-online" method="post">
++              <input type="hidden" name="item" value="maple-oat-latte">
++              <fieldset class="size-picker">
++                <legend>Size for Maple Oat Latte</legend>
++                <label>
++                  <input type="radio" name="size" value="small" data-price="4.75">
++                  <span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span>
++                  <span class="price">$4.75</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="medium" data-price="5.50" checked>
++                  <span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span>
++                  <span class="price">$5.50</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="large" data-price="6.25">
++                  <span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span>
++                  <span class="price">$6.25</span>
++                </label>
++              </fieldset>
++              <button type="submit" class="btn">Add to Order</button>
++              <p class="order-status" role="status"></p>
++            </form>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=75"
++            alt="Espresso with golden crema in a white cup" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <form class="order-form" action="/order-online" method="post">
++              <input type="hidden" name="item" value="dark-roast-espresso">
++              <fieldset class="size-picker">
++                <legend>Size for Dark Roast Espresso</legend>
++                <label>
++                  <input type="radio" name="size" value="small" data-price="3.00">
++                  <span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span>
++                  <span class="price">$3.00</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="medium" data-price="3.50" checked>
++                  <span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span>
++                  <span class="price">$3.50</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="large" data-price="4.00">
++                  <span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span>
++                  <span class="price">$4.00</span>
++                </label>
++              </fieldset>
++              <button type="submit" class="btn">Add to Order</button>
++              <p class="order-status" role="status"></p>
++            </form>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=75"
++            alt="Iced cold brew with swirling cream in a tall glass" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <form class="order-form" action="/order-online" method="post">
++              <input type="hidden" name="item" value="cold-brew">
++              <fieldset class="size-picker">
++                <legend>Size for Cold Brew</legend>
++                <label>
++                  <input type="radio" name="size" value="small" data-price="4.25">
++                  <span class="size-long">Small</span><span class="size-short" aria-hidden="true">S</span>
++                  <span class="price">$4.25</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="medium" data-price="4.95" checked>
++                  <span class="size-long">Medium</span><span class="size-short" aria-hidden="true">M</span>
++                  <span class="price">$4.95</span>
++                </label>
++                <label>
++                  <input type="radio" name="size" value="large" data-price="5.65">
++                  <span class="size-long">Large</span><span class="size-short" aria-hidden="true">L</span>
++                  <span class="price">$5.65</span>
++                </label>
++              </fieldset>
++              <button type="submit" class="btn">Add to Order</button>
++              <p class="order-status" role="status"></p>
++            </form>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +473,48 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const ORDER_KEY = 'dailyGrindOrder';
++    const orderCount = document.getElementById('order-count');
++
++    function loadOrder() {
++      try {
++        return JSON.parse(localStorage.getItem(ORDER_KEY)) ?? [];
++      } catch {
++        return [];
++      }
++    }
++
++    function renderCount(order) {
++      orderCount.textContent = order.length;
++    }
++
++    renderCount(loadOrder());
++
++    document.querySelectorAll('.order-form').forEach((form) => {
++      const status = form.querySelector('.order-status');
++      const name = form.closest('.card').querySelector('h3').textContent;
++      let clearTimer;
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const size = form.querySelector('input[name="size"]:checked');
++        const sizeLabel = size.closest('label').querySelector('.size-long').textContent;
++        const order = loadOrder();
++        order.push({ item: form.elements.item.value, size: size.value, price: Number(size.dataset.price) });
++        try {
++          localStorage.setItem(ORDER_KEY, JSON.stringify(order));
++        } catch {
++          // Storage unavailable (private mode, quota): keep the in-page count accurate anyway
++        }
++        renderCount(order);
++        status.textContent = `Added a ${sizeLabel.toLowerCase()} ${name} to your order.`;
++        clearTimeout(clearTimer);
++        clearTimer = setTimeout(() => (status.textContent = ''), 4000);
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

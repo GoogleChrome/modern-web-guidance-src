@@ -1,0 +1,401 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,90 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Apply the saved theme before first paint to avoid a flash of the wrong theme
++    try {
++      var savedTheme = localStorage.getItem('theme');
++      if (savedTheme === 'light' || savedTheme === 'dark') {
++        document.documentElement.dataset.theme = savedTheme;
++      }
++    } catch (e) { }
++  </script>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      /* Coffee-cream palette (light) */
++      --light-bg: #fbf3e4;
++      --light-surface: #fffaf0;
++      --light-text: #3e2723;
++      --light-muted: #6d5648;
++      --light-primary: #5d4037;
++      --light-nav: #4e342e;
++      --light-accent: #a65a1c;
++      --light-border: #e0cfb4;
++      --light-footer: #ead9bd;
++      --light-btn-text: #fffaf0;
++
++      /* Dark roast palette (dark) */
++      --dark-bg: #1c1411;
++      --dark-surface: #2a1e19;
++      --dark-text: #f1e4d3;
++      --dark-muted: #bba998;
++      --dark-primary: #e8cfae;
++      --dark-nav: #2a1c16;
++      --dark-accent: #e0a060;
++      --dark-border: #4a372e;
++      --dark-footer: #120d0b;
++      --dark-btn-text: #1c1411;
++
++      --bg: light-dark(var(--light-bg), var(--dark-bg));
++      --surface: light-dark(var(--light-surface), var(--dark-surface));
++      --text: light-dark(var(--light-text), var(--dark-text));
++      --muted: light-dark(var(--light-muted), var(--dark-muted));
++      --primary: light-dark(var(--light-primary), var(--dark-primary));
++      --nav-bg: light-dark(var(--light-nav), var(--dark-nav));
++      --accent: light-dark(var(--light-accent), var(--dark-accent));
++      --border: light-dark(var(--light-border), var(--dark-border));
++      --footer-bg: light-dark(var(--light-footer), var(--dark-footer));
++      --btn-bg: light-dark(var(--light-primary), var(--dark-accent));
++      --btn-hover: light-dark(var(--light-nav), var(--dark-primary));
++      --btn-text: light-dark(var(--light-btn-text), var(--dark-btn-text));
++      --nav-accent: var(--dark-accent);
+     }
+ 
++    /* Manual overrides from the theme selector */
++    :root[data-theme="light"] {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      color-scheme: dark;
++    }
++
++    /* Always-dark region: re-declare every theme variable with the dark values */
++    .always-dark {
++      color-scheme: dark;
++      --bg: var(--dark-bg);
++      --surface: var(--dark-surface);
++      --text: var(--dark-text);
++      --muted: var(--dark-muted);
++      --primary: var(--dark-primary);
++      --nav-bg: var(--dark-nav);
++      --accent: var(--dark-accent);
++      --border: var(--dark-border);
++      --footer-bg: var(--dark-footer);
++      --btn-bg: var(--dark-accent);
++      --btn-hover: var(--dark-primary);
++      --btn-text: var(--dark-btn-text);
++      background: var(--bg);
++      color: var(--text);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,14 +95,105 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++      accent-color: var(--accent);
+     }
+ 
++    :focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Theme selector bar */
++    .theme-bar {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 8px;
++      padding: 6px 5%;
++      background: var(--surface);
++      border-bottom: 1px solid var(--border);
++      font-size: 0.85rem;
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      padding: 4px 8px;
++    }
++
++    select:hover,
++    select:focus {
++      border-color: var(--accent);
++    }
++
++    /* Scrollable areas share one scrollbar style built from theme variables */
++    .scroll-container {
++      max-height: 280px;
++      overflow: auto;
++      padding: 16px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      scrollbar-color: var(--accent) var(--surface);
++      scrollbar-width: thin;
++    }
++
++    .review {
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .review:last-child {
++      border-bottom: 0;
++    }
++
++    .review .stars {
++      color: var(--accent);
++    }
++
++    .review .author {
++      color: var(--muted);
++      font-size: 0.85rem;
++    }
++
++    /* Late night specials */
++    .late-night {
++      margin-top: 40px;
++      padding: 32px 20px;
++      border-radius: 8px;
++    }
++
++    .late-night h2 {
++      text-align: center;
++      color: var(--accent);
++    }
++
++    .late-night .controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin: 16px 0;
++    }
++
++    .late-night .scroll-container {
++      background: var(--surface);
++    }
++
++    .late-night h3 {
++      color: var(--accent);
++      margin-bottom: 6px;
++    }
++
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: var(--nav-bg);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -62,13 +225,13 @@
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+@@ -107,9 +270,10 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -121,23 +285,23 @@
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -145,8 +309,12 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    footer {
++      color: var(--text);
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -156,8 +324,17 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="theme-bar">
++    <label for="theme-select">Theme</label>
++    <select id="theme-select">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +371,71 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">Customer Reviews</h2>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Customer reviews">
++        <div class="review"><span class="stars">★★★★★</span>
++          <p>The maple oat latte is the best I've ever had. Cozy shop, friendly baristas.</p><span class="author">— Priya S.</span>
++        </div>
++        <div class="review"><span class="stars">★★★★★</span>
++          <p>Their dark roast espresso fuels my entire work week. Never disappoints.</p><span class="author">— Marcus T.</span>
++        </div>
++        <div class="review"><span class="stars">★★★★☆</span>
++          <p>Cold brew is incredibly smooth. Wish the line were shorter on weekends!</p><span class="author">— Elena R.</span>
++        </div>
++        <div class="review"><span class="stars">★★★★★</span>
++          <p>Love that the beans are locally roasted. You can taste the difference.</p><span class="author">— Jordan K.</span>
++        </div>
++        <div class="review"><span class="stars">★★★★★</span>
++          <p>Perfect spot to read a book with a flat white. Calm and welcoming.</p><span class="author">— Aiko M.</span>
++        </div>
++        <div class="review"><span class="stars">★★★★☆</span>
++          <p>Great pastries too. The almond croissant pairs perfectly with the house drip.</p><span class="author">— Sam D.</span>
++        </div>
++      </div>
++    </section>
++
++    <section class="late-night always-dark" aria-labelledby="late-night-title">
++      <h2 id="late-night-title">Late Night Specials</h2>
++      <div class="controls">
++        <label for="special-select">Pick a special</label>
++        <select id="special-select">
++          <option value="all">All specials</option>
++          <option value="espresso">Espresso</option>
++          <option value="dessert">Dessert drinks</option>
++          <option value="decaf">Decaf</option>
++        </select>
++      </div>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Late night specials">
++        <div class="special" data-type="espresso">
++          <h3>Midnight Doppio</h3>
++          <p>Double shot of our darkest roast, served after 9pm for $3.</p>
++        </div>
++        <div class="special" data-type="dessert">
++          <h3>Affogato</h3>
++          <p>Vanilla gelato drowned in a fresh espresso shot.</p>
++        </div>
++        <div class="special" data-type="decaf">
++          <h3>Decaf Mocha</h3>
++          <p>Swiss-water decaf with dark chocolate and steamed milk.</p>
++        </div>
++        <div class="special" data-type="dessert">
++          <h3>Salted Caramel Cortado</h3>
++          <p>Equal parts espresso and warm milk with a salted caramel swirl.</p>
++        </div>
++        <div class="special" data-type="espresso">
++          <h3>Nightcap Ristretto</h3>
++          <p>A short, intense pull for the true coffee lover.</p>
++        </div>
++        <div class="special" data-type="decaf">
++          <h3>Chamomile Honey Latte</h3>
++          <p>Caffeine-free and soothing, perfect before heading home.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +446,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Theme selector: "system" removes the override so the browser follows OS preference
++    var themeSelect = document.getElementById('theme-select');
++    var root = document.documentElement;
++    themeSelect.value = root.dataset.theme || 'system';
++    themeSelect.addEventListener('change', function () {
++      var value = themeSelect.value;
++      if (value === 'light' || value === 'dark') {
++        root.dataset.theme = value;
++      } else {
++        delete root.dataset.theme;
++      }
++      try {
++        if (value === 'system') localStorage.removeItem('theme');
++        else localStorage.setItem('theme', value);
++      } catch (e) { }
++    });
++
++    // Late night specials filter
++    var specialSelect = document.getElementById('special-select');
++    specialSelect.addEventListener('change', function () {
++      document.querySelectorAll('.special').forEach(function (el) {
++        el.hidden = specialSelect.value !== 'all' && el.dataset.type !== specialSelect.value;
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

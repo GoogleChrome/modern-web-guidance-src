@@ -1,0 +1,178 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,146 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Parallax Section
++       Pure-CSS scroll-driven parallax using a view timeline. Only `transform`
++       is animated, so all motion runs on the compositor thread. Browsers
++       without scroll-driven animation support, and users who prefer reduced
++       motion, get a static (but complete) layered composition. */
++    .parallax {
++      position: relative;
++      min-height: 80vh;
++      display: grid;
++      place-items: center;
++      overflow: hidden;
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++      view-timeline: --parallax block;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      pointer-events: none;
++    }
++
++    /* Back layer: photo, moves slowest (furthest away) */
++    .parallax__layer--back {
++      inset: -20% 0;
++      z-index: -3;
++      background:
++        linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.75)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center / cover no-repeat;
++      --parallax-from: -12%;
++      --parallax-to: 12%;
++    }
++
++    /* Mid layer: soft warm glows, medium speed */
++    .parallax__layer--mid {
++      inset: -30% 0;
++      z-index: -2;
++      background:
++        radial-gradient(circle at 18% 30%, rgba(255, 171, 64, 0.35), transparent 22%),
++        radial-gradient(circle at 82% 65%, rgba(255, 171, 64, 0.25), transparent 26%),
++        radial-gradient(circle at 55% 85%, rgba(215, 204, 200, 0.18), transparent 18%);
++      --parallax-from: -25%;
++      --parallax-to: 25%;
++    }
++
++    /* Near layer: floating coffee beans, fastest (closest) */
++    .parallax__layer--near {
++      inset: 0;
++      z-index: -1;
++      --parallax-from: 45%;
++      --parallax-to: -45%;
++    }
++
++    .bean {
++      position: absolute;
++      width: var(--size, 48px);
++      aspect-ratio: 3 / 4;
++      border-radius: 50%;
++      background: radial-gradient(ellipse at 35% 30%, #8d6e63, #4e342e 60%, #2b1a15);
++      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
++      rotate: var(--rot, 0deg);
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      inset: 12% 46%;
++      border-radius: 50%;
++      background: #1f120e;
++    }
++
++    .bean:nth-child(1) { top: 8%;  left: 6%;  --size: 56px; --rot: -25deg; }
++    .bean:nth-child(2) { top: 70%; left: 12%; --size: 38px; --rot: 40deg; }
++    .bean:nth-child(3) { top: 18%; left: 86%; --size: 64px; --rot: 15deg; }
++    .bean:nth-child(4) { top: 78%; left: 80%; --size: 44px; --rot: -60deg; }
++    .bean:nth-child(5) { top: 45%; left: 92%; --size: 30px; --rot: 80deg; }
++    .bean:nth-child(6) { top: 40%; left: 2%;  --size: 34px; --rot: 10deg; }
++
++    /* Foreground content */
++    .parallax__content {
++      position: relative;
++      max-width: 640px;
++      margin: 0 20px;
++      padding: 2.5rem 2rem;
++      text-align: center;
++      background: rgba(30, 18, 14, 0.6);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      border-radius: 12px;
++      backdrop-filter: blur(4px);
++      --parallax-from: 8%;
++      --parallax-to: -8%;
++    }
++
++    .parallax__content h2 {
++      font-size: 2.25rem;
++      margin-bottom: 0.75rem;
++      color: var(--accent);
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .parallax__content .btn:hover,
++    .parallax__content .btn:focus-visible {
++      background: #ffc677;
++    }
++
++    .parallax__content .btn:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    @keyframes parallax-shift {
++      from { transform: translate3d(0, var(--parallax-from), 0); }
++      to   { transform: translate3d(0, var(--parallax-to), 0); }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax {
++          /* clip (unlike hidden) doesn't create a scroll container */
++          overflow: clip;
++        }
++
++        .parallax__layer,
++        .parallax__content {
++          will-change: transform;
++          animation: parallax-shift linear both;
++          animation-timeline: --parallax;
++          animation-range: cover 0% cover 100%;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +311,27 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true"></div>
++    <div class="parallax__layer parallax__layer--mid" aria-hidden="true"></div>
++    <div class="parallax__layer parallax__layer--near" aria-hidden="true">
++      <span class="bean"></span>
++      <span class="bean"></span>
++      <span class="bean"></span>
++      <span class="bean"></span>
++      <span class="bean"></span>
++      <span class="bean"></span>
++    </div>
++    <div class="parallax__content">
++      <h2 id="parallax-heading">From Bean to Cup</h2>
++      <p>Every batch is small-lot roasted in our neighborhood roastery, then ground fresh the moment you order.
++        Taste the difference that care makes.</p>
++      <a href="/about" class="btn">Discover Our Process</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..2508347 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,27 @@
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      max-width: 500px;
++      margin: 20px auto 0;
++    }
++
++    .feedback fieldset {
++      border: 0;
++    }
++
++    .feedback label,
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      margin-top: 10px;
++    }
++
++    .feedback button.btn {
++      border: 0;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +216,23 @@
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Rate Your Visit</h2>
++      <form class="card feedback" action="/feedback" method="post">
++        <fieldset>
++          <legend>How was your coffee?</legend>
++          <rating-input name="rating" required></rating-input>
++          <label for="comment">Comments</label>
++          <textarea id="comment" name="comment" rows="3"></textarea>
++        </fieldset>
++        <button type="submit" class="btn">Send Feedback</button>
++        <button type="reset" class="btn">Reset</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script src="rating-input.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/rating-input.js b/rating-input.js
+new file mode 100644
+index 0000000..c6d3c81
+--- /dev/null
++++ b/rating-input.js
+@@ -0,0 +1,146 @@
++class RatingInput extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['required', 'value', 'max'];
++
++  #internals;
++  #value = '';
++  #stars = [];
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.attachShadow({ mode: 'open', delegatesFocus: true });
++    this.shadowRoot.innerHTML = `
++      <style>
++        :host { display: inline-block; }
++        .group { display: inline-flex; gap: 2px; }
++        button {
++          all: unset;
++          font-size: 2rem;
++          line-height: 1;
++          cursor: pointer;
++          color: #bdbdbd;
++          padding: 2px;
++          border-radius: 4px;
++        }
++        button[data-on] { color: var(--rating-color, #ffab40); }
++        button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
++        button:disabled { cursor: not-allowed; opacity: 0.5; }
++      </style>
++      <div class="group" role="radiogroup"></div>`;
++    this.shadowRoot.addEventListener('click', (e) => {
++      const star = e.target.closest('button');
++      if (star) this.#commit(star.dataset.value);
++    });
++    this.shadowRoot.addEventListener('keydown', (e) => this.#onKeydown(e));
++  }
++
++  connectedCallback() {
++    this.#build();
++    if (this.hasAttribute('value')) this.#set(this.getAttribute('value'));
++    this.#render();
++    this.#validate();
++  }
++
++  attributeChangedCallback(name, _old, value) {
++    if (!this.isConnected) return;
++    if (name === 'max') this.#build();
++    else if (name === 'value') this.#set(value ?? '');
++    this.#render();
++    this.#validate();
++  }
++
++  get value() { return this.#value; }
++  set value(v) {
++    this.#set(String(v ?? ''));
++    this.#render();
++    this.#validate();
++  }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  get form() { return this.#internals.form; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++
++  get #max() { return Math.max(1, parseInt(this.getAttribute('max'), 10) || 5); }
++
++  #build() {
++    const group = this.shadowRoot.querySelector('.group');
++    group.replaceChildren(...Array.from({ length: this.#max }, (_, i) => {
++      const star = document.createElement('button');
++      star.type = 'button';
++      star.setAttribute('role', 'radio');
++      star.setAttribute('aria-label', `${i + 1} star${i ? 's' : ''}`);
++      star.dataset.value = String(i + 1);
++      star.textContent = '★';
++      return star;
++    }));
++    this.#stars = [...group.children];
++    this.#render();
++  }
++
++  // Normalise and push the value into the owning form.
++  #set(v) {
++    const n = Number(v);
++    this.#value = Number.isInteger(n) && n >= 1 && n <= this.#max ? String(n) : '';
++    this.#internals.setFormValue(this.#value || null, this.#value);
++  }
++
++  // User-driven change: update and fire native-style events.
++  #commit(v) {
++    if (this.#value === v) return;
++    this.value = v;
++    this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #render() {
++    const current = Number(this.#value);
++    // Roving tabindex: selected star, or the first one when empty.
++    const tabbable = current || 1;
++    for (const star of this.#stars) {
++      const n = Number(star.dataset.value);
++      star.toggleAttribute('data-on', n <= current);
++      star.setAttribute('aria-checked', String(n === current));
++      star.tabIndex = n === tabbable ? 0 : -1;
++    }
++  }
++
++  #onKeydown(e) {
++    const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
++    if (!step) return;
++    e.preventDefault();
++    const next = Math.min(this.#max, Math.max(1, (Number(this.#value) || 0) + step));
++    this.#commit(String(next));
++    this.#stars[next - 1].focus();
++  }
++
++  #validate() {
++    if (this.hasAttribute('required') && !this.#value) {
++      this.#internals.setValidity(
++        { valueMissing: true },
++        'Please choose a rating.',
++        this.#stars[0],
++      );
++    } else {
++      this.#internals.setValidity({});
++    }
++  }
++
++  formResetCallback() {
++    this.value = this.getAttribute('value') ?? '';
++  }
++
++  // Disable internal controls only; the host matches :disabled automatically.
++  formDisabledCallback(disabled) {
++    for (const star of this.#stars) star.disabled = disabled;
++  }
++
++  formStateRestoreCallback(state) {
++    this.value = state ?? '';
++  }
++}
++
++customElements.define('rating-input', RatingInput);

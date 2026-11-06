@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,94 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .rewards-trigger {
++      font: inherit;
++      font-size: 0.9rem;
++      line-height: inherit;
++      color: var(--accent);
++      background: transparent;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .rewards-trigger:disabled {
++      cursor: wait;
++      opacity: 0.6;
++    }
++
++    a:focus-visible, button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .rewards-popover {
++      position: fixed;
++      inset: 85px 5% auto auto;
++      margin: 0;
++      width: min(360px, 90vw);
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #fffaf3;
++      color: var(--text);
++      box-shadow: 0 12px 40px rgba(62, 39, 35, 0.22);
++      font: inherit;
++    }
++
++    .rewards-popover .eyebrow {
++      color: #765643;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .rewards-popover h2 {
++      font-size: 1.65rem;
++      line-height: 1.2;
++      margin-bottom: 12px;
++    }
++
++    .rewards-popover p {
++      font-size: 0.95rem;
++    }
++
++    .rewards-close {
++      position: absolute;
++      top: 8px;
++      right: 12px;
++      border: 0;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .rewards-popover {
++        top: 130px;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +247,27 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button id="rewards-trigger" class="rewards-trigger" type="button"
++          popovertarget="rewards-popover" aria-controls="rewards-popover" aria-expanded="false" disabled>Rewards</button>
++        <noscript><a href="/rewards">Explore Rewards</a></noscript>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" class="rewards-popover" popover="auto" aria-labelledby="rewards-title" hidden>
++    <button class="rewards-close" type="button" popovertarget="rewards-popover"
++      popovertargetaction="hide" aria-label="Close rewards">&times;</button>
++    <p class="eyebrow">Daily Grind Rewards</p>
++    <h2 id="rewards-title">Your daily ritual.<br>A little more rewarding.</h2>
++    <p>Make every coffee count. Join our rewards community for member perks and more reasons to savor your next cup.</p>
++    <a href="/rewards" class="btn">Explore Rewards &rarr;</a>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +305,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./scripts/rewards.js"></script>
+ </body>
+ 
+ </html>

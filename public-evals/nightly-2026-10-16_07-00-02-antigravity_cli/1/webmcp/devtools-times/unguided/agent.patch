@@ -1,0 +1,196 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..0ae7543 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,12 @@
++/// <reference types="webmcp-types" />
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++    modelContext?: WebMCP.ModelContext;
++  }
++  interface Navigator {
++    modelContext?: WebMCP.ModelContext;
+   }
+ }
+ 
+diff --git a/package.json b/package.json
+index 66c3a6d..f9446f1 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.10"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..35ee5af 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -1,16 +1,64 @@
+-
+-import { getCollection } from 'astro:content';
++import { getCollection, getEntry } from 'astro:content';
+ import type { APIRoute } from 'astro';
+ 
+-export const GET: APIRoute = async ({ params, request }) => {
++export const GET: APIRoute = async ({ url }) => {
++    const slug = url.searchParams.get('slug');
++    if (slug) {
++        const article = await getEntry('articles', slug);
++        if (!article) {
++            return new Response(JSON.stringify({ error: 'Article not found' }), {
++                status: 404,
++                headers: { 'Content-Type': 'application/json' },
++            });
++        }
++        return new Response(JSON.stringify({
++            slug: article.id,
++            title: article.data.title,
++            summary: article.data.summary,
++            author: article.data.author,
++            category: article.data.category,
++            date: article.data.date,
++            readingTime: article.data.readingTime,
++            tags: article.data.tags || [],
++            image: article.data.image,
++            image_caption: article.data.image_caption,
++            body: article.body,
++        }), {
++            headers: { 'Content-Type': 'application/json' },
++        });
++    }
++
+     const articles = await getCollection('articles');
+-    const formattedArticles = articles.map(article => ({
++    const category = url.searchParams.get('category')?.toLowerCase();
++    const query = url.searchParams.get('query')?.toLowerCase();
++
++    let filtered = articles;
++    if (category) {
++        filtered = filtered.filter(a => a.data.category.toLowerCase() === category);
++    }
++    if (query) {
++        filtered = filtered.filter(a => 
++            a.data.title.toLowerCase().includes(query) || 
++            a.data.summary.toLowerCase().includes(query)
++        );
++    }
++
++    filtered.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++    const formattedArticles = filtered.map(article => ({
+         slug: article.id,
+         title: article.data.title,
+         summary: article.data.summary,
++        author: article.data.author,
++        category: article.data.category,
++        date: article.data.date,
++        readingTime: article.data.readingTime,
++        tags: article.data.tags || [],
+         image: article.data.image,
++        image_caption: article.data.image_caption,
+     }));
+ 
+-    // Simulate a network delay to make the INP issue more noticeable
+-    return new Response(JSON.stringify(formattedArticles));
+-}
++    return new Response(JSON.stringify(formattedArticles), {
++        headers: { 'Content-Type': 'application/json' },
++    });
++};
+diff --git a/src/pages/api/multimedia.json.ts b/src/pages/api/multimedia.json.ts
+new file mode 100644
+index 0000000..10045e1
+--- /dev/null
++++ b/src/pages/api/multimedia.json.ts
+@@ -0,0 +1,38 @@
++import { getCollection, getEntry } from 'astro:content';
++import type { APIRoute } from 'astro';
++
++export const GET: APIRoute = async ({ url }) => {
++    const slug = url.searchParams.get('slug');
++    if (slug) {
++        const item = await getEntry('multimedia', slug);
++        if (!item) {
++            return new Response(JSON.stringify({ error: 'Multimedia item not found' }), {
++                status: 404,
++                headers: { 'Content-Type': 'application/json' },
++            });
++        }
++        return new Response(JSON.stringify({
++            slug: item.id,
++            title: item.data.title,
++            description: item.data.description,
++            publishDate: item.data.publishDate,
++            category: item.data.category,
++            body: item.body,
++        }), {
++            headers: { 'Content-Type': 'application/json' },
++        });
++    }
++
++    const items = await getCollection('multimedia');
++    const formatted = items.map(m => ({
++        slug: m.id,
++        title: m.data.title,
++        description: m.data.description,
++        publishDate: m.data.publishDate,
++        category: m.data.category,
++    }));
++
++    return new Response(JSON.stringify(formatted), {
++        headers: { 'Content-Type': 'application/json' },
++    });
++};
+diff --git a/src/pages/api/reports.json.ts b/src/pages/api/reports.json.ts
+new file mode 100644
+index 0000000..7a61b36
+--- /dev/null
++++ b/src/pages/api/reports.json.ts
+@@ -0,0 +1,38 @@
++import { getCollection, getEntry } from 'astro:content';
++import type { APIRoute } from 'astro';
++
++export const GET: APIRoute = async ({ url }) => {
++    const slug = url.searchParams.get('slug');
++    if (slug) {
++        const report = await getEntry('reports', slug);
++        if (!report) {
++            return new Response(JSON.stringify({ error: 'Report not found' }), {
++                status: 404,
++                headers: { 'Content-Type': 'application/json' },
++            });
++        }
++        return new Response(JSON.stringify({
++            slug: report.id,
++            title: report.data.title,
++            description: report.data.description,
++            publishDate: report.data.publishDate,
++            category: report.data.category,
++            body: report.body,
++        }), {
++            headers: { 'Content-Type': 'application/json' },
++        });
++    }
++
++    const reports = await getCollection('reports');
++    const formatted = reports.map(r => ({
++        slug: r.id,
++        title: r.data.title,
++        description: r.data.description,
++        publishDate: r.data.publishDate,
++        category: r.data.category,
++    }));
++
++    return new Response(JSON.stringify(formatted), {
++        headers: { 'Content-Type': 'application/json' },
++    });
++};

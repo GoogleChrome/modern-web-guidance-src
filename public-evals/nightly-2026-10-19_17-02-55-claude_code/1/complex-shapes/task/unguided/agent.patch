@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,49 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero > *:not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Purely additive: it is absolutely
++       positioned, so the hero layout is identical whether or not it renders.
++       The background colour is the fallback if the photo fails to load. */
++    .shaped-element {
++      display: none;
++      position: absolute;
++      right: 4%;
++      bottom: -8%;
++      width: min(34vw, 420px);
++      aspect-ratio: 1;
++      background: var(--accent) url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80') center / cover no-repeat;
++      pointer-events: none;
++      opacity: 0.9;
++    }
++
++    /* Only show it where the free-form mask is supported, so an unmasked
++       square never appears in its place. */
++    @supports ((mask-image: url('x')) or (-webkit-mask-image: url('x'))) {
++      .shaped-element {
++        display: block;
++        -webkit-mask: var(--splash-mask) center / contain no-repeat;
++        mask: var(--splash-mask) center / contain no-repeat;
++        --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c22-3 36 14 56 20 21 6 41 20 38 46-3 22-22 28-18 50 4 20 20 34 8 54-13 21-40 14-60 20-19 6-34 26-56 18-24-9-18-36-34-52C20 148 2 140 4 116c2-22 24-26 28-46 4-22-8-44 12-58 18-12 38-2 57-4z'/%3E%3Ccircle cx='178' cy='20' r='9'/%3E%3Ccircle cx='192' cy='46' r='5'/%3E%3Ccircle cx='14' cy='176' r='8'/%3E%3Ccircle cx='34' cy='194' r='4'/%3E%3C/svg%3E");
++      }
++    }
++
++    @media (max-width: 800px) {
++      .shaped-element {
++        display: none;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +207,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

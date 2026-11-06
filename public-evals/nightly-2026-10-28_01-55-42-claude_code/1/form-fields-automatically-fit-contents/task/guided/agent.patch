@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Custom Order Form */
++    .order-form-section {
++      margin-top: 60px;
++    }
++
++    .order-form-section h2,
++    .order-form-section > p {
++      text-align: center;
++    }
++
++    .order-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin: 20px auto 0;
++      display: flex;
++      flex-direction: column;
++      gap: 1.25rem;
++      /* Keep flex children from stretching so field-sizing can shrink them */
++      align-items: start;
++    }
++
++    .order-form fieldset {
++      border: 0;
++      display: contents;
++    }
++
++    .order-form legend {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      /* Don't stretch controls to the label width; let content decide */
++      align-items: start;
++      gap: 0.25rem;
++      max-width: 100%;
++    }
++
++    .form-field label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .form-field input,
++    .form-field textarea,
++    .form-field select {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid #b0a49f;
++      border-radius: 5px;
++      padding: 0.5rem 0.75rem;
++      /* Size the control to its content instead of a fixed default width */
++      field-sizing: content;
++      width: auto;
++      height: auto;
++    }
++
++    .form-field input:focus-visible,
++    .form-field textarea:focus-visible,
++    .form-field select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Text input grows horizontally with what the user types */
++    .form-field input {
++      min-inline-size: 12ch;
++      max-inline-size: 100%;
++    }
++
++    /* Textarea keeps a stable width and grows vertically as lines wrap */
++    .form-field textarea {
++      width: 100%;
++      min-block-size: 2lh;
++      max-block-size: 10lh;
++      resize: vertical;
++    }
++
++    .form-field:has(textarea) {
++      align-self: stretch;
++    }
++
++    /* Select fits only the currently chosen option */
++    .form-field select {
++      max-inline-size: 100%;
++    }
++
++    .order-form .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +296,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-form-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Custom Order Request</h2>
++      <p>Planning an event or want a special roast? Tell us what you need.</p>
++      <form class="order-form" action="/custom-order" method="POST">
++        <fieldset>
++          <legend>Your request</legend>
++
++          <div class="form-field">
++            <label for="order-name">Name</label>
++            <input type="text" id="order-name" name="name" autocomplete="name" placeholder="Jane Doe" required>
++          </div>
++
++          <div class="form-field">
++            <label for="order-roast">Preferred roast</label>
++            <select id="order-roast" name="roast" required>
++              <option value="">Choose a roast</option>
++              <option value="light">Light</option>
++              <option value="medium">Medium</option>
++              <option value="medium-dark">Medium-Dark</option>
++              <option value="dark">Dark</option>
++              <option value="espresso">Espresso Blend</option>
++              <option value="decaf">Swiss Water Decaf</option>
++            </select>
++          </div>
++
++          <div class="form-field">
++            <label for="order-notes">Order details</label>
++            <textarea id="order-notes" name="notes" placeholder="Quantity, grind, delivery date, anything else we should know." maxlength="1000"></textarea>
++          </div>
++        </fieldset>
++
++        <button type="submit" class="btn">Send Request</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

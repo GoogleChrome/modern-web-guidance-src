@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,123 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Animate to/from intrinsic sizes (Chromium; others jump instantly) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    /* Promo alert: dismissed via a checkbox, no JavaScript */
++    #promo-alert {
++      block-size: auto;
++      overflow: clip;
++      background: var(--accent);
++      color: var(--text);
++      transition: block-size 0.5s ease-in-out, opacity 0.5s ease, visibility 0.5s allow-discrete;
++    }
++
++    #promo-alert:has(#alert-dismiss:checked) {
++      block-size: 0;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .promo-inner {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.6rem 5%;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      appearance: none;
++      flex: none;
++      position: relative;
++      inline-size: 1.75rem;
++      block-size: 1.75rem;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    #alert-dismiss::before {
++      content: "\00d7";
++      position: absolute;
++      inset: 0;
++      display: grid;
++      place-items: center;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.12);
++    }
++
++    #alert-dismiss:focus-visible,
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* FAQ accordion */
++    .faq {
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      cursor: pointer;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    #faq-content {
++      padding: 0 20px 16px;
++    }
++
++    .faq details::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 0.35s ease, content-visibility 0.35s allow-discrete;
++    }
++
++    .faq details[open]::details-content {
++      block-size: auto;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #promo-alert,
++      .faq details::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotion">
++    <div class="promo-inner">
++      <p>Free pastry with any large drink this week!</p>
++      <input type="checkbox" id="alert-dismiss" aria-label="Dismiss promotion">
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +304,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" style="margin-top: 40px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">FAQ</h2>
++      <details>
++        <summary id="faq-trigger">Do you offer plant-based milk?</summary>
++        <div id="faq-content">
++          <p>Yes! Oat, almond, and soy milk are available for every drink at no extra charge.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

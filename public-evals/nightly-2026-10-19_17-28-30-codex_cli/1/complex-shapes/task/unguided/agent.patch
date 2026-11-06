@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,13 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +88,32 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
++    .shaped-element {
++      position: absolute;
++      top: 50%;
++      right: -4%;
++      width: min(60vw, 650px);
++      height: auto;
++      aspect-ratio: 6 / 5;
++      transform: translateY(-50%) rotate(-12deg);
++      opacity: 0.45;
++      pointer-events: none;
++      z-index: -1;
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        width: 95vw;
++        right: -35%;
++        opacity: 0.3;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +193,29 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <!-- Inline vector needs no network request; the rounded rectangle is the
++         fallback if clipping is unavailable. Absolute positioning reserves
++         the hero layout independently of the decorative artwork. -->
++    <svg class="shaped-element" viewBox="0 0 600 500" fill="none"
++      aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
++      <defs>
++        <linearGradient id="coffee-splash-color" x1="70" y1="60" x2="530" y2="450" gradientUnits="userSpaceOnUse">
++          <stop stop-color="#ffcf88" />
++          <stop offset="0.55" stop-color="#c58449" />
++          <stop offset="1" stop-color="#79503a" />
++        </linearGradient>
++        <clipPath id="coffee-splash-clip" clipPathUnits="userSpaceOnUse">
++          <path d="M88 155C50 109 74 63 124 80C160 94 160 36 210 46C251 54 253 91 297 71C354 44 391 62 391 108C392 144 454 103 477 138C502 175 469 189 511 213C566 244 557 288 512 305C475 320 527 368 492 396C458 422 423 387 400 425C370 475 327 461 302 426C277 392 248 455 207 431C175 413 196 373 150 377C94 383 65 349 90 310C112 276 48 275 44 232C40 191 114 188 88 155Z" />
++        </clipPath>
++      </defs>
++      <g clip-path="url(#coffee-splash-clip)">
++        <rect x="30" y="30" width="540" height="440" rx="150" fill="url(#coffee-splash-color)" />
++        <path d="M93 291C186 144 347 104 481 185M111 326C230 183 370 160 506 221M151 361C264 256 376 224 481 262"
++          stroke="#ffe5bd" stroke-opacity="0.23" stroke-width="12" stroke-linecap="round" />
++      </g>
++    </svg>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

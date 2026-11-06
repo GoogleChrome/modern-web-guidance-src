@@ -1,0 +1,997 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..fed0dd5
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,362 @@
++/*
++ * The Daily Grind – client-side views.
++ *
++ * Routing is hash based (#/menu, #/locations/…) so it works from a plain
++ * static file server with no rewrite rules and gets back/forward for free.
++ *
++ * View switching strategy:
++ *   - Home is server-rendered in index.html.
++ *   - Every other view is mounted from its <template> the first time it is
++ *     visited and then kept in the DOM permanently.
++ *   - Inactive views get `content-visibility: hidden` (see index.html CSS),
++ *     which skips their layout/paint but keeps the rendered state cached, so
++ *     switching back is near-instant and all in-view state (filters, typed
++ *     text, counters, scroll position) survives.
++ *
++ * With a fixed set of five views the memory cost of keeping them all mounted
++ * is negligible; if views ever become dynamic/unbounded an eviction policy
++ * (e.g. LRU) should be added to `mounted`.
++ */
++
++const BRAND = 'The Daily Grind';
++
++const VIEWS = {
++  home: { title: `${BRAND} | Artisanal Coffee` },
++  menu: { title: `Menu | ${BRAND}`, template: 'tpl-menu', init: initMenu },
++  locations: { title: `Locations | ${BRAND}`, template: 'tpl-locations', init: initLocations },
++  rewards: { title: `Rewards | ${BRAND}`, template: 'tpl-rewards', init: initRewards },
++  account: { title: `My Account | ${BRAND}`, template: 'tpl-account', init: initAccount },
++};
++
++const DEFAULT_VIEW = 'home';
++
++/* ------------------------------------------------------------------ */
++/* Router                                                              */
++/* ------------------------------------------------------------------ */
++
++const sections = new Map(
++  [...document.querySelectorAll('.spa-view')].map((el) => [el.dataset.view, el]),
++);
++const navLinks = [...document.querySelectorAll('[data-nav]')];
++
++/** name -> controller returned by the view's init(). Presence == mounted. */
++const mounted = new Map();
++/** name -> window.scrollY when the user last left that view. */
++const scrollPositions = new Map();
++
++let currentView = null;
++
++function parseHash(hash = location.hash) {
++  // "#/menu/seasonal" -> { name: "menu", params: ["seasonal"] }
++  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
++  const [name = DEFAULT_VIEW, ...params] = parts;
++  return VIEWS[name] ? { name, params } : { name: DEFAULT_VIEW, params: [] };
++}
++
++function ensureMounted(name) {
++  if (mounted.has(name)) return mounted.get(name);
++
++  const section = sections.get(name);
++  const def = VIEWS[name];
++  if (def.template) {
++    const template = document.getElementById(def.template);
++    section.append(template.content.cloneNode(true));
++  }
++  const controller = def.init ? def.init(section) : {};
++  mounted.set(name, controller);
++  return controller;
++}
++
++function setActive(name) {
++  for (const [viewName, section] of sections) {
++    const active = viewName === name;
++    section.classList.toggle('is-active', active);
++    section.setAttribute('aria-hidden', String(!active));
++    section.toggleAttribute('inert', !active);
++  }
++  for (const link of navLinks) {
++    if (link.dataset.nav === name) link.setAttribute('aria-current', 'page');
++    else link.removeAttribute('aria-current');
++  }
++  document.title = VIEWS[name].title;
++}
++
++function navigate({ moveFocus }) {
++  const { name, params } = parseHash();
++  const switching = name !== currentView;
++
++  performance.mark(`view:${name}:start`);
++
++  if (switching && currentView) scrollPositions.set(currentView, window.scrollY);
++
++  const controller = ensureMounted(name);
++  setActive(name);
++  controller.update?.(params);
++
++  if (switching) {
++    // Restore where the user left off in this view (0 for a first visit).
++    window.scrollTo({ top: scrollPositions.get(name) ?? 0, behavior: 'instant' });
++    if (moveFocus) sections.get(name).focus({ preventScroll: true });
++  }
++
++  currentView = name;
++  performance.measure(`view:${name}`, `view:${name}:start`);
++}
++
++// We handle scroll position per view ourselves.
++if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++window.addEventListener('hashchange', () => navigate({ moveFocus: true }));
++navigate({ moveFocus: false });
++
++/* ------------------------------------------------------------------ */
++/* Helpers                                                             */
++/* ------------------------------------------------------------------ */
++
++const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++function img(id, width = 600) {
++  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${width}&q=70`;
++}
++
++function el(tag, attrs = {}, ...children) {
++  const node = document.createElement(tag);
++  for (const [key, value] of Object.entries(attrs)) {
++    if (key === 'class') node.className = value;
++    else if (key === 'dataset') Object.assign(node.dataset, value);
++    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
++    else node.setAttribute(key, value);
++  }
++  node.append(...children);
++  return node;
++}
++
++/* ------------------------------------------------------------------ */
++/* Menu                                                                */
++/* ------------------------------------------------------------------ */
++
++const MENU_ITEMS = [
++  { id: 'maple-oat-latte', name: 'Maple Oat Latte', category: 'seasonal', price: 5.75, photo: '1541167760496-1628856ab772', blurb: 'Creamy oat milk with a hint of Vermont maple syrup.' },
++  { id: 'spiced-cortado', name: 'Spiced Cortado', category: 'seasonal', price: 4.95, photo: '1509042239860-f550ce710b93', blurb: 'A double ristretto cut with warm cinnamon milk.' },
++  { id: 'dark-roast-espresso', name: 'Dark Roast Espresso', category: 'espresso', price: 3.25, photo: '1461023058943-07fcbe16d735', blurb: 'Bold, smokey, and perfect for a morning boost.' },
++  { id: 'cappuccino', name: 'Cappuccino', category: 'espresso', price: 4.25, photo: '1511920170033-f8396924c348', blurb: 'Equal parts espresso, steamed milk, and velvety foam.' },
++  { id: 'flat-white', name: 'Flat White', category: 'espresso', price: 4.5, photo: '1514432324607-a09d9b4aefdd', blurb: 'Silky microfoam over two shots of our house blend.' },
++  { id: 'cold-brew', name: 'Cold Brew', category: 'cold-brew', price: 4.75, photo: '1517487881594-2787fef5ebf7', blurb: 'Steeped for 18 hours for maximum smoothness.' },
++  { id: 'nitro-cold-brew', name: 'Nitro Cold Brew', category: 'cold-brew', price: 5.25, photo: '1497935586351-b67a49e012bf', blurb: 'Nitrogen-infused for a cascading, creamy pour.' },
++  { id: 'butter-croissant', name: 'Butter Croissant', category: 'pastries', price: 3.5, photo: '1555507036-ab1f4038808a', blurb: 'Laminated by hand with cultured French butter.' },
++  { id: 'morning-bun', name: 'Cardamom Morning Bun', category: 'pastries', price: 3.75, photo: '1559925393-8be0ec4767c8', blurb: 'Sticky, citrusy, and dusted with cardamom sugar.' },
++];
++
++function initMenu(root) {
++  const chips = [...root.querySelectorAll('.chip')];
++  const categories = new Set(chips.map((c) => c.dataset.category));
++  const grid = root.querySelector('[data-items]');
++  const summary = root.querySelector('[data-order-summary]');
++
++  const quantities = new Map();
++  const cards = new Map();
++  let category = 'all';
++
++  for (const item of MENU_ITEMS) {
++    const count = el('output', { 'aria-label': `${item.name} quantity` }, '0');
++    const card = el(
++      'article',
++      { class: 'item-card', dataset: { category: item.category } },
++      el('img', { src: img(item.photo), alt: '', loading: 'lazy', width: '600', height: '450' }),
++      el(
++        'div',
++        { class: 'item-body' },
++        el('h3', {}, el('span', {}, item.name), el('span', {}, money.format(item.price))),
++        el('p', {}, item.blurb),
++        el(
++          'div',
++          { class: 'stepper' },
++          el('button', { type: 'button', 'aria-label': `Remove one ${item.name}`, onclick: () => adjust(item, -1) }, '−'),
++          count,
++          el('button', { type: 'button', 'aria-label': `Add one ${item.name}`, onclick: () => adjust(item, 1) }, '+'),
++        ),
++      ),
++    );
++    cards.set(item.id, { card, count });
++    grid.append(card);
++  }
++
++  function adjust(item, delta) {
++    const next = Math.max(0, (quantities.get(item.id) ?? 0) + delta);
++    quantities.set(item.id, next);
++    cards.get(item.id).count.textContent = String(next);
++    renderSummary();
++  }
++
++  function renderSummary() {
++    let items = 0;
++    let total = 0;
++    for (const item of MENU_ITEMS) {
++      const qty = quantities.get(item.id) ?? 0;
++      items += qty;
++      total += qty * item.price;
++    }
++    summary.textContent = items
++      ? `Your order: ${items} item${items === 1 ? '' : 's'} · ${money.format(total)}`
++      : 'Your order is empty';
++  }
++
++  function setCategory(next) {
++    category = next;
++    for (const chip of chips) chip.setAttribute('aria-pressed', String(chip.dataset.category === next));
++    for (const { card } of cards.values()) {
++      card.hidden = next !== 'all' && card.dataset.category !== next;
++    }
++  }
++
++  for (const chip of chips) {
++    chip.addEventListener('click', () => {
++      setCategory(chip.dataset.category);
++      // Keep the URL shareable without triggering a navigation.
++      const hash = chip.dataset.category === 'all' ? '#/menu' : `#/menu/${chip.dataset.category}`;
++      history.replaceState(null, '', hash);
++    });
++  }
++
++  return {
++    // Only a category present in the URL overrides the user's current filter;
++    // plain "#/menu" leaves whatever they last picked intact.
++    update([requested]) {
++      if (requested && categories.has(requested) && requested !== category) setCategory(requested);
++    },
++  };
++}
++
++/* ------------------------------------------------------------------ */
++/* Locations                                                           */
++/* ------------------------------------------------------------------ */
++
++const LOCATIONS = [
++  { id: 'downtown', name: 'Downtown Roastery', address: '112 Market Street', hours: 'Mon–Fri 6am–7pm · Sat–Sun 7am–6pm', photo: '1554118811-1e0d58224f24' },
++  { id: 'riverside', name: 'Riverside', address: '48 Bank Street', hours: 'Daily 6:30am–6pm', photo: '1501339847302-ac426a4a7cbb' },
++  { id: 'university', name: 'University Commons', address: '9 College Avenue', hours: 'Mon–Fri 6am–9pm · Sat–Sun 8am–8pm', photo: '1445116572660-236099ec97a0' },
++  { id: 'northside', name: 'Northside Kiosk', address: '300 Maple Lane', hours: 'Mon–Fri 6am–3pm', photo: '1453614512568-c4024d13c247' },
++];
++
++function initLocations(root) {
++  const search = root.querySelector('[data-search]');
++  const list = root.querySelector('[data-locations]');
++  const empty = root.querySelector('[data-empty]');
++  const summary = root.querySelector('[data-store-summary]');
++
++  const cards = new Map();
++  let selected = null;
++
++  for (const loc of LOCATIONS) {
++    const button = el('button', { type: 'button', class: 'btn btn-outline', 'aria-pressed': 'false', onclick: () => select(loc.id) }, 'Make this my store');
++    const card = el(
++      'article',
++      { class: 'location-card' },
++      el('img', { src: img(loc.photo, 400), alt: '', loading: 'lazy', width: '400', height: '300' }),
++      el(
++        'div',
++        { class: 'location-body' },
++        el('h3', {}, loc.name),
++        el('address', {}, loc.address),
++        el('p', {}, loc.hours),
++        button,
++      ),
++    );
++    cards.set(loc.id, { card, button, loc });
++    list.append(card);
++  }
++
++  function select(id) {
++    selected = id;
++    for (const { card, button, loc } of cards.values()) {
++      const isSelected = loc.id === id;
++      card.classList.toggle('is-selected', isSelected);
++      button.textContent = isSelected ? 'Your store' : 'Make this my store';
++      button.setAttribute('aria-pressed', String(isSelected));
++    }
++    summary.textContent = `Your store: ${cards.get(id).loc.name}`;
++  }
++
++  function filter() {
++    const query = search.value.trim().toLowerCase();
++    let visible = 0;
++    for (const { card, loc } of cards.values()) {
++      const match = !query || `${loc.name} ${loc.address}`.toLowerCase().includes(query);
++      card.hidden = !match;
++      if (match) visible++;
++    }
++    empty.hidden = visible > 0;
++  }
++
++  search.addEventListener('input', filter);
++
++  return {
++    update([requested]) {
++      if (requested && cards.has(requested) && requested !== selected) select(requested);
++    },
++  };
++}
++
++/* ------------------------------------------------------------------ */
++/* Rewards                                                             */
++/* ------------------------------------------------------------------ */
++
++const TIER_SIZE = 500;
++
++function initRewards(root) {
++  const pointsEl = root.querySelector('[data-points]');
++  const tierLabel = root.querySelector('[data-tier-label]');
++  const progress = root.querySelector('[data-progress]');
++  const rewards = [...root.querySelectorAll('.reward')];
++
++  let points = Number(pointsEl.textContent);
++
++  function render() {
++    pointsEl.textContent = String(points);
++    const remaining = TIER_SIZE - (points % TIER_SIZE);
++    progress.value = points % TIER_SIZE;
++    tierLabel.textContent = `${remaining} points to the next tier`;
++    for (const reward of rewards) {
++      if (reward.classList.contains('is-redeemed')) continue;
++      reward.querySelector('button').disabled = Number(reward.dataset.cost) > points;
++    }
++  }
++
++  for (const reward of rewards) {
++    const button = reward.querySelector('button');
++    button.addEventListener('click', () => {
++      const cost = Number(reward.dataset.cost);
++      if (cost > points) return;
++      points -= cost;
++      reward.classList.add('is-redeemed');
++      button.disabled = true;
++      button.textContent = 'Redeemed';
++      render();
++    });
++  }
++
++  render();
++  return {};
++}
++
++/* ------------------------------------------------------------------ */
++/* Account                                                             */
++/* ------------------------------------------------------------------ */
++
++function initAccount(root) {
++  const form = root.querySelector('[data-account-form]');
++  const status = root.querySelector('[data-status]');
++  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
++
++  form.addEventListener('submit', (event) => {
++    event.preventDefault();
++    if (!form.reportValidity()) return;
++    status.textContent = `Saved at ${time.format(new Date())}`;
++  });
++
++  form.addEventListener('input', () => {
++    status.textContent = 'Unsaved changes';
++  });
++
++  return {};
++}
+diff --git a/index.html b/index.html
+index 66c9173..6731d45 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --muted: #6d4c41;
++      --border: #e0d6d2;
+     }
+ 
+     * {
+@@ -27,6 +29,11 @@
+       background-color: var(--light);
+     }
+ 
++    img {
++      max-width: 100%;
++      display: block;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -44,6 +51,8 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+@@ -66,12 +75,44 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /*
++     * SPA views.
++     * Every view stays mounted in the DOM once it has been visited. Inactive views
++     * use `content-visibility: hidden`, which removes them from layout/paint but
++     * keeps their rendering state cached, so switching back is near-instant.
++     * Browsers without content-visibility fall back to display: none.
++     */
++    .spa-view:not(.is-active) {
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .spa-view:not(.is-active) {
++        display: block;
++        content-visibility: hidden;
++      }
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -93,6 +134,21 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .page-header {
++      background: var(--secondary);
++      padding: 40px 20px;
++      text-align: center;
++    }
++
++    .page-header h1 {
++      font-size: 2.25rem;
++      color: var(--primary);
++    }
++
++    .page-header p {
++      color: var(--muted);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -129,12 +185,293 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      background: var(--secondary);
++      color: var(--muted);
++      cursor: not-allowed;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .summary {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    /* Filter chips */
++    .chips {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      list-style: none;
++    }
++
++    .chip {
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      border-radius: 999px;
++      padding: 6px 14px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .chip[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Menu items */
++    .item-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .item-card img {
++      aspect-ratio: 4 / 3;
++      width: 100%;
++      object-fit: cover;
++    }
++
++    .item-card .item-body {
++      padding: 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      flex: 1;
++    }
++
++    .item-card h3 {
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
++    .item-card p {
++      color: var(--muted);
++      font-size: 0.95rem;
++      flex: 1;
++    }
++
++    .stepper {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .stepper button {
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-size: 1.1rem;
++      cursor: pointer;
++    }
++
++    .stepper button:hover {
++      background: var(--secondary);
++    }
++
++    .stepper output {
++      min-width: 1.5ch;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    /* Locations */
++    .search {
++      width: 100%;
++      max-width: 400px;
++      padding: 10px 14px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font: inherit;
++    }
++
++    .location-card {
++      display: grid;
++      grid-template-columns: 140px 1fr;
++      gap: 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      border: 2px solid transparent;
++    }
++
++    .location-card.is-selected {
++      border-color: var(--accent);
++    }
++
++    .location-card img {
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .location-card .location-body {
++      padding: 16px 16px 16px 0;
++    }
++
++    .location-card h3 {
++      color: var(--primary);
++    }
++
++    .location-card address {
++      font-style: normal;
++      color: var(--muted);
++    }
++
++    .location-card .btn {
++      margin-top: 10px;
++      padding: 6px 14px;
++      font-size: 0.9rem;
++    }
++
++    .location-list {
++      display: grid;
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .empty {
++      color: var(--muted);
++      font-style: italic;
++      margin-top: 20px;
++    }
++
++    /* Rewards */
++    .points-card {
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      padding: 24px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .points-card strong {
++      font-size: 2.5rem;
++      line-height: 1;
++    }
++
++    .points-card progress {
++      width: 100%;
++      height: 10px;
++      accent-color: var(--accent);
++    }
++
++    .reward-list {
++      list-style: none;
++      display: grid;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .reward {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      background: white;
++      padding: 14px 18px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reward .btn {
++      margin-top: 0;
++      padding: 6px 14px;
++      font-size: 0.9rem;
++    }
++
++    .reward .cost {
++      color: var(--muted);
++      font-size: 0.9rem;
++    }
++
++    .reward.is-redeemed {
++      opacity: 0.6;
++    }
++
++    /* Account form */
++    .form {
++      display: grid;
++      gap: 16px;
++      max-width: 480px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form label {
++      display: grid;
++      gap: 4px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form input:not([type="checkbox"]),
++    .form select {
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font: inherit;
++      font-weight: 400;
++    }
++
++    .form .checkbox {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: 400;
++    }
++
++    .form .btn {
++      margin-top: 0;
++      justify-self: start;
++    }
++
++    .status {
++      color: var(--muted);
++      font-size: 0.9rem;
++      min-height: 1.5em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,51 +489,193 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-direction: column;
++        gap: 10px;
++      }
++
++      nav ul li {
++        margin: 0 8px;
++      }
++
++      .location-card {
++        grid-template-columns: 1fr;
++      }
++
++      .location-card img {
++        aspect-ratio: 16 / 9;
++      }
++
++      .location-card .location-body {
++        padding: 0 16px 16px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <a href="#/" class="logo" data-nav="home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-nav="menu">Menu</a></li>
++      <li><a href="#/locations" data-nav="locations">Locations</a></li>
++      <li><a href="#/rewards" data-nav="rewards">Rewards</a></li>
++      <li><a href="#/account" data-nav="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main id="app">
++
++    <!-- Home is rendered up-front so the hero paints immediately. -->
++    <section class="spa-view is-active" id="view-home" data-view="home" tabindex="-1" aria-label="Home">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
++
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="#/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="#/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="#/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
+       </div>
+     </section>
++
++    <!--
++      The remaining views are mounted from their <template> on first visit and
++      then kept in the DOM, so returning to them never rebuilds anything.
++    -->
++    <section class="spa-view" id="view-menu" data-view="menu" tabindex="-1" aria-label="Menu" aria-hidden="true" inert></section>
++    <section class="spa-view" id="view-locations" data-view="locations" tabindex="-1" aria-label="Locations" aria-hidden="true" inert></section>
++    <section class="spa-view" id="view-rewards" data-view="rewards" tabindex="-1" aria-label="Rewards" aria-hidden="true" inert></section>
++    <section class="spa-view" id="view-account" data-view="account" tabindex="-1" aria-label="My Account" aria-hidden="true" inert></section>
++
+   </main>
+ 
++  <template id="tpl-menu">
++    <header class="page-header">
++      <h1>Our Menu</h1>
++      <p>Roasted in small batches. Pulled with care.</p>
++    </header>
++    <div class="container">
++      <div class="toolbar">
++        <ul class="chips" data-chips aria-label="Filter menu by category">
++          <li><button type="button" class="chip" data-category="all" aria-pressed="true">All</button></li>
++          <li><button type="button" class="chip" data-category="espresso" aria-pressed="false">Espresso</button></li>
++          <li><button type="button" class="chip" data-category="seasonal" aria-pressed="false">Seasonal</button></li>
++          <li><button type="button" class="chip" data-category="cold-brew" aria-pressed="false">Cold Brew</button></li>
++          <li><button type="button" class="chip" data-category="pastries" aria-pressed="false">Pastries</button></li>
++        </ul>
++        <p class="summary" data-order-summary aria-live="polite">Your order is empty</p>
++      </div>
++      <div class="grid" data-items></div>
++    </div>
++  </template>
++
++  <template id="tpl-locations">
++    <header class="page-header">
++      <h1>Find a Café</h1>
++      <p>Four neighborhood spots, one obsession with great coffee.</p>
++    </header>
++    <div class="container">
++      <div class="toolbar">
++        <input type="search" class="search" data-search placeholder="Search by neighborhood or street" aria-label="Search locations">
++        <p class="summary" data-store-summary aria-live="polite">No home store selected</p>
++      </div>
++      <div class="location-list" data-locations></div>
++      <p class="empty" data-empty hidden>No cafés match that search.</p>
++    </div>
++  </template>
++
++  <template id="tpl-rewards">
++    <header class="page-header">
++      <h1>Grind Rewards</h1>
++      <p>Every sip earns points. Every 500 points unlocks a new tier.</p>
++    </header>
++    <div class="container">
++      <div class="points-card">
++        <span>Available points</span>
++        <strong data-points>340</strong>
++        <label for="tier-progress" data-tier-label>160 points to the next tier</label>
++        <progress id="tier-progress" data-progress max="500" value="340"></progress>
++      </div>
++      <h2 style="margin-top: 30px;">Redeem</h2>
++      <ul class="reward-list" data-rewards>
++        <li class="reward" data-cost="100">
++          <div><strong>Free drip coffee</strong><br><span class="cost">100 points</span></div>
++          <button type="button" class="btn">Redeem</button>
++        </li>
++        <li class="reward" data-cost="150">
++          <div><strong>Any pastry</strong><br><span class="cost">150 points</span></div>
++          <button type="button" class="btn">Redeem</button>
++        </li>
++        <li class="reward" data-cost="250">
++          <div><strong>Free specialty drink</strong><br><span class="cost">250 points</span></div>
++          <button type="button" class="btn">Redeem</button>
++        </li>
++        <li class="reward" data-cost="500">
++          <div><strong>12 oz bag of beans</strong><br><span class="cost">500 points</span></div>
++          <button type="button" class="btn">Redeem</button>
++        </li>
++      </ul>
++    </div>
++  </template>
++
++  <template id="tpl-account">
++    <header class="page-header">
++      <h1>My Account</h1>
++      <p>Keep your details and preferences up to date.</p>
++    </header>
++    <div class="container">
++      <form class="form" data-account-form novalidate>
++        <label>
++          Full name
++          <input type="text" name="name" value="Jordan Rivera" autocomplete="name" required>
++        </label>
++        <label>
++          Email
++          <input type="email" name="email" value="jordan@example.com" autocomplete="email" required>
++        </label>
++        <label>
++          Favorite drink
++          <select name="favorite">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="flat-white">Flat White</option>
++            <option value="cold-brew" selected>Cold Brew</option>
++          </select>
++        </label>
++        <label class="checkbox">
++          <input type="checkbox" name="offers" checked>
++          Email me seasonal offers
++        </label>
++        <button type="submit" class="btn">Save changes</button>
++        <output class="status" data-status aria-live="polite"></output>
++      </form>
++    </div>
++  </template>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +686,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="app.js"></script>
++
+ </body>
+ 
+ </html>

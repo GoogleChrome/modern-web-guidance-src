@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,131 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Rewards navbar button */
++    .nav-button {
++      background: none;
++      border: 0;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
++      transition: color 0.3s;
++    }
++
++    .nav-button:hover,
++    .nav-button[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    .nav-button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    /* Rewards popover card */
++    .rewards-popover {
++      position: fixed;
++      inset: auto;
++      top: 70px;
++      right: 5%;
++      margin: 0;
++      width: min(320px, calc(100vw - 24px));
++      padding: 0;
++      border: 0;
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .rewards-popover-header {
++      background: linear-gradient(rgba(78, 52, 46, 0.85), rgba(78, 52, 46, 0.85)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=70');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 18px 20px;
++      position: relative;
++    }
++
++    .rewards-popover-header .tier {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-top: 6px;
++    }
++
++    .rewards-close {
++      position: absolute;
++      top: 10px;
++      right: 12px;
++      background: none;
++      border: 0;
++      color: white;
++      font-size: 1.3rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .rewards-popover-body {
++      padding: 18px 20px 20px;
++    }
++
++    .rewards-points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.1;
++    }
++
++    .rewards-points small {
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: #6d4c41;
++    }
++
++    .rewards-progress {
++      height: 8px;
++      background: var(--secondary);
++      border-radius: 999px;
++      margin: 10px 0 6px;
++      overflow: hidden;
++    }
++
++    .rewards-progress-fill {
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    .rewards-remaining {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .rewards-perks {
++      margin: 14px 0 0 18px;
++      font-size: 0.85rem;
++    }
++
++    .rewards-popover .btn {
++      display: block;
++      text-align: center;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +284,37 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" id="rewards-button" class="nav-button" popovertarget="rewards-popover"
++          aria-haspopup="dialog" aria-expanded="false" aria-controls="rewards-popover"
++          data-fallback-href="/rewards">Rewards</button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" class="rewards-popover" popover role="dialog" aria-labelledby="rewards-title">
++    <div class="rewards-popover-header">
++      <button type="button" class="rewards-close" popovertarget="rewards-popover" popovertargetaction="hide"
++        aria-label="Close rewards">&times;</button>
++      <h3 id="rewards-title">Hi, <span data-field="name">there</span>!</h3>
++      <span class="tier" data-field="tier">Member</span>
++    </div>
++    <div class="rewards-popover-body">
++      <div class="rewards-points"><span data-field="points">0</span> <small>points</small></div>
++      <div class="rewards-progress" role="progressbar" aria-label="Progress to next reward" aria-valuemin="0"
++        aria-valuenow="0" aria-valuemax="500">
++        <div class="rewards-progress-fill"></div>
++      </div>
++      <p class="rewards-remaining" data-field="remaining"></p>
++      <ul class="rewards-perks" data-field="perks"></ul>
++      <a href="/rewards" class="btn">View All Rewards</a>
++    </div>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +352,13 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Module scripts are deferred. rewards.js statically imports popover-support.js,
++    whose top-level await conditionally loads the Popover polyfill, so rewards.js
++    never runs before the Popover API exists.
++  -->
++  <script type="module" src="js/rewards.js"></script>
+ </body>
+ 
+ </html>

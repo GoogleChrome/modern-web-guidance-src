@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+index 66c9173..bd5d184 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,39 @@
+       background: #3e2723;
+     }
+ 
++    .order-form {
++      max-width: 480px;
++      margin: 20px auto 0;
++      display: grid;
++      gap: 16px;
++      text-align: left;
++    }
++
++    .order-form input {
++      display: block;
++      width: 100%;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .roast-field {
++      border: 0;
++    }
++
++    .roast-field legend {
++      margin-bottom: 6px;
++    }
++
++    .order-form .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-right: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +228,27 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="order" style="margin-top: 40px;">
++      <h2 style="text-align: center;">Quick Order</h2>
++      <form class="card order-form" action="/order-online" method="get">
++        <label>Drink
++          <input name="drink" required placeholder="e.g. Cold Brew">
++        </label>
++        <fieldset class="roast-field">
++          <legend>Roast level</legend>
++          <roast-picker name="roast" value="medium" required></roast-picker>
++        </fieldset>
++        <div>
++          <button type="submit" class="btn">Place Order</button>
++          <button type="reset" class="btn">Reset</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
++  <script src="roast-picker.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/roast-picker.js b/roast-picker.js
+new file mode 100644
+index 0000000..8fe09fa
+--- /dev/null
++++ b/roast-picker.js
+@@ -0,0 +1,198 @@
++/**
++ * <roast-picker> — a form-associated custom element for choosing a roast level.
++ *
++ *   <roast-picker name="roast" value="medium" required></roast-picker>
++ *
++ * Participates in forms via ElementInternals: submits its value under `name`,
++ * reports validity (required), and handles reset, disabled (own attribute or
++ * ancestor <fieldset disabled>) and state restore (back/forward, autofill).
++ */
++const ROASTS = [
++  { value: 'light', label: 'Light' },
++  { value: 'medium', label: 'Medium' },
++  { value: 'dark', label: 'Dark' },
++  { value: 'espresso', label: 'Espresso' },
++];
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: inline-block; }
++    :host([hidden]) { display: none; }
++    .group { display: flex; flex-wrap: wrap; gap: 8px; }
++    .opt {
++      font: inherit;
++      padding: 6px 14px;
++      border: 1px solid var(--primary, #4e342e);
++      border-radius: 999px;
++      background: white;
++      color: var(--primary, #4e342e);
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++    .opt[aria-checked="true"] { background: var(--primary, #4e342e); color: white; }
++    .opt:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++    :host(:state(invalid)) .group { outline: 2px solid #c62828; outline-offset: 4px; border-radius: 999px; }
++    :host(:state(disabled)) .opt { opacity: 0.5; cursor: not-allowed; }
++  </style>
++  <div class="group" role="radiogroup" part="group"></div>
++`;
++
++class RoastPicker extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required', 'disabled'];
++
++  #internals = this.attachInternals();
++  #value = '';
++  #dirty = false; // once set by user/script, `value` attribute no longer drives it
++  #formDisabled = false;
++  #group;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true }).append(template.content.cloneNode(true));
++    this.#group = this.shadowRoot.querySelector('.group');
++    this.#internals.role = 'radiogroup';
++    this.#group.addEventListener('click', (e) => {
++      const btn = e.target.closest('.opt');
++      if (btn) this.#choose(btn.dataset.value);
++    });
++    this.#group.addEventListener('keydown', (e) => this.#onKey(e));
++  }
++
++  connectedCallback() {
++    if (!this.#group.children.length) this.#render();
++    if (!this.#dirty) this.#value = this.#normalize(this.getAttribute('value'));
++    this.#sync();
++  }
++
++  attributeChangedCallback(name, _old, next) {
++    if (name === 'value' && !this.#dirty) this.#value = this.#normalize(next);
++    this.#sync();
++  }
++
++  // --- Public API -----------------------------------------------------------
++  get value() { return this.#value; }
++  set value(v) {
++    this.#dirty = true;
++    this.#value = this.#normalize(v);
++    this.#sync();
++  }
++
++  get defaultValue() { return this.getAttribute('value') ?? ''; }
++  set defaultValue(v) { this.setAttribute('value', v); }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(v) { this.setAttribute('name', v); }
++
++  get required() { return this.hasAttribute('required'); }
++  set required(v) { this.toggleAttribute('required', Boolean(v)); }
++
++  get disabled() { return this.hasAttribute('disabled') || this.#formDisabled; }
++  set disabled(v) { this.toggleAttribute('disabled', Boolean(v)); }
++
++  get form() { return this.#internals.form; }
++  get type() { return 'roast-picker'; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++
++  // --- Form lifecycle -------------------------------------------------------
++  formDisabledCallback(disabled) {
++    this.#formDisabled = disabled;
++    this.#sync();
++  }
++
++  formResetCallback() {
++    this.#dirty = false;
++    this.#value = this.#normalize(this.getAttribute('value'));
++    this.#sync();
++  }
++
++  formStateRestoreCallback(state) {
++    this.#dirty = true;
++    this.#value = this.#normalize(state);
++    this.#sync();
++  }
++
++  // --- Internals ------------------------------------------------------------
++  #normalize(v) {
++    return ROASTS.some((r) => r.value === v) ? v : '';
++  }
++
++  #render() {
++    for (const { value, label } of ROASTS) {
++      const btn = document.createElement('button');
++      btn.type = 'button';
++      btn.className = 'opt';
++      btn.role = 'radio';
++      btn.dataset.value = value;
++      btn.textContent = label;
++      this.#group.append(btn);
++    }
++  }
++
++  #choose(value) {
++    if (this.disabled || value === this.#value) return;
++    this.value = value;
++    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #onKey(e) {
++    const keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
++    if (!(e.key in keys) || this.disabled) return;
++    e.preventDefault();
++    const idx = ROASTS.findIndex((r) => r.value === this.#value);
++    const next = ROASTS[(idx + keys[e.key] + ROASTS.length) % ROASTS.length];
++    this.#choose(next.value);
++    this.#group.querySelector(`[data-value="${next.value}"]`).focus();
++  }
++
++  /** Push current state to the form, validity, and the rendered options. */
++  #sync() {
++    const internals = this.#internals;
++    const disabled = this.disabled;
++
++    // Value + state-restore payload (null omits the field from submission).
++    internals.setFormValue(this.#value || null, this.#value);
++
++    // Constraint validation
++    if (this.required && !this.#value) {
++      internals.setValidity(
++        { valueMissing: true },
++        'Please choose a roast level.',
++        this.#group.querySelector('.opt') ?? undefined,
++      );
++    } else {
++      internals.setValidity({});
++    }
++
++    internals.ariaRequired = String(this.required);
++    internals.ariaDisabled = String(disabled);
++    this.#toggleState('disabled', disabled);
++    this.#toggleState('invalid', !internals.validity.valid);
++
++    // Roving tabindex: checked option is tabbable, else the first.
++    const opts = [...this.#group.children];
++    const tabbable = opts.find((b) => b.dataset.value === this.#value) ?? opts[0];
++    for (const btn of opts) {
++      const checked = btn.dataset.value === this.#value;
++      btn.setAttribute('aria-checked', String(checked));
++      btn.tabIndex = btn === tabbable && !disabled ? 0 : -1;
++      btn.disabled = disabled;
++    }
++  }
++
++  #toggleState(name, on) {
++    try {
++      on ? this.#internals.states.add(name) : this.#internals.states.delete(name);
++    } catch {
++      // Older browsers use the legacy dashed-ident syntax; styling is optional.
++    }
++  }
++}
++
++customElements.define('roast-picker', RoastPicker);

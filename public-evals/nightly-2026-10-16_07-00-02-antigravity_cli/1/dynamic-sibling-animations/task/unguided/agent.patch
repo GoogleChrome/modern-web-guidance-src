@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,94 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    @keyframes fadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(20px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes fadeInUp {
++      from {
++        opacity: 0;
++        transform: translateY(20px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    .grid .card {
++      animation: fadeIn 0.6s ease-out both;
++    }
++
++    .grid .card:nth-child(1),
++    .card:nth-child(1) {
++      animation-delay: 0ms;
++    }
++
++    .grid .card:nth-child(2),
++    .card:nth-child(2) {
++      animation-delay: 100ms;
++    }
++
++    .grid .card:nth-child(3),
++    .card:nth-child(3) {
++      animation-delay: 200ms;
++    }
++
++    .grid .card:nth-child(4),
++    .card:nth-child(4) {
++      animation-delay: 300ms;
++    }
++
++    .grid .card:nth-child(5),
++    .card:nth-child(5) {
++      animation-delay: 400ms;
++    }
++
++    .grid .card:nth-child(6),
++    .card:nth-child(6) {
++      animation-delay: 500ms;
++    }
++
++    .grid .card:nth-child(7),
++    .card:nth-child(7) {
++      animation-delay: 600ms;
++    }
++
++    .grid .card:nth-child(8),
++    .card:nth-child(8) {
++      animation-delay: 700ms;
++    }
++
++    .grid .card:nth-child(9),
++    .card:nth-child(9) {
++      animation-delay: 800ms;
++    }
++
++    .grid .card:nth-child(10),
++    .card:nth-child(10) {
++      animation-delay: 900ms;
++    }
++
++    .grid .card:nth-child(11),
++    .card:nth-child(11) {
++      animation-delay: 1000ms;
++    }
++
++    .grid .card:nth-child(12),
++    .card:nth-child(12) {
++      animation-delay: 1100ms;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

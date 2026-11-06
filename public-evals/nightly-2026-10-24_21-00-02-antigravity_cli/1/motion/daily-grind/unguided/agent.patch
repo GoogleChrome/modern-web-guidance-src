@@ -1,0 +1,672 @@
+diff --git a/index.html b/index.html
+index 66c9173..3502201 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,14 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
++      --ease-out-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
++      --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+     }
+ 
+     * {
+@@ -20,16 +24,73 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-x: hidden;
++    }
++
++    /* Keyframe Animations */
++    @keyframes fadeSlideDown {
++      from {
++        opacity: 0;
++        transform: translate3d(0, -18px, 0);
++      }
++      to {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes fadeSlideUp {
++      from {
++        opacity: 0;
++        transform: translate3d(0, 28px, 0);
++      }
++      to {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes heroScaleIn {
++      from {
++        transform: scale3d(1.08, 1.08, 1);
++      }
++      to {
++        transform: scale3d(1, 1, 1);
++      }
++    }
++
++    @keyframes shimmerSweep {
++      0% {
++        transform: translate3d(-120%, 0, 0) skewX(-20deg);
++      }
++      100% {
++        transform: translate3d(220%, 0, 0) skewX(-20deg);
++      }
++    }
++
++    @keyframes subtleFloat {
++      0%, 100% {
++        transform: translate3d(0, 0, 0);
++      }
++      50% {
++        transform: translate3d(0, -4px, 0);
++      }
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: rgba(78, 52, 46, 0.96);
++      backdrop-filter: blur(8px);
++      -webkit-backdrop-filter: blur(8px);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -38,47 +99,117 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0);
++      transition: padding 0.35s var(--ease-out-expo),
++                  background-color 0.35s var(--ease-in-out-smooth),
++                  box-shadow 0.35s var(--ease-in-out-smooth);
++      animation: fadeSlideDown 0.7s var(--ease-out-expo) both;
++    }
++
++    nav.scrolled {
++      padding: 0.75rem 5%;
++      background: rgba(62, 39, 35, 0.98);
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      cursor: pointer;
++      transition: transform 0.3s var(--ease-out-spring), color 0.3s ease;
++    }
++
++    .logo:hover {
++      transform: translate3d(0, -1px, 0) scale(1.02);
++      color: var(--accent);
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      opacity: 0;
++      animation: fadeSlideDown 0.6s var(--ease-out-expo) forwards;
+     }
+ 
++    nav ul li:nth-child(1) { animation-delay: 0.08s; }
++    nav ul li:nth-child(2) { animation-delay: 0.14s; }
++    nav ul li:nth-child(3) { animation-delay: 0.20s; }
++    nav ul li:nth-child(4) { animation-delay: 0.26s; }
++    nav ul li:nth-child(5) { animation-delay: 0.32s; }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      position: relative;
++      padding: 4px 0;
++      transition: color 0.3s var(--ease-in-out-smooth),
++                  transform 0.3s var(--ease-out-expo);
++      display: inline-block;
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: 0;
++      width: 100%;
++      height: 2px;
++      background-color: var(--accent);
++      transform: scaleX(0);
++      transform-origin: right center;
++      transition: transform 0.35s var(--ease-out-expo);
+     }
+ 
+-    nav a:hover {
++    nav a:not(.logout-link):hover,
++    nav a:not(.logout-link):focus-visible {
+       color: var(--accent);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++      transform-origin: left center;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 5px 14px;
+       border-radius: 4px;
++      overflow: hidden;
++      transition: color 0.3s var(--ease-in-out-smooth),
++                  background-color 0.3s var(--ease-in-out-smooth),
++                  transform 0.25s var(--ease-out-spring),
++                  box-shadow 0.3s var(--ease-in-out-smooth);
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: var(--accent);
++      color: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++    }
++
++    .logout-link:active {
++      transform: translate3d(0, 0, 0) scale(0.97);
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 380px;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,60 +217,228 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 18, 15, 0.55), rgba(30, 18, 15, 0.65)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      z-index: -1;
++      will-change: transform;
++      animation: heroScaleIn 1.8s var(--ease-out-expo) forwards;
++      transform: translate3d(0, var(--hero-parallax, 0px), 0) scale(1);
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.2rem, 5vw, 3.25rem);
++      margin-bottom: 0.75rem;
++      letter-spacing: 0.5px;
++      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
++      opacity: 0;
++      animation: fadeSlideUp 0.85s var(--ease-out-expo) 0.15s forwards;
++    }
++
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 540px;
++      opacity: 0;
++      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
++      animation: fadeSlideUp 0.85s var(--ease-out-expo) 0.3s forwards;
++    }
++
++    .hero .btn {
++      opacity: 0;
++      animation: fadeSlideUp 0.85s var(--ease-out-expo) 0.45s forwards;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 56px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      position: relative;
++      margin-bottom: 12px;
++      opacity: 0;
++      transform: translate3d(0, 20px, 0);
++      transition: opacity 0.7s var(--ease-out-expo),
++                  transform 0.7s var(--ease-out-expo);
++    }
++
++    .section-title.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0);
++    }
++
++    .section-title::after {
++      content: '';
++      display: block;
++      width: 56px;
++      height: 3px;
++      background: var(--accent);
++      margin: 10px auto 0;
++      border-radius: 2px;
++      transform: scaleX(0);
++      transition: transform 0.7s var(--ease-out-expo) 0.2s;
++    }
++
++    .section-title.is-visible::after {
++      transform: scaleX(1);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      gap: 24px;
++      margin-top: 28px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px 22px;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
+       text-align: center;
++      position: relative;
++      overflow: hidden;
++      border: 1px solid rgba(215, 204, 200, 0.45);
++      opacity: 0;
++      transform: translate3d(0, 32px, 0);
++      will-change: transform, opacity;
++      transition:
++        opacity 0.7s var(--ease-out-expo) var(--stagger-delay, 0s),
++        transform 0.45s var(--ease-out-expo),
++        box-shadow 0.45s var(--ease-out-expo),
++        border-color 0.35s ease;
++    }
++
++    .card.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0);
++    }
++
++    .card::before {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      right: 0;
++      height: 4px;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      transform: scaleX(0);
++      transform-origin: left center;
++      transition: transform 0.45s var(--ease-out-expo);
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translate3d(0, -8px, 0);
++      box-shadow: 0 16px 32px rgba(62, 39, 35, 0.14);
++      border-color: rgba(255, 171, 64, 0.5);
++    }
++
++    .card:hover::before,
++    .card:focus-within::before {
++      transform: scaleX(1);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
++      transition: color 0.3s ease, transform 0.3s var(--ease-out-expo);
+     }
+ 
++    .card:hover h3 {
++      color: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++    }
++
++    .card p {
++      color: #5d4037;
++      margin-bottom: 6px;
++      transition: color 0.3s ease;
++    }
++
++    /* Buttons */
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 11px 24px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 16px;
++      font-weight: 600;
++      letter-spacing: 0.3px;
++      position: relative;
++      overflow: hidden;
++      box-shadow: 0 4px 10px rgba(62, 39, 35, 0.2);
++      transition: background-color 0.3s var(--ease-in-out-smooth),
++                  transform 0.3s var(--ease-out-spring),
++                  box-shadow 0.3s var(--ease-in-out-smooth);
++    }
++
++    .btn::after {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 45%;
++      height: 100%;
++      background: linear-gradient(
++        90deg,
++        rgba(255, 255, 255, 0) 0%,
++        rgba(255, 255, 255, 0.22) 50%,
++        rgba(255, 255, 255, 0) 100%
++      );
++      transform: translate3d(-140%, 0, 0) skewX(-20deg);
++      pointer-events: none;
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      transform: translate3d(0, -3px, 0);
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.3);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover::after,
++    .btn:focus-visible::after {
++      animation: shimmerSweep 0.75s var(--ease-out-expo);
+     }
+ 
++    .btn:active {
++      transform: translate3d(0, -1px, 0) scale(0.98);
++      box-shadow: 0 3px 8px rgba(62, 39, 35, 0.2);
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 44px 20px;
++      margin-top: 56px;
++      opacity: 0;
++      transform: translate3d(0, 20px, 0);
++      transition: opacity 0.8s var(--ease-out-expo),
++                  transform 0.8s var(--ease-out-expo);
++    }
++
++    footer.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0);
+     }
+ 
+     .footer-links {
+@@ -151,13 +450,94 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      position: relative;
++      padding-bottom: 2px;
++      display: inline-block;
++      transition: color 0.25s ease, transform 0.25s var(--ease-out-expo);
++    }
++
++    .footer-links a::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: 0;
++      width: 100%;
++      height: 1.5px;
++      background-color: var(--primary);
++      transform: scaleX(0);
++      transform-origin: center;
++      transition: transform 0.3s var(--ease-out-expo);
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    .footer-links a:hover::after,
++    .footer-links a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    /* Focus visibility */
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        animation-delay: 0ms !important;
++        transition-duration: 0.01ms !important;
++        transition-delay: 0ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .hero::before {
++        transform: none !important;
++      }
++
++      .section-title,
++      .card,
++      footer,
++      nav ul li,
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        opacity: 1 !important;
++        transform: none !important;
++      }
++
++      .section-title::after {
++        transform: scaleX(1) !important;
++      }
++
++      .card:hover,
++      .card:focus-within,
++      .btn:hover,
++      .btn:focus-visible,
++      .logo:hover,
++      nav a:hover,
++      .footer-links a:hover {
++        transform: none !important;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav id="main-nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,19 +556,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title" data-animate>Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-animate style="--stagger-delay: 0.05s;">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-animate style="--stagger-delay: 0.15s;">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-animate style="--stagger-delay: 0.25s;">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -197,7 +577,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer data-animate>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +587,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const animatedElements = document.querySelectorAll('[data-animate]');
++      const nav = document.getElementById('main-nav');
++      const hero = document.querySelector('.hero');
++
++      function revealAllImmediately() {
++        animatedElements.forEach((el) => el.classList.add('is-visible'));
++      }
++
++      if (prefersReducedMotion.matches || !('IntersectionObserver' in window)) {
++        revealAllImmediately();
++      } else {
++        const observer = new IntersectionObserver(
++          (entries, obs) => {
++            entries.forEach((entry) => {
++              if (entry.isIntersecting) {
++                entry.target.classList.add('is-visible');
++                obs.unobserve(entry.target);
++              }
++            });
++          },
++          {
++            threshold: 0.12,
++            rootMargin: '0px 0px -30px 0px'
++          }
++        );
++
++        animatedElements.forEach((el) => observer.observe(el));
++      }
++
++      // Listen for runtime changes to prefers-reduced-motion
++      prefersReducedMotion.addEventListener('change', (event) => {
++        if (event.matches) {
++          revealAllImmediately();
++          if (hero) {
++            hero.style.setProperty('--hero-parallax', '0px');
++          }
++        }
++      });
++
++      // Performant rAF-throttled scroll handler for navbar state & subtle hero parallax
++      let ticking = false;
++      function onScroll() {
++        const scrollY = window.scrollY || window.pageYOffset;
++
++        if (nav) {
++          nav.classList.toggle('scrolled', scrollY > 24);
++        }
++
++        if (hero && !prefersReducedMotion.matches && scrollY < 600) {
++          const offset = Math.min(scrollY * 0.2, 80);
++          hero.style.setProperty('--hero-parallax', `${offset.toFixed(1)}px`);
++        }
++
++        ticking = false;
++      }
++
++      window.addEventListener(
++        'scroll',
++        () => {
++          if (!ticking) {
++            window.requestAnimationFrame(onScroll);
++            ticking = true;
++          }
++        },
++        { passive: true }
++      );
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

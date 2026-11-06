@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,157 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-field {
++      width: min(100%, 260px);
++      margin-top: 1.25rem;
++      text-align: left;
++    }
++
++    .roast-field > label {
++      display: block;
++      margin-bottom: 0.35rem;
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++      background: var(--primary);
++      color: var(--accent);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .roast-select,
++    .roast-fallback summary {
++      width: 100%;
++      min-height: 48px;
++      padding: 0.6rem 0.85rem;
++      cursor: pointer;
++    }
++
++    .roast-select::picker(select) {
++      padding: 0.3rem;
++    }
++
++    .roast-select::picker-icon,
++    .roast-select option::checkmark {
++      color: var(--accent);
++    }
++
++    .roast-select option {
++      min-height: 48px;
++      padding: 0.6rem;
++      border-radius: 3px;
++      background: var(--primary);
++      color: var(--accent);
++    }
++
++    .roast-select option:is(:hover, :focus, :checked) {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-select option:checked::checkmark {
++      color: var(--primary);
++    }
++
++    .roast-select:focus-visible,
++    .roast-fallback summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Fully branded fallback for browsers without customizable selects. */
++    .roast-fallback {
++      position: relative;
++      color: var(--accent);
++    }
++
++    .roast-fallback summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      list-style: none;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++    }
++
++    .roast-fallback summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .roast-fallback summary::after {
++      content: '';
++      width: 0.5rem;
++      height: 0.5rem;
++      border-right: 2px solid var(--accent);
++      border-bottom: 2px solid var(--accent);
++      transform: rotate(45deg);
++    }
++
++    .roast-options {
++      position: absolute;
++      inset: calc(100% + 4px) 0 auto;
++      z-index: 1001;
++      padding: 0.3rem;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++    }
++
++    .roast-options label {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-height: 48px;
++      padding: 0.6rem;
++      border-radius: 3px;
++      cursor: pointer;
++    }
++
++    .roast-options input {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      clip-path: inset(50%);
++      overflow: hidden;
++    }
++
++    .roast-options label::before {
++      content: '✓';
++      width: 1rem;
++      color: var(--accent);
++      visibility: hidden;
++    }
++
++    .roast-options label:has(:checked)::before {
++      visibility: visible;
++    }
++
++    .roast-options label:is(:hover, :has(:focus-visible), :has(:checked)) {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-options label:is(:hover, :has(:focus-visible), :has(:checked))::before {
++      color: var(--primary);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +311,24 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-field">
++      <label id="roast-label" for="coffee-roast">Coffee roast</label>
++      <select id="coffee-roast" class="roast-select" name="roast">
++        <option value="light">Light</option>
++        <option value="medium" selected>Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++      <details class="roast-fallback" hidden>
++        <summary aria-labelledby="roast-label roast-value"><span id="roast-value">Medium</span></summary>
++        <div class="roast-options" role="group" aria-labelledby="roast-label">
++          <label><input type="radio" name="roast-fallback" value="light">Light</label>
++          <label><input type="radio" name="roast-fallback" value="medium" checked>Medium</label>
++          <label><input type="radio" name="roast-fallback" value="dark">Dark</label>
++        </div>
++      </details>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +363,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('appearance', 'base-select')) {
++      const select = document.querySelector('#coffee-roast');
++      const fallback = document.querySelector('.roast-fallback');
++      const summary = fallback.querySelector('summary');
++      const value = document.querySelector('#roast-value');
++      const label = document.querySelector('#roast-label');
++      select.hidden = true;
++      fallback.hidden = false;
++      label.removeAttribute('for');
++      label.addEventListener('click', () => summary.focus());
++
++      fallback.addEventListener('change', (event) => {
++        select.value = event.target.value;
++        value.textContent = select.selectedOptions[0].textContent;
++        select.dispatchEvent(new Event('change', { bubbles: true }));
++        fallback.open = false;
++        summary.focus();
++      });
++
++      fallback.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') {
++          event.preventDefault();
++          fallback.open = false;
++          summary.focus();
++        }
++      });
++
++      document.addEventListener('click', (event) => {
++        if (!fallback.contains(event.target)) fallback.open = false;
++      });
++
++      fallback.addEventListener('focusout', (event) => {
++        if (!fallback.contains(event.relatedTarget)) fallback.open = false;
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

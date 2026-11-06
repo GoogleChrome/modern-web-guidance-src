@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/reauth.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -120,8 +121,11 @@
+       color: var(--primary);
+     }
+ 
+     .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -134,8 +138,18 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      cursor: wait;
++      opacity: 0.65;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +208,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card" aria-labelledby="reauth-heading" style="margin-top: 40px;">
++      <h2 id="reauth-heading">Confirm your identity</h2>
++      <p>Use your registered passkey or security key before making a sensitive account change.</p>
++      <button type="button" class="btn" data-testid="reauth-button" aria-describedby="reauth-status">Confirm identity</button>
++      <p id="reauth-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

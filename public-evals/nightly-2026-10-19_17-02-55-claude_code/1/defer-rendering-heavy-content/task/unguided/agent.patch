@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -180,8 +180,33 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Skips layout/paint of the card's contents until it nears the viewport.
++       `auto` remembers the real height once rendered, so scroll height stays stable. */
++    .off-screen-card {
++      content-visibility: hidden;
++      contain-intrinsic-size: auto 420px;
++    }
++
++    .debug-panel {
++      display: none;
++      contain: layout paint;
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem;
++      box-sizing: border-box;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.5rem;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel.open {
++      display: block;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +232,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +245,51 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <div>Cards: <span id="debug-total">0</span></div>
++    <div>Rendered (near viewport): <span id="debug-rendered">0</span></div>
++    <div>Deferred (<code>.off-screen-card</code>): <span id="debug-deferred">0</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    const debugBtn = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
+ 
++    // Cards start deferred; the class is removed shortly before they scroll into view.
++    const cardObserver = new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        entry.target.classList.toggle('off-screen-card', !entry.isIntersecting);
++      }
++    }, { rootMargin: '600px 0px' });
+ 
++    function updateDebugStats() {
++      const deferred = feed.querySelectorAll('.card.off-screen-card').length;
++      const total = feed.querySelectorAll('.card').length;
++      document.getElementById('debug-total').textContent = total;
++      document.getElementById('debug-deferred').textContent = deferred;
++      document.getElementById('debug-rendered').textContent = total - deferred;
++    }
+ 
++    // Only a class flip on an isolated element, so toggling never touches the cards.
++    debugBtn.addEventListener('click', () => {
++      const open = debugPanel.classList.toggle('open');
++      debugBtn.classList.toggle('off', !open);
++      debugBtn.setAttribute('aria-expanded', open);
++      if (open) updateDebugStats();
++    });
++
++
++
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -279,15 +336,18 @@
+     }
+ 
+     function renderCards() {
+       const info = feed.querySelector('.info-text');
++      cardObserver.disconnect();
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        const card = createCard(i);
++        fragment.appendChild(card);
++        cardObserver.observe(card);
+       }
+       feed.appendChild(fragment);
+ 
+       measureRender(startTime);

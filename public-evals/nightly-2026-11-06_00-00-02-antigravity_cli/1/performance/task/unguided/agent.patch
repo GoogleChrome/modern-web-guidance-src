@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,9 +3,54 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="description" content="The Daily Grind offers ethically sourced, locally roasted artisanal coffee delivered fresh to your cup. Order online or visit a location near you.">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Resource Hints for Faster Hero LCP -->
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++  <link
++    rel="preload"
++    as="image"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=80 1024w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++    imagesizes="100vw"
++    fetchpriority="high"
++  >
++
++  <!-- Speculation Rules API for Instant Subsequent Navigation (Safe Routes Only) -->
++  <script type="speculationrules">
++    {
++      "prerender": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "href_matches": "/account" } },
++              { "not": { "selector_matches": "[data-no-prerender]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ],
++      "prefetch": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
++
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,22 +118,41 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 320px;
++      background-color: #2b1d1a;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: 0;
++      filter: brightness(0.5);
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -99,8 +163,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -127,9 +195,9 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -139,8 +207,10 @@
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      content-visibility: auto;
++      contain-intrinsic-size: 140px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -163,21 +233,36 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prerender rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <img
++      class="hero-bg"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=75 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=80 1024w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++      sizes="100vw"
++      width="1350"
++      height="900"
++      alt="Freshly brewed artisanal coffee at The Daily Grind"
++      fetchpriority="high"
++      decoding="async"
++    >
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

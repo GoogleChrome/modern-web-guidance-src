@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    dialog#logout-dialog {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
++      background: white;
++      color: var(--text);
++    }
++
++    dialog#logout-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .dialog-content {
++      padding: 24px 32px;
++      text-align: center;
++    }
++
++    .dialog-content h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .dialog-btn {
++      padding: 8px 18px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      cursor: pointer;
++      border: 1px solid var(--primary);
++      text-decoration: none;
++      display: inline-block;
++    }
++
++    .dialog-btn-cancel {
++      background: white;
++      color: var(--primary);
++    }
++
++    .dialog-btn-confirm {
++      background: var(--primary);
++      color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,9 +214,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link test-dialog-trigger">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +257,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog">
++    <div class="dialog-content">
++      <h3>Are you sure?</h3>
++      <p>Are you sure you want to log out of your account?</p>
++      <div class="dialog-actions">
++        <button type="button" class="dialog-btn dialog-btn-cancel" id="logout-cancel">Cancel</button>
++        <a href="/logout" class="dialog-btn dialog-btn-confirm" id="logout-confirm">Logout</a>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    const logoutTrigger = document.querySelector('.test-dialog-trigger');
++    const logoutDialog = document.getElementById('logout-dialog');
++    const logoutCancel = document.getElementById('logout-cancel');
++
++    logoutTrigger.addEventListener('click', (event) => {
++      event.preventDefault();
++      logoutDialog.showModal();
++    });
++
++    logoutCancel.addEventListener('click', () => {
++      logoutDialog.close();
++    });
++
++    logoutDialog.addEventListener('click', (event) => {
++      const rect = logoutDialog.getBoundingClientRect();
++      const clickedInside = (
++        event.clientX >= rect.left &&
++        event.clientX <= rect.right &&
++        event.clientY >= rect.top &&
++        event.clientY <= rect.bottom
++      );
++
++      if (event.target === logoutDialog || !clickedInside) {
++        logoutDialog.close();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

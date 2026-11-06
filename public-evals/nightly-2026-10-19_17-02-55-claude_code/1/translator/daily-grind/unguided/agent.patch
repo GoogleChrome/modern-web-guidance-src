@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+index 66c9173..adf8731 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,15 @@
+       background: #3e2723;
+     }
+ 
++    .lang-select {
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 4px 8px;
++      font-size: 0.85rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,38 +169,44 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-i18n="nav.menu">Menu</a></li>
++      <li><a href="/locations" data-i18n="nav.locations">Locations</a></li>
++      <li><a href="/rewards" data-i18n="nav.rewards">Rewards</a></li>
++      <li><a href="/account" data-i18n="nav.account">My Account</a></li>
++      <li><select id="lang" aria-label="Language" class="lang-select">
++          <option value="en">English</option>
++          <option value="es">Español</option>
++          <option value="fr">Français</option>
++          <option value="de">Deutsch</option>
++        </select></li>
++      <li><a href="/logout" class="logout-link" data-i18n="nav.logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-i18n="hero.title">Wake Up Your Senses</h1>
++    <p data-i18n="hero.sub">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn" data-i18n="hero.cta">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;" data-i18n="seasonal">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 data-i18n="c1.t">Maple Oat Latte</h3>
++          <p data-i18n="c1.d">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 data-i18n="c2.t">Dark Roast Espresso</h3>
++          <p data-i18n="c2.d">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 data-i18n="c3.t">Cold Brew</h3>
++          <p data-i18n="c3.d">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-i18n="details">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +214,63 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-i18n="f.story">Our Story</a> |
++      <a href="/careers" data-i18n="f.team">Join the Team</a> |
++      <a href="/contact" data-i18n="f.contact">Contact Us</a> |
++      <a href="/privacy-policy" data-i18n="f.privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 <span data-i18n="f.rights">The Daily Grind Coffee Co. All rights reserved.</span></p>
+   </footer>
+ 
++<script>
++    const T = {
++      es: {
++        'nav.menu': 'Menú', 'nav.locations': 'Ubicaciones', 'nav.rewards': 'Recompensas', 'nav.account': 'Mi cuenta', 'nav.logout': 'Cerrar sesión',
++        'hero.title': 'Despierta tus sentidos', 'hero.sub': 'De origen ético, tostado localmente y entregado en tu taza.', 'hero.cta': 'Pedir ahora',
++        'seasonal': 'Favoritos de temporada', 'c1.t': 'Latte de avena y arce', 'c1.d': 'Cremosa leche de avena con un toque de sirope de arce de Vermont.',
++        'c2.t': 'Espresso de tueste oscuro', 'c2.d': 'Intenso, ahumado y perfecto para empezar la mañana.',
++        'c3.t': 'Café frío', 'c3.d': 'Infusionado durante 18 horas para una suavidad máxima.', 'details': 'Ver detalles',
++        'f.story': 'Nuestra historia', 'f.team': 'Únete al equipo', 'f.contact': 'Contáctanos', 'f.privacy': 'Privacidad',
++        'f.rights': 'The Daily Grind Coffee Co. Todos los derechos reservados.'
++      },
++      fr: {
++        'nav.menu': 'Menu', 'nav.locations': 'Adresses', 'nav.rewards': 'Récompenses', 'nav.account': 'Mon compte', 'nav.logout': 'Déconnexion',
++        'hero.title': 'Réveillez vos sens', 'hero.sub': 'Issu d\u2019un approvisionnement éthique, torréfié localement, livré dans votre tasse.', 'hero.cta': 'Commander',
++        'seasonal': 'Favoris de saison', 'c1.t': 'Latte avoine et érable', 'c1.d': 'Lait d\u2019avoine crémeux avec une touche de sirop d\u2019érable du Vermont.',
++        'c2.t': 'Espresso torréfaction foncée', 'c2.d': 'Corsé, fumé et parfait pour bien démarrer la matinée.',
++        'c3.t': 'Café froid', 'c3.d': 'Infusé pendant 18 heures pour une douceur maximale.', 'details': 'Voir les détails',
++        'f.story': 'Notre histoire', 'f.team': 'Rejoignez l\u2019équipe', 'f.contact': 'Contactez-nous', 'f.privacy': 'Confidentialité',
++        'f.rights': 'The Daily Grind Coffee Co. Tous droits réservés.'
++      },
++      de: {
++        'nav.menu': 'Speisekarte', 'nav.locations': 'Standorte', 'nav.rewards': 'Prämien', 'nav.account': 'Mein Konto', 'nav.logout': 'Abmelden',
++        'hero.title': 'Wecke deine Sinne', 'hero.sub': 'Ethisch bezogen, lokal geröstet, direkt in deine Tasse geliefert.', 'hero.cta': 'Jetzt bestellen',
++        'seasonal': 'Saisonale Favoriten', 'c1.t': 'Ahorn-Hafer-Latte', 'c1.d': 'Cremige Hafermilch mit einem Hauch Ahornsirup aus Vermont.',
++        'c2.t': 'Dunkler Espresso', 'c2.d': 'Kräftig, rauchig und perfekt für den Muntermacher am Morgen.',
++        'c3.t': 'Cold Brew', 'c3.d': '18 Stunden gezogen für maximale Milde.', 'details': 'Details ansehen',
++        'f.story': 'Unsere Geschichte', 'f.team': 'Team beitreten', 'f.contact': 'Kontakt', 'f.privacy': 'Datenschutz',
++        'f.rights': 'The Daily Grind Coffee Co. Alle Rechte vorbehalten.'
++      }
++    };
++    const nodes = document.querySelectorAll('[data-i18n]');
++    // English source text is whatever is in the HTML; capture it before translating
++    const EN = {};
++    nodes.forEach(n => { EN[n.dataset.i18n] = n.textContent; });
++
++    function setLang(lang) {
++      const dict = T[lang] || {};
++      nodes.forEach(n => { n.textContent = dict[n.dataset.i18n] || EN[n.dataset.i18n]; });
++      document.documentElement.lang = lang;
++      document.getElementById('lang').value = lang;
++      try { localStorage.setItem('lang', lang); } catch (e) {}
++    }
++
++    document.getElementById('lang').addEventListener('change', e => setLang(e.target.value));
++    let saved = 'en';
++    try { saved = localStorage.getItem('lang') || (navigator.language || 'en').slice(0, 2); } catch (e) {}
++    setLang(T[saved] ? saved : 'en');
++  </script>
++
+ </body>
+ 
+ </html>

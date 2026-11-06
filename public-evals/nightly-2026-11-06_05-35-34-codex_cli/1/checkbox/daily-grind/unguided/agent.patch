@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+index 66c9173..4e068e6 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,152 @@
+       color: var(--primary);
+     }
+ 
++    .customizations {
++      min-width: 0;
++      margin-top: 22px;
++      border: 0;
++      text-align: left;
++    }
++
++    .customizations legend {
++      margin-bottom: 10px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .customization {
++      position: relative;
++      display: block;
++      margin-bottom: 8px;
++      cursor: pointer;
++    }
++
++    .customization input {
++      position: absolute;
++      top: 50%;
++      right: 13px;
++      width: 22px;
++      height: 22px;
++      margin: -11px 0 0;
++      opacity: 0;
++      cursor: pointer;
++    }
++
++    .customization-content {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fcfaf8;
++      font-size: 0.9rem;
++      transition: background-color 180ms ease, border-color 180ms ease;
++    }
++
++    .option-icon {
++      width: 20px;
++      height: 20px;
++      flex: 0 0 auto;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.6;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .checkbox-mark {
++      display: grid;
++      place-items: center;
++      flex: 0 0 22px;
++      width: 22px;
++      height: 22px;
++      margin-left: auto;
++      border: 2px solid #8b7168;
++      border-radius: 5px;
++      background: white;
++      transition: background-color 180ms ease, border-color 180ms ease;
++    }
++
++    .checkbox-mark svg {
++      width: 16px;
++      height: 16px;
++      fill: none;
++      stroke: var(--primary);
++      stroke-width: 2.5;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      stroke-dasharray: 20;
++      stroke-dashoffset: 20;
++      transform: scale(0.7);
++      opacity: 0;
++      transition: stroke-dashoffset 200ms ease, transform 200ms ease, opacity 150ms ease;
++    }
++
++    .customization:hover .customization-content {
++      border-color: #8b7168;
++    }
++
++    .customization input:checked + .customization-content {
++      background: #fff3e0;
++      border-color: #a66a1c;
++    }
++
++    .customization input:checked + .customization-content .checkbox-mark {
++      background: var(--accent);
++      border-color: var(--primary);
++    }
++
++    .customization input:checked + .customization-content .checkbox-mark svg {
++      stroke-dashoffset: 0;
++      transform: scale(1);
++      opacity: 1;
++    }
++
++    .customization input:focus-visible + .customization-content {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .customization-content,
++      .checkbox-mark,
++      .checkbox-mark svg {
++        transition: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization input {
++        opacity: 1;
++        z-index: 1;
++      }
++
++      .checkbox-mark {
++        visibility: hidden;
++      }
++
++      .customization input:focus-visible + .customization-content {
++        outline-color: Highlight;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -181,16 +327,85 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations">
++            <legend><span class="sr-only">Maple Oat Latte: </span>Make it yours</legend>
++            <label class="customization" for="maple-oat-extra-shot">
++              <input type="checkbox" id="maple-oat-extra-shot" name="maple-oat-customizations" value="extra-shot">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 9h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5Z"/><path d="M17 10h1a3 3 0 0 1 0 6h-1M8 3v3m4-3v3m4-3v3"/></svg>
++                <span>Extra espresso shot</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++            <label class="customization" for="maple-oat-extra-maple">
++              <input type="checkbox" id="maple-oat-extra-maple" name="maple-oat-customizations" value="extra-maple">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2 5 4-2-1 5 4 1-6 5h-2v4h-2v-4H9l-6-5 4-1-1-5 4 2Z"/></svg>
++                <span>Extra maple syrup</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations">
++            <legend><span class="sr-only">Dark Roast Espresso: </span>Make it yours</legend>
++            <label class="customization" for="dark-roast-extra-shot">
++              <input type="checkbox" id="dark-roast-extra-shot" name="dark-roast-customizations" value="extra-shot">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 9h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5Z"/><path d="M17 10h1a3 3 0 0 1 0 6h-1M8 3v3m4-3v3m4-3v3"/></svg>
++                <span>Extra espresso shot</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++            <label class="customization" for="dark-roast-oat-milk">
++              <input type="checkbox" id="dark-roast-oat-milk" name="dark-roast-customizations" value="oat-milk">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8v4l3 5v9H5v-9l3-5ZM8 7h8M5 12h14M8 16h4"/></svg>
++                <span>Splash of oat milk</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations">
++            <legend><span class="sr-only">Cold Brew: </span>Make it yours</legend>
++            <label class="customization" for="cold-brew-oat-milk">
++              <input type="checkbox" id="cold-brew-oat-milk" name="cold-brew-customizations" value="oat-milk">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8v4l3 5v9H5v-9l3-5ZM8 7h8M5 12h14M8 16h4"/></svg>
++                <span>Splash of oat milk</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++            <label class="customization" for="cold-brew-vanilla">
++              <input type="checkbox" id="cold-brew-vanilla" name="cold-brew-customizations" value="vanilla">
++              <span class="customization-content">
++                <svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 20C7 11 13 5 20 4 19 11 13 18 6 20ZM6 20 18 6M5 4v4M3 6h4"/></svg>
++                <span>Vanilla syrup</span>
++                <span class="checkbox-mark" aria-hidden="true">
++                  <svg viewBox="0 0 20 20" focusable="false"><path d="m4 10 4 4 8-8"/></svg>
++                </span>
++              </span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

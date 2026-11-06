@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,42 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    button:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .order-events {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .order-events p { margin-top: 8px; }
++    #events-status { font-size: 0.9rem; }
++    .events-table { overflow-x: auto; margin-top: 20px; }
++    .events-table:focus-visible { outline: 3px solid var(--accent); }
++    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
++    caption { text-align: left; margin-bottom: 10px; }
++    th, td { padding: 12px; border-bottom: 1px solid var(--secondary); white-space: nowrap; }
++    th { background: #f5f0ed; }
++    td:nth-child(5), td:nth-child(6) { font-family: monospace; font-variant-numeric: tabular-nums; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +228,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="order-events" aria-labelledby="events-heading">
++      <h2 id="events-heading">From order to first sip</h2>
++      <p>Follow a sample batch of coffee orders across checkout, payments, and barista services.</p>
++      <p>Events arrive out of order. Load the batch to see their chronological timeline and the exact time between consecutive events.</p>
++      <button type="button" class="btn" id="load-events" aria-controls="events-results">Load sample order events</button>
++      <p id="events-status" role="status">Sample data · UTC timestamps with nine fractional digits.</p>
++      <div id="events-results" class="events-table" hidden tabindex="0" role="region" aria-label="Chronological coffee order events">
++        <table>
++          <caption>Order event timeline · intervals are measured from the previous row across all orders.</caption>
++          <thead><tr><th scope="col">#</th><th scope="col">Order</th><th scope="col">Event</th><th scope="col">Service</th><th scope="col">Timestamp (UTC)</th><th scope="col">Since previous event</th></tr></thead>
++          <tbody id="events-body"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +254,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./assets/order-events.js"></script>
+ </body>
+ 
+ </html>

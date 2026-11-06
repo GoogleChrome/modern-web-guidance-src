@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+index 66c9173..cd4fa3d 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,177 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards Section */
++    .rewards-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      padding: 35px 30px;
++      box-shadow: 0 4px 15px rgba(78, 52, 46, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .rewards-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .rewards-header h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .rewards-header p {
++      color: var(--text);
++      opacity: 0.85;
++      font-size: 0.95rem;
++    }
++
++    .rewards-content {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++    }
++
++    .progress-ring-wrapper {
++      position: relative;
++      width: 200px;
++      height: 200px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .progress-ring {
++      width: 200px;
++      height: 200px;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring-track {
++      fill: none;
++      stroke: var(--secondary);
++      stroke-width: 14;
++    }
++
++    .progress-ring-fill {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 14;
++      stroke-linecap: round;
++      /* r=82 => circumference = 2 * pi * 82 ≈ 515.22; 70% progress => offset ≈ 154.57 */
++      stroke-dasharray: 515.22;
++      stroke-dashoffset: 154.57;
++      transition: stroke-dashoffset 0.6s ease;
++    }
++
++    .progress-ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      padding: 24px;
++    }
++
++    .progress-count {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.1;
++    }
++
++    .progress-count span {
++      color: var(--accent);
++    }
++
++    .progress-unit {
++      font-size: 0.8rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text);
++      margin-top: 4px;
++    }
++
++    .progress-subtext {
++      font-size: 0.75rem;
++      color: var(--primary);
++      margin-top: 4px;
++      background: var(--light);
++      padding: 2px 8px;
++      border-radius: 10px;
++      border: 1px solid var(--secondary);
++    }
++
++    .rewards-details {
++      flex: 1;
++      min-width: 260px;
++      max-width: 500px;
++    }
++
++    .rewards-details h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.35rem;
++    }
++
++    .rewards-details p {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .rewards-perks {
++      list-style: none;
++      margin-bottom: 20px;
++    }
++
++    .rewards-perks li {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 8px;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .perk-badge {
++      display: inline-block;
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 2px solid var(--primary);
++      flex-shrink: 0;
++    }
++
++    .rewards-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .rewards-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +366,41 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards-section" aria-labelledby="rewards-heading">
++      <div class="rewards-header">
++        <h2 id="rewards-heading">Daily Grind Loyalty Rewards</h2>
++        <p>Earn 1 bean for every handcrafted drink you purchase. Collect 10 beans for a free drink on us!</p>
++      </div>
++
++      <div class="rewards-content">
++        <div class="progress-ring-wrapper" role="progressbar" aria-valuenow="7" aria-valuemin="0" aria-valuemax="10" aria-label="7 out of 10 drinks toward your next free drink">
++          <svg class="progress-ring" viewBox="0 0 200 200">
++            <circle class="progress-ring-track" cx="100" cy="100" r="82"></circle>
++            <circle class="progress-ring-fill" cx="100" cy="100" r="82"></circle>
++          </svg>
++          <div class="progress-ring-center">
++            <div class="progress-count"><span>7</span> / 10</div>
++            <div class="progress-unit">Beans Earned</div>
++            <div class="progress-subtext">3 to free drink</div>
++          </div>
++        </div>
++
++        <div class="rewards-details">
++          <h3>Almost There! 3 Drinks Away</h3>
++          <p>You're 70% of the way to your next complimentary handcrafted beverage of any size. Order ahead or scan your member pass in-store to keep earning.</p>
++          <ul class="rewards-perks">
++            <li><span class="perk-badge"></span> Free handcrafted drink every 10 beans</li>
++            <li><span class="perk-badge"></span> Double bean Tuesdays on all seasonal favorites</li>
++            <li><span class="perk-badge"></span> Complimentary birthday roast or pastry</li>
++          </ul>
++          <div class="rewards-actions">
++            <a href="/rewards" class="btn btn-accent">Redeem &amp; View Perks</a>
++            <a href="/order-online" class="btn">Order to Earn</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

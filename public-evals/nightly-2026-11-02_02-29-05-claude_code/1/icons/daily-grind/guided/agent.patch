@@ -1,0 +1,263 @@
+diff --git a/index.html b/index.html
+index 66c9173..e72f5b3 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,152 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Icon tokens: single-color SVGs rendered as CSS masks, so they follow currentColor */
++      --icon-style-size: 1.1em;
++      --icon-style-spacing: 0.4em;
++      --icon-menu: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 2v2M14 2v2M6 2v2'/%3E%3Cpath d='M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/%3E%3C/svg%3E");
++      --icon-location: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 15 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-gift: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='8' width='18' height='4' rx='1'/%3E%3Cpath d='M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7'/%3E%3Cpath d='M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5'/%3E%3C/svg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E%3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E");
++      --icon-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/%3E%3C/svg%3E");
++      --icon-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
++      --icon-bean: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.17 6.6C9.95 7.48 9.64 8.36 9 9s-1.52.95-2.4 1.17A6 6 0 0 0 8 22c7.73 0 14-6.27 14-14a6 6 0 0 0-11.83-1.4Z'/%3E%3Cpath d='M5.34 10.62a4 4 0 1 0 5.28-5.28'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12h20M12 2v20M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4'/%3E%3C/svg%3E");
++    }
++
++    /* Icon engine: set --icon-start / --icon-end (or --icon on an empty .icon) to render an icon */
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    /* Fallback hooks for browsers without container style queries.
++       content is invalid (so none) when the icon property is unset. */
++    :where(.icon-start, .icon:empty)::before,
++    :where(.icon-end)::after {
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon-start)::before {
++      --icon-start: inherit;
++    }
++
++    :where(.icon:empty)::before {
++      --icon-start: var(--icon);
++    }
++
++    :where(.icon-start, .icon:empty)::before {
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++      mask: var(--icon-start) no-repeat center / contain;
++    }
++
++    :where(.icon-end)::after {
++      --icon-end: inherit;
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
++      mask: var(--icon-end) no-repeat center / contain;
++    }
++
++    :where(.icon-start:not(.icon, :empty))::before {
++      margin-inline-end: var(--icon-style-spacing, 0.3em);
++    }
++
++    :where(.icon-end:not(.icon, :empty))::after {
++      margin-inline-start: var(--icon-style-spacing, 0.3em);
++    }
++
++    @container style(--icon-start) {
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    @container style(--icon-end) {
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Safari: WebKit #301609 / #320220 (icons not painting) and #325900 (overrides ignored) */
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      @layer webkit-301609-fix {
++        ::before,
++        ::after {
++          animation: webkit-301609 0s;
++        }
++      }
++
++      @property --icon-start {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @property --icon-end {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @layer webkit-325900-fix {
++        @container style(--icon-start) {
++          * {
++            --icon-start: initial;
++          }
++        }
++
++        @container style(--icon-end) {
++          * {
++            --icon-end: initial;
++          }
++        }
++      }
+     }
+ 
+     * {
+@@ -66,6 +212,12 @@
+       color: var(--accent);
+     }
+ 
++    nav a[href="/menu"] { --icon-start: var(--icon-menu); }
++    nav a[href="/locations"] { --icon-start: var(--icon-location); }
++    nav a[href="/rewards"] { --icon-start: var(--icon-gift); }
++    nav a[href="/account"] { --icon-start: var(--icon-user); }
++    nav a[href="/logout"] { --icon-start: var(--icon-logout); }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -115,6 +267,17 @@
+       text-align: center;
+     }
+ 
++    .card-icon {
++      display: block;
++      margin-bottom: 10px;
++      --icon-style-size: 2.5rem;
++      --icon-style-color: var(--accent);
++    }
++
++    .card-icon--maple { --icon: var(--icon-leaf); }
++    .card-icon--espresso { --icon: var(--icon-bean); }
++    .card-icon--cold-brew { --icon: var(--icon-snowflake); }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -135,6 +298,23 @@
+       background: #3e2723;
+     }
+ 
++    .btn-order { --icon-start: var(--icon-bag); }
++    .btn-details { --icon-end: var(--icon-arrow-right); }
++
++    .btn-details::after {
++      transition: translate 0.3s;
++    }
++
++    .btn-details:hover::after {
++      translate: 0.2em 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn-details::after {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,18 +340,18 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon-start">Menu</a></li>
++      <li><a href="/locations" class="icon-start">Locations</a></li>
++      <li><a href="/rewards" class="icon-start">Rewards</a></li>
++      <li><a href="/account" class="icon-start">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon-start">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-order icon-start">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +359,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="icon card-icon card-icon--maple" aria-hidden="true"></span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn-details icon-end">View Details</a>
+         </div>
+         <div class="card">
++          <span class="icon card-icon card-icon--espresso" aria-hidden="true"></span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn-details icon-end">View Details</a>
+         </div>
+         <div class="card">
++          <span class="icon card-icon card-icon--cold-brew" aria-hidden="true"></span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn-details icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promos {
++      margin-top: 48px;
++      text-align: center;
++    }
++
++    .promo-controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.55;
++      cursor: default;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #domContainer .card {
++      border-top: 4px solid var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +226,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promos" aria-labelledby="promoHeading">
++      <h2 id="promoHeading">A Little Extra with Your Coffee</h2>
++      <p>Discover special offers to brighten your daily ritual.</p>
++      <div class="promo-controls">
++        <button type="button" class="btn" id="addBtn" aria-controls="domContainer">Add promo</button>
++        <button type="button" class="btn" id="removeBtn" aria-controls="domContainer">Remove last promo</button>
++        <button type="button" class="btn" id="toggleBtn" aria-controls="toggleCard" aria-expanded="true">Hide featured promo</button>
++      </div>
++      <div id="domContainer" class="grid" aria-live="polite" aria-relevant="additions removals">
++        <article id="toggleCard" class="card">
++          <h3>Your Afternoon Pick-Me-Up</h3>
++          <p>Take a little time for yourself with a freshly brewed coffee and a favorite pastry.</p>
++          <a href="/order-online" class="btn">Find your next treat</a>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +255,78 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++    const toggleBtn = document.getElementById('toggleBtn');
++    const toggleCard = document.getElementById('toggleCard');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let promoCount = 0;
++
++    async function animateCard(card, entering) {
++      if (card.hidden || reducedMotion.matches || !card.animate) return;
++      const frames = [
++        { opacity: 0, transform: 'scale(0.92)' },
++        { opacity: 1, transform: 'scale(1)' }
++      ];
++      const animation = card.animate(entering ? frames : frames.slice().reverse(), {
++        duration: 260,
++        easing: 'ease-in-out',
++        fill: 'both'
++      });
++      try {
++        await animation.finished;
++      } finally {
++        animation.cancel();
++      }
++    }
++
++    // Keep rapid clicks from overlapping a card's entry, exit, or visibility change.
++    async function updatePromos(update) {
++      addBtn.disabled = removeBtn.disabled = toggleBtn.disabled = true;
++      try {
++        await update();
++      } finally {
++        addBtn.disabled = false;
++        removeBtn.disabled = !domContainer.lastElementChild;
++        toggleBtn.disabled = !domContainer.contains(toggleCard);
++        toggleBtn.setAttribute('aria-expanded', String(!toggleCard.hidden && domContainer.contains(toggleCard)));
++        toggleBtn.textContent = toggleCard.hidden ? 'Show featured promo' : 'Hide featured promo';
++      }
++    }
++
++    addBtn.addEventListener('click', () => updatePromos(async () => {
++      const card = document.createElement('article');
++      card.className = 'card';
++      const heading = document.createElement('h3');
++      heading.textContent = `Fresh Pick #${++promoCount}`;
++      const description = document.createElement('p');
++      description.textContent = 'Make today a coffee day. Explore our seasonal drinks and locally roasted favorites.';
++      card.append(heading, description);
++      domContainer.append(card);
++      await animateCard(card, true);
++    }));
++
++    removeBtn.addEventListener('click', () => updatePromos(async () => {
++      const card = domContainer.lastElementChild;
++      if (!card) return;
++      await animateCard(card, false);
++      card.remove();
++    }));
++
++    toggleBtn.addEventListener('click', () => updatePromos(async () => {
++      if (toggleCard.hidden) {
++        toggleCard.hidden = false;
++        await animateCard(toggleCard, true);
++      } else {
++        await animateCard(toggleCard, false);
++        toggleCard.hidden = true;
++      }
++    }));
++  </script>
++
+ </body>
+ 
+ </html>

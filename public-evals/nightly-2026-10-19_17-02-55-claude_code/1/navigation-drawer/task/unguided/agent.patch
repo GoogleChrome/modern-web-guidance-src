@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -45,31 +45,146 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-btn {
++      display: grid;
++      place-items: center;
++      width: 44px;
++      height: 44px;
++      background: none;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      color: inherit;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .menu-btn:hover {
++      color: var(--accent);
++    }
++
++    .menu-btn svg,
++    .drawer-close svg {
++      width: 24px;
++      height: 24px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++    }
++
++    /* Drawer: a modal <dialog> that doubles as a horizontal scroll-snap
++       container. Snap point 1 = open (panel visible); snap point 2 = panel
++       scrolled off-screen. A native swipe toward the closed snap point
++       triggers `scrollend`, where the script closes the dialog. The
++       transparent spacer fills the rest of the viewport as the tap target. */
++    .drawer {
++      position: fixed;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      max-width: none;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      color: inherit;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior: contain;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++    }
++
++    .drawer::-webkit-scrollbar {
++      display: none;
++    }
++
++    .drawer[open] {
+       display: flex;
+-      list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .drawer::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++      transition: opacity 0.3s;
+     }
+ 
+-    nav a {
++    @starting-style {
++      .drawer[open]::backdrop {
++        opacity: 0;
++      }
++    }
++
++    .drawer-panel {
++      flex: none;
++      width: min(20rem, 85vw);
++      height: 100%;
++      overflow-y: auto;
++      background: var(--primary);
+       color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 1rem 1.5rem 2rem;
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
+     }
+ 
+-    nav a:hover {
++    .drawer-spacer {
++      flex: none;
++      width: 100vw;
++      height: 100%;
++      scroll-snap-align: end;
++      scroll-snap-stop: always;
++    }
++
++    .drawer-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 1.5rem;
++    }
++
++    .drawer-close {
++      display: grid;
++      place-items: center;
++      width: 44px;
++      height: 44px;
++      margin-right: -10px;
++      background: none;
++      border: 0;
++      color: inherit;
++      cursor: pointer;
++    }
++
++    .drawer-close:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .drawer ul {
++      list-style: none;
++    }
++
++    .drawer li + li {
++      margin-top: 0.25rem;
++    }
++
++    .drawer li a {
++      display: block;
++      padding: 0.75rem 0;
++      font-size: 1.1rem;
++    }
++
++    body:has(.drawer[open]) {
++      overflow: hidden;
++    }
++
++    .drawer li a.logout-link {
++      display: inline-block;
++      margin-top: 1rem;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
++      font-size: 0.9rem;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+@@ -158,15 +273,32 @@
+ <body>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <button type="button" class="menu-btn" aria-label="Open menu" aria-haspopup="dialog"
++      commandfor="site-menu" command="show-modal">
++      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
++    </button>
++
++    <dialog id="site-menu" class="drawer" aria-label="Site menu">
++      <div class="drawer-panel">
++        <div class="drawer-header">
++          <div class="logo">THE DAILY GRIND</div>
++          <button type="button" class="drawer-close" aria-label="Close menu"
++            commandfor="site-menu" command="close">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
++          </button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </div>
++      <div class="drawer-spacer" aria-hidden="true"></div>
++    </dialog>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -206,7 +338,45 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Escape and focus trapping are handled natively by <dialog>.showModal();
++    // opening/closing buttons use invoker commands (commandfor/command).
++    const drawer = document.getElementById('site-menu');
++    const panel = drawer.querySelector('.drawer-panel');
++    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++    const isClosedPosition = () => drawer.scrollLeft >= panel.offsetWidth - 1;
++
++    // Native swipe: the user scrolls the panel off-screen and snaps to the end.
++    if ('onscrollend' in window) {
++      drawer.addEventListener('scrollend', () => {
++        if (drawer.open && isClosedPosition()) drawer.close();
++      });
++    } else {
++      let timer;
++      drawer.addEventListener('scroll', () => {
++        clearTimeout(timer);
++        timer = setTimeout(() => {
++          if (drawer.open && isClosedPosition()) drawer.close();
++        }, 150);
++      });
++    }
++
++    // Tapping the backdrop (the spacer area, or the dialog itself) closes it.
++    drawer.addEventListener('click', (e) => {
++      if (e.target === drawer || e.target.classList.contains('drawer-spacer')) {
++        if (reduceMotion.matches) drawer.close();
++        else drawer.scrollTo({ left: panel.offsetWidth, behavior: 'smooth' });
++      }
++    });
++
++    // Following a link closes the drawer (matters for in-page anchors).
++    panel.addEventListener('click', (e) => {
++      if (e.target.closest('a')) drawer.close();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

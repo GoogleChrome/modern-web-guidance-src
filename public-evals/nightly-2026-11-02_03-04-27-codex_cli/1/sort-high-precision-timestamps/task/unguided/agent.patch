@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .order-events {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    button.btn:disabled { opacity: 0.65; cursor: wait; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .event-status { margin: 16px 0; }
++    .event-table-wrap { overflow-x: auto; }
++    .event-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
++    .event-table caption { text-align: left; padding-bottom: 12px; }
++    .event-table th, .event-table td {
++      text-align: left;
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++    .event-table th { background: #f5f1ef; }
++    .event-table .timestamp, .event-table .interval {
++      font-family: ui-monospace, monospace;
++      white-space: nowrap;
++    }
++    .event-note { margin-top: 12px; font-size: 0.85rem; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +221,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-events" aria-labelledby="events-heading">
++      <h2 id="events-heading">From order to first sip</h2>
++      <p>Follow a coffee order across our services. Load an out-of-order sample batch to see its timeline and the exact time between events.</p>
++      <button id="load-events" class="btn" type="button" aria-controls="event-results">Load coffee order events</button>
++      <p id="event-status" class="event-status" role="status" aria-live="polite">Sample batch ready to load. All timestamps are in UTC, with nanosecond precision.</p>
++      <div id="event-results" hidden>
++        <div class="event-table-wrap" role="region" aria-label="Coffee order event timeline" tabindex="0">
++          <table class="event-table">
++            <caption>Order DG-1042 · Earliest event first · Original arrival position shown for reference</caption>
++            <thead>
++              <tr>
++                <th scope="col">Arrival</th>
++                <th scope="col">Service</th>
++                <th scope="col">Event</th>
++                <th scope="col">Timestamp (UTC)</th>
++                <th scope="col">Since previous event (ns)</th>
++              </tr>
++            </thead>
++            <tbody id="event-rows"></tbody>
++          </table>
++        </div>
++        <p class="event-note">Intervals reflect recorded timestamps across services and may include clock differences.</p>
++      </div>
++      <noscript><p>Enable JavaScript to load and sort the event batch.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +259,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./homepage.js"></script>
+ </body>
+ 
+ </html>

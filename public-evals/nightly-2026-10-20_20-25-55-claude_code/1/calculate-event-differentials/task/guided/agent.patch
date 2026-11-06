@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,23 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer [data-remaining] {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-timer [data-elapsed] {
++      display: block;
++      opacity: 0.75;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +195,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="promo-timer"
++             data-start="2025-12-01" data-end="2026-03-01">
++            <span data-remaining>Calculating&hellip;</span>
++            <span data-elapsed></span>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +226,45 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is not yet in Safari, so load the polyfill when it's missing.
++    if (typeof Temporal === 'undefined') {
++      const { Temporal: T } = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = T;
++    }
++
++    const fmt = (duration) => {
++      const part = (unit, value) =>
++        new Intl.NumberFormat(undefined, { style: 'unit', unit, unitDisplay: 'long' }).format(value);
++      return `${part('day', duration.days)}, ${part('hour', duration.hours)}`;
++    };
++
++    // Dates are midnight (start of day) in the visitor's local time zone.
++    const now = Temporal.Now.zonedDateTimeISO();
++    const atMidnight = (date) =>
++      Temporal.PlainDate.from(date).toZonedDateTime({ timeZone: now.timeZoneId });
++    const opts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'floor' };
++
++    for (const el of document.querySelectorAll('.promo-timer')) {
++      const start = atMidnight(el.dataset.start);
++      const end = atMidnight(el.dataset.end);
++      const remaining = el.querySelector('[data-remaining]');
++      const elapsed = el.querySelector('[data-elapsed]');
++
++      if (Temporal.ZonedDateTime.compare(now, end) >= 0) {
++        remaining.textContent = 'This offer has ended.';
++        elapsed.textContent = `Ran for ${fmt(end.since(start, opts))}`;
++      } else if (Temporal.ZonedDateTime.compare(now, start) < 0) {
++        remaining.textContent = `Starts in ${fmt(now.until(start, opts))}`;
++        elapsed.textContent = '';
++      } else {
++        remaining.textContent = `Offer ends in ${fmt(now.until(end, opts))}`;
++        elapsed.textContent = `Started ${fmt(now.since(start, opts))} ago`;
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

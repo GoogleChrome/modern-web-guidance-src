@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,196 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Static by default; motion is a progressive enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      background: #211a15;
++      color: #fff8ec;
++      view-timeline-name: --coffee-depth;
++      view-timeline-axis: block;
++    }
++
++    .coffee-story__background {
++      position: absolute;
++      inset: -100px 0;
++      z-index: -2;
++      background: url('images/coffee-beans.jpg') center / cover;
++      pointer-events: none;
++    }
++
++    .coffee-story::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(90deg, rgba(25, 19, 15, .97) 10%, rgba(25, 19, 15, .87) 48%, rgba(25, 19, 15, .45));
++      pointer-events: none;
++    }
++
++    .coffee-story__inner {
++      max-width: 1200px;
++      min-height: 680px;
++      margin: auto;
++      padding: 100px 50px;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      align-items: center;
++      gap: 60px;
++    }
++
++    .coffee-story__eyebrow {
++      color: #e6bc82;
++      font-size: .75rem;
++      font-weight: 600;
++      letter-spacing: .22em;
++      text-transform: uppercase;
++      margin-bottom: 24px;
++      display: flex;
++      align-items: center;
++      gap: 14px;
++    }
++
++    .coffee-story__eyebrow::before {
++      content: '';
++      width: 32px;
++      height: 1px;
++      background: currentColor;
++    }
++
++    .coffee-story h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.7rem, 5vw, 4.5rem);
++      font-weight: 400;
++      line-height: 1.08;
++      letter-spacing: -.035em;
++      margin-bottom: 26px;
++    }
++
++    .coffee-story h2 em {
++      color: #e6bc82;
++      font-weight: 400;
++    }
++
++    .coffee-story__description {
++      max-width: 370px;
++      color: #e2d8cc;
++      font-size: 1rem;
++      line-height: 1.8;
++    }
++
++    .coffee-story__link {
++      display: inline-flex;
++      align-items: center;
++      gap: 28px;
++      margin-top: 30px;
++      padding: 8px 0;
++      border-bottom: 1px solid #b89a73;
++      color: #fff8ec;
++      text-decoration: none;
++      font-size: .9rem;
++    }
++
++    .coffee-story__link:hover {
++      color: #e6bc82;
++    }
++
++    .coffee-story__link:focus-visible {
++      outline: 2px solid #e6bc82;
++      outline-offset: 6px;
++    }
++
++    .coffee-story__scene {
++      position: relative;
++      height: 400px;
++      pointer-events: none;
++    }
++
++    .coffee-story__ring {
++      position: absolute;
++      width: 390px;
++      height: 390px;
++      border: 1px solid rgba(230, 188, 130, .65);
++      border-radius: 50%;
++      top: -25px;
++      right: -25px;
++    }
++
++    .coffee-story__photo {
++      position: absolute;
++      inset: 25px 25px 0 0;
++      margin: 0;
++    }
++
++    .coffee-story__photo img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      border-radius: 48% 48% 2px 2px;
++      box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
++    }
++
++    .coffee-story__caption {
++      position: absolute;
++      right: 0;
++      bottom: -36px;
++      font-size: .65rem;
++      letter-spacing: .2em;
++      text-transform: uppercase;
++      color: #e6bc82;
++    }
++
++    /* Only transforms animate; no scroll listeners or permanent GPU hints.
++       A named section timeline keeps all three layers in sync. */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .coffee-story__background,
++        .coffee-story__ring,
++        .coffee-story__photo {
++          animation: coffee-parallax linear both;
++          animation-timeline: --coffee-depth;
++          animation-range: cover 0% cover 100%;
++        }
++
++        .coffee-story__background { --travel: 70px; }
++        .coffee-story__ring { --travel: -45px; }
++        .coffee-story__photo { --travel: -85px; }
++      }
++    }
++
++    @keyframes coffee-parallax {
++      from { transform: translateY(calc(-1 * var(--travel))); }
++      to { transform: translateY(var(--travel)); }
++    }
++
++    @media (max-width: 700px) {
++      .coffee-story__inner {
++        grid-template-columns: 1fr;
++        padding: 64px 24px 96px;
++        gap: 64px;
++      }
++
++      .coffee-story__scene {
++        width: min(100%, 360px);
++        height: 300px;
++        justify-self: center;
++      }
++
++      .coffee-story__ring {
++        width: 280px;
++        height: 280px;
++        right: -10px;
++      }
++
++      .coffee-story__photo {
++        inset: 0 15px 0 0;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +361,27 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="coffee-story" aria-labelledby="coffee-story-title">
++    <div class="coffee-story__background" aria-hidden="true"></div>
++    <div class="coffee-story__inner">
++      <div class="coffee-story__copy">
++        <p class="coffee-story__eyebrow">From bean to brew</p>
++        <h2 id="coffee-story-title">Good coffee.<br><em>Deeper roots.</em></h2>
++        <p class="coffee-story__description">Every cup has a story. Ours begins with thoughtfully sourced beans, a careful roast, and a little time to bring out the extraordinary.</p>
++        <a class="coffee-story__link" href="/about">Discover our story <span aria-hidden="true">↗</span></a>
++      </div>
++      <div class="coffee-story__scene" aria-hidden="true">
++        <div class="coffee-story__ring"></div>
++        <figure class="coffee-story__photo">
++          <img src="images/coffee-ritual.jpg" alt="" width="850" height="567" loading="lazy" decoding="async">
++        </figure>
++        <p class="coffee-story__caption">Thoughtfully sourced. Slowly savored.</p>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

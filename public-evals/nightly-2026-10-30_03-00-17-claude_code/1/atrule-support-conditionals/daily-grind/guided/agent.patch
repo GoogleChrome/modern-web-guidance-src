@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+index 66c9173..46e461e 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,36 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* A space; descendants only inherit it where @property is unsupported (see .card below) */
++      --supports-atproperty: ;
++    }
++
++    /* Registered custom properties and custom functions (ignored where unsupported) */
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --card-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++
++    @function --scrim(--alpha <number>: 0.5) {
++      result: linear-gradient(rgb(0 0 0 / calc(var(--alpha) * 0.5)),
++          rgb(0 0 0 / var(--alpha)) 60%,
++          rgb(0 0 0 / calc(var(--alpha) + 0.25)));
++    }
++
++    @function --fluid(--min <length>, --max <length>) {
++      result: clamp(var(--min), 1rem + 5vw, var(--max));
++    }
++
++    @keyframes card-border-spin {
++      to {
++        --card-angle: 360deg;
++      }
+     }
+ 
+     * {
+@@ -29,15 +59,19 @@
+ 
+     /* Navigation */
+     nav {
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .nav-inner {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      transition: padding 0.3s, box-shadow 0.3s;
+     }
+ 
+     .logo {
+@@ -75,8 +109,8 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      --hero-photo: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), var(--hero-photo);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -152,20 +186,67 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feature-gated enhancements */
++
++    /* Navigation: condense and lift the bar once it sticks (scroll-state container queries) */
++    @supports (container-type: scroll-state) {
++      nav {
++        container-type: scroll-state;
++      }
++
++      @container scroll-state(stuck: top) {
++        .nav-inner {
++          padding-block: 0.5rem;
++          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++        }
++      }
++    }
++
++    /* Hero: richer scrim and fluid heading (@function) */
++    @supports at-rule(@function) {
++      .hero {
++        background-image: --scrim(0.45), var(--hero-photo);
++      }
++
++      .hero h1 {
++        font-size: --fluid(2.25rem, 4.5rem);
++        line-height: 1.1;
++        text-wrap: balance;
++      }
++    }
++
++    /* Seasonal favorites: animated gradient border (@property).
++       var(--supports-atproperty, …) only resolves to the fallback where @property is
++       supported, because the registered property doesn't inherit from :root. */
++    .card {
++      border: 2px solid transparent;
++      background-image: var(--supports-atproperty,
++          linear-gradient(white, white),
++          conic-gradient(from var(--card-angle), var(--accent), var(--secondary), var(--primary), var(--accent)));
++      background-origin: border-box;
++      background-clip: padding-box, border-box;
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation: var(--supports-atproperty, card-border-spin 6s linear infinite);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-inner">
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </div>
+   </nav>
+ 
+   <header class="hero">

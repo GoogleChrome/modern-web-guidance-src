@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,136 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section
++       Pure CSS scroll-driven animations. The section exposes a named view
++       timeline that tracks its progress through the viewport; each layer
++       translates by a different amount over that timeline, so layers appear
++       to move at different speeds. Only `transform` is animated, which keeps
++       the work on the compositor (no layout/paint per frame). */
++    .parallax {
++      position: relative;
++      min-height: 90vh;
++      display: grid;
++      place-items: center;
++      overflow: clip; /* clip, not hidden: avoids creating a scroll container */
++      isolation: isolate;
++      background: var(--primary); /* shown while the photo loads */
++      color: white;
++      view-timeline: --parallax block;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    /* Layer 1 (farthest): photo, oversized so it can drift without gaps */
++    .parallax__layer--back {
++      inset: -20% 0;
++      z-index: -3;
++      background:
++        linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.75)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center / cover no-repeat;
++    }
++
++    /* Layers 2 & 3: decorative coffee beans drawn in CSS */
++    .parallax__layer--mid {
++      z-index: -2;
++      filter: blur(2px);
++      opacity: 0.7;
++    }
++
++    .parallax__layer--near {
++      z-index: -1;
++    }
++
++    .bean {
++      position: absolute;
++      width: var(--size, 48px);
++      aspect-ratio: 3 / 4;
++      border-radius: 50%;
++      background: radial-gradient(ellipse at 35% 30%, #8d6e63, #4e342e 60%, #2d1b16);
++      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
++      rotate: var(--rot, 0deg);
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      inset: 12% 46%;
++      border-radius: 50%;
++      background: #1f120e;
++    }
++
++    /* Layer 4 (closest): the readable content */
++    .parallax__content {
++      position: relative;
++      max-width: 640px;
++      margin: 0 20px;
++      padding: 2.5rem 2rem;
++      text-align: center;
++      background: rgba(30, 18, 14, 0.6);
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      border-radius: 12px;
++      backdrop-filter: blur(4px);
++    }
++
++    .parallax__content h2 {
++      font-size: clamp(1.75rem, 4vw, 2.5rem);
++      margin-bottom: 0.75rem;
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .parallax__content .btn:hover {
++      background: #ffc777;
++    }
++
++    .parallax__content .btn:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    @keyframes parallax-shift {
++      from { transform: translate3d(0, calc(var(--depth) * -1), 0); }
++      to   { transform: translate3d(0, var(--depth), 0); }
++    }
++
++    /* Motion is opt-in: only for users who haven't asked for reduced motion
++       and only in browsers that support scroll-driven animations. Everyone
++       else gets a fully readable, static layered section. */
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) {
++        .parallax__layer,
++        .parallax__content {
++          will-change: transform;
++          animation: parallax-shift linear both;
++          animation-timeline: --parallax;
++          animation-range: cover 0% cover 100%;
++        }
++
++        /* Larger --depth = more travel = appears closer / faster */
++        .parallax__layer--back { --depth: 12vh; }
++        .parallax__layer--mid  { --depth: -6vh; }
++        .parallax__layer--near { --depth: -18vh; }
++        .parallax__content     { --depth: -4vh; }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .parallax__layer--mid .bean:nth-child(n + 4),
++      .parallax__layer--near .bean:nth-child(n + 4) {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +301,34 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true"></div>
++
++    <div class="parallax__layer parallax__layer--mid" aria-hidden="true">
++      <span class="bean" style="--size: 34px; --rot: 20deg; top: 12%; left: 8%;"></span>
++      <span class="bean" style="--size: 28px; --rot: -35deg; top: 30%; left: 82%;"></span>
++      <span class="bean" style="--size: 38px; --rot: 60deg; top: 72%; left: 18%;"></span>
++      <span class="bean" style="--size: 26px; --rot: -10deg; top: 82%; left: 70%;"></span>
++      <span class="bean" style="--size: 30px; --rot: 45deg; top: 8%; left: 58%;"></span>
++    </div>
++
++    <div class="parallax__layer parallax__layer--near" aria-hidden="true">
++      <span class="bean" style="--size: 64px; --rot: -25deg; top: 20%; left: 18%;"></span>
++      <span class="bean" style="--size: 72px; --rot: 35deg; top: 62%; left: 86%;"></span>
++      <span class="bean" style="--size: 56px; --rot: 80deg; top: 88%; left: 40%;"></span>
++      <span class="bean" style="--size: 60px; --rot: -55deg; top: 14%; left: 74%;"></span>
++      <span class="bean" style="--size: 52px; --rot: 15deg; top: 50%; left: 4%;"></span>
++    </div>
++
++    <div class="parallax__content">
++      <h2 id="parallax-heading">From Bean to Cup</h2>
++      <p>We source single-origin beans from small farms, roast them in small batches every morning, and brew them the moment you order.</p>
++      <a href="/our-roastery" class="btn">Meet Our Roasters</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

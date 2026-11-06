@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,128 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Operations Queue Simulator */
++    .ops {
++      margin-top: 60px;
++    }
++
++    .ops h2,
++    .ops > p {
++      text-align: center;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin: 20px 0;
++    }
++
++    .ops-controls button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      color: white;
++      padding: 10px 18px;
++      border-radius: 5px;
++      background: var(--primary);
++    }
++
++    .ops-controls button:hover {
++      filter: brightness(1.2);
++    }
++
++    .ops-controls button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .ops-controls .urgent { background: #b71c1c; }
++    .ops-controls .standard { background: #1565c0; }
++    .ops-controls .background { background: #546e7a; }
++    .ops-controls .batch { background: var(--accent); color: var(--text); }
++
++    .ops-status {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 20px;
++      justify-content: center;
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .heartbeat {
++      display: inline-block;
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #43a047;
++      margin-right: 6px;
++      animation: pulse 1s ease-in-out infinite alternate;
++    }
++
++    @keyframes pulse {
++      to { opacity: 0.2; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .heartbeat { animation: none; }
++    }
++
++    .ops-lists {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++    }
++
++    .ops-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++    }
++
++    .ops-panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .ops-panel ul {
++      list-style: none;
++      max-height: 260px;
++      overflow-y: auto;
++      font-size: 0.9rem;
++    }
++
++    .ops-panel li {
++      padding: 6px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .ops-panel li:last-child { border-bottom: 0; }
++
++    .ops-panel progress {
++      width: 100%;
++      height: 8px;
++      display: block;
++    }
++
++    .tag {
++      font-size: 0.7rem;
++      font-weight: bold;
++      color: white;
++      padding: 1px 6px;
++      border-radius: 3px;
++      margin-right: 6px;
++      text-transform: uppercase;
++    }
++
++    .tag.urgent { background: #b71c1c; }
++    .tag.standard { background: #1565c0; }
++    .tag.background { background: #546e7a; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +314,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p>Tasks run in priority order and yield to the browser, so the page stays responsive.</p>
++
++      <div class="ops-controls">
++        <button type="button" class="urgent" data-task="urgent">Run Urgent Checkout</button>
++        <button type="button" class="standard" data-task="standard">Run Menu Update</button>
++        <button type="button" class="background" data-task="background">Run Telemetry Logging</button>
++        <button type="button" class="batch" data-task="batch">Run Mixed Batch</button>
++      </div>
++
++      <div class="ops-status">
++        <span><span class="heartbeat" aria-hidden="true"></span>UI heartbeat: <output id="ops-ticks">0</output></span>
++        <span>Pending: <output id="ops-pending">0</output></span>
++        <span>Completed: <output id="ops-completed">0</output></span>
++      </div>
++
++      <div class="ops-lists">
++        <div class="ops-panel">
++          <h3>Active Queue</h3>
++          <ul id="ops-queue" aria-live="polite"><li>Queue is empty.</li></ul>
++        </div>
++        <div class="ops-panel">
++          <h3>Completion Log</h3>
++          <ul id="ops-log" aria-live="polite"><li>Nothing has run yet.</li></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +355,131 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      // Lower number = higher priority.
++      const TASK_TYPES = {
++        urgent: { label: 'Urgent checkout', rank: 0, units: 60 },
++        standard: { label: 'Menu update', rank: 1, units: 200 },
++        background: { label: 'Telemetry logging', rank: 2, units: 400 }
++      };
++      const BUDGET_MS = 50; // longer than this counts as a long task
++      const UNIT_COST_MS = 1; // simulated blocking work per unit
++
++      const $ = (id) => document.getElementById(id);
++      const queueEl = $('ops-queue');
++      const logEl = $('ops-log');
++      const pendingEl = $('ops-pending');
++      const completedEl = $('ops-completed');
++
++      const pending = [];
++      let completed = 0;
++      let nextId = 1;
++      let running = false;
++
++      // Heartbeat proves the main thread is still free to run timers.
++      let ticks = 0;
++      setInterval(() => { $('ops-ticks').textContent = ++ticks; }, 100);
++
++      function yieldToMain() {
++        if ('scheduler' in window && 'yield' in window.scheduler) {
++          return scheduler.yield();
++        }
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      }
++
++      function busyWork(ms) {
++        const end = performance.now() + ms;
++        while (performance.now() < end);
++      }
++
++      // Highest priority first, then first-in-first-out.
++      function pickNext() {
++        let best = null;
++        for (const task of pending) {
++          if (!best || task.rank < best.rank) best = task;
++        }
++        return best;
++      }
++
++      function enqueue(type) {
++        const def = TASK_TYPES[type];
++        pending.push({ id: nextId++, type, rank: def.rank, label: def.label, total: def.units, done: 0 });
++        renderQueue();
++      }
++
++      function renderQueue() {
++        pendingEl.textContent = pending.length;
++        queueEl.replaceChildren();
++        if (!pending.length) {
++          queueEl.innerHTML = '<li>Queue is empty.</li>';
++          return;
++        }
++        const ordered = [...pending].sort((a, b) => a.rank - b.rank || a.id - b.id);
++        for (const task of ordered) {
++          const li = document.createElement('li');
++          const tag = document.createElement('span');
++          tag.className = `tag ${task.type}`;
++          tag.textContent = task.type;
++          const progress = document.createElement('progress');
++          progress.max = task.total;
++          progress.value = task.done;
++          progress.setAttribute('aria-label', `${task.label} #${task.id} progress`);
++          li.append(tag, `${task.label} #${task.id}`, progress);
++          queueEl.append(li);
++        }
++      }
++
++      function logDone(task) {
++        if (!completed) logEl.replaceChildren();
++        completedEl.textContent = ++completed;
++        const li = document.createElement('li');
++        const tag = document.createElement('span');
++        tag.className = `tag ${task.type}`;
++        tag.textContent = task.type;
++        li.append(tag, `${task.label} #${task.id} finished`);
++        logEl.prepend(li);
++      }
++
++      async function run() {
++        if (running) return;
++        running = true;
++        let deadline = performance.now() + BUDGET_MS;
++        let task;
++        // Re-pick after every unit so newly added urgent work preempts running work.
++        while ((task = pickNext())) {
++          busyWork(UNIT_COST_MS);
++          task.done++;
++          if (task.done >= task.total) {
++            pending.splice(pending.indexOf(task), 1);
++            logDone(task);
++          }
++          if (performance.now() >= deadline) {
++            renderQueue();
++            await yieldToMain();
++            deadline = performance.now() + BUDGET_MS;
++          }
++        }
++        renderQueue();
++        running = false;
++      }
++
++      document.querySelector('.ops-controls').addEventListener('click', (event) => {
++        const button = event.target.closest('button[data-task]');
++        if (!button) return;
++        const type = button.dataset.task;
++        if (type === 'batch') {
++          // Deliberately enqueued out of order; the scheduler sorts by priority.
++          ['background', 'standard', 'urgent', 'background', 'urgent', 'standard'].forEach(enqueue);
++        } else {
++          enqueue(type);
++        }
++        run();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

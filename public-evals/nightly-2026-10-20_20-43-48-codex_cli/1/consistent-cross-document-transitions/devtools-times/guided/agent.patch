@@ -1,0 +1,193 @@
+diff --git a/README.md b/README.md
+index 4479b53..a1bf3ca 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,30 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Navigation readiness
++
++Pages use native cross-document view transitions. The shared stylesheet opts in
++on every page and disables transitions for reduced motion. Unsupported browsers
++use standard document navigation.
++
++Keep critical styles in the shared layout's `<head>` so they block rendering.
++The layout's `rel="expect"` link waits for `main-content` by default. Long pages
++set `transitionReadyId="initial-view-ready"` and place that checkpoint immediately
++after their initial content, before below-the-fold sections. The checkpoint only
++waits for HTML parsing, not image loading or React hydration.
++
++The initial layout is server-rendered and currently needs no JavaScript to settle.
++If a page adds JavaScript that changes the initial theme or layout, put it in the
++layout's `head` slot with explicit render blocking, for example:
++
++```astro
++<script slot="head" is:inline type="module" blocking="render" src="/critical-layout.js"></script>
++```
++
++Keep these scripts small and complete their layout work during execution; a
++timer, fetch callback, or unawaited import can run after the render block releases.
++Analytics, ads, and interaction-only hydration must remain non-blocking.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..e0f0159 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -3,14 +3,12 @@ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+-
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  transitionReadyId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, transitionReadyId = "main-content" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,18 +21,21 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Wait for the initial view, rather than ads or below-the-fold content. -->
++    <link rel="expect" href={`#${transitionReadyId}`} blocking="render" />
++    <!-- Page-specific layout scripts must use blocking="render" in this slot. -->
++    <slot name="head" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +46,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..8e8c0d6 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} transitionReadyId="initial-view-ready">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+@@ -85,6 +85,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 </figcaption>
+             )}
+         </figure>
++        <span id="initial-view-ready" hidden></span>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+@@ -123,4 +124,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..524dafe 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,7 +37,7 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} transitionReadyId="initial-view-ready">
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+@@ -86,6 +86,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                 </section>
+             )}
+ 
++            <span id="initial-view-ready" hidden></span>
++
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..303387a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" transitionReadyId="initial-view-ready">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -58,6 +58,7 @@ politicsArticles[2] = {
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
++    <span id="initial-view-ready" hidden></span>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +82,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ab32709 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,18 @@
+ @import "tailwindcss";
+ 
++/* Native navigations wait for head styles and the initial-content checkpoint. */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

@@ -1,0 +1,59 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,55 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts &amp; Aspect Ratio</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      margin: 2rem;
++    }
++
++    /* Normalize x-height across fallback/mixed font families */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      line-height: 1.6;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Courier New", monospace;
++      /* inherits the adjusted x-height ratio so code matches surrounding text */
++      font-size-adjust: from-font;
++      background: #f0f0f0;
++      padding: 0.1em 0.3em;
++      border-radius: 3px;
++    }
++
++    /* Independent theme container with locked proportions */
++    #independent-theme-container {
++      aspect-ratio: 16 / 9;
++      width: min(100%, 480px);
++      margin-top: 2rem;
++      padding: 1rem;
++      box-sizing: border-box;
++      background: #1e1b4b;
++      color: #e0e7ff;
++      border-radius: 8px;
++      color-scheme: dark;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text mixed with inline code like <code>const x = 42;</code>
++    and <code>document.querySelector("p")</code> keeps a consistent visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    <h2>Independent Theme</h2>
++    <p>This container keeps a 16:9 aspect ratio.</p>
++  </div>
++</body>
++</html>

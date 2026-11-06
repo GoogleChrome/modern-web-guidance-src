@@ -1,0 +1,457 @@
+diff --git a/index.html b/index.html
+index 66c9173..c514d41 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,53 @@
+       background: #3e2723;
+     }
+ 
++    html { scroll-padding-top: 100px; }
++    .authenticity { margin-top: 64px; padding-top: 36px; border-top: 1px solid var(--secondary); }
++    .eyebrow { color: #795548; font-size: .75rem; text-transform: uppercase; letter-spacing: .15em; font-weight: 700; }
++    .auth-header { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin: 8px 0 24px; }
++    .auth-header h2 { font-size: 2rem; line-height: 1.2; margin-bottom: 10px; }
++    .suite-badge { border: 1px solid #c9d5c4; border-radius: 30px; padding: 8px 14px; background: #eef3eb; color: #375031; font-size: .8rem; white-space: nowrap; }
++    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
++    .signature-panel { background: white; padding: 28px; border: 1px solid #e3dcd8; border-radius: 10px; min-width: 0; }
++    .panel-number { color: #795548; font-size: .75rem; font-weight: 700; letter-spacing: .1em; }
++    .signature-panel h3 { font-size: 1.35rem; margin: 4px 0 8px; }
++    .panel-intro { color: #705f59; font-size: .9rem; margin-bottom: 22px; }
++    .signature-panel label, .output-label { display: block; font-size: .85rem; font-weight: 600; margin: 14px 0 6px; }
++    input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid #b8a9a1; border-radius: 5px; background: #fff; color: var(--text); font: inherit; font-size: .9rem; }
++    textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: .78rem; min-height: 130px; }
++    input[type=file] { padding: 8px; font-size: .8rem; }
++    input::file-selector-button { border: 0; border-radius: 3px; padding: 5px 8px; color: var(--text); background: #eee7e2; margin-right: 10px; cursor: pointer; }
++    button { cursor: pointer; font: inherit; border: 0; }
++    button.btn { font-size: .9rem; }
++    button:disabled { opacity: .5; cursor: not-allowed; }
++    :focus-visible { outline: 3px solid #bb720f; outline-offset: 3px; }
++    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
++    .field-row > * { min-width: 0; }
++    [hidden] { display: none !important; }
++    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
++    .btn.secondary { color: var(--primary); border: 1px solid #b8a9a1; background: white; padding: 9px 15px; }
++    .btn.secondary:hover { background: #f6f1ed; }
++    .status { font-size: .85rem; margin-top: 16px; padding: 12px; background: #f6f3f0; border-radius: 5px; overflow-wrap: anywhere; }
++    .status[data-state=success] { background: #edf4e9; color: #2b4c22; }
++    .status[data-state=error] { background: #fcebe7; color: #942d20; }
++    .status[data-state=warning] { background: #fff3d9; color: #714a08; }
++    .trust-details { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e3dcd8; font-size: .85rem; }
++    .trust-details summary { cursor: pointer; font-weight: 600; }
++    .fingerprint { font-family: ui-monospace, monospace; overflow-wrap: anywhere; font-size: .72rem; margin-top: 12px; color: #705f59; }
++    .security-note { margin: 20px 0; font-size: .85rem; color: #705f59; border-left: 3px solid #b8a9a1; padding-left: 16px; }
++    .security-note strong { color: var(--primary); }
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .signature-grid { grid-template-columns: 1fr; }
++      .auth-header { flex-direction: column; align-items: flex-start; }
++      .suite-badge { white-space: normal; }
++      .signature-panel { padding: 20px; }
++      .field-row { grid-template-columns: 1fr; gap: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,6 +210,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signed-documents">Receipts & Gifts</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +243,68 @@
+         </div>
+       </div>
+     </section>
++    <section class="authenticity" id="signed-documents" aria-labelledby="auth-title">
++      <p class="eyebrow">A little more peace of mind</p>
++      <div class="auth-header">
++        <div>
++          <h2 id="auth-title">Good coffee. Genuine documents.</h2>
++          <p>Sign a coffee receipt or gift voucher. Check that every detail stays intact.</p>
++        </div>
++        <span class="suite-badge" id="crypto-suite">Preparing secure signing…</span>
++      </div>
++      <p class="security-note"><strong>Local signing demo.</strong> Documents created here use a new key for this tab, not an official Daily Grind issuer key. They are not proof of purchase or redeemable credit. To verify official documents, import a public key obtained directly from the issuer and confirm its fingerprint through a separate trusted channel.</p>
++      <noscript><p class="status">Enable JavaScript to sign and verify documents in your browser.</p></noscript>
++      <div class="signature-grid">
++        <section class="signature-panel" aria-labelledby="create-title">
++          <p class="panel-number">01 / CREATE</p>
++          <h3 id="create-title">Make it signed</h3>
++          <p class="panel-intro">A unique signature seals the amount, details, date, and document ID.</p>
++          <form id="artifact-form">
++            <label for="artifact-type">Document type</label>
++            <select id="artifact-type"><option value="receipt">Coffee order receipt</option><option value="voucher">Gift voucher</option></select>
++            <label for="artifact-description" id="description-label">Coffee order</label>
++            <input id="artifact-description" value="Maple Oat Latte × 1" maxlength="200" required>
++            <div class="field-row">
++              <div><label for="artifact-amount">Amount (USD)</label><input id="artifact-amount" type="number" min="0.01" max="10000" step="0.01" value="5.50" required></div>
++              <div id="expiry-field" hidden><label for="artifact-expiry">Valid through (UTC)</label><input id="artifact-expiry" type="date"></div>
++            </div>
++            <button class="btn" id="sign-artifact" type="submit" disabled>Sign document <span aria-hidden="true">↗</span></button>
++          </form>
++          <p id="sign-status" class="status" role="status" aria-live="polite">Preparing your private signing key…</p>
++          <label for="signed-output" class="output-label">Signed document</label>
++          <textarea id="signed-output" readonly placeholder="Your signed JSON document will appear here." spellcheck="false"></textarea>
++          <div class="actions">
++            <button class="btn secondary" id="download-artifact" type="button" disabled>Download JSON</button>
++            <button class="btn secondary" id="check-created" type="button" disabled>Use in verifier →</button>
++          </div>
++        </section>
++        <section class="signature-panel" aria-labelledby="verify-title">
++          <p class="panel-number">02 / VERIFY</p>
++          <h3 id="verify-title">Trust every detail</h3>
++          <p class="panel-intro">Upload or paste a signed document to check its signature against your trusted key.</p>
++          <form id="verify-form">
++            <label for="verify-file">Upload a receipt or voucher</label>
++            <input id="verify-file" type="file" accept=".json,application/json">
++            <label for="verify-input">Or paste signed JSON</label>
++            <textarea id="verify-input" required maxlength="64000" placeholder='Paste the complete signed document here…' spellcheck="false"></textarea>
++            <button class="btn" id="verify-button" type="submit">Verify signature <span aria-hidden="true">✓</span></button>
++          </form>
++          <p id="verify-status" class="status" role="status" aria-live="polite">Select a document to verify.</p>
++          <details class="trust-details">
++            <summary>Verification key & trust</summary>
++            <p class="fingerprint" id="trusted-fingerprint">Preparing this session’s demo verification key…</p>
++            <label for="trusted-key-file">Import a trusted public key (JSON)</label>
++            <input id="trusted-key-file" type="file" accept=".json,application/json">
++            <p>Only import keys from a source you trust. A valid signature proves possession of that key, not payment or voucher redemption.</p>
++            <div class="actions">
++              <button class="btn secondary" id="download-key" type="button" disabled>Export demo public key</button>
++              <button class="btn secondary" id="session-key" type="button" disabled>Use this tab’s demo key</button>
++            </div>
++            <p class="panel-intro" style="margin: 12px 0 0">Save the public key to verify these documents later. Reloading creates a new signing key. Private keys are never exported.</p>
++          </details>
++        </section>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +317,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./receipts.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..ee5d4c1 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/signatures.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/receipts.mjs b/receipts.mjs
+new file mode 100644
+index 0000000..fc54790
+--- /dev/null
++++ b/receipts.mjs
+@@ -0,0 +1,132 @@
++import { createSigner, importVerificationKey, signArtifact, verifyArtifact, MAX_DOCUMENT_SIZE } from './signatures.mjs';
++const $ = id => document.getElementById(id);
++let signer;
++let trustedKey;
++let trustLabel = '';
++let generated;
++const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++function status(id, message, state = '') {
++  const element = $(id);
++  element.textContent = message;
++  element.dataset.state = state;
++}
++function download(value, name) {
++  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
++  const link = document.createElement('a');
++  link.href = url;
++  link.download = name;
++  link.click();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++function invalidateVerification() {
++  status('verify-status', 'Ready to check a document against the selected key.');
++}
++function showTrust(label) {
++  trustLabel = label;
++  $('trusted-fingerprint').textContent = `${label} · SHA-256 ${trustedKey.keyId}`;
++  invalidateVerification();
++}
++async function useSessionKey() {
++  trustedKey = await importVerificationKey(JSON.stringify(signer.verificationKey));
++  showTrust('This session’s demo key');
++}
++function updateType() {
++  const voucher = $('artifact-type').value === 'voucher';
++  $('description-label').textContent = voucher ? 'Recipient / gift message' : 'Coffee order';
++  $('artifact-description').value = voucher ? 'A little coffee, on me.' : 'Maple Oat Latte × 1';
++  $('artifact-amount').value = voucher ? '25.00' : '5.50';
++  $('expiry-field').hidden = !voucher;
++  $('artifact-expiry').required = voucher;
++}
++$('artifact-type').addEventListener('change', updateType);
++$('artifact-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  $('sign-artifact').disabled = true;
++  generated = undefined;
++  $('download-artifact').disabled = true;
++  $('check-created').disabled = true;
++  status('sign-status', 'Signing your document…');
++  try {
++    const rawAmount = $('artifact-amount').value;
++    if (!/^\d+(\.\d{1,2})?$/.test(rawAmount)) throw new Error('Enter an amount with at most two decimal places.');
++    const type = $('artifact-type').value;
++    const expiresAt = type === 'voucher' ? new Date(`${$('artifact-expiry').value}T23:59:59.999Z`).toISOString() : undefined;
++    if (expiresAt && Date.parse(expiresAt) <= Date.now()) throw new Error('Choose a future voucher expiry date.');
++    generated = await signArtifact(signer, { type, description: $('artifact-description').value.trim(),
++      amountCents: Math.round(Number(rawAmount) * 100), expiresAt });
++    $('signed-output').value = JSON.stringify(generated, null, 2);
++    $('download-artifact').disabled = false;
++    $('check-created').disabled = false;
++    status('sign-status', `Signed ${type === 'receipt' ? 'receipt' : 'gift voucher'} · ${money(JSON.parse(generated.payload).amountCents)}. Your document is ready.`, 'success');
++  } catch (error) { status('sign-status', error.message, 'error'); }
++  finally { $('sign-artifact').disabled = false; }
++});
++$('download-artifact').addEventListener('click', () => {
++  if (generated) download(generated, `daily-grind-${JSON.parse(generated.payload).type}-${JSON.parse(generated.payload).id}.json`);
++});
++$('download-key').addEventListener('click', () => download(signer.verificationKey, 'daily-grind-demo-public-key.json'));
++$('session-key').addEventListener('click', () => useSessionKey().catch(error => status('verify-status', error.message, 'error')));
++$('check-created').addEventListener('click', () => {
++  $('verify-input').value = $('signed-output').value;
++  invalidateVerification();
++  $('verify-input').focus();
++});
++$('verify-input').addEventListener('input', invalidateVerification);
++$('verify-file').addEventListener('change', async event => {
++  invalidateVerification();
++  try {
++    const file = event.target.files[0];
++    if (!file) return;
++    if (file.size > MAX_DOCUMENT_SIZE) throw new Error('Document is too large (maximum 64 KB).');
++    $('verify-input').value = await file.text();
++  } catch (error) { status('verify-status', error.message, 'error'); }
++  finally { event.target.value = ''; }
++});
++$('trusted-key-file').addEventListener('change', async event => {
++  // Clear previous trust as soon as a replacement is requested.
++  trustedKey = undefined;
++  $('trusted-fingerprint').textContent = 'No trusted key selected.';
++  invalidateVerification();
++  try {
++    const file = event.target.files[0];
++    if (!file) return;
++    if (file.size > MAX_DOCUMENT_SIZE) throw new Error('Key file is too large.');
++    trustedKey = await importVerificationKey(await file.text());
++    showTrust('Imported key — confirm this fingerprint with the issuer');
++  } catch (error) { status('verify-status', error.message, 'error'); }
++  finally { event.target.value = ''; }
++});
++$('verify-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  $('verify-button').disabled = true;
++  const snapshot = $('verify-input').value;
++  const key = trustedKey;
++  const label = trustLabel;
++  status('verify-status', 'Checking the signature…');
++  try {
++    const { payload, expired } = await verifyArtifact(snapshot, key);
++    if (snapshot !== $('verify-input').value || key !== trustedKey) return invalidateVerification();
++    status('verify-status', `${expired ? 'Signature valid · voucher expired' : 'Signature verified'} · ${payload.type === 'receipt' ? 'Receipt' : 'Gift voucher'} · ${money(payload.amountCents)} · ${payload.description}. Signed ${new Date(payload.issuedAt).toLocaleString()}.${payload.type === 'voucher' ? ` Expires ${payload.expiresAt.slice(0, 10)} (UTC).` : ''} Verified against: ${label}. This confirms integrity and possession of this key; it does not confirm payment or redemption.`, expired ? 'warning' : 'success');
++  } catch (error) {
++    if (snapshot === $('verify-input').value && key === trustedKey) status('verify-status', error.message, 'error');
++    else invalidateVerification();
++  } finally { $('verify-button').disabled = false; }
++});
++async function init() {
++  const expiry = new Date();
++  expiry.setUTCFullYear(expiry.getUTCFullYear() + 1);
++  $('artifact-expiry').value = expiry.toISOString().slice(0, 10);
++  try {
++    signer = await createSigner();
++    await useSessionKey();
++    $('crypto-suite').textContent = signer.suite === 'ML-DSA-65' ? 'ML-DSA-65 · Quantum resistant' : `${signer.suite === 'ECDSA' ? 'ECDSA P-256 / SHA-256' : signer.suite} · Classical signatures`;
++    $('sign-artifact').disabled = false;
++    $('download-key').disabled = false;
++    $('session-key').disabled = false;
++    status('sign-status', 'Your private signing key stays in this tab.');
++  } catch (error) {
++    $('crypto-suite').textContent = 'Signing unavailable';
++    status('sign-status', error.message, 'error');
++  }
++}
++init();
+diff --git a/signatures.mjs b/signatures.mjs
+new file mode 100644
+index 0000000..8e112d1
+--- /dev/null
++++ b/signatures.mjs
+@@ -0,0 +1,103 @@
++// Browser-native signatures. Private keys remain non-exportable and in memory.
++const encoder = new TextEncoder();
++const suites = ['ML-DSA-65', 'Ed25519', 'ECDSA'];
++const keyParams = suite => suite === 'ECDSA' ? { name: suite, namedCurve: 'P-256' } : suite;
++const signParams = suite => suite === 'ECDSA' ? { name: suite, hash: 'SHA-256' } : suite;
++const keyFormat = suite => suite === 'ML-DSA-65' ? 'raw-public' : 'raw';
++export const MAX_DOCUMENT_SIZE = 64000;
++
++function assertSuite(suite) {
++  if (!suites.includes(suite)) throw new Error('Unsupported signature algorithm.');
++}
++function encode(bytes) {
++  return btoa(String.fromCharCode(...new Uint8Array(bytes)));
++}
++function decode(value) {
++  if (typeof value !== 'string' || value.length > 16000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
++    throw new Error('Invalid encoded key or signature.');
++  }
++  return Uint8Array.from(atob(value), c => c.charCodeAt(0));
++}
++async function fingerprint(bytes) {
++  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2, '0')).join('');
++}
++function parse(text) {
++  if (typeof text !== 'string' || text.length > MAX_DOCUMENT_SIZE) throw new Error('Document is too large (maximum 64 KB).');
++  try { return JSON.parse(text); } catch { throw new Error('Please provide a valid JSON document.'); }
++}
++function validatePayload(payload) {
++  if (!payload || payload.domain !== 'daily-grind/artifact/v1' || payload.issuer !== 'The Daily Grind' ||
++      !['receipt', 'voucher'].includes(payload.type) || payload.currency !== 'USD' ||
++      !Number.isSafeInteger(payload.amountCents) || payload.amountCents < 1 || payload.amountCents > 1000000 ||
++      typeof payload.description !== 'string' || !payload.description.trim() || payload.description.length > 200 ||
++      typeof payload.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(payload.id) ||
++      typeof payload.issuedAt !== 'string' || !Number.isFinite(Date.parse(payload.issuedAt)) ||
++      (payload.type === 'voucher' && (typeof payload.expiresAt !== 'string' || !Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.parse(payload.issuedAt)))) {
++    throw new Error('Invalid receipt or voucher details.');
++  }
++  assertSuite(payload.suite);
++}
++// Length-prefixed purpose header prevents replay across artifact types and protocols.
++function signatureInput(suite, payloadText, type) {
++  const context = encoder.encode(`daily-grind/${type}/v1`);
++  const payload = encoder.encode(payloadText);
++  if (suite === 'ML-DSA-65') return { algorithm: { name: suite, context }, data: payload };
++  const framed = new Uint8Array(1 + context.length + payload.length);
++  framed[0] = context.length;
++  framed.set(context, 1);
++  framed.set(payload, 1 + context.length);
++  return { algorithm: signParams(suite), data: framed };
++}
++export async function createSigner(preferred) {
++  if (!globalThis.crypto?.subtle) throw new Error('Signing needs HTTPS and a browser with Web Crypto support.');
++  if (preferred) assertSuite(preferred);
++  const candidates = preferred ? [preferred] : [
++    ...(globalThis.SubtleCrypto?.supports?.('sign', 'ML-DSA-65') ? ['ML-DSA-65'] : []),
++    'Ed25519', 'ECDSA',
++  ];
++  for (const suite of candidates) {
++    try {
++      const keys = await crypto.subtle.generateKey(keyParams(suite), false, ['sign', 'verify']);
++      const bytes = await crypto.subtle.exportKey(keyFormat(suite), keys.publicKey);
++      return { suite, keys, verificationKey: { version: 1, suite, publicKey: encode(bytes), keyId: await fingerprint(bytes) } };
++    } catch (error) {
++      if (error.name !== 'NotSupportedError') throw error;
++    }
++  }
++  throw new Error('This browser does not support the requested signing algorithm.');
++}
++export async function importVerificationKey(text) {
++  const document = parse(text);
++  if (!document || document.version !== 1) throw new Error('Invalid verification key format.');
++  assertSuite(document.suite);
++  const bytes = decode(document.publicKey);
++  const keyId = await fingerprint(bytes);
++  if (document.keyId !== keyId) throw new Error('The key fingerprint does not match.');
++  const publicKey = await crypto.subtle.importKey(keyFormat(document.suite), bytes, keyParams(document.suite), false, ['verify']);
++  return { suite: document.suite, keyId, publicKey };
++}
++export async function signArtifact(signer, details) {
++  const payload = { domain: 'daily-grind/artifact/v1', issuer: 'The Daily Grind', suite: signer.suite,
++    id: crypto.randomUUID(), issuedAt: new Date().toISOString(), type: details.type,
++    description: details.description, amountCents: details.amountCents, currency: 'USD',
++    ...(details.type === 'voucher' ? { expiresAt: details.expiresAt } : {}) };
++  validatePayload(payload);
++  const serialized = JSON.stringify(payload);
++  const { algorithm, data } = signatureInput(signer.suite, serialized, payload.type);
++  const signature = await crypto.subtle.sign(algorithm, signer.keys.privateKey, data);
++  return { version: 1, suite: signer.suite, keyId: signer.verificationKey.keyId, payload: serialized, signature: encode(signature) };
++}
++export async function verifyArtifact(text, trustedKey, now = Date.now()) {
++  if (!trustedKey) throw new Error('Select a trusted verification key first.');
++  const document = parse(text);
++  if (!document || document.version !== 1 || document.keyId !== trustedKey.keyId || document.suite !== trustedKey.suite) {
++    throw new Error('Document does not match the trusted key or signature format.');
++  }
++  const payload = parse(document.payload);
++  validatePayload(payload);
++  if (payload.suite !== document.suite) throw new Error('Signature algorithm mismatch.');
++  const { algorithm, data } = signatureInput(document.suite, document.payload, payload.type);
++  const valid = await crypto.subtle.verify(algorithm, trustedKey.publicKey, decode(document.signature), data);
++  if (!valid) throw new Error('Signature invalid. The document was changed or signed by another key.');
++  return { payload, expired: payload.type === 'voucher' && Date.parse(payload.expiresAt) <= now };
++}
+diff --git a/tests/signatures.test.mjs b/tests/signatures.test.mjs
+new file mode 100644
+index 0000000..9685d8c
+--- /dev/null
++++ b/tests/signatures.test.mjs
+@@ -0,0 +1,47 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createSigner, importVerificationKey, signArtifact, verifyArtifact } from '../signatures.mjs';
++const details = { type: 'receipt', description: 'Maple Oat Latte × 1', amountCents: 550 };
++const serialize = document => JSON.stringify(document);
++const supportedSuites = ['Ed25519', 'ECDSA'];
++if (globalThis.SubtleCrypto?.supports?.('sign', 'ML-DSA-65')) supportedSuites.push('ML-DSA-65');
++for (const suite of supportedSuites) {
++  test(`${suite}: authentic receipts and vouchers survive export/import; tampering fails`, async () => {
++    const signer = await createSigner(suite);
++    assert.equal(signer.keys.privateKey.extractable, false);
++    const trusted = await importVerificationKey(serialize(signer.verificationKey));
++    const receipt = await signArtifact(signer, details);
++    assert.equal((await verifyArtifact(serialize(receipt), trusted)).payload.amountCents, 550);
++    const changed = structuredClone(receipt);
++    const payload = JSON.parse(changed.payload);
++    payload.amountCents = 1;
++    changed.payload = serialize(payload);
++    await assert.rejects(verifyArtifact(serialize(changed), trusted), /Signature invalid/);
++    payload.type = 'voucher';
++    payload.expiresAt = '2099-12-31T23:59:59.999Z';
++    changed.payload = serialize(payload);
++    await assert.rejects(verifyArtifact(serialize(changed), trusted), /Signature invalid/);
++    const voucher = await signArtifact(signer, { ...details, type: 'voucher', expiresAt: '2099-12-31T23:59:59.999Z' });
++    assert.equal((await verifyArtifact(serialize(voucher), trusted)).expired, false);
++    assert.equal((await verifyArtifact(serialize(voucher), trusted, Date.parse('2100-01-01'))).expired, true);
++    const attacker = await createSigner(suite);
++    const forged = await signArtifact(attacker, details);
++    await assert.rejects(verifyArtifact(serialize(forged), trusted), /trusted key/);
++    forged.keyId = trusted.keyId;
++    await assert.rejects(verifyArtifact(serialize(forged), trusted), /Signature invalid/);
++    const corrupted = { ...receipt, signature: receipt.signature.slice(4) };
++    await assert.rejects(verifyArtifact(serialize(corrupted), trusted));
++    await assert.rejects(verifyArtifact(serialize(receipt), undefined), /trusted verification key/);
++    await assert.rejects(verifyArtifact('not json', trusted), /valid JSON/);
++    await assert.rejects(verifyArtifact('x'.repeat(64001), trusted), /too large/);
++    await assert.rejects(importVerificationKey(serialize({ ...signer.verificationKey, keyId: 'wrong' })), /fingerprint/);
++    await assert.rejects(signArtifact(signer, { ...details, amountCents: -1 }), /Invalid/);
++    await assert.rejects(signArtifact(signer, { ...details, amountCents: 1.1 }), /Invalid/);
++  });
++}
++test('automatic selection produces a working signature', async () => {
++  const signer = await createSigner();
++  const trusted = await importVerificationKey(serialize(signer.verificationKey));
++  const artifact = await signArtifact(signer, details);
++  assert.equal((await verifyArtifact(serialize(artifact), trusted)).payload.type, 'receipt');
++});

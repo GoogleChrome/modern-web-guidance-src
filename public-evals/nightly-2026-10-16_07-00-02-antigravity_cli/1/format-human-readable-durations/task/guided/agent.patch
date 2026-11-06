@@ -1,0 +1,290 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -149,10 +149,150 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
++    /* Steeping Calculator Widget */
++    .calculator-section {
++      margin-top: 50px;
++    }
++
++    .calculator-container {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      max-width: 720px;
++      margin: 0 auto;
++    }
++
++    @media (min-width: 650px) {
++      .calculator-container {
++        flex-direction: row;
++      }
++    }
++
++    .calculator-image {
++      flex: 1;
++      min-height: 200px;
++      background-image: url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80');
++      background-size: cover;
++      background-position: center;
++    }
++
++    .calculator-content {
++      flex: 1.4;
++      padding: 30px;
++    }
++
++    .calculator-content h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.6rem;
++    }
++
++    .calculator-content p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 24px;
++    }
++
++    .inputs-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group label {
+       font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 6px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
+     }
++
++    .form-group input[type="number"] {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input[type="number"]:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .unit-selector {
++      margin-bottom: 24px;
++      text-align: left;
++    }
++
++    .unit-selector-title {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .radio-group {
++      display: flex;
++      gap: 20px;
++    }
++
++    .radio-label {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .radio-label input[type="radio"] {
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .result-box {
++      background: #efebe9;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      padding: 14px 18px;
++      text-align: left;
++    }
++
++    .result-label {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: #6d4c41;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-bottom: 4px;
++    }
++
++    .result-value {
++      font-size: 1.25rem;
++      font-weight: 700;
++      color: var(--primary);
++      word-break: break-word;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +334,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calculator-section">
++      <div class="calculator-container">
++        <div class="calculator-image" aria-hidden="true"></div>
++        <div class="calculator-content">
++          <h2>Steeping Time Calculator</h2>
++          <p>Find the perfect brew time. Adjust steeping hours and minutes to display the exact duration for your favorite coffee.</p>
++          
++          <div class="inputs-grid">
++            <div class="form-group">
++              <label for="hoursInput">Hours</label>
++              <input type="number" id="hoursInput" min="0" value="1" placeholder="0">
++            </div>
++            <div class="form-group">
++              <label for="minutesInput">Minutes</label>
++              <input type="number" id="minutesInput" min="0" value="45" placeholder="0">
++            </div>
++          </div>
++
++          <div class="unit-selector">
++            <span class="unit-selector-title">Display Format</span>
++            <div class="radio-group">
++              <label class="radio-label">
++                <input type="radio" name="largestUnit" value="hours" checked>
++                Hours &amp; Minutes
++              </label>
++              <label class="radio-label">
++                <input type="radio" name="largestUnit" value="minutes">
++                Total Minutes
++              </label>
++            </div>
++          </div>
++
++          <div class="result-box">
++            <div class="result-label">Calculated Duration</div>
++            <div class="result-value" id="humanValue"></div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +386,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load Temporal polyfill if Temporal is not available natively
++    (async function loadPolyfill() {
++      if (typeof Temporal === 'undefined') {
++        try {
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++          updateDuration();
++        } catch {
++          try {
++            const module = await import("./node_modules/@js-temporal/polyfill/dist/index.esm.js");
++            globalThis.Temporal = module.Temporal;
++            updateDuration();
++          } catch (e) {
++            // Polyfill not available; standard arithmetic fallback will handle calculations
++          }
++        }
++      }
++    })();
++
++    const hoursInput = document.getElementById('hoursInput');
++    const minutesInput = document.getElementById('minutesInput');
++    const humanValue = document.getElementById('humanValue');
++
++    function updateDuration() {
++      const hours = Math.max(0, parseInt(hoursInput.value, 10) || 0);
++      const minutes = Math.max(0, parseInt(minutesInput.value, 10) || 0);
++      const selectedRadio = document.querySelector('input[name="largestUnit"]:checked');
++      const largestUnit = selectedRadio ? selectedRadio.value : 'hours';
++
++      let balanced = null;
++      if (typeof Temporal !== 'undefined' && Temporal.Duration) {
++        try {
++          const dur = Temporal.Duration.from({ hours, minutes });
++          balanced = dur.round({ largestUnit });
++        } catch (e) {
++          // If Temporal round encounters an issue, fallback to arithmetic
++        }
++      }
++
++      if (!balanced) {
++        const totalMinutes = hours * 60 + minutes;
++        if (largestUnit === 'minutes') {
++          balanced = { hours: 0, minutes: totalMinutes };
++        } else {
++          balanced = { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
++        }
++      }
++
++      const h = balanced.hours ?? 0;
++      const m = balanced.minutes ?? 0;
++
++      if (typeof Intl !== 'undefined' && Intl.DurationFormat) {
++        const isZero = h === 0 && m === 0;
++        const formatter = new Intl.DurationFormat(navigator.language || 'en', {
++          style: 'long',
++          ...(isZero ? { [largestUnit + 'Display']: 'always' } : {})
++        });
++        humanValue.textContent = formatter.format(balanced);
++      } else {
++        if (h === 0 && m === 0) {
++          humanValue.textContent = largestUnit === 'hours' ? '0 hours' : '0 minutes';
++        } else {
++          const parts = [];
++          if (h > 0) parts.push(`${h} hour${h === 1 ? '' : 's'}`);
++          if (m > 0) parts.push(`${m} minute${m === 1 ? '' : 's'}`);
++          humanValue.textContent = parts.join(', ');
++        }
++      }
++    }
++
++    hoursInput.addEventListener('input', updateDuration);
++    minutesInput.addEventListener('input', updateDuration);
++    document.querySelectorAll('input[name="largestUnit"]').forEach(radio => {
++      radio.addEventListener('change', updateDuration);
++    });
++
++    updateDuration();
++  </script>
+ </body>
+ 
+ </html>

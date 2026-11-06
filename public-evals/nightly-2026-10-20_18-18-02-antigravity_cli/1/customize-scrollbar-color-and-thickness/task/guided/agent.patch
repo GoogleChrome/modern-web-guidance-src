@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 280px;
++      overflow-y: auto;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        /* Must define base size in WebKit for custom colors to be visual */
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .testimonial {
++      padding-bottom: 16px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:last-child {
++      padding-bottom: 0;
++      border-bottom: none;
++    }
++
++    .testimonial-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .testimonial-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .testimonial-date {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +265,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback Log</h2>
++      <div class="feedback-log" tabindex="0" role="region" aria-labelledby="feedback-heading">
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Elena R.</span>
++            <span class="testimonial-date">October 19, 2026</span>
++          </div>
++          <p>"The Maple Oat Latte is hands down the best autumn drink in town. Warm, velvety, and just the right touch of sweetness without overpowering the espresso!"</p>
++        </article>
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Marcus T.</span>
++            <span class="testimonial-date">October 17, 2026</span>
++          </div>
++          <p>"I stop by every morning before my commute for the Dark Roast Espresso. Consistent, rich crema and friendly baristas who remember my order."</p>
++        </article>
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Priya K.</span>
++            <span class="testimonial-date">October 15, 2026</span>
++          </div>
++          <p>"That 18-hour Cold Brew is no joke—zero bitterness and super smooth. The cozy seating area also makes it my favorite spot for remote work."</p>
++        </article>
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">David L.</span>
++            <span class="testimonial-date">October 12, 2026</span>
++          </div>
++          <p>"Tried their freshly roasted single-origin beans at home and my pour-overs have never tasted better. Highly recommend asking the staff for brewing tips!"</p>
++        </article>
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Sophia M.</span>
++            <span class="testimonial-date">October 9, 2026</span>
++          </div>
++          <p>"Love the ethical sourcing commitment and the warm community vibe. Paired a cappuccino with a fresh almond croissant today—perfection."</p>
++        </article>
++        <article class="testimonial">
++          <div class="testimonial-header">
++            <span class="testimonial-author">James W.</span>
++            <span class="testimonial-date">October 5, 2026</span>
++          </div>
++          <p>"Best local roaster by far. Even during the morning rush, the line moves quickly and the quality never drops."</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

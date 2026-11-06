@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,84 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const menuItems = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal Favorites",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        price: "$5.50",
++        url: "/menu/seasonal",
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        price: "$3.75",
++        url: "/menu/espresso",
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Coffee",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        price: "$4.50",
++        url: "/menu/cold-brew",
++      },
++    ];
++
++    const controller = new AbortController();
++
++    window.addEventListener("pagehide", () => controller.abort());
++    window.addEventListener("beforeunload", () => controller.abort());
++
++    if ("modelContext" in document) {
++      await document.modelContext.registerTool(
++        {
++          name: "get_menu_item_details",
++          description:
++            "Retrieves details for a coffee shop menu item. Use when the user asks about a drink's description, category, price, or page link.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              itemName: {
++                type: "string",
++                description: "Target drink or food item from the menu.",
++              },
++            },
++            required: ["itemName"],
++          },
++          execute(input) {
++            const rawName = input?.itemName ?? input?.name;
++            if (typeof rawName !== "string" || !rawName.trim()) {
++              return {
++                error: "Pass a valid menu item name to look up.",
++                availableItems: menuItems.map((entry) => entry.name),
++              };
++            }
++
++            const normalized = rawName.trim().toLowerCase();
++            const item = menuItems.find(
++              (entry) => entry.name.toLowerCase() === normalized
++            );
++
++            if (!item) {
++              return {
++                error: `Menu item "${rawName}" not found.`,
++                availableItems: menuItems.map((entry) => entry.name),
++              };
++            }
++
++            return item;
++          },
++          annotations: {
++            readOnlyHint: true,
++          },
++        },
++        { signal: controller.signal }
++      );
++    }
++  </script>
+ </body>
+ 
+ </html>

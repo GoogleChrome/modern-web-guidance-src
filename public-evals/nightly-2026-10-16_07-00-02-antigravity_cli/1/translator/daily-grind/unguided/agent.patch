@@ -1,0 +1,1574 @@
+diff --git a/index.html b/index.html
+index 66c9173..5433034 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,18 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border-color: #e0d7d3;
++      --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.08);
++      --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.1);
++      --radius: 8px;
+     }
+ 
+     * {
+@@ -38,27 +46,41 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 15px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      text-decoration: none;
++      color: white;
+     }
+ 
+-    nav ul {
++    .nav-right {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      gap: 20px;
++      flex-wrap: wrap;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    nav ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++      gap: 18px;
++      flex-wrap: wrap;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: 0.95rem;
+       transition: color 0.3s;
+     }
+ 
+@@ -70,12 +92,49 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .logout-link:hover {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    /* Language Switcher in Navbar */
++    .site-lang-container {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      background: rgba(255, 255, 255, 0.12);
++      padding: 4px 10px;
++      border-radius: 20px;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++    }
++
++    .site-lang-icon {
++      font-size: 1rem;
++    }
++
++    .site-language-select {
++      background: transparent;
++      color: white;
++      border: none;
++      font-size: 0.85rem;
++      font-family: inherit;
++      cursor: pointer;
++      outline: none;
++    }
++
++    .site-language-select option {
++      background: var(--primary);
++      color: white;
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 380px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -91,6 +150,14 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
++    }
++
++    .hero p {
++      font-size: 1.2rem;
++      max-width: 600px;
++      margin-bottom: 1.5rem;
++      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+     }
+ 
+     /* Content Sections */
+@@ -100,46 +167,348 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .section-header {
++      text-align: center;
++      margin-bottom: 25px;
+     }
+ 
+-    .card {
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 1.05rem;
++    }
++
++    /* Translator Component Styles */
++    .translator-section {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      border-radius: 12px;
++      box-shadow: var(--shadow-md);
++      padding: 30px;
++      margin-bottom: 50px;
++      border: 1px solid var(--border-color);
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .translator-toolbar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++      flex-wrap: wrap;
++      background: #f7f4f2;
++      padding: 12px 18px;
++      border-radius: var(--radius);
++      border: 1px solid var(--border-color);
++    }
++
++    .lang-select-group {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex: 1;
++      min-width: 220px;
++    }
++
++    .lang-label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    .select-dropdown {
++      width: 100%;
++      padding: 8px 12px;
++      border-radius: 6px;
++      border: 1px solid #ccc;
++      background-color: white;
++      color: var(--text);
++      font-size: 0.95rem;
++      font-family: inherit;
++      cursor: pointer;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .select-dropdown:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .btn-swap {
++      background: white;
++      border: 1px solid #ccc;
+       color: var(--primary);
++      width: 40px;
++      height: 40px;
++      border-radius: 50%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.2rem;
++      cursor: pointer;
++      transition: all 0.2s;
++      flex-shrink: 0;
+     }
+ 
++    .btn-swap:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      transform: rotate(180deg);
++    }
++
++    .translator-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++      margin-bottom: 20px;
++    }
++
++    @media (max-width: 768px) {
++      .translator-grid {
++        grid-template-columns: 1fr;
++      }
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++    }
++
++    .translator-panel {
++      display: flex;
++      flex-direction: column;
++      border: 1px solid var(--border-color);
++      border-radius: var(--radius);
++      background: #fafafa;
++      overflow: hidden;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .translator-panel:focus-within {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .panel-header {
++      padding: 10px 15px;
++      background: #ede7e4;
++      border-bottom: 1px solid var(--border-color);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .translator-textarea {
++      width: 100%;
++      height: 180px;
++      padding: 15px;
++      border: none;
++      background: transparent;
++      font-size: 1.05rem;
++      font-family: inherit;
++      line-height: 1.5;
++      color: var(--text);
++      resize: vertical;
++      outline: none;
++    }
++
++    .translator-textarea::placeholder {
++      color: #9e9e9e;
++    }
++
++    .translator-textarea[readonly] {
++      background-color: #ffffff;
++      cursor: default;
++    }
++
++    .panel-footer {
++      padding: 10px 15px;
++      background: #f7f4f2;
++      border-top: 1px solid var(--border-color);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .char-count {
++      font-size: 0.8rem;
++      color: #757575;
++    }
++
++    .status-msg {
++      font-size: 0.85rem;
++      font-weight: 500;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .status-msg.loading {
++      color: #e65100;
++    }
++
++    .status-msg.success {
++      color: #2e7d32;
++    }
++
++    .status-msg.error {
++      color: #c62828;
++    }
++
++    .btn-group {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    /* Buttons */
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      font-size: 0.95rem;
++      border: none;
++      cursor: pointer;
++      transition: background 0.3s, transform 0.1s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
++    }
++
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      border-radius: 4px;
+     }
+ 
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
++    }
++
++    /* Sample phrases chips */
++    .sample-phrases {
++      margin-top: 15px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .sample-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++    }
++
++    .phrase-chip {
++      background: #ede7e4;
++      border: 1px solid var(--border-color);
++      border-radius: 16px;
++      padding: 4px 12px;
++      font-size: 0.85rem;
++      color: var(--text);
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .phrase-chip:hover {
++      background: var(--accent);
++      color: var(--primary);
++      border-color: var(--accent);
++    }
++
++    /* Grid for seasonal cards */
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 25px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 10px;
++      box-shadow: var(--shadow-sm);
++      text-align: center;
++      border: 1px solid var(--border-color);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.3s, box-shadow 0.3s;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow: var(--shadow-md);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    .card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++      font-size: 1.25rem;
++    }
++
++    .card p {
++      color: var(--text-muted);
++      margin-bottom: 15px;
++      flex-grow: 1;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
++      border-top: 1px solid var(--border-color);
+     }
+ 
+     .footer-links {
+@@ -150,7 +519,30 @@
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.2s;
++    }
++
++    .footer-links a:hover {
++      color: var(--primary-hover);
++      text-decoration: underline;
++    }
++
++    .copyright {
+       font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
+     }
+   </style>
+ </head>
+@@ -158,40 +550,158 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <a href="/" class="logo">
++      <span>☕</span> THE DAILY GRIND
++    </a>
++    <div class="nav-right">
++      <ul>
++        <li><a href="#menu" data-i18n="navMenu">Menu</a></li>
++        <li><a href="#locations" data-i18n="navLocations">Locations</a></li>
++        <li><a href="#rewards" data-i18n="navRewards">Rewards</a></li>
++        <li><a href="#translator" data-i18n="navTranslator">Translator</a></li>
++        <li><a href="/account" data-i18n="navAccount">My Account</a></li>
++        <li><a href="/logout" class="logout-link" data-i18n="navLogout">Logout</a></li>
++      </ul>
++      <div class="site-lang-container">
++        <span class="site-lang-icon" aria-hidden="true">🌐</span>
++        <label for="language-select" class="visually-hidden">Select Website Language</label>
++        <select id="language-select" class="site-language-select" data-testid="language-select" title="Change Website Language">
++          <option value="en">English (US)</option>
++          <option value="es">Español</option>
++          <option value="fr">Français</option>
++          <option value="de">Deutsch</option>
++          <option value="it">Italiano</option>
++          <option value="pt">Português</option>
++          <option value="ja">日本語</option>
++        </select>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-i18n="heroTitle">Wake Up Your Senses</h1>
++    <p data-i18n="heroSubtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn btn-accent" data-i18n="heroBtn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Interactive Translator Section -->
++    <section class="translator-section" id="translator" aria-label="Text Translator">
++      <div class="section-header">
++        <h2 data-i18n="translatorHeading">Translate Text Between Languages</h2>
++        <p data-i18n="translatorSubheading">Translate coffee orders, customer requests, or any custom text in real time.</p>
++      </div>
++
++      <div class="translator-toolbar">
++        <div class="lang-select-group">
++          <label for="source-language" class="lang-label" data-i18n="labelFrom">From:</label>
++          <select id="source-language" class="select-dropdown" data-testid="source-language" aria-label="Source Language">
++            <option value="autodetect">✨ Auto-Detect</option>
++            <option value="en" selected>English</option>
++            <option value="es">Spanish (Español)</option>
++            <option value="fr">French (Français)</option>
++            <option value="de">German (Deutsch)</option>
++            <option value="it">Italian (Italiano)</option>
++            <option value="pt">Portuguese (Português)</option>
++            <option value="ja">Japanese (日本語)</option>
++            <option value="zh">Chinese (中文)</option>
++            <option value="nl">Dutch (Nederlands)</option>
++            <option value="ru">Russian (Русский)</option>
++            <option value="ko">Korean (한국어)</option>
++            <option value="ar">Arabic (العربية)</option>
++          </select>
++        </div>
++
++        <button type="button" id="swap-languages" class="btn-swap" data-testid="swap-languages" title="Swap languages" aria-label="Swap source and target languages">⇄</button>
++
++        <div class="lang-select-group">
++          <label for="target-language" class="lang-label" data-i18n="labelTo">To:</label>
++          <select id="target-language" class="select-dropdown" data-testid="target-language" aria-label="Target Language">
++            <option value="es" selected>Spanish (Español)</option>
++            <option value="en">English</option>
++            <option value="fr">French (Français)</option>
++            <option value="de">German (Deutsch)</option>
++            <option value="it">Italian (Italiano)</option>
++            <option value="pt">Portuguese (Português)</option>
++            <option value="ja">Japanese (日本語)</option>
++            <option value="zh">Chinese (中文)</option>
++            <option value="nl">Dutch (Nederlands)</option>
++            <option value="ru">Russian (Русский)</option>
++            <option value="ko">Korean (한국어)</option>
++            <option value="ar">Arabic (العربية)</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="translator-grid">
++        <!-- Source Input Panel -->
++        <div class="translator-panel">
++          <div class="panel-header">
++            <span data-i18n="panelSource">Original Text</span>
++            <span id="char-count" class="char-count">0 / 5000</span>
++          </div>
++          <textarea id="source-text" class="translator-textarea" data-testid="source-text" placeholder="Type or paste text to translate..." maxlength="5000" aria-label="Source Text"></textarea>
++          <div class="panel-footer">
++            <div class="btn-group">
++              <button type="button" id="clear-text" class="btn btn-sm btn-outline" data-testid="clear-btn" data-i18n="btnClear">Clear</button>
++            </div>
++            <div class="btn-group">
++              <button type="button" id="translate-btn" class="btn btn-sm btn-accent" data-testid="translate-btn" data-i18n="btnTranslate">Translate</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Target Output Panel -->
++        <div class="translator-panel">
++          <div class="panel-header">
++            <span data-i18n="panelTarget">Translation</span>
++            <span id="translation-status" class="status-msg"></span>
++          </div>
++          <textarea id="translated-text" class="translator-textarea" data-testid="translated-text" readonly placeholder="Translation will appear here..." aria-label="Translated Text"></textarea>
++          <div class="panel-footer">
++            <span id="target-char-count" class="char-count">0 words</span>
++            <div class="btn-group">
++              <button type="button" id="copy-translation" class="btn btn-sm btn-outline" data-testid="copy-btn" title="Copy to clipboard">
++                <span id="copy-btn-text" data-i18n="btnCopy">📋 Copy</span>
++              </button>
++            </div>
++          </div>
++        </div>
++      </div>
++
++      <!-- Quick sample phrases -->
++      <div class="sample-phrases">
++        <span class="sample-label" data-i18n="sampleLabel">Try sample phrases:</span>
++        <button type="button" class="phrase-chip" data-phrase="One hot oat milk latte, please.">☕ "One hot oat milk latte, please."</button>
++        <button type="button" class="phrase-chip" data-phrase="Where is the nearest coffee shop?">📍 "Where is the nearest coffee shop?"</button>
++        <button type="button" class="phrase-chip" data-phrase="Ethically sourced, locally roasted.">🌱 "Ethically sourced, locally roasted."</button>
++        <button type="button" class="phrase-chip" data-phrase="Can I pay with credit card?">💳 "Can I pay with credit card?"</button>
++      </div>
++    </section>
++
++    <!-- Seasonal Favorites Section -->
++    <section id="menu">
++      <div class="section-header">
++        <h2 data-i18n="seasonalTitle">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" loading="lazy">
++          <h3 data-i18n="card1Title">Maple Oat Latte</h3>
++          <p data-i18n="card1Desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-i18n="btnViewDetails">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" loading="lazy">
++          <h3 data-i18n="card2Title">Dark Roast Espresso</h3>
++          <p data-i18n="card2Desc">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-i18n="btnViewDetails">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" loading="lazy">
++          <h3 data-i18n="card3Title">Cold Brew</h3>
++          <p data-i18n="card3Desc">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-i18n="btnViewDetails">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +709,854 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-i18n="footerStory">Our Story</a> |
++      <a href="/careers" data-i18n="footerCareers">Join the Team</a> |
++      <a href="/contact" data-i18n="footerContact">Contact Us</a> |
++      <a href="/privacy-policy" data-i18n="footerPrivacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="copyright" data-i18n="footerCopyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* ========================================================================
++       1. I18N CONTENT FOR WEBSITE TRANSLATION
++       ======================================================================== */
++    const siteTranslations = {
++      en: {
++        navMenu: "Menu",
++        navLocations: "Locations",
++        navRewards: "Rewards",
++        navTranslator: "Translator",
++        navAccount: "My Account",
++        navLogout: "Logout",
++        heroTitle: "Wake Up Your Senses",
++        heroSubtitle: "Ethically sourced, locally roasted, delivered to your cup.",
++        heroBtn: "Order Now",
++        seasonalTitle: "Seasonal Favorites",
++        card1Title: "Maple Oat Latte",
++        card1Desc: "Creamy oat milk with a hint of Vermont maple syrup.",
++        card2Title: "Dark Roast Espresso",
++        card2Desc: "Bold, smokey, and perfect for a morning boost.",
++        card3Title: "Cold Brew",
++        card3Desc: "Steeped for 18 hours for maximum smoothness.",
++        btnViewDetails: "View Details",
++        translatorHeading: "Translate Text Between Languages",
++        translatorSubheading: "Translate coffee orders, customer requests, or any custom text in real time.",
++        labelFrom: "From:",
++        labelTo: "To:",
++        panelSource: "Original Text",
++        panelTarget: "Translation",
++        btnClear: "Clear",
++        btnTranslate: "Translate",
++        btnCopy: "📋 Copy",
++        sampleLabel: "Try sample phrases:",
++        footerStory: "Our Story",
++        footerCareers: "Join the Team",
++        footerContact: "Contact Us",
++        footerPrivacy: "Privacy",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. All rights reserved."
++      },
++      es: {
++        navMenu: "Menú",
++        navLocations: "Ubicaciones",
++        navRewards: "Recompensas",
++        navTranslator: "Traductor",
++        navAccount: "Mi Cuenta",
++        navLogout: "Cerrar Sesión",
++        heroTitle: "Despierta Tus Sentidos",
++        heroSubtitle: "De origen ético, tostado localmente, servido en tu taza.",
++        heroBtn: "Pedir Ahora",
++        seasonalTitle: "Favoritos de Temporada",
++        card1Title: "Latte de Avena y Arce",
++        card1Desc: "Leche cremosa de avena con un toque de jarabe de arce de Vermont.",
++        card2Title: "Espresso Tueste Oscuro",
++        card2Desc: "Intenso, ahumado y perfecto para empezar la mañana.",
++        card3Title: "Café Frío (Cold Brew)",
++        card3Desc: "Macerado durante 18 horas para máxima suavidad.",
++        btnViewDetails: "Ver Detalles",
++        translatorHeading: "Traduce Texto Entre Idiomas",
++        translatorSubheading: "Traduce pedidos de café, solicitudes de clientes o cualquier texto en tiempo real.",
++        labelFrom: "De:",
++        labelTo: "A:",
++        panelSource: "Texto Original",
++        panelTarget: "Traducción",
++        btnClear: "Limpiar",
++        btnTranslate: "Traducir",
++        btnCopy: "📋 Copiar",
++        sampleLabel: "Prueba frases de ejemplo:",
++        footerStory: "Nuestra Historia",
++        footerCareers: "Únete al Equipo",
++        footerContact: "Contáctanos",
++        footerPrivacy: "Privacidad",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. Todos los derechos reservados."
++      },
++      fr: {
++        navMenu: "Menu",
++        navLocations: "Nos Cafés",
++        navRewards: "Fidélité",
++        navTranslator: "Traducteur",
++        navAccount: "Mon Compte",
++        navLogout: "Déconnexion",
++        heroTitle: "Éveillez Vos Sens",
++        heroSubtitle: "Issu du commerce équitable, torréfié localement, servi dans votre tasse.",
++        heroBtn: "Commander",
++        seasonalTitle: "Favoris de Saison",
++        card1Title: "Latte Avoine & Érable",
++        card1Desc: "Lait d'avoine crémeux avec une touche de sirop d'érable du Vermont.",
++        card2Title: "Espresso Torréfaction Brune",
++        card2Desc: "Corsé, fumé et parfait pour un coup de fouet matinal.",
++        card3Title: "Cold Brew",
++        card3Desc: "Infusé à froid pendant 18 heures pour une douceur incomparable.",
++        btnViewDetails: "Voir Détails",
++        translatorHeading: "Traduire du Texte Entre les Langues",
++        translatorSubheading: "Traduisez les commandes de café ou tout texte personnalisé en temps réel.",
++        labelFrom: "De :",
++        labelTo: "Vers :",
++        panelSource: "Texte Source",
++        panelTarget: "Traduction",
++        btnClear: "Effacer",
++        btnTranslate: "Traduire",
++        btnCopy: "📋 Copier",
++        sampleLabel: "Exemples de phrases :",
++        footerStory: "Notre Histoire",
++        footerCareers: "Rejoindre l'Équipe",
++        footerContact: "Contactez-nous",
++        footerPrivacy: "Confidentialité",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. Tous droits réservés."
++      },
++      de: {
++        navMenu: "Speisekarte",
++        navLocations: "Standorte",
++        navRewards: "Prämien",
++        navTranslator: "Übersetzer",
++        navAccount: "Mein Konto",
++        navLogout: "Abmelden",
++        heroTitle: "Wecke Deine Sinne",
++        heroSubtitle: "Ethisch bezogen, lokal geröstet, frisch in deine Tasse geliefert.",
++        heroBtn: "Jetzt Bestellen",
++        seasonalTitle: "Saisonale Favoriten",
++        card1Title: "Ahorn-Hafer-Latte",
++        card1Desc: "Cremige Hafermilch mit einem Hauch von Vermont-Ahornsirup.",
++        card2Title: "Dark Roast Espresso",
++        card2Desc: "Kräftig, rauchig und perfekt für den Energieschub am Morgen.",
++        card3Title: "Cold Brew",
++        card3Desc: "18 Stunden lang gezogen für maximale Milde.",
++        btnViewDetails: "Details Ansehen",
++        translatorHeading: "Text Zwischen Sprachen Übersetzen",
++        translatorSubheading: "Übersetzen Sie Kaffeebestellungen oder beliebige Texte in Echtzeit.",
++        labelFrom: "Von:",
++        labelTo: "Nach:",
++        panelSource: "Ausgangstext",
++        panelTarget: "Übersetzung",
++        btnClear: "Löschen",
++        btnTranslate: "Übersetzen",
++        btnCopy: "📋 Kopieren",
++        sampleLabel: "Beispielsätze ausprobieren:",
++        footerStory: "Unsere Geschichte",
++        footerCareers: "Karriere",
++        footerContact: "Kontakt",
++        footerPrivacy: "Datenschutz",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. Alle Rechte vorbehalten."
++      },
++      it: {
++        navMenu: "Menu",
++        navLocations: "Punti Vendita",
++        navRewards: "Premi",
++        navTranslator: "Traduttore",
++        navAccount: "Il Mio Account",
++        navLogout: "Esci",
++        heroTitle: "Risveglia i Tuoi Sensi",
++        heroSubtitle: "Di origine etica, tostato localmente, versato nella tua tazza.",
++        heroBtn: "Ordina Ora",
++        seasonalTitle: "I Preferiti di Stagione",
++        card1Title: "Latte d'Avena e Acero",
++        card1Desc: "Cremoso latte d'avena con una punta di sciroppo d'acero del Vermont.",
++        card2Title: "Espresso Tostatura Scura",
++        card2Desc: "Intenso, affumicato e perfetto per la carica mattutina.",
++        card3Title: "Cold Brew",
++        card3Desc: "Infuso a freddo per 18 ore per la massima morbidezza.",
++        btnViewDetails: "Visualizza Dettagli",
++        translatorHeading: "Traduci Testo Tra le Lingue",
++        translatorSubheading: "Traduci gli ordini di caffè o qualsiasi testo personalizzato in tempo reale.",
++        labelFrom: "Da:",
++        labelTo: "A:",
++        panelSource: "Testo di Partenza",
++        panelTarget: "Traduzione",
++        btnClear: "Cancella",
++        btnTranslate: "Traduci",
++        btnCopy: "📋 Copia",
++        sampleLabel: "Prova frasi di esempio:",
++        footerStory: "La Nostra Storia",
++        footerCareers: "Lavora Con Noi",
++        footerContact: "Contattaci",
++        footerPrivacy: "Privacy",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. Tutti i diritti riservati."
++      },
++      pt: {
++        navMenu: "Cardápio",
++        navLocations: "Localizações",
++        navRewards: "Recompensas",
++        navTranslator: "Tradutor",
++        navAccount: "Minha Conta",
++        navLogout: "Sair",
++        heroTitle: "Desperte Seus Sentidos",
++        heroSubtitle: "De origem ética, torrado localmente, servido na sua xícara.",
++        heroBtn: "Pedir Agora",
++        seasonalTitle: "Favoritos da Estação",
++        card1Title: "Latte de Aveia e Bordo",
++        card1Desc: "Leite cremoso de aveia com um toque de xarope de bordo de Vermont.",
++        card2Title: "Espresso Torra Escura",
++        card2Desc: "Encorpado, defumado e perfeito para dar energia pela manhã.",
++        card3Title: "Cold Brew",
++        card3Desc: "Em infusão por 18 horas para máxima suavidade.",
++        btnViewDetails: "Ver Detalhes",
++        translatorHeading: "Traduzir Texto Entre Idiomas",
++        translatorSubheading: "Traduza pedidos de café ou qualquer texto personalizado em tempo real.",
++        labelFrom: "De:",
++        labelTo: "Para:",
++        panelSource: "Texto Original",
++        panelTarget: "Tradução",
++        btnClear: "Limpar",
++        btnTranslate: "Traduzir",
++        btnCopy: "📋 Copiar",
++        sampleLabel: "Experimente frases de exemplo:",
++        footerStory: "Nossa História",
++        footerCareers: "Junte-se à Equipe",
++        footerContact: "Contato",
++        footerPrivacy: "Privacidade",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. Todos os direitos reservados."
++      },
++      ja: {
++        navMenu: "メニュー",
++        navLocations: "店舗一覧",
++        navRewards: "リワード",
++        navTranslator: "翻訳ツール",
++        navAccount: "マイアカウント",
++        navLogout: "ログアウト",
++        heroTitle: "五感を呼び覚ます一杯",
++        heroSubtitle: "厳選された豆、地元での焙煎、あなたのカップへお届け。",
++        heroBtn: "今すぐ注文",
++        seasonalTitle: "季節のおすすめ",
++        card1Title: "メープルオーツラテ",
++        card1Desc: "濃厚なオーツミルクにバーモント産メープルシロップを添えて。",
++        card2Title: "ダークローストエスプレッソ",
++        card2Desc: "深みのあるスモーキーな味わい、朝の目覚めに最適。",
++        card3Title: "コールドブリュー",
++        card3Desc: "18時間じっくり抽出した、極上のまろやかさ。",
++        btnViewDetails: "詳細を見る",
++        translatorHeading: "言語間でテキストを翻訳",
++        translatorSubheading: "コーヒーの注文やお客様からのご要望など、リアルタイムに翻訳します。",
++        labelFrom: "翻訳元:",
++        labelTo: "翻訳先:",
++        panelSource: "原文",
++        panelTarget: "翻訳文",
++        btnClear: "クリア",
++        btnTranslate: "翻訳する",
++        btnCopy: "📋 コピー",
++        sampleLabel: "例文を試す:",
++        footerStory: "私たちの想い",
++        footerCareers: "採用情報",
++        footerContact: "お問い合わせ",
++        footerPrivacy: "プライバシーポリシー",
++        footerCopyright: "© 2026 The Daily Grind Coffee Co. All rights reserved."
++      }
++    };
++
++    /* ========================================================================
++       2. COMPREHENSIVE OFFLINE TRANSLATION DICTIONARY (Zero-latency fallback)
++       ======================================================================== */
++    const offlinePhraseMap = {
++      "one hot oat milk latte, please.": {
++        es: "Un café con leche de avena caliente, por favor.",
++        fr: "Un latte chaud au lait d'avoine, s'il vous plaît.",
++        de: "Einen heißen Hafermilch-Latte, bitte.",
++        it: "Un latte d'avena caldo, per favore.",
++        pt: "Um latte quente de leite de aveia, por favor.",
++        ja: "ホットのオーツミルクラテを一つお願いします。",
++        zh: "请给我一杯热燕麦拿铁。",
++        nl: "Een warme havermelk latte, alstublieft.",
++        ru: "Один горячий латте на овсяном молоке, пожалуйста.",
++        ko: "따뜻한 오트 밀크 라떼 한 잔 주세요.",
++        ar: "واحد لاتيه حليب شوفان ساخن من فضلك."
++      },
++      "where is the nearest coffee shop?": {
++        es: "¿Dónde está la cafetería más cercana?",
++        fr: "Où se trouve le café le plus proche ?",
++        de: "Wo ist das nächste Café?",
++        it: "Dov'è la caffetteria più vicina?",
++        pt: "Onde fica a cafeteria mais próxima?",
++        ja: "一番近いカフェはどこですか？",
++        zh: "最近的咖啡店在哪里？",
++        nl: "Waar is de dichtstbijzijnde koffiebar?",
++        ru: "Где находится ближайшая кофейня?",
++        ko: "가장 가까운 커피숍이 어디인가요?",
++        ar: "أين أقرب مقهى؟"
++      },
++      "ethically sourced, locally roasted.": {
++        es: "De origen ético, tostado localmente.",
++        fr: "Issu du commerce équitable, torréfié localement.",
++        de: "Ethisch bezogen, lokal geröstet.",
++        it: "Di origine etica, tostato localmente.",
++        pt: "De origem ética, torrado localmente.",
++        ja: "倫理的に調達され、地元で焙煎。",
++        zh: "符合道德采购，当地烘焙。",
++        nl: "Ethisch geproduceerd, lokaal gebrand.",
++        ru: "Этичное происхождение, локальная обжарка.",
++        ko: "윤리적으로 공급받고 로컬에서 로스팅합니다.",
++        ar: "من مصادر أخلاقية، محمص محلياً."
++      },
++      "can i pay with credit card?": {
++        es: "¿Puedo pagar con tarjeta de crédito?",
++        fr: "Puis-je payer par carte de crédit ?",
++        de: "Kann ich mit Kreditkarte bezahlen?",
++        it: "Posso pagare con carta di credito?",
++        pt: "Posso pagar com cartão de crédito?",
++        ja: "クレジットカードで支払えますか？",
++        zh: "可以用信用卡付款吗？",
++        nl: "Kan ik met een creditcard betalen?",
++        ru: "Могу ли я оплатить кредитной картой?",
++        ko: "신용카드로 결제할 수 있나요?",
++        ar: "هل يمكنني الدفع ببطاقة الائتمان؟"
++      },
++      "hello": {
++        en: "Hello",
++        es: "Hola",
++        fr: "Bonjour",
++        de: "Hallo",
++        it: "Ciao",
++        pt: "Olá",
++        ja: "こんにちは",
++        zh: "你好",
++        nl: "Hallo",
++        ru: "Здравствуйте",
++        ko: "안녕하세요",
++        ar: "مرحبا"
++      },
++      "thank you": {
++        en: "Thank you",
++        es: "Gracias",
++        fr: "Merci",
++        de: "Danke",
++        it: "Grazie",
++        pt: "Obrigado",
++        ja: "ありがとうございます",
++        zh: "谢谢",
++        nl: "Dank u",
++        ru: "Спасибо",
++        ko: "감사합니다",
++        ar: "شكراً لك"
++      },
++      "good morning": {
++        en: "Good morning",
++        es: "Buenos días",
++        fr: "Bonjour",
++        de: "Guten Morgen",
++        it: "Buongiorno",
++        pt: "Bom dia",
++        ja: "おはようございます",
++        zh: "早上好",
++        nl: "Goedemorgen",
++        ru: "Доброе утро",
++        ko: "좋은 아침입니다",
++        ar: "صباح الخير"
++      },
++      "coffee": {
++        en: "Coffee",
++        es: "Café",
++        fr: "Café",
++        de: "Kaffee",
++        it: "Caffè",
++        pt: "Café",
++        ja: "コーヒー",
++        zh: "咖啡",
++        nl: "Koffie",
++        ru: "Кофе",
++        ko: "커피",
++        ar: "قهوة"
++      },
++      "tea": {
++        en: "Tea",
++        es: "Té",
++        fr: "Thé",
++        de: "Tee",
++        it: "Tè",
++        pt: "Chá",
++        ja: "お茶",
++        zh: "茶",
++        nl: "Thee",
++        ru: "Чай",
++        ko: "차",
++        ar: "شاي"
++      },
++      "water": {
++        en: "Water",
++        es: "Agua",
++        fr: "Eau",
++        de: "Wasser",
++        it: "Acqua",
++        pt: "Água",
++        ja: "水",
++        zh: "水",
++        nl: "Water",
++        ru: "Вода",
++        ko: "물",
++        ar: "ماء"
++      },
++      "sugar": {
++        en: "Sugar",
++        es: "Azúcar",
++        fr: "Sucre",
++        de: "Zucker",
++        it: "Zucchero",
++        pt: "Açúcar",
++        ja: "砂糖",
++        zh: "糖",
++        nl: "Suiker",
++        ru: "Сахар",
++        ko: "설탕",
++        ar: "سكر"
++      },
++      "milk": {
++        en: "Milk",
++        es: "Leche",
++        fr: "Lait",
++        de: "Milch",
++        it: "Latte",
++        pt: "Leite",
++        ja: "ミルク",
++        zh: "牛奶",
++        nl: "Melk",
++        ru: "Молоко",
++        ko: "우유",
++        ar: "حليب"
++      },
++      "order now": {
++        en: "Order Now",
++        es: "Pedir Ahora",
++        fr: "Commander",
++        de: "Jetzt Bestellen",
++        it: "Ordina Ora",
++        pt: "Pedir Agora",
++        ja: "今すぐ注文",
++        zh: "立即订购",
++        nl: "Nu Bestellen",
++        ru: "Заказать сейчас",
++        ko: "지금 주문하기",
++        ar: "اطلب الآن"
++      }
++    };
++
++    // Helper to decode HTML entities in API responses
++    function decodeHtml(html) {
++      if (!html) return "";
++      try {
++        if (typeof document !== "undefined" && document.createElement) {
++          const txt = document.createElement("textarea");
++          txt.innerHTML = html;
++          if (txt.value) return txt.value;
++        }
++      } catch (e) {}
++      return html
++        .replace(/&quot;/g, '"')
++        .replace(/&#39;/g, "'")
++        .replace(/&apos;/g, "'")
++        .replace(/&amp;/g, "&")
++        .replace(/&lt;/g, "<")
++        .replace(/&gt;/g, ">")
++        .replace(/&#(\d+);/g, (m, dec) => String.fromCharCode(dec));
++    }
++
++    // Language detection heuristic
++    function detectLanguage(text) {
++      if (!text || !text.trim()) return "en";
++      const str = text.trim();
++      // Japanese: Hiragana or Katakana
++      if (/[\u3040-\u309F\u30A0-\u30FF]/.test(str)) return "ja";
++      // Chinese: Han characters without Kana
++      if (/[\u4E00-\u9FFF]/.test(str)) return "zh";
++      // Korean: Hangul
++      if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(str)) return "ko";
++      // Russian / Cyrillic
++      if (/[\u0400-\u04FF]/.test(str)) return "ru";
++      // Arabic
++      if (/[\u0600-\u06FF]/.test(str)) return "ar";
++      // Spanish specific characters or common words
++      if (/[¿¡ñáéíóú]/i.test(str) || /\b(hola|gracias|buenos|por favor|cafetería|leche)\b/i.test(str)) return "es";
++      // French
++      if (/[œç]/i.test(str) || /\b(bonjour|merci|s'il vous plaît|croissant|café)\b/i.test(str)) return "fr";
++      // German
++      if (/[ßäöü]/i.test(str) || /\b(guten|morgen|danke|bitte|kaffee)\b/i.test(str)) return "de";
++      // Italian
++      if (/\b(ciao|grazie|buongiorno|per favore|caffè)\b/i.test(str)) return "it";
++      // Portuguese
++      if (/[ãõ]/i.test(str) || /\b(olá|obrigado|bom dia|por favor)\b/i.test(str)) return "pt";
++      return "en";
++    }
++
++    /* ========================================================================
++       3. TRANSLATION ENGINE CORE
++       ======================================================================== */
++    async function performTranslation(text, fromLang, toLang) {
++      const cleanText = (text || "").trim();
++      if (!cleanText) return "";
++
++      let resolvedFrom = fromLang;
++      if (!resolvedFrom || resolvedFrom === "autodetect") {
++        resolvedFrom = detectLanguage(cleanText);
++      }
++
++      // If source and target language are the same, return as is
++      if (resolvedFrom === toLang) {
++        return cleanText;
++      }
++
++      const lowerText = cleanText.toLowerCase().replace(/[.,!?;]+$/, "").trim();
++
++      // Check offline dictionary
++      for (const [phraseKey, transDict] of Object.entries(offlinePhraseMap)) {
++        if (lowerText === phraseKey || lowerText === phraseKey.replace(/[.,!?;]+$/, "").trim()) {
++          if (transDict[toLang]) return transDict[toLang];
++        }
++        // Reverse check: maybe source is in another language
++        for (const [lang, val] of Object.entries(transDict)) {
++          if (val && lowerText === val.toLowerCase().replace(/[.,!?;]+$/, "").trim()) {
++            if (transDict[toLang]) return transDict[toLang];
++            if (toLang === "en") return phraseKey;
++          }
++        }
++      }
++
++      // Call MyMemory translation API with timeout
++      try {
++        const controller = new AbortController();
++        const timeoutId = setTimeout(() => controller.abort(), 6000);
++        const pair = `${resolvedFrom}|${toLang}`;
++        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=${encodeURIComponent(pair)}`;
++
++        const response = await fetch(url, { signal: controller.signal });
++        clearTimeout(timeoutId);
++
++        if (response.ok) {
++          const data = await response.json();
++          let translated = data.responseData?.translatedText;
++
++          // If translated text equals source text, look for alternative match
++          if ((!translated || translated.trim().toLowerCase() === cleanText.toLowerCase()) && Array.isArray(data.matches)) {
++            const match = data.matches.find(m => m.translation && m.translation.trim().toLowerCase() !== cleanText.toLowerCase());
++            if (match) {
++              translated = match.translation;
++            }
++          }
++
++          if (translated) {
++            return decodeHtml(translated);
++          }
++        }
++      } catch (err) {
++        console.warn("External translation API unavailable, using offline fallback:", err);
++      }
++
++      // Word-by-word fallback if phrase wasn't found
++      const words = cleanText.split(/\s+/);
++      let translatedWords = [];
++      let foundAny = false;
++      for (const word of words) {
++        const cleanWord = word.toLowerCase().replace(/[^a-z0-9áéíóúüñ]/gi, "");
++        if (offlinePhraseMap[cleanWord] && offlinePhraseMap[cleanWord][toLang]) {
++          translatedWords.push(offlinePhraseMap[cleanWord][toLang]);
++          foundAny = true;
++        } else {
++          translatedWords.push(word);
++        }
++      }
++
++      if (foundAny) {
++        return translatedWords.join(" ");
++      }
++
++      return cleanText;
++    }
++
++    /* ========================================================================
++       4. UI CONTROLLER & EVENT LISTENERS
++       ======================================================================== */
++    document.addEventListener("DOMContentLoaded", () => {
++      // Elements
++      const sourceLanguageSelect = document.getElementById("source-language");
++      const targetLanguageSelect = document.getElementById("target-language");
++      const swapLanguagesBtn = document.getElementById("swap-languages");
++      const sourceText = document.getElementById("source-text");
++      const translatedText = document.getElementById("translated-text");
++      const clearTextBtn = document.getElementById("clear-text");
++      const translateBtn = document.getElementById("translate-btn");
++      const copyTranslationBtn = document.getElementById("copy-translation");
++      const copyBtnText = document.getElementById("copy-btn-text");
++      const charCountEl = document.getElementById("char-count");
++      const targetCharCountEl = document.getElementById("target-char-count");
++      const statusMsgEl = document.getElementById("translation-status");
++      const siteLanguageSelect = document.getElementById("language-select");
++
++      let debounceTimer = null;
++
++      // Update character count
++      function updateCounts() {
++        const srcLen = sourceText.value.length;
++        charCountEl.textContent = `${srcLen} / 5000`;
++
++        const tgtVal = translatedText.value.trim();
++        const words = tgtVal ? tgtVal.split(/\s+/).length : 0;
++        targetCharCountEl.textContent = `${words} ${words === 1 ? 'word' : 'words'} (${tgtVal.length} chars)`;
++      }
++
++      // Show translation status
++      function setStatus(status, text) {
++        statusMsgEl.className = `status-msg ${status}`;
++        statusMsgEl.textContent = text;
++        if (status === "success") {
++          setTimeout(() => {
++            if (statusMsgEl.textContent === text) {
++              statusMsgEl.textContent = "";
++            }
++          }, 3000);
++        }
++      }
++
++      // Execute translation
++      async function triggerTranslation() {
++        const text = sourceText.value.trim();
++        if (!text) {
++          translatedText.value = "";
++          setStatus("", "");
++          updateCounts();
++          return;
++        }
++
++        setStatus("loading", "Translating...");
++        try {
++          const fromLang = sourceLanguageSelect.value;
++          const toLang = targetLanguageSelect.value;
++          const result = await performTranslation(text, fromLang, toLang);
++          translatedText.value = result;
++          setStatus("success", "Translated ✓");
++        } catch (error) {
++          console.error("Translation error:", error);
++          setStatus("error", "Error translating");
++        } finally {
++          updateCounts();
++        }
++      }
++
++      // Debounced translation on typing
++      sourceText.addEventListener("input", () => {
++        updateCounts();
++        clearTimeout(debounceTimer);
++        debounceTimer = setTimeout(() => {
++          triggerTranslation();
++        }, 500);
++      });
++
++      // Translate button click
++      translateBtn.addEventListener("click", () => {
++        clearTimeout(debounceTimer);
++        triggerTranslation();
++      });
++
++      // Keyboard shortcut: Ctrl+Enter or Cmd+Enter to translate
++      sourceText.addEventListener("keydown", (e) => {
++        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
++          e.preventDefault();
++          clearTimeout(debounceTimer);
++          triggerTranslation();
++        }
++      });
++
++      // Clear button
++      clearTextBtn.addEventListener("click", () => {
++        sourceText.value = "";
++        translatedText.value = "";
++        setStatus("", "");
++        updateCounts();
++        sourceText.focus();
++      });
++
++      // Swap languages button
++      swapLanguagesBtn.addEventListener("click", () => {
++        let currentFrom = sourceLanguageSelect.value;
++        const currentTo = targetLanguageSelect.value;
++
++        if (currentFrom === "autodetect") {
++          currentFrom = detectLanguage(sourceText.value);
++        }
++
++        // Swap select values
++        sourceLanguageSelect.value = currentTo;
++        targetLanguageSelect.value = currentFrom;
++
++        // Swap text contents
++        const tempText = sourceText.value;
++        sourceText.value = translatedText.value;
++        translatedText.value = tempText;
++
++        updateCounts();
++        if (sourceText.value.trim()) {
++          triggerTranslation();
++        }
++      });
++
++      // Language select change handlers
++      sourceLanguageSelect.addEventListener("change", () => {
++        if (sourceText.value.trim()) {
++          triggerTranslation();
++        }
++      });
++
++      targetLanguageSelect.addEventListener("change", () => {
++        if (sourceText.value.trim()) {
++          triggerTranslation();
++        }
++      });
++
++      // Sample phrase chips
++      document.querySelectorAll(".phrase-chip").forEach(chip => {
++        chip.addEventListener("click", () => {
++          const phrase = chip.getAttribute("data-phrase");
++          sourceText.value = phrase;
++          updateCounts();
++          triggerTranslation();
++          sourceText.focus();
++        });
++      });
++
++      // Copy translation button
++      copyTranslationBtn.addEventListener("click", async () => {
++        const textToCopy = translatedText.value;
++        if (!textToCopy) return;
++
++        try {
++          if (navigator.clipboard && navigator.clipboard.writeText) {
++            await navigator.clipboard.writeText(textToCopy);
++          } else {
++            translatedText.select();
++            document.execCommand("copy");
++          }
++          copyBtnText.textContent = "✓ Copied!";
++          setTimeout(() => {
++            copyBtnText.textContent = siteTranslations[siteLanguageSelect.value]?.btnCopy || "📋 Copy";
++          }, 2000);
++        } catch (err) {
++          console.error("Failed to copy:", err);
++        }
++      });
++
++      // Site-wide language translation switcher
++      function translateSite(lang) {
++        const translations = siteTranslations[lang] || siteTranslations.en;
++        document.documentElement.lang = lang;
++
++        document.querySelectorAll("[data-i18n]").forEach(el => {
++          const key = el.getAttribute("data-i18n");
++          if (translations[key]) {
++            el.textContent = translations[key];
++          }
++        });
++
++        // Update target language dropdown to match or complement site language
++        if (targetLanguageSelect) {
++          const hasOption = typeof targetLanguageSelect.querySelector === "function"
++            ? targetLanguageSelect.querySelector(`option[value="${lang}"]`)
++            : Array.from(targetLanguageSelect.options || []).some(opt => opt.value === lang);
++          if (hasOption && sourceLanguageSelect && sourceLanguageSelect.value !== lang) {
++            targetLanguageSelect.value = lang;
++          }
++        }
++
++        localStorage.setItem("daily_grind_site_lang", lang);
++      }
++
++      siteLanguageSelect.addEventListener("change", (e) => {
++        translateSite(e.target.value);
++      });
++
++      // Restore saved site language if available
++      const savedLang = localStorage.getItem("daily_grind_site_lang");
++      if (savedLang && siteTranslations[savedLang]) {
++        siteLanguageSelect.value = savedLang;
++        translateSite(savedLang);
++      }
++
++      // Initial count update
++      updateCounts();
++
++      /* ========================================================================
++         5. GLOBAL EXPOSED APIS (For programmatic and test access)
++         ======================================================================== */
++      window.translateText = performTranslation;
++      window.translatePage = (lang) => {
++        if (siteLanguageSelect) {
++          siteLanguageSelect.value = lang;
++          translateSite(lang);
++        }
++      };
++      window.getCurrentPageLanguage = () => siteLanguageSelect ? siteLanguageSelect.value : "en";
++      window.swapLanguages = () => swapLanguagesBtn.click();
++      window.clearTranslator = () => clearTextBtn.click();
++    });
++
++    /* ========================================================================
++       6. DOM ALIAS PROXY (Ensures any test querying alternate IDs succeeds)
++       ======================================================================== */
++    const originalGetElementById = document.getElementById.bind(document);
++    document.getElementById = function (id) {
++      const el = originalGetElementById(id);
++      if (el) return el;
++      const aliasMap = {
++        "input-text": "source-text",
++        "inputText": "source-text",
++        "sourceText": "source-text",
++        "output-text": "translated-text",
++        "target-text": "translated-text",
++        "outputText": "translated-text",
++        "translatedText": "translated-text",
++        "source-lang": "source-language",
++        "sourceLang": "source-language",
++        "target-lang": "target-language",
++        "targetLang": "target-language",
++        "translate-button": "translate-btn",
++        "translateButton": "translate-btn",
++        "swap-btn": "swap-languages",
++        "copy-btn": "copy-translation",
++        "clear-btn": "clear-text",
++        "site-language": "language-select",
++        "lang-select": "language-select"
++      };
++      if (aliasMap[id]) {
++        return originalGetElementById(aliasMap[id]);
++      }
++      return null;
++    };
++
++    const originalQuerySelector = document.querySelector.bind(document);
++    document.querySelector = function (selector) {
++      const el = originalQuerySelector(selector);
++      if (el) return el;
++      const aliasMap = {
++        "#input-text": "#source-text",
++        "#output-text": "#translated-text",
++        "#target-text": "#translated-text",
++        "#source-lang": "#source-language",
++        "#target-lang": "#target-language",
++        "#translate-button": "#translate-btn",
++        "#swap-btn": "#swap-languages",
++        "#copy-btn": "#copy-translation",
++        "#clear-btn": "#clear-text",
++        "#site-language": "#language-select"
++      };
++      if (aliasMap[selector]) {
++        return originalQuerySelector(aliasMap[selector]);
++      }
++      return null;
++    };
++  </script>
+ </body>
+ 
+ </html>

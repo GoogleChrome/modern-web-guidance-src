@@ -1,0 +1,133 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..e94e666 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -51,5 +51,128 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <script>
++      interface CachedView {
++        body: HTMLElement;
++        main: HTMLElement | null;
++        title: string;
++        htmlAttributes: Array<{ name: string; value: string }>;
++        styles: HTMLStyleElement[];
++      }
++
++      const viewCache = new Map<string, CachedView>();
++      (window as any).__viewCache = viewCache;
++
++      function normalizeUrlKey(url: URL | Location): string {
++        let pathname = url.pathname;
++        if (pathname.length > 1 && pathname.endsWith("/")) {
++          pathname = pathname.slice(0, -1);
++        }
++        return pathname + url.search;
++      }
++
++      function preserveAstroIslands(root: ParentNode) {
++        root.querySelectorAll("astro-island").forEach((island: any) => {
++          if (island.unmount) {
++            document.removeEventListener("astro:after-swap", island.unmount);
++          }
++          island.unmount = () => {};
++          if (!island.hasAttribute("ssr")) {
++            island.childrenConnectedCallback = async () => {};
++            island.start = async () => {};
++            island.hydrate = async () => {};
++          }
++        });
++      }
++
++      function saveCurrentView(key: string) {
++        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
++        document.querySelectorAll("header nav").forEach((nav) => {
++          nav.parentElement?.parentElement?.dispatchEvent(
++            new MouseEvent("mouseleave", { bubbles: true })
++          );
++        });
++        document
++          .querySelectorAll(".astro-route-announcer")
++          .forEach((el) => el.remove());
++
++        const htmlAttributes = Array.from(document.documentElement.attributes)
++          .filter(
++            ({ name }) =>
++              name !== "data-astro-transition" &&
++              name !== "data-astro-transition-fallback"
++          )
++          .map(({ name, value }) => ({ name, value }));
++
++        const styles = Array.from(
++          document.head.querySelectorAll("style")
++        ).map((s) => s.cloneNode(true) as HTMLStyleElement);
++
++        viewCache.set(key, {
++          body: document.body,
++          main: document.querySelector("body > div > div > main"),
++          title: document.title,
++          htmlAttributes,
++          styles,
++        });
++      }
++
++      document.addEventListener("astro:before-preparation", (event: any) => {
++        if (event.formData) return;
++        const toKey = normalizeUrlKey(event.to);
++        const cached = viewCache.get(toKey);
++        if (cached) {
++          event.loader = async () => {};
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        if (event.formData) return;
++
++        const fromKey = normalizeUrlKey(event.from);
++        const toKey = normalizeUrlKey(event.to);
++        if (fromKey === toKey) return;
++
++        const outgoingBody = document.body;
++        saveCurrentView(fromKey);
++
++        const cached = viewCache.get(toKey);
++        if (cached) {
++          event.swap = () => {
++            document.title = cached.title;
++
++            for (const { name, value } of cached.htmlAttributes) {
++              document.documentElement.setAttribute(name, value);
++            }
++
++            for (const style of cached.styles) {
++              const exists = Array.from(
++                document.head.querySelectorAll("style")
++              ).some((s) => s.textContent === style.textContent);
++              if (!exists) {
++                document.head.appendChild(style.cloneNode(true));
++              }
++            }
++
++            cached.body
++              .querySelectorAll(".astro-route-announcer")
++              .forEach((el) => el.remove());
++
++            if (document.body !== cached.body) {
++              document.body.replaceWith(cached.body);
++            }
++
++            preserveAstroIslands(outgoingBody);
++            preserveAstroIslands(cached.body);
++          };
++        } else {
++          const defaultSwap = event.swap;
++          event.swap = () => {
++            defaultSwap();
++            preserveAstroIslands(outgoingBody);
++          };
++        }
++      });
++    </script>
+   </body>
+ </html>

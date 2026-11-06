@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+index 66c9173..f5c27c5 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,38 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link
++    rel="preload"
++    as="font"
++    type="font/woff2"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/files/playfair-display-latin-400-normal.woff2"
++    integrity="sha384-fAIPusWGd2V84aQXpBuxOYn6bSF53YXZZ5PEHQbb898tJVSr+LdCZyH2B32CSlWv"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <link
++    rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/index.css"
++    integrity="sha384-2VbuG3XWvceGA5cQJnDdEv/WbyqAOV6lmc1yC2TbikCBv5FZBV0/BGT9kr+0vT9v"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <link
++    rel="stylesheet"
++    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
++    integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <link
++    rel="stylesheet"
++    href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css"
++    integrity="sha384-/rJKQnzOkEo+daG0jMjU1IwwY9unxt1NBw3Ef2fmOJ3PW/TfAg2KXVoWwMZQZtw9"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -41,11 +72,18 @@
+     }
+ 
+     .logo {
++      font-family: 'Playfair Display', Georgia, serif;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    h1,
++    h2,
++    h3 {
++      font-family: 'Playfair Display', Georgia, serif;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+@@ -74,11 +112,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: rgba(0, 0, 0, 0.5);
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +125,15 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-image {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -115,6 +161,14 @@
+       text-align: center;
+     }
+ 
++    .card-image {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -169,6 +223,14 @@
+   </nav>
+ 
+   <header class="hero">
++    <img
++      class="hero-image"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      alt="Artisanal coffee being poured"
++      integrity="sha384-MkCawIXxkhKfMCsafNM9LontDHX3W8n8sYbKwfQ5NE+0xJOWg9RoQMv3OfOjdF4b"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer"
++    >
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -178,17 +240,41 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-aos="fade-up">
++          <img
++            class="card-image"
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            alt="Maple Oat Latte with latte art"
++            integrity="sha384-2WFWQLT/1Eqcaxll4bOFYFCC7h/cBXjjJnnmjOV+LCv2DD2clo3PTPGoTN08yR3F"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++          >
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-aos="fade-up" data-aos-delay="100">
++          <img
++            class="card-image"
++            src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++            alt="Dark Roast Espresso shot"
++            integrity="sha384-6+imsy6TeGpgSm5fEMeAYTlfcFpB57Khf3retJvBa7GI7lOMMprTC7Takj72Lv5K"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++          >
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-aos="fade-up" data-aos-delay="200">
++          <img
++            class="card-image"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            alt="Iced Cold Brew coffee"
++            integrity="sha384-tfGfLHKgA76gapwph6013ofw6V/p6mV/UkcZ+pKoLUWBcmMS3S8GraLsY9SzjIO0"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++          >
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +293,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script
++    src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"
++    integrity="sha384-n1AULnKdMJlK1oQCLNDL9qZsDgXtH6jRYFCpBtWFc+a9Yve0KSoMn575rk755NJZ"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  ></script>
++  <script
++    src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
++    integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  ></script>
++  <script>
++    if (window.AOS) {
++      AOS.init({ duration: 600, once: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

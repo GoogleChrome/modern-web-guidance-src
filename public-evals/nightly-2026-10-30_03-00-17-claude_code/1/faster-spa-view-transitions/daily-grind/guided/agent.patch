@@ -1,0 +1,469 @@
+diff --git a/index.html b/index.html
+index 66c9173..f41135d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,50 +152,344 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logo a {
++      color: inherit;
++    }
++
++    /* SPA views */
++    #app {
++      position: relative;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* Keep the cached rendering state of offscreen views instead of rebuilding them */
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 0 auto;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .page-title {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .lede {
++      text-align: center;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .card img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .filters {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .filters button {
++      font: inherit;
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      border-radius: 20px;
++      padding: 6px 16px;
++      cursor: pointer;
++    }
++
++    .filters button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .card.location {
++      text-align: left;
++    }
++
++    .hours {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .rewards-summary {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      max-width: 600px;
++      margin: 20px auto 0;
++      text-align: center;
++    }
++
++    .rewards-summary .points {
++      font-size: 3rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .rewards-summary progress {
++      width: 100%;
++      height: 14px;
++      accent-color: var(--accent);
++    }
++
++    .account-form {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      max-width: 500px;
++      margin: 20px auto 0;
++      display: grid;
++      gap: 15px;
++    }
++
++    .account-form label {
++      display: grid;
++      gap: 4px;
++      font-weight: 600;
++    }
++
++    .account-form input,
++    .account-form select {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .account-form .checkbox {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: normal;
++    }
++
++    .account-form button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      justify-self: start;
++    }
++
++    .form-status {
++      min-height: 1.6em;
++      color: #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="#/">THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu">Menu</a></li>
++      <li><a href="#/locations">Locations</a></li>
++      <li><a href="#/rewards">Rewards</a></li>
++      <li><a href="#/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <div id="app"></div>
++
++  <template id="view-home" data-title="The Daily Grind | Artisanal Coffee">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
++
++    <main class="container">
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </div>
++      </section>
++    </main>
++  </template>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <template id="view-menu" data-title="Menu | The Daily Grind">
++    <main class="container">
++      <h1 class="page-title">Our Menu</h1>
++      <p class="lede">Every drink is pulled from beans roasted in-house within the last week.</p>
++      <div class="filters" role="group" aria-label="Filter menu">
++        <button type="button" data-filter="all" aria-pressed="true">All</button>
++        <button type="button" data-filter="hot" aria-pressed="false">Hot</button>
++        <button type="button" data-filter="cold" aria-pressed="false">Cold</button>
++      </div>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-kind="hot">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=70" alt="Espresso in a white cup" width="600" height="450" loading="lazy">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p class="price">$3.25</p>
++        </div>
++        <div class="card" data-kind="hot">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=70" alt="Latte with latte art" width="600" height="450" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="price">$5.50</p>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card" data-kind="hot">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=70" alt="Cappuccino on a wooden table" width="600" height="450" loading="lazy">
++          <h3>Classic Cappuccino</h3>
++          <p>Equal parts espresso, steamed milk, and velvety foam.</p>
++          <p class="price">$4.50</p>
+         </div>
+-        <div class="card">
++        <div class="card" data-kind="cold">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70" alt="Iced coffee in a glass" width="600" height="450" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="price">$4.75</p>
++        </div>
++        <div class="card" data-kind="cold">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=70" alt="Iced latte with milk swirling" width="600" height="450" loading="lazy">
++          <h3>Iced Vanilla Latte</h3>
++          <p>House-made vanilla syrup over espresso and cold milk.</p>
++          <p class="price">$5.25</p>
+         </div>
+       </div>
+-    </section>
+-  </main>
++    </main>
++  </template>
++
++  <template id="view-locations" data-title="Locations | The Daily Grind">
++    <main class="container">
++      <h1 class="page-title">Find Us</h1>
++      <p class="lede">Stop by one of our neighborhood cafés for a fresh cup.</p>
++      <div class="grid">
++        <div class="card location">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=70" alt="Bright café interior with wooden tables" width="600" height="450" loading="lazy">
++          <h3>Downtown Roastery</h3>
++          <p>120 Main Street</p>
++          <p class="hours">Mon–Fri 6am–7pm · Sat–Sun 7am–6pm</p>
++        </div>
++        <div class="card location">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=70" alt="Cozy café with hanging lights" width="600" height="450" loading="lazy">
++          <h3>Riverside Café</h3>
++          <p>48 Harbor Lane</p>
++          <p class="hours">Daily 7am–8pm</p>
++        </div>
++        <div class="card location">
++          <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=70" alt="Coffee bar counter with espresso machine" width="600" height="450" loading="lazy">
++          <h3>Uptown Espresso Bar</h3>
++          <p>905 Elm Avenue</p>
++          <p class="hours">Mon–Sat 6:30am–5pm · Closed Sunday</p>
++        </div>
++      </div>
++    </main>
++  </template>
++
++  <template id="view-rewards" data-title="Rewards | The Daily Grind">
++    <main class="container">
++      <h1 class="page-title">Grind Rewards</h1>
++      <p class="lede">Earn 10 points for every dollar spent. 1,500 points gets you a free drink.</p>
++      <div class="rewards-summary">
++        <p>Your balance</p>
++        <p class="points">1,120</p>
++        <progress max="1500" value="1120">1,120 of 1,500 points</progress>
++        <p>380 points until your next free drink</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Free Drink</h3>
++          <p>Any handcrafted beverage, any size.</p>
++          <p class="price">1,500 pts</p>
++        </div>
++        <div class="card">
++          <h3>Pastry Pairing</h3>
++          <p>A fresh-baked pastry with your next order.</p>
++          <p class="price">800 pts</p>
++        </div>
++        <div class="card">
++          <h3>Bag of Beans</h3>
++          <p>12 oz of our house roast, whole or ground.</p>
++          <p class="price">3,000 pts</p>
++        </div>
++      </div>
++    </main>
++  </template>
++
++  <template id="view-account" data-title="My Account | The Daily Grind">
++    <main class="container">
++      <h1 class="page-title">My Account</h1>
++      <p class="lede">Update your profile and ordering preferences.</p>
++      <form class="account-form">
++        <label>
++          Name
++          <input name="name" autocomplete="name" value="Alex Rivera">
++        </label>
++        <label>
++          Email
++          <input name="email" type="email" autocomplete="email" value="alex@example.com">
++        </label>
++        <label>
++          Home café
++          <select name="cafe">
++            <option>Downtown Roastery</option>
++            <option>Riverside Café</option>
++            <option>Uptown Espresso Bar</option>
++          </select>
++        </label>
++        <label>
++          Usual order
++          <input name="usual" value="Maple Oat Latte">
++        </label>
++        <label class="checkbox">
++          <input type="checkbox" name="news" checked>
++          Email me about seasonal drinks
++        </label>
++        <button type="submit" class="btn">Save Changes</button>
++        <p class="form-status" role="status"></p>
++      </form>
++    </main>
++  </template>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +501,96 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    const routes = {
++      '/': 'home',
++      '/menu': 'menu',
++      '/locations': 'locations',
++      '/rewards': 'rewards',
++      '/account': 'account',
++    };
++
++    const app = document.getElementById('app');
++    // Rendered views stay in the DOM once visited; the set is small and fixed, so no eviction is needed.
++    const views = new Map();
++    const scrollPositions = new Map();
++    let activeName = null;
++
++    function setUpView(name, view) {
++      if (name === 'menu') {
++        const buttons = view.querySelectorAll('[data-filter]');
++        view.querySelector('.filters').addEventListener('click', (event) => {
++          const button = event.target.closest('[data-filter]');
++          if (!button) return;
++          const filter = button.dataset.filter;
++          buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
++          view.querySelectorAll('[data-kind]').forEach((card) => {
++            card.hidden = filter !== 'all' && card.dataset.kind !== filter;
++          });
++        });
++      } else if (name === 'account') {
++        const form = view.querySelector('form');
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++          form.querySelector('.form-status').textContent = 'Changes saved.';
++        });
++      }
++    }
++
++    function getView(name) {
++      let view = views.get(name);
++      if (!view) {
++        const template = document.getElementById(`view-${name}`);
++        view = document.createElement('div');
++        view.className = 'spa-view inactive';
++        view.tabIndex = -1;
++        view.dataset.title = template.dataset.title;
++        view.inert = true;
++        view.append(template.content.cloneNode(true));
++        setUpView(name, view);
++        app.append(view);
++        views.set(name, view);
++      }
++      return view;
++    }
++
++    function render() {
++      const path = location.hash.replace(/^#/, '') || '/';
++      const name = routes[path] ?? 'home';
++      if (name === activeName) return;
++
++      const isInitial = activeName === null;
++      if (!isInitial) {
++        scrollPositions.set(activeName, scrollY);
++        const previous = views.get(activeName);
++        previous.classList.add('inactive');
++        previous.inert = true;
++      }
++
++      const view = getView(name);
++      view.classList.remove('inactive');
++      view.inert = false;
++      activeName = name;
++      document.title = view.dataset.title;
++
++      document.querySelectorAll('nav a[href^="#/"]').forEach((link) => {
++        if (link.getAttribute('href') === `#${path}` && link.closest('ul')) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++
++      if (!isInitial) {
++        view.focus({ preventScroll: true });
++        scrollTo(0, scrollPositions.get(name) ?? 0);
++      }
++    }
++
++    addEventListener('hashchange', render);
++    render();
++  </script>
+ </body>
+ 
+ </html>

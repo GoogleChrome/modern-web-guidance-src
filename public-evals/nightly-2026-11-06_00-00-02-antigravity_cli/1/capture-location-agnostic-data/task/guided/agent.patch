@@ -1,0 +1,327 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,131 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Preferences & Reminders Section */
++    .preferences-section {
++      margin-top: 50px;
++    }
++
++    .preferences-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 700px;
++      margin: 20px auto 0;
++    }
++
++    .preferences-card fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 20px;
++      margin-block-end: 1.5rem;
++    }
++
++    .preferences-card legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++      font-size: 1.1rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++      text-align: left;
++    }
++
++    .form-group:last-child {
++      margin-block-end: 0;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-top: -10px;
++      color: var(--text);
++    }
++
++    .form-group input {
++      display: block;
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #9e9e9e;
++      border-radius: 5px;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #c62828;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-start: 0.35rem;
++    }
++
++    .preferences-summary {
++      margin-block-start: 1.5rem;
++      padding: 16px;
++      background-color: var(--light);
++      border-inline-start: 4px solid var(--accent);
++      border-radius: 4px;
++      text-align: left;
++    }
++
++    .preferences-summary h3 {
++      color: var(--primary);
++      margin-block-end: 0.5rem;
++      font-size: 1.05rem;
++    }
++
++    .preferences-summary dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.5rem 1rem;
++      font-size: 0.95rem;
++    }
++
++    .preferences-summary dt {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .preferences-summary dd {
++      margin: 0;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      font-size: 0.8rem;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-inline-start: 6px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +317,66 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences-section" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading" style="text-align: center;">Your Coffee Routine &amp; Milestones</h2>
++      <div class="preferences-card">
++        <form id="coffee-preferences-form" action="/preferences" method="POST">
++          <fieldset>
++            <legend>Travel-Safe Schedule Preferences</legend>
++            <div class="form-group">
++              <label for="pickup-time">Daily Pickup Reminder Time</label>
++              <input
++                type="time"
++                id="pickup-time"
++                name="pickup_time"
++                value="08:30"
++                required
++                aria-describedby="pickup-time-hint"
++              >
++              <span id="pickup-time-hint" class="field-hint">
++                Saved as a location-agnostic wall-clock time so your reminder stays at this exact local hour wherever you travel.
++              </span>
++            </div>
++
++            <div class="form-group">
++              <label for="anniversary-date">Coffee Anniversary Date</label>
++              <input
++                type="date"
++                id="anniversary-date"
++                name="anniversary_date"
++                value="2023-11-06"
++                required
++                aria-describedby="anniversary-date-hint"
++              >
++              <span id="anniversary-date-hint" class="field-hint">
++                Saved as a calendar date without time zone offsets so your anniversary never shifts across days when crossing time zones.
++              </span>
++            </div>
++          </fieldset>
++
++          <button type="submit" class="btn" style="border: none; cursor: pointer; font-size: 1rem; min-height: 48px;">
++            Save Preferences
++          </button>
++        </form>
++
++        <div id="preferences-summary" class="preferences-summary" aria-live="polite">
++          <h3>Active Location-Agnostic Schedule</h3>
++          <dl>
++            <dt>Daily Pickup Reminder:</dt>
++            <dd id="summary-pickup-time">08:30</dd>
++            <dt>Coffee Anniversary:</dt>
++            <dd id="summary-anniversary-date">2023-11-06</dd>
++            <dt>Annual Recurring Date:</dt>
++            <dd id="summary-annual-month-day">--11-06</dd>
++            <dt>Next Scheduled Pickup:</dt>
++            <dd id="summary-combined-datetime">2026-11-06T08:30:00</dd>
++          </dl>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +387,124 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const STORAGE_KEYS = {
++      pickupTime: 'dailyGrind.pickupReminderTime',
++      anniversaryDate: 'dailyGrind.coffeeAnniversaryDate',
++    };
++
++    function initializeApp() {
++      const form = document.getElementById('coffee-preferences-form');
++      const pickupInput = document.getElementById('pickup-time');
++      const anniversaryInput = document.getElementById('anniversary-date');
++
++      const summaryPickupEl = document.getElementById('summary-pickup-time');
++      const summaryAnniversaryEl = document.getElementById('summary-anniversary-date');
++      const summaryMonthDayEl = document.getElementById('summary-annual-month-day');
++      const summaryCombinedEl = document.getElementById('summary-combined-datetime');
++
++      const savedTime = localStorage.getItem(STORAGE_KEYS.pickupTime);
++      const savedDate = localStorage.getItem(STORAGE_KEYS.anniversaryDate);
++
++      if (savedTime) {
++        pickupInput.value = savedTime;
++      }
++      if (savedDate) {
++        anniversaryInput.value = savedDate;
++      }
++
++      function renderSchedule() {
++        if (!pickupInput.value || !anniversaryInput.value) {
++          return;
++        }
++
++        // 1. Parse wall-clock time and calendar date into location-agnostic Temporal Plain types
++        const reminderTime = Temporal.PlainTime.from(pickupInput.value);
++        const anniversaryDate = Temporal.PlainDate.from(anniversaryInput.value);
++
++        // 2. Model the annual recurring anniversary using Temporal.PlainMonthDay with explicit calendar
++        const annualAnniversary = Temporal.PlainMonthDay.from({
++          month: anniversaryDate.month,
++          day: anniversaryDate.day,
++          calendar: 'iso8601',
++        });
++
++        const today = Temporal.Now.plainDateISO();
++        const isAnniversaryToday = annualAnniversary.equals(today.toPlainMonthDay());
++
++        // Convert PlainMonthDay to PlainDate with a specific year before date comparisons/arithmetic
++        const thisYearOccurrence = annualAnniversary.toPlainDate({ year: today.year });
++        const nextOccurrence =
++          Temporal.PlainDate.compare(thisYearOccurrence, today) < 0
++            ? annualAnniversary.toPlainDate({ year: today.year + 1 })
++            : thisYearOccurrence;
++
++        // Combine calendar date and wall-clock time into a location-agnostic PlainDateTime
++        const todayPickupAppointment = today.toPlainDateTime(reminderTime);
++
++        // Read fields directly from Plain types and display without time zone conversion
++        summaryPickupEl.textContent = `${reminderTime.toLocaleString()} (${reminderTime.toString().slice(0, 5)} wall-clock time)`;
++        summaryAnniversaryEl.textContent = `${anniversaryDate.toLocaleString()} (${anniversaryDate.year}-${String(anniversaryDate.month).padStart(2, '0')}-${String(anniversaryDate.day).padStart(2, '0')})`;
++
++        summaryMonthDayEl.textContent = `${annualAnniversary.toLocaleString()} (Next celebration: ${nextOccurrence.toLocaleString()})`;
++        if (isAnniversaryToday) {
++          const badge = document.createElement('span');
++          badge.className = 'badge';
++          badge.textContent = 'Happy Coffee Anniversary!';
++          summaryMonthDayEl.appendChild(badge);
++        }
++
++        summaryCombinedEl.textContent = `${todayPickupAppointment.toLocaleString()} (${todayPickupAppointment.toString()})`;
++      }
++
++      pickupInput.addEventListener('input', () => {
++        pickupInput.setCustomValidity('');
++      });
++      pickupInput.addEventListener('blur', () => {
++        if (!pickupInput.value) {
++          pickupInput.setCustomValidity('Please select a daily pickup reminder time.');
++        }
++      });
++
++      anniversaryInput.addEventListener('input', () => {
++        anniversaryInput.setCustomValidity('');
++      });
++      anniversaryInput.addEventListener('blur', () => {
++        if (!anniversaryInput.value) {
++          anniversaryInput.setCustomValidity('Please select your coffee anniversary date.');
++        }
++      });
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        if (!form.checkValidity()) {
++          form.reportValidity();
++          return;
++        }
++
++        const reminderTime = Temporal.PlainTime.from(pickupInput.value);
++        const anniversaryDate = Temporal.PlainDate.from(anniversaryInput.value);
++
++        localStorage.setItem(STORAGE_KEYS.pickupTime, reminderTime.toString().slice(0, 5));
++        localStorage.setItem(STORAGE_KEYS.anniversaryDate, anniversaryDate.toString());
++
++        renderSchedule();
++      });
++
++      renderSchedule();
++    }
++
++    // Check if Temporal is supported natively; load polyfill if needed
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      initializeApp();
++    })();
++  </script>
+ </body>
+ 
+ </html>

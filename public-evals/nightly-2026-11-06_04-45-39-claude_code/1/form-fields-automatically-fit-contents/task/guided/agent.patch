@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,94 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Order Form */
++    .order-form {
++      max-width: 640px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-form h2 {
++      margin-bottom: 0.25rem;
++    }
++
++    .order-form .intro {
++      margin-bottom: 1.5rem;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      /* Don't stretch controls to full width, so they can size to their content */
++      align-items: flex-start;
++      gap: 0.35rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .order-form input,
++    .order-form textarea,
++    .order-form select {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++      padding: 0.6rem 0.75rem;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      min-height: 48px;
++      max-inline-size: 100%;
++      /* Shrink/grow to fit the content instead of a fixed default size */
++      field-sizing: content;
++    }
++
++    .order-form input {
++      width: auto;
++      min-inline-size: 12ch;
++    }
++
++    .order-form textarea {
++      /* Stable width, auto-sizing height as text wraps */
++      width: 100%;
++      height: auto;
++      min-block-size: 2lh;
++      max-block-size: 10lh;
++      resize: vertical;
++    }
++
++    .order-form select {
++      cursor: pointer;
++    }
++
++    .order-form input:focus-visible,
++    .order-form textarea:focus-visible,
++    .order-form select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form button {
++      font: inherit;
++      border: none;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +280,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="order-form" aria-labelledby="order-heading">
++      <h2 id="order-heading">Pre-Order Your Coffee</h2>
++      <p class="intro">Skip the line &mdash; tell us what you'd like and we'll have it ready.</p>
++      <form action="/order-online" method="POST">
++        <div class="form-group">
++          <label for="order-name">Name for the cup</label>
++          <input type="text" id="order-name" name="name" autocomplete="name" placeholder="e.g. Sam" maxlength="60"
++            required>
++        </div>
++
++        <div class="form-group">
++          <label for="order-drink">Drink</label>
++          <select id="order-drink" name="drink" required>
++            <option value="">Choose a drink</option>
++            <option value="espresso">Espresso</option>
++            <option value="latte">Latte</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="chai">Chai</option>
++            <option value="drip">Drip Coffee of the Day</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="order-notes">Special instructions</label>
++          <textarea id="order-notes" name="notes" maxlength="500" aria-describedby="order-notes-hint"
++            placeholder="Extra hot, oat milk, half sweet..."></textarea>
++          <span id="order-notes-hint" class="hint">Optional. Up to 500 characters.</span>
++        </div>
++
++        <button type="submit" class="btn">Place pre-order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

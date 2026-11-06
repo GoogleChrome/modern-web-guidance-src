@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .contact h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .contact form {
++      display: grid;
++      gap: 1.25rem;
++    }
++
++    .field {
++      display: grid;
++      gap: 0.25rem;
++      padding: 12px 14px;
++      background: white;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .field label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field textarea {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      padding: 0.6rem 0.75rem;
++      min-height: 48px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      background: white;
++    }
++
++    .field textarea {
++      min-height: 8rem;
++      resize: vertical;
++    }
++
++    .field input:focus-visible,
++    .field textarea:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.875rem;
++    }
++
++    /* Red border on the wrapping div once the user has interacted with
++       (or tried to submit) an empty required field or a malformed email. */
++    .field:has(:user-invalid) {
++      border-color: #c62828;
++      background-color: #fff5f5;
++    }
++
++    .field:has(:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .contact button {
++      justify-self: start;
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +276,37 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Get in Touch</h2>
++    <form action="/contact" method="POST">
++      <div class="field">
++        <label for="contact-name">Name</label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required
++          aria-errormessage="contact-name-error">
++        <p id="contact-name-error" class="error-msg">Please enter your name.</p>
++      </div>
++
++      <div class="field">
++        <label for="contact-email">Email</label>
++        <input type="email" id="contact-email" name="email" autocomplete="email" required
++          autocorrect="off" autocapitalize="off" spellcheck="false"
++          aria-errormessage="contact-email-error">
++        <p id="contact-email-error" class="error-msg">Please enter a valid email address.</p>
++      </div>
++
++      <div class="field">
++        <label for="contact-message">Message</label>
++        <textarea id="contact-message" name="message" required
++          aria-errormessage="contact-message-error"></textarea>
++        <p id="contact-message-error" class="error-msg">Please enter a message.</p>
++      </div>
++
++      <button type="submit" class="btn">Send message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

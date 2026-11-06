@@ -1,0 +1,317 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,11 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --sticky-blue: #1565c0;
++      /* Fixed nav height so sticky section headers can sit just below it */
++      --nav-height: 4.5rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -30,9 +33,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -134,8 +138,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Intro */
++    .intro {
++      max-width: 750px;
++      margin: 0 auto 40px;
++      text-align: center;
++    }
++
++    .intro h2 {
++      margin-bottom: 10px;
++    }
++
++    .intro p + p {
++      margin-top: 12px;
++    }
++
++    /* Menu sections with sticky headers */
++    .menu-section {
++      margin-top: 60px;
++    }
++
++    .menu-section > p {
++      max-width: 750px;
++      margin: 20px auto 0;
++      text-align: center;
++    }
++
++    /*
++     * The sticky element itself is a *named* scroll-state container, so the
++     * stuck-state query below only ever targets these section headers and
++     * never the sticky site <nav>. The document/viewport is the scroll root;
++     * headers stick directly beneath the fixed-height nav.
++     */
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++      text-align: center;
++      font-size: 1.6rem;
++      transition: background-color 0.25s, color 0.25s, padding 0.25s,
++        box-shadow 0.25s, border-radius 0.25s, font-size 0.25s;
++    }
++
++    /* Stuck state: blue, shadowed, more compact */
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--sticky-blue);
++        color: white;
++        padding: 0.4rem 1rem;
++        font-size: 1.2rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    /* JS fallback for browsers without scroll-state container queries */
++    .sticky-container.is-stuck .sticky-header {
++      background: var(--sticky-blue);
++      color: white;
++      padding: 0.4rem 1rem;
++      font-size: 1.2rem;
++      border-radius: 0 0 8px 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++    }
++
++    .price {
++      display: block;
++      margin-top: 10px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +278,172 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="menu-section">
++      <div class="intro">
++        <h2>Our Full Menu</h2>
++        <p>Every drink at The Daily Grind starts with beans sourced directly from farmers we know by name. We roast in small batches every week so your cup is always at its peak.</p>
++        <p>Scroll through the menu below &mdash; each section's header stays pinned to the top of the page while you browse it.</p>
++      </div>
++    </section>
++
++    <section class="menu-section" id="espresso" aria-labelledby="espresso-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="espresso-heading">Espresso Bar</h2>
++      </div>
++      <p>Pulled to order on our La Marzocco, using a rotating single-origin and our house Grind Blend.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Classic Espresso</h3>
++          <p>A rich double shot with a thick, hazelnut crema.</p>
++          <span class="price">$3.25</span>
++        </div>
++        <div class="card">
++          <h3>Cortado</h3>
++          <p>Equal parts espresso and silky steamed milk.</p>
++          <span class="price">$4.00</span>
++        </div>
++        <div class="card">
++          <h3>Flat White</h3>
++          <p>Ristretto shots under a thin layer of microfoam.</p>
++          <span class="price">$4.50</span>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Espresso, steamed milk and a deep cap of foam.</p>
++          <span class="price">$4.50</span>
++        </div>
++        <div class="card">
++          <h3>Caramel Macchiato</h3>
++          <p>Vanilla, milk and espresso finished with caramel.</p>
++          <span class="price">$5.25</span>
++        </div>
++        <div class="card">
++          <h3>Mocha</h3>
++          <p>Dark chocolate ganache meets a double shot.</p>
++          <span class="price">$5.25</span>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section" id="brewed" aria-labelledby="brewed-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="brewed-heading">Brewed &amp; Cold</h2>
++      </div>
++      <p>From hand-poured filter coffee to slow-steeped cold brew, these drinks let the beans speak for themselves.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Pour Over</h3>
++          <p>Hand-brewed V60 of today's featured origin.</p>
++          <span class="price">$4.75</span>
++        </div>
++        <div class="card">
++          <h3>Drip of the Day</h3>
++          <p>Freshly brewed every 30 minutes.</p>
++          <span class="price">$2.75</span>
++        </div>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Full-bodied and served for one or two.</p>
++          <span class="price">$5.50</span>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Cold brew infused with nitrogen for a creamy pour.</p>
++          <span class="price">$5.25</span>
++        </div>
++        <div class="card">
++          <h3>Iced Americano</h3>
++          <p>Espresso over ice, topped with cold water.</p>
++          <span class="price">$3.75</span>
++        </div>
++        <div class="card">
++          <h3>Vanilla Sweet Cream</h3>
++          <p>Cold brew with house-made vanilla cream.</p>
++          <span class="price">$5.50</span>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section" id="bakery" aria-labelledby="bakery-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="bakery-heading">Fresh Bakery</h2>
++      </div>
++      <p>Baked every morning by our friends at Sunrise Bakehouse, two blocks down the street.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden and laminated with French butter.</p>
++          <span class="price">$3.50</span>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Bursting with wild Maine blueberries.</p>
++          <span class="price">$3.25</span>
++        </div>
++        <div class="card">
++          <h3>Almond Scone</h3>
++          <p>Tender crumb with toasted almonds and glaze.</p>
++          <span class="price">$3.75</span>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Swirled with brown sugar and cream cheese icing.</p>
++          <span class="price">$4.25</span>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist, spiced and served warm with butter.</p>
++          <span class="price">$3.50</span>
++        </div>
++        <div class="card">
++          <h3>Avocado Toast</h3>
++          <p>Sourdough, smashed avocado, chili flakes.</p>
++          <span class="price">$8.50</span>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section" id="beans" aria-labelledby="beans-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="beans-heading">Beans to Take Home</h2>
++      </div>
++      <p>Every bag is roasted within the last week. Ask a barista to grind it for your brewer of choice.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Grind House Blend</h3>
++          <p>Chocolate, toasted nut, brown sugar. 12oz.</p>
++          <span class="price">$16.00</span>
++        </div>
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral, bergamot, lemon zest. 12oz.</p>
++          <span class="price">$19.00</span>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Red apple, caramel, cocoa. 12oz.</p>
++          <span class="price">$18.00</span>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, cedar, dark chocolate. 12oz.</p>
++          <span class="price">$18.00</span>
++        </div>
++        <div class="card">
++          <h3>Decaf Swiss Water</h3>
++          <p>Milk chocolate and honey, no jitters. 12oz.</p>
++          <span class="price">$17.00</span>
++        </div>
++        <div class="card">
++          <h3>Espresso Roast</h3>
++          <p>Syrupy, molasses, smoky finish. 12oz.</p>
++          <span class="price">$17.00</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +454,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-state container queries:
++    // toggle .is-stuck when a sticky header is pinned below the nav.
++    if (!(window.CSS && CSS.supports('container-type', 'scroll-state'))) {
++      const containers = document.querySelectorAll('.sticky-container');
++      const update = () => {
++        containers.forEach((el) => {
++          const top = parseFloat(getComputedStyle(el).top) || 0;
++          const rect = el.getBoundingClientRect();
++          const parentRect = el.parentElement.getBoundingClientRect();
++          const pinned = Math.abs(rect.top - top) < 1 && parentRect.top < top - 1;
++          el.classList.toggle('is-stuck', pinned);
++        });
++      };
++      window.addEventListener('scroll', update, { passive: true });
++      window.addEventListener('resize', update);
++      update();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,106 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roast picker */
++    .roast-picker {
++      position: relative;
++      margin-top: 20px;
++      width: 260px;
++      text-align: left;
++    }
++
++    .roast-picker select {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++      width: 1px;
++      height: 1px;
++    }
++
++    .roast-trigger {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 2px solid transparent;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .roast-trigger:focus-visible,
++    .roast-trigger[aria-expanded="true"] {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .roast-menu {
++      display: none;
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 50%;
++      transform: translateX(-50%);
++      width: min(440px, 90vw);
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      padding: 10px;
++      margin: 0;
++      list-style: none;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++      z-index: 10;
++    }
++
++    .roast-picker.open .roast-menu {
++      display: grid;
++    }
++
++    .roast-option {
++      border-radius: 8px;
++      overflow: hidden;
++      cursor: pointer;
++      border: 2px solid transparent;
++      background: var(--light);
++      text-align: center;
++      color: var(--text);
++    }
++
++    .roast-option:hover,
++    .roast-option.active {
++      border-color: var(--accent);
++    }
++
++    .roast-option[aria-selected="true"] {
++      border-color: var(--primary);
++    }
++
++    .roast-option .thumb {
++      display: block;
++      height: 80px;
++      background-color: var(--primary);
++      background-size: cover;
++      background-position: center;
++    }
++
++    .roast-option .name {
++      display: block;
++      font-weight: 600;
++      padding: 6px 4px 0;
++    }
++
++    .roast-option .note {
++      display: block;
++      font-size: 0.75rem;
++      padding: 0 4px 8px;
++      opacity: 0.75;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,11 +268,107 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-picker" id="roast-picker">
++      <select id="roast" name="roast" aria-label="Choose a roast" tabindex="-1">
++        <option value="light">Light</option>
++        <option value="medium" selected>Medium</option>
++        <option value="dark">Dark</option>
++      </select>
++      <button type="button" class="roast-trigger" aria-haspopup="listbox" aria-expanded="false">
++        <span class="roast-label">Medium roast</span><span aria-hidden="true">▾</span>
++      </button>
++      <ul class="roast-menu" role="listbox" aria-label="Choose a roast" tabindex="-1">
++        <li class="roast-option" role="option" data-value="light">
++          <span class="thumb" style="background-image: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&q=60'); filter: brightness(1.25) sepia(0.4);"></span>
++          <span class="name">Light</span><span class="note">Bright &amp; fruity</span>
++        </li>
++        <li class="roast-option" role="option" data-value="medium">
++          <span class="thumb" style="background-image: url('https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=300&q=60');"></span>
++          <span class="name">Medium</span><span class="note">Smooth &amp; balanced</span>
++        </li>
++        <li class="roast-option" role="option" data-value="dark">
++          <span class="thumb" style="background-image: url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=300&q=60'); filter: brightness(0.7);"></span>
++          <span class="name">Dark</span><span class="note">Bold &amp; smoky</span>
++        </li>
++      </ul>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <script>
++    (function () {
++      var picker = document.getElementById('roast-picker');
++      var select = picker.querySelector('select');
++      var trigger = picker.querySelector('.roast-trigger');
++      var label = picker.querySelector('.roast-label');
++      var options = Array.prototype.slice.call(picker.querySelectorAll('.roast-option'));
++      var active = 0;
++
++      function setOpen(open) {
++        picker.classList.toggle('open', open);
++        trigger.setAttribute('aria-expanded', open);
++      }
++
++      function setActive(i) {
++        active = (i + options.length) % options.length;
++        options.forEach(function (o, n) { o.classList.toggle('active', n === active); });
++      }
++
++      function choose(i) {
++        var value = options[i].dataset.value;
++        select.value = value;
++        select.dispatchEvent(new Event('change', { bubbles: true }));
++      }
++
++      function sync() {
++        options.forEach(function (o) {
++          o.setAttribute('aria-selected', o.dataset.value === select.value);
++        });
++        var i = options.findIndex(function (o) { return o.dataset.value === select.value; });
++        label.textContent = options[i].querySelector('.name').textContent + ' roast';
++        setActive(i);
++      }
++
++      select.addEventListener('change', sync);
++      sync();
++
++      trigger.addEventListener('click', function () {
++        setOpen(!picker.classList.contains('open'));
++      });
++
++      options.forEach(function (o, i) {
++        o.addEventListener('click', function () {
++          choose(i);
++          setOpen(false);
++          trigger.focus();
++        });
++      });
++
++      picker.addEventListener('keydown', function (e) {
++        var open = picker.classList.contains('open');
++        if (e.key === 'Escape' && open) {
++          setOpen(false);
++        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
++          e.preventDefault();
++          if (!open) setOpen(true); else setActive(active + 1);
++        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
++          e.preventDefault();
++          if (!open) setOpen(true); else setActive(active - 1);
++        } else if (open && (e.key === 'Enter' || e.key === ' ')) {
++          e.preventDefault();
++          choose(active);
++          setOpen(false);
++        }
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!picker.contains(e.target)) setOpen(false);
++      });
++    })();
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

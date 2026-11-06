@@ -1,0 +1,172 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,26 +1,34 @@
+ import React, { useState } from 'react';
++import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+ 
++const LOGIN_ENDPOINT =
++  'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login';
++
+ export default function SignInForm() {
+-  const [username, setUsername] = useState('');
++  const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
++    if (loading) return;
++
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(LOGIN_ENDPOINT, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        // The API identifies accounts by `username`; we collect an email address for it.
++        body: JSON.stringify({ username: email, password }),
+       });
+ 
+       const data = await response.json();
+ 
+@@ -38,61 +46,97 @@
+       setLoading(false);
+     }
+   };
+ 
++  const inputClassName =
++    'w-full px-3 py-2 text-base border border-gray-300 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 user-invalid:border-red-500';
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
++      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <div aria-live="polite">
++        {error && (
++          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++            {error}
++          </div>
++        )}
++
++        {success && (
++          <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
++            {success}
++          </div>
++        )}
++      </div>
++
++      <form
++        onSubmit={handleSubmit}
++        method="post"
++        action={LOGIN_ENDPOINT}
++        className="space-y-4"
++        aria-busy={loading}
++      >
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
++            Email
+           </label>
+           <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
++            type="email"
++            id="email"
++            name="email"
++            value={email}
++            onChange={(e) => setEmail(e.target.value)}
++            autoComplete="username"
++            inputMode="email"
++            enterKeyHint="next"
++            spellCheck={false}
++            autoCapitalize="off"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className={inputClassName}
+           />
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="current-password" className="block text-sm font-medium text-gray-700">
++              Password
++            </label>
++            <button
++              type="button"
++              onClick={() => setShowPassword((v) => !v)}
++              aria-pressed={showPassword}
++              aria-controls="current-password"
++              className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
++            >
++              {showPassword ? (
++                <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
++              ) : (
++                <EyeIcon className="h-4 w-4" aria-hidden="true" />
++              )}
++              {showPassword ? 'Hide password' : 'Show password'}
++            </button>
++          </div>
+           <input
+-            type="password"
+-            id="password"
++            type={showPassword ? 'text' : 'password'}
++            id="current-password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            autoComplete="current-password"
++            enterKeyHint="done"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            className={inputClassName}
+           />
+         </div>
+ 
+         <button
+           type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
++          aria-disabled={loading}
++          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 ${
++            loading ? 'opacity-75 cursor-wait' : ''
+           }`}
+         >
+-          {loading ? 'Signing in...' : 'Sign In'}
++          {loading ? 'Signing in…' : 'Sign In'}
+         </button>
+       </form>
+     </div>
+   );

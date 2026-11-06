@@ -1,0 +1,257 @@
+diff --git a/index.html b/index.html
+index 66c9173..0f1d6c2 100644
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,194 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.3s;
++    }
++
++    .footer-links a:hover {
++      color: var(--primary);
++    }
++
++    /* Motion: only transform/opacity are animated so it stays on the compositor */
++    :root {
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    @keyframes fade-up {
++      from {
++        opacity: 0;
++        transform: translateY(24px);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes fade-down {
++      from {
++        opacity: 0;
++        transform: translateY(-100%);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes hero-zoom {
++      from {
++        transform: scale(1.08);
++      }
++
++      to {
++        transform: scale(1);
++      }
++    }
++
++    nav {
++      animation: fade-down 0.6s var(--ease-out) both;
++    }
++
++    nav a:not(.logout-link) {
++      position: relative;
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -3px;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 0.3s var(--ease-out);
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    .logout-link {
++      display: inline-block;
++      transition: color 0.3s, background-color 0.3s, transform 0.2s var(--ease-out);
++    }
++
++    .logout-link:hover {
++      background-color: rgba(255, 171, 64, 0.12);
++    }
++
++    /* Hero: background zooms on a pseudo-element so only transform animates */
++    .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      background: none;
++    }
++
++    .hero::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      animation: hero-zoom 1.8s var(--ease-out) both;
++    }
++
++    .hero h1 {
++      animation: fade-up 0.8s var(--ease-out) 0.15s both;
++    }
++
++    .hero p {
++      animation: fade-up 0.8s var(--ease-out) 0.3s both;
++    }
++
++    .hero .btn {
++      animation: fade-up 0.8s var(--ease-out) 0.45s both;
++    }
++
++    /* Buttons */
++    .btn {
++      transition: background 0.3s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
++    }
++
++    .btn:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 6px 14px rgba(62, 39, 35, 0.3);
++    }
++
++    .btn:active {
++      transform: translateY(0) scale(0.97);
++      box-shadow: none;
++    }
++
++    .btn:focus-visible,
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Cards */
++    .card {
++      transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
++    }
++
++    .card:hover {
++      transform: translateY(-6px);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
++    }
++
++    /* Scroll reveal (only hidden when JS is available to reveal it) */
++    .js .reveal {
++      opacity: 0;
++      transform: translateY(24px);
++      transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
++      transition-delay: var(--delay, 0s);
++    }
++
++    .js .reveal.is-visible {
++      opacity: 1;
++      transform: none;
++    }
++
++    /* Cards combine reveal with hover: drop the delay once shown */
++    .js .card.reveal.is-visible {
++      transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), opacity 0.7s var(--ease-out);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        animation: none !important;
++        transition-duration: 0.01ms !important;
++        transition-delay: 0s !important;
++        scroll-behavior: auto !important;
++      }
++
++      .js .reveal {
++        opacity: 1;
++        transform: none;
++      }
++
++      .btn:hover,
++      .btn:active,
++      .card:hover {
++        transform: none;
++      }
+     }
+   </style>
++  <script>
++    document.documentElement.classList.add('js');
++  </script>
+ </head>
+ 
+ <body>
+@@ -176,19 +362,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="reveal" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card reveal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal" style="--delay: 0.12s">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card reveal" style="--delay: 0.24s">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -197,7 +383,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="reveal">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +393,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var items = document.querySelectorAll('.reveal');
++      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      if (reduce || !('IntersectionObserver' in window)) {
++        items.forEach(function (el) { el.classList.add('is-visible'); });
++        return;
++      }
++      var io = new IntersectionObserver(function (entries) {
++        entries.forEach(function (e) {
++          if (!e.isIntersecting) return;
++          e.target.classList.add('is-visible');
++          io.unobserve(e.target);
++        });
++      }, { threshold: 0.15 });
++      items.forEach(function (el) { io.observe(el); });
++    })();
++  </script>
+ </body>
+ 
+ </html>

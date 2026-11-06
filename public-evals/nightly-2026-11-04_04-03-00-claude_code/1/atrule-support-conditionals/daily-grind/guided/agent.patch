@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+index 66c9173..f66ed58 100644
+--- a/index.html
++++ b/index.html
+@@ -75,7 +75,10 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      /* First layer is the @property glow (enhancement below); it
++         falls back to transparent where @property is unsupported. */
++      background: radial-gradient(ellipse at 50% 110%, var(--hero-glow, transparent), transparent 65%),
++        linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -152,6 +155,129 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Progressive enhancements
++       Each block below only takes effect in browsers that support
++       the newer at-rule it relies on. Everything above is the
++       baseline experience and works on its own.
++       ========================================================== */
++
++    /* --- Navigation: compact, elevated bar once it is stuck ---
++       Needs @container scroll-state(). at-rule() can only detect an
++       at-rule by name, not query types, so detect support through
++       container-type: scroll-state instead. */
++    @supports (container-type: scroll-state) {
++      nav {
++        container-type: scroll-state;
++      }
++
++      nav::after {
++        content: "";
++        position: absolute;
++        inset: auto 0 0;
++        height: 3px;
++        background: linear-gradient(90deg, transparent, var(--accent), transparent);
++        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
++        opacity: 0;
++        pointer-events: none;
++      }
++
++      .logo {
++        transform-origin: left center;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        nav::after,
++        .logo {
++          transition: opacity 0.3s, scale 0.3s;
++        }
++      }
++
++      @container scroll-state(stuck: top) {
++        nav::after {
++          opacity: 1;
++        }
++
++        .logo {
++          scale: 0.9;
++        }
++      }
++    }
++
++    /* --- Hero: slowly pulsing warm glow ---
++       Needs @property, so the color can be interpolated. Both values
++       below only exist when the properties are registered. Elsewhere,
++       var() falls back to `transparent` and `none`, so neither the
++       glow layer nor the animation is applied. */
++    @property --hero-glow {
++      syntax: "<color>";
++      inherits: false;
++      initial-value: rgba(255, 171, 64, 0.1);
++    }
++
++    @property --hero-glow-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: hero-glow 6s ease-in-out infinite alternate;
++    }
++
++    @keyframes hero-glow {
++      to {
++        --hero-glow: rgba(255, 171, 64, 0.35);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .hero {
++        animation: var(--hero-glow-animation, none);
++      }
++
++      /* Hero content eases in on first paint. Browsers without
++         @starting-style ignore the block, so the transition has
++         nothing to start from and content just shows up as normal. */
++      .hero > * {
++        transition: opacity 0.8s ease-out, translate 0.8s ease-out;
++      }
++
++      .hero > :nth-child(2) { transition-delay: 0.15s; }
++      .hero > :nth-child(3) { transition-delay: 0.3s; }
++
++      @starting-style {
++        .hero > * {
++          opacity: 0;
++          translate: 0 16px;
++        }
++      }
++    }
++
++    /* --- Seasonal favorite cards: layered elevation on hover/focus ---
++       Needs @function. Support is detected by checking whether a
++       dashed-function value parses, not with at-rule(@function). */
++    @function --elevation(--level) {
++      result:
++        0 calc(var(--level) * 1px) calc(var(--level) * 2px) rgba(62, 39, 35, 0.12),
++        0 calc(var(--level) * 3px) calc(var(--level) * 8px) rgba(62, 39, 35, 0.1);
++    }
++
++    @supports (box-shadow: --elevation(1)) {
++      .card {
++        box-shadow: --elevation(1);
++        border-top: 4px solid var(--accent);
++      }
++
++      .card:hover,
++      .card:focus-within {
++        box-shadow: --elevation(5);
++        translate: 0 -4px;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        .card {
++          transition: box-shadow 0.3s, translate 0.3s;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

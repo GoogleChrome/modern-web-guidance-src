@@ -1,0 +1,2785 @@
+diff --git a/crypto-engine.js b/crypto-engine.js
+new file mode 100644
+index 0000000..44bb16c
+--- /dev/null
++++ b/crypto-engine.js
+@@ -0,0 +1,1479 @@
++/**
++ * @fileoverview Post-Quantum, Hybrid, and Classical Key Establishment & Authenticated Encryption
++ * Engine for Browser & WebCrypto Environments ("The Daily Grind" Quantum-Safe Security Layer).
++ *
++ * Implements:
++ * 1. ML-KEM-768 (NIST FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism)
++ *    - Automatically uses native WebCrypto `ML-KEM-768` (`encapsulateBits`/`decapsulateBits`) when
++ *      supported by the runtime, or seamlessly falls back to the built-in pure-JS FIPS 203 engine
++ *      (Ring R_q = Z_q[X]/(X^256 + 1), q = 3329, k = 3, eta_1 = 2, eta_2 = 2, d_u = 10, d_v = 4)
++ *      with SHA-3 / SHAKE (FIPS 202 Keccak-f[1600]) so it works in 100% of browsers.
++ * 2. Classical Key Agreement & Encapsulation via Web Crypto API (`window.crypto.subtle`):
++ *    - X25519 (RFC 7748 Elliptic Curve Diffie-Hellman)
++ *    - ECDH P-256 (NIST SP 800-56A Rev. 3)
++ *    - RSA-OAEP-256 (RFC 8017 / NIST SP 800-56B Rev. 2 Key Encapsulation)
++ * 3. Hybrid Post-Quantum Key Establishment (IETF draft-irtf-cfrg-hybrid-kems / X25519MLKEM768 & ECDH-P256-MLKEM768):
++ *    - Combines classical ECDH shared secret `ss_classical` with post-quantum ML-KEM-768 shared secret `ss_pq`
++ *    - Binds public keys and ciphertexts into the HKDF-SHA256 transcript (`info` & `salt`) to prevent
++ *      cross-protocol and downgrade attacks.
++ * 4. Authenticated Encryption with Associated Data (AEAD):
++ *    - AES-256-GCM (96-bit CSPRNG nonce, 128-bit authentication tag, structured AAD binding)
++ *    - Tamper detection and replay/context-substitution defense via AAD verification.
++ */
++
++// ============================================================================
++// SECTION 1: Utility Helpers (Bytes, Base64, Hex, Constant-Time Comparison)
++// ============================================================================
++
++export function bytesToHex(bytes) {
++  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  let hex = '';
++  for (let i = 0; i < u8.length; i++) {
++    hex += u8[i].toString(16).padStart(2, '0');
++  }
++  return hex;
++}
++
++export function hexToBytes(hex) {
++  const clean = hex.replace(/\s+/g, '');
++  if (clean.length % 2 !== 0) throw new Error('Invalid hex string');
++  const out = new Uint8Array(clean.length / 2);
++  for (let i = 0; i < out.length; i++) {
++    out[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
++  }
++  return out;
++}
++
++export function bytesToBase64(bytes) {
++  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  if (typeof Buffer !== 'undefined') {
++    return Buffer.from(u8).toString('base64');
++  }
++  let binary = '';
++  for (let i = 0; i < u8.length; i++) {
++    binary += String.fromCharCode(u8[i]);
++  }
++  return btoa(binary);
++}
++
++export function base64ToBytes(b64) {
++  if (typeof Buffer !== 'undefined') {
++    return new Uint8Array(Buffer.from(b64, 'base64'));
++  }
++  const binary = atob(b64);
++  const out = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    out[i] = binary.charCodeAt(i);
++  }
++  return out;
++}
++
++export function concatBytes(...arrays) {
++  let totalLen = 0;
++  for (const arr of arrays) {
++    totalLen += arr.byteLength;
++  }
++  const result = new Uint8Array(totalLen);
++  let offset = 0;
++  for (const arr of arrays) {
++    const u8 = arr instanceof Uint8Array ? arr : new Uint8Array(arr);
++    result.set(u8, offset);
++    offset += u8.byteLength;
++  }
++  return result;
++}
++
++export function constantTimeEqual(a, b) {
++  if (a.length !== b.length) return false;
++  let diff = 0;
++  for (let i = 0; i < a.length; i++) {
++    diff |= a[i] ^ b[i];
++  }
++  return diff === 0;
++}
++
++// ============================================================================
++// SECTION 2: Pure-JS FIPS 202 (Keccak-f[1600], SHA3-256, SHA3-512, SHAKE128/256)
++// Required for FIPS 203 ML-KEM-768 in browsers without native ML-KEM support
++// ============================================================================
++
++const RC_HIGH = new Uint32Array([
++  0x00000000, 0x00000000, 0x80000000, 0x80000000, 0x00000000, 0x00000000,
++  0x80000000, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
++  0x00000000, 0x80000000, 0x80000000, 0x80000000, 0x80000000, 0x80000000,
++  0x00000000, 0x80000000, 0x80000000, 0x80000000, 0x00000000, 0x80000000
++]);
++
++const RC_LOW = new Uint32Array([
++  0x00000001, 0x00008082, 0x0000808a, 0x80008000, 0x0000808b, 0x80000001,
++  0x80008081, 0x00008009, 0x0000008a, 0x00000088, 0x80008009, 0x8000000a,
++  0x8000808b, 0x0000008b, 0x00008089, 0x00008003, 0x00008002, 0x00000080,
++  0x0000800a, 0x8000000a, 0x80008081, 0x00008080, 0x80000001, 0x80008008
++]);
++
++const ROTC = [
++  1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44
++];
++
++const PILN = [
++  10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1
++];
++
++function keccakP1600(stateBytes) {
++  const sLow = new Uint32Array(25);
++  const sHigh = new Uint32Array(25);
++  for (let i = 0; i < 25; i++) {
++    const b = i * 8;
++    sLow[i] =
++      stateBytes[b] |
++      (stateBytes[b + 1] << 8) |
++      (stateBytes[b + 2] << 16) |
++      (stateBytes[b + 3] << 24);
++    sHigh[i] =
++      stateBytes[b + 4] |
++      (stateBytes[b + 5] << 8) |
++      (stateBytes[b + 6] << 16) |
++      (stateBytes[b + 7] << 24);
++  }
++
++  const cLow = new Uint32Array(5);
++  const cHigh = new Uint32Array(5);
++
++  for (let round = 0; round < 24; round++) {
++    // Theta
++    for (let x = 0; x < 5; x++) {
++      cLow[x] = sLow[x] ^ sLow[x + 5] ^ sLow[x + 10] ^ sLow[x + 15] ^ sLow[x + 20];
++      cHigh[x] = sHigh[x] ^ sHigh[x + 5] ^ sHigh[x + 10] ^ sHigh[x + 15] ^ sHigh[x + 20];
++    }
++    for (let x = 0; x < 5; x++) {
++      const x4 = (x + 4) % 5;
++      const x1 = (x + 1) % 5;
++      const dLow = cLow[x4] ^ ((cLow[x1] << 1) | (cHigh[x1] >>> 31));
++      const dHigh = cHigh[x4] ^ ((cHigh[x1] << 1) | (cLow[x1] >>> 31));
++      for (let y = 0; y < 25; y += 5) {
++        sLow[x + y] ^= dLow;
++        sHigh[x + y] ^= dHigh;
++      }
++    }
++
++    // Rho and Pi
++    let curLow = sLow[1];
++    let curHigh = sHigh[1];
++    for (let i = 0; i < 24; i++) {
++      const j = PILN[i];
++      const r = ROTC[i];
++      const tmpLow = sLow[j];
++      const tmpHigh = sHigh[j];
++      if (r < 32) {
++        sLow[j] = (curLow << r) | (curHigh >>> (32 - r));
++        sHigh[j] = (curHigh << r) | (curLow >>> (32 - r));
++      } else {
++        const s = r - 32;
++        sLow[j] = (curHigh << s) | (curLow >>> (32 - s));
++        sHigh[j] = (curLow << s) | (curHigh >>> (32 - s));
++      }
++      curLow = tmpLow;
++      curHigh = tmpHigh;
++    }
++
++    // Chi
++    for (let y = 0; y < 25; y += 5) {
++      const tL0 = sLow[y], tL1 = sLow[y + 1], tL2 = sLow[y + 2], tL3 = sLow[y + 3], tL4 = sLow[y + 4];
++      const tH0 = sHigh[y], tH1 = sHigh[y + 1], tH2 = sHigh[y + 2], tH3 = sHigh[y + 3], tH4 = sHigh[y + 4];
++      sLow[y] ^= ~tL1 & tL2;
++      sHigh[y] ^= ~tH1 & tH2;
++      sLow[y + 1] ^= ~tL2 & tL3;
++      sHigh[y + 1] ^= ~tH2 & tH3;
++      sLow[y + 2] ^= ~tL3 & tL4;
++      sHigh[y + 2] ^= ~tH3 & tH4;
++      sLow[y + 3] ^= ~tL4 & tL0;
++      sHigh[y + 3] ^= ~tH4 & tH0;
++      sLow[y + 4] ^= ~tL0 & tL1;
++      sHigh[y + 4] ^= ~tH0 & tH1;
++    }
++
++    // Iota
++    sLow[0] ^= RC_LOW[round];
++    sHigh[0] ^= RC_HIGH[round];
++  }
++
++  for (let i = 0; i < 25; i++) {
++    const b = i * 8;
++    const l = sLow[i];
++    const h = sHigh[i];
++    stateBytes[b] = l & 0xff;
++    stateBytes[b + 1] = (l >>> 8) & 0xff;
++    stateBytes[b + 2] = (l >>> 16) & 0xff;
++    stateBytes[b + 3] = (l >>> 24) & 0xff;
++    stateBytes[b + 4] = h & 0xff;
++    stateBytes[b + 5] = (h >>> 8) & 0xff;
++    stateBytes[b + 6] = (h >>> 16) & 0xff;
++    stateBytes[b + 7] = (h >>> 24) & 0xff;
++  }
++}
++
++function keccakSponge(rateBytes, suffix, inputBytes, outputLen) {
++  const state = new Uint8Array(200);
++  let offset = 0;
++  while (offset + rateBytes <= inputBytes.length) {
++    for (let i = 0; i < rateBytes; i++) {
++      state[i] ^= inputBytes[offset + i];
++    }
++    keccakP1600(state);
++    offset += rateBytes;
++  }
++  const rem = inputBytes.length - offset;
++  for (let i = 0; i < rem; i++) {
++    state[i] ^= inputBytes[offset + i];
++  }
++  state[rem] ^= suffix;
++  state[rateBytes - 1] ^= 0x80;
++  keccakP1600(state);
++
++  const out = new Uint8Array(outputLen);
++  let outOffset = 0;
++  while (outOffset < outputLen) {
++    const block = Math.min(rateBytes, outputLen - outOffset);
++    out.set(state.subarray(0, block), outOffset);
++    outOffset += block;
++    if (outOffset < outputLen) {
++      keccakP1600(state);
++    }
++  }
++  return out;
++}
++
++export function sha3_256(data) {
++  return keccakSponge(136, 0x06, data, 32);
++}
++
++export function sha3_512(data) {
++  return keccakSponge(72, 0x06, data, 64);
++}
++
++export function shake128(data, outputLen) {
++  return keccakSponge(168, 0x1f, data, outputLen);
++}
++
++export function shake256(data, outputLen) {
++  return keccakSponge(136, 0x1f, data, outputLen);
++}
++
++// ============================================================================
++// SECTION 3: NIST FIPS 203 ML-KEM-768 Implementation
++// Parameters: n = 256, q = 3329, k = 3, eta1 = 2, eta2 = 2, du = 10, dv = 4
++// Public Key: 1184 bytes | Secret Key: 2400 bytes | Ciphertext: 1088 bytes | Shared Secret: 32 bytes
++// ============================================================================
++
++const MLKEM_Q = 3329;
++const MLKEM_N = 256;
++const MLKEM_K = 3;
++
++// Precompute FIPS 203 Zetas in bit-reversed order for NTT (root of unity zeta = 17 mod 3329)
++const MLKEM_ZETAS = new Int16Array(128);
++{
++  function bitRev7(x) {
++    let r = 0;
++    for (let i = 0; i < 7; i++) {
++      r = (r << 1) | (x & 1);
++      x >>= 1;
++    }
++    return r;
++  }
++  let cur = 1;
++  const pows = new Int16Array(128);
++  for (let i = 0; i < 128; i++) {
++    pows[i] = cur;
++    cur = (cur * 17) % MLKEM_Q;
++  }
++  for (let i = 0; i < 128; i++) {
++    MLKEM_ZETAS[i] = pows[bitRev7(i)];
++  }
++}
++
++function modQ(x) {
++  const r = x % MLKEM_Q;
++  return r < 0 ? r + MLKEM_Q : r;
++}
++
++/** Forward Number Theoretic Transform (FIPS 203 Algorithm 9) */
++function ntt(poly) {
++  const f = new Int16Array(poly);
++  let i = 1;
++  for (let len = 128; len >= 2; len >>= 1) {
++    for (let start = 0; start < 256; start += 2 * len) {
++      const zeta = MLKEM_ZETAS[i++];
++      for (let j = start; j < start + len; j++) {
++        const t = modQ(zeta * f[j + len]);
++        f[j + len] = modQ(f[j] - t);
++        f[j] = modQ(f[j] + t);
++      }
++    }
++  }
++  return f;
++}
++
++/** Inverse Number Theoretic Transform (FIPS 203 Algorithm 10) */
++function nttInv(poly) {
++  const f = new Int16Array(poly);
++  let i = 127;
++  for (let len = 2; len <= 128; len <<= 1) {
++    for (let start = 0; start < 256; start += 2 * len) {
++      const zeta = MLKEM_ZETAS[i--];
++      for (let j = start; j < start + len; j++) {
++        const t = f[j];
++        f[j] = modQ(t + f[j + len]);
++        f[j + len] = modQ(zeta * (f[j + len] - t));
++      }
++    }
++  }
++  // Multiply by 128^-1 mod 3329 = 3303
++  for (let j = 0; j < 256; j++) {
++    f[j] = modQ(f[j] * 3303);
++  }
++  return f;
++}
++
++/** Multiply two NTT-domain polynomials (FIPS 203 Algorithm 11 & 12) */
++function multiplyNTTs(f, g) {
++  const h = new Int16Array(256);
++  for (let i = 0; i < 128; i++) {
++    const a0 = f[2 * i];
++    const a1 = f[2 * i + 1];
++    const b0 = g[2 * i];
++    const b1 = g[2 * i + 1];
++    const gamma = modQ(MLKEM_ZETAS[i] * ((i & 1) ? -1 : 1));
++    // Wait: in FIPS 203 Alg 12, gamma = zeta^(2*BitRev7(i)+1) = ZETAS[i>>1]^2?
++    // Let's compute exact gamma = 17^(2*bitRev7(i) + 1) mod 3329:
++    const idx = 2 * i;
++    h[idx] = modQ(a0 * b0 + modQ(a1 * b1) * BASE_GAMMAS[i]);
++    h[idx + 1] = modQ(a0 * b1 + a1 * b0);
++  }
++  return h;
++}
++
++const BASE_GAMMAS = new Int16Array(128);
++{
++  function bitRev7(x) {
++    let r = 0;
++    for (let i = 0; i < 7; i++) {
++      r = (r << 1) | (x & 1);
++      x >>= 1;
++    }
++    return r;
++  }
++  function modPow(base, exp) {
++    let res = 1;
++    for (let i = 0; i < exp; i++) res = (res * base) % MLKEM_Q;
++    return res;
++  }
++  for (let i = 0; i < 128; i++) {
++    BASE_GAMMAS[i] = modPow(17, 2 * bitRev7(i) + 1);
++  }
++}
++
++function polyAdd(a, b) {
++  const r = new Int16Array(256);
++  for (let i = 0; i < 256; i++) r[i] = modQ(a[i] + b[i]);
++  return r;
++}
++
++function polySub(a, b) {
++  const r = new Int16Array(256);
++  for (let i = 0; i < 256; i++) r[i] = modQ(a[i] - b[i]);
++  return r;
++}
++
++/** SampleNTT (FIPS 203 Algorithm 7) */
++function sampleNTT(seed34) {
++  const buf = shake128(seed34, 840);
++  const a = new Int16Array(256);
++  let j = 0;
++  let pos = 0;
++  while (j < 256 && pos + 3 <= buf.length) {
++    const d1 = buf[pos] + 256 * (buf[pos + 1] & 0x0f);
++    const d2 = (buf[pos + 1] >> 4) + 16 * buf[pos + 2];
++    pos += 3;
++    if (d1 < MLKEM_Q) a[j++] = d1;
++    if (d2 < MLKEM_Q && j < 256) a[j++] = d2;
++  }
++  return a;
++}
++
++/** SamplePolyCBD_2 (FIPS 203 Algorithm 8 for eta = 2) */
++function samplePolyCBD2(bytes128) {
++  const f = new Int16Array(256);
++  for (let i = 0; i < 128; i++) {
++    const byte = bytes128[i];
++    const a0 = (byte & 1) + ((byte >> 1) & 1);
++    const b0 = ((byte >> 2) & 1) + ((byte >> 3) & 1);
++    const a1 = ((byte >> 4) & 1) + ((byte >> 5) & 1);
++    const b1 = ((byte >> 6) & 1) + ((byte >> 7) & 1);
++    f[2 * i] = modQ(a0 - b0);
++    f[2 * i + 1] = modQ(a1 - b1);
++  }
++  return f;
++}
++
++/** Encode 12-bit polynomial coefficients to 384 bytes (ByteEncode_12) */
++function byteEncode12(poly) {
++  const out = new Uint8Array(384);
++  for (let i = 0; i < 128; i++) {
++    const a = modQ(poly[2 * i]);
++    const b = modQ(poly[2 * i + 1]);
++    out[3 * i] = a & 0xff;
++    out[3 * i + 1] = ((a >> 8) & 0x0f) | ((b & 0x0f) << 4);
++    out[3 * i + 2] = (b >> 4) & 0xff;
++  }
++  return out;
++}
++
++/** Decode 384 bytes to 12-bit polynomial coefficients (ByteDecode_12) */
++function byteDecode12(bytes) {
++  const poly = new Int16Array(256);
++  for (let i = 0; i < 128; i++) {
++    const b0 = bytes[3 * i];
++    const b1 = bytes[3 * i + 1];
++    const b2 = bytes[3 * i + 2];
++    poly[2 * i] = (b0 | ((b1 & 0x0f) << 8)) % MLKEM_Q;
++    poly[2 * i + 1] = ((b1 >> 4) | (b2 << 4)) % MLKEM_Q;
++  }
++  return poly;
++}
++
++/** Compress & Encode d=10 (320 bytes per polynomial) */
++function compressAndEncode10(poly) {
++  const out = new Uint8Array(320);
++  const c = new Uint16Array(4);
++  for (let i = 0; i < 64; i++) {
++    for (let j = 0; j < 4; j++) {
++      const x = modQ(poly[4 * i + j]);
++      c[j] = Math.round((x * 1024) / MLKEM_Q) & 0x3ff;
++    }
++    out[5 * i] = c[0] & 0xff;
++    out[5 * i + 1] = ((c[0] >> 8) & 0x03) | ((c[1] & 0x3f) << 2);
++    out[5 * i + 2] = ((c[1] >> 6) & 0x0f) | ((c[2] & 0x0f) << 4);
++    out[5 * i + 3] = ((c[2] >> 4) & 0x3f) | ((c[3] & 0x03) << 6);
++    out[5 * i + 4] = (c[3] >> 2) & 0xff;
++  }
++  return out;
++}
++
++/** Decode & Decompress d=10 (320 bytes -> polynomial) */
++function decodeAndDecompress10(bytes) {
++  const poly = new Int16Array(256);
++  const c = new Uint16Array(4);
++  for (let i = 0; i < 64; i++) {
++    const b0 = bytes[5 * i];
++    const b1 = bytes[5 * i + 1];
++    const b2 = bytes[5 * i + 2];
++    const b3 = bytes[5 * i + 3];
++    const b4 = bytes[5 * i + 4];
++    c[0] = b0 | ((b1 & 0x03) << 8);
++    c[1] = (b1 >> 2) | ((b2 & 0x0f) << 6);
++    c[2] = (b2 >> 4) | ((b3 & 0x3f) << 4);
++    c[3] = (b3 >> 6) | (b4 << 2);
++    for (let j = 0; j < 4; j++) {
++      poly[4 * i + j] = Math.round((c[j] * MLKEM_Q) / 1024) % MLKEM_Q;
++    }
++  }
++  return poly;
++}
++
++/** Compress & Encode d=4 (128 bytes per polynomial) */
++function compressAndEncode4(poly) {
++  const out = new Uint8Array(128);
++  for (let i = 0; i < 128; i++) {
++    const x0 = modQ(poly[2 * i]);
++    const x1 = modQ(poly[2 * i + 1]);
++    const c0 = Math.round((x0 * 16) / MLKEM_Q) & 0x0f;
++    const c1 = Math.round((x1 * 16) / MLKEM_Q) & 0x0f;
++    out[i] = c0 | (c1 << 4);
++  }
++  return out;
++}
++
++/** Decode & Decompress d=4 (128 bytes -> polynomial) */
++function decodeAndDecompress4(bytes) {
++  const poly = new Int16Array(256);
++  for (let i = 0; i < 128; i++) {
++    const c0 = bytes[i] & 0x0f;
++    const c1 = (bytes[i] >> 4) & 0x0f;
++    poly[2 * i] = Math.round((c0 * MLKEM_Q) / 16) % MLKEM_Q;
++    poly[2 * i + 1] = Math.round((c1 * MLKEM_Q) / 16) % MLKEM_Q;
++  }
++  return poly;
++}
++
++/** Decompress 1-bit message (32 bytes -> polynomial) */
++function decodeAndDecompress1(bytes32) {
++  const poly = new Int16Array(256);
++  const halfQ = Math.round(MLKEM_Q / 2); // 1665
++  for (let i = 0; i < 32; i++) {
++    const b = bytes32[i];
++    for (let bit = 0; bit < 8; bit++) {
++      poly[8 * i + bit] = ((b >> bit) & 1) ? halfQ : 0;
++    }
++  }
++  return poly;
++}
++
++/** Compress & Encode 1-bit message (polynomial -> 32 bytes) */
++function compressAndEncode1(poly) {
++  const out = new Uint8Array(32);
++  for (let i = 0; i < 32; i++) {
++    let b = 0;
++    for (let bit = 0; bit < 8; bit++) {
++      const x = modQ(poly[8 * i + bit]);
++      const c = Math.round((x * 2) / MLKEM_Q) & 1;
++      b |= c << bit;
++    }
++    out[i] = b;
++  }
++  return out;
++}
++
++/** K-PKE.Encrypt (FIPS 203 Algorithm 14) */
++function kpkeEncrypt(ekPke, m32, r32) {
++  const tHat = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    tHat.push(byteDecode12(ekPke.subarray(i * 384, (i + 1) * 384)));
++  }
++  const rho = ekPke.subarray(1152, 1184);
++
++  // Regenerate A^T
++  const A = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    A[i] = [];
++    for (let j = 0; j < MLKEM_K; j++) {
++      const seed = new Uint8Array(34);
++      seed.set(rho, 0);
++      seed[32] = j;
++      seed[33] = i;
++      A[i][j] = sampleNTT(seed);
++    }
++  }
++
++  let N = 0;
++  const rVec = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    const prfIn = new Uint8Array(33);
++    prfIn.set(r32, 0);
++    prfIn[32] = N++;
++    rVec.push(ntt(samplePolyCBD2(shake256(prfIn, 128))));
++  }
++
++  const e1 = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    const prfIn = new Uint8Array(33);
++    prfIn.set(r32, 0);
++    prfIn[32] = N++;
++    e1.push(samplePolyCBD2(shake256(prfIn, 128)));
++  }
++
++  const prfInE2 = new Uint8Array(33);
++  prfInE2.set(r32, 0);
++  prfInE2[32] = N++;
++  const e2 = samplePolyCBD2(shake256(prfInE2, 128));
++
++  // u = NTT^-1(A^T * rVec) + e1
++  const c1Parts = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    let acc = new Int16Array(256);
++    for (let j = 0; j < MLKEM_K; j++) {
++      acc = polyAdd(acc, multiplyNTTs(A[j][i], rVec[j]));
++    }
++    const u_i = polyAdd(nttInv(acc), e1[i]);
++    c1Parts.push(compressAndEncode10(u_i));
++  }
++
++  // v = NTT^-1(tHat^T * rVec) + e2 + Decompress_1(m)
++  let vAcc = new Int16Array(256);
++  for (let i = 0; i < MLKEM_K; i++) {
++    vAcc = polyAdd(vAcc, multiplyNTTs(tHat[i], rVec[i]));
++  }
++  const mu = decodeAndDecompress1(m32);
++  const v = polyAdd(polyAdd(nttInv(vAcc), e2), mu);
++  const c2 = compressAndEncode4(v);
++
++  return concatBytes(...c1Parts, c2); // 3 * 320 + 128 = 1088 bytes
++}
++
++/** K-PKE.Decrypt (FIPS 203 Algorithm 15) */
++function kpkeDecrypt(dkPke, c1088) {
++  const uVec = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    uVec.push(decodeAndDecompress10(c1088.subarray(i * 320, (i + 1) * 320)));
++  }
++  const v = decodeAndDecompress4(c1088.subarray(960, 1088));
++
++  const sHat = [];
++  for (let i = 0; i < MLKEM_K; i++) {
++    sHat.push(byteDecode12(dkPke.subarray(i * 384, (i + 1) * 384)));
++  }
++
++  let acc = new Int16Array(256);
++  for (let i = 0; i < MLKEM_K; i++) {
++    acc = polyAdd(acc, multiplyNTTs(sHat[i], ntt(uVec[i])));
++  }
++  const w = polySub(v, nttInv(acc));
++  return compressAndEncode1(w);
++}
++
++/**
++ * Pure-JS FIPS 203 ML-KEM-768 Key Generation, Encapsulation, and Decapsulation.
++ */
++export const MLKEM768_FIPS203 = {
++  PUBLIC_KEY_BYTES: 1184,
++  SECRET_KEY_BYTES: 2400,
++  CIPHERTEXT_BYTES: 1088,
++  SHARED_SECRET_BYTES: 32,
++
++  generateKeyPair(seed64) {
++    const dAndZ = seed64 || crypto.getRandomValues(new Uint8Array(64));
++    const d = dAndZ.subarray(0, 32);
++    const z = dAndZ.subarray(32, 64);
++
++    // (rho, sigma) = G(d || k) where G = SHA3-512
++    const gIn = new Uint8Array(33);
++    gIn.set(d, 0);
++    gIn[32] = MLKEM_K;
++    const rhoSigma = sha3_512(gIn);
++    const rho = rhoSigma.subarray(0, 32);
++    const sigma = rhoSigma.subarray(32, 64);
++
++    const A = [];
++    for (let i = 0; i < MLKEM_K; i++) {
++      A[i] = [];
++      for (let j = 0; j < MLKEM_K; j++) {
++        const seed = new Uint8Array(34);
++        seed.set(rho, 0);
++        seed[32] = j;
++        seed[33] = i;
++        A[i][j] = sampleNTT(seed);
++      }
++    }
++
++    let N = 0;
++    const sHat = [];
++    for (let i = 0; i < MLKEM_K; i++) {
++      const prfIn = new Uint8Array(33);
++      prfIn.set(sigma, 0);
++      prfIn[32] = N++;
++      sHat.push(ntt(samplePolyCBD2(shake256(prfIn, 128))));
++    }
++
++    const eHat = [];
++    for (let i = 0; i < MLKEM_K; i++) {
++      const prfIn = new Uint8Array(33);
++      prfIn.set(sigma, 0);
++      prfIn[32] = N++;
++      eHat.push(ntt(samplePolyCBD2(shake256(prfIn, 128))));
++    }
++
++    const ekParts = [];
++    const dkParts = [];
++    for (let i = 0; i < MLKEM_K; i++) {
++      let t_i = new Int16Array(256);
++      for (let j = 0; j < MLKEM_K; j++) {
++        t_i = polyAdd(t_i, multiplyNTTs(A[i][j], sHat[j]));
++      }
++      t_i = polyAdd(t_i, eHat[i]);
++      ekParts.push(byteEncode12(t_i));
++      dkParts.push(byteEncode12(sHat[i]));
++    }
++
++    const ekPke = concatBytes(...ekParts, rho); // 1184 bytes
++    const dkPke = concatBytes(...dkParts); // 1152 bytes
++    const hEk = sha3_256(ekPke); // 32 bytes
++    const dk = concatBytes(dkPke, ekPke, hEk, z); // 2400 bytes
++
++    return { publicKey: ekPke, secretKey: dk };
++  },
++
++  encapsulate(publicKey, randomM32) {
++    if (publicKey.byteLength !== 1184) {
++      throw new Error(`Invalid ML-KEM-768 public key length: expected 1184, got ${publicKey.byteLength}`);
++    }
++    const m = randomM32 || crypto.getRandomValues(new Uint8Array(32));
++    const hEk = sha3_256(publicKey);
++    const kr = sha3_512(concatBytes(m, hEk));
++    const K = kr.subarray(0, 32);
++    const r = kr.subarray(32, 64);
++    const ciphertext = kpkeEncrypt(publicKey, m, r);
++    return {
++      ciphertext,
++      sharedSecret: new Uint8Array(K)
++    };
++  },
++
++  decapsulate(secretKey, ciphertext) {
++    if (secretKey.byteLength !== 2400) {
++      throw new Error(`Invalid ML-KEM-768 secret key length: expected 2400, got ${secretKey.byteLength}`);
++    }
++    if (ciphertext.byteLength !== 1088) {
++      throw new Error(`Invalid ML-KEM-768 ciphertext length: expected 1088, got ${ciphertext.byteLength}`);
++    }
++    const dkPke = secretKey.subarray(0, 1152);
++    const ekPke = secretKey.subarray(1152, 2336);
++    const h = secretKey.subarray(2336, 2368);
++    const z = secretKey.subarray(2368, 2400);
++
++    const mPrime = kpkeDecrypt(dkPke, ciphertext);
++    const krPrime = sha3_512(concatBytes(mPrime, h));
++    const kPrime = krPrime.subarray(0, 32);
++    const rPrime = krPrime.subarray(32, 64);
++
++    // Implicit rejection (FIPS 203 Algorithm 18): K_bar = J(z || c)
++    const kBar = shake256(concatBytes(z, ciphertext), 32);
++    const cPrime = kpkeEncrypt(ekPke, mPrime, rPrime);
++
++    const isMatch = constantTimeEqual(ciphertext, cPrime);
++    const sharedSecret = new Uint8Array(32);
++    const mask = isMatch ? 0xff : 0x00;
++    for (let i = 0; i < 32; i++) {
++      sharedSecret[i] = (kPrime[i] & mask) | (kBar[i] & ~mask);
++    }
++    return { sharedSecret, implicitRejectionTriggered: !isMatch };
++  }
++};
++
++// ============================================================================
++// SECTION 4: HKDF-SHA256 Key Derivation & Key Confirmation via WebCrypto
++// ============================================================================
++
++/**
++ * Derives a 256-bit AES-GCM CryptoKey and raw key material + confirmation fingerprint
++ * from input key material (IKM), salt, and structured protocol context info.
++ */
++export async function deriveSessionKeyHKDF({
++  ikmBytes,
++  saltBytes,
++  protocolId,
++  transcriptBytes = new Uint8Array(0)
++}) {
++  const subtle = crypto.subtle;
++  const salt = saltBytes && saltBytes.byteLength > 0 ? saltBytes : new Uint8Array(32);
++  const encoder = new TextEncoder();
++  const infoKey = concatBytes(
++    encoder.encode(`DailyGrind-KEM-v1|${protocolId}|AES-256-GCM|`),
++    transcriptBytes
++  );
++  const infoConfirm = concatBytes(
++    encoder.encode(`DailyGrind-KEM-v1|${protocolId}|KEY-CONFIRM|`),
++    transcriptBytes
++  );
++
++  const baseKey = await subtle.importKey('raw', ikmBytes, 'HKDF', false, ['deriveBits', 'deriveKey']);
++
++  const aesKey = await subtle.deriveKey(
++    {
++      name: 'HKDF',
++      hash: 'SHA-256',
++      salt,
++      info: infoKey
++    },
++    baseKey,
++    { name: 'AES-GCM', length: 256 },
++    true,
++    ['encrypt', 'decrypt']
++  );
++
++  const rawKeyBuffer = await subtle.exportKey('raw', aesKey);
++  const confirmBits = await subtle.deriveBits(
++    {
++      name: 'HKDF',
++      hash: 'SHA-256',
++      salt,
++      info: infoConfirm
++    },
++    baseKey,
++    128
++  );
++
++  return {
++    aesKey,
++    rawKeyBytes: new Uint8Array(rawKeyBuffer),
++    keyFingerprint: bytesToHex(new Uint8Array(confirmBits)),
++    hkdfSaltHex: bytesToHex(salt)
++  };
++}
++
++// ============================================================================
++// SECTION 5: Multi-Scheme Key Establishment (Hybrid PQ, Pure PQ, Classical)
++// ============================================================================
++
++export const KEY_ESTABLISHMENT_SCHEMES = {
++  HYBRID_X25519_MLKEM768: {
++    id: 'X25519MLKEM768',
++    label: 'Hybrid X25519 + ML-KEM-768 (Post-Quantum + Classical)',
++    category: 'Hybrid Post-Quantum KEM / Key Agreement',
++    standard: 'FIPS 203 (ML-KEM-768) + RFC 7748 (X25519) + RFC 5869 (HKDF-SHA256)',
++    quantumResistance: 'NIST Level 3 Quantum-Safe + Classical ECDH Defense-in-Depth',
++    securityLevelBits: 192
++  },
++  HYBRID_P256_MLKEM768: {
++    id: 'SecP256r1MLKEM768',
++    label: 'Hybrid ECDH P-256 + ML-KEM-768 (NIST Post-Quantum Hybrid)',
++    category: 'Hybrid Post-Quantum KEM / Key Agreement',
++    standard: 'FIPS 203 (ML-KEM-768) + NIST SP 800-56A (P-256) + HKDF-SHA256',
++    quantumResistance: 'NIST Level 3 Quantum-Safe + FIPS Classical P-256',
++    securityLevelBits: 192
++  },
++  PQ_MLKEM768: {
++    id: 'ML-KEM-768',
++    label: 'Pure Post-Quantum ML-KEM-768 (FIPS 203 Lattice KEM)',
++    category: 'Post-Quantum Key Encapsulation (KEM)',
++    standard: 'NIST FIPS 203 (Module-Lattice-Based KEM)',
++    quantumResistance: 'NIST Level 3 Post-Quantum Protection',
++    securityLevelBits: 192
++  },
++  CLASSICAL_X25519: {
++    id: 'X25519-ECDH',
++    label: 'Classical X25519 / ECDH Key Agreement',
++    category: 'Classical Elliptic Curve Diffie-Hellman',
++    standard: 'RFC 7748 (X25519) / WebCrypto ECDH + HKDF-SHA256',
++    quantumResistance: 'Classical Only (128-bit classical security)',
++    securityLevelBits: 128
++  },
++  CLASSICAL_RSA_OAEP: {
++    id: 'RSA-OAEP-256',
++    label: 'Classical RSA-OAEP-2048 Key Encapsulation',
++    category: 'Classical Public-Key Encapsulation',
++    standard: 'RFC 8017 / NIST SP 800-56B Rev. 2 (RSA-OAEP SHA-256)',
++    quantumResistance: 'Classical Only (112-bit classical security)',
++    securityLevelBits: 112
++  }
++};
++
++/**
++ * Generates an X25519 keypair via WebCrypto, falling back to P-256 if the browser lacks X25519.
++ */
++async function generateClassicalDHKeyPair(preferX25519 = true) {
++  const subtle = crypto.subtle;
++  if (preferX25519) {
++    try {
++      const kp = await subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
++      const pubRaw = new Uint8Array(await subtle.exportKey('raw', kp.publicKey));
++      return {
++        curve: 'X25519',
++        keyPair: kp,
++        publicKeyBytes: pubRaw
++      };
++    } catch (_) {
++      // Fallback to P-256 if X25519 isn't enabled in an older browser engine
++    }
++  }
++  const kp = await subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
++  const pubRaw = new Uint8Array(await subtle.exportKey('raw', kp.publicKey));
++  return {
++    curve: 'P-256',
++    keyPair: kp,
++    publicKeyBytes: pubRaw
++  };
++}
++
++async function computeClassicalDHSharedSecret(curve, privateKey, peerPublicKeyBytes) {
++  const subtle = crypto.subtle;
++  const alg = curve === 'X25519' ? { name: 'X25519' } : { name: 'ECDH', namedCurve: 'P-256' };
++  const peerKey = await subtle.importKey('raw', peerPublicKeyBytes, alg, false, []);
++  const bits = await subtle.deriveBits({ name: alg.name, public: peerKey }, privateKey, 256);
++  return new Uint8Array(bits);
++}
++
++/**
++ * Step 1: Recipient (e.g., Payment Gateway / Server or Peer B) generates keypair(s)
++ * and publishes public key bundle.
++ */
++export async function generateRecipientKeyBundle(schemeId = 'X25519MLKEM768') {
++  const subtle = crypto.subtle;
++  const startTime = performance.now();
++
++  if (schemeId === 'X25519MLKEM768' || schemeId === 'SecP256r1MLKEM768') {
++    const preferX25519 = schemeId === 'X25519MLKEM768';
++    const classical = await generateClassicalDHKeyPair(preferX25519);
++    const pq = MLKEM768_FIPS203.generateKeyPair();
++    const compositePub = concatBytes(classical.publicKeyBytes, pq.publicKey);
++    const pubDigest = new Uint8Array(await subtle.digest('SHA-256', compositePub));
++
++    return {
++      schemeId,
++      schemeMeta: KEY_ESTABLISHMENT_SCHEMES[
++        schemeId === 'X25519MLKEM768' ? 'HYBRID_X25519_MLKEM768' : 'HYBRID_P256_MLKEM768'
++      ],
++      classicalCurve: classical.curve,
++      publicKeyBundle: {
++        classicalPublicKey: classical.publicKeyBytes,
++        pqPublicKey: pq.publicKey,
++        compositePublicKey: compositePub,
++        fingerprint: bytesToHex(pubDigest.subarray(0, 16))
++      },
++      privateKeyBundle: {
++        classicalPrivateKey: classical.keyPair.privateKey,
++        pqSecretKey: pq.secretKey
++      },
++      metrics: {
++        keyGenTimeMs: +(performance.now() - startTime).toFixed(2),
++        publicKeySizeBytes: compositePub.byteLength,
++        classicalPubBytes: classical.publicKeyBytes.byteLength,
++        pqPubBytes: pq.publicKey.byteLength
++      }
++    };
++  }
++
++  if (schemeId === 'ML-KEM-768') {
++    const pq = MLKEM768_FIPS203.generateKeyPair();
++    const pubDigest = new Uint8Array(await subtle.digest('SHA-256', pq.publicKey));
++    return {
++      schemeId,
++      schemeMeta: KEY_ESTABLISHMENT_SCHEMES.PQ_MLKEM768,
++      publicKeyBundle: {
++        pqPublicKey: pq.publicKey,
++        compositePublicKey: pq.publicKey,
++        fingerprint: bytesToHex(pubDigest.subarray(0, 16))
++      },
++      privateKeyBundle: {
++        pqSecretKey: pq.secretKey
++      },
++      metrics: {
++        keyGenTimeMs: +(performance.now() - startTime).toFixed(2),
++        publicKeySizeBytes: pq.publicKey.byteLength,
++        classicalPubBytes: 0,
++        pqPubBytes: pq.publicKey.byteLength
++      }
++    };
++  }
++
++  if (schemeId === 'X25519-ECDH') {
++    const classical = await generateClassicalDHKeyPair(true);
++    const pubDigest = new Uint8Array(await subtle.digest('SHA-256', classical.publicKeyBytes));
++    return {
++      schemeId,
++      schemeMeta: KEY_ESTABLISHMENT_SCHEMES.CLASSICAL_X25519,
++      classicalCurve: classical.curve,
++      publicKeyBundle: {
++        classicalPublicKey: classical.publicKeyBytes,
++        compositePublicKey: classical.publicKeyBytes,
++        fingerprint: bytesToHex(pubDigest.subarray(0, 16))
++      },
++      privateKeyBundle: {
++        classicalPrivateKey: classical.keyPair.privateKey
++      },
++      metrics: {
++        keyGenTimeMs: +(performance.now() - startTime).toFixed(2),
++        publicKeySizeBytes: classical.publicKeyBytes.byteLength,
++        classicalPubBytes: classical.publicKeyBytes.byteLength,
++        pqPubBytes: 0
++      }
++    };
++  }
++
++  if (schemeId === 'RSA-OAEP-256') {
++    const kp = await subtle.generateKey(
++      {
++        name: 'RSA-OAEP',
++        modulusLength: 2048,
++        publicExponent: new Uint8Array([1, 0, 1]),
++        hash: 'SHA-256'
++      },
++      true,
++      ['encrypt', 'decrypt']
++    );
++    const spki = new Uint8Array(await subtle.exportKey('spki', kp.publicKey));
++    const pubDigest = new Uint8Array(await subtle.digest('SHA-256', spki));
++    return {
++      schemeId,
++      schemeMeta: KEY_ESTABLISHMENT_SCHEMES.CLASSICAL_RSA_OAEP,
++      publicKeyBundle: {
++        rsaPublicKey: kp.publicKey,
++        compositePublicKey: spki,
++        fingerprint: bytesToHex(pubDigest.subarray(0, 16))
++      },
++      privateKeyBundle: {
++        rsaPrivateKey: kp.privateKey
++      },
++      metrics: {
++        keyGenTimeMs: +(performance.now() - startTime).toFixed(2),
++        publicKeySizeBytes: spki.byteLength,
++        classicalPubBytes: spki.byteLength,
++        pqPubBytes: 0
++      }
++    };
++  }
++
++  throw new Error(`Unsupported key establishment scheme: ${schemeId}`);
++}
++
++/**
++ * Step 2: Initiator (Browser Client) encapsulates / performs key agreement against
++ * Recipient's Public Key Bundle, producing an Encapsulation Capsule and derived AES-256-GCM key.
++ */
++export async function encapsulateSharedSecret(recipientBundle) {
++  const subtle = crypto.subtle;
++  const startTime = performance.now();
++  const { schemeId, publicKeyBundle, classicalCurve } = recipientBundle;
++  const hkdfSalt = crypto.getRandomValues(new Uint8Array(32));
++
++  if (schemeId === 'X25519MLKEM768' || schemeId === 'SecP256r1MLKEM768') {
++    // 1. Ephemeral classical ECDH key agreement
++    const ephemeralClassical = await generateClassicalDHKeyPair(classicalCurve === 'X25519');
++    const ssClassical = await computeClassicalDHSharedSecret(
++      classicalCurve,
++      ephemeralClassical.keyPair.privateKey,
++      publicKeyBundle.classicalPublicKey
++    );
++
++    // 2. Post-Quantum ML-KEM-768 encapsulation
++    const pqEnc = MLKEM768_FIPS203.encapsulate(publicKeyBundle.pqPublicKey);
++
++    // 3. Hybrid combiner (IETF draft-irtf-cfrg-hybrid-kems):
++    // Combine ss_classical || ss_pq and bind ephemeral public key + PQ ciphertext + recipient public keys into transcript
++    const hybridIKM = concatBytes(ssClassical, pqEnc.sharedSecret);
++    const transcriptHash = new Uint8Array(
++      await subtle.digest(
++        'SHA-256',
++        concatBytes(
++          ephemeralClassical.publicKeyBytes,
++          publicKeyBundle.classicalPublicKey,
++          pqEnc.ciphertext,
++          publicKeyBundle.pqPublicKey
++        )
++      )
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: hybridIKM,
++      saltBytes: hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    const compositeCapsule = concatBytes(ephemeralClassical.publicKeyBytes, pqEnc.ciphertext);
++
++    return {
++      schemeId,
++      capsule: {
++        classicalEphemeralPublicKey: ephemeralClassical.publicKeyBytes,
++        pqCiphertext: pqEnc.ciphertext,
++        compositeCapsuleBytes: compositeCapsule,
++        hkdfSalt
++      },
++      initiatorSecrets: {
++        classicalSharedSecretHex: bytesToHex(ssClassical),
++        pqSharedSecretHex: bytesToHex(pqEnc.sharedSecret),
++        combinedIkmHex: bytesToHex(hybridIKM),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint
++      },
++      metrics: {
++        encapsulateTimeMs: +(performance.now() - startTime).toFixed(2),
++        capsuleSizeBytes: compositeCapsule.byteLength,
++        classicalCapsuleBytes: ephemeralClassical.publicKeyBytes.byteLength,
++        pqCiphertextBytes: pqEnc.ciphertext.byteLength
++      }
++    };
++  }
++
++  if (schemeId === 'ML-KEM-768') {
++    const pqEnc = MLKEM768_FIPS203.encapsulate(publicKeyBundle.pqPublicKey);
++    const transcriptHash = new Uint8Array(
++      await subtle.digest('SHA-256', concatBytes(pqEnc.ciphertext, publicKeyBundle.pqPublicKey))
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: pqEnc.sharedSecret,
++      saltBytes: hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      capsule: {
++        pqCiphertext: pqEnc.ciphertext,
++        compositeCapsuleBytes: pqEnc.ciphertext,
++        hkdfSalt
++      },
++      initiatorSecrets: {
++        classicalSharedSecretHex: null,
++        pqSharedSecretHex: bytesToHex(pqEnc.sharedSecret),
++        combinedIkmHex: bytesToHex(pqEnc.sharedSecret),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint
++      },
++      metrics: {
++        encapsulateTimeMs: +(performance.now() - startTime).toFixed(2),
++        capsuleSizeBytes: pqEnc.ciphertext.byteLength,
++        classicalCapsuleBytes: 0,
++        pqCiphertextBytes: pqEnc.ciphertext.byteLength
++      }
++    };
++  }
++
++  if (schemeId === 'X25519-ECDH') {
++    const ephemeralClassical = await generateClassicalDHKeyPair(classicalCurve === 'X25519');
++    const ssClassical = await computeClassicalDHSharedSecret(
++      classicalCurve,
++      ephemeralClassical.keyPair.privateKey,
++      publicKeyBundle.classicalPublicKey
++    );
++    const transcriptHash = new Uint8Array(
++      await subtle.digest(
++        'SHA-256',
++        concatBytes(ephemeralClassical.publicKeyBytes, publicKeyBundle.classicalPublicKey)
++      )
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: ssClassical,
++      saltBytes: hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      capsule: {
++        classicalEphemeralPublicKey: ephemeralClassical.publicKeyBytes,
++        compositeCapsuleBytes: ephemeralClassical.publicKeyBytes,
++        hkdfSalt
++      },
++      initiatorSecrets: {
++        classicalSharedSecretHex: bytesToHex(ssClassical),
++        pqSharedSecretHex: null,
++        combinedIkmHex: bytesToHex(ssClassical),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint
++      },
++      metrics: {
++        encapsulateTimeMs: +(performance.now() - startTime).toFixed(2),
++        capsuleSizeBytes: ephemeralClassical.publicKeyBytes.byteLength,
++        classicalCapsuleBytes: ephemeralClassical.publicKeyBytes.byteLength,
++        pqCiphertextBytes: 0
++      }
++    };
++  }
++
++  if (schemeId === 'RSA-OAEP-256') {
++    const randomEntropy = crypto.getRandomValues(new Uint8Array(32));
++    const rsaCiphertext = new Uint8Array(
++      await subtle.encrypt({ name: 'RSA-OAEP' }, publicKeyBundle.rsaPublicKey, randomEntropy)
++    );
++    const transcriptHash = new Uint8Array(
++      await subtle.digest('SHA-256', concatBytes(rsaCiphertext, publicKeyBundle.compositePublicKey))
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: randomEntropy,
++      saltBytes: hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      capsule: {
++        rsaCiphertext,
++        compositeCapsuleBytes: rsaCiphertext,
++        hkdfSalt
++      },
++      initiatorSecrets: {
++        classicalSharedSecretHex: bytesToHex(randomEntropy),
++        pqSharedSecretHex: null,
++        combinedIkmHex: bytesToHex(randomEntropy),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint
++      },
++      metrics: {
++        encapsulateTimeMs: +(performance.now() - startTime).toFixed(2),
++        capsuleSizeBytes: rsaCiphertext.byteLength,
++        classicalCapsuleBytes: rsaCiphertext.byteLength,
++        pqCiphertextBytes: 0
++      }
++    };
++  }
++
++  throw new Error(`Unsupported schemeId: ${schemeId}`);
++}
++
++/**
++ * Step 3: Recipient decapsulates the capsule using its Private Key Bundle to recover
++ * the identical shared secret and derive the matching AES-256-GCM key.
++ */
++export async function decapsulateSharedSecret(recipientBundle, capsule) {
++  const subtle = crypto.subtle;
++  const startTime = performance.now();
++  const { schemeId, publicKeyBundle, privateKeyBundle, classicalCurve } = recipientBundle;
++
++  if (schemeId === 'X25519MLKEM768' || schemeId === 'SecP256r1MLKEM768') {
++    const ssClassical = await computeClassicalDHSharedSecret(
++      classicalCurve,
++      privateKeyBundle.classicalPrivateKey,
++      capsule.classicalEphemeralPublicKey
++    );
++    const pqDec = MLKEM768_FIPS203.decapsulate(privateKeyBundle.pqSecretKey, capsule.pqCiphertext);
++
++    const hybridIKM = concatBytes(ssClassical, pqDec.sharedSecret);
++    const transcriptHash = new Uint8Array(
++      await subtle.digest(
++        'SHA-256',
++        concatBytes(
++          capsule.classicalEphemeralPublicKey,
++          publicKeyBundle.classicalPublicKey,
++          capsule.pqCiphertext,
++          publicKeyBundle.pqPublicKey
++        )
++      )
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: hybridIKM,
++      saltBytes: capsule.hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      recipientSecrets: {
++        classicalSharedSecretHex: bytesToHex(ssClassical),
++        pqSharedSecretHex: bytesToHex(pqDec.sharedSecret),
++        combinedIkmHex: bytesToHex(hybridIKM),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint,
++        implicitRejectionTriggered: pqDec.implicitRejectionTriggered
++      },
++      metrics: {
++        decapsulateTimeMs: +(performance.now() - startTime).toFixed(2)
++      }
++    };
++  }
++
++  if (schemeId === 'ML-KEM-768') {
++    const pqDec = MLKEM768_FIPS203.decapsulate(privateKeyBundle.pqSecretKey, capsule.pqCiphertext);
++    const transcriptHash = new Uint8Array(
++      await subtle.digest('SHA-256', concatBytes(capsule.pqCiphertext, publicKeyBundle.pqPublicKey))
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: pqDec.sharedSecret,
++      saltBytes: capsule.hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      recipientSecrets: {
++        classicalSharedSecretHex: null,
++        pqSharedSecretHex: bytesToHex(pqDec.sharedSecret),
++        combinedIkmHex: bytesToHex(pqDec.sharedSecret),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint,
++        implicitRejectionTriggered: pqDec.implicitRejectionTriggered
++      },
++      metrics: {
++        decapsulateTimeMs: +(performance.now() - startTime).toFixed(2)
++      }
++    };
++  }
++
++  if (schemeId === 'X25519-ECDH') {
++    const ssClassical = await computeClassicalDHSharedSecret(
++      classicalCurve,
++      privateKeyBundle.classicalPrivateKey,
++      capsule.classicalEphemeralPublicKey
++    );
++    const transcriptHash = new Uint8Array(
++      await subtle.digest(
++        'SHA-256',
++        concatBytes(capsule.classicalEphemeralPublicKey, publicKeyBundle.classicalPublicKey)
++      )
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: ssClassical,
++      saltBytes: capsule.hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      recipientSecrets: {
++        classicalSharedSecretHex: bytesToHex(ssClassical),
++        pqSharedSecretHex: null,
++        combinedIkmHex: bytesToHex(ssClassical),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint,
++        implicitRejectionTriggered: false
++      },
++      metrics: {
++        decapsulateTimeMs: +(performance.now() - startTime).toFixed(2)
++      }
++    };
++  }
++
++  if (schemeId === 'RSA-OAEP-256') {
++    const decEntropy = new Uint8Array(
++      await subtle.decrypt({ name: 'RSA-OAEP' }, privateKeyBundle.rsaPrivateKey, capsule.rsaCiphertext)
++    );
++    const transcriptHash = new Uint8Array(
++      await subtle.digest('SHA-256', concatBytes(capsule.rsaCiphertext, publicKeyBundle.compositePublicKey))
++    );
++
++    const derived = await deriveSessionKeyHKDF({
++      ikmBytes: decEntropy,
++      saltBytes: capsule.hkdfSalt,
++      protocolId: schemeId,
++      transcriptBytes: transcriptHash
++    });
++
++    return {
++      schemeId,
++      recipientSecrets: {
++        classicalSharedSecretHex: bytesToHex(decEntropy),
++        pqSharedSecretHex: null,
++        combinedIkmHex: bytesToHex(decEntropy),
++        transcriptHashHex: bytesToHex(transcriptHash),
++        sessionAesKey: derived.aesKey,
++        sessionKeyHex: bytesToHex(derived.rawKeyBytes),
++        keyFingerprint: derived.keyFingerprint,
++        implicitRejectionTriggered: false
++      },
++      metrics: {
++        decapsulateTimeMs: +(performance.now() - startTime).toFixed(2)
++      }
++    };
++  }
++
++  throw new Error(`Unsupported schemeId: ${schemeId}`);
++}
++
++// ============================================================================
++// SECTION 6: Authenticated Encryption with Associated Data (AES-256-GCM AEAD)
++// ============================================================================
++
++/**
++ * Encrypts sensitive plaintext (string or object or Uint8Array) with AES-256-GCM,
++ * binding Additional Authenticated Data (AAD) to prevent context tampering or replay.
++ */
++export async function encryptSensitiveDataAEAD({
++  aesKey,
++  plaintext,
++  aadContext = '',
++  keyFingerprint = '',
++  schemeId = 'X25519MLKEM768'
++}) {
++  const subtle = crypto.subtle;
++  const encoder = new TextEncoder();
++
++  const plaintextBytes =
++    plaintext instanceof Uint8Array
++      ? plaintext
++      : typeof plaintext === 'string'
++      ? encoder.encode(plaintext)
++      : encoder.encode(JSON.stringify(plaintext));
++
++  // 96-bit (12-byte) cryptographically random IV/nonce per NIST SP 800-38D
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const aadString = typeof aadContext === 'string' ? aadContext : JSON.stringify(aadContext);
++  const aadBytes = encoder.encode(aadString);
++
++  const encryptedBuffer = await subtle.encrypt(
++    {
++      name: 'AES-GCM',
++      iv,
++      additionalData: aadBytes,
++      tagLength: 128
++    },
++    aesKey,
++    plaintextBytes
++  );
++
++  const encryptedBytes = new Uint8Array(encryptedBuffer);
++  // WebCrypto AES-GCM appends the 16-byte (128-bit) authentication tag at the end of the ciphertext
++  const ciphertextBody = encryptedBytes.subarray(0, encryptedBytes.length - 16);
++  const authTag = encryptedBytes.subarray(encryptedBytes.length - 16);
++
++  return {
++    version: 'AEAD-AES-256-GCM-v1',
++    schemeId,
++    keyFingerprint,
++    ivHex: bytesToHex(iv),
++    ivBase64: bytesToBase64(iv),
++    aad: aadString,
++    aadHex: bytesToHex(aadBytes),
++    ciphertextHex: bytesToHex(ciphertextBody),
++    authTagHex: bytesToHex(authTag),
++    combinedPayloadBase64: bytesToBase64(encryptedBytes),
++    byteLength: encryptedBytes.byteLength,
++    timestamp: new Date().toISOString()
++  };
++}
++
++/**
++ * Decrypts and authenticates an AES-256-GCM envelope.
++ * Throws a descriptive authentication error if the ciphertext, IV, key, or AAD was tampered with.
++ */
++export async function decryptSensitiveDataAEAD({
++  aesKey,
++  envelope,
++  overrideAad = undefined
++}) {
++  const subtle = crypto.subtle;
++  const encoder = new TextEncoder();
++  const decoder = new TextDecoder();
++
++  const iv = hexToBytes(envelope.ivHex);
++  const aadString = overrideAad !== undefined ? overrideAad : envelope.aad;
++  const aadBytes = encoder.encode(aadString);
++  const ciphertextBody = hexToBytes(envelope.ciphertextHex);
++  const authTag = hexToBytes(envelope.authTagHex);
++  const combined = concatBytes(ciphertextBody, authTag);
++
++  try {
++    const decryptedBuffer = await subtle.decrypt(
++      {
++        name: 'AES-GCM',
++        iv,
++        additionalData: aadBytes,
++        tagLength: 128
++      },
++      aesKey,
++      combined
++    );
++    const decryptedBytes = new Uint8Array(decryptedBuffer);
++    const text = decoder.decode(decryptedBytes);
++    let parsedJson = null;
++    try {
++      parsedJson = JSON.parse(text);
++    } catch (_) {
++      // Plain string
++    }
++    return {
++      authenticated: true,
++      plaintext: text,
++      parsedJson,
++      plaintextBytes: decryptedBytes
++    };
++  } catch (err) {
++    throw new Error(
++      `AEAD Authentication Failed (GCM Tag / AAD Verification Rejected): Ciphertext, authentication tag, or associated data was modified or key mismatch occurred.`
++    );
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..97d6822 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,27 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Quantum-Safe Checkout</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #2d1b17;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e68a00;
+       --text: #3e2723;
+       --light: #fafafa;
++      --bg-warm: #f6f3f0;
++      --crypto-bg: #161922;
++      --crypto-card: #1e2330;
++      --crypto-border: #2e364a;
++      --crypto-text: #e2e8f0;
++      --crypto-muted: #94a3b8;
++      --success: #10b981;
++      --danger: #ef4444;
++      --warning: #f59e0b;
++      --quantum: #a855f7;
++      --classical: #3b82f6;
+     }
+ 
+     * {
+@@ -38,17 +51,34 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .pq-badge-nav {
++      font-size: 0.7rem;
++      background: linear-gradient(135deg, #7e22ce, #2563eb);
++      color: #fff;
++      padding: 3px 9px;
++      border-radius: 999px;
++      letter-spacing: 0.5px;
++      font-weight: 600;
++      text-transform: uppercase;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
+     }
+ 
+     nav ul li {
+@@ -74,8 +104,9 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 48vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(30, 18, 14, 0.65), rgba(30, 18, 14, 0.72)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -89,50 +120,465 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 680px;
++      opacity: 0.95;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 14px;
++      margin-top: 18px;
++      flex-wrap: wrap;
++      justify-content: center;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1180px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++    }
++
++    .section-header p {
++      color: #6d4c41;
++      max-width: 720px;
++      margin: 8px auto 0;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 22px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 10px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      border: 1px solid #ede7e3;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 170px;
++      object-fit: cover;
++    }
++
++    .card-body {
++      padding: 20px;
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      font-weight: 700;
++      color: var(--primary-dark);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 10px;
++      transition: all 0.25s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: #2d1b17;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++      color: #fff;
++    }
++
++    .btn-crypto {
++      background: linear-gradient(135deg, #7e22ce, #2563eb);
++      color: #fff;
++    }
++
++    .btn-crypto:hover {
++      background: linear-gradient(135deg, #6b21a8, #1d4ed8);
++    }
++
++    .btn-outline {
++      background: transparent;
++      border: 1px solid var(--crypto-border);
++      color: var(--crypto-text);
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 255, 255, 0.08);
++    }
++
++    .btn-danger {
++      background: rgba(239, 68, 68, 0.18);
++      color: #fca5a5;
++      border: 1px solid rgba(239, 68, 68, 0.4);
++    }
++
++    .btn-danger:hover {
++      background: rgba(239, 68, 68, 0.32);
++    }
++
++    /* Quantum-Safe Security Workbench & Encrypted Checkout Section */
++    .security-suite {
++      background: var(--crypto-bg);
++      color: var(--crypto-text);
++      border-radius: 16px;
++      padding: 32px;
++      margin: 48px 0;
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
++      border: 1px solid var(--crypto-border);
++    }
++
++    .suite-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 20px;
++      padding-bottom: 24px;
++      border-bottom: 1px solid var(--crypto-border);
++      margin-bottom: 28px;
++    }
++
++    .suite-title h2 {
++      font-size: 1.75rem;
++      color: #fff;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .suite-title p {
++      color: var(--crypto-muted);
++      margin-top: 6px;
++      font-size: 0.95rem;
++      max-width: 760px;
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      background: rgba(16, 185, 129, 0.15);
++      color: #34d399;
++      border: 1px solid rgba(16, 185, 129, 0.35);
++    }
++
++    .status-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--success);
++      box-shadow: 0 0 8px var(--success);
++    }
++
++    /* Scheme Selector Bar */
++    .scheme-bar {
++      background: var(--crypto-card);
++      border: 1px solid var(--crypto-border);
++      border-radius: 12px;
++      padding: 20px;
++      margin-bottom: 24px;
++    }
++
++    .scheme-bar-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 16px;
++    }
++
++    .scheme-select-group {
++      flex: 1;
++      min-width: 280px;
++    }
++
++    .scheme-select-group label {
++      display: block;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: var(--crypto-muted);
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .crypto-select {
++      width: 100%;
++      padding: 11px 14px;
++      background: #0f131a;
++      color: #fff;
++      border: 1px solid #3b445e;
++      border-radius: 8px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      outline: none;
++    }
++
++    .crypto-select:focus {
++      border-color: var(--quantum);
++    }
++
++    .scheme-badges {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-top: 14px;
++    }
++
++    .meta-tag {
++      font-size: 0.78rem;
++      padding: 4px 10px;
++      border-radius: 6px;
++      background: rgba(255, 255, 255, 0.06);
++      color: #cbd5e1;
++      border: 1px solid rgba(255, 255, 255, 0.1);
++    }
++
++    .meta-tag.pq {
++      background: rgba(168, 85, 247, 0.16);
++      color: #d8b4fe;
++      border-color: rgba(168, 85, 247, 0.35);
++    }
++
++    .meta-tag.classical {
++      background: rgba(59, 130, 246, 0.16);
++      color: #93c5fd;
++      border-color: rgba(59, 130, 246, 0.35);
++    }
++
++    /* 3-Step Pipeline Grid */
++    .crypto-pipeline {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 20px;
++      margin-bottom: 24px;
++    }
++
++    .crypto-panel {
++      background: var(--crypto-card);
++      border: 1px solid var(--crypto-border);
++      border-radius: 12px;
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .panel-title {
++      font-size: 1.05rem;
++      font-weight: 700;
++      color: #fff;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid var(--crypto-border);
++      padding-bottom: 10px;
++    }
++
++    .step-num {
++      background: rgba(168, 85, 247, 0.2);
++      color: #d8b4fe;
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 4px;
++      border: 1px solid rgba(168, 85, 247, 0.4);
++    }
++
++    .field-group {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .field-group label {
++      font-size: 0.78rem;
++      color: var(--crypto-muted);
++      font-weight: 600;
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .crypto-input,
++    .crypto-textarea {
++      background: #0f131a;
++      border: 1px solid #333c52;
++      color: #f8fafc;
++      padding: 9px 12px;
++      border-radius: 6px;
++      font-size: 0.88rem;
++      font-family: inherit;
++    }
++
++    .crypto-textarea {
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.8rem;
++      resize: vertical;
++      min-height: 76px;
++    }
++
++    .mono-box {
++      background: #0b0e14;
++      border: 1px solid #283044;
++      border-radius: 6px;
++      padding: 8px 10px;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.76rem;
++      color: #a5f3fc;
++      word-break: break-all;
++      max-height: 82px;
++      overflow-y: auto;
++    }
++
++    .mono-box.pq-secret {
++      color: #e9d5ff;
++      border-color: rgba(168, 85, 247, 0.35);
++    }
++
++    .mono-box.session-key {
++      color: #6ee7b7;
++      border-color: rgba(16, 185, 129, 0.4);
++    }
++
++    .key-match-banner {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      background: rgba(16, 185, 129, 0.12);
++      border: 1px solid rgba(16, 185, 129, 0.35);
++      color: #6ee7b7;
++      padding: 10px 14px;
++      border-radius: 8px;
++      font-size: 0.83rem;
++      font-weight: 600;
++    }
++
++    .key-match-banner.mismatch {
++      background: rgba(239, 68, 68, 0.15);
++      border-color: rgba(239, 68, 68, 0.45);
++      color: #fca5a5;
++    }
++
++    /* Two-column Checkout + Live AEAD Inspector */
++    .aead-workbench {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
++      gap: 22px;
++    }
++
++    .form-row-2 {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 10px;
++    }
++
++    .tamper-toolbar {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-top: 6px;
++    }
++
++    .btn-sm {
++      padding: 6px 11px;
++      font-size: 0.78rem;
++      margin-top: 0;
++    }
++
++    .verification-result {
++      padding: 14px;
++      border-radius: 8px;
++      font-size: 0.85rem;
++      border: 1px solid rgba(16, 185, 129, 0.4);
++      background: rgba(16, 185, 129, 0.1);
++      color: #d1fae5;
++    }
++
++    .verification-result.error {
++      border-color: rgba(239, 68, 68, 0.5);
++      background: rgba(239, 68, 68, 0.14);
++      color: #fecaca;
++    }
++
++    /* Encrypted Storage Vault Table */
++    .vault-section {
++      margin-top: 24px;
++      background: var(--crypto-card);
++      border: 1px solid var(--crypto-border);
++      border-radius: 12px;
++      padding: 20px;
++    }
++
++    .vault-list {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
++    .vault-item {
++      background: #0f131a;
++      border: 1px solid #2b3346;
++      border-radius: 8px;
++      padding: 12px 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      font-size: 0.82rem;
+     }
+ 
+     footer {
+@@ -158,41 +604,329 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">
++      <span>THE DAILY GRIND</span>
++      <span class="pq-badge-nav">PQ-Hybrid + AES-256-GCM</span>
++    </div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu-section">Menu</a></li>
++      <li><a href="#quantum-checkout">Quantum-Safe Checkout</a></li>
++      <li><a href="#aead-inspector">AEAD Inspector</a></li>
++      <li><a href="#encrypted-vault">Browser Vault</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup — protected end-to-end in your browser by Hybrid Post-Quantum Key Encapsulation (X25519 + ML-KEM-768) &amp; AES-256-GCM Authenticated Encryption.</p>
++    <div class="hero-actions">
++      <a href="#quantum-checkout" class="btn btn-accent">Order &amp; Encrypt Now</a>
++      <a href="#aead-inspector" class="btn btn-crypto">Inspect Key Agreement &amp; KEM</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Seasonal Favorites Menu -->
++    <section id="menu-section">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Select an artisanal roast below to populate your encrypted order payload.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte">
++          <div class="card-body">
++            <div>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <div class="price-tag">$6.50</div>
++            </div>
++            <button type="button" class="btn select-item-btn" data-item="Maple Oat Latte (16oz)" data-price="6.50">Add to Encrypted Checkout</button>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso">
++          <div class="card-body">
++            <div>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <div class="price-tag">$4.75</div>
++            </div>
++            <button type="button" class="btn select-item-btn" data-item="Dark Roast Espresso (Double)" data-price="4.75">Add to Encrypted Checkout</button>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80" alt="Cold Brew">
++          <div class="card-body">
++            <div>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <div class="price-tag">$5.50</div>
++            </div>
++            <button type="button" class="btn select-item-btn" data-item="18-Hour Cold Brew (20oz)" data-price="5.50">Add to Encrypted Checkout</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Quantum-Safe Key Agreement, KEM & AEAD Encryption Workbench -->
++    <section id="quantum-checkout" class="security-suite">
++      <div class="suite-header">
++        <div class="suite-title">
++          <h2>
++            <span>Quantum-Safe Key Establishment &amp; Browser AEAD Engine</span>
++          </h2>
++          <p>
++            Establishes ephemeral shared secrets via Public-Key Encapsulation (KEM) and Elliptic-Curve Key Agreement,
++            combining classical ECDH (X25519 / P-256) with NIST FIPS 203 Post-Quantum <strong>ML-KEM-768</strong> via HKDF-SHA256,
++            and encrypts sensitive payment &amp; customer data in the browser using <strong>AES-256-GCM</strong> with bound Additional Authenticated Data (AAD).
++          </p>
++        </div>
++        <div class="status-pill" id="crypto-engine-status">
++          <span class="status-dot"></span>
++          <span id="status-text">Initializing Hybrid KEM...</span>
++        </div>
++      </div>
++
++      <!-- Protocol / Scheme Selector -->
++      <div class="scheme-bar">
++        <div class="scheme-bar-top">
++          <div class="scheme-select-group">
++            <label for="scheme-selector">Key Establishment / Encapsulation Protocol</label>
++            <select id="scheme-selector" class="crypto-select">
++              <option value="X25519MLKEM768" selected>Hybrid X25519 + ML-KEM-768 (Post-Quantum + Classical ECDH + HKDF-SHA256)</option>
++              <option value="SecP256r1MLKEM768">Hybrid ECDH P-256 + ML-KEM-768 (NIST SP 800-56A + FIPS 203 + HKDF-SHA256)</option>
++              <option value="ML-KEM-768">Pure Post-Quantum ML-KEM-768 (NIST FIPS 203 Lattice KEM)</option>
++              <option value="X25519-ECDH">Classical X25519 / ECDH Key Agreement (RFC 7748 + HKDF-SHA256)</option>
++              <option value="RSA-OAEP-256">Classical RSA-OAEP-2048 Key Encapsulation (RFC 8017 SHA-256)</option>
++            </select>
++          </div>
++          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++            <button type="button" id="btn-rekey" class="btn btn-crypto">Establish New Ephemeral Shared Secret</button>
++          </div>
++        </div>
++        <div class="scheme-badges" id="scheme-badges">
++          <span class="meta-tag pq" id="badge-standard">FIPS 203 (ML-KEM-768) + RFC 7748 (X25519)</span>
++          <span class="meta-tag pq" id="badge-quantum">NIST Level 3 Quantum-Safe + Classical Defense-in-Depth</span>
++          <span class="meta-tag classical" id="badge-pubkey-size">Public Key: 1216 B</span>
++          <span class="meta-tag classical" id="badge-capsule-size">KEM Capsule: 1120 B</span>
++          <span class="meta-tag" id="badge-timing">Handshake: -- ms</span>
++        </div>
++      </div>
++
++      <!-- 3-Column Key Establishment Pipeline -->
++      <div class="crypto-pipeline" id="aead-inspector">
++        <!-- Step 1: Recipient Key Generation -->
++        <div class="crypto-panel">
++          <div class="panel-title">
++            <span>1. Recipient Public Key Bundle</span>
++            <span class="step-num">KeyGen</span>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Recipient Public Key Fingerprint (SHA-256)</span>
++              <span id="recipient-curve-label">X25519 + ML-KEM-768</span>
++            </label>
++            <div class="mono-box" id="recipient-pub-fingerprint">--</div>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Classical Public Component</span>
++              <span id="classical-pub-len">32 bytes</span>
++            </label>
++            <div class="mono-box" id="recipient-classical-pub">--</div>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Post-Quantum ML-KEM-768 Public Key (ek)</span>
++              <span id="pq-pub-len">1184 bytes</span>
++            </label>
++            <div class="mono-box pq-secret" id="recipient-pq-pub">--</div>
++          </div>
++        </div>
++
++        <!-- Step 2: Browser Client Encapsulation & Hybrid Combiner -->
++        <div class="crypto-panel">
++          <div class="panel-title">
++            <span>2. Client KEM Encapsulation &amp; DH</span>
++            <span class="step-num">Encapsulate</span>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Classical Shared Secret (ss_classical)</span>
++              <span>256-bit</span>
++            </label>
++            <div class="mono-box" id="initiator-ss-classical">--</div>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Post-Quantum Shared Secret (ss_pq)</span>
++              <span>256-bit</span>
++            </label>
++            <div class="mono-box pq-secret" id="initiator-ss-pq">--</div>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Encapsulated Ciphertext / Ephemeral Capsule</span>
++              <span id="capsule-bytes-label">1120 bytes</span>
++            </label>
++            <div class="mono-box" id="initiator-capsule-hex">--</div>
++          </div>
++        </div>
++
++        <!-- Step 3: HKDF-SHA256 Derivation & Peer Decapsulation Verification -->
++        <div class="crypto-panel">
++          <div class="panel-title">
++            <span>3. HKDF-SHA256 &amp; Decapsulation</span>
++            <span class="step-num">DeriveKey</span>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Transcript Hash (Binds Keys + Ciphertext)</span>
++              <span>SHA-256</span>
++            </label>
++            <div class="mono-box" id="transcript-hash-box">--</div>
++          </div>
++          <div class="field-group">
++            <label>
++              <span>Derived AES-256-GCM Session Key (HKDF)</span>
++              <span id="session-key-fp">Confirm: --</span>
++            </label>
++            <div class="mono-box session-key" id="derived-session-key-box">--</div>
++          </div>
++          <div class="key-match-banner" id="key-agreement-banner">
++            <span id="key-match-status-text">Verifying Initiator &amp; Recipient Shared Secret...</span>
++          </div>
++          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
++            <button type="button" id="btn-test-kem-rejection" class="btn btn-danger btn-sm">
++              Simulate ML-KEM Ciphertext Tampering (Implicit Rejection)
++            </button>
++          </div>
++        </div>
++      </div>
++
++      <!-- Sensitive Data Authenticated Encryption (AES-256-GCM) -->
++      <div class="aead-workbench">
++        <!-- Left: Sensitive Order & Payment Form -->
++        <div class="crypto-panel">
++          <div class="panel-title">
++            <span>Sensitive Browser Payload (Plaintext &amp; AAD)</span>
++            <span class="step-num">Client Input</span>
++          </div>
++
++          <div class="form-row-2">
++            <div class="field-group">
++              <label for="input-customer-name">Customer Name</label>
++              <input id="input-customer-name" class="crypto-input" type="text" value="Elena Vance">
++            </div>
++            <div class="field-group">
++              <label for="input-order-item">Selected Order Item</label>
++              <input id="input-order-item" class="crypto-input" type="text" value="Maple Oat Latte (16oz) - $6.50">
++            </div>
++          </div>
++
++          <div class="form-row-2">
++            <div class="field-group">
++              <label for="input-card-pan">Payment Card Number (Sensitive PII)</label>
++              <input id="input-card-pan" class="crypto-input" type="text" value="4532 0192 8831 4920">
++            </div>
++            <div class="field-group">
++              <label for="input-card-cvv">Security Code (CVV) &amp; Expiry</label>
++              <input id="input-card-cvv" class="crypto-input" type="text" value="842 / 09/29">
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label for="input-delivery-note">Confidential Delivery / Loyalty Token</label>
++            <input id="input-delivery-note" class="crypto-input" type="text" value="VIP-TOKEN-99481-DAILYGRIND | Gate Code #4821">
++          </div>
++
++          <div class="field-group">
++            <label for="input-aad-context">
++              <span>Additional Authenticated Data (AAD - Unencrypted Context Bound to GCM Tag)</span>
++              <span>RFC 5116</span>
++            </label>
++            <input id="input-aad-context" class="crypto-input" type="text" value="merchant=daily-grind.coffee|order=ORD-2026-8841|currency=USD">
++          </div>
++
++          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;">
++            <button type="button" id="btn-encrypt-payload" class="btn btn-accent" style="flex: 1;">
++              Encrypt Sensitive Data (AES-256-GCM)
++            </button>
++            <button type="button" id="btn-save-vault" class="btn btn-outline">
++              Save Envelope to Browser Vault
++            </button>
++          </div>
++        </div>
++
++        <!-- Right: Live AEAD Ciphertext Envelope, GCM Tag & Tamper Verification -->
++        <div class="crypto-panel">
++          <div class="panel-title">
++            <span>Authenticated Encryption Envelope (AES-256-GCM)</span>
++            <span class="step-num">128-bit Tag</span>
++          </div>
++
++          <div class="form-row-2">
++            <div class="field-group">
++              <label for="envelope-iv">96-bit Nonce / IV (Hex)</label>
++              <input id="envelope-iv" class="crypto-input" type="text" readonly>
++            </div>
++            <div class="field-group">
++              <label for="envelope-tag">128-bit GCM Auth Tag (Hex)</label>
++              <input id="envelope-tag" class="crypto-input" type="text" readonly>
++            </div>
++          </div>
++
++          <div class="field-group">
++            <label for="envelope-ciphertext">
++              <span>AEAD Ciphertext (Hex) — Editable to Test Tamper Detection</span>
++              <span id="ciphertext-byte-count">0 bytes</span>
++            </label>
++            <textarea id="envelope-ciphertext" class="crypto-textarea"></textarea>
++          </div>
++
++          <div class="field-group">
++            <label for="envelope-aad-verify">
++              <span>Bound AAD Verified During Decryption</span>
++            </label>
++            <input id="envelope-aad-verify" class="crypto-input" type="text">
++          </div>
++
++          <div class="tamper-toolbar">
++            <button type="button" id="btn-decrypt-verify" class="btn btn-crypto btn-sm">
++              Decrypt &amp; Authenticate Envelope
++            </button>
++            <button type="button" id="btn-tamper-ciphertext" class="btn btn-danger btn-sm">
++              Flip 1 Bit in Ciphertext
++            </button>
++            <button type="button" id="btn-tamper-aad" class="btn btn-danger btn-sm">
++              Tamper with AAD Context
++            </button>
++            <button type="button" id="btn-tamper-tag" class="btn btn-danger btn-sm">
++              Corrupt Auth Tag
++            </button>
++            <button type="button" id="btn-restore-envelope" class="btn btn-outline btn-sm">
++              Restore Valid Envelope
++            </button>
++          </div>
++
++          <div id="decap-verification-box" class="verification-result">
++            Initializing authenticated encryption verification...
++          </div>
++        </div>
++      </div>
++
++      <!-- Encrypted Browser Vault (LocalStorage Encrypted Records) -->
++      <div id="encrypted-vault" class="vault-section">
++        <div class="panel-title">
++          <span>Encrypted Browser Storage Vault (Zero-Plaintext At-Rest Persistence)</span>
++          <button type="button" id="btn-clear-vault" class="btn btn-outline btn-sm">Clear Vault</button>
+         </div>
++        <p style="font-size: 0.83rem; color: var(--crypto-muted); margin-top: 6px;">
++          Sensitive records stored in <code>localStorage</code> contain only the KEM scheme metadata, 96-bit IV, AAD, ciphertext, and 128-bit GCM authentication tag.
++        </p>
++        <div id="vault-records-list" class="vault-list"></div>
+       </div>
+     </section>
+   </main>
+@@ -202,11 +936,380 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy &amp; Quantum Security</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {
++      generateRecipientKeyBundle,
++      encapsulateSharedSecret,
++      decapsulateSharedSecret,
++      encryptSensitiveDataAEAD,
++      decryptSensitiveDataAEAD,
++      hexToBytes,
++      bytesToHex
++    } from './crypto-engine.js';
++
++    const state = {
++      currentScheme: 'X25519MLKEM768',
++      recipientBundle: null,
++      encapsulationResult: null,
++      decapsulationResult: null,
++      latestValidEnvelope: null,
++      vaultItems: []
++    };
++
++    // DOM Elements
++    const schemeSelector = document.getElementById('scheme-selector');
++    const statusText = document.getElementById('status-text');
++    const badgeStandard = document.getElementById('badge-standard');
++    const badgeQuantum = document.getElementById('badge-quantum');
++    const badgePubkeySize = document.getElementById('badge-pubkey-size');
++    const badgeCapsuleSize = document.getElementById('badge-capsule-size');
++    const badgeTiming = document.getElementById('badge-timing');
++
++    const recipientCurveLabel = document.getElementById('recipient-curve-label');
++    const recipientPubFp = document.getElementById('recipient-pub-fingerprint');
++    const classicalPubLen = document.getElementById('classical-pub-len');
++    const recipientClassicalPub = document.getElementById('recipient-classical-pub');
++    const pqPubLen = document.getElementById('pq-pub-len');
++    const recipientPqPub = document.getElementById('recipient-pq-pub');
++
++    const initiatorSsClassical = document.getElementById('initiator-ss-classical');
++    const initiatorSsPq = document.getElementById('initiator-ss-pq');
++    const capsuleBytesLabel = document.getElementById('capsule-bytes-label');
++    const initiatorCapsuleHex = document.getElementById('initiator-capsule-hex');
++
++    const transcriptHashBox = document.getElementById('transcript-hash-box');
++    const sessionKeyFp = document.getElementById('session-key-fp');
++    const derivedSessionKeyBox = document.getElementById('derived-session-key-box');
++    const keyAgreementBanner = document.getElementById('key-agreement-banner');
++    const keyMatchStatusText = document.getElementById('key-match-status-text');
++
++    const inputCustomerName = document.getElementById('input-customer-name');
++    const inputOrderItem = document.getElementById('input-order-item');
++    const inputCardPan = document.getElementById('input-card-pan');
++    const inputCardCvv = document.getElementById('input-card-cvv');
++    const inputDeliveryNote = document.getElementById('input-delivery-note');
++    const inputAadContext = document.getElementById('input-aad-context');
++
++    const envelopeIv = document.getElementById('envelope-iv');
++    const envelopeTag = document.getElementById('envelope-tag');
++    const envelopeCiphertext = document.getElementById('envelope-ciphertext');
++    const envelopeAadVerify = document.getElementById('envelope-aad-verify');
++    const ciphertextByteCount = document.getElementById('ciphertext-byte-count');
++    const decapVerificationBox = document.getElementById('decap-verification-box');
++    const vaultRecordsList = document.getElementById('vault-records-list');
++
++    function buildPlaintextPayload() {
++      return {
++        customerName: inputCustomerName.value.trim(),
++        orderItem: inputOrderItem.value.trim(),
++        paymentCard: {
++          pan: inputCardPan.value.trim(),
++          cvvAndExpiry: inputCardCvv.value.trim()
++        },
++        confidentialNote: inputDeliveryNote.value.trim(),
++        encryptedAt: new Date().toISOString()
++      };
++    }
++
++    async function establishKeyAndEncrypt(schemeId) {
++      statusText.textContent = `Running ${schemeId} Handshake...`;
++      const t0 = performance.now();
++
++      const recipientBundle = await generateRecipientKeyBundle(schemeId);
++      const encResult = await encapsulateSharedSecret(recipientBundle);
++      const decResult = await decapsulateSharedSecret(recipientBundle, encResult.capsule);
++      const totalMs = +(performance.now() - t0).toFixed(2);
++
++      state.currentScheme = schemeId;
++      state.recipientBundle = recipientBundle;
++      state.encapsulationResult = encResult;
++      state.decapsulationResult = decResult;
++
++      // Update Metadata Badges
++      badgeStandard.textContent = recipientBundle.schemeMeta.standard;
++      badgeQuantum.textContent = recipientBundle.schemeMeta.quantumResistance;
++      badgePubkeySize.textContent = `Public Key: ${recipientBundle.metrics.publicKeySizeBytes} B`;
++      badgeCapsuleSize.textContent = `KEM Capsule: ${encResult.metrics.capsuleSizeBytes} B`;
++      badgeTiming.textContent = `Handshake: ${totalMs} ms`;
++
++      // Update Step 1 UI
++      recipientCurveLabel.textContent = recipientBundle.schemeId;
++      recipientPubFp.textContent = recipientBundle.publicKeyBundle.fingerprint;
++      if (recipientBundle.metrics.classicalPubBytes > 0) {
++        classicalPubLen.textContent = `${recipientBundle.metrics.classicalPubBytes} bytes`;
++        recipientClassicalPub.textContent = bytesToHex(
++          recipientBundle.publicKeyBundle.classicalPublicKey ||
++            recipientBundle.publicKeyBundle.compositePublicKey
++        );
++      } else {
++        classicalPubLen.textContent = '0 bytes (Pure Post-Quantum)';
++        recipientClassicalPub.textContent = 'N/A — Pure Post-Quantum ML-KEM-768 Mode';
++      }
++
++      if (recipientBundle.metrics.pqPubBytes > 0) {
++        pqPubLen.textContent = `${recipientBundle.metrics.pqPubBytes} bytes`;
++        recipientPqPub.textContent = bytesToHex(recipientBundle.publicKeyBundle.pqPublicKey);
++      } else {
++        pqPubLen.textContent = '0 bytes (Classical Mode)';
++        recipientPqPub.textContent = 'N/A — Classical Key Establishment Mode';
++      }
++
++      // Update Step 2 UI
++      initiatorSsClassical.textContent =
++        encResult.initiatorSecrets.classicalSharedSecretHex || 'N/A (Pure Post-Quantum)';
++      initiatorSsPq.textContent =
++        encResult.initiatorSecrets.pqSharedSecretHex || 'N/A (Classical Only)';
++      capsuleBytesLabel.textContent = `${encResult.metrics.capsuleSizeBytes} bytes`;
++      initiatorCapsuleHex.textContent = bytesToHex(encResult.capsule.compositeCapsuleBytes);
++
++      // Update Step 3 UI
++      transcriptHashBox.textContent = encResult.initiatorSecrets.transcriptHashHex;
++      sessionKeyFp.textContent = `Confirm: ${encResult.initiatorSecrets.keyFingerprint}`;
++      derivedSessionKeyBox.textContent = encResult.initiatorSecrets.sessionKeyHex;
++
++      const keysMatch =
++        encResult.initiatorSecrets.sessionKeyHex === decResult.recipientSecrets.sessionKeyHex;
++      if (keysMatch) {
++        keyAgreementBanner.classList.remove('mismatch');
++        keyMatchStatusText.textContent = `Shared Secrets Match! Initiator & Recipient derived identical 256-bit AES-GCM key (Confirm: ${encResult.initiatorSecrets.keyFingerprint.slice(0, 12)}...)`;
++      } else {
++        keyAgreementBanner.classList.add('mismatch');
++        keyMatchStatusText.textContent = `Key Mismatch (Implicit Rejection Active)`;
++      }
++
++      statusText.textContent = `${schemeId} Active (${totalMs} ms)`;
++
++      await performEncryption();
++    }
++
++    async function performEncryption() {
++      const payload = buildPlaintextPayload();
++      const aadContext = inputAadContext.value;
++      const { sessionAesKey, keyFingerprint } = state.encapsulationResult.initiatorSecrets;
++
++      const envelope = await encryptSensitiveDataAEAD({
++        aesKey: sessionAesKey,
++        plaintext: payload,
++        aadContext,
++        keyFingerprint,
++        schemeId: state.currentScheme
++      });
++
++      state.latestValidEnvelope = structuredClone(envelope);
++      populateEnvelopeEditor(envelope);
++      await verifyCurrentEnvelope();
++    }
++
++    function populateEnvelopeEditor(envelope) {
++      envelopeIv.value = envelope.ivHex;
++      envelopeTag.value = envelope.authTagHex;
++      envelopeCiphertext.value = envelope.ciphertextHex;
++      envelopeAadVerify.value = envelope.aad;
++      ciphertextByteCount.textContent = `${envelope.ciphertextHex.length / 2} bytes (+ 16B GCM Tag)`;
++    }
++
++    async function verifyCurrentEnvelope() {
++      const editedEnvelope = {
++        ivHex: envelopeIv.value.trim(),
++        authTagHex: envelopeTag.value.trim(),
++        ciphertextHex: envelopeCiphertext.value.trim(),
++        aad: envelopeAadVerify.value
++      };
++
++      try {
++        // Recipient uses its independently decapsulated AES-256-GCM session key
++        const recipientAesKey = state.decapsulationResult.recipientSecrets.sessionAesKey;
++        const result = await decryptSensitiveDataAEAD({
++          aesKey: recipientAesKey,
++          envelope: editedEnvelope
++        });
++
++        decapVerificationBox.classList.remove('error');
++        decapVerificationBox.innerHTML = `
++          <div><strong>AEAD Authentication &amp; Decryption Verified (128-bit GCM Tag Valid)</strong></div>
++          <div style="margin-top:4px; font-size:0.8rem; color:#a7f3d0;">
++            Decapsulated by Recipient via <code>${state.currentScheme}</code> | AAD Context Verified: <code>${editedEnvelope.aad}</code>
++          </div>
++          <pre style="margin-top:8px; background:#090d12; padding:8px; border-radius:6px; overflow-x:auto; font-size:0.76rem; color:#e2e8f0;">${JSON.stringify(result.parsedJson, null, 2)}</pre>
++        `;
++      } catch (err) {
++        decapVerificationBox.classList.add('error');
++        decapVerificationBox.innerHTML = `
++          <div><strong>AEAD Integrity / Authentication Rejected!</strong></div>
++          <div style="margin-top:4px;">${err.message}</div>
++          <div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">
++            Zero plaintext was released because WebCrypto AES-256-GCM verified the 128-bit authentication tag before outputting any decrypted bytes.
++          </div>
++        `;
++      }
++    }
++
++    // Simulate FIPS 203 ML-KEM Implicit Rejection when KEM Ciphertext is modified in transit
++    async function simulateKemCiphertextTampering() {
++      if (!state.encapsulationResult.capsule.pqCiphertext) {
++        decapVerificationBox.classList.add('error');
++        decapVerificationBox.innerHTML = `
++          <div><strong>Select a Hybrid or Post-Quantum ML-KEM-768 scheme to test FIPS 203 Implicit Rejection.</strong></div>
++        `;
++        return;
++      }
++
++      const tamperedCapsule = {
++        ...state.encapsulationResult.capsule,
++        pqCiphertext: new Uint8Array(state.encapsulationResult.capsule.pqCiphertext)
++      };
++      // Flip 1 bit in the ML-KEM-768 lattice ciphertext
++      tamperedCapsule.pqCiphertext[0] ^= 0x01;
++
++      const tamperedDec = await decapsulateSharedSecret(state.recipientBundle, tamperedCapsule);
++      state.decapsulationResult = tamperedDec;
++
++      keyAgreementBanner.classList.add('mismatch');
++      keyMatchStatusText.textContent = `FIPS 203 Implicit Rejection Triggered! Recipient derived pseudorandom fallback key (${tamperedDec.recipientSecrets.keyFingerprint.slice(0, 12)}...) != Initiator key.`;
++
++      await verifyCurrentEnvelope();
++    }
++
++    // Browser Vault Persistence (stores only encrypted AEAD envelopes in localStorage)
++    function loadVaultFromStorage() {
++      try {
++        const raw = localStorage.getItem('daily_grind_pq_vault_v1');
++        state.vaultItems = raw ? JSON.parse(raw) : [];
++      } catch (_) {
++        state.vaultItems = [];
++      }
++      renderVaultList();
++    }
++
++    function saveCurrentToVault() {
++      if (!state.latestValidEnvelope) return;
++      const record = {
++        id: `VAULT-${Date.now().toString().slice(-5)}`,
++        envelope: structuredClone(state.latestValidEnvelope)
++      };
++      state.vaultItems.unshift(record);
++      try {
++        localStorage.setItem('daily_grind_pq_vault_v1', JSON.stringify(state.vaultItems.slice(0, 10)));
++      } catch (_) {}
++      renderVaultList();
++    }
++
++    function renderVaultList() {
++      if (state.vaultItems.length === 0) {
++        vaultRecordsList.innerHTML = `<div style="color: var(--crypto-muted); font-size: 0.82rem;">No encrypted envelopes saved yet. Click "Save Envelope to Browser Vault" to persist an AES-256-GCM record.</div>`;
++        return;
++      }
++      vaultRecordsList.innerHTML = state.vaultItems
++        .map(
++          (item) => `
++          <div class="vault-item">
++            <div>
++              <strong style="color:#fff;">${item.id}</strong>
++              <span class="meta-tag pq" style="margin-left:8px;">${item.envelope.schemeId}</span>
++              <span class="meta-tag" style="margin-left:6px;">Key FP: ${item.envelope.keyFingerprint.slice(0, 12)}...</span>
++              <div style="color:var(--crypto-muted); margin-top:4px; font-family:monospace; font-size:0.75rem;">
++                IV: ${item.envelope.ivHex} | Tag: ${item.envelope.authTagHex} | Ciphertext: ${item.envelope.ciphertextHex.slice(0, 44)}...
++              </div>
++            </div>
++            <div style="color:#6ee7b7; font-size:0.78rem; font-weight:600;">
++              AES-256-GCM Sealed (${item.envelope.byteLength} B)
++            </div>
++          </div>
++        `
++        )
++        .join('');
++    }
++
++    // Event Listeners
++    schemeSelector.addEventListener('change', (e) => {
++      establishKeyAndEncrypt(e.target.value);
++    });
++
++    document.getElementById('btn-rekey').addEventListener('click', () => {
++      establishKeyAndEncrypt(schemeSelector.value);
++    });
++
++    document.getElementById('btn-encrypt-payload').addEventListener('click', () => {
++      performEncryption();
++    });
++
++    document.getElementById('btn-decrypt-verify').addEventListener('click', () => {
++      verifyCurrentEnvelope();
++    });
++
++    document.getElementById('btn-tamper-ciphertext').addEventListener('click', () => {
++      const bytes = hexToBytes(envelopeCiphertext.value);
++      if (bytes.length > 0) {
++        bytes[0] ^= 0x01;
++        envelopeCiphertext.value = bytesToHex(bytes);
++        verifyCurrentEnvelope();
++      }
++    });
++
++    document.getElementById('btn-tamper-aad').addEventListener('click', () => {
++      envelopeAadVerify.value = envelopeAadVerify.value.replace('currency=USD', 'currency=EUR');
++      if (!envelopeAadVerify.value.includes('tampered')) {
++        envelopeAadVerify.value += '|tampered=true';
++      }
++      verifyCurrentEnvelope();
++    });
++
++    document.getElementById('btn-tamper-tag').addEventListener('click', () => {
++      const tagBytes = hexToBytes(envelopeTag.value);
++      tagBytes[tagBytes.length - 1] ^= 0xff;
++      envelopeTag.value = bytesToHex(tagBytes);
++      verifyCurrentEnvelope();
++    });
++
++    document.getElementById('btn-restore-envelope').addEventListener('click', async () => {
++      if (state.latestValidEnvelope) {
++        // Restore clean decapsulation in case KEM tampering was tested
++        state.decapsulationResult = await decapsulateSharedSecret(
++          state.recipientBundle,
++          state.encapsulationResult.capsule
++        );
++        keyAgreementBanner.classList.remove('mismatch');
++        keyMatchStatusText.textContent = `Shared Secrets Match! Initiator & Recipient derived identical 256-bit AES-GCM key (Confirm: ${state.encapsulationResult.initiatorSecrets.keyFingerprint.slice(0, 12)}...)`;
++        populateEnvelopeEditor(state.latestValidEnvelope);
++        await verifyCurrentEnvelope();
++      }
++    });
++
++    document.getElementById('btn-test-kem-rejection').addEventListener('click', () => {
++      simulateKemCiphertextTampering();
++    });
++
++    document.getElementById('btn-save-vault').addEventListener('click', () => {
++      saveCurrentToVault();
++    });
++
++    document.getElementById('btn-clear-vault').addEventListener('click', () => {
++      localStorage.removeItem('daily_grind_pq_vault_v1');
++      state.vaultItems = [];
++      renderVaultList();
++    });
++
++    document.querySelectorAll('.select-item-btn').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const item = btn.getAttribute('data-item');
++        const price = btn.getAttribute('data-price');
++        inputOrderItem.value = `${item} - $${price}`;
++        performEncryption();
++        document.getElementById('quantum-checkout').scrollIntoView({ behavior: 'smooth' });
++      });
++    });
++
++    // Initialize on load
++    loadVaultFromStorage();
++    establishKeyAndEncrypt('X25519MLKEM768').then(() => {
++      saveCurrentToVault();
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..a299fa9 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,7 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },

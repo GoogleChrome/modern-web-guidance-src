@@ -1,0 +1,329 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,15 +6,34 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --control-accent: #4e342e;
++      --control-ink: #ffffff;
++      --border: #8d7770;
++      --track: #d7ccc8;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --light: #211915;
++        --surface: #30241f;
++        --text: #f5ebe6;
++        --secondary: #382923;
++        --control-accent: #ffab40;
++        --control-ink: #211915;
++        --border: #b49b8e;
++        --track: #665148;
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -107,18 +126,18 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--text);
+     }
+ 
+     .btn {
+       display: inline-block;
+@@ -151,8 +170,166 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Keep native semantics and keyboard interactions while branding controls. */
++    .subscription {
++      margin-top: 3rem;
++      padding: clamp(1.25rem, 4vw, 2.5rem);
++      border: 1px solid var(--border);
++      border-top: 5px solid var(--accent);
++      border-radius: 8px;
++      background: var(--surface);
++    }
++
++    .subscription form {
++      max-width: 40rem;
++      margin-top: 1.5rem;
++      accent-color: var(--control-accent);
++    }
++
++    .subscription .field,
++    .subscription fieldset {
++      margin-bottom: 1.5rem;
++    }
++
++    .subscription fieldset { border: 0; min-width: 0; }
++    .subscription legend,
++    .subscription .field > label { font-weight: 600; }
++    .subscription .field > label { display: block; }
++
++    .subscription input[type="email"] {
++      width: 100%;
++      min-height: 48px;
++      margin-top: 0.4rem;
++      padding: 0.65rem;
++      font: inherit;
++      color: var(--text);
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 4px;
++    }
++
++    .subscription .choice {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .choice input { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
++    .subscription input[type="range"] { width: 100%; min-height: 48px; }
++    .roast-scale { display: flex; justify-content: space-between; }
++    .subscription progress { display: block; width: 100%; height: 1rem; margin-block: 0.5rem; }
++    .subscription .hint { font-size: 0.9rem; margin-top: 0.25rem; }
++
++    .subscription button {
++      min-height: 48px;
++      border: 2px solid var(--control-accent);
++      background: var(--control-accent);
++      color: var(--control-ink);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .subscription button:hover {
++      background: var(--control-accent);
++      text-decoration: underline;
++    }
++
++    .subscription :is(input, button):focus-visible {
++      outline: 3px solid var(--control-accent);
++      outline-offset: 4px;
++    }
++
++    #subscription-summary:not(:empty) { margin-top: 1rem; }
++
++    @supports not (accent-color: #4e342e) {
++      .subscription .choice input {
++        position: absolute;
++        clip-path: inset(50%);
++        overflow: hidden;
++        width: 1px;
++        height: 1px;
++        margin: -1px;
++        padding: 0;
++        border: 0;
++        white-space: nowrap;
++      }
++      .subscription .choice span { padding-inline-start: 2rem; }
++      .subscription .choice span::before {
++        content: "";
++        position: absolute;
++        inset-inline-start: 0;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 1.25rem;
++        height: 1.25rem;
++        border: 2px solid var(--border);
++        border-radius: 3px;
++        background: var(--surface);
++      }
++      .subscription input[type="radio"] + span::before { border-radius: 50%; }
++      .subscription .choice input:checked + span::before {
++        background: var(--control-accent);
++        border-color: var(--control-accent);
++      }
++      .subscription .choice input:checked + span::after {
++        content: "✓";
++        position: absolute;
++        inset-inline-start: 0.15rem;
++        top: 50%;
++        transform: translateY(-50%);
++        color: var(--control-ink);
++        font-size: 1rem;
++        font-weight: bold;
++      }
++      .subscription .choice input:focus-visible + span::before {
++        outline: 3px solid var(--control-accent);
++        outline-offset: 4px;
++      }
++      .subscription input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
++      .subscription input[type="range"]::-webkit-slider-runnable-track {
++        height: 8px;
++        border-radius: 4px;
++        background: linear-gradient(to right, var(--control-accent) var(--range-fill, 50%), var(--track) var(--range-fill, 50%));
++      }
++      .subscription input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        width: 24px;
++        height: 24px;
++        margin-top: -8px;
++        border-radius: 50%;
++        background: var(--control-accent);
++        border: 2px solid var(--surface);
++      }
++      .subscription input[type="range"]::-moz-range-track { height: 8px; border-radius: 4px; background: var(--track); }
++      .subscription input[type="range"]::-moz-range-progress { height: 8px; background: var(--control-accent); }
++      .subscription input[type="range"]::-moz-range-thumb {
++        width: 24px;
++        height: 24px;
++        border-radius: 50%;
++        background: var(--control-accent);
++        border: 2px solid var(--surface);
++      }
++      .subscription progress { appearance: none; border: 0; border-radius: 4px; background: var(--track); }
++      .subscription progress::-webkit-progress-bar { background: var(--track); border-radius: 4px; }
++      .subscription progress::-webkit-progress-value { background: var(--control-accent); border-radius: 4px; }
++      .subscription progress::-moz-progress-bar { background: var(--control-accent); border-radius: 4px; }
++    }
++
++    @media (forced-colors: active) {
++      .subscription { --control-accent: Highlight; --control-ink: HighlightText; --border: ButtonText; --surface: Canvas; --track: Canvas; }
++    }
++
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 0.75rem; }
++      nav ul { flex-wrap: wrap; gap: 0.75rem; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +371,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="subscription">
++      <h2>Your coffee. Your rhythm.</h2>
++      <p>Personalize a coffee subscription around the way you brew.</p>
++      <form id="subscription-form" action="#subscription-summary" method="post">
++        <div class="field">
++          <label for="setup-progress">Subscription setup completion</label>
++          <progress id="setup-progress" max="3" value="1" aria-describedby="setup-status">33%</progress>
++          <p id="setup-status" class="hint">33% complete · 1 of 3 details ready.</p>
++          <p class="hint">Medium roast is selected to start. Add your email and delivery frequency to complete setup.</p>
++        </div>
++
++        <div class="field">
++          <label for="subscription-email">Email address (required)</label>
++          <input type="email" id="subscription-email" name="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" required>
++        </div>
++
++        <fieldset>
++          <legend>Delivery frequency (required)</legend>
++          <label class="choice" for="delivery-weekly">
++            <input type="radio" id="delivery-weekly" name="frequency" value="weekly" required>
++            <span>Every week</span>
++          </label>
++          <label class="choice" for="delivery-fortnightly">
++            <input type="radio" id="delivery-fortnightly" name="frequency" value="fortnightly" required>
++            <span>Every two weeks</span>
++          </label>
++          <label class="choice" for="delivery-monthly">
++            <input type="radio" id="delivery-monthly" name="frequency" value="monthly" required>
++            <span>Every month</span>
++          </label>
++        </fieldset>
++
++        <div class="field">
++          <label for="roast-level">Roast preference: <output id="roast-value" for="roast-level" aria-live="off">Medium</output></label>
++          <p id="roast-help" class="hint">Choose from 5 levels, from light and bright to dark and bold.</p>
++          <input type="range" id="roast-level" name="roast" min="1" max="5" step="1" value="3" aria-valuetext="Medium" aria-describedby="roast-help">
++          <div class="roast-scale" aria-hidden="true"><span>Light</span><span>Dark</span></div>
++        </div>
++
++        <label class="choice" for="coffee-emails">
++          <input type="checkbox" id="coffee-emails" name="marketing_emails" value="yes" aria-describedby="email-help">
++          <span>Send me coffee news and special offers (optional)</span>
++        </label>
++        <p id="email-help" class="hint">Email updates are your choice and don't affect setup completion.</p>
++        <button class="btn" type="submit" id="review-subscription" disabled>Review my subscription</button>
++        <noscript><p>Enable JavaScript to see setup progress and review your preferences.</p></noscript>
++        <p id="subscription-summary" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +432,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('subscription-form');
++    const email = document.getElementById('subscription-email');
++    const roast = document.getElementById('roast-level');
++    const roastValue = document.getElementById('roast-value');
++    const progress = document.getElementById('setup-progress');
++    const status = document.getElementById('setup-status');
++    const summary = document.getElementById('subscription-summary');
++    const roastNames = ['Light', 'Medium-light', 'Medium', 'Medium-dark', 'Dark'];
++
++    function updateSetup() {
++      const roastName = roastNames[Number(roast.value) - 1];
++      roastValue.value = roastName;
++      roast.setAttribute('aria-valuetext', roastName);
++      roast.style.setProperty('--range-fill', `${((Number(roast.value) - 1) / 4) * 100}%`);
++      // A valid default roast counts as ready; marketing consent is never required.
++      const completed = Number(email.validity.valid) + Number(Boolean(form.querySelector('input[name="frequency"]:checked'))) + 1;
++      const percent = Math.round((completed / 3) * 100);
++      progress.value = completed;
++      progress.textContent = `${percent}%`;
++      status.textContent = `${percent}% complete · ${completed} of 3 details ready.`;
++      summary.textContent = '';
++    }
++
++    form.addEventListener('input', updateSetup);
++    form.addEventListener('change', updateSetup);
++    window.addEventListener('pageshow', updateSetup);
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const frequency = form.querySelector('input[name="frequency"]:checked');
++      const frequencyLabel = frequency.labels[0].textContent.trim();
++      const updates = document.getElementById('coffee-emails').checked ? 'Email offers selected.' : 'No marketing emails selected.';
++      summary.textContent = `Your preferences: ${roastValue.value} roast, delivered ${frequencyLabel.toLowerCase()}. ${updates} This is a preview; no subscription has been placed.`;
++    });
++    updateSetup();
++    document.getElementById('review-subscription').disabled = false;
++  </script>
+ </body>
+ 
+ </html>

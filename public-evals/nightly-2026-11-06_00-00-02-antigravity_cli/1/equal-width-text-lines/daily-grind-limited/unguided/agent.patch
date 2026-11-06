@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+index 66c9173..2025dbd 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +85,29 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(100%, 480px);
++      display: flex;
++      flex-direction: column;
++      gap: 0.25rem;
++      margin-bottom: 1.5rem;
++      text-transform: uppercase;
++      font-weight: 900;
++      letter-spacing: -0.02em;
++      text-grow: per-line scale;
++      text-box: trim-both cap alphabetic;
++    }
++
++    .hero-line {
++      display: block;
++      width: 100%;
++      white-space: nowrap;
++      line-height: 0.9;
++      text-grow: per-line scale;
++      text-box: trim-both cap alphabetic;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +186,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span class="hero-line">Wake Up</span>
++      <span class="hero-line">Your</span>
++      <span class="hero-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

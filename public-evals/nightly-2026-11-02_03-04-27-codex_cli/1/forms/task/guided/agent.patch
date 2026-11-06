@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="rewards.css">
++  <script src="rewards.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -161,9 +163,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +196,64 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" id="rewards" aria-labelledby="rewards-heading">
++      <div class="rewards-intro">
++        <p class="eyebrow">GOOD COFFEE. GREAT COMPANY.</p>
++        <h2 id="rewards-heading">Your daily ritual, <em>rewarded.</em></h2>
++        <p>A little more to love with every visit. Join the Daily Grind community.</p>
++      </div>
++      <div class="rewards-layout">
++        <aside class="rewards-story" aria-labelledby="perks-heading">
++          <span class="club-label"><span aria-hidden="true">✦</span> THE DAILY GRIND REWARDS</span>
++          <h3 id="perks-heading">Good things<br>are brewing.</h3>
++          <p>Make yourself a regular. We’ll make every coffee break a little more rewarding.</p>
++          <ul class="perks">
++            <li><span class="perk-icon" aria-hidden="true">✦</span><div><strong>Sip. Earn. Enjoy.</strong><span>Collect points on your favorite orders.</span></div></li>
++            <li><span class="perk-icon" aria-hidden="true">♡</span><div><strong>A little something extra</strong><span>Discover offers just for members.</span></div></li>
++            <li><span class="perk-icon" aria-hidden="true">☕</span><div><strong>Stay in the loop</strong><span>Be first to hear what’s brewing.</span></div></li>
++          </ul>
++          <div class="member-card" aria-hidden="true"><span>THE DAILY GRIND</span><span class="card-star">✳</span><div>YOUR DAILY DOSE<br>OF SOMETHING GOOD.</div><small>REWARDS CLUB <span>EST. 2026</span></small></div>
++          <p class="story-note">Your next favorite ritual starts here.</p>
++        </aside>
++        <div class="rewards-form-panel">
++          <ol class="signup-progress" aria-label="Registration progress" hidden>
++            <li aria-current="step"><span>1</span>About you</li><li><span>2</span>Your account</li><li><span>3</span>Review</li>
++          </ol>
++          <div id="signup-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
++          <form id="rewards-form" action="/api/rewards/registration" method="post" autocomplete="on">
++            <div id="error-summary" class="error-summary" tabindex="-1" hidden><h3>Let’s check a few things</h3><ul></ul></div>
++            <fieldset data-step="0">
++              <legend tabindex="-1">Let’s get acquainted.</legend>
++              <p class="step-description">A great cup is even better with your name on it.</p>
++              <p class="required-note">All fields are required unless marked optional.</p>
++              <div class="form-field"><label for="full-name">Full name</label><input id="full-name" name="full_name" type="text" autocomplete="name" maxlength="100" required enterkeyhint="next" aria-describedby="full-name-error"><p class="field-error" id="full-name-error" hidden></p></div>
++              <div class="form-field"><label for="rewards-email">Email address</label><input id="rewards-email" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="254" required enterkeyhint="next" aria-describedby="email-help rewards-email-error"><p class="field-hint" id="email-help">Your email will be your account sign-in.</p><p class="field-error" id="rewards-email-error" hidden></p></div>
++            </fieldset>
++            <fieldset data-step="1">
++              <legend tabindex="-1">Make it yours.</legend>
++              <p class="step-description">Create a password to keep your rewards safe.</p>
++              <div class="form-field"><label for="rewards-password">Password</label><div class="password-control"><input id="rewards-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="128" required enterkeyhint="next" aria-describedby="password-help rewards-password-error"><button id="toggle-password" type="button" aria-controls="rewards-password" aria-pressed="false" hidden>Show</button></div><p class="field-hint" id="password-help">Use 15–128 characters. A unique passphrase works well. Pasting is welcome.</p><p class="field-error" id="rewards-password-error" hidden></p></div>
++              <label class="check-label" for="email-offers"><input id="email-offers" type="checkbox" name="email_offers" value="yes"><span>Send me coffee news and member offers <span class="optional">(optional)</span><small>You can unsubscribe at any time.</small></span></label>
++            </fieldset>
++            <fieldset data-step="2">
++              <legend tabindex="-1">One last look.</legend>
++              <p class="step-description">Check your details before joining the club.</p>
++              <dl class="review-details"><div><dt>Full name</dt><dd id="review-name">—</dd></div><div><dt>Email address</dt><dd id="review-email">—</dd></div><div><dt>Email offers</dt><dd id="review-offers">—</dd></div></dl>
++              <button class="text-button" id="edit-details" type="button" hidden>Edit your details</button>
++              <label class="check-label" for="rewards-consent"><input id="rewards-consent" type="checkbox" name="terms_accepted" value="yes" required aria-describedby="rewards-consent-error"><span>I agree to the <a href="/rewards-terms" target="_blank" rel="noopener noreferrer">Rewards terms (opens in a new tab)</a> and acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy (opens in a new tab)</a>.</span></label><p class="field-error" id="rewards-consent-error" hidden></p>
++            </fieldset>
++            <div class="signup-actions"><button id="signup-back" class="back-button" type="button" hidden>Back</button><button id="signup-next" class="signup-primary" type="submit" disabled>Continue <span aria-hidden="true">→</span></button></div>
++            <noscript><p class="service-note">Please enable JavaScript to use the guided registration form. For help joining, <a href="/contact">contact us</a>.</p></noscript>
++            <p class="signin-note">Already part of the club? <a href="/account">Sign in</a></p>
++          </form>
++          <div id="signup-success" tabindex="-1" hidden><span class="success-mark" aria-hidden="true">✓</span><h3>Welcome to the club.</h3><p>Your rewards account is ready. Your next coffee has a little more to look forward to.</p><a class="signup-primary" href="/account">Go to your account <span aria-hidden="true">→</span></a></div>
++          <p class="privacy-note"><svg aria-hidden="true" width="14" height="16" viewBox="0 0 14 16" fill="none"><rect x="2" y="7" width="10" height="8" rx="2" stroke="currentColor"/><path d="M4 7V4a3 3 0 0 1 6 0v3" stroke="currentColor"/></svg> Your details stay private. Your coffee stays exceptional.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

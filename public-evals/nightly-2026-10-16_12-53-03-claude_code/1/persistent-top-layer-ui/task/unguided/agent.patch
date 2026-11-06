@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,95 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback overlay */
++    .feedback-launch {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin: 0;
++      z-index: 900;
++    }
++
++    .feedback-dialog {
++      margin: auto;
++      width: min(440px, calc(100vw - 32px));
++      border: 0;
++      border-radius: 10px;
++      padding: 24px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(62, 39, 35, 0.55);
++    }
++
++    .feedback-dialog h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++    }
++
++    .feedback-dialog label {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 90px;
++      margin-top: 4px;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .feedback-location {
++      font-size: 0.85rem;
++      margin-top: 4px;
++    }
++
++    .feedback-moves,
++    .feedback-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 12px;
++    }
++
++    .feedback-dialog .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      padding: 6px 14px;
++    }
++
++    .feedback-dialog .btn.secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .feedback-dialog .btn:focus-visible,
++    .feedback-dialog textarea:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .feedback-status {
++      font-size: 0.8rem;
++      margin-top: 10px;
++      color: #6d4c41;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,18 +254,18 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="seasonal-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -196,9 +283,9 @@
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +293,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launch" id="feedback-launch">Feedback</button>
++
++  <dialog class="feedback-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
++    <h2 id="feedback-title">Tell us how we're doing</h2>
++    <p class="feedback-location">Currently inside: <strong id="feedback-location">body</strong></p>
++    <label for="feedback-text">Your feedback</label>
++    <textarea id="feedback-text" placeholder="Type here, then move me around&hellip;"></textarea>
++    <div class="feedback-moves" role="group" aria-label="Move this dialog">
++      <button type="button" class="btn secondary" data-move="#hero">Move to hero</button>
++      <button type="button" class="btn secondary" data-move="#seasonal-grid">Move to menu grid</button>
++      <button type="button" class="btn secondary" data-move="#site-footer">Move to footer</button>
++      <button type="button" class="btn secondary" data-move="body">Move to body</button>
++    </div>
++    <div class="feedback-actions">
++      <button type="button" class="btn" id="feedback-close">Close</button>
++    </div>
++    <p class="feedback-status" id="feedback-status" role="status" aria-live="polite"></p>
++  </dialog>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-dialog');
++      const launch = document.getElementById('feedback-launch');
++      const locationLabel = document.getElementById('feedback-location');
++      const status = document.getElementById('feedback-status');
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++
++      const describe = (el) => el.id ? `#${el.id}` : el.tagName.toLowerCase();
++
++      // Relocate the open dialog. moveBefore() keeps the dialog open, in the
++      // top layer, and keeps focus/selection; otherwise we emulate that.
++      function relocate(target) {
++        if (dialog.parentNode === target && !dialog.nextSibling) return 'noop';
++
++        if (supportsMoveBefore) {
++          try {
++            target.moveBefore(dialog, null);
++            return 'moveBefore';
++          } catch (err) {
++            // e.g. target not connected / hierarchy error: use the fallback.
++          }
++        }
++
++        // Fallback: insertion resets the dialog, so capture and restore state.
++        const wasModal = dialog.matches(':modal');
++        const wasOpen = dialog.open;
++        const active = document.activeElement;
++        const focusInside = dialog.contains(active) ? active : null;
++        const selection = focusInside && 'selectionStart' in focusInside
++          ? [focusInside.selectionStart, focusInside.selectionEnd, focusInside.selectionDirection]
++          : null;
++        const scrolls = [dialog, ...dialog.querySelectorAll('*')]
++          .filter((el) => el.scrollTop || el.scrollLeft)
++          .map((el) => [el, el.scrollTop, el.scrollLeft]);
++
++        target.append(dialog); // removes then inserts; dialog is closed afterwards
++        if (dialog.open) dialog.close();
++
++        if (wasOpen) {
++          if (wasModal) dialog.showModal(); else dialog.show();
++        }
++        if (focusInside && dialog.contains(focusInside)) {
++          focusInside.focus({ preventScroll: true });
++          if (selection) focusInside.setSelectionRange(...selection);
++        }
++        for (const [el, top, left] of scrolls) {
++          el.scrollTop = top;
++          el.scrollLeft = left;
++        }
++        return 'fallback';
++      }
++
++      dialog.addEventListener('click', (event) => {
++        const btn = event.target.closest('[data-move]');
++        if (!btn) return;
++        const target = document.querySelector(btn.dataset.move);
++        if (!target) return;
++        const method = relocate(target);
++        locationLabel.textContent = describe(target);
++        status.textContent = method === 'noop'
++          ? 'Already there.'
++          : `Moved with ${method === 'moveBefore' ? 'moveBefore()' : 'fallback re-open'}.`;
++        btn.focus({ preventScroll: true });
++      });
++
++      launch.addEventListener('click', () => {
++        if (!dialog.open) dialog.showModal();
++      });
++      document.getElementById('feedback-close').addEventListener('click', () => dialog.close());
++
++      // Open by default so the overlay is persistent across the page.
++      dialog.showModal();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

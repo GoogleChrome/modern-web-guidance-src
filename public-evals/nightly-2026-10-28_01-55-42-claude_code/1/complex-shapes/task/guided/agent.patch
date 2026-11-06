@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,77 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative coffee-splash block.
++       Absolutely positioned and non-interactive, so it never affects the
++       hero's flow layout. If the mask or image fails, it degrades to a
++       soft rounded blob of coffee-toned gradient. */
++    .hero {
++      position: relative;
++      overflow: hidden;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .shaped-element {
++      position: absolute;
++      z-index: 0;
++      top: 50%;
++      right: 4%;
++      width: min(38vw, 420px);
++      aspect-ratio: 1;
++      translate: 0 -50%;
++      rotate: -8deg;
++      pointer-events: none;
++      user-select: none;
++      /* Fallback fill shows through if the photo fails to load */
++      background-color: var(--primary);
++      background-image:
++        linear-gradient(135deg, rgba(255, 171, 64, 0.35), rgba(78, 52, 46, 0.6)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80');
++      background-size: cover;
++      background-position: center;
++      opacity: 0.9;
++      /* Free-form coffee splash defined by the inline SVG <mask> below */
++      -webkit-mask-image: url(#coffee-splash);
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: url(#coffee-splash);
++      mask-size: cover;
++      mask-repeat: no-repeat;
++    }
++
++    /* Browsers without masking: fall back to a simple organic blob */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: ellipse(46% 42% at 50% 50%);
++        border-radius: 48% 52% 55% 45% / 45% 48% 52% 55%;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .shaped-element {
++        animation: splash-drift 9s ease-in-out infinite alternate;
++      }
++
++      @keyframes splash-drift {
++        from { translate: 0 -52%; rotate: -8deg; }
++        to   { translate: 0 -48%; rotate: -4deg; }
++      }
++    }
++
++    @media (max-width: 720px) {
++      .shaped-element {
++        right: -10%;
++        width: 60vw;
++        opacity: 0.45;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +236,36 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Coffee-splash mask shape (0–1 coordinates scale with the element) -->
++  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
++    <defs>
++      <mask id="coffee-splash" maskContentUnits="objectBoundingBox" mask-type="alpha">
++        <!-- main splash body -->
++        <path fill="white" d="M0.50 0.10
++          C0.60 0.06 0.70 0.13 0.75 0.22
++          C0.84 0.20 0.94 0.27 0.92 0.38
++          C0.90 0.47 0.98 0.56 0.93 0.66
++          C0.88 0.77 0.75 0.75 0.67 0.85
++          C0.59 0.96 0.45 0.94 0.39 0.85
++          C0.30 0.90 0.17 0.89 0.13 0.78
++          C0.09 0.68 0.15 0.60 0.09 0.51
++          C0.02 0.39 0.11 0.27 0.21 0.25
++          C0.27 0.13 0.40 0.13 0.50 0.10 Z" />
++        <!-- flying droplets -->
++        <path fill="white" d="M0.88 0.08 C0.93 0.03 0.99 0.08 0.95 0.14 C0.93 0.17 0.88 0.15 0.88 0.08 Z" />
++        <path fill="white" d="M0.06 0.17 C0.09 0.12 0.14 0.15 0.12 0.21 C0.10 0.24 0.05 0.22 0.06 0.17 Z" />
++        <path fill="white" d="M0.80 0.90 C0.86 0.86 0.92 0.92 0.87 0.97 C0.83 0.99 0.78 0.95 0.80 0.90 Z" />
++        <circle fill="white" cx="0.20" cy="0.95" r="0.025" />
++        <circle fill="white" cx="0.97" cy="0.52" r="0.02" />
++        <circle fill="white" cx="0.04" cy="0.62" r="0.018" />
++      </mask>
++    </defs>
++  </svg>
++
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

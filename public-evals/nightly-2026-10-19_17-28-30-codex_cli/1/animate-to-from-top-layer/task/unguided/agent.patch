@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,145 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    body:has(dialog[open]) {
++      overflow: hidden;
++    }
++
++    .logout-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(440px, calc(100% - 32px));
++      border: 0;
++      border-radius: 12px;
++      padding: 32px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 60px #0003;
++    }
++
++    .logout-dialog[open] {
++      animation: surface-enter 260ms ease-out both;
++    }
++
++    .logout-dialog::backdrop {
++      background: rgb(25 15 12 / 55%);
++      animation: backdrop-enter 260ms ease-out both;
++    }
++
++    .logout-dialog.is-closing,
++    .notice.is-closing {
++      animation: surface-exit 220ms ease-in both;
++      pointer-events: none;
++    }
++
++    .logout-dialog.is-closing::backdrop {
++      animation: backdrop-exit 220ms ease-in both;
++    }
++
++    .logout-dialog h2 {
++      padding-right: 24px;
++      margin-bottom: 12px;
++    }
++
++    .close-button {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 32px;
++      height: 32px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 24px;
++      cursor: pointer;
++    }
++
++    .close-button:hover {
++      background: var(--secondary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .notice {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: min(380px, calc(100% - 32px));
++      padding: 24px 52px 24px 24px;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 10px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 32px #0003;
++      animation: surface-enter 260ms ease-out both;
++    }
++
++    .notice[hidden] {
++      display: none;
++    }
++
++    .notice h2 {
++      font-size: 1rem;
++      margin-bottom: 6px;
++    }
++
++    @keyframes surface-enter {
++      from { opacity: 0; transform: translateY(16px) scale(0.97); }
++      to { opacity: 1; transform: translateY(0) scale(1); }
++    }
++
++    @keyframes surface-exit {
++      from { opacity: 1; transform: translateY(0) scale(1); }
++      to { opacity: 0; transform: translateY(12px) scale(0.97); }
++    }
++
++    @keyframes backdrop-enter {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes backdrop-exit {
++      from { opacity: 1; }
++      to { opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .logout-dialog[open],
++      .logout-dialog::backdrop,
++      .notice {
++        animation-duration: 1ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +303,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" aria-controls="ordering-notice" aria-expanded="false">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +346,88 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <button type="button" id="close-dialog-btn" class="close-button" aria-label="Close logout confirmation">&times;</button>
++    <h2 id="logout-title">Log out?</h2>
++    <p id="logout-description">Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="cancel-logout-btn" class="btn btn-secondary" autofocus>Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <aside id="ordering-notice" class="notice" aria-labelledby="notice-title" hidden>
++    <button type="button" id="dismiss-notice-btn" class="close-button" aria-label="Dismiss ordering notice">&times;</button>
++    <h2 id="notice-title">Online ordering update</h2>
++    <p role="status" id="notice-message"></p>
++  </aside>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const logoutDialog = document.getElementById('logout-dialog');
++    const orderButton = document.getElementById('foobar');
++    const notice = document.getElementById('ordering-notice');
++    const noticeMessage = document.getElementById('notice-message');
++
++    // Keep each surface mounted until its CSS exit animation finishes.
++    function animateClose(surface, finish) {
++      if (surface.classList.contains('is-closing')) return;
++      surface.classList.add('is-closing');
++      function onAnimationEnd(event) {
++        if (event.target !== surface || event.animationName !== 'surface-exit') return;
++        surface.removeEventListener('animationend', onAnimationEnd);
++        finish();
++        surface.classList.remove('is-closing');
++      }
++      surface.addEventListener('animationend', onAnimationEnd);
++    }
++
++    function closeLogoutDialog() {
++      animateClose(logoutDialog, () => logoutDialog.close());
++    }
++
++    logoutLink.addEventListener('click', (event) => {
++      event.preventDefault();
++      if (!logoutDialog.open) logoutDialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', closeLogoutDialog);
++    document.getElementById('cancel-logout-btn').addEventListener('click', closeLogoutDialog);
++    logoutDialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeLogoutDialog();
++    });
++    logoutDialog.addEventListener('click', (event) => {
++      const bounds = logoutDialog.getBoundingClientRect();
++      if (event.target === logoutDialog &&
++          (event.clientX < bounds.left || event.clientX > bounds.right ||
++           event.clientY < bounds.top || event.clientY > bounds.bottom)) {
++        closeLogoutDialog();
++      }
++    });
++
++    orderButton.addEventListener('click', () => {
++      if (notice.classList.contains('is-closing')) return;
++      notice.hidden = false;
++      noticeMessage.textContent = 'online ordering is currently offline';
++      orderButton.setAttribute('aria-expanded', 'true');
++    });
++
++    function dismissNotice() {
++      if (notice.hidden) return;
++      animateClose(notice, () => {
++        const restoreFocus = notice.contains(document.activeElement);
++        notice.hidden = true;
++        noticeMessage.textContent = '';
++        orderButton.setAttribute('aria-expanded', 'false');
++        if (restoreFocus) orderButton.focus();
++      });
++    }
++    document.getElementById('dismiss-notice-btn').addEventListener('click', dismissNotice);
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && !logoutDialog.open) dismissNotice();
++    });
++  </script>
+ </body>
+ 
+ </html>

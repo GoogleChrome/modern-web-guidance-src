@@ -1,0 +1,753 @@
+diff --git a/index.html b/index.html
+index 66c9173..7c1f367 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,244 @@
+       background: #3e2723;
+     }
+ 
++    /* Encrypted Delivery Notes Section */
++    .delivery-notes-section {
++      margin-top: 48px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    .delivery-notes-header {
++      text-align: center;
++      margin-block-end: 24px;
++    }
++
++    .delivery-notes-header h2 {
++      color: var(--primary);
++      margin-block-end: 8px;
++    }
++
++    .crypto-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: var(--secondary);
++      color: var(--text);
++      font-size: 0.85rem;
++      font-weight: 600;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-block-start: 8px;
++    }
++
++    .delivery-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      align-items: start;
++    }
++
++    fieldset {
++      border: 1px solid #ccc;
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    legend {
++      font-weight: 700;
++      color: var(--primary);
++      padding: 0 8px;
++      font-size: 1.05rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      color: var(--text);
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-block-start: 0.25rem;
++    }
++
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      line-height: 1.5;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #9e9e9e;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++    }
++
++    .form-group textarea {
++      resize: vertical;
++      min-height: 96px;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input,
++      .form-group button {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .form-group textarea:focus-visible,
++    .btn-submit:focus-visible,
++    .btn-secondary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid,
++    .form-group textarea:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .btn-submit {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--primary);
++      color: white;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 0.75rem 1.5rem;
++      min-height: 48px;
++      border: none;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.3s;
++      width: 100%;
++    }
++
++    .btn-submit:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-submit:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 0.5rem 1rem;
++      min-height: 44px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    .envelope-panel {
++      background: var(--light);
++      border: 1px solid #d7ccc8;
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .envelope-panel h3 {
++      color: var(--primary);
++      margin-block-end: 12px;
++      font-size: 1.1rem;
++    }
++
++    .meta-list {
++      display: grid;
++      gap: 10px;
++      font-size: 0.875rem;
++      margin-block-end: 16px;
++    }
++
++    .meta-item {
++      background: white;
++      padding: 10px 12px;
++      border-radius: 6px;
++      border: 1px solid #e0e0e0;
++      overflow-wrap: anywhere;
++    }
++
++    .meta-item strong {
++      display: block;
++      color: var(--primary);
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-block-end: 2px;
++    }
++
++    .meta-item code {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.8rem;
++      color: #37474f;
++    }
++
++    .status-banner {
++      padding: 10px 12px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-block-end: 12px;
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-banner[data-state="error"] {
++      background: #ffebee;
++      color: #b71c1c;
++      border-color: #ef9a9a;
++    }
++
++    .decrypted-box {
++      margin-block-start: 14px;
++      padding: 12px;
++      background: #fff8e1;
++      border: 1px solid #ffe082;
++      border-radius: 6px;
++    }
++
++    .decrypted-box strong {
++      display: block;
++      font-size: 0.85rem;
++      color: var(--primary);
++      margin-block-end: 4px;
++    }
++
++    .action-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-block-start: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +433,124 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="delivery-notes-section" aria-labelledby="delivery-notes-heading">
++      <div class="delivery-notes-header">
++        <h2 id="delivery-notes-heading">Encrypted Delivery Notes</h2>
++        <p>Protect sensitive drop-off instructions, gate codes, and building access details with end-to-end client-side encryption.</p>
++        <div class="crypto-badge" id="crypto-suite-badge" aria-live="polite">
++          Initializing cryptographic key pair...
++        </div>
++      </div>
++
++      <div class="delivery-layout">
++        <form id="delivery-notes-form" action="/delivery-notes" method="POST">
++          <fieldset>
++            <legend>Customer Drop-Off Instructions</legend>
++
++            <div class="form-group">
++              <label for="order-reference">Order Reference (Associated Data / AAD) *</label>
++              <input
++                type="text"
++                id="order-reference"
++                name="order_reference"
++                value="ORD-2026-8841"
++                required
++                maxlength="64"
++                autocomplete="off"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                aria-describedby="order-reference-hint"
++              >
++              <span id="order-reference-hint" class="field-hint">
++                Bound as unencrypted Associated Data (AAD) to the AEAD authentication tag so tampering causes decryption to reject.
++              </span>
++            </div>
++
++            <div class="form-group">
++              <label for="delivery-address">Delivery Address *</label>
++              <textarea
++                id="delivery-address"
++                name="delivery_address"
++                required
++                maxlength="300"
++                autocomplete="street-address"
++                aria-describedby="delivery-address-hint"
++              >742 Evergreen Terrace, Apt 4B</textarea>
++              <span id="delivery-address-hint" class="field-hint">
++                Street address and unit number for your coffee courier.
++              </span>
++            </div>
++
++            <div class="form-group">
++              <label for="delivery-note">Sensitive Delivery Note (Plaintext) *</label>
++              <textarea
++                id="delivery-note"
++                name="delivery_note"
++                required
++                minlength="3"
++                maxlength="1000"
++                aria-describedby="delivery-note-hint"
++              >Gate code #4829. Leave the Maple Oat Latte inside the insulated porch lockbox (code 1994) and do not ring the bell.</textarea>
++              <span id="delivery-note-hint" class="field-hint">
++                Encrypted in your browser using a fresh 12-byte IV and one-time encapsulated shared key before leaving your device.
++              </span>
++            </div>
++
++            <button type="submit" class="btn-submit" id="encrypt-submit-btn">
++              Encapsulate Key &amp; Encrypt Delivery Note
++            </button>
++          </fieldset>
++        </form>
++
++        <div class="envelope-panel" aria-live="polite">
++          <h3>Encrypted Courier Envelope</h3>
++          <div id="encryption-status" class="status-banner" hidden></div>
++
++          <div class="meta-list">
++            <div class="meta-item">
++              <strong>Active KEM &amp; AEAD Suite</strong>
++              <code id="envelope-suite">Initializing...</code>
++            </div>
++            <div class="meta-item">
++              <strong>Courier Recipient Public Key (<code>raw-public</code> / <code>raw</code>)</strong>
++              <code id="recipient-pubkey-display">Generating recipient key pair...</code>
++            </div>
++            <div class="meta-item">
++              <strong>KEM Ciphertext Capsule</strong>
++              <code id="envelope-capsule">No note encrypted yet.</code>
++            </div>
++            <div class="meta-item">
++              <strong>Initialization Vector (12-byte IV)</strong>
++              <code id="envelope-iv">No note encrypted yet.</code>
++            </div>
++            <div class="meta-item">
++              <strong>AEAD Ciphertext + Authentication Tag</strong>
++              <code id="envelope-ciphertext">No note encrypted yet.</code>
++            </div>
++            <div class="meta-item">
++              <strong>Bound Associated Data (AAD)</strong>
++              <code id="envelope-aad">No note encrypted yet.</code>
++            </div>
++          </div>
++
++          <div class="action-row">
++            <button type="button" class="btn-secondary" id="decrypt-verify-btn" disabled>
++              Decapsulate &amp; Verify Courier Decryption
++            </button>
++            <button type="button" class="btn-secondary" id="rotate-keys-btn">
++              Rotate Recipient Key Pair
++            </button>
++          </div>
++
++          <div class="decrypted-box" id="decrypted-output-box" hidden>
++            <strong>Verified Decrypted Note (Courier View)</strong>
++            <p id="decrypted-note-text"></p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +563,378 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const KEM_PUBLIC_KEY_ALGORITHMS = {
++      1184: 'ML-KEM-768',
++      1216: 'MLKEM768-X25519',
++      1568: 'ML-KEM-1024',
++    };
++
++    const IDB_NAME = 'daily-grind-crypto-store';
++    const IDB_STORE = 'recipient-keys';
++    const IDB_KEY_ID = 'recipient-kem-key';
++
++    export function supportsPostQuantumEnvelope() {
++      return (
++        typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')
++      );
++    }
++
++    function bytesToBase64(bytes) {
++      const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++      if (typeof u8.toBase64 === 'function') {
++        return u8.toBase64();
++      }
++      let binary = '';
++      for (let i = 0; i < u8.byteLength; i++) {
++        binary += String.fromCharCode(u8[i]);
++      }
++      return btoa(binary);
++    }
++
++    function openKeyDatabase() {
++      return new Promise((resolve, reject) => {
++        if (!('indexedDB' in globalThis)) {
++          resolve(null);
++          return;
++        }
++        const request = indexedDB.open(IDB_NAME, 1);
++        request.onupgradeneeded = () => {
++          const db = request.result;
++          if (!db.objectStoreNames.contains(IDB_STORE)) {
++            db.createObjectStore(IDB_STORE);
++          }
++        };
++        request.onsuccess = () => resolve(request.result);
++        request.onerror = () => resolve(null);
++      });
++    }
++
++    async function loadPersistedKeyPair() {
++      const db = await openKeyDatabase();
++      if (!db) return null;
++      return new Promise((resolve) => {
++        const tx = db.transaction(IDB_STORE, 'readonly');
++        const store = tx.objectStore(IDB_STORE);
++        const req = store.get(IDB_KEY_ID);
++        req.onsuccess = () => resolve(req.result || null);
++        req.onerror = () => resolve(null);
++      });
++    }
++
++    async function savePersistedKeyPair(keyPair) {
++      const db = await openKeyDatabase();
++      if (!db) return;
++      return new Promise((resolve) => {
++        const tx = db.transaction(IDB_STORE, 'readwrite');
++        const store = tx.objectStore(IDB_STORE);
++        store.put(keyPair, IDB_KEY_ID);
++        tx.oncomplete = () => resolve();
++        tx.onerror = () => resolve();
++      });
++    }
++
++    export async function generateRecipientKeys(forceNew = false) {
++      const pqSupported = supportsPostQuantumEnvelope();
++      const expectedAlg = pqSupported ? 'MLKEM768-X25519' : 'X25519';
++
++      if (!forceNew) {
++        const persistedKeyPair = await loadPersistedKeyPair();
++        if (
++          persistedKeyPair?.publicKey &&
++          persistedKeyPair?.privateKey &&
++          persistedKeyPair.publicKey.algorithm.name === expectedAlg
++        ) {
++          const format = pqSupported ? 'raw-public' : 'raw';
++          const publicKeyBytes = new Uint8Array(
++            await crypto.subtle.exportKey(format, persistedKeyPair.publicKey),
++          );
++          const suite = pqSupported
++            ? 'MLKEM768-X25519+ChaCha20-Poly1305'
++            : 'X25519+HKDF+AES-GCM';
++          return { suite, keyPair: persistedKeyPair, publicKeyBytes };
++        }
++      }
++
++      if (pqSupported) {
++        const keyPair = await crypto.subtle.generateKey(
++          'MLKEM768-X25519',
++          false,
++          ['encapsulateKey', 'decapsulateKey'],
++        );
++        await savePersistedKeyPair(keyPair);
++        const publicKeyBytes = new Uint8Array(
++          await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++        );
++        return { suite: 'MLKEM768-X25519+ChaCha20-Poly1305', keyPair, publicKeyBytes };
++      }
++
++      // Classical fallback: X25519 key agreement + HKDF + AES-GCM
++      const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++      await savePersistedKeyPair(keyPair);
++      const publicKeyBytes = new Uint8Array(
++        await crypto.subtle.exportKey('raw', keyPair.publicKey),
++      );
++      return { suite: 'X25519+HKDF+AES-GCM', keyPair, publicKeyBytes };
++    }
++
++    async function deriveFallbackAesKey(privateKey, peerPublicKey, infoBytes = new Uint8Array(0)) {
++      const sharedSecret = await crypto.subtle.deriveBits(
++        { name: 'X25519', public: peerPublicKey },
++        privateKey,
++        256,
++      );
++      const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++      return crypto.subtle.deriveKey(
++        {
++          name: 'HKDF',
++          hash: 'SHA-256',
++          salt: new Uint8Array(32),
++          info: infoBytes,
++        },
++        hkdfKey,
++        { name: 'AES-GCM', length: 256 },
++        false,
++        ['encrypt', 'decrypt'],
++      );
++    }
++
++    export async function encapsulateEnvelopeKey(
++      recipientPublicKeyOrBytes,
++      infoBytes = new Uint8Array(0),
++    ) {
++      const pubKey =
++        recipientPublicKeyOrBytes instanceof CryptoKey
++          ? recipientPublicKeyOrBytes
++          : await (() => {
++              const bytes =
++                recipientPublicKeyOrBytes instanceof Uint8Array
++                  ? recipientPublicKeyOrBytes
++                  : new Uint8Array(recipientPublicKeyOrBytes);
++              const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++              return kemName
++                ? crypto.subtle.importKey('raw-public', bytes, kemName, true, ['encapsulateKey'])
++                : crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
++            })();
++
++      if (pubKey.algorithm.name !== 'X25519') {
++        const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++          pubKey.algorithm.name,
++          pubKey,
++          'ChaCha20-Poly1305',
++          false,
++          ['encrypt', 'decrypt'],
++        );
++        return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
++      }
++
++      // Classical fallback: generate ephemeral X25519 key pair and send ephemeral public key as capsule
++      const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++      const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++      const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
++      return { sharedKey, capsuleBytes };
++    }
++
++    export async function decapsulateEnvelopeKey(
++      recipientPrivateKey,
++      capsuleBytes,
++      infoBytes = new Uint8Array(0),
++    ) {
++      if (recipientPrivateKey.algorithm.name !== 'X25519') {
++        return crypto.subtle.decapsulateKey(
++          recipientPrivateKey.algorithm.name,
++          recipientPrivateKey,
++          capsuleBytes,
++          'ChaCha20-Poly1305',
++          false,
++          ['encrypt', 'decrypt'],
++        );
++      }
++
++      const ephemeralPubKey = await crypto.subtle.importKey('raw', capsuleBytes, 'X25519', true, []);
++      return deriveFallbackAesKey(recipientPrivateKey, ephemeralPubKey, infoBytes);
++    }
++
++    export async function encryptMessage(key, plaintext, additionalData = new Uint8Array(0)) {
++      // Always generate a fresh 12-byte (96-bit) IV per message
++      const iv = crypto.getRandomValues(new Uint8Array(12));
++      const encoded = new TextEncoder().encode(plaintext);
++
++      const ciphertextBuffer = await crypto.subtle.encrypt(
++        {
++          name: key.algorithm.name,
++          iv,
++          additionalData,
++        },
++        key,
++        encoded,
++      );
++
++      return { iv, ciphertext: new Uint8Array(ciphertextBuffer) };
++    }
++
++    export async function decryptMessage(key, iv, ciphertext, additionalData = new Uint8Array(0)) {
++      const plaintextBuffer = await crypto.subtle.decrypt(
++        {
++          name: key.algorithm.name,
++          iv,
++          additionalData,
++        },
++        key,
++        ciphertext,
++      );
++
++      return new TextDecoder().decode(plaintextBuffer);
++    }
++
++    // UI State & Event Wiring
++    const suiteBadge = document.getElementById('crypto-suite-badge');
++    const envelopeSuiteEl = document.getElementById('envelope-suite');
++    const pubKeyDisplayEl = document.getElementById('recipient-pubkey-display');
++    const capsuleEl = document.getElementById('envelope-capsule');
++    const ivEl = document.getElementById('envelope-iv');
++    const ciphertextEl = document.getElementById('envelope-ciphertext');
++    const aadEl = document.getElementById('envelope-aad');
++    const statusBanner = document.getElementById('encryption-status');
++    const decryptBtn = document.getElementById('decrypt-verify-btn');
++    const rotateKeysBtn = document.getElementById('rotate-keys-btn');
++    const decryptedBox = document.getElementById('decrypted-output-box');
++    const decryptedTextEl = document.getElementById('decrypted-note-text');
++    const form = document.getElementById('delivery-notes-form');
++    const submitBtn = document.getElementById('encrypt-submit-btn');
++
++    let currentRecipient = null;
++    let latestEnvelope = null;
++
++    const PROTOCOL_INFO = new TextEncoder().encode('daily-grind-delivery-note-v1');
++
++    function formatPreview(bytes) {
++      const b64 = bytesToBase64(bytes);
++      const preview = b64.length > 72 ? `${b64.slice(0, 36)}...${b64.slice(-24)}` : b64;
++      return `${preview} (${bytes.byteLength} bytes)`;
++    }
++
++    function setStatus(message, isError = false) {
++      statusBanner.textContent = message;
++      statusBanner.dataset.state = isError ? 'error' : 'ok';
++      statusBanner.hidden = false;
++    }
++
++    async function initRecipient(forceNew = false) {
++      try {
++        currentRecipient = await generateRecipientKeys(forceNew);
++        const isPQ = currentRecipient.suite.startsWith('MLKEM768-X25519');
++        suiteBadge.textContent = isPQ
++          ? 'Active Protection: Hybrid Post-Quantum KEM (MLKEM768-X25519 + ChaCha20-Poly1305)'
++          : 'Active Protection: Classical Ephemeral Key Agreement (X25519 + HKDF + AES-GCM)';
++        envelopeSuiteEl.textContent = currentRecipient.suite;
++        pubKeyDisplayEl.textContent = formatPreview(currentRecipient.publicKeyBytes);
++        if (forceNew) {
++          latestEnvelope = null;
++          decryptBtn.disabled = true;
++          decryptedBox.hidden = true;
++          setStatus('Recipient key pair rotated and persisted in IndexedDB.');
++        }
++      } catch (err) {
++        setStatus(`Key initialization error: ${err.message}`, true);
++      }
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (!form.reportValidity()) return;
++
++      submitBtn.disabled = true;
++      decryptedBox.hidden = true;
++
++      try {
++        if (!currentRecipient) {
++          await initRecipient(false);
++        }
++
++        const orderRef = document.getElementById('order-reference').value.trim();
++        const address = document.getElementById('delivery-address').value.trim();
++        const noteText = document.getElementById('delivery-note').value.trim();
++
++        const payloadPlaintext = JSON.stringify({
++          orderReference: orderRef,
++          address,
++          note: noteText,
++          encryptedAt: new Date().toISOString(),
++        });
++
++        const additionalData = new TextEncoder().encode(`order:${orderRef}|addr:${address}`);
++
++        const { sharedKey, capsuleBytes } = await encapsulateEnvelopeKey(
++          currentRecipient.publicKeyBytes,
++          PROTOCOL_INFO,
++        );
++
++        const { iv, ciphertext } = await encryptMessage(
++          sharedKey,
++          payloadPlaintext,
++          additionalData,
++        );
++
++        latestEnvelope = {
++          capsule: capsuleBytes,
++          iv,
++          ciphertext,
++          additionalData,
++          orderRef,
++          address,
++        };
++
++        capsuleEl.textContent = formatPreview(capsuleBytes);
++        ivEl.textContent = `${bytesToBase64(iv)} (${iv.byteLength} bytes)`;
++        ciphertextEl.textContent = formatPreview(ciphertext);
++        aadEl.textContent = `order:${orderRef}|addr:${address} (${additionalData.byteLength} bytes)`;
++
++        decryptBtn.disabled = false;
++        setStatus(
++          `Encrypted delivery note with ${currentRecipient.suite}. Fresh 12-byte IV and encapsulated key generated.`,
++        );
++      } catch (err) {
++        setStatus(`Encryption failed: ${err.message}`, true);
++      } finally {
++        submitBtn.disabled = false;
++      }
++    });
++
++    decryptBtn.addEventListener('click', async () => {
++      if (!latestEnvelope || !currentRecipient) return;
++      try {
++        const recipientSharedKey = await decapsulateEnvelopeKey(
++          currentRecipient.keyPair.privateKey,
++          latestEnvelope.capsule,
++          PROTOCOL_INFO,
++        );
++
++        const decryptedJson = await decryptMessage(
++          recipientSharedKey,
++          latestEnvelope.iv,
++          latestEnvelope.ciphertext,
++          latestEnvelope.additionalData,
++        );
++
++        const parsed = JSON.parse(decryptedJson);
++        decryptedTextEl.textContent = `[Order ${parsed.orderReference} — ${parsed.address}]: ${parsed.note}`;
++        decryptedBox.hidden = false;
++        setStatus('Decapsulated shared secret and verified AEAD authentication tag + AAD.');
++      } catch (err) {
++        decryptedBox.hidden = true;
++        setStatus(`Decryption / Authentication rejected (${err.name}): ${err.message}`, true);
++      }
++    });
++
++    rotateKeysBtn.addEventListener('click', () => {
++      initRecipient(true);
++    });
++
++    initRecipient(false);
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,17 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,8 +160,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order event timeline */
++    .timeline-panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .timeline-panel h2 {
++      color: var(--primary);
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .timeline-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .timeline-status.error {
++      color: #b71c1c;
++    }
++
++    .table-wrap {
++      overflow-x: auto;
++      margin-top: 16px;
++    }
++
++    .timeline-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .timeline-table th,
++    .timeline-table td {
++      padding: 8px 10px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: left;
++      white-space: nowrap;
++    }
++
++    .timeline-table th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .timeline-table td.mono {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++    }
++
++    .timeline-table tr.tie td {
++      background: #fff3e0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +268,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="timeline-panel" aria-labelledby="timeline-heading">
++      <h2 id="timeline-heading">Order Event Timeline</h2>
++      <p>Load a batch of order events reported out of order by our distributed backend services, sort them by their
++        nanosecond UTC timestamps, and see the exact interval between each step.</p>
++      <button type="button" class="btn" id="load-events">Load &amp; Sort Order Events</button>
++      <p class="timeline-status" id="timeline-status" role="status" aria-live="polite"></p>
++      <div class="table-wrap" id="timeline-output" hidden>
++        <table class="timeline-table">
++          <caption class="visually-hidden">Order events sorted chronologically</caption>
++          <thead>
++            <tr>
++              <th scope="col">#</th>
++              <th scope="col">Timestamp (UTC, ns)</th>
++              <th scope="col">Service</th>
++              <th scope="col">Event</th>
++              <th scope="col">Order</th>
++              <th scope="col">Interval since previous</th>
++            </tr>
++          </thead>
++          <tbody id="timeline-body"></tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +304,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal.Instant keeps full nanosecond precision; Date would truncate to ms.
++    async function ensureTemporal() {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++      }
++      return globalThis.Temporal;
++    }
++
++    const button = document.getElementById('load-events');
++    const statusEl = document.getElementById('timeline-status');
++    const output = document.getElementById('timeline-output');
++    const tbody = document.getElementById('timeline-body');
++
++    function formatDuration(duration) {
++      if (duration.blank) return '0 ns (same instant)';
++      try {
++        return duration.toLocaleString(undefined, { style: 'narrow' });
++      } catch {
++        return duration.toString();
++      }
++    }
++
++    function cell(text, className) {
++      const td = document.createElement('td');
++      td.textContent = text;
++      if (className) td.className = className;
++      return td;
++    }
++
++    button.addEventListener('click', async () => {
++      button.disabled = true;
++      statusEl.classList.remove('error');
++      statusEl.textContent = 'Loading order events…';
++      try {
++        const [Temporal, response] = await Promise.all([ensureTemporal(), fetch('order-events.json')]);
++        if (!response.ok) throw new Error(`HTTP ${response.status}`);
++        const raw = await response.json();
++
++        const events = raw.map(evt => ({ ...evt, instant: Temporal.Instant.from(evt.ts) }));
++        // Stable sort: ties keep their arrival order.
++        const sorted = events.toSorted((a, b) => Temporal.Instant.compare(a.instant, b.instant));
++
++        const rows = sorted.map((evt, i) => {
++          const prev = sorted[i - 1];
++          // Balance up to hours so long gaps read naturally; sub-second units stay exact.
++          const gap = prev ? evt.instant.since(prev.instant, { largestUnit: 'hours' }) : null;
++          const tr = document.createElement('tr');
++          if (prev && evt.instant.equals(prev.instant)) tr.className = 'tie';
++          tr.append(
++            cell(String(i + 1)),
++            cell(evt.instant.toString({ fractionalSecondDigits: 9 }), 'mono'),
++            cell(evt.service),
++            cell(evt.type),
++            cell(evt.orderId),
++            cell(gap ? formatDuration(gap) : '—', 'mono'),
++          );
++          return tr;
++        });
++        tbody.replaceChildren(...rows);
++        output.hidden = false;
++
++        const total = sorted.length > 1
++          ? sorted.at(-1).instant.since(sorted[0].instant, { largestUnit: 'hours' })
++          : null;
++        const ties = sorted.filter((e, i) => i > 0 && e.instant.equals(sorted[i - 1].instant)).length;
++        statusEl.textContent = `Sorted ${sorted.length} events` +
++          (total ? `, spanning ${formatDuration(total)}` : '') +
++          (ties ? `. ${ties} event(s) share an exact timestamp with the previous one (highlighted).` : '.');
++      } catch (err) {
++        statusEl.classList.add('error');
++        statusEl.textContent = `Couldn't load order events: ${err.message}`;
++        output.hidden = true;
++      } finally {
++        button.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

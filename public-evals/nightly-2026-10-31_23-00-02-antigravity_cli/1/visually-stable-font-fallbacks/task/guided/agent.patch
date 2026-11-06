@@ -1,0 +1,56 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,31 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    @font-face {
++      font-family: 'Segoe UI Fallback';
++      src: local('Tahoma'), local('Geneva'), local('Verdana'), local('Arial');
++      size-adjust: 100%;
++      ascent-override: 108%;
++      descent-override: 25%;
++    }
++
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Segoe UI', 'Segoe UI Fallback', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    @supports not (font-size-adjust: from-font) {
++      body {
++        font-size: 1rem;
++        line-height: 1.6;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -41,8 +57,9 @@
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
++      font-size-adjust: cap-height from-font;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+@@ -89,8 +106,9 @@
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
++      font-size-adjust: cap-height from-font;
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */

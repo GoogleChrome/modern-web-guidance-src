@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,67 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Details tooltip */
++    .tip-wrap {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tip-wrap .btn {
++      margin-top: 0;
++    }
++
++    .tooltip {
++      position: absolute;
++      bottom: calc(100% + 10px);
++      left: 50%;
++      transform: translate(-50%, 4px);
++      width: 200px;
++      background: var(--text);
++      color: white;
++      padding: 10px 12px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-size: 0.8rem;
++      line-height: 1.4;
++      text-align: left;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
++      z-index: 10;
++    }
++
++    .tooltip::after {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border: 6px solid transparent;
++      border-top-color: var(--text);
++    }
++
++    .tooltip dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++    }
++
++    .tooltip dt {
++      color: var(--accent);
++      font-weight: bold;
++    }
++
++    .tip-wrap:hover .tooltip,
++    .tip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transform: translate(-50%, 0);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +239,49 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tip-wrap">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-maple">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-maple">
++              <dl>
++                <dt>Calories</dt><dd>190 cal</dd>
++                <dt>Size</dt><dd>12 oz</dd>
++                <dt>Made with</dt><dd>Oat milk, espresso, maple syrup</dd>
++              </dl>
++              <span>Contains oats</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tip-wrap">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-espresso">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-espresso">
++              <dl>
++                <dt>Calories</dt><dd>5 cal</dd>
++                <dt>Size</dt><dd>2 oz (double shot)</dd>
++                <dt>Made with</dt><dd>Dark roast espresso</dd>
++              </dl>
++              <span>Caffeine: ~130 mg</span>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tip-wrap">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-cold-brew">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-cold-brew">
++              <dl>
++                <dt>Calories</dt><dd>15 cal</dd>
++                <dt>Size</dt><dd>16 oz</dd>
++                <dt>Made with</dt><dd>Cold-steeped coffee, water</dd>
++              </dl>
++              <span>Caffeine: ~200 mg</span>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

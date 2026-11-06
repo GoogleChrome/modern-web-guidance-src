@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="./transitions.css">
++  <script src="./transitions.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -27,9 +29,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    body > nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,25 +47,25 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    body > nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    body > nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    body > nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    body > nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -193,8 +195,13 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <nav class="pagination" aria-label="Seasonal favorites pages">
++        <a id="previous" class="btn" aria-disabled="true">&larr; Previous</a>
++        <span aria-current="page">Page 1 of 3</span>
++        <a id="next" class="btn" rel="next" href="./seasonal-2.html">Next &rarr;</a>
++      </nav>
+     </section>
+   </main>
+ 
+   <footer>

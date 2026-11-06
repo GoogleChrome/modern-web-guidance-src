@@ -1,0 +1,1769 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..9b291a6
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,924 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a.active {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      transition: background 0.3s;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-danger {
++      background: #c62828;
++      color: white;
++      border: 1px solid #c62828;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++    }
++
++    .account-section {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      padding: 32px;
++      border-top: 4px solid var(--primary);
++    }
++
++    .account-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 16px;
++      padding-bottom: 24px;
++      border-bottom: 1px solid var(--secondary);
++      margin-bottom: 24px;
++    }
++
++    .account-header h1 {
++      color: var(--primary);
++      font-size: 1.9rem;
++      margin-bottom: 4px;
++    }
++
++    .account-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 6px 12px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .account-grid {
++      display: grid;
++      grid-template-columns: 1fr 2fr;
++      gap: 28px;
++    }
++
++    @media (max-width: 768px) {
++      .account-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .profile-panel {
++      background: #fcfaf9;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .profile-panel h2,
++    .passkey-panel h2 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.25rem;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--text);
++    }
++
++    .form-input {
++      width: 100%;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    .form-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .passkey-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .passkey-actions-bar {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .passkey-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .passkey-item {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 14px;
++      background: #fff;
++    }
++
++    .passkey-info {
++      flex: 1;
++      min-width: 220px;
++    }
++
++    .passkey-title-row {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 4px;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      font-size: 1.05rem;
++      color: var(--primary);
++    }
++
++    .passkey-tag {
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: #5d4037;
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    .passkey-meta {
++      font-size: 0.82rem;
++      color: #6d4c41;
++    }
++
++    .passkey-id-code {
++      font-family: monospace;
++      background: #f5f5f5;
++      padding: 1px 5px;
++      border-radius: 3px;
++      font-size: 0.78rem;
++    }
++
++    .passkey-controls {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .rename-inline-form {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 8px;
++    }
++
++    .sync-status-box {
++      margin-top: 20px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #f5f0ee;
++      border-left: 4px solid var(--primary);
++      font-size: 0.88rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .sync-status-box.success {
++      background: #e8f5e9;
++      border-left-color: #2e7d32;
++      color: #1b5e20;
++    }
++
++    .sync-status-box.warning {
++      background: #fff8e1;
++      border-left-color: #f57f17;
++      color: #e65100;
++    }
++
++    .empty-passkeys {
++      text-align: center;
++      padding: 28px 16px;
++      background: #fcfaf9;
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      color: #6d4037;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" class="active">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <section id="account" class="account-section" aria-labelledby="account-heading">
++      <div class="account-header">
++        <div>
++          <h1 id="account-heading">My Account</h1>
++          <p>Manage your customer profile, security preferences, and registered passkeys.</p>
++        </div>
++        <span class="account-badge" id="auth-status-badge">
++          &#x2713; Signed in as <span id="header-display-name">Alex Rivera</span>
++        </span>
++      </div>
++
++      <div class="account-grid">
++        <div class="profile-panel">
++          <h2>Account Details</h2>
++          <p style="font-size: 0.85rem; color: #5d4037; margin-bottom: 14px;">
++            Updating your account details keeps your browser authenticator passkey labels in sync.
++          </p>
++          <form id="profile-form">
++            <div class="form-group">
++              <label for="user-display-name">Display Name</label>
++              <input type="text" id="user-display-name" class="form-input" value="Alex Rivera" required />
++            </div>
++            <div class="form-group">
++              <label for="user-name">Username / Email</label>
++              <input type="email" id="user-name" class="form-input" value="alex.rivera@dailygrind.coffee" required />
++            </div>
++            <div class="form-group">
++              <label for="user-id-display">User Handle (Base64URL ID)</label>
++              <input type="text" id="user-id-display" class="form-input" value="YWxleC1yaXZlcmEtZGdjLTIwMjY" readonly />
++            </div>
++            <button type="submit" class="btn btn-sm" style="width: 100%; padding: 9px 14px;">
++              Save &amp; Sync Account Details
++            </button>
++          </form>
++        </div>
++
++        <div class="passkey-panel">
++          <div class="passkey-panel-header">
++            <div>
++              <h2>Registered Passkeys</h2>
++              <p style="font-size: 0.88rem; color: #5d4037;">
++                View, rename, or remove passkeys associated with your Daily Grind account.
++              </p>
++            </div>
++            <div class="passkey-actions-bar">
++              <button type="button" id="register-passkey-btn" class="btn btn-sm">
++                + Register New Passkey
++              </button>
++              <button type="button" id="sync-authenticator-btn" class="btn btn-secondary btn-sm">
++                Sync with Authenticator
++              </button>
++            </div>
++          </div>
++
++          <ul id="passkey-list" class="passkey-list" aria-live="polite"></ul>
++
++          <div id="sync-status" class="sync-status-box" role="status" aria-live="polite">
++            <span id="sync-status-text">Browser authenticator is synchronized with your registered passkeys.</span>
++            <span id="sync-capability-pill" class="passkey-tag">WebAuthn Signal API Ready</span>
++          </div>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_account_state_v1';
++
++      function bufferToBase64Url(buffer) {
++        const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return btoa(binary)
++          .replace(/\+/g, '-')
++          .replace(/\//g, '_')
++          .replace(/=+$/, '');
++      }
++
++      function base64UrlToBuffer(base64url) {
++        const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
++        const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
++        const rawData = atob(base64);
++        const outputArray = new Uint8Array(rawData.length);
++        for (let i = 0; i < rawData.length; ++i) {
++          outputArray[i] = rawData.charCodeAt(i);
++        }
++        return outputArray;
++      }
++
++      function getRpId() {
++        return window.location.hostname || 'localhost';
++      }
++
++      const DEFAULT_STATE = {
++        user: {
++          userId: 'YWxleC1yaXZlcmEtZGdjLTIwMjY',
++          name: 'alex.rivera@dailygrind.coffee',
++          displayName: 'Alex Rivera'
++        },
++        passkeys: [
++          {
++            id: 'cGFzc2tleS1tYWNib29rLXByby10b3VjaGlkLTAx',
++            name: 'MacBook Pro Touch ID',
++            authenticatorType: 'Platform / iCloud Keychain',
++            createdAt: '2026-08-14',
++            lastUsedAt: '2026-10-27',
++            BackedUp: true
++          },
++          {
++            id: 'cGFzc2tleS1pcGhvbmUtMTYtcHJvLWZhY2VpZC0wMg',
++            name: 'iPhone 16 Pro Face ID',
++            authenticatorType: 'Synced Passkey',
++            createdAt: '2026-09-03',
++            lastUsedAt: '2026-10-25',
++            BackedUp: true
++          },
++          {
++            id: 'cGFzc2tleS15dWJpa2V5LTVjLW5mYy1iYWNrdXAtMDM',
++            name: 'YubiKey 5C NFC Backup',
++            authenticatorType: 'Roaming Security Key',
++            createdAt: '2026-06-19',
++            lastUsedAt: '2026-09-12',
++            BackedUp: false
++          }
++        ]
++      };
++
++      function loadState() {
++        try {
++          const raw = localStorage.getItem(STORAGE_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (parsed && parsed.user && Array.isArray(parsed.passkeys)) {
++              return parsed;
++            }
++          }
++        } catch (err) {
++          console.warn('Could not read saved passkey state:', err);
++        }
++        return JSON.parse(JSON.stringify(DEFAULT_STATE));
++      }
++
++      function saveState(state) {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
++        } catch (err) {
++          console.warn('Could not persist passkey state:', err);
++        }
++      }
++
++      let appState = loadState();
++      let editingCredentialId = null;
++
++      const passkeyListEl = document.getElementById('passkey-list');
++      const syncStatusBox = document.getElementById('sync-status');
++      const syncStatusText = document.getElementById('sync-status-text');
++      const syncCapabilityPill = document.getElementById('sync-capability-pill');
++      const headerDisplayName = document.getElementById('header-display-name');
++      const inputDisplayName = document.getElementById('user-display-name');
++      const inputUserName = document.getElementById('user-name');
++      const inputUserId = document.getElementById('user-id-display');
++      const profileForm = document.getElementById('profile-form');
++      const registerBtn = document.getElementById('register-passkey-btn');
++      const syncBtn = document.getElementById('sync-authenticator-btn');
++
++      function updateStatusMessage(message, variant = 'info') {
++        syncStatusText.textContent = message;
++        syncStatusBox.className = 'sync-status-box';
++        if (variant === 'success') {
++          syncStatusBox.classList.add('success');
++        } else if (variant === 'warning') {
++          syncStatusBox.classList.add('warning');
++        }
++      }
++
++      async function syncAllAcceptedCredentials(reasonText) {
++        const rpId = getRpId();
++        const allAcceptedCredentialIds = appState.passkeys.map((pk) => pk.id);
++
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalAllAcceptedCredentials({
++              rpId: rpId,
++              userId: appState.user.userId,
++              allAcceptedCredentialIds: allAcceptedCredentialIds
++            });
++            updateStatusMessage(
++              reasonText ||
++                `Synchronized ${allAcceptedCredentialIds.length} accepted passkey(s) with browser authenticator (rpId: ${rpId}).`,
++              'success'
++            );
++            return true;
++          } catch (err) {
++            console.warn('signalAllAcceptedCredentials error:', err);
++            updateStatusMessage(
++              `${reasonText || 'Updated passkeys locally.'} (Authenticator signal rejected: ${err.message})`,
++              'warning'
++            );
++            return false;
++          }
++        } else {
++          updateStatusMessage(
++            `${reasonText || 'Passkeys updated.'} (Browser does not support PublicKeyCredential.signalAllAcceptedCredentials; state saved locally.)`,
++            'info'
++          );
++          return false;
++        }
++      }
++
++      async function signalDeletedPasskeyToAuthenticator(deletedCredentialId, deletedName) {
++        const rpId = getRpId();
++        let signaledUnknown = false;
++
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalUnknownCredential === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: rpId,
++              credentialId: deletedCredentialId
++            });
++            signaledUnknown = true;
++          } catch (err) {
++            console.warn('signalUnknownCredential error:', err);
++          }
++        }
++
++        const syncedAccepted = await syncAllAcceptedCredentials(
++          `Deleted "${deletedName}" and notified browser authenticator to remove credential ${deletedCredentialId.slice(0, 12)}...`
++        );
++
++        if (signaledUnknown && !syncedAccepted) {
++          updateStatusMessage(
++            `Deleted "${deletedName}" and signaled unknown credential to browser authenticator.`,
++            'success'
++          );
++        }
++      }
++
++      async function signalUserDetailsToAuthenticator() {
++        const rpId = getRpId();
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalCurrentUserDetails === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalCurrentUserDetails({
++              rpId: rpId,
++              userId: appState.user.userId,
++              name: appState.user.name,
++              displayName: appState.user.displayName
++            });
++            updateStatusMessage(
++              `Saved profile & synced user details (${appState.user.name}) with browser authenticator.`,
++              'success'
++            );
++            return;
++          } catch (err) {
++            console.warn('signalCurrentUserDetails error:', err);
++          }
++        }
++        updateStatusMessage(
++          `Saved profile details for ${appState.user.displayName} (${appState.user.name}).`,
++          'success'
++        );
++      }
++
++      async function detectCapabilities() {
++        if (typeof window.PublicKeyCredential === 'undefined') {
++          syncCapabilityPill.textContent = 'WebAuthn Unavailable';
++          return;
++        }
++
++        if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++          try {
++            const caps = await PublicKeyCredential.getClientCapabilities();
++            const hasSignals =
++              caps.signalAllAcceptedCredentials ||
++              caps.signalUnknownCredential ||
++              caps.signalCurrentUserDetails;
++            if (hasSignals) {
++              syncCapabilityPill.textContent = 'Authenticator Sync Active';
++              return;
++            }
++          } catch (err) {
++            console.warn('getClientCapabilities check failed:', err);
++          }
++        }
++
++        if (
++          typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function' ||
++          typeof PublicKeyCredential.signalUnknownCredential === 'function'
++        ) {
++          syncCapabilityPill.textContent = 'Signal API Supported';
++        } else {
++          syncCapabilityPill.textContent = 'Local Sync Mode';
++        }
++      }
++
++      function renderProfile() {
++        headerDisplayName.textContent = appState.user.displayName;
++        inputDisplayName.value = appState.user.displayName;
++        inputUserName.value = appState.user.name;
++        inputUserId.value = appState.user.userId;
++      }
++
++      function renderPasskeys() {
++        passkeyListEl.innerHTML = '';
++
++        if (appState.passkeys.length === 0) {
++          const emptyLi = document.createElement('li');
++          emptyLi.className = 'empty-passkeys';
++          emptyLi.innerHTML =
++            '<strong>No passkeys registered.</strong><p style="font-size: 0.85rem; margin-top: 4px;">Register a new passkey to sign in faster and more securely.</p>';
++          passkeyListEl.appendChild(emptyLi);
++          return;
++        }
++
++        appState.passkeys.forEach((pk) => {
++          const li = document.createElement('li');
++          li.className = 'passkey-item';
++          li.dataset.credentialId = pk.id;
++
++          const infoDiv = document.createElement('div');
++          infoDiv.className = 'passkey-info';
++
++          const titleRow = document.createElement('div');
++          titleRow.className = 'passkey-title-row';
++
++          const nameSpan = document.createElement('span');
++          nameSpan.className = 'passkey-name';
++          nameSpan.textContent = pk.name;
++
++          const tagSpan = document.createElement('span');
++          tagSpan.className = 'passkey-tag';
++          tagSpan.textContent = pk.authenticatorType || 'Passkey';
++
++          titleRow.appendChild(nameSpan);
++          titleRow.appendChild(tagSpan);
++
++          const metaDiv = document.createElement('div');
++          metaDiv.className = 'passkey-meta';
++          metaDiv.innerHTML = `Credential ID: <code class="passkey-id-code">${pk.id}</code> &bull; Added: ${pk.createdAt} &bull; Last used: ${pk.lastUsedAt}`;
++
++          infoDiv.appendChild(titleRow);
++          infoDiv.appendChild(metaDiv);
++
++          if (editingCredentialId === pk.id) {
++            const renameForm = document.createElement('form');
++            renameForm.className = 'rename-inline-form';
++
++            const input = document.createElement('input');
++            input.type = 'text';
++            input.className = 'form-input';
++            input.value = pk.name;
++            input.setAttribute('aria-label', 'New passkey name');
++            input.required = true;
++
++            const saveBtn = document.createElement('button');
++            saveBtn.type = 'submit';
++            saveBtn.className = 'btn btn-sm';
++            saveBtn.textContent = 'Save';
++
++            const cancelBtn = document.createElement('button');
++            cancelBtn.type = 'button';
++            cancelBtn.className = 'btn btn-secondary btn-sm';
++            cancelBtn.textContent = 'Cancel';
++            cancelBtn.addEventListener('click', () => {
++              editingCredentialId = null;
++              renderPasskeys();
++            });
++
++            renameForm.addEventListener('submit', async (e) => {
++              e.preventDefault();
++              const newName = input.value.trim();
++              if (!newName) return;
++              const oldName = pk.name;
++              pk.name = newName;
++              editingCredentialId = null;
++              saveState(appState);
++              renderPasskeys();
++              await syncAllAcceptedCredentials(
++                `Renamed passkey "${oldName}" to "${newName}" and synced with browser authenticator.`
++              );
++            });
++
++            renameForm.appendChild(input);
++            renameForm.appendChild(saveBtn);
++            renameForm.appendChild(cancelBtn);
++            infoDiv.appendChild(renameForm);
++          }
++
++          const controlsDiv = document.createElement('div');
++          controlsDiv.className = 'passkey-controls';
++
++          const renameBtn = document.createElement('button');
++          renameBtn.type = 'button';
++          renameBtn.className = 'btn btn-secondary btn-sm';
++          renameBtn.textContent = 'Rename';
++          renameBtn.setAttribute('aria-label', `Rename ${pk.name}`);
++          renameBtn.addEventListener('click', () => {
++            editingCredentialId = pk.id;
++            renderPasskeys();
++          });
++
++          const deleteBtn = document.createElement('button');
++          deleteBtn.type = 'button';
++          deleteBtn.className = 'btn btn-danger btn-sm';
++          deleteBtn.textContent = 'Delete';
++          deleteBtn.setAttribute('aria-label', `Delete ${pk.name}`);
++          deleteBtn.addEventListener('click', async () => {
++            const deletedId = pk.id;
++            const deletedName = pk.name;
++            appState.passkeys = appState.passkeys.filter((item) => item.id !== deletedId);
++            if (editingCredentialId === deletedId) {
++              editingCredentialId = null;
++            }
++            saveState(appState);
++            renderPasskeys();
++            await signalDeletedPasskeyToAuthenticator(deletedId, deletedName);
++          });
++
++          controlsDiv.appendChild(renameBtn);
++          controlsDiv.appendChild(deleteBtn);
++
++          li.appendChild(infoDiv);
++          li.appendChild(controlsDiv);
++          passkeyListEl.appendChild(li);
++        });
++      }
++
++      profileForm.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        const newDisplayName = inputDisplayName.value.trim();
++        const newUserName = inputUserName.value.trim();
++        if (!newDisplayName || !newUserName) return;
++
++        appState.user.displayName = newDisplayName;
++        appState.user.name = newUserName;
++        saveState(appState);
++        renderProfile();
++        await signalUserDetailsToAuthenticator();
++      });
++
++      registerBtn.addEventListener('click', async () => {
++        const rpId = getRpId();
++        let newCredId = null;
++        let authenticatorLabel = 'Platform Authenticator';
++
++        if (
++          window.PublicKeyCredential &&
++          navigator.credentials &&
++          typeof navigator.credentials.create === 'function'
++        ) {
++          try {
++            const challenge = new Uint8Array(32);
++            window.crypto.getRandomValues(challenge);
++
++            const credential = await navigator.credentials.create({
++              publicKey: {
++                challenge: challenge,
++                rp: {
++                  name: 'The Daily Grind',
++                  id: rpId
++                },
++                user: {
++                  id: base64UrlToBuffer(appState.user.userId),
++                  name: appState.user.name,
++                  displayName: appState.user.displayName
++                },
++                pubKeyCredParams: [
++                  { type: 'public-key', alg: -7 },
++                  { type: 'public-key', alg: -257 }
++                ],
++                authenticatorSelection: {
++                  residentKey: 'required',
++                  userVerification: 'preferred'
++                },
++                excludeCredentials: appState.passkeys.map((pk) => ({
++                  id: base64UrlToBuffer(pk.id),
++                  type: 'public-key'
++                }))
++              }
++            });
++
++            if (credential && credential.rawId) {
++              newCredId = bufferToBase64Url(credential.rawId);
++              if (credential.authenticatorAttachment === 'cross-platform') {
++                authenticatorLabel = 'Roaming Security Key';
++              }
++            }
++          } catch (err) {
++            console.warn('WebAuthn navigator.credentials.create fallback triggered:', err);
++          }
++        }
++
++        if (!newCredId) {
++          const randomBytes = new Uint8Array(24);
++          window.crypto.getRandomValues(randomBytes);
++          newCredId = bufferToBase64Url(randomBytes);
++        }
++
++        const today = new Date().toISOString().slice(0, 10);
++        const passkeyNumber = appState.passkeys.length + 1;
++        const newPasskey = {
++          id: newCredId,
++          name: `Passkey #${passkeyNumber} (${today})`,
++          authenticatorType: authenticatorLabel,
++          createdAt: today,
++          lastUsedAt: 'Just now',
++          BackedUp: true
++        };
++
++        appState.passkeys.push(newPasskey);
++        saveState(appState);
++        renderPasskeys();
++        await syncAllAcceptedCredentials(
++          `Registered "${newPasskey.name}" and synchronized accepted credentials with browser authenticator.`
++        );
++      });
++
++      syncBtn.addEventListener('click', async () => {
++        await signalUserDetailsToAuthenticator();
++        await syncAllAcceptedCredentials(
++          `Synchronized ${appState.passkeys.length} accepted passkey(s) and user details with browser authenticator.`
++        );
++      });
++
++      renderProfile();
++      renderPasskeys();
++      detectCapabilities();
++      syncAllAcceptedCredentials();
++    })();
++  </script>
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..265d99b 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,257 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-danger {
++      background: #c62828;
++      color: white;
++      border: none;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      margin-top: 0;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    /* Account & Passkey Management Section */
++    .account-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
++      padding: 32px;
++      border-top: 4px solid var(--primary);
++    }
++
++    .account-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 16px;
++      padding-bottom: 24px;
++      border-bottom: 1px solid var(--secondary);
++      margin-bottom: 24px;
++    }
++
++    .account-header h2 {
++      color: var(--primary);
++      font-size: 1.75rem;
++      margin-bottom: 4px;
++    }
++
++    .account-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 6px 12px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .account-grid {
++      display: grid;
++      grid-template-columns: 1fr 2fr;
++      gap: 28px;
++    }
++
++    @media (max-width: 768px) {
++      .account-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .profile-panel {
++      background: #fcfaf9;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .profile-panel h3,
++    .passkey-panel h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.2rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--text);
++    }
++
++    .form-input {
++      width: 100%;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    .form-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .passkey-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .passkey-actions-bar {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .passkey-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .passkey-item {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 14px;
++      background: #fff;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .passkey-item:hover {
++      border-color: #a1887f;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++    }
++
++    .passkey-info {
++      flex: 1;
++      min-width: 220px;
++    }
++
++    .passkey-title-row {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 4px;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      font-size: 1.05rem;
++      color: var(--primary);
++    }
++
++    .passkey-tag {
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: #5d4037;
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    .passkey-meta {
++      font-size: 0.82rem;
++      color: #6d4c41;
++    }
++
++    .passkey-id-code {
++      font-family: monospace;
++      background: #f5f5f5;
++      padding: 1px 5px;
++      border-radius: 3px;
++      font-size: 0.78rem;
++    }
++
++    .passkey-controls {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .rename-inline-form {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 8px;
++    }
++
++    .sync-status-box {
++      margin-top: 20px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #f5f0ee;
++      border-left: 4px solid var(--primary);
++      font-size: 0.88rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .sync-status-box.success {
++      background: #e8f5e9;
++      border-left-color: #2e7d32;
++      color: #1b5e20;
++    }
++
++    .sync-status-box.warning {
++      background: #fff8e1;
++      border-left-color: #f57f17;
++      color: #e65100;
++    }
++
++    .empty-passkeys {
++      text-align: center;
++      padding: 28px 16px;
++      background: #fcfaf9;
++      border: 1px dashed var(--secondary);
++      border-radius: 8px;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -163,7 +414,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/account" id="nav-account-link">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -195,6 +446,72 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="account" class="account-section" aria-labelledby="account-heading">
++      <div class="account-header">
++        <div>
++          <h2 id="account-heading">My Account</h2>
++          <p>Manage your customer profile, security preferences, and registered passkeys.</p>
++        </div>
++        <span class="account-badge" id="auth-status-badge">
++          &#x2713; Signed in as <span id="header-display-name">Alex Rivera</span>
++        </span>
++      </div>
++
++      <div class="account-grid">
++        <!-- Customer Profile & Authenticator User Details Sync -->
++        <div class="profile-panel">
++          <h3>Account Details</h3>
++          <p style="font-size: 0.85rem; color: #5d4037; margin-bottom: 14px;">
++            Updating your account details keeps your browser authenticator passkey labels in sync.
++          </p>
++          <form id="profile-form">
++            <div class="form-group">
++              <label for="user-display-name">Display Name</label>
++              <input type="text" id="user-display-name" class="form-input" value="Alex Rivera" required />
++            </div>
++            <div class="form-group">
++              <label for="user-name">Username / Email</label>
++              <input type="email" id="user-name" class="form-input" value="alex.rivera@dailygrind.coffee" required />
++            </div>
++            <div class="form-group">
++              <label for="user-id-display">User Handle (Base64URL ID)</label>
++              <input type="text" id="user-id-display" class="form-input" value="YWxleC1yaXZlcmEtZGdjLTIwMjY" readonly />
++            </div>
++            <button type="submit" class="btn btn-sm" style="width: 100%; padding: 9px 14px;">
++              Save &amp; Sync Account Details
++            </button>
++          </form>
++        </div>
++
++        <!-- Passkey Management Panel -->
++        <div class="passkey-panel">
++          <div class="passkey-panel-header">
++            <div>
++              <h3>Registered Passkeys</h3>
++              <p style="font-size: 0.88rem; color: #5d4037;">
++                View, rename, or remove passkeys associated with your Daily Grind account.
++              </p>
++            </div>
++            <div class="passkey-actions-bar">
++              <button type="button" id="register-passkey-btn" class="btn btn-sm">
++                + Register New Passkey
++              </button>
++              <button type="button" id="sync-authenticator-btn" class="btn btn-secondary btn-sm">
++                Sync with Authenticator
++              </button>
++            </div>
++          </div>
++
++          <ul id="passkey-list" class="passkey-list" aria-live="polite"></ul>
++
++          <div id="sync-status" class="sync-status-box" role="status" aria-live="polite">
++            <span id="sync-status-text">Browser authenticator is synchronized with your registered passkeys.</span>
++            <span id="sync-capability-pill" class="passkey-tag">WebAuthn Signal API Ready</span>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +524,494 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_account_state_v1';
++
++      // Helper to convert Uint8Array/ArrayBuffer to Base64URL string
++      function bufferToBase64Url(buffer) {
++        const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return btoa(binary)
++          .replace(/\+/g, '-')
++          .replace(/\//g, '_')
++          .replace(/=+$/, '');
++      }
++
++      // Helper to convert Base64URL string to Uint8Array
++      function base64UrlToBuffer(base64url) {
++        const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
++        const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
++        const rawData = atob(base64);
++        const outputArray = new Uint8Array(rawData.length);
++        for (let i = 0; i < rawData.length; ++i) {
++          outputArray[i] = rawData.charCodeAt(i);
++        }
++        return outputArray;
++      }
++
++      function getRpId() {
++        return window.location.hostname || 'localhost';
++      }
++
++      const DEFAULT_STATE = {
++        user: {
++          userId: 'YWxleC1yaXZlcmEtZGdjLTIwMjY',
++          name: 'alex.rivera@dailygrind.coffee',
++          displayName: 'Alex Rivera'
++        },
++        passkeys: [
++          {
++            id: 'cGFzc2tleS1tYWNib29rLXByby10b3VjaGlkLTAx',
++            name: 'MacBook Pro Touch ID',
++            authenticatorType: 'Platform / iCloud Keychain',
++            createdAt: '2026-08-14',
++            lastUsedAt: '2026-10-27',
++            BackedUp: true
++          },
++          {
++            id: 'cGFzc2tleS1pcGhvbmUtMTYtcHJvLWZhY2VpZC0wMg',
++            name: 'iPhone 16 Pro Face ID',
++            authenticatorType: 'Synced Passkey',
++            createdAt: '2026-09-03',
++            lastUsedAt: '2026-10-25',
++            BackedUp: true
++          },
++          {
++            id: 'cGFzc2tleS15dWJpa2V5LTVjLW5mYy1iYWNrdXAtMDM',
++            name: 'YubiKey 5C NFC Backup',
++            authenticatorType: 'Roaming Security Key',
++            createdAt: '2026-06-19',
++            lastUsedAt: '2026-09-12',
++            BackedUp: false
++          }
++        ]
++      };
++
++      function loadState() {
++        try {
++          const raw = localStorage.getItem(STORAGE_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (parsed && parsed.user && Array.isArray(parsed.passkeys)) {
++              return parsed;
++            }
++          }
++        } catch (err) {
++          console.warn('Could not read saved passkey state:', err);
++        }
++        return JSON.parse(JSON.stringify(DEFAULT_STATE));
++      }
++
++      function saveState(state) {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
++        } catch (err) {
++          console.warn('Could not persist passkey state:', err);
++        }
++      }
++
++      let appState = loadState();
++      let editingCredentialId = null;
++
++      // DOM elements
++      const passkeyListEl = document.getElementById('passkey-list');
++      const syncStatusBox = document.getElementById('sync-status');
++      const syncStatusText = document.getElementById('sync-status-text');
++      const syncCapabilityPill = document.getElementById('sync-capability-pill');
++      const headerDisplayName = document.getElementById('header-display-name');
++      const inputDisplayName = document.getElementById('user-display-name');
++      const inputUserName = document.getElementById('user-name');
++      const inputUserId = document.getElementById('user-id-display');
++      const profileForm = document.getElementById('profile-form');
++      const registerBtn = document.getElementById('register-passkey-btn');
++      const syncBtn = document.getElementById('sync-authenticator-btn');
++
++      function updateStatusMessage(message, variant = 'info') {
++        syncStatusText.textContent = message;
++        syncStatusBox.className = 'sync-status-box';
++        if (variant === 'success') {
++          syncStatusBox.classList.add('success');
++        } else if (variant === 'warning') {
++          syncStatusBox.classList.add('warning');
++        }
++      }
++
++      // Keep the browser authenticator in sync with accepted credentials
++      async function syncAllAcceptedCredentials(reasonText) {
++        const rpId = getRpId();
++        const allAcceptedCredentialIds = appState.passkeys.map((pk) => pk.id);
++
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalAllAcceptedCredentials({
++              rpId: rpId,
++              userId: appState.user.userId,
++              allAcceptedCredentialIds: allAcceptedCredentialIds
++            });
++            updateStatusMessage(
++              reasonText ||
++                `Synchronized ${allAcceptedCredentialIds.length} accepted passkey(s) with browser authenticator (rpId: ${rpId}).`,
++              'success'
++            );
++            return true;
++          } catch (err) {
++            console.warn('signalAllAcceptedCredentials error:', err);
++            updateStatusMessage(
++              `${reasonText || 'Updated passkeys locally.'} (Authenticator signal rejected: ${err.message})`,
++              'warning'
++            );
++            return false;
++          }
++        } else {
++          updateStatusMessage(
++            `${reasonText || 'Passkeys updated.'} (Browser does not support PublicKeyCredential.signalAllAcceptedCredentials; state saved locally.)`,
++            'info'
++          );
++          return false;
++        }
++      }
++
++      // Signal an unknown/deleted credential to the browser authenticator and sync accepted list
++      async function signalDeletedPasskeyToAuthenticator(deletedCredentialId, deletedName) {
++        const rpId = getRpId();
++        let signaledUnknown = false;
++
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalUnknownCredential === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: rpId,
++              credentialId: deletedCredentialId
++            });
++            signaledUnknown = true;
++          } catch (err) {
++            console.warn('signalUnknownCredential error:', err);
++          }
++        }
++
++        const syncedAccepted = await syncAllAcceptedCredentials(
++          `Deleted "${deletedName}" and notified browser authenticator to remove credential ${deletedCredentialId.slice(0, 12)}...`
++        );
++
++        if (signaledUnknown && !syncedAccepted) {
++          updateStatusMessage(
++            `Deleted "${deletedName}" and signaled unknown credential to browser authenticator.`,
++            'success'
++          );
++        }
++      }
++
++      // Signal updated user account details to the browser authenticator
++      async function signalUserDetailsToAuthenticator() {
++        const rpId = getRpId();
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof PublicKeyCredential.signalCurrentUserDetails === 'function'
++        ) {
++          try {
++            await PublicKeyCredential.signalCurrentUserDetails({
++              rpId: rpId,
++              userId: appState.user.userId,
++              name: appState.user.name,
++              displayName: appState.user.displayName
++            });
++            updateStatusMessage(
++              `Saved profile & synced user details (${appState.user.name}) with browser authenticator.`,
++              'success'
++            );
++            return;
++          } catch (err) {
++            console.warn('signalCurrentUserDetails error:', err);
++          }
++        }
++        updateStatusMessage(
++          `Saved profile details for ${appState.user.displayName} (${appState.user.name}).`,
++          'success'
++        );
++      }
++
++      // Detect WebAuthn Signal API capabilities
++      async function detectCapabilities() {
++        if (typeof window.PublicKeyCredential === 'undefined') {
++          syncCapabilityPill.textContent = 'WebAuthn Unavailable';
++          return;
++        }
++
++        if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++          try {
++            const caps = await PublicKeyCredential.getClientCapabilities();
++            const hasSignals =
++              caps.signalAllAcceptedCredentials ||
++              caps.signalUnknownCredential ||
++              caps.signalCurrentUserDetails;
++            if (hasSignals) {
++              syncCapabilityPill.textContent = 'Authenticator Sync Active';
++              return;
++            }
++          } catch (err) {
++            console.warn('getClientCapabilities check failed:', err);
++          }
++        }
++
++        if (
++          typeof PublicKeyCredential.signalAllAcceptedCredentials === 'function' ||
++          typeof PublicKeyCredential.signalUnknownCredential === 'function'
++        ) {
++          syncCapabilityPill.textContent = 'Signal API Supported';
++        } else {
++          syncCapabilityPill.textContent = 'Local Sync Mode';
++        }
++      }
++
++      function renderProfile() {
++        headerDisplayName.textContent = appState.user.displayName;
++        inputDisplayName.value = appState.user.displayName;
++        inputUserName.value = appState.user.name;
++        inputUserId.value = appState.user.userId;
++      }
++
++      function renderPasskeys() {
++        passkeyListEl.innerHTML = '';
++
++        if (appState.passkeys.length === 0) {
++          const emptyLi = document.createElement('li');
++          emptyLi.className = 'empty-passkeys';
++          emptyLi.innerHTML =
++            '<strong>No passkeys registered.</strong><p style="font-size: 0.85rem; margin-top: 4px;">Register a new passkey to sign in faster and more securely.</p>';
++          passkeyListEl.appendChild(emptyLi);
++          return;
++        }
++
++        appState.passkeys.forEach((pk) => {
++          const li = document.createElement('li');
++          li.className = 'passkey-item';
++          li.dataset.credentialId = pk.id;
++
++          const infoDiv = document.createElement('div');
++          infoDiv.className = 'passkey-info';
++
++          const titleRow = document.createElement('div');
++          titleRow.className = 'passkey-title-row';
++
++          const nameSpan = document.createElement('span');
++          nameSpan.className = 'passkey-name';
++          nameSpan.textContent = pk.name;
++
++          const tagSpan = document.createElement('span');
++          tagSpan.className = 'passkey-tag';
++          tagSpan.textContent = pk.authenticatorType || 'Passkey';
++
++          titleRow.appendChild(nameSpan);
++          titleRow.appendChild(tagSpan);
++
++          const metaDiv = document.createElement('div');
++          metaDiv.className = 'passkey-meta';
++          metaDiv.innerHTML = `Credential ID: <code class="passkey-id-code">${pk.id}</code> &bull; Added: ${pk.createdAt} &bull; Last used: ${pk.lastUsedAt}`;
++
++          infoDiv.appendChild(titleRow);
++          infoDiv.appendChild(metaDiv);
++
++          // Inline rename form when editing this passkey
++          if (editingCredentialId === pk.id) {
++            const renameForm = document.createElement('form');
++            renameForm.className = 'rename-inline-form';
++
++            const input = document.createElement('input');
++            input.type = 'text';
++            input.className = 'form-input';
++            input.value = pk.name;
++            input.setAttribute('aria-label', 'New passkey name');
++            input.required = true;
++
++            const saveBtn = document.createElement('button');
++            saveBtn.type = 'submit';
++            saveBtn.className = 'btn btn-sm';
++            saveBtn.textContent = 'Save';
++
++            const cancelBtn = document.createElement('button');
++            cancelBtn.type = 'button';
++            cancelBtn.className = 'btn btn-secondary btn-sm';
++            cancelBtn.textContent = 'Cancel';
++            cancelBtn.addEventListener('click', () => {
++              editingCredentialId = null;
++              renderPasskeys();
++            });
++
++            renameForm.addEventListener('submit', async (e) => {
++              e.preventDefault();
++              const newName = input.value.trim();
++              if (!newName) return;
++              const oldName = pk.name;
++              pk.name = newName;
++              editingCredentialId = null;
++              saveState(appState);
++              renderPasskeys();
++              await syncAllAcceptedCredentials(
++                `Renamed passkey "${oldName}" to "${newName}" and synced with browser authenticator.`
++              );
++            });
++
++            renameForm.appendChild(input);
++            renameForm.appendChild(saveBtn);
++            renameForm.appendChild(cancelBtn);
++            infoDiv.appendChild(renameForm);
++          }
++
++          const controlsDiv = document.createElement('div');
++          controlsDiv.className = 'passkey-controls';
++
++          const renameBtn = document.createElement('button');
++          renameBtn.type = 'button';
++          renameBtn.className = 'btn btn-secondary btn-sm';
++          renameBtn.textContent = 'Rename';
++          renameBtn.setAttribute('aria-label', `Rename ${pk.name}`);
++          renameBtn.addEventListener('click', () => {
++            editingCredentialId = pk.id;
++            renderPasskeys();
++          });
++
++          const deleteBtn = document.createElement('button');
++          deleteBtn.type = 'button';
++          deleteBtn.className = 'btn btn-danger btn-sm';
++          deleteBtn.textContent = 'Delete';
++          deleteBtn.setAttribute('aria-label', `Delete ${pk.name}`);
++          deleteBtn.addEventListener('click', async () => {
++            const deletedId = pk.id;
++            const deletedName = pk.name;
++            appState.passkeys = appState.passkeys.filter((item) => item.id !== deletedId);
++            if (editingCredentialId === deletedId) {
++              editingCredentialId = null;
++            }
++            saveState(appState);
++            renderPasskeys();
++            await signalDeletedPasskeyToAuthenticator(deletedId, deletedName);
++          });
++
++          controlsDiv.appendChild(renameBtn);
++          controlsDiv.appendChild(deleteBtn);
++
++          li.appendChild(infoDiv);
++          li.appendChild(controlsDiv);
++          passkeyListEl.appendChild(li);
++        });
++      }
++
++      // Handle profile updates and signalCurrentUserDetails
++      profileForm.addEventListener('submit', async (e) => {
++        e.preventDefault();
++        const newDisplayName = inputDisplayName.value.trim();
++        const newUserName = inputUserName.value.trim();
++        if (!newDisplayName || !newUserName) return;
++
++        appState.user.displayName = newDisplayName;
++        appState.user.name = newUserName;
++        saveState(appState);
++        renderProfile();
++        await signalUserDetailsToAuthenticator();
++      });
++
++      // Handle registering a new passkey via WebAuthn (with graceful fallback)
++      registerBtn.addEventListener('click', async () => {
++        const rpId = getRpId();
++        let newCredId = null;
++        let authenticatorLabel = 'Platform Authenticator';
++
++        if (
++          window.PublicKeyCredential &&
++          navigator.credentials &&
++          typeof navigator.credentials.create === 'function'
++        ) {
++          try {
++            const challenge = new Uint8Array(32);
++            window.crypto.getRandomValues(challenge);
++
++            const credential = await navigator.credentials.create({
++              publicKey: {
++                challenge: challenge,
++                rp: {
++                  name: 'The Daily Grind',
++                  id: rpId
++                },
++                user: {
++                  id: base64UrlToBuffer(appState.user.userId),
++                  name: appState.user.name,
++                  displayName: appState.user.displayName
++                },
++                pubKeyCredParams: [
++                  { type: 'public-key', alg: -7 },
++                  { type: 'public-key', alg: -257 }
++                ],
++                authenticatorSelection: {
++                  residentKey: 'required',
++                  userVerification: 'preferred'
++                },
++                excludeCredentials: appState.passkeys.map((pk) => ({
++                  id: base64UrlToBuffer(pk.id),
++                  type: 'public-key'
++                }))
++              }
++            });
++
++            if (credential && credential.rawId) {
++              newCredId = bufferToBase64Url(credential.rawId);
++              if (credential.authenticatorAttachment === 'cross-platform') {
++                authenticatorLabel = 'Roaming Security Key';
++              }
++            }
++          } catch (err) {
++            console.warn('WebAuthn navigator.credentials.create fallback triggered:', err);
++          }
++        }
++
++        if (!newCredId) {
++          const randomBytes = new Uint8Array(24);
++          window.crypto.getRandomValues(randomBytes);
++          newCredId = bufferToBase64Url(randomBytes);
++        }
++
++        const today = new Date().toISOString().slice(0, 10);
++        const passkeyNumber = appState.passkeys.length + 1;
++        const newPasskey = {
++          id: newCredId,
++          name: `Passkey #${passkeyNumber} (${today})`,
++          authenticatorType: authenticatorLabel,
++          createdAt: today,
++          lastUsedAt: 'Just now',
++          BackedUp: true
++        };
++
++        appState.passkeys.push(newPasskey);
++        saveState(appState);
++        renderPasskeys();
++        await syncAllAcceptedCredentials(
++          `Registered "${newPasskey.name}" and synchronized accepted credentials with browser authenticator.`
++        );
++      });
++
++      // Manual Sync Button
++      syncBtn.addEventListener('click', async () => {
++        await signalUserDetailsToAuthenticator();
++        await syncAllAcceptedCredentials(
++          `Synchronized ${appState.passkeys.length} accepted passkey(s) and user details with browser authenticator.`
++        );
++      });
++
++      // Initialize UI and perform initial authenticator synchronization
++      renderProfile();
++      renderPasskeys();
++      detectCapabilities();
++      syncAllAcceptedCredentials();
++    })();
++  </script>
+ </body>
+ 
+ </html>

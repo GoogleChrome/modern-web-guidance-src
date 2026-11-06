@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,128 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store Picker */
++    .store-picker {
++      margin-top: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.4rem;
++    }
++
++    .store-picker label {
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    .store-select {
++      min-width: 260px;
++      padding: 10px 14px;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: rgba(255, 255, 255, 0.95);
++      border: 2px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: border-color 0.3s, box-shadow 0.3s;
++    }
++
++    .store-select:hover,
++    .store-select:focus-visible {
++      border-color: var(--accent);
++      outline: none;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    /* Customizable native select (Chromium 135+). Other browsers keep the standard select. */
++    @supports (appearance: base-select) {
++
++      .store-select,
++      .store-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .store-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 12px;
++        text-align: left;
++      }
++
++      .store-select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.3s ease;
++      }
++
++      .store-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .store-select::picker(select) {
++        margin-top: 6px;
++        padding: 6px;
++        border: none;
++        border-radius: 8px;
++        background: white;
++        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++        opacity: 0;
++        transform: translateY(-8px);
++        transition:
++          opacity 0.25s ease,
++          transform 0.25s ease,
++          overlay 0.25s allow-discrete,
++          display 0.25s allow-discrete;
++      }
++
++      .store-select:open::picker(select) {
++        opacity: 1;
++        transform: translateY(0);
++      }
++
++      @starting-style {
++        .store-select:open::picker(select) {
++          opacity: 0;
++          transform: translateY(-8px);
++        }
++      }
++
++      .store-select option {
++        padding: 8px 12px;
++        border-radius: 4px;
++        color: var(--text);
++        transition: background 0.2s;
++      }
++
++      .store-select option:hover,
++      .store-select option:focus-visible {
++        background: var(--secondary);
++        outline: none;
++      }
++
++      .store-select option:checked {
++        font-weight: bold;
++        color: var(--primary);
++      }
++
++      .store-select option::checkmark {
++        color: var(--accent);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .store-select::picker(select),
++      .store-select::picker-icon {
++        transition: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +290,19 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-picker">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" name="store" class="store-select">
++        <option value="" disabled selected>Select a location&hellip;</option>
++        <option value="downtown">Downtown &mdash; 120 Main St</option>
++        <option value="riverside">Riverside &mdash; 45 Water Ave</option>
++        <option value="uptown">Uptown &mdash; 88 Elm Blvd</option>
++        <option value="university">University District &mdash; 9 College Rd</option>
++        <option value="harbor">Harbor Point &mdash; 300 Pier Way</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,107 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter Section */
++    .newsletter-section {
++      max-width: 480px;
++      margin: 0 auto 30px auto;
++    }
++
++    .newsletter-section h3 {
++      font-size: 1.3rem;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .newsletter-section p {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .newsletter-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .newsletter-input-group {
++      display: flex;
++      width: 100%;
++      gap: 10px;
++    }
++
++    .newsletter-input-group input[type="email"] {
++      flex: 1;
++      padding: 10px 14px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      background: white;
++      color: var(--text);
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .newsletter-input-group input[type="email"]:focus {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    /* Red error state applied only on blur / submission */
++    .newsletter-input-group input[type="email"].error {
++      border-color: #d32f2f !important;
++      box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.25) !important;
++    }
++
++    .newsletter-input-group .btn-newsletter {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++      white-space: nowrap;
++    }
++
++    .newsletter-error {
++      display: none;
++      color: #d32f2f;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-top: 6px;
++      text-align: left;
++      width: 100%;
++    }
++
++    .newsletter-error.visible {
++      display: block;
++    }
++
++    .newsletter-success {
++      display: none;
++      color: #2e7d32;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .newsletter-success.visible {
++      display: block;
++    }
++
++    @media (max-width: 480px) {
++      .newsletter-input-group {
++        flex-direction: column;
++      }
++
++      .newsletter-input-group .btn-newsletter {
++        width: 100%;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +296,31 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter-section" aria-labelledby="newsletter-heading">
++      <h3 id="newsletter-heading">Stay Brewed In</h3>
++      <p>Subscribe to our newsletter for artisanal brewing tips and exclusive seasonal offers.</p>
++      <form id="newsletter-form" class="newsletter-form" novalidate>
++        <div class="newsletter-input-group">
++          <input
++            type="email"
++            id="newsletter-email"
++            name="email"
++            placeholder="Enter your email address"
++            aria-label="Email address"
++            autocomplete="email"
++            required
++          >
++          <button type="submit" class="btn btn-newsletter">Subscribe</button>
++        </div>
++        <div id="newsletter-error" class="newsletter-error" role="alert" aria-live="polite"></div>
++      </form>
++      <div id="newsletter-success" class="newsletter-success" role="status">
++        Thanks for subscribing! Check your inbox soon.
++      </div>
++    </section>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +328,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const errorMsg = document.getElementById('newsletter-error');
++      const successMsg = document.getElementById('newsletter-success');
++
++      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++      function showError(message) {
++        emailInput.classList.add('error');
++        errorMsg.textContent = message;
++        errorMsg.classList.add('visible');
++      }
++
++      function clearError() {
++        emailInput.classList.remove('error');
++        errorMsg.textContent = '';
++        errorMsg.classList.remove('visible');
++      }
++
++      function validate() {
++        const val = emailInput.value.trim();
++        if (!val) {
++          showError('Please enter your email address.');
++          return false;
++        }
++        if (!emailRegex.test(val)) {
++          showError('Please enter a valid email address.');
++          return false;
++        }
++        clearError();
++        return true;
++      }
++
++      // Do not show errors while typing; clear active error state on input
++      emailInput.addEventListener('input', function () {
++        clearError();
++      });
++
++      // Only validate after user clicks away (blur)
++      emailInput.addEventListener('blur', function () {
++        validate();
++      });
++
++      // Validate on submit
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        if (validate()) {
++          form.style.display = 'none';
++          successMsg.classList.add('visible');
++        }
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

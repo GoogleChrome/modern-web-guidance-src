@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,157 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Scroll-Driven Parallax Section */
++    .parallax-wrapper {
++      position: relative;
++      height: 85vh;
++      min-height: 520px;
++      overflow: clip;
++      background: radial-gradient(circle at center, #3e2723 0%, #1b0f0d 100%);
++      color: var(--light);
++      display: grid;
++      place-items: center;
++      isolation: isolate;
++    }
++
++    .parallax-layer {
++      grid-area: 1 / 1;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      pointer-events: none;
++    }
++
++    .parallax-layer--interactive {
++      pointer-events: auto;
++      z-index: 4;
++      padding: 2rem;
++    }
++
++    .parallax-bg-image {
++      width: 100%;
++      height: 125%;
++      object-fit: cover;
++      opacity: 0.32;
++      filter: contrast(1.1) saturate(0.9);
++    }
++
++    .parallax-card-item {
++      position: absolute;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(215, 204, 200, 0.25);
++      background: var(--primary);
++    }
++
++    .parallax-card-item img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .parallax-card-left {
++      width: clamp(160px, 22vw, 260px);
++      aspect-ratio: 4 / 5;
++      inset-inline-start: 6%;
++      inset-block-start: 14%;
++    }
++
++    .parallax-card-right {
++      width: clamp(150px, 20vw, 240px);
++      aspect-ratio: 1 / 1;
++      inset-inline-end: 7%;
++      inset-block-end: 14%;
++    }
++
++    .parallax-card-top-right {
++      width: clamp(120px, 15vw, 190px);
++      aspect-ratio: 3 / 4;
++      inset-inline-end: 12%;
++      inset-block-start: 12%;
++      opacity: 0.85;
++    }
++
++    .parallax-card-bottom-left {
++      width: clamp(130px, 16vw, 200px);
++      aspect-ratio: 4 / 3;
++      inset-inline-start: 10%;
++      inset-block-end: 12%;
++      opacity: 0.9;
++    }
++
++    .parallax-content {
++      max-width: 600px;
++      text-align: center;
++      background: rgba(30, 17, 14, 0.82);
++      backdrop-filter: blur(8px);
++      padding: clamp(1.75rem, 4vw, 3rem);
++      border-radius: 16px;
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
++    }
++
++    .parallax-eyebrow {
++      display: inline-block;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      color: var(--accent);
++      margin-bottom: 0.75rem;
++    }
++
++    .parallax-content h2 {
++      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
++      margin-bottom: 1rem;
++      color: #fff;
++      line-height: 1.2;
++    }
++
++    .parallax-content p {
++      color: var(--secondary);
++      font-size: 1.05rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .parallax-layer:nth-child(1) { --parallax-offset: 80px; }
++    .parallax-layer:nth-child(2) { --parallax-offset: 200px; }
++    .parallax-layer:nth-child(3) { --parallax-offset: 340px; }
++    .parallax-layer:nth-child(4) { --parallax-offset: 480px; }
++
++    @keyframes parallax {
++      from {
++        transform: translateY(var(--parallax-offset, calc(120px * sibling-index())));
++      }
++      to {
++        transform: translateY(calc(-0.35 * var(--parallax-offset, calc(120px * sibling-index()))));
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .parallax-wrapper {
++        view-timeline: --parallax-wrapper;
++      }
++
++      .parallax-layer {
++        animation: parallax linear both;
++        animation-timeline: --parallax-wrapper;
++        animation-range: entry 0% exit 100%;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .parallax-layer {
++          animation: none;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +322,70 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="parallax-wrapper">
++      <!-- Layer 1: Deep Background (slowest) -->
++      <div class="parallax-layer" aria-hidden="true">
++        <img
++          class="parallax-bg-image"
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80"
++          alt=""
++          loading="lazy"
++        >
++      </div>
++
++      <!-- Layer 2: Mid-background depth layer -->
++      <div class="parallax-layer" aria-hidden="true">
++        <div class="parallax-card-item parallax-card-top-right">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt=""
++            loading="lazy"
++          >
++        </div>
++        <div class="parallax-card-item parallax-card-bottom-left">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt=""
++            loading="lazy"
++          >
++        </div>
++      </div>
++
++      <!-- Layer 3: Mid-foreground accent layer -->
++      <div class="parallax-layer" aria-hidden="true">
++        <div class="parallax-card-item parallax-card-left">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=700&q=80"
++            alt=""
++            loading="lazy"
++          >
++        </div>
++        <div class="parallax-card-item parallax-card-right">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=700&q=80"
++            alt=""
++            loading="lazy"
++          >
++        </div>
++      </div>
++
++      <!-- Layer 4: Foreground story card (fastest) -->
++      <div class="parallax-layer parallax-layer--interactive">
++        <div class="parallax-content">
++          <span class="parallax-eyebrow">From Bean to Cup</span>
++          <h2>Crafted in Small Batches</h2>
++          <p>
++            Every harvest travels from high-altitude micro-lots directly to our copper drum roasters, unlocking deep caramel notes and vibrant floral aromas in every pour.
++          </p>
++          <a href="/about" class="btn">Explore Our Roasting Process</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

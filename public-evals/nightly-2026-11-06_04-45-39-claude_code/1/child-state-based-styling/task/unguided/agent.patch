@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Iced toggle: parent card reacts to its child checkbox via :has() */
++    .card {
++      border: 2px solid transparent;
++      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.3s;
++    }
++
++    .iced-toggle {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      width: fit-content;
++      margin: 12px auto 0;
++      font-size: 0.9rem;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .iced-toggle input {
++      width: 18px;
++      height: 18px;
++      accent-color: #2b7bb9;
++      cursor: pointer;
++    }
++
++    .card:has(.iced-toggle input:checked) {
++      background: linear-gradient(180deg, #eaf6ff 0%, #d4ecfb 100%);
++      border-color: #7fc1ea;
++      box-shadow: 0 4px 14px rgba(43, 123, 185, 0.25);
++      transform: translateY(-2px);
++    }
++
++    .card:has(.iced-toggle input:checked) h3 {
++      color: #1f5f8f;
++    }
++
++    .card:has(.iced-toggle input:checked) h3::after {
++      content: " \2744\FE0F";
++    }
++
++    .card:has(.iced-toggle input:checked) .btn {
++      background: #2b7bb9;
++    }
++
++    .card:has(.iced-toggle input:checked) .btn:hover {
++      background: #1f5f8f;
++    }
++
++    .card:has(.iced-toggle input:focus-visible) {
++      outline: 3px solid #7fc1ea;
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card { transition: none; }
++      .card:has(.iced-toggle input:checked) { transform: none; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,18 +237,30 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced" value="maple-oat-latte">
++            Make it iced
++          </label>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced" value="dark-roast-espresso">
++            Make it iced
++          </label>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <label class="iced-toggle">
++            <input type="checkbox" name="iced" value="cold-brew">
++            Make it iced
++          </label>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>

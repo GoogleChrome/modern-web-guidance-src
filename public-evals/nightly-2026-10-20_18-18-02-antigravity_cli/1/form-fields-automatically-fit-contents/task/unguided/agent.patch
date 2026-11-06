@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,72 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Form Section */
++    .form-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-section h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 20px;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .order-form input[type="text"],
++    .order-form textarea,
++    .order-form select {
++      field-sizing: content;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background-color: var(--light);
++      max-width: 100%;
++    }
++
++    .order-form input[type="text"]:focus,
++    .order-form textarea:focus,
++    .order-form select:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .order-form button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +258,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="form-section">
++      <h2>Custom Order Request</h2>
++      <form class="order-form" action="/order-online" method="post">
++        <div class="form-group">
++          <label for="customer-name">Your Name</label>
++          <input type="text" id="customer-name" name="customer-name" placeholder="Enter your name" value="Alex">
++        </div>
++
++        <div class="form-group">
++          <label for="drink-choice">Select Your Drink</label>
++          <select id="drink-choice" name="drink-choice">
++            <option value="espresso">Espresso</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="cold-brew">18-Hour Steeped Cold Brew</option>
++            <option value="caramel-macchiato">Artisanal Iced Caramel Macchiato with Oat Milk</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="special-instructions">Special Instructions</label>
++          <textarea id="special-instructions" name="special-instructions" placeholder="Add any customization notes...">Extra hot, light foam</textarea>
++        </div>
++
++        <button type="submit" class="btn">Submit Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

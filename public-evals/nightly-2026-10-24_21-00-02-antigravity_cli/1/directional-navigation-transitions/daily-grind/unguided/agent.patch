@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+index 66c9173..e56cd47 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,99 @@
+       background: #3e2723;
+     }
+ 
++    /* Carousel / Seasonal Favorites */
++    .carousel-wrapper {
++      max-width: 550px;
++      margin: 20px auto 0;
++    }
++
++    .carousel-viewport {
++      position: relative;
++      overflow: hidden;
++      padding: 8px 4px;
++    }
++
++    .carousel-viewport .card {
++      display: none;
++    }
++
++    .carousel-viewport .card.active {
++      display: block;
++    }
++
++    @keyframes slideInRight {
++      from {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @keyframes slideInLeft {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    .carousel-viewport .card.slide-in-right {
++      animation: slideInRight 0.35s ease-out forwards;
++    }
++
++    .carousel-viewport .card.slide-in-left {
++      animation: slideInLeft 0.35s ease-out forwards;
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      margin-top: 15px;
++    }
++
++    .carousel-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .carousel-btn:hover {
++      background: #3e2723;
++    }
++
++    .carousel-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel-viewport .card.slide-in-right,
++      .carousel-viewport .card.slide-in-left {
++        animation: none !important;
++        transition: none !important;
++      }
++
++      .carousel-btn,
++      .btn,
++      nav a {
++        transition: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,28 +268,73 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="carousel-wrapper">
++        <div class="carousel-viewport" aria-live="polite">
++          <div class="card active" data-index="0">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card" data-index="1" hidden>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card" data-index="2" hidden>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-controls">
++          <button type="button" class="carousel-btn" id="prev-btn" aria-label="Previous seasonal favorite">Previous</button>
++          <button type="button" class="carousel-btn" id="next-btn" aria-label="Next seasonal favorite">Next</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const cards = Array.from(document.querySelectorAll('.carousel-viewport .card'));
++      const prevBtn = document.getElementById('prev-btn');
++      const nextBtn = document.getElementById('next-btn');
++      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++      let currentIndex = 0;
++
++      function showItem(newIndex, direction) {
++        const total = cards.length;
++        currentIndex = (newIndex + total) % total;
++        const prefersReducedMotion = reducedMotionQuery.matches;
++
++        cards.forEach((card, index) => {
++          card.classList.remove('active', 'slide-in-right', 'slide-in-left');
++          if (index === currentIndex) {
++            card.hidden = false;
++            card.classList.add('active');
++            if (!prefersReducedMotion && direction) {
++              // Force reflow so rapid consecutive clicks restart the animation cleanly
++              void card.offsetWidth;
++              card.classList.add(direction === 'next' ? 'slide-in-right' : 'slide-in-left');
++            }
++          } else {
++            card.hidden = true;
++          }
++        });
++      }
++
++      prevBtn.addEventListener('click', () => {
++        showItem(currentIndex - 1, 'prev');
++      });
++
++      nextBtn.addEventListener('click', () => {
++        showItem(currentIndex + 1, 'next');
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

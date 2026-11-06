@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,124 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Launchpad – Ship your ideas faster</title>
++  <meta name="description" content="Launchpad helps teams go from idea to launch in record time.">
++
++  <!-- Anti-flicker: hide the page until the experiment SDK has applied its variant. -->
++  <style id="anti-flicker">
++    html.af-hide body { opacity: 0 !important; }
++    html.af-hide { background: #0f172a; }
++    body { transition: opacity .2s ease; }
++  </style>
++  <script>
++    (function (w, d, timeout) {
++      var root = d.documentElement;
++      var revealed = false;
++      root.classList.add('af-hide');
++
++      // Idempotent reveal; called by SDK load, SDK error, or the timeout.
++      w.__revealExperiment = function () {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        root.classList.remove('af-hide');
++      };
++
++      // Safety net: never leave the page blank if the SDK is slow or blocked.
++      var timer = setTimeout(w.__revealExperiment, timeout);
++    })(window, document, 3000);
++  </script>
++
++  <script>
++    (function (w, d) {
++      var s = d.createElement('script');
++      s.src = 'https://cdn.example.com/experiment-sdk.js';
++      s.async = true;
++
++      // Wait for the DOM so the SDK's DOM changes have elements to target,
++      // then reveal on the next frame once the variant has been painted-ready.
++      function done() {
++        function reveal() { requestAnimationFrame(w.__revealExperiment); }
++        if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', reveal);
++        else reveal();
++      }
++      s.onload = done;
++      s.onerror = w.__revealExperiment; // SDK unavailable: show the original content
++      d.head.appendChild(s);
++    })(window, document);
++  </script>
++
++  <style>
++    *, *::before, *::after { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      color: #0f172a;
++      line-height: 1.5;
++    }
++    .nav {
++      position: absolute; inset: 0 0 auto 0;
++      display: flex; justify-content: space-between; align-items: center;
++      padding: 1.25rem 2rem; color: #fff; z-index: 2;
++    }
++    .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -.01em; }
++    .hero {
++      position: relative;
++      min-height: 100vh;
++      display: flex; align-items: center; justify-content: center;
++      text-align: center;
++      padding: 6rem 1.5rem 4rem;
++      color: #fff;
++      background:
++        linear-gradient(rgba(15, 23, 42, .65), rgba(15, 23, 42, .75)),
++        url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80")
++        center / cover no-repeat #0f172a;
++    }
++    .hero-inner { max-width: 44rem; }
++    .hero h1 {
++      margin: 0 0 1rem;
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.1;
++      letter-spacing: -.02em;
++    }
++    .hero p {
++      margin: 0 auto 2rem;
++      font-size: clamp(1.05rem, 2.2vw, 1.3rem);
++      color: #e2e8f0;
++      max-width: 36rem;
++    }
++    .cta {
++      display: inline-block;
++      padding: .95rem 2.25rem;
++      font-size: 1.1rem; font-weight: 600;
++      color: #fff; background: #6366f1;
++      border: 0; border-radius: .6rem;
++      text-decoration: none; cursor: pointer;
++      box-shadow: 0 8px 24px rgba(99, 102, 241, .45);
++      transition: transform .15s ease, background .15s ease;
++    }
++    .cta:hover { background: #4f46e5; transform: translateY(-2px); }
++    .cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    footer { padding: 2rem; text-align: center; color: #64748b; font-size: .9rem; }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <span class="logo">Launchpad</span>
++  </header>
++
++  <main>
++    <section class="hero" id="hero" data-experiment="hero">
++      <div class="hero-inner">
++        <h1 id="hero-headline">Turn your ideas into launches, faster.</h1>
++        <p id="hero-subtext">Launchpad gives your team everything it needs to plan, build, and ship products people love.</p>
++        <a href="#signup" class="cta" id="cta-button" data-experiment="cta">Get started free</a>
++      </div>
++    </section>
++  </main>
++
++  <footer>&copy; 2026 Launchpad. All rights reserved.</footer>
++</body>
++</html>

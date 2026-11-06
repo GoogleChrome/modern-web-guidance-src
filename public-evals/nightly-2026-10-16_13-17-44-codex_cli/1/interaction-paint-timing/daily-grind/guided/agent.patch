@@ -1,0 +1,279 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..eba210b
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,26 @@
++# Render timing
++
++The page loads `render-timing.js` to measure contentful updates caused by user
++interactions, including asynchronous updates and client-side navigations.
++It does not change the site's links into client-side routes.
++
++Listen for `window`'s `render-timing` custom event to consume reports, or read
++`window.renderTiming.getReports()` for the latest 100 reports. Nothing is sent
++over the network. Durations are in milliseconds, relative to the initiating
++interaction, rather than the original page load.
++
++- `interaction-paint`: `interactionId`, `duration`, `element`, `size`. Each larger
++  contentful paint for an interaction produces a new candidate report.
++- `soft-navigation`: `url`, `navigationId`, `interactionId`, `fcpDuration`,
++  `lcpDuration`, `element`, `size`. Finalized on the next soft navigation, when the
++  page becomes hidden, or on page exit. LCP is null when no candidate is available.
++
++`window.renderTiming.supported` exposes browser support. These performance entry
++types have limited availability; unsupported browsers keep working and produce
++no substitute or estimated metrics. This measures contentful updates, not INP
++or initial page-load LCP. Soft-navigation LCP candidates are matched by interaction
++ID, including paints before the URL changed. `window.renderTiming.stop()` drains
++pending records, finalizes the active route, and removes observers and listeners.
++
++Run automated checks with `npm test`. The tests use mocked browser performance
++entries; they do not verify browser-specific entry generation or presentation.
+diff --git a/index.html b/index.html
+index 66c9173..b0db33c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/render-timing.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/package.json b/package.json
+index 2bd4d77..a2a2adc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test tests/*.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/render-timing.js b/render-timing.js
+new file mode 100644
+index 0000000..20f4788
+--- /dev/null
++++ b/render-timing.js
+@@ -0,0 +1,111 @@
++(() => {
++  'use strict';
++
++  const types = window.PerformanceObserver?.supportedEntryTypes ?? [];
++  const supported = Object.freeze({
++    interactionPaint: types.includes('interaction-contentful-paint'),
++    softNavigation: types.includes('soft-navigation'),
++  });
++  const reports = [];
++  let activeNavigation = null;
++  let largestPaint = null;
++  let observer = null;
++  let stopped = false;
++
++  function publish(report) {
++    const record = Object.freeze(report);
++    reports.push(record);
++    if (reports.length > 100) reports.shift();
++    window.dispatchEvent(new CustomEvent('render-timing', { detail: record }));
++  }
++
++  function elementName(entry) {
++    const element = entry?.largestContentfulPaint?.element;
++    return element ? element.localName + (element.id ? `#${element.id}` : '') : null;
++  }
++
++  function updateLargest(entry) {
++    if (!entry) return;
++    const size = entry.largestContentfulPaint?.size ?? 0;
++    const previousSize = largestPaint?.largestContentfulPaint?.size ?? 0;
++    if (!largestPaint || size > previousSize ||
++        (size === previousSize && entry.presentationTime > largestPaint.presentationTime)) {
++      largestPaint = entry;
++    }
++  }
++
++  function finalizeNavigation() {
++    if (!activeNavigation) return;
++    const navigation = activeNavigation;
++    const paint = largestPaint;
++    activeNavigation = null;
++    largestPaint = null;
++    publish({
++      type: 'soft-navigation',
++      url: navigation.name,
++      navigationId: navigation.navigationId,
++      interactionId: navigation.interactionId,
++      fcpDuration: navigation.duration,
++      lcpDuration: paint ? paint.presentationTime - navigation.startTime : null,
++      element: elementName(paint),
++      size: paint?.largestContentfulPaint?.size ?? null,
++    });
++  }
++
++  function process(entries) {
++    // Both entry types start at their initiating interaction. Handle the route
++    // first when tied, regardless of the observer's delivery order.
++    const ordered = [...entries].sort((a, b) => a.startTime - b.startTime ||
++      Number(b.entryType === 'soft-navigation') - Number(a.entryType === 'soft-navigation'));
++    for (const entry of ordered) {
++      if (entry.entryType === 'soft-navigation') {
++        finalizeNavigation();
++        activeNavigation = entry;
++        // This also captures paints that preceded the URL change.
++        updateLargest(entry.getLargestInteractionContentfulPaint());
++      } else if (entry.entryType === 'interaction-contentful-paint') {
++        if (activeNavigation?.interactionId === entry.interactionId) updateLargest(entry);
++        publish({
++          type: 'interaction-paint',
++          interactionId: entry.interactionId,
++          duration: entry.duration,
++          element: elementName(entry),
++          size: entry.largestContentfulPaint?.size ?? null,
++        });
++      }
++    }
++  }
++
++  function flush() {
++    // Include records queued since the last observer callback before finalizing.
++    if (observer) process(observer.takeRecords());
++    finalizeNavigation();
++  }
++
++  function onVisibilityChange() {
++    if (document.visibilityState === 'hidden') flush();
++  }
++
++  if (supported.interactionPaint) {
++    observer = new PerformanceObserver(list => process(list.getEntries()));
++    observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++    if (supported.softNavigation) {
++      observer.observe({ type: 'soft-navigation', buffered: true });
++    }
++    document.addEventListener('visibilitychange', onVisibilityChange);
++    window.addEventListener('pagehide', flush);
++  }
++
++  window.renderTiming = Object.freeze({
++    supported,
++    getReports: () => reports.slice(),
++    stop() {
++      if (stopped) return;
++      stopped = true;
++      flush();
++      observer?.disconnect();
++      document.removeEventListener('visibilitychange', onVisibilityChange);
++      window.removeEventListener('pagehide', flush);
++    },
++  });
++})();
+diff --git a/tests/render-timing.test.cjs b/tests/render-timing.test.cjs
+new file mode 100644
+index 0000000..a9355ab
+--- /dev/null
++++ b/tests/render-timing.test.cjs
+@@ -0,0 +1,100 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++
++const source = readFileSync(require.resolve('../render-timing.js'), 'utf8');
++
++function setup(types) {
++  let observer;
++  const events = [];
++  const listeners = new Map();
++  class Observer {
++    static supportedEntryTypes = types;
++    registrations = [];
++    queued = [];
++    constructor(callback) { this.callback = callback; observer = this; }
++    observe(options) { this.registrations.push(options); }
++    takeRecords() { const entries = this.queued; this.queued = []; return entries; }
++    disconnect() { this.disconnected = true; }
++    deliver(entries) { this.callback({ getEntries: () => entries }); }
++  }
++  const window = {
++    PerformanceObserver: Observer,
++    dispatchEvent: event => events.push(event.detail),
++    addEventListener: (type, callback) => listeners.set(type, callback),
++    removeEventListener: type => listeners.delete(type),
++  };
++  const document = {
++    visibilityState: 'visible',
++    addEventListener: (type, callback) => listeners.set(type, callback),
++    removeEventListener: type => listeners.delete(type),
++  };
++  runInNewContext(source, {
++    window, document, PerformanceObserver: Observer,
++    CustomEvent: class { constructor(type, options) { this.detail = options.detail; } },
++  });
++  return { api: window.renderTiming, observer, events, listeners, document };
++}
++
++function paint(interactionId, startTime, duration, size = 100) {
++  return { entryType: 'interaction-contentful-paint', interactionId, startTime,
++    duration, presentationTime: startTime + duration,
++    largestContentfulPaint: { size, element: { localName: 'h1', id: 'title' } } };
++}
++
++function navigation(interactionId, startTime, seed) {
++  return { entryType: 'soft-navigation', interactionId, startTime, duration: 20,
++    name: 'https://example.com/menu', navigationId: 99,
++    getLargestInteractionContentfulPaint: () => seed };
++}
++
++test('unsupported browsers skip observers and return no fabricated measurements', () => {
++  const { api, observer } = setup([]);
++  assert.equal(observer, undefined);
++  assert.equal(api.supported.interactionPaint, false);
++  assert.equal(api.getReports().length, 0);
++  api.stop();
++});
++
++test('reports interaction duration and limits retained records', () => {
++  const { observer, api, events } = setup(['interaction-contentful-paint']);
++  assert.equal(observer.registrations[0].buffered, true);
++  observer.deliver(Array.from({ length: 105 }, (_, i) => paint(i, 1000, 45)));
++  assert.equal(api.getReports().length, 100);
++  assert.equal(events[0].duration, 45);
++  assert.equal(events[0].element, 'h1#title');
++  assert.ok(Object.isFrozen(events[0]));
++});
++
++test('seeds early paints, matches interaction IDs, and drains records on hide', () => {
++  const { observer, api, document, listeners } = setup([
++    'interaction-contentful-paint', 'soft-navigation',
++  ]);
++  assert.ok(observer.registrations.every(options => options.buffered));
++  const seed = paint(1, 1000, 80, 500);
++  observer.deliver([seed]);
++  observer.deliver([navigation(1, 1000, seed), paint(2, 1100, 800, 1000)]);
++  observer.queued = [paint(1, 1000, 120, 600)];
++  document.visibilityState = 'hidden';
++  listeners.get('visibilitychange')();
++  const report = api.getReports().find(entry => entry.type === 'soft-navigation');
++  assert.equal(report.fcpDuration, 20);
++  assert.equal(report.lcpDuration, 120);
++  assert.equal(report.size, 600);
++  listeners.get('pagehide')();
++  assert.equal(api.getReports().filter(entry => entry.type === 'soft-navigation').length, 1);
++});
++
++test('handles reversed delivery order, retains larger seed, finalizes on next route', () => {
++  const { observer, api } = setup(['interaction-contentful-paint', 'soft-navigation']);
++  observer.deliver([paint(1, 1000, 40, 100), navigation(1, 1000, paint(1, 1000, 80, 500))]);
++  observer.deliver([navigation(2, 2000, null)]);
++  assert.equal(api.getReports().find(entry => entry.type === 'soft-navigation').lcpDuration, 80);
++  api.stop();
++  api.stop();
++  const routes = api.getReports().filter(entry => entry.type === 'soft-navigation');
++  assert.equal(routes.length, 2);
++  assert.equal(routes[1].lcpDuration, null);
++  assert.equal(observer.disconnected, true);
++});

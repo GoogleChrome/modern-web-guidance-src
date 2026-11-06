@@ -1,0 +1,183 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,27 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #seasonal-preview {
++      margin-top: 30px;
++      padding: 16px 20px;
++      background: white;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      text-align: center;
++      font-size: 1.15rem;
++      font-weight: 600;
++      color: var(--text);
++      transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
++    }
++
++    #seasonal-preview.active,
++    #seasonal-preview:interest-target {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,21 +199,22 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview" interesttarget="seasonal-preview" data-drink="Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview" interesttarget="seasonal-preview" data-drink="Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview" interesttarget="seasonal-preview" data-drink="Cold Brew">View Details</a>
+         </div>
+       </div>
++      <div id="seasonal-preview">Select a drink to preview</div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +226,125 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const defaultText = 'Select a drink to preview';
++      const preview = document.getElementById('seasonal-preview');
++
++      if (!preview) return;
++
++      function updatePreview(source) {
++        if (!source) return;
++        const drinkName = source.getAttribute('data-drink') ||
++          source.closest('.card')?.querySelector('h3')?.textContent?.trim() ||
++          source.textContent?.trim();
++        if (drinkName) {
++          preview.textContent = drinkName;
++          preview.style.color = 'var(--accent)';
++          preview.classList.add('active');
++        }
++      }
++
++      function resetPreview() {
++        preview.textContent = defaultText;
++        preview.style.color = '';
++        preview.classList.remove('active');
++      }
++
++      // Listen for declarative interest events on the target element
++      preview.addEventListener('interest', function (event) {
++        const source = event.source || (event.detail && event.detail.source);
++        updatePreview(source);
++      });
++
++      preview.addEventListener('loseinterest', function () {
++        resetPreview();
++      });
++
++      // Polyfill / fallback for environments without native Interest Invoker support.
++      // Uses document-level delegation instead of attaching handlers to individual buttons.
++      if (!('oninterest' in HTMLElement.prototype) && !('InterestEvent' in window)) {
++        if (typeof window.InterestEvent === 'undefined') {
++          window.InterestEvent = class InterestEvent extends Event {
++            constructor(type, initDict = {}) {
++              super(type, initDict);
++              this.source = initDict.source || null;
++            }
++          };
++        }
++
++        let currentInvoker = null;
++        let currentTarget = null;
++
++        function handleInterest(invoker) {
++          const targetId = invoker.getAttribute('interestfor') || invoker.getAttribute('interesttarget');
++          if (!targetId) return;
++          const target = document.getElementById(targetId);
++          if (!target) return;
++
++          if (currentInvoker !== invoker) {
++            if (currentTarget) {
++              handleLoseInterest();
++            }
++            currentInvoker = invoker;
++            currentTarget = target;
++            let event;
++            try {
++              event = new InterestEvent('interest', { source: invoker, bubbles: false, cancelable: true });
++            } catch (e) {
++              event = new CustomEvent('interest', { bubbles: false, cancelable: true });
++              event.source = invoker;
++            }
++            target.dispatchEvent(event);
++          }
++        }
++
++        function handleLoseInterest() {
++          if (currentTarget && currentInvoker) {
++            let event;
++            try {
++              event = new InterestEvent('loseinterest', { source: currentInvoker, bubbles: false, cancelable: true });
++            } catch (e) {
++              event = new CustomEvent('loseinterest', { bubbles: false, cancelable: true });
++              event.source = currentInvoker;
++            }
++            currentTarget.dispatchEvent(event);
++            currentTarget = null;
++            currentInvoker = null;
++          }
++        }
++
++        document.addEventListener('mouseover', function (e) {
++          const invoker = e.target.closest('[interestfor], [interesttarget]');
++          if (invoker) {
++            handleInterest(invoker);
++          } else if (currentInvoker && !currentInvoker.contains(e.target)) {
++            handleLoseInterest();
++          }
++        });
++
++        document.addEventListener('mouseout', function (e) {
++          if (currentInvoker && !currentInvoker.contains(e.relatedTarget)) {
++            handleLoseInterest();
++          }
++        });
++
++        document.addEventListener('focusin', function (e) {
++          const invoker = e.target.closest('[interestfor], [interesttarget]');
++          if (invoker) {
++            handleInterest(invoker);
++          }
++        });
++
++        document.addEventListener('focusout', function (e) {
++          if (currentInvoker && !currentInvoker.contains(e.relatedTarget)) {
++            handleLoseInterest();
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

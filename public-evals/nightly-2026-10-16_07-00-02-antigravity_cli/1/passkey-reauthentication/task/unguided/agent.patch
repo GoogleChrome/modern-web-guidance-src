@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Account Security Section -->
++    <section id="account-security" style="margin-top: 40px;">
++      <h2 style="text-align: center;">Account Security</h2>
++      <div class="card" style="max-width: 600px; margin: 20px auto; text-align: center;">
++        <h3>Sensitive Account Action</h3>
++        <p style="margin-bottom: 15px;">To modify sensitive settings (such as changing your email or password), re-confirm your identity using your security key or passkey.</p>
++        <button type="button" id="reauth-button" data-testid="reauth-button" class="btn">Re-authenticate</button>
++        <div id="reauth-status" style="margin-top: 15px; font-weight: bold; display: none;"></div>
++
++        <div id="sensitive-settings" style="margin-top: 20px; display: none; text-align: left; border-top: 1px solid var(--secondary); padding-top: 20px;">
++          <h4 style="margin-bottom: 10px;">Update Sensitive Settings</h4>
++          <form id="sensitive-form" onsubmit="event.preventDefault(); alert('Settings updated!');">
++            <div style="margin-bottom: 10px;">
++              <label for="new-email" style="display: block; font-size: 0.9rem; margin-bottom: 5px;">New Email Address:</label>
++              <input type="email" id="new-email" placeholder="new-email@example.com" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
++            </div>
++            <button type="submit" class="btn" style="background: #2e7d32;">Save Changes</button>
++          </form>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +228,166 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function base64UrlToBuffer(base64url) {
++      if (!base64url) return new ArrayBuffer(0);
++      if (base64url instanceof ArrayBuffer) return base64url;
++      if (ArrayBuffer.isView(base64url)) return base64url.buffer;
++      if (typeof base64url !== 'string') return base64url;
++      let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++      const remainder = base64.length % 4;
++      if (remainder === 2) base64 += '==';
++      else if (remainder === 3) base64 += '=';
++      else if (remainder === 1) base64 += '===';
++      const rawData = window.atob(base64);
++      const outputArray = new Uint8Array(rawData.length);
++      for (let i = 0; i < rawData.length; ++i) {
++        outputArray[i] = rawData.charCodeAt(i);
++      }
++      return outputArray.buffer;
++    }
++
++    function bufferToBase64Url(buffer) {
++      if (!buffer) return null;
++      const bytes = new Uint8Array(buffer);
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') {
++        return credential.toJSON();
++      }
++      return {
++        id: credential.id,
++        rawId: bufferToBase64Url(credential.rawId),
++        type: credential.type,
++        response: {
++          clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
++          authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
++          signature: bufferToBase64Url(credential.response.signature),
++          userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null
++        },
++        clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
++        authenticatorAttachment: credential.authenticatorAttachment
++      };
++    }
++
++    async function handleReauth(event) {
++      if (event) event.preventDefault();
++      const reauthBtn = document.querySelector('[data-testid="reauth-button"]');
++      const statusEl = document.getElementById('reauth-status');
++      const sensitiveSettings = document.getElementById('sensitive-settings');
++
++      if (reauthBtn) reauthBtn.disabled = true;
++      if (statusEl) {
++        statusEl.textContent = 'Verifying identity...';
++        statusEl.style.color = 'var(--primary)';
++        statusEl.style.display = 'block';
++      }
++
++      try {
++        // 1. Fetch server challenge scoped to user's pre-registered credentials
++        const optionsResponse = await fetch('/api/reauth/options', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'Accept': 'application/json'
++          }
++        });
++
++        if (!optionsResponse.ok) {
++          throw new Error(`Failed to fetch re-authentication options: ${optionsResponse.status} ${optionsResponse.statusText}`);
++        }
++
++        const optionsJSON = await optionsResponse.json();
++        const requestOptions = optionsJSON.publicKey || optionsJSON.options || optionsJSON;
++
++        // 2. Prepare request options and complete WebAuthn ceremony
++        let publicKey;
++        if (typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function') {
++          try {
++            publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(requestOptions);
++          } catch (err) {
++            console.warn('parseRequestOptionsFromJSON failed, falling back:', err);
++          }
++        }
++
++        if (!publicKey) {
++          publicKey = { ...requestOptions };
++          if (typeof publicKey.challenge === 'string') {
++            publicKey.challenge = base64UrlToBuffer(publicKey.challenge);
++          }
++          if (Array.isArray(publicKey.allowCredentials)) {
++            publicKey.allowCredentials = publicKey.allowCredentials.map(cred => ({
++              ...cred,
++              id: typeof cred.id === 'string' ? base64UrlToBuffer(cred.id) : cred.id
++            }));
++          }
++        }
++
++        const credential = await navigator.credentials.get({ publicKey });
++        if (!credential) {
++          throw new Error('Verification ceremony was not completed.');
++        }
++
++        // 3. Submit assertion result to POST /api/reauth/verify
++        const credentialPayload = serializeCredential(credential);
++        const verifyResponse = await fetch('/api/reauth/verify', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'Accept': 'application/json'
++          },
++          body: JSON.stringify(credentialPayload)
++        });
++
++        if (!verifyResponse.ok) {
++          throw new Error(`Verification failed: ${verifyResponse.status} ${verifyResponse.statusText}`);
++        }
++
++        const verifyResult = await verifyResponse.json();
++
++        if (statusEl) {
++          statusEl.textContent = 'Identity successfully verified!';
++          statusEl.style.color = '#2e7d32';
++        }
++        if (sensitiveSettings) {
++          sensitiveSettings.style.display = 'block';
++        }
++
++        return verifyResult;
++      } catch (err) {
++        console.error('Re-authentication error:', err);
++        if (statusEl) {
++          statusEl.textContent = `Verification failed: ${err.message}`;
++          statusEl.style.color = '#c62828';
++          statusEl.style.display = 'block';
++        }
++      } finally {
++        if (reauthBtn) reauthBtn.disabled = false;
++      }
++    }
++
++    function initReauth() {
++      const reauthButton = document.querySelector('[data-testid="reauth-button"]');
++      if (reauthButton) {
++        reauthButton.addEventListener('click', handleReauth);
++      }
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initReauth);
++    } else {
++      initReauth();
++    }
++
++    window.reauthenticate = handleReauth;
++  </script>
+ </body>
+ 
+ </html>

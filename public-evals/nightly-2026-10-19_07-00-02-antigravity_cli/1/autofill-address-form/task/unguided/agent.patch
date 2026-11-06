@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,167 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shipping Form Section */
++    .shipping-section {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++    }
++
++    .shipping-banner {
++      background: linear-gradient(rgba(78, 52, 46, 0.85), rgba(78, 52, 46, 0.85)),
++        url('https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=1200&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 30px 20px;
++      text-align: center;
++    }
++
++    .shipping-banner h2 {
++      font-size: 1.8rem;
++      margin-bottom: 6px;
++      color: white;
++    }
++
++    .shipping-banner p {
++      font-size: 0.95rem;
++      color: var(--secondary);
++    }
++
++    .shipping-form-container {
++      padding: 30px;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .form-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 16px;
++    }
++
++    .form-group {
++      flex: 1 1 100%;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group.half {
++      flex: 1 1 calc(50% - 8px);
++      min-width: 220px;
++    }
++
++    .form-group.third {
++      flex: 1 1 calc(33.333% - 11px);
++      min-width: 140px;
++    }
++
++    .form-group label {
++      font-size: 0.88rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-group label .required {
++      color: #d32f2f;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid #d7ccc8;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: #fafafa;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: none;
++      background-color: #ffffff;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .form-group textarea {
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: 6px;
++      margin-bottom: 12px;
++      cursor: pointer;
++    }
++
++    .checkbox-group input[type="checkbox"] {
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .checkbox-group label {
++      font-size: 0.9rem;
++      color: var(--text);
++      cursor: pointer;
++      margin-bottom: 0;
++      user-select: none;
++    }
++
++    .form-actions {
++      margin-top: 24px;
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++    }
++
++    .form-actions button {
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--text);
++      padding: 10px 20px;
++      border-radius: 5px;
++      border: 1px solid #d7ccc8;
++      transition: background 0.3s;
++    }
++
++    .btn-secondary:hover {
++      background: #d7ccc8;
++    }
++
++    .shipping-alert {
++      display: none;
++      padding: 14px 18px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #a5d6a7;
++      font-weight: 500;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +353,162 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Shipping Address Form -->
++    <section class="shipping-section" id="shipping">
++      <div class="shipping-banner">
++        <h2>Shipping Address</h2>
++        <p>Ethically roasted artisanal coffee delivered straight to your doorstep.</p>
++      </div>
++
++      <div class="shipping-form-container">
++        <div id="shipping-alert" class="shipping-alert" role="status" aria-live="polite">
++          ✓ Shipping address saved successfully! Your coffee will be on its way soon.
++        </div>
++
++        <form id="shipping-form" action="#" method="POST" autocomplete="on">
++          <div class="form-row">
++            <div class="form-group half">
++              <label for="first-name">First Name <span class="required">*</span></label>
++              <input type="text" id="first-name" name="firstName" autocomplete="given-name" required placeholder="Jane">
++            </div>
++            <div class="form-group half">
++              <label for="last-name">Last Name <span class="required">*</span></label>
++              <input type="text" id="last-name" name="lastName" autocomplete="family-name" required placeholder="Doe">
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group half">
++              <label for="email">Email Address <span class="required">*</span></label>
++              <input type="email" id="email" name="email" autocomplete="email" required placeholder="jane.doe@example.com">
++            </div>
++            <div class="form-group half">
++              <label for="phone">Phone Number <span class="required">*</span></label>
++              <input type="tel" id="phone" name="phone" autocomplete="tel" required placeholder="(555) 123-4567">
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="address-line1">Street Address <span class="required">*</span></label>
++              <input type="text" id="address-line1" name="address1" autocomplete="address-line1" required placeholder="123 Roast Way">
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="address-line2">Apartment, suite, unit, etc. <span style="font-weight: normal; color: #757575;">(optional)</span></label>
++              <input type="text" id="address-line2" name="address2" autocomplete="address-line2" placeholder="Apt 4B">
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group third">
++              <label for="city">City <span class="required">*</span></label>
++              <input type="text" id="city" name="city" autocomplete="address-level2" required placeholder="Seattle">
++            </div>
++            <div class="form-group third">
++              <label for="state">State / Province <span class="required">*</span></label>
++              <select id="state" name="state" autocomplete="address-level1" required>
++                <option value="" disabled selected>Select State</option>
++                <option value="AL">Alabama</option>
++                <option value="AK">Alaska</option>
++                <option value="AZ">Arizona</option>
++                <option value="AR">Arkansas</option>
++                <option value="CA">California</option>
++                <option value="CO">Colorado</option>
++                <option value="CT">Connecticut</option>
++                <option value="DE">Delaware</option>
++                <option value="FL">Florida</option>
++                <option value="GA">Georgia</option>
++                <option value="HI">Hawaii</option>
++                <option value="ID">Idaho</option>
++                <option value="IL">Illinois</option>
++                <option value="IN">Indiana</option>
++                <option value="IA">Iowa</option>
++                <option value="KS">Kansas</option>
++                <option value="KY">Kentucky</option>
++                <option value="LA">Louisiana</option>
++                <option value="ME">Maine</option>
++                <option value="MD">Maryland</option>
++                <option value="MA">Massachusetts</option>
++                <option value="MI">Michigan</option>
++                <option value="MN">Minnesota</option>
++                <option value="MS">Mississippi</option>
++                <option value="MO">Missouri</option>
++                <option value="MT">Montana</option>
++                <option value="NE">Nebraska</option>
++                <option value="NV">Nevada</option>
++                <option value="NH">New Hampshire</option>
++                <option value="NJ">New Jersey</option>
++                <option value="NM">New Mexico</option>
++                <option value="NY">New York</option>
++                <option value="NC">North Carolina</option>
++                <option value="ND">North Dakota</option>
++                <option value="OH">Ohio</option>
++                <option value="OK">Oklahoma</option>
++                <option value="OR">Oregon</option>
++                <option value="PA">Pennsylvania</option>
++                <option value="RI">Rhode Island</option>
++                <option value="SC">South Carolina</option>
++                <option value="SD">South Dakota</option>
++                <option value="TN">Tennessee</option>
++                <option value="TX">Texas</option>
++                <option value="UT">Utah</option>
++                <option value="VT">Vermont</option>
++                <option value="VA">Virginia</option>
++                <option value="WA">Washington</option>
++                <option value="WV">West Virginia</option>
++                <option value="WI">Wisconsin</option>
++                <option value="WY">Wyoming</option>
++                <option value="DC">District of Columbia</option>
++              </select>
++            </div>
++            <div class="form-group third">
++              <label for="postal-code">ZIP / Postal Code <span class="required">*</span></label>
++              <input type="text" id="postal-code" name="postalCode" autocomplete="postal-code" required placeholder="98101">
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="country">Country <span class="required">*</span></label>
++              <select id="country" name="country" autocomplete="country" required>
++                <option value="US" selected>United States</option>
++                <option value="CA">Canada</option>
++                <option value="GB">United Kingdom</option>
++                <option value="AU">Australia</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="delivery-instructions">Delivery Instructions <span style="font-weight: normal; color: #757575;">(optional)</span></label>
++              <textarea id="delivery-instructions" name="deliveryInstructions" rows="3" placeholder="Gate codes, porch drop-off notes, etc."></textarea>
++            </div>
++          </div>
++
++          <div class="checkbox-group">
++            <input type="checkbox" id="save-address" name="saveAddress" checked>
++            <label for="save-address">Save this address to my account for future orders</label>
++          </div>
++
++          <div class="checkbox-group">
++            <input type="checkbox" id="same-billing" name="sameBilling" checked>
++            <label for="same-billing">Billing address is the same as shipping address</label>
++          </div>
++
++          <div class="form-actions">
++            <button type="reset" class="btn-secondary">Reset</button>
++            <button type="submit" class="btn" style="border: none;">Save Shipping Address</button>
++          </div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +519,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('shipping-form').addEventListener('submit', function(e) {
++      e.preventDefault();
++      var alertBox = document.getElementById('shipping-alert');
++      if (alertBox) {
++        alertBox.style.display = 'block';
++        alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

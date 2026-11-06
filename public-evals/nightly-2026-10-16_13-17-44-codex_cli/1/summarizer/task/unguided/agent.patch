@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,92 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .journal {
++      margin-top: 56px;
++      padding: clamp(24px, 5vw, 56px);
++      background: #f2ece6;
++      border-top: 3px solid var(--primary);
++      border-radius: 0 0 8px 8px;
++    }
++
++    .journal-eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .journal h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 5vw, 2.8rem);
++      line-height: 1.2;
++      margin: 10px 0 12px;
++    }
++
++    .journal-intro {
++      font-size: 1.1rem;
++      margin-bottom: 28px;
++    }
++
++    .journal-copy {
++      max-width: 72ch;
++    }
++
++    .journal-copy p + p {
++      margin-top: 18px;
++    }
++
++    .journal-tools {
++      margin-top: 28px;
++      padding-top: 24px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .journal-tools .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .journal-tools .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .journal-tools .btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .journal-note, #summary-status {
++      font-size: 0.85rem;
++      margin-top: 10px;
++    }
++
++    .journal-summary {
++      margin-top: 20px;
++      padding: 24px;
++      background: white;
++      border-radius: 6px;
++      border-left: 3px solid var(--accent);
++    }
++
++    .journal-summary h3 {
++      font-family: Georgia, 'Times New Roman', serif;
++      margin-bottom: 12px;
++    }
++
++    .journal-summary ul {
++      padding-left: 22px;
++    }
++
++    .journal-summary li + li {
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +278,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="journal" aria-labelledby="journal-title">
++      <p class="journal-eyebrow">From the source · The Daily Grind</p>
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <p class="journal-intro">A good cup begins long before the first roast.</p>
++
++      <article id="journal-copy" class="journal-copy" aria-label="Our bean sourcing process">
++        <p>Every coffee we bring into the roastery starts with a question: where did it grow, and whose hands helped it get here? Our sourcing process follows the bean back to its origin, looking at the farm, the harvest, and the people behind each lot. Altitude, soil, shade, and rainfall all leave their mark on a coffee. We look for beans that express that sense of place, rather than asking every origin to taste the same.</p>
++        <p>We begin by talking with producers, cooperatives, and sourcing partners who can tell us how a coffee was grown and traded. We ask about picking practices, working conditions, and the price paid to the producer. A label alone cannot tell the whole story, so we value traceable lots and open conversations. Our aim is to build lasting relationships that give growers a reason to keep investing in their land and their coffee, harvest after harvest.</p>
++        <p>Next comes the tasting table. We roast small samples and cup them side by side, paying attention to sweetness, clarity, balance, and finish. We taste without milk or sugar so we can understand the character of the bean itself. A washed coffee might bring a bright, crisp cup, while a naturally processed lot may offer deeper fruit notes. We choose coffees for the care they reflect and the pleasure they bring to the cup, not simply for an unusual tasting note.</p>
++        <p>Responsible sourcing also means asking what happens between harvests. We look for practices that support healthy soil, thoughtful water use, and shade where it suits the growing environment. There is no single recipe that fits every farm. We listen to the people working the land and seek partners who can explain both their progress and their challenges. Those conversations help us make better buying decisions as conditions change.</p>
++        <p>Once a lot is selected, we follow it through milling, shipping, and storage. We compare arrival samples with the coffee we first approved and store green beans carefully to protect their freshness. At the roastery, small trial batches help us find a roast profile that brings out the coffee's natural sweetness without overwhelming its origin. We taste again, adjust, and keep notes before a coffee earns its place on the menu.</p>
++        <p>Our sourcing work never really ends. Coffee is seasonal, and a farm's harvest can change from one year to the next. We revisit our selections, share feedback with our partners, and stay curious about what the next crop will bring. For us, a dependable cup does not mean an identical bean forever. It means applying the same care to every decision, from the first conversation at origin to the last batch we roast for your morning.</p>
++      </article>
++
++      <div class="journal-tools">
++        <button id="summarize-button" class="btn" type="button" aria-controls="journal-summary">Summarize</button>
++        <p class="journal-note">A few key points, created on your device with your browser's AI. A first-time model download may be needed.</p>
++        <p id="summary-status" role="status" aria-live="polite" aria-atomic="true"></p>
++        <div id="journal-summary" class="journal-summary" aria-labelledby="summary-title" hidden>
++          <h3 id="summary-title">The sourcing story, in brief</h3>
++          <ul id="summary-points"></ul>
++          <p class="journal-note">AI-generated summary of this journal entry.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +315,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="journal.js" defer></script>
+ </body>
+ 
+ </html>

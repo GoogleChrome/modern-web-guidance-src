@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..f8412bc 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -60,12 +62,27 @@
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      display: inline-block;
++      padding: 4px 0;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    .nav-indicator {
++      position: absolute;
++      bottom: 0;
++      left: 0;
++      height: 3px;
++      width: 0;
++      background-color: var(--accent);
++      border-radius: 2px;
++      transition: left 0.3s ease, width 0.3s ease;
++      pointer-events: none;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,11 +177,12 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" class="active" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <div class="nav-indicator" aria-hidden="true"></div>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +225,76 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const navList = document.querySelector('nav ul');
++      const indicator = document.querySelector('.nav-indicator');
++      const navLinks = Array.from(document.querySelectorAll('nav ul li a:not(.logout-link)'));
++      const logoutLink = document.querySelector('nav ul li a.logout-link');
++
++      function updateIndicator(targetLink) {
++        if (!targetLink || !navList || !indicator) return;
++        const listRect = navList.getBoundingClientRect();
++        const linkRect = targetLink.getBoundingClientRect();
++        const left = linkRect.width > 0 ? linkRect.left - listRect.left : targetLink.offsetLeft;
++        const width = linkRect.width > 0 ? linkRect.width : targetLink.offsetWidth;
++        indicator.style.left = `${left}px`;
++        indicator.style.width = `${width}px`;
++      }
++
++      function setActiveLink(selectedLink) {
++        navLinks.forEach((link) => {
++          const isSelected = link === selectedLink;
++          link.classList.toggle('active', isSelected);
++          if (link.parentElement) {
++            link.parentElement.classList.toggle('active', isSelected);
++          }
++          if (isSelected) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++        updateIndicator(selectedLink);
++      }
++
++      navLinks.forEach((link) => {
++        link.addEventListener('click', (e) => {
++          e.preventDefault();
++          setActiveLink(link);
++        });
++        if (link.parentElement) {
++          link.parentElement.addEventListener('click', (e) => {
++            if (e.target !== link) {
++              e.preventDefault();
++              setActiveLink(link);
++            }
++          });
++        }
++      });
++
++      if (logoutLink) {
++        logoutLink.addEventListener('click', (e) => {
++          e.preventDefault();
++        });
++      }
++
++      const initialActive = document.querySelector('nav ul li a.active:not(.logout-link)') || navLinks[0];
++      if (initialActive) {
++        setActiveLink(initialActive);
++      }
++
++      window.addEventListener('load', () => {
++        const currentActive = document.querySelector('nav ul li a.active:not(.logout-link)');
++        if (currentActive) updateIndicator(currentActive);
++      });
++
++      window.addEventListener('resize', () => {
++        const currentActive = document.querySelector('nav ul li a.active:not(.logout-link)');
++        if (currentActive) updateIndicator(currentActive);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

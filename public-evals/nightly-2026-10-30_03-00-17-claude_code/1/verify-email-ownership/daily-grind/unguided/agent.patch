@@ -1,0 +1,1201 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..902b281
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++data/
+diff --git a/index.html b/index.html
+index 66c9173..200dd59 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,147 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Rewards Sign-up */
++    .rewards {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      margin-top: 60px;
++      scroll-margin-top: 80px;
++    }
++
++    .rewards-image {
++      background: linear-gradient(rgba(78, 52, 46, 0.55), rgba(78, 52, 46, 0.75)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      padding: 40px;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++    }
++
++    .rewards-image h2 {
++      font-size: 2rem;
++      margin-bottom: 10px;
++    }
++
++    .rewards-image ul {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .rewards-image li::before {
++      content: "\2615\00a0";
++    }
++
++    .rewards-form {
++      padding: 40px;
++    }
++
++    .rewards-form h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .rewards-form .intro {
++      font-size: 0.9rem;
++      margin-bottom: 20px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .field input,
++    .field select {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .field input:focus,
++    .field select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .field .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .checkbox {
++      display: flex;
++      gap: 8px;
++      align-items: flex-start;
++      font-size: 0.85rem;
++      margin-bottom: 16px;
++    }
++
++    .checkbox input {
++      margin-top: 4px;
++    }
++
++    .rewards-form button {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++      width: 100%;
++      margin-top: 0;
++    }
++
++    .rewards-form button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .form-status {
++      margin-top: 16px;
++      padding: 12px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++    }
++
++    .form-status[hidden] {
++      display: none;
++    }
++
++    .form-status.success {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .form-status.error {
++      background: #fbe9e7;
++      color: #bf360c;
++    }
++
++    @media (max-width: 760px) {
++      .rewards {
++        grid-template-columns: 1fr;
++      }
++
++      .rewards-image {
++        min-height: 220px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +336,68 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="rewards" class="rewards" aria-labelledby="rewards-heading">
++      <div class="rewards-image">
++        <h2 id="rewards-heading">Grind Rewards</h2>
++        <p>Every sip gets you closer to your next free drink.</p>
++        <ul>
++          <li>50 bonus points when you join</li>
++          <li>A free drink on your birthday</li>
++          <li>Early access to seasonal favorites</li>
++        </ul>
++      </div>
++
++      <form id="rewards-form" class="rewards-form" action="/api/rewards/signup" method="post">
++        <h3>Create your rewards account</h3>
++        <p class="intro">No codes or confirmation emails. Choose your email from your browser's suggestions and
++          your browser confirms with your email provider that the address is yours.</p>
++
++        <div class="field">
++          <label for="rewards-name">Name</label>
++          <input id="rewards-name" name="name" type="text" autocomplete="name" maxlength="80" required>
++        </div>
++
++        <div class="field">
++          <label for="rewards-email">Email</label>
++          <input id="rewards-email" name="email" type="email" autocomplete="email" maxlength="254" required>
++          <p class="hint">Pick your address from the autofill list so your browser can verify it.</p>
++        </div>
++
++        <!-- Filled by the browser on submit with an issuer-signed token bound to this nonce and our origin. -->
++        <input id="rewards-email-token" type="hidden" name="email_verification_token"
++          autocomplete="email-verification-token" nonce="{{EVP_NONCE}}">
++
++        <div class="field">
++          <label for="rewards-birthday">Birthday month <span style="font-weight: normal;">(optional)</span></label>
++          <select id="rewards-birthday" name="birthday_month">
++            <option value="">Select a month</option>
++            <option value="1">January</option>
++            <option value="2">February</option>
++            <option value="3">March</option>
++            <option value="4">April</option>
++            <option value="5">May</option>
++            <option value="6">June</option>
++            <option value="7">July</option>
++            <option value="8">August</option>
++            <option value="9">September</option>
++            <option value="10">October</option>
++            <option value="11">November</option>
++            <option value="12">December</option>
++          </select>
++        </div>
++
++        <label class="checkbox">
++          <input type="checkbox" name="terms" required>
++          <span>I agree to the Grind Rewards <a href="/rewards/terms">terms</a> and <a href="/privacy-policy">privacy
++              policy</a>.</span>
++        </label>
++
++        <button type="submit" class="btn">Join Grind Rewards</button>
++
++        <div id="rewards-status" class="form-status" role="status" aria-live="polite" hidden></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +410,91 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('rewards-form');
++      const tokenInput = document.getElementById('rewards-email-token');
++      const status = document.getElementById('rewards-status');
++      const button = form.querySelector('button[type="submit"]');
++
++      const MESSAGES = {
++        missing_token: "We couldn't verify your email automatically. Please choose your email from your browser's autofill suggestions. If none appear, your browser or email provider doesn't support instant verification yet.",
++        issuer_not_found: "Your email provider doesn't support instant browser verification yet.",
++        email_mismatch: "The email you entered doesn't match the one your browser verified.",
++        account_exists: 'A rewards account already exists for this email. Try signing in instead.',
++        nonce_expired: 'Your sign-up session expired. Please submit the form again.',
++        invalid_input: 'Please fill in your name, email, and accept the rewards terms.',
++      };
++      const GENERIC = "We couldn't verify that you own this email address.";
++
++      function showStatus(kind, text) {
++        status.className = 'form-status ' + kind;
++        status.textContent = text;
++        status.hidden = false;
++      }
++
++      function setNonce(nonce) {
++        if (!nonce) return;
++        tokenInput.setAttribute('nonce', nonce);
++        tokenInput.value = '';
++      }
++
++      async function refreshNonce() {
++        try {
++          const res = await fetch('/api/rewards/nonce', { credentials: 'same-origin', cache: 'no-store' });
++          if (res.ok) setNonce((await res.json()).nonce);
++        } catch (_) { /* keep the existing nonce */ }
++      }
++
++      // Show the outcome of a non-JavaScript form post (server redirects back here).
++      const params = new URLSearchParams(location.search);
++      if (params.get('rewards') === 'welcome') {
++        showStatus('success', 'Welcome to Grind Rewards! Your email is verified and 50 bonus points are waiting for you.');
++      } else if (params.get('rewards') === 'error') {
++        showStatus('error', MESSAGES[params.get('reason')] || GENERIC);
++      }
++
++      // A page restored from the back/forward cache would carry a used nonce.
++      window.addEventListener('pageshow', (e) => { if (e.persisted) refreshNonce(); });
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++
++        // The browser populates the token field before the submit event fires,
++        // but only if the customer picked their email from autofill and their
++        // provider supports browser-assisted verification.
++        if (!tokenInput.value) {
++          showStatus('error', MESSAGES.missing_token);
++          return;
++        }
++
++        button.disabled = true;
++        showStatus('', 'Verifying your email\u2026');
++        try {
++          const res = await fetch(form.action, {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { Accept: 'application/json' },
++            body: new URLSearchParams(new FormData(form)),
++          });
++          const data = await res.json();
++          if (data.ok) {
++            form.querySelectorAll('input, select, button').forEach((el) => { el.disabled = true; });
++            showStatus('success', 'Welcome to Grind Rewards, ' + data.account.name + '! ' + data.account.email +
++              ' is verified and ' + data.account.points + ' bonus points are waiting for you.');
++            return;
++          }
++          setNonce(data.nonce);
++          showStatus('error', data.message || GENERIC);
++        } catch (_) {
++          await refreshNonce();
++          showStatus('error', 'Something went wrong. Please try again.');
++        }
++        button.disabled = false;
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/lib/evp-verify.js b/lib/evp-verify.js
+new file mode 100644
+index 0000000..2c02542
+--- /dev/null
++++ b/lib/evp-verify.js
+@@ -0,0 +1,296 @@
++// Server-side verification of browser-assisted email verification tokens
++// (WICG Email Verification Protocol, draft-hardt-email-verification-02).
++//
++// When the customer picks their address from the browser's autofill, the
++// browser fetches a signed Email Verification Token (EVT) from the email
++// domain's issuer, binds it to our origin + nonce with a Key Binding JWT, and
++// drops the result into the hidden `autocomplete="email-verification-token"`
++// field on submit. The token looks like:
++//
++//   <EVT JWT>~<KB-JWT>
++//
++// We must check both halves and discover the issuer ourselves via DNS so the
++// customer never has to receive a one-time code or magic link.
++
++import crypto from 'node:crypto';
++import dns from 'node:dns/promises';
++import { domainToASCII } from 'node:url';
++import { safeFetchJson } from './safe-fetch.js';
++
++const MAX_TOKEN_LENGTH = 8192;
++const MAX_AGE_SECONDS = 300;
++const CLOCK_SKEW_SECONDS = 60;
++const DISCOVERY_CACHE_MS = 10 * 60 * 1000;
++
++// draft-02 uses `evt+jwt`; the explainer's earlier examples use `evp-sd-jwt`.
++const EVT_TYPES = new Set(['evt+jwt', 'evp-sd-jwt']);
++const KB_TYPE = 'kb+jwt';
++const DEFAULT_ISSUER_ALGS = ['Ed25519'];
++
++// Fully-specified algorithms we accept, mapped to the only key shape each may
++// be used with. `EdDSA` is accepted solely as a legacy alias for Ed25519 keys
++// (earlier drafts / browser builds emitted it); the key type pins the curve so
++// this doesn't open up algorithm confusion.
++const ALGORITHMS = {
++  Ed25519: { kty: 'OKP', crv: 'Ed25519', hash: null, dsaEncoding: undefined },
++  EdDSA: { kty: 'OKP', crv: 'Ed25519', hash: null, dsaEncoding: undefined },
++  ES256: { kty: 'EC', crv: 'P-256', hash: 'sha256', dsaEncoding: 'ieee-p1363' },
++};
++
++export class EvpVerificationError extends Error {
++  constructor(code, message) {
++    super(message);
++    this.name = 'EvpVerificationError';
++    this.code = code;
++  }
++}
++
++const fail = (code, message) => {
++  throw new EvpVerificationError(code, message);
++};
++
++const B64URL = /^[A-Za-z0-9_-]+$/;
++
++function b64urlJson(segment, what) {
++  if (!B64URL.test(segment)) fail('malformed_token', `${what} is not base64url`);
++  try {
++    const value = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8'));
++    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
++    return value;
++  } catch {
++    fail('malformed_token', `${what} is not a JSON object`);
++  }
++}
++
++function parseJwt(jwt, what) {
++  const parts = jwt.split('.');
++  if (parts.length !== 3 || parts.some((p) => !B64URL.test(p))) {
++    fail('malformed_token', `${what} is not a compact JWS`);
++  }
++  return {
++    header: b64urlJson(parts[0], `${what} header`),
++    payload: b64urlJson(parts[1], `${what} payload`),
++    signingInput: Buffer.from(`${parts[0]}.${parts[1]}`, 'ascii'),
++    signature: Buffer.from(parts[2], 'base64url'),
++  };
++}
++
++function importPublicJwk(jwk, alg, what) {
++  const spec = ALGORITHMS[alg];
++  if (!spec) fail('unsupported_alg', `${what} uses unsupported alg ${JSON.stringify(alg)}`);
++  if (!jwk || typeof jwk !== 'object') fail('invalid_key', `${what} key missing`);
++  if ('d' in jwk) fail('invalid_key', `${what} key must not contain private material`);
++  if (jwk.kty !== spec.kty || jwk.crv !== spec.crv) {
++    fail('invalid_key', `${what} key type does not match alg ${alg}`);
++  }
++  const publicParts = spec.kty === 'OKP'
++    ? { kty: jwk.kty, crv: jwk.crv, x: jwk.x }
++    : { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y };
++  try {
++    return crypto.createPublicKey({ key: publicParts, format: 'jwk' });
++  } catch {
++    fail('invalid_key', `${what} key could not be imported`);
++  }
++}
++
++function verifySignature(parsed, key, alg) {
++  const spec = ALGORITHMS[alg];
++  const keyObject = spec.dsaEncoding ? { key, dsaEncoding: spec.dsaEncoding } : key;
++  try {
++    return crypto.verify(spec.hash, parsed.signingInput, keyObject, parsed.signature);
++  } catch {
++    return false;
++  }
++}
++
++function checkIat(iat, nowSeconds, what) {
++  if (!Number.isInteger(iat)) fail('invalid_claims', `${what} iat missing`);
++  if (iat > nowSeconds + CLOCK_SKEW_SECONDS) fail('token_expired', `${what} iat is in the future`);
++  if (nowSeconds - iat > MAX_AGE_SECONDS) fail('token_expired', `${what} is too old`);
++}
++
++function safeEqual(a, b) {
++  if (typeof a !== 'string' || typeof b !== 'string') return false;
++  const ab = Buffer.from(a);
++  const bb = Buffer.from(b);
++  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
++}
++
++// Hostnames only: lowercase LDH labels, no port, path, or trailing dot.
++const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
++
++export function emailDomain(email) {
++  if (typeof email !== 'string' || email.length > 254) return null;
++  const at = email.lastIndexOf('@');
++  if (at < 1 || at === email.length - 1) return null;
++  const ascii = domainToASCII(email.slice(at + 1).toLowerCase());
++  return HOSTNAME.test(ascii) ? ascii : null;
++}
++
++// ---------------------------------------------------------------------------
++// Issuer discovery: DNS TXT -> /.well-known/email-verification -> jwks_uri
++// ---------------------------------------------------------------------------
++
++export function createDiscovery({
++  resolveTxt = (name) => dns.resolveTxt(name),
++  fetchJson = safeFetchJson,
++  cacheMs = DISCOVERY_CACHE_MS,
++} = {}) {
++  const cache = new Map();
++
++  async function cached(key, load) {
++    const hit = cache.get(key);
++    if (hit && hit.expires > Date.now()) return hit.value;
++    const value = await load();
++    cache.set(key, { value, expires: Date.now() + cacheMs });
++    return value;
++  }
++
++  async function issuerForDomain(domain) {
++    let records;
++    try {
++      records = await resolveTxt(`_email-verification.${domain}`);
++    } catch {
++      fail('issuer_not_found', `No email verification issuer published for ${domain}`);
++    }
++    const issRecords = records
++      .map((chunks) => (Array.isArray(chunks) ? chunks.join('') : String(chunks)))
++      .filter((txt) => txt.startsWith('iss='));
++    if (issRecords.length !== 1) {
++      fail('issuer_not_found', `Expected exactly one issuer record for ${domain}`);
++    }
++    const host = issRecords[0].slice(4).trim();
++    if (!HOSTNAME.test(host)) fail('issuer_not_found', `Invalid issuer host for ${domain}`);
++    return `https://${host}`;
++  }
++
++  async function issuerMetadata(issuer) {
++    return cached(`meta:${issuer}`, async () => {
++      let metadata;
++      try {
++        metadata = await fetchJson(`${issuer}/.well-known/email-verification`);
++      } catch (err) {
++        fail('issuer_unavailable', `Could not load issuer metadata: ${err.message}`);
++      }
++      if (!metadata || metadata.issuer !== issuer) {
++        fail('issuer_mismatch', 'Issuer metadata does not match issuer identifier');
++      }
++      let jwksUrl;
++      try {
++        jwksUrl = new URL(metadata.jwks_uri);
++      } catch {
++        fail('issuer_unavailable', 'Issuer metadata has no valid jwks_uri');
++      }
++      if (jwksUrl.protocol !== 'https:') fail('issuer_unavailable', 'jwks_uri must be https');
++      const algs = Array.isArray(metadata.signing_alg_values_supported)
++        ? metadata.signing_alg_values_supported
++        : DEFAULT_ISSUER_ALGS;
++      return { jwksUri: jwksUrl.href, algs };
++    });
++  }
++
++  async function issuerKey(jwksUri, kid) {
++    const load = async () => {
++      let jwks;
++      try {
++        jwks = await fetchJson(jwksUri);
++      } catch (err) {
++        fail('issuer_unavailable', `Could not load issuer keys: ${err.message}`);
++      }
++      if (!jwks || !Array.isArray(jwks.keys)) fail('issuer_unavailable', 'Issuer JWKS is malformed');
++      return jwks.keys;
++    };
++    let keys = await cached(`jwks:${jwksUri}`, load);
++    let jwk = keys.find((k) => k && k.kid === kid);
++    if (!jwk) {
++      // Issuer may have rotated keys since we cached; refetch once.
++      cache.delete(`jwks:${jwksUri}`);
++      keys = await cached(`jwks:${jwksUri}`, load);
++      jwk = keys.find((k) => k && k.kid === kid);
++    }
++    if (!jwk) fail('invalid_key', 'Issuer signing key not found');
++    return jwk;
++  }
++
++  return { issuerForDomain, issuerMetadata, issuerKey };
++}
++
++const defaultDiscovery = createDiscovery();
++
++// ---------------------------------------------------------------------------
++// Token verification
++// ---------------------------------------------------------------------------
++
++/**
++ * Verify an EVT+KB presentation token.
++ *
++ * @param {string} token              Value of the email-verification-token field.
++ * @param {object} opts
++ * @param {string} opts.audience      Our exact origin, e.g. "https://dailygrind.example".
++ * @param {string} opts.nonce         The nonce we issued for this session.
++ * @param {object} [opts.discovery]   Override issuer discovery (tests).
++ * @param {number} [opts.now]         Override current time in ms (tests).
++ * @returns {Promise<{email: string, issuer: string, isPrivateEmail: boolean}>}
++ */
++export async function verifyEmailVerificationToken(token, { audience, nonce, discovery = defaultDiscovery, now = Date.now() }) {
++  if (!audience || !nonce) throw new Error('audience and nonce are required');
++  if (typeof token !== 'string' || token.length === 0) {
++    fail('missing_token', 'No email verification token was provided');
++  }
++  if (token.length > MAX_TOKEN_LENGTH) fail('malformed_token', 'Token too large');
++
++  const nowSeconds = Math.floor(now / 1000);
++
++  // EVT+KB is an SD-JWT with no disclosures: "<jwt>~<kb-jwt>".
++  const segments = token.split('~');
++  if (segments.length !== 2 || !segments[0] || !segments[1]) {
++    fail('malformed_token', 'Token must be <EVT>~<KB-JWT>');
++  }
++  const [evtJwt, kbJwt] = segments;
++  const evt = parseJwt(evtJwt, 'EVT');
++  const kb = parseJwt(kbJwt, 'KB-JWT');
++
++  // --- EVT structure & claims (§5.3) ---
++  const { header: evtHeader, payload: claims } = evt;
++  if (!EVT_TYPES.has(evtHeader.typ)) fail('malformed_token', 'EVT has wrong typ');
++  if (!ALGORITHMS[evtHeader.alg]) fail('unsupported_alg', 'EVT alg is not supported');
++  if (typeof evtHeader.kid !== 'string' || !evtHeader.kid) fail('malformed_token', 'EVT kid missing');
++  if (typeof claims.iss !== 'string') fail('invalid_claims', 'EVT iss missing');
++  if (typeof claims.email !== 'string') fail('invalid_claims', 'EVT email missing');
++  if (claims.email_verified !== true) fail('email_not_verified', 'Issuer did not assert email_verified');
++  if (!claims.cnf || typeof claims.cnf.jwk !== 'object') fail('invalid_claims', 'EVT cnf.jwk missing');
++  checkIat(claims.iat, nowSeconds, 'EVT');
++
++  // --- KB-JWT structure & claims (§6.5) ---
++  const { header: kbHeader, payload: kbClaims } = kb;
++  const cnfJwk = claims.cnf.jwk;
++  if (kbHeader.typ !== KB_TYPE) fail('malformed_token', 'KB-JWT has wrong typ');
++  if (cnfJwk.alg !== undefined && kbHeader.alg !== cnfJwk.alg) {
++    fail('unsupported_alg', 'KB-JWT alg does not match cnf.jwk alg');
++  }
++  if (!safeEqual(kbClaims.aud, audience)) fail('wrong_audience', 'Token was not issued for this site');
++  if (!safeEqual(kbClaims.nonce, nonce)) fail('wrong_nonce', 'Token nonce does not match this session');
++  checkIat(kbClaims.iat, nowSeconds, 'KB-JWT');
++  const expectedSdHash = crypto.createHash('sha256').update(`${evtJwt}~`, 'ascii').digest('base64url');
++  if (!safeEqual(kbClaims.sd_hash, expectedSdHash)) fail('malformed_token', 'KB-JWT sd_hash mismatch');
++
++  const holderKey = importPublicJwk(cnfJwk, kbHeader.alg, 'cnf.jwk');
++  if (!verifySignature(kb, holderKey, kbHeader.alg)) fail('bad_signature', 'KB-JWT signature is invalid');
++
++  // --- Issuer discovery & EVT signature ---
++  const domain = emailDomain(claims.email);
++  if (!domain) fail('invalid_claims', 'EVT email is not a valid address');
++  const issuer = await discovery.issuerForDomain(domain);
++  if (claims.iss !== issuer) fail('issuer_mismatch', 'EVT iss is not the issuer for this email domain');
++
++  const { jwksUri, algs } = await discovery.issuerMetadata(issuer);
++  if (!algs.includes(evtHeader.alg)) fail('unsupported_alg', 'Issuer does not advertise EVT alg');
++  const issuerJwk = await discovery.issuerKey(jwksUri, evtHeader.kid);
++  if (issuerJwk.alg !== undefined && issuerJwk.alg !== evtHeader.alg) {
++    fail('invalid_key', 'Issuer key alg does not match EVT alg');
++  }
++  const issuerKey = importPublicJwk(issuerJwk, evtHeader.alg, 'issuer');
++  if (!verifySignature(evt, issuerKey, evtHeader.alg)) fail('bad_signature', 'EVT signature is invalid');
++
++  return { email: claims.email, issuer, isPrivateEmail: claims.is_private_email === true };
++}
+diff --git a/lib/safe-fetch.js b/lib/safe-fetch.js
+new file mode 100644
+index 0000000..7291e52
+--- /dev/null
++++ b/lib/safe-fetch.js
+@@ -0,0 +1,103 @@
++// Minimal hardened HTTPS JSON fetcher used for issuer discovery.
++//
++// The issuer host comes from a DNS record controlled by whoever owns the
++// email domain the customer typed, so every request here is effectively
++// attacker-directed. To avoid SSRF we only speak HTTPS, refuse to connect to
++// private / loopback / link-local addresses (checked at connect time, so DNS
++// rebinding can't sneak past), never follow redirects, and cap both the
++// response size and the time we're willing to wait.
++
++import https from 'node:https';
++import dns from 'node:dns';
++import net from 'node:net';
++
++const TIMEOUT_MS = 5000;
++const MAX_BYTES = 64 * 1024;
++
++const blocked = new net.BlockList();
++// IPv4
++blocked.addSubnet('0.0.0.0', 8, 'ipv4');
++blocked.addSubnet('10.0.0.0', 8, 'ipv4');
++blocked.addSubnet('100.64.0.0', 10, 'ipv4');
++blocked.addSubnet('127.0.0.0', 8, 'ipv4');
++blocked.addSubnet('169.254.0.0', 16, 'ipv4');
++blocked.addSubnet('172.16.0.0', 12, 'ipv4');
++blocked.addSubnet('192.0.0.0', 24, 'ipv4');
++blocked.addSubnet('192.168.0.0', 16, 'ipv4');
++blocked.addSubnet('198.18.0.0', 15, 'ipv4');
++blocked.addSubnet('224.0.0.0', 3, 'ipv4');
++// IPv6
++blocked.addAddress('::', 'ipv6');
++blocked.addAddress('::1', 'ipv6');
++// IPv4-mapped IPv6 (::ffff:a.b.c.d) is matched against the IPv4 rules by BlockList.
++blocked.addSubnet('64:ff9b::', 96, 'ipv6');
++blocked.addSubnet('fc00::', 7, 'ipv6');
++blocked.addSubnet('fe80::', 10, 'ipv6');
++blocked.addSubnet('ff00::', 8, 'ipv6');
++
++export function isPublicAddress(address, family) {
++  const type = family === 6 || family === 'IPv6' ? 'ipv6' : 'ipv4';
++  return !blocked.check(address, type);
++}
++
++function publicOnlyLookup(hostname, options, callback) {
++  dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
++    if (err) return callback(err);
++    const list = Array.isArray(addresses) ? addresses : [{ address: addresses, family: options.family }];
++    const bad = list.find((a) => !isPublicAddress(a.address, a.family));
++    if (bad || list.length === 0) {
++      return callback(new Error(`Refusing to connect to non-public address for ${hostname}`));
++    }
++    if (options.all) return callback(null, list);
++    callback(null, list[0].address, list[0].family);
++  });
++}
++
++export function safeFetchJson(urlString) {
++  return new Promise((resolve, reject) => {
++    let url;
++    try {
++      url = new URL(urlString);
++    } catch {
++      return reject(new Error('Invalid URL'));
++    }
++    if (url.protocol !== 'https:' || url.username || url.password) {
++      return reject(new Error('Only plain https:// URLs are allowed'));
++    }
++
++    const req = https.get(
++      url,
++      {
++        lookup: publicOnlyLookup,
++        timeout: TIMEOUT_MS,
++        headers: { accept: 'application/json', 'user-agent': 'DailyGrind-Rewards/1.0' },
++      },
++      (res) => {
++        if (res.statusCode !== 200) {
++          res.resume();
++          return reject(new Error(`Unexpected HTTP ${res.statusCode} from ${url.origin}`));
++        }
++        let size = 0;
++        const chunks = [];
++        res.on('data', (chunk) => {
++          size += chunk.length;
++          if (size > MAX_BYTES) {
++            req.destroy(new Error('Response too large'));
++            return;
++          }
++          chunks.push(chunk);
++        });
++        res.on('end', () => {
++          try {
++            resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
++          } catch {
++            reject(new Error(`Invalid JSON from ${url.href}`));
++          }
++        });
++        res.on('error', reject);
++      },
++    );
++    req.on('timeout', () => req.destroy(new Error('Request timed out')));
++    req.on('error', reject);
++  });
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..1c2d4d4 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,13 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
++  "engines": {
++    "node": ">=20"
++  },
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..e2b03f2
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,290 @@
++// The Daily Grind web server: serves the homepage and the rewards sign-up
++// endpoint that verifies email ownership with the browser-assisted Email
++// Verification Protocol (no one-time passcodes or magic links).
++
++import http from 'node:http';
++import crypto from 'node:crypto';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { verifyEmailVerificationToken, EvpVerificationError } from './lib/evp-verify.js';
++
++const ROOT = path.dirname(fileURLToPath(import.meta.url));
++const PORT = Number(process.env.PORT || 11222);
++// The exact origin customers load the site from. The browser binds the token
++// to this value (KB-JWT `aud`), so it must be configured explicitly in
++// production rather than derived from the spoofable Host header.
++const RP_ORIGIN = (process.env.RP_ORIGIN || `http://localhost:${PORT}`).replace(/\/+$/, '');
++const SECURE_COOKIES = RP_ORIGIN.startsWith('https://');
++const ACCOUNTS_FILE = process.env.REWARDS_ACCOUNTS_FILE || path.join(ROOT, 'data', 'rewards-accounts.json');
++
++const SESSION_COOKIE = 'dg_signup';
++const NONCE_TTL_MS = 15 * 60 * 1000;
++const MAX_SESSIONS = 50_000;
++const MAX_BODY_BYTES = 16 * 1024;
++
++// ---------------------------------------------------------------------------
++// Sign-up sessions: one live nonce per browser session, single use.
++// ---------------------------------------------------------------------------
++
++const sessions = new Map(); // sessionId -> { nonce, expires }
++
++function issueNonce(sessionId) {
++  if (!sessions.has(sessionId) && sessions.size >= MAX_SESSIONS) {
++    sessions.delete(sessions.keys().next().value);
++  }
++  const nonce = crypto.randomBytes(32).toString('base64url');
++  sessions.set(sessionId, { nonce, expires: Date.now() + NONCE_TTL_MS });
++  return nonce;
++}
++
++function takeNonce(sessionId) {
++  const entry = sessionId && sessions.get(sessionId);
++  if (!entry) return null;
++  sessions.delete(sessionId);
++  return entry.expires > Date.now() ? entry.nonce : null;
++}
++
++setInterval(() => {
++  const now = Date.now();
++  for (const [id, entry] of sessions) if (entry.expires <= now) sessions.delete(id);
++}, 60_000).unref();
++
++function getSessionId(req) {
++  const match = /(?:^|;\s*)dg_signup=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.headers.cookie || '');
++  return match ? match[1] : null;
++}
++
++function ensureSession(req, res) {
++  let id = getSessionId(req);
++  if (!id) {
++    id = crypto.randomBytes(32).toString('base64url');
++    const attrs = [`${SESSION_COOKIE}=${id}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=86400'];
++    if (SECURE_COOKIES) attrs.push('Secure');
++    res.setHeader('Set-Cookie', attrs.join('; '));
++  }
++  return id;
++}
++
++// ---------------------------------------------------------------------------
++// Rewards accounts (JSON file store)
++// ---------------------------------------------------------------------------
++
++let accounts = null;
++let writeQueue = Promise.resolve();
++
++async function loadAccounts() {
++  if (accounts) return accounts;
++  try {
++    accounts = JSON.parse(await fs.readFile(ACCOUNTS_FILE, 'utf8'));
++  } catch (err) {
++    if (err.code !== 'ENOENT') throw err;
++    accounts = [];
++  }
++  return accounts;
++}
++
++function persistAccounts() {
++  writeQueue = writeQueue.then(async () => {
++    await fs.mkdir(path.dirname(ACCOUNTS_FILE), { recursive: true });
++    const tmp = `${ACCOUNTS_FILE}.${process.pid}.tmp`;
++    await fs.writeFile(tmp, JSON.stringify(accounts, null, 2));
++    await fs.rename(tmp, ACCOUNTS_FILE);
++  });
++  return writeQueue;
++}
++
++// ---------------------------------------------------------------------------
++// HTTP helpers
++// ---------------------------------------------------------------------------
++
++const SECURITY_HEADERS = {
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'X-Frame-Options': 'DENY',
++};
++
++function send(res, status, body, headers = {}) {
++  res.writeHead(status, { ...SECURITY_HEADERS, ...headers });
++  res.end(body);
++}
++
++function sendJson(res, status, data) {
++  send(res, status, JSON.stringify(data), { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
++}
++
++function readForm(req) {
++  return new Promise((resolve, reject) => {
++    const type = (req.headers['content-type'] || '').split(';')[0].trim();
++    if (type !== 'application/x-www-form-urlencoded') {
++      reject(Object.assign(new Error('Unsupported content type'), { status: 415 }));
++      req.resume();
++      return;
++    }
++    let size = 0;
++    const chunks = [];
++    req.on('data', (chunk) => {
++      size += chunk.length;
++      if (size > MAX_BODY_BYTES) {
++        reject(Object.assign(new Error('Payload too large'), { status: 413 }));
++        req.destroy();
++        return;
++      }
++      chunks.push(chunk);
++    });
++    req.on('end', () => resolve(new URLSearchParams(Buffer.concat(chunks).toString('utf8'))));
++    req.on('error', reject);
++  });
++}
++
++const escapeAttr = (s) => s.replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
++
++// ---------------------------------------------------------------------------
++// Routes
++// ---------------------------------------------------------------------------
++
++let indexTemplate = null;
++
++async function serveHome(req, res) {
++  indexTemplate ??= await fs.readFile(path.join(ROOT, 'index.html'), 'utf8');
++  const nonce = issueNonce(ensureSession(req, res));
++  const html = indexTemplate.replaceAll('{{EVP_NONCE}}', escapeAttr(nonce));
++  send(res, 200, req.method === 'HEAD' ? undefined : html, {
++    'Content-Type': 'text/html; charset=utf-8',
++    'Cache-Control': 'no-store',
++  });
++}
++
++function serveNonce(req, res) {
++  sendJson(res, 200, { nonce: issueNonce(ensureSession(req, res)) });
++}
++
++const FRIENDLY_ERRORS = {
++  missing_token:
++    "We couldn't verify your email automatically. Please choose your email from your browser's autofill suggestions. If none appear, your browser or email provider doesn't support instant verification yet.",
++  issuer_not_found: "Your email provider doesn't support instant browser verification yet.",
++  issuer_unavailable: "We couldn't reach your email provider to confirm your address. Please try again in a moment.",
++  token_expired: 'Your verification expired. Please submit the form again.',
++  wrong_nonce: 'Your sign-up session expired. Please submit the form again.',
++  nonce_expired: 'Your sign-up session expired. Please submit the form again.',
++  email_mismatch: "The email you entered doesn't match the one your browser verified.",
++  account_exists: 'A rewards account already exists for this email. Try signing in instead.',
++  invalid_input: 'Please fill in your name, email, and accept the rewards terms.',
++};
++const GENERIC_ERROR = "We couldn't verify that you own this email address.";
++
++class SignupError extends Error {
++  constructor(status, code) {
++    super(code);
++    this.status = status;
++    this.code = code;
++  }
++}
++
++async function handleSignup(req, res) {
++  const wantsJson = (req.headers.accept || '').includes('application/json');
++  const sessionId = getSessionId(req);
++
++  const respond = (status, payload) => {
++    if (wantsJson) {
++      // On failure hand back a fresh nonce so the page can retry without reloading.
++      if (!payload.ok && sessionId) payload.nonce = issueNonce(sessionId);
++      return sendJson(res, status, payload);
++    }
++    const query = payload.ok ? 'rewards=welcome' : `rewards=error&reason=${encodeURIComponent(payload.error)}`;
++    send(res, 303, undefined, { Location: `/?${query}#rewards`, 'Cache-Control': 'no-store' });
++  };
++
++  try {
++    // Cross-site form posts can't produce a valid token for our origin, but
++    // reject them up front anyway.
++    const origin = req.headers.origin;
++    if (origin && origin !== RP_ORIGIN) throw new SignupError(403, 'bad_origin');
++
++    const form = await readForm(req);
++    const name = (form.get('name') || '').trim();
++    const email = (form.get('email') || '').trim();
++    const token = (form.get('email_verification_token') || '').trim();
++    const birthdayMonth = form.get('birthday_month') || '';
++    const agreed = form.get('terms') === 'on';
++
++    if (!name || name.length > 80 || !email || email.length > 254 || !agreed) {
++      throw new SignupError(400, 'invalid_input');
++    }
++    if (birthdayMonth && !/^(?:[1-9]|1[0-2])$/.test(birthdayMonth)) {
++      throw new SignupError(400, 'invalid_input');
++    }
++    if (!token) throw new SignupError(400, 'missing_token');
++
++    const nonce = takeNonce(sessionId);
++    if (!nonce) throw new SignupError(400, 'nonce_expired');
++
++    const verified = await verifyEmailVerificationToken(token, { audience: RP_ORIGIN, nonce });
++
++    // The verified address is authoritative; it must be the one the customer typed.
++    if (verified.email.toLowerCase() !== email.toLowerCase()) {
++      throw new SignupError(400, 'email_mismatch');
++    }
++
++    const list = await loadAccounts();
++    const normalized = verified.email.toLowerCase();
++    if (list.some((a) => a.email.toLowerCase() === normalized)) {
++      throw new SignupError(409, 'account_exists');
++    }
++    const account = {
++      id: crypto.randomUUID(),
++      name,
++      email: verified.email,
++      emailVerified: true,
++      emailVerification: {
++        method: 'browser-evp',
++        issuer: verified.issuer,
++        isPrivateEmail: verified.isPrivateEmail,
++        verifiedAt: new Date().toISOString(),
++      },
++      birthdayMonth: birthdayMonth ? Number(birthdayMonth) : null,
++      points: 50, // welcome bonus
++      createdAt: new Date().toISOString(),
++    };
++    list.push(account);
++    await persistAccounts();
++
++    respond(201, {
++      ok: true,
++      account: { name: account.name, email: account.email, points: account.points },
++    });
++  } catch (err) {
++    if (err instanceof EvpVerificationError || err instanceof SignupError) {
++      const status = err instanceof SignupError ? err.status : 400;
++      if (err instanceof EvpVerificationError) console.warn(`[rewards] verification failed: ${err.code}: ${err.message}`);
++      return respond(status, { ok: false, error: err.code, message: FRIENDLY_ERRORS[err.code] || GENERIC_ERROR });
++    }
++    if (err.status === 413 || err.status === 415) {
++      return respond(err.status, { ok: false, error: 'invalid_input', message: FRIENDLY_ERRORS.invalid_input });
++    }
++    console.error('[rewards] sign-up error', err);
++    respond(500, { ok: false, error: 'server_error', message: 'Something went wrong. Please try again.' });
++  }
++}
++
++const server = http.createServer(async (req, res) => {
++  const { pathname } = new URL(req.url, 'http://localhost');
++  try {
++    if ((pathname === '/' || pathname === '/index.html') && (req.method === 'GET' || req.method === 'HEAD')) {
++      return await serveHome(req, res);
++    }
++    if (pathname === '/api/rewards/nonce' && req.method === 'GET') return serveNonce(req, res);
++    if (pathname === '/api/rewards/signup') {
++      if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed', { Allow: 'POST' });
++      return await handleSignup(req, res);
++    }
++    send(res, 404, 'Not Found', { 'Content-Type': 'text/plain' });
++  } catch (err) {
++    console.error(err);
++    if (!res.headersSent) send(res, 500, 'Internal Server Error');
++  }
++});
++
++server.listen(PORT, () => {
++  console.log(`The Daily Grind listening on :${PORT} (RP origin ${RP_ORIGIN})`);
++});
+diff --git a/test/evp-verify.test.js b/test/evp-verify.test.js
+new file mode 100644
+index 0000000..41dbb23
+--- /dev/null
++++ b/test/evp-verify.test.js
+@@ -0,0 +1,148 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import crypto from 'node:crypto';
++import { verifyEmailVerificationToken, createDiscovery, emailDomain } from '../lib/evp-verify.js';
++import { isPublicAddress } from '../lib/safe-fetch.js';
++
++const AUD = 'https://dailygrind.example';
++const NONCE = 'n-0S6_WzA2Mj';
++const ISSUER = 'https://issuer.example';
++
++const issuerKeys = crypto.generateKeyPairSync('ed25519');
++const issuerJwk = { ...issuerKeys.publicKey.export({ format: 'jwk' }), kid: 'k1', alg: 'Ed25519' };
++const browserKeys = crypto.generateKeyPairSync('ed25519');
++const browserJwk = { ...browserKeys.publicKey.export({ format: 'jwk' }), alg: 'Ed25519' };
++
++const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
++function sign(header, payload, privateKey) {
++  const input = `${b64(header)}.${b64(payload)}`;
++  return `${input}.${crypto.sign(null, Buffer.from(input), privateKey).toString('base64url')}`;
++}
++
++function makeToken({ evtHeader = {}, evtClaims = {}, kbHeader = {}, kbClaims = {}, issuerKey = issuerKeys.privateKey, browserKey = browserKeys.privateKey } = {}) {
++  const now = Math.floor(Date.now() / 1000);
++  const evt = sign(
++    { alg: 'Ed25519', kid: 'k1', typ: 'evt+jwt', ...evtHeader },
++    { iss: ISSUER, iat: now, cnf: { jwk: browserJwk }, email: 'barista@mail.example', email_verified: true, ...evtClaims },
++    issuerKey,
++  );
++  const sdHash = crypto.createHash('sha256').update(`${evt}~`).digest('base64url');
++  const kb = sign(
++    { alg: 'Ed25519', typ: 'kb+jwt', ...kbHeader },
++    { aud: AUD, nonce: NONCE, iat: now, sd_hash: sdHash, ...kbClaims },
++    browserKey,
++  );
++  return `${evt}~${kb}`;
++}
++
++function discovery({ txt = [['iss=issuer.example']], metadata, jwks } = {}) {
++  const docs = {
++    [`${ISSUER}/.well-known/email-verification`]: metadata ?? {
++      issuer: ISSUER,
++      issuance_endpoint: `${ISSUER}/issue`,
++      jwks_uri: `${ISSUER}/jwks.json`,
++    },
++    [`${ISSUER}/jwks.json`]: jwks ?? { keys: [issuerJwk] },
++  };
++  return createDiscovery({
++    resolveTxt: async (name) => {
++      assert.equal(name, '_email-verification.mail.example');
++      return txt;
++    },
++    fetchJson: async (url) => {
++      if (!(url in docs)) throw new Error(`unexpected fetch ${url}`);
++      return docs[url];
++    },
++  });
++}
++
++const verify = (token, opts = {}) =>
++  verifyEmailVerificationToken(token, { audience: AUD, nonce: NONCE, discovery: discovery(), ...opts });
++
++const rejectsWith = (promise, code) => assert.rejects(promise, (err) => err.code === code);
++
++test('accepts a valid EVT+KB token', async () => {
++  const result = await verify(makeToken());
++  assert.deepEqual(result, { email: 'barista@mail.example', issuer: ISSUER, isPrivateEmail: false });
++});
++
++test('accepts legacy evp-sd-jwt typ with EdDSA alg on Ed25519 keys', async () => {
++  const legacyBrowserJwk = { ...browserJwk };
++  delete legacyBrowserJwk.alg;
++  const token = makeToken({
++    evtHeader: { alg: 'EdDSA', typ: 'evp-sd-jwt' },
++    evtClaims: { cnf: { jwk: legacyBrowserJwk } },
++    kbHeader: { alg: 'EdDSA' },
++  });
++  const jwk = { ...issuerJwk };
++  delete jwk.alg;
++  const d = discovery({
++    metadata: { issuer: ISSUER, jwks_uri: `${ISSUER}/jwks.json`, signing_alg_values_supported: ['EdDSA'] },
++    jwks: { keys: [jwk] },
++  });
++  assert.equal((await verify(token, { discovery: d })).email, 'barista@mail.example');
++});
++
++test('rejects a token minted for another site', () => rejectsWith(verify(makeToken({ kbClaims: { aud: 'https://evil.example' } })), 'wrong_audience'));
++
++test('rejects a token bound to a different nonce', () => rejectsWith(verify(makeToken({ kbClaims: { nonce: 'other' } })), 'wrong_nonce'));
++
++test('rejects stale tokens', () => {
++  const old = Math.floor(Date.now() / 1000) - 3600;
++  return rejectsWith(verify(makeToken({ kbClaims: { iat: old } })), 'token_expired');
++});
++
++test('rejects KB-JWT signed by a key other than cnf.jwk', () =>
++  rejectsWith(verify(makeToken({ browserKey: crypto.generateKeyPairSync('ed25519').privateKey })), 'bad_signature'));
++
++test('rejects EVT forged with a key the issuer does not publish', () =>
++  rejectsWith(verify(makeToken({ issuerKey: crypto.generateKeyPairSync('ed25519').privateKey })), 'bad_signature'));
++
++test('rejects EVT whose iss is not the DNS-designated issuer', () =>
++  rejectsWith(verify(makeToken({ evtClaims: { iss: 'https://attacker.example' } })), 'issuer_mismatch'));
++
++test('rejects when the email domain publishes no issuer', () =>
++  rejectsWith(verify(makeToken(), { discovery: discovery({ txt: [] }) }), 'issuer_not_found'));
++
++test('rejects issuer records with paths or ports', () =>
++  rejectsWith(verify(makeToken(), { discovery: discovery({ txt: [['iss=issuer.example:8443']] }) }), 'issuer_not_found'));
++
++test('rejects metadata that claims a different issuer', () =>
++  rejectsWith(
++    verify(makeToken(), { discovery: discovery({ metadata: { issuer: 'https://other.example', jwks_uri: `${ISSUER}/jwks.json` } }) }),
++    'issuer_mismatch',
++  ));
++
++test('rejects email_verified false', () => rejectsWith(verify(makeToken({ evtClaims: { email_verified: false } })), 'email_not_verified'));
++
++test('rejects tampered EVT (sd_hash mismatch)', async () => {
++  const token = makeToken();
++  const otherEvt = makeToken({ evtClaims: { email: 'victim@mail.example' } }).split('~')[0];
++  await rejectsWith(verify(`${otherEvt}~${token.split('~')[1]}`), 'malformed_token');
++});
++
++test('rejects alg none and MAC algorithms', async () => {
++  await rejectsWith(verify(makeToken({ evtHeader: { alg: 'none' } })), 'unsupported_alg');
++  await rejectsWith(verify(makeToken({ kbHeader: { alg: 'HS256' } })), 'unsupported_alg');
++});
++
++test('rejects malformed input', async () => {
++  await rejectsWith(verify(''), 'missing_token');
++  await rejectsWith(verify('abc'), 'malformed_token');
++  await rejectsWith(verify('a.b.c~d.e.f~g'), 'malformed_token');
++});
++
++test('emailDomain normalizes and validates', () => {
++  assert.equal(emailDomain('a@Mail.Example'), 'mail.example');
++  assert.equal(emailDomain('a@localhost'), null);
++  assert.equal(emailDomain('a@10.0.0.1:80'), null);
++});
++
++test('safe fetch blocks private addresses', () => {
++  assert.equal(isPublicAddress('127.0.0.1', 4), false);
++  assert.equal(isPublicAddress('169.254.169.254', 4), false);
++  assert.equal(isPublicAddress('::1', 6), false);
++  assert.equal(isPublicAddress('fd00::1', 6), false);
++  assert.equal(isPublicAddress('::ffff:10.0.0.1', 6), false);
++  assert.equal(isPublicAddress('93.184.216.34', 4), true);
++});

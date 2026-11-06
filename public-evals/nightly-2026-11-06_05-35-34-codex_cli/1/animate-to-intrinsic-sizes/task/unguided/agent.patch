@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,157 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure controls keep these interactions JavaScript-free. */
++    summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    summary::-webkit-details-marker {
++      display: none;
++    }
++
++    summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -4px;
++    }
++
++    .promo-collapse {
++      display: grid;
++      grid-template-rows: 1fr;
++      transition: grid-template-rows 400ms ease;
++      background: var(--accent);
++    }
++
++    .promo-collapse:has(#promo-alert:not([open])) {
++      grid-template-rows: 0fr;
++    }
++
++    #promo-alert {
++      min-height: 0;
++      overflow: hidden;
++      position: relative;
++    }
++
++    /* Keep the contents in layout until the outer grid finishes collapsing. */
++    #promo-alert::details-content {
++      content-visibility: visible;
++    }
++
++    #promo-alert:not([open]) {
++      visibility: hidden;
++      transition: visibility 0s 400ms;
++    }
++
++    #promo-alert p {
++      padding: 12px 60px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      top: 50%;
++      right: 16px;
++      transform: translateY(-50%);
++      width: 36px;
++      height: 36px;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    #promo-alert:not([open]) #alert-dismiss {
++      visibility: hidden;
++    }
++
++    .faq {
++      margin-top: 48px;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq details {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: clip;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 20px 24px;
++      font-weight: 600;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      line-height: 1;
++      transition: transform 350ms ease;
++    }
++
++    details[open] > #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      padding: 0 24px 24px;
++    }
++
++    /* Animate intrinsic content height, including the closing transition.
++       Browsers without this support retain the native disclosure behavior. */
++    @supports (interpolate-size: allow-keywords) {
++      .faq details::details-content {
++        interpolate-size: allow-keywords;
++        height: 0;
++        overflow: clip;
++        transition: height 350ms ease, content-visibility 350ms allow-discrete;
++      }
++
++      .faq details[open]::details-content {
++        height: auto;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .promo-collapse,
++      .faq details::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++
++      #promo-alert:not([open]) {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="promo-collapse">
++    <details id="promo-alert" open>
++      <summary id="alert-dismiss" aria-label="Dismiss promotion"><span aria-hidden="true">&times;</span></summary>
++      <p><strong>A little perk for your day.</strong> Enjoy 15% off your first online order with code <strong>FIRSTCUP</strong>.</p>
++    </details>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +338,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details>
++        <summary id="faq-trigger" aria-controls="faq-content">Where does your coffee come from?</summary>
++        <div id="faq-content" role="region" aria-labelledby="faq-trigger">
++          <p>We source our beans from growers who share our commitment to quality and ethical farming. Each batch is roasted locally to bring out its distinctive flavor, then brewed fresh for your daily cup.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

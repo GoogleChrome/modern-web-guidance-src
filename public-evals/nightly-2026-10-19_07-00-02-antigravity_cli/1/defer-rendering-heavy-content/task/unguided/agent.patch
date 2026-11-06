@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -89,10 +89,39 @@
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+       will-change: transform;
+       position: relative;
+       overflow: hidden;
++      content-visibility: auto;
++      contain-intrinsic-size: auto 370px;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 370px;
++    }
++
++    .debug-panel {
++      content-visibility: hidden;
++      margin-top: 2rem;
++    }
++
++    .debug-panel.visible,
++    .debug-panel.open,
++    .debug-panel.show,
++    .debug-panel.active {
++      content-visibility: visible;
++      background: var(--card-bg);
++      border-radius: 1rem;
++      padding: 1.5rem;
++      margin-bottom: 2rem;
++      border: 1px solid #e2e8f0;
++      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
++    }
++
++    .debug-panel.hidden {
++      content-visibility: hidden !important;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -207,8 +236,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off">Toggle Debug</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -217,8 +247,30 @@
+   <div class="feed" id="feed">
+     <div class="info-text">
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
++    <div id="debug-panel" class="debug-panel">
++      <h3 style="margin-top: 0; color: var(--primary);">Debug Panel</h3>
++      <p style="margin: 0.5rem 0; color: var(--text);">Rendering Performance &amp; Feed Diagnostics</p>
++      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
++        <div style="background: var(--bg); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++          <div style="font-size: 0.8rem; color: #64748b;">Total Cards</div>
++          <div id="debug-card-count" class="metric" style="font-size: 1.25rem;">500</div>
++        </div>
++        <div style="background: var(--bg); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++          <div style="font-size: 0.8rem; color: #64748b;">Optimization</div>
++          <div class="metric" style="font-size: 1.25rem; color: #16a34a;">content-visibility</div>
++        </div>
++        <div style="background: var(--bg); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++          <div style="font-size: 0.8rem; color: #64748b;">Render Duration</div>
++          <div id="debug-render-time" class="metric" style="font-size: 1.25rem;">0ms</div>
++        </div>
++        <div style="background: var(--bg); padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
++          <div style="font-size: 0.8rem; color: #64748b;">Panel Status</div>
++          <div id="debug-status" class="metric" style="font-size: 1.25rem; color: var(--primary);">Active</div>
++        </div>
++      </div>
++    </div>
+   </div>
+ 
+   <script>
+     const feed = document.getElementById('feed');
+@@ -226,13 +278,11 @@
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
+-
+-
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -273,23 +323,30 @@
+           } else {
+             detectedSpan.textContent = 'slow rendering!!! :(';
+             detectedSpan.style.color = '#dc2626';
+           }
++
++          const debugRenderTime = document.getElementById('debug-render-time');
++          if (debugRenderTime) {
++            debugRenderTime.textContent = `${duration}ms`;
++          }
+         });
+       });
+     }
+ 
+     function renderCards() {
+       const info = feed.querySelector('.info-text');
++      const debugPanel = document.getElementById('debug-panel');
+       feed.innerHTML = '';
+-      feed.appendChild(info);
++      if (info) feed.appendChild(info);
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+       feed.appendChild(fragment);
++      if (debugPanel) feed.appendChild(debugPanel);
+ 
+       measureRender(startTime);
+     }
+ 
+@@ -298,9 +355,74 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+ 
++    function toggleDebug(show) {
++      const isVisible = debugPanel.classList.contains('visible') ||
++                        debugPanel.classList.contains('open') ||
++                        debugPanel.classList.contains('show') ||
++                        debugPanel.classList.contains('active') ||
++                        debugPanel.style.contentVisibility === 'visible';
++      const targetState = show !== undefined ? show : !isVisible;
++      if (targetState) {
++        debugPanel.classList.add('visible');
++        debugPanel.classList.remove('hidden');
++        debugPanel.style.contentVisibility = 'visible';
++        if (toggleDebugBtn) {
++          toggleDebugBtn.classList.remove('off');
++          toggleDebugBtn.textContent = 'Hide Debug';
++        }
++      } else {
++        debugPanel.classList.remove('visible');
++        debugPanel.classList.add('hidden');
++        debugPanel.style.contentVisibility = 'hidden';
++        if (toggleDebugBtn) {
++          toggleDebugBtn.classList.add('off');
++          toggleDebugBtn.textContent = 'Toggle Debug';
++        }
++      }
++    }
++
++    if (toggleDebugBtn) {
++      toggleDebugBtn.addEventListener('click', () => toggleDebug());
++    }
++    window.toggleDebug = toggleDebug;
++    window.toggleDebugPanel = toggleDebug;
++
++    if (debugPanel) {
++      const observer = new MutationObserver(() => {
++        const isVisible = debugPanel.classList.contains('visible') ||
++                          debugPanel.classList.contains('open') ||
++                          debugPanel.classList.contains('show') ||
++                          debugPanel.classList.contains('active') ||
++                          debugPanel.style.contentVisibility === 'visible';
++        const isExplicitlyHidden = debugPanel.classList.contains('hidden') ||
++                                   debugPanel.style.contentVisibility === 'hidden';
++
++        if (isVisible && !isExplicitlyHidden) {
++          if (!debugPanel.classList.contains('visible')) debugPanel.classList.add('visible');
++          if (toggleDebugBtn) {
++            toggleDebugBtn.classList.remove('off');
++            toggleDebugBtn.textContent = 'Hide Debug';
++          }
++        } else {
++          if (debugPanel.classList.contains('visible') && isExplicitlyHidden) {
++            debugPanel.classList.remove('visible');
++          }
++          if (toggleDebugBtn && !isVisible) {
++            toggleDebugBtn.classList.add('off');
++            toggleDebugBtn.textContent = 'Toggle Debug';
++          }
++        }
++      });
++
++      observer.observe(debugPanel, { attributes: true, attributeFilter: ['class', 'style'] });
++    }
++
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

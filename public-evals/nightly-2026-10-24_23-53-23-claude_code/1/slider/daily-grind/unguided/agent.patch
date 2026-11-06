@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+index 66c9173..e7ad74c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,152 @@
+       background: #3e2723;
+     }
+ 
++    /* Range slider */
++    .brew-picker {
++      max-width: 520px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .brew-picker label {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .brew-picker output {
++      color: var(--text);
++      font-weight: 400;
++    }
++
++    .range {
++      --track-h: 8px;
++      --thumb: 24px;
++      --fill-color: var(--accent);
++      --track-color: var(--secondary);
++      --pct: 50%;
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: var(--thumb);
++      background: transparent;
++      cursor: pointer;
++      outline: none;
++    }
++
++    /* Track */
++    .range::-webkit-slider-runnable-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: linear-gradient(var(--fill-color), var(--fill-color)) 0 / var(--pct) 100% no-repeat,
++        var(--track-color);
++    }
++
++    .range::-moz-range-track {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--track-color);
++    }
++
++    /* Fill (Firefox has a native pseudo-element; WebKit uses --pct above) */
++    .range::-moz-range-progress {
++      height: var(--track-h);
++      border-radius: var(--track-h);
++      background: var(--fill-color);
++    }
++
++    /* Thumb */
++    .range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb);
++      height: var(--thumb);
++      margin-top: calc((var(--track-h) - var(--thumb)) / 2);
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid white;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .range::-moz-range-thumb {
++      box-sizing: border-box;
++      width: var(--thumb);
++      height: var(--thumb);
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid white;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    /* Hover / active */
++    .range:hover::-webkit-slider-thumb {
++      transform: scale(1.1);
++    }
++
++    .range:hover::-moz-range-thumb {
++      transform: scale(1.1);
++    }
++
++    .range:active::-webkit-slider-thumb {
++      transform: scale(1.2);
++    }
++
++    .range:active::-moz-range-thumb {
++      transform: scale(1.2);
++    }
++
++    /* Focus (keyboard only) */
++    .range:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--primary);
++    }
++
++    .range:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 3px var(--light), 0 0 0 6px var(--primary);
++    }
++
++    /* Disabled */
++    .range:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    /* Forced colors / high contrast */
++    @media (forced-colors: active) {
++      .range::-webkit-slider-thumb {
++        background: ButtonText;
++        border-color: Canvas;
++      }
++
++      .range::-moz-range-thumb {
++        background: ButtonText;
++        border-color: Canvas;
++      }
++
++      .range:focus-visible::-webkit-slider-thumb {
++        box-shadow: 0 0 0 3px Highlight;
++      }
++
++      .range:focus-visible::-moz-range-thumb {
++        box-shadow: 0 0 0 3px Highlight;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .range::-webkit-slider-thumb,
++      .range::-moz-range-thumb {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +341,33 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="brew-picker">
++      <label for="strength">Brew strength <output id="strength-out" for="strength">Medium</output></label>
++      <input class="range" type="range" id="strength" name="strength" min="1" max="5" step="1" value="3"
++        aria-valuetext="Medium">
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      var names = ['Mild', 'Light', 'Medium', 'Bold', 'Extra bold'];
++      var input = document.getElementById('strength');
++      var out = document.getElementById('strength-out');
++
++      function update() {
++        var pct = (input.value - input.min) / (input.max - input.min) * 100;
++        var name = names[input.value - 1];
++        input.style.setProperty('--pct', pct + '%');
++        input.setAttribute('aria-valuetext', name);
++        out.textContent = name;
++      }
++
++      input.addEventListener('input', update);
++      update();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

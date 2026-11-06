@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,40 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promotion-timer {
++      margin-top: 18px;
++      padding: 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fff8ef;
++    }
++
++    .promotion-status {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .countdown {
++      display: flex;
++      justify-content: center;
++      gap: 24px;
++      margin: 8px 0;
++    }
++
++    .countdown strong {
++      display: block;
++      font-size: 1.8rem;
++      line-height: 1.2;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .countdown span,
++    .promotion-note {
++      font-size: 0.8rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +212,18 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promotion-timer" role="timer" aria-label="Maple Oat Latte promotion timer">
++            <p class="promotion-status" id="promotion-status">Limited-time favorite</p>
++            <div class="countdown" aria-label="Time remaining">
++              <div><strong id="promotion-days">—</strong><span>days</span></div>
++              <div><strong id="promotion-hours">—</strong><span>hours</span></div>
++            </div>
++            <p class="promotion-note">Ends <time datetime="2026-03-01T00:00:00">March 1, 2026 at midnight</time>, your local time.</p>
++            <p class="promotion-note" id="promotion-elapsed">Promotion start date pending.</p>
++            <noscript><p class="promotion-note">Enable JavaScript to see time remaining and elapsed.</p></noscript>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +248,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="promotion-timer.js"></script>
+ </body>
+ 
+ </html>

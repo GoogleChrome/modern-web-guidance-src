@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+index 66c9173..b9dc303 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,42 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      container-type: inline-size;
++      width: min(520px, 88vw);
++      margin-bottom: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 4px;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.9;
++      letter-spacing: normal;
++      word-spacing: normal;
++    }
++
++    .hero h1 .lockup-line {
++      display: inline-block;
++      white-space: nowrap;
++      line-height: 0.9;
++      letter-spacing: normal;
++      word-spacing: normal;
++    }
++
++    .hero h1 .lockup-line:nth-child(1) {
++      font-size: 21.5cqi;
++    }
++
++    .hero h1 .lockup-line:nth-child(2) {
++      font-size: 36cqi;
++    }
++
++    .hero h1 .lockup-line:nth-child(3) {
++      font-size: 25.5cqi;
+     }
+ 
+     /* Content Sections */
+@@ -169,11 +199,48 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span class="lockup-line">Wake Up</span>
++      <span class="lockup-line">Your</span>
++      <span class="lockup-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <script>
++    function fitHeroLockup() {
++      const heading = document.querySelector('.hero h1');
++      if (!heading) return;
++      const targetWidth = heading.clientWidth;
++      if (!targetWidth) return;
++
++      const lines = heading.querySelectorAll('.lockup-line');
++      lines.forEach((line) => {
++        const baseSize = 100;
++        line.style.fontSize = baseSize + 'px';
++        const initialWidth = line.getBoundingClientRect().width;
++        if (initialWidth > 0) {
++          let fittedSize = (baseSize * targetWidth) / initialWidth;
++          line.style.fontSize = fittedSize + 'px';
++          const refinedWidth = line.getBoundingClientRect().width;
++          if (refinedWidth > 0 && Math.abs(refinedWidth - targetWidth) > 0.1) {
++            fittedSize = (fittedSize * targetWidth) / refinedWidth;
++            line.style.fontSize = fittedSize + 'px';
++          }
++        }
++      });
++    }
++
++    fitHeroLockup();
++    window.addEventListener('DOMContentLoaded', fitHeroLockup);
++    window.addEventListener('load', fitHeroLockup);
++    window.addEventListener('resize', fitHeroLockup);
++    if (document.fonts && document.fonts.ready) {
++      document.fonts.ready.then(fitHeroLockup);
++    }
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>

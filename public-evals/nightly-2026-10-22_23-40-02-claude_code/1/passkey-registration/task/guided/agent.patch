@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,19 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -174,8 +185,15 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section style="text-align: center; margin-bottom: 40px;">
++      <h2>Sign in faster</h2>
++      <p>Create a passkey to sign in with your fingerprint, face, or screen lock.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button" disabled>Create passkey</button>
++      <p id="register-status" role="status" aria-live="polite"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +224,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.querySelector('[data-testid="register-button"]');
++      const status = document.getElementById('register-status');
++
++      const postJSON = (url, body) => fetch(url, {
++        method: 'POST',
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(body)
++      });
++
++      // Gate the button on passkey support
++      (async () => {
++        if (!window.PublicKeyCredential ||
++          !PublicKeyCredential.parseCreationOptionsFromJSON ||
++          !PublicKeyCredential.getClientCapabilities) {
++          status.textContent = 'Passkeys are not supported in this browser.';
++          return;
++        }
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet) {
++          button.disabled = false;
++        } else {
++          status.textContent = 'Passkeys are not available on this device.';
++        }
++      })();
++
++      async function registerPasskey() {
++        status.textContent = '';
++        button.disabled = true;
++        try {
++          const optionsResponse = await postJSON('/api/register/options', { promotion: true });
++          if (!optionsResponse.ok) throw new Error('options request failed');
++          const optionsJSON = await optionsResponse.json();
++          const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++          let credential;
++          try {
++            credential = await navigator.credentials.create({ publicKey });
++          } catch (err) {
++            if (err.name === 'InvalidStateError') {
++              status.textContent = 'A passkey already exists for this account.';
++            } else if (err.name === 'SecurityError') {
++              status.textContent = 'Passkeys cannot be used on this site configuration.';
++            } else if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
++              status.textContent = 'Could not create a passkey.';
++            }
++            return; // cancellations are not errors
++          }
++
++          const encoded = credential.toJSON();
++          let verified = false;
++          try {
++            verified = (await postJSON('/api/register/verify', encoded)).ok;
++          } catch (err) {
++            console.error('Passkey verification request failed', err);
++          }
++
++          if (verified) {
++            status.textContent = 'Passkey created successfully.';
++          } else {
++            status.textContent = 'Passkey could not be verified. Please try again.';
++            // Tell the passkey provider to remove the orphaned credential
++            if (PublicKeyCredential.signalUnknownCredential) {
++              try {
++                await PublicKeyCredential.signalUnknownCredential({
++                  rpId: publicKey.rp?.id ?? optionsJSON.rp.id,
++                  credentialId: encoded.id
++                });
++              } catch (err) {
++                console.error('signalUnknownCredential failed', err);
++              }
++            }
++          }
++        } catch (err) {
++          console.error('Passkey registration failed', err);
++          status.textContent = 'Passkey registration failed. Please try again.';
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      button.addEventListener('click', registerPasskey);
++    })();
++  </script>
+ </body>
+ 
+ </html>

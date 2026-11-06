@@ -1,0 +1,705 @@
+diff --git a/index.html b/index.html
+index 66c9173..0e3190b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,131 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Custom Order Form Section */
++    .order-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-section h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      text-align: center;
++    }
++
++    .order-section p.subtitle {
++      text-align: center;
++      margin-bottom: 24px;
++      color: #6d4c41;
++    }
++
++    .order-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 20px;
++      margin-bottom: 20px;
++    }
++
++    .order-fieldset:disabled {
++      opacity: 0.65;
++      background: #f5f5f5;
++    }
++
++    .order-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group select {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    grind-selector {
++      display: block;
++      margin-top: 6px;
++    }
++
++    grind-selector:invalid {
++      outline: 2px dashed #d32f2f;
++      outline-offset: 2px;
++      border-radius: 6px;
++    }
++
++    grind-selector:valid {
++      outline: 2px solid #388e3c;
++      outline-offset: 2px;
++      border-radius: 6px;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .form-actions button {
++      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: #8d6e63;
++      color: white;
++      padding: 10px 16px;
++      border-radius: 5px;
++    }
++
++    .btn-secondary:hover {
++      background: #6d4c41;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary) !important;
++      padding: 9px 15px;
++      border-radius: 5px;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .form-output {
++      margin-top: 20px;
++      padding: 15px;
++      background: var(--light);
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++      font-family: monospace;
++      font-size: 0.9rem;
++      white-space: pre-wrap;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +320,47 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" id="custom-order">
++      <h2>Custom Bean Order</h2>
++      <p class="subtitle">Choose your roast and customize your grind level with our native form-associated control.</p>
++
++      <form id="order-form">
++        <fieldset class="order-fieldset" id="order-fieldset">
++          <legend>Bean Customization</legend>
++
++          <div class="form-group">
++            <label for="bean-variety">Coffee Blend</label>
++            <select id="bean-variety" name="blend" required>
++              <option value="house-blend">House Blend</option>
++              <option value="dark-roast">Dark Roast Espresso</option>
++              <option value="ethiopian-single">Ethiopian Single Origin</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label id="grind-label" for="grind-control">Grind Level (Required)</label>
++            <grind-selector
++              id="grind-control"
++              name="grind"
++              value="medium"
++              required
++              aria-labelledby="grind-label"
++            ></grind-selector>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="submit" class="btn">Submit Order</button>
++          <button type="reset" class="btn-secondary">Reset Form</button>
++          <button type="button" id="clear-grind-btn" class="btn-outline">Clear Grind (Test Invalid)</button>
++          <button type="button" id="toggle-disable-btn" class="btn-outline">Toggle Fieldset Disabled</button>
++          <button type="button" id="restore-state-btn" class="btn-outline">Restore Saved State</button>
++        </div>
++      </form>
++
++      <div id="form-output" class="form-output" aria-live="polite">Ready to order. Current grind: "medium"</div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +373,520 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class GrindSelector extends HTMLElement {
++      static formAssociated = true;
++
++      static get observedAttributes() {
++        return [
++          'value',
++          'required',
++          'disabled',
++          'min',
++          'max',
++          'minlength',
++          'maxlength',
++          'pattern',
++          'name'
++        ];
++      }
++
++      static GRIND_OPTIONS = [
++        { value: 'whole-bean', label: 'Whole Bean', desc: 'Grind at home' },
++        { value: 'coarse', label: 'Coarse', desc: 'French Press / Cold Brew' },
++        { value: 'medium', label: 'Medium', desc: 'Drip / Pour Over' },
++        { value: 'fine', label: 'Fine', desc: 'Espresso / Moka Pot' },
++        { value: 'extra-fine', label: 'Extra Fine', desc: 'Turkish Coffee' }
++      ];
++
++      constructor() {
++        super();
++        this._internals = this.attachInternals();
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++
++        this._dirty = false;
++        this._isDisabled = false;
++        this._customErrorMessage = '';
++        this._value = '';
++
++        this._buildShadowDom();
++      }
++
++      _buildShadowDom() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: block;
++              font-family: inherit;
++            }
++            .control-wrapper {
++              border: 1px solid #d7ccc8;
++              border-radius: 6px;
++              padding: 12px;
++              background: #fff;
++              transition: opacity 0.2s, border-color 0.2s;
++            }
++            :host([disabled]) .control-wrapper,
++            .control-wrapper.disabled {
++              opacity: 0.6;
++              pointer-events: none;
++              background: #f5f5f5;
++            }
++            .options-grid {
++              display: grid;
++              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
++              gap: 8px;
++              margin-bottom: 10px;
++            }
++            .option-btn {
++              display: flex;
++              flex-direction: column;
++              align-items: center;
++              justify-content: center;
++              padding: 10px 8px;
++              border: 2px solid #d7ccc8;
++              border-radius: 6px;
++              background: #fafafa;
++              color: #3e2723;
++              cursor: pointer;
++              font-family: inherit;
++              transition: all 0.15s ease;
++              text-align: center;
++            }
++            .option-btn:hover:not(:disabled) {
++              border-color: #8d6e63;
++              background: #efebe9;
++            }
++            .option-btn[aria-checked="true"] {
++              border-color: #4e342e;
++              background: #4e342e;
++              color: #ffffff;
++            }
++            .option-btn:disabled {
++              cursor: not-allowed;
++            }
++            .option-label {
++              font-weight: 600;
++              font-size: 0.9rem;
++            }
++            .option-desc {
++              font-size: 0.75rem;
++              opacity: 0.85;
++              margin-top: 2px;
++            }
++            .custom-input-row {
++              display: flex;
++              align-items: center;
++              gap: 8px;
++              font-size: 0.85rem;
++              color: #5d4037;
++            }
++            .anchor-input {
++              flex: 1;
++              padding: 6px 10px;
++              border: 1px solid #d7ccc8;
++              border-radius: 4px;
++              font-family: inherit;
++              font-size: 0.9rem;
++              color: #3e2723;
++            }
++            .anchor-input:focus {
++              outline: 2px solid #ffab40;
++              border-color: #4e342e;
++            }
++            .status-text {
++              font-size: 0.8rem;
++              margin-top: 6px;
++              color: #6d4c41;
++            }
++            .status-text.invalid {
++              color: #d32f2f;
++            }
++          </style>
++          <div class="control-wrapper" part="wrapper" role="radiogroup" aria-label="Grind Level">
++            <div class="options-grid" part="options"></div>
++            <div class="custom-input-row">
++              <label for="anchor-input">Selected / Custom Grind:</label>
++              <input
++                id="anchor-input"
++                class="anchor-input"
++                part="input"
++                type="text"
++                placeholder="Select above or enter custom grind..."
++              />
++            </div>
++            <div class="status-text" part="status"></div>
++          </div>
++        `;
++
++        this._wrapper = this.shadowRoot.querySelector('.control-wrapper');
++        this._optionsContainer = this.shadowRoot.querySelector('.options-grid');
++        this._anchor = this.shadowRoot.querySelector('#anchor-input');
++        this._statusText = this.shadowRoot.querySelector('.status-text');
++
++        this._optionButtons = GrindSelector.GRIND_OPTIONS.map((opt) => {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          btn.className = 'option-btn';
++          btn.dataset.value = opt.value;
++          btn.setAttribute('role', 'radio');
++          btn.setAttribute('aria-checked', 'false');
++          btn.innerHTML = `
++            <span class="option-label">${opt.label}</span>
++            <span class="option-desc">${opt.desc}</span>
++          `;
++          btn.addEventListener('click', () => {
++            if (this.disabled) return;
++            this._setUserValue(opt.value);
++          });
++          this._optionsContainer.appendChild(btn);
++          return btn;
++        });
++
++        this._anchor.addEventListener('input', (e) => {
++          if (this.disabled) return;
++          this._dirty = true;
++          this._value = e.target.value;
++          this._customErrorMessage = '';
++          this._syncState();
++          this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++        });
++
++        this._anchor.addEventListener('change', () => {
++          if (this.disabled) return;
++          this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++        });
++      }
++
++      _setUserValue(newVal) {
++        this._dirty = true;
++        this._value = newVal === null || newVal === undefined ? '' : String(newVal);
++        this._customErrorMessage = '';
++        this._syncState();
++        this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++      }
++
++      connectedCallback() {
++        if (!this._dirty && this.hasAttribute('value') && this._value === '') {
++          this._value = this.getAttribute('value') ?? '';
++        }
++        this._isDisabled = this.hasAttribute('disabled') || this._isDisabled;
++        this._applyDisabledUI();
++        this._syncState();
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue) return;
++        switch (name) {
++          case 'value':
++            if (!this._dirty) {
++              this._value = newValue ?? '';
++              this._syncState();
++            }
++            break;
++          case 'disabled':
++            this.formDisabledCallback(newValue !== null);
++            break;
++          case 'required':
++          case 'min':
++          case 'max':
++          case 'minlength':
++          case 'maxlength':
++          case 'pattern':
++            this._updateValidity();
++            this._renderStatus();
++            break;
++        }
++      }
++
++      /* Form-associated lifecycle callbacks */
++      formAssociatedCallback(form) {
++        this._associatedForm = form;
++      }
++
++      formDisabledCallback(disabled) {
++        this._isDisabled = Boolean(disabled);
++        this._applyDisabledUI();
++        this._updateValidity();
++        this._renderStatus();
++      }
++
++      formResetCallback() {
++        this._dirty = false;
++        this._customErrorMessage = '';
++        this._value = this.getAttribute('value') ?? '';
++        this._syncState();
++      }
++
++      formStateRestoreCallback(state, mode) {
++        this._dirty = true;
++        if (typeof state === 'string') {
++          this._value = state;
++        } else if (state instanceof FormData) {
++          const entry = state.get(this.name);
++          this._value = entry !== null ? String(entry) : '';
++        } else {
++          this._value = state === null || state === undefined ? '' : String(state);
++        }
++        this._lastRestoreMode = mode;
++        this._syncState();
++      }
++
++      _applyDisabledUI() {
++        const isDisabled = this.disabled;
++        this._wrapper.classList.toggle('disabled', isDisabled);
++        this._wrapper.setAttribute('aria-disabled', String(isDisabled));
++        this._anchor.disabled = isDisabled;
++        for (const btn of this._optionButtons) {
++          btn.disabled = isDisabled;
++        }
++      }
++
++      _syncState() {
++        this._internals.setFormValue(this._value, this._value);
++        this._renderValue();
++        this._updateValidity();
++        this._renderStatus();
++      }
++
++      _renderValue() {
++        if (this._anchor && this._anchor.value !== this._value) {
++          this._anchor.value = this._value;
++        }
++        if (this._optionButtons) {
++          for (const btn of this._optionButtons) {
++            const isSelected = btn.dataset.value === this._value;
++            btn.setAttribute('aria-checked', String(isSelected));
++          }
++        }
++      }
++
++      _updateValidity() {
++        if (this._customErrorMessage) {
++          this._internals.setValidity(
++            { customError: true },
++            this._customErrorMessage,
++            this._anchor
++          );
++          return;
++        }
++
++        const val = this._value;
++        if (this.required && (!val || val.trim() === '')) {
++          this._internals.setValidity(
++            { valueMissing: true },
++            this.getAttribute('required-message') || 'Please select or enter a grind level.',
++            this._anchor
++          );
++          return;
++        }
++
++        if (val !== '') {
++          const minAttr = this.getAttribute('min');
++          const maxAttr = this.getAttribute('max');
++          const numVal = Number(val);
++          if (minAttr !== null && !Number.isNaN(numVal) && numVal < Number(minAttr)) {
++            this._internals.setValidity(
++              { rangeUnderflow: true },
++              `Value must be at least ${minAttr}.`,
++              this._anchor
++            );
++            return;
++          }
++          if (maxAttr !== null && !Number.isNaN(numVal) && numVal > Number(maxAttr)) {
++            this._internals.setValidity(
++              { rangeOverflow: true },
++              `Value must be at most ${maxAttr}.`,
++              this._anchor
++            );
++            return;
++          }
++
++          const minLengthAttr = this.getAttribute('minlength');
++          if (minLengthAttr !== null && val.length < Number(minLengthAttr)) {
++            this._internals.setValidity(
++              { tooShort: true },
++              `Value must be at least ${minLengthAttr} characters.`,
++              this._anchor
++            );
++            return;
++          }
++
++          const maxLengthAttr = this.getAttribute('maxlength');
++          if (maxLengthAttr !== null && val.length > Number(maxLengthAttr)) {
++            this._internals.setValidity(
++              { tooLong: true },
++              `Value must be at most ${maxLengthAttr} characters.`,
++              this._anchor
++            );
++            return;
++          }
++
++          const patternAttr = this.getAttribute('pattern');
++          if (patternAttr !== null) {
++            const regex = new RegExp(`^(?:${patternAttr})$`);
++            if (!regex.test(val)) {
++              this._internals.setValidity(
++                { patternMismatch: true },
++                this.getAttribute('title') || 'Value does not match the required pattern.',
++                this._anchor
++              );
++              return;
++            }
++          }
++        }
++
++        this._internals.setValidity({});
++      }
++
++      _renderStatus() {
++        if (!this._statusText) return;
++        if (this.disabled) {
++          this._statusText.textContent = 'Control is disabled.';
++          this._statusText.classList.remove('invalid');
++        } else if (!this.validity.valid) {
++          this._statusText.textContent = this.validationMessage;
++          this._statusText.classList.add('invalid');
++        } else {
++          this._statusText.textContent = `Current value: "${this._value}" (Valid)`;
++          this._statusText.classList.remove('invalid');
++        }
++      }
++
++      /* Standard Form Control Properties & Methods */
++      get form() {
++        return this._internals.form;
++      }
++
++      get name() {
++        return this.getAttribute('name') || '';
++      }
++
++      set name(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('name');
++        } else {
++          this.setAttribute('name', val);
++        }
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get labels() {
++        return this._internals.labels;
++      }
++
++      get validity() {
++        return this._internals.validity;
++      }
++
++      get validationMessage() {
++        return this._internals.validationMessage;
++      }
++
++      get willValidate() {
++        return this._internals.willValidate;
++      }
++
++      checkValidity() {
++        return this._internals.checkValidity();
++      }
++
++      reportValidity() {
++        return this._internals.reportValidity();
++      }
++
++      setCustomValidity(message = '') {
++        this._customErrorMessage = String(message);
++        this._updateValidity();
++        this._renderStatus();
++      }
++
++      get defaultValue() {
++        return this.getAttribute('value') ?? '';
++      }
++
++      set defaultValue(val) {
++        this.setAttribute('value', val ?? '');
++      }
++
++      get value() {
++        return this._value;
++      }
++
++      set value(val) {
++        this._dirty = true;
++        this._value = val === null || val === undefined ? '' : String(val);
++        this._syncState();
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(val) {
++        this.toggleAttribute('required', Boolean(val));
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled') || Boolean(this._isDisabled);
++      }
++
++      set disabled(val) {
++        this.toggleAttribute('disabled', Boolean(val));
++      }
++    }
++
++    customElements.define('grind-selector', GrindSelector);
++    window.GrindSelector = GrindSelector;
++
++    // Interactive Form Wiring
++    const orderForm = document.getElementById('order-form');
++    const orderFieldset = document.getElementById('order-fieldset');
++    const grindControl = document.getElementById('grind-control');
++    const formOutput = document.getElementById('form-output');
++    const clearGrindBtn = document.getElementById('clear-grind-btn');
++    const toggleDisableBtn = document.getElementById('toggle-disable-btn');
++    const restoreStateBtn = document.getElementById('restore-state-btn');
++
++    orderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!orderForm.reportValidity()) {
++        formOutput.textContent = `Validation failed: ${grindControl.validationMessage}`;
++        return;
++      }
++      const data = Object.fromEntries(new FormData(orderForm).entries());
++      formOutput.textContent = `Submitted FormData: ${JSON.stringify(data)}`;
++    });
++
++    orderForm.addEventListener('reset', () => {
++      requestAnimationFrame(() => {
++        formOutput.textContent = `Form reset. Grind restored to default: "${grindControl.value}"`;
++      });
++    });
++
++    grindControl.addEventListener('change', () => {
++      formOutput.textContent = `Grind changed to "${grindControl.value}" (valid: ${grindControl.checkValidity()})`;
++    });
++
++    clearGrindBtn.addEventListener('click', () => {
++      grindControl.value = '';
++      formOutput.textContent = `Grind cleared. valid: ${grindControl.checkValidity()} (${grindControl.validationMessage})`;
++    });
++
++    toggleDisableBtn.addEventListener('click', () => {
++      orderFieldset.disabled = !orderFieldset.disabled;
++      formOutput.textContent = `Fieldset disabled: ${orderFieldset.disabled} (grindControl.disabled: ${grindControl.disabled})`;
++    });
++
++    restoreStateBtn.addEventListener('click', () => {
++      grindControl.formStateRestoreCallback('coarse', 'restore');
++      formOutput.textContent = `State restored via formStateRestoreCallback: "${grindControl.value}"`;
++    });
++  </script>
+ </body>
+ 
+ </html>

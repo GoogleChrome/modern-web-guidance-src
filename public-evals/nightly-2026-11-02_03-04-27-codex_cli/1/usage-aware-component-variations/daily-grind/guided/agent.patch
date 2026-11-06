@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8773a5 100644
+--- a/index.html
++++ b/index.html
+@@ -107,9 +107,39 @@
+       margin-top: 20px;
+     }
+ 
++    /* Sections declare context; cards consume it without category classes. */
++    [data-category="seasonal"] {
++      --coffee-category: seasonal;
++      --card-background: #fff5e6;
++      --card-text: #5c3825;
++      --card-accent: #9a4b16;
++      --card-accent-hover: #743710;
++      --card-button-text: white;
++    }
++
++    [data-category="espresso"] {
++      --coffee-category: espresso;
++      --card-background: #30221e;
++      --card-text: #fff4e6;
++      --card-accent: #f0bd80;
++      --card-accent-hover: #ffdaa8;
++      --card-button-text: #30221e;
++    }
++
++    [data-category="cold-brew"] {
++      --coffee-category: cold-brew;
++      --card-background: #edf7f7;
++      --card-text: #23484b;
++      --card-accent: #23686d;
++      --card-accent-hover: #184b50;
++      --card-button-text: white;
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-background, white);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border-block-start: 4px solid var(--card-accent, var(--secondary));
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -117,7 +147,39 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-accent, var(--primary));
++    }
++
++    /* Query inherited semantic context, including through grid wrappers.
++       The section tokens above also provide colors without style queries. */
++    @container style(--coffee-category: seasonal) {
++      .card {
++        --card-background: #fff5e6;
++        --card-text: #5c3825;
++        --card-accent: #9a4b16;
++        --card-accent-hover: #743710;
++        --card-button-text: white;
++      }
++    }
++
++    @container style(--coffee-category: espresso) {
++      .card {
++        --card-background: #30221e;
++        --card-text: #fff4e6;
++        --card-accent: #f0bd80;
++        --card-accent-hover: #ffdaa8;
++        --card-button-text: #30221e;
++      }
++    }
++
++    @container style(--coffee-category: cold-brew) {
++      .card {
++        --card-background: #edf7f7;
++        --card-text: #23484b;
++        --card-accent: #23686d;
++        --card-accent-hover: #184b50;
++        --card-button-text: white;
++      }
+     }
+ 
+     .btn {
+@@ -135,6 +197,15 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      background: var(--card-accent, var(--primary));
++      color: var(--card-button-text, white);
++    }
++
++    .card .btn:hover {
++      background: var(--card-accent-hover, #3e2723);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +246,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-category="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

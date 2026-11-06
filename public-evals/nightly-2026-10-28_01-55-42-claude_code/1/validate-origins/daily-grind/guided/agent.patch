@@ -1,0 +1,848 @@
+diff --git a/brew-timer-widget.html b/brew-timer-widget.html
+new file mode 100644
+index 0000000..197959d
+--- /dev/null
++++ b/brew-timer-widget.html
+@@ -0,0 +1,106 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <title>Brew Timer</title>
++  <style>
++    body {
++      margin: 0;
++      padding: 16px;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      color: #3e2723;
++      background: #fff;
++      text-align: center;
++    }
++
++    h3 {
++      margin: 0 0 8px;
++      color: #4e342e;
++    }
++
++    select,
++    button {
++      font: inherit;
++      padding: 6px 10px;
++      margin: 4px;
++    }
++
++    button {
++      background: #4e342e;
++      color: #fff;
++      border: 0;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    output {
++      display: block;
++      font-size: 2rem;
++      font-variant-numeric: tabular-nums;
++      margin: 8px 0;
++    }
++  </style>
++</head>
++
++<body>
++  <h3>Brew Timer</h3>
++  <label>
++    Method
++    <select id="method">
++      <option value="Pour-over" data-seconds="210">Pour-over (3:30)</option>
++      <option value="French press" data-seconds="240">French press (4:00)</option>
++      <option value="AeroPress" data-seconds="90">AeroPress (1:30)</option>
++    </select>
++  </label>
++  <output id="clock" aria-live="polite">0:00</output>
++  <button id="start" type="button">Start</button>
++
++  <script>
++    // This document runs inside <iframe sandbox="allow-scripts">, so its
++    // origin is opaque and the parent sees event.origin === "null". The
++    // parent pins this window on the "init" message below; every later
++    // message is only honoured because it comes from the same pinned sender.
++    const methodEl = document.getElementById('method');
++    const clockEl = document.getElementById('clock');
++    const startEl = document.getElementById('start');
++    let timer = null;
++
++    const send = (message) => parent.postMessage(message, '*');
++
++    function format(total) {
++      const m = Math.floor(total / 60);
++      const s = total % 60;
++      return `${m}:${String(s).padStart(2, '0')}`;
++    }
++
++    startEl.addEventListener('click', () => {
++      clearInterval(timer);
++      const option = methodEl.selectedOptions[0];
++      let remaining = Number(option.dataset.seconds);
++      clockEl.value = format(remaining);
++      timer = setInterval(() => {
++        remaining -= 1;
++        clockEl.value = format(Math.max(remaining, 0));
++        if (remaining <= 0) {
++          clearInterval(timer);
++          send({ type: 'widget:brew-complete', method: option.value });
++        }
++      }, 1000);
++    });
++
++    window.addEventListener('message', (event) => {
++      // Only the embedding page may configure this widget.
++      if (event.source !== parent) return;
++      if (event.data?.type === 'init:ack' && event.data.theme === 'dark') {
++        document.body.style.background = '#3e2723';
++        document.body.style.color = '#fafafa';
++      }
++    });
++
++    send({ type: 'init' });
++    send({ type: 'widget:resize', height: document.documentElement.scrollHeight });
++  </script>
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..73c9610 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,60 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Validated cross-window / same-site features */
++    .notice {
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      margin-bottom: 20px;
++      border-radius: 4px;
++    }
++
++    .notice a {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .widget-frame {
++      width: 100%;
++      max-width: 360px;
++      height: 220px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .message-log {
++      list-style: none;
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.8rem;
++      text-align: left;
++      max-width: 520px;
++      margin: 10px auto 0;
++    }
++
++    .message-log li[data-kind="accepted"] {
++      color: #2e7d32;
++    }
++
++    .message-log li[data-kind="rejected"] {
++      color: #c62828;
++    }
++
++    a.external::after {
++      content: " ↗";
++      font-size: 0.8em;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +229,11 @@
+   </header>
+ 
+   <main class="container">
++    <div id="return-to-banner" class="notice" hidden>
++      Welcome back. <a id="return-to-link" href="/">Continue</a>
++    </div>
++    <p id="order-status" class="notice" role="status" aria-live="polite" hidden></p>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -195,6 +254,15 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Brew at Home</h2>
++      <p>Time your pour-over with our brew timer.</p>
++      <iframe id="brew-widget" class="widget-frame" src="brew-timer-widget.html" sandbox="allow-scripts"
++        title="Brew timer widget" loading="lazy"></iframe>
++      <p id="brew-status" class="notice" role="status" aria-live="polite" hidden></p>
++      <ul id="message-log" class="message-log" aria-label="Message log"></ul>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +270,14 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://www.instagram.com/">Instagram</a> |
++      <a href="https://maps.google.com/">Find Us on Maps</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="site.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/origin-guard.js b/origin-guard.js
+new file mode 100644
+index 0000000..8de7f00
+--- /dev/null
++++ b/origin-guard.js
+@@ -0,0 +1,208 @@
++/**
++ * Origin and site validation helpers for The Daily Grind.
++ *
++ * Uses the `Origin` API (`Origin.from()`, `isSameOrigin()`, `isSameSite()`,
++ * `opaque`) when the browser supports it, and falls back to `new URL()`
++ * parsing elsewhere. Nothing in here uses `startsWith`, `includes`, or
++ * `split('.')` on hostnames, which is where prefix-spoofing and
++ * public-suffix bugs usually come from.
++ */
++
++const hasOriginApi = () => typeof globalThis.Origin === 'function';
++
++function isMessageEvent(candidate) {
++  return typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent;
++}
++
++/**
++ * Extract an `Origin` from a URL string, URL, anchor element, Window, or
++ * MessageEvent. Browser-dispatched MessageEvents carry an internal origin
++ * (which preserves opaque identity); synthetic ones only have the
++ * `event.origin` string, so fall back to parsing that.
++ */
++function extractOrigin(candidate) {
++  try {
++    return Origin.from(candidate);
++  } catch (err) {
++    if (isMessageEvent(candidate)) {
++      return Origin.from(candidate.origin);
++    }
++    throw err;
++  }
++}
++
++/** Fallback path: turn a candidate into a URL string for `new URL()`. */
++function extractUrlString(candidate) {
++  if (typeof candidate === 'string') return candidate;
++  if (candidate instanceof URL) return candidate.href;
++  if (isMessageEvent(candidate)) return candidate.origin;
++  if (candidate === globalThis) return globalThis.location?.href ?? '';
++  return candidate?.href ?? '';
++}
++
++/**
++ * Build a guard bound to this deployment's trusted origins.
++ *
++ * @param {object} config
++ * @param {string} config.trustedOrderingOrigin  Exact origin allowed to send
++ *   privileged cross-window messages (e.g. the online-ordering app).
++ * @param {string} config.siteUrl  Any URL on the current site; used as the
++ *   reference for same-site checks (normally `location.href`).
++ * @param {string} config.siteRegistrableDomain  The registrable domain this
++ *   site owns (e.g. `thedailygrind.com`). Only consulted by the `URL`
++ *   fallback, which has no Public Suffix List of its own.
++ * @param {string} [config.baseUrl]  Base used to resolve relative redirect
++ *   targets. Defaults to `siteUrl`.
++ */
++export function createOriginGuard({
++  trustedOrderingOrigin,
++  siteUrl,
++  siteRegistrableDomain,
++  baseUrl = siteUrl,
++}) {
++  const trustedOrderingUrl = new URL(trustedOrderingOrigin);
++  const siteReferenceUrl = new URL(siteUrl);
++  const registrableDomain = String(siteRegistrableDomain).toLowerCase();
++
++  /**
++   * Exact (scheme, host, port) match against the ordering origin. Used as the
++   * privilege boundary for cross-window messages; sibling subdomains are
++   * rejected on purpose.
++   */
++  function isTrustedOrderingOrigin(candidate) {
++    try {
++      if (hasOriginApi()) {
++        return extractOrigin(candidate).isSameOrigin(Origin.from(trustedOrderingUrl.href));
++      }
++      const candidateUrl = new URL(extractUrlString(candidate));
++      return candidateUrl.origin !== 'null' && candidateUrl.origin === trustedOrderingUrl.origin;
++    } catch {
++      return false;
++    }
++  }
++
++  /**
++   * Schemeful same-site check against this site. Accepts any subdomain or
++   * port on the same scheme and registrable domain; rejects http: downgrades,
++   * opaque origins (data:, javascript:, blob: from sandboxes), and look-alike
++   * hosts such as `thedailygrind.com.attacker.example`.
++   */
++  function isSameSite(candidate) {
++    try {
++      if (hasOriginApi()) {
++        const candidateOrigin = extractOrigin(candidate);
++        if (candidateOrigin.opaque) return false;
++        return candidateOrigin.isSameSite(Origin.from(siteReferenceUrl.href));
++      }
++      const candidateUrl = new URL(extractUrlString(candidate));
++      if (candidateUrl.origin === 'null') return false;
++      if (candidateUrl.protocol !== siteReferenceUrl.protocol) return false;
++      const host = candidateUrl.hostname.toLowerCase();
++      // The URL fallback cannot consult the Public Suffix List, so only match
++      // the exact host we are running on, or the domain we know we own
++      // (exact or dot-prefixed, never a bare suffix match).
++      return (
++        host === siteReferenceUrl.hostname.toLowerCase() ||
++        host === registrableDomain ||
++        host.endsWith(`.${registrableDomain}`)
++      );
++    } catch {
++      return false;
++    }
++  }
++
++  /**
++   * Validate a redirect target (e.g. `?returnTo=`). Relative paths are
++   * resolved against `baseUrl`. Returns the normalized absolute URL string
++   * when it is a same-site http(s) URL, otherwise `null`.
++   */
++  function resolveSameSiteRedirect(target) {
++    if (typeof target !== 'string' || target.trim() === '') return null;
++    let resolved;
++    try {
++      resolved = new URL(target, baseUrl);
++    } catch {
++      return null;
++    }
++    if (resolved.protocol !== 'https:' && resolved.protocol !== 'http:') return null;
++    if (!isSameSite(resolved)) return null;
++    return resolved.href;
++  }
++
++  /**
++   * Pin the identity of one sandboxed iframe widget on its `init` message.
++   *
++   * Sandboxed iframes (`sandbox="allow-scripts"` without
++   * `allow-same-origin`) serialize `event.origin` as the string "null", so
++   * two unrelated sandboxes are indistinguishable by string comparison. We
++   * therefore pin two things on init: the sender `Window` (`event.source`,
++   * which must be the expected iframe's `contentWindow`) and, where the
++   * `Origin` API exists, the sender's underlying opaque `Origin`. Later
++   * messages are accepted only when both still match; any other sandboxed
++   * iframe, or the same iframe after navigating to a new document, is
++   * rejected.
++   */
++  function createSandboxPin({ initType = 'init' } = {}) {
++    let pinnedSource = null;
++    let pinnedOrigin = hasOriginApi() ? new Origin() : null;
++    let pinned = false;
++
++    function senderOrigin(event) {
++      if (!hasOriginApi()) return null;
++      try {
++        return Origin.from(event);
++      } catch {
++        return null;
++      }
++    }
++
++    return {
++      get isPinned() {
++        return pinned;
++      },
++
++      /**
++       * @param {MessageEvent} event
++       * @param {Window | null | undefined} expectedWidgetWindow  The iframe's
++       *   current `contentWindow`.
++       * @returns {boolean} whether the message may be trusted as the widget's.
++       */
++      accept(event, expectedWidgetWindow) {
++        if (!event || !event.source || !expectedWidgetWindow) return false;
++        // Only opaque-origin senders are eligible: this channel is for the
++        // sandboxed widget, not for arbitrary same-origin or remote windows.
++        if (event.origin !== 'null') return false;
++
++        const origin = senderOrigin(event);
++        if (hasOriginApi() && (!origin || !origin.opaque)) return false;
++
++        if (!pinned) {
++          const isInit = event.data && typeof event.data === 'object' && event.data.type === initType;
++          if (!isInit || event.source !== expectedWidgetWindow) return false;
++          pinnedSource = event.source;
++          if (origin) pinnedOrigin = origin;
++          pinned = true;
++          return true;
++        }
++
++        if (event.source !== pinnedSource || event.source !== expectedWidgetWindow) return false;
++        if (origin && !origin.isSameOrigin(pinnedOrigin)) return false;
++        return true;
++      },
++
++      reset() {
++        pinnedSource = null;
++        pinnedOrigin = hasOriginApi() ? new Origin() : null;
++        pinned = false;
++      },
++    };
++  }
++
++  return {
++    trustedOrderingOrigin: trustedOrderingUrl.origin,
++    isTrustedOrderingOrigin,
++    isSameSite,
++    resolveSameSiteRedirect,
++    createSandboxPin,
++  };
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..d6d5569 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test 'test/**/*.test.mjs'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/site.js b/site.js
+new file mode 100644
+index 0000000..ee445b2
+--- /dev/null
++++ b/site.js
+@@ -0,0 +1,159 @@
++import { createOriginGuard } from './origin-guard.js';
++
++// Deployment configuration. The ordering app lives on its own origin and is
++// the only window allowed to push order updates into this page.
++const TRUSTED_ORDERING_ORIGIN = 'https://order.thedailygrind.com';
++const SITE_REGISTRABLE_DOMAIN = 'thedailygrind.com';
++const RETURN_TO_PARAM = 'returnTo';
++const WIDGET_MAX_HEIGHT = 480;
++
++const guard = createOriginGuard({
++  trustedOrderingOrigin: TRUSTED_ORDERING_ORIGIN,
++  siteUrl: location.href,
++  siteRegistrableDomain: SITE_REGISTRABLE_DOMAIN,
++});
++
++const widgetPin = guard.createSandboxPin({ initType: 'init' });
++
++const $ = (selector) => document.querySelector(selector);
++
++function logMessage(kind, text) {
++  const list = $('#message-log');
++  if (!list) return;
++  const item = document.createElement('li');
++  item.dataset.kind = kind;
++  item.textContent = `${kind === 'accepted' ? '✓' : '✕'} ${text}`;
++  list.prepend(item);
++  while (list.children.length > 8) list.lastElementChild.remove();
++}
++
++function setStatus(selector, text) {
++  const el = $(selector);
++  if (!el) return;
++  el.textContent = text; // textContent only: message payloads are untrusted
++  el.hidden = text === '';
++}
++
++/* ---------------------------------------------------------------------------
++ * 1. Cross-window messages from the ordering app (exact origin match)
++ * ------------------------------------------------------------------------- */
++
++function handleOrderingMessage(event) {
++  const data = event.data;
++  if (!data || typeof data !== 'object') return;
++
++  switch (data.type) {
++    case 'order:status': {
++      const orderId = String(data.orderId ?? '').slice(0, 32);
++      const status = String(data.status ?? '').slice(0, 80);
++      setStatus('#order-status', `Order ${orderId}: ${status}`);
++      logMessage('accepted', `order:status from ${event.origin}`);
++      // Reply to the verified sender only, and pin the target origin so the
++      // acknowledgement cannot leak if the window has since navigated away.
++      event.source?.postMessage({ type: 'order:ack', orderId }, guard.trustedOrderingOrigin);
++      break;
++    }
++    default:
++      logMessage('rejected', `unknown ordering message type "${String(data.type).slice(0, 40)}"`);
++  }
++}
++
++/* ---------------------------------------------------------------------------
++ * 3. Sandboxed brew-timer widget (identity pinned on init)
++ * ------------------------------------------------------------------------- */
++
++function widgetWindow() {
++  return $('#brew-widget')?.contentWindow ?? null;
++}
++
++function handleWidgetMessage(event) {
++  const data = event.data;
++  if (!data || typeof data !== 'object') return;
++
++  switch (data.type) {
++    case 'init': {
++      logMessage('accepted', 'brew-timer widget pinned');
++      // The widget's origin is opaque, so "*" is the only usable targetOrigin.
++      // Only send it non-sensitive configuration.
++      event.source.postMessage({ type: 'init:ack', theme: 'light' }, '*');
++      break;
++    }
++    case 'widget:resize': {
++      const height = Number(data.height);
++      if (Number.isFinite(height) && height > 0) {
++        $('#brew-widget').style.height = `${Math.min(Math.round(height), WIDGET_MAX_HEIGHT)}px`;
++      }
++      break;
++    }
++    case 'widget:brew-complete': {
++      const method = String(data.method ?? 'your brew').slice(0, 40);
++      setStatus('#brew-status', `Timer finished: ${method} is ready to pour.`);
++      logMessage('accepted', `widget:brew-complete (${method})`);
++      break;
++    }
++    default:
++      logMessage('rejected', `unknown widget message type "${String(data.type).slice(0, 40)}"`);
++  }
++}
++
++window.addEventListener('message', (event) => {
++  if (guard.isTrustedOrderingOrigin(event)) {
++    handleOrderingMessage(event);
++    return;
++  }
++
++  if (widgetPin.accept(event, widgetWindow())) {
++    handleWidgetMessage(event);
++    return;
++  }
++
++  // Everything else: wrong origin, an unrelated sandboxed iframe (also
++  // origin "null"), or the widget before it has initialised. Ignore it.
++  logMessage('rejected', `message from ${event.origin || 'unknown origin'}`);
++});
++
++/* ---------------------------------------------------------------------------
++ * 2. Same-site redirects and external-link classification
++ * ------------------------------------------------------------------------- */
++
++function renderReturnToBanner() {
++  const target = new URLSearchParams(location.search).get(RETURN_TO_PARAM);
++  if (target === null) return;
++
++  const banner = $('#return-to-banner');
++  const link = $('#return-to-link');
++  if (!banner || !link) return;
++
++  const safeHref = guard.resolveSameSiteRedirect(target);
++  if (!safeHref) {
++    // Off-site or malformed target: drop it rather than send the user there.
++    logMessage('rejected', `returnTo target not same-site`);
++    return;
++  }
++
++  link.href = safeHref;
++  link.textContent = `Continue to ${new URL(safeHref).pathname}`;
++  banner.hidden = false;
++}
++
++function classifyLinks() {
++  for (const anchor of document.querySelectorAll('a[href]')) {
++    if (anchor.protocol !== 'https:' && anchor.protocol !== 'http:') continue;
++    if (guard.isSameSite(anchor)) continue;
++
++    anchor.classList.add('external');
++    anchor.target = '_blank';
++    const rel = new Set(anchor.rel.split(/\s+/).filter(Boolean));
++    rel.add('noopener');
++    rel.add('noreferrer');
++    anchor.rel = [...rel].join(' ');
++
++    const hint = document.createElement('span');
++    hint.className = 'visually-hidden';
++    hint.textContent = ' (external site, opens in a new tab)';
++    anchor.append(hint);
++  }
++}
++
++renderReturnToBanner();
++classifyLinks();
+diff --git a/test/origin-guard.test.mjs b/test/origin-guard.test.mjs
+new file mode 100644
+index 0000000..279bbea
+--- /dev/null
++++ b/test/origin-guard.test.mjs
+@@ -0,0 +1,226 @@
++import { test, describe, beforeEach, afterEach } from 'node:test';
++import assert from 'node:assert/strict';
++import { createOriginGuard } from '../origin-guard.js';
++
++const CONFIG = {
++  trustedOrderingOrigin: 'https://order.thedailygrind.com',
++  siteUrl: 'https://www.thedailygrind.com/',
++  siteRegistrableDomain: 'thedailygrind.com',
++};
++
++const fakeWindow = (name) => ({ name });
++
++/**
++ * Build something that passes `instanceof MessageEvent` (as browser-dispatched
++ * events do) without going through Node's constructor, which refuses a plain
++ * object as `source`.
++ */
++function msg(origin, source, data, extra = {}) {
++  const e = Object.create(MessageEvent.prototype);
++  for (const [key, value] of Object.entries({ type: 'message', origin, source, data, ...extra })) {
++    Object.defineProperty(e, key, { value, writable: true, configurable: true, enumerable: true });
++  }
++  return e;
++}
++
++/**
++ * Minimal stand-in for the browser `Origin` API so the Origin-backed code path
++ * can be exercised in Node. Opaque identity is modelled with a unique token;
++ * a fake MessageEvent carries its sender origin in `__origin`.
++ */
++class FakeOrigin {
++  constructor(parsed = null) {
++    this.parsed = parsed; // { protocol, hostname, port } or null for opaque
++    this.token = Symbol('opaque');
++  }
++  get opaque() {
++    return this.parsed === null;
++  }
++  static from(candidate) {
++    if (candidate instanceof FakeOrigin) return candidate;
++    if (candidate && candidate.__origin instanceof FakeOrigin) return candidate.__origin;
++    const href = typeof candidate === 'string' ? candidate : candidate?.href;
++    if (typeof href !== 'string') throw new TypeError('unsupported');
++    const url = new URL(href); // throws on 'null' and garbage, like the real API
++    if (url.origin === 'null') return new FakeOrigin(null);
++    return new FakeOrigin({ protocol: url.protocol, hostname: url.hostname, port: url.port });
++  }
++  isSameOrigin(other) {
++    if (!(other instanceof FakeOrigin)) throw new TypeError('not an Origin');
++    if (this.opaque || other.opaque) return this.token === other.token;
++    return (
++      this.parsed.protocol === other.parsed.protocol &&
++      this.parsed.hostname === other.parsed.hostname &&
++      this.parsed.port === other.parsed.port
++    );
++  }
++  isSameSite(other) {
++    if (this.opaque || other.opaque) return this.isSameOrigin(other);
++    if (this.parsed.protocol !== other.parsed.protocol) return false;
++    const site = (h) => h.split('.').slice(-2).join('.'); // test-only PSL stand-in
++    return site(this.parsed.hostname) === site(other.parsed.hostname);
++  }
++}
++
++for (const mode of ['url-fallback', 'origin-api']) {
++  describe(`createOriginGuard (${mode})`, () => {
++    let guard;
++
++    beforeEach(() => {
++      if (mode === 'origin-api') globalThis.Origin = FakeOrigin;
++      guard = createOriginGuard(CONFIG);
++    });
++    afterEach(() => {
++      delete globalThis.Origin;
++    });
++
++    const event = (origin, source, data) => {
++      const e = msg(origin, source, data);
++      if (mode === 'origin-api') {
++        // Browser-dispatched events carry an internal origin; invalid strings
++        // leave it unset so Origin.from(event) throws like it would for a
++        // synthetic event, exercising the `event.origin` fallback.
++        try {
++          e.__origin = origin === 'null' ? new FakeOrigin(null) : FakeOrigin.from(origin);
++        } catch {
++          /* leave unset */
++        }
++      }
++      return e;
++    };
++
++    describe('isTrustedOrderingOrigin', () => {
++      test('accepts the exact ordering origin, with or without default port', () => {
++        assert.equal(guard.isTrustedOrderingOrigin('https://order.thedailygrind.com'), true);
++        assert.equal(guard.isTrustedOrderingOrigin('https://order.thedailygrind.com:443/x?y'), true);
++        assert.equal(guard.isTrustedOrderingOrigin(event('https://order.thedailygrind.com', fakeWindow('o'), {})), true);
++      });
++
++      test('rejects look-alikes, siblings, downgrades, ports and opaque origins', () => {
++        for (const bad of [
++          'https://order.thedailygrind.com.attacker.example',
++          'https://attacker.example/?u=https://order.thedailygrind.com',
++          'https://www.thedailygrind.com',
++          'http://order.thedailygrind.com',
++          'https://order.thedailygrind.com:8443',
++          'null',
++          '',
++          'not a url',
++        ]) {
++          assert.equal(guard.isTrustedOrderingOrigin(bad), false, bad);
++          assert.equal(guard.isTrustedOrderingOrigin(event(bad, fakeWindow('x'), {})), false, bad);
++        }
++      });
++    });
++
++    describe('isSameSite / resolveSameSiteRedirect', () => {
++      test('accepts subdomains and ports on the same scheme and registrable domain', () => {
++        assert.equal(guard.isSameSite('https://www.thedailygrind.com/menu'), true);
++        assert.equal(guard.isSameSite('https://rewards.thedailygrind.com:8443/'), true);
++        assert.equal(guard.isSameSite('https://thedailygrind.com'), true);
++        assert.equal(guard.resolveSameSiteRedirect('/account?tab=orders'), 'https://www.thedailygrind.com/account?tab=orders');
++        assert.equal(guard.resolveSameSiteRedirect('https://rewards.thedailygrind.com/points'), 'https://rewards.thedailygrind.com/points');
++      });
++
++      test('rejects suffix spoofing, scheme downgrades and other sites', () => {
++        for (const bad of [
++          'https://thedailygrind.com.attacker.example/',
++          'https://evilthedailygrind.com/',
++          'https://attacker.example/thedailygrind.com',
++          'http://www.thedailygrind.com/',
++          'https://attacker.example/',
++        ]) {
++          assert.equal(guard.isSameSite(bad), false, bad);
++          assert.equal(guard.resolveSameSiteRedirect(bad), null, bad);
++        }
++      });
++
++      test('rejects protocol-relative, scheme-less and non-http redirect targets', () => {
++        for (const bad of [
++          '//attacker.example/',
++          '\\\\attacker.example',
++          'javascript:alert(1)',
++          'data:text/html,hi',
++          'mailto:hello@thedailygrind.com',
++          '',
++          '   ',
++          null,
++          undefined,
++          42,
++        ]) {
++          assert.equal(guard.resolveSameSiteRedirect(bad), null, String(bad));
++        }
++      });
++
++      test('classifies anchor-like objects by href', () => {
++        assert.equal(guard.isSameSite({ href: 'https://www.thedailygrind.com/about' }), true);
++        assert.equal(guard.isSameSite({ href: 'https://www.instagram.com/thedailygrind' }), false);
++      });
++    });
++
++    describe('createSandboxPin', () => {
++      let pin;
++      let widget;
++      let other;
++
++      beforeEach(() => {
++        pin = guard.createSandboxPin();
++        widget = fakeWindow('widget');
++        other = fakeWindow('other-sandbox');
++      });
++
++      test('pins on init from the expected iframe, then accepts only that sender', () => {
++        const init = event('null', widget, { type: 'init' });
++        assert.equal(pin.accept(init, widget), true);
++        assert.equal(pin.isPinned, true);
++
++        const later = event('null', widget, { type: 'widget:resize', height: 200 });
++        if (mode === 'origin-api') later.__origin = init.__origin; // same document
++        assert.equal(pin.accept(later, widget), true);
++
++        // A different sandboxed iframe also reports origin "null"; rejected.
++        assert.equal(pin.accept(event('null', other, { type: 'widget:resize', height: 1 }), widget), false);
++        // Another sandbox trying to re-run the init handshake is rejected too.
++        assert.equal(pin.accept(event('null', other, { type: 'init' }), widget), false);
++        assert.equal(pin.isPinned, true);
++      });
++
++      test('ignores non-init messages before the pin is established', () => {
++        assert.equal(pin.accept(event('null', widget, { type: 'widget:resize', height: 1 }), widget), false);
++        assert.equal(pin.isPinned, false);
++      });
++
++      test('does not pin an init message from a window other than the expected iframe', () => {
++        assert.equal(pin.accept(event('null', other, { type: 'init' }), widget), false);
++        assert.equal(pin.isPinned, false);
++      });
++
++      test('rejects senders with a real (non-opaque) origin on this channel', () => {
++        assert.equal(pin.accept(event('https://www.thedailygrind.com', widget, { type: 'init' }), widget), false);
++        assert.equal(pin.accept(event('https://attacker.example', widget, { type: 'init' }), widget), false);
++      });
++
++      test('rejects malformed events', () => {
++        assert.equal(pin.accept(null, widget), false);
++        assert.equal(pin.accept(event('null', null, { type: 'init' }), widget), false);
++        assert.equal(pin.accept(event('null', widget, { type: 'init' }), null), false);
++        assert.equal(pin.accept(event('null', widget, 'init'), widget), false);
++      });
++
++      if (mode === 'origin-api') {
++        test('rejects the pinned window after it navigates to a new opaque document', () => {
++          assert.equal(pin.accept(event('null', widget, { type: 'init' }), widget), true);
++          // Same WindowProxy, but a fresh opaque origin (new document).
++          assert.equal(pin.accept(event('null', widget, { type: 'widget:resize', height: 1 }), widget), false);
++        });
++      }
++
++      test('reset() clears the pin', () => {
++        assert.equal(pin.accept(event('null', widget, { type: 'init' }), widget), true);
++        pin.reset();
++        assert.equal(pin.isPinned, false);
++        assert.equal(pin.accept(event('null', widget, { type: 'widget:resize', height: 1 }), widget), false);
++      });
++    });
++  });
++}

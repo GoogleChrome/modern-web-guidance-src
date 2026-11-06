@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,41 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      margin-top: 48px;
++      padding: 28px 0 12px;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container .exclusive-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container h2 {
++      font-size: 1.8rem;
++      margin-bottom: 12px;
++    }
++
++    .paywall-container .preview-content {
++      max-width: 720px;
++    }
++
++    .paywall-container h3 {
++      margin-top: 20px;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +227,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="exclusive-label">Exclusive · Members’ preview</p>
++      <h2 id="roasters-secrets-title">Roaster’s Secrets</h2>
++      <div class="preview-content">
++        <p>A little craft goes into every cup. Step behind the scenes with our roasting team for the small details that make a big difference.</p>
++        <h3>Let fresh beans rest</h3>
++        <p>Fresh from the roaster isn’t always ready for the brewer. Giving beans time to release trapped gas helps bring their sweetness and balance into focus.</p>
++        <h3>Follow the flavor</h3>
++        <p>Start with your favorite recipe, then change one thing at a time. A small adjustment to your grind can reveal a softer finish or a richer, more rounded cup.</p>
++        <h3>The finishing touch</h3>
++        <p>From the water we choose to the way we taste each batch, our daily rituals help every roast tell its own story. Discover more notes from the roasting room in our members’ collection.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Global Tasting Coordinator */
++    .tasting {
++      margin-top: 60px;
++      background: var(--primary);
++      color: var(--secondary);
++      border-radius: 8px;
++      padding: 40px 30px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .tasting h2 {
++      color: white;
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .tasting-intro {
++      max-width: 700px;
++      margin: 0 auto 30px;
++      text-align: center;
++    }
++
++    .tasting-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 20px;
++    }
++
++    .tasting-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    .tasting-controls input,
++    .tasting-controls select {
++      margin-top: 6px;
++      padding: 8px 10px;
++      min-width: 200px;
++      font: inherit;
++      font-size: 1rem;
++      text-transform: none;
++      color: var(--text);
++      background: var(--light);
++      border: 2px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .tasting-controls input:focus,
++    .tasting-controls select:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .tasting-warning {
++      max-width: 700px;
++      margin: 25px auto 0;
++      padding: 12px 16px;
++      background: #3e2723;
++      color: var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .tasting-warning strong {
++      color: var(--accent);
++    }
++
++    .tasting .card {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .tasting .card.is-host {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    .tz-time {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .tz-date,
++    .tz-zone {
++      font-size: 0.85rem;
++    }
++
++    .tz-zone {
++      opacity: 0.75;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +290,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting" aria-labelledby="tasting-heading">
++      <h2 id="tasting-heading">Global Tasting Coordinator</h2>
++      <p class="tasting-intro">
++        Hosting a virtual coffee tasting with friends around the world? Pick a date, a start time, and your
++        own time zone, and we'll show exactly when the first sip happens in New York, London, Tokyo, and UTC
++        &mdash; daylight saving quirks included.
++      </p>
++      <div class="tasting-controls">
++        <label for="dateInput">Date
++          <input type="date" id="dateInput">
++        </label>
++        <label for="timeInput">Start Time
++          <input type="time" id="timeInput" value="10:00">
++        </label>
++        <label for="hostTzSelect">Host Time Zone
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York (America/New_York)</option>
++            <option value="Europe/London">London (Europe/London)</option>
++            <option value="Asia/Tokyo">Tokyo (Asia/Tokyo)</option>
++            <option value="UTC">UTC</option>
++          </select>
++        </label>
++      </div>
++      <p id="hostWarning" class="tasting-warning" role="status" aria-live="polite" hidden></p>
++      <div id="grid" class="grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +329,115 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Use the native Temporal API; fall back to the reference polyfill only in browsers that lack it.
++    const Temporal = globalThis.Temporal
++      ?? (await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.5.1/+esm')).Temporal;
++
++    const TARGET_ZONES = [
++      { id: 'America/New_York', label: 'New York' },
++      { id: 'Europe/London', label: 'London' },
++      { id: 'Asia/Tokyo', label: 'Tokyo' },
++      { id: 'UTC', label: 'UTC' },
++    ];
++
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const grid = document.getElementById('grid');
++    const hostWarning = document.getElementById('hostWarning');
++
++    const timeFormat = { hour: 'numeric', minute: '2-digit' };
++    const dateFormat = { weekday: 'short', month: 'short', day: 'numeric' };
++    const offsetFormat = { timeZoneName: 'shortOffset' };
++
++    function formatPart(zdt, options) {
++      // ZonedDateTime formats in its own zone; passing a timeZone option would throw.
++      return zdt.toLocaleString('en-US', options);
++    }
++
++    // Resolve a wall-clock time in the host zone, detecting DST gaps and overlaps.
++    // Temporal objects are immutable: every step below returns a new instance.
++    function resolveHostTime(plain, tz) {
++      const earlier = plain.toZonedDateTime(tz, { disambiguation: 'earlier' });
++      const later = plain.toZonedDateTime(tz, { disambiguation: 'later' });
++
++      if (earlier.epochNanoseconds === later.epochNanoseconds) {
++        return { zdt: earlier, conflict: null };
++      }
++
++      // 'compatible' matches legacy behaviour: skip forward in a gap, take the earlier instant in an overlap.
++      const resolved = plain.toZonedDateTime(tz, { disambiguation: 'compatible' });
++      const isGap = !resolved.toPlainDateTime().equals(plain);
++      return { zdt: resolved, conflict: { type: isGap ? 'gap' : 'overlap', earlier, later } };
++    }
++
++    function describeConflict(plain, tz, { type, earlier, later }, resolved) {
++      const requested = plain.toLocaleString('en-US', timeFormat);
++      const shownTime = formatPart(resolved, timeFormat);
++      const shownOffset = formatPart(resolved, offsetFormat).split(' ').pop();
++
++      if (type === 'gap') {
++        const skipped = later.offsetNanoseconds - earlier.offsetNanoseconds;
++        const minutes = Math.abs(skipped) / 6e10;
++        return `<strong>Daylight saving gap:</strong> ${requested} does not exist in ${tz} on this date ` +
++          `because clocks spring forward by ${minutes} minutes. The time was moved forward to ` +
++          `${shownTime} (${shownOffset}), which is the same elapsed moment you'd reach if the clocks hadn't jumped.`;
++      }
++
++      const otherOffset = formatPart(later, offsetFormat).split(' ').pop();
++      return `<strong>Daylight saving overlap:</strong> ${requested} occurs twice in ${tz} on this date ` +
++        `because clocks fall back. The first occurrence (${shownOffset}) was used; the second ` +
++        `occurrence would be at ${otherOffset}, one repeated hour later.`;
++    }
++
++    function render() {
++      const tz = hostTzSelect.value;
++      let plain;
++      try {
++        plain = Temporal.PlainDateTime.from(`${dateInput.value}T${timeInput.value}`);
++      } catch {
++        grid.innerHTML = '<div class="card"><p>Choose a valid date and time to see the schedule.</p></div>';
++        hostWarning.hidden = true;
++        return;
++      }
++
++      const { zdt: hostZdt, conflict } = resolveHostTime(plain, tz);
++
++      if (conflict) {
++        hostWarning.innerHTML = describeConflict(plain, tz, conflict, hostZdt);
++        hostWarning.hidden = false;
++      } else {
++        hostWarning.textContent = '';
++        hostWarning.hidden = true;
++      }
++
++      const hostDate = hostZdt.toPlainDate();
++      grid.replaceChildren(...TARGET_ZONES.map(({ id, label }) => {
++        const local = hostZdt.withTimeZone(id);
++        const dayDiff = hostDate.until(local.toPlainDate()).days;
++        const dayNote = dayDiff === 0 ? '' : ` (${dayDiff > 0 ? '+' : ''}${dayDiff} day${Math.abs(dayDiff) === 1 ? '' : 's'})`;
++
++        const card = document.createElement('div');
++        card.className = 'card' + (id === tz ? ' is-host' : '');
++        card.innerHTML = `
++          <h3>${label}${id === tz ? ' &middot; Host' : ''}</h3>
++          <div class="tz-time">${formatPart(local, timeFormat)}</div>
++          <div class="tz-date">${formatPart(local, dateFormat)}${dayNote}</div>
++          <div class="tz-zone">${id} &middot; ${formatPart(local, offsetFormat).split(' ').pop()}</div>`;
++        return card;
++      }));
++    }
++
++    dateInput.value = Temporal.Now.plainDateISO(hostTzSelect.value).toString();
++    [dateInput, timeInput, hostTzSelect].forEach((el) => {
++      el.addEventListener('input', render);
++      el.addEventListener('change', render);
++    });
++    render();
++  </script>
++
+ </body>
+ 
+ </html>

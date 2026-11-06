@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,77 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .journal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++    }
++
++    .journal-meta {
++      font-size: 0.85rem;
++      color: #8d6e63;
++    }
++
++    .journal-body p {
++      margin-bottom: 1rem;
++      max-width: 75ch;
++    }
++
++    .journal .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .journal .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .journal-summary {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      padding: 20px 25px;
++      margin-bottom: 25px;
++    }
++
++    .journal-summary h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .journal-summary ul {
++      padding-left: 20px;
++    }
++
++    .journal-summary li {
++      margin-bottom: 6px;
++    }
++
++    .journal-status {
++      font-size: 0.85rem;
++      color: #8d6e63;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +265,38 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container" id="roasters-journal">
++    <article class="journal">
++      <div class="journal-header">
++        <div>
++          <h2>Roaster's Journal</h2>
++          <p class="journal-meta">From the Roastery &middot; How our beans find their way to your cup</p>
++        </div>
++        <button type="button" class="btn" id="summarize-btn" hidden>Summarize</button>
++      </div>
++
++      <div class="journal-summary" id="journal-summary" hidden aria-live="polite">
++        <h3>The Short Version</h3>
++        <p class="journal-status" id="journal-status"></p>
++        <ul id="journal-summary-list"></ul>
++      </div>
++
++      <div class="journal-body" id="journal-body">
++        <p>Every bag of coffee we roast starts with a relationship, not a catalog. Long before a single bean reaches our roaster, our green coffee buyer has spent weeks on the road visiting farms in Colombia, Ethiopia, Guatemala, and Sumatra. We walk the rows with growers, taste cherries straight off the branch, and talk about everything from rainfall patterns to the price of fertilizer. We believe you can't truly understand a coffee until you've seen the hillside it grew on and shaken the hand of the person who tended it.</p>
++
++        <p>We buy almost exclusively through direct trade, which means we skip the long chain of brokers and exporters that typically sits between a farmer and a roaster. Cutting out those middle layers lets us pay producers well above Fairtrade minimums &mdash; on average, about 40% more than the commodity market price &mdash; while still keeping our menu prices fair for you. More importantly, we commit to multi-year purchasing agreements, so our partners can plan ahead, invest in new drying beds or processing equipment, and know that their harvest has a home before it's even picked.</p>
++
++        <p>Quality starts at the farm, but it's confirmed on our cupping table. When samples arrive at the roastery, our team evaluates each lot blind, scoring it for aroma, acidity, body, sweetness, and finish. Only coffees that score 85 points or higher on the specialty scale make it into our lineup. We also share detailed cupping notes back with every producer, whether we buy their lot or not, because that feedback helps them refine their processing and command better prices from every buyer, not just us.</p>
++
++        <p>Sustainability is woven into how we choose partners. Many of the farms we work with grow under native shade canopy, which protects bird habitats, preserves soil health, and slows ripening for a sweeter, more complex cup. We prioritize producers who practice water-conscious processing and composting of coffee pulp, and we set aside a portion of every purchase for community projects that our partners choose themselves &mdash; recent years have funded a school roof in Huila, a clean-water system in Yirgacheffe, and agronomy training for young farmers in Huehuetenango.</p>
++
++        <p>Once the green coffee lands at our roastery here in town, we roast in small batches of no more than 25 pounds at a time, several days a week. Small batches let us tailor each roast profile to the individual bean, coaxing out the bright citrus of a washed Ethiopian or the deep chocolate notes of a Sumatran. We roast to order for our cafés and online customers, so the coffee in your cup is rarely more than a week off the roaster. It's a slower, more personal way to do things, but we think you can taste the difference &mdash; and so can the families who grew it.</p>
++      </div>
++    </article>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +305,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Summarize the Roaster's Journal with the browser's built-in Summarizer API (Chrome's on-device AI).
++    (async () => {
++      const btn = document.getElementById('summarize-btn');
++      const summaryBox = document.getElementById('journal-summary');
++      const statusEl = document.getElementById('journal-status');
++      const list = document.getElementById('journal-summary-list');
++      const body = document.getElementById('journal-body');
++
++      const options = {
++        type: 'key-points',
++        format: 'markdown',
++        length: 'short',
++        expectedInputLanguages: ['en'],
++        outputLanguage: 'en',
++        sharedContext: "A coffee roaster's blog post about how they source their beans.",
++      };
++
++      if (!('Summarizer' in self)) return;
++
++      let availability;
++      try {
++        availability = await Summarizer.availability(options);
++      } catch {
++        return;
++      }
++      if (availability === 'unavailable') return;
++
++      btn.hidden = false;
++      let summarizer = null;
++
++      const setStatus = (text) => {
++        statusEl.textContent = text;
++        statusEl.hidden = !text;
++      };
++
++      const renderBullets = (markdown) => {
++        list.replaceChildren();
++        markdown
++          .split('\n')
++          .map((line) => line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').trim())
++          .filter(Boolean)
++          .forEach((text) => {
++            const li = document.createElement('li');
++            li.textContent = text;
++            list.appendChild(li);
++          });
++      };
++
++      btn.addEventListener('click', async () => {
++        btn.disabled = true;
++        summaryBox.hidden = false;
++        list.replaceChildren();
++
++        try {
++          if (!summarizer) {
++            setStatus('Preparing on-device AI\u2026');
++            summarizer = await Summarizer.create({
++              ...options,
++              monitor(m) {
++                m.addEventListener('downloadprogress', (e) => {
++                  setStatus(`Downloading AI model\u2026 ${Math.round(e.loaded * 100)}%`);
++                });
++              },
++            });
++          }
++
++          setStatus('Summarizing\u2026');
++          const text = body.innerText.trim();
++          let output = '';
++          for await (const chunk of summarizer.summarizeStreaming(text)) {
++            output += chunk;
++            renderBullets(output);
++          }
++          setStatus('');
++        } catch (err) {
++          console.error(err);
++          setStatus("Sorry, we couldn't summarize this right now. Please try again.");
++        } finally {
++          btn.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

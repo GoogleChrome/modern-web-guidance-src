@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,85 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-top: 12px;
++      font-weight: 600;
++    }
++
++    .newsletter-hint {
++      display: block;
++      margin-bottom: 6px;
++      font-size: 0.85rem;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .newsletter input,
++    .newsletter button {
++      min-height: 48px;
++      padding: 10px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      width: 100%;
++      color: var(--text);
++      background: white;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: var(--text);
++    }
++
++    .newsletter :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    /* Keep validation quiet during editing, including after an earlier error. */
++    .newsletter input:is(:user-invalid, [aria-invalid="true"]):not(:focus) {
++      border-color: #9b2424;
++      background: #fff4f4;
++    }
++
++    .newsletter-error {
++      color: #9b2424;
++      font-size: 0.875rem;
++      margin-top: 6px;
++    }
++
++    .newsletter-status:not(:empty) {
++      margin-top: 8px;
++      font-size: 0.875rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +274,23 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post" aria-labelledby="newsletter-title">
++      <h2 id="newsletter-title">Fresh coffee. Fresh news.</h2>
++      <p>Get the latest from The Daily Grind.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <span class="newsletter-hint" id="newsletter-hint">Use an address like you@example.com.</span>
++      <div class="newsletter-controls">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          autocapitalize="off" autocorrect="off" spellcheck="false"
++          aria-describedby="newsletter-hint" aria-errormessage="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error" aria-live="polite" hidden></p>
++      <p class="newsletter-status" id="newsletter-status" role="status"></p>
++      <noscript><p>Newsletter signup is not available yet.</p></noscript>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +298,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.getElementById('newsletter-email');
++    const error = document.getElementById('newsletter-error');
++    const status = document.getElementById('newsletter-status');
++
++    // Use native email constraints, but control feedback timing explicitly.
++    function showEmailError() {
++      const invalid = !email.validity.valid;
++      email.setAttribute('aria-invalid', String(invalid));
++      error.hidden = !invalid;
++      error.textContent = invalid ? 'Please enter a valid email address.' : '';
++    }
++
++    email.addEventListener('blur', showEmailError);
++    email.addEventListener('input', () => {
++      email.removeAttribute('aria-invalid');
++      error.hidden = true;
++      error.textContent = '';
++      status.textContent = '';
++    });
++
++    email.addEventListener('invalid', (event) => {
++      event.preventDefault();
++      showEmailError();
++      email.focus();
++    });
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      // Replace this message with the mailing-list integration when configured.
++      status.textContent = 'Newsletter signup is not available yet. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

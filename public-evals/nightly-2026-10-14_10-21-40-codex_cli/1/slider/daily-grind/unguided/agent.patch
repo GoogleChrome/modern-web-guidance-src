@@ -1,0 +1,311 @@
+diff --git a/index.html b/index.html
+index 66c9173..1e2ba15 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,101 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>Range — The native slider, refined.</title>
++<style>
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
++:root{--ink:#202723;--muted:#788079;--green:#32815a;--paper:#f7f8f5;--line:#e4e7e0;--fill:#32815a;--track:#dce4da;--thumb-size:26px;--track-size:8px}
++*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px}button,input{font:inherit}button,a,input{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #7cac8c;outline-offset:4px}button{color:inherit}a{color:inherit;text-decoration:none}.wrap{max-width:1180px;margin:auto;padding:0 40px}header{height:90px;border-bottom:1px solid var(--line)}.nav{height:100%;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px;font-family:Manrope,sans-serif;font-weight:800;font-size:24px;letter-spacing:-1px}.brand-icon{width:25px;height:25px;display:flex;gap:4px;align-items:center}.brand-icon i{display:block;width:5px;background:var(--green);border-radius:4px;height:15px}.brand-icon i:nth-child(2){height:25px}.nav-right{display:flex;align-items:center;gap:28px;color:#747b74;font-size:12px}.nav-right a{display:flex;align-items:center;gap:8px;color:#343d35}.pill{border:1px solid #dde5d8;background:#f0f4ec;border-radius:20px;padding:5px 10px;font-size:10px;color:#63755d;letter-spacing:.5px}main{padding-top:54px}.eyebrow{text-transform:uppercase;letter-spacing:2px;color:#728369;font-size:10px;font-weight:650;display:flex;align-items:center;gap:8px}.eyebrow:before{content:'';width:6px;height:6px;background:#6d9565;border-radius:50%}h1{font-family:Manrope,sans-serif;font-size:43px;letter-spacing:-1.9px;line-height:1.25;font-weight:650;margin:14px 0 13px}h1 span{color:#899981}.intro{color:#7b817b;font-size:14px;line-height:1.8;margin:0;max-width:560px}.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:34px}.native{display:flex;gap:7px;align-items:center;font-size:11px;color:#6e776d;padding-bottom:5px}.native svg{color:#5e8255}.playground{display:grid;grid-template-columns:1fr 304px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 6px 18px #23391e03}.preview{display:flex;flex-direction:column;min-width:0}.panel-top{height:65px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf0e9}.panel-title{font-weight:550;font-size:12px;display:flex;align-items:center;gap:8px}.live{font-size:9px;color:#86927f;display:flex;gap:5px;align-items:center}.live:before{content:'';width:5px;height:5px;background:#72a968;border-radius:50%}.preview-body{flex:1;min-height:303px;padding:55px 54px 35px;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(#c7cebf50 .7px,transparent .7px);background-size:15px 15px}.value-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}.value-row label{font-size:13px;font-weight:550}.value-box{display:flex;align-items:center;gap:7px;font-size:12px;color:#8b9389}output.main-value{font-family:Manrope,sans-serif;font-size:29px;font-weight:650;letter-spacing:-1px;color:var(--ink)}.range{--progress:50%;width:100%;appearance:none;-webkit-appearance:none;height:44px;background:transparent;margin:0;cursor:pointer;display:block;border-radius:10px;outline:none}.range::-webkit-slider-runnable-track{height:var(--track-size);border-radius:30px;background:linear-gradient(to right,var(--fill) 0%,var(--fill) var(--progress),var(--track) var(--progress),var(--track) 100%)}.range::-moz-range-track{height:var(--track-size);border-radius:30px;background:var(--track)}.range::-moz-range-progress{height:var(--track-size);background:var(--fill);border-radius:30px}.range::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:var(--thumb-size);height:var(--thumb-size);background:white;border:3px solid var(--fill);border-radius:50%;margin-top:calc((var(--track-size) - var(--thumb-size))/2);box-shadow:0 2px 5px #243e2420;transition:box-shadow .18s,background .18s}.range::-moz-range-thumb{box-sizing:border-box;width:var(--thumb-size);height:var(--thumb-size);background:white;border:3px solid var(--fill);border-radius:50%;box-shadow:0 2px 5px #243e2420}.range:hover::-webkit-slider-thumb{box-shadow:0 0 0 5px color-mix(in srgb,var(--fill) 10%,transparent)}.range:hover::-moz-range-thumb{box-shadow:0 0 0 5px color-mix(in srgb,var(--fill) 10%,transparent)}.range:active::-webkit-slider-thumb{background:var(--fill)}.range:active::-moz-range-thumb{background:var(--fill)}.range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px white,0 0 0 7px var(--fill)}.range:focus-visible::-moz-range-thumb{box-shadow:0 0 0 4px white,0 0 0 7px var(--fill)}.range:focus-visible{outline:2px solid transparent}.range:disabled{opacity:.4;cursor:not-allowed}.range:disabled::-webkit-slider-thumb{box-shadow:none}.bounds{display:flex;justify-content:space-between;font-size:10px;color:#979c92;margin-top:4px}.keyboard-hint{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:34px;font-size:10px;color:#90978a}.keyboard-hint kbd{font-family:inherit;border:1px solid #dde2d7;background:white;padding:1px 5px;border-radius:4px;color:#737e6d}.preview-bottom{padding:14px 26px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#8a9284}.tags{display:flex;gap:7px}.tags span{padding:4px 7px;border:1px solid #e6eadf;border-radius:4px;background:#fafbf8;font-family:monospace;font-size:9px}.settings{border-left:1px solid var(--line);padding:23px 24px;background:#fcfcfa}.settings-title{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:550;margin-bottom:26px}.reset{border:0;background:none;color:#8b9385;font-size:10px;padding:0;display:flex;align-items:center;gap:5px}.field{margin-bottom:21px}.field-head{display:flex;justify-content:space-between;font-size:11px;color:#6f7869;margin-bottom:10px}.field-head output{font-family:monospace;color:#8b9484;font-size:10px}.swatches{display:flex;gap:9px}.swatch{width:26px;height:26px;border-radius:50%;background:var(--color);border:3px solid #fcfcfa;outline:1px solid transparent;padding:0}.swatch.selected{outline-color:var(--color)}.swatch.selected:after{content:'✓';color:white;font-size:12px}.mini-range{--thumb-size:13px;--track-size:3px;--track:#e6e9e0;height:20px}.mini-range::-webkit-slider-thumb{border-width:0;background:#718566}.mini-range::-moz-range-thumb{border-width:0;background:#718566}.setting-divider{border-top:1px solid var(--line);margin:21px 0 17px}.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#6f7869;margin:17px 0}.switch{position:relative;width:28px;height:16px;appearance:none;background:#dce1d7;border-radius:20px;cursor:pointer;margin:0}.switch:checked{background:#6f8965}.switch:before{content:'';position:absolute;width:12px;height:12px;border-radius:50%;background:white;left:2px;top:2px;transition:transform .15s}.switch:checked:before{transform:translateX(12px)}.switch:focus-visible{outline:2px solid var(--green);outline-offset:3px}.export{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px solid #dfe5d7;border-radius:6px;background:white;padding:10px;font-size:11px;margin-top:24px}.export:hover{background:#f0f4eb}.section-top{display:flex;align-items:center;justify-content:space-between;margin:34px 0 16px}.section-top h2{font-size:13px;font-weight:550;margin:0}.section-top span{color:#92998b;font-size:10px}.states{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.state-card{border:1px solid var(--line);border-radius:9px;background:#fff;padding:18px 20px 14px}.state-label{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#6e7865}.state-label span{font-family:monospace;font-size:9px;color:#a2aa9a}.state-card .range{--thumb-size:19px;--track-size:5px;margin:15px 0 4px}.hover-state::-webkit-slider-thumb{box-shadow:0 0 0 5px #32815a16}.hover-state::-moz-range-thumb{box-shadow:0 0 0 5px #32815a16}.focus-state::-webkit-slider-thumb{box-shadow:0 0 0 3px white,0 0 0 5px #88ac87}.focus-state::-moz-range-thumb{box-shadow:0 0 0 3px white,0 0 0 5px #88ac87}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:37px 0 42px}.feature{display:flex;gap:11px}.feature-icon{color:#718566;width:30px;height:30px;background:#eef2e9;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.feature h3{font-size:11px;font-weight:550;margin:1px 0 6px}.feature p{font-size:10px;line-height:1.7;margin:0;color:#90978a}footer{border-top:1px solid var(--line);padding:21px 0;font-size:10px;color:#969e8e}.footer-inner{display:flex;justify-content:space-between}.footer-inner span:last-child{display:flex;align-items:center;gap:6px}svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.status{font-size:10px;color:var(--green);text-align:center;min-height:12px;margin-top:8px}@media(min-width:1400px){main{padding-top:65px}.preview-body{min-height:330px}}@media(max-width:800px){.wrap{padding:0 24px}.heading{align-items:flex-start}.native{display:none}.playground{grid-template-columns:1fr 260px}.preview-body{padding:45px 28px}.states{grid-template-columns:repeat(2,1fr)}h1{font-size:35px}.features{gap:15px}}@media(max-width:580px){header{height:72px}.nav-right>span{display:none}.nav-right{gap:14px}main{padding-top:35px}h1{font-size:32px}.playground{grid-template-columns:1fr}.settings{border-left:0;border-top:1px solid var(--line)}.preview-body{min-height:270px}.features{grid-template-columns:1fr;gap:20px}.section-top span{display:none}.state-card{padding:16px}.preview-bottom{padding:14px 20px}.footer-inner{gap:15px}.intro{font-size:13px}.tags{gap:4px}}
++@media(prefers-reduced-motion:reduce){*{transition:none!important}}@media(forced-colors:active){.range{appearance:auto;forced-color-adjust:auto}.range:focus-visible{outline:2px solid Highlight}.swatch.selected{outline:2px solid Highlight}.switch{appearance:auto}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<header><div class="wrap nav"><a class="brand" href="./" aria-label="Range home"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>range<span style="color:#85a474">.</span></a><div class="nav-right"><span>A little detail. A better interface.</span><span class="pill">COMPONENT / 001</span></div></div></header>
++<main class="wrap">
++<div class="heading"><div><div class="eyebrow">Native, with a little character</div><h1>Small control.<br><span>Endless possibilities.</span></h1><p class="intro">A familiar slider, thoughtfully refined. Customize the details<br class="desktop-break"> and make it feel right at home in your interface.</p></div><div class="native"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="m8 12 3 3 5-6"/></svg>100% native. Always accessible.</div></div>
++<section class="playground" aria-label="Range slider playground"><div class="preview"><div class="panel-top"><span class="panel-title"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/></svg>Playground</span><span class="live">LIVE PREVIEW</span></div><div class="preview-body"><div class="value-row"><label for="main-range">Make yourself comfortable</label><div class="value-box"><output class="main-value" id="main-value" for="main-range">50</output><span>/ 100</span></div></div><input class="range" id="main-range" type="range" min="0" max="100" value="50" aria-describedby="range-help"><div class="bounds" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div><div class="keyboard-hint" id="range-help"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h1m3 0h1m3 0h1M7 14h10"/></svg>Try your <kbd>←</kbd><kbd>→</kbd> arrow keys</div></div><div class="preview-bottom"><span>Built on the browser. Styled by you.</span><div class="tags"><span>input[type="range"]</span><span>CSS + JS</span></div></div></div>
++<aside class="settings" aria-label="Slider customization"><div class="settings-title">Make it yours <button class="reset" id="reset"><span aria-hidden="true">↺</span> Reset</button></div><div class="field"><div class="field-head"><span id="color-label">Accent color</span><output id="color-value">#32815A</output></div><div class="swatches" role="group" aria-labelledby="color-label"><button class="swatch selected" style="--color:#32815a" data-color="#32815a" aria-label="Forest green" aria-pressed="true"></button><button class="swatch" style="--color:#657dc0" data-color="#657dc0" aria-label="Blue" aria-pressed="false"></button><button class="swatch" style="--color:#a581b6" data-color="#a581b6" aria-label="Lavender" aria-pressed="false"></button><button class="swatch" style="--color:#c68b50" data-color="#c68b50" aria-label="Amber" aria-pressed="false"></button><button class="swatch" style="--color:#cf7d7a" data-color="#cf7d7a" aria-label="Rose" aria-pressed="false"></button><button class="swatch" style="--color:#4d5752" data-color="#4d5752" aria-label="Slate" aria-pressed="false"></button></div></div><div class="field"><div class="field-head"><label for="track-size">Track height</label><output id="track-output" for="track-size">8 px</output></div><input class="range mini-range" id="track-size" type="range" min="2" max="16" value="8"></div><div class="field"><div class="field-head"><label for="thumb-size">Thumb size</label><output id="thumb-output" for="thumb-size">26 px</output></div><input class="range mini-range" id="thumb-size" type="range" min="16" max="40" value="26"></div><div class="setting-divider"></div><div class="toggle-row"><label for="show-fill">Show track fill</label><input class="switch" type="checkbox" id="show-fill" checked></div><div class="toggle-row"><label for="disabled">Disabled state</label><input class="switch" type="checkbox" id="disabled"></div><button class="export" id="copy"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>Copy CSS</button><div class="status" id="copy-status" role="status"></div></aside></section>
++<div class="section-top"><h2>Considered in every state</h2><span>The little interactions that make a big difference.</span></div><section class="states" aria-label="Interaction state examples"><div class="state-card"><div class="state-label"><label for="state-default">Default</label><span>01</span></div><input id="state-default" class="range" type="range" value="50"></div><div class="state-card"><div class="state-label"><label for="state-hover">Hover</label><span>02</span></div><input id="state-hover" class="range hover-state" type="range" value="50"></div><div class="state-card"><div class="state-label"><label for="state-focus">Focus</label><span>03</span></div><input id="state-focus" class="range focus-state" type="range" value="50"></div><div class="state-card"><div class="state-label"><label for="state-disabled">Disabled</label><span>04</span></div><input id="state-disabled" class="range" type="range" value="50" disabled></div></section>
++<section class="features" aria-label="Component features"><div class="feature"><div class="feature-icon"><svg viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-14-2 16"/></svg></div><div><h3>Native at its core</h3><p>Real HTML input. No reinvented wheels.<br>Just a better coat of paint.</p></div></div><div class="feature"><div class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M4 9h16m-8 0v6m0-3-5 8m5-8 5 8"/></svg></div><div><h3>Everyone is welcome</h3><p>Keyboard navigation, visible focus, and<br>screen reader support, built right in.</p></div></div><div class="feature"><div class="feature-icon"><svg viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></div><div><h3>Fits your world</h3><p>A few CSS variables. Your colors, your sizes.<br>A small component with room to grow.</p></div></div></section>
++</main><footer><div class="wrap footer-inner"><span>A study in the details. Made for the web.</span><span><span style="color:#78916a">◌</span> Less code. More care.</span></div></footer>
++<script>
++const main=document.getElementById('main-range');
++const track=document.getElementById('track-size');
++const thumb=document.getElementById('thumb-size');
++const fill=document.getElementById('show-fill');
++const disabled=document.getElementById('disabled');
++const preview=document.querySelector('.preview');
++let accent='#32815a';
++function progress(input){const min=Number(input.min)||0,max=Number(input.max)||100;input.style.setProperty('--progress',((Number(input.value)-min)/(max-min)*100)+'%');}
++function update(){preview.style.setProperty('--fill',accent);preview.style.setProperty('--track-size',track.value+'px');preview.style.setProperty('--thumb-size',thumb.value+'px');main.style.setProperty('--progress',fill.checked?main.value+'%':'0%');main.disabled=disabled.checked;document.getElementById('main-value').value=main.value;document.getElementById('track-output').value=track.value+' px';document.getElementById('thumb-output').value=thumb.value+' px';document.getElementById('color-value').value=accent.toUpperCase();main.classList.toggle('no-fill',!fill.checked);progress(track);progress(thumb);}
++document.querySelectorAll('.range').forEach(input=>{progress(input);input.addEventListener('input',()=>{progress(input);if(input===main||input===track||input===thumb)update();});});
++const noFill=document.createElement('style');noFill.textContent='.range.no-fill::-moz-range-progress{background:var(--track)}';document.head.append(noFill);
++[fill,disabled].forEach(input=>input.addEventListener('change',update));
++document.querySelectorAll('.swatch').forEach(button=>button.addEventListener('click',()=>{accent=button.dataset.color;document.querySelectorAll('.swatch').forEach(swatch=>{const selected=swatch===button;swatch.classList.toggle('selected',selected);swatch.setAttribute('aria-pressed',selected);});update();}));
++document.getElementById('reset').addEventListener('click',()=>{main.value=50;track.value=8;thumb.value=26;fill.checked=true;disabled.checked=false;document.querySelector('.swatch').click();document.getElementById('copy-status').textContent='';});
++document.getElementById('copy').addEventListener('click',async()=>{
++const css=`/* Native range slider. Update --progress on input:\n   (value - min) / (max - min) * 100 + '%' */
++.range {
++  --fill: ${accent};
++  --track: #dce4da;
++  --track-size: ${track.value}px;
++  --thumb-size: ${thumb.value}px;
++  --progress: ${main.value}%;
++  appearance: none;
++  width: 100%;
++  height: 44px;
++  background: transparent;
++  cursor: pointer;
++}
++.range::-webkit-slider-runnable-track {
++  height: var(--track-size);
++  border-radius: 30px;
++  background: ${fill.checked?'linear-gradient(to right, var(--fill) var(--progress), var(--track) var(--progress))':'var(--track)'};
++}
++.range::-moz-range-track {
++  height: var(--track-size);
++  border-radius: 30px;
++  background: var(--track);
++}
++.range::-moz-range-progress {
++  height: var(--track-size);
++  border-radius: 30px;
++  background: ${fill.checked?'var(--fill)':'var(--track)'};
++}
++.range::-webkit-slider-thumb {
++  appearance: none;
++  width: var(--thumb-size);
++  height: var(--thumb-size);
++  margin-top: calc((var(--track-size) - var(--thumb-size)) / 2);
++  border: 3px solid var(--fill);
++  border-radius: 50%;
++  background: white;
++}
++.range::-moz-range-thumb {
++  box-sizing: border-box;
++  width: var(--thumb-size);
++  height: var(--thumb-size);
++  border: 3px solid var(--fill);
++  border-radius: 50%;
++  background: white;
++}
++.range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fill) 10%, transparent); }
++.range:hover::-moz-range-thumb { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fill) 10%, transparent); }
++.range:active::-webkit-slider-thumb { background: var(--fill); }
++.range:active::-moz-range-thumb { background: var(--fill); }
++.range:focus-visible { outline: 2px solid transparent; }
++.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px white, 0 0 0 7px var(--fill); }
++.range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px white, 0 0 0 7px var(--fill); }
++.range:disabled { opacity: .4; cursor: not-allowed; }
++@media (forced-colors: active) {
++  .range { appearance: auto; }
++  .range:focus-visible { outline: 2px solid Highlight; }
++}`;
++try{await navigator.clipboard.writeText(css);document.getElementById('copy-status').textContent='CSS copied to clipboard';}catch{const blob=new Blob([css],{type:'text/css'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='range.css';link.click();URL.revokeObjectURL(url);document.getElementById('copy-status').textContent='CSS downloaded';}
++});
++update();
++</script>
+ </body>
+-
+ </html>

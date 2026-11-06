@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+index 66c9173..7048c15 100644
+--- a/index.html
++++ b/index.html
+@@ -108,18 +108,78 @@
+     }
+ 
+     .card {
++      container: card / inline-size;
++      grid-row: span 4;
++      display: grid;
++      grid-template-rows: auto auto 1fr auto;
++      grid-template-rows: subgrid;
++      row-gap: 12px;
+       background: white;
+-      padding: 20px;
++      padding: clamp(16px, 5cqi, 24px);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      align-items: start;
++    }
++
++    .card > :is(img, picture, video, svg, .media) {
++      grid-row: 1;
++      display: block;
++      inline-size: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++      border-radius: 6px;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++      grid-row: 2;
++      font-size: clamp(1.15rem, 5cqi, 1.5rem);
+       color: var(--primary);
+     }
+ 
++    .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++      grid-row: 3;
++    }
++
++    .card > footer {
++      grid-row: 4;
++      background: transparent;
++      padding: 0;
++      margin-top: 0;
++      text-align: inherit;
++    }
++
++    @container (min-width: 380px) {
++      .card:has(> :is(img, picture, video, svg, .media)) {
++        grid-template-columns: minmax(120px, 38%) 1fr;
++        grid-template-rows: auto 1fr auto;
++        column-gap: clamp(16px, 4cqi, 24px);
++        text-align: start;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        block-size: 100%;
++        aspect-ratio: 1 / 1;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++        grid-column: 2;
++        grid-row: 1;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++        grid-column: 2;
++        grid-row: 2;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > footer {
++        grid-column: 2;
++        grid-row: 3;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -131,6 +191,22 @@
+       transition: background 0.3s;
+     }
+ 
++    .card > footer .btn {
++      margin-top: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: clip;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -178,21 +254,30 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte with latte art in a ceramic cup">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Freshly pulled shot of Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Glass of iced Cold Brew coffee">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

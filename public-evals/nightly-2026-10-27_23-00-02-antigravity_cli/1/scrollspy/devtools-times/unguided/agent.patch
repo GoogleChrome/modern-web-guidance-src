@@ -1,0 +1,776 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..80f0344 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,15 +1,84 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef, useCallback } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
++export interface PageSection {
++    id: string;
++    title: string;
++}
++
+ interface BottomNavProps {
+     categories: string[];
+     articles: any[];
+     reports: any[];
+     multimedia: any[];
++    currentPath?: string;
++}
++
++const HOME_DEFAULT_SECTIONS: PageSection[] = [
++    { id: 'top-stories', title: 'Top Stories' },
++    { id: 'top-news', title: 'Top News' },
++    { id: 'world', title: 'World' },
++    { id: 'politics', title: 'Politics' },
++];
++
++function getInitialSectionsForPath(path?: string): PageSection[] {
++    if (!path) return HOME_DEFAULT_SECTIONS;
++    const normalized = path.replace(/\/+$/, '');
++    if (normalized === '' || normalized === '/devtools-times') {
++        return HOME_DEFAULT_SECTIONS;
++    }
++    if (normalized.endsWith('/legal/terms')) {
++        return [
++            { id: 'terms', title: '1. Terms' },
++            { id: 'use-license', title: '2. Use License' },
++            { id: 'disclaimer', title: '3. Disclaimer' },
++        ];
++    }
++    if (normalized.endsWith('/legal/privacy')) {
++        return [
++            { id: 'overview-of-data-protection', title: '1. Overview' },
++            { id: 'general-information', title: '2. General Information' },
++            { id: 'recording-of-data', title: '3. Recording of Data' },
++        ];
++    }
++    if (normalized.includes('/category/')) {
++        return [
++            { id: 'featured-story', title: 'Featured Story' },
++            { id: 'more-articles', title: 'More Articles' },
++        ];
++    }
++    if (normalized.includes('/articles/')) {
++        return [
++            { id: 'article-overview', title: 'Article' },
++            { id: 'related-articles', title: 'Related Articles' },
++        ];
++    }
++    return [];
++}
++
++function slugify(text: string): string {
++    return text
++        .toLowerCase()
++        .trim()
++        .replace(/[^a-z0-9]+/g, '-')
++        .replace(/(^-|-$)/g, '');
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
++const BottomNav: React.FC<BottomNavProps> = ({
++    categories,
++    articles,
++    reports,
++    multimedia,
++    currentPath = '',
++}) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const initialSections = getInitialSectionsForPath(currentPath);
++    const [pageSections, setPageSections] = useState<PageSection[]>(initialSections);
++    const [activeSectionId, setActiveSectionId] = useState<string | null>(
++        initialSections[0]?.id ?? null
++    );
++    const [pathname, setPathname] = useState<string>(currentPath);
++    const navContainerRef = useRef<HTMLDivElement>(null);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,32 +87,297 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    const computeVisibleSection = useCallback((sections: PageSection[]) => {
++        if (typeof window === 'undefined' || sections.length === 0) return;
++
++        const elements = sections
++            .map((sec) => ({
++                ...sec,
++                el: document.getElementById(sec.id),
++            }))
++            .filter((item): item is PageSection & { el: HTMLElement } => item.el !== null);
++
++        if (elements.length === 0) return;
++
++        const navHeight = navContainerRef.current?.getBoundingClientRect().height ?? 80;
++        const viewportHeight = window.innerHeight;
++
++        // Check if scrolled to the very bottom of the page
++        const scrolledToBottom =
++            window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 24;
++        if (scrolledToBottom) {
++            const lastEl = elements[elements.length - 1];
++            const lastRect = lastEl.el.getBoundingClientRect();
++            if (lastRect.top < viewportHeight && lastRect.bottom > navHeight) {
++                setActiveSectionId(lastEl.id);
++                return;
++            }
++        }
++
++        const readingLine = navHeight + Math.min(100, (viewportHeight - navHeight) * 0.25);
++
++        // Compute logical vertical bounds for each section
++        const bounds = elements.map((item, idx) => {
++            const rect = item.el.getBoundingClientRect();
++            const nextRect =
++                idx + 1 < elements.length
++                    ? elements[idx + 1].el.getBoundingClientRect()
++                    : null;
++
++            const isHeadingTag = /^H[1-6]$/.test(item.el.tagName);
++            const containsNext =
++                nextRect && item.el.contains(elements[idx + 1].el);
++
++            const top = rect.top;
++            const bottom =
++                isHeadingTag || containsNext
++                    ? nextRect
++                        ? nextRect.top
++                        : rect.bottom
++                    : rect.bottom;
++
++            const visibleTop = Math.max(top, navHeight);
++            const visibleBottom = Math.min(bottom, viewportHeight);
++            const visiblePx = Math.max(0, visibleBottom - visibleTop);
++
++            return {
++                id: item.id,
++                top,
++                bottom,
++                visiblePx,
++            };
++        });
++
++        // 1. Section whose region spans across the reading line
++        const atReadingLine = bounds.find(
++            (b) => b.top <= readingLine && b.bottom > readingLine
++        );
++        if (atReadingLine) {
++            setActiveSectionId(atReadingLine.id);
++            return;
++        }
++
++        // 2. First section currently visible in the viewport below the sticky nav
++        const firstVisible = bounds.find((b) => b.visiblePx > 0);
++        if (firstVisible) {
++            setActiveSectionId(firstVisible.id);
++            return;
++        }
++
++        // 3. Fallback: last section whose top is above the reading line, or the first section
++        const passedSections = bounds.filter((b) => b.top <= readingLine);
++        if (passedSections.length > 0) {
++            setActiveSectionId(passedSections[passedSections.length - 1].id);
++        } else {
++            setActiveSectionId(bounds[0].id);
++        }
++    }, []);
++
++    useEffect(() => {
++        if (typeof window === 'undefined') return;
++
++        let observer: IntersectionObserver | null = null;
++        let rafId: number | null = null;
++
++        const scanAndObserveSections = () => {
++            setPathname(window.location.pathname);
++
++            const mainEl = document.querySelector('main') || document.body;
++            const candidateNodes = Array.from(
++                mainEl.querySelectorAll<HTMLElement>(
++                    '[data-section-title], article .prose h2, article .prose h3'
++                )
++            );
++
++            const discovered: PageSection[] = [];
++            const seenIds = new Set<string>();
++
++            candidateNodes.forEach((node) => {
++                const title =
++                    node.getAttribute('data-section-title')?.trim() ||
++                    node.textContent?.trim() ||
++                    '';
++                if (!title) return;
++
++                let id = node.id;
++                if (!id) {
++                    id = slugify(title);
++                    if (id) {
++                        node.id = id;
++                    }
++                }
++                if (!id || seenIds.has(id)) return;
++
++                node.classList.add('scroll-mt-24');
++                seenIds.add(id);
++                discovered.push({ id, title });
++            });
++
++            setPageSections(discovered);
++
++            if (observer) {
++                observer.disconnect();
++            }
++
++            if (discovered.length === 0) {
++                setActiveSectionId(null);
++                return;
++            }
++
++            // Respect initial URL hash if present
++            const hashId = window.location.hash.replace(/^#/, '');
++            if (hashId && seenIds.has(hashId)) {
++                setActiveSectionId(hashId);
++            } else {
++                computeVisibleSection(discovered);
++            }
++
++            observer = new IntersectionObserver(
++                () => {
++                    if (rafId !== null) cancelAnimationFrame(rafId);
++                    rafId = requestAnimationFrame(() => {
++                        computeVisibleSection(discovered);
++                    });
++                },
++                {
++                    root: null,
++                    rootMargin: '-64px 0px -25% 0px',
++                    threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
++                }
++            );
++
++            discovered.forEach((sec) => {
++                const el = document.getElementById(sec.id);
++                if (el) observer?.observe(el);
++            });
++        };
++
++        const handleScrollOrResize = () => {
++            if (rafId !== null) cancelAnimationFrame(rafId);
++            rafId = requestAnimationFrame(() => {
++                setPageSections((current) => {
++                    computeVisibleSection(current);
++                    return current;
++                });
++            });
++        };
++
++        scanAndObserveSections();
++
++        window.addEventListener('scroll', handleScrollOrResize, { passive: true });
++        window.addEventListener('resize', handleScrollOrResize, { passive: true });
++        document.addEventListener('astro:page-load', scanAndObserveSections);
++
++        return () => {
++            if (observer) observer.disconnect();
++            if (rafId !== null) cancelAnimationFrame(rafId);
++            window.removeEventListener('scroll', handleScrollOrResize);
++            window.removeEventListener('resize', handleScrollOrResize);
++            document.removeEventListener('astro:page-load', scanAndObserveSections);
++        };
++    }, [computeVisibleSection]);
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+ 
+-    const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+-    const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+-    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
++    const handleSectionClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
++        const target = document.getElementById(sectionId);
++        if (target) {
++            e.preventDefault();
++            setActiveSectionId(sectionId);
++            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++            window.history.replaceState(null, '', `#${sectionId}`);
++        }
++    };
++
++    const isCategoryGroupActive = (groupName: string, subCategories: string[]): boolean => {
++        const lowerPath = decodeURIComponent(pathname).toLowerCase();
++        // Match category page URL
++        if (
++            subCategories.some((cat) =>
++                lowerPath.includes(`/category/${cat.toLowerCase()}`)
++            )
++        ) {
++            return true;
++        }
++        // Match article page category
++        const articleMatch = articles.find((a) =>
++            lowerPath.endsWith(`/articles/${a.id.toLowerCase()}`)
++        );
++        if (
++            articleMatch &&
++            subCategories.some(
++                (cat) => cat.toLowerCase() === articleMatch.data?.category?.toLowerCase()
++            )
++        ) {
++            return true;
++        }
++        // On homepage, highlight "News & Politics" when viewing news/politics sections
++        if (
++            groupName === 'News & Politics' &&
++            activeSectionId &&
++            ['top-stories', 'top-news', 'world', 'politics'].includes(activeSectionId)
++        ) {
++            return true;
++        }
++        return false;
++    };
++
++    const activeSubCategories = activeCategory
++        ? groupedCategories[activeCategory as keyof typeof groupedCategories]
++        : [];
++    const filteredReports = activeCategory
++        ? reports.filter((r) => r.data.category === activeCategory)
++        : [];
++    const filteredMultimedia = activeCategory
++        ? multimedia.filter((m) => m.data.category === activeCategory)
++        : [];
+ 
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++        <div
++            ref={navContainerRef}
++            onMouseLeave={handleMouseLeave}
++            className="sticky top-0 z-40 bg-white font-inter shadow-xs"
++        >
++            {/* Primary Category Navigation Bar */}
++            <div className="border-t border-b border-gray-900 bg-white">
++                <nav
++                    aria-label="Main navigation"
++                    className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto"
++                >
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const isGroupActive = isCategoryGroupActive(groupName, subCategories);
+                         return (
+-                            <div 
++                            <div
+                                 key={groupName}
+                                 onMouseEnter={() => setActiveCategory(groupName)}
+                                 className="h-full flex items-center"
+                             >
+-                                <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                <a
++                                    href="#"
++                                    aria-current={isGroupActive ? 'true' : undefined}
++                                    data-active={isGroupActive ? 'true' : 'false'}
++                                    className={`flex items-center space-x-1 hover:text-amber-500 whitespace-nowrap transition-colors ${
++                                        isGroupActive ? 'text-amber-500 font-bold' : 'text-gray-900'
++                                    }`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
++                                    <svg
++                                        xmlns="http://www.w3.org/2000/svg"
++                                        fill="none"
++                                        viewBox="0 0 24 24"
++                                        strokeWidth="3"
++                                        stroke="currentColor"
++                                        className={`w-3 h-3 ${
++                                            isGroupActive ? 'text-amber-500' : 'text-gray-500'
++                                        }`}
++                                    >
++                                        <path
++                                            strokeLinecap="round"
++                                            strokeLinejoin="round"
++                                            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
++                                        />
+                                     </svg>
+                                 </a>
+                             </div>
+@@ -51,12 +385,54 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                     })}
+                 </nav>
+             </div>
+-            <FlyoutMenu 
+-                isOpen={activeCategory !== null} 
+-                categories={activeSubCategories.filter(c => categories.includes(c))}
++
++            {/* In-Page Section Navigation Bar (highlights currently visible section) */}
++            {pageSections.length > 0 && (
++                <div className="border-b border-gray-200 bg-gray-50/95 backdrop-blur-xs">
++                    <nav
++                        aria-label="Page sections"
++                        className="container mx-auto px-4 flex items-center justify-center space-x-2 sm:space-x-4 h-9 overflow-x-auto text-xs sm:text-sm"
++                    >
++                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 hidden sm:inline mr-1">
++                            On this page:
++                        </span>
++                        {pageSections.map((section) => {
++                            const isActive = activeSectionId === section.id;
++                            return (
++                                <a
++                                    key={section.id}
++                                    href={`#${section.id}`}
++                                    onClick={(e) => handleSectionClick(e, section.id)}
++                                    aria-current={isActive ? 'location' : undefined}
++                                    data-active={isActive ? 'true' : 'false'}
++                                    data-section-link={section.id}
++                                    className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full whitespace-nowrap transition-all duration-150 ${
++                                        isActive
++                                            ? 'active bg-amber-400 text-gray-950 font-bold shadow-2xs'
++                                            : 'text-gray-600 font-medium hover:text-gray-900 hover:bg-gray-200/70'
++                                    }`}
++                                >
++                                    {isActive && (
++                                        <span
++                                            aria-hidden="true"
++                                            className="w-1.5 h-1.5 rounded-full bg-gray-950"
++                                        />
++                                    )}
++                                    <span>{section.title}</span>
++                                </a>
++                            );
++                        })}
++                    </nav>
++                </div>
++            )}
++
++            <FlyoutMenu
++                isOpen={activeCategory !== null}
++                categories={activeSubCategories.filter((c) => categories.includes(c))}
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                currentPath={pathname}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..6779c3c 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -6,9 +6,10 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  currentPath?: string;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia, currentPath = '' }) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -34,13 +35,20 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           <div>
+             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
+             <ul className="space-y-2 text-sm">
+-              {categories.map(category => (
+-                <li key={category}>
+-                  <a href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+-                  </a>
+-                </li>
+-              ))}
++              {categories.map(category => {
++                const isSubActive = decodeURIComponent(currentPath).toLowerCase().includes(`/category/${category.toLowerCase()}`);
++                return (
++                  <li key={category}>
++                    <a
++                      href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`}
++                      aria-current={isSubActive ? 'page' : undefined}
++                      className={`hover:underline capitalize ${isSubActive ? 'text-amber-500 font-bold' : ''}`}
++                    >
++                      {category.charAt(0).toUpperCase() + category.slice(1)}
++                    </a>
++                  </li>
++                );
++              })}
+             </ul>
+           </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..8a63ff0 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const currentPath = Astro.url.pathname;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -63,7 +64,14 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       </div>
+     </div>
+   </div>
+-
+-  <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
+ </header>
++
++<!-- Bottom Navigation Bar (Sticky across page scroll) -->
++<BottomNav
++  client:load
++  categories={categories}
++  articles={articles}
++  reports={reports}
++  multimedia={multimedia}
++  currentPath={currentPath}
++/>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..ccb4324 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,13 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-title={title} class="p-4 md:p-6 scroll-mt-24">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..f5eecfc 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,11 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-title={title} class="p-4 md:p-6 scroll-mt-24">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..ca3972d 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -42,9 +42,7 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
++        <Header />
+         <main class="bg-white relative">
+           <slot />
+         </main>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..a04c2fc 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -36,7 +36,7 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article id="article-overview" data-section-title="Article" class="max-w-3xl mx-auto px-4 py-8 md:py-12 scroll-mt-24">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -116,7 +116,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" data-section-title="Related Articles" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-24">
++        <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..cea002a 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="featured-story" data-section-title="Featured Story" class="mb-8 pb-8 border-b border-gray-200 scroll-mt-24">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -88,9 +88,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
++                <section id="more-articles" data-section-title="More Articles" class="scroll-mt-24">
++                    <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">More in {capitalizedCategory}</h2>
++                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                        {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9b52325 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,26 +38,28 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++    <section id="top-stories" data-section-title="Top Stories" class="scroll-mt-24">
++        <!-- Top Stories Bar -->
++        <div class="bg-white border-b border-gray-300">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                    {topStories.map(article => (
++                        <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..59740b0 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -2,16 +2,22 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++    <section id="overview-of-data-protection" data-section-title="1. Overview" class="scroll-mt-24">
++        <h2>1. An overview of data protection</h2>
++        <p><strong>General information</strong></p>
++        <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++    </section>
+     
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    <section id="general-information" data-section-title="2. General Information" class="scroll-mt-24">
++        <h2>2. General information and mandatory information</h2>
++        <p><strong>Data protection</strong></p>
++        <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
++        <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    </section>
+     
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <section id="recording-of-data" data-section-title="3. Recording of Data" class="scroll-mt-24">
++        <h2>3. Recording of data on our website</h2>
++        <p><strong>Cookies</strong></p>
++        <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    </section>
+ </LegalLayout>
+diff --git a/src/pages/legal/terms.astro b/src/pages/legal/terms.astro
+index de69dc0..39bfbbf 100644
+--- a/src/pages/legal/terms.astro
++++ b/src/pages/legal/terms.astro
+@@ -2,19 +2,25 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Terms of Service">
+-    <h2>1. Terms</h2>
+-    <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++    <section id="terms" data-section-title="1. Terms" class="scroll-mt-24">
++        <h2>1. Terms</h2>
++        <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++    </section>
+     
+-    <h2>2. Use License</h2>
+-    <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+-    <ul>
+-        <li>modify or copy the materials;</li>
+-        <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
+-        <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
+-        <li>remove any copyright or other proprietary notations from the materials; or</li>
+-        <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
+-    </ul>
++    <section id="use-license" data-section-title="2. Use License" class="scroll-mt-24">
++        <h2>2. Use License</h2>
++        <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
++        <ul>
++            <li>modify or copy the materials;</li>
++            <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
++            <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
++            <li>remove any copyright or other proprietary notations from the materials; or</li>
++            <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
++        </ul>
++    </section>
+     
+-    <h2>3. Disclaimer</h2>
+-    <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    <section id="disclaimer" data-section-title="3. Disclaimer" class="scroll-mt-24">
++        <h2>3. Disclaimer</h2>
++        <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    </section>
+ </LegalLayout>

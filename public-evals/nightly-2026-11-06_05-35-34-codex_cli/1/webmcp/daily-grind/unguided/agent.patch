@@ -1,0 +1,385 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..845efb1
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,21 @@
++# Daily Grind browser tools
++
++The static homepage loads `app.js`, which registers three client-side WebMCP tools:
++
++- `get_seasonal_menu({ query?: string })`: read the displayed Seasonal Favorites menu, optionally searching names and descriptions.
++- `select_drink({ drinkId: string })`: highlight a drink, select it in the order form, and reveal the form.
++- `order_drink({ drinkId: string, quantity?: integer })`: add 1–10 drinks (default 1) to the visible demo order.
++
++Drink IDs are `maple-oat-latte`, `dark-roast-espresso`, and `cold-brew`.
++Tools return MCP-style text content containing JSON; invalid arguments return `isError: true` with a useful message and do not change the page. Orders exist only in page memory, reset on reload, and never submit a payment or real café order. Buttons and the order form use the same actions as the tools.
++
++Native discovery uses `document.modelContext.registerTool`, with compatibility for `navigator.modelContext.registerTool`. See the [Chrome WebMCP documentation](https://developer.chrome.com/docs/modern-web-guidance/guides/webmcp/agentic-javascript-tools). Unsupported browsers keep the normal UI and expose the same tool schemas and handlers through this fallback:
++
++```js
++window.dailyGrind.listTools();
++await window.dailyGrind.callTool('get_seasonal_menu', { query: 'oat' });
++await window.dailyGrind.callTool('select_drink', { drinkId: 'cold-brew' });
++await window.dailyGrind.callTool('order_drink', { drinkId: 'cold-brew', quantity: 2 });
++```
++
++Run non-browser checks with `node --test tests/app.test.cjs`. No dependencies or build step are required.
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..b113ab3
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,154 @@
++(() => {
++  'use strict';
++
++  // Read the displayed menu so tools and visitors see the same descriptions.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map(card => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++  }));
++  const drinkInput = document.getElementById('order-drink');
++  const quantityInput = document.getElementById('order-quantity');
++  const status = document.getElementById('order-status');
++  const orderItems = document.getElementById('order-items');
++  const orders = [];
++  const result = data => ({ content: [{ type: 'text', text: JSON.stringify(data) }] });
++  const failure = error => ({ ...result({ error }), isError: true });
++  const snapshot = () => orders.map(item => ({ ...item }));
++
++  function validate(input, allowed) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) {
++      return 'Arguments must be an object.';
++    }
++    if (Object.keys(input).some(key => !allowed.includes(key))) {
++      return `Supported arguments: ${allowed.join(', ')}.`;
++    }
++    return null;
++  }
++
++  function selectDrink(drinkId) {
++    const drink = menu.find(item => item.id === drinkId);
++    if (!drink) return null;
++    drinkInput.value = drink.id;
++    cards.forEach(card => card.classList.toggle('is-selected', card.dataset.drinkId === drink.id));
++    return drink;
++  }
++
++  function revealOrder() {
++    document.getElementById('order-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
++    drinkInput.focus({ preventScroll: true });
++  }
++
++  function renderOrder() {
++    orderItems.replaceChildren(...orders.map(item => {
++      const row = document.createElement('li');
++      row.textContent = `${item.quantity} × ${item.name}`;
++      return row;
++    }));
++  }
++
++  const drinkSchema = {
++    type: 'string', enum: menu.map(item => item.id), description: 'The menu ID of the drink.',
++  };
++  const tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Query the Seasonal Favorites coffee menu. Returns drink IDs, names, and descriptions without changing the page.',
++      inputSchema: {
++        type: 'object', properties: { query: { type: 'string', description: 'Search text matched against drink names and descriptions.', default: '' } },
++        additionalProperties: false,
++      },
++      annotations: { readOnlyHint: true },
++      execute(input = {}) {
++        const error = validate(input, ['query']);
++        if (error) return failure(error);
++        const { query = '' } = input;
++        if (typeof query !== 'string') return failure('query must be a string.');
++        const search = query.trim().toLowerCase();
++        return result({ section: 'Seasonal Favorites', drinks: menu.filter(item =>
++          `${item.name} ${item.description}`.toLowerCase().includes(search)) });
++      },
++    },
++    {
++      name: 'select_drink',
++      description: 'Highlight a seasonal drink, select it in the order form, and bring the form into view without adding an order.',
++      inputSchema: { type: 'object', properties: { drinkId: drinkSchema }, required: ['drinkId'], additionalProperties: false },
++      annotations: { readOnlyHint: false },
++      execute(input = {}) {
++        const error = validate(input, ['drinkId']);
++        if (error) return failure(error);
++        const drink = selectDrink(input.drinkId);
++        if (!drink) return failure('Unknown drinkId. Use get_seasonal_menu to find available drinks.');
++        status.textContent = `${drink.name} selected. Choose a quantity and add it to your order.`;
++        revealOrder();
++        return result({ selectedDrink: drink });
++      },
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible local demo order and show confirmation. No payment or real café order is submitted; orders reset on reload.',
++      inputSchema: {
++        type: 'object', properties: {
++          drinkId: drinkSchema,
++          quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1, description: 'Number of drinks to add.' },
++        }, required: ['drinkId'], additionalProperties: false,
++      },
++      annotations: { readOnlyHint: false },
++      execute(input = {}) {
++        const error = validate(input, ['drinkId', 'quantity']);
++        if (error) return failure(error);
++        const { quantity = 1 } = input;
++        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++          return failure('quantity must be an integer between 1 and 10.');
++        }
++        const drink = selectDrink(input.drinkId);
++        if (!drink) return failure('Unknown drinkId. Use get_seasonal_menu to find available drinks.');
++        quantityInput.value = String(quantity);
++        orders.push({ drinkId: drink.id, name: drink.name, quantity });
++        renderOrder();
++        status.textContent = `Added ${quantity} × ${drink.name} to your demo order.`;
++        revealOrder();
++        return result({ status: 'added_to_demo_order', orders: snapshot() });
++      },
++    },
++  ];
++
++  // Also expose an explicit discovery/invocation surface without patching native APIs.
++  window.dailyGrind = Object.freeze({
++    listTools: () => tools.map(({ execute, ...definition }) => JSON.parse(JSON.stringify(definition))),
++    async callTool(name, input = {}) {
++      const tool = tools.find(item => item.name === name);
++      return tool ? tool.execute(input) : failure('Unknown tool. Call dailyGrind.listTools() for available tools.');
++    },
++  });
++
++  document.querySelectorAll('[data-select-drink]').forEach(button => {
++    button.addEventListener('click', () => tools[1].execute({ drinkId: button.dataset.selectDrink }));
++  });
++  drinkInput.addEventListener('change', () => selectDrink(drinkInput.value));
++  document.getElementById('order-form').addEventListener('submit', event => {
++    event.preventDefault();
++    const response = tools[2].execute({ drinkId: drinkInput.value, quantity: Number(quantityInput.value) });
++    if (response.isError) status.textContent = JSON.parse(response.content[0].text).error;
++  });
++  document.getElementById('clear-order').addEventListener('click', () => {
++    orders.length = 0;
++    renderOrder();
++    status.textContent = 'Your demo order has been cleared.';
++  });
++
++  // Prefer the current WebMCP API; support the older navigator API as well.
++  const modelContext = document.modelContext?.registerTool ? document.modelContext : navigator.modelContext;
++  if (modelContext?.registerTool) {
++    for (const tool of tools) {
++      try {
++        Promise.resolve(modelContext.registerTool(tool)).catch(error => {
++          console.warn(`Daily Grind could not register ${tool.name}:`, error);
++        });
++      } catch (error) {
++        console.warn(`Daily Grind could not register ${tool.name}:`, error);
++      }
++    }
++  }
++})();
+diff --git a/index.html b/index.html
+index 66c9173..6d391f1 100644
+--- a/index.html
++++ b/index.html
+@@ -131,6 +131,26 @@
+       transition: background 0.3s;
+     }
+ 
++    button, select, input { font: inherit; }
++
++    button.btn { border: 0; cursor: pointer; }
++
++    .card.is-selected { outline: 3px solid var(--accent); }
++
++    #order-panel { margin-top: 40px; padding: 24px; background: white; border-radius: 8px; }
++
++    #order-form { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin: 16px 0; }
++
++    #order-form label { display: grid; gap: 4px; }
++
++    #order-form select, #order-form input { padding: 8px; border: 1px solid var(--secondary); border-radius: 4px; }
++
++    #order-form input { width: 90px; }
++
++    #order-status { min-height: 1.6em; }
++
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -171,30 +191,50 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-panel" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-menu" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-select-drink="maple-oat-latte">Choose Drink</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-select-drink="dark-roast-espresso">Choose Drink</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-select-drink="cold-brew">Choose Drink</button>
+         </div>
+       </div>
+     </section>
++    <section id="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your Coffee Order</h2>
++      <p>Build an order here. This is a local demo; no payment or café order is submitted.</p>
++      <form id="order-form">
++        <label>Drink
++          <select id="order-drink" name="drinkId" required>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label>Quantity
++          <input id="order-quantity" name="quantity" type="number" min="1" max="10" value="1" required>
++        </label>
++        <button type="submit" class="btn">Add to Order</button>
++      </form>
++      <p id="order-status" role="status" aria-live="polite"></p>
++      <ul id="order-items" aria-label="Order items"></ul>
++      <button id="clear-order" type="button" class="btn">Clear Order</button>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +247,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./app.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/tests/app.test.cjs b/tests/app.test.cjs
+new file mode 100644
+index 0000000..a9b1d08
+--- /dev/null
++++ b/tests/app.test.cjs
+@@ -0,0 +1,93 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++const html = readFileSync('index.html', 'utf8');
++const source = readFileSync('app.js', 'utf8');
++
++function setup(api = 'none') {
++  function element(extra = {}) {
++    return Object.assign({
++      value: '', textContent: '', children: [], listeners: {},
++      addEventListener(name, callback) { this.listeners[name] = callback; },
++      replaceChildren(...children) { this.children = children; },
++      scrollIntoView() { this.scrolled = true; },
++      focus() { this.focused = true; },
++    }, extra);
++  }
++  const cards = [...html.matchAll(/<div class="card" data-drink-id="([^"]+)">\s*<h3>([^<]+)<\/h3>\s*<p>([^<]+)<\/p>/g)].map(([, id, name, description]) => element({
++    dataset: { drinkId: id },
++    querySelector: selector => ({ textContent: selector === 'h3' ? name : description }),
++    classList: { toggle(name, selected) { this.selected = selected; } },
++  }));
++  assert.equal(cards.length, 3);
++  const buttons = cards.map(card => element({ dataset: { selectDrink: card.dataset.drinkId } }));
++  const elements = Object.fromEntries(['order-drink', 'order-quantity', 'order-status', 'order-items', 'order-panel', 'order-form', 'clear-order'].map(id => [id, element()]));
++  const registered = [];
++  const document = {
++    querySelectorAll: selector => selector === '[data-drink-id]' ? cards : buttons,
++    getElementById: id => elements[id], createElement: () => element(),
++  };
++  const navigator = {};
++  if (api !== 'none') (api === 'current' ? document : navigator).modelContext = { registerTool: tool => registered.push(tool) };
++  const window = {};
++  vm.runInNewContext(source, { document, navigator, window, console });
++  return { tools: window.dailyGrind, elements, cards, buttons, registered };
++}
++const payload = response => JSON.parse(response.content[0].text);
++
++test('registers discoverable schemas with current and legacy WebMCP APIs', () => {
++  for (const api of ['current', 'legacy']) {
++    const { tools, registered } = setup(api);
++    assert.equal(registered.length, 3);
++    assert.deepEqual(Array.from(registered, tool => tool.name), ['get_seasonal_menu', 'select_drink', 'order_drink']);
++    assert.equal(tools.listTools()[0].annotations.readOnlyHint, true);
++    const schema = tools.listTools();
++    schema[0].name = 'changed';
++    assert.equal(tools.listTools()[0].name, 'get_seasonal_menu');
++  }
++});
++
++test('fallback queries visible menu with case-insensitive search and no UI mutations', async () => {
++  const { tools, elements } = setup();
++  assert.equal(payload(await tools.callTool('get_seasonal_menu')).drinks.length, 3);
++  const found = payload(await tools.callTool('get_seasonal_menu', { query: ' OAT ' }));
++  assert.equal(found.drinks[0].id, 'maple-oat-latte');
++  assert.equal(payload(await tools.callTool('get_seasonal_menu', { query: 'tea' })).drinks.length, 0);
++  assert.equal(elements['order-status'].textContent, '');
++});
++
++test('agent selection and human ordering share visible state and clear behavior', async () => {
++  const { tools, elements, cards, buttons } = setup();
++  await tools.callTool('select_drink', { drinkId: 'cold-brew' });
++  assert.equal(elements['order-drink'].value, 'cold-brew');
++  assert.equal(cards[2].classList.selected, true);
++  assert.equal(elements['order-panel'].scrolled, true);
++  assert.equal(elements['order-items'].children.length, 0);
++  const added = payload(await tools.callTool('order_drink', { drinkId: 'cold-brew', quantity: 2 }));
++  assert.equal(added.orders[0].quantity, 2);
++  assert.equal(elements['order-items'].children[0].textContent, '2 × Cold Brew');
++  buttons[0].listeners.click();
++  elements['order-quantity'].value = '3';
++  elements['order-form'].listeners.submit({ preventDefault() {} });
++  assert.equal(elements['order-items'].children[1].textContent, '3 × Maple Oat Latte');
++  elements['clear-order'].listeners.click();
++  assert.equal(elements['order-items'].children.length, 0);
++  const next = payload(await tools.callTool('order_drink', { drinkId: 'dark-roast-espresso' }));
++  assert.equal(next.orders.length, 1);
++  assert.equal(next.orders[0].quantity, 1);
++});
++
++test('invalid tool arguments return actionable errors without changing order or selection', async () => {
++  const { tools, elements } = setup();
++  for (const args of [null, [], {}, { drinkId: 'tea' }, { drinkId: 'cold-brew', quantity: 0 }, { drinkId: 'cold-brew', quantity: 11 }, { drinkId: 'cold-brew', quantity: 1.5 }, { drinkId: 'cold-brew', quantity: '2' }, { drinkId: 'cold-brew', extra: true }]) {
++    const response = await tools.callTool('order_drink', args);
++    assert.equal(response.isError, true);
++    assert.equal(typeof payload(response).error, 'string');
++  }
++  assert.equal((await tools.callTool('get_seasonal_menu', { query: 42 })).isError, true);
++  assert.equal((await tools.callTool('select_drink', { drinkId: 'tea' })).isError, true);
++  assert.equal((await tools.callTool('missing')).isError, true);
++  assert.equal(elements['order-items'].children.length, 0);
++  assert.equal(elements['order-drink'].value, '');
++});

@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,12 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +87,40 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    .shaped-element {
++      /* Decorative only: its size never affects the text or button layout. */
++      position: absolute;
++      inset-inline-end: -4%;
++      bottom: -12%;
++      width: clamp(220px, 42vw, 560px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      opacity: 0.65;
++      background: radial-gradient(ellipse at 35% 30%, var(--accent), var(--primary) 75%);
++      /* A soft organic fallback when CSS masking is unavailable. */
++      border-radius: 42% 58% 66% 34% / 53% 35% 65% 47%;
++      /* Embedded vector avoids an external mask request; disappearance is safe. */
++      --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Cpath fill='white' d='M73 139C38 118 23 92 42 79C62 66 88 102 103 92C122 79 100 37 125 32C152 26 153 76 176 69C200 61 213 29 235 43C255 57 225 89 246 102C270 117 318 74 335 99C352 125 298 143 309 165C322 190 379 183 375 213C372 241 322 221 312 246C301 272 342 303 319 326C296 347 273 308 249 319C222 331 227 376 198 369C173 363 184 328 158 319C129 309 90 351 73 326C57 302 95 279 80 253C65 228 21 241 25 214C29 187 77 206 84 181C90 163 91 150 73 139Z'/%3E%3Cg fill='white'%3E%3Cellipse cx='44' cy='133' rx='10' ry='7' transform='rotate(35 44 133)'/%3E%3Ccircle cx='285' cy='56' r='8'/%3E%3Cellipse cx='355' cy='278' rx='8' ry='13' transform='rotate(-30 355 278)'/%3E%3Ccircle cx='49' cy='285' r='6'/%3E%3C/g%3E%3C/svg%3E");
++      -webkit-mask-image: var(--splash-mask);
++      mask-image: var(--splash-mask);
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-position: center;
++      mask-position: center;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +200,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

@@ -1,0 +1,369 @@
+diff --git a/connections.js b/connections.js
+new file mode 100644
+index 0000000..0e13d02
+--- /dev/null
++++ b/connections.js
+@@ -0,0 +1,94 @@
++(() => {
++  const forms = [...document.querySelectorAll('.device')];
++  const active = new Map();
++  const defaults = {
++    brewer: 'Join the same Wi-Fi network as your brewer.',
++    helper: 'Open the brewing helper on this computer first.'
++  };
++
++  function validateEndpoint(value, kind) {
++    const url = new URL(value);
++    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++      throw new Error('Use an HTTP or HTTPS endpoint without credentials or a fragment.');
++    }
++    const parts = url.hostname.split('.');
++    const ipv4 = parts.length === 4 && parts.every(part => /^\d+$/.test(part) && Number(part) <= 255);
++    const octets = parts.map(Number);
++    const privateIP = ipv4 && (octets[0] === 10 || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31));
++    const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || (ipv4 && octets[0] === 127);
++    if (kind === 'brewer' && !privateIP) throw new Error('Enter your brewer’s private LAN IP, such as http://192.168.1.100/health.');
++    if (kind === 'helper' && !loopback) throw new Error('Use this computer’s address: 127.0.0.1, localhost, or [::1].');
++    return url;
++  }
++
++  function render(form, state, message) {
++    form.dataset.state = state;
++    form.querySelector('.status-text').textContent = {idle: 'Not connected', connecting: 'Connecting', connected: 'Connected', error: 'Connection failed'}[state];
++    form.querySelector('.button-text').textContent = state === 'connecting' ? 'Cancel connection' : state === 'connected' ? 'Disconnect' : `${state === 'error' ? 'Retry' : 'Connect'} ${form.dataset.kind}`;
++    form.querySelector('input').disabled = ['connecting', 'connected'].includes(state);
++    form.querySelector('.device-message').textContent = message;
++    const count = forms.filter(item => item.dataset.state === 'connected').length;
++    document.querySelector('#connection-count').textContent = `${count} of 2 connected`;
++    document.querySelector('#session-dot').style.background = count ? '#54865c' : '';
++  }
++
++  for (const form of forms) {
++    // Cancel and disconnect must remain usable while the address input is disabled.
++    form.addEventListener('submit', async event => {
++      event.preventDefault();
++      const kind = form.dataset.kind;
++      if (['connecting', 'connected'].includes(form.dataset.state)) {
++        const current = active.get(kind);
++        active.delete(kind);
++        if (current) { clearTimeout(current.timer); current.controller.abort(); }
++        render(form, 'idle', defaults[kind]);
++        return;
++      }
++      const input = form.querySelector('input');
++      let url;
++      try { url = validateEndpoint(input.value.trim(), kind); }
++      catch (error) { render(form, 'error', error instanceof TypeError ? 'Enter a complete endpoint beginning with http:// or https://.' : error.message); input.focus(); return; }
++      const controller = new AbortController();
++      const request = {controller, timer: null};
++      active.set(kind, request);
++      render(form, 'connecting', 'Checking your endpoint… Allow local access if your browser asks.');
++      request.timer = setTimeout(() => controller.abort(), 20000);
++      try {
++        const response = await fetch(url.href, {
++          method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
++          redirect: 'error', signal: controller.signal,
++          targetAddressSpace: kind === 'brewer' ? 'local' : 'loopback'
++        });
++        // The response body is not needed; cancel it to avoid downloading device data.
++        if (response.body) await response.body.cancel();
++        if (active.get(kind) !== request) return;
++        if (!response.ok) throw new Error(`The endpoint returned HTTP ${response.status}. Check its status path and access settings.`);
++        render(form, 'connected', `Endpoint responded successfully · checked at ${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}.`);
++      } catch (error) {
++        if (active.get(kind) !== request) return;
++        const message = error.name === 'AbortError'
++          ? 'No response within 20 seconds. Check the address, service, and browser permissions.'
++          : error instanceof TypeError
++            ? 'Couldn’t reach the endpoint. Check the service, network, browser permission, and CORS settings. See connection help below.'
++            : error.message;
++        render(form, 'error', message);
++      } finally {
++        clearTimeout(request.timer);
++        if (active.get(kind) === request) active.delete(kind);
++      }
++    });
++    form.querySelector('input').addEventListener('input', () => {
++      if (form.dataset.state === 'error') render(form, 'idle', defaults[form.dataset.kind]);
++    });
++  }
++  document.querySelector('#help-toggle').addEventListener('click', event => {
++    const button = event.currentTarget;
++    const expanded = button.getAttribute('aria-expanded') === 'true';
++    button.setAttribute('aria-expanded', String(!expanded));
++    document.querySelector('#connection-help').hidden = expanded;
++  });
++  window.addEventListener('pagehide', () => {
++    for (const request of active.values()) { clearTimeout(request.timer); request.controller.abort(); }
++    active.clear();
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..d186da6 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,67 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f7f5f0">
++  <title>The Daily Grind | A better daily ritual</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--paper:#f7f5f0;--ink:#263c31;--muted:#787d73;--line:#dddfd5;--green:#314f3d;--gold:#a77d45;--serif:'Libre Caslon Display',Georgia,serif}
++    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6}button,input{font:inherit}button,a,input{ -webkit-tap-highlight-color:transparent}a{color:inherit;text-decoration:none}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #a77d45;outline-offset:4px}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.wrap{width:min(1184px,calc(100% - 96px));margin:auto}.announcement{background:var(--green);color:#f3f1e7;text-align:center;font-size:10px;letter-spacing:1.6px;padding:8px 15px;text-transform:uppercase}.announcement span{margin:0 12px;opacity:.5}nav{height:94px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:12px}.brand-icon{width:38px;height:38px}.brand-name{font-size:19px;font-weight:700;letter-spacing:-.8px;line-height:1.15}.brand-sub{font-size:8px;letter-spacing:3px;margin-top:5px;font-weight:500}nav ul{display:flex;list-style:none;gap:29px;padding:0;margin:0}nav li a{font-size:12px;color:#646b61}nav li a:hover{color:var(--ink)}.account{display:flex;align-items:center;gap:8px;font-size:12px}.account svg{width:17px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:46px 0 48px}.eyebrow{font-size:10px;text-transform:uppercase;font-weight:600;letter-spacing:2px;display:flex;align-items:center;gap:9px}.eyebrow:before{content:'';width:21px;height:1px;background:var(--gold)}h1,h2,h3,p{margin:0}h1{font:64px/.99 var(--serif);letter-spacing:-1.9px;margin:24px 0 20px}h1 em{font-weight:400;color:#7e886e}.hero-copy>p{max-width:350px;color:#7a7e72;font-size:13px;line-height:1.85}.primary-link{display:inline-flex;align-items:center;gap:28px;margin-top:25px;background:var(--green);color:white;border-radius:4px;padding:12px 19px;font-size:11px;font-weight:500}.primary-link:hover,.connect:hover{background:#233d2d}.hero-note{display:flex;align-items:center;gap:8px;color:#929386;font-size:10px;margin-top:22px}.hero-note svg{width:14px;height:14px}.hero-photo{position:relative;height:328px;border-radius:6px;overflow:hidden;background:#5e4836}.hero-photo img{width:100%;height:100%;object-fit:cover;object-position:center 53%}.photo-caption{position:absolute;bottom:17px;left:17px;right:17px;display:flex;align-items:center;justify-content:space-between;color:white;background:#26352ba6;backdrop-filter:blur(9px);padding:12px 14px;border:1px solid #ffffff24;border-radius:3px;font-size:10px}.photo-caption span{font-size:8px;letter-spacing:1px;opacity:.75}.photo-caption svg{width:17px}.equipment{border:1px solid var(--line);border-radius:7px;background:#eeeee6;padding:29px 30px 19px;position:relative}.section-head{display:flex;align-items:center;justify-content:space-between;gap:20px}.section-kicker{font-size:9px;text-transform:uppercase;letter-spacing:1.7px;color:#7d836f;margin-bottom:4px}h2{font:35px/1.2 var(--serif);letter-spacing:-.6px}.section-description{font-size:11px;color:#7b8074;margin-top:7px}.session{display:flex;gap:7px;align-items:center;font-size:10px;color:#767e6d;white-space:nowrap}.dot{width:6px;height:6px;border-radius:50%;background:#a3a99c;display:inline-block;flex-shrink:0}.device-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}.device{padding:22px;background:#fffefa;border:1px solid #dddfd5;border-radius:5px}.device-top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.device-icon{display:grid;place-items:center;width:42px;height:42px;background:#f0f1e9;border:1px solid #e7e9df;border-radius:7px}.device-icon svg{width:23px;height:23px}.status{display:flex;align-items:center;gap:6px;color:#878b80;background:#f3f3ed;border-radius:20px;padding:3px 9px;font-size:9px;white-space:nowrap}.device h3{font-size:15px;letter-spacing:-.2px;margin-top:14px;font-weight:600}.device-desc{font-size:11px;color:#85887d;margin-top:4px}.connection-type{font-size:8px;text-transform:uppercase;letter-spacing:1.3px;color:#7a806f;display:flex;align-items:center;gap:5px;margin:14px 0 16px}.connection-type svg{width:12px;height:12px}.field-label{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:500;margin-bottom:6px}.field-label span{font-weight:400;color:#909286;font-size:9px}.address{position:relative}.address>svg{position:absolute;top:12px;left:12px;width:14px;height:14px;color:#929888}input{width:100%;height:39px;border:1px solid #dfe1d7;border-radius:3px;padding:0 10px 0 35px;color:#4e5b4b;background:#fbfbf7;font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}input:disabled{opacity:.65}.connect{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#fff;border:0;border-radius:3px;width:100%;padding:10px;font-size:11px;font-weight:500;margin-top:13px;min-height:38px}.connect svg{width:14px;height:14px}.device-message{font-size:10px;color:#919586;margin-top:10px;min-height:16px}.device[data-state=connected] .status{background:#e7f0e5;color:#3e6946}.device[data-state=connected] .dot{background:#54865c}.device[data-state=error] .status{background:#faeee7;color:#a36543}.device[data-state=error] .dot{background:#b37c52}.device[data-state=error] .device-message{color:#9a6143}.device[data-state=connecting] .dot{background:#b29762;animation:pulse 1s infinite}.device[data-state=connecting] .connect{background:#67775f}.panel-foot{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:17px;color:#858a7b;font-size:9px}.privacy{display:flex;gap:6px;align-items:center}.privacy svg{width:12px;height:12px}.help-button{background:none;border:0;padding:3px 0;color:#68775f;font-size:10px;display:flex;align-items:center;gap:5px}.help-button svg{width:13px;height:13px}.help{background:#fffefa;border:1px solid var(--line);border-radius:4px;margin-top:15px;padding:18px;color:#6e7768;font-size:11px}.help[hidden]{display:none}.help ol{margin:8px 0;padding-left:18px}.help a{text-decoration:underline}.help code{font-size:10px}.favorites{padding:39px 0 44px}.favorites-head{display:flex;justify-content:space-between;align-items:center}.favorites h2{font-size:30px}.text-link{font-size:10px;display:flex;align-items:center;gap:9px}.text-link svg{width:14px}.favorites-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:21px;margin-top:21px}.favorite{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);padding-top:18px}.coffee-thumb{height:65px;width:65px;flex-shrink:0;border-radius:4px;object-fit:cover}.favorite h3{font-size:12px;font-weight:600}.favorite p{font-size:10px;color:#8b8d80;margin-top:3px;max-width:215px}.favorite a{display:inline-block;font-size:9px;color:#78816a;margin-top:6px}.favorite a:hover{text-decoration:underline}footer{border-top:1px solid var(--line);padding:23px 0;color:#909184;font-size:9px}.footer-inner{display:flex;justify-content:space-between;align-items:center}.footer-links{display:flex;gap:20px}.footer-brand{display:flex;align-items:center;gap:8px;color:#757e6d}.footer-brand svg{width:16px;height:16px}@keyframes pulse{50%{opacity:.3}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.device[data-state=connecting] .dot{animation:none}}@media(min-width:1450px){.wrap{width:min(1240px,calc(100% - 140px))}.hero{gap:95px;padding-top:54px}.hero-photo{height:360px}h1{font-size:72px}}@media(max-width:850px){.wrap{width:calc(100% - 40px)}nav ul{gap:16px}.hero{gap:25px}h1{font-size:54px}.equipment{padding:23px}.favorite{align-items:flex-start}.coffee-thumb{width:50px;height:60px}.account span{display:none}.hero-photo{height:325px}.panel-foot{align-items:flex-start}}@media(max-width:600px){.announcement{font-size:8px;letter-spacing:1px}.announcement span{margin:0 5px}nav{height:80px}.brand-name{font-size:17px}.brand-icon{width:30px}nav ul{gap:13px}nav li a{font-size:10px}nav li:nth-child(2),nav li:nth-child(3){display:none}.account{font-size:10px}.hero{grid-template-columns:1fr;padding:30px 0;gap:25px}h1{font-size:59px;margin:18px 0}.hero-copy>p{max-width:100%}.hero-photo{height:240px}.hero-note{margin-top:16px}.equipment{padding:21px 16px 15px}.section-head{align-items:flex-start}.session{font-size:8px;margin-top:7px}.session .session-label{display:none}h2{font-size:31px}.section-description{max-width:250px;line-height:1.7}.device-grid{grid-template-columns:1fr;gap:14px;margin-top:20px}.panel-foot{flex-direction:column;gap:8px}.device{padding:20px}.favorites-grid{grid-template-columns:1fr;gap:16px}.coffee-thumb{width:65px;height:65px}.favorite p{max-width:100%}.favorites{padding:30px 0}.footer-inner{flex-wrap:wrap;gap:15px}.footer-links{gap:16px}footer{padding:20px 0}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
++    <symbol id="cup" viewBox="0 0 24 24"><path d="M4 9h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a3 3 0 1 1-2 5M3 23h16M7 2v3M11 1v4M15 2v3"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5"/></symbol>
++    <symbol id="wifi" viewBox="0 0 24 24"><path d="M3 8a15 15 0 0 1 18 0M6 12a10 10 0 0 1 12 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".5"/></symbol>
++    <symbol id="link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-5-5l4-4a4 4 0 0 1 6 0m2 3a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-2 2"/></symbol>
++    <symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6"/></symbol>
++    <symbol id="monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4M7 13l3-3-3-3m6 6h4"/></symbol>
++    <symbol id="brewer" viewBox="0 0 24 24"><path d="M5 3h13v18H5zM5 7h13M8 4.8h.1M11 5h4M8 11h7v4a3 3 0 0 1-3 3h-1a3 3 0 0 1-3-3zM15 12h1a2 2 0 0 1-1 4M7 21v-1h9v1"/></symbol>
++    <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
++    <symbol id="leaf" viewBox="0 0 24 24"><path d="M5 19C-2 8 10 3 21 3c0 13-5 20-16 16Zm0 0L16 8"/></symbol>
++  </svg>
++  <div class="announcement">Good coffee. Good company. <span>✦</span> Your daily ritual, made better.</div>
++  <nav class="wrap" aria-label="Main navigation">
++    <a class="brand" href="/" aria-label="The Daily Grind home"><svg class="brand-icon"><use href="#cup"/></svg><div><div class="brand-name">the daily grind<span style="color:#a88754">.</span></div><div class="brand-sub">COFFEE & COMMUNITY</div></div></a>
++    <ul><li><a href="/menu">Our menu</a></li><li><a href="/locations">Find us</a></li><li><a href="/rewards">Grind rewards</a></li><li><a href="#equipment" style="color:var(--ink)">Brew connected</a></li></ul>
++    <a class="account" href="/account"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>My account</span></a>
+   </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main class="wrap">
++    <header class="hero">
++      <div class="hero-copy"><div class="eyebrow">Crafted with care. Every day.</div><h1>A better brew.<br><em>A better day.</em></h1><p>Ethically sourced, locally roasted, and made for the moments that matter. Find your daily ritual here.</p><a class="primary-link" href="/order-online">Find your next favorite <svg><use href="#arrow"/></svg></a><div class="hero-note"><svg><use href="#leaf"/></svg> Thoughtfully sourced. Always freshly brewed.</div></div>
++      <div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1100&q=85" alt="Freshly poured coffee with latte art on a warm café table"><div class="photo-caption"><div>Small batches. Big heart.<br><span>THE DAILY GRIND WAY</span></div><svg><use href="#cup"/></svg></div></div>
++    </header>
++    <section class="equipment" id="equipment" aria-labelledby="equipment-title">
++      <div class="section-head"><div><div class="section-kicker">Your coffee, connected</div><h2 id="equipment-title">Meet your brew station.</h2><p class="section-description">Connect your equipment and bring a little more craft to every cup.</p></div><div class="session"><span class="dot" id="session-dot"></span><span><span class="session-label">Equipment status · </span><span id="connection-count">0 of 2 connected</span></span></div></div>
++      <div class="device-grid">
++        <form class="device" id="brewer-form" data-kind="brewer" data-state="idle">
++          <div class="device-top"><div class="device-icon"><svg><use href="#brewer"/></svg></div><div class="status" role="status"><span class="dot"></span><span class="status-text">Not connected</span></div></div>
++          <h3>Wi-Fi coffee brewer</h3><p class="device-desc">A direct line to your shop’s next great cup.</p><div class="connection-type"><svg><use href="#wifi"/></svg> Shop network <span style="color:#c4c7ba;margin:0 3px">/</span> Private LAN</div>
++          <label class="field-label" for="brewer-address">Brewer endpoint <span>IP address + status path</span></label><div class="address"><svg><use href="#link"/></svg><input id="brewer-address" name="endpoint" type="url" required value="http://192.168.1.100/health" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="brewer-message"></div>
++          <button class="connect" type="submit"><svg><use href="#link"/></svg><span class="button-text">Connect brewer</span></button><p class="device-message" id="brewer-message" aria-live="polite">Join the same Wi-Fi network as your brewer.</p>
++        </form>
++        <form class="device" id="helper-form" data-kind="helper" data-state="idle">
++          <div class="device-top"><div class="device-icon"><svg><use href="#monitor"/></svg></div><div class="status" role="status"><span class="dot"></span><span class="status-text">Not connected</span></div></div>
++          <h3>Desktop brewing helper</h3><p class="device-desc">Your favorite brewing companion, right at home.</p><div class="connection-type"><svg><use href="#monitor"/></svg> This computer <span style="color:#c4c7ba;margin:0 3px">/</span> Localhost</div>
++          <label class="field-label" for="helper-address">Helper endpoint <span>Local address + status path</span></label><div class="address"><svg><use href="#link"/></svg><input id="helper-address" name="endpoint" type="url" required value="http://127.0.0.1:8080/health" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="helper-message"></div>
++          <button class="connect" type="submit"><svg><use href="#link"/></svg><span class="button-text">Connect helper</span></button><p class="device-message" id="helper-message" aria-live="polite">Open the brewing helper on this computer first.</p>
++        </form>
+       </div>
++      <div class="panel-foot"><div class="privacy"><svg><use href="#shield"/></svg> Connections stay between your browser and your equipment.</div><button class="help-button" id="help-toggle" aria-expanded="false" aria-controls="connection-help"><svg><use href="#info"/></svg> A little help connecting <span aria-hidden="true">↗</span></button></div>
++      <div class="help" id="connection-help" hidden><strong>A few things before your first brew</strong><ol><li>For the brewer, join the shop’s Wi-Fi and enter its private IP address, port (if needed), and status endpoint.</li><li>For the desktop helper, open it on this computer and enter its local status endpoint. The example addresses use <code>/health</code>; replace this with your equipment’s actual endpoint.</li><li>Allow local network access if your browser asks. Both services must allow this website’s origin through CORS. HTTPS or a browser supporting local HTTP connections may be required.</li></ol><p>Connect sends a read-only GET request; a successful response confirms reachability. No brew starts automatically. If a connection fails, check the address, Wi-Fi, service settings, and browser permissions. <a href="https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access" target="_blank" rel="noopener noreferrer">About browser connection permissions ↗</a></p></div>
+     </section>
++    <section class="favorites" aria-labelledby="favorites-title"><div class="favorites-head"><div><div class="section-kicker">Something for your everyday</div><h2 id="favorites-title">Seasonal favorites</h2></div><a class="text-link" href="/menu">Explore the menu <svg><use href="#arrow"/></svg></a></div><div class="favorites-grid">
++      <article class="favorite"><img class="coffee-thumb" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=180&q=80" alt="Iced oat milk latte" loading="lazy"><div><h3>Maple Oat Latte</h3><p>Creamy oat milk. A little Vermont maple magic.</p><a href="/menu/seasonal">Discover your new ritual ↗</a></div></article>
++      <article class="favorite"><img class="coffee-thumb" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=180&q=80" alt="Rich espresso in a ceramic cup" loading="lazy"><div><h3>Dark Roast Espresso</h3><p>Bold, smoky, and the start of something good.</p><a href="/menu/espresso">Meet your morning boost ↗</a></div></article>
++      <article class="favorite"><img class="coffee-thumb" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=180&q=80" alt="Cold coffee served over ice" loading="lazy"><div><h3>Slow-Steeped Cold Brew</h3><p>18 hours of patience. Unbelievably smooth.</p><a href="/menu/cold-brew">Take it slow ↗</a></div></article>
++    </div></section>
+   </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <footer><div class="wrap footer-inner"><div class="footer-brand"><svg><use href="#cup"/></svg> A little better, every day.</div><div class="footer-links"><a href="/about">Our story</a><a href="/careers">Join the team</a><a href="/contact">Say hello</a><a href="/privacy-policy">Privacy</a></div><span>© 2026 The Daily Grind Coffee Co.</span></div></footer>
++  <script src="connections.js" defer></script>
+ </body>
+-
+ </html>

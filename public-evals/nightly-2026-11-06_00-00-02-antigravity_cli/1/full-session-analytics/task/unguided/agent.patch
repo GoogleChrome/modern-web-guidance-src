@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,16 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Demo</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals": "./node_modules/web-vitals/dist/web-vitals.js",
++        "web-vitals/attribution": "./node_modules/web-vitals/dist/web-vitals.attribution.js"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #2563eb;
+       --bg: #f8fafc;
+@@ -300,7 +308,43 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'web-vitals';
++
++    const queue = new Set();
++    function addToQueue(metric) {
++      queue.add(metric);
++    }
++
++    function flushQueue() {
++      if (queue.size > 0) {
++        const body = JSON.stringify([...queue]);
++
++        if (navigator.sendBeacon) {
++          navigator.sendBeacon('/path/to/analytics/endpoint', body);
++        } else {
++          fetch('/path/to/analytics/endpoint', {
++            body,
++            method: 'POST',
++            keepalive: true,
++          });
++        }
++
++        queue.clear();
++      }
++    }
++
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        flushQueue();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

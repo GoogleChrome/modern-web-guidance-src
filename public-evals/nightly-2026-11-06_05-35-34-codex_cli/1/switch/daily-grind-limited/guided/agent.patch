@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+index 66c9173..25c8c8b 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,34 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      const savedTheme = localStorage.getItem('daily-grind-theme');
++      if (savedTheme === 'light' || savedTheme === 'dark') {
++        document.querySelector('meta[name="color-scheme"]').content = savedTheme;
++      }
++    } catch {}
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --secondary: light-dark(#d7ccc8, #332723);
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: light-dark(#3e2723, #f1e6e0);
++      --light: light-dark(#fafafa, #1e1917);
++      --surface: light-dark(white, #2b2320);
++      --heading: light-dark(#4e342e, #e7c5ad);
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
++      color-scheme: dark;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="light"]) {
++      color-scheme: light;
+     }
+ 
+     * {
+@@ -108,7 +128,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +137,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+@@ -152,6 +172,76 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .preferences {
++      margin-top: 40px;
++    }
++
++    .preference {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-top: 16px;
++      padding: 20px;
++      border-radius: 8px;
++      background: var(--surface);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .preference label {
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .preference-control {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++    }
++
++    #dark-mode {
++      appearance: none;
++      position: relative;
++      width: 52px;
++      height: 30px;
++      border: 2px solid var(--heading);
++      border-radius: 20px;
++      background: var(--secondary);
++      cursor: pointer;
++    }
++
++    #dark-mode::before {
++      content: '';
++      position: absolute;
++      width: 20px;
++      height: 20px;
++      top: 3px;
++      left: 3px;
++      border-radius: 50%;
++      background: var(--heading);
++    }
++
++    #dark-mode:checked {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
++    #dark-mode:checked::before {
++      transform: translateX(22px);
++      background: #3e2723;
++    }
++
++    #dark-mode:focus-visible {
++      outline: 3px solid var(--heading);
++      outline-offset: 4px;
++    }
++
++    #dark-mode-state {
++      min-width: 2ch;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +285,19 @@
+         </div>
+       </div>
+     </section>
++    <section class="preferences" aria-labelledby="preferences-title" hidden>
++      <h2 id="preferences-title">Preferences</h2>
++      <div class="preference">
++        <div>
++          <label for="dark-mode">Dark mode</label>
++          <p id="dark-mode-description">Use a darker appearance. Your choice is saved on this device.</p>
++        </div>
++        <div class="preference-control">
++          <span id="dark-mode-state" aria-hidden="true">Off</span>
++          <input id="dark-mode" type="checkbox" switch role="switch" aria-describedby="dark-mode-description">
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +310,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeMeta = document.querySelector('meta[name="color-scheme"]');
++    const darkMode = document.getElementById('dark-mode');
++    const darkModeState = document.getElementById('dark-mode-state');
++    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
++
++    function syncDarkMode() {
++      darkMode.checked = themeMeta.content === 'dark' ||
++        (themeMeta.content === 'light dark' && systemTheme.matches);
++      darkModeState.textContent = darkMode.checked ? 'On' : 'Off';
++    }
++
++    darkMode.addEventListener('change', () => {
++      const target = darkMode.checked ? 'dark' : 'light';
++      const override = darkMode.checked === systemTheme.matches ? null : target;
++      themeMeta.content = override ?? 'light dark';
++      syncDarkMode();
++      try {
++        if (override) localStorage.setItem('daily-grind-theme', override);
++        else localStorage.removeItem('daily-grind-theme');
++      } catch {}
++    });
++
++    systemTheme.addEventListener('change', syncDarkMode);
++    window.addEventListener('storage', (event) => {
++      if (event.key !== 'daily-grind-theme' && event.key !== null) return;
++      themeMeta.content = event.newValue === 'light' || event.newValue === 'dark'
++        ? event.newValue : 'light dark';
++      syncDarkMode();
++    });
++
++    syncDarkMode();
++    document.querySelector('.preferences').hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,309 @@
+diff --git a/README.md b/README.md
+index 4479b53..056b67f 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,17 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++Client-side navigation retains the five most recently visited views (including
++the active view). Returning to a retained route reuses its DOM, form state, and
++event listeners. Inactive views use `content-visibility: hidden` and are inert;
++older views are evicted in least-recently-used order. Paths and query strings
++identify views, while fragments share a view. Astro still fetches destinations
++and manages metadata, scripts, history, and scroll restoration. Navigating to the
++current route or reloading refreshes its content and state.
++
++Run `pnpm test` for the automated DOM cache checks and `pnpm build` for the
++production build.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index 2e1f2e8..d79e86a 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -23,7 +24,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "happy-dom": "^21.0.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..c2887ec 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const viewKey = Astro.url.pathname + Astro.url.search;
+ ---
+ 
+ <!doctype html>
+@@ -35,6 +36,10 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import { installViewCache } from "../scripts/view-cache";
++      installViewCache(document);
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +50,15 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-host>
++          <div
++            class="spa-view"
++            data-view-key={viewKey}
++            transition:persist={`view-${encodeURIComponent(viewKey)}`}
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..9b672c4
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,67 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++const MAX_VIEWS = 5;
++const PERSIST_ATTRIBUTE = "data-astro-transition-persist";
++
++/** Keep the five most recently used route DOM trees, including the active view. */
++export function installViewCache(doc: Document) {
++  let focusAfterSwap = false;
++
++  doc.addEventListener("astro:before-swap", (event) => {
++    const transition = event as TransitionBeforeSwapEvent;
++    const swap = transition.swap;
++
++    // Mutate only once Astro commits the navigation, not during preparation.
++    transition.swap = () => {
++      const host = doc.querySelector<HTMLElement>("[data-view-host]");
++      const nextHost = transition.newDocument.querySelector<HTMLElement>("[data-view-host]");
++      const incoming = nextHost?.querySelector<HTMLElement>("[data-view-key]");
++      if (!host || !nextHost || !incoming) {
++        swap();
++        return;
++      }
++
++      const views = Array.from(host.children) as HTMLElement[];
++      const key = incoming.dataset.viewKey;
++      // A navigation to the current URL should still be able to refresh its data.
++      const sameRoute = transition.from.pathname + transition.from.search === key;
++      const cached = sameRoute ? undefined : views.find((view) => view.dataset.viewKey === key);
++      const active = cached ?? incoming;
++      const retained = views.filter((view) => view !== active && view.dataset.viewKey !== key);
++      // DOM order records recency: oldest first, active last. Omitted views are
++      // removed by Astro's normal swap, including React island cleanup.
++      const keep = [...retained.slice(-(MAX_VIEWS - 1)), active];
++
++      for (const view of views) {
++        if (!keep.includes(view)) view.removeAttribute(PERSIST_ATTRIBUTE);
++      }
++
++      for (const view of keep) {
++        const inactive = view !== active;
++        view.classList.toggle("is-inactive", inactive);
++        view.inert = inactive;
++        view.setAttribute("aria-hidden", String(inactive));
++      }
++
++      // Give Astro a matching placeholder for each retained DOM tree. Its native
++      // persistence transfer preserves islands, listeners and media state while
++      // still handling the new page's head, scripts and browser history.
++      nextHost.replaceChildren(...keep.map((view) => {
++        if (view === incoming) return incoming;
++        const placeholder = transition.newDocument.createElement("div");
++        placeholder.setAttribute(PERSIST_ATTRIBUTE, view.getAttribute(PERSIST_ATTRIBUTE)!);
++        return placeholder;
++      }));
++
++      swap();
++      focusAfterSwap = true;
++    };
++  });
++
++  doc.addEventListener("astro:after-swap", () => {
++    if (!focusAfterSwap) return;
++    focusAfterSwap = false;
++    doc.querySelector<HTMLElement>("[data-view-host] > .spa-view:not(.is-inactive)")
++      ?.focus({ preventScroll: true });
++  });
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7845982 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,21 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Retain inactive route layout state without painting or occupying page space. */
++.spa-view.is-inactive {
++  content-visibility: hidden;
++  contain-intrinsic-size: none;
++  position: absolute;
++  inset: 0 0 auto;
++  block-size: 0;
++  overflow: clip;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.is-inactive {
++    display: none;
++  }
++}
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..85d27f6
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,117 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { Window } from 'happy-dom';
++import { installViewCache } from '../src/scripts/view-cache.ts';
++
++const origin = 'https://example.test';
++const persist = 'data-astro-transition-persist';
++
++function markup(key) {
++  return `<main data-view-host><div class="spa-view" tabindex="-1"
++    data-view-key="${key}" ${persist}="view-${encodeURIComponent(key)}">
++    <input value="initial"><button>Open</button></div></main>`;
++}
++
++function setup(key = '/news') {
++  const window = new Window({ url: origin + key });
++  const doc = window.document;
++  doc.body.innerHTML = markup(key);
++  installViewCache(doc);
++  let current = key;
++
++  function navigate(to, html = markup(to)) {
++    const next = new window.DOMParser().parseFromString(html, 'text/html');
++    const incoming = next.querySelector('.spa-view');
++    const event = new window.Event('astro:before-swap');
++    Object.assign(event, {
++      from: new URL(current, origin),
++      to: new URL(to, origin),
++      newDocument: next,
++      swap() {
++        // Emulate Astro's documented transition:persist transfer contract.
++        // History, styles and script loading stay the router's responsibility.
++        for (const view of doc.querySelectorAll(`[${persist}]`)) {
++          const placeholder = next.querySelector(`[${persist}="${view.getAttribute(persist)}"]`);
++          placeholder?.replaceWith(view);
++        }
++        doc.body.replaceWith(next.body);
++      },
++    });
++    doc.dispatchEvent(event);
++    event.swap();
++    current = to;
++    doc.dispatchEvent(new window.Event('astro:after-swap'));
++    return incoming;
++  }
++
++  const active = () => doc.querySelector('.spa-view:not(.is-inactive)');
++  return { window, doc, navigate, active };
++}
++
++test('returning to a route restores the original DOM, form state and listeners', () => {
++  const { doc, navigate, active } = setup();
++  const original = active();
++  original.querySelector('input').value = 'edited';
++  let clicks = 0;
++  original.querySelector('button').addEventListener('click', () => clicks++);
++
++  navigate('/reports');
++  assert.equal(original.isConnected, true);
++  assert.equal(original.classList.contains('is-inactive'), true);
++  assert.equal(original.inert, true);
++  assert.equal(original.getAttribute('aria-hidden'), 'true');
++
++  const discarded = navigate('/news');
++  assert.equal(active(), original);
++  assert.equal(discarded.isConnected, false);
++  assert.equal(original.querySelector('input').value, 'edited');
++  original.querySelector('button').click();
++  assert.equal(clicks, 1);
++  assert.equal(original.inert, false);
++  assert.equal(original.getAttribute('aria-hidden'), 'false');
++  assert.equal(doc.activeElement, original);
++});
++
++test('cache evicts the least recently used view and rebuilds it on its next visit', () => {
++  const { doc, navigate, active } = setup('/a');
++  const oldest = active();
++  navigate('/b');
++  const b = active();
++  navigate('/c');
++  navigate('/d');
++  navigate('/e');
++  navigate('/b'); // Refresh recency of B; A should be evicted next.
++  navigate('/f');
++  assert.equal(doc.querySelectorAll('.spa-view').length, 5);
++  assert.equal(oldest.isConnected, false);
++  assert.equal(b.isConnected, true);
++  assert.equal(doc.querySelectorAll('.spa-view:not(.is-inactive)').length, 1);
++  navigate('/a');
++  assert.notEqual(active(), oldest);
++  assert.equal(doc.querySelectorAll('.spa-view').length, 5);
++});
++
++test('query strings distinguish views; fragments share the same route DOM', () => {
++  const { navigate, active } = setup('/search?q=one');
++  const first = active();
++  navigate('/search?q=two');
++  assert.notEqual(active(), first);
++  navigate('/search?q=one#results', markup('/search?q=one'));
++  assert.equal(active(), first);
++});
++
++test('navigation to the current route refreshes its content', () => {
++  const { doc, navigate, active } = setup();
++  const original = active();
++  const incoming = navigate('/news');
++  assert.equal(active(), incoming);
++  assert.equal(original.isConnected, false);
++  assert.equal(doc.querySelectorAll('.spa-view').length, 1);
++});
++
++test('pages outside the cached layout use the normal swap', () => {
++  const { doc, navigate } = setup();
++  navigate('/other', '<main>Uncached page</main>');
++  assert.equal(doc.body.textContent, 'Uncached page');
++  assert.equal(doc.querySelector('[data-view-host]'), null);
++});

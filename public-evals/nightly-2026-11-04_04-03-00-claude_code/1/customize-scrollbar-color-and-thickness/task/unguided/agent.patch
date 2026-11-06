@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++    }
++
++    .feedback-log {
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 10px 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Firefox */
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    /* WebKit / Blink */
++    .feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb:hover {
++      background: #ff9100;
++    }
++
++    .testimonial {
++      padding: 14px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .testimonial:last-child {
++      border-bottom: none;
++    }
++
++    .testimonial blockquote {
++      font-style: italic;
++    }
++
++    .testimonial cite {
++      display: block;
++      margin-top: 6px;
++      font-size: 0.85rem;
++      font-style: normal;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback</h2>
++      <div class="feedback-log" role="log" aria-label="Customer feedback log" tabindex="0">
++        <article class="testimonial">
++          <blockquote>"The Maple Oat Latte is everything I want in a fall drink. Not too sweet, perfectly balanced."</blockquote>
++          <cite>&mdash; Sarah M., Oct 28, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Best cold brew in town, hands down. Smooth with zero bitterness."</blockquote>
++          <cite>&mdash; James T., Oct 25, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"The baristas remembered my order after my second visit. That's the kind of service that keeps me coming back."</blockquote>
++          <cite>&mdash; Priya K., Oct 21, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Dark Roast Espresso got me through finals week. Bold and rich every single time."</blockquote>
++          <cite>&mdash; Marcus L., Oct 18, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Love that the beans are ethically sourced. You can taste the care in every cup."</blockquote>
++          <cite>&mdash; Elena R., Oct 14, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Online ordering was quick and my drink was ready the moment I walked in."</blockquote>
++          <cite>&mdash; Daniel W., Oct 10, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"Cozy atmosphere, great music, and the pastries pair perfectly with the house blend."</blockquote>
++          <cite>&mdash; Aisha B., Oct 6, 2026</cite>
++        </article>
++        <article class="testimonial">
++          <blockquote>"The rewards program is actually generous. Free drink every few visits!"</blockquote>
++          <cite>&mdash; Tom H., Oct 2, 2026</cite>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

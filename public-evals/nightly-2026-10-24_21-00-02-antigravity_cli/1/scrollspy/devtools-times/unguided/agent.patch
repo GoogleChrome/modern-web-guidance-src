@@ -1,0 +1,523 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..573e3aa 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -6,10 +6,12 @@ interface BottomNavProps {
+     articles: any[];
+     reports: any[];
+     multimedia: any[];
++    currentCategory?: string;
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
++const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia, currentCategory }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [visibleGroup, setVisibleGroup] = useState<string | null>(null);
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,6 +20,52 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    useEffect(() => {
++        const updateCurrentGroup = () => {
++            // Check URL or category prop first
++            const path = window.location.pathname.toLowerCase();
++            for (const [groupName, subCategories] of Object.entries(groupedCategories)) {
++                const matchesUrl = subCategories.some((cat) => {
++                    const encoded = cat.toLowerCase().replace(' ', '%20');
++                    const raw = cat.toLowerCase();
++                    return (
++                        path.includes(`/category/${encoded}`) ||
++                        path.includes(`/category/${raw}`) ||
++                        (currentCategory && currentCategory.toLowerCase() === raw)
++                    );
++                });
++                if (matchesUrl) {
++                    setVisibleGroup(groupName);
++                    return;
++                }
++            }
++
++            // Also check visible sections on the page that carry data-category-group
++            const groupSections = Array.from(document.querySelectorAll<HTMLElement>('[data-category-group]'));
++            if (groupSections.length > 0) {
++                const offset = 180;
++                let activeGrp: string | null = null;
++                for (const el of groupSections) {
++                    const rect = el.getBoundingClientRect();
++                    if (rect.top <= offset && rect.bottom > 80) {
++                        activeGrp = el.getAttribute('data-category-group');
++                    }
++                }
++                setVisibleGroup(activeGrp);
++            } else {
++                setVisibleGroup(null);
++            }
++        };
++
++        updateCurrentGroup();
++        window.addEventListener('scroll', updateCurrentGroup, { passive: true });
++        document.addEventListener('astro:page-load', updateCurrentGroup);
++        return () => {
++            window.removeEventListener('scroll', updateCurrentGroup);
++            document.removeEventListener('astro:page-load', updateCurrentGroup);
++        };
++    }, [currentCategory]);
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+@@ -31,6 +79,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const isHighlighted = activeCategory === groupName || visibleGroup === groupName;
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -39,10 +88,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    aria-current={visibleGroup === groupName ? 'true' : undefined}
++                                    className={`flex items-center space-x-1 hover:text-amber-600 whitespace-nowrap h-full border-b-2 transition-colors ${
++                                        isHighlighted
++                                            ? 'text-amber-600 border-amber-500'
++                                            : 'text-gray-900 border-transparent'
++                                    }`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className={`w-3 h-3 ${isHighlighted ? 'text-amber-600' : 'text-gray-500'}`}>
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
+diff --git a/src/components/SectionNav.tsx b/src/components/SectionNav.tsx
+new file mode 100644
+index 0000000..e6291f7
+--- /dev/null
++++ b/src/components/SectionNav.tsx
+@@ -0,0 +1,176 @@
++import React, { useEffect, useState } from 'react';
++
++export interface SectionItem {
++    id: string;
++    label: string;
++}
++
++interface SectionNavProps {
++    sections?: SectionItem[];
++    autoDetectSelector?: string;
++}
++
++const SectionNav: React.FC<SectionNavProps> = ({ sections: initialSections, autoDetectSelector }) => {
++    const [sections, setSections] = useState<SectionItem[]>(initialSections || []);
++    const [activeSection, setActiveSection] = useState<string>('');
++
++    useEffect(() => {
++        const initObserver = () => {
++            let currentSections = initialSections || [];
++
++            if (!currentSections.length && autoDetectSelector) {
++                const elements = Array.from(document.querySelectorAll(autoDetectSelector));
++                const detected: SectionItem[] = [];
++                elements.forEach((el, index) => {
++                    const attrLabel = el.getAttribute('data-nav-section');
++                    const text = (attrLabel || el.textContent)?.trim();
++                    if (!text) return;
++                    let id = el.id || el.closest('[id]')?.id || '';
++                    if (!id) {
++                        id = text
++                            .toLowerCase()
++                            .replace(/[^a-z0-9]+/g, '-')
++                            .replace(/(^-|-$)/g, '') || `section-${index}`;
++                        el.id = id;
++                    }
++                    if (!detected.some(s => s.id === id)) {
++                        detected.push({ id, label: text });
++                    }
++                });
++                currentSections = detected;
++                setSections(detected);
++            } else if (initialSections) {
++                setSections(initialSections);
++            }
++
++            if (currentSections.length === 0) return () => {};
++
++            const sectionElements = currentSections
++                .map(s => document.getElementById(s.id))
++                .filter((el): el is HTMLElement => el !== null);
++
++            if (sectionElements.length === 0) return () => {};
++
++            const visibleSections = new Map<string, IntersectionObserverEntry>();
++
++            const updateActiveFromScroll = () => {
++                // Check if user scrolled to the very bottom of the page
++                if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 20) {
++                    setActiveSection(currentSections[currentSections.length - 1].id);
++                    return;
++                }
++
++                // Find the section closest to the top of the viewport (below sticky header)
++                const offset = 120;
++                let currentId = currentSections[0].id;
++                for (const el of sectionElements) {
++                    const rect = el.getBoundingClientRect();
++                    if (rect.top <= offset) {
++                        currentId = el.id;
++                    } else {
++                        break;
++                    }
++                }
++                setActiveSection(currentId);
++            };
++
++            const observer = new IntersectionObserver(
++                (entries) => {
++                    entries.forEach((entry) => {
++                        if (entry.isIntersecting) {
++                            visibleSections.set(entry.target.id, entry);
++                        } else {
++                            visibleSections.delete(entry.target.id);
++                        }
++                    });
++
++                    if (visibleSections.size > 0) {
++                        // Pick the highest visible section in document order or highest intersection ratio
++                        const sortedVisible = Array.from(visibleSections.values()).sort(
++                            (a, b) => a.target.getBoundingClientRect().top - b.target.getBoundingClientRect().top
++                        );
++                        setActiveSection(sortedVisible[0].target.id);
++                    } else {
++                        updateActiveFromScroll();
++                    }
++                },
++                {
++                    rootMargin: '-80px 0px -55% 0px',
++                    threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
++                }
++            );
++
++            sectionElements.forEach((el) => observer.observe(el));
++            window.addEventListener('scroll', updateActiveFromScroll, { passive: true });
++            updateActiveFromScroll();
++
++            return () => {
++                observer.disconnect();
++                window.removeEventListener('scroll', updateActiveFromScroll);
++            };
++        };
++
++        let cleanup = initObserver();
++
++        const handlePageLoad = () => {
++            if (cleanup) cleanup();
++            cleanup = initObserver();
++        };
++
++        document.addEventListener('astro:page-load', handlePageLoad);
++
++        return () => {
++            if (cleanup) cleanup();
++            document.removeEventListener('astro:page-load', handlePageLoad);
++        };
++    }, [initialSections, autoDetectSelector]);
++
++    if (sections.length === 0) {
++        return null;
++    }
++
++    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
++        e.preventDefault();
++        const el = document.getElementById(id);
++        if (el) {
++            setActiveSection(id);
++            const yOffset = -60;
++            const y = el.getBoundingClientRect().top + window.scrollY + yOffset;
++            window.scrollTo({ top: y, behavior: 'smooth' });
++            window.history.replaceState(null, '', `#${id}`);
++        }
++    };
++
++    return (
++        <nav
++            aria-label="Page sections"
++            className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 shadow-xs transition-all"
++        >
++            <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-center space-x-2 sm:space-x-6 h-11 overflow-x-auto">
++                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 hidden sm:inline-block mr-1">
++                    On this page:
++                </span>
++                {sections.map((section) => {
++                    const isActive = activeSection === section.id;
++                    return (
++                        <a
++                            key={section.id}
++                            href={`#${section.id}`}
++                            onClick={(e) => handleClick(e, section.id)}
++                            aria-current={isActive ? 'location' : undefined}
++                            className={`relative h-full flex items-center px-3 text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors duration-200 border-b-2 ${
++                                isActive
++                                    ? 'text-amber-600 border-amber-500 bg-amber-50/50'
++                                    : 'text-gray-600 border-transparent hover:text-gray-900 hover:border-gray-300'
++                            }`}
++                        >
++                            {section.label}
++                        </a>
++                    );
++                })}
++            </div>
++        </nav>
++    );
++};
++
++export default SectionNav;
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..d4cf757 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,13 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-nav-section={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..e498c06 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,11 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-nav-section={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..a8ee2cc 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from './Layout.astro';
++import SectionNav from '../components/SectionNav';
+ 
+ export interface Props {
+ 	title: string;
+@@ -8,6 +9,7 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
++    <SectionNav client:load autoDetectSelector=".prose h2, .prose h3" />
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..f982753 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SectionNav from '../../components/SectionNav.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -36,7 +37,8 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <SectionNav client:load autoDetectSelector="article[data-nav-section], article .prose h2, article .prose h3, section[data-nav-section]" />
++    <article id="article-overview" data-nav-section="Article" class="max-w-3xl mx-auto px-4 py-8 md:py-12 scroll-mt-14">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -116,7 +118,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" data-nav-section="Related Articles" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-14">
++        <h2 class="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..2058f98 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,7 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import SectionNav from '../../components/SectionNav';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -38,6 +39,15 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
++    {otherArticles.length > 0 && (
++        <SectionNav
++            client:load
++            sections={[
++                { id: 'featured-story', label: 'Featured Story' },
++                { id: 'more-stories', label: 'More Stories' },
++            ]}
++        />
++    )}
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+@@ -66,7 +76,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="featured-story" data-nav-section="Featured Story" class="mb-8 pb-8 border-b border-gray-200 scroll-mt-14">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -88,9 +98,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                <section id="more-stories" data-nav-section="More Stories" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 scroll-mt-14">
+                     {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
++                </section>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..caf9f73 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,26 +39,38 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav
++        client:load
++        sections={[
++            { id: 'top-stories', label: 'Top Stories' },
++            { id: 'top-news', label: 'Top News' },
++            { id: 'world', label: 'World' },
++            { id: 'politics', label: 'Politics' },
++        ]}
++    />
++
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++    <section id="top-stories" data-nav-section="Top Stories" class="scroll-mt-14">
++        <div class="bg-white border-b border-gray-300">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                    {topStories.map(article => (
++                        <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +78,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file

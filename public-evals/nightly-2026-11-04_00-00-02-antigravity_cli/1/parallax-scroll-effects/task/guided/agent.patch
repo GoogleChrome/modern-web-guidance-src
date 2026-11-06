@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,143 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section */
++    .parallax-section {
++      background-color: #2b1b17;
++      color: var(--light);
++    }
++
++    .wrapper {
++      position: relative;
++      overflow: clip;
++      height: 80vh;
++      min-height: 520px;
++      display: grid;
++      place-items: center;
++      padding: 40px 20px;
++    }
++
++    .layer {
++      grid-area: 1 / 1;
++      will-change: transform;
++    }
++
++    .layer-bg {
++      position: absolute;
++      inset: -15% 0;
++      width: 100%;
++      height: 130%;
++      object-fit: cover;
++      opacity: 0.35;
++      z-index: 1;
++    }
++
++    .layer-mid-left,
++    .layer-mid-right {
++      position: relative;
++      z-index: 2;
++      width: clamp(180px, 24vw, 280px);
++      aspect-ratio: 4 / 5;
++      border-radius: 12px;
++      overflow: clip;
++      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(215, 204, 200, 0.25);
++    }
++
++    .layer-mid-left {
++      justify-self: start;
++      align-self: end;
++      margin-left: 5%;
++      margin-bottom: 5%;
++    }
++
++    .layer-mid-right {
++      justify-self: end;
++      align-self: start;
++      margin-right: 5%;
++      margin-top: 5%;
++    }
++
++    .layer-mid-left img,
++    .layer-mid-right img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .layer-fg {
++      position: relative;
++      z-index: 3;
++      max-width: 560px;
++      background: rgba(62, 39, 35, 0.88);
++      backdrop-filter: blur(8px);
++      padding: 2.5rem;
++      border-radius: 12px;
++      text-align: center;
++      border: 1px solid rgba(255, 171, 64, 0.35);
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
++    }
++
++    .layer-fg .eyebrow {
++      display: inline-block;
++      color: var(--accent);
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      margin-bottom: 0.5rem;
++    }
++
++    .layer-fg h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++      color: white;
++    }
++
++    .layer-fg p {
++      color: var(--secondary);
++      margin-bottom: 0.5rem;
++    }
++
++    .layer:nth-child(1) { --offset: 80px; }
++    .layer:nth-child(2) { --offset: 180px; }
++    .layer:nth-child(3) { --offset: 280px; }
++    .layer:nth-child(4) { --offset: 380px; }
++
++    @keyframes parallax {
++      from {
++        transform: translateY(var(--offset, calc(100px * sibling-index())));
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .wrapper {
++          view-timeline: --wrapper;
++        }
++
++        .layer {
++          animation: parallax linear both;
++          animation-timeline: --wrapper;
++          animation-range: entry 25% exit calc(100% / sibling-count() * sibling-index());
++        }
++
++        .layer:nth-child(1) { animation-range: entry 25% exit 25%; }
++        .layer:nth-child(2) { animation-range: entry 25% exit 50%; }
++        .layer:nth-child(3) { animation-range: entry 25% exit 75%; }
++        .layer:nth-child(4) { animation-range: entry 25% exit 100%; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .layer {
++        animation: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +308,39 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax-section" aria-labelledby="roast-craft-heading">
++    <div class="wrapper">
++      <img
++        class="layer layer-bg"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1400&q=80"
++        alt=""
++        loading="lazy"
++      >
++      <div class="layer layer-mid-left">
++        <img
++          src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++          alt="Freshly brewed espresso poured into a ceramic cup"
++          loading="lazy"
++        >
++      </div>
++      <div class="layer layer-mid-right">
++        <img
++          src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++          alt="Artisanal latte art crafted with steamed milk"
++          loading="lazy"
++        >
++      </div>
++      <div class="layer layer-fg">
++        <span class="eyebrow">Small-Batch Craft</span>
++        <h2 id="roast-craft-heading">From High-Altitude Farms to Your Morning Cup</h2>
++        <p>Every bean is hand-selected from sustainable micro-lots and slow-roasted in small batches to unlock deep caramel sweetness and vibrant origin notes.</p>
++        <a href="/about" class="btn">Explore Our Roast Process</a>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

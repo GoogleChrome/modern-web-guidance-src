@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,58 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      text-align: center;
++      margin-bottom: 16px;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    #auth-status {
++      margin-top: 12px;
++      text-align: center;
++      min-height: 1.6em;
++    }
++
++    #auth-status[data-state="error"] {
++      color: #b71c1c;
++    }
++
++    #auth-status[data-state="success"] {
++      color: #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +224,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin">
++      <h2>Sign In</h2>
++      <form id="signin-form">
++        <label for="username">Username</label>
++        <input type="text" id="username" name="username" autocomplete="username webauthn" autocapitalize="none"
++          autocorrect="off" spellcheck="false" data-testid="username-field">
++        <button type="button" class="btn" id="passkey-button" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p id="auth-status" role="status" aria-live="polite" data-testid="auth-status"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +266,130 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const statusEl = document.querySelector('[data-testid="auth-status"]');
++    const button = document.querySelector('[data-testid="auth-button"]');
++    let autofillAbortController = new AbortController();
++
++    function setStatus(message, state) {
++      statusEl.textContent = message;
++      statusEl.dataset.state = state;
++    }
++
++    // Polyfills getClientCapabilities / parse*FromJSON / toJSON where missing
++    try {
++      await import('https://esm.sh/webauthn-polyfills');
++    } catch (err) {
++      console.warn('Could not load webauthn-polyfills:', err);
++    }
++
++    const passkeysSupported = 'PublicKeyCredential' in window;
++    if (!passkeysSupported) {
++      button.disabled = true;
++      setStatus('Passkeys are not supported in this browser.', 'error');
++    }
++
++    async function fetchOptions() {
++      const response = await fetch('/api/login/options', { method: 'POST' });
++      if (!response.ok) throw new Error('Could not start passkey sign-in.');
++      return response.json();
++    }
++
++    function verifyLogin(encoded) {
++      return fetch('/api/login/verify', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(encoded),
++      });
++    }
++
++    async function completeLogin(credential) {
++      const encoded = credential.toJSON();
++      let response;
++      try {
++        response = await verifyLogin(encoded);
++      } catch (err) {
++        console.error('Verification request error:', err);
++        setStatus('Could not reach the server. Please try again.', 'error');
++        return;
++      }
++
++      if (response.ok) {
++        let name = '';
++        try {
++          const data = await response.json();
++          name = data.username || data.user?.username || '';
++        } catch { /* body is optional */ }
++        setStatus(name ? `Signed in as ${name}.` : 'Signed in with passkey.', 'success');
++        return;
++      }
++
++      if (response.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++        // Unauthenticated and the server doesn't know this credential: tell the passkey provider
++        try {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: location.hostname,
++            credentialId: encoded.id,
++          });
++        } catch (err) {
++          console.warn('signalUnknownCredential failed:', err);
++        }
++        setStatus('That passkey is no longer registered. Please use another sign-in method.', 'error');
++      } else {
++        setStatus('Passkey sign-in failed. Please try again.', 'error');
++      }
++    }
++
++    async function initializeConditionalAutofill() {
++      if (!passkeysSupported) return;
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalGet !== true) return;
++
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await fetchOptions());
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++          mediation: 'conditional',
++        });
++        await completeLogin(credential);
++      } catch (err) {
++        if (['NotAllowedError', 'AbortError'].includes(err.name)) return;
++        console.error('Unexpected conditional get error:', err);
++      }
++    }
++
++    async function triggerButtonAuthentication() {
++      // Abort the pending conditional request so it doesn't collide with the explicit prompt
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      let credential;
++      try {
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await fetchOptions());
++        credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++        });
++      } catch (err) {
++        if (err.name === 'NotAllowedError') {
++          setStatus('Passkey sign-in was cancelled.', 'error');
++        } else if (err.name !== 'AbortError') {
++          console.error(err);
++          setStatus('Passkey sign-in failed. Please try again.', 'error');
++        }
++        // Re-arm autofill suggestions after a cancelled or failed prompt
++        initializeConditionalAutofill();
++        return;
++      }
++      await completeLogin(credential);
++    }
++
++    button.addEventListener('click', triggerButtonAuthentication);
++    initializeConditionalAutofill();
++  </script>
++
+ </body>
+ 
+ </html>

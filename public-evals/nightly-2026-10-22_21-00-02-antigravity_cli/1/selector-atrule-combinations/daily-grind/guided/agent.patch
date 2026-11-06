@@ -1,0 +1,531 @@
+diff --git a/index.html b/index.html
+index 66c9173..2a3c24d 100644
+--- a/index.html
++++ b/index.html
+@@ -4,153 +4,356 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer reset {
++      body,
++      h1,
++      h2,
++      h3,
++      p,
++      ul,
++      fieldset {
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      fieldset {
++        border: 0;
++      }
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++    @layer theme {
++      /* 1. Decouple selection logic (union & intersection of @-rules and selectors) from applied rules */
++      :root {
++        --color-primary: #4e342e;
++        --color-primary-hover: #3e2723;
++        --color-secondary: #d7ccc8;
++        --color-accent: #ffab40;
++        --color-text: #3e2723;
++        --color-bg: #fafafa;
++        --color-surface: #ffffff;
++        --color-surface-elevated: #fff8f2;
++        --color-on-primary: #ffffff;
++        --color-border: rgba(62, 39, 35, 0.16);
++        --shadow-card: 0 2px 5px rgba(0, 0, 0, 0.1);
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --space-xs: 0.35rem;
++        --space-sm: 0.75rem;
++        --space-md: 1.25rem;
++        --space-lg: 2.5rem;
++        --radius-sm: 4px;
++        --radius-md: 8px;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Default state for non-critical branching fallback */
++        --color-scheme: light;
++        --promo-highlight: off;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        /* Union of OS dark preference and explicit selector/meta overrides */
++        @media (prefers-color-scheme: dark) {
++          --color-scheme: dark;
++        }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        &:has(> head > meta[name="color-scheme"][content="dark"]),
++        &:has(#theme-dark:checked),
++        &.dark {
++          --color-scheme: dark;
++        }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        &:has(> head > meta[name="color-scheme"][content="light"]),
++        &:has(#theme-light:checked),
++        &.light {
++          --color-scheme: light;
++        }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        /* Intersection of viewport @media rule and selector state */
++        @media (width >= 48rem) {
++          &:has(.card.featured:hover, #highlight-featured:checked) {
++            --promo-highlight: on;
++          }
++        }
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        line-height: 1.6;
++        color: var(--color-text);
++        background-color: var(--color-bg);
++        transition: background-color 0.25s ease, color 0.25s ease;
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      @container style(--color-scheme: dark) {
++        body {
++          --color-primary: #2b1b17;
++          --color-primary-hover: #5d4037;
++          --color-secondary: #1e1411;
++          --color-accent: #ffab40;
++          --color-text: #f5ebe6;
++          --color-bg: #140d0b;
++          --color-surface: #221714;
++          --color-surface-elevated: #2e1f1b;
++          --color-border: rgba(255, 171, 64, 0.28);
++          --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.45);
++        }
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--color-primary);
++        color: var(--color-on-primary);
++        padding-block: 1rem;
++        padding-inline: 5%;
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: space-between;
++        align-items: center;
++        gap: var(--space-md);
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 1000;
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        & ul {
++          display: flex;
++          align-items: center;
++          flex-wrap: wrap;
++          gap: var(--space-md);
++          list-style: none;
++        }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        & a {
++          color: inherit;
++          text-decoration: none;
++          font-size: 0.9rem;
++          transition: color 0.3s;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++          &:hover {
++            color: var(--color-accent);
++          }
++        }
++      }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: 700;
++        letter-spacing: 1px;
++        display: inline-flex;
++        align-items: center;
++        gap: 0.5rem;
++      }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++      /* Base fallback for non-critical branching outside @container */
++      #logo-dark {
++        display: none;
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      .logout-link {
++        border: 1px solid var(--color-accent);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-sm);
++        border-radius: var(--radius-sm);
++      }
++
++      .theme-switcher {
++        display: inline-flex;
++        align-items: center;
++        gap: 0.35rem;
++        background: rgba(255, 255, 255, 0.1);
++        padding-block: 0.2rem;
++        padding-inline: 0.5rem;
++        border-radius: var(--radius-sm);
++        font-size: 0.8rem;
++
++        & label {
++          cursor: pointer;
++          padding-block: 0.15rem;
++          padding-inline: 0.4rem;
++          border-radius: var(--radius-sm);
++
++          &:has(:checked) {
++            background: var(--color-accent);
++            color: #2b1b17;
++            font-weight: 600;
++          }
++        }
++
++        & input[type="radio"] {
++          position: absolute;
++          opacity: 0;
++          pointer-events: none;
++        }
++      }
++
++      /* Hero Section */
++      .hero {
++        min-block-size: 60vh;
++        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: center;
++        color: var(--color-on-primary);
++        text-align: center;
++        padding-inline: var(--space-md);
++
++        & h1 {
++          font-size: 3rem;
++          margin-block-end: 1rem;
++        }
++      }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++      /* Content Sections */
++      .container {
++        max-inline-size: 1100px;
++        margin-block: var(--space-lg);
++        margin-inline: auto;
++        padding-inline: var(--space-md);
++      }
++
++      .section-header {
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 0.5rem;
++        text-align: center;
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++        gap: var(--space-md);
++        margin-block-start: var(--space-md);
++      }
++
++      .card {
++        background: var(--color-surface);
++        padding: var(--space-md);
++        border-radius: var(--radius-md);
++        border: 1px solid var(--color-border);
++        box-shadow: var(--shadow-card);
++        text-align: center;
++        transition: transform 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
++
++        & h3 {
++          margin-block-end: 0.625rem;
++          color: var(--color-primary);
++        }
++
++        &.featured {
++          font-weight: 400;
++          background: var(--color-surface-elevated);
++          border-color: var(--color-accent);
++        }
++      }
++
++      /* 2. Key on the custom property for applied rules */
++      @container not style(--color-scheme: dark) {
++        .card.featured {
++          font-weight: 400;
++        }
++
++        #logo-dark {
++          display: none;
++        }
++      }
++
++      @container style(--color-scheme: dark) {
++        #logo-dark {
++          display: inline; /* override fallback */
++        }
++
++        #logo {
++          display: none;
++        }
++
++        .card {
++          & h3 {
++            color: var(--color-accent);
++          }
++
++          &.featured {
++            font-weight: 300;
++          }
++        }
++      }
++
++      @container style(--promo-highlight: on) {
++        .card.featured {
++          transform: translateY(-4px);
++        }
++      }
++
++      .badge {
++        display: inline-block;
++        font-size: 0.75rem;
++        padding-block: 0.15rem;
++        padding-inline: 0.5rem;
++        border-radius: var(--radius-sm);
++        background: var(--color-accent);
++        color: #2b1b17;
++        margin-block-end: 0.5rem;
++        font-weight: 600;
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--color-primary);
++        color: var(--color-on-primary);
++        padding-block: 0.625rem;
++        padding-inline: var(--space-md);
++        text-decoration: none;
++        border-radius: 5px;
++        margin-block-start: 0.9375rem;
++        transition: background-color 0.3s;
++
++        &:hover:not(:disabled) {
++          background: var(--color-primary-hover);
++        }
++      }
++
++      footer {
++        background: var(--color-secondary);
++        text-align: center;
++        padding-block: var(--space-lg);
++        padding-inline: var(--space-md);
++        margin-block-start: var(--space-lg);
++      }
++
++      .footer-links {
++        margin-block-end: var(--space-md);
++
++        & a {
++          margin-inline: 0.625rem;
++          color: var(--color-text);
++          text-decoration: none;
++          font-size: 0.85rem;
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      /* 3. Utility classes for toggling visibility via negated container style queries */
++      @container not style(--color-scheme: dark) {
++        .if-dark {
++          display: none !important;
++        }
++      }
++
++      @container not style(--color-scheme: light) {
++        .if-light {
++          display: none !important;
++        }
++      }
+     }
+   </style>
+ </head>
+@@ -158,27 +361,44 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">
++      <span id="logo" aria-hidden="true">☀️</span>
++      <span id="logo-dark" aria-hidden="true">🌙</span>
++      <span>THE DAILY GRIND</span>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <fieldset class="theme-switcher" aria-label="Color theme">
++          <label><input type="radio" name="theme" id="theme-auto" value="auto" checked>Auto</label>
++          <label><input type="radio" name="theme" id="theme-light" value="light">Light</label>
++          <label><input type="radio" name="theme" id="theme-dark" value="dark">Dark</label>
++        </fieldset>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <p class="if-light">Ethically sourced, locally roasted, delivered to your morning cup.</p>
++    <p class="if-dark">Ethically sourced, locally roasted, crafted for late-night roasts &amp; cozy evenings.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p class="if-light">Bright, energizing pours selected for daytime sipping.</p>
++        <p class="if-dark">Rich, velvety pours curated for evening relaxation.</p>
++      </div>
+       <div class="grid">
+-        <div class="card">
++        <div class="card featured">
++          <span class="badge">Featured Roast</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>

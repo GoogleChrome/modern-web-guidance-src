@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,83 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Physical hover motion
++       ----------------------------------------------------------------
++       Easing curves use CSS linear() to plot real physics curves.
++       Each rule declares a cubic-bezier() fallback first; browsers
++       that don't support linear() drop the second declaration and
++       keep the fallback. */
++    .card.spring,
++    .card.bounce {
++      --lift: 0px;
++      --scale: 1;
++      transform: translateY(var(--lift)) scale(var(--scale));
++      will-change: transform;
++    }
++
++    /* Spring: damped harmonic oscillator (damping ratio ≈ 0.42).
++       Overshoots its target by ~23%, rings back under, then settles. */
++    .card.spring {
++      --spring-ease: linear(0, 0.045, 0.162, 0.323, 0.506, 0.688, 0.856,
++          0.996, 1.105, 1.179, 1.221, 1.234, 1.224, 1.197, 1.159, 1.116,
++          1.074, 1.034, 1.001, 0.976, 0.958, 0.949, 0.945, 0.948, 0.954,
++          0.963, 0.973, 0.983, 0.992, 1, 1.006, 1.01, 1.012, 1.013, 1.012,
++          1.011, 1.009, 1.006, 1.004, 1.002, 1);
++      transition:
++        transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
++        box-shadow 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
++      transition:
++        transform 0.7s var(--spring-ease),
++        box-shadow 0.7s var(--spring-ease);
++    }
++
++    .card.spring:hover,
++    .card.spring:focus-within {
++      --scale: 1.06;
++      box-shadow: 0 14px 28px rgba(78, 52, 46, 0.22);
++    }
++
++    /* Bounce: a ball dropping onto its resting point — hits the
++       target, rebounds with decaying height, and comes to rest. */
++    .card.bounce {
++      --bounce-ease: linear(0, 0.004, 0.016, 0.035, 0.063, 0.098, 0.141,
++          0.191, 0.25, 0.316, 0.391, 0.473, 0.563, 0.66, 0.766, 0.879,
++          1 36.4%, 0.938, 0.889, 0.851, 0.824, 0.809, 0.805 54.5%, 0.809,
++          0.824, 0.851, 0.889, 0.938, 1 72.7%, 0.969, 0.951, 0.945 81.8%,
++          0.951, 0.969, 1 90.9%, 0.988, 0.984 95.5%, 0.988, 1);
++      transition:
++        transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55),
++        box-shadow 0.8s ease-out;
++      transition:
++        transform 0.8s var(--bounce-ease),
++        box-shadow 0.8s var(--bounce-ease);
++    }
++
++    .card.bounce:hover,
++    .card.bounce:focus-within {
++      --lift: -12px;
++      --scale: 1.03;
++      box-shadow: 0 16px 24px rgba(78, 52, 46, 0.2);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce {
++        transition: none;
++        will-change: auto;
++      }
++
++      .card.spring:hover,
++      .card.spring:focus-within,
++      .card.bounce:hover,
++      .card.bounce:focus-within {
++        --lift: 0px;
++        --scale: 1;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,14 +252,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

@@ -1,0 +1,34 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,29 @@
++# Daily Grind
++
++The homepage loads `analytics.js` with a deferred script. It records one
++`page_view` per document load and delegated `click` events (including nested
++elements in links and buttons). Events include an ISO timestamp, page pathname,
++element tag, optional `data-analytics` label or element ID, and link destination
++pathname. Query strings, fragments, and visible or entered text are excluded.
++
++Events are sent together after 1 second without interactions, or after at most
++5 seconds of continuous activity. A batch is limited to 50 events. Hiding or
++leaving the page flushes pending events with `sendBeacon`, falling back to a
++keepalive fetch. Delivery is best effort; failures are swallowed without retries
++or persistent storage.
++
++The hosting service must implement `POST /api/analytics` (or change the script's
++`data-endpoint` in `index.html`). This static repository has no server receiver.
++Both transports send JSON with `Content-Type: application/json`:
++
++```json
++{
++  "events": [
++    { "type": "page_view", "timestamp": "2026-10-30T12:00:00.000Z", "page": "/" },
++    { "type": "click", "timestamp": "2026-10-30T12:00:00.500Z", "page": "/", "element": "a", "destination": "/order-online" }
++  ]
++}
++```
++
++Run the isolated client tests with `node --test analytics.test.cjs`; no server or
++browser is required.

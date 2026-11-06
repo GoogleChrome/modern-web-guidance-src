@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,32 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .search-box {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 0;
++      padding: 10px 14px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .search-box:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    mark.highlight {
++      background: gold;
++      color: inherit;
++      padding: 0;
++      margin: 0;
++      border-radius: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,8 +200,10 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="search" id="search-input" class="search-box" placeholder="Search the menu..."
++        aria-label="Search seasonal favorites" autocomplete="off">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +232,55 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (function () {
++      var input = document.getElementById('search-input');
++      var targets = document.querySelectorAll('.grid .card h3, .grid .card p');
++
++      function clearHighlights() {
++        document.querySelectorAll('mark.highlight').forEach(function (mark) {
++          var parent = mark.parentNode;
++          parent.replaceChild(document.createTextNode(mark.textContent), mark);
++          parent.normalize();
++        });
++      }
++
++      function highlight(root, query) {
++        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
++        var nodes = [];
++        while (walker.nextNode()) nodes.push(walker.currentNode);
++
++        nodes.forEach(function (node) {
++          var text = node.nodeValue;
++          var lower = text.toLowerCase();
++          var idx = lower.indexOf(query);
++          if (idx === -1) return;
++
++          var frag = document.createDocumentFragment();
++          var last = 0;
++          while (idx !== -1) {
++            frag.appendChild(document.createTextNode(text.slice(last, idx)));
++            var mark = document.createElement('mark');
++            mark.className = 'highlight';
++            mark.textContent = text.slice(idx, idx + query.length);
++            frag.appendChild(mark);
++            last = idx + query.length;
++            idx = lower.indexOf(query, last);
++          }
++          frag.appendChild(document.createTextNode(text.slice(last)));
++          node.parentNode.replaceChild(frag, node);
++        });
++      }
++
++      input.addEventListener('input', function () {
++        clearHighlights();
++        var query = input.value.trim().toLowerCase();
++        if (!query) return;
++        targets.forEach(function (el) { highlight(el, query); });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,90 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.is-theater {
++      height: auto;
++      scroll-margin-top: 72px;
++      min-height: 60vh;
++      padding: 36px 20px;
++    }
++
++    .hero.is-theater > h1,
++    .hero.is-theater > p,
++    .hero.is-theater > a {
++      display: none;
++    }
++
++    .hero-player {
++      width: 100%;
++      max-width: 1060px;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    .roasting {
++      margin-bottom: 44px;
++      scroll-margin-top: 100px;
++    }
++
++    .roasting-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .roasting-heading p {
++      margin-top: 4px;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .video-slot {
++      position: relative;
++      height: 0;
++      padding-top: 56.25%;
++    }
++
++    .video-slot.is-away {
++      padding-top: 0;
++    }
++
++    .video-player {
++      position: absolute;
++      inset: 0;
++      background: #1c1715;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
++    }
++
++    .video-player iframe {
++      display: block;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .hero-player button {
++      margin-top: 20px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,11 +253,31 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div id="hero-player" class="hero-player" hidden>
++      <div id="hero-video-slot" class="video-slot"></div>
++      <button id="exit-theater" class="btn" type="button" aria-controls="roasting-player">Exit theater mode</button>
++    </div>
+   </header>
+ 
+   <main class="container">
++    <section class="roasting" aria-labelledby="roasting-title">
++      <div class="roasting-heading">
++        <div>
++          <h2 id="roasting-title">From Bean to Roast</h2>
++          <p>Go behind the scenes of a great cup of coffee.</p>
++        </div>
++        <button id="theater-toggle" class="btn" type="button" aria-controls="roasting-player" aria-pressed="false" hidden>Theater mode</button>
++      </div>
++      <div id="main-video-slot" class="video-slot">
++        <div id="roasting-player" class="video-player">
++          <iframe src="https://www.youtube.com/embed/N6BJVM5tvnw" title="Coffee Roasting Explained"
++            width="1060" height="596" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +308,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const hero = document.querySelector('.hero');
++      const heroPlayer = document.getElementById('hero-player');
++      const heroSlot = document.getElementById('hero-video-slot');
++      const mainSlot = document.getElementById('main-video-slot');
++      const player = document.getElementById('roasting-player');
++      const toggle = document.getElementById('theater-toggle');
++      const exit = document.getElementById('exit-theater');
++      let theater = false;
++      const atomicMove = typeof heroSlot.moveBefore === 'function';
++      let pendingFrame = 0;
++
++      // Legacy DOM insertion reloads iframes. Keep the player connected in its
++      // original parent and position it over the hero slot on those browsers.
++      function positionFallback() {
++        if (!theater || atomicMove) return;
++        const rect = heroSlot.getBoundingClientRect();
++        Object.assign(player.style, {
++          position: 'fixed',
++          top: rect.top + 'px',
++          left: rect.left + 'px',
++          width: rect.width + 'px',
++          height: rect.height + 'px',
++          right: 'auto',
++          bottom: 'auto',
++          zIndex: '10'
++        });
++      }
++
++      function schedulePosition() {
++        if (!theater || atomicMove || pendingFrame) return;
++        pendingFrame = requestAnimationFrame(function () {
++          pendingFrame = 0;
++          positionFallback();
++        });
++      }
++
++      function setTheater(enabled) {
++        theater = enabled;
++        hero.classList.toggle('is-theater', enabled);
++        heroPlayer.hidden = !enabled;
++        mainSlot.classList.toggle('is-away', enabled);
++
++        if (atomicMove) {
++          // Both parents stay connected. Never use appendChild/insertBefore
++          // here: removing and reinserting the player resets its iframe.
++          (enabled ? heroSlot : mainSlot).moveBefore(player, null);
++        }
++        if (!atomicMove) {
++          if (enabled) positionFallback();
++          else player.removeAttribute('style');
++        }
++
++        toggle.setAttribute('aria-pressed', String(enabled));
++        toggle.textContent = enabled ? 'Exit theater mode' : 'Theater mode';
++        (enabled ? hero : document.querySelector('.roasting')).scrollIntoView({ block: 'start' });
++        if (!atomicMove) positionFallback();
++        (enabled ? exit : toggle).focus({ preventScroll: true });
++      }
++
++      toggle.hidden = false;
++      toggle.addEventListener('click', function () { setTheater(!theater); });
++      exit.addEventListener('click', function () { setTheater(false); });
++      document.addEventListener('keydown', function (event) {
++        if (event.key === 'Escape' && theater) setTheater(false);
++      });
++      window.addEventListener('scroll', schedulePosition, { passive: true, capture: true });
++      window.addEventListener('resize', schedulePosition);
++      if (typeof ResizeObserver === 'function') {
++        new ResizeObserver(schedulePosition).observe(heroSlot);
++      }
++    }());
++  </script>
+ </body>
+ 
+ </html>

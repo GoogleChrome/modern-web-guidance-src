@@ -1,0 +1,323 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,14 +151,167 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback dialog */
++    .feedback-trigger {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 900;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      padding: 12px 20px;
++      border-radius: 999px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .feedback-trigger:hover {
++      background: #ff9100;
++    }
++
++    .feedback-trigger:focus-visible,
++    .feedback-dialog :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Visual hint showing which DOM section currently contains the dialog */
++    section.dock,
++    footer.dock {
++      position: relative;
++    }
++
++    .dock:has(> dialog[open])::after {
++      content: "Feedback dialog lives here (" attr(data-dock-label) ")";
++      position: absolute;
++      top: 8px;
++      left: 8px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--text);
++      background: var(--accent);
++      padding: 2px 8px;
++      border-radius: 4px;
++      outline: 2px dashed var(--accent);
++      outline-offset: 2px;
++    }
++
++    .feedback-dialog {
++      width: min(480px, calc(100% - 32px));
++      margin: auto;
++      border: 0;
++      border-radius: 12px;
++      padding: 24px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++    }
++
++    .feedback-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .feedback-dialog::backdrop {
++      background: rgba(30, 15, 10, 0.55);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .feedback-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .feedback-dialog .location {
++      font-size: 0.85rem;
++      margin-bottom: 16px;
++      color: #6d4c41;
++    }
++
++    .feedback-dialog fieldset {
++      border: 0;
++      margin-bottom: 16px;
++    }
++
++    .feedback-dialog legend,
++    .feedback-dialog label {
++      font-weight: 600;
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .rating {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .rating label {
++      font-weight: 400;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      margin: 0;
++    }
++
++    .feedback-dialog textarea {
++      width: 100%;
++      min-height: 110px;
++      font: inherit;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      resize: vertical;
++      margin-bottom: 16px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      justify-content: flex-end;
++    }
++
++    .dialog-actions button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 6px;
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++    }
++
++    .dialog-actions .primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .dialog-actions .move {
++      margin-right: auto;
++      border-style: dashed;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="dock" data-dock="header" data-dock-label="header">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -174,9 +327,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="dock" data-dock="main" data-dock-label="main content">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -196,17 +349,138 @@
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="dock" data-dock="footer" data-dock-label="footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <!-- Feedback dialog: starts docked in the footer and is reparented between docks while open -->
++    <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title">
++      <h2 id="feedback-title">Share your feedback</h2>
++      <p class="location">Currently placed in the <strong id="feedback-location">footer</strong> section of the page.</p>
++      <form method="dialog" id="feedback-form">
++        <fieldset>
++          <legend>How was your last visit?</legend>
++          <div class="rating">
++            <label><input type="radio" name="rating" value="1" required> 1</label>
++            <label><input type="radio" name="rating" value="2"> 2</label>
++            <label><input type="radio" name="rating" value="3"> 3</label>
++            <label><input type="radio" name="rating" value="4"> 4</label>
++            <label><input type="radio" name="rating" value="5"> 5</label>
++          </div>
++        </fieldset>
++        <label for="feedback-message">Tell us more</label>
++        <textarea id="feedback-message" name="message" autofocus
++          placeholder="What did you love? What could be better?"></textarea>
++        <div class="dialog-actions">
++          <button type="button" class="move" id="feedback-move">Move to next section</button>
++          <button type="submit" value="cancel" formnovalidate>Cancel</button>
++          <button type="submit" value="send" class="primary">Send feedback</button>
++        </div>
++      </form>
++    </dialog>
+   </footer>
+ 
++  <button type="button" class="feedback-trigger" id="feedback-open">Feedback</button>
++  <p class="visually-hidden" role="status" id="feedback-status"></p>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-dialog');
++      const form = document.getElementById('feedback-form');
++      const openBtn = document.getElementById('feedback-open');
++      const moveBtn = document.getElementById('feedback-move');
++      const locationLabel = document.getElementById('feedback-location');
++      const status = document.getElementById('feedback-status');
++      const docks = [...document.querySelectorAll('[data-dock]')];
++      const supportsMoveBefore = 'moveBefore' in Element.prototype;
++
++      // Set while a fallback relocation closes/re-opens the dialog, so that
++      // transient close events aren't mistaken for the user dismissing it.
++      let relocating = false;
++
++      const announce = (msg) => {
++        status.textContent = '';
++        requestAnimationFrame(() => { status.textContent = msg; });
++      };
++
++      openBtn.addEventListener('click', () => {
++        dialog.returnValue = '';
++        dialog.showModal();
++      });
++
++      dialog.addEventListener('close', () => {
++        if (relocating) return;
++        if (dialog.returnValue === 'send') {
++          form.reset();
++          announce('Thanks! Your feedback has been sent.');
++        }
++        dialog.returnValue = '';
++      });
++
++      // Capture the state that a remove + insert would destroy.
++      function snapshot() {
++        const active = dialog.contains(document.activeElement) ? document.activeElement : null;
++        return {
++          wasOpen: dialog.open,
++          wasModal: dialog.matches(':modal'),
++          active,
++          selection: active && typeof active.selectionStart === 'number'
++            ? [active.selectionStart, active.selectionEnd, active.selectionDirection]
++            : null,
++          scrollTop: dialog.scrollTop,
++        };
++      }
++
++      function restore(state) {
++        if (state.wasOpen) {
++          // Removing a dialog from the document drops it from the top layer
++          // but can leave the `open` attribute behind, which would make
++          // showModal() throw. Clear it before re-opening.
++          if (dialog.open) dialog.removeAttribute('open');
++          state.wasModal ? dialog.showModal() : dialog.show();
++        }
++        dialog.scrollTop = state.scrollTop;
++        if (state.active) {
++          state.active.focus({ preventScroll: true });
++          if (state.selection) {
++            try { state.active.setSelectionRange(...state.selection); } catch { /* not a text control */ }
++          }
++        }
++      }
++
++      function relocate(target) {
++        if (supportsMoveBefore) {
++          // Atomic move: the dialog stays modal, in the top layer, and the
++          // focused element keeps focus.
++          target.moveBefore(dialog, null);
++          return;
++        }
++
++        // Fallback: a classic move closes the dialog and drops focus,
++        // so re-open it and restore focus/selection/scroll by hand.
++        const state = snapshot();
++        relocating = true;
++        target.insertBefore(dialog, null);
++        restore(state);
++        // Any close event queued by the move is dispatched in an earlier task.
++        setTimeout(() => { relocating = false; });
++      }
++
++      moveBtn.addEventListener('click', () => {
++        const current = docks.findIndex((dock) => dock.contains(dialog));
++        const next = docks[(current + 1) % docks.length];
++        relocate(next);
++        locationLabel.textContent = next.dataset.dockLabel;
++        announce(`Feedback dialog moved to the ${next.dataset.dockLabel} section.`);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

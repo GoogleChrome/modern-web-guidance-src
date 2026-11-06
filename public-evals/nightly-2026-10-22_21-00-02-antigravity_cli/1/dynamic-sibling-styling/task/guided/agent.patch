@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,112 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Dynamic Sibling Styling: Spectrum, Fan, and Circle */
++    :is(.spectrum-card, .fan-card, .circle-orb) {
++      --index: var(--sibling-index);
++      --count: var(--sibling-count);
++    }
++
++    @supports (top: calc(sibling-index() * 1px)) {
++      :is(.spectrum-card, .fan-card, .circle-orb) {
++        --index: sibling-index();
++        --count: sibling-count();
++      }
++    }
++
++    .spectrum-card {
++      background-color: hsl(calc(360deg / var(--count) * var(--index)), 70%, 88%);
++    }
++
++    /* Loyalty Cards Fan Layout */
++    .fan-section,
++    .circle-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .fan-container {
++      position: relative;
++      display: grid;
++      place-items: center;
++      min-height: 280px;
++      margin-top: 30px;
++    }
++
++    .fan-card {
++      --center: calc((var(--count) + 1) / 2);
++      grid-area: 1 / 1;
++      width: 180px;
++      height: 230px;
++      background: var(--primary);
++      color: var(--light);
++      border: 2px solid var(--accent);
++      border-radius: 12px;
++      padding: 20px 15px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
++      transform-origin: center 120%;
++      transform: rotate(calc(12deg * (var(--index) - var(--center))));
++      transition: transform 0.3s ease;
++    }
++
++    .fan-card h3 {
++      color: var(--accent);
++      font-size: 1.1rem;
++    }
++
++    .fan-card p {
++      font-size: 0.85rem;
++    }
++
++    /* Coffee Origin Badges Circle Layout */
++    .circle-container {
++      position: relative;
++      display: grid;
++      place-items: center;
++      width: 420px;
++      height: 420px;
++      max-width: 100%;
++      margin: 30px auto;
++    }
++
++    .circle-orb {
++      --angle: calc(360deg / var(--count) * var(--index));
++      --radius: 150px;
++      position: absolute;
++      place-self: center;
++      width: 100px;
++      height: 100px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--text);
++      border: 2px solid var(--primary);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      padding: 10px;
++      font-weight: bold;
++      font-size: 0.85rem;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
++      transform: translate(
++        calc(cos(var(--angle)) * var(--radius)),
++        calc(sin(var(--angle)) * var(--radius))
++      );
++    }
++
++    .circle-orb span {
++      display: block;
++      font-size: 0.75rem;
++      font-weight: normal;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +281,88 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="fan-section">
++      <h2>Loyalty Rewards Tiers</h2>
++      <p>Collect stamps with every cup and unlock artisanal perks.</p>
++      <div class="fan-container">
++        <div class="fan-card">
++          <h3>Bean Sprout</h3>
++          <p>1x Points on all brewed coffee</p>
++          <span>Tier 1</span>
++        </div>
++        <div class="fan-card">
++          <h3>Light Roast</h3>
++          <p>Free syrup &amp; milk upgrades</p>
++          <span>Tier 2</span>
++        </div>
++        <div class="fan-card">
++          <h3>Medium Roast</h3>
++          <p>Monthly complimentary pastry</p>
++          <span>Tier 3</span>
++        </div>
++        <div class="fan-card">
++          <h3>Gold Crema</h3>
++          <p>Double points &amp; priority order</p>
++          <span>Tier 4</span>
++        </div>
++        <div class="fan-card">
++          <h3>Master Roaster</h3>
++          <p>Exclusive single-origin bag monthly</p>
++          <span>Tier 5</span>
++        </div>
++      </div>
++    </section>
++
++    <section class="circle-section">
++      <h2>Single-Origin Beans</h2>
++      <p>Explore our ethically sourced coffee origins from around the globe.</p>
++      <div class="circle-container">
++        <div class="circle-orb">
++          <strong>Ethiopia</strong>
++          <span>Yirgacheffe</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Colombia</strong>
++          <span>Huila</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Guatemala</strong>
++          <span>Antigua</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Kenya</strong>
++          <span>Nyeri</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Sumatra</strong>
++          <span>Mandheling</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Costa Rica</strong>
++          <span>Tarrazú</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +373,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('top: calc(sibling-index() * 1px)')) {
++      const applySiblingFallback = (container) => {
++        const children = Array.from(container.children);
++        const count = children.length;
++        children.forEach((child, index) => {
++          child.style.setProperty('--sibling-index', index + 1);
++          child.style.setProperty('--sibling-count', count);
++        });
++      };
++
++      const containers = document.querySelectorAll('.grid, .fan-container, .circle-container');
++      const observer = new MutationObserver((mutations) => {
++        const updated = new Set();
++        for (const mutation of mutations) {
++          if (mutation.type === 'childList' && mutation.target instanceof Element) {
++            updated.add(mutation.target);
++          }
++        }
++        updated.forEach(applySiblingFallback);
++      });
++
++      containers.forEach((container) => {
++        applySiblingFallback(container);
++        observer.observe(container, { childList: true });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

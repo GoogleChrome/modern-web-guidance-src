@@ -1,0 +1,69 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..f5feb36 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -27,14 +25,20 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Wait for the server-rendered page content before taking the new snapshot. -->
++    <link rel="expect" href="#main-content" blocking="render" />
++
++    <!-- Put page-specific critical styles and blocking="render" scripts in the head. -->
++    <slot name="head" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +49,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1c0f702 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,18 @@
+ @import "tailwindcss";
+ 
++/* Native document navigation waits for the destination's render blockers. */
++@view-transition {
++  navigation: auto;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

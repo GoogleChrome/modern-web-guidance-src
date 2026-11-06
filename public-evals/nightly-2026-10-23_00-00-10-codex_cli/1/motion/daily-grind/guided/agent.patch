@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..a5e94f9 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,9 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-fast: 160ms;
++      --motion-enter: 480ms;
++      --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -59,7 +62,6 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -128,7 +130,6 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+@@ -152,6 +153,134 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Visible, usable static states are the default, including without JS. */
++    nav a,
++    .footer-links a {
++      display: inline-block;
++      position: relative;
++    }
++
++    nav a:not(.logout-link)::after,
++    .footer-links a::after {
++      content: '';
++      position: absolute;
++      inset: auto 0 -3px;
++      height: 2px;
++      background: currentColor;
++      transform: scaleX(0);
++      transform-origin: left;
++    }
++
++    nav a:hover::after,
++    nav a:focus-visible::after,
++    .footer-links a:hover::after,
++    .footer-links a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    /* Opt in to motion; preference changes also stop CSS animations at once. */
++    @media (prefers-reduced-motion: no-preference) {
++      .logo,
++      nav ul,
++      .hero h1,
++      .hero p,
++      .hero > .btn {
++        animation: enter var(--motion-enter) var(--motion-ease) both;
++      }
++
++      nav ul,
++      .hero p {
++        animation-delay: 70ms;
++      }
++
++      .hero > .btn {
++        animation-delay: 140ms;
++      }
++
++      .btn,
++      .logout-link {
++        transition: transform var(--motion-fast) var(--motion-ease);
++      }
++
++      .btn:focus-visible,
++      .logout-link:focus-visible {
++        transform: translateY(-2px);
++      }
++
++      .btn:active,
++      .logout-link:active {
++        transform: translateY(0) scale(0.97);
++      }
++
++      nav a::after,
++      .footer-links a::after {
++        transition: transform 220ms var(--motion-ease);
++      }
++
++      .card {
++        transition: transform 240ms var(--motion-ease);
++      }
++
++      .card:focus-within {
++        transform: translateY(-4px);
++      }
++
++      [data-reveal].is-reveal-pending {
++        opacity: 0;
++      }
++
++      [data-reveal].is-revealed {
++        animation: enter var(--motion-enter) var(--motion-ease) both;
++        animation-delay: var(--reveal-delay, 0ms);
++      }
++
++      .card:nth-child(2) {
++        --reveal-delay: 60ms;
++      }
++
++      .card:nth-child(3) {
++        --reveal-delay: 120ms;
++      }
++
++      /* Keep focused content visible immediately, even during a reveal. */
++      [data-reveal]:focus-within {
++        opacity: 1;
++        animation: none;
++      }
++
++      @keyframes enter {
++        from {
++          opacity: 0;
++          translate: 0 12px;
++        }
++        to {
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
++      .card:hover {
++        transform: translateY(-4px);
++      }
++
++      .btn:hover,
++      .logout-link:hover {
++        transform: translateY(-2px);
++      }
++
++      .btn:active,
++      .logout-link:active {
++        transform: translateY(0) scale(0.97);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,19 +305,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 data-reveal style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-reveal>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-reveal>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-reveal>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -198,15 +327,63 @@
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
++    <div class="footer-links" data-reveal>
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p data-reveal>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Observe once per element rather than doing work on every scroll frame.
++    if ('IntersectionObserver' in window && 'matchMedia' in window) {
++      const motionPreference = window.matchMedia('(prefers-reduced-motion: no-preference)');
++      const revealElements = document.querySelectorAll('[data-reveal]');
++      const revealed = new WeakSet();
++      let observer;
++
++      function reveal(element) {
++        element.classList.remove('is-reveal-pending');
++        element.classList.add('is-revealed');
++        revealed.add(element);
++        observer?.unobserve(element);
++      }
++
++      function syncMotion() {
++        observer?.disconnect();
++        if (!motionPreference.matches) {
++          revealElements.forEach((element) => {
++            element.classList.remove('is-reveal-pending', 'is-revealed');
++            revealed.add(element);
++          });
++          return;
++        }
++
++        observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) reveal(entry.target);
++          });
++        }, { threshold: 0.1 });
++
++        revealElements.forEach((element) => {
++          if (revealed.has(element)) return;
++          element.classList.add('is-reveal-pending');
++          observer.observe(element);
++        });
++      }
++
++      // Keyboard navigation must never land on content waiting to animate.
++      document.addEventListener('focusin', (event) => {
++        const element = event.target.closest('[data-reveal].is-reveal-pending');
++        if (element) reveal(element);
++      });
++      motionPreference.addEventListener('change', syncMotion);
++      syncMotion();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

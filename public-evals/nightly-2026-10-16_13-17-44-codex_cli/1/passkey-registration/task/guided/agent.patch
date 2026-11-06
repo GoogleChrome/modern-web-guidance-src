@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: default;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +185,16 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card" aria-labelledby="passkey-heading">
++      <h2 id="passkey-heading">Sign in with a passkey</h2>
++      <p>Create a passkey for your account using your device's screen lock.</p>
++      <button type="button" class="btn" data-testid="register-button"
++        aria-describedby="register-status" disabled>Create passkey</button>
++      <p id="register-status" role="status" aria-live="polite">Checking passkey support…</p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +225,108 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const registerButton = document.querySelector('[data-testid="register-button"]');
++    const registerStatus = document.getElementById('register-status');
++    let registrationInProgress = false;
++
++    async function initializePasskeys() {
++      if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.create) {
++        registerStatus.textContent = 'Passkeys require a supported browser and a secure connection. You can keep using your existing sign-in method.';
++        return;
++      }
++
++      try {
++        await import('/assets/webauthn-polyfills.js');
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (!capabilities.conditionalGet || !capabilities.passkeyPlatformAuthenticator) {
++          registerStatus.textContent = 'Passkey creation is unavailable on this device. You can keep using your existing sign-in method.';
++          return;
++        }
++        registerButton.disabled = false;
++        registerStatus.textContent = '';
++      } catch {
++        registerStatus.textContent = 'Unable to check passkey support. Please reload to try again.';
++      }
++    }
++
++    async function postJSON(url, body) {
++      const response = await fetch(url, {
++        method: 'POST',
++        credentials: 'same-origin',
++        mode: 'same-origin',
++        redirect: 'error',
++        cache: 'no-store',
++        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++        body: JSON.stringify(body),
++      });
++      if (!response.ok) throw new Error('Registration request failed.');
++      return response;
++    }
++
++    registerButton.addEventListener('click', async () => {
++      if (registerButton.disabled || registrationInProgress) return;
++      registrationInProgress = true;
++      registerButton.disabled = true;
++      registerButton.setAttribute('aria-busy', 'true');
++      registerStatus.textContent = 'Preparing your passkey…';
++      let registered = false;
++
++      try {
++        const optionsResponse = await postJSON('/api/register/options', { promotion: true });
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsResponse.json());
++        registerStatus.textContent = 'Follow your device’s instructions to create a passkey.';
++        const credential = await navigator.credentials.create({ publicKey });
++        if (!credential) throw new Error('No credential was created.');
++        const encodedResponse = credential.toJSON();
++
++        registerStatus.textContent = 'Verifying your passkey…';
++        // Only verification failures may signal an orphaned credential, never prompt cancellation.
++        try {
++          const verificationResponse = await postJSON('/api/register/verify', encodedResponse);
++          // Accept an empty successful response, but honor explicit rejection in JSON responses.
++          if (verificationResponse.headers.get('content-type')?.includes('application/json')) {
++            const result = await verificationResponse.json();
++            if (result?.verified === false || result?.success === false) {
++              throw new Error('Registration was not verified.');
++            }
++          }
++        } catch {
++          if (typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: publicKey.rp.id || window.location.hostname,
++                credentialId: encodedResponse.id,
++              });
++            } catch {
++              // Password-manager synchronization is optional; retain the verification error.
++            }
++          }
++          registerStatus.textContent = 'Could not verify your passkey. Please try again.';
++          return;
++        }
++
++        registered = true;
++        registerButton.textContent = 'Passkey created';
++        registerStatus.textContent = 'Your passkey is ready to use.';
++      } catch (error) {
++        const messages = {
++          InvalidStateError: 'A passkey already exists for this account on this authenticator.',
++          NotAllowedError: 'Passkey creation was cancelled or timed out. You can try again.',
++          AbortError: 'Passkey creation was interrupted. You can try again.',
++          SecurityError: 'Passkey creation is unavailable for this site. Please contact support.',
++        };
++        registerStatus.textContent = messages[error.name] || 'Could not create your passkey. Please try again.';
++      } finally {
++        registrationInProgress = false;
++        registerButton.disabled = registered;
++        registerButton.removeAttribute('aria-busy');
++      }
++    });
++
++    initializePasskeys();
++  </script>
+ </body>
+ 
+ </html>

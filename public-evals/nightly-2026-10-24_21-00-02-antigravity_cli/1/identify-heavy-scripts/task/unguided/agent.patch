@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,233 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    (function initScriptPerformanceMonitor() {
++      const statsByScript = new Map();
++
++      function recordScriptMetric(scriptName, sourceCategory, duration, details = {}) {
++        if (!scriptName) scriptName = 'inline-or-anonymous-script';
++        const existing = statsByScript.get(scriptName) || {
++          script: scriptName,
++          count: 0,
++          totalDurationMs: 0,
++          maxDurationMs: 0,
++          blockingTimeMs: 0,
++          networkDurationMs: 0,
++          executionDurationMs: 0,
++          categories: new Set(),
++          lastDetails: null,
++        };
++
++        existing.count += 1;
++        existing.totalDurationMs = +(existing.totalDurationMs + duration).toFixed(2);
++        existing.maxDurationMs = +Math.max(existing.maxDurationMs, duration).toFixed(2);
++        if (details.blockingTime) {
++          existing.blockingTimeMs = +(existing.blockingTimeMs + details.blockingTime).toFixed(2);
++        }
++        if (details.networkDuration) {
++          existing.networkDurationMs = +Math.max(existing.networkDurationMs, details.networkDuration).toFixed(2);
++        }
++        if (details.executionDuration) {
++          existing.executionDurationMs = +(existing.executionDurationMs + details.executionDuration).toFixed(2);
++        }
++        existing.categories.add(sourceCategory);
++        existing.lastDetails = details;
++        statsByScript.set(scriptName, existing);
++      }
++
++      if (typeof PerformanceObserver !== 'undefined') {
++        const supported = PerformanceObserver.supportedEntryTypes || [];
++
++        // 1. Long Animation Frames API (LoAF) - attributes main-thread blocking directly to scripts
++        if (supported.includes('long-animation-frame')) {
++          try {
++            const loafObserver = new PerformanceObserver((list) => {
++              for (const frame of list.getEntries()) {
++                const scripts = frame.scripts || [];
++                for (const script of scripts) {
++                  const scriptUrl = script.sourceURL || script.invoker || 'inline-script';
++                  const location = script.sourceFunctionName
++                    ? `${scriptUrl} (${script.sourceFunctionName}:${script.sourceCharPosition || 0})`
++                    : scriptUrl;
++
++                  recordScriptMetric(scriptUrl, 'long-animation-frame', script.duration, {
++                    blockingTime: frame.blockingDuration || Math.max(0, script.duration - 50),
++                    executionDuration: script.duration,
++                    invoker: script.invoker,
++                    invokerType: script.invokerType,
++                    functionName: script.sourceFunctionName || '(anonymous)',
++                    forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration || 0,
++                    location,
++                  });
++
++                  console.warn('[Slow Script Detected - LoAF]', {
++                    script: scriptUrl,
++                    functionName: script.sourceFunctionName || '(anonymous)',
++                    invoker: script.invoker,
++                    invokerType: script.invokerType,
++                    scriptDurationMs: +script.duration.toFixed(2),
++                    forcedStyleAndLayoutMs: +(script.forcedStyleAndLayoutDuration || 0).toFixed(2),
++                    frameDurationMs: +frame.duration.toFixed(2),
++                    frameBlockingDurationMs: +(frame.blockingDuration || 0).toFixed(2),
++                  });
++                }
++              }
++            });
++            loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++          } catch (e) {
++            // Ignore if browser rejects observation
++          }
++        }
++
++        // 2. Long Tasks API - identifies tasks blocking the main thread for >50ms
++        if (supported.includes('longtask')) {
++          try {
++            const longTaskObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                const attribution = (entry.attribution && entry.attribution[0]) || {};
++                const scriptId =
++                  attribution.containerSrc ||
++                  attribution.containerName ||
++                  attribution.containerId ||
++                  entry.name ||
++                  'unknown-task-source';
++                const blockingTime = Math.max(0, entry.duration - 50);
++
++                recordScriptMetric(scriptId, 'longtask', entry.duration, {
++                  blockingTime,
++                  executionDuration: entry.duration,
++                  containerType: attribution.containerType,
++                  containerName: attribution.containerName,
++                  startTime: +entry.startTime.toFixed(2),
++                });
++
++                console.warn('[Slow Script / Long Task Detected]', {
++                  source: scriptId,
++                  durationMs: +entry.duration.toFixed(2),
++                  blockingTimeMs: +blockingTime.toFixed(2),
++                  startTimeMs: +entry.startTime.toFixed(2),
++                  attribution,
++                });
++              }
++            });
++            longTaskObserver.observe({ type: 'longtask', buffered: true });
++          } catch (e) {
++            // Ignore if browser rejects observation
++          }
++        }
++
++        // 3. Resource Timing API - tracks slow network loading & render-blocking scripts
++        if (supported.includes('resource')) {
++          try {
++            const resourceObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                if (entry.initiatorType === 'script' || /\.m?js(\?|$)/i.test(entry.name)) {
++                  const isRenderBlocking = entry.renderBlockingStatus === 'blocking';
++                  const dnsTime = entry.domainLookupEnd - entry.domainLookupStart;
++                  const tcpTime = entry.connectEnd - entry.connectStart;
++                  const ttfb = entry.responseStart - entry.requestStart;
++                  const downloadTime = entry.responseEnd - entry.responseStart;
++
++                  recordScriptMetric(entry.name, 'resource', entry.duration, {
++                    networkDuration: entry.duration,
++                    renderBlockingStatus: entry.renderBlockingStatus || 'unknown',
++                    transferSizeBytes: entry.transferSize,
++                    decodedBodySizeBytes: entry.decodedBodySize,
++                    dnsMs: +dnsTime.toFixed(2),
++                    tcpMs: +tcpTime.toFixed(2),
++                    ttfbMs: +ttfb.toFixed(2),
++                    downloadMs: +downloadTime.toFixed(2),
++                  });
++
++                  if (entry.duration > 100 || isRenderBlocking) {
++                    console.warn('[Slow or Render-Blocking Script Resource]', {
++                      scriptUrl: entry.name,
++                      totalLoadDurationMs: +entry.duration.toFixed(2),
++                      renderBlocking: isRenderBlocking,
++                      transferSizeKB: entry.transferSize ? +(entry.transferSize / 1024).toFixed(2) : 0,
++                      ttfbMs: +ttfb.toFixed(2),
++                      downloadMs: +downloadTime.toFixed(2),
++                    });
++                  }
++                }
++              }
++            });
++            resourceObserver.observe({ type: 'resource', buffered: true });
++          } catch (e) {
++            // Ignore if browser rejects observation
++          }
++        }
++      }
++
++      // 4. Synchronous / Inline <script> execution profiler via DOM MutationObserver
++      const scriptStartTimes = new WeakMap();
++      if (typeof MutationObserver !== 'undefined') {
++        const domObserver = new MutationObserver((mutations) => {
++          for (const mutation of mutations) {
++            for (const node of mutation.addedNodes) {
++              if (node.tagName === 'SCRIPT') {
++                const label = node.src || node.id || `inline-script#${document.scripts.length}`;
++                const start = performance.now();
++                scriptStartTimes.set(node, start);
++
++                const onComplete = () => {
++                  const duration = performance.now() - start;
++                  recordScriptMetric(label, 'script-element', duration, {
++                    async: node.async,
++                    defer: node.defer,
++                    type: node.type || 'text/javascript',
++                  });
++                };
++
++                if (node.src) {
++                  node.addEventListener('load', onComplete, { once: true });
++                  node.addEventListener('error', onComplete, { once: true });
++                } else {
++                  queueMicrotask(onComplete);
++                }
++              }
++            }
++          }
++        });
++        domObserver.observe(document.documentElement, { childList: true, subtree: true });
++      }
++
++      // 5. Public helper to inspect and rank the slowest scripts on the page
++      window.getSlowScriptsReport = function getSlowScriptsReport() {
++        const report = Array.from(statsByScript.values())
++          .map((item) => ({
++            script: item.script,
++            occurrences: item.count,
++            totalDurationMs: item.totalDurationMs,
++            maxDurationMs: item.maxDurationMs,
++            blockingTimeMs: item.blockingTimeMs,
++            networkDurationMs: item.networkDurationMs,
++            executionDurationMs: item.executionDurationMs,
++            detectedVia: Array.from(item.categories).join(', '),
++          }))
++          .sort((a, b) => (b.blockingTimeMs - a.blockingTimeMs) || (b.totalDurationMs - a.totalDurationMs));
++
++        if (report.length > 0) {
++          console.group('Slow Scripts Performance Report');
++          console.table(report);
++          console.groupEnd();
++        } else {
++          console.info('[Script Performance Monitor] No slow scripts detected so far.');
++        }
++
++        return report;
++      };
++
++      window.addEventListener('load', () => {
++        setTimeout(() => {
++          window.getSlowScriptsReport();
++        }, 1000);
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

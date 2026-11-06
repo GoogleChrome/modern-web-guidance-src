@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+index 66c9173..4ac002f 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,26 @@
+       color: var(--primary);
+     }
+ 
++    .navigation-target:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 6px;
++    }
++
++    .navigation-target-arrived {
++      animation: destination-highlight 1.2s ease-out;
++    }
++
++    @keyframes destination-highlight {
++      from { box-shadow: 0 0 0 6px var(--accent); }
++      to { box-shadow: 0 0 0 0 transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .navigation-target-arrived {
++        animation: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,7 +180,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -171,27 +191,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="menu" class="navigation-target" tabindex="-1">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div id="maple-oat-latte" class="card navigation-target" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#maple-oat-latte" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div id="espresso" class="card navigation-target" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div id="cold-brew" class="card navigation-target" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +227,91 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      let cancelNavigation = () => {};
++      const scrollingKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
++
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('a[href^="#"]');
++        if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey ||
++            event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') ||
++            (link.target && link.target !== '_self')) return;
++
++        const target = document.getElementById(link.hash.slice(1));
++        if (!target) return;
++
++        event.preventDefault();
++        cancelNavigation();
++        document.querySelectorAll('.navigation-target-arrived').forEach((element) => {
++          element.classList.remove('navigation-target-arrived');
++        });
++
++        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++        const navHeight = document.querySelector('nav').getBoundingClientRect().height;
++        const destination = Math.max(0, Math.min(
++          target.getBoundingClientRect().top + window.scrollY - navHeight - 16,
++          document.documentElement.scrollHeight - window.innerHeight
++        ));
++        let frame;
++        let settledFrames = 0;
++        let previousPosition = window.scrollY;
++        const startedAt = performance.now();
++
++        const cleanup = () => {
++          cancelAnimationFrame(frame);
++          document.removeEventListener('scrollend', onScrollEnd);
++          window.removeEventListener('wheel', interrupt);
++          window.removeEventListener('touchstart', interrupt);
++          window.removeEventListener('pointerdown', interrupt);
++          window.removeEventListener('keydown', interrupt);
++          cancelNavigation = () => {};
++        };
++        const arrive = () => {
++          cleanup();
++          if (window.location.hash !== link.hash) history.pushState(null, '', link.hash);
++          target.focus({ preventScroll: true });
++          if (!reducedMotion) target.classList.add('navigation-target-arrived');
++        };
++        const atDestination = () => Math.abs(window.scrollY - destination) < 1;
++        const onScrollEnd = () => {
++          if (atDestination()) arrive();
++        };
++        function interrupt(event) {
++          if (event.type !== 'keydown' || scrollingKeys.has(event.key)) cleanup();
++        }
++        const checkPosition = (now) => {
++          const position = window.scrollY;
++          settledFrames = atDestination() && Math.abs(position - previousPosition) < 0.5
++            ? settledFrames + 1 : 0;
++          previousPosition = position;
++          // Also covers browsers without scrollend and destinations already in view.
++          if (settledFrames >= 3) {
++            arrive();
++          } else if (now - startedAt > 8000) {
++            cleanup();
++          } else {
++            frame = requestAnimationFrame(checkPosition);
++          }
++        };
++
++        cancelNavigation = cleanup;
++        document.addEventListener('scrollend', onScrollEnd);
++        window.addEventListener('wheel', interrupt, { passive: true });
++        window.addEventListener('touchstart', interrupt, { passive: true });
++        window.addEventListener('pointerdown', interrupt, { passive: true });
++        window.addEventListener('keydown', interrupt);
++        window.scrollTo({ top: destination, behavior: reducedMotion ? 'instant' : 'smooth' });
++        frame = requestAnimationFrame(checkPosition);
++      });
++
++      document.addEventListener('animationend', (event) => {
++        if (event.animationName === 'destination-highlight') {
++          event.target.classList.remove('navigation-target-arrived');
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

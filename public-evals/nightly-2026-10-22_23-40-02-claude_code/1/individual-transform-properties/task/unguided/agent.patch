@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,63 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured promo badge */
++    .card.has-badge {
++      position: relative;
++    }
++
++    .target {
++      position: absolute;
++      top: -14px;
++      right: -14px;
++      width: 72px;
++      height: 72px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      font-size: 0.7rem;
++      font-weight: bold;
++      line-height: 1.1;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: var(--accent);
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      z-index: 1;
++      /* Explicit stacking context, so hover doesn't change layering (no will-change) */
++      isolation: isolate;
++      /* rotate, translate and scale are independent properties, so the two
++         animations and the hover transition compose instead of overriding
++         each other's transform. */
++      animation:
++        target-spin 4s linear infinite,
++        target-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes target-spin {
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes target-slide {
++      from {
++        translate: -12px 0;
++      }
++
++      to {
++        translate: 12px 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,9 +232,10 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card has-badge">
++          <span class="target">Featured</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>

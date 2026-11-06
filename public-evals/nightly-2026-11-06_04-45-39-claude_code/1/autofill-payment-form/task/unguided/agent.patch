@@ -1,0 +1,323 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,117 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment-section {
++      margin-top: 60px;
++    }
++
++    .payment-section h2 {
++      text-align: center;
++    }
++
++    .payment-section .subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .payment-form {
++      max-width: 480px;
++      margin: 0 auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-row {
++      display: flex;
++      gap: 16px;
++    }
++
++    .form-row .form-group {
++      flex: 1;
++    }
++
++    .payment-form label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .payment-form input {
++      width: 100%;
++      padding: 10px 12px;
++      font-size: 1rem;
++      font-family: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .payment-form input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.3);
++    }
++
++    .payment-form input[aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .error-message {
++      display: block;
++      min-height: 1.2em;
++      font-size: 0.8rem;
++      color: #c62828;
++      margin-top: 4px;
++    }
++
++    .payment-form button {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++      padding: 12px 20px;
++      margin-top: 5px;
++    }
++
++    .payment-form button:disabled {
++      opacity: 0.7;
++      cursor: not-allowed;
++    }
++
++    .form-status {
++      margin-top: 15px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .form-status.success {
++      color: #2e7d32;
++    }
++
++    .form-status.error {
++      color: #c62828;
++    }
++
++    .secure-note {
++      margin-top: 12px;
++      text-align: center;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +303,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment-section" id="payment">
++      <h2>Payment Details</h2>
++      <p class="subtitle">Complete your order securely.</p>
++
++      <form class="payment-form" id="payment-form" novalidate>
++        <div class="form-group">
++          <label for="card-number">Card Number</label>
++          <input type="text" id="card-number" name="cardNumber" inputmode="numeric"
++            autocomplete="cc-number" placeholder="1234 5678 9012 3456" maxlength="23"
++            aria-describedby="card-number-error" required>
++          <span class="error-message" id="card-number-error" aria-live="polite"></span>
++        </div>
++
++        <div class="form-group">
++          <label for="card-name">Name on Card</label>
++          <input type="text" id="card-name" name="cardName" autocomplete="cc-name"
++            placeholder="Jane Doe" maxlength="100" aria-describedby="card-name-error" required>
++          <span class="error-message" id="card-name-error" aria-live="polite"></span>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="card-expiry">Expiry Date</label>
++            <input type="text" id="card-expiry" name="cardExpiry" inputmode="numeric"
++              autocomplete="cc-exp" placeholder="MM/YY" maxlength="5"
++              aria-describedby="card-expiry-error" required>
++            <span class="error-message" id="card-expiry-error" aria-live="polite"></span>
++          </div>
++
++          <div class="form-group">
++            <label for="card-cvc">Security Code</label>
++            <input type="password" id="card-cvc" name="cardCvc" inputmode="numeric"
++              autocomplete="cc-csc" placeholder="CVC" maxlength="4"
++              aria-describedby="card-cvc-error" required>
++            <span class="error-message" id="card-cvc-error" aria-live="polite"></span>
++          </div>
++        </div>
++
++        <button type="submit" class="btn">Pay Now</button>
++        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
++        <p class="secure-note">&#128274; We never store your card details.</p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +359,148 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('payment-form');
++      const numberInput = document.getElementById('card-number');
++      const nameInput = document.getElementById('card-name');
++      const expiryInput = document.getElementById('card-expiry');
++      const cvcInput = document.getElementById('card-cvc');
++      const status = document.getElementById('form-status');
++
++      const digitsOnly = (value) => value.replace(/\D/g, '');
++
++      // Luhn checksum for card number validation
++      function passesLuhn(number) {
++        let sum = 0;
++        let double = false;
++        for (let i = number.length - 1; i >= 0; i--) {
++          let digit = parseInt(number[i], 10);
++          if (double) {
++            digit *= 2;
++            if (digit > 9) digit -= 9;
++          }
++          sum += digit;
++          double = !double;
++        }
++        return sum % 10 === 0;
++      }
++
++      const isAmex = (digits) => /^3[47]/.test(digits);
++
++      const validators = {
++        'card-number': (value) => {
++          const digits = digitsOnly(value);
++          if (!digits) return 'Card number is required.';
++          if (digits.length < 13 || digits.length > 19) return 'Card number must be 13–19 digits.';
++          if (!passesLuhn(digits)) return 'Please enter a valid card number.';
++          return '';
++        },
++        'card-name': (value) => {
++          const name = value.trim();
++          if (!name) return 'Name on card is required.';
++          if (!/^[\p{L}\s'.-]+$/u.test(name)) return 'Name may only contain letters, spaces, apostrophes, periods, and hyphens.';
++          return '';
++        },
++        'card-expiry': (value) => {
++          const match = value.match(/^(\d{2})\/(\d{2})$/);
++          if (!match) return 'Use MM/YY format.';
++          const month = parseInt(match[1], 10);
++          const year = 2000 + parseInt(match[2], 10);
++          if (month < 1 || month > 12) return 'Month must be between 01 and 12.';
++          const now = new Date();
++          const currentYear = now.getFullYear();
++          const currentMonth = now.getMonth() + 1;
++          if (year < currentYear || (year === currentYear && month < currentMonth)) {
++            return 'This card has expired.';
++          }
++          if (year > currentYear + 20) return 'Please enter a valid expiry year.';
++          return '';
++        },
++        'card-cvc': (value) => {
++          const cvc = digitsOnly(value);
++          const expected = isAmex(digitsOnly(numberInput.value)) ? 4 : 3;
++          if (!cvc) return 'Security code is required.';
++          if (cvc.length !== expected) return `Security code must be ${expected} digits.`;
++          return '';
++        }
++      };
++
++      function validateField(input) {
++        const message = validators[input.id](input.value);
++        const errorEl = document.getElementById(input.id + '-error');
++        errorEl.textContent = message;
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++        return !message;
++      }
++
++      // Format card number into groups (4-6-5 for Amex, 4-4-4-4 otherwise)
++      numberInput.addEventListener('input', () => {
++        const digits = digitsOnly(numberInput.value).slice(0, 19);
++        let formatted;
++        if (isAmex(digits)) {
++          formatted = [digits.slice(0, 4), digits.slice(4, 10), digits.slice(10, 15)]
++            .filter(Boolean).join(' ');
++        } else {
++          formatted = digits.replace(/(.{4})/g, '$1 ').trim();
++        }
++        numberInput.value = formatted;
++        cvcInput.maxLength = isAmex(digits) ? 4 : 3;
++      });
++
++      // Auto-insert slash in MM/YY
++      expiryInput.addEventListener('input', (e) => {
++        let digits = digitsOnly(expiryInput.value).slice(0, 4);
++        if (digits.length === 1 && digits > '1') digits = '0' + digits;
++        const isDeleting = e.inputType && e.inputType.startsWith('delete');
++        if (digits.length >= 3 || (digits.length === 2 && !isDeleting)) {
++          expiryInput.value = digits.slice(0, 2) + '/' + digits.slice(2);
++        } else {
++          expiryInput.value = digits;
++        }
++      });
++
++      cvcInput.addEventListener('input', () => {
++        cvcInput.value = digitsOnly(cvcInput.value).slice(0, 4);
++      });
++
++      [numberInput, nameInput, expiryInput, cvcInput].forEach((input) => {
++        input.addEventListener('blur', () => {
++          if (input.value) validateField(input);
++        });
++      });
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        status.textContent = '';
++        status.className = 'form-status';
++
++        const inputs = [numberInput, nameInput, expiryInput, cvcInput];
++        const results = inputs.map(validateField);
++        const firstInvalid = inputs[results.indexOf(false)];
++        if (firstInvalid) {
++          firstInvalid.focus();
++          status.textContent = 'Please correct the highlighted fields.';
++          status.classList.add('error');
++          return;
++        }
++
++        // NOTE: Raw card data should never be sent to or stored on our own
++        // servers. Hook this up to a PCI-compliant payment processor
++        // (e.g. Stripe Elements, Braintree Hosted Fields) that tokenizes
++        // the card in the browser, then submit only the returned token.
++        const submitBtn = form.querySelector('button[type="submit"]');
++        submitBtn.disabled = true;
++        status.textContent = 'Payment details accepted. Thank you for your order!';
++        status.classList.add('success');
++        form.reset();
++        inputs.forEach((input) => input.removeAttribute('aria-invalid'));
++        setTimeout(() => { submitBtn.disabled = false; }, 1500);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

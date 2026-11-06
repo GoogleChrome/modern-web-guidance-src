@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,15 +4,40 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+   <style>
++    @font-face {
++      font-family: 'Plus Jakarta Sans Fallback';
++      src: local('Segoe UI'), local('Tahoma'), local('Verdana'), local('Arial'), local('Helvetica Neue'), local('sans-serif');
++      font-display: swap;
++      size-adjust: 105.5%;
++      ascent-override: 96%;
++      descent-override: 24%;
++      line-gap-override: 0%;
++    }
++
++    @font-face {
++      font-family: 'Playfair Display Fallback';
++      src: local('Georgia'), local('Times New Roman'), local('serif');
++      font-display: swap;
++      size-adjust: 108.5%;
++      ascent-override: 99%;
++      descent-override: 22%;
++      line-gap-override: 0%;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --font-body: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      --font-heading: 'Playfair Display', 'Playfair Display Fallback', Georgia, serif;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -20,14 +45,20 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: var(--font-body);
++      font-size-adjust: 0.52;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3 {
++      font-family: var(--font-heading);
++      font-size-adjust: 0.51;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

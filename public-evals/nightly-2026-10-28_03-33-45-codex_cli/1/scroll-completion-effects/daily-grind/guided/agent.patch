@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+index 66c9173..a0112fb 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,26 @@
+       color: var(--primary);
+     }
+ 
++    .navigation-target:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 8px;
++    }
++
++    .navigation-target.is-arrived {
++      animation: arrival-highlight 1.2s ease-out;
++    }
++
++    @keyframes arrival-highlight {
++      from { background-color: var(--secondary); }
++      to { background-color: transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .navigation-target.is-arrived {
++        animation: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,7 +180,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -175,8 +195,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="navigation-target" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +227,71 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let navigationId = 0;
++    let pendingNavigation;
++
++    async function scrollToTarget(top, behavior, signal) {
++      const result = window.scrollTo({ top, behavior });
++      if (result && typeof result.then === 'function') {
++        return await result;
++      }
++
++      // Older browsers return undefined. Wait for scrollend or scrolling to go
++      // idle, including when the destination is already in view.
++      await new Promise((resolve) => {
++        let idleTimer;
++        const finish = () => {
++          clearTimeout(idleTimer);
++          document.removeEventListener('scrollend', finish);
++          document.removeEventListener('scroll', onScroll);
++          signal.removeEventListener('abort', finish);
++          resolve();
++        };
++        const onScroll = () => {
++          clearTimeout(idleTimer);
++          idleTimer = setTimeout(finish, 120);
++        };
++        document.addEventListener('scrollend', finish, { once: true });
++        document.addEventListener('scroll', onScroll, { passive: true });
++        signal.addEventListener('abort', finish, { once: true });
++        onScroll();
++      });
++    }
++
++    document.addEventListener('click', async (event) => {
++      const link = event.target.closest('a[href^="#"]');
++      if (!link || event.defaultPrevented || event.button !== 0 ||
++          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
++          link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++
++      const target = document.getElementById(link.hash.slice(1));
++      if (!target) return;
++      event.preventDefault();
++
++      const id = ++navigationId;
++      pendingNavigation?.abort();
++      pendingNavigation = new AbortController();
++      document.querySelectorAll('.is-arrived').forEach((element) => {
++        element.classList.remove('is-arrived');
++      });
++
++      const navHeight = document.querySelector('nav').getBoundingClientRect().height;
++      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
++      const top = Math.min(maxScroll, Math.max(0,
++        window.scrollY + target.getBoundingClientRect().top - navHeight - 16));
++      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
++        ? 'instant' : 'smooth';
++      // Use window.scrollTo to avoid early scrollIntoView promise resolution
++      // in browsers with the root-scroller bug.
++      const result = await scrollToTarget(top, behavior, pendingNavigation.signal);
++      if (id !== navigationId || result?.interrupted || Math.abs(window.scrollY - top) > 1) return;
++
++      if (window.location.hash !== link.hash) history.pushState(null, '', link.hash);
++      target.focus({ preventScroll: true });
++      target.classList.add('is-arrived');
++    });
++  </script>
+ </body>
+ 
+ </html>

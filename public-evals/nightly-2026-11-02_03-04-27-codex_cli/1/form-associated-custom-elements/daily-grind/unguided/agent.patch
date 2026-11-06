@@ -1,0 +1,284 @@
+diff --git a/index.html b/index.html
+index 66c9173..7b3dfb6 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,49 @@
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-top: 64px;
++      padding: 36px;
++      background: #f4efea;
++      border: 1px solid #e5dcd5;
++      border-radius: 16px;
++      display: grid;
++      grid-template-columns: 1fr 1.5fr;
++      gap: 40px;
++    }
++
++    .eyebrow { color: #795548; font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
++    .feedback h2 { font-size: 2rem; line-height: 1.2; margin: 12px 0 16px; }
++    .feedback-intro p { color: #6e5950; }
++    .feedback-note { font-size: .8rem; margin-top: 24px; }
++    .feedback fieldset { border: 0; min-width: 0; }
++    .feedback legend { font-weight: 700; margin-bottom: 20px; }
++    .feedback label, .rating-label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: 8px; }
++    .feedback label span { color: #79685f; font-weight: 400; }
++    .feedback select, .feedback textarea {
++      width: 100%; padding: 12px; border: 1px solid #c9bcb3; border-radius: 6px;
++      background: #fffdfb; color: var(--text); font: inherit;
++    }
++    .feedback textarea { resize: vertical; min-height: 110px; }
++    .feedback select:focus-visible, .feedback textarea:focus-visible, .feedback button:focus-visible {
++      outline: 3px solid #a56b35; outline-offset: 3px;
++    }
++    .form-field + .form-field { margin-top: 22px; }
++    .feedback button { cursor: pointer; font: inherit; }
++    .form-actions { display: flex; gap: 16px; align-items: center; margin-top: 24px; }
++    .form-actions .btn { margin: 0; border: 0; }
++    .reset-button { border: 0; background: transparent; color: #6e5950; padding: 10px; }
++    .feedback-result { margin-top: 20px; padding: 16px; background: white; border-radius: 6px; overflow-wrap: anywhere; }
++    .feedback-result:empty { display: none; }
++    star-rating:not(:defined) { display: block; min-height: 80px; }
++    @media (max-width: 680px) {
++      nav { gap: 16px; flex-wrap: wrap; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .feedback { grid-template-columns: 1fr; padding: 24px; gap: 28px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +238,44 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <div class="feedback-intro">
++        <span class="eyebrow">A little feedback. A better brew.</span>
++        <h2 id="feedback-heading">How was your cup?</h2>
++        <p>From the first sip to the last drop, we’d love to hear what you think. Help us make your next coffee even better.</p>
++        <p class="feedback-note">Fields marked * are required.<br>This is a demo form. Your feedback is previewed here and isn’t sent or saved.</p>
++      </div>
++      <form id="coffee-feedback">
++        <fieldset>
++          <legend>Your coffee experience</legend>
++          <div class="form-field">
++            <label for="coffee">What were you drinking? *</label>
++            <select id="coffee" name="coffee" required>
++              <option value="">Choose your coffee</option>
++              <option>Maple Oat Latte</option>
++              <option>Dark Roast Espresso</option>
++              <option>Cold Brew</option>
++              <option>Something else</option>
++            </select>
++          </div>
++          <div class="form-field">
++            <label id="rating-label" for="coffee-rating">Your rating *</label>
++            <star-rating id="coffee-rating" name="rating" required aria-labelledby="rating-label"></star-rating>
++          </div>
++          <div class="form-field">
++            <label for="comments">Tell us a little more <span>(optional)</span></label>
++            <textarea id="comments" name="comments" rows="3" maxlength="2000" placeholder="What made your cup special? What could be better?"></textarea>
++          </div>
++          <div class="form-actions">
++            <button class="btn" type="submit">Share feedback <span aria-hidden="true">↗</span></button>
++            <button class="reset-button" type="reset">Start fresh</button>
++          </div>
++        </fieldset>
++        <p id="feedback-result" class="feedback-result" role="status" aria-live="polite"></p>
++        <noscript>Please enable JavaScript to use the star rating and preview your feedback.</noscript>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +288,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./star-rating.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/star-rating.js b/star-rating.js
+new file mode 100644
+index 0000000..bcdbe7a
+--- /dev/null
++++ b/star-rating.js
+@@ -0,0 +1,171 @@
++/** A form-associated rating: the host owns the value and validation. */
++class StarRating extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required', 'disabled'];
++
++  #internals;
++  #buttons;
++  #value = '';
++  #dirty = false;
++  #disabled = false;
++  #showError = false;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.innerHTML = `
++      <style>
++        :host { display: block; }
++        .stars { display: flex; gap: 6px; width: fit-content; }
++        button { width: 44px; height: 46px; border: 1px solid #c9bcb3; border-radius: 6px;
++          background: #fffdfb; color: #88776c; cursor: pointer; font: 30px/1 Georgia, serif; }
++        button.filled { color: #a15f12; background: #fff4dc; border-color: #bd8c4b; }
++        button:hover:not(:disabled) { background: #f5e3c4; }
++        button:focus-visible { outline: 3px solid #a56b35; outline-offset: 3px; }
++        button:disabled { cursor: not-allowed; opacity: .45; }
++        p { margin: 8px 0 0; font: .8rem/1.5 'Segoe UI', sans-serif; color: #79685f; }
++        #error { color: #a02c22; }
++        [hidden] { display: none; }
++        @media (forced-colors: active) { button.filled { border: 3px solid Highlight; } }
++      </style>
++      <div class="stars" role="radiogroup" aria-label="Coffee rating" aria-describedby="hint error">
++        ${[1, 2, 3, 4, 5].map(value => `<button type="button" role="radio" aria-checked="false" aria-label="${value} ${value === 1 ? 'star' : 'stars'}" data-value="${value}"><span aria-hidden="true">☆</span></button>`).join('')}
++      </div>
++      <p id="hint" aria-live="polite">Choose 1 to 5 stars · Use arrow keys to adjust</p>
++      <p id="error" hidden>Please choose a star rating.</p>
++    `;
++    this.#buttons = [...root.querySelectorAll('button')];
++    root.addEventListener('click', event => {
++      const button = event.target.closest('button');
++      if (button && !this.#disabled) this.#select(button.dataset.value);
++    });
++    root.addEventListener('keydown', event => {
++      if (this.#disabled || !['ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
++      event.preventDefault();
++      const current = Number(this.#value);
++      let next;
++      if (event.key === 'Home') next = 1;
++      else if (event.key === 'End') next = 5;
++      else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = current % 5 + 1;
++      else next = current <= 1 ? 5 : current - 1;
++      this.#select(String(next));
++      this.#buttons[next - 1].focus();
++    });
++    this.addEventListener('invalid', () => {
++      this.#showError = true;
++      this.#render();
++    });
++  }
++
++  connectedCallback() {
++    this.#sync();
++  }
++
++  attributeChangedCallback(name) {
++    if (name === 'value' && !this.#dirty) this.#value = this.#normalize(this.defaultValue);
++    if (name === 'disabled') this.#disabled = this.matches(':disabled');
++    this.#sync();
++  }
++
++  get value() { return this.#value; }
++  set value(value) {
++    this.#dirty = true;
++    this.#value = this.#normalize(value);
++    this.#sync();
++  }
++  get defaultValue() { return this.getAttribute('value') ?? ''; }
++  set defaultValue(value) { this.setAttribute('value', value); }
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this.setAttribute('name', value); }
++  get required() { return this.hasAttribute('required'); }
++  set required(value) { this.toggleAttribute('required', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  get form() { return this.#internals.form; }
++  get labels() { return this.#internals.labels; }
++  get validity() { return this.#internals.validity; }
++  get validationMessage() { return this.#internals.validationMessage; }
++  get willValidate() { return this.#internals.willValidate; }
++  checkValidity() { return this.#internals.checkValidity(); }
++  reportValidity() { return this.#internals.reportValidity(); }
++  focus(options) { this.#buttons[(Number(this.#value) || 1) - 1].focus(options); }
++
++  formResetCallback() {
++    this.#dirty = false;
++    this.#showError = false;
++    this.#value = this.#normalize(this.defaultValue);
++    this.#sync();
++  }
++
++  formDisabledCallback(disabled) {
++    // Includes inherited fieldset state; never reflect this onto the host attribute.
++    this.#disabled = disabled;
++    this.#sync();
++  }
++
++  formStateRestoreCallback(state) {
++    this.value = typeof state === 'string' ? state : '';
++    this.#showError = false;
++    this.#render();
++  }
++
++  #normalize(value) {
++    const text = String(value);
++    return /^[1-5]$/.test(text) ? text : '';
++  }
++
++  #select(value) {
++    if (value === this.#value) return;
++    this.value = value;
++    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #sync() {
++    this.#internals.setFormValue(this.#value || null, this.#value);
++    const missing = this.required && !this.#value;
++    this.#internals.setValidity(
++      missing ? { valueMissing: true } : {},
++      missing ? 'Please choose a star rating.' : '',
++      this.#buttons[(Number(this.#value) || 1) - 1]
++    );
++    this.#render();
++  }
++
++  #render() {
++    const selected = Number(this.#value);
++    this.#buttons.forEach((button, index) => {
++      button.disabled = this.#disabled;
++      button.tabIndex = !this.#disabled && index === (selected || 1) - 1 ? 0 : -1;
++      button.setAttribute('aria-checked', String(index + 1 === selected));
++      button.classList.toggle('filled', index < selected);
++      button.firstElementChild.textContent = index < selected ? '★' : '☆';
++    });
++    const group = this.shadowRoot.querySelector('[role="radiogroup"]');
++    group.setAttribute('aria-required', String(this.required));
++    group.setAttribute('aria-disabled', String(this.#disabled));
++    const invalid = this.#showError && this.required && !selected && !this.#disabled;
++    group.setAttribute('aria-invalid', String(invalid));
++    this.shadowRoot.getElementById('error').hidden = !invalid;
++    this.shadowRoot.getElementById('hint').textContent = selected
++      ? `${selected} out of 5 stars · ${['', 'Not my cup', 'Could be better', 'Pretty good', 'Loved it', 'Made my day'][selected]}`
++      : 'Choose 1 to 5 stars · Use arrow keys to adjust';
++  }
++}
++
++customElements.define('star-rating', StarRating);
++
++const form = document.getElementById('coffee-feedback');
++const result = document.getElementById('feedback-result');
++
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  // The custom element contributes its value through ElementInternals.
++  const data = new FormData(form);
++  const comments = data.get('comments')?.trim();
++  result.textContent = `Feedback preview: ${data.get('coffee')} — ${data.get('rating')} out of 5 stars.${comments ? ` Your note: ${comments}` : ''} This demo hasn’t sent or saved your feedback.`;
++});
++
++form.addEventListener('reset', () => { result.textContent = ''; });
++form.addEventListener('input', () => { result.textContent = ''; });

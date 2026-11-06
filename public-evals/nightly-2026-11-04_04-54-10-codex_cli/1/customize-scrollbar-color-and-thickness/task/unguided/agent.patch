@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,61 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      max-height: 300px;
++      overflow-y: auto;
++      padding: 0 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) var(--primary);
++    }
++
++    .feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-track {
++      background: var(--primary);
++      border-radius: 8px;
++    }
++
++    .feedback-log::-webkit-scrollbar-thumb {
++      background: var(--accent);
++      border-radius: 8px;
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .testimonial {
++      padding: 20px 0;
++    }
++
++    .testimonial + .testimonial {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .testimonial figcaption {
++      margin-top: 8px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +247,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <figure class="testimonial">
++          <blockquote><p>“The maple oat latte is my new seasonal favorite. A perfect start to a chilly morning!”</p></blockquote>
++          <figcaption>— Jamie R.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“Smooth cold brew and such a welcoming team. This has become my regular coffee stop.”</p></blockquote>
++          <figcaption>— Morgan L.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“The espresso is rich and full of flavor. You can taste the care in every cup.”</p></blockquote>
++          <figcaption>— Alex T.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“A cozy spot to take a break, catch up with a friend, and enjoy a great latte.”</p></blockquote>
++          <figcaption>— Taylor S.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“Friendly service and consistently delicious coffee keep me coming back every week.”</p></blockquote>
++          <figcaption>— Casey M.</figcaption>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,215 @@
+diff --git a/index.html b/index.html
+index 66c9173..2812197 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,40 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Language selector */
++    .lang-picker {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select {
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 4px 8px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .lang-status {
++      font-size: 0.75rem;
++      color: var(--secondary);
++      min-width: 0;
++    }
++
++    [data-translating] {
++      opacity: 0.5;
++      transition: opacity 0.3s;
++    }
+   </style>
+ </head>
+ 
+@@ -166,11 +200,27 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div class="lang-picker">
++      <label for="lang-select">Language</label>
++      <select id="lang-select">
++        <option value="en">English</option>
++        <option value="es">Español</option>
++        <option value="fr">Français</option>
++        <option value="de">Deutsch</option>
++        <option value="it">Italiano</option>
++        <option value="pt">Português</option>
++        <option value="ja">日本語</option>
++        <option value="ko">한국어</option>
++        <option value="zh">中文</option>
++        <option value="hi">हिन्दी</option>
++      </select>
++      <span class="lang-status" id="lang-status" role="status" aria-live="polite"></span>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <h1 data-i18n>Wake Up Your Senses</h1>
++    <p data-i18n>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -180,17 +230,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-i18n>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-i18n>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-i18n>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +257,118 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // On-device translation via the browser's built-in Translator API
++    // (no text leaves the device). Originals are kept so every switch
++    // translates from the English source rather than chaining translations.
++    (() => {
++      const SOURCE = 'en';
++      const STORAGE_KEY = 'daily-grind-lang';
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('lang-status');
++      const nodes = [...document.querySelectorAll('[data-i18n]')];
++      const originals = new Map(nodes.map(el => [el, el.textContent]));
++      const translators = new Map();
++      let requestId = 0;
++
++      const setStatus = msg => { status.textContent = msg; };
++
++      const restore = () => {
++        for (const [el, text] of originals) {
++          el.textContent = text;
++          el.removeAttribute('lang');
++        }
++      };
++
++      if (!('Translator' in self)) {
++        select.disabled = true;
++        select.title = 'On-device translation is not supported in this browser.';
++        setStatus('Translation unavailable');
++        return;
++      }
++
++      async function getTranslator(target) {
++        if (translators.has(target)) return translators.get(target);
++        const opts = { sourceLanguage: SOURCE, targetLanguage: target };
++        const availability = await Translator.availability(opts);
++        if (availability === 'unavailable') return null;
++        const promise = Translator.create({
++          ...opts,
++          monitor(m) {
++            m.addEventListener('downloadprogress', e => {
++              setStatus(`Downloading language… ${Math.round(e.loaded * 100)}%`);
++            });
++          },
++        });
++        translators.set(target, promise);
++        try {
++          return await promise;
++        } catch (err) {
++          translators.delete(target);
++          throw err;
++        }
++      }
++
++      async function applyLanguage(target) {
++        const id = ++requestId;
++        if (target === SOURCE) {
++          restore();
++          setStatus('');
++          return;
++        }
++        setStatus('Translating…');
++        nodes.forEach(el => el.setAttribute('data-translating', ''));
++        try {
++          const translator = await getTranslator(target);
++          if (id !== requestId) return;
++          if (!translator) {
++            restore();
++            setStatus('Language not supported');
++            return;
++          }
++          const results = await Promise.all(
++            nodes.map(el => translator.translate(originals.get(el)))
++          );
++          if (id !== requestId) return;
++          nodes.forEach((el, i) => {
++            el.textContent = results[i];
++            el.setAttribute('lang', target);
++          });
++          setStatus('');
++        } catch (err) {
++          if (id !== requestId) return;
++          console.error('Translation failed:', err);
++          restore();
++          setStatus('Translation failed');
++        } finally {
++          if (id === requestId) {
++            nodes.forEach(el => el.removeAttribute('data-translating'));
++          }
++        }
++      }
++
++      select.addEventListener('change', () => {
++        const target = select.value;
++        localStorage.setItem(STORAGE_KEY, target);
++        applyLanguage(target);
++      });
++
++      // Restore a saved choice on load, but only if the model is already on
++      // the device: downloading a new model requires a user gesture.
++      const saved = localStorage.getItem(STORAGE_KEY);
++      if (saved && saved !== SOURCE && select.querySelector(`option[value="${saved}"]`)) {
++        Translator.availability({ sourceLanguage: SOURCE, targetLanguage: saved })
++          .then(a => {
++            if (a === 'available') {
++              select.value = saved;
++              applyLanguage(saved);
++            }
++          })
++          .catch(() => {});
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

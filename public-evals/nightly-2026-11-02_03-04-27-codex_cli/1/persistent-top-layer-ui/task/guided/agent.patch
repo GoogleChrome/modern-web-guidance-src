@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,113 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .feedback-launcher {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1001;
++      margin: 0;
++      box-shadow: 0 4px 20px #3e272330;
++    }
++
++    .feedback-launcher, .feedback-dialog button {
++      font: inherit;
++      cursor: pointer;
++      border: 1px solid transparent;
++      min-height: 44px;
++    }
++
++    .feedback-dialog {
++      position: fixed;
++      inset: auto 24px 24px auto;
++      margin: 0;
++      width: min(420px, calc(100% - 32px));
++      max-height: calc(100dvh - 48px);
++      overflow: auto;
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      background: #fffdfa;
++      color: var(--text);
++      box-shadow: 0 16px 64px #27171140;
++    }
++
++    #feedback-left .feedback-dialog { inset: auto auto 24px 24px; }
++    .feedback-dialog:modal { overscroll-behavior: contain; }
++    .feedback-dialog::backdrop {
++      background: #24181370;
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .feedback-heading, .feedback-actions {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .feedback-eyebrow {
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      color: #755b4e;
++    }
++
++    .feedback-dialog h2 { font-size: 1.5rem; margin: 4px 0 8px; }
++    .feedback-description { font-size: 0.9rem; margin-bottom: 24px; }
++    .feedback-close {
++      align-self: flex-start;
++      min-width: 44px;
++      background: transparent;
++      color: var(--primary);
++      border-radius: 50%;
++      font-size: 1.5rem !important;
++    }
++    .feedback-close:hover { background: #efe8e2; }
++    .feedback-dialog label { display: block; font-weight: 600; font-size: 0.9rem; }
++    .feedback-dialog textarea {
++      display: block;
++      width: 100%;
++      min-height: 140px;
++      margin: 8px 0;
++      padding: 12px;
++      resize: vertical;
++      font: inherit;
++      font-size: 1rem;
++      border: 1px solid #a98c7d;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++    }
++    .feedback-note, .feedback-status { font-size: 0.78rem; color: #755b4e; }
++    .feedback-status { margin-top: 20px; min-height: 2.5em; }
++    .feedback-actions { margin-top: 12px; flex-wrap: wrap; }
++    .feedback-actions .btn { margin: 0; }
++    .feedback-move {
++      padding: 10px 14px;
++      border-color: var(--secondary) !important;
++      border-radius: 5px;
++      color: var(--primary);
++      background: transparent;
++    }
++    .feedback-move:hover { background: #efe8e2; }
++    .feedback-dialog :focus-visible, .feedback-launcher:focus-visible {
++      outline: 3px solid #a65312;
++      outline-offset: 3px;
++    }
++    @media (max-width: 480px) {
++      .feedback-dialog, #feedback-left .feedback-dialog {
++        inset: auto auto 16px 16px;
++        padding: 22px;
++        max-height: calc(100dvh - 32px);
++      }
++      .feedback-launcher { right: 16px; bottom: 16px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -206,7 +311,101 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="btn feedback-launcher" id="feedback-open"
++    aria-haspopup="dialog" aria-controls="feedback-dialog">Share feedback</button>
++
++  <!-- Both hosts stay connected so moveBefore can preserve top-layer state. -->
++  <div id="feedback-right">
++    <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title"
++      aria-describedby="feedback-description">
++      <form method="dialog">
++        <div class="feedback-heading">
++          <div>
++            <p class="feedback-eyebrow">A little feedback. A better daily grind.</p>
++            <h2 id="feedback-title">How was your visit?</h2>
++          </div>
++          <button type="submit" class="feedback-close" aria-label="Close feedback" value="close">&times;</button>
++        </div>
++        <p id="feedback-description" class="feedback-description">Good coffee starts with listening. Leave a thought about your experience.</p>
++        <label for="feedback-message">Your feedback</label>
++        <textarea id="feedback-message" name="feedback" placeholder="What made your day? What could be better?" autofocus></textarea>
++        <p class="feedback-note">Your draft stays here when you move or close this window. It isn’t sent anywhere.</p>
++        <p id="feedback-status" class="feedback-status" role="status">On the right. Make yourself at home.</p>
++        <div class="feedback-actions">
++          <button type="button" id="feedback-move" class="feedback-move">Move to the left &larr;</button>
++          <button type="submit" class="btn" value="done">Keep browsing</button>
++        </div>
++      </form>
++    </dialog>
++  </div>
++  <div id="feedback-left"></div>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const feedbackOpen = document.getElementById('feedback-open');
++    const feedbackMove = document.getElementById('feedback-move');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const feedbackStatus = document.getElementById('feedback-status');
++    let usedMoveFallback = false;
++
++    feedbackOpen.addEventListener('click', () => {
++      if (!feedbackDialog.open) feedbackDialog.showModal();
++    });
++
++    feedbackMove.addEventListener('click', () => {
++      const moveLeft = feedbackDialog.parentElement.id === 'feedback-right';
++      const destination = document.getElementById(moveLeft ? 'feedback-left' : 'feedback-right');
++
++      if (typeof destination.moveBefore === 'function') {
++        // Atomic reparenting retains modality, top-layer membership and focus.
++        destination.moveBefore(feedbackDialog, null);
++      } else {
++        const wasOpen = feedbackDialog.open;
++        const wasModal = feedbackDialog.matches(':modal');
++        const focusedElement = document.activeElement;
++        const returnValue = feedbackDialog.returnValue;
++        const selection = [feedbackMessage.selectionStart, feedbackMessage.selectionEnd,
++          feedbackMessage.selectionDirection];
++        const scrollPositions = [feedbackDialog, feedbackMessage].map(element =>
++          [element, element.scrollTop, element.scrollLeft]);
++
++        // Explicitly close first: a traditional move can leave a stale open
++        // attribute while removing modality. Reopen through the native API.
++        if (wasOpen) feedbackDialog.close();
++        destination.insertBefore(feedbackDialog, null);
++        if (wasOpen) {
++          if (wasModal) feedbackDialog.showModal();
++          else feedbackDialog.show();
++        }
++        feedbackDialog.returnValue = returnValue;
++        if (wasOpen && feedbackDialog.contains(focusedElement)) {
++          focusedElement.focus({ preventScroll: true });
++        }
++        feedbackMessage.setSelectionRange(...selection);
++        scrollPositions.forEach(([element, top, left]) => {
++          element.scrollTop = top;
++          element.scrollLeft = left;
++        });
++        usedMoveFallback = true;
++      }
++
++      feedbackMove.textContent = moveLeft ? 'Move to the right →' : 'Move to the left ←';
++      feedbackStatus.textContent = `Moved to the ${moveLeft ? 'left' : 'right'}. Your draft is still here.`;
++    });
++
++    feedbackDialog.addEventListener('close', () => {
++      // Ignore the queued close event from a fallback move that already reopened.
++      if (feedbackDialog.open) return;
++      feedbackDialog.returnValue = '';
++      // Reopening during fallback replaces the browser's remembered invoker.
++      if (usedMoveFallback) {
++        feedbackOpen.focus();
++        usedMoveFallback = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+index 66c9173..10efeee 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,19 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Icon library: inline SVG data URIs (no extra requests, vector-sharp at any DPI).
++         Used as alpha masks, so the stroke colour here is irrelevant — icons take currentColor. */
++      --icon-coffee: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/></svg>");
++      --icon-map-pin: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0'/><circle cx='12' cy='10' r='3'/></svg>");
++      --icon-gift: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='8' width='18' height='4' rx='1'/><path d='M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5'/></svg>");
++      --icon-user: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>");
++      --icon-log-out: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/></svg>");
++      --icon-bag: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0'/></svg>");
++      --icon-arrow-right: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14M12 5l7 7-7 7'/></svg>");
++      --icon-leaf: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/></svg>");
++      --icon-flame: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/></svg>");
++      --icon-snowflake: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2v20M2 12h20M9 4l3 3 3-3M9 20l3-3 3 3M4 9l3 3-3 3M20 9l-3 3 3 3'/></svg>");
+     }
+ 
+     * {
+@@ -152,6 +165,93 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Icon system
++       Add class="icon" plus an icon-* class to any element; the glyph is drawn in a
++       ::before pseudo-element, so it is purely presentational and never announced by
++       screen readers (the element's own text provides the accessible name).
++       Customise per element with --icon (which glyph), --icon-size and color. */
++    .icon {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.45em;
++    }
++
++    .icon::before {
++      content: "";
++      flex-shrink: 0;
++      width: var(--icon-size, 1.1em);
++      height: var(--icon-size, 1.1em);
++      background-color: currentColor;
++      -webkit-mask: var(--icon) center / contain no-repeat;
++      mask: var(--icon) center / contain no-repeat;
++    }
++
++    /* Place the icon after the label instead of before it */
++    .icon-trailing::before {
++      order: 1;
++    }
++
++    .icon-coffee { --icon: var(--icon-coffee); }
++    .icon-map-pin { --icon: var(--icon-map-pin); }
++    .icon-gift { --icon: var(--icon-gift); }
++    .icon-user { --icon: var(--icon-user); }
++    .icon-log-out { --icon: var(--icon-log-out); }
++    .icon-bag { --icon: var(--icon-bag); }
++    .icon-arrow-right { --icon: var(--icon-arrow-right); }
++    .icon-leaf { --icon: var(--icon-leaf); }
++    .icon-flame { --icon: var(--icon-flame); }
++    .icon-snowflake { --icon: var(--icon-snowflake); }
++
++    /* Keep icons visible in Windows High Contrast / forced-colors mode */
++    @media (forced-colors: active) {
++      .icon::before {
++        forced-color-adjust: none;
++        background-color: CanvasText;
++      }
++
++      a.icon::before {
++        background-color: LinkText;
++      }
++    }
++
++    .btn.icon-arrow-right::before {
++      transition: transform 0.2s;
++    }
++
++    .btn.icon-arrow-right:hover::before {
++      transform: translateX(3px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn.icon-arrow-right:hover::before {
++        transform: none;
++      }
++    }
++
++    .card-icon {
++      --icon-size: 28px;
++      display: flex;
++      justify-content: center;
++      width: 56px;
++      height: 56px;
++      margin: 0 auto 12px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -160,18 +260,18 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon icon-coffee">Menu</a></li>
++      <li><a href="/locations" class="icon icon-map-pin">Locations</a></li>
++      <li><a href="/rewards" class="icon icon-gift">Rewards</a></li>
++      <li><a href="/account" class="icon icon-user">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon icon-log-out">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn icon icon-bag">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +279,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-icon icon icon-leaf" aria-hidden="true"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn icon icon-trailing icon-arrow-right">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
++          <div class="card-icon icon icon-flame" aria-hidden="true"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn icon icon-trailing icon-arrow-right">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
++          <div class="card-icon icon icon-snowflake" aria-hidden="true"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn icon icon-trailing icon-arrow-right">View Details<span class="visually-hidden"> about Cold Brew</span></a>
+         </div>
+       </div>
+     </section>

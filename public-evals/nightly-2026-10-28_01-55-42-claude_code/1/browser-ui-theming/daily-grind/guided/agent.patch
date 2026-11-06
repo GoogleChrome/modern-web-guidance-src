@@ -1,0 +1,541 @@
+diff --git a/index.html b/index.html
+index 66c9173..54702a8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,394 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Browser UI theming: tint the browser's own controls instead of rebuilding them */
++    :root {
++      color-scheme: light;
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-track: var(--secondary);
++      --field-border: #a1887f;
++      --field-bg: #fff;
++      --error: #8e2a1f;
++    }
++
++    html {
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 6px;
++        border: 2px solid var(--scrollbar-track);
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    ::selection {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    ::placeholder {
++      color: #8d6e63;
++      opacity: 1;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Layout: Seasonal Favorites beside the order customizer */
++    .menu-layout {
++      display: grid;
++      gap: 40px;
++      align-items: start;
++    }
++
++    @media (min-width: 900px) {
++      .menu-layout {
++        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++      }
++
++      .menu-layout .grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Order customizer */
++    .order-form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      display: grid;
++      gap: 20px;
++    }
++
++    .order-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 14px 16px 16px;
++      display: grid;
++      gap: 12px;
++    }
++
++    .order-form legend {
++      color: var(--primary);
++      font-weight: bold;
++      padding: 0 6px;
++    }
++
++    .field {
++      display: grid;
++      gap: 4px;
++    }
++
++    .field > :is(label, .field-label) {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
++      gap: 12px;
++    }
++
++    .hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    /* Text-like fields: styled as ordinary boxes */
++    .order-form input:not([type="checkbox"], [type="radio"], [type="range"]),
++    .order-form select,
++    .order-form textarea {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: var(--field-bg);
++      border: 1px solid var(--field-border);
++      border-radius: 5px;
++      padding: 0.6rem 0.75rem;
++      min-height: 44px;
++      width: 100%;
++    }
++
++    .order-form textarea {
++      field-sizing: content;
++      min-height: 5lh;
++      max-height: 12lh;
++      resize: vertical;
++    }
++
++    .order-form :is(input, select, textarea):user-invalid {
++      border-color: var(--error);
++      box-shadow: 0 0 0 1px var(--error);
++    }
++
++    .order-form input:not([type="range"]):user-valid,
++    .order-form select:user-valid {
++      border-color: var(--primary);
++    }
++
++    /* Customizable select: button, picker, arrow, and checkmark in brand colors */
++    .brand-select,
++    .brand-select::picker(select) {
++      appearance: base-select;
++    }
++
++    .brand-select {
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .brand-select::picker-icon {
++      color: var(--primary);
++      transition: rotate 0.2s;
++    }
++
++    .brand-select:open::picker-icon {
++      rotate: 180deg;
++    }
++
++    .brand-select::picker(select) {
++      background: var(--field-bg);
++      color: var(--text);
++      border: 1px solid var(--field-border);
++      border-radius: 6px;
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.2);
++      padding: 6px;
++      margin-top: 4px;
++    }
++
++    .brand-select option {
++      padding: 0.5rem 0.75rem;
++      border-radius: 4px;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .brand-select option:hover,
++    .brand-select option:focus-visible {
++      background: var(--secondary);
++      outline: none;
++    }
++
++    .brand-select option:checked {
++      background: var(--primary);
++      color: white;
++    }
++
++    .brand-select option::checkmark {
++      color: var(--accent);
++      order: 1;
++      margin-inline-start: auto;
++    }
++
++    .brand-select option small {
++      color: #8d6e63;
++      font-size: 0.8rem;
++    }
++
++    .brand-select option:checked small {
++      color: var(--secondary);
++    }
++
++    /* Radios and checkboxes: native inputs tinted by accent-color, label chips */
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .choices label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 14px 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 999px;
++      cursor: pointer;
++      background: var(--light);
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .choices label:hover {
++      border-color: var(--field-border);
++    }
++
++    .choices label:has(:checked) {
++      background: var(--secondary);
++      border-color: var(--primary);
++      font-weight: 600;
++    }
++
++    .choices input {
++      width: 1.1rem;
++      height: 1.1rem;
++      margin: 0;
++    }
++
++    /* Range slider and progress keep their native look, tinted by accent-color */
++    .order-form input[type="range"] {
++      width: 100%;
++      margin: 6px 0;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .rewards {
++      display: grid;
++      gap: 6px;
++      font-size: 0.9rem;
++    }
++
++    .rewards progress {
++      width: 100%;
++      height: 10px;
++    }
++
++    .order-form .btn {
++      border: none;
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      justify-self: start;
++      margin-top: 0;
++    }
++
++    /* Fallback for browsers without accent-color: draw the native inputs with CSS only */
++    @supports not (accent-color: #000) {
++      .choices input {
++        appearance: none;
++        border: 2px solid var(--field-border);
++        background: var(--field-bg);
++        display: inline-grid;
++        place-content: center;
++        flex-shrink: 0;
++      }
++
++      .choices input[type="checkbox"] {
++        border-radius: 3px;
++      }
++
++      .choices input[type="radio"] {
++        border-radius: 50%;
++      }
++
++      .choices input::before {
++        content: "";
++        width: 0.6rem;
++        height: 0.6rem;
++        transform: scale(0);
++        transition: transform 0.15s;
++      }
++
++      .choices input[type="checkbox"]::before {
++        clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
++        background: white;
++      }
++
++      .choices input[type="radio"]::before {
++        border-radius: 50%;
++        background: white;
++      }
++
++      .choices input:checked {
++        background: var(--primary);
++        border-color: var(--primary);
++      }
++
++      .choices input:checked::before {
++        transform: scale(1);
++      }
++
++      .order-form input[type="range"] {
++        appearance: none;
++        background: transparent;
++      }
++
++      .order-form input[type="range"]::-webkit-slider-runnable-track {
++        height: 8px;
++        border-radius: 4px;
++        background: linear-gradient(to right, var(--primary) var(--progress, 0%), var(--secondary) var(--progress, 0%));
++      }
++
++      .order-form input[type="range"]::-webkit-slider-thumb {
++        appearance: none;
++        width: 18px;
++        height: 18px;
++        margin-top: -5px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 2px solid white;
++      }
++
++      .order-form input[type="range"]::-moz-range-track {
++        height: 8px;
++        border-radius: 4px;
++        background: var(--secondary);
++      }
++
++      .order-form input[type="range"]::-moz-range-progress {
++        height: 8px;
++        border-radius: 4px;
++        background: var(--primary);
++      }
++
++      .order-form input[type="range"]::-moz-range-thumb {
++        width: 18px;
++        height: 18px;
++        border-radius: 50%;
++        background: var(--primary);
++        border: 2px solid white;
++      }
++
++      .rewards progress {
++        appearance: none;
++        border: none;
++        border-radius: 5px;
++        background: var(--secondary);
++        overflow: hidden;
++      }
++
++      .rewards progress::-webkit-progress-bar {
++        background: var(--secondary);
++      }
++
++      .rewards progress::-webkit-progress-value {
++        background: var(--primary);
++      }
++
++      .rewards progress::-moz-progress-bar {
++        background: var(--primary);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -174,7 +562,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container menu-layout">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -195,6 +583,108 @@
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="order-heading">
++      <h2 id="order-heading" style="text-align: center;">Build Your Brew</h2>
++      <form class="order-form" action="/order-online" method="POST">
++        <fieldset>
++          <legend>Your drink</legend>
++
++          <div class="field">
++            <label for="drink">Drink</label>
++            <select class="brand-select" id="drink" name="drink" required>
++              <button>
++                <selectedcontent></selectedcontent>
++              </button>
++              <option value="maple-oat-latte" selected>Maple Oat Latte <small>seasonal</small></option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew <small>18-hour steep</small></option>
++              <option value="cappuccino">Cappuccino</option>
++              <option value="flat-white">Flat White</option>
++              <option value="mocha">Mocha</option>
++              <option value="chai-latte">Chai Latte</option>
++            </select>
++          </div>
++
++          <div class="field">
++            <span class="field-label" id="size-label">Size</span>
++            <div class="choices" role="radiogroup" aria-labelledby="size-label">
++              <label><input type="radio" name="size" value="small"> Small, 8 oz</label>
++              <label><input type="radio" name="size" value="medium" checked> Medium, 12 oz</label>
++              <label><input type="radio" name="size" value="large"> Large, 16 oz</label>
++            </div>
++          </div>
++
++          <div class="field">
++            <span class="field-label" id="extras-label">Extras</span>
++            <div class="choices" role="group" aria-labelledby="extras-label">
++              <label><input type="checkbox" name="extras" value="extra-shot"> Extra shot</label>
++              <label><input type="checkbox" name="extras" value="oat-milk" checked> Oat milk</label>
++              <label><input type="checkbox" name="extras" value="whipped-cream"> Whipped cream</label>
++              <label><input type="checkbox" name="extras" value="decaf"> Decaf</label>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="sweetness">Sweetness: <output for="sweetness" id="sweetness-output">2</output> pumps</label>
++            <input type="range" id="sweetness" name="sweetness" min="0" max="5" step="1" value="2" list="sweetness-ticks">
++            <datalist id="sweetness-ticks">
++              <option value="0"></option>
++              <option value="1"></option>
++              <option value="2"></option>
++              <option value="3"></option>
++              <option value="4"></option>
++              <option value="5"></option>
++            </datalist>
++            <div class="range-labels" aria-hidden="true"><span>Unsweetened</span><span>Extra sweet</span></div>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Pickup</legend>
++
++          <div class="field-row">
++            <div class="field">
++              <label for="pickup-date">Date</label>
++              <input type="date" id="pickup-date" name="pickup_date" required>
++            </div>
++            <div class="field">
++              <label for="pickup-time">Time</label>
++              <input type="time" id="pickup-time" name="pickup_time" min="06:00" max="20:00" step="900" aria-describedby="time-hint" required>
++              <span class="hint" id="time-hint">Open 6:00 AM to 8:00 PM</span>
++            </div>
++            <div class="field">
++              <label for="quantity">Quantity</label>
++              <input type="number" id="quantity" name="quantity" min="1" max="12" value="1" inputmode="numeric" required>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="location">Location</label>
++            <input type="text" id="location" name="location" list="locations" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing a cafe name" required>
++            <datalist id="locations">
++              <option value="Downtown Roastery"></option>
++              <option value="Riverside Kiosk"></option>
++              <option value="University Avenue"></option>
++              <option value="Maple Street Cafe"></option>
++              <option value="Harbor Market"></option>
++            </datalist>
++          </div>
++
++          <div class="field">
++            <label for="notes">Special instructions</label>
++            <textarea id="notes" name="notes" maxlength="300" placeholder="Extra hot, light foam, name for the cup..."></textarea>
++          </div>
++        </fieldset>
++
++        <div class="rewards">
++          <label for="rewards-progress">Rewards: 7 of 10 stamps. Three more drinks earn a free one.</label>
++          <progress id="rewards-progress" max="10" value="7">7 of 10</progress>
++        </div>
++
++        <button type="submit" class="btn">Add to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +697,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const sweetness = document.getElementById('sweetness');
++    const sweetnessOutput = document.getElementById('sweetness-output');
++    const supportsAccent = CSS.supports('accent-color', '#000');
++
++    function syncSweetness() {
++      sweetnessOutput.value = sweetness.value;
++      if (!supportsAccent) {
++        const pct = ((sweetness.value - sweetness.min) / (sweetness.max - sweetness.min)) * 100;
++        sweetness.style.setProperty('--progress', pct + '%');
++      }
++    }
++
++    sweetness.addEventListener('input', syncSweetness);
++    syncSweetness();
++  </script>
++
+ </body>
+ 
+ </html>

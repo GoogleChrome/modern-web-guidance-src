@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,68 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1;
++      padding: 10px 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter input.touched:invalid {
++      border-color: #c62828;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-error {
++      color: #c62828;
++      font-size: 0.85rem;
++      text-align: left;
++      margin-top: 6px;
++      min-height: 1.4em;
++    }
++
++    .newsletter-success {
++      color: var(--primary);
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +257,17 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" action="/subscribe" method="post" novalidate>
++      <h3>Join Our Mailing List</h3>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          aria-label="Email address" aria-describedby="newsletter-error" autocomplete="email" required>
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error" aria-live="polite"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +275,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-error');
++
++      // Only show errors once the user has interacted with the field (or tried to submit).
++      function validate() {
++        if (!input.classList.contains('touched')) return input.validity.valid;
++        var message = '';
++        if (input.validity.valueMissing) {
++          message = 'Please enter your email address.';
++        } else if (input.validity.typeMismatch) {
++          message = 'Please enter a valid email address.';
++        }
++        error.textContent = message;
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++        return !message;
++      }
++
++      input.addEventListener('blur', function () {
++        input.classList.add('touched');
++        validate();
++      });
++
++      input.addEventListener('input', validate);
++
++      form.addEventListener('submit', function (e) {
++        input.classList.add('touched');
++        if (!validate()) {
++          e.preventDefault();
++          input.focus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

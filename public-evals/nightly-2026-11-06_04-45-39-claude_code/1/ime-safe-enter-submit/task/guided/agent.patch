@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Feedback */
++    .feedback {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .feedback h2 {
++      text-align: center;
++      margin-bottom: 15px;
++    }
++
++    .feedback-form {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .feedback-form textarea {
++      width: 100%;
++      min-height: 100px;
++      padding: 10px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      resize: vertical;
++    }
++
++    .feedback-form textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .feedback-form button {
++      align-self: flex-end;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .feedback-hint {
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
++    .feedback-status {
++      text-align: center;
++      color: var(--primary);
++      font-weight: bold;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +250,18 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="feedback" aria-labelledby="feedback-heading">
++    <h2 id="feedback-heading">Send Us Feedback</h2>
++    <form id="feedback-form" class="feedback-form">
++      <label for="feedback-message" class="feedback-hint">Tell us what you think. Press Enter to send, Shift+Enter for a new line.</label>
++      <textarea id="feedback-message" name="message" required placeholder="Your feedback..."></textarea>
++      <button type="submit" class="btn">Send</button>
++    </form>
++    <p id="feedback-status" class="feedback-status" role="status"></p>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +270,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const feedbackForm = document.getElementById('feedback-form');
++    const feedbackInput = document.getElementById('feedback-message');
++    const feedbackStatus = document.getElementById('feedback-status');
++
++    feedbackInput.addEventListener('keydown', (event) => {
++      if (event.key === 'Enter' && !event.shiftKey) {
++        event.preventDefault();
++        // Don't submit while an IME is composing (keyCode 229 covers Safari).
++        if (event.isComposing || event.keyCode === 229) return;
++        feedbackForm.requestSubmit();
++      }
++    });
++
++    feedbackForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!feedbackInput.value.trim()) {
++        feedbackStatus.textContent = 'Please enter some feedback first.';
++        return;
++      }
++      // TODO: send to a backend endpoint once one exists.
++      feedbackForm.reset();
++      feedbackStatus.textContent = 'Thanks for your feedback!';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

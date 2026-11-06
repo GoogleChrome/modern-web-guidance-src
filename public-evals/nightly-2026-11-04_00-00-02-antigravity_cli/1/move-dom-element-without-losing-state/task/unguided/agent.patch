@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    /* Video & Theater Mode */
++    .hero.theater-active {
++      height: auto;
++      min-height: 75vh;
++      padding: 40px 20px;
++    }
++
++    .video-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .video-controls {
++      margin: 15px 0;
++    }
++
++    .video-wrapper {
++      max-width: 800px;
++      margin: 20px auto 0;
++    }
++
++    .hero iframe,
++    .video-wrapper iframe {
++      width: 100%;
++      max-width: 800px;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      min-height: 450px;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
++      display: block;
++      margin: 20px auto 0;
++    }
++
++    .hero iframe {
++      max-width: 960px;
++      min-height: 540px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +241,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" id="roasting-section">
++      <h2>The Art of Coffee Roasting</h2>
++      <p>Go behind the scenes and watch how we roast our small-batch beans to perfection.</p>
++      <div class="video-controls">
++        <button id="theater-mode-btn" class="btn" type="button" aria-pressed="false">Theater Mode</button>
++      </div>
++      <div id="video-container" class="video-wrapper">
++        <iframe
++          id="roasting-video"
++          width="800"
++          height="450"
++          src="https://www.youtube.com/embed/vFcS080VYQ0"
++          title="Coffee Roasting Process Video"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++           referrerpolicy="strict-origin-when-cross-origin"
++          allowfullscreen>
++        </iframe>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const theaterBtn = document.getElementById('theater-mode-btn');
++      const iframe = document.getElementById('roasting-video');
++      const heroSection = document.querySelector('.hero');
++      const originalContainer = document.getElementById('video-container');
++
++      let isTheaterMode = false;
++
++      function reparentNode(targetParent, node) {
++        // Use the state-preserving DOM moveBefore API when supported so the
++        // iframe does not reload or lose playback state when reparented.
++        if (typeof targetParent.moveBefore === 'function') {
++          targetParent.moveBefore(node, null);
++        } else {
++          // Fallback for older browsers without Element.prototype.moveBefore
++          targetParent.appendChild(node);
++        }
++      }
++
++      theaterBtn.addEventListener('click', function () {
++        isTheaterMode = !isTheaterMode;
++        const destination = isTheaterMode ? heroSection : originalContainer;
++
++        reparentNode(destination, iframe);
++
++        heroSection.classList.toggle('theater-active', isTheaterMode);
++        theaterBtn.setAttribute('aria-pressed', String(isTheaterMode));
++        theaterBtn.textContent = isTheaterMode ? 'Exit Theater Mode' : 'Theater Mode';
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,108 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Toast notifications
++       Each toast is its own popover="manual" element in the top layer, so no
++       z-index is needed. Stacking offset comes from sibling-index(); the
++       holder uses display: contents so it never acts as a layout box. */
++    .toast-region {
++      display: contents;
++    }
++
++    .toast {
++      --toast-height: 3.25rem;
++      --toast-gap: 0.75rem;
++      --toast-index: sibling-index();
++
++      position: fixed;
++      inset: auto 1.25rem calc(1.25rem + (var(--toast-index) - 1) * (var(--toast-height) + var(--toast-gap))) auto;
++      margin: 0;
++      block-size: var(--toast-height);
++      inline-size: max-content;
++      max-inline-size: calc(100vw - 2.5rem);
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      padding: 0 0.5rem 0 1rem;
++      border: none;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      font-weight: 600;
++
++      opacity: 0;
++      translate: 0 1rem;
++      transition:
++        opacity 0.3s ease,
++        translate 0.3s ease,
++        bottom 0.3s ease,
++        overlay 0.3s allow-discrete,
++        display 0.3s allow-discrete;
++    }
++
++    .toast:not(:is(:popover-open, .\:popover-open)) {
++      display: none;
++    }
++
++    .toast:is(:popover-open, .\:popover-open) {
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    @starting-style {
++      .toast:is(:popover-open, .\:popover-open) {
++        opacity: 0;
++        translate: 2rem 0;
++      }
++    }
++
++    /* Fallback where sibling-index() is unsupported */
++    @supports not (order: sibling-index()) {
++      .toast { --toast-index: 1; }
++      .toast:nth-child(2) { --toast-index: 2; }
++      .toast:nth-child(3) { --toast-index: 3; }
++      .toast:nth-child(4) { --toast-index: 4; }
++      .toast:nth-child(5) { --toast-index: 5; }
++      .toast:nth-child(6) { --toast-index: 6; }
++      .toast:nth-child(7) { --toast-index: 7; }
++      .toast:nth-child(8) { --toast-index: 8; }
++    }
++
++    .toast-close {
++      display: grid;
++      place-items: center;
++      inline-size: 2rem;
++      block-size: 2rem;
++      border: none;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .toast-close:hover,
++    .toast-close:focus-visible {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        translate: none;
++        transition-property: opacity, overlay, display;
++      }
++
++      @starting-style {
++        .toast:is(:popover-open, .\:popover-open) {
++          translate: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +273,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +283,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +309,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="toast-region" aria-live="polite"></div>
++
++  <template id="toast-template">
++    <div class="toast" popover="manual" role="status">
++      <span>Added to cart!</span>
++      <button type="button" class="toast-close" popovertargetaction="hide" aria-label="Close notification">&times;</button>
++    </div>
++  </template>
++
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    const region = document.querySelector(".toast-region");
++    const template = document.getElementById("toast-template");
++    const DURATION = 3000;
++    const EXIT_MS = 300;
++    let count = 0;
++
++    function showToast() {
++      const toast = template.content.firstElementChild.cloneNode(true);
++      toast.id = `toast-${++count}`;
++      toast.querySelector(".toast-close").setAttribute("popovertarget", toast.id);
++
++      const timer = setTimeout(() => toast.hidePopover(), DURATION);
++      toast.addEventListener("toggle", (event) => {
++        if (event.newState !== "closed") return;
++        clearTimeout(timer);
++        setTimeout(() => toast.remove(), EXIT_MS);
++      });
++
++      // Newest toast is first sibling, so it sits at the bottom and older ones shift up
++      region.prepend(toast);
++      toast.showPopover();
++    }
++
++    document.addEventListener("click", (event) => {
++      if (event.target.closest(".toast-trigger")) showToast();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

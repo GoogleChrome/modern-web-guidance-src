@@ -1,0 +1,337 @@
+diff --git a/README.md b/README.md
+index 4479b53..4959dd2 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,14 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Text translation
++
++Open `/devtools-times/translate` or choose **Translate** in the header. Select the source and target languages, enter up to 5,000 characters, and choose **Translate text**. You can swap languages, clear the input, try an example, or copy the result.
++
++This feature uses the browser's on-device `Translator` API. It requires a secure context (HTTPS or localhost) and a supported desktop browser and device. The first use of a language pair may download a language pack; download progress appears in the form. Unsupported browsers and language pairs show an availability message. Text is not sent to a remote translation service.
++
++Run the translation lifecycle tests with `node --test tests/translation.test.ts` (Node 22.18+).
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..d4e47e8 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -21,6 +21,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <a href={`${baseUrl}translate`} class="text-xs font-semibold text-gray-700 hover:text-gray-950 hover:underline">Translate</a>
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/TextTranslator.tsx b/src/components/TextTranslator.tsx
+new file mode 100644
+index 0000000..5e07cd7
+--- /dev/null
++++ b/src/components/TextTranslator.tsx
+@@ -0,0 +1,153 @@
++import { useEffect, useRef, useState } from 'react';
++import { ArrowsRightLeftIcon, ClipboardDocumentIcon, LanguageIcon, XMarkIcon } from '@heroicons/react/24/outline';
++import { languages, translateText, type Availability, type TranslatorAPI } from '../utils/translation';
++
++const limit = 5000;
++const control = 'rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-50';
++const action = 'inline-flex items-center gap-2 rounded px-3 py-2 text-sm font-semibold hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-amber-600 disabled:opacity-40';
++
++export default function TextTranslator() {
++  const [source, setSource] = useState('en');
++  const [target, setTarget] = useState('es');
++  const [text, setText] = useState('');
++  const [result, setResult] = useState('');
++  const [availability, setAvailability] = useState<Availability | 'checking' | 'unsupported'>('checking');
++  const [busy, setBusy] = useState(false);
++  const [message, setMessage] = useState('');
++  const [error, setError] = useState('');
++  const [progress, setProgress] = useState<number | null>(null);
++  const request = useRef<AbortController | null>(null);
++  const revision = useRef(0);
++  const api = () => (window as Window & { Translator?: TranslatorAPI }).Translator;
++
++  useEffect(() => {
++    let active = true;
++    setAvailability('checking');
++    const translator = api();
++    if (!translator) {
++      setAvailability('unsupported');
++    } else if (source === target) {
++      setAvailability('available');
++    } else {
++      translator.availability({ sourceLanguage: source, targetLanguage: target })
++        .then(value => { if (active) setAvailability(value); })
++        .catch(() => { if (active) setAvailability('unavailable'); });
++    }
++    return () => { active = false; };
++  }, [source, target]);
++
++  useEffect(() => () => { request.current?.abort(); revision.current++; }, []);
++
++  function reset() {
++    revision.current++;
++    setResult(''); setError(''); setMessage(''); setProgress(null);
++  }
++
++  async function translate(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    if (!text.trim() || busy) return;
++    reset();
++    if (source === target) { setResult(text); setMessage('Translation ready.'); return; }
++    const translator = api();
++    if (!translator || availability === 'checking' || availability === 'unavailable') return;
++    const controller = new AbortController();
++    request.current = controller;
++    setBusy(true);
++    setMessage(availability === 'available' ? 'Translating…' : 'Preparing your language pack…');
++    try {
++      const translated = await translateText(translator,
++        { sourceLanguage: source, targetLanguage: target }, text,
++        percent => {
++          if (!controller.signal.aborted) {
++            setProgress(percent);
++            setMessage(percent < 100 ? `Downloading language pack: ${percent}%` : 'Translating…');
++          }
++        }, controller.signal);
++      if (!controller.signal.aborted) {
++        setResult(translated); setMessage('Translation ready.'); setAvailability('available');
++      }
++    } catch {
++      if (!controller.signal.aborted) {
++        setMessage('');
++        setError('We couldn’t translate this text. Check your connection if a language pack needs downloading, then try again.');
++      }
++    } finally {
++      if (!controller.signal.aborted) { setBusy(false); setProgress(null); }
++      if (request.current === controller) request.current = null;
++    }
++  }
++
++  function swap() {
++    const previous = source;
++    setSource(target); setTarget(previous);
++    if (result) setText(result);
++    reset();
++  }
++
++  async function copy() {
++    const current = revision.current;
++    try {
++      await navigator.clipboard.writeText(result);
++      if (revision.current === current) setMessage('Translation copied to clipboard.');
++    } catch {
++      if (revision.current === current) setError('Copy is unavailable. Select the translation and copy it manually.');
++    }
++  }
++
++  const blocked = availability === 'unsupported' || availability === 'unavailable' || availability === 'checking';
++  const languageName = (code: string) => languages.find(([value]) => value === code)?.[1];
++
++  return (
++    <form onSubmit={translate}>
++      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
++        <div className="flex items-center gap-2 text-sm font-semibold"><LanguageIcon className="h-5 w-5" aria-hidden="true" /> Text translation</div>
++        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900">On-device translation</span>
++      </div>
++      <div className="overflow-hidden rounded-lg border border-gray-300">
++        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-gray-300 bg-gray-50 p-4 sm:gap-5 sm:px-6">
++          <div className="min-w-0"><label htmlFor="source-language" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">From</label>
++            <select id="source-language" value={source} disabled={busy} onChange={e => { reset(); setSource(e.target.value); }} className={`${control} w-full`}>
++              {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
++            </select>
++          </div>
++          <button type="button" className={`${action} mt-6 px-2`} onClick={swap} disabled={busy} aria-label="Swap languages" title="Swap languages"><ArrowsRightLeftIcon className="h-5 w-5" aria-hidden="true" /></button>
++          <div className="min-w-0"><label htmlFor="target-language" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">To</label>
++            <select id="target-language" value={target} disabled={busy} onChange={e => { reset(); setTarget(e.target.value); }} className={`${control} w-full`}>
++              {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
++            </select>
++          </div>
++        </div>
++        <div className="grid divide-y divide-gray-200 md:grid-cols-2 md:divide-x md:divide-y-0">
++          <div className="p-4 sm:p-6">
++            <div className="mb-3 flex h-8 items-center justify-between"><label htmlFor="source-text" className="text-sm font-semibold">Original text</label>
++              <button type="button" className={action} disabled={!text || busy} onClick={() => { setText(''); reset(); }} aria-label="Clear text"><XMarkIcon className="h-4 w-4" aria-hidden="true" /></button>
++            </div>
++            <textarea id="source-text" value={text} lang={source} dir="auto" disabled={busy} maxLength={limit} onChange={e => { setText(e.target.value); reset(); }} placeholder="Type or paste the text you’d like to translate…" aria-describedby="text-limit" className="min-h-64 w-full resize-y rounded bg-transparent p-2 text-lg leading-relaxed placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-amber-600" />
++            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500">
++              <button type="button" disabled={busy} onClick={() => { setText('The world is full of stories. A new language opens the door to more of them.'); setSource('en'); reset(); }} className="rounded font-semibold text-gray-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-amber-600 disabled:opacity-40">Try an example</button>
++              <span id="text-limit">{text.length.toLocaleString()} / 5,000 characters</span>
++            </div>
++          </div>
++          <div className="bg-gray-50/70 p-4 sm:p-6" aria-busy={busy}>
++            <div className="mb-3 flex h-8 items-center justify-between"><label htmlFor="translated-text" className="text-sm font-semibold">{languageName(target)} translation</label>
++              <button type="button" className={action} disabled={!result || busy} onClick={copy}><ClipboardDocumentIcon className="h-4 w-4" aria-hidden="true" /> Copy</button>
++            </div>
++            <textarea id="translated-text" value={result} readOnly lang={target} dir="auto" placeholder="Your translation will appear here." className="min-h-64 w-full resize-y rounded bg-transparent p-2 text-lg leading-relaxed placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-amber-600" />
++            <p className="mt-3 text-xs text-gray-500">Translated text can be selected and copied.</p>
++          </div>
++        </div>
++      </div>
++      <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
++        <p className="max-w-xl text-xs leading-relaxed text-gray-500">The first translation may download a language pack. After that, you can translate offline.</p>
++        <button type="submit" disabled={busy || blocked || !text.trim()} className="inline-flex items-center gap-2 rounded bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-not-allowed disabled:opacity-40"><LanguageIcon className="h-5 w-5" aria-hidden="true" />{busy ? 'Translating…' : 'Translate text'}</button>
++      </div>
++      <div role="status" className="mt-4 text-sm text-gray-600">
++        {availability === 'unsupported' ? <p className="rounded border border-amber-200 bg-amber-50 p-4 text-amber-950">On-device translation is unavailable in this browser. Try a supported desktop browser, such as a recent version of Chrome or Edge.</p>
++          : availability === 'unavailable' ? <p className="rounded border border-amber-200 bg-amber-50 p-4 text-amber-950">This language pair is unavailable on your device. Choose another pair of languages.</p>
++          : availability === 'checking' ? 'Checking language availability…' : message}
++      </div>
++      {progress !== null && <progress value={progress} max={100} aria-label="Language pack download" className="mt-2 w-full accent-amber-500" />}
++      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
++    </form>
++  );
++}
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..962da2c
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,21 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TextTranslator from '../components/TextTranslator';
++---
++
++<Layout title="Translate | The DevTools Times">
++  <section class="mx-auto max-w-6xl px-4 py-10 sm:px-8 sm:py-14">
++    <div class="mb-8 border-b border-gray-900 pb-7">
++      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-gray-500">The DevTools Times · Language tools</p>
++      <h1 class="font-brand text-5xl leading-tight text-gray-900 sm:text-6xl">A world of words, translated.</h1>
++      <p class="mt-3 max-w-2xl text-base leading-relaxed text-gray-600">Cross language barriers. Translate a headline, a passage, or your own words — right here in your browser.</p>
++    </div>
++    <TextTranslator client:load />
++    <noscript><p class="mt-4 text-gray-700">Enable JavaScript to use the translation tool.</p></noscript>
++    <div class="mt-10 grid gap-6 border-t border-gray-200 pt-6 sm:grid-cols-3">
++      <div><h2 class="font-brand text-2xl">Your words stay yours.</h2><p class="mt-2 text-sm leading-relaxed text-gray-600">Translation happens on your device. Your text is not sent to a translation server.</p></div>
++      <div><h2 class="font-brand text-2xl">Ready for the world.</h2><p class="mt-2 text-sm leading-relaxed text-gray-600">Choose from 39 languages. Available language pairs depend on your browser and device.</p></div>
++      <div><h2 class="font-brand text-2xl">A little context helps.</h2><p class="mt-2 text-sm leading-relaxed text-gray-600">Use complete sentences for better results. Always review translations of names and nuanced language.</p></div>
++    </div>
++  </section>
++</Layout>
+diff --git a/src/utils/translation.ts b/src/utils/translation.ts
+new file mode 100644
+index 0000000..813ec71
+--- /dev/null
++++ b/src/utils/translation.ts
+@@ -0,0 +1,47 @@
++export const languages = [
++  ['ar', 'Arabic'], ['bg', 'Bulgarian'], ['bn', 'Bengali'], ['zh', 'Chinese'],
++  ['zh-Hant', 'Chinese (Traditional)'], ['hr', 'Croatian'], ['cs', 'Czech'],
++  ['da', 'Danish'], ['nl', 'Dutch'], ['en', 'English'], ['fi', 'Finnish'],
++  ['fr', 'French'], ['de', 'German'], ['el', 'Greek'], ['he', 'Hebrew'],
++  ['hi', 'Hindi'], ['hu', 'Hungarian'], ['id', 'Indonesian'], ['it', 'Italian'],
++  ['ja', 'Japanese'], ['kn', 'Kannada'], ['ko', 'Korean'], ['lt', 'Lithuanian'],
++  ['mr', 'Marathi'], ['no', 'Norwegian'], ['pl', 'Polish'], ['pt', 'Portuguese'],
++  ['ro', 'Romanian'], ['ru', 'Russian'], ['sk', 'Slovak'], ['sl', 'Slovenian'],
++  ['es', 'Spanish'], ['sv', 'Swedish'], ['ta', 'Tamil'], ['te', 'Telugu'],
++  ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
++] as const;
++
++export type LanguagePair = { sourceLanguage: string; targetLanguage: string };
++export type Availability = 'available' | 'downloadable' | 'downloading' | 'unavailable';
++export interface TranslationSession {
++  translate(text: string): Promise<string>;
++  destroy(): void;
++}
++export interface TranslatorAPI {
++  availability(options: LanguagePair): Promise<Availability>;
++  create(options: LanguagePair & {
++    signal?: AbortSignal;
++    monitor?: (monitor: { addEventListener(type: 'downloadprogress', callback: (event: { loaded: number }) => void): void }) => void;
++  }): Promise<TranslationSession>;
++}
++
++// Call directly from a user action: creating a model can require user activation.
++export async function translateText(api: TranslatorAPI, pair: LanguagePair, text: string,
++  onProgress: (percent: number) => void, signal: AbortSignal): Promise<string> {
++  const translator = await api.create({
++    ...pair, signal,
++    monitor(monitor) {
++      monitor.addEventListener('downloadprogress', event => {
++        onProgress(Math.round(Math.max(0, Math.min(1, event.loaded)) * 100));
++      });
++    },
++  });
++  try {
++    signal.throwIfAborted();
++    const result = await translator.translate(text);
++    signal.throwIfAborted();
++    return result;
++  } finally {
++    translator.destroy();
++  }
++}
+diff --git a/tests/translation.test.ts b/tests/translation.test.ts
+new file mode 100644
+index 0000000..a226801
+--- /dev/null
++++ b/tests/translation.test.ts
+@@ -0,0 +1,61 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { translateText, type TranslatorAPI } from '../src/utils/translation.ts';
++
++const pair = { sourceLanguage: 'en', targetLanguage: 'es' };
++
++test('creates immediately, forwards language pair and text, reports progress, and releases the model', async () => {
++  let created = false;
++  let destroyed = false;
++  const progress: number[] = [];
++  const api: TranslatorAPI = {
++    availability: async () => 'available',
++    create: async options => {
++      created = true;
++      assert.equal(options.sourceLanguage, 'en');
++      assert.equal(options.targetLanguage, 'es');
++      options.monitor?.({ addEventListener: (_type, callback) => callback({ loaded: 0.456 }) });
++      return {
++        translate: async text => { assert.equal(text, 'Hello'); return 'Hola'; },
++        destroy: () => { destroyed = true; },
++      };
++    },
++  };
++  const pending = translateText(api, pair, 'Hello', value => progress.push(value), new AbortController().signal);
++  assert.equal(created, true, 'create runs before yielding user activation');
++  assert.equal(await pending, 'Hola');
++  assert.deepEqual(progress, [46]);
++  assert.equal(destroyed, true);
++});
++
++test('releases the model even when translation fails', async () => {
++  let destroyed = false;
++  const api: TranslatorAPI = {
++    availability: async () => 'available',
++    create: async () => ({
++      translate: async () => { throw new Error('Translation failed'); },
++      destroy: () => { destroyed = true; },
++    }),
++  };
++  await assert.rejects(translateText(api, pair, 'Hello', () => {}, new AbortController().signal), /Translation failed/);
++  assert.equal(destroyed, true);
++});
++
++test('abandoning a request during model creation skips translation and releases the model', async () => {
++  const controller = new AbortController();
++  let destroyed = false;
++  let translated = false;
++  const api: TranslatorAPI = {
++    availability: async () => 'available',
++    create: async () => {
++      controller.abort();
++      return {
++        translate: async () => { translated = true; return 'Hola'; },
++        destroy: () => { destroyed = true; },
++      };
++    },
++  };
++  await assert.rejects(translateText(api, pair, 'Hello', () => {}, controller.signal), { name: 'AbortError' });
++  assert.equal(translated, false);
++  assert.equal(destroyed, true);
++});

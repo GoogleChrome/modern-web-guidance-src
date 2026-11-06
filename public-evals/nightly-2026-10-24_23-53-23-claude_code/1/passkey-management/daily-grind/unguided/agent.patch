@@ -1,0 +1,336 @@
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..40fdda8
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,330 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b71c1c;
++    }
++
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    nav ul { display: flex; list-style: none; }
++    nav ul li { margin-left: 20px; }
++    nav a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++    nav a:hover { color: var(--accent); }
++    .logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++    .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
++    h1 { color: var(--primary); margin-bottom: 0.5rem; }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 24px;
++    }
++
++    .panel h2 { color: var(--primary); margin-bottom: 4px; }
++    .hint { font-size: 0.9rem; opacity: 0.8; }
++
++    .passkey-list { list-style: none; margin-top: 16px; }
++
++    .passkey {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: space-between;
++      align-items: center;
++      padding: 14px 0;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .passkey-info { flex: 1 1 240px; min-width: 0; }
++    .passkey-name { font-weight: 600; overflow-wrap: anywhere; }
++    .passkey-meta { font-size: 0.8rem; opacity: 0.75; }
++    .passkey-actions { display: flex; gap: 8px; }
++
++    .rename-form { display: flex; gap: 8px; flex: 1 1 240px; }
++    .rename-form input {
++      flex: 1;
++      min-width: 0;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    button {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 7px 14px;
++      border-radius: 5px;
++      border: 1px solid var(--primary);
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++    }
++
++    button.secondary { background: white; color: var(--primary); }
++    button.danger { background: white; color: var(--danger); border-color: var(--danger); }
++    button:disabled { opacity: 0.5; cursor: not-allowed; }
++    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
++
++    .status { margin-top: 16px; padding: 10px 14px; border-radius: 5px; font-size: 0.9rem; }
++    .status[hidden] { display: none; }
++    .status.ok { background: #e8f5e9; color: #1b5e20; }
++    .status.error { background: #ffebee; color: var(--danger); }
++
++    .empty { margin-top: 16px; }
++
++    footer { background: var(--secondary); text-align: center; padding: 40px 20px; margin-top: 40px; }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <h2 id="passkeys-heading">Passkeys</h2>
++      <p class="hint">Passkeys let you sign in with your fingerprint, face, or device PIN. Remove any you no longer use.</p>
++
++      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
++      <p id="loading" class="empty">Loading your passkeys…</p>
++      <ul id="passkey-list" class="passkey-list" hidden></ul>
++      <p id="empty" class="empty" hidden>You haven't registered any passkeys yet.</p>
++    </section>
++  </main>
++
++  <footer>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    /*
++     * Expected backend API (session-cookie authenticated, JSON):
++     *   GET    /api/passkeys      -> { user: { id, name, displayName },
++     *                                  passkeys: [{ id, name, createdAt, lastUsedAt }] }
++     *   PATCH  /api/passkeys/:id  body { name } -> updated passkey
++     *   DELETE /api/passkeys/:id  -> 204
++     * `id` is the base64url credential ID; `user.id` is the base64url user handle.
++     * A 401 means the session has expired.
++     */
++    const API = '/api/passkeys';
++    const listEl = document.getElementById('passkey-list');
++    const emptyEl = document.getElementById('empty');
++    const loadingEl = document.getElementById('loading');
++    const statusEl = document.getElementById('status');
++
++    let state = { user: null, passkeys: [] };
++
++    function show(message, kind) {
++      statusEl.textContent = message;
++      statusEl.className = 'status ' + kind;
++      statusEl.hidden = false;
++    }
++
++    async function api(path, options) {
++      const res = await fetch(API + path, {
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++        ...options,
++      });
++      if (res.status === 401) {
++        location.href = '/login?next=/account';
++        throw new Error('Your session has expired.');
++      }
++      if (!res.ok) throw new Error('Request failed (' + res.status + ').');
++      return res.status === 204 ? null : res.json();
++    }
++
++    /*
++     * Keep the browser/OS authenticator in sync with the server. The WebAuthn
++     * Signal API is not available in every browser, so failures are ignored.
++     */
++    async function signal(fn) {
++      try { await fn(); } catch (e) { console.warn('Passkey signal failed', e); }
++    }
++
++    function signalCredentialList() {
++      if (!state.user || !window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
++      return signal(() => PublicKeyCredential.signalAllAcceptedCredentials({
++        rpId: location.hostname,
++        userId: state.user.id,
++        allAcceptedCredentialIds: state.passkeys.map(p => p.id),
++      }));
++    }
++
++    function signalUserDetails() {
++      if (!state.user || !window.PublicKeyCredential?.signalCurrentUserDetails) return;
++      return signal(() => PublicKeyCredential.signalCurrentUserDetails({
++        rpId: location.hostname,
++        userId: state.user.id,
++        name: state.user.name,
++        displayName: state.user.displayName,
++      }));
++    }
++
++    function fmt(date) {
++      return date ? new Date(date).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'never';
++    }
++
++    function render(renamingId) {
++      loadingEl.hidden = true;
++      listEl.replaceChildren();
++      listEl.hidden = state.passkeys.length === 0;
++      emptyEl.hidden = state.passkeys.length > 0;
++
++      for (const pk of state.passkeys) {
++        const li = document.createElement('li');
++        li.className = 'passkey';
++
++        if (pk.id === renamingId) {
++          const form = document.createElement('form');
++          form.className = 'rename-form';
++          const input = document.createElement('input');
++          input.value = pk.name;
++          input.maxLength = 64;
++          input.required = true;
++          input.setAttribute('aria-label', 'Passkey name');
++          const save = document.createElement('button');
++          save.textContent = 'Save';
++          const cancel = document.createElement('button');
++          cancel.type = 'button';
++          cancel.className = 'secondary';
++          cancel.textContent = 'Cancel';
++          cancel.onclick = () => render();
++          form.onsubmit = e => { e.preventDefault(); rename(pk, input.value.trim(), save); };
++          form.append(input, save, cancel);
++          li.append(form);
++          listEl.append(li);
++          input.focus();
++          input.select();
++          continue;
++        }
++
++        const info = document.createElement('div');
++        info.className = 'passkey-info';
++        const name = document.createElement('div');
++        name.className = 'passkey-name';
++        name.textContent = pk.name || 'Unnamed passkey';
++        const meta = document.createElement('div');
++        meta.className = 'passkey-meta';
++        meta.textContent = 'Added ' + fmt(pk.createdAt) + ' · Last used ' + fmt(pk.lastUsedAt);
++        info.append(name, meta);
++
++        const actions = document.createElement('div');
++        actions.className = 'passkey-actions';
++        const renameBtn = document.createElement('button');
++        renameBtn.className = 'secondary';
++        renameBtn.textContent = 'Rename';
++        renameBtn.setAttribute('aria-label', 'Rename ' + (pk.name || 'passkey'));
++        renameBtn.onclick = () => render(pk.id);
++        const delBtn = document.createElement('button');
++        delBtn.className = 'danger';
++        delBtn.textContent = 'Delete';
++        delBtn.setAttribute('aria-label', 'Delete ' + (pk.name || 'passkey'));
++        delBtn.onclick = () => remove(pk, delBtn);
++        actions.append(renameBtn, delBtn);
++
++        li.append(info, actions);
++        listEl.append(li);
++      }
++    }
++
++    async function rename(pk, name, button) {
++      if (!name || name === pk.name) return render();
++      button.disabled = true;
++      try {
++        const updated = await api('/' + encodeURIComponent(pk.id), {
++          method: 'PATCH',
++          body: JSON.stringify({ name }),
++        });
++        pk.name = updated?.name ?? name;
++        render();
++        show('Passkey renamed to “' + pk.name + '”.', 'ok');
++        // Nicknames live on the server; re-send account details so the
++        // authenticator's stored user info stays current.
++        await signalUserDetails();
++      } catch (e) {
++        button.disabled = false;
++        show(e.message, 'error');
++      }
++    }
++
++    async function remove(pk, button) {
++      if (!confirm('Delete “' + (pk.name || 'this passkey') + '”? You will no longer be able to sign in with it.')) return;
++      button.disabled = true;
++      try {
++        await api('/' + encodeURIComponent(pk.id), { method: 'DELETE' });
++        state.passkeys = state.passkeys.filter(p => p.id !== pk.id);
++        render();
++        show('Passkey deleted.', 'ok');
++        // Tell the authenticator to drop the deleted credential.
++        await signalCredentialList();
++      } catch (e) {
++        button.disabled = false;
++        show(e.message, 'error');
++      }
++    }
++
++    (async function init() {
++      try {
++        const data = await api('');
++        state = { user: data.user, passkeys: data.passkeys || [] };
++        render();
++        // Reconcile on every visit, e.g. after a key was removed elsewhere.
++        await signalCredentialList();
++        await signalUserDetails();
++      } catch (e) {
++        loadingEl.hidden = true;
++        show('Could not load your passkeys. ' + e.message, 'error');
++      }
++    })();
++  </script>
++
++</body>
++
++</html>

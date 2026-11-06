@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,80 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Showcase</title>
++
++  <!-- Elevate priority for the video poster image acting as the LCP element -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical header font (fonts have high priority by default) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Deprioritize secondary font preload to avoid network contention -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <style>
++    @font-face {
++      font-family: 'Brand Font';
++      src: url('brand-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'Secondary Font';
++      src: url('secondary-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      background-color: #0f172a;
++      color: #f8fafc;
++      font-family: 'Secondary Font', system-ui, sans-serif;
++      font-size-adjust: from-font;
++    }
++
++    header h1 {
++      margin: 0 0 1rem;
++      font-family: 'Brand Font', system-ui, sans-serif;
++      font-size: 2.5rem;
++      font-size-adjust: from-font;
++    }
++
++    .ui-meta {
++      margin: 0 0 1.5rem;
++      color: #94a3b8;
++      font-family: 'Secondary Font', system-ui, sans-serif;
++    }
++
++    video {
++      display: block;
++      max-width: 100%;
++      height: auto;
++      border-radius: 0.5rem;
++      background-color: #1e293b;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Next-Gen Video Experience</h1>
++  </header>
++  <main>
++    <p class="ui-meta">Ultra-low latency streaming showcase</p>
++    <video
++      controls
++      width="1280"
++      height="720"
++      poster="poster.jpg"
++      preload="none"
++    >
++      <source src="video.webm" type="video/webm">
++      <source src="video.mp4" type="video/mp4">
++      <track src="captions.vtt" kind="captions" srclang="en" label="English">
++    </video>
++  </main>
++</body>
++</html>

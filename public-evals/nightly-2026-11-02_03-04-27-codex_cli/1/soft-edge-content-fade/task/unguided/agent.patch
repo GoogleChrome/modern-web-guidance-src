@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so the page background shows through. */
++    .paywall-container {
++      margin-top: 48px;
++      padding: 32px clamp(20px, 5vw, 56px) 40px;
++      background: white;
++      border-radius: 8px;
++      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
++    }
++
++    .paywall-container .exclusive-label {
++      display: inline-block;
++      margin-bottom: 12px;
++      padding: 4px 10px;
++      border-radius: 4px;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +226,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="exclusive-label">Exclusive preview</span>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>Great coffee starts long before the first sip. Step behind the counter for a taste of the small details our roasters use to bring every bean to life.</p>
++      <p><strong>Let the beans rest.</strong> Freshly roasted coffee needs time to release trapped gases. Giving it a little breathing room helps reveal a sweeter, more balanced cup.</p>
++      <p><strong>Follow the flavor.</strong> A bright, sharp cup can be a cue to grind a little finer; a dry, bitter finish may call for a coarser grind. Change one thing at a time and taste the difference.</p>
++      <p><strong>Make the ritual yours.</strong> Keep a few notes on your beans, grind, and brew time. The best recipe is the one that brings out the flavors you love, morning after morning.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,182 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // ---------------------------------------------------------------------
++    // WebMCP: expose a client-side "get_menu_item_details" tool to AI agents
++    // (navigator.modelContext). No-op in browsers without WebMCP support.
++    // ---------------------------------------------------------------------
++    (() => {
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          aliases: ['maple latte', 'oat latte', 'maple oat'],
++          category: 'Seasonal',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          sizes: [
++            { size: 'Small (12 oz)', price: 4.75 },
++            { size: 'Medium (16 oz)', price: 5.25 },
++            { size: 'Large (20 oz)', price: 5.75 }
++          ],
++          caffeineMg: { 'Small (12 oz)': 75, 'Medium (16 oz)': 150, 'Large (20 oz)': 150 },
++          temperature: ['hot', 'iced'],
++          dietary: ['vegan', 'dairy-free'],
++          allergens: ['oats (may contain gluten)'],
++          available: true,
++          url: '/menu/seasonal'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          aliases: ['espresso', 'dark roast', 'dark espresso', 'shot'],
++          category: 'Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          sizes: [
++            { size: 'Single shot', price: 2.75 },
++            { size: 'Double shot', price: 3.50 }
++          ],
++          caffeineMg: { 'Single shot': 75, 'Double shot': 150 },
++          temperature: ['hot'],
++          dietary: ['vegan', 'dairy-free', 'gluten-free'],
++          allergens: [],
++          available: true,
++          url: '/menu/espresso'
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          aliases: ['coldbrew', 'cold coffee', 'iced coffee'],
++          category: 'Cold Coffee',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          sizes: [
++            { size: 'Medium (16 oz)', price: 4.50 },
++            { size: 'Large (24 oz)', price: 5.25 }
++          ],
++          caffeineMg: { 'Medium (16 oz)': 200, 'Large (24 oz)': 300 },
++          temperature: ['iced'],
++          dietary: ['vegan', 'dairy-free', 'gluten-free'],
++          allergens: [],
++          available: true,
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      const normalize = (s) =>
++        String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
++
++      function findMenuItem(query) {
++        const q = normalize(query);
++        if (!q) return null;
++        const keys = (item) => [item.name, item.id, ...item.aliases].map(normalize);
++        // 1) exact name / id / alias match
++        let match = MENU_ITEMS.find((item) => keys(item).includes(q));
++        if (match) return match;
++        // 2) partial match in either direction (e.g. "latte", "the cold brew please")
++        match = MENU_ITEMS.find((item) =>
++          keys(item).some((k) => k.includes(q) || q.includes(k)));
++        if (match) return match;
++        // 3) every word of the query appears in the name or an alias
++        const words = q.split(' ');
++        return MENU_ITEMS.find((item) =>
++          keys(item).some((k) => words.every((w) => k.includes(w)))) || null;
++      }
++
++      const toolResult = (data, isError = false) => ({
++        content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
++        ...(isError ? { isError: true } : {})
++      });
++
++      const menuItemTool = {
++        name: 'get_menu_item_details',
++        description:
++          'Look up details for a single item on The Daily Grind coffee menu by its name. ' +
++          'Returns the item\'s description, category, available sizes with prices (USD), ' +
++          'caffeine content, hot/iced options, dietary info, allergens, availability, and a ' +
++          'link to its menu page. Matching is case-insensitive and tolerates partial names ' +
++          '(e.g. "latte" or "espresso"). If no item matches, the response lists all valid ' +
++          'item names so you can retry. Current items: ' +
++          MENU_ITEMS.map((i) => i.name).join(', ') + '.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description:
++                'The name of the menu item to look up, e.g. "Maple Oat Latte", ' +
++                '"Dark Roast Espresso", or "Cold Brew". Case-insensitive; partial names are accepted.'
++            }
++          },
++          required: ['name'],
++          additionalProperties: false
++        },
++        annotations: { readOnlyHint: true },
++        async execute({ name } = {}) {
++          if (typeof name !== 'string' || !name.trim()) {
++            return toolResult({
++              error: 'The "name" parameter is required and must be a non-empty string.',
++              availableItems: MENU_ITEMS.map((i) => i.name)
++            }, true);
++          }
++          const item = findMenuItem(name);
++          if (!item) {
++            return toolResult({
++              error: `No menu item found matching "${name}".`,
++              availableItems: MENU_ITEMS.map((i) => i.name)
++            }, true);
++          }
++          const { aliases, ...details } = item;
++          return toolResult({
++            ...details,
++            url: new URL(item.url, location.origin).href
++          });
++        }
++      };
++
++      // --- Registration lifecycle -------------------------------------------
++      let registration = null; // { controller, handle }
++
++      function registerMenuTool() {
++        const mc = navigator.modelContext;
++        if (!mc || typeof mc.registerTool !== 'function' || registration) return;
++        const controller = new AbortController();
++        try {
++          // Newer spec: unregister via AbortSignal. Older drafts return an
++          // object with unregister(); both are handled in unregisterMenuTool().
++          const handle = mc.registerTool(menuItemTool, { signal: controller.signal });
++          registration = { controller, handle };
++        } catch (err) {
++          console.warn('[WebMCP] Failed to register get_menu_item_details:', err);
++        }
++      }
++
++      function unregisterMenuTool() {
++        if (!registration) return;
++        const { controller, handle } = registration;
++        registration = null;
++        try {
++          controller.abort();
++          if (handle && typeof handle.unregister === 'function') {
++            handle.unregister();
++          } else if (typeof navigator.modelContext?.unregisterTool === 'function') {
++            navigator.modelContext.unregisterTool(menuItemTool.name);
++          }
++        } catch (err) {
++          // Already unregistered (e.g. by the abort signal) — nothing to do.
++        }
++      }
++
++      registerMenuTool();
++
++      // Deactivate when the page is unloaded. "pagehide" fires reliably on
++      // navigation/close (unlike "unload") and is bfcache-friendly; if the page
++      // is restored from the back/forward cache, register the tool again.
++      window.addEventListener('pagehide', unregisterMenuTool);
++      window.addEventListener('pageshow', (e) => { if (e.persisted) registerMenuTool(); });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

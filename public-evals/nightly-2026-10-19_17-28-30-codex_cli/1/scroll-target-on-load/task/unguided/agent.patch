@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,47 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .media-scroll {
++      height: 460px;
++      overflow-y: auto;
++      overflow-anchor: none;
++      scroll-behavior: auto;
++      visibility: hidden;
++      margin-top: 20px;
++      padding: 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-scroll:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      max-width: 640px;
++      margin: 0 auto 20px;
++      padding: 0;
++      overflow: hidden;
++    }
++
++    .media-card:last-child {
++      margin-bottom: 0;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++    }
++
++    .media-card .card-content {
++      padding: 20px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -152,8 +191,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <noscript>
++    <style>.media-scroll { visibility: visible; }</style>
++  </noscript>
+ </head>
+ 
+ <body>
+ 
+@@ -175,26 +217,61 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-scroll" tabindex="0" role="region" aria-labelledby="seasonal-heading">
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&h=200&q=80" width="640" height="200" alt="Iced latte served in a glass">
++          <div class="card-content">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&h=200&q=80" width="640" height="200" alt="Freshly brewed espresso in a small cup">
++          <div class="card-content">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="card media-card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&h=200&q=80" width="640" height="200" alt="Cold coffee poured over ice">
++          <div class="card-content">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=640&h=200&q=80" width="640" height="200" alt="Cappuccino topped with milk foam art">
++          <div class="card-content">
++            <h3>Classic Cappuccino</h3>
++            <p>Rich espresso under a cloud of velvety milk foam.</p>
++            <a href="/menu/cappuccino" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&h=200&q=80" width="640" height="200" alt="Fresh coffee prepared with a pour-over brewer">
++          <div class="card-content">
++            <h3>House Pour-Over</h3>
++            <p>A slow-brewed cup that brings out every delicious detail.</p>
++            <a href="/menu/pour-over" class="btn">View Details</a>
++          </div>
++        </article>
+       </div>
++      <script>
++        // Run synchronously while hidden so the first paint has the final position.
++        // Explicit image dimensions keep this position stable as photos load.
++        const mediaScroll = document.querySelector('.media-scroll');
++        const targetCard = mediaScroll.querySelector('.target');
++        mediaScroll.scrollTop = targetCard.getBoundingClientRect().top
++          - mediaScroll.getBoundingClientRect().top - mediaScroll.clientTop
++          - parseFloat(getComputedStyle(mediaScroll).paddingTop);
++        mediaScroll.style.visibility = 'visible';
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

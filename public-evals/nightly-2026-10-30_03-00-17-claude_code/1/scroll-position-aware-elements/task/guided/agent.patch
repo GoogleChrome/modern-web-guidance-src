@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -20,8 +20,11 @@
+       padding: 0;
+     }
+ 
+     body {
++      display: flex;
++      flex-direction: column;
++      height: 100dvh;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -137,9 +140,10 @@
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      /* Extra bottom space so the floating button never covers footer text */
++      padding: 40px 20px 88px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -151,8 +155,98 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container */
++    .scroller {
++      flex: 1;
++      overflow-y: auto;
++      /* Lets descendants query whether this container has been scrolled */
++      container-type: scroll-state;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    /* Back to top: sticky to the scroller's bottom edge. The negative top
++       margin cancels its own height plus margins so it takes no layout space. */
++    .back-to-top {
++      position: sticky;
++      bottom: 24px;
++      z-index: 10;
++      display: grid;
++      place-items: center;
++      width: 48px;
++      height: 48px;
++      margin: -72px 24px 24px auto;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 1.4rem;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      /* Visible by default for browsers with neither scroll-state queries nor JS */
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        translate 0.3s ease,
++        background 0.3s;
++    }
++
++    .back-to-top:hover {
++      background: #3e2723;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Hidden state: visibility (not just opacity) removes it from the tab order */
++    @supports (container-type: scroll-state) {
++      .back-to-top {
++        visibility: hidden;
++        opacity: 0;
++        translate: 0 20px;
++      }
++
++      @container scroll-state(scrollable: top) {
++        .back-to-top {
++          visibility: visible;
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++    }
++
++    /* IntersectionObserver fallback (class set by script below) */
++    .scroller.js-scroll-aware .back-to-top {
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++    }
++
++    .scroller.js-scroll-aware.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top {
++        translate: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,9 +261,12 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <div class="scroller">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
++
++  <header class="hero" id="top">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -206,7 +303,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <a href="#top" class="back-to-top" aria-label="Back to top">&uarr;</a>
++  </div>
++
++  <script>
++    // Fallback for browsers without container scroll-state queries
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const scroller = document.querySelector('.scroller');
++      const sentinel = scroller.querySelector('.scroll-sentinel');
++      scroller.classList.add('js-scroll-aware');
++
++      new IntersectionObserver(([entry]) => {
++        // Sentinel out of view means the user has scrolled down
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller }).observe(sentinel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

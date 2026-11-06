@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,16 +106,90 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @property --inner-size {
++      syntax: '<length>';
++      initial-value: 0px;
++      inherits: true;
++    }
++
++    @property --outer-size {
++      syntax: '<length>';
++      initial-value: 0px;
++      inherits: true;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .product-card {
++      position: relative;
++      overflow: hidden;
++      padding: 36px 20px 36px;
++      --mouse-x: 0px;
++      --mouse-y: 0px;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      transition: --inner-size 0.3s ease, --outer-size 0.3s ease;
++    }
++
++    .product-card:hover {
++      --inner-size: 70px;
++      --outer-size: 150px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition: --inner-size 0s, --outer-size 0s;
++      }
++    }
++
++    .spotlight-overlay {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++      user-select: none;
++      border-radius: inherit;
++      border: 2px solid var(--accent);
++      background: rgba(255, 171, 64, 0.16);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      padding: 8px 14px;
++      -webkit-mask-image: radial-gradient(
++        circle at var(--mouse-x) var(--mouse-y),
++        black var(--inner-size),
++        transparent var(--outer-size)
++      );
++      mask-image: radial-gradient(
++        circle at var(--mouse-x) var(--mouse-y),
++        black var(--inner-size),
++        transparent var(--outer-size)
++      );
++    }
++
++    .spotlight-meta {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.75rem;
++      font-weight: 700;
++      color: var(--primary);
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .spotlight-notes {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,22 +251,43 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="spotlight-overlay" aria-hidden="true">
++            <div class="spotlight-meta">
++              <span>12 oz • Medium Roast</span>
++              <span>$5.50</span>
++            </div>
++            <div class="spotlight-notes">Notes: Pure Vermont Maple • Toasted Oat • Warm Cinnamon</div>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="spotlight-overlay" aria-hidden="true">
++            <div class="spotlight-meta">
++              <span>Double Shot • Dark Roast</span>
++              <span>$3.75</span>
++            </div>
++            <div class="spotlight-notes">Notes: Dark Cocoa • Roasted Walnut • Caramelized Sugar</div>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="spotlight-overlay" aria-hidden="true">
++            <div class="spotlight-meta">
++              <span>16 oz • Slow Steeped</span>
++              <span>$4.75</span>
++            </div>
++            <div class="spotlight-notes">Notes: Velvety Chocolate • Sweet Molasses • Smooth Finish</div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +301,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      const updateSpotlight = (event) => {
++        const rect = card.getBoundingClientRect();
++        const x = event.clientX - rect.left;
++        const y = event.clientY - rect.top;
++        card.style.setProperty('--mouse-x', `${x}px`);
++        card.style.setProperty('--mouse-y', `${y}px`);
++      };
++
++      card.addEventListener('pointermove', updateSpotlight);
++      card.addEventListener('mousemove', updateSpotlight);
++      card.addEventListener('pointerenter', updateSpotlight);
++      card.addEventListener('mouseenter', updateSpotlight);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

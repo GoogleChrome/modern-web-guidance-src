@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+index 1bacf96..a8656f2 100644
+--- a/index.html
++++ b/index.html
+@@ -29,7 +29,8 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      --surface: var(--primary);
++      background: var(--surface);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -56,14 +57,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    nav a:hover,
++    nav a:focus-visible {
++      text-decoration: underline;
+     }
+ 
+     .logout-link {
+@@ -121,21 +122,24 @@
+     }
+ 
+     .btn {
++      --surface: var(--primary);
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--surface);
++      color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      --surface: #3e2723;
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      --surface: var(--secondary);
++      background: var(--surface);
++      color: black;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +151,29 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Dynamic fallback for browsers with relative colors but no contrast-color().
++       XYZ's y is relative luminance; 0.1791287847 is where black and white
++       have equal contrast. D65 white is (0.9504559271, 1, 1.0890577508). */
++    @supports (color: color(from red xyz-d65 max(0, sign(0.1791287847 - y)) 0 0)) {
++      nav, .btn, footer {
++        --contrast-light: max(0, sign(0.1791287847 - y));
++        color: color(from var(--surface) xyz-d65
++          calc(0.9504559271 * var(--contrast-light))
++          var(--contrast-light)
++          calc(1.0890577508 * var(--contrast-light)) / 1);
++      }
++    }
++
++    @supports (color: contrast-color(red)) {
++      nav, .btn, footer {
++        color: contrast-color(var(--surface));
++      }
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -10,8 +10,9 @@
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
+     }
+ 
+     * {
+@@ -134,8 +135,118 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-block-start: 48px;
++    }
++
++    .reviews-section h2 {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    .scroller {
++      height: 360px;
++      overflow-y: auto;
++      container-type: scroll-state;
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: sticky;
++      left: 0;
++      right: 0;
++      height: 32px;
++      opacity: 0;
++      transition: opacity 0.2s;
++      pointer-events: none;
++      z-index: 1;
++    }
++
++    .indicator-top {
++      top: 0;
++      margin-block-end: -32px;
++      background: linear-gradient(to bottom, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      margin-block-start: -32px;
++      background: linear-gradient(to top, rgba(78, 52, 46, 0.25), transparent);
++    }
++
++    @container scroll-state(scrollable: top) {
++      .indicator-top {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: bottom) {
++      .indicator-bottom {
++        opacity: 1;
++      }
++    }
++
++    .sentinel-top,
++    .sentinel-bottom {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    .scroller.scrolled-down .indicator-top {
++      opacity: 1;
++    }
++
++    .scroller.can-scroll-down .indicator-bottom {
++      opacity: 1;
++    }
++
++    .reviews-list {
++      list-style: none;
++      padding: 16px 24px;
++    }
++
++    .review-item {
++      padding-block: 16px;
++    }
++
++    .review-item:not(:last-child) {
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-block-end: 6px;
++      gap: 12px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .review-rating {
++      color: var(--accent);
++      font-size: 0.95rem;
++      letter-spacing: 1px;
++    }
++
++    .review-meta {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      margin-block-end: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +305,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section">
++      <h2>Customer Reviews</h2>
++      <div class="scroller">
++        <div class="sentinel-top" aria-hidden="true"></div>
++        <div class="indicator-top" aria-hidden="true"></div>
++        <ul class="reviews-list" role="list">
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">Elena Rostova</h3>
++              <span class="review-rating" role="img" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-meta">Ordered: Maple Oat Latte &middot; 2 days ago</p>
++            <p>The Maple Oat Latte has completely ruined other coffee shops for me. The real Vermont maple comes through without being overly sweet, and the espresso balance is spot on.</p>
++          </li>
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">Marcus Vance</h3>
++              <span class="review-rating" role="img" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-meta">Ordered: Dark Roast Espresso &middot; 5 days ago</p>
++            <p>Rich, chocolatey crema and zero bitterness. I pick up a bag of whole beans every Friday morning—easily the most consistent roast in town.</p>
++          </li>
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">Priya Nair</h3>
++              <span class="review-rating" role="img" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++            </div>
++            <p class="review-meta">Ordered: Cold Brew &middot; 1 week ago</p>
++            <p>Super smooth cold brew that doesn't even need milk or sugar. The morning line moves fast and the baristas always remember my order.</p>
++          </li>
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">David Kim</h3>
++              <span class="review-rating" role="img" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-meta">Ordered: Pour-Over Single Origin &middot; 2 weeks ago</p>
++            <p>Tried the Ethiopian single-origin pour-over on a whim and was blown away by the floral and bergamot notes. Cozy atmosphere for reading or catching up with friends.</p>
++          </li>
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">Hannah Abbott</h3>
++              <span class="review-rating" role="img" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-meta">Ordered: Maple Oat Latte &middot; 3 weeks ago</p>
++            <p>Warm, welcoming space and the pastries pair wonderfully with the seasonal drinks. Highly recommend grabbing a seat by the window on a rainy morning.</p>
++          </li>
++          <li class="review-item">
++            <div class="review-header">
++              <h3 class="review-author">Liam O'Connor</h3>
++              <span class="review-rating" role="img" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-meta">Ordered: Cold Brew &middot; 1 month ago</p>
++            <p>That 18-hour steep makes all the difference. Bold caffeine kick with a silky finish—my go-to afternoon pick-me-up.</p>
++          </li>
++        </ul>
++        <div class="indicator-bottom" aria-hidden="true"></div>
++        <div class="sentinel-bottom" aria-hidden="true"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +377,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const topSentinel = document.querySelector('.sentinel-top');
++      const bottomSentinel = document.querySelector('.sentinel-bottom');
++      const scroller = document.querySelector('.scroller');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach((entry) => {
++          if (entry.target === topSentinel) {
++            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
++          }
++          if (entry.target === bottomSentinel) {
++            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
++          }
++        });
++      }, { root: scroller });
++
++      observer.observe(topSentinel);
++      observer.observe(bottomSentinel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

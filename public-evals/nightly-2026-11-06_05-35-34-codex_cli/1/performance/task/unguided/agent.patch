@@ -1,0 +1,50 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,45 @@
++# Daily Grind performance audit
++
++## Scope and findings
++
++Audited the complete checkout: one static HTML page, inline CSS, system fonts, and one external hero background. No application JavaScript, hydration, third-party scripts, font downloads, interaction handlers, or build pipeline exist. No browser, server, or server entrypoint was used. This is a source and asset audit; LCP, INP, CLS, TTFB, and Lighthouse scores have **not** been measured.
++
++The main loading opportunity was the CSS hero background: a single 1350-pixel image on Unsplash, with no responsive selection or explicit priority. The original URL returned 157,968 bytes during this audit; its `auto=format` response can vary by client. Remote image delivery also required a separate origin connection. The page's inline styles and system fonts already avoid additional blocking stylesheet and font requests.
++
++The desktop navigation could exceed a narrow viewport. Its sticky positioning also consumed mobile screen space. No slow JavaScript interaction can be established from this source. All 13 navigation destinations are absent from the checkout; backend routing and destination response times remain unverified. A missing destination or slow navigation response is distinct from INP, which measures interaction responsiveness on the current page.
++
++## Changes
++
++- Reused the existing stock photograph as local WebP variants. No third-party requests remain in page resources.
++- Replaced the CSS background with an early, parser-discoverable `img`, using `srcset`, `sizes`, `fetchpriority="high"`, and eager loading. No redundant preload is needed for this image in the initial markup. Decorative empty alt text preserves the background's semantics.
++- Preserved the centered cover image, dark overlay, colors, content, and native links. Explicit image dimensions and a hero height independent of image download reserve space. A minimum hero height keeps text and the CTA inside the hero on short screens.
++- Wrapped navigation with stable CSS breakpoints and retained sticky navigation on desktop. Increased link target space, added visible keyboard focus, and respected reduced motion. No JavaScript was introduced.
++- Made the card grid fit viewports narrower than its previous 250-pixel minimum track size.
++- Added a dependency-free offline resource inventory and byte budgets: `npm run audit:performance`. It checks resource availability, WebP signatures, third-party dependencies, HTML size, and individual resource sizes. Missing application routes are reported separately because deployment routing is unknown.
++
++## Asset measurements
++
++| Hero candidate | Bytes | Compared with original response |
++| --- | ---: | ---: |
++| Original remote URL | 157,968 | baseline |
++| 480 × 320 WebP | 25,812 | 83.7% smaller |
++| 960 × 640 WebP | 72,892 | 53.9% smaller |
++| 1440 × 960 WebP | 139,080 | 12.0% smaller |
++| 1920 × 1280 WebP | 177,082 | 12.1% larger, higher resolution |
++
++The browser selects one candidate according to viewport, pixel density, and its own heuristics; mobile devices do not necessarily select the smallest file. The 1920 candidate intentionally trades bytes for detail on larger or denser displays. These are uncompressed file sizes, not measured transfer timings or CWV gains. HTML gzip/Brotli sizes printed by the script are estimates; they do not prove deployment compression is enabled.
++
++## Deployment follow-up
++
++1. Configure compression for HTML on the actual host and verify cache headers. Keep HTML revalidatable. Images can use a long cache lifetime only with a versioning policy; current descriptive filenames must be renamed when their contents change before enabling immutable caching. WebP does not benefit materially from additional gzip.
++2. Verify the 13 destination routes on the deployed application, especially ordering, account, and logout. This checkout contains no route implementation or authentication backend to optimize.
++3. Use deployed field data (Search Console/CrUX or consent-appropriate real-user monitoring) to assess the 75th percentile by device: LCP ≤2.5 seconds, INP ≤200 ms, CLS ≤0.1. No monitoring script or endpoint was added without an existing telemetry integration. Hosting latency, caching, and destination performance cannot be inferred from source.
++4. If field data still shows image-related LCP delays, compare candidate selection and image quality before adding further formats or preloads. Investigate server response time if TTFB dominates. Preserve this page's zero-JavaScript baseline.
++
++Guidance: [Optimize LCP](https://web.dev/articles/optimize-lcp), [Responsive images](https://web.dev/learn/design/responsive-images), [Core Web Vitals report](https://support.google.com/webmasters/answer/9205520).
++
++## Image provenance
++
++Existing stock image: https://images.unsplash.com/photo-1495474472287-4d71bcdd2085
++
++Variants downloaded with `fm=webp&fit=crop&w=WIDTH&h=HEIGHT&q=70`, except the 1920-pixel variant uses `q=55`. Dimensions and byte sizes were verified offline. The image is served locally at runtime.

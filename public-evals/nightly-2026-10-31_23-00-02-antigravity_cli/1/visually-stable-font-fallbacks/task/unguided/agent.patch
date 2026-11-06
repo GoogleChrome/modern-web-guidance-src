@@ -1,0 +1,32 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,16 +13,27 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @font-face {
++      font-family: 'CustomFontFallback';
++      src: local('Segoe UI'), local('Tahoma'), local('Geneva'), local('Verdana'), local('Arial');
++      font-display: swap;
++      size-adjust: 100%;
++      ascent-override: 95%;
++      descent-override: 25%;
++      line-gap-override: 0%;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Segoe UI', 'CustomFontFallback', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: 0.52;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }

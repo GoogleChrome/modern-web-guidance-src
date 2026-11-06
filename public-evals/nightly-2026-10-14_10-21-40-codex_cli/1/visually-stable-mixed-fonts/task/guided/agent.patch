@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,92 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#f7f8fa">
++  <title>Type Study — Mixed fonts, in harmony</title>
++  <style>
++    :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #202938; background: #f7f8fa; }
++    * { box-sizing: border-box; }
++    body { margin: 0; }
++    .topbar { max-width: 1200px; margin: auto; padding: 28px 44px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e1e5eb; }
++    .brand { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 700; letter-spacing: -.5px; }
++    .brand-mark { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 9px; background: #295bd5; color: white; font-family: Georgia, serif; font-size: 22px; }
++    .topbar-label { font-size: 12px; color: #748094; }
++    main { max-width: 1050px; margin: 0 auto; padding: 66px 32px 32px; }
++    .eyebrow { color: #295bd5; text-transform: uppercase; font-size: 11px; letter-spacing: 2px; font-weight: 700; }
++    h1 { font-size: clamp(34px, 5vw, 52px); letter-spacing: -2px; line-height: 1.12; margin: 18px 0; font-weight: 600; }
++    .intro { font-size: 16px; line-height: 1.7; color: #738093; max-width: 580px; margin: 0; }
++    .cards { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: 43px; }
++    .card { background: white; border: 1px solid #dfe4ec; border-radius: 14px; overflow: hidden; }
++    .card-header { padding: 24px 26px 21px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
++    .number { font-size: 11px; color: #8b96a6; letter-spacing: 1px; margin-bottom: 10px; }
++    h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.4px; }
++    .badge { background: #edf3ff; color: #315fbe; border: 1px solid #e0eaff; font-size: 10px; padding: 5px 8px; border-radius: 5px; white-space: nowrap; }
++    .preview { margin: 0 18px; padding: 29px 25px; min-height: 225px; background: #f7f9fc; border: 1px solid #e9edf4; border-radius: 8px; }
++    .preview-label { text-transform: uppercase; letter-spacing: 1.5px; font-size: 9px; color: #8793a5; margin-bottom: 22px; }
++    #mixed-fonts-container { font-family: Arial, Helvetica, sans-serif; font-size: 19px; line-height: 1.85; margin: 0; font-size-adjust: from-font; }
++    #mixed-fonts-container code { font-family: Consolas, 'Liberation Mono', monospace; font-size: 1em; background: #e8eefb; color: #315fbe; padding: 2px 5px; border-radius: 4px; }
++    #independent-theme-container { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; line-height: 1.65; font-size-adjust: 0.5; color: #444a5a; }
++    #independent-theme-container p { margin: 0; }
++    .theme-preview { background: #faf8f3; border-color: #ede9df; }
++    .theme-preview .preview-label { font-family: Arial, Helvetica, sans-serif; font-size-adjust: none; }
++    .snippet { margin: 20px 26px 0; font-family: Consolas, 'Liberation Mono', monospace; font-size: 12px; color: #47546b; line-height: 1.8; }
++    .property { color: #295bd5; }
++    .description { margin: 14px 26px 24px; font-size: 12px; line-height: 1.7; color: #7b8798; }
++    .note { display: flex; gap: 14px; align-items: flex-start; padding: 22px 24px; margin-top: 25px; border: 1px solid #e1e6ee; border-radius: 10px; }
++    .info { flex-shrink: 0; border: 1px solid #98a6ba; border-radius: 50%; width: 17px; height: 17px; text-align: center; font-size: 12px; color: #748094; }
++    .note h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
++    .note p { margin: 0; font-size: 12px; line-height: 1.7; color: #7b8798; }
++    footer { display: flex; justify-content: space-between; margin-top: 46px; padding-top: 20px; border-top: 1px solid #e1e5eb; color: #8b96a6; font-size: 10px; }
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container { line-height: 1.9; }
++      #mixed-fonts-container code { font-size: .98em; }
++    }
++    @supports not (font-size-adjust: 0.5) {
++      #independent-theme-container { font-size: 24px; line-height: 1.6; }
++    }
++    @media (max-width: 720px) {
++      .topbar { padding: 22px 24px; }
++      main { padding: 44px 24px 24px; }
++      .cards { grid-template-columns: 1fr; margin-top: 30px; }
++      .preview { min-height: auto; }
++      .topbar-label { font-size: 10px; }
++      footer { gap: 16px; }
++    }
++  </style>
++</head>
++<body>
++  <header class="topbar">
++    <div class="brand"><span class="brand-mark" aria-hidden="true">Aa</span> type study<span style="color:#9ca6b6">.</span></div>
++    <span class="topbar-label">A little exploration of modern CSS</span>
++  </header>
++  <main>
++    <div class="eyebrow">Typography / Experiment 01</div>
++    <h1>Different fonts. Same rhythm.</h1>
++    <p class="intro">Bring mixed typefaces into balance with CSS. Consistent visual height, even when the font family changes.</p>
++    <div class="cards">
++      <section class="card" aria-labelledby="mixed-title">
++        <div class="card-header"><div><div class="number">01 / MIXED FONTS</div><h2 id="mixed-title">Automatically in harmony</h2></div><span class="badge">from-font</span></div>
++        <div class="preview">
++          <div class="preview-label">Live text preview</div>
++          <p id="mixed-fonts-container">Good typography makes the details feel effortless. Even inline code like <code>font-size-adjust</code> belongs in the flow.</p>
++        </div>
++        <div class="snippet"><span class="property">font-size-adjust</span>: from-font;</div>
++        <p class="description">The primary font sets the x-height. Inline code inherits that ratio, keeping both typefaces visually aligned.</p>
++      </section>
++      <section class="card" aria-labelledby="theme-title">
++        <div class="card-header"><div><div class="number">02 / INDEPENDENT THEME</div><h2 id="theme-title">A rhythm of its own</h2></div><span class="badge">0.5</span></div>
++        <div id="independent-theme-container" class="preview theme-preview">
++          <div class="preview-label">Editorial theme</div>
++          <p>“Type is the voice of the written word. Give it room to speak.”</p>
++        </div>
++        <div class="snippet"><span class="property">font-size-adjust</span>: 0.5;</div>
++        <p class="description">An explicit ratio sets the lowercase height to half the font size, giving this theme its own consistent proportions.</p>
++      </section>
++    </div>
++    <aside class="note"><span class="info" aria-hidden="true">i</span><div><h3>Small letters, big difference</h3><p>Fonts with the same font size can look surprisingly different. The x-height is the height of a lowercase “x” — font-size-adjust uses it to keep text visually consistent.</p></div></aside>
++    <footer><span>Built with native CSS. No scripts required.</span><span>TYPE STUDY — 001</span></footer>
++  </main>
++</body>
++</html>

@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,118 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f7f6f2">
++  <title>Type / Form — A study in balance</title>
++  <style>
++    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap');
++    :root { color-scheme: light; --paper:#f7f6f2; --ink:#252922; --muted:#7b7e73; --line:#dedfd5; --green:#435a35; }
++    * { box-sizing:border-box; }
++    body { margin:0; background:var(--paper); color:var(--ink); font-family:'DM Sans',sans-serif; -webkit-font-smoothing:antialiased; }
++    button, a { -webkit-tap-highlight-color:transparent; }
++    button { font:inherit; }
++    .shell { max-width:1240px; margin:auto; padding:0 48px; }
++    header { height:104px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
++    .brand { text-decoration:none; color:var(--ink); font-size:23px; font-weight:650; letter-spacing:-1.2px; display:flex; align-items:center; gap:13px; }
++    .brand-mark { display:grid; place-items:center; width:30px; height:30px; background:var(--green); color:white; border-radius:50%; font-family:Georgia,serif; font-size:23px; font-style:italic; font-weight:400; }
++    nav { display:flex; align-items:center; gap:31px; font-size:13px; }
++    nav a { color:var(--muted); text-decoration:none; }
++    nav a.active { color:var(--ink); }
++    .edition { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1px; border:1px solid var(--line); border-radius:5px; padding:8px 11px; }
++    main { padding:65px 0 50px; }
++    .eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--green); display:flex; align-items:center; gap:9px; }
++    .dot { height:6px; width:6px; border-radius:100%; background:#6f8659; display:inline-block; }
++    .intro { display:flex; justify-content:space-between; align-items:flex-end; margin:19px 0 42px; gap:30px; }
++    h1 { font-size:clamp(36px,4.6vw,57px); line-height:1.13; font-weight:450; letter-spacing:-2.7px; margin:0; }
++    .intro p { font-size:14px; color:var(--muted); line-height:1.7; margin:0 0 4px; max-width:290px; }
++    .grid { display:grid; grid-template-columns:1.35fr 1fr; gap:22px; align-items:stretch; }
++    .panel { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fcfbf8; }
++    .panel-label { display:flex; align-items:center; justify-content:space-between; padding:21px 24px; font-size:11px; border-bottom:1px solid var(--line); }
++    .label-title { display:flex; align-items:center; gap:12px; font-weight:500; }
++    .number { font:10px 'IBM Plex Mono',monospace; color:#93968b; }
++    .tag { font:9px 'IBM Plex Mono',monospace; color:var(--green); background:#ebeee4; border:1px solid #dfe5d5; border-radius:4px; padding:5px 7px; }
++    .specimen { padding:37px 32px 29px; }
++    .small-label { color:var(--muted); font:9px 'IBM Plex Mono',monospace; letter-spacing:1.4px; text-transform:uppercase; }
++    #mixed-fonts-container { font-family:'DM Sans',sans-serif; font-size:29px; line-height:1.65; letter-spacing:-.85px; margin:23px 0 28px; font-size-adjust:from-font; }
++    #mixed-fonts-container code { font-family:'IBM Plex Mono',monospace; font-size:1em; font-size-adjust:inherit; color:#4e623d; background:#edf0e5; border:1px solid #e1e6d5; border-radius:5px; padding:3px 7px; letter-spacing:-.7px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
++    .font-key { display:flex; gap:20px; font-size:10px; color:var(--muted); padding-bottom:28px; }
++    .font-key span { display:flex; align-items:center; gap:7px; }
++    .swatch { width:7px; height:7px; border-radius:2px; background:#b5baab; }
++    .swatch.code { background:#78915d; }
++    .baseline { height:83px; position:relative; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); padding-top:8px; }
++    .baseline:after { content:''; position:absolute; top:50px; left:0; right:0; border-top:1px dashed #c9d0bc; }
++    .letters { font-size:42px; letter-spacing:-2px; line-height:1; background:linear-gradient(transparent 46%,#edf0e6 46%,#edf0e6 83%,transparent 83%); }
++    .letters.mono { font-family:'IBM Plex Mono',monospace; font-size-adjust:from-font; }
++    .measure { font:9px 'IBM Plex Mono',monospace; color:var(--muted); align-self:flex-end; margin-bottom:4px; }
++    .code-bar { background:#f0f0e9; padding:18px 23px; border-top:1px solid var(--line); color:#6e7466; font:10px/1.7 'IBM Plex Mono',monospace; }
++    .code-bar b { color:var(--green); font-weight:500; }
++    .theme-wrap { padding:19px; }
++    #independent-theme-container { font-size-adjust:0.5; aspect-ratio:4 / 3; background:#e9eddf; border:1px solid #dfe5d4; border-radius:7px; position:relative; padding:26px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; }
++    .theme-top { display:flex; justify-content:space-between; color:#69745b; font:9px 'IBM Plex Mono',monospace; letter-spacing:1px; }
++    .theme-symbol { position:absolute; width:150px; height:150px; right:-32px; top:64px; border:1px solid #c5ceb7; border-radius:50%; }
++    .theme-symbol:before,.theme-symbol:after { content:''; position:absolute; inset:16px; border:1px solid #c5ceb7; border-radius:50%; }
++    .theme-symbol:after { inset:33px; }
++    .theme-content { position:relative; padding-top:28px; }
++    .theme-content h2 { font-family:Georgia,serif; font-size:40px; line-height:1.08; font-weight:400; letter-spacing:-1.6px; margin:0 0 15px; color:#3c4d30; }
++    .theme-content p { font-size:12px; line-height:1.65; color:#6a755f; max-width:240px; margin:0; }
++    .theme-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:25px; color:#68765b; font:9px 'IBM Plex Mono',monospace; }
++    .theme-bottom code { background:#dce3cf; padding:5px 7px; border-radius:3px; font-family:inherit; }
++    .theme-note { margin:18px 4px 3px; color:var(--muted); font-size:11px; line-height:1.7; }
++    .theme-note code { font:10px 'IBM Plex Mono',monospace; color:#555e4b; }
++    .details { margin-top:27px; display:grid; grid-template-columns:repeat(3,1fr); gap:32px; padding:27px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
++    .detail { display:flex; gap:12px; }
++    .detail-icon { width:25px; height:25px; flex-shrink:0; border:1px solid #dce1d3; border-radius:6px; display:grid; place-items:center; color:#63764e; font-size:13px; }
++    .detail h3 { margin:2px 0 6px; font-size:12px; font-weight:500; }
++    .detail p { margin:0; font-size:11px; color:var(--muted); line-height:1.65; }
++    footer { display:flex; justify-content:space-between; color:#8b8e82; font:9px 'IBM Plex Mono',monospace; padding:27px 0 30px; }
++    footer span:last-child { display:flex; align-items:center; gap:7px; }
++    @media(min-width:1100px) { .theme-wrap { padding:22px; } }
++    @media(max-width:800px) { .shell { padding:0 24px; } header { height:80px; } .edition { display:none; } nav { gap:19px; } main { padding-top:40px; } .intro { align-items:flex-start; flex-direction:column; gap:18px; margin-bottom:30px; } .intro p { max-width:380px; } .grid { grid-template-columns:1fr; } .details { grid-template-columns:1fr; gap:22px; } #independent-theme-container { max-height:none; } h1 { letter-spacing:-1.5px; } }
++    @media(prefers-reduced-motion:no-preference) { .panel { animation:appear .55s ease-out both; } .panel:nth-child(2) { animation-delay:.1s; } @keyframes appear { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } } }
++  </style>
++</head>
++<body>
++  <div class="shell">
++    <header>
++      <a class="brand" href="./" aria-label="Type Form home"><span class="brand-mark">t</span>type / form</a>
++      <nav aria-label="Main navigation"><a class="active" href="#specimens">The playground</a><a href="#principles">How it works ↗</a><span class="edition">EXPERIMENT 001</span></nav>
++    </header>
++    <main>
++      <div class="eyebrow"><span class="dot"></span> A small study in typography</div>
++      <div class="intro"><h1>Different fonts.<br>Common ground.</h1><p>A little harmony for mixed typography.<br>Native CSS. Thoughtful proportions.<br>Everything in its right place.</p></div>
++      <section class="grid" id="specimens" aria-label="Typography specimens">
++        <article class="panel">
++          <div class="panel-label"><span class="label-title"><span class="number">01 /</span> Mixed company</span><span class="tag">AUTO-ADJUSTED</span></div>
++          <div class="specimen">
++            <span class="small-label">One paragraph. Two personalities.</span>
++            <p id="mixed-fonts-container">Good typography makes room for everyone. Even a little <code>inline code</code> should feel at home. With <code>font-size-adjust</code>, different fonts find their balance.</p>
++            <div class="font-key"><span><i class="swatch"></i> DM Sans · Regular</span><span><i class="swatch code"></i> IBM Plex Mono · Code</span></div>
++            <div class="baseline" aria-label="Font height comparison"><span class="letters">Aa Bb</span><span class="measure">A SHARED X-HEIGHT</span><span class="letters mono">Aa Bb</span></div>
++          </div>
++          <div class="code-bar">font-size-adjust: <b>from-font</b>;</div>
++        </article>
++        <article class="panel">
++          <div class="panel-label"><span class="label-title"><span class="number">02 /</span> A world of its own</span><span class="tag">INDEPENDENT</span></div>
++          <div class="theme-wrap">
++            <div id="independent-theme-container">
++              <div class="theme-top"><span>THE BOTANICAL EDITION</span><span>↗</span></div>
++              <div class="theme-symbol" aria-hidden="true"></div>
++              <div class="theme-content"><h2>Naturally<br>in proportion.</h2><p>A different voice, with its own rhythm.<br>A self-contained theme that sets<br>its own typographic rules.</p></div>
++              <div class="theme-bottom"><code>aspect value: 0.5</code><span>4 : 3</span></div>
++            </div>
++            <p class="theme-note">An explicit <code>0.5</code> font aspect value gives this theme its own balance, inside a fixed <code>4 / 3</code> frame.</p>
++          </div>
++          <div class="code-bar">font-size-adjust: <b>0.5</b>; &nbsp; aspect-ratio: <b>4 / 3</b>;</div>
++        </article>
++      </section>
++      <section class="details" id="principles" aria-label="How it works">
++        <div class="detail"><span class="detail-icon" aria-hidden="true">↕</span><div><h3>Optically in sync</h3><p>Match the perceived height of mixed fonts,<br>so every character belongs.</p></div></div>
++        <div class="detail"><span class="detail-icon" aria-hidden="true">⌘</span><div><h3>Let the browser do the math</h3><p>The first available font sets the reference.<br>CSS takes care of the rest.</p></div></div>
++        <div class="detail"><span class="detail-icon" aria-hidden="true">◈</span><div><h3>Room for independence</h3><p>Override the inherited value to give a theme<br>its own consistent proportions.</p></div></div>
++      </section>
++      <footer><span>TYPE / FORM — EXPLORATIONS IN NATIVE CSS</span><span><i class="dot"></i> Made to find balance</span></footer>
++    </main>
++  </div>
++</body>
++</html>

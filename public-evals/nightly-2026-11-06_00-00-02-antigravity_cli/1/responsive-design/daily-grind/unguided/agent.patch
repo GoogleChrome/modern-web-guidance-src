@@ -1,0 +1,550 @@
+diff --git a/index.html b/index.html
+index 66c9173..1bc9634 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,12 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --space-xs: clamp(0.5rem, 1vw, 0.75rem);
++      --space-sm: clamp(0.75rem, 2vw, 1.25rem);
++      --space-md: clamp(1.25rem, 3vw, 2rem);
++      --space-lg: clamp(2rem, 5vw, 3.5rem);
++      --radius-md: clamp(8px, 1.2vw, 12px);
+     }
+ 
+     * {
+@@ -25,41 +31,61 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      overflow-x: hidden;
++    }
++
++    img,
++    picture {
++      max-width: 100%;
++      display: block;
+     }
+ 
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: clamp(0.75rem, 2vw, 1rem) 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.75rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      container-type: inline-size;
++      container-name: navbar;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem clamp(0.75rem, 2vw, 1.25rem);
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 0;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
++      font-size: clamp(0.85rem, 1.2vw, 0.95rem);
+       transition: color 0.3s;
++      display: inline-block;
++      padding: 0.25rem 0;
+     }
+ 
+     nav a:hover {
+@@ -74,9 +100,20 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: clamp(320px, 58vh, 640px);
++      aspect-ratio: 16 / 9;
++      max-height: 75vh;
++      width: 100%;
++      background: linear-gradient(rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.52)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: linear-gradient(rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.52)),
++        image-set(
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=80') 2x
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -85,72 +122,306 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: var(--space-lg) clamp(1.25rem, 5vw, 3rem);
++      container-type: inline-size;
++      container-name: hero;
++    }
++
++    .hero-media {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      overflow: hidden;
++    }
++
++    .hero-media::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(
++        180deg,
++        rgba(30, 18, 14, 0.45) 0%,
++        rgba(30, 18, 14, 0.6) 100%
++      );
++      z-index: 1;
++    }
++
++    .hero-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(1.85rem, 5vw + 0.5rem, 3.5rem);
++      line-height: 1.15;
++      margin-bottom: clamp(0.65rem, 1.5vw, 1rem);
++      max-width: 18ch;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 2vw + 0.25rem, 1.3rem);
++      line-height: 1.5;
++      max-width: 52ch;
++      margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
++      text-wrap: pretty;
++    }
++
++    @container hero (max-width: 480px) {
++      .hero h1 {
++        font-size: clamp(1.65rem, 7cqi, 2.25rem);
++      }
++
++      .hero p {
++        font-size: clamp(0.95rem, 3.8cqi, 1.1rem);
++      }
++
++      .hero .btn {
++        width: min(100%, 240px);
++      }
++    }
++
++    @container hero (min-width: 481px) {
++      .hero h1 {
++        font-size: clamp(2.1rem, 5.5cqi, 3.5rem);
++      }
++
++      .hero p {
++        font-size: clamp(1.05rem, 2.2cqi, 1.35rem);
++      }
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      width: min(100%, 1160px);
++      margin: var(--space-lg) auto;
++      padding: 0 clamp(1rem, 4vw, 2.5rem);
++      flex: 1;
++      container-type: inline-size;
++      container-name: main-container;
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: clamp(1.5rem, 3vw + 0.5rem, 2.25rem);
++      line-height: 1.25;
++      margin-bottom: var(--space-md);
++      color: var(--primary);
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: clamp(1.25rem, 3vw, 2rem);
++      margin-top: var(--space-sm);
++      container-type: inline-size;
++      container-name: cards-grid;
+     }
+ 
++    /* Drink Cards */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--surface);
++      border-radius: var(--radius-md);
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
+       text-align: center;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++      container-type: inline-size;
++      container-name: drink-card;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 22px rgba(62, 39, 35, 0.14);
++    }
++
++    .card-media {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      overflow: hidden;
++      background-color: var(--secondary);
++      flex-shrink: 0;
++    }
++
++    .card-media picture,
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.04);
++    }
++
++    .card-content {
++      padding: clamp(1.1rem, 3vw, 1.5rem);
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      justify-content: space-between;
++      align-items: center;
++      gap: 0.65rem;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: clamp(1.15rem, 2vw + 0.5rem, 1.4rem);
++      line-height: 1.3;
++      margin-bottom: 0.25rem;
+       color: var(--primary);
+     }
+ 
++    .card p {
++      font-size: clamp(0.92rem, 1.2vw + 0.5rem, 1.05rem);
++      line-height: 1.55;
++      color: var(--text);
++      max-width: 38ch;
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: clamp(0.6rem, 1.5vw, 0.75rem) clamp(1.1rem, 2.5vw, 1.5rem);
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 0.5rem;
++      font-size: clamp(0.9rem, 1.2vw + 0.4rem, 1rem);
++      font-weight: 600;
++      transition: background 0.3s, transform 0.2s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Card Container Queries */
++    @container drink-card (max-width: 260px) {
++      .card-media {
++        aspect-ratio: 16 / 10;
++      }
++
++      .card-content {
++        padding: 0.9rem;
++      }
++
++      .card h3 {
++        font-size: clamp(1.05rem, 6cqi, 1.2rem);
++      }
++
++      .card p {
++        font-size: clamp(0.85rem, 4.5cqi, 0.95rem);
++      }
++
++      .card .btn {
++        width: 100%;
++      }
++    }
++
++    @container drink-card (min-width: 261px) {
++      .card h3 {
++        font-size: clamp(1.15rem, 4.8cqi, 1.45rem);
++      }
++
++      .card p {
++        font-size: clamp(0.92rem, 3.6cqi, 1.05rem);
++      }
++    }
++
++    @container cards-grid (min-width: 440px) and (max-width: 590px) {
++      .card {
++        display: grid;
++        grid-template-columns: minmax(170px, 42%) 1fr;
++        text-align: left;
++      }
++
++      .card-media {
++        aspect-ratio: 1 / 1;
++        height: 100%;
++      }
++
++      .card-content {
++        align-items: flex-start;
++        justify-content: center;
++        padding: 1.25rem 1.5rem;
++      }
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: clamp(1.75rem, 4vw, 2.75rem) 1.25rem;
++      margin-top: var(--space-lg);
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 1.25rem;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 0.5rem 0.75rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.25rem;
+       color: var(--text);
+       text-decoration: none;
+-      font-size: 0.85rem;
++      font-size: clamp(0.82rem, 1.2vw, 0.92rem);
++    }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    /* Viewport Media Queries */
++    @media (max-width: 480px) {
++      nav {
++        justify-content: center;
++        text-align: center;
++      }
++
++      nav ul {
++        justify-content: center;
++        width: 100%;
++      }
++
++      .hero {
++        aspect-ratio: 4 / 5;
++        min-height: 360px;
++      }
++
++      .card-media {
++        aspect-ratio: 16 / 10;
++      }
++    }
++
++    @media (min-width: 481px) and (max-width: 768px) {
++      .hero {
++        aspect-ratio: 4 / 3;
++        min-height: 380px;
++      }
++    }
++
++    @media (min-width: 1200px) {
++      .hero {
++        aspect-ratio: 21 / 9;
++      }
++
++      .grid {
++        grid-template-columns: repeat(3, 1fr);
++      }
+     }
+   </style>
+ </head>
+@@ -169,6 +440,28 @@
+   </nav>
+ 
+   <header class="hero">
++    <picture class="hero-media">
++      <source
++        media="(min-width: 1024px)"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++                https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=80 1920w"
++        sizes="100vw">
++      <source
++        media="(min-width: 600px)"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=960&q=80 960w,
++                https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw">
++      <img
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80 640w,
++                https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=960&q=80 960w,
++                https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++        alt="Freshly brewed artisanal coffee surrounded by roasted coffee beans"
++        width="1350"
++        height="760"
++        fetchpriority="high">
++    </picture>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -176,22 +469,73 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-media">
++            <picture>
++              <source
++                srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=80 400w,
++                        https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80 800w"
++                sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw">
++              <img
++                src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++                alt="Maple Oat Latte with creamy latte art"
++                width="800"
++                height="600"
++                loading="lazy"
++                decoding="async">
++            </picture>
++          </div>
++          <div class="card-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-media">
++            <picture>
++              <source
++                srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&q=80 400w,
++                        https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80 800w"
++                sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw">
++              <img
++                src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++                alt="Freshly pulled Dark Roast Espresso shot with rich crema"
++                width="800"
++                height="600"
++                loading="lazy"
++                decoding="async">
++            </picture>
++          </div>
++          <div class="card-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-media">
++            <picture>
++              <source
++                srcset="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=400&q=80 400w,
++                        https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80 800w"
++                sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw">
++              <img
++                src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++                alt="Chilled Cold Brew coffee served over ice"
++                width="800"
++                height="600"
++                loading="lazy"
++                decoding="async">
++            </picture>
++          </div>
++          <div class="card-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,97 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    #anchor {
++      anchor-name: --latte-info;
++      display: inline-grid;
++      place-items: center;
++      width: 30px;
++      height: 30px;
++      border: 1px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: bold 1rem Georgia, serif;
++      cursor: pointer;
++    }
++
++    #anchor:hover {
++      background: var(--secondary);
++    }
++
++    #anchor:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .latte-tooltip {
++      position: fixed;
++      position-anchor: --latte-info;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      width: min(260px, calc(100vw - 32px));
++      margin: 0;
++      padding: 0;
++      border: 0;
++      overflow: visible;
++      background: transparent;
++      color: white;
++      text-align: center;
++      font-size: 0.875rem;
++    }
++
++    /* Query descendants so the active fallback can change the bubble shape. */
++    .latte-tooltip-content {
++      position: relative;
++      margin: 0 0 12px;
++      padding: 12px 16px;
++      border-radius: 12px 12px 4px 4px;
++      background: var(--primary);
++      box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
++    }
++
++    .latte-tooltip-content::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: calc(50% - 8px);
++      border: 8px solid transparent;
++      border-bottom-width: 0;
++      border-top-color: var(--primary);
++    }
++
++    @container anchored(fallback: flip-block) {
++      .latte-tooltip-content {
++        margin: 12px 0 0;
++        border-radius: 4px 4px 12px 12px;
++      }
++
++      .latte-tooltip-content::after {
++        top: auto;
++        bottom: 100%;
++        border-top-width: 0;
++        border-top-color: transparent;
++        border-bottom-width: 8px;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +269,16 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button id="anchor" type="button" popovertarget="latte-tooltip"
++              aria-label="More about the Maple Oat Latte" aria-describedby="latte-tooltip">i</button>
++          </div>
++          <div id="latte-tooltip" class="latte-tooltip" popover role="tooltip">
++            <p class="latte-tooltip-content">A seasonal favorite with creamy oat milk and a hint of Vermont maple syrup.</p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

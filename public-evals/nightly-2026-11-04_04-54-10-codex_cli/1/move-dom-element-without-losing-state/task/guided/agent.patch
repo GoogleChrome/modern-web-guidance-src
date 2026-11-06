@@ -1,0 +1,184 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,76 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.is-theater {
++      height: auto;
++      min-height: 60vh;
++      padding-block: 32px;
++    }
++
++    .theater-toggle {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .theater-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .theater-toggle[hidden] {
++      display: none;
++    }
++
++    .video-section {
++      margin-top: 40px;
++    }
++
++    .video-section h2 {
++      margin-bottom: 16px;
++    }
++
++    .video-slot {
++      width: 100%;
++      max-width: 1100px;
++      aspect-ratio: 16 / 9;
++    }
++
++    .hero .video-slot {
++      margin-top: 24px;
++    }
++
++    .video-slot[hidden] {
++      display: none;
++    }
++
++    .roasting-video {
++      display: block;
++      width: 100%;
++      height: 100%;
++      border: 0;
++      border-radius: 8px;
++      background: #000;
++    }
++
++    .roasting-video.is-positioned {
++      position: absolute;
++      z-index: 1;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,8 +239,11 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn theater-toggle" id="theater-toggle"
++      aria-controls="roasting-video" aria-pressed="false" hidden>Theater mode</button>
++    <div id="hero-video-slot" class="video-slot" hidden></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +265,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="video-section" aria-labelledby="roasting-heading">
++      <h2 id="roasting-heading">From Green Bean to Daily Grind</h2>
++      <div id="main-video-slot" class="video-slot">
++        <iframe id="roasting-video" class="roasting-video" width="1100" height="619"
++          src="https://www.youtube.com/embed/N6BJVM5tvnw"
++          title="Coffee Roasting Explained by James Hoffmann"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++      </div>
++      <p>Watch <a href="https://www.youtube.com/watch?v=N6BJVM5tvnw">Coffee Roasting Explained</a>
++        by James Hoffmann, and use Theater mode above for a bigger view.</p>
++    </section>
++    <p id="video-status" class="visually-hidden" role="status"></p>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +290,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const toggle = document.getElementById('theater-toggle');
++    const video = document.getElementById('roasting-video');
++    const home = document.getElementById('main-video-slot');
++    const theater = document.getElementById('hero-video-slot');
++    const status = document.getElementById('video-status');
++    const canMove = typeof theater.moveBefore === 'function';
++    let theaterMode = false;
++
++    function positionVideo() {
++      if (canMove || !theaterMode) return;
++      const bounds = theater.getBoundingClientRect();
++      video.style.top = `${bounds.top + window.scrollY}px`;
++      video.style.left = `${bounds.left + window.scrollX}px`;
++      video.style.width = `${bounds.width}px`;
++      video.style.height = `${bounds.height}px`;
++    }
++
++    toggle.hidden = false;
++    toggle.addEventListener('click', () => {
++      theaterMode = !theaterMode;
++      hero.classList.toggle('is-theater', theaterMode);
++      theater.hidden = !theaterMode;
++
++      if (canMove) {
++        // Atomic moves keep the same iframe browsing context and playback state.
++        (theaterMode ? theater : home).moveBefore(video, null);
++        home.hidden = theaterMode;
++      } else {
++        // Traditional reparenting reloads iframes. Keep it connected to its
++        // original parent and visually place it over the hero slot instead.
++        // Keep the home ancestor rendered so playback is never suspended.
++        home.style.height = theaterMode ? '0px' : '';
++        home.style.aspectRatio = theaterMode ? 'auto' : '';
++        video.classList.toggle('is-positioned', theaterMode);
++        if (theaterMode) {
++          positionVideo();
++        } else {
++          ['top', 'left', 'width', 'height'].forEach(property => {
++            video.style.removeProperty(property);
++          });
++        }
++      }
++
++      toggle.setAttribute('aria-pressed', String(theaterMode));
++      status.textContent = theaterMode
++        ? 'Video is now in the hero section.'
++        : 'Video is back in the main content.';
++    });
++
++    if (!canMove) {
++      window.addEventListener('resize', positionVideo);
++      window.addEventListener('load', positionVideo);
++      if (typeof ResizeObserver === 'function') {
++        const observer = new ResizeObserver(positionVideo);
++        observer.observe(hero);
++        observer.observe(theater);
++      }
++      if (document.fonts) document.fonts.ready.then(positionVideo);
++    }
++  </script>
+ </body>
+ 
+ </html>

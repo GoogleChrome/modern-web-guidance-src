@@ -1,0 +1,594 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,15 +86,71 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
++    .hero-webgl-canvas {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++      z-index: 1;
++    }
++
++    .hero h1,
++    .hero p,
++    .hero .btn {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      user-select: text;
++      -webkit-user-select: text;
+     }
+ 
++    .hero .btn {
++      pointer-events: auto;
++      cursor: pointer;
++      user-select: text;
++      -webkit-user-select: text;
++    }
++
++    /* When WebGL shader rendering is active, hide static raster fill on target elements
++       while keeping DOM text nodes selectable and the button link clickable */
++    .hero.webgl-active h1[data-webgl-ripple] {
++      color: transparent;
++      text-shadow: none;
++    }
++
++    .hero.webgl-active h1[data-webgl-ripple]::selection {
++      background: rgba(255, 171, 64, 0.35);
++      color: transparent;
++    }
++
++    .hero.webgl-active .btn[data-webgl-ripple] {
++      color: transparent;
++      background-color: transparent;
++      border-color: transparent;
++      box-shadow: none;
++    }
++
++    .hero.webgl-active .btn[data-webgl-ripple]::selection {
++      background: rgba(255, 171, 64, 0.35);
++      color: transparent;
++    }
++
++    .hero.webgl-active .btn[data-webgl-ripple]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,12 +224,13 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <header class="hero" id="hero">
++    <canvas id="hero-ripple-canvas" class="hero-webgl-canvas" aria-hidden="true"></canvas>
++    <h1 data-webgl-ripple="heading">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-webgl-ripple="button">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +264,491 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function initHeroWebGLRipple() {
++      const hero = document.querySelector('.hero');
++      const canvas = document.getElementById('hero-ripple-canvas');
++      if (!hero || !canvas) return;
++
++      const headingEl = hero.querySelector('h1[data-webgl-ripple]');
++      const buttonEl = hero.querySelector('.btn[data-webgl-ripple]');
++      if (!headingEl || !buttonEl) return;
++
++      const gl = canvas.getContext('webgl', {
++        alpha: true,
++        antialias: true,
++        premultipliedAlpha: false
++      }) || canvas.getContext('experimental-webgl', {
++        alpha: true,
++        antialias: true,
++        premultipliedAlpha: false
++      });
++
++      if (!gl) return;
++
++      // Capture base visual styles before activating transparent DOM text overlay
++      const headingBaseStyle = window.getComputedStyle(headingEl);
++      const buttonBaseStyle = window.getComputedStyle(buttonEl);
++      const baseStyles = {
++        headingColor: headingBaseStyle.color || '#ffffff',
++        buttonColor: buttonBaseStyle.color || '#ffffff',
++        buttonBg: buttonBaseStyle.backgroundColor || '#4e342e',
++        buttonHoverBg: '#3e2723',
++        buttonRadius: parseFloat(buttonBaseStyle.borderRadius) || 5
++      };
++
++      const vertexShaderSource = `
++        attribute vec2 a_position;
++        attribute vec2 a_texCoord;
++        varying vec2 v_uv;
++
++        void main() {
++          v_uv = a_texCoord;
++          gl_Position = vec4(a_position, 0.0, 1.0);
++        }
++      `;
++
++      const fragmentShaderSource = `
++        precision highp float;
++
++        varying vec2 v_uv;
++        uniform sampler2D u_texture;
++        uniform vec2 u_resolution;
++        uniform float u_time;
++        uniform vec2 u_mouse;
++        uniform vec2 u_mouseVelocity;
++        uniform float u_hoverIntensity;
++        uniform vec4 u_ripples[8];
++
++        void main() {
++          vec2 uv = v_uv;
++          float aspect = u_resolution.x / max(u_resolution.y, 1.0);
++          vec2 aspectScale = vec2(aspect, 1.0);
++
++          vec2 totalDisplacement = vec2(0.0);
++          float waveHighlight = 0.0;
++
++          // 1. Ambient continuous GPU wave distortion for hero HTML content
++          float ambientWaveX = sin(uv.y * 18.0 + u_time * 2.2) * cos(uv.x * 12.0 - u_time * 1.6);
++          float ambientWaveY = cos(uv.x * 16.0 + u_time * 1.9) * sin(uv.y * 14.0 + u_time * 1.4);
++          totalDisplacement += vec2(ambientWaveX, ambientWaveY) * 0.0028;
++
++          // 2. Interactive cursor proximity ripple & wake distortion
++          vec2 toMouse = (uv - u_mouse) * aspectScale;
++          float mouseDist = length(toMouse);
++          vec2 mouseDir = mouseDist > 0.0001 ? toMouse / mouseDist : vec2(0.0);
++          float cursorField = exp(-mouseDist * 9.0) * u_hoverIntensity;
++          float cursorRipple = sin(mouseDist * 48.0 - u_time * 7.5) * cursorField;
++          float velocityBoost = clamp(length(u_mouseVelocity) * 1.8, 0.0, 1.5);
++          totalDisplacement += mouseDir * cursorRipple * (0.0065 + velocityBoost * 0.006);
++          totalDisplacement += u_mouseVelocity * exp(-mouseDist * 10.0) * 0.008;
++          waveHighlight += cursorRipple * 0.25;
++
++          // 3. Expanding ring ripples from pointer movement, clicks, and button interactions
++          for (int i = 0; i < 8; i++) {
++            vec4 ripple = u_ripples[i];
++            float startTime = ripple.z;
++            float amplitude = ripple.w;
++            if (amplitude > 0.0001) {
++              float age = max(0.0, u_time - startTime);
++              if (age < 3.0) {
++                vec2 delta = (uv - ripple.xy) * aspectScale;
++                float dist = length(delta);
++                vec2 dir = dist > 0.0001 ? delta / dist : vec2(0.0);
++
++                float radius = age * 0.42;
++                float ringDist = dist - radius;
++                float envelope = exp(-ringDist * ringDist * 95.0);
++                float decay = exp(-age * 1.85) * exp(-dist * 2.2);
++                float wave = sin(ringDist * 65.0 - age * 10.0) * envelope * decay * amplitude;
++
++                totalDisplacement += dir * wave;
++                waveHighlight += wave * 12.0;
++              }
++            }
++          }
++
++          vec2 distortedUv = clamp(uv + totalDisplacement, 0.0, 1.0);
++
++          // Chromatic dispersion proportional to ripple displacement
++          vec2 chromaOffset = totalDisplacement * 0.35;
++          vec4 sampleR = texture2D(u_texture, clamp(distortedUv + chromaOffset, 0.0, 1.0));
++          vec4 sampleG = texture2D(u_texture, distortedUv);
++          vec4 sampleB = texture2D(u_texture, clamp(distortedUv - chromaOffset, 0.0, 1.0));
++
++          float alpha = max(sampleG.a, max(sampleR.a, sampleB.a));
++          vec3 color = vec3(sampleR.r, sampleG.g, sampleB.b);
++
++          // Subtle specular shimmer on ripple crests where HTML content is present
++          float specular = clamp(waveHighlight, 0.0, 0.35) * alpha;
++          color += vec3(1.0, 0.92, 0.8) * specular;
++
++          gl_FragColor = vec4(color, alpha);
++        }
++      `;
++
++      function compileShader(type, source) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++          console.error('WebGL shader compile error:', gl.getShaderInfoLog(shader));
++          gl.deleteShader(shader);
++          return null;
++        }
++        return shader;
++      }
++
++      const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
++      const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
++      if (!vertexShader || !fragmentShader) return;
++
++      const program = gl.createProgram();
++      gl.attachShader(program, vertexShader);
++      gl.attachShader(program, fragmentShader);
++      gl.linkProgram(program);
++
++      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++        console.error('WebGL program link error:', gl.getProgramInfoLog(program));
++        return;
++      }
++
++      gl.useProgram(program);
++
++      // Fullscreen quad in clip space with standard top-left UV orientation
++      const vertices = new Float32Array([
++        -1.0, -1.0,  0.0, 1.0,
++         1.0, -1.0,  1.0, 1.0,
++        -1.0,  1.0,  0.0, 0.0,
++        -1.0,  1.0,  0.0, 0.0,
++         1.0, -1.0,  1.0, 1.0,
++         1.0,  1.0,  1.0, 0.0
++      ]);
++
++      const buffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
++      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
++
++      const posLoc = gl.getAttribLocation(program, 'a_position');
++      const texLoc = gl.getAttribLocation(program, 'a_texCoord');
++      gl.enableVertexAttribArray(posLoc);
++      gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 16, 0);
++      gl.enableVertexAttribArray(texLoc);
++      gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 16, 8);
++
++      const uTextureLoc = gl.getUniformLocation(program, 'u_texture');
++      const uResolutionLoc = gl.getUniformLocation(program, 'u_resolution');
++      const uTimeLoc = gl.getUniformLocation(program, 'u_time');
++      const uMouseLoc = gl.getUniformLocation(program, 'u_mouse');
++      const uMouseVelLoc = gl.getUniformLocation(program, 'u_mouseVelocity');
++      const uHoverIntensityLoc = gl.getUniformLocation(program, 'u_hoverIntensity');
++      const uRipplesLoc = gl.getUniformLocation(program, 'u_ripples[0]');
++
++      const texture = gl.createTexture();
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++
++      // Offscreen 2D canvas used to rasterize HTML content ('Wake Up Your Senses' & 'Order Now')
++      const sourceCanvas = document.createElement('canvas');
++      const sourceCtx = sourceCanvas.getContext('2d');
++
++      let isButtonHovered = false;
++      let isButtonFocused = false;
++      let buttonHoverMix = 0;
++
++      function parseRgb(colorStr, fallback) {
++        const match = colorStr && colorStr.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
++        if (match) {
++          return [Number(match[1]), Number(match[2]), Number(match[3])];
++        }
++        if (colorStr && colorStr.startsWith('#') && colorStr.length === 7) {
++          return [
++            parseInt(colorStr.slice(1, 3), 16),
++            parseInt(colorStr.slice(3, 5), 16),
++            parseInt(colorStr.slice(5, 7), 16)
++          ];
++        }
++        return fallback;
++      }
++
++      const primaryRgb = parseRgb(baseStyles.buttonBg, [78, 52, 46]);
++      const hoverRgb = parseRgb(baseStyles.buttonHoverBg, [62, 39, 35]);
++
++      function drawRoundedRect(ctx, x, y, width, height, radius) {
++        const r = Math.min(radius, width / 2, height / 2);
++        ctx.beginPath();
++        ctx.moveTo(x + r, y);
++        ctx.arcTo(x + width, y, x + width, y + height, r);
++        ctx.arcTo(x + width, y + height, x, y + height, r);
++        ctx.arcTo(x, y + height, x, y, r);
++        ctx.arcTo(x, y, x + width, y, r);
++        ctx.closePath();
++      }
++
++      // Measure and draw DOM text nodes at their exact browser-laid-out coordinates
++      function drawElementText(ctx, element, heroRect, fillStyle) {
++        const style = window.getComputedStyle(element);
++        const fontWeight = style.fontWeight || '700';
++        const fontSize = style.fontSize || '48px';
++        const fontFamily = style.fontFamily || 'sans-serif';
++        ctx.font = `${fontWeight} ${fontSize} ${fontFamily}`;
++        ctx.fillStyle = fillStyle;
++        ctx.textBaseline = 'middle';
++
++        const textNode = Array.from(element.childNodes).find(
++          (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
++        );
++
++        if (textNode && document.createRange) {
++          const text = textNode.textContent;
++          const wordRegex = /\S+/g;
++          let match;
++          const range = document.createRange();
++          ctx.textAlign = 'left';
++
++          while ((match = wordRegex.exec(text)) !== null) {
++            range.setStart(textNode, match.index);
++            range.setEnd(textNode, match.index + match[0].length);
++            const wordRect = range.getBoundingClientRect();
++            if (wordRect.width > 0 && wordRect.height > 0) {
++              const x = wordRect.left - heroRect.left;
++              const y = wordRect.top - heroRect.top + wordRect.height / 2;
++              ctx.fillText(match[0], x, y);
++            }
++          }
++        } else {
++          const rect = element.getBoundingClientRect();
++          ctx.textAlign = 'center';
++          const x = rect.left - heroRect.left + rect.width / 2;
++          const y = rect.top - heroRect.top + rect.height / 2;
++          ctx.fillText(element.textContent.trim(), x, y);
++        }
++      }
++
++      function updateHTMLTexture() {
++        const dpr = Math.min(window.devicePixelRatio || 1, 2);
++        const heroRect = hero.getBoundingClientRect();
++        const width = Math.max(1, Math.round(heroRect.width));
++        const height = Math.max(1, Math.round(heroRect.height));
++
++        const pixelWidth = Math.round(width * dpr);
++        const pixelHeight = Math.round(height * dpr);
++
++        if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
++          canvas.width = pixelWidth;
++          canvas.height = pixelHeight;
++          gl.viewport(0, 0, pixelWidth, pixelHeight);
++        }
++
++        if (sourceCanvas.width !== pixelWidth || sourceCanvas.height !== pixelHeight) {
++          sourceCanvas.width = pixelWidth;
++          sourceCanvas.height = pixelHeight;
++        }
++
++        sourceCtx.save();
++        sourceCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
++        sourceCtx.clearRect(0, 0, width, height);
++
++        // 1. Rasterize 'Wake Up Your Senses' heading
++        drawElementText(sourceCtx, headingEl, heroRect, baseStyles.headingColor);
++
++        // 2. Rasterize 'Order Now' button background + label
++        const btnRect = buttonEl.getBoundingClientRect();
++        const bx = btnRect.left - heroRect.left;
++        const by = btnRect.top - heroRect.top;
++        const bw = btnRect.width;
++        const bh = btnRect.height;
++
++        const r = Math.round(primaryRgb[0] + (hoverRgb[0] - primaryRgb[0]) * buttonHoverMix);
++        const g = Math.round(primaryRgb[1] + (hoverRgb[1] - primaryRgb[1]) * buttonHoverMix);
++        const b = Math.round(primaryRgb[2] + (hoverRgb[2] - primaryRgb[2]) * buttonHoverMix);
++
++        drawRoundedRect(sourceCtx, bx, by, bw, bh, baseStyles.buttonRadius);
++        sourceCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
++        sourceCtx.fill();
++
++        drawElementText(sourceCtx, buttonEl, heroRect, baseStyles.buttonColor);
++        sourceCtx.restore();
++
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
++      }
++
++      // Activate transparent DOM overlay now that WebGL pipeline is ready
++      hero.classList.add('webgl-active');
++      updateHTMLTexture();
++
++      // Ripple state management
++      const MAX_RIPPLES = 8;
++      const ripples = Array.from({ length: MAX_RIPPLES }, () => ({
++        x: 0.5,
++        y: 0.5,
++        startTime: -10.0,
++        amplitude: 0.0
++      }));
++      let rippleIndex = 0;
++      const rippleUniformData = new Float32Array(MAX_RIPPLES * 4);
++
++      const startTimestamp = performance.now();
++      function getElapsedSeconds() {
++        return (performance.now() - startTimestamp) * 0.001;
++      }
++
++      function addRipple(normX, normY, amplitude) {
++        ripples[rippleIndex] = {
++          x: normX,
++          y: normY,
++          startTime: getElapsedSeconds(),
++          amplitude: amplitude
++        };
++        rippleIndex = (rippleIndex + 1) % MAX_RIPPLES;
++      }
++
++      // Seed an initial gentle ripple over the hero text on load
++      addRipple(0.5, 0.42, 0.012);
++
++      let mouseX = 0.5;
++      let mouseY = 0.5;
++      let targetMouseX = 0.5;
++      let targetMouseY = 0.5;
++      let mouseVelX = 0.0;
++      let mouseVelY = 0.0;
++      let hoverIntensity = 0.0;
++      let targetHoverIntensity = 0.0;
++      let lastRippleSpawnTime = 0;
++
++      function handlePointerMove(clientX, clientY) {
++        const rect = hero.getBoundingClientRect();
++        if (rect.width <= 0 || rect.height <= 0) return;
++
++        const nx = (clientX - rect.left) / rect.width;
++        const ny = (clientY - rect.top) / rect.height;
++
++        const dx = nx - targetMouseX;
++        const dy = ny - targetMouseY;
++        mouseVelX = Math.max(-0.5, Math.min(0.5, dx * 14.0));
++        mouseVelY = Math.max(-0.5, Math.min(0.5, dy * 14.0));
++
++        targetMouseX = Math.max(0.0, Math.min(1.0, nx));
++        targetMouseY = Math.max(0.0, Math.min(1.0, ny));
++        targetHoverIntensity = 1.0;
++
++        const now = getElapsedSeconds();
++        const speed = Math.hypot(dx, dy);
++        if (speed > 0.012 && now - lastRippleSpawnTime > 0.09) {
++          addRipple(targetMouseX, targetMouseY, Math.min(0.016, 0.006 + speed * 0.12));
++          lastRippleSpawnTime = now;
++        }
++      }
++
++      hero.addEventListener('pointermove', (e) => {
++        handlePointerMove(e.clientX, e.clientY);
++      }, { passive: true });
++
++      hero.addEventListener('pointerenter', (e) => {
++        handlePointerMove(e.clientX, e.clientY);
++        addRipple(targetMouseX, targetMouseY, 0.012);
++      }, { passive: true });
++
++      hero.addEventListener('pointerleave', () => {
++        targetHoverIntensity = 0.0;
++      }, { passive: true });
++
++      hero.addEventListener('pointerdown', (e) => {
++        const rect = hero.getBoundingClientRect();
++        if (rect.width <= 0 || rect.height <= 0) return;
++        const nx = Math.max(0.0, Math.min(1.0, (e.clientX - rect.left) / rect.width));
++        const ny = Math.max(0.0, Math.min(1.0, (e.clientY - rect.top) / rect.height));
++        addRipple(nx, ny, 0.022);
++      }, { passive: true });
++
++      buttonEl.addEventListener('mouseenter', () => {
++        isButtonHovered = true;
++        const heroRect = hero.getBoundingClientRect();
++        const btnRect = buttonEl.getBoundingClientRect();
++        if (heroRect.width > 0 && heroRect.height > 0) {
++          const cx = (btnRect.left - heroRect.left + btnRect.width / 2) / heroRect.width;
++          const cy = (btnRect.top - heroRect.top + btnRect.height / 2) / heroRect.height;
++          addRipple(cx, cy, 0.016);
++        }
++      });
++
++      buttonEl.addEventListener('mouseleave', () => {
++        isButtonHovered = false;
++      });
++
++      buttonEl.addEventListener('focus', () => {
++        isButtonFocused = true;
++      });
++
++      buttonEl.addEventListener('blur', () => {
++        isButtonFocused = false;
++      });
++
++      window.addEventListener('resize', updateHTMLTexture, { passive: true });
++      if (typeof ResizeObserver !== 'undefined') {
++        const resizeObserver = new ResizeObserver(() => updateHTMLTexture());
++        resizeObserver.observe(hero);
++      }
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(() => updateHTMLTexture());
++      }
++
++      gl.enable(gl.BLEND);
++      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
++
++      function render() {
++        const elapsed = getElapsedSeconds();
++
++        // Smoothly interpolate pointer state
++        mouseX += (targetMouseX - mouseX) * 0.16;
++        mouseY += (targetMouseY - mouseY) * 0.16;
++        mouseVelX *= 0.88;
++        mouseVelY *= 0.88;
++        hoverIntensity += (targetHoverIntensity - hoverIntensity) * 0.1;
++
++        // Smoothly interpolate button hover color and re-upload texture when transitioning
++        const targetBtnMix = (isButtonHovered || isButtonFocused) ? 1.0 : 0.0;
++        if (Math.abs(targetBtnMix - buttonHoverMix) > 0.005) {
++          buttonHoverMix += (targetBtnMix - buttonHoverMix) * 0.2;
++          updateHTMLTexture();
++        }
++
++        for (let i = 0; i < MAX_RIPPLES; i++) {
++          const r = ripples[i];
++          const offset = i * 4;
++          rippleUniformData[offset] = r.x;
++          rippleUniformData[offset + 1] = r.y;
++          rippleUniformData[offset + 2] = r.startTime;
++          rippleUniformData[offset + 3] = r.amplitude;
++        }
++
++        gl.clearColor(0.0, 0.0, 0.0, 0.0);
++        gl.clear(gl.COLOR_BUFFER_BIT);
++
++        gl.useProgram(program);
++        gl.activeTexture(gl.TEXTURE0);
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        gl.uniform1i(uTextureLoc, 0);
++        gl.uniform2f(uResolutionLoc, canvas.width, canvas.height);
++        gl.uniform1f(uTimeLoc, elapsed);
++        gl.uniform2f(uMouseLoc, mouseX, mouseY);
++        gl.uniform2f(uMouseVelLoc, mouseVelX, mouseVelY);
++        gl.uniform1f(uHoverIntensityLoc, hoverIntensity);
++        gl.uniform4fv(uRipplesLoc, rippleUniformData);
++
++        gl.drawArrays(gl.TRIANGLES, 0, 6);
++        requestAnimationFrame(render);
++      }
++
++      requestAnimationFrame(render);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

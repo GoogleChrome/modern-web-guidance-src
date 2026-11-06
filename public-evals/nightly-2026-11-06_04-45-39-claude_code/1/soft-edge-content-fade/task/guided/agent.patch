@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Roaster's Secrets paywall preview */
++    .paywall-container {
++      margin-top: 60px;
++    }
++
++    .paywall-container .eyebrow {
++      display: block;
++      text-align: center;
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: #b26a00;
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .paywall-preview {
++      max-height: 420px;
++      overflow: hidden;
++      /* Fade the content itself to full transparency so the page background
++         shows through — no colored overlay involved. */
++      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++    }
++
++    .paywall-preview img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 20px;
++    }
++
++    .paywall-preview h3 {
++      color: var(--primary);
++      margin: 15px 0 5px;
++    }
++
++    .paywall-preview p {
++      margin-bottom: 10px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: 10px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +245,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="eyebrow">Members Exclusive</span>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <div class="paywall-preview">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=80"
++          alt="Freshly roasted coffee beans spilling from a scoop" width="1100" height="220" loading="lazy">
++        <p>Every bag we sell starts with a few minutes of obsessive listening. Our head roaster waits for
++          "first crack" — the moment the beans audibly pop as moisture escapes — and then makes the single
++          most important decision of the batch: how long to let it develop.</p>
++        <h3>1. The 90-Second Rule</h3>
++        <p>For our single-origin light roasts, we drop the beans between 75 and 90 seconds after first crack.
++          Any sooner and the cup tastes grassy; any later and the bright, fruity notes from the farm begin to
++          caramelize into something generic.</p>
++        <h3>2. Rest Before You Brew</h3>
++        <p>Freshly roasted coffee is still releasing carbon dioxide. We let espresso blends rest for at least
++          seven days before pulling a shot, which gives a sweeter, more balanced crema.</p>
++        <h3>3. Water Is Half the Recipe</h3>
++        <p>Our baristas dial in water with a specific mineral profile, because the magnesium content changes
++          how much flavor gets extracted from the grounds.</p>
++      </div>
++      <div class="paywall-cta">
++        <p>Unlock the full guide, roast profiles, and monthly tasting notes.</p>
++        <a href="/rewards" class="btn">Join Rewards to Keep Reading</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

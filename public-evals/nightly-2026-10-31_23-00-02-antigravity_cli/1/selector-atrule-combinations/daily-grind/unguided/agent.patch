@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+index 66c9173..f5734b2 100644
+--- a/index.html
++++ b/index.html
+@@ -7,11 +7,87 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light;
++      --on: ;
++      --off: initial;
++      --is-dark: var(--off);
++      --is-light: var(--on);
++
++      --primary: var(--is-dark, #4e342e) var(--is-light, #8d5b4c);
++      --secondary: var(--is-dark, #d7ccc8) var(--is-light, #221714);
++      --accent: var(--is-dark, #ffab40) var(--is-light, #ffbe66);
++      --text: var(--is-dark, #3e2723) var(--is-light, #f3e9e4);
++      --light: var(--is-dark, #fafafa) var(--is-light, #140e0c);
++      --heading: var(--is-dark, #3e2723) var(--is-light, #f5ebe6);
++
++      --nav-bg: var(--is-dark, #4e342e) var(--is-light, #1c120f);
++      --nav-text: var(--is-dark, #ffffff) var(--is-light, #f5ebe6);
++      --nav-link: var(--is-dark, #ffffff) var(--is-light, #ead8cf);
++      --nav-border: var(--is-dark, #3e2723) var(--is-light, #382621);
++      --nav-shadow: var(--is-dark, rgba(62, 39, 35, 0.15)) var(--is-light, rgba(0, 0, 0, 0.55));
++      --logout-bg: var(--is-dark, transparent) var(--is-light, rgba(255, 190, 102, 0.12));
++
++      --hero-bg: var(--is-dark, #5d4037) var(--is-light, #120b09);
++      --hero-overlay-start: var(--is-dark, rgba(62, 39, 35, 0.45)) var(--is-light, rgba(12, 8, 6, 0.72));
++      --hero-overlay-end: var(--is-dark, rgba(62, 39, 35, 0.55)) var(--is-light, rgba(18, 11, 9, 0.82));
++      --hero-text: var(--is-dark, #ffffff) var(--is-light, #f5ebe6);
++      --hero-heading: var(--is-dark, #ffffff) var(--is-light, #ffedd5);
++      --hero-subtext: var(--is-dark, #fff8f2) var(--is-light, #e0cec5);
++      --hero-border: var(--is-dark, #d7ccc8) var(--is-light, #382621);
++      --hero-shadow: var(--is-dark, rgba(0, 0, 0, 0.3)) var(--is-light, rgba(0, 0, 0, 0.7));
++
++      --card-bg: var(--is-dark, #ffffff) var(--is-light, #241915);
++      --card-text: var(--is-dark, #3e2723) var(--is-light, #e2d2ca);
++      --card-heading: var(--is-dark, #4e342e) var(--is-light, #ffbe66);
++      --card-border: var(--is-dark, #e6dcd8) var(--is-light, #3d2b25);
++      --card-shadow: var(--is-dark, rgba(0, 0, 0, 0.1)) var(--is-light, rgba(0, 0, 0, 0.5));
++
++      --btn-bg: var(--is-dark, #4e342e) var(--is-light, #8d5b4c);
++      --btn-text: var(--is-dark, #ffffff) var(--is-light, #fffaf7);
++      --btn-border: var(--is-dark, #4e342e) var(--is-light, #a67060);
++      --btn-hover: var(--is-dark, #3e2723) var(--is-light, #a67060);
++    }
++
++    @media (prefers-color-scheme: light) {
++      :root {
++        color-scheme: light;
++        --is-dark: var(--off);
++        --is-light: var(--on);
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        color-scheme: dark;
++        --is-dark: var(--on);
++        --is-light: var(--off);
++      }
++    }
++
++    :root[data-theme="light"],
++    :root[data-color-scheme="light"],
++    :root[data-mode="light"],
++    :root[theme="light"],
++    :root.light,
++    :root.theme-light,
++    :root.light-theme,
++    :root.light-mode {
++      color-scheme: light;
++      --is-dark: var(--off);
++      --is-light: var(--on);
++    }
++
++    :root[data-theme="dark"],
++    :root[data-color-scheme="dark"],
++    :root[data-mode="dark"],
++    :root[theme="dark"],
++    :root.dark,
++    :root.theme-dark,
++    :root.dark-theme,
++    :root.dark-mode {
++      color-scheme: dark;
++      --is-dark: var(--on);
++      --is-light: var(--off);
+     }
+ 
+     * {
+@@ -29,8 +105,10 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: 0 2px 8px var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -44,6 +122,7 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: var(--nav-text);
+     }
+ 
+     nav ul {
+@@ -56,7 +135,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-link);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -68,6 +147,7 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
++      background-color: var(--logout-bg);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,15 +155,17 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay-start), var(--hero-overlay-end)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--hero-bg);
+       background-size: cover;
+       background-position: center;
++      border-bottom: 1px solid var(--hero-border);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -91,6 +173,12 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      color: var(--hero-heading);
++      text-shadow: 0 2px 6px var(--hero-shadow);
++    }
++
++    .hero p {
++      color: var(--hero-subtext);
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +188,10 @@
+       padding: 0 20px;
+     }
+ 
++    section h2 {
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,31 +200,38 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    .card p {
++      color: var(--card-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1px solid var(--btn-border);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s, border-color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {

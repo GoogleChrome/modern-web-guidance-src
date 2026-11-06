@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+index 66c9173..c403544 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,21 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Hold the first render (and therefore any incoming view transition) until
++       the content up to #page-content has been parsed. Styles are inline above
++       and the script below is synchronous, so both are ready by then too. -->
++  <link rel="expect" href="#page-content" blocking="render">
++  <script>
++    // Critical script: runs synchronously before first render. Skip the
++    // transition entirely for users who prefer reduced motion.
++    (function () {
++      var reduce = matchMedia('(prefers-reduced-motion: reduce)');
++      function skip(e) { if (reduce.matches && e.viewTransition) e.viewTransition.skipTransition(); }
++      addEventListener('pagereveal', skip);
++      addEventListener('pageswap', skip);
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -27,6 +42,47 @@
+       background-color: var(--light);
+     }
+ 
++    /* Page transitions (cross-document view transitions) */
++    @view-transition {
++      navigation: auto;
++    }
++
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    ::view-transition-group(site-nav) {
++      animation-duration: 0s;
++    }
++
++    ::view-transition-old(root) {
++      animation: 200ms ease-in both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms ease-out 100ms both vt-fade-in;
++    }
++
++    @keyframes vt-fade-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -174,7 +230,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="page-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

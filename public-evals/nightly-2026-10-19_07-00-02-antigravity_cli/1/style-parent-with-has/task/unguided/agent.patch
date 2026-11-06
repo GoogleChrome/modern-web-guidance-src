@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,85 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact-section {
++      margin-top: 60px;
++    }
++
++    .contact-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .contact-form {
++      max-width: 600px;
++      margin: 0 auto;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      padding: 10px;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      transition: border-color 0.2s ease;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 1rem;
++      box-sizing: border-box;
++    }
++
++    .form-group textarea {
++      resize: vertical;
++      min-height: 120px;
++    }
++
++    .form-group input:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .contact-form .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      text-align: center;
++    }
++
++    /* Red border on wrapping div when input is invalid or required field empty */
++    .form-group:has(:invalid),
++    .form-group:has(input:invalid),
++    .form-group:has(textarea:invalid),
++    form div:has(:invalid),
++    form div:has(input:invalid),
++    form div:has(textarea:invalid),
++    .form-group:has(:user-invalid),
++    form div:has(:user-invalid) {
++      border: 2px solid red;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +271,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="contact-section" id="contact">
++      <h2>Contact Us</h2>
++      <form class="contact-form" id="contact-form" action="#" method="post">
++        <div class="form-group">
++          <label for="name">Name</label>
++          <input type="text" id="name" name="name" required placeholder="Your Name">
++        </div>
++        <div class="form-group">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" required placeholder="Your Email">
++        </div>
++        <div class="form-group">
++          <label for="message">Message</label>
++          <textarea id="message" name="message" required placeholder="Your Message"></textarea>
++        </div>
++        <button type="submit" class="btn">Send Message</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

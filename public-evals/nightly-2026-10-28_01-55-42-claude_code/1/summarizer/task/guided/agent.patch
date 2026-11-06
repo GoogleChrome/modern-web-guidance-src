@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 32px clamp(20px, 5vw, 48px);
++    }
++
++    .journal h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .journal .journal-meta {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 24px;
++    }
++
++    .journal-body {
++      max-width: 70ch;
++      margin: 0 auto;
++    }
++
++    .journal-body p {
++      margin-bottom: 1.1em;
++    }
++
++    .journal-body h3 {
++      color: var(--primary);
++      margin: 1.4em 0 0.5em;
++      font-size: 1.1rem;
++    }
++
++    .journal-actions {
++      max-width: 70ch;
++      margin: 24px auto 0;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .journal-actions .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .journal-actions .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .summary-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      min-height: 1.4em;
++    }
++
++    .summary-output {
++      margin: 16px 0 0 1.2em;
++      padding: 0;
++    }
++
++    .summary-output:empty {
++      display: none;
++    }
++
++    .summary-output li {
++      margin-bottom: 8px;
++    }
++
++    .summary-output li::marker {
++      color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +274,65 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" id="journal" aria-labelledby="journal-heading">
++      <h2 id="journal-heading">Roaster's Journal</h2>
++      <p class="journal-meta">Notes from the roastery on how we find, buy, and roast our beans</p>
++
++      <div class="journal-body" id="journal-text">
++        <p>
++          Every bag of coffee we sell starts a long way from our roastery, and usually at an altitude where the air is
++          thin and the mornings are cold. Over the past decade we have built direct relationships with eleven
++          producer families and three washing-station cooperatives across Ethiopia, Colombia, Guatemala, and
++          Sumatra. We do not buy through anonymous spot markets. Instead, our green buyer visits each origin at
++          least once a year, walks the plots with the farmers, and agrees on prices before the harvest begins. That
++          early commitment matters: it lets producers plan their labor, their fertilizer purchases, and their
++          processing without gambling on where the commodity price will land in six months.
++        </p>
++
++        <h3>How we choose a lot</h3>
++        <p>
++          Sourcing begins with cupping, and a lot of it. During harvest season our team evaluates somewhere between
++          two and three hundred samples, each roasted to a light, consistent profile so that nothing hides behind
++          roast character. We score on sweetness, acidity, body, and clarity of flavor, but the number we care most
++          about is uniformity across the sample. A lot that tastes brilliant in one cup and flat in the next usually
++          signals uneven drying or mixed cherry ripeness, and it will not hold up over a season on our shelves. We
++          also ask for moisture and water-activity readings on every lot we shortlist, because coffee that leaves
++          origin too wet will fade long before it reaches your cup.
++        </p>
++
++        <h3>Paying for quality, not just volume</h3>
++        <p>
++          Our pricing model is simple and public. We start from the Fairtrade minimum, then add a quality premium
++          that scales with the cupping score, plus a fixed relationship bonus for every producer who has sold to us
++          for three consecutive years. In the most recent harvest our average price paid to producers was a little
++          more than two and a half times the C-market price. We publish these figures in our annual transparency
++          report, along with the FOB price, the importer's margin, and the freight costs, so that anyone can see
++          where the money goes. We think this is the minimum standard for calling coffee "ethically sourced", and
++          we would rather show our work than ask you to take the phrase on faith.
++        </p>
++
++        <h3>Processing and the journey home</h3>
++        <p>
++          We buy washed, natural, and honey-processed coffees, and we work with producers on experimental
++          fermentations when they are interested, but we never push a process that a farm cannot execute
++          consistently with the equipment it has. Once a lot is contracted, it is milled, bagged in GrainPro liners
++          inside jute, and shipped in temperature-monitored containers. When it arrives, we cup it again against the
++          original pre-shipment sample. If a coffee has lost character in transit, we talk with the producer and the
++          importer about what happened rather than quietly blending it away. Then the roasting team spends a week
++          dialing in a profile that highlights what made us fall for the coffee in the first place, and it finally
++          makes its way to the bar, the shelf, and, with any luck, your morning.
++        </p>
++      </div>
++
++      <div class="journal-actions">
++        <button type="button" class="btn" id="summarize-btn">Summarize this entry</button>
++        <p class="summary-status" id="summary-status" role="status" aria-live="polite"></p>
++        <ul class="summary-output" id="summary-output" aria-label="Summary of the Roaster's Journal"></ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +343,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.getElementById('summarize-btn');
++      const status = document.getElementById('summary-status');
++      const output = document.getElementById('summary-output');
++      const article = document.getElementById('journal-text');
++
++      // The same options object must be passed to availability() and create().
++      const options = {
++        sharedContext: 'A coffee roaster\'s blog post about how they source green coffee beans.',
++        type: 'key-points',
++        format: 'plain-text',
++        length: 'short',
++      };
++
++      const setStatus = (text) => { status.textContent = text; };
++
++      if (!('Summarizer' in self)) {
++        button.disabled = true;
++        setStatus('On-device summarization is not supported in this browser.');
++        return;
++      }
++
++      const renderBullets = (text) => {
++        output.replaceChildren();
++        let lines = text
++          .split(/\r?\n/)
++          .map((line) => line.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s+/, '').trim())
++          .filter(Boolean);
++        if (lines.length <= 1) {
++          lines = text.split(/(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean);
++        }
++        for (const line of lines) {
++          const li = document.createElement('li');
++          li.textContent = line;
++          output.append(li);
++        }
++      };
++
++      let summarizer = null;
++
++      // Creating the summarizer (and any model download) must happen inside a user gesture.
++      button.addEventListener('click', async () => {
++        button.disabled = true;
++        output.replaceChildren();
++        output.setAttribute('aria-busy', 'true');
++
++        try {
++          const availability = await Summarizer.availability(options);
++          if (availability === 'unavailable') {
++            setStatus('On-device summarization is unavailable on this device.');
++            return;
++          }
++
++          if (!summarizer) {
++            setStatus(availability === 'available'
++              ? 'Preparing summarizer\u2026'
++              : 'Downloading the on-device model\u2026 0%');
++            summarizer = await Summarizer.create({
++              ...options,
++              monitor(m) {
++                m.addEventListener('downloadprogress', (e) => {
++                  const pct = e.total ? Math.round((e.loaded / e.total) * 100) : Math.round(e.loaded * 100);
++                  setStatus(`Downloading the on-device model\u2026 ${pct}%`);
++                });
++              },
++            });
++          }
++
++          setStatus('Summarizing\u2026');
++          const summary = await summarizer.summarize(article.innerText);
++          renderBullets(summary);
++          setStatus('Summary generated on your device. No text left your browser.');
++        } catch (err) {
++          console.error(err);
++          setStatus(err && err.name === 'NotAllowedError'
++            ? 'The browser blocked the model download. Please click the button again.'
++            : 'Sorry, we could not generate a summary right now.');
++        } finally {
++          output.removeAttribute('aria-busy');
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

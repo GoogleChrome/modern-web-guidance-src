@@ -1,0 +1,27 @@
+diff --git a/404.html b/404.html
+new file mode 100644
+--- a/404.html
++++ b/404.html
+@@ -0,0 +1,22 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Redirecting | The Daily Grind</title>
++  <script>
++    // Preserve deep link path for static servers that serve 404.html on sub-routes
++    (function () {
++      var path = window.location.pathname;
++      var search = window.location.search;
++      var hash = window.location.hash;
++      var slug = path.replace(/^\/+|\/+$/g, '');
++      if (slug && slug !== 'index.html') {
++        window.location.replace('/?item=' + encodeURIComponent(slug) + (search ? '&' + search.slice(1) : '') + hash);
++      } else {
++        window.location.replace('/');
++      }
++    })();
++  </script>
++</head>
++<body></body>
++</html>

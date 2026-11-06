@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,155 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section (CSS-only, scroll-driven) */
++    .parallax {
++      position: relative;
++      /* `clip` (not `hidden`) so the section is NOT a scroll container and
++         the view timeline is measured against the page scrollport. */
++      overflow: clip;
++      contain: layout paint style;
++      min-height: 85vh;
++      display: grid;
++      place-items: center;
++      padding: 4rem 20px;
++      background: var(--primary);
++      color: white;
++      /* Shared timeline: progress 0 -> 1 as the section travels through the viewport */
++      view-timeline: --parallax block;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      /* Oversize the layer vertically so translating it never exposes edges */
++      inset: -18% 0;
++      pointer-events: none;
++    }
++
++    .parallax__layer--back {
++      z-index: 0;
++    }
++
++    .parallax__layer--back img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: brightness(0.55) saturate(0.9);
++    }
++
++    .parallax__layer--mid {
++      z-index: 1;
++    }
++
++    .parallax__card {
++      position: absolute;
++      width: clamp(90px, 16vw, 220px);
++      aspect-ratio: 4 / 5;
++      border-radius: 10px;
++      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
++      overflow: hidden;
++    }
++
++    .parallax__card img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .parallax__card--1 {
++      top: 26%;
++      left: 6%;
++      transform: rotate(-6deg);
++    }
++
++    .parallax__card--2 {
++      top: 58%;
++      right: 8%;
++      transform: rotate(5deg);
++    }
++
++    .parallax__card--3 {
++      top: 20%;
++      right: 24%;
++      width: clamp(70px, 11vw, 150px);
++      transform: rotate(10deg);
++    }
++
++    .parallax__layer--front {
++      z-index: 2;
++    }
++
++    /* Soft "bokeh" lights drawn with gradients (no blur filter = cheap to composite) */
++    .parallax__glow {
++      position: absolute;
++      width: 22vmin;
++      height: 22vmin;
++      border-radius: 50%;
++      background: radial-gradient(circle, rgba(255, 171, 64, 0.5) 0%, rgba(255, 171, 64, 0.18) 40%, rgba(255, 171, 64, 0) 70%);
++    }
++
++    .parallax__glow--1 { top: 30%; left: 22%; }
++    .parallax__glow--2 { top: 62%; left: 48%; width: 14vmin; height: 14vmin; }
++    .parallax__glow--3 { top: 36%; right: 6%; width: 30vmin; height: 30vmin; }
++    .parallax__glow--4 { top: 72%; left: 10%; width: 10vmin; height: 10vmin; }
++
++    .parallax__content {
++      position: relative;
++      z-index: 3;
++      max-width: 620px;
++      text-align: center;
++      padding: 2.5rem 2rem;
++      border-radius: 12px;
++      background: rgba(62, 39, 35, 0.82);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
++    }
++
++    .parallax__content h2 {
++      font-size: clamp(1.8rem, 4vw, 2.6rem);
++      line-height: 1.2;
++      margin-bottom: 1rem;
++    }
++
++    .parallax__content p {
++      margin-bottom: 0.5rem;
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .parallax__content .btn:hover {
++      background: #ffc46b;
++    }
++
++    /* Motion is applied only when the browser supports scroll-driven animations
++       and the user has not asked for reduced motion. Otherwise the section
++       renders as a static, fully readable composition. */
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax__layer {
++          animation: parallax-drift linear both;
++          animation-timeline: --parallax;
++          animation-range: cover 0% cover 100%;
++          will-change: transform;
++        }
++
++        /* Positive drift = lags behind the page (appears farther away).
++           Negative drift = overtakes the page (appears closer than the content). */
++        .parallax__layer--back  { --drift: 12%; }
++        .parallax__layer--mid   { --drift: 5%; }
++        .parallax__layer--front { --drift: -10%; }
++      }
++    }
++
++    @keyframes parallax-drift {
++      from { transform: translate3d(0, calc(var(--drift) * -1), 0); }
++      to   { transform: translate3d(0, var(--drift), 0); }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +320,46 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true">
++      <img
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70"
++        srcset="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=70 800w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70 1600w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=2400&q=70 2400w"
++        sizes="100vw"
++        alt="" loading="lazy" decoding="async">
++    </div>
++
++    <div class="parallax__layer parallax__layer--mid" aria-hidden="true">
++      <figure class="parallax__card parallax__card--1">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=440&q=70" alt="" loading="lazy" decoding="async">
++      </figure>
++      <figure class="parallax__card parallax__card--2">
++        <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=440&q=70" alt="" loading="lazy" decoding="async">
++      </figure>
++      <figure class="parallax__card parallax__card--3">
++        <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=300&q=70" alt="" loading="lazy" decoding="async">
++      </figure>
++    </div>
++
++    <div class="parallax__content">
++      <h2 id="parallax-heading">From Farm to First Sip</h2>
++      <p>Every bean we roast is traced back to a single farm, picked at peak ripeness, and roasted in small batches within days of arriving.</p>
++      <p>Depth you can taste, in every layer.</p>
++      <a href="/about" class="btn">Meet Our Growers</a>
++    </div>
++
++    <div class="parallax__layer parallax__layer--front" aria-hidden="true">
++      <span class="parallax__glow parallax__glow--1"></span>
++      <span class="parallax__glow parallax__glow--2"></span>
++      <span class="parallax__glow parallax__glow--3"></span>
++      <span class="parallax__glow parallax__glow--4"></span>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,382 @@
+diff --git a/index.html b/index.html
+index 66c9173..7c28dd6 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,247 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer theme {
++      :root {
++        /* Tier 1: Literal design tokens */
++        --color-brown-900: #3e2723;
++        --color-brown-800: #4e342e;
++        --color-brown-100: #d7ccc8;
++        --color-amber-400: #ffab40;
++        --color-neutral-50: #fafafa;
++        --color-white: #ffffff;
++        --color-overlay-dark: rgba(0, 0, 0, 0.5);
++        --color-shadow-subtle: rgba(0, 0, 0, 0.1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --space-2xs: 0.3125rem;
++        --space-xs: 0.625rem;
++        --space-sm: 0.75rem;
++        --space-md: 0.9375rem;
++        --space-lg: 1rem;
++        --space-xl: 1.25rem;
++        --space-2xl: 2.5rem;
++        --space-fluid-inline: 5%;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --size-text-xs: 0.85rem;
++        --size-text-sm: 0.9rem;
++        --size-text-lg: 1.5rem;
++        --size-text-2xl: 3rem;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --shadow-sm: 0 2px 5px var(--color-shadow-subtle);
++        --transition-base: 0.3s ease;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        /* Tier 2: Semantic design tokens */
++        --primary: var(--color-brown-800);
++        --primary-hover: var(--color-brown-900);
++        --secondary: var(--color-brown-100);
++        --accent: var(--color-amber-400);
++        --text: var(--color-brown-900);
++        --text-inverse: var(--color-white);
++        --light: var(--color-neutral-50);
++        --surface-card: var(--color-white);
++        --font-body: var(--font-sans);
+ 
+-    nav a:hover {
+-      color: var(--accent);
++        /* Tier 3: Component & layout tokens */
++        --container-max-inline: 1100px;
++        --grid-min-col: 250px;
++        --hero-min-block: 60dvh;
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    @layer reset {
++      :where(html, body, nav, header, main, section, footer, div, ul, li, h1, h2, h3, p, a) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++    @layer base {
++      body {
++        font-family: var(--font-body);
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++      }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      a {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--text-inverse);
++        padding-block: var(--space-lg);
++        padding-inline: var(--space-fluid-inline);
++        display: flex;
++        flex-wrap: wrap;
++        justify-content: space-between;
++        align-items: safe center;
++        gap: var(--space-lg);
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        & .logo {
++          font-size: var(--size-text-lg);
++          font-weight: bold;
++          letter-spacing: 1px;
++        }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        & ul {
++          display: flex;
++          flex-wrap: wrap;
++          flex-wrap: balance;
++          align-items: safe center;
++          gap: var(--space-xl);
++          list-style: none;
++        }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++        & a {
++          color: inherit;
++          font-size: var(--size-text-sm);
++          transition: color var(--transition-base);
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++          &:where(:hover, :focus-visible) {
++            color: var(--accent);
++          }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++          &.logout-link {
++            border: 1px solid var(--accent);
++            padding-block: var(--space-2xs);
++            padding-inline: var(--space-sm);
++            border-radius: var(--radius-sm);
++            corner-shape: squircle;
++          }
++        }
++      }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++      /* Hero Section */
++      .hero {
++        min-block-size: 60vh;
++        min-block-size: var(--hero-min-block);
++        background: linear-gradient(var(--color-overlay-dark), var(--color-overlay-dark)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        background-size: cover;
++        background-position: center;
++        display: flex;
++        flex-direction: column;
++        justify-content: center;
++        align-items: safe center;
++        color: var(--text-inverse);
++        text-align: center;
++        padding-inline: var(--space-xl);
++        padding-block: var(--space-2xl);
++
++        & h1 {
++          font-size: var(--size-text-2xl);
++          margin-block-end: var(--space-lg);
++        }
++      }
++
++      /* Content Sections & Card Grid */
++      .container {
++        max-inline-size: var(--container-max-inline);
++        margin-block: var(--space-2xl);
++        margin-inline: auto;
++        padding-inline: var(--space-xl);
++
++        & section > h2 {
++          text-align: center;
++        }
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-col), 1fr));
++        gap: var(--space-xl);
++        margin-block-start: var(--space-xl);
++      }
++
++      .card {
++        grid-row: span 3;
++        display: grid;
++        grid-template-rows: auto 1fr auto;
++        grid-template-rows: subgrid;
++        row-gap: var(--space-xs);
++        justify-items: center;
++        background: var(--surface-card);
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-xl);
++        border-radius: var(--radius-lg);
++        corner-shape: squircle;
++        box-shadow: var(--shadow-sm);
++        text-align: center;
++
++        & h3 {
++          color: var(--primary);
++        }
++
++        & .btn {
++          margin-block-start: var(--space-2xs);
++        }
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--primary);
++        color: var(--text-inverse);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-xl);
++        text-decoration: none;
++        border-radius: var(--radius-md);
++        corner-shape: squircle;
++        margin-block-start: var(--space-md);
++        transition: background-color var(--transition-base);
++
++        &:where(:hover, :focus-visible) {
++          background: var(--primary-hover);
++        }
++      }
++
++      /* Footer */
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: var(--space-2xl);
++        padding-inline: var(--space-xl);
++        margin-block-start: var(--space-2xl);
++
++        & .footer-links {
++          margin-block-end: var(--space-xl);
++
++          & a {
++            margin-inline: var(--space-xs);
++            color: var(--text);
++            font-size: var(--size-text-xs);
++            transition: color var(--transition-base);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++            &:where(:hover, :focus-visible) {
++              color: var(--primary);
++              text-decoration: underline;
++            }
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +272,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

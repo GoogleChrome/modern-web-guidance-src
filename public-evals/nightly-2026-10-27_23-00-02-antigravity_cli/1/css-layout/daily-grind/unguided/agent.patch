@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+index 7400c85..9513d52 100644
+--- a/index.html
++++ b/index.html
+@@ -32,34 +32,30 @@
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
+-    }
+-
+     .logo {
+-      float: left;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+-      float: right;
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -79,18 +75,22 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+@@ -101,30 +101,57 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
++    .section-title {
++      text-align: center;
++      margin-bottom: 10px;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      grid-auto-rows: auto 1fr auto;
++      gap: 20px;
++      margin-top: 20px;
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
++      container-type: inline-size;
++      container-name: card;
++      display: grid;
++      grid-row: span 3;
++      grid-template-rows: subgrid;
++      gap: 12px;
++      align-items: start;
++      justify-items: center;
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      align-self: start;
++      width: fit-content;
++    }
++
++    .card p {
++      align-self: start;
++      max-width: 60ch;
++    }
++
++    .card .btn {
++      margin-top: 0;
++      align-self: end;
++      width: fit-content;
++    }
++
++    @container card (min-width: 400px) {
++      .card {
++        justify-items: start;
++        text-align: left;
++      }
+     }
+ 
+     .btn {
+@@ -183,7 +210,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

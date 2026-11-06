@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,125 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Native disclosure controls keep both interactions JavaScript-free. */
++    summary { cursor: pointer; list-style: none; }
++    summary::-webkit-details-marker { display: none; }
++    summary:focus-visible, a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: #eadbc5;
++      color: var(--primary);
++      overflow: hidden;
++      max-height: 120px;
++      transition: max-height 450ms ease, opacity 300ms ease;
++    }
++    #promo-alert:not([open]) { max-height: 0; opacity: 0; }
++    #promo-alert::details-content { content-visibility: visible; }
++    .promo-message {
++      padding: 13px 64px;
++      text-align: center;
++      font-size: 0.85rem;
++      letter-spacing: 0.15px;
++    }
++    .promo-message span { margin: 0 9px; opacity: 0.5; }
++    #alert-dismiss {
++      position: absolute;
++      right: 24px;
++      top: 10px;
++      width: 30px;
++      height: 30px;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 23px;
++      line-height: 1;
++      transition: background 180ms ease;
++    }
++    #alert-dismiss:hover { background: #dac6a9; }
++    #promo-alert:not([open]) #alert-dismiss { visibility: hidden; }
++    @supports (interpolate-size: allow-keywords) {
++      #promo-alert {
++        interpolate-size: allow-keywords;
++        height: auto;
++        max-height: none;
++        transition: height 450ms ease, opacity 300ms ease;
++      }
++      #promo-alert:not([open]) { height: 0; max-height: none; }
++    }
++
++    .faq-section {
++      margin-top: 72px;
++      padding: 56px 0 24px;
++      border-top: 1px solid #e5dcd7;
++      display: grid;
++      grid-template-columns: 1fr 1.55fr;
++      gap: 72px;
++    }
++    .eyebrow {
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: #94745b;
++      margin-bottom: 12px;
++    }
++    .faq-intro h2 { font-size: 2.3rem; line-height: 1.2; margin-bottom: 18px; }
++    .faq-intro p { color: #806c63; font-size: 0.95rem; max-width: 290px; }
++    .faq-intro a { color: var(--primary); text-underline-offset: 4px; }
++    .faq-list { border-top: 1px solid #ded3cc; }
++    .faq-item { border-bottom: 1px solid #ded3cc; }
++    .faq-item summary {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 24px;
++      padding: 22px 0;
++      font-size: 0.98rem;
++      font-weight: 600;
++    }
++    .faq-item summary::after {
++      content: '+';
++      display: grid;
++      place-items: center;
++      flex: 0 0 26px;
++      height: 26px;
++      border-radius: 50%;
++      background: #eee7df;
++      font-size: 20px;
++      font-weight: 400;
++      transition: transform 350ms ease, background 350ms ease;
++    }
++    .faq-item[open] summary::after { transform: rotate(45deg); background: #e2d1bb; }
++    .faq-item::details-content {
++      display: grid;
++      grid-template-rows: 0fr;
++      content-visibility: visible;
++      transition: grid-template-rows 400ms ease;
++    }
++    .faq-item[open]::details-content { grid-template-rows: 1fr; }
++    .faq-answer { min-height: 0; overflow: hidden; }
++    .faq-answer p { padding: 0 32px 24px 0; color: #806c63; font-size: 0.92rem; }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .faq-section { grid-template-columns: 1fr; gap: 30px; margin-top: 48px; padding-top: 36px; }
++      .faq-intro p { max-width: none; }
++      .promo-message { padding: 12px 45px 12px 20px; font-size: 0.75rem; }
++      .promo-message span { margin: 0 4px; }
++      #alert-dismiss { right: 9px; }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after, ::details-content { transition: none !important; }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +273,13 @@
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open aria-label="Special offer">
++    <summary id="alert-dismiss" aria-label="Dismiss promotional offer" title="Dismiss offer">&times;</summary>
++    <div class="promo-message"><strong>A little something to brighten your morning.</strong><span aria-hidden="true">/</span> Enjoy 15% off your first order with code <strong>FIRSTSIP</strong></div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +316,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <div class="faq-intro">
++        <div class="eyebrow">A little coffee knowledge</div>
++        <h2 id="faq-heading">Good questions.<br>Fresh answers.</h2>
++        <p>Everything you need to know before your next cup.</p>
++        <p style="margin-top: 22px;">Still curious? <a href="/contact">Get in touch &rarr;</a></p>
++      </div>
++      <div class="faq-list">
++        <details class="faq-item">
++          <summary id="faq-trigger" aria-controls="faq-content">Where does your coffee come from?</summary>
++          <div id="faq-content" class="faq-answer" role="region" aria-labelledby="faq-trigger">
++            <p>We source our beans from growers who share our passion for quality and responsible farming. Every batch is roasted locally to bring out its unique character, then brewed fresh for your daily ritual.</p>
++          </div>
++        </details>
++        <details class="faq-item">
++          <summary>Do you have dairy-free options?</summary>
++          <div class="faq-answer"><p>Absolutely. Swap in oat or almond milk for your favorite latte, or enjoy our espresso, filter coffee, and cold brew without milk. Ask our team about ingredients when you order.</p></div>
++        </details>
++        <details class="faq-item">
++          <summary>Can I order ahead for pickup?</summary>
++          <div class="faq-answer"><p>Yes! Choose your favorites through our online menu, select your location, and place your order. We’ll have your coffee ready so you can get on with your day.</p></div>
++        </details>
++        <details class="faq-item">
++          <summary>How does the rewards program work?</summary>
++          <div class="faq-answer"><p>Join Daily Grind Rewards and earn points with every purchase. Visit our Rewards page to see how to sign up and turn your daily coffee into something extra.</p></div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

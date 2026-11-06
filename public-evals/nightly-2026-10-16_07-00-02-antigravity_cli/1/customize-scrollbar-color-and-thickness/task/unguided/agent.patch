@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Section & Scrollable Container */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container {
++      max-height: 320px;
++      overflow-y: auto;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
++
++      /* Standard scrollbar styling */
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    /* WebKit scrollbar styling */
++    .feedback-container::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-container::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb:hover {
++      background: #ffa726;
++    }
++
++    .feedback-card {
++      background: var(--light);
++      padding: 16px;
++      border-radius: 6px;
++      border-left: 4px solid var(--accent);
++    }
++
++    .feedback-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .feedback-author {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .feedback-quote {
++      color: var(--text);
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    .feedback-date {
++      margin-top: 6px;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +276,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-container">
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">Sarah Jenkins</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <p class="feedback-quote">"The Maple Oat Latte is an absolute autumn staple! Smooth, naturally sweet without being overwhelming, and the foam art was gorgeous."</p>
++          <div class="feedback-date">October 14, 2026</div>
++        </div>
++
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">Marcus Vance</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <p class="feedback-quote">"Best espresso in town by a long shot. Strong, rich, and never bitter. The Daily Grind is my go-to spot before early morning meetings."</p>
++          <div class="feedback-date">October 12, 2026</div>
++        </div>
++
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">Elena Rostova</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <p class="feedback-quote">"The 18-hour cold brew has the smoothest finish I've ever tasted. You can truly tell the beans are roasted locally with care."</p>
++          <div class="feedback-date">October 9, 2026</div>
++        </div>
++
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">David Kim</span>
++            <span class="feedback-rating">★★★★☆</span>
++          </div>
++          <p class="feedback-quote">"Wonderful ambiance and friendly baristas. Loved the cozy seating and the quick service during the morning rush!"</p>
++          <div class="feedback-date">October 6, 2026</div>
++        </div>
++
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">Chloe Bennett</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <p class="feedback-quote">"I tried the Dark Roast Espresso and was blown away. Definitely signing up for the coffee subscription."</p>
++          <div class="feedback-date">October 3, 2026</div>
++        </div>
++
++        <div class="feedback-card">
++          <div class="feedback-meta">
++            <span class="feedback-author">James Patel</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <p class="feedback-quote">"Their commitment to ethically sourced beans makes every cup taste even better. Keep up the phenomenal work!"</p>
++          <div class="feedback-date">September 29, 2026</div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

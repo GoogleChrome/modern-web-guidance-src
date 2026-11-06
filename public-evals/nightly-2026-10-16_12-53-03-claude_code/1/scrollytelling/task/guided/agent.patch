@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,115 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling: #animated reveals as the matching #tracked text section scrolls past */
++    .scrolly {
++      margin-top: 60px;
++    }
++
++    .scrolly h2 {
++      text-align: center;
++    }
++
++    .scrolly-body {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    #animated {
++      display: none;
++    }
++
++    /* Native scroll-driven animations only; without support the text stands alone */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      .scrolly {
++        timeline-scope: --step-1, --step-2, --step-3;
++      }
++
++      #tracked section:nth-child(1) { view-timeline: --step-1 block; }
++      #tracked section:nth-child(2) { view-timeline: --step-2 block; }
++      #tracked section:nth-child(3) { view-timeline: --step-3 block; }
++
++      #animated {
++        display: grid;
++        position: sticky;
++        top: 80px;
++        height: calc(100vh - 100px);
++        align-self: start;
++      }
++
++      #animated section {
++        grid-area: 1 / 1;
++        border-radius: 8px;
++        overflow: hidden;
++        background: var(--secondary);
++        animation: reveal-in auto linear both, reveal-out auto linear forwards;
++        animation-range: entry 25% cover 50%, exit 50% exit 75%;
++      }
++
++      #animated section:last-child {
++        animation: reveal-in auto linear both;
++        animation-range: entry 25% cover 50%;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --step-1; }
++      #animated section:nth-child(2) { animation-timeline: --step-2; }
++      #animated section:nth-child(3) { animation-timeline: --step-3; }
++
++      #animated img {
++        width: 100%;
++        height: 100%;
++        object-fit: cover;
++        display: block;
++      }
++
++      @media (max-width: 700px) {
++        .scrolly-body {
++          grid-template-columns: 1fr;
++          gap: 0;
++        }
++
++        #animated {
++          order: -1;
++          height: 40vh;
++          top: 70px;
++          z-index: 1;
++        }
++
++        #tracked section {
++          min-height: 60vh;
++        }
++      }
++    }
++
++    @keyframes reveal-in {
++      from { opacity: 0; transform: translateY(40px) scale(0.95); }
++    }
++
++    @keyframes reveal-out {
++      to { opacity: 0; transform: translateY(-40px) scale(0.95); }
++    }
++
++    /* Keep the crossfade but drop the movement */
++    @media (prefers-reduced-motion: reduce) {
++      @keyframes reveal-in { from { opacity: 0; } }
++      @keyframes reveal-out { to { opacity: 0; } }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +301,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrolly">
++      <h2>From Bean to Cup</h2>
++      <div class="scrolly-body">
++        <div id="tracked">
++          <section>
++            <h3>1. Ethically Sourced</h3>
++            <p>We buy directly from small farms, paying fair prices for the best beans of each harvest.</p>
++          </section>
++          <section>
++            <h3>2. Roasted Locally</h3>
++            <p>Small batches are roasted every morning in our shop, so every bag arrives at peak freshness.</p>
++          </section>
++          <section>
++            <h3>3. Brewed With Care</h3>
++            <p>Our baristas dial in every shot, delivering a cup worth waking up for.</p>
++          </section>
++        </div>
++        <div id="animated" aria-hidden="true">
++          <section><img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy"></section>
++          <section><img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy"></section>
++          <section><img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy"></section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

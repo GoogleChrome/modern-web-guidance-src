@@ -1,0 +1,175 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,170 @@
++// Daily Grind client-side analytics.
++//
++// Records page views and click interactions. Events are debounced and
++// batched: every new event aborts the pending beacon and reschedules a single
++// request containing the whole queue, so a burst of rapid interactions
++// coalesces into one deferred background request. The batch is delivered
++// when BATCH_WINDOW elapses or when the user leaves the page, whichever
++// comes first.
++
++// Minimal fetchLater() polyfill for browsers without native support
++// (Firefox, Safari). Sends on timeout or when the page becomes hidden.
++globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++  let timeoutHandle;
++  let activated = false;
++
++  function sendNow() {
++    if (!(init.signal && init.signal.aborted)) {
++      if (
++        'keepalive' in Request.prototype ||
++        init.method !== 'POST' ||
++        init.headers
++      ) {
++        fetch(url, Object.assign({}, init, { keepalive: true })).catch(() => {});
++        activated = true;
++      } else {
++        activated = navigator.sendBeacon(url, init.body);
++      }
++    }
++    destroy();
++  }
++
++  function destroy() {
++    document.removeEventListener('visibilitychange', sendNow);
++    clearTimeout(timeoutHandle);
++  }
++
++  if (document.visibilityState === 'hidden') {
++    queueMicrotask(sendNow);
++  } else {
++    document.addEventListener('visibilitychange', sendNow);
++    if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++      timeoutHandle = setTimeout(sendNow, init.activateAfter);
++    }
++  }
++
++  if (init.signal) {
++    init.signal.addEventListener('abort', destroy);
++  }
++
++  return {
++    get activated() {
++      return activated;
++    },
++  };
++};
++
++(() => {
++  const ANALYTICS_ENDPOINT = '/api/analytics';
++
++  // All events occurring within this window are sent in a single request.
++  const BATCH_WINDOW = 10 * 1000;
++
++  // Cap the batch so the payload stays well under the ~64KB fetchLater /
++  // keepalive quota. When reached, the pending batch is left to send and a
++  // fresh one is started.
++  const MAX_QUEUE_SIZE = 100;
++
++  const sessionId = getSessionId();
++  const eventQueue = [];
++  let fetchLaterResult = null;
++  let fetchLaterController = null;
++
++  function getSessionId() {
++    const KEY = 'dg_analytics_session';
++    try {
++      let id = sessionStorage.getItem(KEY);
++      if (!id) {
++        id = crypto.randomUUID();
++        sessionStorage.setItem(KEY, id);
++      }
++      return id;
++    } catch {
++      return crypto.randomUUID();
++    }
++  }
++
++  function trackEvent(type, data = {}) {
++    // Start a new batch if the previous one has already been sent, or if the
++    // current batch is full (in which case it is left scheduled, not aborted).
++    if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++      fetchLaterController = null;
++      fetchLaterResult = null;
++      eventQueue.length = 0;
++    }
++
++    eventQueue.push({
++      type,
++      ts: Date.now(),
++      path: location.pathname,
++      ...data,
++    });
++
++    // Debounce: cancel the pending beacon and reschedule with the full queue.
++    fetchLaterController?.abort();
++    fetchLaterController = new AbortController();
++
++    try {
++      fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++        body: JSON.stringify({ sessionId, events: eventQueue }),
++        signal: fetchLaterController.signal,
++        activateAfter: BATCH_WINDOW,
++      });
++    } catch (error) {
++      // Quota exceeded or unsupported environment: drop this batch silently
++      // so analytics never interferes with the page.
++      fetchLaterResult = null;
++      eventQueue.length = 0;
++    }
++  }
++
++  function describeElement(el) {
++    // Report the nearest meaningful interactive element rather than
++    // whatever inner node happened to be clicked.
++    const target =
++      el.closest('a, button, [data-track], input, select, textarea, summary') || el;
++    const info = { tag: target.tagName.toLowerCase() };
++    if (target.id) info.id = target.id;
++    if (target.dataset.track) info.track = target.dataset.track;
++    if (typeof target.className === 'string' && target.className.trim()) {
++      info.classes = target.className.trim().split(/\s+/).slice(0, 5);
++    }
++    if (target instanceof HTMLAnchorElement && target.href) {
++      info.href = target.getAttribute('href');
++    }
++    // Never capture text typed into form fields.
++    if (!target.matches('input, select, textarea')) {
++      const text = target.textContent.trim().replace(/\s+/g, ' ');
++      if (text) info.text = text.slice(0, 80);
++    }
++    return info;
++  }
++
++  // Page view: the script is deferred, so the DOM is ready on execution.
++  trackEvent('page_view', {
++    url: location.href,
++    referrer: document.referrer || undefined,
++    title: document.title,
++    viewport: { w: innerWidth, h: innerHeight },
++  });
++
++  // Click interactions (capture phase so stopPropagation() elsewhere can't
++  // hide clicks; passive so tracking never delays the interaction).
++  document.addEventListener(
++    'click',
++    (event) => {
++      if (!(event.target instanceof Element)) return;
++      trackEvent('click', {
++        target: describeElement(event.target),
++        x: Math.round(event.clientX),
++        y: Math.round(event.clientY),
++      });
++    },
++    { capture: true, passive: true },
++  );
++
++  // Expose a tiny API for custom events.
++  window.dailyGrindAnalytics = { track: trackEvent };
++})();

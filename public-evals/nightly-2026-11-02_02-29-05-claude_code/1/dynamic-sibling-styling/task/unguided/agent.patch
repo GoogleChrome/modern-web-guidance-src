@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,124 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Shared sibling indexing: --i is 1-based position, --n is total siblings.
++       Native sibling-index()/sibling-count() where supported; the script at the
++       bottom of the page fills them in elsewhere. */
++    .spectrum-card,
++    .fan-card,
++    .circle-orb {
++      --i: 1;
++      --n: 1;
++    }
++
++    @supports (z-index: sibling-index()) {
++      .spectrum-card,
++      .fan-card,
++      .circle-orb {
++        --i: sibling-index();
++        --n: sibling-count();
++      }
++    }
++
++    /* Spectrum cards: hues spread evenly across the color wheel */
++    .spectrum-card {
++      --hue: calc(360deg * (var(--i) - 1) / var(--n) + 30deg);
++      background: oklch(92% 0.06 var(--hue));
++      border-top: 4px solid oklch(65% 0.14 var(--hue));
++    }
++
++    .section-title {
++      text-align: center;
++      margin-top: 60px;
++    }
++
++    /* Loyalty card fan */
++    .fan-container {
++      --spread: 60deg;
++      position: relative;
++      height: 320px;
++      margin-top: 20px;
++    }
++
++    .fan-card {
++      --step: calc(var(--spread) / max(var(--n) - 1, 1));
++      --angle: calc((var(--i) - (var(--n) + 1) / 2) * var(--step));
++      --hue: calc(360deg * (var(--i) - 1) / var(--n) + 30deg);
++      position: absolute;
++      left: 50%;
++      bottom: 0;
++      width: 160px;
++      height: 240px;
++      margin-left: -80px;
++      padding: 18px;
++      border-radius: 12px;
++      color: white;
++      background: linear-gradient(160deg,
++          oklch(55% 0.12 var(--hue)),
++          oklch(35% 0.08 var(--hue)));
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
++      transform-origin: 50% 120%;
++      transform: rotate(var(--angle));
++      transition: transform 0.3s, box-shadow 0.3s;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .fan-card:hover,
++    .fan-card:focus-visible {
++      z-index: 1;
++      transform: rotate(var(--angle)) translateY(-30px);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
++    }
++
++    .fan-card h3 {
++      font-size: 1.1rem;
++      letter-spacing: 1px;
++    }
++
++    .fan-card .perk {
++      font-size: 0.85rem;
++      opacity: 0.9;
++    }
++
++    /* Coffee origin circle */
++    .circle-container {
++      --size: min(420px, 90vw);
++      --orb: 90px;
++      --radius: calc((var(--size) - var(--orb)) / 2);
++      position: relative;
++      width: var(--size);
++      aspect-ratio: 1;
++      margin: 30px auto 0;
++      border-radius: 50%;
++      background: radial-gradient(circle, var(--secondary) 0 25%, transparent 26%);
++    }
++
++    .circle-orb {
++      --angle: calc(360deg * (var(--i) - 1) / var(--n) - 90deg);
++      --hue: calc(360deg * (var(--i) - 1) / var(--n) + 30deg);
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      width: var(--orb);
++      height: var(--orb);
++      margin: calc(var(--orb) / -2);
++      border-radius: 50%;
++      display: grid;
++      place-items: center;
++      text-align: center;
++      font-size: 0.8rem;
++      font-weight: bold;
++      line-height: 1.2;
++      color: oklch(25% 0.05 var(--hue));
++      background: oklch(88% 0.08 var(--hue));
++      border: 3px solid oklch(60% 0.13 var(--hue));
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
++      transform: rotate(var(--angle)) translateX(var(--radius)) rotate(calc(-1 * var(--angle)));
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,25 +293,63 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 class="section-title">Loyalty Rewards</h2>
++      <div class="fan-container">
++        <div class="fan-card" tabindex="0">
++          <h3>Bean</h3>
++          <p class="perk">Free birthday drink</p>
++        </div>
++        <div class="fan-card" tabindex="0">
++          <h3>Roast</h3>
++          <p class="perk">10% off every order</p>
++        </div>
++        <div class="fan-card" tabindex="0">
++          <h3>Brew</h3>
++          <p class="perk">Free refills all day</p>
++        </div>
++        <div class="fan-card" tabindex="0">
++          <h3>Barista</h3>
++          <p class="perk">Early access to seasonal menus</p>
++        </div>
++        <div class="fan-card" tabindex="0">
++          <h3>Master Roaster</h3>
++          <p class="perk">Monthly bag of single-origin beans</p>
++        </div>
++      </div>
++    </section>
++
++    <section>
++      <h2 class="section-title">Our Coffee Origins</h2>
++      <div class="circle-container">
++        <div class="circle-orb">Ethiopia</div>
++        <div class="circle-orb">Colombia</div>
++        <div class="circle-orb">Brazil</div>
++        <div class="circle-orb">Kenya</div>
++        <div class="circle-orb">Guatemala</div>
++        <div class="circle-orb">Sumatra</div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -205,8 +359,28 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  <script>
++    // Fallback for browsers without sibling-index()/sibling-count():
++    // set --i/--n on each item and keep them in sync as items change.
++    if (!CSS.supports('z-index: sibling-index()')) {
++      const index = (parent) => {
++        const items = parent.children;
++        for (let k = 0; k < items.length; k++) {
++          items[k].style.setProperty('--i', k + 1);
++          items[k].style.setProperty('--n', items.length);
++        }
++      };
++      const observer = new MutationObserver((records) => {
++        records.forEach((r) => index(r.target));
++      });
++      document.querySelectorAll('.grid, .fan-container, .circle-container').forEach((parent) => {
++        index(parent);
++        observer.observe(parent, { childList: true });
++      });
++    }
++  </script>
+ 
+ </body>
+ 
+ </html>

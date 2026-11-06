@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,146 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Shaped Elements ---------- */
++    .shaped-section {
++      margin-top: 60px;
++    }
++
++    .shaped-section > h2 {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    /* 1) Featured barista: organic paint-splat crop.
++       The clipPath uses objectBoundingBox units (0–1), so the splat
++       scales with whatever size the image is rendered at. */
++    .barista-feature {
++      display: flex;
++      align-items: center;
++      gap: 40px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: min(320px, 80vw);
++      aspect-ratio: 1 / 1;
++      height: auto;
++      object-fit: cover;
++      -webkit-clip-path: url(#paint-splat);
++      clip-path: url(#paint-splat);
++    }
++
++    .barista-bio {
++      max-width: 420px;
++    }
++
++    .barista-bio h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++    }
++
++    .barista-bio .role {
++      color: var(--accent);
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      font-size: 0.8rem;
++      margin-bottom: 10px;
++    }
++
++    /* 2) Loyalty banner: two siblings that read as one card.
++       The shadow lives on the parent as a drop-shadow filter so it
++       follows the masked outline of .card-accent (box-shadow would not). */
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      max-width: 760px;
++      margin: 0 auto;
++      filter: drop-shadow(0 10px 18px rgba(62, 39, 35, 0.25))
++        drop-shadow(0 2px 4px rgba(62, 39, 35, 0.15));
++    }
++
++    .unified-card .card-body {
++      flex: 1 1 auto;
++      background: var(--primary);
++      color: white;
++      padding: 28px 32px;
++      border-radius: 14px 0 0 14px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--accent);
++      font-size: 1.5rem;
++      margin-bottom: 6px;
++    }
++
++    .unified-card .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .unified-card .card-body .btn:hover {
++      background: #ffc174;
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 140px;
++      /* Same base colour as .card-body so the seam is invisible */
++      background:
++        radial-gradient(circle at 35% 30%, rgba(255, 171, 64, 0.55) 0 14px, transparent 15px),
++        radial-gradient(circle at 55% 72%, rgba(255, 171, 64, 0.35) 0 9px, transparent 10px),
++        var(--primary);
++      border-radius: 0 14px 14px 0;
++      /* Concave cutout curve on the outer (right) side */
++      -webkit-mask: radial-gradient(circle 46px at 100% 50%, transparent 98%, #000 100%);
++      mask: radial-gradient(circle 46px at 100% 50%, transparent 98%, #000 100%);
++    }
++
++    /* 3) Promo card: circular notch on the top edge, made with a gradient mask. */
++    .promo-wrap {
++      max-width: 420px;
++      margin: 0 auto;
++      /* Shadow on wrapper so it follows the notch (masks clip box-shadow) */
++      filter: drop-shadow(0 8px 14px rgba(62, 39, 35, 0.2));
++    }
++
++    .gradient-masked-card {
++      --notch: 32px;
++      background: linear-gradient(135deg, var(--accent), #ff8a50);
++      color: var(--text);
++      text-align: center;
++      padding: calc(var(--notch) + 24px) 28px 28px;
++      border-radius: 16px;
++      -webkit-mask: radial-gradient(circle var(--notch) at 50% 0, transparent 98%, #000 100%);
++      mask: radial-gradient(circle var(--notch) at 50% 0, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .gradient-masked-card .promo-code {
++      display: inline-block;
++      margin-top: 12px;
++      padding: 6px 14px;
++      border: 2px dashed var(--primary);
++      border-radius: 6px;
++      font-weight: 700;
++      letter-spacing: 2px;
++    }
++
++    @media (max-width: 560px) {
++      .unified-card .card-accent {
++        flex-basis: 80px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,10 +332,71 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Featured Barista -->
++    <section class="shaped-section">
++      <h2>Meet Our Featured Barista</h2>
++      <div class="barista-feature">
++        <img class="shaped-avatar"
++          src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=640&h=640&q=80"
++          alt="Portrait of Maya, our featured barista" width="320" height="320">
++        <div class="barista-bio">
++          <h3>Maya Torres</h3>
++          <p class="role">Head Barista &middot; Latte Art Champion</p>
++          <p>Maya has been pulling shots at The Daily Grind for six years. Ask her about her signature
++            cardamom cortado &mdash; or for a rosetta on your next flat white.</p>
++        </div>
++      </div>
++    </section>
++
++    <!-- Loyalty Banner -->
++    <section class="shaped-section">
++      <h2>Grind Rewards</h2>
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Every 10th Cup Is On Us</h3>
++          <p>Join Grind Rewards to earn beans on every order, unlock birthday treats, and get early access
++            to seasonal drinks.</p>
++          <a href="/rewards" class="btn">Join Free</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++    </section>
++
++    <!-- Promo Card -->
++    <section class="shaped-section">
++      <h2>This Week's Promo</h2>
++      <div class="promo-wrap">
++        <div class="gradient-masked-card">
++          <h3>Buy One, Gift One</h3>
++          <p>Treat a friend to any handcrafted drink when you buy one for yourself, all week long.</p>
++          <span class="promo-code">SHARE2026</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <!-- Clip path definitions (objectBoundingBox = coordinates 0..1, scales with the element) -->
++  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
++    <defs>
++      <clipPath id="paint-splat" clipPathUnits="objectBoundingBox">
++        <path d="M0.50,0.04
++          C0.56,0.04 0.58,0.12 0.63,0.13 C0.68,0.14 0.72,0.03 0.79,0.06
++          C0.85,0.09 0.80,0.19 0.84,0.24 C0.88,0.29 0.97,0.25 0.98,0.33
++          C0.99,0.40 0.90,0.42 0.90,0.49 C0.90,0.56 1.00,0.60 0.97,0.68
++          C0.94,0.75 0.85,0.70 0.82,0.76 C0.79,0.82 0.87,0.91 0.80,0.95
++          C0.73,0.99 0.68,0.89 0.61,0.90 C0.54,0.91 0.53,0.99 0.45,0.98
++          C0.37,0.97 0.40,0.88 0.33,0.86 C0.26,0.84 0.20,0.94 0.13,0.89
++          C0.07,0.84 0.16,0.76 0.12,0.70 C0.08,0.64 0.00,0.64 0.01,0.56
++          C0.02,0.48 0.11,0.50 0.12,0.43 C0.13,0.36 0.03,0.31 0.07,0.23
++          C0.11,0.16 0.20,0.22 0.25,0.17 C0.30,0.12 0.27,0.04 0.35,0.03
++          C0.42,0.02 0.44,0.04 0.50,0.04 Z" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

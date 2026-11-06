@@ -1,0 +1,730 @@
+diff --git a/README.md b/README.md
+index 4479b53..15430e0 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,37 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## SMS sign-up verification
++
++Copy `.env.example` to `.env` and set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
++and `TWILIO_FROM_NUMBER` to an SMS-capable Twilio sender. For deployed builds,
++provide these as server environment variables. Credentials stay on the server.
++The integration uses the [Twilio Messages API](https://www.twilio.com/docs/messaging/api/message-resource).
++Without configuration, sending a code returns a clear unavailable message; no
++test code or simulated verification is exposed to users.
++
++Sign-up sends a random six-digit code, verifies it on the server, then permits
++account registration through the existing registration service. Codes expire
++after five minutes, allow five guesses, and are consumed after verification and
++successful registration. Resending replaces the previous challenge, with a
++60-second cooldown and a limit of five sends per phone per hour.
++
++SMS messages end with `@hostname #123456`, using the current request hostname
++without a scheme, port, or path. Use HTTPS and serve the application through a
++trusted host/proxy configuration in production. WebOTP listens before sending
++the SMS and automatically fills and submits the single code input. Browsers
++without WebOTP retain `autocomplete="one-time-code"`, pasting, and manual entry.
++If the browser denies SMS access, users can still enter their code.
++
++Challenge state and per-phone rate limits are held in this Node process and
++bound to the Astro server session. A restart requires a fresh code. Before
++running multiple instances, move challenge state, atomic consumption, and rate
++limits to a shared store and use a shared Astro session driver. Add deployment
++level IP/global SMS quotas to control sending across different phone numbers.
++The external registration API is outside this repository; enforcing this
++verification policy across every client also requires that API to accept only
++trusted server registrations and persist the verified phone association.
++
++Run `pnpm test` for server verification tests (mocked SMS and registration; no
++real messages are sent), and `pnpm build` to validate the application build.
+diff --git a/package.json b/package.json
+index 2e1f2e8..30eb3ab 100644
+--- a/package.json
++++ b/package.json
+@@ -6,6 +6,7 @@
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
++    "test": "node --test tests/*.test.ts",
+     "preview": "astro preview",
+     "astro": "astro"
+   },
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..661e574 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,200 @@
+-import React, { useState } from 'react';
++import { useEffect, useRef, useState, type FormEvent } from 'react';
++import { listenForSmsCode } from '../utils/smsOtp';
++
++type Step = 'details' | 'code' | 'verified' | 'complete';
++const endpoint = `${import.meta.env.BASE_URL}api/signup`;
++const inputClass = 'w-full min-h-12 rounded-md border border-gray-400 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
++const buttonClass = 'w-full min-h-12 rounded-md bg-gray-900 px-4 py-3 font-medium text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-wait disabled:opacity-60';
++const linkClass = 'min-h-12 py-3 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:text-gray-500';
+ 
+ export default function SignUpForm() {
++  const [step, setStep] = useState<Step>('details');
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
++  const [showPassword, setShowPassword] = useState(false);
++  const [phone, setPhone] = useState('');
++  const [error, setError] = useState('');
++  const [status, setStatus] = useState('');
+   const [loading, setLoading] = useState(false);
++  const [retryAt, setRetryAt] = useState(0);
++  const [seconds, setSeconds] = useState(0);
++  const formRef = useRef<HTMLFormElement>(null);
++  const codeRef = useRef<HTMLInputElement>(null);
++  const headingRef = useRef<HTMLHeadingElement>(null);
++  const phoneRef = useRef<HTMLInputElement>(null);
++  const smsController = useRef<AbortController | null>(null);
++  const busy = useRef(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
++  useEffect(() => {
++    if (!retryAt) return;
++    const update = () => setSeconds(Math.max(0, Math.ceil((retryAt - Date.now()) / 1000)));
++    update();
++    const timer = window.setInterval(update, 1000);
++    return () => window.clearInterval(timer);
++  }, [retryAt]);
++
++  useEffect(() => {
++    if (step === 'code') codeRef.current?.focus();
++    else if (step === 'verified' || step === 'complete') headingRef.current?.focus();
++  }, [step]);
++
++  useEffect(() => () => smsController.current?.abort(), []);
+ 
++  function startSmsListener() {
++    smsController.current = listenForSmsCode((code) => {
++      if (!codeRef.current) return;
++      codeRef.current.value = code;
++      if (!busy.current) formRef.current?.requestSubmit();
++    });
++  }
++
++  async function request(action: 'send' | 'verify' | 'register', code?: string) {
++    if (busy.current) return;
++    busy.current = true;
++    setLoading(true);
++    setError('');
++    smsController.current?.abort();
++    const previousStep = step;
++    let sent = false;
++    if (action === 'send') {
++      if (codeRef.current) codeRef.current.value = '';
++      setStatus('');
++      setStep('code');
++      // Subscribe before requesting the text so a fast SMS cannot be missed.
++      startSmsListener();
++    }
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
++      const response = await fetch(endpoint, {
++        method: 'POST', headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ action, phone, ...(action === 'verify' ? { code } : {}),
++          ...(action === 'register' ? { username, password } : {}) }),
++        signal: AbortSignal.timeout(20_000),
+       });
+-
+       const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
++      if (data.retryAfter) setRetryAt(Date.now() + data.retryAfter * 1000);
++      if (!response.ok) throw new Error(data.error || 'Please try again.');
++      setStatus(data.message);
++      if (action === 'send') {
++        sent = true;
++        setStep('code');
++        codeRef.current?.focus();
++      } else if (action === 'verify') setStep('verified');
++      else {
++        setStep('complete');
+         setPassword('');
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      if (action === 'send') {
++        smsController.current?.abort();
++        setStep(previousStep);
++      }
++      setError(err instanceof Error && err.name !== 'TimeoutError' && err.name !== 'TypeError'
++        ? err.message : 'We could not complete your request. Check your connection and try again.');
++      if (action === 'verify') codeRef.current?.focus();
+     } finally {
++      busy.current = false;
+       setLoading(false);
++      // A very fast SMS can resolve while the send request is still pending.
++      if (sent && codeRef.current?.validity.valid && codeRef.current.value) formRef.current?.requestSubmit();
+     }
+-  };
++  }
++
++  function handleSubmit(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    if (step === 'details') void request('send');
++    else if (step === 'code') void request('verify', codeRef.current?.value);
++    else if (step === 'verified') void request('register');
++  }
++
++  function changeNumber() {
++    smsController.current?.abort();
++    setStep('details');
++    setError('');
++    setStatus('');
++    // Focus after the details fields have mounted.
++    window.setTimeout(() => phoneRef.current?.focus(), 0);
++  }
+ 
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
++    <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
++      <h1 ref={headingRef} tabIndex={-1} className="mb-2 text-center text-2xl font-bold text-gray-900">
++        {step === 'complete' ? 'Welcome to The DevTools Times' : step === 'verified' ? 'Your phone is verified' : step === 'code' ? 'Check your messages' : 'Create your account'}
++      </h1>
++      {step !== 'complete' && (
++        <>
++          <p className="mb-6 text-center text-sm text-gray-600">A few details. One quick verification.</p>
++          <ol aria-label="Sign-up progress" role="list" className="mb-6 flex justify-between gap-2 text-xs text-gray-600">
++            {['Account details', 'Verify phone', 'Create account'].map((label, index) => (
++              <li key={label} aria-current={index === (step === 'details' ? 0 : step === 'code' ? 1 : 2) ? 'step' : undefined}
++                className="border-t-2 border-gray-200 pt-2 aria-[current=step]:border-gray-900 aria-[current=step]:font-semibold aria-[current=step]:text-gray-900">
++                {index + 1}. {label}
++              </li>
++            ))}
++          </ol>
++        </>
+       )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
++      <div role="status" aria-atomic="true" className={status ? 'mb-4 rounded-md bg-green-50 p-3 text-sm text-green-800' : ''}>{status}</div>
++      <div id="signup-error" role="alert" aria-atomic="true" className={error ? 'mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800' : ''}>{error}</div>
++      {step === 'complete' ? (
++        <a href={`${import.meta.env.BASE_URL}signin`} className={`${buttonClass} block text-center`}>Continue to sign in</a>
++      ) : (
++        <form ref={formRef} action={endpoint} method="POST" onSubmit={handleSubmit} className="space-y-5">
++          {step === 'details' && (
++            <>
++              <p className="text-xs text-gray-600">All fields are required.</p>
++              <div>
++                <label htmlFor="username" className="mb-1 block text-sm font-medium">Username</label>
++                <input type="text" id="username" name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
++                  value={username} onChange={(event) => setUsername(event.target.value)} required maxLength={100} className={inputClass} />
++              </div>
++              <div>
++                <label htmlFor="password" className="mb-1 block text-sm font-medium">Password</label>
++                <p id="password-hint" className="mb-2 text-xs text-gray-600">Use at least 8 characters and include a number.</p>
++                <input type={showPassword ? 'text' : 'password'} id="password" name="password" autoComplete="new-password"
++                  value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} maxLength={256} pattern=".*[0-9].*"
++                  aria-describedby="password-hint" className={inputClass} />
++                <button type="button" className={linkClass} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>Show password</button>
++              </div>
++              <div>
++                <label htmlFor="phone" className="mb-1 block text-sm font-medium">Mobile phone number</label>
++                <p id="phone-hint" className="mb-2 text-xs text-gray-600">Include your country code, for example +1 202 555 0123. We’ll text you a verification code. Message and data rates may apply.</p>
++                <input ref={phoneRef} type="tel" id="phone" name="phone" autoComplete="tel" inputMode="tel" maxLength={40}
++                  value={phone} onChange={(event) => { setPhone(event.target.value); event.target.setCustomValidity(''); }} required
++                  onBlur={(event) => event.target.setCustomValidity(/^\+[1-9]\d{7,14}$/.test(event.target.value.replace(/[\s().-]/g, '')) ? '' : 'Include your country code, for example +1 202 555 0123.')}
++                  aria-describedby="phone-hint" className={inputClass} />
++              </div>
++              <button type="submit" disabled={loading} data-skip-tracking="true" className={buttonClass}>{loading ? 'Sending code…' : 'Send verification code'}</button>
++            </>
++          )}
++          {step === 'code' && (
++            <>
++              <div>
++                <label htmlFor="otp" className="mb-1 block text-sm font-medium">Verification code</label>
++                <p id="code-hint" className="mb-3 text-sm text-gray-600">Enter the 6-digit code sent to <strong className="font-medium text-gray-900">{phone}</strong>. Your code expires in 5 minutes. You can paste it here.</p>
++                <input ref={codeRef} type="text" id="otp" name="otp" inputMode="numeric" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false}
++                  required pattern="[0-9]{6}" maxLength={6} enterKeyHint="done" aria-invalid={error ? true : undefined}
++                  aria-describedby={`code-hint${error ? ' signup-error' : ''}`} onInput={() => setError('')}
++                  className={`${inputClass} font-mono text-xl tracking-[0.35em]`} />
++              </div>
++              <button type="submit" disabled={loading} data-skip-tracking="true" className={buttonClass}>{loading ? 'Verifying…' : 'Verify phone number'}</button>
++              <div className="flex flex-wrap justify-between gap-x-4">
++                <button type="button" className={linkClass} disabled={loading || seconds > 0} onClick={() => void request('send')}>
++                  {seconds > 0 ? `Resend code in ${seconds}s` : 'Resend code'}
++                </button>
++                <button type="button" className={linkClass} disabled={loading} onClick={changeNumber}>Change phone number</button>
++              </div>
++            </>
++          )}
++          {step === 'verified' && (
++            <>
++              <p className="text-sm text-gray-600">You’re ready to join as <strong className="text-gray-900">{username}</strong>.</p>
++              <button type="submit" disabled={loading} data-skip-tracking="true" className={buttonClass}>{loading ? 'Creating account…' : 'Create account'}</button>
++              <button type="button" className={linkClass} disabled={loading} onClick={changeNumber}>Back to account details</button>
++            </>
++          )}
++        </form>
+       )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
++      {step !== 'complete' && <p className="mt-6 text-center text-sm text-gray-600">Already have an account? <a href={`${import.meta.env.BASE_URL}signin`} className="inline-block py-3 font-medium text-gray-900 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-blue-600">Sign in</a></p>}
+     </div>
+   );
+ }
+diff --git a/src/env.d.ts b/src/env.d.ts
+new file mode 100644
+index 0000000..6bee67a
+--- /dev/null
++++ b/src/env.d.ts
+@@ -0,0 +1,7 @@
++/// <reference types="astro/client" />
++
++declare namespace App {
++  interface SessionData {
++    phoneChallenge: import('./server/signup').PhoneChallenge;
++  }
++}
+diff --git a/src/pages/api/signup.ts b/src/pages/api/signup.ts
+new file mode 100644
+index 0000000..0a38b0a
+--- /dev/null
++++ b/src/pages/api/signup.ts
+@@ -0,0 +1,8 @@
++import type { APIRoute } from 'astro';
++import { handleSignup } from '../../server/signup';
++
++export const POST: APIRoute = ({ request, session }) => handleSignup(request, session, {
++  accountSid: process.env.TWILIO_ACCOUNT_SID ?? import.meta.env.TWILIO_ACCOUNT_SID,
++  authToken: process.env.TWILIO_AUTH_TOKEN ?? import.meta.env.TWILIO_AUTH_TOKEN,
++  from: process.env.TWILIO_FROM_NUMBER ?? import.meta.env.TWILIO_FROM_NUMBER,
++});
+diff --git a/src/server/signup.ts b/src/server/signup.ts
+new file mode 100644
+index 0000000..d1eb52f
+--- /dev/null
++++ b/src/server/signup.ts
+@@ -0,0 +1,139 @@
++import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
++
++export interface PhoneChallenge {
++  phone: string;
++  salt: string;
++  hash: string;
++  expiresAt: number;
++  attempts: number;
++  verified: boolean;
++}
++
++interface Session {
++  get(key: 'phoneChallenge'): Promise<PhoneChallenge | undefined>;
++  set(key: 'phoneChallenge', value: PhoneChallenge): void;
++  delete(key: 'phoneChallenge'): void;
++}
++
++interface Options {
++  accountSid?: string;
++  authToken?: string;
++  from?: string;
++  fetch?: typeof fetch;
++  now?: () => number;
++}
++
++const digest = (salt: string, code: string) => createHash('sha256').update(`${salt}:${code}`).digest('hex');
++const json = (data: object, status = 200) => Response.json(data, {
++  status, headers: { 'Cache-Control': 'no-store' },
++});
++
++export function normalizePhone(phone: unknown): string | null {
++  if (typeof phone !== 'string' || phone.length > 40) return null;
++  const normalized = phone.replace(/[\s().-]/g, '');
++  return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : null;
++}
++
++// Limits also span sessions for the same phone. Deploy behind a shared rate
++// limiter when running multiple server instances (see README).
++const sends = new Map<string, { count: number; last: number; reset: number }>();
++const challenges = new Map<string, PhoneChallenge>();
++const activePhones = new Set<string>();
++
++export async function handleSignup(request: Request, session: Session | undefined, options: Options = {}): Promise<Response> {
++  if (request.headers.get('origin') !== new URL(request.url).origin ||
++      !request.headers.get('content-type')?.startsWith('application/json')) {
++    return json({ error: 'Please submit the form from this website.' }, 403);
++  }
++  if (!session) return json({ error: 'Verification is unavailable. Please try again later.' }, 503);
++  let lockedPhone: string | undefined;
++  try {
++    const body = await request.json().catch(() => null);
++    if (!body || typeof body !== 'object') return json({ error: 'Invalid request.' }, 400);
++    const phone = normalizePhone(body.phone);
++    if (!phone) return json({ error: 'Enter a phone number with its country code, for example +1 202 555 0123.' }, 400);
++    if (activePhones.has(phone)) return json({ error: 'A request is already in progress. Please try again.' }, 409);
++    activePhones.add(phone);
++    lockedPhone = phone;
++    const now = (options.now ?? Date.now)();
++    const send = options.fetch ?? fetch;
++    for (const [key, value] of challenges) if (value.expiresAt <= now) challenges.delete(key);
++
++    if (body.action === 'send') {
++      if (!options.accountSid || !options.authToken || !options.from) {
++        return json({ error: 'SMS verification is not configured yet. Please try again later.' }, 503);
++      }
++      for (const [key, value] of sends) if (value.reset <= now) sends.delete(key);
++      const limit = sends.get(phone);
++      if (limit && (now - limit.last < 60_000 || limit.count >= 5)) {
++        const retryAfter = Math.ceil(((limit.count >= 5 ? limit.reset : limit.last + 60_000) - now) / 1000);
++        return json({ error: `Please wait ${retryAfter} seconds before requesting another code.`, retryAfter }, 429);
++      }
++      if (sends.size >= 10_000 && !limit) return json({ error: 'SMS verification is busy. Please try again later.' }, 503);
++      sends.set(phone, { count: (limit?.count ?? 0) + 1, last: now, reset: limit?.reset ?? now + 3_600_000 });
++      const previous = await session.get('phoneChallenge');
++      if (previous) challenges.delete(previous.salt);
++      session.delete('phoneChallenge');
++      const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
++      const salt = randomBytes(16).toString('hex');
++      const sms = await send(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(options.accountSid)}/Messages.json`, {
++        method: 'POST',
++        headers: { Authorization: `Basic ${Buffer.from(`${options.accountSid}:${options.authToken}`).toString('base64')}`,
++          'Content-Type': 'application/x-www-form-urlencoded' },
++        body: new URLSearchParams({ To: phone, From: options.from,
++          Body: `Your DevTools Times verification code is ${code}. It expires in 5 minutes.\n\n@${new URL(request.url).hostname} #${code}` }),
++        signal: AbortSignal.timeout(15_000),
++      });
++      if (!sms.ok) return json({ error: 'We could not send your text. Check your number and try again in a minute.' }, 502);
++      const challenge = { phone, salt, hash: digest(salt, code), expiresAt: now + 300_000, attempts: 0, verified: false };
++      challenges.set(salt, challenge);
++      session.set('phoneChallenge', challenge);
++      return json({ message: 'Code sent. Check your text messages.', retryAfter: 60 });
++    }
++
++    const stored = await session.get('phoneChallenge');
++    const challenge = stored && challenges.get(stored.salt);
++    if (!challenge || challenge.phone !== phone || challenge.expiresAt <= now) {
++      session.delete('phoneChallenge');
++      return json({ error: 'Your code has expired. Please request a new code.' }, 400);
++    }
++    if (body.action === 'verify') {
++      if (challenge.attempts >= 5) return json({ error: 'Too many attempts. Please request a new code.' }, 429);
++      if (challenge.verified) return json({ error: 'This code has already been used.' }, 400);
++      challenge.attempts++;
++      const valid = typeof body.code === 'string' && /^\d{6}$/.test(body.code) &&
++        timingSafeEqual(Buffer.from(challenge.hash, 'hex'), Buffer.from(digest(challenge.salt, body.code), 'hex'));
++      session.set('phoneChallenge', { ...challenge, verified: valid });
++      challenge.verified = valid;
++      if (!valid) return json({ error: 'That code is incorrect. Check the text message and try again.' }, 400);
++      return json({ message: 'Phone number verified.' });
++    }
++    if (body.action === 'register') {
++      if (!challenge.verified) return json({ error: 'Verify your phone number before creating your account.' }, 403);
++      if (typeof body.username !== 'string' || !body.username.trim() || body.username.length > 100 ||
++          typeof body.password !== 'string' || body.password.length < 8 || body.password.length > 256 || !/\d/.test(body.password)) {
++        return json({ error: 'Enter a username and a password of at least 8 characters containing a number.' }, 400);
++      }
++      // Consume verification before the upstream mutation; never trust a client-side flag.
++      session.delete('phoneChallenge');
++      challenges.delete(challenge.salt);
++      const registered = await send('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
++        method: 'POST', headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ username: body.username.trim(), password: body.password, phone }),
++        signal: AbortSignal.timeout(15_000),
++      });
++      if (!registered.ok) {
++        // A definitive rejection can be retried; an ambiguous network failure cannot.
++        session.set('phoneChallenge', challenge);
++        challenges.set(challenge.salt, challenge);
++        return json({ error: 'Registration failed. Try another username or try again later.' }, 400);
++      }
++      return json({ message: 'Your account is ready. You can now sign in.' });
++    }
++    return json({ error: 'Unknown action.' }, 400);
++  } catch {
++    return json({ error: 'We could not complete your request. Please try again.' }, 502);
++  } finally {
++    if (lockedPhone) activePhones.delete(lockedPhone);
++  }
++}
+diff --git a/src/utils/smsOtp.ts b/src/utils/smsOtp.ts
+new file mode 100644
+index 0000000..71e8e46
+--- /dev/null
++++ b/src/utils/smsOtp.ts
+@@ -0,0 +1,21 @@
++/** WebOTP is an enhancement; manual entry remains available on every failure. */
++export function listenForSmsCode(onCode: (code: string) => void): AbortController | null {
++  if (typeof window === 'undefined' || !window.isSecureContext ||
++      !('OTPCredential' in window) || !navigator.credentials?.get) return null;
++
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(), 300_000);
++  controller.signal.addEventListener('abort', () => clearTimeout(timeout), { once: true });
++  try {
++    const options = { otp: { transport: ['sms'] }, signal: controller.signal } as CredentialRequestOptions;
++    void navigator.credentials.get(options).then((credential) => {
++      const code = (credential as (Credential & { code?: string }) | null)?.code;
++      if (!controller.signal.aborted && typeof code === 'string' && /^\d{6}$/.test(code)) onCode(code);
++    }).catch(() => {
++      // Permission denial, timeout, and unsupported policies need no error UI.
++    }).finally(() => clearTimeout(timeout));
++  } catch {
++    controller.abort();
++  }
++  return controller;
++}
+diff --git a/tests/signup.test.ts b/tests/signup.test.ts
+new file mode 100644
+index 0000000..befa169
+--- /dev/null
++++ b/tests/signup.test.ts
+@@ -0,0 +1,113 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { handleSignup, normalizePhone, type PhoneChallenge } from '../src/server/signup.ts';
++
++let phoneIndex = 1000;
++function setup() {
++  let challenge: PhoneChallenge | undefined;
++  let now = Date.now();
++  let sms = '';
++  let registrationCount = 0;
++  let rejectSms = false;
++  let rejectRegistration = false;
++  const phone = `+1202555${phoneIndex++}`;
++  const session = {
++    async get() { return challenge && structuredClone(challenge); },
++    set(_key: string, value: PhoneChallenge) { challenge = structuredClone(value); },
++    delete() { challenge = undefined; },
++  };
++  const mockFetch: typeof fetch = async (url, init) => {
++    if (String(url).includes('twilio.com')) {
++      sms = new URLSearchParams(init?.body as URLSearchParams).get('Body')!;
++      return new Response('{}', { status: rejectSms ? 400 : 201 });
++    }
++    registrationCount++;
++    const body = JSON.parse(init?.body as string);
++    assert.equal(body.phone, phone);
++    assert.equal(body.username, 'reader');
++    return new Response('{}', { status: rejectRegistration ? 400 : 200 });
++  };
++  const options = { accountSid: 'ACtest', authToken: 'test', from: '+12025550123', fetch: mockFetch, now: () => now };
++  const request = (body: object, origin = 'https://news.example') => new Request('https://news.example/devtools-times/api/signup', {
++    method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, ...body }),
++  });
++  return {
++    run: (body: object, origin?: string) => handleSignup(request(body, origin), session, options),
++    code: () => sms.match(/#(\d{6})$/)![1],
++    sms: () => sms,
++    advance: (ms: number) => { now += ms; },
++    registrations: () => registrationCount,
++    rejectSms: () => { rejectSms = true; },
++    rejectRegistration: (value: boolean) => { rejectRegistration = value; },
++    unconfigured: () => handleSignup(request({ action: 'send' }), session),
++  };
++}
++
++test('normalizes formatted international numbers and rejects missing country codes', () => {
++  assert.equal(normalizePhone('+1 (202) 555-0123'), '+12025550123');
++  for (const invalid of ['2025550123', '+012345678', '+123', '+1202abc0123', {}, null]) assert.equal(normalizePhone(invalid), null);
++});
++
++test('sends origin-bound SMS, verifies and creates an account once', async () => {
++  const app = setup();
++  assert.equal((await app.run({ action: 'send' })).status, 200);
++  assert.match(app.sms(), /\n\n@news\.example #\d{6}$/);
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'password1' })).status, 403);
++  assert.equal(app.registrations(), 0);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 200);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 400);
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'password1' })).status, 200);
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'password1' })).status, 400);
++  assert.equal(app.registrations(), 1);
++});
++
++test('bounds incorrect guesses and expires codes', async () => {
++  const app = setup();
++  await app.run({ action: 'send' });
++  for (let attempt = 0; attempt < 5; attempt++) assert.equal((await app.run({ action: 'verify', code: 'bad' })).status, 400);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 429);
++  app.advance(300_001);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 400);
++});
++
++test('enforces resend cooldown and invalidates the old challenge', async () => {
++  const app = setup();
++  await app.run({ action: 'send' });
++  const oldCode = app.code();
++  assert.equal((await app.run({ action: 'send' })).status, 429);
++  app.advance(60_001);
++  assert.equal((await app.run({ action: 'send' })).status, 200);
++  // Random codes can coincide; always verify the newly issued challenge.
++  if (oldCode !== app.code()) assert.equal((await app.run({ action: 'verify', code: oldCode })).status, 400);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 200);
++});
++
++test('rejects cross-origin requests, malformed input, and missing provider configuration', async () => {
++  const app = setup();
++  assert.equal((await app.run({ action: 'send' }, 'https://attacker.example')).status, 403);
++  assert.equal((await app.run({ action: 'send', phone: '123' })).status, 400);
++  assert.equal((await app.unconfigured()).status, 503);
++  assert.equal(app.sms(), '');
++});
++
++test('failed delivery never creates a usable challenge', async () => {
++  const app = setup();
++  app.rejectSms();
++  assert.equal((await app.run({ action: 'send' })).status, 502);
++  assert.equal((await app.run({ action: 'verify', code: app.code() })).status, 400);
++});
++
++test('rejects phone changes and weak passwords; allows retry after upstream rejection', async () => {
++  const app = setup();
++  await app.run({ action: 'send' });
++  assert.equal((await app.run({ action: 'verify', phone: '+12025559999', code: app.code() })).status, 400);
++  // A mismatched number clears the session challenge, requiring a fresh SMS.
++  app.advance(60_001);
++  await app.run({ action: 'send' });
++  await app.run({ action: 'verify', code: app.code() });
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'weak' })).status, 400);
++  app.rejectRegistration(true);
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'password1' })).status, 400);
++  app.rejectRegistration(false);
++  assert.equal((await app.run({ action: 'register', username: 'reader', password: 'password1' })).status, 200);
++});
+diff --git a/tests/smsOtp.test.ts b/tests/smsOtp.test.ts
+new file mode 100644
+index 0000000..b66cf07
+--- /dev/null
++++ b/tests/smsOtp.test.ts
+@@ -0,0 +1,66 @@
++import { afterEach, test } from 'node:test';
++import assert from 'node:assert/strict';
++import { listenForSmsCode } from '../src/utils/smsOtp.ts';
++
++const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
++const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
++afterEach(() => {
++  for (const [name, descriptor] of [['window', originalWindow], ['navigator', originalNavigator]] as const) {
++    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
++    else Reflect.deleteProperty(globalThis, name);
++  }
++});
++
++function browser(get: (options: CredentialRequestOptions) => Promise<unknown>, secure = true, supported = true) {
++  Object.defineProperty(globalThis, 'window', { configurable: true, value: {
++    isSecureContext: secure, ...(supported ? { OTPCredential: class {} } : {}),
++  } });
++  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { credentials: { get } } });
++}
++const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
++
++test('unsupported browsers and insecure contexts retain manual entry', () => {
++  const get = () => { assert.fail('WebOTP must not be called'); };
++  browser(get, true, false);
++  assert.equal(listenForSmsCode(() => assert.fail()), null);
++  browser(get, false, true);
++  assert.equal(listenForSmsCode(() => assert.fail()), null);
++});
++
++test('extracts a complete code including leading zeros and requests SMS transport', async () => {
++  browser(async (options) => {
++    assert.deepEqual((options as CredentialRequestOptions & { otp: object }).otp, { transport: ['sms'] });
++    assert.ok(options.signal);
++    return { code: '012345' };
++  });
++  let received = '';
++  listenForSmsCode((code) => { received = code; });
++  await flush();
++  assert.equal(received, '012345');
++});
++
++test('aborting on manual submit, resend, or unmount prevents a late code callback', async () => {
++  let deliver: (value: unknown) => void = () => {};
++  browser(() => new Promise((resolve) => { deliver = resolve; }));
++  const controller = listenForSmsCode(() => assert.fail('An aborted code must not submit'))!;
++  controller.abort();
++  deliver({ code: '123456' });
++  await flush();
++  assert.equal(controller.signal.aborted, true);
++});
++
++test('denied permissions, null credentials, and malformed codes preserve the fallback', async () => {
++  for (const result of [null, { code: '123' }, { code: 'abcdef' }]) {
++    browser(async () => result);
++    listenForSmsCode(() => assert.fail('Invalid credentials must not submit'));
++    await flush();
++  }
++  browser(async () => { throw new Error('NotAllowedError'); });
++  listenForSmsCode(() => assert.fail());
++  await flush();
++});
++
++test('synchronous platform errors do not break the form', () => {
++  browser(() => { throw new Error('SecurityError'); });
++  assert.equal(listenForSmsCode(() => assert.fail())?.signal.aborted, true);
++});

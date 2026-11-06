@@ -1,0 +1,41 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,37 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!--
++    Speculative loading: prefetch same-origin pages when the user shows intent
++    (hovering/starting to click), so the next page loads faster.
++    Logout is excluded by both URL and class so it is never fetched by accident.
++    Add class="no-prefetch" or rel="nofollow" to any other link to opt it out.
++    Browsers without Speculation Rules support simply ignore this block.
++  -->
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "tag": "daily-grind-prefetch",
++          "source": "document",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "href_matches": "/logout/*" } },
++              { "not": { "selector_matches": ".logout-link" } },
++              { "not": { "selector_matches": ".no-prefetch" } },
++              { "not": { "selector_matches": "[rel~=nofollow]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

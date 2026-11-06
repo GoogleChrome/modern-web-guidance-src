@@ -1,0 +1,375 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..737c7ec
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,88 @@
++---
++export interface SectionItem {
++  id: string;
++  label: string;
++}
++
++export interface Props {
++  sections: SectionItem[];
++  ariaLabel?: string;
++  class?: string;
++}
++
++const { sections, ariaLabel = "Page sections", class: className = "" } = Astro.props;
++---
++
++<nav
++  aria-label={ariaLabel}
++  class:list={[
++    "scrollspy-nav sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200",
++    className,
++  ]}
++>
++  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-6 overflow-x-auto text-sm">
++    {sections.map((section) => (
++      <a
++        href={`#${section.id}`}
++        class="py-3 border-b-2 border-transparent text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors"
++      >
++        {section.label}
++      </a>
++    ))}
++  </div>
++</nav>
++
++<script>
++  function initScrollspy() {
++    const navs = document.querySelectorAll<HTMLElement>("nav.scrollspy-nav");
++    if (!navs.length) return;
++
++    const supportsScrollTargetGroup = CSS.supports("scroll-target-group: auto");
++
++    navs.forEach((nav) => {
++      if (nav.dataset.scrollspyInitialized === "true") return;
++      nav.dataset.scrollspyInitialized = "true";
++
++      const navLinks = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++      const sections = navLinks
++        .map((link) => {
++          const hash = link.getAttribute("href");
++          return hash ? document.getElementById(hash.slice(1)) : null;
++        })
++        .filter((el): el is HTMLElement => el !== null);
++
++      if (supportsScrollTargetGroup) {
++        const syncAriaCurrent = () => {
++          const currentLink = nav.querySelector<HTMLAnchorElement>("a:target-current");
++          navLinks.forEach((link) => {
++            link.setAttribute("aria-current", link === currentLink ? "true" : "false");
++          });
++        };
++
++        syncAriaCurrent();
++        document.addEventListener("scrollend", syncAriaCurrent);
++      } else {
++        const observer = new IntersectionObserver(
++          (entries) => {
++            entries.forEach((entry) => {
++              if (entry.isIntersecting) {
++                const id = entry.target.getAttribute("id");
++                navLinks.forEach((link) => {
++                  const isActive = link.getAttribute("href") === `#${id}`;
++                  link.classList.toggle(":target-current", isActive);
++                  link.setAttribute("aria-current", String(isActive));
++                });
++              }
++            });
++          },
++          { rootMargin: "-50% 0px -50% 0px", threshold: 0 }
++        );
++
++        sections.forEach((section) => observer.observe(section));
++      }
++    });
++  }
++
++  initScrollspy();
++  document.addEventListener("astro:page-load", initScrollspy);
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..d2a9254 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-12">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..d7ac476 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,10 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-12">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..b931315 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,6 +8,7 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
++    <slot name="nav" />
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..bf9cfbb 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SectionNav from '../../components/SectionNav.astro';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -36,7 +37,13 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <SectionNav
++        sections={[
++            { id: 'article-content', label: 'Article' },
++            { id: 'related-articles', label: 'Related Articles' },
++        ]}
++    />
++    <article id="article-content" class="max-w-3xl mx-auto px-4 py-8 md:py-12 scroll-mt-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -116,7 +123,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-12">
++        <h2 class="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..6c4bc36 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,6 +39,15 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav
++        sections={[
++            { id: 'featured', label: 'Featured' },
++            { id: 'top-news', label: 'Top News' },
++            { id: 'world', label: 'World' },
++            { id: 'politics', label: 'Politics' },
++        ]}
++    />
++
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +65,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="featured" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 scroll-mt-12">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +75,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..a084ca6 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,32 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++import SectionNav from '../../components/SectionNav.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++    <SectionNav
++        slot="nav"
++        sections={[
++            { id: 'overview', label: '1. Overview' },
++            { id: 'general-info', label: '2. General Information' },
++            { id: 'data-recording', label: '3. Data Recording' },
++        ]}
++    />
++    <section id="overview" class="scroll-mt-16">
++        <h2>1. An overview of data protection</h2>
++        <p><strong>General information</strong></p>
++        <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
++    </section>
+     
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    <section id="general-info" class="scroll-mt-16">
++        <h2>2. General information and mandatory information</h2>
++        <p><strong>Data protection</strong></p>
++        <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
++        <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    </section>
+     
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <section id="data-recording" class="scroll-mt-16">
++        <h2>3. Recording of data on our website</h2>
++        <p><strong>Cookies</strong></p>
++        <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    </section>
+ </LegalLayout>
+diff --git a/src/pages/legal/terms.astro b/src/pages/legal/terms.astro
+index de69dc0..e106c81 100644
+--- a/src/pages/legal/terms.astro
++++ b/src/pages/legal/terms.astro
+@@ -1,20 +1,35 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++import SectionNav from '../../components/SectionNav.astro';
+ ---
+ <LegalLayout title="Terms of Service">
+-    <h2>1. Terms</h2>
+-    <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++    <SectionNav
++        slot="nav"
++        sections={[
++            { id: 'terms', label: '1. Terms' },
++            { id: 'use-license', label: '2. Use License' },
++            { id: 'disclaimer', label: '3. Disclaimer' },
++        ]}
++    />
++    <section id="terms" class="scroll-mt-16">
++        <h2>1. Terms</h2>
++        <p>By accessing the website at The DevTools Times, you are agreeing to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws. If you do not agree with any of these terms, you are prohibited from using or accessing this site. The materials contained in this website are protected by applicable copyright and trademark law.</p>
++    </section>
+     
+-    <h2>2. Use License</h2>
+-    <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+-    <ul>
+-        <li>modify or copy the materials;</li>
+-        <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
+-        <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
+-        <li>remove any copyright or other proprietary notations from the materials; or</li>
+-        <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
+-    </ul>
++    <section id="use-license" class="scroll-mt-16">
++        <h2>2. Use License</h2>
++        <p>Permission is granted to temporarily download one copy of the materials (information or software) on The DevTools Times' website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
++        <ul>
++            <li>modify or copy the materials;</li>
++            <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
++            <li>attempt to decompile or reverse engineer any software contained on The DevTools Times' website;</li>
++            <li>remove any copyright or other proprietary notations from the materials; or</li>
++            <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
++        </ul>
++    </section>
+     
+-    <h2>3. Disclaimer</h2>
+-    <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    <section id="disclaimer" class="scroll-mt-16">
++        <h2>3. Disclaimer</h2>
++        <p>The materials on The DevTools Times' website are provided on an 'as is' basis. The DevTools Times makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
++    </section>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..24da654 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,16 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* MANDATORY: The container of markers must have scroll-target-group: auto */
++nav.scrollspy-nav {
++  scroll-target-group: auto;
++}
++
++/* Combine native :target-current with fallback class .\:target-current using :is() so older browsers don't invalidate the rule */
++nav.scrollspy-nav a:is(:target-current, .\:target-current) {
++  color: var(--accent, #b45309);
++  border-bottom-color: var(--accent, #b45309);
++  font-weight: 700;
++}

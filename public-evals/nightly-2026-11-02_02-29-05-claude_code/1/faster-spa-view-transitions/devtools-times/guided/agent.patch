@@ -1,0 +1,179 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4ea9ea3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const viewKey = Astro.url.pathname + Astro.url.search;
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +46,16 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-spa-views transition:persist="spa-views">
++          <div class="spa-view outline-none" data-spa-view={viewKey} tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..9b1d000
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,118 @@
++import {
++  swapFunctions,
++  type TransitionBeforePreparationEvent,
++  type TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++/*
++ * Keeps the rendered DOM of previously visited views alive across ClientRouter
++ * navigations. The <main> view host is persisted between pages; each visited URL
++ * owns one `[data-spa-view]` child. Inactive views are hidden with
++ * `content-visibility: hidden` (see global.css), so the browser skips their
++ * layout/paint but keeps the cached rendering state, and returning to them is
++ * near-instant instead of re-fetching, re-parsing and re-hydrating the page.
++ */
++
++// Upper bound of cached views, so the many dynamic article routes don't bloat memory.
++const MAX_CACHED_VIEWS = 8;
++
++const HOST_SELECTOR = "[data-spa-views]";
++const VIEW_SELECTOR = ":scope > [data-spa-view]";
++
++interface CachedView {
++  view: HTMLElement;
++  // Server response for the view (with the view's content stripped), used to
++  // swap <head>/page chrome without a network round trip. The initially loaded
++  // page has none and is fetched again, but its view DOM is still reused.
++  snapshot?: Document;
++}
++
++const cache = new Map<string, CachedView>();
++let isFormSubmission = false;
++
++const viewKey = (url: URL) => url.pathname + url.search;
++
++function touch(key: string, entry: CachedView) {
++  cache.delete(key);
++  cache.set(key, entry);
++  while (cache.size > MAX_CACHED_VIEWS) {
++    const [oldestKey, oldest] = cache.entries().next().value!;
++    oldest.view.remove();
++    cache.delete(oldestKey);
++  }
++}
++
++function setActive(view: HTMLElement, active: boolean) {
++  view.classList.toggle("inactive", !active);
++  view.inert = !active;
++  if (active) view.removeAttribute("aria-hidden");
++  else view.setAttribute("aria-hidden", "true");
++}
++
++function registerInitialView() {
++  const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
++  const view = host?.querySelector<HTMLElement>(VIEW_SELECTOR);
++  if (view) touch(viewKey(new URL(location.href)), { view });
++}
++
++document.addEventListener("astro:before-preparation", (event: TransitionBeforePreparationEvent) => {
++  isFormSubmission = !!event.formData;
++  const cached = !isFormSubmission && cache.get(viewKey(event.to));
++  if (cached && cached.snapshot) {
++    const snapshot = cached.snapshot;
++    event.loader = async () => {
++      event.newDocument = snapshot.cloneNode(true) as Document;
++    };
++  }
++});
++
++document.addEventListener("astro:before-swap", (event: TransitionBeforeSwapEvent) => {
++  const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
++  const newDoc = event.newDocument;
++  const incomingHost = newDoc.querySelector<HTMLElement>(HOST_SELECTOR);
++  const incoming = incomingHost?.querySelector<HTMLElement>(VIEW_SELECTOR);
++
++  if (!host || !incomingHost || !incoming) {
++    // Not a page with a view host: fall back to a full body swap.
++    cache.clear();
++    return;
++  }
++
++  const key = viewKey(event.to);
++  let entry = cache.get(key);
++
++  // A form POST result must not be served from (or kept in) the cache.
++  if (entry && isFormSubmission) {
++    entry.view.remove();
++    cache.delete(key);
++    entry = undefined;
++  }
++
++  event.swap = () => {
++    // Mark already executed scripts while the incoming view is still part of newDoc.
++    swapFunctions.deselectScripts(newDoc);
++    swapFunctions.swapRootAttributes(newDoc);
++    swapFunctions.swapHeadElements(newDoc);
++
++    if (entry) {
++      // Reuse the live view; the freshly parsed copy is discarded.
++      incoming.remove();
++    } else {
++      const snapshot = isFormSubmission ? undefined : (newDoc.cloneNode(true) as Document);
++      snapshot?.querySelector(HOST_SELECTOR)?.querySelector(VIEW_SELECTOR)?.replaceChildren();
++      host.append(incoming);
++      entry = { view: incoming, snapshot };
++    }
++    touch(key, entry);
++
++    for (const view of host.querySelectorAll<HTMLElement>(VIEW_SELECTOR)) {
++      setActive(view, view === entry.view);
++    }
++
++    // The persisted host is moved (via moveBefore() where supported) into the new body.
++    swapFunctions.swapBodyElement(newDoc.body, document.body);
++    entry.view.focus({ preventScroll: true });
++  };
++});
++
++registerInitialView();
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..8a50a75 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,17 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Previously visited views kept alive by src/scripts/view-cache.ts */
++.spa-view.inactive {
++  /* Skip layout/paint but keep the cached rendering state */
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

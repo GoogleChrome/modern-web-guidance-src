@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+index 66c9173..62f0942 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,160 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards Section */
++    .loyalty-section {
++      margin-top: 50px;
++    }
++
++    .loyalty-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .loyalty-card {
++      background: white;
++      padding: 35px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 4px solid var(--accent);
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++    }
++
++    .progress-ring-wrapper {
++      position: relative;
++      width: 190px;
++      height: 190px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .progress-ring {
++      width: 190px;
++      height: 190px;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring-track {
++      fill: none;
++      stroke: var(--secondary);
++      stroke-width: 14;
++    }
++
++    .progress-ring-fill {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 14;
++      stroke-linecap: round;
++      stroke-dasharray: 471.24;
++      stroke-dashoffset: 94.25; /* 80% progress (8 of 10 drinks) */
++      transition: stroke-dashoffset 0.6s ease;
++    }
++
++    .progress-ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      padding: 20px;
++    }
++
++    .progress-count {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.1;
++    }
++
++    .progress-unit {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text);
++      margin-top: 2px;
++    }
++
++    .progress-status {
++      font-size: 0.75rem;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-top: 6px;
++      font-weight: 600;
++    }
++
++    .loyalty-details {
++      flex: 1;
++      min-width: 260px;
++      max-width: 520px;
++    }
++
++    .loyalty-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 4px;
++      margin-bottom: 10px;
++    }
++
++    .loyalty-details h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .loyalty-details p {
++      color: var(--text);
++      margin-bottom: 12px;
++    }
++
++    .loyalty-perks {
++      list-style: none;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin: 15px 0 5px;
++    }
++
++    .loyalty-perks li {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 6px 12px;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    .loyalty-perks li strong {
++      color: var(--primary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      margin-left: 10px;
++    }
++
++    .btn-accent:hover {
++      background: #ffa000;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +349,38 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="loyalty-section" id="rewards">
++      <h2>Loyalty Rewards</h2>
++      <div class="loyalty-card">
++        <div class="progress-ring-wrapper" role="progressbar" aria-valuenow="8" aria-valuemin="0" aria-valuemax="10" aria-label="Loyalty reward progress: 8 of 10 drinks toward your next free drink">
++          <svg class="progress-ring" viewBox="0 0 190 190" aria-hidden="true">
++            <circle class="progress-ring-track" cx="95" cy="95" r="75"></circle>
++            <circle class="progress-ring-fill" cx="95" cy="95" r="75"></circle>
++          </svg>
++          <div class="progress-ring-center">
++            <span class="progress-count">8 / 10</span>
++            <span class="progress-unit">Drinks</span>
++            <span class="progress-status">2 to go!</span>
++          </div>
++        </div>
++
++        <div class="loyalty-details">
++          <span class="loyalty-badge">Daily Grind Perks</span>
++          <h3>Almost Time for a Free Drink!</h3>
++          <p>You've earned <strong>8 out of 10</strong> bean stamps toward your next complimentary handcrafted beverage of any size. Just <strong>2 more drinks</strong> to unlock your reward.</p>
++          <ul class="loyalty-perks">
++            <li><strong>Current Tier:</strong> Gold Roaster</li>
++            <li><strong>Next Reward:</strong> Any Handcrafted Drink</li>
++            <li><strong>Bonus:</strong> Double stamps on Fridays</li>
++          </ul>
++          <div>
++            <a href="/rewards" class="btn">View Rewards History</a>
++            <a href="/order-online" class="btn btn-accent">Order &amp; Earn</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

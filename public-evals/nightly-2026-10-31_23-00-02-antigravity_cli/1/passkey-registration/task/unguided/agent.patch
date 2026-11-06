@@ -1,0 +1,349 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .passkey-promo {
++      background: white;
++      border-left: 5px solid var(--accent);
++      border-radius: 8px;
++      padding: 24px;
++      margin-bottom: 35px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .passkey-promo-content {
++      flex: 1 1 300px;
++    }
++
++    .passkey-promo h2 {
++      color: var(--primary);
++      font-size: 1.35rem;
++      margin-bottom: 6px;
++    }
++
++    .passkey-promo p {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .passkey-actions {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 8px;
++    }
++
++    .passkey-actions .btn {
++      margin-top: 0;
++      border: none;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    .passkey-status {
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .passkey-status.success {
++      color: #2e7d32;
++      font-weight: 600;
++    }
++
++    .passkey-status.error {
++      color: #c62828;
++      font-weight: 600;
++    }
++
++    .passkey-status.info {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +242,21 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="passkey-promo" id="passkey-promo-section" aria-labelledby="passkey-promo-heading">
++      <div class="passkey-promo-content">
++        <h2 id="passkey-promo-heading">Sign in faster with a passkey</h2>
++        <p>Skip the password next time. Create a passkey for fast, phishing-resistant sign-in using your device's fingerprint, face, or screen lock.</p>
++      </div>
++      <div class="passkey-actions">
++        <button type="button" class="btn" id="register-passkey-btn" data-testid="register-button">
++          Create passkey
++        </button>
++        <p id="passkey-status" class="passkey-status" data-testid="register-status" role="status" aria-live="polite"></p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +287,246 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const registerButton = document.querySelector('[data-testid="register-button"]');
++      const statusEl = document.getElementById('passkey-status');
++
++      function setStatus(message, type = 'info') {
++        if (!statusEl) return;
++        statusEl.textContent = message;
++        statusEl.className = `passkey-status ${type}`;
++      }
++
++      function base64urlToBuffer(base64url) {
++        if (base64url instanceof ArrayBuffer) {
++          return base64url;
++        }
++        if (ArrayBuffer.isView(base64url)) {
++          return base64url.buffer.slice(base64url.byteOffset, base64url.byteOffset + base64url.byteLength);
++        }
++        const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
++        const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
++        const rawData = window.atob(base64);
++        const outputArray = new Uint8Array(rawData.length);
++        for (let i = 0; i < rawData.length; i += 1) {
++          outputArray[i] = rawData.charCodeAt(i);
++        }
++        return outputArray.buffer;
++      }
++
++      function bufferToBase64url(buffer) {
++        if (!buffer) return undefined;
++        if (typeof buffer === 'string') return buffer;
++        const bytes = buffer instanceof Uint8Array
++          ? buffer
++          : new Uint8Array(ArrayBuffer.isView(buffer) ? buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) : buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i += 1) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return window.btoa(binary)
++          .replace(/\+/g, '-')
++          .replace(/\//g, '_')
++          .replace(/=+$/g, '');
++      }
++
++      function parseCreationOptions(rawData) {
++        const options = rawData && rawData.publicKey
++          ? rawData.publicKey
++          : (rawData && rawData.options ? rawData.options : rawData);
++
++        if (
++          typeof window.PublicKeyCredential !== 'undefined' &&
++          typeof window.PublicKeyCredential.parseCreationOptionsFromJSON === 'function'
++        ) {
++          try {
++            const parsed = window.PublicKeyCredential.parseCreationOptionsFromJSON(options);
++            if (!options.authenticatorSelection && !parsed.authenticatorSelection) {
++              parsed.authenticatorSelection = {
++                authenticatorAttachment: 'platform',
++                residentKey: 'required',
++                requireResidentKey: true,
++                userVerification: 'required',
++              };
++            }
++            return parsed;
++          } catch (_) {
++            // Fall back to manual decoding if options JSON does not strictly match native parser schema
++          }
++        }
++
++        const publicKey = {
++          rp: {
++            name: 'The Daily Grind',
++            id: window.location.hostname || 'localhost',
++            ...(options && options.rp ? options.rp : {}),
++          },
++          pubKeyCredParams: (options && options.pubKeyCredParams) || [
++            { type: 'public-key', alg: -7 },
++            { type: 'public-key', alg: -257 },
++          ],
++          authenticatorSelection: {
++            authenticatorAttachment: 'platform',
++            residentKey: 'required',
++            requireResidentKey: true,
++            userVerification: 'required',
++            ...(options && options.authenticatorSelection ? options.authenticatorSelection : {}),
++          },
++          ...(options || {}),
++        };
++
++        if (typeof publicKey.challenge === 'string' || ArrayBuffer.isView(publicKey.challenge)) {
++          publicKey.challenge = base64urlToBuffer(publicKey.challenge);
++        }
++
++        if (publicKey.user && (typeof publicKey.user.id === 'string' || ArrayBuffer.isView(publicKey.user.id))) {
++          publicKey.user = {
++            ...publicKey.user,
++            id: base64urlToBuffer(publicKey.user.id),
++          };
++        }
++
++        if (Array.isArray(publicKey.excludeCredentials)) {
++          publicKey.excludeCredentials = publicKey.excludeCredentials.map((cred) => ({
++            ...cred,
++            id: typeof cred.id === 'string' || ArrayBuffer.isView(cred.id) ? base64urlToBuffer(cred.id) : cred.id,
++          }));
++        }
++
++        return publicKey;
++      }
++
++      function serializeCredential(credential) {
++        if (typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++
++        const response = credential.response || {};
++        const serializedResponse = {
++          clientDataJSON: bufferToBase64url(response.clientDataJSON),
++          attestationObject: bufferToBase64url(response.attestationObject),
++        };
++
++        if (typeof response.getTransports === 'function') {
++          serializedResponse.transports = response.getTransports();
++        } else if (Array.isArray(response.transports)) {
++          serializedResponse.transports = response.transports;
++        }
++
++        if (typeof response.getPublicKeyAlgorithm === 'function') {
++          serializedResponse.publicKeyAlgorithm = response.getPublicKeyAlgorithm();
++        } else if (typeof response.publicKeyAlgorithm === 'number') {
++          serializedResponse.publicKeyAlgorithm = response.publicKeyAlgorithm;
++        }
++
++        if (typeof response.getPublicKey === 'function') {
++          const pk = response.getPublicKey();
++          if (pk) serializedResponse.publicKey = bufferToBase64url(pk);
++        } else if (response.publicKey) {
++          serializedResponse.publicKey = bufferToBase64url(response.publicKey);
++        }
++
++        if (typeof response.getAuthenticatorData === 'function') {
++          const authData = response.getAuthenticatorData();
++          if (authData) serializedResponse.authenticatorData = bufferToBase64url(authData);
++        } else if (response.authenticatorData) {
++          serializedResponse.authenticatorData = bufferToBase64url(response.authenticatorData);
++        }
++
++        const serialized = {
++          id: credential.id,
++          rawId: bufferToBase64url(credential.rawId) || credential.id,
++          type: credential.type || 'public-key',
++          response: serializedResponse,
++          clientExtensionResults:
++            typeof credential.getClientExtensionResults === 'function'
++              ? credential.getClientExtensionResults()
++              : (credential.clientExtensionResults || {}),
++        };
++
++        if (credential.authenticatorAttachment) {
++          serialized.authenticatorAttachment = credential.authenticatorAttachment;
++        }
++
++        return serialized;
++      }
++
++      async function handleRegisterPasskey() {
++        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.create) {
++          setStatus('Passkeys are not supported on this browser or device.', 'error');
++          return;
++        }
++
++        registerButton.disabled = true;
++        setStatus('Preparing passkey registration...', 'info');
++
++        try {
++          if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
++            await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++          }
++          if (typeof window.PublicKeyCredential.getClientCapabilities === 'function') {
++            await window.PublicKeyCredential.getClientCapabilities();
++          }
++
++          const optionsRes = await fetch('/api/register/options', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++              'Accept': 'application/json',
++            },
++            credentials: 'same-origin',
++            body: JSON.stringify({ promotion: true }),
++          });
++
++          if (!optionsRes.ok) {
++            throw new Error(`Failed to fetch registration options (${optionsRes.status})`);
++          }
++
++          const optionsData = await optionsRes.json();
++          const publicKey = parseCreationOptions(optionsData);
++
++          const credential = await navigator.credentials.create({ publicKey });
++          if (!credential) {
++            throw new Error('Passkey creation did not return a credential.');
++          }
++
++          const credentialPayload = serializeCredential(credential);
++
++          const verifyRes = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++              'Accept': 'application/json',
++            },
++            credentials: 'same-origin',
++            body: JSON.stringify(credentialPayload),
++          });
++
++          if (!verifyRes.ok) {
++            throw new Error(`Passkey verification failed (${verifyRes.status})`);
++          }
++
++          setStatus('Passkey created and verified!', 'success');
++        } catch (err) {
++          if (err && err.name === 'InvalidStateError') {
++            setStatus('A passkey is already registered for this device.', 'info');
++          } else if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
++            setStatus('Passkey creation was cancelled.', 'info');
++          } else {
++            setStatus(err && err.message ? err.message : 'Unable to register passkey. Please try again.', 'error');
++          }
++        } finally {
++          registerButton.disabled = false;
++        }
++      }
++
++      if (registerButton) {
++        registerButton.addEventListener('click', handleRegisterPasskey);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

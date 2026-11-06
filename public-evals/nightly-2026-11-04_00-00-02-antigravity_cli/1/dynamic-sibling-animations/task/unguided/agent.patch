@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,16 +106,56 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @keyframes cardFadeInUp {
++      from {
++        opacity: 0;
++        transform: translateY(20px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .grid .card {
++      opacity: 0;
++      animation: cardFadeInUp 0.5s ease-out forwards;
++    }
++
++    .grid .card:nth-child(1) {
++      animation-delay: 0ms;
++    }
++
++    .grid .card:nth-child(2) {
++      animation-delay: 100ms;
++    }
++
++    .grid .card:nth-child(3) {
++      animation-delay: 200ms;
++    }
++
++    .grid .card:nth-child(4) {
++      animation-delay: 300ms;
++    }
++
++    .grid .card:nth-child(5) {
++      animation-delay: 400ms;
++    }
++
++    .grid .card:nth-child(6) {
++      animation-delay: 500ms;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

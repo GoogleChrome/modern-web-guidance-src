@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="barista.css">
++  <script src="barista.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +196,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="coffee-ai" aria-labelledby="barista-title">
++      <div class="ai-heading">
++        <div><span class="eyebrow">A LITTLE COFFEE KNOW-HOW</span><h2 id="barista-title">Ask the barista</h2></div>
++        <span class="local-badge">On-device AI</span>
++      </div>
++      <p>Get to know our Maple Oat Latte or Cold Brew. Ask a question, then keep the conversation going.</p>
++      <p id="ai-status" class="ai-status" role="status">Checking local AI availability…</p>
++      <progress id="model-progress" max="1" value="0" aria-label="AI model download progress" hidden></progress>
++      <form id="barista-form">
++        <label for="barista-question">What would you like to know?</label>
++        <textarea id="barista-question" rows="3" maxlength="4000" required placeholder="How is the Cold Brew made?"></textarea>
++        <div class="ai-actions"><button id="ask-the-barista" class="btn" type="submit">Ask the barista</button><button id="stop-btn" class="btn secondary-btn" type="button" disabled>Stop</button></div>
++      </form>
++      <div id="barista-answer" class="ai-output" aria-live="polite" aria-atomic="false">Your barista’s answer will appear here.</div>
++      <p class="ai-note">Responses are generated locally and may be imperfect. Ask our team about allergies or dietary needs.</p>
++    </section>
++
++    <div class="ai-grid">
++      <section class="coffee-ai" aria-labelledby="feedback-title">
++        <span class="eyebrow">HOW WAS YOUR CUP?</span>
++        <h2 id="feedback-title">Customer feedback analyzer</h2>
++        <p>Turn a coffee experience into a sentiment score and category, right on your device.</p>
++        <form id="sentiment-form">
++          <label for="customer-feedback">Customer feedback</label>
++          <textarea id="customer-feedback" rows="4" maxlength="4000" required placeholder="The latte was wonderfully creamy and the service was lovely."></textarea>
++          <button id="sentiment-btn" class="btn" type="submit">Analyze feedback</button>
++        </form>
++        <p id="sentiment-status" class="ai-note" role="status">Score: −1 (negative) to 1 (positive).</p>
++        <pre id="sentiment-result" class="ai-output" aria-live="polite">Your JSON result will appear here.</pre>
++      </section>
++
++      <section class="coffee-ai" aria-labelledby="branch-title">
++        <span class="eyebrow">EXPLORE ANOTHER POUR</span>
++        <h2 id="branch-title">Conversation branching</h2>
++        <p>Clone the current conversation to try a different question with the same context.</p>
++        <label for="session-select">Active conversation</label>
++        <select id="session-select" disabled><option>No active conversation</option></select>
++        <div class="ai-actions"><button id="clone-btn" class="btn" type="button" disabled>Clone conversation</button><button id="cleanup-btn" class="btn secondary-btn" type="button" disabled>Keep only active</button></div>
++        <p id="context-usage" class="ai-note" role="status">Context usage will appear after your first question.</p>
++        <meter id="context-meter" min="0" max="1" value="0" aria-label="Active conversation context usage"></meter>
++        <p id="branch-status" class="ai-note" role="status">Up to 3 conversations. Older inactive branches are released automatically.</p>
++        <button id="reset-btn" class="text-btn" type="button" disabled>Clear all conversations</button>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

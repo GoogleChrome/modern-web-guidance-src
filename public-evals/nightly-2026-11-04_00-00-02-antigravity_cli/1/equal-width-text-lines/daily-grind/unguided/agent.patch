@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+index 66c9173..6236fac 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +85,46 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(88vw, 460px);
++      margin: 0 auto 1.25rem;
++      padding: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.88;
++      letter-spacing: normal;
++      word-spacing: normal;
++      text-rendering: geometricPrecision;
++    }
++
++    .hero-line {
++      display: block;
++      width: max-content;
++      white-space: nowrap;
++      line-height: 0.88;
++      letter-spacing: normal;
++      word-spacing: normal;
++      margin: 0;
++      padding: 0;
++      text-rendering: geometricPrecision;
++    }
++
++    .hero-line:nth-child(1) {
++      font-size: 5.8rem;
++    }
++
++    .hero-line:nth-child(2) {
++      font-size: 9.8rem;
++    }
++
++    .hero-line:nth-child(3) {
++      font-size: 6.8rem;
+     }
+ 
+     /* Content Sections */
+@@ -169,11 +203,56 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="hero-lockup">
++      <span class="hero-line">Wake Up</span>
++      <span class="hero-line">Your</span>
++      <span class="hero-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <script>
++    (function () {
++      function fitHeroLockup() {
++        const lockup = document.querySelector('.hero h1');
++        if (!lockup) return;
++        const lines = lockup.querySelectorAll('.hero-line');
++        if (!lines.length) return;
++
++        const targetWidth = lockup.getBoundingClientRect().width;
++        if (targetWidth <= 0) return;
++
++        lines.forEach((line) => {
++          let fontSize = 100;
++          line.style.fontSize = fontSize + 'px';
++
++          for (let i = 0; i < 6; i++) {
++            const currentWidth = line.getBoundingClientRect().width;
++            if (currentWidth <= 0) break;
++            fontSize = fontSize * (targetWidth / currentWidth);
++            line.style.fontSize = fontSize.toFixed(4) + 'px';
++            if (Math.abs(currentWidth - targetWidth) < 0.05) break;
++          }
++        });
++      }
++
++      fitHeroLockup();
++      window.addEventListener('resize', fitHeroLockup);
++      window.addEventListener('DOMContentLoaded', fitHeroLockup);
++      window.addEventListener('load', fitHeroLockup);
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(fitHeroLockup);
++      }
++      if (typeof ResizeObserver !== 'undefined') {
++        const lockup = document.querySelector('.hero h1');
++        if (lockup) {
++          new ResizeObserver(fitHeroLockup).observe(lockup);
++        }
++      }
++    })();
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>

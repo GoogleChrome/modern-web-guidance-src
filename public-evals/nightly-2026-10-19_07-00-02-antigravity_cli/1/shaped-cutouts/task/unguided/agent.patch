@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,193 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shaped Elements Styles */
++    .barista-section,
++    .loyalty-section,
++    .promo-section {
++      margin-top: 60px;
++    }
++
++    /* 1) Featured Barista Profile Image */
++    .barista-profile {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      background: white;
++      padding: 40px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
++      max-width: 850px;
++      margin: 0 auto;
++    }
++
++    @media (max-width: 768px) {
++      .barista-profile {
++        flex-direction: column;
++        text-align: center;
++      }
++    }
++
++    .shaped-avatar {
++      width: 240px;
++      height: 240px;
++      object-fit: cover;
++      flex-shrink: 0;
++      display: block;
++      clip-path: url(#paint-splat);
++      -webkit-clip-path: url(#paint-splat);
++      mask: url(#paint-splat-mask);
++      -webkit-mask: url(#paint-splat-mask);
++      mask-image: url(#paint-splat-mask);
++      -webkit-mask-image: url(#paint-splat-mask);
++    }
++
++    .barista-info {
++      flex: 1;
++    }
++
++    .barista-info h3 {
++      font-size: 1.8rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .barista-role {
++      color: #8d6e63;
++      font-weight: 600;
++      margin-bottom: 14px;
++      text-transform: uppercase;
++      font-size: 0.85rem;
++      letter-spacing: 0.5px;
++    }
++
++    .barista-quote {
++      margin-top: 15px;
++      color: var(--text);
++      border-left: 3px solid var(--accent);
++      padding-left: 12px;
++      font-style: italic;
++    }
++
++    /* 2) Loyalty Banner with Unified Card, Unmasked Card Body, and Curved Masked Accent */
++    .unified-card {
++      display: flex;
++      max-width: 780px;
++      margin: 0 auto;
++      filter: drop-shadow(0 10px 24px rgba(78, 52, 46, 0.16));
++      border-radius: 14px;
++      position: relative;
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      background: #ffffff;
++      padding: 35px 40px;
++      border-radius: 14px 0 0 14px;
++    }
++
++    .unified-card .card-body .badge {
++      display: inline-block;
++      background: #efebe9;
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 10px;
++    }
++
++    .unified-card .card-accent {
++      width: 100px;
++      background: linear-gradient(135deg, var(--accent), #ff8f00);
++      border-radius: 0 14px 14px 0;
++      -webkit-mask: url(#cutout-curve-mask);
++      mask: url(#cutout-curve-mask);
++      -webkit-mask-image: url(#cutout-curve-mask);
++      mask-image: url(#cutout-curve-mask);
++    }
++
++    /* 3) Promo Card with Circular Notch Cutout via Gradient Mask */
++    .gradient-masked-card {
++      max-width: 480px;
++      margin: 0 auto;
++      background: linear-gradient(145deg, #ffffff, #fff8e1);
++      padding: 45px 35px 35px;
++      border-radius: 16px;
++      text-align: center;
++      position: relative;
++      filter: drop-shadow(0 10px 24px rgba(78, 52, 46, 0.14));
++      -webkit-mask-image: radial-gradient(circle 24px at 50% 0, transparent 23px, #000 24px);
++      mask-image: radial-gradient(circle 24px at 50% 0, transparent 23px, #000 24px);
++      -webkit-mask: radial-gradient(circle 24px at 50% 0, transparent 23px, #000 24px);
++      mask: radial-gradient(circle 24px at 50% 0, transparent 23px, #000 24px);
++    }
++
++    .promo-notch-label {
++      font-size: 0.7rem;
++      letter-spacing: 1.5px;
++      font-weight: 700;
++      color: #8d6e63;
++      margin-bottom: 12px;
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      margin-bottom: 10px;
++    }
++
++    .promo-code {
++      display: inline-block;
++      margin: 15px 0;
++      padding: 8px 16px;
++      background: #f5efe6;
++      border: 1px dashed var(--primary);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .promo-code span {
++      font-weight: bold;
++      color: var(--primary);
++      letter-spacing: 1px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- SVG Shape Definitions -->
++  <svg class="svg-definitions" width="0" height="0" style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
++    <defs>
++      <!-- 1) Organic paint splat vector shape scaling with element dimensions via objectBoundingBox -->
++      <clipPath id="paint-splat" clipPathUnits="objectBoundingBox">
++        <path d="M 0.48 0.05 C 0.53 0.02, 0.58 0.04, 0.60 0.10 C 0.63 0.17, 0.58 0.22, 0.64 0.24 C 0.71 0.18, 0.80 0.16, 0.84 0.22 C 0.88 0.28, 0.83 0.35, 0.77 0.37 C 0.85 0.38, 0.94 0.36, 0.96 0.44 C 0.98 0.52, 0.90 0.56, 0.85 0.57 C 0.92 0.62, 0.97 0.70, 0.93 0.78 C 0.89 0.85, 0.81 0.81, 0.76 0.80 C 0.78 0.87, 0.81 0.94, 0.74 0.97 C 0.67 1.00, 0.62 0.91, 0.58 0.86 C 0.54 0.92, 0.49 0.98, 0.42 0.97 C 0.35 0.96, 0.36 0.87, 0.34 0.82 C 0.27 0.88, 0.19 0.94, 0.13 0.88 C 0.08 0.82, 0.14 0.74, 0.18 0.70 C 0.11 0.69, 0.03 0.67, 0.03 0.58 C 0.03 0.49, 0.12 0.48, 0.17 0.46 C 0.09 0.41, 0.05 0.33, 0.08 0.26 C 0.12 0.19, 0.20 0.24, 0.24 0.28 C 0.23 0.20, 0.26 0.11, 0.34 0.10 C 0.41 0.09, 0.42 0.19, 0.45 0.21 C 0.46 0.14, 0.44 0.07, 0.48 0.05 Z M 0.86 0.18 C 0.88 0.16, 0.91 0.18, 0.91 0.21 C 0.91 0.24, 0.88 0.26, 0.86 0.26 C 0.84 0.26, 0.82 0.24, 0.82 0.21 C 0.82 0.18, 0.84 0.16, 0.86 0.18 Z M 0.16 0.83 C 0.18 0.81, 0.21 0.83, 0.21 0.86 C 0.21 0.89, 0.18 0.91, 0.16 0.91 C 0.14 0.91, 0.12 0.89, 0.12 0.86 C 0.12 0.83, 0.14 0.81, 0.16 0.83 Z M 0.89 0.82 C 0.91 0.80, 0.93 0.82, 0.93 0.84 C 0.93 0.86, 0.91 0.88, 0.89 0.88 C 0.87 0.88, 0.85 0.86, 0.85 0.84 C 0.85 0.82, 0.87 0.80, 0.89 0.82 Z M 0.22 0.15 C 0.24 0.13, 0.26 0.15, 0.26 0.17 C 0.26 0.19, 0.24 0.21, 0.22 0.21 C 0.20 0.21, 0.18 0.19, 0.18 0.17 C 0.18 0.15, 0.20 0.13, 0.22 0.15 Z" />
++      </clipPath>
++      <mask id="paint-splat-mask" maskContentUnits="objectBoundingBox">
++        <path fill="white" d="M 0.48 0.05 C 0.53 0.02, 0.58 0.04, 0.60 0.10 C 0.63 0.17, 0.58 0.22, 0.64 0.24 C 0.71 0.18, 0.80 0.16, 0.84 0.22 C 0.88 0.28, 0.83 0.35, 0.77 0.37 C 0.85 0.38, 0.94 0.36, 0.96 0.44 C 0.98 0.52, 0.90 0.56, 0.85 0.57 C 0.92 0.62, 0.97 0.70, 0.93 0.78 C 0.89 0.85, 0.81 0.81, 0.76 0.80 C 0.78 0.87, 0.81 0.94, 0.74 0.97 C 0.67 1.00, 0.62 0.91, 0.58 0.86 C 0.54 0.92, 0.49 0.98, 0.42 0.97 C 0.35 0.96, 0.36 0.87, 0.34 0.82 C 0.27 0.88, 0.19 0.94, 0.13 0.88 C 0.08 0.82, 0.14 0.74, 0.18 0.70 C 0.11 0.69, 0.03 0.67, 0.03 0.58 C 0.03 0.49, 0.12 0.48, 0.17 0.46 C 0.09 0.41, 0.05 0.33, 0.08 0.26 C 0.12 0.19, 0.20 0.24, 0.24 0.28 C 0.23 0.20, 0.26 0.11, 0.34 0.10 C 0.41 0.09, 0.42 0.19, 0.45 0.21 C 0.46 0.14, 0.44 0.07, 0.48 0.05 Z M 0.86 0.18 C 0.88 0.16, 0.91 0.18, 0.91 0.21 C 0.91 0.24, 0.88 0.26, 0.86 0.26 C 0.84 0.26, 0.82 0.24, 0.82 0.21 C 0.82 0.18, 0.84 0.16, 0.86 0.18 Z M 0.16 0.83 C 0.18 0.81, 0.21 0.83, 0.21 0.86 C 0.21 0.89, 0.18 0.91, 0.16 0.91 C 0.14 0.91, 0.12 0.89, 0.12 0.86 C 0.12 0.83, 0.14 0.81, 0.16 0.83 Z M 0.89 0.82 C 0.91 0.80, 0.93 0.82, 0.93 0.84 C 0.93 0.86, 0.91 0.88, 0.89 0.88 C 0.87 0.88, 0.85 0.86, 0.85 0.84 C 0.85 0.82, 0.87 0.80, 0.89 0.82 Z M 0.22 0.15 C 0.24 0.13, 0.26 0.15, 0.26 0.17 C 0.26 0.19, 0.24 0.21, 0.22 0.21 C 0.20 0.21, 0.18 0.19, 0.18 0.17 C 0.18 0.15, 0.20 0.13, 0.22 0.15 Z" />
++      </mask>
++
++      <!-- 2) Custom cutout curve mask for .card-accent on its side -->
++      <mask id="cutout-curve-mask" maskContentUnits="objectBoundingBox">
++        <path fill="white" d="M 0,0 L 1,0 C 0.65,0.35 0.65,0.65 1,1 L 0,1 Z" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +374,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- 1) Featured Barista Profile Section -->
++    <section class="barista-section">
++      <h2 style="text-align: center; margin-bottom: 24px;">Featured Barista</h2>
++      <div class="barista-profile">
++        <img src="https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=600&q=80" alt="Elena Vance, Featured Barista" class="shaped-avatar">
++        <div class="barista-info">
++          <h3>Elena Vance</h3>
++          <p class="barista-role">Head of Coffee & Lead Roaster</p>
++          <p>Elena curates our small-batch roasts and leads latte art workshops. She brings over a decade of craft roasting expertise to every single pour.</p>
++          <p class="barista-quote">"Great coffee isn't just about heat and beans—it's about telling the story of the soil where it grew."</p>
++        </div>
++      </div>
++    </section>
++
++    <!-- 2) Loyalty Banner with Unified Card -->
++    <section class="loyalty-section">
++      <div class="unified-card">
++        <div class="card-body">
++          <span class="badge">Grind Club Loyalty</span>
++          <h3>Brew Rewards & Free Perks</h3>
++          <p>Earn beans with every sip. Collect 10 beans to unlock complimentary pour-overs, artisanal pastries, and invitations to private cupping sessions.</p>
++          <a href="/rewards" class="btn">Join Grind Club</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++    </section>
++
++    <!-- 3) Promo Card with Circular Notch Cutout via Gradient Mask -->
++    <section class="promo-section">
++      <h2 style="text-align: center; margin-bottom: 24px;">Special Offers</h2>
++      <div class="gradient-masked-card">
++        <div class="promo-notch-label">MEMBER PROMO</div>
++        <h3>Weekend Roaster's Deal</h3>
++        <p>Enjoy 25% off all retail single-origin beans and cold brew growler refills this weekend.</p>
++        <div class="promo-code">USE CODE: <span>GRIND25</span></div>
++        <div>
++          <a href="/order-online" class="btn">Claim Offer</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

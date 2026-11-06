@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+index 66c9173..196c236 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,75 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .language-panel {
++      background: #f1ebe8;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      margin-bottom: 32px;
++    }
++
++    .language-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 12px;
++      margin-block: 12px;
++    }
++
++    .language-field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .language-field select,
++    .language-controls button {
++      min-height: 48px;
++      max-width: 100%;
++      padding: 10px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .language-field select {
++      background: white;
++      color: var(--text);
++    }
++
++    .language-controls button {
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++    }
++
++    .language-controls :disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .language-controls :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .language-note,
++    #translation-status {
++      font-size: 0.9rem;
++    }
++
++    .story {
++      margin-top: 40px;
++      padding: 24px;
++      border-inline-start: 4px solid var(--accent);
++      background: white;
++    }
++
++    .story p {
++      margin-top: 12px;
++    }
+   </style>
+ </head>
+ 
+@@ -175,26 +244,54 @@
+   </header>
+ 
+   <main class="container">
++    <section class="language-panel" aria-labelledby="language-heading">
++      <h2 id="language-heading">Enjoy the menu in your language</h2>
++      <p class="language-note" id="translation-help">Translate our coffee descriptions and story on your device. Your browser may download a language pack first; the text stays on your device.</p>
++      <div class="language-controls">
++        <div class="language-field">
++          <label for="language-select">Reading language</label>
++          <select id="language-select" name="language" aria-describedby="translation-help translation-status" disabled>
++            <option value="en" lang="en">English (original)</option>
++            <option value="es" lang="es">Español</option>
++            <option value="fr" lang="fr">Français</option>
++            <option value="de" lang="de">Deutsch</option>
++            <option value="it" lang="it">Italiano</option>
++            <option value="pt" lang="pt">Português</option>
++            <option value="ja" lang="ja">日本語</option>
++            <option value="zh" lang="zh">中文</option>
++            <option value="ar" lang="ar">العربية</option>
++          </select>
++        </div>
++        <button id="translate-button" type="button" disabled>Translate</button>
++      </div>
++      <p id="translation-status" role="status" aria-live="polite" aria-atomic="true">Showing the original English text.</p>
++      <noscript><p>Enable JavaScript to use on-device translation. The original English menu and story are available below.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-translatable lang="en" dir="auto">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-translatable lang="en" dir="auto">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-translatable lang="en" dir="auto">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story" aria-labelledby="story-heading">
++      <h2 id="story-heading">Our Story</h2>
++      <p data-translatable lang="en" dir="auto">At The Daily Grind, our story starts with ethically sourced coffee, locally roasted and delivered to your cup.</p>
++      <p data-translatable lang="en" dir="auto">From a bold espresso to a smooth cold brew, we believe a good cup of coffee is a reason to slow down and enjoy your day.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +304,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="translation.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/translation.js b/translation.js
+new file mode 100644
+index 0000000..667702e
+--- /dev/null
++++ b/translation.js
+@@ -0,0 +1,124 @@
++(() => {
++  const select = document.getElementById('language-select');
++  const button = document.getElementById('translate-button');
++  const status = document.getElementById('translation-status');
++  const nodes = [...document.querySelectorAll('[data-translatable]')];
++  // Always translate the original copy, never a previous machine translation.
++  const originals = nodes.map((node) => node.textContent);
++  const cache = new Map([['en', originals]]);
++  let revision = 0;
++  let readyOptions = null;
++  let activeTranslator = null;
++  let displayedLanguage = 'en';
++
++  function display(texts, language) {
++    nodes.forEach((node, index) => {
++      node.textContent = texts[index];
++      node.lang = language;
++    });
++    displayedLanguage = language;
++  }
++
++  if (!window.isSecureContext || !('Translator' in window)) {
++    status.textContent = 'On-device translation is unavailable in this browser. The original English text is available below. Try a supported desktop browser, such as Chrome or Edge, over HTTPS.';
++    return;
++  }
++
++  select.disabled = false;
++  status.textContent = 'Showing the original English text. Choose a language to translate.';
++
++  select.addEventListener('change', async () => {
++    const request = ++revision;
++    const language = select.value;
++    readyOptions = null;
++    button.disabled = true;
++    button.textContent = 'Translate';
++    if (activeTranslator) {
++      activeTranslator.destroy();
++      activeTranslator = null;
++    }
++
++    if (cache.has(language)) {
++      display(cache.get(language), language);
++      status.textContent = language === 'en'
++        ? 'Showing the original English text.'
++        : 'Showing the translated coffee descriptions and story. Choose English to restore the original.';
++      return;
++    }
++
++    status.textContent = 'Checking on-device language support…';
++    const options = {
++      sourceLanguage: 'en',
++      targetLanguage: language,
++      monitor(monitor) {
++        monitor.addEventListener('downloadprogress', (event) => {
++          if (request !== revision) return;
++          const percent = Math.round(event.loaded * 100);
++          status.textContent = `Downloading language pack: ${percent}%. Translation will run on your device.`;
++        });
++      },
++    };
++
++    try {
++      const availability = await window.Translator.availability(options);
++      if (request !== revision) return;
++      if (availability === 'unavailable') {
++        status.textContent = 'This language is unavailable on your device. The displayed text has been kept. Choose another language or English for the original.';
++        return;
++      }
++      if (!['available', 'downloadable', 'downloading'].includes(availability)) {
++        throw new Error('Unknown translation availability');
++      }
++      readyOptions = options;
++      button.disabled = false;
++      button.textContent = availability === 'available' ? 'Translate' : 'Download & translate';
++      status.textContent = availability === 'available'
++        ? 'Ready to translate on your device. Select Translate to continue.'
++        : 'A language pack is needed. Select Download & translate to continue. The first download may take a few minutes.';
++    } catch {
++      if (request !== revision) return;
++      status.textContent = 'Could not check language support. The displayed text has been kept. Choose another language and try again, or choose English for the original.';
++    }
++  });
++
++  button.addEventListener('click', async () => {
++    if (!readyOptions || button.disabled) return;
++    const request = revision;
++    const options = readyOptions;
++    let translator;
++    button.disabled = true;
++    button.textContent = 'Translating…';
++    status.textContent = 'Preparing on-device translation… You can choose English at any time to restore the original.';
++
++    try {
++      // Create directly within the click gesture, with no availability await first.
++      translator = await window.Translator.create(options);
++      if (request !== revision) return;
++      activeTranslator = translator;
++      status.textContent = 'Translating coffee descriptions and story on your device…';
++      const translated = [];
++      for (const text of originals) {
++        const result = await translator.translate(text);
++        if (request !== revision) return;
++        if (typeof result !== 'string' || !result.trim()) {
++          throw new Error('Empty translation');
++        }
++        translated.push(result);
++      }
++      // Commit the complete result together so a failed translation keeps the page intact.
++      cache.set(options.targetLanguage, translated);
++      display(translated, options.targetLanguage);
++      status.textContent = 'Coffee descriptions and story translated on your device. Choose English to restore the original.';
++    } catch {
++      if (request !== revision) return;
++      status.textContent = 'Translation could not finish. The displayed text has been kept. Check your connection if a language pack is needed, then try again or choose English for the original.';
++    } finally {
++      if (translator) translator.destroy();
++      if (request === revision) {
++        activeTranslator = null;
++        button.textContent = 'Translate';
++        button.disabled = displayedLanguage === options.targetLanguage;
++      }
++    }
++  });
++})();

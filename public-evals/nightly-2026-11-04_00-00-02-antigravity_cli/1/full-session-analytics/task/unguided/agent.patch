@@ -1,0 +1,57 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -187,8 +187,15 @@
+       text-align: center;
+       color: #64748b;
+     }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "web-vitals": "./node_modules/web-vitals/dist/web-vitals.js"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+   <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
+@@ -297,10 +304,36 @@
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
++  </script>
+ 
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'web-vitals';
+ 
++    const queue = new Set();
++    function addToQueue(metric) {
++      queue.add(metric);
++    }
++
++    function flushQueue() {
++      if (queue.size > 0) {
++        const body = JSON.stringify([...queue]);
++        navigator.sendBeacon('/path/to/analytics/endpoint', body);
++        queue.clear();
++      }
++    }
++
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // Report all available metrics whenever the page is backgrounded or unloaded.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        flushQueue();
++      }
++    });
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

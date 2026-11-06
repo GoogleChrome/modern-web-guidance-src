@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,14 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
++      min-height: 360px;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -87,8 +92,21 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .shaped-element {
++      position: absolute;
++      top: 50%;
++      right: -5%;
++      width: clamp(280px, 52vw, 720px);
++      height: auto;
++      aspect-ratio: 10 / 7;
++      transform: translateY(-50%) rotate(-12deg);
++      opacity: 0.4;
++      pointer-events: none;
++      z-index: -1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +186,34 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <!-- Inline vector clipping keeps the decoration independent of image loading.
++         Absolute positioning reserves the hero layout even if SVG clipping fails. -->
++    <svg class="shaped-element" viewBox="0 0 600 420" width="600" height="420"
++      aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
++      <defs>
++        <clipPath id="hero-splash-clip" clipPathUnits="userSpaceOnUse">
++          <path d="M52 228 C6 190 35 137 91 132 C119 130 92 71 145 67
++            C191 62 194 104 232 76 C280 39 301 13 347 39
++            C378 57 358 91 403 82 C466 65 535 93 519 145
++            C506 182 582 171 577 219 C573 259 531 253 518 281
++            C499 323 553 338 503 365 C452 393 416 349 380 373
++            C332 405 305 377 269 368 C226 357 191 403 154 370
++            C126 346 151 316 108 311 C47 306 17 267 52 228 Z" />
++        </clipPath>
++        <linearGradient id="hero-splash-color" x1="0" y1="1" x2="1" y2="0">
++          <stop offset="0" stop-color="#4e342e" />
++          <stop offset="0.55" stop-color="#b87945" />
++          <stop offset="1" stop-color="#ffab40" />
++        </linearGradient>
++      </defs>
++      <g clip-path="url(#hero-splash-clip)">
++        <rect width="600" height="420" rx="180" fill="url(#hero-splash-color)" />
++        <path d="M50 290 C180 130 350 320 555 130 M65 320 C220 170 375 350 565 170"
++          fill="none" stroke="#d7ccc8" stroke-width="3" opacity="0.25" />
++      </g>
++    </svg>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

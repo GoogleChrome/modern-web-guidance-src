@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+index 66c9173..53946b7 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,23 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: 100%;
++      max-width: 650px;
++      margin-bottom: 1.5rem;
++      text-transform: uppercase;
++      font-weight: 900;
++      line-height: 0.9;
++    }
++
++    .hero h1 > span,
++    .hero h1 > div,
++    .hero h1 .poster-line {
++      display: block;
++      text-fit: grow;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +180,10 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="poster-heading">
++      <span class="poster-line">Wake Up</span>
++      <span class="poster-line">Your Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

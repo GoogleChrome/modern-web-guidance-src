@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,9 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
++      min-height: 450px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -99,13 +100,54 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro-banner {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .intro-banner p {
++      max-width: 750px;
++      margin: 12px auto 0;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: 0;
++      z-index: 1001;
++      container-type: scroll-state;
++      container-name: sticky-header;
++      margin-top: 40px;
++    }
++
++    .sticky-header {
++      background-color: var(--primary);
++      color: white;
++      padding: 24px 32px;
++      border-radius: 8px;
++      box-shadow: none;
++      text-align: center;
++    }
++
++    @container sticky-header scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: blue;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++        padding: 8px 16px;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
++      margin-bottom: 40px;
+     }
+ 
+     .card {
+       background: white;
+@@ -175,26 +217,120 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="intro-banner">
++        <h2>Crafted with Passion Since 2012</h2>
++        <p>Every batch at The Daily Grind is small-lot roasted in-house using sustainably harvested beans from partner farms across Latin America, East Africa, and the Pacific. Scroll down to explore our seasonal selections, signature espresso drinks, fresh pastries, and whole-bean offerings.</p>
++      </div>
++
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p>Bold, smokey, and perfect for a morning boost with dark cocoa notes.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p>Steeped for 18 hours for maximum smoothness and low acidity.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Spiced Cardamom Cortado</h3>
++          <p>Equal parts velvety steamed milk and rich espresso infused with freshly ground cardamom.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Honey Cinnamon Flat White</h3>
++          <p>Micro-foamed whole milk poured over ristretto shots with wildflower honey.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Brown Sugar Shaken Iced Espresso</h3>
++          <p>Hand-shaken espresso with caramelized brown sugar syrup and a splash of oat milk.</p>
++          <a href="/menu/shaken-espresso" class="btn">View Details</a>
++        </div>
+       </div>
++
++      <div class="sticky-container">
++        <h2 class="sticky-header">Single-Origin Pour Overs</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Bright floral jasmine aroma with vibrant bergamot and peach tea tasting notes.</p>
++          <a href="/menu/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila Reserva</h3>
++          <p>Balanced sweetness featuring red apple, caramel, and toasted hazelnut finishes.</p>
++          <a href="/menu/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemala Antigua</h3>
++          <p>Full-bodied volcanic soil coffee with rich dark chocolate and orange zest notes.</p>
++          <a href="/menu/guatemala" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Kenya AA Nyeri</h3>
++          <p>Juicy blackcurrant acidity paired with cane sugar sweetness and a clean finish.</p>
++          <a href="/menu/kenya" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Costa Rica Tarrazu Honey</h3>
++          <p>Honey-processed lot offering nectarine brightness and buttery almond undertones.</p>
++          <a href="/menu/costa-rica" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, syrupy body with herbal cedar spice and bittersweet cocoa linger.</p>
++          <a href="/menu/sumatra" class="btn">View Details</a>
++        </div>
++      </div>
++
++      <div class="sticky-container">
++        <h2 class="sticky-header">Artisanal Bakery &amp; Pastries</h2>
++      </div>
++      <div class="grid" style="min-height: 90vh;">
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky laminated pastry filled with house-made sweet almond frangipane and toasted slices.</p>
++          <a href="/menu/almond-croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Espresso Morning Bun</h3>
++          <p>Brioche swirl tossed in cinnamon-espresso sugar with orange zest glaze.</p>
++          <a href="/menu/morning-bun" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Lemon Scone</h3>
++          <p>Tender buttermilk scone bursting with wild Maine blueberries and Meyer lemon curd.</p>
++          <a href="/menu/scone" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Savory Gruyere Tartine</h3>
++          <p>Naturally leavened country sourdough topped with caramelized onions and aged Gruyere.</p>
++          <a href="/menu/tartine" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Pistachio Rose Financier</h3>
++          <p>Browned-butter French tea cake studded with roasted Sicilian pistachios.</p>
++          <a href="/menu/financier" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Chocolate Babka</h3>
++          <p>Braided sweet yeast dough layered with 70% Valrhona chocolate fudge.</p>
++          <a href="/menu/babka" class="btn">View Details</a>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

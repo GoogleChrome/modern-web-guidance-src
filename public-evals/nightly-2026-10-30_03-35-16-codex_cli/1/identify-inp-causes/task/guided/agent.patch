@@ -1,0 +1,58 @@
+diff --git a/INP-DIAGNOSTICS.md b/INP-DIAGNOSTICS.md
+new file mode 100644
+--- a/INP-DIAGNOSTICS.md
++++ b/INP-DIAGNOSTICS.md
+@@ -0,0 +1,53 @@
++# INP diagnostics
++
++The page loads the self-hosted attribution build of Google's `web-vitals` 6.2.3
++from `scripts/vendor/`. Its Apache 2.0 license is included alongside it. The file
++is the unmodified `dist/web-vitals.attribution.js` from the published npm package:
++https://registry.npmjs.org/web-vitals/-/web-vitals-6.2.3.tgz.
++No build step or runtime CDN request is required.
++
++Reports include INP in milliseconds, its rating, input delay, processing duration,
++presentation delay, the interaction's stable target label and the longest
++overlapping script's source/function/position and phase. They also include forced
++style/layout work within that script and rendering style/layout costs across the
++overlapping long animation frames.
++
++- Large `inputDelay`: investigate work already blocking the main thread.
++- Large `processingDuration`: investigate interaction handlers and their scripts.
++- Large `presentationDelay`: investigate rendering, CSS invalidation and layout.
++- Large forced style/layout durations: investigate synchronous DOM reads after writes.
++
++These are investigation clues, not proof that a script caused all of the delay.
++Rendering frame totals can include work outside the interaction window. Separate
++style/layout timings are `null` when unavailable; the combined
++`totalStyleAndLayoutDuration` and `forcedStyleAndLayoutDuration` provide older
++LoAF implementations' measurements. Browsers without LoAF still report available
++INP phases. Browsers without Event Timing cannot provide INP; no substitute score
++is fabricated. A visit without a qualifying interaction may produce no report.
++
++## Local diagnostics
++
++Slow INP reports are logged as console warnings. Append `?inp-debug` (or
++`&inp-debug` when the URL already has a query) to log every INP candidate change.
++This does not report every interaction. Normal reports are emitted when the page
++is hidden, and continue after a back/forward cache restore. No polling or DOM
++updates are used for diagnostics.
++
++Each report also emits a `performance:inp` event on `window`, with the plain JSON
++report in `event.detail`, for integration with existing analytics.
++`data-inp-target` attributes identify controls without collecting their text,
++form values or destination URLs. Script URL query strings and fragments are removed.
++
++## Field reporting
++
++Set `data-inp-endpoint` on the module script in `index.html` to your real analytics
++collector URL. This static project has no collector, so the default empty value
++does not send network requests. The collector must accept POST bodies containing
++JSON with content type `text/plain;charset=UTF-8`. For a cross-origin collector,
++configure its CORS policy for the fetch fallback and allow it in your CSP.
++
++Reports use `sendBeacon`, falling back to `fetch` with `keepalive` if unavailable,
++rejected, or throwing. Delivery is best effort. Upsert by metric `id`: multiple
++reports can occur within a visit, so do not count each as a separate visit. A
++bfcache restore receives a new metric ID. Aggregate final values at the 75th
++percentile across visits; good INP is at most 200 ms, poor INP exceeds 500 ms.

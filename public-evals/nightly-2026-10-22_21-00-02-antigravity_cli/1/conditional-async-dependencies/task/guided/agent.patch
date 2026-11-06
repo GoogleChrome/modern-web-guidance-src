@@ -1,0 +1,19 @@
+diff --git a/conditionally-load-polyfill.js b/conditionally-load-polyfill.js
+new file mode 100644
+--- a/conditionally-load-polyfill.js
++++ b/conditionally-load-polyfill.js
+@@ -0,0 +1,14 @@
++// Check if missing web features need to be polyfilled before dependent modules run.
++// MANDATORY: Prefer checking HTMLElement.prototype / HTMLButtonElement.prototype
++// over window or document when feature-detecting DOM attributes/properties.
++if (!('popover' in HTMLElement.prototype)) {
++  // Use top-level await to pause the execution of any module that imports this file
++  // until the polyfill finishes downloading and executing.
++  await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++}
++
++if (!('commandForElement' in HTMLButtonElement.prototype)) {
++  await import('https://esm.run/invokers-polyfill');
++}
++
++export const polyfillLoaded = true;

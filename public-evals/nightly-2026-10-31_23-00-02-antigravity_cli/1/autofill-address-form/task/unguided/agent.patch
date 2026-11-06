@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form Section */
++    .shipping-section {
++      margin-top: 50px;
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .shipping-section p {
++      text-align: center;
++      margin-bottom: 25px;
++      color: var(--text);
++    }
++
++    .shipping-form {
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++      margin-bottom: 18px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 18px;
++    }
++
++    .form-row .form-group {
++      margin-bottom: 0;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-group input {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      transition: border-color 0.3s;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .shipping-form button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      width: 100%;
++      padding: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,59 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" aria-labelledby="shipping-heading">
++      <h2 id="shipping-heading">Coffee Bean Delivery</h2>
++      <p>Enter your shipping details below to get freshly roasted coffee beans delivered straight to your door.</p>
++      <form id="shipping-form" class="shipping-form" action="/order-delivery" method="POST" autocomplete="on">
++        <div class="form-group">
++          <label for="recipient-name">Recipient Name</label>
++          <input type="text" id="recipient-name" name="name" autocomplete="name" placeholder="Jane Doe" required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="email">Email Address</label>
++            <input type="email" id="email" name="email" autocomplete="email" placeholder="jane@example.com" required>
++          </div>
++          <div class="form-group">
++            <label for="phone">Phone Number</label>
++            <input type="tel" id="phone" name="tel" autocomplete="tel" placeholder="(555) 123-4567" required>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="street-address">Street Address</label>
++          <input type="text" id="street-address" name="street-address" autocomplete="street-address" placeholder="123 Roast Lane, Apt 4B" required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="city">City</label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" placeholder="Seattle" required>
++          </div>
++          <div class="form-group">
++            <label for="state">State / Province</label>
++            <input type="text" id="state" name="state" autocomplete="address-level1" placeholder="WA" required>
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="postal-code">Postal Code</label>
++            <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" placeholder="98101" required>
++          </div>
++          <div class="form-group">
++            <label for="country">Country</label>
++            <input type="text" id="country" name="country" autocomplete="country-name" placeholder="United States" required>
++          </div>
++        </div>
++
++        <button type="submit" class="btn">Save Shipping Address</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

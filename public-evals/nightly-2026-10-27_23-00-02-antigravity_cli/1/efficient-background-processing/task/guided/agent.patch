@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,52 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      text-align: center;
++    }
++
++    .roaster-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .roaster-temp-badge {
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 999px;
++      font-weight: bold;
++      font-size: 1.1rem;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++    }
++
++    #roast-canvas {
++      width: 100%;
++      max-width: 640px;
++      height: 260px;
++      background: #2b1b17;
++      border-radius: 8px;
++      display: block;
++      margin: 0 auto;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +240,21 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-label="Real-Time Coffee Roasting Simulator">
++    <div class="roaster-header">
++      <div>
++        <h2>Live Drum Roaster Simulator</h2>
++        <p>Watch our signature small-batch beans roast in real time.</p>
++      </div>
++      <div class="roaster-temp-badge">
++        Drum Temp: <span id="roast-temp-value">198.0°C</span>
++      </div>
++    </div>
++    <canvas id="roast-canvas" width="640" height="260"></canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +263,160 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const roastingWidget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const tempValueEl = document.getElementById('roast-temp-value');
++      if (!roastingWidget || !canvas || !tempValueEl) return;
++
++      const ctx = canvas.getContext('2d');
++      let animationFrameId = null;
++      let tempIntervalId = null;
++      let isRunning = false;
++      let currentTemp = 198.0;
++      let tempDirection = 1;
++
++      const beans = Array.from({ length: 24 }, (_, i) => ({
++        x: 60 + ((i * 23) % (canvas.width - 120)),
++        y: 45 + ((i * 37) % (canvas.height - 90)),
++        vx: (i % 2 === 0 ? 1 : -1) * (1.1 + (i % 5) * 0.25),
++        vy: (i % 3 === 0 ? -1 : 1) * (0.9 + (i % 4) * 0.25),
++        angle: (i * 0.45) % (Math.PI * 2),
++        spin: (i % 2 === 0 ? 1 : -1) * (0.03 + (i % 3) * 0.01),
++        rx: 12 + (i % 3) * 2,
++        ry: 8 + (i % 2) * 1.5,
++      }));
++
++      function drawRoastingBeans() {
++        if (!ctx) return;
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++
++        // Subtle warm glow at bottom of roaster drum
++        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
++        gradient.addColorStop(0, '#2b1b17');
++        gradient.addColorStop(1, '#4e2a1e');
++        ctx.fillStyle = gradient;
++        ctx.fillRect(0, 0, canvas.width, canvas.height);
++
++        // Calculate bean color warmth based on temperature (195°C - 220°C)
++        const roastRatio = Math.min(1, Math.max(0, (currentTemp - 195) / 25));
++        const r = Math.round(115 - roastRatio * 50);
++        const g = Math.round(72 - roastRatio * 36);
++        const b = Math.round(45 - roastRatio * 24);
++        const beanFill = `rgb(${r}, ${g}, ${b})`;
++
++        for (const bean of beans) {
++          bean.x += bean.vx;
++          bean.y += bean.vy;
++          bean.angle += bean.spin;
++
++          if (bean.x < bean.rx + 8 || bean.x > canvas.width - bean.rx - 8) {
++            bean.vx *= -1;
++          }
++          if (bean.y < bean.ry + 8 || bean.y > canvas.height - bean.ry - 8) {
++            bean.vy *= -1;
++          }
++
++          ctx.save();
++          ctx.translate(bean.x, bean.y);
++          ctx.rotate(bean.angle);
++
++          // Bean body
++          ctx.beginPath();
++          ctx.ellipse(0, 0, bean.rx, bean.ry, 0, 0, Math.PI * 2);
++          ctx.fillStyle = beanFill;
++          ctx.fill();
++          ctx.lineWidth = 1.5;
++          ctx.strokeStyle = '#24140e';
++          ctx.stroke();
++
++          // Bean center crease
++          ctx.beginPath();
++          ctx.moveTo(-bean.rx * 0.7, 0);
++          ctx.quadraticCurveTo(0, bean.ry * 0.35, bean.rx * 0.7, 0);
++          ctx.strokeStyle = '#1a0e0a';
++          ctx.lineWidth = 1.2;
++          ctx.stroke();
++
++          ctx.restore();
++        }
++      }
++
++      function renderLoop() {
++        if (!isRunning) return;
++        drawRoastingBeans();
++        animationFrameId = requestAnimationFrame(renderLoop);
++      }
++
++      function updateTemperature() {
++        currentTemp += tempDirection * (0.3 + Math.random() * 0.4);
++        if (currentTemp >= 218.5) {
++          currentTemp = 218.5;
++          tempDirection = -1;
++        } else if (currentTemp <= 196.0) {
++          currentTemp = 196.0;
++          tempDirection = 1;
++        }
++        tempValueEl.textContent = `${currentTemp.toFixed(1)}°C`;
++      }
++
++      function startSimulation() {
++        if (isRunning) return;
++        isRunning = true;
++        if (animationFrameId === null) {
++          animationFrameId = requestAnimationFrame(renderLoop);
++        }
++        if (tempIntervalId === null) {
++          tempIntervalId = setInterval(updateTemperature, 800);
++        }
++      }
++
++      function stopSimulation() {
++        isRunning = false;
++        if (animationFrameId !== null) {
++          cancelAnimationFrame(animationFrameId);
++          animationFrameId = null;
++        }
++        if (tempIntervalId !== null) {
++          clearInterval(tempIntervalId);
++          tempIntervalId = null;
++        }
++      }
++
++      // Start initially so initial frame is drawn; offscreen state changes will immediately pause it
++      drawRoastingBeans();
++      startSimulation();
++
++      // Listen directly on the element with content-visibility: auto as the event may not bubble
++      roastingWidget.addEventListener('contentvisibilityautostatechange', (event) => {
++        if (event.skipped) {
++          stopSimulation();
++        } else {
++          startSimulation();
++        }
++      });
++
++      // Fallback using IntersectionObserver for older browsers lacking content-visibility support
++      const isSupported = 'contentVisibility' in document.documentElement.style;
++      if (!isSupported && 'IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (entry.isIntersecting) {
++              startSimulation();
++            } else {
++              stopSimulation();
++            }
++          });
++        }, {
++          rootMargin: '200px'
++        });
++
++        observer.observe(roastingWidget);
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

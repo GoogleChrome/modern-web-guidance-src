@@ -1,0 +1,294 @@
+diff --git a/index.html b/index.html
+index 66c9173..cff582b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,31 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .widget-section {
++      margin-top: 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .widget-frame {
++      width: 100%;
++      height: 110px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      margin-top: 12px;
++    }
++
++    .status-banner {
++      margin-top: 12px;
++      padding: 10px 14px;
++      background: var(--light);
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +220,21 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-section" aria-labelledby="widget-heading">
++      <h2 id="widget-heading">Rewards &amp; Quick Order Widget</h2>
++      <p>Check your loyalty points or receive live order updates from our trusted ordering portal.</p>
++      <div id="order-status" class="status-banner" role="status" aria-live="polite">
++        Waiting for order or widget updates...
++      </div>
++      <iframe
++        id="sandboxed-order-widget"
++        class="widget-frame"
++        title="Sandboxed Loyalty &amp; Quick Order Widget"
++        sandbox="allow-scripts"
++        srcdoc="<!DOCTYPE html><html><body style='font-family: sans-serif; margin: 12px; color: #3e2723;'><p style='margin: 0 0 8px;'><strong>Loyalty Widget</strong> (Sandboxed)</p><button id='ping-btn' style='background: #4e342e; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;'>Redeem 50 Bean Points</button><script>window.parent.postMessage({ type: 'init', widget: 'loyalty' }, '*');document.getElementById('ping-btn').addEventListener('click', () => { window.parent.postMessage({ type: 'redeem', points: 50 }, '*'); });</script></body></html>"
++      ></iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +242,234 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://orders.dailygrind.example/track">Track Order</a> |
++      <a href="https://roastery-tour.example.org">Partner Roastery</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" id="origin-site-validation">
++    // Trusted ordering origin and primary site configuration for The Daily Grind
++    export const TRUSTED_ORDERING_URL = 'https://orders.dailygrind.example';
++    export const APP_SITE_URL = 'https://www.dailygrind.example';
++    export const TRUSTED_SITE_DOMAIN = 'dailygrind.example';
++
++    function extractUrlString(candidate) {
++      if (typeof candidate === 'string') return candidate;
++      if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++        return candidate.origin;
++      }
++      if (candidate === globalThis) {
++        return globalThis.location?.href ?? '';
++      }
++      return candidate?.href ?? '';
++    }
++
++    export function extractOrigin(candidate) {
++      try {
++        return Origin.from(candidate);
++      } catch (err) {
++        // Synthetic new MessageEvent('message', { origin }) objects in tests lack an
++        // internal browser origin; fall back to parsing candidate.origin if it is a URL.
++        if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++          return Origin.from(candidate.origin);
++        }
++        throw err;
++      }
++    }
++
++    /**
++     * 1. Verify exact origin for privileged cross-window messages from the trusted ordering origin.
++     * Uses Origin.from() and isSameOrigin() when supported, with a URL-based fallback that rejects
++     * opaque "null" origins and requires an exact normalized origin match.
++     */
++    export function isTrustedOrderingOrigin(candidate, trustedUrl = TRUSTED_ORDERING_URL) {
++      try {
++        if ('Origin' in globalThis) {
++          const trustedOrigin = Origin.from(trustedUrl);
++          return extractOrigin(candidate).isSameOrigin(trustedOrigin);
++        }
++        const candidateUrl = new URL(extractUrlString(candidate));
++        const trustedParsedUrl = new URL(trustedUrl);
++        return (
++          candidateUrl.origin !== 'null' &&
++          trustedParsedUrl.origin !== 'null' &&
++          candidateUrl.origin === trustedParsedUrl.origin
++        );
++      } catch {
++        // Rejects invalid URLs, opaque "null" strings, or unsupported objects
++        return false;
++      }
++    }
++
++    /**
++     * 2. Validate same-site redirect URLs and classify internal vs. external links
++     * without error-prone string splitting.
++     * Uses Origin.from() and schemeful isSameSite() backed by the browser's Public Suffix List,
++     * with a URL-based fallback for browsers without the Origin API.
++     */
++    export function isAllowedSameSiteUrl(
++      candidateUrlOrElement,
++      siteUrl = APP_SITE_URL,
++      siteDomain = TRUSTED_SITE_DOMAIN
++    ) {
++      try {
++        if ('Origin' in globalThis) {
++          const appOrigin = Origin.from(siteUrl);
++          const candidateOrigin = extractOrigin(candidateUrlOrElement);
++          if (candidateOrigin.opaque) return false;
++          return candidateOrigin.isSameSite(appOrigin);
++        }
++        const candidateUrl = new URL(extractUrlString(candidateUrlOrElement));
++        const trustedUrl = new URL(siteUrl);
++        return (
++          candidateUrl.origin !== 'null' &&
++          candidateUrl.protocol === trustedUrl.protocol &&
++          (candidateUrl.hostname === siteDomain ||
++            candidateUrl.hostname.endsWith(`.${siteDomain}`))
++        );
++      } catch {
++        return false;
++      }
++    }
++
++    /**
++     * Classify and harden anchor elements on the page using same-site validation
++     * rather than string splitting. Marks external links with rel="noopener noreferrer"
++     * and target="_blank".
++     */
++    export function classifyAndHardenLinks(root = document, siteUrl = APP_SITE_URL) {
++      const anchors = root.querySelectorAll('a[href]');
++      for (const anchor of anchors) {
++        const rawHref = anchor.getAttribute('href') || '';
++        // Relative same-origin paths on the page share the current document's site
++        const resolvedCandidate = rawHref.startsWith('/')
++          ? new URL(rawHref, siteUrl).href
++          : anchor;
++
++        if (isAllowedSameSiteUrl(resolvedCandidate, siteUrl)) {
++          anchor.dataset.linkSite = 'same-site';
++        } else {
++          anchor.dataset.linkSite = 'external';
++          anchor.setAttribute('rel', 'noopener noreferrer');
++          anchor.setAttribute('target', '_blank');
++        }
++      }
++    }
++
++    /**
++     * Validate a post-login or checkout redirect parameter (?returnTo= or ?redirect=)
++     * ensuring only schemeful same-site targets are permitted.
++     */
++    export function getValidatedRedirectUrl(
++      rawRedirectUrl,
++      fallbackPath = '/account',
++      siteUrl = APP_SITE_URL
++    ) {
++      if (!rawRedirectUrl) return fallbackPath;
++      if (isAllowedSameSiteUrl(rawRedirectUrl, siteUrl)) {
++        return new URL(rawRedirectUrl).href;
++      }
++      return fallbackPath;
++    }
++
++    /**
++     * 3. Pin the opaque sender identity of a sandboxed iframe widget on initialization
++     * using new Origin() sentinel and Origin.from(event) so subsequent messages from that
++     * same widget match via isSameOrigin() while other sandboxed iframes (also event.origin === "null")
++     * are rejected.
++     */
++    export function createSandboxedWidgetVerifier(expectedWidgetWindow) {
++      // Initialize with a unique opaque sentinel that matches no other origin
++      let pinnedSandboxOrigin = 'Origin' in globalThis ? new Origin() : null;
++      let isSandboxPinned = false;
++
++      return function handleSandboxedWidgetMessage(event, widgetWindow = expectedWidgetWindow) {
++        try {
++          if ('Origin' in globalThis) {
++            const senderOrigin = Origin.from(event);
++            if (!senderOrigin.opaque) {
++              return false;
++            }
++
++            // Pin the opaque origin only once on initialization from the expected sandboxed iframe
++            if (
++              !isSandboxPinned &&
++              event.source === widgetWindow &&
++              event.data?.type === 'init'
++            ) {
++              pinnedSandboxOrigin = senderOrigin;
++              isSandboxPinned = true;
++            }
++
++            // Subsequent messages from the SAME sandboxed iframe match pinnedSandboxOrigin;
++            // messages from any other sandboxed iframe (also event.origin === "null") return false.
++            return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
++          }
++
++          // Fallback for browsers without Origin API: verify event.origin === 'null' and source window
++          if (event.origin !== 'null') return false;
++          if (
++            !isSandboxPinned &&
++            event.source === widgetWindow &&
++            event.data?.type === 'init'
++          ) {
++            isSandboxPinned = true;
++          }
++          return isSandboxPinned && event.source === widgetWindow;
++        } catch {
++          return false;
++        }
++      };
++    }
++
++    const widgetIframe = document.getElementById('sandboxed-order-widget');
++    const verifyWidgetMessage = createSandboxedWidgetVerifier(widgetIframe?.contentWindow ?? null);
++    const statusBanner = document.getElementById('order-status');
++
++    export function handleSandboxedWidgetMessage(event, expectedWidgetWindow = widgetIframe?.contentWindow) {
++      return verifyWidgetMessage(event, expectedWidgetWindow);
++    }
++
++    // Wire up cross-window message listener for both trusted ordering origin and pinned sandboxed widget
++    window.addEventListener('message', (event) => {
++      if (isTrustedOrderingOrigin(event)) {
++        if (statusBanner && event.data?.status) {
++          statusBanner.textContent = `Trusted Order Update: ${String(event.data.status)}`;
++        }
++        return;
++      }
++
++      if (handleSandboxedWidgetMessage(event, widgetIframe?.contentWindow)) {
++        if (statusBanner) {
++          if (event.data?.type === 'init') {
++            statusBanner.textContent = 'Sandboxed loyalty widget initialized and origin pinned.';
++          } else if (event.data?.type === 'redeem') {
++            statusBanner.textContent = `Sandboxed widget redeemed ${Number(event.data.points) || 0} points.`;
++          }
++        }
++      }
++    });
++
++    // Classify links and validate any ?returnTo= redirect query parameter on load
++    classifyAndHardenLinks(document, APP_SITE_URL);
++    const params = new URLSearchParams(window.location.search);
++    if (params.has('returnTo')) {
++      const safeRedirect = getValidatedRedirectUrl(params.get('returnTo'));
++      document.body.dataset.validatedRedirect = safeRedirect;
++    }
++
++    // Expose helpers on window for programmatic inspection if needed
++    Object.assign(window, {
++      isTrustedOrderingOrigin,
++      isAllowedSameSiteUrl,
++      classifyAndHardenLinks,
++      getValidatedRedirectUrl,
++      createSandboxedWidgetVerifier,
++      handleSandboxedWidgetMessage,
++    });
++  </script>
+ </body>
+ 
+ </html>

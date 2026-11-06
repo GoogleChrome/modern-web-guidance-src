@@ -1,0 +1,16 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -21,8 +21,12 @@
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      /* Scale whichever font is active so its x-height matches the first
++         available font in the stack. Keeps text the same visual size when a
++         web font swaps in over the fallback, which prevents layout shift. */
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }

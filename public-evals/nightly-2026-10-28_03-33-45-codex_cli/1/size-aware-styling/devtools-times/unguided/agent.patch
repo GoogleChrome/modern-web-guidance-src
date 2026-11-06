@@ -1,0 +1,49 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..daad4fd 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -16,13 +16,14 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
++<div class="@container/article min-w-0 h-full">
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
++    <div class="bg-white p-6 @min-[32rem]/article:p-8 shadow-sm">
++        <div class="grid grid-cols-1 @min-[48rem]/article:grid-cols-3 gap-8">
++            <div class="@min-[48rem]/article:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="mt-2 text-3xl @min-[32rem]/article:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -37,7 +38,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
++            <div class="@min-[48rem]/article:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+@@ -66,7 +67,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class="text-lg @min-[24rem]/article:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+@@ -80,4 +81,5 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
++</div>

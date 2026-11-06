@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,65 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      position: relative;
++    }
++
++    .scroll-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++    }
++
++    .back-to-top {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1001;
++      border: 0;
++      border-radius: 999px;
++      padding: 14px 20px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transform: translateY(16px);
++      transition: opacity 250ms ease, transform 250ms ease,
++        visibility 0s linear 250ms;
++    }
++
++    .back-to-top.is-visible {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translateY(0);
++      transition-delay: 0s;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top {
++        transition: none;
++        transform: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +212,10 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller" tabindex="-1" role="region" aria-label="Coffee shop page">
++  <span class="scroll-sentinel" aria-hidden="true"></span>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +265,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button class="back-to-top" type="button" inert>↑ Back to top</button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTop = scroller.querySelector('.back-to-top');
++    const sentinel = scroller.querySelector('.scroll-sentinel');
++
++    // Observe the top marker instead of handling every scroll event.
++    const observer = new IntersectionObserver(([entry]) => {
++      const visible = !entry.isIntersecting;
++      backToTop.inert = !visible;
++      backToTop.classList.toggle('is-visible', visible);
++    }, {
++      root: scroller,
++      rootMargin: '160px 0px 0px 0px',
++      threshold: 0,
++    });
++
++    observer.observe(sentinel);
++
++    backToTop.addEventListener('click', () => {
++      // Move focus before the button becomes inert again at the top.
++      scroller.focus({ preventScroll: true });
++      scroller.scrollTo({
++        top: 0,
++        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
++          ? 'instant'
++          : 'smooth',
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

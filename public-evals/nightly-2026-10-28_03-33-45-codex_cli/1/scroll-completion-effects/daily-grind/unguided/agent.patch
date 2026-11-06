@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+index 66c9173..5b5acf6 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,19 @@
+       border-radius: 4px;
+     }
+ 
++    .navigation-arrival {
++      animation: navigation-arrival 0.9s ease-out;
++    }
++
++    @keyframes navigation-arrival {
++      from { box-shadow: 0 0 0 4px var(--accent); }
++      to { box-shadow: 0 0 0 4px transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .navigation-arrival { animation: none; }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -160,7 +173,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -171,27 +184,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="seasonal" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +220,94 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const nav = document.querySelector('nav');
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      let cancelNavigation = () => {};
++
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('a[href^="#"]');
++        if (!link || event.defaultPrevented || event.button !== 0 ||
++            event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
++            link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++
++        let target;
++        try {
++          target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
++        } catch {
++          return;
++        }
++        if (!target) return;
++
++        event.preventDefault();
++        cancelNavigation();
++        document.querySelectorAll('.navigation-arrival').forEach((element) => {
++          element.classList.remove('navigation-arrival');
++        });
++
++        // Clamp the destination: sections near the footer cannot reach the top.
++        const destination = Math.max(0, Math.min(
++          window.scrollY + target.getBoundingClientRect().top - nav.offsetHeight - 16,
++          document.documentElement.scrollHeight - window.innerHeight
++        ));
++        let frame;
++        let settledFrames = 0;
++        let idleFrames = 0;
++        let previousY = window.scrollY;
++        const stopKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
++        const cancelOnKey = (event) => {
++          if (stopKeys.has(event.key)) cleanup();
++        };
++        const cleanup = () => {
++          cancelAnimationFrame(frame);
++          window.removeEventListener('wheel', cleanup);
++          window.removeEventListener('touchstart', cleanup);
++          window.removeEventListener('pointerdown', cleanup);
++          window.removeEventListener('keydown', cancelOnKey);
++          cancelNavigation = () => {};
++        };
++        cancelNavigation = cleanup;
++        window.addEventListener('wheel', cleanup, { passive: true });
++        window.addEventListener('touchstart', cleanup, { passive: true });
++        window.addEventListener('pointerdown', cleanup, { passive: true });
++        window.addEventListener('keydown', cancelOnKey);
++
++        const checkArrival = () => {
++          const currentY = window.scrollY;
++          const stationary = Math.abs(currentY - previousY) < 0.1;
++          const arrived = Math.abs(currentY - destination) <= 1;
++          settledFrames = arrived && stationary ? settledFrames + 1 : 0;
++          idleFrames = stationary ? idleFrames + 1 : 0;
++          previousY = currentY;
++
++          if (settledFrames >= 3) {
++            cleanup();
++            // preventScroll keeps focus from starting a second scroll.
++            target.focus({ preventScroll: true });
++            target.classList.add('navigation-arrival');
++            target.addEventListener('animationend', () => {
++              target.classList.remove('navigation-arrival');
++            }, { once: true });
++            if (window.location.hash !== link.hash) history.pushState(null, '', link.hash);
++            return;
++          }
++          // An interrupted or unreachable scroll must never activate the target.
++          if (idleFrames >= 60) {
++            cleanup();
++            return;
++          }
++          frame = requestAnimationFrame(checkArrival);
++        };
++
++        window.scrollTo({
++          top: destination,
++          behavior: reducedMotion.matches ? 'instant' : 'smooth'
++        });
++        frame = requestAnimationFrame(checkArrival);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

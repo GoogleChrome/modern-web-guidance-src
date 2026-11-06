@@ -1,0 +1,319 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,32 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --muted: #6d554c;
++      --border: #94796e;
++      --control: #4e342e;
++      --track: #d7ccc8;
++      --heading: #4e342e;
++      color-scheme: light;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --light: #211916;
++        --surface: #30231e;
++        --text: #f7eee8;
++        --secondary: #382a24;
++        --muted: #d5bfb1;
++        --border: #b3998b;
++        --control: #ffab40;
++        --track: #786052;
++        --heading: #ffbf75;
++        color-scheme: dark;
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -107,18 +129,18 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+@@ -134,8 +156,145 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .subscription {
++      margin-top: 64px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-top: 5px solid var(--accent);
++      border-radius: 12px;
++      padding: clamp(24px, 5vw, 48px);
++    }
++
++    .eyebrow {
++      color: var(--muted);
++      font-size: .8rem;
++      font-weight: 700;
++      letter-spacing: .15em;
++      text-transform: uppercase;
++    }
++
++    .subscription h2 {
++      color: var(--heading);
++      font-size: clamp(1.7rem, 4vw, 2.3rem);
++      margin: 6px 0;
++    }
++
++    .subscription-intro, .hint { color: var(--muted); }
++    .subscription-intro { max-width: 60ch; }
++    .hint { font-size: .875rem; }
++    .setup-progress { margin: 28px 0; }
++    .progress-heading { display: flex; justify-content: space-between; gap: 12px; }
++    .progress-heading label { font-weight: 600; }
++
++    progress {
++      display: block;
++      width: 100%;
++      height: 10px;
++      margin-top: 10px;
++      appearance: none;
++      border: 0;
++      border-radius: 20px;
++      overflow: hidden;
++      background: var(--track);
++      accent-color: var(--control);
++    }
++
++    progress::-webkit-progress-bar { background: var(--track); border-radius: 20px; }
++    progress::-webkit-progress-value { background: var(--control); border-radius: 20px; }
++    progress::-moz-progress-bar { background: var(--control); border-radius: 20px; }
++    .form-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 40px; }
++    .form-field > label, legend { display: block; font-weight: 600; margin-bottom: 10px; }
++    fieldset { border: 0; min-width: 0; }
++    .full-width { grid-column: 1 / -1; }
++
++    input[type="email"] {
++      width: 100%;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--text);
++      padding: 12px 14px;
++      font: inherit;
++    }
++
++    .choice { display: flex; align-items: center; gap: 12px; min-height: 44px; }
++    .choice label { cursor: pointer; padding: 8px 0; }
++    input[type="checkbox"], input[type="radio"] {
++      width: 20px;
++      height: 20px;
++      flex-shrink: 0;
++      accent-color: var(--control);
++      cursor: pointer;
++    }
++
++    input[type="range"] {
++      display: block;
++      width: 100%;
++      height: 44px;
++      margin: 0;
++      appearance: none;
++      background: transparent;
++      cursor: pointer;
++      accent-color: var(--control);
++    }
++
++    input[type="range"]::-webkit-slider-runnable-track {
++      height: 8px;
++      background: var(--track);
++      border-radius: 10px;
++    }
++    input[type="range"]::-moz-range-track {
++      height: 8px;
++      background: var(--track);
++      border-radius: 10px;
++    }
++    input[type="range"]::-webkit-slider-thumb {
++      appearance: none;
++      width: 24px;
++      height: 24px;
++      margin-top: -8px;
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++    }
++    input[type="range"]::-moz-range-thumb {
++      width: 18px;
++      height: 18px;
++      border: 3px solid var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++    }
++    .range-labels { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); }
++    output { color: var(--heading); font-weight: 600; }
++    :focus-visible { outline: 3px solid var(--control); outline-offset: 4px; }
++    .subscription button {
++      font: inherit;
++      font-weight: 600;
++      border: 2px solid var(--primary);
++      background: var(--accent);
++      color: #3e2723;
++      cursor: pointer;
++      margin: 0;
++    }
++    .subscription button:hover { background: #ffc474; }
++    .form-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 28px; }
++    #subscription-status { margin-top: 16px; font-weight: 600; }
++
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .form-fields { grid-template-columns: 1fr; }
++      .progress-heading { flex-wrap: wrap; }
++    }
++
++    @media (forced-colors: active) {
++      input[type="range"] { appearance: auto; }
++      progress { appearance: auto; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +353,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="subscription" aria-labelledby="subscription-heading">
++      <p class="eyebrow">Your coffee. Your rhythm.</p>
++      <h2 id="subscription-heading">A better morning, delivered.</h2>
++      <p class="subscription-intro">Make your coffee subscription your own. Pick your delivery rhythm and find the roast that feels like you.</p>
++
++      <form id="subscription-form">
++        <div class="setup-progress">
++          <div class="progress-heading">
++            <label for="subscription-progress">Subscription setup</label>
++            <span id="progress-description" aria-live="polite">1 of 3 details complete</span>
++          </div>
++          <progress id="subscription-progress" max="3" value="1" aria-describedby="progress-description">1 of 3</progress>
++        </div>
++
++        <div class="form-fields">
++          <div class="form-field">
++            <label for="subscription-email">Email address (required)</label>
++            <input type="email" id="subscription-email" name="email" autocomplete="email" placeholder="you@example.com" required aria-describedby="email-hint">
++            <p class="hint" id="email-hint">The email to use for your subscription.</p>
++          </div>
++
++          <fieldset>
++            <legend>Delivery frequency (required)</legend>
++            <div class="choice">
++              <input type="radio" id="frequency-weekly" name="frequency" value="weekly" required>
++              <label for="frequency-weekly">Every week</label>
++            </div>
++            <div class="choice">
++              <input type="radio" id="frequency-fortnightly" name="frequency" value="fortnightly" required>
++              <label for="frequency-fortnightly">Every 2 weeks</label>
++            </div>
++            <div class="choice">
++              <input type="radio" id="frequency-monthly" name="frequency" value="monthly" required>
++              <label for="frequency-monthly">Every month</label>
++            </div>
++          </fieldset>
++
++          <div class="form-field full-width">
++            <label for="roast-level">Roast preference: <output id="roast-description" for="roast-level">Medium · 3 of 5</output></label>
++            <p class="hint" id="roast-hint">Start with our balanced medium roast, or adjust to your taste.</p>
++            <input type="range" id="roast-level" name="roast" min="1" max="5" step="1" value="3" aria-describedby="roast-hint" aria-valuetext="Medium, 3 of 5">
++            <div class="range-labels" aria-hidden="true"><span>Light &amp; bright</span><span>Dark &amp; bold</span></div>
++          </div>
++
++          <div class="full-width">
++            <div class="choice">
++              <input type="checkbox" id="email-updates" name="emailUpdates" aria-describedby="updates-hint">
++              <label for="email-updates">Send me coffee news, brewing tips, and offers.</label>
++            </div>
++            <p class="hint" id="updates-hint">Optional. Unsubscribe anytime. This choice doesn’t affect setup progress.</p>
++          </div>
++        </div>
++
++        <div class="form-actions">
++          <button type="submit" class="btn">Save my preferences <span aria-hidden="true">&rarr;</span></button>
++          <p class="hint">Saved on this device. No order or payment is placed.</p>
++        </div>
++        <p id="subscription-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +425,46 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    const form = document.getElementById('subscription-form');
++    const email = document.getElementById('subscription-email');
++    const roast = document.getElementById('roast-level');
++    const progress = document.getElementById('subscription-progress');
++    const status = document.getElementById('subscription-status');
++    const roastNames = ['Light', 'Medium-light', 'Medium', 'Medium-dark', 'Dark'];
++
++    function updateSetup() {
++      const roastName = roastNames[Number(roast.value) - 1];
++      document.getElementById('roast-description').value = `${roastName} · ${roast.value} of 5`;
++      roast.setAttribute('aria-valuetext', `${roastName}, ${roast.value} of 5`);
++      const complete = Number(email.validity.valid) + Number(Boolean(form.querySelector('input[name="frequency"]:checked'))) + 1;
++      progress.value = complete;
++      progress.textContent = `${complete} of 3`;
++      document.getElementById('progress-description').textContent = `${complete} of 3 details complete`;
++    }
++
++    form.addEventListener('input', () => {
++      updateSetup();
++      status.textContent = '';
++    });
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const preferences = {
++        email: email.value.trim(),
++        frequency: form.querySelector('input[name="frequency"]:checked').value,
++        roast: Number(roast.value),
++        emailUpdates: document.getElementById('email-updates').checked
++      };
++      try {
++        localStorage.setItem('daily-grind-subscription-preferences', JSON.stringify(preferences));
++        status.textContent = 'Your coffee preferences are saved on this device. No subscription order has been placed.';
++      } catch {
++        status.textContent = 'Your browser could not save these preferences. Please allow local storage and try again.';
++      }
++    });
++    updateSetup();
++  </script>
+ </body>
+ 
+ </html>

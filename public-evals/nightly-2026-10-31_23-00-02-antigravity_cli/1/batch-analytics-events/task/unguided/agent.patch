@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,221 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ANALYTICS_CONFIG = {
++        endpoint: '/api/analytics',
++        debounceDelay: 300,
++        idleTimeout: 200,
++        maxBatchSize: 50
++      };
++
++      const eventQueue = [];
++      const sentBatches = [];
++      let debounceTimer = null;
++      let idleCallbackId = null;
++      let batchSequence = 0;
++
++      function cancelScheduledFlush() {
++        if (debounceTimer !== null) {
++          clearTimeout(debounceTimer);
++          debounceTimer = null;
++        }
++        if (idleCallbackId !== null && typeof window.cancelIdleCallback === 'function') {
++          window.cancelIdleCallback(idleCallbackId);
++          idleCallbackId = null;
++        }
++      }
++
++      function sendBatchRequest(payload, useBeacon) {
++        const serialized = JSON.stringify(payload);
++
++        if (useBeacon && typeof navigator.sendBeacon === 'function') {
++          try {
++            const blob = new Blob([serialized], { type: 'application/json' });
++            const queued = navigator.sendBeacon(ANALYTICS_CONFIG.endpoint, blob);
++            if (queued) {
++              return Promise.resolve({ ok: true, transport: 'beacon' });
++            }
++          } catch (_) {
++            // Fall through to fetch keepalive
++          }
++        }
++
++        if (typeof window.fetch === 'function') {
++          return window.fetch(ANALYTICS_CONFIG.endpoint, {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json'
++            },
++            body: serialized,
++            keepalive: true,
++            priority: 'low'
++          }).catch(function () {
++            return { ok: false, transport: 'fetch' };
++          });
++        }
++
++        return Promise.resolve({ ok: false, transport: 'none' });
++      }
++
++      function flushEvents(reason, useBeacon) {
++        cancelScheduledFlush();
++
++        if (eventQueue.length === 0) {
++          return null;
++        }
++
++        const batch = eventQueue.splice(0, eventQueue.length);
++        const payload = {
++          batchId: 'batch_' + Date.now() + '_' + (++batchSequence),
++          sentAt: new Date().toISOString(),
++          timestamp: Date.now(),
++          reason: reason || 'debounce',
++          url: window.location.href,
++          path: window.location.pathname,
++          eventCount: batch.length,
++          events: batch
++        };
++
++        sentBatches.push(payload);
++        sendBatchRequest(payload, Boolean(useBeacon));
++        return payload;
++      }
++
++      function scheduleBackgroundFlush() {
++        cancelScheduledFlush();
++
++        if (eventQueue.length >= ANALYTICS_CONFIG.maxBatchSize) {
++          flushEvents('max_batch_size', false);
++          return;
++        }
++
++        debounceTimer = setTimeout(function () {
++          debounceTimer = null;
++          if (typeof window.requestIdleCallback === 'function') {
++            idleCallbackId = window.requestIdleCallback(function () {
++              idleCallbackId = null;
++              flushEvents('debounce_idle', false);
++            }, { timeout: ANALYTICS_CONFIG.idleTimeout });
++          } else {
++            flushEvents('debounce_timeout', false);
++          }
++        }, ANALYTICS_CONFIG.debounceDelay);
++      }
++
++      function enqueueEvent(eventData) {
++        const enrichedEvent = Object.assign({
++          timestamp: Date.now(),
++          isoTimestamp: new Date().toISOString(),
++          url: window.location.href,
++          path: window.location.pathname
++        }, eventData);
++
++        eventQueue.push(enrichedEvent);
++        scheduleBackgroundFlush();
++        return enrichedEvent;
++      }
++
++      function trackPageView() {
++        return enqueueEvent({
++          type: 'pageview',
++          event: 'pageview',
++          title: document.title,
++          referrer: document.referrer || '',
++          viewport: {
++            width: window.innerWidth,
++            height: window.innerHeight
++          }
++        });
++      }
++
++      function getSectionName(element) {
++        if (!element || typeof element.closest !== 'function') {
++          return 'unknown';
++        }
++        if (element.closest('nav')) return 'nav';
++        if (element.closest('header.hero, header')) return 'hero';
++        if (element.closest('main')) return 'main';
++        if (element.closest('footer')) return 'footer';
++        return 'body';
++      }
++
++      function trackClick(domEvent) {
++        const rawTarget = domEvent.target instanceof Element ? domEvent.target : document.body;
++        const interactiveTarget = rawTarget.closest('a, button, .btn, .card') || rawTarget;
++        const anchor = rawTarget.closest('a[href]');
++
++        if (anchor) {
++          const href = anchor.getAttribute('href') || '';
++          if (href.startsWith('/')) {
++            domEvent.preventDefault();
++          }
++        }
++
++        const label = (interactiveTarget.innerText || interactiveTarget.textContent || '')
++          .trim()
++          .replace(/\s+/g, ' ')
++          .slice(0, 120);
++
++        return enqueueEvent({
++          type: 'click',
++          event: 'click',
++          target: interactiveTarget.tagName.toLowerCase(),
++          rawTarget: rawTarget.tagName.toLowerCase(),
++          id: interactiveTarget.id || null,
++          className: typeof interactiveTarget.className === 'string' && interactiveTarget.className.trim()
++            ? interactiveTarget.className.trim()
++            : null,
++          text: label || null,
++          href: anchor ? anchor.getAttribute('href') : null,
++          section: getSectionName(interactiveTarget),
++          coordinates: {
++            x: domEvent.clientX,
++            y: domEvent.clientY
++          }
++        });
++      }
++
++      // Record initial page view
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', trackPageView, { once: true });
++      } else {
++        trackPageView();
++      }
++
++      // Record click interactions across the page
++      document.addEventListener('click', trackClick, { capture: true });
++
++      // Flush remaining queued events if the page is hidden or unloaded
++      document.addEventListener('visibilitychange', function () {
++        if (document.visibilityState === 'hidden') {
++          flushEvents('visibility_hidden', true);
++        }
++      });
++
++      window.addEventListener('pagehide', function () {
++        flushEvents('pagehide', true);
++      });
++
++      const analyticsApi = {
++        config: ANALYTICS_CONFIG,
++        queue: eventQueue,
++        sentBatches: sentBatches,
++        track: enqueueEvent,
++        trackPageView: trackPageView,
++        trackClick: trackClick,
++        flush: flushEvents,
++        getQueue: function () { return eventQueue.slice(); },
++        getSentBatches: function () { return sentBatches.slice(); }
++      };
++
++      window.analytics = analyticsApi;
++      window.telemetry = analyticsApi;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

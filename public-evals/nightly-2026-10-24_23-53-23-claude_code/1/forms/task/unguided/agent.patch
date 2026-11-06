@@ -1,0 +1,613 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -138,9 +138,8 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -151,8 +150,244 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards registration */
++    .rewards-section {
++      background: white;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .rewards-inner {
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
++    .rewards-inner h2 {
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .rewards-intro {
++      text-align: center;
++      margin: 8px 0 24px;
++    }
++
++    .progress {
++      display: flex;
++      list-style: none;
++      gap: 8px;
++      margin-bottom: 24px;
++    }
++
++    .progress li {
++      flex: 1;
++      padding: 8px 4px;
++      border-bottom: 4px solid var(--secondary);
++      font-size: 0.85rem;
++      text-align: center;
++    }
++
++    .progress li[aria-current="step"] {
++      border-bottom-color: var(--primary);
++      font-weight: bold;
++    }
++
++    .progress li.done {
++      border-bottom-color: #2e7d32;
++    }
++
++    .rewards-form fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    .rewards-form legend {
++      font-size: 1.2rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .js .rewards-form .step[hidden] {
++      display: none;
++    }
++
++    .field {
++      margin-bottom: 18px;
++    }
++
++    .field label,
++    .field .label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 4px;
++    }
++
++    .req {
++      color: #b71c1c;
++    }
++
++    .rewards-form input[type="text"],
++    .rewards-form input[type="email"],
++    .rewards-form input[type="password"],
++    .rewards-form input[type="tel"],
++    .rewards-form input[type="date"],
++    .rewards-form select {
++      width: 100%;
++      min-height: 44px;
++      padding: 8px 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 2px solid #8d6e63;
++      border-radius: 4px;
++    }
++
++    .rewards-form input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .rewards-form :focus-visible {
++      outline: 3px solid #1a73e8;
++      outline-offset: 2px;
++    }
++
++    .row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 0 16px;
++    }
++
++    .pw-wrap {
++      display: flex;
++      gap: 8px;
++    }
++
++    .pw-wrap input {
++      flex: 1;
++    }
++
++    .check {
++      display: flex;
++      gap: 10px;
++      align-items: flex-start;
++      margin-bottom: 14px;
++    }
++
++    .check input {
++      width: 24px;
++      height: 24px;
++      margin-top: 2px;
++      flex-shrink: 0;
++      accent-color: var(--primary);
++    }
++
++    .error {
++      color: #b71c1c;
++      font-size: 0.875rem;
++      margin-top: 4px;
++    }
++
++    .error:empty {
++      display: none;
++    }
++
++    .error-summary {
++      border: 2px solid #b71c1c;
++      border-radius: 4px;
++      padding: 12px 16px;
++      margin-bottom: 20px;
++      color: #7f0000;
++    }
++
++    .error-summary[hidden] {
++      display: none;
++    }
++
++    .error-summary a {
++      color: inherit;
++    }
++
++    .form-actions {
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .form-actions .btn {
++      margin-top: 0;
++      border: 2px solid var(--primary);
++      font: inherit;
++      cursor: pointer;
++      min-height: 44px;
++    }
++
++    .form-actions .btn.secondary {
++      background: white;
++      color: var(--primary);
++    }
++
++    .form-actions .btn[disabled] {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .pw-wrap .btn {
++      margin-top: 0;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++      padding: 0 14px;
++    }
++
++    .review-list dt {
++      font-weight: 600;
++    }
++
++    .review-list dd {
++      margin: 0 0 10px;
++    }
++
++    .hp {
++      position: absolute;
++      left: -10000px;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    .form-status {
++      margin-top: 16px;
++      font-weight: 600;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      * {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +431,130 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="rewards-section" id="join" aria-labelledby="rewards-heading">
++    <div class="rewards-inner">
++      <h2 id="rewards-heading">Join Daily Grind Rewards</h2>
++      <p class="rewards-intro">Earn a star with every cup. Your first drink is on us. It takes about a minute.</p>
++
++      <ol class="progress" id="progress" aria-label="Registration progress">
++        <li>1. Account</li>
++        <li>2. Preferences</li>
++        <li>3. Review</li>
++      </ol>
++
++      <form class="rewards-form" id="rewards-form" method="post" action="/api/rewards/register"
++        autocomplete="on" novalidate>
++        <div class="error-summary" id="error-summary" role="alert" tabindex="-1" hidden></div>
++
++        <!-- Step 1 -->
++        <fieldset class="step" data-step="1">
++          <legend>Create your account</legend>
++          <p class="hint"><span class="req" aria-hidden="true">*</span> Required fields</p>
++          <div class="row">
++            <div class="field">
++              <label for="first-name">First name <span class="req" aria-hidden="true">*</span></label>
++              <input type="text" id="first-name" name="given_name" autocomplete="given-name" required
++                maxlength="60" aria-describedby="first-name-err">
++              <div class="error" id="first-name-err"></div>
++            </div>
++            <div class="field">
++              <label for="last-name">Last name <span class="req" aria-hidden="true">*</span></label>
++              <input type="text" id="last-name" name="family_name" autocomplete="family-name" required
++                maxlength="60" aria-describedby="last-name-err">
++              <div class="error" id="last-name-err"></div>
++            </div>
++          </div>
++          <div class="field">
++            <label for="email">Email address <span class="req" aria-hidden="true">*</span></label>
++            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required
++              maxlength="254" autocapitalize="none" spellcheck="false" aria-describedby="email-err">
++            <div class="error" id="email-err"></div>
++          </div>
++          <div class="field">
++            <label for="password">Password <span class="req" aria-hidden="true">*</span></label>
++            <span class="hint" id="password-hint">At least 12 characters. A passphrase works well. Spaces are allowed.</span>
++            <div class="pw-wrap">
++              <input type="password" id="password" name="password" autocomplete="new-password" required
++                minlength="12" maxlength="128" aria-describedby="password-hint password-err">
++              <button type="button" class="btn" id="toggle-pw" aria-controls="password" aria-pressed="false">Show</button>
++            </div>
++            <div class="error" id="password-err"></div>
++          </div>
++        </fieldset>
++
++        <!-- Step 2 -->
++        <fieldset class="step" data-step="2">
++          <legend>Make it yours</legend>
++          <div class="field">
++            <label for="phone">Mobile phone <span class="hint" style="display:inline">(optional)</span></label>
++            <span class="hint" id="phone-hint">For order-ready texts only.</span>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"
++              aria-describedby="phone-hint phone-err">
++            <div class="error" id="phone-err"></div>
++          </div>
++          <div class="field">
++            <label for="birthday">Birthday <span class="hint" style="display:inline">(optional)</span></label>
++            <span class="hint" id="birthday-hint">We'll send a free drink on your birthday.</span>
++            <input type="date" id="birthday" name="birthday" autocomplete="bday" aria-describedby="birthday-hint birthday-err">
++            <div class="error" id="birthday-err"></div>
++          </div>
++          <div class="field">
++            <label for="drink">Favorite drink</label>
++            <select id="drink" name="favorite_drink">
++              <option value="">No preference</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="drip">Drip Coffee</option>
++              <option value="tea">Tea</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="postal">ZIP / postal code <span class="hint" style="display:inline">(optional)</span></label>
++            <span class="hint" id="postal-hint">Helps us suggest your nearest shop.</span>
++            <input type="text" id="postal" name="postal_code" autocomplete="postal-code" maxlength="10"
++              aria-describedby="postal-hint postal-err">
++            <div class="error" id="postal-err"></div>
++          </div>
++        </fieldset>
++
++        <!-- Step 3 -->
++        <fieldset class="step" data-step="3">
++          <legend>Review and confirm</legend>
++          <dl class="review-list" id="review" aria-live="polite"></dl>
++          <div class="field">
++            <div class="check">
++              <input type="checkbox" id="terms" name="terms" value="yes" required aria-describedby="terms-err">
++              <label for="terms" style="font-weight:400">I agree to the
++                <a href="/rewards/terms">Rewards Terms</a> and have read the
++                <a href="/privacy-policy">Privacy Policy</a>. <span class="req" aria-hidden="true">*</span>
++                <span class="visually-hidden">(required)</span></label>
++            </div>
++            <div class="error" id="terms-err"></div>
++          </div>
++          <div class="check">
++            <input type="checkbox" id="marketing" name="marketing_opt_in" value="yes">
++            <label for="marketing" style="font-weight:400">Email me offers and news (optional, unsubscribe any time).</label>
++          </div>
++          <!-- Honeypot for naive bots; hidden from people and assistive tech -->
++          <div class="hp" aria-hidden="true">
++            <label for="website">Leave this field empty</label>
++            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="button" class="btn secondary" id="back" hidden>Back</button>
++          <button type="button" class="btn" id="next">Continue</button>
++          <button type="submit" class="btn" id="submit">Join Rewards</button>
++        </div>
++        <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
++      </form>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +563,223 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var root = document.documentElement;
++      root.classList.add('js');
++
++      var form = document.getElementById('rewards-form');
++      var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
++      var crumbs = Array.prototype.slice.call(document.querySelectorAll('#progress li'));
++      var backBtn = document.getElementById('back');
++      var nextBtn = document.getElementById('next');
++      var submitBtn = document.getElementById('submit');
++      var summary = document.getElementById('error-summary');
++      var status = document.getElementById('form-status');
++      var current = 0;
++
++      var drinkSelect = document.getElementById('drink');
++
++      function esc(id) { return document.getElementById(id); }
++
++      /* ---------- validation ---------- */
++      var rules = {
++        'first-name': function (v) { return v.trim() ? '' : 'Enter your first name.'; },
++        'last-name': function (v) { return v.trim() ? '' : 'Enter your last name.'; },
++        'email': function (v) {
++          if (!v.trim()) return 'Enter your email address.';
++          return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? '' : 'Enter a valid email address, like name@example.com.';
++        },
++        'password': function (v) {
++          if (!v) return 'Create a password.';
++          return v.length >= 12 ? '' : 'Password must be at least 12 characters (you have ' + v.length + ').';
++        },
++        'phone': function (v) {
++          if (!v.trim()) return '';
++          var digits = v.replace(/\D/g, '');
++          return /^[\d\s().+-]+$/.test(v) && digits.length >= 7 && digits.length <= 15 ? '' : 'Enter a valid phone number, or leave it blank.';
++        },
++        'birthday': function (v) {
++          if (!v) return '';
++          var d = new Date(v + 'T00:00:00');
++          if (isNaN(d) || d > new Date() || d.getFullYear() < 1900) return 'Enter a valid date in the past.';
++          return '';
++        },
++        'postal': function (v) {
++          if (!v.trim()) return '';
++          return /^[A-Za-z0-9 -]{3,10}$/.test(v.trim()) ? '' : 'Enter a valid ZIP or postal code.';
++        },
++        'terms': function () { return esc('terms').checked ? '' : 'You must accept the terms to join.'; }
++      };
++
++      function setError(id, msg) {
++        var input = esc(id);
++        var out = esc(id + '-err');
++        out.textContent = msg;
++        if (msg) input.setAttribute('aria-invalid', 'true');
++        else input.removeAttribute('aria-invalid');
++      }
++
++      function label(id) {
++        var l = form.querySelector('label[for="' + id + '"]');
++        return l ? l.firstChild.textContent.trim() : id;
++      }
++
++      function validateStep(index) {
++        var problems = [];
++        steps[index].querySelectorAll('input, select').forEach(function (el) {
++          if (!rules[el.id]) return;
++          var msg = rules[el.id](el.value);
++          setError(el.id, msg);
++          if (msg) problems.push({ id: el.id, msg: msg });
++        });
++        renderSummary(problems);
++        if (problems.length) esc(problems[0].id).focus();
++        return problems.length === 0;
++      }
++
++      function renderSummary(problems) {
++        summary.textContent = '';
++        if (!problems.length) { summary.hidden = true; return; }
++        var p = document.createElement('p');
++        p.textContent = 'Please fix ' + problems.length + (problems.length === 1 ? ' problem:' : ' problems:');
++        var ul = document.createElement('ul');
++        problems.forEach(function (pr) {
++          var li = document.createElement('li');
++          var a = document.createElement('a');
++          a.href = '#' + pr.id;
++          a.textContent = pr.msg;
++          a.addEventListener('click', function (e) { e.preventDefault(); esc(pr.id).focus(); });
++          li.appendChild(a);
++          ul.appendChild(li);
++        });
++        summary.appendChild(p);
++        summary.appendChild(ul);
++        summary.hidden = false;
++      }
++
++      // Validate on blur once touched, and clear errors as the user fixes them
++      Object.keys(rules).forEach(function (id) {
++        var el = esc(id);
++        el.addEventListener('blur', function () {
++          if (el.value || el.getAttribute('aria-invalid')) setError(id, rules[id](el.value));
++        });
++        el.addEventListener('input', function () {
++          if (el.getAttribute('aria-invalid')) setError(id, rules[id](el.value));
++        });
++      });
++
++      /* ---------- step navigation ---------- */
++      function show(index, moveFocus) {
++        current = index;
++        steps.forEach(function (s, i) { s.hidden = i !== index; });
++        crumbs.forEach(function (c, i) {
++          if (i === index) c.setAttribute('aria-current', 'step');
++          else c.removeAttribute('aria-current');
++          c.classList.toggle('done', i < index);
++        });
++        backBtn.hidden = index === 0;
++        nextBtn.hidden = index === steps.length - 1;
++        submitBtn.hidden = index !== steps.length - 1;
++        summary.hidden = true;
++        if (index === steps.length - 1) renderReview();
++        if (moveFocus) {
++          var legend = steps[index].querySelector('legend');
++          legend.setAttribute('tabindex', '-1');
++          legend.focus();
++        }
++      }
++
++      function renderReview() {
++        var dl = esc('review');
++        dl.textContent = '';
++        var items = [
++          ['Name', esc('first-name').value.trim() + ' ' + esc('last-name').value.trim()],
++          ['Email', esc('email').value.trim()],
++          ['Password', '\u2022'.repeat(Math.min(esc('password').value.length, 12))],
++          ['Mobile phone', esc('phone').value.trim()],
++          ['Birthday', esc('birthday').value],
++          ['Favorite drink', drinkSelect.value ? drinkSelect.options[drinkSelect.selectedIndex].text : ''],
++          ['ZIP / postal code', esc('postal').value.trim()]
++        ];
++        items.forEach(function (it) {
++          var dt = document.createElement('dt');
++          var dd = document.createElement('dd');
++          dt.textContent = it[0];
++          dd.textContent = it[1] || 'Not provided';
++          dl.appendChild(dt);
++          dl.appendChild(dd);
++        });
++      }
++
++      nextBtn.addEventListener('click', function () {
++        if (validateStep(current)) show(current + 1, true);
++      });
++      backBtn.addEventListener('click', function () { show(current - 1, true); });
++
++      // Enter on steps 1-2 advances rather than submitting early
++      form.addEventListener('keydown', function (e) {
++        if (e.key === 'Enter' && current < steps.length - 1 && e.target.tagName === 'INPUT') {
++          e.preventDefault();
++          nextBtn.click();
++        }
++      });
++
++      esc('toggle-pw').addEventListener('click', function () {
++        var pw = esc('password');
++        var showing = pw.type === 'text';
++        pw.type = showing ? 'password' : 'text';
++        this.textContent = showing ? 'Show' : 'Hide';
++        this.setAttribute('aria-pressed', String(!showing));
++      });
++
++      /* ---------- submission ---------- */
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        // Revalidate every step; jump back to the first one with problems
++        for (var i = 0; i < steps.length; i++) {
++          if (!validateStep(i)) { show(i, false); validateStep(i); return; }
++        }
++        if (esc('website').value) { return; } // honeypot tripped: silently drop
++
++        var data = new FormData(form);
++        data.delete('website');
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Joining\u2026';
++        status.textContent = '';
++
++        var controller = new AbortController();
++        var timer = setTimeout(function () { controller.abort(); }, 15000);
++
++        fetch(form.action, {
++          method: 'POST',
++          body: data,
++          credentials: 'same-origin',
++          headers: { 'Accept': 'application/json', 'X-Requested-With': 'fetch' },
++          signal: controller.signal
++        }).then(function (res) {
++          if (!res.ok) throw new Error('HTTP ' + res.status);
++          form.reset();
++          esc('password').type = 'password';
++          form.hidden = true;
++          document.getElementById('progress').hidden = true;
++          var done = document.createElement('div');
++          done.setAttribute('tabindex', '-1');
++          done.innerHTML = '<h3>Welcome to Daily Grind Rewards!</h3><p>Check your email to confirm your address and claim your free first drink.</p>';
++          form.parentNode.appendChild(done);
++          done.focus();
++        }).catch(function () {
++          status.textContent = 'We couldn\u2019t complete your registration. Please check your connection and try again.';
++          submitBtn.disabled = false;
++          submitBtn.textContent = 'Join Rewards';
++        }).then(function () { clearTimeout(timer); });
++      });
++
++      show(0, false);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

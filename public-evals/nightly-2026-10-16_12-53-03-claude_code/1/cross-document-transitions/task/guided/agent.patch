@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,72 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination .btn[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    /* Page transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-group(root) {
++        animation-duration: 0.4s;
++        animation-timing-function: ease-in-out;
++      }
++
++      :active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation-name: slide-to-left;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-from-right;
++        }
++      }
++
++      :active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation-name: slide-to-right;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-from-left;
++        }
++      }
++    }
++
++    @keyframes slide-to-left {
++      to { transform: translateX(-20%); opacity: 0; }
++    }
++
++    @keyframes slide-from-right {
++      from { transform: translateX(100%); }
++    }
++
++    @keyframes slide-to-right {
++      to { transform: translateX(20%); opacity: 0; }
++    }
++
++    @keyframes slide-from-left {
++      from { transform: translateX(-100%); }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +257,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" class="btn" aria-disabled="true">&larr; Previous</a>
++        <a id="next" class="btn" href="?page=2">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +274,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const PAGES = [
++      [
++        ['Maple Oat Latte', 'Creamy oat milk with a hint of Vermont maple syrup.', '/menu/seasonal'],
++        ['Dark Roast Espresso', 'Bold, smokey, and perfect for a morning boost.', '/menu/espresso'],
++        ['Cold Brew', 'Steeped for 18 hours for maximum smoothness.', '/menu/cold-brew']
++      ],
++      [
++        ['Pumpkin Spice Latte', 'Roasted pumpkin, warm spices, and steamed milk.', '/menu/pumpkin-spice'],
++        ['Honey Cinnamon Cortado', 'Smooth espresso balanced with local honey.', '/menu/cortado'],
++        ['Chai Tea Latte', 'House-brewed chai with a velvety milk finish.', '/menu/chai']
++      ],
++      [
++        ['Caramel Macchiato', 'Vanilla, steamed milk, espresso, and caramel drizzle.', '/menu/macchiato'],
++        ['Peppermint Mocha', 'Dark chocolate and cool peppermint, topped with cream.', '/menu/peppermint-mocha'],
++        ['Nitro Cold Brew', 'Cold brew infused with nitrogen for a creamy pour.', '/menu/nitro']
++      ]
++    ];
++
++    const pageOf = (url) => {
++      const n = parseInt(new URL(url).searchParams.get('page'), 10);
++      return n >= 1 && n <= PAGES.length ? n : 1;
++    };
++
++    // Render the current page of items and wire up pagination links.
++    const page = pageOf(location.href);
++    const grid = document.querySelector('.grid');
++    grid.replaceChildren(...PAGES[page - 1].map(([title, text, href]) => {
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.innerHTML = '<h3></h3><p></p><a class="btn">View Details</a>';
++      card.querySelector('h3').textContent = title;
++      card.querySelector('p').textContent = text;
++      card.querySelector('a').href = href;
++      return card;
++    }));
++
++    const setLink = (id, target) => {
++      const link = document.getElementById(id);
++      if (target >= 1 && target <= PAGES.length) {
++        link.href = '?page=' + target;
++        link.removeAttribute('aria-disabled');
++      } else {
++        link.removeAttribute('href');
++        link.setAttribute('aria-disabled', 'true');
++      }
++    };
++    setLink('previous', page - 1);
++    setLink('next', page + 1);
++
++    // Pick a directional view transition type for cross-document navigations.
++    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
++      window.addEventListener('pagereveal', (e) => {
++        if (!e.viewTransition || !window.navigation?.activation?.from) return;
++        const { from, entry } = window.navigation.activation;
++        const fromUrl = new URL(from.url);
++        const toUrl = new URL(entry.url);
++        if (fromUrl.pathname !== toUrl.pathname) return;
++        const delta = pageOf(toUrl) - pageOf(fromUrl);
++        if (delta !== 0) {
++          e.viewTransition.types.add(delta > 0 ? 'next' : 'previous');
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

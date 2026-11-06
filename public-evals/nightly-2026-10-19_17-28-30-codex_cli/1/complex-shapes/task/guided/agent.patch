@@ -1,0 +1,59 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,8 +73,11 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -87,8 +90,33 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .shaped-element {
++      /* Absolute positioning keeps even a missing mask out of the layout. */
++      position: absolute;
++      z-index: -1;
++      right: -2%;
++      bottom: -8%;
++      width: clamp(180px, 38vw, 480px);
++      aspect-ratio: 1.2;
++      pointer-events: none;
++      border-radius: 44% 56% 62% 38% / 58% 35% 65% 42%;
++      background: radial-gradient(ellipse at 35% 30%, #dca967, #9b6038 60%, #633d29);
++      opacity: 0.65;
++      transform: rotate(-12deg);
++      /* Embedded vector scales fluidly and avoids an external mask request. */
++      --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 500'%3E%3Cpath fill='white' d='M93 175C35 148 18 115 49 103C82 90 111 138 142 113C165 95 113 39 148 27C183 15 189 83 227 76C268 68 266 20 303 35C329 45 304 89 345 99C387 109 440 45 461 73C483 102 415 132 445 162C479 196 554 158 564 192C577 229 500 231 505 270C510 310 589 332 560 361C537 386 482 334 455 365C431 394 471 451 435 465C399 479 381 411 345 426C309 441 310 489 276 474C246 461 268 420 229 415C188 411 148 465 122 435C101 410 147 374 121 346C94 319 39 350 28 317C16 281 94 280 89 245C84 218 48 211 57 189C64 174 80 177 93 175Z'/%3E%3Cellipse fill='white' cx='523' cy='99' rx='16' ry='11'/%3E%3Ccircle fill='white' cx='76' cy='407' r='12'/%3E%3Ccircle fill='white' cx='361' cy='28' r='8'/%3E%3C/svg%3E");
++      -webkit-mask-image: var(--splash-mask);
++      mask-image: var(--splash-mask);
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-position: center;
++      mask-position: center;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +196,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

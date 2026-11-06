@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,119 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Mailing List Form */
++    .mailing-list {
++      max-width: 480px;
++      margin: 0 auto 28px;
++      padding: 20px 24px;
++      background: rgba(255, 255, 255, 0.55);
++      border-radius: 8px;
++    }
++
++    .mailing-list h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++      font-size: 1.25rem;
++    }
++
++    .mailing-list p {
++      font-size: 0.9rem;
++      margin-bottom: 14px;
++      color: var(--text);
++    }
++
++    .mailing-list-form {
++      display: flex;
++      gap: 10px;
++      align-items: flex-start;
++      justify-content: center;
++      flex-wrap: wrap;
++    }
++
++    .input-group {
++      flex: 1 1 240px;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .mailing-list-input {
++      width: 100%;
++      padding: 10px 14px;
++      border: 1.5px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background: white;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .mailing-list-input:focus {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .mailing-list-input.input-error,
++    .mailing-list-input:user-invalid {
++      border-color: #d32f2f;
++      background-color: #fff8f8;
++    }
++
++    .mailing-list-input.input-error:focus,
++    .mailing-list-input:user-invalid:focus {
++      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
++    }
++
++    .error-message {
++      color: #d32f2f;
++      font-size: 0.8rem;
++      margin-top: 6px;
++      font-weight: 500;
++      display: none;
++    }
++
++    .error-message.visible {
++      display: block;
++    }
++
++    .success-message {
++      color: #2e7d32;
++      font-size: 0.85rem;
++      margin-top: 8px;
++      font-weight: 500;
++      display: none;
++    }
++
++    .success-message.visible {
++      display: block;
++    }
++
++    .mailing-list-btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
++      font-weight: 600;
++      padding: 10.5px 20px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +308,31 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <div class="mailing-list">
++      <h3>Join Our Mailing List</h3>
++      <p>Get fresh roast updates, brewing tips, and exclusive seasonal offers.</p>
++      <form id="mailing-list-form" class="mailing-list-form" novalidate>
++        <div class="input-group">
++          <label for="mailing-email" class="sr-only">Email Address</label>
++          <input
++            type="email"
++            id="mailing-email"
++            name="email"
++            class="mailing-list-input"
++            placeholder="Enter your email address"
++            required
++            aria-describedby="mailing-email-error"
++            aria-invalid="false"
++          >
++          <span id="mailing-email-error" class="error-message" role="alert">Please enter your email address.</span>
++        </div>
++        <button type="submit" class="btn mailing-list-btn">Subscribe</button>
++      </form>
++      <p id="mailing-list-success" class="success-message" role="status">Thanks for subscribing! Check your inbox soon.</p>
++    </div>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +340,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('mailing-list-form');
++      const emailInput = document.getElementById('mailing-email');
++      const errorMsg = document.getElementById('mailing-email-error');
++      const successMsg = document.getElementById('mailing-list-success');
++
++      let interacted = false;
++
++      function setErrorState(message) {
++        emailInput.classList.add('input-error');
++        emailInput.setAttribute('aria-invalid', 'true');
++        errorMsg.textContent = message;
++        errorMsg.classList.add('visible');
++      }
++
++      function clearErrorState() {
++        emailInput.classList.remove('input-error');
++        emailInput.setAttribute('aria-invalid', 'false');
++        errorMsg.classList.remove('visible');
++      }
++
++      function validateField() {
++        const value = emailInput.value.trim();
++        if (value === '') {
++          setErrorState('Please enter your email address.');
++          return false;
++        }
++        if (!emailInput.validity.valid) {
++          setErrorState('Please enter a valid email address.');
++          return false;
++        }
++        clearErrorState();
++        return true;
++      }
++
++      emailInput.addEventListener('blur', function () {
++        interacted = true;
++        validateField();
++      });
++
++      emailInput.addEventListener('input', function () {
++        successMsg.classList.remove('visible');
++        if (interacted) {
++          if (emailInput.value.trim() === '') {
++            setErrorState('Please enter your email address.');
++          } else if (emailInput.validity.valid) {
++            clearErrorState();
++          }
++        }
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        interacted = true;
++        if (validateField()) {
++          clearErrorState();
++          emailInput.value = '';
++          interacted = false;
++          successMsg.classList.add('visible');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

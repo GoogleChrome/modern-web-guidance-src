@@ -1,0 +1,210 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -121,8 +121,11 @@
+     }
+ 
+     .btn {
+       display: inline-block;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -134,8 +137,103 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Each toast is its own native top-layer element, directly under body.
++       Counting from the last sibling keeps the newest toast at the bottom,
++       regardless of how many page elements precede the notifications. */
++    .toast {
++      position: fixed;
++      inset: auto max(1rem, env(safe-area-inset-right))
++        max(1rem, env(safe-area-inset-bottom)) auto;
++      bottom: calc(max(1rem, env(safe-area-inset-bottom)) +
++        (sibling-count() - sibling-index()) * 5rem);
++      margin: 0;
++      width: min(20rem, calc(100vw - 2rem));
++      height: 4rem;
++      padding: 0.75rem 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 6px 24px rgb(0 0 0 / 0.2);
++      overflow: visible;
++      animation: toast-enter 200ms ease-out both;
++      transition: bottom 200ms ease, display 180ms, overlay 180ms;
++      transition-behavior: allow-discrete;
++    }
++
++    .toast:popover-open {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++    }
++
++    .toast::backdrop {
++      background: transparent;
++      pointer-events: none;
++    }
++
++    .toast[data-closing] {
++      pointer-events: none;
++      animation: toast-exit 180ms ease-in both;
++    }
++
++    .toast-close {
++      flex: none;
++      width: 2.5rem;
++      height: 2.5rem;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    .toast-close:hover {
++      background: rgb(255 255 255 / 0.15);
++    }
++
++    .toast-close:focus-visible,
++    .toast-trigger:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @keyframes toast-enter {
++      from { opacity: 0; transform: translateY(0.75rem); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    @keyframes toast-exit {
++      from { opacity: 1; transform: translateY(0); }
++      to { opacity: 0; transform: translateX(0.75rem); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        animation-duration: 1ms;
++        transition-duration: 1ms;
++      }
++
++      .toast[data-closing] {
++        animation-duration: 1ms;
++      }
++
++      @keyframes toast-enter {
++        from { opacity: 0; }
++        to { opacity: 1; }
++      }
++
++      @keyframes toast-exit {
++        from { opacity: 1; }
++        to { opacity: 0; }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +268,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +278,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +304,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let toastId = 0;
++
++    document.querySelectorAll('.toast-trigger').forEach((trigger) => {
++      trigger.addEventListener('click', () => {
++        const toast = document.createElement('div');
++        toast.className = 'toast';
++        toast.id = `toast-${++toastId}`;
++        toast.setAttribute('popover', 'manual');
++
++        const message = document.createElement('span');
++        message.setAttribute('role', 'status');
++        message.setAttribute('aria-atomic', 'true');
++
++        const close = document.createElement('button');
++        close.type = 'button';
++        close.className = 'toast-close';
++        close.setAttribute('aria-label', 'Close notification');
++        close.setAttribute('popovertarget', toast.id);
++        close.setAttribute('popovertargetaction', 'hide');
++        close.textContent = '\u00d7';
++
++        toast.append(message, close);
++        document.body.append(toast);
++        toast.showPopover();
++        // Populate the live region after it enters the accessibility tree.
++        requestAnimationFrame(() => { message.textContent = 'added to cart!'; });
++
++        const timeout = setTimeout(dismiss, 3000);
++
++        async function dismiss() {
++          if (toast.hasAttribute('data-closing')) return;
++          clearTimeout(timeout);
++          toast.setAttribute('data-closing', '');
++          // Keep the popover in the real top layer throughout its exit,
++          // including browsers without discrete display/overlay transitions.
++          await Promise.allSettled(toast.getAnimations().map((animation) => animation.finished));
++          toast.hidePopover();
++          toast.remove();
++        }
++
++        close.addEventListener('click', (event) => {
++          event.preventDefault();
++          dismiss();
++        });
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

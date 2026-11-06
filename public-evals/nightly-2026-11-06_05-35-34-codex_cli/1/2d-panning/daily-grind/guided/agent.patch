@@ -1,0 +1,254 @@
+diff --git a/index.html b/index.html
+index 66c9173..d5e97d8 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,106 @@
+       background: #3e2723;
+     }
+ 
++    .locations {
++      margin-top: 56px;
++    }
++
++    .locations-heading {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .locations-heading p {
++      margin-top: 8px;
++    }
++
++    .map-viewport {
++      width: 100%;
++      height: 520px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: contain;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #eee9df;
++      cursor: grab;
++    }
++
++    .map-viewport:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .map-viewport.is-panning {
++      cursor: grabbing;
++      user-select: none;
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .map-viewport.has-pan-fallback {
++        touch-action: none;
++      }
++    }
++
++    .cafe-map {
++      position: relative;
++      width: 1800px;
++      height: 1200px;
++      user-select: none;
++    }
++
++    .map-art {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++    }
++
++    .map-location {
++      position: absolute;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      width: 240px;
++      padding: 14px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgb(78 52 46 / 12%);
++    }
++
++    .map-pin {
++      display: grid;
++      place-items: center;
++      flex: 0 0 36px;
++      height: 36px;
++      border-radius: 50% 50% 50% 4px;
++      background: var(--primary);
++      color: white;
++      font-weight: bold;
++    }
++
++    .map-location h3 {
++      font-size: 1rem;
++    }
++
++    .map-location p {
++      font-size: 0.85rem;
++    }
++
++    .map-caption {
++      margin-top: 12px;
++      text-align: center;
++      font-size: 0.85rem;
++    }
++
++    @media (max-width: 600px) {
++      .map-viewport {
++        height: 440px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +295,74 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations" aria-labelledby="locations-title">
++      <div class="locations-heading">
++        <h2 id="locations-title">Find Your Daily Grind</h2>
++        <p>A good cup is always around the corner. Explore our neighborhood cafés.</p>
++      </div>
++      <p id="map-instructions" class="map-caption" style="margin: 0 0 12px;">
++        Drag or scroll in any direction to explore. Focus the map and use arrow keys to move.
++      </p>
++      <div class="map-viewport" tabindex="0" role="region" aria-label="Coffee shop locations map"
++        aria-describedby="map-instructions map-note">
++        <div class="cafe-map">
++          <svg class="map-art" viewBox="0 0 1800 1200" aria-hidden="true" focusable="false">
++            <defs>
++              <pattern id="city-blocks" width="240" height="200" patternUnits="userSpaceOnUse">
++                <rect width="240" height="200" fill="#eee9df" />
++                <rect x="18" y="18" width="204" height="164" rx="12" fill="#e1d9cc" />
++                <path d="M0 0H240M0 0V200" stroke="#fffdf8" stroke-width="22" />
++              </pattern>
++            </defs>
++            <rect width="1800" height="1200" fill="url(#city-blocks)" />
++            <rect x="510" y="220" width="400" height="300" rx="30" fill="#c5d3b5" />
++            <rect x="1230" y="830" width="390" height="310" rx="30" fill="#c5d3b5" />
++            <g fill="#b1c49c">
++              <circle cx="560" cy="280" r="24" /><circle cx="840" cy="280" r="30" />
++              <circle cx="560" cy="450" r="28" /><circle cx="850" cy="450" r="22" />
++              <circle cx="1290" cy="1080" r="30" /><circle cx="1550" cy="1080" r="26" />
++            </g>
++            <path d="M1450 -100C1100 250 1480 430 1210 650S920 980 1140 1300"
++              fill="none" stroke="#b9d4d8" stroke-width="145" />
++            <path d="M-100 910L1900 190M-100 640H1900M960 -100V1300"
++              fill="none" stroke="#d7ccc0" stroke-width="54" />
++            <path d="M-100 910L1900 190M-100 640H1900M960 -100V1300"
++              fill="none" stroke="#fffdf8" stroke-width="42" />
++            <g fill="#746b5d" font-family="Segoe UI, sans-serif" font-size="18" letter-spacing="3" text-anchor="middle">
++              <text x="710" y="370">CENTRAL PARK</text>
++              <text x="1425" y="1010">RIVERSIDE GARDENS</text>
++              <text x="350" y="160">OLD TOWN</text>
++              <text x="700" y="850">MARKET DISTRICT</text>
++              <text x="1540" y="530">EAST VILLAGE</text>
++              <text x="520" y="625" font-size="14" letter-spacing="2">B R E W E R   S T R E E T</text>
++              <text x="990" y="360" font-size="14" transform="rotate(90 990 360)">MAIN AVENUE</text>
++            </g>
++          </svg>
++          <article class="map-location" style="left: 230px; top: 260px;">
++            <span class="map-pin" aria-hidden="true">1</span>
++            <div><h3>Old Town</h3><p>24 Willow Lane</p><p>Daily · 7 am–6 pm</p></div>
++          </article>
++          <article class="map-location" style="left: 610px; top: 540px;">
++            <span class="map-pin" aria-hidden="true">2</span>
++            <div><h3>Parkside</h3><p>82 Brewer Street</p><p>Daily · 6 am–7 pm</p></div>
++          </article>
++          <article class="map-location" style="left: 520px; top: 940px;">
++            <span class="map-pin" aria-hidden="true">3</span>
++            <div><h3>Market Square</h3><p>15 Market Square</p><p>Daily · 7 am–6 pm</p></div>
++          </article>
++          <article class="map-location" style="left: 1390px; top: 320px;">
++            <span class="map-pin" aria-hidden="true">4</span>
++            <div><h3>East Village</h3><p>108 Maple Street</p><p>Daily · 6 am–7 pm</p></div>
++          </article>
++          <article class="map-location" style="left: 1280px; top: 740px;">
++            <span class="map-pin" aria-hidden="true">5</span>
++            <div><h3>Riverside</h3><p>36 River Walk</p><p>Daily · 7 am–8 pm</p></div>
++          </article>
++        </div>
++      </div>
++      <p id="map-note" class="map-caption">Illustrated neighborhood map · Sample café locations and hours</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +375,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mapViewport = document.querySelector('.map-viewport');
++    const needsPanFallback = !CSS.supports('scroll-axis-lock', 'none');
++    let mapPointer = null;
++
++    // Start near the central café, with room to explore on both axes.
++    mapViewport.scrollLeft = 730 - mapViewport.clientWidth / 2;
++    mapViewport.scrollTop = 590 - mapViewport.clientHeight / 2;
++
++    if (needsPanFallback) {
++      mapViewport.classList.add('has-pan-fallback');
++      mapViewport.addEventListener('wheel', (event) => {
++        // Preserve browser zoom gestures.
++        if (event.ctrlKey || event.metaKey) return;
++        event.preventDefault();
++        const unitX = event.deltaMode === 1 ? 20 : event.deltaMode === 2 ? mapViewport.clientWidth : 1;
++        const unitY = event.deltaMode === 1 ? 20 : event.deltaMode === 2 ? mapViewport.clientHeight : 1;
++        mapViewport.scrollLeft += event.deltaX * unitX;
++        mapViewport.scrollTop += event.deltaY * unitY;
++      }, { passive: false });
++    }
++
++    mapViewport.addEventListener('pointerdown', (event) => {
++      // Native touch scrolling remains available where axis unlocking is supported.
++      if (!needsPanFallback && event.pointerType !== 'mouse') return;
++      if (!event.isPrimary || event.button !== 0 || mapPointer) return;
++      const bounds = mapViewport.getBoundingClientRect();
++      const x = event.clientX - bounds.left - mapViewport.clientLeft;
++      const y = event.clientY - bounds.top - mapViewport.clientTop;
++      // Leave native scrollbars draggable.
++      if (x < 0 || y < 0 || x >= mapViewport.clientWidth || y >= mapViewport.clientHeight) return;
++      mapPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
++      mapViewport.focus({ preventScroll: true });
++      mapViewport.setPointerCapture(event.pointerId);
++      mapViewport.classList.add('is-panning');
++      event.preventDefault();
++    });
++
++    mapViewport.addEventListener('pointermove', (event) => {
++      if (!mapPointer || event.pointerId !== mapPointer.id) return;
++      // Apply both deltas on every move, including reversals and diagonal movement.
++      mapViewport.scrollLeft -= event.clientX - mapPointer.x;
++      mapViewport.scrollTop -= event.clientY - mapPointer.y;
++      mapPointer.x = event.clientX;
++      mapPointer.y = event.clientY;
++    });
++
++    function endMapPan(event) {
++      if (!mapPointer || event.pointerId !== mapPointer.id) return;
++      mapPointer = null;
++      mapViewport.classList.remove('is-panning');
++      if (mapViewport.hasPointerCapture(event.pointerId)) {
++        mapViewport.releasePointerCapture(event.pointerId);
++      }
++    }
++
++    mapViewport.addEventListener('pointerup', endMapPan);
++    mapViewport.addEventListener('pointercancel', endMapPan);
++    mapViewport.addEventListener('lostpointercapture', endMapPan);
++  </script>
++
+ </body>
+ 
+ </html>

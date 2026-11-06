@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,62 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .rewards-tour {
++      position: relative;
++    }
++
++    #feature[aria-describedby] {
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 6px;
++      border-radius: 2px;
++    }
++
++    #tour-step {
++      position: absolute;
++      top: calc(100% + 18px);
++      right: -20px;
++      width: min(280px, calc(100vw - 32px));
++      padding: 20px;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++      font-size: 0.9rem;
++    }
++
++    #tour-step::before {
++      content: '';
++      position: absolute;
++      top: -7px;
++      right: 40px;
++      width: 12px;
++      height: 12px;
++      background: white;
++      border-top: 1px solid var(--secondary);
++      border-left: 1px solid var(--secondary);
++      transform: rotate(45deg);
++    }
++
++    #tour-step h2 {
++      font-size: 1.1rem;
++      margin-bottom: 6px;
++    }
++
++    #tour-step .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,9 +215,16 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li class="rewards-tour">
++        <a href="/rewards" id="feature" aria-describedby="tour-message">Rewards</a>
++        <div id="tour-step" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-message">
++          <h2 id="tour-title">Your coffee, rewarded</h2>
++          <p id="tour-message">Earn points with every purchase and turn your daily coffee into delicious rewards.</p>
++          <button type="button" class="btn" id="close-tour">Got it</button>
++        </div>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +267,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTour = document.getElementById('close-tour');
++
++    function preventTourNavigation(event) {
++      if (!tourStep.hidden) event.preventDefault();
++    }
++
++    rewardsLink.addEventListener('click', preventTourNavigation);
++    rewardsLink.addEventListener('auxclick', preventTourNavigation);
++
++    closeTour.addEventListener('click', () => {
++      tourStep.hidden = true;
++      rewardsLink.removeAttribute('aria-describedby');
++      rewardsLink.focus({ preventScroll: true });
++    });
++  </script>
+ </body>
+ 
+ </html>

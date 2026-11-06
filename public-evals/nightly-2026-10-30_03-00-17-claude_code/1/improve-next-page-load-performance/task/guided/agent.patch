@@ -1,0 +1,42 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,27 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Prefetch same-origin pages on hover/pointerdown. Never speculate state-changing URLs like /logout. -->
++  <script type="speculationrules">
++    {
++      "prefetch": [{
++        "tag": "site-prefetch",
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout" } },
++            { "not": { "href_matches": "/logout/*" } },
++            { "not": { "href_matches": "/logout\\?*" } },
++            { "not": { "selector_matches": ".no-prefetch" } },
++            { "not": { "selector_matches": "[rel~=nofollow]" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -163,9 +182,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link no-prefetch">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">

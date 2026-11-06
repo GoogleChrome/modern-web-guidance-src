@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,99 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shipping address */
++    .shipping {
++      margin-top: 64px;
++      display: grid;
++      grid-template-columns: 1fr 1.8fr;
++      background: white;
++      border: 1px solid #e7dfdb;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 20px rgba(78, 52, 46, 0.04);
++    }
++
++    .shipping-intro {
++      padding: 36px 28px;
++      background: #f1ebe6;
++    }
++
++    .shipping-icon {
++      display: inline-flex;
++      padding: 12px;
++      background: #fff8ee;
++      border-radius: 12px;
++      margin-bottom: 24px;
++    }
++
++    .shipping-eyebrow {
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 1.8px;
++      margin-bottom: 10px;
++    }
++
++    .shipping-intro h2 {
++      font-size: 1.8rem;
++      line-height: 1.25;
++      margin-bottom: 14px;
++    }
++
++    .shipping-intro > p:last-child {
++      color: #715c54;
++      font-size: 0.95rem;
++    }
++
++    .shipping-form { padding: 32px; }
++    .form-note { color: #715c54; font-size: 0.8rem; margin-bottom: 22px; }
++    .address-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
++    .field { display: flex; flex-direction: column; gap: 6px; }
++    .field-wide { grid-column: 1 / -1; }
++    .field label { font-weight: 600; font-size: 0.85rem; }
++    .optional { font-weight: 400; color: #715c54; }
++
++    .field input, .field select {
++      width: 100%;
++      min-height: 46px;
++      padding: 10px 12px;
++      border: 1px solid #cbbfb8;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.95rem;
++    }
++
++    .field input::placeholder { color: #8a7b74; }
++    .field input:focus-visible, .field select:focus-visible, .shipping-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .shipping-actions {
++      margin-top: 26px;
++      padding-top: 22px;
++      border-top: 1px solid #eee7e2;
++    }
++
++    .shipping-form .btn { margin-top: 0; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
++    .shipping-privacy { margin-top: 10px; font-size: 0.75rem; color: #715c54; }
++    .shipping-status { color: #38623c; font-size: 0.9rem; }
++    .shipping-status:not(:empty) { margin-top: 14px; }
++
++    @media (max-width: 700px) {
++      .shipping { grid-template-columns: 1fr; margin-top: 40px; }
++      .shipping-intro, .shipping-form { padding: 24px; }
++      .shipping-icon { margin-bottom: 16px; }
++    }
++
++    @media (max-width: 420px) {
++      .address-fields { grid-template-columns: 1fr; }
++      .shipping-form .btn { width: 100%; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +285,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping" aria-labelledby="shipping-title">
++      <div class="shipping-intro">
++        <span class="shipping-icon" aria-hidden="true">
++          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M4 9 16 3l12 6v14l-12 6-12-6V9Z M4 9l12 6 12-6 M16 15v14 M10 6l12 6v6" />
++          </svg>
++        </span>
++        <p class="shipping-eyebrow">FROM OUR ROASTERY TO YOUR DOOR</p>
++        <h2 id="shipping-title">Good coffee.<br>Right at home.</h2>
++        <p>Tell us where your next coffee delivery should go.</p>
++      </div>
++
++      <form class="shipping-form" id="shipping-form">
++        <h3>Shipping address</h3>
++        <p class="form-note">All fields are required unless marked optional.</p>
++        <div class="address-fields">
++          <div class="field">
++            <label for="first-name">First name</label>
++            <input id="first-name" name="firstName" autocomplete="shipping given-name" required maxlength="100">
++          </div>
++          <div class="field">
++            <label for="last-name">Last name</label>
++            <input id="last-name" name="lastName" autocomplete="shipping family-name" required maxlength="100">
++          </div>
++          <div class="field field-wide">
++            <label for="country">Country / region</label>
++            <select id="country" name="country" autocomplete="shipping country" required>
++              <option value="US">United States</option>
++              <option value="CA">Canada</option>
++              <option value="GB">United Kingdom</option>
++              <option value="AU">Australia</option>
++            </select>
++          </div>
++          <div class="field field-wide">
++            <label for="address-line1">Street address</label>
++            <input id="address-line1" name="addressLine1" autocomplete="shipping address-line1" placeholder="Street number and street name" required maxlength="200">
++          </div>
++          <div class="field field-wide">
++            <label for="address-line2">Apartment, suite, etc. <span class="optional">(optional)</span></label>
++            <input id="address-line2" name="addressLine2" autocomplete="shipping address-line2" maxlength="200">
++          </div>
++          <div class="field field-wide">
++            <label for="city">City</label>
++            <input id="city" name="city" autocomplete="shipping address-level2" required maxlength="100">
++          </div>
++          <div class="field">
++            <label for="state">State / province / region</label>
++            <input id="state" name="state" autocomplete="shipping address-level1" required maxlength="100">
++          </div>
++          <div class="field">
++            <label for="postal-code">ZIP / postal code</label>
++            <input id="postal-code" name="postalCode" autocomplete="shipping postal-code" required maxlength="20">
++          </div>
++        </div>
++        <div class="shipping-actions">
++          <button class="btn" type="submit">Confirm shipping address <span aria-hidden="true">&rarr;</span></button>
++          <p class="shipping-privacy">Your address stays on this page and is not sent or saved.</p>
++          <p class="shipping-status" id="shipping-status" role="status"></p>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +359,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const shippingStatus = document.getElementById('shipping-status');
++
++    shippingForm.addEventListener('input', (event) => {
++      event.target.setCustomValidity('');
++      shippingStatus.textContent = '';
++    });
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      for (const field of shippingForm.querySelectorAll('input[required]')) {
++        field.setCustomValidity(field.value.trim() ? '' : 'Please fill out this field.');
++      }
++      if (!shippingForm.reportValidity()) return;
++      shippingStatus.textContent = 'Shipping address confirmed for this visit. No order has been placed.';
++    });
++  </script>
+ </body>
+ 
+ </html>

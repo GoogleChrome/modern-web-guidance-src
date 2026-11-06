@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+index 66c9173..a129283 100644
+--- a/index.html
++++ b/index.html
+@@ -38,38 +38,53 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++      ul {
++        display: flex;
++        list-style: none;
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      li {
++        margin-left: 20px;
++      }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      a {
++        color: white;
++        text-decoration: none;
++        font-size: 0.9rem;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        /* Union of interaction states */
++        &:is(:hover, :focus-visible) {
++          color: var(--accent);
++        }
++      }
++
++      .logout-link {
++        border: 1px solid var(--accent);
++        padding: 5px 12px;
++        border-radius: 4px;
++      }
++
++      /* Stack the nav on narrow screens */
++      @media (max-width: 700px) {
++        flex-direction: column;
++        gap: 0.5rem;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        ul {
++          flex-wrap: wrap;
++          justify-content: center;
++        }
++
++        li {
++          margin: 0 10px;
++        }
++      }
+     }
+ 
+     /* Hero Section */
+@@ -86,11 +101,15 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++
++        @media (max-width: 700px) {
++          font-size: 2rem;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -113,11 +132,21 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+-    }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++      }
++
++      /* Lift cards only where hover exists and motion is welcome */
++      @media (hover: hover) and (prefers-reduced-motion: no-preference) {
++        transition: transform 0.3s, box-shadow 0.3s;
++
++        &:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
++        }
++      }
+     }
+ 
+     .btn {
+@@ -128,11 +157,27 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++
++      &:is(:hover, :focus-visible) {
++        background: var(--text);
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: background 0.3s;
++      }
++    }
++
++    /* Hero button sits on a dark image: invert it, reusing .btn's other styles */
++    .hero .btn:is(:hover, :focus-visible) {
++      background: var(--accent);
++      color: var(--primary);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* Shared link color transition for nav and footer links */
++    :is(nav, .footer-links) a {
++      @media (prefers-reduced-motion: no-preference) {
++        transition: color 0.3s;
++      }
+     }
+ 
+     footer {
+@@ -140,17 +185,22 @@
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+-    }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
++      .footer-links {
++        margin-bottom: 20px;
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++        a {
++          margin: 0 10px;
++          color: var(--text);
++          text-decoration: none;
++          font-size: 0.85rem;
++
++          &:is(:hover, :focus-visible) {
++            color: var(--primary);
++            text-decoration: underline;
++          }
++        }
++      }
+     }
+   </style>
+ </head>

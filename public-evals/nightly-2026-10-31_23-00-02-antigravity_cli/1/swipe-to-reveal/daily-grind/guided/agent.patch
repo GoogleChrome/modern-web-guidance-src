@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+index 66c9173..f026f41 100644
+--- a/index.html
++++ b/index.html
+@@ -109,10 +109,11 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 0;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
+     }
+ 
+     .card h3 {
+@@ -120,6 +121,75 @@
+       color: var(--primary);
+     }
+ 
++    .SwipeReveal {
++      display: grid;
++      grid-template-columns: 100% max-content;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      overscroll-behavior: auto;
++      overscroll-behavior: chain;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .SwipeReveal-content {
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++      background: white;
++      padding: 20px;
++    }
++
++    .SwipeReveal-content:focus-visible {
++      outline: auto;
++      outline-offset: -2px;
++    }
++
++    .SwipeReveal-panel {
++      scroll-snap-align: end;
++      display: flex;
++      background: var(--secondary);
++
++      &:first-child {
++        scroll-snap-align: start;
++      }
++    }
++
++    .SwipeReveal-panel button {
++      border: none;
++      padding: 0 16px;
++      min-inline-size: 48px;
++      min-block-size: 48px;
++      font-family: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      color: white;
++      background: var(--primary);
++      transition: filter 0.2s;
++    }
++
++    .SwipeReveal-panel button:not(:last-child) {
++      border-inline-end: 1px solid rgba(255, 255, 255, 0.2);
++    }
++
++    .SwipeReveal-panel button:hover:not(:disabled) {
++      filter: brightness(1.15);
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .SwipeReveal-panel button:focus-visible {
++      outline-offset: -3px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,20 +248,41 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3 id="drink-maple">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" aria-labelledby="view-maple drink-maple"><span id="view-maple">View Details</span></a>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <button type="button" aria-labelledby="add-maple drink-maple"><span id="add-maple">Quick Add</span></button>
++            <button type="button" aria-labelledby="fav-maple drink-maple"><span id="fav-maple">Favorite</span></button>
++            <button type="button" aria-labelledby="share-maple drink-maple"><span id="share-maple">Share</span></button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3 id="drink-espresso">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" aria-labelledby="view-espresso drink-espresso"><span id="view-espresso">View Details</span></a>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <button type="button" aria-labelledby="add-espresso drink-espresso"><span id="add-espresso">Quick Add</span></button>
++            <button type="button" aria-labelledby="fav-espresso drink-espresso"><span id="fav-espresso">Favorite</span></button>
++            <button type="button" aria-labelledby="share-espresso drink-espresso"><span id="share-espresso">Share</span></button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
++            <h3 id="drink-coldbrew">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" aria-labelledby="view-coldbrew drink-coldbrew"><span id="view-coldbrew">View Details</span></a>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <button type="button" aria-labelledby="add-coldbrew drink-coldbrew"><span id="add-coldbrew">Quick Add</span></button>
++            <button type="button" aria-labelledby="fav-coldbrew drink-coldbrew"><span id="fav-coldbrew">Favorite</span></button>
++            <button type="button" aria-labelledby="share-coldbrew drink-coldbrew"><span id="share-coldbrew">Share</span></button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +298,18 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
++      content.addEventListener('focusin', (event) => {
++        if (event.target.matches(':focus-visible')) {
++          content.scrollIntoView({
++            block: 'nearest',
++            inline: 'start',
++          });
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

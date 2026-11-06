@@ -1,0 +1,254 @@
+diff --git a/index.html b/index.html
+index 66c9173..e5fabd5 100644
+--- a/index.html
++++ b/index.html
+@@ -27,49 +27,72 @@
+       background-color: var(--light);
+     }
+ 
++    /* Shared link and button base styles using :is() / :where() */
++    :is(nav, .footer-links) a,
++    .btn {
++      text-decoration: none;
++    }
++
++    :is(nav, .hero) {
++      color: white;
++      display: flex;
++      align-items: center;
++    }
++
++    :is(.hero, .card, footer, main section > h2) {
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
+       padding: 1rem 5%;
+-      display: flex;
+       justify-content: space-between;
+-      align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++      @media (max-width: 768px) {
++        flex-direction: column;
++        gap: 0.75rem;
++      }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++      & .logo {
++        font-size: 1.5rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++      }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++      & ul {
++        display: flex;
++        list-style: none;
++        flex-wrap: wrap;
++        justify-content: center;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        & li {
++          margin-left: 20px;
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++          @media (max-width: 768px) {
++            margin: 0 10px;
++          }
++        }
++      }
++
++      & a {
++        color: white;
++        font-size: 0.9rem;
++        transition: color 0.3s, background-color 0.3s;
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++        &:is(:hover, :focus-visible) {
++          color: var(--accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--accent);
++          padding: 5px 12px;
++          border-radius: 4px;
++        }
++      }
+     }
+ 
+     /* Hero Section */
+@@ -79,18 +102,18 @@
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+-      display: flex;
+       flex-direction: column;
+       justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      & h1 {
++        font-size: 3rem;
++        margin-bottom: 1rem;
++
++        @media (max-width: 768px) {
++          font-size: 2.25rem;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -98,6 +121,7 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      container-type: inline-size;
+     }
+ 
+     .grid {
+@@ -112,12 +136,15 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      & h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++      }
++
++      @supports (backdrop-filter: blur(4px)) {
++        backdrop-filter: blur(4px);
++      }
+     }
+ 
+     .btn {
+@@ -125,34 +152,68 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+-      text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+-    }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      &:is(:hover, :focus-visible) {
++        background: #3e2723;
++      }
+     }
+ 
+     footer {
+       background: var(--secondary);
+-      text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+-    }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
++      & .footer-links {
++        margin-bottom: 20px;
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++        & a {
++          margin: 0 10px;
++          color: var(--text);
++          font-size: 0.85rem;
++
++          &:is(:hover, :focus-visible) {
++            text-decoration: underline;
++          }
++        }
++      }
+     }
+   </style>
++  <script type="speculationrules">
++    {
++      "prerender": [
++        {
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ],
++      "prefetch": [
++        {
++          "where": {
++            "and": [
++              {
++                "or": [
++                  { "selector_matches": "nav a:not(.logout-link)" },
++                  { "selector_matches": ".btn" },
++                  { "selector_matches": ".footer-links a" }
++                ]
++              },
++              { "not": { "href_matches": "/logout" } }
++            ]
++          },
++          "eagerness": "conservative"
++        }
++      ]
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -176,7 +237,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,9 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Blend Lab</title>
++  <link rel="stylesheet" href="blend-lab.css">
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -157,9 +158,9 @@
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <a href="#" class="logo"><span class="logo-mark">◒</span> THE DAILY GRIND<span class="logo-sub">GOOD COFFEE. EVERY DAY.</span></a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -168,29 +169,66 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <span class="eyebrow hero-eyebrow">A LITTLE CURIOSITY. A BETTER CUP.</span><h1>Find your daily ritual.</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#blend-lab" class="btn hero-button">Discover your blend <span>↗</span></a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="lab" id="blend-lab" aria-labelledby="lab-title">
++      <div class="lab-heading"><div><p class="eyebrow">THE DAILY GRIND / EXPERIMENT NO. 01</p><h2 id="lab-title">A little science.<br>A lot of flavor.</h2></div><p class="lab-intro">Your perfect cup is out there. Explore thousands of recipe blends and find the flavor profile that feels like you.</p></div>
++      <div class="lab-workspace">
++        <form id="simulation-form" class="lab-settings">
++          <div class="panel-title"><span class="step-number">01</span><h3>Make it yours</h3><span class="tiny-label">BLEND LAB</span></div>
++          <label for="flavor">What’s your flavor?</label>
++          <select id="flavor"><option value="balanced">Smooth & balanced</option><option value="bright">Bright & fruity</option><option value="bold">Bold & chocolatey</option></select>
++          <label for="roast">Roast preference <span id="roast-value">Medium</span></label>
++          <input type="range" id="roast" min="1" max="3" value="2" step="1" aria-valuetext="Medium">
++          <div class="range-labels"><span>Light</span><span>Medium</span><span>Dark</span></div>
++          <label for="batch-size">Recipes to explore</label>
++          <select id="batch-size"><option value="25000">25,000 recipes · Quick taste</option><option value="100000" selected>100,000 recipes · Deep dive</option><option value="500000">500,000 recipes · Full exploration</option></select>
++          <div class="settings-note"><span>✧</span><p>Small variations. Big possibilities.<br>We’ll explore origins, ratios, and extraction.</p></div>
++          <button class="run-button" id="run-button" type="submit"><span>Simulate my blend</span><span aria-hidden="true">↗</span></button>
++          <button class="cancel-button" id="cancel-button" type="button" hidden>Stop simulation</button>
++          <p class="model-note">A flavor exploration, not a tasting guarantee.</p>
++        </form>
++        <div class="lab-results" id="results-panel" aria-busy="false">
++          <div class="panel-title"><span class="step-number">02</span><h3>Your flavor discovery</h3><span class="status-pill" id="status-pill">READY TO EXPLORE</span></div>
++          <div class="empty-state" id="empty-state">
++            <div class="flavor-orbit" aria-hidden="true"><span class="orbit-label orbit-top">BRIGHT</span><span class="orbit-label orbit-right">SWEET</span><span class="orbit-label orbit-bottom">BOLD</span><span class="orbit-label orbit-left">SMOOTH</span><div class="orbit-inner"><svg viewBox="0 0 80 80" width="64" height="64"><path d="M52 12C27 7 10 30 15 51s28 24 43 9S76 17 52 12Z" fill="#7b805c"/><path d="M52 17C32 27 49 49 25 63" stroke="#f6f5ed" stroke-width="3" fill="none"/></svg></div></div>
++            <h4>Great coffee starts with curiosity.</h4><p>Set your preferences and let’s find<br>something worth brewing.</p>
++            <div class="origin-tags"><span>BRAZIL</span><span>ETHIOPIA</span><span>COLOMBIA</span></div>
++          </div>
++          <div class="simulation-output" id="simulation-output" hidden>
++            <div class="progress-heading"><strong id="progress-title">Exploring the possibilities…</strong><span id="progress-percent">0%</span></div>
++            <progress id="simulation-progress" value="0" max="100" aria-label="Simulation progress"></progress>
++            <div class="progress-meta"><span id="recipe-count">0 recipes explored</span><span id="elapsed">0.0s elapsed</span></div>
++            <div id="best-profile" class="best-profile"><p class="eyebrow">YOUR LEADING FLAVOR PROFILE</p><h4 id="profile-name">Finding your first blend…</h4><p id="profile-description">Comparing origins and brewing variables.</p><div id="flavor-bars" class="flavor-bars"></div></div>
++            <div class="ranked-heading"><span>TOP RECIPE BLENDS</span><span>MATCH</span></div><div id="ranked-results"></div>
++          </div>
++          <p class="sr-only" id="simulation-announcement" role="status" aria-live="polite"></p>
++          <div class="lab-footnote"><span class="live-dot"></span> Big batches. Smooth experience.<span class="footnote-detail">Keep exploring while we do the blending.</span></div>
++        </div>
++      </div>
++      <div class="lab-bottom"><span>CRAFTED WITH CURIOSITY, BREWED WITH CARE.</span><span>Find the extraordinary in your everyday. <span aria-hidden="true">↗</span></span></div>
++    </section>
++    <section class="seasonal-section">
++      <div class="seasonal-heading"><div><p class="eyebrow">FRESH FROM THE COFFEE BAR</p><h2>Seasonal favorites</h2></div><a href="/menu">Explore the menu ↗</a></div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <span class="coffee-icon" aria-hidden="true">☕</span><h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <span class="coffee-icon" aria-hidden="true">◕</span><h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <span class="coffee-icon" aria-hidden="true">♧</span><h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -206,7 +244,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script src="blend-lab.js" defer></script>
+ </body>
+ 
+ </html>

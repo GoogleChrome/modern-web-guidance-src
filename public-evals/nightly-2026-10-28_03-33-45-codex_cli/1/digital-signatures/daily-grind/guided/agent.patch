@@ -1,0 +1,508 @@
+diff --git a/index.html b/index.html
+index 66c9173..20de414 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="signing.css">
++  <script type="module" src="signing.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -163,6 +165,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#receipt-studio">Receipts & Gifts</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +198,75 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="receipt-studio" id="receipt-studio" aria-labelledby="studio-heading">
++      <div class="studio-heading">
++        <div><p class="eyebrow">THE DAILY GRIND · DIGITAL KEEPSAKES</p><h2 id="studio-heading">Good coffee. Genuine proof.</h2></div>
++        <p>Keep the details. Share a little joy.<br>Seal every receipt and gift with a digital signature.</p>
++      </div>
++      <div class="studio-shell">
++        <div class="studio-controls">
++          <div class="mode-switch" aria-label="Document tools">
++            <button type="button" id="create-mode" aria-pressed="true" aria-controls="create-panel">01 &nbsp; Create & sign</button>
++            <button type="button" id="verify-mode" aria-pressed="false" aria-controls="verify-panel">02 &nbsp; Verify a document</button>
++          </div>
++          <div id="create-panel">
++            <h3>A signature for every sip.</h3>
++            <p class="studio-intro">Create a sample document, signed with a key that stays in this browser. No payment is taken.</p>
++            <form id="sign-form" action="#receipt-studio" method="post">
++              <fieldset class="document-types"><legend>What would you like to create?</legend>
++                <label><input type="radio" name="documentType" value="receipt" checked> Order receipt</label>
++                <label><input type="radio" name="documentType" value="voucher"> Gift voucher</label>
++              </fieldset>
++              <div id="receipt-fields" class="field-row">
++                <div class="field"><label for="coffee">Your coffee</label><select id="coffee" name="coffee"><option value="maple">Maple Oat Latte · $5.50</option><option value="espresso">Dark Roast Espresso · $3.50</option><option value="coldbrew">Cold Brew · $4.50</option></select></div>
++                <div class="field quantity"><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min="1" max="20" step="1" value="1" required></div>
++              </div>
++              <div id="voucher-fields" hidden>
++                <div class="field"><label for="gift-amount">Gift value (USD)</label><select id="gift-amount" name="giftAmount"><option value="1000">$10</option><option value="2500" selected>$25</option><option value="5000">$50</option><option value="10000">$100</option></select></div>
++                <div class="field"><label for="gift-message">A little note <span>(optional)</span></label><textarea id="gift-message" name="giftMessage" rows="2" maxlength="200" placeholder="Your next coffee is on me."></textarea></div>
++              </div>
++              <div class="field"><label for="recipient">Made for <span>(optional)</span></label><input id="recipient" name="recipient" autocomplete="name" maxlength="80" placeholder="A name, or just a coffee lover"></div>
++              <div class="field"><label for="algorithm">Signature protection</label><select id="algorithm" name="algorithm" aria-describedby="algorithm-help"><option value="auto">Automatic · best available</option><option value="Ed25519">Ed25519 · classical</option><option value="ECDSA">ECDSA P-256 · classical</option><option value="ML-DSA-65">ML-DSA-65 · quantum-resistant</option></select><p class="field-help" id="algorithm-help">Automatic tries quantum-resistant signing first, then Ed25519 or ECDSA. Availability depends on your browser.</p></div>
++              <button type="submit" class="studio-primary" id="sign-button">Sign sample receipt <span aria-hidden="true">↗</span></button>
++            </form>
++          </div>
++          <div id="verify-panel" hidden>
++            <h3>A little check. A lot of confidence.</h3>
++            <p class="studio-intro">Check a signed receipt or voucher against a key you already trust. A document cannot establish trust in its own signer.</p>
++            <form id="verify-form" action="#receipt-studio" method="post">
++              <div class="field"><label for="document-file">Upload a signed document</label><input type="file" id="document-file" name="documentFile" accept=".json,application/json"></div>
++              <div class="field"><label for="document-json">Or paste the signed JSON</label><textarea id="document-json" name="documentJson" rows="7" maxlength="65536" spellcheck="false" autocapitalize="off" required placeholder='{"format": "daily-grind-signed-v1", …}'></textarea></div>
++              <button type="button" id="use-last" class="text-button" disabled>Use my last signed document</button>
++              <button type="submit" class="studio-primary" id="verify-button">Verify signature <span aria-hidden="true">↗</span></button>
++            </form>
++          </div>
++          <p id="studio-status" class="studio-status" role="status" aria-live="polite" aria-atomic="true">Ready when you are. Your documents stay on your device.</p>
++          <noscript><p>JavaScript is required for local digital signing and verification.</p></noscript>
++        </div>
++        <aside class="preview-area" aria-label="Document preview">
++          <div class="preview-caption"><span>YOUR DIGITAL KEEPSAKE</span><span id="preview-state">UNSIGNED PREVIEW</span></div>
++          <div class="paper-receipt" id="paper-receipt">
++            <div class="receipt-mark" aria-hidden="true">☕</div><p class="receipt-brand">THE DAILY GRIND</p><p class="receipt-tagline">A good day starts with a good cup.</p>
++            <div class="receipt-rule"></div>
++            <div class="receipt-meta"><span id="preview-kind">SAMPLE ORDER RECEIPT</span><span id="preview-date">MADE WITH CARE</span></div>
++            <p class="receipt-recipient" id="preview-recipient">For a coffee lover</p>
++            <div class="receipt-item"><span id="preview-item">1 × Maple Oat Latte</span><span id="preview-price">$5.50</span></div>
++            <p id="preview-message" class="receipt-message" hidden></p>
++            <div class="receipt-total"><span id="total-label">Total · USD</span><strong id="preview-total">$5.50</strong></div>
++            <div class="receipt-seal"><span class="seal-icon" aria-hidden="true">◇</span><div><strong id="seal-title">A little extra assurance</strong><p id="seal-description">Ready for your digital signature.</p></div></div>
++            <p class="receipt-id" id="preview-id">BREWED WITH LOVE. SEALED WITH MATH.</p>
++          </div>
++          <button type="button" id="download-document" class="download-button" disabled>Download signed document <span aria-hidden="true">↓</span></button>
++          <p class="preview-note">A signature protects the details from changes.<br>These local samples are not proof of purchase or redeemable credit.</p>
++        </aside>
++      </div>
++      <details class="key-details"><summary>Your signing key & trusted verifiers <span aria-hidden="true">+</span></summary>
++        <div class="key-content"><div><h3>A key that stays with you.</h3><p>The private key is non-exportable and saved in this browser when storage is available. Clearing site data removes it. Only the public verification key can be shared.</p><p id="key-info">Your signing key will be created when you sign.</p><button type="button" class="secondary-button" id="download-key" disabled>Download public key ↓</button></div>
++        <div><h3>Verify across devices.</h3><p>Get the public key directly from the signer. Independently compare its full SHA-256 fingerprint before trusting it. Imported keys are trusted for this session only.</p><label for="trust-file">Import public verification key</label><input id="trust-file" name="trustFile" type="file" accept=".json,application/json"><div id="pending-trust" hidden><p id="trust-fingerprint" class="fingerprint"></p><button type="button" class="secondary-button" id="trust-key">I checked the fingerprint · Trust key</button></div><p id="trust-status" role="status" aria-live="polite"></p></div></div>
++      </details>
++      <p class="studio-footnote">Built for integrity. These browser-created samples identify a local signing key, not a verified Daily Grind merchant. Authentic store receipts and redeemable vouchers require a merchant-controlled issuer and redemption service.</p>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/signatures.mjs b/signatures.mjs
+new file mode 100644
+index 0000000..da99039
+--- /dev/null
++++ b/signatures.mjs
+@@ -0,0 +1,109 @@
++// Versioned, domain-separated signatures. Verification keys travel separately
++// from documents: an attacker-controlled document never establishes trust.
++const encoder = new TextEncoder();
++const suites = ['ML-DSA-65', 'Ed25519', 'ECDSA'];
++export const format = 'daily-grind-signed-v1';
++const keyFormat = 'daily-grind-public-key-v1';
++const context = encoder.encode(format);
++
++export function canonical(value) {
++  if (value === null || typeof value !== 'object') return JSON.stringify(value);
++  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
++  return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
++}
++function base64(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))); }
++function unbase64(value) {
++  if (typeof value !== 'string' || !value.length || value.length > 20000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw new Error('Invalid encoded key or signature.');
++  return Uint8Array.from(atob(value), char => char.charCodeAt(0));
++}
++function requireCrypto() {
++  if (!globalThis.crypto?.subtle) throw new Error('Digital signing needs HTTPS and a browser with Web Crypto support.');
++}
++function keyParams(suite) {
++  if (!suites.includes(suite)) throw new Error('Unsupported signature algorithm.');
++  return suite === 'ECDSA' ? { name: 'ECDSA', namedCurve: 'P-256' } : suite;
++}
++function signatureParams(suite) {
++  return suite === 'ECDSA' ? { name: 'ECDSA', hash: 'SHA-256' } : suite === 'ML-DSA-65' ? { name: suite, context } : suite;
++}
++function publicFormat(suite) { return suite === 'ML-DSA-65' ? 'raw-public' : 'raw'; }
++function signedBytes(body) {
++  const bytes = encoder.encode(canonical(body));
++  if (body.suite === 'ML-DSA-65') return bytes;
++  // Classical algorithms ignore ContextParams, so frame the context explicitly.
++  const framed = new Uint8Array(1 + context.length + bytes.length);
++  framed[0] = context.length;
++  framed.set(context, 1);
++  framed.set(bytes, context.length + 1);
++  return framed;
++}
++function exactKeys(value, keys) {
++  if (!value || Array.isArray(value) || typeof value !== 'object' || Object.keys(value).sort().join('|') !== [...keys].sort().join('|')) throw new Error('Unrecognized document structure.');
++}
++export function validatePayload(payload) {
++  const common = ['id', 'issuer', 'kind', 'createdAt', 'recipient', 'currency', 'amountCents', 'sample'];
++  if (!['receipt', 'voucher'].includes(payload?.kind)) throw new Error('Expected an order receipt or gift voucher.');
++  exactKeys(payload, [...common, payload.kind === 'receipt' ? 'items' : 'message']);
++  if (payload.issuer !== 'The Daily Grind · local sample' || payload.sample !== true || payload.currency !== 'USD' || typeof payload.id !== 'string' || !/^DG-[0-9a-f-]{36}$/.test(payload.id) || typeof payload.createdAt !== 'string' || !Number.isFinite(Date.parse(payload.createdAt)) || new Date(payload.createdAt).toISOString() !== payload.createdAt || typeof payload.recipient !== 'string' || payload.recipient.length > 80 || !Number.isSafeInteger(payload.amountCents) || payload.amountCents <= 0 || payload.amountCents > 100000) throw new Error('Invalid document details.');
++  if (payload.kind === 'voucher') {
++    if (![1000, 2500, 5000, 10000].includes(payload.amountCents) || typeof payload.message !== 'string' || payload.message.length > 200) throw new Error('Invalid gift voucher.');
++  } else {
++    if (!Array.isArray(payload.items) || payload.items.length !== 1) throw new Error('Invalid receipt items.');
++    const item = payload.items[0];
++    exactKeys(item, ['name', 'quantity', 'unitCents']);
++    const prices = { 'Maple Oat Latte': 550, 'Dark Roast Espresso': 350, 'Cold Brew': 450 };
++    if (!Object.hasOwn(prices, item.name) || prices[item.name] !== item.unitCents || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20 || payload.amountCents !== item.quantity * item.unitCents) throw new Error('Receipt totals or items are inconsistent.');
++  }
++}
++export async function fingerprint(suite, publicKey) {
++  requireCrypto();
++  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(canonical({ suite, publicKey })));
++  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
++}
++export function supportsQuantum() {
++  return typeof globalThis.SubtleCrypto?.supports === 'function' && globalThis.SubtleCrypto.supports('sign', 'ML-DSA-65') && globalThis.SubtleCrypto.supports('verify', 'ML-DSA-65');
++}
++export async function createKey(suite) {
++  requireCrypto();
++  const keyPair = await crypto.subtle.generateKey(keyParams(suite), false, ['sign', 'verify']);
++  const publicKey = base64(await crypto.subtle.exportKey(publicFormat(suite), keyPair.publicKey));
++  return { suite, ...keyPair, publicBytes: publicKey, keyId: await fingerprint(suite, publicKey) };
++}
++export async function createBestKey() {
++  const candidates = supportsQuantum() ? suites : suites.slice(1);
++  for (const suite of candidates) {
++    try { return await createKey(suite); }
++    catch (error) { if (error.name !== 'NotSupportedError') throw error; }
++  }
++  throw new Error('No supported digital signature algorithm is available in this browser.');
++}
++export function exportPublicKey(key) {
++  return { format: keyFormat, suite: key.suite, keyId: key.keyId, publicKey: key.publicBytes };
++}
++export async function importPublicKey(data) {
++  requireCrypto();
++  exactKeys(data, ['format', 'suite', 'keyId', 'publicKey']);
++  if (data.format !== keyFormat || !suites.includes(data.suite) || !/^[a-f0-9]{64}$/.test(data.keyId)) throw new Error('Not a Daily Grind public verification key.');
++  const bytes = unbase64(data.publicKey);
++  const expectedLength = { 'ML-DSA-65': 1952, Ed25519: 32, ECDSA: 65 }[data.suite];
++  if (bytes.length !== expectedLength || await fingerprint(data.suite, data.publicKey) !== data.keyId) throw new Error('Public key fingerprint does not match.');
++  const publicKey = await crypto.subtle.importKey(publicFormat(data.suite), bytes, keyParams(data.suite), true, ['verify']);
++  return { suite: data.suite, publicKey, publicBytes: data.publicKey, keyId: data.keyId };
++}
++export async function signDocument(payload, key) {
++  validatePayload(payload);
++  const body = { format, suite: key.suite, keyId: key.keyId, payload };
++  const signature = await crypto.subtle.sign(signatureParams(key.suite), key.privateKey, signedBytes(body));
++  return { ...body, signature: base64(signature) };
++}
++export async function verifyDocument(document, trustedKey) {
++  requireCrypto();
++  exactKeys(document, ['format', 'suite', 'keyId', 'payload', 'signature']);
++  if (document.format !== format || !suites.includes(document.suite) || !/^[a-f0-9]{64}$/.test(document.keyId)) throw new Error('Unrecognized signed document.');
++  validatePayload(document.payload);
++  if (!trustedKey || trustedKey.keyId !== document.keyId || trustedKey.suite !== document.suite) throw new Error('Unknown signer. Import a public key from the signer and check its fingerprint before trusting it.');
++  const { signature, ...body } = document;
++  const valid = await crypto.subtle.verify(signatureParams(document.suite), trustedKey.publicKey, unbase64(signature), signedBytes(body));
++  if (!valid) throw new Error('Signature invalid. This document has changed or was signed by a different key.');
++  return document.payload;
++}
+diff --git a/signing.css b/signing.css
+new file mode 100644
+index 0000000..847e727
+--- /dev/null
++++ b/signing.css
+@@ -0,0 +1,5 @@
++.receipt-studio{margin-top:80px;scroll-margin-top:100px;--ink:#352b24;--muted:#71675d;--green:#345b48;color:var(--ink)}
++.studio-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:26px}.eyebrow{font-size:.68rem;font-weight:700;letter-spacing:2px;margin-bottom:8px;color:#75654f}.studio-heading h2{font-family:Georgia,serif;font-size:clamp(2rem,4vw,2.8rem);font-weight:400;line-height:1.2}.studio-heading>p{font-size:.88rem;color:var(--muted)}
++.studio-shell{display:grid;grid-template-columns:1.08fr 1fr;border:1px solid #ded9ce;border-radius:12px;overflow:hidden;background:#fff}.studio-controls{padding:32px}.mode-switch{display:flex;border-bottom:1px solid #ded9ce;gap:20px;margin-bottom:28px}.mode-switch button{border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font:600 .8rem 'Segoe UI',sans-serif;padding:0 0 14px;min-height:48px;cursor:pointer}.mode-switch button[aria-pressed=true]{color:var(--green);border-bottom-color:var(--green)}.studio-controls h3,.key-content h3{font:400 1.5rem Georgia,serif;line-height:1.3;margin-bottom:10px}.studio-intro{font-size:.85rem;color:var(--muted);margin-bottom:24px}.document-types{border:0;margin:0 0 20px;padding:0;display:flex;gap:12px;flex-wrap:wrap}.document-types legend,.field label,.key-content label{font-weight:600;font-size:.78rem;margin-bottom:8px}.document-types label{display:flex;align-items:center;gap:8px;border:1px solid #d1ccbf;padding:10px 14px;border-radius:5px;min-height:48px;font-size:.85rem;cursor:pointer}.document-types label:has(input:checked){border-color:var(--green);background:#f1f5ef}.document-types input{accent-color:var(--green)}.field{margin-bottom:17px;min-width:0}.field label{display:block}.field label span{font-weight:400;color:var(--muted)}.field input,.field select,.field textarea,#trust-file{width:100%;border:1px solid #bbb5a8;border-radius:5px;background:#fff;color:var(--ink);padding:11px 12px;min-height:48px;font:400 1rem 'Segoe UI',sans-serif}.field textarea{resize:vertical}.field input[type=file],#trust-file{font-size:.8rem;padding:10px;overflow:hidden}.field input::file-selector-button,#trust-file::file-selector-button{border:0;background:#eeeae2;color:var(--ink);padding:6px 10px;border-radius:3px;margin-right:8px;cursor:pointer}.field-row{display:flex;gap:14px}.field-row>.field:first-child{flex:1}.quantity{width:90px}.field-help{font-size:.72rem;line-height:1.6;color:var(--muted);margin-top:7px}.studio-primary{display:flex;width:100%;align-items:center;justify-content:space-between;background:var(--green);color:#fff;border:1px solid var(--green);border-radius:5px;min-height:50px;padding:12px 18px;font:600 .88rem 'Segoe UI',sans-serif;cursor:pointer;margin-top:22px}.studio-primary:hover{background:#264734}.studio-primary span{font-size:1.2rem}.studio-status{font-size:.76rem;line-height:1.6;color:var(--muted);margin-top:16px;overflow-wrap:anywhere}.studio-status[data-tone=error]{color:#a03023}.studio-status[data-tone=success]{color:#285f3c}.preview-area{background:#eeeae1;padding:30px 35px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0}.preview-caption{display:flex;width:100%;justify-content:space-between;gap:12px;font-size:.56rem;font-weight:700;letter-spacing:1px;color:#6f695d;margin-bottom:22px}.paper-receipt{width:100%;max-width:350px;background:#fffefa;padding:28px;box-shadow:0 7px 15px #3e342311;position:relative;margin-bottom:25px;overflow-wrap:anywhere}.paper-receipt:after{content:'';position:absolute;left:0;right:0;bottom:-6px;height:9px;background:linear-gradient(135deg,#fffefa 25%,transparent 25%) -6px 0,linear-gradient(225deg,#fffefa 25%,transparent 25%) -6px 0;background-size:12px 12px}.receipt-mark{text-align:center;font-size:2rem;filter:grayscale(1)}.receipt-brand{text-align:center;font-size:1rem;font-weight:800;letter-spacing:2px;margin-top:7px}.receipt-tagline{text-align:center;font:italic .76rem Georgia,serif;color:var(--muted);margin-top:5px}.receipt-rule{border-top:1px dashed #c8c1b5;margin:22px 0}.receipt-meta{display:flex;justify-content:space-between;gap:10px;font: .52rem monospace;letter-spacing:.5px}.receipt-recipient{font:italic 1rem Georgia,serif;margin:22px 0 16px}.receipt-item{display:flex;justify-content:space-between;gap:10px;font:.75rem monospace;line-height:1.7}.receipt-message{font:italic .9rem Georgia,serif;white-space:pre-wrap;margin-top:18px;color:var(--muted)}.receipt-total{border-top:1px dashed #c8c1b5;border-bottom:1px dashed #c8c1b5;margin:20px 0;padding:15px 0;display:flex;justify-content:space-between;align-items:center;font-size:.75rem}.receipt-total strong{font:400 1.8rem Georgia,serif}.receipt-seal{display:flex;align-items:center;gap:10px;color:var(--green);margin:22px 0}.seal-icon{display:grid;place-items:center;border:1px solid #92a28b;border-radius:50%;width:34px;height:34px;flex-shrink:0;font-size:1.5rem}.receipt-seal strong{font-size:.7rem;font-weight:600}.receipt-seal p{font-size:.65rem;margin-top:2px}.receipt-id{text-align:center;font:.49rem monospace;letter-spacing:.4px;color:var(--muted)}.download-button{border:1px solid #a49c8e;border-radius:5px;background:transparent;display:flex;justify-content:space-between;gap:25px;align-items:center;padding:10px 16px;min-height:48px;font:600 .76rem 'Segoe UI',sans-serif;color:var(--ink);cursor:pointer;width:100%;max-width:350px}.preview-note{text-align:center;font-size:.65rem;line-height:1.7;color:var(--muted);margin-top:14px}.key-details{border:1px solid #ded9ce;border-radius:8px;margin-top:18px;background:#f7f6f1}.key-details summary{cursor:pointer;padding:18px 22px;font-size:.83rem;font-weight:600;min-height:56px}.key-details summary span{float:right}.key-content{display:grid;grid-template-columns:1fr 1fr;gap:35px;padding:8px 24px 24px}.key-content h3{font-size:1.15rem}.key-content p{font-size:.76rem;color:var(--muted);margin:10px 0;overflow-wrap:anywhere}.key-content label{display:block;margin-top:16px}.secondary-button,.text-button{border:1px solid #b5ae9f;border-radius:4px;padding:10px 14px;background:transparent;font:600 .76rem 'Segoe UI',sans-serif;color:var(--ink);min-height:48px;cursor:pointer}.text-button{border:0;padding:0;min-height:40px;color:var(--green);text-decoration:underline}.fingerprint,#key-info{font-family:monospace;word-break:break-all}.studio-footnote{font-size:.7rem;line-height:1.8;color:var(--muted);max-width:850px;margin:17px auto;text-align:center}.receipt-studio button:disabled{opacity:.5;cursor:not-allowed}.receipt-studio :focus-visible{outline:3px solid #a86a1f;outline-offset:3px}.receipt-studio [hidden]{display:none!important}nav ul{flex-wrap:wrap;justify-content:flex-end;gap:8px 0}nav a[href='#receipt-studio']{color:#ffcc80}
++@media(max-width:800px){.studio-heading{display:block}.studio-heading>p{margin-top:15px}.studio-shell{grid-template-columns:1fr}.studio-controls{padding:24px}.preview-area{padding:28px 24px}.preview-caption{max-width:350px}.key-content{grid-template-columns:1fr;gap:25px}.receipt-studio{margin-top:55px}nav{gap:15px;align-items:start}nav .logo{font-size:1.1rem;white-space:nowrap}nav ul li{margin-left:12px}nav a{font-size:.75rem}}
++@media(max-width:480px){nav{flex-direction:column}nav ul{justify-content:flex-start}nav ul li{margin-left:0;margin-right:14px}.studio-controls{padding:22px 18px}.mode-switch{gap:16px}.mode-switch button{font-size:.72rem}.field-row{gap:10px}.quantity{width:75px}.paper-receipt{padding:24px}.document-types{gap:8px}.document-types label{padding:9px 10px}.studio-heading h2{font-size:2rem}}
+diff --git a/signing.js b/signing.js
+new file mode 100644
+index 0000000..fbd1443
+--- /dev/null
++++ b/signing.js
+@@ -0,0 +1,279 @@
++import { createKey, exportPublicKey, importPublicKey, signDocument, verifyDocument, supportsQuantum } from './signatures.mjs';
++
++const $ = id => document.getElementById(id);
++const money = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
++const coffees = { maple: ['Maple Oat Latte', 550], espresso: ['Dark Roast Espresso', 350], coldbrew: ['Cold Brew', 450] };
++const knownKeys = new Map();
++const signingKeys = new Map();
++let currentKey, lastSigned, downloadable, pendingKey, dbPromise;
++let storageWarning = '';
++let fileLoading = false;
++let fileVersion = 0;
++
++function status(message, tone = '') {
++  $('studio-status').textContent = message;
++  $('studio-status').dataset.tone = tone;
++}
++function mode(create) {
++  fileVersion++;
++  fileLoading = false;
++  $('create-panel').hidden = !create;
++  $('verify-panel').hidden = create;
++  $('create-mode').setAttribute('aria-pressed', String(create));
++  $('verify-mode').setAttribute('aria-pressed', String(!create));
++  status(create ? 'Ready when you are. Your documents stay on your device.' : 'Upload or paste a signed document to check its integrity and signer.');
++  if (create) updatePreview();
++}
++$('create-mode').addEventListener('click', () => mode(true));
++$('verify-mode').addEventListener('click', () => mode(false));
++
++function openDatabase() {
++  if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
++    const request = indexedDB.open('daily-grind-signing-v1', 1);
++    request.onupgradeneeded = () => {
++      const store = request.result.createObjectStore('keys', { keyPath: 'keyId' });
++      store.createIndex('suite', 'suite');
++    };
++    request.onerror = () => reject(request.error);
++    request.onblocked = () => reject(new Error('Browser key storage is blocked.'));
++    request.onsuccess = () => {
++      request.result.onversionchange = () => request.result.close();
++      resolve(request.result);
++    };
++  });
++  return dbPromise;
++}
++async function readKey(suite, refresh = false) {
++  if (!refresh && signingKeys.has(suite)) return signingKeys.get(suite);
++  try {
++    const db = await openDatabase();
++    const keys = await new Promise((resolve, reject) => {
++      const request = db.transaction('keys').objectStore('keys').index('suite').getAll(suite);
++      request.onsuccess = () => resolve(request.result);
++      request.onerror = () => reject(request.error);
++    });
++    // Retain every local public key, including keys created by another tab.
++    for (const stored of keys) knownKeys.set(stored.keyId, stored);
++    const key = keys[0];
++    if (key) signingKeys.set(suite, key);
++    return key;
++  } catch {
++    storageWarning = ' Browser storage is unavailable: this key lasts only for this page session. Download its public key before leaving.';
++    return undefined;
++  }
++}
++async function saveKey(key) {
++  signingKeys.set(key.suite, key);
++  knownKeys.set(key.keyId, key);
++  try {
++    const db = await openDatabase();
++    await new Promise((resolve, reject) => {
++      const transaction = db.transaction('keys', 'readwrite');
++      transaction.objectStore('keys').put(key);
++      transaction.oncomplete = resolve;
++      transaction.onerror = () => reject(transaction.error);
++      transaction.onabort = () => reject(transaction.error);
++    });
++  } catch {
++    storageWarning = ' Browser storage is unavailable: this key lasts only for this page session. Download its public key before leaving.';
++  }
++}
++async function getSigningKey(choice) {
++  const candidates = choice === 'auto' ? (supportsQuantum() ? ['ML-DSA-65', 'Ed25519', 'ECDSA'] : ['Ed25519', 'ECDSA']) : [choice];
++  for (const suite of candidates) {
++    try {
++      const existing = await readKey(suite);
++      if (existing) return existing;
++      const key = await createKey(suite);
++      await saveKey(key);
++      return key;
++    } catch (error) {
++      if (choice !== 'auto' || error.name !== 'NotSupportedError') throw error;
++    }
++  }
++  throw new Error('No supported signature algorithm is available in this browser.');
++}
++function draftPayload() {
++  const voucher = $('sign-form').elements.documentType.value === 'voucher';
++  const [name, unitCents] = coffees[$('coffee').value];
++  const quantity = Number($('quantity').value);
++  return {
++    id: 'DG-' + crypto.randomUUID(), issuer: 'The Daily Grind · local sample',
++    kind: voucher ? 'voucher' : 'receipt', createdAt: new Date().toISOString(),
++    recipient: $('recipient').value.trim(), currency: 'USD', sample: true,
++    amountCents: voucher ? Number($('gift-amount').value) : unitCents * quantity,
++    ...(voucher ? { message: $('gift-message').value.trim() } : { items: [{ name, quantity, unitCents }] })
++  };
++}
++function render(payload, state, suite = '', keyId = '') {
++  const voucher = payload.kind === 'voucher';
++  $('preview-kind').textContent = voucher ? 'SAMPLE GIFT VOUCHER' : 'SAMPLE ORDER RECEIPT';
++  $('preview-date').textContent = state === 'unsigned' ? 'MADE WITH CARE' : new Date(payload.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++  $('preview-recipient').textContent = 'For ' + (payload.recipient || 'a coffee lover');
++  $('preview-item').textContent = voucher ? 'A little coffee, a lot of love' : `${payload.items[0].quantity} × ${payload.items[0].name}`;
++  $('preview-price').textContent = money(payload.amountCents);
++  $('preview-total').textContent = money(payload.amountCents);
++  $('total-label').textContent = voucher ? 'Gift value · USD' : 'Total · USD';
++  $('preview-message').hidden = !voucher || !payload.message;
++  $('preview-message').textContent = voucher ? payload.message : '';
++  const signed = state !== 'unsigned';
++  $('preview-state').textContent = state === 'verified' ? 'SIGNATURE VERIFIED' : signed ? 'DIGITALLY SIGNED' : 'UNSIGNED PREVIEW';
++  $('seal-title').textContent = state === 'verified' ? 'Integrity verified' : signed ? 'Digitally signed sample' : 'A little extra assurance';
++  $('seal-description').textContent = signed ? `${suite === 'ECDSA' ? 'ECDSA P-256' : suite} · Key ${keyId.slice(0, 12)}…` : 'Ready for your digital signature.';
++  $('preview-id').textContent = signed ? payload.id : 'BREWED WITH LOVE. SEALED WITH MATH.';
++}
++function updatePreview() {
++  const voucher = $('sign-form').elements.documentType.value === 'voucher';
++  $('receipt-fields').hidden = voucher;
++  $('quantity').disabled = voucher;
++  $('coffee').disabled = voucher;
++  $('voucher-fields').hidden = !voucher;
++  $('gift-amount').disabled = !voucher;
++  $('gift-message').disabled = !voucher;
++  $('sign-button').replaceChildren(document.createTextNode(voucher ? 'Sign sample gift voucher ' : 'Sign sample receipt '), Object.assign(document.createElement('span'), { textContent: '↗' }));
++  downloadable = undefined;
++  $('download-document').disabled = true;
++  // A preview needs no cryptographic operations or secure context.
++  const [name, unitCents] = coffees[$('coffee').value];
++  const quantity = Math.min(20, Math.max(1, Number($('quantity').value) || 1));
++  render({ kind: voucher ? 'voucher' : 'receipt', recipient: $('recipient').value.trim(), amountCents: voucher ? Number($('gift-amount').value) : unitCents * quantity, items: [{ name, quantity }], message: $('gift-message').value.trim() }, 'unsigned');
++}
++$('sign-form').addEventListener('input', () => { updatePreview(); status('Preview updated. Sign again to seal these details.'); });
++$('sign-form').addEventListener('change', updatePreview);
++$('sign-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  const form = $('sign-form');
++  if (!form.reportValidity()) return;
++  // Snapshot before async key generation; do not allow edits to masquerade as signed.
++  if (!globalThis.crypto?.subtle) { status('Digital signing needs HTTPS and a browser with Web Crypto support.', 'error'); return; }
++  const controls = [...form.elements];
++  const disabledBefore = controls.map(control => control.disabled);
++  try {
++    const payload = draftPayload();
++    const choice = $('algorithm').value;
++    controls.forEach(control => { control.disabled = true; });
++    status('Creating your digital signature…');
++    const key = await getSigningKey(choice);
++    const signed = await signDocument(payload, key);
++    // Self-check before presenting or exporting a signed result.
++    await verifyDocument(signed, key);
++    currentKey = key;
++    lastSigned = signed;
++    downloadable = signed;
++    $('download-document').disabled = false;
++    $('download-key').disabled = false;
++    $('use-last').disabled = false;
++    $('key-info').textContent = `${currentKey.suite === 'ECDSA' ? 'ECDSA P-256' : currentKey.suite} · SHA-256 fingerprint: ${currentKey.keyId}${storageWarning}`;
++    render(payload, 'signed', currentKey.suite, currentKey.keyId);
++    status(`Sample ${payload.kind === 'voucher' ? 'gift voucher' : 'receipt'} signed with ${currentKey.suite === 'ECDSA' ? 'ECDSA P-256' : currentKey.suite}. Download the document and share the public key separately.${storageWarning}`, 'success');
++  } catch (error) { status(friendlyError(error), 'error'); }
++  finally { controls.forEach((control, index) => { control.disabled = disabledBefore[index]; }); }
++});
++function friendlyError(error) {
++  if (error.name === 'NotSupportedError') return 'This browser does not support that signature algorithm. Choose Automatic or ECDSA P-256. Quantum-resistant documents need a browser that supports ML-DSA-65.';
++  if (error instanceof SyntaxError) return 'This is not valid JSON. Upload or paste a complete signed document.';
++  return error.message || 'The operation could not be completed. Please try again.';
++}
++function download(value, filename) {
++  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
++  const link = document.createElement('a');
++  link.href = url; link.download = filename;
++  document.body.append(link); link.click(); link.remove();
++  setTimeout(() => URL.revokeObjectURL(url), 1000);
++}
++$('download-document').addEventListener('click', () => {
++  if (downloadable) download(downloadable, `${downloadable.payload.id}-${downloadable.payload.kind}.json`);
++});
++$('download-key').addEventListener('click', () => {
++  if (currentKey) download(exportPublicKey(currentKey), `daily-grind-public-key-${currentKey.keyId.slice(0, 12)}.json`);
++});
++async function readJSONFile(file) {
++  if (!file || file.size > 65536) throw new Error('Choose a JSON file smaller than 64 KB.');
++  return file.text();
++}
++function invalidateVerification() {
++  downloadable = undefined;
++  $('download-document').disabled = true;
++  $('preview-state').textContent = 'AWAITING VERIFICATION';
++  $('seal-title').textContent = 'Verification pending';
++  $('seal-description').textContent = 'Verify the current document before trusting it.';
++}
++$('document-json').addEventListener('input', () => {
++  fileVersion++;
++  fileLoading = false;
++  $('document-file').value = '';
++  invalidateVerification();
++  status('Document changed. Verify its signature again.');
++});
++$('document-file').addEventListener('change', async () => {
++  const version = ++fileVersion;
++  fileLoading = true;
++  invalidateVerification();
++  try {
++    const text = await readJSONFile($('document-file').files[0]);
++    if (version !== fileVersion) return;
++    $('document-json').value = text;
++    status('Document loaded. Select Verify signature to check it.');
++  } catch (error) { if (version === fileVersion) status(friendlyError(error), 'error'); }
++  finally { if (version === fileVersion) fileLoading = false; }
++});
++$('use-last').addEventListener('click', () => {
++  if (!lastSigned) return;
++  fileVersion++;
++  fileLoading = false;
++  $('document-json').value = JSON.stringify(lastSigned, null, 2);
++  $('document-file').value = '';
++  invalidateVerification();
++  status('Your last signed sample is ready to verify.');
++});
++$('verify-form').addEventListener('submit', async event => {
++  event.preventDefault();
++  if (fileLoading) { status('Please wait for the selected file to finish loading.', 'error'); return; }
++  const version = fileVersion;
++  $('verify-button').disabled = true;
++  invalidateVerification();
++  status('Checking the signature and trusted key…');
++  try {
++    const text = $('document-json').value;
++    if (text.length > 65536) throw new Error('Signed documents must be smaller than 64 KB.');
++    const signed = JSON.parse(text);
++    // Load previously created local keys, but never trust a key from a document.
++    if (['ML-DSA-65', 'Ed25519', 'ECDSA'].includes(signed?.suite)) await readKey(signed.suite, true);
++    const payload = await verifyDocument(signed, knownKeys.get(signed?.keyId));
++    if (version !== fileVersion) return;
++    downloadable = signed;
++    $('download-document').disabled = false;
++    render(payload, 'verified', signed.suite, signed.keyId);
++    status(`Signature valid. The ${payload.kind === 'voucher' ? 'gift voucher' : 'receipt'} is unchanged and matches trusted key ${signed.keyId.slice(0, 12)}…. This is a local sample, not proof of purchase or redeemable credit.`, 'success');
++  } catch (error) {
++    if (version !== fileVersion) return;
++    $('preview-state').textContent = 'NOT VERIFIED';
++    $('seal-title').textContent = 'Document not verified';
++    $('seal-description').textContent = 'Do not rely on this document.';
++    status(friendlyError(error), 'error');
++  } finally { $('verify-button').disabled = false; }
++});
++let trustVersion = 0;
++$('trust-file').addEventListener('change', async () => {
++  const version = ++trustVersion;
++  pendingKey = undefined;
++  $('pending-trust').hidden = true;
++  $('trust-status').textContent = 'Reading public key…';
++  try {
++    const data = JSON.parse(await readJSONFile($('trust-file').files[0]));
++    const key = await importPublicKey(data);
++    if (version !== trustVersion) return;
++    pendingKey = key;
++    $('trust-fingerprint').textContent = `${key.suite} · SHA-256 fingerprint: ${key.keyId}`;
++    $('pending-trust').hidden = false;
++    $('trust-status').textContent = 'Key loaded. Compare this fingerprint with the signer through a trusted channel before accepting it.';
++  } catch (error) { if (version === trustVersion) $('trust-status').textContent = friendlyError(error); }
++});
++$('trust-key').addEventListener('click', () => {
++  if (!pendingKey) return;
++  knownKeys.set(pendingKey.keyId, pendingKey);
++  $('trust-status').textContent = `Key ${pendingKey.keyId.slice(0, 12)}… is now trusted for this session. Verify your document again.`;
++  $('pending-trust').hidden = true;
++  pendingKey = undefined;
++});
++updatePreview();

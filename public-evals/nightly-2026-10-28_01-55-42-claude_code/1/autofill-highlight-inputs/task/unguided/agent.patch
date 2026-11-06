@@ -1,0 +1,32 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,28 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Highlight browser-autofilled fields with a green border */
++    input:-webkit-autofill,
++    input:-webkit-autofill:hover,
++    input:-webkit-autofill:focus,
++    textarea:-webkit-autofill,
++    select:-webkit-autofill {
++      border: 2px solid #2e7d32;
++      /* Chrome/Safari force a yellow/blue background on autofill; this keeps it light */
++      -webkit-box-shadow: 0 0 0 1000px var(--light) inset;
++      box-shadow: 0 0 0 1000px var(--light) inset;
++      -webkit-text-fill-color: var(--text);
++      transition: background-color 5000s ease-in-out 0s;
++    }
++
++    input:autofill,
++    textarea:autofill,
++    select:autofill {
++      border: 2px solid #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>

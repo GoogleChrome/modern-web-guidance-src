@@ -1,0 +1,29 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,24 @@
++# The Daily Grind
++
++Run `pnpm install` and `pnpm start` to serve the site.
++
++Core Web Vitals monitoring loads from `/monitoring.js` and uses the self-hosted
++`web-vitals` library. CLS, INP, and LCP reports are batched for up to five seconds
++and flushed when the page becomes hidden or on `pagehide`. Empty batches are not
++sent. Failed fetch batches remain queued for the next report or lifecycle flush.
++Metrics unavailable in a browser (or INP without an interaction) are not reported.
++
++The deployment must provide a same-origin `POST /collect` handler; the development
++static server does not implement a collector. Each request is a JSON array of
++objects with `id`, `name`, `value`, `rating`, and `navigationType`. Values are
++absolute: the collector should upsert by metric `id`, replacing earlier values
++rather than summing them. LCP and INP values are milliseconds; CLS is unitless.
++Beacon delivery is best effort, and acceptance by the browser does not confirm
++server receipt.
++
++The checked-in `vendor/` assets allow static hosting without a bundler or CDN.
++After updating the pinned `web-vitals` dependency, run `pnpm vendor:web-vitals`
++and commit the refreshed assets and lockfile. The upstream Apache 2.0 license is
++included in `vendor/web-vitals.LICENSE`.
++
++Run `pnpm test` for automated batching and lifecycle tests (no browser required).

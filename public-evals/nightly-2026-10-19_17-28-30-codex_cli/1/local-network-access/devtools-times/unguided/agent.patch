@@ -1,0 +1,41 @@
+diff --git a/README.md b/README.md
+index 4479b53..759aa07 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,18 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local network access
++
++Responses include a `Permissions-Policy` header allowing this application's origin
++to request resources on the user's local network and loopback interface. Both the
++`local-network` and `loopback-network` directives and the legacy
++`local-network-access` directive are included for browser compatibility.
++
++Serve the application over HTTPS (or localhost during development). Users must
++grant the browser's network access permission when prompted, and local services
++must allow the application's origin through CORS for cross-origin requests.
++See the [Local Network Access specification](https://wicg.github.io/local-network-access/).
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..0bb9d19 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to request local network and loopback access.
++  // Keep the legacy directive for browsers using the combined permission.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self), local-network-access=(self)',
++  );
++  return response;
+ });

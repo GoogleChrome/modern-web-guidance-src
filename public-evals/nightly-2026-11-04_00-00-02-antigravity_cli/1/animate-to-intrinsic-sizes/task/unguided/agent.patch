@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,100 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Visually hidden checkbox for CSS-only state management */
++    .state-toggle {
++      position: absolute;
++      width: 0;
++      height: 0;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      opacity: 0;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      pointer-events: none;
++    }
++
++    /* Promo Alert Banner */
++    #promo-alert {
++      interpolate-size: allow-keywords;
++      background: linear-gradient(90deg, #3e2723, var(--primary));
++      color: var(--light);
++      height: auto;
++      overflow: hidden;
++      opacity: 1;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    .promo-alert-inner {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 12px 5%;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .promo-message {
++      font-size: 0.95rem;
++      line-height: 1.4;
++    }
++
++    .promo-message strong {
++      color: var(--accent);
++    }
++
++    .promo-code {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-family: monospace;
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: rgba(255, 255, 255, 0.12);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      white-space: nowrap;
++      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++    }
++
++    #alert-dismiss:hover {
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--accent);
++    }
++
++    #promo-alert:has(#alert-toggle:checked) {
++      height: 0;
++      opacity: 0;
++      pointer-events: none;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -134,8 +218,126 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* FAQ Accordion Section */
++    .faq-section {
++      margin-top: 50px;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .faq-accordion {
++      max-width: 800px;
++      margin: 0 auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.1rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      transition: background 0.25s ease, color 0.25s ease;
++    }
++
++    #faq-trigger:hover {
++      background: #f5f0ee;
++    }
++
++    .faq-chevron {
++      display: inline-block;
++      font-size: 0.9rem;
++      transition: transform 0.35s ease;
++      color: var(--primary);
++    }
++
++    #faq-toggle:checked ~ #faq-trigger {
++      background: #f5f0ee;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    #faq-toggle:checked ~ #faq-trigger .faq-chevron {
++      transform: rotate(180deg);
++    }
++
++    #faq-content {
++      interpolate-size: allow-keywords;
++      height: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: height 0.35s ease, opacity 0.35s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-content {
++      height: auto;
++      opacity: 1;
++    }
++
++    .faq-content-inner {
++      padding: 20px 24px;
++      color: var(--text);
++    }
++
++    .faq-content-inner p + p {
++      margin-top: 12px;
++    }
++
++    @supports not (interpolate-size: allow-keywords) {
++      #promo-alert {
++        display: grid;
++        grid-template-rows: 1fr;
++        transition: grid-template-rows 0.35s ease, opacity 0.35s ease;
++      }
++
++      .promo-alert-inner {
++        min-height: 0;
++        overflow: hidden;
++      }
++
++      #promo-alert:has(#alert-toggle:checked) {
++        height: auto;
++        grid-template-rows: 0fr;
++      }
++
++      #faq-content {
++        display: grid;
++        grid-template-rows: 0fr;
++        height: auto;
++        transition: grid-template-rows 0.35s ease, opacity 0.35s ease;
++      }
++
++      .faq-content-inner {
++        min-height: 0;
++        overflow: hidden;
++        padding: 0 24px;
++        transition: padding 0.35s ease;
++      }
++
++      #faq-toggle:checked ~ #faq-content {
++        grid-template-rows: 1fr;
++      }
++
++      #faq-toggle:checked ~ #faq-content .faq-content-inner {
++        padding: 20px 24px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +358,20 @@
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotional Offer">
++    <input type="checkbox" id="alert-toggle" class="state-toggle" aria-hidden="true">
++    <div class="promo-alert-inner">
++      <p class="promo-message">
++        <strong>Fresh Roast Special:</strong> Get 20% off your first coffee subscription order with code <span class="promo-code">DAILY20</span> — plus free shipping on orders over $35!
++      </p>
++      <label for="alert-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss promotional alert">
++        &times; Dismiss
++      </label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +408,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" id="faq">
++      <h2>Frequently Asked Questions</h2>
++      <div class="faq-accordion">
++        <input type="checkbox" id="faq-toggle" class="state-toggle" aria-hidden="true">
++        <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0">
++          <span>How are your coffee beans ethically sourced and freshly roasted?</span>
++          <span class="faq-chevron" aria-hidden="true">&#9662;</span>
++        </label>
++        <div id="faq-content" role="region" aria-labelledby="faq-trigger">
++          <div class="faq-content-inner">
++            <p>We partner directly with small-lot, sustainable farms across Central and South America, East Africa, and Sumatra. Every harvest is Fair Trade certified and shade-grown to protect local ecosystems.</p>
++            <p>Our beans are roasted in small batches daily at our local roastery and shipped within 24 hours of roasting so that every bag arrives at peak flavor and aroma.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

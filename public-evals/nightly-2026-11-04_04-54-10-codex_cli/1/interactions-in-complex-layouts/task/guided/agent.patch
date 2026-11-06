@@ -1,0 +1,352 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,147 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#263c32">
++  <title>Order Board · The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{font-family:'DM Sans',sans-serif;color:#283b32;background:#f7f8f5;font-synthesis:none;--green:#2d5541;--muted:#838a82;--line:#e4e8df;--accent:#d1e4aa}
++    *{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #7f9e59;outline-offset:4px}button{color:inherit}button svg{pointer-events:none}svg.icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.sprite{position:absolute;width:0;height:0;overflow:hidden}
++    .app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}.sidebar{background:#263c32;color:#f2f5ee;padding:36px 22px 22px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:11px;padding:0 10px}.brand-mark{width:37px;height:42px;stroke:#d7e4bc;fill:none;stroke-width:1.5}.brand-name{font-family:Manrope,sans-serif;font-size:18px;font-weight:800;line-height:1.1;letter-spacing:-.6px}.brand-name small{display:block;font:9px 'DM Sans',sans-serif;letter-spacing:2.7px;margin-top:8px;color:#afbaac}.workspace-label{font-size:10px;letter-spacing:1.9px;color:#9aa99b;margin:54px 14px 15px}.nav-item{display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:7px;color:#bcc7bc;text-decoration:none;font-size:13px;border-radius:7px}.nav-item.active{background:#d3e6b2;color:#294030;font-weight:650}.nav-item .nav-count{margin-left:auto;background:#bfd69b;min-width:22px;text-align:center;border-radius:4px;font-size:11px;padding:2px 5px}.nav-item.muted{color:#aab9ae}.sidebar-bottom{margin-top:auto}.shift-note{border:1px solid #4b5c4d;border-radius:9px;padding:17px 14px;margin-bottom:23px;background:#2d4337}.shift-note .sprout{color:#cbddac;margin-bottom:12px}.shift-note strong{font-size:12px;font-weight:500;display:block}.shift-note p{font-size:11px;line-height:1.8;color:#acbaac;margin:7px 0 0}.profile{border-top:1px solid #435348;padding:21px 6px 0;display:flex;align-items:center;gap:10px}.avatar{height:34px;width:34px;background:#e3dcc7;color:#44513a;display:grid;place-items:center;border-radius:50%;font-size:11px;font-weight:650}.profile-name{font-size:12px}.profile-name small{display:block;font-size:10px;color:#aab9ae;margin-top:4px}.profile .icon{margin-left:auto;width:15px;color:#aab9ae}
++    .main{min-width:0}.topbar{height:82px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 38px;background:#fffefa}.breadcrumb{display:flex;align-items:center;gap:12px;font-size:11px;color:#959a90}.breadcrumb strong{font-weight:500;color:#4a554b}.topbar-right{display:flex;align-items:center;gap:19px}.date{font-size:11px;color:#727c71}.open-status{font-size:10px;display:flex;align-items:center;gap:7px;color:#5c7550;border:1px solid #dce5d3;border-radius:20px;padding:7px 10px;background:#f6f9f1}.dot{width:6px;height:6px;background:currentColor;border-radius:50%;display:inline-block}.icon-button{border:0;background:none;padding:5px;display:grid;place-items:center;color:#737d70}.help-button{border-left:1px solid var(--line);padding-left:17px}.content{padding:33px 38px 20px;max-width:1700px;margin:auto}.page-heading{display:flex;justify-content:space-between;align-items:center;gap:18px}.eyebrow{font-size:9px;font-weight:600;color:#929a86;letter-spacing:1.8px;text-transform:uppercase;margin:0 0 10px}h1{font-family:Manrope,sans-serif;font-size:30px;line-height:1.3;font-weight:750;letter-spacing:-1.1px;margin:0} .subtitle{font-size:12px;color:#80877c;margin:9px 0 0}.primary-button{display:flex;align-items:center;gap:8px;background:#2d503d;border:1px solid #2d503d;color:white;border-radius:6px;padding:11px 16px;font-size:11px;font-weight:500;box-shadow:0 2px 3px #233d2810}.primary-button:hover{background:#3c614a}.primary-button .icon{height:16px;width:16px}.overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:28px}.stat{display:flex;align-items:center;gap:13px;border:1px solid var(--line);border-radius:8px;padding:17px 18px;background:#fffefa}.stat-symbol{display:grid;place-items:center;width:37px;height:37px;background:#f0f2e9;color:#738064;border-radius:8px}.stat:nth-child(2) .stat-symbol{background:#faf1df;color:#b58b42}.stat:nth-child(3) .stat-symbol{background:#edf0e6;color:#768559}.stat:nth-child(4) .stat-symbol{background:#eaf3e9;color:#648858}.stat-label{color:#83897e;font-size:10px;margin-bottom:4px}.stat-value{font-family:Manrope,sans-serif;font-size:22px;font-weight:750;letter-spacing:-.5px}.stat-value small{font:10px 'DM Sans',sans-serif;color:#929889;margin-left:6px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:30px 0 21px}.filters{display:flex;gap:4px;background:#edf0e8;padding:4px;border-radius:6px}.filter{font-size:10px;background:none;border:0;color:#7a8373;padding:8px 13px;border-radius:4px}.filter.active{background:#fffefa;color:#354a35;box-shadow:0 1px 4px #24382112;font-weight:600}.board-tools{display:flex;align-items:center;gap:13px}.search{display:flex;align-items:center;gap:9px;background:#fffefa;border:1px solid var(--line);border-radius:6px;padding:9px 11px}.search .icon{width:15px;height:15px;color:#92998c}.search input{width:155px;border:0;background:transparent;outline:none;font-size:10px;color:#3c4e3c}.search input::placeholder{color:#9b9f93}.live-label{font-size:10px;color:#87917e;display:flex;align-items:center;gap:6px}.live-label .dot{color:#839e64;width:5px;height:5px}
++    .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.board-column{border:1px solid #e2e6dc;border-radius:9px;background:#eff1ea;display:flex;flex-direction:column;min-width:0;height:calc(100dvh - 382px);min-height:460px;content-visibility:auto;contain-intrinsic-size:auto 320px auto 600px;contain:layout style paint;transition:background-color .15s,border-color .15s}.board-column[data-status="brewing"]{background:#f2f0e8;border-color:#e9e4d8}.board-column[data-status="ready"]{background:#edf2e9;border-color:#e0e7db}.board-column.drop-target{background:#e0ebd5;border-color:#8aa66b;box-shadow:inset 0 0 0 1px #8aa66b}.column-heading{display:flex;align-items:center;padding:19px 17px 17px;gap:9px;flex-shrink:0}.status-icon{width:19px;height:19px;border:1.5px dashed #8b967b;border-radius:50%;display:grid;place-items:center;color:#889570}.status-icon.brewing{border:0;color:#b2985a}.status-icon.ready{border:0;background:#d6e2c8;color:#6f8859}.status-icon .icon{width:15px;height:15px}.column-heading h2{font-size:12px;margin:0;font-weight:600}.column-count{display:grid;place-items:center;background:#e1e6d9;color:#869274;border-radius:5px;min-width:20px;height:19px;font-size:10px;margin-left:1px}.board-column[data-status="brewing"] .column-count{background:#e9e3d3;color:#a28b5d}.board-column[data-status="ready"] .column-count{background:#dde8d6;color:#7b9167}.column-hint{margin-left:auto;font-size:9px;color:#959b8d}.order-list{padding:0 11px 10px;overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;scrollbar-width:thin;scrollbar-color:#d2d9c9 transparent}.card{background:#fffefa;border:1px solid #e3e6dc;border-radius:7px;margin-bottom:11px;padding:15px;box-shadow:0 2px 3px #37402604;content-visibility:auto;contain-intrinsic-size:auto 190px;contain:layout style paint;position:relative}.card[hidden]{display:none}.card:last-child{margin-bottom:0}.card-top{display:flex;align-items:center;gap:7px;font-size:9px;color:#8e9587}.order-number{font-size:10px;color:#78856d;font-weight:600;letter-spacing:.2px}.order-age{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:9px;color:#969b8d}.order-age .icon{width:11px;height:11px}.drag-handle{border:0;background:transparent;color:#a6ad9d;padding:0;margin-left:4px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;display:none}.js .drag-handle{display:grid}.drag-handle .icon{width:13px;height:16px}.card h3{font:700 14px Manrope,sans-serif;letter-spacing:-.3px;margin:15px 0 8px;color:#344631;line-height:1.4}.drink-line{display:flex;align-items:center;gap:7px;font-size:10px;color:#858d7d}.drink-line .separator{color:#c3c9b9}.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:11px;min-height:19px}.tag{font-size:8px;line-height:1.5;border-radius:4px;padding:3px 6px;background:#f0f1e8;color:#7e876e}.tag.special{color:#ad8850;background:#faf1df}.card-note{font-size:9px;color:#a19375;display:flex;align-items:center;gap:5px;margin:11px 0 0}.card-note .icon{width:12px;height:12px}.card-footer{border-top:1px dashed #e5e7dd;margin-top:15px;padding-top:11px;display:flex;align-items:center;gap:6px;min-height:25px}.customer-initial{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#edece3;font-size:8px;color:#899075}.customer{font-size:9px;color:#7d8772}.order-type{margin-left:auto;display:flex;gap:4px;align-items:center;color:#929b85;font-size:8px}.order-type .icon{width:11px;height:11px}.advance{border:0;background:#edf2e5;border-radius:4px;padding:3px;color:#778e61;display:grid;place-items:center;margin-left:5px}.advance:hover{background:#dce8ce}.advance .icon{width:12px;height:12px}.card.dragging{opacity:.35}.drag-preview{position:fixed;top:0;left:0;z-index:1000;pointer-events:none;margin:0;opacity:.96;box-shadow:0 14px 35px #263c3226;will-change:transform;content-visibility:visible}.column-footer{padding:8px 17px 12px;font-size:9px;color:#9ca28f;text-align:center;flex-shrink:0}.board-footer{display:flex;justify-content:space-between;align-items:center;padding-top:15px;font-size:9px;color:#9ba18f}.board-footer span{display:flex;align-items:center;gap:5px}.board-footer .icon{height:12px;width:12px}.empty-state{font-size:11px;text-align:center;color:#959e88;padding:35px 10px;line-height:1.7}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2d4836;color:white;font-size:12px;padding:12px 20px;border-radius:7px;box-shadow:0 5px 20px #20372820;z-index:100}.toast:empty{display:none}dialog{border:1px solid var(--line);border-radius:14px;background:#fffefa;color:#344631;padding:28px;width:min(440px,calc(100% - 32px));box-shadow:0 20px 70px #18302425}dialog::backdrop{background:#20372c60}dialog h2{font:700 23px Manrope,sans-serif;margin:0 0 9px;letter-spacing:-.6px}dialog p{font-size:12px;color:#85907b;line-height:1.8}dialog label{display:block;font-size:11px;margin-top:17px}dialog input,dialog select{width:100%;padding:10px;border:1px solid #dfe4d7;background:#f9faf6;border-radius:5px;margin-top:7px;font-size:12px;color:#344631}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:13px}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}.secondary-button{border:1px solid var(--line);background:transparent;padding:10px 15px;border-radius:6px;font-size:11px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
++    @supports not (content-visibility:auto){.board-column{contain:layout style paint}}
++    @media(min-width:1500px){.content{padding-top:42px}.board-column{height:calc(100dvh - 400px)}.card{padding:20px}.card h3{font-size:16px}.card-footer{margin-top:20px}}
++    @media(max-width:1150px){.app{grid-template-columns:195px minmax(0,1fr)}.sidebar{padding-inline:14px}.topbar{padding-inline:25px}.content{padding:28px 25px 18px}.board{gap:12px}.column-heading{padding-inline:12px}.column-hint{display:none}.card{padding:12px}.card h3{font-size:12px}.stat{padding:14px 12px;gap:9px}.stat-symbol{width:30px;height:30px}.stat-value{font-size:20px}.board-column{height:calc(100dvh - 367px)}}
++    @media(max-width:850px){.app{grid-template-columns:76px minmax(0,1fr)}.sidebar{padding:29px 12px 20px}.brand{padding:0;justify-content:center}.brand-name,.workspace-label,.nav-item span,.sidebar-bottom,.nav-item .nav-count{display:none}.sidebar nav{margin-top:40px}.nav-item{justify-content:center;padding:13px}.overview{gap:9px}.stat{gap:8px}.stat-symbol{display:none}.date{display:none}.board{grid-template-columns:repeat(3,minmax(245px,1fr));overflow-x:auto;padding-bottom:8px}.board-column{height:580px}.search input{width:115px}.live-label{display:none}.content{padding:25px 20px}.topbar{height:65px;padding-inline:20px}.brand-mark{width:33px}.card h3{font-size:14px}}
++    @media(max-width:560px){.app{grid-template-columns:1fr}.sidebar{height:auto;position:static;flex-direction:row;padding:15px 20px;align-items:center;justify-content:space-between}.brand-name{display:block;font-size:15px}.brand-name small{display:none}.brand-mark{height:30px;width:27px}.sidebar nav{margin:0}.nav-item{margin:0;padding:8px}.nav-item.muted{display:none}.nav-item.active span:not(.nav-count){display:block;font-size:11px}.topbar{height:50px}.open-status{font-size:9px;padding:5px 8px}.topbar-right{gap:10px}.breadcrumb{font-size:10px;gap:8px}.content{padding:24px 16px}.eyebrow{font-size:8px}h1{font-size:25px}.subtitle{font-size:10px;max-width:200px;line-height:1.7}.primary-button{font-size:10px;padding:10px}.overview{grid-template-columns:repeat(2,1fr);margin-top:22px}.stat{padding:12px 14px}.stat-symbol{display:grid}.toolbar{flex-wrap:wrap;gap:12px;margin:24px 0 17px}.filters{flex:1}.filter{flex:1}.board-tools,.search{width:100%}.search input{width:100%}.board{gap:12px;grid-template-columns:repeat(3,280px)}.board-column{height:570px}.board-footer span:last-child{display:none}.help-button{padding-left:10px}}
++    @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++<svg class="sprite" xmlns="http://www.w3.org/2000/svg"><defs>
++<symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M5.5 8h1M11.5 8h1M17.5 8h1"/></symbol>
++<symbol id="i-cup" viewBox="0 0 24 24"><path d="M4 9h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9ZM17 10h2a3 3 0 0 1 0 6h-2M8 3v3M12 2v4M2 22h18"/></symbol>
++<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
++<symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></symbol>
++<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
++<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
++<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
++<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
++<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01"/></symbol>
++<symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01" stroke-width="3"/></symbol>
++<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2"/></symbol>
++<symbol id="i-note" viewBox="0 0 24 24"><path d="M5 3h14v14l-4 4H5V3Zm14 14h-4v4M8 8h8M8 12h5"/></symbol>
++<symbol id="i-leaf" viewBox="0 0 24 24"><path d="M12 21V10m0 4C5 15 3 10 3 5c6 0 9 2 9 8m0-3c0-5 4-7 9-7 0 6-3 9-9 9"/></symbol>
++<symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 15v-4m5 4V7m5 8V4"/></symbol>
++<symbol id="i-history" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6m3-3v5l3 2"/></symbol>
++<symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5"/></symbol>
++</defs></svg>
++<div class="app">
++<aside class="sidebar" aria-label="Workspace navigation">
++  <div class="brand"><svg class="brand-mark" viewBox="0 0 40 48" aria-hidden="true"><path d="M7 20h23v13a8 8 0 0 1-8 8h-7a8 8 0 0 1-8-8V20Zm23 2h3a6 6 0 0 1 0 12h-3M3 45h31M14 14c-6-6 6-6 0-12m8 12c-6-6 6-6 0-12"/></svg><div class="brand-name">the daily grind<small>GOOD COFFEE. GOOD DAYS.</small></div></div>
++  <div class="workspace-label">WORKSPACE</div>
++  <nav><a class="nav-item active" href="#order-board" aria-current="page"><svg class="icon"><use href="#i-board"/></svg><span>Order board</span><span class="nav-count" id="nav-count">8</span></a><a class="nav-item muted" href="#" data-view="history"><svg class="icon"><use href="#i-history"/></svg><span>Order history</span></a><a class="nav-item muted" href="#" data-view="menu"><svg class="icon"><use href="#i-cup"/></svg><span>Drink menu</span></a><a class="nav-item muted" href="#" data-view="team"><svg class="icon"><use href="#i-team"/></svg><span>Team</span></a><a class="nav-item muted" href="#" data-view="insights"><svg class="icon"><use href="#i-chart"/></svg><span>Daily insights</span></a></nav>
++  <div class="sidebar-bottom"><div class="shift-note"><svg class="icon sprout"><use href="#i-leaf"/></svg><strong>A little care in every cup.</strong><p>Take your time. Make it good.<br>You've got this, team.</p></div><div class="profile"><span class="avatar">JD</span><div class="profile-name">Jamie Davis<small>Barista · Morning shift</small></div><svg class="icon"><use href="#i-chevron"/></svg></div></div>
++</aside>
++<div class="main">
++<header class="topbar"><div class="breadcrumb">Workspace<svg class="icon" style="width:12px;height:12px"><use href="#i-chevron"/></svg><strong>Order board</strong></div><div class="topbar-right"><span class="date" id="today"></span><span class="open-status"><span class="dot"></span> Café is open</span><button class="icon-button help-button" id="help" aria-label="How to use the order board"><svg class="icon"><use href="#i-help"/></svg></button></div></header>
++<main class="content" id="order-board">
++<div class="page-heading"><div><p class="eyebrow">Behind the bar</p><h1>A good day starts here.</h1><p class="subtitle">A little organization. A lot of great coffee.</p></div><button class="primary-button" id="new-order"><svg class="icon"><use href="#i-plus"/></svg>New order</button></div>
++<section class="overview" aria-label="Order overview"><div class="stat"><span class="stat-symbol"><svg class="icon"><use href="#i-board"/></svg></span><div><div class="stat-label">Active orders</div><div class="stat-value" id="active-count">8</div></div></div><div class="stat"><span class="stat-symbol"><svg class="icon"><use href="#i-clock"/></svg></span><div><div class="stat-label">In the queue</div><div class="stat-value" id="queued-count">3</div></div></div><div class="stat"><span class="stat-symbol"><svg class="icon"><use href="#i-cup"/></svg></span><div><div class="stat-label">On the brew</div><div class="stat-value" id="brewing-count">3</div></div></div><div class="stat"><span class="stat-symbol"><svg class="icon"><use href="#i-check"/></svg></span><div><div class="stat-label">Ready to enjoy</div><div class="stat-value" id="ready-count">2</div></div></div></section>
++<div class="toolbar"><div class="filters" role="group" aria-label="Filter by order type"><button class="filter active" data-filter="all" aria-pressed="true">All orders</button><button class="filter" data-filter="in-house" aria-pressed="false">In-house</button><button class="filter" data-filter="takeaway" aria-pressed="false">Takeaway</button></div><div class="board-tools"><span class="live-label"><span class="dot"></span>Live board</span><label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search orders..." aria-label="Search orders by drink, number, or customer"></label></div></div>
++<section class="board" aria-label="Drink order kanban board">
++<section class="board-column" id="queued" data-status="queued" aria-labelledby="queued-title"><header class="column-heading"><span class="status-icon"></span><h2 id="queued-title">Queued</h2><span class="column-count">3</span><span class="column-hint">Next up</span></header><div class="order-list" role="list" aria-label="Queued orders"></div><div class="column-footer">Good things are brewing.</div></section>
++<section class="board-column" id="brewing" data-status="brewing" aria-labelledby="brewing-title"><header class="column-heading"><span class="status-icon brewing"><svg class="icon"><use href="#i-cup"/></svg></span><h2 id="brewing-title">Brewing</h2><span class="column-count">3</span><span class="column-hint">Made with care</span></header><div class="order-list" role="list" aria-label="Brewing orders"></div><div class="column-footer">A little craft in every cup.</div></section>
++<section class="board-column" id="ready" data-status="ready" aria-labelledby="ready-title"><header class="column-heading"><span class="status-icon ready"><svg class="icon"><use href="#i-check"/></svg></span><h2 id="ready-title">Ready</h2><span class="column-count">2</span><span class="column-hint">Sip, sip, hooray</span></header><div class="order-list" role="list" aria-label="Ready orders"></div><div class="column-footer">Ready for a happy handoff.</div></section>
++</section>
++<div class="board-footer"><span><svg class="icon"><use href="#i-grip"/></svg>Drag orders between columns to update their status</span><span>Made with care. Served with a smile.</span></div>
++</main>
++</div></div>
++<dialog id="order-dialog" aria-labelledby="dialog-title"><form id="order-form"><p class="eyebrow">One great cup, coming up</p><h2 id="dialog-title">New order</h2><label>Drink<select name="drink"><option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option><option>Cappuccino</option><option>Matcha Latte</option><option>Flat White</option><option>Vanilla Latte</option></select></label><label>Customer name<input name="customer" placeholder="e.g. Alex" required maxlength="40"></label><div class="form-row"><label>Size<select name="size"><option>Regular</option><option>Small</option><option>Large</option></select></label><label>Order type<select name="type"><option value="takeaway">Takeaway</option><option value="in-house">In-house</option></select></label></div><label>Special instructions<input name="note" placeholder="Extra hot, no sugar..." maxlength="100"></label><div class="dialog-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button class="primary-button" type="submit">Add to queue<svg class="icon"><use href="#i-arrow"/></svg></button></div></form></dialog>
++<dialog id="info-dialog" aria-labelledby="info-title"><h2 id="info-title"></h2><div id="info-body"></div><div class="dialog-actions"><button class="primary-button" data-close>Got it</button></div></dialog>
++<div class="toast" role="status" aria-live="polite" id="announcement"></div>
++<script>
++(() => {
++  'use strict';
++  document.documentElement.classList.add('js');
++  const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
++  const initial = [
++    {id:1048,drink:'Maple Oat Latte',customer:'Olivia M.',size:'Large',milk:'Oat milk',tags:['Extra hot','1 pump maple'],type:'takeaway',status:'queued',minutes:2,note:''},
++    {id:1047,drink:'Dark Roast Espresso',customer:'James W.',size:'Double shot',milk:'No milk',tags:['Extra shot'],type:'in-house',status:'queued',minutes:3,note:''},
++    {id:1046,drink:'Cold Brew',customer:'Sophie L.',size:'Regular',milk:'Black',tags:['Less ice'],type:'takeaway',status:'queued',minutes:4,note:'No sugar, please'},
++    {id:1045,drink:'Cappuccino',customer:'Ethan R.',size:'Regular',milk:'Whole milk',tags:['Extra foam'],type:'in-house',status:'brewing',minutes:5,note:''},
++    {id:1044,drink:'Matcha Latte',customer:'Isabella K.',size:'Large',milk:'Oat milk',tags:['Iced','Less sweet'],type:'takeaway',status:'brewing',minutes:6,note:''},
++    {id:1043,drink:'Flat White',customer:'Noah B.',size:'Regular',milk:'Whole milk',tags:['Extra hot'],type:'in-house',status:'brewing',minutes:7,note:''},
++    {id:1042,drink:'Vanilla Latte',customer:'Ava T.',size:'Regular',milk:'Almond milk',tags:['Iced'],type:'takeaway',status:'ready',minutes:8,note:''},
++    {id:1041,drink:'Cold Brew',customer:'Liam H.',size:'Large',milk:'Black',tags:['No ice'],type:'takeaway',status:'ready',minutes:9,note:''}
++  ];
++  const statuses = ['queued','brewing','ready'];
++  let orders = initial;
++  try { const saved = JSON.parse(localStorage.getItem('daily-grind-orders-v1')); if (Array.isArray(saved) && saved.every(o => Number.isInteger(o.id) && typeof o.drink === 'string' && typeof o.customer === 'string' && typeof o.size === 'string' && typeof o.milk === 'string' && typeof o.note === 'string' && Array.isArray(o.tags) && o.tags.every(t => typeof t === 'string') && statuses.includes(o.status) && ['in-house','takeaway'].includes(o.type)) && new Set(saved.map(o=>o.id)).size===saved.length) orders = saved; } catch {}
++  const columns = [...document.querySelectorAll('.board-column')];
++  const lists = new Map(columns.map(c => [c.dataset.status,c.querySelector('.order-list')]));
++  const cards = new Map();
++  const orderMap = new Map(orders.map(o => [o.id,o]));
++  let filter = 'all', query = '', dragId = null, targetColumn = null, toastTimer;
++  const escape = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++  document.getElementById('today').textContent = new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric'}).format(new Date());
++  let savePending=false;
++  function flushSave(){if(!savePending)return;savePending=false;try{localStorage.setItem('daily-grind-orders-v1',JSON.stringify(orders));}catch{}}
++  function persist(){if(savePending)return;savePending=true;if('requestIdleCallback' in window)window.requestIdleCallback(flushSave,{timeout:1500});else setTimeout(flushSave,150);}
++  window.addEventListener('pagehide',flushSave);
++  const counts={queued:0,brewing:0,ready:0},visible={queued:0,brewing:0,ready:0};
++  for(const o of orders){counts[o.status]++;visible[o.status]++;}
++  function setText(element,value){if(element.textContent!==String(value))element.textContent=value;}
++  function announce(message){const live=document.getElementById('announcement');live.textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>live.textContent='',3500);}
++  function cardMarkup(o){return `<div class="card-top"><span class="order-number">#${o.id}</span><span class="order-age">${icon('clock')}${o.minutes || 0} min</span><button class="drag-handle" aria-label="Move ${escape(o.drink)}: use left and right arrow keys" title="Drag to move · ← / → to change status">${icon('grip')}</button></div><h3>${escape(o.drink)}</h3><div class="drink-line">${escape(o.size)}<span class="separator">·</span>${escape(o.milk)}</div><div class="tags">${o.tags.map(t=>`<span class="tag${t==='Extra shot'||t==='1 pump maple'?' special':''}">${escape(t)}</span>`).join('')}</div>${o.note?`<p class="card-note">${icon('note')}${escape(o.note)}</p>`:''}<div class="card-footer"><span class="customer-initial">${escape(o.customer.charAt(0))}</span><span class="customer">${escape(o.customer)}</span><span class="order-type">${icon(o.type==='takeaway'?'bag':'cup')}${o.type==='takeaway'?'Takeaway':'In-house'}</span><button class="advance" aria-label="${o.status==='ready'?'Mark collected':'Move to '+statuses[statuses.indexOf(o.status)+1]}" title="${o.status==='ready'?'Mark collected':'Move to '+statuses[statuses.indexOf(o.status)+1]}">${icon(o.status==='ready'?'check':'arrow')}</button></div>`;}
++  function makeCard(o){const card=document.createElement('article');card.className='card';card.draggable=true;card.dataset.id=o.id;card.setAttribute('role','listitem');card.setAttribute('aria-label',`Order ${o.id}: ${o.drink} for ${o.customer}`);card.innerHTML=cardMarkup(o);cards.set(o.id,card);return card;}
++  const fragments=new Map(statuses.map(s=>[s,document.createDocumentFragment()]));
++  orders.forEach(o=>fragments.get(o.status).append(makeCard(o)));
++  fragments.forEach((fragment,status)=>lists.get(status).append(fragment));
++  function matches(o){return (filter==='all'||o.type===filter)&&(!query||`${o.id} ${o.drink} ${o.customer}`.toLowerCase().includes(query));}
++  function updateCounts(){for(const c of columns){const s=c.dataset.status;setText(c.querySelector('.column-count'),visible[s]);setText(document.getElementById(s+'-count'),counts[s]);let empty=c.querySelector('.empty-state');if(!visible[s]&&!empty){empty=document.createElement('div');empty.className='empty-state';empty.textContent=filter!=='all'||query?'No matching orders.':'All clear. A fresh start.';lists.get(s).append(empty);}else if(visible[s]&&empty)empty.remove();}setText(document.getElementById('active-count'),orders.length);setText(document.getElementById('nav-count'),orders.length);}
++  function moveOrder(id,status){const o=orderMap.get(id);if(!o||o.status===status)return;const card=cards.get(id);counts[o.status]--;counts[status]++;if(matches(o)){visible[o.status]--;visible[status]++;}o.status=status;lists.get(status).append(card);const advance=card.querySelector('.advance');const label=status==='ready'?'Mark collected':'Move to '+statuses[statuses.indexOf(status)+1];advance.setAttribute('aria-label',label);advance.title=label;advance.innerHTML=icon(status==='ready'?'check':'arrow');updateCounts();persist();announce(`${o.drink} moved to ${status}.`);}
++  function setTarget(column){if(targetColumn===column)return;targetColumn?.classList.remove('drop-target');targetColumn=column;targetColumn?.classList.add('drop-target');}
++  function finishDrag(){if(dragId!==null)cards.get(dragId)?.classList.remove('dragging');dragId=null;setTarget(null);}
++  const board=document.querySelector('.board');
++  board.addEventListener('dragstart',e=>{const card=e.target.closest('.card');if(!card)return;dragId=Number(card.dataset.id);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',card.dataset.id);card.classList.add('dragging');});
++  board.addEventListener('dragover',e=>{if(dragId===null)return;const column=e.target.closest('.board-column');if(column){e.preventDefault();e.dataTransfer.dropEffect='move';setTarget(column);}});
++  board.addEventListener('dragleave',e=>{if(!board.contains(e.relatedTarget))setTarget(null);});
++  board.addEventListener('drop',e=>{if(dragId===null)return;e.preventDefault();const column=e.target.closest('.board-column');if(column)moveOrder(dragId,column.dataset.status);finishDrag();});
++  board.addEventListener('dragend',finishDrag);
++  board.addEventListener('keydown',e=>{if(!e.target.closest('.drag-handle')||!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const id=Number(e.target.closest('.card').dataset.id);const o=orderMap.get(id),index=statuses.indexOf(o.status)+(e.key==='ArrowRight'?1:-1);if(statuses[index]){moveOrder(id,statuses[index]);cards.get(id).querySelector('.drag-handle').focus();}});
++  board.addEventListener('click',e=>{if(!e.target.closest('.advance'))return;const id=Number(e.target.closest('.card').dataset.id),o=orderMap.get(id);if(o.status!=='ready'){moveOrder(id,statuses[statuses.indexOf(o.status)+1]);return;}counts[o.status]--;if(matches(o))visible[o.status]--;cards.get(id).remove();cards.delete(id);orderMap.delete(id);orders=orders.filter(order=>order.id!==id);updateCounts();persist();announce(`${o.drink} collected. Enjoy!`);});
++  // A fixed preview escapes paint containment. Read geometry once, then write only
++  // transforms in animation frames; no card/column geometry reads during movement.
++  let pointer=null,frame=0;
++  board.addEventListener('pointerdown',e=>{const handle=e.target.closest('.drag-handle');if(!handle||e.button!==0||!e.isPrimary)return;e.preventDefault();const card=handle.closest('.card'),rect=card.getBoundingClientRect();const bounds=columns.map(column=>({column,rect:column.getBoundingClientRect()}));pointer={id:e.pointerId,handle,card,rect,bounds,startX:e.clientX,startY:e.clientY,x:e.clientX,y:e.clientY,preview:null};handle.setPointerCapture(e.pointerId);});
++  function paintDrag(){frame=0;if(!pointer?.preview)return;const p=pointer;p.preview.style.transform=`translate3d(${p.rect.left+p.x-p.startX}px,${p.rect.top+p.y-p.startY}px,0) rotate(1.5deg)`;setTarget(p.bounds.find(b=>p.x>=b.rect.left&&p.x<=b.rect.right&&p.y>=b.rect.top&&p.y<=b.rect.bottom)?.column||null);}
++  board.addEventListener('pointermove',e=>{if(!pointer||e.pointerId!==pointer.id)return;pointer.x=e.clientX;pointer.y=e.clientY;if(!pointer.preview&&Math.hypot(e.clientX-pointer.startX,e.clientY-pointer.startY)>5){dragId=Number(pointer.card.dataset.id);const preview=pointer.card.cloneNode(true);preview.removeAttribute('draggable');preview.setAttribute('aria-hidden','true');preview.inert=true;preview.classList.add('drag-preview');preview.style.width=pointer.rect.width+'px';preview.style.height=pointer.rect.height+'px';pointer.preview=preview;document.body.append(preview);pointer.card.classList.add('dragging');}if(pointer.preview&&!frame)frame=requestAnimationFrame(paintDrag);});
++  function endPointer(e,cancel=false){if(!pointer||e.pointerId!==pointer.id)return;if(pointer.preview&&!cancel){paintDrag();if(targetColumn)moveOrder(dragId,targetColumn.dataset.status);}const p=pointer;pointer=null;cancelAnimationFrame(frame);frame=0;p.preview?.remove();finishDrag();if(p.handle.hasPointerCapture(p.id))p.handle.releasePointerCapture(p.id);}
++  board.addEventListener('pointerup',e=>endPointer(e));board.addEventListener('pointercancel',e=>endPointer(e,true));board.addEventListener('lostpointercapture',e=>endPointer(e,true));
++  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pointer)endPointer({pointerId:pointer.id},true);});
++  window.addEventListener('resize',()=>{if(pointer)endPointer({pointerId:pointer.id},true);});
++  // Cancel on scrolling because cached viewport bounds are no longer valid.
++  document.addEventListener('scroll',()=>{if(pointer)endPointer({pointerId:pointer.id},true);},true);
++  function applyFilter(){for(const s of statuses)visible[s]=0;for(const o of orders){const shown=matches(o);cards.get(o.id).hidden=!shown;if(shown)visible[o.status]++;}updateCounts();}
++  document.querySelector('.filters').addEventListener('click',e=>{const button=e.target.closest('[data-filter]');if(!button)return;filter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});applyFilter();});
++  let searchTimer;document.getElementById('search').addEventListener('input',e=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{query=e.target.value.toLowerCase().trim();applyFilter();},100);});
++  const dialog=document.getElementById('order-dialog');
++  document.getElementById('new-order').addEventListener('click',()=>dialog.showModal());
++  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
++  document.getElementById('order-form').addEventListener('submit',e=>{e.preventDefault();const data=new FormData(e.target);const customer=data.get('customer').trim();if(!customer){e.target.elements.customer.setCustomValidity('Please enter a customer name.');e.target.elements.customer.reportValidity();return;}const o={id:orders.reduce((max,o)=>Math.max(max,o.id),1048)+1,drink:data.get('drink'),customer,size:data.get('size'),milk:data.get('drink')==='Maple Oat Latte'?'Oat milk':data.get('drink')==='Cold Brew'||data.get('drink')==='Dark Roast Espresso'?'Black':'Whole milk',tags:[],note:data.get('note').trim(),type:data.get('type'),status:'queued',minutes:0};orders.push(o);orderMap.set(o.id,o);counts.queued++;if(matches(o))visible.queued++;const card=makeCard(o);card.hidden=!matches(o);lists.get('queued').prepend(card);updateCounts();persist();dialog.close();e.target.reset();announce(`Order #${o.id} added to the queue.`);});
++  document.querySelector('[name="customer"]').addEventListener('input',e=>e.target.setCustomValidity(''));
++  const info=document.getElementById('info-dialog');
++  function showInfo(title,body){document.getElementById('info-title').textContent=title;document.getElementById('info-body').innerHTML=body;info.showModal();}
++  document.getElementById('help').addEventListener('click',()=>showInfo('Keep the coffee flowing.', '<p>Drag a card into Queued, Brewing, or Ready. On a touch screen, use the dotted handle. You can also focus the handle and use the left and right arrow keys.</p><p>The arrow on each card moves it to the next stage. The checkmark on a ready order marks it as collected. Search and filters help you find the next cup. Orders are saved on this device.</p>'));
++  document.querySelectorAll('[data-view]').forEach(link=>link.addEventListener('click',e=>{e.preventDefault();const view=link.dataset.view;if(view==='menu')showInfo('The drink menu',`<p>${[...new Set(initial.map(o=>o.drink))].map(escape).join('<br>')}</p>`);if(view==='team')showInfo('Behind the bar','<p>Jamie Davis<br>Barista · Morning shift</p>');if(view==='insights')showInfo('The current brew',`<p>${orders.length} active orders<br>${orders.filter(o=>o.status==='queued').length} queued · ${orders.filter(o=>o.status==='brewing').length} brewing · ${orders.filter(o=>o.status==='ready').length} ready</p>`);if(view==='history')showInfo('Order history','<p>Collected orders leave the live board. This workspace currently tracks active orders only.</p>');}));
++  updateCounts();
++})();
++</script>
+ </body>
+-
+ </html>

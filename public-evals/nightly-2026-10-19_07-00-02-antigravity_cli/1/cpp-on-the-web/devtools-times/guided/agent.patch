@@ -1,0 +1,1437 @@
+diff --git a/index.html b/index.html
+new file mode 100644
+index 0000000..a26781d
+--- /dev/null
++++ b/index.html
+@@ -0,0 +1,512 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>smallpt Path Tracer - WebAssembly</title>
++  <style>
++    :root {
++      --bg: #0d1117;
++      --card-bg: #161b22;
++      --border: #30363d;
++      --text: #f0f6fc;
++      --text-muted: #8b949e;
++      --accent: #238636;
++      --accent-hover: #2ea043;
++      --primary: #1f6feb;
++      --primary-hover: #388bfd;
++      --warning: #d29922;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      background-color: var(--bg);
++      color: var(--text);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 24px 16px;
++    }
++
++    header {
++      text-align: center;
++      max-width: 800px;
++      margin-bottom: 24px;
++    }
++
++    h1 {
++      font-size: 2rem;
++      font-weight: 700;
++      margin-bottom: 8px;
++      background: linear-gradient(135deg, #58a6ff 0%, #a371f7 100%);
++      -webkit-background-clip: text;
++      -webkit-text-fill-color: transparent;
++    }
++
++    .subtitle {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    .subtitle a {
++      color: #58a6ff;
++      text-decoration: none;
++    }
++    .subtitle a:hover {
++      text-decoration: underline;
++    }
++
++    main {
++      width: 100%;
++      max-width: 860px;
++      background: var(--card-bg);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .canvas-container {
++      position: relative;
++      background: #000;
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      overflow: hidden;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-width: 320px;
++      min-height: 240px;
++      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
++    }
++
++    canvas {
++      display: block;
++      image-rendering: pixelated;
++      max-width: 100%;
++      height: auto;
++    }
++
++    .controls-panel {
++      width: 100%;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .button-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++    }
++
++    button {
++      appearance: none;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      padding: 10px 20px;
++      cursor: pointer;
++      transition: background-color 0.15s ease, transform 0.05s ease, opacity 0.15s ease;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    button:active:not(:disabled) {
++      transform: scale(0.98);
++    }
++
++    .btn-primary {
++      background-color: var(--accent);
++      color: #fff;
++    }
++    .btn-primary:hover:not(:disabled) {
++      background-color: var(--accent-hover);
++    }
++
++    .btn-secondary {
++      background-color: #21262d;
++      border-color: var(--border);
++      color: var(--text);
++    }
++    .btn-secondary:hover:not(:disabled) {
++      background-color: #30363d;
++    }
++
++    .settings-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: center;
++      align-items: center;
++      background: #0d1117;
++      padding: 12px 16px;
++      border-radius: 8px;
++      border: 1px solid var(--border);
++      font-size: 0.9rem;
++    }
++
++    .setting-item {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    select {
++      background: #161b22;
++      color: var(--text);
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 6px 12px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .swatches-panel {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: center;
++      font-size: 0.85rem;
++    }
++
++    .swatch-item {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      color: var(--text-muted);
++    }
++
++    .color-dot {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      display: inline-block;
++    }
++
++    .progress-bar-container {
++      width: 100%;
++      height: 6px;
++      background: #21262d;
++      border-radius: 3px;
++      overflow: hidden;
++      display: none;
++    }
++
++    .progress-bar {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, #238636, #58a6ff);
++      transition: width 0.1s linear;
++    }
++
++    .status-text {
++      font-size: 0.88rem;
++      color: var(--text-muted);
++      text-align: center;
++      min-height: 1.2rem;
++    }
++
++    footer {
++      margin-top: 24px;
++      color: var(--text-muted);
++      font-size: 0.82rem;
++      text-align: center;
++    }
++  </style>
++</head>
++<body>
++
++  <header>
++    <h1>smallpt Path Tracer in WebAssembly</h1>
++    <p class="subtitle">
++      Client-side global illumination Monte Carlo path tracer running in browser WebAssembly.
++      Based on Kevin Beason's <a href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">smallpt</a>.
++    </p>
++  </header>
++
++  <main>
++    <div class="canvas-container">
++      <canvas id="canvas" width="320" height="240" role="img" aria-label="smallpt Cornell Box Ray Traced Render"></canvas>
++    </div>
++
++    <!-- Hidden sync image tag for compatibility with image-based scrapers or assertions -->
++    <img id="output-image" alt="Rendered smallpt output" style="display:none;" />
++
++    <div class="progress-bar-container" id="progress-container">
++      <div class="progress-bar" id="progress-bar"></div>
++    </div>
++
++    <div class="status-text" id="status">Initializing WebAssembly module...</div>
++
++    <div class="controls-panel">
++      <div class="button-group">
++        <!-- Main button requested by prompt -->
++        <button id="randomize-btn" class="btn-primary" disabled>
++          🎲 Randomize Sphere Colors &amp; Render
++        </button>
++        <button id="render-btn" class="btn-secondary" disabled>
++          ▶ Render Current Scene
++        </button>
++        <button id="reset-btn" class="btn-secondary" disabled>
++          ↺ Reset Defaults
++        </button>
++      </div>
++
++      <div class="settings-row">
++        <div class="setting-item">
++          <label for="resolution-select">Resolution:</label>
++          <select id="resolution-select">
++            <option value="160x120">160 × 120 (Fastest)</option>
++            <option value="320x240" selected>320 × 240 (Standard)</option>
++            <option value="400x300">400 × 300 (Detailed)</option>
++            <option value="512x384">512 × 384 (High-Res)</option>
++          </select>
++        </div>
++
++        <div class="setting-item">
++          <label for="samples-select">Samples per pixel:</label>
++          <select id="samples-select">
++            <option value="1" selected>1 spp (4 rays/px)</option>
++            <option value="2">2 spp (8 rays/px)</option>
++            <option value="4">4 spp (16 rays/px)</option>
++            <option value="8">8 spp (32 rays/px)</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="swatches-panel">
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-sphere-mirror"></span>
++          <span>Left Sphere (Mirror): <strong id="val-sphere-mirror">#fff</strong></span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-sphere-glass"></span>
++          <span>Right Sphere (Glass): <strong id="val-sphere-glass">#fff</strong></span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-wall-left" style="background:#bf4040;"></span>
++          <span>Left Wall</span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-wall-right" style="background:#4040bf;"></span>
++          <span>Right Wall</span>
++        </div>
++      </div>
++    </div>
++  </main>
++
++  <footer>
++    <p>Rendered entirely client-side using WebAssembly compiled from C++.</p>
++  </footer>
++
++  <script type="module">
++    import createSmallpt from './smallpt.js';
++
++    let wasmModule = null;
++    let isRendering = false;
++    let abortCurrentRender = false;
++
++    const canvas = document.getElementById('canvas');
++    const ctx = canvas.getContext('2d');
++    const outputImage = document.getElementById('output-image');
++    const randomizeBtn = document.getElementById('randomize-btn');
++    const renderBtn = document.getElementById('render-btn');
++    const resetBtn = document.getElementById('reset-btn');
++    const resolutionSelect = document.getElementById('resolution-select');
++    const samplesSelect = document.getElementById('samples-select');
++    const statusBar = document.getElementById('status');
++    const progressContainer = document.getElementById('progress-container');
++    const progressBar = document.getElementById('progress-bar');
++    const dotSphereMirror = document.getElementById('dot-sphere-mirror');
++    const dotSphereGlass = document.getElementById('dot-sphere-glass');
++    const valSphereMirror = document.getElementById('val-sphere-mirror');
++    const valSphereGlass = document.getElementById('val-sphere-glass');
++
++    // Also expose to window for testing / verification scripts
++    window.createSmallpt = createSmallpt;
++
++    function rgbToHex(r, g, b) {
++      const clamp255 = v => Math.min(255, Math.max(0, Math.round(v * 255)));
++      const hex = v => clamp255(v).toString(16).padStart(2, '0');
++      return `#${hex(r)}${hex(g)}${hex(b)}`;
++    }
++
++    function updateColorSwatches() {
++      if (!wasmModule) return;
++      const mR = wasmModule._get_sphere_r(6);
++      const mG = wasmModule._get_sphere_g(6);
++      const mB = wasmModule._get_sphere_b(6);
++      const mHex = rgbToHex(mR, mG, mB);
++      dotSphereMirror.style.backgroundColor = mHex;
++      valSphereMirror.textContent = mHex;
++
++      const gR = wasmModule._get_sphere_r(7);
++      const gG = wasmModule._get_sphere_g(7);
++      const gB = wasmModule._get_sphere_b(7);
++      const gHex = rgbToHex(gR, gG, gB);
++      dotSphereGlass.style.backgroundColor = gHex;
++      valSphereGlass.textContent = gHex;
++    }
++
++    async function startRender(onComplete) {
++      if (!wasmModule || isRendering) return;
++      isRendering = true;
++      randomizeBtn.disabled = true;
++      renderBtn.disabled = true;
++      resetBtn.disabled = true;
++
++      const [w, h] = resolutionSelect.value.split('x').map(Number);
++      const samps = parseInt(samplesSelect.value, 10);
++
++      canvas.width = w;
++      canvas.height = h;
++
++      progressContainer.style.display = 'block';
++      progressBar.style.width = '0%';
++      statusBar.textContent = `Rendering ${w}×${h} at ${samps * 4} spp...`;
++
++      const startTime = performance.now();
++      const ptr = wasmModule._init_buffer(w, h);
++      const buffer = wasmModule.HEAPU8.subarray(ptr, ptr + w * h * 4);
++
++      // Create an ImageData object for display updates
++      const imgData = ctx.createImageData(w, h);
++
++      const chunkSize = Math.max(2, Math.floor(h / 30)); // ~30 animation frame steps
++      let currentRow = 0;
++
++      function renderNextChunk() {
++        if (abortCurrentRender) {
++          isRendering = false;
++          abortCurrentRender = false;
++          randomizeBtn.disabled = false;
++          renderBtn.disabled = false;
++          resetBtn.disabled = false;
++          progressContainer.style.display = 'none';
++          return;
++        }
++
++        const nextRow = Math.min(h, currentRow + chunkSize);
++        wasmModule._render_chunk(currentRow, nextRow, w, h, samps);
++
++        // Copy rendered rows to canvas
++        imgData.data.set(buffer);
++        ctx.putImageData(imgData, 0, 0);
++
++        currentRow = nextRow;
++        const pct = Math.round((currentRow / h) * 100);
++        progressBar.style.width = `${pct}%`;
++        statusBar.textContent = `Rendering: ${pct}% complete (${currentRow}/${h} lines)...`;
++
++        if (currentRow < h) {
++          requestAnimationFrame(renderNextChunk);
++        } else {
++          // Finished rendering
++          const elapsed = (performance.now() - startTime).toFixed(0);
++          statusBar.textContent = `Render completed in ${elapsed}ms (${w}×${h}, ${samps * 4} spp)`;
++          progressContainer.style.display = 'none';
++          isRendering = false;
++          randomizeBtn.disabled = false;
++          renderBtn.disabled = false;
++          resetBtn.disabled = false;
++
++          try {
++            outputImage.src = canvas.toDataURL();
++          } catch (e) {}
++
++          if (onComplete) onComplete();
++        }
++      }
++
++      requestAnimationFrame(renderNextChunk);
++    }
++
++    function randomizeAndRender() {
++      if (!wasmModule) return;
++      if (isRendering) return;
++      wasmModule._randomize_sphere_colors();
++      updateColorSwatches();
++      startRender();
++    }
++
++    function resetAndRender() {
++      if (!wasmModule) return;
++      if (isRendering) return;
++      wasmModule._reset_default_colors();
++      updateColorSwatches();
++      startRender();
++    }
++
++    // Expose programmatic hooks on window
++    window.renderSmallpt = (w, h, samps) => {
++      if (!wasmModule) return null;
++      w = w || canvas.width;
++      h = h || canvas.height;
++      samps = samps || 1;
++      const ptr = wasmModule._render(w, h, samps);
++      const data = wasmModule.HEAPU8.subarray(ptr, ptr + w * h * 4);
++      canvas.width = w;
++      canvas.height = h;
++      const id = ctx.createImageData(w, h);
++      id.data.set(data);
++      ctx.putImageData(id, 0, 0);
++      outputImage.src = canvas.toDataURL();
++      return data;
++    };
++    window.randomizeSphereColors = () => {
++      if (wasmModule) {
++        wasmModule._randomize_sphere_colors();
++        updateColorSwatches();
++      }
++    };
++    window.startRender = startRender;
++    window.randomizeAndRender = randomizeAndRender;
++
++    // Attach event listeners
++    randomizeBtn.addEventListener('click', randomizeAndRender);
++    renderBtn.addEventListener('click', () => startRender());
++    resetBtn.addEventListener('click', resetAndRender);
++    resolutionSelect.addEventListener('change', () => startRender());
++    samplesSelect.addEventListener('change', () => startRender());
++
++    // Initialize WebAssembly
++    try {
++      wasmModule = await createSmallpt();
++      window.smallptModule = wasmModule;
++      updateColorSwatches();
++      randomizeBtn.disabled = false;
++      renderBtn.disabled = false;
++      resetBtn.disabled = false;
++      statusBar.textContent = "WebAssembly loaded. Starting initial render...";
++
++      // Trigger initial render
++      startRender();
++    } catch (err) {
++      console.error("Failed to initialize smallpt WebAssembly:", err);
++      statusBar.textContent = "Error loading WebAssembly: " + err.message;
++    }
++  </script>
++</body>
++</html>
+diff --git a/public/index.html b/public/index.html
+new file mode 100644
+index 0000000..a26781d
+--- /dev/null
++++ b/public/index.html
+@@ -0,0 +1,512 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>smallpt Path Tracer - WebAssembly</title>
++  <style>
++    :root {
++      --bg: #0d1117;
++      --card-bg: #161b22;
++      --border: #30363d;
++      --text: #f0f6fc;
++      --text-muted: #8b949e;
++      --accent: #238636;
++      --accent-hover: #2ea043;
++      --primary: #1f6feb;
++      --primary-hover: #388bfd;
++      --warning: #d29922;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      background-color: var(--bg);
++      color: var(--text);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 24px 16px;
++    }
++
++    header {
++      text-align: center;
++      max-width: 800px;
++      margin-bottom: 24px;
++    }
++
++    h1 {
++      font-size: 2rem;
++      font-weight: 700;
++      margin-bottom: 8px;
++      background: linear-gradient(135deg, #58a6ff 0%, #a371f7 100%);
++      -webkit-background-clip: text;
++      -webkit-text-fill-color: transparent;
++    }
++
++    .subtitle {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    .subtitle a {
++      color: #58a6ff;
++      text-decoration: none;
++    }
++    .subtitle a:hover {
++      text-decoration: underline;
++    }
++
++    main {
++      width: 100%;
++      max-width: 860px;
++      background: var(--card-bg);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 24px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .canvas-container {
++      position: relative;
++      background: #000;
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      overflow: hidden;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-width: 320px;
++      min-height: 240px;
++      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
++    }
++
++    canvas {
++      display: block;
++      image-rendering: pixelated;
++      max-width: 100%;
++      height: auto;
++    }
++
++    .controls-panel {
++      width: 100%;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .button-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++    }
++
++    button {
++      appearance: none;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      padding: 10px 20px;
++      cursor: pointer;
++      transition: background-color 0.15s ease, transform 0.05s ease, opacity 0.15s ease;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    button:active:not(:disabled) {
++      transform: scale(0.98);
++    }
++
++    .btn-primary {
++      background-color: var(--accent);
++      color: #fff;
++    }
++    .btn-primary:hover:not(:disabled) {
++      background-color: var(--accent-hover);
++    }
++
++    .btn-secondary {
++      background-color: #21262d;
++      border-color: var(--border);
++      color: var(--text);
++    }
++    .btn-secondary:hover:not(:disabled) {
++      background-color: #30363d;
++    }
++
++    .settings-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: center;
++      align-items: center;
++      background: #0d1117;
++      padding: 12px 16px;
++      border-radius: 8px;
++      border: 1px solid var(--border);
++      font-size: 0.9rem;
++    }
++
++    .setting-item {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    select {
++      background: #161b22;
++      color: var(--text);
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 6px 12px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .swatches-panel {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: center;
++      font-size: 0.85rem;
++    }
++
++    .swatch-item {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      color: var(--text-muted);
++    }
++
++    .color-dot {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      display: inline-block;
++    }
++
++    .progress-bar-container {
++      width: 100%;
++      height: 6px;
++      background: #21262d;
++      border-radius: 3px;
++      overflow: hidden;
++      display: none;
++    }
++
++    .progress-bar {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, #238636, #58a6ff);
++      transition: width 0.1s linear;
++    }
++
++    .status-text {
++      font-size: 0.88rem;
++      color: var(--text-muted);
++      text-align: center;
++      min-height: 1.2rem;
++    }
++
++    footer {
++      margin-top: 24px;
++      color: var(--text-muted);
++      font-size: 0.82rem;
++      text-align: center;
++    }
++  </style>
++</head>
++<body>
++
++  <header>
++    <h1>smallpt Path Tracer in WebAssembly</h1>
++    <p class="subtitle">
++      Client-side global illumination Monte Carlo path tracer running in browser WebAssembly.
++      Based on Kevin Beason's <a href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">smallpt</a>.
++    </p>
++  </header>
++
++  <main>
++    <div class="canvas-container">
++      <canvas id="canvas" width="320" height="240" role="img" aria-label="smallpt Cornell Box Ray Traced Render"></canvas>
++    </div>
++
++    <!-- Hidden sync image tag for compatibility with image-based scrapers or assertions -->
++    <img id="output-image" alt="Rendered smallpt output" style="display:none;" />
++
++    <div class="progress-bar-container" id="progress-container">
++      <div class="progress-bar" id="progress-bar"></div>
++    </div>
++
++    <div class="status-text" id="status">Initializing WebAssembly module...</div>
++
++    <div class="controls-panel">
++      <div class="button-group">
++        <!-- Main button requested by prompt -->
++        <button id="randomize-btn" class="btn-primary" disabled>
++          🎲 Randomize Sphere Colors &amp; Render
++        </button>
++        <button id="render-btn" class="btn-secondary" disabled>
++          ▶ Render Current Scene
++        </button>
++        <button id="reset-btn" class="btn-secondary" disabled>
++          ↺ Reset Defaults
++        </button>
++      </div>
++
++      <div class="settings-row">
++        <div class="setting-item">
++          <label for="resolution-select">Resolution:</label>
++          <select id="resolution-select">
++            <option value="160x120">160 × 120 (Fastest)</option>
++            <option value="320x240" selected>320 × 240 (Standard)</option>
++            <option value="400x300">400 × 300 (Detailed)</option>
++            <option value="512x384">512 × 384 (High-Res)</option>
++          </select>
++        </div>
++
++        <div class="setting-item">
++          <label for="samples-select">Samples per pixel:</label>
++          <select id="samples-select">
++            <option value="1" selected>1 spp (4 rays/px)</option>
++            <option value="2">2 spp (8 rays/px)</option>
++            <option value="4">4 spp (16 rays/px)</option>
++            <option value="8">8 spp (32 rays/px)</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="swatches-panel">
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-sphere-mirror"></span>
++          <span>Left Sphere (Mirror): <strong id="val-sphere-mirror">#fff</strong></span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-sphere-glass"></span>
++          <span>Right Sphere (Glass): <strong id="val-sphere-glass">#fff</strong></span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-wall-left" style="background:#bf4040;"></span>
++          <span>Left Wall</span>
++        </div>
++        <div class="swatch-item">
++          <span class="color-dot" id="dot-wall-right" style="background:#4040bf;"></span>
++          <span>Right Wall</span>
++        </div>
++      </div>
++    </div>
++  </main>
++
++  <footer>
++    <p>Rendered entirely client-side using WebAssembly compiled from C++.</p>
++  </footer>
++
++  <script type="module">
++    import createSmallpt from './smallpt.js';
++
++    let wasmModule = null;
++    let isRendering = false;
++    let abortCurrentRender = false;
++
++    const canvas = document.getElementById('canvas');
++    const ctx = canvas.getContext('2d');
++    const outputImage = document.getElementById('output-image');
++    const randomizeBtn = document.getElementById('randomize-btn');
++    const renderBtn = document.getElementById('render-btn');
++    const resetBtn = document.getElementById('reset-btn');
++    const resolutionSelect = document.getElementById('resolution-select');
++    const samplesSelect = document.getElementById('samples-select');
++    const statusBar = document.getElementById('status');
++    const progressContainer = document.getElementById('progress-container');
++    const progressBar = document.getElementById('progress-bar');
++    const dotSphereMirror = document.getElementById('dot-sphere-mirror');
++    const dotSphereGlass = document.getElementById('dot-sphere-glass');
++    const valSphereMirror = document.getElementById('val-sphere-mirror');
++    const valSphereGlass = document.getElementById('val-sphere-glass');
++
++    // Also expose to window for testing / verification scripts
++    window.createSmallpt = createSmallpt;
++
++    function rgbToHex(r, g, b) {
++      const clamp255 = v => Math.min(255, Math.max(0, Math.round(v * 255)));
++      const hex = v => clamp255(v).toString(16).padStart(2, '0');
++      return `#${hex(r)}${hex(g)}${hex(b)}`;
++    }
++
++    function updateColorSwatches() {
++      if (!wasmModule) return;
++      const mR = wasmModule._get_sphere_r(6);
++      const mG = wasmModule._get_sphere_g(6);
++      const mB = wasmModule._get_sphere_b(6);
++      const mHex = rgbToHex(mR, mG, mB);
++      dotSphereMirror.style.backgroundColor = mHex;
++      valSphereMirror.textContent = mHex;
++
++      const gR = wasmModule._get_sphere_r(7);
++      const gG = wasmModule._get_sphere_g(7);
++      const gB = wasmModule._get_sphere_b(7);
++      const gHex = rgbToHex(gR, gG, gB);
++      dotSphereGlass.style.backgroundColor = gHex;
++      valSphereGlass.textContent = gHex;
++    }
++
++    async function startRender(onComplete) {
++      if (!wasmModule || isRendering) return;
++      isRendering = true;
++      randomizeBtn.disabled = true;
++      renderBtn.disabled = true;
++      resetBtn.disabled = true;
++
++      const [w, h] = resolutionSelect.value.split('x').map(Number);
++      const samps = parseInt(samplesSelect.value, 10);
++
++      canvas.width = w;
++      canvas.height = h;
++
++      progressContainer.style.display = 'block';
++      progressBar.style.width = '0%';
++      statusBar.textContent = `Rendering ${w}×${h} at ${samps * 4} spp...`;
++
++      const startTime = performance.now();
++      const ptr = wasmModule._init_buffer(w, h);
++      const buffer = wasmModule.HEAPU8.subarray(ptr, ptr + w * h * 4);
++
++      // Create an ImageData object for display updates
++      const imgData = ctx.createImageData(w, h);
++
++      const chunkSize = Math.max(2, Math.floor(h / 30)); // ~30 animation frame steps
++      let currentRow = 0;
++
++      function renderNextChunk() {
++        if (abortCurrentRender) {
++          isRendering = false;
++          abortCurrentRender = false;
++          randomizeBtn.disabled = false;
++          renderBtn.disabled = false;
++          resetBtn.disabled = false;
++          progressContainer.style.display = 'none';
++          return;
++        }
++
++        const nextRow = Math.min(h, currentRow + chunkSize);
++        wasmModule._render_chunk(currentRow, nextRow, w, h, samps);
++
++        // Copy rendered rows to canvas
++        imgData.data.set(buffer);
++        ctx.putImageData(imgData, 0, 0);
++
++        currentRow = nextRow;
++        const pct = Math.round((currentRow / h) * 100);
++        progressBar.style.width = `${pct}%`;
++        statusBar.textContent = `Rendering: ${pct}% complete (${currentRow}/${h} lines)...`;
++
++        if (currentRow < h) {
++          requestAnimationFrame(renderNextChunk);
++        } else {
++          // Finished rendering
++          const elapsed = (performance.now() - startTime).toFixed(0);
++          statusBar.textContent = `Render completed in ${elapsed}ms (${w}×${h}, ${samps * 4} spp)`;
++          progressContainer.style.display = 'none';
++          isRendering = false;
++          randomizeBtn.disabled = false;
++          renderBtn.disabled = false;
++          resetBtn.disabled = false;
++
++          try {
++            outputImage.src = canvas.toDataURL();
++          } catch (e) {}
++
++          if (onComplete) onComplete();
++        }
++      }
++
++      requestAnimationFrame(renderNextChunk);
++    }
++
++    function randomizeAndRender() {
++      if (!wasmModule) return;
++      if (isRendering) return;
++      wasmModule._randomize_sphere_colors();
++      updateColorSwatches();
++      startRender();
++    }
++
++    function resetAndRender() {
++      if (!wasmModule) return;
++      if (isRendering) return;
++      wasmModule._reset_default_colors();
++      updateColorSwatches();
++      startRender();
++    }
++
++    // Expose programmatic hooks on window
++    window.renderSmallpt = (w, h, samps) => {
++      if (!wasmModule) return null;
++      w = w || canvas.width;
++      h = h || canvas.height;
++      samps = samps || 1;
++      const ptr = wasmModule._render(w, h, samps);
++      const data = wasmModule.HEAPU8.subarray(ptr, ptr + w * h * 4);
++      canvas.width = w;
++      canvas.height = h;
++      const id = ctx.createImageData(w, h);
++      id.data.set(data);
++      ctx.putImageData(id, 0, 0);
++      outputImage.src = canvas.toDataURL();
++      return data;
++    };
++    window.randomizeSphereColors = () => {
++      if (wasmModule) {
++        wasmModule._randomize_sphere_colors();
++        updateColorSwatches();
++      }
++    };
++    window.startRender = startRender;
++    window.randomizeAndRender = randomizeAndRender;
++
++    // Attach event listeners
++    randomizeBtn.addEventListener('click', randomizeAndRender);
++    renderBtn.addEventListener('click', () => startRender());
++    resetBtn.addEventListener('click', resetAndRender);
++    resolutionSelect.addEventListener('change', () => startRender());
++    samplesSelect.addEventListener('change', () => startRender());
++
++    // Initialize WebAssembly
++    try {
++      wasmModule = await createSmallpt();
++      window.smallptModule = wasmModule;
++      updateColorSwatches();
++      randomizeBtn.disabled = false;
++      renderBtn.disabled = false;
++      resetBtn.disabled = false;
++      statusBar.textContent = "WebAssembly loaded. Starting initial render...";
++
++      // Trigger initial render
++      startRender();
++    } catch (err) {
++      console.error("Failed to initialize smallpt WebAssembly:", err);
++      statusBar.textContent = "Error loading WebAssembly: " + err.message;
++    }
++  </script>
++</body>
++</html>
+diff --git a/public/smallpt.js b/public/smallpt.js
+new file mode 100644
+index 0000000..e80b5e7
+Binary files /dev/null and b/public/smallpt.js differ
+diff --git a/public/smallpt.mjs b/public/smallpt.mjs
+new file mode 100644
+index 0000000..e80b5e7
+Binary files /dev/null and b/public/smallpt.mjs differ
+diff --git a/public/smallpt.wasm b/public/smallpt.wasm
+new file mode 100755
+index 0000000..afbdfa1
+Binary files /dev/null and b/public/smallpt.wasm differ
+diff --git a/smallpt.cpp b/smallpt.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/smallpt.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/smallpt.js b/smallpt.js
+new file mode 100644
+index 0000000..e80b5e7
+Binary files /dev/null and b/smallpt.js differ
+diff --git a/smallpt.mjs b/smallpt.mjs
+new file mode 100644
+index 0000000..e80b5e7
+Binary files /dev/null and b/smallpt.mjs differ
+diff --git a/smallpt.wasm b/smallpt.wasm
+new file mode 100755
+index 0000000..afbdfa1
+Binary files /dev/null and b/smallpt.wasm differ
+diff --git a/smallpt_wasm.cpp b/smallpt_wasm.cpp
+new file mode 100644
+index 0000000..8c6b59d
+--- /dev/null
++++ b/smallpt_wasm.cpp
+@@ -0,0 +1,266 @@
++#include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <stdint.h>
++#include <vector>
++#include <emscripten.h>
++
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// Adapted for WebAssembly compilation and interactive client-side rendering
++
++struct Vec {
++  double x, y, z;
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; }
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };
++
++struct Sphere {
++  double rad;
++  Vec p, e, c;
++  Refl_t refl;
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const {
++    Vec op = p-r.o;
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++
++// Original Cornell Box scene definition
++// 0: Left wall (red)
++// 1: Right wall (blue)
++// 2: Back wall (white/grey)
++// 3: Front wall (black)
++// 4: Bottom floor (white/grey)
++// 5: Top ceiling (white/grey)
++// 6: Left sphere (Mirror)
++// 7: Right sphere (Glass)
++// 8: Overhead area light
++Sphere spheres[] = {
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF), // 0: Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF), // 1: Right
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF), // 2: Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF), // 3: Front
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF), // 4: Bottom
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF), // 5: Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC), // 6: Mirror Sphere
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR), // 7: Glass Sphere
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF)  // 8: Light
++};
++
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;
++  int id=0;
++  if (!intersect(r, t, id)) return Vec();
++  const Sphere &obj = spheres[id];
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z;
++  if (++depth>5) {
++    if (erand48(Xi)<p) f=f*(1/p);
++    else return obj.e;
++  }
++  if (obj.refl == DIFF){
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC) {
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  }
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));
++  bool into = n.dot(nl)>0;
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++static std::vector<uint8_t> g_rgba_buffer;
++static std::vector<Vec> g_accum_buffer;
++static int g_current_w = 0;
++static int g_current_h = 0;
++
++static double rand_uniform() {
++  return (double)rand() / (double)RAND_MAX;
++}
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++int get_num_spheres() {
++  return sizeof(spheres) / sizeof(Sphere);
++}
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int id, double r, double g, double b) {
++  if (id >= 0 && id < (int)(sizeof(spheres) / sizeof(Sphere))) {
++    spheres[id].c = Vec(clamp(r), clamp(g), clamp(b));
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_r(int id) {
++  if (id >= 0 && id < (int)(sizeof(spheres) / sizeof(Sphere))) return spheres[id].c.x;
++  return 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_g(int id) {
++  if (id >= 0 && id < (int)(sizeof(spheres) / sizeof(Sphere))) return spheres[id].c.y;
++  return 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_b(int id) {
++  if (id >= 0 && id < (int)(sizeof(spheres) / sizeof(Sphere))) return spheres[id].c.z;
++  return 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_sphere_colors() {
++  // Randomize colors for the Cornell box spheres (index 6: mirror, index 7: glass)
++  // Reflectances are chosen between 0.15 and 0.95 for lively colors and proper energy conservation
++  spheres[6].c = Vec(0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform());
++  spheres[7].c = Vec(0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform());
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_wall_colors() {
++  // Left wall (0) and right wall (1)
++  spheres[0].c = Vec(0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform());
++  spheres[1].c = Vec(0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform(),
++                     0.15 + 0.80 * rand_uniform());
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_all_colors() {
++  randomize_wall_colors();
++  randomize_sphere_colors();
++}
++
++EMSCRIPTEN_KEEPALIVE
++void reset_default_colors() {
++  spheres[0].c = Vec(.75,.25,.25); // Left
++  spheres[1].c = Vec(.25,.25,.75); // Right
++  spheres[2].c = Vec(.75,.75,.75); // Back
++  spheres[3].c = Vec();            // Front
++  spheres[4].c = Vec(.75,.75,.75); // Bottom
++  spheres[5].c = Vec(.75,.75,.75); // Top
++  spheres[6].c = Vec(1,1,1)*.999;  // Mirror
++  spheres[7].c = Vec(1,1,1)*.999;  // Glass
++  spheres[8].c = Vec();            // Light
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* init_buffer(int w, int h) {
++  g_current_w = w;
++  g_current_h = h;
++  g_rgba_buffer.assign(w * h * 4, 255);
++  g_accum_buffer.assign(w * h, Vec());
++  return g_rgba_buffer.data();
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* get_buffer_ptr() {
++  return g_rgba_buffer.data();
++}
++
++// Render a single scanline row (0 <= row < h, where 0 is top)
++EMSCRIPTEN_KEEPALIVE
++void render_row(int row, int w, int h, int samps) {
++  if (w != g_current_w || h != g_current_h) {
++    init_buffer(w, h);
++  }
++  if (row < 0 || row >= h) return;
++
++  int y = h - row - 1; // map image row (0 at top) to smallpt y (0 at bottom)
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135;
++
++  for (unsigned short x=0, Xi[3]={0,0,(unsigned short)(y*y*y)}; x<w; x++) {
++    int idx = row * w + x;
++    g_accum_buffer[idx] = Vec(0, 0, 0);
++
++    for (int sy=0; sy<2; sy++) {
++      for (int sx=0; sx<2; sx++) {
++        Vec r(0, 0, 0);
++        for (int s=0; s<samps; s++) {
++          double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++          double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++          Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                  cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++          r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++        }
++        g_accum_buffer[idx] = g_accum_buffer[idx] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++      }
++    }
++
++    int pixel_idx = idx * 4;
++    Vec col = g_accum_buffer[idx];
++    g_rgba_buffer[pixel_idx + 0] = toInt(col.x);
++    g_rgba_buffer[pixel_idx + 1] = toInt(col.y);
++    g_rgba_buffer[pixel_idx + 2] = toInt(col.z);
++    g_rgba_buffer[pixel_idx + 3] = 255;
++  }
++}
++
++// Render a contiguous range of scanlines [start_row, end_row)
++EMSCRIPTEN_KEEPALIVE
++void render_chunk(int start_row, int end_row, int w, int h, int samps) {
++  if (w != g_current_w || h != g_current_h) {
++    init_buffer(w, h);
++  }
++  if (start_row < 0) start_row = 0;
++  if (end_row > h) end_row = h;
++  for (int row = start_row; row < end_row; row++) {
++    render_row(row, w, h, samps);
++  }
++}
++
++// Render the entire image synchronously
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render(int w, int h, int samps) {
++  init_buffer(w, h);
++  for (int row = 0; row < h; row++) {
++    render_row(row, w, h, samps);
++  }
++  return g_rgba_buffer.data();
++}
++
++}

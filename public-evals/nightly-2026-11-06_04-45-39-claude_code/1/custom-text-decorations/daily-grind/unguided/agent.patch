@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+index 66c9173..39729d0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,168 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Decorative text lines
++       Native CSS text decorations (ink-skipping, offset, inset)
++       with animated reveals. Custom properties are registered so
++       the browser can interpolate them smoothly.
++       ========================================================== */
++    @property --deco-offset {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0.2em;
++    }
++
++    @property --deco-thickness {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 1px;
++    }
++
++    @property --deco-inset {
++      syntax: '<length>';
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --deco-color {
++      syntax: '<color>';
++      inherits: true;
++      initial-value: transparent;
++    }
++
++    .deco {
++      /* Shared defaults: every decorated element skips ink around
++         descenders (g, p, y, j…) so the line never cuts glyphs. */
++      text-decoration-line: underline;
++      text-decoration-color: var(--deco-color);
++      text-decoration-thickness: var(--deco-thickness);
++      text-underline-offset: var(--deco-offset);
++      text-decoration-skip-ink: auto;
++      text-decoration-skip: ink edges;
++      /* Horizontal end insets (CSS Text Decoration 4). Browsers
++         without support simply ignore this declaration. */
++      text-decoration-inset: var(--deco-inset);
++      transition:
++        --deco-color 0.35s ease,
++        --deco-offset 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
++        --deco-thickness 0.35s ease,
++        --deco-inset 0.45s cubic-bezier(0.22, 1, 0.36, 1),
++        color 0.3s;
++    }
++
++    /* --- Navigation: underline that drops into place and grows
++           outward from the centre (large inset -> small inset). --- */
++    nav a.deco {
++      --deco-color: rgba(255, 171, 64, 0);
++      --deco-offset: 0.65em;
++      --deco-thickness: 1px;
++      --deco-inset: 2em;
++    }
++
++    nav a.deco:hover,
++    nav a.deco:focus-visible,
++    nav a.deco[aria-current="page"] {
++      --deco-color: var(--accent);
++      --deco-offset: 0.3em;
++      --deco-thickness: 2px;
++      --deco-inset: 0.1em;
++    }
++
++    /* Logout: framed by an overline + underline pair that
++       closes in from the ends. */
++    nav a.logout-link.deco {
++      text-decoration-line: underline overline;
++      --deco-offset: 0.25em;
++      --deco-inset: 1.5em;
++    }
++
++    nav a.logout-link.deco:hover,
++    nav a.logout-link.deco:focus-visible {
++      --deco-inset: 0.25em;
++      --deco-thickness: 1.5px;
++    }
++
++    /* --- Section heading: double underline + overline that reveal
++           on page load, with the lines inset from each end. --- */
++    .section-title {
++      text-align: center;
++      margin-bottom: 0.5rem;
++    }
++
++    .section-title .deco {
++      text-decoration-line: underline overline;
++      text-decoration-style: double;
++      --deco-color: var(--accent);
++      --deco-offset: 0.18em;
++      --deco-thickness: 3px;
++      --deco-inset: 0.6em;
++      animation: deco-heading-reveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
++    }
++
++    @keyframes deco-heading-reveal {
++      from {
++        --deco-color: rgba(255, 171, 64, 0);
++        --deco-offset: 0.9em;
++        --deco-thickness: 0px;
++        --deco-inset: 3.5em;
++      }
++
++      to {
++        --deco-color: var(--accent);
++        --deco-offset: 0.18em;
++        --deco-thickness: 3px;
++        --deco-inset: 0.6em;
++      }
++    }
++
++    /* --- Card titles: wavy "steam" underline that rises and
++           settles when the card is hovered or focused. --- */
++    .card h3.deco {
++      text-decoration-style: wavy;
++      --deco-color: rgba(78, 52, 46, 0);
++      --deco-offset: 0.6em;
++      --deco-thickness: 1px;
++      --deco-inset: 1.5em;
++    }
++
++    .card:hover h3.deco,
++    .card:focus-within h3.deco {
++      --deco-color: var(--accent);
++      --deco-offset: 0.22em;
++      --deco-thickness: 2px;
++      --deco-inset: 0.3em;
++    }
++
++    /* --- Footer: a resting dotted underline that becomes a thick,
++           translucent "highlighter" strikethrough on hover. --- */
++    .footer-links a.deco {
++      text-decoration-style: dotted;
++      --deco-color: rgba(62, 39, 35, 0.35);
++      --deco-offset: 0.3em;
++      --deco-thickness: 1px;
++      --deco-inset: 0.4em;
++    }
++
++    .footer-links a.deco:hover,
++    .footer-links a.deco:focus-visible {
++      text-decoration-line: line-through;
++      text-decoration-style: solid;
++      --deco-color: rgba(255, 171, 64, 0.55);
++      --deco-thickness: 0.55em;
++      --deco-inset: -0.15em;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .deco {
++        transition: none;
++      }
++
++      .section-title .deco {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,11 +322,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="deco">Menu</a></li>
++      <li><a href="/locations" class="deco">Locations</a></li>
++      <li><a href="/rewards" class="deco">Rewards</a></li>
++      <li><a href="/account" class="deco">My Account</a></li>
++      <li><a href="/logout" class="logout-link deco">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,20 +338,20 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title"><span class="deco">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="deco">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="deco">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="deco">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -199,10 +361,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" class="deco">Our Story</a> |
++      <a href="/careers" class="deco">Join the Team</a> |
++      <a href="/contact" class="deco">Contact Us</a> |
++      <a href="/privacy-policy" class="deco">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

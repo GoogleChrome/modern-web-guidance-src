@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+index 66c9173..b9077ec 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,15 @@
+       background: #3e2723;
+     }
+ 
++    .view[hidden] {
++      display: none;
++    }
++
++    .view-page {
++      min-height: 40vh;
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -168,6 +177,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div class="view" data-path="/">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +207,8 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +220,80 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Each visited route keeps its own container in #views. Leaving a view
++    // hides it (and remembers its scroll offset) instead of tearing it down,
++    // so returning to it is a toggle rather than a rebuild.
++    (() => {
++      const host = document.getElementById('views');
++      const views = new Map();   // path -> { el, scrollY }
++      const NO_SPA = new Set(['/logout']);
++      let current = null;
++
++      const normalize = (path) => (path.length > 1 ? path.replace(/\/+$/, '') : path) || '/';
++
++      const titleFor = (path) =>
++        path.split('/').filter(Boolean).pop().split('-')
++          .map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
++
++      function createView(path) {
++        const el = document.createElement('main');
++        el.className = 'view view-page container';
++        el.dataset.path = path;
++        const h = document.createElement('h2');
++        h.textContent = titleFor(path);
++        const p = document.createElement('p');
++        p.textContent = 'This page is coming soon.';
++        const back = document.createElement('a');
++        back.href = '/';
++        back.className = 'btn';
++        back.textContent = 'Back Home';
++        el.append(h, p, back);
++        host.append(el);
++        return el;
++      }
++
++      function show(path) {
++        path = normalize(path);
++        if (current === path) return;
++        const prev = views.get(current);
++        if (prev) {
++          prev.scrollY = window.scrollY;
++          prev.el.hidden = true;
++        }
++        let view = views.get(path);
++        if (!view) {
++          view = { el: createView(path), scrollY: 0 };
++          views.set(path, view);
++        }
++        view.el.hidden = false;
++        current = path;
++        document.title = (path === '/' ? 'The Daily Grind' : titleFor(path) + ' | The Daily Grind') + ' | Artisanal Coffee';
++        window.scrollTo(0, view.scrollY);
++      }
++
++      // Adopt the server-rendered home markup as the first cached view.
++      const home = host.querySelector('.view[data-path="/"]');
++      views.set('/', { el: home, scrollY: 0 });
++      current = '/';
++      const initial = normalize(location.pathname);
++      if (initial !== '/') show(initial);
++
++      document.addEventListener('click', (e) => {
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        const a = e.target.closest('a[href]');
++        if (!a || a.target || a.hasAttribute('download')) return;
++        const url = new URL(a.href, location.href);
++        if (url.origin !== location.origin || NO_SPA.has(url.pathname)) return;
++        e.preventDefault();
++        if (normalize(url.pathname) !== current) history.pushState(null, '', url.pathname);
++        show(url.pathname);
++      });
++
++      history.scrollRestoration = 'manual';
++      window.addEventListener('popstate', () => show(location.pathname));
++    })();
++  </script>
+ </body>
+ 
+ </html>

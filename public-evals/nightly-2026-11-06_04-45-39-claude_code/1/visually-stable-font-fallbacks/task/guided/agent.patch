@@ -1,0 +1,26 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -21,8 +21,11 @@
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      /* Scale fallback fonts to match the primary font's x-height so text
++         keeps the same visual size (and doesn't reflow) when fonts swap. */
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -43,8 +46,10 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      /* All-caps text: normalize by cap height instead of x-height. */
++      font-size-adjust: cap-height from-font;
+     }
+ 
+     nav ul {
+       display: flex;

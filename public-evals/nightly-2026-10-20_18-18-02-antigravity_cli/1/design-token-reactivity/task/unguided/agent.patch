@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,58 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 10px;
++    }
++
++    #toggle-spacious {
++      display: none;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: background 0.3s;
++    }
++
++    #toggle-spacious:hover {
++      background: #3e2723;
++    }
++
++    :root {
++      --style-query-support: 1;
++    }
++
++    @container style(--style-query-support: 1) {
++      #toggle-spacious {
++        display: inline-block;
++      }
++    }
++
++    @supports (container-type: style) or (container: style(--density: spacious)) {
++      #toggle-spacious {
++        display: inline-block;
++      }
++    }
++
++    #target-container {
++      --density: compact;
++    }
++
++    @container style(--density: spacious) {
++      #target-item,
++      .card {
++        padding: 40px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,25 +225,30 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="section-header">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <button id="toggle-spacious" type="button">Toggle Spacious View</button>
++      </div>
++      <div id="target-container">
++        <div class="grid">
++          <div id="target-item" class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +261,20 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const toggleBtn = document.getElementById('toggle-spacious');
++    const targetContainer = document.getElementById('target-container');
++
++    if (toggleBtn && targetContainer) {
++      toggleBtn.addEventListener('click', () => {
++        const current = targetContainer.style.getPropertyValue('--density').trim();
++        const next = current === 'spacious' ? 'compact' : 'spacious';
++        targetContainer.style.setProperty('--density', next);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

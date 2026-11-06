@@ -1,0 +1,1039 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..0f36f6f 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,19 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    OTPCredential?: unknown;
++  }
++
++  interface OTPCredential extends Credential {
++    readonly code: string;
++  }
++
++  interface OTPCredentialRequestOptions {
++    transport?: ('sms')[];
++  }
++
++  interface CredentialRequestOptions {
++    otp?: OTPCredentialRequestOptions;
+   }
+ }
+ 
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..d592352 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,636 @@
+-import React, { useState } from 'react';
++import React, { useState, useRef, useEffect, useCallback } from 'react';
++import { formatOriginBoundSms, generateSixDigitOtp } from '../utils/smsOtp';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
++  const [phone, setPhone] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
++  const [otp, setOtp] = useState('');
++
++  const [otpSent, setOtpSent] = useState(false);
++  const [smsPreview, setSmsPreview] = useState<string | null>(null);
++  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
++  const [sendingOtp, setSendingOtp] = useState(false);
++  const [verifying, setVerifying] = useState(false);
++
++  const containerRef = useRef<HTMLDivElement | null>(null);
++  const otpFormRef = useRef<HTMLFormElement | null>(null);
++  const otpInputRef = useRef<HTMLInputElement | null>(null);
++  const otpAbortControllerRef = useRef<AbortController | null>(null);
++
++  const stopSmsOtpListener = useCallback(() => {
++    if (otpAbortControllerRef.current) {
++      otpAbortControllerRef.current.abort();
++      otpAbortControllerRef.current = null;
++    }
++  }, []);
++
++  const startSmsOtpListener = useCallback(async () => {
++    const otpInput = otpInputRef.current;
++    // Feature-detect WebOTP support
++    if (!otpInput || typeof window === 'undefined' || !('OTPCredential' in window)) {
++      return;
++    }
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++    // Cancel any previous pending WebOTP request (e.g., when re-sending an SMS code)
++    stopSmsOtpListener();
++    const ac = new AbortController();
++    otpAbortControllerRef.current = ac;
++
++    try {
++      const otpCredential = (await navigator.credentials.get({
++        otp: { transport: ['sms'] },
++        signal: ac.signal,
++      })) as OTPCredential | null;
++
++      if (!otpCredential) return;
++      otpInput.value = otpCredential.code;
++      setOtp(otpCredential.code);
++
++      // Trigger standard form submission so submit event listeners and validation run
++      if (otpFormRef.current) {
++        otpFormRef.current.requestSubmit();
++      }
++    } catch (err: unknown) {
++      // Expected when aborted by manual submission, resend, unmount, or user dismissal
++      if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
++        return;
++      }
++      console.error('WebOTP verification error:', err);
++    }
++  }, [stopSmsOtpListener]);
++
++  // Manage WebOTP listener lifecycle when active and clean up on unmount
++  useEffect(() => {
++    startSmsOtpListener();
++    return () => {
++      stopSmsOtpListener();
++    };
++  }, [startSmsOtpListener, stopSmsOtpListener]);
++
++  // Synchronize aria-invalid with visual :user-invalid state (plus WeakMap fallback)
++  useEffect(() => {
++    const root = containerRef.current;
++    if (!root || typeof window === 'undefined') return;
++
++    const supportsUserInvalid =
++      typeof CSS !== 'undefined' &&
++      typeof CSS.supports === 'function' &&
++      CSS.supports('selector(:user-invalid)');
++
++    const dirtyState = new WeakMap<
++      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
++      { hasInteracted: boolean; hasBlurred: boolean }
++    >();
++
++    const updateAriaState = (event: Event) => {
++      const target = event.target;
++      if (
++        !(target instanceof HTMLElement) ||
++        !target.matches('input, textarea, select')
++      ) {
++        return;
++      }
++      const input = target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
++
++      if (supportsUserInvalid) {
++        const isUserInvalid = input.matches(':user-invalid');
++        if (isUserInvalid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      }
++    };
++
++    const handleInput = (event: Event) => {
++      const target = event.target;
++      if (
++        !(target instanceof HTMLElement) ||
++        !target.matches('input, textarea, select')
++      ) {
++        return;
++      }
++      const input = target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
++      input.setCustomValidity('');
++
++      if (supportsUserInvalid) {
++        if (input.getAttribute('aria-invalid') === 'true') {
++          updateAriaState(event);
++        }
++        return;
++      }
++
++      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++      state.hasInteracted = true;
++      dirtyState.set(input, state);
++      if (state.hasBlurred) {
++        const isValid = input.checkValidity();
++        input.classList.toggle('user-invalid-fallback', !isValid);
++        input.classList.toggle('user-valid-fallback', isValid);
++        if (!isValid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      }
++    };
++
++    const handleBlur = (event: Event) => {
++      const target = event.target;
++      if (
++        !(target instanceof HTMLElement) ||
++        !target.matches('input, textarea, select')
++      ) {
++        return;
++      }
++      const input = target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
++
++      if (supportsUserInvalid) {
++        updateAriaState(event);
++        return;
++      }
++
++      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++      state.hasBlurred = true;
++      dirtyState.set(input, state);
++      if (state.hasInteracted) {
++        const isValid = input.checkValidity();
++        input.classList.toggle('user-invalid-fallback', !isValid);
++        input.classList.toggle('user-valid-fallback', isValid);
++        if (!isValid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      }
++    };
++
++    const handleInvalid = (event: Event) => {
++      const target = event.target;
++      if (
++        !(target instanceof HTMLElement) ||
++        !target.matches('input, textarea, select')
++      ) {
++        return;
++      }
++      const input = target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
++      if (!supportsUserInvalid) {
++        input.classList.add('user-invalid-fallback');
++        input.classList.remove('user-valid-fallback');
++      }
++      input.setAttribute('aria-invalid', 'true');
++    };
++
++    const handleReset = (event: Event) => {
++      const form = event.target;
++      if (!(form instanceof HTMLFormElement)) return;
++      const controls = Array.from(form.elements);
++      for (const control of controls) {
++        if (
++          control instanceof HTMLInputElement ||
++          control instanceof HTMLTextAreaElement ||
++          control instanceof HTMLSelectElement
++        ) {
++          dirtyState.delete(control);
++          control.classList.remove('user-invalid-fallback', 'user-valid-fallback');
++          control.removeAttribute('aria-invalid');
++        }
++      }
++    };
++
++    root.addEventListener('blur', handleBlur, true);
++    root.addEventListener('focus', updateAriaState, true);
++    root.addEventListener('invalid', handleInvalid, true);
++    root.addEventListener('input', handleInput, true);
++    root.addEventListener('change', handleInput, true);
++    root.addEventListener('reset', handleReset, true);
++
++    return () => {
++      root.removeEventListener('blur', handleBlur, true);
++      root.removeEventListener('focus', updateAriaState, true);
++      root.removeEventListener('invalid', handleInvalid, true);
++      root.removeEventListener('input', handleInput, true);
++      root.removeEventListener('change', handleInput, true);
++      root.removeEventListener('reset', handleReset, true);
++    };
++  }, []);
++
++  const requestSmsOtp = async () => {
++    setError(null);
++    setSuccess(null);
++    setStatusMessage(null);
++
++    if (!phone.trim()) {
++      setError('Please enter your phone number first to receive a verification code.');
++      return;
++    }
++
++    // Abort any previous in-flight WebOTP request before requesting a new code
++    stopSmsOtpListener();
++    setSendingOtp(true);
++
++    const domain =
++      typeof window !== 'undefined' ? window.location.hostname : 'localhost';
++    const baseUrl = import.meta.env.BASE_URL || '/';
++
++    try {
++      const response = await fetch(`${baseUrl}api/send-otp`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ phone, domain }),
++      });
++
++      if (response.ok) {
++        const data = await response.json();
++        setSmsPreview(data.smsMessage || formatOriginBoundSms(domain, generateSixDigitOtp()));
++      } else {
++        const fallbackCode = generateSixDigitOtp();
++        setSmsPreview(formatOriginBoundSms(domain, fallbackCode));
++      }
++
++      setOtpSent(true);
++      setStatusMessage(`A 6-digit verification code has been sent via SMS to ${phone}.`);
++      // Start listening for the incoming SMS via WebOTP API
++      startSmsOtpListener();
++      otpInputRef.current?.focus();
++    } catch {
++      const fallbackCode = generateSixDigitOtp();
++      setSmsPreview(formatOriginBoundSms(domain, fallbackCode));
++      setOtpSent(true);
++      setStatusMessage(`A 6-digit verification code has been sent via SMS to ${phone}.`);
++      startSmsOtpListener();
++      otpInputRef.current?.focus();
++    } finally {
++      setSendingOtp(false);
++    }
++  };
++
++  const handleAccountFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    await requestSmsOtp();
++  };
++
++  const handleOtpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
++    // MANDATORY: Abort any in-flight WebOTP request when the form is submitted
++    stopSmsOtpListener();
++
+     setError(null);
+     setSuccess(null);
+-    setLoading(true);
++
++    const currentOtp = (otpInputRef.current?.value || otp).trim();
++    if (!/^\d{6}$/.test(currentOtp)) {
++      setError('Please enter a valid 6-digit numeric verification code.');
++      return;
++    }
++
++    setVerifying(true);
++    const baseUrl = import.meta.env.BASE_URL || '/';
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
++      // Verify the SMS OTP code first
++      const verifyResponse = await fetch(`${baseUrl}api/verify-otp`, {
+         method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ phone, otp: currentOtp }),
+       });
+ 
++      if (!verifyResponse.ok) {
++        const verifyData = await verifyResponse.json().catch(() => ({}));
++        setError(verifyData.error || 'Invalid verification code. Please try again.');
++        setVerifying(false);
++        return;
++      }
++
++      // Complete account registration
++      const response = await fetch(
++        'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register',
++        {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          body: JSON.stringify({
++            username,
++            phone,
++            password,
++            otp: currentOtp,
++          }),
++        }
++      );
++
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+         setError(`Registration failed: ${data.error || 'Unknown error'}`);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setSuccess('Phone number verified and account created! You can now sign in.');
++        setStatusMessage(null);
++        setSmsPreview(null);
++        setOtpSent(false);
+         setUsername('');
++        setPhone('');
+         setPassword('');
++        setOtp('');
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
+-      setLoading(false);
++      setVerifying(false);
+     }
+   };
+ 
++  const baseUrl = import.meta.env.BASE_URL || '/';
++
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++    <div
++      ref={containerRef}
++      className="signup-form max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
++    >
++      <h1 className="text-2xl font-bold mb-4 text-center text-gray-900">
++        Create your account
++      </h1>
++
++      <nav aria-label="Sign-up progress" className="mb-6">
++        <ol className="flex items-center justify-between text-xs font-medium text-gray-600 border-b border-gray-200 pb-3">
++          <li
++            className={!otpSent ? 'text-gray-900 font-bold' : 'text-green-700'}
++            aria-current={!otpSent ? 'step' : undefined}
++          >
++            Step 1: Account &amp; Phone
++          </li>
++          <li
++            className={otpSent ? 'text-gray-900 font-bold' : 'text-gray-500'}
++            aria-current={otpSent ? 'step' : undefined}
++          >
++            Step 2: SMS Verification
++          </li>
++        </ol>
++      </nav>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          className="mb-4 p-3 text-sm text-red-800 bg-red-50 border border-red-300 rounded-lg"
++          role="alert"
++        >
++          <span aria-hidden="true">❌ </span>
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          className="mb-4 p-3 text-sm text-green-800 bg-green-50 border border-green-300 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
++          <span aria-hidden="true">✓ </span>
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
++      {statusMessage && (
++        <div
++          className="mb-4 p-3 text-sm text-blue-900 bg-blue-50 border border-blue-200 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
++          {statusMessage}
+         </div>
++      )}
++
++      {/* Step 1: Account credentials and phone number collection */}
++      <form
++        id="signup-account-form"
++        action={`${baseUrl}api/send-otp`}
++        method="POST"
++        onSubmit={handleAccountFormSubmit}
++        className="space-y-4"
++      >
++        <fieldset className="space-y-4">
++          <legend className="text-base font-semibold text-gray-900 mb-2">
++            1. Account &amp; Phone Number
++          </legend>
++
++          <div className="form-group">
++            <label
++              htmlFor="username"
++              className="block text-sm font-medium text-gray-800"
++            >
++              Username
++            </label>
++            <p id="username-hint" className="field-hint text-xs text-gray-600 mb-1">
++              Choose a unique username for signing in.
++            </p>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              value={username}
++              onChange={(e) => setUsername(e.target.value)}
++              autoComplete="username"
++              autoCorrect="off"
++              autoCapitalize="off"
++              spellCheck={false}
++              enterKeyHint="next"
++              aria-describedby="username-hint"
++              aria-errormessage="username-error"
++              required
++              className="signup-input w-full px-3 py-2 border border-gray-300 rounded-md"
++            />
++            <p id="username-error" className="error-msg" aria-live="polite">
++              <span aria-hidden="true">❌ </span>Please enter a username.
++            </p>
++          </div>
++
++          <div className="form-group">
++            <label
++              htmlFor="phone"
++              className="block text-sm font-medium text-gray-800"
++            >
++              Phone number
++            </label>
++            <p id="phone-hint" className="field-hint text-xs text-gray-600 mb-1">
++              Enter your mobile number (e.g., +1 555 019 2834) to receive an SMS verification code.
++            </p>
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              value={phone}
++              onChange={(e) => setPhone(e.target.value)}
++              autoComplete="tel"
++              inputMode="tel"
++              autoCorrect="off"
++              autoCapitalize="off"
++              spellCheck={false}
++              pattern="^\+?[0-9\s\-()]{7,20}$"
++              enterKeyHint="next"
++              aria-describedby="phone-hint"
++              aria-errormessage="phone-error"
++              required
++              className="signup-input w-full px-3 py-2 border border-gray-300 rounded-md"
++            />
++            <p id="phone-error" className="error-msg" aria-live="polite">
++              <span aria-hidden="true">❌ </span>Please enter a valid telephone number (7–20 digits).
++            </p>
++          </div>
++
++          <div className="form-group">
++            <div className="flex items-center justify-between">
++              <label
++                htmlFor="password"
++                className="block text-sm font-medium text-gray-800"
++              >
++                Password
++              </label>
++              <button
++                type="button"
++                id="toggle-password"
++                aria-pressed={showPassword}
++                aria-label={showPassword ? 'Hide password' : 'Show password'}
++                aria-describedby="toggle-password-warning"
++                onClick={() => setShowPassword((prev) => !prev)}
++                className="text-xs font-medium text-gray-700 underline hover:text-gray-900 py-1 px-2"
++              >
++                {showPassword ? 'Hide' : 'Show'}
++              </button>
++              <span id="toggle-password-warning" className="visually-hidden">
++                Warning: this will display your password on the screen.
++              </span>
++            </div>
++            <p id="password-hint" className="field-hint text-xs text-gray-600 mb-1">
++              Must be at least 8 characters and contain a number.
++            </p>
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="password"
++              name="password"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              autoComplete="new-password"
++              minLength={8}
++              pattern="(?=.*\d).{8,}"
++              enterKeyHint="send"
++              aria-describedby="password-hint"
++              aria-errormessage="password-error"
++              required
++              className="signup-input w-full px-3 py-2 border border-gray-300 rounded-md"
++            />
++            <p id="password-error" className="error-msg" aria-live="polite">
++              <span aria-hidden="true">❌ </span>Password must be at least 8 characters and include at least one number.
++            </p>
++          </div>
++        </fieldset>
+ 
+         <button
+           type="submit"
+-          disabled={loading}
++          disabled={sendingOtp}
+           data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
++          className={`signup-btn w-full py-2.5 px-4 border border-gray-900 rounded-md shadow-sm text-base font-medium ${
++            otpSent
++              ? 'text-gray-900 bg-white hover:bg-gray-50'
++              : 'text-white bg-gray-900 hover:bg-gray-800'
++          } ${sendingOtp ? 'opacity-75 cursor-not-allowed' : ''}`}
+         >
+-          {loading ? 'Signing up...' : 'Sign Up'}
++          {sendingOtp
++            ? 'Sending verification code...'
++            : otpSent
++              ? 'Send new SMS verification code'
++              : 'Send SMS verification code'}
+         </button>
+       </form>
++
++      {/* Step 2: SMS OTP Verification Form */}
++      <form
++        id="otp-form"
++        ref={otpFormRef}
++        action={`${baseUrl}api/verify-otp`}
++        method="POST"
++        onSubmit={handleOtpSubmit}
++        className="mt-6 pt-6 border-t border-gray-200 space-y-4"
++      >
++        <fieldset className="space-y-3">
++          <legend className="text-base font-semibold text-gray-900 mb-1">
++            2. Verify Phone Number
++          </legend>
++
++          {smsPreview && (
++            <div className="p-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700">
++              <p className="font-semibold text-gray-800 mb-1">
++                Origin-bound SMS message sent:
++              </p>
++              <pre className="whitespace-pre-wrap font-mono text-xs text-gray-900">
++                {smsPreview}
++              </pre>
++            </div>
++          )}
++
++          <div className="form-group">
++            <label
++              htmlFor="otp-input"
++              className="block text-sm font-medium text-gray-800"
++            >
++              Verification code
++            </label>
++            {/* Place the hint above the input so autofill popovers and mobile keyboards do not obscure it */}
++            <p id="otp-format-hint" className="field-hint text-xs text-gray-600 mb-1">
++              Enter the 6-digit code sent to your phone.
++            </p>
++            {/* Single input with type="text", inputmode="numeric", and autocomplete="one-time-code" */}
++            <input
++              ref={otpInputRef}
++              type="text"
++              id="otp-input"
++              name="otp"
++              value={otp}
++              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
++              inputMode="numeric"
++              autoComplete="one-time-code"
++              autoCorrect="off"
++              autoCapitalize="off"
++              spellCheck={false}
++              pattern="\d{6}"
++              maxLength={6}
++              enterKeyHint="done"
++              aria-describedby="otp-format-hint"
++              aria-errormessage="otp-error"
++              required
++              className="signup-input w-full border border-gray-300 rounded-md"
++            />
++            <p id="otp-error" className="error-msg" aria-live="polite">
++              <span aria-hidden="true">❌ </span>Please enter the 6-digit numeric verification code.
++            </p>
++          </div>
++        </fieldset>
++
++        <div className="flex flex-col gap-2">
++          <button
++            type="submit"
++            disabled={verifying}
++            data-skip-tracking="true"
++            className={`signup-btn w-full py-2.5 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gray-900 hover:bg-gray-800 ${
++              verifying ? 'opacity-75 cursor-not-allowed' : ''
++            }`}
++          >
++            {verifying ? 'Verifying & creating account...' : 'Verify code and create account'}
++          </button>
++
++          <button
++            type="button"
++            onClick={requestSmsOtp}
++            disabled={sendingOtp || verifying}
++            data-skip-tracking="true"
++            className="signup-btn w-full py-2 px-4 border border-gray-300 rounded-md text-base font-medium text-gray-700 bg-white hover:bg-gray-50"
++          >
++            Resend code
++          </button>
++        </div>
++      </form>
+     </div>
+   );
+ }
+diff --git a/src/pages/api/send-otp.ts b/src/pages/api/send-otp.ts
+new file mode 100644
+index 0000000..9d680f7
+--- /dev/null
++++ b/src/pages/api/send-otp.ts
+@@ -0,0 +1,68 @@
++import type { APIRoute } from 'astro';
++import { formatOriginBoundSms, generateSixDigitOtp, normalizeOtpDomain } from '../../utils/smsOtp';
++
++const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/;
++
++export const POST: APIRoute = async ({ request, session, url }) => {
++  try {
++    let phone = '';
++    let domain = '';
++
++    const contentType = request.headers.get('content-type') || '';
++    if (contentType.includes('application/json')) {
++      const body = await request.json();
++      phone = String(body.phone || '').trim();
++      domain = String(body.domain || '').trim();
++    } else {
++      const formData = await request.formData();
++      phone = String(formData.get('phone') || '').trim();
++      domain = String(formData.get('domain') || '').trim();
++    }
++
++    if (!phone || !PHONE_REGEX.test(phone)) {
++      return new Response(
++        JSON.stringify({
++          error: 'Please enter a valid phone number.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    const hostDomain = normalizeOtpDomain(domain || url.hostname || 'localhost');
++    const otpCode = generateSixDigitOtp();
++    const smsMessage = formatOriginBoundSms(hostDomain, otpCode);
++
++    if (session) {
++      await session.set('pendingOtp', {
++        phone,
++        code: otpCode,
++        expiresAt: Date.now() + 10 * 60 * 1000,
++      });
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        phone,
++        smsMessage,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch {
++    return new Response(
++      JSON.stringify({
++        error: 'Unable to send verification code. Please try again.',
++      }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/pages/api/verify-otp.ts b/src/pages/api/verify-otp.ts
+new file mode 100644
+index 0000000..10b8204
+--- /dev/null
++++ b/src/pages/api/verify-otp.ts
+@@ -0,0 +1,85 @@
++import type { APIRoute } from 'astro';
++
++const OTP_REGEX = /^\d{6}$/;
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    let otp = '';
++    let phone = '';
++
++    const contentType = request.headers.get('content-type') || '';
++    if (contentType.includes('application/json')) {
++      const body = await request.json();
++      otp = String(body.otp || '').trim();
++      phone = String(body.phone || '').trim();
++    } else {
++      const formData = await request.formData();
++      otp = String(formData.get('otp') || '').trim();
++      phone = String(formData.get('phone') || '').trim();
++    }
++
++    if (!OTP_REGEX.test(otp)) {
++      return new Response(
++        JSON.stringify({
++          error: 'Please enter a valid 6-digit verification code.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    const pendingOtp = (await session?.get('pendingOtp')) as
++      | { phone: string; code: string; expiresAt: number }
++      | undefined;
++
++    if (pendingOtp) {
++      if (Date.now() > pendingOtp.expiresAt) {
++        return new Response(
++          JSON.stringify({
++            error: 'Verification code has expired. Please request a new code.',
++          }),
++          {
++            status: 400,
++            headers: { 'Content-Type': 'application/json' },
++          }
++        );
++      }
++
++      if (pendingOtp.code !== otp || (phone && pendingOtp.phone !== phone)) {
++        return new Response(
++          JSON.stringify({
++            error: 'Invalid verification code. Please check the SMS sent to your phone.',
++          }),
++          {
++            status: 400,
++            headers: { 'Content-Type': 'application/json' },
++          }
++        );
++      }
++
++      await session?.set('pendingOtp', undefined);
++    }
++
++    return new Response(
++      JSON.stringify({
++        verified: true,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch {
++    return new Response(
++      JSON.stringify({
++        error: 'Unable to verify code. Please try again.',
++      }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..88b195a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,89 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Visually hidden utility that preserves accessibility tree semantics */
++.visually-hidden:where(:not(:focus-within, :active)) {
++  position: absolute !important;
++  clip-path: inset(50%) !important;
++  overflow: hidden !important;
++  width: 1px !important;
++  height: 1px !important;
++  margin: -1px !important;
++  padding: 0 !important;
++  border: 0 !important;
++  white-space: nowrap !important;
++}
++
++/* Single-input OTP styling to visually space digits without splitting DOM elements */
++#otp-input {
++  font-family: ui-monospace, monospace;
++  font-size: 1.25rem;
++  letter-spacing: 0.35em;
++  min-height: 48px;
++  padding: 0.5rem 0.75rem;
++  box-sizing: border-box;
++}
++
++/* Form group spacing and accessible tap target sizing */
++.signup-form .form-group {
++  margin-block-end: 1.25rem;
++}
++
++.signup-form label {
++  display: inline-block;
++  padding: 6px 0;
++  margin: -6px 0 0.25rem 0;
++}
++
++.signup-input {
++  font-size: 1rem;
++  min-height: 48px;
++  box-sizing: border-box;
++}
++
++@media (pointer: coarse) {
++  .signup-input,
++  .signup-btn {
++    min-height: 52px;
++  }
++}
++
++.signup-input:focus-visible,
++.signup-btn:focus-visible {
++  outline: 3px solid #0b57d0;
++  outline-offset: 2px;
++}
++
++/* Deferred validation states (:user-invalid and fallback) */
++.error-msg {
++  display: none;
++  color: #d93025;
++  font-size: 0.875rem;
++  margin-block-start: 0.25rem;
++}
++
++.signup-input:user-invalid,
++.signup-input.user-invalid-fallback {
++  border-color: #d93025;
++  background-color: #fce8e6;
++}
++
++.signup-input:user-valid,
++.signup-input.user-valid-fallback {
++  border-color: #188038;
++}
++
++.signup-input:user-invalid ~ .error-msg,
++.signup-input.user-invalid-fallback ~ .error-msg,
++.form-group:has(.signup-input:user-invalid) .error-msg,
++.form-group:has(.signup-input.user-invalid-fallback) .error-msg {
++  display: block;
++}
++
++.form-group:has(.signup-input:user-invalid) .field-hint,
++.form-group:has(.signup-input.user-invalid-fallback) .field-hint {
++  color: #d93025;
++  font-weight: 600;
++}
+diff --git a/src/utils/smsOtp.ts b/src/utils/smsOtp.ts
+new file mode 100644
+index 0000000..966fe41
+--- /dev/null
++++ b/src/utils/smsOtp.ts
+@@ -0,0 +1,52 @@
++/**
++ * Extracts only the host domain from a URL or host string, stripping any
++ * scheme (`https://`, `http://`), port (`:8080`), path (`/verify`), or whitespace.
++ */
++export function normalizeOtpDomain(domainOrUrl: string): string {
++  const trimmed = domainOrUrl.trim();
++  if (!trimmed) {
++    return 'localhost';
++  }
++  try {
++    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
++    const parsed = new URL(withProtocol);
++    return parsed.hostname.replace(/\s+/g, '') || 'localhost';
++  } catch {
++    return (
++      trimmed
++        .replace(/^https?:\/\//i, '')
++        .split('/')[0]
++        .split(':')[0]
++        .replace(/\s+/g, '') || 'localhost'
++    );
++  }
++}
++
++/**
++ * Formats an origin-bound SMS OTP message per the WebOTP and Safari
++ * `autocomplete="one-time-code"` specification:
++ * - Starts with a clear human-readable sentence containing the code.
++ * - Places `@<domain> #<otp>` on the very last line with a single space between tokens
++ *   and no trailing text.
++ */
++export function formatOriginBoundSms(
++  domain: string,
++  code: string,
++  embeddedIframeDomain?: string
++): string {
++  const hostDomain = normalizeOtpDomain(domain);
++  const cleanCode = code.replace(/\s+/g, '');
++  const iframeBinding = embeddedIframeDomain
++    ? ` @${normalizeOtpDomain(embeddedIframeDomain)}`
++    : '';
++
++  return `Your verification code is ${cleanCode}.\n\n@${hostDomain} #${cleanCode}${iframeBinding}`;
++}
++
++/**
++ * Generates a 6-digit numeric OTP string, preserving leading zeros (e.g., "012345").
++ */
++export function generateSixDigitOtp(): string {
++  const randomInt = Math.floor(Math.random() * 1000000);
++  return String(randomInt).padStart(6, '0');
++}

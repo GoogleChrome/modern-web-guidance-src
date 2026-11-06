@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product Carousel */
++    @keyframes scale-card {
++      0% {
++        scale: 0.75;
++      }
++      50% {
++        scale: 1;
++      }
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: scroll;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      list-style: none;
++      padding-block: 30px;
++      padding-inline: max(20px, calc(50% - 140px));
++      margin-top: 20px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller > * {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-top: 8px;
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .scroller > * {
++          animation: scale-card auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    :where(a:any-link, button, .scroller):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,27 +244,66 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="seasonal-heading">
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Latte art in a ceramic mug" width="280" height="180">
++            <h3 id="prod-maple-latte">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p class="price">$5.50</p>
++          </div>
++          <a href="/menu/seasonal" class="btn" aria-labelledby="btn-maple-latte prod-maple-latte" id="btn-maple-latte">View Details</a>
++        </li>
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Rich dark roast espresso shot" width="280" height="180">
++            <h3 id="prod-espresso">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <p class="price">$3.75</p>
++          </div>
++          <a href="/menu/espresso" class="btn" aria-labelledby="btn-espresso prod-espresso" id="btn-espresso">View Details</a>
++        </li>
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew coffee in a tall glass" width="280" height="180">
++            <h3 id="prod-cold-brew">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p class="price">$4.50</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn" aria-labelledby="btn-cold-brew prod-cold-brew" id="btn-cold-brew">View Details</a>
++        </li>
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80" alt="Caramel macchiato with foam drizzle" width="280" height="180" loading="lazy">
++            <h3 id="prod-macchiato">Caramel Macchiato</h3>
++            <p>Velvety steamed milk marked with espresso and caramel.</p>
++            <p class="price">$5.25</p>
++          </div>
++          <a href="/menu/macchiato" class="btn" aria-labelledby="btn-macchiato prod-macchiato" id="btn-macchiato">View Details</a>
++        </li>
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=600&q=80" alt="Green matcha latte with frothy top" width="280" height="180" loading="lazy">
++            <h3 id="prod-matcha">Ceremonial Matcha</h3>
++            <p>Stone-ground Japanese green tea whisked with oat milk.</p>
++            <p class="price">$5.75</p>
++          </div>
++          <a href="/menu/matcha" class="btn" aria-labelledby="btn-matcha prod-matcha" id="btn-matcha">View Details</a>
++        </li>
++        <li class="card">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Spiced chai latte topped with cinnamon" width="280" height="180" loading="lazy">
++            <h3 id="prod-chai">Spiced Chai Latte</h3>
++            <p>Black tea infused with cardamom, cinnamon, and ginger.</p>
++            <p class="price">$4.95</p>
++          </div>
++          <a href="/menu/chai" class="btn" aria-labelledby="btn-chai prod-chai" id="btn-chai">View Details</a>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 
+   <footer>

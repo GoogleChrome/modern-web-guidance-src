@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,44 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive editorial preview: fade the content itself into any background. */
++    .roasters-secrets {
++      max-width: 760px;
++      margin: 56px auto 0;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .roasters-secrets header {
++      text-align: center;
++    }
++
++    .exclusive-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container {
++      padding-top: 24px;
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +230,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets" aria-labelledby="roasters-secrets-title">
++      <header>
++        <p class="exclusive-label">Exclusive preview</p>
++        <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++        <p>A little inside knowledge for a better everyday cup.</p>
++      </header>
++      <div class="paywall-container">
++        <h3>The secret starts before the first sip</h3>
++        <p>Behind every roast is a series of small decisions: when to turn up the heat, when to let the beans develop, and when to stop. Our roasters follow aroma, color, and the sound of the first crack to bring each coffee's character into focus.</p>
++        <p>At home, start with freshly ground beans and pay attention to your water. Let it settle just off the boil, then give the grounds a gentle first pour. That brief bloom releases trapped gas and helps the rest of the water flow through more evenly.</p>
++        <p>Next comes the part we love most: dialing in the balance. Change one thing at a time, taste as you go, and keep a few notes. A small adjustment to your grind can reveal sweetness and depth you never knew were there.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+index 66c9173..bb54b6c 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,24 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selector — CSS, composed.</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet">
++<style>
++:root{--green:#28734c;--ink:#252b28;--muted:#858a86;--line:#e6e9e5;--pale:#edf4ec;--bg:#f7f8f5}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px}button,input,select{font:inherit}button,a,select{cursor:pointer}button{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #6b9c68;outline-offset:3px}button{background:white;border:1px solid var(--line);border-radius:6px}svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}.app{display:flex;min-height:100vh}.sidebar{width:231px;flex:none;background:#fff;border-right:1px solid var(--line);padding:34px 20px 20px;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0}.brand{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:25px;font-weight:650;letter-spacing:-1.2px}.brand-icon{background:#2c6548;color:#fff;border-radius:8px;display:grid;place-items:center;width:32px;height:33px;font-family:monospace;font-size:22px;letter-spacing:-5px;padding-right:5px}.brand small{font-size:9px;letter-spacing:.8px;color:#6f7771;border:1px solid var(--line);border-radius:4px;padding:3px 5px;margin-left:auto}.nav-label{font-size:10px;font-weight:650;letter-spacing:1.5px;color:#979c97;margin:43px 13px 13px}.nav-button{display:flex;gap:12px;width:100%;align-items:center;background:none;border:0;text-align:left;padding:12px 13px;margin:3px 0;color:#707771;font-size:13px}.nav-button.active{background:var(--pale);color:#2b6346;font-weight:600}.nav-button .count{margin-left:auto;background:#fff;border:1px solid #e4e7e2;font-size:10px;padding:1px 6px;border-radius:4px}.tip{margin:35px 7px 20px;padding:16px 14px;background:#f7f8f4;border:1px solid var(--line);border-radius:8px}.tip-icon{color:#65816a;margin-bottom:11px}.tip strong{display:block;font-size:12px;margin-bottom:7px}.tip p{font-size:11px;color:#82887f;line-height:1.8;margin:0}.tip code{color:#57715a;font-size:10px}.side-bottom{margin-top:auto;padding:18px 11px 0;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;color:#80867f;font-size:11px}.status-dot{width:6px;height:6px;background:#79a378;border-radius:50%}.side-bottom span:last-child{margin-left:auto;color:#b0b4ae}main{margin-left:231px;width:calc(100% - 231px)}.topbar{height:80px;background:#ffffffb3;border-bottom:1px solid var(--line);padding:0 40px;display:flex;align-items:center;justify-content:space-between}.breadcrumb{display:flex;align-items:center;gap:12px;font-size:12px;color:#8a8f88}.breadcrumb b{font-weight:500;color:#40473f}.top-right{display:flex;align-items:center;gap:21px}.text-link{border:0;background:none;font-size:12px;color:#6c746d;padding:0}.key{font-family:monospace;border:1px solid var(--line);border-radius:4px;padding:3px 5px;color:#8c918a;font-size:10px}.avatar{height:30px;width:30px;border-radius:50%;background:#e8ecdf;display:grid;place-items:center;color:#667457;font-size:11px;font-weight:600}.content{max-width:1440px;margin:auto;padding:38px 40px 24px}.heading-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:29px}h1{font-size:29px;letter-spacing:-1.1px;font-weight:550;margin:0 0 9px}.subtitle{margin:0;color:#858b83;font-size:12px}.heading-actions{display:flex;gap:9px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;font-size:11px;font-weight:500;white-space:nowrap}.btn svg{width:14px;height:14px}.btn-primary{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 2px 2px #1d59371a}.workspace{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}.panel{background:#fff;border:1px solid var(--line);border-radius:9px;overflow:hidden}.panel-title{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 21px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600}.title-left{display:flex;gap:10px;align-items:center}.title-left svg{width:16px;color:#798379}.badge{font-size:9px;color:#81897e;background:#f6f7f3;border:1px solid var(--line);padding:3px 7px;border-radius:4px;font-weight:400}.builder-body{padding:23px 21px}.field-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;align-items:center;margin-bottom:11px}.help{font-size:10px;border:1px solid #d8ded6;color:#979e94;border-radius:50%;height:13px;width:13px;display:inline-grid;place-items:center}.segmented{display:flex;border:1px solid var(--line);border-radius:6px;padding:4px;background:#f7f8f5;gap:4px}.segment{flex:1;border:0;background:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:#7b8279;padding:9px 4px}.segment.active{background:white;box-shadow:0 1px 4px #233d2412;color:#356246}.venn{display:inline-flex;position:relative;width:24px;height:15px}.venn:before,.venn:after{content:'';position:absolute;width:13px;height:13px;border:1.4px solid currentColor;border-radius:50%;top:0}.venn:before{left:1px}.venn:after{right:1px}.segment.active .venn:before{background:#51825a26}.explain{font-size:10px;color:#969b92;margin:10px 0 23px}.selector-list{display:flex;flex-direction:column;gap:8px}.selector-row{display:flex;align-items:center;gap:8px}.selector-input{border:1px solid var(--line);background:#fcfcfa;display:flex;align-items:center;flex:1;border-radius:5px;height:37px;min-width:0}.hash{color:#9aa692;padding:0 11px;font-family:'IBM Plex Mono',monospace;font-size:13px}.selector-input input{width:100%;border:0;outline:0;background:none;font:11px 'IBM Plex Mono',monospace;color:#547246;min-width:0}.remove{padding:5px;border:0;color:#a1a79c;background:none;font-size:18px}.add{border:1px dashed #dce2d7;background:#fff;width:100%;padding:9px;color:#7a8872;font-size:10px;margin-top:10px}.join-line{display:flex;gap:8px;align-items:center;margin:20px 0;color:#a8b09f;font-size:9px}.join-line:before,.join-line:after{content:'';height:1px;flex:1;background:var(--line)}.condition-label{display:flex;gap:8px;align-items:center}.optional{font-size:9px;color:#9b9f96;font-weight:400}.condition-box{border:1px solid var(--line);border-radius:6px;padding:12px}.condition-top{display:flex;gap:8px;align-items:center}.condition-top select{font:10px 'IBM Plex Mono',monospace;color:#6e6587;border:1px solid #e1e2de;border-radius:4px;background:white;padding:6px 7px;flex:1;min-width:0}.condition-box input{border:0;background:#f8f9f6;color:#737c68;font:10px 'IBM Plex Mono',monospace;padding:9px;border-radius:4px;margin-top:10px;width:100%;outline:0}.condition-toggle{margin-left:auto;color:#a1a79c;background:none;border:0}.condition-extra{margin-top:9px}.builder-footer{background:#fafbf8;border-top:1px solid var(--line);padding:13px 20px;display:flex;align-items:center;gap:7px;font-size:10px;color:#8d9587}.builder-footer svg{color:#8ca27d;width:13px;height:13px}.right-stack{display:flex;flex-direction:column;gap:21px}.tabs{display:flex;gap:22px;height:100%;align-items:center}.tab{height:100%;padding:0;background:none;border:0;border-radius:0;font-size:11px;color:#92988c;position:relative}.tab.active{color:#416d49}.tab.active:after{content:'';position:absolute;bottom:-1px;height:2px;left:0;right:0;background:#4e7950}.copy{border:0;background:none;color:#8a9285;font-size:10px;display:flex;align-items:center;gap:6px}.copy svg{width:13px;height:13px}.code-area{padding:22px 14px 25px;min-height:244px;font:11px/2.05 'IBM Plex Mono',monospace;background:#fdfdfa;overflow:auto}.code-line{display:flex;white-space:pre}.line-number{color:#c0c5b8;min-width:31px;text-align:center;margin-right:12px;user-select:none}.code-text{color:#626b5c}.purple{color:#8b6c9b}.olive{color:#687e45}.orange{color:#b08d54}.code-bottom{display:flex;justify-content:space-between;padding:12px 19px;border-top:1px solid var(--line);font-size:9px;color:#9ba291;background:#fafbf8}.code-bottom span:first-child{display:flex;align-items:center;gap:6px}.code-bottom .status-dot{width:5px;height:5px}.preview-title{height:49px}.live{font-size:9px;font-weight:400;color:#8b9485;display:flex;align-items:center;gap:6px}.live .status-dot{width:5px;height:5px}.preview-body{padding:19px 20px 17px}.preview-elements{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.sample{height:59px;border:1px solid #e8ebe3;background:#fafbf8;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#a0a798;font:10px 'IBM Plex Mono',monospace;transition:.2s}.sample.matched{background:#edf3e8;border-color:#b1c39e;color:#5c7944;box-shadow:inset 0 0 0 1px #b1c39e18}.legend{display:flex;justify-content:space-between;margin-top:17px;align-items:center;color:#8c9582;font-size:9px}.legend-left{display:flex;gap:14px}.legend-left span{display:flex;align-items:center;gap:5px}.square{width:7px;height:7px;display:inline-block;border:1px solid #adc19a;background:#edf3e8;border-radius:2px}.square.empty{background:#fafbf8;border-color:#dde2d6}.bottom-section{margin-top:30px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.section-title h2{font-size:12px;font-weight:600;margin:0}.section-title button{font-size:10px;color:#8e9785;background:none;border:0}.examples{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.example{border:1px solid var(--line);background:white;border-radius:7px;text-align:left;padding:16px 17px;transition:.2s}.example:hover{border-color:#b5c6ab;transform:translateY(-2px)}.example-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.example-icon{background:#f1f4ec;color:#80916f;border-radius:5px;padding:5px;display:inline-flex}.example-icon svg{width:14px;height:14px}.example-arrow{color:#adb5a3}.example strong{font-size:11px;font-weight:550;display:block;margin-bottom:7px}.example p{font-size:10px;color:#959c8d;margin:0;line-height:1.7}.page-footer{display:flex;justify-content:space-between;align-items:center;margin-top:27px;color:#a0a695;font-size:9px}.page-footer div{display:flex;align-items:center;gap:6px}.page-footer svg{height:12px;width:12px}.toast{position:fixed;bottom:25px;left:calc(50% + 80px);background:#2c5940;color:white;border-radius:7px;padding:12px 22px;font-size:12px;box-shadow:0 5px 25px #20332126;opacity:0;transform:translateY(12px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translateY(0)}dialog{border:1px solid var(--line);border-radius:12px;padding:27px;width:480px;max-width:90vw;color:var(--ink);box-shadow:0 20px 80px #24382e20}dialog::backdrop{background:#25342c45}dialog h2{margin:0 0 14px;font-size:21px}dialog p{font-size:13px;line-height:1.8;color:#7a8375}.saved-item{width:100%;padding:13px;margin-bottom:8px;text-align:left;color:var(--green)}.dialog-close{float:right;border:0;background:#f4f6f0;padding:4px 9px;color:#7e8875}@media(min-width:1450px){.content{padding-top:46px}.code-area{min-height:266px}.builder-body{padding-top:27px;padding-bottom:27px}.sample{height:65px}}@media(max-width:1100px){.sidebar{width:195px;padding-left:13px;padding-right:13px}main{margin-left:195px;width:calc(100% - 195px)}.content{padding:30px 25px}.topbar{padding:0 25px}.workspace{gap:16px}.builder-body{padding:19px 16px}.panel-title{padding:0 16px}.heading-actions .btn{padding:9px}.subtitle{max-width:360px;line-height:1.7}.legend{gap:8px}.preview-elements{gap:6px}.sample{font-size:9px}.brand{font-size:23px}}@media(max-width:800px){.sidebar{width:70px;padding:25px 10px}.brand{padding:0;justify-content:center}.brand-name,.brand small,.nav-label,.nav-button span,.tip,.side-bottom{display:none}.nav-button{justify-content:center;padding:13px;margin-top:14px}.nav-button svg{flex:none}.brand{margin-bottom:35px}main{margin-left:70px;width:calc(100% - 70px)}.workspace{grid-template-columns:1fr}.heading-row{align-items:flex-start;gap:15px}.heading-actions{flex-direction:column}.examples{grid-template-columns:1fr}.example{padding:15px}.example-head{float:left;margin:0 15px 10px 0}.example-arrow{display:none}.example p{margin-left:39px}.top-right .text-link,.key{display:none}.content{padding:26px 20px}.topbar{height:65px;padding:0 20px}h1{font-size:25px}.page-footer{gap:15px;line-height:1.7}.toast{left:90px;right:20px;text-align:center}.code-area{min-height:230px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg style="display:none" xmlns="http://www.w3.org/2000/svg"><symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol><symbol id="icon-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></symbol><symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1v15"/></symbol><symbol id="icon-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4z"/></symbol><symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="icon-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol><symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol><symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol><symbol id="icon-bulb" viewBox="0 0 24 24"><path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z"/></symbol><symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol><symbol id="icon-layers" viewBox="0 0 24 24"><path d="m3 8 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 18l9 5 9-5"/></symbol><symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol></svg>
++<div class="app"><aside class="sidebar"><div class="brand"><span class="brand-icon">{ }</span><span class="brand-name">selector</span><small>BETA</small></div><div class="nav-label">WORKSPACE</div><button class="nav-button active" id="nav-playground"><svg><use href="#icon-grid"/></svg><span>Playground</span></button><button class="nav-button" id="nav-saved"><svg><use href="#icon-bookmark"/></svg><span>Saved snippets</span><span class="count" id="saved-count">0</span></button><div class="nav-label">RESOURCES</div><button class="nav-button" id="nav-examples"><svg><use href="#icon-code"/></svg><span>Examples</span></button><button class="nav-button" id="nav-reference"><svg><use href="#icon-book"/></svg><span>Quick reference</span></button><div class="tip"><svg class="tip-icon"><use href="#icon-bulb"/></svg><strong>A little less repetition.</strong><p>Combine selectors with <code>:is()</code> and let your CSS do more with less.</p></div><div class="side-bottom"><i class="status-dot"></i> All systems operational <span>↗</span></div></aside>
++<main><header class="topbar"><div class="breadcrumb"><svg style="width:15px"><use href="#icon-grid"/></svg><span>Workspace</span><span style="color:#c0c5bb">/</span><b>Playground</b></div><div class="top-right"><button class="text-link" id="docs">Documentation ↗</button><span class="key">⌘ K</span><div class="avatar">JD</div></div></header><div class="content"><div class="heading-row"><div><h1>CSS, composed.</h1><p class="subtitle">Combine selectors and conditions. Write less, target precisely.</p></div><div class="heading-actions"><button class="btn" id="reset"><svg><use href="#icon-reset"/></svg>Reset</button><button class="btn btn-primary" id="save"><svg><use href="#icon-bookmark"/></svg>Save snippet</button></div></div>
++<div class="workspace"><section class="panel"><div class="panel-title"><span class="title-left"><svg><use href="#icon-sliders"/></svg>Rule builder</span><span class="badge">CSS nesting</span></div><div class="builder-body"><div class="field-label">Combine selectors <span class="help" title="Intersection matches every selector. Union matches any selector.">?</span></div><div class="segmented"><button class="segment active" data-mode="intersection"><span class="venn"></span>Intersection <span style="opacity:.6">(and)</span></button><button class="segment" data-mode="union"><span class="venn"></span>Union <span style="opacity:.6">(or)</span></button></div><p class="explain" id="mode-description">Match elements that satisfy all selectors.</p><div class="field-label">Selectors <span style="font-weight:400;color:#a0a697;font-size:9px" id="selector-count">2 selectors</span></div><div class="selector-list" id="selector-list"></div><button class="add" id="add-selector">＋ &nbsp; Add selector</button><div class="join-line">WITH CONDITIONS</div><div class="field-label"><span class="condition-label">Conditional rules <span class="optional">Optional</span></span><span class="help" title="Wrap your selector in a media query or feature query.">?</span></div><div id="conditions"></div><button class="add" id="add-condition">＋ &nbsp; Add condition</button></div><div class="builder-footer"><svg><use href="#icon-bulb"/></svg>Selectors are combined using native CSS features.</div></section>
++<div class="right-stack"><section class="panel"><div class="panel-title"><div class="tabs"><button class="tab active" data-tab="css">Generated CSS</button><button class="tab" data-tab="html">HTML</button></div><button class="copy" id="copy"><svg><use href="#icon-copy"/></svg><span>Copy code</span></button></div><div class="code-area" id="code-output" aria-live="polite"></div><div class="code-bottom"><span><i class="status-dot"></i> Valid CSS</span><span id="specificity">Specificity: 0, 2, 0</span></div></section><section class="panel"><div class="panel-title preview-title"><span class="title-left"><svg><use href="#icon-grid"/></svg>Live preview</span><span class="live"><i class="status-dot"></i>Live</span></div><div class="preview-body"><div class="preview-elements" id="preview"></div><div class="legend"><div class="legend-left"><span><i class="square"></i>Matched</span><span><i class="square empty"></i>Not matched</span></div><span id="match-count">2 of 6 elements matched</span></div></div></section></div></div>
++<section class="bottom-section" id="example-section"><div class="section-title"><h2>A little inspiration</h2><button id="all-examples">Explore examples &nbsp; ↗</button></div><div class="examples"><button class="example" data-example="states"><div class="example-head"><span class="example-icon"><svg><use href="#icon-layers"/></svg></span><span class="example-arrow">↗</span></div><strong>One rule, multiple states</strong><p>Group hover, focus, and active states.</p></button><button class="example" data-example="responsive"><div class="example-head"><span class="example-icon"><svg><use href="#icon-grid"/></svg></span><span class="example-arrow">↗</span></div><strong>Responsive, without the repeat</strong><p>Combine breakpoints in a single rule.</p></button><button class="example" data-example="supports"><div class="example-head"><span class="example-icon"><svg><use href="#icon-sliders"/></svg></span><span class="example-arrow">↗</span></div><strong>Progressive by design</strong><p>Layer features with @supports.</p></button></div></section><footer class="page-footer"><span>Made for the way you think about CSS.</span><div><svg><use href="#icon-check"/></svg> Native CSS <span style="margin:0 5px">·</span> No dependencies <span style="margin:0 5px">·</span> Just possibilities.</div></footer></div></main></div><div class="toast" id="toast" role="status"></div><dialog id="modal"><button class="dialog-close" id="close-modal" aria-label="Close">×</button><div id="modal-content"></div></dialog>
++<script>
++const $=s=>document.querySelector(s);let mode='intersection',selectors=['.card','.featured'],conditions=[{type:'@media',value:'(min-width: 768px)'}],tab='css';let snippets=[];try{snippets=JSON.parse(localStorage.getItem('selector-snippets')||'[]')}catch{}const elements=[{label:'.card',classes:'card'},{label:'.card.featured',classes:'card featured'},{label:'.button',classes:'button'},{label:'.card.featured',classes:'card featured'},{label:'.featured',classes:'featured'},{label:'.card',classes:'card'}];let rawCode='';
++function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
++function renderSelectors(){const list=$('#selector-list');list.innerHTML=selectors.map((s,i)=>`<div class="selector-row"><div class="selector-input"><span class="hash">${i+1<10?'0':''}${i+1}</span><input aria-label="Selector ${i+1}" value="${esc(s)}" data-index="${i}" spellcheck="false" placeholder=".your-selector"></div><button class="remove" data-remove="${i}" aria-label="Remove selector ${i+1}">×</button></div>`).join('');list.querySelectorAll('input').forEach(input=>input.addEventListener('input',e=>{selectors[+e.target.dataset.index]=e.target.value;update()}));list.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{selectors.splice(+b.dataset.remove,1);renderSelectors();update()});$('#selector-count').textContent=`${selectors.length} selector${selectors.length===1?'':'s'}`}
++function renderConditions(){$('#conditions').innerHTML=conditions.map((c,i)=>`<div class="condition-box ${i?'condition-extra':''}"><div class="condition-top"><select aria-label="Condition type ${i+1}" data-condition="${i}">${['@media','@supports','@container'].map(t=>`<option ${c.type===t?'selected':''}>${t}</option>`).join('')}</select><button class="condition-toggle" data-delete-condition="${i}" aria-label="Remove condition">×</button></div><input data-value="${i}" aria-label="Condition expression ${i+1}" value="${esc(c.value)}" spellcheck="false"></div>`).join('');document.querySelectorAll('[data-condition]').forEach(s=>s.onchange=()=>{let c=conditions[+s.dataset.condition];c.type=s.value;c.value=s.value==='@supports'?'(display: grid)':s.value==='@container'?'(min-width: 400px)':'(min-width: 768px)';renderConditions();update()});document.querySelectorAll('[data-value]').forEach(s=>s.oninput=()=>{conditions[+s.dataset.value].value=s.value;update()});document.querySelectorAll('[data-delete-condition]').forEach(s=>s.onclick=()=>{conditions.splice(+s.dataset.deleteCondition,1);renderConditions();update()})}
++function update(){document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',b.dataset.mode===mode)});$('#mode-description').textContent=mode==='intersection'?'Match elements that satisfy all selectors.':'Match elements that satisfy any selector.';const clean=selectors.map(s=>s.trim()).filter(Boolean);const selector=mode==='union'?`:is(${clean.join(', ')})`:clean.map(s=>/^[.#:\[]/.test(s)?s:`:is(${s})`).join('');let lines=[],depth=0;conditions.forEach(c=>{lines.push('  '.repeat(depth)+c.type+' '+c.value+' {');depth++});lines.push('  '.repeat(depth)+(selector||'*')+' {');lines.push('  '.repeat(depth+1)+'color: #4d7c3f;');lines.push('  '.repeat(depth+1)+'background: #edf3e8;');lines.push('  '.repeat(depth)+'}');while(depth>0){depth--;lines.push('  '.repeat(depth)+'}')};rawCode=tab==='css'?lines.join('\n'):elements.map(e=>`<div class="${e.classes}">\n  ${e.label}\n</div>`).join('\n');$('#code-output').innerHTML=rawCode.split('\n').map((l,i)=>{let s=esc(l);if(tab==='css'){if(l.includes('@'))s=s.replace(/(@\w+)/g,'<span class="purple">$1</span>');else if(l.includes('{'))s=`<span class="olive">${s}</span>`;else if(l.includes(': '))s=s.replace(/(#[a-f0-9]+)/g,'<span class="orange">$1</span>')}return `<div class="code-line"><span class="line-number">${i+1}</span><span class="code-text">${s}</span></div>`}).join('');let count=0;$('#preview').innerHTML=elements.map(e=>{const node=document.createElement('div');node.className=e.classes;let hits=clean.map(s=>{try{return node.matches(s)}catch{return false}});const matched=clean.length===0|| (mode==='intersection'?hits.every(Boolean):hits.some(Boolean));if(matched)count++;return `<div class="sample ${matched?'matched':''}">${e.label}</div>`}).join('');$('#match-count').textContent=`${count} of 6 elements matched`;const weights=clean.map(s=>[(s.match(/#[\w-]+/g)||[]).length,(s.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g)||[]).length,(s.match(/^[a-z]+|::[\w-]+/g)||[]).length]);const spec=mode==='union'?weights.sort((a,b)=>b[0]-a[0]||b[1]-a[1]||b[2]-a[2])[0]||[0,0,0]:weights.reduce((a,b)=>a.map((n,i)=>n+b[i]),[0,0,0]);$('#specificity').textContent='Specificity: '+spec.join(', ');$('#saved-count').textContent=snippets.length}
++function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),2600)}function load(){renderSelectors();renderConditions();update()}document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;update()});document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(t=>t.classList.toggle('active',t===b));update()});$('#add-selector').onclick=()=>{selectors.push('');renderSelectors();update();$('#selector-list').lastElementChild.querySelector('input').focus()};$('#add-condition').onclick=()=>{conditions.push({type:'@supports',value:'(display: grid)'});renderConditions();update()};$('#reset').onclick=()=>{mode='intersection';selectors=['.card','.featured'];conditions=[{type:'@media',value:'(min-width: 768px)'}];load();toast('Playground reset')};$('#copy').onclick=async()=>{try{await navigator.clipboard.writeText(rawCode);toast('Code copied to clipboard')}catch{toast('Clipboard unavailable. Select the code to copy.')}};$('#save').onclick=()=>{snippets.push({mode,selectors:[...selectors],conditions:conditions.map(c=>({...c}))});try{localStorage.setItem('selector-snippets',JSON.stringify(snippets))}catch{}update();toast('Snippet saved to your workspace')};function modal(html){$('#modal-content').innerHTML=html;$('#modal').showModal()}$('#close-modal').onclick=()=>$('#modal').close();$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').close()};$('#nav-saved').onclick=()=>{modal('<h2>Saved snippets</h2>'+(snippets.length?snippets.map((s,i)=>`<button class="saved-item" data-load="${i}">${esc(s.selectors.join(s.mode==='union'?' or ':' + '))} <small style="float:right">Load ↗</small></button>`).join(''):'<p>Your workspace is ready. Save a snippet to keep your selectors and conditions here.</p>'));document.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=snippets[+b.dataset.load];mode=s.mode;selectors=[...s.selectors];conditions=s.conditions.map(c=>({...c}));load();$('#modal').close();toast('Snippet loaded')})};const reference=()=>modal('<h2>A quick CSS reference</h2><p><b>Intersection (and)</b><br><code>.card.featured</code> matches elements with both classes.</p><p><b>Union (or)</b><br><code>:is(.card, .featured)</code> matches either class, without repeating declarations.</p><p><b>Conditional rules</b><br><code>@media</code> checks the viewport, <code>@supports</code> checks browser features, and <code>@container</code> checks a containing element. Multiple conditions are nested and must all be met.</p><p>The preview shows selector matches. Conditional rules apply when their conditions are met in your page.</p>');$('#nav-reference').onclick=reference;$('#docs').onclick=reference;$('#nav-examples').onclick=()=>$('#example-section').scrollIntoView({behavior:'smooth'});$('#all-examples').onclick=()=>modal('<h2>Start with an example</h2><p>Choose one of the three example cards in the playground to load an editable rule. Try changing the selectors or adding another condition to make it your own.</p>');$('#nav-playground').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});document.querySelectorAll('[data-example]').forEach(b=>b.onclick=()=>{if(b.dataset.example==='states'){mode='union';selectors=['.button:hover','.button:focus','.button:active'];conditions=[]}else if(b.dataset.example==='responsive'){mode='union';selectors=['.card','.featured'];conditions=[{type:'@media',value:'(min-width: 768px) and (max-width: 1200px)'}]}else{mode='intersection';selectors=['.card','.featured'];conditions=[{type:'@supports',value:'(display: grid)'}]}load();window.scrollTo({top:0,behavior:'smooth'});toast('Example loaded — make it yours')});document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();$('#selector-list input')?.focus()}});load();
++</script></body></html>

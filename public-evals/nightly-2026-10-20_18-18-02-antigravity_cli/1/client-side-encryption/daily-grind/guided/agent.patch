@@ -1,0 +1,872 @@
+diff --git a/crypto-envelope.js b/crypto-envelope.js
+new file mode 100644
+index 0000000..eff0e81
+--- /dev/null
++++ b/crypto-envelope.js
+@@ -0,0 +1,548 @@
++/**
++ * Client-side envelope encryption module using Web Cryptography API (`crypto.subtle`).
++ *
++ * Supports hybrid post-quantum ('MLKEM768-X25519') and standalone post-quantum
++ * ('ML-KEM-768', 'ML-KEM-1024') Key Encapsulation Mechanisms (KEMs) with
++ * 'ChaCha20-Poly1305' or 'AES-GCM' AEAD encryption, and falls back to ephemeral-static
++ * Diffie-Hellman key agreement ('X25519' + 'HKDF' + 'AES-GCM') when KEMs or
++ * 'ChaCha20-Poly1305' are unavailable.
++ */
++
++export const KEM_PUBLIC_KEY_ALGORITHMS = {
++  1184: 'ML-KEM-768',
++  1216: 'MLKEM768-X25519',
++  1568: 'ML-KEM-1024',
++};
++
++const IDB_DB_NAME = 'daily-grind-crypto-store';
++const IDB_STORE_NAME = 'keys';
++const DEFAULT_IDB_KEY = 'recipient-kem-key';
++
++/**
++ * Checks whether the current browser supports post-quantum KEM encapsulation
++ * and ChaCha20-Poly1305 AEAD via the static `SubtleCrypto.supports()` method.
++ *
++ * @param {string} [kemAlgorithm='MLKEM768-X25519']
++ * @param {string} [aeadAlgorithm='ChaCha20-Poly1305']
++ * @returns {boolean}
++ */
++export function supportsPostQuantumEnvelope(
++  kemAlgorithm = 'MLKEM768-X25519',
++  aeadAlgorithm = 'ChaCha20-Poly1305',
++) {
++  return (
++    typeof globalThis.SubtleCrypto?.supports === 'function' &&
++    SubtleCrypto.supports('encapsulateKey', kemAlgorithm, aeadAlgorithm)
++  );
++}
++
++/**
++ * Generates a recipient key pair using the requested KEM algorithm (defaulting to
++ * hybrid 'MLKEM768-X25519') with `extractable: false`, or falls back to 'X25519'
++ * key agreement when post-quantum KEM support is unavailable.
++ *
++ * @param {string} [preferredKem='MLKEM768-X25519'] - 'MLKEM768-X25519', 'ML-KEM-768', or 'ML-KEM-1024'
++ * @returns {Promise<{ suite: string, algorithm: string, keyPair: CryptoKeyPair, publicKeyBytes: Uint8Array }>}
++ */
++export async function generateRecipientKeys(preferredKem = 'MLKEM768-X25519') {
++  if (supportsPostQuantumEnvelope(preferredKem, 'ChaCha20-Poly1305')) {
++    const keyPair = await crypto.subtle.generateKey(
++      preferredKem,
++      false,
++      ['encapsulateKey', 'decapsulateKey'],
++    );
++    const publicKeyBytes = new Uint8Array(
++      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++    );
++    return {
++      suite: `${preferredKem}+ChaCha20-Poly1305`,
++      algorithm: preferredKem,
++      keyPair,
++      publicKeyBytes,
++    };
++  }
++
++  // Classical fallback: X25519 key agreement + HKDF + AES-GCM
++  const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++  const publicKeyBytes = new Uint8Array(
++    await crypto.subtle.exportKey('raw', keyPair.publicKey),
++  );
++  return {
++    suite: 'X25519+HKDF+AES-GCM',
++    algorithm: 'X25519',
++    keyPair,
++    publicKeyBytes,
++  };
++}
++
++/**
++ * Persists a non-extractable `CryptoKeyPair` in IndexedDB using structured cloning
++ * without ever exporting the private key bytes.
++ *
++ * @param {CryptoKeyPair} keyPair
++ * @param {string} [storageKey=DEFAULT_IDB_KEY]
++ * @returns {Promise<void>}
++ */
++export function saveKeyPairToIndexedDB(keyPair, storageKey = DEFAULT_IDB_KEY) {
++  return new Promise((resolve, reject) => {
++    if (typeof indexedDB === 'undefined') {
++      resolve();
++      return;
++    }
++    const request = indexedDB.open(IDB_DB_NAME, 1);
++    request.onupgradeneeded = () => {
++      const db = request.result;
++      if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
++        db.createObjectStore(IDB_STORE_NAME);
++      }
++    };
++    request.onsuccess = () => {
++      const db = request.result;
++      const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
++      const objectStore = tx.objectStore(IDB_STORE_NAME);
++      objectStore.put(keyPair, storageKey);
++      tx.oncomplete = () => {
++        db.close();
++        resolve();
++      };
++      tx.onerror = () => {
++        db.close();
++        reject(tx.error);
++      };
++    };
++    request.onerror = () => reject(request.error);
++  });
++}
++
++/**
++ * Loads a previously persisted `CryptoKeyPair` from IndexedDB.
++ *
++ * @param {string} [storageKey=DEFAULT_IDB_KEY]
++ * @returns {Promise<CryptoKeyPair | null>}
++ */
++export function loadKeyPairFromIndexedDB(storageKey = DEFAULT_IDB_KEY) {
++  return new Promise((resolve, reject) => {
++    if (typeof indexedDB === 'undefined') {
++      resolve(null);
++      return;
++    }
++    const request = indexedDB.open(IDB_DB_NAME, 1);
++    request.onupgradeneeded = () => {
++      const db = request.result;
++      if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
++        db.createObjectStore(IDB_STORE_NAME);
++      }
++    };
++    request.onsuccess = () => {
++      const db = request.result;
++      const tx = db.transaction(IDB_STORE_NAME, 'readonly');
++      const objectStore = tx.objectStore(IDB_STORE_NAME);
++      const getReq = objectStore.get(storageKey);
++      getReq.onsuccess = () => {
++        db.close();
++        resolve(getReq.result || null);
++      };
++      getReq.onerror = () => {
++        db.close();
++        reject(getReq.error);
++      };
++    };
++    request.onerror = () => reject(request.error);
++  });
++}
++
++/**
++ * Exports a recipient public key to a `Uint8Array`. Uses `'raw-public'` for
++ * modern KEM keys and `'raw'` for classical fallback keys.
++ *
++ * @param {CryptoKey} publicKey
++ * @returns {Promise<Uint8Array>}
++ */
++export async function exportRecipientPublicKey(publicKey) {
++  const format = publicKey.algorithm.name === 'X25519' ? 'raw' : 'raw-public';
++  const buffer = await crypto.subtle.exportKey(format, publicKey);
++  return new Uint8Array(buffer);
++}
++
++/**
++ * Imports a recipient public key from raw bytes or returns the `CryptoKey` if already imported.
++ * Automatically detects the KEM algorithm from the byte length (1216 -> MLKEM768-X25519,
++ * 1184 -> ML-KEM-768, 1568 -> ML-KEM-1024) and uses `'raw-public'` with `['encapsulateKey']`,
++ * or imports as `'X25519'` with `'raw'` format and `[]` usages for 32-byte fallback keys.
++ *
++ * @param {CryptoKey | Uint8Array | ArrayBuffer} recipientPublicKeyOrBytes
++ * @param {KeyUsage[]} [kemUsages=['encapsulateKey']]
++ * @returns {Promise<CryptoKey>}
++ */
++export async function importRecipientPublicKey(
++  recipientPublicKeyOrBytes,
++  kemUsages = ['encapsulateKey'],
++) {
++  if (recipientPublicKeyOrBytes instanceof CryptoKey) {
++    return recipientPublicKeyOrBytes;
++  }
++  const bytes =
++    recipientPublicKeyOrBytes instanceof Uint8Array
++      ? recipientPublicKeyOrBytes
++      : new Uint8Array(recipientPublicKeyOrBytes);
++  const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++  if (kemName) {
++    return crypto.subtle.importKey('raw-public', bytes, kemName, true, kemUsages);
++  }
++  return crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
++}
++
++/**
++ * Imports a KEM private key from `'raw-seed'` bytes (32 bytes for 'MLKEM768-X25519',
++ * 64 bytes for 'ML-KEM-768' and 'ML-KEM-1024') with `['decapsulateKey']` usage.
++ *
++ * @param {Uint8Array | ArrayBuffer} seedBytes
++ * @param {string} [algorithm='MLKEM768-X25519']
++ * @param {boolean} [extractable=false]
++ * @returns {Promise<CryptoKey>}
++ */
++export async function importKemPrivateSeed(
++  seedBytes,
++  algorithm = 'MLKEM768-X25519',
++  extractable = false,
++) {
++  return crypto.subtle.importKey('raw-seed', seedBytes, algorithm, extractable, [
++    'decapsulateKey',
++  ]);
++}
++
++/**
++ * Derives a public `CryptoKey` from a private `CryptoKey` using `crypto.subtle.getPublicKey()`.
++ *
++ * @param {CryptoKey} privateKey
++ * @returns {Promise<CryptoKey>}
++ */
++export async function derivePublicKeyFromPrivate(privateKey) {
++  const usages = privateKey.algorithm.name === 'X25519' ? [] : ['encapsulateKey'];
++  return crypto.subtle.getPublicKey(privateKey, usages);
++}
++
++/**
++ * Internal helper for classical X25519 + HKDF (SHA-256) -> 256-bit AES-GCM key derivation.
++ *
++ * @param {CryptoKey} privateKey
++ * @param {CryptoKey} peerPublicKey
++ * @param {Uint8Array} [infoBytes]
++ * @returns {Promise<CryptoKey>}
++ */
++async function deriveFallbackAesKey(
++  privateKey,
++  peerPublicKey,
++  infoBytes = new Uint8Array(0),
++) {
++  const sharedSecret = await crypto.subtle.deriveBits(
++    { name: 'X25519', public: peerPublicKey },
++    privateKey,
++    256,
++  );
++  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, [
++    'deriveKey',
++  ]);
++  return crypto.subtle.deriveKey(
++    {
++      name: 'HKDF',
++      hash: 'SHA-256',
++      salt: new Uint8Array(32),
++      info: infoBytes,
++    },
++    hkdfKey,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    ['encrypt', 'decrypt'],
++  );
++}
++
++/**
++ * Encapsulates a fresh one-time shared AEAD key and produces a ciphertext capsule
++ * for the recipient's public key.
++ *
++ * When `infoBytes` is non-empty on a KEM key, supports optional HKDF domain separation
++ * (`useHkdfDomainSeparation: true`) by encapsulating an `'HKDF'` base key and deriving
++ * a 256-bit `'AES-GCM'` key; otherwise encapsulates `'ChaCha20-Poly1305'` (or `'AES-GCM'`)
++ * directly via `crypto.subtle.encapsulateKey()`.
++ *
++ * @param {CryptoKey | Uint8Array | ArrayBuffer} recipientPublicKeyOrBytes
++ * @param {Uint8Array} [infoBytes=new Uint8Array(0)]
++ * @param {{ aeadAlgorithm?: 'ChaCha20-Poly1305' | 'AES-GCM', useHkdfDomainSeparation?: boolean }} [options]
++ * @returns {Promise<{ sharedKey: CryptoKey, capsuleBytes: Uint8Array }>}
++ */
++export async function encapsulateEnvelopeKey(
++  recipientPublicKeyOrBytes,
++  infoBytes = new Uint8Array(0),
++  options = {},
++) {
++  const { aeadAlgorithm = 'ChaCha20-Poly1305', useHkdfDomainSeparation = false } = options;
++  const pubKey = await importRecipientPublicKey(recipientPublicKeyOrBytes, ['encapsulateKey']);
++
++  if (pubKey.algorithm.name !== 'X25519') {
++    if (useHkdfDomainSeparation) {
++      const { sharedKey: hkdfBaseKey, ciphertext } = await crypto.subtle.encapsulateKey(
++        pubKey.algorithm.name,
++        pubKey,
++        'HKDF',
++        false,
++        ['deriveKey'],
++      );
++      const derivedTarget =
++        aeadAlgorithm === 'AES-GCM'
++          ? { name: 'AES-GCM', length: 256 }
++          : { name: 'ChaCha20-Poly1305' };
++      const sharedKey = await crypto.subtle.deriveKey(
++        {
++          name: 'HKDF',
++          hash: 'SHA-256',
++          salt: new Uint8Array(32),
++          info: infoBytes,
++        },
++        hkdfBaseKey,
++        derivedTarget,
++        false,
++        ['encrypt', 'decrypt'],
++      );
++      return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
++    }
++
++    const targetAlgo =
++      aeadAlgorithm === 'AES-GCM' ? { name: 'AES-GCM', length: 256 } : 'ChaCha20-Poly1305';
++    const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++      pubKey.algorithm.name,
++      pubKey,
++      targetAlgo,
++      false,
++      ['encrypt', 'decrypt'],
++    );
++    return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
++  }
++
++  // Classical fallback: generate ephemeral X25519 key pair and send ephemeral public key as capsule
++  const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++  const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++  const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
++  return { sharedKey, capsuleBytes };
++}
++
++/**
++ * Decapsulates a ciphertext capsule using the recipient's private key to recover the
++ * shared AEAD `CryptoKey`.
++ *
++ * @param {CryptoKey} recipientPrivateKey
++ * @param {Uint8Array | ArrayBuffer} capsuleBytes
++ * @param {Uint8Array} [infoBytes=new Uint8Array(0)]
++ * @param {{ aeadAlgorithm?: 'ChaCha20-Poly1305' | 'AES-GCM', useHkdfDomainSeparation?: boolean }} [options]
++ * @returns {Promise<CryptoKey>}
++ */
++export async function decapsulateEnvelopeKey(
++  recipientPrivateKey,
++  capsuleBytes,
++  infoBytes = new Uint8Array(0),
++  options = {},
++) {
++  const { aeadAlgorithm = 'ChaCha20-Poly1305', useHkdfDomainSeparation = false } = options;
++  const capsule =
++    capsuleBytes instanceof Uint8Array ? capsuleBytes : new Uint8Array(capsuleBytes);
++
++  if (recipientPrivateKey.algorithm.name !== 'X25519') {
++    if (useHkdfDomainSeparation) {
++      const hkdfBaseKey = await crypto.subtle.decapsulateKey(
++        recipientPrivateKey.algorithm.name,
++        recipientPrivateKey,
++        capsule,
++        'HKDF',
++        false,
++        ['deriveKey'],
++      );
++      const derivedTarget =
++        aeadAlgorithm === 'AES-GCM'
++          ? { name: 'AES-GCM', length: 256 }
++          : { name: 'ChaCha20-Poly1305' };
++      return crypto.subtle.deriveKey(
++        {
++          name: 'HKDF',
++          hash: 'SHA-256',
++          salt: new Uint8Array(32),
++          info: infoBytes,
++        },
++        hkdfBaseKey,
++        derivedTarget,
++        false,
++        ['encrypt', 'decrypt'],
++      );
++    }
++
++    const targetAlgo =
++      aeadAlgorithm === 'AES-GCM' ? { name: 'AES-GCM', length: 256 } : 'ChaCha20-Poly1305';
++    return crypto.subtle.decapsulateKey(
++      recipientPrivateKey.algorithm.name,
++      recipientPrivateKey,
++      capsule,
++      targetAlgo,
++      false,
++      ['encrypt', 'decrypt'],
++    );
++  }
++
++  const ephemeralPubKey = await crypto.subtle.importKey('raw', capsule, 'X25519', true, []);
++  return deriveFallbackAesKey(recipientPrivateKey, ephemeralPubKey, infoBytes);
++}
++
++/**
++ * Encrypts UTF-8 text with an AEAD CryptoKey ('ChaCha20-Poly1305' or 'AES-GCM')
++ * using a fresh, cryptographically random 12-byte (96-bit) IV per message and
++ * optional Additional Authenticated Data (AAD).
++ *
++ * @param {CryptoKey} key
++ * @param {string} plaintext
++ * @param {Uint8Array} [additionalData=new Uint8Array(0)]
++ * @returns {Promise<{ iv: Uint8Array, ciphertext: Uint8Array }>}
++ */
++export async function encryptMessage(
++  key,
++  plaintext,
++  additionalData = new Uint8Array(0),
++) {
++  // Always generate a fresh 12-byte (96-bit) IV per message
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const encoded = new TextEncoder().encode(plaintext);
++
++  const ciphertextBuffer = await crypto.subtle.encrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    encoded,
++  );
++
++  return { iv, ciphertext: new Uint8Array(ciphertextBuffer) };
++}
++
++/**
++ * Decrypts and authenticates an AEAD payload ('ChaCha20-Poly1305' or 'AES-GCM').
++ * Throws `OperationError` if the ciphertext, authentication tag, or `additionalData` was tampered with.
++ *
++ * @param {CryptoKey} key
++ * @param {Uint8Array} iv
++ * @param {Uint8Array} ciphertext
++ * @param {Uint8Array} [additionalData=new Uint8Array(0)]
++ * @returns {Promise<string>}
++ */
++export async function decryptMessage(
++  key,
++  iv,
++  ciphertext,
++  additionalData = new Uint8Array(0),
++) {
++  const plaintextBuffer = await crypto.subtle.decrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    ciphertext,
++  );
++
++  return new TextDecoder().decode(plaintextBuffer);
++}
++
++/**
++ * High-level helper that performs a full per-message envelope encryption:
++ * encapsulates a fresh shared key for the recipient, encrypts the plaintext with a fresh
++ * 12-byte IV and optional AAD, and returns `{ capsule, iv, ciphertext }`.
++ *
++ * @param {CryptoKey | Uint8Array | ArrayBuffer} recipientPublicKeyOrBytes
++ * @param {string} plaintext
++ * @param {{ additionalData?: Uint8Array, infoBytes?: Uint8Array, aeadAlgorithm?: 'ChaCha20-Poly1305' | 'AES-GCM', useHkdfDomainSeparation?: boolean }} [options]
++ * @returns {Promise<{ capsule: Uint8Array, iv: Uint8Array, ciphertext: Uint8Array, algorithm: string }>}
++ */
++export async function sealEnvelope(recipientPublicKeyOrBytes, plaintext, options = {}) {
++  const {
++    additionalData = new Uint8Array(0),
++    infoBytes = new Uint8Array(0),
++    aeadAlgorithm = 'ChaCha20-Poly1305',
++    useHkdfDomainSeparation = false,
++  } = options;
++
++  const { sharedKey, capsuleBytes } = await encapsulateEnvelopeKey(
++    recipientPublicKeyOrBytes,
++    infoBytes,
++    { aeadAlgorithm, useHkdfDomainSeparation },
++  );
++  const { iv, ciphertext } = await encryptMessage(sharedKey, plaintext, additionalData);
++  return {
++    capsule: capsuleBytes,
++    iv,
++    ciphertext,
++    algorithm: sharedKey.algorithm.name,
++  };
++}
++
++/**
++ * High-level helper that decapsulates `{ capsule, iv, ciphertext }` and decrypts + authenticates
++ * the payload using the recipient's private key.
++ *
++ * @param {CryptoKey} recipientPrivateKey
++ * @param {{ capsule: Uint8Array, iv: Uint8Array, ciphertext: Uint8Array }} envelope
++ * @param {{ additionalData?: Uint8Array, infoBytes?: Uint8Array, aeadAlgorithm?: 'ChaCha20-Poly1305' | 'AES-GCM', useHkdfDomainSeparation?: boolean }} [options]
++ * @returns {Promise<string>}
++ */
++export async function openEnvelope(recipientPrivateKey, envelope, options = {}) {
++  const {
++    additionalData = new Uint8Array(0),
++    infoBytes = new Uint8Array(0),
++    aeadAlgorithm = 'ChaCha20-Poly1305',
++    useHkdfDomainSeparation = false,
++  } = options;
++
++  const sharedKey = await decapsulateEnvelopeKey(
++    recipientPrivateKey,
++    envelope.capsule,
++    infoBytes,
++    { aeadAlgorithm, useHkdfDomainSeparation },
++  );
++  return decryptMessage(sharedKey, envelope.iv, envelope.ciphertext, additionalData);
++}
++
++/**
++ * Encodes a `Uint8Array` to Base64 using native `Uint8Array.prototype.toBase64()` when available,
++ * with a standard fallback.
++ *
++ * @param {Uint8Array} bytes
++ * @returns {string}
++ */
++export function bytesToBase64(bytes) {
++  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  if (typeof u8.toBase64 === 'function') {
++    return u8.toBase64();
++  }
++  let binary = '';
++  for (let i = 0; i < u8.byteLength; i++) {
++    binary += String.fromCharCode(u8[i]);
++  }
++  return btoa(binary);
++}
++
++/**
++ * Decodes a Base64 string to a `Uint8Array` using native `Uint8Array.fromBase64()` when available,
++ * with a standard fallback.
++ *
++ * @param {string} base64
++ * @returns {Uint8Array}
++ */
++export function base64ToBytes(base64) {
++  if (typeof Uint8Array.fromBase64 === 'function') {
++    return Uint8Array.fromBase64(base64);
++  }
++  const binary = atob(base64);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes;
++}
+diff --git a/index.html b/index.html
+index 66c9173..a1c3195 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,99 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Client-Side Encryption Section */
++    .crypto-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--primary);
++    }
++
++    .crypto-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 4px 12px;
++      border-radius: 999px;
++    }
++
++    .crypto-controls {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .field-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      margin-bottom: 16px;
++    }
++
++    .field-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .field-group select,
++    .field-group input,
++    .field-group textarea {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .field-group textarea.mono,
++    .output-box {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.82rem;
++      background: #f5f2f0;
++      padding: 12px;
++      border-radius: 5px;
++      word-break: break-all;
++      white-space: pre-wrap;
++    }
++
++    .btn-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 16px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      margin-top: 0;
++    }
++
++    button.btn-secondary {
++      background: #6d4c41;
++    }
++
++    .status-text {
++      font-size: 0.9rem;
++      margin-top: 8px;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +288,70 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="crypto-section" id="secure-order-envelope">
++      <div class="crypto-header">
++        <div>
++          <h2>Quantum-Resistant Order &amp; Gift Note Encryption</h2>
++          <p>End-to-end browser envelope encryption using WebCrypto KEMs (<code>MLKEM768-X25519</code>, <code>ML-KEM-768</code>, <code>ML-KEM-1024</code>) or <code>X25519</code> key agreement with AEAD (<code>ChaCha20-Poly1305</code> / <code>AES-GCM</code>).</p>
++        </div>
++        <span class="badge" id="crypto-suite-badge">Detecting WebCrypto Suite...</span>
++      </div>
++
++      <div class="crypto-controls">
++        <div class="field-group">
++          <label for="kem-select">KEM / Key Agreement Algorithm</label>
++          <select id="kem-select">
++            <option value="MLKEM768-X25519" selected>MLKEM768-X25519 (Hybrid Post-Quantum + Classical Default)</option>
++            <option value="ML-KEM-768">ML-KEM-768 (NIST Category 3 Standalone PQ)</option>
++            <option value="ML-KEM-1024">ML-KEM-1024 (NIST Category 5 Standalone PQ)</option>
++          </select>
++        </div>
++        <div class="field-group">
++          <label for="aead-select">AEAD Cipher (for KEM encapsulation)</label>
++          <select id="aead-select">
++            <option value="ChaCha20-Poly1305" selected>ChaCha20-Poly1305 (256-bit, 12-byte IV)</option>
++            <option value="AES-GCM">AES-GCM (256-bit, 12-byte IV)</option>
++          </select>
++        </div>
++      </div>
++
++      <div class="btn-row">
++        <button type="button" class="btn" id="generate-keys-btn">1. Generate &amp; Persist Recipient Key Pair</button>
++      </div>
++
++      <div class="field-group">
++        <label for="recipient-pubkey">Recipient Public Key (<code>'raw-public'</code> / Base64)</label>
++        <textarea id="recipient-pubkey" class="mono" rows="2" readonly placeholder="Generate or load recipient keys to view exported public key bytes..."></textarea>
++      </div>
++
++      <div class="crypto-controls">
++        <div class="field-group">
++          <label for="plaintext-input">Sensitive Order Payload (Plaintext)</label>
++          <textarea id="plaintext-input" rows="3">Deliver 2x Maple Oat Lattes to Suite 402. Door code: #8492. Card last-4: 4242.</textarea>
++        </div>
++        <div class="field-group">
++          <label for="aad-input">Associated Data (AAD - Authenticated Metadata)</label>
++          <input type="text" id="aad-input" value="order-id:DG-2026-1020|recipient:roastery-fulfillment">
++        </div>
++      </div>
++
++      <div class="btn-row">
++        <button type="button" class="btn" id="encrypt-btn">2. Encapsulate Key &amp; Encrypt Payload</button>
++        <button type="button" class="btn btn-secondary" id="decrypt-btn">3. Decapsulate &amp; Decrypt Envelope</button>
++      </div>
++
++      <div class="field-group">
++        <label>Encrypted Envelope Output (<code>{ capsule, iv, ciphertext }</code>)</label>
++        <pre class="output-box" id="envelope-output">No envelope generated yet.</pre>
++      </div>
++
++      <div class="field-group">
++        <label>Decrypted &amp; Authenticated Result</label>
++        <pre class="output-box" id="decrypted-output">Awaiting decryption...</pre>
++        <p class="status-text" id="crypto-status"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +364,142 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {
++      supportsPostQuantumEnvelope,
++      generateRecipientKeys,
++      saveKeyPairToIndexedDB,
++      loadKeyPairFromIndexedDB,
++      exportRecipientPublicKey,
++      sealEnvelope,
++      openEnvelope,
++      bytesToBase64,
++    } from './crypto-envelope.js';
++
++    const suiteBadge = document.getElementById('crypto-suite-badge');
++    const kemSelect = document.getElementById('kem-select');
++    const aeadSelect = document.getElementById('aead-select');
++    const generateKeysBtn = document.getElementById('generate-keys-btn');
++    const pubKeyField = document.getElementById('recipient-pubkey');
++    const plaintextInput = document.getElementById('plaintext-input');
++    const aadInput = document.getElementById('aad-input');
++    const encryptBtn = document.getElementById('encrypt-btn');
++    const decryptBtn = document.getElementById('decrypt-btn');
++    const envelopeOutput = document.getElementById('envelope-output');
++    const decryptedOutput = document.getElementById('decrypted-output');
++    const statusText = document.getElementById('crypto-status');
++
++    let activeRecipientKeyPair = null;
++    let activePublicKeyBytes = null;
++    let currentEnvelope = null;
++
++    function updateStatus(message, isError = false) {
++      statusText.textContent = message;
++      statusText.style.color = isError ? '#b71c1c' : '#2e7d32';
++    }
++
++    async function initRecipientKeys(forceNew = false) {
++      try {
++        const preferredKem = kemSelect.value;
++        const pqSupported = supportsPostQuantumEnvelope(preferredKem, aeadSelect.value);
++        suiteBadge.textContent = pqSupported
++          ? `PQ Hybrid Ready (${preferredKem} + ${aeadSelect.value})`
++          : 'Classical Fallback (X25519 + HKDF + AES-GCM)';
++
++        if (!forceNew) {
++          const cachedPair = await loadKeyPairFromIndexedDB(`recipient-kem-key-${preferredKem}`);
++          if (cachedPair && cachedPair.publicKey && cachedPair.privateKey) {
++            activeRecipientKeyPair = cachedPair;
++            activePublicKeyBytes = await exportRecipientPublicKey(cachedPair.publicKey);
++            pubKeyField.value = `${ cachedPair.publicKey.algorithm.name } (${ activePublicKeyBytes.byteLength } bytes): ${ bytesToBase64(activePublicKeyBytes) }`;
++            updateStatus(`Loaded non-extractable ${cachedPair.publicKey.algorithm.name} key pair from IndexedDB.`);
++            return;
++          }
++        }
++
++        const generated = await generateRecipientKeys(preferredKem);
++        activeRecipientKeyPair = generated.keyPair;
++        activePublicKeyBytes = generated.publicKeyBytes;
++        await saveKeyPairToIndexedDB(generated.keyPair, `recipient-kem-key-${preferredKem}`);
++
++        pubKeyField.value = `${generated.algorithm} (${generated.publicKeyBytes.byteLength} bytes): ${bytesToBase64(generated.publicKeyBytes)}`;
++        updateStatus(`Generated & persisted non-extractable ${generated.suite} key pair.`);
++      } catch (err) {
++        updateStatus(`Key setup error: ${err.message}`, true);
++      }
++    }
++
++    generateKeysBtn.addEventListener('click', () => initRecipientKeys(true));
++    kemSelect.addEventListener('change', () => initRecipientKeys(false));
++    aeadSelect.addEventListener('change', () => {
++      const preferredKem = kemSelect.value;
++      const pqSupported = supportsPostQuantumEnvelope(preferredKem, aeadSelect.value);
++      suiteBadge.textContent = pqSupported
++        ? `PQ Hybrid Ready (${preferredKem} + ${aeadSelect.value})`
++        : 'Classical Fallback (X25519 + HKDF + AES-GCM)';
++    });
++
++    encryptBtn.addEventListener('click', async () => {
++      try {
++        if (!activePublicKeyBytes) {
++          await initRecipientKeys(false);
++        }
++        const aadBytes = new TextEncoder().encode(aadInput.value);
++        const infoBytes = new TextEncoder().encode('envelope-v1');
++        const aeadAlgorithm = aeadSelect.value;
++
++        currentEnvelope = await sealEnvelope(activePublicKeyBytes, plaintextInput.value, {
++          additionalData: aadBytes,
++          infoBytes,
++          aeadAlgorithm,
++        });
++
++        envelopeOutput.textContent = JSON.stringify(
++          {
++            algorithm: currentEnvelope.algorithm,
++            capsuleByteLength: currentEnvelope.capsule.byteLength,
++            capsuleBase64: bytesToBase64(currentEnvelope.capsule),
++            ivByteLength: currentEnvelope.iv.byteLength,
++            ivBase64: bytesToBase64(currentEnvelope.iv),
++            ciphertextByteLength: currentEnvelope.ciphertext.byteLength,
++            ciphertextBase64: bytesToBase64(currentEnvelope.ciphertext),
++          },
++          null,
++          2,
++        );
++        updateStatus(
++          `Encapsulated shared secret (${currentEnvelope.capsule.byteLength}-byte capsule) and encrypted with fresh 12-byte IV.`,
++        );
++      } catch (err) {
++        updateStatus(`Encryption error: ${err.message}`, true);
++      }
++    });
++
++    decryptBtn.addEventListener('click', async () => {
++      try {
++        if (!currentEnvelope || !activeRecipientKeyPair) {
++          updateStatus('Encrypt a payload first before decapsulating.', true);
++          return;
++        }
++        const aadBytes = new TextEncoder().encode(aadInput.value);
++        const infoBytes = new TextEncoder().encode('envelope-v1');
++        const aeadAlgorithm = aeadSelect.value;
++
++        const plaintext = await openEnvelope(activeRecipientKeyPair.privateKey, currentEnvelope, {
++          additionalData: aadBytes,
++          infoBytes,
++          aeadAlgorithm,
++        });
++        decryptedOutput.textContent = plaintext;
++        updateStatus('Successfully decapsulated shared key and authenticated AEAD ciphertext + AAD.');
++      } catch (err) {
++        decryptedOutput.textContent = '[Decryption / Authentication Failed]';
++        updateStatus(`Decryption failed (${err.name}): ${err.message}`, true);
++      }
++    });
++
++    initRecipientKeys(false);
++  </script>
+ </body>
+ 
+ </html>

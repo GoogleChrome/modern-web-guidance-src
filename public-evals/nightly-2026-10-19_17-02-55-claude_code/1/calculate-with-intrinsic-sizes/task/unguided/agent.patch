@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,108 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo badge */
++    .promo-badge {
++      display: block;
++      margin-block: 0.75rem 0;
++      margin-inline: auto;
++      padding: 0.25rem 0.75rem;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      text-align: center;
++      border-radius: 999px;
++      /* Fallback for browsers without calc-size() */
++      inline-size: max-content;
++      /* 1.2x the max-content size, clamped between 100px and 100% of the parent */
++      inline-size: calc-size(max-content, size * 1.2);
++      min-inline-size: 100px;
++      max-inline-size: 100%;
++    }
++
++    /* Accordion */
++    .accordion {
++      margin-block-start: 40px;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding: 1rem 1.25rem;
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 8px;
++      font: inherit;
++      font-size: 1.1rem;
++      font-weight: bold;
++      cursor: pointer;
++    }
++
++    #accordion-toggle:hover {
++      background: #3e2723;
++    }
++
++    #accordion-toggle::after {
++      content: '+';
++      transition: rotate 0.4s ease;
++    }
++
++    #accordion-toggle[aria-expanded="true"]::after {
++      content: '\2212';
++    }
++
++    /*
++     * Directly transitioning between different intrinsic keyword sizes
++     * (e.g. min-content to max-content, or auto to fit-content) is not
++     * supported; keywords like auto only interpolate with a length when
++     * interpolate-size / calc-size() opts in, and keyword-to-keyword
++     * transitions still jump.
++     */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    .accordion-content {
++      block-size: 0;
++      overflow: hidden;
++      visibility: hidden;
++      transition: block-size 0.4s ease, visibility 0.4s;
++    }
++
++    .accordion-content.is-open {
++      /* natural height plus 2rem of breathing room */
++      block-size: calc-size(auto, size + 2rem);
++      visibility: visible;
++    }
++
++    .accordion-content p {
++      padding-block: 1rem 0;
++      padding-inline: 1.25rem;
++    }
++
++    /* No calc-size() support: expand without animating */
++    @supports not (block-size: calc-size(auto, size)) {
++      .accordion-content.is-open {
++        block-size: auto;
++        padding-block-end: 2rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content,
++      #accordion-toggle::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +280,9 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <span class="promo-badge">Staff Pick</span>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -194,10 +295,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion">
++      <h2 style="text-align: center; margin-block-end: 20px;">FAQ</h2>
++      <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">
++        Our Sourcing
++      </button>
++      <div id="sourcing-content" class="accordion-content">
++        <p>We buy directly from small family farms, paying above fair-trade prices. Every bean is traceable to its
++          origin, roasted locally in small batches, and delivered within days of roasting.</p>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    const toggle = document.getElementById('accordion-toggle');
++    const content = document.querySelector('.accordion-content');
++    toggle.addEventListener('click', () => {
++      const open = content.classList.toggle('is-open');
++      toggle.setAttribute('aria-expanded', open);
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

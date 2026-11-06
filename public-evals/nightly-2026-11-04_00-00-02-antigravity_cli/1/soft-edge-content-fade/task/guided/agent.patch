@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Roaster's Secrets Preview */
++    .secrets-section {
++      margin-top: 60px;
++    }
++
++    .secrets-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .secrets-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-height: 320px;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .paywall-container p {
++      margin-bottom: 16px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="secrets-section">
++      <div class="secrets-header">
++        <span class="secrets-badge">Members Exclusive</span>
++        <h2>Roaster's Secrets</h2>
++        <p>Go behind the drum with our head roaster's private notes, origin diaries, and precision brew profiles.</p>
++      </div>
++      <div class="paywall-container">
++        <article>
++          <h3>Mastering the First Crack: Thermal Momentum &amp; Maillard Balance</h3>
++          <p>Achieving a honeyed sweetness without tipping into baked bitterness comes down to how we manage convective heat transfer in the final ninety seconds before first crack. With high-density washed Ethiopian heirlooms, we intentionally taper gas pressure at 182°C while opening the airflow damper by 15% to clear chaff and preserve delicate bergamot aromatics.</p>
++          <p>Once the exothermic reaction begins, drum speed becomes our primary lever. Rather than letting rate-of-rise (RoR) crash, we maintain a steady 8°C per minute decline through a 14.5% development time ratio. At home, you can unlock these hidden florals by blooming at 93°C with a 1:3 water ratio for 45 seconds before beginning a gentle, center-focused spiral pour.</p>
++          <p>In the next section of our logbook, we break down our exact water mineral targets—specifically balancing magnesium to calcium ratios at 2:1 with 40 ppm KH alkalinity—and why resting single-origin light roasts for 12 days in one-way valve bags dramatically shifts perceived acidity from sharp lemon to ripe stone fruit...</p>
++        </article>
++      </div>
++      <div class="paywall-cta">
++        <p>Want full access to our roasting logs and brew recipes?</p>
++        <a href="/rewards" class="btn">Unlock Full Guide</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

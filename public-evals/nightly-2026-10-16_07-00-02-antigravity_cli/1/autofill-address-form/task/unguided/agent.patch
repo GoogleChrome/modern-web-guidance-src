@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,163 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Shipping Form Section */
++    .shipping-section {
++      margin-top: 60px;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      padding: 40px;
++      max-width: 760px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .shipping-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.8rem;
++    }
++
++    .shipping-section .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 30px;
++      font-size: 0.95rem;
++    }
++
++    .shipping-form .form-group {
++      margin-bottom: 20px;
++    }
++
++    .shipping-form .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 20px;
++    }
++
++    .shipping-form .form-row-three {
++      display: grid;
++      grid-template-columns: 2fr 1fr 1fr;
++      gap: 20px;
++    }
++
++    .shipping-form label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .shipping-form label .required {
++      color: #c62828;
++    }
++
++    .shipping-form input[type="text"],
++    .shipping-form input[type="email"],
++    .shipping-form input[type="tel"],
++    .shipping-form select,
++    .shipping-form textarea {
++      width: 100%;
++      padding: 11px 14px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #fff;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .shipping-form input:focus,
++    .shipping-form select:focus,
++    .shipping-form textarea:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .shipping-form select {
++      cursor: pointer;
++    }
++
++    .shipping-form textarea {
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    .shipping-form .checkbox-group {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin: 16px 0;
++    }
++
++    .shipping-form input[type="checkbox"] {
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .shipping-form .checkbox-label {
++      font-size: 0.9rem;
++      color: var(--text);
++      cursor: pointer;
++      user-select: none;
++      margin-bottom: 0;
++      font-weight: normal;
++    }
++
++    .shipping-form .btn-submit {
++      display: block;
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 14px 20px;
++      font-size: 1rem;
++      font-weight: 600;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.3s, transform 0.1s;
++      margin-top: 25px;
++    }
++
++    .shipping-form .btn-submit:hover {
++      background: #3e2723;
++    }
++
++    .shipping-form .btn-submit:active {
++      transform: translateY(1px);
++    }
++
++    .form-success-message {
++      display: none;
++      background: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #a5d6a7;
++      border-radius: 6px;
++      padding: 14px;
++      margin-top: 20px;
++      text-align: center;
++      font-weight: 500;
++    }
++
++    @media (max-width: 650px) {
++      .shipping-form .form-row,
++      .shipping-form .form-row-three {
++        grid-template-columns: 1fr;
++        gap: 15px;
++      }
++      .shipping-section {
++        padding: 24px 18px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,10 +349,108 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Shipping Address Form -->
++    <section class="shipping-section" id="shipping-address-section">
++      <h2>Shipping Address</h2>
++      <p class="section-subtitle">Enter your delivery details to receive freshly roasted artisanal coffee at your doorstep.</p>
++
++      <form class="shipping-form" id="shipping-form">
++        <div class="form-row">
++          <div class="form-group">
++            <label for="first-name">First Name <span class="required">*</span></label>
++            <input type="text" id="first-name" name="firstName" autocomplete="given-name" required placeholder="Jane">
++          </div>
++          <div class="form-group">
++            <label for="last-name">Last Name <span class="required">*</span></label>
++            <input type="text" id="last-name" name="lastName" autocomplete="family-name" required placeholder="Doe">
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="email">Email Address <span class="required">*</span></label>
++            <input type="email" id="email" name="email" autocomplete="email" required placeholder="jane.doe@example.com">
++          </div>
++          <div class="form-group">
++            <label for="phone">Phone Number <span class="required">*</span></label>
++            <input type="tel" id="phone" name="phone" autocomplete="tel" required placeholder="(555) 123-4567">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="address-line1">Street Address <span class="required">*</span></label>
++          <input type="text" id="address-line1" name="addressLine1" autocomplete="address-line1" required placeholder="123 Coffee Roasters Way">
++        </div>
++
++        <div class="form-group">
++          <label for="address-line2">Apartment, Suite, Unit, etc. <span style="font-weight: normal; color: #8d6e63;">(Optional)</span></label>
++          <input type="text" id="address-line2" name="addressLine2" autocomplete="address-line2" placeholder="Apt 4B">
++        </div>
++
++        <div class="form-row-three">
++          <div class="form-group">
++            <label for="city">City <span class="required">*</span></label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" required placeholder="Seattle">
++          </div>
++          <div class="form-group">
++            <label for="state">State / Province <span class="required">*</span></label>
++            <input type="text" id="state" name="state" autocomplete="address-level1" required placeholder="WA">
++          </div>
++          <div class="form-group">
++            <label for="zip">ZIP / Postal Code <span class="required">*</span></label>
++            <input type="text" id="zip" name="postalCode" autocomplete="postal-code" required placeholder="98101">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="country">Country <span class="required">*</span></label>
++          <select id="country" name="country" autocomplete="country" required>
++            <option value="US" selected>United States</option>
++            <option value="CA">Canada</option>
++            <option value="GB">United Kingdom</option>
++            <option value="AU">Australia</option>
++            <option value="DE">Germany</option>
++            <option value="FR">France</option>
++            <option value="JP">Japan</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="delivery-notes">Delivery Instructions <span style="font-weight: normal; color: #8d6e63;">(Optional)</span></label>
++          <textarea id="delivery-notes" name="deliveryNotes" placeholder="e.g., Leave on front porch, gate code #1234"></textarea>
++        </div>
++
++        <div class="checkbox-group">
++          <input type="checkbox" id="same-as-billing" name="sameAsBilling" checked>
++          <label for="same-as-billing" class="checkbox-label">Billing address is the same as shipping address</label>
++        </div>
++
++        <div class="checkbox-group">
++          <input type="checkbox" id="save-address" name="saveAddress">
++          <label for="save-address" class="checkbox-label">Save this shipping address for future orders</label>
++        </div>
++
++        <button type="submit" class="btn-submit">Save &amp; Deliver to this Address</button>
++
++        <div class="form-success-message" id="shipping-success-message">
++          ✓ Shipping address has been saved successfully!
++        </div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    document.getElementById('shipping-form').addEventListener('submit', function(event) {
++      event.preventDefault();
++      var messageEl = document.getElementById('shipping-success-message');
++      messageEl.style.display = 'block';
++      messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

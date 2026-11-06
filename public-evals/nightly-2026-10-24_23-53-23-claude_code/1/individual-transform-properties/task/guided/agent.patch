@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Featured promo badge */
++    .seasonal {
++      position: relative;
++    }
++
++    .target {
++      position: absolute;
++      top: 0;
++      right: 0;
++      /* Stable stacking context without will-change */
++      isolation: isolate;
++      z-index: 1;
++      display: grid;
++      place-items: center;
++      width: 90px;
++      height: 90px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      text-transform: uppercase;
++      line-height: 1.2;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
++      /* Individual transform properties compose independently, so the
++         hover scale never overrides the running rotate/translate animations */
++      scale: 1;
++      transition: scale 0.3s ease;
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation:
++          badge-spin 6s linear infinite,
++          badge-slide 3s ease-in-out infinite alternate;
++      }
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes badge-spin {
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes badge-slide {
++      from {
++        translate: -40px 0;
++      }
++
++      to {
++        translate: 0 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,9 +231,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
++      <div class="target">Featured<br>Pick</div>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

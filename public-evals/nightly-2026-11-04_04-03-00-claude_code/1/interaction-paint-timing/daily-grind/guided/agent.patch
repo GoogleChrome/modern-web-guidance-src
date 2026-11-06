@@ -1,0 +1,336 @@
+diff --git a/index.html b/index.html
+index 66c9173..a31488d 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/perf-monitor.js"></script>
+ </head>
+ 
+ <body>
+@@ -160,35 +161,35 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-perf="nav">Menu</a></li>
++      <li><a href="/locations" data-perf="nav">Locations</a></li>
++      <li><a href="/rewards" data-perf="nav">Rewards</a></li>
++      <li><a href="/account" data-perf="nav">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-perf="nav">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-perf="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-perf="seasonal-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/perf-monitor.js b/perf-monitor.js
+new file mode 100644
+index 0000000..37001ac
+--- /dev/null
++++ b/perf-monitor.js
+@@ -0,0 +1,273 @@
++/**
++ * Daily Grind – client-side interaction paint monitoring.
++ *
++ * Measures how long it takes from a user interaction until the resulting
++ * visual update is painted on screen, for:
++ *   - navigation bar links        (data-perf="nav")
++ *   - the hero "Order Now" button (data-perf="order-now")
++ *   - "Seasonal Favorites" cards  (data-perf="seasonal-card")
++ *   - client-side view switches   (soft navigations)
++ *
++ * Primary signals (Chrome/Edge 151+):
++ *   - `interaction-contentful-paint`: time from interaction start until the
++ *     largest contentful paint it caused, including async work (fetch, await,
++ *     setTimeout) that happens after the first frame.
++ *   - `soft-navigation`: client-side route changes caused by an interaction,
++ *     with FCP/LCP relative to the interaction start.
++ * Fallback (all browsers with Event Timing):
++ *   - `event` entries: time from interaction until the very next paint.
++ *
++ * Results are batched and delivered with fetchLater() (polyfilled where
++ * unsupported) when the user leaves the page. Add `?perf-debug` to the URL to
++ * also log each measurement to the console.
++ */
++
++const ENDPOINT = globalThis.DAILY_GRIND_PERF_ENDPOINT ?? '/analytics/interaction-paint';
++const DEBUG = new URLSearchParams(location.search).has('perf-debug');
++const MAX_RECORDS = 100;
++const TRACKED_SELECTOR = '[data-perf]';
++const INTERACTION_EVENTS = ['pointerdown', 'pointerup', 'click', 'keydown', 'keyup'];
++
++const supportedTypes = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++const supports = (type) => supportedTypes.includes(type);
++
++// ---------------------------------------------------------------------------
++// fetchLater() polyfill (sends on visibilitychange → hidden where unsupported)
++// ---------------------------------------------------------------------------
++globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++  let timeoutHandle;
++  let activated = false;
++
++  function sendNow() {
++    if (!(init.signal && init.signal.aborted)) {
++      if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++        fetch(url, Object.assign({}, init, { keepalive: true }));
++        activated = true;
++      } else {
++        activated = navigator.sendBeacon(url, init.body);
++      }
++    }
++    destroy();
++  }
++
++  function destroy() {
++    document.removeEventListener('visibilitychange', sendNow);
++    clearTimeout(timeoutHandle);
++  }
++
++  if (document.visibilityState === 'hidden') {
++    queueMicrotask(sendNow);
++  } else {
++    document.addEventListener('visibilitychange', sendNow);
++    if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++      timeoutHandle = setTimeout(sendNow, init.activateAfter);
++    }
++  }
++
++  if (init.signal) {
++    init.signal.addEventListener('abort', destroy);
++  }
++
++  return {
++    get activated() {
++      return activated;
++    },
++  };
++};
++
++// ---------------------------------------------------------------------------
++// Reporting
++// ---------------------------------------------------------------------------
++const session = {
++  id: crypto.randomUUID(),
++  page: location.pathname,
++  // Keyed so progressively larger paints for the same interaction replace
++  // earlier ones instead of adding duplicate records.
++  records: new Map(),
++};
++
++let beaconController = null;
++let queueScheduled = false;
++
++function record(key, data) {
++  session.records.set(key, data);
++  if (session.records.size > MAX_RECORDS) {
++    session.records.delete(session.records.keys().next().value);
++  }
++  if (DEBUG) console.debug('[perf]', data.metric, data.target, `${Math.round(data.duration)}ms`, data);
++  scheduleBeacon();
++}
++
++function scheduleBeacon() {
++  // Coalesce bursts of entries into a single re-queue.
++  if (queueScheduled) return;
++  queueScheduled = true;
++  queueMicrotask(() => {
++    queueScheduled = false;
++    beaconController?.abort();
++    beaconController = new AbortController();
++    try {
++      fetchLater(ENDPOINT, {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++        body: JSON.stringify({
++          sessionId: session.id,
++          page: session.page,
++          records: [...session.records.values()],
++        }),
++        signal: beaconController.signal,
++      });
++    } catch {
++      // Quota exceeded or invalid endpoint – drop silently, never break the page.
++    }
++  });
++}
++
++// ---------------------------------------------------------------------------
++// Attributing interactions to tracked UI targets
++// ---------------------------------------------------------------------------
++
++/** Human-readable label for a tracked element, e.g. "nav:Menu". */
++function describe(el) {
++  const kind = el.dataset.perf;
++  const name =
++    el.dataset.perfName ??
++    el.querySelector('h3')?.textContent ??
++    el.textContent;
++  return `${kind}:${name.trim().replace(/\s+/g, ' ')}`;
++}
++
++function trackedTarget(node) {
++  return node instanceof Element ? node.closest(TRACKED_SELECTOR) : null;
++}
++
++// interactionId → label (from Event Timing entries)
++const labelsById = new Map();
++// Recent input events on tracked targets, used when no Event Timing entry
++// exists (entries under the 16ms durationThreshold are never reported).
++const recentInputs = [];
++
++for (const type of INTERACTION_EVENTS) {
++  addEventListener(
++    type,
++    (event) => {
++      const el = trackedTarget(event.target);
++      if (!el) return;
++      recentInputs.push({ timeStamp: event.timeStamp, label: describe(el) });
++      if (recentInputs.length > 50) recentInputs.shift();
++    },
++    { capture: true, passive: true },
++  );
++}
++
++function labelFor(interactionId, startTime) {
++  const byId = labelsById.get(interactionId);
++  if (byId) return byId;
++  // An interaction's startTime equals the timeStamp of its first input event.
++  const match = recentInputs.find((input) => Math.abs(input.timeStamp - startTime) < 1);
++  return match?.label ?? null;
++}
++
++// ---------------------------------------------------------------------------
++// 1. Event Timing – interaction → next paint (all supporting browsers)
++// ---------------------------------------------------------------------------
++if (supports('event')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      if (!entry.interactionId) continue;
++      const el = trackedTarget(entry.target);
++      const label = el ? describe(el) : labelsById.get(entry.interactionId);
++      if (!label) continue;
++      labelsById.set(entry.interactionId, label);
++
++      const key = `next-paint:${entry.interactionId}`;
++      const prev = session.records.get(key);
++      if (prev && prev.duration >= entry.duration) continue;
++      record(key, {
++        metric: 'interaction-next-paint',
++        target: label,
++        interactionId: entry.interactionId,
++        event: entry.name,
++        startTime: entry.startTime,
++        duration: entry.duration,
++        inputDelay: entry.processingStart - entry.startTime,
++        processingTime: entry.processingEnd - entry.processingStart,
++        presentationDelay: entry.startTime + entry.duration - entry.processingEnd,
++      });
++    }
++  }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
++}
++
++// ---------------------------------------------------------------------------
++// 2. Interaction contentful paint – interaction → final visual update
++// ---------------------------------------------------------------------------
++if (supports('interaction-contentful-paint')) {
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      const label = labelFor(entry.interactionId, entry.startTime);
++      if (!label) continue;
++      // Entries are emitted progressively; the latest one for an interaction
++      // is its largest contentful paint so far.
++      const lcp = entry.largestContentfulPaint;
++      record(`contentful-paint:${entry.interactionId}`, {
++        metric: 'interaction-contentful-paint',
++        target: label,
++        interactionId: entry.interactionId,
++        startTime: entry.startTime,
++        duration: entry.duration, // presentationTime - startTime
++        element: lcp?.element ? selectorFor(lcp.element) : lcp?.id || null,
++        size: lcp?.size ?? null,
++        url: lcp?.url || null,
++      });
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++// ---------------------------------------------------------------------------
++// 3. Soft navigations – client-side view switches
++// ---------------------------------------------------------------------------
++if (supports('soft-navigation') && supports('interaction-contentful-paint')) {
++  let activeNav = null;
++
++  function recordView(lcpEntry) {
++    const lcp = lcpEntry?.largestContentfulPaint;
++    record(`view-switch:${activeNav.navigationId}`, {
++      metric: 'view-switch',
++      target: labelFor(activeNav.interactionId, activeNav.startTime) ?? 'other',
++      url: activeNav.name,
++      navigationId: activeNav.navigationId,
++      interactionId: activeNav.interactionId,
++      startTime: activeNav.startTime,
++      fcp: activeNav.duration, // presentationTime - startTime
++      duration: lcpEntry ? lcpEntry.duration : activeNav.duration, // LCP, else FCP
++      element: lcp?.element ? selectorFor(lcp.element) : lcp?.id || null,
++    });
++  }
++
++  new PerformanceObserver((list) => {
++    for (const nav of list.getEntries()) {
++      activeNav = nav;
++      // Seed with paints that happened before the URL changed.
++      recordView(nav.getLargestInteractionContentfulPaint());
++    }
++  }).observe({ type: 'soft-navigation', buffered: true });
++
++  new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // Match by interactionId, not navigationId, so pre-URL-change paints are
++      // included and later unrelated interactions on the new view are not.
++      if (activeNav && entry.interactionId === activeNav.interactionId) {
++        recordView(entry);
++      }
++    }
++  }).observe({ type: 'interaction-contentful-paint', buffered: true });
++}
++
++// ---------------------------------------------------------------------------
++// Helpers
++// ---------------------------------------------------------------------------
++function selectorFor(el) {
++  if (el.id) return `#${el.id}`;
++  const cls = [...el.classList].map((c) => `.${c}`).join('');
++  return `${el.tagName.toLowerCase()}${cls}`;
++}

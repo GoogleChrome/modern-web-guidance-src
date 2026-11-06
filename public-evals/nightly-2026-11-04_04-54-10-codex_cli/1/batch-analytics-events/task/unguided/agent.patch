@@ -1,0 +1,25 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,20 @@
++# Daily Grind
++
++The homepage loads `analytics.js` with `defer`. It records a `page_view` and
++delegated `click` events, combining them into a JSON POST to `/api/analytics`
++after 500 ms without activity (at most 5 seconds during continuous activity).
++Each request contains up to 50 events; the pending queue holds up to 100.
++
++The deployment must supply `/api/analytics`; this static project does not
++include a collector. Change `ENDPOINT` in `analytics.js` to use another collector.
++The request body is `{ "events": [...] }`. Each event has `type`, ISO `timestamp`,
++and page `path`. Clicks also include the element `tag` and, for web links, a
++`destination` pathname. Query strings, fragments, element text, and form values
++are excluded. Fetch requests omit credentials.
++
++Pending events use `sendBeacon` when the document becomes hidden or on
++`pagehide`, with a keepalive fetch fallback. Delivery is best effort: failed
++requests are dropped without retries, and events beyond the queue limit are
++dropped. Tracking does not delay or cancel navigation.
++
++Run the isolated analytics checks with `node --test analytics.test.cjs`.

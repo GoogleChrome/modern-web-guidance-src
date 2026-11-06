@@ -1,0 +1,26 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,21 @@
++# Daily Grind analytics
++
++The homepage loads `analytics.js` as a deferred script. It records one `page_view`
++and delegated `click` events, including timestamps, page paths, and element tags
++and IDs. Link clicks also include the destination path. Query strings, fragments,
++form values, and visible text are excluded.
++
++Configure the `ENDPOINT` constant in `analytics.js` for your collector (default:
++`/api/analytics`). The hosting backend must implement this endpoint; the static
++site does not include a collector. It receives JSON POST bodies of the form
++`{ "events": [{ "type": "page_view", "timestamp": 0, "path": "/" }] }`.
++
++Each event replaces the pending deferred request with the complete batch and
++restarts a 10-second quiet window. Native `fetchLater()` handles early navigation;
++unsupported browsers use a timer and flush when the page becomes hidden with a
++low-priority keepalive fetch. Native scheduling errors also use this fallback.
++Batches flush early at 100 events or before exceeding 48 KiB. Delivery is best
++effort, without retries, persistent storage, or blocking navigation.
++
++Run the isolated checks with `node --test analytics.test.cjs`. They use simulated
++DOM events and timers, without a browser or server.

@@ -1,0 +1,18 @@
+diff --git a/REGISTRATION.md b/REGISTRATION.md
+new file mode 100644
+--- a/REGISTRATION.md
++++ b/REGISTRATION.md
+@@ -0,0 +1,13 @@
++# Rewards registration integration
++
++This project is served as static files and has no membership backend. The form supports three steps and local validation. It deliberately reports that registration is unavailable rather than claiming to create an account or sending credentials to a static host. Fields are disabled if JavaScript is unavailable. User details are kept only in the page, never in cookies, browser storage, analytics, or console logs.
++
++To connect production enrollment:
++
++1. Serve the page over HTTPS. Set the form's `data-endpoint` to a same-origin registration endpoint, and inject a session-bound token into `<meta name="csrf-token" content="SERVER_GENERATED_TOKEN">`. Do not hardcode a token in this repository or deploy this page with a shared cached token.
++2. Accept POST multipart form data with `name`, `email`, `password`, optional `favorite` and `marketing`, `terms=accepted`, and the empty `website` honeypot. Verify the `X-CSRF-Token` against the session and validate Origin server-side before processing. Use Secure, HttpOnly, SameSite session cookies.
++3. Independently validate all fields, password length (15–128 characters), explicit consent, allowed coffee preferences, and the honeypot. Apply rate limits and abuse controls. Enforce unique accounts, handle retries safely, and return generic responses that do not reveal membership status. Hash passwords using a suitable password-hashing algorithm such as Argon2id; never log passwords or request bodies.
++4. Send an expiring, single-use email verification link. Return JSON `{"status":"verification_required"}` on acceptance. The frontend treats all other success payloads and HTTP errors as unconfirmed registration, preserves the entered values, and offers a retry. A timeout may follow a successful server write, so the backend must handle retries safely.
++5. Set `Cache-Control: no-store` for account responses. Configure a Content Security Policy, HSTS, Referrer-Policy, and other security headers at the hosting layer. Supply the actual rewards terms and privacy policy at the linked routes before launch.
++
++Client validation is a usability feature, not a security boundary. There is no production enrollment implementation in this static repository.

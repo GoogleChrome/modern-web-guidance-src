@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 1bacf96..18f2625 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,33 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++       * Foreground colors derived from the theme backgrounds.
++       * Change --primary or --secondary and these resolve to whichever of
++       * black / white has the higher contrast against the new background.
++       * Static values below are only a last resort for very old browsers.
++       */
++      --primary-contrast: white;
++      --secondary-contrast: black;
++    }
++
++    /* Fallback: relative color syntax picks black or white by OKLCH lightness. */
++    @supports (color: oklch(from red max(0, sign(0.5 - l)) 0 h)) {
++      :root {
++        /* 0.623 is the highest lightness threshold that still passes WCAG AA. */
++        --contrast-threshold: 0.623;
++        --primary-contrast: oklch(from var(--primary) max(0, sign(var(--contrast-threshold) - l)) 0 h);
++        --secondary-contrast: oklch(from var(--secondary) max(0, sign(var(--contrast-threshold) - l)) 0 h);
++      }
++    }
++
++    /* Preferred: let the browser compute the contrasting color. */
++    @supports (color: contrast-color(red)) {
++      :root {
++        --primary-contrast: contrast-color(var(--primary));
++        --secondary-contrast: contrast-color(var(--secondary));
++      }
+     }
+ 
+     * {
+@@ -30,7 +57,7 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+-      color: white;
++      color: var(--primary-contrast);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +83,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--primary-contrast);
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: opacity 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    /* Hover keeps the contrast-safe color; indicate state without changing hue. */
++    nav a:hover,
++    nav a:focus-visible {
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++      opacity: 0.85;
+     }
+ 
+     .logout-link {
+@@ -123,19 +154,23 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: var(--primary-contrast);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: box-shadow 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* Darken on hover with an overlay so the text color never has to change. */
++    .btn:hover,
++    .btn:focus-visible {
++      box-shadow: inset 0 0 0 100vmax rgb(0 0 0 / 0.15);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--secondary-contrast);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,10 +182,16 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--secondary-contrast);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++    }
+   </style>
+ </head>
+ 

@@ -1,0 +1,296 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,292 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Northwind — Ship faster with confidence</title>
++  <meta name="description" content="Northwind helps product teams ship, measure, and iterate without the guesswork.">
++
++  <!--
++    Experiment SDK (A/B testing)
++    - `async`: fetches without blocking HTML parsing, so the DOM is built in parallel.
++    - `blocking="render"`: holds first paint until the script has executed, so the
++      user never sees the control content before the variant is applied.
++    Only this script blocks rendering; analytics/tracking should NOT use it.
++  -->
++  <script src="https://cdn.example.com/experiment-sdk.js" async blocking="render"></script>
++
++  <!--
++    Fallback for browsers that ignore `blocking="render"` (e.g. Firefox).
++    Feature-detected so supporting browsers skip it entirely and keep progressive
++    rendering. The page is revealed when the SDK signals readiness, when the SDK
++    script finishes/fails to load, or after a hard timeout — whichever is first.
++  -->
++  <script>
++    (function () {
++      if (Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) return;
++
++      var root = document.documentElement;
++      root.classList.add('ab-loading');
++
++      var revealed = false;
++      function reveal() {
++        if (revealed) return;
++        revealed = true;
++        root.classList.remove('ab-loading');
++        clearTimeout(timer);
++      }
++
++      // Hard cap so a slow/unavailable CDN never leaves the page blank.
++      var timer = setTimeout(reveal, 3000);
++
++      // Hook for the SDK: it can call window.__abReveal() or dispatch 'experiment:ready'.
++      window.__abReveal = reveal;
++      window.addEventListener('experiment:ready', reveal, { once: true });
++
++      // If the SDK script errors or finishes loading without signalling, reveal anyway.
++      var sdk = document.querySelector('script[src*="experiment-sdk.js"]');
++      if (sdk) {
++        sdk.addEventListener('error', reveal, { once: true });
++        sdk.addEventListener('load', function () {
++          // Give a synchronous SDK one task to apply its DOM changes before reveal.
++          setTimeout(reveal, 0);
++        }, { once: true });
++      }
++    })();
++  </script>
++
++  <style>
++    /* Anti-flicker fallback state (only used when blocking="render" is unsupported). */
++    .ab-loading { opacity: 0 !important; }
++    .ab-loading body { pointer-events: none; }
++
++    :root {
++      color-scheme: light dark;
++      --bg: light-dark(#fbfbfd, #0d0f14);
++      --fg: light-dark(#111318, #f2f3f7);
++      --muted: light-dark(#5a6070, #a3a9b8);
++      --accent: light-dark(#2b5cff, #6b8cff);
++      --accent-fg: #ffffff;
++      --surface: light-dark(#ffffff, #171a22);
++      --border: light-dark(#e3e6ee, #2a2f3b);
++    }
++
++    *, *::before, *::after { box-sizing: border-box; }
++
++    html, body { margin: 0; }
++
++    body {
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      line-height: 1.5;
++      background: var(--bg);
++      color: var(--fg);
++      -webkit-font-smoothing: antialiased;
++    }
++
++    .skip-link {
++      position: absolute;
++      left: 1rem;
++      top: -3rem;
++      padding: 0.5rem 0.75rem;
++      background: var(--surface);
++      color: var(--fg);
++      border-radius: 0.5rem;
++      border: 1px solid var(--border);
++    }
++    .skip-link:focus { top: 1rem; }
++
++    header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      padding: 1rem clamp(1rem, 4vw, 3rem);
++      max-width: 72rem;
++      margin-inline: auto;
++    }
++
++    .brand {
++      font-weight: 700;
++      font-size: 1.125rem;
++      letter-spacing: -0.01em;
++      text-decoration: none;
++      color: inherit;
++    }
++
++    nav a {
++      color: var(--muted);
++      text-decoration: none;
++      margin-inline-start: 1.25rem;
++      font-size: 0.95rem;
++    }
++    nav a:hover, nav a:focus-visible { color: var(--fg); }
++
++    .hero {
++      max-width: 72rem;
++      margin-inline: auto;
++      padding: clamp(2rem, 6vw, 5rem) clamp(1rem, 4vw, 3rem);
++      display: grid;
++      gap: 2.5rem;
++      align-items: center;
++      grid-template-columns: 1fr;
++    }
++    @media (min-width: 56rem) {
++      .hero { grid-template-columns: 1.1fr 1fr; }
++    }
++
++    .eyebrow {
++      display: inline-block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 0.06em;
++      text-transform: uppercase;
++      color: var(--accent);
++      margin-block-end: 0.75rem;
++    }
++
++    h1 {
++      font-size: clamp(2.25rem, 5vw + 1rem, 4rem);
++      line-height: 1.05;
++      letter-spacing: -0.03em;
++      margin: 0 0 1rem;
++      text-wrap: balance;
++    }
++
++    .lede {
++      font-size: clamp(1.05rem, 1vw + 0.8rem, 1.25rem);
++      color: var(--muted);
++      margin: 0 0 2rem;
++      max-width: 36rem;
++      text-wrap: pretty;
++    }
++
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 1rem;
++      align-items: center;
++    }
++
++    .cta {
++      appearance: none;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      font-size: 1.05rem;
++      padding: 0.9rem 1.6rem;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--accent-fg);
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      transition: transform 120ms ease, filter 120ms ease;
++    }
++    .cta:hover { filter: brightness(1.08); }
++    .cta:active { transform: translateY(1px); }
++    .cta:focus-visible { outline: 3px solid color-mix(in oklab, var(--accent) 50%, transparent); outline-offset: 3px; }
++
++    .secondary {
++      color: var(--muted);
++      text-decoration: none;
++      font-weight: 500;
++    }
++    .secondary:hover, .secondary:focus-visible { color: var(--fg); text-decoration: underline; }
++
++    .fineprint {
++      margin: 1rem 0 0;
++      font-size: 0.85rem;
++      color: var(--muted);
++    }
++
++    .hero-media {
++      border-radius: 1.25rem;
++      overflow: hidden;
++      border: 1px solid var(--border);
++      background: var(--surface);
++      aspect-ratio: 4 / 3;
++    }
++    .hero-media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    /*
++      Variant hooks. The experiment SDK can set data-variant on <html>
++      (e.g. document.documentElement.dataset.variant = 'b') and these rules
++      apply with no further DOM manipulation. The SDK may also rewrite text
++      directly; both approaches are covered by the render-blocking load above.
++    */
++    [data-variant="b"] .cta { background: light-dark(#0f9d58, #2fbf71); }
++    [data-variant="b"] .cta-text-control { display: none; }
++    [data-variant="b"] .cta-text-b { display: inline; }
++    .cta-text-b { display: none; }
++
++    footer {
++      max-width: 72rem;
++      margin: 3rem auto 0;
++      padding: 1.5rem clamp(1rem, 4vw, 3rem);
++      border-top: 1px solid var(--border);
++      color: var(--muted);
++      font-size: 0.875rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <a class="skip-link" href="#main">Skip to content</a>
++
++  <header>
++    <a class="brand" href="/">Northwind</a>
++    <nav aria-label="Primary">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#docs">Docs</a>
++    </nav>
++  </header>
++
++  <main id="main">
++    <section class="hero" aria-labelledby="hero-title">
++      <div>
++        <span class="eyebrow">Now in public beta</span>
++        <h1 id="hero-title" data-experiment="hero-title">Ship faster with confidence</h1>
++        <p class="lede" data-experiment="hero-lede">
++          Northwind gives product teams one place to plan, release, and measure—so
++          every launch is backed by data instead of guesswork.
++        </p>
++        <div class="actions">
++          <a class="cta" href="#signup" data-experiment="hero-cta">
++            <span class="cta-text-control">Start your free trial</span>
++            <span class="cta-text-b">Get started — it's free</span>
++            <span aria-hidden="true">→</span>
++          </a>
++          <a class="secondary" href="#demo">Watch a 2‑minute demo</a>
++        </div>
++        <p class="fineprint">No credit card required. Cancel anytime.</p>
++      </div>
++
++      <figure class="hero-media" style="margin:0">
++        <img
++          src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
++          width="1200"
++          height="900"
++          alt="A product team collaborating around a laptop in a bright office"
++          fetchpriority="high"
++          decoding="async"
++        >
++      </figure>
++    </section>
++  </main>
++
++  <footer>
++    © 2026 Northwind, Inc.
++  </footer>
++</body>
++</html>

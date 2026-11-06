@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+index 66c9173..9011c88 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,98 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Brand palette — coffee brown at the core */
++      --coffee-900: #2b1d17;
++      --coffee-800: #3e2723;
++      --coffee-700: #4e342e;
++      --coffee-300: #c79a7a;
++      --coffee-200: #e0bfa5;
++      --caramel: #ffab40;
++      --caramel-hover: #ffbd66;
++
++      /* Light scheme tokens */
++      --bg-light: #faf6f2;
++      --surface-light: #ffffff;
++      --text-light: #2b1d17;
++      --muted-light: #6d5a50;
++      --border-light: #e4d7cd;
++      --heading-light: var(--coffee-700);
++      --nav-bg-light: var(--coffee-700);
++      --nav-text-light: #ffffff;
++      --btn-bg-light: var(--coffee-700);
++      --btn-bg-hover-light: var(--coffee-800);
++      --btn-text-light: #ffffff;
++      --footer-bg-light: #efe6df;
++      --shadow-light: rgb(62 39 35 / 0.12);
++      --badge-new-bg-light: #ffe0b2;
++      --badge-new-text-light: #6b3e00;
++      --badge-sold-bg-light: #ece4df;
++      --badge-sold-text-light: #5d4f48;
++
++      /* Dark scheme tokens */
++      --bg-dark: #17110e;
++      --surface-dark: #241a16;
++      --text-dark: #f3ebe5;
++      --muted-dark: #bfaea3;
++      --border-dark: #3a2c25;
++      --heading-dark: var(--coffee-200);
++      --nav-bg-dark: #2a1d18;
++      --nav-text-dark: #f3ebe5;
++      --btn-bg-dark: var(--coffee-300);
++      --btn-bg-hover-dark: var(--coffee-200);
++      --btn-text-dark: #1c120e;
++      --footer-bg-dark: #1f1612;
++      --shadow-dark: rgb(0 0 0 / 0.45);
++      --badge-new-bg-dark: #5a3a12;
++      --badge-new-text-dark: #ffd59a;
++      --badge-sold-bg-dark: #3a2f2a;
++      --badge-sold-text-dark: #d8cbc3;
++
++      /* Active semantic tokens (light by default) */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --text: var(--text-light);
++      --muted: var(--muted-light);
++      --border: var(--border-light);
++      --heading: var(--heading-light);
++      --nav-bg: var(--nav-bg-light);
++      --nav-text: var(--nav-text-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text: var(--btn-text-light);
++      --footer-bg: var(--footer-bg-light);
++      --shadow: var(--shadow-light);
++      --badge-new-bg: var(--badge-new-bg-light);
++      --badge-new-text: var(--badge-new-text-light);
++      --badge-sold-bg: var(--badge-sold-bg-light);
++      --badge-sold-text: var(--badge-sold-text-light);
++
++      color-scheme: light dark;
++      accent-color: var(--btn-bg);
++
++      @media (prefers-color-scheme: dark) {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --text: var(--text-dark);
++        --muted: var(--muted-dark);
++        --border: var(--border-dark);
++        --heading: var(--heading-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --nav-text: var(--nav-text-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --footer-bg: var(--footer-bg-dark);
++        --shadow: var(--shadow-dark);
++        --badge-new-bg: var(--badge-new-bg-dark);
++        --badge-new-text: var(--badge-new-text-dark);
++        --badge-sold-bg: var(--badge-sold-bg-dark);
++        --badge-sold-text: var(--badge-sold-text-dark);
++      }
+     }
+ 
+     * {
+@@ -24,13 +108,19 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--caramel);
++      outline-offset: 3px;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,34 +146,35 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--caramel);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--caramel);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section — always a dark photo overlay, so colors are fixed */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgb(23 17 14 / 0.55), rgb(23 17 14 / 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--coffee-900);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #fff;
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -93,6 +184,16 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: var(--caramel);
++      color: var(--coffee-900);
++      font-weight: 600;
++    }
++
++    .hero .btn:hover {
++      background: var(--caramel-hover);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +201,10 @@
+       padding: 0 20px;
+     }
+ 
++    h2 {
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,22 +213,56 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .card p {
++      color: var(--muted);
++    }
++
++    .card.is-sold-out h3,
++    .card.is-sold-out p {
++      opacity: 0.75;
++    }
++
++    /* Status badges — text label carries the meaning, color reinforces it */
++    .badge {
++      display: inline-block;
++      margin-bottom: 8px;
++      padding: 2px 10px;
++      border: 1px solid transparent; /* visible in forced-colors mode */
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.05em;
++      text-transform: uppercase;
++    }
++
++    .badge-new {
++      background: var(--badge-new-bg);
++      color: var(--badge-new-text);
++    }
++
++    .badge-sold-out {
++      background: var(--badge-sold-bg);
++      color: var(--badge-sold-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1px solid transparent;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +271,13 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--muted);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +293,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -179,6 +324,7 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -188,7 +334,8 @@
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card is-sold-out">
++          <span class="badge badge-sold-out">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

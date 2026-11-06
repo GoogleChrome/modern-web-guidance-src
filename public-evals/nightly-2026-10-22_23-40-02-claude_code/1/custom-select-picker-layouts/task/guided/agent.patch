@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,133 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast picker */
++    .roast-field {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++      margin-top: 20px;
++    }
++
++    .roast-field label {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++    }
++
++    .roast-picker,
++    .roast-picker::picker(select) {
++      appearance: base-select;
++    }
++
++    .roast-picker {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      width: 220px;
++      padding: 10px 14px;
++      background: white;
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-picker::picker(select) {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 8px;
++      margin-block: 6px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
++    }
++
++    .roast-picker:open::picker(select) {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++      width: max(anchor-size(width), 340px);
++    }
++
++    .roast-picker option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 4px;
++      padding: 14px 8px;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++      text-align: center;
++    }
++
++    .roast-picker option:hover,
++    .roast-picker option:focus-visible {
++      background: var(--light);
++    }
++
++    .roast-picker option::checkmark {
++      display: none;
++    }
++
++    .roast-picker option:checked {
++      position: relative;
++      border-color: var(--primary);
++      background: #fff3e0;
++      font-weight: 700;
++    }
++
++    .roast-picker option:checked::after {
++      content: "✓";
++      position: absolute;
++      inset-block-start: -8px;
++      inset-inline-end: -8px;
++      display: grid;
++      place-items: center;
++      width: 20px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 12px;
++    }
++
++    .roast-picker option svg {
++      width: 40px;
++      height: 40px;
++    }
++
++    .roast-picker option .roast-desc {
++      font-size: 0.75rem;
++      font-weight: 400;
++      opacity: 0.75;
++    }
++
++    .roast-picker selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .roast-picker selectedcontent svg {
++      width: 22px;
++      height: 22px;
++    }
++
++    .roast-picker selectedcontent .roast-desc {
++      display: none;
++    }
++
++    .hero .btn {
++      margin-top: 15px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,8 +295,29 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-field">
++      <label for="roast">Choose your roast</label>
++      <select id="roast" name="roast" class="roast-picker">
++        <button><selectedcontent></selectedcontent></button>
++        <option value="light">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#a1887f"/><path d="M8 4c5 4-3 11 2 16" transform="rotate(30 12 12) translate(2 0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round"/></svg>
++          <span class="roast-title">Light</span>
++          <span class="roast-desc">Bright &amp; fruity</span>
++        </option>
++        <option value="medium">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#6d4c41"/><path d="M8 4c5 4-3 11 2 16" transform="rotate(30 12 12) translate(2 0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round"/></svg>
++          <span class="roast-title">Medium</span>
++          <span class="roast-desc">Smooth &amp; balanced</span>
++        </option>
++        <option value="dark">
++          <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7" ry="10" transform="rotate(30 12 12)" fill="#3e2723"/><path d="M8 4c5 4-3 11 2 16" transform="rotate(30 12 12) translate(2 0)" fill="none" stroke="#fafafa" stroke-width="1.5" stroke-linecap="round"/></svg>
++          <span class="roast-title">Dark</span>
++          <span class="roast-desc">Bold &amp; smoky</span>
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +352,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    // Native select only moves linearly; make Left/Right work in the side-by-side grid.
++    document.querySelector('.roast-picker').addEventListener('keydown', (e) => {
++      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
++      const select = e.currentTarget;
++      if (!select.matches(':open')) return;
++      e.preventDefault();
++      const rtl = getComputedStyle(select).direction === 'rtl';
++      const step = (e.key === 'ArrowRight') !== rtl ? 1 : -1;
++      const options = [...select.options];
++      const next = options[options.indexOf(document.activeElement) + step];
++      next?.focus();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

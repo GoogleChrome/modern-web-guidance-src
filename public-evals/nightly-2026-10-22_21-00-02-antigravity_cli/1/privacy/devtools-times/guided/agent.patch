@@ -1,0 +1,1045 @@
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..f81a866 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -63,13 +63,13 @@ const baseUrl = import.meta.env.BASE_URL;
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
+             <ul class="space-y-2 mb-4">
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}signup`} data-skip-tracking="true" class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                         Subscribe
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}signin`} data-skip-tracking="true" class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+@@ -78,7 +78,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+-                <li><a href="#" class="hover:underline">Email Newsletters</a></li>
++                <li><a href={`${baseUrl}legal/privacy#preferences`} data-skip-tracking="true" class="hover:underline">Data &amp; Privacy Controls</a></li>
+             </ul>
+         </div>
+ 
+@@ -89,16 +89,16 @@ const baseUrl = import.meta.env.BASE_URL;
+         <!-- Copyright and legal links -->
+         <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+             <span>© 2025 The DevTools Times Company</span>
+-            <a href="#" class="hover:underline">Contact Us</a>
+-            <a href="#" class="hover:underline">Work with us</a>
+-            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+-            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+-            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href={`${baseUrl}legal/imprint`} class="hover:underline">Contact Us</a>
++            <a href={`${baseUrl}legal/imprint`} class="hover:underline">Work with us</a>
++            <a href={`${baseUrl}legal/privacy`} class="hover:underline">Privacy Policy</a>
++            <a href={`${baseUrl}legal/terms`} class="hover:underline">Terms of Service</a>
++            <a href={`${baseUrl}legal/imprint`} class="hover:underline">Imprint</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href={`${baseUrl}legal/privacy#preferences`} data-skip-tracking="true" class="hover:underline">Manage Privacy Preferences &amp; Clear Site Data</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..bfd46bc 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,16 +1,41 @@
+ import React, { useState } from 'react';
+ 
++const ERROR_MESSAGES: Record<string, string> = {
++  APP_ERR_2001: 'Invalid username or password. Please verify your credentials and try again.',
++  APP_ERR_2002: 'Account not found or temporarily locked. Please check your username.',
++};
++
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
++  const [usernameInvalid, setUsernameInvalid] = useState(false);
++  const [passwordInvalid, setPasswordInvalid] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [clearingData, setClearingData] = useState(false);
++
++  const syncAriaInvalid = (
++    input: HTMLInputElement,
++    setInvalid: React.Dispatch<React.SetStateAction<boolean>>
++  ) => {
++    const isUserInvalid = input.matches(':user-invalid') || !input.validity.valid;
++    setInvalid(isUserInvalid);
++  };
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    const form = e.currentTarget;
++    if (!form.checkValidity()) {
++      setUsernameInvalid(username.trim().length === 0);
++      setPasswordInvalid(password.length === 0);
++      return;
++    }
++
+     setLoading(true);
+ 
+     try {
+@@ -19,81 +44,259 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        referrerPolicy: 'no-referrer',
++        credentials: 'omit',
++        body: JSON.stringify({ username: username.trim(), password }),
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const friendlyMessage =
++          (data.error && ERROR_MESSAGES[data.error]) ||
++          data.message ||
++          `Login failed: ${data.error || 'Invalid credentials'}`;
++        setError(friendlyMessage);
+       } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Privacy by design: Never store sensitive tokens or PII in localStorage,
++        // as it is accessible by any embedded script.
++        setPassword('');
++        setSuccess(
++          'Signed in successfully! For your security, session tokens are never stored in browser localStorage.'
++        );
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      setError('An unexpected network error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleFedCMSignIn = async () => {
++    setError(null);
++    setSuccess(null);
++    if (typeof window === 'undefined' || !('IdentityCredential' in window) || !navigator.credentials) {
++      setError(
++        'Federated Credential Management (FedCM) is not supported or configured in this browser environment. Please use standard sign-in.'
++      );
++      return;
++    }
++    try {
++      setLoading(true);
++      const credential = await navigator.credentials.get({
++        // @ts-expect-error FedCM identity option
++        identity: {
++          providers: [
++            {
++              configURL: 'https://accounts.example.com/fedcm.json',
++              clientId: 'devtools-times-web',
++            },
++          ],
++        },
++      });
++      if (credential) {
++        setSuccess('Signed in with Federated Credential Management (FedCM).');
++      }
++    } catch {
++      setError('FedCM sign-in was cancelled or no federated provider is active.');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  const handleClearSiteData = async () => {
++    setClearingData(true);
++    setError(null);
++    try {
++      await fetch('/api/logout', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++      });
++      setUsername('');
++      setPassword('');
++      setSuccess(
++        'All local session data, cookies, and storage for The DevTools Times have been cleared via Clear-Site-Data.'
++      );
++    } catch {
++      setError('Could not clear site data. Please try again.');
++    } finally {
++      setClearingData(false);
++    }
++  };
++
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++    <div className="max-w-lg mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h1 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign In</h1>
++      <p className="text-xs text-center text-gray-600 mb-6">
++        Reading articles and saving a local reading list does not require an account. Sign in only if you wish to sync subscriber access.
++      </p>
++
++      <aside
++        aria-label="Privacy and data minimization notice"
++        className="mb-6 p-3.5 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 space-y-1"
++      >
++        <p className="font-semibold text-gray-900">Privacy by Design &amp; Data Minimization</p>
++        <p>
++          Third-party analytics and advertising scripts are strictly disabled on this authentication page. We only request the minimum credentials required to verify your account and never store authentication tokens or personal data in <code>localStorage</code>.
++        </p>
++        <p>
++          Read our{' '}
++          <a href="/legal/privacy" className="underline font-medium text-gray-900 hover:text-blue-700">
++            Privacy Policy
++          </a>{' '}
++          or{' '}
++          <a href="/signup" className="underline font-medium text-gray-900 hover:text-blue-700">
++            create a minimal account
++          </a>
++          .
++        </p>
++      </aside>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          id="signin-form-error"
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          id="signin-form-success"
++          className="mb-4 p-3 text-sm text-green-800 bg-green-100 border border-green-200 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++          <label htmlFor="username" className="block text-sm font-medium text-gray-800 mb-1">
++            Username <span className="text-gray-500 font-normal">(required)</span>
+           </label>
++          <aside id="signin-username-why" className="text-xs text-gray-600 mb-1.5">
++            <strong>Why we ask:</strong> Used solely to identify your account during authentication. Never shared with third parties or used for advertising profiles.
++          </aside>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="off"
++            spellCheck={false}
+             value={username}
+-            onChange={(e) => setUsername(e.target.value)}
++            onChange={(e) => {
++              setUsername(e.target.value);
++              if (usernameInvalid) setUsernameInvalid(false);
++            }}
++            onBlur={(e) => syncAriaInvalid(e.currentTarget, setUsernameInvalid)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-required="true"
++            aria-invalid={usernameInvalid ? 'true' : 'false'}
++            aria-describedby={usernameInvalid ? 'signin-username-why signin-username-error' : 'signin-username-why'}
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&:user-invalid]:border-red-600 [&:user-invalid]:bg-red-50/30"
+           />
++          {usernameInvalid && (
++            <p id="signin-username-error" className="mt-1 text-xs text-red-700" role="alert">
++              Please enter your account username.
++            </p>
++          )}
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++          <label htmlFor="current-password" className="block text-sm font-medium text-gray-800 mb-1">
++            Password <span className="text-gray-500 font-normal">(required)</span>
+           </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
++          <aside id="signin-password-why" className="text-xs text-gray-600 mb-1.5">
++            <strong>Why we ask:</strong> Verifies account ownership over an encrypted HTTPS request with referrer stripping enabled.
++          </aside>
++          <div className="relative flex items-center">
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="current-password"
++              name="password"
++              autoComplete="current-password"
++              value={password}
++              onChange={(e) => {
++                setPassword(e.target.value);
++                if (passwordInvalid) setPasswordInvalid(false);
++              }}
++              onBlur={(e) => syncAriaInvalid(e.currentTarget, setPasswordInvalid)}
++              required
++              aria-required="true"
++              aria-invalid={passwordInvalid ? 'true' : 'false'}
++              aria-describedby={
++                passwordInvalid
++                  ? 'signin-password-why password-toggle-constraint signin-password-error'
++                  : 'signin-password-why password-toggle-constraint'
++              }
++              className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&:user-invalid]:border-red-600 [&:user-invalid]:bg-red-50/30"
++            />
++            <button
++              id="toggle-password"
++              type="button"
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="password-toggle-constraint"
++              data-skip-tracking="true"
++              onClick={() => setShowPassword((prev) => !prev)}
++              className="absolute right-2 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++              {showPassword ? 'Hide' : 'Show'}
++            </button>
++          </div>
++          <p id="password-toggle-constraint" className="text-xs text-gray-500 mt-1">
++            Note: Showing your password will display it in plain text on your screen.
++          </p>
++          {passwordInvalid && (
++            <p id="signin-password-error" className="mt-1 text-xs text-red-700" role="alert">
++              Please enter your password.
++            </p>
++          )}
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          data-skip-tracking="true"
++          className={`w-full py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <div className="mt-6 pt-5 border-t border-gray-200 space-y-3">
++        <button
++          type="button"
++          onClick={handleFedCMSignIn}
++          disabled={loading}
++          data-skip-tracking="true"
++          className="w-full py-2 px-4 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
++        >
++          Sign in with Federated Credential Management (FedCM)
++        </button>
++
++        <div className="flex items-center justify-between text-xs text-gray-600 pt-2">
++          <span>Want to remove active session &amp; browser data?</span>
++          <button
++            type="button"
++            onClick={handleClearSiteData}
++            disabled={clearingData}
++            data-skip-tracking="true"
++            className="underline font-medium text-red-700 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
++          >
++            {clearingData ? 'Clearing...' : 'Sign Out & Clear Site Data'}
++          </button>
++        </div>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..144367f 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,16 +1,43 @@
+ import React, { useState } from 'react';
+ 
++const ERROR_MESSAGES: Record<string, string> = {
++  APP_ERR_1001: 'This username is already taken. Please choose a different username.',
++  APP_ERR_1002: 'Password does not meet security requirements (minimum 8 characters and at least one number).',
++};
++
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
++  const [usernameInvalid, setUsernameInvalid] = useState(false);
++  const [passwordInvalid, setPasswordInvalid] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [clearingData, setClearingData] = useState(false);
++
++  const isPasswordRuleSatisfied = password.length >= 8 && /\d/.test(password);
++
++  const syncAriaInvalid = (
++    input: HTMLInputElement,
++    setInvalid: React.Dispatch<React.SetStateAction<boolean>>
++  ) => {
++    const isUserInvalid = input.matches(':user-invalid') || !input.validity.valid;
++    setInvalid(isUserInvalid);
++  };
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setError(null);
+     setSuccess(null);
++
++    const form = e.currentTarget;
++    if (!form.checkValidity() || !isPasswordRuleSatisfied) {
++      setUsernameInvalid(username.trim().length === 0);
++      setPasswordInvalid(!isPasswordRuleSatisfied);
++      return;
++    }
++
+     setLoading(true);
+ 
+     try {
+@@ -19,86 +46,219 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        referrerPolicy: 'no-referrer',
++        credentials: 'omit',
++        body: JSON.stringify({ username: username.trim(), password }),
+       });
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const friendlyMessage =
++          (data.error && ERROR_MESSAGES[data.error]) ||
++          data.message ||
++          `Registration failed: ${data.error || 'Unable to register'}`;
++        setError(friendlyMessage);
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        setSuccess('Account registered with minimal data! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setUsernameInvalid(false);
++        setPasswordInvalid(false);
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      setError('An unexpected network error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleClearSiteData = async () => {
++    setClearingData(true);
++    setError(null);
++    try {
++      await fetch('/api/logout', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++      });
++      setUsername('');
++      setPassword('');
++      setSuccess(
++        'All local session data, cookies, and storage for The DevTools Times have been cleared via Clear-Site-Data.'
++      );
++    } catch {
++      setError('Could not clear site data. Please try again.');
++    } finally {
++      setClearingData(false);
++    }
++  };
++
+   return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++    <div className="max-w-lg mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h1 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign Up</h1>
++      <p className="text-xs text-center text-gray-600 mb-6">
++        No account is required to read articles or maintain a session reading list. Register only if you want cross-device subscriber access.
++      </p>
++
++      <aside
++        aria-label="Data minimization and privacy commitment"
++        className="mb-6 p-3.5 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 space-y-1"
++      >
++        <p className="font-semibold text-gray-900">Data Minimization &amp; User Transparency</p>
++        <p>
++          We practice strict data minimization: we do <strong>not</strong> ask for your real name, phone number, physical address, or demographic details. Third-party tracking scripts are disabled on this page.
++        </p>
++        <p>
++          Review our{' '}
++          <a href="/legal/privacy" className="underline font-medium text-gray-900 hover:text-blue-700">
++            Privacy Policy
++          </a>{' '}
++          or{' '}
++          <a href="/signin" className="underline font-medium text-gray-900 hover:text-blue-700">
++            sign in to an existing account
++          </a>
++          .
++        </p>
++      </aside>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          id="signup-form-error"
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          id="signup-form-success"
++          className="mb-4 p-3 text-sm text-green-800 bg-green-100 border border-green-200 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
++          <label htmlFor="username" className="block text-sm font-medium text-gray-800 mb-1">
++            Username <span className="text-gray-500 font-normal">(required)</span>
+           </label>
++          <aside id="signup-username-why" className="text-xs text-gray-600 mb-1.5">
++            <strong>Why we ask:</strong> A pseudonymous handle is the only identifier needed to recognize your account. You do not need to use your real name or email address.
++          </aside>
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="off"
++            spellCheck={false}
+             value={username}
+-            onChange={(e) => setUsername(e.target.value)}
++            onChange={(e) => {
++              setUsername(e.target.value);
++              if (usernameInvalid) setUsernameInvalid(false);
++            }}
++            onBlur={(e) => syncAriaInvalid(e.currentTarget, setUsernameInvalid)}
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-required="true"
++            aria-invalid={usernameInvalid ? 'true' : 'false'}
++            aria-describedby={usernameInvalid ? 'signup-username-why signup-username-error' : 'signup-username-why'}
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&:user-invalid]:border-red-600 [&:user-invalid]:bg-red-50/30"
+           />
++          {usernameInvalid && (
++            <p id="signup-username-error" className="mt-1 text-xs text-red-700" role="alert">
++              Please choose a username.
++            </p>
++          )}
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
++          <label htmlFor="new-password" className="block text-sm font-medium text-gray-800 mb-1">
++            Password <span className="text-gray-500 font-normal">(required)</span>
+           </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <aside id="signup-password-why" className="text-xs text-gray-600 mb-1.5">
++            <strong>Why we ask:</strong> Protects your account from unauthorized access. Your password is never stored in browser storage.
++          </aside>
++          <p id="password-constraints" className="text-xs text-gray-600 mb-1.5">
++            Must be at least 8 characters and contain at least one number.
++          </p>
++          <div className="relative flex items-center">
++            <input
++              type={showPassword ? 'text' : 'password'}
++              id="new-password"
++              name="password"
++              autoComplete="new-password"
++              minLength={8}
++              pattern=".*\d.*"
++              value={password}
++              onChange={(e) => {
++                setPassword(e.target.value);
++                if (passwordInvalid) setPasswordInvalid(false);
++              }}
++              onBlur={(e) => syncAriaInvalid(e.currentTarget, setPasswordInvalid)}
++              required
++              aria-required="true"
++              aria-invalid={passwordInvalid ? 'true' : 'false'}
++              aria-describedby={
++                passwordInvalid
++                  ? 'signup-password-why password-constraints password-toggle-constraint signup-password-error'
++                  : 'signup-password-why password-constraints password-toggle-constraint'
++              }
++              className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&:user-invalid]:border-red-600 [&:user-invalid]:bg-red-50/30"
++            />
++            <button
++              id="toggle-password"
++              type="button"
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="password-toggle-constraint"
++              data-skip-tracking="true"
++              onClick={() => setShowPassword((prev) => !prev)}
++              className="absolute right-2 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++              {showPassword ? 'Hide' : 'Show'}
++            </button>
++          </div>
++          <p id="password-toggle-constraint" className="text-xs text-gray-500 mt-1">
++            Note: Showing your password will display it in plain text on your screen.
+           </p>
++          {passwordInvalid && (
++            <p id="signup-password-error" className="mt-1 text-xs text-red-700" role="alert">
++              Password must be at least 8 characters long and include at least one number.
++            </p>
++          )}
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
+           data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          className={`w-full py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
++        <span>Exercise your right to erasure at any time:</span>
++        <button
++          type="button"
++          onClick={handleClearSiteData}
++          disabled={clearingData}
++          data-skip-tracking="true"
++          className="underline font-medium text-red-700 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
++        >
++          {clearingData ? 'Clearing...' : 'Clear All Site Data'}
++        </button>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..f558dc8 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,37 +8,53 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  disableThirdParty?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, disableThirdParty = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const pathname = Astro.url.pathname;
++
++// Privacy by design: Never load third-party scripts or ad slots on sensitive pages
++// such as authentication (/signin, /signup) or legal/privacy management routes.
++const isSensitiveRoute =
++  disableThirdParty ||
++  pathname.includes("/signin") ||
++  pathname.includes("/signup") ||
++  pathname.includes("/legal");
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    {/*
++      Privacy by design & data minimization:
++      - Unaudited third-party scripts (analytics-client.js, ad-client.js) are removed by default
++        to protect user privacy without offloading privacy labor onto the user.
++      - Sensitive pages (/signin, /signup, /legal) strictly prohibit all third-party scripts and ad slots.
++    */}
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}/favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {!isSensitiveRoute && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..b7db1bf 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -7,7 +7,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ ---
+-<Layout title={title}>
++<Layout title={title} disableThirdParty={true}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..c2634f0 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,39 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++  // Data minimization: Do NOT eagerly initialize or write an empty 'readingList'
++  // to the session on every anonymous page visit, which would set unnecessary session cookies
++  // before the user chooses to bookmark anything.
++
++  const response = await next();
++  const headers = response.headers;
++
++  // Baseline document & API security and privacy headers
++  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  headers.set(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=(), gyroscope=(), magnetometer=(), usb=(), payment=(), interest-cohort=(), browsing-topics=(), join-ad-interest-group=(), run-ad-auction=(), attribution-reporting=(), focus-without-user-activation=()'
++  );
++  headers.set('X-Content-Type-Options', 'nosniff');
++  headers.set('X-Frame-Options', 'SAMEORIGIN');
++  headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  headers.set(
++    'Content-Security-Policy',
++    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://us-central1-web-devrel-apps.cloudfunctions.net; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
++  );
++
++  // Prevent browser/proxy caching of sensitive authentication or data-erasure routes
++  const pathname = context.url.pathname;
++  if (
++    pathname.includes('/signin') ||
++    pathname.includes('/signup') ||
++    pathname.includes('/api/logout')
++  ) {
++    headers.set('Cache-Control', 'no-store, max-age=0');
+   }
+-  return next();
++
++  return response;
+ });
++
+diff --git a/src/pages/api/logout.ts b/src/pages/api/logout.ts
+new file mode 100644
+index 0000000..1212425
+--- /dev/null
++++ b/src/pages/api/logout.ts
+@@ -0,0 +1,22 @@
++import type { APIRoute } from 'astro';
++
++export const POST: APIRoute = async ({ session }) => {
++  if (session) {
++    await session.destroy();
++  }
++
++  return new Response(
++    JSON.stringify({
++      cleared: true,
++      message: 'Session destroyed and browser site data cleared.',
++    }),
++    {
++      status: 200,
++      headers: {
++        'Content-Type': 'application/json',
++        'Clear-Site-Data': '"cookies", "storage", "cache"',
++        'Cache-Control': 'no-store, max-age=0',
++      },
++    }
++  );
++};
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..690efe2 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,4 +1,3 @@
+-
+ import type { APIRoute } from 'astro';
+ 
+ export const POST: APIRoute = async ({ request, session }) => {
+@@ -7,7 +6,7 @@ export const POST: APIRoute = async ({ request, session }) => {
+     return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
+   }
+ 
+-  let readingList = await session?.get('readingList') || [];
++  let readingList = (await session?.get('readingList')) || [];
+ 
+   if (readingList.includes(slug)) {
+     readingList = readingList.filter((item: string) => item !== slug);
+@@ -23,9 +22,24 @@ export const POST: APIRoute = async ({ request, session }) => {
+ };
+ 
+ export const GET: APIRoute = async ({ session }) => {
+-  const readingList = await session?.get('readingList') || [];
++  const readingList = (await session?.get('readingList')) || [];
+ 
+   return new Response(JSON.stringify({ readingList }), {
+     headers: { 'Content-Type': 'application/json' },
+   });
+ };
++
++export const DELETE: APIRoute = async ({ session }) => {
++  if (session) {
++    await session.destroy();
++  }
++
++  return new Response(JSON.stringify({ readingList: [], cleared: true }), {
++    headers: {
++      'Content-Type': 'application/json',
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++      'Cache-Control': 'no-store, max-age=0',
++    },
++  });
++};
++
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..dae00ef 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -67,7 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     width="1200"
+                     height="675"
+                     class="w-full h-auto"
+-                    crossorigin="use-credentials"
++                    crossorigin="anonymous"
++                    referrerpolicy="no-referrer"
+                 />
+             ) : (
+                 <Image 
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..5c9f5d0 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,95 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++const readingList = (await Astro.session?.get('readingList')) || [];
+ ---
+-<LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++<LegalLayout title="Privacy Policy & Data Controls">
++    <p class="lead">
++        At <strong>The DevTools Times</strong>, privacy is engineered by default rather than offloaded onto readers through confusing consent banners. This policy transparently explains what minimal data is processed, why it is needed, and how you can inspect or erase it at any moment.
++    </p>
++
++    <h2>1. Privacy by Design &amp; Data Minimization</h2>
++    <ul>
++        <li><strong>No Forced Account Creation:</strong> You can read all articles and bookmark stories into your session reading list without creating an account or providing personal identifiers.</li>
++        <li><strong>Minimal Credentials on Sign-Up/Sign-In:</strong> If you opt to register or sign in, we only request a pseudonymous username and password. We never ask for your legal name, phone number, physical address, or demographic profile.</li>
++        <li><strong>Zero <code>localStorage</code> Token Storage:</strong> Sensitive credentials, session tokens, and Personally Identifiable Information (PII) are never written to <code>localStorage</code> or <code>sessionStorage</code>, protecting your account from script-level exfiltration.</li>
++        <li><strong>On-Demand Session Cookies Only:</strong> We do not set session cookies on anonymous visits until you actively save an article to your reading list.</li>
++    </ul>
++
++    <h2>2. Purpose Limitation</h2>
++    <ul>
++        <li><strong>Authentication Data:</strong> Your username and password are used strictly to authenticate your account over HTTPS with referrer stripping (<code>referrerPolicy: "no-referrer"</code>). They are never repurposed for advertising or cross-site tracking.</li>
++        <li><strong>Reading List Session:</strong> Bookmarked article slugs are stored solely to display your saved articles and can be cleared instantly below.</li>
++    </ul>
++
++    <h2>3. Third-Party Scripts &amp; External Subresources</h2>
++    <ul>
++        <li><strong>No Third-Party Tracking by Default:</strong> We audited and removed third-party click-tracking scripts (<code>analytics-client.js</code>) that previously captured UI interactions.</li>
++        <li><strong>Strict Isolation on Sensitive Pages:</strong> Third-party scripts and ad slots are completely excluded from authentication (<code>/signin</code>, <code>/signup</code>) and legal/privacy routes.</li>
++        <li><strong>Referrer &amp; Credential Stripping:</strong> External font stylesheets and media assets are loaded with <code>crossorigin="anonymous"</code> and <code>referrerpolicy="no-referrer"</code> so your browsing context and cookies are never leaked to external origins.</li>
++    </ul>
++
++    <h2>4. Document Security &amp; Privacy Headers</h2>
++    <p>Every response from The DevTools Times enforces strict HTTP headers:</p>
++    <ul>
++        <li><code>Referrer-Policy: strict-origin-when-cross-origin</code></li>
++        <li><code>Permissions-Policy</code> disabling camera, microphone, geolocation, payment, USB, sensors, and ad-interest cohorts (<code>browsing-topics=()</code>, <code>interest-cohort=()</code>) by default.</li>
++        <li><code>Content-Security-Policy</code> restricting script, style, and connection origins.</li>
++        <li><code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, and <code>Clear-Site-Data</code> support upon logout or data erasure.</li>
++    </ul>
++
++    <h2 id="preferences">5. Your Data Rights &amp; Instant Controls (Access &amp; Erasure)</h2>
++    <p>
++        You have the right to inspect, export, and permanently erase any session or browser data stored by this site.
++    </p>
++
++    <div class="not-prose my-6 p-5 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
++        <div>
++            <h3 class="text-base font-bold text-gray-900">Current Session Reading List</h3>
++            <p class="text-xs text-gray-600 mt-0.5">
++                {readingList.length === 0
++                    ? 'No articles are currently stored in your session reading list.'
++                    : `Stored article slugs (${readingList.length}): ${readingList.join(', ')}`}
++            </p>
++        </div>
++
++        <div class="flex flex-wrap gap-3">
++            <button
++                id="clear-all-site-data-btn"
++                type="button"
++                data-skip-tracking="true"
++                class="px-4 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
++            >
++                Clear All Site Data &amp; Cookies (Clear-Site-Data)
++            </button>
++            <a
++                href="/api/reading-list.json"
++                download="reading-list-export.json"
++                data-skip-tracking="true"
++                class="px-4 py-2 text-xs font-semibold text-gray-800 bg-white border border-gray-300 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++                Export Reading List (JSON)
++            </a>
++        </div>
++        <p id="privacy-action-status" class="text-xs font-medium text-green-800 hidden" role="status" aria-live="polite"></p>
++    </div>
++
++    <script is:inline>
++        const clearBtn = document.getElementById('clear-all-site-data-btn');
++        const statusEl = document.getElementById('privacy-action-status');
++        if (clearBtn && statusEl) {
++            clearBtn.addEventListener('click', async () => {
++                clearBtn.setAttribute('disabled', 'true');
++                try {
++                    await fetch('/api/logout', { method: 'POST' });
++                    statusEl.textContent = 'All session data, cookies, and browser storage have been cleared.';
++                    statusEl.classList.remove('hidden');
++                } catch {
++                    statusEl.textContent = 'Unable to clear data right now. Please try again.';
++                    statusEl.classList.remove('hidden');
++                } finally {
++                    clearBtn.removeAttribute('disabled');
++                }
++            });
++        }
++    </script>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..efa50b0 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" disableThirdParty={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..df2fcd6 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" disableThirdParty={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>

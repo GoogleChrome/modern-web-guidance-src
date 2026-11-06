@@ -1,0 +1,628 @@
+diff --git a/index.html b/index.html
+index 66c9173..b2b08c0 100644
+--- a/index.html
++++ b/index.html
+@@ -131,10 +131,280 @@
+       transition: background 0.3s;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible,
++    .dialog-close:focus-visible,
++    .drink-dialog :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Drink dialog */
++    body.dialog-open {
++      overflow: hidden;
++    }
++
++    .drink-dialog {
++      border: 0;
++      border-radius: 12px;
++      padding: 0;
++      width: min(560px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      margin: auto;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      overflow: hidden;
++    }
++
++    .drink-dialog[open] {
++      display: flex;
++      flex-direction: column;
++      animation: dialog-in 0.2s ease-out;
++    }
++
++    .drink-dialog::backdrop {
++      background: rgba(30, 20, 15, 0.6);
++    }
++
++    @keyframes dialog-in {
++      from { opacity: 0; transform: translateY(12px) scale(0.98); }
++      to { opacity: 1; transform: none; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drink-dialog[open] { animation: none; }
++    }
++
++    .dialog-form {
++      display: flex;
++      flex-direction: column;
++      min-height: 0;
++      flex: 1;
++    }
++
++    .dialog-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 16px 20px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .dialog-header h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .dialog-header h2:focus {
++      outline: none;
++    }
++
++    .dialog-close {
++      flex: none;
++      width: 44px;
++      height: 44px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--text);
++      font-size: 1.75rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .dialog-close:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-body {
++      padding: 20px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-image {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 16px;
++      background: var(--secondary);
++    }
++
++    .drink-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 20px;
++      margin: 12px 0 4px;
++      font-size: 0.9rem;
++    }
++
++    .drink-meta dt {
++      font-weight: bold;
++    }
++
++    .drink-meta div {
++      display: flex;
++      gap: 6px;
++    }
++
++    .dialog-body fieldset {
++      border: 0;
++      margin-top: 18px;
++    }
++
++    .dialog-body legend,
++    .field-label {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 8px;
++    }
++
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .choice {
++      position: relative;
++    }
++
++    .choice input {
++      position: absolute;
++      opacity: 0;
++      inset: 0;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .choice span {
++      display: block;
++      min-height: 44px;
++      padding: 10px 14px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .choice input:checked + span {
++      border-color: var(--primary);
++      background: #efebe9;
++      font-weight: bold;
++    }
++
++    .choice input:focus-visible + span {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .dialog-body select,
++    .dialog-body input[type="number"] {
++      font: inherit;
++      min-height: 44px;
++      padding: 8px 10px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      background: white;
++      color: inherit;
++    }
++
++    .dialog-body select {
++      width: 100%;
++    }
++
++    .dialog-body input[type="number"] {
++      width: 6rem;
++    }
++
++    .dialog-footer {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 16px 20px;
++      border-top: 1px solid var(--secondary);
++      background: var(--light);
++    }
++
++    .dialog-footer .btn {
++      margin-top: 0;
++    }
++
++    .dialog-total {
++      font-size: 1.1rem;
++      font-weight: bold;
++    }
++
++    .dialog-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    @media (max-width: 480px) {
++      /* Bottom-sheet style on small screens */
++      .drink-dialog {
++        width: 100%;
++        max-width: 100%;
++        max-height: 92dvh;
++        margin: auto 0 0;
++        border-radius: 16px 16px 0 0;
++      }
++
++      .dialog-footer {
++        padding-bottom: max(16px, env(safe-area-inset-bottom));
++      }
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .toast {
++      position: fixed;
++      left: 50%;
++      bottom: 24px;
++      transform: translateX(-50%);
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      z-index: 1100;
++    }
++
++    .toast:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +441,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" data-order-trigger aria-haspopup="dialog" aria-controls="drink-dialog">Order Now</button>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +451,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple-oat-latte" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details: Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="dark-roast-espresso" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details: Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details: Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +477,312 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="drink-dialog" class="drink-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description" closedby="any">
++    <form method="dialog" class="dialog-form" id="order-form">
++      <div class="dialog-header">
++        <h2 id="dialog-title" tabindex="-1">Drink details</h2>
++        <button type="button" class="dialog-close" data-close aria-label="Close">
++          <span aria-hidden="true">&times;</span>
++        </button>
++      </div>
++
++      <div class="dialog-body">
++        <div id="drink-picker" hidden>
++          <label class="field-label" for="drink-select">Choose a drink</label>
++          <select id="drink-select" name="drink"></select>
++        </div>
++
++        <img id="dialog-image" class="dialog-image" src="" alt="" width="560" height="315">
++        <p id="dialog-description"></p>
++        <dl class="drink-meta">
++          <div><dt>Price</dt><dd id="dialog-price"></dd></div>
++          <div><dt>Caffeine</dt><dd id="dialog-caffeine"></dd></div>
++          <div><dt>Tasting notes</dt><dd id="dialog-notes"></dd></div>
++        </dl>
++
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choice-group" id="size-options"></div>
++        </fieldset>
++
++        <fieldset id="milk-fieldset">
++          <legend>Milk</legend>
++          <div class="choice-group" id="milk-options"></div>
++        </fieldset>
++
++        <div style="margin-top: 18px;">
++          <label class="field-label" for="quantity">Quantity</label>
++          <input type="number" id="quantity" name="quantity" min="1" max="10" value="1" inputmode="numeric">
++        </div>
++      </div>
++
++      <div class="dialog-footer">
++        <p class="dialog-total">Total: <output id="dialog-total" for="quantity">$0.00</output></p>
++        <div class="dialog-actions">
++          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
++          <button type="submit" class="btn" value="add">Add to Order</button>
++        </div>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="toast" class="toast" role="status" aria-live="polite"></div>
++
++  <script>
++    (function () {
++      var DRINKS = {
++        'maple-oat-latte': {
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup, poured over a double shot of our house espresso.',
++          price: 5.25,
++          caffeine: 'Medium',
++          notes: 'Maple, toasted oat, caramel',
++          image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
++          alt: 'A latte with foam art in a ceramic cup',
++          milks: ['Oat', 'Whole', 'Almond', 'Soy'],
++          defaultMilk: 'Oat'
++        },
++        'dark-roast-espresso': {
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost. Pulled from our signature dark roast blend.',
++          price: 3.25,
++          caffeine: 'High',
++          notes: 'Dark chocolate, smoke, molasses',
++          image: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=80',
++          alt: 'A shot of espresso in a small white cup',
++          milks: null
++        },
++        'cold-brew': {
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness, served over ice.',
++          price: 4.50,
++          caffeine: 'High',
++          notes: 'Cocoa, cherry, brown sugar',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80',
++          alt: 'An iced coffee in a tall glass',
++          milks: ['None', 'Splash of whole', 'Splash of oat', 'Sweet cream'],
++          defaultMilk: 'None'
++        }
++      };
++
++      var SIZES = [
++        { id: 'small', label: 'Small (8 oz)', delta: 0 },
++        { id: 'medium', label: 'Medium (12 oz)', delta: 0.5 },
++        { id: 'large', label: 'Large (16 oz)', delta: 1 }
++      ];
++      var ESPRESSO_SIZES = [
++        { id: 'single', label: 'Single', delta: 0 },
++        { id: 'double', label: 'Double', delta: 1 }
++      ];
++
++      var dialog = document.getElementById('drink-dialog');
++      var form = document.getElementById('order-form');
++      var title = document.getElementById('dialog-title');
++      var picker = document.getElementById('drink-picker');
++      var select = document.getElementById('drink-select');
++      var img = document.getElementById('dialog-image');
++      var desc = document.getElementById('dialog-description');
++      var priceEl = document.getElementById('dialog-price');
++      var caffeineEl = document.getElementById('dialog-caffeine');
++      var notesEl = document.getElementById('dialog-notes');
++      var sizeGroup = document.getElementById('size-options');
++      var milkFieldset = document.getElementById('milk-fieldset');
++      var milkGroup = document.getElementById('milk-options');
++      var qty = document.getElementById('quantity');
++      var totalEl = document.getElementById('dialog-total');
++      var toast = document.getElementById('toast');
++
++      var currentId = null;
++      var opener = null;
++      var toastTimer = null;
++
++      function money(n) { return '$' + n.toFixed(2); }
++
++      function sizesFor(id) { return id === 'dark-roast-espresso' ? ESPRESSO_SIZES : SIZES; }
++
++      function choice(name, value, label, checked) {
++        var wrap = document.createElement('label');
++        wrap.className = 'choice';
++        var input = document.createElement('input');
++        input.type = 'radio';
++        input.name = name;
++        input.value = value;
++        input.checked = checked;
++        var span = document.createElement('span');
++        span.textContent = label;
++        wrap.appendChild(input);
++        wrap.appendChild(span);
++        return wrap;
++      }
++
++      Object.keys(DRINKS).forEach(function (id) {
++        var opt = document.createElement('option');
++        opt.value = id;
++        opt.textContent = DRINKS[id].name + ' \u2014 ' + money(DRINKS[id].price);
++        select.appendChild(opt);
++      });
++
++      function render(id) {
++        var d = DRINKS[id];
++        currentId = id;
++        select.value = id;
++        if (picker.hidden) title.textContent = d.name;
++        img.hidden = false;
++        img.src = d.image;
++        img.alt = d.alt;
++        desc.textContent = d.description;
++        priceEl.textContent = 'from ' + money(d.price);
++        caffeineEl.textContent = d.caffeine;
++        notesEl.textContent = d.notes;
++
++        sizeGroup.textContent = '';
++        sizesFor(id).forEach(function (s, i) {
++          var delta = s.delta ? ' (+' + money(s.delta) + ')' : '';
++          sizeGroup.appendChild(choice('size', s.id, s.label + delta, i === 0));
++        });
++
++        milkGroup.textContent = '';
++        if (d.milks) {
++          milkFieldset.hidden = false;
++          d.milks.forEach(function (m) {
++            milkGroup.appendChild(choice('milk', m, m, m === d.defaultMilk));
++          });
++        } else {
++          milkFieldset.hidden = true;
++        }
++        updateTotal();
++      }
++
++      function selectedSize() {
++        var checked = form.querySelector('input[name="size"]:checked');
++        var sizes = sizesFor(currentId);
++        for (var i = 0; i < sizes.length; i++) {
++          if (checked && sizes[i].id === checked.value) return sizes[i];
++        }
++        return sizes[0];
++      }
++
++      function quantity() {
++        var n = parseInt(qty.value, 10);
++        if (isNaN(n) || n < 1) return 1;
++        return Math.min(n, 10);
++      }
++
++      function updateTotal() {
++        var unit = DRINKS[currentId].price + selectedSize().delta;
++        totalEl.textContent = money(unit * quantity());
++      }
++
++      img.addEventListener('error', function () { img.hidden = true; });
++
++      function open(id, trigger, chooseDrink) {
++        opener = trigger;
++        picker.hidden = !chooseDrink;
++        title.textContent = chooseDrink ? 'Start Your Order' : DRINKS[id].name;
++        qty.value = 1;
++        render(id);
++        dialog.returnValue = '';
++        if (typeof dialog.showModal === 'function') {
++          dialog.showModal();
++        } else {
++          dialog.setAttribute('open', '');
++        }
++        document.body.classList.add('dialog-open');
++        // Move focus to the title so screen readers announce the dialog context
++        // and keyboard users start at the top of the content.
++        title.focus();
++      }
++
++      function close() {
++        if (typeof dialog.close === 'function') {
++          dialog.close();
++        } else {
++          dialog.removeAttribute('open');
++          onClosed();
++        }
++      }
++
++      function showToast(msg) {
++        clearTimeout(toastTimer);
++        toast.textContent = msg;
++        toastTimer = setTimeout(function () { toast.textContent = ''; }, 5000);
++      }
++
++      function onClosed() {
++        document.body.classList.remove('dialog-open');
++        if (dialog.returnValue === 'add') {
++          var d = DRINKS[currentId];
++          var milk = form.querySelector('input[name="milk"]:checked');
++          var size = selectedSize().label.replace(/ \(.*\)/, '');
++          showToast('Added ' + quantity() + ' \u00d7 ' + size + ' ' + d.name +
++            (milk ? ' (' + milk.value + ')' : '') + ' to your order.');
++        }
++        // Return focus to the control that opened the dialog.
++        if (opener && document.contains(opener)) opener.focus();
++        opener = null;
++      }
++
++      // Triggers
++      document.querySelectorAll('[data-drink]').forEach(function (btn) {
++        btn.addEventListener('click', function () { open(btn.dataset.drink, btn, false); });
++      });
++      document.querySelectorAll('[data-order-trigger]').forEach(function (btn) {
++        btn.addEventListener('click', function () { open(Object.keys(DRINKS)[0], btn, true); });
++      });
++
++      // Form interactions
++      select.addEventListener('change', function () { render(select.value); });
++      form.addEventListener('change', function (e) {
++        if (e.target.name === 'size') updateTotal();
++      });
++      qty.addEventListener('input', updateTotal);
++      // Fallback for browsers without method="dialog" support.
++      form.addEventListener('submit', function (e) {
++        if (typeof dialog.close !== 'function') {
++          e.preventDefault();
++          dialog.returnValue = 'add';
++          close();
++        }
++      });
++      qty.addEventListener('blur', function () { qty.value = quantity(); updateTotal(); });
++
++      // Dismissal: close button / Cancel
++      dialog.querySelectorAll('[data-close]').forEach(function (btn) {
++        btn.addEventListener('click', function () { dialog.returnValue = 'cancel'; close(); });
++      });
++
++      // Dismissal: Escape key (desktop) and Android back gesture are handled
++      // natively by showModal() via the "cancel" event. Fallback for browsers
++      // without native <dialog> support:
++      dialog.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && typeof dialog.showModal !== 'function') {
++          e.preventDefault();
++          close();
++        }
++      });
++
++      // Dismissal: tapping/clicking the backdrop (outside the dialog box).
++      // Only close if the press both started and ended on the backdrop so that
++      // drag-selecting text inside the dialog doesn't dismiss it.
++      var pressedOnBackdrop = false;
++      function isBackdrop(e) {
++        if (e.target !== dialog) return false;
++        var r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      }
++      dialog.addEventListener('pointerdown', function (e) { pressedOnBackdrop = isBackdrop(e); });
++      dialog.addEventListener('click', function (e) {
++        if (pressedOnBackdrop && isBackdrop(e)) {
++          dialog.returnValue = 'cancel';
++          close();
++        }
++        pressedOnBackdrop = false;
++      });
++
++      dialog.addEventListener('close', onClosed);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

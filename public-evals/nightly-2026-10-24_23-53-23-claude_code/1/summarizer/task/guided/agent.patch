@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,60 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Journal */
++    .journal {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .journal h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .journal-text p {
++      margin-bottom: 1rem;
++      max-width: 70ch;
++      margin-inline: auto;
++    }
++
++    .journal-actions {
++      text-align: center;
++    }
++
++    .journal-actions button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .journal-actions button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .journal-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .journal-summary {
++      max-width: 70ch;
++      margin: 20px auto 0;
++      padding: 15px 20px 15px 40px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .journal-summary[hidden] {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +246,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" id="journal" aria-labelledby="journal-title">
++      <h2 id="journal-title">Roaster's Journal</h2>
++      <div class="journal-text" id="journal-text">
++        <p>Every bag we roast begins months before the beans reach our shop, usually with a long email thread and a
++          sample tin on the cupping table. We buy directly from small farms and cooperatives in Colombia, Ethiopia,
++          Guatemala, and Sumatra, and we only commit to a harvest after cupping at least three separate lots. We score
++          each one blind, looking for sweetness, clean acidity, and a finish that doesn't fade the moment the cup cools.
++        </p>
++        <p>Relationships matter more than any single score. Many of our partners have supplied us for six years or more,
++          and we pay well above the Fairtrade minimum, agreeing on the price before the harvest so the farmers can plan
++          their year. Where we can, we pre-finance part of the crop, which helps producers cover labor and
++          processing costs during the lean months. Each lot arrives with its altitude, variety, and processing method
++          recorded, and we print the farm name on the bag.</p>
++        <p>Once the green coffee lands, it rests for a few weeks before we roast. We run small test batches first,
++          adjusting heat and airflow until the profile brings out what we tasted at origin rather than hiding it behind
++          roast flavors. Every production batch is cupped again the next morning, and anything that doesn't match the
++          sample gets set aside. We roast to order twice a week, so what you drink is almost always less than ten days
++          off the roaster.</p>
++        <p>Sustainability is part of the sourcing process, not an afterthought. We favor shade-grown and
++          organically managed farms, ship green coffee in reusable jute sacks, and send spent chaff and burlap to local
++          gardeners as mulch. Each year one of us travels to origin to walk the farms, taste the new crop, and listen to
++          what our partners need next season. Those trips shape what ends up on our menu.</p>
++      </div>
++      <div class="journal-actions">
++        <button type="button" class="btn" id="summarize-btn" hidden>Summarize</button>
++        <p class="journal-status" id="summarize-status" role="status"></p>
++        <ul class="journal-summary" id="summary-list" aria-label="Journal summary" hidden></ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +288,83 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const btn = document.getElementById('summarize-btn');
++      const status = document.getElementById('summarize-status');
++      const list = document.getElementById('summary-list');
++      const source = document.getElementById('journal-text');
++      const options = {
++        sharedContext: 'A coffee roaster describing how it sources green coffee beans.',
++        type: 'key-points',
++        format: 'markdown',
++        length: 'medium',
++        expectedInputLanguages: ['en'],
++        outputLanguage: 'en',
++      };
++
++      if (!('Summarizer' in self)) {
++        status.textContent = 'Summarizing is unavailable: this browser has no built-in AI summarizer.';
++        return;
++      }
++
++      let summarizer;
++
++      async function init() {
++        const availability = await Summarizer.availability(options);
++        if (availability === 'unavailable') {
++          status.textContent = 'Summarizing is unavailable on this device.';
++          return;
++        }
++        btn.hidden = false;
++        if (availability !== 'available') {
++          status.textContent = 'The first summary will download a small on-device AI model.';
++        }
++      }
++
++      function render(markdown) {
++        list.replaceChildren();
++        for (const line of markdown.split('\n')) {
++          const text = line.replace(/^\s*[-*•]\s+/, '').replace(/\*\*|__/g, '').trim();
++          if (!text) continue;
++          const li = document.createElement('li');
++          li.textContent = text;
++          list.append(li);
++        }
++        list.hidden = !list.children.length;
++      }
++
++      btn.addEventListener('click', async () => {
++        btn.disabled = true;
++        list.hidden = true;
++        try {
++          // create() needs the click's user activation if the model must be downloaded
++          summarizer ??= await Summarizer.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                status.textContent = `Downloading AI model… ${Math.round((e.loaded / e.total) * 100)}%`;
++              });
++            },
++          });
++          status.textContent = 'Summarizing…';
++          render(await summarizer.summarize(source.innerText));
++          status.textContent = '';
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Sorry, the summary could not be generated.';
++        } finally {
++          btn.disabled = false;
++        }
++      });
++
++      init().catch((err) => {
++        console.error(err);
++        status.textContent = 'Summarizing is unavailable on this device.';
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

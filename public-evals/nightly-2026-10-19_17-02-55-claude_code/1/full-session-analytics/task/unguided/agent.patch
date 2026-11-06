@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,64 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value per metric; CLS/INP/LCP can be updated until the page is hidden.
++    const queue = new Map();
++
++    function enqueue(metric) {
++      queue.set(metric.name, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType,
++      });
++    }
++
++    function flushQueue() {
++      if (!queue.size) return;
++
++      const body = JSON.stringify({
++        url: location.href,
++        metrics: Array.from(queue.values()),
++      });
++
++      // sendBeacon is queued by the browser and survives page unload.
++      // Fall back to a keepalive fetch if it is unavailable or refuses the payload.
++      const sent = navigator.sendBeacon &&
++        navigator.sendBeacon(ANALYTICS_ENDPOINT, new Blob([body], { type: 'application/json' }));
++      if (!sent) {
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => { });
++      }
++
++      queue.clear();
++    }
++
++    // Register the web-vitals observers first so their own visibilitychange handlers
++    // finalize metric values before our flush handler runs.
++    onLCP(enqueue);
++    onINP(enqueue);
++    onCLS(enqueue);
++
++    // visibilitychange is the reliable "page is going away" signal (tab close, navigation,
++    // tab switch, app backgrounding on mobile); pagehide covers browsers that skip it.
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+index 66c9173..4100a61 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,48 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating draggable element */
++    .floating {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: 220px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .floating-handle {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      padding: 6px 12px;
++      cursor: grab;
++      user-select: none;
++      touch-action: none;
++    }
++
++    .floating.dragging .floating-handle {
++      cursor: grabbing;
++    }
++
++    .floating.dragging {
++      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
++    }
++
++    .floating-body {
++      padding: 12px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .floating-body .btn {
++      margin-top: 8px;
++      padding: 6px 14px;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +249,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating" id="floating">
++    <div class="floating-handle">&#8942;&#8942; Drag me</div>
++    <div class="floating-body">
++      <p>Free pastry with any large drink today!</p>
++      <a href="/rewards" class="btn">Claim</a>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      var el = document.getElementById('floating');
++      var handle = el.querySelector('.floating-handle');
++      var startX, startY, startLeft, startTop;
++
++      function clamp(v, min, max) {
++        return Math.max(min, Math.min(max, v));
++      }
++
++      handle.addEventListener('pointerdown', function (e) {
++        if (e.button !== undefined && e.button !== 0) return;
++        var rect = el.getBoundingClientRect();
++        // Switch from right/bottom anchoring to left/top so it can move freely
++        el.style.left = rect.left + 'px';
++        el.style.top = rect.top + 'px';
++        el.style.right = 'auto';
++        el.style.bottom = 'auto';
++        startX = e.clientX;
++        startY = e.clientY;
++        startLeft = rect.left;
++        startTop = rect.top;
++        el.classList.add('dragging');
++        handle.setPointerCapture(e.pointerId);
++        e.preventDefault();
++      });
++
++      handle.addEventListener('pointermove', function (e) {
++        if (!el.classList.contains('dragging')) return;
++        var maxLeft = window.innerWidth - el.offsetWidth;
++        var maxTop = window.innerHeight - el.offsetHeight;
++        el.style.left = clamp(startLeft + e.clientX - startX, 0, Math.max(0, maxLeft)) + 'px';
++        el.style.top = clamp(startTop + e.clientY - startY, 0, Math.max(0, maxTop)) + 'px';
++      });
++
++      function endDrag(e) {
++        el.classList.remove('dragging');
++        if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
++      }
++      handle.addEventListener('pointerup', endDrag);
++      handle.addEventListener('pointercancel', endDrag);
++
++      // Keep the element on-screen after the window is resized
++      window.addEventListener('resize', function () {
++        if (!el.style.left) return;
++        var rect = el.getBoundingClientRect();
++        el.style.left = clamp(rect.left, 0, Math.max(0, window.innerWidth - el.offsetWidth)) + 'px';
++        el.style.top = clamp(rect.top, 0, Math.max(0, window.innerHeight - el.offsetHeight)) + 'px';
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -91,8 +91,56 @@
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 350px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 2rem auto 4rem;
++      padding: 1.5rem;
++      background: #0f172a;
++      color: #f8fafc;
++      border-radius: 1rem;
++      font-family: monospace;
++      border: 1px solid #334155;
++      content-visibility: hidden;
++      contain-intrinsic-size: auto 200px;
++    }
++
++    .debug-panel.visible {
++      content-visibility: visible;
++    }
++
++    .debug-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 1rem;
++      margin-top: 1rem;
++    }
++
++    .debug-stat {
++      background: #1e293b;
++      padding: 0.75rem 1rem;
++      border-radius: 0.5rem;
++      border: 1px solid #334155;
++    }
++
++    .debug-stat-label {
++      font-size: 0.75rem;
++      color: #94a3b8;
++      margin-bottom: 0.25rem;
++    }
++
++    .debug-stat-value {
++      font-size: 1.1rem;
++      font-weight: bold;
++      color: #38bdf8;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -205,9 +253,9 @@
+     </filter>
+   </svg>
+ 
+   <div class="controls">
+-
++    <button id="toggle-debug" class="toggle-btn off">Toggle Debug Panel</button>
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+@@ -215,24 +263,66 @@
+   </div>
+ 
+   <div class="feed" id="feed">
+     <div class="info-text">
+-      <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
++      <p>This page contains 500 complex cards. Is good? <strong>yes</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <h3 style="margin-top: 0; color: #f8fafc;">Render &amp; Performance Debug Panel</h3>
++    <div class="debug-grid">
++      <div class="debug-stat">
++        <div class="debug-stat-label">Total Cards</div>
++        <div class="debug-stat-value" id="debug-total-cards">500</div>
++      </div>
++      <div class="debug-stat">
++        <div class="debug-stat-label">Last Render Duration</div>
++        <div class="debug-stat-value" id="debug-render-time">0ms</div>
++      </div>
++      <div class="debug-stat">
++        <div class="debug-stat-label">Offscreen Optimization</div>
++        <div class="debug-stat-value">content-visibility: auto</div>
++      </div>
++      <div class="debug-stat">
++        <div class="debug-stat-label">Panel Visibility State</div>
++        <div class="debug-stat-value" id="debug-panel-state">hidden</div>
++      </div>
++    </div>
++    <div style="margin-top: 1rem;">
++      <div class="sub-expensive-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;">
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++        <div class="expensive-element" style="height: 40px; margin-top: 0;"></div>
++      </div>
++    </div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugRenderTime = document.getElementById('debug-render-time');
++    const debugPanelState = document.getElementById('debug-panel-state');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
++    toggleDebugBtn.addEventListener('click', () => {
++      const isVisible = debugPanel.classList.toggle('visible');
++      toggleDebugBtn.classList.toggle('off', !isVisible);
++      debugPanelState.textContent = isVisible ? 'visible' : 'hidden';
++    });
+ 
+-
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +355,11 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          if (debugRenderTime) {
++            debugRenderTime.textContent = `${duration}ms`;
++          }
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';

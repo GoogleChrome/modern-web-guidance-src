@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <title>Legacy AI Interface</title>
+</head>
+<body>
+  <div id="status">Checking system...</div>
+  <div id="output"></div>
+  <button id="run">Run Analysis</button>
+
+  <script>
+    const runBtn = document.getElementById('run');
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+
+    runBtn.onclick = async () => {
+      const model = await window.ai.languageModel.capabilities();
+      
+      const session = await window.ai.languageModel.create({
+        topK: 1,
+        temperature: 0
+      });
+
+      const abortController = new AbortController();
+      const sessionWithAbort = await window.ai.languageModel.create({
+        signal: abortController.signal
+      });
+
+      const response = await session.prompt("Summarize: <html><body>Unsafe content</body></html>");
+      outputEl.innerHTML = "<div>" + response + "</div>";
+
+      const rawJson = await session.prompt(
+        "Return JSON with rating 1-5 and is_positive boolean for 'Terrible food'",
+        {
+          responseFormat: "json"
+        }
+      );
+      
+      const structuredData = JSON.stringify(rawJson);
+      outputEl.innerHTML += "<span>" + structuredData + "</span>";
+
+      const stream = session.promptStreaming("Write a long essay");
+      stream.onmessage = (e) => {
+        outputEl.innerHTML = e.data;
+      };
+
+      console.log("Tokens: " + session.maxTokens);
+    };
+  </script>
+</body>
+</html>

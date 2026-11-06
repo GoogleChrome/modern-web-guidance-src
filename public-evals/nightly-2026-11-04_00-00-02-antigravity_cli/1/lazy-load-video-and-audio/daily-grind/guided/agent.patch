@@ -1,0 +1,346 @@
+diff --git a/index.html b/index.html
+index 66c9173..3804a0a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1280&q=80" fetchpriority="high">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,8 +75,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +86,30 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      gap: 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero-video-wrapper {
++      width: 100%;
++      max-width: 720px;
++      margin-top: 10px;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
++    }
++
++    .hero-video-wrapper video,
++    .media-card video {
++      display: block;
++      width: 100%;
++      height: auto;
++      background-color: #1b110e;
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +119,17 @@
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 25px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -120,6 +150,63 @@
+       color: var(--primary);
+     }
+ 
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++    }
++
++    .media-card {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++    }
++
++    .media-card figure {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .media-card figcaption {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .media-card audio {
++      width: 100%;
++    }
++
++    .media-card details {
++      margin-top: 4px;
++      font-size: 0.9rem;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .media-card summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .media-card details p {
++      margin-top: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -157,7 +244,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -169,14 +256,29 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <div class="hero-video-wrapper">
++      <video
++        controls
++        width="1280"
++        height="720"
++        poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1280&q=80"
++        preload="metadata"
++      >
++        <source src="/media/hero-morning-pour.webm" type="video/webm">
++        <source src="/media/hero-morning-pour.mp4" type="video/mp4">
++        <track src="/media/hero-en.vtt" kind="captions" srclang="en" label="English">
++      </video>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +297,56 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-podcast-heading">
++      <h2 id="roasting-podcast-heading" class="section-heading">Inside the Roastery &amp; Podcast</h2>
++      <p class="section-subtitle">Go behind the scenes with our small-batch roasting team and tune in to our weekly coffee origins podcast.</p>
++      <div class="media-grid">
++        <article class="media-card">
++          <h3>Small-Batch Roasting Process</h3>
++          <p>Watch how our master roasters balance heat and airflow to highlight single-origin flavor profiles.</p>
++          <figure>
++            <video
++              controls
++              loading="lazy"
++              width="800"
++              height="450"
++              poster="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80"
++              preload="metadata"
++            >
++              <source src="/media/roasting-process.webm" type="video/webm">
++              <source src="/media/roasting-process.mp4" type="video/mp4">
++              <track src="/media/roasting-en.vtt" kind="captions" srclang="en" label="English">
++            </video>
++            <figcaption>Behind the scenes: Roasting our Ethiopian Yirgacheffe lot.</figcaption>
++          </figure>
++          <details id="roasting-video-transcript">
++            <summary>View video transcript</summary>
++            <p>[Roaster drum turning steadily with the crackling sound of first crack] Master Roaster: We monitor bean temperature and airflow every second during the Maillard reaction to unlock peak sweetness.</p>
++          </details>
++        </article>
++
++        <article class="media-card">
++          <h3>The Daily Grind Podcast</h3>
++          <p>Conversations with farmers, cuppers, and baristas about sustainable coffee culture.</p>
++          <figure>
++            <figcaption id="episode-title">Episode 14: Mastering the First Crack &amp; Origin Stories</figcaption>
++            <audio
++              controls
++              loading="lazy"
++              preload="metadata"
++              src="/media/podcast-episode-14.mp3"
++              aria-labelledby="episode-title"
++              aria-details="episode-transcript"
++            ></audio>
++            <details id="episode-transcript">
++              <summary>View episode transcript</summary>
++              <p>Host: Welcome back to The Daily Grind Podcast. Today we are joined by our head roaster to discuss how altitude, washed processing, and careful heat ramping shape the bright citrus notes in your morning cup.</p>
++            </details>
++          </figure>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +359,81 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Pause autoplaying videos when the user prefers reduced motion
++    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++    function syncReducedMotion(prefersReducedMotion) {
++      for (const video of document.querySelectorAll('video[autoplay]')) {
++        if (prefersReducedMotion) {
++          video.removeAttribute('autoplay');
++          video.pause();
++        }
++      }
++    }
++
++    syncReducedMotion(reducedMotionQuery.matches);
++    reducedMotionQuery.addEventListener('change', (event) => {
++      syncReducedMotion(event.matches);
++    });
++
++    // Feature-detect native media lazy loading on HTMLMediaElement.prototype
++    const supportsLazyMedia = Object.hasOwn(HTMLMediaElement.prototype, 'loading');
++
++    if (!supportsLazyMedia) {
++      const lazyMediaElements = document.querySelectorAll(
++        'video[loading="lazy"], audio[loading="lazy"][controls]',
++      );
++
++      const mediaObserver = new IntersectionObserver(
++        (entries, observer) => {
++          for (const entry of entries) {
++            if (!entry.isIntersecting) continue;
++
++            const media = entry.target;
++
++            // Restore deferred poster and preload attributes when entering the viewport
++            if (media.dataset.poster) {
++              media.poster = media.dataset.poster;
++              delete media.dataset.poster;
++            }
++
++            if (media.dataset.preload) {
++              media.preload = media.dataset.preload;
++              delete media.dataset.preload;
++            }
++
++            if (media.dataset.src) {
++              media.src = media.dataset.src;
++              delete media.dataset.src;
++            }
++
++            for (const source of media.querySelectorAll('source[data-src]')) {
++              source.src = source.dataset.src;
++              delete source.dataset.src;
++            }
++
++            media.load();
++            observer.unobserve(media);
++          }
++        },
++        { rootMargin: '200px 0px' },
++      );
++
++      for (const media of lazyMediaElements) {
++        // Hold back network fetches in unsupported browsers until intersection
++        if (media.hasAttribute('poster')) {
++          media.dataset.poster = media.getAttribute('poster');
++          media.removeAttribute('poster');
++        }
++        if (media.hasAttribute('preload') && media.getAttribute('preload') !== 'none') {
++          media.dataset.preload = media.getAttribute('preload');
++        }
++        media.preload = 'none';
++        mediaObserver.observe(media);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/media/hero-en.vtt b/media/hero-en.vtt
+new file mode 100644
+index 0000000..39a9304
+--- /dev/null
++++ b/media/hero-en.vtt
+@@ -0,0 +1,7 @@
++WEBVTT
++
++00:00:00.000 --> 00:00:05.000
++[Gentle acoustic music plays as freshly roasted coffee beans cascade into a cooling tray]
++
++00:00:05.000 --> 00:00:12.000
++Host: Welcome to The Daily Grind roastery, where every batch is slow-roasted to bring out rich caramel and floral notes.
+diff --git a/media/roasting-en.vtt b/media/roasting-en.vtt
+new file mode 100644
+index 0000000..ff18d08
+--- /dev/null
++++ b/media/roasting-en.vtt
+@@ -0,0 +1,7 @@
++WEBVTT
++
++00:00:00.000 --> 00:00:06.000
++[Roaster drum turning steadily with the crackling sound of first crack]
++
++00:00:06.000 --> 00:00:15.000
++Master Roaster: We monitor bean temperature and airflow every second during the Maillard reaction to unlock peak sweetness.

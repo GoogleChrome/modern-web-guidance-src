@@ -1,0 +1,508 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,144 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roasting Simulator Widget */
++    #roasting-widget {
++      max-width: 1100px;
++      min-height: 400px;
++      margin: 40px auto 0;
++      padding: 24px;
++      background: #2b1b17;
++      color: var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .roast-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .roast-header h2 {
++      color: var(--accent);
++      font-size: 1.4rem;
++      letter-spacing: 0.5px;
++    }
++
++    .roast-status {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .roast-status::before {
++      content: "";
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: #9e9e9e;
++    }
++
++    #roasting-widget[data-roast-state="running"] .roast-status::before {
++      background: #66bb6a;
++      box-shadow: 0 0 6px #66bb6a;
++    }
++
++    .roast-body {
++      display: flex;
++      gap: 20px;
++      flex: 1;
++    }
++
++    .roast-canvas-wrap {
++      flex: 1 1 60%;
++      min-width: 0;
++      min-height: 300px;
++      background: #1a100d;
++      border-radius: 8px;
++      overflow: hidden;
++      position: relative;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 300px;
++    }
++
++    .roast-readout {
++      flex: 1 1 35%;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      gap: 12px;
++      padding: 16px;
++      background: rgba(255, 255, 255, 0.04);
++      border-radius: 8px;
++    }
++
++    .roast-readout .label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      opacity: 0.7;
++    }
++
++    #roast-temp-value {
++      font-size: 3rem;
++      font-weight: bold;
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++      line-height: 1.1;
++    }
++
++    .roast-stage {
++      font-size: 1.1rem;
++      color: #fff;
++    }
++
++    .roast-progress {
++      height: 8px;
++      background: rgba(255, 255, 255, 0.1);
++      border-radius: 4px;
++      overflow: hidden;
++    }
++
++    .roast-progress-bar {
++      height: 100%;
++      width: 0;
++      background: linear-gradient(90deg, #8bc34a, #ffab40, #6d4c41);
++      transition: width 0.4s linear;
++    }
++
++    .roast-note {
++      font-size: 0.8rem;
++      opacity: 0.65;
++    }
++
++    @media (max-width: 720px) {
++      .roast-body {
++        flex-direction: column;
++      }
++
++      #roast-canvas {
++        height: 240px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +332,359 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" data-roast-state="paused" aria-label="Live roasting simulator">
++    <div class="roast-header">
++      <h2>Live Roasting Simulator</h2>
++      <span class="roast-status" id="roast-status" aria-live="polite">Paused</span>
++    </div>
++    <div class="roast-body">
++      <div class="roast-canvas-wrap">
++        <canvas id="roast-canvas" role="img" aria-label="Animated coffee beans tumbling in a roasting drum"></canvas>
++      </div>
++      <div class="roast-readout">
++        <span class="label">Drum Temperature</span>
++        <div><span id="roast-temp-value">--</span><span class="label" style="font-size:1rem;letter-spacing:0;"> &deg;F</span></div>
++        <span class="label">Stage</span>
++        <div class="roast-stage" id="roast-stage">Preheating</div>
++        <div class="roast-progress" aria-hidden="true"><div class="roast-progress-bar" id="roast-progress-bar"></div></div>
++        <p class="roast-note">Simulation pauses automatically when scrolled out of view to save battery.</p>
++      </div>
++    </div>
++  </section>
++
++  <script>
++    (function () {
++      'use strict';
++
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var tempEl = document.getElementById('roast-temp-value');
++      var stageEl = document.getElementById('roast-stage');
++      var statusEl = document.getElementById('roast-status');
++      var barEl = document.getElementById('roast-progress-bar');
++      if (!widget || !canvas || !canvas.getContext) { return; }
++      var ctx = canvas.getContext('2d');
++      if (!ctx) { return; }
++
++      /* ---------- Cross-browser helpers ---------- */
++      var raf = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
++        window.mozRequestAnimationFrame || function (cb) { return window.setTimeout(function () { cb(now()); }, 1000 / 60); };
++      var caf = window.cancelAnimationFrame || window.webkitCancelAnimationFrame ||
++        window.mozCancelAnimationFrame || window.clearTimeout;
++      function now() { return (window.performance && performance.now) ? performance.now() : new Date().getTime(); }
++
++      /* ---------- Simulation constants ---------- */
++      var TICK_MS = 500;           // temperature update interval
++      var ROAST_SECONDS = 48;      // charge -> drop
++      var COOL_SECONDS = 10;       // cooling tray
++      var REST_SECONDS = 2;        // pause before the next batch
++      var CYCLE_SECONDS = ROAST_SECONDS + COOL_SECONDS + REST_SECONDS;
++      var T_START = 180, T_END = 430;
++      var BEAN_COUNT = 30;
++
++      /* ---------- State ---------- */
++      var roastClock = 0;          // seconds of *active* simulation time (does not advance while paused)
++      var temp = T_START;
++      var roastLevel = 0;          // 0 = green, 1 = fully developed (drives bean colour)
++      var inView = false;
++      var pageVisible = true;
++      var rafId = null;
++      var intervalId = null;
++      var lastFrame = 0;
++      var drumAngle = 0;
++      var beans = [];
++      var smoke = [];
++      var W = 0, H = 0, dpr = 1;
++
++      /* ---------- Canvas sizing ---------- */
++      function resizeCanvas() {
++        dpr = window.devicePixelRatio || 1;
++        var rect = canvas.getBoundingClientRect();
++        var w = Math.max(1, Math.floor(rect.width));
++        var h = Math.max(1, Math.floor(rect.height));
++        if (w === W && h === H && canvas.width === Math.floor(w * dpr)) { return; }
++        W = w; H = h;
++        canvas.width = Math.floor(w * dpr);
++        canvas.height = Math.floor(h * dpr);
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.scale(dpr, dpr);
++        if (!beans.length) { initBeans(); }
++      }
++
++      function drumRadius() { return Math.min(W, H) * 0.42; }
++
++      function initBeans() {
++        beans = [];
++        var R = drumRadius();
++        for (var i = 0; i < BEAN_COUNT; i++) {
++          var a = Math.random() * Math.PI * 2;
++          var r = Math.random() * R * 0.7;
++          beans.push({
++            x: Math.cos(a) * r, y: Math.sin(a) * r,
++            vx: 0, vy: 0,
++            rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 4,
++            size: 7 + Math.random() * 4
++          });
++        }
++      }
++
++      /* ---------- Temperature model (runs on the interval) ---------- */
++      function profile(t) {
++        if (t < ROAST_SECONDS) {
++          var p = t / ROAST_SECONDS;
++          var eased = 1 - Math.pow(1 - p, 2.2);       // fast initial climb, tapering off
++          var turning = Math.sin(Math.min(p * 6, Math.PI)) * -12; // charge dip / turning point
++          return T_START + (T_END - T_START) * eased + turning;
++        }
++        if (t < ROAST_SECONDS + COOL_SECONDS) {
++          var c = (t - ROAST_SECONDS) / COOL_SECONDS;
++          return T_END - (T_END - T_START) * (1 - Math.pow(1 - c, 3));
++        }
++        return T_START;
++      }
++
++      function stageFor(t, temperature) {
++        if (t >= ROAST_SECONDS + COOL_SECONDS) { return 'Loading Next Batch'; }
++        if (t >= ROAST_SECONDS) { return 'Cooling'; }
++        if (temperature < 300) { return 'Drying Phase'; }
++        if (temperature < 385) { return 'Maillard / Browning'; }
++        if (temperature < 405) { return 'First Crack'; }
++        return 'Development'; 
++      }
++
++      function tick() {
++        roastClock += TICK_MS / 1000;
++        if (roastClock >= CYCLE_SECONDS) { roastClock = 0; roastLevel = 0; }
++        var jitter = (Math.random() - 0.5) * 2.5;
++        temp = profile(roastClock) + jitter;
++        if (roastClock < ROAST_SECONDS) {
++          roastLevel = Math.max(roastLevel, Math.min(1, (temp - T_START) / (T_END - T_START)));
++        } else if (roastClock >= ROAST_SECONDS + COOL_SECONDS) {
++          roastLevel = 0;
++        }
++        tempEl.textContent = temp.toFixed(1);
++        stageEl.textContent = stageFor(roastClock, temp);
++        var pct = roastClock < ROAST_SECONDS ? (roastClock / ROAST_SECONDS) * 100 : (roastClock < ROAST_SECONDS + COOL_SECONDS ? 100 : 0);
++        barEl.style.width = pct.toFixed(1) + '%';
++      }
++
++      /* ---------- Rendering (runs on the animation loop) ---------- */
++      function lerp(a, b, t) { return a + (b - a) * t; }
++      function beanColor(level) {
++        // green -> straw yellow -> cinnamon -> dark brown
++        var stops = [[132, 160, 90], [205, 170, 85], [150, 85, 45], [62, 39, 35]];
++        var pos = Math.max(0, Math.min(0.999, level)) * (stops.length - 1);
++        var i = Math.floor(pos), f = pos - i;
++        var a = stops[i], b = stops[i + 1];
++        return 'rgb(' + Math.round(lerp(a[0], b[0], f)) + ',' + Math.round(lerp(a[1], b[1], f)) + ',' + Math.round(lerp(a[2], b[2], f)) + ')';
++      }
++
++      function stepPhysics(dt) {
++        var R = drumRadius() - 8;
++        var spin = 1.6; // rad/s drum rotation
++        drumAngle += spin * dt;
++        var heat = Math.max(0, (temp - T_START) / (T_END - T_START));
++        for (var i = 0; i < beans.length; i++) {
++          var b = beans[i];
++          b.vy += 420 * dt;                                 // gravity
++          b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vr * dt;
++          var d = Math.sqrt(b.x * b.x + b.y * b.y);
++          if (d > R - b.size) {
++            var nx = b.x / d, ny = b.y / d;
++            b.x = nx * (R - b.size); b.y = ny * (R - b.size);
++            var dot = b.vx * nx + b.vy * ny;
++            b.vx -= 1.4 * dot * nx; b.vy -= 1.4 * dot * ny; // bounce with damping
++            // drum wall drags the bean tangentially (counter-clockwise lift on the left)
++            var tx = -ny, ty = nx;
++            var wallSpeed = spin * R;
++            b.vx = lerp(b.vx, tx * wallSpeed, 0.35);
++            b.vy = lerp(b.vy, ty * wallSpeed, 0.35);
++            b.vr = (Math.random() - 0.5) * 6;
++          }
++          // light bean-bean jostling so they don't pile into a single point
++          for (var j = i + 1; j < beans.length; j++) {
++            var o = beans[j], dx = o.x - b.x, dy = o.y - b.y;
++            var dist = Math.sqrt(dx * dx + dy * dy) || 0.01, minD = b.size + o.size - 4;
++            if (dist < minD) {
++              var push = (minD - dist) * 0.5, ux = dx / dist, uy = dy / dist;
++              b.x -= ux * push; b.y -= uy * push; o.x += ux * push; o.y += uy * push;
++            }
++          }
++        }
++        // smoke / steam particles once things get hot
++        if (heat > 0.45 && Math.random() < heat * 0.5) {
++          smoke.push({ x: (Math.random() - 0.5) * R * 1.2, y: -R * 0.2, r: 4 + Math.random() * 6, a: 0.25, vy: -25 - Math.random() * 20 });
++        }
++        for (var s = smoke.length - 1; s >= 0; s--) {
++          var sp = smoke[s];
++          sp.y += sp.vy * dt; sp.r += 10 * dt; sp.a -= 0.12 * dt;
++          if (sp.a <= 0) { smoke.splice(s, 1); }
++        }
++      }
++
++      function draw() {
++        var cx = W / 2, cy = H / 2, R = drumRadius();
++        var heat = Math.max(0, Math.min(1, (temp - T_START) / (T_END - T_START)));
++        ctx.clearRect(0, 0, W, H);
++
++        // heat glow beneath the drum
++        var glow = ctx.createRadialGradient(cx, cy + R * 0.9, 10, cx, cy + R * 0.9, R * 1.6);
++        glow.addColorStop(0, 'rgba(255, 120, 30,' + (0.15 + heat * 0.45) + ')');
++        glow.addColorStop(1, 'rgba(255, 120, 30, 0)');
++        ctx.fillStyle = glow;
++        ctx.fillRect(0, 0, W, H);
++
++        ctx.save();
++        ctx.translate(cx, cy);
++
++        // drum body
++        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
++        var body = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
++        body.addColorStop(0, '#5a4038'); body.addColorStop(1, '#2a1a15');
++        ctx.fillStyle = body; ctx.fill();
++        ctx.lineWidth = 6; ctx.strokeStyle = '#8d6e63'; ctx.stroke();
++
++        // rotating vanes
++        ctx.save(); ctx.rotate(drumAngle);
++        ctx.strokeStyle = 'rgba(141, 110, 99, 0.6)'; ctx.lineWidth = 4;
++        for (var v = 0; v < 4; v++) {
++          ctx.rotate(Math.PI / 2);
++          ctx.beginPath(); ctx.moveTo(R * 0.72, 0); ctx.lineTo(R * 0.95, 0); ctx.stroke();
++        }
++        ctx.restore();
++
++        // smoke
++        for (var s = 0; s < smoke.length; s++) {
++          var sp = smoke[s];
++          ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
++          ctx.fillStyle = 'rgba(230, 230, 230,' + sp.a.toFixed(3) + ')'; ctx.fill();
++        }
++
++        // beans
++        var fill = beanColor(roastLevel);
++        for (var i = 0; i < beans.length; i++) {
++          var b = beans[i];
++          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
++          ctx.beginPath();
++          if (ctx.ellipse) { ctx.ellipse(0, 0, b.size, b.size * 0.65, 0, 0, Math.PI * 2); }
++          else { ctx.save(); ctx.scale(1, 0.65); ctx.arc(0, 0, b.size, 0, Math.PI * 2); ctx.restore(); }
++          ctx.fillStyle = fill; ctx.fill();
++          ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
++          // centre crease
++          ctx.beginPath(); ctx.moveTo(-b.size * 0.7, 0);
++          ctx.quadraticCurveTo(0, b.size * 0.25, b.size * 0.7, 0);
++          ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.2; ctx.stroke();
++          // highlight
++          ctx.beginPath(); ctx.arc(-b.size * 0.3, -b.size * 0.25, b.size * 0.18, 0, Math.PI * 2);
++          ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
++          ctx.restore();
++        }
++        ctx.restore();
++      }
++
++      function frame(ts) {
++        rafId = raf(frame);
++        resizeCanvas();
++        if (!lastFrame) { lastFrame = ts; }
++        var dt = Math.min(0.05, (ts - lastFrame) / 1000); // clamp so a long pause can't explode the physics
++        lastFrame = ts;
++        stepPhysics(dt);
++        draw();
++      }
++
++      /* ---------- Lifecycle: start / stop both loops together ---------- */
++      function isRunning() { return rafId !== null; }
++
++      function start() {
++        if (isRunning()) { return; }
++        lastFrame = 0;
++        resizeCanvas();
++        rafId = raf(frame);
++        intervalId = window.setInterval(tick, TICK_MS);
++        widget.setAttribute('data-roast-state', 'running');
++        statusEl.textContent = 'Live';
++      }
++
++      function stop(reason) {
++        if (isRunning()) {
++          caf(rafId); rafId = null;
++          window.clearInterval(intervalId); intervalId = null;
++        }
++        widget.setAttribute('data-roast-state', 'paused');
++        statusEl.textContent = reason || 'Paused';
++      }
++
++      function update() {
++        if (inView && pageVisible) { start(); }
++        else { stop(!pageVisible ? 'Paused – tab hidden' : 'Paused – off screen'); }
++      }
++
++      /* ---------- Viewport visibility: IntersectionObserver with scroll fallback ---------- */
++      if ('IntersectionObserver' in window && 'IntersectionObserverEntry' in window &&
++          'isIntersecting' in window.IntersectionObserverEntry.prototype) {
++        var io = new IntersectionObserver(function (entries) {
++          for (var i = 0; i < entries.length; i++) {
++            if (entries[i].target === widget) { inView = entries[i].isIntersecting; }
++          }
++          update();
++        }, { threshold: 0.05 });
++        io.observe(widget);
++      } else {
++        // Fallback for browsers without IntersectionObserver: throttled geometry checks on scroll/resize.
++        var pending = false;
++        function checkInView() {
++          pending = false;
++          var rect = widget.getBoundingClientRect();
++          var vh = window.innerHeight || document.documentElement.clientHeight;
++          var vw = window.innerWidth || document.documentElement.clientWidth;
++          var visible = rect.bottom > 0 && rect.top < vh && rect.right > 0 && rect.left < vw &&
++            rect.width > 0 && rect.height > 0;
++          if (visible !== inView) { inView = visible; update(); }
++        }
++        function schedule() {
++          if (pending) { return; }
++          pending = true;
++          raf(checkInView);
++        }
++        var evts = ['scroll', 'resize', 'orientationchange', 'load'];
++        for (var e = 0; e < evts.length; e++) {
++          if (window.addEventListener) { window.addEventListener(evts[e], schedule, false); }
++          else if (window.attachEvent) { window.attachEvent('on' + evts[e], schedule); }
++        }
++        checkInView();
++      }
++
++      /* ---------- Page visibility: Page Visibility API with focus/blur + pagehide fallback ---------- */
++      var hiddenProp = null, visEvent = null;
++      if (typeof document.hidden !== 'undefined') { hiddenProp = 'hidden'; visEvent = 'visibilitychange'; }
++      else if (typeof document.webkitHidden !== 'undefined') { hiddenProp = 'webkitHidden'; visEvent = 'webkitvisibilitychange'; }
++      else if (typeof document.msHidden !== 'undefined') { hiddenProp = 'msHidden'; visEvent = 'msvisibilitychange'; }
++
++      if (hiddenProp && document.addEventListener) {
++        pageVisible = !document[hiddenProp];
++        document.addEventListener(visEvent, function () { pageVisible = !document[hiddenProp]; update(); }, false);
++      } else if (window.addEventListener) {
++        window.addEventListener('focus', function () { pageVisible = true; update(); }, false);
++        window.addEventListener('blur', function () { pageVisible = false; update(); }, false);
++      } else if (window.attachEvent) {
++        window.attachEvent('onfocus', function () { pageVisible = true; update(); });
++        window.attachEvent('onblur', function () { pageVisible = false; update(); });
++      }
++      if (window.addEventListener) {
++        window.addEventListener('pagehide', function () { pageVisible = false; update(); }, false);
++        window.addEventListener('pageshow', function () { pageVisible = true; update(); }, false);
++      }
++
++      // Paint one static frame so the widget never looks empty before it scrolls into view.
++      resizeCanvas();
++      tempEl.textContent = temp.toFixed(1);
++      draw();
++      update();
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

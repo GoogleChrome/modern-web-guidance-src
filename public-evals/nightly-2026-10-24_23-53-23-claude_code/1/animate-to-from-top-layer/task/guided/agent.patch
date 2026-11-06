@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,128 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Top-layer overlays (dialog + popover) */
++    .confirm-dialog,
++    .info-overlay {
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++      background: white;
++      opacity: 0;
++      transition-property: opacity, translate, scale, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    .confirm-dialog {
++      padding: 1.5rem;
++      width: min(90vw, 400px);
++      scale: 0.9;
++    }
++
++    .confirm-dialog h2 {
++      margin-bottom: 0.5rem;
++      color: var(--primary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 1.5rem;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++      border: 1px solid var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .dialog-actions .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    .info-overlay {
++      inset: auto 1.5rem 1.5rem auto;
++      margin: 0;
++      padding: 1rem 1rem 1rem 1.25rem;
++      max-width: min(90vw, 360px);
++      border-left: 4px solid var(--accent);
++      translate: 0 1.5rem;
++    }
++
++    .info-overlay-content {
++      display: flex;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .info-overlay button {
++      background: none;
++      border: none;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      color: inherit;
++    }
++
++    :is(.confirm-dialog[open], .info-overlay:popover-open):where(:not([data-closing])) {
++      opacity: 1;
++      scale: 1;
++      translate: 0 0;
++
++      @starting-style {
++        opacity: 0;
++      }
++
++      &.confirm-dialog {
++        @starting-style {
++          scale: 0.9;
++        }
++      }
++
++      &.info-overlay {
++        @starting-style {
++          translate: 0 1.5rem;
++        }
++      }
++
++      &::backdrop {
++        background-color: rgb(0 0 0 / 0.5);
++
++        @starting-style {
++          background-color: transparent;
++        }
++      }
++    }
++
++    .confirm-dialog::backdrop {
++      background-color: transparent;
++      transition-property: background-color, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .confirm-dialog,
++      .info-overlay {
++        scale: 1;
++        translate: 0 0;
++        transition-duration: 0.1s;
++      }
++
++      .confirm-dialog::backdrop {
++        transition-duration: 0.1s;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +283,17 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" popovertarget="info-overlay">Ordering Status</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +327,82 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" class="confirm-dialog" aria-labelledby="logout-title">
++    <h2 id="logout-title">Log out?</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="close-dialog-btn" class="btn btn-secondary">Cancel</button>
++      <a href="/logout" class="btn">Log out</a>
++    </div>
++  </dialog>
++
++  <div id="info-overlay" class="info-overlay" popover role="status">
++    <div class="info-overlay-content">
++      <p>online ordering is currently offline</p>
++      <button type="button" id="close-info-btn" aria-label="Dismiss">&times;</button>
++    </div>
++  </div>
++
++  <script>
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++    }
++
++    // Plays the exit transition, then closes (data-closing is the fallback
++    // for browsers that can't transition out of the top layer).
++    async function closeTopLayer(element) {
++      if (!supportsTopLayerExit()) {
++        element.setAttribute('data-closing', '');
++        const animations = element.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!element.hasAttribute('data-closing')) return;
++        element.removeAttribute('data-closing');
++      }
++      if (element instanceof HTMLDialogElement) element.close();
++      else element.hidePopover();
++    }
++
++    const logoutDialog = document.getElementById('logout-dialog');
++    document.getElementById('open-dialog-btn').addEventListener('click', (e) => {
++      e.preventDefault();
++      logoutDialog.showModal();
++    });
++    document.getElementById('close-dialog-btn').addEventListener('click', () => closeTopLayer(logoutDialog));
++    logoutDialog.addEventListener('cancel', (e) => {
++      e.preventDefault();
++      closeTopLayer(logoutDialog);
++    });
++    // Backdrop click
++    logoutDialog.addEventListener('click', (e) => {
++      if (e.target === logoutDialog) closeTopLayer(logoutDialog);
++    });
++
++    const infoOverlay = document.getElementById('info-overlay');
++    document.getElementById('close-info-btn').addEventListener('click', () => closeTopLayer(infoOverlay));
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,145 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .barista-feature {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 24px 40px;
++      margin-block: 64px;
++      padding: 24px;
++      background: #f2ece7;
++      border-radius: 16px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: min(240px, 100%);
++      height: auto;
++      aspect-ratio: 1;
++      object-fit: cover;
++      -webkit-mask-image: url(#barista-splat);
++      mask-image: url(#barista-splat);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .barista-story {
++      flex: 1 1 240px;
++    }
++
++    .eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-block-end: 8px;
++    }
++
++    .barista-story h2 {
++      font-size: 1.8rem;
++      margin-block-end: 12px;
++    }
++
++    .barista-story p:last-child {
++      margin-block-start: 12px;
++      font-style: italic;
++    }
++
++    .offers {
++      display: grid;
++      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
++      gap: 28px;
++      align-items: center;
++      margin-block-end: 56px;
++    }
++
++    .unified-card {
++      --loyalty-background: var(--primary);
++      display: flex;
++      /* Shadow follows the combined silhouette; keep the wrapper transparent. */
++      filter: drop-shadow(0 10px 12px rgb(62 39 35 / 18%));
++      color: white;
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      padding: 32px;
++      border-radius: 16px 0 0 16px;
++      background: var(--loyalty-background);
++    }
++
++    .card-body h2 {
++      margin-block-end: 12px;
++    }
++
++    .card-body .eyebrow {
++      color: var(--accent);
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .card-body .btn:hover {
++      background: #ffc170;
++    }
++
++    .card-accent {
++      flex: 0 0 clamp(36px, 6vw, 72px);
++      background: var(--loyalty-background);
++      border-radius: 0 16px 16px 0;
++      -webkit-mask-image: url(#loyalty-curve);
++      mask-image: url(#loyalty-curve);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      padding: 48px 28px 28px;
++      border-radius: 16px;
++      background: linear-gradient(135deg, #f7dab0, #e8bb86);
++      text-align: center;
++      /* Reserve top padding so the circular notch never clips the text. */
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 22px, black 23px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 22px, black 23px);
++    }
++
++    .gradient-masked-card h2 {
++      font-size: 1.7rem;
++      margin-block-end: 10px;
++    }
++
++    @media (max-width: 640px) {
++      .offers {
++        grid-template-columns: minmax(0, 1fr);
++      }
++
++      .barista-feature {
++        justify-content: center;
++      }
++
++      .card-body {
++        padding: 24px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +293,24 @@
+ </head>
+ 
+ <body>
+ 
++  <svg class="shape-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++    <defs>
++      <!-- Fractional coordinates scale both masks with their target dimensions. -->
++      <mask id="barista-splat" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <path fill="white" d="M .5 .06 C .58 .02 .59 .2 .68 .16 C .77 .11 .83 .05 .87 .14 C .92 .23 .82 .3 .89 .37 C .95 .43 1 .43 .98 .53 C .96 .63 .81 .6 .8 .7 C .78 .79 .9 .88 .81 .94 C .72 1 .66 .86 .57 .9 C .48 .94 .44 1 .36 .96 C .28 .92 .32 .79 .23 .77 C .14 .75 .03 .86 .02 .75 C .01 .65 .16 .61 .14 .51 C .12 .42 .01 .38 .04 .29 C .08 .2 .23 .27 .29 .19 C .35 .11 .3 .02 .4 .02 C .47 .02 .45 .09 .5 .06 Z" />
++      </mask>
++      <mask id="loyalty-curve" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <rect width="1" height="1" fill="white" />
++        <!-- Extend past the right edge to prevent a stray seam along the cutout. -->
++        <path d="M 1.1 0 C .3 .18 .3 .82 1.1 1 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +347,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="barista-feature" aria-labelledby="barista-heading">
++      <img class="shaped-avatar" src="assets/featured-barista.jpg" width="640" height="640"
++        alt="Maya, our featured barista, smiling" loading="lazy" decoding="async">
++      <div class="barista-story">
++        <p class="eyebrow">The people behind your pour</p>
++        <h2 id="barista-heading">Meet Maya, your morning person.</h2>
++        <p>Our featured barista brings a little artistry to every cup, from a perfectly pulled espresso to that last swirl of latte art.</p>
++        <p>Her go-to? An oat milk flat white, with a warm welcome on the side.</p>
++      </div>
++    </section>
++
++    <div class="offers">
++      <section class="unified-card" aria-labelledby="loyalty-heading">
++        <div class="card-body">
++          <p class="eyebrow">A little loyalty, a lot of coffee</p>
++          <h2 id="loyalty-heading">Make every cup count.</h2>
++          <p>Join Daily Grind Rewards to collect points on your favorites and enjoy a few well-earned perks along the way.</p>
++          <a href="/rewards" class="btn">Explore Rewards</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </section>
++
++      <section class="gradient-masked-card" aria-labelledby="promo-heading">
++        <p class="eyebrow">Your next coffee break</p>
++        <h2 id="promo-heading">Sip something seasonal.</h2>
++        <p>A little maple. A little comfort. Find your new favorite on our seasonal menu.</p>
++        <a href="/menu/seasonal" class="btn">Discover the Menu</a>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

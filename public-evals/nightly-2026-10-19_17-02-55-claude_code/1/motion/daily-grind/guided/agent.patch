@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+index 66c9173..b97e1c5 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,92 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Motion: static by default, enabled only when the user has no reduced-motion preference */
++    .card,
++    .btn {
++      transition: background 0.3s, box-shadow 0.3s;
++    }
++
++    .btn:focus-visible,
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @keyframes fade-up {
++        from {
++          opacity: 0;
++          translate: 0 24px;
++        }
++      }
++
++      @keyframes fade-down {
++        from {
++          opacity: 0;
++          translate: 0 -100%;
++        }
++      }
++
++      nav {
++        animation: fade-down 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
++      }
++
++      .hero {
++        overflow: hidden;
++      }
++
++      .hero > * {
++        animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
++      }
++
++      .hero > :nth-child(1) { animation-delay: 0.15s; }
++      .hero > :nth-child(2) { animation-delay: 0.3s; }
++      .hero > :nth-child(3) { animation-delay: 0.45s; }
++
++      nav a,
++      .footer-links a {
++        transition: color 0.3s, translate 0.2s ease-out;
++      }
++
++      nav a:hover,
++      .footer-links a:hover {
++        translate: 0 -2px;
++      }
++
++      .card {
++        transition: background 0.3s, box-shadow 0.3s, translate 0.25s ease-out;
++      }
++
++      .card:hover {
++        translate: 0 -6px;
++        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
++      }
++
++      .btn {
++        transition: background 0.3s, translate 0.2s ease-out, scale 0.2s ease-out;
++      }
++
++      .btn:hover {
++        translate: 0 -2px;
++      }
++
++      .btn:active {
++        scale: 0.96;
++      }
++
++      /* Decorative scroll reveals: progressive enhancement, no fallback needed */
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        main h2,
++        .card,
++        footer > * {
++          animation: fade-up linear backwards;
++          animation-timeline: view();
++          animation-range: entry 0% entry 60%;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

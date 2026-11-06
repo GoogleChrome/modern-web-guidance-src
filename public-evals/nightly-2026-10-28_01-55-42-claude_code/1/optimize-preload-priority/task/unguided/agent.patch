@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,70 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Brand — Watch the Film</title>
++
++<!-- LCP element: the poster. Preload at highest priority so it is discovered
++     in the preload scanner rather than waiting for the <video> element. -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++
++<!-- Critical header font: preload so it starts downloading alongside the poster. -->
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++
++<!-- Secondary font is NOT preloaded: it is low priority and must not compete
++     with the poster or header font for bandwidth. -->
++
++<style>
++@font-face{
++  font-family:"Brand";
++  src:url(brand-font.woff2) format("woff2");
++  font-weight:400 700;
++  font-display:swap; /* header renders immediately in fallback, swaps when ready */
++}
++@font-face{
++  font-family:"Secondary";
++  src:url(secondary-font.woff2) format("woff2");
++  font-weight:400;
++  font-display:optional; /* never blocks or shifts; used only if it arrives fast */
++}
++*{box-sizing:border-box;margin:0}
++html,body{height:100%}
++body{
++  background:#000;
++  color:#fff;
++  font-family:"Secondary",system-ui,sans-serif;
++  display:flex;
++  flex-direction:column;
++}
++h1{
++  font-family:"Brand",system-ui,sans-serif;
++  font-size:clamp(1.5rem,4vw,2.5rem);
++  padding:1rem 1.25rem;
++}
++main{flex:1;display:grid;place-items:center;padding:0 1rem 1rem}
++video{
++  width:min(100%,960px);
++  aspect-ratio:16/9; /* reserves space before poster arrives: no layout shift */
++  background:#111;
++  display:block;
++}
++footer{
++  font-size:.875rem;
++  color:#999;
++  padding:1rem 1.25rem;
++}
++</style>
++</head>
++<body>
++<h1>Brand</h1>
++<main>
++  <!-- preload="none": the video bytes do not compete with the poster.
++       The poster image is the LCP candidate. -->
++  <video controls preload="none" poster="poster.jpg" width="960" height="540">
++    <source src="video.mp4" type="video/mp4">
++  </video>
++</main>
++<footer>© 2026 Brand</footer>
++</body>
++</html>

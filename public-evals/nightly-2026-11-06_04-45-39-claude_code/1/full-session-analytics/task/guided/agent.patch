@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,121 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++  <script type="module">
++    // Core Web Vitals monitoring.
++    // Metrics are queued with fetchLater() and the browser delivers the latest
++    // payload when the user closes the tab or navigates away, so values are
++    // final at send time. No unload/beforeunload listeners (bfcache-safe).
++    import { onCLS, onINP, onLCP, onFCP, onTTFB } from 'https://unpkg.com/web-vitals@5?module';
++
++    // fetchLater() polyfill for browsers without native support (Firefox,
++    // Safari). Falls back to fetch keepalive / sendBeacon on visibilitychange.
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++    const pageId = crypto.randomUUID();
++
++    // Latest value of each metric, keyed by metric ID (web-vitals generates a
++    // new ID per page load and per bfcache restore).
++    const pendingMetrics = new Map();
++    let controller = null;
++    let pendingResult = null;
++
++    function queueBeacon(metric) {
++      // If the previous beacon was already delivered (e.g. tab was hidden and
++      // then shown again, or the page was restored from bfcache), start a new
++      // batch. Re-reported metrics keep their ID so the server can keep the
++      // latest value per ID.
++      if (pendingResult && pendingResult.activated) {
++        pendingMetrics.clear();
++        controller = null;
++      }
++
++      pendingMetrics.set(metric.id, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType,
++      });
++
++      // Replace the previously scheduled beacon with the updated snapshot.
++      controller?.abort();
++      controller = new AbortController();
++
++      const body = JSON.stringify({
++        pageId,
++        url: location.href,
++        metrics: [...pendingMetrics.values()],
++      });
++
++      try {
++        pendingResult = fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body,
++          signal: controller.signal,
++        });
++      } catch (error) {
++        // Quota exceeded or unsupported; drop silently.
++        pendingResult = null;
++      }
++    }
++
++    // reportAllChanges keeps the queued payload current as values change;
++    // only the final snapshot is actually sent when the user leaves.
++    const opts = { reportAllChanges: true };
++    onCLS(queueBeacon, opts);
++    onINP(queueBeacon, opts);
++    onLCP(queueBeacon, opts);
++    onFCP(queueBeacon, opts);
++    onTTFB(queueBeacon, opts);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,119 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order-section {
++      margin-top: 50px;
++      background: white;
++      padding: 35px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-subtitle {
++      text-align: center;
++      margin-bottom: 25px;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .order-form {
++      max-width: 540px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .required-indicator {
++      color: #c62828;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 12px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1.5px solid var(--secondary);
++      border-radius: 5px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    /* Only show invalid styles after user interaction or form submission attempt */
++    .form-control.touched:invalid,
++    .order-form.submitted .form-control:invalid,
++    .form-control.is-invalid {
++      border-color: #c62828;
++      background-color: #fff8f8;
++    }
++
++    .form-control.touched:valid,
++    .form-control.is-valid {
++      border-color: #2e7d32;
++    }
++
++    .error-message {
++      display: none;
++      color: #c62828;
++      font-size: 0.875rem;
++      margin-top: 6px;
++      font-weight: 500;
++    }
++
++    .error-message.visible {
++      display: block;
++    }
++
++    .order-success {
++      display: none;
++      margin-top: 20px;
++      padding: 14px 16px;
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++      border-radius: 5px;
++      text-align: center;
++      font-weight: 500;
++    }
++
++    .order-success.visible {
++      display: block;
++    }
++
++    .submit-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +305,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Quick Pickup Order</h2>
++      <p class="order-subtitle">Choose your neighborhood Daily Grind shop and we'll have your cup ready when you arrive.</p>
++
++      <form id="order-form" class="order-form" action="/order-online" method="post" novalidate>
++        <div class="form-group">
++          <label for="local-shop">
++            Local Shop <span class="required-indicator" aria-hidden="true">*</span>
++          </label>
++          <select
++            id="local-shop"
++            name="localShop"
++            class="form-control"
++            required
++            aria-required="true"
++            aria-invalid="false"
++            aria-describedby="local-shop-error"
++          >
++            <option value="">-- Select a local shop --</option>
++            <option value="downtown-roastery">Downtown Roastery — 124 Main St</option>
++            <option value="westside-cafe">Westside Cafe — 450 Oak Ave</option>
++            <option value="riverside-espresso">Riverside Espresso Bar — 88 River Rd</option>
++            <option value="university-district">University District — 310 College Way</option>
++            <option value="northgate-market">Northgate Market — 720 Pine St</option>
++          </select>
++          <div id="local-shop-error" class="error-message" role="alert" aria-live="polite" hidden>
++            Please select a local shop for your pickup order.
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="drink-select">Drink Selection</label>
++          <select id="drink-select" name="drink" class="form-control">
++            <option value="maple-oat-latte">Maple Oat Latte — $5.50</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso — $3.75</option>
++            <option value="cold-brew">18-Hour Cold Brew — $4.75</option>
++            <option value="house-drip">House Drip Coffee — $3.25</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="drink-size">Size</label>
++          <select id="drink-size" name="size" class="form-control">
++            <option value="small">Small (8 oz)</option>
++            <option value="medium" selected>Medium (12 oz)</option>
++            <option value="large">Large (16 oz)</option>
++          </select>
++        </div>
++
++        <button type="submit" class="btn submit-btn">Place Pickup Order</button>
++
++        <div id="order-success" class="order-success" role="status" aria-live="polite" hidden></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +372,97 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const orderForm = document.getElementById('order-form');
++      const shopSelect = document.getElementById('local-shop');
++      const shopError = document.getElementById('local-shop-error');
++      const drinkSelect = document.getElementById('drink-select');
++      const sizeSelect = document.getElementById('drink-size');
++      const orderSuccess = document.getElementById('order-success');
++
++      let hasInteractedWithShop = false;
++      let hasAttemptedSubmit = false;
++
++      function updateShopValidationState() {
++        const isValid = shopSelect.value.trim() !== '' && shopSelect.checkValidity();
++
++        if (!hasInteractedWithShop && !hasAttemptedSubmit) {
++          shopSelect.classList.remove('is-invalid', 'is-valid', 'touched');
++          shopSelect.setAttribute('aria-invalid', 'false');
++          shopError.classList.remove('visible');
++          shopError.setAttribute('hidden', '');
++          return isValid;
++        }
++
++        shopSelect.classList.add('touched');
++
++        if (!isValid) {
++          shopSelect.classList.add('is-invalid');
++          shopSelect.classList.remove('is-valid');
++          shopSelect.setAttribute('aria-invalid', 'true');
++          shopError.classList.add('visible');
++          shopError.removeAttribute('hidden');
++        } else {
++          shopSelect.classList.remove('is-invalid');
++          shopSelect.classList.add('is-valid');
++          shopSelect.setAttribute('aria-invalid', 'false');
++          shopError.classList.remove('visible');
++          shopError.setAttribute('hidden', '');
++        }
++
++        return isValid;
++      }
++
++      shopSelect.addEventListener('change', function () {
++        hasInteractedWithShop = true;
++        updateShopValidationState();
++      });
++
++      shopSelect.addEventListener('blur', function () {
++        hasInteractedWithShop = true;
++        updateShopValidationState();
++      });
++
++      shopSelect.addEventListener('invalid', function (event) {
++        event.preventDefault();
++        hasInteractedWithShop = true;
++        updateShopValidationState();
++      });
++
++      orderForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++        hasAttemptedSubmit = true;
++        hasInteractedWithShop = true;
++        orderForm.classList.add('submitted');
++
++        const isShopValid = updateShopValidationState();
++        if (!isShopValid) {
++          orderSuccess.classList.remove('visible');
++          orderSuccess.setAttribute('hidden', '');
++          shopSelect.focus();
++          return;
++        }
++
++        const selectedShopText = shopSelect.options[shopSelect.selectedIndex].text;
++        const selectedDrinkText = drinkSelect.options[drinkSelect.selectedIndex].text.split(' — ')[0];
++        const selectedSizeText = sizeSelect.options[sizeSelect.selectedIndex].text;
++
++        orderSuccess.textContent =
++          'Order received! Your ' +
++          selectedSizeText +
++          ' ' +
++          selectedDrinkText +
++          ' is being prepared at ' +
++          selectedShopText +
++          '.';
++        orderSuccess.classList.add('visible');
++        orderSuccess.removeAttribute('hidden');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

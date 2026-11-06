@@ -1,0 +1,328 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    body > nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,25 +45,25 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    body > nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    body > nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    body > nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    body > nav a:hover {
+       color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -134,8 +134,153 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites: TOC sidebar + scroll-snapping panel */
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: 220px 1fr;
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .toc-sidebar {
++      align-self: start;
++      position: sticky;
++      top: 90px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .toc-sidebar h3 {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .toc-sidebar ul {
++      list-style: none;
++    }
++
++    .toc-sidebar a {
++      display: block;
++      padding: 8px 12px;
++      border-left: 4px solid transparent;
++      border-radius: 0 4px 4px 0;
++      color: var(--text);
++      text-decoration: none;
++      transition: background 0.3s, border-color 0.3s;
++    }
++
++    .toc-sidebar a:hover {
++      background: var(--light);
++    }
++
++    .toc-sidebar a:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Active link: color plus border and weight so it isn't conveyed by color alone */
++    .toc-sidebar a[aria-current="true"] {
++      background: var(--secondary);
++      border-left-color: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .seasonal-panel {
++      height: 70vh;
++      min-height: 360px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      /* Each section fills the panel, so mandatory snapping never hides content */
++      scroll-snap-type: y mandatory;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .seasonal-panel {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .drink-section {
++      min-height: 100%;
++      padding: 30px;
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++    }
++
++    .drink-section + .drink-section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .drink-section header {
++      scroll-snap-align: start;
++      /* Keep the header clear of the panel's top edge when snapped */
++      scroll-margin-top: 30px;
++    }
++
++    .drink-section h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++    }
++
++    .drink-section .tagline {
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .drink-section img {
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .drink-section:focus {
++      outline: none;
++    }
++
++    .drink-section .btn {
++      align-self: flex-start;
++      margin-top: 0;
++    }
++
++    @media (max-width: 700px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++
++      .toc-sidebar {
++        position: static;
++      }
++
++      .toc-sidebar ul {
++        display: flex;
++        flex-wrap: wrap;
++        gap: 5px;
++      }
++
++      .toc-sidebar a {
++        border-left: none;
++        border-bottom: 4px solid transparent;
++        border-radius: 4px 4px 0 0;
++      }
++
++      .toc-sidebar a[aria-current="true"] {
++        border-bottom-color: var(--accent);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,30 +319,112 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-layout">
++        <nav class="toc-sidebar" aria-labelledby="toc-heading">
++          <h3 id="toc-heading">On the Menu</h3>
++          <ul>
++            <li><a href="#maple-oat-latte" aria-current="true">Maple Oat Latte</a></li>
++            <li><a href="#dark-roast-espresso">Dark Roast Espresso</a></li>
++            <li><a href="#cold-brew">Cold Brew</a></li>
++          </ul>
++        </nav>
++
++        <div class="seasonal-panel" tabindex="0" aria-label="Seasonal drinks">
++          <article class="drink-section" id="maple-oat-latte" tabindex="-1">
++            <header>
++              <h3>Maple Oat Latte</h3>
++              <p class="tagline">Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++              alt="Lattes with heart-shaped foam art on a wooden table" width="900" height="506" loading="lazy">
++            <p>Our house espresso pulled over steamed oat milk and finished with a drizzle of pure Vermont maple.
++              Warm, nutty, and just sweet enough for crisp autumn mornings.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="dark-roast-espresso" tabindex="-1">
++            <header>
++              <h3>Dark Roast Espresso</h3>
++              <p class="tagline">Bold, smokey, and perfect for a morning boost.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=80"
++              alt="Top-down view of an espresso in a white cup on dark slate" width="900" height="506" loading="lazy">
++            <p>A double shot of our darkest roast with a thick, caramel-colored crema. Notes of cocoa and toasted
++              oak make it a favorite on its own or as the base of any drink.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </article>
++
++          <article class="drink-section" id="cold-brew" tabindex="-1">
++            <header>
++              <h3>Cold Brew</h3>
++              <p class="tagline">Steeped for 18 hours for maximum smoothness.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80"
++              alt="Iced cold brew with cream swirling through the glass" width="900" height="506" loading="lazy">
++            <p>Coarse-ground beans steeped slowly in cold water for a low-acid, naturally sweet brew. Serve it
++              black over ice or add a splash of cream.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
++  <script type="module">
++    const panel = document.querySelector('.seasonal-panel');
++    const links = [...document.querySelectorAll('.toc-sidebar a')];
++    const sections = [...panel.querySelectorAll('.drink-section')];
++
++    function setActive(id) {
++      for (const link of links) {
++        if (link.hash === `#${id}`) {
++          link.setAttribute('aria-current', 'true');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      }
++    }
++
++    // Scroll only the panel (not the page); CSS scroll-behavior makes it smooth
++    // unless the user prefers reduced motion.
++    for (const link of links) {
++      link.addEventListener('click', (event) => {
++        const section = document.getElementById(link.hash.slice(1));
++        if (!section) return;
++        event.preventDefault();
++        const top = panel.scrollTop + section.getBoundingClientRect().top - panel.getBoundingClientRect().top;
++        panel.scrollTo({ top });
++        setActive(section.id);
++        section.focus({ preventScroll: true });
++      });
++    }
++
++    if ('onscrollsnapchange' in HTMLElement.prototype) {
++      // Fires once the panel settles on a new snapped header
++      panel.addEventListener('scrollsnapchange', (event) => {
++        const section = event.snapTargetBlock?.closest('.drink-section');
++        if (section) setActive(section.id);
++      });
++    } else {
++      // Fallback: track which sections touch the top 10% of the panel and
++      // pick the lowest one, which is the section snapped to the top.
++      const visible = new Set();
++      const observer = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.isIntersecting) visible.add(entry.target);
++          else visible.delete(entry.target);
++        }
++        const current = sections.findLast((section) => visible.has(section));
++        if (current) setActive(current.id);
++      }, { root: panel, rootMargin: '0px 0px -90% 0px' });
++      sections.forEach((section) => observer.observe(section));
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

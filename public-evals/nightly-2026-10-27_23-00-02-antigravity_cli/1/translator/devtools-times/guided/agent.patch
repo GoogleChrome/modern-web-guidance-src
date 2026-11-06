@@ -1,0 +1,1043 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..7f214b3 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,57 @@
++type AvailabilityStatus = 'available' | 'downloadable' | 'downloading' | 'unavailable';
++
++interface TranslatorOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++  monitor?: (m: {
++    addEventListener(
++      type: 'downloadprogress',
++      listener: (e: { loaded: number; total?: number }) => void
++    ): void;
++  }) => void;
++}
++
++interface TranslatorInstance {
++  translate(text: string): Promise<string>;
++  translateStreaming(text: string): AsyncIterable<string>;
++  destroy?: () => void;
++}
++
++interface TranslatorConstructor {
++  availability(options: { sourceLanguage: string; targetLanguage: string }): Promise<AvailabilityStatus>;
++  create(options: TranslatorOptions): Promise<TranslatorInstance>;
++}
++
++interface LanguageDetectionResult {
++  detectedLanguage: string;
++  confidence: number;
++}
++
++interface LanguageDetectorInstance {
++  detect(text: string): Promise<LanguageDetectionResult[]>;
++  destroy?: () => void;
++}
++
++interface LanguageDetectorConstructor {
++  availability(): Promise<AvailabilityStatus>;
++  create(options?: {
++    monitor?: (m: {
++      addEventListener(
++        type: 'downloadprogress',
++        listener: (e: { loaded: number; total?: number }) => void
++      ): void;
++    }) => void;
++  }): Promise<LanguageDetectorInstance>;
++}
++
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    Translator?: TranslatorConstructor;
++    LanguageDetector?: LanguageDetectorConstructor;
+   }
++  var Translator: TranslatorConstructor | undefined;
++  var LanguageDetector: LanguageDetectorConstructor | undefined;
+ }
+ 
+ export {};
+\ No newline at end of file
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..f1613b5 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -20,12 +20,12 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} data-translatable class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 data-translatable class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p data-translatable class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -64,12 +64,12 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++            <div data-translatable class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 data-translatable class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p data-translatable class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..9f24867 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -50,7 +50,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+             <ul className="space-y-2 text-sm">
+                 {topStories.map(article => (
+                     <li key={article.id}>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline">{article.data.title}</a>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} data-translatable className="hover:underline">{article.data.title}</a>
+                     </li>
+                 ))}
+             </ul>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..536e9b4 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import TranslationControl from "./TranslationControl.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <TranslationControl client:load variant="header" />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..72ee9fc 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -69,8 +69,8 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                  <p className="text-sm text-gray-600">{article.summary}</p>
++                  <h4 data-translatable className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                  <p data-translatable className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+                 <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..b824112 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -77,7 +77,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                                         <li key={article.slug}>
+                                             <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+                                                 <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                                <h4 data-translatable className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                             </a>
+                                         </li>
+                                     );
+@@ -104,8 +104,8 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             {filteredArticles.map(article => (
+                                 <li key={article.slug}>
+                                     <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
++                                        <h4 data-translatable className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                        <p data-translatable className="text-sm text-gray-600">{article.summary}</p>
+                                     </a>
+                                 </li>
+                             ))}
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..cf083ba 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -10,7 +10,7 @@ export interface Props {
+ const { title, articles } = Astro.props;
+ ---
+ <section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++    <h2 data-translatable class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..8e11f14 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -27,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+ <section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++    <h2 data-translatable class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+@@ -35,15 +35,15 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} data-translatable class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 data-translatable class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p data-translatable class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+                 <div class="flex items-center text-gray-500 text-sm">
+@@ -74,16 +74,16 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} data-translatable class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 data-translatable class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                             <p data-translatable class="text-gray-700 mb-4 flex-grow">
+                                 {article.data.summary}
+                             </p>
+                         )}
+diff --git a/src/components/TranslationControl.tsx b/src/components/TranslationControl.tsx
+new file mode 100644
+index 0000000..1af2d2e
+--- /dev/null
++++ b/src/components/TranslationControl.tsx
+@@ -0,0 +1,394 @@
++import React, { useState, useEffect, useId, useRef } from 'react';
++import {
++  SUPPORTED_LANGUAGES,
++  isTranslatorSupported,
++  isLanguageDetectorSupported,
++  checkLanguagePairAvailability,
++  detectSampleLanguage,
++  translateElements,
++  restoreOriginalContent,
++  collectTranslatableElements,
++  getOriginalText,
++} from '../utils/translator';
++
++interface TranslationControlProps {
++  /** Optional CSS selector to scope translation (defaults to the whole document) */
++  scopeSelector?: string;
++  /** Compact layout for header bar vs full card layout for article pages */
++  variant?: 'header' | 'article';
++}
++
++export default function TranslationControl({
++  scopeSelector,
++  variant = 'article',
++}: TranslationControlProps) {
++  const idPrefix = useId();
++  const [supported, setSupported] = useState<boolean | null>(null);
++  const [detectorSupported, setDetectorSupported] = useState<boolean>(false);
++  const [sourceLanguage, setSourceLanguage] = useState<string>('en');
++  const [targetLanguage, setTargetLanguage] = useState<string>('es');
++  const [availability, setAvailability] = useState<AvailabilityStatus | 'checking'>('checking');
++  const [status, setStatus] = useState<'idle' | 'downloading' | 'translating' | 'translated' | 'error'>('idle');
++  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
++  const [translationProgress, setTranslationProgress] = useState<{ completed: number; total: number } | null>(null);
++  const [statusMessage, setStatusMessage] = useState<string>('');
++  const [detectedInfo, setDetectedInfo] = useState<string | null>(null);
++  const [isExpanded, setIsExpanded] = useState<boolean>(variant === 'article');
++  const abortControllerRef = useRef<AbortController | null>(null);
++
++  const getRootNode = (): ParentNode => {
++    if (typeof document === 'undefined') return null as unknown as ParentNode;
++    if (scopeSelector) {
++      return document.querySelector(scopeSelector) ?? document;
++    }
++    return document;
++  };
++
++  useEffect(() => {
++    const hasTranslator = isTranslatorSupported();
++    setSupported(hasTranslator);
++    setDetectorSupported(isLanguageDetectorSupported());
++  }, []);
++
++  useEffect(() => {
++    if (!supported) {
++      setAvailability('unavailable');
++      return;
++    }
++    let cancelled = false;
++    setAvailability('checking');
++    checkLanguagePairAvailability(sourceLanguage, targetLanguage).then((res) => {
++      if (!cancelled) {
++        setAvailability(res);
++      }
++    });
++    return () => {
++      cancelled = true;
++    };
++  }, [supported, sourceLanguage, targetLanguage]);
++
++  const handleSwapLanguages = () => {
++    setSourceLanguage(targetLanguage);
++    setTargetLanguage(sourceLanguage);
++    setDetectedInfo(null);
++  };
++
++  const handleDetectLanguage = async () => {
++    const root = getRootNode();
++    if (!root) return;
++    const elements = collectTranslatableElements(root);
++    const sample = elements
++      .slice(0, 4)
++      .map((el) => getOriginalText(el))
++      .join(' ')
++      .slice(0, 500);
++
++    if (!sample) {
++      setStatusMessage('No translatable text found on this page.');
++      return;
++    }
++
++    setStatusMessage('Detecting language on-device...');
++    const detected = await detectSampleLanguage(sample, (loaded) => {
++      setDownloadProgress(Math.round(loaded * 100));
++    });
++    setDownloadProgress(null);
++
++    if (detected) {
++      const matched = SUPPORTED_LANGUAGES.find(
++        (l) => l.code === detected.detectedLanguage || detected.detectedLanguage.startsWith(l.code)
++      );
++      if (matched) {
++        setSourceLanguage(matched.code);
++        const pct = Math.round(detected.confidence * 100);
++        setDetectedInfo(`Detected ${matched.label} (${pct}%)`);
++        setStatusMessage(`Detected source language: ${matched.label}`);
++        if (matched.code === targetLanguage) {
++          setTargetLanguage(matched.code === 'en' ? 'es' : 'en');
++        }
++      } else {
++        setStatusMessage(`Detected language "${detected.detectedLanguage}" is not in the supported list.`);
++      }
++    } else {
++      setStatusMessage('Could not automatically detect the source language.');
++    }
++  };
++
++  const handleTranslate = async () => {
++    const root = getRootNode();
++    if (!root) return;
++
++    if (abortControllerRef.current) {
++      abortControllerRef.current.abort();
++    }
++    const controller = new AbortController();
++    abortControllerRef.current = controller;
++
++    if (sourceLanguage === targetLanguage) {
++      restoreOriginalContent(root);
++      setStatus('idle');
++      setStatusMessage('Restored original language.');
++      return;
++    }
++
++    try {
++      setStatus(availability === 'downloadable' || availability === 'downloading' ? 'downloading' : 'translating');
++      setDownloadProgress(null);
++      setTranslationProgress(null);
++      setStatusMessage('Preparing on-device translation...');
++
++      const { translatedCount } = await translateElements({
++        sourceLanguage,
++        targetLanguage,
++        root,
++        signal: controller.signal,
++        onDownloadProgress: (loadedFraction) => {
++          setStatus('downloading');
++          const pct = Math.round(loadedFraction * 100);
++          setDownloadProgress(pct);
++          setStatusMessage(`Downloading on-device language model (${pct}%)...`);
++        },
++        onTranslationProgress: (completed, total) => {
++          setStatus('translating');
++          setDownloadProgress(null);
++          setTranslationProgress({ completed, total });
++          setStatusMessage(`Translating on-device (${completed}/${total} sections)...`);
++        },
++      });
++
++      if (!controller.signal.aborted) {
++        setStatus('translated');
++        setDownloadProgress(null);
++        setTranslationProgress(null);
++        setAvailability('available');
++        const targetLabel = SUPPORTED_LANGUAGES.find((l) => l.code === targetLanguage)?.label ?? targetLanguage;
++        setStatusMessage(`Translated ${translatedCount} sections into ${targetLabel} on-device.`);
++      }
++    } catch (err: any) {
++      if (controller.signal.aborted) return;
++      setStatus('error');
++      setDownloadProgress(null);
++      setTranslationProgress(null);
++      setStatusMessage(err?.message || 'On-device translation failed.');
++    }
++  };
++
++  const handleRestore = () => {
++    if (abortControllerRef.current) {
++      abortControllerRef.current.abort();
++    }
++    const root = getRootNode();
++    if (root) {
++      restoreOriginalContent(root);
++    }
++    setStatus('idle');
++    setDownloadProgress(null);
++    setTranslationProgress(null);
++    setStatusMessage('Showing original text.');
++  };
++
++  const isBusy = status === 'downloading' || status === 'translating';
++  const progressLabelId = `${idPrefix}-progress-label`;
++  const sourceSelectId = `${idPrefix}-source-lang`;
++  const targetSelectId = `${idPrefix}-target-lang`;
++
++  if (variant === 'header' && !isExpanded) {
++    return (
++      <div className="relative inline-flex items-center" data-no-translate>
++        <button
++          type="button"
++          onClick={() => setIsExpanded(true)}
++          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-amber-700 bg-gray-100 hover:bg-amber-50 border border-gray-300 rounded px-2.5 py-1.5 transition-colors"
++          aria-expanded={isExpanded}
++          title="Translate articles and teasers on-device"
++        >
++          <svg className="w-4 h-4 text-amber-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
++            <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
++          </svg>
++          <span>Translate Page</span>
++          {status === 'translated' && (
++            <span className="inline-block w-2 h-2 rounded-full bg-amber-600" aria-hidden="true" />
++          )}
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <section
++      aria-label="On-device article translation"
++      data-no-translate
++      className={
++        variant === 'header'
++          ? 'bg-amber-50/70 border border-amber-200 rounded-md p-3 my-2 text-xs shadow-xs'
++          : 'bg-gray-50 border border-gray-200 rounded-lg p-3.5 my-4 text-sm'
++      }
++    >
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        {/* Title & Badge */}
++        <div className="flex items-center gap-2">
++          <svg className="w-5 h-5 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
++            <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
++          </svg>
++          <div>
++            <span className="font-semibold text-gray-900">On-Device Translation</span>
++            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-900">
++              Built-in AI
++            </span>
++          </div>
++          {availability === 'downloadable' && supported && (
++            <span className="text-xs text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded">
++              Model download required
++            </span>
++          )}
++          {availability === 'available' && supported && (
++            <span className="text-xs text-green-800 bg-green-100 px-2 py-0.5 rounded">
++              Ready offline
++            </span>
++          )}
++        </div>
++
++        {/* Language Controls */}
++        <div className="flex flex-wrap items-center gap-2">
++          <div className="flex items-center gap-1.5">
++            <label htmlFor={sourceSelectId} className="text-xs font-medium text-gray-600">
++              From
++            </label>
++            <select
++              id={sourceSelectId}
++              value={sourceLanguage}
++              onChange={(e) => setSourceLanguage(e.target.value)}
++              disabled={!supported || isBusy}
++              className="bg-white border border-gray-300 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
++            >
++              {SUPPORTED_LANGUAGES.map((lang) => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.label}
++                </option>
++              ))}
++            </select>
++          </div>
++
++          <button
++            type="button"
++            onClick={handleSwapLanguages}
++            disabled={!supported || isBusy}
++            title="Swap source and target languages"
++            aria-label="Swap source and target languages"
++            className="p-1 text-gray-600 hover:text-amber-700 hover:bg-gray-200/60 rounded disabled:opacity-50 transition-colors"
++          >
++            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
++              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
++            </svg>
++          </button>
++
++          <div className="flex items-center gap-1.5">
++            <label htmlFor={targetSelectId} className="text-xs font-medium text-gray-600">
++              To
++            </label>
++            <select
++              id={targetSelectId}
++              value={targetLanguage}
++              onChange={(e) => setTargetLanguage(e.target.value)}
++              disabled={!supported || isBusy}
++              className="bg-white border border-gray-300 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
++            >
++              {SUPPORTED_LANGUAGES.map((lang) => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.label}
++                </option>
++              ))}
++            </select>
++          </div>
++
++          {detectorSupported && (
++            <button
++              type="button"
++              onClick={handleDetectLanguage}
++              disabled={isBusy}
++              className="text-xs font-medium text-gray-700 hover:text-amber-800 bg-white hover:bg-gray-100 border border-gray-300 rounded px-2 py-1 disabled:opacity-50 transition-colors"
++              title="Auto-detect source language using on-device LanguageDetector API"
++            >
++              Auto-detect
++            </button>
++          )}
++
++          <button
++            type="button"
++            onClick={handleTranslate}
++            disabled={!supported || availability === 'unavailable' || isBusy || sourceLanguage === targetLanguage}
++            className="bg-gray-900 hover:bg-amber-700 text-white font-semibold text-xs px-3 py-1.5 rounded disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
++          >
++            {isBusy
++              ? status === 'downloading'
++                ? 'Downloading...'
++                : 'Translating...'
++              : availability === 'downloadable'
++                ? 'Download & Translate'
++                : 'Translate'}
++          </button>
++
++          {(status === 'translated' || isBusy) && (
++            <button
++              type="button"
++              onClick={handleRestore}
++              className="text-xs font-medium text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-100 border border-gray-300 rounded px-2.5 py-1.5 transition-colors"
++            >
++              {isBusy ? 'Cancel' : 'Show Original'}
++            </button>
++          )}
++
++          {variant === 'header' && (
++            <button
++              type="button"
++              onClick={() => setIsExpanded(false)}
++              aria-label="Close translation bar"
++              className="p-1 text-gray-500 hover:text-gray-800 rounded"
++            >
++              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
++                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
++              </svg>
++            </button>
++          )}
++        </div>
++      </div>
++
++      {/* Progress Bar for model download or active section translation */}
++      {isBusy && (
++        <div className="mt-2.5 flex items-center gap-3">
++          <progress
++            aria-labelledby={progressLabelId}
++            max={
++              status === 'downloading'
++                ? 100
++                : translationProgress && translationProgress.total > 0
++                  ? translationProgress.total
++                  : undefined
++            }
++            value={
++              status === 'downloading'
++                ? downloadProgress !== null
++                  ? downloadProgress
++                  : undefined
++                : translationProgress && translationProgress.total > 0
++                  ? translationProgress.completed
++                  : undefined
++            }
++            className="w-full h-2"
++          />
++        </div>
++      )}
++
++      {/* Polite live region & graceful fallback messaging */}
++      <div role="status" aria-live="polite" className="mt-1.5 text-xs text-gray-600 flex flex-wrap items-center justify-between gap-2">
++        <span id={progressLabelId}>
++          {supported === false
++            ? 'Client-side translation is currently unsupported in this browser (requires Chrome 138+ or Edge 148+ with Built-in AI).'
++            : availability === 'unavailable' && sourceLanguage !== targetLanguage
++              ? `Translation for ${sourceLanguage.toUpperCase()} → ${targetLanguage.toUpperCase()} is unavailable on this device.`
++              : statusMessage || (detectedInfo ? detectedInfo : 'Translate headlines, teasers, and full articles privately in your browser.')}
++        </span>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..574eb06 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import TranslationControl from '../../components/TranslationControl.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -39,16 +40,16 @@ const isBookmarked = readingList.includes(article.slug);
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} data-translatable class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translatable class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translatable class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -57,6 +58,9 @@ const isBookmarked = readingList.includes(article.slug);
+             By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+         </div>
+ 
++        <!-- On-Device Article Translation Control -->
++        <TranslationControl client:load variant="article" />
++
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+@@ -80,7 +84,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 />
+             )}
+             {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                <figcaption data-translatable class="text-xs text-gray-500 mt-2 px-2">
+                     {article.data.image_caption}
+                 </figcaption>
+             )}
+@@ -105,7 +109,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class="prose max-w-none" data-translatable-scope>
+             <Content />
+         </div>
+ 
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..4338922 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -76,10 +76,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 data-translatable class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                             {featuredArticle.data.title}
+                         </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
++                        <p data-translatable class="text-base md:text-lg text-gray-700">
+                             {featuredArticle.data.summary}
+                         </p>
+                     </a>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..22b3be2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -45,7 +45,7 @@ politicsArticles[2] = {
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h3 data-translatable class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9e52604 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,59 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++progress {
++  appearance: none;
++  border: 0 solid;
++  overflow: clip;
++  container-type: inline-size;
++  --progress-bar-radius: 1e5px;
++  --progress-bar-indeterminate-size: 30%;
++  --progress-bar-indeterminate-animation-duration: 1.5s;
++  border-radius: var(--progress-bar-radius);
++  background: var(--progress-bar-track, #e5e7eb);
++  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++
++  @media (prefers-reduced-motion: reduce) {
++    --progress-bar-indeterminate-animation-duration: 10s;
++  }
++}
++
++progress:indeterminate {
++  --progress-bar-animation: var(
++    --progress-bar-indeterminate-animation,
++    progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++  );
++}
++
++progress:dir(rtl) {
++  --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++}
++
++progress::-webkit-progress-bar {
++  background: transparent;
++}
++
++progress::-webkit-progress-value {
++  background: var(--progress-bar-fill, #d97706);
++  border-radius: var(--progress-bar-radius);
++  transition: inline-size 0.3s;
++  animation: var(--progress-bar-animation, revert-rule);
++}
++
++progress::-moz-progress-bar {
++  background: var(--progress-bar-fill, #d97706);
++  border-radius: var(--progress-bar-radius);
++  transition: inline-size 0.3s;
++  animation: var(--progress-bar-animation, revert-rule);
++}
++
++@keyframes progress-bar-indeterminate {
++  from, to {
++    inline-size: var(--progress-bar-indeterminate-size);
++    margin-right: auto;
++  }
++  from { translate: -100%; }
++  to { translate: 100cqi; }
++}
+diff --git a/src/utils/translator.ts b/src/utils/translator.ts
+new file mode 100644
+index 0000000..4b09801
+--- /dev/null
++++ b/src/utils/translator.ts
+@@ -0,0 +1,245 @@
++export interface LanguageOption {
++  code: string;
++  label: string;
++}
++
++export const SUPPORTED_LANGUAGES: LanguageOption[] = [
++  { code: 'ar', label: 'Arabic (العربية)' },
++  { code: 'bg', label: 'Bulgarian (Български)' },
++  { code: 'bn', label: 'Bengali (বাংলা)' },
++  { code: 'cs', label: 'Czech (Čeština)' },
++  { code: 'da', label: 'Danish (Dansk)' },
++  { code: 'de', label: 'German (Deutsch)' },
++  { code: 'el', label: 'Greek (Ελληνικά)' },
++  { code: 'en', label: 'English' },
++  { code: 'es', label: 'Spanish (Español)' },
++  { code: 'fi', label: 'Finnish (Suomi)' },
++  { code: 'fr', label: 'French (Français)' },
++  { code: 'he', label: 'Hebrew (עברית)' },
++  { code: 'hi', label: 'Hindi (हिन्दी)' },
++  { code: 'hr', label: 'Croatian (Hrvatski)' },
++  { code: 'hu', label: 'Hungarian (Magyar)' },
++  { code: 'id', label: 'Indonesian (Bahasa Indonesia)' },
++  { code: 'it', label: 'Italian (Italiano)' },
++  { code: 'ja', label: 'Japanese (日本語)' },
++  { code: 'kn', label: 'Kannada (ಕನ್ನಡ)' },
++  { code: 'ko', label: 'Korean (한국어)' },
++  { code: 'lt', label: 'Lithuanian (Lietuvių)' },
++  { code: 'mr', label: 'Marathi (मराठी)' },
++  { code: 'nl', label: 'Dutch (Nederlands)' },
++  { code: 'no', label: 'Norwegian (Norsk)' },
++  { code: 'pl', label: 'Polish (Polski)' },
++  { code: 'pt', label: 'Portuguese (Português)' },
++  { code: 'ro', label: 'Romanian (Română)' },
++  { code: 'ru', label: 'Russian (Русский)' },
++  { code: 'sk', label: 'Slovak (Slovenčina)' },
++  { code: 'sl', label: 'Slovenian (Slovenščina)' },
++  { code: 'sv', label: 'Swedish (Svenska)' },
++  { code: 'ta', label: 'Tamil (தமிழ்)' },
++  { code: 'te', label: 'Telugu (తెలుగు)' },
++  { code: 'th', label: 'Thai (ไทย)' },
++  { code: 'tr', label: 'Turkish (Türkçe)' },
++  { code: 'uk', label: 'Ukrainian (Українська)' },
++  { code: 'vi', label: 'Vietnamese (Tiếng Việt)' },
++  { code: 'zh', label: 'Chinese Simplified (简体中文)' },
++  { code: 'zh-Hant', label: 'Chinese Traditional (繁體中文)' },
++];
++
++export const RTL_LANGUAGES = new Set(['ar', 'he']);
++
++const originalTextMap = new WeakMap<Element, string>();
++
++const TRANSLATABLE_SELECTORS = [
++  '[data-translatable]',
++  '[data-translatable-scope] p',
++  '[data-translatable-scope] h1',
++  '[data-translatable-scope] h2',
++  '[data-translatable-scope] h3',
++  '[data-translatable-scope] h4',
++  '[data-translatable-scope] li',
++  '[data-translatable-scope] blockquote',
++  '[data-translatable-scope] figcaption',
++].join(', ');
++
++export function collectTranslatableElements(root: ParentNode = document): HTMLElement[] {
++  const nodes = Array.from(root.querySelectorAll<HTMLElement>(TRANSLATABLE_SELECTORS));
++  return nodes.filter((el) => {
++    if (el.closest('[data-no-translate]')) return false;
++    // Avoid translating a parent element that wraps other translatable block elements
++    const hasNestedTranslatable = nodes.some((other) => other !== el && el.contains(other));
++    if (hasNestedTranslatable) return false;
++    const text = originalTextMap.get(el) ?? el.textContent?.trim() ?? '';
++    return text.length > 0;
++  });
++}
++
++export function getOriginalText(el: HTMLElement): string {
++  let orig = originalTextMap.get(el);
++  if (orig === undefined) {
++    orig = el.textContent?.trim() ?? '';
++    originalTextMap.set(el, orig);
++  }
++  return orig;
++}
++
++export function restoreOriginalContent(root: ParentNode = document): void {
++  const elements = collectTranslatableElements(root);
++  for (const el of elements) {
++    const orig = originalTextMap.get(el);
++    if (orig !== undefined) {
++      el.textContent = orig;
++    }
++    el.removeAttribute('lang');
++    el.removeAttribute('dir');
++    el.removeAttribute('data-translated-lang');
++  }
++}
++
++export function isTranslatorSupported(): boolean {
++  return typeof self !== 'undefined' && 'Translator' in self && Boolean(self.Translator);
++}
++
++export function isLanguageDetectorSupported(): boolean {
++  return typeof self !== 'undefined' && 'LanguageDetector' in self && Boolean(self.LanguageDetector);
++}
++
++export async function checkLanguagePairAvailability(
++  sourceLanguage: string,
++  targetLanguage: string
++): Promise<AvailabilityStatus> {
++  if (!isTranslatorSupported() || !self.Translator) {
++    return 'unavailable';
++  }
++  if (sourceLanguage === targetLanguage) {
++    return 'available';
++  }
++  try {
++    const options = { sourceLanguage, targetLanguage };
++    return await self.Translator.availability(options);
++  } catch {
++    return 'unavailable';
++  }
++}
++
++export async function detectSampleLanguage(
++  sampleText: string,
++  onProgress?: (loaded: number) => void
++): Promise<{ detectedLanguage: string; confidence: number } | null> {
++  if (!isLanguageDetectorSupported() || !self.LanguageDetector) {
++    return null;
++  }
++  const cleanSample = sampleText.trim();
++  if (cleanSample.length < 10) {
++    return null;
++  }
++  try {
++    const availability = await self.LanguageDetector.availability();
++    if (availability === 'unavailable') {
++      return null;
++    }
++    const detector = await self.LanguageDetector.create({
++      monitor(m) {
++        m.addEventListener('downloadprogress', (e) => {
++          onProgress?.(e.loaded);
++        });
++      },
++    });
++    const results = await detector.detect(cleanSample);
++    if (results && results.length > 0 && results[0].detectedLanguage) {
++      return {
++        detectedLanguage: results[0].detectedLanguage,
++        confidence: results[0].confidence,
++      };
++    }
++  } catch {
++    // Ignore detector errors and fall back to manual source language
++  }
++  return null;
++}
++
++export interface TranslateElementsOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++  root?: ParentNode;
++  useStreamingForLongText?: boolean;
++  signal?: AbortSignal;
++  onDownloadProgress?: (loadedFraction: number) => void;
++  onTranslationProgress?: (completed: number, total: number) => void;
++}
++
++export async function translateElements({
++  sourceLanguage,
++  targetLanguage,
++  root = document,
++  useStreamingForLongText = true,
++  signal,
++  onDownloadProgress,
++  onTranslationProgress,
++}: TranslateElementsOptions): Promise<{ translatedCount: number }> {
++  if (sourceLanguage === targetLanguage) {
++    restoreOriginalContent(root);
++    return { translatedCount: 0 };
++  }
++
++  if (!isTranslatorSupported() || !self.Translator) {
++    throw new Error('Client-side Translator API is unsupported in this browser.');
++  }
++
++  const pairOptions = { sourceLanguage, targetLanguage };
++  const availability = await self.Translator.availability(pairOptions);
++  if (availability === 'unavailable') {
++    throw new Error(
++      `Translation model for ${sourceLanguage.toUpperCase()} → ${targetLanguage.toUpperCase()} is unavailable on this device.`
++    );
++  }
++
++  const translator = await self.Translator.create({
++    ...pairOptions,
++    monitor(m) {
++      m.addEventListener('downloadprogress', (e) => {
++        onDownloadProgress?.(e.loaded);
++      });
++    },
++  });
++
++  const elements = collectTranslatableElements(root);
++  const total = elements.length;
++  let completed = 0;
++
++  onTranslationProgress?.(0, total);
++
++  for (const el of elements) {
++    if (signal?.aborted) {
++      break;
++    }
++    const sourceText = getOriginalText(el);
++    if (!sourceText) {
++      completed += 1;
++      onTranslationProgress?.(completed, total);
++      continue;
++    }
++
++    el.setAttribute('lang', targetLanguage);
++    el.setAttribute('dir', RTL_LANGUAGES.has(targetLanguage) ? 'rtl' : 'ltr');
++
++    if (useStreamingForLongText && sourceText.length > 160 && typeof translator.translateStreaming === 'function') {
++      const stream = translator.translateStreaming(sourceText);
++      let accumulated = '';
++      for await (const chunk of stream) {
++        if (signal?.aborted) break;
++        accumulated += chunk;
++        el.textContent = accumulated;
++      }
++    } else {
++      const translated = await translator.translate(sourceText);
++      if (signal?.aborted) break;
++      el.textContent = translated;
++    }
++
++    el.setAttribute('data-translated-lang', targetLanguage);
++    completed += 1;
++    onTranslationProgress?.(completed, total);
++  }
++
++  return { translatedCount: completed };
++}

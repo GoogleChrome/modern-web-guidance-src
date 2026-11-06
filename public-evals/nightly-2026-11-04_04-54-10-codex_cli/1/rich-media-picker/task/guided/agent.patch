@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,132 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-order {
++      width: min(100%, 340px);
++      margin-top: 24px;
++    }
++
++    .roast-order label {
++      display: block;
++      margin-bottom: 8px;
++      text-align: left;
++      font-weight: 600;
++    }
++
++    .roast-select {
++      width: 100%;
++      min-height: 56px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fffaf5;
++      color: var(--text);
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible,
++    .roast-order .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .roast-order .btn {
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select,
++      .roast-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-select::picker(select) {
++        width: anchor-size(width);
++        max-height: min(360px, 70dvh);
++        overflow-y: auto;
++        margin-block: 6px;
++        padding: 6px;
++        border: 1px solid var(--secondary);
++        border-radius: 8px;
++        background: #fffaf5;
++        color: var(--text);
++        box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
++      }
++
++      .roast-select selectedcontent,
++      .roast-select option {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++      }
++
++      .roast-select option {
++        padding: 12px;
++        border-radius: 4px;
++        cursor: pointer;
++      }
++
++      .roast-select svg {
++        width: 26px;
++        height: 26px;
++        flex-shrink: 0;
++        color: var(--primary);
++      }
++
++      .roast-copy {
++        display: flex;
++        flex-direction: column;
++        line-height: 1.4;
++      }
++
++      .roast-title {
++        font-weight: 600;
++      }
++
++      .roast-description {
++        font-size: 0.8rem;
++        color: #6d4c41;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: #f0e6dc;
++      }
++
++      .roast-select option:checked {
++        background: #ead9c8;
++      }
++
++      .roast-select option:checked .roast-title {
++        font-weight: 750;
++      }
++
++      .roast-select option::checkmark {
++        margin-inline-start: auto;
++        order: 1;
++        color: var(--primary);
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +286,36 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="roast-order" action="/order-online" method="get">
++      <label for="roast">Choose your roast</label>
++      <select class="roast-select" id="roast" name="roast">
++        <button type="button"><selectedcontent></selectedcontent></button>
++        <option value="dark-roast" selected>
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M5 9h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5Z" />
++            <path d="M17 10h1a3 3 0 1 1 0 6h-1M8 3v3m4-4v4m4-3v3" />
++          </svg>
++          <span class="roast-copy"><span class="roast-title">Dark Roast</span> <span class="roast-description">Bold &amp; smoky with a chocolate finish.</span></span>
++        </option>
++        <option value="light-roast">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
++            <circle cx="12" cy="12" r="4" />
++            <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
++          </svg>
++          <span class="roast-copy"><span class="roast-title">Light Roast</span> <span class="roast-description">Bright &amp; mellow with citrus notes.</span></span>
++        </option>
++        <option value="cold-brew">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
++            <path d="m6 7 2 14h8l2-14ZM5 7h14M14 7l2-5h4M7 12h10" />
++            <path d="m10 10 2-1 1 2-2 1m1 3 2-1 1 2-2 1" />
++          </svg>
++          <span class="roast-copy"><span class="roast-title">Cold Brew</span> <span class="roast-description">Slow-steeped for a smooth, cool sip.</span></span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>

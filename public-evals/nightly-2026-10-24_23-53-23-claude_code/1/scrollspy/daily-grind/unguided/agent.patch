@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+index 66c9173..fce00ff 100644
+--- a/index.html
++++ b/index.html
+@@ -62,10 +62,26 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active:not(.logout-link) {
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
++    html {
++      scroll-behavior: smooth;
++    }
++
++    section[id],
++    header[id],
++    footer[id] {
++      scroll-margin-top: 60px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,6 +176,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
++      <li><a href="#home">Home</a></li>
++      <li><a href="#favorites">Favorites</a></li>
++      <li><a href="#contact">Contact</a></li>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -168,14 +187,14 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="home">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -197,7 +216,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="contact">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +226,34 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
++      var sections = links
++        .map(function (a) { return document.querySelector(a.getAttribute('href')); })
++        .filter(Boolean);
++
++      function update() {
++        var line = window.innerHeight * 0.35;
++        var atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++        var current = sections[0];
++        sections.forEach(function (sec) {
++          if (sec.getBoundingClientRect().top <= line) current = sec;
++        });
++        if (atBottom) current = sections[sections.length - 1];
++        links.forEach(function (a) {
++          var on = a.getAttribute('href') === '#' + current.id;
++          a.classList.toggle('active', on);
++          if (on) a.setAttribute('aria-current', 'true');
++          else a.removeAttribute('aria-current');
++        });
++      }
++
++      window.addEventListener('scroll', update, { passive: true });
++      window.addEventListener('resize', update);
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

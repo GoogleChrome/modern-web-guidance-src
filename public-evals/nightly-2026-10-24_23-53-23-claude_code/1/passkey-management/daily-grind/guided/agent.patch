@@ -1,0 +1,336 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..6633829
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,165 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b71c1c;
++    }
++
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; color: white; text-decoration: none; }
++    nav ul { display: flex; list-style: none; }
++    nav ul li { margin-left: 20px; }
++    nav a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++    nav a:hover { color: var(--accent); }
++    nav a[aria-current="page"] { color: var(--accent); }
++    .logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++    .container { max-width: 760px; margin: 40px auto; padding: 0 20px; }
++    h1 { color: var(--primary); }
++    .lede { margin: 8px 0 24px; }
++
++    .panel {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .passkey-list { list-style: none; display: grid; gap: 12px; }
++
++    .passkey {
++      display: grid;
++      grid-template-columns: auto 1fr auto;
++      gap: 4px 16px;
++      align-items: center;
++      padding: 12px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++    .passkey:last-child { border-bottom: 0; }
++    .passkey img, .passkey .icon-fallback { width: 32px; height: 32px; }
++    .icon-fallback {
++      display: grid; place-items: center; border-radius: 6px;
++      background: var(--secondary); font-size: 1.1rem;
++    }
++    .passkey-name { font-weight: 600; overflow-wrap: anywhere; }
++    .passkey-meta { font-size: 0.85rem; opacity: 0.8; }
++    .actions { display: flex; gap: 8px; }
++
++    .rename-form { display: flex; gap: 8px; flex-wrap: wrap; }
++    .rename-form input {
++      flex: 1 1 12rem; padding: 6px 10px; font: inherit;
++      border: 1px solid var(--primary); border-radius: 5px;
++    }
++
++    button {
++      font: inherit; font-size: 0.9rem; cursor: pointer;
++      padding: 6px 14px; border-radius: 5px;
++      border: 1px solid var(--primary); background: white; color: var(--primary);
++    }
++    button:hover { background: var(--secondary); }
++    button.primary { background: var(--primary); color: white; }
++    button.primary:hover { background: #3e2723; }
++    button.danger { border-color: var(--danger); color: var(--danger); }
++    button.danger.primary { background: var(--danger); color: white; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++
++    #status { margin-top: 16px; min-height: 1.5em; }
++    #status.error { color: var(--danger); }
++
++    dialog {
++      margin: auto; padding: 24px; border: 0; border-radius: 8px;
++      max-width: min(28rem, 90vw);
++    }
++    dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
++    dialog p { margin: 8px 0 20px; }
++    dialog form { display: flex; justify-content: flex-end; gap: 8px; }
++
++    @media (max-width: 540px) {
++      .passkey { grid-template-columns: auto 1fr; }
++      .actions { grid-column: 1 / -1; }
++    }
++  </style>
++</head>
++
++<body>
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>My Account</h1>
++    <p class="lede">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a password. Remove any you no longer use.</p>
++
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <h2 id="passkeys-heading">Your passkeys</h2>
++      <p id="empty" hidden>No passkeys found.</p>
++      <ul id="passkey-list" class="passkey-list"></ul>
++      <p id="status" role="status"></p>
++    </section>
++  </main>
++
++  <dialog id="delete-dialog" aria-labelledby="delete-title">
++    <h2 id="delete-title">Delete passkey?</h2>
++    <p id="delete-text"></p>
++    <form method="dialog">
++      <button value="cancel">Cancel</button>
++      <button value="delete" class="danger primary">Delete</button>
++    </form>
++  </dialog>
++
++  <template id="passkey-template">
++    <li class="passkey">
++      <img alt="" hidden>
++      <span class="icon-fallback" aria-hidden="true">🔑</span>
++      <div>
++        <div class="passkey-name"></div>
++        <div class="passkey-meta"></div>
++      </div>
++      <div class="actions">
++        <button type="button" data-action="rename">Rename</button>
++        <button type="button" data-action="delete" class="danger">Delete</button>
++      </div>
++    </li>
++  </template>
++
++  <script type="module" src="./passkeys.js"></script>
++</body>
++
++</html>
+diff --git a/account/passkeys.js b/account/passkeys.js
+new file mode 100644
+index 0000000..7f899e8
+--- /dev/null
++++ b/account/passkeys.js
+@@ -0,0 +1,159 @@
++// Passkey management for the My Account page.
++//
++// Expects these endpoints (signed-in session):
++//   GET    /api/user                -> { id (Base64URL user handle) }
++//   GET    /api/credentials         -> [{ id (Base64URL), name, providerIcon?, registeredAt, lastUsedAt? }]
++//   PUT    /api/credential/:id      body { name }
++//   DELETE /api/credential/:id
++
++const rpId = location.hostname;
++
++const list = document.getElementById('passkey-list');
++const empty = document.getElementById('empty');
++const status = document.getElementById('status');
++const template = document.getElementById('passkey-template');
++const dialog = document.getElementById('delete-dialog');
++const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++let userId;
++
++function say(message, isError = false) {
++  status.textContent = message;
++  status.classList.toggle('error', isError);
++}
++
++async function api(path, options) {
++  const response = await fetch(path, {
++    credentials: 'same-origin',
++    headers: { 'Content-Type': 'application/json' },
++    ...options,
++  });
++  if (response.status === 401) {
++    location.href = '/login';
++    throw new Error('Signed out');
++  }
++  if (!response.ok) throw new Error(`Request failed (${response.status})`);
++  return response.json();
++}
++
++// Tell the browser's passkey provider which credentials the server still accepts,
++// so deleted passkeys are removed from the user's authenticator too.
++async function syncAcceptedCredentials(credentials) {
++  if (!window.PublicKeyCredential?.signalAllAcceptedCredentials || !userId) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId,
++      userId,
++      allAcceptedCredentialIds: credentials.map((c) => c.id),
++    });
++  } catch (e) {
++    console.error('signalAllAcceptedCredentials failed:', e);
++  }
++}
++
++function formatDate(epoch) {
++  return dateFormat.format(new Date(epoch));
++}
++
++function render(credentials) {
++  list.replaceChildren();
++  empty.hidden = credentials.length > 0;
++  for (const cred of credentials) {
++    const row = template.content.firstElementChild.cloneNode(true);
++    row.dataset.id = cred.id;
++    row.dataset.name = cred.name;
++    const img = row.querySelector('img');
++    if (cred.providerIcon) {
++      img.src = cred.providerIcon;
++      img.hidden = false;
++      row.querySelector('.icon-fallback').hidden = true;
++    }
++    row.querySelector('.passkey-name').textContent = cred.name;
++    const meta = [`Created ${formatDate(cred.registeredAt)}`];
++    meta.push(cred.lastUsedAt ? `Last used ${formatDate(cred.lastUsedAt)}` : 'Never used');
++    row.querySelector('.passkey-meta').textContent = meta.join(' · ');
++    row.querySelector('[data-action="rename"]').setAttribute('aria-label', `Rename ${cred.name}`);
++    row.querySelector('[data-action="delete"]').setAttribute('aria-label', `Delete ${cred.name}`);
++    list.append(row);
++  }
++}
++
++async function reload() {
++  const credentials = await api('/api/credentials');
++  render(credentials);
++  return credentials;
++}
++
++function startRename(row) {
++  const nameEl = row.querySelector('.passkey-name');
++  const form = document.createElement('form');
++  form.className = 'rename-form';
++  form.innerHTML = `
++    <input name="name" required maxlength="60" aria-label="Passkey name">
++    <button class="primary">Save</button>
++    <button type="button" data-cancel>Cancel</button>`;
++  const input = form.elements.name;
++  input.value = row.dataset.name;
++  nameEl.replaceChildren(form);
++  row.querySelector('.actions').hidden = true;
++  input.focus();
++  input.select();
++
++  const restore = () => {
++    nameEl.textContent = row.dataset.name;
++    row.querySelector('.actions').hidden = false;
++    row.querySelector('[data-action="rename"]').focus();
++  };
++  form.querySelector('[data-cancel]').addEventListener('click', restore);
++  form.addEventListener('keydown', (e) => e.key === 'Escape' && restore());
++  form.addEventListener('submit', async (e) => {
++    e.preventDefault();
++    const name = input.value.trim();
++    if (!name) return;
++    try {
++      // A passkey nickname is a server-side label only; nothing to signal to the authenticator.
++      await api(`/api/credential/${encodeURIComponent(row.dataset.id)}`, {
++        method: 'PUT',
++        body: JSON.stringify({ name }),
++      });
++      await reload();
++      say('Passkey renamed.');
++    } catch (err) {
++      say(`Couldn't rename passkey: ${err.message}`, true);
++    }
++  });
++}
++
++function confirmDelete(row) {
++  document.getElementById('delete-text').textContent =
++    `“${row.dataset.name}” will no longer be able to sign you in. This can't be undone.`;
++  dialog.returnValue = '';
++  dialog.addEventListener('close', async () => {
++    if (dialog.returnValue !== 'delete') return;
++    try {
++      await api(`/api/credential/${encodeURIComponent(row.dataset.id)}`, { method: 'DELETE' });
++      const remaining = await reload();
++      await syncAcceptedCredentials(remaining);
++      say('Passkey deleted.');
++    } catch (err) {
++      say(`Couldn't delete passkey: ${err.message}`, true);
++    }
++  }, { once: true });
++  dialog.showModal();
++}
++
++list.addEventListener('click', (e) => {
++  const button = e.target.closest('button[data-action]');
++  if (!button) return;
++  const row = button.closest('.passkey');
++  if (button.dataset.action === 'rename') startRename(row);
++  else confirmDelete(row);
++});
++
++try {
++  const [user, credentials] = await Promise.all([api('/api/user'), reload()]);
++  userId = user.id;
++  await syncAcceptedCredentials(credentials);
++} catch (err) {
++  say(`Couldn't load your passkeys: ${err.message}`, true);
++}

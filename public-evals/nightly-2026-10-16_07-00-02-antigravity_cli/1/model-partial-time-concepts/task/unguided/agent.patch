@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,140 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Leap year utility function taking standard Gregorian rules into account
++    function isLeapYear(year) {
++      return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
++    }
++
++    // Number of days in a given month (month: 1-12)
++    // Uses day 0 of month + 1 to automatically handle leap years accurately
++    function getDaysInMonth(year, month) {
++      return new Date(year, month, 0).getDate();
++    }
++
++    /**
++     * Calculates the remaining time until a credit card expires.
++     * Credit cards remain active through the final day of the printed expiration month,
++     * expiring at 23:59:59.999 on that month's last day.
++     * 
++     * Handles leap years and avoids mutating date objects (e.g. Feb 29 rollover bugs).
++     */
++    function calculateCreditCardExpiry(expMonth = 12, expYear = 2027, currentDate = new Date()) {
++      if (typeof expMonth === 'string') {
++        if (expMonth.includes('/')) {
++          const parts = expMonth.split('/');
++          expMonth = parseInt(parts[0], 10);
++          expYear = parseInt(parts[1], 10);
++        } else {
++          expMonth = parseInt(expMonth, 10);
++        }
++      }
++      if (typeof expYear === 'string') {
++        expYear = parseInt(expYear, 10);
++      }
++      if (expYear < 100) {
++        expYear += 2000;
++      }
++
++      // Day 0 of next month provides the exact last day of expMonth,
++      // correctly accounting for leap years (e.g., Feb 29 vs Feb 28).
++      const lastDay = new Date(expYear, expMonth, 0).getDate();
++      const expirationDate = new Date(expYear, expMonth - 1, lastDay, 23, 59, 59, 999);
++      const expirationDateStart = new Date(expYear, expMonth - 1, 1, 0, 0, 0, 0);
++
++      const diffMs = expirationDate.getTime() - currentDate.getTime();
++      const isExpired = diffMs <= 0;
++
++      const totalSeconds = isExpired ? 0 : Math.floor(diffMs / 1000);
++      const totalMinutes = isExpired ? 0 : Math.floor(diffMs / (1000 * 60));
++      const totalHours = isExpired ? 0 : Math.floor(diffMs / (1000 * 60 * 60));
++      const totalDays = isExpired ? 0 : Math.floor(diffMs / (1000 * 60 * 60 * 24));
++
++      let temp = new Date(currentDate.getTime());
++      let years = 0;
++      let months = 0;
++      let days = 0;
++
++      if (!isExpired) {
++        // Increment full years safely handling February 29
++        while (true) {
++          const nextYear = new Date(temp.getTime());
++          nextYear.setFullYear(temp.getFullYear() + 1);
++          // If starting on Feb 29 and next year is not a leap year, prevent rolling over to March 1
++          if (temp.getMonth() === 1 && temp.getDate() === 29 && nextYear.getMonth() !== 1) {
++            nextYear.setDate(28);
++          }
++          if (nextYear <= expirationDate) {
++            years++;
++            temp = nextYear;
++          } else {
++            break;
++          }
++        }
++
++        // Increment full months safely
++        while (true) {
++          const targetYear = temp.getMonth() === 11 ? temp.getFullYear() + 1 : temp.getFullYear();
++          const targetMonth = (temp.getMonth() + 1) % 12;
++          const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
++          const targetDay = Math.min(temp.getDate(), daysInTargetMonth);
++          const nextMonth = new Date(targetYear, targetMonth, targetDay, temp.getHours(), temp.getMinutes(), temp.getSeconds(), temp.getMilliseconds());
++
++          if (nextMonth <= expirationDate) {
++            months++;
++            temp = nextMonth;
++          } else {
++            break;
++          }
++        }
++
++        // Remaining calendar days
++        const remMs = expirationDate.getTime() - temp.getTime();
++        days = Math.floor(remMs / (1000 * 60 * 60 * 24));
++      }
++
++      const formatted = isExpired
++        ? 'Credit card has expired'
++        : `${years} year(s), ${months} month(s), and ${days} day(s) remaining (${totalDays} total days)`;
++
++      return {
++        expirationDate,
++        expirationDateStart,
++        isExpired,
++        totalMilliseconds: Math.max(0, diffMs),
++        totalSeconds,
++        totalMinutes,
++        totalHours,
++        totalDays,
++        daysRemaining: totalDays,
++        years,
++        months,
++        days,
++        formatted
++      };
++    }
++
++    // Set credit card expiration to December 2027
++    const expMonth = 12; // December
++    const expYear = 2027; // 2027
++    const timeUntilExpiry = calculateCreditCardExpiry(expMonth, expYear);
++
++    // Expose functions and results globally
++    const root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
++    root.isLeapYear = isLeapYear;
++    root.getDaysInMonth = getDaysInMonth;
++    root.calculateCreditCardExpiry = calculateCreditCardExpiry;
++    root.getTimeUntilCreditCardExpires = calculateCreditCardExpiry;
++    root.timeUntilExpiry = timeUntilExpiry;
++    root.creditCardExpiry = timeUntilExpiry;
++    root.daysUntilCreditCardExpires = timeUntilExpiry.totalDays;
++
++    console.log(`Credit Card Expiration (December 2027): ${timeUntilExpiry.formatted}`);
++    console.log('Expiration Date:', timeUntilExpiry.expirationDate);
++    console.log('Total days remaining:', timeUntilExpiry.totalDays);
++  </script>
+ </body>
+ 
+ </html>

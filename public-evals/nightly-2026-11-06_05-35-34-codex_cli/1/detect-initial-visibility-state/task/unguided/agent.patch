@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,30 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Run inline, early in the head, before the tab's visibility can change during loading.
++    (function () {
++      var backgrounded;
++
++      if (typeof document.hidden === 'boolean') {
++        backgrounded = document.hidden;
++      } else if (typeof document.msHidden === 'boolean') {
++        backgrounded = document.msHidden;
++      } else if (typeof document.webkitHidden === 'boolean') {
++        backgrounded = document.webkitHidden;
++      } else {
++        backgrounded = !document.hasFocus();
++      }
++
++      console.log({
++        backgrounded: backgrounded,
++        timestamp: Date.now(),
++        note: 'Legacy focus-based fallback checks are only a best effort and are unreliable for async scripts: focus may change before execution. Visibility reports the state when this script runs.'
++      });
++    }());
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

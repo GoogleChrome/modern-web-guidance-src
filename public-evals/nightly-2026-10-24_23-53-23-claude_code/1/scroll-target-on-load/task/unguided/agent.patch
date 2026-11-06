@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,46 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical media scroller */
++    .media-scroll {
++      position: relative; /* makes child offsetTop relative to the scroller */
++      height: 480px;
++      max-width: 440px;
++      margin: 20px auto 0;
++      overflow-y: auto;
++      scroll-behavior: auto; /* never animate the initial positioning */
++      scroll-snap-type: y mandatory;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .media-card {
++      flex: 0 0 auto;
++      scroll-snap-align: start;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .media-card img {
++      display: block;
++      width: 400px;
++      max-width: 100%;
++      height: 240px;
++      object-fit: cover;
++    }
++
++    .media-card .media-body {
++      padding: 15px 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +232,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">From the Roastery</h2>
++      <div class="media-scroll" id="media-scroll">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=400&h=240&q=80" width="400" height="240" alt="Cup of coffee on a saucer">
++          <div class="media-body"><h3>Morning Pour</h3><p>Our signature house blend.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&h=240&q=80" width="400" height="240" alt="Coffee cup on a table">
++          <div class="media-body"><h3>Slow Sips</h3><p>Brewed fresh, every hour.</p></div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=400&h=240&q=80" width="400" height="240" alt="Roasted coffee beans">
++          <div class="media-body"><h3>Fresh Roasted Beans</h3><p>Small batches, big flavor.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=400&h=240&q=80" width="400" height="240" alt="Barista pouring coffee">
++          <div class="media-body"><h3>Barista Craft</h3><p>Precision in every pour.</p></div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&h=240&q=80" width="400" height="240" alt="Latte with art">
++          <div class="media-body"><h3>Latte Art</h3><p>Made to be admired.</p></div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously right after the scroller is parsed, before first paint,
++        // so the target is already in view with no visible scroll or flash.
++        (function () {
++          var scroller = document.getElementById('media-scroll');
++          var target = scroller.querySelector('.target');
++          scroller.scrollTop = target.offsetTop - 20; // 20px = scroller padding
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

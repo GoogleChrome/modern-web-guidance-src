@@ -1,0 +1,284 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,57 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Passkey Promotion Banner */
++    .passkey-promo {
++      background: white;
++      border-left: 5px solid var(--accent);
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++    }
++
++    .passkey-promo h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .passkey-promo button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .passkey-promo button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .passkey-status {
++      margin-top: 12px;
++      font-size: 0.95rem;
++      font-weight: 500;
++    }
++
++    .passkey-status.success {
++      color: #2e7d32;
++    }
++
++    .passkey-status.error {
++      color: #c62828;
++    }
++
++    .hidden {
++      display: none !important;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +223,15 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section id="passkey-section" class="passkey-promo">
++      <h2>Faster, Safer Sign-In with Passkeys</h2>
++      <p>Skip the password and sign in securely using your device's biometrics or screen lock.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-passkey-btn">Create passkey</button>
++      <p id="passkey-status" class="passkey-status" data-testid="register-status" role="status" aria-live="polite"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +262,206 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const registerSection = document.getElementById('passkey-section');
++      const registerButton = document.querySelector('[data-testid="register-button"]');
++      const statusMessage = document.getElementById('passkey-status');
++
++      function setStatus(message, type) {
++        if (!statusMessage) return;
++        statusMessage.textContent = message;
++        statusMessage.className = 'passkey-status' + (type ? ' ' + type : '');
++      }
++
++      // Base64URL to Uint8Array helper
++      function base64UrlToUint8Array(base64Url) {
++        if (base64Url instanceof Uint8Array) return base64Url;
++        if (base64Url instanceof ArrayBuffer) return new Uint8Array(base64Url);
++        if (Array.isArray(base64Url)) return new Uint8Array(base64Url);
++        const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
++        const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
++        const rawData = window.atob(base64);
++        const outputArray = new Uint8Array(rawData.length);
++        for (let i = 0; i < rawData.length; ++i) {
++          outputArray[i] = rawData.charCodeAt(i);
++        }
++        return outputArray;
++      }
++
++      // ArrayBuffer / Uint8Array to Base64URL helper
++      function bufferToBase64Url(buffer) {
++        const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.byteLength; i++) {
++          binary += String.fromCharCode(bytes[i]);
++        }
++        return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      // Prepare PublicKeyCredentialCreationOptions from server JSON
++      function parseCreationOptionsFromJSON(optionsJSON) {
++        const rawOptions = optionsJSON && optionsJSON.publicKey ? optionsJSON.publicKey : optionsJSON;
++
++        if (typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          try {
++            return PublicKeyCredential.parseCreationOptionsFromJSON(rawOptions);
++          } catch (e) {
++            // Fall through to manual conversion if structure differs slightly
++          }
++        }
++
++        const publicKey = Object.assign({}, rawOptions);
++        publicKey.challenge = base64UrlToUint8Array(rawOptions.challenge);
++
++        if (rawOptions.user) {
++          publicKey.user = Object.assign({}, rawOptions.user, {
++            id: base64UrlToUint8Array(rawOptions.user.id)
++          });
++        }
++
++        if (Array.isArray(rawOptions.excludeCredentials)) {
++          publicKey.excludeCredentials = rawOptions.excludeCredentials.map(function (cred) {
++            return Object.assign({}, cred, {
++              id: base64UrlToUint8Array(cred.id)
++            });
++          });
++        }
++
++        return publicKey;
++      }
++
++      // Serialize PublicKeyCredential response for verification POST
++      function serializeCredential(credential) {
++        if (typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++
++        const response = credential.response;
++        const serializedResponse = {
++          clientDataJSON: bufferToBase64Url(response.clientDataJSON),
++          attestationObject: bufferToBase64Url(response.attestationObject)
++        };
++
++        if (typeof response.getTransports === 'function') {
++          serializedResponse.transports = response.getTransports();
++        }
++        if (typeof response.getPublicKeyAlgorithm === 'function') {
++          serializedResponse.publicKeyAlgorithm = response.getPublicKeyAlgorithm();
++        }
++        if (typeof response.getPublicKey === 'function') {
++          const pk = response.getPublicKey();
++          if (pk) serializedResponse.publicKey = bufferToBase64Url(pk);
++        }
++        if (typeof response.getAuthenticatorData === 'function') {
++          const authData = response.getAuthenticatorData();
++          if (authData) serializedResponse.authenticatorData = bufferToBase64Url(authData);
++        }
++
++        const clientExtensionResults = typeof credential.getClientExtensionResults === 'function'
++          ? credential.getClientExtensionResults()
++          : {};
++
++        const serialized = {
++          id: credential.id,
++          rawId: bufferToBase64Url(credential.rawId),
++          type: credential.type,
++          response: serializedResponse,
++          clientExtensionResults: clientExtensionResults
++        };
++
++        if (credential.authenticatorAttachment) {
++          serialized.authenticatorAttachment = credential.authenticatorAttachment;
++        }
++
++        return serialized;
++      }
++
++      // Feature detection for WebAuthn / platform authenticator
++      async function checkPasskeySupport() {
++        if (!window.PublicKeyCredential || !navigator.credentials || typeof navigator.credentials.create !== 'function') {
++          if (registerSection) registerSection.classList.add('hidden');
++          return false;
++        }
++
++        if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
++          try {
++            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++            if (!available) {
++              if (registerSection) registerSection.classList.add('hidden');
++              return false;
++            }
++          } catch (err) {
++            if (registerSection) registerSection.classList.add('hidden');
++            return false;
++          }
++        }
++        return true;
++      }
++
++      checkPasskeySupport();
++
++      if (registerButton) {
++        registerButton.addEventListener('click', async function () {
++          setStatus('Creating passkey...', '');
++          registerButton.disabled = true;
++
++          try {
++            // 1. Fetch passkey creation options from server
++            const optionsRes = await fetch('/api/register/options', {
++              method: 'POST',
++              headers: {
++                'Content-Type': 'application/json'
++              },
++              credentials: 'same-origin',
++              body: JSON.stringify({ promotion: true })
++            });
++
++            if (!optionsRes.ok) {
++              throw new Error('Failed to fetch registration options.');
++            }
++
++            const optionsJSON = await optionsRes.json();
++            const publicKey = parseCreationOptionsFromJSON(optionsJSON);
++
++            // 2. Create the passkey credential via WebAuthn API
++            const credential = await navigator.credentials.create({ publicKey: publicKey });
++
++            if (!credential) {
++              throw new Error('Passkey creation was did not return a credential.');
++            }
++
++            // 3. Verify registration with the server
++            const verifyRes = await fetch('/api/register/verify', {
++              method: 'POST',
++              headers: {
++                'Content-Type': 'application/json'
++              },
++              credentials: 'same-origin',
++              body: JSON.stringify(serializeCredential(credential))
++            });
++
++            if (!verifyRes.ok) {
++              throw new Error('Failed to verify passkey registration.');
++            }
++
++            setStatus('Passkey created and registered successfully!', 'success');
++          } catch (error) {
++            if (error && error.name === 'InvalidStateError') {
++              setStatus('A passkey is already registered for this device.', 'error');
++            } else if (error && error.name === 'NotAllowedError') {
++              setStatus('Passkey creation was cancelled or not allowed.', 'error');
++            } else {
++              setStatus((error && error.message) || 'An error occurred during passkey registration.', 'error');
++            }
++          } finally {
++            registerButton.disabled = false;
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

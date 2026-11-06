@@ -1,0 +1,264 @@
+diff --git a/index.html b/index.html
+index 66c9173..d67ab30 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; object-src 'none'; base-uri 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types daily-grind-html daily-grind-inert-parse">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -115,6 +117,15 @@
+       text-align: center;
+     }
+ 
++    .card-img {
++      display: block;
++      width: calc(100% + 40px);
++      height: 180px;
++      margin: -20px -20px 15px;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -177,22 +188,11 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="grid" id="seasonal-grid" aria-live="polite">
++        <noscript>
++          <p style="text-align: center;">Enable JavaScript to see our seasonal favorites, or
++            <a href="/menu/seasonal">browse the seasonal menu</a>.</p>
++        </noscript>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +207,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="js/main.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/js/main.js b/js/main.js
+new file mode 100644
+index 0000000..a6117f6
+--- /dev/null
++++ b/js/main.js
+@@ -0,0 +1,7 @@
++import { setSafeHTML } from './safe-html.js';
++import { seasonalCards } from './seasonal-cards.js';
++
++const grid = document.getElementById('seasonal-grid');
++if (grid) {
++  setSafeHTML(grid, seasonalCards.join(''));
++}
+diff --git a/js/safe-html.js b/js/safe-html.js
+new file mode 100644
+index 0000000..c2d7e7a
+--- /dev/null
++++ b/js/safe-html.js
+@@ -0,0 +1,150 @@
++/**
++ * Safe HTML rendering for The Daily Grind.
++ *
++ * Defense in depth against DOM-based XSS:
++ *  1. Every HTML string is run through a strict allowlist sanitizer that
++ *     rebuilds the markup from scratch (unknown tags, attributes, event
++ *     handlers, and dangerous URLs never survive).
++ *  2. The sanitizer is wrapped in a Trusted Types policy. The page's CSP
++ *     enforces `require-trusted-types-for 'script'`, so in supporting
++ *     browsers any attempt to write a raw string into innerHTML,
++ *     outerHTML, insertAdjacentHTML, document.write, etc. throws instead
++ *     of executing.
++ *  3. In browsers without Trusted Types, the same sanitizer still runs, so
++ *     the protection does not depend on the browser feature.
++ */
++
++const ALLOWED_TAGS = new Set([
++  'div', 'section', 'article', 'figure', 'figcaption',
++  'h3', 'h4', 'p', 'span', 'strong', 'em', 'b', 'i', 'small', 'br',
++  'ul', 'ol', 'li', 'a', 'img',
++]);
++
++// Elements whose *content* must be discarded entirely (not unwrapped).
++const DROP_WITH_CONTENT = new Set([
++  'script', 'style', 'template', 'iframe', 'frame', 'frameset', 'object',
++  'embed', 'applet', 'noscript', 'noembed', 'noframes', 'svg', 'math',
++  'xmp', 'plaintext', 'textarea', 'select', 'option', 'title', 'head',
++  'link', 'meta', 'base', 'form', 'input', 'button',
++]);
++
++const GLOBAL_ATTRS = new Set(['class', 'title']);
++const TAG_ATTRS = {
++  a: new Set(['href']),
++  img: new Set(['src', 'alt', 'width', 'height', 'loading']),
++};
++
++const IMAGE_HOSTS = new Set(['images.unsplash.com']);
++const CLASS_TOKEN = /^[a-zA-Z][\w-]{0,40}$/;
++
++function isSafeHref(value) {
++  try {
++    const url = new URL(value, window.location.href);
++    if (url.origin === window.location.origin) {
++      return url.protocol === 'http:' || url.protocol === 'https:';
++    }
++    return url.protocol === 'https:';
++  } catch {
++    return false;
++  }
++}
++
++function isSafeImageSrc(value) {
++  try {
++    const url = new URL(value, window.location.href);
++    return url.protocol === 'https:' && IMAGE_HOSTS.has(url.hostname);
++  } catch {
++    return false;
++  }
++}
++
++function sanitizeAttr(tag, name, value) {
++  switch (name) {
++    case 'class': {
++      const tokens = value.split(/\s+/).filter((t) => CLASS_TOKEN.test(t));
++      return tokens.length ? tokens.join(' ') : null;
++    }
++    case 'href':
++      return isSafeHref(value) ? value : null;
++    case 'src':
++      return isSafeImageSrc(value) ? value : null;
++    case 'width':
++    case 'height':
++      return /^\d{1,4}$/.test(value) ? value : null;
++    case 'loading':
++      return value === 'lazy' || value === 'eager' ? value : null;
++    default: // title, alt: plain text, escaped on serialization
++      return value;
++  }
++}
++
++// Private policy used *only* to hand untrusted markup to DOMParser.
++// DOMParser produces an inert document: scripts never run and no
++// resources load, so this pass-through is never exposed or written to the
++// live DOM. It exists because DOMParser is itself a Trusted Types sink.
++const tt = window.trustedTypes;
++const inertParsePolicy = tt
++  ? tt.createPolicy('daily-grind-inert-parse', { createHTML: (s) => s })
++  : null;
++
++function parseInert(html) {
++  const input = inertParsePolicy ? inertParsePolicy.createHTML(html) : html;
++  return new DOMParser().parseFromString(input, 'text/html');
++}
++
++function cleanNode(source, outDoc, outParent) {
++  for (const node of Array.from(source.childNodes)) {
++    if (node.nodeType === Node.TEXT_NODE) {
++      outParent.appendChild(outDoc.createTextNode(node.data));
++      continue;
++    }
++    if (node.nodeType !== Node.ELEMENT_NODE) continue; // drop comments, PIs
++
++    const tag = node.localName;
++    if (node.namespaceURI !== 'http://www.w3.org/1999/xhtml' || DROP_WITH_CONTENT.has(tag)) {
++      continue;
++    }
++    if (!ALLOWED_TAGS.has(tag)) {
++      cleanNode(node, outDoc, outParent); // unwrap: keep safe children only
++      continue;
++    }
++
++    const el = outDoc.createElement(tag);
++    const tagAttrs = TAG_ATTRS[tag];
++    for (const { name, value } of Array.from(node.attributes)) {
++      const attr = name.toLowerCase();
++      if (!GLOBAL_ATTRS.has(attr) && !(tagAttrs && tagAttrs.has(attr))) continue;
++      const clean = sanitizeAttr(tag, attr, value);
++      if (clean !== null) el.setAttribute(attr, clean);
++    }
++    if (tag === 'img' && !el.hasAttribute('src')) continue; // no broken/unsafe images
++    if (tag === 'img' && !el.hasAttribute('alt')) el.setAttribute('alt', '');
++
++    outParent.appendChild(el);
++    cleanNode(node, outDoc, el);
++  }
++}
++
++/** Sanitize an untrusted HTML string, returning a safe HTML string. */
++export function sanitizeHTML(dirty) {
++  const parsed = parseInert(String(dirty));
++  const outDoc = document.implementation.createHTMLDocument('');
++  const container = outDoc.createElement('div');
++  cleanNode(parsed.body, outDoc, container);
++  return container.innerHTML; // getter: serialization, not a sink
++}
++
++// Public policy: the only way this page creates TrustedHTML.
++const htmlPolicy = tt
++  ? tt.createPolicy('daily-grind-html', { createHTML: sanitizeHTML })
++  : null;
++
++/** Returns TrustedHTML (or a sanitized string where TT is unsupported). */
++export function toSafeHTML(dirty) {
++  return htmlPolicy ? htmlPolicy.createHTML(dirty) : sanitizeHTML(dirty);
++}
++
++/** Safely replace an element's contents with sanitized markup. */
++export function setSafeHTML(element, dirty) {
++  element.innerHTML = toSafeHTML(dirty);
++}
+diff --git a/js/seasonal-cards.js b/js/seasonal-cards.js
+new file mode 100644
+index 0000000..71d1cf2
+--- /dev/null
++++ b/js/seasonal-cards.js
+@@ -0,0 +1,23 @@
++// Seasonal Favorites card markup. These strings are treated as untrusted
++// (they may eventually come from a CMS or API) and are always sanitized
++// before insertion — see safe-html.js.
++export const seasonalCards = [
++  `<div class="card">
++     <img class="card-img" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Latte with foam art" loading="lazy">
++     <h3>Maple Oat Latte</h3>
++     <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++     <a href="/menu/seasonal" class="btn">View Details</a>
++   </div>`,
++  `<div class="card">
++     <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Shot of dark espresso" loading="lazy">
++     <h3>Dark Roast Espresso</h3>
++     <p>Bold, smokey, and perfect for a morning boost.</p>
++     <a href="/menu/espresso" class="btn">View Details</a>
++   </div>`,
++  `<div class="card">
++     <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Glass of iced cold brew" loading="lazy">
++     <h3>Cold Brew</h3>
++     <p>Steeped for 18 hours for maximum smoothness.</p>
++     <a href="/menu/cold-brew" class="btn">View Details</a>
++   </div>`,
++];

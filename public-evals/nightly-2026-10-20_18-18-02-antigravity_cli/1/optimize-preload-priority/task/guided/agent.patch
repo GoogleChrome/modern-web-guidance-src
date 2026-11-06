@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,111 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Elevate priority for the video poster image acting as the LCP candidate -->
++  <link rel="preload" href="poster.jpg" as="image" type="image/jpeg" fetchpriority="high">
++
++  <!-- Preload the critical header font (fonts have high default priority; crossorigin is required even same-origin) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Deprioritize the secondary UI font to prevent network contention with critical LCP resources -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <!-- Inline critical CSS to avoid render-blocking stylesheet requests -->
++  <style>
++    @font-face {
++      font-family: "BrandFont";
++      src: url("brand-font.woff2") format("woff2");
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: "SecondaryFont";
++      src: url("secondary-font.woff2") format("woff2");
++      font-display: swap;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++    }
++
++    body {
++      background: #0a0a0c;
++      color: #f4f4f6;
++      font-family: system-ui, -apple-system, sans-serif;
++      line-height: 1.5;
++      padding: 2rem 1rem;
++    }
++
++    header, main, footer {
++      max-width: 960px;
++      margin-inline: auto;
++    }
++
++    header {
++      margin-bottom: 1.5rem;
++    }
++
++    h1 {
++      font-family: "BrandFont", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      font-size: clamp(1.75rem, 4vw, 2.75rem);
++      letter-spacing: -0.02em;
++    }
++
++    .secondary-ui {
++      font-family: "SecondaryFont", system-ui, sans-serif;
++      font-size-adjust: from-font;
++      color: #a1a1aa;
++      font-size: 0.9375rem;
++    }
++
++    .video-frame {
++      margin-block: 1.5rem;
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      border-radius: 0.5rem;
++      background: #18181b;
++    }
++
++    footer {
++      margin-top: 2rem;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Next-Generation Video Streaming</h1>
++    <p class="secondary-ui">Instant playback with zero layout shift.</p>
++  </header>
++
++  <main>
++    <div class="video-frame">
++      <video
++        controls
++        width="1280"
++        height="720"
++        poster="poster.jpg"
++        preload="none"
++      >
++        <source src="intro.webm" type="video/webm">
++        <source src="intro.mp4" type="video/mp4">
++        <track src="captions.vtt" kind="captions" srclang="en" label="English">
++      </video>
++    </div>
++  </main>
++
++  <footer class="secondary-ui">
++    <p>&copy; 2026 StreamPlatform</p>
++  </footer>
++</body>
++</html>

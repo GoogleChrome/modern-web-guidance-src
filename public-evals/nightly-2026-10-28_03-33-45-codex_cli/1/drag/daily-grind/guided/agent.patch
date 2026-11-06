@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+index 66c9173..bfed04d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,98 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating quick order */
++    button, select { font: inherit; }
++    button { cursor: pointer; }
++    button:focus-visible, select:focus-visible, .order-link:focus-visible {
++      outline: 3px solid #b97525;
++      outline-offset: 3px;
++    }
++    .quick-order {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: min(350px, calc(100vw - 24px));
++      max-height: calc(100dvh - 24px);
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++      border: 1px solid #dfd1c3;
++      border-radius: 18px;
++      background: #fffdf8;
++      box-shadow: 0 16px 60px #2f1c2440, 0 2px 8px #2f1c2414;
++    }
++    .quick-order[hidden], .cart-launcher[hidden], .order-link[hidden] { display: none; }
++    .order-header {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 16px;
++      color: #fff7ed;
++      background: var(--primary);
++    }
++    .order-handle {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex: 1;
++      min-width: 0;
++      text-align: left;
++      color: inherit;
++      border: 0;
++      padding: 0;
++      background: none;
++    }
++    .order-handle.ready { cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
++    .order-handle.dragging { cursor: grabbing; }
++    .grip { display: none; color: #d5bca8; font-size: 21px; letter-spacing: -3px; }
++    .ready .grip { display: inline; }
++    .order-title { font-size: 14px; font-weight: 650; letter-spacing: .2px; }
++    .order-subtitle { display: block; font-size: 10px; font-weight: 400; color: #ddc9bc; letter-spacing: .4px; }
++    .order-count { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #ffffff1a; font-size: 12px; }
++    .minimize { border: 0; color: inherit; background: none; padding: 5px; font-size: 21px; line-height: 1; }
++    .order-body { padding: 22px; overflow-y: auto; overscroll-behavior: contain; }
++    .order-eyebrow { color: #876b50; font-size: 10px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; }
++    .order-intro { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
++    .order-intro h2 { font-family: Georgia, serif; font-size: 27px; line-height: 1.3; font-weight: 400; margin: 4px 0; }
++    .order-intro p { font-size: 12px; color: #826f62; }
++    .cup-badge { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: #f1e6d7; color: #795338; }
++    .cup-badge svg { width: 30px; height: 30px; }
++    .order-label { display: block; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
++    .order-select { width: 100%; padding: 10px 12px; border: 1px solid #dfd3c6; border-radius: 8px; background: #fffdf8; color: var(--text); font-size: 13px; }
++    .order-row { display: flex; gap: 12px; margin-top: 15px; }
++    .order-row > div { flex: 1; min-width: 0; }
++    .temperature { display: flex; padding: 3px; border: 1px solid #dfd3c6; border-radius: 8px; background: #f3ede4; }
++    .temperature button { flex: 1; padding: 7px 4px; font-size: 12px; color: #7b6859; border: 0; border-radius: 5px; background: transparent; }
++    .temperature button[aria-pressed="true"] { color: #4e342e; background: #fffdf8; box-shadow: 0 1px 3px #4e342e20; font-weight: 650; }
++    .order-total { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; margin-top: 2px; }
++    .quantity { display: flex; align-items: center; gap: 15px; border: 1px solid #dfd3c6; border-radius: 8px; padding: 2px; }
++    .quantity button { border: 0; background: transparent; width: 30px; height: 32px; color: var(--primary); font-size: 20px; }
++    .quantity button:disabled { color: #cbbfb3; cursor: default; }
++    .quantity output { font-size: 13px; min-width: 10px; text-align: center; }
++    .price { font-family: Georgia, serif; font-size: 25px; }
++    .add-order { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--primary); color: white; font-size: 13px; font-weight: 600; }
++    .add-order:hover { background: #37231f; }
++    .order-note { margin-top: 10px; text-align: center; font-size: 10px; color: #8b7767; }
++    .order-feedback { color: #49623d; font-size: 12px; margin-top: 10px; }
++    .order-feedback:empty { display: none; }
++    .bag { border-top: 1px solid #e6dbce; margin-top: 16px; padding-top: 12px; font-size: 12px; }
++    .bag summary { cursor: pointer; font-weight: 600; }
++    .bag ul { list-style: none; margin-top: 8px; }
++    .bag li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee6db; }
++    .bag small { display: block; color: #8b7767; }
++    .remove-item { background: none; border: 0; color: #806453; text-decoration: underline; font-size: 11px; }
++    .order-link { display: block; margin-top: 10px; color: var(--primary); font-weight: 600; }
++    .cart-launcher { position: fixed; z-index: 1100; bottom: 24px; right: 24px; border: 1px solid #86695a; border-radius: 50px; padding: 14px 22px; background: var(--primary); color: white; box-shadow: 0 6px 24px #2f1c2433; }
++    @media (max-width: 600px) {
++      .quick-order { right: 12px; bottom: 12px; }
++      .order-body { padding: 18px; }
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +299,174 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <aside class="quick-order" id="quick-order" aria-label="Quick coffee order">
++    <div class="order-header">
++      <button class="order-handle" id="order-handle" type="button" disabled>
++        <span class="grip" aria-hidden="true">⠿</span>
++        <span class="order-title">Your coffee, your way<span class="order-subtitle">QUICK ORDER</span></span>
++      </button>
++      <span class="order-count" id="order-count" aria-label="0 items in bag">0</span>
++      <button class="minimize" id="minimize-order" type="button" hidden aria-label="Minimize quick order">−</button>
++    </div>
++    <div class="order-body">
++      <div class="order-intro">
++        <div><span class="order-eyebrow">A little pick-me-up</span><h2>Make it a coffee.</h2><p>Your next favorite is a few taps away.</p></div>
++        <span class="cup-badge" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13h17v8a7 7 0 0 1-7 7h-3a7 7 0 0 1-7-7zM24 14h2a4 4 0 0 1 0 8h-2M5 28h22M11 8c-3-3 3-3 0-6M17 8c-3-3 3-3 0-6"/></svg></span>
++      </div>
++      <form id="coffee-form" action="/order-online" method="get">
++        <label class="order-label" for="coffee-drink">Choose your coffee</label>
++        <select class="order-select" id="coffee-drink" name="drink">
++          <option value="maple">Maple Oat Latte</option>
++          <option value="espresso">Dark Roast Espresso</option>
++          <option value="coldbrew">Cold Brew</option>
++        </select>
++        <div class="order-row">
++          <div><label class="order-label" for="coffee-size">Size</label><select class="order-select" id="coffee-size" name="size"><option value="regular">Regular · 12 oz</option><option value="large">Large · 16 oz</option></select></div>
++          <div><span class="order-label" id="temperature-label">How do you like it?</span><div class="temperature" role="group" aria-labelledby="temperature-label"><button type="button" data-temp="hot" aria-pressed="true">Hot</button><button type="button" data-temp="iced" aria-pressed="false">Iced</button></div></div>
++        </div>
++        <div class="order-total">
++          <div class="quantity" role="group" aria-label="Quantity"><button type="button" id="decrease" aria-label="Decrease quantity" disabled>−</button><output id="quantity" aria-live="polite" aria-label="Quantity">1</output><button type="button" id="increase" aria-label="Increase quantity">+</button></div>
++          <output class="price" id="coffee-price" aria-live="polite" aria-label="Coffee subtotal">$5.50</output>
++        </div>
++        <button class="add-order" type="submit"><span>Add to bag</span><span aria-hidden="true">＋</span></button>
++        <p class="order-note">Good coffee. A better kind of daily ritual.</p>
++      </form>
++      <p class="order-feedback" id="order-feedback" role="status"></p>
++      <details class="bag" id="coffee-bag"><summary id="bag-summary">Your bag · 0 items</summary><ul id="bag-items"></ul><p id="bag-empty">Your bag is ready for something good.</p><a class="order-link" href="/order-online" id="continue-order" hidden>Browse the full ordering menu →</a></details>
++      <noscript><p><a href="/order-online">Order your coffee online →</a></p></noscript>
++    </div>
++  </aside>
++  <button class="cart-launcher" id="cart-launcher" type="button" aria-controls="quick-order" aria-expanded="false" hidden>Quick order · <span id="launcher-count">0</span></button>
++  <script>
++    (() => {
++      const panel = document.querySelector('#quick-order');
++      const handle = document.querySelector('#order-handle');
++      const launcher = document.querySelector('#cart-launcher');
++      const drink = document.querySelector('#coffee-drink');
++      const size = document.querySelector('#coffee-size');
++      const feedback = document.querySelector('#order-feedback');
++      const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++      const menu = { maple: { name: 'Maple Oat Latte', price: 550 }, espresso: { name: 'Dark Roast Espresso', price: 350 }, coldbrew: { name: 'Cold Brew', price: 450 } };
++      let quantity = 1;
++      let temperature = 'hot';
++      let bag = [];
++      try {
++        const saved = JSON.parse(sessionStorage.getItem('daily-grind-bag') || '[]');
++        if (Array.isArray(saved)) bag = saved.filter(item =>
++          item && typeof item.name === 'string' && ['regular', 'large'].includes(item.size) &&
++          ['hot', 'iced'].includes(item.temperature) && Number.isInteger(item.quantity) &&
++          item.quantity > 0 && item.quantity <= 20 && Number.isInteger(item.total) && item.total > 0
++        );
++      } catch { /* The cart also works when browser storage is unavailable. */ }
++      let offsetX = 0, offsetY = 0;
++      const subtotal = () => (menu[drink.value].price + (size.value === 'large' ? 100 : 0)) * quantity;
++      const format = cents => money.format(cents / 100);
++      function updateOptions() {
++        document.querySelector('#quantity').value = quantity;
++        document.querySelector('#decrease').disabled = quantity <= 1;
++        document.querySelector('#increase').disabled = quantity >= 20;
++        document.querySelector('#coffee-price').value = format(subtotal());
++        document.querySelectorAll('[data-temp]').forEach(button => {
++          button.disabled = drink.value === 'coldbrew' && button.dataset.temp === 'hot';
++          button.setAttribute('aria-pressed', String(button.dataset.temp === temperature));
++        });
++      }
++      drink.addEventListener('change', () => { if (drink.value === 'coldbrew') temperature = 'iced'; updateOptions(); feedback.textContent = ''; });
++      size.addEventListener('change', updateOptions);
++      document.querySelectorAll('[data-temp]').forEach(button => button.addEventListener('click', () => { temperature = button.dataset.temp; updateOptions(); }));
++      document.querySelector('#decrease').addEventListener('click', () => { quantity = Math.max(1, quantity - 1); updateOptions(); });
++      document.querySelector('#increase').addEventListener('click', () => { quantity = Math.min(20, quantity + 1); updateOptions(); });
++      function updateBag() {
++        try { sessionStorage.setItem('daily-grind-bag', JSON.stringify(bag)); } catch { /* Keep the current bag in memory. */ }
++        const count = bag.reduce((sum, item) => sum + item.quantity, 0);
++        const total = bag.reduce((sum, item) => sum + item.total, 0);
++        document.querySelector('#order-count').textContent = count;
++        document.querySelector('#order-count').setAttribute('aria-label', `${count} items in bag`);
++        document.querySelector('#launcher-count').textContent = count;
++        document.querySelector('#bag-summary').textContent = `Your bag · ${count} ${count === 1 ? 'item' : 'items'}${count ? ' · ' + format(total) : ''}`;
++        document.querySelector('#bag-empty').hidden = count > 0;
++        document.querySelector('#continue-order').hidden = count === 0;
++        const list = document.querySelector('#bag-items');
++        list.replaceChildren();
++        bag.forEach((item, index) => {
++          const row = document.createElement('li');
++          const description = document.createElement('span');
++          description.textContent = `${item.quantity} × ${item.name}`;
++          const detail = document.createElement('small');
++          detail.textContent = `${item.size} · ${item.temperature} · ${format(item.total)}`;
++          description.append(detail);
++          const remove = document.createElement('button');
++          remove.type = 'button'; remove.className = 'remove-item'; remove.textContent = 'Remove';
++          remove.setAttribute('aria-label', `Remove ${item.name} from bag`);
++          remove.addEventListener('click', () => {
++            bag.splice(index, 1); updateBag();
++            feedback.textContent = `${item.name} removed from your bag.`;
++            document.querySelector('#bag-summary').focus();
++          });
++          row.append(description, remove); list.append(row);
++        });
++      }
++      document.querySelector('#coffee-form').addEventListener('submit', event => {
++        event.preventDefault();
++        bag.push({ name: menu[drink.value].name, size: size.value, temperature, quantity, total: subtotal() });
++        updateBag();
++        feedback.textContent = `${quantity} ${menu[drink.value].name} added to your bag.`;
++      });
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++        panel.style.right = 'auto'; panel.style.bottom = 'auto';
++      }
++      function clampPosition() {
++        if (panel.hidden) return;
++        const rect = panel.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      }
++      document.querySelector('#minimize-order').hidden = false;
++      handle.disabled = false;
++      handle.classList.add('ready');
++      handle.setAttribute('aria-label', 'Move quick order panel. Drag or use arrow keys.');
++      handle.addEventListener('pointerdown', event => {
++        if (event.button !== 0 || !event.isPrimary) return;
++        const rect = panel.getBoundingClientRect();
++        offsetX = event.clientX - rect.left; offsetY = event.clientY - rect.top;
++        handle.setPointerCapture(event.pointerId);
++        handle.classList.add('dragging');
++      });
++      handle.addEventListener('pointermove', event => {
++        if (handle.hasPointerCapture(event.pointerId)) moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++      const stopDrag = event => {
++        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
++        handle.classList.remove('dragging');
++      };
++      handle.addEventListener('pointerup', stopDrag);
++      handle.addEventListener('pointercancel', stopDrag);
++      handle.addEventListener('lostpointercapture', () => handle.classList.remove('dragging'));
++      handle.addEventListener('keydown', event => {
++        const movements = { ArrowLeft: [-15, 0], ArrowRight: [15, 0], ArrowUp: [0, -15], ArrowDown: [0, 15] };
++        const movement = movements[event.key];
++        if (!movement) return;
++        event.preventDefault();
++        const rect = panel.getBoundingClientRect();
++        moveTo(rect.left + movement[0], rect.top + movement[1]);
++      });
++      document.querySelector('#minimize-order').addEventListener('click', () => {
++        panel.hidden = true; launcher.hidden = false; launcher.setAttribute('aria-expanded', 'false'); launcher.focus();
++      });
++      launcher.addEventListener('click', () => {
++        panel.hidden = false; launcher.hidden = true; launcher.setAttribute('aria-expanded', 'true'); clampPosition(); handle.focus();
++      });
++      window.addEventListener('resize', clampPosition);
++      new ResizeObserver(clampPosition).observe(panel);
++      updateOptions();
++      updateBag();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,28 +99,90 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .carousel {
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      gap: 32px;
++      padding: 40px 50%;
+       margin-top: 20px;
++      align-items: center;
+     }
+ 
++    .carousel-item {
++      scroll-snap-align: center;
++      container-type: scroll-state;
++      flex: 0 0 280px;
++    }
++
+     .card {
+-      background: white;
++      background-color: #e0e0e0;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: none;
+       text-align: center;
++      transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @container scroll-state(snapped: x) {
++      .card {
++        transform: scale(1.15);
++        background-color: #007bff;
++        color: white;
++        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      }
++
++      .card h3 {
++        color: white;
++      }
++    }
++
++    @container scroll-state(snapped: inline) {
++      .card {
++        transform: scale(1.15);
++        background-color: #007bff;
++        color: white;
++        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      }
++
++      .card h3 {
++        color: white;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel {
++        scroll-behavior: auto;
++      }
++
++      .card {
++        transition: none !important;
++        transform: none !important;
++      }
++
++      @container scroll-state(snapped: x) {
++        .card {
++          transition: none !important;
++          transform: none !important;
++        }
++      }
++
++      @container scroll-state(snapped: inline) {
++        .card {
++          transition: none !important;
++          transform: none !important;
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,23 +238,29 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="carousel">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

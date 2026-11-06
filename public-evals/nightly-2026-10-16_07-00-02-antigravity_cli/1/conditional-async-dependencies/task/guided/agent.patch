@@ -1,0 +1,20 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+--- a/app.js
++++ b/app.js
+@@ -0,0 +1,15 @@
++// app.js
++
++// Safe to interact with popover elements here now that any required polyfill has loaded.
++const rewardsPopover = document.getElementById('rewards-popover');
++const rewardsBtn = document.getElementById('rewards-btn');
++
++if (rewardsPopover && rewardsBtn) {
++  // Synchronize ARIA state when popover visibility changes
++  rewardsPopover.addEventListener('toggle', (event) => {
++    const isOpen = event.newState
++      ? event.newState === 'open'
++      : rewardsPopover.matches(':popover-open, .\\:popover-open');
++    rewardsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
++  });
++}

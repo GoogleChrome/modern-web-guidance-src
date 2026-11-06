@@ -1,0 +1,174 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,136 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      align-items: start;
++    }
++
++    .showcase h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    /*
++     * Nested-curve card.
++     * `overflow: clip` + `overflow-clip-margin: content-box` moves the clip
++     * edge from the default padding box to the inner content box. The browser
++     * derives the clip's corner radii from the border-radius minus padding,
++     * so children and footers are cut along the concentric inner curve
++     * without hand-computing a second radius.
++     */
++    .nested-curve-parent {
++      --curve-padding: 24px;
++      padding: var(--curve-padding);
++      border-radius: 32px;
++      background: white;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-parent .curve-media {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++    }
++
++    .nested-curve-parent .curve-body {
++      padding: 16px 4px 0;
++    }
++
++    .nested-curve-parent .curve-body p {
++      margin-bottom: 12px;
++    }
++
++    /* Deliberately wider than the content box so the clip is visible. */
++    .nested-curve-parent .curve-footer {
++      margin: 16px calc(-1 * var(--curve-padding)) calc(-1 * var(--curve-padding));
++      padding: 14px var(--curve-padding);
++      background: var(--primary);
++      color: white;
++      font-size: 0.9rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .nested-curve-parent .curve-footer a {
++      color: var(--accent);
++      text-decoration: none;
++      font-weight: bold;
++    }
++
++    /*
++     * Promos block.
++     * `overflow: clip` keeps the text clipped at the padding box; the 15px
++     * `overflow-clip-margin` extends the clip rectangle just enough for the
++     * button's glow to escape instead of being sliced off.
++     */
++    .safety-zone-parent {
++      --safety-zone: 15px;
++      position: relative;
++      padding: 24px;
++      border-radius: 12px;
++      background: var(--secondary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      overflow-clip-margin: padding-box var(--safety-zone);
++    }
++
++    .safety-zone-parent p {
++      margin-bottom: 12px;
++    }
++
++    /* Long single-line promo code: overflows horizontally and gets clipped. */
++    .safety-zone-parent .promo-ticker {
++      white-space: nowrap;
++      font-family: 'Courier New', monospace;
++      font-size: 0.85rem;
++      letter-spacing: 2px;
++      opacity: 0.75;
++      margin: 12px 0 20px;
++    }
++
++    .safety-zone-parent .glow-btn {
++      display: inline-block;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-weight: bold;
++      color: var(--text);
++      background: var(--accent);
++      padding: 12px 28px;
++      border-radius: 999px;
++      box-shadow:
++        0 0 0 4px rgba(255, 171, 64, 0.35),
++        0 0 var(--safety-zone) rgba(255, 171, 64, 0.9),
++        0 0 calc(var(--safety-zone) * 2) rgba(255, 171, 64, 0.6);
++      transition: transform 0.2s;
++    }
++
++    .safety-zone-parent .glow-btn:hover {
++      transform: translateY(-2px);
++    }
++
++    /* Fallback: browsers without `overflow: clip` still get basic clipping. */
++    @supports not (overflow: clip) {
++      .nested-curve-parent,
++      .safety-zone-parent {
++        overflow: hidden;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +301,33 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase" aria-label="Showcase">
++    <article class="nested-curve-parent">
++      <img class="curve-media"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="Latte art in a ceramic cup on a wooden table">
++      <div class="curve-body">
++        <h2>Single-Origin Spotlight</h2>
++        <p>This month: a washed Ethiopian Yirgacheffe with notes of bergamot, jasmine, and honey.</p>
++      </div>
++      <div class="curve-footer">
++        <span>Available in-store &amp; online</span>
++        <a href="/menu/single-origin">Explore &rarr;</a>
++      </div>
++    </article>
++
++    <aside class="safety-zone-parent">
++      <h2>Member Promos</h2>
++      <p>Rewards members get double points on every pour-over this week.</p>
++      <div class="promo-ticker">
++        CODE: DOUBLEPOUR &bull; CODE: FREEREFILL &bull; CODE: MORNINGBOOST &bull; CODE: BEANBUDDY &bull; CODE: GRINDTIME
++      </div>
++      <button type="button" class="glow-btn">Claim Your Reward</button>
++    </aside>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

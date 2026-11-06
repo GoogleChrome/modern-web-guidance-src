@@ -1,0 +1,50 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,46 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="card-expiry" role="status"></p>
+   </footer>
+ 
++  <script>
++    (async () => {
++      const expiry = { year: 2027, month: 12, calendar: 'iso8601' };
++      let temporal = globalThis.Temporal;
++
++      if (!temporal) {
++        try {
++          ({ Temporal: temporal } = await import('https://esm.sh/@js-temporal/polyfill@0.5.1'));
++        } catch {
++          // Calendar-month arithmetic below also works when the polyfill is unavailable.
++        }
++      }
++
++      let monthsRemaining;
++      if (temporal) {
++        const currentMonth = temporal.Now.plainDateISO().toPlainYearMonth();
++        const expiryMonth = temporal.PlainYearMonth.from(expiry);
++        monthsRemaining = currentMonth.until(expiryMonth, { largestUnit: 'months' }).months;
++      } else {
++        const today = new Date();
++        // Compare only local calendar years/months: no day, DST, or leap-year assumptions.
++        monthsRemaining = (expiry.year - today.getFullYear()) * 12
++          + expiry.month - (today.getMonth() + 1);
++      }
++
++      const status = document.getElementById('card-expiry');
++      if (monthsRemaining < 0) {
++        status.textContent = 'Your credit card expired in December 2027.';
++      } else if (monthsRemaining === 0) {
++        status.textContent = 'Your credit card expires at the end of this month (December 2027).';
++      } else {
++        status.textContent = `Your credit card expires in ${monthsRemaining} ${monthsRemaining === 1 ? 'month' : 'months'} (December 2027).`;
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

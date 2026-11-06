@@ -1,0 +1,56 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Prefetch same-origin pages when the user shows intent (hover, focus, touch).
++    // Never prefetch state-changing links: opt out with data-no-prefetch, or via the path denylist.
++    (function () {
++      var NEVER_PREFETCH = [/^\/logout\b/i, /^\/log-out\b/i, /^\/signout\b/i];
++      var seen = {};
++
++      function shouldPrefetch(a) {
++        if (!a || !a.href || a.hasAttribute('data-no-prefetch') || a.hasAttribute('download')) return false;
++        if (a.target && a.target !== '_self') return false;
++        if (a.origin !== location.origin) return false;
++        if (a.pathname === location.pathname && a.search === location.search) return false;
++        return !NEVER_PREFETCH.some(function (re) { return re.test(a.pathname); });
++      }
++
++      function prefetch(e) {
++        var a = e.target.closest && e.target.closest('a');
++        if (!shouldPrefetch(a) || seen[a.href]) return;
++        var conn = navigator.connection;
++        if (conn && (conn.saveData || /2g/.test(conn.effectiveType))) return;
++        seen[a.href] = true;
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = a.href;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      ['mouseover', 'focusin', 'touchstart'].forEach(function (type) {
++        document.addEventListener(type, prefetch, { passive: true });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,436 @@
+diff --git a/calendar-tool.js b/calendar-tool.js
+new file mode 100644
+--- a/calendar-tool.js
++++ b/calendar-tool.js
+@@ -0,0 +1,431 @@
++/**
++ * International Calendar Converter & Calculator
++ * Powered by ECMAScript Temporal API
++ * 
++ * Accurately calculates and displays dates in non-Gregorian calendar systems:
++ * - Islamic (Umm al-Qura)
++ * - Hebrew (Lunisolar)
++ * - Japanese (Wareki with Eras)
++ */
++
++(function () {
++  'use strict';
++
++  // Supported Calendars Configuration
++  const CALENDAR_CONFIGS = [
++    {
++      id: 'islamic-umalqura',
++      name: 'Islamic (Umm al-Qura)',
++      nativeName: 'تقويم أم القرى',
++      formattedDateId: 'islamic-date',
++      containerId: 'card-islamic',
++      bcp47Locale: 'en-u-ca-islamic-umalqura',
++      nativeLocale: 'ar-SA-u-ca-islamic-umalqura',
++      isRTL: true,
++      description: 'Official astronomical lunar calendar of Saudi Arabia with 12 lunar months.'
++    },
++    {
++      id: 'hebrew',
++      name: 'Hebrew Calendar',
++      nativeName: 'הלוח העברי',
++      formattedDateId: 'hebrew-date',
++      containerId: 'card-hebrew',
++      bcp47Locale: 'en-u-ca-hebrew',
++      nativeLocale: 'he-IL-u-ca-hebrew',
++      isRTL: true,
++      description: 'Lunisolar calendar coordinating 29/30 day lunar months with the solar year via 13-month leap years.'
++    },
++    {
++      id: 'japanese',
++      name: 'Japanese Calendar',
++      nativeName: '和暦 (Wareki)',
++      formattedDateId: 'japanese-date',
++      containerId: 'card-japanese',
++      bcp47Locale: 'en-u-ca-japanese',
++      nativeLocale: 'ja-JP-u-ca-japanese',
++      isRTL: false,
++      description: 'Solar calendar reckoning years within named imperial regnal eras (e.g., Reiwa, Heisei).'
++    }
++  ];
++
++  /**
++   * Progressive Feature Detection for ECMAScript Temporal API
++   */
++  async function ensureTemporalReady() {
++    function testNativeSupport() {
++      try {
++        if (typeof Temporal !== 'undefined' && typeof Temporal.PlainDate === 'function') {
++          // Safety invariant: verify that non-Gregorian calendars work
++          Temporal.PlainDate.from('2026-10-16').withCalendar('islamic-umalqura');
++          return true;
++        }
++      } catch (e) {
++        // Native Temporal might be present but lacking non-Gregorian calendars
++      }
++      return false;
++    }
++
++    if (testNativeSupport()) {
++      return true;
++    }
++
++    // Helper to dynamically load script
++    function loadScript(src) {
++      return new Promise((resolve, reject) => {
++        const script = document.createElement('script');
++        script.src = src;
++        script.onload = () => resolve(true);
++        script.onerror = () => reject(new Error('Failed to load: ' + src));
++        document.head.appendChild(script);
++      });
++    }
++
++    try {
++      await loadScript('vendor/temporal-polyfill.js');
++    } catch (localErr) {
++      console.warn('Local polyfill not reachable, attempting CDN fallback...', localErr);
++      try {
++        await loadScript('https://cdn.jsdelivr.net/npm/temporal-polyfill@1.0.6/full/global.js');
++      } catch (cdnErr) {
++        console.error('Failed to load Temporal polyfill from both local vendor and CDN.', cdnErr);
++        return false;
++      }
++    }
++
++    return testNativeSupport();
++  }
++
++  /**
++   * Pure Temporal calculations for a given ISO date and calendar
++   * No hardcoded rules, no legacy Date math
++   */
++  function calculateCalendar(isoDateStr, config) {
++    const calendarId = config.id;
++    // Strict ISO parsing with PlainDate
++    const plainDate = Temporal.PlainDate.from(isoDateStr);
++    const calDate = plainDate.withCalendar(calendarId);
++
++    // Current date comparison using Temporal.Now
++    const today = Temporal.Now.plainDateISO();
++    const cmp = Temporal.PlainDate.compare(plainDate, today);
++    const timelineLabel = cmp < 0 ? 'Past' : (cmp === 0 ? 'Today' : 'Future');
++
++    // Formatted localized dates
++    let formattedDate = '';
++    let localizedNative = '';
++
++    if (calendarId === 'japanese') {
++      // With era names for Japanese
++      formattedDate = calDate.toLocaleString('en-u-ca-japanese', {
++        era: 'long',
++        year: 'numeric',
++        month: 'long',
++        day: 'numeric',
++        weekday: 'long'
++      });
++      localizedNative = calDate.toLocaleString('ja-JP-u-ca-japanese', { dateStyle: 'full' });
++    } else if (calendarId === 'islamic-umalqura') {
++      formattedDate = calDate.toLocaleString('en-u-ca-islamic-umalqura', { dateStyle: 'full' });
++      localizedNative = calDate.toLocaleString('ar-SA-u-ca-islamic-umalqura', { dateStyle: 'full' });
++    } else if (calendarId === 'hebrew') {
++      formattedDate = calDate.toLocaleString('en-u-ca-hebrew', { dateStyle: 'full' });
++      localizedNative = calDate.toLocaleString('he-IL-u-ca-hebrew', { dateStyle: 'full' });
++    }
++
++    // Year display details
++    let yearDisplay = `${calDate.year}`;
++    let eraDetails = null;
++    if (calendarId === 'japanese' && calDate.era) {
++      const eraCapitalized = calDate.era.charAt(0).toUpperCase() + calDate.era.slice(1);
++      eraDetails = {
++        era: calDate.era,
++        eraCapitalized: eraCapitalized,
++        eraYear: calDate.eraYear
++      };
++      yearDisplay = `${calDate.year} (${eraCapitalized} ${calDate.eraYear})`;
++    } else if (calendarId === 'islamic-umalqura') {
++      yearDisplay = `${calDate.year} AH`;
++    }
++
++    // Total months in that specific calendar year (handles lunisolar leap years)
++    const totalMonths = calDate.monthsInYear;
++    const isLeapYear = totalMonths > 12;
++
++    // Month breakdown: iterate through all months in that specific year
++    const monthBreakdown = [];
++    for (let m = 1; m <= totalMonths; m++) {
++      // Safety Invariant: setting day: 1 avoids out-of-range day numbers for shorter months
++      const mDate = calDate.with({ month: m, day: 1 });
++      const monthName = mDate.toLocaleString(config.bcp47Locale, { month: 'long' });
++      const isSelected = mDate.monthCode === calDate.monthCode;
++      const isLeapMonth = mDate.monthCode.endsWith('L');
++
++      monthBreakdown.push({
++        numericMonth: m,
++        monthCode: mDate.monthCode,
++        monthName: monthName,
++        daysInMonth: mDate.daysInMonth,
++        isSelected: isSelected,
++        isLeapMonth: isLeapMonth
++      });
++    }
++
++    return {
++      config,
++      year: calDate.year,
++      yearDisplay,
++      eraDetails,
++      numericMonth: calDate.month,
++      monthCode: calDate.monthCode,
++      totalMonths,
++      isLeapYear,
++      timelineLabel,
++      formattedDate,
++      localizedNative,
++      monthBreakdown
++    };
++  }
++
++  /**
++   * Render calendar card UI
++   */
++  function renderCard(data) {
++    const cardEl = document.getElementById(data.config.containerId);
++    if (!cardEl) return;
++
++    // Determine timeline badge style class
++    const timelineClass = data.timelineLabel.toLowerCase();
++
++    // Render month breakdown rows
++    const breakdownRowsHtml = data.monthBreakdown.map(m => {
++      const selectedClass = m.isSelected ? 'month-row-selected' : '';
++      const leapBadge = m.isLeapMonth ? '<span class="leap-month-tag">Leap</span>' : '';
++      const selectedBadge = m.isSelected ? '<span class="selected-tag">Selected</span>' : '';
++      return `
++        <tr class="${selectedClass}">
++          <td class="col-num">${m.numericMonth}</td>
++          <td class="col-code"><code>${m.monthCode}</code></td>
++          <td class="col-name">${m.monthName} ${leapBadge} ${selectedBadge}</td>
++          <td class="col-days"><strong>${m.daysInMonth}</strong> days</td>
++        </tr>
++      `;
++    }).join('');
++
++    // Special metadata badges
++    let extraMeta = '';
++    if (data.config.id === 'japanese' && data.eraDetails) {
++      extraMeta = `
++        <div class="calendar-meta-item">
++          <span class="meta-label">Era &amp; Year</span>
++          <span class="meta-value highlight-era">${data.eraDetails.eraCapitalized} (Year ${data.eraDetails.eraYear})</span>
++        </div>
++      `;
++    } else if (data.config.id === 'hebrew') {
++      const leapStatusText = data.isLeapYear ? 'Lunisolar Leap Year (13 months)' : 'Regular Year (12 months)';
++      extraMeta = `
++        <div class="calendar-meta-item">
++          <span class="meta-label">Year Type</span>
++          <span class="meta-value ${data.isLeapYear ? 'highlight-leap' : ''}">${leapStatusText}</span>
++        </div>
++      `;
++    }
++
++    cardEl.innerHTML = `
++      <div class="calendar-card-header">
++        <div class="calendar-title-wrap">
++          <h3 class="calendar-title">${data.config.name}</h3>
++          <span class="calendar-native-title" ${data.config.isRTL ? 'dir="rtl"' : ''}>${data.config.nativeName}</span>
++        </div>
++        <span class="timeline-badge timeline-${timelineClass}" title="Comparison to current date">${data.timelineLabel}</span>
++      </div>
++
++      <p class="calendar-desc">${data.config.description}</p>
++
++      <div class="formatted-date-container">
++        <div class="formatted-date-label">Formatted Localized Date</div>
++        <div id="${data.config.formattedDateId}" class="main-formatted-date">${data.formattedDate}</div>
++        <div class="native-formatted-date" ${data.config.isRTL ? 'dir="rtl"' : ''}>${data.localizedNative}</div>
++      </div>
++
++      <div class="calendar-meta-grid">
++        <div class="calendar-meta-item">
++          <span class="meta-label">Converted Year</span>
++          <span class="meta-value">${data.yearDisplay}</span>
++        </div>
++        <div class="calendar-meta-item">
++          <span class="meta-label">Numeric Month</span>
++          <span class="meta-value">${data.numericMonth}</span>
++        </div>
++        <div class="calendar-meta-item">
++          <span class="meta-label">Month Code</span>
++          <span class="meta-value month-code-val"><code>${data.monthCode}</code></span>
++        </div>
++        <div class="calendar-meta-item">
++          <span class="meta-label">Total Months in Year</span>
++          <span class="meta-value">${data.totalMonths} months</span>
++        </div>
++        ${extraMeta}
++      </div>
++
++      <div class="month-breakdown-wrapper">
++        <div class="breakdown-header">
++          <h4>Year Month Breakdown (${data.monthBreakdown.length} months)</h4>
++          <span class="breakdown-sub">Showing stable codes and day counts for ${data.yearDisplay}</span>
++        </div>
++        <div class="breakdown-table-container">
++          <table class="breakdown-table">
++            <thead>
++              <tr>
++                <th class="col-num">#</th>
++                <th class="col-code">Code</th>
++                <th class="col-name">Month</th>
++                <th class="col-days">Days</th>
++              </tr>
++            </thead>
++            <tbody>
++              ${breakdownRowsHtml}
++            </tbody>
++          </table>
++        </div>
++      </div>
++    `;
++  }
++
++  /**
++   * Main update routine
++   */
++  function updateCalendars(dateStr) {
++    const errorEl = document.getElementById('calendar-error-msg');
++    if (!dateStr) {
++      if (errorEl) {
++        errorEl.textContent = 'Please choose a valid date.';
++        errorEl.style.display = 'block';
++      }
++      return;
++    }
++
++    try {
++      // Invariant check: validate date parsing via Temporal
++      Temporal.PlainDate.from(dateStr);
++      if (errorEl) errorEl.style.display = 'none';
++    } catch (e) {
++      if (errorEl) {
++        errorEl.textContent = 'Invalid date selected. Please use YYYY-MM-DD format.';
++        errorEl.style.display = 'block';
++      }
++      return;
++    }
++
++    // Process each configured calendar
++    CALENDAR_CONFIGS.forEach(config => {
++      try {
++        const data = calculateCalendar(dateStr, config);
++        renderCard(data);
++      } catch (err) {
++        console.error(`Error calculating date for calendar ${config.id}:`, err);
++        const cardEl = document.getElementById(config.containerId);
++        if (cardEl) {
++          cardEl.innerHTML = `<div class="calendar-card-error">Could not calculate date for ${config.name}: ${err.message}</div>`;
++        }
++      }
++    });
++  }
++
++  /**
++   * Initialize interactive widget
++   */
++  async function init() {
++    const isReady = await ensureTemporalReady();
++    if (!isReady) {
++      const container = document.getElementById('calendar-cards-grid');
++      if (container) {
++        container.innerHTML = '<div class="calendar-error">Modern Temporal calendar capabilities are loading or unavailable.</div>';
++      }
++      return;
++    }
++
++    const dateInput = document.getElementById('calendar-date-input');
++    const todayPlain = Temporal.Now.plainDateISO();
++    const todayStr = todayPlain.toString();
++
++    // Set initial date if not set
++    if (dateInput) {
++      if (!dateInput.value) {
++        dateInput.value = todayStr;
++      }
++      dateInput.addEventListener('input', function () {
++        updateCalendars(this.value);
++      });
++      dateInput.addEventListener('change', function () {
++        updateCalendars(this.value);
++      });
++    }
++
++    // Preset quick buttons
++    const btnToday = document.getElementById('btn-preset-today');
++    if (btnToday) {
++      btnToday.addEventListener('click', () => {
++        const tStr = Temporal.Now.plainDateISO().toString();
++        if (dateInput) dateInput.value = tStr;
++        updateCalendars(tStr);
++      });
++    }
++
++    const btnPrev = document.getElementById('btn-preset-prev');
++    if (btnPrev) {
++      btnPrev.addEventListener('click', () => {
++        if (!dateInput || !dateInput.value) return;
++        try {
++          const prev = Temporal.PlainDate.from(dateInput.value).subtract({ days: 1 });
++          const prevStr = prev.toString();
++          dateInput.value = prevStr;
++          updateCalendars(prevStr);
++        } catch (e) {}
++      });
++    }
++
++    const btnNext = document.getElementById('btn-preset-next');
++    if (btnNext) {
++      btnNext.addEventListener('click', () => {
++        if (!dateInput || !dateInput.value) return;
++        try {
++          const next = Temporal.PlainDate.from(dateInput.value).add({ days: 1 });
++          const nextStr = next.toString();
++          dateInput.value = nextStr;
++          updateCalendars(nextStr);
++        } catch (e) {}
++      });
++    }
++
++    const btnHebrewLeap = document.getElementById('btn-preset-hebrew-leap');
++    if (btnHebrewLeap) {
++      btnHebrewLeap.addEventListener('click', () => {
++        // Date inside Hebrew leap month Adar I (M05L) in year 5787
++        const leapDate = '2027-02-08';
++        if (dateInput) dateInput.value = leapDate;
++        updateCalendars(leapDate);
++      });
++    }
++
++    const btnJapaneseEra = document.getElementById('btn-preset-japanese-era');
++    if (btnJapaneseEra) {
++      btnJapaneseEra.addEventListener('click', () => {
++        // Start of Reiwa era (May 1, 2019)
++        const eraDate = '2019-05-01';
++        if (dateInput) dateInput.value = eraDate;
++        updateCalendars(eraDate);
++      });
++    }
++
++    // Initial render
++    const initialDate = dateInput && dateInput.value ? dateInput.value : todayStr;
++    updateCalendars(initialDate);
++  }
++
++  // Run on DOM ready
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', init);
++  } else {
++    init();
++  }
++})();

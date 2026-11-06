@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,68 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      /* Proximity snapping: the search bar snaps fully open or fully closed
++         near the top, without interfering with free scrolling further down. */
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-down search bar (sits above the nav, hidden on load) */
++    .search-bar {
++      background: var(--text);
++      padding: 0.75rem 5%;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      display: flex;
++      gap: 8px;
++      max-width: 700px;
++      margin: 0 auto;
++    }
++
++    .search-bar input[type="search"] {
++      flex: 1;
++      padding: 8px 12px;
++      border: none;
++      border-radius: 4px;
++      font: inherit;
++      font-size: 0.95rem;
++    }
++
++    .search-bar input[type="search"]:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .search-bar button {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 4px;
++      padding: 8px 16px;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: bold;
++      cursor: pointer;
++    }
++
++    /* Zero-height, non-sticky marker at the nav's resting position, used as
++       the "closed" snap point (the sticky nav itself moves, so it can't be). */
++    .search-snap-point {
++      height: 0;
++      scroll-snap-align: start;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +90,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* Start the page scrolled to the nav, hiding the search bar above it */
++      scroll-initial-target: nearest;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -134,8 +189,17 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +220,17 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar" role="search">
++    <form action="/search" method="get">
++      <label for="site-search" class="visually-hidden">Search</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, locations, and more…">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++  <div class="search-snap-point" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +279,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target: start at the nav.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      window.scrollTo(0, document.querySelector('.search-snap-point').offsetTop);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,157 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..30d3137 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -45,11 +46,22 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-cache transition:persist="page-views">
++          <div
++            class="spa-view"
++            data-view-key={Astro.url.pathname + Astro.url.search}
++            data-cache-view={String(cacheView)}
++            tabindex="-1"
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  import "../scripts/view-cache";
++</script>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..91c438d
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,59 @@
++// Astro still owns fetching, history, scrolling, head updates and script execution.
++// Its persistent main container keeps these views mounted across document swaps.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const initialView = document.querySelector<HTMLElement>("[data-view-key]");
++if (initialView?.dataset.viewKey) {
++  views.set(initialView.dataset.viewKey, initialView);
++}
++
++document.addEventListener("astro:before-swap", (event) => {
++  const incoming = event.newDocument.querySelector<HTMLElement>("[data-view-key]");
++  const host = document.querySelector<HTMLElement>("[data-view-cache]");
++  const key = incoming?.dataset.viewKey;
++  // Pages outside the shared layout keep Astro's normal navigation behavior.
++  if (!host || !incoming || !key) return;
++
++  const swap = event.swap;
++  event.swap = () => {
++    // Do not change cached nodes during preparation: navigation can be aborted.
++    swap();
++
++    // Authentication views are fresh on every visit and discarded on departure.
++    const active = incoming.dataset.cacheView === "false"
++      ? incoming
++      : views.get(key) ?? incoming;
++
++    for (const [oldKey, view] of views) {
++      if (view !== active && view.dataset.cacheView === "false") {
++        view.remove();
++        views.delete(oldKey);
++      } else if (view !== active) {
++        view.classList.add("inactive");
++        view.inert = true;
++        view.setAttribute("aria-hidden", "true");
++      }
++    }
++
++    if (active.parentElement !== host) host.append(active);
++    active.classList.remove("inactive");
++    active.inert = false;
++    active.removeAttribute("aria-hidden");
++
++    // Map insertion order tracks least-recently-used views, including the active one.
++    views.delete(key);
++    views.set(key, active);
++    while (views.size > MAX_VIEWS) {
++      const oldestKey = views.keys().next().value!;
++      views.get(oldestKey)!.remove();
++      views.delete(oldestKey);
++    }
++  };
++});
++
++document.addEventListener("astro:after-swap", () => {
++  // Prevent focus from staying inside an inactive view. Astro handles scroll
++  // restoration and fragment navigation independently of this focus change.
++  document.querySelector<HTMLElement>(".spa-view:not(.inactive)")
++    ?.focus({ preventScroll: true });
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1b4c212 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,18 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Keep the actual nodes and rendering state of recently visited views. */
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

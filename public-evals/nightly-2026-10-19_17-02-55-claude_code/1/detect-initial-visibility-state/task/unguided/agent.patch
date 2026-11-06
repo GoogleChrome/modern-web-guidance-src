@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,62 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <script>
++    // Background-tab detection. Kept inline, synchronous and in <head> so it runs
++    // before the page can change visibility state (async/deferred scripts may run late).
++    // Times are in ms relative to performance.timeOrigin (navigation start).
++    (function () {
++      function report(isBackground, backgroundTime, source, reliable) {
++        var info = {
++          isBackground: isBackground,     // boolean: page was initially loaded in a background tab
++          backgroundTime: backgroundTime, // ms since navigation start, or null if never backgrounded
++          source: source,
++          reliable: reliable
++        };
++        if (!reliable) {
++          // FALLBACK ACTIVE: result below is an approximation, not an exact timestamp.
++          console.warn('[background-detect] FALLBACK detection active - result may be inaccurate.', info);
++        } else {
++          console.log('[background-detect]', info);
++        }
++      }
++
++      // Preferred: the Visibility State performance entries (Chromium) record the exact
++      // time of every visibility change, including the initial state at startTime 0.
++      var entries = [];
++      try {
++        entries = performance.getEntriesByType('visibilitystate');
++      } catch (e) { /* unsupported entry type */ }
++
++      if (entries.length) {
++        var hidden = entries.filter(function (e) { return e.name === 'hidden'; })[0];
++        report(!!hidden && hidden.startTime === 0, hidden ? hidden.startTime : null,
++          'performance-visibilitystate', true);
++        return;
++      }
++
++      // FALLBACK (unreliable): only document.visibilityState at script execution time is
++      // available. If hidden now, the true backgrounding time is unknown; performance.now()
++      // is merely when this script ran, i.e. an upper bound on when it was backgrounded.
++      if (document.visibilityState === 'hidden') {
++        report(true, performance.now(), 'fallback-document-visibilityState', false);
++        return;
++      }
++
++      // Visible at load: report not-background, then capture a later backgrounding.
++      // The event fires when it happens, so event.timeStamp is accurate here.
++      report(false, null, 'fallback-document-visibilityState', false);
++      document.addEventListener('visibilitychange', function onChange(e) {
++        if (document.visibilityState === 'hidden') {
++          document.removeEventListener('visibilitychange', onChange);
++          report(false, e.timeStamp, 'fallback-visibilitychange-event', false);
++        }
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

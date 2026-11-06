@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+index 66c9173..4d01ff3 100644
+--- a/index.html
++++ b/index.html
+@@ -62,6 +62,7 @@
+       transition: color 0.3s;
+     }
+ 
++    nav a[aria-current="page"],
+     nav a:hover {
+       color: var(--accent);
+     }
+@@ -135,6 +136,29 @@
+       background: #3e2723;
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
++    .view-heading { margin-bottom: 12px; }
++    .view-intro { margin-bottom: 24px; }
++    label { display: block; margin: 16px 0 6px; font-weight: 600; }
++    input, select, button { font: inherit; }
++    input, select { padding: 10px; border: 1px solid var(--secondary); border-radius: 4px; max-width: 100%; }
++    button.btn { border: 0; cursor: pointer; }
++    .account-form { max-width: 460px; }
++    .account-form input { width: 100%; }
++    .status { margin-top: 16px; }
++    .logo a { font: inherit; letter-spacing: inherit; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++
++    @media (max-width: 680px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,46 +181,113 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main navigation">
++    <div class="logo"><a href="#/">THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-route="menu">Menu</a></li>
++      <li><a href="#/locations" data-route="locations">Locations</a></li>
++      <li><a href="#/rewards" data-route="rewards">Rewards</a></li>
++      <li><a href="#/account" data-route="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <main id="views">
++  <div data-view="home">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#/menu" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++  </div>
++  </div>
+   </main>
+ 
++  <template id="view-menu">
++    <section class="container" data-view="menu" aria-labelledby="menu-heading">
++      <h1 id="menu-heading" class="view-heading" tabindex="-1">Our Menu</h1>
++      <p class="view-intro">Find your daily favorite, freshly made to order.</p>
++      <label for="menu-filter">Browse drinks</label>
++      <select id="menu-filter">
++        <option value="all">All drinks</option>
++        <option value="seasonal">Seasonal</option>
++        <option value="espresso">Espresso</option>
++        <option value="cold">Cold coffee</option>
++      </select>
++      <div class="grid">
++        <article class="card" data-category="seasonal"><h3>Maple Oat Latte</h3><p>Creamy oat milk with a hint of Vermont maple syrup.</p></article>
++        <article class="card" data-category="espresso"><h3>Dark Roast Espresso</h3><p>Bold, smokey, and perfect for a morning boost.</p></article>
++        <article class="card" data-category="cold"><h3>Cold Brew</h3><p>Steeped for 18 hours for maximum smoothness.</p></article>
++      </div>
++    </section>
++  </template>
++
++  <template id="view-locations">
++    <section class="container" data-view="locations" aria-labelledby="locations-heading">
++      <h1 id="locations-heading" class="view-heading" tabindex="-1">Locations</h1>
++      <p class="view-intro">Find your next coffee stop.</p>
++      <label for="location-search">Search locations</label>
++      <input id="location-search" type="search" placeholder="Search by neighborhood">
++      <div class="grid">
++        <article class="card" data-location="downtown"><h3>Downtown</h3><p>Your morning coffee stop in the heart of the city.</p></article>
++        <article class="card" data-location="riverside"><h3>Riverside</h3><p>Slow down and enjoy a cup by the river.</p></article>
++      </div>
++      <p id="location-empty" class="status" hidden>No locations match your search.</p>
++    </section>
++  </template>
++
++  <template id="view-rewards">
++    <section class="container" data-view="rewards" aria-labelledby="rewards-heading">
++      <h1 id="rewards-heading" class="view-heading" tabindex="-1">Daily Grind Rewards</h1>
++      <p class="view-intro">Make every coffee count.</p>
++      <div class="grid">
++        <article class="card"><h3>Earn with every visit</h3><p>Ask your barista about earning rewards on your favorite drinks.</p></article>
++        <article class="card"><h3>A little extra joy</h3><p>Discover member treats and seasonal favorites.</p></article>
++      </div>
++      <details style="margin-top: 24px;"><summary>How do I get started?</summary><p>Visit your local Daily Grind and ask about joining our rewards program.</p></details>
++      <a class="btn" href="#/account">My Account</a>
++    </section>
++  </template>
++
++  <template id="view-account">
++    <section class="container" data-view="account" aria-labelledby="account-heading">
++      <h1 id="account-heading" class="view-heading" tabindex="-1">My Account</h1>
++      <p class="view-intro">Keep your coffee preferences handy during this visit.</p>
++      <form class="account-form">
++        <label for="account-name">Name</label>
++        <input id="account-name" name="name" autocomplete="name">
++        <label for="account-email">Email</label>
++        <input id="account-email" name="email" type="email" autocomplete="email">
++        <label for="account-drink">Favorite drink</label>
++        <select id="account-drink" name="drink"><option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option></select>
++        <button class="btn" type="submit">Save preferences</button>
++        <p class="status" role="status"></p>
++      </form>
++    </section>
++  </template>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +298,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (() => {
++      const outlet = document.querySelector('#views');
++      // Each view is mounted once. Hiding it preserves inputs, listeners, and open details.
++      const views = new Map([['home', outlet.querySelector('[data-view="home"]')]]);
++      const scrollPositions = new Map();
++      const routes = new Set(['home', 'menu', 'locations', 'rewards', 'account']);
++      let activeRoute;
++      views.get('home').hidden = true;
++
++      function mount(route) {
++        if (views.has(route)) return views.get(route);
++        const view = document.querySelector(`#view-${route}`).content.firstElementChild.cloneNode(true);
++        view.hidden = true;
++        outlet.append(view);
++        views.set(route, view);
++
++        if (route === 'menu') {
++          view.querySelector('select').addEventListener('change', (event) => {
++            view.querySelectorAll('[data-category]').forEach((card) => {
++              card.hidden = event.target.value !== 'all' && card.dataset.category !== event.target.value;
++            });
++          });
++        }
++        if (route === 'locations') {
++          view.querySelector('input').addEventListener('input', (event) => {
++            const query = event.target.value.trim().toLowerCase();
++            const cards = [...view.querySelectorAll('[data-location]')];
++            cards.forEach((card) => { card.hidden = !card.dataset.location.includes(query); });
++            view.querySelector('#location-empty').hidden = cards.some((card) => !card.hidden);
++          });
++        }
++        if (route === 'account') {
++          view.querySelector('form').addEventListener('submit', (event) => {
++            event.preventDefault();
++            view.querySelector('[role="status"]').textContent = 'Preferences saved for this visit.';
++          });
++        }
++        return view;
++      }
++
++      function navigate() {
++        const requested = location.hash.replace(/^#\/?/, '') || 'home';
++        const route = routes.has(requested) ? requested : 'home';
++        if (route === activeRoute) return;
++        const isInitial = activeRoute === undefined;
++        if (!isInitial) {
++          scrollPositions.set(activeRoute, window.scrollY);
++          views.get(activeRoute).hidden = true;
++        }
++        const view = mount(route);
++        view.hidden = false;
++        activeRoute = route;
++        document.querySelectorAll('nav [data-route]').forEach((link) => {
++          if (link.dataset.route === route) link.setAttribute('aria-current', 'page');
++          else link.removeAttribute('aria-current');
++        });
++        document.title = route === 'home' ? 'The Daily Grind | Artisanal Coffee'
++          : `${route === 'account' ? 'My Account' : route[0].toUpperCase() + route.slice(1)} | The Daily Grind`;
++        if (!isInitial) {
++          view.querySelector('h1').focus({ preventScroll: true });
++          window.scrollTo(0, scrollPositions.get(route) ?? 0);
++        }
++      }
++
++      // The router owns scroll restoration for its retained views, including back/forward.
++      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++      outlet.querySelector('h1').tabIndex = -1;
++      window.addEventListener('hashchange', navigate);
++      navigate();
++    })();
++  </script>
+ </body>
+ 
+ </html>

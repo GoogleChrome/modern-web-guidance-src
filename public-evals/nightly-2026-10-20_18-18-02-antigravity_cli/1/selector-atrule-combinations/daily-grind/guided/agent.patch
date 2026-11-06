@@ -1,0 +1,427 @@
+diff --git a/index.html b/index.html
+index 66c9173..e2b017b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="color-scheme" content="light dark">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -12,19 +13,50 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
+-    }
++      --surface: #ffffff;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++      /* Decouple selection logic from applied rules by storing the combined
++         selector + @-rule result on a custom property on an ancestor (:root) */
++      --color-scheme: light;
++      --layout-density: comfortable;
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &:is(.dark, [data-theme="dark"], :has(> head > meta[name="color-scheme"][content="dark"]), :has(#theme-dark:checked)) {
++        --color-scheme: dark;
++      }
++
++      &:is(.light, [data-theme="light"], :has(> head > meta[name="color-scheme"][content="light"]), :has(#theme-light:checked)) {
++        --color-scheme: light;
++      }
++
++      /* Intersection example: compact mode when either explicitly toggled OR on narrow viewports with dense preference */
++      @media (max-width: 768px) {
++        &:has(#compact-mobile:checked),
++        &.compact-auto {
++          --layout-density: compact;
++        }
++      }
++
++      &:is(.compact, [data-density="compact"], :has(#density-compact:checked)) {
++        --layout-density: compact;
++      }
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
++      margin: 0;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s, color 0.3s;
++    }
++
++    h1, h2, h3, p, ul {
++      margin: 0;
++      padding: 0;
+     }
+ 
+     /* Navigation */
+@@ -38,21 +70,32 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 1rem;
+     }
+ 
+-    .logo {
++    .logo-group {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    .logo-img {
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      object-fit: cover;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -60,10 +103,10 @@
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+-    }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++      &:hover {
++        color: var(--accent);
++      }
+     }
+ 
+     .logout-link {
+@@ -72,6 +115,42 @@
+       border-radius: 4px;
+     }
+ 
++    /* Theme & Density Controls Bar */
++    .controls-bar {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 0.6rem 5%;
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 1.5rem;
++      font-size: 0.85rem;
++      border-block-end: 1px solid rgba(0, 0, 0, 0.08);
++    }
++
++    .control-fieldset {
++      border: none;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      margin: 0;
++      padding: 0;
++    }
++
++    .control-fieldset span {
++      font-weight: 600;
++    }
++
++    .control-fieldset label {
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.25rem;
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -86,11 +165,11 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
+-    }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      & h1 {
++        font-size: 3rem;
++        margin-block-end: 1rem;
++      }
+     }
+ 
+     /* Content Sections */
+@@ -100,24 +179,42 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+-      margin-top: 20px;
++      margin-block-start: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.2s;
++
++      & h3 {
++        margin-block-end: 10px;
++        color: var(--primary);
++      }
++
++      &.featured {
++        font-weight: 400;
++        border: 2px solid var(--accent);
++      }
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .card-img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-block-end: 12px;
+     }
+ 
+     .btn {
+@@ -127,30 +224,126 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-block-start: 15px;
+       transition: background 0.3s;
+-    }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++      &:hover {
++        background: #3e2723;
++      }
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-block-start: 40px;
++      transition: background-color 0.3s;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: 20px;
++
++      & a {
++        margin: 0 10px;
++        color: var(--text);
++        text-decoration: none;
++        font-size: 0.85rem;
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* Non-critical branching fallback: base styles outside @container,
++       with container style queries applying combined state rules without duplication */
++    #logo-dark {
++      display: none;
++    }
++
++    @container not style(--color-scheme: dark) {
++      .card.featured {
++        font-weight: 400;
++      }
++
++      #logo-dark {
++        display: none;
++      }
++    }
++
++    @container style(--color-scheme: dark) {
++      body {
++        --primary: #d7ccc8;
++        --secondary: #2c1e1a;
++        --text: #f5ebe6;
++        --light: #18110f;
++        --surface: #251a17;
++        color: var(--text);
++        background-color: var(--light);
++      }
++
++      nav {
++        background: #251a17;
++      }
++
++      .card {
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
++      }
++
++      .card.featured {
++        font-weight: 300;
++      }
++
++      .btn {
++        background: var(--accent);
++        color: #18110f;
++        font-weight: 600;
++
++        &:hover {
++          background: #ffc470;
++        }
++      }
++
++      #logo-dark {
++        display: inline;
++      }
++
++      #logo {
++        display: none;
++      }
++    }
++
++    @container style(--layout-density: compact) {
++      .container {
++        margin: 20px auto;
++      }
++
++      .grid {
++        gap: 12px;
++      }
++
++      .card {
++        padding: 12px;
++      }
++
++      .card-img {
++        height: 110px;
++      }
++    }
++
++    /* Utility classes for toggling visibility based on combined criteria */
++    @container not style(--color-scheme: dark) {
++      .if-dark {
++        display: none !important;
++      }
++    }
++
++    @container not style(--color-scheme: light) {
++      .if-light {
++        display: none !important;
++      }
++    }
++
++    @container not style(--layout-density: compact) {
++      .if-compact {
++        display: none !important;
++      }
+     }
+   </style>
+ </head>
+@@ -158,7 +351,11 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo-group">
++      <img id="logo" class="logo-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=120&q=80" alt="The Daily Grind Light Emblem">
++      <img id="logo-dark" class="logo-img" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=120&q=80" alt="The Daily Grind Dark Emblem">
++      <div class="logo">THE DAILY GRIND</div>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,6 +365,23 @@
+     </ul>
+   </nav>
+ 
++  <div class="controls-bar" role="region" aria-label="Display preferences">
++    <fieldset class="control-fieldset">
++      <span>Theme:</span>
++      <label><input type="radio" name="theme" id="theme-auto" checked> Auto (`@media`)</label>
++      <label><input type="radio" name="theme" id="theme-light"> Light</label>
++      <label><input type="radio" name="theme" id="theme-dark"> Dark</label>
++    </fieldset>
++    <fieldset class="control-fieldset">
++      <span>Density:</span>
++      <label><input type="checkbox" id="density-compact"> Compact View</label>
++      <label><input type="checkbox" id="compact-mobile" checked> Auto-compact on Mobile (`&lt;=768px`)</label>
++    </fieldset>
++    <span class="if-dark">Dark Roast Mode Active</span>
++    <span class="if-light">Morning Light Mode Active</span>
++    <span class="if-compact">Compact Grid</span>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -176,19 +390,22 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card featured">
++          <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

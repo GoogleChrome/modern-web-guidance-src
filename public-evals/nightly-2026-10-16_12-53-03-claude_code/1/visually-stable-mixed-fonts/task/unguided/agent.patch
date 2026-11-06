@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,50 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts and Independent Theme</title>
++  <style>
++    :root {
++      color-scheme: light;
++      font-family: system-ui, sans-serif;
++    }
++
++    #mixed-fonts-container {
++      /* Normalize x-height across fallback and inline-code fonts */
++      font-size-adjust: from-font;
++      max-width: 60ch;
++      line-height: 1.6;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
++      font-size-adjust: from-font;
++    }
++
++    #independent-theme-container {
++      /* Independent theme: opts out of the page's light scheme */
++      color-scheme: dark;
++      background-color: Canvas;
++      color: CanvasText;
++      /* Numeric aspect-ratio override locks proportions */
++      aspect-ratio: 16 / 9;
++      width: min(100%, 480px);
++      padding: 1rem;
++      box-sizing: border-box;
++      display: grid;
++      place-items: center;
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Use the <code>font-size-adjust</code> property with regular text, then call
++    <code>document.querySelector()</code> inline so both fonts share a consistent visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    Independent theme (16 / 9)
++  </div>
++</body>
++</html>

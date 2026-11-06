@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,40 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @keyframes card-enter {
++      from {
++        opacity: 0;
++        transform: translateY(16px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .grid > .card {
++        animation: card-enter 500ms ease-out backwards;
++        animation-delay: calc(var(--card-index, 0) * 100ms);
++      }
++
++      .grid > .card:nth-child(2) {
++        --card-index: 1;
++      }
++
++      .grid > .card:nth-child(3) {
++        --card-index: 2;
++      }
++
++      @supports (animation-delay: calc(sibling-index() * 100ms)) {
++        .grid > .card {
++          animation-delay: calc((sibling-index() - 1) * 100ms);
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;

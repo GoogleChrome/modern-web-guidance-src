@@ -1,0 +1,296 @@
+diff --git a/index.html b/index.html
+index 66c9173..e189eb1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,95 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Draggable Floating Element */
++    .floating-widget {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      width: 260px;
++      background: white;
++      border: 2px solid var(--primary);
++      border-radius: 12px;
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.2);
++      z-index: 2000;
++      user-select: none;
++      touch-action: none;
++      cursor: grab;
++      transition: box-shadow 0.2s ease, transform 0.1s ease;
++      overflow: hidden;
++    }
++
++    .floating-widget.dragging {
++      cursor: grabbing;
++      box-shadow: 0 14px 32px rgba(62, 39, 35, 0.35);
++      transform: scale(1.02);
++    }
++
++    .floating-widget-header {
++      background: var(--primary);
++      color: white;
++      padding: 10px 14px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .floating-widget-grip {
++      opacity: 0.75;
++      font-size: 1rem;
++      letter-spacing: 2px;
++    }
++
++    .floating-widget-body {
++      padding: 12px 14px;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    .floating-widget-body p {
++      margin-bottom: 10px;
++    }
++
++    .floating-widget-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .floating-widget .widget-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 6px 12px;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 0.8rem;
++      cursor: pointer;
++      text-decoration: none;
++      display: inline-block;
++    }
++
++    .floating-widget .widget-btn:hover {
++      filter: brightness(0.95);
++    }
++
++    .floating-widget .reset-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 5px 8px;
++      border-radius: 6px;
++      font-size: 0.75rem;
++      cursor: pointer;
++    }
++
++    .floating-widget .reset-btn:hover {
++      background: var(--secondary);
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +296,195 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside id="floating-element" class="floating-widget" aria-label="Quick Order Floating Widget">
++    <div class="floating-widget-header">
++      <span>☕ Quick Order &amp; Rewards</span>
++      <span class="floating-widget-grip" aria-hidden="true">⋮⋮</span>
++    </div>
++    <div class="floating-widget-body">
++      <p>You have <strong>140 Bean Points</strong>! Ready for your free handcrafted drink?</p>
++      <div class="floating-widget-actions">
++        <a href="/rewards" class="widget-btn" draggable="false">Redeem Now</a>
++        <button type="button" id="reset-widget-pos" class="reset-btn" title="Reset position">Reset Pos</button>
++      </div>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      const floatingEl = document.getElementById('floating-element');
++      const resetBtn = document.getElementById('reset-widget-pos');
++      if (!floatingEl) return;
++
++      const STORAGE_KEY = 'daily_grind_floating_pos';
++
++      let isDragging = false;
++      let startX = 0;
++      let startY = 0;
++      let initialLeft = 0;
++      let initialTop = 0;
++      let activePointerId = null;
++
++      function clampPosition(left, top) {
++        const rect = floatingEl.getBoundingClientRect();
++        const maxLeft = Math.max(0, window.innerWidth - rect.width);
++        const maxTop = Math.max(0, window.innerHeight - rect.height);
++        return {
++          left: Math.min(Math.max(0, left), maxLeft),
++          top: Math.min(Math.max(0, top), maxTop)
++        };
++      }
++
++      function applyPosition(left, top) {
++        const clamped = clampPosition(left, top);
++        floatingEl.style.left = clamped.left + 'px';
++        floatingEl.style.top = clamped.top + 'px';
++        floatingEl.style.right = 'auto';
++        floatingEl.style.bottom = 'auto';
++        return clamped;
++      }
++
++      // Restore saved position if available
++      try {
++        const saved = localStorage.getItem(STORAGE_KEY);
++        if (saved) {
++          const parsed = JSON.parse(saved);
++          if (typeof parsed.left === 'number' && typeof parsed.top === 'number') {
++            applyPosition(parsed.left, parsed.top);
++          }
++        }
++      } catch (e) {
++        // Ignore storage errors
++      }
++
++      function onDragStart(clientX, clientY, target) {
++        if (target && target.closest('a, button, input, textarea, select')) {
++          return false;
++        }
++        const rect = floatingEl.getBoundingClientRect();
++        isDragging = true;
++        startX = clientX;
++        startY = clientY;
++        initialLeft = rect.left;
++        initialTop = rect.top;
++
++        applyPosition(initialLeft, initialTop);
++        floatingEl.classList.add('dragging');
++        return true;
++      }
++
++      function onDragMove(clientX, clientY) {
++        if (!isDragging) return;
++        const dx = clientX - startX;
++        const dy = clientY - startY;
++        applyPosition(initialLeft + dx, initialTop + dy);
++      }
++
++      function onDragEnd() {
++        if (!isDragging) return;
++        isDragging = false;
++        activePointerId = null;
++        floatingEl.classList.remove('dragging');
++
++        const rect = floatingEl.getBoundingClientRect();
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify({
++            left: Math.round(rect.left),
++            top: Math.round(rect.top)
++          }));
++        } catch (e) {
++          // Ignore storage errors
++        }
++      }
++
++      if (window.PointerEvent) {
++        floatingEl.addEventListener('pointerdown', function (e) {
++          if (e.button !== undefined && e.button !== 0) return;
++          if (onDragStart(e.clientX, e.clientY, e.target)) {
++            activePointerId = e.pointerId;
++            if (floatingEl.setPointerCapture) {
++              try {
++                floatingEl.setPointerCapture(e.pointerId);
++              } catch (err) {}
++            }
++            e.preventDefault();
++          }
++        });
++
++        window.addEventListener('pointermove', function (e) {
++          if (!isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return;
++          onDragMove(e.clientX, e.clientY);
++        });
++
++        window.addEventListener('pointerup', function (e) {
++          if (!isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return;
++          onDragEnd();
++        });
++
++        window.addEventListener('pointercancel', function (e) {
++          if (!isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return;
++          onDragEnd();
++        });
++      } else {
++        floatingEl.addEventListener('mousedown', function (e) {
++          if (e.button !== 0) return;
++          if (onDragStart(e.clientX, e.clientY, e.target)) {
++            e.preventDefault();
++          }
++        });
++
++        window.addEventListener('mousemove', function (e) {
++          if (!isDragging) return;
++          onDragMove(e.clientX, e.clientY);
++        });
++
++        window.addEventListener('mouseup', function () {
++          onDragEnd();
++        });
++
++        floatingEl.addEventListener('touchstart', function (e) {
++          if (e.touches.length !== 1) return;
++          const touch = e.touches[0];
++          if (onDragStart(touch.clientX, touch.clientY, e.target)) {
++            e.preventDefault();
++          }
++        }, { passive: false });
++
++        window.addEventListener('touchmove', function (e) {
++          if (!isDragging || e.touches.length !== 1) return;
++          const touch = e.touches[0];
++          onDragMove(touch.clientX, touch.clientY);
++        }, { passive: false });
++
++        window.addEventListener('touchend', function () {
++          onDragEnd();
++        });
++      }
++
++      // Keep within viewport on window resize
++      window.addEventListener('resize', function () {
++        if (floatingEl.style.left && floatingEl.style.top) {
++          const currentLeft = parseFloat(floatingEl.style.left);
++          const currentTop = parseFloat(floatingEl.style.top);
++          if (!isNaN(currentLeft) && !isNaN(currentTop)) {
++            applyPosition(currentLeft, currentTop);
++          }
++        }
++      });
++
++      if (resetBtn) {
++        resetBtn.addEventListener('click', function () {
++          floatingEl.style.left = '';
++          floatingEl.style.top = '';
++          floatingEl.style.right = '24px';
++          floatingEl.style.bottom = '24px';
++          try {
++            localStorage.removeItem(STORAGE_KEY);
++          } catch (e) {}
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,790 @@
+diff --git a/index.html b/index.html
+index 66c9173..5633b42 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,260 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Equipment Connection Panel */
++    .equipment-section {
++      margin-top: 50px;
++      background: #fff;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .equipment-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .equipment-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .equipment-header p {
++      max-width: 680px;
++      margin: 0 auto;
++      font-size: 0.95rem;
++    }
++
++    .security-warning {
++      background: #fff3e0;
++      border-left: 4px solid #e65100;
++      color: #4e342e;
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 24px;
++      font-size: 0.9rem;
++    }
++
++    .equipment-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    .device-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .device-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .device-title-group h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin-bottom: 4px;
++    }
++
++    .address-space-tag {
++      display: inline-block;
++      font-size: 0.78rem;
++      font-family: monospace;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--secondary);
++    }
++
++    .permission-badge-wrapper {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-end;
++      font-size: 0.8rem;
++    }
++
++    .permission-badge-label {
++      color: #5d4037;
++      margin-bottom: 2px;
++    }
++
++    .permission-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-weight: 600;
++      font-size: 0.8rem;
++      text-transform: capitalize;
++      background: #eceff1;
++      color: #37474f;
++      border: 1px solid #cfd8dc;
++    }
++
++    .permission-badge[data-state="granted"] {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border-color: #a5d6a7;
++    }
++
++    .permission-badge[data-state="prompt"] {
++      background: #fff8e1;
++      color: #e65100;
++      border-color: #ffe082;
++    }
++
++    .permission-badge[data-state="denied"] {
++      background: #ffebee;
++      color: #b71c1c;
++      border-color: #ef9a9a;
++    }
++
++    .device-description {
++      font-size: 0.92rem;
++      color: var(--text);
++    }
++
++    .device-form {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      text-align: left;
++    }
++
++    .form-field label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .field-hint {
++      font-size: 0.8rem;
++      color: #5d4037;
++    }
++
++    .form-field input {
++      font-size: 1rem;
++      padding: 10px 12px;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++      font-family: monospace;
++    }
++
++    .button-row {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin-top: 4px;
++    }
++
++    .btn-action {
++      background: var(--primary);
++      color: #fff;
++      border: none;
++      padding: 10px 18px;
++      min-height: 48px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-action:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: #fff;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 10px 16px;
++      min-height: 48px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: #efebe9;
++    }
++
++    .status-box {
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      background: #fff;
++      border: 1px solid var(--secondary);
++    }
++
++    .status-box[data-status-type="connected"] {
++      background: #e8f5e9;
++      border-color: #81c784;
++      color: #1b5e20;
++    }
++
++    .status-box[data-status-type="error"] {
++      background: #ffebee;
++      border-color: #e57373;
++      color: #b71c1c;
++    }
++
++    .status-box[data-status-type="connecting"] {
++      background: #e3f2fd;
++      border-color: #64b5f6;
++      color: #0d47a1;
++    }
++
++    .remediation-box {
++      background: #fff8e1;
++      border: 1px solid #ffb74d;
++      border-left: 4px solid #e65100;
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      color: #3e2723;
++    }
++
++    .remediation-box strong {
++      display: block;
++      margin-bottom: 4px;
++      color: #bf360c;
++    }
++
++    .remediation-box ol {
++      padding-left: 20px;
++      margin-top: 6px;
++    }
++
++    :where(a:any-link, button, input):focus-visible {
++      outline: 3px solid #bf360c;
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +449,157 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment-section" aria-labelledby="equipment-panel-heading">
++      <div class="equipment-header">
++        <h2 id="equipment-panel-heading">Barista &amp; Home Equipment Connection Panel</h2>
++        <p>Connect directly from your browser to a Wi-Fi coffee brewer on your local network or to the Daily Grind companion brewing utility running on your device's loopback interface.</p>
++      </div>
++
++      <div id="insecure-context-banner" class="security-warning" role="alert" hidden>
++        <strong>Secure Context Required (HTTPS):</strong> Local Network Access permissions (<code>local-network</code> and <code>loopback-network</code>) require a secure context (<code>https://</code>) and are automatically denied on insecure <code>http://</code> origins.
++      </div>
++
++      <div class="equipment-grid">
++        <!-- Wi-Fi Coffee Brewer (Local Network) -->
++        <article class="device-card" aria-labelledby="brewer-card-title">
++          <div class="device-card-header">
++            <div class="device-title-group">
++              <h3 id="brewer-card-title">Wi-Fi Coffee Brewer</h3>
++              <span class="address-space-tag">targetAddressSpace: "local"</span>
++            </div>
++            <div class="permission-badge-wrapper">
++              <span class="permission-badge-label"><code>local-network</code> permission</span>
++              <span class="permission-badge" data-permission-status="local-network" data-state="prompt">Checking...</span>
++            </div>
++          </div>
++
++          <p class="device-description" id="brewer-permission-rationale">
++            Requires <strong>Local Network</strong> permission so the browser can communicate with your Wi-Fi brewer over your LAN (RFC 1918 private IPs like <code>192.168.1.x</code> or <code>.local</code> mDNS hostnames) to read boiler temperature, pressure telemetry, and trigger brew profiles.
++          </p>
++
++          <form id="local-brewer-form" class="device-form" action="/api/local-brewer" method="GET" novalidate>
++            <div class="form-field">
++              <label for="brewer-http-url">Brewer HTTP Status Endpoint</label>
++              <span id="brewer-http-hint" class="field-hint">Local LAN HTTP endpoint (e.g., <code>http://192.168.1.100:8080/api/status</code> or <code>http://brewer.local:8080/api/status</code>).</span>
++              <input
++                type="url"
++                id="brewer-http-url"
++                name="brewerHttpUrl"
++                value="http://192.168.1.100:8080/api/status"
++                aria-describedby="brewer-http-hint"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                required
++              >
++            </div>
++
++            <div class="form-field">
++              <label for="brewer-ws-url">Brewer Live Telemetry WebSocket URL</label>
++              <span id="brewer-ws-hint" class="field-hint">Use a local IP literal or <code>.local</code> mDNS hostname (e.g., <code>ws://192.168.1.100:8080/stream</code>).</span>
++              <input
++                type="url"
++                id="brewer-ws-url"
++                name="brewerWsUrl"
++                value="ws://192.168.1.100:8080/stream"
++                aria-describedby="brewer-ws-hint"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++              >
++            </div>
++
++            <div class="button-row">
++              <button type="submit" id="connect-brewer-btn" class="btn-action">Connect to Wi-Fi Brewer</button>
++              <button type="button" id="stream-brewer-ws-btn" class="btn-secondary">Stream Live Telemetry (WS)</button>
++            </div>
++          </form>
++
++          <div id="brewer-status-box" class="status-box" role="status" aria-live="polite" aria-atomic="true">
++            Ready to connect. Click "Connect to Wi-Fi Brewer" to initiate a local network connection.
++          </div>
++
++          <div class="remediation-box" data-remediation="local-network" role="alert" hidden>
++            <strong>How to Fix Local Network Connection &amp; Permission Issues:</strong>
++            <ol>
++              <li>Open your browser's <strong>Site Settings</strong> (click the tune/lock icon in the address bar) and set <strong>Local network</strong> to <strong>Allow</strong>.</li>
++              <li>Ensure your Wi-Fi Coffee Brewer is powered on and connected to the same Wi-Fi / LAN subnet as this device.</li>
++              <li>Verify that the brewer firmware responds with CORS headers (<code>Access-Control-Allow-Origin</code>) for cross-origin status reads.</li>
++            </ol>
++          </div>
++        </article>
++
++        <!-- Companion Brewing Utility (Loopback Interface) -->
++        <article class="device-card" aria-labelledby="companion-card-title">
++          <div class="device-card-header">
++            <div class="device-title-group">
++              <h3 id="companion-card-title">Companion Brewing Utility</h3>
++              <span class="address-space-tag">targetAddressSpace: "loopback"</span>
++            </div>
++            <div class="permission-badge-wrapper">
++              <span class="permission-badge-label"><code>loopback-network</code> permission</span>
++              <span class="permission-badge" data-permission-status="loopback-network" data-state="prompt">Checking...</span>
++            </div>
++          </div>
++
++          <p class="device-description" id="companion-permission-rationale">
++            Requires <strong>Loopback Network</strong> permission to connect to the companion brewing utility daemon running on your machine's loopback interface (<code>127.0.0.1</code>, <code>[::1]</code>, or <code>localhost</code>) for USB scale readout, grinder calibration, and recipe sync.
++          </p>
++
++          <form id="loopback-companion-form" class="device-form" action="/api/loopback-companion" method="GET" novalidate>
++            <div class="form-field">
++              <label for="companion-http-url">Companion Loopback HTTP Endpoint</label>
++              <span id="companion-http-hint" class="field-hint">Loopback HTTP endpoint on this machine (e.g., <code>http://127.0.0.1:45678/health</code> or <code>http://localhost:45678/health</code>).</span>
++              <input
++                type="url"
++                id="companion-http-url"
++                name="companionHttpUrl"
++                value="http://127.0.0.1:45678/health"
++                aria-describedby="companion-http-hint"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                required
++              >
++            </div>
++
++            <div class="form-field">
++              <label for="companion-ws-url">Companion Live Scale WebSocket URL</label>
++              <span id="companion-ws-hint" class="field-hint">Loopback WebSocket endpoint (e.g., <code>ws://127.0.0.1:45678/stream</code>).</span>
++              <input
++                type="url"
++                id="companion-ws-url"
++                name="companionWsUrl"
++                value="ws://127.0.0.1:45678/stream"
++                aria-describedby="companion-ws-hint"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++              >
++            </div>
++
++            <div class="button-row">
++              <button type="submit" id="connect-companion-btn" class="btn-action">Connect to Companion Utility</button>
++              <button type="button" id="stream-companion-ws-btn" class="btn-secondary">Connect Scale Stream (WS)</button>
++            </div>
++          </form>
++
++          <div id="companion-status-box" class="status-box" role="status" aria-live="polite" aria-atomic="true">
++            Ready to connect. Click "Connect to Companion Utility" to connect to your loopback service.
++          </div>
++
++          <div class="remediation-box" data-remediation="loopback-network" role="alert" hidden>
++            <strong>How to Fix Loopback Utility Connection &amp; Permission Issues:</strong>
++            <ol>
++              <li>Open your browser's <strong>Site Settings</strong> in the address bar and set <strong>Loopback network</strong> to <strong>Allow</strong>.</li>
++              <li>Ensure the Daily Grind Companion Brewing Utility is running locally on your computer and listening on the configured loopback port (e.g., <code>127.0.0.1:45678</code>).</li>
++              <li>Verify that the local daemon includes <code>Access-Control-Allow-Origin</code> on its HTTP responses.</li>
++            </ol>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +612,366 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    /**
++     * Cross-browser permission check for the granular LNA permissions.
++     * Never falls back to querying 'local-network-access', which crashes older Chrome versions.
++     * @param {'local-network' | 'loopback-network'} permissionName
++     */
++    export async function queryLnaPermissionSafe(permissionName) {
++      if (!navigator.permissions?.query) {
++        return 'prompt';
++      }
++      try {
++        const status = await navigator.permissions.query({ name: permissionName });
++        return status.state;
++      } catch {
++        // Unrecognized permission name; proceed on user gesture
++        return 'prompt';
++      }
++    }
++
++    /**
++     * Queries the granular Local Network Access permission for the target space
++     * and binds a 'change' listener when supported.
++     * @param {'local-network' | 'loopback-network'} permissionName
++     * @param {() => void} [onGranted]
++     */
++    export async function checkNetworkPermission(permissionName, onGranted) {
++      if (!navigator.permissions?.query) {
++        updatePermissionUI(permissionName, 'prompt');
++        return 'prompt';
++      }
++
++      try {
++        const status = await navigator.permissions.query({ name: permissionName });
++
++        // Keep UI synchronized if the user changes permission in browser site settings
++        status.addEventListener('change', () => {
++          updatePermissionUI(permissionName, status.state);
++          if (status.state === 'granted' && typeof onGranted === 'function') {
++            onGranted();
++          }
++        });
++
++        updatePermissionUI(permissionName, status.state);
++        return status.state;
++      } catch {
++        // Unrecognized permission name in browsers without LNA support; treat as 'prompt'
++        updatePermissionUI(permissionName, 'prompt');
++        return 'prompt';
++      }
++    }
++
++    /**
++     * Updates the permission status badge and remediation instructions box.
++     * @param {'local-network' | 'loopback-network'} permissionName
++     * @param {PermissionState} state
++     */
++    export function updatePermissionUI(permissionName, state) {
++      const statusBadge = document.querySelector(`[data-permission-status="${permissionName}"]`);
++      const remediationBox = document.querySelector(`[data-remediation="${permissionName}"]`);
++      if (statusBadge) {
++        statusBadge.textContent = state;
++        statusBadge.dataset.state = state;
++      }
++      if (remediationBox) {
++        // Show remediation instructions whenever permission is explicitly denied
++        remediationBox.hidden = state !== 'denied';
++      }
++    }
++
++    /**
++     * Connects to the Wi-Fi coffee brewer on the local network over HTTP.
++     * @param {string} deviceUrl
++     */
++    export async function fetchLocalDeviceStatus(deviceUrl = 'http://192.168.1.100:8080/api/status') {
++      const request = new Request(deviceUrl, {
++        method: 'GET',
++        mode: 'cors',
++        // MANDATORY: Declare 'local' when targeting RFC 1918 / .local LAN addresses
++        targetAddressSpace: 'local',
++      });
++
++      const response = await fetch(request);
++      if (!response.ok) {
++        throw new Error(`Brewer responded with HTTP ${response.status}`);
++      }
++      return response.json();
++    }
++
++    /**
++     * Connects to the companion brewing utility daemon running on the user's loopback interface.
++     * @param {string} daemonUrl
++     */
++    export async function fetchLoopbackDaemon(daemonUrl = 'http://127.0.0.1:45678/health') {
++      const request = new Request(daemonUrl, {
++        method: 'GET',
++        mode: 'cors',
++        // MANDATORY: Declare 'loopback' when targeting 127.0.0.1, [::1], or localhost
++        targetAddressSpace: 'loopback',
++      });
++
++      const response = await fetch(request);
++      if (!response.ok) {
++        throw new Error(`Companion utility responded with HTTP ${response.status}`);
++      }
++      return response.json();
++    }
++
++    /**
++     * Opens a WebSocket connection to a local network or loopback endpoint.
++     * Pass only subprotocol string(s) as the second argument (never a { targetAddressSpace } options object).
++     * @param {string} wsUrl
++     */
++    export function openLocalWebSocket(wsUrl = 'ws://192.168.1.100:8080/stream') {
++      const socket = new WebSocket(wsUrl, ['v1.telemetry']);
++      return socket;
++    }
++
++    // UI Helper to update connection status feedback safely using textContent
++    function setStatusFeedback(element, type, message) {
++      if (!element) return;
++      element.dataset.statusType = type;
++      element.textContent = message;
++    }
++
++    function showRemediation(permissionName) {
++      const remediationBox = document.querySelector(`[data-remediation="${permissionName}"]`);
++      if (remediationBox) {
++        remediationBox.hidden = false;
++      }
++    }
++
++    // Elements
++    const insecureBanner = document.getElementById('insecure-context-banner');
++    const brewerForm = document.getElementById('local-brewer-form');
++    const brewerHttpInput = document.getElementById('brewer-http-url');
++    const brewerWsInput = document.getElementById('brewer-ws-url');
++    const brewerWsBtn = document.getElementById('stream-brewer-ws-btn');
++    const brewerStatusBox = document.getElementById('brewer-status-box');
++
++    const companionForm = document.getElementById('loopback-companion-form');
++    const companionHttpInput = document.getElementById('companion-http-url');
++    const companionWsInput = document.getElementById('companion-ws-url');
++    const companionWsBtn = document.getElementById('stream-companion-ws-btn');
++    const companionStatusBox = document.getElementById('companion-status-box');
++
++    let activeBrewerSocket = null;
++    let activeCompanionSocket = null;
++
++    if (window.isSecureContext === false && insecureBanner) {
++      insecureBanner.hidden = false;
++    }
++
++    async function handleConnectBrewer() {
++      const url = brewerHttpInput.value.trim();
++      if (!url) {
++        setStatusFeedback(brewerStatusBox, 'error', 'Please enter a valid Wi-Fi brewer HTTP endpoint URL.');
++        return;
++      }
++
++      setStatusFeedback(
++        brewerStatusBox,
++        'connecting',
++        `Connecting to Wi-Fi brewer at ${url} (targetAddressSpace: "local")...`
++      );
++
++      try {
++        const data = await fetchLocalDeviceStatus(url);
++        const summary = data?.status ? `Status: ${data.status}` : JSON.stringify(data);
++        setStatusFeedback(
++          brewerStatusBox,
++          'connected',
++          `Connected to Wi-Fi Coffee Brewer at ${url}. ${summary}`
++        );
++        const updatedState = await queryLnaPermissionSafe('local-network');
++        updatePermissionUI('local-network', updatedState);
++      } catch (err) {
++        const currentState = await queryLnaPermissionSafe('local-network');
++        updatePermissionUI('local-network', currentState);
++        showRemediation('local-network');
++        const detail = err instanceof Error ? err.message : String(err);
++        setStatusFeedback(
++          brewerStatusBox,
++          'error',
++          `Unable to reach Wi-Fi brewer at ${url} (${detail}). Ensure the brewer is powered on, on the same Wi-Fi network, and allowed under Local network permission.`
++        );
++      }
++    }
++
++    async function handleConnectCompanion() {
++      const url = companionHttpInput.value.trim();
++      if (!url) {
++        setStatusFeedback(companionStatusBox, 'error', 'Please enter a valid companion loopback HTTP endpoint URL.');
++        return;
++      }
++
++      setStatusFeedback(
++        companionStatusBox,
++        'connecting',
++        `Connecting to companion utility at ${url} (targetAddressSpace: "loopback")...`
++      );
++
++      try {
++        const data = await fetchLoopbackDaemon(url);
++        const summary = data?.status ? `Status: ${data.status}` : JSON.stringify(data);
++        setStatusFeedback(
++          companionStatusBox,
++          'connected',
++          `Connected to Companion Brewing Utility at ${url}. ${summary}`
++        );
++        const updatedState = await queryLnaPermissionSafe('loopback-network');
++        updatePermissionUI('loopback-network', updatedState);
++      } catch (err) {
++        const currentState = await queryLnaPermissionSafe('loopback-network');
++        updatePermissionUI('loopback-network', currentState);
++        showRemediation('loopback-network');
++        const detail = err instanceof Error ? err.message : String(err);
++        setStatusFeedback(
++          companionStatusBox,
++          'error',
++          `Unable to reach Companion Brewing Utility at ${url} (${detail}). Ensure the companion app is running on 127.0.0.1 / localhost and Loopback network permission is allowed.`
++        );
++      }
++    }
++
++    function handleStreamBrewerWebSocket() {
++      const wsUrl = brewerWsInput.value.trim();
++      if (!wsUrl) {
++        setStatusFeedback(brewerStatusBox, 'error', 'Please enter a valid WebSocket URL (ws:// or wss://).');
++        return;
++      }
++
++      if (activeBrewerSocket) {
++        activeBrewerSocket.close();
++        activeBrewerSocket = null;
++      }
++
++      setStatusFeedback(brewerStatusBox, 'connecting', `Opening live telemetry WebSocket to ${wsUrl}...`);
++
++      try {
++        const socket = openLocalWebSocket(wsUrl);
++        activeBrewerSocket = socket;
++
++        socket.addEventListener('open', () => {
++          setStatusFeedback(brewerStatusBox, 'connected', `Live telemetry stream connected via WebSocket (${wsUrl}).`);
++        });
++
++        socket.addEventListener('message', (event) => {
++          setStatusFeedback(brewerStatusBox, 'connected', `Brewer telemetry update: ${String(event.data)}`);
++        });
++
++        socket.addEventListener('error', async () => {
++          const currentState = await queryLnaPermissionSafe('local-network');
++          updatePermissionUI('local-network', currentState);
++          showRemediation('local-network');
++          setStatusFeedback(
++            brewerStatusBox,
++            'error',
++            `WebSocket telemetry connection to ${wsUrl} failed. Verify the brewer is online on your LAN and Local network access is permitted.`
++          );
++        });
++      } catch (err) {
++        showRemediation('local-network');
++        const detail = err instanceof Error ? err.message : String(err);
++        setStatusFeedback(brewerStatusBox, 'error', `Failed to initialize WebSocket (${detail}).`);
++      }
++    }
++
++    function handleStreamCompanionWebSocket() {
++      const wsUrl = companionWsInput.value.trim();
++      if (!wsUrl) {
++        setStatusFeedback(companionStatusBox, 'error', 'Please enter a valid loopback WebSocket URL.');
++        return;
++      }
++
++      if (activeCompanionSocket) {
++        activeCompanionSocket.close();
++        activeCompanionSocket = null;
++      }
++
++      setStatusFeedback(companionStatusBox, 'connecting', `Opening scale stream WebSocket to ${wsUrl}...`);
++
++      try {
++        const socket = openLocalWebSocket(wsUrl);
++        activeCompanionSocket = socket;
++
++        socket.addEventListener('open', () => {
++          setStatusFeedback(companionStatusBox, 'connected', `Companion scale stream connected via WebSocket (${wsUrl}).`);
++        });
++
++        socket.addEventListener('message', (event) => {
++          setStatusFeedback(companionStatusBox, 'connected', `Scale readout: ${String(event.data)}`);
++        });
++
++        socket.addEventListener('error', async () => {
++          const currentState = await queryLnaPermissionSafe('loopback-network');
++          updatePermissionUI('loopback-network', currentState);
++          showRemediation('loopback-network');
++          setStatusFeedback(
++            companionStatusBox,
++            'error',
++            `Loopback WebSocket connection to ${wsUrl} failed. Verify the companion daemon is running locally and Loopback network access is permitted.`
++          );
++        });
++      } catch (err) {
++        showRemediation('loopback-network');
++        const detail = err instanceof Error ? err.message : String(err);
++        setStatusFeedback(companionStatusBox, 'error', `Failed to initialize loopback WebSocket (${detail}).`);
++      }
++    }
++
++    // Event listeners (explicit user gesture gating when state is 'prompt')
++    brewerForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      handleConnectBrewer();
++    });
++
++    companionForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      handleConnectCompanion();
++    });
++
++    brewerWsBtn.addEventListener('click', () => {
++      handleStreamBrewerWebSocket();
++    });
++
++    companionWsBtn.addEventListener('click', () => {
++      handleStreamCompanionWebSocket();
++    });
++
++    // Pre-check granular permissions on initialization; only auto-connect if already 'granted'
++    async function initEquipmentConnections() {
++      const localState = await checkNetworkPermission('local-network', () => {
++        handleConnectBrewer();
++      });
++      if (localState === 'granted') {
++        handleConnectBrewer();
++      } else if (localState === 'denied') {
++        setStatusFeedback(
++          brewerStatusBox,
++          'error',
++          'Local network access permission is denied. Follow the instructions below to re-enable it in your browser site settings.'
++        );
++      }
++
++      const loopbackState = await checkNetworkPermission('loopback-network', () => {
++        handleConnectCompanion();
++      });
++      if (loopbackState === 'granted') {
++        handleConnectCompanion();
++      } else if (loopbackState === 'denied') {
++        setStatusFeedback(
++          companionStatusBox,
++          'error',
++          'Loopback network access permission is denied. Follow the instructions below to re-enable it in your browser site settings.'
++        );
++      }
++    }
++
++    initEquipmentConnections();
++  </script>
+ </body>
+ 
+ </html>

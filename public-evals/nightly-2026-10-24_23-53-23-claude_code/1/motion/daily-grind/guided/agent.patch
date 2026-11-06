@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+index 66c9173..d987a3e 100644
+--- a/index.html
++++ b/index.html
+@@ -59,7 +59,7 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s ease;
+     }
+ 
+     nav a:hover {
+@@ -128,7 +128,7 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s ease;
+     }
+ 
+     .btn:hover {
+@@ -152,6 +152,86 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Motion: everything below is opt-in and only animates opacity/transform */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      @keyframes fade-up {
++        from {
++          opacity: 0;
++          translate: 0 24px;
++        }
++      }
++
++      @keyframes fade-down {
++        from {
++          opacity: 0;
++          translate: 0 -100%;
++        }
++      }
++
++      nav {
++        animation: fade-down 0.6s ease-out backwards;
++      }
++
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        animation: fade-up 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
++      }
++
++      .hero h1 { animation-delay: 0.15s; }
++      .hero p { animation-delay: 0.3s; }
++      .hero .btn { animation-delay: 0.45s; }
++
++      .card {
++        transition: translate 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      .card:hover {
++        translate: 0 -6px;
++        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
++      }
++
++      .btn {
++        transition: background-color 0.3s ease, scale 0.2s ease;
++      }
++
++      .btn:hover { scale: 1.05; }
++      .btn:active { scale: 0.97; }
++
++      .logout-link {
++        transition: color 0.3s ease, background-color 0.3s ease;
++      }
++
++      .logout-link:hover {
++        background-color: rgba(255, 171, 64, 0.15);
++      }
++
++      .footer-links a {
++        display: inline-block;
++        transition: translate 0.2s ease, opacity 0.2s ease;
++      }
++
++      .footer-links a:hover {
++        translate: 0 -2px;
++        opacity: 0.7;
++      }
++
++      /* Scroll-driven reveals; content stays visible where unsupported */
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        main h2,
++        .card,
++        footer > * {
++          animation: fade-up linear backwards;
++          animation-timeline: view();
++          animation-range: entry 0% entry 60%;
++        }
++      }
++    }
+   </style>
+ </head>
+ 

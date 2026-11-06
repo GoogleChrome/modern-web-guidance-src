@@ -1,0 +1,341 @@
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..3dccdb1
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,265 @@
++/**
++ * <coffee-card> — a menu item card.
++ *
++ * Attributes (each reflected to a same-named camelCase property):
++ *   name      string   Drink name, rendered as the card heading.
++ *   href      string   URL for the "View Details" link.
++ *   image     string   Optional photo URL (decorative).
++ *   price     number   Price in USD; omitted from the card when absent.
++ *   sold-out  boolean  Marks the drink unavailable and disables the link.
++ *   favorite  boolean  Toggled by the heart button; fires `favorite-change`.
++ *
++ * The default slot holds the description.
++ */
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      --_card-primary: var(--primary, #4e342e);
++      --_card-accent: var(--accent, #ffab40);
++      display: block;
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      overflow: hidden;
++    }
++
++    :host([hidden]) { display: none; }
++
++    img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    img:not([src]) { display: none; }
++
++    .body { padding: 20px; }
++
++    h3 {
++      margin: 0 0 10px;
++      color: var(--_card-primary);
++    }
++
++    .price {
++      margin: 0 0 10px;
++      font-weight: bold;
++      color: var(--_card-primary);
++    }
++
++    .price:empty { display: none; }
++
++    ::slotted(p) { margin: 0; }
++
++    .badge {
++      display: none;
++      position: absolute;
++      inset-block-start: 12px;
++      inset-inline-start: 12px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--_card-primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    :host([sold-out]) .badge { display: block; }
++    :host([sold-out]) img { filter: grayscale(1); }
++
++    .favorite {
++      position: absolute;
++      inset-block-start: 8px;
++      inset-inline-end: 8px;
++      inline-size: 40px;
++      block-size: 40px;
++      border: none;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.9);
++      color: var(--_card-primary);
++      font: inherit;
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .favorite:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    :host([favorite]) .favorite { color: crimson; }
++
++    .link {
++      display: inline-block;
++      background: var(--_card-primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .link:hover { background: #3e2723; }
++
++    :host([sold-out]) .link {
++      background: #9e9e9e;
++      pointer-events: none;
++    }
++  </style>
++  <img part="image" alt="" width="600" height="400" loading="lazy" decoding="async">
++  <span class="badge">Sold out</span>
++  <button class="favorite" type="button" part="favorite" aria-pressed="false">
++    <span aria-hidden="true">♡</span>
++  </button>
++  <div class="body">
++    <h3></h3>
++    <p class="price"></p>
++    <slot></slot>
++    <a class="link" part="link">View Details</a>
++  </div>
++`;
++
++const priceFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'href', 'image', 'price', 'sold-out', 'favorite'];
++
++  #els;
++  #abort = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.append(template.content.cloneNode(true));
++    this.#els = {
++      image: root.querySelector('img'),
++      name: root.querySelector('h3'),
++      price: root.querySelector('.price'),
++      favorite: root.querySelector('.favorite'),
++      favoriteIcon: root.querySelector('.favorite span'),
++      link: root.querySelector('.link'),
++    };
++  }
++
++  // String attributes
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(v) { v ? this.setAttribute('name', v) : this.removeAttribute('name'); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(v) { v ? this.setAttribute('href', v) : this.removeAttribute('href'); }
++
++  get image() { return this.getAttribute('image') ?? ''; }
++  set image(v) { v ? this.setAttribute('image', v) : this.removeAttribute('image'); }
++
++  // Numeric attribute: null when absent or not a finite number.
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const n = Number(raw);
++    return Number.isFinite(n) ? n : null;
++  }
++  set price(v) {
++    const n = Number(v);
++    v === null || v === undefined || v === '' || !Number.isFinite(n)
++      ? this.removeAttribute('price')
++      : this.setAttribute('price', String(n));
++  }
++
++  // Boolean attributes: present = true, absent = false.
++  get soldOut() { return this.hasAttribute('sold-out'); }
++  set soldOut(on) { this.toggleAttribute('sold-out', Boolean(on)); }
++
++  get favorite() { return this.hasAttribute('favorite'); }
++  set favorite(on) { this.toggleAttribute('favorite', Boolean(on)); }
++
++  connectedCallback() {
++    // Properties assigned before the element was upgraded shadow the
++    // prototype accessors; re-run them through the setters.
++    for (const prop of ['name', 'href', 'image', 'price', 'soldOut', 'favorite']) {
++      this.#upgradeProperty(prop);
++    }
++
++    // connectedCallback re-runs on every insertion, so keep setup idempotent.
++    this.#abort?.abort();
++    this.#abort = new AbortController();
++    this.#els.favorite.addEventListener('click', () => this.#toggleFavorite(), {
++      signal: this.#abort.signal,
++    });
++
++    this.#render();
++  }
++
++  disconnectedCallback() {
++    this.#abort?.abort();
++    this.#abort = null;
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) this.#render(name);
++  }
++
++  #upgradeProperty(prop) {
++    if (Object.hasOwn(this, prop)) {
++      const value = this[prop];
++      delete this[prop];
++      this[prop] = value;
++    }
++  }
++
++  #toggleFavorite() {
++    this.favorite = !this.favorite;
++    this.dispatchEvent(new CustomEvent('favorite-change', {
++      bubbles: true,
++      composed: true,
++      detail: { name: this.name, favorite: this.favorite },
++    }));
++  }
++
++  #render(changed) {
++    const els = this.#els;
++    const all = changed === undefined;
++
++    if (all || changed === 'name') {
++      els.name.textContent = this.name;
++      this.#renderFavorite();
++    }
++    if (all || changed === 'image') {
++      this.image ? els.image.setAttribute('src', this.image) : els.image.removeAttribute('src');
++    }
++    if (all || changed === 'price') {
++      const price = this.price;
++      els.price.textContent = price === null ? '' : priceFormat.format(price);
++    }
++    if (all || changed === 'href' || changed === 'sold-out') {
++      // A sold-out card keeps its link text but drops href so it is no
++      // longer focusable or followable.
++      const live = this.href && !this.soldOut;
++      live ? els.link.setAttribute('href', this.href) : els.link.removeAttribute('href');
++    }
++    if (all || changed === 'favorite') {
++      this.#renderFavorite();
++    }
++  }
++
++  #renderFavorite() {
++    const { favorite, favoriteIcon } = this.#els;
++    favorite.setAttribute('aria-pressed', String(this.favorite));
++    favorite.setAttribute('aria-label', `Favorite ${this.name}`.trim());
++    favoriteIcon.textContent = this.favorite ? '♥' : '♡';
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
++
++export { CoffeeCard };
+diff --git a/index.html b/index.html
+index 66c9173..e76e4ca 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,17 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* Fail open: reveal un-upgraded cards after 2s if the script never loads. */
++    coffee-card:not(:defined) {
++      display: block;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
+     }
+ 
+     .btn {
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/coffee-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +179,18 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card name="Maple Oat Latte" href="/menu/seasonal" price="5.75"
++          image="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=80">
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        </coffee-card>
++        <coffee-card name="Dark Roast Espresso" href="/menu/espresso" price="3.25"
++          image="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&h=400&q=80">
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        </coffee-card>
++        <coffee-card name="Cold Brew" href="/menu/cold-brew" price="4.50"
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=400&q=80">
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
+     </section>
+   </main>

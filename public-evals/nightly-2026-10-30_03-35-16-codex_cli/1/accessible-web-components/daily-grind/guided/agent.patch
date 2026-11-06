@@ -1,0 +1,160 @@
+diff --git a/drink-favorite.js b/drink-favorite.js
+new file mode 100644
+index 0000000..3c6d228
+--- /dev/null
++++ b/drink-favorite.js
+@@ -0,0 +1,76 @@
++class DrinkFavorite extends HTMLElement {
++  static observedAttributes = ['favorite', 'drink-name'];
++
++  #button;
++  #icon;
++  #label;
++
++  get favorite() {
++    return this.hasAttribute('favorite');
++  }
++
++  set favorite(value) {
++    this.toggleAttribute('favorite', Boolean(value));
++  }
++
++  connectedCallback() {
++    // Reconnecting an existing element must not duplicate its control or listener.
++    if (this.#button) return;
++
++    this.#button = document.createElement('button');
++    this.#button.type = 'button';
++    this.#icon = document.createElement('span');
++    this.#icon.className = 'favorite-icon';
++    this.#icon.setAttribute('aria-hidden', 'true');
++    this.#label = document.createElement('span');
++    this.#button.append(this.#icon, this.#label);
++    this.append(this.#button);
++
++    try {
++      const saved = this.#storageKey && localStorage.getItem(this.#storageKey);
++      if (saved !== null && saved !== '') this.favorite = saved === 'true';
++    } catch {
++      // The toggle still works when browser storage is unavailable.
++    }
++
++    this.#button.addEventListener('click', () => {
++      this.favorite = !this.favorite;
++      try {
++        if (this.#storageKey) {
++          localStorage.setItem(this.#storageKey, String(this.favorite));
++        }
++      } catch {
++        // Keep the in-page selection even if it cannot be saved.
++      }
++      this.dispatchEvent(new CustomEvent('change', {
++        bubbles: true,
++        detail: {
++          drinkId: this.getAttribute('drink-id'),
++          favorite: this.favorite,
++        },
++      }));
++    });
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  get #storageKey() {
++    const drinkId = this.getAttribute('drink-id');
++    return drinkId ? `daily-grind:favorite:${drinkId}` : '';
++  }
++
++  #render() {
++    if (!this.#button) return;
++    this.#button.setAttribute('aria-pressed', String(this.favorite));
++    this.#button.setAttribute('aria-label', `Favorite ${this.getAttribute('drink-name') || 'drink'}`);
++    this.#icon.textContent = this.favorite ? '♥' : '♡';
++    this.#label.textContent = this.favorite ? 'Favorited' : 'Favorite';
++  }
++}
++
++if (!customElements.get('drink-favorite')) {
++  customElements.define('drink-favorite', DrinkFavorite);
++}
+diff --git a/index.html b/index.html
+index 66c9173..39d5c40 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/drink-favorite.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -120,6 +121,45 @@
+       color: var(--primary);
+     }
+ 
++    drink-favorite {
++      display: block;
++      margin-top: 15px;
++    }
++
++    drink-favorite button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      min-height: 44px;
++      padding: 8px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    drink-favorite button:hover {
++      background: var(--secondary);
++    }
++
++    drink-favorite button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    drink-favorite button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    drink-favorite .favorite-icon {
++      font-size: 1.3em;
++      line-height: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -182,16 +222,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <drink-favorite drink-id="maple-oat-latte" drink-name="Maple Oat Latte"></drink-favorite>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <drink-favorite drink-id="dark-roast-espresso" drink-name="Dark Roast Espresso"></drink-favorite>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <drink-favorite drink-id="cold-brew" drink-name="Cold Brew"></drink-favorite>
+         </div>
+       </div>
+     </section>

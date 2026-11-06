@@ -1,0 +1,242 @@
+diff --git a/package.json b/package.json
+index 66c3a6d..aedd9f5 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "latest"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..624c644 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
++import { READING_LIST_CHANGED } from '../scripts/events';
+ 
+ interface Props {
+   slug: string;
+@@ -10,6 +11,13 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  // Keep in sync when an agent changes the reading list through a WebMCP tool.
++  useEffect(() => {
++    const onChange = (e: Event) => setIsBookmarked((e as CustomEvent<string[]>).detail.includes(slug));
++    window.addEventListener(READING_LIST_CHANGED, onChange);
++    return () => window.removeEventListener(READING_LIST_CHANGED, onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..3217f17 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -53,3 +53,7 @@ const baseUrl = import.meta.env.BASE_URL;
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  import "../scripts/webmcp";
++</script>
+diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
+index 4cd4be4..0c577e0 100644
+--- a/src/pages/api/articles.json.ts
++++ b/src/pages/api/articles.json.ts
+@@ -9,6 +9,7 @@ export const GET: APIRoute = async ({ params, request }) => {
+         title: article.data.title,
+         summary: article.data.summary,
+         image: article.data.image,
++        category: article.data.category,
+     }));
+ 
+     // Simulate a network delay to make the INP issue more noticeable
+diff --git a/src/scripts/events.ts b/src/scripts/events.ts
+new file mode 100644
+index 0000000..6686ba6
+--- /dev/null
++++ b/src/scripts/events.ts
+@@ -0,0 +1 @@
++export const READING_LIST_CHANGED = "reading-list-changed";
+diff --git a/src/scripts/webmcp.ts b/src/scripts/webmcp.ts
+new file mode 100644
+index 0000000..55af1c1
+--- /dev/null
++++ b/src/scripts/webmcp.ts
+@@ -0,0 +1,151 @@
++import { navigate } from "astro:transitions/client";
++import { READING_LIST_CHANGED } from "./events";
++
++const baseUrl = import.meta.env.BASE_URL;
++
++interface ArticleSummary {
++  slug: string;
++  title: string;
++  summary: string;
++  category: string;
++}
++
++let articlesPromise: Promise<ArticleSummary[]> | undefined;
++
++function getArticles(signal?: AbortSignal) {
++  articlesPromise ??= fetch(`${baseUrl}api/articles.json`, { signal })
++    .then((response) => response.json())
++    .catch((error) => {
++      articlesPromise = undefined;
++      throw error;
++    });
++  return articlesPromise;
++}
++
++async function fetchReadingList(signal?: AbortSignal): Promise<string[]> {
++  const response = await fetch(`${baseUrl}api/reading-list.json`, { signal });
++  return (await response.json()).readingList;
++}
++
++// The API only supports toggling, so check the current state first.
++async function setInReadingList(slug: string, wanted: boolean, signal: AbortSignal) {
++  const articles = await getArticles(signal);
++  if (!articles.some((article) => article.slug === slug)) {
++    return { error: `No article with slug "${slug}".`, hint: "Use search-articles to find valid slugs." };
++  }
++  let readingList = await fetchReadingList(signal);
++  if (readingList.includes(slug) !== wanted) {
++    const response = await fetch(`${baseUrl}api/reading-list.json`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ slug }),
++      signal,
++    });
++    readingList = (await response.json()).readingList;
++    window.dispatchEvent(new CustomEvent(READING_LIST_CHANGED, { detail: readingList }));
++  }
++  return { readingList };
++}
++
++const slugSchema = {
++  type: "string",
++  description: "Article slug as returned by search-articles.",
++} as const;
++
++function createTools(): WebMCP.ModelContextTool[] {
++  return [
++    {
++      name: "search-articles",
++      description:
++        "Searches published articles by keyword and/or category. Use to find articles or browse what is available.",
++      inputSchema: {
++        type: "object",
++        properties: {
++          query: { type: "string", description: "Words to look for in titles and summaries. Omit to list all." },
++          category: { type: "string", description: "Category name to restrict results to, e.g. Sports." },
++        },
++      },
++      async execute({ query, category }: { query?: string; category?: string }, { signal }: { signal: AbortSignal }) {
++        const term = query?.trim().toLowerCase();
++        const articles = await getArticles(signal);
++        const results = articles.filter(
++          (article) =>
++            (!category || article.category.toLowerCase() === category.toLowerCase()) &&
++            (!term ||
++              article.title.toLowerCase().includes(term) ||
++              article.summary.toLowerCase().includes(term)),
++        );
++        return {
++          categories: [...new Set(articles.map((article) => article.category))],
++          results: results.map(({ slug, title, summary, category }) => ({ slug, title, summary, category })),
++        };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: "open-article",
++      description: "Navigates the browser to an article page so the user can read it.",
++      inputSchema: { type: "object", properties: { slug: slugSchema }, required: ["slug"] },
++      async execute({ slug }: { slug: string }, { signal }: { signal: AbortSignal }) {
++        const articles = await getArticles(signal);
++        if (!articles.some((article) => article.slug === slug)) {
++          return { error: `No article with slug "${slug}".`, hint: "Use search-articles to find valid slugs." };
++        }
++        await navigate(`${baseUrl}articles/${slug}`);
++        return { opened: slug };
++      },
++    },
++    {
++      name: "open-category",
++      description: "Navigates the browser to a category page listing its articles.",
++      inputSchema: {
++        type: "object",
++        properties: { category: { type: "string", description: "Category name, e.g. Sports." } },
++        required: ["category"],
++      },
++      async execute({ category }: { category: string }, { signal }: { signal: AbortSignal }) {
++        const articles = await getArticles(signal);
++        const categories = [...new Set(articles.map((article) => article.category))];
++        const match = categories.find((name) => name.toLowerCase() === String(category).toLowerCase());
++        if (!match) {
++          return { error: `Unknown category "${category}".`, categories };
++        }
++        await navigate(`${baseUrl}category/${match.toLowerCase()}`);
++        return { opened: match };
++      },
++    },
++    {
++      name: "get-reading-list",
++      description: "Returns the articles currently saved in the user's reading list.",
++      inputSchema: { type: "object", properties: {} },
++      async execute(_input: unknown, { signal }: { signal: AbortSignal }) {
++        const [articles, slugs] = await Promise.all([getArticles(signal), fetchReadingList(signal)]);
++        return articles
++          .filter((article) => slugs.includes(article.slug))
++          .map(({ slug, title, summary }) => ({ slug, title, summary }));
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: "add-to-reading-list",
++      description: "Saves an article to the user's reading list. Has no effect if it is already saved.",
++      inputSchema: { type: "object", properties: { slug: slugSchema }, required: ["slug"] },
++      execute: ({ slug }: { slug: string }, { signal }: { signal: AbortSignal }) =>
++        setInReadingList(slug, true, signal),
++    },
++    {
++      name: "remove-from-reading-list",
++      description: "Removes an article from the user's reading list. Has no effect if it is not saved.",
++      inputSchema: { type: "object", properties: { slug: slugSchema }, required: ["slug"] },
++      execute: ({ slug }: { slug: string }, { signal }: { signal: AbortSignal }) =>
++        setInReadingList(slug, false, signal),
++    },
++  ];
++}
++
++// Astro's ClientRouter keeps the same document across navigations, so tools registered once stay available.
++if (document.modelContext) {
++  for (const tool of createTools()) {
++    document.modelContext.registerTool(tool);
++  }
++}
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

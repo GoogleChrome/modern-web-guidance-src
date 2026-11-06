@@ -1,0 +1,43 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,38 @@
++# Script performance diagnostics
++
++The page loads `script-performance.js` without blocking HTML parsing. It observes
++long animation frames (frames over 50 ms) and aggregates their script attribution
++by source URL for the current page visit, including buffered entries from before
++the monitor registered. No data is transmitted or persisted.
++
++In the developer console, run:
++
++```js
++scriptPerformance.report(); // Ranked scripts with at least 100 ms accumulated
++scriptPerformance.report({ minDurationMs: 0 }); // All observed scripts
++scriptPerformance.snapshot(); // Same data without console output
++```
++
++A report is also logged when the tab becomes hidden. Reports show invocation
++count, accumulated duration, longest invocation, and forced style/layout time
++(a portion of duration, not an extra cost). Start with the highest accumulated
++duration and use the source URL to investigate the script. Data accumulates
++across observer callbacks; reading a report does not reset it.
++
++The monitor retains at most 200 source URLs to bound memory. Reports include an
++`overflowInvocations` count when additional sources are omitted. Returned rows
++are copies, so modifying a snapshot does not affect later reports.
++
++This measures script work attributed to slow frames, not network download time,
++all JavaScript execution, or definitive causation. Frames can also be slow due to
++rendering. Some work has no attribution (including workers and cross-origin
++iframes), and an empty source URL is grouped as unattributed. Source URLs identify
++entry points, not necessarily the slowest nested function. See the
++[Long Animation Frames API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing).
++
++Unsupported browsers keep the page working; `snapshot().supported` is `false`
++and `report()` explains that attribution is unavailable. An empty supported
++report means no attributed scripts met the threshold, not proof the page is fast.
++The original page contains no scripts to diagnose; no artificial slow code is added.
++
++Run the isolated monitor checks with `node --test script-performance.test.cjs`.

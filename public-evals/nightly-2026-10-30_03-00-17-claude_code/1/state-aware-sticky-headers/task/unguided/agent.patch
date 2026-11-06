@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
++      --stuck-blue: #1565c0;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -34,8 +36,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      min-height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -134,8 +137,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky Section Headers */
++    .menu-section {
++      margin-top: 60px;
++    }
++
++    .sticky-container {
++      /* Stick just below the site nav (document is the scroll root) */
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 900;
++      /* Named scroll-state container so queries never match the site nav */
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 1.5rem;
++      border-radius: 8px;
++      box-shadow: none;
++      transition: background-color 0.25s, color 0.25s, padding 0.25s, box-shadow 0.25s, border-radius 0.25s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.5rem;
++      transition: font-size 0.25s;
++    }
++
++    .sticky-header p {
++      font-size: 0.9rem;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--stuck-blue);
++        color: white;
++        padding: 0.4rem 1.5rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      }
++
++      .sticky-header h2 {
++        font-size: 1.15rem;
++      }
++
++      .sticky-header p {
++        display: none;
++      }
++    }
++
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .section-body {
++      margin-top: 20px;
++    }
++
++    .section-body p {
++      margin-bottom: 1rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +264,120 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Our Roasts</h2>
++          <p>Small-batch beans roasted every Tuesday and Friday.</p>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Ethiopia Yirgacheffe" loading="lazy">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Bright and floral with notes of bergamot and lemon.</p>
++          <a href="/beans/ethiopia" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Colombia Huila" loading="lazy">
++          <h3>Colombia Huila</h3>
++          <p>Balanced and sweet with caramel and red apple.</p>
++          <a href="/beans/colombia" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Sumatra Mandheling" loading="lazy">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, with a cedar finish.</p>
++          <a href="/beans/sumatra" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="House Blend" loading="lazy">
++          <h3>House Blend</h3>
++          <p>Our everyday cup: chocolatey, nutty, and smooth.</p>
++          <a href="/beans/house-blend" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" alt="Decaf Swiss Water" loading="lazy">
++          <h3>Decaf Swiss Water</h3>
++          <p>All the flavor, none of the jitters.</p>
++          <a href="/beans/decaf" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Guatemala Antigua" loading="lazy">
++          <h3>Guatemala Antigua</h3>
++          <p>Cocoa and spice with a velvety body.</p>
++          <a href="/beans/guatemala" class="btn">Learn More</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Brewing Guides</h2>
++          <p>Make café-quality coffee at home.</p>
++        </div>
++      </div>
++      <div class="section-body">
++        <div class="card">
++          <h3>Pour Over</h3>
++          <p>Use a 1:16 ratio of coffee to water. Grind medium-fine, bloom with twice the coffee's weight in water for 30 seconds, then pour slowly in spirals until you reach your target weight. Total brew time should be around three minutes.</p>
++          <p>Water just off the boil (around 94&deg;C) extracts sweetness without bitterness. If your cup tastes sour, grind finer; if it tastes harsh, grind coarser.</p>
++        </div>
++        <br>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Coarse grind, 1:15 ratio. Add water, stir gently, and steep for four minutes. Break the crust, skim the foam, and press slowly. Pour everything out right away so the coffee doesn't keep extracting.</p>
++          <p>For an even cleaner cup, let it settle for another few minutes before pressing — patience pays off.</p>
++        </div>
++        <br>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Coarse grind, 1:8 ratio. Combine with cold filtered water, cover, and steep in the fridge for 18 hours. Strain through a paper filter and dilute to taste. Keeps for up to two weeks refrigerated.</p>
++        </div>
++        <br>
++        <div class="card">
++          <h3>Espresso</h3>
++          <p>Dose 18g of finely ground coffee, tamp level, and aim for 36g of liquid in 25–30 seconds. Adjust the grind before anything else when dialing in.</p>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Visit Us</h2>
++          <p>Three neighborhood cafés, one obsession.</p>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown" loading="lazy">
++          <h3>Downtown</h3>
++          <p>Open 6am–8pm daily. Fast Wi-Fi and plenty of outlets.</p>
++          <a href="/locations/downtown" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Riverside" loading="lazy">
++          <h3>Riverside</h3>
++          <p>Patio seating with a view of the water. Dogs welcome.</p>
++          <a href="/locations/riverside" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80" alt="Old Town" loading="lazy">
++          <h3>Old Town</h3>
++          <p>Our original roastery — watch the roasters at work.</p>
++          <a href="/locations/old-town" class="btn">Learn More</a>
++        </div>
++      </div>
++      <div class="section-body">
++        <p>Can't make it in? Every location offers order-ahead pickup through the app, and our Rewards members earn a free drink every ten visits.</p>
++        <p>Hosting an event? We cater meetings, weddings, and everything in between. Reach out through our contact page for a quote.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

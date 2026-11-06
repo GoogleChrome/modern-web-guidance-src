@@ -1,0 +1,53 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,48 @@
++# The Daily Grind
++
++Static HTML with INP diagnostics. Install with `pnpm install --frozen-lockfile`.
++Run `pnpm build` after upgrading `web-vitals` to refresh the checked-in, self-hosted
++attribution module, source map, and license in `vendor/`. No server is required to
++build. Deploy `index.html`, `inp-diagnostics.js`, and `vendor/` together.
++
++## Reading INP diagnostics
++
++`window.dailyGrindINP` contains the latest INP candidate report. Consumers can also
++listen for `window`'s `daily-grind:inp` custom event and read `event.detail`.
++Reports update when the INP candidate changes and when the library finalizes a
++changed metric on page hide. They are not a log of every interaction. Use the
++latest value per metric `id` in analytics, rather than counting each update as a
++separate page visit. The library handles outliers and back/forward cache restores.
++No interaction, or no Event Timing support, means no report, not a zero INP score.
++
++The three phase durations and `dominantPhase` indicate where to investigate:
++
++- `inputDelay`: work already blocking the main thread before handlers can run.
++- `processingDuration`: work during event processing, including synchronous layout.
++- `presentationDelay`: work between event processing and the next visible frame.
++
++`longestScript` identifies a script URL, function, character position, invoker,
++and the phase it overlaps most. This is supporting evidence, not proof of a sole
++cause. Rendering and forced style/layout timings distinguish CSS/style costs from
++geometry/layout costs when supported. Combined style/layout timings remain
++available on older implementations. Missing measurements are `null`, not zero;
++LoAF support and frame count distinguish unavailable data from no matching frame.
++Frame-level durations can extend outside the interaction and are not additive
++subparts of INP. Scripts shorter than 5 ms and frames shorter than 50 ms may not
++have attribution. Stable `data-inp-target` labels identify page controls without
++collecting text or input values; script URL queries and fragments are stripped.
++
++## Production collection
++
++This static app has no analytics backend. To collect field reports, configure an
++existing same-origin JSON POST collector by adding this to the document head:
++
++```html
++<meta name="inp-report-endpoint" content="/your-existing-collector">
++```
++
++The collector must be implemented separately and accept `application/json`.
++Configured reports use `sendBeacon`, with a keepalive `fetch` fallback when the
++beacon is unavailable or rejected. Delivery is best effort, with no retries or
++offline persistence. Without configuration, reports stay in memory and custom
++events only. No requests are sent to an assumed analytics endpoint.

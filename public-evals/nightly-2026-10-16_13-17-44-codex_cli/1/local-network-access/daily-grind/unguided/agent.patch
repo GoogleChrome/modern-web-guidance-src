@@ -1,0 +1,91 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..3a687a0
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,38 @@
++# The Daily Grind
++
++Run `pnpm install`, then `pnpm start`. The default port is 11222; override it
++with the `PORT` environment variable.
++
++## Local network access
++
++The server sends a `Permissions-Policy` header allowing this application's
++origin to request local network and loopback resources. It includes the legacy
++`local-network-access` directive for older browsers. If deployed through a
++different static host, configure that host to send the same response header:
++
++```http
++Permissions-Policy: local-network=(self), loopback-network=(self), local-network-access=(self)
++```
++
++Serve the deployed app over HTTPS. The browser still asks the user for access
++when a local connection is attempted. If the app is embedded in a cross-origin
++iframe, its parent must also delegate `local-network` and `loopback-network`
++(or `local-network-access` on older browsers) through its iframe `allow`
++attribute and any applicable parent Permissions-Policy.
++
++When adding device requests, initiate the first connection from a user action
++and declare the target address space for HTTP endpoints:
++
++```js
++// Run from a user-initiated connection handler, using the user's service URL.
++const response = await fetch(serviceUrl, {
++  targetAddressSpace: 'local', // Use 'loopback' for localhost / 127.0.0.1 / ::1.
++});
++if (!response.ok) throw new Error(`Service returned HTTP ${response.status}`);
++```
++
++The local service must allow the app's origin through CORS. This header does
++not grant user consent, override an embedding page's policy, or bypass CORS.
++There are no device URLs configured and no network probes on page load.
++
++See [Chrome's local network access guidance](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/local-network-access.md).
+diff --git a/package.json b/package.json
+index 2bd4d77..28d9b59 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "statikk": "^3.1.0"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..48f886d
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,16 @@
++import statikk from 'statikk';
++import { fileURLToPath } from 'node:url';
++
++const { url } = await statikk({
++  root: fileURLToPath(new URL('.', import.meta.url)),
++  port: process.env.PORT || 11222,
++  setHeaders(response) {
++    // Keep the legacy directive for browsers predating the split permissions.
++    response.setHeader(
++      'Permissions-Policy',
++      'local-network=(self), loopback-network=(self), local-network-access=(self)',
++    );
++  },
++});
++
++console.log(`The Daily Grind is available at ${url}`);

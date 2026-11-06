@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,100 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Modern CSS: Font Size Adjust &amp; Aspect Ratio</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++      --bg-color: #f8fafc;
++      --text-color: #1e293b;
++      --code-bg: #e2e8f0;
++      --code-color: #0f172a;
++      --card-bg: #ffffff;
++      --border-color: #cbd5e1;
++    }
++
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      background-color: var(--bg-color);
++      color: var(--text-color);
++      line-height: 1.6;
++      padding: 2rem;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    /* Paragraph with mixed font families using modern CSS font-size-adjust */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.25rem;
++      /* Automatically normalize the visual x-height across mixed fonts */
++      font-size-adjust: from-font;
++      background-color: var(--card-bg);
++      padding: 1.5rem;
++      border-radius: 0.5rem;
++      border: 1px solid var(--border-color);
++      margin-bottom: 2rem;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      font-size-adjust: from-font;
++      background-color: var(--code-bg);
++      color: var(--code-color);
++      padding: 0.15rem 0.4rem;
++      border-radius: 0.25rem;
++    }
++
++    /* Independent theme container with a specific numeric aspect-ratio override */
++    #independent-theme-container {
++      color-scheme: dark;
++      --theme-bg: #0f172a;
++      --theme-text: #f8fafc;
++      --theme-accent: #38bdf8;
++      background-color: var(--theme-bg);
++      color: var(--theme-text);
++      border: 2px solid var(--theme-accent);
++      border-radius: 0.75rem;
++      padding: 1.5rem;
++      width: 100%;
++      max-width: 480px;
++      /* Lock down visual proportions using a numeric aspect-ratio override */
++      aspect-ratio: 16 / 9;
++      font-size-adjust: 0.5;
++      box-sizing: border-box;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
++    }
++
++    #independent-theme-container h2 {
++      margin: 0 0 0.5rem 0;
++      color: var(--theme-accent);
++    }
++
++    #independent-theme-container p {
++      margin: 0;
++      opacity: 0.9;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <h1>Typography &amp; Proportional Containers</h1>
++
++    <p id="mixed-fonts-container">
++      When combining regular prose with inline code snippets like <code>const ratio = 16 / 9;</code> or <code>font-size-adjust: from-font;</code>, different font families often appear mismatched in visual height even at the same nominal <code>font-size</code>. Modern CSS normalizes the lowercase x-height automatically so mixed typography reads harmoniously.
++    </p>
++
++    <div id="independent-theme-container">
++      <h2>Independent Dark Theme Box</h2>
++      <p>This container maintains locked visual proportions and independent theme styling.</p>
++    </div>
++  </main>
++</body>
++</html>

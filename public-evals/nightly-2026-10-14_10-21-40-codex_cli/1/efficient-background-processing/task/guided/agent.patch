@@ -1,0 +1,186 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      height: 400px;
++      padding: 24px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: var(--light);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    #roasting-widget p {
++      color: var(--secondary);
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      flex: 1;
++      min-height: 0;
++      border-radius: 6px;
++      background: #281b17;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +228,16 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-heading">
++    <h2 id="roast-heading">Inside the Roaster</h2>
++    <p>A little heat. A lot of character. Watch our simulated roast.</p>
++    <canvas id="roast-canvas" width="960" height="240" role="img"
++      aria-label="Coffee beans tumbling inside a roasting drum">Coffee beans roasting in a drum.</canvas>
++    <div>Simulated temperature: <strong><span id="roast-temp-value">185</span> °C</strong></div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +246,124 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const temperatureValue = document.getElementById('roast-temp-value');
++      const context = canvas.getContext('2d');
++      const beans = Array.from({ length: 36 }, () => ({
++        phase: Math.random() * Math.PI * 2,
++        radius: 0.3 + Math.random() * 0.65,
++        speed: 0.6 + Math.random() * 0.7
++      }));
++      let frameId = null;
++      let intervalId = null;
++      let running = false;
++      let inViewport = false;
++      let renderingSkipped = false;
++      let pageActive = true;
++      let lastTime = null;
++      let roastTime = 0;
++      let temperature = 185;
++
++      function drawBeans() {
++        if (!context) return;
++        const width = canvas.width;
++        const height = canvas.height;
++        context.clearRect(0, 0, width, height);
++        beans.forEach((bean) => {
++          const angle = bean.phase + roastTime * bean.speed;
++          const x = width / 2 + Math.cos(angle) * width * 0.43 * bean.radius;
++          const y = height / 2 + Math.sin(angle) * height * 0.34 * bean.radius;
++          context.save();
++          context.translate(x, y);
++          context.rotate(-angle * 1.5);
++          context.fillStyle = temperature > 205 ? '#75432b' : '#ad7146';
++          context.beginPath();
++          context.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2);
++          context.fill();
++          context.strokeStyle = '#3e2723';
++          context.lineWidth = 2;
++          context.beginPath();
++          context.moveTo(-10, 0);
++          context.bezierCurveTo(-3, -5, 3, 5, 10, 0);
++          context.stroke();
++          context.restore();
++        });
++      }
++
++      function animate(time) {
++        frameId = null;
++        if (!running) return;
++        if (lastTime !== null) roastTime += Math.min((time - lastTime) / 1000, 0.05);
++        lastTime = time;
++        drawBeans();
++        frameId = requestAnimationFrame(animate);
++      }
++
++      // One owner for both resources prevents duplicate loops on repeated events.
++      function syncSimulation() {
++        const shouldRun = pageActive && inViewport && !renderingSkipped && !document.hidden;
++        if (shouldRun === running) return;
++        running = shouldRun;
++        lastTime = null;
++        if (running) {
++          if (context) frameId = requestAnimationFrame(animate);
++          intervalId = setInterval(() => {
++            temperature += (215 - temperature) * 0.04 + (Math.random() - 0.5) * 1.2;
++            temperatureValue.textContent = Math.round(temperature);
++          }, 1000);
++        } else {
++          if (frameId !== null) cancelAnimationFrame(frameId);
++          if (intervalId !== null) clearInterval(intervalId);
++          frameId = null;
++          intervalId = null;
++        }
++      }
++
++      // Listen on the element itself: this rendering-state event may not bubble.
++      if ('oncontentvisibilityautostatechange' in widget) {
++        widget.addEventListener('contentvisibilityautostatechange', (event) => {
++          renderingSkipped = event.skipped;
++          syncSimulation();
++        });
++      }
++
++      // Also enforce exact viewport visibility: native rendering may start early.
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          inViewport = entries[entries.length - 1].isIntersecting;
++          syncSimulation();
++        }, { threshold: 0 });
++        observer.observe(widget);
++      } else {
++        // Legacy fallback uses events, never an always-running polling timer.
++        const checkViewport = () => {
++          const rect = widget.getBoundingClientRect();
++          inViewport = rect.bottom > 0 && rect.right > 0 &&
++            rect.top < window.innerHeight && rect.left < window.innerWidth;
++          syncSimulation();
++        };
++        window.addEventListener('scroll', checkViewport, { passive: true, capture: true });
++        window.addEventListener('resize', checkViewport, { passive: true });
++        window.addEventListener('pageshow', checkViewport);
++        checkViewport();
++      }
++
++      document.addEventListener('visibilitychange', syncSimulation);
++      window.addEventListener('pagehide', () => {
++        pageActive = false;
++        syncSimulation();
++      });
++      window.addEventListener('pageshow', () => {
++        pageActive = true;
++        syncSimulation();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

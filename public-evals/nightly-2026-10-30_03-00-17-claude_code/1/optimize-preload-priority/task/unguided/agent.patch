@@ -1,0 +1,36 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,32 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Watch the Film</title>
++
++<!-- LCP element: fetch the poster immediately at the highest priority -->
++<link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++<!-- Critical header font: preload (crossorigin is required for font preloads) -->
++<link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++<!-- secondary-font.woff2 is intentionally NOT preloaded so it can't compete with the LCP resources -->
++
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-display:swap}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:optional}
++*{margin:0;box-sizing:border-box}
++body{background:#000;color:#fff;font:16px/1.5 Secondary,system-ui,sans-serif;text-align:center;padding:2rem 1rem}
++h1{font:700 clamp(2rem,6vw,3.5rem)/1.1 Brand,system-ui,sans-serif;margin-bottom:1.5rem}
++video{display:block;width:100%;max-width:960px;height:auto;aspect-ratio:3/2;margin:0 auto;background:#111}
++a{display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;border:1px solid #fff;border-radius:999px;color:inherit;text-decoration:none}
++</style>
++</head>
++<body>
++<h1>Watch the Film</h1>
++<!-- preload="none": no video bytes are fetched until the user hits play, so the poster owns the bandwidth -->
++<video controls playsinline preload="none" poster="poster.jpg" width="1600" height="1066">
++  <source src="video.mp4" type="video/mp4">
++</video>
++<a href="#">Get started</a>
++</body>
++</html>

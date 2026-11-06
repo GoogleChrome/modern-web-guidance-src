@@ -1,0 +1,357 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..c23f487
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,227 @@
++import React, { useState, useEffect, useRef } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
++
++export interface TopStoryItem {
++  id: string;
++  title: string;
++  date: string;
++  url: string;
++  category?: string;
++}
++
++interface TopStoriesSliderProps {
++  stories: TopStoryItem[];
++}
++
++export default function TopStoriesSlider({ stories }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [prevIndex, setPrevIndex] = useState<number | null>(null);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [isAnimating, setIsAnimating] = useState(false);
++  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
++  const touchStartX = useRef<number | null>(null);
++
++  useEffect(() => {
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    setPrefersReducedMotion(mediaQuery.matches);
++
++    const handleChange = (e: MediaQueryListEvent) => {
++      setPrefersReducedMotion(e.matches);
++    };
++
++    mediaQuery.addEventListener('change', handleChange);
++    return () => mediaQuery.removeEventListener('change', handleChange);
++  }, []);
++
++  useEffect(() => {
++    if (isAnimating) {
++      const timer = setTimeout(() => {
++        setIsAnimating(false);
++        setPrevIndex(null);
++        setDirection(null);
++      }, 400);
++      return () => clearTimeout(timer);
++    }
++  }, [isAnimating]);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handleNext = () => {
++    if (isAnimating || stories.length <= 1) return;
++    const nextIdx = (currentIndex + 1) % stories.length;
++
++    if (prefersReducedMotion) {
++      setCurrentIndex(nextIdx);
++      return;
++    }
++
++    setPrevIndex(currentIndex);
++    setCurrentIndex(nextIdx);
++    setDirection('next');
++    setIsAnimating(true);
++  };
++
++  const handlePrev = () => {
++    if (isAnimating || stories.length <= 1) return;
++    const prevIdx = (currentIndex - 1 + stories.length) % stories.length;
++
++    if (prefersReducedMotion) {
++      setCurrentIndex(prevIdx);
++      return;
++    }
++
++    setPrevIndex(currentIndex);
++    setCurrentIndex(prevIdx);
++    setDirection('prev');
++    setIsAnimating(true);
++  };
++
++  const handleAnimationEnd = (e: React.AnimationEvent) => {
++    // Only handle animation end for the slide element itself
++    if (e.target === e.currentTarget) {
++      setIsAnimating(false);
++      setPrevIndex(null);
++      setDirection(null);
++    }
++  };
++
++  const handleKeyDown = (e: React.KeyboardEvent) => {
++    if (e.key === 'ArrowRight') {
++      handleNext();
++    } else if (e.key === 'ArrowLeft') {
++      handlePrev();
++    }
++  };
++
++  const handleTouchStart = (e: React.TouchEvent) => {
++    touchStartX.current = e.touches[0].clientX;
++  };
++
++  const handleTouchEnd = (e: React.TouchEvent) => {
++    if (touchStartX.current === null) return;
++    const touchEndX = e.changedTouches[0].clientX;
++    const diff = touchStartX.current - touchEndX;
++
++    if (Math.abs(diff) > 40) {
++      if (diff > 0) {
++        handleNext();
++      } else {
++        handlePrev();
++      }
++    }
++    touchStartX.current = null;
++  };
++
++  const renderStoryContent = (story: TopStoryItem) => (
++    <div className="flex items-center space-x-3 w-full min-w-0">
++      {story.category && (
++        <span className="text-xs font-semibold uppercase tracking-wider text-amber-500 shrink-0 hidden sm:inline">
++          {story.category}
++        </span>
++      )}
++      <a
++        href={story.url}
++        title={story.title}
++        className="font-bold text-gray-900 hover:text-amber-400 transition-colors text-sm sm:text-base cursor-pointer truncate"
++      >
++        {story.title}
++      </a>
++      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
++        {story.date}
++      </span>
++    </div>
++  );
++
++  return (
++    <div className="bg-white border-b border-gray-300">
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
++        <div
++          className="flex items-center justify-between gap-3 sm:gap-6"
++          role="region"
++          aria-roledescription="carousel"
++          aria-label="Top stories slider"
++          tabIndex={0}
++          onKeyDown={handleKeyDown}
++          onTouchStart={handleTouchStart}
++          onTouchEnd={handleTouchEnd}
++        >
++          {/* Label Indicator */}
++          <div className="flex items-center space-x-2 shrink-0">
++            <span className="w-2.5 h-2.5 rounded-full bg-red-600" aria-hidden="true" />
++            <span className="text-xs font-bold uppercase tracking-wider text-gray-900">
++              Top Stories
++            </span>
++          </div>
++
++          <div className="hidden sm:block h-4 w-px bg-gray-300 shrink-0" aria-hidden="true" />
++
++          {/* Slider Content Viewport */}
++          <div
++            className="flex-1 min-w-0 relative overflow-hidden h-7 sm:h-8 flex items-center"
++            aria-live="polite"
++            aria-atomic="true"
++          >
++            {/* Outgoing story during animation */}
++            {isAnimating && prevIndex !== null && (
++              <div
++                key={`outgoing-${prevIndex}`}
++                aria-hidden="true"
++                className={`absolute inset-0 flex items-center w-full pointer-events-none ${
++                  direction === 'next'
++                    ? 'animate-slide-to-left'
++                    : 'animate-slide-to-right'
++                }`}
++              >
++                {renderStoryContent(stories[prevIndex])}
++              </div>
++            )}
++
++            {/* Current / Incoming story */}
++            <div
++              key={`current-${currentIndex}`}
++              className={`flex items-center w-full h-full ${
++                isAnimating
++                  ? direction === 'next'
++                    ? 'animate-slide-from-right'
++                    : 'animate-slide-from-left'
++                  : ''
++              }`}
++              onAnimationEnd={handleAnimationEnd}
++            >
++              {renderStoryContent(stories[currentIndex])}
++            </div>
++          </div>
++
++          {/* Slider Controls */}
++          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
++            <span className="text-xs text-gray-400 font-medium tabular-nums hidden md:inline mr-1">
++              {currentIndex + 1} / {stories.length}
++            </span>
++            <button
++              type="button"
++              onClick={handlePrev}
++              aria-label="Previous story"
++              disabled={isAnimating || stories.length <= 1}
++              className="inline-flex items-center justify-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded border border-gray-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-400"
++            >
++              <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++              <span>Previous</span>
++            </button>
++            <button
++              type="button"
++              onClick={handleNext}
++              aria-label="Next story"
++              disabled={isAnimating || stories.length <= 1}
++              className="inline-flex items-center justify-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded border border-gray-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-400"
++            >
++              <span>Next</span>
++              <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++            </button>
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..ce47a26 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,21 +39,17 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <!-- Top Stories Section (Slider) -->
++    <TopStoriesSlider
++        client:load
++        stories={topStories.map(article => ({
++            id: article.id,
++            title: article.data.title,
++            date: article.data.date.toLocaleDateString(),
++            url: `${import.meta.env.BASE_URL}articles/${article.id}`,
++            category: article.data.category,
++        }))}
++    />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1cd3acb 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,73 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Directional slider transitions: animate transform on compositor thread */
++@keyframes slide-to-left {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-to-right {
++  from {
++    transform: translateX(0);
++  }
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.animate-slide-to-left {
++  animation: slide-to-left 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none !important;
++    transform: none !important;
++  }
++}
++
++.animate-slide-from-right {
++  animation: slide-from-right 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none !important;
++    transform: none !important;
++  }
++}
++
++.animate-slide-to-right {
++  animation: slide-to-right 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none !important;
++    transform: none !important;
++  }
++}
++
++.animate-slide-from-left {
++  animation: slide-from-left 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
++  @media (prefers-reduced-motion: reduce) {
++    animation: none !important;
++    transform: none !important;
++  }
+ }
+\ No newline at end of file

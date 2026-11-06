@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,13 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +88,45 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 4rem 20px;
+     }
+ 
++    .shaped-element {
++      /* Decoration never participates in layout or intercepts the order link. */
++      position: absolute;
++      z-index: -1;
++      right: -3rem;
++      bottom: -4rem;
++      width: clamp(18rem, 46vw, 38rem);
++      max-width: 85%;
++      aspect-ratio: 1.15;
++      pointer-events: none;
++      opacity: 0.65;
++      background: radial-gradient(ellipse at 70% 75%, var(--accent), var(--primary) 75%);
++      /* Organic fallback when neither masking property is supported. */
++      border-radius: 63% 37% 56% 44% / 43% 58% 42% 57%;
++      transform: rotate(-12deg);
++    }
++
++    @supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
++      .shaped-element {
++        /* Embedded vector avoids a separate mask request and scales fluidly.
++           If masking fails, only this decorative layer disappears. */
++        --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 520'%3E%3Cpath fill='white' d='M83 318C110 288 48 248 73 209S149 207 157 159S133 70 174 65S225 123 266 103S320 30 356 51S356 123 400 132S484 103 505 139S470 205 504 233S577 263 555 304S487 317 474 362S502 441 459 458S394 414 355 441S311 507 274 482S261 420 215 417S138 453 113 419S62 350 83 318Z'/%3E%3Cellipse fill='white' cx='70' cy='122' rx='18' ry='27' transform='rotate(-30 70 122)'/%3E%3Cellipse fill='white' cx='539' cy='390' rx='14' ry='22' transform='rotate(28 539 390)'/%3E%3Ccircle fill='white' cx='416' cy='44' r='12'/%3E%3C/svg%3E");
++        border-radius: 0;
++        -webkit-mask-image: var(--splash-mask);
++        mask-image: var(--splash-mask);
++        -webkit-mask-size: contain;
++        mask-size: contain;
++        -webkit-mask-position: center;
++        mask-position: center;
++        -webkit-mask-repeat: no-repeat;
++        mask-repeat: no-repeat;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +206,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

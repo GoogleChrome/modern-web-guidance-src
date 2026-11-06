@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Passkey promotion */
++    .passkey-promo {
++      max-width: 640px;
++      margin: 40px auto 0;
++    }
++
++    .passkey-promo button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .passkey-promo button.btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .passkey-status {
++      margin-top: 10px;
++      min-height: 1.6em;
++      font-size: 0.9rem;
++    }
++
++    .passkey-status[data-state="error"] {
++      color: #b71c1c;
++    }
++
++    .passkey-status[data-state="success"] {
++      color: #2e7d32;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +225,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card passkey-promo" aria-labelledby="passkey-heading">
++      <h3 id="passkey-heading">Sign in faster with a passkey</h3>
++      <p>Use your fingerprint, face, or screen lock to sign in &mdash; no password needed.</p>
++      <button type="button" class="btn" id="register-button" data-testid="register-button" disabled>
++        Create passkey
++      </button>
++      <p class="passkey-status" id="passkey-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +246,152 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const button = document.getElementById('register-button');
++    const statusEl = document.getElementById('passkey-status');
++
++    function setStatus(message, state = '') {
++      statusEl.textContent = message;
++      statusEl.dataset.state = state;
++    }
++
++    // Load the JSON (de)serialization polyfill only for browsers that support
++    // WebAuthn but lack parseCreationOptionsFromJSON / toJSON.
++    async function ensureWebAuthnJSON() {
++      if (
++        typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
++        typeof PublicKeyCredential.prototype.toJSON === 'function'
++      ) {
++        return;
++      }
++      await import('https://esm.sh/webauthn-polyfills@0.1.7');
++    }
++
++    async function getCapabilities() {
++      if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
++        return PublicKeyCredential.getClientCapabilities();
++      }
++      // Fallback for browsers without getClientCapabilities().
++      const [passkeyPlatformAuthenticator, conditionalGet] = await Promise.all([
++        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.() ?? false,
++        PublicKeyCredential.isConditionalMediationAvailable?.() ?? false,
++      ]);
++      return { passkeyPlatformAuthenticator, conditionalGet };
++    }
++
++    // Gate the UI on page load: only enable when passkeys are usable here.
++    async function initPasskeyButton() {
++      if (!window.isSecureContext || !window.PublicKeyCredential) return;
++      try {
++        const caps = await getCapabilities();
++        if (caps.passkeyPlatformAuthenticator && caps.conditionalGet) {
++          button.disabled = false;
++        }
++      } catch (err) {
++        console.error('Unable to determine passkey capabilities:', err);
++      }
++    }
++
++    async function signalUnknown(rpId, credentialId) {
++      if (typeof PublicKeyCredential.signalUnknownCredential !== 'function') return;
++      try {
++        await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++      } catch (err) {
++        console.warn('signalUnknownCredential failed:', err);
++      }
++    }
++
++    async function registerPasskey() {
++      button.disabled = true;
++      setStatus('Preparing passkey creation…');
++
++      try {
++        await ensureWebAuthnJSON();
++
++        // 1. Fetch creation options from the server.
++        let publicKey;
++        try {
++          const res = await fetch('/api/register/options', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify({ promotion: true }),
++          });
++          if (!res.ok) throw new Error(`Options request failed (${res.status})`);
++          const optionsJSON = await res.json();
++          publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++        } catch (err) {
++          console.error(err);
++          setStatus('Could not start passkey creation. Please try again later.', 'error');
++          return;
++        }
++
++        // 2. Create the passkey.
++        setStatus('Follow your device prompt to create a passkey.');
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey });
++        } catch (err) {
++          switch (err.name) {
++            case 'InvalidStateError':
++              setStatus('A passkey already exists for this account on this device.', 'error');
++              break;
++            case 'NotAllowedError':
++              setStatus('Passkey creation was cancelled.');
++              break;
++            case 'AbortError':
++              setStatus('Passkey creation was aborted.');
++              break;
++            case 'SecurityError':
++              console.error('RP ID or secure context configuration error:', err);
++              setStatus('Passkeys are not available on this site right now.', 'error');
++              break;
++            default:
++              console.error(err);
++              setStatus('Something went wrong creating your passkey.', 'error');
++          }
++          return; // Do not signal unknown credential for standard WebAuthn errors.
++        }
++        if (!credential) {
++          setStatus('Passkey creation was cancelled.');
++          return;
++        }
++
++        // 3. Verify the registration with the server.
++        setStatus('Verifying your passkey…');
++        const encoded = credential.toJSON();
++        // Always use the server-provided RP ID, never location.hostname.
++        const rpId = publicKey.rp.id;
++        try {
++          const res = await fetch('/api/register/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify(encoded),
++          });
++          if (!res.ok) {
++            await signalUnknown(rpId, encoded.id);
++            setStatus('We could not verify your passkey. Please try again.', 'error');
++            return;
++          }
++        } catch (err) {
++          console.error('Server verification network failure:', err);
++          await signalUnknown(rpId, encoded.id);
++          setStatus('We could not verify your passkey. Please try again.', 'error');
++          return;
++        }
++
++        setStatus('Passkey created! You can now use it to sign in.', 'success');
++      } finally {
++        button.disabled = false;
++      }
++    }
++
++    button.addEventListener('click', registerPasskey);
++    initPasskeyButton();
++  </script>
++
+ </body>
+ 
+ </html>

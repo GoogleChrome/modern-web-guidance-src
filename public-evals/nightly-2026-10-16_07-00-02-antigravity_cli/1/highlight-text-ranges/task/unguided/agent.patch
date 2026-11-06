@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #search-input {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 0;
++      padding: 10px 16px;
++      font-size: 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      outline: none;
++      font-family: inherit;
++      box-sizing: border-box;
++      background: white;
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    #search-input:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    mark,
++    .highlight {
++      background-color: gold;
++      color: inherit;
++      padding: 0;
++      margin: 0;
++    }
++
++    .btn mark,
++    .btn .highlight {
++      color: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +211,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="text" id="search-input" placeholder="Search seasonal favorites..." aria-label="Search seasonal favorites">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +242,75 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const searchInput = document.getElementById('search-input');
++      const cards = document.querySelectorAll('.grid .card');
++
++      if (!searchInput || !cards.length) return;
++
++      cards.forEach(card => {
++        card.dataset.originalHtml = card.innerHTML;
++      });
++
++      function escapeRegExp(string) {
++        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++      }
++
++      function highlightNode(node, regexSource) {
++        if (node.nodeType === Node.TEXT_NODE) {
++          const text = node.nodeValue;
++          if (!text) return;
++
++          const localRegex = new RegExp(regexSource, 'gi');
++          let match = localRegex.exec(text);
++          if (!match) return;
++
++          const fragment = document.createDocumentFragment();
++          let lastIndex = 0;
++
++          do {
++            if (match.index > lastIndex) {
++              fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
++            }
++            const mark = document.createElement('mark');
++            mark.className = 'highlight';
++            mark.style.backgroundColor = 'gold';
++            mark.textContent = match[0];
++            fragment.appendChild(mark);
++            lastIndex = localRegex.lastIndex;
++            if (match[0].length === 0) break;
++          } while ((match = localRegex.exec(text)) !== null);
++
++          if (lastIndex < text.length) {
++            fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
++          }
++
++          node.parentNode.replaceChild(fragment, node);
++        } else if (node.nodeType === Node.ELEMENT_NODE) {
++          Array.from(node.childNodes).forEach(child => highlightNode(child, regexSource));
++        }
++      }
++
++      function handleSearch() {
++        cards.forEach(card => {
++          card.innerHTML = card.dataset.originalHtml;
++        });
++
++        const query = searchInput.value.trim();
++        if (!query) return;
++
++        const regexSource = escapeRegExp(query).replace(/\s+/g, '\\s+');
++        cards.forEach(card => {
++          highlightNode(card, regexSource);
++        });
++      }
++
++      searchInput.addEventListener('input', handleSearch);
++      searchInput.addEventListener('keyup', handleSearch);
++    })();
++  </script>
+ </body>
+ 
+ </html>

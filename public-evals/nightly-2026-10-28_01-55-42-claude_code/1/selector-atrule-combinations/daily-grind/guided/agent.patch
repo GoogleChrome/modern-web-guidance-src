@@ -1,0 +1,227 @@
+diff --git a/index.html b/index.html
+index 66c9173..1a8b570 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,129 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Tell the browser up front that both schemes are supported (avoids a white flash). -->
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* ------------------------------------------------------------------
++       Theme tokens
++       ------------------------------------------------------------------
++       Every themed rule below reads a semantic token (--nav-bg, --card-bg, ...).
++       Each token is defined ONCE with light-dark(), which resolves against the
++       element's computed `color-scheme`. That property is what both inputs drive:
++
++         - OS preference:  `color-scheme: light dark` lets the browser pick.
++         - App override:   <html data-theme="dark|light"> or <html class="dark|light">
++                           pins `color-scheme`, which light-dark() then follows.
++
++       So there is a single copy of the nav / hero / card styling and a single
++       place where the scheme is decided.
++       ------------------------------------------------------------------ */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      /* Raw palette: light / dark pairs */
++      --page-bg-light: #fafafa;          --page-bg-dark: #181210;
++      --text-light: #3e2723;             --text-dark: #efe4dc;
++      --accent-light: #ffab40;           --accent-dark: #ffbd66;
++
++      --nav-bg-light: #4e342e;           --nav-bg-dark: #231915;
++      --nav-text-light: #ffffff;         --nav-text-dark: #f3e9e1;
++      --nav-border-light: transparent;   --nav-border-dark: #3b2b24;
++
++      --hero-overlay-light: rgb(0 0 0 / 0.5);  --hero-overlay-dark: rgb(12 7 5 / 0.7);
++      --hero-text-light: #ffffff;        --hero-text-dark: #fbf3ec;
++
++      --card-bg-light: #ffffff;          --card-bg-dark: #2a201b;
++      --card-border-light: transparent;  --card-border-dark: #43332b;
++      --card-shadow-light: rgb(0 0 0 / 0.1);   --card-shadow-dark: rgb(0 0 0 / 0.5);
++      --card-title-light: #4e342e;       --card-title-dark: #e8c39e;
++
++      --btn-bg-light: #4e342e;           --btn-bg-dark: #ffab40;
++      --btn-bg-hover-light: #3e2723;     --btn-bg-hover-dark: #ffc266;
++      --btn-text-light: #ffffff;         --btn-text-dark: #2a1b14;
++
++      --footer-bg-light: #d7ccc8;        --footer-bg-dark: #120d0b;
++
++      /* Semantic tokens, resolved by color-scheme */
++      --page-bg: light-dark(var(--page-bg-light), var(--page-bg-dark));
++      --text: light-dark(var(--text-light), var(--text-dark));
++      --accent: light-dark(var(--accent-light), var(--accent-dark));
++      --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++      --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++      --nav-border: light-dark(var(--nav-border-light), var(--nav-border-dark));
++      --hero-overlay: light-dark(var(--hero-overlay-light), var(--hero-overlay-dark));
++      --hero-text: light-dark(var(--hero-text-light), var(--hero-text-dark));
++      --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
++      --card-border: light-dark(var(--card-border-light), var(--card-border-dark));
++      --card-shadow: light-dark(var(--card-shadow-light), var(--card-shadow-dark));
++      --card-title: light-dark(var(--card-title-light), var(--card-title-dark));
++      --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++      --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++      --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++      --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++    }
++
++    /* Explicit app override: a root attribute or class pins the scheme.
++       Everything else follows automatically through light-dark(). */
++    :root[data-theme="dark"],
++    :root.dark {
++      color-scheme: dark;
++    }
++
++    :root[data-theme="light"],
++    :root.light {
++      color-scheme: light;
++    }
++
++    /* Fallback for browsers that predate light-dark() (Chrome < 123, Safari < 17.5,
++       Firefox < 120). The same semantic tokens are re-derived from two "space
++       toggles": a toggle holding a blank value makes var(--toggle, X) resolve to
++       nothing, while `initial` makes it fall back to X. So each token below keeps
++       only the branch whose scheme is active, and the nav / hero / card rules
++       still need no duplicate. */
++    @supports not (color: light-dark(#000, #fff)) {
++      :root {
++        --skip-light: initial;   /* light active: keep light values */
++        --skip-dark: ;           /* dark inactive: drop dark values */
++
++        --page-bg: var(--skip-light, var(--page-bg-light)) var(--skip-dark, var(--page-bg-dark));
++        --text: var(--skip-light, var(--text-light)) var(--skip-dark, var(--text-dark));
++        --accent: var(--skip-light, var(--accent-light)) var(--skip-dark, var(--accent-dark));
++        --nav-bg: var(--skip-light, var(--nav-bg-light)) var(--skip-dark, var(--nav-bg-dark));
++        --nav-text: var(--skip-light, var(--nav-text-light)) var(--skip-dark, var(--nav-text-dark));
++        --nav-border: var(--skip-light, var(--nav-border-light)) var(--skip-dark, var(--nav-border-dark));
++        --hero-overlay: var(--skip-light, var(--hero-overlay-light)) var(--skip-dark, var(--hero-overlay-dark));
++        --hero-text: var(--skip-light, var(--hero-text-light)) var(--skip-dark, var(--hero-text-dark));
++        --card-bg: var(--skip-light, var(--card-bg-light)) var(--skip-dark, var(--card-bg-dark));
++        --card-border: var(--skip-light, var(--card-border-light)) var(--skip-dark, var(--card-border-dark));
++        --card-shadow: var(--skip-light, var(--card-shadow-light)) var(--skip-dark, var(--card-shadow-dark));
++        --card-title: var(--skip-light, var(--card-title-light)) var(--skip-dark, var(--card-title-dark));
++        --btn-bg: var(--skip-light, var(--btn-bg-light)) var(--skip-dark, var(--btn-bg-dark));
++        --btn-bg-hover: var(--skip-light, var(--btn-bg-hover-light)) var(--skip-dark, var(--btn-bg-hover-dark));
++        --btn-text: var(--skip-light, var(--btn-text-light)) var(--skip-dark, var(--btn-text-dark));
++        --footer-bg: var(--skip-light, var(--footer-bg-light)) var(--skip-dark, var(--footer-bg-dark));
++      }
++
++      @media (prefers-color-scheme: dark) {
++        :root {
++          --skip-light: ;
++          --skip-dark: initial;
++        }
++      }
++
++      /* The attribute/class override wins over the OS preference by specificity. */
++      :root[data-theme="dark"],
++      :root.dark {
++        --skip-light: ;
++        --skip-dark: initial;
++      }
++
++      :root[data-theme="light"],
++      :root.light {
++        --skip-light: initial;
++        --skip-dark: ;
++      }
+     }
+ 
+     * {
+@@ -24,13 +139,14 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +172,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +191,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +199,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +224,23 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-title);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +249,11 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;

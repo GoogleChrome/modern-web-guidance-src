@@ -1,0 +1,3521 @@
+diff --git a/components/dg-cart-drawer.js b/components/dg-cart-drawer.js
+new file mode 100644
+index 0000000..2d65ff4
+--- /dev/null
++++ b/components/dg-cart-drawer.js
+@@ -0,0 +1,537 @@
++/**
++ * `<dg-cart-drawer>` — Slide-out Shopping Bag / Order Drawer Web Component
++ *
++ * Uses a modal `<dialog closedby="any">` anchored to the right edge of the viewport
++ * with top-layer entry/exit animations and full keyboard/backdrop dismissal.
++ */
++
++import { attachDialogLightDismiss, closeDialogWithAnimation } from './top-layer-utils.js';
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: contents;
++      --_drawer-bg: var(--drawer-bg, #ffffff);
++      --_drawer-fg: var(--drawer-fg, var(--text, #3e2723));
++      --_drawer-primary: var(--drawer-primary, var(--primary, #4e342e));
++      --_drawer-accent: var(--drawer-accent, var(--accent, #ffab40));
++      --_drawer-border: var(--drawer-border, var(--border, #e0d6d2));
++    }
++
++    dialog {
++      margin: 0 0 0 auto;
++      padding: 0;
++      border: none;
++      border-left: 1px solid var(--_drawer-border);
++      background: var(--_drawer-bg);
++      color: var(--_drawer-fg);
++      width: min(92vw, 400px);
++      height: 100dvh;
++      max-height: 100dvh;
++      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.22);
++      opacity: 0;
++      transform: translateX(100%);
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.28s;
++      transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++      transition-behavior: allow-discrete;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(30, 18, 14, 0);
++      backdrop-filter: blur(0px);
++      transition-property: background-color, backdrop-filter, display, overlay;
++      transition-duration: 0.28s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    :is(dialog[open]):where(:not([data-closing])) {
++      opacity: 1;
++      transform: translateX(0);
++
++      @starting-style {
++        opacity: 0;
++        transform: translateX(100%);
++      }
++
++      &::backdrop {
++        background-color: rgba(30, 18, 14, 0.5);
++        backdrop-filter: blur(2px);
++
++        @starting-style {
++          background-color: rgba(30, 18, 14, 0);
++          backdrop-filter: blur(0px);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      dialog {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        :is(dialog[open]):where(:not([data-closing])) {
++          transform: none;
++        }
++      }
++    }
++
++    .drawer-layout {
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++    }
++
++    header {
++      padding: 1.25rem 1.5rem;
++      border-bottom: 1px solid var(--_drawer-border);
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      background: #fafafa;
++    }
++
++    h2 {
++      margin: 0;
++      font-size: 1.2rem;
++      color: var(--_drawer-primary);
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .close-btn {
++      font: inherit;
++      width: 2rem;
++      height: 2rem;
++      border-radius: 50%;
++      border: 1px solid var(--_drawer-border);
++      background: #ffffff;
++      color: var(--_drawer-primary);
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.15rem;
++    }
++
++    .close-btn:hover {
++      background: #efebe9;
++    }
++
++    .items-list {
++      flex: 1;
++      overflow-y: auto;
++      padding: 1.25rem 1.5rem;
++      display: flex;
++      flex-direction: column;
++      gap: 1rem;
++    }
++
++    .empty-state {
++      text-align: center;
++      color: #6d4c41;
++      margin: auto 0;
++      padding: 2rem 1rem;
++    }
++
++    .empty-icon {
++      font-size: 2.5rem;
++      margin-bottom: 0.5rem;
++      opacity: 0.6;
++    }
++
++    .cart-item {
++      display: flex;
++      gap: 0.85rem;
++      padding-bottom: 1rem;
++      border-bottom: 1px solid var(--_drawer-border);
++      align-items: center;
++    }
++
++    .cart-item img {
++      width: 60px;
++      height: 60px;
++      border-radius: 8px;
++      object-fit: cover;
++      background: #efebe9;
++      flex-shrink: 0;
++    }
++
++    .item-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .item-name {
++      font-weight: 700;
++      color: var(--_drawer-primary);
++      font-size: 0.95rem;
++      margin: 0 0 0.15rem;
++    }
++
++    .item-meta {
++      font-size: 0.78rem;
++      color: #6d4c41;
++      margin-bottom: 0.4rem;
++    }
++
++    .qty-controls {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.45rem;
++      border: 1px solid var(--_drawer-border);
++      border-radius: 6px;
++      padding: 0.1rem 0.35rem;
++      background: #fafafa;
++    }
++
++    .qty-btn {
++      font: inherit;
++      border: none;
++      background: transparent;
++      color: var(--_drawer-primary);
++      font-weight: 700;
++      cursor: pointer;
++      padding: 0.1rem 0.35rem;
++      font-size: 0.9rem;
++    }
++
++    .qty-val {
++      font-size: 0.82rem;
++      font-weight: 600;
++      min-width: 1.2rem;
++      text-align: center;
++    }
++
++    .item-price {
++      font-weight: 700;
++      font-size: 0.95rem;
++      color: var(--_drawer-primary);
++    }
++
++    footer {
++      padding: 1.25rem 1.5rem;
++      border-top: 1px solid var(--_drawer-border);
++      background: #fafafa;
++      display: flex;
++      flex-direction: column;
++      gap: 0.85rem;
++    }
++
++    .summary-row {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.92rem;
++      color: #5d4037;
++    }
++
++    .summary-total {
++      display: flex;
++      justify-content: space-between;
++      font-size: 1.1rem;
++      font-weight: 800;
++      color: var(--_drawer-primary);
++      padding-top: 0.5rem;
++      border-top: 1px dashed var(--_drawer-border);
++    }
++
++    .checkout-btn {
++      font: inherit;
++      width: 100%;
++      padding: 0.8rem 1.2rem;
++      border-radius: 8px;
++      border: none;
++      background: var(--_drawer-primary);
++      color: #ffffff;
++      font-weight: 700;
++      font-size: 0.98rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease;
++    }
++
++    .checkout-btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .checkout-btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    button:focus-visible {
++      outline: 2px solid var(--_drawer-accent);
++      outline-offset: 2px;
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <dialog part="dialog" closedby="any" aria-labelledby="drawer-title">
++    <div class="drawer-layout" part="surface">
++      <header part="header">
++        <h2 id="drawer-title">
++          <span aria-hidden="true">&#128717;</span>
++          <span>Your Order Bag</span>
++        </h2>
++        <button type="button" class="close-btn" part="close-button" aria-label="Close order bag">
++          &times;
++        </button>
++      </header>
++
++      <div class="items-list" part="items"></div>
++
++      <footer part="footer">
++        <div class="summary-row">
++          <span>Estimated Pickup</span>
++          <strong>In 8–12 mins</strong>
++        </div>
++        <div class="summary-total">
++          <span>Total</span>
++          <span class="total-amount">$0.00</span>
++        </div>
++        <button type="button" class="checkout-btn" part="checkout-button" disabled>
++          Place Pickup Order
++        </button>
++      </footer>
++    </div>
++  </dialog>
++`;
++
++export class DgCartDrawer extends HTMLElement {
++  #items = [];
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    this.shadowRoot.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    const dialog = this.#dialog;
++    if (!this.#initialized && dialog) {
++      this.#setupListeners(dialog);
++      this.#initialized = true;
++    }
++    this.#renderItems();
++  }
++
++  get #dialog() {
++    return this.shadowRoot.querySelector('dialog');
++  }
++
++  get items() {
++    return [...this.#items];
++  }
++
++  get totalCount() {
++    return this.#items.reduce((sum, item) => sum + item.quantity, 0);
++  }
++
++  get totalPrice() {
++    return this.#items.reduce((sum, item) => sum + item.price * item.quantity, 0);
++  }
++
++  open() {
++    const dialog = this.#dialog;
++    if (!dialog || dialog.open) return;
++    dialog.showModal();
++  }
++
++  async close() {
++    const dialog = this.#dialog;
++    if (!dialog || !dialog.open) return;
++    await closeDialogWithAnimation(dialog);
++  }
++
++  addItem(product) {
++    const size = product.size || 'Medium (12oz)';
++    const milk = product.milk || 'Oat Milk';
++    const key = `${product.id}__${size}__${milk}`;
++    const existing = this.#items.find((item) => item.key === key);
++
++    if (existing) {
++      existing.quantity += product.quantity || 1;
++    } else {
++      this.#items.push({
++        key,
++        id: product.id,
++        name: product.name,
++        price: Number(product.price) || 0,
++        image: product.image,
++        size,
++        milk,
++        quantity: product.quantity || 1,
++      });
++    }
++
++    this.#renderItems();
++    this.#notifyChange();
++  }
++
++  updateQuantity(key, delta) {
++    const index = this.#items.findIndex((i) => i.key === key);
++    if (index === -1) return;
++    this.#items[index].quantity += delta;
++    if (this.#items[index].quantity <= 0) {
++      this.#items.splice(index, 1);
++    }
++    this.#renderItems();
++    this.#notifyChange();
++  }
++
++  clear() {
++    this.#items = [];
++    this.#renderItems();
++    this.#notifyChange();
++  }
++
++  #notifyChange() {
++    this.dispatchEvent(
++      new CustomEvent('dg-cart-change', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          items: this.items,
++          totalCount: this.totalCount,
++          totalPrice: this.totalPrice,
++        },
++      })
++    );
++  }
++
++  #setupListeners(dialog) {
++    const closeBtn = this.shadowRoot.querySelector('.close-btn');
++    const checkoutBtn = this.shadowRoot.querySelector('.checkout-btn');
++    const listEl = this.shadowRoot.querySelector('.items-list');
++
++    closeBtn?.addEventListener('click', () => this.close());
++
++    dialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      this.close();
++    });
++
++    attachDialogLightDismiss(dialog, () => this.close());
++
++    listEl?.addEventListener('click', (e) => {
++      const btn = e.target.closest('button[data-action]');
++      if (!btn) return;
++      const key = btn.dataset.key;
++      const action = btn.dataset.action;
++      if (action === 'inc') {
++        this.updateQuantity(key, 1);
++      } else if (action === 'dec') {
++        this.updateQuantity(key, -1);
++      }
++    });
++
++    checkoutBtn?.addEventListener('click', () => {
++      if (this.#items.length === 0) return;
++      const summary = {
++        items: this.items,
++        totalCount: this.totalCount,
++        totalPrice: this.totalPrice,
++      };
++      this.clear();
++      this.close();
++      this.dispatchEvent(
++        new CustomEvent('dg-checkout', {
++          bubbles: true,
++          composed: true,
++          detail: summary,
++        })
++      );
++    });
++  }
++
++  #renderItems() {
++    const listEl = this.shadowRoot.querySelector('.items-list');
++    const totalEl = this.shadowRoot.querySelector('.total-amount');
++    const checkoutBtn = this.shadowRoot.querySelector('.checkout-btn');
++
++    if (!listEl) return;
++
++    if (this.#items.length === 0) {
++      listEl.innerHTML = `
++        <div class="empty-state">
++          <div class="empty-icon" aria-hidden="true">&#9749;</div>
++          <p><strong>Your coffee bag is empty</strong></p>
++          <p style="font-size: 0.85rem; margin-top: 0.25rem;">Add a seasonal favorite or artisanal roast to start your pickup order.</p>
++        </div>
++      `;
++    } else {
++      listEl.innerHTML = '';
++      for (const item of this.#items) {
++        const row = document.createElement('div');
++        row.className = 'cart-item';
++
++        const img = document.createElement('img');
++        img.src = item.image;
++        img.alt = item.name;
++
++        const info = document.createElement('div');
++        info.className = 'item-info';
++
++        const nameEl = document.createElement('p');
++        nameEl.className = 'item-name';
++        nameEl.textContent = item.name;
++
++        const metaEl = document.createElement('p');
++        metaEl.className = 'item-meta';
++        metaEl.textContent = `${item.size} • ${item.milk}`;
++
++        const controls = document.createElement('div');
++        controls.className = 'qty-controls';
++
++        const decBtn = document.createElement('button');
++        decBtn.type = 'button';
++        decBtn.className = 'qty-btn';
++        decBtn.dataset.action = 'dec';
++        decBtn.dataset.key = item.key;
++        decBtn.setAttribute('aria-label', `Decrease quantity of ${item.name}`);
++        decBtn.textContent = '−';
++
++        const qtyVal = document.createElement('span');
++        qtyVal.className = 'qty-val';
++        qtyVal.textContent = String(item.quantity);
++
++        const incBtn = document.createElement('button');
++        incBtn.type = 'button';
++        incBtn.className = 'qty-btn';
++        incBtn.dataset.action = 'inc';
++        incBtn.dataset.key = item.key;
++        incBtn.setAttribute('aria-label', `Increase quantity of ${item.name}`);
++        incBtn.textContent = '+';
++
++        controls.append(decBtn, qtyVal, incBtn);
++        info.append(nameEl, metaEl, controls);
++
++        const priceEl = document.createElement('div');
++        priceEl.className = 'item-price';
++        priceEl.textContent = `$${(item.price * item.quantity).toFixed(2)}`;
++
++        row.append(img, info, priceEl);
++        listEl.append(row);
++      }
++    }
++
++    if (totalEl) {
++      totalEl.textContent = `$${this.totalPrice.toFixed(2)}`;
++    }
++    if (checkoutBtn) {
++      checkoutBtn.disabled = this.#items.length === 0;
++    }
++  }
++}
++
++if (!customElements.get('dg-cart-drawer')) {
++  customElements.define('dg-cart-drawer', DgCartDrawer);
++}
+diff --git a/components/dg-footer.js b/components/dg-footer.js
+new file mode 100644
+index 0000000..814aaa3
+--- /dev/null
++++ b/components/dg-footer.js
+@@ -0,0 +1,209 @@
++/**
++ * `<dg-footer>` — Reusable Application Footer Web Component
++ *
++ * Features:
++ * - Semantic `<footer>` layout with brand bio, navigation links, and newsletter subscription
++ * - Dispatches `dg-newsletter-subscribe` custom event when a user signs up
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: block;
++      margin-top: auto;
++      --_footer-bg: var(--footer-bg, var(--secondary, #d7ccc8));
++      --_footer-fg: var(--footer-fg, var(--text, #3e2723));
++      --_footer-primary: var(--footer-primary, var(--primary, #4e342e));
++      background: var(--_footer-bg);
++      color: var(--_footer-fg);
++    }
++
++    footer {
++      max-width: var(--container-max, 1140px);
++      margin: 0 auto;
++      padding: 2.75rem 1.25rem 2rem;
++      display: flex;
++      flex-direction: column;
++      gap: 2rem;
++    }
++
++    .footer-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 2rem;
++      text-align: left;
++    }
++
++    .col h3 {
++      margin: 0 0 0.65rem;
++      font-size: 1.05rem;
++      color: var(--_footer-primary);
++    }
++
++    .col p {
++      font-size: 0.88rem;
++      line-height: 1.5;
++      margin: 0;
++    }
++
++    .newsletter-form {
++      display: flex;
++      gap: 0.45rem;
++      margin-top: 0.75rem;
++    }
++
++    .newsletter-form input {
++      font: inherit;
++      flex: 1;
++      min-width: 0;
++      padding: 0.5rem 0.75rem;
++      border-radius: 6px;
++      border: 1px solid rgba(62, 39, 35, 0.25);
++      background: #ffffff;
++      color: var(--_footer-fg);
++      font-size: 0.88rem;
++    }
++
++    .newsletter-form button {
++      font: inherit;
++      padding: 0.5rem 0.95rem;
++      border-radius: 6px;
++      border: none;
++      background: var(--_footer-primary);
++      color: #ffffff;
++      font-weight: 600;
++      font-size: 0.88rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease;
++    }
++
++    .newsletter-form button:hover {
++      background: #3e2723;
++    }
++
++    .bottom-bar {
++      padding-top: 1.5rem;
++      border-top: 1px solid rgba(62, 39, 35, 0.15);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++      align-items: center;
++    }
++
++    .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.5rem 1.25rem;
++    }
++
++    .footer-links a {
++      color: var(--_footer-fg);
++      text-decoration: none;
++      font-size: 0.88rem;
++      font-weight: 600;
++      transition: color 0.2s ease;
++    }
++
++    .footer-links a:hover {
++      color: var(--_footer-primary);
++      text-decoration: underline;
++    }
++
++    .copyright {
++      font-size: 0.82rem;
++      opacity: 0.85;
++      margin: 0;
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <footer part="footer">
++    <div class="footer-grid">
++      <div class="col">
++        <h3>THE DAILY GRIND</h3>
++        <p>Small-batch specialty coffee ethically sourced from family farms and roasted fresh daily in our neighborhood roastery.</p>
++      </div>
++
++      <div class="col">
++        <h3>Roastery Hours</h3>
++        <p>Mon – Fri: 6:30 AM – 7:00 PM<br>Sat – Sun: 7:00 AM – 8:00 PM</p>
++      </div>
++
++      <div class="col">
++        <h3>Roaster's Notes</h3>
++        <p>Get early access to seasonal single-origin drops and brewing guides.</p>
++        <form class="newsletter-form" part="newsletter-form">
++          <input type="email" name="email" placeholder="you@example.com" aria-label="Email address for newsletter" required />
++          <button type="submit">Join</button>
++        </form>
++      </div>
++    </div>
++
++    <div class="bottom-bar">
++      <nav class="footer-links" aria-label="Footer Navigation" part="links">
++        <a href="/about">Our Story</a>
++        <a href="/careers">Join the Team</a>
++        <a href="/contact">Contact Us</a>
++        <a href="/privacy-policy">Privacy</a>
++      </nav>
++      <p class="copyright" part="copyright">&copy; <span class="year">2026</span> The Daily Grind Coffee Co. All rights reserved.</p>
++    </div>
++  </footer>
++`;
++
++export class DgFooter extends HTMLElement {
++  static observedAttributes = ['year'];
++
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    this.shadowRoot.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      const form = this.shadowRoot.querySelector('.newsletter-form');
++      form?.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const input = form.querySelector('input[name="email"]');
++        const email = input?.value?.trim();
++        if (!email) return;
++        this.dispatchEvent(
++          new CustomEvent('dg-newsletter-subscribe', {
++            bubbles: true,
++            composed: true,
++            detail: { email },
++          })
++        );
++        form.reset();
++      });
++      this.#initialized = true;
++    }
++    this.#syncYear();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (name === 'year' && oldVal !== newVal) {
++      this.#syncYear();
++    }
++  }
++
++  #syncYear() {
++    const yearEl = this.shadowRoot.querySelector('.year');
++    if (yearEl) {
++      yearEl.textContent = this.getAttribute('year') || '2026';
++    }
++  }
++}
++
++if (!customElements.get('dg-footer')) {
++  customElements.define('dg-footer', DgFooter);
++}
+diff --git a/components/dg-modal.js b/components/dg-modal.js
+new file mode 100644
+index 0000000..d71b183
+--- /dev/null
++++ b/components/dg-modal.js
+@@ -0,0 +1,286 @@
++/**
++ * `<dg-modal>` — Reusable Modal Dialog Web Component
++ *
++ * Uses native `<dialog closedby="any">` (`light-dismiss-a-dialog` guide) with
++ * smooth top-layer entry/exit animations (`animate-to-from-top-layer` guide)
++ * and fallback support for browsers without `closedby` or discrete `display`
++ * transitions.
++ */
++
++import { attachDialogLightDismiss, closeDialogWithAnimation } from './top-layer-utils.js';
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: contents;
++      --_modal-bg: var(--modal-bg, #ffffff);
++      --_modal-fg: var(--modal-fg, var(--text, #3e2723));
++      --_modal-primary: var(--modal-primary, var(--primary, #4e342e));
++      --_modal-accent: var(--modal-accent, var(--accent, #ffab40));
++      --_modal-border: var(--modal-border, var(--border, #e0d6d2));
++    }
++
++    dialog {
++      margin: auto;
++      padding: 0;
++      border: 1px solid var(--_modal-border);
++      border-radius: 14px;
++      background: var(--_modal-bg);
++      color: var(--_modal-fg);
++      width: min(92vw, var(--modal-max-width, 540px));
++      max-height: 88vh;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++      opacity: 0;
++      transform: scale(0.94) translateY(8px);
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.25s;
++      transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++      transition-behavior: allow-discrete;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(30, 18, 14, 0);
++      backdrop-filter: blur(0px);
++      transition-property: background-color, backdrop-filter, display, overlay;
++      transition-duration: 0.25s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    :is(dialog[open]):where(:not([data-closing])) {
++      opacity: 1;
++      transform: scale(1) translateY(0);
++
++      @starting-style {
++        opacity: 0;
++        transform: scale(0.94) translateY(8px);
++      }
++
++      &::backdrop {
++        background-color: rgba(30, 18, 14, 0.55);
++        backdrop-filter: blur(3px);
++
++        @starting-style {
++          background-color: rgba(30, 18, 14, 0);
++          backdrop-filter: blur(0px);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      dialog {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        :is(dialog[open]):where(:not([data-closing])) {
++          transform: none;
++        }
++      }
++    }
++
++    .dialog-surface {
++      display: flex;
++      flex-direction: column;
++      max-height: 88vh;
++    }
++
++    .modal-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      padding: 1.15rem 1.5rem;
++      border-bottom: 1px solid var(--_modal-border);
++      background: #fafafa;
++    }
++
++    h2 {
++      margin: 0;
++      font-size: 1.25rem;
++      color: var(--_modal-primary);
++    }
++
++    .close-btn {
++      font: inherit;
++      width: 2rem;
++      height: 2rem;
++      border-radius: 50%;
++      border: 1px solid var(--_modal-border);
++      background: #ffffff;
++      color: var(--_modal-primary);
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.1rem;
++      line-height: 1;
++      transition: background-color 0.15s ease, transform 0.15s ease;
++    }
++
++    .close-btn:hover {
++      background: #efebe9;
++      transform: scale(1.05);
++    }
++
++    .close-btn:focus-visible {
++      outline: 2px solid var(--_modal-accent);
++      outline-offset: 2px;
++    }
++
++    .modal-body {
++      padding: 1.5rem;
++      overflow-y: auto;
++      flex: 1;
++    }
++
++    .modal-footer {
++      padding: 1rem 1.5rem;
++      border-top: 1px solid var(--_modal-border);
++      background: #fafafa;
++      display: flex;
++      justify-content: flex-end;
++      gap: 0.75rem;
++    }
++
++    .modal-footer[hidden] {
++      display: none;
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <dialog part="dialog" closedby="any" aria-labelledby="modal-title">
++    <div class="dialog-surface" part="surface">
++      <header class="modal-header" part="header">
++        <h2 id="modal-title" part="title">Details</h2>
++        <button type="button" class="close-btn" part="close-button" aria-label="Close dialog">
++          &times;
++        </button>
++      </header>
++      <div class="modal-body" part="body">
++        <slot></slot>
++      </div>
++      <footer class="modal-footer" part="footer" hidden>
++        <slot name="footer"></slot>
++      </footer>
++    </div>
++  </dialog>
++`;
++
++export class DgModal extends HTMLElement {
++  static observedAttributes = ['heading', 'open'];
++
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    this.shadowRoot.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    const dialog = this.#dialog;
++    if (!this.#initialized && dialog) {
++      this.#setupListeners(dialog);
++      this.#initialized = true;
++    }
++    this.#syncHeading();
++    if (this.hasAttribute('open') && dialog && !dialog.open) {
++      dialog.showModal();
++    }
++  }
++
++  get #dialog() {
++    return this.shadowRoot.querySelector('dialog');
++  }
++
++  get heading() {
++    return this.getAttribute('heading') ?? 'Details';
++  }
++
++  set heading(val) {
++    this.setAttribute('heading', val);
++  }
++
++  get open() {
++    return Boolean(this.#dialog?.open);
++  }
++
++  showModal() {
++    const dialog = this.#dialog;
++    if (!dialog || dialog.open) return;
++    dialog.showModal();
++    this.toggleAttribute('open', true);
++    this.dispatchEvent(new CustomEvent('dg-modal-open', { bubbles: true, composed: true }));
++  }
++
++  async close(returnValue) {
++    const dialog = this.#dialog;
++    if (!dialog || !dialog.open) return;
++    await closeDialogWithAnimation(dialog, returnValue);
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'heading') {
++      this.#syncHeading();
++    } else if (name === 'open') {
++      if (newVal !== null) {
++        this.showModal();
++      } else if (this.#dialog?.open) {
++        this.close();
++      }
++    }
++  }
++
++  #syncHeading() {
++    const titleEl = this.shadowRoot.querySelector('#modal-title');
++    if (titleEl) {
++      titleEl.textContent = this.heading;
++    }
++  }
++
++  #setupListeners(dialog) {
++    const closeBtn = this.shadowRoot.querySelector('.close-btn');
++    const footerSlot = this.shadowRoot.querySelector('slot[name="footer"]');
++    const footerEl = this.shadowRoot.querySelector('.modal-footer');
++
++    closeBtn?.addEventListener('click', () => {
++      this.close('dismiss');
++    });
++
++    footerSlot?.addEventListener('slotchange', () => {
++      const hasFooter = footerSlot.assignedNodes({ flatten: true }).length > 0;
++      if (footerEl) {
++        footerEl.hidden = !hasFooter;
++      }
++    });
++
++    dialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      this.close('cancel');
++    });
++
++    dialog.addEventListener('close', () => {
++      this.removeAttribute('open');
++      this.dispatchEvent(
++        new CustomEvent('dg-modal-close', {
++          bubbles: true,
++          composed: true,
++          detail: { returnValue: dialog.returnValue },
++        })
++      );
++    });
++
++    attachDialogLightDismiss(dialog, () => this.close('backdrop'));
++  }
++}
++
++if (!customElements.get('dg-modal')) {
++  customElements.define('dg-modal', DgModal);
++}
+diff --git a/components/dg-navbar.js b/components/dg-navbar.js
+new file mode 100644
+index 0000000..474b19a
+--- /dev/null
++++ b/components/dg-navbar.js
+@@ -0,0 +1,359 @@
++/**
++ * `<dg-navbar>` — Reusable Responsive Navigation Bar Web Component
++ *
++ * Features:
++ * - Sticky top navigation with customizable brand title (`brand` attribute)
++ * - Active link state (`active` attribute)
++ * - Interactive shopping bag trigger button with live item counter (`cart-count` attribute)
++ * - Mobile hamburger menu toggle with `ElementInternals` `:state(menu-open)`
++ * - Dispatches `dg-cart-open` and `dg-nav-select` custom events
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: block;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      --_nav-bg: var(--nav-bg, var(--primary, #4e342e));
++      --_nav-fg: var(--nav-fg, #ffffff);
++      --_nav-accent: var(--nav-accent, var(--accent, #ffab40));
++      background: var(--_nav-bg);
++      color: var(--_nav-fg);
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    nav {
++      max-width: var(--container-max, 1140px);
++      margin: 0 auto;
++      padding: 0.9rem 1.25rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      position: relative;
++    }
++
++    .brand {
++      font-size: 1.35rem;
++      font-weight: 800;
++      letter-spacing: 1px;
++      color: var(--_nav-fg);
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .brand-icon {
++      color: var(--_nav-accent);
++      font-size: 1.25rem;
++    }
++
++    .nav-right {
++      display: flex;
++      align-items: center;
++      gap: 1.25rem;
++    }
++
++    ul {
++      display: flex;
++      align-items: center;
++      list-style: none;
++      margin: 0;
++      padding: 0;
++      gap: 1.25rem;
++    }
++
++    a {
++      color: var(--_nav-fg);
++      text-decoration: none;
++      font-size: 0.92rem;
++      font-weight: 500;
++      padding: 0.35rem 0.5rem;
++      border-radius: 4px;
++      transition: color 0.2s ease, background-color 0.2s ease;
++    }
++
++    a:hover,
++    a[aria-current="page"] {
++      color: var(--_nav-accent);
++    }
++
++    a:focus-visible,
++    button:focus-visible {
++      outline: 2px solid var(--_nav-accent);
++      outline-offset: 2px;
++    }
++
++    .logout-link {
++      border: 1px solid var(--_nav-accent);
++      padding: 0.35rem 0.75rem;
++      border-radius: 4px;
++    }
++
++    .logout-link:hover {
++      background: var(--_nav-accent);
++      color: #3e2723;
++    }
++
++    .actions {
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++    }
++
++    .cart-btn {
++      font: inherit;
++      color: #3e2723;
++      background: var(--_nav-accent);
++      border: none;
++      padding: 0.45rem 0.85rem;
++      border-radius: 9999px;
++      font-size: 0.88rem;
++      font-weight: 700;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.45rem;
++      transition: transform 0.15s ease, filter 0.2s ease;
++    }
++
++    .cart-btn:hover {
++      filter: brightness(1.06);
++      transform: translateY(-1px);
++    }
++
++    .cart-badge {
++      background: #3e2723;
++      color: #ffffff;
++      font-size: 0.75rem;
++      min-width: 1.35rem;
++      height: 1.35rem;
++      padding: 0 0.35rem;
++      border-radius: 9999px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .menu-toggle {
++      display: none;
++      font: inherit;
++      background: transparent;
++      color: var(--_nav-fg);
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      border-radius: 6px;
++      padding: 0.4rem 0.6rem;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    @media (max-width: 768px) {
++      .menu-toggle {
++        display: inline-flex;
++        align-items: center;
++        gap: 0.35rem;
++      }
++
++      ul {
++        display: none;
++        position: absolute;
++        top: 100%;
++        left: 0;
++        right: 0;
++        background: var(--_nav-bg);
++        flex-direction: column;
++        align-items: stretch;
++        padding: 1rem 1.25rem;
++        gap: 0.5rem;
++        border-top: 1px solid rgba(255, 255, 255, 0.12);
++        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
++      }
++
++      :host(:state(menu-open)) ul {
++        display: flex;
++      }
++
++      ul li a {
++        display: block;
++        padding: 0.5rem 0.75rem;
++      }
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <nav part="nav" aria-label="Primary Navigation">
++    <a href="/" class="brand" part="brand">
++      <span class="brand-icon" aria-hidden="true">&#9749;</span>
++      <span class="brand-text">THE DAILY GRIND</span>
++    </a>
++
++    <div class="nav-right">
++      <ul part="links">
++        <li><a href="/menu" data-nav="menu">Menu</a></li>
++        <li><a href="/locations" data-nav="locations">Locations</a></li>
++        <li><a href="/rewards" data-nav="rewards">Rewards</a></li>
++        <li><a href="/account" data-nav="account">My Account</a></li>
++        <li><a href="#component-showcase" data-nav="components">UI Components</a></li>
++        <li><a href="/logout" class="logout-link" data-nav="logout">Logout</a></li>
++      </ul>
++
++      <div class="actions">
++        <button type="button" class="cart-btn" part="cart-button" aria-label="Open order bag">
++          <span aria-hidden="true">&#128717;</span>
++          <span>Bag</span>
++          <span class="cart-badge" part="cart-badge">0</span>
++        </button>
++
++        <button type="button" class="menu-toggle" part="menu-toggle" aria-expanded="false" aria-label="Toggle navigation menu">
++          <span aria-hidden="true">&#9776;</span>
++        </button>
++      </div>
++    </div>
++  </nav>
++`;
++
++export class DgNavbar extends HTMLElement {
++  static observedAttributes = ['brand', 'cart-count', 'active'];
++
++  #internals;
++  #menuOpen = false;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals?.();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    this.shadowRoot.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#syncUI();
++  }
++
++  get brand() {
++    return this.getAttribute('brand') ?? 'THE DAILY GRIND';
++  }
++
++  set brand(value) {
++    if (value) {
++      this.setAttribute('brand', value);
++    } else {
++      this.removeAttribute('brand');
++    }
++  }
++
++  get cartCount() {
++    return Number(this.getAttribute('cart-count')) || 0;
++  }
++
++  set cartCount(value) {
++    this.setAttribute('cart-count', String(Math.max(0, Number(value) || 0)));
++  }
++
++  get active() {
++    return this.getAttribute('active') ?? '';
++  }
++
++  set active(value) {
++    if (value) {
++      this.setAttribute('active', value);
++    } else {
++      this.removeAttribute('active');
++    }
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) {
++      this.#syncUI();
++    }
++  }
++
++  #setupListeners() {
++    const cartBtn = this.shadowRoot.querySelector('.cart-btn');
++    const menuToggle = this.shadowRoot.querySelector('.menu-toggle');
++    const links = this.shadowRoot.querySelectorAll('ul a');
++
++    cartBtn?.addEventListener('click', () => {
++      this.dispatchEvent(
++        new CustomEvent('dg-cart-open', {
++          bubbles: true,
++          composed: true,
++        })
++      );
++    });
++
++    menuToggle?.addEventListener('click', () => {
++      this.#menuOpen = !this.#menuOpen;
++      this.#setMenuState(this.#menuOpen);
++    });
++
++    links.forEach((link) => {
++      link.addEventListener('click', (e) => {
++        const navKey = link.dataset.nav || '';
++        const href = link.getAttribute('href') || '';
++        if (this.#menuOpen) {
++          this.#menuOpen = false;
++          this.#setMenuState(false);
++        }
++        const event = new CustomEvent('dg-nav-select', {
++          bubbles: true,
++          composed: true,
++          cancelable: true,
++          detail: { key: navKey, href, label: link.textContent.trim() },
++        });
++        const proceed = this.dispatchEvent(event);
++        if (!proceed) {
++          e.preventDefault();
++        }
++      });
++    });
++  }
++
++  #setMenuState(open) {
++    const menuToggle = this.shadowRoot.querySelector('.menu-toggle');
++    menuToggle?.setAttribute('aria-expanded', String(open));
++    if (this.#internals?.states) {
++      if (open) {
++        this.#internals.states.add('menu-open');
++      } else {
++        this.#internals.states.delete('menu-open');
++      }
++    }
++  }
++
++  #syncUI() {
++    const brandText = this.shadowRoot.querySelector('.brand-text');
++    const badge = this.shadowRoot.querySelector('.cart-badge');
++    const links = this.shadowRoot.querySelectorAll('ul a');
++
++    if (brandText) {
++      brandText.textContent = this.brand;
++    }
++    if (badge) {
++      badge.textContent = String(this.cartCount);
++    }
++    const activeKey = this.active;
++    links.forEach((link) => {
++      if (link.dataset.nav === activeKey) {
++        link.setAttribute('aria-current', 'page');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    });
++  }
++}
++
++if (!customElements.get('dg-navbar')) {
++  customElements.define('dg-navbar', DgNavbar);
++}
+diff --git a/components/dg-product-card.js b/components/dg-product-card.js
+new file mode 100644
+index 0000000..21bfa91
+--- /dev/null
++++ b/components/dg-product-card.js
+@@ -0,0 +1,546 @@
++/**
++ * `<dg-product-card>` — Reusable Coffee Menu & Product Card Web Component
++ *
++ * Features:
++ * - Responsive container query layout (`container-type: inline-size`)
++ * - Shared `CSSStyleSheet` via `adoptedStyleSheets`
++ * - Private shadow custom properties (`--_card-bg: var(--card-bg, ...)`) for clean theming
++ * - Runtime custom states (`:state(favorited)`, `:state(in-cart)`) via `ElementInternals`
++ * - Dispatches `dg-add-to-cart`, `dg-quick-view`, and `dg-favorite-change` events
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: block;
++      container-type: inline-size;
++      --_card-bg: var(--card-bg, #ffffff);
++      --_card-fg: var(--card-fg, var(--text, #3e2723));
++      --_card-primary: var(--card-primary, var(--primary, #4e342e));
++      --_card-accent: var(--card-accent, var(--accent, #ffab40));
++      --_card-border: var(--card-border, var(--border, #e0d6d2));
++    }
++
++    article {
++      background: var(--_card-bg);
++      color: var(--_card-fg);
++      border: 1px solid var(--_card-border);
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 3px 10px rgba(62, 39, 35, 0.08);
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
++    }
++
++    article:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.14);
++    }
++
++    :host(:state(in-cart)) article {
++      border-color: var(--_card-accent);
++    }
++
++    .media {
++      position: relative;
++      aspect-ratio: 16 / 10;
++      background: #efebe9;
++      overflow: hidden;
++    }
++
++    .media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    article:hover .media img {
++      transform: scale(1.04);
++    }
++
++    .badge {
++      position: absolute;
++      top: 0.75rem;
++      left: 0.75rem;
++      background: var(--_card-accent);
++      color: #3e2723;
++      font-size: 0.72rem;
++      font-weight: 800;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 0.25rem 0.65rem;
++      border-radius: 9999px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
++    }
++
++    .badge[hidden] {
++      display: none;
++    }
++
++    .fav-btn {
++      position: absolute;
++      top: 0.65rem;
++      right: 0.65rem;
++      width: 2.15rem;
++      height: 2.15rem;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.9);
++      color: #6d4c41;
++      font: inherit;
++      font-size: 1.05rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
++    }
++
++    .fav-btn:hover {
++      transform: scale(1.08);
++      background: #ffffff;
++    }
++
++    :host(:state(favorited)) .fav-btn {
++      color: #c62828;
++      background: #ffebee;
++    }
++
++    .content {
++      padding: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      gap: 0.5rem;
++      text-align: left;
++    }
++
++    .header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 0.5rem;
++    }
++
++    h3 {
++      margin: 0;
++      font-size: 1.15rem;
++      color: var(--_card-primary);
++      line-height: 1.3;
++    }
++
++    .price {
++      font-weight: 800;
++      font-size: 1.05rem;
++      color: var(--_card-primary);
++      white-space: nowrap;
++    }
++
++    .meta {
++      font-size: 0.78rem;
++      color: #6d4c41;
++      display: flex;
++      gap: 0.6rem;
++      align-items: center;
++    }
++
++    .meta[hidden] {
++      display: none;
++    }
++
++    .desc {
++      font-size: 0.92rem;
++      color: #5d4037;
++      line-height: 1.5;
++      flex: 1;
++    }
++
++    ::slotted(p) {
++      margin: 0;
++    }
++
++    .actions {
++      display: flex;
++      gap: 0.5rem;
++      margin-top: 0.75rem;
++      padding-top: 0.75rem;
++      border-top: 1px solid var(--_card-border);
++    }
++
++    .btn-primary,
++    .btn-secondary {
++      font: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      padding: 0.55rem 0.9rem;
++      border-radius: 6px;
++      cursor: pointer;
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.35rem;
++      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++    }
++
++    .btn-primary {
++      flex: 1;
++      background: var(--_card-primary);
++      color: #ffffff;
++      border: 1.5px solid var(--_card-primary);
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++      border-color: #3e2723;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--_card-primary);
++      border: 1.5px solid var(--_card-border);
++    }
++
++    .btn-secondary:hover {
++      border-color: var(--_card-primary);
++      background: #efebe9;
++    }
++
++    button:focus-visible,
++    a:focus-visible {
++      outline: 2px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    /* Container query: horizontal layout when placed in wide containers */
++    @container (min-width: 34rem) {
++      article {
++        flex-direction: row;
++        align-items: stretch;
++      }
++
++      .media {
++        width: 42%;
++        aspect-ratio: auto;
++        min-height: 200px;
++      }
++
++      .content {
++        width: 58%;
++      }
++    }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article part="card">
++    <div class="media" part="media">
++      <img part="image" src="" alt="" loading="lazy" />
++      <span class="badge" part="badge" hidden></span>
++      <button type="button" class="fav-btn" part="favorite-button" aria-label="Save to favorites" aria-pressed="false">
++        <span class="fav-icon" aria-hidden="true">&#9825;</span>
++      </button>
++    </div>
++
++    <div class="content" part="content">
++      <div class="header-row">
++        <h3 part="title"></h3>
++        <span class="price" part="price"></span>
++      </div>
++      <div class="meta" part="meta" hidden></div>
++      <div class="desc" part="description">
++        <slot></slot>
++      </div>
++      <div class="actions" part="actions">
++        <button type="button" class="btn-primary add-btn" part="add-button">
++          Add to Order
++        </button>
++        <a class="btn-secondary details-btn" part="details-button" href="#">
++          View Details
++        </a>
++      </div>
++    </div>
++  </article>
++`;
++
++export class DgProductCard extends HTMLElement {
++  static observedAttributes = [
++    'product-id',
++    'name',
++    'price',
++    'image',
++    'badge',
++    'category',
++    'calories',
++    'href',
++    'favorited',
++  ];
++
++  #internals;
++  #favorited = false;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals?.();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    this.shadowRoot.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++    this.#favorited = this.hasAttribute('favorited');
++    this.#syncFavoriteState();
++    this.#syncUI();
++  }
++
++  get productId() {
++    return this.getAttribute('product-id') || this.name.toLowerCase().replace(/\s+/g, '-');
++  }
++
++  set productId(val) {
++    this.setAttribute('product-id', val);
++  }
++
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++
++  set name(val) {
++    this.setAttribute('name', val);
++  }
++
++  get price() {
++    return Number(this.getAttribute('price')) || 0;
++  }
++
++  set price(val) {
++    this.setAttribute('price', String(val));
++  }
++
++  get image() {
++    return (
++      this.getAttribute('image') ||
++      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80'
++    );
++  }
++
++  set image(val) {
++    this.setAttribute('image', val);
++  }
++
++  get badge() {
++    return this.getAttribute('badge') ?? '';
++  }
++
++  set badge(val) {
++    if (val) {
++      this.setAttribute('badge', val);
++    } else {
++      this.removeAttribute('badge');
++    }
++  }
++
++  get calories() {
++    return this.getAttribute('calories') ?? '';
++  }
++
++  set calories(val) {
++    if (val) {
++      this.setAttribute('calories', val);
++    } else {
++      this.removeAttribute('calories');
++    }
++  }
++
++  get href() {
++    return this.getAttribute('href') || '#';
++  }
++
++  set href(val) {
++    this.setAttribute('href', val);
++  }
++
++  get favorited() {
++    return this.#favorited;
++  }
++
++  set favorited(val) {
++    const next = Boolean(val);
++    if (this.#favorited === next) return;
++    this.#favorited = next;
++    this.toggleAttribute('favorited', next);
++    this.#syncFavoriteState();
++  }
++
++  markInCart(inCart = true) {
++    if (!this.#internals?.states) return;
++    if (inCart) {
++      this.#internals.states.add('in-cart');
++    } else {
++      this.#internals.states.delete('in-cart');
++    }
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'favorited') {
++      this.#favorited = newVal !== null;
++      this.#syncFavoriteState();
++      return;
++    }
++    this.#syncUI();
++  }
++
++  getProductData() {
++    const slot = this.shadowRoot.querySelector('slot');
++    const assigned = slot?.assignedNodes({ flatten: true }) || [];
++    const description = assigned
++      .map((n) => n.textContent)
++      .join(' ')
++      .trim();
++
++    return {
++      id: this.productId,
++      name: this.name,
++      price: this.price,
++      image: this.image,
++      badge: this.badge,
++      calories: this.calories,
++      href: this.href,
++      description,
++    };
++  }
++
++  #setupListeners() {
++    const addBtn = this.shadowRoot.querySelector('.add-btn');
++    const detailsBtn = this.shadowRoot.querySelector('.details-btn');
++    const favBtn = this.shadowRoot.querySelector('.fav-btn');
++
++    addBtn?.addEventListener('click', () => {
++      this.markInCart(true);
++      this.dispatchEvent(
++        new CustomEvent('dg-add-to-cart', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            ...this.getProductData(),
++            size: 'Medium (12oz)',
++            milk: 'Oat Milk',
++            quantity: 1,
++          },
++        })
++      );
++    });
++
++    detailsBtn?.addEventListener('click', (e) => {
++      const event = new CustomEvent('dg-quick-view', {
++        bubbles: true,
++        composed: true,
++        cancelable: true,
++        detail: this.getProductData(),
++      });
++      const notCancelled = this.dispatchEvent(event);
++      if (!notCancelled) {
++        e.preventDefault();
++      }
++    });
++
++    favBtn?.addEventListener('click', () => {
++      this.favorited = !this.#favorited;
++      this.dispatchEvent(
++        new CustomEvent('dg-favorite-change', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            ...this.getProductData(),
++            favorited: this.#favorited,
++          },
++        })
++      );
++    });
++  }
++
++  #syncFavoriteState() {
++    const favBtn = this.shadowRoot.querySelector('.fav-btn');
++    const favIcon = this.shadowRoot.querySelector('.fav-icon');
++    if (favBtn) {
++      favBtn.setAttribute('aria-pressed', String(this.#favorited));
++      favBtn.setAttribute(
++        'aria-label',
++        this.#favorited ? `Remove ${this.name} from favorites` : `Save ${this.name} to favorites`
++      );
++    }
++    if (favIcon) {
++      favIcon.innerHTML = this.#favorited ? '&#9829;' : '&#9825;';
++    }
++    if (this.#internals?.states) {
++      if (this.#favorited) {
++        this.#internals.states.add('favorited');
++      } else {
++        this.#internals.states.delete('favorited');
++      }
++    }
++  }
++
++  #syncUI() {
++    const img = this.shadowRoot.querySelector('img');
++    const badgeEl = this.shadowRoot.querySelector('.badge');
++    const titleEl = this.shadowRoot.querySelector('h3');
++    const priceEl = this.shadowRoot.querySelector('.price');
++    const metaEl = this.shadowRoot.querySelector('.meta');
++    const detailsBtn = this.shadowRoot.querySelector('.details-btn');
++
++    if (img) {
++      img.src = this.image;
++      img.alt = this.name || 'Coffee beverage';
++    }
++
++    if (badgeEl) {
++      if (this.badge) {
++        badgeEl.textContent = this.badge;
++        badgeEl.hidden = false;
++      } else {
++        badgeEl.textContent = '';
++        badgeEl.hidden = true;
++      }
++    }
++
++    if (titleEl) {
++      titleEl.textContent = this.name;
++    }
++
++    if (priceEl) {
++      priceEl.textContent = this.price > 0 ? `$${this.price.toFixed(2)}` : '';
++    }
++
++    if (metaEl) {
++      if (this.calories) {
++        metaEl.textContent = `${this.calories} cal`;
++        metaEl.hidden = false;
++      } else {
++        metaEl.textContent = '';
++        metaEl.hidden = true;
++      }
++    }
++
++    if (detailsBtn) {
++      detailsBtn.setAttribute('href', this.href);
++    }
++  }
++}
++
++if (!customElements.get('dg-product-card')) {
++  customElements.define('dg-product-card', DgProductCard);
++}
+diff --git a/components/dg-tabs.js b/components/dg-tabs.js
+new file mode 100644
+index 0000000..b913898
+--- /dev/null
++++ b/components/dg-tabs.js
+@@ -0,0 +1,233 @@
++/**
++ * `<dg-tabs>` — Accessible Filter / Category Tab Bar Web Component
++ *
++ * Features:
++ * - Semantic `role="tablist"` and `role="tab"` inside a single Shadow DOM root
++ * - Roving `tabindex` with Left/Right/Home/End arrow key navigation
++ * - Dispatches `dg-tab-change` event with `{ value, label }` when active tab changes
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: block;
++      --_tab-bg: var(--tab-bg, #efebe9);
++      --_tab-active-bg: var(--tab-active-bg, var(--primary, #4e342e));
++      --_tab-active-fg: var(--tab-active-fg, #ffffff);
++      --_tab-fg: var(--tab-fg, var(--text, #3e2723));
++      --_tab-accent: var(--tab-accent, var(--accent, #ffab40));
++    }
++
++    .tablist {
++      display: inline-flex;
++      flex-wrap: wrap;
++      gap: 0.35rem;
++      background: var(--_tab-bg);
++      padding: 0.35rem;
++      border-radius: 9999px;
++      border: 1px solid var(--border, #e0d6d2);
++    }
++
++    button[role="tab"] {
++      font: inherit;
++      font-size: 0.88rem;
++      font-weight: 600;
++      padding: 0.45rem 1.1rem;
++      border-radius: 9999px;
++      border: none;
++      background: transparent;
++      color: var(--_tab-fg);
++      cursor: pointer;
++      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    button[role="tab"]:hover {
++      background: rgba(78, 52, 46, 0.08);
++    }
++
++    button[role="tab"][aria-selected="true"] {
++      background: var(--_tab-active-bg);
++      color: var(--_tab-active-fg);
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.2);
++    }
++
++    button[role="tab"]:focus-visible {
++      outline: 2px solid var(--_tab-accent);
++      outline-offset: 2px;
++    }
++  }
++`);
++
++const DEFAULT_TABS = [
++  { value: 'all', label: 'All Favorites' },
++  { value: 'seasonal', label: 'Seasonal' },
++  { value: 'espresso', label: 'Espresso' },
++  { value: 'cold-brew', label: 'Cold Brew & Iced' },
++  { value: 'bakery', label: 'Artisanal Bakery' },
++];
++
++export class DgTabs extends HTMLElement {
++  static observedAttributes = ['active', 'tabs'];
++
++  #tabs = DEFAULT_TABS;
++  #active = 'all';
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++  }
++
++  connectedCallback() {
++    if (this.hasAttribute('tabs')) {
++      this.#parseTabsAttribute(this.getAttribute('tabs'));
++    }
++    if (this.hasAttribute('active')) {
++      this.#active = this.getAttribute('active') || 'all';
++    }
++    this.#render();
++    if (!this.#initialized) {
++      this.#setupListeners();
++      this.#initialized = true;
++    }
++  }
++
++  get active() {
++    return this.#active;
++  }
++
++  set active(val) {
++    if (this.#active === val) return;
++    this.#active = val;
++    this.setAttribute('active', val);
++    this.#updateSelection();
++  }
++
++  get tabs() {
++    return this.#tabs;
++  }
++
++  set tabs(list) {
++    if (!Array.isArray(list)) return;
++    this.#tabs = list;
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'tabs') {
++      this.#parseTabsAttribute(newVal);
++      if (this.isConnected) this.#render();
++    } else if (name === 'active' && newVal) {
++      this.#active = newVal;
++      if (this.isConnected) this.#updateSelection();
++    }
++  }
++
++  #parseTabsAttribute(raw) {
++    if (!raw) {
++      this.#tabs = DEFAULT_TABS;
++      return;
++    }
++    try {
++      const parsed = JSON.parse(raw);
++      if (Array.isArray(parsed) && parsed.length > 0) {
++        this.#tabs = parsed;
++      }
++    } catch {
++      // Fallback to comma-separated "value:Label" pairs
++      this.#tabs = raw.split(',').map((pair) => {
++        const [value, label] = pair.split(':').map((s) => s.trim());
++        return { value: value || 'all', label: label || value || 'All' };
++      });
++    }
++  }
++
++  #render() {
++    const label = this.getAttribute('aria-label') || 'Menu Categories';
++    this.shadowRoot.innerHTML = '';
++    const list = document.createElement('div');
++    list.className = 'tablist';
++    list.setAttribute('role', 'tablist');
++    list.setAttribute('aria-label', label);
++    list.setAttribute('part', 'tablist');
++
++    for (const tab of this.#tabs) {
++      const isSelected = tab.value === this.#active;
++      const btn = document.createElement('button');
++      btn.type = 'button';
++      btn.setAttribute('role', 'tab');
++      btn.setAttribute('part', 'tab');
++      btn.dataset.value = tab.value;
++      btn.setAttribute('aria-selected', String(isSelected));
++      btn.tabIndex = isSelected ? 0 : -1;
++      btn.textContent = tab.label;
++      list.append(btn);
++    }
++
++    this.shadowRoot.append(list);
++  }
++
++  #updateSelection(focusActive = false) {
++    const buttons = this.shadowRoot.querySelectorAll('button[role="tab"]');
++    buttons.forEach((btn) => {
++      const selected = btn.dataset.value === this.#active;
++      btn.setAttribute('aria-selected', String(selected));
++      btn.tabIndex = selected ? 0 : -1;
++      if (selected && focusActive) {
++        btn.focus();
++      }
++    });
++  }
++
++  #selectTab(value, focusActive = false) {
++    const tab = this.#tabs.find((t) => t.value === value);
++    if (!tab) return;
++    this.#active = tab.value;
++    this.setAttribute('active', tab.value);
++    this.#updateSelection(focusActive);
++    this.dispatchEvent(
++      new CustomEvent('dg-tab-change', {
++        bubbles: true,
++        composed: true,
++        detail: { value: tab.value, label: tab.label },
++      })
++    );
++  }
++
++  #setupListeners() {
++    this.shadowRoot.addEventListener('click', (e) => {
++      const btn = e.target.closest('button[role="tab"]');
++      if (!btn) return;
++      this.#selectTab(btn.dataset.value, false);
++    });
++
++    this.shadowRoot.addEventListener('keydown', (e) => {
++      const buttons = Array.from(this.shadowRoot.querySelectorAll('button[role="tab"]'));
++      if (buttons.length === 0) return;
++      const currentIndex = buttons.findIndex((b) => b.dataset.value === this.#active);
++      let nextIndex = -1;
++
++      if (e.key === 'ArrowRight') {
++        nextIndex = (currentIndex + 1) % buttons.length;
++      } else if (e.key === 'ArrowLeft') {
++        nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
++      } else if (e.key === 'Home') {
++        nextIndex = 0;
++      } else if (e.key === 'End') {
++        nextIndex = buttons.length - 1;
++      }
++
++      if (nextIndex !== -1) {
++        e.preventDefault();
++        this.#selectTab(buttons[nextIndex].dataset.value, true);
++      }
++    });
++  }
++}
++
++if (!customElements.get('dg-tabs')) {
++  customElements.define('dg-tabs', DgTabs);
++}
+diff --git a/components/dg-toast.js b/components/dg-toast.js
+new file mode 100644
+index 0000000..4a28e32
+--- /dev/null
++++ b/components/dg-toast.js
+@@ -0,0 +1,164 @@
++/**
++ * `<dg-toast>` — Accessible Live-Region Toast Notification Manager
++ *
++ * Exposes `.show({ title, message, variant, duration })` method to display
++ * non-blocking feedback notifications (e.g., item added to bag, order placed).
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  @layer base {
++    :host {
++      display: block;
++      position: fixed;
++      bottom: 1.5rem;
++      right: 1.5rem;
++      z-index: 2000;
++      pointer-events: none;
++      --_toast-bg: var(--toast-bg, #3e2723);
++      --_toast-fg: var(--toast-fg, #ffffff);
++      --_toast-accent: var(--toast-accent, var(--accent, #ffab40));
++    }
++
++    .stack {
++      display: flex;
++      flex-direction: column;
++      gap: 0.65rem;
++      align-items: flex-end;
++      max-width: min(92vw, 360px);
++    }
++
++    .toast {
++      pointer-events: auto;
++      background: var(--_toast-bg);
++      color: var(--_toast-fg);
++      border-left: 4px solid var(--_toast-accent);
++      border-radius: 10px;
++      padding: 0.85rem 1.1rem;
++      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
++      display: flex;
++      align-items: flex-start;
++      gap: 0.75rem;
++      width: 100%;
++      animation: toast-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
++    .toast[data-variant="success"] {
++      border-left-color: #66bb6a;
++    }
++
++    .toast-body {
++      flex: 1;
++      font-size: 0.88rem;
++      line-height: 1.4;
++    }
++
++    .toast-title {
++      font-weight: 700;
++      font-size: 0.92rem;
++      margin-bottom: 0.15rem;
++      color: var(--_toast-accent);
++    }
++
++    .toast[data-variant="success"] .toast-title {
++      color: #a5d6a7;
++    }
++
++    .dismiss-btn {
++      font: inherit;
++      background: transparent;
++      border: none;
++      color: rgba(255, 255, 255, 0.75);
++      cursor: pointer;
++      font-size: 1.1rem;
++      line-height: 1;
++      padding: 0.1rem 0.25rem;
++    }
++
++    .dismiss-btn:hover {
++      color: #ffffff;
++    }
++
++    @keyframes toast-in {
++      from {
++        opacity: 0;
++        transform: translateY(10px) scale(0.97);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toast {
++        animation-duration: 0.05s;
++      }
++    }
++  }
++`);
++
++export class DgToast extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.adoptedStyleSheets = [sheet];
++    const stack = document.createElement('div');
++    stack.className = 'stack';
++    stack.setAttribute('role', 'status');
++    stack.setAttribute('aria-live', 'polite');
++    stack.setAttribute('part', 'stack');
++    this.shadowRoot.append(stack);
++  }
++
++  /**
++   * @param {{ title?: string, message: string, variant?: 'default' | 'success', duration?: number }} options
++   */
++  show({ title = 'The Daily Grind', message = '', variant = 'default', duration = 3400 } = {}) {
++    const stack = this.shadowRoot.querySelector('.stack');
++    if (!stack) return;
++
++    const item = document.createElement('div');
++    item.className = 'toast';
++    item.dataset.variant = variant;
++    item.setAttribute('part', 'toast');
++
++    const body = document.createElement('div');
++    body.className = 'toast-body';
++
++    if (title) {
++      const titleEl = document.createElement('div');
++      titleEl.className = 'toast-title';
++      titleEl.textContent = title;
++      body.append(titleEl);
++    }
++
++    const msgEl = document.createElement('div');
++    msgEl.textContent = message;
++    body.append(msgEl);
++
++    const dismiss = document.createElement('button');
++    dismiss.type = 'button';
++    dismiss.className = 'dismiss-btn';
++    dismiss.setAttribute('aria-label', 'Dismiss notification');
++    dismiss.innerHTML = '&times;';
++
++    let timerId;
++    const removeToast = () => {
++      clearTimeout(timerId);
++      item.remove();
++    };
++
++    dismiss.addEventListener('click', removeToast);
++    item.append(body, dismiss);
++    stack.append(item);
++
++    if (duration > 0) {
++      timerId = setTimeout(removeToast, duration);
++    }
++  }
++}
++
++if (!customElements.get('dg-toast')) {
++  customElements.define('dg-toast', DgToast);
++}
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..d6b55e9
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,19 @@
++/**
++ * The Daily Grind — Reusable UI Components Entrypoint
++ *
++ * Registers all custom elements and exports their classes and helpers.
++ */
++
++export { DgNavbar } from './dg-navbar.js';
++export { DgProductCard } from './dg-product-card.js';
++export { DgModal } from './dg-modal.js';
++export { DgCartDrawer } from './dg-cart-drawer.js';
++export { DgTabs } from './dg-tabs.js';
++export { DgToast } from './dg-toast.js';
++export { DgFooter } from './dg-footer.js';
++export {
++  canTransitionDisplay,
++  supportsTopLayerExit,
++  closeDialogWithAnimation,
++  attachDialogLightDismiss,
++} from './top-layer-utils.js';
+diff --git a/components/top-layer-utils.js b/components/top-layer-utils.js
+new file mode 100644
+index 0000000..e5f4749
+--- /dev/null
++++ b/components/top-layer-utils.js
+@@ -0,0 +1,85 @@
++/**
++ * Top-layer exit transition helper (`animate-to-from-top-layer` guide).
++ * Detects whether the browser natively transitions `display` and `overlay`
++ * when closing a `<dialog>` or `[popover]`. If unsupported, applies a
++ * `data-closing` attribute and waits for CSS transitions to finish before
++ * calling `.close()` or `.hidePopover()`.
++ */
++
++let supportsDisplayTransition;
++
++export function canTransitionDisplay() {
++  if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++    return false;
++  }
++  const probe = document.createElement('div');
++  probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++  document.body.appendChild(probe);
++  getComputedStyle(probe).display;
++  probe.style.display = 'none';
++  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++  probe.remove();
++  return supportsDisplayTransition;
++}
++
++export function supportsTopLayerExit() {
++  return Boolean(window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay());
++}
++
++/**
++ * Smoothly closes a modal `<dialog>` element, falling back to `data-closing`
++ * animation waiting when native discrete top-layer exit transitions are unsupported.
++ *
++ * @param {HTMLDialogElement} dialog
++ * @param {string} [returnValue]
++ */
++export async function closeDialogWithAnimation(dialog, returnValue) {
++  if (!dialog || !dialog.open) return;
++
++  if (!supportsTopLayerExit()) {
++    dialog.setAttribute('data-closing', '');
++    const animations = dialog.getAnimations({ subtree: true });
++    if (animations.length > 0) {
++      await Promise.race([
++        Promise.allSettled(animations.map((a) => a.finished)),
++        new Promise((r) => setTimeout(r, 2000)),
++      ]);
++    }
++    if (!dialog.hasAttribute('data-closing')) return;
++    dialog.removeAttribute('data-closing');
++  }
++
++  dialog.close(returnValue);
++}
++
++/**
++ * Installs a light-dismiss fallback on a `<dialog>` element for browsers
++ * that do not yet support the declarative `closedby="any"` attribute
++ * (`light-dismiss-a-dialog` guide).
++ *
++ * @param {HTMLDialogElement} dialog
++ * @param {(dialog: HTMLDialogElement) => void} [onDismiss]
++ */
++export function attachDialogLightDismiss(dialog, onDismiss) {
++  if ('closedBy' in HTMLDialogElement.prototype) return;
++
++  dialog.addEventListener('click', (event) => {
++    if (event.target !== dialog) return;
++
++    const rect = dialog.getBoundingClientRect();
++    const isDialogContent =
++      rect.top <= event.clientY &&
++      event.clientY <= rect.top + rect.height &&
++      rect.left <= event.clientX &&
++      event.clientX <= rect.left + rect.width;
++
++    if (isDialogContent) return;
++
++    if (onDismiss) {
++      onDismiss(dialog);
++    } else {
++      closeDialogWithAnimation(dialog);
++    }
++  });
++}
+diff --git a/index.html b/index.html
+index 66c9173..92f4919 100644
+--- a/index.html
++++ b/index.html
+@@ -5,207 +5,397 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="./styles/main.css">
++  <script type="module" src="./components/index.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <!-- Reusable Sticky Navigation Bar Component -->
++  <dg-navbar id="app-navbar" brand="THE DAILY GRIND" active="menu" cart-count="0"></dg-navbar>
+ 
++  <!-- Hero Banner Component -->
+   <header class="hero">
++    <span class="badge badge--accent">Small-Batch Roastery</span>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="#seasonal-menu" class="btn btn--accent btn--lg">Order Now</a>
++      <button type="button" class="btn btn--outline-light btn--lg" id="open-bag-hero">View Order Bag</button>
++    </div>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" id="seasonal-menu">
++    <!-- Filterable Menu Section using <dg-tabs> and <dg-product-card> -->
++    <section aria-labelledby="menu-heading">
++      <div class="section-header">
++        <h2 id="menu-heading">Seasonal Favorites</h2>
++        <p>Handcrafted beverages and freshly baked goods made with organic ingredients.</p>
++        <div class="mt-2">
++          <dg-tabs id="menu-tabs" active="all" aria-label="Filter menu items by category"></dg-tabs>
++        </div>
++      </div>
++
++      <div class="grid" id="product-grid">
++        <dg-product-card
++          product-id="maple-oat-latte"
++          name="Maple Oat Latte"
++          price="5.75"
++          badge="Seasonal"
++          category="seasonal"
++          calories="210"
++          href="/menu/seasonal"
++          image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Creamy oat milk with a hint of Vermont maple syrup and a double shot of espresso.</p>
++        </dg-product-card>
++
++        <dg-product-card
++          product-id="dark-roast-espresso"
++          name="Dark Roast Espresso"
++          price="3.95"
++          badge="Roaster's Pick"
++          category="espresso"
++          calories="15"
++          href="/menu/espresso"
++          image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Bold, smokey, and perfect for a morning boost with rich dark chocolate undertones.</p>
++        </dg-product-card>
++
++        <dg-product-card
++          product-id="cold-brew"
++          name="Cold Brew"
++          price="4.85"
++          badge="18-Hr Steep"
++          category="cold-brew"
++          calories="5"
++          href="/menu/cold-brew"
++          image="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Steeped for 18 hours in filtered cold water for maximum smoothness and low acidity.</p>
++        </dg-product-card>
++
++        <dg-product-card
++          product-id="honey-cardamom-cortado"
++          name="Honey Cardamom Cortado"
++          price="5.25"
++          badge="New"
++          category="seasonal"
++          calories="130"
++          href="/menu/cortado"
++          image="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Equal parts velvety steamed milk and espresso infused with wildflower honey and cardamom.</p>
++        </dg-product-card>
++
++        <dg-product-card
++          product-id="vanilla-sweet-cream-nitro"
++          name="Vanilla Sweet Cream Nitro"
++          price="5.50"
++          category="cold-brew"
++          calories="110"
++          href="/menu/nitro"
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Cascading nitrogen-infused cold brew topped with house-made Madagascar vanilla cream.</p>
++        </dg-product-card>
++
++        <dg-product-card
++          product-id="almond-butter-croissant"
++          name="Almond Butter Croissant"
++          price="4.50"
++          badge="Fresh Baked"
++          category="bakery"
++          calories="340"
++          href="/menu/bakery"
++          image="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=800&q=80"
++        >
++          <p>Flaky laminated pastry filled with roasted almond frangipane and toasted sliced almonds.</p>
++        </dg-product-card>
++      </div>
++    </section>
++
++    <!-- Featured Wide Card Container Query Demo -->
++    <section class="mt-3" style="margin-top: 3.5rem;" aria-labelledby="featured-heading">
++      <div class="section-header">
++        <h2 id="featured-heading">Roaster's Reserve Spotlight</h2>
++        <p>The same <code>&lt;dg-product-card&gt;</code> component adapts automatically to wide containers via CSS Container Queries.</p>
++      </div>
++      <dg-product-card
++        product-id="ethiopia-yirgacheffe-beans"
++        name="Ethiopia Yirgacheffe Whole Bean (12oz)"
++        price="18.50"
++        badge="Single Origin"
++        category="espresso"
++        href="/menu/beans"
++        image="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80"
++      >
++        <p>Washed process heirloom varietals grown at 2,100 meters. Bright floral jasmine aroma with notes of bergamot, white peach, and Meyer lemon zest.</p>
++      </dg-product-card>
++    </section>
++
++    <!-- Reusable UI Component Library Showcase -->
++    <section id="component-showcase" style="margin-top: 4rem; padding-top: 2.5rem; border-top: 1px solid var(--border);" aria-labelledby="showcase-heading">
++      <div class="section-header">
++        <span class="badge">Design System</span>
++        <h2 id="showcase-heading" class="mt-1">Reusable UI Component Library</h2>
++        <p>Interactive primitives and custom elements built for The Daily Grind.</p>
++      </div>
++
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <!-- Buttons & Badges Card -->
++        <div class="card" style="text-align: left;">
++          <h3>Buttons &amp; Badges</h3>
++          <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 1rem;">Native semantic buttons styled with cascade layers and variants.</p>
++          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
++            <button type="button" class="btn btn--sm">Primary</button>
++            <button type="button" class="btn btn--accent btn--sm">Accent</button>
++            <button type="button" class="btn btn--outline btn--sm">Outline</button>
++            <button type="button" class="btn btn--ghost btn--sm">Ghost</button>
++          </div>
++          <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
++            <span class="badge">Default</span>
++            <span class="badge badge--accent">Seasonal</span>
++            <span class="badge badge--success">In Stock</span>
++            <span class="badge badge--warning">Low Roast</span>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <!-- Overlays & Notifications Card -->
++        <div class="card" style="text-align: left;">
++          <h3>Dialogs, Drawers &amp; Toasts</h3>
++          <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 1rem;">Top-layer native <code>&lt;dialog closedby="any"&gt;</code> modals and polite live-region toasts.</p>
++          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
++            <button type="button" class="btn btn--sm" id="demo-modal-btn">Open Customizer Modal</button>
++            <button type="button" class="btn btn--outline btn--sm" id="demo-drawer-btn">Open Order Drawer</button>
++            <button type="button" class="btn btn--accent btn--sm" id="demo-toast-btn">Trigger Toast</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- Alerts & Callouts Card -->
++        <div class="card" style="text-align: left;">
++          <h3>Alerts &amp; Callouts</h3>
++          <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 0.75rem;">Contextual status banners for rewards and store announcements.</p>
++          <div class="alert alert--accent" style="font-size: 0.85rem;">
++            <div>
++              <strong>Double Bean Points!</strong> Order any seasonal drink today to earn 2x rewards.
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <!-- Reusable Drink Customizer / Quick-View Modal Component -->
++  <dg-modal id="product-modal" heading="Customize Your Drink">
++    <form id="customize-form">
++      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.25rem;">
++        <img
++          id="modal-product-img"
++          src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++          alt="Selected drink"
++          style="width: 84px; height: 84px; border-radius: 10px; object-fit: cover;"
++        >
++        <div>
++          <span class="badge badge--accent" id="modal-product-badge">Seasonal</span>
++          <h3 id="modal-product-name" style="margin-top: 0.25rem;">Maple Oat Latte</h3>
++          <p id="modal-product-price" style="font-weight: 700; color: var(--primary);">$5.75</p>
++        </div>
++      </div>
++
++      <p id="modal-product-desc" class="text-muted mb-2" style="font-size: 0.92rem;">
++        Creamy oat milk with a hint of Vermont maple syrup and a double shot of espresso.
++      </p>
++
++      <div class="form-group">
++        <span class="form-label">Cup Size</span>
++        <div class="chip-group">
++          <label class="chip-option">
++            <input type="radio" name="size" value="Small (8oz)">
++            <span>Small (8oz)</span>
++          </label>
++          <label class="chip-option">
++            <input type="radio" name="size" value="Medium (12oz)" checked>
++            <span>Medium (12oz)</span>
++          </label>
++          <label class="chip-option">
++            <input type="radio" name="size" value="Large (16oz)">
++            <span>Large (16oz)</span>
++          </label>
++        </div>
++      </div>
++
++      <div class="form-group">
++        <label class="form-label" for="milk-select">Milk Choice</label>
++        <select class="form-control" id="milk-select" name="milk">
++          <option value="Oat Milk">Barista Oat Milk</option>
++          <option value="Whole Milk">Organic Whole Milk</option>
++          <option value="Almond Milk">Roasted Almond Milk</option>
++          <option value="No Milk / Black">No Milk (Black)</option>
++        </select>
++      </div>
++    </form>
++
++    <div slot="footer" style="display: flex; gap: 0.6rem; justify-content: flex-end; width: 100%;">
++      <button type="button" class="btn btn--ghost btn--sm" id="modal-cancel-btn">Cancel</button>
++      <button type="button" class="btn btn--sm" id="modal-confirm-btn">Add Customized Drink</button>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </dg-modal>
++
++  <!-- Reusable Slide-Out Shopping Bag Drawer -->
++  <dg-cart-drawer id="cart-drawer"></dg-cart-drawer>
++
++  <!-- Reusable Live-Region Toast Notification Stack -->
++  <dg-toast id="app-toast"></dg-toast>
++
++  <!-- Reusable Footer Component -->
++  <dg-footer year="2026"></dg-footer>
++
++  <!-- Application Controller wiring the reusable components together -->
++  <script type="module">
++    const navbar = document.getElementById('app-navbar');
++    const tabs = document.getElementById('menu-tabs');
++    const productGrid = document.getElementById('product-grid');
++    const modal = document.getElementById('product-modal');
++    const cartDrawer = document.getElementById('cart-drawer');
++    const toast = document.getElementById('app-toast');
++
++    let activeModalProduct = {
++      id: 'maple-oat-latte',
++      name: 'Maple Oat Latte',
++      price: 5.75,
++      image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80',
++      badge: 'Seasonal',
++      description: 'Creamy oat milk with a hint of Vermont maple syrup and a double shot of espresso.',
++    };
++
++    // 1. Category Filtering via <dg-tabs>
++    tabs?.addEventListener('dg-tab-change', (e) => {
++      const category = e.detail.value;
++      const cards = productGrid.querySelectorAll('dg-product-card');
++      cards.forEach((card) => {
++        const matches = category === 'all' || card.getAttribute('category') === category;
++        card.hidden = !matches;
++      });
++    });
++
++    // 2. Add to Order via <dg-product-card>
++    document.addEventListener('dg-add-to-cart', (e) => {
++      const item = e.detail;
++      cartDrawer?.addItem(item);
++      toast?.show({
++        title: 'Added to Order Bag',
++        message: `${item.name} (${item.size}) added to your pickup order.`,
++        variant: 'success',
++      });
++    });
++
++    // 3. Favorite Toggle via <dg-product-card>
++    document.addEventListener('dg-favorite-change', (e) => {
++      const { name, favorited } = e.detail;
++      toast?.show({
++        title: favorited ? 'Saved to Favorites' : 'Removed from Favorites',
++        message: favorited ? `${name} saved to your account.` : `${name} removed from favorites.`,
++      });
++    });
++
++    // 4. Quick View / Customize Modal via <dg-product-card>
++    document.addEventListener('dg-quick-view', (e) => {
++      e.preventDefault();
++      const product = e.detail;
++      activeModalProduct = product;
++
++      document.getElementById('modal-product-img').src = product.image;
++      document.getElementById('modal-product-name').textContent = product.name;
++      document.getElementById('modal-product-price').textContent = `$${Number(product.price).toFixed(2)}`;
++      document.getElementById('modal-product-desc').textContent = product.description;
++
++      const badgeEl = document.getElementById('modal-product-badge');
++      if (product.badge) {
++        badgeEl.textContent = product.badge;
++        badgeEl.hidden = false;
++      } else {
++        badgeEl.hidden = true;
++      }
++
++      modal.heading = `Customize ${product.name}`;
++      modal.showModal();
++    });
++
++    document.getElementById('modal-cancel-btn')?.addEventListener('click', () => {
++      modal.close('cancel');
++    });
++
++    document.getElementById('modal-confirm-btn')?.addEventListener('click', () => {
++      const form = document.getElementById('customize-form');
++      const formData = new FormData(form);
++      const size = formData.get('size') || 'Medium (12oz)';
++      const milk = formData.get('milk') || 'Oat Milk';
++
++      cartDrawer?.addItem({
++        ...activeModalProduct,
++        size,
++        milk,
++        quantity: 1,
++      });
++
++      modal.close('confirm');
++      toast?.show({
++        title: 'Customized Drink Added',
++        message: `${activeModalProduct.name} (${size}, ${milk}) added to bag.`,
++        variant: 'success',
++      });
++    });
++
++    // 5. Sync Cart Count with <dg-navbar>
++    cartDrawer?.addEventListener('dg-cart-change', (e) => {
++      navbar.cartCount = e.detail.totalCount;
++    });
++
++    cartDrawer?.addEventListener('dg-checkout', (e) => {
++      toast?.show({
++        title: 'Order Confirmed!',
++        message: `Your pickup order (${e.detail.totalCount} items, $${e.detail.totalPrice.toFixed(2)}) will be ready in 8–12 mins.`,
++        variant: 'success',
++        duration: 5000,
++      });
++    });
++
++    navbar?.addEventListener('dg-cart-open', () => {
++      cartDrawer?.open();
++    });
++
++    document.getElementById('open-bag-hero')?.addEventListener('click', () => {
++      cartDrawer?.open();
++    });
++
++    // 6. Newsletter subscription via <dg-footer>
++    document.addEventListener('dg-newsletter-subscribe', (e) => {
++      toast?.show({
++        title: 'Welcome to Roaster’s Notes!',
++        message: `Subscribed ${e.detail.email} to seasonal coffee drops.`,
++        variant: 'success',
++      });
++    });
++
++    // 7. Showcase Demo Triggers
++    document.getElementById('demo-modal-btn')?.addEventListener('click', () => {
++      modal.heading = `Customize ${activeModalProduct.name}`;
++      modal.showModal();
++    });
++
++    document.getElementById('demo-drawer-btn')?.addEventListener('click', () => {
++      cartDrawer?.open();
++    });
++
++    document.getElementById('demo-toast-btn')?.addEventListener('click', () => {
++      toast?.show({
++        title: 'Fresh Batch Ready',
++        message: 'Our Ethiopia Yirgacheffe pour-over just finished brewing at the bar.',
++      });
++    });
++  </script>
+ 
+ </body>
+ 
+diff --git a/styles/main.css b/styles/main.css
+new file mode 100644
+index 0000000..680df22
+--- /dev/null
++++ b/styles/main.css
+@@ -0,0 +1,439 @@
++/* ==========================================================================
++   The Daily Grind — Reusable UI & Design System Stylesheet
++   Organized with Cascade Layers (@layer) for predictable specificity
++   ========================================================================== */
++
++@layer tokens, reset, typography, layout, components, utilities;
++
++@layer tokens {
++  :root {
++    /* Brand Colors */
++    --primary: #4e342e;
++    --primary-hover: #3e2723;
++    --primary-light: #7b5e57;
++    --secondary: #d7ccc8;
++    --secondary-light: #efebe9;
++    --accent: #ffab40;
++    --accent-hover: #ff9100;
++    --text: #3e2723;
++    --text-muted: #6d4c41;
++    --light: #fafafa;
++    --surface: #ffffff;
++    --border: #e0d6d2;
++
++    /* Semantic Status Colors */
++    --success: #2e7d32;
++    --success-bg: #e8f5e9;
++    --warning: #ef6c00;
++    --warning-bg: #fff3e0;
++    --danger: #c62828;
++    --danger-bg: #ffebee;
++
++    /* Spacing & Sizing */
++    --radius-sm: 4px;
++    --radius-md: 8px;
++    --radius-lg: 14px;
++    --radius-pill: 9999px;
++
++    /* Shadows */
++    --shadow-sm: 0 2px 5px rgba(62, 39, 35, 0.08);
++    --shadow-md: 0 6px 18px rgba(62, 39, 35, 0.12);
++    --shadow-lg: 0 16px 36px rgba(62, 39, 35, 0.2);
++
++    /* Typography */
++    --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --container-max: 1140px;
++  }
++}
++
++@layer reset {
++  *,
++  *::before,
++  *::after {
++    box-sizing: border-box;
++    margin: 0;
++    padding: 0;
++  }
++
++  body {
++    font-family: var(--font-sans);
++    line-height: 1.6;
++    color: var(--text);
++    background-color: var(--light);
++    min-height: 100vh;
++    display: flex;
++    flex-direction: column;
++  }
++
++  img {
++    max-width: 100%;
++    display: block;
++  }
++
++  button,
++  input,
++  select,
++  textarea {
++    font: inherit;
++    color: inherit;
++  }
++
++  /* Custom element upgrade fail-open guard (custom-elements guide) */
++  :is(dg-navbar, dg-product-card, dg-modal, dg-cart-drawer, dg-tabs, dg-toast, dg-footer):not(:defined) {
++    opacity: 0;
++    animation: defined-fallback 0.2s 2s forwards;
++  }
++
++  @keyframes defined-fallback {
++    to {
++      opacity: 1;
++    }
++  }
++}
++
++@layer typography {
++  h1, h2, h3, h4 {
++    color: var(--primary);
++    line-height: 1.25;
++    font-weight: 700;
++  }
++
++  .section-header {
++    text-align: center;
++    margin-bottom: 2rem;
++  }
++
++  .section-header h2 {
++    font-size: clamp(1.6rem, 3vw, 2.2rem);
++    margin-bottom: 0.5rem;
++  }
++
++  .section-header p {
++    color: var(--text-muted);
++    max-width: 560px;
++    margin: 0 auto;
++  }
++}
++
++@layer layout {
++  .container {
++    width: 100%;
++    max-width: var(--container-max);
++    margin: 2.5rem auto;
++    padding: 0 1.25rem;
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++    gap: 1.5rem;
++    margin-top: 1.25rem;
++  }
++}
++
++@layer components {
++  /* --------------------------------------------------------------------------
++     Hero Section Component (.hero)
++     -------------------------------------------------------------------------- */
++  .hero {
++    min-height: 60vh;
++    background: linear-gradient(rgba(35, 20, 15, 0.62), rgba(35, 20, 15, 0.62)),
++      url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++    background-size: cover;
++    background-position: center;
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    align-items: center;
++    color: white;
++    text-align: center;
++    padding: 3rem 1.25rem;
++    gap: 0.75rem;
++  }
++
++  .hero h1 {
++    color: white;
++    font-size: clamp(2.25rem, 5vw, 3.4rem);
++    margin-bottom: 0.25rem;
++    letter-spacing: -0.02em;
++  }
++
++  .hero p {
++    font-size: 1.15rem;
++    max-width: 540px;
++    opacity: 0.95;
++    margin-bottom: 0.5rem;
++  }
++
++  .hero-actions {
++    display: flex;
++    flex-wrap: wrap;
++    gap: 0.75rem;
++    justify-content: center;
++    margin-top: 0.5rem;
++  }
++
++  /* --------------------------------------------------------------------------
++     Button Component (.btn) — Native <button> and <a> styling
++     -------------------------------------------------------------------------- */
++  .btn {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    gap: 0.5rem;
++    background: var(--primary);
++    color: white;
++    padding: 0.65rem 1.35rem;
++    font-size: 0.95rem;
++    font-weight: 600;
++    text-decoration: none;
++    border-radius: var(--radius-md);
++    border: 1.5px solid transparent;
++    cursor: pointer;
++    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
++    line-height: 1.3;
++  }
++
++  .btn:hover {
++    background: var(--primary-hover);
++    transform: translateY(-1px);
++    box-shadow: var(--shadow-sm);
++  }
++
++  .btn:active {
++    transform: translateY(0);
++  }
++
++  .btn:focus-visible {
++    outline: 3px solid var(--accent);
++    outline-offset: 2px;
++  }
++
++  .btn:disabled,
++  .btn[aria-disabled="true"] {
++    opacity: 0.55;
++    pointer-events: none;
++  }
++
++  /* Button Variants */
++  .btn--accent {
++    background: var(--accent);
++    color: var(--primary-hover);
++  }
++
++  .btn--accent:hover {
++    background: var(--accent-hover);
++    color: var(--primary-hover);
++  }
++
++  .btn--outline {
++    background: transparent;
++    color: var(--primary);
++    border-color: var(--primary);
++  }
++
++  .btn--outline:hover {
++    background: var(--primary);
++    color: white;
++  }
++
++  .btn--outline-light {
++    background: rgba(255, 255, 255, 0.1);
++    color: white;
++    border-color: rgba(255, 255, 255, 0.75);
++    backdrop-filter: blur(4px);
++  }
++
++  .btn--outline-light:hover {
++    background: white;
++    color: var(--primary);
++  }
++
++  .btn--ghost {
++    background: transparent;
++    color: var(--text);
++  }
++
++  .btn--ghost:hover {
++    background: var(--secondary-light);
++  }
++
++  /* Button Sizes */
++  .btn--sm {
++    padding: 0.4rem 0.85rem;
++    font-size: 0.85rem;
++    border-radius: var(--radius-sm);
++  }
++
++  .btn--lg {
++    padding: 0.85rem 1.75rem;
++    font-size: 1.05rem;
++  }
++
++  /* --------------------------------------------------------------------------
++     Badge / Pill Component (.badge)
++     -------------------------------------------------------------------------- */
++  .badge {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.3rem;
++    padding: 0.2rem 0.65rem;
++    font-size: 0.75rem;
++    font-weight: 700;
++    text-transform: uppercase;
++    letter-spacing: 0.04em;
++    border-radius: var(--radius-pill);
++    background: var(--secondary);
++    color: var(--primary-hover);
++  }
++
++  .badge--accent {
++    background: var(--accent);
++    color: var(--primary-hover);
++  }
++
++  .badge--success {
++    background: var(--success-bg);
++    color: var(--success);
++  }
++
++  .badge--warning {
++    background: var(--warning-bg);
++    color: var(--warning);
++  }
++
++  /* --------------------------------------------------------------------------
++     Static Card Fallback (.card)
++     -------------------------------------------------------------------------- */
++  .card {
++    background: var(--surface);
++    padding: 1.5rem;
++    border-radius: var(--radius-md);
++    box-shadow: var(--shadow-sm);
++    border: 1px solid var(--border);
++    text-align: center;
++    transition: transform 0.2s ease, box-shadow 0.2s ease;
++  }
++
++  .card:hover {
++    transform: translateY(-2px);
++    box-shadow: var(--shadow-md);
++  }
++
++  .card h3 {
++    margin-bottom: 0.5rem;
++    color: var(--primary);
++  }
++
++  /* --------------------------------------------------------------------------
++     Alert / Callout Banner (.alert)
++     -------------------------------------------------------------------------- */
++  .alert {
++    display: flex;
++    align-items: flex-start;
++    justify-content: space-between;
++    gap: 1rem;
++    padding: 1rem 1.25rem;
++    border-radius: var(--radius-md);
++    border-left: 4px solid var(--primary);
++    background: var(--secondary-light);
++    color: var(--text);
++  }
++
++  .alert--accent {
++    border-left-color: var(--accent-hover);
++    background: var(--warning-bg);
++  }
++
++  .alert--success {
++    border-left-color: var(--success);
++    background: var(--success-bg);
++  }
++
++  /* --------------------------------------------------------------------------
++     Form Controls (.form-group, .form-control, .chip-group)
++     -------------------------------------------------------------------------- */
++  .form-group {
++    display: flex;
++    flex-direction: column;
++    gap: 0.4rem;
++    margin-bottom: 1rem;
++    text-align: left;
++  }
++
++  .form-label {
++    font-size: 0.875rem;
++    font-weight: 600;
++    color: var(--primary);
++  }
++
++  .form-control {
++    width: 100%;
++    padding: 0.6rem 0.85rem;
++    border: 1.5px solid var(--border);
++    border-radius: var(--radius-md);
++    background: var(--surface);
++    color: var(--text);
++    transition: border-color 0.2s ease, box-shadow 0.2s ease;
++  }
++
++  .form-control:focus {
++    outline: none;
++    border-color: var(--primary);
++    box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++  }
++
++  .chip-group {
++    display: flex;
++    flex-wrap: wrap;
++    gap: 0.5rem;
++  }
++
++  .chip-option {
++    position: relative;
++  }
++
++  .chip-option input {
++    position: absolute;
++    opacity: 0;
++    pointer-events: none;
++  }
++
++  .chip-option span {
++    display: inline-block;
++    padding: 0.45rem 0.9rem;
++    border-radius: var(--radius-pill);
++    border: 1.5px solid var(--border);
++    background: var(--surface);
++    font-size: 0.85rem;
++    font-weight: 600;
++    cursor: pointer;
++    transition: all 0.15s ease;
++  }
++
++  .chip-option input:checked + span {
++    background: var(--primary);
++    color: white;
++    border-color: var(--primary);
++  }
++
++  .chip-option input:focus-visible + span {
++    outline: 2px solid var(--accent);
++    outline-offset: 2px;
++  }
++}
++
++@layer utilities {
++  .text-center { text-align: center; }
++  .text-muted { color: var(--text-muted); }
++  .mt-1 { margin-top: 0.5rem; }
++  .mt-2 { margin-top: 1rem; }
++  .mt-3 { margin-top: 1.5rem; }
++  .mb-2 { margin-bottom: 1rem; }
++  .flex-between {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 1rem;
++  }
++}

@@ -1,0 +1,637 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,488 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    /**
++     * Script Performance Monitor & Bottleneck Identifier
++     * Identifies slow scripts across network loading, main-thread execution (LoAF),
++     * and long tasks (>50ms), aggregating offenders by script source.
++     */
++    (function initScriptPerformanceMonitor() {
++      const SLOW_RESOURCE_THRESHOLD_MS = 100;
++      const LONG_TASK_THRESHOLD_MS = 50;
++
++      const state = {
++        scriptsByUrl: new Map(),
++        longAnimationFrames: [],
++        longTasks: [],
++        resourceEntries: [],
++        scriptElementTimings: [],
++      };
++
++      function getOrCreateScriptRecord(url) {
++        const key = url || '(inline / anonymous script)';
++        if (!state.scriptsByUrl.has(key)) {
++          state.scriptsByUrl.set(key, {
++            url: key,
++            networkDurationMs: 0,
++            transferSizeBytes: 0,
++            decodedBodySizeBytes: 0,
++            renderBlockingStatus: 'unknown',
++            totalExecutionTimeMs: 0,
++            maxExecutionTimeMs: 0,
++            forcedStyleAndLayoutMs: 0,
++            pauseDurationMs: 0,
++            blockingDurationMs: 0,
++            longFrameCount: 0,
++            longTaskCount: 0,
++            invokers: new Set(),
++            functions: new Set(),
++          });
++        }
++        return state.scriptsByUrl.get(key);
++      }
++
++      // 1. Observe Resource Timing for slow-loading or render-blocking <script> resources
++      function processResourceEntry(entry) {
++        const isScript =
++          entry.initiatorType === 'script' ||
++          /\.m?js(\?|$)/i.test(entry.name);
++        if (!isScript) return;
++
++        const record = getOrCreateScriptRecord(entry.name);
++        record.networkDurationMs = Math.max(record.networkDurationMs, entry.duration);
++        record.transferSizeBytes = entry.transferSize || record.transferSizeBytes;
++        record.decodedBodySizeBytes = entry.decodedBodySize || record.decodedBodySizeBytes;
++        if (entry.renderBlockingStatus) {
++          record.renderBlockingStatus = entry.renderBlockingStatus;
++        }
++
++        const resourceInfo = {
++          url: entry.name,
++          durationMs: Number(entry.duration.toFixed(2)),
++          dnsMs: Number((entry.domainLookupEnd - entry.domainLookupStart).toFixed(2)),
++          tcpMs: Number((entry.connectEnd - entry.connectStart).toFixed(2)),
++          ttfbMs: Number((entry.responseStart - entry.requestStart).toFixed(2)),
++          downloadMs: Number((entry.responseEnd - entry.responseStart).toFixed(2)),
++          transferSizeBytes: entry.transferSize || 0,
++          decodedBodySizeBytes: entry.decodedBodySize || 0,
++          renderBlockingStatus: entry.renderBlockingStatus || 'unknown',
++        };
++        state.resourceEntries.push(resourceInfo);
++
++        if (
++          entry.duration >= SLOW_RESOURCE_THRESHOLD_MS ||
++          entry.renderBlockingStatus === 'blocking'
++        ) {
++          console.warn('[Script Perf] Slow or render-blocking script resource:', resourceInfo);
++        }
++        scheduleUIUpdate();
++      }
++
++      if (typeof PerformanceObserver !== 'undefined') {
++        const supportedTypes = PerformanceObserver.supportedEntryTypes || [];
++
++        if (supportedTypes.includes('resource')) {
++          try {
++            const resourceObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                processResourceEntry(entry);
++              }
++            });
++            resourceObserver.observe({ type: 'resource', buffered: true });
++          } catch (e) {
++            console.debug('[Script Perf] Resource observer error:', e);
++          }
++        }
++
++        // 2. Observe Long Animation Frames (LoAF) for fine-grained script attribution
++        if (supportedTypes.includes('long-animation-frame')) {
++          try {
++            const loafObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                const scripts = (entry.scripts || []).map((s) => {
++                  const sourceUrl = s.sourceURL || s.invoker || '(inline / anonymous script)';
++                  const record = getOrCreateScriptRecord(sourceUrl);
++                  record.totalExecutionTimeMs += s.duration;
++                  record.maxExecutionTimeMs = Math.max(record.maxExecutionTimeMs, s.duration);
++                  record.forcedStyleAndLayoutMs += s.forcedStyleAndLayoutDuration || 0;
++                  record.pauseDurationMs += s.pauseDuration || 0;
++                  record.blockingDurationMs += entry.blockingDuration || 0;
++                  record.longFrameCount += 1;
++                  if (s.invoker) record.invokers.add(`${s.invoker} (${s.invokerType || 'unknown'})`);
++                  if (s.sourceFunctionName) {
++                    record.functions.add(
++                      `${s.sourceFunctionName}@${s.sourceCharPosition ?? '?'}`
++                    );
++                  }
++
++                  return {
++                    sourceURL: sourceUrl,
++                    functionName: s.sourceFunctionName || '(anonymous)',
++                    charPosition: s.sourceCharPosition ?? -1,
++                    invoker: s.invoker || '',
++                    invokerType: s.invokerType || '',
++                    durationMs: Number(s.duration.toFixed(2)),
++                    forcedStyleAndLayoutMs: Number(
++                      (s.forcedStyleAndLayoutDuration || 0).toFixed(2)
++                    ),
++                    pauseDurationMs: Number((s.pauseDuration || 0).toFixed(2)),
++                  };
++                });
++
++                const loafRecord = {
++                  startTimeMs: Number(entry.startTime.toFixed(2)),
++                  durationMs: Number(entry.duration.toFixed(2)),
++                  blockingDurationMs: Number((entry.blockingDuration || 0).toFixed(2)),
++                  scripts,
++                };
++                state.longAnimationFrames.push(loafRecord);
++
++                if (scripts.length > 0) {
++                  console.warn('[Script Perf] Long Animation Frame attributed to scripts:', loafRecord);
++                }
++                scheduleUIUpdate();
++              }
++            });
++            loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++          } catch (e) {
++            console.debug('[Script Perf] LoAF observer error:', e);
++          }
++        }
++
++        // 3. Observe Long Tasks (>50ms) for main-thread blocking attribution
++        if (supportedTypes.includes('longtask')) {
++          try {
++            const longTaskObserver = new PerformanceObserver((list) => {
++              for (const entry of list.getEntries()) {
++                const attributions = (entry.attribution || []).map((attr) => {
++                  const src = attr.containerSrc || attr.containerName || attr.name || '(self / top-level)';
++                  const record = getOrCreateScriptRecord(src);
++                  record.longTaskCount += 1;
++                  record.blockingDurationMs += Math.max(0, entry.duration - LONG_TASK_THRESHOLD_MS);
++                  if (!supportedTypes.includes('long-animation-frame')) {
++                    record.totalExecutionTimeMs += entry.duration;
++                    record.maxExecutionTimeMs = Math.max(record.maxExecutionTimeMs, entry.duration);
++                  }
++                  return {
++                    name: attr.name,
++                    containerType: attr.containerType,
++                    containerSrc: attr.containerSrc,
++                    containerId: attr.containerId,
++                    containerName: attr.containerName,
++                  };
++                });
++
++                const taskInfo = {
++                  startTimeMs: Number(entry.startTime.toFixed(2)),
++                  durationMs: Number(entry.duration.toFixed(2)),
++                  blockingTimeMs: Number(Math.max(0, entry.duration - LONG_TASK_THRESHOLD_MS).toFixed(2)),
++                  attributions,
++                };
++                state.longTasks.push(taskInfo);
++                console.warn('[Script Perf] Long Task detected (>50ms):', taskInfo);
++                scheduleUIUpdate();
++              }
++            });
++            longTaskObserver.observe({ type: 'longtask', buffered: true });
++          } catch (e) {
++            console.debug('[Script Perf] LongTask observer error:', e);
++          }
++        }
++      }
++
++      // 4. Track <script> element load/execution lifecycle via MutationObserver
++      const trackedScripts = new WeakSet();
++      function instrumentScriptElement(scriptEl) {
++        if (trackedScripts.has(scriptEl)) return;
++        trackedScripts.add(scriptEl);
++
++        const label =
++          scriptEl.src ||
++          scriptEl.id ||
++          `inline-script (${(scriptEl.textContent || '').trim().slice(0, 40).replace(/\s+/g, ' ')}...)`;
++        const discoveredAt = performance.now();
++
++        scriptEl.addEventListener('load', () => {
++          const loadEnd = performance.now();
++          state.scriptElementTimings.push({
++            script: label,
++            async: scriptEl.async,
++            defer: scriptEl.defer,
++            type: scriptEl.type || 'text/javascript',
++            elapsedSinceDiscoveryMs: Number((loadEnd - discoveredAt).toFixed(2)),
++          });
++          scheduleUIUpdate();
++        });
++      }
++
++      if (typeof MutationObserver !== 'undefined') {
++        const domObserver = new MutationObserver((mutations) => {
++          for (const mutation of mutations) {
++            for (const node of mutation.addedNodes) {
++              if (node.tagName === 'SCRIPT') {
++                instrumentScriptElement(node);
++              } else if (node.querySelectorAll) {
++                node.querySelectorAll('script').forEach(instrumentScriptElement);
++              }
++            }
++          }
++        });
++        domObserver.observe(document.documentElement, {
++          childList: true,
++          subtree: true,
++        });
++      }
++
++      // 5. Build ranked report of scripts causing slowdowns
++      function getReport() {
++        const offenders = Array.from(state.scriptsByUrl.values())
++          .map((item) => {
++            // Calculate an overall impact score combining CPU blocking/execution and network delay
++            const impactScoreMs =
++              item.totalExecutionTimeMs +
++              item.forcedStyleAndLayoutMs +
++              (item.renderBlockingStatus === 'blocking' ? item.networkDurationMs : item.networkDurationMs * 0.5);
++
++            return {
++              url: item.url,
++              impactScoreMs: Number(impactScoreMs.toFixed(2)),
++              totalExecutionTimeMs: Number(item.totalExecutionTimeMs.toFixed(2)),
++              maxExecutionTimeMs: Number(item.maxExecutionTimeMs.toFixed(2)),
++              forcedStyleAndLayoutMs: Number(item.forcedStyleAndLayoutMs.toFixed(2)),
++              pauseDurationMs: Number(item.pauseDurationMs.toFixed(2)),
++              blockingDurationMs: Number(item.blockingDurationMs.toFixed(2)),
++              networkDurationMs: Number(item.networkDurationMs.toFixed(2)),
++              transferSizeKB: Number((item.transferSizeBytes / 1024).toFixed(2)),
++              renderBlockingStatus: item.renderBlockingStatus,
++              longFrameCount: item.longFrameCount,
++              longTaskCount: item.longTaskCount,
++              invokers: Array.from(item.invokers),
++              functions: Array.from(item.functions),
++            };
++          })
++          .sort((a, b) => b.impactScoreMs - a.impactScoreMs);
++
++        return {
++          generatedAt: new Date().toISOString(),
++          totalBlockingTimeMs: Number(
++            state.longTasks
++              .reduce((sum, t) => sum + t.blockingTimeMs, 0)
++              .toFixed(2)
++          ),
++          longTaskCount: state.longTasks.length,
++          longAnimationFrameCount: state.longAnimationFrames.length,
++          offenders,
++          longAnimationFrames: state.longAnimationFrames,
++          longTasks: state.longTasks,
++          resourceEntries: state.resourceEntries,
++          scriptElementTimings: state.scriptElementTimings,
++        };
++      }
++
++      function printReportToConsole() {
++        const report = getReport();
++        console.group('[Script Perf] Website Script Performance Report');
++        console.log(
++          `Total Blocking Time (TBT): ${report.totalBlockingTimeMs}ms | Long Tasks: ${report.longTaskCount} | Long Animation Frames: ${report.longAnimationFrameCount}`
++        );
++        if (report.offenders.length > 0) {
++          console.table(
++            report.offenders.map((o) => ({
++              Script: o.url,
++              'Impact (ms)': o.impactScoreMs,
++              'CPU Exec (ms)': o.totalExecutionTimeMs,
++              'Max Exec (ms)': o.maxExecutionTimeMs,
++              'Layout Thrash (ms)': o.forcedStyleAndLayoutMs,
++              'Network (ms)': o.networkDurationMs,
++              'Size (KB)': o.transferSizeKB,
++              'Render Blocking': o.renderBlockingStatus,
++              'Long Frames': o.longFrameCount,
++              'Long Tasks': o.longTaskCount,
++              Functions: o.functions.join(', ') || '-',
++            }))
++          );
++        } else {
++          console.log('No slow or blocking scripts detected so far.');
++        }
++        console.groupEnd();
++        return report;
++      }
++
++      // 6. Helper to profile custom synchronous/asynchronous functions manually
++      function profileScriptTask(name, fn) {
++        const startMark = `script-start:${name}`;
++        const endMark = `script-end:${name}`;
++        performance.mark(startMark);
++        const start = performance.now();
++
++        const finalize = () => {
++          const duration = performance.now() - start;
++          performance.mark(endMark);
++          performance.measure(`script:${name}`, startMark, endMark);
++          const record = getOrCreateScriptRecord(name);
++          record.totalExecutionTimeMs += duration;
++          record.maxExecutionTimeMs = Math.max(record.maxExecutionTimeMs, duration);
++          if (duration >= LONG_TASK_THRESHOLD_MS) {
++            record.longTaskCount += 1;
++            record.blockingDurationMs += duration - LONG_TASK_THRESHOLD_MS;
++          }
++          scheduleUIUpdate();
++        };
++
++        try {
++          const result = fn();
++          if (result && typeof result.then === 'function') {
++            return result.finally(finalize);
++          }
++          finalize();
++          return result;
++        } catch (err) {
++          finalize();
++          throw err;
++        }
++      }
++
++      // 7. Diagnostic UI Panel to inspect slow scripts directly on the page
++      let uiScheduled = false;
++      function scheduleUIUpdate() {
++        if (uiScheduled) return;
++        uiScheduled = true;
++        requestAnimationFrame(() => {
++          uiScheduled = false;
++          renderDiagnosticsPanel();
++        });
++      }
++
++      function escapeHtml(str) {
++        return String(str)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;');
++      }
++
++      function renderDiagnosticsPanel() {
++        const container = document.getElementById('script-perf-diagnostics-body');
++        const summaryBadge = document.getElementById('script-perf-summary-badge');
++        if (!container || !summaryBadge) return;
++
++        const report = getReport();
++        summaryBadge.textContent = `${report.offenders.length} script(s) | TBT: ${report.totalBlockingTimeMs}ms`;
++
++        if (report.offenders.length === 0) {
++          container.innerHTML =
++            '<p class="perf-empty">No slow or blocking scripts detected yet. Interact with the page or run a diagnostic check.</p>';
++          return;
++        }
++
++        const rows = report.offenders
++          .map(
++            (o) => `
++            <tr>
++              <td class="perf-url" title="${escapeHtml(o.url)}">
++                <strong>${escapeHtml(o.url.split('/').pop() || o.url)}</strong>
++                <div class="perf-sub">${escapeHtml(o.url)}</div>
++                ${
++                  o.functions.length
++                    ? `<div class="perf-fn">Fn: ${escapeHtml(o.functions.join(', '))}</div>`
++                    : ''
++                }
++              </td>
++              <td><span class="perf-badge ${o.impactScoreMs >= 50 ? 'perf-bad' : 'perf-ok'}">${o.impactScoreMs} ms</span></td>
++              <td>${o.totalExecutionTimeMs} ms (max ${o.maxExecutionTimeMs} ms)</td>
++              <td>${o.forcedStyleAndLayoutMs} ms</td>
++              <td>${o.networkDurationMs} ms (${o.transferSizeKB} KB)</td>
++              <td>${escapeHtml(o.renderBlockingStatus)}</td>
++              <td>${o.longFrameCount} LoAF / ${o.longTaskCount} LT</td>
++            </tr>
++          `
++          )
++          .join('');
++
++        container.innerHTML = `
++          <div class="perf-metrics-bar">
++            <span><strong>Total Blocking Time:</strong> ${report.totalBlockingTimeMs} ms</span>
++            <span><strong>Long Tasks (&gt;50ms):</strong> ${report.longTaskCount}</span>
++            <span><strong>Long Animation Frames:</strong> ${report.longAnimationFrameCount}</span>
++          </div>
++          <div class="perf-table-wrap">
++            <table class="perf-table">
++              <thead>
++                <tr>
++                  <th>Script / Attribution</th>
++                  <th>Impact Score</th>
++                  <th>CPU Execution</th>
++                  <th>Forced Layout</th>
++                  <th>Network Load</th>
++                  <th>Blocking Status</th>
++                  <th>Slow Events</th>
++                </tr>
++              </thead>
++              <tbody>${rows}</tbody>
++            </table>
++          </div>
++        `;
++      }
++
++      function mountDiagnosticsUI() {
++        if (document.getElementById('script-perf-panel')) return;
++        const panel = document.createElement('aside');
++        panel.id = 'script-perf-panel';
++        panel.setAttribute('aria-label', 'Script Performance Monitor');
++        panel.innerHTML = `
++          <div class="perf-header">
++            <div>
++              <strong>Script Performance Monitor</strong>
++              <span id="script-perf-summary-badge" class="perf-summary-badge">Scanning...</span>
++            </div>
++            <div class="perf-actions">
++              <button type="button" id="script-perf-log-btn" class="perf-btn">Log Console Report</button>
++              <button type="button" id="script-perf-toggle-btn" class="perf-btn">Minimize</button>
++            </div>
++          </div>
++          <div id="script-perf-diagnostics-body" class="perf-body"></div>
++        `;
++        document.body.appendChild(panel);
++
++        document.getElementById('script-perf-log-btn').addEventListener('click', () => {
++          printReportToConsole();
++        });
++
++        const toggleBtn = document.getElementById('script-perf-toggle-btn');
++        const bodyEl = document.getElementById('script-perf-diagnostics-body');
++        toggleBtn.addEventListener('click', () => {
++          const isHidden = bodyEl.style.display === 'none';
++          bodyEl.style.display = isHidden ? 'block' : 'none';
++          toggleBtn.textContent = isHidden ? 'Minimize' : 'Expand';
++        });
++
++        renderDiagnosticsPanel();
++      }
++
++      // Expose global API for programmatic inspection
++      window.ScriptPerformanceMonitor = {
++        getReport,
++        printReport: printReportToConsole,
++        profileTask: profileScriptTask,
++        state,
++      };
++
++      window.addEventListener('DOMContentLoaded', () => {
++        document.querySelectorAll('script').forEach(instrumentScriptElement);
++        mountDiagnosticsUI();
++      });
++
++      window.addEventListener('load', () => {
++        setTimeout(() => {
++          renderDiagnosticsPanel();
++          printReportToConsole();
++        }, 250);
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +631,144 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Script Performance Diagnostics Panel */
++    #script-perf-panel {
++      position: fixed;
++      bottom: 16px;
++      right: 16px;
++      width: min(860px, calc(100vw - 32px));
++      max-height: 55vh;
++      background: #1e1e1e;
++      color: #f5f5f5;
++      border: 1px solid #444;
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 12px;
++      z-index: 9999;
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++    }
++
++    .perf-header {
++      background: #2d2d2d;
++      padding: 10px 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #444;
++    }
++
++    .perf-summary-badge {
++      background: #3e2723;
++      color: var(--accent);
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-left: 8px;
++      font-size: 11px;
++    }
++
++    .perf-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .perf-btn {
++      background: #3d3d3d;
++      color: #fff;
++      border: 1px solid #555;
++      padding: 4px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 11px;
++    }
++
++    .perf-btn:hover {
++      background: #505050;
++    }
++
++    .perf-body {
++      padding: 12px 14px;
++      overflow-y: auto;
++    }
++
++    .perf-metrics-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 10px;
++      padding-bottom: 8px;
++      border-bottom: 1px solid #333;
++      color: #ccc;
++    }
++
++    .perf-table-wrap {
++      overflow-x: auto;
++    }
++
++    .perf-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++    }
++
++    .perf-table th,
++    .perf-table td {
++      padding: 6px 8px;
++      border-bottom: 1px solid #333;
++      vertical-align: top;
++    }
++
++    .perf-table th {
++      color: #aaa;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .perf-url {
++      max-width: 260px;
++      word-break: break-all;
++    }
++
++    .perf-sub {
++      color: #888;
++      font-size: 10px;
++      margin-top: 2px;
++    }
++
++    .perf-fn {
++      color: #ffab40;
++      font-size: 10px;
++      margin-top: 2px;
++    }
++
++    .perf-badge {
++      display: inline-block;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-weight: bold;
++    }
++
++    .perf-bad {
++      background: rgba(244, 67, 54, 0.25);
++      color: #ff8a80;
++      border: 1px solid #ef5350;
++    }
++
++    .perf-ok {
++      background: rgba(76, 175, 80, 0.2);
++      color: #a5d6a7;
++      border: 1px solid #66bb6a;
++    }
++
++    .perf-empty {
++      color: #aaa;
++      padding: 8px 0;
++    }
+   </style>
+ </head>
+ 
+ <body>

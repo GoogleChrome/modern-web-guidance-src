@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,69 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f6f5ef">
++  <meta name="description" content="Thoughtfully curated escapes for the way you want to feel. Discover a different kind of travel with Elsewhere.">
++  <title>Elsewhere — Find your kind of away</title>
++  <script>
++    // Native render blocking keeps the experiment ahead of first paint.
++    // Only browsers without native support need the visibility fallback.
++    window.experimentComplete = function () {
++      const reveal = () => document.documentElement.classList.remove('ab-loading');
++      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal, { once: true });
++      else reveal();
++    };
++    if (!('blocking' in HTMLScriptElement.prototype)) document.documentElement.classList.add('ab-loading');
++  </script>
++  <style>.ab-loading body { visibility: hidden; }</style>
++  <!-- This SDK must finish visual changes during execution or DOMContentLoaded. -->
++  <script src="https://cdn.example.com/experiment-sdk.js" async blocking="render" onload="experimentComplete()" onerror="experimentComplete()"></script>
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++</head>
++<body>
++  <header class="header wrap">
++    <a href="#" class="logo" aria-label="Elsewhere home">elsewhere<span class="logo-sun">✳</span></a>
++    <nav aria-label="Main navigation"><a href="#escapes">Our escapes</a><a href="#difference">The elsewhere way</a><a href="#journal">Field notes <span class="tiny-arrow">↗</span></a></nav>
++    <a class="button nav-cta" href="#escapes">Find my escape <span>↗</span></a>
++  </header>
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <img class="hero-image" src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=2400&q=85" alt="Colorful Italian coastal village perched above the turquoise Mediterranean Sea" fetchpriority="high">
++      <div class="hero-shade"></div>
++      <div class="hero-content">
++        <div class="eyebrow"><span class="small-sun">✳</span> LESS ORDINARY. MORE YOU.</div>
++        <h1 id="hero-title">Find your kind<br>of <span class="serif">away.</span></h1>
++        <p>Not just a change of scenery. A change of pace.<br>Thoughtfully curated escapes that stay with you.</p>
++        <a class="button hero-cta" id="hero-cta" href="#escapes">Find your escape <span>↗</span></a>
++        <div class="hero-proof"><div class="avatars"><img src="https://i.pravatar.cc/64?img=47" alt=""><img src="https://i.pravatar.cc/64?img=12" alt=""><img src="https://i.pravatar.cc/64?img=49" alt=""></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><span>Loved by 2,000+ curious souls</span></div></div>
++      </div>
++      <div class="location"><span class="location-dot"></span> Somewhere in Cinque Terre, Italy <span>44°07′ N 9°42′ E</span></div>
++      <a href="#escapes" class="hero-scroll" aria-label="Discover our escapes">↓</a>
++    </section>
++    <section class="promise wrap" id="difference" aria-label="The Elsewhere way">
++      <p>A little further from ordinary.<br><strong>A little closer to yourself.</strong></p>
++      <div><span class="promise-icon">✧</span><span>Handpicked places.<br><strong>Never off the shelf.</strong></span></div>
++      <div><span class="promise-icon">♧</span><span>Small footprints.<br><strong>Lasting impressions.</strong></span></div>
++      <div><span class="promise-icon">☼</span><span>All the details, handled.<br><strong>Just bring yourself.</strong></span></div>
++    </section>
++    <section class="escapes wrap" id="escapes">
++      <div class="section-top"><div><div class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</div><h2>Where do you want to <span class="serif">be?</span></h2></div><a href="#trip-grid" class="text-link" id="view-all">Explore all escapes <span>↗</span></a></div>
++      <div class="filter-row"><div class="filters" role="group" aria-label="Filter escapes"><button class="filter active" data-filter="all" aria-pressed="true">A little of everything</button><button class="filter" data-filter="coast" aria-pressed="false">By the water</button><button class="filter" data-filter="nature" aria-pressed="false">Into the wild</button><button class="filter" data-filter="slow" aria-pressed="false">The slow life</button></div><span class="curated-note">Good places. Better feelings.</span></div>
++      <div class="trip-grid" id="trip-grid">
++        <button class="trip" data-category="coast" data-name="The Italian slow-down" data-place="Cinque Terre, Italy" data-price="1,290"><div class="trip-image"><img src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=900&q=80" alt="Sun-drenched whitewashed Mediterranean village" loading="lazy"><span class="trip-tag">SALT IN YOUR HAIR</span><span class="trip-arrow">↗</span></div><div class="trip-meta"><span>CINQUE TERRE, ITALY</span><span>6 nights</span></div><h3>The Italian slow-down</h3><p>Long lunches. Coastal trails. No rush at all.</p><div class="trip-price">From <strong>$1,290</strong> <span>/ person</span></div></button>
++        <button class="trip" data-category="nature" data-name="A little closer to wild" data-place="Dolomites, Italy" data-price="1,450"><div class="trip-image"><img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80" alt="Dramatic mountain peaks rising into the clouds" loading="lazy"><span class="trip-tag">TAKE A DEEPER BREATH</span><span class="trip-arrow">↗</span></div><div class="trip-meta"><span>DOLOMITES, ITALY</span><span>5 nights</span></div><h3>A little closer to wild</h3><p>Alpine air, quiet trails, and a fresh perspective.</p><div class="trip-price">From <strong>$1,450</strong> <span>/ person</span></div></button>
++        <button class="trip" data-category="slow" data-name="The art of doing less" data-place="Alentejo, Portugal" data-price="980"><div class="trip-image"><img src="https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=900&q=80" alt="Soft morning light filtering through a tranquil green forest" loading="lazy"><span class="trip-tag">MAKE ROOM FOR NOTHING</span><span class="trip-arrow">↗</span></div><div class="trip-meta"><span>ALENTEJO, PORTUGAL</span><span>4 nights</span></div><h3>The art of doing less</h3><p>Sleep in. Wander out. Let the days unfold.</p><div class="trip-price">From <strong>$980</strong> <span>/ person</span></div></button>
++      </div>
++    </section>
++    <section class="journal wrap" id="journal"><div><div class="eyebrow">A NOTE FROM ELSEWHERE</div><h2>The best things happen<br>when you take the <span class="serif">scenic route.</span></h2></div><div><p>We believe travel should feel a little more personal. So we seek out the small, the local, and the wonderfully unexpected — and bring it all together for you.</p><a class="text-link" href="#escapes">Find a new perspective <span>↗</span></a></div></section>
++  </main>
++  <footer class="wrap"><a href="#" class="logo">elsewhere<span class="logo-sun">✳</span></a><span>Go somewhere. Feel something.</span><span>© 2026 Elsewhere</span></footer>
++  <dialog id="trip-dialog"><button class="close" aria-label="Close trip details">×</button><div class="eyebrow">YOUR NEXT CHAPTER</div><h2 id="dialog-title"></h2><p id="dialog-description"></p><form id="enquiry-form"><label for="email">Where can we send the details?</label><input id="email" type="email" placeholder="Your email address" required autocomplete="email"><button class="button" type="submit">Keep me in the loop <span>↗</span></button><p class="form-note">A little inspiration for your next escape.</p></form><p id="enquiry-success" hidden>You're on your way. Your interest has been saved on this device — come back whenever you're ready to explore.</p></dialog>
++  <script src="app.js"></script>
++</body>
++</html>

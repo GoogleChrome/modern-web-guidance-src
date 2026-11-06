@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,35 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Order sequencer telemetry */
++    .sequencer {
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .sequencer button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .telemetry-log {
++      margin: 20px auto 0;
++      max-width: 800px;
++      max-height: 300px;
++      overflow: auto;
++      padding: 15px;
++      background: var(--primary);
++      color: var(--secondary);
++      border-radius: 8px;
++      text-align: left;
++      font-family: monospace;
++      font-size: 0.8rem;
++      white-space: pre-wrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +221,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="sequencer">
++      <h2>High-Frequency Order Sequencer</h2>
++      <p>Click rapidly to fire coffee orders. Each click is timestamped with nanosecond resolution.</p>
++      <button type="button" id="order-btn" class="btn">Place Coffee Order</button>
++      <pre class="telemetry-log" id="telemetry-log" role="log" aria-live="polite">Waiting for orders…</pre>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +240,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script type="module">
++    // Temporal is not available in every browser (e.g. Safari); load a polyfill when missing.
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const drinks = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew'];
++    const events = [];
++    const logEl = document.getElementById('telemetry-log');
++
++    function recordEvent(eventType, nodeId) {
++      return { nodeId, eventType, timestamp: Temporal.Now.instant() };
++    }
++
++    function sequenceEvents(list) {
++      return [...list].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
++    }
++
++    function render() {
++      const sorted = sequenceEvents(events);
++      const lines = sorted.map((ev, i) => {
++        const delta = i === 0
++          ? 'first order'
++          : `+${ev.timestamp.since(sorted[i - 1].timestamp).total('nanoseconds')} ns`;
++        return `#${i + 1} ${ev.eventType} [${ev.nodeId}] ${ev.timestamp.toString({ fractionalSecondDigits: 9 })}  ${delta}`;
++      });
++      logEl.textContent = lines.join('\n');
++      logEl.scrollTop = logEl.scrollHeight;
++      if (sorted.length > 1) {
++        const last = sorted.length - 1;
++        console.log(`Delay between order ${last} and order ${last + 1}: ${sorted[last].timestamp.since(sorted[last - 1].timestamp).total('nanoseconds')}ns`);
++      }
++    }
++
++    document.getElementById('order-btn').addEventListener('click', () => {
++      const drink = drinks[events.length % drinks.length];
++      events.push(recordEvent(drink, `barista-${(events.length % 3) + 1}`));
++      render();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

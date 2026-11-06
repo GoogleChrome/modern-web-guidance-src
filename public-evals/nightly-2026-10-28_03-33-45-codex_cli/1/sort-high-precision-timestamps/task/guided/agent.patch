@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,69 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible, .event-table-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    button.btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    .order-events {
++      margin-top: 40px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #event-status {
++      margin-top: 12px;
++    }
++
++    .event-table-scroll {
++      overflow-x: auto;
++      margin-top: 20px;
++    }
++
++    .event-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .event-table caption {
++      text-align: left;
++      font-weight: 600;
++      padding-bottom: 12px;
++    }
++
++    .event-table th, .event-table td {
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .event-table thead {
++      background: #f4efed;
++    }
++
++    .event-table time, .event-interval {
++      font-family: ui-monospace, monospace;
++      white-space: nowrap;
++      font-variant-numeric: tabular-nums;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +255,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-events" aria-labelledby="event-heading">
++      <h2 id="event-heading">From Order to First Sip</h2>
++      <p>Follow a sample coffee order across our backend services. Load an out-of-order batch to see each event in UTC chronological order and the exact time since the previous event.</p>
++      <button type="button" class="btn" id="load-order-events" aria-controls="event-results">Load sample order events</button>
++      <p id="event-status" role="status" aria-live="polite"></p>
++      <div id="event-results" hidden>
++        <div class="event-table-scroll" role="region" aria-label="Coffee order event timeline" tabindex="0">
++          <table class="event-table">
++            <caption>Sample order DG-1042 · UTC timestamps retain all nine fractional digits</caption>
++            <thead>
++              <tr>
++                <th scope="col">Event</th>
++                <th scope="col">Service</th>
++                <th scope="col">Timestamp (UTC)</th>
++                <th scope="col">Since previous event</th>
++              </tr>
++            </thead>
++            <tbody id="event-rows"></tbody>
++          </table>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +290,9 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./order-events.js"></script>
++
+ </body>
+ 
+ </html>

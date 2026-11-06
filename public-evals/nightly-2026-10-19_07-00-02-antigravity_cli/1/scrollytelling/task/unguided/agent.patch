@@ -1,0 +1,399 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,288 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Scrollytelling Styles */
++    :root,
++    main,
++    .scrollytelling-wrapper,
++    .scrollytelling {
++      timeline-scope: --section-1, --section-2, --section-3, --section-4;
++    }
++
++    .scrollytelling-wrapper {
++      margin-top: 60px;
++      padding-top: 20px;
++    }
++
++    .scrollytelling-heading {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-heading h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-heading p {
++      color: #6d4c41;
++      font-size: 1.1rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .scrollytelling {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 48px;
++      align-items: start;
++      position: relative;
++    }
++
++    /* Tracked Container & Sections */
++    #tracked {
++      display: flex;
++      flex-direction: column;
++    }
++
++    #tracked > section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 10px;
++      view-timeline-axis: block;
++    }
++
++    #tracked > section:nth-child(1),
++    #tracked-1 {
++      view-timeline: --section-1 block;
++      view-timeline-name: --section-1;
++      view-timeline-axis: block;
++    }
++
++    #tracked > section:nth-child(2),
++    #tracked-2 {
++      view-timeline: --section-2 block;
++      view-timeline-name: --section-2;
++      view-timeline-axis: block;
++    }
++
++    #tracked > section:nth-child(3),
++    #tracked-3 {
++      view-timeline: --section-3 block;
++      view-timeline-name: --section-3;
++      view-timeline-axis: block;
++    }
++
++    #tracked > section:nth-child(4),
++    #tracked-4 {
++      view-timeline: --section-4 block;
++      view-timeline-name: --section-4;
++      view-timeline-axis: block;
++    }
++
++    .step-card {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 20px rgba(78, 52, 46, 0.08);
++      position: relative;
++    }
++
++    .step-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++      text-transform: uppercase;
++    }
++
++    .step-card h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 12px;
++    }
++
++    .step-card p {
++      color: #5d4037;
++      font-size: 1rem;
++      line-height: 1.7;
++      margin-bottom: 16px;
++    }
++
++    .step-meta {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      font-size: 0.85rem;
++      color: #795548;
++      border-top: 1px solid var(--secondary);
++      padding-top: 14px;
++    }
++
++    /* Animated Container & Sections */
++    #animated {
++      position: sticky;
++      top: 100px;
++      height: 480px;
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-rows: 1fr;
++      border-radius: 16px;
++      overflow: hidden;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.2);
++      background: var(--primary);
++    }
++
++    #animated > section {
++      grid-area: 1 / 1;
++      width: 100%;
++      height: 100%;
++      position: relative;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      border-radius: 16px;
++      overflow: hidden;
++      opacity: 0;
++      transform: translateY(24px) scale(0.96);
++      animation-name: reveal;
++      animation-duration: 1ms;
++      animation-timing-function: ease-in-out;
++      animation-fill-mode: both;
++      animation-range: cover 0% cover 100%;
++      will-change: opacity, transform;
++    }
++
++    #animated > section img {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 1;
++    }
++
++    .panel-content {
++      position: relative;
++      z-index: 2;
++      background: linear-gradient(to top, rgba(30, 18, 14, 0.94) 0%, rgba(30, 18, 14, 0.6) 70%, transparent 100%);
++      padding: 30px 24px 24px;
++      color: white;
++    }
++
++    .panel-tag {
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.75rem;
++      padding: 3px 10px;
++      border-radius: 12px;
++      display: inline-block;
++      margin-bottom: 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .panel-content h4 {
++      font-size: 1.4rem;
++      margin-bottom: 6px;
++      color: #fff;
++    }
++
++    .panel-content p {
++      font-size: 0.9rem;
++      color: #f5ebe6;
++      line-height: 1.4;
++    }
++
++    /* Scroll-Driven Keyframes */
++    @keyframes reveal {
++      0% {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++        pointer-events: none;
++      }
++      20%, 75% {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++        pointer-events: auto;
++      }
++      95%, 100% {
++        opacity: 0;
++        transform: translateY(-24px) scale(0.96);
++        pointer-events: none;
++      }
++    }
++
++    /* Bind Animated Sections to Tracked Timelines */
++    #animated > section:nth-child(1),
++    #animated-1 {
++      animation-timeline: --section-1;
++    }
++
++    #animated > section:nth-child(2),
++    #animated-2 {
++      animation-timeline: --section-2;
++    }
++
++    #animated > section:nth-child(3),
++    #animated-3 {
++      animation-timeline: --section-3;
++    }
++
++    #animated > section:nth-child(4),
++    #animated-4 {
++      animation-timeline: --section-4;
++    }
++
++    /* Fallback for browsers without timeline-scope support */
++    @supports not (timeline-scope: --section-1) {
++      #animated > section {
++        opacity: 1;
++        transform: none;
++        position: relative;
++        height: 280px;
++        margin-bottom: 20px;
++      }
++      #animated {
++        position: static;
++        height: auto;
++        display: flex;
++        flex-direction: column;
++      }
++    }
++
++    /* Responsive adjustments */
++    @media (max-width: 860px) {
++      .scrollytelling {
++        grid-template-columns: 1fr;
++        gap: 24px;
++      }
++
++      #animated {
++        position: sticky;
++        top: 80px;
++        height: 320px;
++        z-index: 50;
++      }
++
++      #tracked > section {
++        min-height: 60vh;
++        padding: 20px 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +474,106 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Scrollytelling Section -->
++    <section class="scrollytelling-wrapper" id="scrollytelling">
++      <div class="scrollytelling-heading">
++        <h2>The Artisanal Journey: Bean to Cup</h2>
++        <p>Follow every stage of craft behind our signature roast and pour.</p>
++      </div>
++
++      <div class="scrollytelling">
++        <div id="tracked">
++          <section id="tracked-1" class="step">
++            <div class="step-card">
++              <span class="step-badge">Phase 01</span>
++              <h3>Ethical Sourcing</h3>
++              <p>We partner directly with smallholder coffee farmers across high-altitude regions in Colombia and Ethiopia. Shade-grown under native canopies, each cherry is hand-harvested at peak ripeness for unparalleled flavor complexity.</p>
++              <div class="step-meta">
++                <span><strong>Origin:</strong> High-altitude Andes &amp; Yirgacheffe</span>
++                <span><strong>Standard:</strong> 100% Fair Trade &amp; Shade Grown</span>
++              </div>
++            </div>
++          </section>
++
++          <section id="tracked-2" class="step">
++            <div class="step-card">
++              <span class="step-badge">Phase 02</span>
++              <h3>Small-Batch Roasting</h3>
++              <p>Our roast masters monitor bean temperature and airflow in customized cast-iron drum roasters. Every single-origin lot receives a bespoke roast profile that accentuates its distinctive terroir and delicate aromatics.</p>
++              <div class="step-meta">
++                <span><strong>Technique:</strong> Cast-Iron Drum Profiling</span>
++                <span><strong>Notes:</strong> Caramelized Stone Fruit &amp; Cocoa</span>
++              </div>
++            </div>
++          </section>
++
++          <section id="tracked-3" class="step">
++            <div class="step-card">
++              <span class="step-badge">Phase 03</span>
++              <h3>Precision Grinding</h3>
++              <p>Ground on-demand with commercial titanium flat burrs calibrated to 5-micron tolerances. Perfect unimodal particle distribution ensures balanced surface contact and eliminates bitter over-extraction.</p>
++              <div class="step-meta">
++                <span><strong>Burrs:</strong> 98mm Titanium Flat Burrs</span>
++                <span><strong>Calibration:</strong> Micro-metric Stepless</span>
++              </div>
++            </div>
++          </section>
++
++          <section id="tracked-4" class="step">
++            <div class="step-card">
++              <span class="step-badge">Phase 04</span>
++              <h3>Artisanal Extraction</h3>
++              <p>Brewed with mineral-balanced reverse-osmosis water at precisely 93.5&deg;C and 9 bars of consistent pressure. Crowned with silky, velvety microfoam and poured into a warmed ceramic cup for your daily ritual.</p>
++              <div class="step-meta">
++                <span><strong>Extraction:</strong> 93.5&deg;C @ 9.0 Bar</span>
++                <span><strong>Finish:</strong> Velvety Microfoam Latte Art</span>
++              </div>
++            </div>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section id="animated-1" class="panel">
++            <img src="https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?auto=format&fit=crop&w=800&q=80" alt="Freshly harvested coffee beans" loading="lazy" decoding="async">
++            <div class="panel-content">
++              <span class="panel-tag">Stage 01 &bull; Source</span>
++              <h4>High-Altitude Harvest</h4>
++              <p>Hand-picked specialty grade cherries at 1,800m elevation.</p>
++            </div>
++          </section>
++
++          <section id="animated-2" class="panel">
++            <img src="https://images.unsplash.com/photo-1518832553480-cd0e625ed3e6?auto=format&fit=crop&w=800&q=80" alt="Coffee beans roasting in drum" loading="lazy" decoding="async">
++            <div class="panel-content">
++              <span class="panel-tag">Stage 02 &bull; Roast</span>
++              <h4>Master Drum Roasting</h4>
++              <p>Carefully profiled to unleash subtle nuances and rich crema.</p>
++            </div>
++          </section>
++
++          <section id="animated-3" class="panel">
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80" alt="Precision espresso extraction" loading="lazy" decoding="async">
++            <div class="panel-content">
++              <span class="panel-tag">Stage 03 &bull; Grind</span>
++              <h4>Micron Precision Extraction</h4>
++              <p>Uniform particle distribution tailored for ideal contact.</p>
++            </div>
++          </section>
++
++          <section id="animated-4" class="panel">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80" alt="Artisanal pour over and latte art" loading="lazy" decoding="async">
++            <div class="panel-content">
++              <span class="panel-tag">Stage 04 &bull; Pour</span>
++              <h4>The Finished Cup</h4>
++              <p>Crafted to perfection, served fresh for your daily grind.</p>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

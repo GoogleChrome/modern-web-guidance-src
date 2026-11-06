@@ -1,0 +1,280 @@
+diff --git a/index.html b/index.html
+index 66c9173..cd33399 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.pexels.com/videos/2853788/free-video-2853788.jpg?auto=compress&amp;w=1280">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,18 +76,14 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      min-height: 60vh;
++      background: var(--primary);
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
+       align-items: center;
+       color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      padding: 60px 5%;
+     }
+ 
+     .hero h1 {
+@@ -93,6 +91,89 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: #261b17;
++      border-radius: 8px;
++    }
++
++    figcaption {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .hero figcaption a {
++      color: var(--secondary);
++    }
++
++    .media-section {
++      margin-top: 80px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .media-section > p {
++      margin: 8px 0 24px;
++    }
++
++    .podcast {
++      padding: 32px;
++      background: #efe9e5;
++      border-radius: 8px;
++    }
++
++    audio {
++      display: block;
++      width: 100%;
++      margin-top: 20px;
++    }
++
++    main a {
++      color: var(--primary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 40px 20px;
++      }
++
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++
++      .podcast {
++        padding: 24px;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +250,23 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++    <figure>
++      <!-- The visible hero stays eager; playback is always the visitor's choice. -->
++      <video controls playsinline width="1280" height="720" preload="metadata"
++        poster="https://images.pexels.com/videos/2853788/free-video-2853788.jpg?auto=compress&amp;w=1280"
++        aria-label="Fresh espresso pouring into a cup">
++        <source src="https://videos.pexels.com/video-files/2853788/2853788-hd_1920_1080_24fps.mp4" type="video/mp4">
++        Your browser does not support video playback.
++      </video>
++      <figcaption>A moment of morning ritual. Espresso footage by
++        <a href="https://www.pexels.com/video/slow-motion-footage-of-freshly-brewed-coffee-dripping-into-a-cup-2853788/">K on Pexels</a>.
++        This clip has no spoken dialogue.</figcaption>
++    </figure>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +290,43 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="roasting-title">
++      <h2 id="roasting-title">From Bean to Beautiful</h2>
++      <p>Take a closer look at the roasting process, where every great cup begins.</p>
++      <figure>
++        <!-- Keep URLs inert in the HTML: preload="none" alone does not defer posters. -->
++        <video controls playsinline loading="lazy" width="1280" height="720"
++          preload="none" data-preload="metadata"
++          data-poster="https://images.pexels.com/videos/7990940/pexels-photo-7990940.jpeg?auto=compress&amp;w=1280"
++          aria-label="Coffee beans turning inside a roasting machine">
++          <source data-src="https://videos.pexels.com/video-files/7990940/7990940-hd_1920_1080_24fps.mp4" type="video/mp4">
++          Your browser does not support video playback.
++        </video>
++        <figcaption>Coffee beans turn inside a roasting machine. Footage by
++          <a href="https://www.pexels.com/video/coffee-beans-in-a-roasting-machine-7990940/">Pew Nguyen on Pexels</a>.
++          This clip has no spoken dialogue.</figcaption>
++      </figure>
++      <noscript><p><a href="https://www.pexels.com/video/coffee-beans-in-a-roasting-machine-7990940/">Watch the roasting video on Pexels</a>.</p></noscript>
++    </section>
++
++    <section class="media-section podcast" aria-labelledby="podcast-title">
++      <h2 id="podcast-title">The Coffee Break</h2>
++      <p>Pour yourself a cup and settle into a conversation about coffee.</p>
++      <figure>
++        <figcaption id="episode-title"><strong>Featured podcast: Home Coffee Roasting, part 1</strong><br>
++          dnt · Hacker Public Radio · 18 min 43 sec</figcaption>
++        <audio controls loading="lazy" preload="none" data-preload="metadata"
++          aria-labelledby="episode-title"
++          data-src="https://hub.hackerpublicradio.org/ccdn.php?filename=%2Feps%2Fhpr3563%2Fhpr3563.mp3">
++          Your browser does not support audio playback.
++        </audio>
++      </figure>
++      <p><a href="https://hackerpublicradio.org/eps/hpr3563/index.html">Episode notes</a> ·
++        <a href="https://hub.hackerpublicradio.org/ccdn.php?filename=%2Feps%2Fhpr3563%2Fhpr3563.txt">Read the transcript</a> ·
++        <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA</a></p>
++      <noscript><p><a href="https://hub.hackerpublicradio.org/ccdn.php?filename=%2Feps%2Fhpr3563%2Fhpr3563.mp3">Listen to the podcast</a>.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +339,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="media-loading.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/media-loading.js b/media-loading.js
+new file mode 100644
+index 0000000..a5ce3db
+--- /dev/null
++++ b/media-loading.js
+@@ -0,0 +1,67 @@
++// URLs start in data attributes so even speculative parsing cannot fetch them.
++const deferredMedia = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"]');
++
++function attachResources(media) {
++  for (const attribute of ['poster', 'preload', 'src']) {
++    if (media.dataset[attribute]) {
++      media.setAttribute(attribute, media.dataset[attribute]);
++      delete media.dataset[attribute];
++    }
++  }
++  for (const source of media.querySelectorAll('source[data-src]')) {
++    source.src = source.dataset.src;
++    delete source.dataset.src;
++  }
++}
++
++const observer = 'IntersectionObserver' in window
++  ? new IntersectionObserver((entries) => {
++      for (const entry of entries) {
++        if (!entry.isIntersecting) continue;
++        attachResources(entry.target);
++        entry.target.load();
++        observer.unobserve(entry.target);
++      }
++    }, { rootMargin: '200px 0px' })
++  : null;
++
++const pending = new Set();
++for (const media of deferredMedia) {
++  if ('loading' in media) {
++    // Supported browsers defer posters and preload requests themselves.
++    attachResources(media);
++  } else if (observer) {
++    observer.observe(media);
++  } else {
++    pending.add(media);
++  }
++}
++
++// Preserve viewport deferral even in older browsers without IntersectionObserver.
++if (pending.size) {
++  let scheduled = false;
++  function checkViewport() {
++    scheduled = false;
++    for (const media of pending) {
++      const box = media.getBoundingClientRect();
++      if (box.bottom >= -200 && box.top <= window.innerHeight + 200 &&
++          box.right >= 0 && box.left <= window.innerWidth) {
++        attachResources(media);
++        media.load();
++        pending.delete(media);
++      }
++    }
++    if (!pending.size) {
++      window.removeEventListener('scroll', scheduleCheck);
++      window.removeEventListener('resize', scheduleCheck);
++    }
++  }
++  function scheduleCheck() {
++    if (scheduled) return;
++    scheduled = true;
++    window.requestAnimationFrame(checkViewport);
++  }
++  window.addEventListener('scroll', scheduleCheck, { passive: true });
++  window.addEventListener('resize', scheduleCheck);
++  checkViewport();
++}

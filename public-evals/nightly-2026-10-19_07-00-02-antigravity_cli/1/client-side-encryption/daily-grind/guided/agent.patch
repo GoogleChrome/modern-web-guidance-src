@@ -1,0 +1,2091 @@
+diff --git a/crypto-envelope.js b/crypto-envelope.js
+new file mode 100644
+index 0000000..ac422e1
+--- /dev/null
++++ b/crypto-envelope.js
+@@ -0,0 +1,661 @@
++/**
++ * Client-Side Encryption with Post-Quantum & Hybrid Key Encapsulation (KEM),
++ * Classical Key Agreement Fallback, and Authenticated Encryption (AEAD).
++ *
++ * Implements modern Web Cryptography API standards:
++ * - Hybrid Post-Quantum: MLKEM768-X25519 + ChaCha20-Poly1305 / AES-GCM
++ * - Post-Quantum: ML-KEM-768, ML-KEM-1024
++ * - Classical Fallback: X25519 + HKDF-SHA256 + AES-GCM
++ * - Authenticated Encryption with Associated Data (AEAD)
++ * - Structured Clone persistence in IndexedDB for non-extractable keys
++ */
++
++export const KEM_PUBLIC_KEY_ALGORITHMS = {
++  1184: 'ML-KEM-768',
++  1216: 'MLKEM768-X25519',
++  1568: 'ML-KEM-1024',
++};
++
++export const KEM_CIPHERTEXT_LENGTHS = {
++  'MLKEM768-X25519': 1120,
++  'ML-KEM-768': 1088,
++  'ML-KEM-1024': 1568,
++  'X25519': 32,
++};
++
++/**
++ * Safe helper to check SubtleCrypto.supports static method.
++ * Note: Must be called on SubtleCrypto constructor, NOT crypto.subtle.
++ * @param {string} op
++ * @param  {...any} args
++ * @returns {boolean}
++ */
++export function checkSubtleSupport(op, ...args) {
++  try {
++    if (typeof globalThis.SubtleCrypto?.supports === 'function') {
++      return SubtleCrypto.supports(op, ...args);
++    }
++  } catch (err) {
++    // Unsupported parameters or algorithm
++  }
++  return false;
++}
++
++/**
++ * Detect available cryptographic capabilities in the current browser/runtime.
++ */
++export function detectCapabilities() {
++  const dummyIv = new Uint8Array(12);
++
++  const hasHybrid = checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305') ||
++                    checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'AES-GCM');
++  const hasMlkem768 = checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'ChaCha20-Poly1305') ||
++                      checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'AES-GCM');
++  const hasMlkem1024 = checkSubtleSupport('encapsulateKey', 'ML-KEM-1024', 'ChaCha20-Poly1305') ||
++                       checkSubtleSupport('encapsulateKey', 'ML-KEM-1024', 'AES-GCM');
++  const hasChaCha = checkSubtleSupport('encrypt', { name: 'ChaCha20-Poly1305', iv: dummyIv }) ||
++                    checkSubtleSupport('generateKey', 'ChaCha20-Poly1305');
++  const hasAesGcm = checkSubtleSupport('encrypt', { name: 'AES-GCM', iv: dummyIv }) ||
++                    checkSubtleSupport('generateKey', { name: 'AES-GCM', length: 256 }) ||
++                    true; // AES-GCM is Baseline widely available since 2017
++  const hasX25519 = checkSubtleSupport('generateKey', 'X25519') ||
++                    typeof crypto?.subtle?.deriveBits === 'function';
++
++  return {
++    supportsStaticCheck: typeof globalThis.SubtleCrypto?.supports === 'function',
++    hybridMLKEM768X25519: hasHybrid,
++    mlKem768: hasMlkem768,
++    mlKem1024: hasMlkem1024,
++    chaCha20Poly1305: hasChaCha,
++    aesGcm: hasAesGcm,
++    x25519: hasX25519,
++    postQuantumSupported: hasHybrid || hasMlkem768 || hasMlkem1024,
++  };
++}
++
++/**
++ * Checks if post-quantum envelope encryption is natively supported.
++ */
++export function supportsPostQuantumEnvelope() {
++  return (
++    checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305') ||
++    checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'AES-GCM') ||
++    checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'ChaCha20-Poly1305') ||
++    checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'AES-GCM')
++  );
++}
++
++/**
++ * Determines the best supported post-quantum or classical suite.
++ * @param {string} [preferredSuite] Optional preference ('MLKEM768-X25519', 'ML-KEM-768', 'ML-KEM-1024', 'X25519')
++ */
++export function selectBestSuite(preferredSuite) {
++  const caps = detectCapabilities();
++
++  if (preferredSuite === 'MLKEM768-X25519' && caps.hybridMLKEM768X25519) {
++    return {
++      kem: 'MLKEM768-X25519',
++      aead: caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM',
++      type: 'hybrid-pq',
++    };
++  }
++  if (preferredSuite === 'ML-KEM-768' && caps.mlKem768) {
++    return {
++      kem: 'ML-KEM-768',
++      aead: caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM',
++      type: 'pure-pq',
++    };
++  }
++  if (preferredSuite === 'ML-KEM-1024' && caps.mlKem1024) {
++    return {
++      kem: 'ML-KEM-1024',
++      aead: 'AES-GCM',
++      type: 'pure-pq-high',
++    };
++  }
++  if (preferredSuite === 'X25519') {
++    return {
++      kem: 'X25519',
++      aead: 'AES-GCM',
++      type: 'classical-fallback',
++    };
++  }
++
++  // Auto-selection based on capabilities:
++  if (caps.hybridMLKEM768X25519) {
++    return {
++      kem: 'MLKEM768-X25519',
++      aead: caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM',
++      type: 'hybrid-pq',
++    };
++  }
++  if (caps.mlKem768) {
++    return {
++      kem: 'ML-KEM-768',
++      aead: caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM',
++      type: 'pure-pq',
++    };
++  }
++  if (caps.mlKem1024) {
++    return {
++      kem: 'ML-KEM-1024',
++      aead: 'AES-GCM',
++      type: 'pure-pq-high',
++    };
++  }
++
++  // Classical fallback
++  return {
++    kem: 'X25519',
++    aead: 'AES-GCM',
++    type: 'classical-fallback',
++  };
++}
++
++/**
++ * Generate recipient key pair.
++ * Uses post-quantum KEM if supported or preferred; falls back to classical X25519.
++ *
++ * @param {Object} [options]
++ * @param {string} [options.preferredSuite] - e.g. 'MLKEM768-X25519', 'ML-KEM-768', 'ML-KEM-1024', 'X25519'
++ * @param {boolean} [options.extractable=false] - Non-extractable keys can be stored safely in IndexedDB
++ * @returns {Promise<{suite: string, keyPair: CryptoKeyPair, publicKeyBytes: Uint8Array}>}
++ */
++export async function generateRecipientKeys(options = {}) {
++  const { preferredSuite, extractable = false } = options;
++  const suite = selectBestSuite(preferredSuite);
++
++  if (suite.kem !== 'X25519') {
++    // Generate KEM key pair
++    const keyPair = await crypto.subtle.generateKey(
++      suite.kem,
++      extractable,
++      ['encapsulateKey', 'decapsulateKey']
++    );
++    // KEM public keys must be exported with 'raw-public'
++    const publicKeyBuffer = await crypto.subtle.exportKey('raw-public', keyPair.publicKey);
++    const publicKeyBytes = new Uint8Array(publicKeyBuffer);
++    return {
++      suite: `${suite.kem}+${suite.aead}`,
++      algorithm: suite.kem,
++      aeadAlgorithm: suite.aead,
++      keyPair,
++      publicKeyBytes,
++    };
++  }
++
++  // Classical fallback: X25519 key agreement + HKDF + AES-GCM
++  const keyPair = await crypto.subtle.generateKey('X25519', extractable, ['deriveBits', 'deriveKey']);
++  // Classical X25519 public key exported as 'raw'
++  const publicKeyBuffer = await crypto.subtle.exportKey('raw', keyPair.publicKey);
++  const publicKeyBytes = new Uint8Array(publicKeyBuffer);
++  return {
++    suite: 'X25519+HKDF+AES-GCM',
++    algorithm: 'X25519',
++    aeadAlgorithm: 'AES-GCM',
++    keyPair,
++    publicKeyBytes,
++  };
++}
++
++/**
++ * Derives a symmetric AEAD key from X25519 shared secret using HKDF.
++ * Used for classical fallback.
++ */
++async function deriveFallbackAesKey(privateKey, peerPublicKey, infoBytes = new Uint8Array(0)) {
++  const sharedSecret = await crypto.subtle.deriveBits(
++    { name: 'X25519', public: peerPublicKey },
++    privateKey,
++    256
++  );
++  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++  return crypto.subtle.deriveKey(
++    {
++      name: 'HKDF',
++      hash: 'SHA-256',
++      salt: new Uint8Array(32),
++      info: infoBytes,
++    },
++    hkdfKey,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    ['encrypt', 'decrypt']
++  );
++}
++
++/**
++ * Encapsulate a shared AEAD key using recipient's public key.
++ *
++ * @param {CryptoKey|Uint8Array|ArrayBuffer} recipientPublicKeyOrBytes
++ * @param {Object} [options]
++ * @param {string} [options.sharedKeyAlgorithm] - 'ChaCha20-Poly1305' or 'AES-GCM'
++ * @param {Uint8Array} [options.infoBytes] - Context/domain separation info
++ * @returns {Promise<{sharedKey: CryptoKey, capsuleBytes: Uint8Array, algorithm: string, aeadAlgorithm: string}>}
++ */
++export async function encapsulateEnvelopeKey(recipientPublicKeyOrBytes, options = {}) {
++  const { infoBytes = new Uint8Array(0) } = options;
++
++  let pubKey;
++  if (recipientPublicKeyOrBytes instanceof CryptoKey) {
++    pubKey = recipientPublicKeyOrBytes;
++  } else {
++    const bytes = recipientPublicKeyOrBytes instanceof Uint8Array
++      ? recipientPublicKeyOrBytes
++      : new Uint8Array(recipientPublicKeyOrBytes);
++
++    const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++    if (kemName) {
++      pubKey = await crypto.subtle.importKey(
++        'raw-public',
++        bytes,
++        kemName,
++        true,
++        ['encapsulateKey']
++      );
++    } else {
++      // 32-byte classical X25519
++      pubKey = await crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
++    }
++  }
++
++  const kemName = pubKey.algorithm.name;
++
++  if (kemName !== 'X25519') {
++    // Choose AEAD algorithm
++    let sharedKeyAlg = options.sharedKeyAlgorithm;
++    if (!sharedKeyAlg) {
++      const caps = detectCapabilities();
++      sharedKeyAlg = caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM';
++    }
++
++    // Try direct encapsulation with AEAD key
++    try {
++      const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++        kemName,
++        pubKey,
++        sharedKeyAlg,
++        false,
++        ['encrypt', 'decrypt']
++      );
++      return {
++        sharedKey,
++        capsuleBytes: new Uint8Array(ciphertext),
++        algorithm: kemName,
++        aeadAlgorithm: sharedKeyAlg,
++      };
++    } catch (err) {
++      // If direct AEAD encapsulation throws, encapsulate with HKDF for domain separation
++      const { sharedKey: hkdfBaseKey, ciphertext } = await crypto.subtle.encapsulateKey(
++        kemName,
++        pubKey,
++        'HKDF',
++        false,
++        ['deriveKey']
++      );
++      const derivedKey = await crypto.subtle.deriveKey(
++        {
++          name: 'HKDF',
++          hash: 'SHA-256',
++          salt: new Uint8Array(32),
++          info: infoBytes,
++        },
++        hkdfBaseKey,
++        { name: 'AES-GCM', length: 256 },
++        false,
++        ['encrypt', 'decrypt']
++      );
++      return {
++        sharedKey: derivedKey,
++        capsuleBytes: new Uint8Array(ciphertext),
++        algorithm: kemName,
++        aeadAlgorithm: 'AES-GCM',
++      };
++    }
++  }
++
++  // Classical fallback: generate ephemeral X25519 key pair and send ephemeral public key as capsule
++  const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits', 'deriveKey']);
++  const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++  const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
++  return {
++    sharedKey,
++    capsuleBytes,
++    algorithm: 'X25519',
++    aeadAlgorithm: 'AES-GCM',
++  };
++}
++
++/**
++ * Decapsulate shared AEAD key from capsule using recipient's private key.
++ *
++ * @param {CryptoKey} recipientPrivateKey
++ * @param {Uint8Array|ArrayBuffer} capsuleBytes
++ * @param {Object} [options]
++ * @param {string} [options.sharedKeyAlgorithm] - 'ChaCha20-Poly1305' or 'AES-GCM'
++ * @param {Uint8Array} [options.infoBytes]
++ * @returns {Promise<CryptoKey>}
++ */
++export async function decapsulateEnvelopeKey(recipientPrivateKey, capsuleBytes, options = {}) {
++  const { infoBytes = new Uint8Array(0) } = options;
++  const capsule = capsuleBytes instanceof Uint8Array ? capsuleBytes : new Uint8Array(capsuleBytes);
++  const kemName = recipientPrivateKey.algorithm.name;
++
++  if (kemName !== 'X25519') {
++    let sharedKeyAlg = options.sharedKeyAlgorithm;
++    if (!sharedKeyAlg) {
++      const caps = detectCapabilities();
++      sharedKeyAlg = caps.chaCha20Poly1305 ? 'ChaCha20-Poly1305' : 'AES-GCM';
++    }
++
++    try {
++      return await crypto.subtle.decapsulateKey(
++        kemName,
++        recipientPrivateKey,
++        capsule,
++        sharedKeyAlg,
++        false,
++        ['encrypt', 'decrypt']
++      );
++    } catch (err) {
++      // Try HKDF decapsulation
++      const recBaseKey = await crypto.subtle.decapsulateKey(
++        kemName,
++        recipientPrivateKey,
++        capsule,
++        'HKDF',
++        false,
++        ['deriveKey']
++      );
++      return crypto.subtle.deriveKey(
++        {
++          name: 'HKDF',
++          hash: 'SHA-256',
++          salt: new Uint8Array(32),
++          info: infoBytes,
++        },
++        recBaseKey,
++        { name: 'AES-GCM', length: 256 },
++        false,
++        ['encrypt', 'decrypt']
++      );
++    }
++  }
++
++  // Classical fallback: import ephemeral public key from capsule
++  const ephemeralPubKey = await crypto.subtle.importKey('raw', capsule, 'X25519', true, []);
++  return deriveFallbackAesKey(recipientPrivateKey, ephemeralPubKey, infoBytes);
++}
++
++/**
++ * Encrypts UTF-8 text with an AEAD CryptoKey ('ChaCha20-Poly1305' or 'AES-GCM').
++ * Uses a fresh 12-byte (96-bit) IV for every message.
++ *
++ * @param {CryptoKey} key
++ * @param {string|Uint8Array} plaintext
++ * @param {Uint8Array} [additionalData]
++ * @returns {Promise<{iv: Uint8Array, ciphertext: Uint8Array}>}
++ */
++export async function encryptMessage(key, plaintext, additionalData = new Uint8Array(0)) {
++  // Always generate a fresh 12-byte (96-bit) IV per message
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const encoded = typeof plaintext === 'string'
++    ? new TextEncoder().encode(plaintext)
++    : plaintext;
++
++  const ciphertextBuffer = await crypto.subtle.encrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    encoded
++  );
++
++  return { iv, ciphertext: new Uint8Array(ciphertextBuffer) };
++}
++
++/**
++ * Decrypts and authenticates an AEAD payload.
++ * Throws OperationError if ciphertext or additionalData was tampered with.
++ *
++ * @param {CryptoKey} key
++ * @param {Uint8Array} iv
++ * @param {Uint8Array} ciphertext
++ * @param {Uint8Array} [additionalData]
++ * @returns {Promise<string>}
++ */
++export async function decryptMessage(key, iv, ciphertext, additionalData = new Uint8Array(0)) {
++  const plaintextBuffer = await crypto.subtle.decrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    ciphertext
++  );
++
++  return new TextDecoder().decode(plaintextBuffer);
++}
++
++/**
++ * High-level envelope encryption:
++ * 1. Encapsulates shared AEAD key
++ * 2. Encrypts sensitive plaintext with fresh 12-byte IV and bound AAD
++ * 3. Packages into serializable JSON structure
++ *
++ * @param {CryptoKey|Uint8Array} recipientPublicKeyOrBytes
++ * @param {string} plaintext
++ * @param {Object} [options]
++ * @param {Uint8Array|string} [options.additionalData]
++ * @param {string} [options.sharedKeyAlgorithm]
++ * @returns {Promise<Object>}
++ */
++export async function encryptEnvelope(recipientPublicKeyOrBytes, plaintext, options = {}) {
++  const aadBytes = options.additionalData
++    ? (typeof options.additionalData === 'string' ? new TextEncoder().encode(options.additionalData) : options.additionalData)
++    : new Uint8Array(0);
++
++  const { sharedKey, capsuleBytes, algorithm, aeadAlgorithm } = await encapsulateEnvelopeKey(
++    recipientPublicKeyOrBytes,
++    { sharedKeyAlgorithm: options.sharedKeyAlgorithm }
++  );
++
++  const { iv, ciphertext } = await encryptMessage(sharedKey, plaintext, aadBytes);
++
++  return {
++    version: 1,
++    suite: `${algorithm}+${aeadAlgorithm}`,
++    algorithm,
++    aeadAlgorithm,
++    capsule: toBase64(capsuleBytes),
++    iv: toBase64(iv),
++    ciphertext: toBase64(ciphertext),
++    additionalData: aadBytes.length > 0 ? toBase64(aadBytes) : undefined,
++    timestamp: new Date().toISOString(),
++  };
++}
++
++/**
++ * High-level envelope decryption:
++ * 1. Decapsulates shared AEAD key from capsule
++ * 2. Authenticates and decrypts ciphertext with IV and bound AAD
++ *
++ * @param {CryptoKey} recipientPrivateKey
++ * @param {Object} envelope
++ * @param {Object} [options]
++ * @param {Uint8Array|string} [options.overrideAdditionalData]
++ * @returns {Promise<string>} Plaintext string
++ */
++export async function decryptEnvelope(recipientPrivateKey, envelope, options = {}) {
++  const capsuleBytes = fromBase64(envelope.capsule);
++  const iv = fromBase64(envelope.iv);
++  const ciphertext = fromBase64(envelope.ciphertext);
++
++  let aadBytes;
++  if (options.overrideAdditionalData !== undefined) {
++    aadBytes = typeof options.overrideAdditionalData === 'string'
++      ? new TextEncoder().encode(options.overrideAdditionalData)
++      : options.overrideAdditionalData;
++  } else if (envelope.additionalData) {
++    aadBytes = fromBase64(envelope.additionalData);
++  } else {
++    aadBytes = new Uint8Array(0);
++  }
++
++  const sharedKey = await decapsulateEnvelopeKey(
++    recipientPrivateKey,
++    capsuleBytes,
++    { sharedKeyAlgorithm: envelope.aeadAlgorithm }
++  );
++
++  return decryptMessage(sharedKey, iv, ciphertext, aadBytes);
++}
++
++// ---------------------------------------------------------
++// IndexedDB Key Vault for Non-Extractable CryptoKeyPair Storage
++// ---------------------------------------------------------
++
++const DB_NAME = 'DailyGrindCryptoVault';
++const DB_VERSION = 1;
++const STORE_NAME = 'recipientKeys';
++
++function openDatabase() {
++  return new Promise((resolve, reject) => {
++    if (typeof indexedDB === 'undefined') {
++      reject(new Error('IndexedDB is not available in this environment'));
++      return;
++    }
++    const req = indexedDB.open(DB_NAME, DB_VERSION);
++    req.onupgradeneeded = (e) => {
++      const db = e.target.result;
++      if (!db.objectStoreNames.contains(STORE_NAME)) {
++        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
++      }
++    };
++    req.onsuccess = () => resolve(req.result);
++    req.onerror = () => reject(req.error);
++  });
++}
++
++/**
++ * Persists a recipient CryptoKeyPair in IndexedDB via structured cloning.
++ * Safe for non-extractable keys!
++ */
++export async function saveRecipientKeyPair(id, keyPair, metadata = {}) {
++  const db = await openDatabase();
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE_NAME, 'readwrite');
++    const store = tx.objectStore(STORE_NAME);
++    const record = {
++      id,
++      keyPair, // Stored directly via structured cloning
++      metadata,
++      createdAt: new Date().toISOString(),
++    };
++    const req = store.put(record);
++    req.onsuccess = () => resolve(record);
++    req.onerror = () => reject(req.error);
++  });
++}
++
++/**
++ * Loads a recipient CryptoKeyPair from IndexedDB.
++ */
++export async function loadRecipientKeyPair(id) {
++  const db = await openDatabase();
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE_NAME, 'readonly');
++    const store = tx.objectStore(STORE_NAME);
++    const req = store.get(id);
++    req.onsuccess = () => resolve(req.result || null);
++    req.onerror = () => reject(req.error);
++  });
++}
++
++/**
++ * Lists all stored recipient keys.
++ */
++export async function listRecipientKeyPairs() {
++  const db = await openDatabase();
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE_NAME, 'readonly');
++    const store = tx.objectStore(STORE_NAME);
++    const req = store.getAll();
++    req.onsuccess = () => {
++      const records = req.result.map(r => ({
++        id: r.id,
++        metadata: r.metadata,
++        createdAt: r.createdAt,
++      }));
++      resolve(records);
++    };
++    req.onerror = () => reject(req.error);
++  });
++}
++
++/**
++ * Deletes a stored key pair.
++ */
++export async function deleteRecipientKeyPair(id) {
++  const db = await openDatabase();
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE_NAME, 'readwrite');
++    const store = tx.objectStore(STORE_NAME);
++    const req = store.delete(id);
++    req.onsuccess = () => resolve(true);
++    req.onerror = () => reject(req.error);
++  });
++}
++
++// ---------------------------------------------------------
++// Binary / Base64 / Hex Encoding Utilities
++// ---------------------------------------------------------
++
++export function toBase64(bytes) {
++  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  if (typeof u8.toBase64 === 'function') {
++    return u8.toBase64();
++  }
++  if (typeof Buffer !== 'undefined') {
++    return Buffer.from(u8).toString('base64');
++  }
++  let binary = '';
++  const len = u8.byteLength;
++  for (let i = 0; i < len; i++) {
++    binary += String.fromCharCode(u8[i]);
++  }
++  return btoa(binary);
++}
++
++export function fromBase64(base64) {
++  if (typeof Uint8Array.fromBase64 === 'function') {
++    return Uint8Array.fromBase64(base64);
++  }
++  if (typeof Buffer !== 'undefined') {
++    return new Uint8Array(Buffer.from(base64, 'base64'));
++  }
++  const binary = atob(base64);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes;
++}
++
++export function toHex(bytes) {
++  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  return Array.from(u8)
++    .map(b => b.toString(16).padStart(2, '0'))
++    .join('');
++}
++
++export function fromHex(hex) {
++  const cleanHex = hex.replace(/[^0-9a-fA-F]/g, '');
++  const bytes = new Uint8Array(cleanHex.length / 2);
++  for (let i = 0; i < bytes.length; i++) {
++    bytes[i] = parseInt(cleanHex.substr(i * 2, 2), 16);
++  }
++  return bytes;
++}
+diff --git a/index.html b/index.html
+index 66c9173..a1a8a08 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,359 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Post-Quantum Vault Styles */
++    .vault-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 20px rgba(78, 52, 46, 0.12);
++      border: 1px solid #e0d7d3;
++      overflow: hidden;
++    }
++
++    .vault-header {
++      background: linear-gradient(135deg, #3e2723, #4e342e);
++      color: white;
++      padding: 30px;
++      text-align: center;
++      position: relative;
++    }
++
++    .vault-header h2 {
++      font-size: 2rem;
++      margin-bottom: 8px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .vault-header p {
++      color: #d7ccc8;
++      max-width: 750px;
++      margin: 0 auto;
++      font-size: 0.95rem;
++    }
++
++    .security-status-bar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 15px;
++      background: #efebe9;
++      padding: 12px 25px;
++      border-bottom: 1px solid #d7ccc8;
++      font-size: 0.9rem;
++    }
++
++    .status-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      font-weight: 600;
++      font-size: 0.85rem;
++    }
++
++    .status-badge.pq-active {
++      background: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-badge.fallback {
++      background: #fff8e1;
++      color: #f57f17;
++      border: 1px solid #ffe082;
++    }
++
++    .vault-tabs {
++      display: flex;
++      border-bottom: 2px solid #e0e0e0;
++      background: #fafafa;
++    }
++
++    .tab-btn {
++      flex: 1;
++      padding: 14px 20px;
++      background: none;
++      border: none;
++      font-size: 1rem;
++      font-weight: 600;
++      color: #5d4037;
++      cursor: pointer;
++      transition: all 0.2s;
++      border-bottom: 3px solid transparent;
++      text-align: center;
++    }
++
++    .tab-btn:hover {
++      background: #f5f5f5;
++    }
++
++    .tab-btn.active {
++      color: var(--primary);
++      border-bottom: 3px solid var(--accent);
++      background: white;
++    }
++
++    .tab-panel {
++      padding: 30px 25px;
++      display: none;
++    }
++
++    .tab-panel.active {
++      display: block;
++    }
++
++    .flow-steps {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 25px;
++    }
++
++    .flow-card {
++      background: #fafafa;
++      border: 1px solid #e0e0e0;
++      border-radius: 8px;
++      padding: 20px;
++      position: relative;
++    }
++
++    .flow-card.accent-card {
++      border-left: 4px solid var(--accent);
++    }
++
++    .flow-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 15px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .step-number {
++      background: var(--primary);
++      color: white;
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 0.85rem;
++      font-weight: bold;
++      margin-right: 8px;
++    }
++
++    .flow-card-title {
++      font-size: 1.2rem;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: #3e2723;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #ccc;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.2);
++    }
++
++    textarea.form-control {
++      font-family: inherit;
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    .code-box {
++      background: #2b2b2b;
++      color: #f8f8f2;
++      padding: 12px 14px;
++      border-radius: 6px;
++      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
++      font-size: 0.85rem;
++      overflow-x: auto;
++      white-space: pre-wrap;
++      word-break: break-all;
++      margin-top: 8px;
++      border: 1px solid #444;
++      max-height: 220px;
++      overflow-y: auto;
++    }
++
++    .btn-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    .btn-action {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 9px 18px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.9rem;
++      transition: background 0.2s;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .btn-action:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary-action {
++      background: #efebe9;
++      color: #4e342e;
++      border: 1px solid #bcaaa4;
++      padding: 9px 16px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.85rem;
++      transition: all 0.2s;
++    }
++
++    .btn-secondary-action:hover {
++      background: #d7ccc8;
++    }
++
++    .btn-danger-action {
++      background: #ffebee;
++      color: #c62828;
++      border: 1px solid #ef9a9a;
++      padding: 8px 14px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.85rem;
++      transition: all 0.2s;
++    }
++
++    .btn-danger-action:hover {
++      background: #ffcdd2;
++    }
++
++    .alert-box {
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin: 15px 0;
++      font-size: 0.9rem;
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++    }
++
++    .alert-info {
++      background: #e1f5fe;
++      color: #01579b;
++      border: 1px solid #b3e5fc;
++    }
++
++    .alert-success {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #c8e6c9;
++    }
++
++    .alert-warning {
++      background: #fff8e1;
++      color: #e65100;
++      border: 1px solid #ffe082;
++    }
++
++    .alert-danger {
++      background: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ffcdd2;
++    }
++
++    .diag-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 15px;
++      font-size: 0.9rem;
++    }
++
++    .diag-table th, .diag-table td {
++      border: 1px solid #e0e0e0;
++      padding: 10px 14px;
++      text-align: left;
++    }
++
++    .diag-table th {
++      background: #efebe9;
++      color: #3e2723;
++      font-weight: 600;
++    }
++
++    .badge-pill {
++      padding: 3px 8px;
++      border-radius: 12px;
++      font-size: 0.8rem;
++      font-weight: bold;
++    }
++
++    .badge-success {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .badge-neutral {
++      background: #f5f5f5;
++      color: #757575;
++    }
++
++    .template-chips {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 10px;
++    }
++
++    .chip-btn {
++      background: #f5f5f5;
++      border: 1px solid #ddd;
++      border-radius: 16px;
++      padding: 4px 12px;
++      font-size: 0.8rem;
++      cursor: pointer;
++      color: #5d4037;
++    }
++
++    .chip-btn:hover {
++      background: #e0e0e0;
++    }
+   </style>
+ </head>
+ 
+@@ -160,6 +513,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
++      <li><a href="#quantum-vault" class="vault-link">🔒 PQ Vault</a></li>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+@@ -171,7 +525,10 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; justify-content: center;">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#quantum-vault" class="btn" style="background: var(--accent); color: #3e2723; font-weight: bold;">🔒 Post-Quantum Vault</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -195,8 +552,788 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Post-Quantum Vault Section -->
++    <section id="quantum-vault" class="vault-section">
++      <div class="vault-header">
++        <h2>🔒 Post-Quantum Confidential Vault</h2>
++        <p>
++          End-to-end cryptographic protection using Post-Quantum Key Encapsulation (MLKEM768-X25519 / ML-KEM-768),
++          Classical Key Agreement Fallback (X25519 + HKDF), and Authenticated Encryption with Associated Data (ChaCha20-Poly1305 / AES-GCM).
++        </p>
++      </div>
++
++      <div class="security-status-bar">
++        <div>
++          <strong>Active Security Suite:</strong>
++          <span id="active-suite-pill" class="status-badge pq-active">Detecting...</span>
++        </div>
++        <div>
++          <strong>AEAD Cipher:</strong>
++          <span id="active-aead-pill" class="status-badge pq-active">Detecting...</span>
++        </div>
++        <div>
++          <strong>Quantum Resistance:</strong>
++          <span id="active-pq-pill" class="status-badge pq-active">Checking...</span>
++        </div>
++      </div>
++
++      <div class="vault-tabs">
++        <button class="tab-btn active" data-tab="interactive-tab">Interactive Workflow</button>
++        <button class="tab-btn" data-tab="diagnostics-tab">WebCrypto Capabilities</button>
++        <button class="tab-btn" data-tab="self-test-tab">Automated Verification</button>
++      </div>
++
++      <!-- Tab 1: Interactive Workflow -->
++      <div id="interactive-tab" class="tab-panel active">
++        <div class="flow-steps">
++
++          <!-- Step 1: Recipient Key Setup -->
++          <div class="flow-card accent-card">
++            <div class="flow-card-header">
++              <h3 class="flow-card-title"><span class="step-number">1</span> Recipient Key Setup (Roastery / Store)</h3>
++              <span id="step1-status" class="badge-pill badge-neutral">No Key Generated</span>
++            </div>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              The recipient generates a key pair once. Non-extractable keys are safely stored in IndexedDB via structured cloning without exposing private key material.
++            </p>
++
++            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
++              <div class="form-group">
++                <label for="suite-select">Cryptographic Suite:</label>
++                <select id="suite-select" class="form-control">
++                  <option value="auto">Auto-Detect Best Available Suite</option>
++                  <option value="MLKEM768-X25519">MLKEM768-X25519 (Hybrid Post-Quantum + Classical)</option>
++                  <option value="ML-KEM-768">ML-KEM-768 (NIST FIPS 203 Category 3)</option>
++                  <option value="ML-KEM-1024">ML-KEM-1024 (NIST Category 5)</option>
++                  <option value="X25519">X25519 + HKDF-SHA256 (Classical Fallback)</option>
++                </select>
++              </div>
++
++              <div class="form-group">
++                <label for="key-extractable">Key Extraction Policy:</label>
++                <select id="key-extractable" class="form-control">
++                  <option value="false">Non-Extractable (Recommended - IndexedDB Structured Clone)</option>
++                  <option value="true">Extractable (Development & Debugging Only)</option>
++                </select>
++              </div>
++            </div>
++
++            <div class="btn-group">
++              <button id="btn-generate-key" class="btn-action">🔑 Generate Recipient Keys</button>
++              <button id="btn-save-idb" class="btn-secondary-action" disabled>💾 Save to IndexedDB Vault</button>
++              <button id="btn-load-idb" class="btn-secondary-action">📂 Load Stored Keys</button>
++            </div>
++
++            <div id="recipient-key-details" style="display: none; margin-top: 15px;">
++              <label style="font-weight: 600; font-size: 0.85rem; color: #3e2723;">Recipient Public Key (<span id="pubkey-size">0</span> bytes, exported via '<span id="pubkey-format">raw-public</span>'):</label>
++              <div id="pubkey-display" class="code-box"></div>
++              <div style="margin-top: 6px; font-size: 0.8rem; color: #6d4c41;">
++                <strong>Fingerprint (SHA-256):</strong> <span id="pubkey-fingerprint" style="font-family: monospace;">-</span>
++              </div>
++            </div>
++            <div id="step1-alert"></div>
++          </div>
++
++          <!-- Step 2: Sender Encapsulation & AEAD Encryption -->
++          <div class="flow-card">
++            <div class="flow-card-header">
++              <h3 class="flow-card-title"><span class="step-number">2</span> Sender Client-Side Encapsulation & AEAD Encryption (Customer)</h3>
++              <span id="step2-status" class="badge-pill badge-neutral">Awaiting Payload</span>
++            </div>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              The sender encapsulates a fresh one-time 256-bit AEAD key using the recipient's public key, generates a fresh 12-byte IV, and encrypts sensitive data with bound Authenticated Associated Data (AAD).
++            </p>
++
++            <div class="form-group">
++              <label>Sensitive Data Templates:</label>
++              <div class="template-chips">
++                <button type="button" class="chip-btn" id="chip-vip-order">☕ VIP Custom Coffee Order</button>
++                <button type="button" class="chip-btn" id="chip-recipe">🔥 Confidential Roast Profile</button>
++                <button type="button" class="chip-btn" id="chip-payment">💳 Tokenized Payment & Delivery</button>
++              </div>
++            </div>
++
++            <div class="form-group">
++              <label for="plaintext-input">Sensitive Plaintext to Encrypt:</label>
++              <textarea id="plaintext-input" class="form-control" rows="4">{
++  "orderId": "DG-99201",
++  "item": "Special Reserve Gesha Cold Drip",
++  "roastLevel": "Light Cinnamon",
++  "specialNotes": "Double filtered, grind size 450um",
++  "tokenizedCard": "tok_visa_4242_pqc_exp2028",
++  "deliveryPin": "8931"
++}</textarea>
++            </div>
++
++            <div class="form-group">
++              <label for="aad-input">
++                Additional Authenticated Data (AAD):
++                <small style="color: #795548; font-weight: normal;">(Metadata authenticated against tampering, transmitted unencrypted)</small>
++              </label>
++              <input type="text" id="aad-input" class="form-control" value="orderId=DG-99201;customer=vip_alice;proto=v1">
++            </div>
++
++            <div class="btn-group">
++              <button id="btn-encrypt" class="btn-action">🔒 Encapsulate & Encrypt Envelope</button>
++            </div>
++
++            <div id="envelope-details" style="display: none; margin-top: 15px;">
++              <label style="font-weight: 600; font-size: 0.85rem; color: #3e2723;">Generated Cryptographic Envelope (JSON):</label>
++              <div id="envelope-display" class="code-box"></div>
++
++              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; font-size: 0.85rem;">
++                <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
++                  <strong>Capsule Size:</strong> <span id="env-capsule-size">0</span> B
++                </div>
++                <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
++                  <strong>IV Length:</strong> 12 Bytes (96-bit random)
++                </div>
++                <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
++                  <strong>Ciphertext + Tag:</strong> <span id="env-ct-size">0</span> B
++                </div>
++                <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
++                  <strong>AEAD Algorithm:</strong> <span id="env-aead-name">-</span>
++                </div>
++              </div>
++            </div>
++            <div id="step2-alert"></div>
++          </div>
++
++          <!-- Step 3: Recipient Decapsulation & AEAD Decryption -->
++          <div class="flow-card">
++            <div class="flow-card-header">
++              <h3 class="flow-card-title"><span class="step-number">3</span> Recipient Decapsulation & Authenticated Decryption (Barista)</h3>
++              <span id="step3-status" class="badge-pill badge-neutral">Ready</span>
++            </div>
++            <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 15px;">
++              The recipient recovers the shared key from the ciphertext capsule and decrypts the payload. Tampering with either the ciphertext or the AAD metadata immediately throws an <code style="color: #b71c1c;">OperationError</code>.
++            </p>
++
++            <div class="btn-group">
++              <button id="btn-decrypt" class="btn-action">🔓 Decapsulate & Decrypt</button>
++              <button id="btn-tamper-ct" class="btn-danger-action" title="Alters 1 byte of the ciphertext">⚠️ Tamper Ciphertext (Flip 1 Bit)</button>
++              <button id="btn-tamper-aad" class="btn-danger-action" title="Modifies the authenticated metadata">⚠️ Tamper AAD Metadata</button>
++              <button id="btn-restore-env" class="btn-secondary-action">🔄 Restore Valid Envelope</button>
++            </div>
++
++            <div id="decrypted-result" style="display: none; margin-top: 15px;">
++              <label style="font-weight: 600; font-size: 0.85rem; color: #2e7d32;">Authenticated Plaintext Decrypted Successfully:</label>
++              <div id="decrypted-display" class="code-box" style="background: #1b2e1b; border-color: #2e7d32;"></div>
++            </div>
++            <div id="step3-alert"></div>
++          </div>
++
++        </div>
++      </div>
++
++      <!-- Tab 2: Diagnostic Capabilities Inspector -->
++      <div id="diagnostics-tab" class="tab-panel">
++        <h3 style="color: var(--primary); margin-bottom: 10px;">Web Cryptography API Capability Diagnostics</h3>
++        <p style="font-size: 0.9rem; color: #5d4037; margin-bottom: 20px;">
++          Auditing browser support using the static <code>SubtleCrypto.supports()</code> method. Modern post-quantum algorithms protect against <strong>Harvest Now, Decrypt Later</strong> attacks by replacing or augmenting classical Diffie-Hellman with lattice-based Key Encapsulation Mechanisms.
++        </p>
++
++        <table class="diag-table">
++          <thead>
++            <tr>
++              <th>Capability / Algorithm</th>
++              <th>Standard / RFC</th>
++              <th>Classification</th>
++              <th>Status in Current Browser</th>
++            </tr>
++          </thead>
++          <tbody id="diag-tbody">
++            <tr><td colspan="4" style="text-align: center;">Scanning WebCrypto capabilities...</td></tr>
++          </tbody>
++        </table>
++
++        <div style="margin-top: 25px; padding: 18px; background: #efebe9; border-radius: 8px;">
++          <h4 style="color: #3e2723; margin-bottom: 8px;">Why Hybrid Post-Quantum Protection?</h4>
++          <p style="font-size: 0.85rem; color: #4e342e; line-height: 1.5;">
++            Shor's algorithm on a cryptographically relevant quantum computer (CRQC) will break classical asymmetric cryptography (RSA, ECDH, X25519).
++            <strong>MLKEM768-X25519</strong> combines post-quantum ML-KEM (NIST FIPS 203) with classical X25519 in a dual-envelope, ensuring your sensitive coffee recipes and payment tokens remain secure even if one of the underlying mathematical problems is broken.
++          </p>
++        </div>
++      </div>
++
++      <!-- Tab 3: Automated Self-Test Runner -->
++      <div id="self-test-tab" class="tab-panel">
++        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
++          <div>
++            <h3 style="color: var(--primary); margin-bottom: 5px;">In-Browser Automated Verification Suite</h3>
++            <p style="font-size: 0.9rem; color: #5d4037;">Executes end-to-end cryptographic assertions directly within your browser runtime.</p>
++          </div>
++          <button id="btn-run-tests" class="btn-action">▶ Run All Browser Tests</button>
++        </div>
++
++        <div id="test-progress-alert"></div>
++
++        <table class="diag-table" style="margin-top: 15px;">
++          <thead>
++            <tr>
++              <th>Test Assertion</th>
++              <th>Target Suite</th>
++              <th>Duration</th>
++              <th>Result</th>
++            </tr>
++          </thead>
++          <tbody id="test-results-tbody">
++            <tr>
++              <td colspan="4" style="text-align: center; color: #757575;">Click "Run All Browser Tests" to execute the verification suite.</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++
++    </section>
+   </main>
+ 
++  <script type="module">
++    import {
++      detectCapabilities,
++      supportsPostQuantumEnvelope,
++      generateRecipientKeys,
++      encapsulateEnvelopeKey,
++      decapsulateEnvelopeKey,
++      encryptMessage,
++      decryptMessage,
++      encryptEnvelope,
++      decryptEnvelope,
++      saveRecipientKeyPair,
++      loadRecipientKeyPair,
++      listRecipientKeyPairs,
++      toBase64,
++      fromBase64,
++      toHex,
++      fromHex,
++      checkSubtleSupport
++    } from './crypto-envelope.js';
++
++    // Application state
++    let currentRecipient = null;
++    let currentEnvelope = null;
++    let originalValidEnvelope = null;
++
++    // Initialize UI on load
++    document.addEventListener('DOMContentLoaded', async () => {
++      initTabs();
++      updateStatusBadges();
++      renderDiagnosticsTable();
++      setupEventListeners();
++
++      // Automatically generate default recipient keys on initial load
++      try {
++        await generateKeys();
++      } catch (err) {
++        console.error('Initial key generation:', err);
++      }
++    });
++
++    function initTabs() {
++      const tabBtns = document.querySelectorAll('.tab-btn');
++      tabBtns.forEach(btn => {
++        btn.addEventListener('click', () => {
++          tabBtns.forEach(b => b.classList.remove('active'));
++          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
++          btn.classList.add('active');
++          const targetId = btn.getAttribute('data-tab');
++          document.getElementById(targetId).classList.add('active');
++        });
++      });
++    }
++
++    function updateStatusBadges() {
++      const caps = detectCapabilities();
++      const suitePill = document.getElementById('active-suite-pill');
++      const aeadPill = document.getElementById('active-aead-pill');
++      const pqPill = document.getElementById('active-pq-pill');
++
++      if (caps.hybridMLKEM768X25519) {
++        suitePill.textContent = 'Hybrid MLKEM768-X25519';
++        suitePill.className = 'status-badge pq-active';
++        pqPill.textContent = 'Post-Quantum & Classical Hybrid';
++        pqPill.className = 'status-badge pq-active';
++      } else if (caps.mlKem768) {
++        suitePill.textContent = 'ML-KEM-768 (NIST FIPS 203)';
++        suitePill.className = 'status-badge pq-active';
++        pqPill.textContent = 'Post-Quantum Active';
++        pqPill.className = 'status-badge pq-active';
++      } else if (caps.mlKem1024) {
++        suitePill.textContent = 'ML-KEM-1024 (NIST Cat 5)';
++        suitePill.className = 'status-badge pq-active';
++        pqPill.textContent = 'Post-Quantum Active';
++        pqPill.className = 'status-badge pq-active';
++      } else {
++        suitePill.textContent = 'X25519 + HKDF-SHA256 (Fallback)';
++        suitePill.className = 'status-badge fallback';
++        pqPill.textContent = 'Classical Fallback (Pre-Quantum)';
++        pqPill.className = 'status-badge fallback';
++      }
++
++      if (caps.chaCha20Poly1305) {
++        aeadPill.textContent = 'ChaCha20-Poly1305 (256-bit)';
++        aeadPill.className = 'status-badge pq-active';
++      } else {
++        aeadPill.textContent = 'AES-GCM (256-bit)';
++        aeadPill.className = 'status-badge pq-active';
++      }
++    }
++
++    async function generateKeys() {
++      const suitePref = document.getElementById('suite-select').value;
++      const extractable = document.getElementById('key-extractable').value === 'true';
++      const step1Status = document.getElementById('step1-status');
++      const step1Alert = document.getElementById('step1-alert');
++
++      step1Status.textContent = 'Generating...';
++      step1Status.className = 'badge-pill badge-neutral';
++
++      try {
++        currentRecipient = await generateRecipientKeys({
++          preferredSuite: suitePref === 'auto' ? undefined : suitePref,
++          extractable,
++        });
++
++        const pubBytes = currentRecipient.publicKeyBytes;
++        const pubBase64 = toBase64(pubBytes);
++        const pubHex = toHex(pubBytes);
++
++        // Compute SHA-256 fingerprint of public key
++        const hashBuf = await crypto.subtle.digest('SHA-256', pubBytes);
++        const fingerprint = toHex(new Uint8Array(hashBuf)).slice(0, 16).replace(/(.{4})/g, '$1:').slice(0, -1);
++
++        document.getElementById('pubkey-size').textContent = pubBytes.byteLength;
++        document.getElementById('pubkey-format').textContent = currentRecipient.algorithm === 'X25519' ? 'raw' : 'raw-public';
++        document.getElementById('pubkey-fingerprint').textContent = fingerprint;
++
++        const pubDisplay = document.getElementById('pubkey-display');
++        pubDisplay.textContent = `// Algorithm: ${currentRecipient.algorithm} | Export Format: ${currentRecipient.algorithm === 'X25519' ? 'raw' : 'raw-public'}\n` +
++          `// Base64:\n${pubBase64}\n\n` +
++          `// Hex preview (first 64 chars):\n${pubHex.slice(0, 64)}...`;
++
++        document.getElementById('recipient-key-details').style.display = 'block';
++        document.getElementById('btn-save-idb').disabled = false;
++
++        step1Status.textContent = currentRecipient.suite;
++        step1Status.className = 'badge-pill badge-success';
++        step1Alert.innerHTML = `<div class="alert-box alert-success">✓ Successfully generated <strong>${currentRecipient.algorithm}</strong> key pair (${pubBytes.byteLength} bytes public key). Extractable: ${extractable}.</div>`;
++      } catch (err) {
++        step1Status.textContent = 'Error';
++        step1Status.className = 'badge-pill badge-neutral';
++        step1Alert.innerHTML = `<div class="alert-box alert-danger">❌ Key generation failed: ${err.message}</div>`;
++      }
++    }
++
++    function setupEventListeners() {
++      document.getElementById('btn-generate-key').addEventListener('click', generateKeys);
++      document.getElementById('suite-select').addEventListener('change', generateKeys);
++
++      // Template chip handlers
++      document.getElementById('chip-vip-order').addEventListener('click', () => {
++        document.getElementById('plaintext-input').value = JSON.stringify({
++          orderId: "DG-99201",
++          item: "Special Reserve Gesha Cold Drip",
++          roastLevel: "Light Cinnamon",
++          specialNotes: "Double filtered, grind size 450um",
++          tokenizedCard: "tok_visa_4242_pqc_exp2028",
++          deliveryPin: "8931"
++        }, null, 2);
++        document.getElementById('aad-input').value = "orderId=DG-99201;customer=vip_alice;proto=v1";
++      });
++
++      document.getElementById('chip-recipe').addEventListener('click', () => {
++        document.getElementById('plaintext-input').value = JSON.stringify({
++          recipeId: "REC-DARK-SMOKE",
++          beanOrigin: "Yirgacheffe & Antigua Hybrid",
++          chargeTempC: 205,
++          firstCrackTimeSec: 540,
++          developmentRatio: "14.5%",
++          secretIngredient: "Bourbon barrel conditioning (7 days)"
++        }, null, 2);
++        document.getElementById('aad-input').value = "recipeId=REC-DARK-SMOKE;vault=master_roaster";
++      });
++
++      document.getElementById('chip-payment').addEventListener('click', () => {
++        document.getElementById('plaintext-input').value = JSON.stringify({
++          customerName: "Eleanor Vance",
++          shippingAddress: "45 Artisanal Way, Suite 300, Portland, OR",
++          virtualCardNonce: "nonce_sec_991847192847",
++          billingZip: "97201",
++          loyaltyCardSecret: "dg_loyalty_diamond_98124"
++        }, null, 2);
++        document.getElementById('aad-input').value = "user=eleanor_vance;session=sess_secure_8819";
++      });
++
++      // Save to IndexedDB
++      document.getElementById('btn-save-idb').addEventListener('click', async () => {
++        if (!currentRecipient) return;
++        const step1Alert = document.getElementById('step1-alert');
++        try {
++          const keyId = `daily-grind-recipient-${Date.now()}`;
++          await saveRecipientKeyPair(keyId, currentRecipient.keyPair, {
++            suite: currentRecipient.suite,
++            algorithm: currentRecipient.algorithm,
++            publicKeyBytes: Array.from(currentRecipient.publicKeyBytes),
++          });
++          step1Alert.innerHTML = `<div class="alert-box alert-success">💾 Non-extractable key pair safely stored in IndexedDB store "recipientKeys" with ID <code>${keyId}</code> via structured cloning!</div>`;
++        } catch (err) {
++          step1Alert.innerHTML = `<div class="alert-box alert-danger">❌ IndexedDB save failed: ${err.message}</div>`;
++        }
++      });
++
++      // Load from IndexedDB
++      document.getElementById('btn-load-idb').addEventListener('click', async () => {
++        const step1Alert = document.getElementById('step1-alert');
++        try {
++          const keys = await listRecipientKeyPairs();
++          if (!keys || keys.length === 0) {
++            step1Alert.innerHTML = `<div class="alert-box alert-warning">ℹ No saved keys in IndexedDB. Generate and save one first!</div>`;
++            return;
++          }
++          const latest = keys[keys.length - 1];
++          const record = await loadRecipientKeyPair(latest.id);
++          currentRecipient = {
++            suite: record.metadata.suite,
++            algorithm: record.metadata.algorithm,
++            aeadAlgorithm: record.metadata.aeadAlgorithm || 'AES-GCM',
++            keyPair: record.keyPair,
++            publicKeyBytes: new Uint8Array(record.metadata.publicKeyBytes),
++          };
++          step1Alert.innerHTML = `<div class="alert-box alert-success">📂 Loaded stored key pair <code>${latest.id}</code> (${currentRecipient.algorithm}) directly from IndexedDB structured clone!</div>`;
++          document.getElementById('step1-status').textContent = currentRecipient.suite;
++          document.getElementById('step1-status').className = 'badge-pill badge-success';
++        } catch (err) {
++          step1Alert.innerHTML = `<div class="alert-box alert-danger">❌ Failed loading from IndexedDB: ${err.message}</div>`;
++        }
++      });
++
++      // Encrypt & Encapsulate
++      document.getElementById('btn-encrypt').addEventListener('click', async () => {
++        const step2Alert = document.getElementById('step2-alert');
++        const step2Status = document.getElementById('step2-status');
++
++        if (!currentRecipient) {
++          step2Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Please generate recipient keys in Step 1 first.</div>`;
++          return;
++        }
++
++        const plaintext = document.getElementById('plaintext-input').value;
++        const aad = document.getElementById('aad-input').value;
++
++        try {
++          step2Status.textContent = 'Encrypting...';
++          step2Status.className = 'badge-pill badge-neutral';
++
++          const envelope = await encryptEnvelope(currentRecipient.publicKeyBytes, plaintext, {
++            additionalData: aad,
++          });
++
++          currentEnvelope = envelope;
++          originalValidEnvelope = JSON.parse(JSON.stringify(envelope));
++
++          document.getElementById('envelope-display').textContent = JSON.stringify(envelope, null, 2);
++          document.getElementById('env-capsule-size').textContent = fromBase64(envelope.capsule).byteLength;
++          document.getElementById('env-ct-size').textContent = fromBase64(envelope.ciphertext).byteLength;
++          document.getElementById('env-aead-name').textContent = envelope.aeadAlgorithm;
++          document.getElementById('envelope-details').style.display = 'block';
++
++          step2Status.textContent = 'Encrypted';
++          step2Status.className = 'badge-pill badge-success';
++          step2Alert.innerHTML = `<div class="alert-box alert-success">✓ Encapsulated fresh shared secret and encrypted payload with authenticated <strong>${envelope.aeadAlgorithm}</strong>. Fresh 12-byte IV generated.</div>`;
++        } catch (err) {
++          step2Status.textContent = 'Error';
++          step2Status.className = 'badge-pill badge-neutral';
++          step2Alert.innerHTML = `<div class="alert-box alert-danger">❌ Encryption failed: ${err.message}</div>`;
++        }
++      });
++
++      // Decrypt
++      document.getElementById('btn-decrypt').addEventListener('click', async () => {
++        const step3Alert = document.getElementById('step3-alert');
++        const step3Status = document.getElementById('step3-status');
++        const decryptedResult = document.getElementById('decrypted-result');
++        const decryptedDisplay = document.getElementById('decrypted-display');
++
++        if (!currentRecipient || !currentEnvelope) {
++          step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Please encrypt an envelope in Step 2 first.</div>`;
++          return;
++        }
++
++        try {
++          step3Status.textContent = 'Decapsulating...';
++          step3Status.className = 'badge-pill badge-neutral';
++
++          const plaintext = await decryptEnvelope(currentRecipient.keyPair.privateKey, currentEnvelope);
++
++          decryptedDisplay.textContent = plaintext;
++          decryptedResult.style.display = 'block';
++
++          step3Status.textContent = 'Authenticated & Decrypted';
++          step3Status.className = 'badge-pill badge-success';
++          step3Alert.innerHTML = `<div class="alert-box alert-success">✓ Decapsulation and AEAD authentication verified successfully! Integrity confirmed.</div>`;
++        } catch (err) {
++          decryptedResult.style.display = 'none';
++          step3Status.textContent = 'Authentication Failed';
++          step3Status.className = 'badge-pill badge-neutral';
++          step3Alert.innerHTML = `<div class="alert-box alert-danger">❌ Decryption / Authentication Rejected: <strong>${err.name}</strong> - ${err.message || 'Ciphertext or metadata was altered! Authenticated decryption failed.'}</div>`;
++        }
++      });
++
++      // Tamper ciphertext
++      document.getElementById('btn-tamper-ct').addEventListener('click', () => {
++        const step3Alert = document.getElementById('step3-alert');
++        if (!currentEnvelope) {
++          step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Please encrypt an envelope first.</div>`;
++          return;
++        }
++        const ctBytes = fromBase64(currentEnvelope.ciphertext);
++        ctBytes[ctBytes.length - 1] ^= 0x01; // flip 1 bit
++        currentEnvelope.ciphertext = toBase64(ctBytes);
++        document.getElementById('envelope-display').textContent = JSON.stringify(currentEnvelope, null, 2);
++        step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Tampered 1 bit of ciphertext in envelope! Click "Decapsulate & Decrypt" to verify that AEAD catches the tampering with an OperationError.</div>`;
++      });
++
++      // Tamper AAD
++      document.getElementById('btn-tamper-aad').addEventListener('click', () => {
++        const step3Alert = document.getElementById('step3-alert');
++        if (!currentEnvelope) {
++          step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Please encrypt an envelope first.</div>`;
++          return;
++        }
++        const tamperedAad = "orderId=TAMPERED-ORDER-999;customer=attacker;proto=v1";
++        currentEnvelope.additionalData = toBase64(new TextEncoder().encode(tamperedAad));
++        document.getElementById('envelope-display').textContent = JSON.stringify(currentEnvelope, null, 2);
++        step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ Tampered Associated Data (AAD) to "${tamperedAad}"! Click "Decapsulate & Decrypt" to verify that AEAD rejects unauthenticated metadata.</div>`;
++      });
++
++      // Restore envelope
++      document.getElementById('btn-restore-env').addEventListener('click', () => {
++        const step3Alert = document.getElementById('step3-alert');
++        if (!originalValidEnvelope) {
++          step3Alert.innerHTML = `<div class="alert-box alert-warning">⚠️ No original envelope saved yet.</div>`;
++          return;
++        }
++        currentEnvelope = JSON.parse(JSON.stringify(originalValidEnvelope));
++        document.getElementById('envelope-display').textContent = JSON.stringify(currentEnvelope, null, 2);
++        step3Alert.innerHTML = `<div class="alert-box alert-info">🔄 Restored original valid envelope. Click "Decapsulate & Decrypt" to verify.</div>`;
++      });
++
++      // Run automated self tests
++      document.getElementById('btn-run-tests').addEventListener('click', runInBrowserTests);
++    }
++
++    function renderDiagnosticsTable() {
++      const tbody = document.getElementById('diag-tbody');
++      const dummyIv = new Uint8Array(12);
++
++      const items = [
++        {
++          name: 'MLKEM768-X25519',
++          std: 'NIST FIPS 203 + RFC 7748',
++          class: 'Hybrid Post-Quantum KEM',
++          supported: checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305') ||
++                     checkSubtleSupport('encapsulateKey', 'MLKEM768-X25519', 'AES-GCM'),
++        },
++        {
++          name: 'ML-KEM-768',
++          std: 'NIST FIPS 203 (Kyber)',
++          class: 'Post-Quantum KEM (Cat 3)',
++          supported: checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'ChaCha20-Poly1305') ||
++                     checkSubtleSupport('encapsulateKey', 'ML-KEM-768', 'AES-GCM'),
++        },
++        {
++          name: 'ML-KEM-1024',
++          std: 'NIST FIPS 203 (CNSA 2.0)',
++          class: 'Post-Quantum KEM (Cat 5)',
++          supported: checkSubtleSupport('encapsulateKey', 'ML-KEM-1024', 'ChaCha20-Poly1305') ||
++                     checkSubtleSupport('encapsulateKey', 'ML-KEM-1024', 'AES-GCM'),
++        },
++        {
++          name: 'ChaCha20-Poly1305',
++          std: 'RFC 8439',
++          class: 'Authenticated Encryption (AEAD)',
++          supported: checkSubtleSupport('encrypt', { name: 'ChaCha20-Poly1305', iv: dummyIv }) ||
++                     checkSubtleSupport('generateKey', 'ChaCha20-Poly1305'),
++        },
++        {
++          name: 'AES-GCM (256-bit)',
++          std: 'NIST SP 800-38D',
++          class: 'Authenticated Encryption (AEAD)',
++          supported: true, // Baseline widely available
++        },
++        {
++          name: 'X25519',
++          std: 'RFC 7748',
++          class: 'Classical Key Agreement',
++          supported: checkSubtleSupport('generateKey', 'X25519') || typeof crypto?.subtle?.deriveBits === 'function',
++        },
++        {
++          name: 'HKDF-SHA256',
++          std: 'RFC 5869',
++          class: 'Key Derivation Function',
++          supported: true, // Baseline widely available
++        },
++      ];
++
++      tbody.innerHTML = items.map(item => `
++        <tr>
++          <td><code>${item.name}</code></td>
++          <td>${item.std}</td>
++          <td>${item.class}</td>
++          <td>
++            <span class="badge-pill ${item.supported ? 'badge-success' : 'badge-neutral'}">
++              ${item.supported ? '✓ Supported' : '○ Not Supported / Classical Fallback'}
++            </span>
++          </td>
++        </tr>
++      `).join('');
++    }
++
++    async function runInBrowserTests() {
++      const tbody = document.getElementById('test-results-tbody');
++      const progressAlert = document.getElementById('test-progress-alert');
++      tbody.innerHTML = '';
++      progressAlert.innerHTML = '<div class="alert-box alert-info">⏳ Running cryptographic self-tests in browser...</div>';
++
++      const tests = [
++        {
++          name: 'AEAD AES-GCM Encrypt/Decrypt Roundtrip',
++          suite: 'AES-GCM-256',
++          fn: async () => {
++            const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++            const plaintext = 'Secret Mocha #123';
++            const aad = new TextEncoder().encode('order:123');
++            const { iv, ciphertext } = await encryptMessage(key, plaintext, aad);
++            const decrypted = await decryptMessage(key, iv, ciphertext, aad);
++            if (decrypted !== plaintext) throw new Error('Decrypted mismatch');
++          }
++        },
++        {
++          name: 'AEAD Fresh 12-byte IV Generation Validation',
++          suite: 'AEAD IV Randomness',
++          fn: async () => {
++            const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++            const res1 = await encryptMessage(key, 'Sample 1');
++            const res2 = await encryptMessage(key, 'Sample 2');
++            if (res1.iv.byteLength !== 12 || res2.iv.byteLength !== 12) throw new Error('IV must be 12 bytes');
++            if (toHex(res1.iv) === toHex(res2.iv)) throw new Error('IV collision detected');
++          }
++        },
++        {
++          name: 'AEAD Ciphertext Tampering Rejection',
++          suite: 'Integrity Check',
++          fn: async () => {
++            const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++            const { iv, ciphertext } = await encryptMessage(key, 'Tamper test payload');
++            const tampered = new Uint8Array(ciphertext);
++            tampered[tampered.length - 1] ^= 1;
++            let caught = false;
++            try {
++              await decryptMessage(key, iv, tampered);
++            } catch (err) {
++              if (err.name === 'OperationError') caught = true;
++            }
++            if (!caught) throw new Error('Tampered ciphertext was NOT rejected with OperationError');
++          }
++        },
++        {
++          name: 'AEAD Associated Data (AAD) Tampering Rejection',
++          suite: 'Metadata Integrity',
++          fn: async () => {
++            const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
++            const aad1 = new TextEncoder().encode('auth1');
++            const aad2 = new TextEncoder().encode('auth2');
++            const { iv, ciphertext } = await encryptMessage(key, 'Payload', aad1);
++            let caught = false;
++            try {
++              await decryptMessage(key, iv, ciphertext, aad2);
++            } catch (err) {
++              if (err.name === 'OperationError') caught = true;
++            }
++            if (!caught) throw new Error('Tampered AAD was NOT rejected with OperationError');
++          }
++        },
++        {
++          name: 'Classical Key Agreement Roundtrip (X25519 + HKDF + AES-GCM)',
++          suite: 'X25519 Fallback',
++          fn: async () => {
++            const recipient = await generateRecipientKeys({ preferredSuite: 'X25519' });
++            const enc = await encapsulateEnvelopeKey(recipient.publicKeyBytes);
++            const decKey = await decapsulateEnvelopeKey(recipient.keyPair.privateKey, enc.capsuleBytes);
++            const { iv, ciphertext } = await encryptMessage(enc.sharedKey, 'Classical fallback message');
++            const dec = await decryptMessage(decKey, iv, ciphertext);
++            if (dec !== 'Classical fallback message') throw new Error('Classical decrypted mismatch');
++          }
++        },
++        {
++          name: 'Full High-Level Envelope Encrypt/Decrypt Roundtrip',
++          suite: 'Full Envelope',
++          fn: async () => {
++            const recipient = await generateRecipientKeys();
++            const envelope = await encryptEnvelope(recipient.publicKeyBytes, 'Confidential batch test', {
++              additionalData: 'test-meta-info'
++            });
++            const decrypted = await decryptEnvelope(recipient.keyPair.privateKey, envelope);
++            if (decrypted !== 'Confidential batch test') throw new Error('High level envelope mismatch');
++          }
++        },
++      ];
++
++      // Add Post-quantum test if supported
++      const caps = detectCapabilities();
++      if (caps.mlKem768 || caps.hybridMLKEM768X25519) {
++        tests.push({
++          name: 'Post-Quantum KEM Roundtrip (ML-KEM / MLKEM768-X25519)',
++          suite: 'Post-Quantum KEM',
++          fn: async () => {
++            const recipient = await generateRecipientKeys({ preferredSuite: caps.hybridMLKEM768X25519 ? 'MLKEM768-X25519' : 'ML-KEM-768' });
++            const enc = await encapsulateEnvelopeKey(recipient.publicKeyBytes);
++            const decKey = await decapsulateEnvelopeKey(recipient.keyPair.privateKey, enc.capsuleBytes, { sharedKeyAlgorithm: enc.aeadAlgorithm });
++            const { iv, ciphertext } = await encryptMessage(enc.sharedKey, 'Post quantum secret');
++            const dec = await decryptMessage(decKey, iv, ciphertext);
++            if (dec !== 'Post quantum secret') throw new Error('PQ decrypted mismatch');
++          }
++        });
++      }
++
++      let allPassed = true;
++
++      for (const t of tests) {
++        const start = performance.now();
++        let passed = false;
++        let errStr = '';
++        try {
++          await t.fn();
++          passed = true;
++        } catch (err) {
++          allPassed = false;
++          errStr = err.message;
++        }
++        const duration = (performance.now() - start).toFixed(1);
++
++        const tr = document.createElement('tr');
++        tr.innerHTML = `
++          <td><strong>${t.name}</strong></td>
++          <td><code>${t.suite}</code></td>
++          <td>${duration} ms</td>
++          <td>
++            <span class="badge-pill ${passed ? 'badge-success' : 'badge-danger'}">
++              ${passed ? '✓ PASSED' : `❌ FAILED: ${errStr}`}
++            </span>
++          </td>
++        `;
++        tbody.appendChild(tr);
++      }
++
++      if (allPassed) {
++        progressAlert.innerHTML = `<div class="alert-box alert-success">✓ All ${tests.length} browser cryptographic self-tests passed successfully!</div>`;
++      } else {
++        progressAlert.innerHTML = `<div class="alert-box alert-danger">❌ Some browser self-tests failed. Check table details below.</div>`;
++      }
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/package.json b/package.json
+index 2bd4d77..1baf457 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test test/crypto.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/test/crypto.test.js b/test/crypto.test.js
+new file mode 100644
+index 0000000..c772d3a
+--- /dev/null
++++ b/test/crypto.test.js
+@@ -0,0 +1,229 @@
++import { test, describe } from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  detectCapabilities,
++  supportsPostQuantumEnvelope,
++  generateRecipientKeys,
++  encapsulateEnvelopeKey,
++  decapsulateEnvelopeKey,
++  encryptMessage,
++  decryptMessage,
++  encryptEnvelope,
++  decryptEnvelope,
++  toBase64,
++  fromBase64,
++  toHex,
++  fromHex,
++} from '../crypto-envelope.js';
++
++describe('WebCrypto Capabilities and Diagnostics', () => {
++  test('detectCapabilities returns expected shape and boolean flags', () => {
++    const caps = detectCapabilities();
++    assert.equal(typeof caps.supportsStaticCheck, 'boolean');
++    assert.equal(typeof caps.postQuantumSupported, 'boolean');
++    assert.equal(typeof caps.aesGcm, 'boolean');
++    assert.equal(caps.aesGcm, true, 'AES-GCM must be supported');
++  });
++
++  test('SubtleCrypto.supports detects algorithm capabilities statically', () => {
++    const supported = supportsPostQuantumEnvelope();
++    // In Node 24, ML-KEM-768 is supported
++    assert.equal(typeof supported, 'boolean');
++  });
++});
++
++describe('Encoding Utilities', () => {
++  test('toBase64 and fromBase64 round-trip', () => {
++    const input = new Uint8Array([0, 1, 2, 127, 128, 254, 255, 42, 99]);
++    const b64 = toBase64(input);
++    const output = fromBase64(b64);
++    assert.deepEqual(output, input);
++  });
++
++  test('toHex and fromHex round-trip', () => {
++    const input = new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0x01, 0x02]);
++    const hex = toHex(input);
++    assert.equal(hex.toLowerCase(), 'deadbeef0102');
++    const output = fromHex(hex);
++    assert.deepEqual(output, input);
++  });
++});
++
++describe('Authenticated Encryption with Associated Data (AEAD)', () => {
++  test('encryptMessage and decryptMessage with AES-GCM and fresh 12-byte IV', async () => {
++    const key = await crypto.subtle.generateKey(
++      { name: 'AES-GCM', length: 256 },
++      false,
++      ['encrypt', 'decrypt']
++    );
++
++    const plaintext = 'Artisanal Single-Origin Espresso #49281';
++    const aad = new TextEncoder().encode('orderId:991');
++
++    const res1 = await encryptMessage(key, plaintext, aad);
++    const res2 = await encryptMessage(key, plaintext, aad);
++
++    // Verify IV freshness: each message must have a unique random 12-byte IV
++    assert.equal(res1.iv.byteLength, 12);
++    assert.equal(res2.iv.byteLength, 12);
++    assert.notDeepEqual(res1.iv, res2.iv, 'Each encryption must use a distinct 12-byte IV');
++
++    const decrypted = await decryptMessage(key, res1.iv, res1.ciphertext, aad);
++    assert.equal(decrypted, plaintext);
++  });
++
++  test('encryptMessage and decryptMessage with ChaCha20-Poly1305 if supported', async () => {
++    const caps = detectCapabilities();
++    if (!caps.chaCha20Poly1305) {
++      return;
++    }
++
++    const key = await crypto.subtle.generateKey(
++      'ChaCha20-Poly1305',
++      false,
++      ['encrypt', 'decrypt']
++    );
++
++    const plaintext = 'Cold brew steeped for 24 hours at 4C';
++    const aad = new TextEncoder().encode('batch:2026-10-19');
++
++    const { iv, ciphertext } = await encryptMessage(key, plaintext, aad);
++    assert.equal(iv.byteLength, 12);
++
++    const decrypted = await decryptMessage(key, iv, ciphertext, aad);
++    assert.equal(decrypted, plaintext);
++  });
++
++  test('Tampering with ciphertext causes OperationError rejection', async () => {
++    const key = await crypto.subtle.generateKey(
++      { name: 'AES-GCM', length: 256 },
++      false,
++      ['encrypt', 'decrypt']
++    );
++
++    const plaintext = 'Confidential roasting formula';
++    const aad = new TextEncoder().encode('meta');
++    const { iv, ciphertext } = await encryptMessage(key, plaintext, aad);
++
++    const tamperedCiphertext = new Uint8Array(ciphertext);
++    tamperedCiphertext[tamperedCiphertext.length - 1] ^= 0x01; // flip 1 bit
++
++    await assert.rejects(
++      async () => {
++        await decryptMessage(key, iv, tamperedCiphertext, aad);
++      },
++      (err) => err.name === 'OperationError',
++      'Tampered ciphertext must be rejected with OperationError'
++    );
++  });
++
++  test('Tampering with Associated Data (AAD) causes OperationError rejection', async () => {
++    const key = await crypto.subtle.generateKey(
++      { name: 'AES-GCM', length: 256 },
++      false,
++      ['encrypt', 'decrypt']
++    );
++
++    const plaintext = 'Secret Customer Notes';
++    const originalAad = new TextEncoder().encode('userId:123');
++    const tamperedAad = new TextEncoder().encode('userId:999'); // modified metadata
++    const { iv, ciphertext } = await encryptMessage(key, plaintext, originalAad);
++
++    await assert.rejects(
++      async () => {
++        await decryptMessage(key, iv, ciphertext, tamperedAad);
++      },
++      (err) => err.name === 'OperationError',
++      'Tampered AAD metadata must be rejected with OperationError'
++    );
++  });
++});
++
++describe('Classical Key Agreement Fallback (X25519 + HKDF + AES-GCM)', () => {
++  test('Full roundtrip encapsulation and decapsulation with X25519', async () => {
++    const recipient = await generateRecipientKeys({ preferredSuite: 'X25519' });
++    assert.equal(recipient.algorithm, 'X25519');
++    assert.equal(recipient.publicKeyBytes.byteLength, 32);
++
++    // Sender encapsulates shared key using recipient public key bytes
++    const enc = await encapsulateEnvelopeKey(recipient.publicKeyBytes);
++    assert.equal(enc.capsuleBytes.byteLength, 32);
++    assert.equal(enc.algorithm, 'X25519');
++
++    // Recipient recovers shared key using private key and capsule bytes
++    const decKey = await decapsulateEnvelopeKey(recipient.keyPair.privateKey, enc.capsuleBytes);
++
++    // Verify both derived keys encrypt/decrypt identically
++    const plaintext = 'Classical fallback payload';
++    const aad = new TextEncoder().encode('order:classic-1');
++    const { iv, ciphertext } = await encryptMessage(enc.sharedKey, plaintext, aad);
++    const decrypted = await decryptMessage(decKey, iv, ciphertext, aad);
++    assert.equal(decrypted, plaintext);
++  });
++});
++
++describe('Post-Quantum Key Encapsulation (ML-KEM / MLKEM768-X25519)', () => {
++  test('Full roundtrip encapsulation and decapsulation with ML-KEM-768', async () => {
++    const caps = detectCapabilities();
++    if (!caps.mlKem768) {
++      return;
++    }
++
++    const recipient = await generateRecipientKeys({ preferredSuite: 'ML-KEM-768' });
++    assert.equal(recipient.algorithm, 'ML-KEM-768');
++    assert.equal(recipient.publicKeyBytes.byteLength, 1184);
++
++    // Sender encapsulates shared key
++    const enc = await encapsulateEnvelopeKey(recipient.publicKeyBytes);
++    assert.equal(enc.algorithm, 'ML-KEM-768');
++    assert.equal(enc.capsuleBytes.byteLength, 1088);
++
++    // Recipient decapsulates
++    const decKey = await decapsulateEnvelopeKey(
++      recipient.keyPair.privateKey,
++      enc.capsuleBytes,
++      { sharedKeyAlgorithm: enc.aeadAlgorithm }
++    );
++
++    const plaintext = 'Quantum-safe artisanal blend secret';
++    const aad = new TextEncoder().encode('aad:pq-demo');
++    const { iv, ciphertext } = await encryptMessage(enc.sharedKey, plaintext, aad);
++    const decrypted = await decryptMessage(decKey, iv, ciphertext, aad);
++    assert.equal(decrypted, plaintext);
++  });
++
++  test('High-level encryptEnvelope and decryptEnvelope end-to-end', async () => {
++    const recipient = await generateRecipientKeys();
++
++    const sensitiveOrder = JSON.stringify({
++      item: 'Maple Oat Latte Reserve',
++      quantity: 2,
++      grindSize: 'Coarse',
++      cardToken: 'tok_pq_coffee_9874',
++    });
++
++    const envelope = await encryptEnvelope(recipient.publicKeyBytes, sensitiveOrder, {
++      additionalData: 'daily-grind:order:2026-10-19',
++    });
++
++    assert.ok(envelope.capsule);
++    assert.ok(envelope.iv);
++    assert.ok(envelope.ciphertext);
++    assert.ok(envelope.additionalData);
++
++    const decrypted = await decryptEnvelope(recipient.keyPair.privateKey, envelope);
++    assert.equal(decrypted, sensitiveOrder);
++
++    // Tampering test on envelope
++    const tamperedEnvelope = {
++      ...envelope,
++      ciphertext: toBase64(new Uint8Array([1, 2, 3, 4, 5])),
++    };
++    await assert.rejects(
++      async () => {
++        await decryptEnvelope(recipient.keyPair.privateKey, tamperedEnvelope);
++      },
++      (err) => err.name === 'OperationError'
++    );
++  });
++});

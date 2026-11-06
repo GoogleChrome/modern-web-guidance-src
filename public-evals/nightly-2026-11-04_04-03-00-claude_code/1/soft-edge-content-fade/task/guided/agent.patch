@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,61 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Roaster's Secrets teaser */
++    .secrets {
++      margin-top: 60px;
++    }
++
++    .secrets-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .secrets-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 3px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container {
++      max-height: 420px;
++      overflow: hidden;
++      /* Fade the content itself to full transparency so the page background
++         shows through, rather than painting a colored overlay on top. */
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container img {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 20px;
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin: 20px 0 8px;
++    }
++
++    .paywall-container p {
++      margin-bottom: 12px;
++    }
++
++    .secrets-cta {
++      text-align: center;
++      margin-top: -20px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +247,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="secrets" aria-labelledby="secrets-title">
++      <div class="secrets-header">
++        <span class="secrets-badge">Members Exclusive</span>
++        <h2 id="secrets-title">Roaster's Secrets</h2>
++        <p>A behind-the-scenes look at how our head roaster coaxes flavor out of every bean.</p>
++      </div>
++
++      <div class="paywall-container">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=80"
++          alt="Freshly roasted coffee beans" width="1100" height="220" loading="lazy">
++        <h3>1. Listen for the First Crack</h3>
++        <p>Every roast tells you when it's ready, if you know how to listen. Around the nine-minute mark, the beans
++          release trapped moisture with an audible pop. That's the first crack, and the next ninety seconds decide
++          whether your cup tastes bright and fruity or deep and chocolatey.</p>
++        <h3>2. Rest Before You Brew</h3>
++        <p>Freshly roasted isn't the same as freshest tasting. We let our single-origin beans degas for three to
++          five days so carbon dioxide doesn't mute the delicate notes during extraction. Espresso blends rest even
++          longer, up to ten days, for a silkier crema.</p>
++        <h3>3. Development Time Ratio</h3>
++        <p>Our roasters track the percentage of total roast time that happens after first crack. Keeping it between
++          18 and 22 percent is the sweet spot for balancing sweetness and acidity, but for our Ethiopian lots we
++          push it just a little further to...</p>
++      </div>
++
++      <div class="secrets-cta">
++        <a href="/rewards" class="btn">Unlock the Full Guide</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

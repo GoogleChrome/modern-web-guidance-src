@@ -1,0 +1,14 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- Diagnostic: logs slow/heavy scripts to the console. Remove when done. -->
++  <script src="/script-profiler.js" defer></script>
+ </head>
+ 
+ <body>
+ 

@@ -1,0 +1,34 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,29 @@
++# Site audit and improvements
++
++## Findings addressed
++
++- **Navigation:** The original menu, location, rewards, account, logout, ordering, and footer links pointed to unimplemented routes. Replaced these with real in-page destinations and interactive drink details. Account and ordering interfaces need a backend before they can be provided honestly.
++- **Mobile usability:** Reworked the desktop-only header and fixed-height hero into responsive layouts. Navigation wraps, coffee cards stack, controls remain usable, and text scales for smaller screens.
++- **Accessibility:** Added a skip link, semantic landmarks, a single primary heading, labeled navigation and controls, visible keyboard focus, meaningful image descriptions, filter state and announcements, reduced-motion styles, and native modal dialogs with focus restoration.
++- **Performance:** Kept the site framework-free. Hosted four optimized WebP stock images locally (about 280 KB combined). Prioritized the hero and deferred below-the-fold images. Replaced the external font stylesheet with two local variable WOFF2 fonts and swap behavior. Images reserve layout space.
++- **Content and visual hierarchy:** Established a consistent palette, type scale, spacing, coffee photography, clear calls to action, and distinct menu and brand-story sections.
++- **Search and browser metadata:** Added a descriptive title, meta description, favicon, theme color, and referrer policy. Canonical URLs and location structured data require the real domain and business details.
++- **Maintainability:** Separated HTML, CSS, and JavaScript. Added a dependency lockfile and a locally installed static server, avoiding a fresh unpinned server download at every startup. Added regression tests for navigation/assets, filtering, and drink dialogs.
++
++## Verification
++
++- `pnpm test`: verifies every anchor and local asset, document IDs, image metadata, filter results and announcements, all drink triggers, dialog content, closing, and focus restoration.
++- `node --check script.js`: JavaScript syntax.
++- `pnpm dlx html-validate index.html`: HTML and semantic validation.
++- `pnpm audit --prod`: no known production dependency vulnerabilities.
++- `git diff --check`: no whitespace errors.
++- HTTP smoke checks: homepage, hero image, and local font return 200 from the application server.
++- No browser was opened. Real-device rendering, native modal keyboard behavior, and measured Core Web Vitals have not been verified. The dialog implementation is stubbed in DOM tests because jsdom does not implement native dialogs.
++
++## Assets and operation
++
++Run `pnpm install`, then `pnpm start`. The default port is 11222; set `PORT` to override it. Run regression checks with `pnpm test`.
++
++Stock photography: Unsplash photos `1442512595331-e89e73853f31`, `1461023058943-07fcbe16d735`, `1514432324607-a09d9b4aefdd`, and `1517701604599-bb29b565090c`. No generated images are used. DM Sans and Manrope are distributed under the SIL Open Font License; copies are included in `fonts/`.
++
++Before a production launch, confirm the product descriptions and ingredients with the business, provide genuine contact/location details, and configure caching, HTTPS, and security headers in the hosting environment. Prices, online ordering, memberships, and account management are not connected to services.

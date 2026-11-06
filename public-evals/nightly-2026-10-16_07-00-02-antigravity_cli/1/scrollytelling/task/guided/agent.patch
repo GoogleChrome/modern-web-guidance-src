@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,223 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling Section */
++    html {
++      timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4;
++    }
++
++    .scrollytelling {
++      margin-top: 80px;
++      padding-top: 20px;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-header p {
++      color: #6d4c41;
++      font-size: 1.1rem;
++    }
++
++    .scrollytelling-wrapper {
++      display: flex;
++      gap: 50px;
++      position: relative;
++      align-items: flex-start;
++    }
++
++    #tracked {
++      flex: 1;
++      min-width: 0;
++    }
++
++    #tracked section {
++      min-height: 80vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 20px;
++    }
++
++    #tracked section:first-child {
++      padding-top: 10vh;
++    }
++
++    #tracked section:last-child {
++      padding-bottom: 20vh;
++    }
++
++    #tracked section:nth-child(1) { view-timeline: --tl-1 block; }
++    #tracked section:nth-child(2) { view-timeline: --tl-2 block; }
++    #tracked section:nth-child(3) { view-timeline: --tl-3 block; }
++    #tracked section:nth-child(4) { view-timeline: --tl-4 block; }
++
++    .step-label {
++      display: inline-block;
++      font-size: 0.85rem;
++      font-weight: 700;
++      color: var(--accent);
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      margin-bottom: 10px;
++    }
++
++    #tracked h3 {
++      font-size: 1.8rem;
++      color: var(--primary);
++      margin-bottom: 15px;
++      line-height: 1.3;
++    }
++
++    #tracked p {
++      font-size: 1.05rem;
++      line-height: 1.8;
++      color: #4e342e;
++      max-width: 450px;
++    }
++
++    #animated {
++      flex: 1;
++      min-width: 0;
++      position: sticky;
++      top: 100px;
++      height: 480px;
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-rows: 1fr;
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      width: 100%;
++      height: 100%;
++      opacity: 0;
++    }
++
++    #animated section:first-child {
++      opacity: 1;
++    }
++
++    .animated-card {
++      width: 100%;
++      height: 100%;
++      position: relative;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
++      background: var(--primary);
++    }
++
++    .animated-card img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .animated-card .card-caption {
++      position: absolute;
++      bottom: 0;
++      left: 0;
++      right: 0;
++      padding: 24px;
++      background: linear-gradient(to top, rgba(30, 18, 15, 0.9) 0%, rgba(30, 18, 15, 0.5) 60%, transparent 100%);
++      color: white;
++    }
++
++    .animated-card .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 3px 10px;
++      border-radius: 20px;
++      margin-bottom: 8px;
++    }
++
++    .animated-card h4 {
++      font-size: 1.3rem;
++      color: white;
++      font-weight: 600;
++    }
++
++    @keyframes animate-in {
++      from {
++        scale: 0.9;
++        opacity: 0;
++        transform: translateY(20px);
++      }
++      to {
++        scale: 1;
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes animate-out {
++      to {
++        scale: 0.95;
++        opacity: 0;
++        transform: translateY(-20px);
++      }
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      #animated section {
++        opacity: 0;
++        animation: animate-in auto linear both, animate-out auto linear forwards;
++        animation-range: entry 25% cover 50%, exit 50% exit 75%;
++        backface-visibility: hidden;
++        will-change: transform, opacity;
++      }
++
++      #animated section:nth-child(1) { animation-timeline: --tl-1; }
++      #animated section:nth-child(2) { animation-timeline: --tl-2; }
++      #animated section:nth-child(3) { animation-timeline: --tl-3; }
++      #animated section:nth-child(4) { animation-timeline: --tl-4; }
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-wrapper {
++        flex-direction: column-reverse;
++        gap: 20px;
++      }
++
++      #animated {
++        position: sticky;
++        top: 70px;
++        width: 100%;
++        height: 280px;
++        z-index: 10;
++      }
++
++      #tracked section {
++        min-height: 60vh;
++        padding: 30px 10px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #animated section {
++        animation: none !important;
++        opacity: 1 !important;
++        transform: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +409,86 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Scrollytelling Section -->
++    <section class="scrollytelling">
++      <div class="scrollytelling-header">
++        <h2>The Bean-to-Cup Journey</h2>
++        <p>Explore the artisanal craftsmanship behind every cup we brew</p>
++      </div>
++
++      <div class="scrollytelling-wrapper">
++        <div id="tracked">
++          <section>
++            <span class="step-label">Stage 01</span>
++            <h3>Ethical Direct Trade</h3>
++            <p>We partner directly with sustainable smallholder farms in Colombia, Ethiopia, and Guatemala. Every cherry is hand-harvested at peak ripeness to ensure unmatched flavor and equitable wages.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Stage 02</span>
++            <h3>Small-Batch Drum Roasting</h3>
++            <p>Inside our vintage cast-iron roasters, our roast masters calibrate temperature and airflow degree by degree to unlock natural origin characteristics—from citrus vibrance to deep cacao notes.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Stage 03</span>
++            <h3>Precision Barista Extraction</h3>
++            <p>Every espresso pull and slow-drip pour-over is dialed in down to the gram and second. We balance mineral hardness, water temperature, and brew timing for silky, balanced extraction.</p>
++          </section>
++
++          <section>
++            <span class="step-label">Stage 04</span>
++            <h3>Artisanal Daily Ritual</h3>
++            <p>The culmination of care, dedication, and passion poured directly into your ceramic mug or compostable cup. Savor each nuanced note and connect with your morning ritual.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <div class="animated-card">
++              <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80" alt="Freshly harvested coffee beans at farm origin" loading="lazy">
++              <div class="card-caption">
++                <span class="badge">Origin</span>
++                <h4>Sustainable Highlands</h4>
++              </div>
++            </div>
++          </section>
++
++          <section>
++            <div class="animated-card">
++              <img src="https://images.unsplash.com/photo-1518832553480-cd0e625ed3e6?auto=format&fit=crop&w=800&q=80" alt="Coffee beans roasting in drum" loading="lazy">
++              <div class="card-caption">
++                <span class="badge">Roastery</span>
++                <h4>Master Flame Roasting</h4>
++              </div>
++            </div>
++          </section>
++
++          <section>
++            <div class="animated-card">
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Barista preparing pour-over drip coffee" loading="lazy">
++              <div class="card-caption">
++                <span class="badge">Craft</span>
++                <h4>Calculated Extraction</h4>
++              </div>
++            </div>
++          </section>
++
++          <section>
++            <div class="animated-card">
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="Fresh cup of coffee with latte art" loading="lazy">
++              <div class="card-caption">
++                <span class="badge">Ritual</span>
++                <h4>The Daily Masterpiece</h4>
++              </div>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

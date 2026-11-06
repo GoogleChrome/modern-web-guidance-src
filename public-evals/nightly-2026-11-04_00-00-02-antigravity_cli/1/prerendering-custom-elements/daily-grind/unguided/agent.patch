@@ -1,0 +1,619 @@
+diff --git a/index.html b/index.html
+index 66c9173..40fddd2 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,10 @@
+       margin-top: 20px;
+     }
+ 
++    drink-card {
++      display: block;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -178,21 +182,443 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card drink-id="maple-oat-latte">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              * {
++                box-sizing: border-box;
++                margin: 0;
++                padding: 0;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                display: flex;
++                flex-direction: column;
++                height: 100%;
++                transition: transform 0.2s ease, box-shadow 0.2s ease;
++              }
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                position: relative;
++                margin-bottom: 10px;
++              }
++              .card h3 {
++                color: var(--primary, #4e342e);
++                padding: 0 28px;
++              }
++              .fav-btn {
++                position: absolute;
++                right: 0;
++                top: 50%;
++                transform: translateY(-50%);
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                color: var(--text, #3e2723);
++                font-size: 1rem;
++                transition: all 0.2s ease;
++              }
++              .fav-btn:hover {
++                border-color: var(--accent, #ffab40);
++                background: #fff8e1;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                color: var(--text, #3e2723);
++                margin-bottom: 10px;
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 12px;
++                background: var(--light, #fafafa);
++                border-left: 3px solid var(--accent, #ffab40);
++                border-radius: 4px;
++                text-align: left;
++                font-size: 0.9rem;
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-panel ul {
++                list-style: none;
++                margin-top: 6px;
++              }
++              .details-panel li {
++                margin-bottom: 4px;
++              }
++              .actions {
++                margin-top: auto;
++                padding-top: 15px;
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 18px;
++                text-decoration: none;
++                border: none;
++                border-radius: 5px;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-secondary {
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++              }
++              .btn-secondary:hover {
++                background: #bcaaa4;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="card-header">
++                <h3><slot name="title">Maple Oat Latte</slot></h3>
++                <button type="button" class="fav-btn" data-action="toggle-favorite" aria-pressed="false" aria-label="Favorite Maple Oat Latte" title="Toggle Favorite">
++                  <span aria-hidden="true">&#9825;</span>
++                </button>
++              </div>
++              <p class="summary"><slot name="description">Creamy oat milk with a hint of Vermont maple syrup.</slot></p>
++              <div class="details-panel" id="details-maple-oat-latte" hidden>
++                <strong>Tasting &amp; Nutrition Notes:</strong>
++                <ul>
++                  <li><strong>Origin:</strong> Single-origin Ethiopian espresso + Grade A Vermont maple</li>
++                  <li><strong>Calories:</strong> 190 kcal (12 oz)</li>
++                  <li><strong>Dietary:</strong> 100% Plant-Based / Dairy-Free</li>
++                </ul>
++              </div>
++              <div class="actions">
++                <button type="button" class="btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-maple-oat-latte">View Details</button>
++                <a href="/menu/seasonal" class="btn btn-secondary">Order</a>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
++        </drink-card>
++
++        <drink-card drink-id="dark-roast-espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              * {
++                box-sizing: border-box;
++                margin: 0;
++                padding: 0;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                display: flex;
++                flex-direction: column;
++                height: 100%;
++                transition: transform 0.2s ease, box-shadow 0.2s ease;
++              }
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                position: relative;
++                margin-bottom: 10px;
++              }
++              .card h3 {
++                color: var(--primary, #4e342e);
++                padding: 0 28px;
++              }
++              .fav-btn {
++                position: absolute;
++                right: 0;
++                top: 50%;
++                transform: translateY(-50%);
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                color: var(--text, #3e2723);
++                font-size: 1rem;
++                transition: all 0.2s ease;
++              }
++              .fav-btn:hover {
++                border-color: var(--accent, #ffab40);
++                background: #fff8e1;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                color: var(--text, #3e2723);
++                margin-bottom: 10px;
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 12px;
++                background: var(--light, #fafafa);
++                border-left: 3px solid var(--accent, #ffab40);
++                border-radius: 4px;
++                text-align: left;
++                font-size: 0.9rem;
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-panel ul {
++                list-style: none;
++                margin-top: 6px;
++              }
++              .details-panel li {
++                margin-bottom: 4px;
++              }
++              .actions {
++                margin-top: auto;
++                padding-top: 15px;
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 18px;
++                text-decoration: none;
++                border: none;
++                border-radius: 5px;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-secondary {
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++              }
++              .btn-secondary:hover {
++                background: #bcaaa4;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="card-header">
++                <h3><slot name="title">Dark Roast Espresso</slot></h3>
++                <button type="button" class="fav-btn" data-action="toggle-favorite" aria-pressed="false" aria-label="Favorite Dark Roast Espresso" title="Toggle Favorite">
++                  <span aria-hidden="true">&#9825;</span>
++                </button>
++              </div>
++              <p class="summary"><slot name="description">Bold, smokey, and perfect for a morning boost.</slot></p>
++              <div class="details-panel" id="details-dark-roast-espresso" hidden>
++                <strong>Tasting &amp; Nutrition Notes:</strong>
++                <ul>
++                  <li><strong>Origin:</strong> Sumatra Mandheling &amp; Colombian blend</li>
++                  <li><strong>Calories:</strong> 10 kcal (Double Shot)</li>
++                  <li><strong>Roast Level:</strong> Full French Dark Roast</li>
++                </ul>
++              </div>
++              <div class="actions">
++                <button type="button" class="btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-dark-roast-espresso">View Details</button>
++                <a href="/menu/espresso" class="btn btn-secondary">Order</a>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
++        </drink-card>
++
++        <drink-card drink-id="cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++              }
++              * {
++                box-sizing: border-box;
++                margin: 0;
++                padding: 0;
++              }
++              .card {
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                position: relative;
++                display: flex;
++                flex-direction: column;
++                height: 100%;
++                transition: transform 0.2s ease, box-shadow 0.2s ease;
++              }
++              :host([favorited]) .card {
++                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.35);
++                outline: 2px solid var(--accent, #ffab40);
++              }
++              .card-header {
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                position: relative;
++                margin-bottom: 10px;
++              }
++              .card h3 {
++                color: var(--primary, #4e342e);
++                padding: 0 28px;
++              }
++              .fav-btn {
++                position: absolute;
++                right: 0;
++                top: 50%;
++                transform: translateY(-50%);
++                background: transparent;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                width: 32px;
++                height: 32px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                cursor: pointer;
++                color: var(--text, #3e2723);
++                font-size: 1rem;
++                transition: all 0.2s ease;
++              }
++              .fav-btn:hover {
++                border-color: var(--accent, #ffab40);
++                background: #fff8e1;
++              }
++              .fav-btn[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--primary, #4e342e);
++              }
++              .summary {
++                color: var(--text, #3e2723);
++                margin-bottom: 10px;
++              }
++              .details-panel {
++                margin-top: 12px;
++                padding: 12px;
++                background: var(--light, #fafafa);
++                border-left: 3px solid var(--accent, #ffab40);
++                border-radius: 4px;
++                text-align: left;
++                font-size: 0.9rem;
++              }
++              .details-panel[hidden] {
++                display: none;
++              }
++              .details-panel ul {
++                list-style: none;
++                margin-top: 6px;
++              }
++              .details-panel li {
++                margin-bottom: 4px;
++              }
++              .actions {
++                margin-top: auto;
++                padding-top: 15px;
++                display: flex;
++                gap: 8px;
++                justify-content: center;
++                flex-wrap: wrap;
++              }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 18px;
++                text-decoration: none;
++                border: none;
++                border-radius: 5px;
++                font-family: inherit;
++                font-size: 0.9rem;
++                cursor: pointer;
++                transition: background 0.3s;
++              }
++              .btn:hover {
++                background: #3e2723;
++              }
++              .btn-secondary {
++                background: var(--secondary, #d7ccc8);
++                color: var(--text, #3e2723);
++              }
++              .btn-secondary:hover {
++                background: #bcaaa4;
++              }
++            </style>
++            <article class="card" part="card">
++              <div class="card-header">
++                <h3><slot name="title">Cold Brew</slot></h3>
++                <button type="button" class="fav-btn" data-action="toggle-favorite" aria-pressed="false" aria-label="Favorite Cold Brew" title="Toggle Favorite">
++                  <span aria-hidden="true">&#9825;</span>
++                </button>
++              </div>
++              <p class="summary"><slot name="description">Steeped for 18 hours for maximum smoothness.</slot></p>
++              <div class="details-panel" id="details-cold-brew" hidden>
++                <strong>Tasting &amp; Nutrition Notes:</strong>
++                <ul>
++                  <li><strong>Origin:</strong> Guatemalan Antigua coarse grind</li>
++                  <li><strong>Calories:</strong> 15 kcal (16 oz unsweetened)</li>
++                  <li><strong>Notes:</strong> Dark chocolate, toasted almond, low acidity</li>
++                </ul>
++              </div>
++              <div class="actions">
++                <button type="button" class="btn" data-action="toggle-details" aria-expanded="false" aria-controls="details-cold-brew">View Details</button>
++                <a href="/menu/cold-brew" class="btn btn-secondary">Order</a>
++              </div>
++            </article>
++          </template>
++          <span slot="title">Cold Brew</span>
++          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +633,144 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    class DrinkCard extends HTMLElement {
++      static get observedAttributes() {
++        return ['expanded', 'favorited'];
++      }
++
++      constructor() {
++        super();
++        // Hydrate existing Declarative Shadow DOM in place without re-rendering
++        if (!this.shadowRoot) {
++          const template = this.querySelector('template[shadowrootmode]');
++          if (template) {
++            const mode = template.getAttribute('shadowrootmode') || 'open';
++            const root = this.attachShadow({ mode });
++            root.appendChild(template.content.cloneNode(true));
++            template.remove();
++          }
++        }
++
++        this._onDetailsClick = this._onDetailsClick.bind(this);
++        this._onFavoriteClick = this._onFavoriteClick.bind(this);
++      }
++
++      connectedCallback() {
++        if (!this.shadowRoot) return;
++
++        this._detailsBtn = this.shadowRoot.querySelector('[data-action="toggle-details"]');
++        this._detailsPanel = this.shadowRoot.querySelector('.details-panel');
++        this._favBtn = this.shadowRoot.querySelector('[data-action="toggle-favorite"]');
++
++        if (this._detailsBtn) {
++          this._detailsBtn.addEventListener('click', this._onDetailsClick);
++        }
++        if (this._favBtn) {
++          this._favBtn.addEventListener('click', this._onFavoriteClick);
++        }
++
++        this._syncExpandedState();
++        this._syncFavoriteState();
++        this.setAttribute('hydrated', '');
++      }
++
++      disconnectedCallback() {
++        if (this._detailsBtn) {
++          this._detailsBtn.removeEventListener('click', this._onDetailsClick);
++        }
++        if (this._favBtn) {
++          this._favBtn.removeEventListener('click', this._onFavoriteClick);
++        }
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (oldValue === newValue || !this.shadowRoot) return;
++        if (name === 'expanded') {
++          this._syncExpandedState();
++        } else if (name === 'favorited') {
++          this._syncFavoriteState();
++        }
++      }
++
++      get expanded() {
++        return this.hasAttribute('expanded');
++      }
++
++      set expanded(value) {
++        this.toggleAttribute('expanded', Boolean(value));
++      }
++
++      get favorited() {
++        return this.hasAttribute('favorited');
++      }
++
++      set favorited(value) {
++        this.toggleAttribute('favorited', Boolean(value));
++      }
++
++      toggleDetails() {
++        this.expanded = !this.expanded;
++        this.dispatchEvent(new CustomEvent('drink-details-toggle', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            drinkId: this.getAttribute('drink-id'),
++            expanded: this.expanded
++          }
++        }));
++      }
++
++      toggleFavorite() {
++        this.favorited = !this.favorited;
++        this.dispatchEvent(new CustomEvent('drink-favorite-toggle', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            drinkId: this.getAttribute('drink-id'),
++            favorited: this.favorited
++          }
++        }));
++      }
++
++      _onDetailsClick(event) {
++        event.preventDefault();
++        this.toggleDetails();
++      }
++
++      _onFavoriteClick(event) {
++        event.preventDefault();
++        this.toggleFavorite();
++      }
++
++      _syncExpandedState() {
++        const isExpanded = this.expanded;
++        if (this._detailsPanel) {
++          this._detailsPanel.hidden = !isExpanded;
++        }
++        if (this._detailsBtn) {
++          this._detailsBtn.setAttribute('aria-expanded', String(isExpanded));
++          this._detailsBtn.textContent = isExpanded ? 'Hide Details' : 'View Details';
++        }
++      }
++
++      _syncFavoriteState() {
++        const isFavorited = this.favorited;
++        if (this._favBtn) {
++          this._favBtn.setAttribute('aria-pressed', String(isFavorited));
++          const icon = this._favBtn.querySelector('span');
++          if (icon) {
++            icon.innerHTML = isFavorited ? '&#9829;' : '&#9825;';
++          }
++        }
++      }
++    }
++
++    if (!customElements.get('drink-card')) {
++      customElements.define('drink-card', DrinkCard);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

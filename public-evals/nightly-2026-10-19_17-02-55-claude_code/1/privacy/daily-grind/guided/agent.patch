@@ -1,0 +1,213 @@
+diff --git a/.well-known/security.txt b/.well-known/security.txt
+new file mode 100644
+index 0000000..5056c6d
+--- /dev/null
++++ b/.well-known/security.txt
+@@ -0,0 +1,4 @@
++Contact: mailto:privacy@dailygrind.example
++Expires: 2027-10-19T00:00:00.000Z
++Preferred-Languages: en
++Policy: /privacy-policy
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..5ccb137
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,26 @@
++# Privacy by design notes
++
++## Data minimization
++- The site is static and collects no personal data: no cookies, storage, analytics, or forms.
++- The server (`server.js`) does not log IPs or user agents, and sets `Referrer-Policy: no-referrer`.
++- Browser features that leak data or enable tracking are disabled via `Permissions-Policy`.
++- Any new feature that collects data must collect the minimum fields, state the purpose in
++  `privacy-policy.html`, and define a retention period.
++
++## Third-party audit (performed 2026-10-19)
++| Third party | Use | Decision |
++|---|---|---|
++| images.unsplash.com | Hero image (leaked visitor IP to a third party) | Removed; image self-hosted at `assets/hero.jpg` |
++| `statikk` via `pnpm dlx` | Dev static server, unpinned remote fetch at startup | Replaced by dependency-free `server.js` |
++
++No third-party scripts, fonts, or embeds remain. The CSP (`default-src 'none'`, `img-src 'self'`) blocks any
++newly added third-party resource, so adding one requires a deliberate policy change and a new audit entry here.
++
++## Secure data handling
++- HTTPS enforced via HSTS and `upgrade-insecure-requests` (terminate TLS in front of `server.js`).
++- Only allow-listed files are served (no source/config exposure); path traversal is rejected.
++- Only GET/HEAD are accepted; responses default to `Cache-Control: no-store`.
++
++## Security headers
++CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP, COEP and
++X-Permitted-Cross-Domain-Policies are set in `server.js`. If deploying behind another host/CDN, replicate them there.
+diff --git a/assets/hero.jpg b/assets/hero.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/hero.jpg differ
+diff --git a/index.html b/index.html
+index 66c9173..7b4a635 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -76,7 +77,7 @@
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url('/assets/hero.jpg');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..db6f6bb
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,43 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <title>Privacy Policy | The Daily Grind</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #3e2723; background: #fafafa; margin: 0; }
++    main { max-width: 760px; margin: 40px auto; padding: 0 20px; }
++    h1, h2 { color: #4e342e; margin: 1.2em 0 0.4em; }
++    a { color: #4e342e; }
++  </style>
++</head>
++
++<body>
++  <main>
++    <p><a href="/">&larr; The Daily Grind</a></p>
++    <h1>Privacy Policy</h1>
++    <p>Last updated: October 19, 2026</p>
++
++    <h2>What this site collects</h2>
++    <p>This website does not use cookies, analytics, advertising trackers, or fingerprinting, and does not store
++      anything in your browser. Our server does not log IP addresses or user agents.</p>
++
++    <h2>Third parties</h2>
++    <p>All images, styles, and scripts are served from our own domain. Your browser makes no requests to third-party
++      services when you view our pages, and a Content Security Policy enforces this. We re-audit any proposed
++      third-party service before adding it (see <code>PRIVACY.md</code> in the source repository).</p>
++
++    <h2>Data we collect when you create an account or order</h2>
++    <p>We will collect only what is needed to fulfill the purpose: for orders, your name and pickup details; for
++      rewards, an email address. We do not sell your data. We delete order data after it is no longer needed and
++      account data when you close your account.</p>
++
++    <h2>Your rights</h2>
++    <p>You may request access to, correction of, or deletion of your data at any time at
++      <a href="mailto:privacy@dailygrind.example">privacy@dailygrind.example</a>.</p>
++  </main>
++</body>
++
++</html>
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..f659052
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,78 @@
++// Minimal static file server that applies security and privacy headers.
++// Zero dependencies; no request logging of IPs or user agents (data minimization).
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++
++const ROOT = __dirname;
++const PORT = Number(process.env.PORT) || 11222;
++
++// Only these paths are public; server code and package files are never served.
++const PUBLIC = [/^\/index\.html$/, /^\/privacy-policy\.html$/, /^\/assets\//, /^\/\.well-known\/security\.txt$/];
++
++const TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.jpg': 'image/jpeg',
++  '.txt': 'text/plain; charset=utf-8',
++};
++
++// Pages are fully self-contained: no third-party origins are allowed.
++const CSP = [
++  "default-src 'none'",
++  "img-src 'self'",
++  "style-src 'self' 'unsafe-inline'",
++  "font-src 'self'",
++  "connect-src 'self'",
++  "base-uri 'none'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  "object-src 'none'",
++  'upgrade-insecure-requests',
++].join('; ');
++
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': CSP,
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'no-referrer',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cross-Origin-Embedder-Policy': 'require-corp',
++  'X-Permitted-Cross-Domain-Policies': 'none',
++};
++
++const ALIASES = { '/': '/index.html', '/privacy-policy': '/privacy-policy.html' };
++
++function send(res, status, body, extra = {}) {
++  res.writeHead(status, { ...SECURITY_HEADERS, 'Cache-Control': 'no-store', ...extra });
++  res.end(body);
++}
++
++http
++  .createServer((req, res) => {
++    if (req.method !== 'GET' && req.method !== 'HEAD') {
++      return send(res, 405, 'Method Not Allowed', { Allow: 'GET, HEAD' });
++    }
++    let pathname;
++    try {
++      pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
++    } catch {
++      return send(res, 400, 'Bad Request');
++    }
++    pathname = ALIASES[pathname] || pathname;
++    const file = path.join(ROOT, pathname);
++    if (!file.startsWith(ROOT + path.sep) || !PUBLIC.some((re) => re.test(pathname))) {
++      return send(res, 404, 'Not Found');
++    }
++    fs.readFile(file, (err, data) => {
++      if (err) return send(res, 404, 'Not Found');
++      const cache = pathname.startsWith('/assets/') ? 'public, max-age=86400' : 'no-store';
++      send(res, 200, req.method === 'HEAD' ? undefined : data, {
++        'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream',
++        'Cache-Control': cache,
++      });
++    });
++  })
++  .listen(PORT, () => console.log(`Listening on http://localhost:${PORT}`));

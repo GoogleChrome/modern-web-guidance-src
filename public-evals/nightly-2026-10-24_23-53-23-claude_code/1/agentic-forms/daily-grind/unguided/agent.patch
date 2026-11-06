@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 66c9173..4be24f2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,31 @@
+       background: #3e2723;
+     }
+ 
++    form {
++      display: inline-block;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .nav-form {
++      margin-bottom: 20px;
++    }
++
++    .nav-form select {
++      padding: 6px;
++      border-radius: 4px;
++      border: 1px solid var(--primary);
++    }
++
++    .nav-form button.btn {
++      margin-top: 0;
++      padding: 6px 14px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +196,10 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form action="/order-online" method="get" toolname="order_online"
++      tooldescription="Go to the online ordering page to order coffee from The Daily Grind.">
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+@@ -181,23 +209,48 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal" method="get" toolname="view_maple_oat_latte"
++            tooldescription="View details for the Maple Oat Latte menu item.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso" method="get" toolname="view_dark_roast_espresso"
++            tooldescription="View details for the Dark Roast Espresso menu item.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew" method="get" toolname="view_cold_brew"
++            tooldescription="View details for the Cold Brew menu item.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="nav-form" action="/" method="get" id="navigate-form" toolname="navigate"
++      tooldescription="Navigate to a page of The Daily Grind website, such as the menu, locations, rewards, account, or company info pages.">
++      <label for="page">Go to: </label>
++      <select id="page" name="page" required toolparamdescription="The page to navigate to">
++        <option value="/menu">Menu</option>
++        <option value="/locations">Locations</option>
++        <option value="/rewards">Rewards</option>
++        <option value="/account">My Account</option>
++        <option value="/about">Our Story</option>
++        <option value="/careers">Join the Team</option>
++        <option value="/contact">Contact Us</option>
++        <option value="/privacy-policy">Privacy</option>
++        <option value="/logout">Logout</option>
++      </select>
++      <button type="submit" class="btn">Go</button>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +260,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Route the navigation form's selected page to its URL (a plain GET to "/" would drop the path).
++    document.getElementById('navigate-form').addEventListener('submit', (e) => {
++      e.preventDefault();
++      window.location.href = document.getElementById('page').value;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

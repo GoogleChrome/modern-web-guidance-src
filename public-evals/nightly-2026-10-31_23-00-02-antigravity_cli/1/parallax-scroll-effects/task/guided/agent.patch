@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,101 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section */
++    .wrapper {
++      position: relative;
++      overflow: clip;
++      height: 100vh;
++      display: grid;
++      grid-template-areas: "stack";
++      place-items: center;
++      background-color: #261714;
++      color: var(--light);
++    }
++
++    .layer {
++      grid-area: stack;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      padding: 20px;
++    }
++
++    .layer-bg {
++      padding: 0;
++    }
++
++    .layer-bg img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      opacity: 0.45;
++    }
++
++    .layer-mid {
++      justify-content: space-around;
++      max-width: 1100px;
++      pointer-events: none;
++    }
++
++    .parallax-photo {
++      width: 260px;
++      height: 340px;
++      object-fit: cover;
++      border-radius: 12px;
++      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(255, 171, 64, 0.35);
++    }
++
++    .parallax-content {
++      max-width: 540px;
++      background: rgba(62, 39, 35, 0.88);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      border-radius: 12px;
++      padding: 40px 32px;
++      text-align: center;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
++    }
++
++    .parallax-content h2 {
++      font-size: 2.25rem;
++      margin-bottom: 1rem;
++      color: var(--accent);
++    }
++
++    .parallax-content p {
++      font-size: 1.05rem;
++      color: var(--secondary);
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @keyframes parallax {
++        from {
++          transform: translateY(700px);
++        }
++      }
++
++      .wrapper {
++        view-timeline: --wrapper;
++      }
++
++      .layer {
++        animation: parallax linear both;
++        animation-timeline: --wrapper;
++        animation-range: entry 25% exit calc(100% / sibling-count() * sibling-index());
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        .layer {
++          animation: none;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +266,48 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="wrapper">
++    <div class="layer layer-bg">
++      <img
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80"
++        alt=""
++        width="1350"
++        height="900"
++        loading="lazy"
++        fetchpriority="low"
++      >
++    </div>
++    <div class="layer layer-mid">
++      <img
++        class="parallax-photo"
++        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++        alt=""
++        width="260"
++        height="340"
++        loading="lazy"
++        fetchpriority="low"
++      >
++      <img
++        class="parallax-photo"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++        alt=""
++        width="260"
++        height="340"
++        loading="lazy"
++        fetchpriority="low"
++      >
++    </div>
++    <div class="layer layer-fg">
++      <div class="parallax-content">
++        <h2>From Bean to Cup</h2>
++        <p>Every batch is slow-roasted in small quantities to unlock deep caramel notes, rich aroma, and a velvety finish in every pour.</p>
++        <a href="/about" class="btn">Explore Our Craft</a>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

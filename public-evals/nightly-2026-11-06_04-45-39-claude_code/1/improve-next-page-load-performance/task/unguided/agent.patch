@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,87 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!--
++    Link prefetching.
++    Same-origin links are prefetched when the user shows intent (hover / pointerdown),
++    so the next page is usually already cached by the time they click.
++
++    NEVER prefetched:
++      - /logout (and anything under it) — prefetching would sign the user out
++      - any link marked with data-no-prefetch or rel="nofollow"
++    To opt another link out, add the data-no-prefetch attribute to it.
++  -->
++  <script type="speculationrules">
++  {
++    "prefetch": [{
++      "source": "document",
++      "where": {
++        "and": [
++          { "href_matches": "/*" },
++          { "not": { "href_matches": "/logout" } },
++          { "not": { "href_matches": "/logout/*" } },
++          { "not": { "href_matches": "/logout?*" } },
++          { "not": { "selector_matches": "[data-no-prefetch], [rel~=nofollow]" } }
++        ]
++      },
++      "eagerness": "moderate"
++    }]
++  }
++  </script>
++  <script>
++    // Fallback for browsers without Speculation Rules support (Firefox, Safari):
++    // inject <link rel="prefetch"> on hover / touch, using the same exclusions.
++    (function () {
++      if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) return;
++
++      var link = document.createElement('link');
++      if (!(link.relList && link.relList.supports && link.relList.supports('prefetch'))) return;
++
++      var conn = navigator.connection;
++      if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
++
++      var prefetched = new Set();
++
++      function isExcluded(a, url) {
++        if (a.hasAttribute('data-no-prefetch') || a.hasAttribute('download')) return true;
++        if (/(^|\s)nofollow(\s|$)/i.test(a.getAttribute('rel') || '')) return true;
++        if (/^\/logout(\/|$)/i.test(url.pathname)) return true;
++        return false;
++      }
++
++      function prefetch(e) {
++        var a = e.target.closest && e.target.closest('a[href]');
++        if (!a || (a.target && a.target !== '_self')) return;
++
++        var url;
++        try { url = new URL(a.href, location.href); } catch (_) { return; }
++        if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return;
++        if (isExcluded(a, url)) return;
++
++        url.hash = '';
++        var key = url.href;
++        if (key === location.href.split('#')[0] || prefetched.has(key)) return;
++        prefetched.add(key);
++
++        var l = document.createElement('link');
++        l.rel = 'prefetch';
++        l.href = key;
++        document.head.appendChild(l);
++      }
++
++      var timer;
++      document.addEventListener('mouseover', function (e) {
++        clearTimeout(timer);
++        timer = setTimeout(function () { prefetch(e); }, 65);
++      }, { passive: true });
++      document.addEventListener('mouseout', function () { clearTimeout(timer); }, { passive: true });
++      document.addEventListener('touchstart', prefetch, { passive: true });
++      document.addEventListener('focusin', prefetch);
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -163,9 +242,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">

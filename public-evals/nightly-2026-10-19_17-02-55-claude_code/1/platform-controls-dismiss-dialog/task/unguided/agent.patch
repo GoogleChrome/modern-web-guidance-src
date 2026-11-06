@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,42 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    /* Details modal */
++    .details-modal {
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      margin: auto;
++      width: min(90vw, 450px);
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .details-modal::backdrop {
++      background: rgba(0, 0, 0, 0.6);
++    }
++
++    .modal-content {
++      padding: 24px;
++    }
++
++    .modal-content h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .modal-content ul {
++      margin: 10px 0 0 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +214,59 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-modal="maple-oat-latte-modal">Show Details</button>
++          <dialog id="maple-oat-latte-modal" class="details-modal" aria-labelledby="maple-oat-latte-title">
++            <div class="modal-content">
++              <h2 id="maple-oat-latte-title">Maple Oat Latte</h2>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <ul>
++              <li>Size: 12 oz</li>
++              <li>Milk: Oat</li>
++              <li>Espresso: Double shot</li>
++              <li>Sweetener: Vermont maple syrup</li>
++              <li>Calories: 190</li>
++              </ul>
++              <button type="button" class="btn" data-close>Close</button>
++            </div>
++          </dialog>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-modal="dark-roast-espresso-modal">Show Details</button>
++          <dialog id="dark-roast-espresso-modal" class="details-modal" aria-labelledby="dark-roast-espresso-title">
++            <div class="modal-content">
++              <h2 id="dark-roast-espresso-title">Dark Roast Espresso</h2>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <ul>
++              <li>Size: 2 oz</li>
++              <li>Roast: Dark</li>
++              <li>Tasting notes: Smoky, cocoa, toasted nuts</li>
++              <li>Calories: 5</li>
++              </ul>
++              <button type="button" class="btn" data-close>Close</button>
++            </div>
++          </dialog>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-modal="cold-brew-modal">Show Details</button>
++          <dialog id="cold-brew-modal" class="details-modal" aria-labelledby="cold-brew-title">
++            <div class="modal-content">
++              <h2 id="cold-brew-title">Cold Brew</h2>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <ul>
++              <li>Size: 16 oz</li>
++              <li>Steeped: 18 hours</li>
++              <li>Tasting notes: Smooth, chocolatey, low acidity</li>
++              <li>Calories: 5</li>
++              </ul>
++              <button type="button" class="btn" data-close>Close</button>
++            </div>
++          </dialog>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +280,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('[data-modal]').forEach((button) => {
++      button.addEventListener('click', () => {
++        document.getElementById(button.dataset.modal).showModal();
++      });
++    });
++
++    document.querySelectorAll('.details-modal').forEach((dialog) => {
++      // Escape is handled natively by showModal().
++      dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
++
++      // Clicks on the backdrop target the dialog itself; clicks inside hit .modal-content or its children.
++      dialog.addEventListener('click', (event) => {
++        if (event.target === dialog) dialog.close();
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

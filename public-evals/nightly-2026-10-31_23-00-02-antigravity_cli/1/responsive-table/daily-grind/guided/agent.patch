@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+index 66c9173..3a82d0e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,151 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutritional & Pricing Table */
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      margin-top: 2rem;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    table {
++      width: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      text-align: left;
++    }
++
++    caption {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      padding: 1rem;
++      text-align: left;
++      background: white;
++      border-bottom: 2px solid var(--secondary);
++    }
++
++    th,
++    td {
++      padding: 0.85rem 1rem;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++    }
++
++    thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++      color: var(--primary);
++      font-weight: 600;
++      white-space: nowrap;
++      border-right: 1px solid var(--secondary);
++    }
++
++    tbody tr:last-child th,
++    tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    @container (width < 600px) {
++      table,
++      thead,
++      tbody,
++      tr,
++      th,
++      td {
++        display: block;
++      }
++
++      thead {
++        /* Hide column header from layout and screen readers in stacked mode */
++        display: none;
++      }
++
++      tr {
++        margin-block-end: 1.5rem;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        overflow: hidden;
++      }
++
++      tbody tr:last-child {
++        margin-block-end: 0;
++      }
++
++      tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 2;
++        background: var(--secondary);
++        color: var(--text);
++        border-right: none;
++      }
++
++      table {
++        --label-1: "Drink";
++        --label-2: "Serving Size";
++        --label-3: "Price";
++        --label-4: "Calories";
++        --label-5: "Caffeine";
++        --label-6: "Sugar";
++      }
++
++      td {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        gap: 1rem;
++      }
++
++      td::before {
++        font-weight: 600;
++        color: var(--primary);
++      }
++
++      td:nth-child(2)::before {
++        content: var(--label-2) ": ";
++      }
++
++      td:nth-child(3)::before {
++        content: var(--label-3) ": ";
++      }
++
++      td:nth-child(4)::before {
++        content: var(--label-4) ": ";
++      }
++
++      td:nth-child(5)::before {
++        content: var(--label-5) ": ";
++      }
++
++      td:nth-child(6)::before {
++        content: var(--label-6) ": ";
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +339,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div tabindex="0" role="region" aria-labelledby="seasonal-nutrition-caption" class="table-wrapper">
++        <table>
++          <caption id="seasonal-nutrition-caption">Nutritional and Pricing Breakdown</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Serving Size</th>
++              <th scope="col">Price</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Caffeine</th>
++              <th scope="col">Sugar</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>12 oz (355 ml)</td>
++              <td>$5.50</td>
++              <td>210 kcal</td>
++              <td>150 mg</td>
++              <td>18 g</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 oz (60 ml)</td>
++              <td>$3.25</td>
++              <td>10 kcal</td>
++              <td>150 mg</td>
++              <td>0 g</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>16 oz (473 ml)</td>
++              <td>$4.75</td>
++              <td>5 kcal</td>
++              <td>200 mg</td>
++              <td>0 g</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 

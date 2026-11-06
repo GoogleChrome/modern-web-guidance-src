@@ -1,0 +1,354 @@
+diff --git a/index.html b/index.html
+index 66c9173..4579469 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,24 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --spring-easing: linear(0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%, 1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%, 1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%, 0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%, 1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%, 0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%, 1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%, 0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%, 0.995 88.9%, 1);
++      --bounce-easing: linear(0, 0.214 14.7%, 0.386 23.7%, 0.598 31.9%, 0.999 44.7%, 0.807 52.6%, 0.762 56%, 0.747 59.4%, 0.758 62.4%, 0.793 65.6%, 0.999 77.4%, 0.961 81.2%, 0.949 84.8%, 0.956 88%, 0.993 95.5%, 1);
++    }
++
++    @keyframes fade-up {
++      from {
++        opacity: 0;
++        translate: 0 18px;
++      }
++      to {
++        opacity: 1;
++        translate: 0 0;
++      }
+     }
+ 
+     * {
+@@ -56,20 +70,86 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++      transition:
++        color 0.25s ease-out,
++        translate 0.3s ease-out;
++      transition-timing-function: ease-out, var(--spring-easing);
++
++      &::after {
++        content: "";
++        position: absolute;
++        inset-inline: 0;
++        inset-block-end: -4px;
++        height: 2px;
++        background: var(--accent);
++        border-radius: 2px;
++        scale: 0 1;
++        transform-origin: center;
++        transition: scale 0.3s ease-out;
++        transition-timing-function: var(--spring-easing);
++      }
++
++      &:hover,
++      &:focus-visible {
++        color: var(--accent);
++        translate: 0 -2px;
+ 
+-    nav a:hover {
+-      color: var(--accent);
++        &::after {
++          scale: 1 1;
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: color 0.2s ease-out;
++
++        &:hover,
++        &:focus-visible {
++          translate: none;
++        }
++
++        &::after {
++          transition: none;
++        }
++      }
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition:
++        color 0.25s ease-out,
++        background-color 0.25s ease-out,
++        translate 0.3s ease-out,
++        scale 0.3s ease-out;
++      transition-timing-function: ease-out, ease-out, var(--spring-easing), var(--spring-easing);
++
++      &::after {
++        display: none;
++      }
++
++      &:hover,
++      &:focus-visible {
++        background-color: rgba(255, 171, 64, 0.15);
++        scale: 1.03;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        transition:
++          color 0.2s ease-out,
++          background-color 0.2s ease-out;
++
++        &:hover,
++        &:focus-visible {
++          translate: none;
++          scale: none;
++        }
++      }
+     }
+ 
+     /* Hero Section */
+@@ -91,6 +171,55 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      animation: fade-up 0.6s ease-out both;
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++      }
++    }
++
++    .hero p {
++      animation: fade-up 0.6s ease-out 0.1s both;
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++      }
++    }
++
++    .hero .btn {
++      animation: fade-up 0.6s ease-out 0.2s both;
++      transition:
++        background-color 0.25s ease-out,
++        translate 0.45s ease-out,
++        scale 0.45s ease-out;
++      transition-timing-function: ease-out, var(--spring-easing), var(--spring-easing);
++
++      &:hover,
++      &:focus-visible {
++        background-color: var(--accent);
++        color: var(--text);
++        translate: 0 -3px;
++        scale: 1.06;
++      }
++
++      &:active {
++        translate: 0 -1px;
++        scale: 0.98;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++        transition:
++          background-color 0.2s ease-out,
++          color 0.2s ease-out;
++
++        &:hover,
++        &:focus-visible,
++        &:active {
++          translate: none;
++          scale: none;
++        }
++      }
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +229,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,11 +241,56 @@
+     }
+ 
+     .card {
++      --stagger-time: 0.12s;
++      position: relative;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      animation: fade-up 0.5s ease-out both;
++      animation-delay: calc(var(--sibling-index, 1) * var(--stagger-time));
++      animation-delay: calc(sibling-index() * var(--stagger-time));
++      transition:
++        translate 0.45s ease-out,
++        scale 0.45s ease-out;
++      transition-timing-function: var(--spring-easing);
++
++      &::after {
++        content: "";
++        position: absolute;
++        inset: 0;
++        border-radius: inherit;
++        box-shadow: 0 12px 24px rgba(62, 39, 35, 0.16);
++        opacity: 0;
++        pointer-events: none;
++        transition: opacity 0.3s ease-out;
++      }
++
++      &:hover,
++      &:focus-within {
++        translate: 0 -6px;
++        scale: 1.02;
++
++        &::after {
++          opacity: 1;
++        }
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++        transition: none;
++
++        &:hover,
++        &:focus-within {
++          translate: none;
++          scale: none;
++        }
++
++        &::after {
++          transition: opacity 0.2s ease-out;
++        }
++      }
+     }
+ 
+     .card h3 {
+@@ -121,6 +299,7 @@
+     }
+ 
+     .btn {
++      position: relative;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,11 +307,38 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++      font-weight: 600;
++      transition:
++        background-color 0.25s ease-out,
++        color 0.25s ease-out,
++        translate 0.35s ease-out,
++        scale 0.35s ease-out;
++      transition-timing-function: ease-out, ease-out, var(--bounce-easing), var(--bounce-easing);
++
++      &:hover,
++      &:focus-visible {
++        background-color: var(--primary-hover);
++        translate: 0 -2px;
++        scale: 1.04;
++      }
++
++      &:active {
++        translate: 0 0;
++        scale: 0.98;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        transition:
++          background-color 0.2s ease-out,
++          color 0.2s ease-out;
+ 
+-    .btn:hover {
+-      background: #3e2723;
++        &:hover,
++        &:focus-visible,
++        &:active {
++          translate: none;
++          scale: none;
++        }
++      }
+     }
+ 
+     footer {
+@@ -147,10 +353,29 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition:
++        color 0.2s ease-out,
++        translate 0.25s ease-out;
++
++      &:hover,
++      &:focus-visible {
++        color: var(--primary);
++        translate: 0 -1px;
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: color 0.2s ease-out;
++
++        &:hover,
++        &:focus-visible {
++          translate: none;
++        }
++      }
+     }
+   </style>
+ </head>
+@@ -176,8 +401,8 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <div class="grid" id="stagger-list">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +432,16 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
++      const staggerList = document.getElementById('stagger-list');
++      if (staggerList) {
++        [...staggerList.children].forEach((el, index) =>
++          el.style.setProperty('--sibling-index', index + 1)
++        );
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

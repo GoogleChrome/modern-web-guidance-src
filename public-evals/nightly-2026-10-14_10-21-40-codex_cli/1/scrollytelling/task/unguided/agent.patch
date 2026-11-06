@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,166 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Both branches share the named timelines declared by the text sections. */
++    .coffee-story {
++      margin-top: 64px;
++      timeline-scope: --source, --roast, --brew;
++    }
++
++    .story-heading {
++      margin-bottom: 24px;
++    }
++
++    .story-eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++
++    .story-heading h2 {
++      font-size: clamp(1.8rem, 4vw, 2.5rem);
++      line-height: 1.2;
++      margin: 8px 0 12px;
++    }
++
++    .story-panels {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 24px;
++    }
++
++    #tracked {
++      background: #f1ece8;
++      border-radius: 12px;
++    }
++
++    #tracked:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    #tracked > section {
++      padding: 40px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++    }
++
++    .story-number {
++      color: #80665c;
++      font-size: 0.8rem;
++      letter-spacing: 0.12em;
++      margin-bottom: 20px;
++    }
++
++    #tracked h3 {
++      font-size: 1.6rem;
++      line-height: 1.25;
++      margin-bottom: 16px;
++    }
++
++    #tracked > section:nth-child(1) { view-timeline: --source block; }
++    #tracked > section:nth-child(2) { view-timeline: --roast block; }
++    #tracked > section:nth-child(3) { view-timeline: --brew block; }
++
++    #animated {
++      display: grid;
++      gap: 16px;
++    }
++
++    #animated > section {
++      position: relative;
++      overflow: hidden;
++      border-radius: 12px;
++      min-height: 200px;
++      background: var(--primary);
++      color: white;
++    }
++
++    #animated img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      position: absolute;
++      object-fit: cover;
++    }
++
++    #animated h3 {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 48px 24px 24px;
++      background: linear-gradient(transparent, rgba(30, 19, 15, 0.85));
++      font-size: 1rem;
++      font-weight: 500;
++    }
++
++    .scroll-hint { display: none; }
++
++    @keyframes story-reveal {
++      0% { opacity: 0; transform: translateY(20px); }
++      35%, 65% { opacity: 1; transform: translateY(0); }
++      100% { opacity: 0; transform: translateY(-20px); }
++    }
++
++    /* Keep every visual visible unless cross-branch scroll timelines work. */
++    @supports (timeline-scope: --source) and (view-timeline: --source block) and
++      (animation-timeline: --source) and (animation-range: cover 0% cover 100%) {
++      @media (prefers-reduced-motion: no-preference) {
++        .story-panels { --story-height: 440px; }
++
++        #tracked {
++          height: var(--story-height);
++          overflow-y: auto;
++          scrollbar-color: #80665c #f1ece8;
++          scrollbar-width: thin;
++        }
++
++        #tracked > section { min-height: 100%; }
++
++        #animated {
++          height: var(--story-height);
++          position: relative;
++          overflow: hidden;
++          border-radius: 12px;
++          background: var(--primary);
++        }
++
++        #animated > section {
++          position: absolute;
++          inset: 0;
++          animation: story-reveal 1s linear both;
++          /* These follow the shorthand, which resets animation-timeline. */
++          animation-timeline: var(--story-timeline);
++          animation-range: cover 0% cover 100%;
++        }
++
++        #animated > section:nth-child(1) { --story-timeline: --source; }
++        #animated > section:nth-child(2) { --story-timeline: --roast; }
++        #animated > section:nth-child(3) { --story-timeline: --brew; }
++
++        .scroll-hint {
++          display: block;
++          color: #80665c;
++          font-size: 0.85rem;
++          margin-top: 14px;
++        }
++
++        @media (max-width: 640px) {
++          .story-panels { --story-height: 300px; }
++          #animated { order: -1; height: 240px; }
++        }
++      }
++    }
++
++    @media (max-width: 640px) {
++      .story-panels { grid-template-columns: 1fr; gap: 16px; }
++      #tracked > section { padding: 28px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +352,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-story" aria-labelledby="story-title">
++      <div class="story-heading">
++        <p class="story-eyebrow">Good coffee. Every step of the way.</p>
++        <h2 id="story-title">From bean to cup</h2>
++        <p>A little care goes a long way. Follow the journey behind your daily grind.</p>
++      </div>
++
++      <div class="story-panels">
++        <div id="tracked" tabindex="0" role="region" aria-label="The coffee journey">
++          <section aria-labelledby="source-title">
++            <p class="story-number">01 / THE ORIGIN</p>
++            <h3 id="source-title">Great coffee starts at the source.</h3>
++            <p>Every cup begins with thoughtfully sourced beans. We choose coffees with character, grown by people who care as much about the harvest as we do about your first sip.</p>
++          </section>
++          <section aria-labelledby="roast-title">
++            <p class="story-number">02 / THE ROAST</p>
++            <h3 id="roast-title">Small batches. Big personality.</h3>
++            <p>Locally roasted with patience and precision, our beans develop their own balance of sweetness, depth, and aroma. We bring out the best in every batch.</p>
++          </section>
++          <section aria-labelledby="brew-title">
++            <p class="story-number">03 / YOUR DAILY RITUAL</p>
++            <h3 id="brew-title">Made with care. Enjoyed your way.</h3>
++            <p>A rich espresso, a slow pour-over, or a silky latte. However you take your coffee, we make every cup a moment worth slowing down for.</p>
++          </section>
++        </div>
++
++        <div id="animated" aria-label="From bean to cup in pictures">
++          <section aria-labelledby="source-caption">
++            <img src="images/coffee-beans.jpg" alt="A close view of whole coffee beans" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="source-caption">01 — Thoughtfully sourced</h3>
++          </section>
++          <section aria-labelledby="roast-caption">
++            <img src="images/coffee-roast.jpg" alt="Coffee prepared in a warm café setting" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="roast-caption">02 — Locally roasted</h3>
++          </section>
++          <section aria-labelledby="brew-caption">
++            <img src="images/coffee-brew.jpg" alt="Fresh coffee ready to be enjoyed" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="brew-caption">03 — Carefully crafted</h3>
++          </section>
++        </div>
++      </div>
++      <p class="scroll-hint">Scroll inside the story to explore ↓ · You can also focus the text panel and use the arrow keys.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

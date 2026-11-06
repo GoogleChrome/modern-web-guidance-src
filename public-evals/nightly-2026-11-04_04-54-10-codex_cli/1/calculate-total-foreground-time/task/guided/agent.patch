@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,57 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Start early so the fallback captures visibility changes during loading.
++    window.getTotalForegroundTime = (() => {
++      let total = 0;
++      let visibleSince = document.visibilityState === 'visible' ? 0 : null;
++      let pageHidden = false;
++
++      function updateVisibility() {
++        const now = performance.now();
++        if (visibleSince !== null) {
++          total += now - visibleSince;
++          visibleSince = null;
++        }
++        if (!pageHidden && document.visibilityState === 'visible') {
++          visibleSince = now;
++        }
++      }
++
++      document.addEventListener('visibilitychange', updateVisibility);
++      window.addEventListener('pagehide', () => {
++        pageHidden = true;
++        updateVisibility();
++      });
++      window.addEventListener('pageshow', () => {
++        pageHidden = false;
++        updateVisibility();
++      });
++
++      /**
++       * Returns cumulative visible time for this document in milliseconds.
++       * Visibility measures foreground time, not attention or user activity.
++       */
++      return function getTotalForegroundTime() {
++        const entries = performance.getEntriesByType('visibility-state');
++        const now = performance.now();
++
++        if (entries.length === 0) {
++          // Older browsers have no visibility history; use events tracked above.
++          return total + (visibleSince === null ? 0 : now - visibleSince);
++        }
++
++        return entries.reduce((duration, entry, index) => {
++          if (entry.name !== 'visible') return duration;
++          const end = entries[index + 1]?.startTime ?? now;
++          return duration + end - entry.startTime;
++        }, 0);
++      };
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

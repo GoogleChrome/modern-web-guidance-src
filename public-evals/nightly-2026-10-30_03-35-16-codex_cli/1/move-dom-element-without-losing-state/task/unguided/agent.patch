@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,86 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.theater-active {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    #hero-video-slot {
++      display: none;
++      width: 100%;
++      max-width: 960px;
++      margin-top: 24px;
++      text-align: left;
++    }
++
++    .theater-active #hero-video-slot {
++      display: block;
++    }
++
++    .roasting-section {
++      margin-bottom: 40px;
++    }
++
++    #video-home {
++      margin-top: 20px;
++    }
++
++    .video-player {
++      overflow: hidden;
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
++    }
++
++    .video-frame {
++      position: relative;
++      padding-top: 56.25%;
++    }
++
++    .video-frame iframe {
++      position: absolute;
++      inset: 0;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .video-toolbar {
++      padding: 12px 16px;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    #theater-toggle {
++      border: 1px solid var(--accent);
++      border-radius: 5px;
++      padding: 8px 16px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #theater-toggle:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    .video-player.theater-overlay {
++      position: absolute;
++      z-index: 10;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,11 +249,32 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div id="hero-video-slot"></div>
+   </header>
+ 
+   <main class="container">
++    <section class="roasting-section" aria-labelledby="roasting-title">
++      <h2 id="roasting-title">The Art of the Roast</h2>
++      <p>Discover how roasting brings out the sweetness and character in every bean.</p>
++      <div id="video-home">
++        <div id="roasting-player" class="video-player">
++          <div class="video-frame">
++            <iframe id="roasting-video"
++              src="https://www.youtube.com/embed/Y52WQygSrmQ"
++              title="How Roasting can make (or break) coffee"
++              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          </div>
++          <div class="video-toolbar">
++            <span>From green bean to your daily grind</span>
++            <button id="theater-toggle" type="button" aria-pressed="false"
++              aria-controls="roasting-player" hidden>Theater mode</button>
++          </div>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +305,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const home = document.getElementById('video-home');
++    const heroSlot = document.getElementById('hero-video-slot');
++    const player = document.getElementById('roasting-player');
++    const toggle = document.getElementById('theater-toggle');
++    const canMoveWithoutReload = typeof heroSlot.moveBefore === 'function';
++    let theaterActive = false;
++
++    function positionFallback() {
++      if (!theaterActive || canMoveWithoutReload) return;
++      const bounds = heroSlot.getBoundingClientRect();
++      player.style.width = bounds.width + 'px';
++      player.style.left = (bounds.left + window.scrollX) + 'px';
++      player.style.top = (bounds.top + window.scrollY) + 'px';
++      heroSlot.style.height = player.getBoundingClientRect().height + 'px';
++    }
++
++    toggle.hidden = false;
++    toggle.addEventListener('click', () => {
++      theaterActive = !theaterActive;
++      hero.classList.toggle('theater-active', theaterActive);
++
++      if (canMoveWithoutReload) {
++        // Atomic movement preserves the nested iframe's browsing context.
++        // appendChild/insertBefore would reload it, even with the same node.
++        const destination = theaterActive ? heroSlot : home;
++        destination.moveBefore(player, null);
++      } else {
++        // Keep the iframe connected to its original parent on older browsers.
++        // Visually place it in the hero instead of resetting playback by reparenting.
++        player.classList.toggle('theater-overlay', theaterActive);
++        if (!theaterActive) {
++          player.style.removeProperty('width');
++          player.style.removeProperty('left');
++          player.style.removeProperty('top');
++          heroSlot.style.removeProperty('height');
++        }
++      }
++
++      toggle.setAttribute('aria-pressed', String(theaterActive));
++      toggle.textContent = theaterActive ? 'Exit theater mode' : 'Theater mode';
++      positionFallback();
++      player.scrollIntoView({ block: 'center', behavior: 'auto' });
++    });
++
++    if (!canMoveWithoutReload) {
++      window.addEventListener('resize', positionFallback);
++      window.addEventListener('load', positionFallback);
++      if (typeof ResizeObserver === 'function') {
++        const observer = new ResizeObserver(positionFallback);
++        observer.observe(hero);
++        observer.observe(player);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

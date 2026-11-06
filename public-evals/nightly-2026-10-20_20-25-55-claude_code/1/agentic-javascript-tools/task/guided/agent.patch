@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,78 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Menu details exposed to AI assistants; mirrors the cards on this page.
++    const MENU_ITEMS = [
++      {
++        name: "Maple Oat Latte",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        category: "Seasonal Favorites",
++        detailsUrl: "/menu/seasonal",
++      },
++      {
++        name: "Dark Roast Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        category: "Seasonal Favorites",
++        detailsUrl: "/menu/espresso",
++      },
++      {
++        name: "Cold Brew",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        category: "Seasonal Favorites",
++        detailsUrl: "/menu/cold-brew",
++      },
++    ];
++
++    const normalize = (value) => value.trim().toLowerCase().replace(/\s+/g, " ");
++
++    // Aborting this controller unregisters the tool.
++    const webMcpController = new AbortController();
++
++    if ("modelContext" in document) {
++      document.modelContext.registerTool({
++        name: "get_menu_item_details",
++        description: "Looks up a Daily Grind menu item and returns its description, category, and details page. Use when the user asks about a specific drink on the menu.",
++        inputSchema: {
++          type: "object",
++          properties: {
++            name: {
++              type: "string",
++              description: "Name of the menu item, such as the maple oat latte or cold brew. Case-insensitive.",
++            },
++          },
++          required: ["name"],
++        },
++        execute({ name } = {}) {
++          if (typeof name !== "string" || !name.trim()) {
++            return {
++              error: "Pass the name of a menu item.",
++              availableItems: MENU_ITEMS.map((item) => item.name),
++            };
++          }
++          const query = normalize(name);
++          const item =
++            MENU_ITEMS.find((entry) => normalize(entry.name) === query) ??
++            MENU_ITEMS.find((entry) => normalize(entry.name).includes(query));
++          if (!item) {
++            return {
++              error: `Menu item "${name}" not found.`,
++              availableItems: MENU_ITEMS.map((entry) => entry.name),
++            };
++          }
++          return item;
++        },
++        annotations: { readOnlyHint: true },
++      }, { signal: webMcpController.signal }).catch((err) => {
++        console.warn("WebMCP tool registration failed:", err);
++      });
++
++      // Deactivate the tool when the page is unloaded.
++      addEventListener("pagehide", () => webMcpController.abort(), { once: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

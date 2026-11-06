@@ -1,0 +1,71 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,66 @@
++# Site audit and optimization
++
++Completed October 19, 2026. Scope: the entire original repository, all public pages and resources, startup behavior, accessibility, responsive layout, loading performance, internal navigation, metadata, and HTTP security. Verification was automated; no manual browser inspection was performed.
++
++## Findings and changes
++
++| Priority | Finding | Resolution |
++| --- | --- | --- |
++| High | All 13 linked destination paths were missing. Menu details, ordering, accounts, logout, locations, rewards, and footer links led nowhere. | Replaced navigation with actual sections, added distinct native coffee disclosures, added a real privacy page, and removed unsupported account/order/careers entry points. The page clearly states that online ordering is unavailable. |
++| High | The navigation could overflow narrow screens, with no responsive breakpoint. | Added wrapping navigation, a single-column mobile menu, flexible spacing and typography, and safe wrapping at enlarged text sizes. |
++| High | No skip link or explicit keyboard focus styling. Repeated “View Details” labels were ambiguous. | Added a focusable main landmark, skip navigation, contrasting outlines, 44px minimum control heights, and unique disclosure labels. Native details/summary works without scripts. |
++| Medium | A single remote, CSS-discovered hero image was used at every viewport size. | Reused the existing stock photo, locally hosted as responsive WebP variants, exposed directly in HTML with high fetch priority, dimensions, and an explicit image slot. The decorative photo has empty alternative text. |
++| Medium | The startup command downloaded an unpinned server package at runtime. | Replaced it with a Node.js server using built-in modules only. No installation, build, browser JavaScript, remote fonts, or runtime third-party dependencies are required. |
++| Medium | No project-controlled compression, cache policy, or security headers. | Added precomputed Brotli/gzip variants; revalidation for documents/styles; fingerprinted, immutable image caching; CSP; MIME protection; framing restrictions; referrer and permissions policies. Only explicitly public resources are served. |
++| Medium | Missing search description, crawler instructions, favicon, and social summary metadata. | Added descriptions, robots.txt, a local SVG favicon, theme color, and Open Graph text metadata. |
++| Low | Plain card styling offered limited hierarchy and reading guidance. | Preserved the coffee brand, palette, headline, stock photo, and three drinks while improving type, spacing, section hierarchy, and print styling. |
++
++The homepage includes short story and coffee-selection sections based on the existing coffee descriptions. No business addresses, prices, opening hours, or contact details have been invented.
++
++## Image delivery
++
++| Resource | Bytes |
++| --- | ---: |
++| Original remote 1350px JPEG | 157,974 |
++| New 640px WebP | 30,652 |
++| New 1280px WebP | 78,016 |
++| New 1920px WebP | 157,718 |
++
++The 1280px variant is approximately 51% smaller than the original request; the smallest variant is approximately 81% smaller. The browser selects one appropriate image using srcset/sizes. Content fingerprints allow a one-year cache without trapping visitors on an outdated replacement image.
++
++## Automated validation
++
++- `npm test`: four passing integration tests. They check both pages, all internal links, all fragment targets, image srcset references, unique IDs, public-file isolation, malformed paths, unsupported methods, HEAD responses, security and content headers, cache policy, and compression round trips.
++- HTML Validate 11.16.4: both HTML documents pass. A documented inline exception preserves `role="list"` for Safari when list styling is removed.
++- axe-core 4.14.0 with Puppeteer 25.14.0: no violations in the selected WCAG A/AA, WCAG 2.1, WCAG 2.2 AA, and best-practice checks on either page at 320, 375, 768, 1280, and 1920 CSS pixels. The test harness bypassed CSP solely to inject axe; production CSP remains restrictive.
++- Automated layout checks: no horizontal overflow at those widths, including after setting the root text size to 200%; all images load.
++- Automated keyboard checks: skip link moves focus to main; all three disclosures open with Enter and close with Space. No page runtime errors or failed resource requests were observed.
++- `git diff --check`: passes.
++
++Lighthouse 13.5.0 measurements against the local Node server, using headless Chrome with the mobile and desktop presets:
++
++| Category / metric | Mobile | Desktop |
++| --- | ---: | ---: |
++| Performance | 100 | 100 |
++| Accessibility | 100 | 100 |
++| Best practices | 100 | 100 |
++| SEO | 100 | 100 |
++| First Contentful Paint | 0.8 s | 0.2 s |
++| Largest Contentful Paint | 1.4 s | 0.4 s |
++| Cumulative Layout Shift | 0 | 0 |
++| Total Blocking Time | 0 ms | 0 ms |
++
++These are local lab measurements, not production or real-user measurements. Scores do not establish full accessibility conformance. Remaining Lighthouse suggestions include about 6 KiB of further image compression and the small render-blocking stylesheet; the stylesheet is shared with the privacy page and no CSS/JavaScript loader is needed.
++
++The optional audit tools were installed outside the repository; they are not application dependencies. To repeat Lighthouse with a local Chrome installation:
++
++```sh
++pnpm dlx lighthouse http://localhost:11222 --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo
++```
++
++## Remaining production inputs
++
++- Supply the production hostname before adding absolute canonical URLs, a sitemap, and absolute social image URLs.
++- Configure HTTPS, HSTS, proxy logging/retention, and equivalent headers if deploying on a separate static host. The privacy notice explicitly distinguishes site code from hosting behavior.
++- Supply verified location/contact information and business details before publishing those features. Real ordering, accounts, rewards, and hiring flows need actual destinations or backend services.
++- Confirm production performance with field measurements after deployment. Manual visual and assistive-technology review was outside this task as requested.

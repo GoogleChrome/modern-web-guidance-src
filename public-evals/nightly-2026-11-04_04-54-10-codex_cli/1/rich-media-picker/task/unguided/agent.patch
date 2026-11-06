@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,89 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-picker {
++      position: relative;
++      width: min(100%, 340px);
++      margin-top: 24px;
++      text-align: left;
++    }
++
++    .roast-label {
++      display: block;
++      margin-bottom: 8px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 0.04em;
++    }
++
++    .roast-trigger,
++    .roast-option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      width: 100%;
++      padding: 13px 16px;
++      color: var(--text);
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .roast-trigger {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fff;
++      box-shadow: 0 4px 16px #0002;
++    }
++
++    .roast-icon {
++      width: 26px;
++      height: 26px;
++      flex-shrink: 0;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.6;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .roast-copy { flex: 1; }
++    .roast-title { display: block; font-size: 0.95rem; font-weight: 600; }
++    .roast-description { display: block; font-size: 0.78rem; color: #735c54; }
++    .roast-chevron { width: 18px; height: 18px; transition: transform 0.2s; }
++    .roast-trigger[aria-expanded="true"] .roast-chevron { transform: rotate(180deg); }
++
++    .roast-options {
++      position: absolute;
++      top: calc(100% + 8px);
++      left: 0;
++      right: 0;
++      z-index: 10;
++      padding: 5px;
++      list-style: none;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 10px 28px #0003;
++    }
++
++    .roast-options[hidden] { display: none; }
++    .roast-option { border-radius: 6px; }
++    .roast-option[aria-selected="true"] { background: #f4eeea; }
++    .roast-option:hover,
++    .roast-option:focus { background: #fff0dc; outline: none; }
++    .roast-trigger:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +243,31 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-picker">
++      <span id="roast-label" class="roast-label">Choose your roast</span>
++      <button type="button" class="roast-trigger" id="roast-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="roast-options" aria-labelledby="roast-label roast-selection">
++        <svg class="roast-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z M17 10h1a3 3 0 0 1 0 6h-1 M7 3v3 M11 2v4 M15 3v3"/></svg>
++        <span class="roast-copy" id="roast-selection"><span class="roast-title">Dark roast</span><span class="roast-description">Bold & rich with notes of dark chocolate.</span></span>
++        <svg class="roast-icon roast-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
++      </button>
++      <ul class="roast-options" id="roast-options" role="listbox" aria-labelledby="roast-label" hidden>
++        <li class="roast-option" role="option" tabindex="-1" aria-selected="true" data-roast="dark-roast">
++          <svg class="roast-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z M17 10h1a3 3 0 0 1 0 6h-1 M7 3v3 M11 2v4 M15 3v3"/></svg>
++          <span class="roast-copy"><span class="roast-title">Dark roast</span><span class="roast-description">Bold & rich with notes of dark chocolate.</span></span>
++        </li>
++        <li class="roast-option" role="option" tabindex="-1" aria-selected="false" data-roast="medium-roast">
++          <svg class="roast-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="7" ry="9" transform="rotate(35 12 12)"/><path d="M16 5c-7 2-1 12-8 14"/></svg>
++          <span class="roast-copy"><span class="roast-title">Medium roast</span><span class="roast-description">Smooth & balanced with a caramel finish.</span></span>
++        </li>
++        <li class="roast-option" role="option" tabindex="-1" aria-selected="false" data-roast="cold-brew">
++          <svg class="roast-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-2 14H7L5 7Z M14 7l2-5h4 M6 12h12 M9 9h2 M13 16h2"/></svg>
++          <span class="roast-copy"><span class="roast-title">Cold brew</span><span class="roast-description">Slow-steeped for a refreshing, mellow sip.</span></span>
++        </li>
++      </ul>
++    </div>
++    <a href="/order-online?roast=dark-roast" class="btn" id="order-button">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +301,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const picker = document.querySelector('.roast-picker');
++    const trigger = document.getElementById('roast-trigger');
++    const list = document.getElementById('roast-options');
++    const options = [...list.querySelectorAll('[role="option"]')];
++    const selection = document.getElementById('roast-selection');
++    const orderButton = document.getElementById('order-button');
++
++    function closePicker(returnFocus = false) {
++      list.hidden = true;
++      trigger.setAttribute('aria-expanded', 'false');
++      if (returnFocus) trigger.focus();
++    }
++
++    function openPicker(index = options.findIndex(option => option.getAttribute('aria-selected') === 'true')) {
++      list.hidden = false;
++      trigger.setAttribute('aria-expanded', 'true');
++      options[index].focus();
++    }
++
++    function chooseRoast(option) {
++      options.forEach(item => item.setAttribute('aria-selected', String(item === option)));
++      selection.replaceChildren(...[...option.querySelector('.roast-copy').children].map(child => child.cloneNode(true)));
++      trigger.querySelector('.roast-icon').replaceWith(option.querySelector('svg').cloneNode(true));
++      orderButton.href = '/order-online?roast=' + encodeURIComponent(option.dataset.roast);
++      closePicker(true);
++    }
++
++    trigger.addEventListener('click', () => list.hidden ? openPicker() : closePicker());
++    trigger.addEventListener('keydown', event => {
++      if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
++        event.preventDefault();
++        openPicker(event.key === 'ArrowDown' ? 0 : options.length - 1);
++      }
++    });
++
++    options.forEach(option => option.addEventListener('click', () => chooseRoast(option)));
++    list.addEventListener('keydown', event => {
++      const index = options.indexOf(document.activeElement);
++      let next;
++      if (event.key === 'ArrowDown') next = (index + 1) % options.length;
++      if (event.key === 'ArrowUp') next = (index - 1 + options.length) % options.length;
++      if (event.key === 'Home') next = 0;
++      if (event.key === 'End') next = options.length - 1;
++      if (next !== undefined) {
++        event.preventDefault();
++        options[next].focus();
++      } else if (event.key === 'Enter' || event.key === ' ') {
++        event.preventDefault();
++        chooseRoast(options[index]);
++      } else if (event.key === 'Escape') {
++        event.preventDefault();
++        closePicker(true);
++      } else if (event.key.length === 1) {
++        const match = options.find(option => option.querySelector('.roast-title').textContent.toLowerCase().startsWith(event.key.toLowerCase()));
++        if (match) { event.preventDefault(); match.focus(); }
++      }
++    });
++
++    document.addEventListener('click', event => {
++      if (!picker.contains(event.target)) closePicker();
++    });
++    picker.addEventListener('focusout', event => {
++      if (!picker.contains(event.relatedTarget)) closePicker();
++    });
++  </script>
+ </body>
+ 
+ </html>

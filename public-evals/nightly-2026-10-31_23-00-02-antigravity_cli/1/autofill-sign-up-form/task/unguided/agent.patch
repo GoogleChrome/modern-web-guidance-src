@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,120 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-Up Section */
++    .signup-section {
++      margin-top: 60px;
++      background: white;
++      padding: 40px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++      max-width: 550px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .signup-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .signup-section p.subtitle {
++      text-align: center;
++      font-size: 0.95rem;
++      margin-bottom: 25px;
++      color: #5d4037;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="email"],
++    .form-group input[type="password"] {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.2);
++    }
++
++    .form-check {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++    }
++
++    .form-check input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 16px;
++      height: 16px;
++      cursor: pointer;
++    }
++
++    .signup-btn {
++      width: 100%;
++      padding: 12px;
++      font-weight: 600;
++      margin-top: 5px;
++    }
++
++    .signup-message {
++      display: none;
++      margin-top: 15px;
++      padding: 12px;
++      border-radius: 5px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .signup-message.success {
++      display: block;
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #c8e6c9;
++    }
++
++    .signup-message.error {
++      display: block;
++      background-color: #ffebee;
++      color: #c62828;
++      border: 1px solid #ffcdd2;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -162,8 +268,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,10 +301,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup-section">
++      <h2>Create an Account</h2>
++      <p class="subtitle">Sign up to earn rewards on every cup and get exclusive seasonal offers.</p>
++      <form id="signup-form" action="/signup" method="POST">
++        <div class="form-group">
++          <label for="full-name">Full Name</label>
++          <input type="text" id="full-name" name="name" placeholder="Jane Doe" required autocomplete="name">
++        </div>
++        <div class="form-group">
++          <label for="email">Email Address</label>
++          <input type="email" id="email" name="email" placeholder="jane@example.com" required autocomplete="email">
++        </div>
++        <div class="form-group">
++          <label for="password">Password</label>
++          <input type="password" id="password" name="password" placeholder="At least 8 characters" minlength="8" required autocomplete="new-password">
++        </div>
++        <div class="form-group">
++          <label for="confirm-password">Confirm Password</label>
++          <input type="password" id="confirm-password" name="confirmPassword" placeholder="Re-enter your password" minlength="8" required autocomplete="new-password">
++        </div>
++        <div class="form-check">
++          <input type="checkbox" id="rewards-opt-in" name="rewardsOptIn" checked>
++          <label for="rewards-opt-in">Enroll me in Daily Grind Rewards &amp; newsletter</label>
++        </div>
++        <button type="submit" class="btn signup-btn">Sign Up</button>
++        <div id="signup-message" class="signup-message" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    document.getElementById('signup-form').addEventListener('submit', function (e) {
++      e.preventDefault();
++      var password = document.getElementById('password').value;
++      var confirmPassword = document.getElementById('confirm-password').value;
++      var messageEl = document.getElementById('signup-message');
++
++      if (password !== confirmPassword) {
++        messageEl.className = 'signup-message error';
++        messageEl.textContent = 'Passwords do not match. Please try again.';
++        return;
++      }
++
++      messageEl.className = 'signup-message success';
++      messageEl.textContent = 'Welcome to The Daily Grind! Your account has been created.';
++      this.reset();
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

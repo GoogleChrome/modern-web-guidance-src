@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+index 66c9173..4062508 100644
+--- a/index.html
++++ b/index.html
+@@ -14,6 +14,34 @@
+       --light: #fafafa;
+     }
+ 
++    /*
++     * Progressive enhancements
++     * ------------------------
++     * The at-rules below are ignored by browsers that don't understand them.
++     * The rules and declarations that depend on them are gated further down
++     * with `@supports at-rule(@name)`, so they only apply when the at-rule
++     * is actually supported.
++     */
++
++    /* Cross-document view transitions between pages of the site */
++    @view-transition {
++      navigation: auto;
++    }
++
++    /* A brand-tinted overlay for image backgrounds (used by the hero) */
++    @function --scrim(--color, --alpha: 0.5) {
++      result: linear-gradient(
++        rgb(from var(--color) r g b / var(--alpha)),
++        rgb(from var(--color) r g b / calc(var(--alpha) * 1.5))
++      );
++    }
++
++    /* Layered shadow scaled by an elevation level (used by the cards) */
++    @function --elevation(--level: 1) {
++      result: 0 calc(var(--level) * 2px) calc(var(--level) * 6px)
++        rgb(0 0 0 / calc(var(--level) * 0.06));
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -38,6 +66,19 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++
++      /* Only when @view-transition is supported: give the nav its own
++         transition group so it stays put while the page content animates. */
++      @supports at-rule(@view-transition) {
++        view-transition-name: site-nav;
++      }
++    }
++
++    @supports at-rule(@view-transition) {
++      /* The nav is identical on every page, so skip its cross-fade. */
++      ::view-transition-group(site-nav) {
++        animation-duration: 0s;
++      }
+     }
+ 
+     .logo {
+@@ -86,6 +127,13 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++
++      /* Only when @function is supported: swap the flat black overlay for a
++         brand-tinted scrim computed by --scrim(). */
++      @supports at-rule(@function) {
++        background-image: --scrim(var(--primary), 0.45),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      }
+     }
+ 
+     .hero h1 {
+@@ -113,6 +161,18 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      /* Only when @function is supported: elevation-based shadows that lift
++         the card on hover. */
++      @supports at-rule(@function) {
++        box-shadow: --elevation(1);
++        transition: box-shadow 0.3s, translate 0.3s;
++
++        &:hover {
++          box-shadow: --elevation(4);
++          translate: 0 -4px;
++        }
++      }
+     }
+ 
+     .card h3 {

@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,81 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="description" content="The Everyday Chair. A considered place to sit, made for the way you live.">
++  <title>Form — The Everyday Chair</title>
++  <link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++  <style>
++    :root{color-scheme:light;--ink:#242820;--paper:#f5f4ef;--muted:#77796f;--line:#d9dbd0}
++    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;cursor:pointer}a:focus-visible,button:focus-visible{outline:2px solid #536249;outline-offset:6px}[hidden]{display:none!important}
++    .header{height:90px;margin:0 5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:relative;z-index:2}.wordmark{font-size:34px;font-weight:700;letter-spacing:-2px}.wordmark span{color:#879173}nav{display:flex;gap:32px;align-items:center;font-size:12px}nav button{background:none;border:0;padding:10px 0}.bag{font-size:12px}.menu{position:absolute;top:89px;left:0;right:0;background:var(--paper);border:1px solid var(--line);padding:28px;display:grid;grid-template-columns:1fr 240px;gap:30px;box-shadow:0 15px 25px #2428200a}.menu p{font-size:12px;color:var(--muted)}.menu img{display:block;width:240px;height:150px;object-fit:cover;background:#e5e6dc}
++    main{margin:0 5%}.hero{padding:55px 0 65px;display:grid;grid-template-columns:0.85fr 1.15fr;gap:6%;align-items:center}.eyebrow{text-transform:uppercase;letter-spacing:2px;font-size:10px;font-weight:600}.hero h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(54px,6vw,90px);font-weight:400;line-height:1.04;letter-spacing:-3px;margin:28px 0}.hero h1 em{font-weight:400;color:#778168}.description{font-size:14px;line-height:1.85;color:#6b6f64;max-width:300px}.purchase{display:flex;gap:25px;align-items:center;margin-top:32px}.button{display:inline-flex;align-items:center;justify-content:space-between;gap:38px;background:var(--ink);color:white;padding:17px 23px;font-size:12px}.price{font-size:13px}.note{font-size:10px;color:var(--muted);margin-top:18px}.hero-image{position:relative;background:#e7e7dc;min-width:0}.hero-image img{display:block;width:100%;height:540px;object-fit:cover;color:#68725f;font-size:12px}.image-caption{position:absolute;bottom:22px;left:24px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase}.index{position:absolute;top:22px;right:24px;font-size:10px}
++    .principles{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;padding:25px 0;font-size:11px}.principles span{color:var(--muted);margin-right:13px}.gallery{padding:95px 0 100px;display:grid;grid-template-columns:1fr 1fr;gap:9%;align-items:center}.gallery-image{background:#e8e4dc}.gallery-image img{display:block;width:100%;height:380px;object-fit:cover;font-size:12px;color:var(--muted)}h2{font-family:Georgia,'Times New Roman',serif;font-size:43px;font-weight:400;line-height:1.15;letter-spacing:-1px;margin:20px 0}.gallery p{font-size:13px;line-height:1.8;color:var(--muted);max-width:320px}.toggle{background:none;border:0;border-bottom:1px solid var(--ink);padding:13px 0 9px;font-size:11px;display:flex;gap:45px}.details{border-top:1px solid var(--line);padding:75px 0 120px;display:flex;justify-content:space-between;gap:50px}.details h2{max-width:400px;margin:0}.details p{max-width:310px;font-size:13px;line-height:1.9;color:var(--muted)}footer{background:#e7e9df;padding:55px 5% 25px}.footer-top{display:flex;justify-content:space-between;align-items:center;padding-bottom:65px}footer img{width:100px;height:40px;object-fit:contain;font-size:20px}footer p{font-family:Georgia,serif;font-size:24px}.footer-bottom{border-top:1px solid #cbd0c0;padding-top:22px;display:flex;justify-content:space-between;font-size:10px;color:#73796c}
++    @media(min-width:1500px){main,.header{max-width:1350px;margin-left:auto;margin-right:auto}}@media(max-width:700px){.header{height:75px}nav{gap:18px}nav>a{display:none}.menu{top:74px;grid-template-columns:1fr}.menu img{width:100%}.hero{grid-template-columns:1fr;padding-top:35px;gap:35px}.hero h1{font-size:64px}.hero-image img{height:420px}.principles{flex-direction:column;gap:16px}.gallery{grid-template-columns:1fr;gap:30px;padding:65px 0}.gallery-image img{height:330px}.details{flex-direction:column;padding:55px 0 75px;gap:20px}.footer-top{align-items:flex-start;flex-direction:column;padding-bottom:35px}.footer-bottom{gap:20px;line-height:1.7}h2{font-size:36px}}
++    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
++  </style>
++</head>
++<body>
++  <header class="header">
++    <a class="wordmark" href="#" aria-label="Form home">form<span>.</span></a>
++    <nav aria-label="Main navigation">
++      <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="shop-menu">Collection <span aria-hidden="true">⌄</span></button>
++      <a href="#philosophy">Our approach</a>
++    </nav>
++    <a class="bag" href="#product">Explore the chair ↗</a>
++    <div class="menu" id="shop-menu" hidden>
++      <div><span class="eyebrow">Less, but considered</span><p>Objects for everyday living.</p><a href="#product">The Everyday Chair ↗</a></div>
++      <img src="mega-menu-promo.jpg" alt="Discover the Form furniture collection" width="480" height="300" loading="lazy" decoding="async" fetchpriority="low">
++    </div>
++  </header>
++  <main>
++    <section class="hero" id="product" aria-labelledby="product-title">
++      <div>
++        <div class="eyebrow">The everyday collection / No. 01</div>
++        <h1 id="product-title">A little less.<br><em>A little better.</em></h1>
++        <p class="description">Meet the Everyday Chair. Quietly beautiful, thoughtfully made. A familiar place to slow down.</p>
++        <div class="purchase"><a class="button" href="#gallery">Discover the chair <span aria-hidden="true">↗</span></a><span class="price">$240</span></div>
++        <p class="note">Natural oak · Made to stay</p>
++      </div>
++      <div class="hero-image">
++        <img src="hero-lcp.jpg" alt="The Everyday Chair in natural oak" width="1200" height="1200" loading="eager" fetchpriority="high">
++        <span class="index" aria-hidden="true">01 / 01</span>
++        <span class="image-caption">Honest materials. Enduring form.</span>
++      </div>
++    </section>
++    <div class="principles"><div><span>01</span> Solid wood, naturally</div><div><span>02</span> Considered in every detail</div><div><span>03</span> Designed for the everyday</div></div>
++    <section class="gallery" id="gallery" aria-labelledby="gallery-title">
++      <div class="gallery-image">
++        <img id="gallery-main" src="hero-lcp.jpg" alt="Everyday Chair, front view" width="1000" height="800" loading="lazy" decoding="async">
++        <img id="gallery-alt" src="gallery-alt.jpg" alt="Everyday Chair, alternate view showing the wood and joinery" width="1000" height="800" loading="lazy" decoding="async" fetchpriority="low" hidden>
++      </div>
++      <div><span class="eyebrow">Nothing extra. Everything you need.</span><h2>Good from<br>every angle.</h2><p>Soft lines. A reassuring feel. Every detail has a purpose, and every curve invites you to stay a little longer.</p><button class="toggle" id="gallery-toggle" type="button" aria-controls="gallery-alt" aria-expanded="false"> <span>See another angle</span><span aria-hidden="true">↗</span></button></div>
++    </section>
++    <section class="details" id="philosophy" aria-labelledby="philosophy-title"><div><span class="eyebrow">Our approach</span><h2 id="philosophy-title">Fewer things.<br>More meaning.</h2></div><p>We believe the things we live with should earn their place. Through simple forms and honest materials, we make everyday objects that feel at home. Today, and for years to come.</p></section>
++  </main>
++  <footer><div class="footer-top"><a href="#" aria-label="Form home"><img src="footer-logo.png" alt="Form" width="200" height="80" loading="lazy" decoding="async" fetchpriority="low"></a><p>Make room for the everyday.</p></div><div class="footer-bottom"><span>© 2026 Form. Thoughtfully made.</span><a href="#product">Back to the top ↑</a></div></footer>
++  <script>
++    const menuToggle = document.getElementById('menu-toggle');
++    const menu = document.getElementById('shop-menu');
++    function closeMenu() { menu.hidden = true; menuToggle.setAttribute('aria-expanded', 'false'); }
++    menuToggle.addEventListener('click', () => {
++      menu.hidden = !menu.hidden;
++      menuToggle.setAttribute('aria-expanded', String(!menu.hidden));
++    });
++    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !menu.hidden) { closeMenu(); menuToggle.focus(); } });
++    document.addEventListener('click', event => { if (!menu.hidden && !menu.contains(event.target) && !menuToggle.contains(event.target)) closeMenu(); });
++    menu.querySelector('a').addEventListener('click', closeMenu);
++    const galleryToggle = document.getElementById('gallery-toggle');
++    const galleryMain = document.getElementById('gallery-main');
++    const galleryAlt = document.getElementById('gallery-alt');
++    galleryToggle.addEventListener('click', () => {
++      const showAlternate = galleryAlt.hidden;
++      galleryAlt.hidden = !showAlternate;
++      galleryMain.hidden = showAlternate;
++      galleryToggle.setAttribute('aria-expanded', String(showAlternate));
++      galleryToggle.firstElementChild.textContent = showAlternate ? 'See the front view' : 'See another angle';
++    });
++  </script>
++</body>
++</html>

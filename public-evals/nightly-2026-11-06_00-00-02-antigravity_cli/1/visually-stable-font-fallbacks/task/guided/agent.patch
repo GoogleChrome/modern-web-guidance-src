@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,9 +4,21 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+   <style>
++    @font-face {
++      font-family: 'Outfit Fallback';
++      src: local('Segoe UI'), local('Tahoma'), local('Verdana'), local('Arial');
++      size-adjust: 100.3%;
++      ascent-override: 99.7%;
++      descent-override: 25.9%;
++      line-gap-override: 0%;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -20,14 +32,27 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Outfit', 'Outfit Fallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .logo,
++    .hero h1 {
++      font-size-adjust: cap-height from-font;
++    }
++
++    @supports not (font-size-adjust: from-font) {
++      body {
++        font-family: 'Outfit', 'Outfit Fallback', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

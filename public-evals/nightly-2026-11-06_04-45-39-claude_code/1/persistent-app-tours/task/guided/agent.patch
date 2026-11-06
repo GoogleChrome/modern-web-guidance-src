@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #tour-step {
++      position-anchor: --rewards-link;
++      /* anchor() insets (not position-area) so the polyfill can handle it too */
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(center);
++      translate: -50% 0;
++      margin: 12px 0 0;
++      width: min(260px, calc(100vw - 2rem));
++      padding: 1rem 1.1rem;
++      border: 1px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++      overflow: visible;
++    }
++
++    #tour-step::before {
++      content: "";
++      position: absolute;
++      top: -7px;
++      left: 50%;
++      width: 12px;
++      height: 12px;
++      background: white;
++      border-top: 1px solid var(--accent);
++      border-left: 1px solid var(--accent);
++      transform: translateX(-50%) rotate(45deg);
++    }
++
++    #tour-step h2 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 0.35rem;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-bottom: 0.75rem;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 5px;
++      padding: 6px 14px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    #tour-step button:hover,
++    #tour-step button:focus-visible {
++      background: #3e2723;
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,14 +226,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
++    <h2 id="tour-title">New: Daily Grind Rewards</h2>
++    <p>Earn points on every purchase and redeem them for free drinks and treats.</p>
++    <button type="button" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +277,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load polyfills only when native support is missing
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!CSS.supports("anchor-name: --a")) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++
++    const tourStep = document.getElementById("tour-step");
++    const rewardsLink = document.getElementById("feature");
++    const isOpen = () => tourStep.matches(":is(:popover-open, .\\:popover-open)");
++
++    // Keep the user on the page while the tour is active
++    rewardsLink.addEventListener("click", (event) => {
++      if (isOpen()) event.preventDefault();
++    });
++
++    tourStep.showPopover();
++    tourStep.querySelector("button").focus();
++  </script>
++
+ </body>
+ 
+ </html>

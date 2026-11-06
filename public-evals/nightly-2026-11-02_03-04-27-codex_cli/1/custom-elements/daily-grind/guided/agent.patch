@@ -1,0 +1,269 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..ba8f810
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,42 @@
++# Coffee cards
++
++`index.html` loads `coffee-card.js` as a browser module. Each autonomous
++`<coffee-card>` owns an open shadow root, its styles, and its link listener.
++No build step is required.
++
++```html
++<coffee-card name="Cold Brew" description="Steeped for 18 hours."
++  href="/menu/cold-brew" price="4.50" featured></coffee-card>
++```
++
++Attributes and properties share the same names and reflect in both directions:
++
++| Attribute/property | Type | Default / behavior |
++| --- | --- | --- |
++| `name`, `description`, `href` | String | Empty string; setting `null` or `undefined` removes the attribute. |
++| `price` | Number or `null` | Optional USD price; missing, blank, negative, or non-finite values read as `null` and hide the price. Zero is valid. |
++| `featured` | Boolean | False; presence shows the seasonal favorite label. |
++| `disabled` | Boolean | False; presence disables the details link. |
++
++Boolean attributes follow HTML presence semantics: `disabled="false"` still
++means disabled. Set `card.disabled = false` or remove the attribute to enable it.
++An empty `href` also disables the link.
++
++```js
++const card = document.querySelector('coffee-card');
++card.price = 5.25; // Reflects price="5.25" and displays $5.25.
++card.featured = true;
++card.setAttribute('name', 'Maple Cold Brew'); // Updates card.name and the heading.
++```
++
++An enabled details link dispatches a bubbling, composed, cancelable
++`coffee-select` event with `{ name, href, price }` in `event.detail` before normal
++link navigation. Call `event.preventDefault()` to handle navigation yourself.
++
++Connection setup is idempotent. Disconnection removes the link listener, and
++reconnection restores it without replacing the shadow tree or losing state.
++Properties assigned before registration are replayed through their setters on
++connection. Attribute updates also render while the card is detached.
++
++Colors inherit the page's `--primary` and `--accent` CSS custom properties, with
++standalone defaults.
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..f8ff52c
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,146 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
++      text-align: center;
++    }
++    h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++    .featured { color: var(--primary, #4e342e); font-weight: bold; }
++    .price { margin-top: 10px; font-weight: bold; }
++    a {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++    a:hover { background: #3e2723; }
++    a:focus-visible { outline: 2px solid var(--accent, #ffab40); outline-offset: 3px; }
++    a[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
++    [hidden] { display: none; }
++  </style>
++  <article>
++    <p class="featured" hidden>Seasonal favorite</p>
++    <h3></h3>
++    <p class="description"></p>
++    <p class="price" hidden></p>
++    <a>View Details</a>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'description', 'href', 'price', 'featured', 'disabled'];
++
++  #link;
++  #heading;
++  #description;
++  #price;
++  #featured;
++  #listening = false;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.append(template.content.cloneNode(true));
++    this.#link = root.querySelector('a');
++    this.#heading = root.querySelector('h3');
++    this.#description = root.querySelector('.description');
++    this.#price = root.querySelector('.price');
++    this.#featured = root.querySelector('.featured');
++  }
++
++  connectedCallback() {
++    // Replay values assigned before customElements.define() upgraded this node.
++    for (const property of CoffeeCard.observedAttributes) {
++      if (Object.hasOwn(this, property)) {
++        const value = this[property];
++        delete this[property];
++        this[property] = value;
++      }
++    }
++    this.#render();
++    if (!this.#listening) {
++      this.#link.addEventListener('click', this.#onClick);
++      this.#listening = true;
++    }
++  }
++
++  disconnectedCallback() {
++    this.#link.removeEventListener('click', this.#onClick);
++    this.#listening = false;
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue !== newValue) this.#render();
++  }
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) { this.#setString('name', value); }
++  get description() { return this.getAttribute('description') ?? ''; }
++  set description(value) { this.#setString('description', value); }
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(value) { this.#setString('href', value); }
++
++  // Missing, empty, negative, or non-finite prices have no displayed value.
++  get price() {
++    const raw = this.getAttribute('price');
++    const value = Number(raw);
++    return raw?.trim() && Number.isFinite(value) && value >= 0 ? value : null;
++  }
++  set price(value) {
++    if (value == null) this.removeAttribute('price');
++    else this.setAttribute('price', String(value));
++  }
++
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(value) { this.toggleAttribute('featured', Boolean(value)); }
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++
++  #setString(attribute, value) {
++    if (value == null) this.removeAttribute(attribute);
++    else this.setAttribute(attribute, String(value));
++  }
++
++  #render() {
++    // Consumer strings are text, never interpreted as HTML.
++    this.#heading.textContent = this.name;
++    this.#description.textContent = this.description;
++    this.#featured.hidden = !this.featured;
++    const price = this.price;
++    this.#price.hidden = price === null;
++    this.#price.textContent = price === null ? '' : `$${price.toFixed(2)}`;
++    if (this.disabled || !this.href) {
++      this.#link.removeAttribute('href');
++      this.#link.setAttribute('role', 'link');
++      this.#link.setAttribute('aria-disabled', 'true');
++    } else {
++      this.#link.setAttribute('href', this.href);
++      this.#link.removeAttribute('role');
++      this.#link.removeAttribute('aria-disabled');
++    }
++  }
++
++  #onClick = (event) => {
++    if (this.disabled || !this.href || !this.dispatchEvent(new CustomEvent('coffee-select', {
++      bubbles: true,
++      composed: true,
++      cancelable: true,
++      detail: { name: this.name, href: this.href, price: this.price },
++    }))) event.preventDefault();
++  };
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..071a8e9 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +140,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./coffee-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +166,21 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal">
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso">
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew">
++        </coffee-card>
+       </div>
+     </section>
+   </main>

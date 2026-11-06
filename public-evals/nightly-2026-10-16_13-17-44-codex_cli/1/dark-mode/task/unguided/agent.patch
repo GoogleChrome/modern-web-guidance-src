@@ -1,0 +1,321 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,19 +3,82 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    // Apply a saved preference before the page paints. System mode follows the OS.
++    try {
++      const theme = localStorage.getItem('coffee-theme');
++      if (theme === 'light' || theme === 'dark') {
++        document.documentElement.dataset.theme = theme;
++      }
++    } catch { /* Theme selection also works when storage is unavailable. */ }
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --background: light-dark(#fbf5eb, #191310);
++      --surface: light-dark(#fffaf2, #261e19);
++      --secondary: light-dark(#eee0ce, #30251e);
++      --primary: light-dark(#593a28, #efd5b4);
++      --text: light-dark(#36271f, #f2e4d4);
++      --muted: light-dark(#715c4b, #c5ae98);
++      --accent: light-dark(#85431d, #edb276);
++      --accent-hover: light-dark(#653013, #f7cda2);
++      --on-accent: light-dark(#fffaf2, #24170f);
++      --border: light-dark(#d7c4ae, #574234);
++      --scroll-thumb: light-dark(#987453, #ac805b);
++      --scroll-track: light-dark(#eee0ce, #30251e);
++      --shadow: light-dark(#593a2812, #00000030);
+     }
+ 
++    :root[data-theme="light"] { color-scheme: light; }
++    :root[data-theme="dark"] { color-scheme: dark; }
++
++    /* light-dark() values resolve against each element's local color scheme. */
++    .late-night { color-scheme: dark; }
++
++    html { accent-color: var(--accent); }
++
+     * {
++      scrollbar-color: var(--scroll-thumb) var(--scroll-track);
++      scrollbar-width: thin;
++    }
++
++    *::-webkit-scrollbar { width: 10px; height: 10px; }
++    *::-webkit-scrollbar-track { background: var(--scroll-track); }
++    *::-webkit-scrollbar-thumb {
++      background: var(--scroll-thumb);
++      border: 2px solid var(--scroll-track);
++      border-radius: 10px;
++    }
++
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++    ::selection { color: var(--on-accent); background: var(--accent); }
++
++    .theme-bar {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 5%;
++      background: var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      padding: 8px 30px 8px 10px;
++      accent-color: var(--accent);
++    }
++
++    * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+@@ -23,15 +86,16 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--background);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--surface);
++      color: var(--text);
++      border-bottom: 1px solid var(--border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -55,9 +119,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -107,12 +171,13 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+@@ -121,19 +186,19 @@
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--accent);
++      color: var(--on-accent);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--accent-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
+@@ -151,12 +216,60 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    section + section { margin-top: 48px; }
++    .section-heading { text-align: center; margin-bottom: 20px; }
++    .section-heading p { color: var(--muted); margin-top: 6px; }
++    .scroll-container {
++      overflow: auto;
++      max-height: 290px;
++      overscroll-behavior: contain;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      background: var(--surface);
++      padding: 0 24px;
++      color: var(--text);
++    }
++    .review, .special { padding: 22px 0; }
++    .review + .review, .special + .special { border-top: 1px solid var(--border); }
++    .review blockquote { margin: 8px 0; }
++    .review figcaption, .special p { color: var(--muted); }
++    .stars, .price { color: var(--accent); }
++    .late-night {
++      background: var(--background);
++      color: var(--text);
++      accent-color: var(--accent);
++      padding: 32px;
++      border: 1px solid var(--border);
++      border-radius: 12px;
++    }
++    .late-night h2 { color: var(--primary); }
++    .late-night label { display: block; margin-bottom: 8px; }
++    .late-night select { width: 100%; margin-bottom: 20px; }
++    .special h3 { display: flex; justify-content: space-between; gap: 16px; }
++    .special[hidden] { display: none; }
++    .eyebrow { color: var(--accent); text-transform: uppercase; font-size: .8rem; letter-spacing: .12em; }
++    @media (max-width: 640px) {
++      nav { flex-direction: column; gap: 10px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++      .late-night { padding: 24px 18px; }
++      .special h3 { flex-wrap: wrap; gap: 4px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="theme-bar">
++    <label for="theme-select">Appearance</label>
++    <select id="theme-select" aria-label="Choose color theme">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -194,8 +307,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section aria-labelledby="reviews-heading">
++      <div class="section-heading">
++        <h2 id="reviews-heading">Good Coffee. Great Company.</h2>
++        <p>A few words from our regulars.</p>
++      </div>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Customer reviews">
++        <figure class="review">
++          <div class="stars" aria-label="5 out of 5 stars">★★★★★</div>
++          <blockquote>“The maple oat latte is my favorite part of the morning. Always made with care.”</blockquote>
++          <figcaption>— Jamie, neighborhood regular</figcaption>
++        </figure>
++        <figure class="review">
++          <div class="stars" aria-label="5 out of 5 stars">★★★★★</div>
++          <blockquote>“A cozy corner, a good book, and the smoothest cold brew in town.”</blockquote>
++          <figcaption>— Alex, cold brew enthusiast</figcaption>
++        </figure>
++        <figure class="review">
++          <div class="stars" aria-label="5 out of 5 stars">★★★★★</div>
++          <blockquote>“Come for the espresso, stay for the friendly faces. My go-to spot for an afternoon reset.”</blockquote>
++          <figcaption>— Morgan, espresso lover</figcaption>
++        </figure>
++        <figure class="review">
++          <div class="stars" aria-label="5 out of 5 stars">★★★★★</div>
++          <blockquote>“The dark roast has so much depth. You can taste the attention in every cup.”</blockquote>
++          <figcaption>— Sam, daily visitor</figcaption>
++        </figure>
++      </div>
++    </section>
++
++    <section class="late-night" aria-labelledby="late-night-heading">
++      <div class="section-heading">
++        <p class="eyebrow">For the night owls</p>
++        <h2 id="late-night-heading">Late Night Specials</h2>
++        <p>Slow down and settle in with something warm.</p>
++      </div>
++      <label for="specials-select">Find your evening favorite</label>
++      <select id="specials-select">
++        <option value="all">All late night specials</option>
++        <option value="coffee">Coffee &amp; espresso</option>
++        <option value="caffeine-free">Caffeine-free comforts</option>
++      </select>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Late night specials" aria-live="polite">
++        <article class="special" data-category="coffee">
++          <h3>Midnight Mocha <span class="price">$5.50</span></h3>
++          <p>Dark chocolate, double espresso, and silky steamed milk.</p>
++        </article>
++        <article class="special" data-category="coffee">
++          <h3>Maple Decaf Latte <span class="price">$5.00</span></h3>
++          <p>All the roasted richness, with decaf espresso and a touch of maple.</p>
++        </article>
++        <article class="special" data-category="caffeine-free">
++          <h3>Vanilla Moon Milk <span class="price">$4.50</span></h3>
++          <p>Warm oat milk with vanilla, cinnamon, and a little maple sweetness.</p>
++        </article>
++        <article class="special" data-category="caffeine-free">
++          <h3>Chamomile &amp; Honey <span class="price">$4.00</span></h3>
++          <p>A fragrant, caffeine-free infusion for a softer end to the day.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +379,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const themeSelect = document.getElementById('theme-select');
++    themeSelect.value = document.documentElement.dataset.theme || 'system';
++    themeSelect.addEventListener('change', () => {
++      const theme = themeSelect.value;
++      if (theme === 'system') {
++        delete document.documentElement.dataset.theme;
++      } else {
++        document.documentElement.dataset.theme = theme;
++      }
++      try {
++        localStorage.setItem('coffee-theme', theme);
++      } catch { /* The current selection still applies without persistence. */ }
++    });
++
++    document.getElementById('specials-select').addEventListener('change', (event) => {
++      document.querySelectorAll('.special').forEach((special) => {
++        special.hidden = event.target.value !== 'all' && special.dataset.category !== event.target.value;
++      });
++      document.querySelector('.late-night .scroll-container').scrollTop = 0;
++    });
++  </script>
+ </body>
+ 
+ </html>

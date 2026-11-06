@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,37 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    #search-input {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto;
++      padding: 10px 16px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 25px;
++      outline: none;
++      transition: border-color 0.3s, box-shadow 0.3s;
++    }
++
++    #search-input:focus {
++      border-color: var(--primary);
++      box-shadow: 0 0 5px rgba(78, 52, 46, 0.3);
++    }
++
++    ::highlight(search-results) {
++      background-color: gold;
++      color: #000;
++    }
++
++    mark.search-highlight {
++      background-color: gold;
++      color: #000;
++      padding: 0;
++      margin: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +205,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="search" id="search-input" placeholder="Search seasonal favorites..." aria-label="Search seasonal favorites">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +236,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initSearch() {
++      const searchInput = document.getElementById('search-input');
++      const menuCards = document.querySelectorAll('.grid .card');
++
++      if (!searchInput || menuCards.length === 0) return;
++
++      function performSearch() {
++        const query = searchInput.value;
++        const term = query.trim().toLowerCase();
++
++        // Clear previous highlights
++        if (typeof CSS !== 'undefined' && CSS.highlights) {
++          CSS.highlights.clear();
++        } else {
++          menuCards.forEach(card => {
++            const marks = card.querySelectorAll('mark.search-highlight');
++            marks.forEach(mark => mark.replaceWith(...mark.childNodes));
++            card.normalize();
++          });
++        }
++
++        if (!term) return;
++
++        // Custom Highlight API
++        if (typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight !== 'undefined') {
++          const ranges = [];
++
++          menuCards.forEach(card => {
++            const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++            let node;
++            while ((node = walker.nextNode())) {
++              const text = node.textContent;
++              const lowerText = text.toLowerCase();
++              let startIndex = 0;
++              let matchIndex;
++
++              while ((matchIndex = lowerText.indexOf(term, startIndex)) !== -1) {
++                const range = new Range();
++                range.setStart(node, matchIndex);
++                range.setEnd(node, matchIndex + term.length);
++                ranges.push(range);
++                startIndex = matchIndex + term.length;
++              }
++            }
++          });
++
++          if (ranges.length > 0) {
++            const searchHighlight = new Highlight(...ranges);
++            CSS.highlights.set('search-results', searchHighlight);
++          }
++        } else {
++          // Fallback using <mark>
++          menuCards.forEach(card => {
++            const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++            const textNodes = [];
++            let node;
++            while ((node = walker.nextNode())) {
++              textNodes.push(node);
++            }
++
++            textNodes.forEach(textNode => {
++              const text = textNode.textContent;
++              let matchIndex = text.toLowerCase().indexOf(term);
++              if (matchIndex === -1) return;
++
++              const fragment = document.createDocumentFragment();
++              let lastIndex = 0;
++
++              while (matchIndex !== -1) {
++                fragment.append(text.slice(lastIndex, matchIndex));
++                const mark = document.createElement('mark');
++                mark.className = 'search-highlight';
++                mark.textContent = text.slice(matchIndex, matchIndex + term.length);
++                fragment.append(mark);
++                lastIndex = matchIndex + term.length;
++                matchIndex = text.toLowerCase().indexOf(term, lastIndex);
++              }
++
++              fragment.append(text.slice(lastIndex));
++              textNode.replaceWith(fragment);
++            });
++          });
++        }
++      }
++
++      searchInput.addEventListener('input', performSearch);
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initSearch);
++    } else {
++      initSearch();
++    }
++  </script>
+ </body>
+ 
+ </html>

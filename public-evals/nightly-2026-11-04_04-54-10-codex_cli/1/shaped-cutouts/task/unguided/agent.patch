@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,152 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .barista-feature {
++      display: grid;
++      grid-template-columns: 260px 1fr;
++      align-items: center;
++      gap: 40px;
++      margin: 64px 0 40px;
++    }
++
++    .eyebrow {
++      color: #785348;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .barista-feature h2 {
++      font-size: 2rem;
++      margin-bottom: 12px;
++    }
++
++    .barista-feature p:last-child {
++      max-width: 560px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 1;
++      object-fit: cover;
++      object-position: center 35%;
++      /* A vector mask stretches with the image, without fixed pixel coordinates. */
++      --splat-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M49 8C56 7 60 0 65 3C70 6 65 15 72 17C79 20 86 10 90 16C94 22 84 28 88 34C92 40 100 39 98 46C96 52 87 51 88 59C89 66 98 70 94 76C90 82 82 74 77 80C72 86 77 96 69 97C61 98 61 87 53 89C46 90 42 100 36 96C30 92 36 84 29 82C22 80 14 88 10 82C6 76 16 70 12 64C9 58 0 59 2 51C3 44 13 46 14 39C15 32 5 27 10 21C15 16 22 23 28 19C34 15 29 5 36 3C43 1 42 9 49 8Z'/%3E%3C/svg%3E");
++      -webkit-mask-image: var(--splat-mask);
++      mask-image: var(--splat-mask);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .offers {
++      display: grid;
++      grid-template-columns: 1.3fr 1fr;
++      align-items: stretch;
++      gap: 28px;
++      margin-bottom: 56px;
++    }
++
++    .offers h2 {
++      font-size: 1.6rem;
++      line-height: 1.25;
++      margin-bottom: 12px;
++    }
++
++    .unified-card {
++      display: flex;
++      /* Shadow follows the combined silhouette of both children. */
++      filter: drop-shadow(0 8px 12px rgb(62 39 35 / 15%));
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      padding: 32px;
++      background: #f0e3d4;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .card-accent {
++      flex: 0 0 85px;
++      background: #f0e3d4;
++      --accent-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0 0H85Q100 0 100 6V24C100 36 30 34 30 50S100 64 100 76V94Q100 100 85 100H0Z'/%3E%3C/svg%3E");
++      -webkit-mask-image: var(--accent-mask);
++      mask-image: var(--accent-mask);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      padding: 44px 32px 32px;
++      border-radius: 12px;
++      background: var(--primary);
++      color: white;
++      /* Transparent circle removes a semicircular notch from the top edge. */
++      -webkit-mask-image: radial-gradient(circle at 50% 0, transparent 23px, #000 24px);
++      mask-image: radial-gradient(circle at 50% 0, transparent 23px, #000 24px);
++    }
++
++    .gradient-masked-card .eyebrow {
++      color: #ffca85;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .gradient-masked-card .btn:hover {
++      background: #ffc46f;
++    }
++
++    @media (max-width: 650px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .barista-feature {
++        grid-template-columns: 1fr;
++        gap: 20px;
++      }
++
++      .shaped-avatar {
++        max-width: 260px;
++        justify-self: center;
++      }
++
++      .offers {
++        grid-template-columns: 1fr;
++      }
++
++      .card-body {
++        padding: 28px 24px;
++      }
++
++      .card-accent {
++        flex-basis: 60px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +338,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-feature" aria-labelledby="barista-heading">
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&amp;fit=crop&amp;w=600&amp;q=80"
++        alt="Alex, our featured barista, smiling outdoors" width="600" height="600" loading="lazy">
++      <div>
++        <p class="eyebrow">The people behind your cup</p>
++        <h2 id="barista-heading">Meet Alex, your morning regular.</h2>
++        <p>A passion for great beans. A knack for remembering your order. Our featured barista brings a little extra care to every pour. Alex’s current favorite? A maple oat latte, of course.</p>
++      </div>
++    </section>
++
++    <div class="offers">
++      <section class="unified-card" aria-labelledby="loyalty-heading">
++        <div class="card-body">
++          <p class="eyebrow">Daily rituals, rewarded</p>
++          <h2 id="loyalty-heading">Good coffee. Great perks.</h2>
++          <p>Make every coffee count. Join our rewards club and turn your daily cup into something extra special.</p>
++          <a href="/rewards" class="btn">Explore Rewards</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </section>
++
++      <section class="gradient-masked-card" aria-labelledby="promo-heading">
++        <p class="eyebrow">Your next coffee break</p>
++        <h2 id="promo-heading">Find your new favorite.</h2>
++        <p>Warm spices, smooth espresso, and a little seasonal magic. Discover what’s brewing today.</p>
++        <a href="/menu/seasonal" class="btn">Explore Seasonal Sips</a>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

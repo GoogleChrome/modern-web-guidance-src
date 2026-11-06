@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,109 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function monitorSlowScripts() {
++      const LONG_ANIMATION_FRAME_THRESHOLD_MS = 50;
++      const SLOW_SCRIPT_DURATION_THRESHOLD_MS = 5;
++      const SLOW_RESOURCE_THRESHOLD_MS = 100;
++
++      // 1. Long Animation Frames (LoAF) API: identifies scripts contributing to main-thread blocking (>50ms)
++      if ('PerformanceObserver' in window && PerformanceObserver.supportedEntryTypes) {
++        const supportedTypes = PerformanceObserver.supportedEntryTypes;
++
++        if (supportedTypes.includes('long-animation-frame')) {
++          const loafObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              if (entry.duration < LONG_ANIMATION_FRAME_THRESHOLD_MS) continue;
++
++              const culprits = (entry.scripts || [])
++                .filter((script) => script.duration >= SLOW_SCRIPT_DURATION_THRESHOLD_MS)
++                .map((script) => ({
++                  sourceURL: script.sourceURL || '(inline or anonymous)',
++                  sourceFunctionName: script.sourceFunctionName || '(anonymous)',
++                  sourceCharPosition: script.sourceCharPosition,
++                  invoker: script.invoker,
++                  invokerType: script.invokerType,
++                  durationMs: Math.round(script.duration * 100) / 100,
++                  executionStartMs: Math.round(script.executionStart * 100) / 100,
++                  forcedStyleAndLayoutDurationMs: Math.round((script.forcedStyleAndLayoutDuration || 0) * 100) / 100,
++                  windowAttribution: script.windowAttribution,
++                }))
++                .sort((a, b) => b.durationMs - a.durationMs);
++
++              if (culprits.length > 0) {
++                console.warn(
++                  `[Perf] Long Animation Frame detected (${Math.round(entry.duration)}ms, blocking: ${Math.round(entry.blockingDuration || 0)}ms). Slow scripts:`,
++                  culprits
++                );
++              }
++            }
++          });
++
++          loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++        } else if (supportedTypes.includes('longtask')) {
++          // 2. Fallback to Long Tasks API where LoAF is not supported
++          const longTaskObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              const attribution = (entry.attribution || []).map((attr) => ({
++                name: attr.name,
++                containerType: attr.containerType,
++                containerSrc: attr.containerSrc,
++                containerId: attr.containerId,
++                containerName: attr.containerName,
++              }));
++
++              console.warn(
++                `[Perf] Long Task detected (${Math.round(entry.duration)}ms at ${Math.round(entry.startTime)}ms):`,
++                attribution
++              );
++            }
++          });
++
++          longTaskObserver.observe({ type: 'longtask', buffered: true });
++        }
++
++        // 3. Resource Timing API: identifies scripts that are slow to download or render-blocking
++        if (supportedTypes.includes('resource')) {
++          const resourceObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              const isScript =
++                entry.initiatorType === 'script' ||
++                /\.m?js(\?|$)/i.test(entry.name);
++
++              if (!isScript) continue;
++
++              const isRenderBlocking = entry.renderBlockingStatus === 'blocking';
++              if (entry.duration >= SLOW_RESOURCE_THRESHOLD_MS || isRenderBlocking) {
++                const dnsMs = entry.domainLookupEnd - entry.domainLookupStart;
++                const tcpMs = entry.connectEnd - entry.connectStart;
++                const ttfbMs = entry.responseStart - entry.requestStart;
++                const downloadMs = entry.responseEnd - entry.responseStart;
++
++                console.warn(`[Perf] Slow or blocking script resource: ${entry.name}`, {
++                  url: entry.name,
++                  totalDurationMs: Math.round(entry.duration * 100) / 100,
++                  renderBlockingStatus: entry.renderBlockingStatus || 'unknown',
++                  transferSizeBytes: entry.transferSize,
++                  decodedBodySizeBytes: entry.decodedBodySize,
++                  breakdownMs: {
++                    dns: Math.round(dnsMs * 100) / 100,
++                    tcp: Math.round(tcpMs * 100) / 100,
++                    ttfb: Math.round(ttfbMs * 100) / 100,
++                    download: Math.round(downloadMs * 100) / 100,
++                  },
++                });
++              }
++            }
++          });
++
++          resourceObserver.observe({ type: 'resource', buffered: true });
++        }
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

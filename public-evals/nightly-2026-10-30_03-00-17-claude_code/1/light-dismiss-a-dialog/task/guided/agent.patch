@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,64 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    button.logout-link {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    button.logout-link:hover {
++      color: var(--accent);
++    }
++
++    /* Logout confirmation dialog */
++    .logout-dialog {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: 360px;
++      width: calc(100% - 40px);
++      text-align: center;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .logout-dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    .logout-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .dialog-actions .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .dialog-actions .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .dialog-actions .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +219,23 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="logout-link test-dialog-trigger" commandfor="logout-dialog" command="show-modal">Logout</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" class="logout-dialog" closedby="any" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">Are you sure?</h2>
++    <p>You will be logged out of your account.</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close">Cancel</button>
++      <a href="/logout" class="btn">Logout</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +273,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the Invoker Commands polyfill only where commandfor/command are unsupported
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch((err) => {
++        console.error('Error loading invokers polyfill:', err);
++      });
++    }
++
++    // Light-dismiss fallback for browsers without <dialog closedby> support
++    const logoutDialog = document.getElementById('logout-dialog');
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      logoutDialog.addEventListener('click', (event) => {
++        // Backdrop clicks target the dialog itself, not its children
++        if (event.target !== logoutDialog) return;
++
++        const rect = logoutDialog.getBoundingClientRect();
++        const isInsideDialog =
++          rect.top <= event.clientY && event.clientY <= rect.bottom &&
++          rect.left <= event.clientX && event.clientX <= rect.right;
++
++        if (!isInsideDialog) logoutDialog.close();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

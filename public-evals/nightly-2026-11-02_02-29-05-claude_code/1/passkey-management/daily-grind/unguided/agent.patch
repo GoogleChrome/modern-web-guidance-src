@@ -1,0 +1,1000 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..c798bb9
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,452 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #c62828;
++      --muted: #8d6e63;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    .logo a {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Account header */
++    .account-hero {
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++        url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      color: white;
++      text-align: center;
++      padding: 60px 20px;
++    }
++
++    .account-hero h1 {
++      font-size: 2.4rem;
++    }
++
++    .container {
++      max-width: 900px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .panel {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 20px;
++      flex-wrap: wrap;
++      margin-bottom: 20px;
++    }
++
++    .panel h2 {
++      color: var(--primary);
++    }
++
++    .panel-intro {
++      color: var(--muted);
++      font-size: 0.95rem;
++      max-width: 560px;
++    }
++
++    .notice {
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      font-size: 0.9rem;
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++    }
++
++    .notice.error {
++      background: #ffebee;
++      border-left-color: var(--danger);
++    }
++
++    .sync-badge {
++      font-size: 0.8rem;
++      padding: 4px 10px;
++      border-radius: 999px;
++      background: var(--secondary);
++      white-space: nowrap;
++    }
++
++    .sync-badge.on {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    /* Passkey list */
++    .passkey-list {
++      list-style: none;
++    }
++
++    .passkey {
++      display: flex;
++      align-items: center;
++      gap: 16px;
++      padding: 16px 0;
++      border-top: 1px solid #eee;
++    }
++
++    .passkey:first-child {
++      border-top: none;
++    }
++
++    .passkey-icon {
++      flex: 0 0 44px;
++      height: 44px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .passkey-body {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      overflow-wrap: anywhere;
++    }
++
++    .passkey-meta {
++      font-size: 0.82rem;
++      color: var(--muted);
++    }
++
++    .tag {
++      display: inline-block;
++      font-size: 0.72rem;
++      font-weight: 600;
++      padding: 1px 8px;
++      border-radius: 999px;
++      background: #efebe9;
++      margin-left: 6px;
++      vertical-align: middle;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .rename-form {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      align-items: center;
++    }
++
++    .rename-form input {
++      flex: 1;
++      min-width: 160px;
++      padding: 6px 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .rename-form input:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .field-error {
++      flex-basis: 100%;
++      color: var(--danger);
++      font-size: 0.8rem;
++    }
++
++    .empty {
++      text-align: center;
++      color: var(--muted);
++      padding: 30px 0;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      text-decoration: none;
++      border: none;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++    }
++
++    .btn-outline:hover {
++      background: #efebe9;
++    }
++
++    .btn-danger {
++      background: var(--danger);
++    }
++
++    .btn-danger:hover {
++      background: #8e0000;
++    }
++
++    .btn-link-danger {
++      color: var(--danger);
++    }
++
++    /* Dialog */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 28px;
++      max-width: 440px;
++      width: calc(100% - 40px);
++      margin: auto;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    dialog p {
++      margin-bottom: 10px;
++      font-size: 0.95rem;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      left: 50%;
++      transform: translateX(-50%);
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @media (max-width: 600px) {
++      .passkey {
++        flex-wrap: wrap;
++      }
++
++      .passkey-actions {
++        width: 100%;
++        justify-content: flex-end;
++      }
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account/" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="account-hero">
++    <h1>My Account</h1>
++    <p id="greeting">Manage how you sign in to The Daily Grind.</p>
++  </header>
++
++  <main class="container">
++    <section class="panel" aria-labelledby="passkeys-heading">
++      <div class="panel-header">
++        <div>
++          <h2 id="passkeys-heading">Passkeys</h2>
++          <p class="panel-intro">
++            Passkeys let you sign in with your fingerprint, face, or device PIN instead of a password.
++            Rename them so they're easy to recognise, and remove any you no longer use.
++          </p>
++        </div>
++        <span id="sync-badge" class="sync-badge" hidden></span>
++      </div>
++
++      <div id="notice" role="status" hidden></div>
++
++      <p id="loading" class="empty">Loading your passkeys&hellip;</p>
++      <ul id="passkey-list" class="passkey-list" aria-labelledby="passkeys-heading" hidden></ul>
++      <p id="empty" class="empty" hidden>You haven't registered any passkeys yet.</p>
++    </section>
++  </main>
++
++  <dialog id="delete-dialog" aria-labelledby="delete-title">
++    <form method="dialog">
++      <h3 id="delete-title">Remove passkey?</h3>
++      <p>
++        <strong id="delete-name"></strong> will no longer be able to sign in to your Daily Grind account.
++      </p>
++      <p id="delete-sync-note"></p>
++      <p id="delete-last-warning" class="notice error" hidden>
++        This is your only passkey. You'll need to sign in another way (such as an email link) next time.
++      </p>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-outline" autofocus>Cancel</button>
++        <button type="submit" value="confirm" class="btn btn-danger">Remove passkey</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script type="module" src="/account/passkeys.js"></script>
++</body>
++
++</html>
+diff --git a/account/passkeys.js b/account/passkeys.js
+new file mode 100644
+index 0000000..e88686e
+--- /dev/null
++++ b/account/passkeys.js
+@@ -0,0 +1,523 @@
++// Passkey management for "My Account".
++//
++// Expected backend contract (same-origin, session cookie auth):
++//   GET    /api/account/passkeys      -> { rpId, user: { id, name, displayName }, passkeys: [Passkey] }
++//   PATCH  /api/account/passkeys/:id  { name } -> Passkey
++//   DELETE /api/account/passkeys/:id  -> 204
++//   Passkey = { id, name, createdAt, lastUsedAt?, backedUp?, authenticator? }
++// `user.id` is the WebAuthn user handle and `Passkey.id` the credential ID, both base64url.
++//
++// When the API isn't deployed (the static site returns 404), the page falls back to a
++// clearly labelled demo backed by localStorage so the UI can still be explored.
++
++const API_BASE = '/api/account/passkeys';
++const LOGIN_URL = '/login?next=' + encodeURIComponent('/account/');
++const NAME_MAX_LENGTH = 64;
++
++const els = {
++  greeting: document.getElementById('greeting'),
++  notice: document.getElementById('notice'),
++  syncBadge: document.getElementById('sync-badge'),
++  loading: document.getElementById('loading'),
++  list: document.getElementById('passkey-list'),
++  empty: document.getElementById('empty'),
++  dialog: document.getElementById('delete-dialog'),
++  deleteName: document.getElementById('delete-name'),
++  deleteSyncNote: document.getElementById('delete-sync-note'),
++  deleteLastWarning: document.getElementById('delete-last-warning'),
++  toast: document.getElementById('toast'),
++};
++
++const state = {
++  backend: null,
++  rpId: null,
++  user: null,
++  passkeys: [],
++  editingId: null,
++  busyIds: new Set(),
++};
++
++class HttpError extends Error {
++  constructor(status, message) {
++    super(message);
++    this.status = status;
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Backends
++// ---------------------------------------------------------------------------
++
++const apiBackend = {
++  demo: false,
++
++  async request(path, options = {}) {
++    const res = await fetch(API_BASE + path, {
++      credentials: 'same-origin',
++      ...options,
++      headers: {
++        Accept: 'application/json',
++        'X-Requested-With': 'fetch',
++        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
++        ...options.headers,
++      },
++    });
++    if (!res.ok) {
++      let message = `Request failed (${res.status})`;
++      try {
++        const body = await res.json();
++        if (body && typeof body.error === 'string') message = body.error;
++      } catch { /* non-JSON error body */ }
++      throw new HttpError(res.status, message);
++    }
++    if (res.status === 204) return null;
++    const type = res.headers.get('Content-Type') || '';
++    if (!type.includes('application/json')) {
++      // A static host serving an HTML page means the API isn't really there.
++      throw new HttpError(404, 'Passkey API not available');
++    }
++    return res.json();
++  },
++
++  list() {
++    return this.request('');
++  },
++
++  rename(id, name) {
++    return this.request('/' + encodeURIComponent(id), {
++      method: 'PATCH',
++      body: JSON.stringify({ name }),
++    });
++  },
++
++  remove(id) {
++    return this.request('/' + encodeURIComponent(id), { method: 'DELETE' });
++  },
++};
++
++const DEMO_STORAGE_KEY = 'dailyGrind.demoPasskeys';
++
++const demoBackend = {
++  demo: true,
++
++  seed() {
++    const day = 24 * 60 * 60 * 1000;
++    const now = Date.now();
++    return [
++      { id: 'ZGVtby1pcGhvbmU', name: 'iPhone 16', authenticator: 'iCloud Keychain', backedUp: true,
++        createdAt: new Date(now - 220 * day).toISOString(), lastUsedAt: new Date(now - 1 * day).toISOString() },
++      { id: 'ZGVtby1tYWNib29r', name: 'Work MacBook', authenticator: 'Google Password Manager', backedUp: true,
++        createdAt: new Date(now - 95 * day).toISOString(), lastUsedAt: new Date(now - 12 * day).toISOString() },
++      { id: 'ZGVtby15dWJpa2V5', name: 'YubiKey 5C', authenticator: 'Security key', backedUp: false,
++        createdAt: new Date(now - 400 * day).toISOString(), lastUsedAt: null },
++    ];
++  },
++
++  load() {
++    try {
++      const stored = JSON.parse(localStorage.getItem(DEMO_STORAGE_KEY));
++      if (Array.isArray(stored)) return stored;
++    } catch { /* fall through to seed */ }
++    const seeded = this.seed();
++    this.save(seeded);
++    return seeded;
++  },
++
++  save(passkeys) {
++    try {
++      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(passkeys));
++    } catch { /* storage unavailable; demo just won't persist */ }
++  },
++
++  async list() {
++    return {
++      rpId: location.hostname,
++      user: { id: 'ZGVtby11c2Vy', name: 'demo@dailygrind.example', displayName: 'Demo Customer' },
++      passkeys: this.load(),
++    };
++  },
++
++  async rename(id, name) {
++    const passkeys = this.load();
++    const passkey = passkeys.find((p) => p.id === id);
++    if (!passkey) throw new HttpError(404, 'Passkey not found');
++    passkey.name = name;
++    this.save(passkeys);
++    return passkey;
++  },
++
++  async remove(id) {
++    this.save(this.load().filter((p) => p.id !== id));
++    return null;
++  },
++};
++
++// ---------------------------------------------------------------------------
++// Authenticator sync (WebAuthn Signal API)
++// ---------------------------------------------------------------------------
++
++const signalSupport = {
++  acceptedCredentials: typeof window.PublicKeyCredential?.signalAllAcceptedCredentials === 'function',
++  userDetails: typeof window.PublicKeyCredential?.signalCurrentUserDetails === 'function',
++};
++
++function canSignal() {
++  // Never signal from demo mode: the IDs are fake and must not touch real authenticators.
++  return !state.backend.demo && Boolean(state.rpId && state.user?.id);
++}
++
++// Tells the browser/passkey provider exactly which credentials this account still
++// accepts, so passkeys deleted here (or on another device) stop appearing in sign-in prompts.
++async function signalAcceptedCredentials() {
++  if (!signalSupport.acceptedCredentials || !canSignal()) return false;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: state.rpId,
++      userId: state.user.id,
++      allAcceptedCredentialIds: state.passkeys.map((p) => p.id),
++    });
++    return true;
++  } catch (err) {
++    console.warn('signalAllAcceptedCredentials failed', err);
++    return false;
++  }
++}
++
++// Keeps the account name shown inside the passkey provider up to date.
++async function signalUserDetails() {
++  if (!signalSupport.userDetails || !canSignal() || !state.user.name) return;
++  try {
++    await PublicKeyCredential.signalCurrentUserDetails({
++      rpId: state.rpId,
++      userId: state.user.id,
++      name: state.user.name,
++      displayName: state.user.displayName || state.user.name,
++    });
++  } catch (err) {
++    console.warn('signalCurrentUserDetails failed', err);
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Rendering
++// ---------------------------------------------------------------------------
++
++const dateFormat = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
++
++function formatDate(value) {
++  if (!value) return null;
++  const date = new Date(value);
++  return Number.isNaN(date.getTime()) ? null : dateFormat.format(date);
++}
++
++function el(tag, props = {}, children = []) {
++  const node = document.createElement(tag);
++  for (const [key, value] of Object.entries(props)) {
++    if (key === 'class') node.className = value;
++    else if (key === 'text') node.textContent = value;
++    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
++    else if (value !== undefined && value !== null && value !== false) node.setAttribute(key, value === true ? '' : value);
++  }
++  for (const child of [].concat(children)) {
++    if (child) node.append(child);
++  }
++  return node;
++}
++
++function keyIcon() {
++  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
++  svg.setAttribute('viewBox', '0 0 24 24');
++  svg.setAttribute('width', '22');
++  svg.setAttribute('height', '22');
++  svg.setAttribute('aria-hidden', 'true');
++  svg.innerHTML = '<path fill="currentColor" d="M7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm5.65-4A6 6 0 1 0 12.65 14H17v4h4v-4h2v-4H12.65Z"/>';
++  return svg;
++}
++
++function showNotice(message, { error = false } = {}) {
++  els.notice.textContent = message;
++  els.notice.className = 'notice' + (error ? ' error' : '');
++  els.notice.hidden = false;
++}
++
++let toastTimer;
++function toast(message) {
++  els.toast.textContent = message;
++  els.toast.hidden = false;
++  clearTimeout(toastTimer);
++  toastTimer = setTimeout(() => { els.toast.hidden = true; }, 4000);
++}
++
++function renderSyncBadge() {
++  if (state.backend.demo) {
++    els.syncBadge.hidden = true;
++    return;
++  }
++  const on = signalSupport.acceptedCredentials;
++  els.syncBadge.textContent = on ? 'Browser sync on' : 'Browser sync unavailable';
++  els.syncBadge.title = on
++    ? 'Changes here are sent to your browser’s passkey manager automatically.'
++    : 'Your browser can’t be updated automatically. After removing a passkey, also delete it from your device’s password manager.';
++  els.syncBadge.className = 'sync-badge' + (on ? ' on' : '');
++  els.syncBadge.hidden = false;
++}
++
++function renderPasskey(passkey) {
++  const busy = state.busyIds.has(passkey.id);
++  const editing = state.editingId === passkey.id;
++
++  const meta = [];
++  const created = formatDate(passkey.createdAt);
++  const lastUsed = formatDate(passkey.lastUsedAt);
++  if (passkey.authenticator) meta.push(passkey.authenticator);
++  if (created) meta.push('Added ' + created);
++  meta.push(lastUsed ? 'Last used ' + lastUsed : 'Never used');
++
++  let body;
++  let actions = null;
++
++  if (editing) {
++    const inputId = 'rename-' + passkey.id;
++    const errorId = inputId + '-error';
++    const input = el('input', {
++      id: inputId,
++      type: 'text',
++      value: passkey.name,
++      maxlength: NAME_MAX_LENGTH,
++      required: true,
++      autocomplete: 'off',
++      'aria-describedby': errorId,
++      onkeydown: (e) => { if (e.key === 'Escape') cancelRename(); },
++    });
++    const error = el('span', { id: errorId, class: 'field-error', 'aria-live': 'polite' });
++    body = el('form', {
++      class: 'rename-form',
++      novalidate: true,
++      onsubmit: (e) => { e.preventDefault(); submitRename(passkey, input, error); },
++    }, [
++      el('label', { for: inputId, class: 'visually-hidden', text: 'Passkey name' }),
++      input,
++      el('button', { type: 'submit', class: 'btn', disabled: busy, text: busy ? 'Saving…' : 'Save' }),
++      el('button', { type: 'button', class: 'btn btn-outline', disabled: busy, text: 'Cancel', onclick: cancelRename }),
++      error,
++    ]);
++  } else {
++    body = el('div', {}, [
++      el('div', { class: 'passkey-name' }, [
++        passkey.name || 'Unnamed passkey',
++        passkey.backedUp ? el('span', { class: 'tag', text: 'Synced', title: 'Backed up to a cloud passkey manager' }) : null,
++      ]),
++      el('div', { class: 'passkey-meta', text: meta.join(' · ') }),
++    ]);
++    actions = el('div', { class: 'passkey-actions' }, [
++      el('button', {
++        type: 'button', class: 'btn btn-outline', disabled: busy, text: 'Rename',
++        'aria-label': `Rename ${passkey.name || 'passkey'}`,
++        onclick: () => startRename(passkey.id),
++      }),
++      el('button', {
++        type: 'button', class: 'btn btn-outline btn-link-danger', disabled: busy, text: busy ? 'Removing…' : 'Remove',
++        'aria-label': `Remove ${passkey.name || 'passkey'}`,
++        onclick: () => confirmDelete(passkey),
++      }),
++    ]);
++  }
++
++  return el('li', { class: 'passkey', 'data-id': passkey.id }, [
++    el('div', { class: 'passkey-icon' }, keyIcon()),
++    el('div', { class: 'passkey-body' }, body),
++    actions,
++  ]);
++}
++
++function render() {
++  els.loading.hidden = true;
++  els.list.replaceChildren(...state.passkeys.map(renderPasskey));
++  els.list.hidden = state.passkeys.length === 0;
++  els.empty.hidden = state.passkeys.length !== 0;
++
++  if (state.editingId) {
++    const input = els.list.querySelector(`li[data-id="${CSS.escape(state.editingId)}"] input`);
++    if (input && document.activeElement !== input) {
++      input.focus();
++      input.select();
++    }
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Actions
++// ---------------------------------------------------------------------------
++
++function startRename(id) {
++  state.editingId = id;
++  render();
++}
++
++function cancelRename() {
++  const id = state.editingId;
++  state.editingId = null;
++  render();
++  focusRow(id, 'button');
++}
++
++function focusRow(id, selector) {
++  const row = id && els.list.querySelector(`li[data-id="${CSS.escape(id)}"]`);
++  row?.querySelector(selector)?.focus();
++}
++
++function validateName(raw) {
++  const name = raw.replace(/\s+/g, ' ').trim();
++  if (!name) return { error: 'Please enter a name.' };
++  if (name.length > NAME_MAX_LENGTH) return { error: `Names can be up to ${NAME_MAX_LENGTH} characters.` };
++  return { name };
++}
++
++async function submitRename(passkey, input, errorEl) {
++  const { name, error } = validateName(input.value);
++  if (error) {
++    errorEl.textContent = error;
++    input.setAttribute('aria-invalid', 'true');
++    input.focus();
++    return;
++  }
++  if (name === passkey.name) {
++    cancelRename();
++    return;
++  }
++
++  state.busyIds.add(passkey.id);
++  render();
++  try {
++    const updated = await state.backend.rename(passkey.id, name);
++    Object.assign(passkey, updated && typeof updated === 'object' ? updated : { name });
++    state.editingId = null;
++    toast(`Renamed to “${passkey.name}”.`);
++  } catch (err) {
++    if (handleAuthError(err)) return;
++    if (err.status === 404) {
++      await refreshAfterMissing(passkey.id);
++      return;
++    }
++    toast(err.message || 'Could not rename passkey.');
++  } finally {
++    state.busyIds.delete(passkey.id);
++    render();
++    if (!state.editingId) focusRow(passkey.id, 'button');
++  }
++}
++
++function confirmDelete(passkey) {
++  els.deleteName.textContent = passkey.name || 'This passkey';
++  els.deleteLastWarning.hidden = state.passkeys.length > 1;
++  els.deleteSyncNote.textContent = state.backend.demo
++    ? 'Demo mode: nothing on your device will change.'
++    : signalSupport.acceptedCredentials
++      ? 'We’ll also let your browser’s passkey manager know, so it stops offering this passkey.'
++      : 'Your browser can’t be updated automatically, so you may also want to delete it from your device’s password manager.';
++
++  els.dialog.returnValue = '';
++  els.dialog.addEventListener('close', async () => {
++    if (els.dialog.returnValue === 'confirm') {
++      await deletePasskey(passkey);
++    } else {
++      focusRow(passkey.id, '.btn-link-danger');
++    }
++  }, { once: true });
++  els.dialog.showModal();
++}
++
++async function deletePasskey(passkey) {
++  state.busyIds.add(passkey.id);
++  if (state.editingId === passkey.id) state.editingId = null;
++  render();
++  try {
++    await state.backend.remove(passkey.id);
++  } catch (err) {
++    if (handleAuthError(err)) return;
++    // Already gone on the server counts as success; anything else is a real failure.
++    if (err.status !== 404) {
++      state.busyIds.delete(passkey.id);
++      render();
++      toast(err.message || 'Could not remove passkey.');
++      return;
++    }
++  }
++
++  const index = state.passkeys.indexOf(passkey);
++  state.busyIds.delete(passkey.id);
++  state.passkeys = state.passkeys.filter((p) => p.id !== passkey.id);
++  render();
++
++  const synced = await signalAcceptedCredentials();
++  toast(synced
++    ? `Removed “${passkey.name}” and updated your browser.`
++    : `Removed “${passkey.name}”.`);
++
++  // Move focus to a sensible neighbour so keyboard users aren't dropped at the top.
++  const next = state.passkeys[Math.min(index, state.passkeys.length - 1)];
++  if (next) focusRow(next.id, 'button');
++}
++
++async function refreshAfterMissing(id) {
++  toast('That passkey was already removed.');
++  state.passkeys = state.passkeys.filter((p) => p.id !== id);
++  if (state.editingId === id) state.editingId = null;
++  await signalAcceptedCredentials();
++}
++
++function handleAuthError(err) {
++  if (err.status === 401) {
++    location.assign(LOGIN_URL);
++    return true;
++  }
++  return false;
++}
++
++// ---------------------------------------------------------------------------
++// Boot
++// ---------------------------------------------------------------------------
++
++async function loadAccount() {
++  try {
++    return { backend: apiBackend, data: await apiBackend.list() };
++  } catch (err) {
++    if (err.status === 401) throw err;
++    if (err instanceof TypeError || err.status === 404) {
++      return { backend: demoBackend, data: await demoBackend.list() };
++    }
++    throw err;
++  }
++}
++
++async function init() {
++  try {
++    const { backend, data } = await loadAccount();
++    state.backend = backend;
++    state.rpId = data.rpId || location.hostname;
++    state.user = data.user || null;
++    state.passkeys = Array.isArray(data.passkeys) ? data.passkeys : [];
++  } catch (err) {
++    if (handleAuthError(err)) return;
++    els.loading.hidden = true;
++    showNotice('We couldn’t load your passkeys. Please refresh the page or try again later.', { error: true });
++    return;
++  }
++
++  if (state.user?.displayName) {
++    els.greeting.textContent = `Signed in as ${state.user.displayName}`;
++  }
++  if (state.backend.demo) {
++    showNotice('Demo mode: the account service isn’t connected, so these sample passkeys are stored only in this browser.');
++  }
++
++  renderSyncBadge();
++  render();
++
++  // Reconcile the authenticator with the server on every visit, which also cleans up
++  // passkeys that were removed from another device or by support.
++  signalAcceptedCredentials();
++  signalUserDetails();
++}
++
++init();
+diff --git a/index.html b/index.html
+index 66c9173..85cac06 100644
+--- a/index.html
++++ b/index.html
+@@ -163,7 +163,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/account/">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>

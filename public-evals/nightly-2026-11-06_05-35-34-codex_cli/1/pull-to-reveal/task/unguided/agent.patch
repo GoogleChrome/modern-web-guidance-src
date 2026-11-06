@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Start each fresh visit at the navigation, with search just above it.
++    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -19,17 +23,62 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
++      min-height: calc(100vh + var(--search-height, 82px));
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .search-bar {
++      padding: 16px 5%;
++      background: var(--secondary);
++      scroll-snap-align: start;
++    }
++
++    .search-form {
++      display: flex;
++      max-width: 1100px;
++      margin: 0 auto;
++      gap: 10px;
++    }
++
++    .search-form input {
++      flex: 1;
++      min-width: 0;
++      padding: 12px 16px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .search-form button {
++      padding: 10px 20px;
++      border: 0;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .search-form :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-snap-align: start;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +205,15 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form class="search-form" role="search" action="/menu" method="get">
++      <input type="search" name="q" aria-label="Search the menu" placeholder="Search coffee, drinks, and more…">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +262,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const searchBar = document.querySelector('.search-bar');
++    const navigation = document.querySelector('nav');
++    document.body.style.setProperty('--search-height', `${searchBar.offsetHeight}px`);
++
++    // Keep direct section links usable; otherwise hide search before first paint.
++    if (!location.hash) {
++      window.scrollTo({ top: navigation.offsetTop, behavior: 'instant' });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

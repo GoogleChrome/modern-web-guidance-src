@@ -1,0 +1,140 @@
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..7bbb97e
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,25 @@
++# Privacy by design notes
++
++## Data minimization
++- The site collects no personal data: no forms, cookies, storage, analytics, or tracking scripts.
++- The server does not log IP addresses or user agents and sets no cookies.
++- Referrers are suppressed (`Referrer-Policy: no-referrer`); sensor/ad-cohort APIs are disabled via `Permissions-Policy`.
++- Before adding any feature that collects data (login, orders, rewards), document the purpose, retention period, and legal basis here, and collect only what that purpose needs.
++
++## Third-party audit
++Audit of external requests made by the page (2026-10-20):
++- `images.unsplash.com` hero image: **removed**. It leaked each visitor's IP/UA to a third party. The image is now self-hosted at `assets/hero.jpg`.
++- No fonts, scripts, CDNs, or embeds remain. The CSP (`default-src 'none'`, `img-src 'self'`) enforces this: any new third party is blocked until reviewed and explicitly allowed.
++- Re-audit whenever a dependency or external resource is added.
++
++## Secure data handling
++- HTTPS enforced (HSTS, `upgrade-insecure-requests`); terminate TLS in front of `server.js`.
++- `server.js` serves only an allowlist of files and only GET/HEAD; responses are `Cache-Control: no-store`.
++- Any future personal data must be encrypted in transit and at rest, access-controlled, and deleted after its retention period.
++
++## Security headers (see `server.js`)
++CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP/CORP/COEP.
++
++## Known gaps
++- Nav/footer links (/menu, /account, /privacy-policy, etc.) have no pages yet; a real privacy policy page is needed before launch.
++- Inline `<style>` requires `'unsafe-inline'` for styles; move CSS to a file to drop it.
+diff --git a/assets/hero.jpg b/assets/hero.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/hero.jpg differ
+diff --git a/index.html b/index.html
+index 66c9173..7b4a635 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -76,7 +77,7 @@
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url('/assets/hero.jpg');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..f3dd52a
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,65 @@
++// Minimal dependency-free static server that applies security headers.
++// No cookies, no request logging of IPs/user agents, no third-party calls.
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++
++const ROOT = __dirname;
++const PORT = process.env.PORT || 11222;
++const PUBLIC_FILES = new Set(['/index.html', '/assets/hero.jpg']);
++const TYPES = { '.html': 'text/html; charset=utf-8', '.jpg': 'image/jpeg' };
++
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': [
++    "default-src 'none'",
++    "style-src 'self' 'unsafe-inline'",
++    "img-src 'self'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    'upgrade-insecure-requests',
++  ].join('; '),
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'no-referrer',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cross-Origin-Embedder-Policy': 'require-corp',
++  'Cache-Control': 'no-store',
++};
++
++http.createServer((req, res) => {
++  res.setHeader('X-Powered-By', '');
++  res.removeHeader('X-Powered-By');
++  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    res.writeHead(405, { Allow: 'GET, HEAD' });
++    return res.end();
++  }
++
++  let pathname;
++  try {
++    pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
++  } catch {
++    res.writeHead(400);
++    return res.end();
++  }
++  if (pathname === '/') pathname = '/index.html';
++
++  // Allowlist rather than path-joining arbitrary input (no traversal, no leaking server.js etc.)
++  if (!PUBLIC_FILES.has(pathname)) {
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    return res.end('Not found');
++  }
++  fs.readFile(path.join(ROOT, pathname), (err, data) => {
++    if (err) {
++      res.writeHead(500);
++      return res.end();
++    }
++    res.writeHead(200, { 'Content-Type': TYPES[path.extname(pathname)] });
++    res.end(req.method === 'HEAD' ? undefined : data);
++  });
++}).listen(PORT, () => console.log(`Listening on :${PORT}`));

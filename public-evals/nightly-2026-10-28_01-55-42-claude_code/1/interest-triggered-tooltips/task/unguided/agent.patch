@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,78 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Tooltip on "View Details" buttons */
++    .tooltip-wrap {
++      position: relative;
++      display: inline-block;
++    }
++
++    .tooltip {
++      position: absolute;
++      bottom: calc(100% + 10px);
++      left: 50%;
++      transform: translateX(-50%) translateY(6px);
++      width: max-content;
++      max-width: 230px;
++      background: var(--text);
++      color: white;
++      text-align: left;
++      font-size: 0.8rem;
++      line-height: 1.4;
++      padding: 10px 12px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
++      z-index: 10;
++    }
++
++    .tooltip::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border: 6px solid transparent;
++      border-top-color: var(--text);
++    }
++
++    .tooltip strong {
++      color: var(--accent);
++    }
++
++    .tooltip dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++      margin-top: 6px;
++    }
++
++    .tooltip dt {
++      font-weight: 600;
++      opacity: 0.85;
++    }
++
++    .tooltip dd {
++      margin: 0;
++    }
++
++    .tooltip-wrap:hover .tooltip,
++    .tooltip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transform: translateX(-50%) translateY(0);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .tooltip {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +250,49 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-wrap">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-maple-oat">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-maple-oat">
++              <strong>Maple Oat Latte</strong> &middot; 16 oz
++              <dl>
++                <dt>Calories</dt><dd>310 kcal</dd>
++                <dt>Caffeine</dt><dd>150 mg</dd>
++                <dt>Sugar</dt><dd>38 g</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-wrap">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-dark-roast">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-dark-roast">
++              <strong>Dark Roast Espresso</strong> &middot; 2 oz double shot
++              <dl>
++                <dt>Calories</dt><dd>10 kcal</dd>
++                <dt>Caffeine</dt><dd>130 mg</dd>
++                <dt>Sugar</dt><dd>0 g</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-wrap">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-cold-brew">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-cold-brew">
++              <strong>Cold Brew</strong> &middot; 16 oz
++              <dl>
++                <dt>Calories</dt><dd>15 kcal</dd>
++                <dt>Caffeine</dt><dd>205 mg</dd>
++                <dt>Sugar</dt><dd>0 g</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

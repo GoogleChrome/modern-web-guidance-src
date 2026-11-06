@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,8 +106,57 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .promo-badge-row {
++      display: flex;
++      justify-content: center;
++      padding: 24px 32px;
++    }
++
++    .target {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 104px;
++      height: 104px;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      font-size: 0.8rem;
++      font-weight: 700;
++      line-height: 1.3;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.18);
++      isolation: isolate;
++      /* Keep a stacking context before, during, and after hover. */
++      transform: scale(1);
++      transition: transform 0.3s ease;
++      /* Separate transform properties let both animations and hover compose. */
++      animation: promo-spin 12s linear infinite,
++        promo-slide 2.5s ease-in-out infinite alternate;
++    }
++
++    .target strong {
++      font-size: 0.95rem;
++    }
++
++    .target:hover {
++      transform: scale(1.15);
++    }
++
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -24px 0; }
++      to { translate: 24px 0; }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -176,8 +225,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge-row">
++        <div class="target">
++          <strong>Featured</strong>
++          <span>Seasonal sip</span>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

@@ -1,0 +1,532 @@
+diff --git a/index.html b/index.html
+index 66c9173..eb274b8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,186 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Customer Reviews */
++    .review-count {
++      display: inline-block;
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      background: none;
++      border: none;
++      cursor: pointer;
++      text-decoration: underline;
++      font-family: inherit;
++    }
++
++    .reviews {
++      margin-top: 50px;
++    }
++
++    .reviews h2 {
++      text-align: center;
++    }
++
++    .reviews-intro {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .reviews-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    .review-form,
++    .review {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .review-form h3 {
++      color: var(--primary);
++      margin-bottom: 15px;
++    }
++
++    .review-form label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      margin: 12px 0 4px;
++    }
++
++    .review-form input,
++    .review-form select,
++    .review-form textarea {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++    }
++
++    .review-form textarea {
++      min-height: 120px;
++      resize: vertical;
++      font-family: Consolas, Monaco, monospace;
++      font-size: 0.85rem;
++    }
++
++    .review-form .hint {
++      font-size: 0.75rem;
++      color: #8d6e63;
++      margin-top: 4px;
++    }
++
++    .review-form button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .review-preview {
++      margin-top: 12px;
++      padding: 10px;
++      border: 1px dashed var(--secondary);
++      border-radius: 4px;
++      min-height: 40px;
++      font-size: 0.9rem;
++    }
++
++    .form-error {
++      color: #c62828;
++      font-size: 0.85rem;
++      margin-top: 8px;
++      min-height: 1.2em;
++    }
++
++    .review-filter {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 15px;
++    }
++
++    .review-filter button {
++      background: white;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      padding: 4px 12px;
++      border-radius: 999px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .review-filter button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .review-list {
++      list-style: none;
++      display: grid;
++      gap: 15px;
++    }
++
++    .review-meta {
++      display: flex;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 6px;
++      font-size: 0.85rem;
++      margin-bottom: 8px;
++    }
++
++    .review-meta .drink {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .review-meta .stars {
++      color: var(--accent);
++      letter-spacing: 2px;
++    }
++
++    .review-body p,
++    .review-body ul,
++    .review-body ol,
++    .review-body blockquote {
++      margin-bottom: 8px;
++    }
++
++    .review-body ul,
++    .review-body ol {
++      padding-left: 20px;
++    }
++
++    .review-body blockquote {
++      border-left: 3px solid var(--accent);
++      padding-left: 10px;
++      color: #6d4c41;
++    }
++
++    .review-body a {
++      color: var(--primary);
++    }
++
++    .review-body code {
++      background: #efebe9;
++      padding: 0 4px;
++      border-radius: 3px;
++    }
++
++    .review-empty {
++      color: #8d6e63;
++      font-style: italic;
++    }
+   </style>
+ </head>
+ 
+@@ -182,16 +362,72 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <br>
++          <button type="button" class="review-count" data-drink="maple-oat-latte"></button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <br>
++          <button type="button" class="review-count" data-drink="dark-roast-espresso"></button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <br>
++          <button type="button" class="review-count" data-drink="cold-brew"></button>
++        </div>
++      </div>
++    </section>
++
++    <section class="reviews" id="reviews" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">Customer Reviews</h2>
++      <p class="reviews-intro">Tell us what you think of our seasonal favorites. Basic formatting is welcome.</p>
++      <div class="reviews-layout">
++        <form class="review-form" id="review-form" novalidate>
++          <h3>Write a Review</h3>
++          <label for="review-name">Your name</label>
++          <input id="review-name" name="name" type="text" maxlength="40" required autocomplete="given-name">
++
++          <label for="review-drink">Drink</label>
++          <select id="review-drink" name="drink" required>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++
++          <label for="review-rating">Rating</label>
++          <select id="review-rating" name="rating" required>
++            <option value="5">★★★★★ Excellent</option>
++            <option value="4">★★★★☆ Great</option>
++            <option value="3">★★★☆☆ Good</option>
++            <option value="2">★★☆☆☆ Fair</option>
++            <option value="1">★☆☆☆☆ Poor</option>
++          </select>
++
++          <label for="review-body">Your review (HTML allowed)</label>
++          <textarea id="review-body" name="body" maxlength="2000" required
++            placeholder="<p>The <strong>maple</strong> is just right!</p>"></textarea>
++          <p class="hint">Allowed: &lt;p&gt; &lt;br&gt; &lt;b&gt; &lt;strong&gt; &lt;i&gt; &lt;em&gt; &lt;u&gt; &lt;s&gt;
++            &lt;ul&gt; &lt;ol&gt; &lt;li&gt; &lt;blockquote&gt; &lt;code&gt; &lt;a href&gt;. Everything else is removed.</p>
++
++          <label>Preview</label>
++          <div class="review-preview review-body" id="review-preview" aria-live="polite"></div>
++
++          <p class="form-error" id="review-error" role="alert"></p>
++          <button type="submit" class="btn">Submit Review</button>
++        </form>
++
++        <div>
++          <div class="review-filter" id="review-filter" role="group" aria-label="Filter reviews by drink">
++            <button type="button" data-filter="all" aria-pressed="true">All</button>
++            <button type="button" data-filter="maple-oat-latte" aria-pressed="false">Maple Oat Latte</button>
++            <button type="button" data-filter="dark-roast-espresso" aria-pressed="false">Dark Roast Espresso</button>
++            <button type="button" data-filter="cold-brew" aria-pressed="false">Cold Brew</button>
++          </div>
++          <ul class="review-list" id="review-list"></ul>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +443,267 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const DRINKS = {
++        'maple-oat-latte': 'Maple Oat Latte',
++        'dark-roast-espresso': 'Dark Roast Espresso',
++        'cold-brew': 'Cold Brew'
++      };
++      const STORAGE_KEY = 'daily-grind-reviews';
++      const MAX_BODY_LENGTH = 2000;
++      const HTML_NS = 'http://www.w3.org/1999/xhtml';
++      const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
++
++      // Allowlist shared by the native Sanitizer API and the fallback sanitizer.
++      // Keys are element names; values are the attributes permitted on them.
++      const ALLOWED = {
++        p: [], br: [], b: [], strong: [], i: [], em: [], u: [], s: [],
++        ul: [], ol: [], li: [], blockquote: [], code: [],
++        a: ['href', 'title']
++      };
++      // Disallowed elements whose content should be dropped rather than unwrapped.
++      const DROP_WITH_CONTENT = new Set([
++        'script', 'style', 'template', 'iframe', 'frame', 'frameset', 'object', 'embed',
++        'noscript', 'noembed', 'noframes', 'xmp', 'plaintext', 'title', 'textarea',
++        'select', 'option', 'head', 'meta', 'link', 'base', 'svg', 'math'
++      ]);
++
++      const SANITIZER_CONFIG = {
++        elements: Object.entries(ALLOWED).map(([name, attributes]) => ({ name, attributes })),
++        attributes: [],
++        comments: false,
++        dataAttributes: false
++      };
++
++      function isSafeUrl(value) {
++        try {
++          return SAFE_URL_PROTOCOLS.has(new URL(value, document.baseURI).protocol);
++        } catch {
++          return false;
++        }
++      }
++
++      // Final hardening applied to output from either sanitizer path.
++      function hardenLinks(root) {
++        for (const a of root.querySelectorAll('a')) {
++          const href = a.getAttribute('href');
++          if (href === null || !isSafeUrl(href.trim())) {
++            a.removeAttribute('href');
++          } else {
++            a.setAttribute('rel', 'nofollow noopener noreferrer ugc');
++            a.setAttribute('target', '_blank');
++          }
++        }
++      }
++
++      // Fallback for browsers without Element.setHTML(): parse into an inert
++      // document (scripts never run, resources never load) and rebuild an
++      // allowlisted copy node-by-node in the live document.
++      function copyAllowed(src, dest, depth) {
++        if (depth > 20) return;
++        for (const node of src.childNodes) {
++          if (node.nodeType === Node.TEXT_NODE) {
++            dest.appendChild(document.createTextNode(node.data));
++            continue;
++          }
++          if (node.nodeType !== Node.ELEMENT_NODE) continue; // drops comments, PIs, etc.
++          if (node.namespaceURI !== HTML_NS) continue;        // drops SVG / MathML
++          const tag = node.localName;
++          if (DROP_WITH_CONTENT.has(tag)) continue;
++          if (!Object.hasOwn(ALLOWED, tag)) {
++            copyAllowed(node, dest, depth + 1); // unwrap unknown element, keep its text
++            continue;
++          }
++          const el = document.createElement(tag);
++          for (const attr of ALLOWED[tag]) {
++            const value = node.getAttribute(attr);
++            if (value !== null) el.setAttribute(attr, value);
++          }
++          copyAllowed(node, el, depth + 1);
++          dest.appendChild(el);
++        }
++      }
++
++      function renderSafeHTML(target, html) {
++        target.replaceChildren();
++        if (typeof target.setHTML === 'function') {
++          try {
++            // Native HTML Sanitizer API: always strips script-capable markup,
++            // and our config narrows it further to the allowlist above.
++            target.setHTML(html, { sanitizer: SANITIZER_CONFIG });
++            hardenLinks(target);
++            return;
++          } catch {
++            target.replaceChildren();
++          }
++        }
++        const inert = new DOMParser().parseFromString(html, 'text/html');
++        const fragment = document.createDocumentFragment();
++        copyAllowed(inert.body, fragment, 0);
++        target.appendChild(fragment);
++        hardenLinks(target);
++      }
++
++      const SEED_REVIEWS = [
++        {
++          name: 'Priya', drink: 'maple-oat-latte', rating: 5, date: '2026-10-21',
++          body: '<p>The <strong>perfect</strong> fall drink. Not too sweet, and the oat milk is <em>so</em> creamy.</p>'
++        },
++        {
++          name: 'Marcus', drink: 'dark-roast-espresso', rating: 4, date: '2026-10-25',
++          body: '<p>Bold and smoky, just as advertised.</p><ul><li>Great crema</li><li>A touch bitter on its own</li></ul>'
++        },
++        {
++          name: 'Jo', drink: 'cold-brew', rating: 5, date: '2026-10-29',
++          body: '<blockquote>Steeped for 18 hours</blockquote><p>You can taste every one of them. My daily order now.</p>'
++        }
++      ];
++
++      function isValidReview(r) {
++        return r && typeof r === 'object'
++          && typeof r.name === 'string'
++          && Object.hasOwn(DRINKS, r.drink)
++          && Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5
++          && typeof r.body === 'string'
++          && typeof r.date === 'string';
++      }
++
++      function loadReviews() {
++        try {
++          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
++          if (Array.isArray(stored)) return stored.filter(isValidReview);
++        } catch { /* fall through to seed data */ }
++        return SEED_REVIEWS.slice();
++      }
++
++      function saveReviews() {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
++        } catch { /* storage unavailable; keep in memory only */ }
++      }
++
++      let reviews = loadReviews();
++      let activeFilter = 'all';
++
++      const list = document.getElementById('review-list');
++      const form = document.getElementById('review-form');
++      const bodyInput = document.getElementById('review-body');
++      const preview = document.getElementById('review-preview');
++      const errorEl = document.getElementById('review-error');
++      const filterGroup = document.getElementById('review-filter');
++
++      function renderReview(review) {
++        const li = document.createElement('li');
++        li.className = 'review';
++
++        const meta = document.createElement('div');
++        meta.className = 'review-meta';
++
++        const drink = document.createElement('span');
++        drink.className = 'drink';
++        drink.textContent = DRINKS[review.drink];
++
++        const stars = document.createElement('span');
++        stars.className = 'stars';
++        stars.setAttribute('aria-label', `${review.rating} out of 5 stars`);
++        stars.textContent = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
++
++        const byline = document.createElement('span');
++        byline.textContent = `${review.name} · ${review.date}`;
++
++        meta.append(drink, stars, byline);
++
++        const body = document.createElement('div');
++        body.className = 'review-body';
++        renderSafeHTML(body, review.body);
++
++        li.append(meta, body);
++        return li;
++      }
++
++      function render() {
++        const visible = reviews
++          .filter(r => activeFilter === 'all' || r.drink === activeFilter)
++          .slice()
++          .reverse();
++
++        if (visible.length === 0) {
++          const empty = document.createElement('li');
++          empty.className = 'review-empty';
++          empty.textContent = 'No reviews yet. Be the first!';
++          list.replaceChildren(empty);
++        } else {
++          list.replaceChildren(...visible.map(renderReview));
++        }
++
++        for (const btn of document.querySelectorAll('.review-count')) {
++          const count = reviews.filter(r => r.drink === btn.dataset.drink).length;
++          btn.textContent = `${count} review${count === 1 ? '' : 's'}`;
++        }
++        for (const btn of filterGroup.querySelectorAll('button')) {
++          btn.setAttribute('aria-pressed', String(btn.dataset.filter === activeFilter));
++        }
++      }
++
++      function setFilter(filter) {
++        activeFilter = filter;
++        render();
++      }
++
++      filterGroup.addEventListener('click', e => {
++        const btn = e.target.closest('button[data-filter]');
++        if (btn) setFilter(btn.dataset.filter);
++      });
++
++      for (const btn of document.querySelectorAll('.review-count')) {
++        btn.addEventListener('click', () => {
++          setFilter(btn.dataset.drink);
++          document.getElementById('review-drink').value = btn.dataset.drink;
++          document.getElementById('reviews').scrollIntoView({ behavior: 'smooth' });
++        });
++      }
++
++      bodyInput.addEventListener('input', () => {
++        renderSafeHTML(preview, bodyInput.value.slice(0, MAX_BODY_LENGTH));
++      });
++
++      form.addEventListener('submit', e => {
++        e.preventDefault();
++        const data = new FormData(form);
++        const name = String(data.get('name') || '').trim().slice(0, 40);
++        const drink = String(data.get('drink'));
++        const rating = Number.parseInt(data.get('rating'), 10);
++        const body = String(data.get('body') || '').slice(0, MAX_BODY_LENGTH);
++
++        // Reject reviews that are empty once sanitized (e.g. only a script tag).
++        const probe = document.createElement('div');
++        renderSafeHTML(probe, body);
++
++        const review = { name, drink, rating, body, date: new Date().toISOString().slice(0, 10) };
++        if (!name) {
++          errorEl.textContent = 'Please enter your name.';
++        } else if (!probe.textContent.trim()) {
++          errorEl.textContent = 'Please write a review.';
++        } else if (!isValidReview(review)) {
++          errorEl.textContent = 'Please choose a drink and rating.';
++        } else {
++          errorEl.textContent = '';
++          // Store the raw input; it is re-sanitized every time it is rendered.
++          reviews.push(review);
++          saveReviews();
++          form.reset();
++          preview.replaceChildren();
++          setFilter(drink);
++        }
++      });
++
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

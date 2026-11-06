@@ -1,0 +1,304 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,148 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Global tasting planner */
++    .tasting-coordinator {
++      margin-top: 48px;
++      padding: 32px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f4efec;
++    }
++
++    .tasting-heading {
++      max-width: 650px;
++      margin: 0 auto 28px;
++      text-align: center;
++    }
++
++    .tasting-eyebrow {
++      margin-bottom: 6px;
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++    }
++
++    .tasting-heading h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .planner-controls {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 20px;
++      border: 0;
++    }
++
++    .planner-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .planner-field input,
++    .planner-field select {
++      width: 100%;
++      min-width: 0;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #9b8278;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      color-scheme: light;
++    }
++
++    .planner-field input:focus-visible,
++    .planner-field select:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .planner-note {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
++    .host-warning {
++      margin-top: 20px;
++      padding: 14px 16px;
++      border-left: 4px solid #a75e00;
++      border-radius: 4px;
++      background: #fff0d9;
++      color: var(--text);
++      font-size: 0.9rem;
++    }
++
++    .tasting-times {
++      display: grid;
++      grid-template-columns: repeat(4, minmax(0, 1fr));
++      gap: 14px;
++      margin-top: 24px;
++    }
++
++    .timezone-card {
++      padding: 22px 14px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      text-align: center;
++    }
++
++    .timezone-card h3 {
++      font-size: 1rem;
++      font-weight: 600;
++    }
++
++    .timezone-card .local-time {
++      display: block;
++      margin: 8px 0 4px;
++      color: #ffd29a;
++      font-size: 1.75rem;
++      font-weight: 700;
++      line-height: 1.3;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .timezone-card .local-date,
++    .timezone-card .timezone-offset {
++      display: block;
++      font-size: 0.8rem;
++    }
++
++    .timezone-card .timezone-offset {
++      margin-top: 6px;
++      color: var(--secondary);
++    }
++
++    @media (max-width: 760px) {
++      .tasting-times {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++      }
++
++      .planner-controls {
++        grid-template-columns: 1fr;
++        gap: 14px;
++      }
++
++      .tasting-coordinator {
++        padding: 24px 18px;
++      }
++    }
++
++    @media (max-width: 360px) {
++      .tasting-times {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +334,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="tasting-coordinator" aria-labelledby="tastingTitle">
++      <div class="tasting-heading">
++        <p class="tasting-eyebrow">One tasting. Four time zones.</p>
++        <h2 id="tastingTitle">Global Tasting Coordinator</h2>
++        <p>Bring coffee lovers together for a virtual tasting. Choose your host’s date, time, and time zone to find the same moment in New York, London, Tokyo, and UTC.</p>
++      </div>
++
++      <fieldset class="planner-controls" id="plannerControls" disabled aria-describedby="plannerNote">
++        <legend hidden>Plan your virtual coffee tasting</legend>
++        <div class="planner-field">
++          <label for="dateInput">Tasting date</label>
++          <input type="date" id="dateInput" required>
++        </div>
++        <div class="planner-field">
++          <label for="timeInput">Host’s local time</label>
++          <input type="time" id="timeInput" value="15:00" step="60" required>
++        </div>
++        <div class="planner-field">
++          <label for="hostTzSelect">Host’s time zone</label>
++          <select id="hostTzSelect">
++            <option value="America/New_York">New York · America/New_York</option>
++            <option value="Europe/London">London · Europe/London</option>
++            <option value="Asia/Tokyo">Tokyo · Asia/Tokyo</option>
++            <option value="UTC">UTC · Coordinated Universal Time</option>
++          </select>
++        </div>
++      </fieldset>
++      <p class="planner-note" id="plannerNote">Times update automatically. Local dates are included so you can spot a different day.</p>
++      <p class="host-warning" id="hostWarning" role="status" aria-live="polite" aria-atomic="true">Loading the tasting planner…</p>
++      <div class="tasting-times" id="grid" aria-label="Equivalent tasting times" aria-live="polite" aria-atomic="true"></div>
++      <noscript><p>Please enable JavaScript to plan a tasting across time zones.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +379,109 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const hostWarning = document.getElementById('hostWarning');
++    const grid = document.getElementById('grid');
++    const plannerControls = document.getElementById('plannerControls');
++    const destinations = [
++      { name: 'New York', zone: 'America/New_York' },
++      { name: 'London', zone: 'Europe/London' },
++      { name: 'Tokyo', zone: 'Asia/Tokyo' },
++      { name: 'UTC', zone: 'UTC' },
++    ];
++    const timeFormat = { hour: 'numeric', minute: '2-digit', hour12: true };
++    const dateFormat = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
++
++    function showWarning(message = '') {
++      hostWarning.textContent = message;
++      hostWarning.hidden = !message;
++    }
++
++    async function initializePlanner() {
++      try {
++        // Use the native API where available; load the same API for older browsers.
++        const TemporalAPI = globalThis.Temporal ??
++          (await import('https://esm.sh/temporal-polyfill@0.3.0')).Temporal;
++
++        dateInput.value = TemporalAPI.Now.zonedDateTimeISO(hostTzSelect.value)
++          .toPlainDate().toString();
++        plannerControls.disabled = false;
++
++        function updatePlanner() {
++          grid.replaceChildren();
++          if (!dateInput.value || !timeInput.value ||
++              !dateInput.validity.valid || !timeInput.validity.valid) {
++            showWarning('Choose a valid tasting date and host time to see the local times.');
++            return;
++          }
++
++          try {
++            const input = `${dateInput.value}T${timeInput.value}[${hostTzSelect.value}]`;
++            // Validate and resolve first, so malformed input cannot be mistaken for DST.
++            const hostTime = TemporalAPI.ZonedDateTime.from(input, {
++              disambiguation: 'compatible', overflow: 'reject',
++            });
++            let warning = '';
++
++            try {
++              TemporalAPI.ZonedDateTime.from(input, { disambiguation: 'reject' });
++            } catch (error) {
++              if (!(error instanceof RangeError)) throw error;
++              const earlier = TemporalAPI.ZonedDateTime.from(input, { disambiguation: 'earlier' });
++              const later = TemporalAPI.ZonedDateTime.from(input, { disambiguation: 'later' });
++              const isOverlap = earlier.toPlainDateTime().equals(later.toPlainDateTime());
++              const resolved = hostTime.toLocaleString('en-US', { ...dateFormat, ...timeFormat });
++
++              warning = isOverlap
++                ? `Daylight saving overlap: this host time occurs twice in ${hostTzSelect.value}. We selected the first occurrence: ${resolved} (UTC${hostTime.offset}); the second occurrence has offset UTC${later.offset}. All cards show the first occurrence.`
++                : `Daylight saving gap: this host time does not exist in ${hostTzSelect.value} because the clocks move forward. We shifted it forward by the clock-change gap to ${resolved} (UTC${hostTime.offset}). All cards show this resolved time.`;
++            }
++
++            const cards = destinations.map(({ name, zone }) => {
++              // Temporal objects are immutable: each conversion returns a new object.
++              const localTime = hostTime.withTimeZone(zone);
++              const card = document.createElement('article');
++              card.className = 'timezone-card';
++              const heading = document.createElement('h3');
++              heading.textContent = name;
++              const time = document.createElement('time');
++              time.className = 'local-time';
++              time.dateTime = localTime.toInstant().toString();
++              time.textContent = localTime.toLocaleString('en-US', timeFormat);
++              const date = document.createElement('span');
++              date.className = 'local-date';
++              date.textContent = localTime.toLocaleString('en-US', dateFormat);
++              const offset = document.createElement('span');
++              offset.className = 'timezone-offset';
++              offset.textContent = `UTC${localTime.offset}`;
++              card.append(heading, time, date, offset);
++              return card;
++            });
++
++            grid.replaceChildren(...cards);
++            showWarning(warning);
++          } catch {
++            showWarning('We couldn’t calculate that tasting time. Please check the date, time, and host time zone.');
++          }
++        }
++
++        for (const control of [dateInput, timeInput, hostTzSelect]) {
++          control.addEventListener('input', updatePlanner);
++          control.addEventListener('change', updatePlanner);
++        }
++        updatePlanner();
++      } catch {
++        showWarning('The tasting planner couldn’t load. Please check your connection and reload, or try a browser with Temporal support.');
++      }
++    }
++
++    initializePlanner();
++  </script>
++
+ </body>
+ 
+ </html>

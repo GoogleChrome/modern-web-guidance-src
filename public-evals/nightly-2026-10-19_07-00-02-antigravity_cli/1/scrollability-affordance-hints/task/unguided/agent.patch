@@ -1,0 +1,295 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,136 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-top: 50px;
++    }
++
++    .reviews-wrapper {
++      position: relative;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .reviews-scroll-container,
++    .reviews-container,
++    .reviews-scroll {
++      height: 380px;
++      overflow-y: auto;
++      overflow-x: hidden;
++      padding: 12px 15px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: absolute;
++      left: 0;
++      right: 0;
++      height: 48px;
++      pointer-events: none;
++      z-index: 10;
++      transition: opacity 0.25s ease, visibility 0.25s ease;
++    }
++
++    .indicator-top {
++      top: 0;
++      background: linear-gradient(to bottom, var(--light) 0%, rgba(250, 250, 250, 0) 100%);
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      background: linear-gradient(to top, var(--light) 0%, rgba(250, 250, 250, 0) 100%);
++    }
++
++    .indicator-top.hidden,
++    .indicator-bottom.hidden {
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .indicator-top.visible,
++    .indicator-bottom.visible {
++      opacity: 1;
++      visibility: visible;
++    }
++
++    .review-card {
++      background: white;
++      padding: 18px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      display: flex;
++      gap: 16px;
++      align-items: flex-start;
++      border: 1px solid rgba(0, 0, 0, 0.05);
++    }
++
++    .review-avatar {
++      width: 48px;
++      height: 48px;
++      border-radius: 50%;
++      object-fit: cover;
++      flex-shrink: 0;
++    }
++
++    .review-content {
++      flex: 1;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 4px;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .reviewer-name {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .review-stars {
++      color: var(--accent);
++      font-size: 1rem;
++      letter-spacing: 2px;
++    }
++
++    .review-date {
++      font-size: 0.8rem;
++      color: #8d6e63;
++      margin-bottom: 6px;
++    }
++
++    .review-text {
++      color: var(--text);
++      font-size: 0.95rem;
++      line-height: 1.5;
++    }
++
++    .helpful-btn {
++      background: none;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      color: var(--primary);
++      padding: 4px 10px;
++      font-size: 0.8rem;
++      cursor: pointer;
++      margin-top: 8px;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .helpful-btn:hover {
++      background: var(--secondary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +322,154 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section customer-reviews" id="customer-reviews">
++      <h2 style="text-align: center; margin-bottom: 24px;">Customer Reviews</h2>
++      <div class="reviews-wrapper">
++        <div class="indicator-top hidden" aria-hidden="true" style="opacity: 0; visibility: hidden;"></div>
++        <div class="reviews-scroll-container reviews-container reviews-scroll" id="reviewsContainer">
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80" alt="Sarah Mitchell" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">Sarah Mitchell</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++              </div>
++              <div class="review-date">October 17, 2026 &bull; Verified Customer</div>
++              <p class="review-text">The Maple Oat Latte is an absolute revelation! The Vermont maple syrup gives it just the right amount of sweetness without overpowering the espresso. Definitely my new autumn staple.</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (14)</button>
++            </div>
++          </div>
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80" alt="Marcus Vance" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">Marcus Vance</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++              </div>
++              <div class="review-date">October 15, 2026 &bull; Verified Customer</div>
++              <p class="review-text">Hands down the best cold brew in the neighborhood. Smooth, bold, and never bitter. The 18-hour steep really makes all the difference.</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (9)</button>
++            </div>
++          </div>
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Elena Gomez" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">Elena Gomez</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++              </div>
++              <div class="review-date">October 12, 2026 &bull; Verified Customer</div>
++              <p class="review-text">The Dark Roast Espresso is perfection in a demitasse cup. Thick crema, smoky hazelnut undertones, and ethically sourced. The baristas really know their craft.</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (21)</button>
++            </div>
++          </div>
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80" alt="David Chen" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">David Chen</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++              </div>
++              <div class="review-date">October 10, 2026 &bull; Verified Customer</div>
++              <p class="review-text">Love the cozy ambiance and friendly staff. The pumpkin spice scone paired with a pour-over was heavenly. Can get quite busy on Saturday mornings, but always worth the wait.</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (6)</button>
++            </div>
++          </div>
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80" alt="Chloe Taylor" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">Chloe Taylor</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++              </div>
++              <div class="review-date">October 5, 2026 &bull; Verified Customer</div>
++              <p class="review-text">I order beans for home brewing and stop by every Tuesday for my morning latte. Consistent quality, warm smiles, and fantastic artisanal blends. A true local gem!</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (11)</button>
++            </div>
++          </div>
++          <div class="review-card">
++            <img class="review-avatar" src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80" alt="James Wilson" />
++            <div class="review-content">
++              <div class="review-header">
++                <span class="reviewer-name">James Wilson</span>
++                <span class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++              </div>
++              <div class="review-date">September 28, 2026 &bull; Verified Customer</div>
++              <p class="review-text">Top-notch specialty coffee. The Maple Oat Latte blew me away on the first sip. Super comfy seating and excellent Wi-Fi if you need to get some work done.</p>
++              <button type="button" class="helpful-btn" onclick="this.textContent = 'Helpful (' + (parseInt(this.textContent.match(/\d+/)[0]) + 1) + ')'">Helpful (8)</button>
++            </div>
++          </div>
++        </div>
++        <div class="indicator-bottom visible" aria-hidden="false" style="opacity: 1; visibility: visible;"></div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      function initReviewsScroll() {
++        const scrollContainer = document.querySelector('.reviews-scroll-container') || document.querySelector('.reviews-container');
++        const topIndicator = document.querySelector('.indicator-top');
++        const bottomIndicator = document.querySelector('.indicator-bottom');
++
++        if (!scrollContainer || !topIndicator || !bottomIndicator) return;
++
++        function updateIndicators() {
++          const scrollTop = scrollContainer.scrollTop;
++          const scrollHeight = scrollContainer.scrollHeight;
++          const clientHeight = scrollContainer.clientHeight;
++
++          // Top indicator: only appear when user has scrolled down
++          const hasScrolledDown = scrollTop > 0;
++
++          // Bottom indicator: only appear when user can scroll down further
++          const canScrollFurther = Math.ceil(scrollTop + clientHeight) < scrollHeight - 1;
++
++          if (hasScrolledDown) {
++            topIndicator.classList.add('visible');
++            topIndicator.classList.remove('hidden');
++            topIndicator.style.opacity = '1';
++            topIndicator.style.visibility = 'visible';
++          } else {
++            topIndicator.classList.remove('visible');
++            topIndicator.classList.add('hidden');
++            topIndicator.style.opacity = '0';
++            topIndicator.style.visibility = 'hidden';
++          }
++
++          if (canScrollFurther) {
++            bottomIndicator.classList.add('visible');
++            bottomIndicator.classList.remove('hidden');
++            bottomIndicator.style.opacity = '1';
++            bottomIndicator.style.visibility = 'visible';
++          } else {
++            bottomIndicator.classList.remove('visible');
++            bottomIndicator.classList.add('hidden');
++            bottomIndicator.style.opacity = '0';
++            bottomIndicator.style.visibility = 'hidden';
++          }
++        }
++
++        scrollContainer.addEventListener('scroll', updateIndicators);
++        window.addEventListener('resize', updateIndicators);
++        window.addEventListener('load', updateIndicators);
++        if (window.ResizeObserver) {
++          new ResizeObserver(updateIndicators).observe(scrollContainer);
++        }
++        updateIndicators();
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initReviewsScroll);
++      } else {
++        initReviewsScroll();
++      }
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

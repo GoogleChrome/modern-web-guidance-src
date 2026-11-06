@@ -1,0 +1,325 @@
+diff --git a/index.html b/index.html
+index 66c9173..69bfa28 100644
+--- a/index.html
++++ b/index.html
+@@ -5,13 +5,78 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="color-scheme" content="light dark">
+   <style>
++    /*
++     * Theme tokens built around the brand coffee brown (#4e342e).
++     * Light mode is the default; dark mode overrides via prefers-color-scheme.
++     */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      --brand: #4e342e;          /* coffee brown */
++      --brand-deep: #3e2723;
++      --accent: #ffab40;         /* caramel */
++
++      --bg: #faf6f2;
++      --surface: #ffffff;
++      --surface-border: #eadfd8;
++      --text: #2b1d17;
++      --text-muted: #6d5a50;
++      --heading: #4e342e;
++
++      --nav-bg: #4e342e;
++      --nav-text: #fdf8f4;
++      --nav-hover: #ffcc80;
++
++      --btn-bg: #6f4e37;
++      --btn-text: #ffffff;
++      --btn-hover-bg: #4e342e;
++
++      --footer-bg: #efe5de;
++      --footer-text: #4e342e;
++      --footer-muted: #6d5a50;
++
++      --badge-new-bg: #ffab40;
++      --badge-new-text: #3e2723;
++      --badge-soldout-bg: #ece4df;
++      --badge-soldout-text: #5d4037;
++      --badge-soldout-border: #d7ccc8;
++
++      --shadow: 0 2px 6px rgba(62, 39, 35, 0.08), 0 8px 24px rgba(62, 39, 35, 0.06);
++      --focus: #ff9100;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: #17110e;
++        --surface: #241a16;
++        --surface-border: #3a2c25;
++        --text: #f2e9e3;
++        --text-muted: #c2b0a6;
++        --heading: #e8cdb5;
++
++        --nav-bg: #2a1c17;
++        --nav-text: #f2e9e3;
++        --nav-hover: #ffb960;
++
++        --btn-bg: #c8a27a;
++        --btn-text: #1e1411;
++        --btn-hover-bg: #ddbb95;
++
++        --footer-bg: #100b09;
++        --footer-text: #e8cdb5;
++        --footer-muted: #a8968c;
++
++        --badge-new-bg: #ffb960;
++        --badge-new-text: #2a1c17;
++        --badge-soldout-bg: #33261f;
++        --badge-soldout-text: #d7ccc8;
++        --badge-soldout-border: #4a3a32;
++
++        --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.25);
++        --focus: #ffb960;
++      }
+     }
+ 
+     * {
+@@ -24,13 +89,19 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 3px;
++      border-radius: 4px;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +109,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+@@ -48,6 +120,7 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
+       list-style: none;
+     }
+ 
+@@ -56,14 +129,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s, background-color 0.2s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-hover);
+     }
+ 
+     .logout-link {
+@@ -72,10 +145,15 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    .logout-link:hover {
++      background: var(--accent);
++      color: var(--brand-deep);
++    }
++
++    /* Hero Section — always dark overlay on the photo, so text stays light in both modes */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.7)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +161,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #fdf8f4;
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -91,6 +169,17 @@
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
++    }
++
++    .hero .btn {
++      background: var(--accent);
++      color: var(--brand-deep);
++      font-weight: 600;
++    }
++
++    .hero .btn:hover {
++      background: #ffc170;
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +189,10 @@
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,38 +201,78 @@
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: relative;
++      background: var(--surface);
++      border: 1px solid var(--surface-border);
++      padding: 44px 20px 20px;
++      border-radius: 10px;
++      box-shadow: var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .card p {
++      color: var(--text-muted);
++    }
++
++    /* Status badges */
++    .badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      display: inline-block;
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 0.05em;
++      text-transform: uppercase;
++      line-height: 1.6;
++      border: 1px solid transparent;
++    }
++
++    .badge--new {
++      background: var(--badge-new-bg);
++      color: var(--badge-new-text);
++    }
++
++    .badge--sold-out {
++      background: var(--badge-soldout-bg);
++      color: var(--badge-soldout-text);
++      border-color: var(--badge-soldout-border);
++    }
++
++    .card--sold-out h3,
++    .card--sold-out p {
++      opacity: 0.75;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.2s, color 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-muted);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      border-top: 1px solid var(--surface-border);
+     }
+ 
+     .footer-links {
+@@ -148,10 +281,14 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -179,6 +316,7 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge--new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -188,7 +326,8 @@
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card--sold-out">
++          <span class="badge badge--sold-out">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

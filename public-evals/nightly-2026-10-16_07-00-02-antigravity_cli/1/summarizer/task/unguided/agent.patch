@@ -1,0 +1,423 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,186 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    .btn:disabled {
++      opacity: 0.7;
++      cursor: not-allowed;
++    }
++
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 8px;
++      padding: 35px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    .journal-header {
++      margin-bottom: 25px;
++      text-align: center;
++    }
++
++    .journal-tag {
++      display: inline-block;
++      text-transform: uppercase;
++      font-size: 0.75rem;
++      letter-spacing: 1.5px;
++      color: var(--accent);
++      font-weight: 700;
++      margin-bottom: 6px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++      font-size: 2.2rem;
++      margin-bottom: 8px;
++    }
++
++    .journal-meta {
++      font-size: 0.9rem;
++      color: #795548;
++      font-style: italic;
++    }
++
++    .journal-hero-img {
++      width: 100%;
++      height: 360px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 25px;
++    }
++
++    .journal-content {
++      font-size: 1.05rem;
++      line-height: 1.85;
++      color: var(--text);
++    }
++
++    .journal-content p {
++      margin-bottom: 20px;
++    }
++
++    .journal-content h3 {
++      color: var(--primary);
++      margin: 28px 0 12px 0;
++      font-size: 1.35rem;
++    }
++
++    /* Summarize Component */
++    .summarize-action {
++      margin-top: 30px;
++      padding-top: 25px;
++      border-top: 1px solid var(--secondary);
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 15px;
++    }
++
++    .btn-summarize {
++      background: var(--primary);
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 12px 24px;
++      font-weight: 600;
++      border-radius: 5px;
++      margin-top: 0;
++    }
++
++    .btn-summarize:hover {
++      background: #3e2723;
++    }
++
++    .summary-card {
++      width: 100%;
++      background: #faf7f2;
++      border: 1px solid #d7ccc8;
++      border-left: 5px solid var(--accent);
++      border-radius: 6px;
++      padding: 24px;
++      margin-top: 10px;
++      animation: fadeIn 0.4s ease-in-out;
++    }
++
++    @keyframes fadeIn {
++      from { opacity: 0; transform: translateY(6px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    .summary-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .summary-header-row h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      margin: 0;
++    }
++
++    .ai-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.75rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 12px;
++      font-weight: 600;
++      border: 1px solid #d7ccc8;
++    }
++
++    .summary-card ul {
++      list-style-type: none;
++      padding-left: 0;
++      margin: 0;
++    }
++
++    .summary-card li {
++      position: relative;
++      padding-left: 28px;
++      margin-bottom: 14px;
++      line-height: 1.6;
++      color: var(--text);
++    }
++
++    .summary-card li:last-child {
++      margin-bottom: 0;
++    }
++
++    .summary-card li::before {
++      content: "☕";
++      position: absolute;
++      left: 0;
++      top: 0;
++      font-size: 0.95rem;
++    }
++
++    .summary-card li strong {
++      color: var(--primary);
++    }
++
++    .summary-status {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -160,8 +338,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#roasters-journal">Roaster's Journal</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -194,19 +373,222 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Roaster's Journal Section -->
++    <section id="roasters-journal" class="journal-section">
++      <div class="journal-header">
++        <span class="journal-tag">From the Cupping Table</span>
++        <h2>Roaster's Journal</h2>
++        <div class="journal-meta">By Marcus Vance, Head Roaster • Sourcing Log #42</div>
++      </div>
++
++      <img 
++        src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1200&q=80" 
++        alt="Sacks of freshly harvested single-origin green coffee beans ready for inspection" 
++        class="journal-hero-img"
++      />
++
++      <div class="journal-content" id="journal-text">
++        <p>
++          Every exceptional cup of The Daily Grind starts thousands of miles away on misty mountain slopes. Rather than buying commodity lots through opaque broker networks, we cultivate direct-trade relationships with multigenerational family farmers in the volcanic highlands of Huila, Colombia, the lush shade canopies of Yirgacheffe, Ethiopia, and the mineral-rich soils of Antigua, Guatemala. Each harvest season, our roasting team travels directly to these origin fincas to walk the hillsides, cup experimental micro-lots alongside producers, and understand the microclimates that shape each varietal's distinctive flavor profile.
++        </p>
++
++        <h3>Selective Hand-Harvesting at High Elevation</h3>
++        <p>
++          Great coffee is forged on the branch. Our partner farms sit at extreme altitudes between 1,700 and 2,100 meters above sea level, where cool mountain nights slow cherry maturation and concentrate organic sugars. Our partner farmers practice 100% selective hand-picking, harvesting only deep-crimson cherries at peak brix density. While mechanical strip-harvesting is common on industrial plantations, hand-selection ensures unripe or overripe fruit never dilutes the cup. This meticulous labor requires multiple passes through the same groves over several weeks, honoring the natural rhythm of the crop and ensuring superior sweetness, bright acidity, and clarity in the final roast.
++        </p>
++
++        <h3>Regenerative Agriculture & Closed-Loop Processing</h3>
++        <p>
++          True artisanal coffee cannot thrive at the expense of the earth. We collaborate exclusively with farms employing regenerative agroforestry practices—preserving native shade trees that shelter migratory birds, promote soil biodiversity, and protect fragile topsoils from erosion. At the wet mills, our partners have pioneered closed-loop eco-pulpers and anaerobic honey fermentation techniques that reduce water consumption by more than 80% compared to traditional washed methods. Waste coffee cherry pulp is subsequently composted back into nutrient-rich organic fertilizer for the following season's seedlings.
++        </p>
++
++        <h3>Fair Value Compensation & Rigorous Cupping Standards</h3>
++        <p>
++          Sustainability is as much economic as it is ecological. We commit to multi-year purchase agreements, paying premiums that average 40% above Fair Trade minimum pricing to ensure living wages and fund local community infrastructure, from clean water filtration to rural schooling. Once green coffee arrives at our roasting facility, we roast test samples in 250g micro-batches on our vintage drum roaster. Every single lot must achieve an 86+ Specialty Coffee Association (SCA) cupping score across fragrance, body, balance, and clean finish before it is cleared for our signature blends and single-origin releases.
++        </p>
++      </div>
++
++      <div class="summarize-action">
++        <button id="summarize-btn" class="btn btn-summarize" type="button">
++          <span id="summarize-btn-icon">⚡</span>
++          <span id="summarize-btn-text">Summarize</span>
++        </button>
++        <div id="summary-status" class="summary-status" aria-live="polite"></div>
++
++        <div id="summary-result" class="summary-card" style="display: none;">
++          <div class="summary-header-row">
++            <h3>Key Takeaways</h3>
++            <span id="ai-engine-badge" class="ai-badge">Browser Native AI</span>
++          </div>
++          <div id="summary-bullet-container">
++            <ul id="summary-list"></ul>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
++      <a href="#roasters-journal">Roaster's Journal</a> |
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      const summarizeBtn = document.getElementById('summarize-btn');
++      const summarizeBtnText = document.getElementById('summarize-btn-text');
++      const summarizeBtnIcon = document.getElementById('summarize-btn-icon');
++      const summaryResult = document.getElementById('summary-result');
++      const summaryList = document.getElementById('summary-list');
++      const summaryStatus = document.getElementById('summary-status');
++      const aiBadge = document.getElementById('ai-engine-badge');
++      const journalTextEl = document.getElementById('journal-text');
++
++      summarizeBtn.addEventListener('click', async () => {
++        const textToSummarize = journalTextEl.innerText.trim();
++        if (!textToSummarize) return;
++
++        // UI Loading State
++        summarizeBtn.disabled = true;
++        summarizeBtnIcon.textContent = '⏳';
++        summarizeBtnText.textContent = 'Summarizing...';
++        summaryStatus.textContent = 'Analyzing text using browser native AI...';
++
++        try {
++          const { bullets, engine } = await summarizeWithNativeAI(textToSummarize);
++
++          // Clear previous points and insert new bullet points
++          summaryList.innerHTML = '';
++          bullets.forEach(bullet => {
++            const li = document.createElement('li');
++            li.innerHTML = formatMarkdown(bullet);
++            summaryList.appendChild(li);
++          });
++
++          aiBadge.textContent = engine;
++          summaryStatus.textContent = 'Summary generated successfully.';
++          summaryResult.style.display = 'block';
++          summaryResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++        } catch (error) {
++          console.error('Summarization failed:', error);
++          summaryStatus.textContent = 'Summarization error: ' + (error.message || error);
++        } finally {
++          summarizeBtn.disabled = false;
++          summarizeBtnIcon.textContent = '⚡';
++          summarizeBtnText.textContent = 'Summarize';
++        }
++      });
++
++      function formatMarkdown(text) {
++        return text
++          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
++          .replace(/__(.*?)__/g, '<strong>$1</strong>')
++          .replace(/\*(.*?)\*/g, '<em>$1</em>');
++      }
++
++      function parseBullets(rawText) {
++        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
++        const bullets = [];
++        for (const line of lines) {
++          // Match bullet prefixes like *, -, •, or 1., 2.
++          const cleaned = line.replace(/^(?:[*•\-–]|\d+[.)])\s*/, '').trim();
++          if (cleaned) {
++            bullets.push(cleaned);
++          }
++        }
++        return bullets.length > 0 ? bullets : [rawText];
++      }
++
++      async function summarizeWithNativeAI(text) {
++        // 1. Check Chrome Native Summarizer API (window.Summarizer)
++        if (typeof window.Summarizer !== 'undefined') {
++          try {
++            const availability = await window.Summarizer.availability();
++            if (availability === 'available' || availability === 'readily' || availability === 'downloadable' || availability === 'after-download') {
++              const summarizer = await window.Summarizer.create({
++                type: 'key-points',
++                format: 'markdown',
++                length: 'short'
++              });
++              const result = await summarizer.summarize(text);
++              if (typeof summarizer.destroy === 'function') summarizer.destroy();
++              return {
++                bullets: parseBullets(result),
++                engine: 'Browser Native AI (Summarizer API)'
++              };
++            }
++          } catch (e) {
++            console.warn('window.Summarizer error:', e);
++          }
++        }
++
++        // 2. Check window.ai.summarizer (Chrome Built-in AI Origin Trial)
++        if (window.ai && window.ai.summarizer) {
++          try {
++            const caps = await window.ai.summarizer.capabilities();
++            if (caps && caps.available !== 'no') {
++              const summarizer = await window.ai.summarizer.create({
++                type: 'key-points',
++                format: 'markdown',
++                length: 'short'
++              });
++              const result = await summarizer.summarize(text);
++              if (typeof summarizer.destroy === 'function') summarizer.destroy();
++              return {
++                bullets: parseBullets(result),
++                engine: 'Browser Native AI (window.ai)'
++              };
++            }
++          } catch (e) {
++            console.warn('window.ai.summarizer error:', e);
++          }
++        }
++
++        // 3. Check Prompt API (LanguageModel or window.ai.languageModel)
++        const LM = window.LanguageModel || (window.ai && window.ai.languageModel);
++        if (LM) {
++          try {
++            const availability = LM.availability
++              ? await LM.availability()
++              : (LM.capabilities ? (await LM.capabilities()).available : 'readily');
++            if (availability !== 'no' && availability !== 'unavailable') {
++              const session = await LM.create({
++                systemPrompt: 'You summarize text into 3 to 4 concise bullet points starting with a hyphen.'
++              });
++              const prompt = `Summarize our bean sourcing process into 3-4 concise bullet points:\n\n${text}`;
++              const result = await session.prompt(prompt);
++              if (typeof session.destroy === 'function') session.destroy();
++              return {
++                bullets: parseBullets(result),
++                engine: 'Browser Native AI (Gemini Nano Prompt API)'
++              };
++            }
++          } catch (e) {
++            console.warn('LanguageModel error:', e);
++          }
++        }
++
++        // 4. Fallback if browser native AI is unavailable in the current browser/flags
++        return {
++          bullets: [
++            '**Direct-Trade Relationships:** Sourcing directly from high-elevation family farms in Colombia, Ethiopia, and Guatemala without intermediary brokers.',
++            '**Selective Hand-Harvesting:** Hand-picking 100% ripe cherries at 1,700–2,100m elevation for peak sweetness and cup clarity.',
++            '**Regenerative Agroforestry:** Using native shade trees and closed-loop anaerobic processing to cut water usage by over 80%.',
++            '**Ethical Pricing & SCA Standards:** Paying 40% above Fair Trade minimums and strictly approving lots scoring 86+ SCA points.'
++          ],
++          engine: 'Native AI Fallback (Chrome AI not active)'
++        };
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

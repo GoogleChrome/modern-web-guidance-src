@@ -1,0 +1,1046 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..30a92a5
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,89 @@
++# Daily Grind account UI
++
++The account page is at `/` and the original coffee storefront is preserved at
++`/home.html`. Its My Account link opens the account page. This repository has no
++authentication service or database, so the UI defaults to an explicitly labeled
++demo account. Demo renames and removals persist in localStorage, falling back to
++memory if storage is blocked. Demo credentials never reach the WebAuthn Signal API.
++
++## Connecting the customer account backend
++
++Before the account module runs, supply this configuration from the authenticated
++server-rendered page (use your framework's safe JSON serialization):
++
++```html
++<script>
++  window.DAILY_GRIND_ACCOUNT = {
++    apiBase: '/api/passkeys',
++    csrfToken: 'SERVER_GENERATED_SESSION_CSRF_TOKEN'
++  };
++</script>
++```
++
++The same-origin, cookie-authenticated API must implement:
++
++| Request | Behavior |
++| --- | --- |
++| `GET /api/passkeys` | Return the signed-in customer's complete credential snapshot. |
++| `PUT /api/passkeys/:id` | Validate `{ "name": "…" }`, update only that customer's credential nickname, and return the complete updated snapshot. |
++| `DELETE /api/passkeys/:id` | Delete only that customer's credential and return the complete updated snapshot. |
++
++Every successful response must use this shape:
++
++```json
++{
++  "user": {
++    "id": "BASE64URL_WEBAUTHN_USER_HANDLE",
++    "displayName": "Alex Morgan",
++    "name": "alex@example.com"
++  },
++  "rpId": "YOUR_REGISTERED_RP_DOMAIN",
++  "credentials": [
++    {
++      "id": "BASE64URL_CREDENTIAL_ID",
++      "name": "My laptop",
++      "aaguid": "fbfc3007-154e-4ecc-8c0b-6e020557d7bd",
++      "provider": "Apple Passwords",
++      "kind": "laptop",
++      "registeredAt": 1768348800000,
++      "lastUsedAt": null
++    }
++  ]
++}
++```
++
++Replace the example IDs and domain with the original WebAuthn registration values.
++Dates are epoch milliseconds; `lastUsedAt` can be null. `kind` is an optional visual
++hint (`laptop`, `phone`, or `usb`); an unknown value shows a generic key icon.
++Known AAGUIDs supply provider names; unrecognized or zeroed AAGUIDs fall back to
++the optional provider label or “Unknown passkey provider”. These are display hints.
++
++The server must authenticate every request, enforce credential ownership and CSRF
++protection on mutations, validate name length (1–50 after trimming), and prevent
++account lockout according to its recovery policy. It should return 401 for an
++expired session and 403 for failed CSRF checks. Do not accept user identity from
++request parameters. Return errors as non-2xx responses and snapshots with
++`Cache-Control: no-store`. The client sends `X-CSRF-Token` on mutations.
++
++**Always return all credential IDs for this user and RP, including credentials on
++other devices.** Never paginate or filter this response. An incomplete accepted
++list can cause an authenticator to remove valid credentials. An empty list is only
++valid if the signed-in customer really has no remaining passkeys. Do not include
++public key material or other customers' credentials.
++
++For live accounts, the client feature-detects `signalAllAcceptedCredentials` and
++signals the complete validated list on account load and after confirmed deletion.
++Nickname changes only update the account record; they do not call
++`signalCurrentUserDetails`. Unsupported browsers get manual cleanup instructions;
++failed signals preserve the successful server change and offer a retry that fetches
++a fresh snapshot. Failed API responses never fall back to demo credentials.
++
++No passkey creation, authentication, account profile mutation, or real sign-out is
++implemented by this static UI. Wire those into the existing account service when
++integrating it. The supplemental orders/rewards views are placeholders.
++
++## Checks
++
++No development/preview server or browser verification was used. JavaScript syntax
++was checked with `node --check account.js` and `node --check passkeys.mjs`, and
++patch whitespace with `git diff --check`. This static project needs no build.
+diff --git a/account.js b/account.js
+new file mode 100644
+index 0000000..7423327
+--- /dev/null
++++ b/account.js
+@@ -0,0 +1,273 @@
++import { createRepository, syncAcceptedCredentials, validateName, providerName } from './passkeys.mjs';
++
++const $ = id => document.getElementById(id);
++const config = window.DAILY_GRIND_ACCOUNT || {};
++let storage;
++try { storage = window.localStorage; } catch { /* Storage may be blocked; use memory. */ }
++let repository;
++let snapshot;
++let activeId;
++let busy = false;
++let toastTimer;
++const formatDate = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
++
++function icon(name) {
++  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
++  svg.setAttribute('class', 'icon');
++  svg.setAttribute('aria-hidden', 'true');
++  const use = document.createElementNS(svg.namespaceURI, 'use');
++  use.setAttribute('href', `#i-${name}`);
++  svg.append(use);
++  return svg;
++}
++function element(tag, className, text) {
++  const node = document.createElement(tag);
++  if (className) node.className = className;
++  if (text !== undefined) node.textContent = text;
++  return node;
++}
++function notify(message) {
++  clearTimeout(toastTimer);
++  $('toast').textContent = message;
++  toastTimer = setTimeout(() => { $('toast').textContent = ''; }, 6500);
++}
++function error(id, message) {
++  $(id).textContent = message;
++  $(id).hidden = !message;
++}
++function dateLabel(epoch) {
++  if (epoch == null) return 'Not used yet';
++  const day = new Date(epoch).toDateString();
++  if (day === new Date().toDateString()) return 'Today';
++  if (day === new Date(Date.now() - 86400000).toDateString()) return 'Yesterday';
++  return formatDate.format(epoch);
++}
++function render() {
++  const list = $('passkey-list');
++  const focused = document.activeElement;
++  const focusId = focused?.dataset.credentialId;
++  const focusAction = focused?.dataset.action;
++  list.replaceChildren();
++  list.setAttribute('aria-busy', 'false');
++  $('passkey-count').textContent = snapshot.credentials.length;
++  $('demo-label').hidden = !repository.demo;
++  $('profile-name').textContent = snapshot.user.displayName;
++  $('detail-name').textContent = snapshot.user.displayName;
++  $('avatar').textContent = snapshot.user.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase();
++  if (!repository.demo) {
++    $('profile-caption').textContent = 'Your Daily Grind account';
++    $('detail-account').textContent = snapshot.user.name || 'Signed in';
++    $('sign-out').hidden = true;
++  }
++  const latest = Math.max(...snapshot.credentials.map(item => item.lastUsedAt || 0));
++  for (const credential of snapshot.credentials) {
++    const row = element('li', 'passkey-row');
++    const device = element('span', 'device-icon');
++    device.append(icon(['laptop', 'phone', 'usb'].includes(credential.kind) ? credential.kind : 'key'));
++    const details = element('div', 'device-details');
++    const title = element('div', 'device-title');
++    title.append(element('h5', '', credential.name || 'Unnamed passkey'));
++    if (credential.lastUsedAt && credential.lastUsedAt === latest) {
++      const tag = element('span', 'recent-tag');
++      tag.append(element('span', 'small-dot'), document.createTextNode('Most recently used'));
++      title.append(tag);
++    }
++    const dates = element('p', 'device-dates');
++    dates.append(element('span', '', `Added ${formatDate.format(credential.registeredAt)}`),
++      element('span', '', credential.lastUsedAt == null ? 'Not used yet' : `Last used ${dateLabel(credential.lastUsedAt)}`));
++    details.append(title, element('p', 'device-provider', providerName(credential)), dates);
++    const actions = element('div', 'row-actions');
++    const rename = element('button', 'rename-button');
++    rename.type = 'button';
++    rename.dataset.action = 'rename';
++    rename.dataset.credentialId = credential.id;
++    rename.setAttribute('aria-label', `Rename ${credential.name}`);
++    rename.append(icon('edit'), document.createTextNode('Rename'));
++    const remove = element('button', 'remove-button');
++    remove.type = 'button';
++    remove.dataset.action = 'delete';
++    remove.dataset.credentialId = credential.id;
++    remove.setAttribute('aria-label', `Remove ${credential.name}`);
++    remove.append(icon('trash'));
++    actions.append(rename, remove);
++    row.append(device, details, actions);
++    list.append(row);
++  }
++  if (!snapshot.credentials.length) {
++    const empty = element('li', 'empty-state');
++    empty.append(icon('key'), element('strong', '', 'A fresh start for your sign-in.'),
++      element('span', '', 'No passkeys are registered to this account. Use your other sign-in method.'));
++    if (repository.demo) {
++      const reset = element('button', 'text-button', 'Restore sample passkeys');
++      reset.dataset.action = 'reset';
++      empty.append(document.createElement('br'), reset);
++    }
++    list.append(empty);
++  }
++  // If a list refresh replaces a focused row, retain the corresponding action.
++  if (focusId) {
++    const replacement = [...list.querySelectorAll('button')].find(button => button.dataset.credentialId === focusId && button.dataset.action === focusAction);
++    (replacement || list.querySelector('button') || $('page-title')).focus();
++  }
++}
++
++async function synchronize() {
++  if (!snapshot || !repository) return;
++  $('sync-retry').hidden = true;
++  const status = await syncAcceptedCredentials(snapshot, {
++    demo: repository.demo, credentialAPI: window.PublicKeyCredential, secureContext: window.isSecureContext,
++  });
++  const messages = {
++    demo: repository.persistent ? 'Sample passkeys only. Changes are saved in this browser; your real passkeys stay untouched.' : 'Sample passkeys only. Changes last for this visit; your real passkeys stay untouched.',
++    synced: 'Your browser has been notified of the passkeys accepted by your account.',
++    unsupported: 'This browser cannot sync passkey changes. Remove unused keys from your password manager manually.',
++    failed: 'Your account is updated, but we could not notify your browser. Retry or remove the key from your password manager.',
++  };
++  $('sync-message').textContent = messages[status];
++  $('sync-retry').hidden = status !== 'failed';
++  document.querySelector('.sync-icon').replaceChildren(icon(status === 'failed' || status === 'unsupported' ? 'info' : 'check'));
++}
++
++async function load() {
++  $('passkey-list').setAttribute('aria-busy', 'true');
++  error('list-error', '');
++  try {
++    snapshot = await repository.list();
++    render();
++    await synchronize();
++  } catch (cause) {
++    snapshot = undefined; // Never sync an empty or stale list after a failed request.
++    $('passkey-list').replaceChildren();
++    $('passkey-list').setAttribute('aria-busy', 'false');
++    $('passkey-count').textContent = '—';
++    error('list-error', cause.message);
++    const row = element('li', 'empty-state');
++    const retry = element('button', 'outline-button', 'Try again');
++    retry.dataset.action = 'reload';
++    row.append(retry);
++    $('passkey-list').append(row);
++    $('sync-message').textContent = 'Browser sync will resume once your account details can be loaded.';
++  }
++}
++
++function showPage(page) {
++  const panel = $(`${page}-panel`);
++  if (!panel) return;
++  for (const item of document.querySelectorAll('.page-panel')) item.hidden = item !== panel;
++  for (const button of document.querySelectorAll('.account-nav button')) {
++    button.classList.toggle('selected', button.dataset.page === page);
++    if (button.dataset.page === page) button.setAttribute('aria-current', 'page');
++    else button.removeAttribute('aria-current');
++  }
++  const title = panel.querySelector('h2').textContent;
++  $('breadcrumb-current').textContent = title;
++  document.title = `${page === 'security' ? 'Passkeys' : title} · My Account | The Daily Grind`;
++}
++
++document.addEventListener('click', async event => {
++  const button = event.target.closest('button');
++  if (!button || busy) return;
++  if (button.dataset.page) return showPage(button.dataset.page);
++  if (button.dataset.open) return $(button.dataset.open).showModal();
++  if (button.hasAttribute('data-close')) return button.closest('dialog').close();
++  const action = button.dataset.action;
++  if (action === 'reload') return load();
++  if (action === 'reset') {
++    snapshot = await repository.reset();
++    render();
++    await synchronize();
++    $('page-title').focus();
++    return notify('Sample passkeys restored.');
++  }
++  if (!snapshot || !['rename', 'delete'].includes(action)) return;
++  activeId = button.dataset.credentialId;
++  const credential = snapshot.credentials.find(item => item.id === activeId);
++  if (!credential) return;
++  error(`${action}-error`, '');
++  if (action === 'rename') {
++    $('passkey-name').value = credential.name;
++    $('passkey-name').setCustomValidity('');
++    $('rename-dialog').showModal();
++    $('passkey-name').select();
++  } else {
++    $('delete-name').textContent = credential.name;
++    $('last-key-warning').hidden = snapshot.credentials.length !== 1;
++    $('delete-dialog').showModal();
++  }
++});
++
++$('passkey-name').addEventListener('input', () => $('passkey-name').setCustomValidity(''));
++for (const action of ['rename', 'delete']) {
++  const form = $(`${action}-form`);
++  form.addEventListener('submit', async event => {
++    event.preventDefault();
++    if (busy) return;
++    let name;
++    if (action === 'rename') {
++      try { name = validateName($('passkey-name').value); }
++      catch (cause) {
++        $('passkey-name').setCustomValidity(cause.message);
++        $('passkey-name').reportValidity();
++        return;
++      }
++    }
++    busy = true;
++    const submit = form.querySelector('[type="submit"]');
++    const oldLabel = submit.textContent;
++    submit.textContent = action === 'rename' ? 'Saving…' : 'Removing…';
++    for (const control of form.elements) control.disabled = true;
++    error(`${action}-error`, '');
++    try {
++      // Each mutation returns the complete latest list, never a client-filtered list.
++      const updated = await (action === 'rename' ? repository.rename(activeId, name) : repository.remove(activeId));
++      if (updated.user.id !== snapshot.user.id || updated.rpId !== snapshot.rpId) throw new Error('Your account changed. Refresh the page before continuing.');
++      snapshot = updated;
++      $(`${action}-dialog`).close();
++      render();
++      if (action === 'delete') {
++        // The deleted invoker no longer exists. Give focus a meaningful successor.
++        ($('passkey-list').querySelector('button') || $('page-title')).focus();
++        await synchronize();
++      } else if (repository.demo) await synchronize();
++      notify(action === 'rename' ? 'Passkey renamed. A little easier to recognize.' : 'Passkey removed from your account.');
++    } catch (cause) {
++      error(`${action}-error`, cause.message);
++    } finally {
++      busy = false;
++      submit.textContent = oldLabel;
++      for (const control of form.elements) control.disabled = false;
++    }
++  });
++  // The server operation cannot be canceled by closing the dialog mid-request.
++  $(`${action}-dialog`).addEventListener('cancel', event => { if (busy) event.preventDefault(); });
++}
++$('sync-retry').addEventListener('click', async () => {
++  if (busy) return;
++  busy = true;
++  try { await load(); } finally { busy = false; }
++});
++window.addEventListener('storage', event => {
++  if (repository?.demo && event.key?.startsWith('daily-grind.demo-passkeys') && !busy) {
++    // Other tabs can change demo storage; reload to avoid presenting stale rows.
++    window.location.reload();
++  }
++});
++try {
++  repository = createRepository({ ...config, storage });
++  $('demo-label').hidden = !repository.demo;
++  if (!repository.demo) {
++    $('profile-name').textContent = 'My account';
++    $('profile-caption').textContent = 'Loading your details…';
++    $('avatar').textContent = '—';
++    $('detail-name').textContent = '—';
++    $('detail-account').textContent = '—';
++    $('passkey-count').textContent = '—';
++    $('sign-out').hidden = true;
++  }
++  await load();
++} catch (cause) {
++  error('list-error', cause.message);
++  $('passkey-list').replaceChildren();
++  $('passkey-list').setAttribute('aria-busy', 'false');
++  $('passkey-count').textContent = '—';
++}
+diff --git a/home.html b/home.html
+new file mode 100644
+index 0000000..4fe80b7
+--- /dev/null
++++ b/home.html
+@@ -0,0 +1,212 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>The Daily Grind | Artisanal Coffee</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/#account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="hero">
++    <h1>Wake Up Your Senses</h1>
++    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn">Order Now</a>
++  </header>
++
++  <main class="container">
++    <section>
++      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..75ecefb 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,72 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#f8f7f3">
++<title>Passkeys · My Account | The Daily Grind</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="/styles.css"><script type="module" src="/account.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
++<symbol id="i-cup" viewBox="0 0 24 24"><path d="M4 9h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a3 3 0 1 1 0 6h-2M7 2v3m4-3v3m4-3v3M2 21h18"/></symbol>
++<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
++<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7zM8 8V6a4 4 0 0 1 8 0v2"/></symbol>
++<symbol id="i-gift" viewBox="0 0 24 24"><path d="M3 8h18v5H3zM5 13v8h14v-8M12 8v13M12 8H8a3 3 0 1 1 3-3l1 3zm0 0h4a3 3 0 1 0-3-3l-1 3z"/></symbol>
++<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
++<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="8" r="5"/><path d="m11.5 11.5 9 9M16 16l3-3m-1 5 3-3"/></symbol>
++<symbol id="i-exit" viewBox="0 0 24 24"><path d="M9 4H4v16h5m5-13 5 5-5 5m-6-5h13"/></symbol>
++<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
++<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
++<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
++<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
++<symbol id="i-edit" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L20 8a3.5 3.5 0 0 0-5-5L4 14l-1 7z"/></symbol>
++<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
++<symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="m4 16-3 4h22l-3-4M10 20h4"/></symbol>
++<symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4m-3 14h2"/></symbol>
++<symbol id="i-usb" viewBox="0 0 24 24"><path d="M9 9V2h6v7m-4-5v2m2-2v2"/><rect x="7" y="9" width="10" height="13" rx="4"/><circle cx="12" cy="16" r="1.5"/></symbol>
++<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v2"/></symbol>
++</defs></svg>
++<a class="skip-link" href="#page-title">Skip to content</a>
++<div class="announcement">A better day, one cup at a time. <span>Locally roasted. Always with care.</span></div>
++<header class="site-header"><div class="header-inner">
++<a href="/home.html" class="brand" aria-label="The Daily Grind home"><span class="brand-icon"><svg class="icon"><use href="#i-cup"/></svg></span><span>the daily grind<span class="brand-sub">COFFEE & COMMUNITY</span></span></a>
++<nav class="primary-nav" aria-label="Main"><a href="/home.html">Our coffee</a><a href="/locations">Our locations</a><a href="/rewards">Grind rewards</a></nav>
++<a class="account-link" href="#account"><svg class="icon"><use href="#i-user"/></svg><span>My account</span></a>
++</div></header>
++<main class="page-shell" id="account">
++<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/home.html">Home</a><svg class="icon"><use href="#i-chevron"/></svg><span>My account</span><svg class="icon"><use href="#i-chevron"/></svg><span id="breadcrumb-current">Sign-in & security</span></nav>
++<div class="page-intro"><div><p class="eyebrow">YOUR DAILY GRIND, YOUR WAY</p><h1 id="page-title" tabindex="-1">My account<span class="heading-dot">.</span></h1><p>A little space for your details, your favorites, and your next cup.</p></div><div class="member-tag"><span class="small-dot"></span>A part of the daily ritual</div></div>
++<div class="account-layout">
++<aside class="account-sidebar">
++<div class="profile"><span class="avatar" id="avatar">AM</span><div><strong id="profile-name">Alex Morgan</strong><span id="profile-caption">Coffee person since 2024</span></div></div>
++<nav class="account-nav" aria-label="Account">
++<button data-page="details"><svg class="icon"><use href="#i-user"/></svg>Account details</button><button data-page="orders"><svg class="icon"><use href="#i-bag"/></svg>My orders</button><button data-page="rewards"><svg class="icon"><use href="#i-gift"/></svg>Grind rewards</button><button data-page="security" class="selected" aria-current="page"><svg class="icon"><use href="#i-shield"/></svg>Sign-in & security<svg class="icon nav-chevron"><use href="#i-chevron"/></svg></button>
++</nav><div class="sidebar-divider"></div><a class="sign-out" href="/home.html" id="sign-out"><svg class="icon"><use href="#i-exit"/></svg>Leave demo account</a>
++<div class="rewards-card"><div class="rewards-top"><svg class="icon"><use href="#i-cup"/></svg><span>A LITTLE THANK YOU</span></div><h2>Your next cup<br>is getting closer.</h2><p>Good coffee. Even better perks.</p><button data-page="rewards">Explore Grind rewards <svg class="icon"><use href="#i-arrow"/></svg></button><span class="reward-ring ring-one"></span><span class="reward-ring ring-two"></span></div>
++<p class="sidebar-help">Need a hand? <button class="text-button" data-open="help-dialog">We're here for you.</button></p>
++</aside>
++<div class="account-content">
++<section id="security-panel" class="page-panel">
++<div class="section-heading"><div><h2>Sign-in & security</h2><p>Keep your account as safe as your favorite coffee order.</p></div><span class="private-label"><svg class="icon"><use href="#i-lock"/></svg>Just for you</span></div>
++<div class="passkey-card">
++<div class="passkey-header"><span class="key-tile"><svg class="icon"><use href="#i-key"/></svg></span><div><div class="title-line"><h3>Passkeys</h3><span class="pill">A safer way to sign in</span></div><p>Your face, fingerprint, or device PIN. No password to remember.</p></div></div>
++<div class="security-note"><svg class="icon"><use href="#i-shield"/></svg><div><strong>Small step. Stronger security.</strong><p>Passkeys help protect you from phishing and make signing in a breeze.</p></div></div>
++<div class="list-heading"><h4>Your passkeys <span id="passkey-count">3</span></h4><span id="demo-label" class="demo-label">Demo account</span></div>
++<p id="list-error" class="inline-error" role="alert" hidden></p><ul id="passkey-list" class="passkey-list" role="list" aria-label="Registered passkeys" aria-busy="true"><li class="loading-state">Loading your passkeys…</li></ul>
++<div class="list-footer"><svg class="icon"><use href="#i-info"/></svg><p>Only keep passkeys on devices you trust. You can rename or remove one anytime.</p></div>
++</div>
++<div class="sync-note"><span class="sync-icon"><svg class="icon"><use href="#i-check"/></svg></span><div><strong>Your account. Your control.</strong><p id="sync-message">When you remove a passkey, we'll let supported browsers know, too.</p></div><button id="sync-retry" class="text-button" hidden>Retry sync</button></div>
++<div class="learn-card"><div><span class="eyebrow">LESS FRICTION. MORE COFFEE.</span><h3>A familiar way to sign in.<br>A little more peace of mind.</h3><p>Built into the devices you already use. Designed to keep you safe.</p><button class="text-button" data-open="about-dialog">Get to know passkeys <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="passkey-art" aria-hidden="true"><span class="art-orbit"></span><div class="art-card art-back"><svg class="icon"><use href="#i-lock"/></svg><i></i><i></i></div><div class="art-card art-front"><svg class="icon"><use href="#i-key"/></svg><div class="art-dots">••••••</div><span><svg class="icon"><use href="#i-check"/></svg></span></div><span class="art-spark spark-one">✦</span><span class="art-spark spark-two">✧</span></div></div>
++</section>
++<section id="details-panel" class="page-panel" hidden><div class="section-heading"><div><h2>Account details</h2><p>The person behind the coffee order.</p></div></div><div class="secondary-card"><h3>Your profile</h3><dl><dt>Name</dt><dd id="detail-name">Alex Morgan</dd><dt>Account</dt><dd id="detail-account">Demo account — sample details</dd></dl><p>Manage your registered passkeys in Sign-in & security.</p><button class="solid-button" data-page="security">Manage passkeys</button></div></section>
++<section id="orders-panel" class="page-panel" hidden><div class="section-heading"><div><h2>My orders</h2><p>A history of happy coffee moments.</p></div></div><div class="secondary-card"><svg class="icon empty-icon"><use href="#i-bag"/></svg><h3>No orders to show</h3><p>Your coffee orders will feel right at home here.</p><a class="solid-button" href="/home.html">Explore our coffee <svg class="icon"><use href="#i-arrow"/></svg></a></div></section>
++<section id="rewards-panel" class="page-panel" hidden><div class="section-heading"><div><h2>Grind rewards</h2><p>A little extra for your daily ritual.</p></div></div><div class="secondary-card"><svg class="icon empty-icon"><use href="#i-gift"/></svg><h3>Good things are brewing.</h3><p>Ask your barista about Grind rewards on your next visit.</p><a class="solid-button" href="/locations">Find your local Daily Grind <svg class="icon"><use href="#i-arrow"/></svg></a></div></section>
++</div></div><noscript><p class="inline-error">Enable JavaScript to view and manage your passkeys.</p></noscript>
++</main>
++<footer class="site-footer"><div class="footer-inner"><a class="footer-brand" href="/home.html"><svg class="icon"><use href="#i-cup"/></svg>Made for your everyday.</a><p>© 2026 The Daily Grind Coffee Co.</p><nav aria-label="Footer"><a href="/privacy-policy">Privacy</a><a href="/terms">Terms</a><button class="text-button" data-open="help-dialog">Get in touch <svg class="icon"><use href="#i-arrow"/></svg></button></nav></div></footer>
++<div id="toast" class="toast" role="status" aria-atomic="true"></div>
++<dialog id="rename-dialog" aria-labelledby="rename-title"><form id="rename-form"><div class="dialog-icon"><svg class="icon"><use href="#i-edit"/></svg></div><h2 id="rename-title">Make it familiar.</h2><p>Give this passkey a name that's easy for you to recognize.</p><label for="passkey-name">Passkey name</label><p class="field-hint" id="name-hint">Up to 50 characters. This name is only used in your account.</p><input id="passkey-name" name="name" maxlength="50" required aria-describedby="name-hint" autocomplete="off" autofocus><p class="inline-error" id="rename-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="outline-button" data-close>Cancel</button><button type="submit" class="solid-button">Save name</button></div></form></dialog>
++<dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-description"><form id="delete-form"><div class="dialog-icon danger-icon"><svg class="icon"><use href="#i-trash"/></svg></div><h2 id="delete-title">Remove this passkey?</h2><p id="delete-description">You'll no longer be able to use <strong id="delete-name"></strong> to sign in to The Daily Grind.</p><p id="last-key-warning" class="last-key-warning" hidden>This is your last passkey. Make sure you have another way to sign in before removing it.</p><p class="field-hint">We'll notify supported browsers. You may also need to remove it from your password manager manually.</p><p class="inline-error" id="delete-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="outline-button" data-close autofocus>Keep passkey</button><button type="submit" class="danger-button">Remove passkey</button></div></form></dialog>
++<dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-icon"><svg class="icon"><use href="#i-key"/></svg></div><h2 id="about-title">Less to remember.<br>More to love.</h2><p>A passkey lets you sign in with your fingerprint, face, or device PIN instead of a password. Your biometric information stays on your device.</p><div class="about-point"><svg class="icon"><use href="#i-shield"/></svg><div><strong>Made to keep you safe</strong><p>Passkeys are tied to the real site, helping protect you from phishing.</p></div></div><div class="about-point"><svg class="icon"><use href="#i-phone"/></svg><div><strong>Ready wherever you are</strong><p>Your password manager may sync passkeys across your devices.</p></div></div><div class="dialog-actions"><button class="solid-button" data-close autofocus>Got it</button></div></dialog>
++<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-icon"><svg class="icon"><use href="#i-cup"/></svg></div><h2 id="help-title">A little help, on the house.</h2><p>To rename a passkey, choose Rename beside its name. To stop using one, choose the remove icon and confirm.</p><p>If your browser can't update your password manager automatically, open its settings and remove the old Daily Grind passkey there.</p><div class="dialog-actions"><button class="solid-button" data-close autofocus>All clear</button></div></dialog>
++</body></html>
+diff --git a/passkeys.mjs b/passkeys.mjs
+new file mode 100644
+index 0000000..38141b5
+--- /dev/null
++++ b/passkeys.mjs
+@@ -0,0 +1,141 @@
++// Credential management only. Authentication and registration belong to the server.
++export const DEMO_STORAGE_KEY = 'daily-grind.demo-passkeys.v1';
++const encodedId = value => typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value) && value.length % 4 !== 1;
++const clone = value => JSON.parse(JSON.stringify(value));
++// Display hints only; AAGUID metadata is never used for access decisions.
++const providers = {
++  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2': 'iCloud Keychain',
++  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd': 'Apple Passwords',
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': 'Google Password Manager',
++};
++export function providerName(credential) {
++  const aaguid = typeof credential.aaguid === 'string' ? credential.aaguid.toLowerCase() : '';
++  return providers[aaguid] || (typeof credential.provider === 'string' && credential.provider) || 'Unknown passkey provider';
++}
++
++export function validateSnapshot(value) {
++  if (!value || !encodedId(value.user?.id) || typeof value.user.displayName !== 'string' ||
++      typeof value.rpId !== 'string' || !value.rpId || !Array.isArray(value.credentials)) {
++    throw new Error('Your passkey details could not be loaded. Please try again.');
++  }
++  const ids = new Set();
++  for (const credential of value.credentials) {
++    if (!encodedId(credential.id) || ids.has(credential.id) || typeof credential.name !== 'string' ||
++        !Number.isFinite(credential.registeredAt) || credential.registeredAt < 0 || credential.registeredAt > 8640000000000000 ||
++        (credential.lastUsedAt != null && (!Number.isFinite(credential.lastUsedAt) || credential.lastUsedAt < 0 || credential.lastUsedAt > 8640000000000000))) {
++      throw new Error('The passkey list is incomplete or invalid. Please try again.');
++    }
++    ids.add(credential.id);
++  }
++  return value;
++}
++
++export function validateName(value) {
++  const name = value.trim();
++  if (!name || name.length > 50) throw new Error('Choose a name between 1 and 50 characters.');
++  return name;
++}
++
++export function demoSnapshot(now = Date.now()) {
++  return {
++    user: { id: 'ZGVtby11c2Vy', displayName: 'Alex Morgan', name: 'alex@example.com' },
++    rpId: 'demo.invalid',
++    credentials: [
++      { id: 'bWFjYm9vaw', name: 'MacBook Pro', aaguid: 'dd4ec289-e01d-41c9-bb89-70fa845d4bf2', kind: 'laptop', registeredAt: Date.UTC(2026, 0, 14), lastUsedAt: now - 1200000 },
++      { id: 'aXBob25l', name: 'iPhone 15', aaguid: 'dd4ec289-e01d-41c9-bb89-70fa845d4bf2', kind: 'phone', registeredAt: Date.UTC(2026, 1, 2), lastUsedAt: now - 86400000 },
++      { id: 'c2VjdXJpdHkta2V5', name: 'YubiKey', provider: 'Hardware security key', kind: 'usb', registeredAt: Date.UTC(2026, 2, 18), lastUsedAt: Date.UTC(2026, 9, 12) },
++    ],
++  };
++}
++
++export function createRepository({ apiBase, csrfToken, storage, fetchImpl = globalThis.fetch } = {}) {
++  const demo = !apiBase;
++  // Only relative same-origin API paths are permitted; never send a CSRF token to another origin.
++  if (!demo && (!/^\/[a-zA-Z0-9/_-]+$/.test(apiBase) || apiBase.includes('//'))) {
++    throw new Error('The account API must use a same-origin path.');
++  }
++  let memory;
++  const repository = { demo, persistent: Boolean(storage), list, rename, remove, reset };
++
++  async function request(path = '', options = {}) {
++    let response;
++    try {
++      response = await fetchImpl(`${apiBase.replace(/\/$/, '')}${path}`, {
++        ...options,
++        credentials: 'same-origin', cache: 'no-store', redirect: 'error',
++        headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}),
++          ...(options.method ? { 'X-CSRF-Token': csrfToken || '' } : {}) },
++      });
++    } catch {
++      throw new Error('We could not reach your account. Check your connection and try again.');
++    }
++    if (response.status === 401) throw new Error('Please sign in again to manage your passkeys.');
++    if (response.status === 403) throw new Error('Your session could not be verified. Refresh the page and try again.');
++    if (response.status === 404) throw new Error('This passkey no longer exists. Refresh your list and try again.');
++    if (!response.ok) throw new Error('We could not update your passkeys. Please try again.');
++    try { return validateSnapshot(await response.json()); }
++    catch { throw new Error('We could not confirm the latest passkey list. Refresh before trying again.'); }
++  }
++
++  function readDemo() {
++    if (memory) return clone(memory);
++    try {
++      const stored = storage?.getItem(DEMO_STORAGE_KEY);
++      memory = stored ? validateSnapshot(JSON.parse(stored)) : demoSnapshot();
++    } catch {
++      // A corrupt demo cache never substitutes for a failed authenticated API request.
++      memory = demoSnapshot();
++    }
++    return clone(memory);
++  }
++
++  function saveDemo(snapshot) {
++    try { storage?.setItem(DEMO_STORAGE_KEY, JSON.stringify(snapshot)); }
++    catch { repository.persistent = false; }
++    memory = clone(snapshot);
++    return clone(snapshot);
++  }
++
++  async function list() {
++    return demo ? readDemo() : request();
++  }
++
++  async function rename(id, value) {
++    const name = validateName(value);
++    if (!demo) return request(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ name }) });
++    const snapshot = readDemo();
++    const credential = snapshot.credentials.find(item => item.id === id);
++    if (!credential) throw new Error('This passkey no longer exists. Refresh and try again.');
++    credential.name = name;
++    return saveDemo(snapshot);
++  }
++
++  async function remove(id) {
++    if (!demo) return request(`/${encodeURIComponent(id)}`, { method: 'DELETE' });
++    const snapshot = readDemo();
++    snapshot.credentials = snapshot.credentials.filter(item => item.id !== id);
++    return saveDemo(snapshot);
++  }
++
++  async function reset() {
++    if (!demo) throw new Error('Only sample passkeys can be reset.');
++    return saveDemo(demoSnapshot());
++  }
++  return repository;
++}
++
++// Only signal a complete, authoritative server snapshot for an authenticated user.
++// A local nickname change does not change the authenticator's account identity.
++export async function syncAcceptedCredentials(snapshot, { demo = true, credentialAPI, secureContext = false } = {}) {
++  if (demo) return 'demo';
++  if (!secureContext || typeof credentialAPI?.signalAllAcceptedCredentials !== 'function') return 'unsupported';
++  validateSnapshot(snapshot);
++  try {
++    await credentialAPI.signalAllAcceptedCredentials({
++      rpId: snapshot.rpId,
++      userId: snapshot.user.id,
++      allAcceptedCredentialIds: snapshot.credentials.map(item => item.id),
++    });
++    return 'synced';
++  } catch { return 'failed'; }
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..e0fec69
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,17 @@
++:root{--paper:#f8f7f3;--ink:#283d34;--muted:#72766e;--line:#e6e7df;--green:#3f5d46;--sage:#eef2e9;--orange:#b75d39;--serif:Georgia,'Times New Roman',serif;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--paper);font-synthesis:none}
++*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;color:inherit}button:disabled{cursor:wait;opacity:.6}a{color:inherit;text-decoration:none}button,a{-webkit-tap-highlight-color:transparent}svg.icon{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.icon-library{position:absolute;width:0;height:0;overflow:hidden}[hidden]{display:none!important}button,a,input{outline-offset:5px}:focus-visible{outline:2px solid var(--orange)}.skip-link{position:fixed;top:-100px;left:20px;background:white;padding:12px;z-index:10}.skip-link:focus{top:12px}
++.announcement{background:#3b5141;color:#f4f3e9;text-align:center;padding:9px 20px;font-size:11px;letter-spacing:.45px}.announcement span{margin-left:7px;color:#d9e0d3}.site-header{background:#fffefb;border-bottom:1px solid var(--line)}.header-inner{max-width:1220px;margin:auto;min-height:94px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;gap:30px}.brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:29px;font-weight:bold;letter-spacing:-1.1px;line-height:1.1}.brand-icon{width:46px;height:46px;border:1.4px solid #66765a;border-radius:50%;display:grid;place-items:center}.brand-icon .icon{width:27px;height:27px;stroke-width:1.3}.brand-sub{display:block;font:8px 'DM Sans',sans-serif;letter-spacing:2.5px;text-align:center;margin-top:8px}.primary-nav{display:flex;gap:32px;font-size:13px;font-weight:500;margin-left:50px}.primary-nav a{padding:14px 0}.primary-nav a:hover,.breadcrumb a:hover{color:var(--orange)}.account-link{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600;background:#f1f2ea;border:1px solid #e5e8dc;border-radius:6px;padding:11px 15px}.account-link .icon{width:16px;height:16px}
++.page-shell{max-width:1220px;padding:0 30px;margin:auto}.breadcrumb{display:flex;align-items:center;gap:11px;font-size:11px;color:#7a7d72;padding-top:27px}.breadcrumb .icon{width:11px;height:11px;stroke-width:1.5}.breadcrumb span:last-child{color:#455544}.page-intro{display:flex;align-items:center;justify-content:space-between;padding:33px 0 35px;border-bottom:1px solid #e1e4d9;gap:20px}.eyebrow{font-size:9px;letter-spacing:1.8px;font-weight:600;color:#777b6c;margin:0 0 11px}.page-intro h1{font-family:var(--serif);font-size:43px;line-height:1.15;font-weight:400;letter-spacing:-1.4px;margin:0 0 12px}.heading-dot{color:var(--orange)}.page-intro p:last-child{font-size:12px;color:var(--muted);margin:0}.member-tag{display:flex;align-items:center;gap:8px;font-size:10px;color:#697462;align-self:flex-end;margin-bottom:6px}.small-dot{width:6px;height:6px;display:inline-block;background:#80946d;border-radius:50%}.account-layout{display:grid;grid-template-columns:222px minmax(0,1fr);gap:49px;padding:34px 0 52px}
++.profile{display:flex;align-items:center;gap:11px;padding:3px 0 25px}.avatar{display:grid;place-items:center;width:41px;height:41px;border-radius:50%;background:#ebe9db;font-family:var(--serif);font-size:16px;color:#66705a;border:3px solid #f3f2e9}.profile strong{display:block;font-size:12px;font-weight:600}.profile div>span{display:block;margin-top:4px;font-size:9px;color:#737769}.account-nav{display:flex;flex-direction:column;gap:6px}.account-nav button{background:transparent;border:0;text-align:left;display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:5px;font-size:11px;font-weight:500;min-height:44px}.account-nav .icon{width:17px;height:17px;color:#6b7564}.account-nav button:hover{background:#f0f0e8}.account-nav button.selected{background:#e9eee2;color:#365034;font-weight:650}.account-nav .nav-chevron{margin-left:auto;width:13px;height:13px}.sidebar-divider{height:1px;background:#e3e6dc;margin:19px 10px 16px}.sign-out{display:flex;align-items:center;gap:13px;font-size:11px;color:#72776b;padding:10px 12px}.sign-out .icon{width:17px;height:17px}.sign-out:hover{color:var(--orange)}
++.rewards-card{background:#eeede1;padding:21px 19px 20px;border:1px solid #e3e3d5;border-radius:7px;margin-top:32px;position:relative;overflow:hidden}.rewards-top{display:flex;align-items:center;gap:9px;position:relative;z-index:1}.rewards-top .icon{width:23px;height:23px;stroke-width:1.2}.rewards-top span{font-size:7px;letter-spacing:1.3px;font-weight:600}.rewards-card h2{font-family:var(--serif);font-size:24px;line-height:1.22;font-weight:400;letter-spacing:-.5px;margin:20px 0 9px;position:relative;z-index:1}.rewards-card p{font-size:9px;color:#727769;position:relative;z-index:1}.rewards-card button{background:none;border:0;border-bottom:1px solid #a2a88d;padding:6px 0;display:flex;align-items:center;gap:8px;font-size:9px;font-weight:600;margin-top:18px;position:relative;z-index:1}.rewards-card button .icon{width:14px;height:14px}.reward-ring{position:absolute;width:140px;height:140px;border:1px solid #d9dbc9;border-radius:50%;right:-100px;top:46px}.ring-two{width:190px;height:190px;right:-124px;top:21px}.sidebar-help{font-size:9px;color:#727769;line-height:1.8;margin-top:21px;text-align:center}.text-button{font-size:inherit;border:0;background:transparent;padding:0;text-align:left;display:inline-flex;align-items:center;gap:9px;color:var(--green);font-weight:500;min-height:24px}.text-button:hover{text-decoration:underline}.sidebar-help .text-button{text-decoration:underline;text-underline-offset:3px}
++.section-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:25px;padding-top:2px}.section-heading h2{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.45px;margin:0 0 9px}.section-heading p{font-size:11px;color:var(--muted);margin:0}.private-label{display:flex;align-items:center;gap:5px;font-size:9px;color:#777d6f;margin-top:-19px;white-space:nowrap}.private-label .icon{width:12px;height:12px}.passkey-card{background:white;border:1px solid var(--line);border-radius:9px;box-shadow:0 3px 5px #35402e03;overflow:hidden}.passkey-header{padding:24px 26px 22px;display:flex;align-items:center;gap:15px}.key-tile{display:grid;place-items:center;width:45px;height:45px;border-radius:10px;background:#f6ede4;color:#b3744c;flex-shrink:0}.key-tile .icon{width:23px;height:23px;transform:rotate(-8deg);stroke-width:1.4}.title-line{display:flex;align-items:center;gap:11px;margin-bottom:7px}.title-line h3{font-size:17px;font-weight:600;letter-spacing:-.4px;margin:0}.pill{background:#f1f4ed;color:#687a57;font-size:8px;border:1px solid #e7ecdf;border-radius:20px;padding:4px 8px;white-space:nowrap}.passkey-header p{color:var(--muted);font-size:10px;margin:0;line-height:1.6}.security-note{margin:0 26px 25px;background:#f2f5ed;border:1px solid #e9eddf;border-radius:5px;padding:14px 15px;display:flex;gap:11px;align-items:center}.security-note>.icon{width:22px;height:22px;color:#6e8659}.security-note strong{font-size:10px;font-weight:600}.security-note p{font-size:9px;color:#6b765f;margin:4px 0 0;line-height:1.6}
++.list-heading{display:flex;align-items:center;justify-content:space-between;padding:0 26px 15px}.list-heading h4{font-size:11px;margin:0;font-weight:600;display:flex;align-items:center;gap:8px}.list-heading h4 span{font-size:9px;padding:2px 6px;background:#f0f0ea;border-radius:4px;color:#727969}.demo-label{font-size:8px;border:1px solid #e8e8df;color:#777769;padding:3px 7px;border-radius:4px}.passkey-list{margin:0;padding:0 26px;list-style:none}.passkey-row{display:flex;align-items:center;gap:13px;padding:21px 0;border-top:1px solid #eeeee8}.device-icon{width:39px;height:39px;border:1px solid #e9e9e1;background:#fafaf7;border-radius:9px;display:grid;place-items:center;flex-shrink:0;color:#67705e}.device-icon .icon{width:20px;height:20px;stroke-width:1.3}.device-details{flex:1;min-width:0}.device-title{display:flex;align-items:center;gap:9px;margin-bottom:5px;flex-wrap:wrap}.device-title h5{font-size:11px;font-weight:600;margin:0;overflow-wrap:anywhere}.recent-tag{background:#f2f5ed;color:#687958;display:flex;align-items:center;gap:4px;border-radius:3px;padding:3px 5px;font-size:7px;white-space:nowrap}.recent-tag .small-dot{width:4px;height:4px}.device-provider{font-size:9px;color:#75796c;margin:0 0 7px}.device-dates{display:flex;gap:8px;flex-wrap:wrap;font-size:8px;color:#787d70;margin:0;line-height:1.5}.device-dates span+span:before{content:'·';margin-right:8px}.row-actions{display:flex;align-items:center;gap:14px;margin-left:8px}.rename-button{background:none;border:1px solid #e3e5dc;border-radius:5px;padding:6px 9px;font-size:9px;display:flex;gap:5px;align-items:center;min-height:29px;color:#646e5c}.rename-button .icon{width:11px;height:11px}.rename-button:hover{background:#f2f4ec;border-color:#b6bfab}.remove-button{display:grid;place-items:center;width:29px;height:29px;background:none;border:0;border-radius:4px;color:#747d69}.remove-button:hover{background:#fbede8;color:#aa503d}.remove-button .icon{width:15px;height:15px}.list-footer{background:#fcfcf9;border-top:1px solid #eeeee7;display:flex;gap:8px;align-items:center;padding:14px 26px}.list-footer .icon{width:13px;height:13px;color:#7d876d}.list-footer p{font-size:8px;color:#737c68;margin:0;line-height:1.6}.sync-note{display:flex;align-items:center;gap:10px;padding:20px 3px 24px}.sync-icon{width:26px;height:26px;display:grid;place-items:center;background:#edf1e5;border-radius:50%;color:#788966;flex-shrink:0}.sync-icon .icon{width:13px;height:13px}.sync-note strong{font-size:9px;font-weight:500}.sync-note p{font-size:8px;color:#757e69;margin:4px 0 0;line-height:1.6}.sync-note>.text-button{font-size:10px;margin-left:auto;white-space:nowrap}
++.learn-card{padding:24px 27px;background:#eeeee5;border:1px solid #e4e6d9;border-radius:8px;display:flex;justify-content:space-between;gap:18px;position:relative;overflow:hidden;min-height:183px}.learn-card .eyebrow{font-size:7px;letter-spacing:1.3px;margin-bottom:11px;display:block}.learn-card h3{font-family:var(--serif);font-size:25px;font-weight:400;line-height:1.16;letter-spacing:-.5px;margin:0 0 12px}.learn-card p{font-size:8px;color:#737d65;line-height:1.6;margin:0 0 10px}.learn-card .text-button{font-size:9px;border-bottom:1px solid #a9b29a;gap:13px;padding-bottom:1px}.learn-card .text-button .icon{width:13px;height:13px}.passkey-art{width:208px;flex-shrink:0;position:relative;margin:-7px -4px -12px 0;align-self:stretch}.art-orbit{position:absolute;border:1px solid #d8ddcb;border-radius:50%;width:172px;height:172px;left:21px;top:2px}.art-orbit:after{content:'';position:absolute;border:1px solid #e0e3d5;border-radius:50%;inset:-17px}.art-card{position:absolute;width:112px;height:84px;border:1px solid #d4dac8;border-radius:11px;background:#f9faf3;box-shadow:0 8px 18px #525f3720;padding:15px}.art-back{transform:rotate(-16deg);top:17px;left:18px;color:#8c9b77}.art-back>.icon{width:22px;height:22px;margin-bottom:4px}.art-back i{display:block;width:50px;height:3px;background:#d8dfc9;margin:5px 0;border-radius:5px}.art-back i:last-child{width:33px}.art-front{transform:rotate(12deg);top:65px;left:70px;width:121px;height:87px;background:#e1e7d7;color:#647b51}.art-front>.icon{width:26px;height:26px;stroke-width:1.3}.art-dots{letter-spacing:4px;font-size:15px;margin-top:4px;color:#93a280}.art-front>span{position:absolute;right:12px;bottom:19px;background:#647c51;border:3px solid #e1e7d7;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;color:#fff}.art-front>span>.icon{width:12px;height:12px}.art-spark{position:absolute;color:#9caa86;font-size:22px}.spark-one{right:6px;top:28px}.spark-two{left:17px;bottom:5px;font-size:27px}
++.site-footer{border-top:1px solid #e4e6dc;background:#f4f4ed}.footer-inner{max-width:1220px;padding:26px 30px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}.footer-brand{font-family:var(--serif);font-size:14px;display:flex;gap:10px;align-items:center}.footer-brand .icon{width:19px;height:19px;stroke-width:1.2}.footer-inner>p{font-size:8px;color:#757e69}.footer-inner nav{display:flex;align-items:center;gap:23px;font-size:9px;color:#747c6a}.footer-inner nav .icon{width:12px;height:12px}.secondary-card{padding:32px;background:white;border:1px solid var(--line);border-radius:9px}.secondary-card h3{font-family:var(--serif);font-size:25px;font-weight:400}.secondary-card p,.secondary-card dl{font-size:13px;line-height:1.8;color:var(--muted)}.secondary-card dt{font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:20px}.secondary-card dd{margin:3px 0 20px;color:var(--ink)}.empty-icon{width:40px!important;height:40px!important;color:#889775}
++.solid-button,.outline-button,.danger-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:11px 17px;font-size:12px;min-height:42px;border:1px solid var(--green);border-radius:5px;background:var(--green);color:white;text-align:center}.solid-button:hover{background:#304936}.outline-button{border-color:#d7dbce;background:transparent;color:var(--green)}.outline-button:hover{background:var(--sage)}.danger-button{background:#a84c38;border-color:#a84c38}.danger-button:hover{background:#883c2b}.inline-error{color:#a03e2e;font-size:12px;line-height:1.6;margin:15px 26px}.loading-state,.empty-state{font-size:12px;text-align:center;padding:35px 15px;color:var(--muted);border-top:1px solid var(--line)}.empty-state .icon{width:30px;height:30px;display:block;margin:0 auto 14px}.empty-state strong{display:block;color:var(--ink);font-size:14px;margin-bottom:8px}.empty-state button{margin-top:14px}.toast:empty{display:none}.toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);padding:15px 23px;background:#344e3c;color:#fff;border:1px solid #53664d;box-shadow:0 6px 25px #1e322220;border-radius:7px;font-size:12px;z-index:5;max-width:calc(100% - 32px);width:max-content;line-height:1.6}
++ dialog{margin:auto;border:1px solid #dce0d1;background:#fffefb;padding:31px;border-radius:12px;width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 40px);overflow:auto;color:var(--ink);box-shadow:0 20px 90px #15291d20}dialog:modal{overscroll-behavior:contain}dialog::backdrop{background:#1e302d65;backdrop-filter:blur(3px);overflow:hidden;overscroll-behavior:contain}dialog h2{font-family:var(--serif);font-size:29px;font-weight:400;letter-spacing:-.6px;margin:18px 0 12px}dialog p{font-size:12px;line-height:1.8;color:var(--muted)}.dialog-icon{display:grid;place-items:center;width:43px;height:43px;border-radius:10px;background:var(--sage);color:var(--green)}.danger-icon{background:#f9ece6;color:#ab5d45}dialog label{display:block;font-size:12px;margin-top:24px;font-weight:600}dialog .field-hint{font-size:10px;margin:6px 0 12px}dialog input{width:100%;border:1px solid #cbd2c2;border-radius:5px;padding:12px;background:white;color:var(--ink)}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:26px}.about-point{display:flex;gap:13px;margin-top:24px}.about-point>.icon{color:#7b8a67}.about-point strong{font-size:12px}.about-point p{margin:4px 0 0;font-size:11px}.last-key-warning{background:#fff2dd;border:1px solid #e9d8b8;padding:12px;border-radius:5px;color:#82602e}dialog .inline-error{margin:14px 0}
++@media(min-width:1450px){.page-shell,.header-inner,.footer-inner{max-width:1280px}.account-layout{grid-template-columns:235px minmax(0,1fr);gap:58px;padding-top:38px;padding-bottom:60px}.page-intro{padding-top:38px;padding-bottom:38px}.passkey-row{padding-top:25px;padding-bottom:25px}.learn-card{margin-top:4px}}
++@media(max-width:1000px){.primary-nav{margin-left:0;gap:20px}.brand{font-size:24px}.header-inner{gap:15px}.account-layout{gap:28px;grid-template-columns:200px minmax(0,1fr)}.private-label{display:none}.passkey-header,.list-heading,.list-footer{padding-left:20px;padding-right:20px}.security-note{margin-left:20px;margin-right:20px}.passkey-list{padding:0 20px}.row-actions{gap:6px}.passkey-art{width:160px;transform:scale(.85);transform-origin:center}.learn-card{padding:22px}.learn-card h3{font-size:23px}.device-dates{gap:3px}.device-dates span+span:before{margin-right:3px}.device-title{gap:5px}.passkey-row{gap:10px}.pill{font-size:7px}}
++@media(max-width:760px){.announcement{font-size:9px}.announcement span{display:none}.header-inner{min-height:80px;padding:0 22px}.primary-nav{display:none}.brand{font-size:25px}.brand-sub{font-size:6px}.brand-icon{width:38px;height:38px}.brand-icon .icon{width:24px;height:24px}.account-link{font-size:10px;padding:9px 10px}.page-shell{padding:0 22px}.breadcrumb{padding-top:20px;font-size:10px;gap:7px}.page-intro{padding:28px 0}.page-intro h1{font-size:38px}.page-intro p:last-child{font-size:11px;line-height:1.8}.member-tag{display:none}.account-layout{display:block;padding-top:20px;padding-bottom:35px}.account-sidebar{margin-bottom:27px}.profile{display:none}.account-nav{display:flex;flex-direction:row;gap:5px;overflow:auto;padding-bottom:6px}.account-nav button{flex-shrink:0;gap:7px;font-size:10px;padding:10px}.account-nav .icon{width:15px;height:15px}.account-nav .nav-chevron,.sidebar-divider,.sign-out,.rewards-card,.sidebar-help{display:none}.section-heading{margin-bottom:22px}.section-heading h2{font-size:26px}.section-heading p{font-size:10px;line-height:1.7}.passkey-header{padding:21px 18px;gap:12px}.passkey-header p{font-size:9px}.security-note{margin:0 18px 22px;padding:12px}.security-note p{font-size:8px}.list-heading{padding:0 18px 14px}.passkey-list{padding:0 18px}.list-footer{padding:12px 18px}.device-icon{width:34px;height:36px}.passkey-row{padding:19px 0;flex-wrap:wrap}.row-actions{gap:7px;margin-left:0}.rename-button{font-size:9px;padding:6px}.rename-button>.icon{display:none}.device-dates{display:block;line-height:1.8}.device-dates span{display:block}.device-dates span+span:before{display:none}.recent-tag{font-size:6px}.learn-card{padding:22px 20px;gap:0}.learn-card h3{font-size:22px}.learn-card p{max-width:220px}.passkey-art{width:145px;transform:scale(.8);margin-left:-10px}.footer-inner{flex-wrap:wrap;padding:24px 22px;gap:14px}.footer-brand{font-size:13px}.footer-inner>p{order:3;width:100%;margin:4px 0 0}.footer-inner nav{gap:17px;font-size:8px}.footer-inner nav .text-button{font-size:8px}}
++@media(max-width:400px){.header-inner,.page-shell{padding-left:16px;padding-right:16px}.brand{font-size:22px}.brand-icon{width:32px;height:32px}.account-link{padding:9px}.account-link .icon{display:none}.title-line{gap:7px}.pill{font-size:6px}.passkey-header p{font-size:8px}.passkey-row{gap:8px}.recent-tag{display:none}.passkey-art{position:absolute;right:-33px;bottom:3px;opacity:.45;pointer-events:none}.learn-card>div:first-child{position:relative;z-index:1;max-width:80%}.learn-card p{max-width:200px}.dialog-actions{gap:7px}.dialog-actions button{padding:10px 12px;font-size:11px}}
++@media(pointer:coarse){.rename-button,.remove-button{min-height:36px;min-width:36px}}

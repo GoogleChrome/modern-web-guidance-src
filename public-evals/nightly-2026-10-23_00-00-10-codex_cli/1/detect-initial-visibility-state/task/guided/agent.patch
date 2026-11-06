@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,60 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const initialEntry = entries.find((entry) => entry.startTime === 0);
++      const fallbackActive = !initialEntry;
++      const initiallyBackgrounded = initialEntry
++        ? initialEntry.name === 'hidden'
++        : document.visibilityState === 'hidden';
++
++      // Times are milliseconds relative to navigation (performance.timeOrigin),
++      // not Unix timestamps. Zero is a valid initial hidden timestamp.
++      let timeBackgrounded = fallbackActive
++        ? (initiallyBackgrounded ? 0 : null)
++        : (entries.find((entry) => entry.name === 'hidden')?.startTime ?? null);
++
++      if (fallbackActive) {
++        // LEGACY FALLBACK: current visibility cannot recover initial state if an
++        // async script runs after a tab switch. Zero below is assumed, not measured;
++        // later timestamps measure listener execution, not the actual transition.
++        console.warn('Visibility detection fallback active: initial background status and timing may be inaccurate, especially for async scripts.');
++      }
++
++      const logVisibilityInfo = () => console.log({
++        initiallyBackgrounded,
++        timeBackgrounded,
++        fallbackActive
++      });
++
++      logVisibilityInfo();
++
++      // If no backgrounding has occurred yet, record and log the first one.
++      // Keep the initial status fixed even when the page is hidden later.
++      if (timeBackgrounded === null) {
++        const recordFirstBackground = () => {
++          if (document.visibilityState !== 'hidden') return;
++
++          timeBackgrounded = fallbackActive
++            ? performance.now()
++            : (performance.getEntriesByType('visibility-state')
++              .find((entry) => entry.name === 'hidden')?.startTime ?? null);
++
++          if (timeBackgrounded !== null) {
++            logVisibilityInfo();
++            document.removeEventListener('visibilitychange', recordFirstBackground);
++          }
++        };
++        document.addEventListener('visibilitychange', recordFirstBackground);
++      }
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

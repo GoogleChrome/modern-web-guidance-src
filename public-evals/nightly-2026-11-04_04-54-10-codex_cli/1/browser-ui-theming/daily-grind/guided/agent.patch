@@ -1,0 +1,311 @@
+diff --git a/index.html b/index.html
+index 66c9173..c3bfb10 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,30 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scroll-padding-top: 6rem;
++    }
++
++    ::selection {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    /* Keep browser scrollbars visible, including inside form fields and pickers. */
++    * {
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    @supports not (scrollbar-color: #4e342e #d7ccc8) {
++      ::-webkit-scrollbar { width: 14px; height: 14px; }
++      ::-webkit-scrollbar-track { background: var(--secondary); }
++      ::-webkit-scrollbar-thumb {
++        background: var(--primary);
++        border: 3px solid var(--secondary);
++        border-radius: 10px;
++      }
+     }
+ 
+     * {
+@@ -98,11 +122,15 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++      gap: 32px;
++      align-items: start;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: minmax(0, 1fr);
+       gap: 20px;
+       margin-top: 20px;
+     }
+@@ -135,6 +163,171 @@
+       background: #3e2723;
+     }
+ 
++    :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    nav a:focus-visible,
++    .hero a:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    .order-panel {
++      background: #fff;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      min-width: 0;
++    }
++
++    .order-panel > p {
++      margin-block: 4px 20px;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 18px;
++    }
++
++    .field {
++      display: grid;
++      gap: 5px;
++      min-width: 0;
++    }
++
++    .field > label,
++    legend {
++      font-weight: 600;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 16px;
++    }
++
++    input, select, textarea, button {
++      font: inherit;
++    }
++
++    .field :is(select, textarea, input:not([type="range"])) {
++      width: 100%;
++      min-width: 0;
++      min-height: 48px;
++      padding: 10px;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++    }
++
++    textarea {
++      resize: vertical;
++    }
++
++    textarea::placeholder {
++      color: #70534b;
++      opacity: 1;
++    }
++
++    /* Enhance the browser's own select picker; older browsers keep native UI. */
++    @supports (appearance: base-select) {
++      .order-form select,
++      .order-form select::picker(select) {
++        appearance: base-select;
++      }
++
++      .order-form select::picker(select) {
++        font: inherit;
++        color: var(--text);
++        background: var(--light);
++        border: 1px solid var(--primary);
++        border-radius: 5px;
++        padding: 5px;
++      }
++
++      .order-form select::picker-icon,
++      .order-form option::checkmark {
++        color: var(--primary);
++      }
++
++      .order-form option {
++        padding: 10px;
++        border-radius: 3px;
++      }
++
++      .order-form option:checked {
++        background: var(--secondary);
++      }
++
++      .order-form option:is(:hover, :focus-visible) {
++        background: var(--accent);
++        color: var(--text);
++      }
++    }
++
++    fieldset {
++      min-width: 0;
++      border: 0;
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 4px 20px;
++    }
++
++    .choice {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .choice input {
++      width: 1.15rem;
++      height: 1.15rem;
++      flex-shrink: 0;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      min-height: 32px;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .hint, .range-labels {
++      font-size: 0.85rem;
++    }
++
++    .order-form .btn {
++      margin-top: 0;
++      border: 0;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    @media (max-width: 760px) {
++      .container { grid-template-columns: minmax(0, 1fr); }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++    }
++
++    @media (max-width: 400px) {
++      .field-row { grid-template-columns: minmax(0, 1fr); }
++      .order-panel { padding: 18px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +368,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +388,75 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-panel" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Make It Your Own</h2>
++      <p>Your daily ritual, just the way you like it.</p>
++      <form class="order-form" action="/order-online" method="get">
++        <div class="field">
++          <label for="coffee">Choose your coffee</label>
++          <select id="coffee" name="coffee">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Cup size</legend>
++          <div class="choices">
++            <label class="choice" for="size-small"><input id="size-small" type="radio" name="size" value="small"> Small</label>
++            <label class="choice" for="size-medium"><input id="size-medium" type="radio" name="size" value="medium" checked> Medium</label>
++            <label class="choice" for="size-large"><input id="size-large" type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="milk">Milk preference</label>
++          <select id="milk" name="milk">
++            <option value="oat">Oat milk</option>
++            <option value="whole">Whole milk</option>
++            <option value="skim">Skim milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="soy">Soy milk</option>
++            <option value="none">No milk</option>
++          </select>
++        </div>
++
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input id="sweetness" name="sweetness" type="range" min="0" max="4" step="1" value="2" aria-describedby="sweetness-help">
++          <div class="range-labels" aria-hidden="true"><span>Unsweetened</span><span>Extra sweet</span></div>
++          <p class="hint" id="sweetness-help">0–4 pumps of syrup. Start with 2 for a little sweetness.</p>
++        </div>
++
++        <fieldset>
++          <legend>A little extra</legend>
++          <div class="choices">
++            <label class="choice" for="extra-shot"><input id="extra-shot" type="checkbox" name="extras" value="extra-shot"> Extra espresso shot</label>
++            <label class="choice" for="decaf"><input id="decaf" type="checkbox" name="decaf" value="yes"> Make it decaf</label>
++          </div>
++        </fieldset>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="pickup-date">Pickup date (optional)</label>
++            <input id="pickup-date" name="pickup_date" type="date">
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time (optional)</label>
++            <input id="pickup-time" name="pickup_time" type="time">
++          </div>
++        </div>
++
++        <div class="field">
++          <label for="notes">Special requests (optional)</label>
++          <textarea id="notes" name="notes" rows="3" maxlength="300" placeholder="A little cinnamon, room for milk…" aria-describedby="notes-help"></textarea>
++          <p class="hint" id="notes-help">Up to 300 characters.</p>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

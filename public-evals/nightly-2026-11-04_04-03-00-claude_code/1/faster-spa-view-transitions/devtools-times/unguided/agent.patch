@@ -1,0 +1,235 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..516dd37 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,10 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      // Keep visited pages alive so navigating back to them skips fetch, parse and hydration.
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..c3457dd
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,214 @@
++/**
++ * View cache for Astro's <ClientRouter />.
++ *
++ * By default every client-side navigation fetches the target page, parses the
++ * HTML into a fresh Document, swaps it in and re-hydrates every island – even
++ * when the user just goes back to a page they saw a second ago. The previous
++ * page's <body> is simply thrown away.
++ *
++ * This module keeps the *live* <body> of pages the user navigates away from in
++ * a small LRU cache (together with a snapshot of their <head>). When the user
++ * returns to such a page (history back/forward or a link to it), the network
++ * request, HTML parsing and island hydration are skipped: the preserved body –
++ * including hydrated React islands and their component state – is swapped back
++ * in as-is.
++ *
++ * Opting out:
++ *   - <body data-view-cache="off">   never cache this page
++ *   - <a data-view-cache="off">      always load this link fresh
++ *   - Any form submission (POST via the router) clears the whole cache, since
++ *     it may have changed server-side state.
++ */
++import {
++  swapFunctions,
++  type TransitionBeforePreparationEvent,
++  type TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++/** Maximum number of page bodies kept alive. */
++const MAX_ENTRIES = 10;
++/** Entries older than this are discarded and the page is fetched again. */
++const MAX_AGE_MS = 10 * 60 * 1000;
++
++const TRANSITION_BEFORE_PREPARATION = "astro:before-preparation";
++const TRANSITION_BEFORE_SWAP = "astro:before-swap";
++const OPT_OUT_ATTR = "data-view-cache";
++const PERSIST_ATTR = "data-astro-transition-persist";
++/** Root attributes owned by the router that must not be restored from a snapshot. */
++const ROUTER_ROOT_ATTRS = ["data-astro-transition", "data-astro-transition-fallback"];
++
++type AstroIsland = HTMLElement & { unmount?: () => void };
++
++interface CacheEntry {
++  /** The preserved, detached <body> element (live nodes, not a copy). */
++  body: HTMLElement;
++  /** Document carrying the page's <html> attributes and <head>, with an empty body. */
++  shell: Document;
++  storedAt: number;
++  /** Set once the entry's body has been put back into the document. */
++  restored: boolean;
++}
++
++const cache = new Map<string, CacheEntry>();
++/**
++ * Entries taken out of the cache by a navigation that has not swapped yet,
++ * keyed by the AbortSignal shared by that navigation's preparation and swap events.
++ */
++const pending = new WeakMap<AbortSignal, CacheEntry>();
++
++const keyFor = (url: URL) => url.pathname + url.search;
++
++const isOptedOut = (el: Element | null | undefined) =>
++  el?.closest?.(`[${OPT_OUT_ATTR}="off"]`) != null;
++
++/** Release an entry's resources (unmount its islands so frameworks can clean up). */
++function dispose(entry: CacheEntry) {
++  for (const island of entry.body.querySelectorAll("astro-island")) {
++    island.dispatchEvent(new CustomEvent("astro:unmount"));
++  }
++}
++
++function clearCache() {
++  for (const entry of cache.values()) dispose(entry);
++  cache.clear();
++}
++
++function takeEntry(key: string): CacheEntry | undefined {
++  const entry = cache.get(key);
++  if (!entry) return undefined;
++  cache.delete(key);
++  if (Date.now() - entry.storedAt > MAX_AGE_MS) {
++    dispose(entry);
++    return undefined;
++  }
++  return entry;
++}
++
++function putEntry(key: string, entry: CacheEntry) {
++  const previous = cache.get(key);
++  if (previous) {
++    cache.delete(key);
++    dispose(previous);
++  }
++  cache.set(key, entry);
++  while (cache.size > MAX_ENTRIES) {
++    const [oldestKey, oldest] = cache.entries().next().value!;
++    cache.delete(oldestKey);
++    dispose(oldest);
++  }
++}
++
++/** Snapshot <html> attributes and <head> of the current document into a shell Document. */
++function snapshotShell(): Document {
++  const shell = document.implementation.createHTMLDocument("");
++  const root = shell.documentElement;
++  for (const { name, value } of document.documentElement.attributes) {
++    if (!ROUTER_ROOT_ATTRS.includes(name)) root.setAttribute(name, value);
++  }
++  shell.head.replaceChildren(
++    ...[...document.head.childNodes].map((node) => shell.importNode(node, true)),
++  );
++  return shell;
++}
++
++/**
++ * Remember where persisted (`transition:persist`) elements sit in the outgoing
++ * body. The router moves them into the incoming body, so we leave a copy behind
++ * to give the cached page a target for them when it comes back.
++ */
++function markPersistedElements(oldBody: HTMLElement, newBody: HTMLElement) {
++  const markers: Array<[Comment, Element]> = [];
++  for (const el of oldBody.querySelectorAll(`[${PERSIST_ATTR}]`)) {
++    const id = el.getAttribute(PERSIST_ATTR);
++    if (!newBody.querySelector(`[${PERSIST_ATTR}="${CSS.escape(id ?? "")}"]`)) continue;
++    const marker = document.createComment("view-cache-persist");
++    el.before(marker);
++    markers.push([marker, el]);
++  }
++  return () => {
++    for (const [marker, el] of markers) marker.replaceWith(el.cloneNode(true));
++  };
++}
++
++/** Prepare an outgoing body for life in the cache, after it has been swapped out. */
++function detachIntoCache(oldBody: HTMLElement) {
++  // Islands schedule their own unmount for the next `astro:after-swap` when
++  // they are disconnected. Cancel that so their framework roots stay alive.
++  for (const island of oldBody.querySelectorAll<AstroIsland>("astro-island")) {
++    if (island.unmount) document.removeEventListener("astro:after-swap", island.unmount);
++  }
++  // The router appends an aria-live announcer on every navigation.
++  oldBody.querySelectorAll(".astro-route-announcer").forEach((el) => el.remove());
++}
++
++/** Swap the document to `newDoc`/`newBody`, preserving the outgoing body if allowed. */
++function swapAndPreserve(event: TransitionBeforeSwapEvent, newDoc: Document, newBody: HTMLElement) {
++  const oldBody = document.body;
++  const fromKey = keyFor(event.from);
++  const cacheOutgoing =
++    !isOptedOut(oldBody) && fromKey !== keyFor(event.to) && oldBody !== newBody;
++  const shell = cacheOutgoing ? snapshotShell() : undefined;
++  const restorePersistTargets = cacheOutgoing
++    ? markPersistedElements(oldBody, newBody)
++    : () => {};
++
++  swapFunctions.deselectScripts(newDoc);
++  swapFunctions.swapRootAttributes(newDoc);
++  swapFunctions.swapHeadElements(newDoc);
++  const restoreFocus = swapFunctions.saveFocus();
++  swapFunctions.swapBodyElement(newBody, oldBody);
++  restoreFocus();
++
++  if (cacheOutgoing && shell) {
++    restorePersistTargets();
++    detachIntoCache(oldBody);
++    putEntry(fromKey, { body: oldBody, shell, storedAt: Date.now(), restored: false });
++  }
++}
++
++document.addEventListener(TRANSITION_BEFORE_PREPARATION, (e) => {
++  const event = e as TransitionBeforePreparationEvent;
++
++  if (event.formData) {
++    // A submission may mutate server state; cached pages could be stale now.
++    clearCache();
++    return;
++  }
++  if (isOptedOut(event.sourceElement)) return;
++
++  const key = keyFor(event.to);
++  if (key === keyFor(event.from)) return;
++  const entry = takeEntry(key);
++  if (!entry) return;
++
++  pending.set(event.signal, entry);
++  event.loader = async () => {
++    // The body is supplied in the swap; the shell only provides <html>/<head>.
++    event.newDocument = entry.shell.cloneNode(true) as Document;
++  };
++  // If this navigation is superseded before swapping, put the page back.
++  event.signal.addEventListener(
++    "abort",
++    () => {
++      pending.delete(event.signal);
++      if (entry.restored) return;
++      // A newer snapshot of the same page may have been cached meanwhile.
++      if (cache.has(key)) dispose(entry);
++      else putEntry(key, entry);
++    },
++    { once: true },
++  );
++});
++
++document.addEventListener(TRANSITION_BEFORE_SWAP, (e) => {
++  const event = e as TransitionBeforeSwapEvent;
++  const entry = pending.get(event.signal);
++  pending.delete(event.signal);
++
++  event.swap = entry
++    ? () => {
++        entry.restored = true;
++        swapAndPreserve(event, event.newDocument, entry.body);
++      }
++    : () => swapAndPreserve(event, event.newDocument, event.newDocument.body);
++});

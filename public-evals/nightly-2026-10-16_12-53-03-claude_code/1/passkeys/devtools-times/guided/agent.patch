@@ -1,0 +1,973 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..de39389 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# passkey store
++data/
+diff --git a/package.json b/package.json
+index 66c3a6d..712b70c 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,8 @@
+     "@astrojs/node": "^11.1.3",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..de5caef 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const signedIn = !!(await Astro.session?.get('userId'));
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -25,6 +26,16 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {signedIn ? (
++          <a
++            href={`${baseUrl}account`}
++            data-skip-tracking="true"
++            class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
++          >
++            Account
++          </a>
++        ) : (
++          <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +50,8 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++          </>
++        )}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/PasskeyManager.tsx b/src/components/PasskeyManager.tsx
+new file mode 100644
+index 0000000..b06772b
+--- /dev/null
++++ b/src/components/PasskeyManager.tsx
+@@ -0,0 +1,143 @@
++import React, { useEffect, useState } from 'react';
++import { call, describeError, passkeysSupported, reauthenticate, registerPasskey, signOut, withReauth } from '../lib/passkeyClient';
++
++const baseUrl = import.meta.env.BASE_URL;
++
++interface Passkey {
++  id: string;
++  name: string;
++  deviceType: string;
++  backedUp: boolean;
++  createdAt: number;
++  lastUsedAt: number | null;
++}
++
++const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
++const btn = 'text-xs font-semibold py-1.5 px-3 rounded border border-gray-300 text-gray-800 hover:bg-gray-50 disabled:opacity-60';
++
++export default function PasskeyManager({ username }: { username: string }) {
++  const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [notice, setNotice] = useState<string | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [editing, setEditing] = useState<string | null>(null);
++  const [draft, setDraft] = useState('');
++  const [supported, setSupported] = useState(true);
++
++  const load = async () => setPasskeys((await call('')).passkeys);
++
++  useEffect(() => {
++    setSupported(passkeysSupported());
++    load().catch((e) => setError(describeError(e)));
++  }, []);
++
++  const run = async (fn: () => Promise<unknown>, success?: string) => {
++    setError(null);
++    setNotice(null);
++    setBusy(true);
++    try {
++      await fn();
++      await load();
++      if (success) setNotice(success);
++    } catch (e) {
++      setError(describeError(e));
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const add = () => run(() => withReauth(() => registerPasskey()), 'Passkey added.');
++  const remove = (p: Passkey) => {
++    if (!window.confirm(`Remove “${p.name}”? You will no longer be able to sign in with it.`)) return;
++    return run(() => withReauth(() => call(`/${encodeURIComponent(p.id)}`, 'DELETE')), 'Passkey removed.');
++  };
++  const rename = (p: Passkey) =>
++    run(async () => {
++      await call(`/${encodeURIComponent(p.id)}`, 'PATCH', { name: draft });
++      setEditing(null);
++    }, 'Passkey renamed.');
++  const confirm = () => run(() => reauthenticate(), 'Identity confirmed. Sensitive changes are unlocked for 5 minutes.');
++  const leave = async () => {
++    await signOut();
++    window.location.href = `${baseUrl}signin`;
++  };
++
++  return (
++    <div className="max-w-xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <div className="flex items-center justify-between mb-6">
++        <div>
++          <h2 className="text-2xl font-bold text-gray-800">Account</h2>
++          <p className="text-sm text-gray-600">Signed in as <strong>{username}</strong></p>
++        </div>
++        <button type="button" onClick={leave} className={btn}>Sign out</button>
++      </div>
++
++      <h3 className="text-lg font-semibold text-gray-800 mb-1">Passkeys</h3>
++      <p className="text-sm text-gray-600 mb-4">
++        Passkeys let you sign in with your fingerprint, face, or screen lock. Adding or removing one asks you to confirm with a passkey first.
++      </p>
++
++      {error && <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">{error}</div>}
++      {notice && <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">{notice}</div>}
++
++      {passkeys === null ? (
++        <p className="text-sm text-gray-500">Loading…</p>
++      ) : (
++        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md mb-4">
++          {passkeys.map((p) => (
++            <li key={p.id} className="p-3 flex items-center justify-between gap-3">
++              {editing === p.id ? (
++                <form
++                  className="flex flex-1 gap-2"
++                  onSubmit={(e) => {
++                    e.preventDefault();
++                    rename(p);
++                  }}
++                >
++                  <input
++                    autoFocus
++                    aria-label="Passkey name"
++                    value={draft}
++                    maxLength={60}
++                    required
++                    onChange={(e) => setDraft(e.target.value)}
++                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md"
++                  />
++                  <button type="submit" disabled={busy} className={btn}>Save</button>
++                  <button type="button" onClick={() => setEditing(null)} className={btn}>Cancel</button>
++                </form>
++              ) : (
++                <>
++                  <div className="min-w-0">
++                    <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
++                    <p className="text-xs text-gray-500">
++                      {p.backedUp ? 'Synced' : 'This device only'} · Added {fmt(p.createdAt)} ·{' '}
++                      {p.lastUsedAt ? `Last used ${fmt(p.lastUsedAt)}` : 'Never used'}
++                    </p>
++                  </div>
++                  <div className="flex gap-2 shrink-0">
++                    <button type="button" disabled={busy} className={btn} onClick={() => { setEditing(p.id); setDraft(p.name); }}>Rename</button>
++                    <button type="button" disabled={busy || passkeys.length < 2} title={passkeys.length < 2 ? 'Add another passkey before removing your only one' : undefined} className={btn} onClick={() => remove(p)}>Remove</button>
++                  </div>
++                </>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++
++      <div className="flex flex-wrap gap-2">
++        <button
++          type="button"
++          onClick={add}
++          disabled={busy || !supported}
++          className="py-2 px-4 rounded-md text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-60"
++        >
++          Add a passkey
++        </button>
++        <button type="button" onClick={confirm} disabled={busy || !supported} className={btn}>Confirm it’s me</button>
++      </div>
++      {!supported && <p className="mt-3 text-sm text-gray-500">This browser does not support passkeys.</p>}
++    </div>
++  );
++}
+diff --git a/src/components/PasskeySignIn.tsx b/src/components/PasskeySignIn.tsx
+new file mode 100644
+index 0000000..e136c21
+--- /dev/null
++++ b/src/components/PasskeySignIn.tsx
+@@ -0,0 +1,77 @@
++import React, { useEffect, useState } from 'react';
++import { describeError, passkeysSupported, signInWithPasskey } from '../lib/passkeyClient';
++
++const baseUrl = import.meta.env.BASE_URL;
++
++/** "Sign in with a passkey" button. Also enables passkey autofill on the username field. */
++export default function PasskeySignIn() {
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++  const [supported, setSupported] = useState(false);
++
++  const finish = () => {
++    window.location.href = `${baseUrl}account`;
++  };
++
++  useEffect(() => {
++    setSupported(passkeysSupported());
++  }, []);
++
++  // Conditional UI: lets the browser offer passkeys in the username field's autofill.
++  useEffect(() => {
++    let cancelled = false;
++    (async () => {
++      if (!passkeysSupported()) return;
++      if (!(await PublicKeyCredential.isConditionalMediationAvailable?.())) return;
++      try {
++        await signInWithPasskey({ useBrowserAutofill: true });
++        if (!cancelled) finish();
++      } catch {
++        /* superseded by the button or dismissed */
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, []);
++
++  const handleClick = async () => {
++    setError(null);
++    setLoading(true);
++    try {
++      await signInWithPasskey();
++      finish();
++    } catch (e) {
++      setError(describeError(e));
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  if (!supported) return null;
++
++  return (
++    <div className="mb-6">
++      {error && (
++        <div className="mb-3 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++      <button
++        type="button"
++        onClick={handleClick}
++        disabled={loading}
++        className={`w-full py-2 px-4 border border-gray-900 rounded-md text-sm font-medium text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          loading ? 'opacity-75 cursor-not-allowed' : ''
++        }`}
++      >
++        {loading ? 'Waiting for passkey…' : 'Sign in with a passkey'}
++      </button>
++      <div className="flex items-center my-5 text-xs text-gray-500" aria-hidden="true">
++        <span className="flex-1 border-t border-gray-200" />
++        <span className="px-3">or use your password</span>
++        <span className="flex-1 border-t border-gray-200" />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/PasskeySignUp.tsx b/src/components/PasskeySignUp.tsx
+new file mode 100644
+index 0000000..df9683f
+--- /dev/null
++++ b/src/components/PasskeySignUp.tsx
+@@ -0,0 +1,74 @@
++import React, { useEffect, useState } from 'react';
++import { describeError, passkeysSupported, registerPasskey } from '../lib/passkeyClient';
++
++const baseUrl = import.meta.env.BASE_URL;
++
++/** Create an account protected by a passkey instead of a password. */
++export default function PasskeySignUp() {
++  const [username, setUsername] = useState('');
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++  const [supported, setSupported] = useState(false);
++
++  useEffect(() => {
++    setSupported(passkeysSupported());
++  }, []);
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setError(null);
++    setLoading(true);
++    try {
++      await registerPasskey({ username });
++      window.location.href = `${baseUrl}account`;
++    } catch (err) {
++      setError(describeError(err));
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  if (!supported) return null;
++
++  return (
++    <form onSubmit={handleSubmit} className="mb-6 space-y-3">
++      <p className="text-sm text-gray-600">Skip the password: sign up with a passkey using your fingerprint, face or screen lock.</p>
++      {error && (
++        <div className="p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++      <div>
++        <label htmlFor="passkey-username" className="block text-sm font-medium text-gray-700 mb-1">
++          Username
++        </label>
++        <input
++          type="text"
++          id="passkey-username"
++          value={username}
++          onChange={(e) => setUsername(e.target.value)}
++          required
++          minLength={3}
++          maxLength={32}
++          pattern="[A-Za-z0-9._\-]+"
++          autoComplete="username webauthn"
++          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++        />
++      </div>
++      <button
++        type="submit"
++        disabled={loading}
++        className={`w-full py-2 px-4 border border-gray-900 rounded-md text-sm font-medium text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++          loading ? 'opacity-75 cursor-not-allowed' : ''
++        }`}
++      >
++        {loading ? 'Creating passkey…' : 'Sign up with a passkey'}
++      </button>
++      <div className="flex items-center pt-2 text-xs text-gray-500" aria-hidden="true">
++        <span className="flex-1 border-t border-gray-200" />
++        <span className="px-3">or use a password</span>
++        <span className="flex-1 border-t border-gray-200" />
++      </div>
++    </form>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..61c5d12 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import PasskeySignIn from './PasskeySignIn';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -42,6 +43,8 @@ export default function SignInForm() {
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++
++      <PasskeySignIn />
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+@@ -63,6 +66,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username webauthn"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..2cd678d 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,5 @@
+ import React, { useState } from 'react';
++import PasskeySignUp from './PasskeySignUp';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -43,6 +44,8 @@ export default function SignUpForm() {
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++
++      <PasskeySignUp />
+       
+       {error && (
+         <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+diff --git a/src/lib/passkeyClient.ts b/src/lib/passkeyClient.ts
+new file mode 100644
+index 0000000..d891d3c
+--- /dev/null
++++ b/src/lib/passkeyClient.ts
+@@ -0,0 +1,67 @@
++import { startAuthentication, startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
++
++const api = (path: string) => `${import.meta.env.BASE_URL}api/passkeys${path}`;
++
++export class ApiError extends Error {
++  constructor(message: string, public status: number, public code?: string) {
++    super(message);
++  }
++}
++
++export async function call<T = any>(path: string, method = 'GET', body?: unknown): Promise<T> {
++  const res = await fetch(api(path), {
++    method,
++    headers: body ? { 'Content-Type': 'application/json' } : undefined,
++    body: body ? JSON.stringify(body) : undefined,
++  });
++  const data = await res.json().catch(() => ({}));
++  if (!res.ok) throw new ApiError(data.message || data.error || 'Request failed', res.status, data.error);
++  return data;
++}
++
++export const passkeysSupported = () => typeof window !== 'undefined' && browserSupportsWebAuthn();
++
++/** Turns WebAuthn browser errors into friendly messages. Returns null if the user just cancelled. */
++export function describeError(e: unknown): string | null {
++  if (e instanceof ApiError) return e.message;
++  const err = e as Error;
++  if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') return null;
++  if (err?.name === 'InvalidStateError') return 'This passkey is already registered on this device.';
++  return err?.message || 'Something went wrong. Please try again.';
++}
++
++/** Create a passkey; creates the account first when signed out (username required). */
++export async function registerPasskey(opts: { username?: string; name?: string } = {}) {
++  const options = await call('/register/options', 'POST', { username: opts.username });
++  const response = await startRegistration({ optionsJSON: options });
++  return call('/register/verify', 'POST', { response, name: opts.name });
++}
++
++export async function signInWithPasskey(opts: { useBrowserAutofill?: boolean; signal?: AbortSignal } = {}) {
++  const options = await call('/authenticate/options', 'POST', { purpose: 'signin' });
++  const response = await startAuthentication({ optionsJSON: options, useBrowserAutofill: opts.useBrowserAutofill });
++  return call('/authenticate/verify', 'POST', { response });
++}
++
++export async function reauthenticate() {
++  const options = await call('/authenticate/options', 'POST', { purpose: 'reauth' });
++  const response = await startAuthentication({ optionsJSON: options });
++  return call('/authenticate/verify', 'POST', { response });
++}
++
++/** Run a sensitive request; if the server asks for reauthentication, prompt for a passkey and retry once. */
++export async function withReauth<T>(fn: () => Promise<T>): Promise<T> {
++  try {
++    return await fn();
++  } catch (e) {
++    if (e instanceof ApiError && e.code === 'reauth_required') {
++      await reauthenticate();
++      return fn();
++    }
++    throw e;
++  }
++}
++
++export async function signOut() {
++  await call('/signout', 'POST', {});
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..993eadf
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,146 @@
++import { promises as fs } from 'node:fs';
++import path from 'node:path';
++import { randomBytes } from 'node:crypto';
++import type { APIContext } from 'astro';
++import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
++
++export const RP_NAME = 'The DevTools Times';
++/** How long a successful sign-in or reauthentication counts as "recent". */
++export const REAUTH_WINDOW_MS = 5 * 60 * 1000;
++const CHALLENGE_TTL_MS = 5 * 60 * 1000;
++
++export interface PasskeyRecord {
++  id: string; // base64url credential ID
++  publicKey: string; // base64url COSE public key
++  counter: number;
++  transports?: AuthenticatorTransportFuture[];
++  deviceType: 'singleDevice' | 'multiDevice';
++  backedUp: boolean;
++  name: string;
++  createdAt: number;
++  lastUsedAt: number | null;
++}
++
++export interface UserRecord {
++  id: string; // base64url random user handle
++  username: string;
++  createdAt: number;
++  passkeys: PasskeyRecord[];
++}
++
++interface Db {
++  users: UserRecord[];
++}
++
++// ---- Storage (JSON file, serialized writes) ----
++
++const DB_PATH = process.env.PASSKEY_DB ?? path.join(process.cwd(), 'data', 'passkeys.json');
++let queue: Promise<unknown> = Promise.resolve();
++
++async function read(): Promise<Db> {
++  try {
++    return JSON.parse(await fs.readFile(DB_PATH, 'utf8'));
++  } catch (e: any) {
++    if (e.code === 'ENOENT') return { users: [] };
++    throw e;
++  }
++}
++
++/** Run a read-modify-write transaction; writes are serialized and atomic. */
++export function withDb<T>(fn: (db: Db) => T | Promise<T>): Promise<T> {
++  const run = queue.then(async () => {
++    const db = await read();
++    const result = await fn(db);
++    await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
++    const tmp = `${DB_PATH}.${process.pid}.tmp`;
++    await fs.writeFile(tmp, JSON.stringify(db, null, 2));
++    await fs.rename(tmp, DB_PATH);
++    return result;
++  });
++  queue = run.catch(() => {});
++  return run;
++}
++
++export async function findUserById(id: string) {
++  return (await read()).users.find((u) => u.id === id) ?? null;
++}
++
++export async function findUserByUsername(username: string) {
++  const n = normalizeUsername(username);
++  return (await read()).users.find((u) => u.username.toLowerCase() === n) ?? null;
++}
++
++export async function findUserByCredentialId(credId: string) {
++  return (await read()).users.find((u) => u.passkeys.some((p) => p.id === credId)) ?? null;
++}
++
++export function normalizeUsername(s: unknown) {
++  return typeof s === 'string' ? s.trim().toLowerCase() : '';
++}
++
++export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/i;
++
++export function newUserId() {
++  return randomBytes(32).toString('base64url');
++}
++
++// ---- Relying party ----
++
++export function rp(ctx: APIContext) {
++  const origin = process.env.PASSKEY_ORIGIN ?? ctx.url.origin;
++  return { origin, rpID: process.env.PASSKEY_RP_ID ?? new URL(origin).hostname };
++}
++
++// ---- Session state ----
++
++export type ChallengeState =
++  | { purpose: 'register'; challenge: string; expires: number; userId: string; username: string; isNew: boolean }
++  | { purpose: 'signin' | 'reauth'; challenge: string; expires: number };
++
++export async function saveChallenge(ctx: APIContext, state: Omit<ChallengeState, 'expires'>) {
++  ctx.session?.set('passkeyChallenge', { ...state, expires: Date.now() + CHALLENGE_TTL_MS });
++}
++
++/** Challenges are single-use: reading one removes it. */
++export async function takeChallenge<P extends ChallengeState['purpose']>(
++  ctx: APIContext,
++  purposes: P[],
++): Promise<Extract<ChallengeState, { purpose: P }> | null> {
++  const state = (await ctx.session?.get('passkeyChallenge')) as ChallengeState | undefined;
++  ctx.session?.delete('passkeyChallenge');
++  if (!state || state.expires < Date.now() || !purposes.includes(state.purpose as P)) return null;
++  return state as any;
++}
++
++export async function currentUser(ctx: APIContext) {
++  const id = await ctx.session?.get('userId');
++  return id ? findUserById(id) : null;
++}
++
++export async function startSession(ctx: APIContext, userId: string) {
++  await ctx.session?.regenerate();
++  ctx.session?.set('userId', userId);
++  ctx.session?.set('authenticatedAt', Date.now());
++}
++
++export function markReauthenticated(ctx: APIContext) {
++  ctx.session?.set('authenticatedAt', Date.now());
++}
++
++export async function hasRecentAuth(ctx: APIContext) {
++  const at = (await ctx.session?.get('authenticatedAt')) as number | undefined;
++  return !!at && Date.now() - at < REAUTH_WINDOW_MS;
++}
++
++// ---- Responses ----
++
++export function json(body: unknown, status = 200) {
++  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
++}
++
++export const reauthRequired = () => json({ error: 'reauth_required', message: 'Please confirm it is you with your passkey.' }, 403);
++
++export function publicPasskey(p: PasskeyRecord) {
++  const { publicKey, counter, ...rest } = p;
++  return rest;
++}
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..1c7a895
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,15 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManager from '../components/PasskeyManager';
++import { findUserById } from '../lib/passkeys';
++
++const userId = await Astro.session?.get("userId");
++const user = userId ? await findUserById(userId) : null;
++if (!user) return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++---
++
++<Layout title="Account | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <PasskeyManager client:load username={user.username} />
++  </div>
++</Layout>
+diff --git a/src/pages/api/passkeys/[id].ts b/src/pages/api/passkeys/[id].ts
+new file mode 100644
+index 0000000..a354369
+--- /dev/null
++++ b/src/pages/api/passkeys/[id].ts
+@@ -0,0 +1,38 @@
++import type { APIRoute } from 'astro';
++import { currentUser, hasRecentAuth, json, reauthRequired, withDb } from '../../../lib/passkeys';
++
++export const prerender = false;
++
++/** Rename a passkey. */
++export const PATCH: APIRoute = async (ctx) => {
++  const user = await currentUser(ctx);
++  if (!user) return json({ error: 'Not signed in.' }, 401);
++  const body = await ctx.request.json().catch(() => ({}));
++  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : '';
++  if (!name) return json({ error: 'Name is required.' }, 400);
++
++  const ok = await withDb((db) => {
++    const p = db.users.find((u) => u.id === user.id)?.passkeys.find((k) => k.id === ctx.params.id);
++    if (p) p.name = name;
++    return !!p;
++  });
++  return ok ? json({ name }) : json({ error: 'Passkey not found.' }, 404);
++};
++
++/** Remove a passkey. Requires recent authentication; the last passkey cannot be removed. */
++export const DELETE: APIRoute = async (ctx) => {
++  const user = await currentUser(ctx);
++  if (!user) return json({ error: 'Not signed in.' }, 401);
++  if (!(await hasRecentAuth(ctx))) return reauthRequired();
++
++  const result = await withDb((db) => {
++    const u = db.users.find((x) => x.id === user.id);
++    if (!u?.passkeys.some((k) => k.id === ctx.params.id)) return 'missing' as const;
++    if (u.passkeys.length <= 1) return 'last' as const;
++    u.passkeys = u.passkeys.filter((k) => k.id !== ctx.params.id);
++    return 'ok' as const;
++  });
++  if (result === 'missing') return json({ error: 'Passkey not found.' }, 404);
++  if (result === 'last') return json({ error: 'You cannot remove your only passkey, or you would be locked out.' }, 409);
++  return json({ removed: true });
++};
+diff --git a/src/pages/api/passkeys/authenticate/options.ts b/src/pages/api/passkeys/authenticate/options.ts
+new file mode 100644
+index 0000000..bbd82af
+--- /dev/null
++++ b/src/pages/api/passkeys/authenticate/options.ts
+@@ -0,0 +1,31 @@
++import type { APIRoute } from 'astro';
++import { generateAuthenticationOptions } from '@simplewebauthn/server';
++import { currentUser, json, rp, saveChallenge } from '../../../../lib/passkeys';
++
++export const prerender = false;
++
++/**
++ * body: { purpose: 'signin' | 'reauth' }
++ * signin uses discoverable credentials (no username needed);
++ * reauth is limited to the signed-in user's passkeys and requires user verification.
++ */
++export const POST: APIRoute = async (ctx) => {
++  const body = await ctx.request.json().catch(() => ({}));
++  const purpose = body.purpose === 'reauth' ? 'reauth' : 'signin';
++  const { rpID } = rp(ctx);
++
++  let allowCredentials;
++  if (purpose === 'reauth') {
++    const user = await currentUser(ctx);
++    if (!user) return json({ error: 'Not signed in.' }, 401);
++    allowCredentials = user.passkeys.map((p) => ({ id: p.id, transports: p.transports }));
++  }
++
++  const options = await generateAuthenticationOptions({
++    rpID,
++    allowCredentials,
++    userVerification: purpose === 'reauth' ? 'required' : 'preferred',
++  });
++  await saveChallenge(ctx, { purpose, challenge: options.challenge });
++  return json(options);
++};
+diff --git a/src/pages/api/passkeys/authenticate/verify.ts b/src/pages/api/passkeys/authenticate/verify.ts
+new file mode 100644
+index 0000000..fb64312
+--- /dev/null
++++ b/src/pages/api/passkeys/authenticate/verify.ts
+@@ -0,0 +1,59 @@
++import type { APIRoute } from 'astro';
++import { verifyAuthenticationResponse } from '@simplewebauthn/server';
++import {
++  currentUser, findUserByCredentialId, json, markReauthenticated, rp, startSession, takeChallenge, withDb,
++} from '../../../../lib/passkeys';
++
++export const prerender = false;
++
++export const POST: APIRoute = async (ctx) => {
++  const state = await takeChallenge(ctx, ['signin', 'reauth']);
++  if (!state) return json({ error: 'Request expired. Please try again.' }, 400);
++
++  const body = await ctx.request.json().catch(() => null);
++  const response = body?.response;
++  if (!response?.id) return json({ error: 'Invalid request.' }, 400);
++
++  const user = await findUserByCredentialId(response.id);
++  const passkey = user?.passkeys.find((p) => p.id === response.id);
++  if (!user || !passkey) return json({ error: 'Passkey not recognized.' }, 401);
++
++  if (state.purpose === 'reauth') {
++    const me = await currentUser(ctx);
++    if (!me || me.id !== user.id) return json({ error: 'That passkey belongs to a different account.' }, 403);
++  }
++
++  const { origin, rpID } = rp(ctx);
++  let verification;
++  try {
++    verification = await verifyAuthenticationResponse({
++      response,
++      expectedChallenge: state.challenge,
++      expectedOrigin: origin,
++      expectedRPID: rpID,
++      requireUserVerification: state.purpose === 'reauth',
++      credential: {
++        id: passkey.id,
++        publicKey: Buffer.from(passkey.publicKey, 'base64url'),
++        counter: passkey.counter,
++        transports: passkey.transports,
++      },
++    });
++  } catch (e: any) {
++    return json({ error: `Could not verify passkey: ${e.message}` }, 401);
++  }
++  if (!verification.verified) return json({ error: 'Passkey verification failed.' }, 401);
++
++  await withDb((db) => {
++    const p = db.users.find((u) => u.id === user.id)?.passkeys.find((k) => k.id === passkey.id);
++    if (p) {
++      p.counter = verification.authenticationInfo.newCounter;
++      p.backedUp = verification.authenticationInfo.credentialBackedUp;
++      p.lastUsedAt = Date.now();
++    }
++  });
++
++  if (state.purpose === 'reauth') markReauthenticated(ctx);
++  else await startSession(ctx, user.id);
++  return json({ verified: true, username: user.username });
++};
+diff --git a/src/pages/api/passkeys/index.ts b/src/pages/api/passkeys/index.ts
+new file mode 100644
+index 0000000..65d69aa
+--- /dev/null
++++ b/src/pages/api/passkeys/index.ts
+@@ -0,0 +1,10 @@
++import type { APIRoute } from 'astro';
++import { currentUser, json, publicPasskey } from '../../../lib/passkeys';
++
++export const prerender = false;
++
++export const GET: APIRoute = async (ctx) => {
++  const user = await currentUser(ctx);
++  if (!user) return json({ error: 'Not signed in.' }, 401);
++  return json({ username: user.username, passkeys: user.passkeys.map(publicPasskey) });
++};
+diff --git a/src/pages/api/passkeys/register/options.ts b/src/pages/api/passkeys/register/options.ts
+new file mode 100644
+index 0000000..036b1db
+--- /dev/null
++++ b/src/pages/api/passkeys/register/options.ts
+@@ -0,0 +1,45 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions } from '@simplewebauthn/server';
++import {
++  RP_NAME, USERNAME_RE, currentUser, findUserByUsername, hasRecentAuth, json, newUserId,
++  normalizeUsername, reauthRequired, rp, saveChallenge,
++} from '../../../../lib/passkeys';
++
++export const prerender = false;
++
++/**
++ * Signed out: starts account creation with a first passkey (body: { username }).
++ * Signed in: starts adding another passkey; requires recent authentication.
++ */
++export const POST: APIRoute = async (ctx) => {
++  const body = await ctx.request.json().catch(() => ({}));
++  const existing = await currentUser(ctx);
++  let userId: string, username: string, excluded: { id: string; transports?: any }[] = [];
++
++  if (existing) {
++    if (!(await hasRecentAuth(ctx))) return reauthRequired();
++    ({ id: userId, username } = existing);
++    excluded = existing.passkeys;
++  } else {
++    username = normalizeUsername(body.username);
++    if (!USERNAME_RE.test(username)) {
++      return json({ error: 'Username must be 3–32 characters: letters, numbers, dots, dashes or underscores.' }, 400);
++    }
++    if (await findUserByUsername(username)) return json({ error: 'That username is already taken.' }, 409);
++    userId = newUserId();
++  }
++
++  const { rpID } = rp(ctx);
++  const options = await generateRegistrationOptions({
++    rpName: RP_NAME,
++    rpID,
++    userID: Buffer.from(userId, 'base64url'),
++    userName: username,
++    attestationType: 'none',
++    excludeCredentials: excluded.map((p) => ({ id: p.id, transports: p.transports })),
++    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++  });
++
++  await saveChallenge(ctx, { purpose: 'register', challenge: options.challenge, userId, username, isNew: !existing });
++  return json(options);
++};
+diff --git a/src/pages/api/passkeys/register/verify.ts b/src/pages/api/passkeys/register/verify.ts
+new file mode 100644
+index 0000000..d896e46
+--- /dev/null
++++ b/src/pages/api/passkeys/register/verify.ts
+@@ -0,0 +1,69 @@
++import type { APIRoute } from 'astro';
++import { verifyRegistrationResponse } from '@simplewebauthn/server';
++import {
++  currentUser, findUserByCredentialId, hasRecentAuth, json, reauthRequired, rp, startSession,
++  takeChallenge, withDb, type PasskeyRecord,
++} from '../../../../lib/passkeys';
++
++export const prerender = false;
++
++export const POST: APIRoute = async (ctx) => {
++  const state = await takeChallenge(ctx, ['register']);
++  if (!state) return json({ error: 'Registration expired. Please try again.' }, 400);
++
++  const existing = await currentUser(ctx);
++  if (state.isNew ? !!existing : existing?.id !== state.userId) return json({ error: 'Session changed. Please try again.' }, 400);
++  if (existing && !(await hasRecentAuth(ctx))) return reauthRequired();
++
++  const body = await ctx.request.json().catch(() => null);
++  if (!body?.response) return json({ error: 'Invalid request.' }, 400);
++
++  const { origin, rpID } = rp(ctx);
++  let verification;
++  try {
++    verification = await verifyRegistrationResponse({
++      response: body.response,
++      expectedChallenge: state.challenge,
++      expectedOrigin: origin,
++      expectedRPID: rpID,
++    });
++  } catch (e: any) {
++    return json({ error: `Could not verify passkey: ${e.message}` }, 400);
++  }
++  if (!verification.verified || !verification.registrationInfo) return json({ error: 'Passkey verification failed.' }, 400);
++
++  const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
++  if (await findUserByCredentialId(credential.id)) return json({ error: 'This passkey is already registered.' }, 409);
++
++  const name = (typeof body.name === 'string' && body.name.trim().slice(0, 60)) || defaultName(credentialDeviceType, credentialBackedUp);
++  const record: PasskeyRecord = {
++    id: credential.id,
++    publicKey: Buffer.from(credential.publicKey).toString('base64url'),
++    counter: credential.counter,
++    transports: credential.transports,
++    deviceType: credentialDeviceType,
++    backedUp: credentialBackedUp,
++    name,
++    createdAt: Date.now(),
++    lastUsedAt: null,
++  };
++
++  const result = await withDb((db) => {
++    if (state.isNew) {
++      if (db.users.some((u) => u.username.toLowerCase() === state.username)) return 'taken' as const;
++      db.users.push({ id: state.userId, username: state.username, createdAt: Date.now(), passkeys: [record] });
++    } else {
++      db.users.find((u) => u.id === state.userId)?.passkeys.push(record);
++    }
++    return 'ok' as const;
++  });
++  if (result === 'taken') return json({ error: 'That username is already taken.' }, 409);
++
++  if (state.isNew) await startSession(ctx, state.userId);
++  return json({ verified: true, name });
++};
++
++function defaultName(type: string, backedUp: boolean) {
++  const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++  return `${type === 'multiDevice' || backedUp ? 'Synced passkey' : 'Device passkey'} · ${date}`;
++}
+diff --git a/src/pages/api/passkeys/signout.ts b/src/pages/api/passkeys/signout.ts
+new file mode 100644
+index 0000000..9d919f3
+--- /dev/null
++++ b/src/pages/api/passkeys/signout.ts
+@@ -0,0 +1,11 @@
++import type { APIRoute } from 'astro';
++import { json } from '../../../lib/passkeys';
++
++export const prerender = false;
++
++export const POST: APIRoute = async ({ session }) => {
++  session?.delete('userId');
++  session?.delete('authenticatedAt');
++  await session?.regenerate();
++  return json({ signedOut: true });
++};

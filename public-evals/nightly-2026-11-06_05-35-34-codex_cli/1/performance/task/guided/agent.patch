@@ -1,0 +1,59 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,54 @@
++# Daily Grind performance audit
++
++Audited 2026-11-06. Scope: the supplied static homepage, its assets and package configuration. Validation uses source inspection, downloaded asset sizes, file metadata and a dependency-free resource check. No browser, dev/preview server, server entrypoint or Lighthouse run was used. This project has no build script; no build was required.
++
++## Findings and changes
++
++| Area | Finding | Resolution |
++| --- | --- | --- |
++| LCP discovery | The hero was a CSS background, without a preload or priority hint. Its request depended on CSS processing. | Put the image in the initial HTML as a `picture` with one eager, high-priority `img`. The preload scanner can discover it directly. No redundant image preload is needed. |
++| Image delivery | Every viewport referenced the same 1350 × 900 remote image. The sampled response was a 157,968-byte JPEG. | Self-host the same photograph in AVIF with a WebP fallback, with 640, 960, 1280 and 1920px candidates. `sizes` accounts for full-width desktop display, portrait `object-fit: cover` cropping and the minimum hero height. |
++| Network chain | The hero required a connection to `images.unsplash.com`. | All render resources are now same-origin or inline. There are no third-party runtime requests. |
++| Layout stability | The original hero already reserved space, but mobile browser toolbar changes could resize its `vh` height. | Preserve reserved hero geometry, include intrinsic image dimensions, use stable `svh` with a `vh` fallback and retain a dark background while loading. Keep the photo outside content flow. |
++| Mobile interactions | The single-row navigation could overflow; links had small touch targets. | Wrap navigation links below 800px, provide 44px-tall navigation targets and let the product grid shrink below its previous 250px floor. Scale the hero heading for narrow screens. |
++| INP / main thread | No client JavaScript, event handlers, timers, hydration, DOM measurement loops or third-party widgets exist in this repository. | Preserve native link interactions and zero JavaScript. No evidence of a script-based slow interaction exists to fix; destination latency requires deployment data. |
++| CSS / fonts | The page uses a small inline stylesheet and system fonts, with no CSS imports or external styles. | Preserve this short rendering path. Do not add a framework, font downloads, content-visibility or a service worker for this small page. |
++| Asset versioning | Previously the image was remotely managed. | Commit image files with content hashes, enabling safe immutable asset caching when configured on the host. |
++
++## Measured payloads
++
++These are file sizes, **not measured Core Web Vitals or load times**. Browser image selection depends on viewport, pixel density, cover cropping and format support. Only one picture candidate is normally downloaded, not the whole table.
++
++| Width | AVIF bytes | WebP bytes |
++| --- | ---: | ---: |
++| 640 | 17,513 | 30,450 |
++| 960 | 27,407 | 52,788 |
++| 1280 | 39,023 | 83,756 |
++| 1920 | 65,383 | 177,082 |
++
++Compared with the sampled original JPEG, the 1280px AVIF is 75.3% smaller and the 640px AVIF is 88.9% smaller. These comparisons use different resolutions and compression settings; they do not establish equal visual quality. The largest AVIF is still 58.6% smaller than the original. The 1920px WebP is larger than the original because it supplies a higher resolution; smaller WebP candidates reduce transfer for smaller displays.
++
++The final inline HTML/CSS is approximately 6.4 KB uncompressed (original: 4,708 bytes). Client JavaScript remains 0 bytes. The slightly larger markup exposes responsive image candidates and adds mobile layout rules. No extra blocking stylesheet request was introduced.
++
++## Validation
++
++Run `npm run check:performance`. It reads files only and verifies:
++
++- Hero priority, eager loading, decorative semantics and intrinsic dimensions.
++- Matching AVIF/WebP sizing policies and all eight local candidates.
++- Image signatures, encoded widths, the fallback image height and SHA-256 filename fingerprints.
++- Per-file budgets of 75 KB for AVIF, 190 KB for WebP and 12 KB for HTML/CSS.
++- No missing or unreferenced image files, runtime scripts, remote CSS backgrounds or external blocking stylesheets.
++
++Also run `git diff --check`. Source comparison confirms the existing text and all navigation destinations are retained. These checks protect resource delivery; they cannot verify paint timing, visual quality, viewport behavior, real input latency or browser CLS.
++
++## Deployment considerations and remaining measurements
++
++- **Caching:** No production server configuration is supplied. Configure `/assets/coffee-hero-*` with `Cache-Control: public, max-age=31536000, immutable`, and the public homepage with `Cache-Control: no-cache` so it revalidates. Do not apply public caching to account/logout responses. These headers have not been configured or verified by this change.
++- **Compression and transport:** Enable Brotli or gzip for HTML at the host and verify MIME types (`image/avif`, `image/webp`). Image files are already compressed. TTFB, redirects, HTTP version, CDN behavior and actual response headers cannot be inferred from local source.
++- **Core Web Vitals:** No LCP, INP, CLS or Lighthouse score is claimed. After deployment, use available field data to assess mobile/desktop LCP, INP and CLS at the 75th percentile, and separate LCP into TTFB, resource delay, download time and render delay. Use existing analytics or CrUX/Search Console if available; no tracking script was added.
++- **Destinations:** `/menu`, `/locations`, `/rewards`, `/account`, `/logout`, `/order-online` and other linked pages have no implementations in the supplied repository. Their response times and interaction behavior are outside the evidence available here. Links are preserved. Avoid automatic prefetch/prerender of account, ordering or logout URLs, which can trigger unintended work or side effects.
++
++## Photograph provenance
++
++The assets use the same existing Unsplash photograph: `https://images.unsplash.com/photo-1495474472287-4d71bcdd2085`. Variants were downloaded with `fm=avif&q=50` or `fm=webp&q=55`, `fit=crop` and the indicated width. The original aspect ratio and centered cover treatment are preserved. No generated imagery was used.

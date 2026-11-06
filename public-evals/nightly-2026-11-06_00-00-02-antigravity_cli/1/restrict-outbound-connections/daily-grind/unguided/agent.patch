@@ -1,0 +1,283 @@
+diff --git a/index.html b/index.html
+index 66c9173..da0eea1 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,65 @@
+       background: #3e2723;
+     }
+ 
++    .newsletter-section {
++      background: white;
++      padding: 40px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .newsletter-section h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .newsletter-form {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++      flex-wrap: wrap;
++    }
++
++    .newsletter-form input[type="email"] {
++      padding: 10px 15px;
++      font-size: 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      min-width: 260px;
++    }
++
++    .newsletter-form button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      font-size: 1rem;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter-form button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-message {
++      margin-top: 15px;
++      font-weight: 500;
++      min-height: 1.5em;
++    }
++
++    .newsletter-message.success {
++      color: #2e7d32;
++    }
++
++    .newsletter-message.error {
++      color: #c62828;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +254,23 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="newsletter-section" id="newsletter">
++      <h2>Subscribe to Our Newsletter</h2>
++      <p>Get brewing tips, seasonal release alerts, and exclusive subscriber perks delivered straight to your inbox.</p>
++      <form id="newsletter-form" class="newsletter-form" action="/newsletter" method="POST">
++        <input
++          type="email"
++          id="newsletter-email"
++          name="email"
++          placeholder="Enter your email address"
++          aria-label="Email address"
++          required
++        >
++        <button type="submit" id="newsletter-submit">Subscribe</button>
++      </form>
++      <div id="newsletter-message" class="newsletter-message" role="status" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +283,58 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const messageEl = document.getElementById('newsletter-message');
++
++      function showMessage(text, isError) {
++        messageEl.textContent = text;
++        messageEl.className = 'newsletter-message ' + (isError ? 'error' : 'success');
++      }
++
++      document.addEventListener('securitypolicyviolation', function (e) {
++        showMessage(
++          'Sorry, the request could not go through because connections to external servers (' + (e.blockedURI || 'blocked destination') + ') are restricted.',
++          true
++        );
++      });
++
++      form.addEventListener('submit', async function (e) {
++        e.preventDefault();
++        const email = emailInput.value.trim();
++        if (!email) {
++          showMessage('Please enter a valid email address.', true);
++          return;
++        }
++
++        const endpoint = form.getAttribute('action') || '/newsletter';
++
++        try {
++          const response = await fetch(endpoint, {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json'
++            },
++            body: JSON.stringify({ email: email })
++          });
++
++          const data = await response.json().catch(function () { return {}; });
++          if (!response.ok) {
++            showMessage(data.error || 'Sorry, your request could not go through. Please try again later.', true);
++            return;
++          }
++
++          showMessage(data.message || 'Thank you for subscribing to our newsletter!', false);
++          form.reset();
++        } catch (err) {
++          showMessage('Sorry, your request could not go through. Please check your connection and try again.', true);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..6089380
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,111 @@
++const http = require('http');
++const fs = require('fs');
++const path = require('path');
++const querystring = require('querystring');
++
++const PORT = process.env.PORT || 11222;
++
++const CSP_HEADER = [
++  "default-src 'self'",
++  "connect-src 'self'",
++  "img-src 'self' https://images.unsplash.com",
++  "script-src 'self' 'unsafe-inline'",
++  "style-src 'self' 'unsafe-inline'",
++  "form-action 'self'",
++  "base-uri 'self'",
++  "object-src 'none'"
++].join('; ');
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'text/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.svg': 'image/svg+xml',
++  '.ico': 'image/x-icon'
++};
++
++const subscribers = new Set();
++
++function parseEmail(rawBody, contentType) {
++  if (!rawBody) return '';
++  if (contentType.includes('application/json')) {
++    try {
++      const parsed = JSON.parse(rawBody);
++      return (parsed.email || '').trim();
++    } catch {
++      return '';
++    }
++  }
++  if (contentType.includes('application/x-www-form-urlencoded')) {
++    const parsed = querystring.parse(rawBody);
++    return (parsed.email || '').trim();
++  }
++  try {
++    const parsed = JSON.parse(rawBody);
++    if (parsed && parsed.email) return String(parsed.email).trim();
++  } catch {
++    // Fallback to query string
++  }
++  const parsed = querystring.parse(rawBody);
++  return (parsed.email || '').trim();
++}
++
++const server = http.createServer((req, res) => {
++  res.setHeader('Content-Security-Policy', CSP_HEADER);
++
++  const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = reqUrl.pathname;
++
++  if (req.method === 'POST' && (
++    pathname === '/newsletter' ||
++    pathname === '/api/newsletter' ||
++    pathname === '/subscribe' ||
++    pathname === '/api/subscribe'
++  )) {
++    let body = '';
++    req.on('data', (chunk) => {
++      body += chunk.toString();
++    });
++    req.on('end', () => {
++      const contentType = req.headers['content-type'] || '';
++      const email = parseEmail(body, contentType);
++      if (!email || !email.includes('@')) {
++        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
++        res.end(JSON.stringify({ ok: false, error: 'Please provide a valid email address.' }));
++        return;
++      }
++      subscribers.add(email);
++      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++      res.end(JSON.stringify({ ok: true, message: 'Thank you for subscribing to The Daily Grind newsletter!', email }));
++    });
++    return;
++  }
++
++  let filePath = pathname === '/' ? '/index.html' : pathname;
++  const resolvedPath = path.resolve(__dirname, '.' + filePath);
++
++  if (!resolvedPath.startsWith(__dirname)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  fs.readFile(resolvedPath, (err, content) => {
++    if (err) {
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end('Not Found');
++      return;
++    }
++    const ext = path.extname(resolvedPath).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++    res.writeHead(200, { 'Content-Type': contentType });
++    res.end(content);
++  });
++});
++
++server.listen(PORT, () => {
++  console.log(`Server listening on http://localhost:${PORT}`);
++});

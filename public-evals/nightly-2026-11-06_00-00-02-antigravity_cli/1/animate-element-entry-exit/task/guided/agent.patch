@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,23 +112,86 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: block;
++      opacity: 1;
++      scale: 1;
++      transition:
++        display 0.4s,
++        opacity 0.4s ease-out,
++        scale 0.4s ease-out;
++      transition-behavior: allow-discrete;
+     }
+ 
++    @starting-style {
++      .card {
++        opacity: 0;
++        scale: 0.9;
++      }
++    }
++
++    .card:where([hidden], [data-closing]) {
++      opacity: 0;
++      scale: 0.9;
++    }
++
++    .card[hidden] {
++      display: none;
++      opacity: 0;
++      scale: 0.9;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        scale: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        .card {
++          scale: none;
++        }
++      }
++
++      .card:where([hidden], [data-closing]) {
++        scale: none;
++      }
++
++      .card[hidden] {
++        scale: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-section {
++      margin-top: 50px;
++    }
++
++    .promo-controls {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin: 15px 0 20px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+@@ -194,8 +257,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo-section" aria-labelledby="promoHeading">
++      <h2 id="promoHeading" style="text-align: center;">Special Promotions</h2>
++      <div class="promo-controls">
++        <button id="toggleBtn" class="btn" type="button">Toggle Featured Promo</button>
++        <button id="addBtn" class="btn" type="button">Add Promo Card</button>
++        <button id="removeBtn" class="btn" type="button">Remove Last Promo</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <h3>Morning Happy Hour</h3>
++          <p>Enjoy 20% off all handcrafted espresso drinks before 9 AM.</p>
++          <a href="/order-online" class="btn">Claim Offer</a>
++        </div>
++        <div class="card">
++          <h3>Double Rewards Friday</h3>
++          <p>Earn 2x points on every whole-bean coffee bag purchase this Friday.</p>
++          <a href="/rewards" class="btn">Join Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +290,121 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const domContainer = document.getElementById('domContainer');
++    const toggleCard = document.getElementById('toggleCard');
++    const toggleBtn = document.getElementById('toggleBtn');
++    const addBtn = document.getElementById('addBtn');
++    const removeBtn = document.getElementById('removeBtn');
++
++    const promoOffers = [
++      {
++        title: 'Free Pastry Pairing',
++        description: 'Get a complimentary butter croissant with any large seasonal latte.',
++        link: '/menu/seasonal',
++        cta: 'View Menu'
++      },
++      {
++        title: 'Roaster’s Flight Sampler',
++        description: 'Try three single-origin pour-overs for the price of two all weekend.',
++        link: '/order-online',
++        cta: 'Order Sampler'
++      },
++      {
++        title: 'Bring a Mug Discount',
++        description: 'Save $1.00 on every refill when you bring your own reusable tumbler.',
++        link: '/locations',
++        cta: 'Find a Cafe'
++      }
++    ];
++    let promoIndex = 0;
++
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    async function hideElement(el) {
++      if (canTransitionDisplay()) {
++        el.hidden = true;
++      } else {
++        el.setAttribute('data-closing', '');
++      }
++
++      const animations = el.getAnimations();
++      if (animations.length > 0) {
++        await Promise.race([
++          Promise.allSettled(animations.map((a) => a.finished)),
++          new Promise((r) => setTimeout(r, 2000)),
++        ]);
++      }
++
++      if (el.hasAttribute('data-closing')) {
++        el.removeAttribute('data-closing');
++        el.hidden = true;
++      }
++    }
++
++    function showElement(el) {
++      el.removeAttribute('data-closing');
++      el.hidden = false;
++    }
++
++    async function removeElement(el) {
++      await hideElement(el);
++      el.remove();
++    }
++
++    toggleBtn.addEventListener('click', () => {
++      if (toggleCard.hidden || toggleCard.hasAttribute('data-closing')) {
++        showElement(toggleCard);
++      } else {
++        hideElement(toggleCard);
++      }
++    });
++
++    addBtn.addEventListener('click', () => {
++      const offer = promoOffers[promoIndex % promoOffers.length];
++      promoIndex += 1;
++
++      const card = document.createElement('div');
++      card.className = 'card';
++
++      const heading = document.createElement('h3');
++      heading.textContent = offer.title;
++
++      const text = document.createElement('p');
++      text.textContent = offer.description;
++
++      const link = document.createElement('a');
++      link.href = offer.link;
++      link.className = 'btn';
++      link.textContent = offer.cta;
++
++      card.append(heading, text, link);
++      domContainer.appendChild(card);
++    });
++
++    removeBtn.addEventListener('click', async () => {
++      const cards = domContainer.querySelectorAll('.card:not([data-removing])');
++      const lastCard = cards[cards.length - 1];
++      if (!lastCard) return;
++      lastCard.setAttribute('data-removing', '');
++      await removeElement(lastCard);
++    });
++  </script>
+ </body>
+ 
+ </html>

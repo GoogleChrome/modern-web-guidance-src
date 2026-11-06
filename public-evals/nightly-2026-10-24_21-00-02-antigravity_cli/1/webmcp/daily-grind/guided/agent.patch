@@ -1,0 +1,914 @@
+diff --git a/index.html b/index.html
+index 66c9173..1347980 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,135 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive & WebMCP Sections */
++    .section-title {
++      text-align: center;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      align-items: center;
++      margin: 10px 0;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .badge {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      text-transform: uppercase;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++    }
++
++    .panel-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++      margin-top: 40px;
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel h2 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.35rem;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++      font-size: 0.9rem;
++    }
++
++    .form-group input,
++    .form-group select {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .status-banner {
++      margin-top: 14px;
++      padding: 10px 12px;
++      border-radius: 5px;
++      background: #efebe9;
++      color: var(--text);
++      font-size: 0.9rem;
++      min-height: 42px;
++    }
++
++    .cart-list {
++      list-style: none;
++      margin: 12px 0;
++    }
++
++    .cart-list li {
++      display: flex;
++      justify-content: space-between;
++      padding: 6px 0;
++      border-bottom: 1px solid #efebe9;
++      font-size: 0.92rem;
++    }
++
++    /* WebMCP Agent Visual Feedback */
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      background-color: rgba(255, 171, 64, 0.08);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #d84315;
++    }
+   </style>
+ </head>
+ 
+@@ -160,10 +289,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu-section">Menu</a></li>
++      <li><a href="#locations-section">Locations</a></li>
++      <li><a href="#rewards-section">Rewards</a></li>
++      <li><a href="#order-section">Order &amp; Cart</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,30 +300,142 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-section" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section id="menu-section">
++      <h2 class="section-title">Seasonal Favorites &amp; Menu</h2>
++      <p class="section-subtitle" id="agent-activity-status" aria-live="polite">
++        Browse our freshly roasted selections or ask your AI assistant to search the menu, customize a drink, or check rewards.
++      </p>
++
++      <div class="panel" style="margin-bottom: 24px;">
++        <form id="menu-search-form"
++              toolname="search_menu"
++              tooldescription="Search and filter the coffee shop menu by keyword, category, or dietary preference. Use when the user wants to find drinks or pastries on the menu."
++              toolautosubmit>
++          <div class="grid" style="margin-top: 0; align-items: end;">
++            <div class="form-group" style="margin-bottom: 0;">
++              <label for="search-query">Search Keyword</label>
++              <input type="text"
++                     id="search-query"
++                     name="query"
++                     placeholder="e.g., oat, espresso, cold brew"
++                     toolparamdescription="Keyword matching drink name, flavor notes, or ingredients (e.g., maple, espresso, oat)">
++            </div>
++            <div class="form-group" style="margin-bottom: 0;">
++              <label for="search-category">Category</label>
++              <select id="search-category"
++                      name="category"
++                      toolparamdescription="Menu category to filter by">
++                <option value="all">All Categories</option>
++                <option value="seasonal">Seasonal</option>
++                <option value="espresso">Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++                <option value="bakery">Bakery</option>
++              </select>
++            </div>
++            <div class="form-group" style="margin-bottom: 0;">
++              <button type="submit" class="btn" style="width: 100%; margin-top: 0;">Filter Menu</button>
++            </div>
++          </div>
++        </form>
++      </div>
++
++      <div class="grid" id="menu-grid">
++        <div class="card" data-item-id="maple-oat-latte">
++          <span class="badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-meta">$5.75 &bull; 190 cal</div>
++          <button type="button" class="btn" data-quick-add="maple-oat-latte">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="dark-roast-espresso">
++          <span class="badge">Espresso</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-meta">$3.50 &bull; 15 cal</div>
++          <button type="button" class="btn" data-quick-add="dark-roast-espresso">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="cold-brew">
++          <span class="badge">Cold Brew</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-meta">$4.75 &bull; 5 cal</div>
++          <button type="button" class="btn" data-quick-add="cold-brew">Add to Order</button>
+         </div>
+       </div>
+     </section>
++
++    <div class="panel-grid">
++      <section class="panel" id="order-section">
++        <h2>Current Order &amp; Checkout</h2>
++        <ul class="cart-list" id="cart-items-list">
++          <li><span>Your cup is currently empty.</span><span>$0.00</span></li>
++        </ul>
++        <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 10px;">
++          <span>Total:</span>
++          <span id="cart-total">$0.00</span>
++        </div>
++
++        <hr style="margin: 18px 0; border: none; border-top: 1px solid #efebe9;">
++
++        <form id="checkout-form"
++              toolname="submit_pickup_order"
++              tooldescription="Submit the current cart for in-store pickup at a chosen cafe location. Requires user confirmation before finalizing payment.">
++          <div class="form-group">
++            <label for="customer-name">Pickup Name</label>
++            <input type="text"
++                   id="customer-name"
++                   name="customerName"
++                   required
++                   placeholder="Alex Rivera"
++                   toolparamdescription="Name of the person picking up the order">
++          </div>
++          <div class="form-group">
++            <label for="pickup-location">Pickup Location</label>
++            <select id="pickup-location"
++                    name="locationId"
++                    required
++                    toolparamdescription="Cafe location where the order will be prepared">
++              <option value="downtown">Downtown Roastery (742 Evergreen Ave)</option>
++              <option value="harbor">Harborfront Cafe (108 Pier Way)</option>
++              <option value="uptown">Uptown Espresso Bar (515 Oak St)</option>
++            </select>
++          </div>
++          <button type="submit" class="btn" style="width: 100%; margin-top: 4px;">Place Pickup Order</button>
++        </form>
++        <div class="status-banner" id="order-status-banner" aria-live="polite">
++          Add drinks to your order to check out for pickup.
++        </div>
++      </section>
++
++      <section class="panel" id="locations-section">
++        <h2>Locations &amp; Rewards</h2>
++        <div id="rewards-section" style="margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #efebe9;">
++          <h3 style="color: var(--primary); font-size: 1.05rem;">Daily Grind Rewards</h3>
++          <p id="rewards-summary">Member: <strong>Alex Rivera</strong> (Gold Tier) &bull; <strong id="rewards-points">340</strong> pts</p>
++          <p style="font-size: 0.85rem; color: #6d4c41;">100 points = $5.00 off your order.</p>
++        </div>
++
++        <h3 style="color: var(--primary); font-size: 1.05rem; margin-bottom: 8px;">Cafe Locations</h3>
++        <ul class="cart-list" id="locations-list">
++          <li>
++            <span><strong>Downtown Roastery</strong> &mdash; 742 Evergreen Ave</span>
++            <span>Open 6am&ndash;7pm</span>
++          </li>
++          <li>
++            <span><strong>Harborfront Cafe</strong> &mdash; 108 Pier Way</span>
++            <span>Open 6:30am&ndash;6pm</span>
++          </li>
++          <li>
++            <span><strong>Uptown Espresso Bar</strong> &mdash; 515 Oak St</span>
++            <span>Open 7am&ndash;8pm</span>
++          </li>
++        </ul>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+@@ -207,6 +448,605 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const MENU_CATEGORIES = ['all', 'seasonal', 'espresso', 'cold-brew', 'bakery'];
++      const DRINK_SIZES = ['small', 'medium', 'large'];
++      const MILK_OPTIONS = ['whole', 'oat', 'almond', 'none'];
++
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.75,
++          calories: 190,
++          vegan: true,
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.50,
++          calories: 15,
++          vegan: true,
++          description: 'Bold, smokey, and perfect for a morning boost.'
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          category: 'cold-brew',
++          price: 4.75,
++          calories: 5,
++          vegan: true,
++          description: 'Steeped for 18 hours for maximum smoothness.'
++        },
++        {
++          id: 'cardamom-cortado',
++          name: 'Cardamom Cortado',
++          category: 'espresso',
++          price: 4.50,
++          calories: 90,
++          vegan: false,
++          description: 'Equal parts rich espresso and warm spiced milk.'
++        },
++        {
++          id: 'almond-croissant',
++          name: 'Almond Croissant',
++          category: 'bakery',
++          price: 4.25,
++          calories: 320,
++          vegan: false,
++          description: 'Flaky butter pastry filled with sweet almond frangipane.'
++        }
++      ];
++
++      const LOCATIONS = [
++        {
++          id: 'downtown',
++          name: 'Downtown Roastery',
++          address: '742 Evergreen Ave',
++          neighborhood: 'downtown',
++          hours: '6:00 AM - 7:00 PM',
++          hasDriveThru: false,
++          wifiAvailable: true
++        },
++        {
++          id: 'harbor',
++          name: 'Harborfront Cafe',
++          address: '108 Pier Way',
++          neighborhood: 'harbor',
++          hours: '6:30 AM - 6:00 PM',
++          hasDriveThru: false,
++          wifiAvailable: true
++        },
++        {
++          id: 'uptown',
++          name: 'Uptown Espresso Bar',
++          address: '515 Oak St',
++          neighborhood: 'uptown',
++          hours: '7:00 AM - 8:00 PM',
++          hasDriveThru: true,
++          wifiAvailable: true
++        }
++      ];
++
++      const appState = {
++        cart: [],
++        rewards: {
++          memberName: 'Alex Rivera',
++          tier: 'Gold',
++          points: 340,
++          appliedDiscount: 0
++        },
++        orders: []
++      };
++
++      const menuGridEl = document.getElementById('menu-grid');
++      const cartListEl = document.getElementById('cart-items-list');
++      const cartTotalEl = document.getElementById('cart-total');
++      const orderStatusEl = document.getElementById('order-status-banner');
++      const rewardsPointsEl = document.getElementById('rewards-points');
++      const agentActivityEl = document.getElementById('agent-activity-status');
++
++      function setStatusMessage(message) {
++        if (orderStatusEl) {
++          orderStatusEl.textContent = message;
++        }
++      }
++
++      function renderMenu(items) {
++        if (!menuGridEl) return;
++        if (items.length === 0) {
++          menuGridEl.innerHTML = '<div class="card"><p>No menu items matched your filter.</p></div>';
++          return;
++        }
++        menuGridEl.innerHTML = items
++          .map(
++            (item) => `
++          <div class="card" data-item-id="${item.id}">
++            <span class="badge">${item.category}</span>
++            <h3>${item.name}</h3>
++            <p>${item.description}</p>
++            <div class="card-meta">$${item.price.toFixed(2)} &bull; ${item.calories} cal</div>
++            <button type="button" class="btn" data-quick-add="${item.id}">Add to Order</button>
++          </div>`
++          )
++          .join('');
++      }
++
++      function getCartSummary() {
++        const subtotal = appState.cart.reduce(
++          (sum, entry) => sum + entry.unitPrice * entry.quantity,
++          0
++        );
++        const discount = Math.min(appState.rewards.appliedDiscount, subtotal);
++        const total = Number(Math.max(0, subtotal - discount).toFixed(2));
++        return {
++          items: appState.cart.map((entry) => ({ ...entry })),
++          itemCount: appState.cart.reduce((count, entry) => count + entry.quantity, 0),
++          subtotal: Number(subtotal.toFixed(2)),
++          discount: Number(discount.toFixed(2)),
++          total
++        };
++      }
++
++      function renderCartAndRewards() {
++        const summary = getCartSummary();
++        if (cartListEl) {
++          if (summary.items.length === 0) {
++            cartListEl.innerHTML = '<li><span>Your cup is currently empty.</span><span>$0.00</span></li>';
++          } else {
++            cartListEl.innerHTML = summary.items
++              .map(
++                (entry) => `
++              <li>
++                <span>${entry.quantity}x ${entry.name} (${entry.size}, ${entry.milk} milk)</span>
++                <span>$${(entry.unitPrice * entry.quantity).toFixed(2)}</span>
++              </li>`
++              )
++              .join('');
++          }
++        }
++        if (cartTotalEl) {
++          cartTotalEl.textContent = `$${summary.total.toFixed(2)}`;
++        }
++        if (rewardsPointsEl) {
++          rewardsPointsEl.textContent = String(appState.rewards.points);
++        }
++      }
++
++      function filterMenuItems({ query = '', category = 'all' } = {}) {
++        const normalizedQuery = String(query || '').trim().toLowerCase();
++        const normalizedCategory = String(category || 'all').trim().toLowerCase();
++
++        return MENU_ITEMS.filter((item) => {
++          const matchesCategory =
++            normalizedCategory === 'all' ||
++            !normalizedCategory ||
++            item.category.toLowerCase() === normalizedCategory;
++          const matchesQuery =
++            !normalizedQuery ||
++            item.name.toLowerCase().includes(normalizedQuery) ||
++            item.description.toLowerCase().includes(normalizedQuery) ||
++            item.category.toLowerCase().includes(normalizedQuery);
++          return matchesCategory && matchesQuery;
++        });
++      }
++
++      function addItemToCart({ itemId, size = 'medium', milk = 'oat', quantity = 1 }) {
++        const normalizedId = String(itemId || '').trim().toLowerCase();
++        const menuItem = MENU_ITEMS.find(
++          (entry) =>
++            entry.id === normalizedId ||
++            entry.name.toLowerCase() === normalizedId
++        );
++
++        if (!menuItem) {
++          return {
++            error: `Menu item "${itemId}" was not found.`,
++            availableItems: MENU_ITEMS.map((entry) => ({ id: entry.id, name: entry.name }))
++          };
++        }
++
++        if (!DRINK_SIZES.includes(size)) {
++          return {
++            error: `Unsupported size "${size}".`,
++            supportedSizes: DRINK_SIZES
++          };
++        }
++
++        if (!MILK_OPTIONS.includes(milk)) {
++          return {
++            error: `Unsupported milk option "${milk}".`,
++            supportedMilkOptions: MILK_OPTIONS
++          };
++        }
++
++        const parsedQty = Number(quantity);
++        if (!Number.isInteger(parsedQty) || parsedQty < 1 || parsedQty > 10) {
++          return {
++            error: 'Provide a valid whole-number quantity.'
++          };
++        }
++
++        const sizeUpcharge = size === 'large' ? 0.75 : size === 'small' ? -0.25 : 0;
++        const unitPrice = Number((menuItem.price + sizeUpcharge).toFixed(2));
++
++        const existing = appState.cart.find(
++          (entry) => entry.itemId === menuItem.id && entry.size === size && entry.milk === milk
++        );
++
++        if (existing) {
++          existing.quantity += parsedQty;
++        } else {
++          appState.cart.push({
++            itemId: menuItem.id,
++            name: menuItem.name,
++            size,
++            milk,
++            quantity: parsedQty,
++            unitPrice
++          });
++        }
++
++        renderCartAndRewards();
++        const summary = getCartSummary();
++        setStatusMessage(`Added ${parsedQty}x ${menuItem.name} (${size}) to your order.`);
++        return {
++          addedItem: {
++            itemId: menuItem.id,
++            name: menuItem.name,
++            size,
++            milk,
++            quantity: parsedQty,
++            unitPrice
++          },
++          cart: summary
++        };
++      }
++
++      // Wire up quick-add buttons on menu cards
++      document.addEventListener('click', (event) => {
++        const button = event.target.closest('[data-quick-add]');
++        if (!button) return;
++        const itemId = button.getAttribute('data-quick-add');
++        addItemToCart({ itemId, size: 'medium', milk: 'oat', quantity: 1 });
++      });
++
++      // Handle Declarative WebMCP Form 1: Search Menu
++      const menuSearchForm = document.getElementById('menu-search-form');
++      if (menuSearchForm) {
++        menuSearchForm.addEventListener('submit', (event) => {
++          event.preventDefault();
++          const formData = new FormData(menuSearchForm);
++          const query = String(formData.get('query') || '').trim();
++          const category = String(formData.get('category') || 'all').trim();
++
++          if (!MENU_CATEGORIES.includes(category)) {
++            const errorMsg = `Validation failed: category ("${category}" is not a supported menu category)`;
++            if (event.agentInvoked && typeof event.respondWith === 'function') {
++              event.respondWith(Promise.resolve({ error: errorMsg, categories: MENU_CATEGORIES }));
++            }
++            return;
++          }
++
++          const matches = filterMenuItems({ query, category });
++          renderMenu(matches);
++
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            event.respondWith(
++              Promise.resolve({
++                query,
++                category,
++                count: matches.length,
++                items: matches
++              })
++            );
++          }
++        });
++      }
++
++      // Handle Declarative WebMCP Form 2: Submit Pickup Order
++      const checkoutForm = document.getElementById('checkout-form');
++      if (checkoutForm) {
++        checkoutForm.addEventListener('submit', (event) => {
++          event.preventDefault();
++          const formData = new FormData(checkoutForm);
++          const customerName = String(formData.get('customerName') || '').trim();
++          const locationId = String(formData.get('locationId') || '').trim();
++
++          const validationErrors = [];
++          if (!customerName) {
++            validationErrors.push({ field: 'customerName', message: 'Pickup name is required' });
++          }
++          const location = LOCATIONS.find((loc) => loc.id === locationId);
++          if (!location) {
++            validationErrors.push({ field: 'locationId', message: 'Select a valid cafe location' });
++          }
++          if (appState.cart.length === 0) {
++            validationErrors.push({ field: 'cart', message: 'Add at least one item to your order before checking out' });
++          }
++
++          if (validationErrors.length > 0) {
++            const errorString =
++              'Validation failed: ' +
++              validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++            setStatusMessage(errorString);
++            if (event.agentInvoked && typeof event.respondWith === 'function') {
++              event.respondWith(Promise.resolve(errorString));
++            }
++            return;
++          }
++
++          const summary = getCartSummary();
++          const orderConfirmation = {
++            orderId: `DG-${1000 + appState.orders.length + 1}`,
++            customerName,
++            location: location.name,
++            items: summary.items,
++            totalCharged: summary.total,
++            estimatedReadyMinutes: 10
++          };
++
++          appState.orders.push(orderConfirmation);
++          appState.cart = [];
++          appState.rewards.appliedDiscount = 0;
++          renderCartAndRewards();
++          setStatusMessage(
++            `Order ${orderConfirmation.orderId} confirmed for ${customerName} at ${location.name}! Ready in ~10 mins.`
++          );
++
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            event.respondWith(Promise.resolve(orderConfirmation));
++          }
++        });
++      }
++
++      // WebMCP Lifecycle Events (supporting Chrome 156+ document.modelContext and window fallback)
++      const targetFor = (type, listener, options) =>
++        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++          .addEventListener(type, listener, options);
++
++      targetFor('toolactivated', ({ toolName }) => {
++        if (agentActivityEl) {
++          agentActivityEl.textContent = `AI Assistant is currently running tool "${toolName}"...`;
++        }
++      });
++
++      targetFor('toolcancel', ({ toolName }) => {
++        if (agentActivityEl) {
++          agentActivityEl.textContent = `AI Assistant cancelled execution of tool "${toolName}".`;
++        }
++      });
++
++      // Imperative WebMCP Tool Registration with Feature Detection and AbortController Cleanup
++      const toolsController = new AbortController();
++      window.addEventListener('pagehide', () => toolsController.abort(), { once: true });
++
++      async function registerWebMcpTools() {
++        if (!('modelContext' in document) || !document.modelContext) {
++          return;
++        }
++
++        const registrationOptions = { signal: toolsController.signal };
++
++        // 1. Read-only tool: Get menu item details
++        await document.modelContext.registerTool(
++          {
++            name: 'get_menu_item_details',
++            description:
++              'Retrieves nutritional details, pricing, and customization options for a specific drink or bakery item on the menu. Use when the user asks about calories, vegan options, or price of an item.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                itemId: {
++                  type: 'string',
++                  description: 'Identifier or display name of the menu item to inspect.'
++                }
++              },
++              required: ['itemId']
++            },
++            execute({ itemId } = {}) {
++              if (typeof itemId !== 'string' || !itemId.trim()) {
++                return {
++                  error: 'Provide a non-empty itemId or item name.',
++                  availableItems: MENU_ITEMS.map((entry) => ({ id: entry.id, name: entry.name }))
++                };
++              }
++              const normalized = itemId.trim().toLowerCase();
++              const item = MENU_ITEMS.find(
++                (entry) =>
++                  entry.id === normalized || entry.name.toLowerCase() === normalized
++              );
++              if (!item) {
++                return {
++                  error: `Menu item "${itemId}" not found.`,
++                  availableItems: MENU_ITEMS.map((entry) => ({ id: entry.id, name: entry.name }))
++                };
++              }
++              return {
++                ...item,
++                availableSizes: DRINK_SIZES,
++                availableMilkOptions: MILK_OPTIONS
++              };
++            },
++            annotations: { readOnlyHint: true }
++          },
++          registrationOptions
++        );
++
++        // 2. State-updating tool: Add item to order cart
++        await document.modelContext.registerTool(
++          {
++            name: 'add_to_cart',
++            description:
++              'Adds a coffee drink or bakery item with selected size and milk preference to the active order cart. Use when the user wants to add items to their order.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                itemId: {
++                  type: 'string',
++                  description: 'Identifier or name of the menu item to add.'
++                },
++                size: {
++                  type: 'string',
++                  enum: DRINK_SIZES,
++                  default: 'medium',
++                  description: 'Cup size for the beverage.'
++                },
++                milk: {
++                  type: 'string',
++                  enum: MILK_OPTIONS,
++                  default: 'oat',
++                  description: 'Milk choice for the beverage.'
++                },
++                quantity: {
++                  type: 'number',
++                  minimum: 1,
++                  maximum: 10,
++                  default: 1,
++                  description: 'Number of items to add.'
++                }
++              },
++              required: ['itemId']
++            },
++            execute({ itemId, size = 'medium', milk = 'oat', quantity = 1 } = {}) {
++              return addItemToCart({ itemId, size, milk, quantity });
++            },
++            annotations: {
++              readOnlyHint: false,
++              consequentialHint: false
++            }
++          },
++          registrationOptions
++        );
++
++        // 3. Read-only tool: Get current cart status
++        await document.modelContext.registerTool(
++          {
++            name: 'get_cart_summary',
++            description:
++              'Returns all items currently in the shopping cart along with subtotal, applied rewards discount, and final total. Use when the user asks what is in their order or how much it costs.',
++            inputSchema: {
++              type: 'object',
++              properties: {}
++            },
++            execute() {
++              return getCartSummary();
++            },
++            annotations: { readOnlyHint: true }
++          },
++          registrationOptions
++        );
++
++        // 4. Consequential state-updating tool: Redeem rewards points
++        await document.modelContext.registerTool(
++          {
++            name: 'redeem_rewards_points',
++            description:
++              'Redeems loyalty reward points for a dollar discount on the active order. Use when the user asks to apply their rewards points toward their purchase.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                pointsToRedeem: {
++                  type: 'number',
++                  enum: [100, 200, 300],
++                  default: 100,
++                  description: 'Number of loyalty points to convert into an order discount.'
++                }
++              },
++              required: ['pointsToRedeem']
++            },
++            execute({ pointsToRedeem = 100 } = {}) {
++              if (![100, 200, 300].includes(pointsToRedeem)) {
++                return {
++                  error: 'Unsupported pointsToRedeem value.',
++                  availablePoints: appState.rewards.points,
++                  supportedIncrements: [100, 200, 300]
++                };
++              }
++              if (appState.rewards.points < pointsToRedeem) {
++                return {
++                  error: `Insufficient points. Member has ${appState.rewards.points} points available.`,
++                  availablePoints: appState.rewards.points
++                };
++              }
++              const discountDollars = (pointsToRedeem / 100) * 5;
++              appState.rewards.points -= pointsToRedeem;
++              appState.rewards.appliedDiscount += discountDollars;
++              renderCartAndRewards();
++              setStatusMessage(
++                `Redeemed ${pointsToRedeem} points for $${discountDollars.toFixed(2)} off your order!`
++              );
++              return {
++                redeemedPoints: pointsToRedeem,
++                discountApplied: discountDollars,
++                remainingPoints: appState.rewards.points,
++                cart: getCartSummary()
++              };
++            },
++            annotations: {
++              readOnlyHint: false,
++              consequentialHint: true,
++              untrustedContentHint: false
++            }
++          },
++          registrationOptions
++        );
++
++        // 5. Read-only tool: Find cafe locations
++        await document.modelContext.registerTool(
++          {
++            name: 'find_cafe_locations',
++            description:
++              'Finds Daily Grind cafe locations and their opening hours. Use when the user asks where cafes are located, store hours, or drive-thru availability.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                neighborhood: {
++                  type: 'string',
++                  enum: ['all', 'downtown', 'harbor', 'uptown'],
++                  default: 'all',
++                  description: 'Area of the city to filter cafe locations.'
++                },
++                driveThruOnly: {
++                  type: 'boolean',
++                  default: false,
++                  description: 'Whether to only include locations with a drive-thru window.'
++                }
++              }
++            },
++            execute({ neighborhood = 'all', driveThruOnly = false } = {}) {
++              const validNeighborhoods = ['all', 'downtown', 'harbor', 'uptown'];
++              if (!validNeighborhoods.includes(neighborhood)) {
++                return {
++                  error: `Unsupported neighborhood "${neighborhood}".`,
++                  supportedNeighborhoods: validNeighborhoods
++                };
++              }
++              const filtered = LOCATIONS.filter((loc) => {
++                const matchesArea = neighborhood === 'all' || loc.neighborhood === neighborhood;
++                const matchesDriveThru = !driveThruOnly || loc.hasDriveThru;
++                return matchesArea && matchesDriveThru;
++              });
++              return {
++                count: filtered.length,
++                locations: filtered
++              };
++            },
++            annotations: { readOnlyHint: true }
++          },
++          registrationOptions
++        );
++      }
++
++      renderMenu(MENU_ITEMS);
++      renderCartAndRewards();
++      registerWebMcpTools();
++    })();
++  </script>
+ </body>
+ 
+ </html>

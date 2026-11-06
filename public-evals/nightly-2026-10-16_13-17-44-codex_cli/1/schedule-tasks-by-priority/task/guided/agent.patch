@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .operations {
++      margin-top: 48px;
++      padding: 28px;
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 4px 20px rgba(78, 52, 46, 0.05);
++    }
++
++    .operations-heading, .queue-summary, .task-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .eyebrow { color: #795548; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; }
++    .operations h2 { margin: 4px 0; }
++    .operations-description { color: #705e58; max-width: 650px; }
++    .queue-status { padding: 5px 12px; border-radius: 20px; background: #f2eee9; font-size: 0.8rem; }
++    .queue-status[data-active="true"] { background: #fff1dc; color: #784407; }
++    .operation-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0 16px; }
++    .operation-button { font: inherit; color: var(--text); background: #faf8f6; border: 1px solid #ded4ce; border-radius: 8px; padding: 16px; text-align: left; cursor: pointer; }
++    .operation-button strong, .operation-button span { display: block; }
++    .operation-button span { font-size: 0.8rem; color: #705e58; margin-top: 4px; }
++    .operation-button:hover { background: #f1ebe5; border-color: #a58b7a; }
++    .operation-button:focus-visible, .batch-button:focus-visible { outline: 3px solid #b5721c; outline-offset: 3px; }
++    .operation-button[data-kind="checkout"] { border-top: 3px solid #bd6438; }
++    .operation-button[data-kind="menu"] { border-top: 3px solid #b79659; }
++    .operation-button[data-kind="telemetry"] { border-top: 3px solid #80947b; }
++    .batch-button { font: inherit; border: 0; cursor: pointer; margin: 0; }
++    .batch-note { color: #705e58; font-size: 0.8rem; margin: 10px 0 24px; }
++    .queue-summary { border-top: 1px solid #eee6e0; padding-top: 20px; font-size: 0.85rem; }
++    .queue-summary strong { font-variant-numeric: tabular-nums; }
++    .task-list { list-style: none; margin-top: 16px; max-height: 280px; overflow-y: auto; }
++    .task-row { padding: 12px 0; border-bottom: 1px solid #eee6e0; font-size: 0.85rem; }
++    .task-meta { color: #705e58; font-size: 0.75rem; }
++    .task-row progress { width: 100%; height: 6px; accent-color: var(--primary); display: block; margin-top: 8px; }
++    .queue-empty { color: #705e58; font-size: 0.85rem; padding: 20px 0; }
++    .activity { margin-top: 20px; padding: 16px; background: #f7f4f0; border-radius: 8px; }
++    .activity h3 { font-size: 0.85rem; margin-bottom: 8px; }
++    .activity ol { list-style: none; font-family: ui-monospace, monospace; font-size: 0.75rem; color: #705e58; max-height: 150px; overflow-y: auto; }
++    .activity li { padding: 3px 0; }
++    @media (max-width: 650px) {
++      .operations { padding: 20px; }
++      .operation-actions { grid-template-columns: 1fr; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +243,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-heading">
++        <div>
++          <p class="eyebrow">BEHIND THE COUNTER</p>
++          <h2 id="operations-title">Operations queue</h2>
++        </div>
++        <span class="queue-status" id="queue-status" role="status">Ready to run</span>
++      </div>
++      <p class="operations-description">A little order for the daily rush. Simulate café tasks and watch urgent work move to the front of the queue.</p>
++      <div class="operation-actions">
++        <button type="button" class="operation-button" data-kind="checkout"><strong>Run checkout</strong><span>Urgent · Process a customer order</span></button>
++        <button type="button" class="operation-button" data-kind="menu"><strong>Update menu</strong><span>Standard · Refresh seasonal offerings</span></button>
++        <button type="button" class="operation-button" data-kind="telemetry"><strong>Log telemetry</strong><span>Background · Record café activity</span></button>
++      </div>
++      <button type="button" class="btn batch-button" id="run-batch">Run mixed batch <span aria-hidden="true">→</span></button>
++      <p class="batch-note">Adds 6 tasks in mixed order. Runs checkout first, menu updates next, telemetry last. You can add urgent work at any time.</p>
++      <div class="queue-summary">
++        <span><strong id="pending-count">0</strong> pending · <strong id="completed-count">0</strong> completed</span>
++        <span>Urgent → Standard → Background</span>
++      </div>
++      <ul class="task-list" id="task-list" aria-label="Active and pending operations"></ul>
++      <p class="queue-empty" id="queue-empty">The counter is clear. Choose a task to get started.</p>
++      <div class="activity">
++        <h3>Execution log</h3>
++        <ol id="activity-log" aria-label="Recent execution events"><li>Waiting for your first task…</li></ol>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +282,139 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    (() => {
++      const definitions = {
++        checkout: { label: 'Checkout', priority: 'user-blocking', rank: 0, budget: 360, urgency: 'Urgent' },
++        menu: { label: 'Menu update', priority: 'user-visible', rank: 1, budget: 600, urgency: 'Standard' },
++        telemetry: { label: 'Telemetry logging', priority: 'background', rank: 2, budget: 900, urgency: 'Background' }
++      };
++      const queue = [];
++      let sequence = 0;
++      let completed = 0;
++      let pumping = false;
++      let previousTask = null;
++      let hasActivity = false;
++      const status = document.getElementById('queue-status');
++      const list = document.getElementById('task-list');
++      const log = document.getElementById('activity-log');
++      const pendingCount = document.getElementById('pending-count');
++      const completedCount = document.getElementById('completed-count');
++      const empty = document.getElementById('queue-empty');
++      const compare = (a, b) => a.rank - b.rank || a.id - b.id;
++
++      function record(message) {
++        if (!hasActivity) { log.replaceChildren(); hasActivity = true; }
++        const entry = document.createElement('li');
++        entry.textContent = `${new Date().toLocaleTimeString()} · ${message}`;
++        log.prepend(entry);
++        while (log.children.length > 50) log.lastElementChild.remove();
++      }
++
++      function render() {
++        queue.sort(compare);
++        pendingCount.textContent = queue.length;
++        completedCount.textContent = completed;
++        empty.hidden = queue.length > 0;
++        empty.textContent = completed ? 'All caught up. Every task has been completed.' : 'The counter is clear. Choose a task to get started.';
++        status.textContent = queue.length ? `Running · ${queue[0].label} #${queue[0].id}` : completed ? 'All tasks complete' : 'Ready to run';
++        status.dataset.active = String(queue.length > 0);
++        list.replaceChildren(...queue.map((task, index) => {
++          const row = document.createElement('li');
++          row.className = 'task-row';
++          const heading = document.createElement('div');
++          heading.className = 'task-heading';
++          const name = document.createElement('strong');
++          name.textContent = `${task.label} #${task.id}`;
++          const meta = document.createElement('span');
++          meta.className = 'task-meta';
++          meta.textContent = `${task.urgency} · ${index === 0 ? 'Running' : task.work > 0 ? 'Paused' : 'Queued'} · ${Math.floor(task.work / task.budget * 100)}%`;
++          const progress = document.createElement('progress');
++          progress.max = task.budget;
++          progress.value = task.work;
++          progress.setAttribute('aria-label', `${task.label} #${task.id} progress`);
++          heading.append(name, meta);
++          row.append(heading, progress);
++          return row;
++        }));
++      }
++
++      // The local queue also provides priority scheduling in browsers without postTask.
++      // Select the next task inside the callback so newly arrived urgent work wins.
++      function scheduleChunk(callback) {
++        if (typeof globalThis.scheduler?.postTask === 'function') {
++          return globalThis.scheduler.postTask(callback, { priority: queue[0].priority });
++        }
++        return new Promise((resolve, reject) => setTimeout(() => {
++          try { resolve(callback()); } catch (error) { reject(error); }
++        }, 0));
++      }
++
++      function yieldToBrowser() {
++        return typeof globalThis.scheduler?.yield === 'function'
++          ? globalThis.scheduler.yield()
++          : new Promise(resolve => setTimeout(resolve, 0));
++      }
++
++      async function runQueue() {
++        if (pumping) return;
++        pumping = true;
++        try {
++          while (queue.length) {
++            queue.sort(compare);
++            await scheduleChunk(() => {
++              queue.sort(compare);
++              const task = queue[0];
++              if (task !== previousTask) {
++                if (previousTask && queue.includes(previousTask)) record(`Paused ${previousTask.label} #${previousTask.id} for urgent work`);
++                record(`${task.work ? 'Resumed' : 'Started'} ${task.label} #${task.id} (${task.urgency.toLowerCase()})`);
++                previousTask = task;
++              }
++              // Simulated CPU work stays within a 6ms slice, well below a long task.
++              const start = performance.now();
++              const deadline = start + Math.min(6, task.budget - task.work);
++              while (performance.now() < deadline) {
++                task.checksum = (task.checksum * 1664525 + 1013904223) >>> 0;
++              }
++              task.work = Math.min(task.budget, task.work + performance.now() - start);
++              if (task.work >= task.budget) {
++                queue.shift();
++                completed++;
++                previousTask = null;
++                record(`Completed ${task.label} #${task.id}`);
++              }
++              render();
++            });
++            await yieldToBrowser();
++          }
++        } catch (error) {
++          record('Queue interrupted. Add a task to retry pending work.');
++          status.textContent = 'Queue interrupted';
++          console.error('Operations queue failed:', error);
++        } finally {
++          pumping = false;
++        }
++      }
++
++      function enqueue(kinds) {
++        for (const kind of kinds) {
++          const task = { ...definitions[kind], id: ++sequence, work: 0, checksum: 1 };
++          queue.push(task);
++          record(`Queued ${task.label} #${task.id}`);
++        }
++        render();
++        void runQueue();
++      }
++
++      document.querySelectorAll('.operation-button').forEach(button => {
++        button.addEventListener('click', () => enqueue([button.dataset.kind]));
++      });
++      document.getElementById('run-batch').addEventListener('click', () => {
++        enqueue(['telemetry', 'menu', 'checkout', 'telemetry', 'checkout', 'menu']);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

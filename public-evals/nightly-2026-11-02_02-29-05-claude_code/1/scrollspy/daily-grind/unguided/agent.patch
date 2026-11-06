@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+index 66c9173..e8fd754 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,17 @@
+       padding: 0;
+     }
+ 
++    html {
++      /* Keep anchored sections from hiding under the sticky nav */
++      scroll-padding-top: 80px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -66,6 +77,12 @@
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 2px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -135,6 +152,113 @@
+       background: #3e2723;
+     }
+ 
++    /* Page Sections */
++    .page-section {
++      padding: 40px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .page-section:last-child {
++      border-bottom: none;
++    }
++
++    .page-section h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .section-intro {
++      text-align: center;
++      max-width: 640px;
++      margin: 10px auto 0;
++    }
++
++    .menu-category {
++      margin-top: 30px;
++    }
++
++    .menu-category h3 {
++      color: var(--primary);
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 5px;
++      margin-bottom: 10px;
++    }
++
++    .menu-list {
++      list-style: none;
++    }
++
++    .menu-list li {
++      display: flex;
++      justify-content: space-between;
++      padding: 6px 0;
++      border-bottom: 1px dashed var(--secondary);
++    }
++
++    .price {
++      font-weight: bold;
++    }
++
++    .location-card {
++      padding: 0;
++      overflow: hidden;
++    }
++
++    .location-card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .location-card .card-body {
++      padding: 20px;
++    }
++
++    .hours {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .rewards-tier {
++      border-top: 4px solid var(--accent);
++    }
++
++    .points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .account-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      margin-top: 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++    }
++
++    .account-panel h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .progress {
++      background: var(--secondary);
++      border-radius: 10px;
++      height: 10px;
++      overflow: hidden;
++      margin: 8px 0;
++    }
++
++    .progress-bar {
++      background: var(--accent);
++      height: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,10 +284,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +299,11 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="page-section">
++      <h2>Menu</h2>
++      <p class="section-intro">Every drink is made to order with beans roasted in-house each week.</p>
++
++      <h3 style="text-align: center; margin-top: 30px;">Seasonal Favorites</h3>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,6 +321,122 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="grid">
++        <div class="menu-category">
++          <h3>Espresso Bar</h3>
++          <ul class="menu-list">
++            <li><span>Espresso</span><span class="price">$3.00</span></li>
++            <li><span>Cappuccino</span><span class="price">$4.25</span></li>
++            <li><span>Flat White</span><span class="price">$4.50</span></li>
++            <li><span>Caffè Mocha</span><span class="price">$5.00</span></li>
++          </ul>
++        </div>
++        <div class="menu-category">
++          <h3>Brewed &amp; Cold</h3>
++          <ul class="menu-list">
++            <li><span>House Drip</span><span class="price">$2.75</span></li>
++            <li><span>Pour Over</span><span class="price">$4.00</span></li>
++            <li><span>Cold Brew</span><span class="price">$4.50</span></li>
++            <li><span>Nitro Cold Brew</span><span class="price">$5.25</span></li>
++          </ul>
++        </div>
++        <div class="menu-category">
++          <h3>Bakery</h3>
++          <ul class="menu-list">
++            <li><span>Butter Croissant</span><span class="price">$3.50</span></li>
++            <li><span>Blueberry Muffin</span><span class="price">$3.25</span></li>
++            <li><span>Almond Scone</span><span class="price">$3.75</span></li>
++            <li><span>Avocado Toast</span><span class="price">$7.50</span></li>
++          </ul>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="page-section">
++      <h2>Locations</h2>
++      <p class="section-intro">Stop by one of our neighborhood cafés — free Wi-Fi and plenty of seating at every shop.</p>
++      <div class="grid">
++        <div class="card location-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
++            alt="Warm café interior with wooden tables" loading="lazy">
++          <div class="card-body">
++            <h3>Downtown</h3>
++            <p>120 Main Street</p>
++            <p class="hours">Mon–Fri 6am–7pm · Sat–Sun 7am–6pm</p>
++          </div>
++        </div>
++        <div class="card location-card">
++          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
++            alt="Bright café counter with hanging lights" loading="lazy">
++          <div class="card-body">
++            <h3>Riverside</h3>
++            <p>45 Harbor Lane</p>
++            <p class="hours">Daily 7am–8pm</p>
++          </div>
++        </div>
++        <div class="card location-card">
++          <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=600&q=80"
++            alt="Cozy café seating by the window" loading="lazy">
++          <div class="card-body">
++            <h3>University District</h3>
++            <p>880 College Avenue</p>
++            <p class="hours">Mon–Fri 6am–10pm · Sat–Sun 8am–8pm</p>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section">
++      <h2>Rewards</h2>
++      <p class="section-intro">Earn 10 points for every dollar you spend and redeem them for free drinks, treats, and more.</p>
++      <div class="grid">
++        <div class="card rewards-tier">
++          <h3>Bean</h3>
++          <p class="points">0+</p>
++          <p>Free birthday drink and member-only offers.</p>
++        </div>
++        <div class="card rewards-tier">
++          <h3>Roast</h3>
++          <p class="points">500+</p>
++          <p>Free drink every 150 points plus free syrup add-ons.</p>
++        </div>
++        <div class="card rewards-tier">
++          <h3>Reserve</h3>
++          <p class="points">1,500+</p>
++          <p>Double points on Mondays and early access to new blends.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section">
++      <h2>My Account</h2>
++      <p class="section-intro">Welcome back! Here's a quick look at your Daily Grind profile.</p>
++      <div class="account-panel">
++        <div>
++          <h3>Rewards Balance</h3>
++          <p class="points">320 pts</p>
++          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="500" aria-valuenow="320"
++            aria-label="Progress to Roast tier">
++            <div class="progress-bar" style="width: 64%;"></div>
++          </div>
++          <p class="hours">180 points until Roast tier</p>
++        </div>
++        <div>
++          <h3>Recent Orders</h3>
++          <ul class="menu-list">
++            <li><span>Maple Oat Latte</span><span class="price">$5.25</span></li>
++            <li><span>Butter Croissant</span><span class="price">$3.50</span></li>
++            <li><span>Cold Brew</span><span class="price">$4.50</span></li>
++          </ul>
++        </div>
++        <div>
++          <h3>Preferences</h3>
++          <p>Home store: Downtown</p>
++          <p>Usual: Oat milk, extra shot</p>
++          <a href="/account/settings" class="btn">Edit Profile</a>
++        </div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +450,61 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Highlight the nav link for whichever section is currently in view
++    (function () {
++      const nav = document.querySelector('nav');
++      const links = Array.from(document.querySelectorAll('nav a[href^="#"]'));
++      const sections = links
++        .map((link) => document.querySelector(link.getAttribute('href')))
++        .filter(Boolean);
++
++      function setActive(id) {
++        links.forEach((link) => {
++          const isActive = link.getAttribute('href') === '#' + id;
++          link.classList.toggle('active', isActive);
++          if (isActive) {
++            link.setAttribute('aria-current', 'location');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function update() {
++        // A section is "current" once its top passes just below the sticky nav
++        const offset = nav.offsetHeight + 40;
++        let current = null;
++        sections.forEach((section) => {
++          if (section.getBoundingClientRect().top <= offset) {
++            current = section.id;
++          }
++        });
++        // Short final sections may never reach the top, so activate them at page bottom
++        const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
++        if (atBottom && sections.length) {
++          current = sections[sections.length - 1].id;
++        }
++        setActive(current);
++      }
++
++      let ticking = false;
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          requestAnimationFrame(() => {
++            update();
++            ticking = false;
++          });
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      window.addEventListener('resize', onScroll);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

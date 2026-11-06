@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,62 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards;
++    }
++
++    #feature[aria-describedby] {
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 7px;
++      border-radius: 2px;
++    }
++
++    #tour-step {
++      position: fixed;
++      position-anchor: --rewards;
++      inset: auto;
++      top: calc(anchor(bottom) + 18px);
++      left: clamp(16px, calc(anchor(center) - 160px), max(16px, calc(100vw - 336px)));
++      width: 320px;
++      max-width: calc(100vw - 32px);
++      margin: 0;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 32px rgb(0 0 0 / 20%);
++      z-index: 1001;
++    }
++
++    #tour-step h2 {
++      font-size: 1.2rem;
++      margin-bottom: 8px;
++    }
++
++    #tour-step button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #tour-step.tour-fallback {
++      display: block;
++    }
++
++    #tour-step[hidden] {
++      display: none;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +215,20 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature" aria-describedby="tour-message">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-message">
++    <h2 id="tour-title">Your coffee comes with perks</h2>
++    <p id="tour-message">Earn points with every coffee and turn your daily ritual into delicious rewards.</p>
++    <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +266,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTourButton = tourStep.querySelector('button');
++    const supportsPopover = 'popover' in HTMLElement.prototype;
++    const supportsAnchors = CSS.supports('anchor-name: --rewards') &&
++      CSS.supports('top: anchor(bottom)') &&
++      CSS.supports('left: clamp(16px, calc(anchor(center) - 160px), 100vw)');
++    let tourOpen = true;
++    let trackingFrame;
++
++    // Keep the fallback tethered even when fonts, layout, or scrolling move the link.
++    function trackRewards() {
++      if (!tourOpen) return;
++      const target = rewardsLink.getBoundingClientRect();
++      const width = tourStep.getBoundingClientRect().width;
++      tourStep.style.top = `${target.bottom + 18}px`;
++      tourStep.style.left = `${Math.max(16, Math.min(target.left + target.width / 2 - width / 2, window.innerWidth - width - 16))}px`;
++      trackingFrame = requestAnimationFrame(trackRewards);
++    }
++
++    if (supportsPopover) {
++      tourStep.showPopover();
++    } else {
++      tourStep.classList.add('tour-fallback');
++    }
++    if (!supportsAnchors) trackRewards();
++    closeTourButton.focus({ preventScroll: true });
++
++    function preventTourNavigation(event) {
++      if (tourOpen) event.preventDefault();
++    }
++    rewardsLink.addEventListener('click', preventTourNavigation);
++    rewardsLink.addEventListener('auxclick', preventTourNavigation);
++
++    closeTourButton.addEventListener('click', (event) => {
++      event.preventDefault();
++      tourOpen = false;
++      cancelAnimationFrame(trackingFrame);
++      if (supportsPopover) tourStep.hidePopover();
++      tourStep.hidden = true;
++      rewardsLink.removeAttribute('aria-describedby');
++      rewardsLink.focus({ preventScroll: true });
++    });
++  </script>
+ </body>
+ 
+ </html>

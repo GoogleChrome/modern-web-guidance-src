@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,17 +19,46 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull down from the navigation to reveal search. */
++    .search-bar {
++      background: var(--primary);
++      padding: 1rem 5%;
++      scroll-snap-align: start;
++    }
++
++    .search-bar input {
++      display: block;
++      width: 100%;
++      padding: 0.75rem 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++      font: inherit;
++    }
++
++    .search-bar input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +185,12 @@
+ </head>
+ 
+ <body>
+ 
++  <form class="search-bar" role="search" action="/search" method="get">
++    <input type="search" name="q" aria-label="Search The Daily Grind" placeholder="Search The Daily Grind…">
++  </form>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +239,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Preserve the initial position in browsers without scroll-initial-target.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      const navigation = document.querySelector('nav');
++      window.scrollTo(0, navigation.getBoundingClientRect().top + window.scrollY);
++    }
++  </script>
+ </body>
+ 
+ </html>

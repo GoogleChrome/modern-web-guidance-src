@@ -1,0 +1,678 @@
+diff --git a/index.html b/index.html
+index 66c9173..85ca8d4 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,40 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-strong: #c66900;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #bcaaa4;
++      --focus-ring: #005fcc;
++      --switch-off-bg: #795548;
++      --switch-on-bg: #2e7d32;
++      --switch-disabled-bg: #bdbdbd;
++      --badge-bg: #efebe9;
++      --badge-text: #4e342e;
++    }
++
++    body[data-theme="dark"] {
++      --primary: #261714;
++      --primary-dark: #1b0f0d;
++      --secondary: #2d1e1b;
++      --accent: #ffab40;
++      --accent-strong: #ffd180;
++      --text: #f5f5f5;
++      --text-muted: #d7ccc8;
++      --light: #18110f;
++      --surface: #251a17;
++      --border: #5d4037;
++      --focus-ring: #82b1ff;
++      --switch-off-bg: #6d4c41;
++      --switch-on-bg: #43a047;
++      --switch-disabled-bg: #424242;
++      --badge-bg: #3e2723;
++      --badge-text: #ffe0b2;
+     }
+ 
+     * {
+@@ -25,6 +55,19 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.25s ease, color 0.25s ease;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
+     }
+ 
+     /* Navigation */
+@@ -38,6 +81,8 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      flex-wrap: wrap;
++      gap: 12px;
+     }
+ 
+     .logo {
+@@ -46,9 +91,17 @@
+       letter-spacing: 1px;
+     }
+ 
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++      flex-wrap: wrap;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -66,12 +119,174 @@
+       color: var(--accent);
+     }
+ 
++    nav a:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Accessible Switch Component (WAI-ARIA Switch Pattern) */
++    .switch-wrapper {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    button[role="switch"] {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      background: transparent;
++      border: 2px solid transparent;
++      border-radius: 999px;
++      padding: 4px 8px;
++      cursor: pointer;
++      font: inherit;
++      color: inherit;
++      text-align: left;
++      user-select: none;
++      transition: background-color 0.2s ease, border-color 0.2s ease;
++    }
++
++    button[role="switch"]:hover:not(:disabled) {
++      background-color: rgba(255, 171, 64, 0.12);
++    }
++
++    button[role="switch"]:focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 2px;
++    }
++
++    nav button[role="switch"] {
++      color: #ffffff;
++    }
++
++    nav button[role="switch"]:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    button[role="switch"]:disabled,
++    button[role="switch"][aria-disabled="true"] {
++      cursor: not-allowed;
++      opacity: 0.65;
++    }
++
++    .switch-track {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      width: 52px;
++      height: 28px;
++      background-color: var(--switch-off-bg);
++      border: 2px solid rgba(255, 255, 255, 0.85);
++      border-radius: 999px;
++      transition: background-color 0.2s ease, border-color 0.2s ease;
++      flex-shrink: 0;
++    }
++
++    .preference-item .switch-track {
++      border-color: var(--text);
++    }
++
++    button[role="switch"][aria-checked="true"] .switch-track {
++      background-color: var(--switch-on-bg);
++    }
++
++    button[role="switch"]:disabled .switch-track {
++      background-color: var(--switch-disabled-bg);
++      border-color: var(--border);
++    }
++
++    .switch-thumb {
++      position: absolute;
++      top: 2px;
++      left: 2px;
++      width: 20px;
++      height: 20px;
++      background-color: #ffffff;
++      border-radius: 50%;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    button[role="switch"][aria-checked="true"] .switch-thumb {
++      transform: translateX(24px);
++    }
++
++    /* Visual state icon inside thumb for non-color differentiation (WCAG 1.4.1) */
++    .switch-thumb::after {
++      content: "";
++      width: 6px;
++      height: 6px;
++      border-radius: 50%;
++      border: 2px solid var(--switch-off-bg);
++      transition: all 0.15s ease;
++    }
++
++    button[role="switch"][aria-checked="true"] .switch-thumb::after {
++      width: 4px;
++      height: 9px;
++      border-radius: 0;
++      border: none;
++      border-right: 2px solid var(--switch-on-bg);
++      border-bottom: 2px solid var(--switch-on-bg);
++      transform: rotate(45deg) translate(-1px, -1px);
++    }
++
++    .switch-state-text {
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.04em;
++      min-width: 2.2rem;
++    }
++
++    .switch-state-on {
++      display: none;
++    }
++
++    .switch-state-off {
++      display: inline;
++    }
++
++    button[role="switch"][aria-checked="true"] .switch-state-on {
++      display: inline;
++    }
++
++    button[role="switch"][aria-checked="true"] .switch-state-off {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      .switch-track,
++      .switch-thumb {
++        transition: none !important;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .switch-track {
++        border: 2px solid ButtonText;
++      }
++      button[role="switch"][aria-checked="true"] .switch-track {
++        background-color: Highlight;
++      }
++      .switch-thumb {
++        background-color: ButtonFace;
++        border: 1px solid ButtonText;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -100,6 +315,77 @@
+       padding: 0 20px;
+     }
+ 
++    /* Preferences Panel */
++    .preferences-panel {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 24px;
++      margin-bottom: 40px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    .preferences-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 16px;
++      border-bottom: 1px solid var(--border);
++      padding-bottom: 12px;
++    }
++
++    .preferences-header h2 {
++      color: var(--text);
++      font-size: 1.4rem;
++    }
++
++    .preferences-status {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      background: var(--badge-bg);
++      color: var(--badge-text);
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-weight: 600;
++    }
++
++    .preferences-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 16px;
++    }
++
++    .preference-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 14px 16px;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      background: var(--light);
++    }
++
++    .preference-info {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .preference-label {
++      font-weight: 600;
++      font-size: 1rem;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .preference-desc {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,16 +394,39 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid var(--border);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: opacity 0.2s ease, transform 0.2s ease;
++    }
++
++    .card[hidden] {
++      display: none;
+     }
+ 
+     .card h3 {
++      margin-bottom: 8px;
++      color: var(--text);
++    }
++
++    .card-badges {
++      display: flex;
++      justify-content: center;
++      gap: 6px;
++      flex-wrap: wrap;
+       margin-bottom: 10px;
+-      color: var(--primary);
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: var(--badge-bg);
++      color: var(--badge-text);
+     }
+ 
+     .btn {
+@@ -132,7 +441,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
+     footer {
+@@ -157,15 +466,36 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-actions">
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++      <div class="switch-wrapper">
++        <button
++          type="button"
++          role="switch"
++          id="dark-mode-switch"
++          aria-checked="false"
++          aria-label="Dark roast theme"
++          data-switch-target="theme"
++        >
++          <span class="switch-label">Dark Mode</span>
++          <span class="switch-track" aria-hidden="true">
++            <span class="switch-thumb"></span>
++          </span>
++          <span class="switch-state-text" aria-hidden="true">
++            <span class="switch-state-on">On</span>
++            <span class="switch-state-off">Off</span>
++          </span>
++        </button>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -175,21 +505,131 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="preferences-panel" aria-labelledby="brew-prefs-heading">
++      <div class="preferences-header">
++        <h2 id="brew-prefs-heading">Quick Brew &amp; Order Preferences</h2>
++        <span id="active-prefs-summary" class="preferences-status" aria-live="polite">
++          Standard menu &bull; Caffeinated
++        </span>
++      </div>
++
++      <div class="preferences-grid" role="group" aria-labelledby="brew-prefs-heading">
++        <!-- Switch 1: Dairy-Free Filter -->
++        <div class="preference-item">
++          <div class="preference-info">
++            <span id="label-dairy-free" class="preference-label" data-switch-for="switch-dairy-free">
++              Dairy-Free Menu Only
++            </span>
++            <span id="desc-dairy-free" class="preference-desc">
++              Filter drinks made exclusively with oat, almond, or coconut milk.
++            </span>
++          </div>
++          <button
++            type="button"
++            role="switch"
++            id="switch-dairy-free"
++            aria-checked="false"
++            aria-labelledby="label-dairy-free"
++            aria-describedby="desc-dairy-free"
++            data-switch-target="dairy-free"
++          >
++            <span class="switch-track" aria-hidden="true">
++              <span class="switch-thumb"></span>
++            </span>
++            <span class="switch-state-text" aria-hidden="true">
++              <span class="switch-state-on">On</span>
++              <span class="switch-state-off">Off</span>
++            </span>
++          </button>
++        </div>
++
++        <!-- Switch 2: Decaf Default -->
++        <div class="preference-item">
++          <div class="preference-info">
++            <span id="label-decaf" class="preference-label" data-switch-for="switch-decaf">
++              Swiss Water Decaf
++            </span>
++            <span id="desc-decaf" class="preference-desc">
++              Prepare all seasonal espresso beverages with decaffeinated beans.
++            </span>
++          </div>
++          <button
++            type="button"
++            role="switch"
++            id="switch-decaf"
++            aria-checked="false"
++            aria-labelledby="label-decaf"
++            aria-describedby="desc-decaf"
++            data-switch-target="decaf"
++          >
++            <span class="switch-track" aria-hidden="true">
++              <span class="switch-thumb"></span>
++            </span>
++            <span class="switch-state-text" aria-hidden="true">
++              <span class="switch-state-on">On</span>
++              <span class="switch-state-off">Off</span>
++            </span>
++          </button>
++        </div>
++
++        <!-- Switch 3: Reusable Cup Discount -->
++        <div class="preference-item">
++          <div class="preference-info">
++            <span id="label-reusable-cup" class="preference-label" data-switch-for="switch-reusable-cup">
++              Bring Reusable Tumbler
++            </span>
++            <span id="desc-reusable-cup" class="preference-desc">
++              Save $0.50 and earn 25 bonus rewards stars on pickup orders.
++            </span>
++          </div>
++          <button
++            type="button"
++            role="switch"
++            id="switch-reusable-cup"
++            aria-checked="true"
++            aria-labelledby="label-reusable-cup"
++            aria-describedby="desc-reusable-cup"
++            data-switch-target="reusable-cup"
++          >
++            <span class="switch-track" aria-hidden="true">
++              <span class="switch-thumb"></span>
++            </span>
++            <span class="switch-state-text" aria-hidden="true">
++              <span class="switch-state-on">On</span>
++              <span class="switch-state-off">Off</span>
++            </span>
++          </button>
++        </div>
++      </div>
++    </section>
++
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-dairy-free="true">
+           <h3>Maple Oat Latte</h3>
++          <div class="card-badges">
++            <span class="badge">Dairy-Free</span>
++            <span class="badge roast-badge">Signature Espresso</span>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-dairy-free="true">
+           <h3>Dark Roast Espresso</h3>
++          <div class="card-badges">
++            <span class="badge">Dairy-Free</span>
++            <span class="badge roast-badge">Bold Roast</span>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-dairy-free="false">
+           <h3>Cold Brew</h3>
++          <div class="card-badges">
++            <span class="badge">Sweet Cream Foam</span>
++            <span class="badge roast-badge">18-Hr Steep</span>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -207,6 +647,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const switches = document.querySelectorAll('button[role="switch"]');
++      const summaryEl = document.getElementById('active-prefs-summary');
++      const cards = document.querySelectorAll('.card');
++      const roastBadges = document.querySelectorAll('.roast-badge');
++
++      function updateApplicationState() {
++        const themeSwitch = document.getElementById('dark-mode-switch');
++        const dairyFreeSwitch = document.getElementById('switch-dairy-free');
++        const decafSwitch = document.getElementById('switch-decaf');
++        const cupSwitch = document.getElementById('switch-reusable-cup');
++
++        const isDark = themeSwitch && themeSwitch.getAttribute('aria-checked') === 'true';
++        const isDairyFree = dairyFreeSwitch && dairyFreeSwitch.getAttribute('aria-checked') === 'true';
++        const isDecaf = decafSwitch && decafSwitch.getAttribute('aria-checked') === 'true';
++        const isReusableCup = cupSwitch && cupSwitch.getAttribute('aria-checked') === 'true';
++
++        if (isDark) {
++          document.body.setAttribute('data-theme', 'dark');
++        } else {
++          document.body.removeAttribute('data-theme');
++        }
++
++        cards.forEach(function (card) {
++          if (isDairyFree && card.getAttribute('data-dairy-free') === 'false') {
++            card.setAttribute('hidden', '');
++          } else {
++            card.removeAttribute('hidden');
++          }
++        });
++
++        roastBadges.forEach(function (badge) {
++          if (!badge.dataset.originalText) {
++            badge.dataset.originalText = badge.textContent;
++          }
++          badge.textContent = isDecaf ? 'Swiss Water Decaf' : badge.dataset.originalText;
++        });
++
++        if (summaryEl) {
++          const parts = [
++            isDairyFree ? 'Dairy-free menu' : 'Standard menu',
++            isDecaf ? 'Swiss Water Decaf' : 'Caffeinated'
++          ];
++          if (isReusableCup) {
++            parts.push('Reusable cup (-$0.50)');
++          }
++          summaryEl.textContent = parts.join(' • ');
++        }
++      }
++
++      function toggleSwitch(switchEl) {
++        if (switchEl.disabled || switchEl.getAttribute('aria-disabled') === 'true') {
++          return;
++        }
++        const isChecked = switchEl.getAttribute('aria-checked') === 'true';
++        const nextState = !isChecked;
++        switchEl.setAttribute('aria-checked', String(nextState));
++
++        switchEl.dispatchEvent(
++          new CustomEvent('switchchange', {
++            bubbles: true,
++            detail: {
++              checked: nextState,
++              target: switchEl.getAttribute('data-switch-target')
++            }
++          })
++        );
++
++        updateApplicationState();
++      }
++
++      switches.forEach(function (switchEl) {
++        switchEl.addEventListener('click', function () {
++          toggleSwitch(switchEl);
++        });
++      });
++
++      // Allow clicking associated text labels to toggle their switch
++      document.querySelectorAll('[data-switch-for]').forEach(function (labelEl) {
++        labelEl.addEventListener('click', function () {
++          const targetId = labelEl.getAttribute('data-switch-for');
++          const switchEl = document.getElementById(targetId);
++          if (switchEl) {
++            switchEl.focus();
++            toggleSwitch(switchEl);
++          }
++        });
++      });
++
++      updateApplicationState();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+index 66c9173..9ba0ca3 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,56 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Hold the first render (and thus the transition's new-page snapshot) until the main content is parsed. -->
++  <link rel="expect" href="#main-content" blocking="render">
+   <style>
++    /* Cross-document view transitions. Styles are inline so they are render-blocking and applied before the transition starts. */
++    @view-transition {
++      navigation: auto;
++    }
++
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    main {
++      view-transition-name: page-content;
++    }
++
++    footer {
++      view-transition-name: site-footer;
++    }
++
++    ::view-transition-old(page-content) {
++      animation: 0.25s ease-in both page-out;
++    }
++
++    ::view-transition-new(page-content) {
++      animation: 0.35s ease-out both page-in;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -153,6 +202,17 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- Synchronous (render-blocking) script: runs before the page is revealed, so the transition never starts on a page whose critical script hasn't run. -->
++  <script>
++    document.documentElement.classList.add('js');
++    // Skip the transition for same-page navigations (e.g. hash links).
++    addEventListener('pageswap', (e) => {
++      if (!e.viewTransition || !e.activation) return;
++      const from = e.activation.from && new URL(e.activation.from.url);
++      const to = e.activation.entry && new URL(e.activation.entry.url);
++      if (from && to && from.pathname === to.pathname) e.viewTransition.skipTransition();
++    });
++  </script>
+ </head>
+ 
+ <body>
+@@ -174,7 +234,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..9391368 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,30 @@
+       padding: 0 20px;
+     }
+ 
++    .navigation-target:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 8px;
++    }
++
++    .navigation-target.is-arrived {
++      animation: arrival 1.2s ease-out;
++    }
++
++    .info-section {
++      margin-top: 64px;
++    }
++
++    @keyframes arrival {
++      from { background-color: var(--secondary); }
++      to { background-color: transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .navigation-target.is-arrived {
++        animation: none;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,9 +184,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,12 +195,12 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="navigation-target" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +219,17 @@
+         </div>
+       </div>
+     </section>
++    <section id="locations" class="navigation-target info-section" tabindex="-1" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Find Your Daily Grind</h2>
++      <p>Make time for a freshly roasted coffee at your local café.</p>
++      <a href="/locations" class="btn">Explore Locations</a>
++    </section>
++
++    <section id="rewards" class="navigation-target info-section" tabindex="-1" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Daily Grind Rewards</h2>
++      <p>Discover more ways to enjoy your daily coffee ritual.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +242,90 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let activeNavigation;
++
++    async function scrollToTarget(top, signal) {
++      // Observe before scrolling so even a short scroll cannot be missed.
++      let finish;
++      const settled = new Promise((resolve) => {
++        let idleTimer;
++        finish = () => {
++          clearTimeout(idleTimer);
++          document.removeEventListener('scroll', onScroll);
++          document.removeEventListener('scrollend', finish);
++          signal.removeEventListener('abort', finish);
++          resolve();
++        };
++        const onScroll = () => {
++          clearTimeout(idleTimer);
++          idleTimer = setTimeout(finish, 120);
++        };
++        document.addEventListener('scroll', onScroll, { passive: true });
++        document.addEventListener('scrollend', finish);
++        signal.addEventListener('abort', finish, { once: true });
++        // Also handles destinations that need no movement.
++        onScroll();
++      });
++
++      try {
++        const result = window.scrollTo({
++          top,
++          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++        });
++        if (result && typeof result.then === 'function') {
++          await result;
++          // Guard against root-scroller promises that resolve prematurely.
++          if (!signal.aborted && Math.abs(window.scrollY - top) > 1) await settled;
++        } else {
++          // Older browsers: scrollend, or an idle debounce reset by each scroll.
++          await settled;
++        }
++      } finally {
++        finish();
++      }
++    }
++
++    document.addEventListener('click', async (event) => {
++      const link = event.target.closest('a[href^="#"]');
++      if (!link || event.defaultPrevented || event.button !== 0 ||
++          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
++          link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++      const target = document.getElementById(link.hash.slice(1));
++      if (!target) return;
++      event.preventDefault();
++
++      activeNavigation?.abort();
++      const navigation = new AbortController();
++      activeNavigation = navigation;
++      document.querySelectorAll('.is-arrived').forEach((element) => element.classList.remove('is-arrived'));
++
++      // User input cancels delayed effects so focus is never stolen afterward.
++      const cancel = () => navigation.abort();
++      const cancelOnKey = (keyEvent) => {
++        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Tab', 'Escape'].includes(keyEvent.key)) cancel();
++      };
++      const options = { passive: true, signal: navigation.signal };
++      window.addEventListener('wheel', cancel, options);
++      window.addEventListener('touchstart', cancel, options);
++      window.addEventListener('pointerdown', cancel, options);
++      window.addEventListener('keydown', cancelOnKey, { signal: navigation.signal });
++
++      const navHeight = document.querySelector('nav').getBoundingClientRect().height;
++      const maxTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
++      const top = Math.min(maxTop, Math.max(0, window.scrollY + target.getBoundingClientRect().top - navHeight - 20));
++      try {
++        await scrollToTarget(top, navigation.signal);
++        if (navigation.signal.aborted || activeNavigation !== navigation || Math.abs(window.scrollY - top) > 1) return;
++        history.pushState(null, '', link.hash);
++        target.focus({ preventScroll: true });
++        target.classList.add('is-arrived');
++      } finally {
++        navigation.abort();
++        if (activeNavigation === navigation) activeNavigation = null;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

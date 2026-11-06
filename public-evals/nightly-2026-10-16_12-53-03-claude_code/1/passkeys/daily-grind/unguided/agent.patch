@@ -1,0 +1,843 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..af07e85
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules
++data.json
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..e8ccba1
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,88 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/site.css">
++  <link rel="stylesheet" href="/base.css">
++</head>
++<body>
++  <nav>
++    <a href="/" class="logo" style="color:white;text-decoration:none">THE DAILY GRIND</a>
++    <ul id="auth-nav"></ul>
++  </nav>
++  <main class="auth-box" style="max-width:640px">
++    <h1 id="hello">My Account</h1>
++    <p class="muted" id="email"></p>
++    <h2 style="margin-top:24px">Passkeys</h2>
++    <p class="muted">Passkeys let you sign in with your fingerprint, face, or screen lock. Add more than one so you never get locked out. Removing a passkey or adding a new one asks you to confirm with a passkey first.</p>
++    <ul class="pk-list" id="list"></ul>
++    <button class="btn" id="add">Add a passkey</button>
++    <div id="msg" class="msg" role="alert"></div>
++    <h2 style="margin-top:32px">Danger zone</h2>
++    <button class="btn danger" id="delete-account">Delete account</button>
++  </main>
++  <script type="module">
++    import { initNav } from '/nav.js';
++    import { api, addPasskey, withReauth, passkeysSupported } from '/passkeys.js';
++    const msg = document.getElementById('msg');
++    const show = (text, kind = 'error') => { msg.textContent = text; msg.className = 'msg ' + kind; };
++    const fmt = (t) => (t ? new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'never');
++
++    const user = await initNav();
++    if (!user) location.href = '/login?next=/account';
++    document.getElementById('hello').textContent = `Hi, ${user.displayName}`;
++    document.getElementById('email').textContent = user.username;
++    if (!passkeysSupported()) document.getElementById('add').disabled = true;
++
++    function render(passkeys) {
++      const list = document.getElementById('list');
++      list.replaceChildren(...passkeys.map((p) => {
++        const li = document.createElement('li');
++        const info = document.createElement('div');
++        const name = document.createElement('strong');
++        name.textContent = p.name;
++        const meta = document.createElement('div');
++        meta.className = 'muted';
++        meta.textContent = `Added ${fmt(p.createdAt)} · Last used ${fmt(p.lastUsedAt)}${p.backedUp ? ' · Synced' : ''}`;
++        info.append(name, meta);
++        const actions = document.createElement('div');
++        actions.className = 'pk-actions';
++        const rename = document.createElement('button');
++        rename.className = 'btn secondary'; rename.textContent = 'Rename';
++        rename.onclick = () => attempt(async () => {
++          const n = prompt('Passkey name', p.name);
++          if (n === null) return;
++          render((await api('PATCH', '/api/passkeys', { id: p.id, name: n })).passkeys);
++        });
++        const del = document.createElement('button');
++        del.className = 'btn danger'; del.textContent = 'Remove';
++        del.onclick = () => attempt(async () => {
++          if (!confirm(`Remove “${p.name}”? You won’t be able to sign in with it anymore.`)) return;
++          render((await withReauth(() => api('DELETE', '/api/passkeys', { id: p.id }))).passkeys);
++          show('Passkey removed.', 'ok');
++        });
++        actions.append(rename, del);
++        li.append(info, actions);
++        return li;
++      }));
++    }
++    async function attempt(fn) {
++      msg.className = 'msg';
++      try { await fn(); } catch (e) { if (e.status === 401) location.href = '/login?next=/account'; else show(e.message); }
++    }
++
++    render((await api('GET', '/api/passkeys')).passkeys);
++    document.getElementById('add').onclick = () => attempt(async () => {
++      render((await withReauth(addPasskey)).passkeys);
++      show('Passkey added.', 'ok');
++    });
++    document.getElementById('delete-account').onclick = () => attempt(async () => {
++      if (!confirm('Permanently delete your account and all passkeys?')) return;
++      await withReauth(() => api('DELETE', '/api/account'));
++      location.href = '/';
++    });
++  </script>
++</body>
++</html>
+diff --git a/base.css b/base.css
+new file mode 100644
+index 0000000..439f722
+--- /dev/null
++++ b/base.css
+@@ -0,0 +1,68 @@
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++.btn { display: inline-block; background: var(--primary); color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; transition: background .3s; }
++.btn:hover { background: #3e2723; }
+diff --git a/index.html b/index.html
+index 66c9173..649fadd 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="/site.css">
+ </head>
+ 
+ <body>
+@@ -163,9 +164,8 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <ul id="auth-nav"></ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +207,10 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { initNav } from '/nav.js';
++    initNav();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/login.html b/login.html
+new file mode 100644
+index 0000000..f492be6
+--- /dev/null
++++ b/login.html
+@@ -0,0 +1,56 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Sign in | The Daily Grind</title>
++  <link rel="stylesheet" href="/site.css">
++  <link rel="stylesheet" href="/base.css">
++</head>
++<body>
++  <nav>
++    <a href="/" class="logo" style="color:white;text-decoration:none">THE DAILY GRIND</a>
++    <ul id="auth-nav"></ul>
++  </nav>
++  <main class="auth-box">
++    <h1>Sign in</h1>
++    <p class="muted">No passwords here. Use a passkey saved on your device, password manager, or security key.</p>
++    <button class="btn" id="signin" style="width:100%">Sign in with a passkey</button>
++    <div class="divider">— or create an account —</div>
++    <form id="register">
++      <label>Email <input type="email" name="username" autocomplete="username webauthn" required></label>
++      <label>Name <input type="text" name="displayName" autocomplete="name" maxlength="64"></label>
++      <button class="btn secondary" type="submit" style="width:100%">Create account with a passkey</button>
++    </form>
++    <div id="msg" class="msg" role="alert"></div>
++    <p class="muted" id="unsupported" hidden>This browser doesn’t support passkeys.</p>
++  </main>
++  <script type="module">
++    import { initNav } from '/nav.js';
++    import { signIn, registerAccount, passkeysSupported } from '/passkeys.js';
++    const msg = document.getElementById('msg');
++    const show = (text, kind = 'error') => { msg.textContent = text; msg.className = 'msg ' + kind; };
++    const next = () => new URLSearchParams(location.search).get('next');
++    // Only allow same-site relative redirects.
++    const go = () => { const n = next(); location.href = n && /^\/(?!\/)/.test(n) ? n : '/account'; };
++
++    initNav().then((u) => { if (u) go(); });
++    if (!passkeysSupported()) {
++      document.getElementById('unsupported').hidden = false;
++      document.querySelectorAll('button').forEach((b) => (b.disabled = true));
++    }
++
++    async function run(btn, fn) {
++      btn.disabled = true; msg.className = 'msg';
++      try { await fn(); go(); }
++      catch (e) { if (!e.cancelled) show(e.message); else show(e.message); btn.disabled = false; }
++    }
++    document.getElementById('signin').onclick = (e) => run(e.target, signIn);
++    document.getElementById('register').onsubmit = (e) => {
++      e.preventDefault();
++      const f = new FormData(e.target);
++      run(e.target.querySelector('button'), () => registerAccount(f.get('username'), f.get('displayName')));
++    };
++  </script>
++</body>
++</html>
+diff --git a/nav.js b/nav.js
+new file mode 100644
+index 0000000..32bc69f
+--- /dev/null
++++ b/nav.js
+@@ -0,0 +1,14 @@
++import { api, logout } from './passkeys.js';
++
++// Swaps the nav's account/logout links based on session state. Returns the current user (or null).
++export async function initNav() {
++  const slot = document.getElementById('auth-nav');
++  const { user } = await api('GET', '/api/me').catch(() => ({ user: null }));
++  if (user) {
++    slot.innerHTML = '<li><a href="/account">My Account</a></li><li><button type="button" class="logout-link nav-btn" id="logout">Logout</button></li>';
++    document.getElementById('logout').onclick = async () => { await logout(); location.href = '/'; };
++  } else {
++    slot.innerHTML = '<li><a href="/login" class="logout-link">Sign in</a></li>';
++  }
++  return user;
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..1cf0b6d 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,14 @@
+ {
+   "name": "daily-grind",
++  "type": "module",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@simplewebauthn/server": "^14.0.3"
+   }
+ }
+diff --git a/passkeys.js b/passkeys.js
+new file mode 100644
+index 0000000..3746a11
+--- /dev/null
++++ b/passkeys.js
+@@ -0,0 +1,97 @@
++// Browser-side WebAuthn helpers shared by all pages.
++const toB64u = (buf) =>
++  btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++const fromB64u = (s) => {
++  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '='));
++  return Uint8Array.from(b, (c) => c.charCodeAt(0)).buffer;
++};
++
++export async function api(method, url, body) {
++  const res = await fetch(url, {
++    method,
++    headers: body ? { 'Content-Type': 'application/json' } : {},
++    body: body ? JSON.stringify(body) : undefined,
++    credentials: 'same-origin',
++  });
++  const data = await res.json().catch(() => ({}));
++  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { code: data.code, status: res.status });
++  return data;
++}
++
++export const passkeysSupported = () => !!window.PublicKeyCredential;
++
++function friendly(e) {
++  if (e?.name === 'NotAllowedError') return Object.assign(new Error('Passkey prompt was cancelled or timed out.'), { cancelled: true });
++  if (e?.name === 'InvalidStateError') return new Error('This passkey is already registered on this device.');
++  return e;
++}
++
++async function create(options) {
++  options.challenge = fromB64u(options.challenge);
++  options.user.id = fromB64u(options.user.id);
++  (options.excludeCredentials || []).forEach((c) => (c.id = fromB64u(c.id)));
++  let cred;
++  try { cred = await navigator.credentials.create({ publicKey: options }); } catch (e) { throw friendly(e); }
++  const r = cred.response;
++  return {
++    id: cred.id, rawId: toB64u(cred.rawId), type: cred.type,
++    clientExtensionResults: cred.getClientExtensionResults(),
++    authenticatorAttachment: cred.authenticatorAttachment,
++    response: {
++      clientDataJSON: toB64u(r.clientDataJSON),
++      attestationObject: toB64u(r.attestationObject),
++      transports: r.getTransports?.() || [],
++    },
++  };
++}
++
++async function get(options) {
++  options.challenge = fromB64u(options.challenge);
++  (options.allowCredentials || []).forEach((c) => (c.id = fromB64u(c.id)));
++  let cred;
++  try { cred = await navigator.credentials.get({ publicKey: options }); } catch (e) { throw friendly(e); }
++  const r = cred.response;
++  return {
++    id: cred.id, rawId: toB64u(cred.rawId), type: cred.type,
++    clientExtensionResults: cred.getClientExtensionResults(),
++    authenticatorAttachment: cred.authenticatorAttachment,
++    response: {
++      clientDataJSON: toB64u(r.clientDataJSON),
++      authenticatorData: toB64u(r.authenticatorData),
++      signature: toB64u(r.signature),
++      userHandle: r.userHandle ? toB64u(r.userHandle) : undefined,
++    },
++  };
++}
++
++export async function registerAccount(username, displayName) {
++  const options = await api('POST', '/api/register/options', { username, displayName });
++  return api('POST', '/api/register/verify', await create(options));
++}
++
++export async function signIn() {
++  const options = await api('POST', '/api/login/options');
++  return api('POST', '/api/login/verify', await get(options));
++}
++
++export async function reauthenticate() {
++  const options = await api('POST', '/api/reauth/options');
++  return api('POST', '/api/reauth/verify', await get(options));
++}
++
++export async function addPasskey() {
++  const options = await api('POST', '/api/passkeys/options');
++  return api('POST', '/api/passkeys/verify', await create(options));
++}
++
++// Runs a sensitive action; if the server asks for reauth, prompts for a passkey and retries once.
++export async function withReauth(action) {
++  try { return await action(); }
++  catch (e) {
++    if (e.code !== 'reauth_required') throw e;
++    await reauthenticate();
++    return action();
++  }
++}
++
++export const logout = () => api('POST', '/api/logout');
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..c66a053
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,397 @@
++// Static file server + passkey (WebAuthn) API. Data is persisted to data.json.
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import crypto from 'node:crypto';
++import { fileURLToPath } from 'node:url';
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++} from '@simplewebauthn/server';
++
++const ROOT = path.dirname(fileURLToPath(import.meta.url));
++const PORT = Number(process.env.PORT || 11222);
++const RP_NAME = 'The Daily Grind';
++// RP ID / origin are derived from the request host unless pinned via env.
++const RP_ID_ENV = process.env.RP_ID;
++const ORIGIN_ENV = process.env.ORIGIN;
++const REAUTH_WINDOW_MS = 5 * 60 * 1000;
++const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
++const CHALLENGE_TTL_MS = 5 * 60 * 1000;
++const DB_FILE = path.join(ROOT, 'data.json');
++
++// ---- storage ----
++// db.users[id] = { id, username, displayName, passkeys: [{ id, publicKey(b64url), counter, transports, name, createdAt, lastUsedAt, deviceType, backedUp }] }
++let db = { users: {} };
++try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch {}
++const save = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
++const b64u = (buf) => Buffer.from(buf).toString('base64url');
++const fromB64u = (s) => new Uint8Array(Buffer.from(s, 'base64url'));
++const findByUsername = (name) =>
++  Object.values(db.users).find((u) => u.username.toLowerCase() === name.toLowerCase());
++const findByCredential = (id) => {
++  for (const u of Object.values(db.users)) {
++    const pk = u.passkeys.find((p) => p.id === id);
++    if (pk) return { user: u, passkey: pk };
++  }
++};
++
++// ---- sessions (in-memory) ----
++const sessions = new Map(); // sid -> { userId, reauthAt, challenge, challengeKind, challengeExp, pending, expires }
++function getSession(req, res, create = false) {
++  const cookies = Object.fromEntries(
++    (req.headers.cookie || '').split(/;\s*/).filter(Boolean).map((c) => {
++      const i = c.indexOf('=');
++      return [c.slice(0, i), c.slice(i + 1)];
++    }),
++  );
++  let sid = cookies.sid;
++  let s = sid && sessions.get(sid);
++  if (s && s.expires < Date.now()) { sessions.delete(sid); s = null; }
++  if (!s && create) {
++    sid = crypto.randomBytes(32).toString('base64url');
++    s = { expires: Date.now() + SESSION_TTL_MS };
++    sessions.set(sid, s);
++    const secure = isSecure(req) ? '; Secure' : '';
++    res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_TTL_MS / 1000}${secure}`);
++  }
++  if (s) s.sid = sid;
++  return s;
++}
++const isSecure = (req) => req.headers['x-forwarded-proto'] === 'https';
++function destroySession(req, res) {
++  const s = getSession(req, res);
++  if (s) sessions.delete(s.sid);
++  res.setHeader('Set-Cookie', 'sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
++}
++// Rotate the session id on privilege change to prevent fixation.
++function rotateSession(req, res, s) {
++  sessions.delete(s.sid);
++  const sid = crypto.randomBytes(32).toString('base64url');
++  const fresh = { expires: Date.now() + SESSION_TTL_MS };
++  sessions.set(sid, fresh);
++  fresh.sid = sid;
++  const secure = isSecure(req) ? '; Secure' : '';
++  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_TTL_MS / 1000}${secure}`);
++  return fresh;
++}
++
++// ---- helpers ----
++class HttpError extends Error {
++  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
++}
++const send = (res, status, body) => {
++  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
++  res.end(JSON.stringify(body));
++};
++async function readJson(req) {
++  let size = 0;
++  const chunks = [];
++  for await (const c of req) {
++    size += c.length;
++    if (size > 100_000) throw new HttpError(413, 'Request too large');
++    chunks.push(c);
++  }
++  if (!chunks.length) return {};
++  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
++  catch { throw new HttpError(400, 'Invalid JSON'); }
++}
++function rp(req) {
++  const host = req.headers.host || `localhost:${PORT}`;
++  const proto = isSecure(req) ? 'https' : 'http';
++  return {
++    rpID: RP_ID_ENV || host.replace(/:\d+$/, ''),
++    origin: ORIGIN_ENV || `${proto}://${host}`,
++  };
++}
++function setChallenge(s, kind, challenge, extra = {}) {
++  Object.assign(s, { challenge, challengeKind: kind, challengeExp: Date.now() + CHALLENGE_TTL_MS, ...extra });
++}
++// Challenges are single-use: consumed whether or not verification succeeds.
++function takeChallenge(s, kind) {
++  const ok = s.challenge && s.challengeKind === kind && s.challengeExp > Date.now();
++  const c = ok ? s.challenge : null;
++  const pending = s.pending;
++  delete s.challenge; delete s.challengeKind; delete s.challengeExp; delete s.pending;
++  if (!c) throw new HttpError(400, 'Challenge expired. Please try again.');
++  return { challenge: c, pending };
++}
++function requireUser(req, res) {
++  const s = getSession(req, res);
++  const user = s?.userId && db.users[s.userId];
++  if (!user) throw new HttpError(401, 'Not signed in');
++  return { s, user };
++}
++function requireRecentAuth(s) {
++  if (!s.reauthAt || Date.now() - s.reauthAt > REAUTH_WINDOW_MS)
++    throw new HttpError(403, 'Please confirm it’s you with your passkey.', 'reauth_required');
++}
++const publicPasskey = (p) => ({
++  id: p.id, name: p.name, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt,
++  deviceType: p.deviceType, backedUp: p.backedUp,
++});
++const defaultName = (transports = [], deviceType) =>
++  transports.includes('internal') ? 'This device' : deviceType === 'multiDevice' ? 'Synced passkey' : 'Security key';
++
++function startSession(req, res, user, authedNow = true) {
++  let s = getSession(req, res, true);
++  s = rotateSession(req, res, s);
++  s.userId = user.id;
++  if (authedNow) s.reauthAt = Date.now();
++  return s;
++}
++
++// ---- rate limiting (per IP, simple fixed window on /api/*) ----
++const hits = new Map();
++function rateLimit(req) {
++  const ip = req.socket.remoteAddress;
++  const now = Date.now();
++  const h = hits.get(ip);
++  if (!h || h.reset < now) hits.set(ip, { count: 1, reset: now + 60_000 });
++  else if (++h.count > 60) throw new HttpError(429, 'Too many requests. Try again shortly.');
++}
++
++// ---- routes ----
++const routes = {};
++const route = (method, p, fn) => { routes[`${method} ${p}`] = fn; };
++
++route('GET', '/api/me', async (req, res) => {
++  const s = getSession(req, res);
++  const user = s?.userId && db.users[s.userId];
++  if (!user) return send(res, 200, { user: null });
++  send(res, 200, {
++    user: { username: user.username, displayName: user.displayName },
++    recentlyAuthenticated: !!s.reauthAt && Date.now() - s.reauthAt <= REAUTH_WINDOW_MS,
++  });
++});
++
++// Registration: create a new account with a first passkey.
++route('POST', '/api/register/options', async (req, res) => {
++  const { username, displayName } = await readJson(req);
++  const name = String(username || '').trim();
++  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name) || name.length > 254)
++    throw new HttpError(400, 'Enter a valid email address.');
++  if (findByUsername(name)) throw new HttpError(409, 'An account with that email already exists. Try signing in.');
++  const { rpID } = rp(req);
++  const userID = crypto.randomBytes(32);
++  const options = await generateRegistrationOptions({
++    rpName: RP_NAME, rpID, userName: name,
++    userDisplayName: String(displayName || '').trim().slice(0, 64) || name,
++    userID,
++    attestationType: 'none', supportedAlgorithmIDs: [-7, -257, -8],
++    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++  });
++  const s = getSession(req, res, true);
++  setChallenge(s, 'register', options.challenge, {
++    pending: { userId: b64u(userID), username: name, displayName: String(displayName || '').trim().slice(0, 64) || name },
++  });
++  send(res, 200, options);
++});
++
++route('POST', '/api/register/verify', async (req, res) => {
++  const body = await readJson(req);
++  const s = getSession(req, res);
++  if (!s) throw new HttpError(400, 'Session expired. Please try again.');
++  const { challenge, pending } = takeChallenge(s, 'register');
++  if (!pending) throw new HttpError(400, 'Invalid registration state');
++  if (findByUsername(pending.username)) throw new HttpError(409, 'An account with that email already exists.');
++  const { rpID, origin } = rp(req);
++  const v = await verifyRegistrationResponse({
++    response: body, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpID,
++  }).catch(() => { throw new HttpError(400, 'Passkey registration could not be verified.'); });
++  if (!v.verified) throw new HttpError(400, 'Passkey registration could not be verified.');
++  const { credential, credentialDeviceType, credentialBackedUp } = v.registrationInfo;
++  if (findByCredential(credential.id)) throw new HttpError(409, 'That passkey is already registered.');
++  const user = {
++    id: pending.userId, username: pending.username, displayName: pending.displayName,
++    passkeys: [{
++      id: credential.id, publicKey: b64u(credential.publicKey), counter: credential.counter,
++      transports: credential.transports || [], name: defaultName(credential.transports, credentialDeviceType),
++      createdAt: Date.now(), lastUsedAt: null, deviceType: credentialDeviceType, backedUp: credentialBackedUp,
++    }],
++  };
++  db.users[user.id] = user;
++  save();
++  startSession(req, res, user);
++  send(res, 200, { user: { username: user.username, displayName: user.displayName } });
++});
++
++// Authentication: usernameless (discoverable credentials) sign-in.
++route('POST', '/api/login/options', async (req, res) => {
++  const { rpID } = rp(req);
++  const options = await generateAuthenticationOptions({ rpID, userVerification: 'preferred' });
++  const s = getSession(req, res, true);
++  setChallenge(s, 'login', options.challenge);
++  send(res, 200, options);
++});
++
++async function verifyAssertion(req, res, kind, expectedUserId) {
++  const body = await readJson(req);
++  const s = getSession(req, res);
++  if (!s) throw new HttpError(400, 'Session expired. Please try again.');
++  const { challenge } = takeChallenge(s, kind);
++  const found = findByCredential(body?.id);
++  if (!found || (expectedUserId && found.user.id !== expectedUserId))
++    throw new HttpError(401, 'Passkey not recognized.');
++  const { rpID, origin } = rp(req);
++  const { user, passkey } = found;
++  const v = await verifyAuthenticationResponse({
++    response: body, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpID,
++    credential: { id: passkey.id, publicKey: fromB64u(passkey.publicKey), counter: passkey.counter, transports: passkey.transports },
++  }).catch(() => { throw new HttpError(401, 'Passkey verification failed.'); });
++  if (!v.verified) throw new HttpError(401, 'Passkey verification failed.');
++  passkey.counter = v.authenticationInfo.newCounter;
++  passkey.backedUp = v.authenticationInfo.credentialBackedUp;
++  passkey.lastUsedAt = Date.now();
++  save();
++  return { user, s };
++}
++
++route('POST', '/api/login/verify', async (req, res) => {
++  const { user } = await verifyAssertion(req, res, 'login');
++  startSession(req, res, user);
++  send(res, 200, { user: { username: user.username, displayName: user.displayName } });
++});
++
++route('POST', '/api/logout', async (req, res) => {
++  destroySession(req, res);
++  send(res, 200, { ok: true });
++});
++
++// Reauthentication: prove presence of one of the signed-in user's passkeys.
++route('POST', '/api/reauth/options', async (req, res) => {
++  const { s, user } = requireUser(req, res);
++  const { rpID } = rp(req);
++  const options = await generateAuthenticationOptions({
++    rpID, userVerification: 'required',
++    allowCredentials: user.passkeys.map((p) => ({ id: p.id, transports: p.transports })),
++  });
++  setChallenge(s, 'reauth', options.challenge);
++  send(res, 200, options);
++});
++
++route('POST', '/api/reauth/verify', async (req, res) => {
++  const { s, user } = requireUser(req, res);
++  const out = await verifyAssertion(req, res, 'reauth', user.id);
++  out.s.reauthAt = Date.now();
++  send(res, 200, { ok: true });
++});
++
++// Management
++route('GET', '/api/passkeys', async (req, res) => {
++  const { user } = requireUser(req, res);
++  send(res, 200, { passkeys: user.passkeys.map(publicPasskey) });
++});
++
++route('POST', '/api/passkeys/options', async (req, res) => {
++  const { s, user } = requireUser(req, res);
++  requireRecentAuth(s);
++  const { rpID } = rp(req);
++  const options = await generateRegistrationOptions({
++    rpName: RP_NAME, rpID, userName: user.username, userDisplayName: user.displayName,
++    userID: fromB64u(user.id), attestationType: 'none', supportedAlgorithmIDs: [-7, -257, -8],
++    excludeCredentials: user.passkeys.map((p) => ({ id: p.id, transports: p.transports })),
++    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++  });
++  setChallenge(s, 'add', options.challenge);
++  send(res, 200, options);
++});
++
++route('POST', '/api/passkeys/verify', async (req, res) => {
++  const body = await readJson(req);
++  const { s, user } = requireUser(req, res);
++  const { challenge } = takeChallenge(s, 'add');
++  requireRecentAuth(s);
++  const { rpID, origin } = rp(req);
++  const v = await verifyRegistrationResponse({
++    response: body, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpID,
++  }).catch(() => { throw new HttpError(400, 'Passkey registration could not be verified.'); });
++  if (!v.verified) throw new HttpError(400, 'Passkey registration could not be verified.');
++  const { credential, credentialDeviceType, credentialBackedUp } = v.registrationInfo;
++  if (findByCredential(credential.id)) throw new HttpError(409, 'That passkey is already registered.');
++  user.passkeys.push({
++    id: credential.id, publicKey: b64u(credential.publicKey), counter: credential.counter,
++    transports: credential.transports || [], name: defaultName(credential.transports, credentialDeviceType),
++    createdAt: Date.now(), lastUsedAt: null, deviceType: credentialDeviceType, backedUp: credentialBackedUp,
++  });
++  save();
++  send(res, 200, { passkeys: user.passkeys.map(publicPasskey) });
++});
++
++route('PATCH', '/api/passkeys', async (req, res) => {
++  const { user } = requireUser(req, res);
++  const { id, name } = await readJson(req);
++  const pk = user.passkeys.find((p) => p.id === id);
++  const clean = String(name || '').trim().slice(0, 40);
++  if (!pk) throw new HttpError(404, 'Passkey not found');
++  if (!clean) throw new HttpError(400, 'Name cannot be empty.');
++  pk.name = clean;
++  save();
++  send(res, 200, { passkeys: user.passkeys.map(publicPasskey) });
++});
++
++route('DELETE', '/api/passkeys', async (req, res) => {
++  const { s, user } = requireUser(req, res);
++  requireRecentAuth(s);
++  const { id } = await readJson(req);
++  const i = user.passkeys.findIndex((p) => p.id === id);
++  if (i < 0) throw new HttpError(404, 'Passkey not found');
++  if (user.passkeys.length === 1)
++    throw new HttpError(400, 'You can’t remove your only passkey. Add another first, or delete your account.');
++  user.passkeys.splice(i, 1);
++  save();
++  send(res, 200, { passkeys: user.passkeys.map(publicPasskey) });
++});
++
++route('DELETE', '/api/account', async (req, res) => {
++  const { s, user } = requireUser(req, res);
++  requireRecentAuth(s);
++  delete db.users[user.id];
++  save();
++  for (const [sid, sess] of sessions) if (sess.userId === user.id) sessions.delete(sid);
++  destroySession(req, res);
++  send(res, 200, { ok: true });
++});
++
++// ---- static ----
++const PAGES = { '/': 'index.html', '/login': 'login.html', '/account': 'account.html' };
++const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
++const PUBLIC_FILES = new Set(['nav.js', 'index.html', 'login.html', 'account.html', 'passkeys.js', 'site.css', 'base.css']);
++
++function serveStatic(req, res, pathname) {
++  const file = PAGES[pathname] || pathname.replace(/^\//, '');
++  if (!PUBLIC_FILES.has(file)) {
++    res.writeHead(404, { 'Content-Type': 'text/plain' });
++    return res.end('Not found');
++  }
++  fs.readFile(path.join(ROOT, file), (err, data) => {
++    if (err) { res.writeHead(404); return res.end('Not found'); }
++    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
++    res.end(data);
++  });
++}
++
++http.createServer(async (req, res) => {
++  const { pathname } = new URL(req.url, 'http://x');
++  try {
++    if (pathname.startsWith('/api/')) {
++      const fn = routes[`${req.method} ${pathname}`];
++      if (!fn) throw new HttpError(404, 'Not found');
++      rateLimit(req);
++      // CSRF defense for state-changing requests: require same-origin.
++      if (req.method !== 'GET') {
++        const origin = req.headers.origin;
++        if (!origin || new URL(origin).host !== req.headers.host) throw new HttpError(403, 'Cross-origin request blocked');
++      }
++      return await fn(req, res);
++    }
++    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
++    serveStatic(req, res, pathname);
++  } catch (e) {
++    if (!(e instanceof HttpError)) console.error(e);
++    const status = e instanceof HttpError ? e.status : 500;
++    send(res, status, { error: e instanceof HttpError ? e.message : 'Something went wrong', code: e.code });
++  }
++}).listen(PORT, () => console.log(`The Daily Grind running on http://localhost:${PORT}`));
+diff --git a/site.css b/site.css
+new file mode 100644
+index 0000000..998a1f1
+--- /dev/null
++++ b/site.css
+@@ -0,0 +1,19 @@
++.nav-btn { background: none; font: inherit; color: white; cursor: pointer; }
++.nav-btn.logout-link { font-size: 0.9rem; }
++.auth-box { max-width: 460px; margin: 60px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
++.auth-box h1, .auth-box h2 { color: var(--primary); margin-bottom: 8px; }
++.auth-box label { display: block; margin-top: 14px; font-size: .9rem; font-weight: 600; }
++.auth-box input[type=text], .auth-box input[type=email] { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid var(--secondary); border-radius: 5px; font: inherit; }
++button.btn { border: 0; cursor: pointer; font: inherit; }
++button.btn.secondary { background: var(--secondary); color: var(--text); }
++button.btn.danger { background: #b71c1c; }
++button.btn:disabled { opacity: .6; cursor: wait; }
++.msg { margin-top: 14px; padding: 10px; border-radius: 5px; font-size: .9rem; display: none; }
++.msg.error { display: block; background: #ffebee; color: #b71c1c; }
++.msg.ok { display: block; background: #e8f5e9; color: #1b5e20; }
++.muted { color: #6d4c41; font-size: .85rem; }
++.pk-list { list-style: none; margin-top: 16px; }
++.pk-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; border-top: 1px solid var(--secondary); }
++.pk-actions { display: flex; gap: 8px; }
++.pk-actions .btn { margin: 0; padding: 6px 12px; font-size: .85rem; }
++.divider { margin: 18px 0; text-align: center; color: #6d4c41; font-size: .85rem; }

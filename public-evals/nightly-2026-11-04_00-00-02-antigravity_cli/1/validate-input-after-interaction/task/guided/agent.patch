@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,94 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .newsletter-form {
++      max-width: 440px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++      color: var(--primary);
++    }
++
++    .newsletter-form .hint {
++      display: block;
++      color: #5d4037;
++      font-size: 0.85rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .newsletter-input-row {
++      display: flex;
++      gap: 8px;
++      align-items: stretch;
++    }
++
++    .newsletter-form input[type="email"] {
++      flex: 1;
++      font-size: 1rem;
++      padding: 0.65rem 0.75rem;
++      min-height: 48px;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background-color: #ffffff;
++      color: var(--text);
++    }
++
++    .newsletter-form input[type="email"]:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .newsletter-form input[type="email"]:user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .newsletter-form input[type="email"]:user-valid {
++      border-color: #188038;
++    }
++
++    .newsletter-form .error-msg {
++      display: none;
++      color: #b31412;
++      font-size: 0.875rem;
++      margin-top: 0.35rem;
++      font-weight: 500;
++    }
++
++    .newsletter-form:has(input[type="email"]:user-invalid) .error-msg,
++    .newsletter-form input[type="email"]:user-invalid ~ .error-msg {
++      display: block;
++    }
++
++    .newsletter-form button[type="submit"] {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 0 20px;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: 600;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter-form button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-form button[type="submit"]:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -197,8 +283,33 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter-form" action="/newsletter" method="POST">
++      <div class="field">
++        <label for="newsletter-email">Subscribe to our newsletter</label>
++        <span id="newsletter-email-hint" class="hint">Format: you@example.com</span>
++        <div class="newsletter-input-row">
++          <input
++            type="email"
++            id="newsletter-email"
++            name="email"
++            required
++            autocomplete="email"
++            autocorrect="off"
++            autocapitalize="off"
++            spellcheck="false"
++            aria-describedby="newsletter-email-hint"
++            aria-errormessage="newsletter-email-error"
++          >
++          <button type="submit">Subscribe</button>
++        </div>
++        <div id="newsletter-email-error" class="error-msg" aria-live="polite">
++          <span aria-hidden="true">❌</span> Please enter a valid email address.
++        </div>
++      </div>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +317,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const updateAriaState = (event) => {
++      const input = event.target;
++      if (!input.matches?.('input, textarea, select')) return;
++
++      if (input.matches(':user-invalid')) {
++        input.setAttribute('aria-invalid', 'true');
++      } else {
++        input.removeAttribute('aria-invalid');
++      }
++    };
++
++    document.addEventListener('blur', updateAriaState, true);
++    document.addEventListener('focus', updateAriaState, true);
++    document.addEventListener('invalid', updateAriaState, true);
++
++    document.addEventListener('input', (event) => {
++      const input = event.target;
++      if (!input.matches?.('input, textarea, select')) return;
++
++      if (input.getAttribute('aria-invalid') === 'true') {
++        updateAriaState(event);
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,79 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      position: relative;
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      container-type: scroll-state;
++      container-name: page-scroll;
++    }
++
++    .scroll-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++    }
++
++    .back-to-top {
++      position: sticky;
++      bottom: 20px;
++      z-index: 1001;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      width: max-content;
++      min-height: 48px;
++      margin: 20px 20px 20px auto;
++      padding: 12px 18px;
++      border: 0;
++      border-radius: 999px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      box-shadow: 0 3px 12px rgb(0 0 0 / 20%);
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++      transition: opacity 0.3s ease, translate 0.3s ease, visibility 0.3s;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++        translate: none;
++      }
++    }
++
++    .back-to-top:hover {
++      background: #3e2723;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @container page-scroll scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* Only the fallback observer sets this class. */
++    .scroller.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +226,10 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller" role="region" tabindex="-1" aria-label="The Daily Grind page">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +279,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- This final row reserves space so the floating button cannot cover the footer. -->
++  <button type="button" class="back-to-top">
++    <span aria-hidden="true">↑</span> Back to top
++  </button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTop = scroller.querySelector('.back-to-top');
++
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const observer = new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller, threshold: 1 });
++
++      observer.observe(scroller.querySelector('.scroll-sentinel'));
++    }
++
++    backToTop.addEventListener('click', () => {
++      // Return keyboard focus before the button becomes hidden at the top.
++      scroller.focus({ preventScroll: true });
++      scroller.scrollTo({
++        top: 0,
++        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

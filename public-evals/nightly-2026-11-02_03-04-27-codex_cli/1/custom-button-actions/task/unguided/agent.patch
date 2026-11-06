@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,58 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .action-section {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .action-stage {
++      display: grid;
++      place-items: center;
++      min-height: 240px;
++    }
++
++    #action-target {
++      display: grid;
++      place-items: center;
++      width: 120px;
++      height: 120px;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 3rem;
++      border-radius: 8px;
++      transition: rotate 0.4s, scale 0.4s, border-radius 0.4s;
++    }
++
++    #action-target.is-spun { rotate: 180deg; }
++    #action-target.is-grown { scale: 1.3; }
++    #action-target.is-rounded { border-radius: 50%; }
++
++    .action-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .action-controls .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .action-controls .btn[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #action-target { transition: none; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +244,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="action-section" aria-labelledby="action-heading">
++      <h2 id="action-heading">Give Your Coffee a Twist</h2>
++      <p>Mix and match a few playful moves.</p>
++      <div class="action-stage">
++        <div id="action-target" role="img" aria-label="Coffee cup">☕</div>
++      </div>
++      <div class="action-controls">
++        <button type="button" class="btn" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" class="btn" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +269,31 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const actionTarget = document.getElementById('action-target');
++    const commandClasses = {
++      '--spin': 'is-spun',
++      '--grow': 'is-grown',
++      '--round': 'is-rounded',
++    };
++
++    actionTarget.addEventListener('command', (event) => {
++      if (event.command === '--reset') {
++        actionTarget.classList.remove(...Object.values(commandClasses));
++      } else if (Object.hasOwn(commandClasses, event.command)) {
++        actionTarget.classList.toggle(commandClasses[event.command]);
++      } else {
++        return;
++      }
++
++      document.querySelectorAll('.action-controls [aria-pressed]').forEach((button) => {
++        button.setAttribute('aria-pressed', String(
++          actionTarget.classList.contains(commandClasses[button.getAttribute('command')])
++        ));
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

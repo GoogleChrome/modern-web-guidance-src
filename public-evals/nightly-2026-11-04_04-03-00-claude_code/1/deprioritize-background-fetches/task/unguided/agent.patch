@@ -1,0 +1,23 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,19 @@
++<!doctype html>
++<meta charset="utf-8">
++<title>Fetch</title>
++<button id="go">Load</button>
++<script>
++document.getElementById('go').addEventListener('click', () => {
++  // Mission-critical: ask the browser to prioritize this request.
++  fetch('/api/data', { priority: 'high' });
++
++  // Analytics: low priority so it doesn't compete; keepalive lets it finish if the page unloads.
++  fetch('/api/analytics', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ click: 1 }),
++    priority: 'low',
++    keepalive: true
++  });
++});
++</script>

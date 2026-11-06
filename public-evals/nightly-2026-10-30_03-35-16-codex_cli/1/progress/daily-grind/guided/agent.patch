@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+index 66c9173..a53ecf3 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,101 @@
+       padding: 0 20px;
+     }
+ 
++    /* Native progress bars: value = determinate; no value = indeterminate. */
++    .progress-panel {
++      margin-bottom: 40px;
++      padding: 24px;
++      background: #fff8ef;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .progress-panel h2 {
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: 24px;
++      margin-top: 20px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      gap: 4px 12px;
++      margin-bottom: 8px;
++    }
++
++    .progress-heading label {
++      font-weight: 600;
++    }
++
++    .progress-heading span,
++    .progress-description {
++      font-size: 0.9rem;
++    }
++
++    .progress-description {
++      margin-top: 8px;
++    }
++
++    .process-progress {
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.8s;
++      appearance: none;
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++      border: 0 solid;
++      border-radius: 100px;
++      overflow: clip;
++      background: var(--secondary);
++      container-type: inline-size;
++    }
++
++    .process-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    .process-progress::-webkit-progress-value {
++      background: var(--primary);
++      border-radius: 100px;
++      animation: var(--progress-bar-animation, none);
++    }
++
++    .process-progress::-moz-progress-bar {
++      background: var(--primary);
++      border-radius: 100px;
++      animation: var(--progress-bar-animation, none);
++    }
++
++    .process-progress:indeterminate {
++      --progress-bar-animation: progress-pending var(--progress-bar-indeterminate-animation-duration) infinite linear;
++    }
++
++    .process-progress:indeterminate:dir(rtl) {
++      --progress-bar-animation: progress-pending var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    @keyframes progress-pending {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .process-progress {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -175,6 +270,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel">
++      <h2>Every Cup Counts</h2>
++      <p>A little closer to your next coffee moment.</p>
++      <div class="progress-grid">
++        <div>
++          <div class="progress-heading">
++            <label for="rewards-progress">Your coffee rewards</label>
++            <span>6 of 10 coffees · 60%</span>
++          </div>
++          <progress class="process-progress" id="rewards-progress" value="6" max="10"
++            aria-describedby="rewards-description"></progress>
++          <p class="progress-description" id="rewards-description">Just 4 more coffees until your next free cup.</p>
++        </div>
++        <div>
++          <div class="progress-heading">
++            <label for="order-progress">Order status</label>
++            <span>Checking with the café…</span>
++          </div>
++          <progress class="process-progress" id="order-progress" max="100"
++            aria-describedby="order-description"></progress>
++          <p class="progress-description" id="order-description">Waiting for an order update. Completion is not yet available.</p>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,62 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Physical hover motion for seasonal cards */
++    .card.spring,
++    .card.bounce {
++      will-change: transform;
++    }
++
++    /* Overshoots the target scale, then settles like a damped spring */
++    .card.spring {
++      /* Fallback for browsers without linear() */
++      transition: transform 0.7s cubic-bezier(0.34, 1.8, 0.64, 1), box-shadow 0.7s ease-out;
++      transition-timing-function: linear(
++        0, 0.2 2.5%, 0.55 5.5%, 0.9 8.5%, 1.12 11.5%, 1.22 14%, 1.26 16%, 1.25 18%,
++        1.2 21%, 1.1 25%, 1.03 29%, 0.98 33%, 0.96 37%, 0.965 41%, 0.98 46%,
++        1.0 52%, 1.01 58%, 1.005 65%, 1 75%, 1
++      );
++    }
++
++    .card.spring:hover,
++    .card.spring:focus-within {
++      transform: scale(1.08);
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
++    }
++
++    /* Hops up and bounces on the "ground" a few times before resting */
++    .card.bounce {
++      transition: transform 0.8s cubic-bezier(0.28, 1.6, 0.5, 1), box-shadow 0.8s ease-out;
++      transition-timing-function: linear(
++        0, 0.18 3%, 0.5 6.5%, 0.85 10%, 1 13.5%, 0.9 17%, 0.82 20%, 0.84 22%,
++        0.92 25%, 1 29%, 0.96 32%, 0.93 34.5%, 0.95 37%, 1 41%, 0.99 44%,
++        0.98 46%, 1 50%, 1
++      );
++    }
++
++    .card.bounce:hover,
++    .card.bounce:focus-within {
++      transform: translateY(-16px);
++      box-shadow: 0 20px 24px -8px rgba(0, 0, 0, 0.2);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce {
++        transition: none;
++        will-change: auto;
++      }
++
++      .card.spring:hover,
++      .card.spring:focus-within,
++      .card.bounce:hover,
++      .card.bounce:focus-within {
++        transform: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +231,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,43 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      // Read browser-recorded history so delayed/async execution does not lose
++      // the initial state. All times are milliseconds since navigation's
++      // performance time origin, not Unix timestamps; null means not recorded.
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const initialEntry = entries.find((entry) => entry.startTime === 0);
++
++      if (initialEntry) {
++        const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++        console.log({
++          initiallyBackgrounded: initialEntry.name === 'hidden',
++          timeBackgrounded: firstHiddenEntry?.startTime ?? null,
++          fallbackActive: false
++        });
++        return;
++      }
++
++      // UNRELIABLE LEGACY FALLBACK: current visibility cannot establish the
++      // initial state if the tab changed visibility before this script ran.
++      // This timestamp is only the observation time, NOT the exact time the
++      // page became hidden. Do not treat fallback data as precise analytics.
++      const currentlyHidden = document.visibilityState === 'hidden';
++      console.warn('Visibility history unavailable: fallback detection is active. '
++        + 'Initial background status may be wrong with async scripts; '
++        + 'background time is only an observation-time estimate.');
++      console.log({
++        initiallyBackgrounded: currentlyHidden,
++        timeBackgrounded: currentlyHidden ? performance.now() : null,
++        fallbackActive: true
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

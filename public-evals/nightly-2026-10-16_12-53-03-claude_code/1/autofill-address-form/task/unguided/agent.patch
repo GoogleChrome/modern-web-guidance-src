@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping Form */
++    .shipping {
++      max-width: 640px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .shipping h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group input,
++    .form-group select {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      background: white;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .shipping .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +250,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping">
++      <h2>Shipping Address</h2>
++      <form action="/shipping-address" method="post">
++        <div class="form-group">
++          <label for="full-name">Full Name</label>
++          <input type="text" id="full-name" name="full_name" autocomplete="name" required>
++        </div>
++        <div class="form-group">
++          <label for="address1">Address Line 1</label>
++          <input type="text" id="address1" name="address1" autocomplete="address-line1" required>
++        </div>
++        <div class="form-group">
++          <label for="address2">Address Line 2 (optional)</label>
++          <input type="text" id="address2" name="address2" autocomplete="address-line2">
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="city">City</label>
++            <input type="text" id="city" name="city" autocomplete="address-level2" required>
++          </div>
++          <div class="form-group">
++            <label for="state">State / Province</label>
++            <input type="text" id="state" name="state" autocomplete="address-level1" required>
++          </div>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="zip">ZIP / Postal Code</label>
++            <input type="text" id="zip" name="zip" autocomplete="postal-code" required>
++          </div>
++          <div class="form-group">
++            <label for="country">Country</label>
++            <select id="country" name="country" autocomplete="country" required>
++              <option value="US" selected>United States</option>
++              <option value="CA">Canada</option>
++              <option value="GB">United Kingdom</option>
++              <option value="AU">Australia</option>
++            </select>
++          </div>
++        </div>
++        <div class="form-group">
++          <label for="phone">Phone (optional)</label>
++          <input type="tel" id="phone" name="phone" autocomplete="tel">
++        </div>
++        <button type="submit" class="btn">Save Address</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    #anchor {
++      anchor-name: --info-anchor;
++      background: var(--secondary);
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      font-weight: bold;
++      font-family: Georgia, serif;
++      font-size: 1rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #anchor:hover,
++    #anchor:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    [popover][role="tooltip"] {
++      position: fixed;
++      inset: auto;
++      position-anchor: --info-anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      background: var(--primary);
++      color: var(--light);
++      border: none;
++      padding: 10px 14px;
++      max-width: 240px;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: center;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      overflow: visible;
++      margin: 0 0 10px 0;
++      border-radius: 8px 8px 2px 2px;
++    }
++
++    .tooltip-body {
++      margin: 0;
++      border-radius: 8px 8px 2px 2px;
++    }
++
++    [popover][role="tooltip"]::before,
++    [popover][role="tooltip"]::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      transform: translateX(-50%);
++      top: 100%;
++      bottom: auto;
++      border: 7px solid transparent;
++      border-top-color: var(--primary);
++      border-bottom-color: transparent;
++    }
++
++    @position-try --flip-bottom {
++      position-area: bottom;
++      margin: 10px 0 0 0;
++      border-radius: 2px 2px 8px 8px;
++    }
++
++    @container anchored(fallback: flip-block) {
++      [popover][role="tooltip"],
++      .tooltip-body {
++        margin: 10px 0 0 0;
++        border-radius: 2px 2px 8px 8px;
++      }
++
++      [popover][role="tooltip"]::before,
++      [popover][role="tooltip"]::after {
++        top: auto;
++        bottom: 100%;
++        border-top-color: transparent;
++        border-bottom-color: var(--primary);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +277,15 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" id="anchor" popovertarget="maple-tooltip" aria-describedby="maple-tooltip" aria-label="More info about Maple Oat Latte">i</button>
++          </div>
++          <div id="maple-tooltip" popover role="tooltip">
++            <div class="tooltip-body">Made with organic rolled-oat milk, pure Grade A Vermont maple syrup, and a double shot of signature espresso. (180 cal)</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

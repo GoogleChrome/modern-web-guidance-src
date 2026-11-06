@@ -1,0 +1,300 @@
+diff --git a/assets/vendor/interestfor/COPYRIGHT b/assets/vendor/interestfor/COPYRIGHT
+new file mode 100644
+index 0000000..f76a56e
+--- /dev/null
++++ b/assets/vendor/interestfor/COPYRIGHT
+@@ -0,0 +1,7 @@
++// Copyright (c) 2025, Mason Freed
++// All rights reserved.
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++
+diff --git a/assets/vendor/interestfor/LICENSE b/assets/vendor/interestfor/LICENSE
+new file mode 100644
+index 0000000..6c458b8
+--- /dev/null
++++ b/assets/vendor/interestfor/LICENSE
+@@ -0,0 +1,28 @@
++BSD 3-Clause License
++
++Copyright (c) 2025, Mason Freed
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are met:
++
++1. Redistributions of source code must retain the above copyright notice, this
++   list of conditions and the following disclaimer.
++
++2. Redistributions in binary form must reproduce the above copyright notice,
++   this list of conditions and the following disclaimer in the documentation
++   and/or other materials provided with the distribution.
++
++3. Neither the name of the copyright holder nor the names of its
++   contributors may be used to endorse or promote products derived from
++   this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+diff --git a/assets/vendor/interestfor/interestfor.min.js b/assets/vendor/interestfor/interestfor.min.js
+new file mode 100644
+index 0000000..9cb31b7
+--- /dev/null
++++ b/assets/vendor/interestfor/interestfor.min.js
+@@ -0,0 +1,8 @@
++// Copyright (c) 2025, Mason Freed
++// All rights reserved.
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++
++!function(){const e="interestfor",t="interest",n="loseinterest",r="--interest-delay-start",o="--interest-delay-end",s="--interest-delay",i="--interest-button-content",a="--interest-button-polyfill-content",l="interest-button",c="__interestForData",u="__interestForTargetData",d="__interestForButton",f="__interestForButtonInvoker",m="__interestForExplicitTarget",p="http://www.w3.org/1999/xlink",h=new Set,b=new Set,g=new Set;let y=!1;if(window.interestForPolyfillInstalled)return;window.interestForPolyfillInstalled=!0;const E=HTMLButtonElement.prototype.hasOwnProperty("interestForElement");if(E&&!window.interestForUsePolyfillAlways)return;if(E){const e=e=>{e.isTrusted&&(e.preventDefault(),e.stopImmediatePropagation())};document.body.addEventListener(t,e,{capture:!0}),document.body.addEventListener(n,e,{capture:!0})}window.InterestEvent&&!window.interestForUsePolyfillAlways||(window.InterestEvent=class extends Event{#e;constructor(e,t={}){super(e,t);const{source:n}=t;if(null!=n&&!(n instanceof Element))throw new TypeError("source must be an element");this.#e=n}get[Symbol.toStringTag](){return"InterestEvent"}get source(){const e=this.#e;if(!e)return null;const t=P(e);return t!==P(this.target||document)?t.host:e}});const w="none",v="full",T="explicit",A="hover",L="dehover",N="focus",x="blur";function P(e){return e&&"function"==typeof e.getRootNode?e.getRootNode():e&&e.parentNode?P(e.parentNode):e}function k(e,r,o,s={}){if(!e||!r)return!1;if(!e.isConnected||I(e)!==r||o===w&&F(r)!==e)return!1;if(o!==w){z(e),e[c].state!==w&&e[c].target!==r&&D(e);const n=F(r);if(n){if(n===e)return o===T&&(n[c].state=T),n[c].clearLostTask(),!1;if(!k(n,r,w))return!1;if(!e.isConnected||I(e)!==r)return!1}return function(e,n,r){const o=e[c];switch(r){case v:case T:if(o.state!==w)throw new Error("Invalid state");if(!n.dispatchEvent(new InterestEvent(t,{source:e,cancelable:!0})))return!1;if(o.state=r,o.target=n,o.clearGainedTask(),n[u]||(n[u]={}),n[u].invoker=e,n.hasAttribute("popover")&&(n.addEventListener("beforetoggle",_),n[u].shownByInterest=!1,!$(n))){try{n.showPopover({source:e})}catch{}n[u].shownByInterest=$(n)}if(h.add(e),e.classList.add("interest-source"),n.classList.add("interest-target"),H(n)||e.setAttribute("aria-expanded","true"),"none"===getComputedStyle(e).anchorName&&"auto"===getComputedStyle(n).positionAnchor){const t=`--interest-anchor-${Math.random().toString(36).substring(2)}`;e.style.anchorName=t,n.style.positionAnchor=t,o.anchorName=t}break;default:throw new Error("Invalid state")}return!0}(e,r,o)}return function(e,{force:t=!1,closePopovers:r=!0}={}){const o=e[c];if(clearTimeout(o.gainedTimer),clearTimeout(o.lostTimer),o.state===w)return!0;const s=o.target,i=s.dispatchEvent(new InterestEvent(n,{source:e,cancelable:!t}));if(!i)return!1;const a=s[u],l=r&&a?.invoker===e&&a.shownByInterest;D(e),l&&$(s)&&function(e,t){const n=e[c],r=t.contains(document.activeElement);r&&(n.suppressNextFocusInterest=!0);try{t.hidePopover()}catch{}r&&(n.suppressNextFocusInterest=!1)}(e,s);return!0}(e,s)}function S(e){const t=1e3*O(e,o);if(!M(t))return;const n=e[c];n.clearLostTask();const r=n.target;n.lostTimer=setTimeout(()=>{k(e,r,w)},t)}function F(e){const t=e[u]?.invoker||null;if(!t)return null;const n=t[c];return n&&n.state!==w&&n.target===e&&I(t)===e?t:null}function I(t){if(!t.hasAttribute(e)||!t.isConnected||!function(e){if(e instanceof HTMLButtonElement)return!e.matches(":disabled");if(e instanceof HTMLAnchorElement||e instanceof HTMLAreaElement)return e.hasAttribute("href");if(window.SVGAElement&&e instanceof SVGAElement)return e.hasAttribute("href")||e.hasAttributeNS(p,"href");return!1}(t))return null;const n=C(t);return n&&n.isConnected?n:null}function C(t){const n=t.getAttribute(e);if(null===n)return null;const r=t[m];if(r&&""===n)return function(e,t){const n=P(e);let r=P(t);for(;r;){if(r===n)return!0;r=r instanceof ShadowRoot?P(r.host):null}return!1}(r,t)?r:null;if(""===n)return null;const o=P(t);return"function"==typeof o.getElementById?o.getElementById(n):null}function $(e){try{return e.matches(":popover-open")}catch{return!1}}function _(e){if("closed"!==e.newState)return;const t=e.currentTarget,n=F(t);if(n){if(t.contains(document.activeElement)){const e=n[c];e.suppressNextFocusInterest=!0,setTimeout(()=>{e.suppressNextFocusInterest=!1},0)}k(n,t,w,{closePopovers:!1})}}function M(e){return e>=0&&e<=2147483647}function B(e){const t=String(e).trim(),n=t.match(/^([\d.]+(?:e[+-]?\d+)?)s$/i);if(n)return parseFloat(n[1]);const r=t.match(/^([\d.]+(?:e[+-]?\d+)?)ms$/i);return r?parseFloat(r[1])/1e3:/\b(infinity|nan)\b/i.test(t)?1/0:parseFloat(t)||0}function O(e,t){const n=getComputedStyle(e),o=n.getPropertyValue(t).trim();if("normal"!==o.toLowerCase())return B(o);const i=n.getPropertyValue(s).trim();if(i&&"normal"!==i.toLowerCase()){const e=i.split(/\s+/).filter(e=>e.length>0);if(e.length>0){const n=e[0],o=e.length>1?e[1]:n;let s;if(s=t===r?n:o,"normal"!==s.toLowerCase())return B(s)}}return t===r?.25:.15}function D(e){const t=e[c];if(!t)return;if(clearTimeout(t.gainedTimer),clearTimeout(t.lostTimer),t.state===w)return;const n=t.target;h.delete(e),e.classList.remove("interest-source"),n&&(n[u]?.invoker===e&&(n.removeEventListener("beforetoggle",_),n[u]=null,n.classList.remove("interest-target")),H(n)||e.setAttribute("aria-expanded","false")),t.anchorName&&(e.style.anchorName="",n&&(n.style.positionAnchor=""),t.anchorName=null),t.state=w,t.target=null}const V=["a[href]","area[href]","input:not([disabled])","select:not([disabled])","textarea:not([disabled])","button:not([disabled])","iframe","object","embed","[contenteditable]",'[tabindex]:not([tabindex="-1"])'].join(",");function H(e){if("hint"!==e.getAttribute("popover")?.toLowerCase())return!1;if(e.querySelector(V))return!1;if(e.querySelector("h1,h2,h3,h4,h5,h6,ul,ol,li,table,nav,header,footer,main,aside,article,section,form,blockquote,details,summary,dialog"))return!1;const t=e.querySelectorAll("[role]");for(const e of t){const t=e.getAttribute("role").toLowerCase();if(!["presentation","none","generic","image"].includes(t))return!1}return!0}function G(e){return e?e.replace(/\s+/g," ").trim():""}function j(e,t=!1){if(e.nodeType===Node.TEXT_NODE)return e.data;if(e.nodeType!==Node.ELEMENT_NODE)return"";if(!t&&(e.hasAttribute("hidden")||"true"===e.getAttribute("aria-hidden")||"script"===e.localName||"style"===e.localName))return"";const n=e.getAttribute("aria-label");if(n)return n;if("img"===e.localName||"area"===e.localName)return e.getAttribute("alt")||"";let r="";for(const t of e.childNodes)r+=j(t);return r}function q(e,t){if(t.id)if(H(t)){if((e.getAttribute("aria-labelledby")||"").trim().split(/\s+/).includes(t.id))return;const n=function(e){const t=e.getAttribute("aria-labelledby");if(t){const n=P(e);if("function"==typeof n.getElementById){const e=[];for(const r of t.trim().split(/\s+/)){const t=r?n.getElementById(r):null;t&&e.push(G(j(t,!0)))}const r=G(e.join(" "));if(r)return r}}const n=G(e.getAttribute("aria-label"));if(n)return n;if(e.labels?.length){const t=G([...e.labels].map(e=>j(e,!0)).join(" "));if(t)return t}return G(j(e,!0))||G(e.getAttribute("title"))}(e),r=G(j(t,!0));n?r&&r!==n&&!e.hasAttribute("aria-describedby")&&e.setAttribute("aria-describedby",t.id):r&&e.setAttribute("aria-labelledby",t.id)}else e.hasAttribute("aria-details")||e.setAttribute("aria-details",t.id),e.setAttribute("aria-expanded","false"),t.hasAttribute("role")||t.setAttribute("role","tooltip")}function z(e){e[c]||(e[c]={state:w,target:null,a11yTarget:null,gainedTimer:null,lostTimer:null,longPressTimer:null,suppressNextFocusInterest:!1,clearGainedTask(){clearTimeout(this.gainedTimer)},clearLostTask(){clearTimeout(this.lostTimer)}});const t=I(e);t&&e[c].a11yTarget!==t&&(e[c].a11yTarget=t,q(e,t))}function R(e){if(e[f])return e[f];if(e.assignedSlot)return e.assignedSlot;if(e.parentElement)return e.parentElement;const t=e.parentNode;return t instanceof ShadowRoot?t.host:null}function U(e){const t=new Set;if(0===h.size)return t;const n=e=>{const r=F(e);r&&!t.has(r)&&(t.add(r),n(r));const o=R(e);o&&!t.has(o)&&n(o)};return n(e),t}function X(e,t){if(y)return;if(!e.isConnected)return;const n=I(e);n&&z(e);const o=e[c];if(t===A||t===N){let s=!1;o&&(o.clearLostTask(),s=t===N&&o.suppressNextFocusInterest,o.suppressNextFocusInterest=!1);for(const t of U(e))t[c].clearLostTask();n&&!s&&o.state===w&&function(e,t){const n=I(e);if(!n)return;const o=1e3*O(e,r);M(o)&&(e[c].clearGainedTask(),e[c].gainedTimer=setTimeout(()=>{k(e,n,t)},o))}(e,v)}else if(o&&(o.clearGainedTask(),o.state===v&&S(e)),t===x||!e.matches(":hover"))for(const t of U(e))S(t)}function J(e){return e instanceof HTMLElement&&"area"!==e.localName&&!!e.parentNode&&!!I(e)}function K(e){const t=getComputedStyle(e).getPropertyValue(i).trim();return t&&"none"!==t&&"normal"!==t?t:null}function Q(){const e=this[f];e&&k(e,I(e),T)}function W(e,t){let n=e[d];t?(n||(n=e.ownerDocument.createElement("span"),n.className=l,n.setAttribute("aria-hidden","true"),n[f]=e,n.addEventListener("click",Q),e[d]=n,b.add(e)),n.style.getPropertyValue(a)!==t&&n.style.setProperty(a,t),e.nextSibling!==n&&e.after(n)):n&&(n.remove(),e[d]=null,b.delete(e))}function Y(t){const n=[];for(const r of t){let t=null;const o=I(r);o?(g.delete(r),J(r)&&(t=K(r))):r.isConnected&&r.hasAttribute(e)?g.add(r):g.delete(r),n.push([r,o,t])}for(const[e,t,r]of n)t&&z(e),W(e,r)}function Z(t){const n=new Set;let r=!1;const o=t=>{if(t.nodeType===Node.ELEMENT_NODE&&!t[f]){t.hasAttribute(e)&&n.add(t);for(const r of t.querySelectorAll(`[${e}]`))n.add(r)}};for(const s of t){if("childList"===s.type){for(const e of s.addedNodes)e.nodeType!==Node.ELEMENT_NODE||e[f]||(r=!0,o(e));continue}const t=s.target;switch(s.attributeName){case e:null!==s.oldValue&&D(t),""!==t.getAttribute(e)&&(t[m]=null),n.add(t);break;case"id":r=!0;break;default:o(t)}}for(const e of[...h]){const t=e[c].target;e.isConnected&&t&&t.isConnected||D(e)}if(r)for(const e of g)n.add(e);for(const e of[...b])n.has(e)||(J(e)?e.nextSibling!==e[d]&&e.after(e[d]):W(e,null));Y(n)}function ee(){!function(){const t=document.createElement("style");t.textContent=`@property ${r} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}\n      @property ${o} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}\n      @property ${s} {syntax: "*"; inherits: false;}\n      @property ${i} {syntax: "*"; inherits: false;}`,document.head.appendChild(t);const n=`span.${l}[aria-hidden]`,u=document.createElement("style");u.textContent=`:where(button[${e}]) {\n        -webkit-user-select: none;\n        user-select: none;\n      }\n      :where(${n}) {\n        display: inline-block;\n        vertical-align: middle;\n        color: inherit;\n        background-color: transparent;\n        box-sizing: border-box;\n        min-inline-size: 24px;\n        min-block-size: 24px;\n        min-block-size: max(24px, 1lh);\n        align-content: center;\n        text-align: center;\n        -webkit-user-select: none;\n        user-select: none;\n        cursor: help;\n      }\n      :where(${n}:hover) {\n        background-color: color-mix(in oklab, currentColor 10%, transparent);\n      }\n      :where(${n}:active) {\n        background-color: color-mix(in oklab, currentColor 20%, transparent);\n      }\n      :where(${n})::before {\n        content: var(${a});\n      }`,document.head.prepend(u),document[c]={globalPropsStyle:t,uaStyle:u}}(),function(){const e=(e,t)=>{const n=e.composedPath(),r=n.length?n[0]:e.target;if(r instanceof Element)for(let e=r;e;e=R(e))X(e,t)},t=e=>{"touch"!==e.pointerType&&(y=!1)};document.body.addEventListener("pointerover",t),document.body.addEventListener("pointerdown",t),document.body.addEventListener("mouseover",t=>e(t,A)),document.body.addEventListener("mouseout",t=>e(t,L)),document.body.addEventListener("focusin",t=>e(t,N)),document.body.addEventListener("focusout",t=>e(t,x)),document.body.addEventListener("keydown",e=>{y=!1,"Escape"!==e.key||e.defaultPrevented||[...h].reverse().forEach(e=>{k(e,e[c].target,w,{force:!0})})});const n=/iPad|iPhone|iPod/.test(navigator.userAgent);document.body.addEventListener("touchstart",e=>{y=!0;const t=e.target.closest("button[interestfor]");t&&(z(t),t[c].longPressActive=!1,t[c].longPressTimer=setTimeout(()=>{t[c].state===w&&(n?t[c].longPressActive=!0:k(t,I(t),T)),t[c].longPressTimer=null},500))});const r=e=>{const t=e.target.closest("button[interestfor]");t&&t[c]&&(clearTimeout(t[c].longPressTimer),t[c].longPressTimer=null,t[c].longPressActive=!1)};document.body.addEventListener("touchmove",r),document.body.addEventListener("touchend",e=>{const t=e.target.closest("button[interestfor]"),n=t?.[c]?.longPressActive;r(e),n&&(e.cancelable&&e.preventDefault(),t[c].state===w&&k(t,I(t),T))},{passive:!1})}(),new MutationObserver(Z).observe(document,{childList:!0,subtree:!0,attributes:!0,attributeOldValue:!0,attributeFilter:[e,"id","href","disabled"]}),Y(document.querySelectorAll(`[${e}]`)),console.log(`interestfor polyfill installed (native: ${E}).`)}!function(){const t={configurable:!0,enumerable:!0,get(){return C(this)},set(t){if(null==t)this[m]=null,this.removeAttribute(e);else{if(!(t instanceof Element))throw new TypeError("Failed to set the 'interestForElement' property: The provided value is not of type 'Element'.");this[m]=t,this.setAttribute(e,"")}}};[window.HTMLButtonElement,window.HTMLAnchorElement,window.HTMLAreaElement,window.SVGAElement].forEach(e=>{!e||Object.prototype.hasOwnProperty.call(e.prototype,"interestForElement")&&!window.interestForUsePolyfillAlways||Object.defineProperty(e.prototype,"interestForElement",t)})}(),"complete"===document.readyState?ee():window.addEventListener("load",ee)}();
+\ No newline at end of file
+diff --git a/index.html b/index.html
+index 66c9173..2019d96 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,112 @@
+       background: #3e2723;
+     }
+ 
++    [interestfor] {
++      --interest-delay-start: 0.25s;
++      --interest-delay-end: 0.3s;
++      interest-delay: var(--interest-delay-start) var(--interest-delay-end);
++    }
++
++    .btn:focus-visible,
++    .drink-preview a:focus-visible,
++    .drink-preview summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .drink-preview {
++      display: none;
++      position: fixed;
++      width: min(340px, calc(100vw - 24px));
++      max-height: calc(100dvh - 24px);
++      overflow-y: auto;
++      padding: 24px;
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      text-align: left;
++      box-shadow: 0 12px 36px rgb(62 39 35 / 20%);
++    }
++
++    .drink-preview:popover-open {
++      display: block;
++    }
++
++    .drink-preview .eyebrow {
++      margin-bottom: 6px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      color: #795548;
++    }
++
++    .drink-preview h4 {
++      margin-bottom: 8px;
++      font-size: 1.3rem;
++      line-height: 1.3;
++    }
++
++    .drink-preview dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 6px 16px;
++      margin: 16px 0;
++      padding: 12px 0;
++      border-block: 1px solid #eee5e1;
++      font-size: 0.9rem;
++    }
++
++    .drink-preview dt {
++      font-weight: 600;
++    }
++
++    .drink-preview summary {
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .drink-preview details p {
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
++    .drink-preview .btn {
++      display: block;
++      text-align: center;
++    }
++
++    @supports (position-area: block-end) {
++      [interestfor="maple-preview"] { anchor-name: --maple-preview; }
++      [interestfor="espresso-preview"] { anchor-name: --espresso-preview; }
++      [interestfor="cold-brew-preview"] { anchor-name: --cold-brew-preview; }
++      #maple-preview { position-anchor: --maple-preview; }
++      #espresso-preview { position-anchor: --espresso-preview; }
++      #cold-brew-preview { position-anchor: --cold-brew-preview; }
++
++      .drink-preview {
++        inset: auto;
++        margin: 8px 0;
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .drink-preview {
++        transition: opacity 0.15s, display 0.15s allow-discrete,
++          overlay 0.15s allow-discrete;
++      }
++
++      @starting-style {
++        .drink-preview:popover-open {
++          opacity: 0;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +287,59 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-preview" aria-label="View details for Maple Oat Latte">View Details</a>
++          <div id="maple-preview" class="drink-preview" popover="hint" aria-labelledby="maple-preview-title">
++            <p class="eyebrow">Seasonal menu preview</p>
++            <h4 id="maple-preview-title">Maple Oat Latte</h4>
++            <p>A creamy latte with a touch of Vermont maple sweetness.</p>
++            <dl>
++              <dt>Made with</dt><dd>Oat milk &amp; maple syrup</dd>
++              <dt>Taste</dt><dd>Creamy &amp; gently sweet</dd>
++            </dl>
++            <details>
++              <summary>What to expect</summary>
++              <p>Soft oat milk and a hint of maple syrup make this a comforting seasonal favorite. Explore the seasonal menu for more details.</p>
++            </details>
++            <a href="/menu/seasonal" class="btn">Explore seasonal menu &rarr;</a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="espresso-preview" aria-label="View details for Dark Roast Espresso">View Details</a>
++          <div id="espresso-preview" class="drink-preview" popover="hint" aria-labelledby="espresso-preview-title">
++            <p class="eyebrow">Espresso menu preview</p>
++            <h4 id="espresso-preview-title">Dark Roast Espresso</h4>
++            <p>A bold, smoky espresso for a full-flavored morning ritual.</p>
++            <dl>
++              <dt>Roast</dt><dd>Dark</dd>
++              <dt>Taste</dt><dd>Bold &amp; smoky</dd>
++            </dl>
++            <details>
++              <summary>What to expect</summary>
++              <p>A concentrated coffee experience with a pronounced dark-roast character. Explore the espresso menu for more details.</p>
++            </details>
++            <a href="/menu/espresso" class="btn">Explore espresso menu &rarr;</a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview" aria-label="View details for Cold Brew">View Details</a>
++          <div id="cold-brew-preview" class="drink-preview" popover="hint" aria-labelledby="cold-brew-preview-title">
++            <p class="eyebrow">Cold brew menu preview</p>
++            <h4 id="cold-brew-preview-title">Cold Brew</h4>
++            <p>Slow-steeped coffee with a smooth, easygoing finish.</p>
++            <dl>
++              <dt>Preparation</dt><dd>Steeped for 18 hours</dd>
++              <dt>Taste</dt><dd>Smooth &amp; mellow</dd>
++            </dl>
++            <details>
++              <summary>What to expect</summary>
++              <p>A long, 18-hour steep brings out the smooth character of our cold brew. Explore the cold brew menu for more details.</p>
++            </details>
++            <a href="/menu/cold-brew" class="btn">Explore cold brew menu &rarr;</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +355,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Vendored interestfor 1.0.12 (BSD); no runtime CDN dependency.
++    // Older browsers without Popover retain the ordinary navigation links.
++    if ('popover' in HTMLElement.prototype) {
++      if (!Object.hasOwn(HTMLButtonElement.prototype, 'interestForElement')) {
++        await import('./assets/vendor/interestfor/interestfor.min.js');
++      }
++
++      const previews = [...document.querySelectorAll('.drink-preview')];
++      const hasAnchors = CSS.supports('position-area: block-end');
++
++      function positionPreview(preview) {
++        const trigger = document.querySelector(`[interestfor="${preview.id}"]`);
++        const rect = trigger.getBoundingClientRect();
++        const width = preview.offsetWidth;
++        const height = preview.offsetHeight;
++        const gap = 8;
++        const left = Math.max(12, Math.min(rect.left, innerWidth - width - 12));
++        const below = rect.bottom + gap;
++        const top = below + height <= innerHeight - 12
++          ? below : Math.max(12, rect.top - height - gap);
++        Object.assign(preview.style, {
++          inset: 'auto', margin: '0', left: `${left}px`, top: `${top}px`
++        });
++      }
++
++      for (const preview of previews) {
++        preview.addEventListener('beforetoggle', (event) => {
++          if (event.newState !== 'open') return;
++          // Also enforce one preview in browsers that treat hint as manual.
++          for (const other of previews) {
++            if (other !== preview && other.matches(':popover-open')) other.hidePopover();
++          }
++        });
++        if (!hasAnchors) {
++          // ResizeObserver runs before paint, including when details expand.
++          new ResizeObserver(() => {
++            if (preview.matches(':popover-open')) positionPreview(preview);
++          }).observe(preview);
++        }
++      }
++
++      if (!hasAnchors) {
++        const reposition = () => previews.forEach((preview) => {
++          if (preview.matches(':popover-open')) positionPreview(preview);
++        });
++        window.addEventListener('resize', reposition);
++        document.addEventListener('scroll', reposition, { capture: true, passive: true });
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,169 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo Alert (no JS: non-modal <dialog> closed by a method="dialog" form) */
++    #promo-alert {
++      position: static;
++      display: grid;
++      grid-template-rows: 1fr;
++      width: 100%;
++      max-width: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: var(--accent);
++      color: var(--text);
++      transition:
++        grid-template-rows 0.35s ease,
++        opacity 0.35s ease,
++        display 0.35s allow-discrete;
++    }
++
++    #promo-alert:not([open]) {
++      display: none;
++      grid-template-rows: 0fr;
++      opacity: 0;
++    }
++
++    .promo-alert-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .promo-alert-body {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.6rem 5%;
++      font-size: 0.95rem;
++    }
++
++    .promo-alert-body form {
++      margin-left: auto;
++    }
++
++    #alert-dismiss {
++      display: grid;
++      place-items: center;
++      width: 2rem;
++      height: 2rem;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: inherit;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.1);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* FAQ Accordion (no JS: <details>/<summary> + ::details-content) */
++    .faq {
++      max-width: 750px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 12px;
++      overflow: hidden;
++      /* Lets block-size animate to/from `auto` where supported */
++      interpolate-size: allow-keywords;
++    }
++
++    .faq-item summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      padding: 1rem 1.25rem;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    .faq-item summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq-item summary::after {
++      content: "";
++      flex-shrink: 0;
++      width: 0.6rem;
++      height: 0.6rem;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 0.35s ease;
++    }
++
++    .faq-item[open] summary::after {
++      transform: rotate(-135deg);
++    }
++
++    .faq-item summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .faq-item::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition:
++        block-size 0.35s ease,
++        content-visibility 0.35s allow-discrete;
++    }
++
++    .faq-item[open]::details-content {
++      block-size: auto;
++    }
++
++    .faq-content {
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq-item::details-content,
++      .faq-item summary::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="promo-alert" open aria-label="Promotion">
++    <div class="promo-alert-inner">
++      <div class="promo-alert-body">
++        <p><strong>Fall Special:</strong> Buy one Maple Oat Latte, get one 50% off &mdash; this week only!</p>
++        <form method="dialog">
++          <button id="alert-dismiss" type="submit" aria-label="Dismiss promotion">&times;</button>
++        </form>
++      </div>
++    </div>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +350,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++
++      <details class="faq-item">
++        <summary id="faq-trigger">Do you offer dairy-free milk options?</summary>
++        <div id="faq-content" class="faq-content">
++          <p>Yes! We offer oat, almond, soy, and coconut milk at no extra charge. Our Maple Oat Latte is made
++            with oat milk by default.</p>
++        </div>
++      </details>
++
++      <details class="faq-item">
++        <summary>Where do you source your beans?</summary>
++        <div class="faq-content">
++          <p>We partner directly with small farms in Colombia, Ethiopia, and Guatemala, and roast every batch
++            locally each week.</p>
++        </div>
++      </details>
++
++      <details class="faq-item">
++        <summary>How do rewards work?</summary>
++        <div class="faq-content">
++          <p>Earn one star for every dollar spent. Collect 50 stars for a free drink of any size.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,96 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..b9bf527 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,10 +8,87 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
+-            <slot />
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
++        <nav id="legal-toc" aria-label="On this page" hidden class="hidden lg:block sticky top-24 self-start order-last lg:order-first text-sm">
++            <p class="font-bold text-gray-900 mb-2">On this page</p>
++            <ul class="border-l-2 border-gray-200"></ul>
++        </nav>
++        <div>
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            <div class="prose max-w-none" id="legal-content">
++                <slot />
++            </div>
+         </div>
+     </div>
+ </Layout>
++
++<style is:global>
++    #legal-content h2 { scroll-margin-top: 6rem; }
++    #legal-toc { scroll-target-group: auto; }
++    #legal-toc a {
++        display: block;
++        padding: 0.25rem 0.75rem;
++        margin-left: -2px;
++        border-left: 2px solid transparent;
++        color: #4b5563;
++    }
++    #legal-toc a:hover { color: #111827; }
++    /* :is() keeps the rule valid in browsers without :target-current; they get the class set by the script below. */
++    #legal-toc a:is(:target-current, .\:target-current) {
++        color: #1d4ed8;
++        border-left-color: #1d4ed8;
++        font-weight: 600;
++    }
++</style>
++
++<script>
++    const toc = document.querySelector<HTMLElement>('#legal-toc');
++    const headings = [...document.querySelectorAll<HTMLElement>('#legal-content h2')];
++
++    if (toc && headings.length > 1) {
++        const list = toc.querySelector('ul')!;
++        const links = headings.map((heading, i) => {
++            heading.id ||= `section-${i + 1}`;
++            const link = document.createElement('a');
++            link.href = `#${heading.id}`;
++            link.textContent = heading.textContent;
++            const item = document.createElement('li');
++            item.append(link);
++            list.append(item);
++            return link;
++        });
++        toc.hidden = false;
++
++        const setCurrent = (current: HTMLAnchorElement | null) => {
++            links.forEach((link) => {
++                link.classList.toggle(':target-current', !CSS.supports('scroll-target-group: auto') && link === current);
++                link.setAttribute('aria-current', String(link === current));
++            });
++        };
++
++        if (CSS.supports('scroll-target-group: auto')) {
++            const sync = () => setCurrent(toc.querySelector<HTMLAnchorElement>('a:target-current'));
++            sync();
++            document.addEventListener('scrollend', sync);
++        } else {
++            // Fallback: the current section is the last heading that has scrolled above 30% of the viewport.
++            let ticking = false;
++            const update = () => {
++                ticking = false;
++                const threshold = window.innerHeight * 0.3;
++                let index = -1;
++                headings.forEach((heading, i) => {
++                    if (heading.getBoundingClientRect().top <= threshold) index = i;
++                });
++                setCurrent(links[index] ?? null);
++            };
++            update();
++            addEventListener('scroll', () => {
++                if (!ticking) {
++                    ticking = true;
++                    requestAnimationFrame(update);
++                }
++            }, { passive: true });
++        }
++    }
++</script>

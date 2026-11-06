@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,8 +106,66 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .promo-badge-slot {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-height: 160px;
++      padding: 20px 40px;
++    }
++
++    .target {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 112px;
++      height: 112px;
++      flex-shrink: 0;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      line-height: 1.3;
++      box-shadow: 0 3px 8px rgb(62 39 35 / 15%);
++      /* Independent properties keep both animations and hover scaling composable.
++         Identity values establish the stacking context before hover. */
++      translate: 0;
++      rotate: 0deg;
++      scale: 1;
++      animation: promo-spin 12s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 250ms ease;
++    }
++
++    .target small {
++      margin-top: 4px;
++      font-size: 0.75rem;
++    }
++
++    .target:hover {
++      scale: 1.12;
++    }
++
++    @keyframes promo-spin {
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -20px 0; }
++      to { translate: 20px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation: none;
++        transition: none;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -176,8 +234,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge-slot">
++        <span class="target"><strong>Featured</strong><small>Seasonal pick</small></span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

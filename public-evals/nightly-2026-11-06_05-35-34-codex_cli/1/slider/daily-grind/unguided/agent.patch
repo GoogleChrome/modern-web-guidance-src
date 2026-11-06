@@ -1,0 +1,231 @@
+diff --git a/index.html b/index.html
+index 66c9173..b828e5d 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,170 @@
+       color: var(--primary);
+     }
+ 
++    /* Brew strength: keep the native range control and its keyboard behavior. */
++    .brew-panel {
++      background: #f3ede7;
++      border: 1px solid #dfd2c8;
++      border-radius: 16px;
++      padding: clamp(24px, 4vw, 40px);
++      margin-bottom: 40px;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      align-items: center;
++      gap: 24px 48px;
++    }
++
++    .brew-eyebrow {
++      color: #785344;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .brew-panel h2 {
++      font-size: 1.75rem;
++      line-height: 1.25;
++      margin-bottom: 10px;
++    }
++
++    .brew-description {
++      color: #715c52;
++      max-width: 38ch;
++    }
++
++    .brew-label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 10px;
++    }
++
++    .brew-label-row label {
++      font-weight: 600;
++    }
++
++    .brew-value {
++      background: var(--primary);
++      color: white;
++      border-radius: 20px;
++      padding: 4px 12px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .brew-range {
++      --fill: 50%;
++      -webkit-appearance: none;
++      appearance: none;
++      display: block;
++      width: 100%;
++      height: 44px;
++      margin: 0;
++      background: transparent;
++      border-radius: 8px;
++      cursor: pointer;
++      accent-color: var(--primary);
++    }
++
++    .brew-range::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 8px;
++      background: linear-gradient(to right, var(--primary) 0%, #a7693f var(--fill), #d9c9bc var(--fill), #d9c9bc 100%);
++    }
++
++    .brew-range::-moz-range-track {
++      height: 8px;
++      border-radius: 8px;
++      background: #d9c9bc;
++    }
++
++    .brew-range::-moz-range-progress {
++      height: 8px;
++      border-radius: 8px;
++      background: linear-gradient(to right, var(--primary), #a7693f);
++    }
++
++    .brew-range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 26px;
++      height: 26px;
++      margin-top: -9px;
++      background: var(--primary);
++      border: 4px solid #fffaf5;
++      border-radius: 50%;
++      box-shadow: 0 1px 5px #4e342e55;
++    }
++
++    .brew-range::-moz-range-thumb {
++      box-sizing: border-box;
++      width: 26px;
++      height: 26px;
++      background: var(--primary);
++      border: 4px solid #fffaf5;
++      border-radius: 50%;
++      box-shadow: 0 1px 5px #4e342e55;
++    }
++
++    .brew-range:hover::-webkit-slider-thumb,
++    .brew-range:active::-webkit-slider-thumb {
++      background: #92592f;
++    }
++
++    .brew-range:hover::-moz-range-thumb,
++    .brew-range:active::-moz-range-thumb {
++      background: #92592f;
++    }
++
++    .brew-range:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .brew-scale {
++      display: flex;
++      justify-content: space-between;
++      color: #715c52;
++      font-size: 0.8rem;
++      margin-top: 2px;
++    }
++
++    .brew-hint {
++      color: #715c52;
++      font-size: 0.8rem;
++      margin-top: 12px;
++    }
++
++    @media (max-width: 640px) {
++      .brew-panel {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .brew-range {
++        appearance: auto;
++        -webkit-appearance: auto;
++      }
++
++      .brew-range:focus-visible {
++        outline-color: Highlight;
++      }
++
++      .brew-range::-webkit-slider-runnable-track {
++        background: CanvasText;
++      }
++
++      .brew-range::-moz-range-track,
++      .brew-range::-moz-range-progress {
++        background: CanvasText;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,6 +339,28 @@
+   </header>
+ 
+   <main class="container">
++    <section class="brew-panel" aria-labelledby="brew-heading">
++      <div>
++        <p class="brew-eyebrow">Your cup, your way</p>
++        <h2 id="brew-heading">Find your perfect brew</h2>
++        <p class="brew-description">From easygoing sips to a bold morning ritual. How do you like your coffee?</p>
++      </div>
++      <div>
++        <div class="brew-label-row">
++          <label for="brew-strength">Brew strength</label>
++          <output class="brew-value" id="brew-value" for="brew-strength">Balanced · 3/5</output>
++        </div>
++        <input class="brew-range" id="brew-strength" name="brew-strength" type="range"
++          min="1" max="5" step="1" value="3" aria-valuetext="Balanced, 3 of 5"
++          aria-describedby="brew-hint">
++        <div class="brew-scale" aria-hidden="true">
++          <span>Mild</span>
++          <span>Balanced</span>
++          <span>Bold</span>
++        </div>
++        <p class="brew-hint" id="brew-hint">Choose your strength. Use arrow keys to fine-tune.</p>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +393,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const brewStrength = document.getElementById('brew-strength');
++    const brewValue = document.getElementById('brew-value');
++    const strengthNames = ['Mild', 'Smooth', 'Balanced', 'Rich', 'Bold'];
++
++    function updateBrewStrength() {
++      const value = Number(brewStrength.value);
++      const min = Number(brewStrength.min);
++      const max = Number(brewStrength.max);
++      const name = strengthNames[value - min];
++      brewStrength.style.setProperty('--fill', `${((value - min) / (max - min)) * 100}%`);
++      brewStrength.setAttribute('aria-valuetext', `${name}, ${value} of ${max}`);
++      brewValue.value = `${name} · ${value}/${max}`;
++    }
++
++    brewStrength.addEventListener('input', updateBrewStrength);
++    window.addEventListener('pageshow', updateBrewStrength);
++    updateBrewStrength();
++  </script>
++
+ </body>
+ 
+ </html>

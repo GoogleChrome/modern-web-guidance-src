@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+index 66c9173..ec99366 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,25 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Hold the first paint until the above-the-fold content (nav + hero) is parsed,
++       so the transition never animates to a blank or partial page. -->
++  <link rel="expect" href="#hero" blocking="render">
+   <style>
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++    }
++
++    /* Keep the nav steady while page content cross-fades */
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    ::view-transition-group(root) {
++      animation-duration: 0.3s;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -168,7 +186,7 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

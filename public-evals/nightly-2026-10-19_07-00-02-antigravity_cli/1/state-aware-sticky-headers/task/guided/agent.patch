@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 100vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -99,8 +99,63 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    section,
++    .section {
++      overflow-anchor: none;
++      margin-bottom: 50px;
++    }
++
++    /* Sticky Section Headers using Container Scroll-State Queries */
++    .sticky-container {
++      position: sticky;
++      top: 0;
++      container-type: scroll-state;
++      container-name: section-header sticky-container;
++      z-index: 100;
++    }
++
++    .sticky-header {
++      background-color: white;
++      padding: 20px;
++      margin: 0;
++      text-align: center;
++      font-size: 1.6rem;
++      font-weight: 600;
++      color: var(--primary);
++      border-radius: 6px;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s, color 0.3s;
++    }
++
++    /* Stuck state styles via named container queries */
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: blue;
++        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
++        padding: 10px 20px;
++        color: white;
++      }
++    }
++
++    @container sticky-container scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: blue;
++        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
++        padding: 10px 20px;
++        color: white;
++      }
++    }
++
++    /* Progressive enhancement fallback */
++    .sticky-container.is-stuck .sticky-header,
++    .sticky-header.is-stuck {
++      background-color: blue;
++      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
++      padding: 10px 20px;
++      color: white;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -114,8 +169,16 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -174,28 +237,85 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Artisanal Roasts</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Ethiopian Yirgacheffe">
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p>Light roast with delicate notes of jasmine, bergamot, and peach.</p>
++          <a href="/menu/ethiopian" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Guatemalan Antigua">
++          <h3>Guatemalan Antigua</h3>
++          <p>Medium roast offering rich milk chocolate, caramel, and gentle spice.</p>
++          <a href="/menu/guatemalan" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Sumatra Mandheling">
++          <h3>Sumatra Mandheling</h3>
++          <p>Dark roast featuring a heavy body, earthy complexity, and dark cacao.</p>
++          <a href="/menu/sumatra" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Fresh Bakery &amp; Pastries</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80" alt="Artisan Croissant">
++          <h3>Artisan Croissant</h3>
++          <p>Traditional layered butter pastry baked fresh every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" alt="Cinnamon Brioche">
++          <h3>Cinnamon Brioche</h3>
++          <p>Soft brioche spiral rolled with Saigon cinnamon and bourbon vanilla.</p>
++          <a href="/menu/cinnamon-brioche" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=600&q=80" alt="Wild Berry Scone">
++          <h3>Wild Berry Scone</h3>
++          <p>Crumbly golden scone packed with wild mountain blackberries.</p>
++          <a href="/menu/berry-scone" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +326,45 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      function getScrollParent(node) {
++        if (node == null || node === document.body || node === document.documentElement) {
++          return null;
++        }
++        if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
++          const overflow = getComputedStyle(node).overflow;
++          if (overflow !== 'visible' && overflow !== 'clip') {
++            return node;
++          }
++        }
++        return getScrollParent(node.parentNode);
++      }
++
++      document.querySelectorAll('.sticky-container').forEach(container => {
++        const root = getScrollParent(container);
++        const topOffset = parseFloat(getComputedStyle(container).top) || 0;
++        const observer = new IntersectionObserver(
++          ([e]) => {
++            const isStuck = e.intersectionRatio < 1;
++            container.classList.toggle('is-stuck', isStuck);
++            const header = container.querySelector('.sticky-header');
++            if (header) {
++              header.classList.toggle('is-stuck', isStuck);
++            }
++          },
++          {
++            root: root,
++            threshold: [1],
++            rootMargin: `-${topOffset + 1}px 0px 0px 0px`
++          }
++        );
++        observer.observe(container);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

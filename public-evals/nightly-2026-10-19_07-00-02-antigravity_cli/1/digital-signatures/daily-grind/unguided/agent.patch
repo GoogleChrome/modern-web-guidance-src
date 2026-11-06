@@ -1,0 +1,1693 @@
+diff --git a/package.json b/package.json
+index 2bd4d77..be3246e 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,16 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@noble/curves": "^2.4.0",
++    "@noble/hashes": "^2.4.0",
++    "@noble/post-quantum": "^0.7.1"
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "esbuild": "^0.28.2",
++    "typescript": "^7.0.2",
++    "vitest": "^5.0.5"
+   }
+ }
+diff --git a/src/crypto/algorithms.ts b/src/crypto/algorithms.ts
+new file mode 100644
+index 0000000..41edcf6
+--- /dev/null
++++ b/src/crypto/algorithms.ts
+@@ -0,0 +1,100 @@
++import { AlgorithmId, AlgorithmMetadata } from './types.js';
++
++export const ALGORITHMS: Record<AlgorithmId, AlgorithmMetadata> = {
++  'ML-DSA-44': {
++    id: 'ML-DSA-44',
++    name: 'ML-DSA-44 (Dilithium2)',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Category 2 (~128-bit quantum security)',
++    quantumResistant: true,
++    publicKeySize: 1312,
++    signatureSize: 2420,
++    description:
++      'Module-Lattice-Based Digital Signature Standard (FIPS 204). Highly efficient, immune to Shor\'s quantum algorithm, recommended by NIST for general post-quantum digital signatures.',
++  },
++  'ML-DSA-65': {
++    id: 'ML-DSA-65',
++    name: 'ML-DSA-65 (Dilithium3)',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Category 3 (~192-bit quantum security)',
++    quantumResistant: true,
++    publicKeySize: 1952,
++    signatureSize: 3309,
++    description:
++      'Intermediate security level for Module-Lattice-Based signatures, equivalent to AES-192. Standard post-quantum choice for high-assurance applications.',
++  },
++  'ML-DSA-87': {
++    id: 'ML-DSA-87',
++    name: 'ML-DSA-87 (Dilithium5)',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 204',
++    securityLevel: 'NIST Category 5 (~256-bit quantum security)',
++    quantumResistant: true,
++    publicKeySize: 2592,
++    signatureSize: 4627,
++    description:
++      'Maximum NIST security level for Module-Lattice-Based signatures, equivalent to AES-256 against quantum attacks.',
++  },
++  'SLH-DSA-SHA2-128s': {
++    id: 'SLH-DSA-SHA2-128s',
++    name: 'SLH-DSA-SHA2-128s (SPHINCS+)',
++    category: 'post-quantum',
++    standard: 'NIST FIPS 205',
++    securityLevel: 'NIST Category 1 (~128-bit quantum security)',
++    quantumResistant: true,
++    publicKeySize: 32,
++    signatureSize: 7856,
++    description:
++      'Stateless Hash-Based Digital Signature Standard (FIPS 205). Based solely on cryptographic hash functions without lattice hardness assumptions; ultra-compact 32-byte public key.',
++  },
++  'Ed25519': {
++    id: 'Ed25519',
++    name: 'Ed25519 (EdDSA)',
++    category: 'classical',
++    standard: 'RFC 8032 / FIPS 186-5',
++    securityLevel: '128-bit classical security (Vulnerable to Shor\'s Quantum Algorithm)',
++    quantumResistant: false,
++    publicKeySize: 32,
++    signatureSize: 64,
++    description:
++      'Widely used high-speed classical elliptic curve signature algorithm over Edwards25519. Minimal signature and key size, but vulnerable to future cryptanalytically relevant quantum computers (CRQCs).',
++  },
++  'ECDSA-P256': {
++    id: 'ECDSA-P256',
++    name: 'ECDSA (NIST P-256 + SHA-256)',
++    category: 'classical',
++    standard: 'ANSI X9.62 / FIPS 186-4',
++    securityLevel: '128-bit classical security (Vulnerable to Shor\'s Quantum Algorithm)',
++    quantumResistant: false,
++    publicKeySize: 65,
++    signatureSize: 64,
++    description:
++      'Standard NIST prime curve classical signature implemented natively in all browsers via Web Crypto API (SubtleCrypto).',
++  },
++  'RSA-PSS-2048': {
++    id: 'RSA-PSS-2048',
++    name: 'RSA-PSS 2048-bit (SHA-256)',
++    category: 'classical',
++    standard: 'PKCS #1 v2.2 / RFC 8017',
++    securityLevel: '112-bit classical security (Vulnerable to Shor\'s Quantum Algorithm)',
++    quantumResistant: false,
++    publicKeySize: 270,
++    signatureSize: 256,
++    description:
++      'Classical probabilistic signature scheme with RSA 2048-bit modulus. Standard legacy PKI algorithm, susceptible to polynomial-time quantum factorisation.',
++  },
++};
++
++export function getAlgorithmList(): AlgorithmMetadata[] {
++  return Object.values(ALGORITHMS);
++}
++
++export function getPostQuantumAlgorithms(): AlgorithmMetadata[] {
++  return getAlgorithmList().filter((a) => a.quantumResistant);
++}
++
++export function getClassicalAlgorithms(): AlgorithmMetadata[] {
++  return getAlgorithmList().filter((a) => !a.quantumResistant);
++}
+diff --git a/src/crypto/artifact.ts b/src/crypto/artifact.ts
+new file mode 100644
+index 0000000..08db366
+--- /dev/null
++++ b/src/crypto/artifact.ts
+@@ -0,0 +1,205 @@
++import {
++  AlgorithmId,
++  ArtifactManifest,
++  SerializableKeyPair,
++  SignedArtifactEnvelope,
++  VerificationResult,
++} from './types.js';
++import {
++  base64ToBytes,
++  bytesToBase64,
++  canonicalJsonStringify,
++  computeSha256Hex,
++  stringToBytes,
++} from './utils.js';
++import { isPostQuantumAlgorithm, signPqc, verifyPqc } from './post-quantum.js';
++import { isClassicalAlgorithm, signClassical, verifyClassical } from './classical.js';
++
++/**
++ * Sign an artifact (file, image, document, binary data) by hashing its content
++ * and signing the manifest.
++ */
++export async function signArtifact(
++  algorithm: AlgorithmId,
++  fileBytes: Uint8Array,
++  fileName: string,
++  mimeType: string,
++  keyPair: SerializableKeyPair,
++  metadata?: Record<string, any>
++): Promise<SignedArtifactEnvelope> {
++  const sha256DigestHex = computeSha256Hex(fileBytes);
++
++  const manifest: ArtifactManifest = {
++    fileName,
++    fileSize: fileBytes.byteLength,
++    mimeType: mimeType || 'application/octet-stream',
++    sha256DigestHex,
++    timestamp: new Date().toISOString(),
++    metadata,
++  };
++
++  const canonicalManifest = canonicalJsonStringify(manifest);
++  const manifestBytes = stringToBytes(canonicalManifest);
++
++  let signatureBytes: Uint8Array;
++  if (isPostQuantumAlgorithm(algorithm)) {
++    const privBytes =
++      keyPair.rawPrivateKey ||
++      (keyPair.privateKeyBase64 ? base64ToBytes(keyPair.privateKeyBase64) : undefined);
++    if (!privBytes) {
++      throw new Error(`Private key missing for post-quantum algorithm ${algorithm}`);
++    }
++    signatureBytes = await signPqc(algorithm, manifestBytes, privBytes);
++  } else if (isClassicalAlgorithm(algorithm)) {
++    signatureBytes = await signClassical(algorithm, manifestBytes, keyPair);
++  } else {
++    throw new Error(`Unsupported algorithm ${algorithm}`);
++  }
++
++  const category = isPostQuantumAlgorithm(algorithm) ? 'post-quantum' : 'classical';
++
++  return {
++    version: '1.0',
++    algorithm,
++    category,
++    manifest,
++    signatureBase64: bytesToBase64(signatureBytes),
++    publicKeyBase64: keyPair.publicKeyBase64,
++    signerFingerprint: keyPair.fingerprint,
++  };
++}
++
++/**
++ * Verify an artifact against a signed manifest envelope
++ */
++export async function verifyArtifact(
++  fileBytes: Uint8Array,
++  envelope: SignedArtifactEnvelope,
++  keyPairOrPubKey?: SerializableKeyPair | Uint8Array
++): Promise<VerificationResult> {
++  const verifiedAt = new Date().toISOString();
++  const { algorithm, manifest, signatureBase64 } = envelope;
++  const isPqc = isPostQuantumAlgorithm(algorithm);
++  const isClass = isClassicalAlgorithm(algorithm);
++
++  if (!isPqc && !isClass) {
++    return {
++      valid: false,
++      algorithm,
++      category: 'classical',
++      error: `Unsupported algorithm: ${algorithm}`,
++      verifiedAt,
++    };
++  }
++
++  // 1. Check file content digest integrity
++  const actualSha256Hex = computeSha256Hex(fileBytes);
++  if (actualSha256Hex.toLowerCase() !== manifest.sha256DigestHex.toLowerCase()) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: envelope.signerFingerprint,
++      error: `Artifact content digest mismatch! Expected SHA-256 ${manifest.sha256DigestHex.substring(0, 16)}..., but received ${actualSha256Hex.substring(0, 16)}... The file has been modified or corrupted.`,
++      details: {
++        expectedDigest: manifest.sha256DigestHex,
++        actualDigest: actualSha256Hex,
++        expectedSize: manifest.fileSize,
++        actualSize: fileBytes.byteLength,
++      },
++      verifiedAt,
++    };
++  }
++
++  // 2. Check file size
++  if (fileBytes.byteLength !== manifest.fileSize) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: envelope.signerFingerprint,
++      error: `Artifact size mismatch! Expected ${manifest.fileSize} bytes, but received ${fileBytes.byteLength} bytes.`,
++      verifiedAt,
++    };
++  }
++
++  // 3. Verify cryptographic signature on manifest
++  const canonicalManifest = canonicalJsonStringify(manifest);
++  const manifestBytes = stringToBytes(canonicalManifest);
++
++  let signatureBytes: Uint8Array;
++  try {
++    signatureBytes = base64ToBytes(signatureBase64);
++  } catch (err) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: 'Invalid base64 signature encoding in envelope',
++      verifiedAt,
++    };
++  }
++
++  // Determine public key: either passed directly or retrieved from envelope
++  let pubKey: SerializableKeyPair | Uint8Array;
++  if (keyPairOrPubKey) {
++    pubKey = keyPairOrPubKey;
++  } else if (envelope.publicKeyBase64) {
++    pubKey = base64ToBytes(envelope.publicKeyBase64);
++  } else {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: 'No public key provided for verification',
++      verifiedAt,
++    };
++  }
++
++  let sigValid = false;
++  try {
++    if (isPqc) {
++      const pubBytes =
++        pubKey instanceof Uint8Array
++          ? pubKey
++          : pubKey.rawPublicKey || base64ToBytes(pubKey.publicKeyBase64);
++      sigValid = await verifyPqc(algorithm, signatureBytes, manifestBytes, pubBytes);
++    } else {
++      sigValid = await verifyClassical(algorithm, signatureBytes, manifestBytes, pubKey);
++    }
++  } catch (err: any) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: `Cryptographic verification error: ${err?.message || err}`,
++      verifiedAt,
++    };
++  }
++
++  if (!sigValid) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: envelope.signerFingerprint,
++      error: 'Manifest signature verification failed! The manifest was altered or the public key does not match the signer.',
++      details: { manifest },
++      verifiedAt,
++    };
++  }
++
++  return {
++    valid: true,
++    algorithm,
++    category: isPqc ? 'post-quantum' : 'classical',
++    signerFingerprint: envelope.signerFingerprint,
++    details: {
++      fileName: manifest.fileName,
++      fileSize: manifest.fileSize,
++      sha256DigestHex: actualSha256Hex,
++      manifestTimestamp: manifest.timestamp,
++    },
++    verifiedAt,
++  };
++}
+diff --git a/src/crypto/classical.ts b/src/crypto/classical.ts
+new file mode 100644
+index 0000000..7c2dcc4
+--- /dev/null
++++ b/src/crypto/classical.ts
+@@ -0,0 +1,304 @@
++import { ed25519 } from '@noble/curves/ed25519.js';
++import { AlgorithmId, SerializableKeyPair } from './types.js';
++import {
++  bytesToBase64,
++  base64ToBytes,
++  bytesToHex,
++  hexToBytes,
++  computeFingerprint,
++} from './utils.js';
++
++export function isClassicalAlgorithm(algorithm: AlgorithmId): boolean {
++  return (
++    algorithm === 'Ed25519' ||
++    algorithm === 'ECDSA-P256' ||
++    algorithm === 'RSA-PSS-2048'
++  );
++}
++
++function getSubtleCrypto(): SubtleCrypto {
++  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
++    return window.crypto.subtle;
++  }
++  if (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.subtle) {
++    return globalThis.crypto.subtle;
++  }
++  throw new Error('Web Crypto API (SubtleCrypto) is not available in this environment');
++}
++
++/**
++ * Generate a new classical keypair (Ed25519, ECDSA-P256, or RSA-PSS-2048)
++ */
++export async function generateClassicalKeyPair(
++  algorithm: AlgorithmId
++): Promise<SerializableKeyPair> {
++  const subtle = getSubtleCrypto();
++
++  if (algorithm === 'Ed25519') {
++    const privBytes = crypto.getRandomValues(new Uint8Array(32));
++    const pubBytes = ed25519.getPublicKey(privBytes);
++    const fingerprint = computeFingerprint(pubBytes);
++
++    return {
++      algorithm,
++      category: 'classical',
++      createdAt: new Date().toISOString(),
++      fingerprint,
++      publicKeyBase64: bytesToBase64(pubBytes),
++      publicKeyHex: bytesToHex(pubBytes),
++      privateKeyBase64: bytesToBase64(privBytes),
++      privateKeyHex: bytesToHex(privBytes),
++      rawPublicKey: pubBytes,
++      rawPrivateKey: privBytes,
++    };
++  }
++
++  if (algorithm === 'ECDSA-P256') {
++    const keyPair = await subtle.generateKey(
++      { name: 'ECDSA', namedCurve: 'P-256' },
++      true,
++      ['sign', 'verify']
++    );
++
++    const spki = new Uint8Array(await subtle.exportKey('spki', keyPair.publicKey));
++    const pkcs8 = new Uint8Array(await subtle.exportKey('pkcs8', keyPair.privateKey));
++    const fingerprint = computeFingerprint(spki);
++
++    return {
++      algorithm,
++      category: 'classical',
++      createdAt: new Date().toISOString(),
++      fingerprint,
++      publicKeyBase64: bytesToBase64(spki),
++      publicKeyHex: bytesToHex(spki),
++      privateKeyBase64: bytesToBase64(pkcs8),
++      privateKeyHex: bytesToHex(pkcs8),
++      rawPublicKey: spki,
++      rawPrivateKey: pkcs8,
++      nativePublicKey: keyPair.publicKey,
++      nativePrivateKey: keyPair.privateKey,
++    };
++  }
++
++  if (algorithm === 'RSA-PSS-2048') {
++    const keyPair = await subtle.generateKey(
++      {
++        name: 'RSA-PSS',
++        modulusLength: 2048,
++        publicExponent: new Uint8Array([1, 0, 1]),
++        hash: 'SHA-256',
++      },
++      true,
++      ['sign', 'verify']
++    );
++
++    const spki = new Uint8Array(await subtle.exportKey('spki', keyPair.publicKey));
++    const pkcs8 = new Uint8Array(await subtle.exportKey('pkcs8', keyPair.privateKey));
++    const fingerprint = computeFingerprint(spki);
++
++    return {
++      algorithm,
++      category: 'classical',
++      createdAt: new Date().toISOString(),
++      fingerprint,
++      publicKeyBase64: bytesToBase64(spki),
++      publicKeyHex: bytesToHex(spki),
++      privateKeyBase64: bytesToBase64(pkcs8),
++      privateKeyHex: bytesToHex(pkcs8),
++      rawPublicKey: spki,
++      rawPrivateKey: pkcs8,
++      nativePublicKey: keyPair.publicKey,
++      nativePrivateKey: keyPair.privateKey,
++    };
++  }
++
++  throw new Error(`Unsupported classical algorithm: ${algorithm}`);
++}
++
++/**
++ * Sign data using classical private key
++ */
++export async function signClassical(
++  algorithm: AlgorithmId,
++  messageBytes: Uint8Array,
++  keyPairOrPrivKey: SerializableKeyPair | Uint8Array
++): Promise<Uint8Array> {
++  const subtle = getSubtleCrypto();
++
++  if (algorithm === 'Ed25519') {
++    const privBytes =
++      keyPairOrPrivKey instanceof Uint8Array
++        ? keyPairOrPrivKey
++        : keyPairOrPrivKey.rawPrivateKey || base64ToBytes(keyPairOrPrivKey.privateKeyBase64!);
++    return ed25519.sign(messageBytes, privBytes);
++  }
++
++  if (algorithm === 'ECDSA-P256') {
++    let privKey: CryptoKey;
++    if (!(keyPairOrPrivKey instanceof Uint8Array) && keyPairOrPrivKey.nativePrivateKey) {
++      privKey = keyPairOrPrivKey.nativePrivateKey;
++    } else {
++      const pkcs8Bytes =
++        keyPairOrPrivKey instanceof Uint8Array
++          ? keyPairOrPrivKey
++          : keyPairOrPrivKey.rawPrivateKey || base64ToBytes(keyPairOrPrivKey.privateKeyBase64!);
++      privKey = await subtle.importKey(
++        'pkcs8',
++        pkcs8Bytes as BufferSource,
++        { name: 'ECDSA', namedCurve: 'P-256' },
++        false,
++        ['sign']
++      );
++    }
++
++    const sig = await subtle.sign(
++      { name: 'ECDSA', hash: 'SHA-256' },
++      privKey,
++      messageBytes as BufferSource
++    );
++    return new Uint8Array(sig);
++  }
++
++  if (algorithm === 'RSA-PSS-2048') {
++    let privKey: CryptoKey;
++    if (!(keyPairOrPrivKey instanceof Uint8Array) && keyPairOrPrivKey.nativePrivateKey) {
++      privKey = keyPairOrPrivKey.nativePrivateKey;
++    } else {
++      const pkcs8Bytes =
++        keyPairOrPrivKey instanceof Uint8Array
++          ? keyPairOrPrivKey
++          : keyPairOrPrivKey.rawPrivateKey || base64ToBytes(keyPairOrPrivKey.privateKeyBase64!);
++      privKey = await subtle.importKey(
++        'pkcs8',
++        pkcs8Bytes as BufferSource,
++        { name: 'RSA-PSS', hash: 'SHA-256' },
++        false,
++        ['sign']
++      );
++    }
++
++    const sig = await subtle.sign(
++      { name: 'RSA-PSS', saltLength: 32 },
++      privKey,
++      messageBytes as BufferSource
++    );
++    return new Uint8Array(sig);
++  }
++
++  throw new Error(`Unsupported classical algorithm: ${algorithm}`);
++}
++
++/**
++ * Verify signature using classical public key
++ */
++export async function verifyClassical(
++  algorithm: AlgorithmId,
++  signatureBytes: Uint8Array,
++  messageBytes: Uint8Array,
++  keyPairOrPubKey: SerializableKeyPair | Uint8Array
++): Promise<boolean> {
++  const subtle = getSubtleCrypto();
++
++  try {
++    if (algorithm === 'Ed25519') {
++      const pubBytes =
++        keyPairOrPubKey instanceof Uint8Array
++          ? keyPairOrPubKey
++          : keyPairOrPubKey.rawPublicKey || base64ToBytes(keyPairOrPubKey.publicKeyBase64);
++      return ed25519.verify(signatureBytes, messageBytes, pubBytes);
++    }
++
++    if (algorithm === 'ECDSA-P256') {
++      let pubKey: CryptoKey;
++      if (!(keyPairOrPubKey instanceof Uint8Array) && keyPairOrPubKey.nativePublicKey) {
++        pubKey = keyPairOrPubKey.nativePublicKey;
++      } else {
++        const spkiBytes =
++          keyPairOrPubKey instanceof Uint8Array
++            ? keyPairOrPubKey
++            : keyPairOrPubKey.rawPublicKey || base64ToBytes(keyPairOrPubKey.publicKeyBase64);
++        pubKey = await subtle.importKey(
++          'spki',
++          spkiBytes as BufferSource,
++          { name: 'ECDSA', namedCurve: 'P-256' },
++          false,
++          ['verify']
++        );
++      }
++
++      return await subtle.verify(
++        { name: 'ECDSA', hash: 'SHA-256' },
++        pubKey,
++        signatureBytes as BufferSource,
++        messageBytes as BufferSource
++      );
++    }
++
++    if (algorithm === 'RSA-PSS-2048') {
++      let pubKey: CryptoKey;
++      if (!(keyPairOrPubKey instanceof Uint8Array) && keyPairOrPubKey.nativePublicKey) {
++        pubKey = keyPairOrPubKey.nativePublicKey;
++      } else {
++        const spkiBytes =
++          keyPairOrPubKey instanceof Uint8Array
++            ? keyPairOrPubKey
++            : keyPairOrPubKey.rawPublicKey || base64ToBytes(keyPairOrPubKey.publicKeyBase64);
++        pubKey = await subtle.importKey(
++          'spki',
++          spkiBytes as BufferSource,
++          { name: 'RSA-PSS', hash: 'SHA-256' },
++          false,
++          ['verify']
++        );
++      }
++
++      return await subtle.verify(
++        { name: 'RSA-PSS', saltLength: 32 },
++        pubKey,
++        signatureBytes as BufferSource,
++        messageBytes as BufferSource
++      );
++    }
++  } catch (err) {
++    return false;
++  }
++
++  return false;
++}
++
++/**
++ * Import classical keypair from base64 or hex
++ */
++export async function importClassicalKeyPair(
++  algorithm: AlgorithmId,
++  publicKeyStr: string,
++  privateKeyStr?: string
++): Promise<SerializableKeyPair> {
++  if (!isClassicalAlgorithm(algorithm)) {
++    throw new Error(`Algorithm ${algorithm} is not a classical algorithm`);
++  }
++
++  const isHex = /^[0-9a-fA-F]+$/.test(publicKeyStr.trim()) && publicKeyStr.trim().length % 2 === 0;
++  const pubBytes = isHex ? hexToBytes(publicKeyStr.trim()) : base64ToBytes(publicKeyStr.trim());
++
++  let privBytes: Uint8Array | undefined;
++  if (privateKeyStr && privateKeyStr.trim()) {
++    const privHex = /^[0-9a-fA-F]+$/.test(privateKeyStr.trim()) && privateKeyStr.trim().length % 2 === 0;
++    privBytes = privHex ? hexToBytes(privateKeyStr.trim()) : base64ToBytes(privateKeyStr.trim());
++  }
++
++  const fingerprint = computeFingerprint(pubBytes);
++
++  return {
++    algorithm,
++    category: 'classical',
++    createdAt: new Date().toISOString(),
++    fingerprint,
++    publicKeyBase64: bytesToBase64(pubBytes),
++    publicKeyHex: bytesToHex(pubBytes),
++    privateKeyBase64: privBytes ? bytesToBase64(privBytes) : undefined,
++    privateKeyHex: privBytes ? bytesToHex(privBytes) : undefined,
++    rawPublicKey: pubBytes,
++    rawPrivateKey: privBytes,
++  };
++}
+diff --git a/src/crypto/engine.ts b/src/crypto/engine.ts
+new file mode 100644
+index 0000000..23b4ab2
+--- /dev/null
++++ b/src/crypto/engine.ts
+@@ -0,0 +1,168 @@
++import {
++  AlgorithmId,
++  AlgorithmMetadata,
++  ArtifactManifest,
++  SerializableKeyPair,
++  SignedArtifactEnvelope,
++  SignedMessageEnvelope,
++  SignedToken,
++  TokenClaims,
++  VerificationResult,
++} from './types.js';
++import { ALGORITHMS, getAlgorithmList } from './algorithms.js';
++import {
++  generatePqcKeyPair,
++  importPqcKeyPair,
++  isPostQuantumAlgorithm,
++  signPqc,
++  verifyPqc,
++} from './post-quantum.js';
++import {
++  generateClassicalKeyPair,
++  importClassicalKeyPair,
++  isClassicalAlgorithm,
++  signClassical,
++  verifyClassical,
++} from './classical.js';
++import { signMessage, verifyMessageEnvelope, verifyDetachedMessage } from './message.js';
++import { signToken, verifyToken, VerifyTokenOptions } from './token.js';
++import { signArtifact, verifyArtifact } from './artifact.js';
++import { computeSha256Hex } from './utils.js';
++
++export class CryptoEngine {
++  /**
++   * Get all supported algorithms metadata
++   */
++  public static getSupportedAlgorithms(): AlgorithmMetadata[] {
++    return getAlgorithmList();
++  }
++
++  /**
++   * Get metadata for a specific algorithm
++   */
++  public static getAlgorithmMetadata(algorithm: AlgorithmId): AlgorithmMetadata {
++    const meta = ALGORITHMS[algorithm];
++    if (!meta) {
++      throw new Error(`Unknown algorithm: ${algorithm}`);
++    }
++    return meta;
++  }
++
++  /**
++   * Generate a fresh keypair for any supported algorithm (Classical or Post-Quantum)
++   */
++  public static async generateKeyPair(algorithm: AlgorithmId): Promise<SerializableKeyPair> {
++    if (isPostQuantumAlgorithm(algorithm)) {
++      return generatePqcKeyPair(algorithm);
++    }
++    if (isClassicalAlgorithm(algorithm)) {
++      return generateClassicalKeyPair(algorithm);
++    }
++    throw new Error(`Unsupported algorithm: ${algorithm}`);
++  }
++
++  /**
++   * Import keypair from public (and optional private) key string (base64 or hex)
++   */
++  public static async importKeyPair(
++    algorithm: AlgorithmId,
++    publicKeyStr: string,
++    privateKeyStr?: string
++  ): Promise<SerializableKeyPair> {
++    if (isPostQuantumAlgorithm(algorithm)) {
++      return importPqcKeyPair(algorithm, publicKeyStr, privateKeyStr);
++    }
++    if (isClassicalAlgorithm(algorithm)) {
++      return importClassicalKeyPair(algorithm, publicKeyStr, privateKeyStr);
++    }
++    throw new Error(`Unsupported algorithm: ${algorithm}`);
++  }
++
++  /**
++   * Sign arbitrary message
++   */
++  public static async signMessage(
++    algorithm: AlgorithmId,
++    message: string,
++    keyPair: SerializableKeyPair,
++    metadata?: Record<string, any>
++  ): Promise<SignedMessageEnvelope> {
++    return signMessage(algorithm, message, keyPair, metadata);
++  }
++
++  /**
++   * Verify signed message envelope
++   */
++  public static async verifyMessage(
++    envelope: SignedMessageEnvelope,
++    keyPairOrPubKey?: SerializableKeyPair | Uint8Array
++  ): Promise<VerificationResult> {
++    return verifyMessageEnvelope(envelope, keyPairOrPubKey);
++  }
++
++  /**
++   * Verify detached message
++   */
++  public static async verifyDetachedMessage(
++    algorithm: AlgorithmId,
++    message: string,
++    signatureBase64: string,
++    keyPairOrPubKey: SerializableKeyPair | Uint8Array
++  ): Promise<boolean> {
++    return verifyDetachedMessage(algorithm, message, signatureBase64, keyPairOrPubKey);
++  }
++
++  /**
++   * Sign structured token / JWT claims
++   */
++  public static async signToken(
++    algorithm: AlgorithmId,
++    claims: TokenClaims,
++    keyPair: SerializableKeyPair
++  ): Promise<SignedToken> {
++    return signToken(algorithm, claims, keyPair);
++  }
++
++  /**
++   * Verify structured token
++   */
++  public static async verifyToken(
++    tokenString: string,
++    keyPairOrPubKey: SerializableKeyPair | Uint8Array,
++    options?: VerifyTokenOptions
++  ): Promise<VerificationResult> {
++    return verifyToken(tokenString, keyPairOrPubKey, options);
++  }
++
++  /**
++   * Sign binary artifact / file
++   */
++  public static async signArtifact(
++    algorithm: AlgorithmId,
++    fileBytes: Uint8Array,
++    fileName: string,
++    mimeType: string,
++    keyPair: SerializableKeyPair,
++    metadata?: Record<string, any>
++  ): Promise<SignedArtifactEnvelope> {
++    return signArtifact(algorithm, fileBytes, fileName, mimeType, keyPair, metadata);
++  }
++
++  /**
++   * Verify binary artifact / file
++   */
++  public static async verifyArtifact(
++    fileBytes: Uint8Array,
++    envelope: SignedArtifactEnvelope,
++    keyPairOrPubKey?: SerializableKeyPair | Uint8Array
++  ): Promise<VerificationResult> {
++    return verifyArtifact(fileBytes, envelope, keyPairOrPubKey);
++  }
++
++  /**
++   * Compute SHA-256 hash
++   */
++  public static hash(data: Uint8Array | string): string {
++    return computeSha256Hex(data);
++  }
++}
+diff --git a/src/crypto/message.ts b/src/crypto/message.ts
+new file mode 100644
+index 0000000..eb48e31
+--- /dev/null
++++ b/src/crypto/message.ts
+@@ -0,0 +1,194 @@
++import {
++  AlgorithmId,
++  SerializableKeyPair,
++  SignedMessageEnvelope,
++  VerificationResult,
++} from './types.js';
++import {
++  base64ToBytes,
++  bytesToBase64,
++  canonicalJsonStringify,
++  stringToBytes,
++} from './utils.js';
++import { isPostQuantumAlgorithm, signPqc, verifyPqc } from './post-quantum.js';
++import { isClassicalAlgorithm, signClassical, verifyClassical } from './classical.js';
++
++export function constructMessageSigningPayload(
++  algorithm: AlgorithmId,
++  message: string,
++  timestamp: string
++): Uint8Array {
++  const normalized = canonicalJsonStringify({
++    alg: algorithm,
++    msg: message,
++    ts: timestamp,
++  });
++  return stringToBytes(normalized);
++}
++
++/**
++ * Sign an arbitrary text or JSON message
++ */
++export async function signMessage(
++  algorithm: AlgorithmId,
++  message: string,
++  keyPair: SerializableKeyPair,
++  metadata?: Record<string, any>
++): Promise<SignedMessageEnvelope> {
++  const timestamp = new Date().toISOString();
++  const signingBytes = constructMessageSigningPayload(algorithm, message, timestamp);
++
++  let signatureBytes: Uint8Array;
++  if (isPostQuantumAlgorithm(algorithm)) {
++    const privBytes =
++      keyPair.rawPrivateKey ||
++      (keyPair.privateKeyBase64 ? base64ToBytes(keyPair.privateKeyBase64) : undefined);
++    if (!privBytes) {
++      throw new Error(`Private key missing for post-quantum algorithm ${algorithm}`);
++    }
++    signatureBytes = await signPqc(algorithm, signingBytes, privBytes);
++  } else if (isClassicalAlgorithm(algorithm)) {
++    signatureBytes = await signClassical(algorithm, signingBytes, keyPair);
++  } else {
++    throw new Error(`Unsupported algorithm ${algorithm}`);
++  }
++
++  const category = isPostQuantumAlgorithm(algorithm) ? 'post-quantum' : 'classical';
++
++  return {
++    version: '1.0',
++    algorithm,
++    category,
++    timestamp,
++    signerFingerprint: keyPair.fingerprint,
++    message,
++    signatureBase64: bytesToBase64(signatureBytes),
++    publicKeyBase64: keyPair.publicKeyBase64,
++    metadata,
++  };
++}
++
++/**
++ * Verify a signed message envelope
++ */
++export async function verifyMessageEnvelope(
++  envelope: SignedMessageEnvelope,
++  keyPairOrPubKey?: SerializableKeyPair | Uint8Array
++): Promise<VerificationResult> {
++  const verifiedAt = new Date().toISOString();
++  const { algorithm, message, timestamp, signatureBase64 } = envelope;
++
++  const isPqc = isPostQuantumAlgorithm(algorithm);
++  const isClass = isClassicalAlgorithm(algorithm);
++
++  if (!isPqc && !isClass) {
++    return {
++      valid: false,
++      algorithm,
++      category: 'classical',
++      error: `Unsupported algorithm: ${algorithm}`,
++      verifiedAt,
++    };
++  }
++
++  let signatureBytes: Uint8Array;
++  try {
++    signatureBytes = base64ToBytes(signatureBase64);
++  } catch (err) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: 'Invalid base64 signature encoding in envelope',
++      verifiedAt,
++    };
++  }
++
++  let pubKey: SerializableKeyPair | Uint8Array;
++  if (keyPairOrPubKey) {
++    pubKey = keyPairOrPubKey;
++  } else if (envelope.publicKeyBase64) {
++    pubKey = base64ToBytes(envelope.publicKeyBase64);
++  } else {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: 'No public key provided for verification',
++      verifiedAt,
++    };
++  }
++
++  const signingBytes = constructMessageSigningPayload(algorithm, message, timestamp);
++
++  let sigValid = false;
++  try {
++    if (isPqc) {
++      const pubBytes =
++        pubKey instanceof Uint8Array
++          ? pubKey
++          : pubKey.rawPublicKey || base64ToBytes(pubKey.publicKeyBase64);
++      sigValid = await verifyPqc(algorithm, signatureBytes, signingBytes, pubBytes);
++    } else {
++      sigValid = await verifyClassical(algorithm, signatureBytes, signingBytes, pubKey);
++    }
++  } catch (err: any) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: `Cryptographic verification error: ${err?.message || err}`,
++      verifiedAt,
++    };
++  }
++
++  if (!sigValid) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: envelope.signerFingerprint,
++      error: 'Cryptographic signature mismatch! The message was tampered with, altered, or signed by a different key.',
++      verifiedAt,
++      details: { timestamp, messageSnippet: message.substring(0, 100) },
++    };
++  }
++
++  return {
++    valid: true,
++    algorithm,
++    category: isPqc ? 'post-quantum' : 'classical',
++    signerFingerprint: envelope.signerFingerprint,
++    details: { timestamp, messageLength: message.length },
++    verifiedAt,
++  };
++}
++
++/**
++ * Verify detached raw message and signature
++ */
++export async function verifyDetachedMessage(
++  algorithm: AlgorithmId,
++  message: string,
++  signatureBase64: string,
++  keyPairOrPubKey: SerializableKeyPair | Uint8Array
++): Promise<boolean> {
++  const messageBytes = stringToBytes(message);
++  let signatureBytes: Uint8Array;
++  try {
++    signatureBytes = base64ToBytes(signatureBase64);
++  } catch (err) {
++    return false;
++  }
++
++  if (isPostQuantumAlgorithm(algorithm)) {
++    const pubBytes =
++      keyPairOrPubKey instanceof Uint8Array
++        ? keyPairOrPubKey
++        : keyPairOrPubKey.rawPublicKey || base64ToBytes(keyPairOrPubKey.publicKeyBase64);
++    return verifyPqc(algorithm, signatureBytes, messageBytes, pubBytes);
++  } else if (isClassicalAlgorithm(algorithm)) {
++    return verifyClassical(algorithm, signatureBytes, messageBytes, keyPairOrPubKey);
++  }
++  return false;
++}
+diff --git a/src/crypto/post-quantum.ts b/src/crypto/post-quantum.ts
+new file mode 100644
+index 0000000..5869524
+--- /dev/null
++++ b/src/crypto/post-quantum.ts
+@@ -0,0 +1,130 @@
++import { ml_dsa44, ml_dsa65, ml_dsa87 } from '@noble/post-quantum/ml-dsa.js';
++import { slh_dsa_sha2_128s } from '@noble/post-quantum/slh-dsa.js';
++import { AlgorithmId, SerializableKeyPair } from './types.js';
++import {
++  bytesToBase64,
++  base64ToBytes,
++  bytesToHex,
++  hexToBytes,
++  computeFingerprint,
++} from './utils.js';
++
++export function isPostQuantumAlgorithm(algorithm: AlgorithmId): boolean {
++  return (
++    algorithm === 'ML-DSA-44' ||
++    algorithm === 'ML-DSA-65' ||
++    algorithm === 'ML-DSA-87' ||
++    algorithm === 'SLH-DSA-SHA2-128s'
++  );
++}
++
++function getPqcEngine(algorithm: AlgorithmId) {
++  switch (algorithm) {
++    case 'ML-DSA-44':
++      return ml_dsa44;
++    case 'ML-DSA-65':
++      return ml_dsa65;
++    case 'ML-DSA-87':
++      return ml_dsa87;
++    case 'SLH-DSA-SHA2-128s':
++      return slh_dsa_sha2_128s;
++    default:
++      throw new Error(`Unsupported Post-Quantum algorithm: ${algorithm}`);
++  }
++}
++
++/**
++ * Generate a new Post-Quantum keypair (FIPS 204 ML-DSA or FIPS 205 SLH-DSA)
++ */
++export async function generatePqcKeyPair(
++  algorithm: AlgorithmId
++): Promise<SerializableKeyPair> {
++  const engine = getPqcEngine(algorithm);
++  const keys = engine.keygen();
++
++  const pubBytes = keys.publicKey;
++  const privBytes = keys.secretKey;
++
++  const fingerprint = computeFingerprint(pubBytes);
++
++  return {
++    algorithm,
++    category: 'post-quantum',
++    createdAt: new Date().toISOString(),
++    fingerprint,
++    publicKeyBase64: bytesToBase64(pubBytes),
++    publicKeyHex: bytesToHex(pubBytes),
++    privateKeyBase64: bytesToBase64(privBytes),
++    privateKeyHex: bytesToHex(privBytes),
++    rawPublicKey: pubBytes,
++    rawPrivateKey: privBytes,
++  };
++}
++
++/**
++ * Sign data using Post-Quantum private key
++ */
++export async function signPqc(
++  algorithm: AlgorithmId,
++  messageBytes: Uint8Array,
++  secretKeyBytes: Uint8Array
++): Promise<Uint8Array> {
++  const engine = getPqcEngine(algorithm);
++  return engine.sign(messageBytes, secretKeyBytes);
++}
++
++/**
++ * Verify signature using Post-Quantum public key
++ */
++export async function verifyPqc(
++  algorithm: AlgorithmId,
++  signatureBytes: Uint8Array,
++  messageBytes: Uint8Array,
++  publicKeyBytes: Uint8Array
++): Promise<boolean> {
++  try {
++    const engine = getPqcEngine(algorithm);
++    return engine.verify(signatureBytes, messageBytes, publicKeyBytes);
++  } catch (err) {
++    // If invalid key length or format, verify returns false instead of throwing
++    return false;
++  }
++}
++
++/**
++ * Import PQC keypair from base64 or hex
++ */
++export function importPqcKeyPair(
++  algorithm: AlgorithmId,
++  publicKeyStr: string,
++  privateKeyStr?: string
++): SerializableKeyPair {
++  if (!isPostQuantumAlgorithm(algorithm)) {
++    throw new Error(`Algorithm ${algorithm} is not a post-quantum algorithm`);
++  }
++
++  // Detect hex or base64
++  const isHex = /^[0-9a-fA-F]+$/.test(publicKeyStr.trim()) && publicKeyStr.trim().length % 2 === 0;
++  const pubBytes = isHex ? hexToBytes(publicKeyStr.trim()) : base64ToBytes(publicKeyStr.trim());
++
++  let privBytes: Uint8Array | undefined;
++  if (privateKeyStr && privateKeyStr.trim()) {
++    const privHex = /^[0-9a-fA-F]+$/.test(privateKeyStr.trim()) && privateKeyStr.trim().length % 2 === 0;
++    privBytes = privHex ? hexToBytes(privateKeyStr.trim()) : base64ToBytes(privateKeyStr.trim());
++  }
++
++  const fingerprint = computeFingerprint(pubBytes);
++
++  return {
++    algorithm,
++    category: 'post-quantum',
++    createdAt: new Date().toISOString(),
++    fingerprint,
++    publicKeyBase64: bytesToBase64(pubBytes),
++    publicKeyHex: bytesToHex(pubBytes),
++    privateKeyBase64: privBytes ? bytesToBase64(privBytes) : undefined,
++    privateKeyHex: privBytes ? bytesToHex(privBytes) : undefined,
++    rawPublicKey: pubBytes,
++    rawPrivateKey: privBytes,
++  };
++}
+diff --git a/src/crypto/token.ts b/src/crypto/token.ts
+new file mode 100644
+index 0000000..189343e
+--- /dev/null
++++ b/src/crypto/token.ts
+@@ -0,0 +1,281 @@
++import {
++  AlgorithmId,
++  SerializableKeyPair,
++  SignedToken,
++  TokenClaims,
++  TokenHeader,
++  VerificationResult,
++} from './types.js';
++import {
++  base64UrlToBytes,
++  bytesToBase64Url,
++  bytesToString,
++  stringToBytes,
++  canonicalJsonStringify,
++} from './utils.js';
++import { isPostQuantumAlgorithm, signPqc, verifyPqc } from './post-quantum.js';
++import { isClassicalAlgorithm, signClassical, verifyClassical } from './classical.js';
++
++export function createTokenHeader(
++  algorithm: AlgorithmId,
++  keyPair?: SerializableKeyPair
++): TokenHeader {
++  return {
++    alg: algorithm,
++    typ: isPostQuantumAlgorithm(algorithm) ? 'JWT+PQC' : 'JWT+CLASSICAL',
++    kid: keyPair?.fingerprint,
++  };
++}
++
++export function encodeJwtPart(obj: any): string {
++  const json = canonicalJsonStringify(obj);
++  return bytesToBase64Url(stringToBytes(json));
++}
++
++export function decodeJwtPart<T = any>(part: string): T {
++  const bytes = base64UrlToBytes(part);
++  const json = bytesToString(bytes);
++  return JSON.parse(json);
++}
++
++/**
++ * Sign a token (payload claims) using a classical or post-quantum key
++ */
++export async function signToken(
++  algorithm: AlgorithmId,
++  payload: TokenClaims,
++  keyPair: SerializableKeyPair,
++  customHeader?: Partial<TokenHeader>
++): Promise<SignedToken> {
++  const now = Math.floor(Date.now() / 1000);
++
++  const finalPayload: TokenClaims = {
++    iat: payload.iat ?? now,
++    exp: payload.exp ?? now + 3600, // default 1 hour
++    ...payload,
++  };
++
++  const header: TokenHeader = {
++    ...createTokenHeader(algorithm, keyPair),
++    ...customHeader,
++  };
++
++  const encodedHeader = encodeJwtPart(header);
++  const encodedPayload = encodeJwtPart(finalPayload);
++  const signingInput = `${encodedHeader}.${encodedPayload}`;
++  const signingInputBytes = stringToBytes(signingInput);
++
++  let signatureBytes: Uint8Array;
++  if (isPostQuantumAlgorithm(algorithm)) {
++    const privBytes =
++      keyPair.rawPrivateKey ||
++      (keyPair.privateKeyBase64 ? base64UrlToBytes(keyPair.privateKeyBase64) : undefined);
++    if (!privBytes) {
++      throw new Error(`Private key missing for post-quantum algorithm ${algorithm}`);
++    }
++    signatureBytes = await signPqc(algorithm, signingInputBytes, privBytes);
++  } else if (isClassicalAlgorithm(algorithm)) {
++    signatureBytes = await signClassical(algorithm, signingInputBytes, keyPair);
++  } else {
++    throw new Error(`Unsupported algorithm ${algorithm}`);
++  }
++
++  const encodedSignature = bytesToBase64Url(signatureBytes);
++  const compact = `${signingInput}.${encodedSignature}`;
++
++  return {
++    compact,
++    header,
++    payload: finalPayload,
++    signatureBase64: encodedSignature,
++  };
++}
++
++export interface VerifyTokenOptions {
++  expectedIssuer?: string;
++  expectedAudience?: string;
++  expectedSubject?: string;
++  clockToleranceSeconds?: number;
++  checkExpiration?: boolean;
++}
++
++/**
++ * Verify a compact token using a public key
++ */
++export async function verifyToken(
++  tokenString: string,
++  keyPairOrPubKey: SerializableKeyPair | Uint8Array,
++  options: VerifyTokenOptions = {}
++): Promise<VerificationResult> {
++  const verifiedAt = new Date().toISOString();
++  const parts = tokenString.trim().split('.');
++
++  if (parts.length !== 3) {
++    return {
++      valid: false,
++      algorithm: 'ML-DSA-44', // placeholder
++      category: 'post-quantum',
++      error: 'Invalid token format. Token must contain header.payload.signature parts.',
++      verifiedAt,
++    };
++  }
++
++  const [headerPart, payloadPart, signaturePart] = parts;
++
++  let header: TokenHeader;
++  let payload: TokenClaims;
++
++  try {
++    header = decodeJwtPart<TokenHeader>(headerPart);
++    payload = decodeJwtPart<TokenClaims>(payloadPart);
++  } catch (err: any) {
++    return {
++      valid: false,
++      algorithm: 'ML-DSA-44',
++      category: 'post-quantum',
++      error: `Failed to parse token JSON: ${err?.message || err}`,
++      verifiedAt,
++    };
++  }
++
++  const algorithm = header.alg;
++  const isPqc = isPostQuantumAlgorithm(algorithm);
++  const isClass = isClassicalAlgorithm(algorithm);
++
++  if (!isPqc && !isClass) {
++    return {
++      valid: false,
++      algorithm,
++      category: 'classical',
++      error: `Unsupported algorithm in token header: ${algorithm}`,
++      verifiedAt,
++    };
++  }
++
++  const signingInput = `${headerPart}.${payloadPart}`;
++  const signingInputBytes = stringToBytes(signingInput);
++
++  let signatureBytes: Uint8Array;
++  try {
++    signatureBytes = base64UrlToBytes(signaturePart);
++  } catch (err) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: 'Invalid base64 signature encoding',
++      verifiedAt,
++    };
++  }
++
++  // Cryptographic signature check
++  let sigValid = false;
++  try {
++    if (isPqc) {
++      const pubBytes =
++        keyPairOrPubKey instanceof Uint8Array
++          ? keyPairOrPubKey
++          : keyPairOrPubKey.rawPublicKey || base64UrlToBytes(keyPairOrPubKey.publicKeyBase64);
++      sigValid = await verifyPqc(algorithm, signatureBytes, signingInputBytes, pubBytes);
++    } else {
++      sigValid = await verifyClassical(algorithm, signatureBytes, signingInputBytes, keyPairOrPubKey);
++    }
++  } catch (err: any) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      error: `Verification error: ${err?.message || err}`,
++      verifiedAt,
++    };
++  }
++
++  if (!sigValid) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: header.kid,
++      error: 'Cryptographic signature mismatch! The token was tampered with, altered, or signed by a different key.',
++      verifiedAt,
++      details: { header, payload },
++    };
++  }
++
++  // Signature is valid! Now validate token claims (exp, nbf, iss, aud)
++  const now = Math.floor(Date.now() / 1000);
++  const tolerance = options.clockToleranceSeconds ?? 0;
++  const warnings: string[] = [];
++
++  if (options.checkExpiration !== false && typeof payload.exp === 'number') {
++    if (now > payload.exp + tolerance) {
++      return {
++        valid: false,
++        algorithm,
++        category: isPqc ? 'post-quantum' : 'classical',
++        signerFingerprint: header.kid,
++        error: `Token expired at ${new Date(payload.exp * 1000).toISOString()} (current time: ${new Date(now * 1000).toISOString()})`,
++        verifiedAt,
++        details: { header, payload },
++      };
++    }
++  }
++
++  if (typeof payload.nbf === 'number' && now < payload.nbf - tolerance) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: header.kid,
++      error: `Token not valid before ${new Date(payload.nbf * 1000).toISOString()}`,
++      verifiedAt,
++      details: { header, payload },
++    };
++  }
++
++  if (options.expectedIssuer && payload.iss !== options.expectedIssuer) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: header.kid,
++      error: `Issuer mismatch: expected "${options.expectedIssuer}", got "${payload.iss}"`,
++      verifiedAt,
++      details: { header, payload },
++    };
++  }
++
++  if (options.expectedAudience && payload.aud !== options.expectedAudience) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: header.kid,
++      error: `Audience mismatch: expected "${options.expectedAudience}", got "${payload.aud}"`,
++      verifiedAt,
++      details: { header, payload },
++    };
++  }
++
++  if (options.expectedSubject && payload.sub !== options.expectedSubject) {
++    return {
++      valid: false,
++      algorithm,
++      category: isPqc ? 'post-quantum' : 'classical',
++      signerFingerprint: header.kid,
++      error: `Subject mismatch: expected "${options.expectedSubject}", got "${payload.sub}"`,
++      verifiedAt,
++      details: { header, payload },
++    };
++  }
++
++  return {
++    valid: true,
++    algorithm,
++    category: isPqc ? 'post-quantum' : 'classical',
++    signerFingerprint: header.kid,
++    warnings: warnings.length > 0 ? warnings : undefined,
++    details: { header, payload },
++    verifiedAt,
++  };
++}
+diff --git a/src/crypto/types.ts b/src/crypto/types.ts
+new file mode 100644
+index 0000000..2b12318
+--- /dev/null
++++ b/src/crypto/types.ts
+@@ -0,0 +1,110 @@
++/**
++ * Core cryptographic types for Classical and Post-Quantum Signing and Verification.
++ */
++
++export type AlgorithmCategory = 'classical' | 'post-quantum';
++
++export type AlgorithmId =
++  // Post-Quantum (Quantum-Resistant)
++  | 'ML-DSA-44'
++  | 'ML-DSA-65'
++  | 'ML-DSA-87'
++  | 'SLH-DSA-SHA2-128s'
++  // Classical
++  | 'Ed25519'
++  | 'ECDSA-P256'
++  | 'RSA-PSS-2048';
++
++export interface AlgorithmMetadata {
++  id: AlgorithmId;
++  name: string;
++  category: AlgorithmCategory;
++  standard: string; // e.g., "NIST FIPS 204", "RFC 8032", "NIST FIPS 186-5"
++  securityLevel: string; // e.g., "NIST Category 2 (128-bit quantum)", "128-bit classical"
++  quantumResistant: boolean;
++  publicKeySize: number; // approximate or exact bytes
++  signatureSize: number; // approximate or exact bytes
++  description: string;
++}
++
++export interface SerializableKeyPair {
++  algorithm: AlgorithmId;
++  category: AlgorithmCategory;
++  createdAt: string;
++  fingerprint: string;
++  publicKeyBase64: string;
++  publicKeyHex: string;
++  privateKeyBase64?: string;
++  privateKeyHex?: string;
++  jwk?: JsonWebKey;
++  nativePrivateKey?: any; // internal handle if WebCrypto
++  nativePublicKey?: any;
++  rawPublicKey?: Uint8Array;
++  rawPrivateKey?: Uint8Array;
++}
++
++export interface SignedMessageEnvelope {
++  version: '1.0';
++  algorithm: AlgorithmId;
++  category: AlgorithmCategory;
++  timestamp: string;
++  signerFingerprint: string;
++  message: string;
++  signatureBase64: string;
++  publicKeyBase64: string;
++  metadata?: Record<string, any>;
++}
++
++export interface TokenClaims {
++  iss?: string; // Issuer
++  sub?: string; // Subject
++  aud?: string; // Audience
++  exp?: number; // Expiration (unix epoch seconds)
++  nbf?: number; // Not before (unix epoch seconds)
++  iat?: number; // Issued at (unix epoch seconds)
++  jti?: string; // JWT ID
++  [key: string]: any;
++}
++
++export interface TokenHeader {
++  alg: AlgorithmId;
++  typ: 'JWT+PQC' | 'JWT+CLASSICAL';
++  kid?: string;
++}
++
++export interface SignedToken {
++  compact: string; // header_b64.payload_b64.sig_b64
++  header: TokenHeader;
++  payload: TokenClaims;
++  signatureBase64: string;
++}
++
++export interface ArtifactManifest {
++  fileName: string;
++  fileSize: number;
++  mimeType: string;
++  sha256DigestHex: string;
++  timestamp: string;
++  metadata?: Record<string, any>;
++}
++
++export interface SignedArtifactEnvelope {
++  version: '1.0';
++  algorithm: AlgorithmId;
++  category: AlgorithmCategory;
++  manifest: ArtifactManifest;
++  signatureBase64: string;
++  publicKeyBase64: string;
++  signerFingerprint: string;
++}
++
++export interface VerificationResult {
++  valid: boolean;
++  algorithm: AlgorithmId;
++  category: AlgorithmCategory;
++  signerFingerprint?: string;
++  error?: string;
++  warnings?: string[];
++  details?: Record<string, any>;
++  verifiedAt: string;
++}
+diff --git a/src/crypto/utils.ts b/src/crypto/utils.ts
+new file mode 100644
+index 0000000..a765e24
+--- /dev/null
++++ b/src/crypto/utils.ts
+@@ -0,0 +1,106 @@
++/**
++ * Utility functions for byte conversion, Base64/Base64URL encoding/decoding,
++ * Hex formatting, SHA-256 fingerprinting, and canonical serialization.
++ */
++import { sha256 } from '@noble/hashes/sha256.js';
++
++export function bytesToHex(bytes: Uint8Array): string {
++  let hex = '';
++  for (let i = 0; i < bytes.length; i++) {
++    hex += bytes[i].toString(16).padStart(2, '0');
++  }
++  return hex;
++}
++
++export function hexToBytes(hex: string): Uint8Array {
++  const clean = hex.replace(/[^0-9a-fA-F]/g, '');
++  if (clean.length % 2 !== 0) {
++    throw new Error('Invalid hex string length');
++  }
++  const bytes = new Uint8Array(clean.length / 2);
++  for (let i = 0; i < clean.length; i += 2) {
++    bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16);
++  }
++  return bytes;
++}
++
++export function bytesToBase64(bytes: Uint8Array): string {
++  if (typeof Buffer !== 'undefined') {
++    return Buffer.from(bytes).toString('base64');
++  }
++  let binary = '';
++  const len = bytes.byteLength;
++  for (let i = 0; i < len; i++) {
++    binary += String.fromCharCode(bytes[i]);
++  }
++  return btoa(binary);
++}
++
++export function base64ToBytes(base64: string): Uint8Array {
++  // normalize padding and URL-safe characters if any
++  let standard = base64.replace(/-/g, '+').replace(/_/g, '/');
++  while (standard.length % 4 !== 0) {
++    standard += '=';
++  }
++  if (typeof Buffer !== 'undefined') {
++    return new Uint8Array(Buffer.from(standard, 'base64'));
++  }
++  const binary = atob(standard);
++  const bytes = new Uint8Array(binary.length);
++  for (let i = 0; i < binary.length; i++) {
++    bytes[i] = binary.charCodeAt(i);
++  }
++  return bytes;
++}
++
++export function bytesToBase64Url(bytes: Uint8Array): string {
++  return bytesToBase64(bytes)
++    .replace(/\+/g, '-')
++    .replace(/\//g, '_')
++    .replace(/=+$/, '');
++}
++
++export function base64UrlToBytes(base64url: string): Uint8Array {
++  return base64ToBytes(base64url);
++}
++
++export function stringToBytes(str: string): Uint8Array {
++  return new TextEncoder().encode(str);
++}
++
++export function bytesToString(bytes: Uint8Array): string {
++  return new TextDecoder().decode(bytes);
++}
++
++export function computeSha256(data: Uint8Array): Uint8Array {
++  return sha256(data);
++}
++
++export function computeSha256Hex(data: Uint8Array | string): string {
++  const bytes = typeof data === 'string' ? stringToBytes(data) : data;
++  return bytesToHex(computeSha256(bytes));
++}
++
++export function computeFingerprint(publicKeyBytes: Uint8Array): string {
++  const hash = computeSha256(publicKeyBytes);
++  // Format as readable SHA-256 fingerprint: xx:xx:xx:xx...
++  const hex = bytesToHex(hash.slice(0, 16));
++  return hex.match(/.{1,2}/g)?.join(':') || hex;
++}
++
++/**
++ * Deterministic JSON stringify (keys sorted alphabetically)
++ */
++export function canonicalJsonStringify(obj: any): string {
++  if (obj === null || typeof obj !== 'object') {
++    return JSON.stringify(obj);
++  }
++  if (Array.isArray(obj)) {
++    return '[' + obj.map(canonicalJsonStringify).join(',') + ']';
++  }
++  const keys = Object.keys(obj).sort();
++  const pairs = keys.map((key) => {
++    return JSON.stringify(key) + ':' + canonicalJsonStringify(obj[key]);
++  });
++  return '{' + pairs.join(',') + '}';
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..3d0552a
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "skipLibCheck": true,
++    "esModuleInterop": true,
++    "resolveJsonModule": true,
++    "isolatedModules": true
++  },
++  "include": ["src/**/*", "test/**/*"]
++}

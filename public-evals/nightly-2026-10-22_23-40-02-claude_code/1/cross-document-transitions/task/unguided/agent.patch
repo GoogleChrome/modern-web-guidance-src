@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Page transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      @keyframes slide-out-left { to { opacity: 0; transform: translateX(-60px); } }
++      @keyframes slide-out-right { to { opacity: 0; transform: translateX(60px); } }
++      @keyframes slide-in-right { from { opacity: 0; transform: translateX(60px); } }
++      @keyframes slide-in-left { from { opacity: 0; transform: translateX(-60px); } }
++      @keyframes fade-out { to { opacity: 0; } }
++      @keyframes fade-in { from { opacity: 0; } }
++
++      /* Default: simple cross-fade */
++      ::view-transition-old(root) {
++        animation: 250ms ease both fade-out;
++      }
++
++      ::view-transition-new(root) {
++        animation: 250ms ease both fade-in;
++      }
++
++      /* Next: old content exits left, new content enters from the right */
++      html:active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation: 350ms ease both slide-out-left;
++        }
++
++        &::view-transition-new(root) {
++          animation: 350ms ease both slide-in-right;
++        }
++      }
++
++      /* Previous: old content exits right, new content enters from the left */
++      html:active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation: 350ms ease both slide-out-right;
++        }
++
++        &::view-transition-new(root) {
++          animation: 350ms ease both slide-in-left;
++        }
++      }
++    }
++
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 30px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +244,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <nav class="pagination" aria-label="Seasonal favorites pagination">
++        <a id="previous" href="/?page=1" class="btn">&larr; Previous</a>
++        <a id="next" href="/?page=2" class="btn">Next &rarr;</a>
++      </nav>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +261,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      // Page number from the ?page= param (defaults to 1)
++      const pageOf = (url) => Number(new URL(url).searchParams.get('page')) || 1;
++
++      // Returns 'next' / 'previous' when navigating between pages of the listing
++      const transitionTypeFor = (fromUrl, toUrl) => {
++        if (!fromUrl || !toUrl) return null;
++        const from = new URL(fromUrl);
++        const to = new URL(toUrl);
++        if (from.origin !== to.origin || from.pathname !== to.pathname) return null;
++        const diff = pageOf(to) - pageOf(from);
++        return diff > 0 ? 'next' : diff < 0 ? 'previous' : null;
++      };
++
++      // Incoming page: apply the type once the new page is revealed
++      window.addEventListener('pagereveal', (event) => {
++        if (!event.viewTransition || !navigation.activation?.from) return;
++        const type = transitionTypeFor(navigation.activation.from.url, navigation.activation.entry.url);
++        if (type) event.viewTransition.types.add(type);
++      });
++
++      // Outgoing page: apply the same type so the old content animates out accordingly
++      window.addEventListener('pageswap', (event) => {
++        if (!event.viewTransition || !event.activation) return;
++        const type = transitionTypeFor(event.activation.from?.url, event.activation.entry?.url);
++        if (type) event.viewTransition.types.add(type);
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

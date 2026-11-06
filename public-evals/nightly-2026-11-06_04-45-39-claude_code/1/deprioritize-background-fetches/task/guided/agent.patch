@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,35 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Load</title>
++</head>
++<body>
++  <button type="button" id="load">Load data</button>
++  <output id="out"></output>
++  <script>
++    const out = document.getElementById('out');
++
++    document.getElementById('load').addEventListener('click', async () => {
++      // Analytics: fire-and-forget, deprioritized so it doesn't compete with /api/data.
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      }).catch(() => {});
++
++      // Mission-critical data: high priority.
++      try {
++        const res = await fetch('/api/data', { priority: 'high' });
++        if (!res.ok) throw new Error(`HTTP ${res.status}`);
++        out.textContent = await res.text();
++      } catch (err) {
++        out.textContent = `Error: ${err.message}`;
++      }
++    });
++  </script>
++</body>
++</html>

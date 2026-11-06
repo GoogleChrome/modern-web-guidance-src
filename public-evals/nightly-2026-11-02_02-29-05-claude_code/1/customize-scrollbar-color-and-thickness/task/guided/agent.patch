@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-gutter: stable;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-item {
++      padding: 15px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-item:first-child {
++      padding-top: 0;
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .feedback-item blockquote {
++      font-style: italic;
++    }
++
++    .feedback-item p {
++      margin-top: 6px;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading" style="text-align: center;">Customer Feedback</h2>
++      <ul class="feedback-log" tabindex="0" aria-label="Customer testimonials">
++        <li class="feedback-item">
++          <blockquote>"The Maple Oat Latte is autumn in a cup. I've ordered it every morning this week!"</blockquote>
++          <p>&mdash; Sarah M., Portland</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"Best cold brew in town, hands down. Smooth with zero bitterness."</blockquote>
++          <p>&mdash; James K., Seattle</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"Friendly baristas and a cozy atmosphere. My go-to spot for remote work."</blockquote>
++          <p>&mdash; Priya R., Austin</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"The Dark Roast Espresso gives me exactly the kick I need before a long shift."</blockquote>
++          <p>&mdash; Marcus T., Denver</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"Online ordering is fast and my drink is always ready when I arrive."</blockquote>
++          <p>&mdash; Elena G., Chicago</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"Love that the beans are ethically sourced. You can taste the quality."</blockquote>
++          <p>&mdash; David L., Boston</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"The rewards program is generous. I got a free pastry on my birthday!"</blockquote>
++          <p>&mdash; Aisha N., Atlanta</p>
++        </li>
++        <li class="feedback-item">
++          <blockquote>"Consistently great coffee at every location I've visited."</blockquote>
++          <p>&mdash; Tom W., San Diego</p>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

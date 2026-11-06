@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+index 66c9173..4e10765 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,7 +77,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +88,36 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
++    /* Poster lockup: every line is sized so its glyphs fill the same width */
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(88vw, 28rem);
++      container-type: inline-size;
++      margin-bottom: 1.25rem;
++      font-family: 'Anton', 'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif;
++      font-weight: 400;
++      text-transform: uppercase;
++      line-height: 0.88;
++      letter-spacing: 0;
++    }
++
++    .hero h1 .line {
++      display: block;
++      width: fit-content;
++      margin-inline: auto;
++      white-space: nowrap;
++      /* CSS-only approximation (per-line --fit ratio); refined by JS below */
++      font-size: calc(var(--fit, 0.25) * 100cqi);
++    }
++
++    .hero h1 .line + .line {
++      margin-top: 0.04em;
++    }
++
++    .hero h1 .line--accent {
++      color: var(--accent);
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +196,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="fit-lockup">
++      <span class="line" style="--fit: 0.31">Wake Up</span>
++      <span class="line line--accent" style="--fit: 0.5">Your</span>
++      <span class="line" style="--fit: 0.33">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +238,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Size each lockup line's font so its rendered text width equals the
++    // container width (the text scales; spacing is never stretched).
++    (function () {
++      var lockups = document.querySelectorAll('.fit-lockup');
++      var BASE = 100; // px, measuring size
++
++      function fit(lockup) {
++        var target = lockup.clientWidth;
++        if (!target) return;
++        if (lockup._fitWidth === target && !lockup._force) return;
++        lockup._fitWidth = target;
++        lockup._force = false;
++        lockup.querySelectorAll('.line').forEach(function (line) {
++          line.style.fontSize = BASE + 'px';
++          var w = line.getBoundingClientRect().width;
++          if (w) line.style.fontSize = (BASE * target / w) + 'px';
++        });
++      }
++
++      function fitAll() { lockups.forEach(fit); }
++
++      fitAll();
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () {
++        lockups.forEach(function (el) { el._force = true; });
++        fitAll();
++      });
++      if ('ResizeObserver' in window) {
++        var ro = new ResizeObserver(fitAll);
++        lockups.forEach(function (el) { ro.observe(el); });
++      } else {
++        window.addEventListener('resize', fitAll);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

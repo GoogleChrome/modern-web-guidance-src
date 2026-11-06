@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,132 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section */
++    .parallax {
++      position: relative;
++      min-height: 90vh;
++      overflow: clip;
++      display: grid;
++      place-items: center;
++      padding: 15vh 5%;
++      background: var(--text);
++      view-timeline: --parallax;
++    }
++
++    .parallax-photos,
++    .parallax-content {
++      grid-area: 1 / 1;
++    }
++
++    .parallax-bg {
++      position: absolute;
++      /* Oversized so no gaps show while it translates */
++      inset: -20vh 0;
++    }
++
++    .parallax-bg img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .parallax-bg::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 15, 10, 0.55), rgba(30, 15, 10, 0.75));
++    }
++
++    .parallax-photos {
++      position: relative;
++      width: min(1100px, 100%);
++      align-self: stretch;
++      pointer-events: none;
++    }
++
++    .parallax-photo {
++      position: absolute;
++      width: clamp(140px, 22vw, 260px);
++      aspect-ratio: 2 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      border: 6px solid var(--light);
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
++    }
++
++    .parallax-photo:nth-child(1) {
++      top: 0;
++      left: 0;
++      rotate: -6deg;
++    }
++
++    .parallax-photo:nth-child(2) {
++      bottom: 0;
++      right: 0;
++      rotate: 5deg;
++    }
++
++    .parallax-content {
++      position: relative;
++      max-width: 520px;
++      padding: 2.5rem;
++      border-radius: 8px;
++      background: rgba(250, 250, 250, 0.95);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
++      text-align: center;
++    }
++
++    .parallax-content h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 0.75rem;
++    }
++
++    /* Layers move at different speeds: background slowest, content fastest */
++    .parallax-bg {
++      --parallax-from: -15vh;
++      --parallax-to: 15vh;
++    }
++
++    .parallax-photos {
++      --parallax-from: 12vh;
++      --parallax-to: -12vh;
++    }
++
++    .parallax-content {
++      --parallax-from: 25vh;
++      --parallax-to: -25vh;
++    }
++
++    @keyframes parallax {
++      from {
++        translate: 0 var(--parallax-from);
++      }
++
++      to {
++        translate: 0 var(--parallax-to);
++      }
++    }
++
++    /* Progressive enhancement: decorative only, so no fallback is needed */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          animation: parallax linear both;
++          animation-timeline: --parallax;
++        }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .parallax-photos {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +297,29 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax-layer parallax-bg">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70"
++        alt="" loading="lazy" decoding="async">
++    </div>
++    <div class="parallax-layer parallax-photos" aria-hidden="true">
++      <img class="parallax-photo"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=520&q=70"
++        alt="" loading="lazy" decoding="async">
++      <img class="parallax-photo"
++        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=520&q=70"
++        alt="" loading="lazy" decoding="async">
++    </div>
++    <div class="parallax-layer parallax-content">
++      <h2 id="parallax-heading">From Bean to Cup</h2>
++      <p>Every batch is small-lot roasted in-house, ground to order, and pulled by baristas who care about
++        the details. Taste the difference that craft makes.</p>
++      <a href="/about" class="btn">Our Story</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

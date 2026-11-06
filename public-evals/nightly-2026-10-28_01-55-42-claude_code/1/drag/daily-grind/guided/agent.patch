@@ -1,0 +1,536 @@
+diff --git a/index.html b/index.html
+index 66c9173..82d4f44 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,256 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating Quick Order Panel */
++    .cart-panel {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      width: min(320px, calc(100vw - 32px));
++      background: white;
++      color: var(--text);
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.28);
++      z-index: 1100;
++      overflow: hidden;
++      font-size: 0.95rem;
++    }
++
++    .cart-panel.is-positioned {
++      right: auto;
++      bottom: auto;
++    }
++
++    .cart-panel__header {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 14px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .cart-panel__header.is-draggable {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .cart-panel__header.is-draggable.dragging {
++      cursor: grabbing;
++    }
++
++    .cart-panel__header:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .cart-panel__grip {
++      display: none;
++      width: 14px;
++      height: 14px;
++      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.75) 1.5px, transparent 1.6px);
++      background-size: 7px 7px;
++      flex-shrink: 0;
++    }
++
++    .cart-panel__header.is-draggable .cart-panel__grip {
++      display: block;
++    }
++
++    .cart-panel__title {
++      flex: 1;
++      font-size: 1rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++    }
++
++    .cart-panel__toggle {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      color: white;
++      border-radius: 4px;
++      width: 28px;
++      height: 28px;
++      cursor: pointer;
++      font-size: 1rem;
++      line-height: 1;
++    }
++
++    .cart-panel__toggle:hover {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    .cart-panel__body {
++      padding: 14px;
++      display: grid;
++      gap: 12px;
++    }
++
++    .cart-panel[data-collapsed="true"] .cart-panel__body {
++      display: none;
++    }
++
++    .cart-panel label,
++    .cart-panel__label {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .cart-panel select {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .cart-panel__sizes,
++    .cart-panel__qty {
++      display: flex;
++      gap: 6px;
++    }
++
++    .cart-panel__sizes button {
++      flex: 1;
++      padding: 8px 0;
++      border: 1px solid var(--secondary);
++      background: var(--light);
++      color: var(--text);
++      border-radius: 6px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .cart-panel__sizes button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .cart-panel__qty {
++      align-items: center;
++    }
++
++    .cart-panel__qty button {
++      width: 34px;
++      height: 34px;
++      border-radius: 50%;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-size: 1.2rem;
++      cursor: pointer;
++    }
++
++    .cart-panel__qty button:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .cart-panel__qty output {
++      min-width: 2ch;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    .cart-panel__extras {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++    }
++
++    .cart-panel__extras label {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      text-transform: none;
++      letter-spacing: 0;
++      font-weight: 400;
++      color: var(--text);
++      margin: 0;
++    }
++
++    .cart-panel__total {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      border-top: 1px dashed var(--secondary);
++      padding-top: 10px;
++      font-weight: 600;
++    }
++
++    .cart-panel__total output {
++      font-size: 1.25rem;
++      color: var(--primary);
++    }
++
++    .cart-panel .btn {
++      margin-top: 0;
++      width: 100%;
++      text-align: center;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .cart-panel .btn--accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .cart-panel .btn--accent:hover {
++      background: #ff9100;
++    }
++
++    .cart-panel__list {
++      list-style: none;
++      display: grid;
++      gap: 6px;
++      max-height: 120px;
++      overflow-y: auto;
++      font-size: 0.85rem;
++    }
++
++    .cart-panel__list li {
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++      background: var(--light);
++      padding: 6px 8px;
++      border-radius: 6px;
++    }
++
++    .cart-panel__list button {
++      background: none;
++      border: none;
++      color: var(--primary);
++      cursor: pointer;
++      font-size: 1rem;
++      line-height: 1;
++    }
++
++    .cart-panel__empty {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .cart-panel__status {
++      font-size: 0.8rem;
++      color: #2e7d32;
++      min-height: 1.2em;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +457,274 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="cart-panel" id="quick-order" aria-labelledby="quick-order-title">
++    <div class="cart-panel__header" id="quick-order-handle">
++      <span class="cart-panel__grip" aria-hidden="true"></span>
++      <h2 class="cart-panel__title" id="quick-order-title">Quick Order</h2>
++      <button type="button" class="cart-panel__toggle" id="quick-order-toggle" aria-expanded="true"
++        aria-controls="quick-order-body" aria-label="Collapse quick order panel">&minus;</button>
++    </div>
++
++    <div class="cart-panel__body" id="quick-order-body">
++      <div>
++        <label for="qo-drink">Drink</label>
++        <select id="qo-drink">
++          <option value="Maple Oat Latte" data-price="5.25">Maple Oat Latte &mdash; $5.25</option>
++          <option value="Dark Roast Espresso" data-price="3.50">Dark Roast Espresso &mdash; $3.50</option>
++          <option value="Cold Brew" data-price="4.75">Cold Brew &mdash; $4.75</option>
++          <option value="Cappuccino" data-price="4.50">Cappuccino &mdash; $4.50</option>
++          <option value="Drip Coffee" data-price="2.95">Drip Coffee &mdash; $2.95</option>
++        </select>
++      </div>
++
++      <div>
++        <span class="cart-panel__label" id="qo-size-label">Size</span>
++        <div class="cart-panel__sizes" role="group" aria-labelledby="qo-size-label">
++          <button type="button" data-size="Small" data-extra="0" aria-pressed="true">S</button>
++          <button type="button" data-size="Medium" data-extra="0.50" aria-pressed="false">M</button>
++          <button type="button" data-size="Large" data-extra="1.00" aria-pressed="false">L</button>
++        </div>
++      </div>
++
++      <div>
++        <span class="cart-panel__label" id="qo-qty-label">Quantity</span>
++        <div class="cart-panel__qty" role="group" aria-labelledby="qo-qty-label">
++          <button type="button" id="qo-qty-minus" aria-label="Decrease quantity">&minus;</button>
++          <output id="qo-qty" aria-live="polite">1</output>
++          <button type="button" id="qo-qty-plus" aria-label="Increase quantity">+</button>
++        </div>
++      </div>
++
++      <fieldset class="cart-panel__extras" style="border: 0;">
++        <label><input type="checkbox" class="qo-extra" value="Oat milk" data-price="0.75"> Oat milk (+$0.75)</label>
++        <label><input type="checkbox" class="qo-extra" value="Extra shot" data-price="1.00"> Extra shot (+$1.00)</label>
++        <label><input type="checkbox" class="qo-extra" value="Vanilla syrup" data-price="0.50"> Vanilla syrup (+$0.50)</label>
++      </fieldset>
++
++      <div class="cart-panel__total">
++        <span>Item total</span>
++        <output id="qo-item-total" aria-live="polite">$5.25</output>
++      </div>
++
++      <button type="button" class="btn btn--accent" id="qo-add">Add to Order</button>
++
++      <div>
++        <span class="cart-panel__label" id="qo-cart-label">Your Order</span>
++        <ul class="cart-panel__list" id="qo-cart" aria-labelledby="qo-cart-label"></ul>
++        <p class="cart-panel__empty" id="qo-empty">Nothing in your cart yet.</p>
++      </div>
++
++      <div class="cart-panel__total">
++        <span>Cart total</span>
++        <output id="qo-cart-total" aria-live="polite">$0.00</output>
++      </div>
++
++      <p class="cart-panel__status" id="qo-status" role="status"></p>
++
++      <a href="/order-online" class="btn" id="qo-checkout">Checkout</a>
++    </div>
++  </aside>
++
++  <script>
++    (function () {
++      const panel = document.getElementById('quick-order');
++      const handle = document.getElementById('quick-order-handle');
++      const toggle = document.getElementById('quick-order-toggle');
++
++      /* ---------- Dragging ---------- */
++      let offsetX = 0;
++      let offsetY = 0;
++      let startX = 0;
++      let startY = 0;
++      let isDragging = false;
++      const DRAG_THRESHOLD = 4;
++      const KEY_STEP = 15;
++
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        panel.style.left = Math.max(0, Math.min(left, maxLeft)) + 'px';
++        panel.style.top = Math.max(0, Math.min(top, maxTop)) + 'px';
++      }
++
++      function ensurePositioned() {
++        if (panel.classList.contains('is-positioned')) return;
++        const rect = panel.getBoundingClientRect();
++        panel.classList.add('is-positioned');
++        moveTo(rect.left, rect.top);
++      }
++
++      function reclamp() {
++        if (!panel.classList.contains('is-positioned')) return;
++        moveTo(parseFloat(panel.style.left) || 0, parseFloat(panel.style.top) || 0);
++      }
++
++      handle.classList.add('is-draggable');
++      handle.setAttribute('tabindex', '0');
++      handle.setAttribute('aria-label', 'Quick order panel. Drag, or press arrow keys, to move the panel.');
++
++      handle.addEventListener('pointerdown', function (event) {
++        if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
++        ensurePositioned();
++        const rect = panel.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        isDragging = false;
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', function (event) {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++        if (!isDragging) {
++          if (Math.abs(event.clientX - startX) < DRAG_THRESHOLD &&
++              Math.abs(event.clientY - startY) < DRAG_THRESHOLD) return;
++          isDragging = true;
++          handle.classList.add('dragging');
++        }
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', function () {
++        isDragging = false;
++        handle.classList.remove('dragging');
++      });
++
++      handle.addEventListener('keydown', function (event) {
++        if (event.target !== handle) return;
++        const deltas = {
++          ArrowLeft: [-KEY_STEP, 0],
++          ArrowRight: [KEY_STEP, 0],
++          ArrowUp: [0, -KEY_STEP],
++          ArrowDown: [0, KEY_STEP]
++        };
++        const delta = deltas[event.key];
++        if (!delta) return;
++        event.preventDefault();
++        ensurePositioned();
++        moveTo((parseFloat(panel.style.left) || 0) + delta[0],
++               (parseFloat(panel.style.top) || 0) + delta[1]);
++      });
++
++      window.addEventListener('resize', reclamp);
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(reclamp).observe(panel);
++      }
++
++      /* ---------- Collapse / expand ---------- */
++      toggle.addEventListener('click', function () {
++        const collapsed = panel.getAttribute('data-collapsed') === 'true';
++        panel.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
++        toggle.setAttribute('aria-expanded', String(collapsed));
++        toggle.setAttribute('aria-label', (collapsed ? 'Collapse' : 'Expand') + ' quick order panel');
++        toggle.innerHTML = collapsed ? '&minus;' : '+';
++        reclamp();
++      });
++
++      /* ---------- Quick order controls ---------- */
++      const drinkSelect = document.getElementById('qo-drink');
++      const sizeButtons = Array.from(document.querySelectorAll('.cart-panel__sizes button'));
++      const qtyOutput = document.getElementById('qo-qty');
++      const extras = Array.from(document.querySelectorAll('.qo-extra'));
++      const itemTotal = document.getElementById('qo-item-total');
++      const cartList = document.getElementById('qo-cart');
++      const cartEmpty = document.getElementById('qo-empty');
++      const cartTotal = document.getElementById('qo-cart-total');
++      const status = document.getElementById('qo-status');
++      const cart = [];
++      let qty = 1;
++
++      const money = function (n) { return '$' + n.toFixed(2); };
++
++      function currentSize() {
++        return sizeButtons.find(function (b) { return b.getAttribute('aria-pressed') === 'true'; }) || sizeButtons[0];
++      }
++
++      function unitPrice() {
++        const base = parseFloat(drinkSelect.selectedOptions[0].dataset.price);
++        const sizeExtra = parseFloat(currentSize().dataset.extra);
++        const extrasTotal = extras.filter(function (e) { return e.checked; })
++          .reduce(function (sum, e) { return sum + parseFloat(e.dataset.price); }, 0);
++        return base + sizeExtra + extrasTotal;
++      }
++
++      function updateItemTotal() {
++        itemTotal.textContent = money(unitPrice() * qty);
++      }
++
++      function renderCart() {
++        cartList.innerHTML = '';
++        let total = 0;
++        cart.forEach(function (item, index) {
++          total += item.lineTotal;
++          const li = document.createElement('li');
++          const text = document.createElement('span');
++          text.textContent = item.qty + '× ' + item.size + ' ' + item.drink +
++            (item.extras.length ? ' (' + item.extras.join(', ') + ')' : '') +
++            ' — ' + money(item.lineTotal);
++          const remove = document.createElement('button');
++          remove.type = 'button';
++          remove.setAttribute('aria-label', 'Remove ' + item.drink + ' from order');
++          remove.textContent = '×';
++          remove.addEventListener('click', function () {
++            cart.splice(index, 1);
++            renderCart();
++            status.textContent = item.drink + ' removed.';
++          });
++          li.append(text, remove);
++          cartList.appendChild(li);
++        });
++        cartEmpty.hidden = cart.length > 0;
++        cartTotal.textContent = money(total);
++        reclamp();
++      }
++
++      drinkSelect.addEventListener('change', updateItemTotal);
++
++      sizeButtons.forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          sizeButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
++          updateItemTotal();
++        });
++      });
++
++      document.getElementById('qo-qty-minus').addEventListener('click', function () {
++        qty = Math.max(1, qty - 1);
++        qtyOutput.textContent = qty;
++        updateItemTotal();
++      });
++
++      document.getElementById('qo-qty-plus').addEventListener('click', function () {
++        qty = Math.min(12, qty + 1);
++        qtyOutput.textContent = qty;
++        updateItemTotal();
++      });
++
++      extras.forEach(function (e) { e.addEventListener('change', updateItemTotal); });
++
++      document.getElementById('qo-add').addEventListener('click', function () {
++        const item = {
++          drink: drinkSelect.value,
++          size: currentSize().dataset.size,
++          qty: qty,
++          extras: extras.filter(function (e) { return e.checked; }).map(function (e) { return e.value; }),
++          lineTotal: unitPrice() * qty
++        };
++        cart.push(item);
++        renderCart();
++        status.textContent = 'Added ' + item.qty + '× ' + item.drink + ' to your order.';
++        qty = 1;
++        qtyOutput.textContent = qty;
++        extras.forEach(function (e) { e.checked = false; });
++        updateItemTotal();
++      });
++
++      updateItemTotal();
++      renderCart();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,34 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,30 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Dashboard</title>
++    <script async src="/js/app.js"></script>
++    <script src="/js/legacy-widgets.js"></script>
++    <script defer src="/js/tracker.js"></script>
++    <style>
++      body { margin: 0; padding: 3rem 1.5rem; background: #fafafa; color: #222; font: 16px system-ui, sans-serif; }
++      main { max-width: 720px; margin: auto; }
++      h1 { margin: 0 0 2rem; font-size: 1.75rem; font-weight: 600; }
++      dl { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; }
++      dl > div { flex: 1; min-width: 140px; padding: 1.5rem; border: 1px solid #e5e5e5; border-radius: 8px; background: white; }
++      dt { color: #666; font-size: .875rem; }
++      dd { margin: .5rem 0 0; font-size: 2rem; font-weight: 600; }
++    </style>
++  </head>
++  <body>
++    <main>
++      <h1>Dashboard</h1>
++      <dl aria-label="Overview">
++        <div><dt>Visitors</dt><dd>—</dd></div>
++        <div><dt>Orders</dt><dd>—</dd></div>
++        <div><dt>Revenue</dt><dd>—</dd></div>
++      </dl>
++    </main>
++  </body>
++</html>

@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,20 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @function --cool-gradient(--start: #f5ebe6, --end: #d7ccc8, --angle: 135deg) {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --responsive-columns(--small: 1fr, --large: 1fr 1fr) {
++      result: var(--small);
++
++      @media (min-width: 700px) {
++        result: var(--large);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +35,17 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background: --cool-gradient(var(--light), var(--secondary));
+     }
+ 
++    h2 {
++      background: --cool-gradient(var(--secondary), var(--accent));
++      padding: 10px 16px;
++      border-radius: 6px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,11 +117,17 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main {
++      display: grid;
++      grid-template-columns: --responsive-columns();
++      gap: 20px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: --responsive-columns();
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

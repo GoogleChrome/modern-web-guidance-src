@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,60 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Load data</title>
++    <style>
++      :root { font-family: system-ui, sans-serif; color-scheme: light dark; }
++      body { margin: 0; min-height: 100svh; display: grid; place-items: center; }
++      main { text-align: center; padding: 24px; }
++      button { padding: 14px 26px; border: 0; border-radius: 8px; background: #2563eb; color: white; font: inherit; font-weight: 600; cursor: pointer; }
++      button:hover { background: #1d4ed8; }
++      button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 4px; }
++      button:disabled { opacity: .6; cursor: wait; }
++      #status { min-height: 1.5em; font-size: 14px; }
++      pre { max-width: min(600px, 80vw); max-height: 50vh; overflow: auto; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
++    </style>
++  </head>
++  <body>
++    <main>
++      <button type="button" id="load">Load data</button>
++      <p id="status" role="status"></p>
++      <pre id="data" hidden></pre>
++    </main>
++    <script>
++      const button = document.querySelector('#load');
++      const status = document.querySelector('#status');
++      const output = document.querySelector('#data');
++
++      button.addEventListener('click', () => {
++        button.disabled = true;
++        status.textContent = 'Loading…';
++        output.hidden = true;
++
++        // Start the critical request first; never wait for analytics to render it.
++        const dataRequest = fetch('/api/data', { priority: 'high' });
++        fetch('/api/analytics', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ click: 1 }),
++          priority: 'low',
++          keepalive: true,
++        }).catch(() => { /* Analytics failure must not interrupt data loading. */ });
++
++        dataRequest
++          .then(response => {
++            if (!response.ok) throw new Error(`Request failed (${response.status})`);
++            return response.text();
++          })
++          .then(data => {
++            output.textContent = data;
++            output.hidden = false;
++            status.textContent = 'Data loaded.';
++          })
++          .catch(() => { status.textContent = 'Could not load data. Please try again.'; })
++          .finally(() => { button.disabled = false; });
++      });
++    </script>
++  </body>
++</html>

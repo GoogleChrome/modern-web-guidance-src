@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+index 66c9173..00c9e42 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,64 @@
+       background: #3e2723;
+     }
+ 
++    /* Language selector */
++    .lang-picker {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select {
++      font: inherit;
++      padding: 4px 8px;
++      border-radius: 4px;
++      border: 1px solid var(--accent);
++      background: var(--primary);
++      color: white;
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.6;
++    }
++
++    .lang-status {
++      font-size: 0.75rem;
++      color: var(--secondary);
++      min-height: 1em;
++    }
++
++    .lang-status progress {
++      width: 70px;
++      vertical-align: middle;
++      accent-color: var(--accent);
++    }
++
++    .story {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 30px;
++      align-items: center;
++      margin-top: 60px;
++    }
++
++    .story img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 8px;
++    }
++
++    .story h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .story p + p {
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -166,11 +224,18 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div class="lang-picker">
++      <label for="lang-select">Language</label>
++      <select id="lang-select" disabled>
++        <option value="en" selected>English</option>
++      </select>
++      <span id="lang-status" class="lang-status" role="status" aria-live="polite"></span>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <p data-translate>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -180,26 +245,38 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-translate>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-translate>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-translate>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" id="our-story">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80"
++        alt="Freshly roasted coffee beans" width="900" height="600" loading="lazy">
++      <div>
++        <h2>Our Story</h2>
++        <p data-translate>The Daily Grind began in 2012 as a single roaster in a converted garage, run by two friends who
++          believed great coffee should be honest coffee.</p>
++        <p data-translate>Today we still roast every batch by hand, buy directly from the farmers who grow our beans, and
++          pay them fairly for their craft. Every cup you drink supports the families behind it.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
++      <a href="#our-story">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+@@ -207,6 +284,104 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // On-device translation of menu descriptions and story text via the built-in Translator API.
++    const SOURCE = 'en';
++    const TARGETS = ['es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'sv', 'tr', 'ru', 'uk', 'ar', 'he', 'hi', 'ja', 'ko', 'zh', 'zh-Hant', 'vi', 'th', 'id'];
++    const STORAGE_KEY = 'dailygrind-lang';
++
++    const select = document.getElementById('lang-select');
++    const status = document.getElementById('lang-status');
++    const elements = [...document.querySelectorAll('[data-translate]')];
++    const originals = new Map(elements.map((el) => [el, el.textContent.trim().replace(/\s+/g, ' ')]));
++    const translators = new Map();
++    let requestId = 0;
++
++    for (const code of TARGETS) {
++      const label = new Intl.DisplayNames([code], { type: 'language' }).of(code);
++      select.add(new Option(label, code));
++    }
++
++    function restoreOriginals() {
++      for (const el of elements) {
++        el.textContent = originals.get(el);
++        el.removeAttribute('lang');
++        el.removeAttribute('dir');
++      }
++    }
++
++    async function getTranslator(targetLanguage) {
++      if (translators.has(targetLanguage)) return translators.get(targetLanguage);
++      const options = { sourceLanguage: SOURCE, targetLanguage };
++      const availability = await Translator.availability(options);
++      if (availability === 'unavailable') return null;
++      const translator = await Translator.create({
++        ...options,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            const pct = Math.round(e.loaded * 100);
++            status.innerHTML = `Downloading <progress max="100" value="${pct}"></progress> ${pct}%`;
++          });
++        },
++      });
++      translators.set(targetLanguage, translator);
++      return translator;
++    }
++
++    async function applyLanguage(lang) {
++      const id = ++requestId;
++      localStorage.setItem(STORAGE_KEY, lang);
++      if (lang === SOURCE) {
++        restoreOriginals();
++        status.textContent = '';
++        return;
++      }
++      status.textContent = 'Translating…';
++      try {
++        const translator = await getTranslator(lang);
++        if (id !== requestId) return;
++        if (!translator) {
++          status.textContent = 'This language isn’t available on your device.';
++          return;
++        }
++        const results = await Promise.all(elements.map((el) => translator.translate(originals.get(el))));
++        if (id !== requestId) return;
++        const dir = new Intl.Locale(lang).getTextInfo?.().direction ?? (['ar', 'he'].includes(lang) ? 'rtl' : 'ltr');
++        elements.forEach((el, i) => {
++          el.textContent = results[i];
++          el.lang = lang;
++          el.dir = dir;
++        });
++        status.textContent = '';
++      } catch (err) {
++        if (id !== requestId) return;
++        console.error(err);
++        status.textContent = err.name === 'NotAllowedError'
++          ? 'Select the language again to start the download.'
++          : 'Translation failed. Please try again.';
++      }
++    }
++
++    if ('Translator' in self) {
++      select.disabled = false;
++      select.addEventListener('change', () => applyLanguage(select.value));
++
++      // Restore a saved choice only if its model is already on-device (downloads need a user gesture).
++      const saved = localStorage.getItem(STORAGE_KEY);
++      if (saved && saved !== SOURCE && TARGETS.includes(saved)) {
++        Translator.availability({ sourceLanguage: SOURCE, targetLanguage: saved }).then((availability) => {
++          if (availability === 'available' && select.value === SOURCE) {
++            select.value = saved;
++            applyLanguage(saved);
++          }
++        }).catch(() => {});
++      }
++    } else {
++      select.title = 'On-device translation is currently unsupported in this browser';
++      status.textContent = 'Translation unsupported in this browser';
++    }
++  </script>
++
+ </body>
+ 
+ </html>

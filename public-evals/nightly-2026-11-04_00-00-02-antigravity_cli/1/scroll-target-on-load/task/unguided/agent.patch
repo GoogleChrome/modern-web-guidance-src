@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,69 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Vertical Scroll Container & Media Cards */
++    .scroll-section {
++      margin-top: 50px;
++    }
++
++    .scroll-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .scroll-container {
++      position: relative;
++      max-width: 700px;
++      height: 420px;
++      margin: 0 auto;
++      overflow-y: auto;
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 20px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      scroll-behavior: auto;
++    }
++
++    .media-card {
++      display: flex;
++      flex-direction: column;
++      background: var(--light);
++      border: 1px solid #e0d7d3;
++      border-radius: 8px;
++      overflow: hidden;
++      margin-bottom: 24px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
++    }
++
++    .media-card:last-child {
++      margin-bottom: 0;
++    }
++
++    .media-card.target {
++      scroll-start-target: auto;
++      border-color: var(--accent);
++    }
++
++    .media-card img {
++      width: 660px;
++      height: 260px;
++      max-width: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .media-card-body {
++      padding: 16px 20px;
++    }
++
++    .media-card-body h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +255,87 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scroll-section">
++      <h2>Roastery Spotlight</h2>
++      <div class="scroll-container" id="media-scroll-container">
++        <div class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=660&h=260&q=80"
++            alt="Freshly poured latte art"
++            width="660"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>1. Artisanal Pour Over</h3>
++            <p>Hand-poured single-origin coffee highlighting delicate floral and citrus notes.</p>
++          </div>
++        </div>
++
++        <div class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=660&h=260&q=80"
++            alt="Roasted coffee beans in a cup"
++            width="660"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>2. Small-Batch Roasting</h3>
++            <p>Roasted daily in small batches to lock in peak aroma and rich caramel sweetness.</p>
++          </div>
++        </div>
++
++        <div class="media-card target">
++          <img
++            src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=660&h=260&q=80"
++            alt="Barista crafting espresso"
++            width="660"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>3. Signature Espresso Blend</h3>
++            <p>Our flagship house blend featuring velvety crema and notes of dark chocolate.</p>
++          </div>
++        </div>
++
++        <div class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=660&h=260&q=80"
++            alt="Iced coffee with milk swirl"
++            width="660"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>4. Nitro Cold Brew</h3>
++            <p>Infused with nitrogen for a cascading, stout-like texture and naturally sweet finish.</p>
++          </div>
++        </div>
++
++        <div class="media-card">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=660&h=260&q=80"
++            alt="Warm cafe interior with coffee cups"
++            width="660"
++            height="260"
++          >
++          <div class="media-card-body">
++            <h3>5. Sustainable Sourcing</h3>
++            <p>Direct-trade partnerships with high-altitude farms committed to regenerative agriculture.</p>
++          </div>
++        </div>
++      </div>
++      <script>
++        (function () {
++          var container = document.getElementById('media-scroll-container');
++          var target = container ? container.querySelector('.target') : null;
++          if (container && target) {
++            container.scrollTop = target.offsetTop;
++          }
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

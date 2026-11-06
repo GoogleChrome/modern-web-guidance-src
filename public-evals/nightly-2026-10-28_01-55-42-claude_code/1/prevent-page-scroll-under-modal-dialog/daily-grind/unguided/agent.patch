@@ -1,0 +1,48 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..e01444a 100644
+--- a/index.html
++++ b/index.html
+@@ -153,9 +153,11 @@
+       font-size: 0.85rem;
+     }
+ 
++    /* Lock page scroll while a modal dialog is open. Padding compensates for the
++       scrollbar that disappears so the layout does not shift sideways. */
+     body.modal-open {
+       overflow: hidden;
+-      position: fixed;
++      padding-right: var(--scrollbar-gap, 0px);
+     }
+ 
+     dialog {
+@@ -230,10 +232,27 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+-    if (noticeDialog) {
+-      noticeDialog.show();
++    const closeNotice = document.getElementById("close-notice");
++
++    function lockPageScroll() {
++      const scrollbarGap = window.innerWidth - document.documentElement.clientWidth;
++      document.body.style.setProperty("--scrollbar-gap", scrollbarGap + "px");
+       document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++    }
++
++    function unlockPageScroll() {
++      document.body.classList.remove("modal-open");
++      document.body.style.removeProperty("--scrollbar-gap");
++    }
++
++    if (noticeDialog) {
++      // "close" fires for the button, Esc, and dialog.close(), so the lock is always released.
++      noticeDialog.addEventListener("close", unlockPageScroll);
++      if (closeNotice) {
++        closeNotice.addEventListener("click", () => noticeDialog.close());
++      }
++      noticeDialog.showModal();
++      lockPageScroll();
+     }
+   </script>
+ </body>

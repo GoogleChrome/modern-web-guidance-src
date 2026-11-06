@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,98 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    (function detectBackgroundLoad() {
++      let wasLoadedInBackground = false;
++      let backgroundTimestamp = null;
++      let fallbackActive = false;
++
++      // Primary detection: VisibilityStateEntry via PerformanceObserver (buffered)
++      // Accurately captures initial visibility state at startTime === 0 and any subsequent
++      // visibility transitions, even when executed asynchronously or late in the page lifecycle.
++      const supportsVisibilityStateEntry =
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.includes('visibility-state');
++
++      if (supportsVisibilityStateEntry) {
++        try {
++          const observer = new PerformanceObserver((list) => {
++            const entries = list.getEntries();
++            for (const entry of entries) {
++              // An entry at startTime === 0 with name === 'hidden' indicates the page
++              // was initially loaded in a background tab.
++              if (entry.startTime === 0 && entry.name === 'hidden') {
++                wasLoadedInBackground = true;
++                if (backgroundTimestamp === null) {
++                  backgroundTimestamp = entry.startTime;
++                }
++              } else if (entry.name === 'hidden' && backgroundTimestamp === null) {
++                backgroundTimestamp = entry.startTime;
++              }
++            }
++
++            console.log({
++              background: wasLoadedInBackground,
++              backgroundTime: backgroundTimestamp,
++              wasLoadedInBackground,
++              backgroundTimestamp,
++              fallbackActive: false,
++            });
++          });
++
++          observer.observe({ type: 'visibility-state', buffered: true });
++        } catch (err) {
++          runLegacyFallback();
++        }
++      } else {
++        runLegacyFallback();
++      }
++
++      // WARNING: Legacy fallback detection (`document.visibilityState` / `document.hidden`)
++      // is ONLY accurate if executed synchronously at initial page load. For async or deferred
++      // scripts, this fallback is highly inaccurate and potentially unreliable because the user
++      // may have switched tabs before the script ran, and the historical transition timestamp is lost.
++      function runLegacyFallback() {
++        fallbackActive = true;
++        const isCurrentlyHidden =
++          document.visibilityState === 'hidden' || Boolean(document.hidden);
++
++        wasLoadedInBackground = isCurrentlyHidden;
++        backgroundTimestamp = isCurrentlyHidden ? performance.now() : null;
++
++        console.warn(
++          '[Visibility Detection] Legacy fallback active: document.visibilityState is potentially unreliable for async scripts.'
++        );
++
++        console.log({
++          background: wasLoadedInBackground,
++          backgroundTime: backgroundTimestamp,
++          wasLoadedInBackground,
++          backgroundTimestamp,
++          fallbackActive: true,
++          unreliableForAsync: true,
++        });
++
++        // Also listen for future visibility changes in fallback mode if not already backgrounded
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState === 'hidden' && backgroundTimestamp === null) {
++            backgroundTimestamp = performance.now();
++            console.log({
++              background: wasLoadedInBackground,
++              backgroundTime: backgroundTimestamp,
++              wasLoadedInBackground,
++              backgroundTimestamp,
++              fallbackActive: true,
++              unreliableForAsync: true,
++            });
++          }
++        });
++      }
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

@@ -1,0 +1,518 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..6e70748 100644
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,12 @@
+ 
+ <head>
+   <meta charset="UTF-8">
++  <meta http-equiv="Content-Security-Policy"
++    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types dompurify seasonal-favorites">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="./vendor/purify.min.js" defer></script>
++  <script type="module" src="./seasonal-favorites.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -177,23 +181,8 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
++      <noscript>Enable JavaScript to see our seasonal favorites, or <a href="/menu">browse our menu</a>.</noscript>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..0599468 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,19 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
++    "build": "node scripts/vendor-sanitizer.js",
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "dompurify": "^3.4.17"
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3"
+   }
+ }
+diff --git a/safe-html.js b/safe-html.js
+new file mode 100644
+index 0000000..2970599
+--- /dev/null
++++ b/safe-html.js
+@@ -0,0 +1,26 @@
++// Every HTML insertion goes through this sanitizer, including without Trusted Types.
++export function createHTMLSanitizer(purifier, trustedTypes) {
++  if (!purifier?.isSupported) {
++    throw new Error('HTML sanitization is unavailable.');
++  }
++
++  const sanitize = (html) => purifier.sanitize(html, {
++    ALLOWED_TAGS: ['div', 'h3', 'p', 'a'],
++    ALLOWED_ATTR: ['class', 'href'],
++    ALLOW_DATA_ATTR: false,
++    ALLOW_ARIA_ATTR: false,
++    RETURN_TRUSTED_TYPE: false,
++  });
++
++  // No default policy: other DOM sinks reject raw strings under our CSP.
++  // DOMPurify's internal policy is also allowed so it can parse inert HTML.
++  const policy = trustedTypes?.createPolicy('seasonal-favorites', {
++    createHTML: sanitize,
++  });
++
++  return policy ? (html) => policy.createHTML(html) : sanitize;
++}
++
++export function renderCards(container, cards, sanitizeHTML) {
++  container.innerHTML = sanitizeHTML(cards.join(''));
++}
+diff --git a/scripts/vendor-sanitizer.js b/scripts/vendor-sanitizer.js
+new file mode 100644
+index 0000000..0f12c5a
+--- /dev/null
++++ b/scripts/vendor-sanitizer.js
+@@ -0,0 +1,14 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const vendor = new URL('../vendor/', import.meta.url);
++await mkdir(vendor, { recursive: true });
++for (const filename of ['purify.min.js', 'purify.min.js.map']) {
++  await copyFile(
++    new URL(`../node_modules/dompurify/dist/${filename}`, import.meta.url),
++    new URL(filename, vendor),
++  );
++}
++await copyFile(
++  new URL('../node_modules/dompurify/LICENSE', import.meta.url),
++  new URL('DOMPurify-LICENSE', vendor),
++);
+diff --git a/seasonal-favorites.js b/seasonal-favorites.js
+new file mode 100644
+index 0000000..d3ed68f
+--- /dev/null
++++ b/seasonal-favorites.js
+@@ -0,0 +1,30 @@
++import { createHTMLSanitizer, renderCards } from './safe-html.js';
++
++export const seasonalFavorites = [
++  `<div class="card">
++    <h3>Maple Oat Latte</h3>
++    <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <a href="/menu/seasonal" class="btn">View Details</a>
++  </div>`,
++  `<div class="card">
++    <h3>Dark Roast Espresso</h3>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/menu/espresso" class="btn">View Details</a>
++  </div>`,
++  `<div class="card">
++    <h3>Cold Brew</h3>
++    <p>Steeped for 18 hours for maximum smoothness.</p>
++    <a href="/menu/cold-brew" class="btn">View Details</a>
++  </div>`,
++];
++
++const container = document.getElementById('seasonal-favorites');
++
++try {
++  const sanitizeHTML = createHTMLSanitizer(window.DOMPurify, window.trustedTypes);
++  renderCards(container, seasonalFavorites, sanitizeHTML);
++} catch (error) {
++  // Fail closed if the sanitizer or policy cannot initialize.
++  container.textContent = 'Seasonal favorites are unavailable. Please browse our menu.';
++  console.error('Unable to render seasonal favorites:', error);
++}
+diff --git a/tests/seasonal-favorites.test.js b/tests/seasonal-favorites.test.js
+new file mode 100644
+index 0000000..c47cf41
+--- /dev/null
++++ b/tests/seasonal-favorites.test.js
+@@ -0,0 +1,120 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++import { JSDOM } from 'jsdom';
++import createDOMPurify from 'dompurify';
++import { createHTMLSanitizer, renderCards } from '../safe-html.js';
++
++const homepage = await readFile(new URL('../index.html', import.meta.url), 'utf8');
++const vendorScript = await readFile(new URL('../vendor/purify.min.js', import.meta.url), 'utf8');
++
++test('homepage renders the original cards using the shipped sanitizer', async () => {
++  const dom = new JSDOM(homepage, { runScripts: 'outside-only' });
++  dom.window.eval(vendorScript);
++  globalThis.window = dom.window;
++  globalThis.document = dom.window.document;
++  try {
++    await import('../seasonal-favorites.js');
++    const cards = [...document.querySelectorAll('#seasonal-favorites .card')];
++    assert.deepEqual(cards.map((card) => card.querySelector('h3').textContent), [
++      'Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew',
++    ]);
++    assert.deepEqual(cards.map((card) => card.querySelector('a').getAttribute('href')), [
++      '/menu/seasonal', '/menu/espresso', '/menu/cold-brew',
++    ]);
++    assert.ok(cards.every((card) => card.querySelector('p').textContent.length > 0));
++  } finally {
++    delete globalThis.window;
++    delete globalThis.document;
++    dom.window.close();
++  }
++});
++
++test('sanitizes XSS payloads even when Trusted Types is unavailable', () => {
++  const { window } = new JSDOM('<div id="cards"></div>');
++  const sanitizeHTML = createHTMLSanitizer(createDOMPurify(window));
++  const container = window.document.getElementById('cards');
++  const payloads = [
++    '<script>alert(1)</script><p>Safe description</p>',
++    '<img src=x onerror=alert(1)><div class="card" onclick="alert(1)">Coffee</div>',
++    '<a href="javascript:alert(1)">bad link</a>',
++    '<a href="java&#x09;script:alert(1)">encoded link</a>',
++    '<a href="data:text/html,<script>alert(1)</script>">data link</a>',
++    '<svg onload=alert(1)><a xlink:href="javascript:alert(1)">svg</a></svg>',
++    '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
++    '<form id="seasonal-favorites"><input name="innerHTML"></form>',
++    '<math><mtext><table><mglyph><style><!--</style><img title="--><img src=x onerror=alert(1)>">',
++    '<p style="background:url(javascript:alert(1))" data-x="payload">Text</p>',
++  ];
++
++  for (const payload of payloads) {
++    renderCards(container, [payload], sanitizeHTML);
++    for (const element of container.querySelectorAll('*')) {
++      assert.ok(['DIV', 'H3', 'P', 'A'].includes(element.tagName), payload);
++      for (const attribute of element.attributes) {
++        assert.ok(['class', 'href'].includes(attribute.name), payload);
++        if (attribute.name === 'href') {
++          assert.doesNotMatch(attribute.value.replace(/\s/g, ''), /^(javascript|data|vbscript):/i);
++        }
++      }
++    }
++  }
++  renderCards(container, ['<div class="card"><h3>Coffee &amp; cream</h3><a class="btn" href="/menu">Details</a></div>'], sanitizeHTML);
++  assert.equal(container.querySelector('h3').textContent, 'Coffee & cream');
++  assert.equal(container.querySelector('a').getAttribute('href'), '/menu');
++  window.close();
++});
++
++test('Trusted Types policy sanitizes before branding and inserting HTML', () => {
++  const { window } = new JSDOM('');
++  const policies = [];
++  const trustedTypes = {
++    createPolicy(name, rules) {
++      policies.push(name);
++      assert.deepEqual(Object.keys(rules), ['createHTML']);
++      return { createHTML: (input) => Object.freeze({ trustedHTML: rules.createHTML(input) }) };
++    },
++  };
++  const sanitizeHTML = createHTMLSanitizer(createDOMPurify(window), trustedTypes);
++  const container = {};
++  renderCards(container, ['<p onclick="alert(1)">Coffee</p><script>alert(1)</script>'], sanitizeHTML);
++  assert.deepEqual(policies, ['seasonal-favorites']);
++  assert.equal(container.innerHTML.trustedHTML, '<p>Coffee</p>');
++  window.close();
++});
++
++test('fails closed if DOMPurify is absent or unsupported', () => {
++  assert.throws(() => createHTMLSanitizer(undefined), /unavailable/);
++  assert.throws(() => createHTMLSanitizer({ isSupported: false }), /unavailable/);
++});
++
++test('homepage displays safe fallback text when its sanitizer fails to load', async () => {
++  const dom = new JSDOM(homepage);
++  globalThis.window = dom.window;
++  globalThis.document = dom.window.document;
++  const originalConsoleError = console.error;
++  console.error = () => {};
++  try {
++    await import('../seasonal-favorites.js?sanitizer-unavailable');
++    const container = document.getElementById('seasonal-favorites');
++    assert.equal(container.children.length, 0);
++    assert.match(container.textContent, /Seasonal favorites are unavailable/);
++  } finally {
++    console.error = originalConsoleError;
++    delete globalThis.window;
++    delete globalThis.document;
++    dom.window.close();
++  }
++});
++
++test('CSP enforces Trusted Types and blocks inline scripts', () => {
++  const { window } = new JSDOM(homepage);
++  const policy = window.document.querySelector('meta[http-equiv="Content-Security-Policy"]').content;
++  assert.match(policy, /require-trusted-types-for 'script'/);
++  assert.match(policy, /trusted-types dompurify seasonal-favorites(?:;|$)/);
++  assert.match(policy, /script-src 'self';/);
++  assert.match(policy, /object-src 'none'/);
++  assert.match(policy, /base-uri 'none'/);
++  assert.ok([...window.document.scripts].every((script) => script.src && !script.textContent.trim()));
++  window.close();
++});
+diff --git a/vendor/DOMPurify-LICENSE b/vendor/DOMPurify-LICENSE
+new file mode 100644
+index 0000000..d645695
+--- /dev/null
++++ b/vendor/DOMPurify-LICENSE
+@@ -0,0 +1,202 @@
++
++                                 Apache License
++                           Version 2.0, January 2004
++                        http://www.apache.org/licenses/
++
++   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
++
++   1. Definitions.
++
++      "License" shall mean the terms and conditions for use, reproduction,
++      and distribution as defined by Sections 1 through 9 of this document.
++
++      "Licensor" shall mean the copyright owner or entity authorized by
++      the copyright owner that is granting the License.
++
++      "Legal Entity" shall mean the union of the acting entity and all
++      other entities that control, are controlled by, or are under common
++      control with that entity. For the purposes of this definition,
++      "control" means (i) the power, direct or indirect, to cause the
++      direction or management of such entity, whether by contract or
++      otherwise, or (ii) ownership of fifty percent (50%) or more of the
++      outstanding shares, or (iii) beneficial ownership of such entity.
++
++      "You" (or "Your") shall mean an individual or Legal Entity
++      exercising permissions granted by this License.
++
++      "Source" form shall mean the preferred form for making modifications,
++      including but not limited to software source code, documentation
++      source, and configuration files.
++
++      "Object" form shall mean any form resulting from mechanical
++      transformation or translation of a Source form, including but
++      not limited to compiled object code, generated documentation,
++      and conversions to other media types.
++
++      "Work" shall mean the work of authorship, whether in Source or
++      Object form, made available under the License, as indicated by a
++      copyright notice that is included in or attached to the work
++      (an example is provided in the Appendix below).
++
++      "Derivative Works" shall mean any work, whether in Source or Object
++      form, that is based on (or derived from) the Work and for which the
++      editorial revisions, annotations, elaborations, or other modifications
++      represent, as a whole, an original work of authorship. For the purposes
++      of this License, Derivative Works shall not include works that remain
++      separable from, or merely link (or bind by name) to the interfaces of,
++      the Work and Derivative Works thereof.
++
++      "Contribution" shall mean any work of authorship, including
++      the original version of the Work and any modifications or additions
++      to that Work or Derivative Works thereof, that is intentionally
++      submitted to Licensor for inclusion in the Work by the copyright owner
++      or by an individual or Legal Entity authorized to submit on behalf of
++      the copyright owner. For the purposes of this definition, "submitted"
++      means any form of electronic, verbal, or written communication sent
++      to the Licensor or its representatives, including but not limited to
++      communication on electronic mailing lists, source code control systems,
++      and issue tracking systems that are managed by, or on behalf of, the
++      Licensor for the purpose of discussing and improving the Work, but
++      excluding communication that is conspicuously marked or otherwise
++      designated in writing by the copyright owner as "Not a Contribution."
++
++      "Contributor" shall mean Licensor and any individual or Legal Entity
++      on behalf of whom a Contribution has been received by Licensor and
++      subsequently incorporated within the Work.
++
++   2. Grant of Copyright License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      copyright license to reproduce, prepare Derivative Works of,
++      publicly display, publicly perform, sublicense, and distribute the
++      Work and such Derivative Works in Source or Object form.
++
++   3. Grant of Patent License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      (except as stated in this section) patent license to make, have made,
++      use, offer to sell, sell, import, and otherwise transfer the Work,
++      where such license applies only to those patent claims licensable
++      by such Contributor that are necessarily infringed by their
++      Contribution(s) alone or by combination of their Contribution(s)
++      with the Work to which such Contribution(s) was submitted. If You
++      institute patent litigation against any entity (including a
++      cross-claim or counterclaim in a lawsuit) alleging that the Work
++      or a Contribution incorporated within the Work constitutes direct
++      or contributory patent infringement, then any patent licenses
++      granted to You under this License for that Work shall terminate
++      as of the date such litigation is filed.
++
++   4. Redistribution. You may reproduce and distribute copies of the
++      Work or Derivative Works thereof in any medium, with or without
++      modifications, and in Source or Object form, provided that You
++      meet the following conditions:
++
++      (a) You must give any other recipients of the Work or
++          Derivative Works a copy of this License; and
++
++      (b) You must cause any modified files to carry prominent notices
++          stating that You changed the files; and
++
++      (c) You must retain, in the Source form of any Derivative Works
++          that You distribute, all copyright, patent, trademark, and
++          attribution notices from the Source form of the Work,
++          excluding those notices that do not pertain to any part of
++          the Derivative Works; and
++
++      (d) If the Work includes a "NOTICE" text file as part of its
++          distribution, then any Derivative Works that You distribute must
++          include a readable copy of the attribution notices contained
++          within such NOTICE file, excluding those notices that do not
++          pertain to any part of the Derivative Works, in at least one
++          of the following places: within a NOTICE text file distributed
++          as part of the Derivative Works; within the Source form or
++          documentation, if provided along with the Derivative Works; or,
++          within a display generated by the Derivative Works, if and
++          wherever such third-party notices normally appear. The contents
++          of the NOTICE file are for informational purposes only and
++          do not modify the License. You may add Your own attribution
++          notices within Derivative Works that You distribute, alongside
++          or as an addendum to the NOTICE text from the Work, provided
++          that such additional attribution notices cannot be construed
++          as modifying the License.
++
++      You may add Your own copyright statement to Your modifications and
++      may provide additional or different license terms and conditions
++      for use, reproduction, or distribution of Your modifications, or
++      for any such Derivative Works as a whole, provided Your use,
++      reproduction, and distribution of the Work otherwise complies with
++      the conditions stated in this License.
++
++   5. Submission of Contributions. Unless You explicitly state otherwise,
++      any Contribution intentionally submitted for inclusion in the Work
++      by You to the Licensor shall be under the terms and conditions of
++      this License, without any additional terms or conditions.
++      Notwithstanding the above, nothing herein shall supersede or modify
++      the terms of any separate license agreement you may have executed
++      with Licensor regarding such Contributions.
++
++   6. Trademarks. This License does not grant permission to use the trade
++      names, trademarks, service marks, or product names of the Licensor,
++      except as required for reasonable and customary use in describing the
++      origin of the Work and reproducing the content of the NOTICE file.
++
++   7. Disclaimer of Warranty. Unless required by applicable law or
++      agreed to in writing, Licensor provides the Work (and each
++      Contributor provides its Contributions) on an "AS IS" BASIS,
++      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
++      implied, including, without limitation, any warranties or conditions
++      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
++      PARTICULAR PURPOSE. You are solely responsible for determining the
++      appropriateness of using or redistributing the Work and assume any
++      risks associated with Your exercise of permissions under this License.
++
++   8. Limitation of Liability. In no event and under no legal theory,
++      whether in tort (including negligence), contract, or otherwise,
++      unless required by applicable law (such as deliberate and grossly
++      negligent acts) or agreed to in writing, shall any Contributor be
++      liable to You for damages, including any direct, indirect, special,
++      incidental, or consequential damages of any character arising as a
++      result of this License or out of the use or inability to use the
++      Work (including but not limited to damages for loss of goodwill,
++      work stoppage, computer failure or malfunction, or any and all
++      other commercial damages or losses), even if such Contributor
++      has been advised of the possibility of such damages.
++
++   9. Accepting Warranty or Additional Liability. While redistributing
++      the Work or Derivative Works thereof, You may choose to offer,
++      and charge a fee for, acceptance of support, warranty, indemnity,
++      or other liability obligations and/or rights consistent with this
++      License. However, in accepting such obligations, You may act only
++      on Your own behalf and on Your sole responsibility, not on behalf
++      of any other Contributor, and only if You agree to indemnify,
++      defend, and hold each Contributor harmless for any liability
++      incurred by, or claims asserted against, such Contributor by reason
++      of your accepting any such warranty or additional liability.
++
++   END OF TERMS AND CONDITIONS
++
++   APPENDIX: How to apply the Apache License to your work.
++
++      To apply the Apache License to your work, attach the following
++      boilerplate notice, with the fields enclosed by brackets "[]"
++      replaced with your own identifying information. (Don't include
++      the brackets!)  The text should be enclosed in the appropriate
++      comment syntax for the file format. We also recommend that a
++      file or class name and description of purpose be included on the
++      same "printed page" as the copyright notice for easier
++      identification within third-party archives.
++
++   Copyright [yyyy] [name of copyright owner]
++
++   Licensed under the Apache License, Version 2.0 (the "License");
++   you may not use this file except in compliance with the License.
++   You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++   Unless required by applicable law or agreed to in writing, software
++   distributed under the License is distributed on an "AS IS" BASIS,
++   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++   See the License for the specific language governing permissions and
++   limitations under the License.
+diff --git a/vendor/purify.min.js b/vendor/purify.min.js
+new file mode 100644
+index 0000000..54a70fe
+--- /dev/null
++++ b/vendor/purify.min.js
+@@ -0,0 +1,7 @@
++/*! @license DOMPurify 3.4.17 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.17/LICENSE */
++(function(e,t){typeof exports==`object`&&typeof module<`u`?module.exports=t():typeof define==`function`&&define.amd?define([],t):(e=typeof globalThis<`u`?globalThis:e||self,e.DOMPurify=t())})(this,function(){"use strict";function e(e,t){this.v=e,this.k=t}function t(e,t){(t==null||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}function n(e){if(Array.isArray(e))return e}function r(e,t){var n=e==null?null:typeof Symbol<`u`&&e[Symbol.iterator]||e[`@@iterator`];if(n!=null){var r,i,a,o,s=[],c=!0,l=!1;try{if(a=(n=n.call(e)).next,t===0){if(Object(n)!==n)return;c=!1}else for(;!(c=(r=a.call(n)).done)&&(s.push(r.value),s.length!==t);c=!0);}catch(e){l=!0,i=e}finally{try{if(!c&&n.return!=null&&(o=n.return(),Object(o)!==o))return}finally{if(l)throw i}}return s}}function i(){throw TypeError(`Invalid attempt to destructure non-iterable instance.
++In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`)}
++/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */
++function a(e,t){return n(e)||r(e,t)||o(e,t)||i()}function o(e,n){if(e){if(typeof e==`string`)return t(e,n);var r={}.toString.call(e).slice(8,-1);return r===`Object`&&e.constructor&&(r=e.constructor.name),r===`Map`||r===`Set`?Array.from(e):r===`Arguments`||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r)?t(e,n):void 0}}function s(t){var n,r;function i(n,r){try{var o=t[n](r),s=o.value,c=s instanceof e;Promise.resolve(c?s.v:s).then(function(e){if(c){var r=n===`return`&&s.k?n:`next`;if(!s.k||e.done)return i(r,e);e=t[r](e).value}a(!!o.done,e)},function(e){i(`throw`,e)})}catch(e){a(2,e)}}function a(e,t){e===2?n.reject(t):n.resolve({value:t,done:e}),(n=n.next)?i(n.key,n.arg):r=null}this._invoke=function(e,t){return new Promise(function(a,o){var s={key:e,arg:t,resolve:a,reject:o,next:null};r?r=r.next=s:(n=r=s,i(e,t))})},typeof t.return!=`function`&&(this.return=void 0)}s.prototype[typeof Symbol==`function`&&Symbol.asyncIterator||`@@asyncIterator`]=function(){return this},s.prototype.next=function(e){return this._invoke(`next`,e)},s.prototype.throw=function(e){return this._invoke(`throw`,e)},s.prototype.return=function(e){return this._invoke(`return`,e)};let c=Object.entries,l=Object.setPrototypeOf,u=Object.isFrozen,d=Object.getPrototypeOf,f=Object.getOwnPropertyDescriptor,p=Object.freeze,m=Object.seal,h=Object.create,ee=typeof Reflect<`u`&&Reflect,g=ee.apply,te=ee.construct;p||(p=function(e){return e}),m||(m=function(e){return e}),g||(g=function(e,t){var n=[...arguments].slice(2);return e.apply(t,n)}),te||(te=function(e){return new e(...[...arguments].slice(1))});let _=E(Array.prototype.forEach);Array.prototype.indexOf;let ne=E(Array.prototype.lastIndexOf),re=E(Array.prototype.pop),ie=E(Array.prototype.push),ae=E(Array.prototype.slice),oe=E(Array.prototype.splice),v=Array.isArray,se=D(Set),ce=E(Set.prototype.add),le=E(Set.prototype.has),y=E(String.prototype.toLowerCase),ue=E(String.prototype.toString),de=E(String.prototype.match),fe=E(String.prototype.replace),pe=E(String.prototype.indexOf),me=E(String.prototype.trim),he=E(Number.prototype.toString),b=E(Boolean.prototype.toString),x=typeof BigInt>`u`?null:E(BigInt.prototype.toString),ge=typeof Symbol>`u`?null:E(Symbol.prototype.toString),S=E(Object.prototype.hasOwnProperty),C=E(Object.prototype.toString),w=E(RegExp.prototype.test),T=D(TypeError);function E(e){return function(t){t instanceof RegExp&&(t.lastIndex=0);var n=[...arguments].slice(1);return g(e,t,n)}}function D(e){return function(){return te(e,[...arguments])}}function O(e,t){let n=arguments.length>2&&arguments[2]!==void 0?arguments[2]:y;if(l&&l(e,null),!v(t))return e;let r=t.length;for(;r--;){let i=t[r];if(typeof i==`string`){let e=n(i);e!==i&&(u(t)||(t[r]=e),i=e)}e[i]=!0}return e}function _e(e){for(let t=0;t<e.length;t++)S(e,t)||(e[t]=null);return e}function k(e){let t=h(null);for(let r of c(e)){var n=a(r,2);let i=n[0],o=n[1];S(e,i)&&(t[i]=v(o)?_e(o):o&&typeof o==`object`&&o.constructor===Object?k(o):o)}return t}function ve(e){switch(typeof e){case`string`:return e;case`number`:return he(e);case`boolean`:return b(e);case`bigint`:return x?x(e):`0`;case`symbol`:return ge?ge(e):`Symbol()`;case`undefined`:return C(e);case`function`:case`object`:{if(e===null)return C(e);let t=e,n=A(t,`toString`);if(typeof n==`function`){let e=n(t);return typeof e==`string`?e:C(e)}return C(e)}default:return C(e)}}function A(e,t){for(;e!==null;){let n=f(e,t);if(n){if(n.get)return E(n.get);if(typeof n.value==`function`)return E(n.value)}e=d(e)}function n(){return null}return n}function ye(e,t){for(;e!==null;){let n=f(e,t);if(n)return n.get?E(n.get):null;e=d(e)}return null}function be(e){try{return w(e,``),!0}catch(e){return!1}}let xe=p(/* @__PURE__ */ `a.abbr.acronym.address.area.article.aside.audio.b.bdi.bdo.big.blink.blockquote.body.br.button.canvas.caption.center.cite.code.col.colgroup.content.data.datalist.dd.decorator.del.details.dfn.dialog.dir.div.dl.dt.element.em.fieldset.figcaption.figure.font.footer.form.h1.h2.h3.h4.h5.h6.head.header.hgroup.hr.html.i.img.input.ins.kbd.label.legend.li.main.map.mark.marquee.menu.menuitem.meter.nav.nobr.ol.optgroup.option.output.p.picture.pre.progress.q.rp.rt.ruby.s.samp.search.section.select.shadow.slot.small.source.spacer.span.strike.strong.style.sub.summary.sup.table.tbody.td.template.textarea.tfoot.th.thead.time.tr.track.tt.u.ul.var.video.wbr`.split(`.`)),Se=p(/* @__PURE__ */ `svg.a.altglyph.altglyphdef.altglyphitem.animatecolor.animatemotion.animatetransform.circle.clippath.defs.desc.ellipse.enterkeyhint.exportparts.filter.font.g.glyph.glyphref.hkern.image.inputmode.line.lineargradient.marker.mask.metadata.mpath.part.path.pattern.polygon.polyline.radialgradient.rect.stop.style.switch.symbol.text.textpath.title.tref.tspan.view.vkern`.split(`.`)),Ce=p([`feBlend`,`feColorMatrix`,`feComponentTransfer`,`feComposite`,`feConvolveMatrix`,`feDiffuseLighting`,`feDisplacementMap`,`feDistantLight`,`feDropShadow`,`feFlood`,`feFuncA`,`feFuncB`,`feFuncG`,`feFuncR`,`feGaussianBlur`,`feImage`,`feMerge`,`feMergeNode`,`feMorphology`,`feOffset`,`fePointLight`,`feSpecularLighting`,`feSpotLight`,`feTile`,`feTurbulence`]),we=p([`animate`,`color-profile`,`cursor`,`discard`,`font-face`,`font-face-format`,`font-face-name`,`font-face-src`,`font-face-uri`,`foreignobject`,`hatch`,`hatchpath`,`mesh`,`meshgradient`,`meshpatch`,`meshrow`,`missing-glyph`,`script`,`set`,`solidcolor`,`unknown`,`use`]),Te=p(/* @__PURE__ */ `math.menclose.merror.mfenced.mfrac.mglyph.mi.mlabeledtr.mmultiscripts.mn.mo.mover.mpadded.mphantom.mroot.mrow.ms.mspace.msqrt.mstyle.msub.msup.msubsup.mtable.mtd.mtext.mtr.munder.munderover.mprescripts`.split(`.`)),Ee=p([`maction`,`maligngroup`,`malignmark`,`mlongdiv`,`mscarries`,`mscarry`,`msgroup`,`mstack`,`msline`,`msrow`,`semantics`,`annotation`,`annotation-xml`,`mprescripts`,`none`]),De=p([`#text`]),Oe=p(/* @__PURE__ */ `accept.action.align.alt.autocapitalize.autocomplete.autopictureinpicture.autoplay.background.bgcolor.border.capture.cellpadding.cellspacing.checked.cite.class.clear.color.cols.colspan.command.commandfor.controls.controlslist.coords.crossorigin.datetime.decoding.default.dir.disabled.disablepictureinpicture.disableremoteplayback.download.draggable.enctype.enterkeyhint.exportparts.face.for.headers.height.hidden.high.href.hreflang.id.inert.inputmode.integrity.ismap.kind.label.lang.list.loading.loop.low.max.maxlength.media.method.min.minlength.multiple.muted.name.nonce.noshade.novalidate.nowrap.open.optimum.part.pattern.placeholder.playsinline.popover.popovertarget.popovertargetaction.poster.preload.pubdate.radiogroup.readonly.rel.required.rev.reversed.role.rows.rowspan.spellcheck.scope.selected.shape.size.sizes.slot.span.srclang.start.src.srcset.step.style.summary.tabindex.title.translate.type.usemap.valign.value.width.wrap.xmlns`.split(`.`)),ke=p(/* @__PURE__ */ `accent-height.accumulate.additive.alignment-baseline.amplitude.ascent.attributename.attributetype.azimuth.basefrequency.baseline-shift.begin.bias.by.class.clip.clippathunits.clip-path.clip-rule.color.color-interpolation.color-interpolation-filters.color-profile.color-rendering.cx.cy.d.dx.dy.diffuseconstant.direction.display.divisor.dominant-baseline.dur.edgemode.elevation.end.exponent.fill.fill-opacity.fill-rule.filter.filterunits.flood-color.flood-opacity.font-family.font-size.font-size-adjust.font-stretch.font-style.font-variant.font-weight.fx.fy.g1.g2.glyph-name.glyphref.gradientunits.gradienttransform.height.href.id.image-rendering.in.in2.intercept.k.k1.k2.k3.k4.kerning.keypoints.keysplines.keytimes.lang.lengthadjust.letter-spacing.kernelmatrix.kernelunitlength.lighting-color.local.marker-end.marker-mid.marker-start.markerheight.markerunits.markerwidth.maskcontentunits.maskunits.max.mask.mask-type.media.method.mode.min.name.numoctaves.offset.operator.opacity.order.orient.orientation.origin.overflow.paint-order.path.pathlength.patterncontentunits.patterntransform.patternunits.pointer-events.points.preservealpha.preserveaspectratio.primitiveunits.r.rx.ry.radius.refx.refy.repeatcount.repeatdur.restart.result.rotate.scale.seed.shape-rendering.slope.specularconstant.specularexponent.spreadmethod.startoffset.stddeviation.stitchtiles.stop-color.stop-opacity.stroke-dasharray.stroke-dashoffset.stroke-linecap.stroke-linejoin.stroke-miterlimit.stroke-opacity.stroke.stroke-width.style.surfacescale.systemlanguage.tabindex.tablevalues.targetx.targety.transform.transform-origin.text-anchor.text-decoration.text-orientation.text-rendering.textlength.type.u1.u2.unicode.values.vector-effect.viewbox.visibility.version.vert-adv-y.vert-origin-x.vert-origin-y.width.word-spacing.wrap.writing-mode.xchannelselector.ychannelselector.x.x1.x2.xmlns.y.y1.y2.z.zoomandpan`.split(`.`)),Ae=p(/* @__PURE__ */ `accent.accentunder.align.bevelled.close.columnalign.columnlines.columnspacing.columnspan.denomalign.depth.dir.display.displaystyle.encoding.fence.frame.height.href.id.largeop.length.linethickness.lquote.lspace.mathbackground.mathcolor.mathsize.mathvariant.maxsize.minsize.movablelimits.notation.numalign.open.rowalign.rowlines.rowspacing.rowspan.rspace.rquote.scriptlevel.scriptminsize.scriptsizemultiplier.selection.separator.separators.stretchy.subscriptshift.supscriptshift.symmetric.voffset.width.xmlns`.split(`.`)),je=p([`xlink:href`,`xml:id`,`xlink:title`,`xml:space`,`xmlns:xlink`]),Me=m(/{{[\w\W]*|^[\w\W]*}}/g),Ne=m(/<%[\w\W]*|^[\w\W]*%>/g),Pe=m(/\${[\w\W]*/g),Fe=m(/^data-[\-\w.\u00B7-\uFFFF]+$/),Ie=m(/^aria-[\-\w]+$/),Le=m(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i),Re=m(/^(?:\w+script|data):/i),ze=m(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g),Be=m(/^html$/i),Ve=m(/^[a-z][.\w]*(-[.\w]+)+$/i),He=m(/<[/\w!]/g),Ue=m(/<[/\w]/g),We=m(/<\/no(script|embed|frames)/i),Ge=m(/\/>/i),j={element:1,attribute:2,text:3,cdataSection:4,entityReference:5,entityNode:6,processingInstruction:7,comment:8,document:9,documentType:10,documentFragment:11,notation:12},Ke=p(O({},[`style`,`script`,`xmp`,`iframe`,`noembed`,`noframes`,`plaintext`,`noscript`])),qe=function(){return typeof window>`u`?null:window},Je=function(e,t){if(typeof e!=`object`||typeof e.createPolicy!=`function`)return null;let n=null,r=`data-tt-policy-suffix`;t&&t.hasAttribute(r)&&(n=t.getAttribute(r));let i=`dompurify`+(n?`#`+n:``);try{return e.createPolicy(i,{createHTML(e){return e},createScriptURL(e){return e}})}catch(e){return console.warn(`TrustedTypes policy `+i+` could not be created.`),null}},Ye=function(){return{afterSanitizeAttributes:[],afterSanitizeElements:[],afterSanitizeShadowDOM:[],beforeSanitizeAttributes:[],beforeSanitizeElements:[],beforeSanitizeShadowDOM:[],uponSanitizeAttribute:[],uponSanitizeElement:[],uponSanitizeShadowNode:[]}},M=function(e,t,n,r){return S(e,t)&&v(e[t])?O(r.base?k(r.base):{},e[t],r.transform):n},Xe=function(e,t,n){let r=S(e,t)?e[t]:void 0;return r&&typeof r==`object`?k(r):n()};function Ze(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:qe(),t=e=>Ze(e);if(t.version=`3.4.17`,t.removed=[],!e||!e.document||e.document.nodeType!==j.document||!e.Element)return t.isSupported=!1,t;let n=e.document,r=n,i=r.currentScript;e.DocumentFragment;let a=e.HTMLTemplateElement,o=e.Node,s=e.Element,l=e.NodeFilter;e.NamedNodeMap===void 0&&(e.NamedNodeMap||e.MozNamedAttrMap),e.HTMLFormElement;let u=e.DOMParser,d=e.trustedTypes,f=s.prototype,ee=A(f,`cloneNode`),g=A(f,`remove`),te=A(f,`removeAttributeNode`),he=A(f,`nextSibling`),b=A(f,`childNodes`),x=A(f,`parentNode`),ge=A(f,`shadowRoot`),C=A(f,`attributes`),E=o&&o.prototype?A(o.prototype,`nodeType`):null,D=o&&o.prototype?A(o.prototype,`nodeName`):null,_e=o&&o.prototype?A(o.prototype,`ownerDocument`):null,N=function(e){return E?E(e):e.nodeType},Qe=function(e){return D?D(e):e.nodeName},$e=ye(f,`namespaceURI`),et=function(e){return $e?$e(e):e.namespaceURI};if(typeof a==`function`){let e=n.createElement(`template`);e.content&&e.content.ownerDocument&&(n=e.content.ownerDocument)}let P,F=``,tt,nt=!1,rt=0,it=function(){if(rt>0)throw T(`A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.`)},at=function(e){it(),rt++;try{return P.createHTML(e)}finally{rt--}},ot=function(e){it(),rt++;try{return P.createScriptURL(e)}finally{rt--}},st=function(){return nt||(tt=Je(d,i),nt=!0),tt},ct=n,lt=ct.implementation,ut=ct.createNodeIterator,dt=ct.createDocumentFragment,ft=ct.getElementsByTagName,pt=r.importNode,I=Ye();t.isSupported=typeof c==`function`&&typeof x==`function`&&lt&&lt.createHTMLDocument!==void 0;let mt=Me,ht=Ne,gt=Pe,_t=Fe,vt=Ie,yt=Re,bt=ze,xt=Ve,St=Le,L=null,Ct=O({},[...xe,...Se,...Ce,...Te,...De]),R=null,wt=O({},[...Oe,...ke,...Ae,...je]),z=Object.seal(h(null,{tagNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},allowCustomizedBuiltInElements:{writable:!0,configurable:!1,enumerable:!0,value:!1}})),Tt=null,Et=null,B=Object.seal(h(null,{tagCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeCheck:{writable:!0,configurable:!1,enumerable:!0,value:null}})),Dt=!0,Ot=!0,kt=!1,At=!0,V=!1,H=!0,U=!1,jt=!1,Mt=null,Nt=null,Pt=!1,W=!1,Ft=!1,It=!1,Lt=!0,Rt=!1,zt=`user-content-`,Bt=!0,Vt=!1,G=null,K={},q=null,Ht=O({},/* @__PURE__ */ `annotation-xml.audio.colgroup.desc.foreignobject.head.iframe.math.mi.mn.mo.ms.mtext.noembed.noframes.noscript.plaintext.script.selectedcontent.style.svg.template.thead.title.video.xmp`.split(`.`)),Ut=null,Wt=O({},[`audio`,`video`,`img`,`source`,`image`,`track`]),Gt=null,Kt=O({},[`alt`,`class`,`for`,`id`,`label`,`name`,`pattern`,`placeholder`,`role`,`summary`,`title`,`value`,`style`,`xmlns`]),qt=`http://www.w3.org/1998/Math/MathML`,Jt=`http://www.w3.org/2000/svg`,J=`http://www.w3.org/1999/xhtml`,Yt=J,Xt=!1,Zt=null,Qt=O({},[qt,Jt,J],ue),$t=p([`mi`,`mo`,`mn`,`ms`,`mtext`]),en=O({},$t),tn=p([`annotation-xml`]),nn=O({},tn),rn=O({},[`title`,`style`,`font`,`a`,`script`]),an=null,on=[`application/xhtml+xml`,`text/html`],Y=null,sn=null,cn=n.createElement(`form`),ln=function(e){return e instanceof RegExp||e instanceof Function},un=function(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};if(sn&&sn===e)return;(!e||typeof e!=`object`)&&(e={}),e=k(e),an=on.indexOf(e.PARSER_MEDIA_TYPE)===-1?`text/html`:e.PARSER_MEDIA_TYPE,Y=an===`application/xhtml+xml`?ue:y,L=M(e,`ALLOWED_TAGS`,Ct,{transform:Y}),R=M(e,`ALLOWED_ATTR`,wt,{transform:Y}),Zt=M(e,`ALLOWED_NAMESPACES`,Qt,{transform:ue}),Gt=M(e,`ADD_URI_SAFE_ATTR`,Kt,{transform:Y,base:Kt}),Ut=M(e,`ADD_DATA_URI_TAGS`,Wt,{transform:Y,base:Wt}),q=M(e,`FORBID_CONTENTS`,Ht,{transform:Y}),Tt=M(e,`FORBID_TAGS`,k({}),{transform:Y}),Et=M(e,`FORBID_ATTR`,k({}),{transform:Y}),K=S(e,`USE_PROFILES`)?e.USE_PROFILES&&typeof e.USE_PROFILES==`object`?k(e.USE_PROFILES):e.USE_PROFILES:!1,Dt=e.ALLOW_ARIA_ATTR!==!1,Ot=e.ALLOW_DATA_ATTR!==!1,kt=e.ALLOW_UNKNOWN_PROTOCOLS||!1,At=e.ALLOW_SELF_CLOSE_IN_ATTR!==!1,V=e.SAFE_FOR_TEMPLATES||!1,H=e.SAFE_FOR_XML!==!1,U=e.WHOLE_DOCUMENT||!1,W=e.RETURN_DOM||!1,Ft=e.RETURN_DOM_FRAGMENT||!1,It=e.RETURN_TRUSTED_TYPE||!1,Pt=e.FORCE_BODY||!1,Lt=e.SANITIZE_DOM!==!1,Rt=e.SANITIZE_NAMED_PROPS||!1,Bt=e.KEEP_CONTENT!==!1,Vt=e.IN_PLACE||!1,St=be(e.ALLOWED_URI_REGEXP)?e.ALLOWED_URI_REGEXP:Le,Yt=typeof e.NAMESPACE==`string`?e.NAMESPACE:J,en=Xe(e,`MATHML_TEXT_INTEGRATION_POINTS`,()=>O({},$t)),nn=Xe(e,`HTML_INTEGRATION_POINTS`,()=>O({},tn));let t=Xe(e,`CUSTOM_ELEMENT_HANDLING`,()=>h(null));if(z=h(null),S(t,`tagNameCheck`)&&ln(t.tagNameCheck)&&(z.tagNameCheck=t.tagNameCheck),S(t,`attributeNameCheck`)&&ln(t.attributeNameCheck)&&(z.attributeNameCheck=t.attributeNameCheck),S(t,`allowCustomizedBuiltInElements`)&&typeof t.allowCustomizedBuiltInElements==`boolean`&&(z.allowCustomizedBuiltInElements=t.allowCustomizedBuiltInElements),m(z),V&&(Ot=!1),Ft&&(W=!0),K&&(L=O({},De),R=h(null),K.html===!0&&(O(L,xe),O(R,Oe)),K.svg===!0&&(O(L,Se),O(R,ke),O(R,je)),K.svgFilters===!0&&(O(L,Ce),O(R,ke),O(R,je)),K.mathMl===!0&&(O(L,Te),O(R,Ae),O(R,je))),B.tagCheck=null,B.attributeCheck=null,S(e,`ADD_TAGS`)&&(typeof e.ADD_TAGS==`function`?B.tagCheck=e.ADD_TAGS:v(e.ADD_TAGS)&&(L===Ct&&(L=k(L)),O(L,e.ADD_TAGS,Y))),S(e,`ADD_ATTR`)&&(typeof e.ADD_ATTR==`function`?B.attributeCheck=e.ADD_ATTR:v(e.ADD_ATTR)&&(R===wt&&(R=k(R)),O(R,e.ADD_ATTR,Y))),S(e,`ADD_FORBID_CONTENTS`)&&v(e.ADD_FORBID_CONTENTS)&&(q===Ht&&(q=k(q)),O(q,e.ADD_FORBID_CONTENTS,Y)),Bt&&(L[`#text`]=!0),U&&O(L,[`html`,`head`,`body`]),L.table&&(O(L,[`tbody`]),delete Tt.tbody),e.TRUSTED_TYPES_POLICY){if(typeof e.TRUSTED_TYPES_POLICY.createHTML!=`function`)throw T(`TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.`);if(typeof e.TRUSTED_TYPES_POLICY.createScriptURL!=`function`)throw T(`TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.`);let t=P;P=e.TRUSTED_TYPES_POLICY;try{F=at(``)}catch(e){throw P=t,e}}else e.TRUSTED_TYPES_POLICY===null?(P=void 0,F=``):(P===void 0&&(P=st()),P&&typeof F==`string`&&(F=at(``)));p&&p(e),sn=e},dn=O({},[...Se,...Ce,...we]),fn=O({},[...Te,...Ee]),pn=function(e,t,n){return t.namespaceURI===J?e===`svg`:t.namespaceURI===qt?e===`svg`&&(n===`annotation-xml`||en[n]):!!dn[e]},mn=function(e,t,n){return t.namespaceURI===J?e===`math`:t.namespaceURI===Jt?e===`math`&&nn[n]:!!fn[e]},hn=function(e,t,n){return t.namespaceURI===Jt&&!nn[n]||t.namespaceURI===qt&&!en[n]?!1:!fn[e]&&(rn[e]||!dn[e])},gn=function(e){let t=et(e),n=y(Qe(e)),r=x(e),i,a;return r&&N(r)===j.element?(i={namespaceURI:et(r)},a=y(Qe(r))):(i={namespaceURI:Yt},a=`template`),Zt[t]?t===Jt?pn(n,i,a):t===qt?mn(n,i,a):t===J?hn(n,i,a):!!(an===`application/xhtml+xml`&&Zt[t]):!1},X=function(e){ie(t.removed,{element:e});try{x(e).removeChild(e)}catch(t){if(g(e),!x(e))throw T(`a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place`)}},_n=function(e,t,n){try{te(e,t)}catch(t){try{e.removeAttribute(n)}catch(e){}}},vn=function(e){Sn(e);let t=b(e);t&&_(ae(t),e=>{try{g(e)}catch(e){}});let n=N(e)===j.element?C(e):null;if(n)for(let t=n.length-1;t>=0;--t){let r=n[t],i=r&&r.name;typeof i==`string`&&_n(e,r,i)}},yn=function(e,n,r){if(!r)try{r=n.getAttributeNode(e)}catch(e){r=null}ie(t.removed,{attribute:r||null,from:n});try{r?te(n,r):n.removeAttribute(e)}catch(t){try{n.removeAttribute(e)}catch(e){}}if(e===`is`){if(W||Ft)try{X(n)}catch(e){}else try{n.setAttribute(e,``)}catch(e){}}},bn=function(e){let t=C(e);if(t)for(let n=t.length-1;n>=0;--n){let r=t[n],i=r&&r.name;typeof i!=`string`||R[Y(i)]||_n(e,r,i)}},xn=function(e,t){let n=arguments.length>2&&arguments[2]!==void 0&&arguments[2],r=[e];for(;r.length>0;){let e=r.pop();if(t(e)===!1)continue;if(n&&N(e)===j.element){let t=ge(e);Z(t)&&r.push(t)}let i=b(e);if(i)for(let e=i.length-1;e>=0;--e)r.push(i[e])}},Sn=function(e){xn(e,e=>{N(e)===j.element&&bn(e)})},Cn=function(e){let t=[];return xn(e,e=>{t.push(e)},!0),t},wn=function(e,t){let n=se();_(Cn(e),e=>{N(e)===j.element&&ce(n,e)}),_(t,e=>{N(e)===j.element&&!le(n,e)&&bn(e)})},Tn=function(e,n){let r=!1;return _(t.removed,t=>{t.element&&(r=r||t.element===e,Sn(t.element))}),wn(e,n),r},En=function(e,t){let n=G,r=null,i=()=>(r||(r=se(),_(t,e=>{ce(r,e)})),r);for(let t=0;;t++){let r=Cn(e),a=[e],o=!1;if(_(r,e=>{N(e)===j.documentFragment?ie(a,e):!o&&!le(n,e)&&(o=le(i(),e))}),!o)return;if(t>=8)throw T(`the tree kept changing during in-place sanitization; refusing to return it`);_(a,(t,n)=>{Dn(t,n>0,e,i())})}},Dn=function(e,t,n,r){let i=Mn(e),a;for(;a=i.nextNode();)le(r,a)&&!le(G,a)&&(t&&Q(I.uponSanitizeShadowNode,a,null),Hn(a,n),Yn(a,n),Z(a.content)&&Xn(a.content))},On=function(e){G&&ce(G,e)},kn=function(e,t){return H?e===`patchsrc`||e===`for`&&t!==`label`&&t!==`output`:!1},An=function(e){H&&xn(e,e=>{let t=N(e);if(t===j.processingInstruction||t===j.comment&&w(Ue,e.data)){try{g(e)}catch(e){}return!1}if(t===j.element){let t=e,n=Y(Qe(e));try{t.hasAttribute&&t.hasAttribute(`patchsrc`)&&t.removeAttribute(`patchsrc`),t.hasAttribute&&t.hasAttribute(`for`)&&kn(`for`,n)&&t.removeAttribute(`for`)}catch(e){}}return!0})},jn=function(e){let t=null,r=null;if(Pt)e=`<remove></remove>`+e;else{let t=de(e,/^[\r\n\t ]+/);r=t&&t[0]}an===`application/xhtml+xml`&&Yt===J&&(e=`<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>`+e+`</body></html>`);let i=P?at(e):e;if(Yt===J)try{t=new u().parseFromString(i,an)}catch(e){}if(!t||!t.documentElement){t=lt.createDocument(Yt,`template`,null);try{t.documentElement.innerHTML=Xt?F:i}catch(e){}}let a=t.body||t.documentElement;return e&&r&&a.insertBefore(n.createTextNode(r),a.childNodes[0]||null),Yt===J?ft.call(t,U?`html`:`body`)[0]:U?t.documentElement:a},Mn=function(e){let t=_e?_e(e):e.ownerDocument;return ut.call(t||e,e,l.SHOW_ELEMENT|l.SHOW_COMMENT|l.SHOW_TEXT|l.SHOW_PROCESSING_INSTRUCTION|l.SHOW_CDATA_SECTION,null)},Nn=function(e){return e=fe(e,mt,` `),e=fe(e,ht,` `),e=fe(e,gt,` `),e},Pn=function(e){var t;Fn(e);let n=(t=e.querySelectorAll)==null?void 0:t.call(e,`template`);n&&_(n,e=>{Z(e.content)&&Pn(e.content)})},Fn=function(e){e.normalize();let t=_e?_e(e):e.ownerDocument,n=ut.call(t||e,e,l.SHOW_TEXT|l.SHOW_COMMENT|l.SHOW_CDATA_SECTION|l.SHOW_PROCESSING_INSTRUCTION,null),r=n.nextNode();for(;r;)r.data=Nn(r.data),r=n.nextNode()},In=function(e){let t=D?D(e):null;return typeof t!=`string`||Y(t)!==`form`?!1:typeof e.nodeName!=`string`||typeof e.textContent!=`string`||typeof e.removeChild!=`function`||e.attributes!==C(e)||typeof e.removeAttribute!=`function`||typeof e.removeAttributeNode!=`function`||typeof e.getAttributeNode!=`function`||typeof e.setAttribute!=`function`||typeof e.namespaceURI!=`string`||typeof e.insertBefore!=`function`||typeof e.hasChildNodes!=`function`||e.nodeType!==E(e)||e.childNodes!==b(e)},Z=function(e){if(!E||typeof e!=`object`||!e)return!1;try{return E(e)===j.documentFragment}catch(e){return!1}},Ln=function(e){if(!E||typeof e!=`object`||!e)return!1;try{return typeof E(e)==`number`}catch(e){return!1}};function Q(e,n,r){e.length!==0&&_(e,e=>{e.call(t,n,r,sn)})}let Rn=function(e,t){return!!(H&&e.hasChildNodes()&&!Ln(e.firstElementChild)&&w(He,e.textContent)&&w(He,e.innerHTML)||H&&Ke[t]&&N(e)===j.element&&et(e)===J&&(Ln(e.firstElementChild)||typeof e.textContent==`string`&&w(He,e.textContent))||e.nodeType===j.processingInstruction||H&&e.nodeType===j.comment&&w(Ue,e.data))},zn=function(e,t){return e instanceof RegExp?w(e,t):e instanceof Function&&!!e(t,...[...arguments].slice(2))},Bn=function(e,t,n){if(!Tt[t]&&Gn(t)&&zn(z.tagNameCheck,t))return!1;if(Bt&&!q[t]&&!q[y(t)]){let t=x(e),r=b(e);if(r&&t){let i=r.length;for(let a=i-1;a>=0;--a){let i=e===n?ee(r[a],!0):r[a];t.insertBefore(i,he(e))}}}return X(e),!0},Vn=function(e,t,n,r){return e.length===0?t:t===n||t===r?k(t):t},$=function(e,t){return e===t||x(e)!==null?!1:(Vt&&Sn(e),!0)},Hn=function(e,n){if(On(e),Q(I.beforeSanitizeElements,e,null),$(e,n))return!0;if(In(e))return X(e),!0;let r=Y(Qe(e));if(L=Vn(I.uponSanitizeElement,L,Ct,Mt),Q(I.uponSanitizeElement,e,{tagName:r,allowedTags:L}),$(e,n))return!0;if(Rn(e,r))return X(e),!0;if(Tt[r]||!(B.tagCheck instanceof Function&&B.tagCheck(r))&&!L[r]){let t=Bn(e,r,n);return t===!1&&(Q(I.afterSanitizeElements,e,null),$(e,n))?!0:t}if(N(e)===j.element&&!gn(e)||(r===`noscript`||r===`noembed`||r===`noframes`)&&w(We,e.innerHTML))return X(e),!0;if(V&&e.nodeType===j.text){let n=Nn(e.textContent);e.textContent!==n&&(ie(t.removed,{element:e.cloneNode()}),e.textContent=n)}return Q(I.afterSanitizeElements,e,null),$(e,n)},Un=function(e,t,r){if(Et[t]||kn(t,e)||Lt&&(t===`id`||t===`name`)&&(r in n||r in cn))return!1;let i=R[t]||B.attributeCheck instanceof Function&&B.attributeCheck(t,e);return Ot&&w(_t,t)||Dt&&w(vt,t)?!0:i?Gt[t]||w(St,fe(r,bt,``))||(t===`src`||t===`xlink:href`||t===`href`)&&e!==`script`&&pe(r,`data:`)===0&&Ut[e]||kt&&!w(yt,fe(r,bt,``))?!0:!r:Gn(e)&&zn(z.tagNameCheck,e)&&zn(z.attributeNameCheck,t,e)||t===`is`&&z.allowCustomizedBuiltInElements&&zn(z.tagNameCheck,r)},Wn=O({},[`annotation-xml`,`color-profile`,`font-face`,`font-face-format`,`font-face-name`,`font-face-src`,`font-face-uri`,`missing-glyph`]),Gn=function(e){return!Wn[y(e)]&&w(xt,e)},Kn=function(e,t,n,r){if(P&&typeof d==`object`&&typeof d.getAttributeType==`function`&&!n)switch(d.getAttributeType(e,t)){case`TrustedHTML`:return at(r);case`TrustedScriptURL`:return ot(r)}return r},qn=function(e,t,n,r){try{return n?e.setAttributeNS(n,t,r):e.setAttribute(t,r),!In(e)||(X(e),!1)}catch(n){return yn(t,e),!1}},Jn=function(e,t){return H&&w(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i,t)?!0:y(e)===`attributename`&&de(t,`href`)!==null},Yn=function(e,n){if(Q(I.beforeSanitizeAttributes,e,null),$(e,n))return;let r=e.attributes;if(!r||In(e))return;R=Vn(I.uponSanitizeAttribute,R,wt,Nt);let i={attrName:``,attrValue:``,keepAttr:!0,allowedAttributes:R,forceKeepAttr:void 0},a=r.length,o=Y(e.nodeName);for(;a--;){let n=r[a],s=n.name,c=n.namespaceURI,l=n.value,u=Y(s),d=l,f=s===`value`?d:me(d),p=!1;i.attrName=u,i.attrValue=f,i.keepAttr=!0,i.forceKeepAttr=void 0,Q(I.uponSanitizeAttribute,e,i),f=i.attrValue,Rt&&(u===`id`||u===`name`)&&pe(f,zt)!==0&&(yn(s,e,n),f=zt+f,p=!0),Jn(s,f)?yn(s,e,n):i.forceKeepAttr||(i.keepAttr?!At&&w(Ge,f)?yn(s,e,n):(V&&(f=Nn(f)),Un(o,u,f)?(f=Kn(o,u,c,f),f!==d&&qn(e,s,c,f)&&p&&re(t.removed)):yn(s,e,n)):yn(s,e,n))}Q(I.afterSanitizeAttributes,e,null),$(e,n)},Xn=function(e){let t=null,n=Mn(e);for(Q(I.beforeSanitizeShadowDOM,e,null);t=n.nextNode();)if(Q(I.uponSanitizeShadowNode,t,null),Hn(t,e),Yn(t,e),Z(t.content)&&Xn(t.content),N(t)===j.element){let e=ge(t);Z(e)&&(Zn(e),Xn(e))}V&&Fn(e),Q(I.afterSanitizeShadowDOM,e,null)},Zn=function(e){let t=[{node:e,shadow:null}];for(;t.length>0;){let e=t.pop();if(e.shadow){Xn(e.shadow);continue}let n=e.node,r=N(n)===j.element,i=b(n);if(i)for(let e=i.length-1;e>=0;--e)t.push({node:i[e],shadow:null});if(r){let e=D?D(n):null;if(typeof e==`string`&&Y(e)===`template`){let e=n.content;Z(e)&&t.push({node:e,shadow:null})}}if(r){let e=ge(n);Z(e)&&t.push({node:null,shadow:e},{node:e,shadow:null})}}};return t.sanitize=function(e){let n=arguments.length>1&&arguments[1]!==void 0?arguments[1]:{},i=null,a=null,o=null,s=null;if(Xt=!e,Xt&&(e=`<!-->`),typeof e!=`string`&&!Ln(e)&&(e=ve(e),typeof e!=`string`))throw T(`dirty is not a string, aborting`);if(!t.isSupported)return e;jt?(L=Mt,R=Nt):un(n),(I.uponSanitizeElement.length>0||I.uponSanitizeAttribute.length>0)&&(L=k(L)),I.uponSanitizeAttribute.length>0&&(R=k(R)),t.removed=[];let c=Vt&&typeof e!=`string`&&Ln(e),l=[],u=G;if(c){An(e);let t=Qe(e);if(typeof t==`string`){let n=Y(t);if(!L[n]||Tt[n])throw vn(e),T(`root node is forbidden and cannot be sanitized in-place`)}if(In(e))throw vn(e),T(`root node is clobbered and cannot be sanitized in-place`);l=Cn(e),G=se()}else if(Ln(e))i=jn(`<!---->`),a=i.ownerDocument.importNode(e,!0),a.nodeType===j.element&&a.nodeName===`BODY`||a.nodeName===`HTML`?i=a:i.appendChild(a),Zn(i);else{if(!W&&!V&&!U&&e.indexOf(`<`)===-1)return P&&It?at(e):e;if(i=jn(e),!i)return W?null:It?F:``}i&&Pt&&X(i.firstChild);let d=c?e:i;try{c&&Zn(e);let t=Mn(d);for(;o=t.nextNode();)Hn(o,d),Yn(o,d),Z(o.content)&&Xn(o.content);c&&En(e,l)}catch(t){throw c&&(vn(e),Tn(e,l)),t}finally{G=u}if(c){if(Tn(e,l))throw T(`a node selected for removal could not be safely returned; refusing to sanitize in place`);return V&&Pn(e),e}if(W){if(V&&Pn(i),Ft)for(s=dt.call(i.ownerDocument);i.firstChild;)s.appendChild(i.firstChild);else s=i;return(R.shadowroot||R.shadowrootmode)&&(s=pt.call(r,s,!0)),s}let f=U?i.outerHTML:i.innerHTML;return U&&L[`!doctype`]&&i.ownerDocument&&i.ownerDocument.doctype&&i.ownerDocument.doctype.name&&w(Be,i.ownerDocument.doctype.name)&&(f=`<!DOCTYPE `+i.ownerDocument.doctype.name+`>
++`+f),V&&(f=Nn(f)),P&&It?at(f):f},t.setConfig=function(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};un(e),jt=!0,Mt=L,Nt=R},t.clearConfig=function(){sn=null,jt=!1,Mt=null,Nt=null,P=tt,F=``},t.isValidAttribute=function(e,t,n){sn||un({});let r=Y(e),i=Y(t);return typeof n==`string`&&(Jn(t,n)||!At&&w(Ge,n))?!1:Un(r,i,n)},t.addHook=function(e,t){typeof t==`function`&&S(I,e)&&ie(I[e],t)},t.removeHook=function(e,t){if(S(I,e)){if(t!==void 0){let n=ne(I[e],t);return n===-1?void 0:oe(I[e],n,1)[0]}return re(I[e])}},t.removeHooks=function(e){S(I,e)&&(I[e]=[])},t.removeAllHooks=function(){I=Ye()},t}return Ze()});
++//# sourceMappingURL=purify.min.js.map
+\ No newline at end of file
+diff --git a/vendor/purify.min.js.map b/vendor/purify.min.js.map
+new file mode 100644
+index 0000000..bedf545
+--- /dev/null
++++ b/vendor/purify.min.js.map
+@@ -0,0 +1 @@
++{"version":3,"file":"purify.min.js","names":["entries","Object","setPrototypeOf","isFrozen","getPrototypeOf","getOwnPropertyDescriptor","freeze","seal","create","_ref","Reflect","apply","construct","x","func","thisArg","_len","arguments","length","args","Array","_key","Func","_len2","_key2","arrayForEach","unapply","prototype","forEach","arrayIndexOf","indexOf","arrayLastIndexOf","lastIndexOf","arrayPop","pop","arrayPush","push","arraySlice","slice","arraySplice","splice","arrayIsArray","isArray","setCreate","unconstruct","Set","setAdd","add","setHas","has","stringToLowerCase","String","toLowerCase","stringToString","toString","stringMatch","match","stringReplace","replace","stringIndexOf","stringTrim","trim","numberToString","Number","booleanToString","Boolean","bigintToString","BigInt","symbolToString","Symbol","objectHasOwnProperty","hasOwnProperty","objectToString","regExpTest","RegExp","test","typeErrorCreate","TypeError","lastIndex","_len3","_key3","_len4","_key4","addToSet","set","array","transformCaseFunc","undefined","l","element","lcElement","cleanArray","index","isPropertyExist","clone","object","newObject","_ref2","_ref3","_slicedToArray","property","value","constructor","stringifyValue","valueAsRecord","valueToString","lookupGetter","stringified","prop","desc","get","fallbackValue","lookupAccessor","isRegex","_unused","freeze","html","svg","svgFilters","svgDisallowed","mathMl","mathMlDisallowed","text","html","svg","mathMl","freeze","html","svg","mathMl","xml","seal","MUSTACHE_EXPR","ERB_EXPR","TMPLIT_EXPR","DATA_ATTR","ARIA_ATTR","IS_ALLOWED_URI","IS_SCRIPT_OR_DATA","ATTR_WHITESPACE","DOCTYPE_NAME","CUSTOM_ELEMENT","ELEMENT_MARKUP_PROBE","COMMENT_MARKUP_PROBE","FALLBACK_TAG_CLOSE","SELF_CLOSING_TAG","TAGS","ATTRS","EXPRESSIONS","addToSet","clone","entries","freeze","seal","arrayForEach","arrayIsArray","arrayLastIndexOf","arrayPop","arrayPush","arraySlice","arraySplice","stringMatch","stringReplace","stringToLowerCase","stringToString","stringIndexOf","stringTrim","regExpTest","setAdd","setCreate","setHas","isRegex","typeErrorCreate","lookupAccessor","lookupGetter","create","objectHasOwnProperty","stringifyValue","NODE_TYPE","element","attribute","text","cdataSection","entityReference","entityNode","processingInstruction","comment","document","documentType","documentFragment","notation","LITERAL_TEXT_ELEMENT_NAMES","LITERAL_TEXT_ELEMENTS","getGlobal","window","_createTrustedTypesPolicy","trustedTypes","purifyHostElement","createPolicy","suffix","ATTR_NAME","hasAttribute","getAttribute","policyName","createHTML","html","createScriptURL","scriptUrl","_","console","warn","_createHooksMap","afterSanitizeAttributes","afterSanitizeElements","afterSanitizeShadowDOM","beforeSanitizeAttributes","beforeSanitizeElements","beforeSanitizeShadowDOM","uponSanitizeAttribute","uponSanitizeElement","uponSanitizeShadowNode","_resolveSetOption","cfg","key","fallback","options","base","transform","_resolveObjectOption","makeFallback","value","undefined","createDOMPurify","arguments","length","DOMPurify","root","version","VERSION","removed","nodeType","Element","isSupported","originalDocument","currentScript","DocumentFragment","HTMLTemplateElement","Node","NodeFilter","_window$NamedNodeMap","NamedNodeMap","MozNamedAttrMap","HTMLFormElement","DOMParser","ElementPrototype","prototype","cloneNode","remove","removeAttributeNode","getNextSibling","getChildNodes","getParentNode","getShadowRoot","getAttributes","getNodeType","getNodeName","getOwnerDocument","_readNodeType","node","_readNodeName","nodeName","getNamespaceURI","_readNamespaceURI","namespaceURI","template","createElement","content","ownerDocument","trustedTypesPolicy","emptyHTML","defaultTrustedTypesPolicy","defaultTrustedTypesPolicyResolved","IN_TRUSTED_TYPES_POLICY","_assertNotInTrustedTypesPolicy","_createTrustedHTML","_createTrustedScriptURL","_getDefaultTrustedTypesPolicy","_document","implementation","createNodeIterator","createDocumentFragment","getElementsByTagName","importNode","hooks","createHTMLDocument","MUSTACHE_EXPR","ERB_EXPR","TMPLIT_EXPR","DATA_ATTR","ARIA_ATTR","IS_SCRIPT_OR_DATA","ATTR_WHITESPACE","CUSTOM_ELEMENT","IS_ALLOWED_URI","ALLOWED_TAGS","DEFAULT_ALLOWED_TAGS","svg","svgFilters","mathMl","ALLOWED_ATTR","DEFAULT_ALLOWED_ATTR","xml","CUSTOM_ELEMENT_HANDLING","Object","tagNameCheck","writable","configurable","enumerable","attributeNameCheck","allowCustomizedBuiltInElements","FORBID_TAGS","FORBID_ATTR","EXTRA_ELEMENT_HANDLING","tagCheck","attributeCheck","ALLOW_ARIA_ATTR","ALLOW_DATA_ATTR","ALLOW_UNKNOWN_PROTOCOLS","ALLOW_SELF_CLOSE_IN_ATTR","SAFE_FOR_TEMPLATES","SAFE_FOR_XML","WHOLE_DOCUMENT","SET_CONFIG","SET_CONFIG_ALLOWED_TAGS","SET_CONFIG_ALLOWED_ATTR","FORCE_BODY","RETURN_DOM","RETURN_DOM_FRAGMENT","RETURN_TRUSTED_TYPE","SANITIZE_DOM","SANITIZE_NAMED_PROPS","SANITIZE_NAMED_PROPS_PREFIX","KEEP_CONTENT","IN_PLACE","IN_PLACE_VISITED","USE_PROFILES","FORBID_CONTENTS","DEFAULT_FORBID_CONTENTS","DATA_URI_TAGS","DEFAULT_DATA_URI_TAGS","URI_SAFE_ATTRIBUTES","DEFAULT_URI_SAFE_ATTRIBUTES","MATHML_NAMESPACE","SVG_NAMESPACE","HTML_NAMESPACE","NAMESPACE","IS_EMPTY_INPUT","ALLOWED_NAMESPACES","DEFAULT_ALLOWED_NAMESPACES","DEFAULT_MATHML_TEXT_INTEGRATION_POINTS","MATHML_TEXT_INTEGRATION_POINTS","DEFAULT_HTML_INTEGRATION_POINTS","HTML_INTEGRATION_POINTS","COMMON_SVG_AND_HTML_ELEMENTS","PARSER_MEDIA_TYPE","SUPPORTED_PARSER_MEDIA_TYPES","DEFAULT_PARSER_MEDIA_TYPE","transformCaseFunc","CONFIG","formElement","isRegexOrFunction","testValue","RegExp","Function","_parseConfig","indexOf","ALLOWED_URI_REGEXP","customElementHandling","ADD_TAGS","ADD_ATTR","ADD_FORBID_CONTENTS","table","tbody","TRUSTED_TYPES_POLICY","previousTrustedTypesPolicy","error","ALL_SVG_TAGS","svgDisallowed","ALL_MATHML_TAGS","mathMlDisallowed","_checkSvgNamespace","tagName","parent","parentTagName","Boolean","_checkMathMlNamespace","_checkHtmlNamespace","_checkValidNamespace","elementNamespace","parentNode","_forceRemove","removeChild","_stripAttributeNode","name","removeAttribute","_neutralizeRoot","_neutralizeSubtree","childNodes","child","attributes","i","_removeAttribute","attr","getAttributeNode","from","setAttribute","_stripDisallowedAttributes","_walkTree","visit","intoShadow","stack","pop","shadowRoot","_isDocumentFragment","push","_collectLiveNodes","nodes","_neutralizeEscapedElements","before","reachable","_neutralizeDiscarded","rootRemoved","entry","MAX_UNVISITED_ROUNDS","_sanitizeUnvisitedNodes","visited","original","getOriginal","beforeNode","round","live","containers","pending","container","index","_sanitizeUnvisitedIn","inShadow","iterator","_createNodeIterator","nextNode","_executeHooks","_sanitizeElements","_sanitizeAttributes","_sanitizeShadowDOM","_markVisited","_isPatchLinkageAttribute","lcName","lcTag","_neutralizePatchLinkage","COMMENT_MARKUP_PROBE","data","_initDocument","dirty","doc","leadingWhitespace","matches","dirtyPayload","parseFromString","documentElement","createDocument","innerHTML","body","insertBefore","createTextNode","call","SHOW_ELEMENT","SHOW_COMMENT","SHOW_TEXT","SHOW_PROCESSING_INSTRUCTION","SHOW_CDATA_SECTION","_stripTemplateExpressions","_scrubTemplateExpressions","_node$querySelectorAl","_scrubOwnCharacterData","templates","querySelectorAll","tmpl","normalize","walker","currentNode","_isClobbered","realTagName","textContent","hasChildNodes","_isNode","hook","_isUnsafeNode","firstElementChild","ELEMENT_MARKUP_PROBE","_matchesNameCheck","check","_len","args","Array","_key","_sanitizeDisallowedNode","_isBasicCustomElement","childCount","hoisted","_forkSharedAllowlist","hookList","set","defaultSet","setConfigSet","_handleHookDetachedNode","allowedTags","nt","FALLBACK_TAG_CLOSE","_isValidAttribute","nameIsPermitted","RESERVED_CUSTOM_ELEMENT_NAMES","_applyTrustedTypesToAttribute","getAttributeType","_setAttributeValue","setAttributeNS","_isUnsafeAttributeValue","hookEvent","attrName","attrValue","keepAttr","allowedAttributes","forceKeepAttr","l","initValue","recreatedNamedProp","SELF_CLOSING_TAG","cleanWrite","fragment","shadowNode","shadowIterator","innerSr","_sanitizeAttachedShadowRoots","shadow","item","isElement","rootName","sr","sanitize","importedNode","returnNode","inPlace","inPlaceNodes","outerVisited","nn","appendChild","firstChild","walkRoot","nodeIterator","shadowroot","shadowrootmode","serializedHTML","outerHTML","doctype","DOCTYPE_NAME","setConfig","clearConfig","isValidAttribute","tag","addHook","entryPoint","hookFunction","removeHook","removeHooks","removeAllHooks","MUSTACHE_EXPR","EXPRESSIONS.MUSTACHE_EXPR","ERB_EXPR","EXPRESSIONS.ERB_EXPR","TMPLIT_EXPR","EXPRESSIONS.TMPLIT_EXPR","DATA_ATTR","EXPRESSIONS.DATA_ATTR","ARIA_ATTR","EXPRESSIONS.ARIA_ATTR","IS_SCRIPT_OR_DATA","EXPRESSIONS.IS_SCRIPT_OR_DATA","ATTR_WHITESPACE","EXPRESSIONS.ATTR_WHITESPACE","CUSTOM_ELEMENT","EXPRESSIONS.CUSTOM_ELEMENT","IS_ALLOWED_URI","EXPRESSIONS.IS_ALLOWED_URI","TAGS.html","TAGS.svg","TAGS.svgFilters","TAGS.mathMl","TAGS.text","ATTRS.html","ATTRS.svg","ATTRS.mathMl","ATTRS.xml","TAGS.svgDisallowed","TAGS.mathMlDisallowed","EXPRESSIONS.COMMENT_MARKUP_PROBE","EXPRESSIONS.ELEMENT_MARKUP_PROBE","EXPRESSIONS.FALLBACK_TAG_CLOSE","EXPRESSIONS.SELF_CLOSING_TAG","EXPRESSIONS.DOCTYPE_NAME","factory","global","_OverloadYield","d","_arrayLikeToArray","a","r","e","n","_arrayWithHoles","_iterableToArrayLimit","t","i","u","f","o","l","_nonIterableRest","_slicedToArray","_unsupportedIterableToArray","AsyncGenerator","resume","settle","entries","setPrototypeOf","isFrozen","getPrototypeOf","getOwnPropertyDescriptor","freeze","seal","create","_ref","apply","construct","x","args","func","thisArg","Func","arrayForEach","unapply","arrayLastIndexOf","arrayPop","arrayPush","arraySlice","arraySplice","arrayIsArray","setCreate","unconstruct","setAdd","setHas","stringToLowerCase","stringToString","stringMatch","stringReplace","stringIndexOf","stringTrim","numberToString","booleanToString","bigintToString","symbolToString","objectHasOwnProperty","objectToString","regExpTest","typeErrorCreate","addToSet","transformCaseFunc","set","array","element","lcElement","cleanArray","index","clone","newObject","_ref2","object","_ref3","property","value","stringifyValue","valueAsRecord","valueToString","lookupGetter","stringified","desc","prop","fallbackValue","lookupAccessor","isRegex","_unused","html$1","svg$1","svgFilters","svgDisallowed","mathMl$1","mathMlDisallowed","text","html","svg","mathMl","xml","MUSTACHE_EXPR","ERB_EXPR","TMPLIT_EXPR","DATA_ATTR","ARIA_ATTR","IS_ALLOWED_URI","IS_SCRIPT_OR_DATA","ATTR_WHITESPACE","DOCTYPE_NAME","CUSTOM_ELEMENT","ELEMENT_MARKUP_PROBE","COMMENT_MARKUP_PROBE","FALLBACK_TAG_CLOSE","SELF_CLOSING_TAG","NODE_TYPE","LITERAL_TEXT_ELEMENTS","getGlobal","_createTrustedTypesPolicy","trustedTypes","suffix","ATTR_NAME","purifyHostElement","policyName","scriptUrl","_","_createHooksMap","_resolveSetOption","cfg","key","options","fallback","_resolveObjectOption","makeFallback","createDOMPurify","window","DOMPurify","root","document","originalDocument","currentScript","HTMLTemplateElement","Node","Element","NodeFilter","DOMParser","ElementPrototype","cloneNode","remove","removeAttributeNode","getNextSibling","getChildNodes","getParentNode","getShadowRoot","getAttributes","getNodeType","getNodeName","getOwnerDocument","_readNodeType","node","_readNodeName","getNamespaceURI","_readNamespaceURI","template","trustedTypesPolicy","emptyHTML","defaultTrustedTypesPolicy","defaultTrustedTypesPolicyResolved","IN_TRUSTED_TYPES_POLICY","_assertNotInTrustedTypesPolicy","_createTrustedHTML","_createTrustedScriptURL","_getDefaultTrustedTypesPolicy","_document","implementation","createNodeIterator","createDocumentFragment","getElementsByTagName","importNode","hooks","MUSTACHE_EXPR$1","ERB_EXPR$1","TMPLIT_EXPR$1","DATA_ATTR$1","ARIA_ATTR$1","IS_SCRIPT_OR_DATA$1","ATTR_WHITESPACE$1","CUSTOM_ELEMENT$1","IS_ALLOWED_URI$1","ALLOWED_TAGS","DEFAULT_ALLOWED_TAGS","ALLOWED_ATTR","DEFAULT_ALLOWED_ATTR","CUSTOM_ELEMENT_HANDLING","FORBID_TAGS","FORBID_ATTR","EXTRA_ELEMENT_HANDLING","ALLOW_ARIA_ATTR","ALLOW_DATA_ATTR","ALLOW_UNKNOWN_PROTOCOLS","ALLOW_SELF_CLOSE_IN_ATTR","SAFE_FOR_TEMPLATES","SAFE_FOR_XML","WHOLE_DOCUMENT","SET_CONFIG","SET_CONFIG_ALLOWED_TAGS","SET_CONFIG_ALLOWED_ATTR","FORCE_BODY","RETURN_DOM","RETURN_DOM_FRAGMENT","RETURN_TRUSTED_TYPE","SANITIZE_DOM","SANITIZE_NAMED_PROPS","SANITIZE_NAMED_PROPS_PREFIX","KEEP_CONTENT","IN_PLACE","IN_PLACE_VISITED","USE_PROFILES","FORBID_CONTENTS","DEFAULT_FORBID_CONTENTS","DATA_URI_TAGS","DEFAULT_DATA_URI_TAGS","URI_SAFE_ATTRIBUTES","DEFAULT_URI_SAFE_ATTRIBUTES","MATHML_NAMESPACE","SVG_NAMESPACE","HTML_NAMESPACE","NAMESPACE","IS_EMPTY_INPUT","ALLOWED_NAMESPACES","DEFAULT_ALLOWED_NAMESPACES","DEFAULT_MATHML_TEXT_INTEGRATION_POINTS","MATHML_TEXT_INTEGRATION_POINTS","DEFAULT_HTML_INTEGRATION_POINTS","HTML_INTEGRATION_POINTS","COMMON_SVG_AND_HTML_ELEMENTS","PARSER_MEDIA_TYPE","SUPPORTED_PARSER_MEDIA_TYPES","CONFIG","formElement","isRegexOrFunction","testValue","_parseConfig","customElementHandling","previousTrustedTypesPolicy","error","ALL_SVG_TAGS","ALL_MATHML_TAGS","_checkSvgNamespace","parent","tagName","parentTagName","_checkMathMlNamespace","_checkHtmlNamespace","_checkValidNamespace","elementNamespace","parentNode","_forceRemove","_stripAttributeNode","attribute","name","_neutralizeRoot","_neutralizeSubtree","childNodes","child","attributes","_removeAttribute","attr","_stripDisallowedAttributes","_walkTree","intoShadow","stack","visit","shadowRoot","_isDocumentFragment","_collectLiveNodes","nodes","_neutralizeEscapedElements","reachable","before","_neutralizeDiscarded","rootRemoved","entry","_sanitizeUnvisitedNodes","visited","original","getOriginal","beforeNode","round","live","containers","pending","_sanitizeUnvisitedIn","container","iterator","_createNodeIterator","inShadow","_executeHooks","_sanitizeElements","_sanitizeAttributes","_sanitizeShadowDOM2","_markVisited","_isPatchLinkageAttribute","lcName","lcTag","_neutralizePatchLinkage","nodeType","_initDocument","doc","leadingWhitespace","dirty","matches","dirtyPayload","body","_stripTemplateExpressions","_scrubTemplateExpressions2","_node$querySelectorAl","_scrubOwnCharacterData","templates","tmpl","walker","currentNode","_isClobbered","realTagName","_isNode","hook","data","_isUnsafeNode","_matchesNameCheck","check","_sanitizeDisallowedNode","_isBasicCustomElement","childCount","hoisted","_forkSharedAllowlist","hookList","defaultSet","setConfigSet","_handleHookDetachedNode","removed","content","_isValidAttribute","nameIsPermitted","RESERVED_CUSTOM_ELEMENT_NAMES","_applyTrustedTypesToAttribute","namespaceURI","_setAttributeValue","_isUnsafeAttributeValue","hookEvent","attrValue","initValue","recreatedNamedProp","shadowNode","shadowIterator","fragment","innerSr","_sanitizeAttachedShadowRoots","item","isElement","rootName","sr","importedNode","returnNode","inPlace","inPlaceNodes","outerVisited","nn","walkRoot","nodeIterator","serializedHTML","tag","hookFunction","entryPoint"],"sources":["../src/utils.ts","../src/tags.ts","../src/attrs.ts","../src/regexp.ts","../src/purify.ts"],"mappings":"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"}
+\ No newline at end of file

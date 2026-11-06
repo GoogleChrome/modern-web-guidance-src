@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,68 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations simulator */
++    .operations { margin-top: 56px; padding-top: 32px; border-top: 1px solid #e4dcd7; }
++    .operations-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
++    .eyebrow { font-size: .68rem; letter-spacing: 2px; font-weight: 700; color: #8a6a56; text-transform: uppercase; margin-bottom: 5px; }
++    .operations h2 { font-size: 1.7rem; letter-spacing: -.6px; }
++    .operations-description { color: #8a756b; font-size: .9rem; margin-top: 4px; }
++    .live-indicator { display: inline-flex; align-items: center; gap: 7px; color: #58735c; background: #edf2eb; border: 1px solid #dce6d8; border-radius: 30px; padding: 6px 11px; font-size: .7rem; white-space: nowrap; }
++    .live-indicator::before { content: ''; width: 6px; height: 6px; background: #729174; border-radius: 50%; }
++    .operations-panel { display: grid; grid-template-columns: 1fr 1.05fr; border: 1px solid #e5dcd4; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 5px 20px #4e342e06; }
++    .task-controls { padding: 26px; }
++    .panel-label { font-size: .68rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: #92796a; }
++    .task-button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 12px; border: 1px solid #e9e1da; border-radius: 7px; background: #fff; color: var(--text); text-align: left; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s, transform .15s; }
++    .task-button:hover { background: #faf7f3; border-color: #c9b6a4; transform: translateY(-1px); }
++    .task-button:focus-visible, .batch-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .task-icon { display: grid; place-items: center; width: 35px; height: 35px; flex-shrink: 0; border-radius: 7px; background: #fbede4; color: #b56b3f; }
++    .task-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
++    .task-icon.standard { background: #f3eee5; color: #9c8053; }
++    .task-icon.background { background: #edf1eb; color: #6e8567; }
++    .task-copy { flex: 1; }
++    .task-copy strong { display: block; font-size: .85rem; font-weight: 600; }
++    .task-copy small { display: block; font-size: .72rem; color: #9a8579; margin-top: 2px; }
++    .priority { font-size: .58rem; font-weight: 700; letter-spacing: .5px; padding: 3px 7px; border-radius: 4px; color: #a35d39; background: #fbede4; }
++    .priority.standard { color: #8c744f; background: #f3eee5; }
++    .priority.background { color: #667c60; background: #edf1eb; }
++    .batch-button { width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 6px; font: 600 .8rem 'Segoe UI', sans-serif; background: var(--primary); color: white; cursor: pointer; }
++    .batch-button:hover { background: #67483d; }
++    .batch-button span { margin-right: 7px; }
++    .batch-note { text-align: center; color: #9a8579; font-size: .68rem; margin-top: 8px; }
++    .queue-monitor { padding: 26px; background: #f8f6f2; border-left: 1px solid #e9e1da; min-width: 0; }
++    .monitor-heading { display: flex; justify-content: space-between; align-items: center; }
++    .queue-status { font-size: .65rem; color: #8b7c70; }
++    .queue-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 20px 0; }
++    .queue-stat + .queue-stat { padding-left: 20px; border-left: 1px solid #e4dcd3; }
++    .queue-stat strong { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
++    .queue-stat span { font-size: .65rem; color: #958175; }
++    .current-task { border: 1px solid #e6ddd3; background: #fffdf9; padding: 12px; border-radius: 6px; }
++    .current-task-heading { display: flex; justify-content: space-between; gap: 8px; font-size: .72rem; color: #7e6a5b; }
++    .current-task progress { display: block; width: 100%; height: 5px; margin-top: 10px; accent-color: #a57d50; border: none; border-radius: 10px; overflow: hidden; }
++    .current-task progress::-webkit-progress-bar { background: #ede6dc; }
++    .current-task progress::-webkit-progress-value { background: #a57d50; }
++    .activity-label { margin-top: 20px; display: flex; justify-content: space-between; }
++    .activity-label span:last-child { font-size: .62rem; font-weight: 400; letter-spacing: 0; text-transform: none; }
++    .activity-log { height: 135px; overflow-y: auto; margin-top: 9px; list-style: none; font: .68rem/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
++    .activity-log li { padding: 3px 0; color: #7d6d60; }
++    .activity-log time { color: #a99a8b; margin-right: 9px; }
++    .activity-log .completion { color: #5e7b58; }
++    .operations-footnote { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 14px; font-size: .68rem; color: #a18b7d; }
++    .operations-footnote span { color: #64805e; }
++    @media (max-width: 700px) {
++      .operations-panel { grid-template-columns: 1fr; }
++      .queue-monitor { border-left: 0; border-top: 1px solid #e9e1da; }
++      .operations-heading { align-items: flex-start; }
++      .operations h2 { font-size: 1.4rem; }
++      .operations-description { font-size: .8rem; }
++      .task-controls, .queue-monitor { padding: 20px; }
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 10px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +254,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-heading">
++        <div>
++          <p class="eyebrow">Behind the counter</p>
++          <h2 id="operations-title">Operations queue</h2>
++          <p class="operations-description">A little order behind every great cup. Put our task queue to work.</p>
++        </div>
++        <span class="live-indicator">Interactive simulator</span>
++      </div>
++      <div class="operations-panel">
++        <div class="task-controls">
++          <p class="panel-label">Add an operation</p>
++          <button class="task-button" type="button" data-task="checkout">
++            <span class="task-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 10-13h-8z"/></svg></span>
++            <span class="task-copy"><strong>Run checkout</strong><small>Keep the line moving. Customers come first.</small></span>
++            <span class="priority">URGENT</span>
++          </button>
++          <button class="task-button" type="button" data-task="menu">
++            <span class="task-icon standard" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
++            <span class="task-copy"><strong>Update menu</strong><small>Refresh the board with the latest offerings.</small></span>
++            <span class="priority standard">STANDARD</span>
++          </button>
++          <button class="task-button" type="button" data-task="telemetry">
++            <span class="task-icon background" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15v-4M13 15V7M18 15v-6"/></svg></span>
++            <span class="task-copy"><strong>Log telemetry</strong><small>Gather insights quietly in the background.</small></span>
++            <span class="priority background">BACKGROUND</span>
++          </button>
++          <button class="batch-button" id="run-batch" type="button"><span aria-hidden="true">▤</span> Run mixed batch <span aria-hidden="true">→</span></button>
++          <p class="batch-note">6 operations · 3 priorities · one organized queue</p>
++        </div>
++        <div class="queue-monitor">
++          <div class="monitor-heading"><p class="panel-label">Queue monitor</p><span class="queue-status" id="queue-status" role="status">Ready when you are</span></div>
++          <div class="queue-stats">
++            <div class="queue-stat"><strong id="pending-count">0</strong><span>Waiting</span></div>
++            <div class="queue-stat"><strong id="completed-count">0</strong><span>Completed</span></div>
++            <div class="queue-stat"><strong id="active-count">0</strong><span>Running</span></div>
++          </div>
++          <div class="current-task">
++            <div class="current-task-heading"><span id="current-name">Waiting for an operation</span><span id="current-percent">0%</span></div>
++            <progress id="task-progress" max="100" value="0" aria-label="Current operation progress"></progress>
++          </div>
++          <div class="activity-label panel-label"><span>Activity log</span><span>Most recent first</span></div>
++          <ol class="activity-log" id="activity-log" aria-label="Operation activity">
++            <li>Queue is clear. Let's make things happen.</li>
++          </ol>
++        </div>
++      </div>
++      <p class="operations-footnote"><span aria-hidden="true">✓</span> Urgent first. Background when there’s room. <span>Always responsive.</span></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +316,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const definitions = {
++        checkout: { label: 'Checkout', priority: 0, steps: 40 },
++        menu: { label: 'Menu update', priority: 1, steps: 75 },
++        telemetry: { label: 'Telemetry logging', priority: 2, steps: 110 }
++      };
++      const queue = [];
++      let nextId = 0;
++      let completed = 0;
++      let active = null;
++      let scheduled = false;
++      const el = id => document.getElementById(id);
++      const log = el('activity-log');
++
++      function record(message, completion = false) {
++        const item = document.createElement('li');
++        const time = document.createElement('time');
++        const now = new Date();
++        time.dateTime = now.toISOString();
++        time.textContent = now.toLocaleTimeString([], { hour12: false });
++        item.append(time, document.createTextNode(message));
++        if (completion) item.className = 'completion';
++        log.prepend(item);
++        while (log.children.length > 40) log.lastElementChild.remove();
++      }
++
++      function render() {
++        el('pending-count').textContent = queue.length - (active ? 1 : 0);
++        el('completed-count').textContent = completed;
++        el('active-count').textContent = active ? 1 : 0;
++        el('queue-status').textContent = queue.length ? 'Processing operations' : completed ? 'All operations complete' : 'Ready when you are';
++        const percent = active ? Math.floor(active.done / active.steps * 100) : completed ? 100 : 0;
++        el('current-name').textContent = active ? `${active.label} #${active.id}` : completed ? 'All caught up' : 'Waiting for an operation';
++        el('current-percent').textContent = `${percent}%`;
++        el('task-progress').value = percent;
++      }
++
++      function schedule() {
++        if (scheduled || !queue.length) return;
++        scheduled = true;
++        // Return control to the browser between slices so input and painting stay responsive.
++        setTimeout(runSlice, 16);
++      }
++
++      function runSlice() {
++        scheduled = false;
++        // Reconsider priority each slice, including when urgent work arrives mid-task.
++        queue.sort((a, b) => a.priority - b.priority || a.id - b.id);
++        const task = queue[0];
++        if (!task) return;
++        if (active !== task) {
++          if (active) record(`Paused ${active.label.toLowerCase()} #${active.id}`);
++          record(`${task.done ? 'Resumed' : 'Started'} ${task.label.toLowerCase()} #${task.id}`);
++          active = task;
++        }
++        // Simulate CPU work with a small time budget; no single long blocking loop.
++        const deadline = performance.now() + 2;
++        while (performance.now() < deadline) Math.sqrt(Math.random() * 10000);
++        task.done++;
++        if (task.done === task.steps) {
++          queue.shift();
++          completed++;
++          record(`Completed ${task.label.toLowerCase()} #${task.id}`, true);
++          active = null;
++        }
++        render();
++        schedule();
++      }
++
++      function enqueue(types) {
++        types.forEach(type => {
++          const task = { ...definitions[type], id: ++nextId, done: 0 };
++          queue.push(task);
++          record(`Queued ${task.label.toLowerCase()} #${task.id}`);
++        });
++        render();
++        schedule();
++      }
++
++      document.querySelectorAll('[data-task]').forEach(button => {
++        button.addEventListener('click', () => enqueue([button.dataset.task]));
++      });
++      el('run-batch').addEventListener('click', () => {
++        // Deliberately enqueue mixed priorities; the scheduler chooses execution order.
++        enqueue(['telemetry', 'menu', 'checkout', 'telemetry', 'checkout', 'menu']);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

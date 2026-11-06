@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,68 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: #4e342e;
++      --scrollbar-track: #f5f0ed;
++      --scrollbar-hover: #3e2723;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+     }
+ 
++    html {
++      scrollbar-gutter: stable;
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000;
++        --scrollbar-track: #fff;
++        --scrollbar-hover: #000;
++      }
++    }
++
++    /* Older browsers use the wider WebKit scrollbar fallback. */
++    @supports not (scrollbar-color: auto) {
++      @media (forced-colors: none) {
++        ::-webkit-scrollbar {
++          width: 16px;
++          height: 16px;
++        }
++
++        ::-webkit-scrollbar-track,
++        ::-webkit-scrollbar-corner {
++          background: var(--scrollbar-track);
++        }
++
++        ::-webkit-scrollbar-thumb {
++          background: var(--scrollbar-thumb);
++          border: 2px solid var(--scrollbar-track);
++          border-radius: 8px;
++          min-height: 40px;
++          min-width: 40px;
++        }
++
++        ::-webkit-scrollbar-thumb:hover,
++        ::-webkit-scrollbar-thumb:active {
++          background: var(--scrollbar-hover);
++        }
++      }
++    }
++
++    /* Let the user's system palette control high-contrast scrollbars. */
++    @media (forced-colors: active) {
++      * {
++        scrollbar-color: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

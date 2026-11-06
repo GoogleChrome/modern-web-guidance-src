@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section & Form Validation */
++    .order-section {
++      background: white;
++      padding: 35px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-top: 50px;
++      max-width: 600px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .order-section p.subtitle {
++      text-align: center;
++      margin-bottom: 25px;
++      font-size: 0.95rem;
++      color: #5d4037;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .required-indicator {
++      color: #d32f2f;
++      margin-left: 2px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 12px 14px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1.5px solid var(--secondary);
++      border-radius: 5px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    /* Only show invalid styling after interaction (user-invalid / touched) or form submission attempt */
++    .form-control:user-invalid,
++    .form-control.touched:invalid,
++    form.submitted .form-control:invalid {
++      border-color: #d32f2f;
++      background-color: #fff8f8;
++    }
++
++    .form-control:user-invalid:focus,
++    .form-control.touched:invalid:focus,
++    form.submitted .form-control:invalid:focus {
++      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
++    }
++
++    .error-message {
++      display: none;
++      color: #d32f2f;
++      font-size: 0.875rem;
++      margin-top: 6px;
++      font-weight: 500;
++    }
++
++    .form-control:user-invalid ~ .error-message,
++    .form-control.touched:invalid ~ .error-message,
++    form.submitted .form-control:invalid ~ .error-message,
++    .error-message.visible {
++      display: block;
++    }
++
++    .order-submit-btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 20px;
++      margin-top: 5px;
++    }
++
++    .order-success {
++      display: none;
++      margin-top: 16px;
++      padding: 12px 16px;
++      background-color: #e8f5e9;
++      color: #2e7d32;
++      border: 1px solid #a5d6a7;
++      border-radius: 5px;
++      text-align: center;
++      font-weight: 500;
++    }
++
++    .order-success.visible {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +285,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +309,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="order-section" aria-labelledby="order-heading">
++      <h2 id="order-heading">Start Your Order</h2>
++      <p class="subtitle">Select your nearest neighborhood cafe for pickup.</p>
++      <form id="order-form" action="/order-online" method="GET" novalidate>
++        <div class="form-group">
++          <label for="local-shop">Local Shop <span class="required-indicator" aria-hidden="true">*</span></label>
++          <select id="local-shop" name="shop" class="form-control" required aria-required="true" aria-describedby="local-shop-error">
++            <option value="">-- Choose a local shop --</option>
++            <option value="downtown">Downtown Roastery &mdash; 124 Main St</option>
++            <option value="riverside">Riverside Cafe &mdash; 450 River Rd</option>
++            <option value="uptown">Uptown Espresso Bar &mdash; 882 Oak Ave</option>
++            <option value="westside">Westside Market &mdash; 310 Sunset Blvd</option>
++          </select>
++          <div id="local-shop-error" class="error-message" role="alert" aria-live="polite">
++            Please select a local shop to continue with your order.
++          </div>
++        </div>
++        <button type="submit" class="btn order-submit-btn">Continue to Order</button>
++        <div id="order-success" class="order-success" role="status" aria-live="polite"></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +343,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('order-form');
++      const shopSelect = document.getElementById('local-shop');
++      const shopError = document.getElementById('local-shop-error');
++      const orderSuccess = document.getElementById('order-success');
++
++      if (!form || !shopSelect || !shopError) return;
++
++      let hasInteracted = false;
++
++      function updateValidationState() {
++        if (!hasInteracted && !form.classList.contains('submitted')) {
++          shopSelect.removeAttribute('aria-invalid');
++          shopError.classList.remove('visible');
++          return true;
++        }
++
++        const isValid = shopSelect.checkValidity();
++        if (!isValid) {
++          shopSelect.setAttribute('aria-invalid', 'true');
++          shopError.classList.add('visible');
++        } else {
++          shopSelect.setAttribute('aria-invalid', 'false');
++          shopError.classList.remove('visible');
++        }
++        return isValid;
++      }
++
++      // Mark as interacted when user changes the value or leaves the select menu after focusing
++      shopSelect.addEventListener('change', function () {
++        hasInteracted = true;
++        shopSelect.classList.add('touched');
++        if (orderSuccess) {
++          orderSuccess.classList.remove('visible');
++        }
++        updateValidationState();
++      });
++
++      shopSelect.addEventListener('blur', function () {
++        hasInteracted = true;
++        shopSelect.classList.add('touched');
++        updateValidationState();
++      });
++
++      // Also listen for native invalid event (e.g., if checkValidity/reportValidity is triggered)
++      shopSelect.addEventListener('invalid', function (e) {
++        e.preventDefault();
++        hasInteracted = true;
++        shopSelect.classList.add('touched');
++        updateValidationState();
++      });
++
++      form.addEventListener('submit', function (e) {
++        hasInteracted = true;
++        form.classList.add('submitted');
++        shopSelect.classList.add('touched');
++
++        const isValid = updateValidationState();
++        if (!isValid) {
++          e.preventDefault();
++          shopSelect.focus();
++          return;
++        }
++
++        e.preventDefault();
++        if (orderSuccess) {
++          const selectedOption = shopSelect.options[shopSelect.selectedIndex];
++          orderSuccess.textContent = 'Order started for ' + selectedOption.text + '!';
++          orderSuccess.classList.add('visible');
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

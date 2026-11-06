@@ -1,0 +1,323 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..a51b563 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -44,6 +44,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         alt=""
+                         width={800}
+                         height={533}
++                        loading="eager"
++                        fetchpriority="high"
+                         format="webp"
+                         class="w-full h-auto object-cover"
+                     />
+@@ -80,4 +82,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..4f87376 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="masthead" class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+@@ -54,7 +54,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="872" height="102" fetchpriority="high" loading="eager" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..46054e3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,12 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  leadContentId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, leadContentId = "page-lead" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -23,18 +22,28 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
+ 
++    <!-- Keep initial theme/layout work in the head and render-blocking.
++         The headline font affects layout, so settle it before taking a snapshot. -->
++    <script is:inline type="module" blocking="render">
++      await document.fonts.load('500 1em "Grenze"').catch(() => {});
++    </script>
++
++    <!-- Wait only for the initial viewport's DOM, never the footer/full body. -->
++    <link rel="expect" href="#masthead" blocking="render" />
++    <link rel="expect" href={`#${leadContentId}`} blocking="render" />
++    <link rel="preload" as="image" href={`${baseUrl}logo.svg`} fetchpriority="high" />
++
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..3231239 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -9,7 +9,7 @@ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++        <h1 id="page-lead" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+         </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..c3a695e 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+ <Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++    <div id="page-lead" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..8496dc7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,8 +35,9 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} leadContentId="lead-story">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <div id="lead-story">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -66,6 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title}
+                     width="1200"
+                     height="675"
++                    loading="eager"
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                     crossorigin="use-credentials"
+                 />
+@@ -75,6 +78,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title} 
+                     width={1200}
+                     height={675}
++                    loading="eager"
++                    fetchpriority="high"
+                     format="webp"
+                     class="w-full h-auto"
+                 />
+@@ -85,6 +90,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 </figcaption>
+             )}
+         </figure>
++        </div>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+@@ -123,4 +129,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..7fe847d 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -40,7 +40,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ <Layout title={`Category: ${capitalizedCategory}`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="page-lead" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -49,6 +49,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     height={400}
+                     format="webp"
+                     quality={80}
++                    loading="eager"
++                    fetchpriority="high"
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..c49ee9a 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" leadContentId="lead-story">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +55,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section id="lead-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +81,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..66b1dee 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -6,7 +6,7 @@ const multimedia = await getCollection('multimedia');
+ ---
+ <Layout title="Multimedia">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++        <h1 id="page-lead" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+@@ -18,4 +18,4 @@ const multimedia = await getCollection('multimedia');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..d6145e7 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -6,7 +6,7 @@ const reports = await getCollection('reports');
+ ---
+ <Layout title="Reports">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++        <h1 id="page-lead" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
+             <ul>
+@@ -18,4 +18,4 @@ const reports = await getCollection('reports');
+             </ul>
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..acbad44 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="page-lead" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..d2f7545 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div id="page-lead" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..b80edae 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,29 @@
+ @import "tailwindcss";
+ 
++/* Native same-origin navigation keeps each page's normal script lifecycle. */
++@view-transition {
++  navigation: auto;
++}
++
++::view-transition-old(root),
++::view-transition-new(root) {
++  animation-duration: 220ms;
++  animation-timing-function: ease-in-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++
++  ::view-transition-old(root),
++  ::view-transition-new(root) {
++    animation: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

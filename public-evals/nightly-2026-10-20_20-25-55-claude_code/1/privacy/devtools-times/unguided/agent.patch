@@ -1,0 +1,337 @@
+diff --git a/docs/THIRD_PARTY_AUDIT.md b/docs/THIRD_PARTY_AUDIT.md
+new file mode 100644
+index 0000000..8129438
+--- /dev/null
++++ b/docs/THIRD_PARTY_AUDIT.md
+@@ -0,0 +1,15 @@
++# Third-party service audit
++
++Review this list whenever an integration is added or changed. Any new origin must also be added to the CSP in `src/middleware.ts` and to the privacy policy.
++
++| Service | Origin | Data shared | Loaded | Controls |
++|---|---|---|---|---|
++| Google Fonts | fonts.googleapis.com, fonts.gstatic.com | IP, user agent | Always | CSP-restricted; candidate for self-hosting to remove the dependency |
++| Analytics client | us-central1-web-devrel-apps.cloudfunctions.net | Usage events, IP | Only after opt-in; never with DNT/GPC | `public/consent.js`; `no-referrer`; CSP `script-src`/`connect-src` |
++| Auth API | same host, `/times_cdn/api/{login,register}` | Username, password | On form submit | `credentials: omit`, `no-referrer`, `no-store` |
++| Ad client | same host, `ad-client.js` | n/a | Disabled (commented out in `Layout.astro`) | If re-enabled, gate behind consent like analytics |
++| Teaser image | cinemai-1026410574114.us-central1.run.app | IP | Home page | CSP `img-src`; candidate for self-hosting |
++
++## Open items
++- Subresource Integrity is not applied to the analytics script because it is mutable and served by a third party; pin a versioned URL plus SRI if one becomes available.
++- CSP uses `'unsafe-inline'` for scripts because of Astro island hydration; migrate to Astro's CSP/nonce support when feasible.
+diff --git a/public/consent.js b/public/consent.js
+new file mode 100644
+index 0000000..bc94635
+--- /dev/null
++++ b/public/consent.js
+@@ -0,0 +1,50 @@
++// Privacy-by-design consent manager: third-party analytics loads only with explicit opt-in.
++(function () {
++  var KEY = 'analytics-consent';
++  var SRC = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js';
++  var optedOut = navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true;
++
++  function read() {
++    try { return localStorage.getItem(KEY); } catch (e) { return null; }
++  }
++  function write(v) {
++    try { localStorage.setItem(KEY, v); } catch (e) { /* storage unavailable: treat as declined */ }
++  }
++  function loadAnalytics() {
++    if (document.querySelector('script[data-analytics]')) return;
++    var s = document.createElement('script');
++    s.src = SRC;
++    s.defer = true;
++    s.referrerPolicy = 'no-referrer';
++    s.crossOrigin = 'anonymous';
++    s.setAttribute('data-analytics', '');
++    document.head.appendChild(s);
++  }
++  function banner() { return document.getElementById('consent-banner'); }
++  function show(open) {
++    var b = banner();
++    if (b) b.hidden = !open;
++  }
++  function decide(accepted) {
++    write(accepted && !optedOut ? 'granted' : 'denied');
++    show(false);
++    if (accepted && !optedOut) loadAnalytics();
++  }
++
++  if (!optedOut && read() === 'granted') loadAnalytics();
++
++  document.addEventListener('astro:page-load', function () {
++    show(!optedOut && read() === null);
++  });
++  document.addEventListener('DOMContentLoaded', function () {
++    show(!optedOut && read() === null);
++  });
++  document.addEventListener('click', function (e) {
++    var t = e.target.closest && e.target.closest('[data-consent-accept],[data-consent-decline],[data-consent-open]');
++    if (!t) return;
++    e.preventDefault();
++    if (t.hasAttribute('data-consent-accept')) decide(true);
++    else if (t.hasAttribute('data-consent-decline')) decide(false);
++    else show(true);
++  });
++})();
+diff --git a/src/components/ConsentBanner.astro b/src/components/ConsentBanner.astro
+new file mode 100644
+index 0000000..00ab9f6
+--- /dev/null
++++ b/src/components/ConsentBanner.astro
+@@ -0,0 +1,22 @@
++---
++const baseUrl = import.meta.env.BASE_URL;
++---
++<div
++  id="consent-banner"
++  hidden
++  role="dialog"
++  aria-label="Privacy preferences"
++  class="fixed bottom-0 inset-x-0 z-[100] bg-white border-t border-gray-300 p-4 shadow-lg"
++>
++  <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-gray-800">
++    <p class="flex-1">
++      We only use privacy-friendly essentials by default. With your permission we also load a
++      third-party analytics script to understand how the site is used. See our
++      <a href={`${baseUrl}legal/privacy`} class="underline">Privacy Policy</a>.
++    </p>
++    <div class="flex gap-2">
++      <button type="button" data-consent-decline class="px-4 py-2 border border-gray-900 rounded-md font-medium">Decline</button>
++      <button type="button" data-consent-accept class="px-4 py-2 bg-gray-900 text-white rounded-md font-medium">Accept analytics</button>
++    </div>
++  </div>
++</div>
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..7392ec7 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -98,7 +98,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href="#" data-consent-open class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..a085028 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -20,6 +20,10 @@ export default function SignInForm() {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
++        // Credentials go to the auth service only: no cookies, referrer or caching.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+       });
+ 
+       const data = await response.json();
+@@ -63,6 +67,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +82,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..423a6aa 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -20,6 +20,10 @@ export default function SignUpForm() {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
++        // Credentials go to the auth service only: no cookies, referrer or caching.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+       });
+ 
+       const data = await response.json();
+@@ -64,6 +68,7 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +83,7 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="new-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..41ad62f 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import ConsentBanner from "../components/ConsentBanner.astro";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -23,14 +24,15 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Analytics is opt-in: loaded only after consent, never when DNT/GPC is set. -->
++    <script is:inline src={`${baseUrl}consent.js`}></script>
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+@@ -50,6 +52,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         </main>
+       </div>
+     </div>
++    <ConsentBanner />
+     <Footer />
+   </body>
+ </html>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..4430323 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,44 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++const ANALYTICS_ORIGIN = 'https://us-central1-web-devrel-apps.cloudfunctions.net';
++
++// Astro hydration islands and view transitions rely on inline scripts, hence 'unsafe-inline'.
++const CSP = [
++  "default-src 'self'",
++  `script-src 'self' 'unsafe-inline' ${ANALYTICS_ORIGIN}`,
++  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
++  "font-src 'self' https://fonts.gstatic.com",
++  "img-src 'self' data: https://cinemai-1026410574114.us-central1.run.app",
++  `connect-src 'self' ${ANALYTICS_ORIGIN}`,
++  "object-src 'none'",
++  "base-uri 'self'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  'upgrade-insecure-requests',
++].join('; ');
++
++const SECURITY_HEADERS: Record<string, string> = {
++  'Content-Security-Policy': CSP,
++  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy':
++    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++};
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++  // Data minimization: only touch the session when it already exists (no cookie for plain readers).
++  // The reading-list API creates it lazily when a user saves an article.
++  const response = await next();
++
++  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
++    response.headers.set(name, value);
++  }
++  if (context.url.pathname.includes('/api/')) {
++    response.headers.set('Cache-Control', 'no-store');
+   }
+-  return next();
++  return response;
+ });
+diff --git a/src/pages/api/reading-list.json.ts b/src/pages/api/reading-list.json.ts
+index 3084fe3..71d2fde 100644
+--- a/src/pages/api/reading-list.json.ts
++++ b/src/pages/api/reading-list.json.ts
+@@ -1,10 +1,19 @@
+ 
+ import type { APIRoute } from 'astro';
+ 
++const SLUG_PATTERN = /^[a-z0-9-]{1,100}$/;
++const MAX_READING_LIST_ITEMS = 100;
++
+ export const POST: APIRoute = async ({ request, session }) => {
+-  const { slug } = await request.json();
+-  if (!slug) {
+-    return new Response(JSON.stringify({ error: 'Slug is required' }), { status: 400 });
++  let slug: unknown;
++  try {
++    ({ slug } = await request.json());
++  } catch {
++    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
++  }
++  // Data minimization: store only a short, well-formed article slug.
++  if (typeof slug !== 'string' || !SLUG_PATTERN.test(slug)) {
++    return new Response(JSON.stringify({ error: 'A valid slug is required' }), { status: 400 });
+   }
+ 
+   let readingList = await session?.get('readingList') || [];
+@@ -12,6 +21,9 @@ export const POST: APIRoute = async ({ request, session }) => {
+   if (readingList.includes(slug)) {
+     readingList = readingList.filter((item: string) => item !== slug);
+   } else {
++    if (readingList.length >= MAX_READING_LIST_ITEMS) {
++      return new Response(JSON.stringify({ error: 'Reading list is full' }), { status: 400 });
++    }
+     readingList.push(slug);
+   }
+ 
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..0a43cb2 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -14,4 +14,20 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <h2>3. Recording of data on our website</h2>
+     <p><strong>Cookies</strong></p>
+     <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++
++    <p>We use a single session cookie, set only when you save an article to your reading list. It stores the article identifiers you saved and nothing else; it is strictly necessary for that feature.</p>
++
++    <h2>4. Data minimization</h2>
++    <p>We collect only what is needed to provide the service. Reading is possible without an account. For sign-in and registration we process only a username and password, which are sent directly to our authentication service and are never stored in your browser or shared with analytics.</p>
++
++    <h2>5. Third-party services</h2>
++    <ul>
++        <li><strong>Google Fonts</strong> (fonts.googleapis.com, fonts.gstatic.com): delivers the headline typeface; your IP address is transmitted to Google when fonts load.</li>
++        <li><strong>Analytics</strong> (us-central1-web-devrel-apps.cloudfunctions.net): loaded only if you click “Accept analytics”. It is never loaded if your browser sends Do Not Track or Global Privacy Control signals. You can change your choice at any time via “Manage Privacy Preferences” in the footer.</li>
++        <li><strong>Authentication service</strong> (same host as above): receives your credentials when you sign in or register.</li>
++    </ul>
++    <p>Third-party integrations are reviewed and documented in <code>docs/THIRD_PARTY_AUDIT.md</code> whenever one is added or changed.</p>
++
++    <h2>6. Security</h2>
++    <p>This site is served with a strict Content Security Policy, HSTS, and related security headers. API responses are not cached.</p>
+ </LegalLayout>

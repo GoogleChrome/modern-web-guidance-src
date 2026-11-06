@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,29 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .ai-panel { margin-top: 40px; padding: 28px; background: #fff; border: 1px solid var(--secondary); border-radius: 8px; }
++    .ai-panel h2 { color: var(--primary); }
++    .ai-intro, .ai-note { color: #6d5750; margin: 8px 0 16px; }
++    .ai-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 24px; }
++    .ai-tool { min-width: 0; }
++    .ai-tool h3 { margin-bottom: 8px; }
++    .ai-tool label { display: block; margin: 12px 0 6px; font-weight: 600; }
++    textarea, select { width: 100%; padding: 12px; border: 1px solid #a9948c; border-radius: 5px; font: inherit; background: white; color: var(--text); }
++    textarea { resize: vertical; min-height: 110px; }
++    button.btn { border: 0; cursor: pointer; font: inherit; }
++    button:disabled { opacity: .5; cursor: not-allowed; }
++    .btn.secondary { background: #eee6e2; color: var(--primary); }
++    .ai-actions { display: flex; gap: 10px; flex-wrap: wrap; }
++    .ai-output { white-space: pre-wrap; overflow-wrap: anywhere; background: #faf7f5; border-left: 3px solid var(--secondary); padding: 16px; margin-top: 16px; min-height: 70px; }
++    .ai-branching { border-top: 1px solid var(--secondary); padding-top: 20px; margin-top: 28px; }
++    .ai-status { min-height: 26px; margin-top: 12px; }
++    #model-progress { width: 100%; margin-top: 8px; }
++    :is(button, textarea, select):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    @media (max-width: 650px) { .ai-tools { grid-template-columns: 1fr; } .ai-panel { padding: 20px; } }
+   </style>
++  <script src="barista.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +214,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="ai-panel" aria-labelledby="barista-heading">
++      <h2 id="barista-heading">A little coffee conversation</h2>
++      <p class="ai-intro">Meet your local AI barista. Explore your next cup, understand feedback, or take a conversation in a new direction.</p>
++      <p class="ai-note">Runs on your device in a browser with built-in AI support. The first use may download a model. Please ask in English.</p>
++      <div class="ai-actions"><button type="button" class="btn secondary" id="stop-ai" disabled>Stop generation</button></div>
++      <p id="ai-status" class="ai-status" role="status" aria-live="polite">Ready to check local AI when you begin.</p>
++      <progress id="model-progress" max="1" value="0" aria-label="Model download progress" hidden></progress>
++      <div class="ai-tools">
++        <section class="ai-tool" aria-labelledby="ask-heading">
++          <h3 id="ask-heading">Ask the barista</h3>
++          <p>Curious about the Maple Oat Latte or Cold Brew?</p>
++          <form id="barista-form">
++            <label for="barista-question">Your coffee question</label>
++            <textarea id="barista-question" placeholder="What makes the Cold Brew so smooth?" maxlength="2000" required></textarea>
++            <button type="submit" class="btn" id="ask-the-barista">Ask the barista</button>
++          </form>
++          <div id="barista-answer" class="ai-output" role="region" aria-label="Barista conversation" tabindex="0">Your conversation will appear here.</div>
++        </section>
++        <section class="ai-tool" aria-labelledby="feedback-heading">
++          <h3 id="feedback-heading">Customer feedback analyzer</h3>
++          <p>Turn a customer’s thoughts into a sentiment snapshot.</p>
++          <form id="sentiment-form">
++            <label for="customer-feedback">Customer feedback</label>
++            <textarea id="customer-feedback" placeholder="The latte was lovely and the service was welcoming." maxlength="4000" required></textarea>
++            <button type="submit" class="btn" id="sentiment-btn">Analyze feedback</button>
++          </form>
++          <p class="ai-note">Score: −1 (negative) to 1 (positive). Category: negative, neutral, or positive.</p>
++          <pre id="sentiment-answer" class="ai-output" aria-live="polite">Your JSON result will appear here.</pre>
++        </section>
++      </div>
++      <section class="ai-tool ai-branching" aria-labelledby="branch-heading">
++        <h3 id="branch-heading">Conversation branching</h3>
++        <p>Clone the active conversation to explore another question with the same history. Keep up to three conversations; the oldest inactive one is released when needed.</p>
++        <label for="active-session">Active conversation</label>
++        <select id="active-session" disabled><option>No active conversation</option></select>
++        <div class="ai-actions">
++          <button type="button" class="btn" id="clone-btn" disabled>Clone conversation</button>
++          <button type="button" class="btn secondary" id="release-session" disabled>Release conversation</button>
++          <button type="button" class="btn secondary" id="reset-sessions" disabled>Clear all conversations</button>
++        </div>
++        <p id="context-usage" class="ai-note" role="status">No context in use.</p>
++      </section>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

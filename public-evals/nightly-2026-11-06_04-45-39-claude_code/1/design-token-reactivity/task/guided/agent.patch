@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,56 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Layout density: a higher-order design token set on #target-container
++       and read by descendants via container style queries. */
++    :root {
++      --style-queries-supported: check;
++    }
++
++    #target-container {
++      --density: comfortable;
++      container-name: density;
++    }
++
++    #target-item {
++      transition: padding 0.3s ease;
++    }
++
++    @container density style(--density: spacious) {
++      #target-item {
++        padding: 48px 36px;
++      }
++    }
++
++    .density-controls {
++      text-align: center;
++    }
++
++    /* Hidden unless the browser supports container style queries */
++    #toggle-spacious {
++      display: none;
++      font: inherit;
++      cursor: pointer;
++      background: white;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      padding: 8px 16px;
++    }
++
++    #toggle-spacious[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    @container style(--style-queries-supported: check) {
++      #toggle-spacious {
++        display: inline-block;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,24 +224,31 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="density-controls">
++        <button type="button" id="toggle-spacious" aria-pressed="false" aria-controls="target-container">
++          Spacious layout
++        </button>
++      </div>
++      <div id="target-container">
++        <div class="grid">
++          <div class="card" id="target-item">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +261,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const densityToggle = document.getElementById('toggle-spacious');
++    const densityContainer = document.getElementById('target-container');
++
++    densityToggle.addEventListener('click', () => {
++      const spacious = densityToggle.getAttribute('aria-pressed') !== 'true';
++      densityToggle.setAttribute('aria-pressed', String(spacious));
++      // Only the ancestor's design token changes; CSS style queries do the rest.
++      densityContainer.style.setProperty('--density', spacious ? 'spacious' : 'comfortable');
++    });
++  </script>
+ </body>
+ 
+ </html>

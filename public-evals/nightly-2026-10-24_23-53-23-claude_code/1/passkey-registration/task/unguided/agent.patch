@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Skip the Password</h2>
++      <p>Create a passkey to sign in faster and earn your welcome reward.</p>
++      <button type="button" class="btn" data-testid="register-button" id="register-button"
++        style="border: none; cursor: pointer; font-size: 1rem;">Create passkey</button>
++      <p id="register-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +213,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const button = document.querySelector('[data-testid="register-button"]');
++      const status = document.getElementById('register-status');
++
++      const b64urlToBuffer = (value) => {
++        const b64 = value.replace(/-/g, '+').replace(/_/g, '/')
++          .padEnd(Math.ceil(value.length / 4) * 4, '=');
++        return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
++      };
++
++      const bufferToB64url = (buffer) => {
++        let bin = '';
++        new Uint8Array(buffer).forEach((b) => { bin += String.fromCharCode(b); });
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      };
++
++      // Prefer the native JSON helpers; fall back to manual conversion.
++      const parseOptions = (json) => {
++        if (window.PublicKeyCredential && PublicKeyCredential.parseCreationOptionsFromJSON) {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuffer(json.challenge),
++          user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++          excludeCredentials: (json.excludeCredentials || []).map((c) => ({
++            ...c,
++            id: b64urlToBuffer(c.id),
++          })),
++        };
++      };
++
++      const serializeCredential = (cred) => {
++        if (typeof cred.toJSON === 'function') return cred.toJSON();
++        const response = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment,
++          clientExtensionResults: cred.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToB64url(response.clientDataJSON),
++            attestationObject: bufferToB64url(response.attestationObject),
++            transports: response.getTransports ? response.getTransports() : [],
++          },
++        };
++      };
++
++      const postJSON = async (url, body) => {
++        const res = await fetch(url, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(body),
++        });
++        if (!res.ok) throw new Error(`Request to ${url} failed (${res.status})`);
++        return res.json();
++      };
++
++      const setStatus = (message) => { status.textContent = message; };
++
++      button.addEventListener('click', async () => {
++        if (!window.isSecureContext || !window.PublicKeyCredential) {
++          setStatus('Passkeys are not supported in this browser.');
++          return;
++        }
++
++        button.disabled = true;
++        setStatus('Creating passkey…');
++        try {
++          // The server generates the challenge; never create one client-side.
++          const options = await postJSON('/api/register/options', { promotion: true });
++          const credential = await navigator.credentials.create({
++            publicKey: parseOptions(options.publicKey || options),
++          });
++          if (!credential) throw new Error('No credential was created.');
++
++          const result = await postJSON('/api/register/verify', serializeCredential(credential));
++          if (result && result.verified === false) throw new Error('Verification failed.');
++          setStatus('Passkey created successfully.');
++        } catch (err) {
++          if (err && err.name === 'NotAllowedError') {
++            setStatus('Passkey creation was cancelled.');
++          } else if (err && err.name === 'InvalidStateError') {
++            setStatus('A passkey already exists for this account on this device.');
++          } else {
++            setStatus('Could not create passkey. Please try again.');
++          }
++        } finally {
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

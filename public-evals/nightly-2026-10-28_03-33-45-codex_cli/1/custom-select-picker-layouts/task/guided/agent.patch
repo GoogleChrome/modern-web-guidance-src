@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,9 @@
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
++      min-height: 430px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -92,8 +93,139 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-order {
++      width: min(360px, 100%);
++      margin-top: 22px;
++    }
++
++    .hero-order label {
++      display: block;
++      margin-bottom: 6px;
++      text-align: left;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .roast-select {
++      width: 100%;
++      min-height: 52px;
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fffaf5;
++      color: var(--text);
++      font: inherit;
++      cursor: pointer;
++      text-align: left;
++    }
++
++    .roast-select:focus-visible,
++    .hero-order .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .hero-order .btn {
++      border: 1px solid var(--secondary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select,
++      .roast-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-select::picker(select) {
++        width: anchor-size(width);
++        max-width: calc(100vw - 32px);
++        margin-block: 8px;
++        padding: 8px;
++        border: 1px solid var(--secondary);
++        border-radius: 12px;
++        background: #fffaf5;
++        color: var(--text);
++        box-shadow: 0 12px 32px #24150e40;
++      }
++
++      /* Apply grid only while open so it cannot reveal a closed picker. */
++      .roast-select:open::picker(select) {
++        display: grid;
++        grid-template-columns: repeat(3, minmax(0, 1fr));
++        gap: 6px;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++      }
++
++      .roast-select option {
++        position: relative;
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 6px;
++        padding: 14px 4px 10px;
++        border: 2px solid transparent;
++        border-radius: 8px;
++        text-align: center;
++        cursor: pointer;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: #eee3d8;
++        outline-offset: -3px;
++      }
++
++      .roast-select option:checked {
++        border-color: var(--primary);
++        background: #f0e2cf;
++      }
++
++      .roast-select option::checkmark {
++        position: absolute;
++        top: 2px;
++        right: 5px;
++        color: var(--primary);
++        font-weight: 700;
++      }
++
++      .roast-art {
++        width: 48px;
++        height: 48px;
++        flex-shrink: 0;
++      }
++
++      .roast-name {
++        font-weight: 700;
++      }
++
++      .roast-notes {
++        font-size: 0.75rem;
++        line-height: 1.4;
++        color: #685247;
++      }
++
++      .roast-select selectedcontent {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .roast-select selectedcontent .roast-art {
++        width: 28px;
++        height: 28px;
++      }
++
++      .roast-select selectedcontent .roast-notes {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +302,42 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="hero-order" action="/order-online" method="get">
++      <label for="hero-roast">Choose your roast</label>
++      <select class="roast-select" id="hero-roast" name="roast">
++        <button type="button"><selectedcontent></selectedcontent></button>
++        <option value="light" aria-label="Light roast — bright and citrusy">
++          <svg class="roast-art" aria-hidden="true" viewBox="0 0 48 48" fill="none">
++            <circle cx="24" cy="24" r="24" fill="#f4e5cc"/>
++            <ellipse cx="24" cy="24" rx="11" ry="16" transform="rotate(35 24 24)" fill="#b47a45"/>
++            <path d="M32 12C18 18 30 29 16 36" stroke="#f4d7ad" stroke-width="2.5" stroke-linecap="round"/>
++          </svg>
++          <span class="roast-name">Light</span>
++          <span class="roast-notes">Bright &amp; citrusy</span>
++        </option>
++        <option value="medium" selected aria-label="Medium roast — smooth and balanced">
++          <svg class="roast-art" aria-hidden="true" viewBox="0 0 48 48" fill="none">
++            <circle cx="24" cy="24" r="24" fill="#ead6c2"/>
++            <ellipse cx="24" cy="24" rx="11" ry="16" transform="rotate(35 24 24)" fill="#805032"/>
++            <path d="M32 12C18 18 30 29 16 36" stroke="#c69c72" stroke-width="2.5" stroke-linecap="round"/>
++          </svg>
++          <span class="roast-name">Medium</span>
++          <span class="roast-notes">Smooth &amp; balanced</span>
++        </option>
++        <option value="dark" aria-label="Dark roast — bold and chocolatey">
++          <svg class="roast-art" aria-hidden="true" viewBox="0 0 48 48" fill="none">
++            <circle cx="24" cy="24" r="24" fill="#dfcbbf"/>
++            <ellipse cx="24" cy="24" rx="11" ry="16" transform="rotate(35 24 24)" fill="#3e2723"/>
++            <path d="M32 12C18 18 30 29 16 36" stroke="#956e58" stroke-width="2.5" stroke-linecap="round"/>
++          </svg>
++          <span class="roast-name">Dark</span>
++          <span class="roast-notes">Bold &amp; chocolatey</span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>

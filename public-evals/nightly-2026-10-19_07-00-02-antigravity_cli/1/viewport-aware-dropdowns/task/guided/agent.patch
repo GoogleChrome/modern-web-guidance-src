@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -48,8 +53,9 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -71,8 +77,76 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options Dropdown Menu & Top Layer Anchor Positioning */
++    #trigger-btn {
++      anchor-name: --trigger-btn;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn:focus-visible {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    #action-panel {
++      position-anchor: --trigger-btn;
++      inset-area: block-end span-inline-end;
++      position-area: block-end span-inline-end;
++      position-try-options: flip-block, flip-inline, flip-block flip-inline;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      inset: auto;
++      margin: 6px 0;
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
++      min-width: 170px;
++    }
++
++    #action-panel:is(:popover-open, .\:popover-open) {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .action-panel-btn {
++      background: transparent;
++      border: none;
++      color: var(--text);
++      padding: 8px 14px;
++      text-align: left;
++      font-family: inherit;
++      font-size: 0.9rem;
++      border-radius: 4px;
++      cursor: pointer;
++      width: 100%;
++      white-space: nowrap;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .action-panel-btn:hover,
++    .action-panel-btn:focus-visible {
++      background-color: var(--secondary);
++      color: var(--primary);
++      outline: none;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +237,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel">Options</button>
++        <div id="action-panel" popover="auto">
++          <button type="button" class="action-panel-btn">Seasonal Offers</button>
++          <button type="button" class="action-panel-btn">Account Settings</button>
++          <button type="button" class="action-panel-btn">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 

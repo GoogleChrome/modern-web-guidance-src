@@ -1,0 +1,1212 @@
+diff --git a/index.html b/index.html
+index 66c9173..849da99 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,16 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #efebe9;
++      --success: #2e7d32;
+     }
+ 
+     * {
+@@ -25,6 +31,9 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     /* Navigation */
+@@ -38,17 +47,22 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      cursor: pointer;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -58,20 +72,49 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      transition: color 0.2s, border-color 0.2s;
++      padding-bottom: 4px;
++      border-bottom: 2px solid transparent;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      border-bottom-color: var(--accent);
++      font-weight: 600;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* SPA View Caching & Visibility */
++    .spa-view[hidden] {
++      display: none !important;
++    }
++
++    .spa-view {
++      flex: 1;
++      animation: fadeIn 0.18s ease-out;
++    }
++
++    @keyframes fadeIn {
++      from {
++        opacity: 0.6;
++        transform: translateY(3px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -93,6 +136,24 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .view-banner {
++      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
++      color: white;
++      padding: 40px 20px;
++      text-align: center;
++    }
++
++    .view-banner h1 {
++      font-size: 2.3rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .view-banner p {
++      color: var(--secondary);
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -102,24 +163,62 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      border: 1px solid var(--border);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 170px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 14px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary-dark);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary-dark);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 3px 8px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,10 +228,180 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Interactive Toolbar & Controls */
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: space-between;
++      align-items: center;
++      background: white;
++      padding: 16px 20px;
++      border-radius: 10px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
++      margin-bottom: 24px;
++    }
++
++    .filter-pills {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .pill {
++      padding: 7px 15px;
++      border-radius: 20px;
++      border: 1px solid var(--secondary);
++      background: var(--light);
++      color: var(--text);
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: all 0.2s;
++    }
++
++    .pill.active,
++    .pill:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .search-input,
++    .form-input,
++    .form-select {
++      padding: 9px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .search-input {
++      min-width: 240px;
++    }
++
++    /* Two-column Layouts */
++    .split-layout {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 28px;
++      align-items: start;
++    }
++
++    @media (max-width: 820px) {
++      .split-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--border);
++    }
++
++    .panel h2,
++    .panel h3 {
++      color: var(--primary);
++      margin-bottom: 14px;
++    }
++
++    /* Progress Bar */
++    .progress-track {
++      width: 100%;
++      height: 14px;
++      background: var(--border);
++      border-radius: 999px;
++      overflow: hidden;
++      margin: 12px 0;
++    }
++
++    .progress-fill {
++      height: 100%;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      transition: width 0.3s ease;
++    }
++
++    /* Form Controls */
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++    }
++
++    .form-group .form-input,
++    .form-group .form-select {
++      width: 100%;
++    }
++
++    .checkbox-row {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin: 10px 0;
++      cursor: pointer;
++    }
++
++    .list-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .list-item:last-child {
++      border-bottom: none;
++    }
++
++    .status-toast {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 6px;
++      background: #e8f5e9;
++      color: var(--success);
++      font-size: 0.9rem;
++      font-weight: 600;
+     }
+ 
+     footer {
+@@ -157,45 +426,54 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main Navigation">
++    <a href="/" class="logo" data-spa-link data-route="home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-spa-link data-route="menu">Menu</a></li>
++      <li><a href="/locations" data-spa-link data-route="locations">Locations</a></li>
++      <li><a href="/rewards" data-spa-link data-route="rewards">Rewards</a></li>
++      <li><a href="/account" data-spa-link data-route="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
++  <!-- SPA View Host: Views are mounted once and cached offscreen via hidden attribute -->
++  <div id="spa-router-outlet">
++    <!-- HOME VIEW (initial active view) -->
++    <div id="view-home" class="spa-view" data-view="home">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu" data-spa-link data-route="menu" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <img class="card-img" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu" data-spa-link data-route="menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu" data-spa-link data-route="menu" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <img class="card-img" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu" data-spa-link data-route="menu" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +485,739 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      const outlet = document.getElementById('spa-router-outlet');
++
++      // Map of route keys to mounted DOM view elements (preserves offscreen DOM state)
++      const viewCache = new Map();
++      const homeViewEl = document.getElementById('view-home');
++      if (homeViewEl) {
++        viewCache.set('home', homeViewEl);
++      }
++
++      const ROUTES = {
++        '/': 'home',
++        '/index.html': 'home',
++        '/menu': 'menu',
++        '/locations': 'locations',
++        '/rewards': 'rewards',
++        '/account': 'account'
++      };
++
++      const ROUTE_TITLES = {
++        home: 'The Daily Grind | Artisanal Coffee',
++        menu: 'Menu | The Daily Grind',
++        locations: 'Locations | The Daily Grind',
++        rewards: 'Rewards | The Daily Grind',
++        account: 'My Account | The Daily Grind'
++      };
++
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.75,
++          calories: '210 cal',
++          desc: 'Creamy oat milk steamed with rich espresso and real Vermont maple syrup.',
++          img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.50,
++          calories: '15 cal',
++          desc: 'Double shot of our signature smokey Sumatra & Colombia dark blend.',
++          img: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'nitro-cold-brew',
++          name: '18-Hour Cold Brew',
++          category: 'cold-brew',
++          price: 4.95,
++          calories: '5 cal',
++          desc: 'Small-batch coarse ground beans steeped cold for 18 hours for velvety smoothness.',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'cardamom-rose-cortado',
++          name: 'Cardamom Honey Cortado',
++          category: 'seasonal',
++          price: 5.25,
++          calories: '130 cal',
++          desc: 'Equal parts espresso and silky warm milk infused with organic wildflower honey and cardamom.',
++          img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'vanilla-sweet-cream-brew',
++          name: 'Vanilla Sweet Cream Cold Brew',
++          category: 'cold-brew',
++          price: 5.50,
++          calories: '110 cal',
++          desc: 'Our slow-steeped cold brew topped with house-made Madagascar vanilla sweet cream.',
++          img: 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'almond-croissant',
++          name: 'Toasted Almond Croissant',
++          category: 'bakery',
++          price: 4.50,
++          calories: '380 cal',
++          desc: 'Flaky French butter pastry filled with sweet almond frangipane and dusted with powdered sugar.',
++          img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80'
++        }
++      ];
++
++      const LOCATIONS_DATA = [
++        {
++          id: 'downtown-roastery',
++          name: 'Downtown Flagship & Roastery',
++          neighborhood: 'downtown',
++          address: '412 Mercer St, Suite 100',
++          hours: 'Mon–Sun: 6:00 AM – 8:00 PM',
++          features: ['Pour-Over Bar', 'Roastery Tours', 'Patio Seating', 'High-Speed Wi-Fi'],
++          img: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'riverside-cafe',
++          name: 'Riverside Greenhouse Cafe',
++          neighborhood: 'riverside',
++          address: '88 Riverwalk Way',
++          hours: 'Mon–Fri: 6:30 AM – 7:00 PM | Sat–Sun: 7:00 AM – 7:00 PM',
++          features: ['Dog Friendly', 'Outdoor Deck', 'Nitro on Tap'],
++          img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'arts-district',
++          name: 'Arts District Espresso Loft',
++          neighborhood: 'arts',
++          address: '1205 Gallery Row',
++          hours: 'Daily: 7:00 AM – 9:00 PM',
++          features: ['Late Night Study', 'Local Bakery Goods', 'Community Events'],
++          img: 'https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'university-commons',
++          name: 'University Commons Express',
++          neighborhood: 'uptown',
++          address: '304 College Ave',
++          hours: 'Mon–Fri: 6:00 AM – 10:00 PM | Weekends: 7:30 AM – 9:00 PM',
++          features: ['Mobile Pickup Lane', 'Study Booths', 'Power Outlets'],
++          img: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=600&q=80'
++        }
++      ];
++
++      const REWARD_TIERS = [
++        { id: 'espresso-shot', cost: 50, title: 'Extra Espresso Shot or Syrup', desc: 'Customize any handcrafted drink on us.' },
++        { id: 'brewed-coffee', cost: 100, title: 'Hot Drip Coffee or Warm Pastry', desc: 'Freshly brewed single-origin drip or bakery item.' },
++        { id: 'handcrafted-drink', cost: 200, title: 'Any Handcrafted Beverage', desc: 'Redeem for any size seasonal latte, cold brew, or espresso drink.' },
++        { id: 'whole-bean-bag', cost: 400, title: '12oz Whole Bean Coffee Bag', desc: 'Take home a freshly roasted bag of our signature beans.' }
++      ];
++
++      function buildMenuView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-menu';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'menu';
++
++        wrapper.innerHTML = `
++          <header class="view-banner">
++            <h1>Artisanal Menu</h1>
++            <p>Crafted to order with organic milk alternatives, house-made syrups, and freshly roasted beans.</p>
++          </header>
++          <main class="container">
++            <div class="toolbar">
++              <div class="filter-pills" role="tablist" aria-label="Menu Categories">
++                <button type="button" class="pill active" data-category="all">All Items</button>
++                <button type="button" class="pill" data-category="seasonal">Seasonal</button>
++                <button type="button" class="pill" data-category="espresso">Espresso</button>
++                <button type="button" class="pill" data-category="cold-brew">Cold Brew</button>
++                <button type="button" class="pill" data-category="bakery">Bakery</button>
++              </div>
++              <input type="search" class="search-input" id="menu-search-input" placeholder="Search drinks & pastries..." aria-label="Search menu items">
++            </div>
++
++            <div class="split-layout">
++              <div>
++                <div class="grid" id="menu-items-grid">
++                  ${MENU_ITEMS.map(item => `
++                    <article class="card menu-item-card" data-category="${item.category}" data-name="${item.name.toLowerCase()} ${item.desc.toLowerCase()}">
++                      <div>
++                        <img class="card-img" src="${item.img}" alt="${item.name}">
++                        <span class="badge">${item.category.replace('-', ' ')} &bull; ${item.calories}</span>
++                        <h3>${item.name}</h3>
++                        <p>${item.desc}</p>
++                      </div>
++                      <div>
++                        <div class="price-tag">$${item.price.toFixed(2)}</div>
++                        <button type="button" class="btn add-to-order-btn" data-id="${item.id}" data-name="${item.name}" data-price="${item.price}">Add to Order</button>
++                      </div>
++                    </article>
++                  `).join('')}
++                </div>
++              </div>
++
++              <aside class="panel" id="menu-order-tray">
++                <h3>Your Order Tray</h3>
++                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">Customize and review items for pickup.</p>
++                <div class="form-group">
++                  <label for="menu-milk-select">Default Milk Preference</label>
++                  <select id="menu-milk-select" class="form-select">
++                    <option value="Whole Milk">Whole Milk</option>
++                    <option value="Oat Milk" selected>Barista Oat Milk (+$0.00)</option>
++                    <option value="Almond Milk">Almond Milk</option>
++                    <option value="Coconut Milk">Coconut Milk</option>
++                  </select>
++                </div>
++                <div id="menu-cart-list" style="margin: 16px 0;">
++                  <p style="color: var(--text-muted); font-style: italic;">No items in your tray yet.</p>
++                </div>
++                <div style="border-top: 2px solid var(--border); padding-top: 12px; display: flex; justify-content: space-between; font-weight: bold;">
++                  <span>Estimated Total:</span>
++                  <span id="menu-cart-total">$0.00</span>
++                </div>
++              </aside>
++            </div>
++          </main>
++        `;
++
++        // Interactive state inside Menu view (persists naturally in DOM)
++        const cart = [];
++        const pills = wrapper.querySelectorAll('.pill');
++        const searchInput = wrapper.querySelector('#menu-search-input');
++        const cards = wrapper.querySelectorAll('.menu-item-card');
++        const cartList = wrapper.querySelector('#menu-cart-list');
++        const cartTotal = wrapper.querySelector('#menu-cart-total');
++        let activeCategory = 'all';
++
++        function filterMenu() {
++          const query = searchInput.value.trim().toLowerCase();
++          cards.forEach(card => {
++            const matchesCat = activeCategory === 'all' || card.dataset.category === activeCategory;
++            const matchesQuery = !query || card.dataset.name.includes(query);
++            card.hidden = !(matchesCat && matchesQuery);
++          });
++        }
++
++        pills.forEach(pill => {
++          pill.addEventListener('click', () => {
++            pills.forEach(p => p.classList.remove('active'));
++            pill.classList.add('active');
++            activeCategory = pill.dataset.category;
++            filterMenu();
++          });
++        });
++
++        searchInput.addEventListener('input', filterMenu);
++
++        function renderCart() {
++          if (cart.length === 0) {
++            cartList.innerHTML = '<p style="color: var(--text-muted); font-style: italic;">No items in your tray yet.</p>';
++            cartTotal.textContent = '$0.00';
++            return;
++          }
++          let sum = 0;
++          cartList.innerHTML = cart.map(entry => {
++            sum += entry.price * entry.qty;
++            return `
++              <div class="list-item">
++                <div>
++                  <strong>${entry.name}</strong>
++                  <div style="font-size: 0.8rem; color: var(--text-muted);">Qty: ${entry.qty}</div>
++                </div>
++                <span>$${(entry.price * entry.qty).toFixed(2)}</span>
++              </div>
++            `;
++          }).join('');
++          cartTotal.textContent = '$' + sum.toFixed(2);
++        }
++
++        wrapper.querySelectorAll('.add-to-order-btn').forEach(btn => {
++          btn.addEventListener('click', () => {
++            const id = btn.dataset.id;
++            const name = btn.dataset.name;
++            const price = parseFloat(btn.dataset.price);
++            const existing = cart.find(c => c.id === id);
++            if (existing) {
++              existing.qty += 1;
++            } else {
++              cart.push({ id, name, price, qty: 1 });
++            }
++            btn.textContent = `Added (${existing ? existing.qty : 1})`;
++            renderCart();
++          });
++        });
++
++        return wrapper;
++      }
++
++      function buildLocationsView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-locations';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'locations';
++
++        wrapper.innerHTML = `
++          <header class="view-banner">
++            <h1>Our Neighborhood Cafes</h1>
++            <p>Find your nearest Daily Grind roastery, check live seating availability, and set your pickup store.</p>
++          </header>
++          <main class="container">
++            <div class="toolbar">
++              <div class="filter-pills" role="tablist" aria-label="Neighborhood Filter">
++                <button type="button" class="pill active" data-area="all">All Areas</button>
++                <button type="button" class="pill" data-area="downtown">Downtown</button>
++                <button type="button" class="pill" data-area="riverside">Riverside</button>
++                <button type="button" class="pill" data-area="arts">Arts District</button>
++                <button type="button" class="pill" data-area="uptown">Uptown</button>
++              </div>
++              <input type="search" class="search-input" id="location-search-input" placeholder="Filter by street, feature, or name..." aria-label="Filter locations">
++            </div>
++
++            <div class="panel" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
++              <div>
++                <strong>Preferred Pickup Cafe:</strong>
++                <span id="selected-cafe-banner" style="color: var(--primary); font-weight: 600; margin-left: 6px;">Downtown Flagship & Roastery</span>
++              </div>
++              <span class="badge" style="margin: 0;">Order Ahead Ready</span>
++            </div>
++
++            <div class="grid" id="locations-grid">
++              ${LOCATIONS_DATA.map((loc, idx) => `
++                <article class="card location-card" data-area="${loc.neighborhood}" data-search="${(loc.name + ' ' + loc.address + ' ' + loc.features.join(' ')).toLowerCase()}">
++                  <div>
++                    <img class="card-img" src="${loc.img}" alt="${loc.name}">
++                    <span class="badge">${loc.neighborhood}</span>
++                    <h3>${loc.name}</h3>
++                    <p style="font-weight: 600; margin-bottom: 4px;">${loc.address}</p>
++                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">${loc.hours}</p>
++                    <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px;">
++                      ${loc.features.map(f => `<span style="font-size: 0.75rem; background: var(--light); border: 1px solid var(--secondary); padding: 2px 8px; border-radius: 4px;">${f}</span>`).join('')}
++                    </div>
++                  </div>
++                  <button type="button" class="btn ${idx === 0 ? 'btn-accent' : ''}" data-select-location="${loc.name}">
++                    ${idx === 0 ? 'Selected Pickup Store' : 'Set as Pickup Store'}
++                  </button>
++                </article>
++              `).join('')}
++            </div>
++          </main>
++        `;
++
++        const areaPills = wrapper.querySelectorAll('.pill');
++        const searchInput = wrapper.querySelector('#location-search-input');
++        const locationCards = wrapper.querySelectorAll('.location-card');
++        const selectedBanner = wrapper.querySelector('#selected-cafe-banner');
++        const selectBtns = wrapper.querySelectorAll('[data-select-location]');
++        let currentArea = 'all';
++
++        function filterLocations() {
++          const q = searchInput.value.trim().toLowerCase();
++          locationCards.forEach(card => {
++            const matchArea = currentArea === 'all' || card.dataset.area === currentArea;
++            const matchQuery = !q || card.dataset.search.includes(q);
++            card.hidden = !(matchArea && matchQuery);
++          });
++        }
++
++        areaPills.forEach(pill => {
++          pill.addEventListener('click', () => {
++            areaPills.forEach(p => p.classList.remove('active'));
++            pill.classList.add('active');
++            currentArea = pill.dataset.area;
++            filterLocations();
++          });
++        });
++
++        searchInput.addEventListener('input', filterLocations);
++
++        selectBtns.forEach(btn => {
++          btn.addEventListener('click', () => {
++            const locName = btn.dataset.selectLocation;
++            selectedBanner.textContent = locName;
++            selectBtns.forEach(b => {
++              b.classList.remove('btn-accent');
++              b.textContent = 'Set as Pickup Store';
++            });
++            btn.classList.add('btn-accent');
++            btn.textContent = 'Selected Pickup Store';
++          });
++        });
++
++        return wrapper;
++      }
++
++      function buildRewardsView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-rewards';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'rewards';
++
++        wrapper.innerHTML = `
++          <header class="view-banner">
++            <h1>Daily Grind Bean Rewards</h1>
++            <p>Earn 10 Beans for every $1 spent. Redeem Beans for free handcrafted drinks, pastries, and whole-bean coffee.</p>
++          </header>
++          <main class="container">
++            <div class="split-layout">
++              <div>
++                <div class="panel" style="margin-bottom: 24px;">
++                  <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
++                    <div>
++                      <span class="badge">Gold Roast Member</span>
++                      <h2><span id="rewards-points-balance">340</span> Beans Available</h2>
++                    </div>
++                    <p style="font-size: 0.9rem; color: var(--text-muted);" id="rewards-next-tier-msg">60 Beans away from a 12oz Whole Bean Coffee Bag (400 Beans)</p>
++                  </div>
++                  <div class="progress-track">
++                    <div class="progress-fill" id="rewards-progress-bar" style="width: 85%;"></div>
++                  </div>
++                </div>
++
++                <h3 style="margin-bottom: 14px; color: var(--primary);">Redeem Your Beans</h3>
++                <div class="grid">
++                  ${REWARD_TIERS.map(tier => `
++                    <div class="card">
++                      <div>
++                        <span class="badge">${tier.cost} Beans</span>
++                        <h3>${tier.title}</h3>
++                        <p>${tier.desc}</p>
++                      </div>
++                      <button type="button" class="btn redeem-reward-btn" data-cost="${tier.cost}" data-title="${tier.title}">
++                        Redeem (${tier.cost} Beans)
++                      </button>
++                    </div>
++                  `).join('')}
++                </div>
++              </div>
++
++              <aside class="panel">
++                <h3>Claim Receipt Code</h3>
++                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">Forgot to scan your app in-store? Enter your receipt code to add bonus Beans.</p>
++                <form id="rewards-promo-form">
++                  <div class="form-group">
++                    <label for="rewards-code-input">Receipt or Promo Code</label>
++                    <input type="text" id="rewards-code-input" class="form-input" placeholder="e.g. MORNING50">
++                  </div>
++                  <button type="submit" class="btn" style="width: 100%; margin-top: 4px;">Add Bonus Beans (+50)</button>
++                </form>
++                <div id="rewards-activity-status" class="status-toast" hidden></div>
++
++                <h3 style="margin-top: 24px;">Recent Activity</h3>
++                <div id="rewards-history-list">
++                  <div class="list-item">
++                    <span>Downtown Roastery Visit</span>
++                    <strong>+65 Beans</strong>
++                  </div>
++                  <div class="list-item">
++                    <span>Reusable Cup Bonus</span>
++                    <strong>+25 Beans</strong>
++                  </div>
++                </div>
++              </aside>
++            </div>
++          </main>
++        `;
++
++        let points = 340;
++        const pointsEl = wrapper.querySelector('#rewards-points-balance');
++        const progressEl = wrapper.querySelector('#rewards-progress-bar');
++        const nextMsgEl = wrapper.querySelector('#rewards-next-tier-msg');
++        const statusEl = wrapper.querySelector('#rewards-activity-status');
++        const historyList = wrapper.querySelector('#rewards-history-list');
++        const promoForm = wrapper.querySelector('#rewards-promo-form');
++        const codeInput = wrapper.querySelector('#rewards-code-input');
++
++        function updateRewardsUI(message) {
++          pointsEl.textContent = String(points);
++          const pct = Math.min(100, Math.round((points / 400) * 100));
++          progressEl.style.width = pct + '%';
++          if (points >= 400) {
++            nextMsgEl.textContent = 'Top reward unlocked! You can redeem a 12oz Whole Bean Coffee Bag.';
++          } else {
++            nextMsgEl.textContent = `${400 - points} Beans away from a 12oz Whole Bean Coffee Bag (400 Beans)`;
++          }
++          if (message) {
++            statusEl.textContent = message;
++            statusEl.hidden = false;
++          }
++        }
++
++        wrapper.querySelectorAll('.redeem-reward-btn').forEach(btn => {
++          btn.addEventListener('click', () => {
++            const cost = parseInt(btn.dataset.cost, 10);
++            const title = btn.dataset.title;
++            if (points < cost) {
++              updateRewardsUI(`Need ${cost - points} more Beans to redeem ${title}.`);
++              return;
++            }
++            points -= cost;
++            const item = document.createElement('div');
++            item.className = 'list-item';
++            item.innerHTML = `<span>Redeemed: ${title}</span><strong>-${cost} Beans</strong>`;
++            historyList.prepend(item);
++            updateRewardsUI(`Redeemed "${title}"! Voucher added to your account.`);
++          });
++        });
++
++        promoForm.addEventListener('submit', (e) => {
++          e.preventDefault();
++          const code = codeInput.value.trim() || 'RECEIPT-BONUS';
++          points += 50;
++          const item = document.createElement('div');
++          item.className = 'list-item';
++          item.innerHTML = `<span>Promo Code (${code})</span><strong>+50 Beans</strong>`;
++          historyList.prepend(item);
++          codeInput.value = '';
++          updateRewardsUI(`Added +50 Beans from code "${code}".`);
++        });
++
++        return wrapper;
++      }
++
++      function buildAccountView() {
++        const wrapper = document.createElement('div');
++        wrapper.id = 'view-account';
++        wrapper.className = 'spa-view';
++        wrapper.dataset.view = 'account';
++
++        wrapper.innerHTML = `
++          <header class="view-banner">
++            <h1>My Account &amp; Preferences</h1>
++            <p>Manage your personal coffee profile, default brew customizations, and coffee club subscription.</p>
++          </header>
++          <main class="container">
++            <div class="split-layout">
++              <section class="panel">
++                <h2>Profile &amp; Barista Defaults</h2>
++                <form id="account-profile-form">
++                  <div class="form-group">
++                    <label for="account-name">Full Name</label>
++                    <input type="text" id="account-name" class="form-input" value="Alex Rivera">
++                  </div>
++                  <div class="form-group">
++                    <label for="account-email">Email Address</label>
++                    <input type="email" id="account-email" class="form-input" value="alex.rivera@example.com">
++                  </div>
++                  <div class="form-group">
++                    <label for="account-roast">Favorite Roast Profile</label>
++                    <select id="account-roast" class="form-select">
++                      <option value="light">Single-Origin Light Roast (Floral &amp; Citrus)</option>
++                      <option value="medium" selected>House Medium Balance (Caramel &amp; Hazelnut)</option>
++                      <option value="dark">Artisanal Dark Espresso (Smokey &amp; Bold)</option>
++                    </select>
++                  </div>
++                  <div class="form-group">
++                    <label for="account-notes">Cup Label Nickname / Barista Note</label>
++                    <input type="text" id="account-notes" class="form-input" value="Alex - Extra hot, light foam" placeholder="e.g. Extra hot, oat milk">
++                  </div>
++
++                  <div style="margin: 18px 0;">
++                    <label class="checkbox-row">
++                      <input type="checkbox" id="account-notify-order" checked>
++                      <span>SMS text alerts when mobile order hits the pickup bar</span>
++                    </label>
++                    <label class="checkbox-row">
++                      <input type="checkbox" id="account-notify-roast" checked>
++                      <span>Early access to limited micro-lot seasonal roasts</span>
++                    </label>
++                  </div>
++
++                  <button type="submit" class="btn">Save Account Preferences</button>
++                  <div id="account-save-status" class="status-toast" hidden></div>
++                </form>
++              </section>
++
++              <aside>
++                <div class="panel" style="margin-bottom: 24px;">
++                  <h3>Daily Grind Wallet</h3>
++                  <p style="font-size: 0.9rem; color: var(--text-muted);">Preloaded Cafe Card (#4829)</p>
++                  <div class="price-tag" style="font-size: 1.8rem; margin: 12px 0;" id="account-wallet-balance">$24.50</div>
++                  <button type="button" class="btn btn-outline" id="account-reload-btn" style="width: 100%;">Quick Reload +$15.00</button>
++                </div>
++
++                <div class="panel">
++                  <h3>Recent Mobile Orders</h3>
++                  <div class="list-item">
++                    <div>
++                      <strong>Maple Oat Latte &amp; Croissant</strong>
++                      <div style="font-size: 0.8rem; color: var(--text-muted);">Downtown Roastery &bull; Yesterday</div>
++                    </div>
++                    <span>$10.25</span>
++                  </div>
++                  <div class="list-item">
++                    <div>
++                      <strong>18-Hour Cold Brew (Large)</strong>
++                      <div style="font-size: 0.8rem; color: var(--text-muted);">Riverside Cafe &bull; 4 days ago</div>
++                    </div>
++                    <span>$4.95</span>
++                  </div>
++                </div>
++              </aside>
++            </div>
++          </main>
++        `;
++
++        const form = wrapper.querySelector('#account-profile-form');
++        const saveStatus = wrapper.querySelector('#account-save-status');
++        const walletBalanceEl = wrapper.querySelector('#account-wallet-balance');
++        const reloadBtn = wrapper.querySelector('#account-reload-btn');
++        let balance = 24.50;
++
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          const name = wrapper.querySelector('#account-name').value.trim();
++          saveStatus.textContent = `Preferences saved for ${name || 'your account'}!`;
++          saveStatus.hidden = false;
++        });
++
++        reloadBtn.addEventListener('click', () => {
++          balance += 15.00;
++          walletBalanceEl.textContent = '$' + balance.toFixed(2);
++          saveStatus.textContent = `Added $15.00 to Cafe Card. New balance: $${balance.toFixed(2)}`;
++          saveStatus.hidden = false;
++        });
++
++        return wrapper;
++      }
++
++      const VIEW_BUILDERS = {
++        menu: buildMenuView,
++        locations: buildLocationsView,
++        rewards: buildRewardsView,
++        account: buildAccountView
++      };
++
++      /**
++       * Returns the cached DOM root for a given route key, creating and mounting it
++       * only on first visit so subsequent navigations reuse the exact DOM tree and state.
++       */
++      function getOrCreateView(routeKey) {
++        if (viewCache.has(routeKey)) {
++          return viewCache.get(routeKey);
++        }
++        const builder = VIEW_BUILDERS[routeKey];
++        if (!builder) {
++          return viewCache.get('home');
++        }
++        const viewEl = builder();
++        viewEl.hidden = true;
++        outlet.appendChild(viewEl);
++        viewCache.set(routeKey, viewEl);
++        return viewEl;
++      }
++
++      function resolveRouteKey(pathname) {
++        if (!pathname) return 'home';
++        const clean = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
++        if (ROUTES[clean]) {
++          return ROUTES[clean];
++        }
++        if (clean.startsWith('/menu')) return 'menu';
++        if (clean.startsWith('/locations')) return 'locations';
++        if (clean.startsWith('/rewards')) return 'rewards';
++        if (clean.startsWith('/account')) return 'account';
++        return 'home';
++      }
++
++      let activeRouteKey = 'home';
++
++      function activateView(routeKey, options = {}) {
++        const targetKey = VIEW_BUILDERS[routeKey] || routeKey === 'home' ? routeKey : 'home';
++        const targetView = getOrCreateView(targetKey);
++
++        // Hide all cached views without detaching/destroying them from the DOM
++        viewCache.forEach((el, key) => {
++          const isMatch = key === targetKey;
++          el.hidden = !isMatch;
++          el.setAttribute('aria-hidden', isMatch ? 'false' : 'true');
++        });
++
++        activeRouteKey = targetKey;
++
++        // Update nav active link styling
++        document.querySelectorAll('nav a[data-route]').forEach(link => {
++          const isCurrent = link.dataset.route === targetKey;
++          link.classList.toggle('active', isCurrent);
++          if (isCurrent) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++
++        // Update document title
++        if (ROUTE_TITLES[targetKey]) {
++          document.title = ROUTE_TITLES[targetKey];
++        }
++
++        // Update browser URL history if requested
++        if (options.pushState) {
++          const targetPath = targetKey === 'home' ? '/' : `/${targetKey}`;
++          if (window.location.pathname !== targetPath) {
++            window.history.pushState({ route: targetKey }, '', targetPath);
++          }
++        }
++
++        return targetView;
++      }
++
++      // Intercept clicks on SPA navigation links
++      document.addEventListener('click', (event) => {
++        const anchor = event.target.closest('a[data-spa-link], nav a');
++        if (!anchor) return;
++
++        // Respect modifier keys / middle-click / external links
++        if (
++          event.defaultPrevented ||
++          event.button !== 0 ||
++          event.metaKey ||
++          event.ctrlKey ||
++          event.shiftKey ||
++          event.altKey ||
++          anchor.target === '_blank'
++        ) {
++          return;
++        }
++
++        const href = anchor.getAttribute('href');
++        if (!href || href === '/logout') {
++          return;
++        }
++
++        const routeKey = anchor.dataset.route || resolveRouteKey(href);
++        if (routeKey && (routeKey === 'home' || VIEW_BUILDERS[routeKey])) {
++          event.preventDefault();
++          activateView(routeKey, { pushState: true });
++        }
++      });
++
++      // Handle browser Back / Forward navigation
++      window.addEventListener('popstate', (event) => {
++        const stateRoute = event.state && event.state.route;
++        const routeKey = stateRoute || resolveRouteKey(window.location.pathname);
++        activateView(routeKey, { pushState: false });
++      });
++
++      // Initialize view based on current URL path or hash
++      const initialPath = window.location.hash
++        ? '/' + window.location.hash.replace(/^#\/?/, '')
++        : window.location.pathname;
++      const initialRoute = resolveRouteKey(initialPath);
++      activateView(initialRoute, { pushState: false });
++
++      // Expose SPA controller for programmatic access if needed
++      window.DailyGrindSPA = {
++        navigate: (routeKey) => activateView(routeKey, { pushState: true }),
++        getCachedViews: () => Array.from(viewCache.keys()),
++        getViewElement: (routeKey) => viewCache.get(routeKey) || null
++      };
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,21 @@
+diff --git a/REGISTRATION.md b/REGISTRATION.md
+new file mode 100644
+--- a/REGISTRATION.md
++++ b/REGISTRATION.md
+@@ -0,0 +1,16 @@
++# Rewards registration integration
++
++The site is static. The registration UI is implemented, but real account creation requires a same-origin backend. It never simulates account creation or stores personal data in browser storage. JavaScript must be enabled; the submit button stays disabled otherwise. HTTPS is required for submission, including local integration testing.
++
++## API contract
++
++- `GET /api/rewards/csrf`: return `200 application/json` with `{ "token": "<cryptographically random, session-bound token>" }`. Set a secure session cookie (`__Host-` prefix, Secure, HttpOnly, SameSite=Lax, Path=/) and `Cache-Control: no-store`.
++- `POST /api/rewards`: accept JSON containing `full_name`, `email`, `password`, `marketing` (boolean), and `terms` (boolean). Require the `X-CSRF-Token` header and validate its session binding, expiration and origin. Reject cross-origin requests and do not permit credentialed cross-origin CORS. Support the `Idempotency-Key` header so retrying an uncertain request cannot create duplicates.
++- Success: return `201 application/json` with `{ "status": "verification_required" }` only after durable acceptance and dispatching a verification email. Respond consistently for existing addresses to avoid account enumeration.
++- Return `429 application/json` when throttled, and appropriate non-success JSON responses for validation/service errors. The UI preserves entries, announces failure, and allows retry. Never echo passwords or sensitive diagnostic information.
++
++Validate all fields on the server independently of the browser: Unicode names, bounded email addresses, passwords of 15–128 characters (never truncate or trim passwords), explicit terms acceptance, and optional marketing consent. Rate-limit registrations and verification emails; check passwords against compromised-password lists; hash passwords using a maintained Argon2id implementation. Store consent with the applicable terms version. Verify email ownership before activating an account or granting rewards.
++
++Provide the linked `/rewards/terms` and `/privacy-policy` pages before launch. Hosting must supply HTTPS and appropriate HTTP security headers, including HSTS, nosniff, frame-ancestors, Referrer-Policy and a CSP tailored to these local assets and Unsplash image origins. No third-party JavaScript or form analytics are used. All user-facing review text uses `textContent`.
++
++Verification for this change is limited to static checks; no browser, development server, preview server, or server entrypoint is used.

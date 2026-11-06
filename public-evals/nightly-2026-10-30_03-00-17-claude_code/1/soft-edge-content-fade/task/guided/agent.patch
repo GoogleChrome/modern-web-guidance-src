@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets Preview */
++    .paywall-container {
++      margin-top: 60px;
++    }
++
++    .paywall-container h2 {
++      text-align: center;
++    }
++
++    .paywall-eyebrow {
++      display: block;
++      text-align: center;
++      color: var(--accent);
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .paywall-teaser {
++      max-height: 420px;
++      overflow: hidden;
++      margin-top: 20px;
++      /* Fade the content itself to full transparency so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++    }
++
++    .paywall-teaser img {
++      float: left;
++      width: 280px;
++      max-width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 8px;
++      margin: 0 20px 10px 0;
++    }
++
++    .paywall-teaser h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-teaser p {
++      margin-bottom: 15px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +245,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-heading">
++      <span class="paywall-eyebrow">Members Exclusive</span>
++      <h2 id="roasters-secrets-heading">Roaster's Secrets</h2>
++      <div class="paywall-teaser">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++          alt="Freshly roasted coffee beans spilling from a scoop" width="280" height="210" loading="lazy">
++        <h3>The First Crack: Timing Is Everything</h3>
++        <p>Every great cup starts in the drum. About nine minutes into a roast, the beans let out an audible pop
++          &mdash; the &ldquo;first crack&rdquo; &mdash; as trapped moisture turns to steam and the cell walls give
++          way. What our head roaster does in the next ninety seconds decides whether a bean tastes bright and fruity or
++          deep and chocolatey.</p>
++        <p>For our single-origin Ethiopian, we pull the batch just 45 seconds after first crack begins, locking in
++          the bergamot and blueberry notes that make it sing as a pour-over. Our house espresso blend, on the other
++          hand, rides right up to the edge of second crack, where caramelized sugars turn rich and syrupy.</p>
++        <p>But the real secret isn't the timing alone &mdash; it's the rest. After cooling, we let every batch degas
++          for a specific number of days before it ever reaches the grinder, and that number changes by origin.
++          Here's the exact resting schedule we use for each of our signature beans, along with the brew ratios our
++          baristas swear by&hellip;</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Join Rewards to Keep Reading</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

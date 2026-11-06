@@ -1,0 +1,271 @@
+diff --git a/index.html b/index.html
+index 66c9173..81af931 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Macro_Espresso_Process.webm/1280px--Macro_Espresso_Process.webm.jpg">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,11 +76,11 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +90,43 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .hero::before {
++      content: '';
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .hero-toggle {
++      position: absolute;
++      right: 20px;
++      bottom: 20px;
++      background: rgba(0, 0, 0, 0.6);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.7);
++      border-radius: 4px;
++      padding: 5px 12px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .hero-toggle:hover,
++    .hero-toggle:focus-visible {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -135,6 +174,60 @@
+       background: #3e2723;
+     }
+ 
++    /* Roastery Section */
++    .roastery {
++      margin-top: 60px;
++    }
++
++    .roastery-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    .media-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .media-card video {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: var(--secondary);
++      border-radius: 4px;
++    }
++
++    .media-card audio {
++      display: block;
++      width: 100%;
++      margin: 15px 0;
++    }
++
++    .media-card figcaption {
++      margin-top: 10px;
++    }
++
++    .credit {
++      font-size: 0.75rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .credit a {
++      color: inherit;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,9 +262,20 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: eager (no loading attribute) so the poster and video start immediately. -->
++    <video class="hero-video" autoplay muted loop playsinline aria-hidden="true" width="1280" height="720"
++      poster="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Macro_Espresso_Process.webm/1280px--Macro_Espresso_Process.webm.jpg">
++      <source
++        src="https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.720p.vp9.webm"
++        type="video/webm">
++      <source
++        src="https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.360p.mpeg4.mov"
++        type="video/quicktime">
++    </video>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="hero-toggle">Pause background video</button>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +299,49 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="roastery" aria-labelledby="roastery-heading">
++      <h2 id="roastery-heading" style="text-align: center;">From Bean to Cup</h2>
++      <div class="roastery-grid">
++        <!-- Below the fold: loading="lazy" defers the poster, preload and media data until
++             the player nears the viewport. Poster/preload live in data-* attributes so the
++             fallback script can hold them back in browsers without native media lazy loading. -->
++        <figure class="media-card">
++          <h3 id="roasting-title">The Art of the Roast</h3>
++          <video controls loading="lazy" preload="none" width="1280" height="720" playsinline
++            aria-labelledby="roasting-title"
++            data-poster="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/960px--ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.jpg"
++            data-preload="metadata">
++            <source
++              src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.720p.vp9.webm"
++              type="video/webm">
++            <source
++              src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.360p.mpeg4.mov"
++              type="video/quicktime">
++          </video>
++          <figcaption>
++            <p>Green beans meet open flame in a traditional pan roast, the same slow, attentive craft that
++              inspires every small batch we roast in-house.</p>
++            <p class="credit">Video: <a href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm">A.Savin</a>,
++              Free Art License</p>
++          </figcaption>
++        </figure>
++
++        <figure class="media-card">
++          <h3 id="podcast-title">The Grind Podcast</h3>
++          <p id="podcast-description">Pour a cup and listen in: this episode tells the story of Westman's Bagel &amp; Coffee and
++            what makes a neighborhood coffee shop worth lining up for.</p>
++          <audio controls loading="lazy" preload="none" data-preload="metadata"
++            aria-labelledby="podcast-title" aria-describedby="podcast-description"
++            src="https://upload.wikimedia.org/wikipedia/commons/transcoded/9/9c/En-Westman%27s_Bagel_%26_Coffee-article.ogg/En-Westman%27s_Bagel_%26_Coffee-article.ogg.mp3"></audio>
++          <figcaption>
++            <p><a href="https://en.wikipedia.org/wiki/Westman%27s_Bagel_%26_Coffee">Read the text version</a></p>
++            <p class="credit">Audio: <a href="https://commons.wikimedia.org/wiki/File:En-Westman%27s_Bagel_%26_Coffee-article.ogg">Spoken Wikipedia</a>,
++              CC BY-SA 4.0</p>
++          </figcaption>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -205,8 +352,65 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="credit">Hero video: <a href="https://commons.wikimedia.org/wiki/File:Macro_Espresso_Process.webm">Scott Schiller</a>,
++      CC BY 2.0</p>
+   </footer>
+ 
++  <script>
++    // Hero video: respect reduced motion and give users a way to pause it.
++    const heroVideo = document.querySelector('.hero-video');
++    const heroToggle = document.querySelector('.hero-toggle');
++    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++    function setHeroPlaying(playing) {
++      if (playing) {
++        heroVideo.play().catch(() => {});
++      } else {
++        heroVideo.pause();
++      }
++      heroToggle.textContent = playing ? 'Pause background video' : 'Play background video';
++    }
++
++    heroToggle.addEventListener('click', () => setHeroPlaying(heroVideo.paused));
++
++    if (reducedMotionQuery.matches) {
++      heroVideo.removeAttribute('autoplay');
++      setHeroPlaying(false);
++    }
++    reducedMotionQuery.addEventListener('change', (event) => {
++      if (event.matches) setHeroPlaying(false);
++    });
++
++    // Offscreen media: native loading="lazy" defers poster and preload until near the
++    // viewport. Browsers without support get the same behavior via IntersectionObserver.
++    const lazyMedia = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]');
++
++    function activateMedia(media) {
++      if (media.dataset.poster) {
++        media.poster = media.dataset.poster;
++        delete media.dataset.poster;
++      }
++      if (media.dataset.preload) {
++        media.preload = media.dataset.preload;
++        delete media.dataset.preload;
++      }
++    }
++
++    if (Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++      lazyMedia.forEach(activateMedia);
++    } else {
++      const mediaObserver = new IntersectionObserver((entries, observer) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          activateMedia(entry.target);
++          observer.unobserve(entry.target);
++        }
++      }, { rootMargin: '200px 0px' });
++
++      lazyMedia.forEach((media) => mediaObserver.observe(media));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,85 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container {
++      max-height: 260px;
++      height: 260px;
++      overflow-y: auto;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--secondary);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-container::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-container::-webkit-scrollbar-track {
++      background: #4e342e;
++      background-color: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      background-color: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-item {
++      padding: 15px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .feedback-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      font-size: 0.95rem;
++      letter-spacing: 1px;
++    }
++
++    .feedback-date {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-bottom: 6px;
++    }
++
++    .feedback-text {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +271,70 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-container" id="feedback-log" aria-label="Customer Feedback Log">
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Elena R.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 22, 2026</div>
++          <p class="feedback-text">"The Maple Oat Latte is hands down the best seasonal drink in town! Not overly sweet, and the espresso comes through beautifully."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Marcus T.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 20, 2026</div>
++          <p class="feedback-text">"Been coming to The Daily Grind every morning for two years. Their 18-hour Cold Brew is unbeatable—smooth, rich, and zero bitterness."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Priya S.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 18, 2026</div>
++          <p class="feedback-text">"Cozy atmosphere, friendly baristas, and freshly roasted beans that make my whole apartment smell incredible. Highly recommend the Dark Roast Espresso!"</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">David K.</span>
++            <span class="feedback-rating">★★★★☆</span>
++          </div>
++          <div class="feedback-date">October 15, 2026</div>
++          <p class="feedback-text">"Great spot for remote work. The Wi-Fi is fast, the pastries are always fresh, and the pour-over coffee is crafted with real care."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Hannah L.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 12, 2026</div>
++          <p class="feedback-text">"I love their commitment to ethical sourcing. You can truly taste the quality difference in every single cup."</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Liam O.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 9, 2026</div>
++          <p class="feedback-text">"Ordered bags of whole bean Ethiopian roast online and they arrived within two days of roasting. Best home espresso pulls I've ever had!"</p>
++        </article>
++        <article class="feedback-item">
++          <div class="feedback-header">
++            <span class="feedback-author">Sofia M.</span>
++            <span class="feedback-rating">★★★★★</span>
++          </div>
++          <div class="feedback-date">October 5, 2026</div>
++          <p class="feedback-text">"The rewards program is awesome and mobile ordering saves me so much time on my morning commute. Five stars all around!"</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

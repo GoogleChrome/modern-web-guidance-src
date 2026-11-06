@@ -1,0 +1,404 @@
+diff --git a/index.html b/index.html
+index 66c9173..84b7037 100644
+--- a/index.html
++++ b/index.html
+@@ -5,159 +5,12 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,7 +29,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,7 +50,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..0785ed5
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,214 @@
++@layer reset, tokens, base, layout, components;
++
++/* Reset: targeted element types only, no universal selector */
++@layer reset {
++  :where(body, header, nav, main, section, footer, div, ul, li, a, h1, h2, h3, p) {
++    box-sizing: border-box;
++    margin: 0;
++    padding: 0;
++  }
++
++  :where(ul) {
++    list-style: none;
++  }
++
++  :where(a) {
++    color: inherit;
++    text-decoration: none;
++  }
++}
++
++/* Design tokens: tier 1 literal -> tier 2 semantic -> tier 3 UI */
++@layer tokens {
++  :root {
++    /* Tier 1: literal values */
++    --brown-900: #3e2723;
++    --brown-700: #4e342e;
++    --brown-100: #d7ccc8;
++    --amber-400: #ffab40;
++    --white: #fff;
++    --gray-50: #fafafa;
++    --black-50: rgb(0 0 0 / 0.5);
++    --black-10: rgb(0 0 0 / 0.1);
++
++    --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++
++    --space-xs: 0.3125rem;
++    --space-s: 0.625rem;
++    --space-m: 1.25rem;
++    --space-l: 2.5rem;
++
++    --radius-s: 4px;
++    --radius-m: 5px;
++    --radius-l: 8px;
++
++    --duration-base: 0.3s;
++
++    /* Tier 2: semantic */
++    --color-primary: var(--brown-700);
++    --color-primary-strong: var(--brown-900);
++    --color-secondary: var(--brown-100);
++    --color-accent: var(--amber-400);
++    --color-text: var(--brown-900);
++    --color-text-inverse: var(--white);
++    --color-surface: var(--white);
++    --color-background: var(--gray-50);
++    --color-overlay: var(--black-50);
++
++    /* Tier 3: general UI */
++    --ui-shadow: 0 2px 5px var(--black-10);
++    --ui-content-width: 1100px;
++    --ui-gutter: var(--space-m);
++    --ui-hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  }
++}
++
++@layer base {
++  body {
++    font-family: var(--font-sans);
++    line-height: 1.6;
++    color: var(--color-text);
++    background-color: var(--color-background);
++  }
++
++  :where(a) {
++    transition: color var(--duration-base);
++  }
++
++  :where(a):focus-visible {
++    outline: 2px solid var(--color-accent);
++    outline-offset: 2px;
++  }
++
++  @media (prefers-reduced-motion: reduce) {
++    :where(a, .btn) {
++      transition: none;
++    }
++  }
++}
++
++@layer layout {
++  .container {
++    max-inline-size: var(--ui-content-width);
++    margin-block: var(--space-l);
++    margin-inline: auto;
++    padding-inline: var(--ui-gutter);
++  }
++
++  .section-title {
++    text-align: center;
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++    gap: var(--space-m);
++    margin-block-start: var(--space-m);
++  }
++}
++
++@layer components {
++  .site-nav {
++    background: var(--color-primary);
++    color: var(--color-text-inverse);
++    padding-block: 1rem;
++    padding-inline: 5%;
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++    position: sticky;
++    inset-block-start: 0;
++    z-index: 1000;
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    ul {
++      display: flex;
++      gap: var(--space-m);
++    }
++
++    a {
++      font-size: 0.9rem;
++
++      &:where(:hover) {
++        color: var(--color-accent);
++      }
++    }
++
++    .logout-link {
++      border: 1px solid var(--color-accent);
++      padding-block: var(--space-xs);
++      padding-inline: 12px;
++      border-radius: var(--radius-s);
++    }
++  }
++
++  .hero {
++    block-size: 60vh;
++    background:
++      linear-gradient(var(--color-overlay), var(--color-overlay)),
++      var(--ui-hero-image) center / cover;
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    align-items: center;
++    color: var(--color-text-inverse);
++    text-align: center;
++    padding-inline: var(--ui-gutter);
++
++    h1 {
++      font-size: 3rem;
++      margin-block-end: 1rem;
++    }
++  }
++
++  .card {
++    background: var(--color-surface);
++    padding: var(--space-m);
++    border-radius: var(--radius-l);
++    box-shadow: var(--ui-shadow);
++    text-align: center;
++
++    h3 {
++      margin-block-end: var(--space-s);
++      color: var(--color-primary);
++    }
++  }
++
++  .btn {
++    --btn-bg: var(--color-primary);
++
++    display: inline-block;
++    background: var(--btn-bg);
++    color: var(--color-text-inverse);
++    padding-block: var(--space-s);
++    padding-inline: var(--space-m);
++    border-radius: var(--radius-m);
++    margin-block-start: 15px;
++    transition: background var(--duration-base);
++
++    &:hover {
++      --btn-bg: var(--color-primary-strong);
++    }
++  }
++
++  .site-footer {
++    background: var(--color-secondary);
++    text-align: center;
++    padding: var(--space-l) var(--space-m);
++    margin-block-start: var(--space-l);
++
++    .footer-links {
++      margin-block-end: var(--space-m);
++
++      a {
++        margin-inline: var(--space-s);
++        font-size: 0.85rem;
++      }
++    }
++  }
++}

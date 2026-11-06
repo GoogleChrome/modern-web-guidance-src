@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..0c8438c 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,110 @@
+       margin-top: 20px;
+     }
+ 
++    /* Rewards and order progress */
++    .progress-panel {
++      margin-bottom: 40px;
++      padding: clamp(20px, 4vw, 32px);
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--accent);
++      border-radius: 8px;
++      background: #fff8ef;
++    }
++
++    .progress-eyebrow {
++      margin-bottom: 4px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .progress-panel h2 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .progress-intro {
++      margin-top: 8px;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      gap: 4px 16px;
++      margin-bottom: 10px;
++    }
++
++    .progress-heading label {
++      font-weight: 700;
++    }
++
++    .progress-detail {
++      margin-top: 8px;
++      font-size: 0.875rem;
++    }
++
++    .coffee-progress {
++      --progress-duration: 1.8s;
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++      appearance: none;
++      border: 0 solid;
++      border-radius: 999px;
++      overflow: clip;
++      background: var(--secondary);
++      container-type: inline-size;
++    }
++
++    .coffee-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    .coffee-progress::-webkit-progress-value {
++      background: var(--primary);
++      border-radius: 999px;
++      animation: var(--progress-animation, none);
++    }
++
++    .coffee-progress::-moz-progress-bar {
++      background: var(--primary);
++      border-radius: 999px;
++      animation: var(--progress-animation, none);
++    }
++
++    .coffee-progress:indeterminate {
++      --progress-animation: coffee-loading var(--progress-duration) linear infinite;
++    }
++
++    .coffee-progress:indeterminate:dir(rtl) {
++      --progress-animation: coffee-loading var(--progress-duration) linear infinite reverse;
++    }
++
++    @keyframes coffee-loading {
++      from, to {
++        inline-size: 30%;
++        margin-right: auto;
++      }
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .coffee-progress {
++        --progress-duration: 10s;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +279,32 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-title">
++      <p class="progress-eyebrow">Every cup counts</p>
++      <h2 id="progress-title">Good things are brewing</h2>
++      <p class="progress-intro">A preview of your rewards and order journey.</p>
++      <div class="progress-grid">
++        <div>
++          <div class="progress-heading">
++            <label for="rewards-progress">Your next free coffee</label>
++            <span>3 of 5 cups · 60%</span>
++          </div>
++          <progress class="coffee-progress" id="rewards-progress" value="3" max="5"
++            aria-describedby="rewards-detail"></progress>
++          <p class="progress-detail" id="rewards-detail">Just 2 more cups until your next coffee is on us.</p>
++        </div>
++        <div>
++          <div class="progress-heading">
++            <label for="order-progress">Order confirmation</label>
++            <span>Confirming…</span>
++          </div>
++          <progress class="coffee-progress" id="order-progress" max="100"
++            aria-describedby="order-detail"></progress>
++          <p class="progress-detail" id="order-detail">Waiting for the café to confirm before tracking begins.</p>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,167 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Calendar explorer */
++    .calendar-explorer {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-eyebrow {
++      color: #775b4d;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++    }
++
++    .calendar-explorer h2 {
++      font-size: clamp(1.6rem, 4vw, 2rem);
++      margin: 4px 0;
++    }
++
++    .calendar-intro, .calendar-note, .calendar-subtitle, #calendar-status {
++      color: #6d5952;
++    }
++
++    .calendar-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 16px;
++      background: #f1eae5;
++      padding: 20px;
++      margin-top: 24px;
++      border-radius: 8px;
++    }
++
++    .calendar-control {
++      display: grid;
++      gap: 6px;
++      flex: 1 1 210px;
++      min-width: 0;
++    }
++
++    .calendar-control label {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .calendar-control input, .calendar-control select, .calendar-controls button, #calendar-retry {
++      min-height: 44px;
++      max-width: 100%;
++      padding: 9px 12px;
++      border: 1px solid #b7a49a;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .calendar-controls button, #calendar-retry {
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .calendar-explorer :focus-visible {
++      outline: 3px solid #976019;
++      outline-offset: 3px;
++    }
++
++    .calendar-explorer :disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    #calendar-status {
++      margin-top: 10px;
++      font-size: 0.8rem;
++      min-height: 1.6em;
++    }
++
++    .calendar-card {
++      background: white;
++      border: 1px solid #e4d9d2;
++      border-radius: 8px;
++      padding: 22px;
++      min-width: 0;
++      box-shadow: 0 2px 5px rgb(78 52 46 / 4%);
++    }
++
++    .calendar-card-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .calendar-card h3 { font-size: 1.2rem; }
++    .calendar-subtitle { font-size: 0.75rem; }
++
++    .timeline {
++      border-radius: 20px;
++      padding: 3px 10px;
++      font-size: 0.7rem;
++      font-weight: 600;
++      background: #f0ebe7;
++      color: #615048;
++    }
++
++    .timeline-today { background: #e7efdf; color: #3d572a; }
++    .timeline-future { background: #fff0d9; color: #805013; }
++
++    .calendar-formatted {
++      display: flex;
++      align-items: center;
++      min-height: 90px;
++      padding: 18px 0;
++      font-size: 1.3rem;
++      font-weight: 600;
++      line-height: 1.4;
++      overflow-wrap: anywhere;
++    }
++
++    .calendar-fields {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++      border-block: 1px solid #eee6e0;
++      padding: 16px 0;
++    }
++
++    .calendar-fields dt { color: #6d5952; font-size: 0.75rem; }
++    .calendar-fields dd { font-weight: 600; font-variant-numeric: tabular-nums; }
++    .month-heading { margin: 18px 0 10px; font-size: 0.8rem; }
++
++    .calendar-months {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 6px;
++      list-style: none;
++    }
++
++    .calendar-months li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 6px;
++      padding: 6px 8px;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      background: #f8f5f2;
++      font-size: 0.7rem;
++    }
++
++    .calendar-months code { font-size: 0.75rem; }
++    .calendar-months .selected-month { background: #f5e5cf; border-color: #bc8e52; }
++    .calendar-note { margin-top: 16px; font-size: 0.75rem; }
++    .calendar-unavailable { margin-top: 24px; font-size: 0.9rem; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +353,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-explorer" aria-labelledby="calendar-heading">
++      <p class="calendar-eyebrow">A world of dates</p>
++      <h2 id="calendar-heading">One day. Different calendars.</h2>
++      <p class="calendar-intro">Explore how a date is shared across cultures, one month at a time.</p>
++
++      <div class="calendar-controls">
++        <div class="calendar-control">
++          <label for="calendar-input">Choose a date · Gregorian</label>
++          <input type="date" id="calendar-input" aria-describedby="calendar-status" disabled>
++        </div>
++        <div class="calendar-control">
++          <label for="calendar-language">Date display language</label>
++          <select id="calendar-language" disabled>
++            <option value="en">English</option>
++            <option value="ar">العربية — Arabic</option>
++            <option value="he">עברית — Hebrew</option>
++            <option value="ja">日本語 — Japanese</option>
++            <option value="fr">Français — French</option>
++            <option value="es">Español — Spanish</option>
++            <option value="de">Deutsch — German</option>
++          </select>
++        </div>
++        <button type="button" id="calendar-today" disabled>Go to today</button>
++      </div>
++      <p id="calendar-status" role="status" aria-live="polite" aria-atomic="true">Loading calendar tools…</p>
++      <button type="button" id="calendar-retry" hidden>Try again</button>
++      <noscript><p>Enable JavaScript to convert dates between calendars.</p></noscript>
++      <div class="grid" id="calendar-results"></div>
++      <p class="calendar-note">Highlighted months contain your selected date. Month codes identify the same month across years;
++        a code ending in L identifies a leap month. Japanese years use era names in the formatted date.
++        Dates follow civil calendar days; the Islamic calendar uses the calculated Umm al-Qura system.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +398,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/assets/calendar-tool.js"></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 60px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++      max-height: 280px;
++      overflow-y: auto;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      margin-top: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      list-style: none;
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        /* Must define base size in WebKit for custom colors to be visual */
++        width: 8px;
++        height: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .testimonial-item {
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 16px;
++    }
++
++    .testimonial-item:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .testimonial-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .testimonial-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .testimonial-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .testimonial-quote {
++      font-style: italic;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +267,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2 style="text-align: center;">Customer Feedback Log</h2>
++      <ul class="feedback-log" role="list">
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Elena R.</span>
++            <span class="testimonial-meta">★★★★★ &bull; 2 hours ago</span>
++          </div>
++          <p class="testimonial-quote">"The Maple Oat Latte is hands down the best seasonal drink in town. Perfectly balanced sweetness without overwhelming the espresso!"</p>
++        </li>
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Marcus T.</span>
++            <span class="testimonial-meta">★★★★★ &bull; Yesterday</span>
++          </div>
++          <p class="testimonial-quote">"Stopped by before work for a Dark Roast Espresso. Rich crema, bold smoky flavor, and friendly baristas who got me out the door fast."</p>
++        </li>
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Priya K.</span>
++            <span class="testimonial-meta">★★★★★ &bull; 3 days ago</span>
++          </div>
++          <p class="testimonial-quote">"Their 18-hour Cold Brew is so smooth I don't even need milk or sugar. My absolute go-to spot for afternoon study sessions."</p>
++        </li>
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">David L.</span>
++            <span class="testimonial-meta">★★★★☆ &bull; 5 days ago</span>
++          </div>
++          <p class="testimonial-quote">"Love knowing the beans are ethically sourced and roasted locally. You can genuinely taste the freshness in every pour-over."</p>
++        </li>
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Hannah S.</span>
++            <span class="testimonial-meta">★★★★★ &bull; 1 week ago</span>
++          </div>
++          <p class="testimonial-quote">"Cozy atmosphere, warm lighting, and the freshly baked croissants pair wonderfully with a cappuccino. Best neighborhood coffee shop!"</p>
++        </li>
++        <li class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Julian M.</span>
++            <span class="testimonial-meta">★★★★★ &bull; 2 weeks ago</span>
++          </div>
++          <p class="testimonial-quote">"Picked up a bag of whole-bean house blend for my home espresso machine. Pulls consistent, chocolatey shots every single morning."</p>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,304 @@
+diff --git a/index.html b/index.html
+index 66c9173..6361286 100644
+--- a/index.html
++++ b/index.html
+@@ -5,13 +5,93 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- "light dark" = follow the system preference; "light" / "dark" = manual override -->
++  <meta name="color-scheme" content="light dark">
++  <script>
++    // Apply a stored theme override before first paint to avoid a flash of the wrong scheme.
++    try {
++      var stored = localStorage.getItem('color-scheme');
++      if (stored === 'light' || stored === 'dark') {
++        document.querySelector('meta[name="color-scheme"]').content = stored;
++      }
++    } catch (e) { /* storage blocked: fall back to system preference */ }
++  </script>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Light palette */
++      --primary-light: #4e342e;
++      --primary-hover-light: #3e2723;
++      --secondary-light: #d7ccc8;
++      --accent-light: #ffab40;
++      --text-light: #3e2723;
++      --bg-light: #fafafa;
++      --surface-light: #ffffff;
++      --heading-light: #4e342e;
++      --shadow-light: rgba(0, 0, 0, 0.1);
++
++      /* Dark palette */
++      --primary-dark: #2b201c;
++      --primary-hover-dark: #8d6e63;
++      --secondary-dark: #241a16;
++      --accent-dark: #ffb74d;
++      --text-dark: #e8ddd6;
++      --bg-dark: #1a1412;
++      --surface-dark: #2b201c;
++      --heading-dark: #d7b899;
++      --shadow-dark: rgba(0, 0, 0, 0.45);
++
++      /* Resolved tokens: default to light, media-query fallback for dark */
++      --primary: var(--primary-light);
++      --primary-hover: var(--primary-hover-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --text: var(--text-light);
++      --light: var(--bg-light);
++      --surface: var(--surface-light);
++      --heading: var(--heading-light);
++      --shadow: var(--shadow-light);
++      --btn-bg: var(--primary-light);
++
++      @media (prefers-color-scheme: dark) {
++        --primary: var(--primary-dark);
++        --primary-hover: var(--primary-hover-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --heading: var(--heading-dark);
++        --shadow: var(--shadow-dark);
++        --btn-bg: #6d4c41;
++      }
++
++      /* light-dark() follows the computed color-scheme, so it also tracks the manual override */
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --primary-hover: light-dark(var(--primary-hover-light), var(--primary-hover-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --light: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --shadow: light-dark(var(--shadow-light), var(--shadow-dark));
++        --btn-bg: light-dark(var(--primary-light), #6d4c41);
++      }
++
++      /* Support both schemes; follow the system by default */
++      color-scheme: light dark;
++
++      /* Map the <meta> override back onto the cascade (the meta alone is only a hint) */
++      &:has(> head > meta[name="color-scheme"][content="dark"]) {
++        color-scheme: dark;
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="light"]) {
++        color-scheme: light;
++      }
++
++      accent-color: var(--accent);
+     }
+ 
+     * {
+@@ -48,6 +128,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -72,6 +153,71 @@
+       border-radius: 4px;
+     }
+ 
++    /* Theme toggle */
++    .theme-toggle {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      border-radius: 50%;
++      background: transparent;
++      color: white;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    .theme-toggle:hover {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .theme-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .theme-toggle svg {
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /*
++      Show only the option that is NOT the currently rendered scheme.
++      Default (light rendered): show "switch to dark". Dark is rendered when the
++      override is "dark", or when the system prefers dark and no "light" override is set.
++    */
++    .theme-toggle .to-light {
++      display: none;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle {
++      .to-dark { display: none; }
++      .to-light { display: contents; }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-toggle {
++        .to-dark { display: none; }
++        .to-light { display: contents; }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,21 +254,22 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
++      transition: background 0.3s, box-shadow 0.3s;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--btn-bg);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -132,7 +279,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
+     footer {
+@@ -140,6 +287,7 @@
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background 0.3s;
+     }
+ 
+     .footer-links {
+@@ -165,6 +313,23 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="theme-toggle" id="theme-toggle">
++          <span class="to-dark">
++            <svg viewBox="0 0 24 24" aria-hidden="true">
++              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
++            </svg>
++            <span class="visually-hidden">Switch to dark theme</span>
++          </span>
++          <span class="to-light">
++            <svg viewBox="0 0 24 24" aria-hidden="true">
++              <circle cx="12" cy="12" r="4" />
++              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
++            </svg>
++            <span class="visually-hidden">Switch to light theme</span>
++          </span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +372,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var KEY = 'color-scheme';
++      var meta = document.querySelector('meta[name="color-scheme"]');
++      var toggle = document.getElementById('theme-toggle');
++      var systemDark = window.matchMedia('(prefers-color-scheme: dark)');
++
++      function systemScheme() {
++        return systemDark.matches ? 'dark' : 'light';
++      }
++
++      // The scheme the user currently sees: the override if set, else the system preference.
++      function renderedScheme() {
++        var c = meta.content;
++        return (c === 'light' || c === 'dark') ? c : systemScheme();
++      }
++
++      function applyStored(value) {
++        meta.content = (value === 'light' || value === 'dark') ? value : 'light dark';
++      }
++
++      toggle.addEventListener('click', function () {
++        var target = renderedScheme() === 'dark' ? 'light' : 'dark';
++        var pin = target !== systemScheme();
++
++        // Only pin a scheme when it diverges from the system; otherwise return to "system".
++        try {
++          if (pin) {
++            localStorage.setItem(KEY, target);
++          } else {
++            localStorage.removeItem(KEY);
++          }
++        } catch (e) { /* storage unavailable: still apply for this page */ }
++
++        meta.content = pin ? target : 'light dark';
++      });
++
++      // Keep in sync when the override changes in another tab.
++      window.addEventListener('storage', function (e) {
++        if (e.key === KEY || e.key === null) {
++          applyStored(e.newValue);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

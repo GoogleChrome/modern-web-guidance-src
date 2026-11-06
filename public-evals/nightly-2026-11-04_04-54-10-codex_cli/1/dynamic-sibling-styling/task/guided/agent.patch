@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,118 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Each group contains only its cards, so sibling counts stay local. */
++    .spectrum-card,
++    .fan-card,
++    .circle-orb {
++      --index: var(--sibling-index, 1);
++      --count: var(--sibling-count, 1);
++      --hue: calc(360deg * (var(--index) - 1) / var(--count));
++    }
++
++    @supports (top: calc(sibling-index() * sibling-count() * 1px)) {
++      .spectrum-card,
++      .fan-card,
++      .circle-orb {
++        --index: sibling-index();
++        --count: sibling-count();
++      }
++    }
++
++    .spectrum-card {
++      background-color: hsl(var(--hue) 65% 90%);
++      border-block-start: 4px solid hsl(var(--hue) 55% 45%);
++    }
++
++    .collection-section {
++      margin-block-start: 4rem;
++      text-align: center;
++    }
++
++    .collection-section > p {
++      margin-block-start: 0.5rem;
++    }
++
++    .fan-container {
++      container-type: inline-size;
++      display: grid;
++      place-items: center;
++      min-block-size: 23rem;
++      isolation: isolate;
++    }
++
++    .fan-card {
++      /* Normalize around the midpoint, including even and single-item groups. */
++      --offset: calc((var(--index) - (var(--count) + 1) / 2) / max(var(--count) - 1, 1));
++      grid-area: 1 / 1;
++      inline-size: clamp(7rem, 25cqi, 10rem);
++      min-block-size: 13rem;
++      padding: 1.25rem 0.75rem;
++      border: 1px solid hsl(var(--hue) 25% 65%);
++      border-radius: 0.8rem;
++      background: linear-gradient(145deg, hsl(var(--hue) 35% 94%), hsl(var(--hue) 35% 76%));
++      box-shadow: 0 6px 18px #3e272326;
++      transform-origin: center 90%;
++      transform: translateX(calc(var(--offset) * min(48cqi, 18rem)))
++        rotate(calc(var(--offset) * 56deg));
++    }
++
++    .fan-card h3 {
++      font-size: 1.1rem;
++      margin-block-end: 0.5rem;
++    }
++
++    .fan-card p {
++      font-size: 0.85rem;
++    }
++
++    .fan-card::after {
++      content: "✦";
++      display: block;
++      margin-block-start: 1.5rem;
++      font-size: 2rem;
++      color: var(--primary);
++    }
++
++    .circle-container {
++      container-type: inline-size;
++      position: relative;
++      display: grid;
++      place-items: center;
++      inline-size: min(100%, 28rem);
++      aspect-ratio: 1;
++      margin: 1.5rem auto 0;
++      border-radius: 50%;
++      background: radial-gradient(circle, var(--secondary) 0 15%, transparent 15.5%);
++    }
++
++    .circle-orb {
++      --angle: calc(360deg * (var(--index) - 1) / var(--count) - 90deg);
++      --radius: 34cqi;
++      position: absolute;
++      display: grid;
++      place-content: center;
++      inline-size: 28cqi;
++      aspect-ratio: 1;
++      padding: 0.4rem;
++      border: 2px solid hsl(var(--hue) 30% 55%);
++      border-radius: 50%;
++      background: hsl(var(--hue) 40% 91%);
++      box-shadow: 0 3px 10px #3e272315;
++      transform: translate(calc(cos(var(--angle)) * var(--radius)),
++        calc(sin(var(--angle)) * var(--radius)));
++    }
++
++    .circle-orb h3 {
++      font-size: clamp(0.75rem, 4cqi, 1.1rem);
++    }
++
++    .circle-orb p {
++      font-size: clamp(0.65rem, 3cqi, 0.85rem);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +287,50 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="collection-section" aria-labelledby="loyalty-heading">
++      <h2 id="loyalty-heading">Good Coffee. Great Rewards.</h2>
++      <p>A little more to love with every cup. Discover our loyalty tiers.</p>
++      <div class="fan-container">
++        <article class="fan-card"><h3>First Sip</h3><p>A warm welcome and a birthday treat.</p></article>
++        <article class="fan-card"><h3>Regular</h3><p>Earn points with every coffee.</p></article>
++        <article class="fan-card"><h3>Enthusiast</h3><p>Enjoy a little extra with your usual.</p></article>
++        <article class="fan-card"><h3>Connoisseur</h3><p>Discover exclusive seasonal tastings.</p></article>
++        <article class="fan-card"><h3>Daily Legend</h3><p>Our finest perks for our familiar faces.</p></article>
++      </div>
++    </section>
++
++    <section class="collection-section" aria-labelledby="origins-heading">
++      <h2 id="origins-heading">A World in Every Cup</h2>
++      <p>Explore the coffee origins that inspire our roasts.</p>
++      <div class="circle-container">
++        <article class="circle-orb"><h3>Ethiopia</h3><p>Floral &amp; bright</p></article>
++        <article class="circle-orb"><h3>Colombia</h3><p>Sweet &amp; balanced</p></article>
++        <article class="circle-orb"><h3>Brazil</h3><p>Nutty &amp; smooth</p></article>
++        <article class="circle-orb"><h3>Guatemala</h3><p>Cocoa &amp; spice</p></article>
++        <article class="circle-orb"><h3>Kenya</h3><p>Juicy &amp; vibrant</p></article>
++        <article class="circle-orb"><h3>Sumatra</h3><p>Earthy &amp; full</p></article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +341,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Older browsers get the same live counts without replacing native CSS.
++    if (!CSS.supports('top: calc(sibling-index() * sibling-count() * 1px)')) {
++      const selector = '.spectrum-card, .fan-card, .circle-orb';
++      const update = () => {
++        const groups = new Set([...document.querySelectorAll(selector)].map(item => item.parentElement));
++        groups.forEach(group => {
++          const children = [...group.children];
++          children.forEach((item, index) => {
++            if (item.matches(selector)) {
++              item.style.setProperty('--sibling-index', index + 1);
++              item.style.setProperty('--sibling-count', children.length);
++            }
++          });
++        });
++      };
++      update();
++      new MutationObserver(update).observe(document.querySelector('main'), {
++        childList: true,
++        subtree: true
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

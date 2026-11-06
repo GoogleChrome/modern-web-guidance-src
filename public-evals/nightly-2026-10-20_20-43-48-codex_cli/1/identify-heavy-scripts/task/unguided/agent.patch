@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <link rel="stylesheet" href="script-diagnostics.css">
++  <script src="script-diagnostics.js" defer></script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -194,8 +196,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="diagnostics" aria-labelledby="diagnostics-title">
++      <div class="diag-heading">
++        <div><p class="diag-eyebrow">UNDER THE HOOD</p><h2 id="diagnostics-title">Script performance</h2><p class="diag-description">A little insight into what’s brewing behind the scenes.</p></div>
++        <span class="diag-status" id="script-status" role="status">Recording live</span>
++      </div>
++      <div class="diag-metrics">
++        <div class="diag-metric"><p>Scripts detected</p><strong id="script-count">0</strong><small>Unique script sources</small></div>
++        <div class="diag-metric"><p>Script load time</p><strong id="script-load">0 ms</strong><small>Combined network duration</small></div>
++        <div class="diag-metric"><p>Blocking time</p><strong id="script-blocking">0 ms</strong><small>Across observed slow events</small></div>
++        <div class="diag-metric"><p id="script-event-label">Slow frames</p><strong id="script-events">0</strong><small>Events longer than 50 ms</small></div>
++      </div>
++      <div class="diag-toolbar">
++        <input id="script-search" type="search" placeholder="Search scripts…" aria-label="Search scripts">
++        <select id="script-sort" aria-label="Sort scripts"><option value="execution">Sort: execution time</option><option value="load">Sort: load time</option><option value="slowCalls">Sort: slow calls</option></select>
++        <button type="button" id="script-pause">Pause recording</button>
++        <button type="button" id="script-reset">Clear</button>
++        <button type="button" id="script-export" class="diag-export">↓ Export report</button>
++      </div>
++      <div class="diag-table-wrap"><table class="diag-table"><thead><tr><th scope="col">Script source</th><th scope="col">Load time</th><th scope="col">Slow-frame execution</th><th scope="col">Slow calls</th></tr></thead><tbody id="script-rows"></tbody></table></div>
++      <p class="diag-empty" id="script-empty">Listening for scripts. Interact with the page to capture activity.</p>
++      <div class="diag-notes"><p id="script-support"></p><p>Load times can overlap and do not equal page load time. Cross-origin scripts may have limited attribution. Blocking time belongs to the whole frame or task, not a single script.</p><div class="diag-foot"><span id="script-results">0 of 0 scripts</span><span>Measured in this tab · No data sent</span></div></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

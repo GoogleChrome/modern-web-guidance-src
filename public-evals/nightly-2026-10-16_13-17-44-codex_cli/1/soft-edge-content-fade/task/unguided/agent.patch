@@ -1,0 +1,88 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* The alpha mask fades the content itself into any page background. */
++    .paywall-container {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .paywall-container header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .exclusive-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      font-size: 2rem;
++      margin: 6px 0;
++    }
++
++    .roaster-preview {
++      max-width: 720px;
++      margin: 0 auto;
++      padding: 24px 24px 40px;
++      background: white;
++      border-radius: 8px;
++      -webkit-mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
++    }
++
++    .roaster-preview h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .roaster-preview p + p {
++      margin-top: 16px;
++    }
++
++    .preview-access {
++      text-align: center;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +243,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <header>
++        <p class="exclusive-label">Exclusive preview</p>
++        <h2 id="roasters-secrets-title">Roaster’s Secrets</h2>
++        <p>A little wisdom from behind the roasting drum.</p>
++      </header>
++      <div class="roaster-preview">
++        <h3>The secret to a sweeter morning cup</h3>
++        <p>Great coffee starts long before the first sip. In our roastery, we follow each batch as its aroma shifts from toasted grain to caramel, looking for the moment when the bean’s natural sweetness shines.</p>
++        <p>At home, start with freshly ground beans and pay attention to your water. A small change in grind size can bring a whole new side of your favorite roast into focus.</p>
++        <p>Next, we’ll take you inside our tasting sessions: how we compare batches, fine-tune a brew, and find the notes that make each seasonal coffee special.</p>
++      </div>
++      <div class="preview-access">
++        <p>There’s more brewing behind the scenes.</p>
++        <a href="/rewards" class="btn">Explore member rewards</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

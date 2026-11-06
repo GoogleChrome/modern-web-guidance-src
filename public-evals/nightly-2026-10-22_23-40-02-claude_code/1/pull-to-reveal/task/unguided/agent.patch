@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,10 +26,49 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll snapping: the search bar sits above the nav and is revealed by scrolling up */
++    html {
++      scroll-snap-type: y proximity;
++    }
++
++    .search-bar {
++      background: var(--secondary);
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      scroll-snap-align: start;
++    }
++
++    .search-bar input {
++      flex: 1;
++      max-width: 600px;
++      padding: 10px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .search-bar button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      padding: 10px 20px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .search-bar button:hover {
++      background: var(--text);
++    }
++
+     /* Navigation */
+     nav {
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +195,13 @@
+ </head>
+ 
+ <body>
+ 
++  <form class="search-bar" role="search" action="/search">
++    <input type="search" name="q" placeholder="Search drinks, food, locations..." aria-label="Search">
++    <button type="submit">Search</button>
++  </form>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

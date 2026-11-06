@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Preview Section */
++    .paywall-container {
++      margin-top: 50px;
++      background: white;
++      padding: 35px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 12px;
++      margin-bottom: 10px;
++    }
++
++    .secrets-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .secrets-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .secrets-content {
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .secrets-content h3 {
++      color: var(--primary);
++      margin: 20px 0 8px;
++    }
++
++    .secrets-content p {
++      margin-bottom: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <div class="secrets-header">
++        <span class="paywall-badge">Exclusive Preview</span>
++        <h2>Roaster's Secrets</h2>
++        <p>Behind-the-scenes techniques from our master roasters for unlocking peak flavor profiles.</p>
++      </div>
++      <div class="secrets-content">
++        <h3>1. Mastering the First Crack Temperature Curve</h3>
++        <p>The transition into first crack is where caramelized sugars meet delicate floral aromatics. By reducing drum heat by 15% just thirty seconds before the exothermic reaction begins, we preserve the bright citrus notes of our high-altitude Ethiopian beans without baking out their natural sweetness.</p>
++        <h3>2. Airflow Modulation During the Maillard Phase</h3>
++        <p>Controlling convective vs. conductive heat transfer is our signature secret. Increasing airflow midway through the Maillard phase sweeps away bitter chaff smoke early, resulting in the remarkably clean, velvety finish found in our Dark Roast Espresso.</p>
++        <h3>3. Post-Roast Degassing &amp; Resting Windows</h3>
++        <p>Freshly roasted coffee isn't immediately ready for extraction. We rest our single-origin micro-lots in climate-controlled conditioning silos for exactly 96 hours, allowing CO2 to dissipate evenly so water can extract every nuance of chocolate and stone fruit.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

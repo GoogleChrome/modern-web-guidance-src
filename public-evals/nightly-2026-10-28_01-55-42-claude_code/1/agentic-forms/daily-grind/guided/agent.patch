@@ -1,0 +1,410 @@
+diff --git a/index.html b/index.html
+index 66c9173..37f20da 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,185 @@
+       background: #3e2723;
+     }
+ 
++    /* Quick Order */
++    .quick-order {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: stretch;
++    }
++
++    .quick-order-photo {
++      width: 100%;
++      height: 100%;
++      min-height: 320px;
++      object-fit: cover;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .quick-order h2 {
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .quick-order .lede {
++      margin-bottom: 1.25rem;
++      color: #5d4037;
++    }
++
++    .order-form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      accent-color: var(--primary);
++    }
++
++    .order-form .form-group {
++      margin-block-end: 1.25rem;
++    }
++
++    .order-form label,
++    .order-form legend {
++      display: block;
++      font-weight: 600;
++      font-size: 0.95rem;
++      margin-block-end: 0.35rem;
++    }
++
++    .order-form input,
++    .order-form select {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      padding: 0.6rem 0.75rem;
++      min-height: 48px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .order-form input:focus-visible,
++    .order-form select:focus-visible,
++    .order-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form input:user-invalid,
++    .order-form select:user-invalid {
++      border-color: #c62828;
++    }
++
++    .order-form fieldset {
++      border: 0;
++      padding: 0;
++      margin-block-end: 1.25rem;
++    }
++
++    .order-form .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.25rem;
++    }
++
++    .order-form .choices label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++      font-weight: 400;
++      margin: 0;
++      padding: 10px 0;
++    }
++
++    .order-form .choices input {
++      width: 1.1rem;
++      height: 1.1rem;
++      min-height: 0;
++      padding: 0;
++    }
++
++    .order-form .hint {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-block-start: 0.25rem;
++    }
++
++    .order-form button[type="submit"] {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      border: 0;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .order-form button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .order-status {
++      margin-block-start: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 5px;
++      font-size: 0.95rem;
++    }
++
++    .order-status:empty {
++      display: none;
++    }
++
++    .order-status[data-state="ok"] {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .order-status[data-state="error"] {
++      background: #ffebee;
++      color: #b71c1c;
++    }
++
++    .order-list {
++      list-style: none;
++      margin-block-start: 0.75rem;
++      padding: 0;
++    }
++
++    .order-list li {
++      padding: 0.35rem 0;
++      border-top: 1px dashed var(--secondary);
++      font-size: 0.9rem;
++    }
++
++    /* WebMCP agent-interaction feedback (ignored by browsers without support) */
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: 4px;
++      background-color: #fff8e1;
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #c62828;
++      animation: order-pulse 2s infinite;
++    }
++
++    @keyframes order-pulse {
++      50% { outline-offset: 6px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      button:tool-submit-active { animation: none; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +374,88 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="quick-order" id="quick-order" aria-labelledby="quick-order-title">
++      <img class="quick-order-photo"
++           src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++           alt="A barista pouring latte art into a ceramic cup" width="900" height="600" loading="lazy" decoding="async">
++      <div>
++        <h2 id="quick-order-title">Quick Order</h2>
++        <p class="lede">Pick your drink, we'll have it ready at the counter.</p>
++
++        <form class="order-form" id="quick-order-form" action="/order-online" method="post"
++              toolname="add-coffee-to-order"
++              tooldescription="Add a coffee drink from The Daily Grind menu to the customer's pickup order. Use this when the user wants to order or pre-order a drink for pickup at a Daily Grind cafe."
++              toolautosubmit>
++
++          <div class="form-group">
++            <label for="drink">Drink</label>
++            <select id="drink" name="drink" required
++                    toolparamdescription="The menu drink to order.">
++              <option value="">Choose a drink…</option>
++              <option value="maple-oat-latte">Maple Oat Latte (seasonal)</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="cappuccino">Cappuccino</option>
++              <option value="flat-white">Flat White</option>
++              <option value="americano">Americano</option>
++              <option value="drip-coffee">House Drip Coffee</option>
++            </select>
++          </div>
++
++          <fieldset toolparamdescription="Cup size for the drink.">
++            <legend>Size</legend>
++            <div class="choices">
++              <label><input type="radio" name="size" value="small" required> Small (8 oz)</label>
++              <label><input type="radio" name="size" value="medium" checked> Medium (12 oz)</label>
++              <label><input type="radio" name="size" value="large"> Large (16 oz)</label>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <label for="milk">Milk</label>
++            <select id="milk" name="milk"
++                    toolparamdescription="Milk preference. Use 'none' for black coffee or straight espresso.">
++              <option value="whole">Whole milk</option>
++              <option value="oat">Oat milk</option>
++              <option value="almond">Almond milk</option>
++              <option value="skim">Skim milk</option>
++              <option value="none">None</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="quantity">Quantity</label>
++            <input type="number" id="quantity" name="quantity" value="1" min="1" max="10" step="1" inputmode="numeric" required
++                   aria-describedby="quantity-hint"
++                   toolparamdescription="How many of this drink to add, e.g. 2.">
++            <span id="quantity-hint" class="hint">Up to 10 per line item.</span>
++          </div>
++
++          <div class="form-group">
++            <label for="location">Pickup location</label>
++            <select id="location" name="location" required
++                    toolparamdescription="Which Daily Grind cafe will prepare the order for pickup.">
++              <option value="">Choose a cafe…</option>
++              <option value="downtown">Downtown – 12 Main St</option>
++              <option value="riverside">Riverside – 88 Harbor Ave</option>
++              <option value="university">University – 301 College Rd</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="pickup-name">Name for the order</label>
++            <input type="text" id="pickup-name" name="pickup_name" autocomplete="name" maxlength="60" required
++                   toolparamdescription="The name the barista will call out when the order is ready.">
++          </div>
++
++          <button type="submit">Add to my order</button>
++
++          <p id="order-status" class="order-status" role="status" aria-live="polite"></p>
++          <ul id="order-list" class="order-list" aria-label="Items in your order"></ul>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +468,130 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('quick-order-form');
++      const status = document.getElementById('order-status');
++      const list = document.getElementById('order-list');
++      const order = [];
++
++      const labelFor = (name, value) => {
++        const control = form.elements[name];
++        if (control instanceof HTMLSelectElement) {
++          return control.options[control.selectedIndex]?.text ?? value;
++        }
++        const radio = form.querySelector(`input[name="${name}"][value="${CSS.escape(value)}"]`);
++        return radio?.parentElement?.textContent.trim() ?? value;
++      };
++
++      const renderOrder = () => {
++        list.replaceChildren(...order.map((item) => {
++          const li = document.createElement('li');
++          li.textContent = `${item.quantity} × ${item.size} ${item.drink} (${item.milk}) · ${item.location} · for ${item.name}`;
++          return li;
++        }));
++      };
++
++      const setStatus = (state, message) => {
++        status.dataset.state = state;
++        status.textContent = message;
++      };
++
++      const validationErrors = () => {
++        const errors = [];
++        for (const control of form.elements) {
++          if (!control.name || control.willValidate === false) continue;
++          if (!control.checkValidity()) {
++            errors.push({ field: control.name, message: control.validationMessage });
++          }
++        }
++        const qty = Number(form.elements.quantity.value);
++        if (!Number.isInteger(qty) || qty < 1 || qty > 10) {
++          errors.push({ field: 'quantity', message: 'must be a whole number between 1 and 10' });
++        }
++        return errors;
++      };
++
++      // Simulates sending the line item to the ordering backend.
++      const addLineItem = async (data) => {
++        const item = {
++          drink: labelFor('drink', data.get('drink')),
++          size: labelFor('size', data.get('size')).replace(/\s*\(.*\)$/, ''),
++          milk: labelFor('milk', data.get('milk')),
++          quantity: Number(data.get('quantity')),
++          location: labelFor('location', data.get('location')),
++          name: String(data.get('pickup_name')).trim(),
++        };
++        await new Promise((resolve) => setTimeout(resolve, 150));
++        order.push(item);
++        renderOrder();
++        const total = order.reduce((sum, i) => sum + i.quantity, 0);
++        return `Added ${item.quantity} × ${item.size} ${item.drink} with ${item.milk} to the order for ${item.name}, ` +
++          `pickup at ${item.location}. The order now has ${total} drink${total === 1 ? '' : 's'}.`;
++      };
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++
++        const errors = validationErrors();
++        if (errors.length > 0) {
++          const message = 'Validation failed: ' +
++            errors.map((err) => `${err.field} (${err.message})`).join(', ');
++          setStatus('error', message);
++          if (event.agentInvoked) {
++            event.respondWith(Promise.resolve(message));
++          } else {
++            form.reportValidity();
++          }
++          return;
++        }
++
++        const submitButton = form.querySelector('button[type="submit"]');
++        submitButton.disabled = true;
++        setStatus('ok', 'Adding to your order…');
++
++        const result = addLineItem(new FormData(form))
++          .then((message) => {
++            setStatus('ok', message);
++            return message;
++          })
++          .catch((error) => {
++            const message = `Could not add the drink: ${error.message}`;
++            setStatus('error', message);
++            return message;
++          })
++          .finally(() => {
++            submitButton.disabled = false;
++          });
++
++        if (event.agentInvoked) {
++          event.respondWith(result);
++        }
++      });
++
++      // Clear stale status as soon as the user starts editing again.
++      form.addEventListener('input', () => {
++        if (status.dataset.state === 'error') setStatus('', '');
++      });
++
++      // WebMCP lifecycle events: Chrome 156+ dispatches on document.modelContext, older on window.
++      const toolEventTarget = (type) =>
++        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window);
++
++      toolEventTarget('toolactivated').addEventListener('toolactivated', (event) => {
++        if (event.toolName === 'add-coffee-to-order') {
++          setStatus('ok', 'Your assistant is filling in the quick order form…');
++        }
++      });
++
++      toolEventTarget('toolcancel').addEventListener('toolcancel', (event) => {
++        if (event.toolName === 'add-coffee-to-order') {
++          setStatus('', '');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

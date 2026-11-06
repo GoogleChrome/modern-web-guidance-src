@@ -1,0 +1,837 @@
+diff --git a/index.html b/index.html
+index 66c9173..38e4357 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,197 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal menu extras */
++    .card {
++      display: flex;
++      flex-direction: column;
++      transition: box-shadow 0.3s, transform 0.3s, opacity 0.3s;
++    }
++
++    .card .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .card .tags {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 6px;
++      margin-top: 8px;
++    }
++
++    .card .tag {
++      font-size: 0.7rem;
++      background: var(--secondary);
++      border-radius: 10px;
++      padding: 2px 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .card .actions {
++      margin-top: auto;
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
++    .card.highlighted {
++      box-shadow: 0 0 0 4px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.2);
++      transform: translateY(-4px);
++    }
++
++    .card.dimmed {
++      opacity: 0.35;
++    }
++
++    .filter-status {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-top: 10px;
++      min-height: 1.4em;
++    }
++
++    .filter-status button {
++      background: none;
++      border: none;
++      color: var(--primary);
++      text-decoration: underline;
++      cursor: pointer;
++      font: inherit;
++      margin-left: 6px;
++    }
++
++    /* Order panel */
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      margin-top: 40px;
++    }
++
++    .order-panel h2 {
++      margin-bottom: 10px;
++    }
++
++    .order-panel ul {
++      list-style: none;
++    }
++
++    .order-panel li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid #eee;
++    }
++
++    .order-panel li small {
++      display: block;
++      color: #795548;
++    }
++
++    .order-panel .remove {
++      background: none;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      cursor: pointer;
++      padding: 2px 8px;
++    }
++
++    .order-total {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 12px;
++      font-weight: bold;
++    }
++
++    .order-total .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .order-total .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    /* Toast */
++    .toast {
++      position: fixed;
++      bottom: 20px;
++      left: 50%;
++      transform: translateX(-50%) translateY(150%);
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      transition: transform 0.3s;
++      z-index: 2000;
++    }
++
++    .toast.show {
++      transform: translateX(-50%) translateY(0);
++    }
++
++    /* Confirm dialog */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: 420px;
++      width: 90%;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog ul {
++      list-style: none;
++      margin: 12px 0;
++    }
++
++    dialog .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    dialog .dialog-actions button {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    dialog .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+@@ -177,26 +368,51 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="seasonal-grid" aria-live="polite">
++        <!-- Static fallback; replaced by the script below when JavaScript runs. -->
++        <div class="card" data-drink-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p class="filter-status" id="filter-status" aria-live="polite"></p>
++    </section>
++
++    <section class="order-panel" id="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your Order</h2>
++      <ul id="order-items"></ul>
++      <p id="order-empty">Your order is empty. Add a seasonal favorite to get started.</p>
++      <div class="order-total">
++        <span>Total: <span id="order-total">$0.00</span></span>
++        <button type="button" class="btn" id="checkout-btn" disabled>Place Order</button>
++      </div>
+     </section>
+   </main>
+ 
++  <dialog id="confirm-dialog" aria-labelledby="confirm-heading">
++    <h3 id="confirm-heading">Confirm your order</h3>
++    <ul id="confirm-items"></ul>
++    <p><strong>Total: <span id="confirm-total"></span></strong></p>
++    <p id="confirm-pickup"></p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" id="confirm-cancel">Cancel</button>
++      <button type="button" class="btn" id="confirm-ok">Confirm Order</button>
++    </div>
++  </dialog>
++
++  <div class="toast" id="toast" role="status" aria-live="polite"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +423,578 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      'use strict';
++
++      // ---------------------------------------------------------------
++      // Seasonal Favorites data (single source of truth for UI + agent tools)
++      // ---------------------------------------------------------------
++      const SIZES = {
++        small: { label: 'Small (8 oz)', priceDelta: -0.5 },
++        medium: { label: 'Medium (12 oz)', priceDelta: 0 },
++        large: { label: 'Large (16 oz)', priceDelta: 0.75 }
++      };
++      const MILKS = {
++        whole: { label: 'Whole milk', priceDelta: 0 },
++        skim: { label: 'Skim milk', priceDelta: 0 },
++        oat: { label: 'Oat milk', priceDelta: 0.6 },
++        almond: { label: 'Almond milk', priceDelta: 0.6 },
++        none: { label: 'No milk', priceDelta: 0 }
++      };
++      const EXTRA_SHOT_PRICE = 0.9;
++      const MAX_QUANTITY = 10;
++
++      const SEASONAL_MENU = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          basePrice: 5.25,
++          temperature: ['hot', 'iced'],
++          caffeineMg: 150,
++          defaultMilk: 'oat',
++          milkOptions: ['oat', 'almond', 'whole', 'skim'],
++          tags: ['seasonal', 'dairy-free', 'sweet'],
++          detailsUrl: '/menu/seasonal'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          basePrice: 3.25,
++          temperature: ['hot'],
++          caffeineMg: 130,
++          defaultMilk: 'none',
++          milkOptions: ['none'],
++          tags: ['bold', 'dairy-free', 'classic'],
++          detailsUrl: '/menu/espresso'
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          basePrice: 4.5,
++          temperature: ['iced'],
++          caffeineMg: 200,
++          defaultMilk: 'none',
++          milkOptions: ['none', 'whole', 'skim', 'oat', 'almond'],
++          tags: ['smooth', 'dairy-free', 'high-caffeine'],
++          detailsUrl: '/menu/cold-brew'
++        }
++      ];
++
++      const DRINK_IDS = SEASONAL_MENU.map((d) => d.id);
++      const findDrink = (idOrName) => {
++        if (typeof idOrName !== 'string') return undefined;
++        const q = idOrName.trim().toLowerCase();
++        return SEASONAL_MENU.find((d) => d.id === q || d.name.toLowerCase() === q);
++      };
++      const money = (n) => '$' + n.toFixed(2);
++      const round2 = (n) => Math.round(n * 100) / 100;
++
++      // ---------------------------------------------------------------
++      // State
++      // ---------------------------------------------------------------
++      const state = {
++        order: [], // { lineId, drinkId, name, size, milk, temperature, extraShots, quantity, notes, unitPrice }
++        nextLineId: 1,
++        activeFilter: null
++      };
++
++      const $ = (id) => document.getElementById(id);
++      const grid = $('seasonal-grid');
++      const filterStatus = $('filter-status');
++      const orderItemsEl = $('order-items');
++      const orderEmptyEl = $('order-empty');
++      const orderTotalEl = $('order-total');
++      const checkoutBtn = $('checkout-btn');
++      const toastEl = $('toast');
++      const dialog = $('confirm-dialog');
++
++      // ---------------------------------------------------------------
++      // Rendering
++      // ---------------------------------------------------------------
++      const el = (tag, props = {}, children = []) => {
++        const node = document.createElement(tag);
++        Object.entries(props).forEach(([k, v]) => {
++          if (k === 'dataset') Object.assign(node.dataset, v);
++          else if (k in node) node[k] = v;
++          else node.setAttribute(k, v);
++        });
++        children.forEach((c) => node.append(c));
++        return node;
++      };
++
++      function renderMenu() {
++        grid.replaceChildren(
++          ...SEASONAL_MENU.map((d) =>
++            el('div', { className: 'card', id: 'drink-' + d.id, dataset: { drinkId: d.id } }, [
++              el('h3', { textContent: d.name }),
++              el('p', { textContent: d.description }),
++              el('p', { className: 'price', textContent: 'From ' + money(d.basePrice + SIZES.small.priceDelta) }),
++              el('div', { className: 'tags' }, d.tags.map((t) => el('span', { className: 'tag', textContent: t }))),
++              el('div', { className: 'actions' }, [
++                el('a', { href: d.detailsUrl, className: 'btn', textContent: 'View Details' }),
++                el('button', {
++                  type: 'button',
++                  className: 'btn btn-accent',
++                  textContent: 'Add to Order',
++                  onclick: () => {
++                    const res = addToOrder({ drinkId: d.id });
++                    if (res.ok) toast('Added ' + d.name + ' to your order');
++                  }
++                })
++              ])
++            ])
++          )
++        );
++        applyFilterStyles();
++      }
++
++      function renderOrder() {
++        orderItemsEl.replaceChildren(
++          ...state.order.map((line) =>
++            el('li', {}, [
++              el('div', {}, [
++                document.createTextNode(line.quantity + ' × ' + line.name),
++                el('small', { textContent: describeLine(line) })
++              ]),
++              el('div', {}, [
++                document.createTextNode(money(line.unitPrice * line.quantity) + ' '),
++                el('button', {
++                  type: 'button',
++                  className: 'remove',
++                  textContent: 'Remove',
++                  ariaLabel: 'Remove ' + line.name,
++                  onclick: () => removeFromOrder(line.lineId)
++                })
++              ])
++            ])
++          )
++        );
++        const empty = state.order.length === 0;
++        orderEmptyEl.hidden = !empty;
++        checkoutBtn.disabled = empty;
++        orderTotalEl.textContent = money(orderTotal());
++      }
++
++      function describeLine(line) {
++        const parts = [SIZES[line.size].label, line.temperature, MILKS[line.milk].label];
++        if (line.extraShots) parts.push('+' + line.extraShots + ' shot' + (line.extraShots > 1 ? 's' : ''));
++        if (line.notes) parts.push('"' + line.notes + '"');
++        return parts.join(' · ');
++      }
++
++      let toastTimer;
++      function toast(message) {
++        toastEl.textContent = message;
++        toastEl.classList.add('show');
++        clearTimeout(toastTimer);
++        toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3000);
++      }
++
++      // ---------------------------------------------------------------
++      // Menu queries & UI actions
++      // ---------------------------------------------------------------
++      function drinkSummary(d) {
++        return {
++          id: d.id,
++          name: d.name,
++          description: d.description,
++          price: {
++            small: round2(d.basePrice + SIZES.small.priceDelta),
++            medium: round2(d.basePrice + SIZES.medium.priceDelta),
++            large: round2(d.basePrice + SIZES.large.priceDelta)
++          },
++          temperatures: d.temperature,
++          caffeineMg: d.caffeineMg,
++          milkOptions: d.milkOptions,
++          defaultMilk: d.defaultMilk,
++          tags: d.tags,
++          detailsUrl: new URL(d.detailsUrl, location.href).href
++        };
++      }
++
++      function queryMenu({ temperature, tag, maxPrice, search } = {}) {
++        return SEASONAL_MENU.filter((d) => {
++          if (temperature && !d.temperature.includes(temperature)) return false;
++          if (tag && !d.tags.includes(String(tag).toLowerCase())) return false;
++          if (typeof maxPrice === 'number' && d.basePrice + SIZES.small.priceDelta > maxPrice) return false;
++          if (search) {
++            const q = String(search).toLowerCase();
++            const hay = (d.name + ' ' + d.description + ' ' + d.tags.join(' ')).toLowerCase();
++            if (!hay.includes(q)) return false;
++          }
++          return true;
++        });
++      }
++
++      function applyFilterStyles() {
++        const matchIds = state.activeFilter ? new Set(state.activeFilter.ids) : null;
++        grid.querySelectorAll('.card[data-drink-id]').forEach((card) => {
++          card.classList.toggle('dimmed', !!matchIds && !matchIds.has(card.dataset.drinkId));
++        });
++        filterStatus.replaceChildren();
++        if (state.activeFilter) {
++          filterStatus.append(
++            document.createTextNode('Showing ' + state.activeFilter.ids.length + ' match(es) for ' + state.activeFilter.label + '.'),
++            el('button', { type: 'button', textContent: 'Clear filter', onclick: () => setFilter(null) })
++          );
++        }
++      }
++
++      function setFilter(criteria) {
++        const hasCriteria = criteria && Object.values(criteria).some((v) => v !== undefined && v !== null && v !== '');
++        if (!hasCriteria) {
++          state.activeFilter = null;
++        } else {
++          const ids = queryMenu(criteria).map((d) => d.id);
++          const label = Object.entries(criteria)
++            .filter(([, v]) => v !== undefined && v !== null && v !== '')
++            .map(([k, v]) => k + ': ' + v)
++            .join(', ');
++          state.activeFilter = { ids, label };
++        }
++        applyFilterStyles();
++        return state.activeFilter ? state.activeFilter.ids : DRINK_IDS;
++      }
++
++      function highlightDrink(drinkId) {
++        const d = findDrink(drinkId);
++        if (!d) return null;
++        grid.querySelectorAll('.card.highlighted').forEach((c) => c.classList.remove('highlighted'));
++        const card = $('drink-' + d.id);
++        if (card) {
++          card.classList.add('highlighted');
++          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
++          setTimeout(() => card.classList.remove('highlighted'), 4000);
++        }
++        return d;
++      }
++
++      // ---------------------------------------------------------------
++      // Order logic
++      // ---------------------------------------------------------------
++      function addToOrder({ drinkId, size = 'medium', milk, temperature, extraShots = 0, quantity = 1, notes } = {}) {
++        const d = findDrink(drinkId);
++        if (!d) return { ok: false, error: 'Unknown drink "' + drinkId + '". Valid ids: ' + DRINK_IDS.join(', ') };
++        if (!SIZES[size]) return { ok: false, error: 'Invalid size "' + size + '". Use small, medium or large.' };
++        const chosenMilk = milk || d.defaultMilk;
++        if (!d.milkOptions.includes(chosenMilk)) {
++          return { ok: false, error: d.name + ' does not support milk "' + chosenMilk + '". Options: ' + d.milkOptions.join(', ') };
++        }
++        const temp = temperature || d.temperature[0];
++        if (!d.temperature.includes(temp)) {
++          return { ok: false, error: d.name + ' is only served ' + d.temperature.join(' or ') + '.' };
++        }
++        const shots = Number(extraShots);
++        if (!Number.isInteger(shots) || shots < 0 || shots > 4) return { ok: false, error: 'extraShots must be an integer from 0 to 4.' };
++        const qty = Number(quantity);
++        if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QUANTITY) {
++          return { ok: false, error: 'quantity must be an integer from 1 to ' + MAX_QUANTITY + '.' };
++        }
++        const unitPrice = round2(d.basePrice + SIZES[size].priceDelta + MILKS[chosenMilk].priceDelta + shots * EXTRA_SHOT_PRICE);
++        const line = {
++          lineId: state.nextLineId++,
++          drinkId: d.id,
++          name: d.name,
++          size,
++          milk: chosenMilk,
++          temperature: temp,
++          extraShots: shots,
++          quantity: qty,
++          notes: notes ? String(notes).slice(0, 140) : '',
++          unitPrice
++        };
++        state.order.push(line);
++        renderOrder();
++        return { ok: true, line };
++      }
++
++      function removeFromOrder(lineId) {
++        const idx = state.order.findIndex((l) => l.lineId === Number(lineId));
++        if (idx === -1) return null;
++        const [removed] = state.order.splice(idx, 1);
++        renderOrder();
++        return removed;
++      }
++
++      function clearOrder() {
++        state.order = [];
++        renderOrder();
++      }
++
++      const orderTotal = () => round2(state.order.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0));
++
++      function orderSnapshot() {
++        return {
++          items: state.order.map((l) => ({ ...l, lineTotal: round2(l.unitPrice * l.quantity), summary: describeLine(l) })),
++          itemCount: state.order.reduce((n, l) => n + l.quantity, 0),
++          total: orderTotal(),
++          currency: 'USD'
++        };
++      }
++
++      // Always requires an explicit click from the human user to submit.
++      function confirmOrderWithUser(pickupName) {
++        return new Promise((resolve) => {
++          $('confirm-items').replaceChildren(
++            ...state.order.map((l) => el('li', { textContent: l.quantity + ' × ' + l.name + ' — ' + describeLine(l) }))
++          );
++          $('confirm-total').textContent = money(orderTotal());
++          $('confirm-pickup').textContent = pickupName ? 'Pickup name: ' + pickupName : '';
++          const finish = (ok) => {
++            $('confirm-ok').onclick = null;
++            $('confirm-cancel').onclick = null;
++            dialog.onclose = null;
++            if (dialog.open) dialog.close();
++            resolve(ok);
++          };
++          $('confirm-ok').onclick = () => finish(true);
++          $('confirm-cancel').onclick = () => finish(false);
++          dialog.onclose = () => finish(false);
++          dialog.showModal();
++        });
++      }
++
++      let orderInFlight = false;
++      async function placeOrder({ pickupName } = {}) {
++        if (state.order.length === 0) return { status: 'error', message: 'The order is empty.' };
++        if (orderInFlight) return { status: 'error', message: 'A confirmation dialog is already open.' };
++        orderInFlight = true;
++        try {
++          const confirmed = await confirmOrderWithUser(pickupName);
++          if (!confirmed) {
++            toast('Order not placed');
++            return { status: 'cancelled', message: 'The user declined to place the order.' };
++          }
++          const receipt = {
++            status: 'placed',
++            orderNumber: 'DG-' + Date.now().toString(36).toUpperCase(),
++            pickupName: pickupName || null,
++            ...orderSnapshot(),
++            estimatedReadyMinutes: 10 + state.order.length * 2
++          };
++          clearOrder();
++          toast('Order ' + receipt.orderNumber + ' placed! Ready in ~' + receipt.estimatedReadyMinutes + ' min');
++          return receipt;
++        } finally {
++          orderInFlight = false;
++        }
++      }
++
++      checkoutBtn.addEventListener('click', () => placeOrder());
++
++      renderMenu();
++      renderOrder();
++
++      // ---------------------------------------------------------------
++      // WebMCP: expose browser tools to in-page AI agents
++      // https://webmachinelearning.github.io/webmcp/
++      // ---------------------------------------------------------------
++      const result = (data) => ({
++        content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }]
++      });
++      const errorResult = (message) => ({ content: [{ type: 'text', text: message }], isError: true });
++
++      const tools = [
++        {
++          name: 'get_seasonal_menu',
++          description:
++            'List drinks in The Daily Grind "Seasonal Favorites" menu with prices per size, temperatures, caffeine, milk options and tags. ' +
++            'Optional filters narrow the results. Does not change the page.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              temperature: { type: 'string', enum: ['hot', 'iced'], description: 'Only drinks served at this temperature.' },
++              tag: { type: 'string', description: 'Only drinks with this tag, e.g. "dairy-free", "bold", "high-caffeine".' },
++              maxPrice: { type: 'number', description: 'Only drinks whose cheapest size costs at most this many USD.' },
++              search: { type: 'string', description: 'Free-text match against name, description and tags.' }
++            },
++            additionalProperties: false
++          },
++          annotations: { readOnlyHint: true },
++          execute: async (args = {}) => {
++            const drinks = queryMenu(args).map(drinkSummary);
++            return result({
++              drinks,
++              sizes: SIZES,
++              milks: MILKS,
++              extraShotPrice: EXTRA_SHOT_PRICE,
++              currency: 'USD'
++            });
++          }
++        },
++        {
++          name: 'get_drink_details',
++          description: 'Get full details for a single Seasonal Favorites drink by id or exact name.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              drinkId: { type: 'string', enum: DRINK_IDS, description: 'Drink id from get_seasonal_menu.' }
++            },
++            required: ['drinkId'],
++            additionalProperties: false
++          },
++          annotations: { readOnlyHint: true },
++          execute: async ({ drinkId } = {}) => {
++            const d = findDrink(drinkId);
++            return d ? result(drinkSummary(d)) : errorResult('Unknown drink "' + drinkId + '". Valid ids: ' + DRINK_IDS.join(', '));
++          }
++        },
++        {
++          name: 'highlight_drink',
++          description: 'Scroll the page to a Seasonal Favorites drink card and visually highlight it for the user.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              drinkId: { type: 'string', enum: DRINK_IDS, description: 'Drink id to highlight.' }
++            },
++            required: ['drinkId'],
++            additionalProperties: false
++          },
++          execute: async ({ drinkId } = {}) => {
++            const d = highlightDrink(drinkId);
++            return d ? result('Highlighted ' + d.name + ' on the page.') : errorResult('Unknown drink "' + drinkId + '".');
++          }
++        },
++        {
++          name: 'filter_seasonal_menu',
++          description:
++            'Visually filter the Seasonal Favorites section on the page: matching drinks stay prominent, others are dimmed. ' +
++            'Call with no arguments to clear the filter. Returns the ids of matching drinks.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              temperature: { type: 'string', enum: ['hot', 'iced'] },
++              tag: { type: 'string', description: 'Tag such as "dairy-free" or "bold".' },
++              maxPrice: { type: 'number', description: 'Maximum starting price in USD.' },
++              search: { type: 'string', description: 'Free-text search.' }
++            },
++            additionalProperties: false
++          },
++          execute: async (args = {}) => {
++            const ids = setFilter(args);
++            return result({ filterActive: !!state.activeFilter, matchingDrinkIds: ids });
++          }
++        },
++        {
++          name: 'add_drink_to_order',
++          description:
++            'Add a Seasonal Favorites drink to the user\'s in-page order with customizations. ' +
++            'This only updates the order shown on the page; it does not submit or charge anything.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              drinkId: { type: 'string', enum: DRINK_IDS, description: 'Drink id from get_seasonal_menu.' },
++              size: { type: 'string', enum: Object.keys(SIZES), default: 'medium' },
++              milk: { type: 'string', enum: Object.keys(MILKS), description: 'Must be one of the drink\'s milkOptions. Defaults to the drink\'s default milk.' },
++              temperature: { type: 'string', enum: ['hot', 'iced'], description: 'Must be one the drink is served at. Defaults to the first available.' },
++              extraShots: { type: 'integer', minimum: 0, maximum: 4, default: 0 },
++              quantity: { type: 'integer', minimum: 1, maximum: MAX_QUANTITY, default: 1 },
++              notes: { type: 'string', maxLength: 140, description: 'Optional barista note.' }
++            },
++            required: ['drinkId'],
++            additionalProperties: false
++          },
++          execute: async (args = {}) => {
++            const res = addToOrder(args);
++            if (!res.ok) return errorResult(res.error);
++            highlightDrink(res.line.drinkId);
++            toast('Added ' + res.line.quantity + ' × ' + res.line.name + ' to your order');
++            return result({ added: res.line, order: orderSnapshot() });
++          }
++        },
++        {
++          name: 'get_current_order',
++          description: 'Return the drinks currently in the user\'s in-page order, with line ids, prices and total.',
++          inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++          annotations: { readOnlyHint: true },
++          execute: async () => result(orderSnapshot())
++        },
++        {
++          name: 'remove_drink_from_order',
++          description: 'Remove one line from the in-page order using its lineId (see get_current_order).',
++          inputSchema: {
++            type: 'object',
++            properties: { lineId: { type: 'integer', description: 'Line id from get_current_order.' } },
++            required: ['lineId'],
++            additionalProperties: false
++          },
++          execute: async ({ lineId } = {}) => {
++            const removed = removeFromOrder(lineId);
++            if (!removed) return errorResult('No order line with id ' + lineId + '.');
++            toast('Removed ' + removed.name + ' from your order');
++            return result({ removed, order: orderSnapshot() });
++          }
++        },
++        {
++          name: 'clear_order',
++          description: 'Remove all drinks from the in-page order.',
++          inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++          annotations: { destructiveHint: true },
++          execute: async () => {
++            clearOrder();
++            toast('Order cleared');
++            return result('Order cleared.');
++          }
++        },
++        {
++          name: 'place_order',
++          description:
++            'Submit the current in-page order for pickup. Opens a confirmation dialog and the order is only placed if the ' +
++            'human user clicks "Confirm Order". Returns the receipt, or status "cancelled" if the user declines.',
++          inputSchema: {
++            type: 'object',
++            properties: { pickupName: { type: 'string', maxLength: 40, description: 'Name to call out at pickup.' } },
++            additionalProperties: false
++          },
++          execute: async (args = {}, client) => {
++            const run = () => placeOrder(args);
++            // Prefer the WebMCP user-interaction hook when the browser provides it.
++            const res = client && typeof client.requestUserInteraction === 'function'
++              ? await client.requestUserInteraction(run)
++              : await run();
++            return res.status === 'error' ? errorResult(res.message) : result(res);
++          }
++        }
++      ];
++
++      function registerWebMcpTools() {
++        const mc = navigator.modelContext;
++        if (!mc) return false;
++        try {
++          if (typeof mc.registerTool === 'function') {
++            tools.forEach((t) => mc.registerTool(t));
++          } else if (typeof mc.provideContext === 'function') {
++            mc.provideContext({ tools });
++          } else {
++            return false;
++          }
++          return true;
++        } catch (err) {
++          console.warn('[Daily Grind] Failed to register WebMCP tools:', err);
++          return false;
++        }
++      }
++
++      // Expose the same tools for agents/extensions that look for a page-level registry,
++      // and for polyfills that install navigator.modelContext after load.
++      window.dailyGrindTools = Object.freeze({
++        list: () => tools.map(({ name, description, inputSchema, annotations }) => ({ name, description, inputSchema, annotations })),
++        call: (name, args) => {
++          const t = tools.find((x) => x.name === name);
++          return t ? t.execute(args || {}) : Promise.resolve(errorResult('Unknown tool "' + name + '".'));
++        }
++      });
++
++      if (!registerWebMcpTools()) {
++        window.addEventListener('load', registerWebMcpTools, { once: true });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

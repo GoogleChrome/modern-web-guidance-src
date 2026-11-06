@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sign-in {
++      max-width: 420px;
++      margin: 40px auto;
++      text-align: left;
++    }
++
++    .sign-in label,
++    .sign-in input {
++      display: block;
++      width: 100%;
++    }
++
++    .sign-in input {
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .sign-in button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .sign-in button:disabled {
++      cursor: default;
++      opacity: 0.65;
++    }
++
++    .sign-in [role="status"] {
++      margin-top: 12px;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +209,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="card sign-in" aria-labelledby="sign-in-heading">
++      <h2 id="sign-in-heading">Sign in to your account</h2>
++      <form id="sign-in-form">
++        <label for="username">Username</label>
++        <input id="username" name="username" type="text"
++          autocomplete="username webauthn" autocapitalize="none" spellcheck="false"
++          data-testid="username-field">
++        <button class="btn" type="submit" data-testid="auth-button">Sign in with passkey</button>
++        <p role="status" aria-live="polite" aria-atomic="true" data-testid="auth-status"></p>
++      </form>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +252,120 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import './vendor/webauthn-polyfills.js';
++
++    const form = document.querySelector('#sign-in-form');
++    const username = document.querySelector('[data-testid="username-field"]');
++    const button = document.querySelector('[data-testid="auth-button"]');
++    const status = document.querySelector('[data-testid="auth-status"]');
++    let activeController = null;
++    let signedIn = false;
++
++    async function authenticate(conditional) {
++      if (signedIn) return;
++
++      // Cancel autofill (including options still being fetched) before a modal request.
++      activeController?.abort();
++      const controller = new AbortController();
++      activeController = controller;
++      const { signal } = controller;
++      if (!conditional) {
++        button.disabled = true;
++        status.textContent = 'Follow your device’s instructions to sign in.';
++      }
++
++      try {
++        if (conditional) {
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          if (signal.aborted || capabilities.conditionalGet !== true) return;
++        }
++
++        // The backend must issue a fresh, session-bound challenge and enforce
++        // its RP ID, origin, challenge, and user-verification policy at verification.
++        const optionsResponse = await fetch('/api/login/options', {
++          credentials: 'same-origin',
++          cache: 'no-store',
++          signal,
++        });
++        if (!optionsResponse.ok) throw new Error('Unable to start passkey sign-in. Please try again.');
++        const options = await optionsResponse.json();
++        if (signal.aborted) return;
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options.publicKey ?? options);
++        publicKey.allowCredentials = []; // Discover passkeys without requiring a username.
++        if (!conditional) publicKey.userVerification = 'required';
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          mediation: conditional ? 'conditional' : 'required',
++          signal,
++        });
++        if (signal.aborted || !credential) return;
++
++        button.disabled = true;
++        status.textContent = 'Verifying your passkey…';
++        const encoded = credential.toJSON();
++        const response = await fetch('/api/login/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encoded),
++          signal,
++        });
++
++        if (!response.ok) {
++          if (response.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: publicKey.rpId ?? location.hostname,
++                credentialId: encoded.id,
++              });
++            } catch {
++              // Credential-store synchronization is optional; preserve the login error.
++            }
++          }
++          throw new Error('Unable to verify your passkey. Please try again.');
++        }
++        const result = response.status === 204 ? {} : await response.json();
++        if (result.verified === false || result.success === false) {
++          throw new Error('Unable to verify your passkey. Please try again.');
++        }
++        signedIn = true;
++        status.textContent = 'Signed in successfully.';
++      } catch (error) {
++        if (signal.aborted || error.name === 'AbortError') return;
++        if (error.name === 'NotAllowedError') {
++          if (!conditional) status.textContent = 'Passkey sign-in was cancelled or timed out. Try again.';
++        } else {
++          status.textContent = error.message || 'Passkey sign-in failed. Please try again.';
++        }
++      } finally {
++        // An aborted request must never change the state of its replacement.
++        if (activeController === controller) {
++          activeController = null;
++          button.disabled = signedIn;
++          if (!conditional && !signedIn) void authenticate(true);
++        }
++      }
++    }
++
++    if (window.isSecureContext && window.PublicKeyCredential && navigator.credentials?.get) {
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        void authenticate(false);
++      });
++      username.addEventListener('focus', () => {
++        if (!activeController && !signedIn) void authenticate(true);
++      });
++      // Register silently on load so focusing the username offers passkey autofill.
++      void authenticate(true);
++    } else {
++      button.disabled = true;
++      status.textContent = 'Passkey sign-in requires a supported browser and a secure connection.';
++      form.addEventListener('submit', (event) => event.preventDefault());
++    }
++  </script>
+ </body>
+ 
+ </html>

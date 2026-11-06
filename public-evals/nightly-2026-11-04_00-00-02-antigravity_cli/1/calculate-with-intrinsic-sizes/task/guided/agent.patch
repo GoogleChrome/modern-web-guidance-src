@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,10 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* MANDATORY: Enable keyword interpolation globally for smooth transitions to/from height: auto or block-size: auto */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -151,8 +153,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo Badge */
++    .promo-badge {
++      display: inline-block;
++      background-color: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      font-size: 0.8rem;
++      padding-block: 0.25rem;
++      padding-inline: 0.5rem;
++      border-radius: 999px;
++      margin-block-end: 0.75rem;
++      /* MANDATORY: Always provide a standard sizing keyword fallback for browsers that do not support calc-size() */
++      inline-size: max-content;
++      inline-size: calc-size(max-content, clamp(100px, size * 1.2, 100%));
++    }
++
++    /* Accordion / FAQ Section */
++    .faq-section {
++      margin-block-start: 3rem;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding-block: 1.5rem;
++      padding-inline: 1.5rem;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-block-end: 1rem;
++      color: var(--primary);
++    }
++
++    #accordion-toggle {
++      inline-size: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding-block: 1rem;
++      padding-inline: 1.25rem;
++      font-size: 1.05rem;
++      font-weight: 600;
++      text-align: start;
++      border-radius: 6px;
++      cursor: pointer;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      transition: background 0.3s ease;
++    }
++
++    #accordion-toggle:hover:not(:disabled) {
++      background: var(--text);
++    }
++
++    /*
++     * Note: Directly transitioning or interpolating between two different intrinsic sizing
++     * keywords (e.g., from min-content to max-content) is not supported. One end of the
++     * transition must be a fixed length or percentage (such as 0 to auto).
++     */
++    .accordion-content {
++      display: block;
++      overflow: hidden;
++      /* MANDATORY: Fallback value for closed state */
++      block-size: 0;
++      opacity: 0;
++      padding-inline: 1.25rem;
++      transition: block-size 0.3s ease-out, opacity 0.3s ease-out;
++    }
++
++    .accordion-content.open {
++      /* MANDATORY: Fallback value for open state in browsers that don't support calc-size() */
++      block-size: auto;
++      /* Smoothly animate from 0 to natural intrinsic height plus 2rem of breathing room */
++      block-size: calc-size(auto, size + 2rem);
++      opacity: 1;
++      padding-block-start: 1rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content {
++        transition: opacity 0.2s ease !important;
++      }
++
++      .accordion-content.open {
++        block-size: auto;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -178,8 +268,9 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="promo-badge">Staff Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -194,8 +285,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="sourcing-heading">
++      <h2 id="sourcing-heading">Our Sourcing</h2>
++      <button id="accordion-toggle" type="button" aria-expanded="false" aria-controls="sourcing-content">
++        <span>How do we ethically source our coffee beans?</span>
++        <span aria-hidden="true">+</span>
++      </button>
++      <div id="sourcing-content" class="accordion-content">
++        <p>We partner directly with smallholder farms and cooperatives across Latin America, East Africa, and Southeast Asia. Every harvest is 100% Fair Trade certified and shade-grown, ensuring sustainable livelihoods for growers and preserving native biodiversity while bringing freshly roasted specialty beans straight to your cup.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +308,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const accordionToggle = document.getElementById('accordion-toggle');
++    const accordionContent = document.querySelector('.accordion-content');
++
++    if (accordionToggle && accordionContent) {
++      accordionToggle.addEventListener('click', () => {
++        const isOpen = accordionContent.classList.toggle('open');
++        accordionToggle.setAttribute('aria-expanded', String(isOpen));
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

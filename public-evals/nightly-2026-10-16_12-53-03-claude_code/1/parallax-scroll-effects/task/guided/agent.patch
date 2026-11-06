@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,106 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Parallax depth section (CSS scroll-driven animations; decorative, so no JS fallback) */
++    .depth {
++      position: relative;
++      height: 80vh;
++      min-height: 480px;
++      overflow: clip;
++      background: var(--primary);
++      color: white;
++      isolation: isolate;
++    }
++
++    .depth-layer {
++      position: absolute;
++      inset: 0;
++    }
++
++    .depth-layer img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .depth-back {
++      inset: -20% 0;
++      z-index: 0;
++    }
++
++    .depth-back::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(30, 15, 10, 0.55);
++    }
++
++    .depth-mid {
++      inset: -30% auto -30% 8%;
++      width: min(34vw, 380px);
++      z-index: 1;
++      display: flex;
++      align-items: center;
++    }
++
++    .depth-mid img {
++      height: auto;
++      aspect-ratio: 3 / 4;
++      border-radius: 12px;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
++    }
++
++    .depth-front {
++      z-index: 2;
++      display: flex;
++      align-items: center;
++      justify-content: flex-end;
++      padding: 0 8%;
++    }
++
++    .depth-copy {
++      max-width: 440px;
++      padding: 28px;
++      border-radius: 8px;
++      background: rgba(62, 39, 35, 0.92);
++    }
++
++    .depth-copy h2 {
++      margin-bottom: 10px;
++    }
++
++    @keyframes depth-shift {
++      from { transform: translateY(var(--shift)); }
++      to { transform: translateY(calc(var(--shift) * -1)); }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .depth {
++          view-timeline: --depth block;
++        }
++
++        .depth-layer {
++          animation: depth-shift linear both;
++          animation-timeline: --depth;
++          animation-range: cover;
++          will-change: transform;
++        }
++
++        .depth-back { --shift: -8%; }
++        .depth-mid { --shift: 25%; }
++        .depth-front { --shift: 6%; }
++      }
++    }
++
++    @media (max-width: 700px) {
++      .depth-mid { display: none; }
++      .depth-front { justify-content: center; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +271,24 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="depth" aria-labelledby="depth-title">
++    <div class="depth-layer depth-back" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70" alt="" width="1600" height="1067" loading="lazy">
++    </div>
++    <div class="depth-layer depth-mid" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=70" alt="" width="600" height="800" loading="lazy">
++    </div>
++    <div class="depth-layer depth-front">
++      <div class="depth-copy">
++        <h2 id="depth-title">From Bean to Cup</h2>
++        <p>We roast in small batches every morning, so every cup you pour is as fresh as the day it left the farm.</p>
++        <a href="/about" class="btn">Our Story</a>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

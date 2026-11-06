@@ -1,0 +1,297 @@
+diff --git a/index.html b/index.html
+index 66c9173..b145073 100644
+--- a/index.html
++++ b/index.html
+@@ -115,6 +115,99 @@
+       text-align: center;
+     }
+ 
++    /* Layout modes for the card collection */
++    .layout-toggle {
++      display: flex;
++      justify-content: center;
++      gap: 0;
++      margin-top: 15px;
++      border: none;
++    }
++
++    .layout-toggle label {
++      cursor: pointer;
++      padding: 6px 16px;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    .layout-toggle label:first-of-type {
++      border-radius: 5px 0 0 5px;
++    }
++
++    .layout-toggle label:last-of-type {
++      border-radius: 0 5px 5px 0;
++      border-left: none;
++    }
++
++    .layout-toggle input {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .layout-toggle label:has(input:checked) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-toggle label:has(input:focus-visible) {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .grid[data-layout="grid"] .card.featured {
++      grid-column: span 2;
++    }
++
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++      text-align: start;
++    }
++
++    .grid[data-layout="list"] .card p {
++      flex: 1;
++    }
++
++    .grid[data-layout="list"] .card h3,
++    .grid[data-layout="list"] .card .btn {
++      margin: 0;
++      flex-shrink: 0;
++    }
++
++    @media (max-width: 600px) {
++      .grid[data-layout="grid"] .card.featured {
++        grid-column: auto;
++      }
++
++      .grid[data-layout="list"] .card {
++        flex-direction: column;
++        align-items: stretch;
++        text-align: center;
++      }
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -177,22 +270,44 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <fieldset class="layout-toggle">
++        <legend class="visually-hidden">Card layout</legend>
++        <label><input type="radio" name="layout" value="grid" checked> Grid</label>
++        <label><input type="radio" name="layout" value="list"> List</label>
++      </fieldset>
++      <p id="seasonal-nav-hint" class="visually-hidden">Use the arrow keys to move between items.</p>
++      <div class="grid" id="seasonal-grid" data-layout="grid" role="group" aria-label="Seasonal favorites"
++        aria-describedby="seasonal-nav-hint" data-spatial-nav>
++        <article class="card featured">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/seasonal" class="btn" aria-label="View details: Maple Oat Latte">View Details</a>
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <a href="/menu/espresso" class="btn" aria-label="View details: Dark Roast Espresso">View Details</a>
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a href="/menu/cold-brew" class="btn" aria-label="View details: Cold Brew">View Details</a>
++        </article>
++        <article class="card">
++          <h3>Pumpkin Spice Cappuccino</h3>
++          <p>Velvety foam dusted with cinnamon, nutmeg, and clove.</p>
++          <a href="/menu/pumpkin-spice" class="btn" aria-label="View details: Pumpkin Spice Cappuccino">View Details</a>
++        </article>
++        <article class="card">
++          <h3>Chai Tea Latte</h3>
++          <p>Black tea simmered with warming spices and steamed milk.</p>
++          <a href="/menu/chai" class="btn" aria-label="View details: Chai Tea Latte">View Details</a>
++        </article>
++        <article class="card">
++          <h3>Honey Lavender Mocha</h3>
++          <p>Rich chocolate, local honey, and a whisper of lavender.</p>
++          <a href="/menu/honey-lavender" class="btn" aria-label="View details: Honey Lavender Mocha">View Details</a>
++        </article>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +322,137 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Layout mode switcher for the seasonal grid.
++    (() => {
++      const grid = document.getElementById('seasonal-grid');
++      document.querySelectorAll('input[name="layout"]').forEach((radio) => {
++        radio.addEventListener('change', () => {
++          if (radio.checked) grid.dataset.layout = radio.value;
++        });
++      });
++    })();
++
++    // Spatial (arrow key) navigation for composite widgets marked with [data-spatial-nav].
++    // Candidates are chosen from live geometry on every keypress, so it works in any
++    // layout mode (grid, list, spanning cards, responsive reflow) without index math.
++    (() => {
++      const CANDIDATE_SELECTOR = 'a[href], button:not([disabled]), [data-spatial-item]';
++      const TOLERANCE = 1; // px, for sub-pixel rounding
++      const WEIGHT = 2; // fallback perpendicular weighting
++      const DIRECTIONS = {
++        ArrowUp: 'up',
++        ArrowDown: 'down',
++        ArrowLeft: 'left',
++        ArrowRight: 'right',
++      };
++
++      const getCandidates = (container) =>
++        [...container.querySelectorAll(CANDIDATE_SELECTOR)].filter((el) =>
++          el.checkVisibility({ visibilityProperty: true, opacityProperty: true })
++        );
++
++      // Returns [gap along nav axis, perpendicular overlap?, perpendicular centre offset]
++      // or null if the candidate is not in the requested direction.
++      function measure(from, to, dir) {
++        const horizontal = dir === 'left' || dir === 'right';
++        let gap;
++        switch (dir) {
++          case 'right': gap = to.left - from.right; break;
++          case 'left': gap = from.left - to.right; break;
++          case 'down': gap = to.top - from.bottom; break;
++          case 'up': gap = from.top - to.bottom; break;
++        }
++        if (gap < -TOLERANCE) return null;
++        gap = Math.max(gap, 0);
++
++        const [fStart, fEnd, tStart, tEnd] = horizontal
++          ? [from.top, from.bottom, to.top, to.bottom]
++          : [from.left, from.right, to.left, to.right];
++        const overlaps = Math.min(fEnd, tEnd) - Math.max(fStart, tStart) > TOLERANCE;
++        const offset = Math.abs((fStart + fEnd) / 2 - (tStart + tEnd) / 2);
++        return { gap, overlaps, offset };
++      }
++
++      function findNext(current, candidates, dir) {
++        const from = current.getBoundingClientRect();
++        let bestAligned = null;
++        let bestFallback = null;
++
++        for (const el of candidates) {
++          if (el === current) continue;
++          const m = measure(from, el.getBoundingClientRect(), dir);
++          if (!m) continue;
++
++          if (m.overlaps) {
++            if (
++              !bestAligned ||
++              m.gap < bestAligned.gap ||
++              (m.gap === bestAligned.gap && m.offset < bestAligned.offset)
++            ) {
++              bestAligned = { el, gap: m.gap, offset: m.offset };
++            }
++          } else {
++            const score = m.gap + WEIGHT * m.offset;
++            if (!bestFallback || score < bestFallback.score) {
++              bestFallback = { el, score };
++            }
++          }
++        }
++        return (bestAligned ?? bestFallback)?.el ?? null;
++      }
++
++      function setActive(candidates, active) {
++        for (const el of candidates) el.tabIndex = el === active ? 0 : -1;
++      }
++
++      function initSpatialNav(container) {
++        // Roving tabindex: only one tab stop for the whole widget.
++        const candidates = getCandidates(container);
++        if (candidates.length) setActive(candidates, candidates[0]);
++
++        // Keep the tab stop on whichever item was last focused (e.g. via mouse click).
++        container.addEventListener('focusin', (e) => {
++          const items = getCandidates(container);
++          if (items.includes(e.target)) setActive(items, e.target);
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const dir = DIRECTIONS[e.key];
++          if (!dir || e.defaultPrevented) return;
++          if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++          const target = e.composedPath()[0];
++          if (
++            target instanceof Element &&
++            target.matches(':read-write, select, input[type="range"], [role="slider"]')
++          ) return;
++
++          const items = getCandidates(container);
++          if (!items.includes(target)) return;
++
++          const next = findNext(target, items, dir);
++          if (!next) return; // let the browser scroll natively
++
++          e.preventDefault();
++          setActive(items, next);
++          next.focus({ preventScroll: true });
++          next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++
++        // If the active item becomes hidden (e.g. layout change), keep a valid tab stop.
++        new ResizeObserver(() => {
++          const items = getCandidates(container);
++          if (items.length && !items.some((el) => el.tabIndex === 0)) {
++            setActive(items, items[0]);
++          }
++        }).observe(container);
++      }
++
++      document.querySelectorAll('[data-spatial-nav]').forEach(initSpatialNav);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

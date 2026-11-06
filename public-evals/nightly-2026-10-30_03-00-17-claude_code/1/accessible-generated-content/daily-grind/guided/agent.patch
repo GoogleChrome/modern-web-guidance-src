@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+index 66c9173..6801f53 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,106 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Decorative icons & flourishes
++       Icons are single-color SVG masks painted with currentColor. All generated
++       content is decorative: the `/ ""` alt text keeps it out of the
++       accessibility tree, so headings and buttons are announced by their
++       DOM text alone. The single-value `content` before each declaration is
++       a fallback for browsers without alt-text syntax support. */
++    :root {
++      --icon-cup: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cpath d='M6 2v2M10 2v2M14 2v2'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
++      --icon-bean: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='12' rx='6.5' ry='9.5' transform='rotate(35 12 12)'/%3E%3Cpath d='M8.5 17.5c2-2 1-4.5 3.5-5.5s3.5-3.5 3.5-5.5'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M4.93 7l14.14 10M4.93 17 19.07 7'/%3E%3Cpath d='m9 4 3 3 3-3M9 20l3-3 3 3'/%3E%3C/svg%3E");
++      --icon-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
++    }
++
++    .icon-start::before,
++    .icon-end::after {
++      content: "";
++      content: "" / "";
++      display: inline-block;
++      width: var(--icon-size, 1em);
++      height: var(--icon-size, 1em);
++      background-color: var(--icon-color, currentColor);
++      mask: var(--icon) no-repeat center / contain;
++      vertical-align: -0.125em;
++      flex: none;
++      pointer-events: none;
++      /* Keep masked icons visible in Windows High Contrast */
++      forced-color-adjust: none;
++    }
++
++    .icon-start::before {
++      margin-inline-end: 0.45em;
++    }
++
++    .icon-end::after {
++      --icon: var(--icon-arrow);
++      margin-inline-start: 0.45em;
++      transition: translate 0.2s ease;
++    }
++
++    .btn:is(:hover, :focus-visible).icon-end::after {
++      translate: 0.2em 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .icon-end::after {
++        transition: none;
++      }
++    }
++
++    /* Section heading: ornamental sparkles either side */
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .section-title::before,
++    .section-title::after {
++      content: "\2726";
++      content: "\2726" / "";
++      display: inline-block;
++      color: var(--accent);
++      font-size: 0.7em;
++      vertical-align: 0.2em;
++      margin-inline: 0.6em;
++    }
++
++    /* Drink headings: per-drink icon, with an underline flourish */
++    .card h3 {
++      --icon-size: 1.1em;
++      --icon-color: var(--primary);
++    }
++
++    .card h3::after {
++      content: "";
++      content: "" / "";
++      display: block;
++      width: 3rem;
++      height: 3px;
++      margin: 0.5rem auto 0;
++      border-radius: 3px;
++      background: linear-gradient(90deg, transparent, var(--accent), transparent);
++    }
++
++    .drink-maple h3 { --icon: var(--icon-leaf); }
++    .drink-espresso h3 { --icon: var(--icon-bean); }
++    .drink-cold-brew h3 { --icon: var(--icon-snowflake); }
++
++    .btn-order {
++      --icon: var(--icon-bag);
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-order:hover {
++      background: #ffc370;
++    }
+   </style>
+ </head>
+ 
+@@ -171,27 +271,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-order icon-start icon-end">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card drink-maple">
++          <h3 class="icon-start">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card drink-espresso">
++          <h3 class="icon-start">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card drink-cold-brew">
++          <h3 class="icon-start">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

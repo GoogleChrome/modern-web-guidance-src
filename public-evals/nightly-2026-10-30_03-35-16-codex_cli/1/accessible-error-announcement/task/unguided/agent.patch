@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,59 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 460px;
++      margin: 0 auto 24px;
++      text-align: left;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-top: 12px;
++      font-weight: 600;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 4px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border: 2px solid #8b1e16;
++    }
++
++    .newsletter-error {
++      min-height: 1.6em;
++      color: #8b1e16;
++      font-weight: 600;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +248,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh news from the Grind</h2>
++      <p>Get coffee news and seasonal updates.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <div class="newsletter-controls">
++        <input id="newsletter-email" name="email" type="email" autocomplete="email" required>
++        <button class="btn" type="submit">Sign up</button>
++      </div>
++      <p id="newsletter-error" class="newsletter-error" aria-live="polite" aria-atomic="true"></p>
++      <p id="newsletter-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +268,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.getElementById('newsletter-email');
++    const error = document.getElementById('newsletter-error');
++    const status = document.getElementById('newsletter-status');
++    let hasInteracted = false;
++
++    // Keep native validation as a fallback when JavaScript is unavailable.
++    newsletter.noValidate = true;
++
++    function updateEmailError() {
++      const showError = hasInteracted && !email.validity.valid;
++      const message = showError
++        ? (email.validity.valueMissing ? 'Please enter your email address.' : 'Please enter a valid email address.')
++        : '';
++
++      email.setAttribute('aria-invalid', String(showError));
++      if (showError) {
++        email.setAttribute('aria-describedby', 'newsletter-error');
++      } else {
++        email.removeAttribute('aria-describedby');
++      }
++
++      // This single node supplies both the visible error and its announcement.
++      // Avoid announcing the same error again on every invalid keystroke.
++      if (error.textContent !== message) error.textContent = message;
++      return !showError;
++    }
++
++    email.addEventListener('blur', () => {
++      hasInteracted = true;
++      updateEmailError();
++    });
++
++    email.addEventListener('input', () => {
++      status.textContent = '';
++      updateEmailError();
++    });
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      hasInteracted = true;
++      status.textContent = '';
++      if (!updateEmailError()) {
++        email.focus();
++        return;
++      }
++      status.textContent = 'Thanks for your interest! Newsletter signup will be available soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,181 @@
+diff --git a/index.html b/index.html
+index 66c9173..73bd5e5 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,59 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++       * Theme selection.
++       * Default: follow the OS (prefers-color-scheme) via `color-scheme: light dark`.
++       * Override: set data-theme="light|dark" or class "light|dark" /
++       * "theme-light|theme-dark" on <html>. The themed tokens below are written
++       * once with light-dark(), which resolves against the active color-scheme,
++       * so no rule has to be repeated per theme or per trigger.
++       */
++      color-scheme: light dark;
++
++      /* Page */
++      --page-bg: light-dark(var(--light), #1a1412);
++      --page-text: light-dark(var(--text), #efe6e2);
++      --heading: light-dark(var(--text), #f5ede9);
++
++      /* Navigation */
++      --nav-bg: light-dark(var(--primary), #120d0b);
++      --nav-text: light-dark(#ffffff, #efe6e2);
++      --nav-link-hover: light-dark(var(--accent), #ffc77a);
++      --nav-border: light-dark(transparent, #3a2c27);
++      --nav-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.6));
++
++      /* Hero */
++      --hero-overlay-top: light-dark(rgba(0, 0, 0, 0.45), rgba(10, 6, 4, 0.7));
++      --hero-overlay-bottom: light-dark(rgba(0, 0, 0, 0.55), rgba(10, 6, 4, 0.85));
++      --hero-text: light-dark(#ffffff, #f5ede9);
++      --hero-subtext: light-dark(rgba(255, 255, 255, 0.92), #d7ccc8);
++
++      /* Seasonal Favorites cards */
++      --card-bg: light-dark(#ffffff, #2a201c);
++      --card-text: light-dark(var(--text), #d9cdc8);
++      --card-heading: light-dark(var(--primary), #ffc77a);
++      --card-border: light-dark(transparent, #3e302a);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
++
++      /* Buttons (used in hero + cards) */
++      --btn-bg: light-dark(var(--primary), var(--accent));
++      --btn-text: light-dark(#ffffff, #241a16);
++      --btn-hover-bg: light-dark(#3e2723, #ffc77a);
++    }
++
++    /* Explicit overrides on the root element: only flip color-scheme. */
++    :root[data-theme="light"],
++    :root.light,
++    :root.theme-light {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"],
++    :root.dark,
++    :root.theme-dark {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -23,14 +76,21 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--page-text);
++      background-color: var(--page-bg);
++      transition: background-color 0.3s, color 0.3s;
++    }
++
++    main h2 {
++      color: var(--heading);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: 0 2px 8px var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,18 +116,18 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-link-hover);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,7 +135,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay-top), var(--hero-overlay-bottom)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +143,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -93,6 +153,10 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      color: var(--hero-subtext);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,22 +172,25 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
++      transition: background-color 0.3s, color 0.3s;
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,7 +199,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {

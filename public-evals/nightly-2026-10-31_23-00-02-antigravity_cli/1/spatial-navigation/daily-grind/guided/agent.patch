@@ -1,0 +1,405 @@
+diff --git a/index.html b/index.html
+index 66c9173..4a4f33d 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,45 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .layout-controls {
++      display: inline-flex;
++      gap: 8px;
++      background: #efebe9;
++      padding: 4px;
++      border-radius: 6px;
++    }
++
++    .layout-btn {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid transparent;
++      padding: 6px 14px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      min-block-size: 32px;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .layout-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-btn:hover:not([aria-pressed="true"]) {
++      background: var(--secondary);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -107,12 +146,58 @@
+       margin-top: 20px;
+     }
+ 
++    .grid[data-layout="featured"] {
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++    }
++
++    @media (min-width: 600px) {
++      .grid[data-layout="featured"] .card:first-child {
++        grid-column: span 2;
++      }
++    }
++
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      text-align: left;
++      gap: 15px;
++    }
++
++    .grid[data-layout="list"] .card-body {
++      flex: 1 1 240px;
++    }
++
++    .grid[data-layout="list"] .card .btn {
++      margin-top: 0;
++    }
++
++    .grid[data-layout="rail"] {
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding-bottom: 12px;
++    }
++
++    .grid[data-layout="rail"] .card {
++      flex: 0 0 280px;
++      scroll-snap-align: start;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -128,13 +213,30 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      min-block-size: 40px;
+       transition: background 0.3s;
++      align-self: center;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :where(a:any-link, button, [tabindex]):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    nav a:focus-visible,
++    .hero .btn:focus-visible {
++      outline-color: white;
++    }
++
++    .card .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,7 +259,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,22 +278,57 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <div class="layout-controls" role="group" aria-label="Card layout mode">
++          <button type="button" class="layout-btn" data-layout-mode="grid" aria-pressed="true">Grid</button>
++          <button type="button" class="layout-btn" data-layout-mode="featured" aria-pressed="false">Featured</button>
++          <button type="button" class="layout-btn" data-layout-mode="list" aria-pressed="false">List</button>
++          <button type="button" class="layout-btn" data-layout-mode="rail" aria-pressed="false">Rail</button>
++        </div>
++      </div>
++      <div class="grid" data-spatial-nav data-layout="grid">
++        <div class="card">
++          <div class="card-body">
++            <h3 id="card-title-maple">Maple Oat Latte</h3>
++            <p id="card-desc-maple">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn" tabindex="0" aria-label="View Details for Maple Oat Latte" aria-describedby="card-desc-maple">View Details</a>
++        </div>
++        <div class="card">
++          <div class="card-body">
++            <h3 id="card-title-espresso">Dark Roast Espresso</h3>
++            <p id="card-desc-espresso">Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <a href="/menu/espresso" class="btn" tabindex="-1" aria-label="View Details for Dark Roast Espresso" aria-describedby="card-desc-espresso">View Details</a>
++        </div>
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-body">
++            <h3 id="card-title-cold-brew">Cold Brew</h3>
++            <p id="card-desc-cold-brew">Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn" tabindex="-1" aria-label="View Details for Cold Brew" aria-describedby="card-desc-cold-brew">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-body">
++            <h3 id="card-title-chai">Spiced Chai Cortado</h3>
++            <p id="card-desc-chai">House-made masala chai blended with a double ristretto shot.</p>
++          </div>
++          <a href="/menu/chai-cortado" class="btn" tabindex="-1" aria-label="View Details for Spiced Chai Cortado" aria-describedby="card-desc-chai">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-body">
++            <h3 id="card-title-pourover">Honey Process Pour-Over</h3>
++            <p id="card-desc-pourover">Single-origin Costa Rican beans with bright stone fruit notes.</p>
++          </div>
++          <a href="/menu/pour-over" class="btn" tabindex="-1" aria-label="View Details for Honey Process Pour-Over" aria-describedby="card-desc-pourover">View Details</a>
++        </div>
++        <div class="card">
++          <div class="card-body">
++            <h3 id="card-title-mocha">Salted Caramel Mocha</h3>
++            <p id="card-desc-mocha">Rich dark chocolate and sea salt caramel topped with steamed milk.</p>
++          </div>
++          <a href="/menu/mocha" class="btn" tabindex="-1" aria-label="View Details for Salted Caramel Mocha" aria-describedby="card-desc-mocha">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +344,186 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const FOCUSABLE_SELECTOR =
++        'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [data-spatial-candidate]';
++
++      const DIRECTION_MAP = {
++        ArrowUp: 'up',
++        ArrowDown: 'down',
++        ArrowLeft: 'left',
++        ArrowRight: 'right',
++      };
++
++      const TOLERANCE = 2;
++      const FALLBACK_WEIGHT = 2.5;
++
++      function isVisible(el) {
++        if (typeof el.checkVisibility === 'function') {
++          return el.checkVisibility();
++        }
++        const rect = el.getBoundingClientRect();
++        return rect.width > 0 && rect.height > 0;
++      }
++
++      function getCandidates(container) {
++        const elements = Array.from(
++          container.querySelectorAll('[data-spatial-candidate], .card a[href], .card button:not(:disabled), .card [tabindex]')
++        );
++        const candidates = elements.length > 0
++          ? elements
++          : Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR));
++        return candidates.filter((el) => !el.disabled && isVisible(el));
++      }
++
++      function syncRovingTabindex(container, activeCandidate) {
++        const candidates = getCandidates(container);
++        if (candidates.length === 0) return;
++
++        const target =
++          activeCandidate && candidates.includes(activeCandidate)
++            ? activeCandidate
++            : candidates.find((el) => el.getAttribute('tabindex') === '0') || candidates[0];
++
++        for (const candidate of candidates) {
++          candidate.setAttribute('tabindex', candidate === target ? '0' : '-1');
++        }
++      }
++
++      function findSpatialCandidate(current, candidates, direction) {
++        const currentRect = current.getBoundingClientRect();
++        const currentCenterX = (currentRect.left + currentRect.right) / 2;
++        const currentCenterY = (currentRect.top + currentRect.bottom) / 2;
++
++        const isHorizontal = direction === 'left' || direction === 'right';
++        const aligned = [];
++        const unaligned = [];
++
++        for (const candidate of candidates) {
++          if (candidate === current) continue;
++          const rect = candidate.getBoundingClientRect();
++
++          let gap = 0;
++          if (direction === 'right') {
++            if (rect.left < currentRect.right - TOLERANCE) continue;
++            gap = Math.max(0, rect.left - currentRect.right);
++          } else if (direction === 'left') {
++            if (rect.right > currentRect.left + TOLERANCE) continue;
++            gap = Math.max(0, currentRect.left - rect.right);
++          } else if (direction === 'down') {
++            if (rect.top < currentRect.bottom - TOLERANCE) continue;
++            gap = Math.max(0, rect.top - currentRect.bottom);
++          } else if (direction === 'up') {
++            if (rect.bottom > currentRect.top + TOLERANCE) continue;
++            gap = Math.max(0, currentRect.top - rect.bottom);
++          }
++
++          const candidateCenterX = (rect.left + rect.right) / 2;
++          const candidateCenterY = (rect.top + rect.bottom) / 2;
++
++          const overlapsPerpendicular = isHorizontal
++            ? Math.min(currentRect.bottom, rect.bottom) > Math.max(currentRect.top, rect.top) + TOLERANCE
++            : Math.min(currentRect.right, rect.right) > Math.max(currentRect.left, rect.left) + TOLERANCE;
++
++          const perpendicularCentreOffset = isHorizontal
++            ? Math.abs(candidateCenterY - currentCenterY)
++            : Math.abs(candidateCenterX - currentCenterX);
++
++          const entry = {
++            candidate,
++            gap,
++            perpendicularCentreOffset,
++            fallbackScore: gap + FALLBACK_WEIGHT * perpendicularCentreOffset,
++          };
++
++          if (overlapsPerpendicular) {
++            aligned.push(entry);
++          } else {
++            unaligned.push(entry);
++          }
++        }
++
++        if (aligned.length > 0) {
++          aligned.sort((a, b) => {
++            if (Math.abs(a.gap - b.gap) > TOLERANCE) {
++              return a.gap - b.gap;
++            }
++            return a.perpendicularCentreOffset - b.perpendicularCentreOffset;
++          });
++          return aligned[0].candidate;
++        }
++
++        if (unaligned.length > 0) {
++          unaligned.sort((a, b) => a.fallbackScore - b.fallbackScore);
++          return unaligned[0].candidate;
++        }
++
++        return null;
++      }
++
++      function initSpatialContainer(container) {
++        syncRovingTabindex(container);
++
++        container.addEventListener('focusin', (e) => {
++          const target = e.composedPath()[0];
++          if (!(target instanceof HTMLElement)) return;
++          const candidates = getCandidates(container);
++          if (candidates.includes(target)) {
++            syncRovingTabindex(container, target);
++          }
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const direction = DIRECTION_MAP[e.key];
++          if (!direction) return;
++
++          if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
++            return;
++          }
++
++          const target = e.composedPath()[0];
++          if (!(target instanceof HTMLElement)) return;
++
++          if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) {
++            return;
++          }
++
++          const candidates = getCandidates(container);
++          if (!candidates.includes(target)) {
++            return;
++          }
++
++          const nextCandidate = findSpatialCandidate(target, candidates, direction);
++          if (!nextCandidate) {
++            return;
++          }
++
++          e.preventDefault();
++          syncRovingTabindex(container, nextCandidate);
++          nextCandidate.focus();
++          nextCandidate.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++      }
++
++      document.querySelectorAll('.grid, [data-spatial-nav]').forEach(initSpatialContainer);
++
++      const layoutButtons = document.querySelectorAll('.layout-btn[data-layout-mode]');
++      const gridContainer = document.querySelector('.grid');
++      if (gridContainer && layoutButtons.length > 0) {
++        layoutButtons.forEach((btn) => {
++          btn.addEventListener('click', () => {
++            const mode = btn.getAttribute('data-layout-mode');
++            gridContainer.setAttribute('data-layout', mode);
++            layoutButtons.forEach((b) => {
++              b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
++            });
++            syncRovingTabindex(gridContainer);
++          });
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,464 @@
+diff --git a/SMS_INTEGRATION.md b/SMS_INTEGRATION.md
+new file mode 100644
+index 0000000..bb91b0e
+--- /dev/null
++++ b/SMS_INTEGRATION.md
+@@ -0,0 +1,46 @@
++# SMS sign-in integration
++
++The homepage is static. Live SMS delivery and session creation require two
++same-origin HTTPS endpoints. The UI deliberately does not accept a code or claim
++an SMS was sent until the server confirms it.
++
++## Send
++
++`POST /api/auth/sms/send`
++
++Request: `{ "phone": "+15551234567" }`
++
++Success: `{ "challengeId": "opaque-server-generated-id" }`
++
++Send a six-digit code bound to that challenge and phone number. Format the final
++line of the SMS with the exact hostname serving this page (no scheme or path):
++
++```text
++Your Daily Grind verification code is 123456.
++
++@your-hostname.example #123456
++```
++
++The page starts WebOTP listening before requesting delivery, when supported in a
++secure context. It also sets `autocomplete="one-time-code"` for system autofill.
++Manual entry and paste work without WebOTP. SMS reading remains subject to the
++browser's permission flow; filling the code never submits the form automatically.
++
++## Verify
++
++`POST /api/auth/sms/verify`
++
++Request: `{ "challengeId": "opaque-server-generated-id", "phone": "+15551234567", "code": "123456" }`
++
++Success: `{ "verified": true }`, with the authenticated session set in a Secure,
++HttpOnly, SameSite cookie. The page then navigates to `/rewards` or `/order-online`
++according to the selected purpose. Those destinations must enforce authentication.
++
++Return a non-success HTTP status for failures: 400/401/410 for invalid or expired
++codes and 429 for rate limits. Validate and expire codes on the server, consume
++successful challenges once, bind them to the requesting session and number, and
++limit send and verification attempts. Check request origins and apply the app's
++CSRF protections. Never return or log plaintext codes. The 30-second UI resend
++countdown is only a convenience; enforce limits server-side.
++
++Browser behavior reference: https://developer.mozilla.org/en-US/docs/Web/API/WebOTP_API
+diff --git a/index.html b/index.html
+index 66c9173..a645248 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,210 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#283e32">
++  <meta name="description" content="Your daily moment, made better. Discover locally roasted coffee, seasonal favorites, and Daily Grind Rewards.">
++  <title>The Daily Grind | A little ritual. A better day.</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--green:#283e32;--ink:#29392e;--cream:#f7f5ef;--muted:#71766d;--line:#dddcd3;--lime:#e4edce}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6}a{color:inherit;text-decoration:none}button,input{font:inherit}button,a,input{touch-action:manipulation}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #a3742b;outline-offset:4px}.skip{position:absolute;left:12px;top:-100px;background:white;padding:12px;z-index:10}.skip:focus{top:10px}.announcement{background:var(--green);color:#f3f4e9;text-align:center;padding:8px 16px;font-size:11px;letter-spacing:.7px}.announcement span{margin:0 10px;color:#b6cba8}.nav{max-width:1280px;padding:25px 54px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:30px}.brand{display:flex;gap:11px;align-items:center;line-height:1.05}.brand svg{width:36px;height:40px}.brand-name{font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-1px;font-size:21px}.brand small{display:block;font:9px 'DM Sans',sans-serif;letter-spacing:3.2px;margin-top:7px}.nav-links{display:flex;gap:31px;align-items:center;list-style:none;padding:0;margin:0;font-size:12px;font-weight:550}.nav-links a:hover,.footer-links a:hover{text-decoration:underline;text-underline-offset:5px}.nav-order{border:1px solid var(--green);border-radius:5px;padding:10px 18px;display:flex;gap:16px;align-items:center}.page{max-width:1280px;margin:auto;padding:0 54px}.hero{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(340px,1fr);min-height:590px;gap:0;border-radius:10px;overflow:hidden;background:#eeeee5}.hero-photo{position:relative;background:linear-gradient(180deg,rgba(18,25,16,.15),rgba(16,24,15,.62)),url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1400&q=85') center 52%/cover;color:white;display:flex;flex-direction:column;justify-content:flex-end;padding:46px 42px}.eyebrow{text-transform:uppercase;font-size:10px;font-weight:650;letter-spacing:2px}.hero-photo .eyebrow{position:absolute;top:32px;left:42px;display:flex;align-items:center;gap:9px}.little-star{font-size:21px;color:#e6eccc}.hero h1{font-family:Manrope,sans-serif;font-size:clamp(36px,4vw,53px);line-height:1.15;letter-spacing:-2px;font-weight:500;margin:0 0 19px}.hero-photo p{font-size:13px;max-width:320px;color:#eae9df;margin:0 0 25px;line-height:1.8}.light-link{font-size:12px;border-bottom:1px solid #b7bcae;padding-bottom:7px;align-self:flex-start;display:flex;gap:35px}.photo-note{position:absolute;bottom:22px;right:23px;font-size:8px;letter-spacing:1px;text-transform:uppercase;writing-mode:vertical-rl;color:#e0dfd1}.signin{padding:31px 37px 25px;background:#fffefa}.signin-intro{display:flex;align-items:center;gap:8px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:650;color:#69735e}.signin-intro svg{width:15px;height:15px}.signin h2{font-family:Manrope,sans-serif;font-size:27px;letter-spacing:-1px;line-height:1.25;font-weight:650;margin:13px 0 9px}.intro-copy{color:var(--muted);font-size:12px;margin:0 0 21px}.purpose{display:flex;padding:4px;background:#f0f0e9;border-radius:6px;margin-bottom:21px;border:0;gap:4px}.purpose label{flex:1;text-align:center;cursor:pointer;border-radius:4px;padding:8px;font-size:11px;position:relative}.purpose input{position:absolute;opacity:0;width:1px;height:1px}.purpose label:has(input:checked){background:white;box-shadow:0 1px 4px #29392e18;font-weight:650}.purpose label:has(input:focus-visible){outline:3px solid #a3742b}.field-label{display:block;font-size:11px;font-weight:650;margin-bottom:7px}.phone-row{display:flex;gap:8px}.phone-field{display:flex;align-items:center;flex:1;min-width:0;border:1px solid var(--line);border-radius:5px;background:white}.phone-field span{padding-left:12px;font-size:13px;white-space:nowrap}.phone-field input{width:100%;min-width:0;border:0;background:transparent;padding:11px 10px;border-radius:5px;color:var(--ink);font-size:12px}.send{background:#eff1e9;border:1px solid #d7ddcf;color:var(--green);border-radius:5px;padding:8px 13px;font-size:11px;font-weight:650;white-space:nowrap}.hint{font-size:10px;color:var(--muted);line-height:1.6;margin:7px 0 19px}.code-label{display:flex;justify-content:space-between;align-items:center}.code-label span{font-size:9px;color:var(--muted)}.code-input{width:100%;border:1px solid var(--line);border-radius:5px;background:#fff;padding:11px 15px;font-size:23px;font-weight:500;letter-spacing:17px;line-height:1.4;color:var(--green)}.code-input::placeholder{color:#c1c4b9;opacity:1}.autofill{display:flex;align-items:flex-start;gap:6px;font-size:10px;color:var(--muted);margin:8px 0 17px}.autofill svg{width:13px;height:15px;flex-shrink:0;margin-top:1px}.verify{width:100%;border:0;border-radius:5px;color:white;background:var(--green);padding:13px 18px;font-weight:550;font-size:12px;display:flex;justify-content:space-between;align-items:center}.verify:hover{background:#3c5543}.send:hover{background:#e4e9d9}button:disabled{opacity:.55;cursor:wait}.terms{text-align:center;font-size:9px;line-height:1.7;color:var(--muted);margin:12px 0 0}.terms a{text-decoration:underline}.status{font-size:11px;line-height:1.5;margin:10px 0;color:#475d3b}.status:empty{display:none}.error{color:#9d342b}.field-error{font-size:10px;color:#9d342b;margin:5px 0}.field-error:empty{display:none}[aria-invalid=true]{border-color:#9d342b}.benefits{display:flex;align-items:center;justify-content:space-between;padding:23px 30px;border-bottom:1px solid var(--line);gap:15px}.benefit{display:flex;align-items:center;gap:11px;font-size:11px}.benefit svg{height:20px;width:20px;stroke:#637053;fill:none;stroke-width:1.4}.benefit strong{font-weight:550}.benefit small{display:block;font-size:9px;color:var(--muted)}.seasonal{padding:43px 0 45px}.section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}.section-head .eyebrow{font-size:9px;color:#79816d;letter-spacing:1.8px}.section-head h2{font-family:Manrope,sans-serif;font-size:26px;letter-spacing:-.8px;font-weight:550;line-height:1.3;margin:6px 0 0}.section-head a{font-size:11px;display:flex;gap:20px;padding-bottom:3px}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.product{display:grid;grid-template-columns:115px 1fr;background:#efeee6;border:1px solid #e6e4da;border-radius:7px;overflow:hidden;min-height:139px}.product img{width:115px;height:100%;min-height:139px;object-fit:cover}.product-copy{padding:18px 14px}.product-tag{font-size:8px;text-transform:uppercase;letter-spacing:1.2px;color:#767c65}.product h3{font-family:Manrope,sans-serif;font-size:13px;letter-spacing:-.2px;margin:6px 0;font-weight:700}.product p{font-size:10px;color:var(--muted);line-height:1.6;margin:0}.product:hover{border-color:#a4ad96}.footer{max-width:1172px;margin:auto;border-top:1px solid var(--line);padding:23px 0 28px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:9px}.footer-links{display:flex;gap:23px}.footer-brand{font-weight:650;color:#53604c;font-size:10px}.footer-brand span{font-weight:400;color:var(--muted);margin-left:14px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(min-width:1400px){.nav{padding-top:30px;padding-bottom:30px}.hero{min-height:610px}.signin{padding-top:40px}}@media(max-width:1000px){.nav{padding:23px 28px}.page{padding:0 28px}.hero-photo{padding:35px 28px}.hero-photo .eyebrow{left:28px}.signin{padding:28px 25px}.nav-links{gap:20px}.product{grid-template-columns:85px 1fr}.product img{width:85px}.product-copy{padding:14px 10px}.footer{margin:0 28px}.benefits{padding-left:5px;padding-right:5px}}@media(max-width:720px){.announcement{font-size:9px}.nav{padding:20px}.brand-name{font-size:18px}.brand small{font-size:7px}.nav-links{gap:14px}.nav-links .desktop{display:none}.nav-order{padding:8px 12px;font-size:10px}.page{padding:0 16px}.hero{grid-template-columns:1fr}.hero-photo{min-height:350px;padding:70px 28px 30px}.hero h1{font-size:42px}.signin{padding:28px}.benefits{gap:15px;flex-wrap:wrap;justify-content:center;padding:22px 0}.benefit{font-size:10px}.benefit small{font-size:8px}.benefit svg{width:17px}.seasonal{padding:30px 0}.section-head h2{font-size:23px}.products{grid-template-columns:1fr;gap:12px}.product{grid-template-columns:100px 1fr;min-height:115px}.product img{width:100px;height:115px;min-height:115px}.product-copy{padding:15px 20px}.product h3{font-size:15px}.product p{font-size:11px}.footer{margin:0 16px;gap:15px;flex-direction:column;align-items:flex-start}.footer-links{gap:19px}.code-input{letter-spacing:15px}.section-head a{gap:8px}.photo-note{display:none}}@media(prefers-reduced-motion:no-preference){button,a{transition:background .15s,border-color .15s}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++  <a href="#main" class="skip">Skip to content</a>
++  <div class="announcement">Good mornings start here.<span>✦</span>Locally roasted. Lovingly brewed.</div>
++  <nav class="nav" aria-label="Main navigation">
++    <a href="/" class="brand" aria-label="The Daily Grind home"><svg viewBox="0 0 40 44" fill="none" aria-hidden="true"><path d="M9 16h23v12c0 7-5 11-11.5 11S9 35 9 28V16Z" stroke="currentColor" stroke-width="1.6"/><path d="M32 19h3a5 5 0 0 1 0 10h-3M5 41h31M16 4c-4 4 4 5 0 9M24 1c-4 4 4 5 0 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="brand-name">the daily grind<small>COFFEE & COMMUNITY</small></span></a>
++    <ul class="nav-links"><li class="desktop"><a href="/menu">Our menu</a></li><li class="desktop"><a href="/locations">Find your grind</a></li><li class="desktop"><a href="#signin" data-purpose="rewards">Rewards</a></li><li><a href="#signin" class="nav-order" data-purpose="order">Order online <span aria-hidden="true">↗</span></a></li></ul>
+   </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main class="page" id="main">
++    <section class="hero" aria-label="Welcome to the Daily Grind">
++      <div class="hero-photo">
++        <div class="eyebrow"><span class="little-star" aria-hidden="true">✳</span> Your daily dose of good</div>
++        <h1>A little ritual.<br>A better day.</h1>
++        <p>Thoughtfully sourced. Locally roasted.<br>Made for your everyday moments.</p>
++        <a href="/menu" class="light-link">Find your new favorite <span aria-hidden="true">↗</span></a>
++        <span class="photo-note">Good coffee. Good company. Every day.</span>
++      </div>
++      <div class="signin" id="signin">
++        <div class="signin-intro"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m10 1 2.5 5.5 6 1-4.3 4.2 1 6L10 15l-5.2 2.7 1-6L1.5 7.5l6-1Z" stroke="currentColor" stroke-width="1.2"/></svg> A little closer to your next cup</div>
++        <h2>Your usual. And a little more.</h2>
++        <p class="intro-copy">Sign in for your rewards or a coffee on the go.</p>
++        <fieldset class="purpose"><legend class="sr-only">What would you like to do?</legend><label><input type="radio" name="purpose" value="rewards" checked>Daily Grind Rewards</label><label><input type="radio" name="purpose" value="order">Order online</label></fieldset>
++        <form id="phone-form" novalidate>
++          <label class="field-label" for="phone">Mobile number</label>
++          <div class="phone-row"><div class="phone-field"><span aria-hidden="true">US +1</span><input type="tel" id="phone" name="phone" autocomplete="tel-national" inputmode="tel" placeholder="(555) 123-4567" required aria-describedby="phone-hint phone-error"></div><button type="submit" class="send" id="send-code">Send code</button></div>
++          <p id="phone-error" class="field-error" aria-live="polite"></p>
++          <p class="hint" id="phone-hint">We’ll text you a one-time code. No password to remember.</p>
++        </form>
++        <form id="code-form" novalidate>
++          <div class="code-label"><label class="field-label" for="code">Verification code</label><span>6-digit code</span></div>
++          <input class="code-input" id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="······" required spellcheck="false" autocapitalize="off" aria-describedby="code-hint code-error">
++          <p id="code-error" class="field-error" aria-live="polite"></p>
++          <p class="autofill" id="code-hint"><svg viewBox="0 0 16 18" fill="none" aria-hidden="true"><path d="m9 1-6 9h4l-1 7 7-10H9l1-6Z" stroke="currentColor" stroke-linejoin="round"/></svg>Your code can fill automatically on supported devices.</p>
++          <button class="verify" type="submit" id="verify-code"><span>Verify & continue</span><span aria-hidden="true">→</span></button>
++        </form>
++        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
++        <p class="terms">By continuing, you agree to our <a href="/terms">Terms</a> & <a href="/privacy-policy">Privacy Policy</a>.<br>Message & data rates may apply.</p>
+       </div>
+     </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++    <div class="benefits" aria-label="The Daily Grind difference">
++      <div class="benefit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4C7 2 2 9 7 15s14 0 12-11Z M5 20 16 8M10 14v-4m0 4h5"/></svg><div><strong>Good from the ground up</strong><small>Ethically sourced, always.</small></div></div>
++      <div class="benefit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8c-3-2 3-3 0-6m6 6c-3-2 3-3 0-6M4 10h13v6a6.5 6.5 0 0 1-13 0Zm13 1h2a3 3 0 0 1 0 6h-2M2 23h19"/></svg><div><strong>Roasted close to home</strong><small>Fresh beans. A whole lot of care.</small></div></div>
++      <div class="benefit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21S1 14 3 7c2-6 8-4 9-1 1-3 7-5 9 1 2 7-9 14-9 14Z"/></svg><div><strong>Your neighborhood, your coffee</strong><small>A familiar face. A favorite place.</small></div></div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++    <section class="seasonal" aria-labelledby="favorites-title">
++      <div class="section-head"><div><div class="eyebrow">Fresh picks. Familiar comforts.</div><h2>Meet your next regular.</h2></div><a href="/menu">Explore the menu <span aria-hidden="true">↗</span></a></div>
++      <div class="products">
++        <a class="product" href="/menu/seasonal"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=300&q=80" alt="Iced latte with creamy swirls of milk" loading="lazy" width="115" height="139"><div class="product-copy"><span class="product-tag">A seasonal favorite</span><h3>Maple Oat Latte</h3><p>A little maple. A lot of cozy.<br>Made with creamy oat milk.</p></div></a>
++        <a class="product" href="/menu/espresso"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=300&q=80" alt="Freshly poured espresso in a ceramic cup" loading="lazy" width="115" height="139"><div class="product-copy"><span class="product-tag">The everyday classic</span><h3>Dark Roast Espresso</h3><p>Bold, rich, and beautifully<br>balanced. Your daily fuel.</p></div></a>
++        <a class="product" href="/menu/cold-brew"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=300&q=80" alt="Cold coffee served over ice" loading="lazy" width="115" height="139"><div class="product-copy"><span class="product-tag">Slow brew. Smooth sip.</span><h3>Signature Cold Brew</h3><p>Steeped for 18 hours.<br>Worth every minute.</p></div></a>
++      </div>
++    </section>
++  </main>
++  <footer class="footer"><div class="footer-brand">Made for your everyday.<span>© 2026 The Daily Grind</span></div><div class="footer-links"><a href="/about">Our story</a><a href="/careers">Join the team</a><a href="/contact">Contact</a><a href="/privacy-policy">Privacy</a><a href="/terms">Terms</a></div></footer>
++  <script>
++    // Requires same-origin SMS endpoints. See SMS_INTEGRATION.md for the contract.
++    const phoneForm = document.querySelector('#phone-form');
++    const codeForm = document.querySelector('#code-form');
++    const phone = document.querySelector('#phone');
++    const code = document.querySelector('#code');
++    const sendButton = document.querySelector('#send-code');
++    const verifyButton = document.querySelector('#verify-code');
++    const status = document.querySelector('#status');
++    let challenge = null;
++    let otpController;
++    let cooldownTimer;
++    let busy = false;
++    const purpose = () => document.querySelector('[name="purpose"]:checked').value;
++    function announce(message, error = false) {
++      status.textContent = message;
++      status.classList.toggle('error', error);
++    }
++    function fieldError(input, message) {
++      input.setAttribute('aria-invalid', String(Boolean(message)));
++      document.querySelector(`#${input.id}-error`).textContent = message;
++      if (message) input.focus();
++    }
++    function stopListening() { otpController?.abort(); }
++    async function listenForCode() {
++      stopListening();
++      if (!window.isSecureContext || !('OTPCredential' in window) || !navigator.credentials) return;
++      const controller = new AbortController();
++      otpController = controller;
++      const timeout = setTimeout(() => controller.abort(), 120000);
++      try {
++        const credential = await navigator.credentials.get({ otp: { transport: ['sms'] }, signal: controller.signal });
++        if (credential && !controller.signal.aborted && /^[0-9]{6}$/.test(credential.code)) {
++          code.value = credential.code;
++          fieldError(code, '');
++          announce('Code filled from your text message. Select Verify & continue.');
++        }
++      } catch { /* Manual entry and system autofill remain available. */ }
++      finally { clearTimeout(timeout); }
++    }
++    async function post(path, body) {
++      const controller = new AbortController();
++      const timeout = setTimeout(() => controller.abort(), 20000);
++      try {
++        const response = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
++        const data = await response.json().catch(() => ({}));
++        if (!response.ok) {
++          if (response.status === 429) throw new Error('Too many attempts. Please wait a few minutes and try again.');
++          if (response.status === 400 || response.status === 401 || response.status === 410) throw new Error('The code is invalid or expired. Please request a new code.');
++          throw new Error('SMS sign-in is currently unavailable. Please try again later.');
++        }
++        return data;
++      } catch (error) {
++        if (error.name === 'AbortError' || error instanceof TypeError) throw new Error('We couldn’t connect. Check your connection and try again.');
++        throw error;
++      } finally { clearTimeout(timeout); }
++    }
++    function cooldown() {
++      clearInterval(cooldownTimer);
++      let seconds = 30;
++      sendButton.disabled = true;
++      sendButton.textContent = `Resend in ${seconds}s`;
++      cooldownTimer = setInterval(() => {
++        seconds--;
++        sendButton.textContent = seconds ? `Resend in ${seconds}s` : 'Resend code';
++        if (!seconds) { clearInterval(cooldownTimer); sendButton.disabled = false; }
++      }, 1000);
++    }
++    phoneForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (busy || sendButton.disabled) return;
++      let digits = phone.value.replace(/\D/g, '');
++      if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
++      if (!/^[2-9][0-9]{9}$/.test(digits)) { fieldError(phone, 'Enter a valid 10-digit US mobile number.'); return; }
++      fieldError(phone, ''); fieldError(code, '');
++      challenge = null;
++      code.value = '';
++      busy = true;
++      phone.readOnly = true;
++      sendButton.disabled = true;
++      sendButton.textContent = 'Sending…';
++      announce('Requesting your verification code…');
++      // Listen before sending the SMS so fast deliveries are captured.
++      listenForCode();
++      try {
++        const sentPhone = `+1${digits}`;
++        const data = await post('/api/auth/sms/send', { phone: sentPhone });
++        if (typeof data.challengeId !== 'string' || !data.challengeId) throw new Error('SMS sign-in is currently unavailable. Please try again later.');
++        challenge = { id: data.challengeId, phone: sentPhone };
++        announce(`Code sent to the number ending in ${digits.slice(-4)}. Enter it below to continue.`);
++        code.focus();
++        cooldown();
++      } catch (error) {
++        stopListening(); announce(error.message, true);
++        sendButton.disabled = false; sendButton.textContent = 'Send code';
++      } finally { busy = false; phone.readOnly = false; }
++    });
++    phone.addEventListener('input', () => {
++      fieldError(phone, '');
++      if (challenge) {
++        challenge = null; code.value = ''; stopListening(); clearInterval(cooldownTimer);
++        sendButton.disabled = false; sendButton.textContent = 'Send code';
++        announce('Mobile number changed. Request a new code to continue.');
++      }
++    });
++    code.addEventListener('input', () => { code.value = code.value.replace(/\D/g, '').slice(0, 6); fieldError(code, ''); });
++    code.addEventListener('paste', (event) => {
++      const text = event.clipboardData?.getData('text');
++      if (text && /^[\d\s-]+$/.test(text.trim())) {
++        event.preventDefault(); code.value = text.replace(/\D/g, '').slice(0, 6); fieldError(code, '');
++      }
++    });
++    codeForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      if (busy) return;
++      if (!challenge) { fieldError(phone, 'Enter your mobile number and select Send code first.'); return; }
++      if (!/^[0-9]{6}$/.test(code.value)) { fieldError(code, 'Enter the 6-digit code from your text message.'); return; }
++      fieldError(code, ''); stopListening();
++      busy = true; verifyButton.disabled = true; sendButton.disabled = true; phone.readOnly = true; code.readOnly = true;
++      verifyButton.querySelector('span').textContent = 'Verifying…';
++      const destination = purpose() === 'order' ? '/order-online' : '/rewards';
++      try {
++        const data = await post('/api/auth/sms/verify', { challengeId: challenge.id, phone: challenge.phone, code: code.value });
++        if (data.verified !== true) throw new Error('The code could not be verified. Please try again or request a new code.');
++        announce('You’re verified. Taking you to your next cup…');
++        window.location.assign(destination);
++      } catch (error) { announce(error.message, true); code.focus(); }
++      finally {
++        busy = false; verifyButton.disabled = false; phone.readOnly = false; code.readOnly = false;
++        verifyButton.querySelector('span').textContent = 'Verify & continue';
++        // Preserve an active resend cooldown.
++        if (!sendButton.textContent.startsWith('Resend in')) sendButton.disabled = false;
++      }
++    });
++    document.querySelectorAll('[data-purpose]').forEach(link => link.addEventListener('click', () => {
++      document.querySelector(`[name="purpose"][value="${link.dataset.purpose}"]`).checked = true;
++      phone.focus({ preventScroll: true });
++    }));
++    window.addEventListener('pagehide', () => { stopListening(); clearInterval(cooldownTimer); });
++  </script>
+ </body>
+-
+ </html>

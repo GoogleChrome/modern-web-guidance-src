@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,36 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the preview itself so the page background shows through. */
++    .paywall-container {
++      max-width: 760px;
++      margin: 60px auto 0;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
++    }
++
++    .paywall-container .exclusive-label {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin: 8px 0 16px;
++      font-size: 2rem;
++      line-height: 1.2;
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +222,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="exclusive-label">Exclusive preview · From our roastery</p>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>Great coffee starts long before the first sip. Step behind the scenes with our roasters for a taste of the small decisions that bring every bean to life.</p>
++      <p><strong>Let the beans tell the story.</strong> We listen for the first crack: the moment heat transforms a green coffee bean and its aromas begin to unfold. From there, timing helps shape the balance of sweetness, brightness, and body in your cup.</p>
++      <p><strong>Give a fresh roast a little room to breathe.</strong> Coffee releases gas after roasting, so the freshest bag isn't always ready to brew its best. Resting the beans lets their character settle and makes extraction more consistent.</p>
++      <p><strong>Change one thing at a time.</strong> Keep your coffee and water measurements consistent, then adjust the grind in small steps. Taste, take a note, and repeat: a better morning ritual begins with a little curiosity.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

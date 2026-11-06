@@ -1,0 +1,136 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,68 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .mailing-list {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .mailing-list h2 {
++      margin-bottom: 8px;
++    }
++
++    .mailing-list label {
++      display: block;
++      text-align: start;
++      margin-bottom: 6px;
++    }
++
++    .mailing-list input {
++      width: 100%;
++      min-height: 48px;
++      padding: 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .mailing-list .btn {
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list .email-error {
++      display: none;
++      margin-top: 6px;
++      color: #9c2020;
++      font-size: 0.875rem;
++      text-align: start;
++    }
++
++    .mailing-list input:is(:user-invalid, [aria-invalid="true"]) {
++      border-color: #9c2020;
++      background: #fff5f5;
++    }
++
++    .mailing-list input:is(:user-invalid, [aria-invalid="true"]) + .email-error {
++      display: block;
++    }
++
++    .mailing-list .signup-status {
++      margin-top: 8px;
++      font-size: 0.875rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +257,20 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form id="mailing-list" class="mailing-list" method="post" aria-labelledby="mailing-list-title">
++      <h2 id="mailing-list-title">Join our mailing list</h2>
++      <label for="mailing-list-email">Email address (required)</label>
++      <input type="email" id="mailing-list-email" name="email" required autocomplete="email"
++        autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@example.com"
++        aria-describedby="mailing-list-error" aria-errormessage="mailing-list-error">
++      <p id="mailing-list-error" class="email-error" aria-live="polite">
++        <span aria-hidden="true">&#9888;</span> Please enter a valid email address. This field is required.
++      </p>
++      <button class="btn" type="submit">Subscribe</button>
++      <p id="mailing-list-status" class="signup-status" role="status"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +278,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingList = document.getElementById('mailing-list');
++    const emailInput = document.getElementById('mailing-list-email');
++    const signupStatus = document.getElementById('mailing-list-status');
++
++    const syncEmailError = () => {
++      if (emailInput.validity.valid) {
++        emailInput.removeAttribute('aria-invalid');
++      } else {
++        emailInput.setAttribute('aria-invalid', 'true');
++      }
++    };
++
++    // A visit followed by blur counts as interaction, even without typing.
++    emailInput.addEventListener('blur', syncEmailError);
++    emailInput.addEventListener('invalid', syncEmailError);
++    emailInput.addEventListener('input', () => {
++      signupStatus.textContent = '';
++      if (emailInput.validity.valid) {
++        emailInput.removeAttribute('aria-invalid');
++      }
++    });
++
++    mailingList.addEventListener('reset', () => {
++      emailInput.removeAttribute('aria-invalid');
++      signupStatus.textContent = '';
++    });
++
++    mailingList.addEventListener('submit', (event) => {
++      event.preventDefault();
++      // Connect a mailing-list provider here before accepting subscriptions.
++      signupStatus.textContent = 'Mailing list signup is currently unavailable. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

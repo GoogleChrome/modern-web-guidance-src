@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+index 66c9173..3fdea53 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,71 @@
+       color: var(--primary);
+     }
+ 
++    .drink-card {
++      position: relative;
++      overflow: hidden;
++      padding: 0;
++      --actions-width: 150px;
++    }
++
++    .drink-content {
++      position: relative;
++      z-index: 1;
++      height: 100%;
++      padding: 20px;
++      background: white;
++      touch-action: pan-y;
++      transition: transform 0.2s ease;
++    }
++
++    .drink-card.is-open .drink-content {
++      transform: translateX(calc(-1 * var(--actions-width)));
++    }
++
++    .drink-actions {
++      position: absolute;
++      inset: 0 0 0 auto;
++      width: var(--actions-width);
++      padding: 12px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      gap: 12px;
++      background: var(--secondary);
++    }
++
++    .drink-actions[hidden] {
++      display: none;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .drink-actions .btn {
++      margin: 0;
++      padding: 10px;
++    }
++
++    .swipe-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drink-content {
++        transition: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,21 +242,40 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="swipe-hint">Swipe left or tap Actions for drink options. Swipe right to close.</p>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="maple-actions" hidden inert>
++            <a href="/menu/seasonal" class="btn" aria-label="View Maple Oat Latte details">View Details</a>
++            <button type="button" class="btn favorite-button" aria-label="Favorite Maple Oat Latte" aria-pressed="false">Favorite</button>
++          </div>
++          <div class="drink-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <button type="button" class="btn actions-toggle" aria-expanded="false" aria-controls="maple-actions" aria-label="Actions for Maple Oat Latte">Actions</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="espresso-actions" hidden inert>
++            <a href="/menu/espresso" class="btn" aria-label="View Dark Roast Espresso details">View Details</a>
++            <button type="button" class="btn favorite-button" aria-label="Favorite Dark Roast Espresso" aria-pressed="false">Favorite</button>
++          </div>
++          <div class="drink-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="btn actions-toggle" aria-expanded="false" aria-controls="espresso-actions" aria-label="Actions for Dark Roast Espresso">Actions</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="cold-brew-actions" hidden inert>
++            <a href="/menu/cold-brew" class="btn" aria-label="View Cold Brew details">View Details</a>
++            <button type="button" class="btn favorite-button" aria-label="Favorite Cold Brew" aria-pressed="false">Favorite</button>
++          </div>
++          <div class="drink-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <button type="button" class="btn actions-toggle" aria-expanded="false" aria-controls="cold-brew-actions" aria-label="Actions for Cold Brew">Actions</button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +291,92 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drinkCards = document.querySelectorAll('.drink-card');
++
++    function setActionsOpen(card, open) {
++      const actions = card.querySelector('.drink-actions');
++      const toggle = card.querySelector('.actions-toggle');
++      if (!open && actions.contains(document.activeElement)) toggle.focus();
++      card.classList.toggle('is-open', open);
++      actions.hidden = !open;
++      actions.inert = !open;
++      toggle.setAttribute('aria-expanded', String(open));
++    }
++
++    drinkCards.forEach((card) => {
++      const content = card.querySelector('.drink-content');
++      const toggle = card.querySelector('.actions-toggle');
++      const favorite = card.querySelector('.favorite-button');
++      let gesture = null;
++      let suppressClick = false;
++
++      function openActions(open) {
++        if (open) drinkCards.forEach((other) => {
++          if (other !== card) setActionsOpen(other, false);
++        });
++        setActionsOpen(card, open);
++      }
++
++      toggle.addEventListener('click', () => {
++        openActions(!card.classList.contains('is-open'));
++      });
++
++      favorite.addEventListener('click', () => {
++        const selected = favorite.getAttribute('aria-pressed') !== 'true';
++        favorite.setAttribute('aria-pressed', String(selected));
++        favorite.textContent = selected ? 'Favorited' : 'Favorite';
++      });
++
++      content.addEventListener('pointerdown', (event) => {
++        if (!event.isPrimary || event.button !== 0) return;
++        suppressClick = false;
++        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, axis: null };
++      });
++
++      content.addEventListener('pointermove', (event) => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        if (!gesture.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 10) {
++          gesture.axis = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
++          if (gesture.axis === 'horizontal') content.setPointerCapture(event.pointerId);
++        }
++        if (gesture.axis === 'horizontal') suppressClick = true;
++      });
++
++      content.addEventListener('pointerup', (event) => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const dx = event.clientX - gesture.x;
++        const dy = event.clientY - gesture.y;
++        if (gesture.axis !== 'vertical' && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
++          suppressClick = true;
++          openActions(dx < 0);
++        }
++        gesture = null;
++      });
++
++      content.addEventListener('pointercancel', () => { gesture = null; });
++      content.addEventListener('lostpointercapture', () => { gesture = null; });
++      content.addEventListener('click', (event) => {
++        if (!suppressClick) return;
++        event.preventDefault();
++        event.stopPropagation();
++        suppressClick = false;
++      }, true);
++
++      card.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') openActions(false);
++      });
++    });
++
++    document.addEventListener('click', (event) => {
++      if (!event.target.closest('.drink-card')) {
++        drinkCards.forEach((card) => setActionsOpen(card, false));
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

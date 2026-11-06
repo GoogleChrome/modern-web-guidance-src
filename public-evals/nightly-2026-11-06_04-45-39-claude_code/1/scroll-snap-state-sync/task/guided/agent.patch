@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,176 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Favorites: TOC sidebar + scroll-snapping panel */
++    .seasonal-heading {
++      text-align: center;
++    }
++
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: minmax(180px, 220px) 1fr;
++      gap: 24px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    /* Reset the global top-bar `nav` styles for the sidebar */
++    nav.toc-sidebar {
++      position: sticky;
++      top: 90px;
++      z-index: auto;
++      display: block;
++      padding: 16px;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .toc-sidebar h3 {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .toc-sidebar ul {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      list-style: none;
++    }
++
++    .toc-sidebar li {
++      margin: 0;
++    }
++
++    .toc-sidebar a {
++      display: block;
++      padding: 8px 12px;
++      border-left: 4px solid transparent;
++      border-radius: 4px;
++      color: var(--text);
++      font-size: 0.95rem;
++      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .toc-sidebar a:hover {
++      color: var(--primary);
++      background: #f5efec;
++    }
++
++    .toc-sidebar a:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Active link: colour + weight + indicator bar (not colour alone) */
++    .toc-sidebar a[aria-current="location"] {
++      background: var(--secondary);
++      border-left-color: var(--accent);
++      color: var(--primary);
++      font-weight: 700;
++    }
++
++    .seasonal-panel {
++      height: min(70vh, 560px);
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      scroll-snap-type: y mandatory;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .seasonal-panel:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .seasonal-panel {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .drink-section {
++      min-height: 100%;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .drink-section + .drink-section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .drink-section header {
++      scroll-snap-align: start;
++      /* Keep a little breathing room above the snapped header */
++      scroll-margin-top: 24px;
++    }
++
++    .drink-section header:focus {
++      outline: none;
++    }
++
++    .drink-section header:focus-visible h3 {
++      text-decoration: underline;
++    }
++
++    .drink-section h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++    }
++
++    .drink-section .tagline {
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .drink-section img {
++      width: 100%;
++      max-height: 260px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .drink-section .btn {
++      align-self: flex-start;
++      margin-top: auto;
++    }
++
++    @media (max-width: 720px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++
++      nav.toc-sidebar {
++        position: static;
++      }
++
++      .toc-sidebar ul {
++        flex-direction: row;
++        overflow-x: auto;
++      }
++
++      .toc-sidebar a {
++        white-space: nowrap;
++        border-left: 0;
++        border-bottom: 4px solid transparent;
++      }
++
++      .toc-sidebar a[aria-current="location"] {
++        border-bottom-color: var(--accent);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,26 +342,48 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section class="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="seasonal-heading">Seasonal Favorites</h2>
++      <div class="seasonal-layout">
++        <nav class="toc-sidebar" aria-label="Seasonal favorites">
++          <h3>On the menu</h3>
++          <ul>
++            <li><a href="#maple-oat-latte" aria-current="location">Maple Oat Latte</a></li>
++            <li><a href="#dark-roast-espresso">Dark Roast Espresso</a></li>
++            <li><a href="#cold-brew">Cold Brew</a></li>
++          </ul>
++        </nav>
++        <div class="seasonal-panel" role="region" aria-labelledby="seasonal-heading" tabindex="0">
++          <article class="drink-section" id="maple-oat-latte" aria-labelledby="maple-oat-latte-title">
++            <header tabindex="-1">
++              <h3 id="maple-oat-latte-title">Maple Oat Latte</h3>
++              <p class="tagline">Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=75" alt="Latte with foam art in a ceramic cup" width="900" height="600" loading="lazy" decoding="async">
++            <p>Our autumn signature: double-shot espresso, steamed oat milk, and real Vermont maple syrup, finished with a dusting of cinnamon.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </article>
++          <article class="drink-section" id="dark-roast-espresso" aria-labelledby="dark-roast-espresso-title">
++            <header tabindex="-1">
++              <h3 id="dark-roast-espresso-title">Dark Roast Espresso</h3>
++              <p class="tagline">Bold, smokey, and perfect for a morning boost.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=900&q=75" alt="Espresso shot in a small white cup" width="900" height="600" loading="lazy" decoding="async">
++            <p>Roasted in-house to a deep, oily finish. Expect notes of dark chocolate, toasted walnut, and a lingering smoky sweetness.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </article>
++          <article class="drink-section" id="cold-brew" aria-labelledby="cold-brew-title">
++            <header tabindex="-1">
++              <h3 id="cold-brew-title">Cold Brew</h3>
++              <p class="tagline">Steeped for 18 hours for maximum smoothness.</p>
++            </header>
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=75" alt="Iced coffee in a tall glass" width="900" height="600" loading="lazy" decoding="async">
++            <p>Coarse-ground single-origin beans steeped cold for 18 hours, then served over ice for a naturally sweet, low-acid cup.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +396,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const panel = document.querySelector('.seasonal-panel');
++    const links = [...document.querySelectorAll('.toc-sidebar a[href^="#"]')];
++    const headers = [...panel.querySelectorAll('.drink-section > header')];
++    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++    // Single source of truth: aria-current drives both a11y state and the visual highlight.
++    function setActive(id) {
++      for (const link of links) {
++        if (link.hash === `#${id}`) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      }
++    }
++
++    const sectionIdOf = (header) => header.closest('.drink-section').id;
++
++    // Click: smoothly scroll only the panel (not the page) to the section header.
++    for (const link of links) {
++      link.addEventListener('click', (event) => {
++        const section = document.getElementById(link.hash.slice(1));
++        const header = section?.querySelector(':scope > header');
++        if (!header) return;
++        event.preventDefault();
++        const top = header.getBoundingClientRect().top - panel.getBoundingClientRect().top
++          + panel.scrollTop - parseFloat(getComputedStyle(header).scrollMarginTop || 0);
++        panel.scrollTo({ top, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
++        // Move focus into the section for keyboard/AT users without a second jump.
++        header.focus({ preventScroll: true });
++        setActive(section.id);
++      });
++    }
++
++    if ('onscrollsnapchange' in HTMLElement.prototype) {
++      // Fires once the panel settles on a new snap target.
++      panel.addEventListener('scrollsnapchange', (event) => {
++        const header = event.snapTargetBlock;
++        if (header && headers.includes(header)) setActive(sectionIdOf(header));
++      });
++    } else {
++      // Fallback: track whichever header sits closest to the top of the panel.
++      const pickTop = () => {
++        const panelTop = panel.getBoundingClientRect().top;
++        let best, bestDist = Infinity;
++        for (const header of headers) {
++          const { top, bottom } = header.getBoundingClientRect();
++          if (bottom < panelTop) continue; // scrolled past
++          const dist = Math.abs(top - panelTop);
++          if (dist < bestDist) { best = header; bestDist = dist; }
++        }
++        if (best) setActive(sectionIdOf(best));
++      };
++      const observer = new IntersectionObserver(pickTop, {
++        root: panel,
++        threshold: [0, 0.5, 1],
++      });
++      headers.forEach((header) => observer.observe(header));
++      panel.addEventListener('scrollend', pickTop);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

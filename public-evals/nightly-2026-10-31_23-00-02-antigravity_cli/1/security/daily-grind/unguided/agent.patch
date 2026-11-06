@@ -1,0 +1,599 @@
+diff --git a/index.html b/index.html
+index 66c9173..a4a8c91 100644
+--- a/index.html
++++ b/index.html
+@@ -4,155 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/security.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -164,7 +19,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" rel="nofollow noopener noreferrer">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +31,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/security.js b/security.js
+new file mode 100644
+index 0000000..916a18c
+--- /dev/null
++++ b/security.js
+@@ -0,0 +1,125 @@
++(function () {
++  'use strict';
++
++  // 1. Trusted Types policy to prevent DOM-based XSS
++  if (window.trustedTypes && typeof window.trustedTypes.createPolicy === 'function') {
++    try {
++      if (!window.trustedTypes.defaultPolicy) {
++        window.trustedTypes.createPolicy('default', {
++          createHTML: function (input) {
++            return String(input)
++              .replace(/&/g, '&amp;')
++              .replace(/</g, '&lt;')
++              .replace(/>/g, '&gt;')
++              .replace(/"/g, '&quot;')
++              .replace(/'/g, '&#39;');
++          },
++          createScriptURL: function (input) {
++            const url = new URL(input, window.location.origin);
++            if (url.origin !== window.location.origin) {
++              throw new TypeError('Blocked cross-origin script URL: ' + url.href);
++            }
++            return url.href;
++          },
++          createScript: function () {
++            throw new TypeError('Dynamic script evaluation is disabled by security policy.');
++          }
++        });
++      }
++    } catch (_) {
++      // Default policy already registered or restricted
++    }
++  }
++
++  // 2. Client-side CSP violation monitoring & reporting
++  document.addEventListener('securitypolicyviolation', function (event) {
++    const report = {
++      'csp-report': {
++        'document-uri': event.documentURI,
++        'referrer': event.referrer,
++        'violated-directive': event.violatedDirective,
++        'effective-directive': event.effectiveDirective,
++        'original-policy': event.originalPolicy,
++        'disposition': event.disposition,
++        'blocked-uri': event.blockedURI,
++        'line-number': event.lineNumber,
++        'column-number': event.columnNumber,
++        'source-file': event.sourceFile,
++        'status-code': event.statusCode,
++        'sample': event.sample || ''
++      }
++    };
++
++    const payload = JSON.stringify(report);
++    if (navigator.sendBeacon) {
++      const blob = new Blob([payload], { type: 'application/csp-report' });
++      navigator.sendBeacon('/csp-report', blob);
++    } else if (window.fetch) {
++      window.fetch('/csp-report', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/csp-report' },
++        body: payload,
++        keepalive: true,
++        credentials: 'same-origin'
++      }).catch(function () {});
++    }
++  });
++
++  // 3. DOM hardening & state-changing route protection
++  function initClientSecurity() {
++    // Harden all anchor elements against unsafe protocols and tabnabbing
++    const links = document.querySelectorAll('a[href]');
++    links.forEach(function (link) {
++      const rawHref = link.getAttribute('href') || '';
++      if (/^\s*(javascript|data|vbscript):/i.test(rawHref)) {
++        link.removeAttribute('href');
++        return;
++      }
++
++      try {
++        const parsed = new URL(link.href, window.location.origin);
++        if (parsed.origin !== window.location.origin) {
++          link.setAttribute('rel', 'noopener noreferrer');
++        }
++      } catch (_) {
++        // Ignore invalid URLs
++      }
++    });
++
++    // Protect state-changing logout links against accidental GET / prefetch / CSRF
++    const logoutLinks = document.querySelectorAll('a.logout-link, a[href="/logout"], a[href="/logout/"]');
++    logoutLinks.forEach(function (logoutLink) {
++      logoutLink.setAttribute('rel', 'nofollow noopener noreferrer');
++      logoutLink.addEventListener('click', function (event) {
++        event.preventDefault();
++        fetch('/logout', {
++          method: 'POST',
++          headers: {
++            'X-Requested-With': 'XMLHttpRequest',
++            'Content-Type': 'application/x-www-form-urlencoded'
++          },
++          credentials: 'same-origin'
++        })
++          .then(function (response) {
++            return response.text();
++          })
++          .then(function (text) {
++            if (window.history && window.history.replaceState) {
++              window.history.replaceState(null, '', '/logout');
++            }
++            document.title = 'Logged Out | The Daily Grind';
++            document.body.textContent = text || 'Logged out';
++          })
++          .catch(function () {
++            window.location.assign('/logout');
++          });
++      });
++    });
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initClientSecurity);
++  } else {
++    initClientSecurity();
++  }
++})();
+diff --git a/server.js b/server.js
+index 52c2fd5..06a1196 100644
+--- a/server.js
++++ b/server.js
+@@ -5,24 +5,122 @@ const path = require('node:path');
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++const CSP_DIRECTIVES = [
++  "default-src 'self'",
++  "script-src 'self'",
++  "style-src 'self'",
++  "img-src 'self' https://images.unsplash.com data:",
++  "font-src 'self'",
++  "connect-src 'self'",
++  "object-src 'none'",
++  "base-uri 'self'",
++  "form-action 'self'",
++  "frame-ancestors 'none'",
++  'report-uri /csp-report',
++  'report-to csp-endpoint'
++].join('; ');
++
++function getSecurityHeaders(contentType, extraHeaders = {}) {
++  return {
++    'Content-Type': contentType,
++    'Content-Security-Policy': CSP_DIRECTIVES,
++    'Reporting-Endpoints': 'csp-endpoint="/csp-report"',
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'X-Permitted-Cross-Domain-Policies': 'none',
++    'X-DNS-Prefetch-Control': 'off',
++    ...extraHeaders
++  };
++}
++
++function isSpeculativeOrCrossSiteRequest(req) {
++  const secPurpose = (req.headers['sec-purpose'] || req.headers['purpose'] || req.headers['x-purpose'] || '').toLowerCase();
++  if (secPurpose.includes('prefetch') || secPurpose.includes('prerender') || secPurpose.includes('preview')) {
++    return true;
++  }
++  const secFetchSite = (req.headers['sec-fetch-site'] || '').toLowerCase();
++  if (secFetchSite === 'cross-site') {
++    return true;
++  }
++  return false;
++}
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  if (pathname === '/csp-report' && req.method === 'POST') {
++    let body = '';
++    req.on('data', (chunk) => {
++      if (body.length < 16384) {
++        body += chunk.toString();
++      }
++    });
++    req.on('end', () => {
++      res.writeHead(204, getSecurityHeaders('text/plain; charset=utf-8'));
++      res.end();
++    });
++    return;
++  }
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    if (isSpeculativeOrCrossSiteRequest(req)) {
++      res.writeHead(403, getSecurityHeaders('text/plain; charset=utf-8', {
++        'Cache-Control': 'no-store'
++      }));
++      res.end('Forbidden');
++      return;
++    }
++
++    res.writeHead(200, getSecurityHeaders('text/html; charset=utf-8', {
++      'Clear-Site-Data': '"cache", "cookies", "storage"',
++      'Cache-Control': 'no-store, no-cache, must-revalidate'
++    }));
+     res.end('Logged out');
+     return;
+   }
+ 
++  if (pathname === '/styles.css') {
++    const cssPath = path.join(WORK_DIR, 'styles.css');
++    fs.readFile(cssPath, (err, data) => {
++      if (err) {
++        res.writeHead(500, getSecurityHeaders('text/plain; charset=utf-8'));
++        res.end('Server error');
++        return;
++      }
++      res.writeHead(200, getSecurityHeaders('text/css; charset=utf-8'));
++      res.end(data);
++    });
++    return;
++  }
++
++  if (pathname === '/security.js') {
++    const jsPath = path.join(WORK_DIR, 'security.js');
++    fs.readFile(jsPath, (err, data) => {
++      if (err) {
++        res.writeHead(500, getSecurityHeaders('text/plain; charset=utf-8'));
++        res.end('Server error');
++        return;
++      }
++      res.writeHead(200, getSecurityHeaders('application/javascript; charset=utf-8'));
++      res.end(data);
++    });
++    return;
++  }
++
+   const filePath = path.join(WORK_DIR, 'index.html');
+   fs.readFile(filePath, (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, getSecurityHeaders('text/plain; charset=utf-8'));
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.writeHead(200, getSecurityHeaders('text/html; charset=utf-8'));
+     res.end(data);
+   });
+ });
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..20d56fe
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,151 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.section-title,
++section h2 {
++  text-align: center;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}

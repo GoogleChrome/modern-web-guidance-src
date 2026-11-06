@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./calendar-tool.mjs"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +135,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .calendar-tool {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-heading { text-align: center; }
++    .calendar-heading p { margin: 8px auto 24px; max-width: 58ch; }
++    .calendar-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      justify-content: center;
++      gap: 12px;
++    }
++    .calendar-controls label { display: block; font-weight: 600; margin-bottom: 4px; }
++    .calendar-controls input, .calendar-controls button {
++      font: inherit;
++      min-height: 44px;
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++    }
++    .calendar-controls input { background: white; color: var(--text); max-width: 100%; }
++    .calendar-controls button { background: var(--primary); color: white; cursor: pointer; }
++    .calendar-controls button:disabled, .calendar-controls input:disabled { opacity: .6; cursor: wait; }
++    .calendar-tool :focus-visible { outline: 3px solid #a85a00; outline-offset: 3px; }
++    #calendar-status { text-align: center; margin-top: 12px; min-height: 1.6em; }
++    .calendar-card { text-align: start; min-width: 0; border-top: 3px solid var(--accent); }
++    .calendar-card h3 { margin-bottom: 4px; }
++    .calendar-date { font-size: 1.2rem; font-weight: 600; min-height: 3.2em; margin: 10px 0 16px; overflow-wrap: anywhere; }
++    .calendar-timeline { display: inline-block; padding: 2px 10px; border-radius: 20px; background: #f2e9e3; font-size: .85rem; }
++    .calendar-facts { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 16px 0; }
++    .calendar-facts dd { text-align: end; font-weight: 600; }
++    .calendar-card h4 { margin: 16px 0 8px; }
++    .month-breakdown { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
++    .month-breakdown li { display: flex; justify-content: space-between; gap: 6px; padding: 6px 8px; background: #faf6f2; border-radius: 4px; font-size: .85rem; }
++    .month-breakdown li[aria-current="true"] { background: #fce6cb; font-weight: 600; }
++    .calendar-note { font-size: .85rem; text-align: center; margin-top: 18px; }
++    .calendar-results[hidden] { display: none; }
++    @media (max-width: 360px) { .month-breakdown { grid-template-columns: 1fr; } }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +237,25 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="calendar-tool" aria-labelledby="calendar-title">
++      <div class="calendar-heading">
++        <h2 id="calendar-title">One Date, Many Traditions</h2>
++        <p>Explore a day across the world’s calendars. Choose a date to discover its place in three different traditions.</p>
++      </div>
++      <div class="calendar-controls">
++        <div>
++          <label for="calendar-input">Choose a date</label>
++          <input id="calendar-input" type="date" required disabled aria-describedby="calendar-help">
++        </div>
++        <button id="calendar-today" type="button" disabled>Use today</button>
++      </div>
++      <p id="calendar-status" role="status" aria-live="polite">Loading calendars…</p>
++      <div id="calendar-results" class="grid calendar-results" hidden></div>
++      <p id="calendar-help" class="calendar-note">Dates use your language preferences. Today is based on your device’s local time zone.<br>Month codes stay consistent across years, including leap months. The highlighted month contains your selected date.</p>
++      <noscript><p class="calendar-note">Please enable JavaScript to use the calendar converter.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

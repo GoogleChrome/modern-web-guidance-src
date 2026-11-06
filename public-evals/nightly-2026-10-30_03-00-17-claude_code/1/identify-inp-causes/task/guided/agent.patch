@@ -1,0 +1,68 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Field diagnostics for Interaction to Next Paint (INP).
++    // The attribution build splits INP into subparts and attaches
++    // Long Animation Frame data so the root cause can be found in production.
++    import { onINP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.js?module';
++
++    onINP((metric) => {
++      const { attribution } = metric;
++      const longestScript = attribution.longestScript;
++
++      // Sum rendering-phase style and layout durations across all LoAF entries
++      // intersecting the INP interaction (primarily explains presentationDelay).
++      let renderStyleDuration = 0;
++      let renderLayoutDuration = 0;
++      for (const entry of attribution.longAnimationFrameEntries) {
++        renderStyleDuration += entry.styleDuration ?? 0;
++        renderLayoutDuration += entry.layoutDuration ?? 0;
++      }
++
++      navigator.sendBeacon('/analytics', JSON.stringify({
++        name: metric.name,
++        id: metric.id,
++        value: metric.value,
++        rating: metric.rating,
++        page: location.pathname,
++        // INP subparts: is the delay from already-running JS (input delay),
++        // the interaction's handlers (processing), or rendering (presentation)?
++        interactionTarget: attribution.interactionTarget,
++        interactionType: attribution.interactionType,
++        loadState: attribution.loadState,
++        inputDelay: attribution.inputDelay,
++        processingDuration: attribution.processingDuration,
++        presentationDelay: attribution.presentationDelay,
++        // The script responsible for the longest work during the interaction.
++        invokerType: longestScript?.entry?.invokerType,
++        invoker: longestScript?.entry?.invoker,
++        sourceURL: longestScript?.entry?.sourceURL,
++        sourceFunctionName: longestScript?.entry?.sourceFunctionName,
++        sourceCharPosition: longestScript?.entry?.sourceCharPosition,
++        subpart: longestScript?.subpart,
++        intersectingDuration: longestScript?.intersectingDuration,
++        // Synchronous style and layout forced inside the longest script
++        // (forcedStyleAndLayoutDuration is the combined fallback).
++        forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
++        forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
++        forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
++        // Rendering-phase style and layout across the interaction's frames
++        // (totalStyleAndLayoutDuration is the combined fallback).
++        renderStyleDuration,
++        renderLayoutDuration,
++        totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration,
++        totalScriptDuration: attribution.totalScriptDuration,
++        totalPaintDuration: attribution.totalPaintDuration,
++      }));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

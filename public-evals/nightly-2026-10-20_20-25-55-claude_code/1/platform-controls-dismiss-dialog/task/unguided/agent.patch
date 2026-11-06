@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,8 +130,14 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+@@ -151,8 +157,27 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .modal {
++      border: none;
++      border-radius: 8px;
++      padding: 30px;
++      max-width: 450px;
++      width: calc(100% - 40px);
++      margin: auto;
++      text-align: center;
++    }
++
++    .modal::backdrop {
++      background: rgba(0, 0, 0, 0.6);
++    }
++
++    .modal h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +205,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-title="Maple Oat Latte" data-details="Creamy oat milk with a hint of Vermont maple syrup. Made with a double shot of our house espresso, steamed oat milk, and a drizzle of real maple syrup. Served hot or iced.">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-title="Dark Roast Espresso" data-details="Bold, smokey, and perfect for a morning boost. A blend of dark-roasted beans with notes of cocoa and toasted caramel, pulled as a double shot.">Show Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-title="Cold Brew" data-details="Steeped for 18 hours for maximum smoothness. Low acidity with a naturally sweet, chocolatey finish. Served over ice.">Show Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +231,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="details-modal" class="modal" aria-labelledby="details-modal-title">
++    <h2 id="details-modal-title"></h2>
++    <p id="details-modal-body"></p>
++    <button type="button" class="btn" id="details-modal-close">Close</button>
++  </dialog>
++
++  <script>
++    const modal = document.getElementById('details-modal');
++    const modalTitle = document.getElementById('details-modal-title');
++    const modalBody = document.getElementById('details-modal-body');
++
++    document.querySelectorAll('button[data-details]').forEach((button) => {
++      button.addEventListener('click', () => {
++        modalTitle.textContent = button.dataset.title;
++        modalBody.textContent = button.dataset.details;
++        modal.showModal();
++      });
++    });
++
++    document.getElementById('details-modal-close').addEventListener('click', () => modal.close());
++
++    // Light dismiss: clicks on the backdrop land on the dialog element itself
++    modal.addEventListener('click', (event) => {
++      if (event.target === modal) modal.close();
++    });
++    // Escape is handled natively by <dialog>
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,82 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,78 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="description" content="Everyday essentials, thoughtfully made. Discover the Everyday Tote by Form.">
++  <title>The Everyday Tote — Form</title>
++  <style>
++    * { box-sizing: border-box; }
++    body { margin: 0; background: #faf9f6; color: #252722; font: 16px/1.6 system-ui, sans-serif; }
++    a { color: inherit; text-underline-offset: .25em; }
++    a:focus-visible, summary:focus-visible { outline: 2px solid #526047; outline-offset: 5px; }
++    header, main, footer { width: min(1100px, calc(100% - 40px)); margin-inline: auto; }
++    header { display: flex; align-items: center; justify-content: space-between; min-height: 80px; }
++    .brand { font-size: 22px; font-weight: 650; letter-spacing: -.06em; text-decoration: none; }
++    nav details { position: relative; }
++    summary { cursor: pointer; padding-block: 10px; }
++    .menu-content { position: absolute; right: 0; z-index: 1; width: min(300px, calc(100vw - 40px)); padding: 20px; background: #faf9f6; border: 1px solid #dcded5; }
++    .menu-content img { margin-bottom: 12px; }
++    img { display: block; max-width: 100%; height: auto; object-fit: cover; background: #e9e8e0; color: #55594f; }
++    .hero img { width: 100%; aspect-ratio: 2 / 1; }
++    .intro { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-block: 28px 56px; }
++    h1 { margin: 0; font-size: clamp(28px, 5vw, 44px); font-weight: 450; line-height: 1.2; letter-spacing: -.045em; }
++    p { margin: 12px 0 0; color: #61655b; }
++    .cta { flex-shrink: 0; padding: 12px 22px; border: 1px solid #252722; text-decoration: none; }
++    .gallery { min-height: 100vh; padding-block: 40px 100px; border-top: 1px solid #dcded5; }
++    h2 { margin: 0 0 24px; font-size: 20px; font-weight: 450; }
++    .gallery img { width: 300px; aspect-ratio: 4 / 3; }
++    .gallery details { margin-top: 16px; }
++    .gallery details img { margin-top: 12px; }
++    footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 32px; border-top: 1px solid #dcded5; font-size: 13px; }
++    @media (max-width: 600px) {
++      .hero img { aspect-ratio: 4 / 3; }
++      .intro { align-items: flex-start; flex-direction: column; }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <a class="brand" href="#" aria-label="Form home">form.</a>
++    <nav aria-label="Main navigation">
++      <details>
++        <summary>Explore</summary>
++        <div class="menu-content">
++          <img src="mega-menu-promo.jpg" alt="Discover the Form collection" width="520" height="320" fetchpriority="low" loading="lazy">
++          <a href="#gallery">Explore the Everyday Tote</a>
++        </div>
++      </details>
++    </nav>
++  </header>
++  <main>
++    <section class="hero" aria-labelledby="product-title">
++      <!-- Discoverable in HTML, eager, and the only high-priority image. -->
++      <img src="hero-lcp.jpg" alt="The Everyday Tote, designed for daily essentials" width="1600" height="800" fetchpriority="high" loading="eager">
++      <div class="intro">
++        <div>
++          <h1 id="product-title">Less, but everyday.</h1>
++          <p>The Everyday Tote. A little room for everything that matters.</p>
++        </div>
++        <a class="cta" href="#gallery">Take a closer look ↗</a>
++      </div>
++    </section>
++    <section class="gallery" id="gallery" aria-labelledby="gallery-title">
++      <h2 id="gallery-title">Considered from every angle.</h2>
++      <!-- Reuse the supplied hero filename for the first, visible gallery view. -->
++      <img src="hero-lcp.jpg" alt="Everyday Tote, front view" width="600" height="450">
++      <details>
++        <summary>See another angle</summary>
++        <img src="gallery-alt.jpg" alt="Everyday Tote, alternate view" width="600" height="450" fetchpriority="low" loading="lazy">
++      </details>
++    </section>
++  </main>
++  <footer>
++    <img src="footer-logo.png" alt="Form" width="100" height="40" loading="lazy">
++    <span>Thoughtfully made. Simply useful.</span>
++  </footer>
++</body>
++</html>

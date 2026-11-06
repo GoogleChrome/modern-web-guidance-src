@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,26 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 15px;
++      padding: 12px;
++      border-radius: 6px;
++      background: #fff3e0;
++      border: 1px solid var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p+p {
++      margin-top: 4px;
++    }
++
++    .promo-timer time {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +198,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-promo" hidden>
++            <p data-remaining-label>Offer ends in <time data-remaining></time></p>
++            <p>Available for <time data-elapsed></time></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +228,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Maple Oat Latte promotion window, as wall-clock times in the visitor's own time zone.
++    const PROMO_START = { date: '2025-11-01', time: '00:00' };
++    const PROMO_END = { date: '2026-03-01', time: '00:00' };
++
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const timer = document.getElementById('maple-promo');
++    const remainingLabel = timer.querySelector('[data-remaining-label]');
++    const remainingEl = timer.querySelector('[data-remaining]');
++    const elapsedEl = timer.querySelector('[data-elapsed]');
++
++    const timeZone = Temporal.Now.timeZoneId();
++    const toZoned = ({ date, time }) =>
++      Temporal.PlainDate.from(date).toZonedDateTime({ timeZone, plainTime: time });
++
++    const start = toZoned(PROMO_START);
++    const end = toZoned(PROMO_END);
++    const now = Temporal.Now.zonedDateTimeISO(timeZone);
++    const units = { largestUnit: 'day', smallestUnit: 'hour' };
++
++    const remaining = now.until(end, units);
++    const elapsed = now.since(start, units);
++
++    if (remaining.sign > 0) {
++      remainingEl.dateTime = remaining.toString();
++      remainingEl.textContent = remaining.toLocaleString(undefined, { style: 'long' });
++    } else {
++      remainingEl.dateTime = end.toPlainDate().toString();
++      remainingEl.textContent = end.toPlainDate().toLocaleString(undefined, { dateStyle: 'long' });
++      remainingLabel.firstChild.textContent = 'Offer ended on ';
++    }
++
++    elapsedEl.dateTime = elapsed.toString();
++    elapsedEl.textContent = elapsed.toLocaleString(undefined, { style: 'long' });
++
++    timer.hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

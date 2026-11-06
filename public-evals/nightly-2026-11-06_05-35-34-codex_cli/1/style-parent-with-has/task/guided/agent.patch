@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact form: validate the whole field wrapper after interaction. */
++    .contact {
++      max-width: 640px;
++    }
++
++    .contact form {
++      display: grid;
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .contact-field {
++      padding: 16px;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .contact-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .contact-field input,
++    .contact-field textarea {
++      display: block;
++      width: 100%;
++      min-height: 48px;
++      padding: 10px;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .contact-field textarea {
++      resize: vertical;
++    }
++
++    .contact-field input:focus-visible,
++    .contact-field textarea:focus-visible,
++    .contact button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .contact-hint,
++    .contact-error {
++      font-size: 0.875rem;
++    }
++
++    .contact-hint {
++      display: block;
++      margin-bottom: 6px;
++    }
++
++    .contact-error {
++      display: none;
++      margin-top: 6px;
++      color: #b3261e;
++    }
++
++    .contact-field:has(:user-invalid) {
++      border-color: #b3261e;
++    }
++
++    .contact-field:has(:user-invalid) .contact-error {
++      display: block;
++    }
++
++    .contact button {
++      justify-self: start;
++      min-height: 48px;
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +277,37 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="container contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Contact Us</h2>
++    <p>Have a question? We'd love to hear from you. All fields are required.</p>
++    <!-- Connect this POST destination to a contact handler for message delivery. -->
++    <form action="/contact" method="post">
++      <div class="contact-field">
++        <label for="contact-name">Name</label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required
++          aria-describedby="contact-name-error">
++        <p class="contact-error" id="contact-name-error">Please enter your name.</p>
++      </div>
++      <div class="contact-field">
++        <label for="contact-email">Email</label>
++        <span class="contact-hint" id="contact-email-hint">For example, you@example.com</span>
++        <input type="email" id="contact-email" name="email" autocomplete="email"
++          autocapitalize="off" autocorrect="off" spellcheck="false" required
++          aria-describedby="contact-email-hint contact-email-error">
++        <p class="contact-error" id="contact-email-error">Please enter a valid email address.</p>
++      </div>
++      <div class="contact-field">
++        <label for="contact-message">Message</label>
++        <textarea id="contact-message" name="message" rows="5" required
++          aria-describedby="contact-message-error"></textarea>
++        <p class="contact-error" id="contact-message-error">Please enter a message.</p>
++      </div>
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

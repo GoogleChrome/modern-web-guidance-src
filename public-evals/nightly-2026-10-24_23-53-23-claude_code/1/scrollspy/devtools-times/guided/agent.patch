@@ -1,0 +1,91 @@
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..95b2cf1 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -8,10 +8,82 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
+-            <slot />
++    <div class="max-w-5xl mx-auto px-4 py-8 md:py-12 lg:grid lg:grid-cols-[14rem_1fr] lg:gap-10">
++        <nav id="legal-toc" aria-label="On this page" hidden class="mb-8 lg:mb-0 lg:sticky lg:top-6 lg:self-start">
++            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">On this page</p>
++            <ul class="toc-list space-y-1 text-sm"></ul>
++        </nav>
++        <div class="min-w-0">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++            <div id="legal-content" class="prose max-w-none">
++                <slot />
++            </div>
+         </div>
+     </div>
+ </Layout>
++
++<style is:global>
++    #legal-toc {
++        scroll-target-group: auto;
++    }
++    #legal-toc a {
++        display: block;
++        padding: 0.25rem 0 0.25rem 0.75rem;
++        border-left: 2px solid #e5e7eb;
++        color: #4b5563;
++    }
++    #legal-toc a:hover {
++        color: #111827;
++    }
++    /* :is() keeps the rule valid in browsers without :target-current */
++    #legal-toc a:is(:target-current, .\:target-current) {
++        color: #111827;
++        font-weight: 600;
++        border-left-color: #111827;
++    }
++    #legal-content h2 {
++        scroll-margin-top: 1.5rem;
++    }
++</style>
++
++<script>
++    const toc = document.getElementById('legal-toc');
++    const list = toc?.querySelector('ul');
++    const headings = document.querySelectorAll<HTMLHeadingElement>('#legal-content h2');
++
++    if (toc && list && headings.length > 1) {
++        headings.forEach((heading, i) => {
++            heading.id ||= `section-${i + 1}`;
++            const link = document.createElement('a');
++            link.href = `#${heading.id}`;
++            link.textContent = heading.textContent;
++            const item = document.createElement('li');
++            item.append(link);
++            list.append(item);
++        });
++        toc.hidden = false;
++
++        const links = toc.querySelectorAll('a');
++        const setCurrent = (current: Element | null) => {
++            links.forEach((link) => link.setAttribute('aria-current', String(link === current)));
++        };
++
++        if (CSS.supports('scroll-target-group: auto')) {
++            const sync = () => setCurrent(toc.querySelector('a:target-current'));
++            sync();
++            document.addEventListener('scrollend', sync);
++        } else {
++            // Fallback: the current section is the last heading above the middle of the viewport
++            const update = () => {
++                let current: Element | null = null;
++                headings.forEach((heading, i) => {
++                    if (heading.getBoundingClientRect().top <= window.innerHeight / 2) current = links[i];
++                });
++                links.forEach((link) => link.classList.toggle(':target-current', link === current));
++                setCurrent(current);
++            };
++            update();
++            addEventListener('scroll', update, { passive: true });
++        }
++    }
++</script>

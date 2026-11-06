@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      margin-top: 48px;
++      padding: clamp(20px, 4vw, 40px);
++      border-radius: 8px;
++      background: #f1e9e4;
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container .preview-label {
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .paywall-container h2 {
++      margin: 6px 0 20px;
++      color: var(--primary);
++    }
++
++    .paywall-container h3 {
++      margin-bottom: 12px;
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +225,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="preview-label">Exclusive preview</p>
++      <h2 id="roasters-secrets-title">Roaster’s Secrets</h2>
++      <h3>A sweeter cup starts before the first sip</h3>
++      <p>Step behind the roaster with The Daily Grind. In this exclusive series, we share the small
++        details that bring out a coffee’s character, from the way we develop a roast to the way you
++        brew it at home.</p>
++      <p>Our first secret: let the aroma lead. Smell your freshly ground beans before adding water,
++        then notice how those notes change as the coffee blooms. That first impression is the
++        beginning of understanding what makes each roast unique.</p>
++      <p>Next, we explore how a small adjustment to your grind can bring sweetness into focus,
++        why a little patience after roasting matters, and how our team finds the balance in
++        every seasonal batch.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

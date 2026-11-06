@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,111 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Roaster's Secrets Preview Section */
++    .roasters-secrets-section {
++      margin-top: 60px;
++      position: relative;
++    }
++
++    .roasters-secrets-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .exclusive-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container {
++      background: white;
++      padding: 35px 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: relative;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
++    }
++
++    .secrets-preview-grid {
++      display: grid;
++      grid-template-columns: 1fr 1.5fr;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 768px) {
++      .secrets-preview-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .secrets-preview-image {
++      width: 100%;
++      height: 260px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .secrets-article h3 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 12px;
++    }
++
++    .secrets-article p {
++      margin-bottom: 14px;
++      color: var(--text);
++    }
++
++    .roast-metrics {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 12px;
++      margin: 18px 0;
++      padding: 15px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .metric-item strong {
++      display: block;
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .metric-item span {
++      font-size: 1.05rem;
++      font-weight: 600;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: -20px;
++      padding: 20px;
++      position: relative;
++      z-index: 2;
++    }
++
++    .paywall-cta p {
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +297,57 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets-section">
++      <div class="roasters-secrets-header">
++        <span class="exclusive-badge">Members Exclusive</span>
++        <h2>Roaster's Secrets</h2>
++        <p>Inside the drum: master roast curves, Maillard timing, and single-origin dialing profiles.</p>
++      </div>
++
++      <div class="paywall-container">
++        <div class="secrets-preview-grid">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80"
++            alt="Artisanal coffee beans roasting"
++            class="secrets-preview-image"
++          />
++          <article class="secrets-article">
++            <h3>Mastering the First Crack: Ethiopian Yirgacheffe</h3>
++            <p>
++              Unlocking the delicate jasmine and bergamot notes in high-altitude washed Ethiopian beans requires precise thermal momentum entering the Maillard phase. When charge temperature exceeds 395°F, tipping can mute the floral aromatics before caramelization even begins.
++            </p>
++            <div class="roast-metrics">
++              <div class="metric-item">
++                <strong>Charge Temp</strong>
++                <span>388°F (198°C)</span>
++              </div>
++              <div class="metric-item">
++                <strong>Development Ratio</strong>
++                <span>14.5% DTR</span>
++              </div>
++              <div class="metric-item">
++                <strong>Drop Temp</strong>
++                <span>406°F (208°C)</span>
++              </div>
++            </div>
++            <p>
++              Forty-five seconds prior to first crack, we reduce gas pressure by 35% while opening airflow dampers to sweep away chaff and prevent baked undertones. As the exothermic reaction peaks, our secret rate-of-rise (RoR) inflection schedule holds a steady decline of 4°F per 30 seconds...
++            </p>
++            <p>
++              For home espresso extraction, rest the beans for exactly 9 days post-roast to allow CO2 degassing to stabilize. Dialing in starts with a 1:2.25 brew ratio at 201°F, using a pre-infusion pressure profile of 2.5 bars for the first 7 seconds before ramping up...
++            </p>
++          </article>
++        </div>
++      </div>
++
++      <div class="paywall-cta">
++        <p>Want the full roast curves and water chemistry recipes?</p>
++        <a href="/rewards" class="btn">Unlock Full Access</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

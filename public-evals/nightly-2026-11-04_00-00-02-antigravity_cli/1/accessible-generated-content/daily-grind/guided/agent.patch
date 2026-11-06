@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+index 66c9173..2bce629 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,24 @@
+       padding: 0 20px;
+     }
+ 
++    main h2 {
++      text-align: center;
++    }
++
++    main h2::before {
++      /* Fallback: render the flourish in browsers without `/` support */
++      content: "✦ ";
++      content: "✦ " / "";
++      color: var(--accent);
++    }
++
++    main h2::after {
++      /* Fallback: render the flourish in browsers without `/` support */
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -118,10 +136,32 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.35em;
+     }
+ 
+-    .btn {
++    .card h3::before {
++      /* Decorative SVG icon: images in `content` are presentational by default, so omit `/ ""` */
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%234e342e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cline x1='6' y1='2' x2='6' y2='4'/%3E%3Cline x1='10' y1='2' x2='10' y2='4'/%3E%3Cline x1='14' y1='2' x2='14' y2='4'/%3E%3C/svg%3E");
+       display: inline-block;
++      line-height: 0;
++    }
++
++    .card h3::after {
++      /* Fallback: render the glyph in browsers without `/` support */
++      content: " ✦";
++      content: " ✦" / "";
++      color: var(--accent);
++      font-size: 0.85em;
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.4em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -131,6 +171,19 @@
+       transition: background 0.3s;
+     }
+ 
++    .btn::before {
++      /* Decorative SVG icon: images in `content` are presentational by default, so omit `/ ""` */
++      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffab40' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3C/svg%3E");
++      display: inline-block;
++      line-height: 0;
++    }
++
++    .btn::after {
++      /* Fallback: render the glyph in browsers without `/` support */
++      content: " →";
++      content: " →" / "";
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }

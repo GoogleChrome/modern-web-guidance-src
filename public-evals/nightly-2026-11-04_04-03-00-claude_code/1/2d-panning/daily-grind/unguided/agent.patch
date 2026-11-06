@@ -1,0 +1,498 @@
+diff --git a/index.html b/index.html
+index 66c9173..41aa63d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,200 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Locations Map */
++    .locations {
++      margin-top: 60px;
++    }
++
++    .locations h2 {
++      text-align: center;
++    }
++
++    .locations .subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .map-viewport {
++      position: relative;
++      width: 100%;
++      height: 520px;
++      overflow: auto;
++      border-radius: 12px;
++      border: 3px solid var(--primary);
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
++      background: #efe6d8;
++      cursor: grab;
++      /* We handle touch/pen panning ourselves so the browser never locks to one axis */
++      touch-action: none;
++      overscroll-behavior: contain;
++      user-select: none;
++      -webkit-user-select: none;
++    }
++
++    .map-viewport.dragging {
++      cursor: grabbing;
++    }
++
++    .map-viewport:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .map-surface {
++      position: relative;
++      width: 2400px;
++      height: 1600px;
++    }
++
++    .map-surface svg.map-art {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++    }
++
++    .map-pin {
++      position: absolute;
++      transform: translate(-50%, -100%);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      background: none;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      color: var(--text);
++      -webkit-user-drag: none;
++    }
++
++    .map-pin .marker {
++      width: 34px;
++      height: 34px;
++      border-radius: 50% 50% 50% 0;
++      transform: rotate(-45deg);
++      background: var(--primary);
++      border: 3px solid var(--accent);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
++      transition: transform 0.2s;
++    }
++
++    .map-pin .marker span {
++      transform: rotate(45deg);
++      font-size: 16px;
++    }
++
++    .map-pin:hover .marker,
++    .map-pin:focus-visible .marker,
++    .map-pin.active .marker {
++      transform: rotate(-45deg) scale(1.15);
++    }
++
++    .map-pin .label {
++      margin-top: 6px;
++      background: white;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++      font-weight: bold;
++      white-space: nowrap;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
++    }
++
++    .map-info {
++      position: absolute;
++      width: 240px;
++      background: white;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      transform: translate(-50%, calc(-100% - 70px));
++      cursor: default;
++      z-index: 5;
++    }
++
++    .map-info[hidden] {
++      display: none;
++    }
++
++    .map-info img {
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++      display: block;
++      -webkit-user-drag: none;
++    }
++
++    .map-info .body {
++      padding: 12px;
++    }
++
++    .map-info h3 {
++      color: var(--primary);
++      font-size: 1rem;
++      margin-bottom: 4px;
++    }
++
++    .map-info p {
++      font-size: 0.85rem;
++    }
++
++    .map-info .close {
++      position: absolute;
++      top: 6px;
++      right: 6px;
++      width: 26px;
++      height: 26px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(0, 0, 0, 0.6);
++      color: white;
++      cursor: pointer;
++      font-size: 14px;
++    }
++
++    .map-hint {
++      position: sticky;
++      left: 12px;
++      top: 12px;
++      display: inline-block;
++      background: rgba(78, 52, 46, 0.85);
++      color: white;
++      font-size: 0.8rem;
++      padding: 4px 10px;
++      border-radius: 4px;
++      z-index: 10;
++      pointer-events: none;
++      margin: 12px 0 0 12px;
++    }
++
++    .map-controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .map-controls button {
++      background: var(--secondary);
++      border: 1px solid var(--primary);
++      color: var(--text);
++      padding: 6px 14px;
++      border-radius: 20px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.85rem;
++    }
++
++    .map-controls button:hover {
++      background: var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +389,56 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations" id="locations-map">
++      <h2>Find a Cafe Near You</h2>
++      <p class="subtitle">Drag, swipe, or scroll in any direction to explore our neighborhood cafes.</p>
++
++      <div class="map-viewport" id="cafe-map" tabindex="0" role="region"
++        aria-label="Cafe locations map. Drag or use arrow keys to pan.">
++        <div class="map-surface" id="cafe-map-surface">
++          <span class="map-hint">Drag to explore &#8596;&#8597;</span>
++          <svg class="map-art" viewBox="0 0 2400 1600" aria-hidden="true">
++            <defs>
++              <pattern id="blocks" width="200" height="200" patternUnits="userSpaceOnUse">
++                <rect width="200" height="200" fill="#efe6d8" />
++                <rect x="18" y="18" width="164" height="164" rx="6" fill="#e4d7c3" />
++              </pattern>
++            </defs>
++            <rect width="2400" height="1600" fill="url(#blocks)" />
++            <!-- Park -->
++            <rect x="818" y="418" width="364" height="364" rx="10" fill="#b7d3a0" />
++            <circle cx="930" cy="540" r="26" fill="#8fbf73" />
++            <circle cx="1060" cy="620" r="34" fill="#8fbf73" />
++            <circle cx="980" cy="700" r="20" fill="#8fbf73" />
++            <text x="1000" y="610" text-anchor="middle" font-size="22" fill="#4b6b38" font-weight="bold">Roaster's Park</text>
++            <!-- River -->
++            <path d="M -20 1250 C 400 1150, 700 1400, 1100 1300 S 1800 1100, 2420 1220" stroke="#9cc5df" stroke-width="70"
++              fill="none" />
++            <text x="1500" y="1225" font-size="20" fill="#3d6f8f" font-style="italic">Espresso River</text>
++            <!-- Main avenues -->
++            <g stroke="#fff8ec" stroke-width="22" stroke-linecap="round">
++              <line x1="0" y1="400" x2="2400" y2="400" />
++              <line x1="0" y1="800" x2="2400" y2="800" />
++              <line x1="600" y1="0" x2="600" y2="1600" />
++              <line x1="1400" y1="0" x2="1400" y2="1600" />
++              <line x1="2000" y1="0" x2="2000" y2="1600" />
++              <line x1="0" y1="0" x2="2400" y2="1600" stroke-width="18" />
++            </g>
++            <g font-size="16" fill="#8d6e63" font-weight="bold">
++              <text x="40" y="392">BEAN STREET</text>
++              <text x="40" y="792">CREMA BOULEVARD</text>
++              <text x="612" y="60" transform="rotate(90 612 60)">MOCHA AVE</text>
++              <text x="1412" y="60" transform="rotate(90 1412 60)">LATTE LANE</text>
++              <text x="2012" y="60" transform="rotate(90 2012 60)">ARABICA WAY</text>
++              <text x="300" y="190" transform="rotate(33.7 300 190)">DIAGONAL DRIP RD</text>
++            </g>
++          </svg>
++        </div>
++      </div>
++
++      <div class="map-controls" id="cafe-map-controls" aria-label="Jump to a location"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +451,235 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('cafe-map');
++      const surface = document.getElementById('cafe-map-surface');
++      const controls = document.getElementById('cafe-map-controls');
++
++      const cafes = [
++        {
++          name: 'Downtown Roastery', x: 640, y: 360,
++          address: '12 Bean Street', hours: 'Daily 6am – 8pm',
++          img: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=480&q=70'
++        },
++        {
++          name: 'Parkside Pour', x: 1230, y: 470,
++          address: '88 Latte Lane', hours: 'Daily 7am – 6pm',
++          img: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=480&q=70'
++        },
++        {
++          name: 'Crema Corner', x: 1960, y: 780,
++          address: '401 Crema Blvd', hours: 'Mon–Sat 6:30am – 7pm',
++          img: 'https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=480&q=70'
++        },
++        {
++          name: 'Riverside Brew Bar', x: 1120, y: 1250,
++          address: '5 Espresso Quay', hours: 'Daily 7am – 9pm',
++          img: 'https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=480&q=70'
++        },
++        {
++          name: 'Mocha Market', x: 560, y: 1000,
++          address: '230 Mocha Ave', hours: 'Daily 6am – 5pm',
++          img: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=480&q=70'
++        },
++        {
++          name: 'Arabica Station', x: 2160, y: 260,
++          address: '17 Arabica Way', hours: 'Mon–Fri 5:30am – 3pm',
++          img: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=480&q=70'
++        }
++      ];
++
++      // Info popup
++      const info = document.createElement('div');
++      info.className = 'map-info';
++      info.hidden = true;
++      info.innerHTML =
++        '<button class="close" type="button" aria-label="Close">&times;</button>' +
++        '<img alt="" draggable="false"><div class="body"><h3></h3><p class="addr"></p><p class="hours"></p>' +
++        '<a class="btn" href="/locations">Get Directions</a></div>';
++      surface.appendChild(info);
++      let activePin = null;
++
++      function openInfo(cafe, pin) {
++        if (activePin) activePin.classList.remove('active');
++        activePin = pin;
++        pin.classList.add('active');
++        info.style.left = cafe.x + 'px';
++        info.style.top = cafe.y + 'px';
++        info.querySelector('img').src = cafe.img;
++        info.querySelector('img').alt = cafe.name + ' interior';
++        info.querySelector('h3').textContent = cafe.name;
++        info.querySelector('.addr').textContent = cafe.address;
++        info.querySelector('.hours').textContent = cafe.hours;
++        info.querySelector('.btn').href = '/locations?cafe=' + encodeURIComponent(cafe.name);
++        info.hidden = false;
++      }
++
++      function closeInfo() {
++        info.hidden = true;
++        if (activePin) activePin.classList.remove('active');
++        activePin = null;
++      }
++      info.querySelector('.close').addEventListener('click', closeInfo);
++
++      function centerOn(x, y, smooth) {
++        viewport.scrollTo({
++          left: x - viewport.clientWidth / 2,
++          top: y - viewport.clientHeight / 2 - 100,
++          behavior: smooth ? 'smooth' : 'auto'
++        });
++      }
++
++      cafes.forEach(function (cafe) {
++        const pin = document.createElement('button');
++        pin.type = 'button';
++        pin.className = 'map-pin';
++        pin.style.left = cafe.x + 'px';
++        pin.style.top = cafe.y + 'px';
++        pin.innerHTML = '<span class="marker"><span>&#9749;</span></span><span class="label"></span>';
++        pin.querySelector('.label').textContent = cafe.name;
++        pin.setAttribute('aria-label', cafe.name + ', ' + cafe.address);
++        pin.addEventListener('click', function () { openInfo(cafe, pin); });
++        surface.appendChild(pin);
++
++        const jump = document.createElement('button');
++        jump.type = 'button';
++        jump.textContent = cafe.name;
++        jump.addEventListener('click', function () {
++          stopMomentum();
++          centerOn(cafe.x, cafe.y, true);
++          openInfo(cafe, pin);
++        });
++        controls.appendChild(jump);
++      });
++
++      /*
++       * Free 2D panning.
++       * touch-action: none on the viewport disables the browser's native touch
++       * scrolling (which often locks to a single axis), so we translate every
++       * pointer movement into BOTH scrollLeft and scrollTop changes ourselves.
++       * The user can pan diagonally and change direction mid-gesture freely.
++       * Mouse wheel / trackpad scrolling keeps working natively on both axes.
++       */
++      const DRAG_THRESHOLD = 4;
++      let pointerId = null;
++      let startX = 0, startY = 0, lastX = 0, lastY = 0, lastT = 0;
++      let velX = 0, velY = 0;
++      let dragging = false;
++      let suppressClick = false;
++      let momentumFrame = null;
++
++      function stopMomentum() {
++        if (momentumFrame !== null) {
++          cancelAnimationFrame(momentumFrame);
++          momentumFrame = null;
++        }
++      }
++
++      viewport.addEventListener('pointerdown', function (e) {
++        if (e.pointerType === 'mouse' && e.button !== 0) return;
++        if (pointerId !== null) return; // ignore additional fingers
++        if (e.target.closest('.map-info')) return; // allow interacting with the popup
++        stopMomentum();
++        pointerId = e.pointerId;
++        startX = lastX = e.clientX;
++        startY = lastY = e.clientY;
++        lastT = performance.now();
++        velX = velY = 0;
++        dragging = false;
++        suppressClick = false;
++      });
++
++      viewport.addEventListener('pointermove', function (e) {
++        if (e.pointerId !== pointerId) return;
++        if (!dragging) {
++          if (Math.hypot(e.clientX - startX, e.clientY - startY) < DRAG_THRESHOLD) return;
++          dragging = true;
++          suppressClick = true;
++          viewport.classList.add('dragging');
++          try { viewport.setPointerCapture(pointerId); } catch (err) { /* noop */ }
++        }
++        const dx = e.clientX - lastX;
++        const dy = e.clientY - lastY;
++        const now = performance.now();
++        const dt = Math.max(now - lastT, 1);
++        // Pan on both axes at once — no axis locking.
++        viewport.scrollLeft -= dx;
++        viewport.scrollTop -= dy;
++        // Smoothed velocity (px/ms) for momentum
++        velX = 0.8 * (dx / dt) + 0.2 * velX;
++        velY = 0.8 * (dy / dt) + 0.2 * velY;
++        lastX = e.clientX;
++        lastY = e.clientY;
++        lastT = now;
++        e.preventDefault();
++      });
++
++      function endDrag(e) {
++        if (e.pointerId !== pointerId) return;
++        const wasDragging = dragging;
++        pointerId = null;
++        dragging = false;
++        viewport.classList.remove('dragging');
++        if (viewport.hasPointerCapture && viewport.hasPointerCapture(e.pointerId)) {
++          viewport.releasePointerCapture(e.pointerId);
++        }
++        // Ignore stale velocity if the pointer paused before release
++        if (!wasDragging || performance.now() - lastT > 80 || e.type === 'pointercancel') return;
++        let vx = velX * 16, vy = velY * 16; // px per frame
++        (function step() {
++          vx *= 0.94;
++          vy *= 0.94;
++          if (Math.abs(vx) < 0.3 && Math.abs(vy) < 0.3) { momentumFrame = null; return; }
++          viewport.scrollLeft -= vx;
++          viewport.scrollTop -= vy;
++          momentumFrame = requestAnimationFrame(step);
++        })();
++      }
++      viewport.addEventListener('pointerup', endDrag);
++      viewport.addEventListener('pointercancel', endDrag);
++
++      // A drag that started on a pin shouldn't also "click" it
++      viewport.addEventListener('click', function (e) {
++        if (suppressClick) {
++          e.stopPropagation();
++          e.preventDefault();
++          suppressClick = false;
++        }
++      }, true);
++
++      viewport.addEventListener('wheel', stopMomentum, { passive: true });
++      viewport.addEventListener('dragstart', function (e) { e.preventDefault(); });
++
++      // Keyboard panning, including diagonals when two arrows are held together
++      const held = new Set();
++      let keyFrame = null;
++      const KEY_DIRS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
++      function keyStep() {
++        let x = 0, y = 0;
++        held.forEach(function (k) { x += KEY_DIRS[k][0]; y += KEY_DIRS[k][1]; });
++        if (!held.size) { keyFrame = null; return; }
++        viewport.scrollLeft += x * 12;
++        viewport.scrollTop += y * 12;
++        keyFrame = requestAnimationFrame(keyStep);
++      }
++      viewport.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape') { closeInfo(); return; }
++        if (!KEY_DIRS[e.key]) return;
++        e.preventDefault();
++        stopMomentum();
++        held.add(e.key);
++        if (keyFrame === null) keyFrame = requestAnimationFrame(keyStep);
++      });
++      viewport.addEventListener('keyup', function (e) { held.delete(e.key); });
++      viewport.addEventListener('blur', function () { held.clear(); });
++
++      // Start centered on the park
++      centerOn(1000, 700, false);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

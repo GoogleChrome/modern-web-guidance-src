@@ -1,0 +1,300 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..53ce255 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -26,11 +26,17 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+ 
++    const toSlug = (text: string) => text.toLowerCase().replace(/ & /g, '-').replace(/\s+/g, '-');
++
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++        <div onMouseLeave={handleMouseLeave} className="relative bg-white">
++            <div className="border-t border-b border-gray-900 bg-white">
++                <nav 
++                    className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto scroll-nav"
++                    style={{ scrollTargetGroup: 'auto' } as React.CSSProperties}
++                >
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const slug = toSlug(groupName);
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -38,8 +44,19 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                 className="h-full flex items-center"
+                             >
+                                 <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    href={`#${slug}`} 
++                                    onClick={(e) => {
++                                        if (typeof window !== 'undefined') {
++                                            const baseUrl = import.meta.env.BASE_URL || '/';
++                                            const currentPath = window.location.pathname;
++                                            const isHome = currentPath === '/' || currentPath === baseUrl || currentPath.endsWith('/index.html');
++                                            if (!isHome) {
++                                                e.preventDefault();
++                                                window.location.href = `${baseUrl}#${slug}`;
++                                            }
++                                        }
++                                    }}
++                                    className="flex items-center space-x-1 hover:text-amber-600 whitespace-nowrap py-1 border-b-2 border-transparent transition-colors"
+                                 >
+                                     <span>{groupName}</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..8ef4b78 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -63,7 +63,9 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       </div>
+     </div>
+   </div>
++</header>
+ 
+-  <!-- Bottom Navigation Bar -->
++<!-- Bottom Navigation Bar -->
++<div class="sticky top-0 z-30 bg-white">
+   <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
+-</header>
++</div>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..3dcd731 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..8ab848f 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,10 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b8258b1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -15,7 +15,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+ <!doctype html>
+-<html lang="en">
++<html lang="en" class="scroll-smooth">
+   <head>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+@@ -35,6 +35,50 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++
++    <script is:inline>
++      function setupScrollspy() {
++        const supportsScrollTargetGroup = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scroll-target-group: auto');
++
++        if (supportsScrollTargetGroup) {
++          const syncAriaCurrent = () => {
++            const currentLink = document.querySelector('nav a:target-current');
++            document.querySelectorAll('nav a').forEach(link => {
++              link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++            });
++          };
++          syncAriaCurrent();
++          document.addEventListener('scrollend', syncAriaCurrent);
++        } else {
++          const navLinks = document.querySelectorAll('nav a');
++          const sections = document.querySelectorAll('main section[id], section[id]');
++          if (!sections.length || !navLinks.length) return;
++
++          const observer = new IntersectionObserver((entries) => {
++            entries.forEach(entry => {
++              if (entry.isIntersecting) {
++                const id = entry.target.getAttribute('id');
++                navLinks.forEach(link => {
++                  const href = link.getAttribute('href');
++                  const isActive = href === `#${id}` || href?.endsWith(`#${id}`);
++                  link.classList.toggle(':target-current', isActive);
++                  link.setAttribute('aria-current', isActive ? 'true' : 'false');
++                });
++              }
++            });
++          }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++          sections.forEach(section => observer.observe(section));
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', setupScrollspy);
++      } else {
++        setupScrollspy();
++      }
++      document.addEventListener('astro:page-load', setupScrollspy);
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -42,9 +86,7 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
+-          <Header />
+-        </div>
++        <Header />
+         <main class="bg-white relative">
+           <slot />
+         </main>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..b278e3e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -10,15 +10,31 @@ import type { RenderResult } from 'astro:content';
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
+-// Slicing articles for different sections
++// Top story / hero article
+ const topArticle = articles[0];
+ const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Categorize articles into navigation groups
++const groupedCategories = {
++    'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
++    'Arts & Culture': ['Culture', 'Media'],
++    'Science & Tech': ['science'],
++    'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development', 'Pets'],
++};
++
++const filterGroup = (cats: string[]) => {
++    const lowerCats = cats.map(c => c.toLowerCase());
++    return articles.filter(a => lowerCats.includes(a.data.category.toLowerCase()));
++};
++
++const newsPoliticsArticles = filterGroup(groupedCategories['News & Politics']);
++const artsCultureArticles = filterGroup(groupedCategories['Arts & Culture']);
++const scienceTechArticles = filterGroup(groupedCategories['Science & Tech']);
++const lifestyleSportsArticles = filterGroup(groupedCategories['Lifestyle & Sports']);
+ 
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
++if (newsPoliticsArticles.length > 2) {
++  newsPoliticsArticles[2] = {
+     id: 'public-transit-overhaul',
+     data: {
+       title: 'What\'s new in DevTools',
+@@ -35,6 +51,7 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++}
+ ---
+ 
+ <Layout title="The DevTools Times">
+@@ -64,21 +81,33 @@ politicsArticles[2] = {
+             <Ad client:visible />
+         </section>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <!-- Anchors for backward compatibility -->
++        <span id="top-news" class="scroll-mt-14 block"></span>
++        <span id="politics" class="scroll-mt-14 block"></span>
++        <!-- "News & Politics" section -->
++        <TopStoryTeaserGrid id="news-politics" title="News & Politics" articles={newsPoliticsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- Anchor for backward compatibility -->
++        <span id="world" class="scroll-mt-14 block"></span>
++        <!-- "Arts & Culture" section -->
++        <SimpleTeaserGrid id="arts-culture" title="Arts & Culture" articles={artsCultureArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <!-- "Science & Tech" section -->
++        <SimpleTeaserGrid id="science-tech" title="Science & Tech" articles={scienceTechArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++        <!-- "Lifestyle & Sports" section -->
++        <TopStoryTeaserGrid id="lifestyle-sports" title="Lifestyle & Sports" articles={lifestyleSportsArticles} />
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..e80b701 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,22 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++:root {
++  --accent: #d97706;
++}
++
++/* MANDATORY: The container of markers must have scroll-target-group: auto */
++nav {
++  /* Enables automatic tracking of fragment links */
++  scroll-target-group: auto;
++}
++
++/* Fallback style if :target-current is not supported.
++   Use :is() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.\:target-current, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
++nav a:is(:target-current, .\:target-current) {
++  color: var(--accent, #d97706);
++  border-bottom-color: var(--accent, #d97706);
++  font-weight: bold;
+ }
+\ No newline at end of file

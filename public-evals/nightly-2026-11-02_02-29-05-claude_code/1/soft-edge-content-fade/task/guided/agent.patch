@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets Preview */
++    .secrets {
++      margin-top: 60px;
++    }
++
++    .secrets-eyebrow {
++      display: block;
++      text-align: center;
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    .paywall-container {
++      max-height: 520px;
++      overflow: hidden;
++      margin-top: 20px;
++      /* Fade the content itself to transparent so the page background shows through */
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container img {
++      display: block;
++      width: 100%;
++      height: 260px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 20px;
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin: 20px 0 10px;
++    }
++
++    .paywall-container p {
++      margin-bottom: 15px;
++    }
++
++    .secrets-cta {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +240,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="secrets">
++      <span class="secrets-eyebrow">Members Exclusive</span>
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <div class="paywall-container">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=80"
++          alt="Freshly roasted coffee beans" loading="lazy" width="1100" height="260">
++        <h3>The First Crack: Timing Is Everything</h3>
++        <p>Every great roast hinges on a single moment. Around the nine-minute mark, the beans begin to pop as moisture
++          escapes and sugars caramelize. Our head roaster listens for this "first crack" the way a musician listens for
++          a downbeat, and what happens in the ninety seconds that follow decides whether a bean tastes bright and fruity
++          or deep and chocolatey.</p>
++        <p>For our single-origin Ethiopian, we drop the batch just thirty seconds after first crack begins, preserving
++          the floral jasmine notes that make it so distinctive. For the house espresso, we let the development stretch
++          a little longer, coaxing out the caramel sweetness that stands up to steamed milk.</p>
++        <h3>Resting: The Step Most People Skip</h3>
++        <p>Freshly roasted coffee isn't ready to brew straight out of the drum. The beans keep releasing carbon dioxide
++          for days, and brewing too soon gives you a sour, uneven cup. Here's the resting schedule we follow for every
++          bag that leaves our roastery, and the exact window we recommend for pour-over versus espresso...</p>
++      </div>
++      <div class="secrets-cta">
++        <a href="/rewards" class="btn">Unlock the Full Story</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

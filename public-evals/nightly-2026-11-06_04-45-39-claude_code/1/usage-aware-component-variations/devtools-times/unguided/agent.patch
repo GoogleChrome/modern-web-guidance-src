@@ -1,0 +1,1255 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..63a07b7 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -1,83 +1,107 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
++import { getCollection } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
++import {
++    getEditionDate,
++    resolveSemanticContext,
++    semanticAttributes,
++    type Placement,
++} from '../utils/semantics';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import Kicker from './semantic/Kicker.astro';
++import ReadingMeter from './semantic/ReadingMeter.astro';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
++    /** @deprecated use `placement="hero"` */
+     large?: boolean;
++    /** Layout role supplied by the parent; changes density and hierarchy. */
++    placement?: Placement;
++    /** "Now" for urgency checks; defaults to the newest article's date. */
++    referenceDate?: Date;
+ }
+ 
+ const { article, large = false } = Astro.props;
+-const image = await getArticleImage(article);
++const placement: Placement = Astro.props.placement ?? (large ? 'hero' : 'standard');
++const referenceDate = Astro.props.referenceDate ?? getEditionDate(await getCollection('articles'));
++
++const ctx = resolveSemanticContext(article, { referenceDate });
++const attrs = semanticAttributes(ctx, { placement });
++
++const image = placement === 'compact' ? null : await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+-const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++
++const base = import.meta.env.BASE_URL;
++const articleHref = `${base}articles/${article.id}`;
++const categoryHref = `${base}category/${article.data.category.toLowerCase()}`;
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++{placement === 'hero' ? (
++    <article {...attrs} class="sem-surface group p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                <Kicker context={ctx} href={categoryHref} maxBadges={3} />
++                <a href={articleHref} class="flex-grow">
++                    <h1 class="sem-headline mt-2 text-3xl md:text-4xl font-brand leading-tight">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p class="sem-standfirst sem-muted mt-4 text-lg">
+                         {article.data.summary}
+                     </p>
+                 </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
++                <div class="flex justify-between items-center mt-6">
++                    <ReadingMeter context={ctx} minutes={article.data.readingTime} />
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
++            <div class="lg:col-span-2 overflow-hidden">
++                <a href={articleHref} tabindex="-1" aria-hidden="true">
++                    <Image
++                        src={image!}
+                         alt=""
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        class="sem-media w-full h-auto object-cover"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
++) : placement === 'compact' ? (
++    <article {...attrs} class="group flex flex-col gap-1">
++        <Kicker context={ctx} maxBadges={1} />
++        <a href={articleHref}>
++            <h3 class="sem-headline sem-fg font-bold leading-snug">{article.data.title}</h3>
++        </a>
++        <ReadingMeter context={ctx} minutes={article.data.readingTime} compact />
++    </article>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++    <article {...attrs} class="sem-card group flex flex-col h-full">
++        <a href={articleHref} tabindex="-1" aria-hidden="true" class="overflow-hidden" style="border-radius: var(--tone-radius)">
++            <Image
++                src={image!}
++                alt=""
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="sem-media w-full object-cover flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++            <Kicker context={ctx} href={categoryHref} />
++            <a href={articleHref} class="flex flex-col mt-1">
++                <h3 class="sem-headline sem-fg text-lg md:text-xl font-brand flex-grow">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="sem-standfirst sem-muted mt-1">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
++            <div class="sem-rule flex justify-between items-center mt-auto pt-2 border-t">
++                <ReadingMeter context={ctx} minutes={article.data.readingTime} />
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..8cb6703 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,8 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button onClick={handleClick} className="p-1" aria-pressed={isBookmarked} aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}>
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'sem-accent fill-current' : 'sem-muted'}`}></BookmarkIcon>
+     </button>
+   );
+ }
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..32c83c8 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -1,20 +1,22 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import SemanticSection from './semantic/SemanticSection.astro';
++import { getEditionDate, type Desk, type Surface } from '../utils/semantics';
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    desk?: Desk;
++    surface?: Surface;
++    referenceDate?: Date;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, desk, surface = 'light' } = Astro.props;
++const referenceDate = Astro.props.referenceDate ?? getEditionDate(articles);
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
+-
++<SemanticSection title={title} desk={desk} surface={surface} articles={articles}>
+     <div class="grid md:grid-cols-3 gap-6">
+-      {articles.map(article => <ArticleTeaser article={article} />)}
++      {articles.map(article => <ArticleTeaser article={article} referenceDate={referenceDate} />)}
+     </div>
+-</section>
++</SemanticSection>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..6fb3b64 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,100 +3,112 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import SemanticSection from './semantic/SemanticSection.astro';
++import Kicker from './semantic/Kicker.astro';
++import ReadingMeter from './semantic/ReadingMeter.astro';
++import {
++    getEditionDate,
++    resolveSemanticContext,
++    semanticAttributes,
++    type Desk,
++    type Surface,
++} from '../utils/semantics';
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    desk?: Desk;
++    surface?: Surface;
++    referenceDate?: Date;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, desk, surface = 'light' } = Astro.props;
+ 
+ if (articles.length < 4) {
+-    throw new Error("TeaserGridVariant requires at least 4 articles.");
++    throw new Error("TopStoryTeaserGrid requires at least 4 articles.");
+ }
+ 
++const referenceDate = Astro.props.referenceDate ?? getEditionDate(articles);
+ const topArticle = articles[0];
+ const bottomArticles = articles.slice(1, 4);
+ 
++const topCtx = resolveSemanticContext(topArticle, { referenceDate });
++const bottomCtx = bottomArticles.map((a) => resolveSemanticContext(a, { referenceDate }));
++
++// Visual weight follows meaning rather than position: within the secondary row
++// the most "visual" story (light/neutral tone, longest read) gets the image,
++// grave stories stay text-led so imagery doesn't sensationalise them.
++const imageScore = (i: number) => {
++    const c = bottomCtx[i];
++    const toneScore = c.tone === 'grave' ? -10 : c.tone === 'light' ? 2 : 0;
++    return toneScore + (bottomArticles[i].data.readingTime ?? 0) / 10 + (i === 1 ? 0.5 : 0);
++};
++const imageIndex = [0, 1, 2].reduce((best, i) => (imageScore(i) > imageScore(best) ? i : best), 1);
++
+ const topArticleImage = await getArticleImage(topArticle);
+-const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
++const bottomImage = await getArticleImage(bottomArticles[imageIndex]);
+ 
+ const readingList = await Astro.session?.get('readingList') || [];
+-
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
++const base = import.meta.env.BASE_URL;
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
+-
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++<SemanticSection title={title} desk={desk} surface={surface} articles={articles}>
++    <!-- Lead story -->
++    <article {...semanticAttributes(topCtx, { placement: 'lead' })} class="group shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                <Kicker context={topCtx} href={`${base}category/${topArticle.data.category.toLowerCase()}`} maxBadges={3} class="mb-2" />
++                <a href={`${base}articles/${topArticle.id}`}>
++                    <h3 class="sem-headline text-3xl lg:text-4xl font-brand mb-4 leading-tight">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p class="sem-standfirst sem-muted mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class="flex justify-between items-center">
++                    <ReadingMeter context={topCtx} minutes={topArticle.data.readingTime} />
++                    <BookmarkButton client:visible slug={topArticle.id} initialIsBookmarked={readingList.includes(topArticle.id)} />
+                 </div>
+             </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++            <div class="w-full order-first lg:order-last overflow-hidden">
++                <a href={`${base}articles/${topArticle.id}`} tabindex="-1" aria-hidden="true">
++                    <Image width="640" height="360" src={topArticleImage} alt="" class="sem-media w-full h-full object-cover aspect-video lg:aspect-auto" style="border-radius:0" />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+-    <!-- Bottom Section: Three Smaller Articles -->
++    <!-- Secondary stories -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+         {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+-            const isBookmarked = readingList.includes(article.id);
++            const ctx = bottomCtx[index];
++            const showImage = index === imageIndex;
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
+-                    {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                <article {...semanticAttributes(ctx, { placement: 'standard' })} class="sem-card group flex flex-col shadow-sm overflow-hidden h-full">
++                    {showImage && (
++                        <a href={`${base}articles/${article.id}`} tabindex="-1" aria-hidden="true" class="overflow-hidden">
++                            <Image width="320" height="180" src={bottomImage} alt="" class="sem-media w-full h-auto object-cover aspect-video" style="border-radius:0" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                        <Kicker context={ctx} href={`${base}category/${article.data.category.toLowerCase()}`} class="mb-2" />
++                        <a href={`${base}articles/${article.id}`}>
++                            <h3 class="sem-headline text-2xl font-brand mb-2">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+-                        {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                        {!showImage && (
++                            <p class="sem-standfirst sem-muted mb-4 flex-grow">
+                                 {article.data.summary}
+                             </p>
+                         )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                        <div class="sem-rule flex justify-between items-center mt-auto pt-2 border-t">
++                            <ReadingMeter context={ctx} minutes={article.data.readingTime} />
++                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={readingList.includes(article.id)} />
+                         </div>
+                     </div>
+-                </div>
+-            )
++                </article>
++            );
+         })}
+     </div>
+-</section>
++</SemanticSection>
+diff --git a/src/components/semantic/Kicker.astro b/src/components/semantic/Kicker.astro
+new file mode 100644
+index 0000000..d9e58a5
+--- /dev/null
++++ b/src/components/semantic/Kicker.astro
+@@ -0,0 +1,38 @@
++---
++/**
++ * Category label plus semantic badges (Breaking / Investigation / Long read…).
++ * Colours come entirely from the surrounding semantic context tokens.
++ */
++import type { SemanticContext } from '../../utils/semantics';
++
++export interface Props {
++    context: SemanticContext;
++    /** Category link target; omit to render plain text. */
++    href?: string;
++    /** Max number of badges to show (compact placements show fewer). */
++    maxBadges?: number;
++    size?: 'sm' | 'md';
++    class?: string;
++}
++
++const { context, href, maxBadges = 2, size = 'sm', class: className = '' } = Astro.props;
++const badges = context.badges.slice(0, maxBadges);
++const labelClass = size === 'md' ? 'text-base' : 'text-sm';
++const Label = href ? 'a' : 'span';
++---
++<div class:list={['flex flex-wrap items-center gap-x-2 gap-y-1', className]}>
++    <span class="sr-only">{context.description}</span>
++    <Label
++        href={href}
++        class:list={['sem-accent font-brand tracking-widest', labelClass, href && 'hover:underline']}
++        aria-hidden="true"
++    >
++        {context.label}
++    </Label>
++    {badges.map((badge) => (
++        <span class="sem-badge" data-kind={badge.kind} aria-hidden="true">
++            {badge.kind === 'urgency' && context.urgency === 'breaking' && <span class="sem-pulse"></span>}
++            {badge.text}
++        </span>
++    ))}
++</div>
+diff --git a/src/components/semantic/ReadingMeter.astro b/src/components/semantic/ReadingMeter.astro
+new file mode 100644
+index 0000000..7c5924e
+--- /dev/null
++++ b/src/components/semantic/ReadingMeter.astro
+@@ -0,0 +1,33 @@
++---
++/**
++ * Reading-time indicator that adapts to the reading commitment:
++ * quick reads get a bolt, long reads get a proportional progress meter,
++ * everything else gets the standard book icon.
++ */
++import { BookOpenIcon, BoltIcon } from '@heroicons/react/24/outline';
++import type { SemanticContext } from '../../utils/semantics';
++
++export interface Props {
++    context: SemanticContext;
++    minutes?: number;
++    /** Compact placements suppress the meter bar. */
++    compact?: boolean;
++}
++
++const { context, minutes, compact = false } = Astro.props;
++const MAX = 12;
++const pct = minutes ? Math.min(100, Math.round((minutes / MAX) * 100)) : 0;
++---
++{minutes != null && (
++    <span class="sem-muted text-xs font-medium inline-flex items-center gap-1.5">
++        {context.format === 'quick'
++            ? <BoltIcon className="w-4 h-4 -mt-px" aria-hidden="true" />
++            : <BookOpenIcon className="w-4 h-4 -mt-px" aria-hidden="true" />}
++        <span>{minutes} Min.</span>
++        {context.format === 'longread' && !compact && (
++            <span class="sem-meter-track inline-block w-14 h-1.5" role="img" aria-label={`Long read: ${minutes} minutes`}>
++                <span class="sem-meter-fill block" style={`width:${pct}%`}></span>
++            </span>
++        )}
++    </span>
++)}
+diff --git a/src/components/semantic/SemanticSection.astro b/src/components/semantic/SemanticSection.astro
+new file mode 100644
+index 0000000..fff90db
+--- /dev/null
++++ b/src/components/semantic/SemanticSection.astro
+@@ -0,0 +1,36 @@
++---
++/**
++ * Establishes a semantic context for everything inside it.
++ *
++ * - `desk`: explicit editorial desk; if omitted it is inferred from `articles`
++ *   (majority vote) so a section full of sports stories turns sports-green.
++ * - `surface`: background register. Children recompute their accents for
++ *   legibility on dark/tinted surfaces automatically through CSS tokens.
++ */
++import type { CollectionEntry } from 'astro:content';
++import { dominantDesk, type Desk, type Surface } from '../../utils/semantics';
++
++export interface Props {
++    title?: string;
++    desk?: Desk;
++    surface?: Surface;
++    articles?: CollectionEntry<'articles'>[];
++    class?: string;
++}
++
++const { title, desk, surface = 'light', articles = [], class: className = '' } = Astro.props;
++const resolvedDesk = desk ?? dominantDesk(articles);
++---
++<section
++    class:list={['sem-surface p-4 md:p-6', className]}
++    data-desk={resolvedDesk}
++    data-surface={surface}
++    aria-label={title}
++>
++    {title && (
++        <h2 class="sem-section-title text-3xl font-bold pb-2 mb-6 lg:mb-8">
++            {title}
++        </h2>
++    )}
++    <slot />
++</section>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..6544406 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,9 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import Kicker from '../../components/semantic/Kicker.astro';
++import ReadingMeter from '../../components/semantic/ReadingMeter.astro';
++import { getEditionDate, resolveDesk, resolveSemanticContext, semanticAttributes } from '../../utils/semantics';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -27,7 +30,13 @@ if (!article) return Astro.redirect('/404');
+ 
+ const { Content } = await render(article);
+ const allArticles = await getCollection('articles');
+-const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
++const editionDate = getEditionDate(allArticles);
++const ctx = resolveSemanticContext(article, { referenceDate: editionDate });
++
++// Related stories favour the same desk, then fall back to anything else.
++const others = allArticles.filter(a => a.id !== article.id);
++const sameDesk = others.filter(a => resolveDesk(a.data.category) === ctx.desk);
++const relatedArticles = [...sameDesk, ...others.filter(a => !sameDesk.includes(a))].slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+@@ -36,11 +45,9 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++    <article {...semanticAttributes(ctx, { placement: 'hero' })} class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <!-- Breadcrumbs/Category + semantic badges -->
++        <Kicker context={ctx} href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} maxBadges={3} size="md" class="mb-2" />
+ 
+         <!-- Headline -->
+         <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+@@ -48,13 +55,16 @@ const isBookmarked = readingList.includes(article.slug);
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p class="sem-standfirst text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+         <!-- Author / Date -->
+         <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            <div class="flex flex-wrap justify-between items-center gap-2">
++                <span>By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}</span>
++                <ReadingMeter context={ctx} minutes={article.data.readingTime} />
++            </div>
+         </div>
+ 
+         <!-- Main Article Image -->
+@@ -76,7 +86,7 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
+-                    class="w-full h-auto"
++                    class="sem-media w-full h-auto"
+                 />
+             )}
+             {article.data.image_caption && (
+@@ -105,7 +115,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class="prose sem-prose max-w-none">
+             <Content />
+         </div>
+ 
+@@ -116,7 +126,7 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8" aria-label="Related stories">
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..377fb81 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,8 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import Kicker from '../../components/semantic/Kicker.astro';
++import { getEditionDate, resolveDesk, resolveSemanticContext, semanticAttributes, titleCase } from '../../utils/semantics';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -34,11 +36,14 @@ const randomArticleForHero = allArticlesInCategory.length > 0
+ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+-const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++const capitalizedCategory = titleCase(category);
++const desk = resolveDesk(category);
++const editionDate = getEditionDate(await getCollection('articles'));
++const featuredCtx = featuredArticle ? resolveSemanticContext(featuredArticle, { referenceDate: editionDate }) : null;
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+-    <div class="pb-8">
++    <div class="pb-8" data-desk={desk}>
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+@@ -53,9 +58,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                 />
+             )}
+             <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
++            <!-- Desk-tinted wash: the header colour follows the category's semantic desk -->
++            <div class="absolute w-full h-full z-1 mix-blend-multiply" style="background: linear-gradient(135deg, var(--sem-accent), transparent 75%); opacity: .75"></div>
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+                     <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
++                    <span class="block mx-auto mt-2 mb-1 h-1 w-16" style="background: color-mix(in oklch, var(--sem-accent), white 45%)"></span>
+                     <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                         {capitalizedCategory}
+                     </h1>
+@@ -65,8 +73,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++            {featuredArticle && featuredArticleImage && featuredCtx && (
++                <section {...semanticAttributes(featuredCtx, { placement: 'lead' })} class="mb-8 pb-8 border-b border-gray-200">
++                    <Kicker context={featuredCtx} maxBadges={3} class="mb-3" />
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -74,12 +83,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
++                            class="sem-media w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class="sem-headline text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                             {featuredArticle.data.title}
+                         </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
++                        <p class="sem-standfirst text-base md:text-lg text-gray-700">
+                             {featuredArticle.data.summary}
+                         </p>
+                     </a>
+@@ -89,7 +98,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    {otherArticles.map(article => <ArticleTeaser article={article} referenceDate={editionDate} />)}
+                 </div>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..a8c752e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,10 +6,14 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import { getEditionDate } from '../utils/semantics';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
++// Single "edition date" so urgency (Breaking / New) is judged consistently across the page.
++const editionDate = getEditionDate(articles);
++
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+ const topStories = articles.slice(1, 4);
+@@ -44,10 +48,7 @@ politicsArticles[2] = {
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        <ArticleTeaser article={article} placement="compact" referenceDate={editionDate} />
+                     </div>
+                 ))}
+             </div>
+@@ -56,7 +57,7 @@ politicsArticles[2] = {
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
++        <ArticleTeaser article={topArticle} placement="hero" referenceDate={editionDate} />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+@@ -65,20 +66,21 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} referenceDate={editionDate} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <!-- Dark band: teasers re-derive accents for legibility via CSS tokens -->
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} surface="dark" referenceDate={editionDate} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid title="Politics" desk="politics" surface="tinted" articles={politicsArticles} referenceDate={editionDate} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..233ec4e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,246 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* ==========================================================================
++   Semantic context tokens
++   --------------------------------------------------------------------------
++   Components emit data-desk / data-tone / data-genre / data-urgency /
++   data-format / data-placement / data-surface (see src/utils/semantics.ts).
++   These rules translate meaning into visual tokens. Everything cascades, so a
++   section can set a context that descendants inherit unless they declare a
++   more specific one.
++   ========================================================================== */
++
++:root {
++  /* Surface tokens (light by default) */
++  --sem-bg: #ffffff;
++  --sem-fg: oklch(0.21 0.02 260);
++  --sem-muted: oklch(0.45 0.02 260);
++  --sem-rule: oklch(0.92 0.005 260);
++  --sem-lift: 0%;          /* how much to lighten accents for legibility */
++
++  /* Desk palette (brand amber when no desk is known) */
++  --desk-accent: oklch(0.48 0.12 60);
++
++  /* Tone tokens */
++  --tone-mute: 0%;         /* pull accent toward foreground for sober topics */
++  --tone-radius: 0.375rem;
++  --tone-media-filter: none;
++  --tone-media-filter-hover: none;
++  --tone-hover-lift: 0;
++
++  --sem-accent: var(--desk-accent);
++}
++
++/* --- Desks --------------------------------------------------------------- */
++[data-desk="news"]      { --desk-accent: oklch(0.50 0.19 27); }
++[data-desk="politics"]  { --desk-accent: oklch(0.42 0.14 265); }
++[data-desk="sports"]    { --desk-accent: oklch(0.52 0.15 150); }
++[data-desk="culture"]   { --desk-accent: oklch(0.48 0.17 320); }
++[data-desk="science"]   { --desk-accent: oklch(0.50 0.10 200); }
++[data-desk="business"]  { --desk-accent: oklch(0.42 0.09 240); }
++[data-desk="media"]     { --desk-accent: oklch(0.48 0.12 60); }
++[data-desk="lifestyle"] { --desk-accent: oklch(0.58 0.15 45); }
++[data-desk="urban"]     { --desk-accent: oklch(0.47 0.07 110); }
++[data-desk="tech"]      { --desk-accent: oklch(0.50 0.12 230); }
++[data-desk="general"]   { --desk-accent: oklch(0.48 0.12 60); }
++
++/* --- Surfaces ------------------------------------------------------------ */
++[data-surface="light"] {
++  --sem-bg: #ffffff;
++  --sem-fg: oklch(0.21 0.02 260);
++  --sem-muted: oklch(0.45 0.02 260);
++  --sem-rule: oklch(0.92 0.005 260);
++  --sem-lift: 0%;
++}
++[data-surface="tinted"] {
++  --sem-bg: color-mix(in oklch, var(--desk-accent) 7%, white);
++  --sem-fg: oklch(0.21 0.02 260);
++  --sem-muted: oklch(0.42 0.02 260);
++  --sem-rule: color-mix(in oklch, var(--desk-accent) 18%, white);
++  --sem-lift: 0%;
++}
++[data-surface="dark"] {
++  --sem-bg: oklch(0.2 0.015 260);
++  --sem-fg: oklch(0.97 0.005 260);
++  --sem-muted: oklch(0.78 0.01 260);
++  --sem-rule: oklch(0.32 0.015 260);
++  --sem-lift: 45%;
++}
++
++/* --- Tones --------------------------------------------------------------- */
++[data-tone] {
++  --tone-mute: 0%;
++  --tone-radius: 0.375rem;
++  --tone-media-filter: none;
++  --tone-media-filter-hover: none;
++  --tone-hover-lift: 0;
++}
++[data-tone="grave"] {
++  --tone-mute: 35%;
++  --tone-radius: 0;
++  --tone-media-filter: grayscale(0.75) contrast(1.05);
++  --tone-media-filter-hover: grayscale(0.2);
++}
++[data-tone="light"] {
++  --tone-radius: 0.875rem;
++  --tone-media-filter: saturate(1.1);
++  --tone-media-filter-hover: saturate(1.25);
++  --tone-hover-lift: -3px;
++}
++
++/* Accent is recomputed wherever the context can change, so nested contexts
++   combine the nearest desk, surface and tone correctly. */
++[data-desk], [data-surface], [data-tone] {
++  --sem-accent: color-mix(
++    in oklch,
++    color-mix(in oklch, var(--desk-accent), white var(--sem-lift)),
++    var(--sem-fg) var(--tone-mute)
++  );
++  --sem-accent-soft: color-mix(in oklch, var(--sem-accent) 14%, transparent);
++}
++
++/* Breaking news always reads as urgent, regardless of desk. */
++[data-urgency="breaking"] {
++  --sem-urgent: color-mix(in oklch, oklch(0.55 0.21 27), white var(--sem-lift));
++}
++[data-urgency="fresh"] {
++  --sem-urgent: var(--sem-accent);
++}
++
++/* --- Utility classes driven by tokens ----------------------------------- */
++.sem-surface {
++  background-color: var(--sem-bg);
++  color: var(--sem-fg);
++}
++.sem-fg     { color: var(--sem-fg); }
++.sem-muted  { color: var(--sem-muted); }
++.sem-accent { color: var(--sem-accent); }
++.sem-rule   { border-color: var(--sem-rule); }
++
++.sem-card {
++  border-radius: var(--tone-radius);
++  transition: transform 200ms ease, box-shadow 200ms ease;
++}
++.sem-card:hover { transform: translateY(var(--tone-hover-lift)); }
++[data-tone="light"].sem-card:hover {
++  box-shadow: 0 10px 24px -12px color-mix(in oklch, var(--sem-accent) 45%, transparent);
++}
++
++.sem-media {
++  border-radius: var(--tone-radius);
++  filter: var(--tone-media-filter);
++  transition: filter 300ms ease;
++}
++.group:hover .sem-media,
++.sem-media:hover { filter: var(--tone-media-filter-hover); }
++
++.sem-headline { transition: color 150ms ease; }
++.group:hover .sem-headline,
++.sem-headline:hover { color: var(--sem-accent); }
++/* Grave stories don't flash colour on hover; they underline instead. */
++[data-tone="grave"] .sem-headline:hover,
++[data-tone="grave"].group:hover .sem-headline {
++  color: inherit;
++  text-decoration: underline;
++  text-decoration-thickness: 1px;
++  text-underline-offset: 0.2em;
++}
++
++/* Analysis pieces use a sober sans headline; everything else uses the brand face. */
++[data-genre="analysis"] .sem-headline {
++  font-family: ui-sans-serif, system-ui, sans-serif;
++  font-weight: 700;
++  letter-spacing: -0.01em;
++}
++/* Reviews get an italic standfirst to signal opinion. */
++[data-genre="review"] .sem-standfirst { font-style: italic; }
++
++/* Kicker badges */
++.sem-badge {
++  display: inline-flex;
++  align-items: center;
++  gap: 0.35em;
++  font-size: 0.68rem;
++  line-height: 1;
++  font-weight: 700;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  padding: 0.3em 0.55em;
++  border-radius: 999px;
++  white-space: nowrap;
++}
++.sem-badge[data-kind="urgency"] {
++  color: white;
++  background: var(--sem-urgent, var(--sem-accent));
++}
++[data-surface="dark"] .sem-badge[data-kind="urgency"] { color: var(--sem-bg); }
++.sem-badge[data-kind="genre"] {
++  color: var(--sem-accent);
++  box-shadow: inset 0 0 0 1px currentColor;
++}
++[data-genre="investigation"] .sem-badge[data-kind="genre"] {
++  color: var(--sem-bg);
++  background: var(--sem-accent);
++  box-shadow: none;
++  border-radius: 0;
++}
++.sem-badge[data-kind="format"] {
++  color: var(--sem-muted);
++  background: var(--sem-accent-soft);
++}
++.sem-pulse {
++  width: 0.45em;
++  height: 0.45em;
++  border-radius: 999px;
++  background: currentColor;
++  animation: sem-pulse 1.4s ease-in-out infinite;
++}
++@keyframes sem-pulse {
++  0%, 100% { opacity: 1; }
++  50% { opacity: 0.25; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .sem-pulse { animation: none; }
++  .sem-card, .sem-media, .sem-headline { transition: none; }
++  .sem-card:hover { transform: none; }
++}
++
++/* Section heading rule picks up the section's desk accent. */
++.sem-section-title {
++  border-bottom: 2px solid var(--sem-fg);
++  position: relative;
++}
++.sem-section-title::after {
++  content: "";
++  position: absolute;
++  left: 0;
++  bottom: -2px;
++  width: 4rem;
++  height: 2px;
++  background: var(--sem-accent);
++}
++
++/* Reading meter */
++.sem-meter-track {
++  background: var(--sem-rule);
++  border-radius: 999px;
++  overflow: hidden;
++}
++.sem-meter-fill {
++  background: var(--sem-accent);
++  height: 100%;
++  border-radius: inherit;
++}
++
++/* Long-form prose links follow the article's desk colour. */
++.sem-prose a { color: var(--sem-accent); }
++[data-tone="grave"] .sem-prose p:first-of-type::first-letter {
++  float: left;
++  font-family: "Grenze", serif;
++  font-size: 3.4em;
++  line-height: 0.85;
++  padding-right: 0.08em;
++  color: var(--sem-fg);
++}
+diff --git a/src/utils/semantics.ts b/src/utils/semantics.ts
+new file mode 100644
+index 0000000..ec3ddc9
+--- /dev/null
++++ b/src/utils/semantics.ts
+@@ -0,0 +1,268 @@
++/**
++ * Semantic context resolution.
++ *
++ * Components never hard-code colours, labels or image treatments for a given
++ * piece of content. Instead they ask this module "what *is* this content?"
++ * and receive a semantic description (desk, tone, genre, urgency, format).
++ * That description is emitted as `data-*` attributes; `global.css` maps each
++ * attribute to visual tokens (CSS custom properties). Because custom
++ * properties cascade, a section can establish a context (e.g. a dark "Culture"
++ * band) and every descendant adapts automatically unless it carries a more
++ * specific context of its own.
++ */
++import type { CollectionEntry } from 'astro:content';
++
++/** Editorial desk — drives the accent palette. */
++export type Desk =
++  | 'news'
++  | 'politics'
++  | 'sports'
++  | 'culture'
++  | 'science'
++  | 'business'
++  | 'media'
++  | 'lifestyle'
++  | 'urban'
++  | 'tech'
++  | 'general';
++
++/** Emotional register — drives image treatment, shape and motion. */
++export type Tone = 'grave' | 'neutral' | 'light';
++
++/** Journalistic form — drives the kicker label and typography. */
++export type Genre = 'news' | 'investigation' | 'analysis' | 'review' | 'feature';
++
++/** Time sensitivity relative to the newest item on the page. */
++export type Urgency = 'breaking' | 'fresh' | 'standard';
++
++/** Reading commitment. */
++export type Format = 'quick' | 'standard' | 'longread';
++
++/** Where in the layout the component sits (supplied by the parent). */
++export type Placement = 'hero' | 'lead' | 'standard' | 'compact';
++
++/** Background the component is rendered on (supplied by the parent). */
++export type Surface = 'light' | 'tinted' | 'dark';
++
++export interface SemanticContext {
++  desk: Desk;
++  tone: Tone;
++  genre: Genre;
++  urgency: Urgency;
++  format: Format;
++  /** Human-readable desk name (the original category, title-cased). */
++  label: string;
++  /** Optional semantic badges, in display priority order. */
++  badges: SemanticBadge[];
++  /** Accessible sentence describing the context for screen readers. */
++  description: string;
++}
++
++export interface SemanticBadge {
++  kind: 'urgency' | 'genre' | 'format';
++  text: string;
++}
++
++type ArticleLike = Pick<CollectionEntry<'articles'>, 'data'>;
++
++const DESK_BY_CATEGORY: Record<string, Desk> = {
++  news: 'news',
++  national: 'news',
++  world: 'news',
++  politics: 'politics',
++  sports: 'sports',
++  culture: 'culture',
++  arts: 'culture',
++  science: 'science',
++  business: 'business',
++  economy: 'business',
++  labor: 'business',
++  media: 'media',
++  lifestyle: 'lifestyle',
++  pets: 'lifestyle',
++  'urban development': 'urban',
++  'web development': 'tech',
++  technology: 'tech',
++};
++
++// Terms match whole words/phrases; a trailing `*` makes a term a word prefix
++// (e.g. `investigat*` matches "investigation" and "investigators").
++const GRAVE_TERMS = [
++  'killer*', 'crime*', 'criminal*', 'death*', 'forensic*', 'murder*', 'pollution',
++  'crisis', 'decay', 'collapse*', 'victim*', 'illicit', 'crumbling', 'time bomb',
++  'existential',
++];
++const LIGHT_TERMS = [
++  'humor', 'comedy', 'improv', 'pet', 'pets', 'dog', 'dogs', 'festival*',
++  'coffee', 'juggl*', 'fun', 'griffon*',
++];
++const INVESTIGATION_TERMS = ['investigat*', 'inside', 'unravel*', 'forensic*', 'profil*', 'criminal*'];
++const ANALYSIS_TERMS = ['future of', 'decline', 'crisis', 'boom', 'overhaul', 'why', 'what next', 'how'];
++const REVIEW_TERMS = ['ballet', 'swan lake', 'festival*', 'concert*', 'theater', 'theatre', 'improv'];
++const BREAKING_TERMS = ['breaking', 'strike', 'strikes', 'just in'];
++/** Desks where a same-day story is genuinely "breaking"; others are just "new". */
++const HARD_NEWS_DESKS: Desk[] = ['news', 'politics', 'business', 'sports'];
++
++const DAY = 24 * 60 * 60 * 1000;
++
++function haystack(article: ArticleLike): string {
++  const { title, summary, tags = [] } = article.data;
++  return `${title} ${summary} ${tags.join(' ')}`.toLowerCase();
++}
++
++const patternCache = new Map<string, RegExp>();
++function termPattern(term: string): RegExp {
++  let re = patternCache.get(term);
++  if (!re) {
++    const prefix = term.endsWith('*');
++    const body = (prefix ? term.slice(0, -1) : term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++    re = new RegExp(`\\b${body}${prefix ? '' : '\\b'}`);
++    patternCache.set(term, re);
++  }
++  return re;
++}
++
++function countMatches(text: string, terms: string[]): number {
++  return terms.reduce((n, term) => n + (termPattern(term).test(text) ? 1 : 0), 0);
++}
++
++export function titleCase(value: string): string {
++  return value.replace(/\b\w/g, (c) => c.toUpperCase());
++}
++
++export function resolveDesk(category: string): Desk {
++  return DESK_BY_CATEGORY[category.trim().toLowerCase()] ?? 'general';
++}
++
++export function resolveTone(article: ArticleLike): Tone {
++  const text = haystack(article);
++  const grave = countMatches(text, GRAVE_TERMS);
++  const light = countMatches(text, LIGHT_TERMS);
++  if (grave > light && grave > 0) return 'grave';
++  if (light > grave && light > 0) return 'light';
++  return 'neutral';
++}
++
++export function resolveGenre(article: ArticleLike, desk: Desk): Genre {
++  const text = haystack(article);
++  if (countMatches(text, INVESTIGATION_TERMS) >= 2) return 'investigation';
++  if (desk === 'culture' && countMatches(text, REVIEW_TERMS) > 0) return 'review';
++  if (countMatches(text, ANALYSIS_TERMS) > 0) return 'analysis';
++  if (desk === 'news' || desk === 'politics' || desk === 'sports') return 'news';
++  return 'feature';
++}
++
++export function resolveFormat(readingTime?: number): Format {
++  if (readingTime == null) return 'standard';
++  if (readingTime >= 8) return 'longread';
++  if (readingTime <= 3) return 'quick';
++  return 'standard';
++}
++
++export function resolveUrgency(
++  article: ArticleLike,
++  desk: Desk,
++  referenceDate?: Date,
++): Urgency {
++  const text = haystack(article);
++  const ref = referenceDate ?? new Date();
++  const age = ref.valueOf() - article.data.date.valueOf();
++  const hardNews = HARD_NEWS_DESKS.includes(desk);
++  if (hardNews && age >= 0 && age < 7 * DAY && countMatches(text, BREAKING_TERMS) > 0) return 'breaking';
++  if (hardNews && age >= 0 && age < 1 * DAY) return 'breaking';
++  if (age >= 0 && age < 4 * DAY) return 'fresh';
++  return 'standard';
++}
++
++const GENRE_LABEL: Record<Genre, string | null> = {
++  news: null,
++  feature: null,
++  investigation: 'Investigation',
++  analysis: 'Analysis',
++  review: 'Review',
++};
++
++const URGENCY_LABEL: Record<Urgency, string | null> = {
++  breaking: 'Breaking',
++  fresh: 'New',
++  standard: null,
++};
++
++const FORMAT_LABEL: Record<Format, string | null> = {
++  quick: 'Quick read',
++  longread: 'Long read',
++  standard: null,
++};
++
++export interface ResolveOptions {
++  /**
++   * Date that counts as "now" for urgency. Pass the newest article's date to
++   * evaluate freshness relative to the current edition instead of wall time.
++   */
++  referenceDate?: Date;
++}
++
++export function resolveSemanticContext(
++  article: ArticleLike,
++  options: ResolveOptions = {},
++): SemanticContext {
++  const desk = resolveDesk(article.data.category);
++  const tone = resolveTone(article);
++  const genre = resolveGenre(article, desk);
++  const urgency = resolveUrgency(article, desk, options.referenceDate);
++  const format = resolveFormat(article.data.readingTime);
++  const label = titleCase(article.data.category);
++
++  const badges: SemanticBadge[] = [];
++  const u = URGENCY_LABEL[urgency];
++  const g = GENRE_LABEL[genre];
++  const f = FORMAT_LABEL[format];
++  if (u) badges.push({ kind: 'urgency', text: u });
++  if (g) badges.push({ kind: 'genre', text: g });
++  if (f) badges.push({ kind: 'format', text: f });
++
++  const description = [label, ...badges.map((b) => b.text)].join(', ');
++
++  return { desk, tone, genre, urgency, format, label, badges, description };
++}
++
++/** Newest date in a list — a stable "edition date" for urgency checks. */
++export function getEditionDate(articles: ArticleLike[]): Date | undefined {
++  if (articles.length === 0) return undefined;
++  return new Date(Math.max(...articles.map((a) => a.data.date.valueOf())));
++}
++
++/** Serialise a context into data attributes for the CSS token layer. */
++export function semanticAttributes(
++  ctx: SemanticContext,
++  extra: { placement?: Placement; surface?: Surface } = {},
++): Record<string, string> {
++  const attrs: Record<string, string> = {
++    'data-desk': ctx.desk,
++    'data-tone': ctx.tone,
++    'data-genre': ctx.genre,
++    'data-urgency': ctx.urgency,
++    'data-format': ctx.format,
++  };
++  if (extra.placement) attrs['data-placement'] = extra.placement;
++  if (extra.surface) attrs['data-surface'] = extra.surface;
++  return attrs;
++}
++
++/**
++ * Infer the dominant desk for a set of articles (used by sections that do not
++ * declare an explicit desk). Returns 'general' when there is no clear majority.
++ */
++export function dominantDesk(articles: ArticleLike[]): Desk {
++  const counts = new Map<Desk, number>();
++  for (const a of articles) {
++    const d = resolveDesk(a.data.category);
++    counts.set(d, (counts.get(d) ?? 0) + 1);
++  }
++  let best: Desk = 'general';
++  let bestCount = 0;
++  for (const [desk, n] of counts) {
++    if (n > bestCount) [best, bestCount] = [desk, n];
++  }
++  return bestCount > articles.length / 2 ? best : 'general';
++}

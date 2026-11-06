@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,125 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section
++       Decorative layers move at different rates via CSS scroll-driven
++       animations (no JavaScript). Progressive enhancement: browsers without
++       support, or users who prefer reduced motion, get a static composition. */
++    .parallax {
++      --height: 80svh;
++      position: relative;
++      display: grid;
++      place-items: center;
++      height: var(--height);
++      min-height: 28rem;
++      overflow: clip; /* hide overscanned layers without creating a scroll container */
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++      view-timeline: --parallax;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    /* Far layer: overscanned so its translation never reveals an edge */
++    .parallax-layer--far {
++      --shift: 12svh;
++      inset-block: calc(-1 * var(--shift));
++      z-index: -3;
++      background:
++        linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.75)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70') center / cover;
++    }
++
++    /* Mid layer: slightly-blurred beans drifting slower than the page */
++    .parallax-layer--mid {
++      --shift: 6svh;
++      z-index: -2;
++      opacity: 0.6;
++      filter: blur(1.5px);
++    }
++
++    /* Near layer: crisp beans moving faster than the page */
++    .parallax-layer--near {
++      --shift: -14svh;
++      z-index: 1;
++    }
++
++    .bean {
++      position: absolute;
++      left: var(--x);
++      top: var(--y);
++      width: var(--size, 3rem);
++      aspect-ratio: 3 / 4;
++      rotate: var(--r, 0deg);
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 30%, #8d6e63, #4e342e 55%, #2b1a14);
++      box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.45);
++    }
++
++    .bean::after {
++      /* the crease down the middle of a coffee bean */
++      content: "";
++      position: absolute;
++      inset: 12% 46%;
++      border-radius: 50%;
++      background: #1f120d;
++      rotate: 8deg;
++    }
++
++    .parallax-content {
++      position: relative;
++      z-index: 2; /* keep text above every bean so it always stays readable */
++      max-width: 36rem;
++      margin-inline: 20px;
++      padding: 2rem 2.5rem;
++      text-align: center;
++      background: rgba(30, 18, 14, 0.6);
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      border-radius: 12px;
++      backdrop-filter: blur(6px);
++    }
++
++    .parallax-content h2 {
++      font-size: clamp(1.75rem, 4vw, 2.5rem);
++      margin-bottom: 0.5rem;
++    }
++
++    .parallax-content .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .parallax-content .btn:hover {
++      background: #ffc370;
++    }
++
++    @keyframes parallax-shift {
++      from { translate: 0 calc(-1 * var(--shift)); }
++      to   { translate: 0 var(--shift); }
++    }
++
++    /* Only animate where supported and where motion is welcome.
++       The animation-range check filters out partial implementations. */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer--far,
++        .parallax-layer--mid,
++        .parallax-layer--near {
++          animation: parallax-shift linear both;
++          /* must come after the shorthand, which would otherwise reset it */
++          animation-timeline: --parallax;
++          animation-range: cover;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +290,32 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax-layer parallax-layer--far" aria-hidden="true"></div>
++
++    <div class="parallax-layer parallax-layer--mid" aria-hidden="true">
++      <span class="bean" style="--x: 8%;  --y: 18%; --size: 2rem;   --r: -20deg;"></span>
++      <span class="bean" style="--x: 22%; --y: 70%; --size: 1.6rem; --r: 35deg;"></span>
++      <span class="bean" style="--x: 70%; --y: 12%; --size: 1.8rem; --r: 60deg;"></span>
++      <span class="bean" style="--x: 86%; --y: 62%; --size: 2.2rem; --r: -45deg;"></span>
++      <span class="bean" style="--x: 48%; --y: 85%; --size: 1.4rem; --r: 10deg;"></span>
++    </div>
++
++    <div class="parallax-content">
++      <h2 id="parallax-heading">From Farm to Cup</h2>
++      <p>We partner directly with small growers, roast in small batches every morning, and brew every cup by hand.</p>
++      <a href="/about" class="btn">Read Our Story</a>
++    </div>
++
++    <div class="parallax-layer parallax-layer--near" aria-hidden="true">
++      <span class="bean" style="--x: 4%;  --y: 55%; --size: 4rem;   --r: 25deg;"></span>
++      <span class="bean" style="--x: 78%; --y: 30%; --size: 3.5rem; --r: -30deg;"></span>
++      <span class="bean" style="--x: 60%; --y: 88%; --size: 3rem;   --r: 70deg;"></span>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

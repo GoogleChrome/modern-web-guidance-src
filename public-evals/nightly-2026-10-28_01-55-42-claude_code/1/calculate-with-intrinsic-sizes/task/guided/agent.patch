@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,15 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++        Enable smooth transitions to and from intrinsic sizes (height: auto,
++        max-content, etc.) site-wide for simple toggles. Progressive
++        enhancement: unsupported browsers fall back to an instant jump.
++      */
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -73,9 +80,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      block-size: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -94,9 +101,9 @@
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-inline-size: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+@@ -119,8 +126,128 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Promo badge */
++    .promo-badge {
++      display: block;
++      margin-inline: auto;
++      margin-block-end: 10px;
++      padding-block: 4px;
++      padding-inline: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      text-align: center;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      border-radius: 999px;
++      /* Fallback for browsers without calc-size() */
++      inline-size: max-content;
++      max-inline-size: 100%;
++      /*
++        1.2x the badge's max-content size, clamped between 100px and the
++        full inline-size of the parent card (the 100% resolves against the
++        container, which is exactly what we want here).
++      */
++      inline-size: calc-size(max-content, clamp(100px, size * 1.2, 100%));
++    }
++
++    /* Our Sourcing accordion */
++    .accordion {
++      margin-block-start: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #accordion-toggle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      inline-size: 100%;
++      padding-block: 16px;
++      padding-inline: 20px;
++      background: var(--primary);
++      color: white;
++      border: 0;
++      font: inherit;
++      font-size: 1.25rem;
++      font-weight: 700;
++      text-align: start;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    #accordion-toggle:hover,
++    #accordion-toggle:focus-visible {
++      background: #3e2723;
++    }
++
++    #accordion-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .accordion-icon {
++      display: inline-block;
++      transition: rotate 0.4s ease-out;
++    }
++
++    #accordion-toggle[aria-expanded="true"] .accordion-icon {
++      rotate: 180deg;
++    }
++
++    .accordion-content {
++      /* Collapsed: zero block-size, clipped. Animates thanks to interpolate-size. */
++      block-size: 0;
++      overflow: hidden;
++      opacity: 0;
++      transition: block-size 0.4s ease-out, opacity 0.4s ease-out;
++    }
++
++    .accordion-content > .accordion-inner {
++      padding-block: 20px;
++      padding-inline: 20px;
++    }
++
++    .accordion-content > .accordion-inner p + p {
++      margin-block-start: 12px;
++    }
++
++    .accordion.is-open .accordion-content {
++      opacity: 1;
++      /* Fallback for browsers without calc-size() */
++      block-size: auto;
++      /*
++        Expanded: natural height plus 2rem of breathing room.
++        calc-size() lets us do math on the intrinsic `auto` basis while keeping
++        the value interpolable, so block-size animates smoothly from 0.
++
++        Note: directly transitioning between two different intrinsic keyword
++        sizes (e.g. min-content -> max-content, or auto -> fit-content) is NOT
++        supported. One end of the transition must always be a fixed length or
++        percentage, which is why the collapsed state here is `block-size: 0`.
++      */
++      block-size: calc-size(auto, size + 2rem);
++    }
++
++    /* Reduced motion: no size animation, just a quick fade instead. */
++    @media (prefers-reduced-motion: reduce) {
++      .accordion-content {
++        transition: opacity 0.2s ease-out;
++      }
++
++      .accordion-icon {
++        transition: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -179,8 +306,9 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
++          <span class="promo-badge">Staff Pick</span>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+@@ -194,10 +322,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion" aria-labelledby="accordion-toggle">
++      <h2>
++        <button type="button" id="accordion-toggle" aria-expanded="false" aria-controls="sourcing-content">
++          Our Sourcing
++          <span class="accordion-icon" aria-hidden="true">&#9662;</span>
++        </button>
++      </h2>
++      <div class="accordion-content" id="sourcing-content" inert>
++        <div class="accordion-inner">
++          <p>Every bean we roast is traceable to the farm it came from. We partner directly with smallholder
++            growers in Colombia, Ethiopia, and Guatemala, paying well above Fair Trade minimums so the people who
++            grow our coffee share in its success.</p>
++          <p>We roast in small batches here in town, never more than ten days before it reaches your cup. Our
++            oat milk, maple syrup, and pastries come from producers within 150 miles of our roastery.</p>
++          <p>Have a question about where something on our menu comes from? Ask any barista. We love talking about
++            it.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (() => {
++      const toggle = document.getElementById('accordion-toggle');
++      const accordion = toggle?.closest('.accordion');
++      const content = accordion?.querySelector('.accordion-content');
++      if (!toggle || !accordion || !content) return;
++
++      toggle.addEventListener('click', () => {
++        const willOpen = toggle.getAttribute('aria-expanded') !== 'true';
++        toggle.setAttribute('aria-expanded', String(willOpen));
++        accordion.classList.toggle('is-open', willOpen);
++        // Keep collapsed content out of the tab order and accessibility tree.
++        content.inert = !willOpen;
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

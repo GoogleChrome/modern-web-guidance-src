@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,215 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Share the text sections' timelines with the separate visual branch. */
++    .coffee-story {
++      --story-green: #344538;
++      --story-paper: #f3f0e8;
++      margin: 64px 0 80px;
++      color: var(--story-green);
++      timeline-scope: --source, --roast, --ritual;
++    }
++
++    .story-heading {
++      display: flex;
++      align-items: end;
++      justify-content: space-between;
++      gap: 24px;
++      padding-bottom: 30px;
++      border-bottom: 1px solid #d8d9ce;
++    }
++
++    .eyebrow {
++      display: block;
++      font-size: 0.68rem;
++      font-weight: 600;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++
++    .story-heading h2 {
++      margin-top: 12px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 3.3rem);
++      font-weight: 400;
++      line-height: 1.15;
++      letter-spacing: -0.04em;
++    }
++
++    .scroll-cue {
++      flex-shrink: 0;
++      font-size: 0.75rem;
++      color: #6f756b;
++    }
++
++    .scroll-cue span { margin-left: 14px; }
++
++    .story-grid {
++      display: grid;
++      grid-template-columns: 0.85fr 1.15fr;
++      gap: clamp(24px, 6vw, 80px);
++      padding-top: 32px;
++    }
++
++    #tracked > section {
++      min-height: 460px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: start;
++      padding: 40px 0;
++    }
++
++    #tracked > section:nth-child(1) { view-timeline: --source block; }
++    #tracked > section:nth-child(2) { view-timeline: --roast block; }
++    #tracked > section:nth-child(3) { view-timeline: --ritual block; }
++
++    .step-number {
++      font-size: 0.75rem;
++      letter-spacing: 0.12em;
++      color: #78816f;
++      border-top: 1px solid #a9ae9b;
++      padding-top: 12px;
++      width: 42px;
++      margin-bottom: 28px;
++    }
++
++    #tracked h3 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
++      font-weight: 400;
++      letter-spacing: -0.035em;
++      line-height: 1.15;
++      margin: 12px 0 20px;
++    }
++
++    #tracked p {
++      max-width: 340px;
++      color: #73766d;
++      font-size: 0.92rem;
++      line-height: 1.85;
++    }
++
++    .story-detail {
++      margin-top: 28px;
++      font-size: 0.65rem;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++      padding: 7px 11px;
++      border: 1px solid #d8d9ce;
++      border-radius: 2px;
++    }
++
++    #animated > section {
++      position: relative;
++      height: 440px;
++      margin-bottom: 20px;
++      overflow: hidden;
++      border-radius: 4px;
++      background: var(--story-green);
++      color: white;
++    }
++
++    #animated img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .visual-caption {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 64px 28px 24px;
++      background: linear-gradient(transparent, rgb(15 25 16 / 75%));
++      display: flex;
++      justify-content: space-between;
++      align-items: end;
++      gap: 12px;
++    }
++
++    .visual-caption h4 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: 1.5rem;
++      font-weight: 400;
++      margin-top: 5px;
++    }
++
++    .visual-caption > span { font-size: 0.7rem; opacity: 0.75; }
++
++    .story-end {
++      border-top: 1px solid #d8d9ce;
++      padding-top: 20px;
++      display: flex;
++      justify-content: space-between;
++      gap: 20px;
++      font-size: 0.75rem;
++      color: #73766d;
++    }
++
++    .story-end a { color: var(--story-green); text-underline-offset: 5px; }
++
++    /* Progressive enhancement: the default layout keeps all three images visible.
++       Declare animation-timeline after animation, which otherwise resets it. */
++    @supports (animation-timeline: --source) and (timeline-scope: --source) and (animation-range: entry 0% entry 100%) {
++      @media (prefers-reduced-motion: no-preference) {
++        #tracked > section {
++          min-height: 75svh;
++          view-timeline-inset: 35% 35%;
++        }
++
++        #animated {
++          position: sticky;
++          top: 100px;
++          align-self: start;
++          height: min(560px, calc(100svh - 132px));
++          min-height: 250px;
++          overflow: hidden;
++          border-radius: 4px;
++          background: var(--story-paper);
++        }
++
++        #animated > section {
++          position: absolute;
++          inset: 0;
++          height: 100%;
++          margin: 0;
++          animation: reveal-panel 1s linear both;
++          animation-range: entry 0% entry 100%;
++        }
++
++        #animated > section:nth-child(1) { animation-timeline: --source; }
++        #animated > section:nth-child(2) { animation-timeline: --roast; }
++        #animated > section:nth-child(3) { animation-timeline: --ritual; }
++      }
++    }
++
++    @keyframes reveal-panel {
++      from { opacity: 0; transform: translateY(24px) scale(1.025); }
++      to { opacity: 1; transform: translateY(0) scale(1); }
++    }
++
++    @media (max-width: 650px) {
++      nav { padding: 14px 20px; flex-wrap: wrap; gap: 10px; }
++      .logo { font-size: 1.1rem; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin: 0; }
++      nav a { font-size: 0.75rem; }
++      .hero h1 { font-size: 2.3rem; }
++      .coffee-story { margin-top: 44px; }
++      .story-heading { align-items: start; flex-direction: column; gap: 16px; }
++      .story-grid { grid-template-columns: 1fr 1fr; gap: 18px; }
++      #tracked h3 { font-size: 1.75rem; }
++      #tracked p { font-size: 0.8rem; }
++      .story-detail { font-size: 0.55rem; padding: 6px; }
++      .visual-caption { padding: 40px 12px 18px; flex-wrap: wrap; }
++      .visual-caption h4 { font-size: 1.2rem; }
++      .visual-caption .eyebrow { font-size: 0.55rem; }
++      .story-end { flex-direction: column; gap: 8px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +381,59 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="coffee-story" aria-labelledby="story-title">
++      <header class="story-heading">
++        <div>
++          <span class="eyebrow">Good coffee. Every step of the way.</span>
++          <h2 id="story-title">A little journey. A better cup.</h2>
++        </div>
++        <p class="scroll-cue">Scroll to discover <span aria-hidden="true">↓</span></p>
++      </header>
++
++      <div class="story-grid">
++        <div id="tracked">
++          <section aria-labelledby="source-title">
++            <span class="step-number">01 / 03</span>
++            <span class="eyebrow">The origin</span>
++            <h3 id="source-title">Great coffee starts<br>with good roots.</h3>
++            <p>High in the hills, every harvest has a story. We choose thoughtfully grown beans from people who care as much about their land as we do about your coffee.</p>
++            <span class="story-detail">Thoughtfully sourced</span>
++          </section>
++          <section aria-labelledby="roast-title">
++            <span class="step-number">02 / 03</span>
++            <span class="eyebrow">The craft</span>
++            <h3 id="roast-title">A little heat.<br>A lot of character.</h3>
++            <p>Roasted in small batches, each bean gets its moment to shine. We take our time finding that sweet spot, bringing out rich aromas and beautifully balanced flavor.</p>
++            <span class="story-detail">Small batches. Big flavor.</span>
++          </section>
++          <section aria-labelledby="ritual-title">
++            <span class="step-number">03 / 03</span>
++            <span class="eyebrow">The everyday ritual</span>
++            <h3 id="ritual-title">Made with care.<br>Enjoyed your way.</h3>
++            <p>The first sip. The familiar faces. A quiet moment before the day begins. This is where our journey becomes part of yours, one freshly brewed cup at a time.</p>
++            <span class="story-detail">Your daily moment</span>
++          </section>
++        </div>
++
++        <div id="animated" aria-label="From origin to your daily cup">
++          <section aria-labelledby="origin-image-title">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1000&amp;q=85" alt="Fresh green coffee leaves growing in the sunshine" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="visual-caption"><div><span class="eyebrow">Rooted in something good</span><h4 id="origin-image-title">From the source.</h4></div><span>01 — ORIGIN</span></div>
++          </section>
++          <section aria-labelledby="roast-image-title">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=1000&amp;q=85" alt="Rich brown roasted coffee beans" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="visual-caption"><div><span class="eyebrow">Patience in every batch</span><h4 id="roast-image-title">Roasted with purpose.</h4></div><span>02 — CRAFT</span></div>
++          </section>
++          <section aria-labelledby="cup-image-title">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1000&amp;q=85" alt="Freshly prepared coffee ready for a quiet moment" width="1000" height="1200" loading="lazy" decoding="async">
++            <div class="visual-caption"><div><span class="eyebrow">The best part of your day</span><h4 id="cup-image-title">To your favorite cup.</h4></div><span>03 — RITUAL</span></div>
++          </section>
++        </div>
++      </div>
++      <div class="story-end"><span>Care in every step. Character in every cup.</span><a href="/about">Get to know The Daily Grind ↗</a></div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

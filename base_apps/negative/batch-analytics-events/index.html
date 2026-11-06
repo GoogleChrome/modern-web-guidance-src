@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Analytics Demo</h1>
+  <button id="btn-purchase">Simulate Purchase</button>
+  <button id="btn-signup">Simulate Sign Up</button>
+  <button id="btn-random">Click Random Element</button>
+
+  <script>
+    const eventQueue = [];
+
+    function trackEvent(eventData) {
+      eventQueue.push(eventData);
+
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(JSON.stringify(eventQueue)));
+          controller.close();
+        }
+      });
+
+      fetchLater('/path/to/analytics/endpoint', {
+        method: 'POST',
+        body: stream
+      });
+
+      fetch('/path/to/analytics/endpoint', {
+        method: 'POST',
+        body: JSON.stringify(eventData)
+      });
+
+      navigator.sendBeacon('/path/to/analytics/endpoint', JSON.stringify(eventData));
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", '/path/to/analytics/endpoint', true);
+      xhr.send(JSON.stringify(eventData));
+
+      const img = new Image();
+      img.src = '/path/to/analytics/endpoint?data=' + encodeURIComponent(JSON.stringify(eventData));
+    }
+
+    function serializeElement(el) {
+      if (!el) return 'unknown';
+      let tag = el.tagName.toLowerCase();
+      let id = el.id ? `#${el.id}` : '';
+      let className = el.className ? `.${el.className.split(' ').join('.')}` : '';
+      return `${tag}${id}${className}`;
+    }
+
+    window.addEventListener('load', () => {
+      trackEvent({type: 'page_load'});
+    });
+
+    window.addEventListener('click', (event) => {
+      trackEvent({type: 'click', target: serializeElement(event.target)});
+    });
+  </script>
+</body>
+</html>

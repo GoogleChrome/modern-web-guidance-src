@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,188 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Scrollytelling Section */
++    .scrollytelling {
++      margin-top: 60px;
++       timeline-scope: --step-1, --step-2, --step-3, --step-4;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .scrollytelling-content {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++      position: relative;
++    }
++
++    #tracked {
++      display: flex;
++      flex-direction: column;
++    }
++
++    #tracked section {
++      min-height: 90vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 40px 20px;
++    }
++
++    #tracked section:nth-child(1) {
++      view-timeline-name: --step-1;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(2) {
++      view-timeline-name: --step-2;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(3) {
++      view-timeline-name: --step-3;
++      view-timeline-axis: block;
++    }
++
++    #tracked section:nth-child(4) {
++      view-timeline-name: --step-4;
++      view-timeline-axis: block;
++    }
++
++    .step-card {
++      background: white;
++      padding: 32px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border-left: 5px solid var(--accent);
++    }
++
++    .step-number {
++      display: inline-block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .step-card h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    #animated {
++      position: sticky;
++      top: 15vh;
++      height: 70vh;
++      display: grid;
++      grid-template-areas: "stack";
++      align-items: center;
++      justify-items: center;
++      overflow: hidden;
++      border-radius: 16px;
++      background: #efebe9;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
++    }
++
++    #animated section {
++      grid-area: stack;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      justify-content: flex-end;
++      padding: 30px;
++      color: white;
++      background-size: cover;
++      background-position: center;
++      opacity: 0;
++      will-change: transform, opacity;
++      animation-name: scrolly-reveal;
++      animation-timing-function: linear;
++      animation-fill-mode: both;
++    }
++
++    #animated section:nth-child(1) {
++      animation-timeline: --step-1;
++      background-image: linear-gradient(to top, rgba(62, 39, 35, 0.85), rgba(62, 39, 35, 0.15)),
++        url('https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1000&q=80');
++    }
++
++    #animated section:nth-child(2) {
++      animation-timeline: --step-2;
++      background-image: linear-gradient(to top, rgba(62, 39, 35, 0.85), rgba(62, 39, 35, 0.15)),
++        url('https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80');
++    }
++
++    #animated section:nth-child(3) {
++      animation-timeline: --step-3;
++      background-image: linear-gradient(to top, rgba(62, 39, 35, 0.85), rgba(62, 39, 35, 0.15)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1000&q=80');
++    }
++
++    #animated section:nth-child(4) {
++      animation-timeline: --step-4;
++      background-image: linear-gradient(to top, rgba(62, 39, 35, 0.85), rgba(62, 39, 35, 0.15)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1000&q=80');
++    }
++
++    #animated section h3 {
++      font-size: 1.8rem;
++      margin-bottom: 8px;
++    }
++
++    #animated section p {
++      font-size: 1rem;
++      color: var(--secondary);
++    }
++
++    @keyframes scrolly-reveal {
++      0% {
++        opacity: 0;
++        transform: translate3d(0, 40px, 0) scale(0.95);
++      }
++      25%, 75% {
++        opacity: 1;
++        transform: translate3d(0, 0, 0) scale(1);
++      }
++      100% {
++        opacity: 0;
++        transform: translate3d(0, -40px, 0) scale(0.95);
++      }
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-content {
++        grid-template-columns: 1fr;
++      }
++
++      #animated {
++        position: sticky;
++        top: 70px;
++        height: 40vh;
++        z-index: 10;
++      }
++
++      #tracked section {
++        min-height: 70vh;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +374,66 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrollytelling">
++      <div class="scrollytelling-header">
++        <h2>From Bean to Cup</h2>
++        <p>Follow the journey of our craft coffee as you scroll.</p>
++      </div>
++      <div class="scrollytelling-content">
++        <div id="tracked">
++          <section>
++            <div class="step-card">
++              <span class="step-number">Step 01</span>
++              <h3>Ethical High-Altitude Sourcing</h3>
++              <p>We partner directly with family-owned farms in Colombia, Ethiopia, and Guatemala. Grown in rich volcanic soil at high altitudes, each cherry is hand-picked at peak ripeness.</p>
++            </div>
++          </section>
++          <section>
++            <div class="step-card">
++              <span class="step-number">Step 02</span>
++              <h3>Artisanal Small-Batch Roasting</h3>
++              <p>Our master roasters carefully monitor temperature curves and airflow to unlock each origin's unique flavor profile—from bright citrus notes to deep chocolate undertones.</p>
++            </div>
++          </section>
++          <section>
++            <div class="step-card">
++              <span class="step-number">Step 03</span>
++              <h3>Precision Burr Grinding</h3>
++              <p>Moments before brewing, beans are ground to an exact micron consistency tailored to the extraction method, preserving volatile aromatics and essential oils.</p>
++            </div>
++          </section>
++          <section>
++            <div class="step-card">
++              <span class="step-number">Step 04</span>
++              <h3>The Perfect Extraction</h3>
++              <p>With purified water heated to 200°F and a steady, calibrated pour, we extract a balanced, velvety cup crafted to elevate your daily ritual.</p>
++            </div>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <h3>1. Direct-Trade Harvest</h3>
++            <p>100% Arabica cherries harvested from sustainable mountain estates.</p>
++          </section>
++          <section>
++            <h3>2. Drum Roasted Daily</h3>
++            <p>Roasted in small batches at our local roastery for peak freshness.</p>
++          </section>
++          <section>
++            <h3>3. Freshly Ground</h3>
++            <p>Uniform particle distribution for a clean, sweet extraction.</p>
++          </section>
++          <section>
++            <h3>4. Poured to Perfection</h3>
++            <p>Rich crema and complex aromatics in every single cup.</p>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

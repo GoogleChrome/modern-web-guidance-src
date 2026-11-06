@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="barista.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +152,53 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .ai-section {
++      margin-top: 40px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .ai-section > p { margin: 8px 0 20px; }
++    .ai-panel { text-align: left; }
++    .ai-panel label { display: block; font-weight: 600; margin: 16px 0 6px; }
++    .ai-panel textarea, .ai-panel select {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid #bca9a1;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++    .ai-panel textarea { resize: vertical; min-height: 100px; }
++    .ai-panel .btn { border: 0; font: inherit; cursor: pointer; }
++    .ai-panel .btn-secondary { background: #eee7e3; color: var(--text); }
++    .ai-panel button:disabled { opacity: 0.5; cursor: not-allowed; }
++    .ai-panel :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .ai-actions { display: flex; flex-wrap: wrap; gap: 10px; }
++    .ai-output {
++      margin-top: 20px;
++      padding: 16px;
++      min-height: 72px;
++      background: #faf7f5;
++      border-left: 3px solid var(--secondary);
++      border-radius: 4px;
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++    }
++    pre.ai-output { font-size: 0.9rem; }
++    .ai-note { font-size: 0.85rem; color: #705c54; }
++    #ai-status { margin-top: 20px; }
++    #ai-progress, #context-meter { width: 100%; accent-color: var(--primary); }
++    #context-usage { margin-top: 16px; }
++    .ai-panel-wide { grid-column: 1 / -1; }
++    [hidden] { display: none !important; }
++    @media (max-width: 600px) {
++      .ai-grid { grid-template-columns: minmax(0, 1fr); }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +240,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="ai-section" aria-labelledby="barista-heading">
++      <h2 id="barista-heading">A little help from our barista</h2>
++      <p>Find your next favorite, share your thoughts, or take the conversation in a new direction.</p>
++      <p class="ai-note">AI runs on your device in a supported browser. First use may download a model.
++        Answers can make mistakes; ask our team to confirm ingredients or dietary needs.</p>
++      <p id="ai-status" role="status">Model availability will be checked when you start.</p>
++      <progress id="ai-progress" max="1" value="0" aria-label="AI model download progress" hidden></progress>
++
++      <div class="grid ai-grid">
++        <section class="card ai-panel" aria-labelledby="ask-heading">
++          <h3 id="ask-heading">Ask the barista</h3>
++          <p>Curious about our Maple Oat Latte or Cold Brew? Ask away, then follow up.</p>
++          <form id="barista-form">
++            <label for="barista-question">Your coffee question</label>
++            <textarea id="barista-question" placeholder="How do the Maple Oat Latte and Cold Brew compare?" maxlength="4000" required></textarea>
++            <div class="ai-actions">
++              <button type="submit" class="btn" id="ask-the-barista">Ask the barista</button>
++              <button type="button" class="btn btn-secondary" id="stop-btn" disabled>Stop AI</button>
++            </div>
++          </form>
++          <div id="barista-answer" class="ai-output" role="region" aria-label="Barista conversation" tabindex="0">Your conversation will appear here.</div>
++        </section>
++
++        <section class="card ai-panel" aria-labelledby="feedback-heading">
++          <h3 id="feedback-heading">Customer feedback analyzer</h3>
++          <p>See the sentiment behind a customer’s experience.</p>
++          <form id="sentiment-form">
++            <label for="customer-feedback">Customer feedback</label>
++            <textarea id="customer-feedback" placeholder="The cold brew was wonderfully smooth and the team was so welcoming." maxlength="4000" required></textarea>
++            <button type="submit" class="btn" id="sentiment-btn">Analyze feedback</button>
++          </form>
++          <p class="ai-note">Score: −1 (negative) to 1 (positive). Category: negative, neutral, or positive.</p>
++          <pre id="sentiment-result" class="ai-output" role="region" aria-label="Feedback analysis JSON" tabindex="0">Your JSON result will appear here.</pre>
++        </section>
++
++        <section class="card ai-panel ai-panel-wide" aria-labelledby="branch-heading">
++          <h3 id="branch-heading">Conversation branching</h3>
++          <p>Clone your active conversation to explore another question with the same context. Continue it with Ask the barista above.</p>
++          <label for="session-select">Active conversation</label>
++          <select id="session-select" disabled><option>Start by asking the barista</option></select>
++          <div class="ai-actions">
++            <button type="button" class="btn" id="clone-btn" disabled>Clone conversation</button>
++            <button type="button" class="btn btn-secondary" id="close-session-btn" disabled>Close conversation</button>
++            <button type="button" class="btn btn-secondary" id="reset-sessions-btn" disabled>Clear all conversations</button>
++          </div>
++          <p id="context-usage" role="status">No active sessions.</p>
++          <meter id="context-meter" min="0" max="1" value="0" aria-label="Active conversation context usage" hidden></meter>
++          <p id="context-warning" class="ai-note" role="status"></p>
++          <p class="ai-note">Up to three conversations stay open. At the limit, cloning releases the least recently used inactive conversation. Closing conversations releases their AI resources.</p>
++        </section>
++      </div>
++      <noscript><p>Enable JavaScript to use the local AI features.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

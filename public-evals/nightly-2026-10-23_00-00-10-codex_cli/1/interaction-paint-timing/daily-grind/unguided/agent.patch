@@ -1,0 +1,223 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..c2416e6
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,37 @@
++# Contentful update timing
++
++The page loads `contentful-metrics.js`, which observes native Interaction
++Contentful Paint and Soft Navigation entries when the browser supports them.
++Durations are milliseconds from the initiating interaction to on-screen
++presentation, including asynchronous content updates. Each reported paint is a
++candidate update, not a finalized INP or LCP score.
++
++```js
++window.contentfulMetrics.support // { interaction: boolean, navigation: boolean }
++window.contentfulMetrics.getEntries() // most recent 200 measurements
++window.addEventListener('contentful-metric', ({ detail }) => {
++  console.log(detail.type, detail.duration, detail.interactionId);
++});
++```
++
++Records contain `type`, `startTime`, `presentationTime`, `duration`,
++`interactionId`, `navigationId`, and `url`. Soft navigation URLs are matched by
++interaction ID, including when paint precedes the URL change. An unmatched paint
++has a null URL; an earlier event payload can be enriched by matching a later
++soft-navigation event with the same interaction ID. `getEntries()` reflects
++these later URL associations. `clear()` clears local history and associations;
++`disconnect()` stops observation. Nothing is sent to a server.
++
++These APIs have limited browser availability. Unsupported browsers safely report
++no measurements; DOM mutations and animation frames are not substitutes for
++contentful presentation timing. See the [Chrome API documentation](https://developer.chrome.com/docs/web-platform/soft-navigations).
++
++The current site uses full-page links and has no client-side router. Soft
++navigation measurements will be emitted if client-side navigation is added and
++the browser detects an interaction, URL change, and visible content update.
++
++Run the observer unit tests without starting a server:
++
++```sh
++node --test tests/contentful-metrics.test.cjs
++```
+diff --git a/contentful-metrics.js b/contentful-metrics.js
+new file mode 100644
+index 0000000..659d547
+--- /dev/null
++++ b/contentful-metrics.js
+@@ -0,0 +1,84 @@
++(() => {
++  'use strict';
++
++  const limit = 200;
++  const entries = [];
++  const navigations = new Map();
++  const observers = [];
++  const supported = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++  const support = {
++    interaction: supported.includes('interaction-contentful-paint'),
++    navigation: supported.includes('soft-navigation'),
++  };
++
++  function publish(record) {
++    entries.push(record);
++    if (entries.length > limit) entries.shift();
++    window.dispatchEvent(new CustomEvent('contentful-metric', {
++      detail: { ...record },
++    }));
++  }
++
++  function observe(type, process) {
++    if (!supported.includes(type)) return;
++    try {
++      const observer = new PerformanceObserver((list) => {
++        for (const entry of list.getEntries()) process(entry);
++      });
++      observer.observe({ type, buffered: true });
++      observers.push(observer);
++    } catch {
++      // Some browsers advertise experimental entry types but reject observation.
++      support[type === 'soft-navigation' ? 'navigation' : 'interaction'] = false;
++    }
++  }
++
++  function timing(entry) {
++    // presentationTime is when pixels reach the screen. Do not substitute a
++    // DOM mutation, requestAnimationFrame callback, or paint-start timestamp.
++    const endTime = entry.presentationTime;
++    if (!Number.isFinite(endTime) || endTime <= 0 || endTime < entry.startTime) {
++      return null;
++    }
++    return { startTime: entry.startTime, presentationTime: endTime,
++      duration: endTime - entry.startTime };
++  }
++
++  observe('soft-navigation', (entry) => {
++    const navigation = { url: entry.name, navigationId: entry.navigationId };
++    navigations.set(entry.interactionId, navigation);
++    if (navigations.size > limit) navigations.delete(navigations.keys().next().value);
++
++    // A contentful paint can arrive before the URL changes. Match by the
++    // initiating interaction, since navigationId may still refer to the old URL.
++    for (const record of entries) {
++      if (record.type === 'interaction-contentful-paint' &&
++          record.interactionId === entry.interactionId) {
++        Object.assign(record, navigation);
++      }
++    }
++    const measured = timing(entry);
++    if (!measured) return;
++    publish({ type: 'soft-navigation', ...measured, ...navigation,
++      interactionId: entry.interactionId });
++  });
++
++  observe('interaction-contentful-paint', (entry) => {
++    const measured = timing(entry);
++    if (!measured) return;
++    const navigation = navigations.get(entry.interactionId);
++    publish({ type: 'interaction-contentful-paint', ...measured,
++      interactionId: entry.interactionId,
++      navigationId: navigation?.navigationId ?? entry.navigationId,
++      // Without a matched soft navigation, a delayed entry cannot reliably be
++      // attributed to the URL visible when the observer callback executes.
++      url: navigation?.url ?? null });
++  });
++
++  window.contentfulMetrics = Object.freeze({
++    get support() { return { ...support }; },
++    getEntries() { return entries.map((entry) => ({ ...entry })); },
++    clear() { entries.length = 0; navigations.clear(); },
++    disconnect() { observers.forEach((observer) => observer.disconnect()); },
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..1dc3171 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/contentful-metrics.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/tests/contentful-metrics.test.cjs b/tests/contentful-metrics.test.cjs
+new file mode 100644
+index 0000000..be570d3
+--- /dev/null
++++ b/tests/contentful-metrics.test.cjs
+@@ -0,0 +1,72 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { runInNewContext } = require('node:vm');
++const source = readFileSync(require.resolve('../contentful-metrics.js'), 'utf8');
++
++function setup(types = ['soft-navigation', 'interaction-contentful-paint']) {
++  const callbacks = new Map();
++  const events = [];
++  const options = [];
++  class Observer {
++    static supportedEntryTypes = types;
++    constructor(callback) { this.callback = callback; }
++    observe(option) { options.push(option); callbacks.set(option.type, this.callback); }
++    disconnect() { this.disconnected = true; }
++  }
++  const window = { dispatchEvent: (event) => events.push(event) };
++  runInNewContext(source, { window, PerformanceObserver: Observer,
++    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init.detail; } } });
++  return { metrics: window.contentfulMetrics, events, options,
++    emit: (type, ...entries) => callbacks.get(type)({ getEntries: () => entries }) };
++}
++
++test('measures actual presentation, including asynchronous content updates', () => {
++  const { metrics, emit, events, options } = setup();
++  emit('interaction-contentful-paint', { startTime: 100, presentationTime: 450,
++    interactionId: 7, navigationId: 'initial' });
++  assert.equal(metrics.getEntries()[0].duration, 350);
++  assert.equal(events[0].type, 'contentful-metric');
++  assert.ok(options.every((option) => option.buffered));
++  events[0].detail.duration = 0;
++  assert.equal(metrics.getEntries()[0].duration, 350);
++});
++
++test('attributes paints that arrive before and after a soft navigation by interaction', () => {
++  const { metrics, emit } = setup();
++  emit('interaction-contentful-paint', { startTime: 100, presentationTime: 150,
++    interactionId: 7, navigationId: 'old' });
++  emit('soft-navigation', { startTime: 100, presentationTime: 160,
++    interactionId: 7, navigationId: 'new', name: 'https://example.com/menu' });
++  emit('interaction-contentful-paint', { startTime: 100, presentationTime: 300,
++    interactionId: 7, navigationId: 'old' });
++  const records = metrics.getEntries();
++  assert.ok(records.every((record) => record.url === 'https://example.com/menu'));
++  assert.ok(records.every((record) => record.navigationId === 'new'));
++  assert.equal(records[1].duration, 60);
++  assert.equal(records[2].duration, 200);
++});
++
++test('does not invent measurements when unsupported or lacking presentation timing', () => {
++  const unsupported = setup([]);
++  assert.equal(unsupported.metrics.support.interaction, false);
++  assert.equal(unsupported.options.length, 0);
++  const { metrics, emit } = setup();
++  emit('interaction-contentful-paint', { startTime: 100, paintTime: 120 });
++  emit('soft-navigation', { startTime: 100, presentationTime: 90 });
++  assert.equal(metrics.getEntries().length, 0);
++});
++
++test('retains a bounded history and exposes defensive copies and clearing', () => {
++  const { metrics, emit } = setup();
++  for (let i = 0; i < 205; i++) {
++    emit('interaction-contentful-paint', { startTime: i, presentationTime: i + 10,
++      interactionId: i });
++  }
++  assert.equal(metrics.getEntries().length, 200);
++  assert.equal(metrics.getEntries()[0].interactionId, 5);
++  metrics.getEntries()[0].duration = -1;
++  assert.equal(metrics.getEntries()[0].duration, 10);
++  metrics.clear();
++  assert.equal(metrics.getEntries().length, 0);
++});

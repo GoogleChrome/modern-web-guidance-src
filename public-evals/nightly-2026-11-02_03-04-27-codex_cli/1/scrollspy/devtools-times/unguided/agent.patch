@@ -1,0 +1,266 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..3b1e757
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,153 @@
++---
++const sections = [
++  { id: 'top-stories', label: 'Top Stories' },
++  { id: 'top-news', label: 'Top News' },
++  { id: 'world', label: 'World' },
++  { id: 'politics', label: 'Politics' },
++];
++---
++
++<section-navigation>
++  <nav aria-label="On this page" class="section-nav">
++    <span class="section-nav-label">On this page</span>
++    {sections.map(({ id, label }, index) => (
++      <a href={`#${id}`} aria-current={index === 0 ? 'location' : undefined}>
++        {label}
++      </a>
++    ))}
++  </nav>
++</section-navigation>
++
++<style>
++  section-navigation {
++    display: block;
++    position: sticky;
++    top: 0;
++    z-index: 20;
++    background: white;
++    border-bottom: 1px solid #d1d5db;
++  }
++
++  .section-nav {
++    display: flex;
++    align-items: center;
++    gap: 0.25rem;
++    overflow-x: auto;
++    padding: 0 1rem;
++  }
++
++  .section-nav-label {
++    margin-right: 1rem;
++    color: #6b7280;
++    font-size: 0.6875rem;
++    font-weight: 600;
++    text-transform: uppercase;
++    letter-spacing: 0.06em;
++    white-space: nowrap;
++  }
++
++  a {
++    padding: 0.875rem 0.75rem;
++    border-bottom: 3px solid transparent;
++    color: #4b5563;
++    font-size: 0.8125rem;
++    font-weight: 600;
++    white-space: nowrap;
++    text-decoration: none;
++  }
++
++  a:hover {
++    background: #f9fafb;
++    color: #111827;
++  }
++
++  a[aria-current='location'] {
++    border-bottom-color: #d97706;
++    background: #fffbeb;
++    color: #92400e;
++  }
++
++  a:focus-visible {
++    outline: 2px solid #92400e;
++    outline-offset: -4px;
++  }
++
++  @media (max-width: 480px) {
++    .section-nav-label {
++      display: none;
++    }
++  }
++</style>
++
++<script>
++  class SectionNavigation extends HTMLElement {
++    private cleanup?: () => void;
++    private stopListening?: () => void;
++
++    connectedCallback() {
++      // Wait until the parser has added the sections following this element.
++      const initialize = () => {
++        this.cleanup?.();
++        const links = Array.from(this.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++        const sections = links.map(link => document.getElementById(link.hash.slice(1)));
++        let frame = 0;
++
++        const update = () => {
++          frame = 0;
++          const boundary = this.getBoundingClientRect().bottom + 24;
++          let current = 0;
++          sections.forEach((section, index) => {
++            if (section && section.getBoundingClientRect().top <= boundary) current = index;
++          });
++
++          // A short final section may never reach the top of the viewport.
++          const last = sections.at(-1);
++          if (last && last.getBoundingClientRect().top < window.innerHeight &&
++              window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
++            current = sections.length - 1;
++          }
++
++          links.forEach((link, index) => {
++            if (index === current) link.setAttribute('aria-current', 'location');
++            else link.removeAttribute('aria-current');
++          });
++        };
++
++        const scheduleUpdate = () => {
++          if (!frame) frame = requestAnimationFrame(update);
++        };
++        const observer = new ResizeObserver(scheduleUpdate);
++        sections.forEach(section => { if (section) observer.observe(section); });
++        observer.observe(this);
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++        window.addEventListener('resize', scheduleUpdate);
++        window.addEventListener('hashchange', scheduleUpdate);
++        update();
++
++        this.cleanup = () => {
++          cancelAnimationFrame(frame);
++          observer.disconnect();
++          window.removeEventListener('scroll', scheduleUpdate);
++          window.removeEventListener('resize', scheduleUpdate);
++          window.removeEventListener('hashchange', scheduleUpdate);
++        };
++      };
++
++      document.addEventListener('astro:page-load', initialize);
++      const readyFrame = requestAnimationFrame(initialize);
++      this.stopListening = () => {
++        cancelAnimationFrame(readyFrame);
++        document.removeEventListener('astro:page-load', initialize);
++      };
++    }
++
++    disconnectedCallback() {
++      this.cleanup?.();
++      this.stopListening?.();
++    }
++  }
++
++  if (!customElements.get('section-navigation')) {
++    customElements.define('section-navigation', SectionNavigation);
++  }
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..27945b3 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6" style={id ? 'scroll-margin-top: 5rem' : undefined}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..19290f0 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,12 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="p-4 md:p-6" style={id ? 'scroll-margin-top: 5rem' : undefined}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..76863c8 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -38,6 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav />
++    <section id="top-stories" aria-label="Top Stories" style="scroll-margin-top: 5rem">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +58,10 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +69,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

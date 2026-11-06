@@ -1,0 +1,70 @@
+diff --git a/index.html b/index.html
+index 66c9173..dd54f92 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,55 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <!-- Wait until all visible content, including the footer, is fully parsed.
++       Keep critical styles and any critical scripts render-blocking in the head. -->
++  <link rel="expect" href="#site-footer" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root) {
++      animation: page-out 200ms ease-in both;
++    }
++
++    ::view-transition-new(root) {
++      animation: page-in 260ms ease-out both;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++
++      ::view-transition-group(*) {
++        animation: none;
++      }
++
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -197,7 +245,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="site-footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

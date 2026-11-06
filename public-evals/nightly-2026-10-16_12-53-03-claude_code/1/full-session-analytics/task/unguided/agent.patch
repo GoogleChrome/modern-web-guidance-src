@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,57 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.js';
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value per metric. Metrics can be re-reported as they are refined
++    // (e.g. CLS keeps growing), so keying by name keeps only the final value.
++    const pending = new Map();
++
++    function queueMetric(metric) {
++      pending.set(metric.name, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType
++      });
++    }
++
++    function flush() {
++      if (pending.size === 0) return;
++
++      const body = JSON.stringify({
++        page: location.href,
++        metrics: Array.from(pending.values())
++      });
++      pending.clear();
++
++      // sendBeacon queues the request so it survives page unload; fall back
++      // to a keepalive fetch if it is unavailable or the browser refuses it.
++      if (!(navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_ENDPOINT, body))) {
++        fetch(ANALYTICS_ENDPOINT, { method: 'POST', body, keepalive: true });
++      }
++    }
++
++    onLCP(queueMetric);
++    onINP(queueMetric);
++    onCLS(queueMetric);
++
++    // Registered after the web-vitals listeners so that, when the page is
++    // hidden, the final metric values are queued before we flush.
++    // visibilitychange is the reliable signal on mobile and for bfcache;
++    // pagehide covers browsers that skip visibilitychange on unload.
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flush();
++    });
++    window.addEventListener('pagehide', flush);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,399 @@
+diff --git a/index.html b/index.html
+index 66c9173..4d4324c 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,34 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --card-border: rgba(0, 0, 0, 0.08);
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
++      --footer-bg: #d7ccc8;
++      --footer-text: #3e2723;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover: #3e2723;
++    }
++
++    [data-theme="dark"] {
++      --primary: #d7ccc8;
++      --secondary: #2c2523;
++      --accent: #ffb74d;
++      --text: #f5f5f5;
++      --light: #161211;
++      --card-bg: #231c19;
++      --card-border: rgba(255, 255, 255, 0.12);
++      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++      --nav-bg: #231c19;
++      --nav-text: #ffffff;
++      --footer-bg: #231c19;
++      --footer-text: #d7ccc8;
++      --btn-bg: #ffab40;
++      --btn-text: #211512;
++      --btn-hover: #ff9100;
+     }
+ 
+     * {
+@@ -25,12 +53,13 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      transition: background-color 0.3s ease, color 0.3s ease;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +67,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      transition: background-color 0.3s ease;
+     }
+ 
+     .logo {
+@@ -46,9 +76,16 @@
+       letter-spacing: 1px;
+     }
+ 
++    .nav-right {
++      display: flex;
++      align-items: center;
++      gap: 25px;
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -56,13 +93,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -72,6 +110,140 @@
+       border-radius: 4px;
+     }
+ 
++    /* Accessible Switch Component */
++    .switch-container {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .switch-label {
++      font-size: 0.9rem;
++      font-weight: 500;
++      color: var(--nav-text);
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .switch-btn {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 4px;
++      min-width: 44px;
++      min-height: 44px;
++      background: transparent;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      color: inherit;
++      border-radius: 9999px;
++      -webkit-tap-highlight-color: transparent;
++    }
++
++    .switch-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .switch-btn:focus:not(:focus-visible) {
++      outline: none;
++    }
++
++    .switch-track {
++      position: relative;
++      display: inline-block;
++      width: 48px;
++      height: 26px;
++      background-color: rgba(0, 0, 0, 0.45);
++      border: 2px solid rgba(255, 255, 255, 0.85);
++      border-radius: 9999px;
++      transition: background-color 0.25s ease, border-color 0.25s ease;
++      vertical-align: middle;
++      box-sizing: border-box;
++    }
++
++    .switch-thumb {
++      position: absolute;
++      top: 2px;
++      left: 2px;
++      width: 18px;
++      height: 18px;
++      background-color: #ffffff;
++      border-radius: 50%;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
++      transition: transform 0.25s ease, background-color 0.25s ease;
++    }
++
++    .switch-btn[aria-checked="true"] .switch-track {
++      background-color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .switch-btn[aria-checked="true"] .switch-thumb {
++      transform: translateX(22px);
++      background-color: #211512;
++    }
++
++    .switch-state {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--nav-text);
++      min-width: 24px;
++      text-align: left;
++      user-select: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      body,
++      nav,
++      footer,
++      .card,
++      .switch-track,
++      .switch-thumb {
++        transition: none !important;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .switch-track {
++        border: 2px solid ButtonText;
++      }
++      .switch-thumb {
++        background-color: ButtonText;
++      }
++      .switch-btn[aria-checked="true"] .switch-track {
++        background-color: Highlight;
++      }
++      .switch-btn[aria-checked="true"] .switch-thumb {
++        background-color: HighlightText;
++      }
++    }
++
++    @media (max-width: 850px) {
++      nav {
++        flex-direction: column;
++        gap: 15px;
++        padding: 1rem 20px;
++      }
++
++      .nav-right {
++        flex-direction: column;
++        gap: 15px;
++        width: 100%;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++      }
++
++      nav ul li {
++        margin: 5px 10px;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,11 +280,14 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      border: 1px solid var(--card-border);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      transition: background-color 0.3s ease, border-color 0.3s ease;
+     }
+ 
+     .card h3 {
+@@ -122,8 +297,8 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,14 +307,16 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s ease;
+     }
+ 
+     .footer-links {
+@@ -148,10 +325,15 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -159,13 +341,30 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-right">
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++      <div class="switch-container">
++        <label id="dark-mode-label" for="dark-mode-switch" class="switch-label">Dark Mode</label>
++        <button type="button"
++                role="switch"
++                id="dark-mode-switch"
++                aria-checked="false"
++                aria-label="Dark Mode"
++                aria-labelledby="dark-mode-label"
++                class="switch-btn">
++          <span class="switch-track">
++            <span class="switch-thumb"></span>
++          </span>
++          <span class="switch-state" aria-hidden="true">Off</span>
++        </button>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +406,58 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const switchBtn = document.getElementById('dark-mode-switch');
++      if (!switchBtn) return;
++      const switchState = switchBtn.querySelector('.switch-state');
++
++      function setSwitchChecked(checked) {
++        switchBtn.setAttribute('aria-checked', checked ? 'true' : 'false');
++        if (switchState) {
++          switchState.textContent = checked ? 'On' : 'Off';
++        }
++        if (checked) {
++          document.documentElement.setAttribute('data-theme', 'dark');
++          try {
++            localStorage.setItem('theme', 'dark');
++          } catch (e) {}
++        } else {
++          document.documentElement.removeAttribute('data-theme');
++          try {
++            localStorage.setItem('theme', 'light');
++          } catch (e) {}
++        }
++      }
++
++      function toggleSwitch() {
++        const isCurrentlyChecked = switchBtn.getAttribute('aria-checked') === 'true';
++        setSwitchChecked(!isCurrentlyChecked);
++      }
++
++      try {
++        const savedTheme = localStorage.getItem('theme');
++        if (savedTheme === 'dark') {
++          setSwitchChecked(true);
++        } else {
++          setSwitchChecked(false);
++        }
++      } catch (e) {
++        setSwitchChecked(false);
++      }
++
++      switchBtn.addEventListener('click', function (event) {
++        toggleSwitch();
++      });
++
++      switchBtn.addEventListener('keydown', function (event) {
++        if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
++          event.preventDefault();
++          toggleSwitch();
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

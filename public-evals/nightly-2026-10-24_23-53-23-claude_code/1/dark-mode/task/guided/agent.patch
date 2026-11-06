@@ -1,0 +1,511 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,128 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Apply a stored theme choice before first paint to avoid a flash of the wrong scheme.
++    try {
++      var savedTheme = localStorage.getItem('theme');
++      if (savedTheme === 'light' || savedTheme === 'dark') {
++        document.documentElement.dataset.theme = savedTheme;
++      }
++    } catch (e) { }
++  </script>
+   <style>
++    /* Raw palette: warm coffee-cream (light) and dark roast (dark) */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --bg-light: #fbf4e9;
++      --bg-dark: #1a110d;
++      --surface-light: #fffaf1;
++      --surface-dark: #2b1d16;
++      --text-light: #3e2723;
++      --text-dark: #f0e2d2;
++      --muted-light: #7a5f55;
++      --muted-dark: #c2a999;
++      --primary-light: #4e342e;
++      --primary-dark: #2e1e17;
++      --accent-light: #a85a12;
++      --accent-dark: #f0b36b;
++      --on-accent-light: #ffffff;
++      --on-accent-dark: #25160f;
++      --border-light: #dccbb8;
++      --border-dark: #4a362b;
++      --thumb-light: #a1887f;
++      --thumb-dark: #8d6e63;
++      --track-light: #efe2d0;
++      --track-dark: #231710;
++
++      /* Active tokens (fallback for browsers without light-dark(): light unless dark is preferred) */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --text: var(--text-light);
++      --muted: var(--muted-light);
++      --primary: var(--primary-light);
++      --accent: var(--accent-light);
++      --on-accent: var(--on-accent-light);
++      --border: var(--border-light);
++      --scrollbar-thumb: var(--thumb-light);
++      --scrollbar-track: var(--track-light);
++
++      @media (prefers-color-scheme: dark) {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --text: var(--text-dark);
++        --muted: var(--muted-dark);
++        --primary: var(--primary-dark);
++        --accent: var(--accent-dark);
++        --on-accent: var(--on-accent-dark);
++        --border: var(--border-dark);
++        --scrollbar-thumb: var(--thumb-dark);
++        --scrollbar-track: var(--track-dark);
++      }
++
++      @supports (color: light-dark(white, black)) {
++        --bg: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --muted: light-dark(var(--muted-light), var(--muted-dark));
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --on-accent: light-dark(var(--on-accent-light), var(--on-accent-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --scrollbar-thumb: light-dark(var(--thumb-light), var(--thumb-dark));
++        --scrollbar-track: light-dark(var(--track-light), var(--track-dark));
++      }
++
++      /* Always-dark nav accent */
++      --nav-accent: #ffab40;
++
++      /* Native UI follows the system unless a theme is forced below */
++      color-scheme: light dark;
++      color: var(--text);
++      accent-color: var(--accent);
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+     }
+ 
++    /* Manual override from the theme select. Fallback tokens are re-pointed for browsers without light-dark(). */
++    :root[data-theme="light"] {
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      color-scheme: dark;
++    }
++
++    @supports not (color: light-dark(white, black)) {
++      :root[data-theme="light"] {
++        --bg: var(--bg-light);
++        --surface: var(--surface-light);
++        --text: var(--text-light);
++        --muted: var(--muted-light);
++        --primary: var(--primary-light);
++        --accent: var(--accent-light);
++        --on-accent: var(--on-accent-light);
++        --border: var(--border-light);
++        --scrollbar-thumb: var(--thumb-light);
++        --scrollbar-track: var(--track-light);
++      }
++
++      :root[data-theme="dark"] {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --text: var(--text-dark);
++        --muted: var(--muted-dark);
++        --primary: var(--primary-dark);
++        --accent: var(--accent-dark);
++        --on-accent: var(--on-accent-dark);
++        --border: var(--border-dark);
++        --scrollbar-thumb: var(--thumb-dark);
++        --scrollbar-track: var(--track-dark);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,11 +133,38 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
++    /* Theme picker */
++    .theme-bar {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 5%;
++      background: var(--surface);
++      border-bottom: 1px solid var(--border);
++      font-size: 0.85rem;
++    }
++
++    select {
++      font: inherit;
++      color: var(--text);
++      background-color: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 4px;
++      padding: 4px 8px;
++    }
++
++    select:focus-visible,
++    .scroll-container:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -62,13 +199,13 @@
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+@@ -107,37 +244,147 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border: 1px solid var(--border);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--accent);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--accent);
++      color: var(--on-accent);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: color-mix(in srgb, var(--accent), var(--text) 20%);
+     }
+ 
++
++    /* Reviews */
++    .section-title {
++      text-align: center;
++    }
++
++    .scroll-container {
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 8px 16px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .scroll-container::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      .scroll-container::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      .scroll-container::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .review {
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .review:last-child {
++      border-bottom: 0;
++    }
++
++    .review cite {
++      display: block;
++      color: var(--muted);
++      font-size: 0.85rem;
++    }
++
++    /* Late night specials: always dark, independent of the page theme */
++    .late-night {
++      color-scheme: only dark;
++      background: var(--bg-dark);
++      color: var(--text-dark);
++      accent-color: var(--accent-dark);
++      scrollbar-color: var(--thumb-dark) var(--track-dark);
++      border: 1px solid var(--border-dark);
++      border-radius: 12px;
++      padding: 24px;
++      margin-top: 40px;
++
++      /* Re-point every theme token to its dark value (also covers browsers without light-dark()) */
++      --bg: var(--bg-dark);
++      --surface: var(--surface-dark);
++      --text: var(--text-dark);
++      --muted: var(--muted-dark);
++      --primary: var(--primary-dark);
++      --accent: var(--accent-dark);
++      --on-accent: var(--on-accent-dark);
++      --border: var(--border-dark);
++      --scrollbar-thumb: var(--thumb-dark);
++      --scrollbar-track: var(--track-dark);
++    }
++
++    .late-night h2 {
++      text-align: center;
++      color: var(--accent);
++    }
++
++    .late-night .filter {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .late-night .scroll-container {
++      background: var(--surface);
++    }
++
++    .special {
++      padding: 12px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .special:last-child {
++      border-bottom: 0;
++    }
++
++    .special h3 {
++      color: var(--accent);
++      font-size: 1rem;
++    }
++
++    .special[hidden] {
++      display: none;
++    }
++
+     footer {
+-      background: var(--secondary);
++      background: var(--surface);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -156,8 +403,17 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="theme-bar">
++    <label for="theme-select">Theme</label>
++    <select id="theme-select">
++      <option value="system">System default</option>
++      <option value="light">Light</option>
++      <option value="dark">Dark</option>
++    </select>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -175,9 +431,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,8 +450,76 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 class="section-title">What Our Regulars Say</h2>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Customer reviews">
++        <article class="review">
++          <p>"The maple oat latte is the best part of my morning commute."</p>
++          <cite>Priya S. &mdash; 5 stars</cite>
++        </article>
++        <article class="review">
++          <p>"Dark roast espresso with real depth. No bitterness, just warmth."</p>
++          <cite>Marcus T. &mdash; 5 stars</cite>
++        </article>
++        <article class="review">
++          <p>"Cold brew is silky smooth. I stock up on bottles every weekend."</p>
++          <cite>Elena R. &mdash; 4 stars</cite>
++        </article>
++        <article class="review">
++          <p>"Friendly baristas and a cozy corner to get work done."</p>
++          <cite>Jon W. &mdash; 5 stars</cite>
++        </article>
++        <article class="review">
++          <p>"Great pastries too. The almond croissant sells out fast, so go early."</p>
++          <cite>Amara K. &mdash; 4 stars</cite>
++        </article>
++        <article class="review">
++          <p>"The rewards program actually pays off. Free drink every few visits."</p>
++          <cite>Dale P. &mdash; 5 stars</cite>
++        </article>
++      </div>
++    </section>
++
++    <section class="late-night" aria-labelledby="late-night-title">
++      <h2 id="late-night-title">Late Night Specials</h2>
++      <div class="filter">
++        <label for="special-filter">Show</label>
++        <select id="special-filter">
++          <option value="all">All specials</option>
++          <option value="caffeinated">Caffeinated</option>
++          <option value="decaf">Decaf</option>
++        </select>
++      </div>
++      <div class="scroll-container" tabindex="0" role="region" aria-label="Late night specials">
++        <article class="special" data-kind="caffeinated">
++          <h3>Midnight Espresso Martini (no alcohol)</h3>
++          <p>Double espresso shaken over ice with vanilla and a pinch of sea salt.</p>
++        </article>
++        <article class="special" data-kind="decaf">
++          <h3>Cocoa Cinnamon Steamer</h3>
++          <p>Steamed milk, dark cocoa and a dusting of cinnamon.</p>
++        </article>
++        <article class="special" data-kind="caffeinated">
++          <h3>Dark Roast Affogato</h3>
++          <p>Vanilla bean gelato drowned in a fresh shot of dark roast.</p>
++        </article>
++        <article class="special" data-kind="decaf">
++          <h3>Decaf Honey Lavender Latte</h3>
++          <p>Swiss water decaf with local honey and lavender syrup.</p>
++        </article>
++        <article class="special" data-kind="caffeinated">
++          <h3>Owl's Cold Brew Tonic</h3>
++          <p>Cold brew over tonic and orange peel. Bright and bracing.</p>
++        </article>
++        <article class="special" data-kind="decaf">
++          <h3>Toasted Marshmallow Hot Chocolate</h3>
++          <p>Rich hot chocolate topped with a torched house-made marshmallow.</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +530,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const root = document.documentElement;
++    const themeMeta = document.querySelector('meta[name="color-scheme"]');
++    const themeSelect = document.getElementById('theme-select');
++
++    function applyTheme(theme) {
++      if (theme === 'light' || theme === 'dark') {
++        root.dataset.theme = theme;
++        themeMeta.content = theme;
++      } else {
++        delete root.dataset.theme;
++        themeMeta.content = 'light dark';
++      }
++    }
++
++    function storedTheme() {
++      try {
++        return localStorage.getItem('theme') || 'system';
++      } catch (e) {
++        return 'system';
++      }
++    }
++
++    themeSelect.value = root.dataset.theme || 'system';
++    applyTheme(themeSelect.value);
++
++    themeSelect.addEventListener('change', () => {
++      applyTheme(themeSelect.value);
++      try {
++        if (themeSelect.value === 'system') localStorage.removeItem('theme');
++        else localStorage.setItem('theme', themeSelect.value);
++      } catch (e) { }
++    });
++
++    // Keep other tabs in sync
++    window.addEventListener('storage', (e) => {
++      if (e.key !== 'theme') return;
++      themeSelect.value = storedTheme();
++      applyTheme(themeSelect.value);
++    });
++
++    // Late night specials filter
++    const specialFilter = document.getElementById('special-filter');
++    specialFilter.addEventListener('change', () => {
++      document.querySelectorAll('.special').forEach((item) => {
++        item.hidden = specialFilter.value !== 'all' && item.dataset.kind !== specialFilter.value;
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

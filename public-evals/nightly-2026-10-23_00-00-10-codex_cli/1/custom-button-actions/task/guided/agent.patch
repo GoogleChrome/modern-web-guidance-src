@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .action-demo {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .action-stage {
++      display: grid;
++      place-items: center;
++      min-height: 260px;
++    }
++
++    #action-target {
++      display: grid;
++      place-items: center;
++      width: 140px;
++      height: 140px;
++      padding: 20px;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      border-radius: 8px;
++      transition: rotate 0.5s, scale 0.5s, border-radius 0.5s;
++    }
++
++    #action-target.is-spun {
++      rotate: 180deg;
++    }
++
++    #action-target.is-grown {
++      scale: 1.4;
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
++    .action-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++    }
++
++    .action-controls button {
++      border: 2px solid transparent;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .action-controls button[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--primary);
++    }
++
++    .action-controls button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #action-target {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="action-demo" aria-labelledby="action-heading">
++      <h2 id="action-heading">Give It a Spin</h2>
++      <p>Mix and match the actions, or reset to start again.</p>
++      <div class="action-stage">
++        <div id="action-target">The Daily Grind</div>
++      </div>
++      <div class="action-controls" role="group" aria-label="Target actions">
++        <button type="button" class="btn" commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
++        <button type="button" class="btn" commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +286,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const actionTarget = document.getElementById('action-target');
++    const actionButtons = document.querySelectorAll('button[commandfor="action-target"]');
++    const actionClasses = new Map([
++      ['--spin', 'is-spun'],
++      ['--grow', 'is-grown'],
++      ['--round', 'is-rounded'],
++    ]);
++
++    actionTarget.addEventListener('command', (event) => {
++      if (event.command === '--reset') {
++        actionTarget.classList.remove(...actionClasses.values());
++      } else if (actionClasses.has(event.command)) {
++        actionTarget.classList.toggle(actionClasses.get(event.command));
++      } else {
++        return;
++      }
++
++      actionButtons.forEach((button) => {
++        const className = actionClasses.get(button.getAttribute('command'));
++        if (className) {
++          button.setAttribute('aria-pressed', String(actionTarget.classList.contains(className)));
++        }
++      });
++    });
++
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      actionButtons.forEach((button) => {
++        button.addEventListener('click', () => {
++          const event = new Event('command');
++          Object.assign(event, { command: button.getAttribute('command'), source: button });
++          actionTarget.dispatchEvent(event);
++        });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

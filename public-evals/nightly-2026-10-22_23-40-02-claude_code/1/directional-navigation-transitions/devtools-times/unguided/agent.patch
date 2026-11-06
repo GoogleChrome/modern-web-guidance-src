@@ -1,0 +1,85 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..81cff4b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,15 +41,23 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++            <div class="top-stories flex items-center gap-4" role="region" aria-roledescription="carousel" aria-label="Top stories">
++                <button type="button" data-prev class="shrink-0 text-sm font-semibold text-gray-700 hover:text-amber-400 border border-gray-300 rounded px-3 py-1">
++                    <span aria-hidden="true">&larr;</span> Previous
++                </button>
++                <div class="top-stories-viewport flex-1 min-w-0 overflow-hidden" aria-live="polite">
++                    {topStories.map((article, i) => (
++                        <div class="top-story" role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${topStories.length}`} hidden={i !== 0}>
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button type="button" data-next class="shrink-0 text-sm font-semibold text-gray-700 hover:text-amber-400 border border-gray-300 rounded px-3 py-1">
++                    Next <span aria-hidden="true">&rarr;</span>
++                </button>
+             </div>
+         </div>
+     </div>
+@@ -81,4 +89,44 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<style>
++    @keyframes slide-from-right {
++        from { transform: translateX(100%); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++    }
++    @keyframes slide-from-left {
++        from { transform: translateX(-100%); opacity: 0; }
++        to { transform: translateX(0); opacity: 1; }
++    }
++    .top-story.slide-next { animation: slide-from-right 300ms ease-out; }
++    .top-story.slide-prev { animation: slide-from-left 300ms ease-out; }
++    @media (prefers-reduced-motion: reduce) {
++        .top-story.slide-next,
++        .top-story.slide-prev { animation: none; }
++    }
++</style>
++
++<script>
++    document.querySelectorAll<HTMLElement>('.top-stories').forEach((root) => {
++        const slides = Array.from(root.querySelectorAll<HTMLElement>('.top-story'));
++        let current = 0;
++
++        const go = (direction: 1 | -1) => {
++            const next = (current + direction + slides.length) % slides.length;
++            if (next === current) return;
++            slides[current].hidden = true;
++            const slide = slides[next];
++            slide.classList.remove('slide-next', 'slide-prev');
++            slide.hidden = false;
++            // Force reflow so the animation restarts on revisited slides
++            void slide.offsetWidth;
++            slide.classList.add(direction === 1 ? 'slide-next' : 'slide-prev');
++            current = next;
++        };
++
++        root.querySelector('[data-next]')?.addEventListener('click', () => go(1));
++        root.querySelector('[data-prev]')?.addEventListener('click', () => go(-1));
++    });
++</script>
+\ No newline at end of file

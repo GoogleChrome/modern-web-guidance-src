@@ -1,0 +1,33 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,29 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Fetch</title>
++</head>
++<body>
++<button id="btn">Load</button>
++<script>
++document.getElementById('btn').addEventListener('click', () => {
++  // Critical request is issued first and marked high priority.
++  const data = fetch('/api/data', { priority: 'high' }).then(r => r.json());
++
++  // Analytics is low priority so it doesn't compete with the critical request;
++  // keepalive lets it finish even if the page unloads.
++  fetch('/api/analytics', {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ click: 1 }),
++    priority: 'low',
++    keepalive: true
++  }).catch(() => {});
++
++  data.then(console.log, console.error);
++});
++</script>
++</body>
++</html>

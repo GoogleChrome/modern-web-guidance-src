@@ -1,0 +1,250 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,125 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-selector {
++      position: relative;
++      display: inline-flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      margin-top: 1.25rem;
++      text-align: left;
++    }
++
++    .roast-label {
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .roast-toggle {
++      display: inline-flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 14px;
++      min-width: 220px;
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s, box-shadow 0.3s;
++    }
++
++    .roast-toggle:hover {
++      background: #3e2723;
++    }
++
++    .roast-toggle:focus-visible {
++      outline: none;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.45);
++    }
++
++    .roast-arrow {
++      width: 16px;
++      height: 16px;
++      flex-shrink: 0;
++      color: var(--accent);
++      transition: transform 0.25s;
++    }
++
++    .roast-selector.open .roast-arrow {
++      transform: rotate(180deg);
++    }
++
++    .roast-menu {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      right: 0;
++      z-index: 20;
++      list-style: none;
++      margin: 0;
++      padding: 6px 0;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
++      display: none;
++    }
++
++    .roast-selector.open .roast-menu {
++      display: block;
++    }
++
++    .roast-option {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 10px 14px;
++      color: white;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .roast-option:hover,
++    .roast-option.active {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-option small {
++      display: block;
++      font-size: 0.75rem;
++      opacity: 0.85;
++    }
++
++    .roast-check {
++      width: 16px;
++      height: 16px;
++      flex-shrink: 0;
++      color: var(--accent);
++      visibility: hidden;
++    }
++
++    .roast-option[aria-selected="true"] .roast-check {
++      visibility: visible;
++    }
++
++    .roast-option:hover .roast-check,
++    .roast-option.active .roast-check {
++      color: var(--primary);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +287,41 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++
++    <div class="roast-selector" id="roast-selector">
++      <span class="roast-label" id="roast-label">Choose your roast</span>
++      <button type="button" class="roast-toggle" id="roast-toggle" aria-haspopup="listbox" aria-expanded="false"
++        aria-labelledby="roast-label roast-toggle-text">
++        <span id="roast-toggle-text">Medium Roast</span>
++        <svg class="roast-arrow" viewBox="0 0 16 16" fill="none" aria-hidden="true">
++          <path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
++        </svg>
++      </button>
++      <ul class="roast-menu" id="roast-menu" role="listbox" aria-labelledby="roast-label" tabindex="-1">
++        <li class="roast-option" role="option" id="roast-light" data-value="light" aria-selected="false">
++          <span>Light Roast<small>Bright &amp; fruity</small></span>
++          <svg class="roast-check" viewBox="0 0 16 16" fill="none" aria-hidden="true">
++            <path d="M2.5 8.5l3.5 3.5 7.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
++          </svg>
++        </li>
++        <li class="roast-option" role="option" id="roast-medium" data-value="medium" aria-selected="true">
++          <span>Medium Roast<small>Balanced &amp; smooth</small></span>
++          <svg class="roast-check" viewBox="0 0 16 16" fill="none" aria-hidden="true">
++            <path d="M2.5 8.5l3.5 3.5 7.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
++          </svg>
++        </li>
++        <li class="roast-option" role="option" id="roast-dark" data-value="dark" aria-selected="false">
++          <span>Dark Roast<small>Bold &amp; smoky</small></span>
++          <svg class="roast-check" viewBox="0 0 16 16" fill="none" aria-hidden="true">
++            <path d="M2.5 8.5l3.5 3.5 7.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
++          </svg>
++        </li>
++      </ul>
++    </div>
++
++    <a href="/order-online?roast=medium" class="btn" id="order-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +355,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var selector = document.getElementById('roast-selector');
++      var toggle = document.getElementById('roast-toggle');
++      var toggleText = document.getElementById('roast-toggle-text');
++      var menu = document.getElementById('roast-menu');
++      var orderBtn = document.getElementById('order-btn');
++      var options = Array.prototype.slice.call(menu.querySelectorAll('.roast-option'));
++      var activeIndex = options.findIndex(function (o) { return o.getAttribute('aria-selected') === 'true'; });
++
++      function setActive(index) {
++        activeIndex = Math.max(0, Math.min(options.length - 1, index));
++        options.forEach(function (o, i) { o.classList.toggle('active', i === activeIndex); });
++        menu.setAttribute('aria-activedescendant', options[activeIndex].id);
++      }
++
++      function open() {
++        selector.classList.add('open');
++        toggle.setAttribute('aria-expanded', 'true');
++        setActive(options.findIndex(function (o) { return o.getAttribute('aria-selected') === 'true'; }));
++        menu.focus();
++      }
++
++      function close(returnFocus) {
++        selector.classList.remove('open');
++        toggle.setAttribute('aria-expanded', 'false');
++        options.forEach(function (o) { o.classList.remove('active'); });
++        if (returnFocus) toggle.focus();
++      }
++
++      function select(index) {
++        options.forEach(function (o, i) { o.setAttribute('aria-selected', i === index ? 'true' : 'false'); });
++        var chosen = options[index];
++        toggleText.textContent = chosen.querySelector('span').firstChild.textContent.trim();
++        orderBtn.href = '/order-online?roast=' + encodeURIComponent(chosen.dataset.value);
++        close(true);
++      }
++
++      toggle.addEventListener('click', function () {
++        selector.classList.contains('open') ? close(false) : open();
++      });
++
++      toggle.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
++      });
++
++      options.forEach(function (o, i) {
++        o.addEventListener('click', function () { select(i); });
++        o.addEventListener('mousemove', function () { if (i !== activeIndex) setActive(i); });
++      });
++
++      menu.addEventListener('keydown', function (e) {
++        switch (e.key) {
++          case 'ArrowDown': e.preventDefault(); setActive(activeIndex + 1); break;
++          case 'ArrowUp': e.preventDefault(); setActive(activeIndex - 1); break;
++          case 'Home': e.preventDefault(); setActive(0); break;
++          case 'End': e.preventDefault(); setActive(options.length - 1); break;
++          case 'Enter':
++          case ' ': e.preventDefault(); select(activeIndex); break;
++          case 'Escape': e.preventDefault(); close(true); break;
++          case 'Tab': close(false); break;
++        }
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!selector.contains(e.target)) close(false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

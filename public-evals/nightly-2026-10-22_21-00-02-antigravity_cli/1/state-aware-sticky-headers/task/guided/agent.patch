@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,12 +11,26 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --stuck-bg: #0056b3;
++      --stuck-text: #ffffff;
++      --stuck-shadow: 0 4px 6px rgb(0 0 0 / 0.15);
++      --header-bg: #f0ebe6;
+     }
+ 
+-    * {
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
++    }
++
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul {
+       margin: 0;
+       padding: 0;
+     }
+ 
+@@ -99,8 +113,72 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro-banner {
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .intro-banner h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++    }
++
++    .intro-banner p {
++      max-width: 750px;
++      margin: 0 auto 16px;
++    }
++
++    section,
++    .section {
++      overflow-anchor: none;
++      margin-bottom: 60px;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: 0;
++      container-type: scroll-state;
++      container-name: section-header;
++      z-index: 1001;
++    }
++
++    .sticky-header {
++      background-color: var(--header-bg);
++      color: var(--primary);
++      padding: 24px 20px;
++      border-radius: 8px;
++      text-align: center;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, padding 0.3s, border-radius 0.3s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.75rem;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: var(--stuck-bg);
++        color: var(--stuck-text);
++        box-shadow: var(--stuck-shadow);
++        padding: 10px 20px;
++        border-radius: 0 0 8px 8px;
++      }
++    }
++
++    .sticky-container.is-stuck .sticky-header {
++      background-color: var(--stuck-bg);
++      color: var(--stuck-text);
++      box-shadow: var(--stuck-shadow);
++      padding: 10px 20px;
++      border-radius: 0 0 8px 8px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -112,15 +190,21 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow-anchor: none;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card .sticky-header h3 {
++      color: inherit;
++      margin-bottom: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,28 +258,134 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="intro-banner">
++      <h2>Crafted With Passion Since 2012</h2>
++      <p>At The Daily Grind, we partner directly with independent farmers across Central America, East Africa, and Southeast Asia to bring you small-batch specialty coffee roasted fresh every morning.</p>
++      <p>Explore our curated seasonal collections, signature espresso roasts, and artisan bakery pairings below. Every cup tells the story of its origin, carefully steeped and brewed to perfection.</p>
++      <p>Scroll down to browse our complete offerings by category.</p>
++    </div>
++
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Seasonal Favorites</h2>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and a dusting of cinnamon nutmeg.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p>Bold, smokey, and perfect for a morning boost with rich dark chocolate undertones.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p>Steeped for 18 hours in filtered cold water for maximum smoothness and low acidity.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Spiced Chai Cortado</h3>
++          <p>Equal parts double-shot espresso and house-simmered cardamom ginger masala chai.</p>
++          <a href="/menu/chai-cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Honey Lavender Flat White</h3>
++          <p>Velvety microfoam poured over ristretto shots infused with wildflower honey and culinary lavender.</p>
++          <a href="/menu/honey-lavender" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Caramel Pecan Macchiato</h3>
++          <p>Toasted pecan syrup layered with steamed milk, rich espresso, and house-made salted caramel drizzle.</p>
++          <a href="/menu/caramel-pecan" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Single-Origin Pour Overs</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p>Bright floral aroma with vibrant notes of bergamot, jasmine, and sweet Meyer lemon.</p>
++          <a href="/menu/ethiopian" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombian Huila</h3>
++          <p>Balanced medium body featuring toasted hazelnut, red apple acidity, and a clean caramel finish.</p>
++          <a href="/menu/colombian" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Full-bodied earthy profile with herbaceous spice, cedarwood, and bittersweet cocoa notes.</p>
++          <a href="/menu/sumatra" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Guatemalan Antigua</h3>
++          <p>Grown in volcanic soil, offering velvety cocoa, brown spice, and subtle orange zest.</p>
++          <a href="/menu/guatemalan" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Kenyan AA Nyeri</h3>
++          <p>Juicy and complex cup bursting with blackcurrant, ruby grapefruit, and wine-like acidity.</p>
++          <a href="/menu/kenyan" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Costa Rican Tarrazú</h3>
++          <p>Honey-processed beans delivering crisp pear sweetness, almond nougat, and silky mouthfeel.</p>
++          <a href="/menu/costa-rican" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Artisanal Bakery &amp; Bites</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky, butter-laminated pastry filled with sweet almond frangipane and topped with toasted slices.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cardamom Morning Bun</h3>
++          <p>Brioche dough swirled with freshly ground green cardamom, cinnamon, and orange blossom sugar.</p>
++          <a href="/menu/morning-bun" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Avocado Sourdough Toast</h3>
++          <p>Thick-cut country sourdough topped with smashed avocado, pickled shallots, and chili flakes.</p>
++          <a href="/menu/avocado-toast" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Lemon Scone</h3>
++          <p>Tender buttermilk scone bursting with wild Maine blueberries and finished with lemon glaze.</p>
++          <a href="/menu/scone" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Matcha Pistachio Tart</h3>
++          <p>Crisp shortbread crust filled with ceremonial grade Uji matcha ganache and crushed pistachios.</p>
++          <a href="/menu/matcha-tart" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Rosemary Sea Salt Focaccia</h3>
++          <p>Extra-virgin olive oil focaccia baked golden with fresh garden rosemary and flaky Maldon salt.</p>
++          <a href="/menu/focaccia" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +396,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function getScrollParent(node) {
++      if (node == null || node === document.body || node === document.documentElement) {
++        return null; // default to viewport
++      }
++      if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
++        const overflow = getComputedStyle(node).overflow;
++        if (overflow !== 'visible' && overflow !== 'clip') {
++          return node;
++        }
++      }
++      return getScrollParent(node.parentNode);
++    }
++
++    document.querySelectorAll('.sticky-container').forEach(container => {
++      const root = getScrollParent(container);
++      const topOffset = parseFloat(getComputedStyle(container).top) || 0;
++
++      const observer = new IntersectionObserver(
++        ([e]) => {
++          // Toggle the fallback class on the sticky header container when stuck at the top
++          e.target.classList.toggle('is-stuck', e.intersectionRatio < 1 && e.boundingClientRect.top <= topOffset + 1);
++        },
++        {
++          root: root,
++          threshold: [1],
++          rootMargin: `-${topOffset + 1}px 0px 0px 0px`
++        }
++      );
++
++      observer.observe(container);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

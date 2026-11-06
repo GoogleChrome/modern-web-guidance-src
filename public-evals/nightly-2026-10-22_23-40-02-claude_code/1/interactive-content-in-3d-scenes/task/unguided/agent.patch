@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Coffee Box Scene */
++    .scene-section {
++      background: radial-gradient(circle at 50% 40%, #6d4c41, var(--primary));
++      color: white;
++      text-align: center;
++      padding: 40px 0 10px;
++    }
++
++    #scene {
++      position: relative;
++      height: 560px;
++      overflow: hidden;
++    }
++
++    #scene canvas,
++    #scene .css-layer {
++      position: absolute;
++      inset: 0;
++    }
++
++    #scene .css-layer {
++      pointer-events: none;
++    }
++
++    .box-form {
++      width: 300px;
++      height: 380px;
++      padding: 28px 24px;
++      background: #fff8f0;
++      color: var(--text);
++      border: 6px solid var(--accent);
++      border-radius: 4px;
++      text-align: left;
++      pointer-events: auto;
++      backface-visibility: hidden;
++    }
++
++    .box-form.away {
++      pointer-events: none;
++      visibility: hidden;
++    }
++
++    .box-form h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .box-form label {
++      display: block;
++      font-size: 0.8rem;
++      margin-top: 12px;
++    }
++
++    .box-form input,
++    .box-form select {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .box-form .row {
++      display: flex;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .box-form button {
++      flex: 1;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      padding: 10px;
++      border-radius: 5px;
++      color: white;
++      background: var(--primary);
++    }
++
++    .box-form button.secondary {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-form button:hover {
++      filter: brightness(1.15);
++    }
++
++    #box-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      min-height: 1.3em;
++    }
+   </style>
++  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+ </head>
+ 
+ <body>
+ 
+@@ -173,8 +268,35 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="scene-section">
++    <h2>Build Your Box</h2>
++    <p>Order a fresh bag, straight from our spinning roastery box.</p>
++    <div id="scene">
++      <div class="css-layer" id="css-layer"></div>
++    </div>
++    <form class="box-form" id="box-form">
++      <h3>Custom Coffee Box</h3>
++      <p style="font-size:.8rem">Pick your beans and we'll roast them today.</p>
++      <label for="name">Your name</label>
++      <input id="name" type="text" placeholder="Jane Barista">
++      <label for="roast">Roast</label>
++      <select id="roast">
++        <option>Light</option>
++        <option selected>Medium</option>
++        <option>Dark</option>
++      </select>
++      <label for="qty">Bags</label>
++      <input id="qty" type="number" min="1" value="1">
++      <div class="row">
++        <button type="submit">Order</button>
++        <button type="reset" class="secondary">Reset</button>
++      </div>
++      <div id="box-status" role="status"></div>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +328,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import * as THREE from 'three';
++    import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
++
++    const host = document.getElementById('scene');
++    const form = document.getElementById('box-form');
++    const status = document.getElementById('box-status');
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const name = form.name.value.trim() || 'friend';
++      status.textContent = `Thanks ${name}! ${form.qty.value} x ${form.roast.value} roast on its way.`;
++    });
++    form.addEventListener('reset', () => { status.textContent = ''; });
++
++    const W = 300, H = 380, D = 160;
++    const camera = new THREE.PerspectiveCamera(40, 1, 1, 3000);
++    camera.position.z = 900;
++
++    // WebGL layer: the box itself
++    const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true });
++    gl.setPixelRatio(Math.min(devicePixelRatio, 2));
++    host.prepend(gl.domElement);
++    const scene = new THREE.Scene();
++    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
++    const sun = new THREE.DirectionalLight(0xffffff, 2);
++    sun.position.set(300, 400, 600);
++    scene.add(sun);
++
++    const box = new THREE.Group();
++    scene.add(box);
++    box.add(new THREE.Mesh(
++      new THREE.BoxGeometry(W, H, D),
++      new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.8 })
++    ));
++
++    // CSS layer: the real form, projected with the same camera onto the box front.
++    // Real DOM elements under a 3D transform keep native hit-testing, so they stay clickable.
++    const css = new CSS3DRenderer({ element: document.getElementById('css-layer') });
++    const cssScene = new THREE.Scene();
++    const formObj = new CSS3DObject(form);
++    formObj.position.z = D / 2 + 1;
++    const cssBox = new THREE.Group();
++    cssScene.add(cssBox);
++    cssBox.add(formObj);
++
++    function resize() {
++      const w = host.clientWidth, h = host.clientHeight;
++      camera.aspect = w / h;
++      camera.updateProjectionMatrix();
++      gl.setSize(w, h);
++      css.setSize(w, h);
++    }
++    addEventListener('resize', resize);
++    resize();
++
++    const normal = new THREE.Vector3(), toCam = new THREE.Vector3(), pos = new THREE.Vector3();
++    let speed = 0.4, angle = 0, last = performance.now();
++    host.addEventListener('pointerenter', () => { speed = 0.15; });
++    host.addEventListener('pointerleave', () => { speed = 0.4; });
++
++    function frame(now) {
++      angle += (now - last) / 1000 * speed;
++      last = now;
++      box.rotation.y = angle;
++      box.rotation.x = 0.1;
++      box.updateMatrixWorld();
++      cssBox.rotation.copy(box.rotation);
++
++      // Hide the form when the front face points away from the camera
++      normal.set(0, 0, 1).transformDirection(box.matrixWorld);
++      pos.setFromMatrixPosition(box.matrixWorld);
++      toCam.subVectors(camera.position, pos).normalize();
++      form.classList.toggle('away', normal.dot(toCam) <= 0.05);
++
++      gl.render(scene, camera);
++      css.render(cssScene, camera);
++      requestAnimationFrame(frame);
++    }
++    requestAnimationFrame(frame);
++  </script>
++
+ </body>
+ 
+ </html>

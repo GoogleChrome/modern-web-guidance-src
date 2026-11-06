@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,11 +84,38 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    .shaped-element {
++      width: 240px;
++      height: 140px;
++      max-width: 100%;
++      margin-bottom: 1.25rem;
++      background: var(--accent)
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80')
++        center / cover no-repeat;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: url('mask.svg');
++      -webkit-mask-size: cover;
++      -webkit-mask-repeat: no-repeat;
++
++      /* Standard property for modern browsers */
++      mask-image: url('mask.svg');
++      mask-size: cover;
++      mask-repeat: no-repeat;
++    }
++
++    /* Fallback for browsers that do not support masking */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        /* Use a simple rounded rectangle as fallback */
++        clip-path: inset(5% round 15px);
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +194,32 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Fluid SVG mask definition with objectBoundingBox coordinates (0 to 1) -->
++  <svg width="0" height="0" aria-hidden="true">
++    <defs>
++      <mask id="custom-shape" maskContentUnits="objectBoundingBox">
++        <!-- Use gray shapes to define semi-transparent/faded splash edges -->
++        <path
++          d="M0.06,0.47 C0.04,0.20 0.23,0.05 0.51,0.07 C0.79,0.08 0.97,0.22 0.96,0.52 C0.95,0.82 0.74,0.95 0.48,0.93 C0.22,0.92 0.08,0.73 0.06,0.47 Z"
++          fill="gray"
++        />
++        <circle cx="0.09" cy="0.25" r="0.04" fill="gray" />
++        <circle cx="0.92" cy="0.22" r="0.05" fill="gray" />
++        <circle cx="0.89" cy="0.80" r="0.04" fill="gray" />
++        <circle cx="0.15" cy="0.82" r="0.05" fill="gray" />
++        <!-- Use white shapes to define fully opaque core splash area -->
++        <path
++          d="M0.125,0.52 C0.09,0.28 0.24,0.12 0.48,0.13 C0.72,0.15 0.91,0.25 0.925,0.48 C0.94,0.72 0.77,0.88 0.52,0.87 C0.27,0.85 0.16,0.75 0.125,0.52 Z"
++          fill="white"
++        />
++      </mask>
++    </defs>
++  </svg>
++
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

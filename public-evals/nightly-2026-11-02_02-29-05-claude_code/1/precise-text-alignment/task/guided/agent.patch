@@ -1,0 +1,14 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -117,8 +117,10 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      /* Trim leading so the visible caps sit exactly 20px from the card edge */
++      text-box: trim-both cap alphabetic;
+     }
+ 
+     .btn {
+       display: inline-block;

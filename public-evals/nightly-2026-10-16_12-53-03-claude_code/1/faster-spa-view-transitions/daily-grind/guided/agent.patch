@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+index 66c9173..49a88b1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,28 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SPA views: inactive views keep their rendered state cached */
++    #views {
++      position: relative;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 auto auto 0;
++      width: 100%;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -168,6 +190,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div class="spa-view" id="view-home" data-route="/" tabindex="-1">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +220,8 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +233,82 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    const MAX_CACHED_VIEWS = 5;
++    const PAGES = {
++      '/menu': ['Menu', 'Espresso, pour-overs, cold brew and fresh pastries, all made to order.'],
++      '/locations': ['Locations', 'Find a Daily Grind near you. Open 6am to 8pm daily.'],
++      '/rewards': ['Rewards', 'Earn a star for every cup and redeem them for free drinks.'],
++      '/account': ['My Account', 'Manage your orders, payment methods and preferences.']
++    };
++
++    const viewsEl = document.getElementById('views');
++    // Map insertion order doubles as LRU order (oldest first).
++    const cache = new Map([['/', document.getElementById('view-home')]]);
++    let current = '/';
++
++    function buildView(path) {
++      const [title, body] = PAGES[path];
++      const view = document.createElement('div');
++      view.className = 'spa-view inactive';
++      view.dataset.route = path;
++      view.tabIndex = -1;
++      view.innerHTML = `<main class="container"><h2></h2><p></p></main>`;
++      view.querySelector('h2').textContent = title;
++      view.querySelector('p').textContent = body;
++      viewsEl.append(view);
++      return view;
++    }
++
++    function showView(path) {
++      path = path in PAGES ? path : '/';
++      let view = cache.get(path);
++      if (view) cache.delete(path);
++      else view = buildView(path);
++      cache.set(path, view); // mark most recently used
++
++      for (const v of cache.values()) {
++        const active = v === view;
++        v.classList.toggle('inactive', !active);
++        v.setAttribute('aria-hidden', String(!active));
++      }
++
++      // Evict least recently used views beyond the cap (never the active one)
++      for (const [key, v] of cache) {
++        if (cache.size <= MAX_CACHED_VIEWS) break;
++        if (v === view) continue;
++        v.remove();
++        cache.delete(key);
++      }
++
++      current = path;
++      document.title = (PAGES[path] ? PAGES[path][0] + ' | ' : '') + 'The Daily Grind | Artisanal Coffee';
++      view.focus({ preventScroll: true });
++      window.scrollTo(0, 0);
++    }
++
++    document.addEventListener('click', (e) => {
++      const a = e.target.closest('a[href]');
++      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      const url = new URL(a.href);
++      if (url.origin !== location.origin) return;
++      const path = url.pathname;
++      if (path !== '/' && !(path in PAGES)) return;
++      e.preventDefault();
++      if (path === current) return;
++      history.pushState(null, '', path);
++      showView(path);
++    });
++
++    document.querySelector('.logo').addEventListener('click', () => {
++      if (current === '/') return;
++      history.pushState(null, '', '/');
++      showView('/');
++    });
++
++    addEventListener('popstate', () => showView(location.pathname));
++    showView(location.pathname);
++  </script>
+ </body>
+ 
+ </html>

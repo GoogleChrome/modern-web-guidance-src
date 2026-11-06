@@ -1,0 +1,230 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,225 @@
++/**
++ * Daily Grind client-side analytics.
++ *
++ * Records page views and click interactions, then batches them into a single
++ * deferred background request. Rapid interactions coalesce: each new event
++ * resets a short debounce timer, a max-wait cap guarantees a flush during
++ * sustained activity, and a batch-size cap bounds payload size. Pending events
++ * are flushed with sendBeacon when the page is hidden or unloaded so that
++ * clicks on links that navigate away are not lost.
++ *
++ * Configure via data attributes on the <script> tag:
++ *   data-endpoint     URL that receives POSTed JSON batches (default: /api/telemetry)
++ *   data-debounce-ms  quiet period before a flush (default: 500)
++ *   data-max-wait-ms  upper bound on how long an event may wait (default: 5000)
++ *   data-max-batch    flush immediately once this many events are queued (default: 25)
++ */
++(function () {
++  'use strict';
++
++  if (typeof window === 'undefined' || typeof document === 'undefined') return;
++
++  // Respect the browser's Do Not Track setting.
++  if (navigator.doNotTrack === '1' || window.doNotTrack === '1') return;
++
++  var script = document.currentScript;
++  var ds = (script && script.dataset) || {};
++
++  var config = {
++    endpoint: ds.endpoint || '/api/telemetry',
++    debounceMs: toInt(ds.debounceMs, 500),
++    maxWaitMs: toInt(ds.maxWaitMs, 5000),
++    maxBatch: toInt(ds.maxBatch, 25)
++  };
++
++  var queue = [];
++  var debounceTimer = null;
++  var maxWaitTimer = null;
++  var sequence = 0;
++  var sessionId = getSessionId();
++
++  function toInt(value, fallback) {
++    var n = parseInt(value, 10);
++    return isNaN(n) || n < 0 ? fallback : n;
++  }
++
++  function getSessionId() {
++    var key = 'dg_session_id';
++    try {
++      var existing = sessionStorage.getItem(key);
++      if (existing) return existing;
++      var id = randomId();
++      sessionStorage.setItem(key, id);
++      return id;
++    } catch (e) {
++      return randomId();
++    }
++  }
++
++  function randomId() {
++    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
++    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
++  }
++
++  // ---------------------------------------------------------------------------
++  // Event queue + debounced / batched flushing
++  // ---------------------------------------------------------------------------
++
++  function track(type, data) {
++    queue.push({
++      type: type,
++      seq: ++sequence,
++      ts: Date.now(),
++      path: location.pathname,
++      data: data || {}
++    });
++    scheduleFlush();
++  }
++
++  function scheduleFlush() {
++    if (queue.length >= config.maxBatch) {
++      flush();
++      return;
++    }
++
++    // Debounce: every new event pushes the flush back by debounceMs...
++    if (debounceTimer) clearTimeout(debounceTimer);
++    debounceTimer = setTimeout(flush, config.debounceMs);
++
++    // ...but never beyond maxWaitMs from the first queued event.
++    if (!maxWaitTimer) {
++      maxWaitTimer = setTimeout(flush, config.maxWaitMs);
++    }
++  }
++
++  function clearTimers() {
++    if (debounceTimer) clearTimeout(debounceTimer);
++    if (maxWaitTimer) clearTimeout(maxWaitTimer);
++    debounceTimer = null;
++    maxWaitTimer = null;
++  }
++
++  function flush() {
++    clearTimers();
++    if (queue.length === 0) return;
++
++    var batch = queue;
++    queue = [];
++
++    var payload = JSON.stringify({
++      sessionId: sessionId,
++      sentAt: Date.now(),
++      page: {
++        url: location.href,
++        referrer: document.referrer || null,
++        title: document.title
++      },
++      events: batch
++    });
++
++    send(payload);
++  }
++
++  // Deliver the batch off the main interaction path. sendBeacon is queued by
++  // the browser and survives navigation; fetch with keepalive is the fallback.
++  function send(payload) {
++    if (navigator.sendBeacon) {
++      try {
++        var blob = new Blob([payload], { type: 'application/json' });
++        if (navigator.sendBeacon(config.endpoint, blob)) return;
++      } catch (e) {
++        // fall through to fetch
++      }
++    }
++
++    if (window.fetch) {
++      fetch(config.endpoint, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: payload,
++        keepalive: true,
++        credentials: 'same-origin'
++      }).catch(function () {
++        // Telemetry is best-effort; never surface failures to the user.
++      });
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Collectors
++  // ---------------------------------------------------------------------------
++
++  function trackPageView() {
++    var nav = performance && performance.getEntriesByType
++      ? performance.getEntriesByType('navigation')[0]
++      : null;
++
++    track('page_view', {
++      navigationType: nav ? nav.type : null,
++      viewport: { width: window.innerWidth, height: window.innerHeight },
++      language: navigator.language || null
++    });
++  }
++
++  function describeTarget(el) {
++    var text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80);
++    var section = el.closest('nav, header, main, footer, section');
++    var card = el.closest('.card');
++    var cardTitle = card ? card.querySelector('h1, h2, h3, h4') : null;
++
++    return {
++      tag: el.tagName.toLowerCase(),
++      id: el.id || null,
++      classes: el.className && typeof el.className === 'string' ? el.className : null,
++      text: text || null,
++      href: el.getAttribute && el.getAttribute('href') || null,
++      section: section ? section.tagName.toLowerCase() : null,
++      context: cardTitle ? cardTitle.textContent.trim() : null
++    };
++  }
++
++  function onClick(event) {
++    // Only primary-button clicks; ignore synthetic/untrusted events.
++    if (event.button !== 0 || !event.isTrusted) return;
++
++    var target = event.target;
++    if (!target || typeof target.closest !== 'function') return;
++
++    // Attribute the click to the nearest interactive ancestor when present,
++    // otherwise record the raw element so untracked areas are still visible.
++    var interactive = target.closest('a, button, [role="button"], input, [data-track]');
++    var el = interactive || target;
++    var detail = describeTarget(el);
++    detail.interactive = !!interactive;
++
++    track('click', detail);
++  }
++
++  // ---------------------------------------------------------------------------
++  // Lifecycle
++  // ---------------------------------------------------------------------------
++
++  // Flush whatever is queued before the page goes away. Clicking a link
++  // navigates immediately, so without this the debounced flush would never run.
++  function onHide() {
++    flush();
++  }
++
++  document.addEventListener('click', onClick, true);
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') onHide();
++  });
++  window.addEventListener('pagehide', onHide);
++
++  // Defer the initial page view until the browser is idle so it never competes
++  // with rendering the page.
++  var scheduleIdle = window.requestIdleCallback || function (cb) { return setTimeout(cb, 0); };
++  if (document.readyState === 'complete') {
++    scheduleIdle(trackPageView);
++  } else {
++    window.addEventListener('load', function () { scheduleIdle(trackPageView); }, { once: true });
++  }
++
++  // Small public hook for custom events (e.g. dgAnalytics.track('add_to_cart', {...})).
++  window.dgAnalytics = { track: track, flush: flush, config: config };
++})();

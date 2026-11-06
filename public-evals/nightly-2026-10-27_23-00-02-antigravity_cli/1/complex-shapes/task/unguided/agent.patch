@@ -1,0 +1,129 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,87 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
++      flex-wrap: wrap;
+       justify-content: center;
+       align-items: center;
++      gap: 2.5rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero-content {
++      max-width: 540px;
++      z-index: 1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Block */
++    .shaped-element {
++      width: 240px;
++      height: 240px;
++      flex-shrink: 0;
++      position: relative;
++      z-index: 1;
++      background-color: var(--primary);
++      background-image: linear-gradient(135deg, rgba(255, 171, 64, 0.25), rgba(78, 52, 46, 0.45)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80');
++      background-size: cover;
++      background-position: center;
++      /* Organic border-radius & path fallback so layout and aesthetic hold if SVG/mask fails */
++      border-radius: 62% 38% 46% 54% / 60% 44% 56% 40%;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
++      /* Free-form fluid vector clip & image mask */
++      -webkit-clip-path: url(#coffee-splash-clip);
++      clip-path: url(#coffee-splash-clip);
++      -webkit-mask-image: url('coffee-splash-mask.svg');
++      mask-image: url('coffee-splash-mask.svg');
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++      overflow: hidden;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      transition: transform 0.4s ease;
++    }
++
++    .shaped-element:hover {
++      transform: scale(1.03) rotate(-2deg);
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      opacity: 0.9;
++    }
++
++    .hero-svg-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      pointer-events: none;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +228,30 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <svg class="hero-svg-defs" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="coffee-splash-clip" clipPathUnits="objectBoundingBox">
++          <path d="M 0.723,0.118 C 0.794,0.154 0.859,0.205 0.898,0.271 C 0.937,0.338 0.950,0.418 0.943,0.495 C 0.935,0.573 0.907,0.645 0.865,0.712 C 0.824,0.778 0.769,0.839 0.701,0.877 C 0.634,0.915 0.554,0.933 0.475,0.925 C 0.397,0.917 0.320,0.885 0.253,0.840 C 0.186,0.795 0.129,0.738 0.096,0.667 C 0.064,0.598 0.056,0.515 0.068,0.438 C 0.081,0.361 0.114,0.289 0.167,0.234 C 0.220,0.180 0.293,0.141 0.366,0.118 C 0.439,0.095 0.512,0.088 0.585,0.095 C 0.658,0.104 0.731,0.128 0.723,0.118 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++
++    <div class="shaped-element" role="img" aria-label="Artisanal espresso pour">
++      <img
++        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
++        alt="Artisanal coffee splash and latte art"
++        loading="lazy"
++        onerror="this.style.display='none'"
++      />
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>

@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,80 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Interactive Customizer Section */
++    .interactive-section {
++      margin-top: 50px;
++      background: white;
++      padding: 40px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .command-controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin: 20px 0 35px;
++    }
++
++    .command-controls .btn {
++      margin-top: 0;
++    }
++
++    .btn-reset {
++      background: #6d4c41;
++    }
++
++    #action-target {
++      width: 160px;
++      height: 160px;
++      margin: 20px auto;
++      background: var(--primary);
++      color: white;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      border-radius: 12px;
++      border: 4px solid var(--accent);
++      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
++      font-weight: bold;
++      transition: transform 0.4s ease, border-radius 0.4s ease;
++    }
++
++    #action-target.is-spun {
++      transform: rotate(180deg);
++    }
++
++    #action-target.is-grown {
++      transform: scale(1.25);
++    }
++
++    #action-target.is-spun.is-grown {
++      transform: rotate(180deg) scale(1.25);
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="interactive-section">
++      <h2>Cup Badge Customizer</h2>
++      <p>Use the controls below to transform our signature coffee emblem.</p>
++      <div class="command-controls">
++        <button commandfor="action-target" command="--spin" class="btn">Spin</button>
++        <button commandfor="action-target" command="--grow" class="btn">Grow</button>
++        <button commandfor="action-target" command="--round" class="btn">Make Round</button>
++        <button commandfor="action-target" command="--reset" class="btn btn-reset">Reset All</button>
++      </div>
++      <div id="action-target">
++        <span>DAILY GRIND</span>
++        <small>EST. 2026</small>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +284,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const actionTarget = document.getElementById('action-target');
++
++    actionTarget.addEventListener('command', (event) => {
++      switch (event.command) {
++        case '--spin':
++          actionTarget.classList.toggle('is-spun');
++          break;
++        case '--grow':
++          actionTarget.classList.toggle('is-grown');
++          break;
++        case '--round':
++          actionTarget.classList.toggle('is-rounded');
++          break;
++        case '--reset':
++          actionTarget.classList.remove('is-spun', 'is-grown', 'is-rounded');
++          break;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

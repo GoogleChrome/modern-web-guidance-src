@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="gift-card.css">
++  <script defer src="vendor/html2canvas.min.js"></script>
++  <script defer src="gift-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +197,50 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-heading">
++      <div class="gift-intro">
++        <p class="gift-eyebrow">A LITTLE COFFEE. A LOT OF LOVE.</p>
++        <h2 id="gift-heading">Make their day, your way.</h2>
++        <p>A thoughtful note, a favorite color, a little Daily Grind magic.<br>Design a coffee card that feels like you.</p>
++      </div>
++      <div class="gift-workspace">
++        <form class="gift-controls" onsubmit="return false">
++          <h3>Your personal touch</h3>
++          <label for="gift-name">Who’s the lucky one? <span>Optional</span></label>
++          <input id="gift-name" name="recipient" type="text" maxlength="30" placeholder="e.g. Alex" autocomplete="off">
++          <div class="gift-label-row"><label for="gift-message">A little message</label><span id="message-count">29 / 100</span></div>
++          <textarea id="gift-message" name="message" rows="3" maxlength="100" aria-describedby="message-count">Good coffee. Even better company.</textarea>
++          <fieldset class="gift-colors">
++            <legend>Pick a mood <span id="color-name">Oat milk</span></legend>
++            <div class="gift-swatches">
++              <label style="--swatch: #efe2ca"><input type="radio" name="card-color" value="#efe2ca" data-name="Oat milk" checked><span aria-hidden="true"></span><span class="sr-only">Oat milk</span></label>
++              <label style="--swatch: #cdd8c1"><input type="radio" name="card-color" value="#cdd8c1" data-name="Sage"><span aria-hidden="true"></span><span class="sr-only">Sage</span></label>
++              <label style="--swatch: #ecc6b9"><input type="radio" name="card-color" value="#ecc6b9" data-name="Rose latte"><span aria-hidden="true"></span><span class="sr-only">Rose latte</span></label>
++              <label style="--swatch: #c8d8e4"><input type="radio" name="card-color" value="#c8d8e4" data-name="Blue morning"><span aria-hidden="true"></span><span class="sr-only">Blue morning</span></label>
++              <label style="--swatch: #d5c8df"><input type="radio" name="card-color" value="#d5c8df" data-name="Lavender"><span aria-hidden="true"></span><span class="sr-only">Lavender</span></label>
++            </div>
++          </fieldset>
++          <button id="export-card" class="gift-download" type="button"><span aria-hidden="true">↓</span> Download your card</button>
++          <p class="gift-download-note">Made to share · Downloads as a PNG image</p>
++          <p id="export-status" role="status" aria-live="polite"></p>
++        </form>
++        <div class="gift-preview">
++          <p class="gift-preview-label"><span class="preview-dot"></span> LIVE PREVIEW <span>Made by you</span></p>
++          <div id="gift-card-stage">
++            <div id="export_element" drawable>
++              <div class="gift-card-top"><span>THE DAILY GRIND</span><span class="gift-card-tag">A COFFEE GIFT</span></div>
++              <div class="gift-card-art" aria-hidden="true"><div class="coffee-steam">~ ~ ~</div><div class="coffee-cup"><div class="coffee-heart">♥</div></div><div class="coffee-saucer"></div></div>
++              <div class="gift-card-copy"><p id="card-recipient">A little pick-me-up, just for you.</p><h3 id="card-message">Good coffee. Even better company.</h3></div>
++              <div class="gift-card-bottom"><span>BREWED WITH LOVE</span><span>Good days start with a cup. ♡</span></div>
++            </div>
++          </div>
++          <p class="gift-preview-note">A small gesture. A warm feeling.</p>
++        </div>
++      </div>
++      <p class="gift-disclaimer">A personalized greeting to share with someone special. This design has no monetary value.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

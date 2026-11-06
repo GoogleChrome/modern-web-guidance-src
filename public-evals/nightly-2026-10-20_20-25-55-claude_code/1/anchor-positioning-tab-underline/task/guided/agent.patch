@@ -1,0 +1,60 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,10 +48,45 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
++    /* Sliding underline tethered to the active tab */
++    nav ul li.active {
++      anchor-name: --active;
++    }
++
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      /* Not position-area: it can't be transitioned */
++      inset-block-start: calc(anchor(bottom) + 0.1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: 0.15lh;
++      background: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset 0.2s ease;
++      }
++    }
++
++    /* Unsupported browsers: static underline, hide the pseudo-element */
++    @supports not (position-anchor: auto) {
++      nav ul::before {
++        content: none;
++      }
++
++      nav ul li.active {
++        border-bottom: 0.15lh solid var(--accent);
++      }
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+@@ -159,9 +194,9 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>

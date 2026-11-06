@@ -1,0 +1,500 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b40e72d
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,22 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the site (default port: 11222).
++
++The site uses native CSS in `styles.css`; no build step is required. It targets
++modern browsers with support for cascade layers, CSS nesting, and `@scope`.
++
++The cascade order is declared up front: `reset`, `tokens`, `base`, `layout`,
++`components`, then `accessibility`. Keep new rules inside a named layer so
++unlayered declarations do not unexpectedly override the architecture.
++
++Palette primitives feed semantic tokens such as `--color-brand` and
++`--color-surface`. Shared spacing, typography, radii, motion, and layout values
++live in the token layer. Component-specific values, such as `--hero-image`,
++are declared on their owning component.
++
++Layout, component, and accessibility rules are scoped to `.daily-grind`.
++Components use explicit classes and shallow native nesting; `:where()` keeps
++element defaults low in specificity. Use component classes for new markup,
++and keep presentation out of HTML style attributes. Logical properties support
++different writing directions. Interactive styles include keyboard focus and
++reduced-motion preferences.
+diff --git a/index.html b/index.html
+index 66c9173..77504c9 100644
+--- a/index.html
++++ b/index.html
+@@ -5,200 +5,53 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
+ </head>
+ 
+-<body>
++<body class="daily-grind">
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++  <nav class="site-nav" aria-label="Main navigation">
++    <div class="site-nav__logo">THE DAILY GRIND</div>
++    <ul class="site-nav__links">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="site-nav__logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="hero__title">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="button">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++    <section class="favorites" aria-labelledby="favorites-title">
++      <h2 id="favorites-title" class="favorites__title">Seasonal Favorites</h2>
++      <div class="favorites__grid">
++        <div class="product-card">
++          <h3 class="product-card__title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="button">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="product-card">
++          <h3 class="product-card__title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="button">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="product-card">
++          <h3 class="product-card__title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="button">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
++  <footer class="site-footer">
++    <div class="site-footer__links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..e9fce4c
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,239 @@
++/* Later layers take precedence without increasing selector specificity. */
++@layer reset, tokens, base, layout, components, accessibility;
++
++@layer reset {
++  :where(*, *::before, *::after) {
++    box-sizing: border-box;
++  }
++
++  :where(body, h1, h2, h3, p, ul) {
++    margin: 0;
++    padding: 0;
++  }
++}
++
++@layer tokens {
++  :root {
++    /* Palette primitives. Components consume the semantic aliases below. */
++    --color-coffee-700: #4e342e;
++    --color-coffee-900: #3e2723;
++    --color-sand-200: #d7ccc8;
++    --color-amber-400: #ffab40;
++    --color-white: #fff;
++    --color-neutral-50: #fafafa;
++
++    --color-brand: var(--color-coffee-700);
++    --color-brand-hover: var(--color-coffee-900);
++    --color-text: var(--color-coffee-900);
++    --color-text-inverse: var(--color-white);
++    --color-accent: var(--color-amber-400);
++    --color-page: var(--color-neutral-50);
++    --color-surface: var(--color-white);
++    --color-surface-muted: var(--color-sand-200);
++    --color-hero-overlay: rgb(0 0 0 / 50%);
++
++    --font-family-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --font-size-small: 0.85rem;
++    --font-size-nav: 0.9rem;
++    --font-size-logo: 1.5rem;
++    --font-size-hero: 3rem;
++    --font-weight-bold: 700;
++    --line-height-body: 1.6;
++    --letter-spacing-logo: 0.0625rem;
++
++    --space-1: 0.3125rem;
++    --space-2: 0.625rem;
++    --space-3: 0.75rem;
++    --space-4: 0.9375rem;
++    --space-5: 1rem;
++    --space-6: 1.25rem;
++    --space-7: 2.5rem;
++    --radius-small: 0.25rem;
++    --radius-button: 0.3125rem;
++    --radius-card: 0.5rem;
++    --shadow-card: 0 2px 5px rgb(0 0 0 / 10%);
++    --border-width: 1px;
++    --focus-width: 3px;
++    --focus-offset: 3px;
++    --duration-interaction: 300ms;
++    --content-max-width: 68.75rem;
++    --page-gutter: var(--space-6);
++    --nav-gutter: 5%;
++    --layer-sticky: 10;
++  }
++}
++
++@layer base {
++  .daily-grind {
++    font-family: var(--font-family-body);
++    line-height: var(--line-height-body);
++    color: var(--color-text);
++    background-color: var(--color-page);
++  }
++}
++
++@layer layout {
++  @scope (.daily-grind) {
++    .container {
++      max-inline-size: var(--content-max-width);
++      margin-block: var(--space-7);
++      margin-inline: auto;
++      padding-inline: var(--page-gutter);
++    }
++  }
++}
++
++@layer components {
++  /* Component rules apply only inside the Daily Grind page. */
++  @scope (.daily-grind) {
++    .site-nav {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: var(--space-5) var(--space-6);
++      position: sticky;
++      inset-block-start: 0;
++      z-index: var(--layer-sticky);
++      padding-block: var(--space-5);
++      padding-inline: var(--nav-gutter);
++      background: var(--color-brand);
++      color: var(--color-text-inverse);
++
++      & .site-nav__logo {
++        font-size: var(--font-size-logo);
++        font-weight: var(--font-weight-bold);
++        letter-spacing: var(--letter-spacing-logo);
++      }
++
++      & .site-nav__links {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: center;
++        gap: var(--space-3) var(--space-6);
++        list-style: none;
++      }
++
++      & :where(a) {
++        color: inherit;
++        text-decoration: none;
++        font-size: var(--font-size-nav);
++        transition: color var(--duration-interaction);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-accent);
++        }
++      }
++
++      & .site-nav__logout {
++        display: inline-block;
++        border: var(--border-width) solid var(--color-accent);
++        padding: var(--space-1) var(--space-3);
++        border-radius: var(--radius-small);
++      }
++    }
++
++    .hero {
++      --hero-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      --hero-height: 60vh;
++
++      min-block-size: var(--hero-height);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      padding: var(--space-7) var(--page-gutter);
++      background-image: linear-gradient(var(--color-hero-overlay), var(--color-hero-overlay)), var(--hero-image);
++      background-size: cover;
++      background-position: center;
++      color: var(--color-text-inverse);
++      text-align: center;
++
++      & .hero__title {
++        font-size: clamp(2rem, 6vw, var(--font-size-hero));
++        margin-block-end: var(--space-5);
++      }
++    }
++
++    .favorites {
++      --favorites-card-min: 15.625rem;
++
++      & .favorites__title {
++        text-align: center;
++      }
++
++      & .favorites__grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--favorites-card-min)), 1fr));
++        gap: var(--space-6);
++        margin-block-start: var(--space-6);
++      }
++    }
++
++    .product-card {
++      background: var(--color-surface);
++      padding: var(--space-6);
++      border-radius: var(--radius-card);
++      box-shadow: var(--shadow-card);
++      text-align: center;
++
++      & .product-card__title {
++        margin-block-end: var(--space-2);
++        color: var(--color-brand);
++      }
++    }
++
++    .button {
++      display: inline-block;
++      background: var(--color-brand);
++      color: var(--color-text-inverse);
++      padding: var(--space-2) var(--space-6);
++      text-decoration: none;
++      border-radius: var(--radius-button);
++      margin-block-start: var(--space-4);
++      transition: background-color var(--duration-interaction);
++
++      &:is(:hover, :focus-visible) {
++        background-color: var(--color-brand-hover);
++      }
++    }
++
++    .site-footer {
++      background: var(--color-surface-muted);
++      text-align: center;
++      padding: var(--space-7) var(--page-gutter);
++      margin-block-start: var(--space-7);
++
++      & .site-footer__links {
++        margin-block-end: var(--space-6);
++
++        & :where(a) {
++          display: inline-block;
++          margin-inline: var(--space-2);
++          color: var(--color-text);
++          text-decoration: none;
++          font-size: var(--font-size-small);
++
++          &:is(:hover, :focus-visible) {
++            text-decoration: underline;
++          }
++        }
++      }
++    }
++  }
++}
++
++@layer accessibility {
++  @scope (.daily-grind) {
++    :where(a, button):focus-visible {
++      outline: var(--focus-width) solid currentColor;
++      outline-offset: var(--focus-offset);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      :where(a, button) {
++        transition: none;
++      }
++    }
++  }
++}

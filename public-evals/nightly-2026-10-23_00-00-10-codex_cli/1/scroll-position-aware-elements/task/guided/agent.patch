@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,81 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      position: relative;
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      container-type: scroll-state;
++      container-name: page-scroll;
++      padding-bottom: 1.25rem;
++    }
++
++    .scroll-sentinel {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++    }
++
++    .back-to-top {
++      position: sticky;
++      bottom: 1.25rem;
++      display: block;
++      margin: 1.25rem 1.25rem 0 auto;
++      min-height: 44px;
++      padding: 0.75rem 1rem;
++      border: 0;
++      border-radius: 999px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++      z-index: 1001;
++      box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
++      /* Visibility also removes the hidden button from keyboard navigation. */
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 1rem;
++      transition: visibility 0.25s, opacity 0.25s ease, translate 0.25s ease;
++    }
++
++    .back-to-top:hover {
++      background: #3e2723;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @container page-scroll scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    @supports not (container-type: scroll-state) {
++      .scroller.scrolled .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .back-to-top {
++        transition: none;
++        translate: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,10 +228,12 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
+ 
+-  <nav>
++  <nav id="page-top" tabindex="-1" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -206,7 +281,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button class="back-to-top" type="button" aria-label="Back to top">
++    <span aria-hidden="true">↑</span> Back to top
++  </button>
++  </div>
++
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTop = scroller.querySelector('.back-to-top');
++
++    // Observe only the top boundary in browsers without scroll-state queries.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const observer = new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting || entry.intersectionRatio < 1);
++      }, { root: scroller, threshold: [0, 1] });
++
++      observer.observe(scroller.querySelector('.scroll-sentinel'));
++    }
++
++    backToTop.addEventListener('click', () => {
++      document.getElementById('page-top').focus({ preventScroll: true });
++      scroller.scrollTo({
++        top: 0,
++        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

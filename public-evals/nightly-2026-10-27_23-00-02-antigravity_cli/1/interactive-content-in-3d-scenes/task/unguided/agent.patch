@@ -1,0 +1,806 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,163 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* 3D Interactive Coffee Box Section */
++    .interactive-3d-section {
++      background: linear-gradient(135deg, #2d1b14 0%, #4e342e 100%);
++      color: var(--light);
++      padding: 50px 20px;
++      margin: 40px 0;
++      border-radius: 12px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
++    }
++
++    .interactive-3d-header {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 30px;
++    }
++
++    .interactive-3d-header h2 {
++      font-size: 2.2rem;
++      margin-bottom: 10px;
++      color: var(--accent);
++    }
++
++    .interactive-3d-header p {
++      color: var(--secondary);
++      font-size: 1rem;
++    }
++
++    .canvas-stage {
++      position: relative;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      margin: 0 auto;
++      width: 600px;
++      max-width: 100%;
++    }
++
++    #coffee-box-canvas {
++      width: 600px;
++      height: 500px;
++      max-width: 100%;
++      border-radius: 10px;
++      background: radial-gradient(circle at center, #3e2723 0%, #1b0f0a 100%);
++      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
++      display: block;
++      position: relative;
++      overflow: hidden;
++    }
++
++    /* Interactive HTML Form inside <canvas layoutsubtree> */
++    #coffee-box-form {
++      width: 300px;
++      height: 340px;
++      padding: 18px;
++      background: #fff8f0;
++      color: #3e2723;
++      border: 3px solid #ffab40;
++      border-radius: 10px;
++      box-sizing: border-box;
++      transform-origin: 0 0;
++      pointer-events: auto;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
++      user-select: auto;
++    }
++
++    #coffee-box-form h3 {
++      font-size: 1.15rem;
++      color: #4e342e;
++      border-bottom: 2px solid #d7ccc8;
++      padding-bottom: 6px;
++      margin-bottom: 8px;
++      text-align: center;
++      letter-spacing: 0.5px;
++    }
++
++    #coffee-box-form .form-group {
++      margin-bottom: 8px;
++      text-align: left;
++    }
++
++    #coffee-box-form label {
++      display: block;
++      font-size: 0.78rem;
++      font-weight: 600;
++      color: #5d4037;
++      margin-bottom: 3px;
++    }
++
++    #coffee-box-form input,
++    #coffee-box-form select {
++      width: 100%;
++      padding: 6px 8px;
++      font-size: 0.85rem;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      background: #ffffff;
++      color: #3e2723;
++      pointer-events: auto;
++    }
++
++    #coffee-box-form input:focus,
++    #coffee-box-form select:focus {
++      outline: 2px solid #ffab40;
++      border-color: #ffab40;
++    }
++
++    #coffee-box-form .form-actions {
++      display: flex;
++      gap: 8px;
++      margin-top: 6px;
++    }
++
++    #coffee-box-form button {
++      flex: 1;
++      padding: 8px 10px;
++      border: none;
++      border-radius: 4px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      pointer-events: auto;
++      transition: background 0.2s, transform 0.1s;
++    }
++
++    #coffee-box-form button[type="submit"] {
++      background: #4e342e;
++      color: #ffffff;
++    }
++
++    #coffee-box-form button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    #coffee-box-form button.secondary-btn {
++      background: #ffab40;
++      color: #3e2723;
++    }
++
++    #coffee-box-form button.secondary-btn:hover {
++      background: #ff9100;
++    }
++
++    #coffee-box-form .form-status {
++      font-size: 0.75rem;
++      text-align: center;
++      color: #2e7d32;
++      font-weight: 600;
++      min-height: 1.1em;
++      margin-top: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +329,45 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="interactive-3d-section" aria-label="Interactive 3D Coffee Box Customizer">
++      <div class="interactive-3d-header">
++        <h2>Customize Your 3D Coffee Box</h2>
++        <p>Interact directly with the live HTML order form projected onto our spinning 3D artisanal coffee box.</p>
++      </div>
++      <div class="canvas-stage">
++        <canvas id="coffee-box-canvas" width="600" height="500" layoutsubtree>
++          <form id="coffee-box-form" autocomplete="off">
++            <h3>THE DAILY GRIND BOX</h3>
++            <div class="form-group">
++              <label for="roast-recipient">Custom Label Name</label>
++              <input type="text" id="roast-recipient" name="recipient" value="Morning Explorer" placeholder="Enter name on box" required />
++            </div>
++            <div class="form-group">
++              <label for="roast-blend">Signature Roast Profile</label>
++              <select id="roast-blend" name="blend">
++                <option value="Ethiopian Yirgacheffe">Ethiopian Yirgacheffe (Light)</option>
++                <option value="Sumatra Mandheling" selected>Sumatra Mandheling (Dark)</option>
++                <option value="Colombia Supremo">Colombia Supremo (Medium)</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="box-bags">Boxes (12oz Whole Bean)</label>
++              <input type="number" id="box-bags" name="quantity" min="1" max="12" value="2" required />
++            </div>
++            <div class="form-actions">
++              <button type="submit" id="order-box-btn">Order Box</button>
++              <button type="button" id="toggle-spin-btn" class="secondary-btn">Pause Spin</button>
++            </div>
++            <div id="coffee-form-status" class="form-status" role="status" aria-live="polite">
++              Ready to roast &amp; ship!
++            </div>
++          </form>
++        </canvas>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +398,592 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const canvas = document.getElementById('coffee-box-canvas');
++      const targetHTMLElement = document.getElementById('coffee-box-form');
++      const recipientInput = document.getElementById('roast-recipient');
++      const blendSelect = document.getElementById('roast-blend');
++      const bagsInput = document.getElementById('box-bags');
++      const toggleSpinBtn = document.getElementById('toggle-spin-btn');
++      const statusEl = document.getElementById('coffee-form-status');
++
++      if (!canvas || !targetHTMLElement) return;
++
++      let isSpinning = true;
++      let rotationY = -0.35;
++      let rotationX = 0.18;
++      let lastTime = performance.now();
++
++      // Interactive form handlers
++      targetHTMLElement.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const name = recipientInput.value.trim() || 'Coffee Lover';
++        const blend = blendSelect.value;
++        const qty = bagsInput.value;
++        statusEl.textContent = 'Ordered ' + qty + 'x ' + blend + ' for ' + name + '!';
++        if (typeof canvas.requestPaint === 'function') {
++          canvas.requestPaint();
++        }
++      });
++
++      toggleSpinBtn.addEventListener('click', function () {
++        isSpinning = !isSpinning;
++        toggleSpinBtn.textContent = isSpinning ? 'Pause Spin' : 'Resume Spin';
++        statusEl.textContent = isSpinning ? 'Spinning 3D coffee box' : 'Rotation paused for easy editing';
++        if (typeof canvas.requestPaint === 'function') {
++          canvas.requestPaint();
++        }
++      });
++
++      [recipientInput, blendSelect, bagsInput].forEach(function (inputEl) {
++        inputEl.addEventListener('input', function () {
++          statusEl.textContent = 'Customizing box for ' + (recipientInput.value || 'you') + '...';
++          if (typeof canvas.requestPaint === 'function') {
++            canvas.requestPaint();
++          }
++        });
++      });
++
++      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
++      if (!gl) return;
++
++      // Vertex shader for the 3D coffee box
++      const vsSource = `
++        attribute vec4 aVertexPosition;
++        attribute vec3 aVertexNormal;
++        attribute vec2 aTextureCoord;
++
++        uniform mat4 uModelViewMatrix;
++        uniform mat4 uProjectionMatrix;
++        uniform mat4 uNormalMatrix;
++
++        varying highp vec2 vTextureCoord;
++        varying highp vec3 vLighting;
++
++        void main(void) {
++          gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
++          vTextureCoord = aTextureCoord;
++
++          highp vec3 ambientLight = vec3(0.45, 0.42, 0.40);
++          highp vec3 directionalLightColor = vec3(0.75, 0.70, 0.62);
++          highp vec3 directionalVector = normalize(vec3(0.5, 0.7, 0.85));
++
++          highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
++          highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
++          vLighting = ambientLight + (directionalLightColor * directional);
++        }
++      `;
++
++      // Fragment shader
++      const fsSource = `
++        varying highp vec2 vTextureCoord;
++        varying highp vec3 vLighting;
++
++        uniform sampler2D uSampler;
++
++        void main(void) {
++          highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
++          gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
++        }
++      `;
++
++      function compileShader(type, source) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        return shader;
++      }
++
++      const vertexShader = compileShader(gl.VERTEX_SHADER, vsSource);
++      const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fsSource);
++
++      const shaderProgram = gl.createProgram();
++      gl.attachShader(shaderProgram, vertexShader);
++      gl.attachShader(shaderProgram, fragmentShader);
++      gl.linkProgram(shaderProgram);
++
++      const programInfo = {
++        program: shaderProgram,
++        attribLocations: {
++          vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
++          vertexNormal: gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
++          textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
++        },
++        uniformLocations: {
++          projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
++          modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
++          normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
++          uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
++        },
++      };
++
++      // Unit cube geometry [-0.5, 0.5] so front face at z = 0.5 maps 1:1 with unit space
++      const positions = new Float32Array([
++        // Front face (Interactive HTML Form face)
++        -0.5, -0.5,  0.5,
++         0.5, -0.5,  0.5,
++         0.5,  0.5,  0.5,
++        -0.5,  0.5,  0.5,
++        // Back face
++        -0.5, -0.5, -0.5,
++        -0.5,  0.5, -0.5,
++         0.5,  0.5, -0.5,
++         0.5, -0.5, -0.5,
++        // Top face
++        -0.5,  0.5, -0.5,
++        -0.5,  0.5,  0.5,
++         0.5,  0.5,  0.5,
++         0.5,  0.5, -0.5,
++        // Bottom face
++        -0.5, -0.5, -0.5,
++         0.5, -0.5, -0.5,
++         0.5, -0.5,  0.5,
++        -0.5, -0.5,  0.5,
++        // Right face
++         0.5, -0.5, -0.5,
++         0.5,  0.5, -0.5,
++         0.5,  0.5,  0.5,
++         0.5, -0.5,  0.5,
++        // Left face
++        -0.5, -0.5, -0.5,
++        -0.5, -0.5,  0.5,
++        -0.5,  0.5,  0.5,
++        -0.5,  0.5, -0.5,
++      ]);
++
++      const normals = new Float32Array([
++        // Front
++         0.0,  0.0,  1.0,
++         0.0,  0.0,  1.0,
++         0.0,  0.0,  1.0,
++         0.0,  0.0,  1.0,
++        // Back
++         0.0,  0.0, -1.0,
++         0.0,  0.0, -1.0,
++         0.0,  0.0, -1.0,
++         0.0,  0.0, -1.0,
++        // Top
++         0.0,  1.0,  0.0,
++         0.0,  1.0,  0.0,
++         0.0,  1.0,  0.0,
++         0.0,  1.0,  0.0,
++        // Bottom
++         0.0, -1.0,  0.0,
++         0.0, -1.0,  0.0,
++         0.0, -1.0,  0.0,
++         0.0, -1.0,  0.0,
++        // Right
++         1.0,  0.0,  0.0,
++         1.0,  0.0,  0.0,
++         1.0,  0.0,  0.0,
++         1.0,  0.0,  0.0,
++        // Left
++        -1.0,  0.0,  0.0,
++        -1.0,  0.0,  0.0,
++        -1.0,  0.0,  0.0,
++        -1.0,  0.0,  0.0,
++      ]);
++
++      const textureCoordinates = new Float32Array([
++        // Front (top-left of HTML element at UV 0,0 -> top-left of front face)
++        0.0, 1.0,
++        1.0, 1.0,
++        1.0, 0.0,
++        0.0, 0.0,
++        // Back
++        1.0, 1.0,
++        1.0, 0.0,
++        0.0, 0.0,
++        0.0, 1.0,
++        // Top
++        0.0, 0.0,
++        0.0, 1.0,
++        1.0, 1.0,
++        1.0, 0.0,
++        // Bottom
++        1.0, 1.0,
++        0.0, 1.0,
++        0.0, 0.0,
++        1.0, 0.0,
++        // Right
++        1.0, 1.0,
++        1.0, 0.0,
++        0.0, 0.0,
++        0.0, 1.0,
++        // Left
++        0.0, 1.0,
++        1.0, 1.0,
++        1.0, 0.0,
++        0.0, 0.0,
++      ]);
++
++      const indices = new Uint16Array([
++        0,  1,  2,      0,  2,  3,    // front
++        4,  5,  6,      4,  6,  7,    // back
++        8,  9,  10,     8,  10, 11,   // top
++        12, 13, 14,     12, 14, 15,   // bottom
++        16, 17, 18,     16, 18, 19,   // right
++        20, 21, 22,     20, 22, 23,   // left
++      ]);
++
++      const positionBuffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
++      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
++
++      const normalBuffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
++      gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
++
++      const textureCoordBuffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
++      gl.bufferData(gl.ARRAY_BUFFER, textureCoordinates, gl.STATIC_DRAW);
++
++      const indexBuffer = gl.createBuffer();
++      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
++
++      function configureTextureParameters() {
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      }
++
++      // Create Coffee Box Packaging Texture for the non-HTML sides of the 3D box
++      const boxSideTexture = gl.createTexture();
++      const sideCanvas = document.createElement('canvas');
++      sideCanvas.width = 512;
++      sideCanvas.height = 512;
++      const sideCtx = sideCanvas.getContext('2d');
++
++      function drawCoffeePackagingSide(img) {
++        sideCtx.fillStyle = '#3e2723';
++        sideCtx.fillRect(0, 0, 512, 512);
++
++        if (img) {
++          sideCtx.save();
++          sideCtx.globalAlpha = 0.35;
++          sideCtx.drawImage(img, 0, 0, 512, 512);
++          sideCtx.restore();
++        }
++
++        sideCtx.strokeStyle = '#ffab40';
++        sideCtx.lineWidth = 14;
++        sideCtx.strokeRect(20, 20, 472, 472);
++
++        sideCtx.fillStyle = '#ffab40';
++        sideCtx.font = 'bold 38px sans-serif';
++        sideCtx.textAlign = 'center';
++        sideCtx.fillText('THE DAILY GRIND', 256, 130);
++
++        sideCtx.fillStyle = '#d7ccc8';
++        sideCtx.font = '24px sans-serif';
++        sideCtx.fillText('ARTISANAL WHOLE BEAN', 256, 180);
++        sideCtx.fillText('100% ARABICA COFFEE', 256, 220);
++
++        // Coffee bean emblem
++        sideCtx.fillStyle = '#ffab40';
++        sideCtx.beginPath();
++        sideCtx.ellipse(256, 320, 55, 38, -0.3, 0, Math.PI * 2);
++        sideCtx.fill();
++        sideCtx.strokeStyle = '#3e2723';
++        sideCtx.lineWidth = 5;
++        sideCtx.beginPath();
++        sideCtx.moveTo(210, 335);
++        sideCtx.quadraticCurveTo(256, 300, 302, 305);
++        sideCtx.stroke();
++
++        sideCtx.fillStyle = '#fafafa';
++        sideCtx.font = '18px sans-serif';
++        sideCtx.fillText('ROASTED FRESH DAILY • NET WT 12 OZ (340g)', 256, 440);
++
++        gl.bindTexture(gl.TEXTURE_2D, boxSideTexture);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sideCanvas);
++        configureTextureParameters();
++      }
++
++      drawCoffeePackagingSide(null);
++      const beanStockImg = new Image();
++      beanStockImg.crossOrigin = 'anonymous';
++      beanStockImg.onload = function () {
++        drawCoffeePackagingSide(beanStockImg);
++      };
++      beanStockImg.src = 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80';
++
++      // Create WebGL Texture for the live HTML Form inside <canvas layoutsubtree>
++      const htmlFormTexture = gl.createTexture();
++      gl.bindTexture(gl.TEXTURE_2D, htmlFormTexture);
++      configureTextureParameters();
++
++      // Fallback 2D canvas if browser does not natively implement texElementImage2D
++      const fallbackFormCanvas = document.createElement('canvas');
++      fallbackFormCanvas.width = 300;
++      fallbackFormCanvas.height = 340;
++      const fallbackCtx = fallbackFormCanvas.getContext('2d');
++
++      function drawFallbackFormTexture() {
++        fallbackCtx.fillStyle = '#fff8f0';
++        fallbackCtx.fillRect(0, 0, 300, 340);
++        fallbackCtx.strokeStyle = '#ffab40';
++        fallbackCtx.lineWidth = 6;
++        fallbackCtx.strokeRect(3, 3, 294, 334);
++
++        fallbackCtx.fillStyle = '#4e342e';
++        fallbackCtx.font = 'bold 18px sans-serif';
++        fallbackCtx.textAlign = 'center';
++        fallbackCtx.fillText('THE DAILY GRIND BOX', 150, 34);
++
++        fallbackCtx.textAlign = 'left';
++        fallbackCtx.fillStyle = '#5d4037';
++        fallbackCtx.font = 'bold 12px sans-serif';
++        fallbackCtx.fillText('Custom Label Name', 18, 68);
++        fallbackCtx.fillStyle = '#ffffff';
++        fallbackCtx.fillRect(18, 74, 264, 28);
++        fallbackCtx.strokeStyle = '#bcaaa4';
++        fallbackCtx.lineWidth = 1;
++        fallbackCtx.strokeRect(18, 74, 264, 28);
++        fallbackCtx.fillStyle = '#3e2723';
++        fallbackCtx.font = '13px sans-serif';
++        fallbackCtx.fillText(recipientInput.value || '', 26, 93);
++
++        fallbackCtx.fillStyle = '#5d4037';
++        fallbackCtx.font = 'bold 12px sans-serif';
++        fallbackCtx.fillText('Signature Roast Profile', 18, 124);
++        fallbackCtx.fillStyle = '#ffffff';
++        fallbackCtx.fillRect(18, 130, 264, 28);
++        fallbackCtx.strokeRect(18, 130, 264, 28);
++        fallbackCtx.fillStyle = '#3e2723';
++        fallbackCtx.font = '13px sans-serif';
++        fallbackCtx.fillText(blendSelect.value || '', 26, 149);
++
++        fallbackCtx.fillStyle = '#5d4037';
++        fallbackCtx.font = 'bold 12px sans-serif';
++        fallbackCtx.fillText('Boxes (12oz Whole Bean)', 18, 180);
++        fallbackCtx.fillStyle = '#ffffff';
++        fallbackCtx.fillRect(18, 186, 264, 28);
++        fallbackCtx.strokeRect(18, 186, 264, 28);
++        fallbackCtx.fillStyle = '#3e2723';
++        fallbackCtx.font = '13px sans-serif';
++        fallbackCtx.fillText(String(bagsInput.value || '1'), 26, 205);
++
++        fallbackCtx.fillStyle = '#4e342e';
++        fallbackCtx.fillRect(18, 232, 128, 32);
++        fallbackCtx.fillStyle = '#ffffff';
++        fallbackCtx.font = 'bold 13px sans-serif';
++        fallbackCtx.textAlign = 'center';
++        fallbackCtx.fillText('Order Box', 82, 253);
++
++        fallbackCtx.fillStyle = '#ffab40';
++        fallbackCtx.fillRect(154, 232, 128, 32);
++        fallbackCtx.fillStyle = '#3e2723';
++        fallbackCtx.fillText(toggleSpinBtn.textContent || 'Pause Spin', 218, 253);
++
++        fallbackCtx.fillStyle = '#2e7d32';
++        fallbackCtx.font = 'bold 12px sans-serif';
++        fallbackCtx.fillText(statusEl.textContent.trim(), 150, 295);
++      }
++
++      function uploadHTMLElementToTexture() {
++        gl.bindTexture(gl.TEXTURE_2D, htmlFormTexture);
++        if (typeof gl.texElementImage2D === 'function') {
++          gl.texElementImage2D(
++            gl.TEXTURE_2D,
++            0,
++            gl.RGBA,
++            gl.RGBA,
++            gl.UNSIGNED_BYTE,
++            targetHTMLElement
++          );
++        } else if (typeof gl.texElementSubImage2D === 'function') {
++          const w = Math.max(1, targetHTMLElement.offsetWidth || 300);
++          const h = Math.max(1, targetHTMLElement.offsetHeight || 340);
++          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++          gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, targetHTMLElement);
++        } else {
++          drawFallbackFormTexture();
++          gl.texImage2D(
++            gl.TEXTURE_2D,
++            0,
++            gl.RGBA,
++            gl.RGBA,
++            gl.UNSIGNED_BYTE,
++            fallbackFormCanvas
++          );
++        }
++        configureTextureParameters();
++      }
++
++      // Listen for HTML-in-Canvas paint events when child DOM changes
++      canvas.onpaint = function () {
++        uploadHTMLElementToTexture();
++      };
++
++      // Initial texture upload
++      uploadHTMLElementToTexture();
++
++      // 4x4 Column-Major Matrix Utilities for 3D Projection & Model-View
++      function createPerspectiveMatrix(fovRadians, aspect, near, far) {
++        const f = 1.0 / Math.tan(fovRadians / 2);
++        const nf = 1 / (near - far);
++        return new Float32Array([
++          f / aspect, 0, 0, 0,
++          0, f, 0, 0,
++          0, 0, (far + near) * nf, -1,
++          0, 0, (2 * far * near) * nf, 0
++        ]);
++      }
++
++      function multiplyMat4(a, b) {
++        const out = new Float32Array(16);
++        for (let col = 0; col < 4; col++) {
++          for (let row = 0; row < 4; row++) {
++            out[col * 4 + row] =
++              a[0 * 4 + row] * b[col * 4 + 0] +
++              a[1 * 4 + row] * b[col * 4 + 1] +
++              a[2 * 4 + row] * b[col * 4 + 2] +
++              a[3 * 4 + row] * b[col * 4 + 3];
++          }
++        }
++        return out;
++      }
++
++      function createTranslationMatrix(tx, ty, tz) {
++        return new Float32Array([
++          1, 0, 0, 0,
++          0, 1, 0, 0,
++          0, 0, 1, 0,
++          tx, ty, tz, 1
++        ]);
++      }
++
++      function createRotationXMatrix(rad) {
++        const c = Math.cos(rad);
++        const s = Math.sin(rad);
++        return new Float32Array([
++          1, 0, 0, 0,
++          0, c, s, 0,
++          0, -s, c, 0,
++          0, 0, 0, 1
++        ]);
++      }
++
++      function createRotationYMatrix(rad) {
++        const c = Math.cos(rad);
++        const s = Math.sin(rad);
++        return new Float32Array([
++          c, 0, -s, 0,
++          0, 1, 0, 0,
++          s, 0, c, 0,
++          0, 0, 0, 1
++        ]);
++      }
++
++      function syncHTMLFormTransform(htmlElementMVP) {
++        const mvpDOM = new DOMMatrix(Array.from(htmlElementMVP));
++
++        const width = targetHTMLElement.offsetWidth || 300;
++        const height = targetHTMLElement.offsetHeight || 340;
++        const cssToUnitSpace = new DOMMatrix()
++          .scale(1 / width, -1 / height, 1)
++          .translate(-width / 2, -height / 2);
++
++        const clipToCanvasViewport = new DOMMatrix()
++          .translate(canvas.width / 2, canvas.height / 2)
++          .scale(canvas.width / 2, -canvas.height / 2, 1);
++
++        const screenSpaceTransform = clipToCanvasViewport
++          .multiply(mvpDOM)
++          .multiply(cssToUnitSpace);
++
++        if (typeof canvas.getElementTransform === 'function') {
++          const computedTransform = canvas.getElementTransform(targetHTMLElement, screenSpaceTransform);
++          if (computedTransform) {
++            targetHTMLElement.style.transform = computedTransform.toString();
++          }
++        } else {
++          targetHTMLElement.style.transform = screenSpaceTransform.toString();
++        }
++      }
++
++      function render(now) {
++        const deltaTime = (now - lastTime) * 0.001;
++        lastTime = now;
++
++        if (isSpinning) {
++          rotationY += deltaTime * 0.55;
++          rotationX = 0.16 * Math.sin(now * 0.0008);
++        }
++
++        if (typeof canvas.requestPaint === 'function') {
++          canvas.requestPaint();
++        } else {
++          uploadHTMLElementToTexture();
++        }
++
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0.12, 0.07, 0.05, 1.0);
++        gl.clearDepth(1.0);
++        gl.enable(gl.DEPTH_TEST);
++        gl.depthFunc(gl.LEQUAL);
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++        const fov = (40 * Math.PI) / 180;
++        const aspect = canvas.width / canvas.height;
++        const projectionMatrix = createPerspectiveMatrix(fov, aspect, 0.1, 100.0);
++
++        const viewTranslation = createTranslationMatrix(0.0, 0.0, -2.15);
++        const rotXMatrix = createRotationXMatrix(rotationX);
++        const rotYMatrix = createRotationYMatrix(rotationY);
++        const rotationMatrix = multiplyMat4(rotXMatrix, rotYMatrix);
++        const modelViewMatrix = multiplyMat4(viewTranslation, rotationMatrix);
++
++        // Compute MVP for the front face (z = +0.5) where the HTML form lives
++        const frontFaceOffset = createTranslationMatrix(0.0, 0.0, 0.5);
++        const frontFaceModelView = multiplyMat4(modelViewMatrix, frontFaceOffset);
++        const htmlElementMVP = multiplyMat4(projectionMatrix, frontFaceModelView);
++
++        // Sync the DOM element's 3D CSS transform so inputs & buttons stay clickable
++        syncHTMLFormTransform(htmlElementMVP);
++
++        gl.useProgram(programInfo.program);
++
++        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
++        gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
++        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
++
++        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
++        gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
++        gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
++
++        gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
++        gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
++        gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
++
++        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++
++        gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
++        gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
++        gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, rotationMatrix);
++
++        gl.activeTexture(gl.TEXTURE0);
++        gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
++
++        // Draw front face (6 indices starting at offset 0) with live HTML form texture
++        gl.bindTexture(gl.TEXTURE_2D, htmlFormTexture);
++        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
++
++        // Draw remaining 5 faces of the coffee box (30 indices starting at byte offset 12)
++        gl.bindTexture(gl.TEXTURE_2D, boxSideTexture);
++        gl.drawElements(gl.TRIANGLES, 30, gl.UNSIGNED_SHORT, 6 * 2);
++
++        requestAnimationFrame(render);
++      }
++
++      requestAnimationFrame(render);
++    })();
++  </script>
+ </body>
+ 
+ </html>

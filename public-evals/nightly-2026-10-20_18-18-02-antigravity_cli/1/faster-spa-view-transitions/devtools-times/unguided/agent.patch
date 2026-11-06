@@ -1,0 +1,267 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..2f7ef62 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,17 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const handleSync = (e: Event) => {
++      const customEvent = e as CustomEvent<{ readingList: string[] }>;
++      if (customEvent.detail?.readingList) {
++        setIsBookmarked(customEvent.detail.readingList.includes(slug));
++      }
++    };
++    window.addEventListener('reading-list-updated', handleSync);
++    return () => window.removeEventListener('reading-list-updated', handleSync);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -20,6 +31,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+     });
+     const data = await response.json();
+     setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: data.readingList } }));
+   };
+ 
+   return (
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..411722c 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -11,6 +11,12 @@ interface BottomNavProps {
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
++    React.useEffect(() => {
++        const handleBeforePreparation = () => setActiveCategory(null);
++        document.addEventListener('astro:before-preparation', handleBeforePreparation);
++        return () => document.removeEventListener('astro:before-preparation', handleBeforePreparation);
++    }, []);
++
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+         'Arts & Culture': ['Culture', 'Media'],
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..07d857c 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -38,14 +38,16 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   }, [onClose]);
+ 
+   const handleRemove = async (slug: string) => {
+-    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
++    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify({ slug }),
+     });
+-    fetchReadingList();
++    const data = await response.json();
++    setReadingList(data.readingList);
++    window.dispatchEvent(new CustomEvent('reading-list-updated', { detail: { readingList: data.readingList } }));
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+@@ -68,7 +70,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+           <ul className="space-y-2">
+             {readingListArticles.map(article => (
+               <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..ca70efe 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -75,7 +75,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                                     const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+                                     return (
+                                         <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
++                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+                                                 <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+                                                 <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                             </a>
+@@ -103,7 +103,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                         <ul className="space-y-2">
+                             {filteredArticles.map(article => (
+                                 <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
++                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} onClick={onClose} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+                                         <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                                         <p className="text-sm text-gray-600">{article.summary}</p>
+                                     </a>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..bd5e57f 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -38,18 +38,155 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
++        <div id="view-outlet" transition:persist>
++          <main class="bg-white relative" data-view-path={Astro.url.pathname}>
++            <slot />
++          </main>
++        </div>
+       </div>
+     </div>
+-    <Footer />
++    <div transition:persist>
++      <Footer />
++    </div>
++    <script>
++      import {
++        swapFunctions,
++        type TransitionBeforePreparationEvent,
++        type TransitionBeforeSwapEvent,
++      } from "astro:transitions/client";
++
++      interface CachedView {
++        title: string;
++        element: HTMLElement;
++      }
++
++      const viewCache = new Map<string, CachedView>();
++
++      function normalizePath(pathname: string): string {
++        return pathname.length > 1 && pathname.endsWith("/")
++          ? pathname.slice(0, -1)
++          : pathname;
++      }
++
++      function cacheCurrentView(rawPathname: string) {
++        const pathname = normalizePath(rawPathname);
++        const outlet = document.getElementById("view-outlet");
++        if (!outlet) return;
++        const activeView =
++          outlet.querySelector<HTMLElement>(
++            `[data-view-path="${CSS.escape(pathname)}"]`,
++          ) ||
++          outlet.querySelector<HTMLElement>(
++            `[data-view-path="${CSS.escape(rawPathname)}"]`,
++          );
++        if (activeView) {
++          activeView.setAttribute("data-view-path", pathname);
++          viewCache.set(pathname, {
++            title: document.title,
++            element: activeView,
++          });
++        }
++      }
++
++      cacheCurrentView(window.location.pathname);
++
++      document.addEventListener("astro:before-preparation", (event) => {
++        const prepEvent = event as TransitionBeforePreparationEvent;
++        const fromPath = normalizePath(prepEvent.from.pathname);
++        const toPath = normalizePath(prepEvent.to.pathname);
++
++        cacheCurrentView(fromPath);
++
++        if (!prepEvent.formData && viewCache.has(toPath)) {
++          const cached = viewCache.get(toPath)!;
++          const originalLoader = prepEvent.loader;
++          prepEvent.loader = async () => {
++            if (!document.contains(cached.element)) {
++              viewCache.delete(toPath);
++              return originalLoader();
++            }
++            const doc = document.implementation.createHTMLDocument(cached.title);
++            const meta = doc.createElement("meta");
++            meta.setAttribute("name", "astro-view-transitions-enabled");
++            meta.setAttribute("content", "true");
++            doc.head.appendChild(meta);
++            prepEvent.newDocument = doc;
++          };
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event) => {
++        const swapEvent = event as TransitionBeforeSwapEvent;
++        const toPath = normalizePath(swapEvent.to.pathname);
++        const outlet = document.getElementById("view-outlet");
++        if (!outlet) return;
++
++        const cached = viewCache.get(toPath);
++
++        if (cached && document.contains(cached.element)) {
++          swapEvent.swap = () => {
++            document.title = cached.title;
++            for (const child of Array.from(outlet.children)) {
++              if (child instanceof HTMLElement) {
++                const isTarget = child === cached.element;
++                child.hidden = !isTarget;
++                child.style.display = isTarget ? "" : "none";
++              }
++            }
++          };
++        } else {
++          const incomingMain = swapEvent.newDocument.querySelector<HTMLElement>(
++            "#view-outlet > main, main[data-view-path]",
++          );
++          if (!incomingMain) return;
++
++          incomingMain.setAttribute("data-view-path", toPath);
++
++          swapEvent.swap = () => {
++            swapFunctions.deselectScripts(swapEvent.newDocument);
++            swapFunctions.swapRootAttributes(swapEvent.newDocument);
++            swapFunctions.swapHeadElements(swapEvent.newDocument);
++            const restoreFocus = swapFunctions.saveFocus();
++
++            for (const child of Array.from(outlet.children)) {
++              if (child instanceof HTMLElement) {
++                child.hidden = true;
++                child.style.display = "none";
++              }
++            }
++
++            const existing = outlet.querySelector<HTMLElement>(
++              `[data-view-path="${CSS.escape(toPath)}"]`,
++            );
++            if (existing) {
++              existing.replaceWith(incomingMain);
++            } else {
++              outlet.appendChild(incomingMain);
++            }
++
++            incomingMain.hidden = false;
++            incomingMain.style.display = "";
++
++            viewCache.set(toPath, {
++              title: swapEvent.newDocument.title || document.title,
++              element: incomingMain,
++            });
++
++            restoreFocus();
++          };
++        }
++      });
++
++      document.addEventListener("astro:page-load", () => {
++        cacheCurrentView(window.location.pathname);
++      });
++    </script>
+   </body>
+ </html>

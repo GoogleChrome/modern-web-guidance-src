@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+index 66c9173..760e9eb 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,30 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Wait for the page content to be parsed before capturing the incoming view. -->
++  <link rel="expect" href="#page-ready" blocking="render">
+   <style>
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation-duration: 240ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -207,6 +230,11 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Keep this after visible content and any synchronous critical initialization.
++       Critical styles stay in the head; future deferred/async critical scripts
++       must explicitly use blocking="render" to participate in readiness. -->
++  <span id="page-ready" hidden></span>
++
+ </body>
+ 
+ </html>

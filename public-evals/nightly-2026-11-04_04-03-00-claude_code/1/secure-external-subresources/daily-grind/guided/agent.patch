@@ -1,0 +1,287 @@
+diff --git a/index.html b/index.html
+index 66c9173..8d03333 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,96 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Baseline: strip path/query from any cross-origin request that doesn't set its own policy -->
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++
++  <!-- Warm up anonymous (credential-less) CORS connections to the third-party origins -->
++  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous">
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin="anonymous">
++
++  <!-- Third-party stylesheet: version-pinned, SRI-verified, no cookies, no Referer -->
++  <link rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css"
++    integrity="sha384-uo/9/s/Ns8DTg4kjkjex8GezUcgMlKD99gTqxvMkIsaG4lSUbeJ0dVELljipv94t"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++
+   <style>
++    /*
++     * Third-party fonts and images are loaded through CSS url() request modifiers.
++     * Each declaration is cascaded: browsers that don't understand a modifier drop
++     * that declaration at parse time and keep the previous one, while supporting
++     * browsers use the last (strictest) one. Never combine verified and unverified
++     * URLs in a single comma-separated src list -- that would bypass SRI.
++     * Hashes are sha384 digests of the exact version-pinned bytes; regenerate with:
++     *   curl -s "$URL" | openssl dgst -sha384 -binary | openssl base64 -A
++     */
++    @font-face {
++      font-family: "Inter";
++      font-style: normal;
++      font-weight: 400;
++      font-display: swap;
++      /* 1. Fallback for browsers without url() request modifiers */
++      src: url("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-400-normal.woff2") format("woff2");
++      /* 2. Browsers supporting cross-origin() + referrer-policy() */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-400-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        ) format("woff2");
++      /* 3. Full protection: CORS + no referrer + Subresource Integrity */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-400-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-gijdfLnskrcqcIndQ6U0wywZhUSIKgq2K0bDl2N/4Plpfkgl7oO1RicuX/dbCo8B")
++        ) format("woff2");
++    }
++
++    @font-face {
++      font-family: "Inter";
++      font-style: normal;
++      font-weight: 600;
++      font-display: swap;
++      /* 1. Fallback for browsers without url() request modifiers */
++      src: url("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-600-normal.woff2") format("woff2");
++      /* 2. Browsers supporting cross-origin() + referrer-policy() */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-600-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        ) format("woff2");
++      /* 3. Full protection: CORS + no referrer + Subresource Integrity */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.1/files/inter-latin-600-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-8ZCsduwOMffBezJQyqVBflyQs4/rfTgoPqa1wGW/vWh3S7gF/jX0KRVmAzfsr2HW")
++        ) format("woff2");
++    }
++
++    @font-face {
++      font-family: "Playfair Display";
++      font-style: normal;
++      font-weight: 700;
++      font-display: swap;
++      /* 1. Fallback for browsers without url() request modifiers */
++      src: url("https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.1.1/files/playfair-display-latin-700-normal.woff2") format("woff2");
++      /* 2. Browsers supporting cross-origin() + referrer-policy() */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.1.1/files/playfair-display-latin-700-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        ) format("woff2");
++      /* 3. Full protection: CORS + no referrer + Subresource Integrity */
++      src: url(
++          "https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.1.1/files/playfair-display-latin-700-normal.woff2"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-2OUMztuc2Uvfq3n8w2APnig7JM4X9miM/re2XmGSZqKU6gdoOGFHDSiACwWV1wfK")
++        ) format("woff2");
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -21,7 +110,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -40,6 +129,13 @@
+       z-index: 1000;
+     }
+ 
++    .logo,
++    h1,
++    h2,
++    h3 {
++      font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
++    }
++
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+@@ -75,8 +171,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -88,6 +183,24 @@
+       padding: 0 20px;
+     }
+ 
++    .hero {
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1600&q=80");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1600&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1600&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-tgwFdfk1lX9NxtsFq0WNIBV2Mlc8yAC+w1oe6GkyAMcCPDG+Eo67Qc4W6tR3siW2")
++        );
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -120,6 +233,74 @@
+       color: var(--primary);
+     }
+ 
++    .card-image {
++      aspect-ratio: 3 / 2;
++      margin: -20px -20px 16px;
++      border-radius: 8px 8px 0 0;
++      background-color: var(--secondary);
++      background-size: cover;
++      background-position: center;
++    }
++
++    .card h3 {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++    }
++
++    nav a svg,
++    .card h3 svg {
++      width: 1em;
++      height: 1em;
++      vertical-align: -0.125em;
++    }
++
++    .card-image--latte {
++      background-image: url("https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++          "https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      background-image: url(
++          "https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-dtnD0xter30KbjXWTaSibu9xBLshJa+/TONLhfwUNjEj71lGWoO0aIqXZvRiC7iU")
++        );
++    }
++
++    .card-image--espresso {
++      background-image: url("https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++          "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      background-image: url(
++          "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-OsbsC55W2YslJ2rBgPzOJIPxbLMWNQsH+xA+kfrn4VmiOz1ywFAcOUEot3hXzHgg")
++        );
++    }
++
++    .card-image--cold-brew {
++      background-image: url("https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++          "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      background-image: url(
++          "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-x2K/bA51pQugUJAdiAyKc3oWHrr4/9gsaNZcD9LJa6aOD7gBgsdD6mqy1z7Ziqsu")
++        );
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -158,7 +339,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><i data-lucide="coffee" aria-hidden="true"></i> THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -179,17 +360,20 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <div class="card-image card-image--latte" role="img" aria-label="Barista pouring steamed milk into a latte"></div>
++          <h3><i data-lucide="leaf" aria-hidden="true"></i>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <div class="card-image card-image--espresso" role="img" aria-label="Cup of espresso with golden crema on a slate counter"></div>
++          <h3><i data-lucide="flame" aria-hidden="true"></i>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <div class="card-image card-image--cold-brew" role="img" aria-label="Glass of iced cold brew with cream swirling through it"></div>
++          <h3><i data-lucide="snowflake" aria-hidden="true"></i>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -207,6 +391,19 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Third-party script: version-pinned, SRI-verified, no cookies, no Referer -->
++  <script
++    src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"
++    integrity="sha384-hJnF5AwidE18GSWTAGHv3ByzzvfNZ1Tcx5y1UUV3WkauuMCEzBJBMSwSt/PUPXnM"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"></script>
++  <script>
++    // If the integrity check fails the library never runs; icons are decorative, so just skip them.
++    if (window.lucide) {
++      window.lucide.createIcons();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

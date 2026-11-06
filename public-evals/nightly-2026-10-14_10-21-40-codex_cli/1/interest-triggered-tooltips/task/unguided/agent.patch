@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .details-tooltip {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .details-tooltip .btn {
++      margin-top: 0;
++    }
++
++    .tooltip {
++      position: absolute;
++      bottom: calc(100% + 8px);
++      left: 50%;
++      transform: translateX(-50%);
++      z-index: 10;
++      width: 240px;
++      max-width: calc(100vw - 40px);
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-size: 0.85rem;
++      line-height: 1.5;
++      text-align: left;
++      visibility: hidden;
++      opacity: 0;
++    }
++
++    /* Bridge the gap so the tooltip stays open when hovered. */
++    .tooltip::after {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 0;
++      width: 100%;
++      height: 8px;
++    }
++
++    .tooltip::before {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border: 6px solid transparent;
++      border-bottom: 0;
++      border-top-color: var(--primary);
++    }
++
++    .tooltip strong,
++    .tooltip span {
++      display: block;
++    }
++
++    .details-tooltip:not(.dismissed):hover .tooltip,
++    .details-tooltip:not(.dismissed):focus-within .tooltip {
++      visibility: visible;
++      opacity: 1;
++    }
++
++    .details-tooltip .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +247,40 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="details-tooltip">
++            <a href="/menu/seasonal" class="btn" aria-describedby="maple-details">View Details</a>
++            <span class="tooltip" id="maple-details" role="tooltip">
++              <strong>Maple Oat Latte</strong>
++              <span>12 fl oz · Approx. 180 calories</span>
++              <span>Made with oat milk and maple syrup. Calories vary by customization.</span>
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="details-tooltip">
++            <a href="/menu/espresso" class="btn" aria-describedby="espresso-details">View Details</a>
++            <span class="tooltip" id="espresso-details" role="tooltip">
++              <strong>Dark Roast Espresso</strong>
++              <span>Double shot · Approx. 10 calories</span>
++              <span>Served black with no added sugar. Milk and sweeteners add calories.</span>
++            </span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="details-tooltip">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="cold-brew-details">View Details</a>
++            <span class="tooltip" id="cold-brew-details" role="tooltip">
++              <strong>Cold Brew</strong>
++              <span>12 fl oz · Approx. 5 calories</span>
++              <span>Steeped for 18 hours and served black. Milk and sweeteners add calories.</span>
++            </span>
++          </span>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +294,21 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.details-tooltip').forEach((details) => {
++      details.addEventListener('pointerenter', () => details.classList.remove('dismissed'));
++      details.addEventListener('focusin', () => details.classList.remove('dismissed'));
++    });
++
++    document.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape') {
++        document.querySelectorAll('.details-tooltip').forEach((details) => {
++          details.classList.add('dismissed');
++        });
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

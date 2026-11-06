@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,26 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px 12px;
++      background-color: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -177,11 +195,15 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" id="maple-oat-latte-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-oat-countdown" aria-live="polite">
++            <p><strong>Offer Ends In:</strong> <span id="countdown-remaining">Calculating...</span></p>
++            <p><strong>Time Elapsed:</strong> <span id="countdown-elapsed">Calculating...</span></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +228,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function updateMapleOatTimer() {
++      const remainingEl = document.getElementById('countdown-remaining');
++      const elapsedEl = document.getElementById('countdown-elapsed');
++      if (!remainingEl || !elapsedEl) return;
++
++      const userTimeZone = Temporal.Now.timeZoneId();
++      const now = Temporal.Now.zonedDateTimeISO(userTimeZone);
++
++      const promoStart = Temporal.ZonedDateTime.from({
++        year: 2026,
++        month: 2,
++        day: 1,
++        hour: 0,
++        minute: 0,
++        second: 0,
++        timeZone: userTimeZone
++      });
++
++      const promoEnd = Temporal.ZonedDateTime.from({
++        year: 2026,
++        month: 3,
++        day: 1,
++        hour: 0,
++        minute: 0,
++        second: 0,
++        timeZone: userTimeZone
++      });
++
++      const durationFormatter = new Intl.DurationFormat(navigator.language || 'en-US', {
++        style: 'long'
++      });
++
++      if (Temporal.ZonedDateTime.compare(now, promoEnd) < 0) {
++        const remainingDuration = now.until(promoEnd, {
++          largestUnit: 'days',
++          smallestUnit: 'hours',
++          roundingMode: 'trunc'
++        });
++        remainingEl.textContent = `${ durationFormatter.format({
++          days: remainingDuration.days,
++          hours: remainingDuration.hours
++        }) } (${ remainingDuration.days } days, ${ remainingDuration.hours } hours left)`;
++      } else {
++        remainingEl.textContent = '0 days, 0 hours left (Offer has ended)';
++      }
++
++      if (Temporal.ZonedDateTime.compare(now, promoStart) >= 0) {
++        const elapsedDuration = now.since(promoStart, {
++          largestUnit: 'days',
++          smallestUnit: 'hours',
++          roundingMode: 'trunc'
++        });
++        elapsedEl.textContent = `${ durationFormatter.format({
++          days: elapsedDuration.days,
++          hours: elapsedDuration.hours
++        }) } (${ elapsedDuration.days } days, ${ elapsedDuration.hours } hours since start)`;
++      } else {
++        elapsedEl.textContent = '0 days, 0 hours (Promotion has not started yet)';
++      }
++    }
++
++    window.addEventListener('DOMContentLoaded', updateMapleOatTimer);
++  </script>
+ </body>
+ 
+ </html>

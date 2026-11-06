@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+index 66c9173..e7c3eed 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,107 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Section */
++    .progress-section {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++      margin-bottom: 40px;
++    }
++
++    .progress-card {
++      background: white;
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-left: 4px solid var(--accent);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .progress-header h2 {
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .progress-value {
++      font-weight: bold;
++      font-size: 0.9rem;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    .progress-track {
++      position: relative;
++      height: 14px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: var(--progress, 0%);
++      background: linear-gradient(90deg, var(--primary), #8d6e63 60%, var(--accent));
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    /* Indeterminate state: a sliding segment, since completion is unknown */
++    .progress-track.is-indeterminate .progress-fill {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 35%;
++      background: linear-gradient(90deg, transparent, var(--primary) 30%, var(--accent) 70%, transparent);
++      animation: progress-slide 1.4s ease-in-out infinite;
++    }
++
++    @keyframes progress-slide {
++      0% { transform: translateX(-100%); }
++      100% { transform: translateX(300%); }
++    }
++
++    .progress-note {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .progress-steps {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      margin-top: 8px;
++      font-size: 0.75rem;
++      color: #8d6e63;
++    }
++
++    .progress-steps li.is-done {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      .progress-track.is-indeterminate .progress-fill {
++        animation: none;
++        width: 100%;
++        opacity: 0.5;
++        background: repeating-linear-gradient(45deg, var(--primary) 0 10px, #8d6e63 10px 20px);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +276,38 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-label="Your progress">
++      <!-- Determinate: known completion (reward stamps earned) -->
++      <article class="progress-card">
++        <div class="progress-header">
++          <h2 id="rewards-progress-label">Rewards: Free Drink</h2>
++          <span class="progress-value" aria-hidden="true">7 / 10 stamps</span>
++        </div>
++        <div class="progress-track" role="progressbar" aria-labelledby="rewards-progress-label"
++          aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps earned">
++          <div class="progress-fill" style="--progress: 70%;"></div>
++        </div>
++        <p class="progress-note">Just 3 more visits until your next drink is on us. <a href="/rewards">View rewards</a></p>
++      </article>
++
++      <!-- Indeterminate: in progress, completion time unknown -->
++      <article class="progress-card">
++        <div class="progress-header">
++          <h2 id="order-progress-label">Order #2048: Preparing</h2>
++          <span class="progress-value" aria-hidden="true">In progress…</span>
++        </div>
++        <div class="progress-track is-indeterminate" role="progressbar" aria-labelledby="order-progress-label"
++          aria-valuemin="0" aria-valuemax="100" aria-valuetext="Your barista is preparing your order" aria-busy="true">
++          <div class="progress-fill"></div>
++        </div>
++        <ol class="progress-steps" aria-label="Order steps">
++          <li class="is-done">Received</li>
++          <li class="is-done" aria-current="step">Preparing</li>
++          <li>Ready for pickup</li>
++        </ol>
++      </article>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

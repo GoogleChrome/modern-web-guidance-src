@@ -1,0 +1,247 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,130 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Horizontal Product Carousel */
++    .carousel-section {
++      margin-bottom: 50px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      color: #5d4037;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .scroller {
++      display: flex;
++      gap: 28px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      padding: 40px calc(50% - 140px);
++      margin: 0 -20px;
++      list-style: none;
++      -webkit-overflow-scrolling: touch;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller::-webkit-scrollbar {
++      height: 8px;
++    }
++
++    .scroller::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-radius: 4px;
++    }
++
++    .scroller::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border-radius: 4px;
++    }
++
++    @keyframes scale-on-scroll {
++      0% {
++        transform: scale(0.8);
++        opacity: 0.75;
++      }
++      50% {
++        transform: scale(1.12);
++        opacity: 1;
++      }
++      100% {
++        transform: scale(0.8);
++        opacity: 0.75;
++      }
++    }
++
++    .scroller .card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      overflow: hidden;
++      padding: 0 0 20px 0;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
++      transform-origin: center center;
++      animation: scale-on-scroll linear both;
++      animation-timeline: view(inline);
++    }
++
++    .scroller .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++      margin-bottom: 15px;
++    }
++
++    .scroller .card-body {
++      padding: 0 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      justify-content: space-between;
++    }
++
++    .scroller .price {
++      display: block;
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .scroller .card {
++        animation: none;
++        transform: none;
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +296,112 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="carousel-section" aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading" class="carousel-header">Signature Coffee Products</h2>
++      <p class="carousel-subtitle">Scroll horizontally or use arrow keys to explore our small-batch roasts and brews.</p>
++      <div class="scroller" role="region" aria-labelledby="carousel-heading" tabindex="0">
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p>Bright floral aroma with notes of bergamot, jasmine, and sweet peach.</p>
++            </div>
++            <div>
++              <span class="price">$18.50</span>
++              <a href="/products/ethiopian-yirgacheffe" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly poured espresso shot in a ceramic cup" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Midnight Velvet Espresso</h3>
++              <p>Rich, full-bodied dark roast with dark chocolate and toasted hazelnut undertones.</p>
++            </div>
++            <div>
++              <span class="price">$16.00</span>
++              <a href="/products/midnight-velvet" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Iced caramel macchiato in a tall glass" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Colombian Supremo</h3>
++              <p>Balanced medium roast featuring caramel sweetness and a crisp citrus finish.</p>
++            </div>
++            <div>
++              <span class="price">$17.00</span>
++              <a href="/products/colombian-supremo" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Glass bottle of artisan cold brew coffee over ice" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Reserve Cold Brew</h3>
++              <p>Small-batch concentrate steeped for 20 hours for a velvety, low-acid finish.</p>
++            </div>
++            <div>
++              <span class="price">$15.00</span>
++              <a href="/products/reserve-cold-brew" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Latte art in a white ceramic mug on a wooden table" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Guatemala Antigua</h3>
++              <p>Velvety body with warm spices, cocoa nibs, and subtle brown sugar sweetness.</p>
++            </div>
++            <div>
++              <span class="price">$19.00</span>
++              <a href="/products/guatemala-antigua" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" alt="Pour-over coffee brewing into a glass carafe" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Sumatra Mandheling</h3>
++              <p>Earthy and syrupy single-origin roast with herbal complexity and low acidity.</p>
++            </div>
++            <div>
++              <span class="price">$18.00</span>
++              <a href="/products/sumatra-mandheling" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Cup of honey oat cortado with roasted coffee beans" loading="lazy">
++          <div class="card-body">
++            <div>
++              <h3>Swiss Water Decaf</h3>
++              <p>100% chemical-free decaffeinated Peruvian beans with notes of graham cracker.</p>
++            </div>
++            <div>
++              <span class="price">$16.50</span>
++              <a href="/products/swiss-water-decaf" class="btn">Add to Cart</a>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

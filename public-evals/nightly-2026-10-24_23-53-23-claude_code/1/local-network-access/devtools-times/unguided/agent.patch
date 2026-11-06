@@ -1,0 +1,18 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..6c910f7 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this page (and frames it delegates to via `allow`) to request
++  // local network / loopback resources (Chrome Local Network Access).
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network-access=*, local-network=*, loopback-network=*',
++  );
++  return response;
+ });

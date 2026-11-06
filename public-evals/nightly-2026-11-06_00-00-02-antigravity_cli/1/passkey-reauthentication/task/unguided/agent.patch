@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <div class="card">
++        <h3>Account Security</h3>
++        <p>Before making sensitive account changes, please confirm your identity with your registered passkey or security key.</p>
++        <button type="button" class="btn" id="reauth-button" data-testid="reauth-button" style="border: none; cursor: pointer;">Confirm Identity</button>
++        <p id="reauth-status" data-testid="reauth-status" style="margin-top: 10px; font-size: 0.9rem;"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +215,108 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function base64urlToUint8Array(base64url) {
++      if (base64url instanceof ArrayBuffer) return new Uint8Array(base64url);
++      if (ArrayBuffer.isView(base64url)) return new Uint8Array(base64url.buffer, base64url.byteOffset, base64url.byteLength);
++      const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
++      const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
++      const rawData = atob(base64);
++      const outputArray = new Uint8Array(rawData.length);
++      for (let i = 0; i < rawData.length; ++i) {
++        outputArray[i] = rawData.charCodeAt(i);
++      }
++      return outputArray;
++    }
++
++    function bufferToBase64url(buffer) {
++      const bytes = new Uint8Array(buffer);
++      let binary = '';
++      for (let i = 0; i < bytes.byteLength; i++) {
++        binary += String.fromCharCode(bytes[i]);
++      }
++      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    const reauthButton = document.querySelector('[data-testid="reauth-button"]');
++    const reauthStatus = document.getElementById('reauth-status');
++
++    if (reauthButton) {
++      reauthButton.addEventListener('click', async () => {
++        try {
++          if (reauthStatus) reauthStatus.textContent = 'Verifying identity...';
++
++          const optionsRes = await fetch('/api/reauth/options', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            credentials: 'same-origin',
++            body: JSON.stringify({})
++          });
++
++          if (!optionsRes.ok) {
++            throw new Error('Failed to fetch re-authentication options');
++          }
++
++          const rawOptions = await optionsRes.json();
++          const opts = rawOptions.publicKey || rawOptions;
++
++          const publicKey = {
++            ...opts,
++            challenge: base64urlToUint8Array(opts.challenge),
++            allowCredentials: Array.isArray(opts.allowCredentials)
++              ? opts.allowCredentials.map((cred) => ({
++                  ...cred,
++                  type: cred.type || 'public-key',
++                  id: base64urlToUint8Array(cred.id)
++                }))
++              : [],
++            userVerification: opts.userVerification || 'required'
++          };
++
++          const credential = await navigator.credentials.get({ publicKey });
++          if (!credential) {
++            throw new Error('No credential returned');
++          }
++
++          const assertionResponse = credential.response;
++          const payload = {
++            id: credential.id,
++            rawId: bufferToBase64url(credential.rawId),
++            type: credential.type,
++            authenticatorAttachment: credential.authenticatorAttachment || null,
++            clientExtensionResults: typeof credential.getClientExtensionResults === 'function'
++              ? credential.getClientExtensionResults()
++              : {},
++            response: {
++              authenticatorData: bufferToBase64url(assertionResponse.authenticatorData),
++              clientDataJSON: bufferToBase64url(assertionResponse.clientDataJSON),
++              signature: bufferToBase64url(assertionResponse.signature),
++              userHandle: assertionResponse.userHandle
++                ? bufferToBase64url(assertionResponse.userHandle)
++                : null
++            }
++          };
++
++          const verifyRes = await fetch('/api/reauth/verify', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            credentials: 'same-origin',
++            body: JSON.stringify(payload)
++          });
++
++          if (!verifyRes.ok) {
++            throw new Error('Identity verification failed');
++          }
++
++          if (reauthStatus) reauthStatus.textContent = 'Identity verified.';
++        } catch (err) {
++          console.error('Re-authentication error:', err);
++          if (reauthStatus) reauthStatus.textContent = err.message || 'Verification failed.';
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

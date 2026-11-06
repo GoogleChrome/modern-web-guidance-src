@@ -1,0 +1,247 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..a61a4ae 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,21 +35,238 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import { swapFunctions } from "astro:transitions/client";
++
++      interface CachedView {
++        title: string;
++        viewSlot: HTMLElement;
++        rootAttrs: Array<{ name: string; value: string }>;
++        bodyClassName: string;
++        timestamp: number;
++      }
++
++      const MAX_CACHED_VIEWS = 25;
++      const viewCache = new Map<string, CachedView>();
++
++      const getCacheKey = (url: URL) => `${url.pathname}${url.search}`;
++
++      const getMainContainer = (root: Document | Element = document): HTMLElement | null => {
++        return (
++          root.querySelector("#app-main-view") ||
++          root.querySelector("body > div > div > main") ||
++          root.querySelector("main")
++        );
++      };
++
++      const reifyMediaElements = (root: ParentNode) => {
++        for (const media of root.querySelectorAll("video, audio")) {
++          const fresh = document.createElement(media.localName);
++          for (const attr of media.attributes) {
++            fresh.setAttribute(attr.name, attr.value);
++          }
++          fresh.innerHTML = media.innerHTML;
++          if (fresh.hasAttribute("muted") && "muted" in fresh) {
++            (fresh as HTMLMediaElement).muted = true;
++          }
++          media.replaceWith(fresh);
++        }
++      };
++
++      const attachShadowRoots = (root: ParentNode) => {
++        root.querySelectorAll("template[shadowrootmode]").forEach((template) => {
++          const mode = template.getAttribute("shadowrootmode");
++          const parent = template.parentNode;
++          if ((mode === "closed" || mode === "open") && parent instanceof HTMLElement) {
++            if (parent.shadowRoot) {
++              template.remove();
++              return;
++            }
++            const shadowRoot = parent.attachShadow({ mode });
++            shadowRoot.appendChild((template as HTMLTemplateElement).content);
++            template.remove();
++            attachShadowRoots(shadowRoot);
++          }
++        });
++      };
++
++      const protectIslandsFromUnmount = (container: Node) => {
++        if (!("querySelectorAll" in container)) return;
++        const islands = (container as ParentNode).querySelectorAll("astro-island");
++        islands.forEach((island: any) => {
++          if (typeof island.unmount === "function") {
++            document.removeEventListener("astro:after-swap", island.unmount);
++          }
++        });
++      };
++
++      const ensureActiveViewSlot = (mainEl: HTMLElement, key: string): HTMLElement => {
++        let activeSlot = mainEl.querySelector<HTMLElement>(":scope > [data-cached-view-slot]:not([hidden])");
++        if (!activeSlot) {
++          activeSlot = document.createElement("div");
++          activeSlot.dataset.cachedViewSlot = key;
++          while (mainEl.firstChild) {
++            activeSlot.appendChild(mainEl.firstChild);
++          }
++          protectIslandsFromUnmount(activeSlot);
++          mainEl.appendChild(activeSlot);
++        } else {
++          activeSlot.dataset.cachedViewSlot = key;
++        }
++        return activeSlot;
++      };
++
++      const saveCurrentViewToCache = (url: URL) => {
++        const currentMain = getMainContainer(document);
++        if (!currentMain) return;
++
++        const key = getCacheKey(url);
++        const activeSlot = ensureActiveViewSlot(currentMain, key);
++        activeSlot.hidden = true;
++        activeSlot.style.display = "none";
++
++        if (viewCache.has(key)) {
++          const existing = viewCache.get(key);
++          if (existing && existing.viewSlot !== activeSlot) {
++            existing.viewSlot
++              .querySelectorAll("astro-island")
++              .forEach((island) => island.dispatchEvent(new CustomEvent("astro:unmount")));
++            existing.viewSlot.remove();
++            protectIslandsFromUnmount(existing.viewSlot);
++          }
++          viewCache.delete(key);
++        } else if (viewCache.size >= MAX_CACHED_VIEWS) {
++          const oldestKey = viewCache.keys().next().value;
++          if (oldestKey !== undefined) {
++            const evicted = viewCache.get(oldestKey);
++            if (evicted) {
++              evicted.viewSlot
++                .querySelectorAll("astro-island")
++                .forEach((island) => island.dispatchEvent(new CustomEvent("astro:unmount")));
++              evicted.viewSlot.remove();
++              protectIslandsFromUnmount(evicted.viewSlot);
++            }
++            viewCache.delete(oldestKey);
++          }
++        }
++
++        const nonOverridable = ["data-astro-transition", "data-astro-transition-fallback"];
++        const rootAttrs = Array.from(document.documentElement.attributes)
++          .filter((attr) => !nonOverridable.includes(attr.name))
++          .map((attr) => ({ name: attr.name, value: attr.value }));
++
++        viewCache.set(key, {
++          title: document.title,
++          viewSlot: activeSlot,
++          rootAttrs,
++          bodyClassName: document.body.className,
++          timestamp: Date.now(),
++        });
++      };
++
++      document.addEventListener("astro:before-preparation", (event: any) => {
++        if (event.formData) return;
++
++        const targetKey = getCacheKey(event.to);
++        const cached = viewCache.get(targetKey);
++        if (cached && cached.viewSlot.childNodes.length > 0) {
++          const originalLoader = event.loader;
++          event.loader = async () => {
++            // Skip network fetch when view is already cached in the DOM
++            try {
++              event.newDocument = document;
++            } catch {
++              await originalLoader();
++            }
++          };
++        }
++      });
++
++      document.addEventListener("astro:before-swap", (event: any) => {
++        const fromKey = getCacheKey(event.from);
++        const toKey = getCacheKey(event.to);
++
++        if (fromKey === toKey && !event.formData) {
++          return;
++        }
++
++        const cachedTarget = !event.formData ? viewCache.get(toKey) : undefined;
++
++        event.swap = () => {
++          const restoreFocus = swapFunctions.saveFocus();
++          // 1. Preserve current view's structural DOM state before swapping
++          saveCurrentViewToCache(event.from);
++
++          const currentMain = getMainContainer(document);
++
++          // 2. If target view is already cached, unhide its preserved DOM container
++          if (cachedTarget && cachedTarget.viewSlot.childNodes.length > 0 && currentMain) {
++            document.title = cachedTarget.title;
++            document.body.className = cachedTarget.bodyClassName;
++
++            for (const { name, value } of cachedTarget.rootAttrs) {
++              document.documentElement.setAttribute(name, value);
++            }
++
++            if (cachedTarget.viewSlot.parentElement !== currentMain) {
++              currentMain.appendChild(cachedTarget.viewSlot);
++            }
++            cachedTarget.viewSlot.hidden = false;
++            cachedTarget.viewSlot.style.display = "";
++
++            // Refresh LRU order
++            viewCache.delete(toKey);
++            viewCache.set(toKey, cachedTarget);
++            restoreFocus();
++            return;
++          }
++
++          // 3. Otherwise, insert the newly fetched view into a new slot inside <main> while keeping cached slots intact
++          const newDoc: Document = event.newDocument;
++          if (!newDoc || newDoc === document) {
++            restoreFocus();
++            return;
++          }
++
++          swapFunctions.deselectScripts(newDoc);
++          swapFunctions.swapRootAttributes(newDoc);
++          swapFunctions.swapHeadElements(newDoc);
++
++          const newMain = getMainContainer(newDoc);
++          if (currentMain && newMain) {
++            const newSlot = document.createElement("div");
++            newSlot.dataset.cachedViewSlot = toKey;
++            while (newMain.firstChild) {
++              newSlot.appendChild(newMain.firstChild);
++            }
++            currentMain.appendChild(newSlot);
++            attachShadowRoots(newSlot);
++            reifyMediaElements(newSlot);
++          } else {
++            swapFunctions.swapBodyElement(newDoc.body, document.body);
++          }
++
++          restoreFocus();
++        };
++      });
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      <AdSlotFireplace client:load transition:persist="ad-fireplace" />
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div transition:persist="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="app-main-view" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+     </div>
+-    <Footer />
++    <div transition:persist="site-footer">
++      <Footer />
++    </div>
+   </body>
+ </html>

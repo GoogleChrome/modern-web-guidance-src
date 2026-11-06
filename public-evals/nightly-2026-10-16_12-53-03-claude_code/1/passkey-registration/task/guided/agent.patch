@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,19 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -171,8 +182,10 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" data-testid="register-button" id="register-button" disabled>Create passkey</button>
++    <p id="register-status" role="status" aria-live="polite"></p>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +219,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const registerButton = document.getElementById('register-button');
++    const registerStatus = document.getElementById('register-status');
++
++    function setStatus(message) {
++      registerStatus.textContent = message;
++    }
++
++    // Enable the button only when passkeys and JSON helpers are supported.
++    async function initRegisterButton() {
++      if (!window.PublicKeyCredential ||
++        !PublicKeyCredential.parseCreationOptionsFromJSON ||
++        !PublicKeyCredential.getClientCapabilities) {
++        return;
++      }
++      const capabilities = await PublicKeyCredential.getClientCapabilities();
++      if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet) {
++        registerButton.disabled = false;
++      }
++    }
++
++    async function registerPasskey() {
++      setStatus('');
++      registerButton.disabled = true;
++      try {
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ promotion: true }),
++        });
++        if (!optionsResponse.ok) {
++          throw new Error('Could not start passkey registration.');
++        }
++        const optionsJSON = await optionsResponse.json();
++        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({ publicKey });
++        } catch (err) {
++          if (err.name === 'InvalidStateError') {
++            setStatus('A passkey already exists for this account.');
++          } else if (err.name === 'SecurityError') {
++            console.error('Passkey RP ID or secure context error.', err);
++            setStatus('Passkeys are not available on this site configuration.');
++          } else if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
++            console.error(err);
++            setStatus('Passkey creation failed.');
++          }
++          // NotAllowedError / AbortError: user cancelled or timed out; stay silent.
++          return;
++        }
++
++        const encoded = credential.toJSON();
++        let verified = false;
++        try {
++          const verifyResponse = await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            credentials: 'same-origin',
++            body: JSON.stringify(encoded),
++          });
++          verified = verifyResponse.ok;
++        } catch (networkErr) {
++          console.error('Passkey verification request failed.', networkErr);
++        }
++
++        if (verified) {
++          setStatus('Passkey created successfully.');
++        } else {
++          setStatus('We could not verify your passkey. Please try again.');
++          // Tell the passkey provider to drop the credential the server rejected.
++          if (PublicKeyCredential.signalUnknownCredential) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: optionsJSON.rp?.id ?? location.hostname,
++                credentialId: encoded.id,
++              });
++            } catch (signalErr) {
++              console.warn(signalErr);
++            }
++          }
++        }
++      } catch (err) {
++        console.error(err);
++        setStatus('Passkey registration failed. Please try again.');
++      } finally {
++        registerButton.disabled = false;
++      }
++    }
++
++    registerButton.addEventListener('click', registerPasskey);
++    initRegisterButton();
++  </script>
++
+ </body>
+ 
+ </html>

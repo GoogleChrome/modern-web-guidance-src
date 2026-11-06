@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+index 66c9173..c7e6f7c 100644
+--- a/index.html
++++ b/index.html
+@@ -107,7 +107,14 @@
+       margin-top: 20px;
+     }
+ 
++    /* Each card is its own size container, so the same card stacks when its
++       grid column is narrow and goes side-by-side when it has more room,
++       regardless of the viewport width. */
+     .card {
++      container: card / inline-size;
++      display: grid;
++      grid-template-columns: minmax(0, 1fr);
++      align-content: start;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -115,11 +122,52 @@
+       text-align: center;
+     }
+ 
++    .card > img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card > .btn {
++      justify-self: center;
++    }
++
++    /* Side-by-side once the card itself is at least 25rem wide. Only cards
++       that have media get a side column; an image-less card stays stacked. */
++    @container card (min-width: 25rem) {
++      .card:has(> img) {
++        grid-template-columns: 9rem minmax(0, 1fr);
++        grid-template-rows: auto auto 1fr;
++        column-gap: 20px;
++        text-align: left;
++      }
++
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        align-self: stretch;
++        height: 100%;
++        aspect-ratio: auto;
++        margin-bottom: 0;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++      }
++
++      .card:has(> img) > .btn {
++        justify-self: start;
++        align-self: start;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +226,27 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            alt="Latte in a white cup with milk being poured into a leaf pattern" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            alt="Shot of dark espresso with crema in a white cup, seen from above" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            alt="Tall glass of cold brew coffee over ice with cream swirling through it" width="600" height="450" loading="lazy" decoding="async">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
+       </div>
+     </section>
+   </main>

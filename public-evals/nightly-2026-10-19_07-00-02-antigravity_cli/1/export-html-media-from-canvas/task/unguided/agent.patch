@@ -1,0 +1,745 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,312 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Gift Card Designer Section */
++    .designer-section {
++      margin-top: 50px;
++      padding: 40px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++    }
++
++    .designer-section .section-title {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++      font-size: 2rem;
++    }
++
++    .designer-section .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 35px;
++      font-size: 1rem;
++    }
++
++    .designer-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    @media (max-width: 880px) {
++      .designer-layout {
++        grid-template-columns: 1fr;
++      }
++      .designer-section {
++        padding: 25px 20px;
++      }
++    }
++
++    .designer-controls {
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .form-control {
++      padding: 10px 14px;
++      border: 1px solid #d7ccc8;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      background: #ffffff;
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    textarea.form-control {
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    .color-picker-row {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .color-input {
++      width: 44px;
++      height: 44px;
++      border: 2px solid #d7ccc8;
++      border-radius: 8px;
++      cursor: pointer;
++      padding: 2px;
++      background: none;
++    }
++
++    .color-swatches {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .color-swatch-btn {
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: 2px solid transparent;
++      cursor: pointer;
++      transition: transform 0.15s, border-color 0.15s;
++      padding: 0;
++    }
++
++    .color-swatch-btn:hover {
++      transform: scale(1.15);
++    }
++
++    .color-swatch-btn.active {
++      border-color: var(--text);
++      box-shadow: 0 0 0 2px white inset;
++      transform: scale(1.1);
++    }
++
++    .designer-preview-wrap {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .canvas-container {
++      width: 100%;
++      display: flex;
++      justify-content: center;
++      background: #f5f0eb;
++      padding: 20px;
++      border-radius: 12px;
++      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
++    }
++
++    #card_canvas {
++      width: 100%;
++      max-width: 600px;
++      height: auto;
++      aspect-ratio: 600 / 360;
++      border-radius: 16px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
++      display: block;
++      background-color: #4e342e;
++    }
++
++    /* HTML Card element styling inside canvas (#export_element) */
++    #export_element {
++      width: 600px;
++      height: 360px;
++      box-sizing: border-box;
++      border-radius: 16px;
++      background-color: #4e342e;
++      color: #ffffff;
++      padding: 28px 32px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      position: relative;
++      overflow: hidden;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      border: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
++    .gift-card-display .card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .gift-card-display .card-brand {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .gift-card-display .coffee-icon {
++      font-size: 2rem;
++    }
++
++    .gift-card-display .brand-name {
++      font-size: 1.25rem;
++      font-weight: 800;
++      letter-spacing: 1.5px;
++      color: #ffffff;
++    }
++
++    .gift-card-display .brand-tagline {
++      font-size: 0.75rem;
++      letter-spacing: 2px;
++      color: var(--accent);
++      text-transform: uppercase;
++    }
++
++    .gift-card-display .card-value {
++      background: rgba(255, 255, 255, 0.18);
++      border: 1px solid rgba(255, 171, 64, 0.5);
++      color: #ffffff;
++      font-weight: 800;
++      font-size: 1.3rem;
++      padding: 6px 16px;
++      border-radius: 20px;
++      backdrop-filter: blur(4px);
++    }
++
++    .gift-card-display .card-content {
++      margin: 15px 0;
++    }
++
++    .gift-card-display .card-to-line {
++      display: flex;
++      align-items: baseline;
++      gap: 8px;
++      margin-bottom: 8px;
++    }
++
++    .gift-card-display .card-label {
++      font-size: 0.8rem;
++      font-weight: 700;
++      color: var(--accent);
++      letter-spacing: 1px;
++    }
++
++    .gift-card-display .recipient-name {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: #ffffff;
++    }
++
++    .gift-card-display .card-message {
++      font-size: 1.05rem;
++      line-height: 1.5;
++      color: rgba(255, 255, 255, 0.95);
++      font-style: italic;
++      max-width: 90%;
++      word-wrap: break-word;
++    }
++
++    .gift-card-display .card-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-end;
++      border-top: 1px solid rgba(255, 255, 255, 0.15);
++      padding-top: 12px;
++    }
++
++    .gift-card-display .card-meta {
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    .gift-card-display .card-number {
++      font-family: monospace;
++      font-size: 0.85rem;
++      letter-spacing: 2px;
++      color: rgba(255, 255, 255, 0.7);
++    }
++
++    .gift-card-display .card-validity {
++      font-size: 0.75rem;
++      color: rgba(255, 255, 255, 0.5);
++    }
++
++    .gift-card-display .card-coffee-bean {
++      font-size: 1.25rem;
++      opacity: 0.7;
++    }
++
++    .export-btn-wrap {
++      width: 100%;
++    }
++
++    .btn-export {
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      border: none;
++      cursor: pointer;
++      font-size: 1.05rem;
++      font-weight: 600;
++      padding: 14px 24px;
++      border-radius: 8px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      transition: background 0.3s, transform 0.1s;
++    }
++
++    .btn-export:hover {
++      background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .btn-export:active {
++      transform: translateY(0);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -162,8 +466,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#gift-card-designer">Gift Cards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -194,8 +499,96 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Custom Coffee Gift Card Designer -->
++    <section id="gift-card-designer" class="designer-section">
++      <h2 class="section-title">Design Your Coffee Gift Card</h2>
++      <p class="section-subtitle">Personalize your gift card with a custom message and roast palette, then export your design as a high-resolution image.</p>
++      
++      <div class="designer-layout">
++        <!-- Controls Column -->
++        <div class="designer-controls">
++          <div class="form-group">
++            <label for="card_recipient_input">Recipient Name</label>
++            <input type="text" id="card_recipient_input" class="form-control" value="Sarah Jenkins" placeholder="e.g. Alex Cooper">
++          </div>
++
++          <div class="form-group">
++            <label for="card_message_input">Custom Message</label>
++            <textarea id="card_message_input" class="form-control" rows="3" placeholder="Write your personalized greeting...">Here's a little pick-me-up on me! Enjoy your favorite brew at The Daily Grind.</textarea>
++          </div>
++
++          <div class="form-group">
++            <label for="card_amount_input">Card Value</label>
++            <select id="card_amount_input" class="form-control">
++              <option value="$15">$15 - Coffee & Pastry</option>
++              <option value="$25" selected>$25 - Weekly Roasts</option>
++              <option value="$50">$50 - Connoisseur's Choice</option>
++              <option value="$100">$100 - Master Roaster</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label>Card Background Color</label>
++            <div class="color-picker-row">
++              <input type="color" id="card_bg_input" class="color-input" value="#4e342e" title="Choose custom color">
++              <div class="color-swatches">
++                <button type="button" class="color-swatch-btn active" data-color="#4e342e" style="background-color: #4e342e;" title="Artisanal Roast"></button>
++                <button type="button" class="color-swatch-btn" data-color="#261b17" style="background-color: #261b17;" title="Midnight Espresso"></button>
++                <button type="button" class="color-swatch-btn" data-color="#7c3a20" style="background-color: #7c3a20;" title="Spiced Cinnamon"></button>
++                <button type="button" class="color-swatch-btn" data-color="#825032" style="background-color: #825032;" title="Caramel Mocha"></button>
++                <button type="button" class="color-swatch-btn" data-color="#2d4a3e" style="background-color: #2d4a3e;" title="Matcha & Mint"></button>
++                <button type="button" class="color-swatch-btn" data-color="#1e293b" style="background-color: #1e293b;" title="Cold Brew Slate"></button>
++              </div>
++            </div>
++          </div>
++
++          <div class="export-btn-wrap">
++            <button type="button" id="export_button" class="btn btn-export">
++              <span>☕</span> Download Gift Card Image
++            </button>
++          </div>
++        </div>
++
++        <!-- Preview Column -->
++        <div class="designer-preview-wrap">
++          <div class="canvas-container">
++            <canvas id="card_canvas" width="600" height="360" content="drawable" layoutsubtree>
++              <div id="export_element" drawable class="gift-card-display">
++                <div class="card-header">
++                  <div class="card-brand">
++                    <span class="coffee-icon">☕</span>
++                    <div>
++                      <div class="brand-name">THE DAILY GRIND</div>
++                      <div class="brand-tagline">ARTISANAL COFFEE CO.</div>
++                    </div>
++                  </div>
++                  <div class="card-value" id="card_amount_display">$25</div>
++                </div>
++
++                <div class="card-content">
++                  <div class="card-to-line">
++                    <span class="card-label">FOR:</span>
++                    <span class="recipient-name" id="card_recipient_display">Sarah Jenkins</span>
++                  </div>
++                  <div class="card-message" id="card_message_display">Here's a little pick-me-up on me! Enjoy your favorite brew at The Daily Grind.</div>
++                </div>
++
++                <div class="card-footer">
++                  <div class="card-meta">
++                    <span class="card-number">DG-8824-GRIND-2026</span>
++                    <span class="card-validity">Valid in-store & online • Never expires</span>
++                  </div>
++                  <div class="card-coffee-bean">🫘</div>
++                </div>
++              </div>
++            </canvas>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +599,321 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      const canvas = document.getElementById('card_canvas');
++      const exportElement = document.getElementById('export_element');
++      const exportBtn = document.getElementById('export_button');
++
++      const recipientInput = document.getElementById('card_recipient_input');
++      const messageInput = document.getElementById('card_message_input');
++      const amountSelect = document.getElementById('card_amount_input');
++      const bgColorInput = document.getElementById('card_bg_input');
++      const swatchBtns = document.querySelectorAll('.color-swatch-btn');
++
++      const recipientDisplay = document.getElementById('card_recipient_display');
++      const messageDisplay = document.getElementById('card_message_display');
++      const amountDisplay = document.getElementById('card_amount_display');
++
++      if (!canvas || !exportElement) return;
++
++      const ctx = canvas.getContext('2d');
++
++      // Feature detection for HTML-in-Canvas (WICG specification)
++      const supportsHtmlInCanvas = () => {
++        return Boolean(ctx && typeof ctx.drawElementImage === 'function');
++      };
++
++      // DOM to Canvas synchronization helper
++      function updateCardDOM() {
++        const nameVal = recipientInput ? recipientInput.value.trim() || 'Coffee Lover' : 'Coffee Lover';
++        const msgVal = messageInput ? messageInput.value.trim() || "Here's a little pick-me-up on me! Enjoy your favorite brew." : "Here's a little pick-me-up on me!";
++        const amtVal = amountSelect ? amountSelect.value || '$25' : '$25';
++        const bgVal = bgColorInput ? bgColorInput.value || '#4e342e' : '#4e342e';
++
++        if (recipientDisplay) recipientDisplay.textContent = nameVal;
++        if (messageDisplay) messageDisplay.textContent = msgVal;
++        if (amountDisplay) amountDisplay.textContent = amtVal;
++        exportElement.style.backgroundColor = bgVal;
++      }
++
++      function drawRoundedRect(context, x, y, width, height, radius) {
++        if (typeof context.roundRect === 'function') {
++          context.beginPath();
++          context.roundRect(x, y, width, height, radius);
++          return;
++        }
++        context.beginPath();
++        context.moveTo(x + radius, y);
++        context.lineTo(x + width - radius, y);
++        context.quadraticCurveTo(x + width, y, x + width, y + radius);
++        context.lineTo(x + width, y + height - radius);
++        context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
++        context.lineTo(x + radius, y + height);
++        context.quadraticCurveTo(x, y + height, x, y + height - radius);
++        context.lineTo(x, y + radius);
++        context.quadraticCurveTo(x, y, x + radius, y);
++        context.closePath();
++      }
++
++      function wrapText(context, text, x, y, maxWidth, lineHeight, maxLines = 4) {
++        const words = text.split(/\s+/);
++        let line = '';
++        let currentY = y;
++        let linesCount = 0;
++
++        for (let n = 0; n < words.length; n++) {
++          const testLine = line + (line ? ' ' : '') + words[n];
++          const metrics = context.measureText(testLine);
++          if (metrics.width > maxWidth && n > 0) {
++            context.fillText(line, x, currentY);
++            line = words[n];
++            currentY += lineHeight;
++            linesCount++;
++            if (linesCount >= maxLines - 1) {
++              let remaining = words.slice(n).join(' ');
++              while (remaining.length > 0 && context.measureText(remaining + '...').width > maxWidth) {
++                remaining = remaining.slice(0, -1);
++              }
++              context.fillText(remaining + '...', x, currentY);
++              return;
++            }
++          } else {
++            line = testLine;
++          }
++        }
++        if (line) {
++          context.fillText(line, x, currentY);
++        }
++      }
++
++      function renderFallbackCanvas() {
++        const width = canvas.width;
++        const height = canvas.height;
++        const bgColor = bgColorInput ? bgColorInput.value || '#4e342e' : '#4e342e';
++        const recipientName = recipientInput ? recipientInput.value.trim() || 'Coffee Lover' : 'Coffee Lover';
++        const customMessage = messageInput ? messageInput.value.trim() || "Here's a little pick-me-up on me! Enjoy your favorite brew." : "Enjoy!";
++        const amount = amountSelect ? amountSelect.value || '$25' : '$25';
++
++        ctx.clearRect(0, 0, width, height);
++
++        ctx.save();
++        drawRoundedRect(ctx, 0, 0, width, height, 16);
++        ctx.fillStyle = bgColor;
++        ctx.fill();
++
++        // Subtle gradient overlay for luxury feel
++        const grad = ctx.createLinearGradient(0, 0, width, height);
++        grad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
++        grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
++        grad.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
++        ctx.fillStyle = grad;
++        ctx.fill();
++
++        // Inner border outline
++        drawRoundedRect(ctx, 12, 12, width - 24, height - 24, 10);
++        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
++        ctx.lineWidth = 1;
++        ctx.stroke();
++
++        // Coffee cup icon
++        ctx.font = '32px sans-serif';
++        ctx.textAlign = 'left';
++        ctx.textBaseline = 'middle';
++        ctx.fillText('☕', 32, 52);
++
++        // Brand Name
++        ctx.fillStyle = '#ffffff';
++        ctx.font = 'bold 20px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        ctx.fillText('THE DAILY GRIND', 76, 44);
++
++        // Brand Subtitle
++        ctx.fillStyle = '#ffab40';
++        ctx.font = 'bold 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        ctx.fillText('ARTISANAL COFFEE CO.', 76, 62);
++
++        // Amount badge (top right)
++        const badgeText = amount;
++        ctx.font = 'bold 18px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        const badgeWidth = ctx.measureText(badgeText).width + 32;
++        const badgeX = width - 32 - badgeWidth;
++        const badgeY = 32;
++        const badgeHeight = 36;
++        drawRoundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 18);
++        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
++        ctx.fill();
++        ctx.strokeStyle = 'rgba(255, 171, 64, 0.6)';
++        ctx.lineWidth = 1;
++        ctx.stroke();
++
++        ctx.fillStyle = '#ffffff';
++        ctx.textAlign = 'center';
++        ctx.textBaseline = 'middle';
++        ctx.fillText(badgeText, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
++
++        // Divider line
++        ctx.beginPath();
++        ctx.moveTo(32, 92);
++        ctx.lineTo(width - 32, 92);
++        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
++        ctx.lineWidth = 1;
++        ctx.stroke();
++
++        // "FOR:" label
++        ctx.textAlign = 'left';
++        ctx.textBaseline = 'alphabetic';
++        ctx.fillStyle = '#ffab40';
++        ctx.font = 'bold 12px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        ctx.fillText('FOR:', 32, 126);
++
++        // Recipient Name
++        ctx.fillStyle = '#ffffff';
++        ctx.font = 'bold 22px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        ctx.fillText(recipientName, 68, 127);
++
++        // Custom message
++        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
++        ctx.font = 'italic 16px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        wrapText(ctx, '"' + customMessage + '"', 32, 165, width - 64, 24, 4);
++
++        // Card footer divider
++        ctx.beginPath();
++        ctx.moveTo(32, height - 60);
++        ctx.lineTo(width - 32, height - 60);
++        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
++        ctx.lineWidth = 1;
++        ctx.stroke();
++
++        // Footer Card Number
++        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
++        ctx.font = '12px monospace';
++        ctx.fillText('DG-8824-GRIND-2026', 32, height - 38);
++
++        // Footer terms
++        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
++        ctx.font = '10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
++        ctx.fillText('Valid at all Daily Grind locations & online • Never expires', 32, height - 22);
++
++        // Bean icon in bottom right
++        ctx.font = '20px sans-serif';
++        ctx.textAlign = 'right';
++        ctx.textBaseline = 'middle';
++        ctx.fillText('🫘', width - 32, height - 34);
++
++        ctx.restore();
++      }
++
++      function paintCanvas() {
++        if (typeof ctx.reset === 'function') {
++          ctx.reset();
++        } else {
++          ctx.clearRect(0, 0, canvas.width, canvas.height);
++        }
++
++        // Native HTML-in-Canvas path
++        if (supportsHtmlInCanvas()) {
++          try {
++            ctx.drawElementImage(exportElement, 0, 0);
++            return;
++          } catch (e) {
++            console.warn('drawElementImage failed, falling back:', e);
++          }
++        }
++
++        // Fallback rendering
++        renderFallbackCanvas();
++      }
++
++      // Paint event synchronization
++      canvas.onpaint = () => {
++        paintCanvas();
++      };
++      canvas.addEventListener('paint', () => {
++        paintCanvas();
++      });
++
++      function requestCardUpdate() {
++        updateCardDOM();
++        if (typeof canvas.requestPaint === 'function') {
++          canvas.requestPaint();
++        } else {
++          paintCanvas();
++        }
++      }
++
++      // Event listeners for user input
++      if (recipientInput) recipientInput.addEventListener('input', requestCardUpdate);
++      if (messageInput) messageInput.addEventListener('input', requestCardUpdate);
++      if (amountSelect) amountSelect.addEventListener('change', requestCardUpdate);
++
++      if (bgColorInput) {
++        bgColorInput.addEventListener('input', () => {
++          swatchBtns.forEach((btn) => {
++            btn.classList.toggle('active', btn.dataset.color.toLowerCase() === bgColorInput.value.toLowerCase());
++          });
++          requestCardUpdate();
++        });
++      }
++
++      swatchBtns.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          if (bgColorInput) bgColorInput.value = btn.dataset.color;
++          swatchBtns.forEach((b) => b.classList.remove('active'));
++          btn.classList.add('active');
++          requestCardUpdate();
++        });
++      });
++
++      // Export / download button handler
++      if (exportBtn) {
++        exportBtn.addEventListener('click', () => {
++          if (typeof canvas.requestPaint === 'function') {
++            canvas.requestPaint();
++          }
++          paintCanvas();
++
++          const filename = 'daily-grind-gift-card.png';
++
++          if (typeof canvas.toBlob === 'function') {
++            canvas.toBlob((blob) => {
++              if (blob) {
++                const url = URL.createObjectURL(blob);
++                const a = document.createElement('a');
++                a.href = url;
++                a.download = filename;
++                document.body.appendChild(a);
++                a.click();
++                document.body.removeChild(a);
++                setTimeout(() => URL.revokeObjectURL(url), 1000);
++              } else {
++                downloadDataURL();
++              }
++            }, 'image/png');
++          } else {
++            downloadDataURL();
++          }
++
++          function downloadDataURL() {
++            try {
++              const dataUrl = canvas.toDataURL('image/png');
++              const a = document.createElement('a');
++              a.href = dataUrl;
++              a.download = filename;
++              document.body.appendChild(a);
++              a.click();
++              document.body.removeChild(a);
++            } catch (e) {
++              console.error('Export error:', e);
++            }
++          }
++        });
++      }
++
++      // Initial render
++      requestCardUpdate();
++    });
++  </script>
+ </body>
+ 
+ </html>

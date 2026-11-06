@@ -1,0 +1,36 @@
+diff --git a/PERFORMANCE.md b/PERFORMANCE.md
+new file mode 100644
+--- a/PERFORMANCE.md
++++ b/PERFORMANCE.md
+@@ -0,0 +1,31 @@
++# Script performance diagnostics
++
++The page loads `script-performance.js` with `defer`. It observes buffered Long
++Animation Frames and aggregates script execution time across observer callbacks.
++No data is sent to a server and the visitor-facing page is unchanged.
++
++In Chrome or Edge 123+, use the site normally, then run this in the DevTools console:
++
++```js
++scriptPerformance.report(); // Scripts with at least 100 ms of accumulated time
++scriptPerformance.report(0); // All observed scripts, ranked by accumulated time
++scriptPerformance.snapshot(); // Get raw summaries without logging
++```
++
++A report also runs when the page becomes hidden. Enable Preserve log in DevTools
++to retain console output across navigation. Measurements accumulate until reload.
++The report includes source URL, invocation count, total duration, longest
++invocation, and forced style/layout duration, all times in milliseconds. Start
++investigating scripts with the highest total duration or longest invocation.
++
++This measures script work attributed to frames longer than 50 ms, not download
++time or all JavaScript execution. Attribution can be missing (including
++cross-origin work); forced layout time is part of script duration, not extra
++time to add to it. No results do not prove that the page is fast. This initial
++page has no other scripts, so an empty report is expected unless new scripts or
++other attributable work are introduced.
++
++Unsupported browsers skip observation; `scriptPerformance.supported` reports
++availability. Summaries retain at most 200 distinct sources to bound memory;
++reports disclose omitted invocations if that limit is reached. There are no
++dependencies, polling timers, or network requests beyond loading the monitor.

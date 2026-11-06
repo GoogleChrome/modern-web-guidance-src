@@ -1,0 +1,804 @@
+diff --git a/index.html b/index.html
+index 66c9173..b24ed08 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,16 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>smallpt WebAssembly Path Tracer</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --bg: #0f172a;
++      --surface: #1e293b;
++      --surface-border: #334155;
++      --text: #f8fafc;
++      --muted: #94a3b8;
++      --accent: #38bdf8;
++      --accent-hover: #0ea5e9;
+     }
+ 
+     * {
+@@ -21,192 +23,343 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg);
+       color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
++      min-height: 100vh;
+       display: flex;
+-      justify-content: space-between;
++      flex-direction: column;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      padding: 2rem 1rem;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++    header {
++      text-align: center;
++      max-width: 760px;
++      margin-bottom: 1.75rem;
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++    h1 {
++      font-size: 2rem;
++      font-weight: 700;
++      letter-spacing: -0.02em;
++      margin-bottom: 0.5rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    header p {
++      color: var(--muted);
++      font-size: 0.95rem;
++      line-height: 1.5;
+     }
+ 
+-    nav a {
+-      color: white;
++    header a {
++      color: var(--accent);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    header a:hover {
++      text-decoration: underline;
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .app-card {
++      background: var(--surface);
++      border: 1px solid var(--surface-border);
++      border-radius: 14px;
++      padding: 1.5rem;
++      max-width: 760px;
++      width: 100%;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 1.25rem;
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++    .canvas-wrapper {
++      position: relative;
++      width: 100%;
++      max-width: 640px;
++      aspect-ratio: 4 / 3;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      border: 1px solid var(--surface-border);
+       display: flex;
+-      flex-direction: column;
++      align-items: center;
+       justify-content: center;
++    }
++
++    canvas {
++      width: 100%;
++      height: 100%;
++      display: block;
++      image-rendering: auto;
++    }
++
++    .controls {
++      display: flex;
++      flex-wrap: wrap;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      justify-content: space-between;
++      width: 100%;
++      max-width: 640px;
++      gap: 1rem;
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    #randomize-btn {
++      background: linear-gradient(135deg, #38bdf8, #2563eb);
++      color: #fff;
++      border: none;
++      border-radius: 8px;
++      padding: 0.75rem 1.4rem;
++      font-size: 1rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
++      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+     }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++    #randomize-btn:hover:not(:disabled) {
++      transform: translateY(-1px);
++      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    #randomize-btn:active:not(:disabled) {
++      transform: translateY(0);
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    #randomize-btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .status-bar {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-end;
++      font-size: 0.875rem;
++      color: var(--muted);
++      gap: 0.2rem;
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++    .status-badge {
++      color: var(--text);
++      font-weight: 600;
++      font-variant-numeric: tabular-nums;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .swatches-panel {
++      width: 100%;
++      max-width: 640px;
++      border-top: 1px solid var(--surface-border);
++      padding-top: 1rem;
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    .swatches-title {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      color: var(--muted);
++      margin-bottom: 0.65rem;
++    }
++
++    .swatches-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
++      gap: 0.5rem;
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    .swatch-item {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      background: rgba(15, 23, 42, 0.6);
++      padding: 0.4rem 0.6rem;
++      border-radius: 6px;
++      border: 1px solid rgba(255, 255, 255, 0.06);
++      font-size: 0.8rem;
++    }
++
++    .swatch-color {
++      width: 16px;
++      height: 16px;
++      border-radius: 4px;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      flex-shrink: 0;
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
++    .swatch-label {
+       color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
+     }
+   </style>
+ </head>
+ 
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header>
++    <h1>smallpt WebAssembly Path Tracer</h1>
++    <p>
++      Client-side global illumination renderer compiled from Kevin Beason's C++
++      <a href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener noreferrer">smallpt</a>
++      to WebAssembly (Monte Carlo path tracing, diffuse, specular &amp; dielectric spheres).
++    </p>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main class="app-card">
++    <div class="canvas-wrapper">
++      <canvas id="canvas" width="256" height="192"></canvas>
++    </div>
++
++    <div class="controls">
++      <button id="randomize-btn" type="button" disabled>
++        Randomize Sphere Colors
++      </button>
++
++      <div class="status-bar">
++        <div id="status-text" class="status-badge">Loading WebAssembly module...</div>
++        <div id="stats-text">256 &times; 192 &bull; Cornell Box Scene</div>
+       </div>
+-    </section>
+-  </main>
++    </div>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++    <div class="swatches-panel">
++      <div class="swatches-title">Current Scene Sphere Colors</div>
++      <div id="swatches" class="swatches-grid"></div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </main>
++
++  <script>
++    const WIDTH = 256;
++    const HEIGHT = 192;
++    const TARGET_PASSES = 12; // 12 passes * 4 subpixels = 48 samples/pixel progressive refinement
++
++    const SPHERE_LABELS = [
++      { index: 0, name: 'Left Sphere (Wall)' },
++      { index: 1, name: 'Right Sphere (Wall)' },
++      { index: 2, name: 'Back Sphere (Wall)' },
++      { index: 4, name: 'Bottom Sphere (Floor)' },
++      { index: 5, name: 'Top Sphere (Ceiling)' },
++      { index: 6, name: 'Mirror Sphere' },
++      { index: 7, name: 'Glass Sphere' }
++    ];
++
++    const canvas = document.getElementById('canvas');
++    const ctx = canvas.getContext('2d');
++    const imageData = ctx.createImageData(WIDTH, HEIGHT);
++    const randomizeBtn = document.getElementById('randomize-btn');
++    const statusText = document.getElementById('status-text');
++    const statsText = document.getElementById('stats-text');
++    const swatchesContainer = document.getElementById('swatches');
++
++    let wasmReady = false;
++    let currentPass = 0;
++    let rafId = null;
++    let seedCounter = 1;
++    let renderStartTime = 0;
++
++    function toSrgbCss(r, g, b) {
++      const gamma = (v) => Math.min(255, Math.max(0, Math.round(Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2) * 255)));
++      return `rgb(${gamma(r)}, ${gamma(g)}, ${gamma(b)})`;
++    }
++
++    function updateSwatches() {
++      if (!wasmReady) return;
++      swatchesContainer.innerHTML = '';
++      for (const item of SPHERE_LABELS) {
++        const r = Module._get_sphere_color_r(item.index);
++        const g = Module._get_sphere_color_g(item.index);
++        const b = Module._get_sphere_color_b(item.index);
++
++        const el = document.createElement('div');
++        el.className = 'swatch-item';
++
++        const dot = document.createElement('span');
++        dot.className = 'swatch-color';
++        dot.style.backgroundColor = toSrgbCss(r, g, b);
++
++        const label = document.createElement('span');
++        label.className = 'swatch-label';
++        label.textContent = item.name;
++
++        el.appendChild(dot);
++        el.appendChild(label);
++        swatchesContainer.appendChild(el);
++      }
++    }
++
++    function blitWasmBuffer(ptr) {
++      const wasmBytes = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, WIDTH * HEIGHT * 4);
++      imageData.data.set(wasmBytes);
++      ctx.putImageData(imageData, 0, 0);
++    }
++
++    function runPass(reset) {
++      const seedOffset = seedCounter * 97 + currentPass * 31;
++      const ptr = Module._render_samples(WIDTH, HEIGHT, 1, reset ? 1 : 0, seedOffset);
++      blitWasmBuffer(ptr);
++      currentPass++;
++      const totalSpp = Module._get_total_samples();
++      const elapsedSec = ((performance.now() - renderStartTime) / 1000).toFixed(2);
++      if (currentPass < TARGET_PASSES) {
++        statusText.textContent = `Path tracing... (${totalSpp} spp)`;
++      } else {
++        statusText.textContent = `Render complete (${totalSpp} spp)`;
++      }
++      statsText.textContent = `${WIDTH} × ${HEIGHT} • ${totalSpp} samples/px • ${elapsedSec}s`;
++    }
++
++    function scheduleProgressivePasses() {
++      if (rafId !== null) {
++        cancelAnimationFrame(rafId);
++        rafId = null;
++      }
++      function step() {
++        if (currentPass >= TARGET_PASSES) {
++          rafId = null;
++          return;
++        }
++        runPass(false);
++        if (currentPass < TARGET_PASSES) {
++          rafId = requestAnimationFrame(step);
++        }
++      }
++      rafId = requestAnimationFrame(step);
++    }
++
++    function startRender(randomizeColors) {
++      if (!wasmReady) return;
++      if (rafId !== null) {
++        cancelAnimationFrame(rafId);
++        rafId = null;
++      }
++      seedCounter++;
++      if (randomizeColors) {
++        const randomSeed = ((Date.now() & 0xffffffff) ^ (seedCounter * 2654435761)) >>> 0;
++        Module._randomize_sphere_colors(randomSeed || seedCounter);
++      }
++      updateSwatches();
++      currentPass = 0;
++      renderStartTime = performance.now();
++      // Run the first pass immediately so the canvas updates synchronously on load and button click
++      runPass(true);
++      // Refine progressively across subsequent animation frames
++      scheduleProgressivePasses();
++    }
++
++    randomizeBtn.addEventListener('click', () => {
++      startRender(true);
++    });
+ 
++    var Module = {
++      onRuntimeInitialized: function () {
++        wasmReady = true;
++        randomizeBtn.disabled = false;
++        startRender(false);
++      }
++    };
++  </script>
++  <script src="smallpt.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e3f4481 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "em++ -O3 -ffast-math smallpt.cpp -o smallpt.js -s WASM=1 -s EXPORTED_FUNCTIONS='[\"_render_samples\",\"_randomize_sphere_colors\",\"_reset_sphere_colors\",\"_set_sphere_color\",\"_get_sphere_color_r\",\"_get_sphere_color_g\",\"_get_sphere_color_b\",\"_get_rgba_buffer\",\"_get_total_samples\"]' -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"HEAPU8\"]' -s ALLOW_MEMORY_GROWTH=1"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/smallpt.cpp b/smallpt.cpp
+new file mode 100644
+index 0000000..ddd46d7
+--- /dev/null
++++ b/smallpt.cpp
+@@ -0,0 +1,269 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// Adapted for WebAssembly client-side execution in the browser
++#include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <stdint.h>
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten/emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++struct Vec {
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++
++Vec radiance(const Ray &r, int depth, unsigned short *Xi, int E=1){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5||!p) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e*E; }
++  if (depth>64) return obj.e*E;
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++
++    // Direct light sampling of the visible ceiling cap of light sphere (spheres[8])
++    Vec e;
++    const Sphere &s = spheres[8];
++    double r_cap = 18.0 * sqrt(erand48(Xi));
++    double phi = 2.0 * M_PI * erand48(Xi);
++    Vec lp(s.p.x + r_cap * cos(phi), 81.52, s.p.z + r_cap * sin(phi));
++    Vec to_light = lp - x;
++    double d2 = to_light.dot(to_light);
++    Vec l = to_light * (1.0 / sqrt(d2));
++    double nl_dot = l.dot(nl);
++    if (nl_dot > 0 && l.y > 0 && intersect(Ray(x, l), t, id) && id == 8) {
++      double omega = (M_PI * 18.0 * 18.0) * l.y / d2;
++      e = f.mult(s.e * (nl_dot * omega * M_1_PI));
++    }
++
++    return obj.e*E + e + f.mult(radiance(Ray(x,d),depth,Xi,0));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c, Tr=1-Re, P=.25+.5*Re, RP=Re/P, TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++static uint8_t *rgba_buffer = NULL;
++static Vec *accum_buffer = NULL;
++static int buf_w = 0;
++static int buf_h = 0;
++static int total_samples = 0;
++
++extern "C" {
++
++EMSCRIPTEN_KEEPALIVE
++void set_sphere_color(int idx, double r, double g, double b) {
++  if (idx >= 0 && idx < 9) {
++    spheres[idx].c = Vec(r, g, b);
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_r(int idx) {
++  return (idx >= 0 && idx < 9) ? spheres[idx].c.x : 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_g(int idx) {
++  return (idx >= 0 && idx < 9) ? spheres[idx].c.y : 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double get_sphere_color_b(int idx) {
++  return (idx >= 0 && idx < 9) ? spheres[idx].c.z : 0.0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void reset_sphere_colors() {
++  spheres[0].c = Vec(.75, .25, .25);      // Left
++  spheres[1].c = Vec(.25, .25, .75);      // Right
++  spheres[2].c = Vec(.75, .75, .75);      // Back
++  spheres[3].c = Vec(0, 0, 0);            // Front
++  spheres[4].c = Vec(.75, .75, .75);      // Bottom
++  spheres[5].c = Vec(.75, .75, .75);      // Top
++  spheres[6].c = Vec(1, 1, 1) * .999;     // Mirror
++  spheres[7].c = Vec(1, 1, 1) * .999;     // Glass
++}
++
++static Vec hsv_to_rgb(double h, double s, double v) {
++  h = h - floor(h);
++  double i = floor(h * 6.0);
++  double f = h * 6.0 - i;
++  double p = v * (1.0 - s);
++  double q = v * (1.0 - f * s);
++  double t = v * (1.0 - (1.0 - f) * s);
++  int sector = ((int)i) % 6;
++  if (sector == 0) return Vec(v, t, p);
++  if (sector == 1) return Vec(q, v, p);
++  if (sector == 2) return Vec(p, v, t);
++  if (sector == 3) return Vec(p, q, v);
++  if (sector == 4) return Vec(t, p, v);
++  return Vec(v, p, q);
++}
++
++EMSCRIPTEN_KEEPALIVE
++void randomize_sphere_colors(unsigned int seed) {
++  unsigned short Xi[3] = {
++    (unsigned short)((seed ^ 0x5A5Au) & 0xFFFF),
++    (unsigned short)(((seed >> 16) ^ 0xA5A5u) & 0xFFFF),
++    (unsigned short)((seed * 2654435761u + 1013904223u) & 0xFFFF)
++  };
++  // Advance PRNG state a few times to decorrelate sequential seeds
++  for (int w = 0; w < 8; ++w) erand48(Xi);
++
++  double base_hue = erand48(Xi);
++  // Randomize Left, Right, Back, Bottom, Top, Mirror, and Glass spheres
++  int indices[] = {0, 1, 2, 4, 5, 6, 7};
++  for (int k = 0; k < 7; ++k) {
++    int idx = indices[k];
++    double hue = base_hue + k * 0.61803398875 + (erand48(Xi) - 0.5) * 0.12;
++    double sat = (idx >= 6) ? (0.55 + erand48(Xi) * 0.40) : (0.65 + erand48(Xi) * 0.30);
++    double val = (idx >= 6) ? (0.85 + erand48(Xi) * 0.14) : (0.75 + erand48(Xi) * 0.20);
++    spheres[idx].c = hsv_to_rgb(hue, sat, val);
++  }
++}
++
++EMSCRIPTEN_KEEPALIVE
++void init_buffer(int w, int h) {
++  if (w != buf_w || h != buf_h || !rgba_buffer || !accum_buffer) {
++    if (rgba_buffer) free(rgba_buffer);
++    if (accum_buffer) free(accum_buffer);
++    buf_w = w;
++    buf_h = h;
++    rgba_buffer = (uint8_t*)malloc(w * h * 4);
++    accum_buffer = (Vec*)malloc(sizeof(Vec) * w * h);
++  }
++  for (int i = 0; i < w * h; ++i) {
++    accum_buffer[i] = Vec();
++    rgba_buffer[i * 4 + 0] = 0;
++    rgba_buffer[i * 4 + 1] = 0;
++    rgba_buffer[i * 4 + 2] = 0;
++    rgba_buffer[i * 4 + 3] = 255;
++  }
++  total_samples = 0;
++}
++
++// Render `samps` samples per subpixel (2x2 subpixels per pixel) and update RGBA buffer.
++// Can be called once or progressively to accumulate passes.
++EMSCRIPTEN_KEEPALIVE
++uint8_t* render_samples(int w, int h, int samps, int reset, unsigned int seed_offset) {
++  if (reset || w != buf_w || h != buf_h || !rgba_buffer || !accum_buffer) {
++    init_buffer(w, h);
++  }
++  int passes = samps > 0 ? samps : 1;
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx = Vec(w * .5135 / h);
++  Vec cy = (cx % cam.d).norm() * .5135;
++  Vec r;
++
++  int prev_samples = total_samples;
++  int new_samples = prev_samples + passes;
++  double prev_weight = (double)prev_samples / (double)new_samples;
++  double pass_weight = 1.0 / (double)new_samples;
++
++  for (int y = 0; y < h; y++) {
++    unsigned short Xi[3] = {
++      (unsigned short)(y + seed_offset),
++      (unsigned short)(y * y + total_samples * 131 + seed_offset),
++      (unsigned short)(y * y * y + total_samples * 997 + seed_offset * 17)
++    };
++    for (unsigned short x = 0; x < w; x++) {
++      int i = (h - y - 1) * w + x;
++      Vec pixel_rad(0, 0, 0);
++      for (int sy = 0; sy < 2; sy++) {     // 2x2 subpixel rows
++        for (int sx = 0; sx < 2; sx++) {   // 2x2 subpixel cols
++          r = Vec();
++          for (int s = 0; s < passes; s++) {
++            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / passes);
++          }
++          pixel_rad = pixel_rad + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      accum_buffer[i] = accum_buffer[i] * prev_weight + pixel_rad * (passes * pass_weight);
++      rgba_buffer[i * 4 + 0] = (uint8_t)toInt(accum_buffer[i].x);
++      rgba_buffer[i * 4 + 1] = (uint8_t)toInt(accum_buffer[i].y);
++      rgba_buffer[i * 4 + 2] = (uint8_t)toInt(accum_buffer[i].z);
++      rgba_buffer[i * 4 + 3] = 255;
++    }
++  }
++  total_samples = new_samples;
++  return rgba_buffer;
++}
++
++EMSCRIPTEN_KEEPALIVE
++uint8_t* get_rgba_buffer() {
++  return rgba_buffer;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int get_total_samples() {
++  return total_samples * 4; // 2x2 subpixels * passes
++}
++
++} // extern "C"
+diff --git a/smallpt.js b/smallpt.js
+new file mode 100644
+index 0000000..6343da7
+--- /dev/null
++++ b/smallpt.js
+@@ -0,0 +1 @@
++var Module=typeof Module!="undefined"?Module:{};var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=globalThis.document?.currentScript?.src;if(typeof __filename!="undefined"){_scriptName=__filename}else if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");scriptDirectory=__dirname+"/";readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?undefined:"utf8");return ret};if(process.argv.length>1){thisProgram=process.argv[1].replace(/\\/g,"/")}programArgs=process.argv.slice(2);if(typeof module!="undefined"){module["exports"]=Module}quit_=(status,toThrow)=>{process.exitCode=status;throw toThrow}}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{if(isFileURI(url)){return new Promise((resolve,reject)=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,true);xhr.responseType="arraybuffer";xhr.onload=()=>{if(xhr.status==200||xhr.status==0&&xhr.response){resolve(xhr.response);return}reject(xhr.status)};xhr.onerror=reject;xhr.send(null)})}var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var isFileURI=filename=>filename.startsWith("file://");class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["c"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("smallpt.wasm")}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!isFileURI(binaryFile)&&!ENVIRONMENT_IS_NODE){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}Module["ccall"]=ccall;Module["cwrap"]=cwrap;var _set_sphere_color,_get_sphere_color_r,_get_sphere_color_g,_get_sphere_color_b,_reset_sphere_colors,_randomize_sphere_colors,_init_buffer,_render_samples,_get_rgba_buffer,_get_total_samples,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_set_sphere_color=Module["_set_sphere_color"]=wasmExports["d"];_get_sphere_color_r=Module["_get_sphere_color_r"]=wasmExports["e"];_get_sphere_color_g=Module["_get_sphere_color_g"]=wasmExports["f"];_get_sphere_color_b=Module["_get_sphere_color_b"]=wasmExports["g"];_reset_sphere_colors=Module["_reset_sphere_colors"]=wasmExports["h"];_randomize_sphere_colors=Module["_randomize_sphere_colors"]=wasmExports["i"];_init_buffer=Module["_init_buffer"]=wasmExports["j"];_render_samples=Module["_render_samples"]=wasmExports["k"];_get_rgba_buffer=Module["_get_rgba_buffer"]=wasmExports["l"];_get_total_samples=Module["_get_total_samples"]=wasmExports["m"];__emscripten_stack_restore=wasmExports["n"];__emscripten_stack_alloc=wasmExports["o"];_emscripten_stack_get_current=wasmExports["p"];memory=wasmMemory=wasmExports["b"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={a:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;createWasm().then(()=>run());
+diff --git a/smallpt.wasm b/smallpt.wasm
+new file mode 100755
+index 0000000..f0664ec
+Binary files /dev/null and b/smallpt.wasm differ

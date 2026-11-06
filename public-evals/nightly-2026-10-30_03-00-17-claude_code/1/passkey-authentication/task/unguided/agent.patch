@@ -1,0 +1,270 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,64 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Passkey Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin button.btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .signin button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .auth-status {
++      margin-top: 15px;
++      text-align: center;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
++    .auth-status.success {
++      color: #2e7d32;
++    }
++
++    .auth-status.error {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +230,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" novalidate>
++        <label for="username">Username</label>
++        <input type="text" id="username" name="username" data-testid="username-field"
++          autocomplete="username webauthn" autocapitalize="none" spellcheck="false">
++        <button type="submit" class="btn" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p class="auth-status" data-testid="auth-status" role="status" aria-live="polite"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +273,181 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const OPTIONS_URL = '/api/login/options';
++      const VERIFY_URL = '/api/login/verify';
++
++      const form = document.getElementById('signin-form');
++      const usernameField = document.querySelector('[data-testid="username-field"]');
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      const statusEl = document.querySelector('[data-testid="auth-status"]');
++
++      // Only one WebAuthn get() may be pending at a time; this aborts the
++      // background conditional (autofill) request before a modal one starts.
++      let pendingController = null;
++      let signedIn = false;
++
++      const setStatus = (message, type = '') => {
++        statusEl.textContent = message;
++        statusEl.className = 'auth-status' + (type ? ' ' + type : '');
++      };
++
++      const b64urlToBuffer = (value) => {
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
++        const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
++        return bytes.buffer;
++      };
++
++      const bufferToB64url = (buffer) => {
++        const bytes = new Uint8Array(buffer);
++        let binary = '';
++        for (const b of bytes) binary += String.fromCharCode(b);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      };
++
++      const parseRequestOptions = (json) => {
++        if (typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseRequestOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuffer(json.challenge),
++          allowCredentials: (json.allowCredentials || []).map((c) => ({
++            ...c,
++            id: b64urlToBuffer(c.id),
++          })),
++        };
++      };
++
++      const credentialToJSON = (credential) => {
++        try {
++          if (typeof credential.toJSON === 'function') return credential.toJSON();
++        } catch (_) { /* fall through to manual serialization */ }
++        const r = credential.response;
++        return {
++          id: credential.id,
++          rawId: bufferToB64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment || null,
++          clientExtensionResults: credential.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToB64url(r.clientDataJSON),
++            authenticatorData: bufferToB64url(r.authenticatorData),
++            signature: bufferToB64url(r.signature),
++            userHandle: r.userHandle ? bufferToB64url(r.userHandle) : null,
++          },
++        };
++      };
++
++      const fetchOptions = async () => {
++        const res = await fetch(OPTIONS_URL, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({}),
++        });
++        if (!res.ok) throw new Error('Could not start sign-in (' + res.status + ')');
++        const json = await res.json();
++        return parseRequestOptions(json.publicKey || json);
++      };
++
++      const verify = async (credential) => {
++        const res = await fetch(VERIFY_URL, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(credentialToJSON(credential)),
++        });
++        let data = {};
++        try { data = await res.json(); } catch (_) { /* empty body */ }
++        if (!res.ok || data.verified === false) {
++          throw new Error(data.error || data.message || 'Passkey verification failed');
++        }
++        return data;
++      };
++
++      const onSuccess = (data) => {
++        signedIn = true;
++        const name = (data.user && (data.user.displayName || data.user.name)) || data.username;
++        setStatus(name ? 'Signed in as ' + name : 'Signed in successfully', 'success');
++        usernameField.disabled = true;
++        authButton.disabled = true;
++      };
++
++      const authenticate = async (mediation) => {
++        if (pendingController) pendingController.abort();
++        const controller = new AbortController();
++        pendingController = controller;
++
++        const publicKey = await fetchOptions();
++        if (controller.signal.aborted) return null;
++
++        const getOptions = { publicKey, signal: controller.signal };
++        if (mediation) getOptions.mediation = mediation;
++
++        try {
++          return await navigator.credentials.get(getOptions);
++        } finally {
++          if (pendingController === controller) pendingController = null;
++        }
++      };
++
++      // Passkey autofill: a background request that surfaces passkeys in the
++      // username field's autofill dropdown when it is focused.
++      const startConditionalUI = async () => {
++        if (signedIn || !window.PublicKeyCredential ||
++            typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') {
++          return;
++        }
++        try {
++          if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return;
++          const credential = await authenticate('conditional');
++          if (!credential) return;
++          setStatus('Verifying…');
++          onSuccess(await verify(credential));
++        } catch (err) {
++          if (err.name === 'AbortError') return;
++          setStatus(err.message || 'Sign-in failed', 'error');
++          // Re-arm autofill so the user can try again.
++          if (err.name !== 'NotAllowedError') return;
++          startConditionalUI();
++        }
++      };
++
++      // Explicit button: abort autofill and prompt for biometrics directly.
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        if (signedIn) return;
++        if (!window.PublicKeyCredential) {
++          setStatus('Passkeys are not supported in this browser.', 'error');
++          return;
++        }
++        authButton.disabled = true;
++        setStatus('Waiting for your passkey…');
++        try {
++          const credential = await authenticate();
++          if (!credential) throw new Error('No passkey was selected');
++          setStatus('Verifying…');
++          onSuccess(await verify(credential));
++        } catch (err) {
++          setStatus(err.name === 'NotAllowedError'
++            ? 'Sign-in was cancelled or timed out.'
++            : (err.message || 'Sign-in failed'), 'error');
++        } finally {
++          if (!signedIn) {
++            authButton.disabled = false;
++            startConditionalUI();
++          }
++        }
++      });
++
++      startConditionalUI();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

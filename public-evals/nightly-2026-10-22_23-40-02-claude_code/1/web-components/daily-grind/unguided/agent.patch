@@ -1,0 +1,305 @@
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..144ac0c
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,77 @@
++import './grind-button.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++    article:hover, article:focus-within {
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
++      transform: translateY(-2px);
++    }
++    h3 { margin: 0 0 10px; color: var(--primary, #4e342e); font-size: 1.17em; }
++    p { margin: 0; }
++    @media (prefers-reduced-motion: reduce) {
++      article { transition: none; }
++      article:hover, article:focus-within { transform: none; }
++    }
++  </style>
++  <article>
++    <h3 id="title"></h3>
++    <p><slot></slot></p>
++    <grind-button id="cta"></grind-button>
++  </article>
++`;
++
++/**
++ * <coffee-card name="Cold Brew" href="/menu/cold-brew" cta="View Details">Description</coffee-card>
++ * Fires a cancelable `coffee-select` event (detail: {name, href}) before navigating.
++ */
++class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'href', 'cta'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).appendChild(template.content.cloneNode(true));
++    this.shadowRoot.getElementById('cta').addEventListener('click', (e) => {
++      const detail = { name: this.name, href: this.getAttribute('href') };
++      const proceed = this.dispatchEvent(
++        new CustomEvent('coffee-select', { detail, bubbles: true, composed: true, cancelable: true })
++      );
++      if (!proceed) e.preventDefault();
++    });
++  }
++
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++
++  connectedCallback() {
++    if (!this.hasAttribute('role')) this.setAttribute('role', 'listitem');
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    if (this.isConnected) this.#render();
++  }
++
++  #render() {
++    const cta = this.shadowRoot.getElementById('cta');
++    const text = this.getAttribute('cta') || 'View Details';
++    this.shadowRoot.getElementById('title').textContent = this.name;
++    cta.textContent = text;
++    cta.setAttribute('label', `${text}: ${this.name}`);
++    const href = this.getAttribute('href');
++    href ? cta.setAttribute('href', href) : cta.removeAttribute('href');
++  }
++}
++
++customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/coffee-section.js b/components/coffee-section.js
+new file mode 100644
+index 0000000..295c2dc
+--- /dev/null
++++ b/components/coffee-section.js
+@@ -0,0 +1,46 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: block; }
++    h2 { margin: 0; text-align: center; font-size: 1.5em; }
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++  </style>
++  <section>
++    <h2></h2>
++    <div class="grid" role="list"><slot></slot></div>
++  </section>
++`;
++
++/**
++ * <coffee-section heading="Seasonal Favorites"> <coffee-card>…</coffee-card> </coffee-section>
++ */
++class CoffeeSection extends HTMLElement {
++  static observedAttributes = ['heading'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).appendChild(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    if (this.isConnected) this.#render();
++  }
++
++  #render() {
++    const heading = this.getAttribute('heading') ?? '';
++    this.shadowRoot.querySelector('h2').textContent = heading;
++    const section = this.shadowRoot.querySelector('section');
++    heading ? section.setAttribute('aria-label', heading) : section.removeAttribute('aria-label');
++  }
++}
++
++customElements.define('coffee-section', CoffeeSection);
+diff --git a/components/grind-button.js b/components/grind-button.js
+new file mode 100644
+index 0000000..51afee7
+--- /dev/null
++++ b/components/grind-button.js
+@@ -0,0 +1,71 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host { display: inline-block; margin-top: 15px; }
++    :host([hidden]) { display: none; }
++    .btn {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      border: 0;
++      border-radius: 5px;
++      font: inherit;
++      text-decoration: none;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++    .btn:hover { background: var(--text, #3e2723); }
++    .btn:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++    :host([disabled]) .btn { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
++  </style>
++  <span id="slot-wrap"><slot></slot></span>
++`;
++
++/**
++ * <grind-button href="/path" label="Accessible name">Text</grind-button>
++ * Renders a link when `href` is set, otherwise a button.
++ */
++class GrindButton extends HTMLElement {
++  static observedAttributes = ['href', 'label', 'disabled'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).appendChild(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    if (this.isConnected) this.#render();
++  }
++
++  #render() {
++    const href = this.getAttribute('href');
++    const tag = href ? 'a' : 'button';
++    let control = this.shadowRoot.querySelector('.btn');
++    if (!control || control.localName !== tag) {
++      control?.remove();
++      control = document.createElement(tag);
++      control.className = 'btn';
++      control.part = 'control';
++      control.appendChild(document.createElement('slot'));
++      this.shadowRoot.getElementById('slot-wrap')?.remove();
++      this.shadowRoot.appendChild(control);
++    }
++    if (href) control.setAttribute('href', href);
++    else control.type = 'button';
++
++    const label = this.getAttribute('label');
++    label ? control.setAttribute('aria-label', label) : control.removeAttribute('aria-label');
++    const disabled = this.hasAttribute('disabled');
++    if (href) disabled ? control.setAttribute('aria-disabled', 'true') : control.removeAttribute('aria-disabled');
++    else control.disabled = disabled;
++    if (href && disabled) control.tabIndex = -1;
++    else control.removeAttribute('tabindex');
++  }
++}
++
++customElements.define('grind-button', GrindButton);
+diff --git a/index.html b/index.html
+index 66c9173..fb0d6c0 100644
+--- a/index.html
++++ b/index.html
+@@ -100,41 +100,6 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +118,9 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/coffee-section.js"></script>
++  <script type="module" src="/components/coffee-card.js"></script>
++  <script type="module" src="/components/grind-button.js"></script>
+ </head>
+ 
+ <body>
+@@ -171,30 +139,15 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <grind-button href="/order-online">Order Now</grind-button>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++    <coffee-section heading="Seasonal Favorites">
++      <coffee-card name="Maple Oat Latte" href="/menu/seasonal">Creamy oat milk with a hint of Vermont maple syrup.</coffee-card>
++      <coffee-card name="Dark Roast Espresso" href="/menu/espresso">Bold, smokey, and perfect for a morning boost.</coffee-card>
++      <coffee-card name="Cold Brew" href="/menu/cold-brew">Steeped for 18 hours for maximum smoothness.</coffee-card>
++    </coffee-section>
+   </main>
+ 
+   <footer>

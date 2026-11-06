@@ -1,0 +1,346 @@
+diff --git a/index.html b/index.html
+index 66c9173..06afa90 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,163 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Finder */
++    .finder {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 2rem;
++      margin-top: 40px;
++    }
++
++    .finder h2 {
++      color: var(--primary);
++    }
++
++    .finder-intro {
++      margin-bottom: 1.5rem;
++    }
++
++    .finder-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 1.5rem;
++      border-radius: 8px;
++      transition: outline-color 0.3s, background-color 0.3s;
++    }
++
++    .finder-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 0.75rem 1rem 1rem;
++    }
++
++    .finder-form legend,
++    .finder-form .field > label {
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 0.25rem;
++    }
++
++    .finder-form fieldset label {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-height: 2.25rem;
++      cursor: pointer;
++    }
++
++    .finder-form input[type="radio"],
++    .finder-form input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 1.1rem;
++      height: 1.1rem;
++    }
++
++    .finder-form .field {
++      display: flex;
++      flex-direction: column;
++      gap: 0.25rem;
++    }
++
++    .finder-form .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .finder-form input[type="number"] {
++      font: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    .finder-form input:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .finder-form .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.875rem;
++    }
++
++    .finder-form input:user-invalid ~ .error-msg {
++      display: block;
++    }
++
++    .finder-form :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .finder-actions {
++      grid-column: 1 / -1;
++      display: flex;
++      gap: 1rem;
++      flex-wrap: wrap;
++    }
++
++    .finder-actions button {
++      font: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.5rem 1.5rem;
++      border-radius: 5px;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++    }
++
++    .finder-actions button[type="submit"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .finder-actions button[type="reset"] {
++      background: white;
++      color: var(--primary);
++    }
++
++    /* Highlight while an AI agent is filling in the form */
++    .finder-form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: 8px;
++      background-color: #fff8e1;
++    }
++
++    .finder-form button:tool-submit-active {
++      outline: 3px dashed var(--accent);
++      outline-offset: 2px;
++    }
++
++    .finder-status {
++      margin: 1.5rem 0 0.5rem;
++      font-weight: 600;
++    }
++
++    .finder-results {
++      list-style: none;
++    }
++
++    .finder-results .card {
++      text-align: left;
++      border-top: 4px solid var(--accent);
++    }
++
++    .finder-results .price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .finder-results .tags {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 0.5rem;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +352,63 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Find Your Perfect Cup</h2>
++      <p class="finder-intro">Tell us what you're in the mood for and we'll match you with drinks from our menu.</p>
++
++      <form id="coffee-finder" class="finder-form" action="/menu" method="GET"
++        toolname="find-coffee"
++        tooldescription="Search The Daily Grind's drink menu for coffees matching the customer's preferences. Returns matching drinks with descriptions and prices. Use this to recommend a drink before the customer orders."
++        toolautosubmit>
++        <fieldset toolparamdescription="Whether the customer wants a hot or iced/cold drink, or has no preference">
++          <legend>Temperature</legend>
++          <label><input type="radio" name="temperature" value="any" checked> No preference</label>
++          <label><input type="radio" name="temperature" value="hot"> Hot</label>
++          <label><input type="radio" name="temperature" value="iced"> Iced</label>
++        </fieldset>
++
++        <fieldset toolparamdescription="Preferred roast level: light is bright and fruity, dark is bold and smoky">
++          <legend>Roast</legend>
++          <label><input type="radio" name="roast" value="any" checked> No preference</label>
++          <label><input type="radio" name="roast" value="light"> Light</label>
++          <label><input type="radio" name="roast" value="medium"> Medium</label>
++          <label><input type="radio" name="roast" value="dark"> Dark</label>
++        </fieldset>
++
++        <fieldset toolparamdescription="Flavor profiles the customer enjoys; drinks matching any selected note are returned">
++          <legend>Flavor notes</legend>
++          <label><input type="checkbox" name="flavor" value="chocolatey"> Chocolatey</label>
++          <label><input type="checkbox" name="flavor" value="nutty"> Nutty</label>
++          <label><input type="checkbox" name="flavor" value="fruity"> Fruity</label>
++          <label><input type="checkbox" name="flavor" value="sweet"> Sweet</label>
++          <label><input type="checkbox" name="flavor" value="spiced"> Spiced</label>
++        </fieldset>
++
++        <fieldset toolparamdescription="Dietary and caffeine requirements">
++          <legend>Dietary</legend>
++          <label><input type="checkbox" name="dairyFree" value="yes"> Dairy-free</label>
++          <label><input type="checkbox" name="decaf" value="yes"> Decaf available</label>
++        </fieldset>
++
++        <div class="field">
++          <label for="max-price">Max price ($)</label>
++          <span id="max-price-hint" class="hint">Leave blank for any price.</span>
++          <input type="number" id="max-price" name="maxPrice" min="2" max="10" step="0.25" inputmode="decimal"
++            enterkeyhint="search" aria-describedby="max-price-hint" aria-errormessage="max-price-error"
++            toolparamdescription="Highest price in US dollars the customer is willing to pay, e.g. 5.50">
++          <span id="max-price-error" class="error-msg"><span aria-hidden="true">⚠</span> Enter an amount between $2 and $10.</span>
++        </div>
++
++        <div class="finder-actions">
++          <button type="submit">Find my coffee</button>
++          <button type="reset">Clear</button>
++        </div>
++      </form>
++
++      <p id="finder-status" class="finder-status" role="status" aria-live="polite"></p>
++      <ul id="finder-results" class="finder-results grid"></ul>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +421,113 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const MENU = [
++      { name: 'Maple Oat Latte', description: 'Creamy oat milk with a hint of Vermont maple syrup.', price: 5.75, temperature: ['hot', 'iced'], roast: 'medium', flavors: ['sweet', 'nutty'], dairyFree: true, decaf: true, url: '/menu/seasonal' },
++      { name: 'Dark Roast Espresso', description: 'Bold, smokey, and perfect for a morning boost.', price: 3.25, temperature: ['hot'], roast: 'dark', flavors: ['chocolatey'], dairyFree: true, decaf: true, url: '/menu/espresso' },
++      { name: 'Cold Brew', description: 'Steeped for 18 hours for maximum smoothness.', price: 4.50, temperature: ['iced'], roast: 'medium', flavors: ['chocolatey', 'nutty'], dairyFree: true, decaf: false, url: '/menu/cold-brew' },
++      { name: 'Ethiopian Pour-Over', description: 'Single-origin Yirgacheffe with bright blueberry and citrus notes.', price: 4.75, temperature: ['hot'], roast: 'light', flavors: ['fruity'], dairyFree: true, decaf: false, url: '/menu/pour-over' },
++      { name: 'Mocha', description: 'Espresso, steamed milk, and house-made dark chocolate sauce.', price: 5.25, temperature: ['hot', 'iced'], roast: 'dark', flavors: ['chocolatey', 'sweet'], dairyFree: false, decaf: true, url: '/menu/mocha' },
++      { name: 'Chai-Spiced Cortado', description: 'Equal parts espresso and milk with cinnamon, cardamom, and clove.', price: 4.95, temperature: ['hot'], roast: 'medium', flavors: ['spiced', 'sweet'], dairyFree: false, decaf: true, url: '/menu/cortado' },
++      { name: 'Hazelnut Iced Americano', description: 'Espresso over ice with a splash of toasted hazelnut syrup.', price: 4.25, temperature: ['iced'], roast: 'medium', flavors: ['nutty', 'sweet'], dairyFree: true, decaf: true, url: '/menu/americano' },
++      { name: 'Sparkling Citrus Espresso', description: 'Light-roast espresso over sparkling water and orange peel.', price: 5.00, temperature: ['iced'], roast: 'light', flavors: ['fruity'], dairyFree: true, decaf: false, url: '/menu/sparkling-espresso' },
++    ];
++
++    const form = document.getElementById('coffee-finder');
++    const status = document.getElementById('finder-status');
++    const results = document.getElementById('finder-results');
++    const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++    function findCoffee(data) {
++      const temperature = data.get('temperature');
++      const roast = data.get('roast');
++      const flavors = data.getAll('flavor');
++      const maxPrice = data.get('maxPrice') ? Number(data.get('maxPrice')) : Infinity;
++
++      return MENU.filter((drink) =>
++        (temperature === 'any' || drink.temperature.includes(temperature)) &&
++        (roast === 'any' || drink.roast === roast) &&
++        (flavors.length === 0 || flavors.some((f) => drink.flavors.includes(f))) &&
++        (!data.has('dairyFree') || drink.dairyFree) &&
++        (!data.has('decaf') || drink.decaf) &&
++        drink.price <= maxPrice
++      );
++    }
++
++    function renderResults(matches) {
++      results.replaceChildren(...matches.map((drink) => {
++        const li = document.createElement('li');
++        li.className = 'card';
++        const h3 = document.createElement('h3');
++        h3.textContent = drink.name;
++        const desc = document.createElement('p');
++        desc.textContent = drink.description;
++        const price = document.createElement('p');
++        price.className = 'price';
++        price.textContent = currency.format(drink.price);
++        const tags = document.createElement('p');
++        tags.className = 'tags';
++        tags.textContent = [`${drink.roast} roast`, drink.temperature.join(' / '), ...drink.flavors].join(' · ');
++        const link = document.createElement('a');
++        link.className = 'btn';
++        link.href = drink.url;
++        link.textContent = 'View Details';
++        li.append(h3, desc, price, tags, link);
++        return li;
++      }));
++      status.textContent = matches.length
++        ? `We found ${matches.length} drink${matches.length === 1 ? '' : 's'} for you.`
++        : 'No drinks match all of those preferences. Try loosening a filter.';
++    }
++
++    function describeForAgent(matches) {
++      if (!matches.length) {
++        return 'No drinks matched these preferences. Suggest the customer relax a filter (e.g. roast, flavor, or max price) and search again.';
++      }
++      return JSON.stringify({
++        count: matches.length,
++        drinks: matches.map(({ name, description, price, temperature, roast, flavors, dairyFree, decaf, url }) => ({
++          name, description, price: currency.format(price), temperature, roast, flavors, dairyFree, decafAvailable: decaf,
++          url: new URL(url, location.href).href,
++        })),
++      });
++    }
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const maxPrice = form.elements.maxPrice;
++      if (!maxPrice.checkValidity()) {
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(`Validation failed: maxPrice (${maxPrice.validationMessage})`));
++        }
++        return;
++      }
++
++      const matches = findCoffee(new FormData(form));
++      renderResults(matches);
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve(describeForAgent(matches)));
++      }
++    });
++
++    form.addEventListener('reset', () => {
++      results.replaceChildren();
++      status.textContent = '';
++      form.elements.maxPrice.removeAttribute('aria-invalid');
++    });
++
++    // Keep aria-invalid in sync with the visual :user-invalid state
++    const syncAria = (el) => {
++      el.setAttribute?.('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
++    };
++    form.addEventListener('blur', (e) => syncAria(e.target), true);
++    form.addEventListener('input', (e) => {
++      if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

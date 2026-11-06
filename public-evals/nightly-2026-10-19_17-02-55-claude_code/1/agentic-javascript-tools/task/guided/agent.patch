@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose menu lookup to AI assistants.
++    const MENU_ITEMS = [
++      {
++        name: 'Maple Oat Latte',
++        category: 'Seasonal',
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        url: '/menu/seasonal',
++      },
++      {
++        name: 'Dark Roast Espresso',
++        category: 'Espresso',
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        url: '/menu/espresso',
++      },
++      {
++        name: 'Cold Brew',
++        category: 'Cold Drinks',
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        url: '/menu/cold-brew',
++      },
++    ];
++
++    const normalize = (value) => value.trim().toLowerCase();
++
++    let menuToolController = null;
++
++    async function registerMenuTool() {
++      if (!('modelContext' in document) || menuToolController) return;
++
++      const controller = new AbortController();
++      menuToolController = controller;
++
++      try {
++        await document.modelContext.registerTool({
++          name: 'get_menu_item_details',
++          description: 'Looks up a menu item at The Daily Grind by name and returns its details. Use when the user asks about a specific drink.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemName: {
++                type: 'string',
++                description: 'Name of the menu item, as the customer would say it. Matching ignores case.',
++              },
++            },
++            required: ['itemName'],
++          },
++          execute({ itemName } = {}) {
++            if (typeof itemName !== 'string' || !itemName.trim()) {
++              return { error: 'Provide the name of a menu item.', availableItems: MENU_ITEMS.map((item) => item.name) };
++            }
++            const item = MENU_ITEMS.find((entry) => normalize(entry.name) === normalize(itemName));
++            if (!item) {
++              return { error: `Menu item "${itemName}" not found.`, availableItems: MENU_ITEMS.map((entry) => entry.name) };
++            }
++            return item;
++          },
++          annotations: { readOnlyHint: true },
++        }, { signal: controller.signal });
++      } catch (err) {
++        if (menuToolController === controller) menuToolController = null;
++        console.error('Failed to register menu tool', err);
++      }
++    }
++
++    // Unregister when the page is unloaded or enters the back/forward cache.
++    function unregisterMenuTool() {
++      menuToolController?.abort();
++      menuToolController = null;
++    }
++
++    registerMenuTool();
++    addEventListener('pagehide', unregisterMenuTool);
++    // Restore the tool if the page is revived from the back/forward cache.
++    addEventListener('pageshow', (event) => {
++      if (event.persisted) registerMenuTool();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

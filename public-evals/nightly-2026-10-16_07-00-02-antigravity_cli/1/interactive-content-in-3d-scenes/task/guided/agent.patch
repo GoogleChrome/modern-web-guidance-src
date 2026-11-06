@@ -1,0 +1,801 @@
+diff --git a/coffee-box-3d.js b/coffee-box-3d.js
+new file mode 100644
+--- a/coffee-box-3d.js
++++ b/coffee-box-3d.js
+@@ -0,0 +1,796 @@
++/**
++ * Interactive 3D Coffee Box Scene
++ * Implements HTML-in-Canvas standard with WebGL2 and responsive CSS fallback.
++ * Follows modern web best practices for interactive HTML content in 3D scenes.
++ */
++
++(function () {
++  'use strict';
++
++  // 1. Check browser support for the HTML-in-Canvas API
++  const supportsHtmlInCanvas = 'content' in HTMLCanvasElement.prototype;
++
++  const canvas = document.getElementById('coffee-canvas');
++  const sceneWrapper = document.getElementById('scene-wrapper');
++  const formElement = document.getElementById('coffee-box-form');
++  const toggleSpinBtn = document.getElementById('toggle-spin-btn');
++  const orderStatusMsg = document.getElementById('order-status-msg');
++
++  if (!canvas || !formElement) {
++    console.error('Coffee 3D scene elements not found.');
++    return;
++  }
++
++  // Fallback setup: Place HTML content on top of canvas using CSS if not supported
++  if (!supportsHtmlInCanvas) {
++    if (sceneWrapper && formElement.parentElement === canvas) {
++      sceneWrapper.appendChild(formElement);
++    }
++  }
++
++  // 2. WebGL Initialization
++  const gl = canvas.getContext('webgl2', { alpha: true, antialias: true }) ||
++             canvas.getContext('webgl', { alpha: true, antialias: true });
++
++  if (!gl) {
++    console.warn('WebGL is not supported in this environment.');
++    return;
++  }
++
++  // 3. Resize Observer for matching device pixels
++  const resizeObserver = new ResizeObserver(([entry]) => {
++    const dpc = entry.devicePixelContentBoxSize;
++    canvas.width = dpc
++      ? dpc[0].inlineSize
++      : Math.round(entry.contentRect.width * (window.devicePixelRatio || 1));
++    canvas.height = dpc
++      ? dpc[0].blockSize
++      : Math.round(entry.contentRect.height * (window.devicePixelRatio || 1));
++    gl.viewport(0, 0, canvas.width, canvas.height);
++  });
++
++  const supportsDevicePixelContentBox =
++    typeof ResizeObserverEntry !== 'undefined' &&
++    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++  const resizeOptions = supportsDevicePixelContentBox
++    ? { box: 'device-pixel-content-box' }
++    : {};
++  resizeObserver.observe(canvas, resizeOptions);
++
++  // 4. Matrix Math Utilities (Column-Major 4x4)
++  function mat4Identity() {
++    return new Float32Array([
++      1, 0, 0, 0,
++      0, 1, 0, 0,
++      0, 0, 1, 0,
++      0, 0, 0, 1
++    ]);
++  }
++
++  function mat4Multiply(a, b) {
++    const out = new Float32Array(16);
++    for (let i = 0; i < 4; i++) {
++      for (let j = 0; j < 4; j++) {
++        out[j * 4 + i] =
++          a[0 * 4 + i] * b[j * 4 + 0] +
++          a[1 * 4 + i] * b[j * 4 + 1] +
++          a[2 * 4 + i] * b[j * 4 + 2] +
++          a[3 * 4 + i] * b[j * 4 + 3];
++      }
++    }
++    return out;
++  }
++
++  function mat4Translate(x, y, z) {
++    const out = mat4Identity();
++    out[12] = x;
++    out[13] = y;
++    out[14] = z;
++    return out;
++  }
++
++  function mat4Scale(sx, sy, sz) {
++    const out = mat4Identity();
++    out[0] = sx;
++    out[5] = sy;
++    out[10] = sz;
++    return out;
++  }
++
++  function mat4RotateX(rad) {
++    const c = Math.cos(rad);
++    const s = Math.sin(rad);
++    const out = mat4Identity();
++    out[5] = c;
++    out[6] = s;
++    out[9] = -s;
++    out[10] = c;
++    return out;
++  }
++
++  function mat4RotateY(rad) {
++    const c = Math.cos(rad);
++    const s = Math.sin(rad);
++    const out = mat4Identity();
++    out[0] = c;
++    out[2] = -s;
++    out[8] = s;
++    out[10] = c;
++    return out;
++  }
++
++  function mat4Perspective(fovyRad, aspect, near, far) {
++    const f = 1.0 / Math.tan(fovyRad / 2);
++    const out = new Float32Array(16);
++    out[0] = f / aspect;
++    out[5] = f;
++    out[10] = (far + near) / (near - far);
++    out[11] = -1;
++    out[14] = (2 * far * near) / (near - far);
++    out[15] = 0;
++    return out;
++  }
++
++  function mat4LookAt(eye, center, up) {
++    const z0 = eye[0] - center[0];
++    const z1 = eye[1] - center[1];
++    const z2 = eye[2] - center[2];
++    const lenZ = Math.hypot(z0, z1, z2) || 1;
++    const zx = z0 / lenZ;
++    const zy = z1 / lenZ;
++    const zz = z2 / lenZ;
++
++    const xx = up[1] * zz - up[2] * zy;
++    const xy = up[2] * zx - up[0] * zz;
++    const xz = up[0] * zy - up[1] * zx;
++    const lenX = Math.hypot(xx, xy, xz) || 1;
++    const x0 = xx / lenX;
++    const x1 = xy / lenX;
++    const x2 = xz / lenX;
++
++    const y0 = zy * x2 - zz * x1;
++    const y1 = zz * x0 - zx * x2;
++    const y2 = zx * x1 - zy * x0;
++
++    return new Float32Array([
++      x0, y0, zx, 0,
++      x1, y1, zy, 0,
++      x2, y2, zz, 0,
++      -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]),
++      -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]),
++      -(zx * eye[0] + zy * eye[1] + zz * eye[2]),
++      1
++    ]);
++  }
++
++  // 5. Shader Setup
++  const vsSource = `
++    attribute vec3 aPosition;
++    attribute vec2 aTexCoord;
++    attribute vec3 aNormal;
++
++    uniform mat4 uMVP;
++    uniform mat4 uModel;
++
++    varying vec2 vTexCoord;
++    varying vec3 vNormal;
++
++    void main() {
++      vTexCoord = aTexCoord;
++      vNormal = (uModel * vec4(aNormal, 0.0)).xyz;
++      gl_Position = uMVP * vec4(aPosition, 1.0);
++    }
++  `;
++
++  const fsSource = `
++    precision mediump float;
++
++    varying vec2 vTexCoord;
++    varying vec3 vNormal;
++
++    uniform sampler2D uTexture;
++    uniform vec3 uLightDir;
++    uniform vec4 uBaseColor;
++    uniform float uUseTexture;
++    uniform float uAmbient;
++
++    void main() {
++      vec3 norm = normalize(vNormal);
++      vec3 light = normalize(uLightDir);
++      float diff = max(dot(norm, light), 0.0);
++      float lighting = uAmbient + (1.0 - uAmbient) * diff;
++
++      vec4 texColor = texture2D(uTexture, vTexCoord);
++      vec4 finalColor = mix(uBaseColor, texColor, uUseTexture);
++      gl_FragColor = vec4(finalColor.rgb * lighting, finalColor.a);
++    }
++  `;
++
++  function createShader(glCtx, type, source) {
++    const shader = glCtx.createShader(type);
++    glCtx.shaderSource(shader, source);
++    glCtx.compileShader(shader);
++    if (!glCtx.getShaderParameter(shader, glCtx.COMPILE_STATUS)) {
++      console.error('Shader compile error:', glCtx.getShaderInfoLog(shader));
++      glCtx.deleteShader(shader);
++      return null;
++    }
++    return shader;
++  }
++
++  const vertShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
++  const fragShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
++  const program = gl.createProgram();
++  gl.attachShader(program, vertShader);
++  gl.attachShader(program, fragShader);
++  gl.linkProgram(program);
++
++  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++    console.error('Program link error:', gl.getProgramInfoLog(program));
++  }
++
++  const attribLocations = {
++    position: gl.getAttribLocation(program, 'aPosition'),
++    texCoord: gl.getAttribLocation(program, 'aTexCoord'),
++    normal: gl.getAttribLocation(program, 'aNormal'),
++  };
++
++  const uniformLocations = {
++    mvp: gl.getUniformLocation(program, 'uMVP'),
++    model: gl.getUniformLocation(program, 'uModel'),
++    lightDir: gl.getUniformLocation(program, 'uLightDir'),
++    baseColor: gl.getUniformLocation(program, 'uBaseColor'),
++    useTexture: gl.getUniformLocation(program, 'uUseTexture'),
++    ambient: gl.getUniformLocation(program, 'uAmbient'),
++    texture: gl.getUniformLocation(program, 'uTexture'),
++  };
++
++  // 6. Unit Quad Geometry (Spanning -0.5 to 0.5 in model space)
++  const quadVertices = new Float32Array([
++    // Position (X, Y, Z)   TexCoord (U, V)   Normal (X, Y, Z)
++    -0.5, -0.5, 0.0,         0.0, 1.0,         0.0, 0.0, 1.0,
++     0.5, -0.5, 0.0,         1.0, 1.0,         0.0, 0.0, 1.0,
++     0.5,  0.5, 0.0,         1.0, 0.0,         0.0, 0.0, 1.0,
++    -0.5, -0.5, 0.0,         0.0, 1.0,         0.0, 0.0, 1.0,
++     0.5,  0.5, 0.0,         1.0, 0.0,         0.0, 0.0, 1.0,
++    -0.5,  0.5, 0.0,         0.0, 0.0,         0.0, 0.0, 1.0,
++  ]);
++
++  const quadVBO = gl.createBuffer();
++  gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
++  gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
++
++  // 7. Texture Allocation and HTML-in-Canvas Upload Utilities
++  function getElementImageSize(canvasEl, element) {
++    let elementImage;
++    try {
++      elementImage = canvasEl.captureElementImage(element);
++    } catch (err) {
++      if (typeof canvasEl.requestPaint === 'function') {
++        canvasEl.requestPaint();
++      }
++      return null;
++    }
++    const width = Math.ceil(elementImage.width);
++    const height = Math.ceil(elementImage.height);
++    if (elementImage && typeof elementImage.close === 'function') {
++      elementImage.close();
++    }
++    return width > 0 && height > 0 ? { width, height } : null;
++  }
++
++  function allocateElementTexture(glCtx, texture, state, width, height) {
++    glCtx.bindTexture(glCtx.TEXTURE_2D, texture);
++    if (state.width === width && state.height === height) return;
++
++    const internalFormat = glCtx.RGBA8 || glCtx.RGBA;
++    glCtx.texImage2D(
++      glCtx.TEXTURE_2D,
++      0,
++      internalFormat,
++      width,
++      height,
++      0,
++      glCtx.RGBA,
++      glCtx.UNSIGNED_BYTE,
++      null
++    );
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_MIN_FILTER, glCtx.LINEAR);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_MAG_FILTER, glCtx.LINEAR);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_WRAP_S, glCtx.CLAMP_TO_EDGE);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_WRAP_T, glCtx.CLAMP_TO_EDGE);
++    state.width = width;
++    state.height = height;
++  }
++
++  function uploadElementWebGL(glCtx, canvasEl, texture, element, state) {
++    const size = getElementImageSize(canvasEl, element);
++    if (!size) return false;
++    const { width, height } = size;
++
++    allocateElementTexture(glCtx, texture, state, width, height);
++    glCtx.texElementSubImage2D(glCtx.TEXTURE_2D, 0, 0, 0, element, { width, height });
++    return true;
++  }
++
++  // 8. Canvas Transform Computation (from Modern Web Guidance)
++  function computeCanvasTransform(canvasEl, element, mvp) {
++    const width = element.offsetWidth || 320;
++    const height = element.offsetHeight || 420;
++
++    // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
++    const toGLModel = new DOMMatrix()
++      .scale(1 / width, -1 / height, 1 / height)
++      .translate(-width / 2, -height / 2);
++
++    // 2. Convert WebGL MVP Matrix to DOM Matrix
++    const mvpDOM = new DOMMatrix(Array.from(mvp));
++
++    // 3. Map to the canvas viewport, in CSS pixels
++    const cw = canvasEl.clientWidth || 800;
++    const ch = canvasEl.clientHeight || 560;
++    const clipToCanvasViewport = new DOMMatrix()
++      .translate(cw / 2, ch / 2)
++      .scale(cw / 2, -ch / 2, ch / 2);
++
++    // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
++    return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++  }
++
++  // 9. Textures for the 3D Coffee Packaging
++  function createTextureFromCanvas(glCtx, drawFn, width, height) {
++    const cvs = document.createElement('canvas');
++    cvs.width = width;
++    cvs.height = height;
++    const ctx = cvs.getContext('2d');
++    drawFn(ctx, width, height);
++
++    const tex = glCtx.createTexture();
++    glCtx.bindTexture(glCtx.TEXTURE_2D, tex);
++    glCtx.texImage2D(glCtx.TEXTURE_2D, 0, glCtx.RGBA, glCtx.RGBA, glCtx.UNSIGNED_BYTE, cvs);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_MIN_FILTER, glCtx.LINEAR);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_MAG_FILTER, glCtx.LINEAR);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_WRAP_S, glCtx.CLAMP_TO_EDGE);
++    glCtx.texParameteri(glCtx.TEXTURE_2D, glCtx.TEXTURE_WRAP_T, glCtx.CLAMP_TO_EDGE);
++    return { texture: tex, canvas: cvs, update: () => {
++      glCtx.bindTexture(glCtx.TEXTURE_2D, tex);
++      glCtx.texImage2D(glCtx.TEXTURE_2D, 0, glCtx.RGBA, glCtx.RGBA, glCtx.UNSIGNED_BYTE, cvs);
++    }};
++  }
++
++  // Textures for package faces
++  const backTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    // Rich coffee roast packaging back label
++    const grad = ctx.createLinearGradient(0, 0, 0, h);
++    grad.addColorStop(0, '#23150f');
++    grad.addColorStop(1, '#150a06');
++    ctx.fillStyle = grad;
++    ctx.fillRect(0, 0, w, h);
++
++    // Elegant border
++    ctx.strokeStyle = '#ffab40';
++    ctx.lineWidth = 6;
++    ctx.strokeRect(16, 16, w - 32, h - 32);
++
++    ctx.fillStyle = '#ffab40';
++    ctx.font = 'bold 22px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('THE DAILY GRIND', w / 2, 60);
++
++    ctx.fillStyle = '#d7ccc8';
++    ctx.font = '14px "Segoe UI", sans-serif';
++    ctx.fillText('ARTISANAL SINGLE-ORIGIN ROAST', w / 2, 85);
++
++    ctx.strokeStyle = 'rgba(255, 171, 64, 0.4)';
++    ctx.lineWidth = 1;
++    ctx.beginPath();
++    ctx.moveTo(40, 105);
++    ctx.lineTo(w - 40, 105);
++    ctx.stroke();
++
++    ctx.fillStyle = '#ffffff';
++    ctx.font = 'bold 26px "Segoe UI", sans-serif';
++    ctx.fillText('GUATEMALA ANTIGUA', w / 2, 150);
++
++    ctx.fillStyle = '#ffab40';
++    ctx.font = '14px "Segoe UI", sans-serif';
++    ctx.fillText('ROAST PROFILE: DARK ROAST ●●●●●', w / 2, 185);
++
++    ctx.fillStyle = '#d7ccc8';
++    ctx.font = '15px "Segoe UI", sans-serif';
++    ctx.fillText('TASTING NOTES', w / 2, 230);
++    ctx.fillStyle = '#ffffff';
++    ctx.font = 'italic 16px "Segoe UI", sans-serif';
++    ctx.fillText('Smoked Dark Chocolate • Brown Sugar • Almond', w / 2, 260);
++
++    ctx.fillStyle = '#d7ccc8';
++    ctx.font = '14px "Segoe UI", sans-serif';
++    ctx.fillText('ELEVATION: 1,650m  |  PROCESS: WASHED', w / 2, 310);
++    ctx.fillText('NET WT. 12 OZ (340G)', w / 2, 340);
++
++    // Barcode mock
++    ctx.fillStyle = '#ffffff';
++    ctx.fillRect(w / 2 - 120, h - 100, 240, 50);
++    ctx.fillStyle = '#000000';
++    for (let x = w / 2 - 110; x < w / 2 + 110; x += 4 + Math.floor(Math.sin(x) * 2 + 2)) {
++      ctx.fillRect(x, h - 95, 2, 40);
++    }
++  }, 512, 672);
++
++  const leftTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    ctx.fillStyle = '#1e110b';
++    ctx.fillRect(0, 0, w, h);
++    ctx.strokeStyle = '#ffab40';
++    ctx.lineWidth = 4;
++    ctx.strokeRect(10, 10, w - 20, h - 20);
++
++    ctx.save();
++    ctx.translate(w / 2, h / 2);
++    ctx.rotate(-Math.PI / 2);
++    ctx.fillStyle = '#ffab40';
++    ctx.font = 'bold 24px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('THE DAILY GRIND • ARTISANAL ROASTERS', 0, 8);
++    ctx.restore();
++  }, 256, 672);
++
++  const rightTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    ctx.fillStyle = '#1e110b';
++    ctx.fillRect(0, 0, w, h);
++    ctx.strokeStyle = '#ffab40';
++    ctx.lineWidth = 4;
++    ctx.strokeRect(10, 10, w - 20, h - 20);
++
++    ctx.fillStyle = '#ffab40';
++    ctx.font = 'bold 18px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('BREWING TIPS', w / 2, 50);
++
++    ctx.fillStyle = '#d7ccc8';
++    ctx.font = '13px "Segoe UI", sans-serif';
++    ctx.fillText('1:16 Coffee to Water', w / 2, 100);
++    ctx.fillText('Water: 200°F / 93°C', w / 2, 130);
++    ctx.fillText('Brew Time: 3:30 mins', w / 2, 160);
++    ctx.fillText('Always Grind Fresh', w / 2, 190);
++  }, 256, 672);
++
++  const topTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    ctx.fillStyle = '#2b1712';
++    ctx.fillRect(0, 0, w, h);
++    ctx.strokeStyle = '#ffab40';
++    ctx.lineWidth = 4;
++    ctx.strokeRect(8, 8, w - 16, h - 16);
++
++    ctx.fillStyle = '#ffab40';
++    ctx.font = 'bold 20px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('★ SEALED FOR ROAST FRESHNESS ★', w / 2, h / 2 + 6);
++  }, 512, 256);
++
++  const bottomTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    ctx.fillStyle = '#150a06';
++    ctx.fillRect(0, 0, w, h);
++    ctx.fillStyle = '#d7ccc8';
++    ctx.font = '14px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('100% COMPOSTABLE PACKAGE • BATCH #2026', w / 2, h / 2 + 5);
++  }, 512, 256);
++
++  // Front fallback texture (when HTML-in-Canvas is not supported or before initial upload)
++  const frontFallbackTexObj = createTextureFromCanvas(gl, (ctx, w, h) => {
++    const grad = ctx.createLinearGradient(0, 0, 0, h);
++    grad.addColorStop(0, '#2b1712');
++    grad.addColorStop(1, '#180d09');
++    ctx.fillStyle = grad;
++    ctx.fillRect(0, 0, w, h);
++
++    ctx.strokeStyle = '#ffab40';
++    ctx.lineWidth = 6;
++    ctx.strokeRect(12, 12, w - 24, h - 24);
++
++    ctx.fillStyle = '#ffab40';
++    ctx.font = 'bold 18px "Segoe UI", sans-serif';
++    ctx.textAlign = 'center';
++    ctx.fillText('THE DAILY GRIND', w / 2, 50);
++
++    ctx.fillStyle = '#ffffff';
++    ctx.font = 'bold 24px "Segoe UI", sans-serif';
++    ctx.fillText('Artisanal Roast Club', w / 2, 90);
++  }, 320, 420);
++
++  // Optional stock photo enhancement for back packaging texture
++  const stockPhoto = new Image();
++  stockPhoto.crossOrigin = 'anonymous';
++  stockPhoto.onload = () => {
++    try {
++      const ctx = backTexObj.canvas.getContext('2d');
++      ctx.save();
++      ctx.globalAlpha = 0.28;
++      ctx.drawImage(stockPhoto, 0, 0, backTexObj.canvas.width, backTexObj.canvas.height);
++      ctx.restore();
++      backTexObj.update();
++    } catch (e) {
++      console.warn('Stock photo texture composite bypassed:', e);
++    }
++  };
++  stockPhoto.src = 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80';
++
++  // Front HTML-in-Canvas texture state
++  const frontElementTexture = gl.createTexture();
++  const frontTextureState = { width: 0, height: 0, uploaded: false };
++
++  // 10. 3D Box Dimensions & Transforms
++  // Box dimensions: Width 2.4, Height 3.15 (matching 320x420 aspect ratio), Depth 1.2
++  const boxW = 2.4;
++  const boxH = 3.15;
++  const boxD = 1.2;
++  const hw = boxW / 2;
++  const hh = boxH / 2;
++  const hd = boxD / 2;
++
++  let rotY = 0.35;
++  const tiltX = 0.22; // subtle downward angle for 3D depth
++  let isSpinning = true;
++  let isFacingCamera = true;
++  let htmlElementMVP = mat4Identity();
++  let boxModelMatrix = mat4Identity();
++  let viewMatrix = mat4Identity();
++  let projMatrix = mat4Identity();
++
++  function updateMatrices() {
++    const cw = canvas.clientWidth || 800;
++    const ch = canvas.clientHeight || 560;
++    const aspect = cw / ch;
++
++    projMatrix = mat4Perspective(Math.PI / 4, aspect, 0.1, 100.0);
++    viewMatrix = mat4LookAt([0, 0, 5.2], [0, 0, 0], [0, 1, 0]);
++
++    // Box model rotation
++    boxModelMatrix = mat4Multiply(mat4RotateX(tiltX), mat4RotateY(rotY));
++
++    // Front face quad model transform
++    const frontFaceModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(0, 0, hd), mat4Scale(boxW, boxH, 1.0))
++    );
++
++    // Front face MVP
++    htmlElementMVP = mat4Multiply(projMatrix, mat4Multiply(viewMatrix, frontFaceModel));
++
++    // Check if front face is facing camera:
++    // Transformed normal Z component in view space
++    const cosY = Math.cos(rotY);
++    const cosTilt = Math.cos(tiltX);
++    isFacingCamera = (cosY * cosTilt) > 0.05;
++  }
++
++  function drawQuad(faceModel, texture, ambient = 0.45) {
++    const mvp = mat4Multiply(projMatrix, mat4Multiply(viewMatrix, faceModel));
++
++    gl.uniformMatrix4fv(uniformLocations.mvp, false, mvp);
++    gl.uniformMatrix4fv(uniformLocations.model, false, faceModel);
++    gl.uniform3f(uniformLocations.lightDir, 0.5, 0.8, 1.0);
++    gl.uniform4f(uniformLocations.baseColor, 0.2, 0.12, 0.08, 1.0);
++    gl.uniform1f(uniformLocations.useTexture, 1.0);
++    gl.uniform1f(uniformLocations.ambient, ambient);
++
++    gl.activeTexture(gl.TEXTURE0);
++    gl.bindTexture(gl.TEXTURE_2D, texture);
++    gl.uniform1i(uniformLocations.texture, 0);
++
++    gl.drawArrays(gl.TRIANGLES, 0, 6);
++  }
++
++  function drawScene() {
++    gl.viewport(0, 0, canvas.width, canvas.height);
++    gl.clearColor(0.0, 0.0, 0.0, 0.0);
++    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++    gl.enable(gl.DEPTH_TEST);
++    gl.depthFunc(gl.LEQUAL);
++    gl.enable(gl.CULL_FACE);
++    gl.cullFace(gl.BACK);
++
++    gl.useProgram(program);
++
++    gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
++    gl.enableVertexAttribArray(attribLocations.position);
++    gl.vertexAttribPointer(attribLocations.position, 3, gl.FLOAT, false, 8 * 4, 0);
++
++    gl.enableVertexAttribArray(attribLocations.texCoord);
++    gl.vertexAttribPointer(attribLocations.texCoord, 2, gl.FLOAT, false, 8 * 4, 3 * 4);
++
++    gl.enableVertexAttribArray(attribLocations.normal);
++    gl.vertexAttribPointer(attribLocations.normal, 3, gl.FLOAT, false, 8 * 4, 5 * 4);
++
++    // 1. Back Face (-Z)
++    const backModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(0, 0, -hd), mat4Multiply(mat4RotateY(Math.PI), mat4Scale(boxW, boxH, 1.0)))
++    );
++    drawQuad(backModel, backTexObj.texture);
++
++    // 2. Right Face (+X)
++    const rightModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(hw, 0, 0), mat4Multiply(mat4RotateY(Math.PI / 2), mat4Scale(boxD, boxH, 1.0)))
++    );
++    drawQuad(rightModel, rightTexObj.texture);
++
++    // 3. Left Face (-X)
++    const leftModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(-hw, 0, 0), mat4Multiply(mat4RotateY(-Math.PI / 2), mat4Scale(boxD, boxH, 1.0)))
++    );
++    drawQuad(leftModel, leftTexObj.texture);
++
++    // 4. Top Face (+Y)
++    const topModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(0, hh, 0), mat4Multiply(mat4RotateX(-Math.PI / 2), mat4Scale(boxW, boxD, 1.0)))
++    );
++    drawQuad(topModel, topTexObj.texture);
++
++    // 5. Bottom Face (-Y)
++    const bottomModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(0, -hh, 0), mat4Multiply(mat4RotateX(Math.PI / 2), mat4Scale(boxW, boxD, 1.0)))
++    );
++    drawQuad(bottomModel, bottomTexObj.texture);
++
++    // 6. Front Face (+Z) with HTML content texture
++    const frontModel = mat4Multiply(
++      boxModelMatrix,
++      mat4Multiply(mat4Translate(0, 0, hd), mat4Scale(boxW, boxH, 1.0))
++    );
++    const activeFrontTexture = (supportsHtmlInCanvas && frontTextureState.uploaded)
++      ? frontElementTexture
++      : frontFallbackTexObj.texture;
++
++    drawQuad(frontModel, activeFrontTexture, 0.85);
++  }
++
++  // Fallback DOM Transform Synchronizer
++  function updateFallbackDOMGeometry() {
++    if (supportsHtmlInCanvas) return;
++
++    const transform = computeCanvasTransform(canvas, formElement, htmlElementMVP);
++    formElement.style.transform = transform.toString();
++
++    if (isFacingCamera) {
++      formElement.style.visibility = 'visible';
++      formElement.style.pointerEvents = 'auto';
++    } else {
++      formElement.style.visibility = 'hidden';
++      formElement.style.pointerEvents = 'none';
++    }
++  }
++
++  // 11. HTML-in-Canvas onpaint Handler
++  if (supportsHtmlInCanvas) {
++    canvas.onpaint = (event) => {
++      // 1. Update texture with HTML content
++      try {
++        if (uploadElementWebGL(gl, canvas, frontElementTexture, formElement, frontTextureState)) {
++          frontTextureState.uploaded = true;
++        }
++      } catch (err) {
++        console.error('texElementSubImage2D copy failed:', err);
++      }
++
++      // Render 3D scene
++      drawScene();
++
++      // 2. Sync DOM position, hit testing, and accessibility bounds with 3D scene
++      if (typeof canvas.updateElementGeometry === 'function') {
++        if (isFacingCamera) {
++          canvas.updateElementGeometry(formElement, {
++            canvasTransform: computeCanvasTransform(canvas, formElement, htmlElementMVP),
++            preserveHitTestOrder: true,
++          });
++        } else if (typeof canvas.clearElementGeometry === 'function') {
++          canvas.clearElementGeometry(formElement);
++        }
++      }
++    };
++  }
++
++  // 12. Main Animation Loop
++  let lastTime = performance.now();
++  const spinSpeed = 0.55; // Radians per second
++
++  function animate(now) {
++    requestAnimationFrame(animate);
++
++    const dt = Math.min((now - lastTime) / 1000, 0.1);
++    lastTime = now;
++
++    if (isSpinning) {
++      rotY = (rotY + spinSpeed * dt) % (Math.PI * 2);
++    }
++
++    updateMatrices();
++
++    if (supportsHtmlInCanvas && typeof canvas.requestPaint === 'function') {
++      canvas.requestPaint();
++    } else {
++      drawScene();
++      updateFallbackDOMGeometry();
++    }
++  }
++
++  requestAnimationFrame(animate);
++
++  // 13. Interactive Form Event Listeners (Retaining Full Clickability while spinning)
++  function requestRepaint() {
++    if (supportsHtmlInCanvas && typeof canvas.requestPaint === 'function') {
++      canvas.requestPaint();
++    }
++  }
++
++  formElement.addEventListener('input', requestRepaint);
++  formElement.addEventListener('change', requestRepaint);
++
++  // Pause / Resume Rotation Toggle
++  if (toggleSpinBtn) {
++    toggleSpinBtn.addEventListener('click', (e) => {
++      e.preventDefault();
++      e.stopPropagation();
++      isSpinning = !isSpinning;
++      toggleSpinBtn.textContent = isSpinning ? 'Pause Spin' : 'Resume Spin';
++      toggleSpinBtn.setAttribute('aria-label', isSpinning ? 'Pause box rotation' : 'Resume box rotation');
++      requestRepaint();
++    });
++  }
++
++  // Order Submission Handling
++  formElement.addEventListener('submit', (e) => {
++    e.preventDefault();
++    const emailInput = document.getElementById('subscriber-email');
++    const blendSelect = document.getElementById('blend-select');
++    const grindSelect = document.getElementById('grind-select');
++
++    const email = emailInput ? emailInput.value.trim() : '';
++    const blend = blendSelect ? blendSelect.value : 'Artisanal Blend';
++    const grind = grindSelect ? grindSelect.value : 'Whole Bean';
++
++    if (!email || !email.includes('@')) {
++      if (orderStatusMsg) {
++        orderStatusMsg.className = 'form-status-alert error';
++        orderStatusMsg.textContent = 'Please enter a valid delivery email.';
++      }
++      requestRepaint();
++      return;
++    }
++
++    if (orderStatusMsg) {
++      orderStatusMsg.className = 'form-status-alert success';
++      orderStatusMsg.textContent = `✓ Box reserved! 1x ${blend} (${grind}) for ${email}.`;
++    }
++
++    requestRepaint();
++  });
++
++  // Pointer drag interaction on scene wrapper to inspect manually
++  let isDragging = false;
++  let previousX = 0;
++
++  sceneWrapper.addEventListener('pointerdown', (e) => {
++    // If clicking directly on a form element or button, let native form interaction proceed
++    if (e.target.closest('#coffee-box-form')) return;
++    isDragging = true;
++    previousX = e.clientX;
++  });
++
++  window.addEventListener('pointermove', (e) => {
++    if (!isDragging) return;
++    const deltaX = e.clientX - previousX;
++    previousX = e.clientX;
++    rotY += deltaX * 0.01;
++    requestRepaint();
++  });
++
++  window.addEventListener('pointerup', () => {
++    isDragging = false;
++  });
++})();

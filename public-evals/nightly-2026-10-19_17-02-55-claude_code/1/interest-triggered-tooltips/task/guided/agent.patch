@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,48 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Tooltips */
++    .tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      margin-block: 8px;
++      top: anchor(bottom);
++      left: anchor(center);
++      translate: -50% 0;
++      position-try: flip-block;
++      width: max-content;
++      max-width: 240px;
++      padding: 12px 14px;
++      border: 0;
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .tooltip strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .tooltip ul {
++      list-style: none;
++    }
++
++    #tip-maple { position-anchor: --tip-maple; }
++    #tip-espresso { position-anchor: --tip-espresso; }
++    #tip-cold-brew { position-anchor: --tip-cold-brew; }
++    a[interestfor="tip-maple"] { anchor-name: --tip-maple; }
++    a[interestfor="tip-espresso"] { anchor-name: --tip-espresso; }
++    a[interestfor="tip-cold-brew"] { anchor-name: --tip-cold-brew; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +220,40 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="tip-maple">View Details</a>
++          <div popover="hint" id="tip-maple" class="tooltip">
++            <strong>Maple Oat Latte</strong>
++            <ul>
++              <li>190 cal (12 oz)</li>
++              <li>Oat milk, espresso, Vermont maple syrup</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="tip-espresso">View Details</a>
++          <div popover="hint" id="tip-espresso" class="tooltip">
++            <strong>Dark Roast Espresso</strong>
++            <ul>
++              <li>5 cal (double shot)</li>
++              <li>Dark roast, no sugar, dairy-free</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="tip-cold-brew">View Details</a>
++          <div popover="hint" id="tip-cold-brew" class="tooltip">
++            <strong>Cold Brew</strong>
++            <ul>
++              <li>15 cal (16 oz)</li>
++              <li>18-hour steep, served over ice</li>
++            </ul>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +267,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!HTMLAnchorElement.prototype.hasOwnProperty("interestForElement")) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++    if (!("anchorName" in document.documentElement.style)) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,173 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="color-scheme" content="light" />
++    <title>Type / Together — A font-size-adjust playground</title>
++    <style>
++      :root { font-family: Arial, Helvetica, sans-serif; color: #252c27; background: #f6f7f2; }
++      * { box-sizing: border-box; }
++      body { margin: 0; line-height: 1.5; }
++      button, input, select { font: inherit; }
++      button, select, input { accent-color: #356448; }
++      button, select { cursor: pointer; }
++      button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #60876b; outline-offset: 4px; }
++      header { max-width: 1280px; margin: auto; padding: 26px 48px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dfe3d9; }
++      .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; letter-spacing: -.04em; }
++      .brand-mark { background: #32573e; color: #fff; width: 35px; height: 35px; border-radius: 9px; display: grid; place-items: center; font-family: Georgia, serif; font-size: 1.45rem; }
++      .header-note { display: flex; align-items: center; gap: 8px; color: #6d766c; font-size: .75rem; }
++      .dot { width: 6px; height: 6px; background: #568164; border-radius: 50%; display: inline-block; }
++      main { max-width: 1184px; padding: 58px 0 32px; margin: auto; }
++      .eyebrow { color: #55705a; font-size: .68rem; letter-spacing: .16em; font-weight: 700; text-transform: uppercase; }
++      h1 { font-size: clamp(2.8rem, 2rem + 3vw, 4.6rem); line-height: 1.08; letter-spacing: -.065em; font-weight: 500; margin: 18px 0; text-wrap: balance; }
++      h1 span { font-family: Georgia, serif; font-style: italic; color: #54745b; }
++      .intro { color: #778074; font-size: 1rem; max-width: 59ch; margin: 0; }
++      .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 40px; }
++      .version { border: 1px solid #d9dfd3; border-radius: 30px; padding: 6px 12px; font: .68rem monospace; color: #76816f; white-space: nowrap; margin-bottom: 5px; }
++      .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 290px; border: 1px solid #dce1d5; border-radius: 16px; background: #fffefa; overflow: hidden; }
++      .specimens { padding: 30px; }
++      .section-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
++      .section-label h2 { font-size: .8rem; font-weight: 500; margin: 0; }
++      .section-label h2 span { color: #a0a698; margin-right: 10px; font: .7rem monospace; }
++      .pill { font-size: .6rem; color: #42694d; background: #eaf0e5; border: 1px solid #dce6d4; border-radius: 5px; padding: 3px 7px; }
++      .sample { border: 1px solid #e5e7df; border-radius: 10px; margin: 19px 0 13px; padding: 38px 30px; min-height: 170px; display: flex; align-items: center; background: #f9faf5; }
++      #mixed-fonts-container { font-family: Arial, Helvetica, sans-serif; font-size: 1.5rem; line-height: 1.8; font-size-adjust: from-font; margin: 0; max-width: 65ch; overflow-wrap: anywhere; }
++      #mixed-fonts-container code { font-family: 'Courier New', monospace; font-size: 1em; background: #e6eddf; color: #3f6247; border-radius: 4px; padding: .08em .25em; }
++      .caption { display: flex; justify-content: space-between; gap: 12px; font-size: .65rem; color: #899180; }
++      .caption code { color: #66775d; }
++      .divider { border: 0; border-top: 1px solid #e8eadf; margin: 30px 0; }
++      #independent-theme-container { font-family: Georgia, 'Times New Roman', serif; font-size-adjust: 0.5; background: #edf0e5; border: 1px solid #dde3d2; padding: 30px; border-radius: 10px; margin: 19px 0 13px; color: #344a34; }
++      .theme-label { font: .6rem Arial, sans-serif; letter-spacing: .15em; text-transform: uppercase; opacity: .65; }
++      #independent-theme-container h3 { font-size: 2.1rem; line-height: 1.3; font-weight: 400; letter-spacing: -.035em; margin: 12px 0; }
++      #independent-theme-container p { font-size: 1rem; line-height: 1.7; margin: 0; max-width: 65ch; }
++      .controls { padding: 28px 24px; border-left: 1px solid #e2e5db; background: #f8f9f3; }
++      .controls h2 { margin: 0 0 28px; font-size: .8rem; font-weight: 500; }
++      .control-heading { margin: 24px 0 10px; display: flex; align-items: center; justify-content: space-between; font-size: .72rem; }
++      .value { color: #657c5e; font: .68rem monospace; }
++      .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border: 1px solid #dce2d3; border-radius: 7px; background: #eef1e7; }
++      .segmented button { border: 0; background: transparent; color: #7a8371; padding: 8px 6px; border-radius: 4px; font-size: .7rem; }
++      .segmented button[aria-pressed="true"] { background: #fffefa; box-shadow: 0 1px 3px #1b2f1b14; color: #36583c; }
++      .hint { font-size: .68rem; line-height: 1.65; color: #8a9280; margin: 10px 0 0; }
++      select { width: 100%; padding: 9px 10px; background: #fffefa; border: 1px solid #dce2d3; border-radius: 6px; color: #55614e; font-size: .72rem; }
++      input[type="range"] { width: 100%; margin: 9px 0; }
++      .range-labels { display: flex; justify-content: space-between; color: #929987; font: .6rem monospace; }
++      .control-divider { border: 0; border-top: 1px solid #e0e5d6; margin: 26px 0; }
++      .ratio { background: #eef2e8; border: 1px solid #dfe6d6; border-radius: 8px; padding: 14px; }
++      .ratio strong { display: block; font-size: .72rem; font-weight: 500; }
++      .ratio code { font-size: .7rem; color: #56724c; }
++      .reset { width: 100%; margin-top: 24px; border: 1px solid #d7dfcf; padding: 9px; border-radius: 6px; background: transparent; color: #66795a; font-size: .7rem; }
++      .code-section { margin-top: 26px; border: 1px solid #dce1d5; border-radius: 12px; background: #fffefa; overflow: hidden; }
++      .code-header { padding: 13px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e7eadf; }
++      .code-header h2 { font-size: .72rem; font-weight: 500; margin: 0; }
++      .copy { border: 1px solid #dce2d3; border-radius: 5px; background: transparent; color: #6d7b63; font-size: .65rem; padding: 4px 9px; }
++      .code-grid { display: grid; grid-template-columns: 1fr 1fr; }
++      pre { margin: 0; padding: 22px; font-size: .72rem; line-height: 1.9; overflow-x: auto; color: #4e6a42; }
++      pre + pre { border-left: 1px solid #e7eadf; }
++      .comment { color: #9aa18e; }
++      footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 24px; color: #919889; font-size: .65rem; }
++      footer a { color: #6f8064; text-underline-offset: 3px; }
++      @supports not (font-size-adjust: from-font) {
++        #mixed-fonts-container { line-height: 1.9; }
++        #mixed-fonts-container code { font-size: .95em; }
++      }
++      @supports not (font-size-adjust: 0.5) {
++        #independent-theme-container { font-size: 1.05rem; line-height: 1.7; }
++      }
++      @media (max-width: 1280px) { main { margin-inline: 48px; } }
++      @media (max-width: 760px) {
++        header { padding: 20px 24px; } main { margin-inline: 24px; padding-top: 36px; }
++        .header-note { display: none; } .version { display: none; } .workspace { grid-template-columns: 1fr; }
++        .specimens { padding: 22px; } .sample { padding: 24px 20px; } .controls { border-left: 0; border-top: 1px solid #e2e5db; }
++        .code-grid { grid-template-columns: 1fr; } pre + pre { border-left: 0; border-top: 1px solid #e7eadf; }
++        footer { flex-direction: column; gap: 8px; } .caption { flex-wrap: wrap; }
++      }
++    </style>
++  </head>
++  <body>
++    <header>
++      <div class="brand"><span class="brand-mark" aria-hidden="true">Tt</span> type / together</div>
++      <div class="header-note"><span class="dot"></span> Small experiments. Better typography.</div>
++    </header>
++    <main>
++      <div class="page-heading">
++        <div><div class="eyebrow">The typography playground / 001</div><h1>Different fonts.<br><span>Same harmony.</span></h1><p class="intro">A little CSS goes a long way. Explore how font-size-adjust keeps mixed type feeling perfectly in tune.</p></div>
++        <span class="version">CSS / font-size-adjust</span>
++      </div>
++      <div class="workspace">
++        <section class="specimens" aria-label="Live typography specimens">
++          <div class="section-label"><h2><span>01</span> Mixed fonts, one rhythm</h2><span class="pill" id="adjustment-status">Auto-adjusted</span></div>
++          <div class="sample"><p id="mixed-fonts-container">Good typography makes <code>code</code> feel right at home. Even when <code>font-family</code> changes, everything stays in harmony.</p></div>
++          <div class="caption"><span>Arial + <span id="font-caption">Courier New</span></span><code id="adjustment-caption">font-size-adjust: from-font;</code></div>
++          <hr class="divider">
++          <div class="section-label"><h2><span>02</span> A theme of its own</h2><span class="pill">Independent</span></div>
++          <div id="independent-theme-container"><span class="theme-label">The editorial theme</span><h3>A different voice.<br>The same sense of balance.</h3><p>Some stories need a softer touch. This independent theme sets its own proportions, keeping every letter considered and every line comfortable.</p></div>
++          <div class="caption"><span>Georgia / serif</span><code>font-size-adjust: 0.5;</code></div>
++        </section>
++        <aside class="controls" aria-label="Typography controls">
++          <h2>Make it your type <span aria-hidden="true">↗</span></h2>
++          <div class="control-heading" id="normalization-label">Visual normalization</div>
++          <div class="segmented" role="group" aria-labelledby="normalization-label"><button type="button" id="auto" aria-pressed="true">Automatic</button><button type="button" id="natural" aria-pressed="false">Natural</button></div>
++          <p class="hint">Match the x-height of different fonts automatically with <code>from-font</code>.</p>
++          <label class="control-heading" for="code-font">Inline code font</label>
++          <select id="code-font"><option value="'Courier New', monospace">Courier New</option><option value="Consolas, monospace">Consolas</option><option value="monospace">System monospace</option></select>
++          <label class="control-heading" for="font-size">Text size <output class="value" id="size-output" for="font-size">24px</output></label>
++          <input id="font-size" type="range" min="16" max="32" value="24"><div class="range-labels"><span>16px</span><span>32px</span></div>
++          <hr class="control-divider">
++          <div class="ratio"><strong>A fixed point of reference</strong><p class="hint">The independent theme uses an explicit x-height ratio.</p><code>font-size-adjust: 0.5;</code></div>
++          <p class="hint">An x-height of 50% of the font size, regardless of the surrounding theme.</p>
++          <button class="reset" id="reset" type="button">↺ &nbsp; Reset playground</button>
++        </aside>
++      </div>
++      <section class="code-section" aria-labelledby="css-title"><div class="code-header"><h2 id="css-title">A small property. A visible difference.</h2><button class="copy" id="copy" type="button">Copy CSS</button></div><div class="code-grid"><pre><code><span class="comment">/* Let the first font set the rhythm */</span>
++#mixed-fonts-container {
++  font-size-adjust: from-font;
++}</code></pre><pre><code><span class="comment">/* Give a separate theme its own proportions */</span>
++#independent-theme-container {
++  font-size-adjust: 0.5;
++}</code></pre></div></section>
++      <footer><span>Built with native CSS. No font-measuring tricks required.</span><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust" target="_blank" rel="noreferrer">Meet font-size-adjust ↗</a></footer>
++      <span id="announcement" role="status" aria-live="polite"></span>
++    </main>
++    <script>
++      const mixed = document.getElementById('mixed-fonts-container');
++      const auto = document.getElementById('auto');
++      const natural = document.getElementById('natural');
++      const font = document.getElementById('code-font');
++      const size = document.getElementById('font-size');
++      function setAdjustment(enabled) {
++        mixed.style.fontSizeAdjust = enabled ? 'from-font' : 'none';
++        auto.setAttribute('aria-pressed', String(enabled));
++        natural.setAttribute('aria-pressed', String(!enabled));
++        document.getElementById('adjustment-status').textContent = enabled ? 'Auto-adjusted' : 'Natural proportions';
++        document.getElementById('adjustment-caption').textContent = `font-size-adjust: ${enabled ? 'from-font' : 'none'};`;
++      }
++      function setFont() {
++        mixed.querySelectorAll('code').forEach(code => { code.style.fontFamily = font.value; });
++        document.getElementById('font-caption').textContent = font.options[font.selectedIndex].text;
++      }
++      function setSize() {
++        mixed.style.fontSize = `${Number(size.value) / 16}rem`;
++        document.getElementById('size-output').value = `${size.value}px`;
++      }
++      auto.addEventListener('click', () => setAdjustment(true));
++      natural.addEventListener('click', () => setAdjustment(false));
++      font.addEventListener('change', setFont);
++      size.addEventListener('input', setSize);
++      document.getElementById('reset').addEventListener('click', () => {
++        setAdjustment(true); font.selectedIndex = 0; size.value = '24'; setFont(); setSize();
++      });
++      document.getElementById('copy').addEventListener('click', async () => {
++        const css = '#mixed-fonts-container {\n  font-size-adjust: from-font;\n}\n\n#independent-theme-container {\n  font-size-adjust: 0.5;\n}';
++        try {
++          await navigator.clipboard.writeText(css);
++          document.getElementById('copy').textContent = 'Copied!';
++          document.getElementById('announcement').textContent = 'CSS copied to clipboard.';
++          setTimeout(() => { document.getElementById('copy').textContent = 'Copy CSS'; }, 2000);
++        } catch {
++          document.getElementById('announcement').textContent = 'Clipboard unavailable. Select and copy the CSS shown above.';
++        }
++      });
++    </script>
++  </body>
++</html>

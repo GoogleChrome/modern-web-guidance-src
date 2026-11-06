@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,114 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product carousel */
++    .carousel h2 {
++      text-align: center;
++    }
++
++    .carousel-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      opacity: 0.75;
++    }
++
++    .scroller {
++      --card-size: 260px;
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last cards reach the centre of the scrollport */
++      padding-inline: calc(50% - var(--card-size) / 2);
++      /* Room for card shadows and focus rings so they are not clipped */
++      padding-block: 24px;
++      margin-top: 16px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-size);
++      display: flex;
++      flex-direction: column;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      overflow: clip;
++      text-align: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .card-body {
++      padding: 16px 16px 20px;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .product-card .price {
++      margin-top: 8px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .product-card .btn {
++      margin-top: 12px;
++    }
++
++    /* Cards grow as they approach the centre of the scroller and shrink
++       as they leave it. Pure CSS: the animation is driven by the card's
++       position inside the scroller (view timeline), not by JavaScript. */
++    @keyframes scale-to-center {
++      0%,
++      100% {
++        scale: 0.82;
++        opacity: 0.7;
++      }
++
++      50% {
++        scale: 1;
++        opacity: 1;
++      }
++    }
++
++    @supports (animation-timeline: view()) and (animation-range: entry) {
++      @media (prefers-reduced-motion: no-preference) {
++        .product-card {
++          animation: scale-to-center auto linear both;
++          /* Must come after the shorthand so it is not reset */
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    /* Hides content visually but keeps it in the accessibility tree. */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +300,74 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="carousel">
++      <h2>Our Signature Roasts</h2>
++      <p class="carousel-hint">Scroll sideways to browse our whole-bean lineup.</p>
++      <ul class="scroller">
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Two cups of black coffee beside scattered roasted beans on a wooden table">
++          <div class="card-body">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright and floral with notes of bergamot and lemon.</p>
++            <p class="price">$18.00 &middot; 12 oz</p>
++            <a href="/shop/ethiopian-yirgacheffe" class="btn">View Details<span class="visually-hidden"> for Ethiopian Yirgacheffe</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Latte with rosetta foam art in a white ceramic cup">
++          <div class="card-body">
++            <h3>House Blend</h3>
++            <p>Balanced, chocolatey, and smooth. Our everyday favourite.</p>
++            <p class="price">$15.00 &middot; 12 oz</p>
++            <a href="/shop/house-blend" class="btn">View Details<span class="visually-hidden"> for House Blend</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Cup of espresso and roasted coffee beans on a dark surface">
++          <div class="card-body">
++            <h3>Colombian Supremo</h3>
++            <p>Caramel sweetness with a nutty, medium-bodied finish.</p>
++            <p class="price">$17.00 &middot; 12 oz</p>
++            <a href="/shop/colombian-supremo" class="btn">View Details<span class="visually-hidden"> for Colombian Supremo</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Cup of coffee surrounded by a ring of roasted coffee beans">
++          <div class="card-body">
++            <h3>Sumatra Mandheling</h3>
++            <p>Earthy, full-bodied, and low in acidity.</p>
++            <p class="price">$19.00 &middot; 12 oz</p>
++            <a href="/shop/sumatra-mandheling" class="btn">View Details<span class="visually-hidden"> for Sumatra Mandheling</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Flat white in a cup and saucer on a marble table">
++          <div class="card-body">
++            <h3>Midnight Decaf</h3>
++            <p>All the flavour of our dark roast, none of the buzz.</p>
++            <p class="price">$16.00 &middot; 12 oz</p>
++            <a href="/shop/midnight-decaf" class="btn">View Details<span class="visually-hidden"> for Midnight Decaf</span></a>
++          </div>
++        </li>
++        <li class="product-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=80"
++            width="600" height="450" loading="lazy" alt="Close-up of glossy dark roasted coffee beans">
++          <div class="card-body">
++            <h3>Espresso Roast</h3>
++            <p>Dark, syrupy, and built for your espresso machine.</p>
++            <p class="price">$18.00 &middot; 12 oz</p>
++            <a href="/shop/espresso-roast" class="btn">View Details<span class="visually-hidden"> for Espresso Roast</span></a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

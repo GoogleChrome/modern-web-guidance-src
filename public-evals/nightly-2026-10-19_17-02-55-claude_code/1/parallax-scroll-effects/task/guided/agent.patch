@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,88 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Parallax Section (scroll-driven, CSS only; decorative, so no fallback) */
++    .parallax {
++      position: relative;
++      overflow: clip;
++      height: 80vh;
++      min-height: 420px;
++      display: grid;
++      place-items: center;
++      background: var(--primary);
++      color: white;
++      isolation: isolate;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    .parallax-bg {
++      inset: -15vh 0;
++      background: linear-gradient(rgba(62, 39, 35, 0.55), rgba(62, 39, 35, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      --shift: 10vh;
++    }
++
++    .parallax-mid {
++      --shift: 25vh;
++      background:
++        radial-gradient(circle at 15% 70%, rgba(255, 171, 64, 0.35) 0 9vmin, transparent 9.2vmin),
++        radial-gradient(circle at 85% 30%, rgba(215, 204, 200, 0.25) 0 14vmin, transparent 14.2vmin);
++    }
++
++    .parallax-front {
++      --shift: 45vh;
++      background:
++        radial-gradient(circle at 70% 85%, rgba(255, 171, 64, 0.55) 0 4vmin, transparent 4.2vmin),
++        radial-gradient(circle at 25% 20%, rgba(250, 250, 250, 0.4) 0 2.5vmin, transparent 2.7vmin);
++    }
++
++    .parallax-content {
++      position: relative;
++      z-index: 1;
++      max-width: 600px;
++      padding: 0 20px;
++      text-align: center;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.25rem;
++      margin-bottom: 1rem;
++    }
++
++    @keyframes parallax-drift {
++      from {
++        transform: translateY(var(--shift));
++      }
++
++      to {
++        transform: translateY(calc(var(--shift) * -1));
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .parallax {
++          view-timeline: --parallax block;
++        }
++
++        .parallax-layer {
++          will-change: transform;
++          animation: parallax-drift linear both;
++          animation-timeline: --parallax;
++          animation-range: cover;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +253,18 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-bg" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-front" aria-hidden="true"></div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>We work directly with small farms and roast every batch within days of your order, so every sip tastes like the harvest it came from.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

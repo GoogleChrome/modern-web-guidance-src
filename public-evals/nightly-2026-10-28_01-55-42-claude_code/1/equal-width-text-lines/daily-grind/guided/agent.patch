@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+index 66c9173..37d6b49 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +85,39 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
++    /* Poster-style lockup: every line is scaled to span the same width */
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /* text-fit needs a definite inline size; a content-sized flex item would not scale */
++      inline-size: min(100%, 28rem);
++      display: grid;
++      justify-items: center;
++      /* Space lines with gap, not line-height, so gaps stay uniform across font sizes */
++      gap: 0.75rem;
++      /* Base size is the minimum; each line grows from here to fill the width */
++      font-size: clamp(1.75rem, 1rem + 3vw, 3rem);
++      line-height: 1;
++      font-weight: 800;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 500%;
++      margin-bottom: 1.5rem;
++    }
++
++    .hero h1 > span {
++      display: block;
++      white-space: nowrap;
++      /* Hug the glyphs so the gap is the only space between lines */
++      text-box: trim-both cap alphabetic;
++    }
++
++    /* Fallback: measure each forced line and scale it by the ratio to the container */
++    @supports not (text-fit: grow) {
++      .hero h1 > span {
++        width: fit-content;
++        font-size: min(var(--text-fit-scale, 1) * 1em, 500%);
++      }
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +196,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="lockup">
++      <span>Wake up</span>
++      <span>your</span>
++      <span>senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +238,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without text-fit: scale each forced line to the lockup width.
++    if (!CSS.supports('text-fit', 'grow per-line-all')) {
++      const fit = lockup => {
++        const lines = [...lockup.querySelectorAll(':scope > span')];
++        // Unscale first so offsetWidth reflects the base size, not the previous scale
++        for (const line of lines) line.style.removeProperty('--text-fit-scale');
++        // All reads, then all writes, to avoid one reflow per line
++        const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
++        lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
++      };
++      for (const lockup of document.querySelectorAll('.lockup')) {
++        new ResizeObserver(() => fit(lockup)).observe(lockup);
++        document.fonts.ready.then(() => fit(lockup));
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

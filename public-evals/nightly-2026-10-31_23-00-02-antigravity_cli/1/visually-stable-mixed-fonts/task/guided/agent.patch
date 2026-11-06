@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,92 @@
++<!DOCTYPE html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <title>Visually Stable Mixed Fonts &amp; Independent Theme Proportions</title>
++    <style>
++      body {
++        font-family: Verdana, system-ui, sans-serif;
++        line-height: 1.5;
++        text-align: start;
++        margin: 0;
++        padding: 2rem;
++        background-color: #f8fafc;
++        color: #1e293b;
++      }
++
++      main {
++        max-inline-size: 80ch;
++        margin-inline: auto;
++        display: grid;
++        gap: 1.5rem;
++      }
++
++      /* Normalize visual height of mixed font families automatically */
++      #mixed-fonts-container {
++        font-family: Verdana, sans-serif;
++        font-size: 1.125rem;
++        font-size-adjust: from-font;
++        text-wrap: pretty;
++        overflow-wrap: break-word;
++        background-color: #ffffff;
++        padding: 1.5rem;
++        border-radius: 0.5rem;
++        border: 1px solid #e2e8f0;
++        margin: 0;
++      }
++
++      #mixed-fonts-container code {
++        font-family: "Courier New", Courier, monospace;
++        background-color: #f1f5f9;
++        padding: 0.125rem 0.375rem;
++        border-radius: 0.25rem;
++      }
++
++      /* Independent theme container with specific numeric aspect-ratio override */
++      #independent-theme-container {
++        font-family: "Times New Roman", Times, serif;
++        font-size: 1.125rem;
++        font-size-adjust: 0.51;
++        text-wrap: pretty;
++        overflow-wrap: break-word;
++        background-color: #1e293b;
++        color: #f8fafc;
++        padding: 1.5rem;
++        border-radius: 0.5rem;
++        border: 1px solid #334155;
++      }
++
++      /* Fallback strategy for browsers without font-size-adjust support */
++      @supports not (font-size-adjust: from-font) {
++        #mixed-fonts-container {
++          line-height: 1.6;
++          font-size: 1.125rem;
++        }
++
++        #mixed-fonts-container code {
++          font-size: 0.95em;
++          line-height: 1.5;
++        }
++
++        #independent-theme-container {
++          font-size: 1.25rem;
++          line-height: 1.6;
++        }
++      }
++    </style>
++  </head>
++  <body>
++    <main>
++      <h1>Font Size Normalization</h1>
++
++      <p id="mixed-fonts-container">
++        When mixing different font families in a single block of prose—such as combining regular body text with inline code snippets like <code>font-size-adjust: from-font</code> or <code>const xHeight = 0.51;</code>—the browser automatically extracts the primary font's x-height aspect ratio and normalizes the visual height of nested inline fonts.
++      </p>
++
++      <div id="independent-theme-container">
++        This container represents an independent theme rendered with a serif typeface. Applying a specific numeric aspect-ratio override locks down its visual proportions so lowercase characters maintain consistent perceived height and legibility alongside the primary theme.
++      </div>
++    </main>
++  </body>
++</html>

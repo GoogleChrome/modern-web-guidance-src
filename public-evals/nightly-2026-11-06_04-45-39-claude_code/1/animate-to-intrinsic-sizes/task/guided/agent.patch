@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,176 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Smooth size transitions to/from intrinsic keywords like `auto` */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    /* Promo alert: a non-modal <dialog open> stays in normal flow and can be
++       closed by a <form method="dialog"> button with zero JavaScript. */
++    #promo-alert {
++      position: static;
++      inline-size: auto;
++      max-inline-size: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      color: var(--text);
++      background: var(--accent);
++      overflow: hidden;
++      block-size: auto;
++      opacity: 1;
++      transition: block-size 0.4s ease-in-out, opacity 0.3s ease, display 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    #promo-alert:not([open]) {
++      display: none;
++      block-size: 0;
++      opacity: 0;
++    }
++
++    .promo-inner {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.75rem 3.5rem;
++      position: relative;
++      text-align: center;
++      font-size: 0.95rem;
++    }
++
++    .promo-inner a {
++      color: inherit;
++      font-weight: bold;
++    }
++
++    .promo-inner form {
++      position: absolute;
++      inset-inline-end: 1rem;
++      inset-block-start: 50%;
++      translate: 0 -50%;
++    }
++
++    #alert-dismiss {
++      display: grid;
++      place-items: center;
++      inline-size: 2rem;
++      block-size: 2rem;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: inherit;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.1);
++    }
++
++    #alert-dismiss:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* FAQ accordion: native <details>, animated via ::details-content */
++    .faq {
++      max-width: 800px;
++      margin: 60px auto 0;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.25rem 1.5rem;
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++      border-radius: 8px;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: "";
++      inline-size: 0.6rem;
++      block-size: 0.6rem;
++      border-inline-end: 2px solid currentColor;
++      border-block-end: 2px solid currentColor;
++      rotate: 45deg;
++      transition: rotate 0.3s ease;
++    }
++
++    .faq[open] #faq-trigger::after {
++      rotate: -135deg;
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .faq::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.4s ease, content-visibility 0.4s;
++      transition-behavior: allow-discrete;
++    }
++
++    .faq[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 1.5rem 1.5rem;
++    }
++
++    #faq-content dt {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 1rem;
++    }
++
++    #faq-content dd {
++      margin-top: 0.25rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      .faq::details-content,
++      #faq-trigger::after {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="promo-alert" open aria-label="Promotion">
++    <div class="promo-inner">
++      <p>☕ Fall special: get <strong>20% off</strong> any pumpkin spice drink this week. <a href="/order-online">Order now</a></p>
++      <form method="dialog">
++        <button id="alert-dismiss" type="submit" aria-label="Dismiss promotion">&times;</button>
++      </form>
++    </div>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +357,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <details class="faq">
++      <summary id="faq-trigger">Frequently Asked Questions</summary>
++      <div id="faq-content">
++        <dl>
++          <dt>Where do you source your beans?</dt>
++          <dd>We buy directly from small farms in Colombia, Ethiopia, and Guatemala, and roast every batch locally.</dd>
++          <dt>Do you offer dairy-free milk?</dt>
++          <dd>Yes! Oat, almond, and soy milk are available at no extra charge.</dd>
++          <dt>How do rewards work?</dt>
++          <dd>Earn one star for every dollar spent. Redeem 50 stars for a free drink of any size.</dd>
++          <dt>Can I order ahead?</dt>
++          <dd>Absolutely. Order online or in our app and skip the line at any location.</dd>
++        </dl>
++      </div>
++    </details>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

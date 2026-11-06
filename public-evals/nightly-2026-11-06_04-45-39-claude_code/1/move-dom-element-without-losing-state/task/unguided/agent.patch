@@ -1,0 +1,281 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,106 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roasting video + theater mode */
++    .video-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .video-section p {
++      margin-bottom: 15px;
++    }
++
++    .video-slot {
++      position: relative;
++      width: 100%;
++      max-width: 800px;
++      margin: 0 auto;
++      aspect-ratio: 16 / 9;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    /* Empty placeholder shown in the main container while in theater mode */
++    .video-slot.is-empty {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      background: var(--secondary);
++      box-shadow: none;
++    }
++
++    .video-slot.is-empty::after {
++      content: 'Playing in theater mode above';
++      color: var(--primary);
++      font-style: italic;
++    }
++
++    #roast-video {
++      display: block;
++      width: 100%;
++      height: 100%;
++      border: 0;
++    }
++
++    .theater-toggle {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .hero-video {
++      display: none;
++      width: min(1100px, 90vw);
++      aspect-ratio: 16 / 9;
++      margin-top: 25px;
++      background: #000;
++      border-radius: 8px;
++      overflow: hidden;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
++    }
++
++    .hero.theater {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero.theater .hero-video {
++      display: block;
++    }
++
++    /* Fallback for browsers without aspect-ratio support */
++    @supports not (aspect-ratio: 16 / 9) {
++      .video-slot,
++      .hero-video {
++        height: 0;
++      }
++
++      /* Percentage padding resolves against the parent's width, so mirror each box's width. */
++      .video-slot {
++        padding-bottom: calc(min(800px, 100%) * 0.5625);
++      }
++
++      .hero-video {
++        padding-bottom: calc(min(1100px, 90vw) * 0.5625);
++      }
++
++      #roast-video {
++        position: absolute;
++        top: 0;
++        left: 0;
++      }
++
++      .hero-video {
++        position: relative;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -171,8 +269,10 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <!-- Theater-mode destination for the roasting video -->
++    <div class="hero-video" id="hero-video-slot"></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +294,22 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section" aria-labelledby="roast-video-heading">
++      <h2 id="roast-video-heading">From Green Bean to Your Cup</h2>
++      <p>Take a look at how roast profiles shape the flavor of every batch.</p>
++      <div class="video-slot" id="main-video-slot">
++        <iframe id="roast-video"
++          src="https://www.youtube-nocookie.com/embed/GZQejHVQoYM?enablejsapi=1&rel=0"
++          title="An Introduction To The Coffee Roasting Profile"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
++      </div>
++      <button type="button" class="btn theater-toggle" id="theater-toggle" aria-pressed="false"
++        aria-controls="roast-video">Theater Mode</button>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +320,136 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var iframe = document.getElementById('roast-video');
++      var mainSlot = document.getElementById('main-video-slot');
++      var heroSlot = document.getElementById('hero-video-slot');
++      var hero = document.querySelector('.hero');
++      var toggle = document.getElementById('theater-toggle');
++      var theater = false;
++
++      // Element.prototype.moveBefore() performs an atomic, state-preserving move:
++      // the iframe keeps its browsing context, so the video doesn't reload or stop.
++      var supportsAtomicMove = typeof Element.prototype.moveBefore === 'function';
++
++      // ---- Fallback for browsers without moveBefore() ----------------------
++      // A classic DOM move (appendChild/insertBefore) detaches the iframe, which
++      // destroys and reloads it. To compensate we track playback through the
++      // YouTube IFrame API and, on move, reload the embed at the same timestamp
++      // (auto-resuming if it was playing).
++      var player = null;
++      var lastTime = 0;
++      var wasPlaying = false;
++
++      function attachPlayer() {
++        if (!window.YT || !window.YT.Player) return;
++        player = new YT.Player(iframe, {
++          events: {
++            onStateChange: function (e) {
++              wasPlaying = e.data === YT.PlayerState.PLAYING ||
++                e.data === YT.PlayerState.BUFFERING;
++            }
++          }
++        });
++      }
++
++      function snapshotPlayback() {
++        if (player && typeof player.getCurrentTime === 'function') {
++          try {
++            lastTime = player.getCurrentTime() || 0;
++            var state = player.getPlayerState();
++            wasPlaying = state === YT.PlayerState.PLAYING ||
++              state === YT.PlayerState.BUFFERING;
++          } catch (err) { /* player not ready yet; keep last known values */ }
++        }
++      }
++
++      function srcAt(seconds, autoplay) {
++        var url = new URL(iframe.src, location.href);
++        url.searchParams.set('enablejsapi', '1');
++        url.searchParams.set('origin', location.origin);
++        url.searchParams.delete('autoplay');
++        url.searchParams.delete('start');
++        if (seconds >= 1) url.searchParams.set('start', String(Math.floor(seconds)));
++        if (autoplay) url.searchParams.set('autoplay', '1');
++        return url.toString();
++      }
++
++      function fallbackMove(target) {
++        snapshotPlayback();
++        // Detach first so updating src and reinserting triggers a single load.
++        iframe.parentNode.removeChild(iframe);
++        if (lastTime > 0 || wasPlaying) iframe.src = srcAt(lastTime, wasPlaying);
++        target.appendChild(iframe);
++        // The old player's message channel died with the old document. (Don't
++        // call destroy(): it would remove our iframe.) Re-attach once loaded.
++        player = null;
++        iframe.addEventListener('load', function onLoad() {
++          iframe.removeEventListener('load', onLoad);
++          attachPlayer();
++        });
++      }
++
++      var apiRequested = false;
++      function loadYouTubeApi() {
++        if (apiRequested) return;
++        apiRequested = true;
++        var prev = window.onYouTubeIframeAPIReady;
++        window.onYouTubeIframeAPIReady = function () {
++          if (typeof prev === 'function') prev();
++          attachPlayer();
++        };
++        var tag = document.createElement('script');
++        tag.src = 'https://www.youtube.com/iframe_api';
++        tag.async = true;
++        document.head.appendChild(tag);
++      }
++
++      if (!supportsAtomicMove) {
++        // Ensure the embed talks to the API with our origin before tracking it.
++        iframe.src = srcAt(0, false);
++        loadYouTubeApi();
++      }
++
++      // ---- Reparenting -----------------------------------------------------
++      function moveIframe(target) {
++        if (iframe.parentNode === target) return;
++        if (supportsAtomicMove) {
++          try {
++            target.moveBefore(iframe, null);
++            return;
++          } catch (err) {
++            // moveBefore can throw (e.g. a disconnected parent); fall through.
++            console.warn('moveBefore failed, using fallback move:', err);
++            loadYouTubeApi();
++          }
++        }
++        fallbackMove(target);
++      }
++
++      function setTheater(on) {
++        theater = on;
++        hero.classList.toggle('theater', on);
++        moveIframe(on ? heroSlot : mainSlot);
++        mainSlot.classList.toggle('is-empty', on);
++        toggle.setAttribute('aria-pressed', String(on));
++        toggle.textContent = on ? 'Exit Theater Mode' : 'Theater Mode';
++        if (on) hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
++      }
++
++      toggle.addEventListener('click', function () {
++        setTheater(!theater);
++      });
++
++      // Escape exits theater mode.
++      document.addEventListener('keydown', function (e) {
++        if (theater && e.key === 'Escape') setTheater(false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

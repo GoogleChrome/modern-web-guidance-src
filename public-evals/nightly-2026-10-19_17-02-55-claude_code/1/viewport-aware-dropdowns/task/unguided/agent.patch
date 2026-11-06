@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown (popover in the top layer, anchored to the trigger) */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn:focus-visible {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      inset: auto;
++      margin: 0;
++      top: anchor(bottom);
++      left: anchor(left);
++      /* Flip below/above and left/right-aligned when the panel would be clipped */
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 12rem;
++      max-width: calc(100vw - 16px);
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    #action-panel button {
++      font: inherit;
++      font-size: 0.9rem;
++      text-align: left;
++      color: inherit;
++      background: transparent;
++      border: 0;
++      border-radius: 4px;
++      padding: 8px 12px;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +225,48 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel">Options</button>
++        <div id="action-panel" popover="auto">
++          <button type="button" data-action="seasonal-offers">Seasonal Offers</button>
++          <button type="button" data-action="account-settings">Account Settings</button>
++          <button type="button" data-action="support">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <script>
++    // Fallback for browsers without CSS anchor positioning: place the panel
++    // below the trigger's left edge, flipping and clamping to the viewport.
++    (function () {
++      var panel = document.getElementById('action-panel');
++      var trigger = document.getElementById('trigger-btn');
++      if (CSS.supports('anchor-name: --a')) return;
++
++      function place() {
++        var t = trigger.getBoundingClientRect();
++        var p = panel.getBoundingClientRect();
++        var vw = document.documentElement.clientWidth;
++        var vh = document.documentElement.clientHeight;
++        var top = t.bottom + p.height > vh && t.top - p.height >= 0 ? t.top - p.height : t.bottom;
++        var left = t.left + p.width > vw && t.right - p.width >= 0 ? t.right - p.width : t.left;
++        panel.style.top = Math.max(0, top) + 'px';
++        panel.style.left = Math.max(0, left) + 'px';
++      }
++
++      panel.addEventListener('toggle', function (e) {
++        if (e.newState === 'open') place();
++      });
++      window.addEventListener('resize', function () {
++        if (panel.matches(':popover-open')) place();
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

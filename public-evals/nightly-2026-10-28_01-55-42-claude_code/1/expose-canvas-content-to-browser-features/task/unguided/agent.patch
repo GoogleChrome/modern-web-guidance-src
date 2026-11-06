@@ -1,0 +1,438 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,120 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee order customizer */
++    .customizer {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .customizer-intro {
++      max-width: 520px;
++      margin: 8px auto 0;
++    }
++
++    .cup-stage {
++      position: relative;
++      width: min(100%, 480px);
++      margin: 20px auto 0;
++      --s: 1; /* CSS px per logical px, set by script on resize */
++    }
++
++    #canvas {
++      position: relative; /* containing block for in-canvas (layoutsubtree) children */
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 480 / 560;
++    }
++
++    /* The form occupies exactly the canvas box, in both in-canvas and overlay modes. */
++    .cup-ui {
++      position: absolute;
++      inset: 0;
++      font-size: max(13px, calc(15px * var(--s)));
++      line-height: 1.3;
++      color: var(--text);
++      text-align: left;
++    }
++
++    .cup-ui [data-slot] {
++      position: absolute;
++      margin: 0;
++    }
++
++    .cup-ui label,
++    .cup-ui legend {
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .cup-ui input[type="text"],
++    .cup-ui select,
++    .cup-ui button {
++      font: inherit;
++      color: inherit;
++      width: 100%;
++      height: 100%;
++      padding: 0 0.6em;
++      border: 1px solid #a1887f;
++      border-radius: 6px;
++      background: #fff;
++    }
++
++    .cup-ui fieldset {
++      border: 0;
++      padding: 0;
++    }
++
++    .cup-ui .milk-options {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 0.2em 0.6em;
++      margin-top: 0.3em;
++    }
++
++    .cup-ui .milk-options label {
++      font-weight: normal;
++      display: flex;
++      align-items: center;
++      gap: 0.35em;
++      cursor: pointer;
++    }
++
++    .cup-ui .milk-options input {
++      width: 1.1em;
++      height: 1.1em;
++      margin: 0;
++      accent-color: var(--primary);
++    }
++
++    .cup-ui button {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .cup-ui button:hover {
++      background: #3e2723;
++    }
++
++    .cup-ui :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .cup-summary {
++      min-height: 1.6em;
++      margin-top: 16px;
++      font-weight: 600;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +306,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-heading">
++      <h2 id="customizer-heading">Build Your Cup</h2>
++      <p class="customizer-intro">Type your name and pick your milk and syrup. Your choices appear right on the cup.</p>
++
++      <div class="cup-stage" id="cup-stage">
++        <!--
++          The canvas paints the cup. The form inside it holds real, focusable HTML, so it is
++          read by screen readers, matched by find-in-page, and translated by the browser.
++          Browsers with HTML-in-Canvas support (layoutsubtree + drawElement) lay out and paint the
++          form through the canvas; others get the identical form as an overlay sharing the canvas box.
++        -->
++        <canvas id="canvas" layoutsubtree width="480" height="560">
++          <form id="cup-form" class="cup-ui" aria-labelledby="customizer-heading" autocomplete="off" novalidate>
++            <label for="cup-name" data-slot="nameLabel">Name on cup</label>
++            <input id="cup-name" name="name" type="text" maxlength="20" placeholder="e.g. Sam" data-slot="name">
++
++            <fieldset data-slot="milk">
++              <legend>Milk</legend>
++              <div class="milk-options">
++                <label><input type="radio" name="milk" value="Whole milk" checked> Whole</label>
++                <label><input type="radio" name="milk" value="Oat milk"> Oat</label>
++                <label><input type="radio" name="milk" value="Almond milk"> Almond</label>
++                <label><input type="radio" name="milk" value="No milk"> None</label>
++              </div>
++            </fieldset>
++
++            <label for="cup-syrup" data-slot="syrupLabel">Syrup</label>
++            <select id="cup-syrup" name="syrup" data-slot="syrup">
++              <option value="">No syrup</option>
++              <option value="Vanilla">Vanilla</option>
++              <option value="Caramel">Caramel</option>
++              <option value="Vermont maple">Vermont maple</option>
++              <option value="Hazelnut">Hazelnut</option>
++            </select>
++
++            <button type="submit" data-slot="submit">Add to order</button>
++          </form>
++        </canvas>
++      </div>
++
++      <p id="cup-summary" class="cup-summary" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +361,261 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      'use strict';
++
++      var canvas = document.getElementById('canvas');
++      var ctx = canvas.getContext('2d');
++      var stage = document.getElementById('cup-stage');
++      var form = document.getElementById('cup-form');
++      var summary = document.getElementById('cup-summary');
++
++      // Logical design size. All geometry below is in these units; the form controls and the
++      // drawing are both scaled from the same numbers so they always line up.
++      var W = 480, H = 560;
++
++      // Where each control sits on the cup, in logical px.
++      var SLOTS = {
++        nameLabel:  { x: 120, y: 152, w: 240, h: 22 },
++        name:       { x: 120, y: 176, w: 240, h: 38 },
++        milk:       { x: 120, y: 228, w: 240, h: 96 },
++        syrupLabel: { x: 120, y: 336, w: 240, h: 22 },
++        syrup:      { x: 120, y: 360, w: 240, h: 38 },
++        submit:     { x: 150, y: 414, w: 180, h: 40 }
++      };
++
++      // Cup geometry, in logical px.
++      var CUP = {
++        rimY: 118, rimRx: 154, rimRy: 20,
++        topL: 86, topR: 394, botL: 116, botR: 364, botY: 478, cx: 240,
++        handleX: 404, handleY: 290,
++        saucerY: 486
++      };
++
++      var scale = 1;          // CSS px per logical px
++      var inCanvas = false;   // true when the form is laid out and painted through the canvas
++      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++      // --- Progressive enhancement: HTML-in-Canvas vs. overlay -------------------------------
++      function useOverlay() {
++        inCanvas = false;
++        canvas.removeAttribute('layoutsubtree');
++        canvas.setAttribute('aria-hidden', 'true'); // the cup is decorative; the form carries meaning
++        if (form.parentNode !== stage) stage.appendChild(form);
++      }
++
++      if (typeof ctx.drawElement === 'function' && form.parentNode === canvas) {
++        inCanvas = true;
++      } else {
++        useOverlay();
++      }
++
++      // --- Layout: position the HTML controls from the same table used for drawing ------------
++      function layoutControls() {
++        var els = form.querySelectorAll('[data-slot]');
++        for (var i = 0; i < els.length; i++) {
++          var r = SLOTS[els[i].getAttribute('data-slot')];
++          if (!r) continue;
++          els[i].style.left = (r.x * scale) + 'px';
++          els[i].style.top = (r.y * scale) + 'px';
++          els[i].style.width = (r.w * scale) + 'px';
++          els[i].style.height = (r.h * scale) + 'px';
++        }
++      }
++
++      // --- Sizing: match the backing store to real device pixels so nothing blurs -------------
++      function resize(entry) {
++        var rect = canvas.getBoundingClientRect();
++        var cssW = rect.width || W;
++        var cssH = rect.height || H;
++        var dpr = window.devicePixelRatio || 1;
++        var pw, ph;
++
++        if (entry && entry.devicePixelContentBoxSize && entry.devicePixelContentBoxSize.length) {
++          // Exact device-pixel size: avoids the sub-pixel rounding that causes shimmer/blur.
++          pw = entry.devicePixelContentBoxSize[0].inlineSize;
++          ph = entry.devicePixelContentBoxSize[0].blockSize;
++        } else {
++          pw = Math.round(cssW * dpr);
++          ph = Math.round(cssH * dpr);
++        }
++
++        if (canvas.width !== pw) canvas.width = pw;
++        if (canvas.height !== ph) canvas.height = ph;
++
++        scale = cssW / W;
++        stage.style.setProperty('--s', scale);
++        layoutControls();
++        scheduleDraw();
++      }
++
++      if (typeof ResizeObserver === 'function') {
++        var ro = new ResizeObserver(function (entries) { resize(entries[0]); });
++        try {
++          ro.observe(canvas, { box: 'device-pixel-content-box' });
++        } catch (e) {
++          ro.observe(canvas);
++        }
++      } else {
++        window.addEventListener('resize', function () { resize(); });
++      }
++
++      // Re-size when the device pixel ratio changes (zoom, moving between monitors).
++      (function watchDpr() {
++        var mq = window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)');
++        var handler = function () {
++          resize();
++          mq.removeEventListener ? mq.removeEventListener('change', handler) : mq.removeListener(handler);
++          watchDpr();
++        };
++        mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler);
++      })();
++
++      // --- Drawing ---------------------------------------------------------------------------
++      function drawCup(t) {
++        var sx = canvas.width / W, sy = canvas.height / H;
++        ctx.setTransform(sx, 0, 0, sy, 0, 0);
++        ctx.clearRect(0, 0, W, H);
++
++        // Saucer
++        ctx.fillStyle = '#d7ccc8';
++        ctx.beginPath();
++        ctx.ellipse(CUP.cx, CUP.saucerY, 196, 28, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = '#c7b8b2';
++        ctx.beginPath();
++        ctx.ellipse(CUP.cx, CUP.saucerY, 140, 16, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Handle (drawn behind the body)
++        ctx.lineCap = 'round';
++        ctx.strokeStyle = '#efe4d6';
++        ctx.lineWidth = 24;
++        ctx.beginPath();
++        ctx.arc(CUP.handleX, CUP.handleY, 58, -Math.PI * 0.42, Math.PI * 0.42);
++        ctx.stroke();
++        ctx.strokeStyle = '#d9c7b4';
++        ctx.lineWidth = 3;
++        ctx.beginPath();
++        ctx.arc(CUP.handleX, CUP.handleY, 70, -Math.PI * 0.40, Math.PI * 0.40);
++        ctx.stroke();
++
++        // Body
++        var body = new Path2D();
++        body.moveTo(CUP.topL, CUP.rimY);
++        body.lineTo(CUP.topR, CUP.rimY);
++        body.lineTo(CUP.botR, CUP.botY - 40);
++        body.quadraticCurveTo(CUP.botR, CUP.botY, CUP.botR - 40, CUP.botY);
++        body.lineTo(CUP.botL + 40, CUP.botY);
++        body.quadraticCurveTo(CUP.botL, CUP.botY, CUP.botL, CUP.botY - 40);
++        body.closePath();
++
++        var grad = ctx.createLinearGradient(CUP.topL, 0, CUP.topR, 0);
++        grad.addColorStop(0, '#f6efe6');
++        grad.addColorStop(0.5, '#fffdf9');
++        grad.addColorStop(1, '#efe4d6');
++        ctx.fillStyle = grad;
++        ctx.fill(body);
++        ctx.strokeStyle = '#d9c7b4';
++        ctx.lineWidth = 3;
++        ctx.stroke(body);
++
++        // Rim and coffee surface
++        ctx.fillStyle = '#fffdf9';
++        ctx.beginPath();
++        ctx.ellipse(CUP.cx, CUP.rimY, CUP.rimRx, CUP.rimRy, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.strokeStyle = '#d9c7b4';
++        ctx.stroke();
++        ctx.fillStyle = '#4e342e';
++        ctx.beginPath();
++        ctx.ellipse(CUP.cx, CUP.rimY, CUP.rimRx - 12, CUP.rimRy - 7, 0, 0, Math.PI * 2);
++        ctx.fill();
++        // Latte-art swirl
++        ctx.strokeStyle = 'rgba(255, 244, 230, 0.85)';
++        ctx.lineWidth = 3;
++        ctx.beginPath();
++        for (var a = 0; a < Math.PI * 4; a += 0.1) {
++          var r = 4 + a * 7;
++          var px = CUP.cx + Math.cos(a) * r;
++          var py = CUP.rimY + Math.sin(a) * r * 0.42;
++          if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
++        }
++        ctx.stroke();
++
++        // Steam
++        ctx.strokeStyle = 'rgba(120, 100, 90, 0.35)';
++        ctx.lineWidth = 6;
++        for (var i = -1; i <= 1; i++) {
++          var x0 = CUP.cx + i * 48;
++          var phase = t * 0.0012 + i * 1.7;
++          ctx.beginPath();
++          ctx.moveTo(x0, CUP.rimY - CUP.rimRy - 6);
++          for (var k = 1; k <= 12; k++) {
++            var yy = CUP.rimY - CUP.rimRy - 6 - k * 6;
++            var xx = x0 + Math.sin(phase + k * 0.55) * 9;
++            ctx.lineTo(xx, yy);
++          }
++          ctx.stroke();
++        }
++      }
++
++      function draw(t) {
++        drawCup(t || 0);
++
++        if (inCanvas) {
++          // Paint the form into the canvas at the exact box it is laid out in. The transform maps
++          // CSS px to device px, so the painted pixels and the hit-testable layout coincide.
++          try {
++            var rect = canvas.getBoundingClientRect();
++            ctx.setTransform(canvas.width / (rect.width || W), 0, 0, canvas.height / (rect.height || H), 0, 0);
++            ctx.drawElement(form, 0, 0);
++          } catch (e) {
++            useOverlay();
++            resize();
++          }
++        }
++      }
++
++      var rafId = 0;
++      function scheduleDraw() {
++        if (rafId) return;
++        rafId = requestAnimationFrame(function (t) {
++          rafId = 0;
++          draw(t);
++          // Keep steam drifting (and the in-canvas form fresh) unless the user prefers less motion.
++          if (!reducedMotion && !document.hidden) scheduleDraw();
++        });
++      }
++
++      document.addEventListener('visibilitychange', function () {
++        if (!document.hidden) scheduleDraw();
++      });
++
++      // In in-canvas mode the painted form is a snapshot, so repaint whenever it changes.
++      ['input', 'change', 'focusin', 'focusout', 'pointerdown', 'pointerup', 'keyup'].forEach(function (ev) {
++        form.addEventListener(ev, scheduleDraw);
++      });
++
++      // --- Order summary ---------------------------------------------------------------------
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        var name = form.elements.name.value.trim();
++        var milk = form.elements.milk.value;
++        var syrup = form.elements.syrup.value;
++        var parts = [milk.toLowerCase()];
++        if (syrup) parts.push(syrup.toLowerCase() + ' syrup');
++        var who = name ? ' for ' + name : '';
++        summary.textContent = 'Added to your order' + who + ': ' + parts.join(', ') + '.';
++        scheduleDraw();
++      });
++
++      resize();
++    })();
++  </script>
+ </body>
+ 
+ </html>

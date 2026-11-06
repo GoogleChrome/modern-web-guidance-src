@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+index 66c9173..40cbbf6 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,60 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Encrypted Delivery Notes */
++    .notes-form {
++      max-width: 640px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .notes-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .notes-form textarea {
++      width: 100%;
++      min-height: 110px;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      resize: vertical;
++    }
++
++    .notes-form button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .notes-form button.btn[disabled] {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .notes-status {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .notes-envelope {
++      margin-top: 12px;
++      padding: 10px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: monospace;
++      font-size: 0.75rem;
++      word-break: break-all;
++      max-height: 160px;
++      overflow: auto;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +249,20 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="delivery-notes" style="margin-top: 60px;">
++      <h2 style="text-align: center;">Delivery Notes</h2>
++      <p style="text-align: center;">Gate codes, allergies, drop-off instructions. Your note is encrypted in your browser before it goes anywhere.</p>
++      <form class="notes-form" id="notes-form">
++        <label for="note-text">Note for your courier</label>
++        <textarea id="note-text" required maxlength="1000" autocomplete="off"
++          placeholder="Gate code 4821, leave with the concierge."></textarea>
++        <button type="submit" class="btn">Encrypt Note</button>
++        <button type="button" class="btn" id="decrypt-btn" hidden>Decrypt to Verify</button>
++        <p class="notes-status" id="notes-status" role="status" aria-live="polite"></p>
++        <pre class="notes-envelope" id="notes-envelope" hidden></pre>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +275,147 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const DB_NAME = 'daily-grind-notes';
++    const KEY_ID = 'courier-key';
++    const encoder = new TextEncoder();
++
++    const form = document.getElementById('notes-form');
++    const noteEl = document.getElementById('note-text');
++    const statusEl = document.getElementById('notes-status');
++    const envelopeEl = document.getElementById('notes-envelope');
++    const decryptBtn = document.getElementById('decrypt-btn');
++
++    let keys = null;
++    let envelope = null;
++
++    const toB64 = (bytes) => btoa(String.fromCharCode(...bytes));
++
++    function supportsPostQuantum() {
++      return typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305');
++    }
++
++    function openDb() {
++      return new Promise((resolve, reject) => {
++        const req = indexedDB.open(DB_NAME, 1);
++        req.onupgradeneeded = () => req.result.createObjectStore('keys');
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      });
++    }
++
++    async function dbRequest(mode, fn) {
++      const db = await openDb();
++      return new Promise((resolve, reject) => {
++        const req = fn(db.transaction('keys', mode).objectStore('keys'));
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      });
++    }
++
++    // Non-extractable key pairs are persisted via structured clone; private bytes never leave the browser.
++    async function loadKeys() {
++      const stored = await dbRequest('readonly', (s) => s.get(KEY_ID)).catch(() => null);
++      if (stored) return stored;
++
++      let record;
++      if (supportsPostQuantum()) {
++        const keyPair = await crypto.subtle.generateKey('MLKEM768-X25519', false, ['encapsulateKey', 'decapsulateKey']);
++        record = { suite: 'MLKEM768-X25519+ChaCha20-Poly1305', keyPair };
++      } else {
++        const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++        record = { suite: 'X25519+HKDF+AES-GCM', keyPair };
++      }
++      await dbRequest('readwrite', (s) => s.put(record, KEY_ID)).catch(() => {});
++      return record;
++    }
++
++    async function deriveFallbackKey(privateKey, peerPublicKey, info) {
++      const bits = await crypto.subtle.deriveBits({ name: 'X25519', public: peerPublicKey }, privateKey, 256);
++      const hkdfKey = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
++      return crypto.subtle.deriveKey(
++        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info },
++        hkdfKey,
++        { name: 'AES-GCM', length: 256 },
++        false,
++        ['encrypt', 'decrypt'],
++      );
++    }
++
++    // Returns the AEAD key plus the capsule the recipient needs to recover it.
++    async function establishSenderKey({ suite, keyPair }) {
++      const info = encoder.encode(suite);
++      if (suite.startsWith('MLKEM768-X25519')) {
++        const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++          'MLKEM768-X25519', keyPair.publicKey, 'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++        return { key: sharedKey, capsule: new Uint8Array(ciphertext) };
++      }
++      const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++      const capsule = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++      const key = await deriveFallbackKey(ephemeral.privateKey, keyPair.publicKey, info);
++      return { key, capsule };
++    }
++
++    async function recoverKey({ suite, keyPair }, capsule) {
++      if (suite.startsWith('MLKEM768-X25519')) {
++        return crypto.subtle.decapsulateKey(
++          'MLKEM768-X25519', keyPair.privateKey, capsule, 'ChaCha20-Poly1305', false, ['encrypt', 'decrypt']);
++      }
++      const ephemeralPublic = await crypto.subtle.importKey('raw', capsule, 'X25519', true, []);
++      return deriveFallbackKey(keyPair.privateKey, ephemeralPublic, encoder.encode(suite));
++    }
++
++    // Suite and version are authenticated but unencrypted metadata.
++    const aadFor = (suite) => encoder.encode(`daily-grind-delivery-note-v1|${suite}`);
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      statusEl.textContent = 'Encrypting…';
++      decryptBtn.hidden = true;
++      try {
++        keys ??= await loadKeys();
++        const { key, capsule } = await establishSenderKey(keys);
++        const iv = crypto.getRandomValues(new Uint8Array(12));
++        const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
++          { name: key.algorithm.name, iv, additionalData: aadFor(keys.suite) },
++          key,
++          encoder.encode(noteEl.value),
++        ));
++        envelope = { suite: keys.suite, capsule, iv, ciphertext };
++        envelopeEl.textContent = JSON.stringify({
++          suite: keys.suite,
++          capsule: toB64(capsule),
++          iv: toB64(iv),
++          ciphertext: toB64(ciphertext),
++        }, null, 2);
++        envelopeEl.hidden = false;
++        decryptBtn.hidden = false;
++        noteEl.value = '';
++        statusEl.textContent = keys.suite.startsWith('MLKEM')
++          ? 'Note encrypted with hybrid post-quantum protection (ML-KEM-768 + X25519, ChaCha20-Poly1305).'
++          : 'Note encrypted (X25519 + HKDF + AES-GCM). This browser lacks post-quantum support.';
++      } catch (err) {
++        console.error(err);
++        statusEl.textContent = 'Encryption failed in this browser. Your note was not sent.';
++      }
++    });
++
++    decryptBtn.addEventListener('click', async () => {
++      try {
++        const key = await recoverKey(keys, envelope.capsule);
++        const plain = await crypto.subtle.decrypt(
++          { name: key.algorithm.name, iv: envelope.iv, additionalData: aadFor(envelope.suite) },
++          key,
++          envelope.ciphertext,
++        );
++        statusEl.textContent = `Decrypted and authenticated: "${new TextDecoder().decode(plain)}"`;
++      } catch (err) {
++        console.error(err);
++        statusEl.textContent = 'Decryption failed: the note could not be authenticated.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

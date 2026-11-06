@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+index 66c9173..3427163 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,159 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Range slider */
++    .brew-picker {
++      max-width: 520px;
++      margin: 50px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .brew-picker-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 14px;
++    }
++
++    .brew-picker label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .brew-picker output {
++      font-weight: 700;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.9rem;
++    }
++
++    .range {
++      --track-h: 8px;
++      --thumb: 24px;
++      --fill: 50%; /* updated from JS; WebKit has no native fill pseudo-element */
++      --track-bg: var(--secondary);
++      --fill-bg: var(--primary);
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: var(--thumb);
++      background: transparent;
++      cursor: pointer;
++      display: block;
++    }
++
++    /* Track */
++    .range::-webkit-slider-runnable-track {
++      height: var(--track-h);
++      border-radius: 999px;
++      background: linear-gradient(var(--fill-bg), var(--fill-bg)) 0 / var(--fill) 100% no-repeat,
++        var(--track-bg);
++    }
++
++    .range::-moz-range-track {
++      height: var(--track-h);
++      border-radius: 999px;
++      background: var(--track-bg);
++    }
++
++    /* Fill (Firefox) */
++    .range::-moz-range-progress {
++      height: var(--track-h);
++      border-radius: 999px;
++      background: var(--fill-bg);
++    }
++
++    /* Thumb */
++    .range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb);
++      height: var(--thumb);
++      margin-top: calc((var(--track-h) - var(--thumb)) / 2);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    .range::-moz-range-thumb {
++      width: calc(var(--thumb) - 6px);
++      height: calc(var(--thumb) - 6px);
++      border-radius: 50%;
++      background: var(--accent);
++      border: 3px solid var(--primary);
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++      transition: transform 0.15s, box-shadow 0.15s;
++    }
++
++    /* Hover / active */
++    .range:hover::-webkit-slider-thumb {
++      transform: scale(1.1);
++    }
++
++    .range:hover::-moz-range-thumb {
++      transform: scale(1.1);
++    }
++
++    .range:active::-webkit-slider-thumb {
++      transform: scale(1.2);
++    }
++
++    .range:active::-moz-range-thumb {
++      transform: scale(1.2);
++    }
++
++    /* Focus: keyboard only, high-contrast ring */
++    .range:focus {
++      outline: none;
++    }
++
++    .range:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 4px var(--light), 0 0 0 7px var(--text);
++    }
++
++    .range:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 4px var(--light), 0 0 0 7px var(--text);
++    }
++
++    /* Disabled */
++    .range:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .range-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      margin-top: 6px;
++    }
++
++    @media (forced-colors: active) {
++      .range::-webkit-slider-thumb {
++        background: ButtonText;
++        border-color: ButtonText;
++      }
++
++      .range::-moz-range-thumb {
++        background: ButtonText;
++        border-color: ButtonText;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .range::-webkit-slider-thumb,
++      .range::-moz-range-thumb {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +348,19 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="brew-picker" aria-labelledby="strength-label">
++      <div class="brew-picker-header">
++        <label id="strength-label" for="strength">Brew strength</label>
++        <output id="strength-out" for="strength">Medium</output>
++      </div>
++      <input type="range" id="strength" class="range" min="1" max="5" step="1" value="3"
++        aria-describedby="strength-scale">
++      <div class="range-scale" id="strength-scale" aria-hidden="true">
++        <span>Mild</span>
++        <span>Bold</span>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +373,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var range = document.getElementById('strength');
++      var out = document.getElementById('strength-out');
++      var labels = ['Mild', 'Light', 'Medium', 'Strong', 'Bold'];
++
++      function update() {
++        var min = +range.min, max = +range.max, val = +range.value;
++        var pct = (val - min) / (max - min);
++        var thumb = parseFloat(getComputedStyle(range).getPropertyValue('--thumb')) || 24;
++        // Fill ends at the thumb centre, which is inset by half a thumb at each end
++        range.style.setProperty('--fill', 'calc(' + pct * 100 + '% + ' + (0.5 - pct) * thumb + 'px)');
++        var text = labels[val - min] || val;
++        out.textContent = text;
++        range.setAttribute('aria-valuetext', text);
++      }
++
++      range.addEventListener('input', update);
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,2173 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..8d43972 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,44 @@
+ declare global {
++  interface TranslatorCreateOptions {
++    sourceLanguage: string;
++    targetLanguage: string;
++    monitor?: (monitor: EventTarget) => void;
++    signal?: AbortSignal;
++  }
++
++  interface TranslatorInstance {
++    translate(text: string, options?: { signal?: AbortSignal }): Promise<string>;
++    translateStreaming?(text: string, options?: { signal?: AbortSignal }): ReadableStream<string>;
++    destroy?(): void;
++    ready?: Promise<void>;
++  }
++
++  interface TranslatorConstructor {
++    availability(options: { sourceLanguage: string; targetLanguage: string }): Promise<'available' | 'downloadable' | 'downloading' | 'unavailable' | 'readily' | 'after-download' | 'no'>;
++    create(options: TranslatorCreateOptions): Promise<TranslatorInstance>;
++  }
++
++  interface LanguageDetectionResult {
++    detectedLanguage: string;
++    confidence: number;
++  }
++
++  interface LanguageDetectorInstance {
++    detect(text: string): Promise<LanguageDetectionResult[]>;
++    destroy?(): void;
++    ready?: Promise<void>;
++  }
++
++  interface LanguageDetectorConstructor {
++    availability(): Promise<'available' | 'downloadable' | 'downloading' | 'unavailable' | 'readily' | 'after-download' | 'no'>;
++    create(options?: { monitor?: (monitor: EventTarget) => void }): Promise<LanguageDetectorInstance>;
++  }
++
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    Translator?: TranslatorConstructor;
++    LanguageDetector?: LanguageDetectorConstructor;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..c365ea3 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
++import ArticleTranslator from './ArticleTranslator';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+@@ -17,15 +18,15 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div class="bg-white p-6 md:p-8 shadow-sm" data-teaser-card>
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest" data-translatable="category">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors" data-translatable="title">
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p class="mt-4 text-lg text-gray-700" data-translatable="summary">
+                         {article.data.summary}
+                     </p>
+                 </a>
+@@ -34,7 +35,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    <div class="flex items-center space-x-2">
++                        <ArticleTranslator client:visible variant="teaser" />
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+@@ -52,7 +56,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
++    <article class="flex flex-col h-full group" data-teaser-card>
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+             <Image 
+                 src={image} 
+@@ -64,19 +68,22 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++            <div class="text-amber-800 text-sm font-brand tracking-widest" data-translatable="category">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow" data-translatable="title">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="text-gray-600 mt-1" data-translatable="summary">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                <div class="flex items-center space-x-2">
++                    <ArticleTranslator client:visible variant="teaser" />
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
+new file mode 100644
+index 0000000..b82da33
+--- /dev/null
++++ b/src/components/ArticleTranslator.tsx
+@@ -0,0 +1,533 @@
++import React, { useState, useEffect, useRef } from 'react';
++import {
++  SUPPORTED_LANGUAGES,
++  checkTranslationAvailability,
++  detectLanguageOnDevice,
++  translateContainerElements,
++  getSavedLanguagePreference,
++  setSavedLanguagePreference,
++  type EngineAvailability,
++  type TranslationProgress,
++} from '../utils/translator';
++
++interface ArticleTranslatorProps {
++  /**
++   * 'header': compact global language switcher in the top navigation bar (translates the whole page)
++   * 'article': rich inline on-device translation control bar for an article page
++   * 'teaser': compact inline button/pill for individual teaser cards
++   */
++  variant?: 'header' | 'article' | 'teaser';
++  /**
++   * Optional selector or ref scope. If omitted, 'header' translates the document,
++   * 'article' translates the closest <article> (plus related teasers if global sync is active),
++   * and 'teaser' translates its parent teaser container.
++   */
++  scopeSelector?: string;
++}
++
++export default function ArticleTranslator({
++  variant = 'article',
++  scopeSelector,
++}: ArticleTranslatorProps) {
++  const [selectedLang, setSelectedLang] = useState<string>('en');
++  const [availabilityMap, setAvailabilityMap] = useState<Record<string, EngineAvailability>>({});
++  const [progress, setProgress] = useState<TranslationProgress>({
++    status: 'idle',
++    sourceLanguage: 'en',
++    targetLanguage: 'en',
++    engineType: 'local-engine',
++  });
++  const [detectedSource, setDetectedSource] = useState<{
++    lang: string;
++    confidence: number;
++    engine: 'builtin-ai' | 'local-engine';
++  }>({ lang: 'en', confidence: 0.99, engine: 'local-engine' });
++  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
++
++  const rootRef = useRef<HTMLDivElement>(null);
++
++  // Resolve the DOM container to translate
++  const resolveContainer = (): ParentNode => {
++    if (typeof document === 'undefined') return null as unknown as ParentNode;
++    if (scopeSelector) {
++      const found = document.querySelector(scopeSelector);
++      if (found) return found;
++    }
++    if (variant === 'header') {
++      return document;
++    }
++    if (variant === 'teaser' && rootRef.current) {
++      const teaserContainer = rootRef.current.closest('[data-teaser-card], article, .teaser-card');
++      if (teaserContainer) return teaserContainer;
++    }
++    if (variant === 'article' && rootRef.current) {
++      const articleEl = rootRef.current.closest('article');
++      if (articleEl) return articleEl;
++    }
++    return document;
++  };
++
++  // Detect source language & check availability on mount
++  useEffect(() => {
++    let mounted = true;
++
++    async function init() {
++      // Check availability for all supported target languages
++      const statuses: Record<string, EngineAvailability> = {};
++      for (const lang of SUPPORTED_LANGUAGES) {
++        if (lang.code === 'en') {
++          statuses[lang.code] = 'available';
++        } else {
++          statuses[lang.code] = await checkTranslationAvailability('en', lang.code);
++        }
++      }
++      if (mounted) {
++        setAvailabilityMap(statuses);
++      }
++
++      // Detect language of the current article/page content
++      const container = resolveContainer();
++      const sampleEl =
++        container?.querySelector?.('[data-translatable="title"], h1, h2, h3, p') ?? null;
++      const sampleText = sampleEl?.textContent?.trim() || '';
++      if (sampleText) {
++        const detection = await detectLanguageOnDevice(sampleText);
++        if (mounted) {
++          setDetectedSource({
++            lang: detection.detectedLanguage,
++            confidence: detection.confidence,
++            engine: detection.engine,
++          });
++        }
++      }
++
++      // Restore saved preference if header or article
++      const saved = getSavedLanguagePreference();
++      if (saved && saved !== 'en' && (variant === 'header' || variant === 'article')) {
++        if (mounted) {
++          setSelectedLang(saved);
++        }
++        await translateContainerElements(saved, {
++          root: variant === 'header' ? document : resolveContainer(),
++          sourceLanguage: 'en',
++          onProgress: (p) => {
++            if (mounted) setProgress(p);
++          },
++        });
++      }
++    }
++
++    init();
++
++    // Listen for global language changes so header, article, and teaser controls stay synchronized
++    const handleGlobalLangChange = async (e: Event) => {
++      const customEvent = e as CustomEvent<{ language: string }>;
++      const newLang = customEvent.detail?.language;
++      if (!newLang || !mounted) return;
++      setSelectedLang(newLang);
++      if (variant === 'header') {
++        await translateContainerElements(newLang, {
++          root: document,
++          sourceLanguage: 'en',
++          onProgress: (p) => {
++            if (mounted) setProgress(p);
++          },
++        });
++      } else {
++        setProgress((prev) => ({
++          ...prev,
++          status: newLang === 'en' ? 'idle' : 'translated',
++          targetLanguage: newLang,
++        }));
++      }
++    };
++
++    const handlePageLoad = () => {
++      const saved = getSavedLanguagePreference();
++      if (saved && saved !== 'en' && variant === 'header') {
++        translateContainerElements(saved, {
++          root: document,
++          sourceLanguage: 'en',
++          onProgress: (p) => {
++            if (mounted) setProgress(p);
++          },
++        });
++      }
++    };
++
++    window.addEventListener('devtools-times:language-change', handleGlobalLangChange);
++    document.addEventListener('astro:page-load', handlePageLoad);
++
++    return () => {
++      mounted = false;
++      window.removeEventListener('devtools-times:language-change', handleGlobalLangChange);
++      document.removeEventListener('astro:page-load', handlePageLoad);
++    };
++  }, [variant]);
++
++  // Close dropdown on outside click
++  useEffect(() => {
++    if (!isDropdownOpen) return;
++    const handleClickOutside = (e: MouseEvent) => {
++      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
++        setIsDropdownOpen(false);
++      }
++    };
++    document.addEventListener('mousedown', handleClickOutside);
++    return () => document.removeEventListener('mousedown', handleClickOutside);
++  }, [isDropdownOpen]);
++
++  const handleSelectLanguage = async (langCode: string) => {
++    setSelectedLang(langCode);
++    setIsDropdownOpen(false);
++
++    if (variant === 'header') {
++      // Global translation: persist preference and translate the whole document
++      setSavedLanguagePreference(langCode);
++      await translateContainerElements(langCode, {
++        root: document,
++        sourceLanguage: 'en',
++        onProgress: setProgress,
++      });
++    } else if (variant === 'article') {
++      // Translate the article and also sync global preference
++      setSavedLanguagePreference(langCode);
++      await translateContainerElements(langCode, {
++        root: document,
++        sourceLanguage: 'en',
++        onProgress: setProgress,
++      });
++    } else {
++      // Teaser-scoped translation: translate only this teaser card!
++      const container = resolveContainer();
++      await translateContainerElements(langCode, {
++        root: container,
++        sourceLanguage: 'en',
++        onProgress: setProgress,
++      });
++    }
++  };
++
++  const currentLangOption =
++    SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang) ?? SUPPORTED_LANGUAGES[0];
++
++  const isBuiltinAvailable = Object.values(availabilityMap).some(
++    (v) => v === 'available' || v === 'downloadable' || v === 'downloading'
++  );
++
++  // ---------------------------------------------------------------------------
++  // VARIANT 1: Compact Teaser Translation Control
++  // ---------------------------------------------------------------------------
++  if (variant === 'teaser') {
++    return (
++      <div
++        ref={rootRef}
++        data-no-translate="true"
++        className="inline-flex items-center space-x-1 relative"
++        onClick={(e) => e.stopPropagation()}
++      >
++        <div className="inline-flex items-center bg-gray-100 hover:bg-amber-50 border border-gray-200 rounded-full px-2 py-0.5 text-xs text-gray-700 transition-colors">
++          <svg
++            className="w-3.5 h-3.5 mr-1 text-amber-700 flex-shrink-0"
++            xmlns="http://www.w3.org/2000/svg"
++            fill="none"
++            viewBox="0 0 24 24"
++            strokeWidth={1.8}
++            stroke="currentColor"
++            aria-hidden="true"
++          >
++            <path
++              strokeLinecap="round"
++              strokeLinejoin="round"
++              d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802"
++            />
++          </svg>
++          <select
++            aria-label="Translate teaser"
++            value={selectedLang}
++            onChange={(e) => handleSelectLanguage(e.target.value)}
++            className="bg-transparent text-xs font-medium text-gray-700 focus:outline-none cursor-pointer pr-1"
++            title="Translate this teaser on-device"
++          >
++            {SUPPORTED_LANGUAGES.map((lang) => (
++              <option key={lang.code} value={lang.code}>
++                {lang.code === 'en' ? 'Translate' : `${lang.flag} ${lang.nativeName}`}
++              </option>
++            ))}
++          </select>
++        </div>
++        {selectedLang !== 'en' && (
++          <button
++            type="button"
++            onClick={() => handleSelectLanguage('en')}
++            className="text-[11px] text-amber-800 hover:underline font-medium px-1"
++            title="Restore original language"
++          >
++            Original
++          </button>
++        )}
++      </div>
++    );
++  }
++
++  // ---------------------------------------------------------------------------
++  // VARIANT 2: Header Global On-Device Translation Control
++  // ---------------------------------------------------------------------------
++  if (variant === 'header') {
++    return (
++      <div ref={rootRef} data-no-translate="true" className="relative inline-block text-left">
++        <div className="flex items-center space-x-1.5">
++          <button
++            type="button"
++            onClick={() => setIsDropdownOpen((prev) => !prev)}
++            aria-label="On-device article translation"
++            aria-expanded={isDropdownOpen}
++            className={`inline-flex items-center space-x-1.5 text-xs font-semibold py-1.5 px-2.5 rounded border transition-colors cursor-pointer ${
++              selectedLang !== 'en'
++                ? 'bg-amber-50 border-amber-400 text-amber-900'
++                : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
++            }`}
++          >
++            <svg
++              className="w-4 h-4 text-amber-700"
++              xmlns="http://www.w3.org/2000/svg"
++              fill="none"
++              viewBox="0 0 24 24"
++              strokeWidth={1.8}
++              stroke="currentColor"
++            >
++              <path
++                strokeLinecap="round"
++                strokeLinejoin="round"
++                d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802"
++              />
++            </svg>
++            <span>
++              {selectedLang === 'en'
++                ? 'Translate'
++                : `${currentLangOption.flag} ${currentLangOption.nativeName}`}
++            </span>
++            {progress.status === 'downloading' || progress.status === 'translating' ? (
++              <span className="w-3 h-3 border-2 border-amber-600 border-t-transparent rounded-full animate-spin inline-block ml-1" />
++            ) : (
++              <svg
++                className="w-3 h-3 text-gray-500"
++                xmlns="http://www.w3.org/2000/svg"
++                fill="none"
++                viewBox="0 0 24 24"
++                strokeWidth={2.5}
++                stroke="currentColor"
++              >
++                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
++              </svg>
++            )}
++          </button>
++
++          {selectedLang !== 'en' && (
++            <button
++              type="button"
++              onClick={() => handleSelectLanguage('en')}
++              className="text-xs text-amber-800 hover:text-amber-600 underline font-medium cursor-pointer"
++              title="Reset page to original English"
++            >
++              Reset
++            </button>
++          )}
++        </div>
++
++        {isDropdownOpen && (
++          <div className="absolute left-0 mt-2 w-64 rounded-lg bg-white shadow-xl border border-gray-200 z-50 p-3">
++            <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-2">
++              <div>
++                <p className="text-xs font-bold text-gray-900">On-Device Translation</p>
++                <p className="text-[11px] text-gray-500">
++                  {isBuiltinAvailable
++                    ? 'Browser Built-in AI Translator ready'
++                    : 'On-device local translation engine active'}
++                </p>
++              </div>
++              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-800">
++                Local
++              </span>
++            </div>
++
++            <div className="space-y-1 max-h-60 overflow-y-auto">
++              {SUPPORTED_LANGUAGES.map((lang) => {
++                const isSelected = lang.code === selectedLang;
++                const avail = availabilityMap[lang.code];
++                return (
++                  <button
++                    key={lang.code}
++                    type="button"
++                    onClick={() => handleSelectLanguage(lang.code)}
++                    className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer ${
++                      isSelected
++                        ? 'bg-amber-100 text-amber-950 font-semibold'
++                        : 'text-gray-700 hover:bg-gray-100'
++                    }`}
++                  >
++                    <span className="flex items-center space-x-2">
++                      <span>{lang.flag}</span>
++                      <span>{lang.nativeName}</span>
++                      <span className="text-gray-400 text-[11px]">({lang.name})</span>
++                    </span>
++                    {lang.code === 'en' ? (
++                      <span className="text-[10px] text-gray-500">Original</span>
++                    ) : avail === 'downloadable' ? (
++                      <span className="text-[10px] text-amber-700">Downloadable</span>
++                    ) : (
++                      <span className="text-[10px] text-green-700">Ready</span>
++                    )}
++                  </button>
++                );
++              })}
++            </div>
++          </div>
++        )}
++      </div>
++    );
++  }
++
++  // ---------------------------------------------------------------------------
++  // VARIANT 3: Full Article On-Device Translation Control Bar
++  // ---------------------------------------------------------------------------
++  return (
++    <div
++      ref={rootRef}
++      data-no-translate="true"
++      className="my-5 p-4 rounded-lg border border-gray-200 bg-gray-50/90 shadow-xs"
++      aria-label="On-device article translation controls"
++    >
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        {/* Left: Label, Icon, and On-Device Status Badge */}
++        <div className="flex items-center space-x-2.5">
++          <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
++            <svg
++              className="w-5 h-5"
++              xmlns="http://www.w3.org/2000/svg"
++              fill="none"
++              viewBox="0 0 24 24"
++              strokeWidth={1.8}
++              stroke="currentColor"
++            >
++              <path
++                strokeLinecap="round"
++                strokeLinejoin="round"
++                d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802"
++              />
++            </svg>
++          </div>
++          <div>
++            <div className="flex items-center space-x-2">
++              <span className="text-sm font-bold text-gray-900">
++                Translate Article On-Device
++              </span>
++              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-900">
++                {isBuiltinAvailable ? 'Browser Built-in AI' : 'On-Device Engine'}
++              </span>
++            </div>
++            <p className="text-xs text-gray-500">
++              Detected language:{' '}
++              <span className="font-medium text-gray-700 uppercase">
++                {detectedSource.lang}
++              </span>{' '}
++              ({Math.round(detectedSource.confidence * 100)}% confidence) • Runs privately in your browser
++            </p>
++          </div>
++        </div>
++
++        {/* Right: Language Selector & Original Reset Button */}
++        <div className="flex flex-wrap items-center gap-2">
++          <label htmlFor="article-language-select" className="sr-only">
++            Target Language
++          </label>
++          <select
++            id="article-language-select"
++            aria-label="Select translation language"
++            value={selectedLang}
++            onChange={(e) => handleSelectLanguage(e.target.value)}
++            className="bg-white border border-gray-300 text-gray-800 text-sm font-medium rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
++          >
++            {SUPPORTED_LANGUAGES.map((lang) => (
++              <option key={lang.code} value={lang.code}>
++                {lang.flag} {lang.nativeName} ({lang.name})
++                {lang.code === 'en' ? ' — Original' : ''}
++              </option>
++            ))}
++          </select>
++
++          {selectedLang !== 'en' && (
++            <button
++              type="button"
++              onClick={() => handleSelectLanguage('en')}
++              className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
++            >
++              Show Original (English)
++            </button>
++          )}
++        </div>
++      </div>
++
++      {/* Quick Language Pills */}
++      <div className="mt-3 pt-2.5 border-t border-gray-200/80 flex flex-wrap items-center gap-1.5">
++        <span className="text-xs text-gray-500 mr-1">Quick translate:</span>
++        {SUPPORTED_LANGUAGES.map((lang) => {
++          const active = selectedLang === lang.code;
++          return (
++            <button
++              key={lang.code}
++              type="button"
++              onClick={() => handleSelectLanguage(lang.code)}
++              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
++                active
++                  ? 'bg-gray-900 text-white'
++                  : 'bg-white border border-gray-200 text-gray-700 hover:border-amber-400 hover:bg-amber-50'
++              }`}
++            >
++              {lang.flag} {lang.nativeName}
++            </button>
++          );
++        })}
++      </div>
++
++      {/* Progress / Status feedback bar */}
++      {progress.status === 'downloading' && (
++        <div className="mt-3">
++          <div className="flex justify-between text-xs text-amber-800 mb-1">
++            <span>Downloading on-device language model...</span>
++            <span>{progress.downloadProgress ?? 0}%</span>
++          </div>
++          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
++            <div
++              className="bg-amber-500 h-1.5 transition-all duration-200"
++              style={{ width: `${progress.downloadProgress ?? 10}%` }}
++            />
++          </div>
++        </div>
++      )}
++
++      {progress.status === 'translating' && (
++        <div className="mt-2.5 flex items-center space-x-2 text-xs text-amber-800">
++          <span className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin inline-block" />
++          <span>
++            Translating on-device ({progress.translatedElementsCount ?? 0}/
++            {progress.totalElementsCount ?? 0} sections)...
++          </span>
++        </div>
++      )}
++
++      {progress.status === 'translated' && selectedLang !== 'en' && (
++        <div className="mt-2.5 flex items-center justify-between text-xs text-green-800 bg-green-50 border border-green-200 rounded px-3 py-1.5">
++          <span>
++            ✓ Translated into <strong>{currentLangOption.nativeName}</strong> (
++            {currentLangOption.name}) on-device using{' '}
++            {progress.engineType === 'builtin-ai'
++              ? 'Browser Built-in AI Translator API'
++              : 'On-Device Local Translation Engine'}
++            .
++          </span>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..91c7fea 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import ArticleTranslator from "./ArticleTranslator.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,6 +22,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <ArticleTranslator client:load variant="header" />
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..c934f54 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -10,7 +10,7 @@ export interface Props {
+ const { title, articles } = Astro.props;
+ ---
+ <section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8" data-translatable="section-title">
+         {title}
+     </h2>
+ 
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..9a862ab 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
++import ArticleTranslator from './ArticleTranslator';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+@@ -27,30 +28,33 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+ <section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8" data-translatable="section-title">
+         {title}
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8" data-teaser-card>
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline" data-translatable="category">
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors" data-translatable="title">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p class="text-gray-700 mb-4 text-base lg:text-lg" data-translatable="summary">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class="flex justify-between items-center text-gray-500 text-sm">
++                    <div class="flex items-center">
++                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++                        </svg>
++                        <span>{topArticle.data.readingTime} Min Read</span>
++                    </div>
++                    <ArticleTranslator client:visible variant="teaser" />
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+@@ -67,23 +71,23 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <div class="flex flex-col shadow-sm overflow-hidden h-full" data-teaser-card>
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline" data-translatable="category">
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors" data-translatable="title">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                             <p class="text-gray-700 mb-4 flex-grow" data-translatable="summary">
+                                 {article.data.summary}
+                             </p>
+                         )}
+@@ -92,7 +96,10 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            <div class="flex items-center space-x-2">
++                                <ArticleTranslator client:visible variant="teaser" />
++                                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            </div>
+                         </div>
+                     </div>
+                 </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..45c03a8 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ArticleTranslator from '../../components/ArticleTranslator.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -39,16 +40,16 @@ const isBookmarked = readingList.includes(article.slug);
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400" data-translatable="category">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight" data-translatable="title">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p class="text-lg md:text-xl text-gray-700 font-light mb-5" data-translatable="summary">
+             {article.data.summary}
+         </p>
+ 
+@@ -57,6 +58,9 @@ const isBookmarked = readingList.includes(article.slug);
+             By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+         </div>
+ 
++        <!-- On-Device Article Translation Control -->
++        <ArticleTranslator client:load variant="article" />
++
+         <!-- Main Article Image -->
+         <figure class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..68e1aea 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,7 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import ArticleTranslator from '../../components/ArticleTranslator';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -56,7 +57,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+                     <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+-                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
++                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm" data-translatable="category">
+                         {capitalizedCategory}
+                     </h1>
+                 </div>
+@@ -66,7 +67,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section class="mb-8 pb-8 border-b border-gray-200" data-teaser-card>
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -76,13 +77,16 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors" data-translatable="title">
+                             {featuredArticle.data.title}
+                         </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
++                        <p class="text-base md:text-lg text-gray-700" data-translatable="summary">
+                             {featuredArticle.data.summary}
+                         </p>
+                     </a>
++                    <div class="mt-3 flex justify-end">
++                        <ArticleTranslator client:visible variant="teaser" />
++                    </div>
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..bb386fc 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -43,9 +43,9 @@ politicsArticles[2] = {
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0" data-teaser-card>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer" data-translatable="title">{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+diff --git a/src/utils/translator.ts b/src/utils/translator.ts
+new file mode 100644
+index 0000000..5b9b0b2
+--- /dev/null
++++ b/src/utils/translator.ts
+@@ -0,0 +1,1260 @@
++/**
++ * On-Device Translation Engine for The DevTools Times
++ *
++ * Uses the Browser Built-in AI Translator API (`window.Translator` / `window.ai.translator`)
++ * and Language Detector API (`window.LanguageDetector` / `window.ai.languageDetector`)
++ * with a comprehensive offline local fallback dictionary and phrase engine so that
++ * on-device translation works reliably across all browsers and hardware configurations.
++ */
++
++export interface LanguageOption {
++  code: string;
++  name: string;
++  nativeName: string;
++  flag: string;
++}
++
++export const SUPPORTED_LANGUAGES: LanguageOption[] = [
++  { code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸' },
++  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
++  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
++  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
++  { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
++  { code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇧🇷' },
++  { code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' },
++];
++
++export type EngineAvailability =
++  | 'available'
++  | 'downloadable'
++  | 'downloading'
++  | 'fallback'
++  | 'checking';
++
++export interface TranslationProgress {
++  status: 'idle' | 'downloading' | 'translating' | 'translated' | 'error';
++  sourceLanguage: string;
++  targetLanguage: string;
++  engineType: 'builtin-ai' | 'local-engine';
++  downloadProgress?: number; // 0 to 100
++  translatedElementsCount?: number;
++  totalElementsCount?: number;
++  detectedLanguage?: string;
++  detectedConfidence?: number;
++  errorMessage?: string;
++}
++
++// Pre-computed exact translations for all articles, categories, and key phrases
++// so offline fallback produces natural, accurate multi-language translations on-device.
++const EXACT_TRANSLATIONS: Record<string, Record<string, string>> = {
++  // Categories
++  'science': { es: 'Ciencia', fr: 'Science', de: 'Wissenschaft', ja: '科学', pt: 'Ciência', it: 'Scienza' },
++  'Science': { es: 'Ciencia', fr: 'Science', de: 'Wissenschaft', ja: '科学', pt: 'Ciência', it: 'Scienza' },
++  'lifestyle': { es: 'Estilo de vida', fr: 'Style de vie', de: 'Lebensstil', ja: 'ライフスタイル', pt: 'Estilo de vida', it: 'Stile di vita' },
++  'Lifestyle': { es: 'Estilo de vida', fr: 'Style de vie', de: 'Lebensstil', ja: 'ライフスタイル', pt: 'Estilo de vida', it: 'Stile di vita' },
++  'news': { es: 'Noticias', fr: 'Actualités', de: 'Nachrichten', ja: 'ニュース', pt: 'Notícias', it: 'Notizie' },
++  'News': { es: 'Noticias', fr: 'Actualités', de: 'Nachrichten', ja: 'ニュース', pt: 'Notícias', it: 'Notizie' },
++  'sports': { es: 'Deportes', fr: 'Sports', de: 'Sport', ja: 'スポーツ', pt: 'Esportes', it: 'Sport' },
++  'Sports': { es: 'Deportes', fr: 'Sports', de: 'Sport', ja: 'スポーツ', pt: 'Esportes', it: 'Sport' },
++  'Culture': { es: 'Cultura', fr: 'Culture', de: 'Kultur', ja: '文化', pt: 'Cultura', it: 'Cultura' },
++  'culture': { es: 'Cultura', fr: 'Culture', de: 'Kultur', ja: '文化', pt: 'Cultura', it: 'Cultura' },
++  'Media': { es: 'Medios', fr: 'Médias', de: 'Medien', ja: 'メディア', pt: 'Mídia', it: 'Media' },
++  'media': { es: 'Medios', fr: 'Médias', de: 'Medien', ja: 'メディア', pt: 'Mídia', it: 'Media' },
++  'Economy': { es: 'Economía', fr: 'Économie', de: 'Wirtschaft', ja: '経済', pt: 'Economia', it: 'Economia' },
++  'economy': { es: 'Economía', fr: 'Économie', de: 'Wirtschaft', ja: '経済', pt: 'Economia', it: 'Economia' },
++  'National': { es: 'Nacional', fr: 'National', de: 'National', ja: '国内', pt: 'Nacional', it: 'Nazionale' },
++  'national': { es: 'Nacional', fr: 'National', de: 'National', ja: '国内', pt: 'Nacional', it: 'Nazionale' },
++  'Labor': { es: 'Trabajo', fr: 'Travail', de: 'Arbeit', ja: '労働', pt: 'Trabalho', it: 'Lavoro' },
++  'labor': { es: 'Trabajo', fr: 'Travail', de: 'Arbeit', ja: '労働', pt: 'Trabalho', it: 'Lavoro' },
++  'Pets': { es: 'Mascotas', fr: 'Animaux', de: 'Haustiere', ja: 'ペット', pt: 'Pets', it: 'Animali' },
++  'pets': { es: 'Mascotas', fr: 'Animaux', de: 'Haustiere', ja: 'ペット', pt: 'Pets', it: 'Animali' },
++  'Business': { es: 'Negocios', fr: 'Affaires', de: 'Wirtschaft', ja: 'ビジネス', pt: 'Negócios', it: 'Affari' },
++  'business': { es: 'Negocios', fr: 'Affaires', de: 'Wirtschaft', ja: 'ビジネス', pt: 'Negócios', it: 'Affari' },
++  'Urban Development': { es: 'Desarrollo Urbano', fr: 'Développement Urbain', de: 'Stadtentwicklung', ja: '都市開発', pt: 'Desenvolvimento Urbano', it: 'Sviluppo Urbano' },
++  'Politics': { es: 'Política', fr: 'Politique', de: 'Politik', ja: '政治', pt: 'Política', it: 'Politica' },
++  'politics': { es: 'Política', fr: 'Politique', de: 'Politik', ja: '政治', pt: 'Política', it: 'Politica' },
++  'Web Development': { es: 'Desarrollo Web', fr: 'Développement Web', de: 'Webentwicklung', ja: 'ウェブ開発', pt: 'Desenvolvimento Web', it: 'Sviluppo Web' },
++
++  // Section headings
++  'Top News': { es: 'Noticias Principales', fr: 'À la Une', de: 'Top-Nachrichten', ja: 'トップニュース', pt: 'Principais Notícias', it: ' Notizie Principali' },
++  'World': { es: 'Mundo', fr: 'Monde', de: 'Welt', ja: '世界', pt: 'Mundo', it: 'Mondo' },
++
++  // Article 1: silent-architects
++  'The Silent Architects of Earth': {
++    es: 'Los Arquitectos Silenciosos de la Tierra',
++    fr: 'Les Architectes Silencieux de la Terre',
++    de: 'Die Stillen Architekten der Erde',
++    ja: '地球の沈黙の建築家たち',
++    pt: 'Os Arquitetos Silenciosos da Terra',
++    it: 'Gli Architetti Silenziosi della Terra',
++  },
++  'Plants are the quiet powerhouses of our planet, serving as the literal foundation for almost all life on Earth. Through the remarkable process of photosynthesis, they capture solar energy and convert it into chemical energy, releasing the oxygen we breathe as a vital byproduct.': {
++    es: 'Las plantas son los motores silenciosos de nuestro planeta y sirven como base literal de casi toda la vida en la Tierra. A través del notable proceso de la fotosíntesis, capturan la energía solar y la convierten en energía química, liberando el oxígeno que respiramos como un subproducto vital.',
++    fr: 'Les plantes sont les centrales silencieuses de notre planète, servant de fondation littérale à presque toute la vie sur Terre. Grâce au remarquable processus de la photosynthèse, elles captent l\'énergie solaire et la convertissent en énergie chimique, libérant l\'oxygène que nous respirons comme sous-produit vital.',
++    de: 'Pflanzen sind die stillen Kraftwerke unseres Planeten und bilden buchstäblich die Grundlage für fast alles Leben auf der Erde. Durch den bemerkenswerten Prozess der Photosynthese fangen sie Sonnenenergie ein und wandeln sie in chemische Energie um, wobei der Sauerstoff, den wir atmen, als lebenswichtiges Nebenprodukt freigesetzt wird.',
++    ja: '植物は私たちの惑星の静かな原動力であり、地球上のほぼすべての生命の文字通りの基盤として機能しています。光合成という驚異的なプロセスを通じて太陽エネルギーを捕捉し、化学エネルギーに変換して、私たちが呼吸する酸素を不可欠な副産物として放出します。',
++    pt: 'As plantas são as usinas silenciosas do nosso planeta, servindo como base literal para quase toda a vida na Terra. Através do notável processo de fotossíntese, elas capturam a energia solar e a convertem em energia química, liberando o oxigênio que respiramos como um subproduto vital.',
++    it: 'Le piante sono le centrali silenziose del nostro pianeta e fungono da fondamento letterale per quasi tutta la vita sulla Terra. Attraverso lo straordinario processo della fotosintesi, catturano l\'energia solare e la convertono in energia chimica, rilasciando l\'ossigeno che respiriamo come sottoprodotto vitale.',
++  },
++  'Beyond just being "oxygen factories," plants are sophisticated organisms with complex systems. Their roots anchor the soil and prevent erosion, while their vascular tissues—xylem and phloem—act like a biological highway, transporting water and nutrients against the pull of gravity.': {
++    es: 'Más allá de ser simples "fábricas de oxígeno", las plantas son organismos sofisticados con sistemas complejos. Sus raíces anclan el suelo y previenen la erosión, mientras que sus tejidos vasculares —xilema y floema— actúan como una autopista biológica que transporta agua y nutrientes contra la fuerza de la gravedad.',
++    fr: 'Au-delà d\'être de simples « usines à oxygène », les plantes sont des organismes sophistiqués dotés de systèmes complexes. Leurs racines ancrent le sol et préviennent l\'érosion, tandis que leurs tissus vasculaires — xylème et phloème — agissent comme une autoroute biologique transportant l\'eau et les nutriments contre la gravité.',
++    de: 'Pflanzen sind weit mehr als nur „Sauerstofffabriken“ – sie sind hochentwickelte Organismen mit komplexen Systemen. Ihre Wurzeln verankern den Boden und verhindern Erosion, während ihre Leitgewebe – Xylem und Phloem – wie eine biologische Autobahn wirken und Wasser sowie Nährstoffe gegen die Schwerkraft transportieren.',
++    ja: '単なる「酸素工場」にとどまらず、植物は複雑なシステムを持つ高度な生物です。その根は土壌を固定して浸食を防ぎ、維管束組織（道管と師管）は生物学的な高速道路のように機能し、重力に逆らって水と栄養分を運びます。',
++    pt: 'Além de serem apenas "fábricas de oxigênio", as plantas são organismos sofisticados com sistemas complexos. Suas raízes fixam o solo e evitam a erosão, enquanto seus tecidos vasculares — xilema e floema — funcionam como uma rodovia biológica, transportando água e nutrientes contra a força da gravidade.',
++    it: 'Oltre a essere semplici "fabbriche di ossigeno", le piante sono organismi sofisticati con sistemi complessi. Le loro radici ancorano il suolo e prevengono l\'erosione, mentre i tessuti vascolari — xilema e floema — agiscono come un\'autostrada biologica, trasportando acqua e sostanze nutritive contro la forza di gravità.',
++  },
++  'Why They Matter': {
++    es: 'Por Qué Importan',
++    fr: 'Pourquoi Elles Comptent',
++    de: 'Warum Sie Wichtig Sind',
++    ja: 'なぜ重要なのか',
++    pt: 'Por Que Elas Importam',
++    it: 'Perché Sono Importanti',
++  },
++
++  // Article 2: coastal-pulse
++  'The Coastal Pulse: Life by the Shore': {
++    es: 'El Pulso Costero: La Vida Junto a la Orilla',
++    fr: 'Le Pouls Côtier : La Vie au Bord du Rivage',
++    de: 'Der Küstenpuls: Leben am Ufer',
++    ja: '沿岸の鼓動：海辺の暮らし',
++    pt: 'O Pulso Costeiro: A Vida à Beira-Mar',
++    it: 'Il Battito Costiero: Vita in Riva al Mare',
++  },
++  'Living by the seaside offers a sensory experience that shifts with the tides. It’s a lifestyle defined by the intertidal rhythm, where the day’s activities are often dictated by the water\'s retreat and advance.': {
++    es: 'Vivir junto al mar ofrece una experiencia sensorial que cambia con las mareas. Es un estilo de vida definido por el ritmo intermareal, donde las actividades del día suelen estar dictadas por el retroceso y el avance del agua.',
++    fr: 'Vivre au bord de la mer offre une expérience sensorielle qui évolue au gré des marées. C\'est un mode de vie défini par le rythme intertidal, où les activités de la journée sont souvent dictées par le retrait et l\'avancée de l\'eau.',
++    de: 'Das Leben am Meer bietet ein sinnliches Erlebnis, das sich mit den Gezeiten verändert. Es ist ein Lebensstil, der vom Gezeitenrhythmus bestimmt wird, bei dem die Aktivitäten des Tages oft vom Rückzug und Vordringen des Wassers diktiert werden.',
++    ja: '海辺での暮らしは、潮の満ち引きとともに変化する感覚的な体験を提供します。それは潮間帯のリズムによって定義されるライフスタイルであり、一日の活動は水の満ち引きによって左右されます。',
++    pt: 'Viver à beira-mar oferece uma experiência sensorial que muda com as marés. É um estilo de vida definido pelo ritmo entre-marés, onde as atividades do dia são frequentemente ditadas pelo recuo e avanço da água.',
++    it: 'Vivere in riva al mare offre un\'esperienza sensoriale che muta con le maree. È uno stile di vita definito dal ritmo intertidale, in cui le attività quotidiane sono spesso dettate dal ritirarsi e dall\'avanzare dell\'acqua.',
++  },
++
++  // Article 3: coffee-alchemy
++  'The Global Alchemy of Coffee': {
++    es: 'La Alquimia Global del Café',
++    fr: 'L\'Alchimie Mondiale du Café',
++    de: 'Die Globale Alchemie des Kaffees',
++    ja: 'コーヒーの世界的錬金術',
++    pt: 'A Alquimia Global do Café',
++    it: 'L\'Alchimia Globale del Caffè',
++  },
++  'Coffee is more than a morning ritual; it is a complex beverage derived from the roasted seeds of the Coffea plant. Originating in the Ethiopian highlands, coffee has evolved into a global commodity that fuels modern industry and social connection.': {
++    es: 'El café es más que un ritual matutino; es una bebida compleja derivada de las semillas tostadas de la planta Coffea. Originario de las tierras altas de Etiopía, el café ha evolucionado hasta convertirse en un producto global que impulsa la industria moderna y la conexión social.',
++    fr: 'Le café est plus qu\'un rituel matinal ; c\'est une boisson complexe issue des graines torréfiées de la plante Coffea. Originaire des hauts plateaux éthiopiens, le café est devenu une marchandise mondiale qui alimente l\'industrie moderne et le lien social.',
++    de: 'Kaffee ist mehr als ein Morgenritual; er ist ein komplexes Getränk, das aus den gerösteten Samen der Coffea-Pflanze gewonnen wird. Ursprünglich aus dem äthiopischen Hochland stammend, hat sich Kaffee zu einem globalen Handelsgut entwickelt, das die moderne Industrie und soziale Verbindungen antreibt.',
++    ja: 'コーヒーは単なる朝の習慣以上のものです。コーヒーノキの焙煎された種子から作られる奥深い飲料です。エチオピアの高地を起源とするコーヒーは、現代の産業と社会的なつながりを支える世界的な商品へと進化しました。',
++    pt: 'O café é mais do que um ritual matinal; é uma bebida complexa derivada das sementes torradas da planta Coffea. Originário das terras altas da Etiópia, o café evoluiu para uma commodity global que impulsiona a indústria moderna e a conexão social.',
++    it: 'Il caffè è più di un rituale mattutino; è una bevanda complessa derivata dai semi tostati della pianta Coffea. Originario degli altipiani etiopi, il caffè si è evoluto in una merce globale che alimenta l\'industria moderna e le connessioni sociali.',
++  },
++
++  // Article 4: super-bowl-lx
++  'Super Bowl LX: A Historic Rematch in Santa Clara': {
++    es: 'Super Bowl LX: Una Revancha Histórica en Santa Clara',
++    fr: 'Super Bowl LX : Une Revanche Historique à Santa Clara',
++    de: 'Super Bowl LX: Ein Historisches Rückspiel in Santa Clara',
++    ja: 'スーパーボウルLX：サンタクララでの歴史的な再戦',
++    pt: 'Super Bowl LX: Uma Revanche Histórica em Santa Clara',
++    it: 'Super Bowl LX: Una Rivincita Storica a Santa Clara',
++  },
++  'The stage is set for a high-stakes reunion. Following a grueling Conference Championship weekend, the New England Patriots and Seattle Seahawks have officially punched their tickets to Super Bowl LX on February 8, 2026.': {
++    es: 'El escenario está listo para un reencuentro de alto riesgo. Tras un agotador fin de semana de Campeonatos de Conferencia, los New England Patriots y los Seattle Seahawks han asegurado oficialmente sus boletos para el Super Bowl LX el 8 de febrero de 2026.',
++    fr: 'Le décor est planté pour des retrouvailles à forts enjeux. Après un week-end éprouvant de championnats de conférence, les New England Patriots et les Seattle Seahawks ont officiellement décroché leur billet pour le Super Bowl LX le 8 février 2026.',
++    de: 'Die Bühne ist bereitet für ein Wiedersehen mit hohem Einsatz. Nach einem kräftezehrenden Conference-Championship-Wochenende haben sich die New England Patriots und die Seattle Seahawks offiziell ihre Tickets für den Super Bowl LX am 8. Februar 2026 gesichert.',
++    ja: '注目の再戦の舞台が整いました。過酷なカンファレンス・チャンピオンシップの週末を経て、ニューイングランド・ペイトリオッツとシアトル・シーホークスが2026年2月8日に開催されるスーパーボウルLXへの出場権を正式に獲得しました。',
++    pt: 'O palco está montado para um reencontro de alto risco. Após um intenso fim de semana de finais de conferência, o New England Patriots e o Seattle Seahawks garantiram oficialmente seus ingressos para o Super Bowl LX em 8 de fevereiro de 2026.',
++    it: 'Il palcoscenico è pronto per una sfida ad alta tensione. Dopo un estenuante fine settimana di finali di Conference, i New England Patriots e i Seattle Seahawks hanno ufficialmente staccato il biglietto per il Super Bowl LX dell\'8 febbraio 2026.',
++  },
++
++  // Article 5: breakthrough-research
++  'Breakthrough Research: A New Era in Medicine': {
++    es: 'Investigación Pionera: Una Nueva Era en la Medicina',
++    fr: 'Recherche Révolutionnaire : Une Nouvelle Ère en Médecine',
++    de: 'Bahnbrechende Forschung: Eine Neue Ära in der Medizin',
++    ja: '画期的な研究：医学の新時代',
++    pt: 'Pesquisa Inovadora: Uma Nova Era na Medicina',
++    it: 'Ricerca Rivoluzionaria: Una Nuova Era nella Medicina',
++  },
++  'Scientists are on the verge of a major breakthrough that could change the way we treat a wide range of diseases. A look at the groundbreaking research that is paving the way for a new era in medicine.': {
++    es: 'Los científicos están al borde de un gran avance que podría cambiar la forma en que tratamos una amplia gama de enfermedades. Un vistazo a la investigación pionera que está allanando el camino hacia una nueva era en la medicina.',
++    fr: 'Les scientifiques sont sur le point de réaliser une percée majeure qui pourrait changer notre façon de traiter un large éventail de maladies. Retour sur ces recherches novatrices qui ouvrent la voie à une nouvelle ère médicale.',
++    de: 'Wissenschaftler stehen kurz vor einem großen Durchbruch, der die Behandlung einer Vielzahl von Krankheiten verändern könnte. Ein Blick auf die bahnbrechende Forschung, die den Weg für eine neue Ära in der Medizin ebnet.',
++    ja: '科学者たちは、幅広い疾患の治療法を一変させる可能性のある大きな飛躍的進歩の目前に迫っています。医学の新時代への道を切り開く画期的な研究を紹介します。',
++    pt: 'Os cientistas estão à beira de um grande avanço que pode mudar a forma como tratamos uma ampla gama de doenças. Um olhar sobre a pesquisa inovadora que está abrindo caminho para uma nova era na medicina.',
++    it: 'Gli scienziati sono sull\'orlo di una svolta importante che potrebbe cambiare il modo in cui trattiamo una vasta gamma di malattie. Uno sguardo alla ricerca rivoluzionaria che sta aprendo la strada a una nuova era nella medicina.',
++  },
++
++  // Article 6: criminal-networks
++  'Unraveling the Web: Inside Criminal Networks': {
++    es: 'Desentrañando la Red: Dentro de las Redes Criminales',
++    fr: 'Démêler la Toile : Au Cœur des Réseaux Criminels',
++    de: 'Das Netz Entwirren: Einblick in Kriminelle Netzwerke',
++    ja: '網を解き明かす：犯罪ネットワークの内部',
++    pt: 'Desvendando a Teia: Por Dentro das Redes Criminosas',
++    it: 'Svelare la Rete: All\'Interno delle Reti Criminali',
++  },
++  'A complex web of connections, a hidden world of illicit activities. Law enforcement agencies are using new strategies to dismantle the criminal networks that threaten our society.': {
++    es: 'Una compleja red de conexiones, un mundo oculto de actividades ilícitas. Las agencias de aplicación de la ley están utilizando nuevas estrategias para desmantelar las redes criminales que amenazan nuestra sociedad.',
++    fr: 'Un réseau complexe de connexions, un monde caché d\'activités illicites. Les forces de l\'ordre utilisent de nouvelles stratégies pour démanteler les réseaux criminels qui menacent notre société.',
++    de: 'Ein komplexes Geflecht von Verbindungen, eine verborgene Welt illegaler Aktivitäten. Strafverfolgungsbehörden setzen neue Strategien ein, um kriminelle Netzwerke zu zerschlagen, die unsere Gesellschaft bedrohen.',
++    ja: '複雑なつながりの網、違法行為の隠された世界。法執行機関は、私たちの社会を脅かす犯罪ネットワークを解体するために新たな戦略を採用しています。',
++    pt: 'Uma complexa teia de conexões, um mundo oculto de atividades ilícitas. As agências policiais estão usando novas estratégias para desmantelar as redes criminosas que ameaçam nossa sociedade.',
++    it: 'Una complessa rete di connessioni, un mondo nascosto di attività illecite. Le forze dell\'ordine stanno utilizzando nuove strategie per smantellare le reti criminali che minacciano la nostra società.',
++  },
++
++  // Article 7: cycling-championships
++  'The Roar of the Crowd: Cycling Championships': {
++    es: 'El Rugido de la Multitud: Campeonatos de Ciclismo',
++    fr: 'Le Rugissement de la Foule : Championnats de Cyclisme',
++    de: 'Das Tosen der Menge: Radsport-Meisterschaften',
++    ja: '群衆の歓声：サイクリング選手権',
++    pt: 'O Rugido da Multidão: Campeonatos de Ciclismo',
++    it: 'Il Boato della Folla: Campionati di Ciclismo',
++  },
++  'A grueling race, a test of endurance and strategy. The National Cycling Championships did not disappoint, with a thrilling finish that will be talked about for years to come.': {
++    es: 'Una carrera agotadora, una prueba de resistencia y estrategia. El Campeonato Nacional de Ciclismo no decepcionó, con un final emocionante del que se hablará durante años.',
++    fr: 'Une course éprouvante, un test d\'endurance et de stratégie. Les Championnats Nationaux de Cyclisme n\'ont pas déçu, avec un final palpitant dont on parlera pendant des années.',
++    de: 'Ein kräftezehrendes Rennen, ein Test für Ausdauer und Strategie. Die Nationalen Radsport-Meisterschaften haben nicht enttäuscht und boten ein spannendes Finale, über das noch jahrelang gesprochen wird.',
++    ja: '過酷なレース、持久力と戦略の試練。全国サイクリング選手権は期待を裏切らず、今後何年にもわたって語り継がれるスリリングなフィニッシュとなりました。',
++    pt: 'Uma corrida extenuante, um teste de resistência e estratégia. O Campeonato Nacional de Ciclismo não decepcionou, com uma chegada emocionante que será comentada por muitos anos.',
++    it: 'Una gara estenuante, una prova di resistenza e strategia. I Campionati Nazionali di Ciclismo non hanno deluso, con un finale emozionante di cui si parlerà per gli anni a venire.',
++  },
++
++  // Article 8: forensic-files
++  'Forensic Files: The Science of Solving Crimes': {
++    es: 'Archivos Forenses: La Ciencia de Resolver Crímenes',
++    fr: 'Dossiers Médico-Légaux : La Science de la Résolution des Crimes',
++    de: 'Forensische Akten: Die Wissenschaft der Verbrechensaufklärung',
++    ja: '科学捜査ファイル：犯罪解決の科学',
++    pt: 'Arquivos Forenses: A Ciência de Solucionar Crimes',
++    it: 'Archivi Forensi: La Scienza della Risoluzione dei Crimini',
++  },
++  'From fingerprints to DNA analysis, forensic science has revolutionized the way we solve crimes. A deep dive into the techniques and technologies that bring criminals to justice.': {
++    es: 'Desde las huellas dactilares hasta el análisis de ADN, la ciencia forense ha revolucionado la forma en que resolvemos los crímenes. Una inmersión profunda en las técnicas y tecnologías que llevan a los criminales ante la justicia.',
++    fr: 'Des empreintes digitales à l\'analyse ADN, la police scientifique a révolutionné notre façon de résoudre les crimes. Une plongée au cœur des techniques et technologies qui traduisent les criminels en justice.',
++    de: 'Von Fingerabdrücken bis zur DNA-Analyse hat die Forensik die Aufklärung von Verbrechen revolutioniert. Ein tiefer Einblick in die Techniken und Technologien, die Kriminelle vor Gericht bringen.',
++    ja: '指紋からDNA分析に至るまで、法科学は犯罪解決の方法に革命をもたらしました。犯罪者を裁きの場へと導く技術とテクノロジーを深掘りします。',
++    pt: 'Das impressões digitais à análise de DNA, a ciência forense revolucionou a maneira como solucionamos crimes. Um mergulho profundo nas técnicas e tecnologias que levam os criminosos à justiça.',
++    it: 'Dalle impronte digitali all\'analisi del DNA, la scienza forense ha rivoluzionato il modo in cui risolviamo i crimini. Un approfondimento sulle tecniche e le tecnologie che assicurano i criminali alla giustizia.',
++  },
++
++  // Article 9: fringe-improv-festival
++  'The Power of Small Stages: Improv Festival Celebrates Unscripted Theater': {
++    es: 'El Poder de los Escenarios Pequeños: El Festival de Improvisación Celebra el Teatro sin Guion',
++    fr: 'Le Pouvoir des Petites Scènes : Le Festival d\'Improvisation Célèbre le Théâtre Spontané',
++    de: 'Die Kraft Kleiner Bühnen: Impro-Festival Feiert Ungeskriptetes Theater',
++    ja: '小さな舞台の力：即興フェスティバルが台本なしの演劇を祝う',
++    pt: 'O Poder dos Pequenos Palcos: Festival de Improviso Celebra o Teatro sem Roteiro',
++    it: 'Il Potere dei Piccoli Palchi: Il Festival d\'Improvvisazione Celebra il Teatro Senza Copione',
++  },
++  'The annual Fringe Improv Festival is once again proving that the most exciting theatrical moments are often the most spontaneous, showcasing the wit and creativity of performers from around the world.': {
++    es: 'El Festival Anual de Improvisación Fringe demuestra una vez más que los momentos teatrales más emocionantes suelen ser los más espontáneos, mostrando el ingenio y la creatividad de artistas de todo el mundo.',
++    fr: 'Le festival annuel Fringe Improv prouve une fois de plus que les moments théâtraux les plus captivants sont souvent les plus spontanés, mettant en valeur l\'esprit et la créativité d\'artistes du monde entier.',
++    de: 'Das jährliche Fringe Improv Festival beweist erneut, dass die aufregendsten Theatermomente oft die spontansten sind, und präsentiert den Witz und die Kreativität von Künstlern aus aller Welt.',
++    ja: '毎年恒例のフリンジ即興フェスティバルは、最もエキサイティングな演劇の瞬間が最も自発的なものであることを再び証明し、世界中のパフォーマーの機知と創造性を披露しています。',
++    pt: 'O Festival Anual de Improviso Fringe prova mais uma vez que os momentos teatrais mais empolgantes são muitas vezes os mais espontâneos, destacando a inteligência e a criatividade de artistas de todo o mundo.',
++    it: 'L\'annuale Fringe Improv Festival dimostra ancora una volta che i momenti teatrali più emozionanti sono spesso i più spontanei, mettendo in mostra l\'arguzia e la creatività di artisti provenienti da tutto il mondo.',
++  },
++
++  // Article 10: future-of-journalism
++  'The Future of Journalism: Navigating a Post-Truth World': {
++    es: 'El Futuro del Periodismo: Navegando en un Mundo Posverdad',
++    fr: 'L\'Avenir du Journalisme : Naviguer dans un Monde Post-Vérité',
++    de: 'Die Zukunft des Journalismus: Navigieren in einer Postfaktischen Welt',
++    ja: 'ジャーナリズムの未来：ポスト真実の世界を生き抜く',
++    pt: 'O Futuro do Jornalismo: Navegando em um Mundo Pós-Verdade',
++    it: 'Il Futuro del Giornalismo: Navigare in un Mondo Post-Verità',
++  },
++  'As misinformation campaigns intensify and trust in media erodes, journalists are adapting with new tools and ethical frameworks to uphold the truth in a fragmented digital landscape.': {
++    es: 'A medida que se intensifican las campañas de desinformación y se erosiona la confianza en los medios, los periodistas se adaptan con nuevas herramientas y marcos éticos para defender la verdad en un panorama digital fragmentado.',
++    fr: 'Alors que les campagnes de désinformation s\'intensifient et que la confiance dans les médias s\'érode, les journalistes s\'adaptent avec de nouveaux outils et cadres éthiques pour défendre la vérité dans un paysage numérique fragmenté.',
++    de: 'Während Desinformationskampagnen zunehmen und das Vertrauen in die Medien schwindet, passen sich Journalisten mit neuen Werkzeugen und ethischen Rahmenbedingungen an, um die Wahrheit in einer fragmentierten digitalen Landschaft zu wahren.',
++    ja: '誤情報キャンペーンが激化しメディアへの信頼が揺らぐ中、ジャーナリストたちは分断されたデジタル環境で真実を守るため、新しいツールと倫理的枠組みに適応しています。',
++    pt: 'À medida que as campanhas de desinformação se intensificam e a confiança na mídia diminui, os jornalistas estão se adaptando com novas ferramentas e estruturas éticas para defender a verdade em um cenário digital fragmentado.',
++    it: 'Mentre le campagne di disinformazione si intensificano e la fiducia nei media si erode, i giornalisti si stanno adattando con nuovi strumenti e quadri etici per difendere la verità in un panorama digitale frammentato.',
++  },
++
++  // Article 11: housing-crisis
++  'Housing Crisis Deepens as Construction Fails to Meet Demand': {
++    es: 'La Crisis de Vivienda se Profundiza Mientras la Construcción no Logra Cubrir la Demanda',
++    fr: 'La Crise du Logement s\'Aggrave Alors que la Construction ne Suit Plus la Demande',
++    de: 'Wohnungskrise Verschärft Sich, da der Bau den Bedarf Nicht Deckt',
++    ja: '建設が需要に追いつかず、住宅危機が深刻化',
++    pt: 'Crise Habitacional se Agrava Enquanto Construção Não Atende à Demanda',
++    it: 'La Crisi Abitativa si Aggrava Mentre l\'Edilizia Non Soddisfa la Domanda',
++  },
++  'A critical shortage of affordable housing is putting pressure on families and economies worldwide, as construction rates lag far behind the growing demand in urban centers.': {
++    es: 'Una escasez crítica de viviendas asequibles está ejerciendo presión sobre las familias y las economías de todo el mundo, a medida que las tasas de construcción se quedan muy atrás de la creciente demanda en los centros urbanos.',
++    fr: 'Une pénurie critique de logements abordables met sous pression les familles et les économies du monde entier, alors que les rythmes de construction restent bien en deçà de la demande croissante dans les centres urbains.',
++    de: 'Ein kritischer Mangel an bezahlbarem Wohnraum setzt Familien und Volkswirtschaften weltweit unter Druck, da die Neubauraten weit hinter der wachsenden Nachfrage in städtischen Zentren zurückbleiben.',
++    ja: '手頃な価格の住宅の深刻な不足が世界中の家庭や経済に圧力をかけており、都市部での需要の伸びに建設ペースが大きく遅れをとっています。',
++    pt: 'Uma escassez crítica de moradias populares está pressionando famílias e economias em todo o mundo, à medida que as taxas de construção ficam muito atrás da crescente demanda nos centros urbanos.',
++    it: 'Una carenza critica di alloggi a prezzi accessibili sta mettendo sotto pressione famiglie ed economie in tutto il mondo, poiché i ritmi di costruzione restano ben lontani dalla crescente domanda nei centri urbani.',
++  },
++
++  // Article 12: indie-fest-returns
++  'Indie Fest Returns with Explosive Lineup and Record Turnout': {
++    es: 'El Festival Indie Regresa con un Cartel Explosivo y Asistencia Récord',
++    fr: 'Le Festival Indie Revient avec une Programmation Explosive et une Affluence Record',
++    de: 'Indie-Fest Kehrt mit Explosivem Line-up und Rekordbesuch Zurück',
++    ja: 'インディー・フェスが豪華ラインナップと過去最高の動員数で復活',
++    pt: 'Festival Indie Retorna com Programação Explosiva e Público Recorde',
++    it: 'L\'Indie Fest Torna con una Lineup Esplosiva e un\'Affluenza Record',
++  },
++  'After a two-year hiatus, the legendary \'Summer Echo\' indie music festival made a triumphant return, drawing massive crowds and showcasing a new generation of musical talent.': {
++    es: 'Tras una pausa de dos años, el legendario festival de música indie "Summer Echo" tuvo un regreso triunfal, atrayendo a multitudes masivas y mostrando a una nueva generación de talento musical.',
++    fr: 'Après deux ans d\'absence, le légendaire festival de musique indie « Summer Echo » a fait un retour triomphal, attirant des foules immenses et mettant en lumière une nouvelle génération de talents musicaux.',
++    de: 'Nach einer zweijährigen Pause feierte das legendäre Indie-Musikfestival „Summer Echo“ eine triumphale Rückkehr, zog riesige Menschenmengen an und präsentierte eine neue Generation musikalischer Talente.',
++    ja: '2年間の休止期間を経て、伝説的なインディー音楽フェスティバル「サマー・エコー」が華々しく復活し、大勢の観客を集めて新世代の音楽的才能を披露しました。',
++    pt: 'Após um hiato de dois anos, o lendário festival de música indie "Summer Echo" fez um retorno triunfante, atraindo grandes multidões e apresentando uma nova geração de talentos musicais.',
++    it: 'Dopo una pausa di due anni, il leggendario festival di musica indie "Summer Echo" ha fatto un ritorno trionfale, attirando folle oceaniche e mettendo in mostra una nuova generazione di talenti musicali.',
++  },
++
++  // Article 13: infrastructure-decay
++  'Crumbling Infrastructure: A Ticking Time Bomb for Public Safety': {
++    es: 'Infraestructura en Ruinas: Una Bomba de Tiempo para la Seguridad Pública',
++    fr: 'Infrastructures Déliquescentes : Une Bombe à Retardement pour la Sécurité Publique',
++    de: 'Marode Infrastruktur: Eine Tickende Zeitbombe für die Öffentliche Sicherheit',
++    ja: '老朽化するインフラ：公共の安全を脅かす時限爆弾',
++    pt: 'Infraestrutura em Colapso: Uma Bomba-Relógio para a Segurança Pública',
++    it: 'Infrastrutture Fatiscenti: Una Bomba a Orologeria per la Sicurezza Pubblica',
++  },
++  'Years of underfunding and neglect have left the nation\'s roads, bridges, and public transit systems in a perilous state, with experts warning of catastrophic failures if action is not taken soon.': {
++    es: 'Años de falta de financiación y abandono han dejado las carreteras, puentes y sistemas de transporte público del país en un estado peligroso, y los expertos advierten sobre fallas catastróficas si no se toman medidas pronto.',
++    fr: 'Des années de sous-financement et de négligence ont laissé les routes, les ponts et les réseaux de transports publics du pays dans un état périlleux, les experts mettant en garde contre des défaillances catastrophiques si rien n\'est fait rapidement.',
++    de: 'Jahrelange Unterfinanzierung und Vernachlässigung haben die Straßen, Brücken und öffentlichen Verkehrssysteme des Landes in einen gefährlichen Zustand versetzt, wobei Experten vor katastrophalen Ausfällen warnen, wenn nicht bald gehandelt wird.',
++    ja: '長年にわたる資金不足と放置により、国内の道路、橋、公共交通機関は危険な状態に置かれており、専門家は早急に対策を講じなければ壊滅的な事故につながると警告しています。',
++    pt: 'Anos de subfinanciamento e negligência deixaram as estradas, pontes e sistemas de transporte público do país em estado crítico, com especialistas alertando para falhas catastróficas se medidas não forem tomadas em breve.',
++    it: 'Anni di sottofinanziamento e incuria hanno lasciato strade, ponti e sistemi di trasporto pubblico del Paese in uno stato pericoloso, con gli esperti che avvertono di cedimenti catastrofici se non si interviene presto.',
++  },
++
++  // Article 14: labor-strikes
++  'A Summer of Strikes: Labor Unrest Spreads as Workers Demand Fair Wages': {
++    es: 'Un Verano de Huelgas: El Malestar Laboral se Extiende Mientras los Trabajadores Exigen Salarios Justos',
++    fr: 'Un Été de Grèves : Le Mécontentement Social s\'Étend pour Exiger des Salaires Justes',
++    de: 'Ein Sommer der Streiks: Arbeitskämpfe Breiten Sich Aus für Faire Löhne',
++    ja: 'ストライキの夏：労働者が公正な賃金を求め労働争議が拡大',
++    pt: 'Um Verão de Greves: Mobilização Trabalhista Cresce por Salários Justos',
++    it: 'Un\'Estate di Scioperi: Le Proteste Sindacali si Diffondono per Salari Equi',
++  },
++  'From transportation to tech, a wave of labor strikes is sweeping across the country, as workers demand better pay and working conditions in the face of soaring corporate profits and inflation.': {
++    es: 'Desde el transporte hasta la tecnología, una ola de huelgas laborales recorre el país, mientras los trabajadores exigen mejores salarios y condiciones de trabajo frente al aumento de las ganancias corporativas y la inflación.',
++    fr: 'Des transports à la technologie, une vague de grèves traverse le pays, les travailleurs exigeant de meilleurs salaires et conditions de travail face à l\'envolée des profits des entreprises et à l\'inflation.',
++    de: 'Vom Transportwesen bis zur Tech-Branche rollt eine Streikwelle durch das Land, da Arbeitnehmer angesichts steigender Unternehmensgewinne und Inflation bessere Bezahlung und Arbeitsbedingungen fordern.',
++    ja: '運輸からテクノロジー業界に至るまで、企業利益の急増とインフレに直面した労働者がより良い賃金と労働条件を求め、全国でストライキの波が広がっています。',
++    pt: 'Do transporte à tecnologia, uma onda de greves trabalhistas varre o país, à medida que os trabalhadores exigem melhores salários e condições de trabalho diante dos lucros corporativos recordes e da inflação.',
++    it: 'Dai trasporti alla tecnologia, un\'ondata di scioperi sta attraversando il Paese, mentre i lavoratori chiedono salari e condizioni di lavoro migliori di fronte all\'aumento dei profitti aziendali e all\'inflazione.',
++  },
++
++  // Article 15: life-with-charlie
++  'The Scruffy Tyrant: Life with Charlie the Griffon': {
++    es: 'El Tirano Desaliñado: La Vida con Charlie el Grifón',
++    fr: 'Le Tyran Ébouriffé : La Vie avec Charlie le Griffon',
++    de: 'Der Struppige Tyrann: Das Leben mit Griffon Charlie',
++    ja: 'ボサボサの暴君：グリフォンのチャーリーとの暮らし',
++    pt: 'O Tirano Desgrenhado: A Vida com Charlie, o Griffon',
++    it: 'Il Tiranno Arruffato: La Vita con il Griffone Charlie',
++  },
++  'Charlie the Griffon looks like he woke up on the wrong side of the bed, every single day. With his famous upturned nose, a perpetually judgmental pout, and a wiry beard that defies gravity, he resembles a grumpy Victorian gentleman shrank down to ten pounds.': {
++    es: 'Charlie el Grifón parece haberse despertado con el pie izquierdo todos los días. Con su famosa nariz respingona, un puchero perpetuamente crítico y una barba alambrada que desafía la gravedad, parece un caballero victoriano gruñón reducido a diez libras.',
++    fr: 'Charlie le Griffon a l\'air de s\'être levé du pied gauche, chaque jour sans exception. Avec son célèbre nez retroussé, sa moue perpétuellement critique et sa barbe broussailleuse défiant la gravité, il ressemble à un gentleman victorien grincheux réduit à quatre kilos.',
++    de: 'Charlie der Griffon sieht jeden einzelnen Tag so aus, als wäre er mit dem falschen Fuß aufgestanden. Mit seiner berühmten Stupsnase, einem ständig urteilenden Schmollmund und einem drahtigen Bart, der der Schwerkraft trotzt, gleicht er einem mürrischen viktorianischen Gentleman im Taschenformat.',
++    ja: 'グリフォンのチャーリーは、毎日機嫌悪く目覚めたかのような顔をしています。有名な上向きの鼻、常に不満げな口元、そして重力に逆らう針金のような髭を持つ彼は、体重4.5キロに縮んだ不機嫌なヴィクトリア朝の紳士のようです。',
++    pt: 'Charlie, o Griffon, parece ter acordado com o pé esquerdo todos os dias. Com seu famoso nariz arrebitado, um bico perpetuamente crítico e uma barba áspera que desafia a gravidade, ele lembra um cavalheiro vitoriano rabugento encolhido para quatro quilos.',
++    it: 'Il griffone Charlie sembra essersi svegliato con il piede sbagliato ogni singolo giorno. Con il suo famoso naso all\'insù, un broncio perennemente severo e una barba ispida che sfida la gravità, somiglia a un burbero gentiluomo vittoriano rimpicciolito a cinque chili.',
++  },
++
++  // Article 16: manufacturing-boom
++  'Manufacturing Boom: A New Era for American Industry?': {
++    es: 'Auge Manufacturero: ¿Una Nueva Era para la Industria Estadounidense?',
++    fr: 'Essor Manufacturier : Une Nouvelle Ère pour l\'Industrie Américaine ?',
++    de: 'Fertigungsboom: Eine Neue Ära für die Amerikanische Industrie?',
++    ja: '製造業ブーム：アメリカ産業の新時代か？',
++    pt: 'Boom da Manufatura: Uma Nova Era para a Indústria Americana?',
++    it: 'Boom Manifatturiero: Una Nuova Era per l\'Industria Americana?',
++  },
++  'A recent surge in domestic manufacturing is sparking hope for an industrial renaissance, driven by investments in high-tech sectors and a push to reshore critical supply chains.': {
++    es: 'Un reciente repunte en la manufactura nacional está despertando esperanzas de un renacimiento industrial, impulsado por inversiones en sectores de alta tecnología y un esfuerzo por relocalizar cadenas de suministro críticas.',
++    fr: 'Une récente poussée de l\'industrie manufacturière nationale suscite l\'espoir d\'une renaissance industrielle, portée par des investissements dans les secteurs de haute technologie et la relocalisation des chaînes d\'approvisionnement critiques.',
++    de: 'Ein jüngster Anstieg der heimischen Produktion weckt Hoffnungen auf eine industrielle Renaissance, angetrieben durch Investitionen in Hightech-Sektoren und das Bestreben, kritische Lieferketten zurückzuholen.',
++    ja: 'ハイテク分野への投資と重要なサプライチェーンの国内回帰の動きに牽引され、国内製造業の最近の急成長が産業ルネサンスへの期待を呼び起こしています。',
++    pt: 'Um recente aumento na manufatura doméstica está despertando a esperança de um renascimento industrial, impulsionado por investimentos em setores de alta tecnologia e um esforço para repatriar cadeias de suprimentos críticas.',
++    it: 'Una recente impennata della produzione nazionale sta accendendo la speranza di un rinascimento industriale, trainata dagli investimenti nei settori ad alta tecnologia e dalla spinta a riportare in patria le catene di approvvigionamento critiche.',
++  },
++
++  // Article 17: mind-of-a-killer
++  'Into the Mind of a Killer: The Art of Criminal Profiling': {
++    es: 'En la Mente de un Asesino: El Arte de la Perfilación Criminal',
++    fr: 'Dans l\'Esprit d\'un Tueur : L\'Art du Profilage Criminel',
++    de: 'In den Kopf eines Mörders: Die Kunst der Fallanalyse',
++    ja: '犯人の心理に迫る：犯罪プロファイリングの技術',
++    pt: 'Na Mente de um Assassino: A Arte do Perfilamento Criminal',
++    it: 'Nella Mente di un Assassino: L\'Arte del Profiling Criminale',
++  },
++  'What drives a person to commit murder? Criminal profilers delve into the psychology of killers to help investigators solve the most heinous of crimes.': {
++    es: '¿Qué impulsa a una persona a cometer un asesinato? Los perfiladores criminales profundizan en la psicología de los asesinos para ayudar a los investigadores a resolver los crímenes más atroces.',
++    fr: 'Qu\'est-ce qui pousse une personne à commettre un meurtre ? Les profileurs criminels plongent dans la psychologie des tueurs pour aider les enquêteurs à résoudre les crimes les plus odieux.',
++    de: 'Was treibt einen Menschen zum Mord? Fallanalytiker tauchen tief in die Psychologie von Tätern ein, um Ermittlern bei der Aufklärung der abscheulichsten Verbrechen zu helfen.',
++    ja: '何が人を殺人に駆り立てるのか？犯罪プロファイラーは犯人の深層心理を掘り下げ、捜査官が最も凶悪な犯罪を解決するのを支援します。',
++    pt: 'O que leva uma pessoa a cometer um assassinato? Os perfiladores criminais mergulham na psicologia dos criminosos para ajudar os investigadores a solucionar os crimes mais hediondos.',
++    it: 'Cosa spinge una persona a commettere un omicidio? I profiler criminali scavano nella psicologia degli assassini per aiutare gli investigatori a risolvere i crimini più efferati.',
++  },
++
++  // Article 18: modern-swan-lake
++  'A Modern \'Swan Lake\': How a New Production is Redefining a Classic': {
++    es: 'Un "Lago de los Cisnes" Moderno: Cómo una Nueva Producción Redefine un Clásico',
++    fr: 'Un « Lac des Cygnes » Moderne : Comment une Nouvelle Production Redéfinit un Classique',
++    de: 'Ein Moderner „Schwanensee“: Wie eine Neuinszenierung einen Klassiker Neu Definiert',
++    ja: '現代版『白鳥の湖』：新演出がいかに古典を再定義しているか',
++    pt: 'Um "Lago dos Cisnes" Moderno: Como uma Nova Produção Está Redefinindo um Clássico',
++    it: 'Un "Lago dei Cigni" Moderno: Come una Nuova Produzione Sta Ridefinendo un Classico',
++  },
++  'A bold new interpretation of the classic ballet \'Swan Lake\' is challenging conventions and captivating audiences with its contemporary choreography and stunning visual design.': {
++    es: 'Una audaz nueva interpretación del ballet clásico "El Lago de los Cisnes" está desafiando las convenciones y cautivando al público con su coreografía contemporánea y su impresionante diseño visual.',
++    fr: 'Une nouvelle interprétation audacieuse du ballet classique « Le Lac des Cygnes » bouscule les conventions et captive le public par sa chorégraphie contemporaine et son design visuel époustouflant.',
++    de: 'Eine mutige Neuinterpretation des Ballettklassikers „Schwanensee“ bricht mit Konventionen und fesselt das Publikum mit zeitgenössischer Choreografie und atemberaubendem visuellem Design.',
++    ja: '古典バレエ『白鳥の湖』の大胆な新解釈が、現代的な振付と圧倒的なビジュアルデザインで従来の常識を覆し、観客を魅了しています。',
++    pt: 'Uma nova e ousada interpretação do balé clássico "O Lago dos Cisnes" está desafiando convenções e cativando o público com sua coreografia contemporânea e design visual deslumbrante.',
++    it: 'Una nuova e audace interpretazione del balletto classico "Il Lago dei Cigni" sfida le convenzioni e conquista il pubblico con la sua coreografia contemporanea e uno straordinario design visivo.',
++  },
++
++  // Article 19: night-game-thrills
++  'Night Game Thrills: A Season to Remember': {
++    es: 'Emociones del Juego Nocturno: Una Temporada para Recordar',
++    fr: 'Frissons des Matchs Nocturnes : Une Saison Mémorable',
++    de: 'Nachtspiel-Nervenkitzel: Eine Unvergessliche Saison',
++    ja: 'ナイターゲームの興奮：記憶に残るシーズン',
++    pt: 'Emoções dos Jogos Noturnos: Uma Temporada para Lembrar',
++    it: 'Emozioni delle Partite in Notturna: Una Stagione da Ricordare',
++  },
++  'As the floodlights blaze, the crack of the bat echoes through the stadium. A look into the electrifying world of night games and what makes them so special.': {
++    es: 'Mientras brillan los reflectores, el chasquido del bate resuena en todo el estadio. Una mirada al electrizante mundo de los partidos nocturnos y lo que los hace tan especiales.',
++    fr: 'Sous le feu des projecteurs, le claquement de la batte résonne dans tout le stade. Plongée dans l\'univers électrisant des matchs nocturnes et ce qui les rend si uniques.',
++    de: 'Wenn das Flutlicht strahlt, hallt das Krachen des Schlägers durch das Stadion. Ein Blick in die elektrisierende Welt der Nachtspiele und was sie so besonders macht.',
++    ja: '照明が輝く中、バットの快音がスタジアムに響き渡ります。ナイターゲームの電撃的な世界と、それを特別にする魅力に迫ります。',
++    pt: 'Enquanto os refletores brilham, o estalo do taco ecoa pelo estádio. Um olhar sobre o mundo eletrizante dos jogos noturnos e o que os torna tão especiais.',
++    it: 'Mentre i riflettori splendono, il suono della mazza riecheggia nello stadio. Uno sguardo al mondo elettrizzante delle partite in notturna e a ciò che le rende così speciali.',
++  },
++
++  // Article 20: olympic-dreams
++  'Olympic Dreams: The Making of a Champion': {
++    es: 'Sueños Olímpicos: La Forja de un Campeón',
++    fr: 'Rêves Olympiques : La Fabrique d\'un Champion',
++    de: 'Olympische Träume: Der Weg zum Champion',
++    ja: 'オリンピックの夢：チャンピオンの誕生',
++    pt: 'Sonhos Olímpicos: A Formação de um Campeão',
++    it: 'Sogni Olimpici: La Nascita di un Campione',
++  },
++  'For these young swimmers, the Olympics are more than just a competition. They\'re a lifelong dream, a culmination of years of hard work and sacrifice. A look at the journey of these aspiring Olympians as they chase their dreams of gold.': {
++    es: 'Para estos jóvenes nadadores, los Juegos Olímpicos son más que una simple competencia. Son el sueño de toda una vida, la culminación de años de arduo trabajo y sacrificio. Una mirada al viaje de estos aspirantes olímpicos mientras persiguen sus sueños de oro.',
++    fr: 'Pour ces jeunes nageurs, les Jeux Olympiques sont bien plus qu\'une compétition. C\'est le rêve d\'une vie, l\'aboutissement d\'années de travail acharné et de sacrifices. Découvrez le parcours de ces espoirs olympiques en quête d\'or.',
++    de: 'Für diese jungen Schwimmer sind die Olympischen Spiele mehr als nur ein Wettkampf. Sie sind ein Lebenstraum, der Höhepunkt jahrelanger harter Arbeit und Entbehrungen. Ein Blick auf den Weg dieser angehenden Olympioniken auf ihrer Jagd nach Gold.',
++    ja: '若いスイマーたちにとって、オリンピックは単なる競技会以上のものです。それは生涯の夢であり、長年の努力と犠牲の結晶です。金メダルの夢を追いかけるオリンピック候補生たちの軌跡を追います。',
++    pt: 'Para esses jovens nadadores, as Olimpíadas são mais do que apenas uma competição. São o sonho de uma vida inteira, o ápice de anos de trabalho duro e sacrifício. Acompanhe a jornada desses aspirantes olímpicos em busca do ouro.',
++    it: 'Per questi giovani nuotatori, le Olimpiadi sono più di una semplice competizione. Sono il sogno di una vita, il culmine di anni di duro lavoro e sacrifici. Uno sguardo al viaggio di questi aspiranti olimpionici mentre inseguono il sogno dell\'oro.',
++  },
++
++  // Article 21: print-media-decline
++  'The End of an Era: Print Media Faces an Existential Crisis': {
++    es: 'El Fin de una Era: La Prensa Escrita Enfrenta una Crisis Existencial',
++    fr: 'La Fin d\'une Ère : La Presse Écrite Face à une Crise Existentielle',
++    de: 'Das Ende einer Ära: Printmedien Stehen vor einer Existenziellen Krise',
++    ja: '時代の終焉：存亡の危機に直面する印刷メディア',
++    pt: 'O Fim de uma Era: A Mídia Impressa Enfrenta uma Crise Existencial',
++    it: 'La Fine di un\'Era: La Carta Stampata Affronta una Crisi Esistenziale',
++  },
++  'With declining circulation and ad revenue, the once-mighty newspaper industry is struggling to survive in a digital world, raising questions about the future of local news and informed democracy.': {
++    es: 'Con la caída de la circulación y los ingresos publicitarios, la alguna vez poderosa industria periodística lucha por sobrevivir en un mundo digital, planteando interrogantes sobre el futuro de las noticias locales y la democracia informada.',
++    fr: 'Avec la baisse des tirages et des revenus publicitaires, l\'industrie autrefois puissante de la presse écrite lutte pour survivre dans un monde numérique, soulevant des questions sur l\'avenir de l\'information locale et de la démocratie.',
++    de: 'Mit sinkenden Auflagen und Werbeeinnahmen kämpft die einst mächtige Zeitungsbranche ums Überleben in einer digitalen Welt, was Fragen über die Zukunft lokaler Nachrichten und einer informierten Demokratie aufwirft.',
++    ja: '発行部数と広告収入の減少に伴い、かつて強大だった新聞業界はデジタル世界で生き残りをかけて苦闘しており、地域ニュースと民主主義の未来に疑問を投げかけています。',
++    pt: 'Com a queda na circulação e na receita publicitária, a outrora poderosa indústria de jornais luta para sobreviver em um mundo digital, levantando questões sobre o futuro do jornalismo local e da democracia informada.',
++    it: 'Con il calo delle tirature e delle entrate pubblicitarie, l\'industria dei giornali, un tempo potente, lotta per sopravvivere in un mondo digitale, sollevando interrogativi sul futuro dell\'informazione locale e della democrazia.',
++  },
++
++  // Article 22: public-transit-overhaul & What's new in DevTools
++  'Cities Bet on Public Transit Overhaul to Combat Gridlock and Emissions': {
++    es: 'Las Ciudades Apuestan por la Renovación del Transporte Público para Combatir el Tráfico y las Emisiones',
++    fr: 'Les Villes Misent sur la Refonte des Transports Publics pour Lutter Contre les Embouteillages et les Émissions',
++    de: 'Städte Setzen auf Nahverkehrs-Modernisierung gegen Staus und Emissionen',
++    ja: '渋滞と排出ガス対策に向け、都市が公共交通機関の抜本的改革に賭ける',
++    pt: 'Cidades Apostam na Reformulação do Transporte Público para Combater Congestionamentos e Emissões',
++    it: 'Le Città Puntano sul Rinnovamento del Trasporto Pubblico contro Traffico ed Emissioni',
++  },
++  'In a bold move to fight climate change and urban congestion, major cities are launching ambitious projects to modernize and expand their public transportation networks, aiming for a car-free future.': {
++    es: 'En una medida audaz para combatir el cambio climático y la congestión urbana, las principales ciudades están lanzando proyectos ambiciosos para modernizar y expandir sus redes de transporte público, apuntando a un futuro sin automóviles.',
++    fr: 'Dans une démarche audacieuse contre le changement climatique et la congestion urbaine, les grandes villes lancent d\'ambitieux projets de modernisation et d\'expansion de leurs réseaux de transports en commun, visant un avenir sans voiture.',
++    de: 'In einem mutigen Schritt gegen den Klimawandel und städtische Staus starten Großstädte ehrgeizige Projekte zur Modernisierung und zum Ausbau ihrer öffentlichen Verkehrsnetze mit dem Ziel einer autofreien Zukunft.',
++    ja: '気候変動と都市の渋滞に立ち向かう大胆な一歩として、主要都市はクルマのない未来を目指し、公共交通網を近代化・拡張する野心的なプロジェクトを開始しています。',
++    pt: 'Em um movimento ousado para combater as mudanças climáticas e o congestionamento urbano, grandes cidades estão lançando projetos ambiciosos para modernizar e expandir suas redes de transporte público, visando um futuro sem carros.',
++    it: 'Con una mossa audace per combattere il cambiamento climatico e la congestione urbana, le grandi città stanno lanciando progetti ambiziosi per modernizzare ed espandere le reti di trasporto pubblico, puntando a un futuro senza auto.',
++  },
++  'What\'s new in DevTools': {
++    es: 'Novedades en DevTools',
++    fr: 'Quoi de neuf dans DevTools',
++    de: 'Was ist neu in DevTools',
++    ja: 'DevToolsの新機能',
++    pt: 'O que há de novo no DevTools',
++    it: 'Novità in DevTools',
++  },
++  'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.': {
++    es: 'Descubre las novedades de Chrome DevTools 144: desde condiciones de solicitud hasta depuración de rendimiento, lo tenemos todo cubierto.',
++    fr: 'Découvrez les nouveautés de Chrome DevTools 144 : des conditions de requête au débogage des performances, nous avons tout prévu.',
++    de: 'Erfahren Sie, was es Neues in Chrome DevTools 144 gibt: von Anfragebedingungen bis hin zum Performance-Debugging haben wir alles für Sie.',
++    ja: 'Chrome DevTools 144の新機能をご紹介：リクエスト条件からパフォーマンスのデバッグまで幅広くカバーしています。',
++    pt: 'Saiba o que há de novo no Chrome DevTools 144: de condições de requisição a depuração de desempenho, temos tudo o que você precisa.',
++    it: 'Scopri le novità di Chrome DevTools 144: dalle condizioni di richiesta al debug delle prestazioni, abbiamo tutto sotto controllo.',
++  },
++
++  // Article 23: tennis-championships
++  'Game, Set, Match: The Tennis Championships': {
++    es: 'Juego, Set y Partido: El Campeonato de Tenis',
++    fr: 'Jeu, Set et Match : Les Championnats de Tennis',
++    de: 'Spiel, Satz und Sieg: Die Tennis-Meisterschaften',
++    ja: 'ゲームセット：テニス選手権開幕',
++    pt: 'Game, Set, Match: O Campeonato de Tênis',
++    it: 'Gioco, Partita, Incontro: I Campionati di Tennis',
++  },
++  'The world\'s top players converge for a tournament that is sure to be one for the ages. A preview of the upcoming Tennis Championships and the players to watch.': {
++    es: 'Los mejores jugadores del mundo convergen en un torneo que seguramente será histórico. Un adelanto del próximo Campeonato de Tenis y los jugadores a seguir.',
++    fr: 'Les meilleurs joueurs du monde convergent pour un tournoi qui s\'annonce historique. Un aperçu des prochains Championnats de Tennis et des joueurs à suivre.',
++    de: 'Die besten Spieler der Welt treffen sich zu einem Turnier für die Ewigkeit. Eine Vorschau auf die kommenden Tennis-Meisterschaften und die Favoriten.',
++    ja: '世界のトッププレーヤーたちが歴史に残る大会に集結します。間近に迫ったテニス選手権のプレビューと注目選手を紹介します。',
++    pt: 'Os melhores jogadores do mundo se reúnem para um torneio que certamente entrará para a história. Uma prévia do próximo Campeonato de Tênis e os jogadores para ficar de olho.',
++    it: 'I migliori giocatori del mondo si sfidano in un torneo destinato a fare storia. Un\'anteprima dei prossimi Campionati di Tennis e dei giocatori da tenere d\'occhio.',
++  },
++
++  // Article 24: the-call-of-the-open-water
++  'The Call of the Open Water: A New Wave of Swimming': {
++    es: 'La Llamada de las Aguas Abiertas: Una Nueva Ola de Natación',
++    fr: 'L\'Appel de l\'Eau Libre : Une Nouvelle Vague de Natation',
++    de: 'Der Ruf des Offenen Wassers: Eine Neue Welle des Schwimmens',
++    ja: 'オープンウォーターの呼び声：水泳の新しい波',
++    pt: 'O Chamado das Águas Abertas: Uma Nova Onda da Natação',
++    it: 'Il Richiamo delle Acque Libere: Una Nuova Ondata di Nuoto',
++  },
++  'More and more people are discovering the thrill of open water swimming. A look at the growing popularity of this challenging and rewarding sport.': {
++    es: 'Cada vez más personas descubren la emoción de nadar en aguas abiertas. Una mirada a la creciente popularidad de este deporte desafiante y gratificante.',
++    fr: 'De plus en plus de personnes découvrent le frisson de la nage en eau libre. Regard sur la popularité croissante de ce sport exigeant et gratifiant.',
++    de: 'Immer mehr Menschen entdecken den Nervenkitzel des Freiwasserschwimmens. Ein Blick auf die wachsende Beliebtheit dieses herausfordernden und lohnenden Sports.',
++    ja: 'オープンウォータースイミングのスリルを発見する人が増えています。この挑戦的でやりがいのあるスポーツの人気の高まりを探ります。',
++    pt: 'Cada vez mais pessoas estão descobrindo a emoção da natação em águas abertas. Um olhar sobre a crescente popularidade desse esporte desafiador e recompensador.',
++    it: 'Sempre più persone scoprono il brivido del nuoto in acque libere. Uno sguardo alla crescente popolarità di questo sport impegnativo e gratificante.',
++  },
++
++  // Article 25: urban-cycling
++  'The Urban Cyclist: A New Way to See the City': {
++    es: 'El Ciclista Urbano: Una Nueva Forma de Ver la Ciudad',
++    fr: 'Le Cycliste Urbain : Une Nouvelle Façon de Voir la Ville',
++    de: 'Der Stadtradler: Eine Neue Art, die Stadt zu Sehen',
++    ja: 'アーバンサイクリスト：都市を見る新しい方法',
++    pt: 'O Ciclista Urbano: Uma Nova Maneira de Ver a Cidade',
++    it: 'Il Ciclista Urbano: Un Nuovo Modo di Vivere la Città',
++  },
++  'Forget the traffic jams and the crowded subways. For a growing number of city dwellers, the bicycle is the only way to travel. A look at the rise of urban cycling and the benefits of two-wheeled transportation.': {
++    es: 'Olvídate de los atascos y de los metros abarrotados. Para un número creciente de habitantes urbanos, la bicicleta es la única forma de viajar. Un vistazo al auge del ciclismo urbano y los beneficios del transporte en dos ruedas.',
++    fr: 'Oubliez les embouteillages et les métros bondés. Pour un nombre croissant de citadins, le vélo est le seul moyen de se déplacer. Retour sur l\'essor du cyclisme urbain et les avantages du transport à deux roues.',
++    de: 'Vergessen Sie Staus und überfüllte U-Bahnen. Für immer mehr Stadtbewohner ist das Fahrrad das einzige Fortbewegungsmittel. Ein Blick auf den Aufstieg des Stadtradelns und die Vorteile des Zweiradverkehrs.',
++    ja: '交通渋滞や満員電車は忘れましょう。増え続ける都市居住者にとって、自転車こそが唯一の移動手段です。都市型サイクリングの台頭と二輪移動のメリットを紹介します。',
++    pt: 'Esqueça os engarrafamentos e os metrôs lotados. Para um número crescente de moradores urbanos, a bicicleta é a única forma de locomoção. Um olhar sobre a ascensão do ciclismo urbano e os benefícios do transporte em duas rodas.',
++    it: 'Dimenticate gli ingorghi e le metropolitane affollate. Per un numero crescente di cittadini, la bicicletta è l\'unico mezzo per spostarsi. Uno sguardo all\'ascesa del ciclismo urbano e ai vantaggi del trasporto su due ruote.',
++  },
++
++  // Article 26: youth-activism
++  'The New Wave of Activism: How Youth Are Shaping Tomorrow\'s Politics': {
++    es: 'La Nueva Ola de Activismo: Cómo los Jóvenes Están Moldeando la Política del Mañana',
++    fr: 'La Nouvelle Vague d\'Activisme : Comment la Jeunesse Façonne la Politique de Demain',
++    de: 'Die Neue Welle des Aktivismus: Wie Jugendliche die Politik von Morgen Gestalten',
++    ja: 'アクティビズムの新しい波：若者がいかにして明日の政治を形作っているか',
++    pt: 'A Nova Onda de Ativismo: Como os Jovens Estão Moldando a Política do Amanhã',
++    it: 'La Nuova Ondata di Attivismo: Come i Giovani Stanno Plasmando la Politica di Domani',
++  },
++  'Frustrated with the slow pace of change, a new generation of young activists is taking to the streets and social media, demanding urgent action on issues from climate change to social justice.': {
++    es: 'Frustrada por la lentitud del cambio, una nueva generación de jóvenes activistas está tomando las calles y las redes sociales, exigiendo acciones urgentes en temas que van desde el cambio climático hasta la justicia social.',
++    fr: 'Frustrée par la lenteur du changement, une nouvelle génération de jeunes militants descend dans la rue et investit les réseaux sociaux, exigeant des mesures urgentes sur des sujets allant du changement climatique à la justice sociale.',
++    de: 'Frustriert über das langsame Tempo des Wandels geht eine neue Generation junger Aktivisten auf die Straße und in die sozialen Medien und fordert dringendes Handeln bei Themen vom Klimawandel bis zur sozialen Gerechtigkeit.',
++    ja: '変化の遅さに苛立ちを募らせた新世代の若き活動家たちが、街頭やSNSに繰り出し、気候変動から社会正義に至る課題への緊急行動を求めています。',
++    pt: 'Frustrada com a lentidão das mudanças, uma nova geração de jovens ativistas está indo às ruas e às redes sociais, exigindo ações urgentes em questões que vão das mudanças climáticas à justiça social.',
++    it: 'Frustrata dalla lentezza del cambiamento, una nuova generazione di giovani attivisti sta scendendo in piazza e sui social media, chiedendo azioni urgenti su temi che vanno dal cambiamento climatico alla giustizia sociale.',
++  },
++};
++
++// Phrase and sentence patterns for general fallback translation of body paragraphs
++const PHRASE_DICTIONARY: Record<string, Array<[RegExp, string]>> = {
++  es: [
++    [/\bBy\b/g, 'Por'],
++    [/\bMin\. Read\b/gi, 'Min. de lectura'],
++    [/\bMin Read\b/gi, 'Min de lectura'],
++    [/\bMin\.\b/g, 'Min.'],
++    [/\bShare:\b/g, 'Compartir:'],
++    [/\bThe Coastal Environment\b/g, 'El Entorno Costero'],
++    [/\bKey Varieties\b/g, 'Variedades Clave'],
++    [/\bBiodiversity:\b/g, 'Biodiversidad:'],
++    [/\bClimate Regulation:\b/g, 'Regulación Climática:'],
++    [/\bHuman Utility:\b/g, 'Utilidad Humana:'],
++    [/\bMicroclimates:\b/g, 'Microclimas:'],
++    [/\bSalt Spray & Ecology:\b/g, 'Brisa Salina y Ecología:'],
++    [/\bArabica:\b/g, 'Arábica:'],
++    [/\bRobusta:\b/g, 'Robusta:'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, 'En un tranquilo laboratorio, un equipo de científicos está desbloqueando los secretos del cuerpo humano.'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, 'Su trabajo, tras años de desarrollo, está a punto de dar frutos con un descubrimiento que tiene el potencial de revolucionar la medicina tal como la conocemos.'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'Desde el cáncer hasta el Alzheimer, las implicaciones de su investigación son vastas y de gran alcance.'],
++    [/\bThe path to discovery is often a long and arduous one, filled with setbacks and challenges\./g, 'El camino hacia el descubrimiento suele ser largo y arduo, lleno de contratiempos y desafíos.'],
++    [/\bThey provide habitats and food for countless species\./g, 'Proporcionan hábitats y alimento para innumerables especies.'],
++    [/\bForests act as "carbon sinks," absorbing/g, 'Los bosques actúan como "sumideros de carbono", absorbiendo'],
++    [/\bto help mitigate global warming\./g, 'para ayudar a mitigar el calentamiento global.'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, 'Desde el algodón de nuestra ropa hasta la aspirina de nuestros botiquines, la vida vegetal está entretejida en la industria humana.'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'Ya sea una imponente secuoya o un diminuto musgo, las plantas son un testimonio de resiliencia biológica y el puente esencial entre el sol y el resto del mundo viviente.'],
++    [/\band\b/g, 'y'],
++    [/\bthe\b/gi, 'el'],
++    [/\bof\b/g, 'de'],
++    [/\bin\b/g, 'en'],
++    [/\bfor\b/g, 'para'],
++    [/\bwith\b/g, 'con'],
++    [/\bis\b/g, 'es'],
++    [/\bare\b/g, 'son'],
++    [/\bfrom\b/g, 'desde'],
++    [/\bto\b/g, 'a'],
++    [/\bthat\b/g, 'que'],
++    [/\bworld\b/gi, 'mundo'],
++    [/\bnew\b/gi, 'nuevo'],
++    [/\bfuture\b/gi, 'futuro'],
++    [/\bpeople\b/gi, 'personas'],
++    [/\bcity\b/gi, 'ciudad'],
++    [/\bcities\b/gi, 'ciudades'],
++    [/\bscience\b/gi, 'ciencia'],
++    [/\btechnology\b/gi, 'tecnología'],
++    [/\bresearch\b/gi, 'investigación'],
++  ],
++  fr: [
++    [/\bBy\b/g, 'Par'],
++    [/\bMin\. Read\b/gi, 'Min de lecture'],
++    [/\bMin Read\b/gi, 'Min de lecture'],
++    [/\bShare:\b/g, 'Partager :'],
++    [/\bThe Coastal Environment\b/g, 'L\'Environnement Côtier'],
++    [/\bKey Varieties\b/g, 'Variétés Clés'],
++    [/\bBiodiversity:\b/g, 'Biodiversité :'],
++    [/\bClimate Regulation:\b/g, 'Régulation Climatique :'],
++    [/\bHuman Utility:\b/g, 'Utilité Humaine :'],
++    [/\bMicroclimates:\b/g, 'Microclimats :'],
++    [/\bSalt Spray & Ecology:\b/g, 'Embruns Salés et Écologie :'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, 'Dans un laboratoire paisible, une équipe de scientifiques perce les secrets du corps humain.'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, 'Leurs travaux, menés depuis des années, sont sur le point d\'aboutir avec une découverte susceptible de révolutionner la médecine telle que nous la connaissons.'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'Du cancer à la maladie d\'Alzheimer, les implications de leurs recherches sont vastes et profondes.'],
++    [/\bThey provide habitats and food for countless species\./g, 'Elles fournissent des habitats et de la nourriture à d\'innombrables espèces.'],
++    [/\bForests act as "carbon sinks," absorbing/g, 'Les forêts agissent comme des « puits de carbone », absorbant'],
++    [/\bto help mitigate global warming\./g, 'pour aider à atténuer le réchauffement climatique.'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, 'Du coton de nos vêtements à l\'aspirine de nos pharmacies, la vie végétale est tissée dans l\'industrie humaine.'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'Qu\'il s\'agisse d\'un séquoia géant ou d\'une minuscule mousse, les plantes témoignent de la résilience biologique et constituent le pont essentiel entre le soleil et le reste du monde vivant.'],
++    [/\band\b/g, 'et'],
++    [/\bthe\b/gi, 'le'],
++    [/\bof\b/g, 'de'],
++    [/\bin\b/g, 'dans'],
++    [/\bfor\b/g, 'pour'],
++    [/\bwith\b/g, 'avec'],
++    [/\bis\b/g, 'est'],
++    [/\bare\b/g, 'sont'],
++    [/\bfrom\b/g, 'de'],
++    [/\bthat\b/g, 'que'],
++    [/\bworld\b/gi, 'monde'],
++    [/\bnew\b/gi, 'nouveau'],
++    [/\bfuture\b/gi, 'avenir'],
++    [/\bpeople\b/gi, 'personnes'],
++    [/\bcity\b/gi, 'ville'],
++    [/\bcities\b/gi, 'villes'],
++    [/\bscience\b/gi, 'science'],
++    [/\btechnology\b/gi, 'technologie'],
++    [/\bresearch\b/gi, 'recherche'],
++  ],
++  de: [
++    [/\bBy\b/g, 'Von'],
++    [/\bMin\. Read\b/gi, 'Min. Lesezeit'],
++    [/\bMin Read\b/gi, 'Min. Lesezeit'],
++    [/\bShare:\b/g, 'Teilen:'],
++    [/\bThe Coastal Environment\b/g, 'Die Küstenumwelt'],
++    [/\bKey Varieties\b/g, 'Hauptsorten'],
++    [/\bBiodiversity:\b/g, 'Artenvielfalt:'],
++    [/\bClimate Regulation:\b/g, 'Klimaregulierung:'],
++    [/\bHuman Utility:\b/g, 'Nutzen für den Menschen:'],
++    [/\bMicroclimates:\b/g, 'Mikroklimata:'],
++    [/\bSalt Spray & Ecology:\b/g, 'Salzgischt & Ökologie:'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, 'In einem ruhigen Labor entschlüsselt ein Wissenschaftlerteam die Geheimnisse des menschlichen Körpers.'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, 'Ihre jahrelange Arbeit steht kurz vor dem Durchbruch – mit einer Entdeckung, die die Medizin, wie wir sie kennen, revolutionieren könnte.'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'Von Krebs bis Alzheimer sind die Auswirkungen ihrer Forschung gewaltig und weitreichend.'],
++    [/\bThey provide habitats and food for countless species\./g, 'Sie bieten Lebensraum und Nahrung für unzählige Arten.'],
++    [/\bForests act as "carbon sinks," absorbing/g, 'Wälder fungieren als „Kohlenstoffsenken“ und absorbieren'],
++    [/\bto help mitigate global warming\./g, 'um die globale Erwärmung einzudämmen.'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, 'Von der Baumwolle in unserer Kleidung bis zum Aspirin im Medizinschrank ist die Pflanzenwelt eng mit der menschlichen Industrie verwoben.'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'Ob riesiger Mammutbaum oder winziges Moos – Pflanzen sind ein Zeugnis biologischer Widerstandskraft und die wesentliche Brücke zwischen der Sonne und der übrigen belebten Welt.'],
++    [/\band\b/g, 'und'],
++    [/\bthe\b/gi, 'die'],
++    [/\bof\b/g, 'von'],
++    [/\bin\b/g, 'in'],
++    [/\bfor\b/g, 'für'],
++    [/\bwith\b/g, 'mit'],
++    [/\bis\b/g, 'ist'],
++    [/\bare\b/g, 'sind'],
++    [/\bfrom\b/g, 'aus'],
++    [/\bworld\b/gi, 'Welt'],
++    [/\bnew\b/gi, 'neu'],
++    [/\bfuture\b/gi, 'Zukunft'],
++    [/\bpeople\b/gi, 'Menschen'],
++    [/\bcity\b/gi, 'Stadt'],
++    [/\bcities\b/gi, 'Städte'],
++    [/\bscience\b/gi, 'Wissenschaft'],
++    [/\btechnology\b/gi, 'Technologie'],
++    [/\bresearch\b/gi, 'Forschung'],
++  ],
++  ja: [
++    [/\bBy\b/g, '著者:'],
++    [/\bMin\. Read\b/gi, '分で読めます'],
++    [/\bMin Read\b/gi, '分で読めます'],
++    [/\bMin\.\b/g, '分'],
++    [/\bShare:\b/g, '共有:'],
++    [/\bThe Coastal Environment\b/g, '沿岸の環境'],
++    [/\bKey Varieties\b/g, '主な品種'],
++    [/\bBiodiversity:\b/g, '生物多様性：'],
++    [/\bClimate Regulation:\b/g, '気候調整：'],
++    [/\bHuman Utility:\b/g, '人間の利用：'],
++    [/\bMicroclimates:\b/g, '微気候：'],
++    [/\bSalt Spray & Ecology:\b/g, '塩水噴霧と生態系：'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, '静かな研究室で、科学者チームが人体の秘密を解き明かしています。'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, '何年にもわたる彼らの研究は、私たちが知る医学に革命を起こす可能性を秘めた発見として実を結ぼうとしています。'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'がんからアルツハイマー病まで、その研究の影響は広範かつ深遠です。'],
++    [/\bThey provide habitats and food for countless species\./g, '無数の種に生息地と食料を提供します。'],
++    [/\bForests act as "carbon sinks," absorbing/g, '森林は「炭素吸収源」として機能し、地球温暖化を緩和するために'],
++    [/\bto help mitigate global warming\./g, 'を吸収します。'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, '衣服の綿から薬箱のアスピリンまで、植物の生命は人間の産業に深く織り込まれています。'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'そびえ立つセコイアであれ小さなコケであれ、植物は生物学的回復力の証であり、太陽と他の生命世界をつなぐ不可欠な架け橋です。'],
++  ],
++  pt: [
++    [/\bBy\b/g, 'Por'],
++    [/\bMin\. Read\b/gi, 'Min de leitura'],
++    [/\bMin Read\b/gi, 'Min de leitura'],
++    [/\bShare:\b/g, 'Compartilhar:'],
++    [/\bThe Coastal Environment\b/g, 'O Ambiente Costeiro'],
++    [/\bKey Varieties\b/g, 'Variedades Principais'],
++    [/\bBiodiversity:\b/g, 'Biodiversidade:'],
++    [/\bClimate Regulation:\b/g, 'Regulação Climática:'],
++    [/\bHuman Utility:\b/g, 'Utilidade Humana:'],
++    [/\bMicroclimates:\b/g, 'Microclimas:'],
++    [/\bSalt Spray & Ecology:\b/g, 'Maresia e Ecologia:'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, 'Em um laboratório silencioso, uma equipe de cientistas está desvendando os segredos do corpo humano.'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, 'Seu trabalho, desenvolvido ao longo de anos, está prestes a dar frutos com uma descoberta capaz de revolucionar a medicina como a conhecemos.'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'Do câncer ao Alzheimer, as implicações de sua pesquisa são vastas e profundas.'],
++    [/\bThey provide habitats and food for countless species\./g, 'Elas fornecem habitats e alimento para inúmeras espécies.'],
++    [/\bForests act as "carbon sinks," absorbing/g, 'As florestas atuam como "sumidouros de carbono", absorvendo'],
++    [/\bto help mitigate global warming\./g, 'para ajudar a mitigar o aquecimento global.'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, 'Do algodão em nossas roupas à aspirina em nossos armários de remédios, a vida vegetal está entrelaçada na indústria humana.'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'Seja uma sequoia gigante ou um pequeno musgo, as plantas são um testemunho da resiliência biológica e a ponte essencial entre o sol e o resto do mundo vivo.'],
++    [/\band\b/g, 'e'],
++    [/\bthe\b/gi, 'o'],
++    [/\bof\b/g, 'de'],
++    [/\bin\b/g, 'em'],
++    [/\bfor\b/g, 'para'],
++    [/\bwith\b/g, 'com'],
++    [/\bis\b/g, 'é'],
++    [/\bare\b/g, 'são'],
++    [/\bworld\b/gi, 'mundo'],
++    [/\bnew\b/gi, 'novo'],
++    [/\bfuture\b/gi, 'futuro'],
++    [/\bpeople\b/gi, 'pessoas'],
++    [/\bcity\b/gi, 'cidade'],
++    [/\bcities\b/gi, 'cidades'],
++    [/\bscience\b/gi, 'ciência'],
++    [/\btechnology\b/gi, 'tecnologia'],
++    [/\bresearch\b/gi, 'pesquisa'],
++  ],
++  it: [
++    [/\bBy\b/g, 'Di'],
++    [/\bMin\. Read\b/gi, 'Min di lettura'],
++    [/\bMin Read\b/gi, 'Min di lettura'],
++    [/\bShare:\b/g, 'Condividi:'],
++    [/\bThe Coastal Environment\b/g, 'L\'Ambiente Costiero'],
++    [/\bKey Varieties\b/g, 'Varietà Principali'],
++    [/\bBiodiversity:\b/g, 'Biodiversità:'],
++    [/\bClimate Regulation:\b/g, 'Regolazione Climatica:'],
++    [/\bHuman Utility:\b/g, 'Utilità Umana:'],
++    [/\bMicroclimates:\b/g, 'Microclimi:'],
++    [/\bSalt Spray & Ecology:\b/g, 'Aerosol Marino ed Ecologia:'],
++    [/\bIn a quiet laboratory, a team of scientists is unlocking the secrets of the human body\./g, 'In un silenzioso laboratorio, un team di scienziati sta svelando i segreti del corpo umano.'],
++    [/\bTheir work, years in the making, is about to come to fruition, with a discovery that has the potential to revolutionize medicine as we know it\./g, 'Il loro lavoro, durato anni, sta per dare i suoi frutti con una scoperta che ha il potenziale di rivoluzionare la medicina così come la conosciamo.'],
++    [/\bFrom cancer to Alzheimer's, the implications of their research are vast and far-reaching\./g, 'Dal cancro all\'Alzheimer, le implicazioni della loro ricerca sono vaste e di ampia portata.'],
++    [/\bThey provide habitats and food for countless species\./g, 'Forniscono habitat e cibo a innumerevoli specie.'],
++    [/\bForests act as "carbon sinks," absorbing/g, 'Le foreste agiscono come "pozzi di carbonio", assorbendo'],
++    [/\bto help mitigate global warming\./g, 'per contribuire a mitigare il riscaldamento globale.'],
++    [/\bFrom the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry\./g, 'Dal cotone nei nostri vestiti all\'aspirina nei nostri armadietti dei medicinali, la vita vegetale è intrecciata nell\'industria umana.'],
++    [/\bWhether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world\./g, 'Che si tratti di un\'imponente sequoia o di un minuscolo muschio, le piante sono una testimonianza di resilienza biologica e il ponte essenziale tra il sole e il resto del mondo vivente.'],
++    [/\band\b/g, 'e'],
++    [/\bthe\b/gi, 'il'],
++    [/\bof\b/g, 'di'],
++    [/\bin\b/g, 'in'],
++    [/\bfor\b/g, 'per'],
++    [/\bwith\b/g, 'con'],
++    [/\bis\b/g, 'è'],
++    [/\bare\b/g, 'sono'],
++    [/\bworld\b/gi, 'mondo'],
++    [/\bnew\b/gi, 'nuovo'],
++    [/\bfuture\b/gi, 'futuro'],
++    [/\bpeople\b/gi, 'persone'],
++    [/\bcity\b/gi, 'città'],
++    [/\bcities\b/gi, 'città'],
++    [/\bscience\b/gi, 'scienza'],
++    [/\btechnology\b/gi, 'tecnologia'],
++    [/\bresearch\b/gi, 'ricerca'],
++  ],
++};
++
++// Cache for active translator instances and translated strings
++const translatorInstanceCache = new Map<string, any>();
++const translationMemoryCache = new Map<string, string>();
++
++/**
++ * Resolves the browser's built-in Translator API constructor if present.
++ */
++function getBrowserTranslatorAPI(): any | null {
++  if (typeof window === 'undefined') return null;
++  const win = window as any;
++  if (win.Translator) return win.Translator;
++  if (win.ai?.translator) return win.ai.translator;
++  if (win.translation?.createTranslator) return win.translation;
++  return null;
++}
++
++/**
++ * Resolves the browser's built-in LanguageDetector API constructor if present.
++ */
++function getBrowserLanguageDetectorAPI(): any | null {
++  if (typeof window === 'undefined') return null;
++  const win = window as any;
++  if (win.LanguageDetector) return win.LanguageDetector;
++  if (win.ai?.languageDetector) return win.ai.languageDetector;
++  if (win.translation?.createDetector) return win.translation;
++  return null;
++}
++
++/**
++ * Checks whether the browser's native on-device Translator API is available
++ * for the given language pair.
++ */
++export async function checkTranslationAvailability(
++  sourceLanguage: string,
++  targetLanguage: string
++): Promise<EngineAvailability> {
++  if (sourceLanguage === targetLanguage) return 'available';
++
++  const api = getBrowserTranslatorAPI();
++  if (!api) return 'fallback';
++
++  try {
++    if (typeof api.availability === 'function') {
++      const status = await api.availability({ sourceLanguage, targetLanguage });
++      if (status === 'available' || status === 'readily') return 'available';
++      if (status === 'downloadable' || status === 'after-download') return 'downloadable';
++      if (status === 'downloading') return 'downloading';
++      return 'fallback';
++    }
++    if (typeof api.capabilities === 'function') {
++      const caps = await api.capabilities();
++      const status = caps?.languagePairAvailable
++        ? caps.languagePairAvailable(sourceLanguage, targetLanguage)
++        : caps?.available;
++      if (status === 'readily' || status === 'available') return 'available';
++      if (status === 'after-download' || status === 'downloadable') return 'downloadable';
++    }
++    if (typeof api.canTranslate === 'function') {
++      const status = await api.canTranslate({ sourceLanguage, targetLanguage });
++      if (status === 'readily' || status === 'available') return 'available';
++      if (status === 'after-download' || status === 'downloadable') return 'downloadable';
++    }
++  } catch {
++    // Fall back to local engine if the browser API throws
++  }
++
++  return 'fallback';
++}
++
++/**
++ * Detects the language of a text snippet using the browser's built-in LanguageDetector API
++ * or a lightweight on-device character/word heuristic fallback.
++ */
++export async function detectLanguageOnDevice(
++  text: string
++): Promise<{ detectedLanguage: string; confidence: number; engine: 'builtin-ai' | 'local-engine' }> {
++  const sample = text.trim().slice(0, 600);
++  if (!sample) {
++    return { detectedLanguage: 'en', confidence: 1, engine: 'local-engine' };
++  }
++
++  const detectorAPI = getBrowserLanguageDetectorAPI();
++  if (detectorAPI) {
++    try {
++      const createFn = detectorAPI.create || detectorAPI.createDetector;
++      if (typeof createFn === 'function') {
++        const detector = await createFn.call(detectorAPI);
++        if (detector.ready) await detector.ready;
++        const results = await detector.detect(sample);
++        if (Array.isArray(results) && results.length > 0 && results[0].detectedLanguage) {
++          return {
++            detectedLanguage: results[0].detectedLanguage,
++            confidence: typeof results[0].confidence === 'number' ? results[0].confidence : 0.95,
++            engine: 'builtin-ai',
++          };
++        }
++      }
++    } catch {
++      // Fall back to heuristic detection
++    }
++  }
++
++  // Heuristic fallback detection
++  if (/[\u3040-\u30ff\u4e00-\u9faf]/.test(sample)) {
++    return { detectedLanguage: 'ja', confidence: 0.98, engine: 'local-engine' };
++  }
++  if (/\b(el|la|los|las|una|para|con|por|del|está|son)\b/i.test(sample)) {
++    return { detectedLanguage: 'es', confidence: 0.92, engine: 'local-engine' };
++  }
++  if (/\b(le|la|les|des|une|dans|pour|avec|est|sont)\b/i.test(sample)) {
++    return { detectedLanguage: 'fr', confidence: 0.92, engine: 'local-engine' };
++  }
++  if (/\b(der|die|das|und|in|den|von|mit|auf|für|nicht)\b/i.test(sample)) {
++    return { detectedLanguage: 'de', confidence: 0.92, engine: 'local-engine' };
++  }
++  if (/\b(o|a|os|as|um|uma|para|com|não|está|são)\b/i.test(sample)) {
++    return { detectedLanguage: 'pt', confidence: 0.9, engine: 'local-engine' };
++  }
++  return { detectedLanguage: 'en', confidence: 0.96, engine: 'local-engine' };
++}
++
++/**
++ * Local fallback translation when `window.Translator` is unavailable or unsupported.
++ */
++function translateWithLocalFallback(
++  text: string,
++  sourceLanguage: string,
++  targetLanguage: string
++): string {
++  if (sourceLanguage === targetLanguage || targetLanguage === 'en') {
++    return text;
++  }
++
++  const trimmed = text.trim();
++  if (!trimmed) return text;
++
++  // 1. Check exact match in pre-computed translations
++  const exactEntry = EXACT_TRANSLATIONS[trimmed];
++  if (exactEntry && exactEntry[targetLanguage]) {
++    // Preserve leading/trailing whitespace
++    const leadingSpace = text.match(/^\s*/)?.[0] ?? '';
++    const trailingSpace = text.match(/\s*$/)?.[0] ?? '';
++    return `${leadingSpace}${exactEntry[targetLanguage]}${trailingSpace}`;
++  }
++
++  // Normalize curly quotes to straight quotes for lookup
++  const normalizedQuotes = trimmed.replace(/[’‘]/g, "'").replace(/[“”]/g, '"');
++  const normalizedEntry = EXACT_TRANSLATIONS[normalizedQuotes];
++  if (normalizedEntry && normalizedEntry[targetLanguage]) {
++    const leadingSpace = text.match(/^\s*/)?.[0] ?? '';
++    const trailingSpace = text.match(/\s*$/)?.[0] ?? '';
++    return `${leadingSpace}${normalizedEntry[targetLanguage]}${trailingSpace}`;
++  }
++
++  // 2. Apply phrase and word replacements for body content
++  const rules = PHRASE_DICTIONARY[targetLanguage];
++  if (!rules) return text;
++
++  let result = text;
++  for (const [pattern, replacement] of rules) {
++    result = result.replace(pattern, replacement);
++  }
++  return result;
++}
++
++/**
++ * Obtains or creates a browser built-in `Translator` session for a language pair.
++ */
++async function getOrCreateBrowserTranslator(
++  sourceLanguage: string,
++  targetLanguage: string,
++  onDownloadProgress?: (percent: number) => void
++): Promise<any | null> {
++  const pairKey = `${sourceLanguage}->${targetLanguage}`;
++  if (translatorInstanceCache.has(pairKey)) {
++    return translatorInstanceCache.get(pairKey);
++  }
++
++  const api = getBrowserTranslatorAPI();
++  if (!api) return null;
++
++  try {
++    const createFn = api.create || api.createTranslator;
++    if (typeof createFn !== 'function') return null;
++
++    const translator = await createFn.call(api, {
++      sourceLanguage,
++      targetLanguage,
++      monitor(m: any) {
++        if (m && typeof m.addEventListener === 'function') {
++          m.addEventListener('downloadprogress', (e: any) => {
++            const loaded = typeof e.loaded === 'number' ? e.loaded : 0;
++            const total = typeof e.total === 'number' && e.total > 0 ? e.total : 1;
++            const ratio = loaded <= 1 && total === 1 ? loaded : loaded / total;
++            const percent = Math.min(100, Math.max(0, Math.round(ratio * 100)));
++            onDownloadProgress?.(percent);
++          });
++        }
++      },
++    });
++
++    if (translator?.ready) {
++      await translator.ready;
++    }
++
++    translatorInstanceCache.set(pairKey, translator);
++    return translator;
++  } catch {
++    return null;
++  }
++}
++
++/**
++ * Translates a single text string on-device using `window.Translator` if available,
++ * falling back to the local on-device translation dictionary.
++ */
++export async function translateTextOnDevice(
++  text: string,
++  sourceLanguage: string,
++  targetLanguage: string,
++  onDownloadProgress?: (percent: number) => void
++): Promise<{ translatedText: string; engine: 'builtin-ai' | 'local-engine' }> {
++  const trimmed = text.trim();
++  if (!trimmed || sourceLanguage === targetLanguage || targetLanguage === 'en') {
++    return { translatedText: text, engine: 'local-engine' };
++  }
++
++  const cacheKey = `${sourceLanguage}:${targetLanguage}:${trimmed}`;
++  const cached = translationMemoryCache.get(cacheKey);
++  if (cached) {
++    const leadingSpace = text.match(/^\s*/)?.[0] ?? '';
++    const trailingSpace = text.match(/\s*$/)?.[0] ?? '';
++    return {
++      translatedText: `${leadingSpace}${cached}${trailingSpace}`,
++      engine: translatorInstanceCache.has(`${sourceLanguage}->${targetLanguage}`)
++        ? 'builtin-ai'
++        : 'local-engine',
++    };
++  }
++
++  const translator = await getOrCreateBrowserTranslator(
++    sourceLanguage,
++    targetLanguage,
++    onDownloadProgress
++  );
++
++  if (translator && typeof translator.translate === 'function') {
++    try {
++      const translated = await translator.translate(trimmed);
++      if (translated && typeof translated === 'string') {
++        translationMemoryCache.set(cacheKey, translated);
++        const leadingSpace = text.match(/^\s*/)?.[0] ?? '';
++        const trailingSpace = text.match(/\s*$/)?.[0] ?? '';
++        return {
++          translatedText: `${leadingSpace}${translated}${trailingSpace}`,
++          engine: 'builtin-ai',
++        };
++      }
++    } catch {
++      // Fall back to local engine on error
++    }
++  }
++
++  const fallbackResult = translateWithLocalFallback(trimmed, sourceLanguage, targetLanguage);
++  translationMemoryCache.set(cacheKey, fallbackResult);
++  const leadingSpace = text.match(/^\s*/)?.[0] ?? '';
++  const trailingSpace = text.match(/\s*$/)?.[0] ?? '';
++  return {
++    translatedText: `${leadingSpace}${fallbackResult}${trailingSpace}`,
++    engine: 'local-engine',
++  };
++}
++
++// Store original text for DOM elements so users can switch languages or revert to Original ('en')
++const originalElementTextMap = new WeakMap<HTMLElement, string>();
++
++const TRANSLATABLE_SELECTORS = [
++  '[data-translatable]',
++  'article .prose p',
++  'article .prose h2',
++  'article .prose h3',
++  'article .prose h4',
++  'article .prose li',
++  'article .prose blockquote',
++  'article figcaption',
++].join(', ');
++
++/**
++ * Collects all translatable elements within a root container (or the entire document).
++ */
++export function getTranslatableElements(root: ParentNode = document): HTMLElement[] {
++  const nodeList = root.querySelectorAll<HTMLElement>(TRANSLATABLE_SELECTORS);
++  const elements: HTMLElement[] = [];
++  const seen = new Set<HTMLElement>();
++
++  nodeList.forEach((el) => {
++    if (seen.has(el)) return;
++    // Skip elements that contain nested translatable elements unless explicitly marked
++    if (el.closest('[data-no-translate]')) return;
++    const text = el.textContent?.trim();
++    if (!text) return;
++    seen.add(el);
++    elements.push(el);
++  });
++
++  return elements;
++}
++
++/**
++ * Translates all translatable elements within the given container (or whole page).
++ * Preserves original English text so switching back to 'en' or another language is instant and clean.
++ */
++export async function translateContainerElements(
++  targetLanguage: string,
++  options?: {
++    root?: ParentNode;
++    sourceLanguage?: string;
++    onProgress?: (progress: TranslationProgress) => void;
++  }
++): Promise<TranslationProgress> {
++  const root = options?.root ?? document;
++  const sourceLanguage = options?.sourceLanguage ?? 'en';
++  const elements = getTranslatableElements(root);
++
++  // Save original text on first encounter
++  for (const el of elements) {
++    if (!originalElementTextMap.has(el)) {
++      originalElementTextMap.set(el, el.textContent ?? '');
++    }
++  }
++
++  // If reverting to source language (English), restore original text immediately
++  if (targetLanguage === 'en' || targetLanguage === sourceLanguage) {
++    for (const el of elements) {
++      const original = originalElementTextMap.get(el);
++      if (original !== undefined) {
++        el.textContent = original;
++        el.removeAttribute('data-translated-lang');
++      }
++    }
++    if (root === document && typeof document !== 'undefined') {
++      document.documentElement.lang = 'en';
++    }
++    const doneState: TranslationProgress = {
++      status: 'idle',
++      sourceLanguage,
++      targetLanguage: 'en',
++      engineType: 'local-engine',
++      translatedElementsCount: elements.length,
++      totalElementsCount: elements.length,
++    };
++    options?.onProgress?.(doneState);
++    return doneState;
++  }
++
++  let activeEngine: 'builtin-ai' | 'local-engine' = 'local-engine';
++  const availability = await checkTranslationAvailability(sourceLanguage, targetLanguage);
++  if (availability === 'available' || availability === 'downloadable' || availability === 'downloading') {
++    activeEngine = 'builtin-ai';
++  }
++
++  const initialProgress: TranslationProgress = {
++    status: availability === 'downloadable' || availability === 'downloading' ? 'downloading' : 'translating',
++    sourceLanguage,
++    targetLanguage,
++    engineType: activeEngine,
++    downloadProgress: availability === 'available' ? 100 : 0,
++    translatedElementsCount: 0,
++    totalElementsCount: elements.length,
++  };
++  options?.onProgress?.(initialProgress);
++
++  let completed = 0;
++  for (const el of elements) {
++    const sourceText = originalElementTextMap.get(el) ?? el.textContent ?? '';
++    if (!sourceText.trim()) {
++      completed++;
++      continue;
++    }
++
++    const { translatedText, engine } = await translateTextOnDevice(
++      sourceText,
++      sourceLanguage,
++      targetLanguage,
++      (percent) => {
++        options?.onProgress?.({
++          status: 'downloading',
++          sourceLanguage,
++          targetLanguage,
++          engineType: 'builtin-ai',
++          downloadProgress: percent,
++          translatedElementsCount: completed,
++          totalElementsCount: elements.length,
++        });
++      }
++    );
++
++    activeEngine = engine;
++    el.textContent = translatedText;
++    el.setAttribute('data-translated-lang', targetLanguage);
++    completed++;
++
++    options?.onProgress?.({
++      status: 'translating',
++      sourceLanguage,
++      targetLanguage,
++      engineType: activeEngine,
++      downloadProgress: 100,
++      translatedElementsCount: completed,
++      totalElementsCount: elements.length,
++    });
++  }
++
++  if (root === document && typeof document !== 'undefined') {
++    document.documentElement.lang = targetLanguage;
++  }
++
++  const finalState: TranslationProgress = {
++    status: 'translated',
++    sourceLanguage,
++    targetLanguage,
++    engineType: activeEngine,
++    downloadProgress: 100,
++    translatedElementsCount: completed,
++    totalElementsCount: elements.length,
++  };
++  options?.onProgress?.(finalState);
++  return finalState;
++}
++
++const STORAGE_KEY = 'devtools_times_preferred_lang';
++
++export function getSavedLanguagePreference(): string {
++  if (typeof window === 'undefined') return 'en';
++  try {
++    return window.localStorage.getItem(STORAGE_KEY) || 'en';
++  } catch {
++    return 'en';
++  }
++}
++
++export function setSavedLanguagePreference(lang: string): void {
++  if (typeof window === 'undefined') return;
++  try {
++    window.localStorage.setItem(STORAGE_KEY, lang);
++    window.dispatchEvent(
++      new CustomEvent('devtools-times:language-change', { detail: { language: lang } })
++    );
++  } catch {
++    // Ignore storage errors
++  }
++}

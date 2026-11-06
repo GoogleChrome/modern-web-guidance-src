@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+index 66c9173..2569568 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,18 @@
+       color: var(--primary);
+     }
+ 
++    .card::before {
++      content: "☕";
++      content: "☕" / "";
++      display: block;
++      font-size: 2rem;
++    }
++
++    .logout-link::after {
++      content: " →";
++      content: " →" / "";
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -146,6 +158,16 @@
+       margin-bottom: 20px;
+     }
+ 
++    /* Decorative separators: the "/ ''" alt text keeps them out of the accessibility tree.
++       The first declaration is a fallback for browsers without alt text support. */
++    .footer-links a+a::before {
++      content: "|";
++      content: "|" / "";
++      margin-right: 20px;
++      color: var(--text);
++      opacity: 0.5;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+@@ -199,9 +221,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>

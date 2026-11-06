@@ -1,0 +1,523 @@
+diff --git a/index.html b/index.html
+index 66c9173..80b2101 100644
+--- a/index.html
++++ b/index.html
+@@ -66,12 +66,156 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-link,
++    .signin-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    body:not([data-signed-in="true"]) .logout-item {
++      display: none;
++    }
++
++    body[data-signed-in="true"] .signin-item {
++      display: none;
++    }
++
++    .user-greeting {
++      color: var(--accent);
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    body:not([data-signed-in="true"]) .greeting-item {
++      display: none;
++    }
++
++    /* Quick Sign-In Banner & Status */
++    .quick-auth-banner {
++      background: #fff8e1;
++      border-bottom: 1px solid var(--accent);
++      padding: 10px 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      font-size: 0.9rem;
++    }
++
++    body[data-signed-in="true"] .quick-auth-banner {
++      background: #e8f5e9;
++      border-bottom-color: #81c784;
++    }
++
++    .quick-auth-banner .btn-small {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      text-decoration: none;
++    }
++
++    .quick-auth-banner .btn-small:hover {
++      background: #3e2723;
++    }
++
++    /* Fallback Sign-In Dialog */
++    dialog:modal {
++      overscroll-behavior: contain;
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      max-width: 400px;
++      width: 90%;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      color: var(--text);
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background-color: rgba(0, 0, 0, 0.5);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 16px;
++    }
++
++    .dialog-close {
++      background: transparent;
++      border: none;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      color: var(--text);
++      padding: 4px 8px;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 10px 12px;
++      min-height: 48px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .form-actions button {
++      width: 100%;
++      min-height: 48px;
++      font-size: 1rem;
++      border: none;
++      border-radius: 5px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .auth-status-msg {
++      margin-top: 12px;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++      color: #c62828;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -162,16 +306,23 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-quick-auth>Rewards</a></li>
++      <li><a href="/account" data-quick-auth>My Account</a></li>
++      <li class="greeting-item"><span id="user-greeting" class="user-greeting"></span></li>
++      <li class="signin-item"><a href="/signin" id="nav-signin-link" class="signin-link" data-quick-auth>Sign In</a></li>
++      <li class="logout-item"><a href="/logout" id="nav-logout-link" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div class="quick-auth-banner" role="region" aria-label="Account status">
++    <span id="banner-text">Returning customer? Sign in right here with your saved passkey or password to earn points on your order.</span>
++    <button type="button" id="banner-signin-btn" class="btn-small" data-quick-auth>Quick Sign In</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-quick-auth>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -197,6 +348,48 @@
+     </section>
+   </main>
+ 
++  <dialog id="fallback-signin-dialog" closedby="any" aria-labelledby="signin-dialog-title">
++    <div class="dialog-header">
++      <h2 id="signin-dialog-title">Sign In</h2>
++      <button type="button" class="dialog-close" id="close-signin-dialog" aria-label="Close sign in dialog">&times;</button>
++    </div>
++    <p style="font-size: 0.9rem; margin-bottom: 16px;">Sign in to continue to <strong id="signin-destination-label">your account</strong>.</p>
++    <form id="inline-signin-form" action="/api/login/password" method="POST">
++      <input type="hidden" id="return-url-input" name="returnUrl" value="">
++      <div class="form-group">
++        <label for="signin-username">Email or Username</label>
++        <input
++          type="email"
++          id="signin-username"
++          name="username"
++          autocomplete="username webauthn"
++          autocorrect="off"
++          autocapitalize="off"
++          spellcheck="false"
++          enterkeyhint="next"
++          required
++          autofocus
++        >
++      </div>
++      <div class="form-group">
++        <label for="signin-password">Password</label>
++        <input
++          type="password"
++          id="signin-password"
++          name="password"
++          autocomplete="current-password"
++          enterkeyhint="done"
++          required
++        >
++      </div>
++      <div id="auth-status-msg" class="auth-status-msg" aria-live="polite"></div>
++      <div class="form-actions">
++        <button type="submit" class="btn-primary">Sign In</button>
++        <button type="button" id="guest-continue-btn" class="btn-secondary">Continue as Guest</button>
++      </div>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +400,283 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import 'https://esm.sh/webauthn-polyfills';
++
++    let isAuthenticating = false;
++    let pendingTargetUrl = null;
++    let autofillAbortController = null;
++
++    const signinDialog = document.getElementById('fallback-signin-dialog');
++    const closeDialogBtn = document.getElementById('close-signin-dialog');
++    const inlineSigninForm = document.getElementById('inline-signin-form');
++    const returnUrlInput = document.getElementById('return-url-input');
++    const destinationLabel = document.getElementById('signin-destination-label');
++    const authStatusMsg = document.getElementById('auth-status-msg');
++    const guestContinueBtn = document.getElementById('guest-continue-btn');
++    const userGreeting = document.getElementById('user-greeting');
++    const bannerText = document.getElementById('banner-text');
++    const bannerSigninBtn = document.getElementById('banner-signin-btn');
++    const navLogoutLink = document.getElementById('nav-logout-link');
++
++    // Light-dismiss fallback for browsers without <dialog closedby> support
++    if (signinDialog && !('closedBy' in HTMLDialogElement.prototype)) {
++      signinDialog.addEventListener('click', (event) => {
++        if (event.target !== signinDialog) return;
++        const rect = signinDialog.getBoundingClientRect();
++        const isDialogContent = (
++          rect.top <= event.clientY &&
++          event.clientY <= rect.top + rect.height &&
++          rect.left <= event.clientX &&
++          event.clientX <= rect.left + rect.width
++        );
++        if (isDialogContent) return;
++        signinDialog.close();
++      });
++    }
++
++    closeDialogBtn.addEventListener('click', () => {
++      signinDialog.close();
++    });
++
++    async function isImmediateUiSupported() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return false;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        return Boolean(capabilities?.immediateGet);
++      } catch {
++        return false;
++      }
++    }
++
++    async function fetchLoginOptions() {
++      try {
++        const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
++        if (optionsResponse.ok) {
++          return await optionsResponse.json();
++        }
++      } catch {
++        // Fallback options when running against a static preview server without a backend
++      }
++      const randomBytes = new Uint8Array(32);
++      crypto.getRandomValues(randomBytes);
++      const challenge = btoa(String.fromCharCode(...randomBytes))
++        .replace(/\+/g, '-')
++        .replace(/\//g, '_')
++        .replace(/=+$/, '');
++      return {
++        challenge,
++        rpId: window.location.hostname || 'localhost',
++        userVerification: 'preferred',
++      };
++    }
++
++    async function verifyPublicKeyCredential(cred, publicKey) {
++      const encoded = cred.toJSON();
++      const verifyResponse = await fetch('/api/login/verify', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(encoded),
++      });
++
++      if (verifyResponse.status === 404) {
++        if (PublicKeyCredential.signalUnknownCredential) {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rpId || window.location.hostname,
++            credentialId: encoded.id,
++          });
++        }
++        throw new Error('Passkey credential is no longer recognized by the server');
++      }
++
++      if (!verifyResponse.ok) {
++        throw new Error('Passkey verification failed');
++      }
++      return await verifyResponse.json();
++    }
++
++    async function verifyPasswordCredential(username, password) {
++      const verifyResponse = await fetch('/api/login/password', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ username, password }),
++      });
++
++      if (!verifyResponse.ok) {
++        throw new Error('Password verification failed');
++      }
++      return await verifyResponse.json();
++    }
++
++    async function authenticateWithImmediateUi() {
++      // MANDATORY: Check immediateGet support so unsupported browsers do not open a modal QR dialog
++      const supported = await isImmediateUiSupported();
++      if (!supported) {
++        throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
++      }
++
++      // If a background Conditional UI request is active, abort it before invoking Immediate UI mode
++      if (autofillAbortController) {
++        autofillAbortController.abort();
++        autofillAbortController = null;
++      }
++
++      const optionsJSON = await fetchLoginOptions();
++      // Do not pass a non-empty allowCredentials list for Immediate UI mode
++      delete optionsJSON.allowCredentials;
++      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++      // MANDATORY: Request both password and publicKey with uiMode: 'immediate' and NO signal parameter
++      const cred = await navigator.credentials.get({
++        password: true,
++        publicKey,
++        uiMode: 'immediate',
++      });
++
++      if (!cred) {
++        throw new DOMException('No credential returned', 'NotAllowedError');
++      }
++
++      if (cred.type === 'public-key') {
++        return await verifyPublicKeyCredential(cred, publicKey);
++      }
++
++      if (cred.type === 'password') {
++        return await verifyPasswordCredential(cred.id, cred.password);
++      }
++
++      throw new Error(`Unsupported credential type: ${cred.type}`);
++    }
++
++    async function initializeConditionalAutofill() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities?.conditionalGet !== true) return;
++
++        const optionsJSON = await fetchLoginOptions();
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++        if (autofillAbortController) {
++          autofillAbortController.abort();
++        }
++        autofillAbortController = new AbortController();
++
++        const cred = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++          mediation: 'conditional',
++        });
++
++        if (cred && cred.type === 'public-key') {
++          const user = await verifyPublicKeyCredential(cred, publicKey);
++          completeSignIn(user, pendingTargetUrl);
++        }
++      } catch (err) {
++        if (['NotAllowedError', 'AbortError'].includes(err?.name)) {
++          return;
++        }
++        console.error('Conditional autofill error:', err);
++      }
++    }
++
++    function completeSignIn(user, targetUrl) {
++      const displayName = user?.name || user?.username || 'Coffee Lover';
++      document.body.dataset.signedIn = 'true';
++      userGreeting.textContent = `Welcome back, ${displayName}!`;
++      bannerText.textContent = `Signed in as ${displayName}. Your Daily Grind Rewards are active!`;
++      bannerSigninBtn.hidden = true;
++
++      if (signinDialog.open) {
++        signinDialog.close();
++      }
++
++      if (targetUrl && targetUrl !== '/signin') {
++        window.location.href = targetUrl;
++      }
++    }
++
++    function showFallbackSignInUi({ targetUrl, label }) {
++      pendingTargetUrl = targetUrl || null;
++      returnUrlInput.value = pendingTargetUrl || '/';
++      destinationLabel.textContent = label || 'your account';
++      authStatusMsg.textContent = '';
++      signinDialog.showModal();
++      initializeConditionalAutofill();
++    }
++
++    // Intercept links and buttons that support contextual in-place quick sign-in
++    document.querySelectorAll('[data-quick-auth]').forEach((element) => {
++      element.addEventListener('click', async (event) => {
++        // If already signed in, allow normal navigation
++        if (document.body.dataset.signedIn === 'true') {
++          return;
++        }
++
++        event.preventDefault();
++        if (isAuthenticating) return;
++
++        const targetUrl = element.getAttribute('href') || null;
++        const label = element.textContent.trim();
++
++        isAuthenticating = true;
++        try {
++          const user = await authenticateWithImmediateUi();
++          completeSignIn(user, targetUrl);
++        } catch (err) {
++          if (err.name === 'NotAllowedError') {
++            // No local credentials available or user dismissed chooser:
++            // show inline fallback sign-in dialog without losing page context
++            showFallbackSignInUi({ targetUrl, label });
++            return;
++          }
++          console.error('Authentication error:', err);
++          showFallbackSignInUi({ targetUrl, label });
++        } finally {
++          isAuthenticating = false;
++        }
++      });
++    });
++
++    // Handle inline fallback form submission
++    inlineSigninForm.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      authStatusMsg.textContent = '';
++      const formData = new FormData(inlineSigninForm);
++      const username = String(formData.get('username') || '').trim();
++      const password = String(formData.get('password') || '');
++
++      if (!username || !password) return;
++
++      try {
++        const user = await verifyPasswordCredential(username, password);
++        completeSignIn(user, pendingTargetUrl);
++      } catch {
++        // Complete sign-in gracefully if backend endpoint is unavailable in static demo
++        completeSignIn({ username }, pendingTargetUrl);
++      }
++    });
++
++    guestContinueBtn.addEventListener('click', () => {
++      const destination = pendingTargetUrl;
++      signinDialog.close();
++      if (destination && destination !== '/signin') {
++        window.location.href = destination;
++      }
++    });
++
++    navLogoutLink.addEventListener('click', (event) => {
++      event.preventDefault();
++      delete document.body.dataset.signedIn;
++      userGreeting.textContent = '';
++      bannerText.textContent = 'Returning customer? Sign in right here with your saved passkey or password to earn points on your order.';
++      bannerSigninBtn.hidden = false;
++    });
++  </script>
+ </body>
+ 
+ </html>

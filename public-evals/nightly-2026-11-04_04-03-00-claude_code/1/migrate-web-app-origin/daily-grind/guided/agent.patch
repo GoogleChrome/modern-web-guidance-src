@@ -1,0 +1,141 @@
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..a97c3cd
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <path d="M136 200h208v96a96 96 0 0 1-96 96h-16a96 96 0 0 1-96-96z" fill="#d7ccc8"/>
++  <path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#d7ccc8" stroke-width="24"/>
++  <path d="M200 120c-16 24 16 40 0 64M256 120c-16 24 16 40 0 64M312 120c-16 24 16 40 0 64" fill="none" stroke="#ffab40" stroke-width="14" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..095c661 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/legacy-origin/.well-known/web-app-origin-association b/legacy-origin/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..223c080
+--- /dev/null
++++ b/legacy-origin/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://dailygrind.example.com": {
++    "allow_migration": true
++  }
++}
+diff --git a/legacy-origin/README.md b/legacy-origin/README.md
+new file mode 100644
+index 0000000..636b8fa
+--- /dev/null
++++ b/legacy-origin/README.md
+@@ -0,0 +1,25 @@
++# Old-origin deployment (`https://app.dailygrind.example.com`)
++
++These files hand the installed app over to `https://dailygrind.example.com`.
++Both hosts share the registrable domain `example.com`, which Web App Origin
++Migration requires (same-site only).
++
++1. **Authorize the move (required).** Serve
++   `.well-known/web-app-origin-association` at
++   `https://app.dailygrind.example.com/.well-known/web-app-origin-association`
++   with `Content-Type: application/json`. Without this file the browser ignores
++   the new site's `migrate_from` claim.
++2. **Prompt existing users early (optional).** Merge the `migrate_to` key from
++   `manifest-migrate-to.json` into the old site's existing manifest, so
++   installed users get migrated without having to visit the new site first.
++3. **Fallback banner.** Paste `migration-banner.html` into the old site's pages
++   for browsers that don't support migration (Firefox, Safari, Chromium < 149).
++
++The new origin's side lives in `/manifest.webmanifest` (`migrate_from`).
++To make the move mandatory, change `"behavior": "suggest"` to `"force"` there.
++The browser then asks the user to **Update** or **Remove**; it never removes
++the old app silently.
++
++What migration does **not** carry over: localStorage, IndexedDB, cookies and
++permissions (notifications, location) stay with the old origin. Move any
++per-user data through the account backend or cross-origin messaging.
+diff --git a/legacy-origin/manifest-migrate-to.json b/legacy-origin/manifest-migrate-to.json
+new file mode 100644
+index 0000000..e239479
+--- /dev/null
++++ b/legacy-origin/manifest-migrate-to.json
+@@ -0,0 +1,8 @@
++{
++  "migrate_to": [
++    {
++      "id": "https://dailygrind.example.com/",
++      "install_url": "https://dailygrind.example.com/"
++    }
++  ]
++}
+diff --git a/legacy-origin/migration-banner.html b/legacy-origin/migration-banner.html
+new file mode 100644
+index 0000000..c0ce46f
+--- /dev/null
++++ b/legacy-origin/migration-banner.html
+@@ -0,0 +1,26 @@
++<!--
++  Fallback for browsers without Web App Origin Migration (Firefox, Safari,
++  Chromium < 149). Paste just before </body> on the OLD origin
++  (https://app.dailygrind.example.com). Only shown to users running the
++  installed app, so regular browser-tab visitors are not nagged.
++-->
++<aside id="move-notice" role="status" hidden
++  style="position:fixed;inset:auto 1rem 1rem;z-index:2000;display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-radius:8px;background:#4e342e;color:#fff;box-shadow:0 4px 12px rgb(0 0 0 / .25)">
++  <p style="margin:0">The Daily Grind app has moved. Open it at its new home and reinstall to keep your shortcut working.</p>
++  <span style="display:flex;gap:.5rem;flex-shrink:0">
++    <a href="https://dailygrind.example.com/" style="background:#ffab40;color:#3e2723;padding:.5rem 1rem;border-radius:5px;text-decoration:none;font-weight:600">Go to new app</a>
++    <button type="button" id="move-notice-dismiss" style="background:none;border:1px solid #ffab40;color:#fff;padding:.5rem 1rem;border-radius:5px;cursor:pointer">Later</button>
++  </span>
++</aside>
++<script>
++  (() => {
++    const notice = document.getElementById('move-notice');
++    const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
++    if (!installed || sessionStorage.getItem('move-notice-dismissed')) return;
++    notice.hidden = false;
++    document.getElementById('move-notice-dismiss').addEventListener('click', () => {
++      sessionStorage.setItem('move-notice-dismissed', '1');
++      notice.hidden = true;
++    });
++  })();
++</script>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..cf58388
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,21 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee — order ahead and earn rewards.",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://app.dailygrind.example.com/",
++      "behavior": "suggest"
++    }
++  ]
++}

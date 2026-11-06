@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets Preview (paywall teaser) */
++    .paywall-container {
++      margin-top: 60px;
++      padding: 40px 0 0;
++      /* Intentionally no background: the masked teaser fades straight into
++         the page background (var(--light)) rather than a card color. */
++      text-align: center;
++    }
++
++    .paywall-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    /* The teaser content fades to full transparency using a mask, so the
++       text and images themselves become see-through and blend into the
++       page background instead of being covered by a solid overlay. */
++    .paywall-teaser {
++      text-align: left;
++      max-height: 260px;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 100%);
++      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0) 100%);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .paywall-teaser img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 16px;
++    }
++
++    .paywall-teaser h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .paywall-teaser p {
++      margin-bottom: 12px;
++    }
++
++    .paywall-cta {
++      margin-top: -10px;
++    }
++
++    .paywall-cta p {
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <span class="paywall-badge">Members Only</span>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <div class="paywall-teaser">
++        <img
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=80"
++          alt="Freshly roasted coffee beans cooling in a roasting drum">
++        <h3>Inside the Roastery: Our Ethiopian Yirgacheffe Profile</h3>
++        <p>Every Tuesday our head roaster shares the exact roast curves, charge temperatures, and development
++          times behind the beans on our shelves. This week we're pulling back the curtain on the washed Yirgacheffe
++          that has become a staff favorite.</p>
++        <p>We charge the drum at 200&deg;C and let the beans soak up heat slowly for the first ninety seconds. The
++          turning point lands right around 1:20, and from there we ease the gas back to stretch the drying phase.
++          The key to preserving those bright bergamot and jasmine notes is a gentle, controlled approach to first
++          crack, which we aim to hit at...</p>
++        <p>From there, the development time ratio becomes the single most important number on the sheet. Push it
++          too far and the florals flatten into caramel. Pull it too short and the cup turns grassy and sour.</p>
++      </div>
++      <div class="paywall-cta">
++        <p>Unlock the full roast profiles, cupping notes, and brew guides.</p>
++        <a href="/rewards" class="btn">Join Rewards to Read More</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

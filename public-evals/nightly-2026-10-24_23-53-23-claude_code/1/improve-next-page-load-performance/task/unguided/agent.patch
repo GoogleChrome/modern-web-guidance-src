@@ -1,0 +1,54 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,39 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Prefetch internal pages when the user shows intent (hover, focus, touch).
++    // Opt a link out with the data-no-prefetch attribute. State-changing URLs
++    // such as /logout are also blocked by path as a safety net.
++    (function () {
++      var NEVER = /^\/(logout|signout|log-out|sign-out)(\/|$)/i;
++      var done = {};
++      var conn = navigator.connection;
++      if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
++
++      function prefetch(e) {
++        var a = e.target.closest && e.target.closest('a[href]');
++        if (!a || a.hasAttribute('data-no-prefetch') || a.closest('[data-no-prefetch]')) return;
++        if (a.origin !== location.origin || a.hasAttribute('download')) return;
++        if (a.target && a.target !== '_self') return;
++        if (NEVER.test(a.pathname)) return;
++        var url = a.origin + a.pathname + a.search;
++        if (url === location.origin + location.pathname + location.search || done[url]) return;
++        done[url] = true;
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = url;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      ['mouseover', 'focusin', 'touchstart'].forEach(function (type) {
++        document.addEventListener(type, prefetch, { passive: true });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

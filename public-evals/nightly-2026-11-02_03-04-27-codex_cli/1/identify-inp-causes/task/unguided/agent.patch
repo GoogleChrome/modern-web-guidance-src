@@ -1,0 +1,40 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,35 @@
++# The Daily Grind
++
++Static HTML site. No build step is required.
++
++## INP diagnostics
++
++`assets/inp-diagnostics.mjs` uses the locally vendored Google `web-vitals`
++attribution library (version 6.2.3, Apache-2.0) to measure Interaction to Next
++Paint. The original distribution and license are in `assets/vendor/`.
++Library source: https://github.com/GoogleChrome/web-vitals/tree/v6.2.3
++
++INP candidates above 200 ms produce a console warning. Each report contains
++the interaction target and type, input delay, handler processing duration,
++presentation delay, and the longest overlapping script when available.
++The dominant timing phase suggests where to investigate; it does not prove
++causality. Script and layout attribution depends on browser support for the
++Long Animation Frames API; missing data is left undefined or null.
++
++The latest report is available as `window.inpDiagnostics`. To connect an
++existing analytics system, listen for reports:
++
++```js
++window.addEventListener('inp-diagnostic', ({ detail }) => {
++  // Forward detail to your existing telemetry integration here.
++});
++```
++
++No reports are sent over the network by this code. Reports use the same metric
++`id` as candidates change; an analytics integration should update by ID rather
++than count every callback as a separate page visit. Values during the visit
++are provisional, and the library also reports changes when the page is hidden.
++Reports require supported Event Timing APIs and a qualifying interaction;
++an absent report does not establish good INP. No key values or element text
++are captured, but selectors and script URLs should be reviewed before sending
++reports to analytics.

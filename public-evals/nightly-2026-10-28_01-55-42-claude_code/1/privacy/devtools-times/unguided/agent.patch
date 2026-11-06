@@ -1,0 +1,873 @@
+diff --git a/README.md b/README.md
+index 4479b53..403a483 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,13 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Privacy
++
++The site is built privacy-first; the Privacy Policy page describes the real data flows and must be kept in sync with `src/config/privacy.ts`:
++
++- **No third-party scripts by default.** The click-analytics client is only injected after the visitor opts in through the consent dialog (`src/components/PrivacyConsent.tsx`, `src/utils/consent.ts`). "Manage Privacy Preferences" in the footer reopens it. The ad client stays disabled.
++- **Self-hosted font.** Grenze (OFL) is served from `src/assets/fonts` instead of Google Fonts.
++- **Minimal account data.** Sign-in and sign-up send only username and password, with `credentials: 'omit'`, `referrerPolicy: 'no-referrer'` and `cache: 'no-store'`.
++- **No cookie for just visiting.** The reading-list session cookie is created on the first bookmark, not on page load.
++- **Response headers.** `src/middleware.ts` sets `Referrer-Policy`, `Permissions-Policy` (incl. `browsing-topics=()`) and `X-Content-Type-Options` on every response.
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..bc8183c 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,9 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    /** Set once the consent-gated analytics script has been injected (see src/utils/consent.ts). */
++    __devtoolsTimesAnalyticsLoaded?: boolean;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/assets/fonts/OFL.txt b/src/assets/fonts/OFL.txt
+new file mode 100644
+index 0000000..c1fedae
+--- /dev/null
++++ b/src/assets/fonts/OFL.txt
+@@ -0,0 +1,93 @@
++Copyright 2019, The Grenze Project Authors (https://github.com/Omnibus-Type/Grenze)
++
++This Font Software is licensed under the SIL Open Font License, Version 1.1.
++This license is copied below, and is also available with a FAQ at:
++https://openfontlicense.org
++
++
++-----------------------------------------------------------
++SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
++-----------------------------------------------------------
++
++PREAMBLE
++The goals of the Open Font License (OFL) are to stimulate worldwide
++development of collaborative font projects, to support the font creation
++efforts of academic and linguistic communities, and to provide a free and
++open framework in which fonts may be shared and improved in partnership
++with others.
++
++The OFL allows the licensed fonts to be used, studied, modified and
++redistributed freely as long as they are not sold by themselves. The
++fonts, including any derivative works, can be bundled, embedded, 
++redistributed and/or sold with any software provided that any reserved
++names are not used by derivative works. The fonts and derivatives,
++however, cannot be released under any other type of license. The
++requirement for fonts to remain under this license does not apply
++to any document created using the fonts or their derivatives.
++
++DEFINITIONS
++"Font Software" refers to the set of files released by the Copyright
++Holder(s) under this license and clearly marked as such. This may
++include source files, build scripts and documentation.
++
++"Reserved Font Name" refers to any names specified as such after the
++copyright statement(s).
++
++"Original Version" refers to the collection of Font Software components as
++distributed by the Copyright Holder(s).
++
++"Modified Version" refers to any derivative made by adding to, deleting,
++or substituting -- in part or in whole -- any of the components of the
++Original Version, by changing formats or by porting the Font Software to a
++new environment.
++
++"Author" refers to any designer, engineer, programmer, technical
++writer or other person who contributed to the Font Software.
++
++PERMISSION & CONDITIONS
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of the Font Software, to use, study, copy, merge, embed, modify,
++redistribute, and sell modified and unmodified copies of the Font
++Software, subject to the following conditions:
++
++1) Neither the Font Software nor any of its individual components,
++in Original or Modified Versions, may be sold by itself.
++
++2) Original or Modified Versions of the Font Software may be bundled,
++redistributed and/or sold with any software, provided that each copy
++contains the above copyright notice and this license. These can be
++included either as stand-alone text files, human-readable headers or
++in the appropriate machine-readable metadata fields within text or
++binary files as long as those fields can be easily viewed by the user.
++
++3) No Modified Version of the Font Software may use the Reserved Font
++Name(s) unless explicit written permission is granted by the corresponding
++Copyright Holder. This restriction only applies to the primary font name as
++presented to the users.
++
++4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
++Software shall not be used to promote, endorse or advertise any
++Modified Version, except to acknowledge the contribution(s) of the
++Copyright Holder(s) and the Author(s) or with their explicit written
++permission.
++
++5) The Font Software, modified or unmodified, in part or in whole,
++must be distributed entirely under this license, and must not be
++distributed under any other license. The requirement for fonts to
++remain under this license does not apply to any document created
++using the Font Software.
++
++TERMINATION
++This license becomes null and void if any of the above conditions are
++not met.
++
++DISCLAIMER
++THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
++OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
++COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
++DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
++OTHER DEALINGS IN THE FONT SOFTWARE.
+diff --git a/src/assets/fonts/grenze-500-latin-ext.woff2 b/src/assets/fonts/grenze-500-latin-ext.woff2
+new file mode 100644
+index 0000000..7a18f1d
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin-ext.woff2 differ
+diff --git a/src/assets/fonts/grenze-500-latin.woff2 b/src/assets/fonts/grenze-500-latin.woff2
+new file mode 100644
+index 0000000..37fde00
+Binary files /dev/null and b/src/assets/fonts/grenze-500-latin.woff2 differ
+diff --git a/src/assets/fonts/grenze-500-vietnamese.woff2 b/src/assets/fonts/grenze-500-vietnamese.woff2
+new file mode 100644
+index 0000000..94a2e07
+Binary files /dev/null and b/src/assets/fonts/grenze-500-vietnamese.woff2 differ
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..84c2cde 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -96,9 +96,15 @@ const baseUrl = import.meta.env.BASE_URL;
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+         </div>
+         
+-        <!-- Privacy settings link -->
++        <!-- Privacy settings link: opens the consent dialog (src/components/PrivacyConsent.tsx);
++             without JavaScript it falls back to the "Your choices" section of the policy. -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a
++                href=`${baseUrl}legal/privacy#your-choices`
++                data-open-privacy-preferences
++                data-skip-tracking="true"
++                class="hover:underline"
++            >Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/PrivacyConsent.tsx b/src/components/PrivacyConsent.tsx
+new file mode 100644
+index 0000000..3b84c1a
+--- /dev/null
++++ b/src/components/PrivacyConsent.tsx
+@@ -0,0 +1,125 @@
++import React, { useCallback, useEffect, useState } from 'react';
++import { ANALYTICS_HOST } from '../config/privacy';
++import {
++  OPEN_PREFERENCES_EVENT,
++  isAnalyticsLoaded,
++  loadAnalyticsScript,
++  readConsent,
++  writeConsent,
++} from '../utils/consent';
++
++interface Props {
++  privacyPolicyUrl: string;
++}
++
++/**
++ * Consent gate for every third-party script on the site.
++ *
++ * Privacy by design: nothing is loaded until the visitor actively chooses. Both choices
++ * are equally prominent, "decline" is a first-class action and the dialog explains in
++ * plain words what is collected and where it goes. The choice can be revisited at any
++ * time through the "Manage Privacy Preferences" link in the footer.
++ */
++export default function PrivacyConsent({ privacyPolicyUrl }: Props) {
++  const [open, setOpen] = useState(false);
++  const [hasChoice, setHasChoice] = useState(false);
++  const [analytics, setAnalytics] = useState(false);
++
++  useEffect(() => {
++    const stored = readConsent();
++    if (stored) {
++      setHasChoice(true);
++      setAnalytics(stored.analytics);
++      if (stored.analytics) loadAnalyticsScript();
++    } else {
++      setOpen(true);
++    }
++
++    const openPreferences = () => {
++      const current = readConsent();
++      setHasChoice(current !== null);
++      setAnalytics(current?.analytics ?? false);
++      setOpen(true);
++    };
++
++    // The footer link is static Astro markup, so listen for it here instead of wiring props.
++    const onDocumentClick = (event: MouseEvent) => {
++      const target = event.target as Element | null;
++      if (target?.closest('[data-open-privacy-preferences]')) {
++        event.preventDefault();
++        openPreferences();
++      }
++    };
++
++    window.addEventListener(OPEN_PREFERENCES_EVENT, openPreferences);
++    document.addEventListener('click', onDocumentClick);
++    return () => {
++      window.removeEventListener(OPEN_PREFERENCES_EVENT, openPreferences);
++      document.removeEventListener('click', onDocumentClick);
++    };
++  }, []);
++
++  const save = useCallback((allowAnalytics: boolean) => {
++    const wasLoaded = isAnalyticsLoaded();
++    writeConsent(allowAnalytics);
++    setHasChoice(true);
++    setAnalytics(allowAnalytics);
++    setOpen(false);
++
++    if (allowAnalytics) {
++      loadAnalyticsScript();
++    } else if (wasLoaded) {
++      // The third-party script cannot be unloaded once it has attached its listeners,
++      // so reloading is the only way to honour the withdrawal immediately.
++      window.location.reload();
++    }
++  }, []);
++
++  if (!open) return null;
++
++  const buttonClass =
++    'rounded border border-gray-900 px-4 py-2 text-sm font-semibold text-gray-900 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900';
++
++  return (
++    <section
++      role="dialog"
++      aria-labelledby="privacy-consent-title"
++      aria-describedby="privacy-consent-description"
++      className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-300 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
++    >
++      <div className="mx-auto max-w-6xl px-4 py-4 md:flex md:items-start md:justify-between md:gap-8">
++        <div className="text-sm text-gray-700">
++          <h2 id="privacy-consent-title" className="text-base font-bold text-gray-900">
++            Your privacy choices
++          </h2>
++          <p id="privacy-consent-description" className="mt-1">
++            The DevTools Times works without tracking. Reading, searching and bookmarking only use a
++            first-party session cookie. If you allow it, we additionally load a third-party analytics
++            script that records the text of the links and buttons you click, together with a timestamp,
++            and sends it to <span className="font-mono">{ANALYTICS_HOST}</span>. Nothing is loaded until
++            you choose.
++          </p>
++          <p className="mt-1 text-xs text-gray-500">
++            {hasChoice && (
++              <>
++                Current setting: analytics {analytics ? 'allowed' : 'declined'}.{' '}
++              </>
++            )}
++            You can change your choice at any time via “Manage Privacy Preferences” in the footer.{' '}
++            <a href={privacyPolicyUrl} className="underline hover:text-gray-900" data-skip-tracking="true">
++              Privacy Policy
++            </a>
++          </p>
++        </div>
++        <div className="mt-3 flex shrink-0 gap-2 md:mt-0">
++          <button type="button" onClick={() => save(false)} className={buttonClass} data-skip-tracking="true">
++            Continue without analytics
++          </button>
++          <button type="button" onClick={() => save(true)} className={buttonClass} data-skip-tracking="true">
++            Allow analytics
++          </button>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..804628a 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,7 @@
+ import React, { useState } from 'react';
++import { AUTH_API_BASE_URL, AUTH_API_HOST } from '../config/privacy';
++
++const privacyPolicyUrl = `${import.meta.env.BASE_URL}legal/privacy`;
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -14,12 +17,18 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++      const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data minimisation: exactly the two fields the user typed, nothing derived from the browser.
+         body: JSON.stringify({ username, password }),
++        // Never attach cookies to the cross-origin auth request, never leak the page URL as
++        // Referer, and never let the credential exchange be cached.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+       });
+ 
+       const data = await response.json();
+@@ -30,11 +39,15 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        // Any session must be established by the server via an HttpOnly, Secure, SameSite
++        // cookie. Do not persist tokens in localStorage/sessionStorage: they are readable by
++        // every script on the page, including third-party ones.
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      // Keep the secret in memory no longer than needed.
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -63,9 +76,14 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+@@ -77,9 +95,13 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            autoComplete="current-password"
++            // Browser "enhanced spellcheck" can send field contents to a cloud service; opt out.
++            spellCheck={false}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+@@ -87,6 +109,7 @@ export default function SignInForm() {
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -94,6 +117,17 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <p className="mt-6 text-xs text-gray-500">
++        <strong className="font-semibold text-gray-700">How we handle this data:</strong> we only ask for
++        your username and password. They are sent encrypted (HTTPS) to our sign-in service at{' '}
++        <span className="font-mono">{AUTH_API_HOST}</span> solely to verify your account, and are never
++        used for analytics or advertising. Read the{' '}
++        <a href={privacyPolicyUrl} className="underline hover:text-gray-900">
++          Privacy Policy
++        </a>
++        .
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..6698413 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,8 @@
+ import React, { useState } from 'react';
++import { AUTH_API_BASE_URL, AUTH_API_HOST } from '../config/privacy';
++
++const privacyPolicyUrl = `${import.meta.env.BASE_URL}legal/privacy`;
++const termsUrl = `${import.meta.env.BASE_URL}legal/terms`;
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -14,12 +18,19 @@ export default function SignUpForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
++      const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        // Data minimisation: an account needs a username and a password. No e-mail, no name,
++        // no device or browser information is collected or sent.
+         body: JSON.stringify({ username, password }),
++        // Never attach cookies to the cross-origin auth request, never leak the page URL as
++        // Referer, and never let the credential exchange be cached.
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
+       });
+ 
+       const data = await response.json();
+@@ -31,11 +42,12 @@ export default function SignUpForm() {
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+-        setPassword('');
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      // Keep the secret in memory no longer than needed.
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -64,11 +76,19 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            autoComplete="username"
++            autoCapitalize="none"
++            autoCorrect="off"
++            spellCheck={false}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p className="text-xs text-gray-500 mt-1">
++            Pick any name. It does not have to be your real name or an e-mail address.
++          </p>
+         </div>
+         
+         <div>
+@@ -78,9 +98,13 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            autoComplete="new-password"
++            // Browser "enhanced spellcheck" can send field contents to a cloud service; opt out.
++            spellCheck={false}
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+           <p className="text-xs text-gray-500 mt-1">
+@@ -99,6 +123,21 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <p className="mt-6 text-xs text-gray-500">
++        <strong className="font-semibold text-gray-700">What we collect:</strong> only the username and
++        password above. They are sent encrypted (HTTPS) to our account service at{' '}
++        <span className="font-mono">{AUTH_API_HOST}</span> to create your account, and are never used
++        for analytics or advertising. By creating an account you agree to the{' '}
++        <a href={termsUrl} className="underline hover:text-gray-900">
++          Terms of Service
++        </a>{' '}
++        and acknowledge the{' '}
++        <a href={privacyPolicyUrl} className="underline hover:text-gray-900">
++          Privacy Policy
++        </a>
++        .
++      </p>
+     </div>
+   );
+ }
+diff --git a/src/config/privacy.ts b/src/config/privacy.ts
+new file mode 100644
+index 0000000..d4e9368
+--- /dev/null
++++ b/src/config/privacy.ts
+@@ -0,0 +1,44 @@
++/**
++ * Single source of truth for every remote endpoint and third-party resource the
++ * browser may contact. Keeping them here makes the site's data flows auditable,
++ * and the Privacy Policy (src/pages/legal/privacy.astro) must stay in sync with it.
++ */
++
++/**
++ * Authentication API used by the sign-in and sign-up forms.
++ * Receives exactly two fields: username and password. Nothing else is sent.
++ * Override with PUBLIC_AUTH_API_BASE_URL at build time if the backend moves.
++ */
++export const AUTH_API_BASE_URL: string =
++  import.meta.env.PUBLIC_AUTH_API_BASE_URL ??
++  'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++
++/** Human-readable host shown to users in the sign-in / sign-up privacy notice. */
++export const AUTH_API_HOST: string = new URL(AUTH_API_BASE_URL).host;
++
++/**
++ * Third-party click-analytics script.
++ * It is NEVER referenced from the HTML. It is injected at runtime by
++ * src/utils/consent.ts only after the visitor has explicitly opted in.
++ *
++ * What it does (audited 2026-10-28): registers a document-wide click listener and
++ * POSTs { tag, text, timestamp } of every clicked link/button to <origin>/api/analytics.
++ */
++export const ANALYTICS_SCRIPT_URL =
++  'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js';
++
++/** Host shown to users when describing where analytics data goes. */
++export const ANALYTICS_HOST: string = new URL(ANALYTICS_SCRIPT_URL).host;
++
++/**
++ * Third-party ad client. Currently disabled. If it is ever re-enabled it must be
++ * loaded through the same consent gate as the analytics script, never from <head>.
++ */
++// export const AD_CLIENT_SCRIPT_URL =
++//   'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js';
++
++/** localStorage key holding the visitor's consent choice (no identifier, only the choice). */
++export const CONSENT_STORAGE_KEY = 'devtools-times.privacy-consent';
++
++/** Bump when the meaning of a consent category changes so visitors are asked again. */
++export const CONSENT_VERSION = 1;
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2e001fe 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,7 +2,9 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import PrivacyConsent from "../components/PrivacyConsent.tsx";
+ import "../styles/global.css";
++import grenzeLatinUrl from "../assets/fonts/grenze-500-latin.woff2?url";
+ 
+ import { ClientRouter } from "astro:transitions";
+ 
+@@ -17,22 +19,26 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <!-- Mirrors the Referrer-Policy response header (src/middleware.ts): other origins only ever see our origin, never full article URLs. -->
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
++    <!--
++      Fonts are self-hosted (src/assets/fonts, @font-face in src/styles/global.css), so no
++      visitor IP address or page URL is sent to a font CDN. Only the primary latin subset is
++      preloaded; the others are fetched on demand by unicode-range.
++    -->
++    <link rel="preload" href={grenzeLatinUrl} as="font" type="font/woff2" crossorigin />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!--
++      No third-party scripts are referenced from the document. The analytics client
++      (src/config/privacy.ts) is injected by <PrivacyConsent /> only after an explicit
++      opt-in, see src/utils/consent.ts. The ad client stays disabled for the same reason.
++    -->
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+@@ -51,5 +57,6 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <PrivacyConsent client:load privacyPolicyUrl={`${baseUrl}legal/privacy`} transition:persist />
+   </body>
+ </html>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..df04c6c 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,34 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+-export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
++/**
++ * Privacy-related response headers for every document and API response.
++ *
++ * - Referrer-Policy: other origins only ever learn our origin, never which article a
++ *   visitor was reading. Mirrored by <meta name="referrer"> in src/layouts/Layout.astro.
++ * - Permissions-Policy: this site never needs these powerful features, and disabling
++ *   `browsing-topics` opts every page out of Chrome's Topics API interest profiling.
++ * - X-Content-Type-Options: no MIME sniffing of responses.
++ */
++const PRIVACY_HEADERS: Record<string, string> = {
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy':
++    'browsing-topics=(), camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++  'X-Content-Type-Options': 'nosniff',
++};
++
++export const onRequest = defineMiddleware(async (_context, next) => {
++  // Data minimisation: no session cookie is created just for visiting the site.
++  // The reading-list session is only written when a visitor bookmarks an article
++  // (src/pages/api/reading-list.json.ts); every reader falls back to an empty list.
++  const response = await next();
++
++  try {
++    for (const [name, value] of Object.entries(PRIVACY_HEADERS)) {
++      if (!response.headers.has(name)) response.headers.set(name, value);
+     }
++  } catch {
++    // Some responses (e.g. Response.redirect) have immutable headers; nothing sensitive there.
+   }
+-  return next();
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..633a420 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,55 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++import { ANALYTICS_HOST, AUTH_API_HOST, CONSENT_STORAGE_KEY } from '../../config/privacy';
++
++const lastUpdated = 'October 28, 2026';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p><em>Last updated: {lastUpdated}. The DevTools Times is a demo site (see the <a href={`${import.meta.env.BASE_URL}legal/imprint`}>Imprint</a>). This page nevertheless describes exactly what the site does with data, because that is how it is built.</em></p>
++
++    <h2>1. The short version</h2>
++    <ul>
++        <li>You can read, search and bookmark articles without any tracking.</li>
++        <li>No third-party script is loaded unless you explicitly allow it. Analytics is off by default.</li>
++        <li>An account needs a username and a password. Nothing else, not even an e-mail address.</li>
++        <li>Fonts, images and styles are served from this site, not from a CDN that sees your IP address.</li>
++        <li>We do not sell, rent or share personal data for advertising.</li>
++    </ul>
++
++    <h2>2. What we process, why, and for how long</h2>
++
++    <h3>2.1 Technical access logs</h3>
++    <p>Like any web server, the hosting platform may keep short-lived technical logs (IP address, requested URL, time, browser type) to operate the service and defend against abuse. We do not use them to build profiles.</p>
++
++    <h3>2.2 Reading list (first-party session cookie)</h3>
++    <p>When you bookmark an article for the first time, the site sets a single first-party session cookie containing an opaque session identifier. The list of bookmarked articles is kept server-side against that identifier. Nothing is set just for visiting. Clearing the cookie in your browser removes the association; the server-side list is then unreachable and expires with the session.</p>
++
++    <h3>2.3 Account (sign-up and sign-in)</h3>
++    <p>The sign-up and sign-in forms collect exactly two fields: a username and a password. The username does not have to be your real name. Both values are sent encrypted (HTTPS) to our account service at <code>{AUTH_API_HOST}</code> only to create or verify your account. No cookies, referrer information or browser details are attached to that request, and the data is never used for analytics or advertising.</p>
++
++    <h3>2.4 Analytics (only with your permission)</h3>
++    <p>On your first visit we ask whether you allow analytics. If you say no, or do not answer, nothing happens: no analytics script is downloaded and no data is sent. If you say yes, a third-party script from <code>{ANALYTICS_HOST}</code> is loaded. It records, for each link or button you click, the element type, its visible text and a timestamp, and sends that to the same host. It does not record what you type into forms, and clicks on the sign-in and sign-up buttons are excluded.</p>
++    <p>You can withdraw permission at any time (see section 4). Withdrawing reloads the page so the script stops immediately.</p>
++
++    <h3>2.5 Advertising</h3>
++    <p>The ad slots on the site are placeholders. No advertising script is loaded. If that ever changes, it will go through the same consent dialog as analytics and this policy will be updated first.</p>
++
++    <h3>2.6 Fonts and other assets</h3>
++    <p>The headline font and all images and styles are served from this site. Your browser does not contact Google Fonts or any other asset CDN on our behalf.</p>
++
++    <h3>2.7 Your privacy choice itself</h3>
++    <p>Your answer to the analytics question is stored in your browser's local storage under the key <code>{CONSENT_STORAGE_KEY}</code>. It contains only the choice and the time you made it, no identifier, and it never leaves your browser.</p>
++
++    <h2>3. Who else sees data</h2>
++    <p>Only the account service and, if you allowed it, the analytics host named above. We do not share personal data with anyone else.</p>
++
++    <h2 id="your-choices">4. Your choices</h2>
++    <ul>
++        <li><strong>Change your analytics choice:</strong> use <a href={`${import.meta.env.BASE_URL}legal/privacy#your-choices`} data-open-privacy-preferences data-skip-tracking="true">Manage Privacy Preferences</a> in the footer of every page.</li>
++        <li><strong>Forget everything:</strong> clear this site's cookies and site data in your browser. That removes the session cookie and the stored choice; you will be asked again on your next visit.</li>
++        <li><strong>Questions:</strong> contact details are in the <a href={`${import.meta.env.BASE_URL}legal/imprint`}>Imprint</a>.</li>
++    </ul>
++
++    <h2>5. Changes to this policy</h2>
++    <p>If the data flows described here change, this page and the consent dialog are updated, and you are asked for permission again where required.</p>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d844214 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,41 @@
+ @import "tailwindcss";
+ 
++/*
++ * "Grenze" is self-hosted (SIL Open Font License 1.1, see src/assets/fonts/OFL.txt)
++ * instead of being loaded from Google Fonts, so no request carrying the visitor's IP
++ * address leaves the site just to render a headline. Same subsets and unicode ranges
++ * as the Google Fonts CSS the site previously used.
++ */
++/* vietnamese */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-vietnamese.woff2") format("woff2");
++  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
++}
++/* latin-ext */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin-ext.woff2") format("woff2");
++  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
++}
++/* latin */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src: url("../assets/fonts/grenze-500-latin.woff2") format("woff2");
++  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
+diff --git a/src/utils/consent.ts b/src/utils/consent.ts
+new file mode 100644
+index 0000000..23358e3
+--- /dev/null
++++ b/src/utils/consent.ts
+@@ -0,0 +1,85 @@
++import { ANALYTICS_SCRIPT_URL, CONSENT_STORAGE_KEY, CONSENT_VERSION } from '../config/privacy';
++
++export interface ConsentState {
++  version: number;
++  /** Opt-in for the third-party click-analytics script. Default: false (nothing loads). */
++  analytics: boolean;
++  /** ISO timestamp of the last change, so the choice can be shown back to the visitor. */
++  updatedAt: string;
++}
++
++/** Fired on `window` whenever the visitor saves a choice. `detail` is the new ConsentState. */
++export const CONSENT_CHANGE_EVENT = 'devtools-times:consent-change';
++/** Dispatch on `window` to reopen the privacy preferences dialog from anywhere. */
++export const OPEN_PREFERENCES_EVENT = 'devtools-times:open-privacy-preferences';
++
++/** Returns the stored choice, or null when the visitor has not decided yet (or storage is unavailable). */
++export function readConsent(): ConsentState | null {
++  if (typeof window === 'undefined') return null;
++  try {
++    const raw = window.localStorage.getItem(CONSENT_STORAGE_KEY);
++    if (!raw) return null;
++    const parsed = JSON.parse(raw) as Partial<ConsentState>;
++    if (parsed.version !== CONSENT_VERSION || typeof parsed.analytics !== 'boolean') return null;
++    return {
++      version: CONSENT_VERSION,
++      analytics: parsed.analytics,
++      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
++    };
++  } catch {
++    return null;
++  }
++}
++
++/** Persists the choice and notifies listeners. Only the choice itself is stored, no identifier. */
++export function writeConsent(analytics: boolean): ConsentState {
++  const state: ConsentState = {
++    version: CONSENT_VERSION,
++    analytics,
++    updatedAt: new Date().toISOString(),
++  };
++  try {
++    window.localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(state));
++  } catch {
++    // Storage blocked (private mode, policy). The choice then only lasts for this page view,
++    // which still errs on the side of not tracking.
++  }
++  window.dispatchEvent(new CustomEvent<ConsentState>(CONSENT_CHANGE_EVENT, { detail: state }));
++  return state;
++}
++
++/** Forgets the stored choice. The visitor will be asked again on the next page load. */
++export function clearConsent(): void {
++  try {
++    window.localStorage.removeItem(CONSENT_STORAGE_KEY);
++  } catch {
++    // ignore
++  }
++}
++
++export function isAnalyticsLoaded(): boolean {
++  return typeof window !== 'undefined' && window.__devtoolsTimesAnalyticsLoaded === true;
++}
++
++/**
++ * Injects the third-party analytics script. Call ONLY after the visitor opted in.
++ *
++ * Idempotent on purpose: Astro's <ClientRouter /> keeps `window`/`document` alive across
++ * navigations and the script registers a document-level click listener, so loading it a
++ * second time would double-report every click.
++ */
++export function loadAnalyticsScript(): void {
++  if (typeof document === 'undefined' || isAnalyticsLoaded()) return;
++  window.__devtoolsTimesAnalyticsLoaded = true;
++
++  const script = document.createElement('script');
++  script.src = ANALYTICS_SCRIPT_URL;
++  script.defer = true;
++  // Do not tell the analytics host which page the visitor is on when fetching the script.
++  script.referrerPolicy = 'no-referrer';
++  // Deliberately no `crossOrigin = 'anonymous'`: the host only returns CORS headers for an
++  // allow-list of deployment origins (not localhost), so the script would fail to load there.
++  // Without it the browser may send cookies it holds for that host; the page itself sets none.
++  script.dataset.consentCategory = 'analytics';
++  document.head.appendChild(script);
++}

@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,67 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts &amp; Independent Theme</title>
++  <style>
++    body {
++      margin: 2rem auto;
++      max-width: 40rem;
++      padding: 0 1rem;
++      font-family: Verdana, Geneva, sans-serif;
++      line-height: 1.6;
++    }
++
++    /* Mixed fonts: nested fonts are normalized to the primary font's x-height */
++    #mixed-fonts-container {
++      font-family: Verdana, Geneva, sans-serif;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      background: #f2f2f2;
++      padding: 0.1em 0.3em;
++      border-radius: 0.25em;
++    }
++
++    /* Independent theme: not a descendant of the primary font, so lock its
++       proportions to an explicit x-height / font-size ratio */
++    #independent-theme-container {
++      font-family: "Times New Roman", Times, serif;
++      font-size-adjust: 0.545;
++      margin-top: 1.5rem;
++      padding: 1rem;
++      border: 1px solid #ccc;
++      border-radius: 0.5rem;
++      background: #fafaf5;
++    }
++
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 1.1em;
++        line-height: 1;
++      }
++
++      #independent-theme-container {
++        font-size: 1.15em;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Call <code>Array.prototype.map()</code> to transform each item, then use
++    <code>filter()</code> to drop the ones you don't need.
++  </p>
++
++  <div id="independent-theme-container">
++    <p>
++      This container uses an independent serif theme whose visual proportions
++      are locked to a fixed x-height ratio, so it reads at the same size as the
++      rest of the page.
++    </p>
++  </div>
++</body>
++</html>

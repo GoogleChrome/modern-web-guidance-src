@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -54,19 +54,151 @@
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    .rewards-toggle {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .rewards-toggle:hover,
++    .rewards-toggle[aria-expanded="true"] {
+       color: var(--accent);
+     }
+ 
++    .rewards-toggle {
++      background: none;
++      border: 0;
++      font-family: inherit;
++      line-height: inherit;
++      cursor: pointer;
++      anchor-name: --rewards-button;
++    }
++
++    button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    #rewards-popover {
++      display: none;
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(390px, calc(100vw - 32px));
++      max-height: calc(100vh - 32px);
++      overflow-y: auto;
++      padding: 0;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 16px 48px rgb(62 39 35 / 24%);
++    }
++
++    #rewards-popover:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    @supports (position-area: block-end) {
++      #rewards-popover {
++        position-anchor: --rewards-button;
++        position-area: block-end span-inline-start;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++        inset: auto;
++        margin: 14px 0;
++      }
++    }
++
++    .rewards-header {
++      background: var(--primary);
++      color: white;
++      padding: 20px 24px;
++      display: flex;
++      align-items: flex-start;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .rewards-header h2 {
++      font-size: 1.25rem;
++    }
++
++    .rewards-header p {
++      color: var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    .rewards-close {
++      border: 0;
++      background: transparent;
++      color: white;
++      cursor: pointer;
++      font-size: 1.5rem;
++      line-height: 1;
++      padding: 4px;
++    }
++
++    .rewards-body {
++      padding: 24px;
++    }
++
++    .rewards-points {
++      padding: 16px;
++      margin-bottom: 20px;
++      background: #f6f1ed;
++      border-radius: 8px;
++    }
++
++    .rewards-points strong {
++      display: block;
++      font-size: 1.8rem;
++    }
++
++    .rewards-body h3 {
++      font-size: 1rem;
++      margin-bottom: 12px;
++    }
++
++    .rewards-tiers {
++      list-style: none;
++    }
++
++    .rewards-tiers li + li {
++      border-top: 1px solid var(--secondary);
++      padding-top: 12px;
++      margin-top: 12px;
++    }
++
++    .rewards-tiers p,
++    .rewards-note {
++      font-size: 0.85rem;
++    }
++
++    .rewards-note {
++      margin-top: 20px;
++    }
++
++    @media (max-width: 650px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 12px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +293,50 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="rewards-toggle" id="rewards-toggle"
++          commandfor="rewards-popover" command="toggle-popover"
++          aria-controls="rewards-popover" aria-expanded="false">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <section id="rewards-popover" popover="auto" aria-labelledby="rewards-title">
++    <div class="rewards-header">
++      <div>
++        <h2 id="rewards-title">Daily Grind Rewards</h2>
++        <p>A little more joy in every cup.</p>
++      </div>
++      <button type="button" class="rewards-close" commandfor="rewards-popover"
++        command="hide-popover" aria-label="Close rewards">&times;</button>
++    </div>
++    <div class="rewards-body">
++      <div class="rewards-points">
++        <p>Current points <small>(sample account)</small></p>
++        <strong>350 points</strong>
++        <p>Silver member &middot; 150 points to Gold</p>
++      </div>
++      <h3>Membership tiers &amp; benefits</h3>
++      <ul class="rewards-tiers">
++        <li>
++          <strong>Bronze &middot; 0&ndash;199 points</strong>
++          <p>Earn 1 point per $1 spent and enjoy a birthday treat.</p>
++        </li>
++        <li>
++          <strong>Silver &middot; 200&ndash;499 points</strong>
++          <p>All Bronze benefits, plus free flavor upgrades.</p>
++        </li>
++        <li>
++          <strong>Gold &middot; 500+ points</strong>
++          <p>All Silver benefits, plus a monthly free drink and early access to seasonal favorites.</p>
++        </li>
++      </ul>
++      <p class="rewards-note">Sample rewards preview. Visit <a href="/account">My Account</a> for your account details.</p>
++    </div>
++  </section>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +374,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const rewards = document.getElementById('rewards-popover');
++    const trigger = document.getElementById('rewards-toggle');
++
++    // The invoker polyfill does not synchronize expanded state itself.
++    rewards.addEventListener('toggle', (event) => {
++      trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
++    });
++
++    async function initializeRewards() {
++      // Invoker commands depend on the Popover API. Finish installing it first.
++      // Native browsers take neither branch and download no fallback scripts.
++      if (!('popover' in HTMLElement.prototype)) {
++        await import('https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js');
++      }
++      if (!('commandForElement' in HTMLButtonElement.prototype)) {
++        await import('https://unpkg.com/invokers-polyfill@1.0.4/invoker.min.js');
++      }
++    }
++
++    initializeRewards().catch((error) => {
++      console.error('Unable to load rewards compatibility support:', error);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

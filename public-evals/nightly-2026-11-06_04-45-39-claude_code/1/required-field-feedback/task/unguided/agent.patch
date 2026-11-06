@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,98 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 10px;
++      align-items: flex-start;
++    }
++
++    .newsletter-field {
++      flex: 1;
++      text-align: left;
++    }
++
++    .newsletter input[type="email"] {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter input[type="email"]:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter input[type="email"][aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .newsletter .error-message {
++      color: #b71c1c;
++      font-size: 0.8rem;
++      margin-top: 4px;
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 11px 20px;
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter .success-message {
++      color: #2e7d32;
++      font-weight: 600;
++      margin-top: 10px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    @media (max-width: 480px) {
++      .newsletter-row {
++        flex-direction: column;
++        align-items: stretch;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +287,24 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h3 id="newsletter-heading">Join Our Mailing List</h3>
++      <p>Get seasonal drops, roast notes, and exclusive offers in your inbox.</p>
++      <form id="newsletter-form" novalidate>
++        <div class="newsletter-row">
++          <div class="newsletter-field">
++            <label for="newsletter-email" class="visually-hidden">Email address</label>
++            <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++              autocomplete="email" required aria-describedby="newsletter-email-error">
++            <div id="newsletter-email-error" class="error-message" aria-live="polite" hidden></div>
++          </div>
++          <button type="submit">Subscribe</button>
++        </div>
++        <p class="success-message" role="status" hidden></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +312,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const input = document.getElementById('newsletter-email');
++      const error = document.getElementById('newsletter-email-error');
++      const success = form.querySelector('.success-message');
++
++      // Errors stay hidden until the user has interacted with the field
++      // (focused and left it) or tried to submit the form.
++      let touched = false;
++
++      function getError() {
++        if (input.validity.valueMissing) return 'Please enter your email address.';
++        if (input.validity.typeMismatch) return 'Please enter a valid email address.';
++        return '';
++      }
++
++      function updateError() {
++        const message = touched ? getError() : '';
++        error.textContent = message;
++        error.hidden = !message;
++        if (message) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      }
++
++      input.addEventListener('blur', function () {
++        touched = true;
++        updateError();
++      });
++
++      // Once an error is showing, clear it live as the user fixes it.
++      input.addEventListener('input', function () {
++        success.hidden = true;
++        if (touched) updateError();
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        touched = true;
++        updateError();
++        if (!input.checkValidity()) {
++          input.focus();
++          return;
++        }
++        // TODO: send input.value to the mailing list provider/backend.
++        success.textContent = 'Thanks for subscribing! Check your inbox for a welcome email.';
++        success.hidden = false;
++        form.reset();
++        touched = false;
++        updateError();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

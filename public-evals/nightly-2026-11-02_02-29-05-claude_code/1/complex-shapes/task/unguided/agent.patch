@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,58 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
++    .hero > *:not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash shape. Absolutely positioned so it never
++       affects hero layout; falls back to a CSS blob if masks are unsupported
++       and to a brown gradient if the photo fails to load. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -8%;
++      width: clamp(180px, 32vw, 420px);
++      aspect-ratio: 1;
++      z-index: 0;
++      pointer-events: none;
++      opacity: 0.85;
++      transform: rotate(-12deg);
++      background-color: var(--primary);
++      background-image:
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80'),
++        linear-gradient(135deg, var(--accent), var(--primary));
++      background-size: cover;
++      background-position: center;
++      border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
++    }
++
++    @supports (mask-image: url('')) or (-webkit-mask-image: url('')) {
++      .shaped-element {
++        border-radius: 0;
++        --splash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M100 18C128 14 150 30 160 52C168 70 186 74 190 92C194 112 178 124 176 140C174 158 160 176 138 180C120 184 112 196 96 192C80 188 76 176 58 172C36 166 18 150 16 128C14 108 4 96 12 78C20 60 40 56 50 40C62 22 78 20 100 18Z'/%3E%3Ccircle cx='184' cy='40' r='7'/%3E%3Ccircle cx='170' cy='22' r='3.5'/%3E%3Ccircle cx='24' cy='182' r='8'/%3E%3Ccircle cx='44' cy='194' r='4'/%3E%3Ccircle cx='178' cy='190' r='5'/%3E%3C/svg%3E");
++        -webkit-mask-image: var(--splash);
++        mask-image: var(--splash);
++        -webkit-mask-size: 100% 100%;
++        mask-size: 100% 100%;
++        -webkit-mask-repeat: no-repeat;
++        mask-repeat: no-repeat;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.5;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +216,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Exclusive Roaster's Secrets Preview */
++    .roasters-secrets {
++      margin-block-start: 60px;
++    }
++
++    .section-title {
++      text-align: center;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      margin-block-start: 8px;
++      opacity: 0.85;
++    }
++
++    .paywall-container {
++      margin-block-start: 24px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-block-size: 380px;
++      overflow: hidden;
++      /* MANDATORY: Use vendor prefix for wider support in older browsers */
++      -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++      /* Standard property for modern browsers */
++      mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
++    }
++
++    .paywall-container h3 {
++      color: var(--primary);
++      margin-block-end: 12px;
++    }
++
++    .paywall-container p {
++      margin-block-end: 16px;
++    }
++
++    .secret-preview-header {
++      display: flex;
++      gap: 24px;
++      align-items: center;
++      margin-block-end: 20px;
++      flex-wrap: wrap;
++    }
++
++    .secret-preview-image {
++      inline-size: 200px;
++      block-size: 130px;
++      object-fit: cover;
++      border-radius: 6px;
++      flex-shrink: 0;
++    }
++
++    .secret-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 4px;
++      margin-block-end: 8px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-block-start: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +266,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasters-secrets">
++      <h2 class="section-title">Roaster's Secrets</h2>
++      <p class="section-subtitle">An exclusive behind-the-scenes guide for our Roaster's Club members.</p>
++      <div class="paywall-container">
++        <div class="secret-preview-header">
++          <img
++            src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++            alt="Freshly roasted coffee beans"
++            class="secret-preview-image"
++          >
++          <div>
++            <span class="secret-badge">Members Exclusive Preview</span>
++            <h3>Mastering the First Crack: Temperature Curves &amp; Airflow</h3>
++            <p>Unlocking the hidden floral and caramelized notes in single-origin Ethiopian beans comes down to a 15-second window during the Maillard reaction phase.</p>
++          </div>
++        </div>
++        <p>When our head roaster charges the drum at 405°F, the initial heat soak sets the foundation for uniform bean expansion. Most home and boutique roasters make the mistake of keeping airflow static through the yellowing phase, trapping chaff smoke and muting delicate bergamot aromatics.</p>
++        <p>At exactly 382°F internal bean temperature—just moments before the exothermic reaction of first crack begins—we open the damper to 75% while tapering gas pressure by a third. This prevents baking the sugars while stretching development time to precisely 18.5% of total roast duration...</p>
++        <p>In the next phase of our brew calibration notes, we break down the exact water mineral composition (magnesium-to-calcium ratios) and burr geometry adjustments needed to extract 22% yield without astringency...</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Full Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

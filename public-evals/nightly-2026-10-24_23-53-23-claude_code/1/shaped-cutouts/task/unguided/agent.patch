@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured barista: organic paint-splat mask. The SVG uses preserveAspectRatio="none"
++       and the mask is sized 100% 100%, so the splat stretches with the image's dimensions. */
++    .featured {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      gap: 12px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: 260px;
++      max-width: 100%;
++      aspect-ratio: 1;
++      object-fit: cover;
++      -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M52 3C62 2 67 10 76 12C87 14 96 22 94 33C93 41 99 46 98 56C97 67 88 70 86 79C84 90 72 97 62 94C55 92 50 99 40 97C29 95 25 86 17 82C7 77 1 68 4 58C6 50 0 44 4 35C8 24 18 22 23 14C29 6 42 4 52 3Z'/><circle cx='9' cy='14' r='4'/><circle cx='94' cy='88' r='3'/><circle cx='4' cy='84' r='2.2'/></svg>") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M52 3C62 2 67 10 76 12C87 14 96 22 94 33C93 41 99 46 98 56C97 67 88 70 86 79C84 90 72 97 62 94C55 92 50 99 40 97C29 95 25 86 17 82C7 77 1 68 4 58C6 50 0 44 4 35C8 24 18 22 23 14C29 6 42 4 52 3Z'/><circle cx='9' cy='14' r='4'/><circle cx='94' cy='88' r='3'/><circle cx='4' cy='84' r='2.2'/></svg>") center / 100% 100% no-repeat;
++    }
++
++    /* Loyalty banner: the shadow lives on the unmasked parent as a drop-shadow filter,
++       since a box-shadow on the masked accent would be clipped. */
++    .unified-card {
++      display: flex;
++      margin-top: 40px;
++      border-radius: 16px;
++      filter: drop-shadow(0 6px 10px rgba(62, 39, 35, 0.25));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      background: white;
++      padding: 28px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 120px;
++      background: linear-gradient(160deg, var(--accent), #ff8f00);
++      border-radius: 0 16px 16px 0;
++      /* concave semicircular cutout on the left side, flush against the body */
++      -webkit-mask: radial-gradient(circle 34px at 0 50%, transparent 97%, #000 100%);
++      mask: radial-gradient(circle 34px at 0 50%, transparent 97%, #000 100%);
++    }
++
++    /* Promo card: circular notch cut from the top edge with a radial gradient mask */
++    .gradient-masked-card {
++      margin-top: 40px;
++      padding: 48px 28px 28px;
++      background: var(--primary);
++      color: white;
++      border-radius: 12px;
++      text-align: center;
++      -webkit-mask: radial-gradient(circle 28px at 50% 0, transparent 97%, #000 100%);
++      mask: radial-gradient(circle 28px at 50% 0, transparent 97%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="featured" style="margin-top: 40px;">
++      <h2>Barista of the Month</h2>
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&h=600&q=80"
++        alt="Barista pouring hot water over a pour-over coffee">
++      <p>Meet Jordan, our pour-over specialist, crafting every cup by hand.</p>
++    </section>
++
++    <div class="unified-card">
++      <div class="card-body">
++        <h3>Join The Grind Rewards</h3>
++        <p>Earn a point for every cup and get your tenth drink on us.</p>
++        <a href="/rewards" class="btn">Join Now</a>
++      </div>
++      <div class="card-accent"></div>
++    </div>
++
++    <div class="gradient-masked-card">
++      <h3>Weekend Special</h3>
++      <p>Buy any pastry, get a drip coffee half off, Saturday and Sunday only.</p>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

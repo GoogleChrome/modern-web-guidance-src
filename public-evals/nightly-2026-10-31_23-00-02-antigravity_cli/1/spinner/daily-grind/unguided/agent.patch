@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..b395fdc 100644
+--- a/index.html
++++ b/index.html
+@@ -121,20 +121,144 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s, opacity 0.2s;
++      position: relative;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn.is-loading,
++    .btn[aria-busy="true"] {
++      cursor: wait;
++      opacity: 0.92;
++      pointer-events: none;
++    }
++
++    .card {
++      position: relative;
++      transition: opacity 0.2s;
++    }
++
++    .card[aria-busy="true"] {
++      cursor: wait;
++    }
++
++    /* Loading Spinner */
++    .spinner {
++      display: none;
++      width: 1em;
++      height: 1em;
++      flex-shrink: 0;
++      border: 2px solid rgba(255, 255, 255, 0.35);
++      border-top-color: #ffffff;
++      border-radius: 50%;
++      will-change: transform;
++      animation: spin 0.75s linear infinite;
++    }
++
++    .btn.is-loading .spinner,
++    .btn[aria-busy="true"] .spinner,
++    .loading-indicator.is-active .spinner {
++      display: inline-block;
++    }
++
++    .loading-indicator {
++      display: none;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary);
++      font-weight: 500;
++    }
++
++    .loading-indicator.is-active {
++      display: flex;
++    }
++
++    .loading-indicator .spinner {
++      border-color: rgba(78, 52, 46, 0.25);
++      border-top-color: var(--primary);
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    @keyframes spin {
++      from {
++        transform: rotate(0deg);
++      }
++      to {
++        transform: rotate(360deg);
++      }
++    }
++
++    @keyframes pulse-opacity {
++      0%, 100% {
++        opacity: 1;
++      }
++      50% {
++        opacity: 0.4;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .spinner {
++        animation: none;
++        border-color: currentColor;
++        opacity: 0.85;
++      }
++
++      .btn,
++      .card,
++      nav a {
++        transition: none;
++      }
++    }
++
++    .drink-details {
++      display: none;
++      margin-top: 12px;
++      padding-top: 12px;
++      border-top: 1px solid var(--secondary);
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    .drink-details.is-visible {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +295,43 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" id="order-now-btn" class="btn" aria-busy="false" data-loading-text="Starting Order...">
++      <span class="spinner" aria-hidden="true"></span>
++      <span class="btn-label">Order Now</span>
++    </a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div id="loading-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-favorites-heading" aria-busy="false">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" aria-busy="false" data-drink="Maple Oat Latte" data-details="16 oz • 180 kcal • Organic Vermont Grade A maple syrup, steamed barista oat milk, and two shots of signature espresso.">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="drink-details" aria-live="polite"></div>
++          <a href="/menu/seasonal" class="btn view-details-btn" aria-busy="false" data-loading-text="Loading Details...">
++            <span class="spinner" aria-hidden="true"></span>
++            <span class="btn-label">View Details</span>
++          </a>
+         </div>
+-        <div class="card">
++        <div class="card" aria-busy="false" data-drink="Dark Roast Espresso" data-details="Double Shot (2 oz) • 10 kcal • 100% Arabica beans roasted dark with notes of dark chocolate, molasses, and toasted walnut.">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="drink-details" aria-live="polite"></div>
++          <a href="/menu/espresso" class="btn view-details-btn" aria-busy="false" data-loading-text="Loading Details...">
++            <span class="spinner" aria-hidden="true"></span>
++            <span class="btn-label">View Details</span>
++          </a>
+         </div>
+-        <div class="card">
++        <div class="card" aria-busy="false" data-drink="Cold Brew" data-details="16 oz • 5 kcal • Single-origin Colombian beans coarse-ground and cold-steeped for 18 hours for a velvety, low-acid finish.">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="drink-details" aria-live="polite"></div>
++          <a href="/menu/cold-brew" class="btn view-details-btn" aria-busy="false" data-loading-text="Loading Details...">
++            <span class="spinner" aria-hidden="true"></span>
++            <span class="btn-label">View Details</span>
++          </a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +347,95 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const statusRegion = document.getElementById('loading-status');
++      const seasonalSection = document.getElementById('seasonal-favorites');
++      const orderBtn = document.getElementById('order-now-btn');
++      const detailButtons = document.querySelectorAll('.view-details-btn');
++
++      function announceStatus(message) {
++        if (statusRegion) {
++          statusRegion.textContent = message;
++        }
++      }
++
++      function setButtonLoading(btn, isLoading, loadingText, defaultText) {
++        const label = btn.querySelector('.btn-label');
++        btn.classList.toggle('is-loading', isLoading);
++        btn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
++        btn.setAttribute('aria-disabled', isLoading ? 'true' : 'false');
++        if (label) {
++          label.textContent = isLoading ? loadingText : defaultText;
++        }
++      }
++
++      if (orderBtn) {
++        const defaultOrderText = orderBtn.querySelector('.btn-label')?.textContent || 'Order Now';
++        orderBtn.addEventListener('click', function (event) {
++          event.preventDefault();
++          if (orderBtn.getAttribute('aria-busy') === 'true') {
++            return;
++          }
++
++          const loadingText = orderBtn.getAttribute('data-loading-text') || 'Starting Order...';
++          setButtonLoading(orderBtn, true, loadingText, defaultOrderText);
++          announceStatus('Starting your online order, please wait...');
++
++          const targetHref = orderBtn.getAttribute('href');
++          setTimeout(function () {
++            announceStatus('Order ready. Redirecting to online ordering.');
++            if (targetHref) {
++              window.location.href = targetHref;
++            }
++          }, 800);
++        });
++      }
++
++      detailButtons.forEach(function (btn) {
++        const defaultText = btn.querySelector('.btn-label')?.textContent || 'View Details';
++        btn.addEventListener('click', function (event) {
++          event.preventDefault();
++          if (btn.getAttribute('aria-busy') === 'true') {
++            return;
++          }
++
++          const card = btn.closest('.card');
++          const drinkName = card?.getAttribute('data-drink') || 'drink';
++          const loadingText = btn.getAttribute('data-loading-text') || 'Loading Details...';
++
++          setButtonLoading(btn, true, loadingText, defaultText);
++          if (card) {
++            card.setAttribute('aria-busy', 'true');
++          }
++          if (seasonalSection) {
++            seasonalSection.setAttribute('aria-busy', 'true');
++          }
++          announceStatus('Loading details for ' + drinkName + '...');
++
++          setTimeout(function () {
++            setButtonLoading(btn, false, loadingText, defaultText);
++            if (card) {
++              card.setAttribute('aria-busy', 'false');
++              const detailsContainer = card.querySelector('.drink-details');
++              const detailsText = card.getAttribute('data-details');
++              if (detailsContainer && detailsText) {
++                detailsContainer.textContent = detailsText;
++                detailsContainer.classList.add('is-visible');
++              }
++            }
++            const anyBusy = Array.from(detailButtons).some(function (b) {
++              return b.getAttribute('aria-busy') === 'true';
++            });
++            if (seasonalSection && !anyBusy) {
++              seasonalSection.setAttribute('aria-busy', 'false');
++            }
++            announceStatus('Loaded details for ' + drinkName + '.');
++          }, 600);
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,78 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .payment {
++      max-width: 540px;
++      margin: 40px auto 0;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scroll-margin-top: 100px;
++    }
++
++    .payment fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    .payment legend {
++      font-size: 1.5rem;
++      font-weight: bold;
++      margin-bottom: 8px;
++    }
++
++    .payment .field {
++      margin-top: 20px;
++    }
++
++    .payment label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .payment input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #8d7770;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .payment input:focus-visible,
++    .payment button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .payment input:user-invalid {
++      border: 2px solid #a62424;
++    }
++
++    .payment .hint {
++      display: block;
++      font-size: 0.875rem;
++      margin-top: 4px;
++    }
++
++    .payment button {
++      width: 100%;
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .payment-status:not(:empty) {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +264,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="payment" id="payment" aria-label="Payment details">
++      <form id="payment-form" action="#payment" method="post" aria-describedby="payment-note">
++        <fieldset>
++          <legend>Payment details</legend>
++          <p id="payment-note">All fields are required. This form is a demo; no payment will be processed.</p>
++
++          <div class="field">
++            <label for="card-number">Card number</label>
++            <input id="card-number" name="card-number" type="text" inputmode="numeric"
++              autocomplete="cc-number" autocorrect="off" spellcheck="false"
++              placeholder="1234 5678 9012 3456" pattern="[0-9](?: ?[0-9]){12,18}"
++              maxlength="37" title="Enter 13 to 19 digits, optionally separated by spaces." required>
++          </div>
++
++          <div class="field">
++            <label for="card-name">Name on card</label>
++            <input id="card-name" name="card-name" type="text" autocomplete="cc-name"
++              placeholder="Full name as shown on card" required>
++          </div>
++
++          <div class="field">
++            <label for="card-expiry">Expiry date</label>
++            <input id="card-expiry" name="card-expiry" type="text" inputmode="numeric"
++              autocomplete="cc-exp" placeholder="MM/YY" pattern="(0[1-9]|1[0-2])/[0-9]{2}"
++              maxlength="5" aria-describedby="expiry-hint" title="Enter a month and year in MM/YY format." required>
++            <small class="hint" id="expiry-hint">Use MM/YY, for example 12/28.</small>
++          </div>
++
++          <div class="field">
++            <label for="card-security-code">Security code</label>
++            <input id="card-security-code" name="card-security-code" type="password" inputmode="numeric"
++              autocomplete="cc-csc" pattern="[0-9]{3,4}" minlength="3" maxlength="4"
++              aria-describedby="security-code-hint" title="Enter the 3 or 4 digit security code." required>
++            <small class="hint" id="security-code-hint">The 3 or 4 digit code on your card.</small>
++          </div>
++        </fieldset>
++        <button class="btn" type="submit">Review payment details</button>
++        <p class="payment-status" id="payment-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +316,20 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const paymentForm = document.getElementById('payment-form');
++    const paymentStatus = document.getElementById('payment-status');
++
++    paymentForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      paymentStatus.textContent = 'Payment details are complete. This demo has not charged your card or sent your details.';
++    });
++
++    paymentForm.addEventListener('input', () => {
++      paymentStatus.textContent = '';
++    });
++  </script>
+ </body>
+ 
+ </html>

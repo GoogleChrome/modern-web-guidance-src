@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,57 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts</title>
++  <style>
++    body {
++      font-family: Georgia, "Times New Roman", serif;
++      margin: 2rem;
++    }
++
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      line-height: 1.6;
++      /* Take the x-height ratio from the primary font and apply it to nested fonts */
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Courier New", monospace;
++    }
++
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++    }
++
++    #independent-theme-container {
++      font-family: Verdana, sans-serif;
++      /* Numeric x-height ratio, independent of the page's primary font */
++      font-size-adjust: 0.52;
++      margin-top: 2rem;
++      padding: 1rem;
++      border: 1px solid currentColor;
++    }
++
++    @supports not (font-size-adjust: 0.52) {
++      #independent-theme-container {
++        font-size: 0.95rem;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text sits beside inline code such as <code>const x = document.querySelector("p");</code>
++    and stays visually balanced with <code>font-size-adjust</code> applied.
++  </p>
++
++  <div id="independent-theme-container">
++    This container uses an independent theme with its own fixed x-height ratio.
++  </div>
++</body>
++</html>

@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,112 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Analytics: page views and clicks, debounced and batched into one deferred request.
++    (() => {
++      const ANALYTICS_ENDPOINT = '/api/analytics';
++      // Events within this window coalesce into a single request.
++      const BATCH_WINDOW = 10 * 1000;
++      // Stay well under the fetchLater() quota (~64KB per origin).
++      const MAX_QUEUE_SIZE = 100;
++
++      // Minimal fetchLater() fallback for browsers without it (Firefox, Safari):
++      // sends on timeout or when the page is hidden.
++      globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++        let timeoutHandle;
++        let activated = false;
++
++        function sendNow() {
++          if (!(init.signal && init.signal.aborted)) {
++            if ('keepalive' in Request.prototype || init.method !== 'POST' || init.headers) {
++              fetch(url, Object.assign({}, init, {keepalive: true}));
++              activated = true;
++            } else {
++              activated = navigator.sendBeacon(url, init.body);
++            }
++          }
++          destroy();
++        }
++
++        function destroy() {
++          document.removeEventListener('visibilitychange', sendNow);
++          clearTimeout(timeoutHandle);
++        }
++
++        if (document.visibilityState === 'hidden') {
++          queueMicrotask(sendNow);
++        } else {
++          document.addEventListener('visibilitychange', sendNow);
++          if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++            timeoutHandle = setTimeout(sendNow, init.activateAfter);
++          }
++        }
++
++        if (init.signal) {
++          init.signal.addEventListener('abort', destroy);
++        }
++
++        return {
++          get activated() {
++            return activated;
++          },
++        };
++      };
++
++      const eventQueue = [];
++      let fetchLaterResult;
++      let fetchLaterController;
++
++      function trackEvent(eventData) {
++        // Start a fresh batch once the last one was sent or the queue is full.
++        if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++          fetchLaterController = null;
++          fetchLaterResult = null;
++          eventQueue.length = 0;
++        }
++
++        eventQueue.push({...eventData, time: Date.now(), path: location.pathname});
++
++        // Replace the pending request with one carrying the full queue.
++        fetchLaterController?.abort();
++        fetchLaterController = new AbortController();
++
++        try {
++          fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++            method: 'POST',
++            headers: {'content-type': 'application/json'},
++            body: JSON.stringify(eventQueue),
++            signal: fetchLaterController.signal,
++            activateAfter: BATCH_WINDOW,
++          });
++        } catch (error) {
++          // Quota exceeded or unsupported; analytics must never break the page.
++        }
++      }
++
++      function serializeElement(el) {
++        const target = el instanceof Element ? el.closest('a, button, [role="button"]') || el : null;
++        if (!target) return null;
++        return {
++          tag: target.localName,
++          id: target.id || undefined,
++          class: target.className || undefined,
++          href: target.getAttribute('href') || undefined,
++          text: target.textContent.trim().slice(0, 80) || undefined,
++        };
++      }
++
++      window.addEventListener('load', () => {
++        trackEvent({type: 'page_view', referrer: document.referrer});
++      });
++
++      window.addEventListener('click', (event) => {
++        trackEvent({type: 'click', target: serializeElement(event.target)});
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

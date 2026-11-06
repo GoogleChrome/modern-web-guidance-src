@@ -1,0 +1,184 @@
+diff --git a/index.html b/index.html
+index 66c9173..279ef8e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,122 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* The transparent text copy lets native decoration skip letter descenders.
++       Clip only that copy to reveal the line without moving or hiding the text. */
++    .decorated-text {
++      --line-color: var(--accent);
++      --line-style: solid;
++      --line-thickness: 0.08em;
++      --line-offset: 0.22em;
++      --line-inset-start: 0.05em;
++      --line-inset-end: 0.05em;
++      position: relative;
++      display: inline-block;
++    }
++
++    .decorated-text::after {
++      /* Empty alternative text keeps generated content out of accessible names. */
++      content: attr(data-text) / "";
++      position: absolute;
++      inset: 0;
++      color: transparent;
++      pointer-events: none;
++      text-decoration-line: underline;
++      text-decoration-color: var(--line-color);
++      text-decoration-style: var(--line-style);
++      text-decoration-thickness: var(--line-thickness);
++      text-underline-offset: var(--line-offset);
++      text-decoration-skip-ink: auto;
++      clip-path: inset(-0.5em var(--line-inset-end) -0.65em var(--line-inset-start));
++    }
++
++    nav .decorated-text {
++      --line-inset-start: 0.08em;
++      --line-inset-end: 0.08em;
++    }
++
++    nav .decorated-text::after,
++    .footer-links .decorated-text::after {
++      clip-path: inset(-0.5em 100% -0.65em var(--line-inset-start));
++      transition: clip-path 350ms ease;
++    }
++
++    nav a:is(:hover, :focus-visible) .decorated-text::after,
++    .footer-links a:is(:hover, :focus-visible) .decorated-text::after {
++      clip-path: inset(-0.5em var(--line-inset-end) -0.65em var(--line-inset-start));
++    }
++
++    nav a:focus-visible,
++    .footer-links a:focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 6px;
++    }
++
++    .section-title {
++      text-align: center;
++      padding-bottom: 0.35em;
++    }
++
++    .section-title .decorated-text {
++      --line-style: wavy;
++      --line-offset: 0.3em;
++      --line-inset-start: 0.45em;
++      --line-inset-end: 0.45em;
++    }
++
++    .section-title .decorated-text::after,
++    .card .decorated-text::after {
++      animation: reveal-line 850ms ease both;
++    }
++
++    .card .decorated-text {
++      --line-color: #a96924;
++      --line-offset: 0.25em;
++      --line-inset-start: 0.2em;
++      --line-inset-end: 0.2em;
++    }
++
++    .card:nth-child(1) .decorated-text {
++      --line-style: double;
++    }
++
++    .card:nth-child(2) .decorated-text::after {
++      animation-delay: 150ms;
++    }
++
++    .card:nth-child(3) .decorated-text {
++      --line-style: wavy;
++    }
++
++    .card:nth-child(3) .decorated-text::after {
++      animation-delay: 300ms;
++    }
++
++    .footer-links .decorated-text {
++      --line-color: var(--primary);
++      --line-style: double;
++      --line-thickness: 0.06em;
++      --line-offset: 0.3em;
++      --line-inset-start: 0.12em;
++      --line-inset-end: 0.12em;
++    }
++
++    @keyframes reveal-line {
++      from {
++        clip-path: inset(-0.5em 100% -0.65em var(--line-inset-start));
++      }
++      to {
++        clip-path: inset(-0.5em var(--line-inset-end) -0.65em var(--line-inset-start));
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .decorated-text::after {
++        animation: none !important;
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,11 +276,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="decorated-text" data-text="Menu">Menu</span></a></li>
++      <li><a href="/locations"><span class="decorated-text" data-text="Locations">Locations</span></a></li>
++      <li><a href="/rewards"><span class="decorated-text" data-text="Rewards">Rewards</span></a></li>
++      <li><a href="/account"><span class="decorated-text" data-text="My Account">My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span class="decorated-text" data-text="Logout">Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,20 +292,20 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title"><span class="decorated-text" data-text="Seasonal Favorites">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3><span class="decorated-text" data-text="Maple Oat Latte">Maple Oat Latte</span></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3><span class="decorated-text" data-text="Dark Roast Espresso">Dark Roast Espresso</span></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3><span class="decorated-text" data-text="Cold Brew">Cold Brew</span></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -199,10 +315,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about"><span class="decorated-text" data-text="Our Story">Our Story</span></a> |
++      <a href="/careers"><span class="decorated-text" data-text="Join the Team">Join the Team</span></a> |
++      <a href="/contact"><span class="decorated-text" data-text="Contact Us">Contact Us</span></a> |
++      <a href="/privacy-policy"><span class="decorated-text" data-text="Privacy">Privacy</span></a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

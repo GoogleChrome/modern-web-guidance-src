@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,136 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    /* Modal & Popover Base Styles */
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    dialog,
++    [popover] {
++      margin: auto;
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      max-width: 420px;
++      width: 90%;
++      opacity: 0;
++      transform: scale(0.9);
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    [popover] {
++      inset: auto 24px 24px auto;
++      margin: 0;
++      border-left: 4px solid var(--accent);
++    }
++
++    :is(dialog[open], [popover]:is(:popover-open, .\:popover-open)):where(:not([data-closing])) {
++      opacity: 1;
++      transform: scale(1);
++
++      @starting-style {
++        opacity: 0;
++        transform: scale(0.9);
++      }
++
++      &::backdrop {
++        background-color: rgba(0, 0, 0, 0.5);
++
++        @starting-style {
++          background-color: rgba(0, 0, 0, 0);
++        }
++      }
++    }
++
++    dialog::backdrop,
++    [popover]::backdrop {
++      background-color: rgba(0, 0, 0, 0);
++      transition-property: background-color, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      dialog,
++      [popover] {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++        :is(dialog[open], [popover]:is(:popover-open, .\:popover-open)):where(:not([data-closing])) {
++          transform: none;
++        }
++      }
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 20px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      text-decoration: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .popover-content {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++    }
++
++    .popover-close {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 4px 10px;
++      border-radius: 4px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +291,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" id="open-dialog-btn" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" id="foobar" class="btn" commandfor="order-offline-popover" command="toggle-popover" popovertarget="order-offline-popover">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +334,118 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-dialog-title" closedby="any">
++    <h2 id="logout-dialog-title">Confirm Logout</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <form method="dialog" class="dialog-actions">
++      <button type="submit" id="close-dialog-btn" class="btn-secondary" value="cancel" commandfor="logout-dialog" command="close" autofocus>Cancel</button>
++      <a href="/logout" class="btn-primary">Log Out</a>
++    </form>
++  </dialog>
++
++  <div id="order-offline-popover" popover="auto" role="status">
++    <div class="popover-content">
++      <p>online ordering is currently offline</p>
++      <button type="button" id="close-popover-btn" class="popover-close" commandfor="order-offline-popover" command="hide-popover" popovertarget="order-offline-popover" popovertargetaction="hide" aria-label="Dismiss notification">Dismiss</button>
++    </div>
++  </div>
++
++  <script type="module">
++    if (!('popover' in HTMLElement.prototype)) {
++      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++    }
++
++    async function closeTopLayer(element) {
++      if (!supportsTopLayerExit()) {
++        element.setAttribute('data-closing', '');
++        const animations = element.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!element.hasAttribute('data-closing')) return;
++        element.removeAttribute('data-closing');
++      }
++
++      if (element instanceof HTMLDialogElement) {
++        element.close();
++      } else if (typeof element.hidePopover === 'function') {
++        element.hidePopover();
++      }
++    }
++
++    const openDialogBtn = document.getElementById('open-dialog-btn');
++    const closeDialogBtn = document.getElementById('close-dialog-btn');
++    const logoutDialog = document.getElementById('logout-dialog');
++    const closePopoverBtn = document.getElementById('close-popover-btn');
++    const orderPopover = document.getElementById('order-offline-popover');
++
++    openDialogBtn.addEventListener('click', (event) => {
++      event.preventDefault();
++      logoutDialog.showModal();
++    });
++
++    closeDialogBtn.addEventListener('click', (event) => {
++      if (!supportsTopLayerExit()) {
++        event.preventDefault();
++        closeTopLayer(logoutDialog);
++      }
++    });
++
++    logoutDialog.addEventListener('cancel', (event) => {
++      event.preventDefault();
++      closeTopLayer(logoutDialog);
++    });
++
++    logoutDialog.addEventListener('close', () => {
++      logoutDialog.returnValue = '';
++    });
++
++    closePopoverBtn.addEventListener('click', (event) => {
++      if (!supportsTopLayerExit()) {
++        event.preventDefault();
++        closeTopLayer(orderPopover);
++      }
++    });
++
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
++        dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) closeTopLayer(dialog); });
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

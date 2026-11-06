@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,88 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .roast-selector {
++      position: relative;
++      width: min(260px, 100%);
++      margin-top: 20px;
++      text-align: left;
++    }
++
++    .roast-label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .roast-trigger,
++    .roast-options {
++      width: 100%;
++      background: var(--primary);
++      color: var(--accent);
++      border: 1px solid var(--accent);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .roast-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 10px 14px;
++      cursor: pointer;
++    }
++
++    .roast-arrow,
++    .roast-check {
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .roast-trigger[aria-expanded="true"] .roast-arrow {
++      transform: rotate(180deg);
++    }
++
++    .roast-options {
++      position: absolute;
++      top: calc(100% + 6px);
++      z-index: 10;
++      list-style: none;
++      padding: 5px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++    }
++
++    .roast-options li {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 8px;
++      border-radius: 3px;
++      cursor: pointer;
++    }
++
++    .roast-options li:hover,
++    .roast-options li:focus {
++      background: var(--accent);
++      color: var(--primary);
++      outline: none;
++    }
++
++    .roast-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .roast-options [aria-selected="false"] .roast-check {
++      visibility: hidden;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +250,21 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector">
++      <span id="roast-label" class="roast-label">Choose your roast</span>
++      <button id="roast-trigger" class="roast-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="roast-options" aria-labelledby="roast-label roast-value">
++        <span id="roast-value">Medium</span>
++        <svg class="roast-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
++      </button>
++      <ul id="roast-options" class="roast-options" role="listbox" aria-labelledby="roast-label" hidden>
++        <li role="option" aria-selected="false" tabindex="-1" data-roast="light">Light<svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></li>
++        <li role="option" aria-selected="true" tabindex="-1" data-roast="medium">Medium<svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></li>
++        <li role="option" aria-selected="false" tabindex="-1" data-roast="dark">Dark<svg class="roast-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></li>
++      </ul>
++      <input type="hidden" name="roast" id="roast" value="medium">
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -206,7 +299,65 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const selector = document.querySelector('.roast-selector');
++    const trigger = document.getElementById('roast-trigger');
++    const list = document.getElementById('roast-options');
++    const options = [...list.querySelectorAll('[role="option"]')];
++
++    function closeRoasts(returnFocus = false) {
++      list.hidden = true;
++      trigger.setAttribute('aria-expanded', 'false');
++      if (returnFocus) trigger.focus();
++    }
++
++    function openRoasts() {
++      list.hidden = false;
++      trigger.setAttribute('aria-expanded', 'true');
++      options.find(option => option.getAttribute('aria-selected') === 'true').focus();
++    }
++
++    function selectRoast(option) {
++      options.forEach(item => item.setAttribute('aria-selected', String(item === option)));
++      document.getElementById('roast-value').textContent = option.textContent;
++      document.getElementById('roast').value = option.dataset.roast;
++      closeRoasts(true);
++    }
++
++    trigger.addEventListener('click', () => list.hidden ? openRoasts() : closeRoasts());
++    trigger.addEventListener('keydown', event => {
++      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
++        event.preventDefault();
++        openRoasts();
++      }
++    });
++
++    options.forEach((option, index) => {
++      option.addEventListener('click', () => selectRoast(option));
++      option.addEventListener('keydown', event => {
++        const key = event.key;
++        if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ', 'Escape'].includes(key)) event.preventDefault();
++        if (key === 'ArrowDown') options[(index + 1) % options.length].focus();
++        else if (key === 'ArrowUp') options[(index + options.length - 1) % options.length].focus();
++        else if (key === 'Home') options[0].focus();
++        else if (key === 'End') options[options.length - 1].focus();
++        else if (key === 'Enter' || key === ' ') selectRoast(option);
++        else if (key === 'Escape') closeRoasts(true);
++        else {
++          const match = options.find(item => item.dataset.roast.startsWith(key.toLowerCase()));
++          if (key.length === 1 && match) match.focus();
++        }
++      });
++    });
++
++    document.addEventListener('click', event => {
++      if (!selector.contains(event.target)) closeRoasts();
++    });
++    selector.addEventListener('focusout', event => {
++      if (!selector.contains(event.relatedTarget)) closeRoasts();
++    });
++  </script>
+ </body>
+ 
+ </html>

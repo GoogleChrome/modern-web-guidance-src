@@ -1,0 +1,3163 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..9f77d70
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++data/
++.env
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..d10f161
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,31 @@
++# The Daily Grind
++
++A coffee shop site with passkey-only accounts. Requires Node.js 24+ and pnpm.
++
++## Setup
++
++Install dependencies with `pnpm install`, then run `pnpm build` to bundle the browser code. `pnpm start` serves both the page and the account API (default port 11222). The previous static-only server cannot verify passkeys; use the included application server when deploying this feature.
++
++For deployment, set:
++
++- `ORIGIN`: the exact public HTTPS origin, e.g. `https://coffee.example.com`, with no trailing slash.
++- `RP_ID`: the domain that owns the passkeys, e.g. `coffee.example.com`. Defaults to the hostname of `ORIGIN`. Keep this stable; changing it makes existing passkeys unusable on the new domain.
++- `PORT`: listening port, default `11222`.
++- `DATA_DIR`: persistent directory for SQLite, default `./data`. Mount persistent storage and back up this directory. Deploy one application instance; the request rate limiter is process-local.
++
++Terminate HTTPS at your reverse proxy and forward requests to this server. Use `http://localhost:11222` locally; it is the default origin. Cookies become Secure automatically with an HTTPS origin. The origin is configured explicitly rather than inferred from untrusted request headers. Do not serve the repository, database directory, or source files as a public static directory.
++
++## Account flows
++
++- **Registration:** choose a unique username, display name, and passkey label. The account is created only after WebAuthn attestation verification. Usernames are account identifiers, not verified email addresses.
++- **Authentication:** use the sign-in button or supported browser passkey autofill. Discoverable credentials allow username-free sign-in. Choosing another device or a security key is handled by the browser's native prompt.
++- **Management:** view creation and last-used dates, rename passkeys, and add/remove them. The last passkey cannot be removed. Add a backup on another device or in another password manager to avoid losing access. No password fallback or email recovery exists in this passkey-only application.
++- **Reauthentication:** identity verification requires user verification (PIN or biometrics), restricts credentials to the signed-in user, and unlocks account edits, passkey additions, and removals for five minutes. Primary sign-in and registration prefer user verification without rejecting authenticators that omit it.
++
++Only public keys and authenticator metadata are stored; private keys and biometric data stay with the authenticator. Sessions use random opaque HttpOnly cookies and expire after 24 hours. Authentication rotates the session ID. Challenges expire after five minutes, are bound to the session, user, ceremony, and verification level, and are consumed on every verification attempt. Mutating API requests require an exact matching Origin header. Credentials are verified with [SimpleWebAuthn](https://simplewebauthn.dev/docs/packages/server).
++
++The browser uses native WebAuthn APIs with bundled `webauthn-polyfills` for JSON serialization and capability discovery. Signal APIs are optional and feature-detected; failures do not undo completed operations. Common provider icons and names are display hints from the [passkey AAGUID registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids), with a generic fallback when metadata is unavailable. Provider identity never grants access.
++
++## Checks
++
++`pnpm check`, `pnpm test`, and `pnpm build` do not start a server. Tests invoke route handlers directly with an in-memory SQLite store and a software authenticator that creates real signed WebAuthn responses. They cover registration, sign-in, reauthentication, management, replay, ownership, origin, user-verification enforcement, and atomic persistence. `server.mjs` is the listening entrypoint; tests never import it.
+diff --git a/index.html b/index.html
+index 66c9173..c6a901b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,67 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    button, input { font: inherit; }
++    button { cursor: pointer; }
++    button:disabled { cursor: wait; opacity: .6; }
++    button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #bb6812; outline-offset: 4px; }
++    .logout-link { background: transparent; color: white; font-size: .9rem; }
++    [hidden] { display: none !important; }
++    #account { scroll-margin-top: 100px; margin-bottom: 48px; }
++    .account-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
++    .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; font-weight: 700; color: #84634f; }
++    .account-heading h2 { font-size: 2rem; letter-spacing: -.04em; }
++    .security-mark { font-size: .8rem; border: 1px solid #dfd5cc; padding: 6px 12px; border-radius: 24px; }
++    .account-layout { display: grid; grid-template-columns: 1.6fr 1fr; border: 1px solid #e3dcd5; border-radius: 12px; overflow: hidden; background: white; }
++    .account-main { padding: 30px; min-width: 0; }
++    .account-aside { background: #f1eae2; padding: 30px; }
++    .account-aside h3 { font-size: 1.35rem; line-height: 1.3; margin: 12px 0; }
++    .account-aside p, .muted { color: #75645c; font-size: .9rem; }
++    .account-aside ol { padding-left: 20px; margin: 20px 0; }
++    .account-aside li { margin-bottom: 12px; font-size: .9rem; }
++    .account-aside details { border-top: 1px solid #d9cfc4; padding-top: 16px; margin-top: 24px; font-size: .85rem; }
++    .account-aside summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
++    .account-tabs { display: flex; gap: 24px; border-bottom: 1px solid #e9e1db; margin-bottom: 24px; }
++    .account-tabs button { background: none; border: 0; padding: 0 0 12px; color: #75645c; border-bottom: 2px solid transparent; }
++    .account-tabs button[aria-pressed="true"] { color: var(--primary); border-color: var(--primary); font-weight: 700; }
++    .account-main h3 { margin-bottom: 8px; }
++    .account-main form { margin-top: 18px; }
++    .field { display: grid; gap: 5px; margin-bottom: 14px; font-size: .85rem; font-weight: 600; }
++    input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #cfc3ba; border-radius: 5px; background: white; color: var(--text); font-size: .95rem; }
++    .btn { border: 1px solid var(--primary); cursor: pointer; font-size: .9rem; }
++    .btn.secondary { background: transparent; color: var(--primary); }
++    .full-width { width: 100%; }
++    .form-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
++    .status { margin-top: 16px; border-radius: 6px; font-size: .9rem; padding: 12px; background: #f5f1ec; }
++    .status:empty { display: none; }
++    .status[data-error="true"] { background: #fff0eb; color: #8a3021; }
++    .account-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
++    .verified-state { font-size: .8rem; margin-top: 12px; color: #586848; }
++    .passkey-list { list-style: none; margin: 20px 0; }
++    .passkey-row { display: grid; grid-template-columns: 38px 1fr; gap: 12px; padding: 18px 0; border-bottom: 1px solid #e9e1db; }
++    .key-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; background: #f1eae2; }
++    .passkey-row strong { overflow-wrap: anywhere; }
++    .passkey-row form { margin: 10px 0 0; }
++    .row-actions { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
++    .text-button { color: var(--primary); background: none; border: 0; text-decoration: underline; font-size: .85rem; }
++    .danger { color: #9b3528; }
++    .profile-settings { border-top: 1px solid #e9e1db; padding-top: 20px; margin-top: 24px; }
++    .profile-settings summary { font-weight: 600; cursor: pointer; }
++    dialog { margin: auto; padding: 28px; border: 0; border-radius: 12px; max-width: 440px; width: calc(100% - 32px); color: var(--text); }
++    dialog::backdrop { background: #24150f99; }
++    dialog p { margin-top: 12px; }
++    @media (max-width: 700px) {
++      nav { gap: 16px; flex-wrap: wrap; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin: 0; }
++      .logo { font-size: 1.1rem; }
++      .account-layout { grid-template-columns: 1fr; }
++      .account-main, .account-aside { padding: 22px; }
++      .account-heading { align-items: start; }
++      .security-mark { display: none; }
++      .form-pair { grid-template-columns: 1fr; gap: 0; }
++      .hero h1 { font-size: 2.25rem; }
++    }
+   </style>
+ </head>
+ 
+@@ -163,8 +224,8 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li><button type="button" id="nav-session" class="logout-link">Sign in</button></li>
+     </ul>
+   </nav>
+ 
+@@ -175,6 +236,83 @@
+   </header>
+ 
+   <main class="container">
++    <section id="account" aria-labelledby="account-title">
++      <div class="account-heading">
++        <div><p class="eyebrow">Your daily ritual, simplified</p><h2 id="account-title">A better way to sign in.</h2></div>
++        <span class="security-mark">◈ &nbsp; Secure with passkeys</span>
++      </div>
++      <div class="account-layout">
++        <div class="account-main" id="account-main">
++          <div id="signed-out">
++            <div class="account-tabs" aria-label="Account access">
++              <button type="button" id="signin-tab" aria-pressed="true">Sign in</button>
++              <button type="button" id="signup-tab" aria-pressed="false">Create an account</button>
++            </div>
++            <div id="signin-panel">
++              <h3>Welcome back to the Grind.</h3>
++              <p class="muted">Your next great cup starts here. Sign in with your fingerprint, face, or device PIN.</p>
++              <form id="signin-form">
++                <label class="field">Username <span class="muted">Optional — choose a saved passkey below</span><input name="username" autocomplete="username webauthn" placeholder="Your username" maxlength="40"></label>
++                <button class="btn full-width passkey-action" type="submit">Sign in with a passkey <span aria-hidden="true">↗</span></button>
++              </form>
++              <p class="muted" style="margin-top:16px">New here? Create an account with a passkey. No password to remember.</p>
++            </div>
++            <div id="signup-panel" hidden>
++              <h3>Make yourself at home.</h3>
++              <p class="muted">Choose a username and create a passkey to open your account.</p>
++              <form id="signup-form">
++                <div class="form-pair">
++                  <label class="field">Display name<input name="displayName" autocomplete="nickname" required maxlength="80" placeholder="Alex"></label>
++                  <label class="field">Username<input name="name" autocomplete="username" required pattern="[a-zA-Z0-9._-]+" maxlength="40" placeholder="alex.coffee" title="Letters, numbers, dots, underscores, and hyphens"></label>
++                </div>
++                <label class="field">Passkey name<input name="passkeyName" required maxlength="80" value="My everyday passkey"></label>
++                <button class="btn full-width passkey-action" type="submit">Create account with a passkey <span aria-hidden="true">↗</span></button>
++              </form>
++            </div>
++          </div>
++          <div id="signed-in" hidden>
++            <p class="eyebrow">Account &amp; security</p>
++            <h3 id="welcome-name" tabindex="-1"></h3>
++            <p class="muted">Manage the passkeys you use to sign in to The Daily Grind.</p>
++            <div class="account-toolbar">
++              <button class="btn passkey-action" id="add-passkey" type="button">+ Add a passkey</button>
++              <button class="btn secondary passkey-action" id="verify-identity" type="button">Verify identity</button>
++              <button class="text-button" id="signout" type="button">Sign out</button>
++            </div>
++            <p id="verified-state" class="verified-state" role="status"></p>
++            <ul id="passkey-list" class="passkey-list" aria-label="Your passkeys"></ul>
++            <p class="muted">Keep a second passkey on another device or security key so you always have a way back in.</p>
++            <details class="profile-settings">
++              <summary>Account details</summary>
++              <form id="profile-form">
++                <div class="form-pair">
++                  <label class="field">Display name<input name="displayName" autocomplete="nickname" required maxlength="80"></label>
++                  <label class="field">Username<input name="name" autocomplete="username" pattern="[a-zA-Z0-9._-]+" required maxlength="40"></label>
++                </div>
++                <button class="btn secondary passkey-action" type="submit">Save account details</button>
++                <p class="muted">You’ll verify your identity before changing your account.</p>
++              </form>
++            </details>
++          </div>
++          <p id="account-status" class="status" role="status" aria-live="polite"></p>
++          <p id="support-message" class="status" hidden></p>
++          <noscript><p>Enable JavaScript to create an account or sign in with a passkey.</p></noscript>
++        </div>
++        <aside class="account-aside" aria-labelledby="passkey-info-title">
++          <span aria-hidden="true" style="font-size:2rem">◈</span>
++          <p class="eyebrow">Less friction. More coffee.</p>
++          <h3 id="passkey-info-title">Your device is your key.</h3>
++          <p>Passkeys make getting into your account as easy as unlocking your phone.</p>
++          <ol>
++            <li><strong>No passwords.</strong><br>Use your fingerprint, face, or device PIN.</li>
++            <li><strong>Only you can sign in.</strong><br>Your passkey works only with this site, helping protect you from phishing.</li>
++            <li><strong>Ready wherever you are.</strong><br>Save a passkey in your password manager or use a security key.</li>
++          </ol>
++          <details><summary>Using a new device?</summary><p>Select “use another device” in your browser’s passkey prompt to sign in with your phone or security key. Synced passkeys may already be available in your password manager. If you lose every passkey, we can’t restore access, so add a backup.</p></details>
++        </aside>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +345,16 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="delete-dialog" aria-labelledby="delete-title">
++    <h2 id="delete-title">Remove this passkey?</h2>
++    <p id="delete-description"></p>
++    <p class="muted">You’ll verify your identity before it’s removed. You can still sign in with your other passkeys.</p>
++    <form method="dialog" class="account-toolbar">
++      <button class="btn secondary" value="cancel">Keep passkey</button>
++      <button class="btn" value="remove">Verify &amp; remove</button>
++    </form>
++  </dialog>
++  <script type="module" src="/assets/account.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..de8442d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,26 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "esbuild src/account.js --bundle --format=esm --target=es2022 --outfile=public/assets/account.js",
++    "test": "node --test test/*.test.mjs",
++    "check": "node --check server.mjs && node --check src/app.mjs && node --check src/account.js"
+   },
+   "pnpm": {
+-    "onlyBuiltDependencies": []
++    "onlyBuiltDependencies": [
++      "esbuild"
++    ]
++  },
++  "dependencies": {
++    "@simplewebauthn/server": "^14.0.3",
++    "express": "^5.3.0",
++    "webauthn-polyfills": "^0.1.7"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
++  },
++  "type": "module",
++  "engines": {
++    "node": ">=24"
+   }
+ }
+diff --git a/public/assets/account.js b/public/assets/account.js
+new file mode 100644
+index 0000000..a1f1cec
+--- /dev/null
++++ b/public/assets/account.js
+@@ -0,0 +1,2162 @@
++var __create = Object.create;
++var __defProp = Object.defineProperty;
++var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
++var __getOwnPropNames = Object.getOwnPropertyNames;
++var __getProtoOf = Object.getPrototypeOf;
++var __hasOwnProp = Object.prototype.hasOwnProperty;
++var __commonJS = (cb, mod) => function __require() {
++  try {
++    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
++  } catch (e) {
++    throw mod = 0, e;
++  }
++};
++var __copyProps = (to, from, except, desc) => {
++  if (from && typeof from === "object" || typeof from === "function") {
++    for (let key of __getOwnPropNames(from))
++      if (!__hasOwnProp.call(to, key) && key !== except)
++        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
++  }
++  return to;
++};
++var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
++  // If the importer is in node compatibility mode or this is not an ESM
++  // file that has been converted to a CommonJS file using a Babel-
++  // compatible transform (i.e. "__esModule" has not been set), then set
++  // "default" to the CommonJS "module.exports" for node compatibility.
++  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
++  mod
++));
++
++// node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/src/ua-parser.js
++var require_ua_parser = __commonJS({
++  "node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/src/ua-parser.js"(exports, module) {
++    (function(window2, undefined2) {
++      "use strict";
++      var LIBVERSION = "1.0.41", EMPTY = "", UNKNOWN = "?", FUNC_TYPE = "function", UNDEF_TYPE = "undefined", OBJ_TYPE = "object", STR_TYPE = "string", MAJOR = "major", MODEL = "model", NAME = "name", TYPE = "type", VENDOR = "vendor", VERSION = "version", ARCHITECTURE = "architecture", CONSOLE = "console", MOBILE = "mobile", TABLET = "tablet", SMARTTV = "smarttv", WEARABLE = "wearable", EMBEDDED = "embedded", UA_MAX_LENGTH = 500;
++      var AMAZON = "Amazon", APPLE = "Apple", ASUS = "ASUS", BLACKBERRY = "BlackBerry", BROWSER = "Browser", CHROME = "Chrome", EDGE = "Edge", FIREFOX = "Firefox", GOOGLE = "Google", HONOR = "Honor", HUAWEI = "Huawei", LENOVO = "Lenovo", LG = "LG", MICROSOFT = "Microsoft", MOTOROLA = "Motorola", NVIDIA = "Nvidia", ONEPLUS = "OnePlus", OPERA = "Opera", OPPO = "OPPO", SAMSUNG = "Samsung", SHARP = "Sharp", SONY = "Sony", XIAOMI = "Xiaomi", ZEBRA = "Zebra", FACEBOOK = "Facebook", CHROMIUM_OS = "Chromium OS", MAC_OS = "Mac OS", SUFFIX_BROWSER = " Browser";
++      var extend = function(regexes2, extensions) {
++        var mergedRegexes = {};
++        for (var i in regexes2) {
++          if (extensions[i] && extensions[i].length % 2 === 0) {
++            mergedRegexes[i] = extensions[i].concat(regexes2[i]);
++          } else {
++            mergedRegexes[i] = regexes2[i];
++          }
++        }
++        return mergedRegexes;
++      }, enumerize = function(arr) {
++        var enums = {};
++        for (var i = 0; i < arr.length; i++) {
++          enums[arr[i].toUpperCase()] = arr[i];
++        }
++        return enums;
++      }, has = function(str1, str2) {
++        return typeof str1 === STR_TYPE ? lowerize(str2).indexOf(lowerize(str1)) !== -1 : false;
++      }, lowerize = function(str) {
++        return str.toLowerCase();
++      }, majorize = function(version) {
++        return typeof version === STR_TYPE ? version.replace(/[^\d\.]/g, EMPTY).split(".")[0] : undefined2;
++      }, trim = function(str, len) {
++        if (typeof str === STR_TYPE) {
++          str = str.replace(/^\s\s*/, EMPTY);
++          return typeof len === UNDEF_TYPE ? str : str.substring(0, UA_MAX_LENGTH);
++        }
++      };
++      var rgxMapper = function(ua, arrays) {
++        var i = 0, j, k, p, q, matches, match;
++        while (i < arrays.length && !matches) {
++          var regex = arrays[i], props = arrays[i + 1];
++          j = k = 0;
++          while (j < regex.length && !matches) {
++            if (!regex[j]) {
++              break;
++            }
++            matches = regex[j++].exec(ua);
++            if (!!matches) {
++              for (p = 0; p < props.length; p++) {
++                match = matches[++k];
++                q = props[p];
++                if (typeof q === OBJ_TYPE && q.length > 0) {
++                  if (q.length === 2) {
++                    if (typeof q[1] == FUNC_TYPE) {
++                      this[q[0]] = q[1].call(this, match);
++                    } else {
++                      this[q[0]] = q[1];
++                    }
++                  } else if (q.length === 3) {
++                    if (typeof q[1] === FUNC_TYPE && !(q[1].exec && q[1].test)) {
++                      this[q[0]] = match ? q[1].call(this, match, q[2]) : undefined2;
++                    } else {
++                      this[q[0]] = match ? match.replace(q[1], q[2]) : undefined2;
++                    }
++                  } else if (q.length === 4) {
++                    this[q[0]] = match ? q[3].call(this, match.replace(q[1], q[2])) : undefined2;
++                  }
++                } else {
++                  this[q] = match ? match : undefined2;
++                }
++              }
++            }
++          }
++          i += 2;
++        }
++      }, strMapper = function(str, map) {
++        for (var i in map) {
++          if (typeof map[i] === OBJ_TYPE && map[i].length > 0) {
++            for (var j = 0; j < map[i].length; j++) {
++              if (has(map[i][j], str)) {
++                return i === UNKNOWN ? undefined2 : i;
++              }
++            }
++          } else if (has(map[i], str)) {
++            return i === UNKNOWN ? undefined2 : i;
++          }
++        }
++        return map.hasOwnProperty("*") ? map["*"] : str;
++      };
++      var oldSafariMap = {
++        "1.0": "/8",
++        "1.2": "/1",
++        "1.3": "/3",
++        "2.0": "/412",
++        "2.0.2": "/416",
++        "2.0.3": "/417",
++        "2.0.4": "/419",
++        "?": "/"
++      }, windowsVersionMap = {
++        "ME": "4.90",
++        "NT 3.11": "NT3.51",
++        "NT 4.0": "NT4.0",
++        "2000": "NT 5.0",
++        "XP": ["NT 5.1", "NT 5.2"],
++        "Vista": "NT 6.0",
++        "7": "NT 6.1",
++        "8": "NT 6.2",
++        "8.1": "NT 6.3",
++        "10": ["NT 6.4", "NT 10.0"],
++        "RT": "ARM"
++      };
++      var regexes = {
++        browser: [
++          [
++            /\b(?:crmo|crios)\/([\w\.]+)/i
++            // Chrome for Android/iOS
++          ],
++          [VERSION, [NAME, "Chrome"]],
++          [
++            /edg(?:e|ios|a)?\/([\w\.]+)/i
++            // Microsoft Edge
++          ],
++          [VERSION, [NAME, "Edge"]],
++          [
++            // Presto based
++            /(opera mini)\/([-\w\.]+)/i,
++            // Opera Mini
++            /(opera [mobiletab]{3,6})\b.+version\/([-\w\.]+)/i,
++            // Opera Mobi/Tablet
++            /(opera)(?:.+version\/|[\/ ]+)([\w\.]+)/i
++            // Opera
++          ],
++          [NAME, VERSION],
++          [
++            /opios[\/ ]+([\w\.]+)/i
++            // Opera mini on iphone >= 8.0
++          ],
++          [VERSION, [NAME, OPERA + " Mini"]],
++          [
++            /\bop(?:rg)?x\/([\w\.]+)/i
++            // Opera GX
++          ],
++          [VERSION, [NAME, OPERA + " GX"]],
++          [
++            /\bopr\/([\w\.]+)/i
++            // Opera Webkit
++          ],
++          [VERSION, [NAME, OPERA]],
++          [
++            // Mixed
++            /\bb[ai]*d(?:uhd|[ub]*[aekoprswx]{5,6})[\/ ]?([\w\.]+)/i
++            // Baidu
++          ],
++          [VERSION, [NAME, "Baidu"]],
++          [
++            /\b(?:mxbrowser|mxios|myie2)\/?([-\w\.]*)\b/i
++            // Maxthon
++          ],
++          [VERSION, [NAME, "Maxthon"]],
++          [
++            /(kindle)\/([\w\.]+)/i,
++            // Kindle
++            /(lunascape|maxthon|netfront|jasmine|blazer|sleipnir)[\/ ]?([\w\.]*)/i,
++            // Lunascape/Maxthon/Netfront/Jasmine/Blazer/Sleipnir
++            // Trident based
++            /(avant|iemobile|slim(?:browser|boat|jet))[\/ ]?([\d\.]*)/i,
++            // Avant/IEMobile/SlimBrowser/SlimBoat/Slimjet
++            /(?:ms|\()(ie) ([\w\.]+)/i,
++            // Internet Explorer
++            // Blink/Webkit/KHTML based                                         // Flock/RockMelt/Midori/Epiphany/Silk/Skyfire/Bolt/Iron/Iridium/PhantomJS/Bowser/QupZilla/Falkon
++            /(flock|rockmelt|midori|epiphany|silk|skyfire|ovibrowser|bolt|iron|vivaldi|iridium|phantomjs|bowser|qupzilla|falkon|rekonq|puffin|brave|whale(?!.+naver)|qqbrowserlite|duckduckgo|klar|helio|(?=comodo_)?dragon)\/([-\w\.]+)/i,
++            // Rekonq/Puffin/Brave/Whale/QQBrowserLite/QQ//Vivaldi/DuckDuckGo/Klar/Helio/Dragon
++            /(heytap|ovi|115)browser\/([\d\.]+)/i,
++            // HeyTap/Ovi/115
++            /(weibo)__([\d\.]+)/i
++            // Weibo
++          ],
++          [NAME, VERSION],
++          [
++            /quark(?:pc)?\/([-\w\.]+)/i
++            // Quark
++          ],
++          [VERSION, [NAME, "Quark"]],
++          [
++            /\bddg\/([\w\.]+)/i
++            // DuckDuckGo
++          ],
++          [VERSION, [NAME, "DuckDuckGo"]],
++          [
++            /(?:\buc? ?browser|(?:juc.+)ucweb)[\/ ]?([\w\.]+)/i
++            // UCBrowser
++          ],
++          [VERSION, [NAME, "UC" + BROWSER]],
++          [
++            /microm.+\bqbcore\/([\w\.]+)/i,
++            // WeChat Desktop for Windows Built-in Browser
++            /\bqbcore\/([\w\.]+).+microm/i,
++            /micromessenger\/([\w\.]+)/i
++            // WeChat
++          ],
++          [VERSION, [NAME, "WeChat"]],
++          [
++            /konqueror\/([\w\.]+)/i
++            // Konqueror
++          ],
++          [VERSION, [NAME, "Konqueror"]],
++          [
++            /trident.+rv[: ]([\w\.]{1,9})\b.+like gecko/i
++            // IE11
++          ],
++          [VERSION, [NAME, "IE"]],
++          [
++            /ya(?:search)?browser\/([\w\.]+)/i
++            // Yandex
++          ],
++          [VERSION, [NAME, "Yandex"]],
++          [
++            /slbrowser\/([\w\.]+)/i
++            // Smart Lenovo Browser
++          ],
++          [VERSION, [NAME, "Smart Lenovo " + BROWSER]],
++          [
++            /(avast|avg)\/([\w\.]+)/i
++            // Avast/AVG Secure Browser
++          ],
++          [[NAME, /(.+)/, "$1 Secure " + BROWSER], VERSION],
++          [
++            /\bfocus\/([\w\.]+)/i
++            // Firefox Focus
++          ],
++          [VERSION, [NAME, FIREFOX + " Focus"]],
++          [
++            /\bopt\/([\w\.]+)/i
++            // Opera Touch
++          ],
++          [VERSION, [NAME, OPERA + " Touch"]],
++          [
++            /coc_coc\w+\/([\w\.]+)/i
++            // Coc Coc Browser
++          ],
++          [VERSION, [NAME, "Coc Coc"]],
++          [
++            /dolfin\/([\w\.]+)/i
++            // Dolphin
++          ],
++          [VERSION, [NAME, "Dolphin"]],
++          [
++            /coast\/([\w\.]+)/i
++            // Opera Coast
++          ],
++          [VERSION, [NAME, OPERA + " Coast"]],
++          [
++            /miuibrowser\/([\w\.]+)/i
++            // MIUI Browser
++          ],
++          [VERSION, [NAME, "MIUI" + SUFFIX_BROWSER]],
++          [
++            /fxios\/([\w\.-]+)/i
++            // Firefox for iOS
++          ],
++          [VERSION, [NAME, FIREFOX]],
++          [
++            /\bqihoobrowser\/?([\w\.]*)/i
++            // 360
++          ],
++          [VERSION, [NAME, "360"]],
++          [
++            /\b(qq)\/([\w\.]+)/i
++            // QQ
++          ],
++          [[NAME, /(.+)/, "$1Browser"], VERSION],
++          [
++            /(oculus|sailfish|huawei|vivo|pico)browser\/([\w\.]+)/i
++          ],
++          [[NAME, /(.+)/, "$1" + SUFFIX_BROWSER], VERSION],
++          [
++            // Oculus/Sailfish/HuaweiBrowser/VivoBrowser/PicoBrowser
++            /samsungbrowser\/([\w\.]+)/i
++            // Samsung Internet
++          ],
++          [VERSION, [NAME, SAMSUNG + " Internet"]],
++          [
++            /metasr[\/ ]?([\d\.]+)/i
++            // Sogou Explorer
++          ],
++          [VERSION, [NAME, "Sogou Explorer"]],
++          [
++            /(sogou)mo\w+\/([\d\.]+)/i
++            // Sogou Mobile
++          ],
++          [[NAME, "Sogou Mobile"], VERSION],
++          [
++            /(electron)\/([\w\.]+) safari/i,
++            // Electron-based App
++            /(tesla)(?: qtcarbrowser|\/(20\d\d\.[-\w\.]+))/i,
++            // Tesla
++            /m?(qqbrowser|2345(?=browser|chrome|explorer))\w*[\/ ]?v?([\w\.]+)/i
++            // QQ/2345
++          ],
++          [NAME, VERSION],
++          [
++            /(lbbrowser|rekonq)/i,
++            // LieBao Browser/Rekonq
++            /\[(linkedin)app\]/i
++            // LinkedIn App for iOS & Android
++          ],
++          [NAME],
++          [
++            /ome\/([\w\.]+) \w* ?(iron) saf/i,
++            // Iron
++            /ome\/([\w\.]+).+qihu (360)[es]e/i
++            // 360
++          ],
++          [VERSION, NAME],
++          [
++            // WebView
++            /((?:fban\/fbios|fb_iab\/fb4a)(?!.+fbav)|;fbav\/([\w\.]+);)/i
++            // Facebook App for iOS & Android
++          ],
++          [[NAME, FACEBOOK], VERSION],
++          [
++            /(Klarna)\/([\w\.]+)/i,
++            // Klarna Shopping Browser for iOS & Android
++            /(kakao(?:talk|story))[\/ ]([\w\.]+)/i,
++            // Kakao App
++            /(naver)\(.*?(\d+\.[\w\.]+).*\)/i,
++            // Naver InApp
++            /(daum)apps[\/ ]([\w\.]+)/i,
++            // Daum App
++            /safari (line)\/([\w\.]+)/i,
++            // Line App for iOS
++            /\b(line)\/([\w\.]+)\/iab/i,
++            // Line App for Android
++            /(alipay)client\/([\w\.]+)/i,
++            // Alipay
++            /(twitter)(?:and| f.+e\/([\w\.]+))/i,
++            // Twitter
++            /(chromium|instagram|snapchat)[\/ ]([-\w\.]+)/i
++            // Chromium/Instagram/Snapchat
++          ],
++          [NAME, VERSION],
++          [
++            /\bgsa\/([\w\.]+) .*safari\//i
++            // Google Search Appliance on iOS
++          ],
++          [VERSION, [NAME, "GSA"]],
++          [
++            /musical_ly(?:.+app_?version\/|_)([\w\.]+)/i
++            // TikTok
++          ],
++          [VERSION, [NAME, "TikTok"]],
++          [
++            /headlesschrome(?:\/([\w\.]+)| )/i
++            // Chrome Headless
++          ],
++          [VERSION, [NAME, CHROME + " Headless"]],
++          [
++            / wv\).+(chrome)\/([\w\.]+)/i
++            // Chrome WebView
++          ],
++          [[NAME, CHROME + " WebView"], VERSION],
++          [
++            /droid.+ version\/([\w\.]+)\b.+(?:mobile safari|safari)/i
++            // Android Browser
++          ],
++          [VERSION, [NAME, "Android " + BROWSER]],
++          [
++            /(chrome|omniweb|arora|[tizenoka]{5} ?browser)\/v?([\w\.]+)/i
++            // Chrome/OmniWeb/Arora/Tizen/Nokia
++          ],
++          [NAME, VERSION],
++          [
++            /version\/([\w\.\,]+) .*mobile\/\w+ (safari)/i
++            // Mobile Safari
++          ],
++          [VERSION, [NAME, "Mobile Safari"]],
++          [
++            /version\/([\w(\.|\,)]+) .*(mobile ?safari|safari)/i
++            // Safari & Safari Mobile
++          ],
++          [VERSION, NAME],
++          [
++            /webkit.+?(mobile ?safari|safari)(\/[\w\.]+)/i
++            // Safari < 3.0
++          ],
++          [NAME, [VERSION, strMapper, oldSafariMap]],
++          [
++            /(webkit|khtml)\/([\w\.]+)/i
++          ],
++          [NAME, VERSION],
++          [
++            // Gecko based
++            /(navigator|netscape\d?)\/([-\w\.]+)/i
++            // Netscape
++          ],
++          [[NAME, "Netscape"], VERSION],
++          [
++            /(wolvic|librewolf)\/([\w\.]+)/i
++            // Wolvic/LibreWolf
++          ],
++          [NAME, VERSION],
++          [
++            /mobile vr; rv:([\w\.]+)\).+firefox/i
++            // Firefox Reality
++          ],
++          [VERSION, [NAME, FIREFOX + " Reality"]],
++          [
++            /ekiohf.+(flow)\/([\w\.]+)/i,
++            // Flow
++            /(swiftfox)/i,
++            // Swiftfox
++            /(icedragon|iceweasel|camino|chimera|fennec|maemo browser|minimo|conkeror)[\/ ]?([\w\.\+]+)/i,
++            // IceDragon/Iceweasel/Camino/Chimera/Fennec/Maemo/Minimo/Conkeror
++            /(seamonkey|k-meleon|icecat|iceape|firebird|phoenix|palemoon|basilisk|waterfox)\/([-\w\.]+)$/i,
++            // Firefox/SeaMonkey/K-Meleon/IceCat/IceApe/Firebird/Phoenix
++            /(firefox)\/([\w\.]+)/i,
++            // Other Firefox-based
++            /(mozilla)\/([\w\.]+) .+rv\:.+gecko\/\d+/i,
++            // Mozilla
++            // Other
++            /(amaya|dillo|doris|icab|ladybird|lynx|mosaic|netsurf|obigo|polaris|w3m|(?:go|ice|up)[\. ]?browser)[-\/ ]?v?([\w\.]+)/i,
++            // Polaris/Lynx/Dillo/iCab/Doris/Amaya/w3m/NetSurf/Obigo/Mosaic/Go/ICE/UP.Browser/Ladybird
++            /\b(links) \(([\w\.]+)/i
++            // Links
++          ],
++          [NAME, [VERSION, /_/g, "."]],
++          [
++            /(cobalt)\/([\w\.]+)/i
++            // Cobalt
++          ],
++          [NAME, [VERSION, /master.|lts./, ""]]
++        ],
++        cpu: [
++          [
++            /\b((amd|x|x86[-_]?|wow|win)64)\b/i
++            // AMD64 (x64)
++          ],
++          [[ARCHITECTURE, "amd64"]],
++          [
++            /(ia32(?=;))/i,
++            // IA32 (quicktime)
++            /\b((i[346]|x)86)(pc)?\b/i
++            // IA32 (x86)
++          ],
++          [[ARCHITECTURE, "ia32"]],
++          [
++            /\b(aarch64|arm(v?[89]e?l?|_?64))\b/i
++            // ARM64
++          ],
++          [[ARCHITECTURE, "arm64"]],
++          [
++            /\b(arm(v[67])?ht?n?[fl]p?)\b/i
++            // ARMHF
++          ],
++          [[ARCHITECTURE, "armhf"]],
++          [
++            // PocketPC mistakenly identified as PowerPC
++            /( (ce|mobile); ppc;|\/[\w\.]+arm\b)/i
++          ],
++          [[ARCHITECTURE, "arm"]],
++          [
++            /((ppc|powerpc)(64)?)( mac|;|\))/i
++            // PowerPC
++          ],
++          [[ARCHITECTURE, /ower/, EMPTY, lowerize]],
++          [
++            / sun4\w[;\)]/i
++            // SPARC
++          ],
++          [[ARCHITECTURE, "sparc"]],
++          [
++            /\b(avr32|ia64(?=;)|68k(?=\))|\barm(?=v([1-7]|[5-7]1)l?|;|eabi)|(irix|mips|sparc)(64)?\b|pa-risc)/i
++            // IA64, 68K, ARM/64, AVR/32, IRIX/64, MIPS/64, SPARC/64, PA-RISC
++          ],
++          [[ARCHITECTURE, lowerize]]
++        ],
++        device: [
++          [
++            //////////////////////////
++            // MOBILES & TABLETS
++            /////////////////////////
++            // Samsung
++            /\b(sch-i[89]0\d|shw-m380s|sm-[ptx]\w{2,4}|gt-[pn]\d{2,4}|sgh-t8[56]9|nexus 10)/i
++          ],
++          [MODEL, [VENDOR, SAMSUNG], [TYPE, TABLET]],
++          [
++            /\b((?:s[cgp]h|gt|sm)-(?![lr])\w+|sc[g-]?[\d]+a?|galaxy nexus)/i,
++            /samsung[- ]((?!sm-[lr])[-\w]+)/i,
++            /sec-(sgh\w+)/i
++          ],
++          [MODEL, [VENDOR, SAMSUNG], [TYPE, MOBILE]],
++          [
++            // Apple
++            /(?:\/|\()(ip(?:hone|od)[\w, ]*)(?:\/|;)/i
++            // iPod/iPhone
++          ],
++          [MODEL, [VENDOR, APPLE], [TYPE, MOBILE]],
++          [
++            /\((ipad);[-\w\),; ]+apple/i,
++            // iPad
++            /applecoremedia\/[\w\.]+ \((ipad)/i,
++            /\b(ipad)\d\d?,\d\d?[;\]].+ios/i
++          ],
++          [MODEL, [VENDOR, APPLE], [TYPE, TABLET]],
++          [
++            /(macintosh);/i
++          ],
++          [MODEL, [VENDOR, APPLE]],
++          [
++            // Sharp
++            /\b(sh-?[altvz]?\d\d[a-ekm]?)/i
++          ],
++          [MODEL, [VENDOR, SHARP], [TYPE, MOBILE]],
++          [
++            // Honor
++            /\b((?:brt|eln|hey2?|gdi|jdn)-a?[lnw]09|(?:ag[rm]3?|jdn2|kob2)-a?[lw]0[09]hn)(?: bui|\)|;)/i
++          ],
++          [MODEL, [VENDOR, HONOR], [TYPE, TABLET]],
++          [
++            /honor([-\w ]+)[;\)]/i
++          ],
++          [MODEL, [VENDOR, HONOR], [TYPE, MOBILE]],
++          [
++            // Huawei
++            /\b((?:ag[rs][2356]?k?|bah[234]?|bg[2o]|bt[kv]|cmr|cpn|db[ry]2?|jdn2|got|kob2?k?|mon|pce|scm|sht?|[tw]gr|vrd)-[ad]?[lw][0125][09]b?|605hw|bg2-u03|(?:gem|fdr|m2|ple|t1)-[7a]0[1-4][lu]|t1-a2[13][lw]|mediapad[\w\. ]*(?= bui|\)))\b(?!.+d\/s)/i
++          ],
++          [MODEL, [VENDOR, HUAWEI], [TYPE, TABLET]],
++          [
++            /(?:huawei)([-\w ]+)[;\)]/i,
++            /\b(nexus 6p|\w{2,4}e?-[atu]?[ln][\dx][012359c][adn]?)\b(?!.+d\/s)/i
++          ],
++          [MODEL, [VENDOR, HUAWEI], [TYPE, MOBILE]],
++          [
++            // Xiaomi
++            /oid[^\)]+; (2[\dbc]{4}(182|283|rp\w{2})[cgl]|m2105k81a?c)(?: bui|\))/i,
++            /\b((?:red)?mi[-_ ]?pad[\w- ]*)(?: bui|\))/i
++            // Mi Pad tablets
++          ],
++          [[MODEL, /_/g, " "], [VENDOR, XIAOMI], [TYPE, TABLET]],
++          [
++            /\b(poco[\w ]+|m2\d{3}j\d\d[a-z]{2})(?: bui|\))/i,
++            // Xiaomi POCO
++            /\b; (\w+) build\/hm\1/i,
++            // Xiaomi Hongmi 'numeric' models
++            /\b(hm[-_ ]?note?[_ ]?(?:\d\w)?) bui/i,
++            // Xiaomi Hongmi
++            /\b(redmi[\-_ ]?(?:note|k)?[\w_ ]+)(?: bui|\))/i,
++            // Xiaomi Redmi
++            /oid[^\)]+; (m?[12][0-389][01]\w{3,6}[c-y])( bui|; wv|\))/i,
++            // Xiaomi Redmi 'numeric' models
++            /\b(mi[-_ ]?(?:a\d|one|one[_ ]plus|note lte|max|cc)?[_ ]?(?:\d?\w?)[_ ]?(?:plus|se|lite|pro)?)(?: bui|\))/i,
++            // Xiaomi Mi
++            / ([\w ]+) miui\/v?\d/i
++          ],
++          [[MODEL, /_/g, " "], [VENDOR, XIAOMI], [TYPE, MOBILE]],
++          [
++            // OPPO
++            /; (\w+) bui.+ oppo/i,
++            /\b(cph[12]\d{3}|p(?:af|c[al]|d\w|e[ar])[mt]\d0|x9007|a101op)\b/i
++          ],
++          [MODEL, [VENDOR, OPPO], [TYPE, MOBILE]],
++          [
++            /\b(opd2(\d{3}a?))(?: bui|\))/i
++          ],
++          [MODEL, [VENDOR, strMapper, { "OnePlus": ["304", "403", "203"], "*": OPPO }], [TYPE, TABLET]],
++          [
++            // Vivo
++            /vivo (\w+)(?: bui|\))/i,
++            /\b(v[12]\d{3}\w?[at])(?: bui|;)/i
++          ],
++          [MODEL, [VENDOR, "Vivo"], [TYPE, MOBILE]],
++          [
++            // Realme
++            /\b(rmx[1-3]\d{3})(?: bui|;|\))/i
++          ],
++          [MODEL, [VENDOR, "Realme"], [TYPE, MOBILE]],
++          [
++            // Motorola
++            /\b(milestone|droid(?:[2-4x]| (?:bionic|x2|pro|razr))?:?( 4g)?)\b[\w ]+build\//i,
++            /\bmot(?:orola)?[- ](\w*)/i,
++            /((?:moto(?! 360)[\w\(\) ]+|xt\d{3,4}|nexus 6)(?= bui|\)))/i
++          ],
++          [MODEL, [VENDOR, MOTOROLA], [TYPE, MOBILE]],
++          [
++            /\b(mz60\d|xoom[2 ]{0,2}) build\//i
++          ],
++          [MODEL, [VENDOR, MOTOROLA], [TYPE, TABLET]],
++          [
++            // LG
++            /((?=lg)?[vl]k\-?\d{3}) bui| 3\.[-\w; ]{10}lg?-([06cv9]{3,4})/i
++          ],
++          [MODEL, [VENDOR, LG], [TYPE, TABLET]],
++          [
++            /(lm(?:-?f100[nv]?|-[\w\.]+)(?= bui|\))|nexus [45])/i,
++            /\blg[-e;\/ ]+((?!browser|netcast|android tv|watch)\w+)/i,
++            /\blg-?([\d\w]+) bui/i
++          ],
++          [MODEL, [VENDOR, LG], [TYPE, MOBILE]],
++          [
++            // Lenovo
++            /(ideatab[-\w ]+|602lv|d-42a|a101lv|a2109a|a3500-hv|s[56]000|pb-6505[my]|tb-?x?\d{3,4}(?:f[cu]|xu|[av])|yt\d?-[jx]?\d+[lfmx])( bui|;|\)|\/)/i,
++            /lenovo ?(b[68]0[08]0-?[hf]?|tab(?:[\w- ]+?)|tb[\w-]{6,7})( bui|;|\)|\/)/i
++          ],
++          [MODEL, [VENDOR, LENOVO], [TYPE, TABLET]],
++          [
++            // Nokia
++            /(nokia) (t[12][01])/i
++          ],
++          [VENDOR, MODEL, [TYPE, TABLET]],
++          [
++            /(?:maemo|nokia).*(n900|lumia \d+|rm-\d+)/i,
++            /nokia[-_ ]?(([-\w\. ]*))/i
++          ],
++          [[MODEL, /_/g, " "], [TYPE, MOBILE], [VENDOR, "Nokia"]],
++          [
++            // Google
++            /(pixel (c|tablet))\b/i
++            // Google Pixel C/Tablet
++          ],
++          [MODEL, [VENDOR, GOOGLE], [TYPE, TABLET]],
++          [
++            /droid.+; (pixel[\daxl ]{0,6})(?: bui|\))/i
++            // Google Pixel
++          ],
++          [MODEL, [VENDOR, GOOGLE], [TYPE, MOBILE]],
++          [
++            // Sony
++            /droid.+; (a?\d[0-2]{2}so|[c-g]\d{4}|so[-gl]\w+|xq-a\w[4-7][12])(?= bui|\).+chrome\/(?![1-6]{0,1}\d\.))/i
++          ],
++          [MODEL, [VENDOR, SONY], [TYPE, MOBILE]],
++          [
++            /sony tablet [ps]/i,
++            /\b(?:sony)?sgp\w+(?: bui|\))/i
++          ],
++          [[MODEL, "Xperia Tablet"], [VENDOR, SONY], [TYPE, TABLET]],
++          [
++            // OnePlus
++            / (kb2005|in20[12]5|be20[12][59])\b/i,
++            /(?:one)?(?:plus)? (a\d0\d\d)(?: b|\))/i
++          ],
++          [MODEL, [VENDOR, ONEPLUS], [TYPE, MOBILE]],
++          [
++            // Amazon
++            /(alexa)webm/i,
++            /(kf[a-z]{2}wi|aeo(?!bc)\w\w)( bui|\))/i,
++            // Kindle Fire without Silk / Echo Show
++            /(kf[a-z]+)( bui|\)).+silk\//i
++            // Kindle Fire HD
++          ],
++          [MODEL, [VENDOR, AMAZON], [TYPE, TABLET]],
++          [
++            /((?:sd|kf)[0349hijorstuw]+)( bui|\)).+silk\//i
++            // Fire Phone
++          ],
++          [[MODEL, /(.+)/g, "Fire Phone $1"], [VENDOR, AMAZON], [TYPE, MOBILE]],
++          [
++            // BlackBerry
++            /(playbook);[-\w\),; ]+(rim)/i
++            // BlackBerry PlayBook
++          ],
++          [MODEL, VENDOR, [TYPE, TABLET]],
++          [
++            /\b((?:bb[a-f]|st[hv])100-\d)/i,
++            /\(bb10; (\w+)/i
++            // BlackBerry 10
++          ],
++          [MODEL, [VENDOR, BLACKBERRY], [TYPE, MOBILE]],
++          [
++            // Asus
++            /(?:\b|asus_)(transfo[prime ]{4,10} \w+|eeepc|slider \w+|nexus 7|padfone|p00[cj])/i
++          ],
++          [MODEL, [VENDOR, ASUS], [TYPE, TABLET]],
++          [
++            / (z[bes]6[027][012][km][ls]|zenfone \d\w?)\b/i
++          ],
++          [MODEL, [VENDOR, ASUS], [TYPE, MOBILE]],
++          [
++            // HTC
++            /(nexus 9)/i
++            // HTC Nexus 9
++          ],
++          [MODEL, [VENDOR, "HTC"], [TYPE, TABLET]],
++          [
++            /(htc)[-;_ ]{1,2}([\w ]+(?=\)| bui)|\w+)/i,
++            // HTC
++            // ZTE
++            /(zte)[- ]([\w ]+?)(?: bui|\/|\))/i,
++            /(alcatel|geeksphone|nexian|panasonic(?!(?:;|\.))|sony(?!-bra))[-_ ]?([-\w]*)/i
++            // Alcatel/GeeksPhone/Nexian/Panasonic/Sony
++          ],
++          [VENDOR, [MODEL, /_/g, " "], [TYPE, MOBILE]],
++          [
++            // TCL
++            /droid [\w\.]+; ((?:8[14]9[16]|9(?:0(?:48|60|8[01])|1(?:3[27]|66)|2(?:6[69]|9[56])|466))[gqswx])\w*(\)| bui)/i
++          ],
++          [MODEL, [VENDOR, "TCL"], [TYPE, TABLET]],
++          [
++            // itel
++            /(itel) ((\w+))/i
++          ],
++          [[VENDOR, lowerize], MODEL, [TYPE, strMapper, { "tablet": ["p10001l", "w7001"], "*": "mobile" }]],
++          [
++            // Acer
++            /droid.+; ([ab][1-7]-?[0178a]\d\d?)/i
++          ],
++          [MODEL, [VENDOR, "Acer"], [TYPE, TABLET]],
++          [
++            // Meizu
++            /droid.+; (m[1-5] note) bui/i,
++            /\bmz-([-\w]{2,})/i
++          ],
++          [MODEL, [VENDOR, "Meizu"], [TYPE, MOBILE]],
++          [
++            // Ulefone
++            /; ((?:power )?armor(?:[\w ]{0,8}))(?: bui|\))/i
++          ],
++          [MODEL, [VENDOR, "Ulefone"], [TYPE, MOBILE]],
++          [
++            // Energizer
++            /; (energy ?\w+)(?: bui|\))/i,
++            /; energizer ([\w ]+)(?: bui|\))/i
++          ],
++          [MODEL, [VENDOR, "Energizer"], [TYPE, MOBILE]],
++          [
++            // Cat
++            /; cat (b35);/i,
++            /; (b15q?|s22 flip|s48c|s62 pro)(?: bui|\))/i
++          ],
++          [MODEL, [VENDOR, "Cat"], [TYPE, MOBILE]],
++          [
++            // Smartfren
++            /((?:new )?andromax[\w- ]+)(?: bui|\))/i
++          ],
++          [MODEL, [VENDOR, "Smartfren"], [TYPE, MOBILE]],
++          [
++            // Nothing
++            /droid.+; (a(?:015|06[35]|142p?))/i
++          ],
++          [MODEL, [VENDOR, "Nothing"], [TYPE, MOBILE]],
++          [
++            // Archos
++            /; (x67 5g|tikeasy \w+|ac[1789]\d\w+)( b|\))/i,
++            /archos ?(5|gamepad2?|([\w ]*[t1789]|hello) ?\d+[\w ]*)( b|\))/i
++          ],
++          [MODEL, [VENDOR, "Archos"], [TYPE, TABLET]],
++          [
++            /archos ([\w ]+)( b|\))/i,
++            /; (ac[3-6]\d\w{2,8})( b|\))/i
++          ],
++          [MODEL, [VENDOR, "Archos"], [TYPE, MOBILE]],
++          [
++            // MIXED
++            /(imo) (tab \w+)/i,
++            // IMO
++            /(infinix) (x1101b?)/i
++            // Infinix XPad
++          ],
++          [VENDOR, MODEL, [TYPE, TABLET]],
++          [
++            /(blackberry|benq|palm(?=\-)|sonyericsson|acer|asus(?! zenw)|dell|jolla|meizu|motorola|polytron|infinix|tecno|micromax|advan)[-_ ]?([-\w]*)/i,
++            // BlackBerry/BenQ/Palm/Sony-Ericsson/Acer/Asus/Dell/Meizu/Motorola/Polytron/Infinix/Tecno/Micromax/Advan
++            /; (hmd|imo) ([\w ]+?)(?: bui|\))/i,
++            // HMD/IMO
++            /(hp) ([\w ]+\w)/i,
++            // HP iPAQ
++            /(microsoft); (lumia[\w ]+)/i,
++            // Microsoft Lumia
++            /(lenovo)[-_ ]?([-\w ]+?)(?: bui|\)|\/)/i,
++            // Lenovo
++            /(oppo) ?([\w ]+) bui/i
++            // OPPO
++          ],
++          [VENDOR, MODEL, [TYPE, MOBILE]],
++          [
++            /(kobo)\s(ereader|touch)/i,
++            // Kobo
++            /(hp).+(touchpad(?!.+tablet)|tablet)/i,
++            // HP TouchPad
++            /(kindle)\/([\w\.]+)/i,
++            // Kindle
++            /(nook)[\w ]+build\/(\w+)/i,
++            // Nook
++            /(dell) (strea[kpr\d ]*[\dko])/i,
++            // Dell Streak
++            /(le[- ]+pan)[- ]+(\w{1,9}) bui/i,
++            // Le Pan Tablets
++            /(trinity)[- ]*(t\d{3}) bui/i,
++            // Trinity Tablets
++            /(gigaset)[- ]+(q\w{1,9}) bui/i,
++            // Gigaset Tablets
++            /(vodafone) ([\w ]+)(?:\)| bui)/i
++            // Vodafone
++          ],
++          [VENDOR, MODEL, [TYPE, TABLET]],
++          [
++            /(surface duo)/i
++            // Surface Duo
++          ],
++          [MODEL, [VENDOR, MICROSOFT], [TYPE, TABLET]],
++          [
++            /droid [\d\.]+; (fp\du?)(?: b|\))/i
++            // Fairphone
++          ],
++          [MODEL, [VENDOR, "Fairphone"], [TYPE, MOBILE]],
++          [
++            /(u304aa)/i
++            // AT&T
++          ],
++          [MODEL, [VENDOR, "AT&T"], [TYPE, MOBILE]],
++          [
++            /\bsie-(\w*)/i
++            // Siemens
++          ],
++          [MODEL, [VENDOR, "Siemens"], [TYPE, MOBILE]],
++          [
++            /\b(rct\w+) b/i
++            // RCA Tablets
++          ],
++          [MODEL, [VENDOR, "RCA"], [TYPE, TABLET]],
++          [
++            /\b(venue[\d ]{2,7}) b/i
++            // Dell Venue Tablets
++          ],
++          [MODEL, [VENDOR, "Dell"], [TYPE, TABLET]],
++          [
++            /\b(q(?:mv|ta)\w+) b/i
++            // Verizon Tablet
++          ],
++          [MODEL, [VENDOR, "Verizon"], [TYPE, TABLET]],
++          [
++            /\b(?:barnes[& ]+noble |bn[rt])([\w\+ ]*) b/i
++            // Barnes & Noble Tablet
++          ],
++          [MODEL, [VENDOR, "Barnes & Noble"], [TYPE, TABLET]],
++          [
++            /\b(tm\d{3}\w+) b/i
++          ],
++          [MODEL, [VENDOR, "NuVision"], [TYPE, TABLET]],
++          [
++            /\b(k88) b/i
++            // ZTE K Series Tablet
++          ],
++          [MODEL, [VENDOR, "ZTE"], [TYPE, TABLET]],
++          [
++            /\b(nx\d{3}j) b/i
++            // ZTE Nubia
++          ],
++          [MODEL, [VENDOR, "ZTE"], [TYPE, MOBILE]],
++          [
++            /\b(gen\d{3}) b.+49h/i
++            // Swiss GEN Mobile
++          ],
++          [MODEL, [VENDOR, "Swiss"], [TYPE, MOBILE]],
++          [
++            /\b(zur\d{3}) b/i
++            // Swiss ZUR Tablet
++          ],
++          [MODEL, [VENDOR, "Swiss"], [TYPE, TABLET]],
++          [
++            /\b((zeki)?tb.*\b) b/i
++            // Zeki Tablets
++          ],
++          [MODEL, [VENDOR, "Zeki"], [TYPE, TABLET]],
++          [
++            /\b([yr]\d{2}) b/i,
++            /\b(dragon[- ]+touch |dt)(\w{5}) b/i
++            // Dragon Touch Tablet
++          ],
++          [[VENDOR, "Dragon Touch"], MODEL, [TYPE, TABLET]],
++          [
++            /\b(ns-?\w{0,9}) b/i
++            // Insignia Tablets
++          ],
++          [MODEL, [VENDOR, "Insignia"], [TYPE, TABLET]],
++          [
++            /\b((nxa|next)-?\w{0,9}) b/i
++            // NextBook Tablets
++          ],
++          [MODEL, [VENDOR, "NextBook"], [TYPE, TABLET]],
++          [
++            /\b(xtreme\_)?(v(1[045]|2[015]|[3469]0|7[05])) b/i
++            // Voice Xtreme Phones
++          ],
++          [[VENDOR, "Voice"], MODEL, [TYPE, MOBILE]],
++          [
++            /\b(lvtel\-)?(v1[12]) b/i
++            // LvTel Phones
++          ],
++          [[VENDOR, "LvTel"], MODEL, [TYPE, MOBILE]],
++          [
++            /\b(ph-1) /i
++            // Essential PH-1
++          ],
++          [MODEL, [VENDOR, "Essential"], [TYPE, MOBILE]],
++          [
++            /\b(v(100md|700na|7011|917g).*\b) b/i
++            // Envizen Tablets
++          ],
++          [MODEL, [VENDOR, "Envizen"], [TYPE, TABLET]],
++          [
++            /\b(trio[-\w\. ]+) b/i
++            // MachSpeed Tablets
++          ],
++          [MODEL, [VENDOR, "MachSpeed"], [TYPE, TABLET]],
++          [
++            /\btu_(1491) b/i
++            // Rotor Tablets
++          ],
++          [MODEL, [VENDOR, "Rotor"], [TYPE, TABLET]],
++          [
++            /((?:tegranote|shield t(?!.+d tv))[\w- ]*?)(?: b|\))/i
++            // Nvidia Tablets
++          ],
++          [MODEL, [VENDOR, NVIDIA], [TYPE, TABLET]],
++          [
++            /(sprint) (\w+)/i
++            // Sprint Phones
++          ],
++          [VENDOR, MODEL, [TYPE, MOBILE]],
++          [
++            /(kin\.[onetw]{3})/i
++            // Microsoft Kin
++          ],
++          [[MODEL, /\./g, " "], [VENDOR, MICROSOFT], [TYPE, MOBILE]],
++          [
++            /droid.+; (cc6666?|et5[16]|mc[239][23]x?|vc8[03]x?)\)/i
++            // Zebra
++          ],
++          [MODEL, [VENDOR, ZEBRA], [TYPE, TABLET]],
++          [
++            /droid.+; (ec30|ps20|tc[2-8]\d[kx])\)/i
++          ],
++          [MODEL, [VENDOR, ZEBRA], [TYPE, MOBILE]],
++          [
++            ///////////////////
++            // SMARTTVS
++            ///////////////////
++            /smart-tv.+(samsung)/i
++            // Samsung
++          ],
++          [VENDOR, [TYPE, SMARTTV]],
++          [
++            /hbbtv.+maple;(\d+)/i
++          ],
++          [[MODEL, /^/, "SmartTV"], [VENDOR, SAMSUNG], [TYPE, SMARTTV]],
++          [
++            /(nux; netcast.+smarttv|lg (netcast\.tv-201\d|android tv))/i
++            // LG SmartTV
++          ],
++          [[VENDOR, LG], [TYPE, SMARTTV]],
++          [
++            /(apple) ?tv/i
++            // Apple TV
++          ],
++          [VENDOR, [MODEL, APPLE + " TV"], [TYPE, SMARTTV]],
++          [
++            /crkey/i
++            // Google Chromecast
++          ],
++          [[MODEL, CHROME + "cast"], [VENDOR, GOOGLE], [TYPE, SMARTTV]],
++          [
++            /droid.+aft(\w+)( bui|\))/i
++            // Fire TV
++          ],
++          [MODEL, [VENDOR, AMAZON], [TYPE, SMARTTV]],
++          [
++            /(shield \w+ tv)/i
++            // Nvidia Shield TV
++          ],
++          [MODEL, [VENDOR, NVIDIA], [TYPE, SMARTTV]],
++          [
++            /\(dtv[\);].+(aquos)/i,
++            /(aquos-tv[\w ]+)\)/i
++            // Sharp
++          ],
++          [MODEL, [VENDOR, SHARP], [TYPE, SMARTTV]],
++          [
++            /(bravia[\w ]+)( bui|\))/i
++            // Sony
++          ],
++          [MODEL, [VENDOR, SONY], [TYPE, SMARTTV]],
++          [
++            /(mi(tv|box)-?\w+) bui/i
++            // Xiaomi
++          ],
++          [MODEL, [VENDOR, XIAOMI], [TYPE, SMARTTV]],
++          [
++            /Hbbtv.*(technisat) (.*);/i
++            // TechniSAT
++          ],
++          [VENDOR, MODEL, [TYPE, SMARTTV]],
++          [
++            /\b(roku)[\dx]*[\)\/]((?:dvp-)?[\d\.]*)/i,
++            // Roku
++            /hbbtv\/\d+\.\d+\.\d+ +\([\w\+ ]*; *([\w\d][^;]*);([^;]*)/i
++            // HbbTV devices
++          ],
++          [[VENDOR, trim], [MODEL, trim], [TYPE, SMARTTV]],
++          [
++            // SmartTV from Unidentified Vendors
++            /droid.+; ([\w- ]+) (?:android tv|smart[- ]?tv)/i
++          ],
++          [MODEL, [TYPE, SMARTTV]],
++          [
++            /\b(android tv|smart[- ]?tv|opera tv|tv; rv:)\b/i
++          ],
++          [[TYPE, SMARTTV]],
++          [
++            ///////////////////
++            // CONSOLES
++            ///////////////////
++            /(ouya)/i,
++            // Ouya
++            /(nintendo) ([wids3utch]+)/i
++            // Nintendo
++          ],
++          [VENDOR, MODEL, [TYPE, CONSOLE]],
++          [
++            /droid.+; (shield)( bui|\))/i
++            // Nvidia Portable
++          ],
++          [MODEL, [VENDOR, NVIDIA], [TYPE, CONSOLE]],
++          [
++            /(playstation \w+)/i
++            // Playstation
++          ],
++          [MODEL, [VENDOR, SONY], [TYPE, CONSOLE]],
++          [
++            /\b(xbox(?: one)?(?!; xbox))[\); ]/i
++            // Microsoft Xbox
++          ],
++          [MODEL, [VENDOR, MICROSOFT], [TYPE, CONSOLE]],
++          [
++            ///////////////////
++            // WEARABLES
++            ///////////////////
++            /\b(sm-[lr]\d\d[0156][fnuw]?s?|gear live)\b/i
++            // Samsung Galaxy Watch
++          ],
++          [MODEL, [VENDOR, SAMSUNG], [TYPE, WEARABLE]],
++          [
++            /((pebble))app/i,
++            // Pebble
++            /(asus|google|lg|oppo) ((pixel |zen)?watch[\w ]*)( bui|\))/i
++            // Asus ZenWatch / LG Watch / Pixel Watch
++          ],
++          [VENDOR, MODEL, [TYPE, WEARABLE]],
++          [
++            /(ow(?:19|20)?we?[1-3]{1,3})/i
++            // Oppo Watch
++          ],
++          [MODEL, [VENDOR, OPPO], [TYPE, WEARABLE]],
++          [
++            /(watch)(?: ?os[,\/]|\d,\d\/)[\d\.]+/i
++            // Apple Watch
++          ],
++          [MODEL, [VENDOR, APPLE], [TYPE, WEARABLE]],
++          [
++            /(opwwe\d{3})/i
++            // OnePlus Watch
++          ],
++          [MODEL, [VENDOR, ONEPLUS], [TYPE, WEARABLE]],
++          [
++            /(moto 360)/i
++            // Motorola 360
++          ],
++          [MODEL, [VENDOR, MOTOROLA], [TYPE, WEARABLE]],
++          [
++            /(smartwatch 3)/i
++            // Sony SmartWatch
++          ],
++          [MODEL, [VENDOR, SONY], [TYPE, WEARABLE]],
++          [
++            /(g watch r)/i
++            // LG G Watch R
++          ],
++          [MODEL, [VENDOR, LG], [TYPE, WEARABLE]],
++          [
++            /droid.+; (wt63?0{2,3})\)/i
++          ],
++          [MODEL, [VENDOR, ZEBRA], [TYPE, WEARABLE]],
++          [
++            ///////////////////
++            // XR
++            ///////////////////
++            /droid.+; (glass) \d/i
++            // Google Glass
++          ],
++          [MODEL, [VENDOR, GOOGLE], [TYPE, WEARABLE]],
++          [
++            /(pico) (4|neo3(?: link|pro)?)/i
++            // Pico
++          ],
++          [VENDOR, MODEL, [TYPE, WEARABLE]],
++          [
++            /; (quest( \d| pro)?)/i
++            // Oculus Quest
++          ],
++          [MODEL, [VENDOR, FACEBOOK], [TYPE, WEARABLE]],
++          [
++            ///////////////////
++            // EMBEDDED
++            ///////////////////
++            /(tesla)(?: qtcarbrowser|\/[-\w\.]+)/i
++            // Tesla
++          ],
++          [VENDOR, [TYPE, EMBEDDED]],
++          [
++            /(aeobc)\b/i
++            // Echo Dot
++          ],
++          [MODEL, [VENDOR, AMAZON], [TYPE, EMBEDDED]],
++          [
++            /(homepod).+mac os/i
++            // Apple HomePod
++          ],
++          [MODEL, [VENDOR, APPLE], [TYPE, EMBEDDED]],
++          [
++            /windows iot/i
++          ],
++          [[TYPE, EMBEDDED]],
++          [
++            ////////////////////
++            // MIXED (GENERIC)
++            ///////////////////
++            /droid .+?; ([^;]+?)(?: bui|; wv\)|\) applew).+? mobile safari/i
++            // Android Phones from Unidentified Vendors
++          ],
++          [MODEL, [TYPE, MOBILE]],
++          [
++            /droid .+?; ([^;]+?)(?: bui|\) applew).+?(?! mobile) safari/i
++            // Android Tablets from Unidentified Vendors
++          ],
++          [MODEL, [TYPE, TABLET]],
++          [
++            /\b((tablet|tab)[;\/]|focus\/\d(?!.+mobile))/i
++            // Unidentifiable Tablet
++          ],
++          [[TYPE, TABLET]],
++          [
++            /(phone|mobile(?:[;\/]| [ \w\/\.]*safari)|pda(?=.+windows ce))/i
++            // Unidentifiable Mobile
++          ],
++          [[TYPE, MOBILE]],
++          [
++            /droid .+?; ([\w\. -]+)( bui|\))/i
++            // Generic Android Device
++          ],
++          [MODEL, [VENDOR, "Generic"]]
++        ],
++        engine: [
++          [
++            /windows.+ edge\/([\w\.]+)/i
++            // EdgeHTML
++          ],
++          [VERSION, [NAME, EDGE + "HTML"]],
++          [
++            /(arkweb)\/([\w\.]+)/i
++            // ArkWeb
++          ],
++          [NAME, VERSION],
++          [
++            /webkit\/537\.36.+chrome\/(?!27)([\w\.]+)/i
++            // Blink
++          ],
++          [VERSION, [NAME, "Blink"]],
++          [
++            /(presto)\/([\w\.]+)/i,
++            // Presto
++            /(webkit|trident|netfront|netsurf|amaya|lynx|w3m|goanna|servo)\/([\w\.]+)/i,
++            // WebKit/Trident/NetFront/NetSurf/Amaya/Lynx/w3m/Goanna/Servo
++            /ekioh(flow)\/([\w\.]+)/i,
++            // Flow
++            /(khtml|tasman|links)[\/ ]\(?([\w\.]+)/i,
++            // KHTML/Tasman/Links
++            /(icab)[\/ ]([23]\.[\d\.]+)/i,
++            // iCab
++            /\b(libweb)/i
++            // LibWeb
++          ],
++          [NAME, VERSION],
++          [
++            /ladybird\//i
++          ],
++          [[NAME, "LibWeb"]],
++          [
++            /rv\:([\w\.]{1,9})\b.+(gecko)/i
++            // Gecko
++          ],
++          [VERSION, NAME]
++        ],
++        os: [
++          [
++            // Windows
++            /microsoft (windows) (vista|xp)/i
++            // Windows (iTunes)
++          ],
++          [NAME, VERSION],
++          [
++            /(windows (?:phone(?: os)?|mobile|iot))[\/ ]?([\d\.\w ]*)/i
++            // Windows Phone
++          ],
++          [NAME, [VERSION, strMapper, windowsVersionMap]],
++          [
++            /windows nt 6\.2; (arm)/i,
++            // Windows RT
++            /windows[\/ ]([ntce\d\. ]+\w)(?!.+xbox)/i,
++            /(?:win(?=3|9|n)|win 9x )([nt\d\.]+)/i
++          ],
++          [[VERSION, strMapper, windowsVersionMap], [NAME, "Windows"]],
++          [
++            // iOS/macOS
++            /[adehimnop]{4,7}\b(?:.*os ([\w]+) like mac|; opera)/i,
++            // iOS
++            /(?:ios;fbsv\/|iphone.+ios[\/ ])([\d\.]+)/i,
++            /cfnetwork\/.+darwin/i
++          ],
++          [[VERSION, /_/g, "."], [NAME, "iOS"]],
++          [
++            /(mac os x) ?([\w\. ]*)/i,
++            /(macintosh|mac_powerpc\b)(?!.+haiku)/i
++            // Mac OS
++          ],
++          [[NAME, MAC_OS], [VERSION, /_/g, "."]],
++          [
++            // Mobile OSes
++            /droid ([\w\.]+)\b.+(android[- ]x86|harmonyos)/i
++            // Android-x86/HarmonyOS
++          ],
++          [VERSION, NAME],
++          [
++            /(ubuntu) ([\w\.]+) like android/i
++            // Ubuntu Touch
++          ],
++          [[NAME, /(.+)/, "$1 Touch"], VERSION],
++          [
++            // Android/Blackberry/WebOS/QNX/Bada/RIM/KaiOS/Maemo/MeeGo/S40/Sailfish OS/OpenHarmony/Tizen
++            /(android|bada|blackberry|kaios|maemo|meego|openharmony|qnx|rim tablet os|sailfish|series40|symbian|tizen|webos)\w*[-\/; ]?([\d\.]*)/i
++          ],
++          [NAME, VERSION],
++          [
++            /\(bb(10);/i
++            // BlackBerry 10
++          ],
++          [VERSION, [NAME, BLACKBERRY]],
++          [
++            /(?:symbian ?os|symbos|s60(?=;)|series ?60)[-\/ ]?([\w\.]*)/i
++            // Symbian
++          ],
++          [VERSION, [NAME, "Symbian"]],
++          [
++            /mozilla\/[\d\.]+ \((?:mobile|tablet|tv|mobile; [\w ]+); rv:.+ gecko\/([\w\.]+)/i
++            // Firefox OS
++          ],
++          [VERSION, [NAME, FIREFOX + " OS"]],
++          [
++            /web0s;.+rt(tv)/i,
++            /\b(?:hp)?wos(?:browser)?\/([\w\.]+)/i
++            // WebOS
++          ],
++          [VERSION, [NAME, "webOS"]],
++          [
++            /watch(?: ?os[,\/]|\d,\d\/)([\d\.]+)/i
++            // watchOS
++          ],
++          [VERSION, [NAME, "watchOS"]],
++          [
++            // Google Chromecast
++            /crkey\/([\d\.]+)/i
++            // Google Chromecast
++          ],
++          [VERSION, [NAME, CHROME + "cast"]],
++          [
++            /(cros) [\w]+(?:\)| ([\w\.]+)\b)/i
++            // Chromium OS
++          ],
++          [[NAME, CHROMIUM_OS], VERSION],
++          [
++            // Smart TVs
++            /panasonic;(viera)/i,
++            // Panasonic Viera
++            /(netrange)mmh/i,
++            // Netrange
++            /(nettv)\/(\d+\.[\w\.]+)/i,
++            // NetTV
++            // Console
++            /(nintendo|playstation) ([wids345portablevuch]+)/i,
++            // Nintendo/Playstation
++            /(xbox); +xbox ([^\);]+)/i,
++            // Microsoft Xbox (360, One, X, S, Series X, Series S)
++            // Other
++            /\b(joli|palm)\b ?(?:os)?\/?([\w\.]*)/i,
++            // Joli/Palm
++            /(mint)[\/\(\) ]?(\w*)/i,
++            // Mint
++            /(mageia|vectorlinux)[; ]/i,
++            // Mageia/VectorLinux
++            /([kxln]?ubuntu|debian|suse|opensuse|gentoo|arch(?= linux)|slackware|fedora|mandriva|centos|pclinuxos|red ?hat|zenwalk|linpus|raspbian|plan 9|minix|risc os|contiki|deepin|manjaro|elementary os|sabayon|linspire)(?: gnu\/linux)?(?: enterprise)?(?:[- ]linux)?(?:-gnu)?[-\/ ]?(?!chrom|package)([-\w\.]*)/i,
++            // Ubuntu/Debian/SUSE/Gentoo/Arch/Slackware/Fedora/Mandriva/CentOS/PCLinuxOS/RedHat/Zenwalk/Linpus/Raspbian/Plan9/Minix/RISCOS/Contiki/Deepin/Manjaro/elementary/Sabayon/Linspire
++            /(hurd|linux)(?: arm\w*| x86\w*| ?)([\w\.]*)/i,
++            // Hurd/Linux
++            /(gnu) ?([\w\.]*)/i,
++            // GNU
++            /\b([-frentopcghs]{0,5}bsd|dragonfly)[\/ ]?(?!amd|[ix346]{1,2}86)([\w\.]*)/i,
++            // FreeBSD/NetBSD/OpenBSD/PC-BSD/GhostBSD/DragonFly
++            /(haiku) (\w+)/i
++            // Haiku
++          ],
++          [NAME, VERSION],
++          [
++            /(sunos) ?([\w\.\d]*)/i
++            // Solaris
++          ],
++          [[NAME, "Solaris"], VERSION],
++          [
++            /((?:open)?solaris)[-\/ ]?([\w\.]*)/i,
++            // Solaris
++            /(aix) ((\d)(?=\.|\)| )[\w\.])*/i,
++            // AIX
++            /\b(beos|os\/2|amigaos|morphos|openvms|fuchsia|hp-ux|serenityos)/i,
++            // BeOS/OS2/AmigaOS/MorphOS/OpenVMS/Fuchsia/HP-UX/SerenityOS
++            /(unix) ?([\w\.]*)/i
++            // UNIX
++          ],
++          [NAME, VERSION]
++        ]
++      };
++      var UAParser2 = function(ua, extensions) {
++        if (typeof ua === OBJ_TYPE) {
++          extensions = ua;
++          ua = undefined2;
++        }
++        if (!(this instanceof UAParser2)) {
++          return new UAParser2(ua, extensions).getResult();
++        }
++        var _navigator = typeof window2 !== UNDEF_TYPE && window2.navigator ? window2.navigator : undefined2;
++        var _ua = ua || (_navigator && _navigator.userAgent ? _navigator.userAgent : EMPTY);
++        var _uach = _navigator && _navigator.userAgentData ? _navigator.userAgentData : undefined2;
++        var _rgxmap = extensions ? extend(regexes, extensions) : regexes;
++        var _isSelfNav = _navigator && _navigator.userAgent == _ua;
++        this.getBrowser = function() {
++          var _browser = {};
++          _browser[NAME] = undefined2;
++          _browser[VERSION] = undefined2;
++          rgxMapper.call(_browser, _ua, _rgxmap.browser);
++          _browser[MAJOR] = majorize(_browser[VERSION]);
++          if (_isSelfNav && _navigator && _navigator.brave && typeof _navigator.brave.isBrave == FUNC_TYPE) {
++            _browser[NAME] = "Brave";
++          }
++          return _browser;
++        };
++        this.getCPU = function() {
++          var _cpu = {};
++          _cpu[ARCHITECTURE] = undefined2;
++          rgxMapper.call(_cpu, _ua, _rgxmap.cpu);
++          return _cpu;
++        };
++        this.getDevice = function() {
++          var _device = {};
++          _device[VENDOR] = undefined2;
++          _device[MODEL] = undefined2;
++          _device[TYPE] = undefined2;
++          rgxMapper.call(_device, _ua, _rgxmap.device);
++          if (_isSelfNav && !_device[TYPE] && _uach && _uach.mobile) {
++            _device[TYPE] = MOBILE;
++          }
++          if (_isSelfNav && _device[MODEL] == "Macintosh" && _navigator && typeof _navigator.standalone !== UNDEF_TYPE && _navigator.maxTouchPoints && _navigator.maxTouchPoints > 2) {
++            _device[MODEL] = "iPad";
++            _device[TYPE] = TABLET;
++          }
++          return _device;
++        };
++        this.getEngine = function() {
++          var _engine = {};
++          _engine[NAME] = undefined2;
++          _engine[VERSION] = undefined2;
++          rgxMapper.call(_engine, _ua, _rgxmap.engine);
++          return _engine;
++        };
++        this.getOS = function() {
++          var _os = {};
++          _os[NAME] = undefined2;
++          _os[VERSION] = undefined2;
++          rgxMapper.call(_os, _ua, _rgxmap.os);
++          if (_isSelfNav && !_os[NAME] && _uach && _uach.platform && _uach.platform != "Unknown") {
++            _os[NAME] = _uach.platform.replace(/chrome os/i, CHROMIUM_OS).replace(/macos/i, MAC_OS);
++          }
++          return _os;
++        };
++        this.getResult = function() {
++          return {
++            ua: this.getUA(),
++            browser: this.getBrowser(),
++            engine: this.getEngine(),
++            os: this.getOS(),
++            device: this.getDevice(),
++            cpu: this.getCPU()
++          };
++        };
++        this.getUA = function() {
++          return _ua;
++        };
++        this.setUA = function(ua2) {
++          _ua = typeof ua2 === STR_TYPE && ua2.length > UA_MAX_LENGTH ? trim(ua2, UA_MAX_LENGTH) : ua2;
++          return this;
++        };
++        this.setUA(_ua);
++        return this;
++      };
++      UAParser2.VERSION = LIBVERSION;
++      UAParser2.BROWSER = enumerize([NAME, VERSION, MAJOR]);
++      UAParser2.CPU = enumerize([ARCHITECTURE]);
++      UAParser2.DEVICE = enumerize([MODEL, VENDOR, TYPE, CONSOLE, MOBILE, SMARTTV, TABLET, WEARABLE, EMBEDDED]);
++      UAParser2.ENGINE = UAParser2.OS = enumerize([NAME, VERSION]);
++      if (typeof exports !== UNDEF_TYPE) {
++        if (typeof module !== UNDEF_TYPE && module.exports) {
++          exports = module.exports = UAParser2;
++        }
++        exports.UAParser = UAParser2;
++      } else {
++        if (typeof define === FUNC_TYPE && define.amd) {
++          define(function() {
++            return UAParser2;
++          });
++        } else if (typeof window2 !== UNDEF_TYPE) {
++          window2.UAParser = UAParser2;
++        }
++      }
++      var $2 = typeof window2 !== UNDEF_TYPE && (window2.jQuery || window2.Zepto);
++      if ($2 && !$2.ua) {
++        var parser = new UAParser2();
++        $2.ua = parser.getResult();
++        $2.ua.get = function() {
++          return parser.getUA();
++        };
++        $2.ua.set = function(ua) {
++          parser.setUA(ua);
++          var result = parser.getResult();
++          for (var prop in result) {
++            $2.ua[prop] = result[prop];
++          }
++        };
++      }
++    })(typeof window === "object" ? window : exports);
++  }
++});
++
++// node_modules/.pnpm/webauthn-polyfills@0.1.7/node_modules/webauthn-polyfills/esm/base64url.js
++var Base64URL = class {
++  /**
++   * Convert bytes into a base64url-encoded string
++   */
++  static encode(buffer) {
++    const base64 = globalThis.btoa(String.fromCharCode(...new Uint8Array(buffer)));
++    return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
++  }
++  /**
++   * Convert a base64url-encoded string into bytes
++   */
++  static decode(base64url) {
++    const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
++    const binStr = globalThis.atob(base64);
++    const bin = new Uint8Array(binStr.length);
++    for (let i = 0; i < binStr.length; i++) {
++      bin[i] = binStr.charCodeAt(i);
++    }
++    return bin.buffer;
++  }
++};
++
++// node_modules/.pnpm/webauthn-polyfills@0.1.7/node_modules/webauthn-polyfills/esm/json_serialization.js
++function isAuthenticatorAssertionResponse(value) {
++  if (typeof value !== "object") {
++    return false;
++  }
++  if (value?.authenticatorData === void 0 || typeof value?.authenticatorData !== "object") {
++    return false;
++  }
++  return true;
++}
++function isAuthenticatorAttestationResponse(value) {
++  if (typeof value !== "object") {
++    return false;
++  }
++  if (value?.attestationObject === void 0 || typeof value?.attestationObject !== "object") {
++    return false;
++  }
++  return true;
++}
++function parseCreationOptionsFromJSON(options) {
++  const user = {
++    ...options.user,
++    id: Base64URL.decode(options.user.id)
++  };
++  const challenge = Base64URL.decode(options.challenge);
++  const excludeCredentials = options.excludeCredentials?.map((cred) => {
++    return {
++      ...cred,
++      id: Base64URL.decode(cred.id),
++      transports: cred.transports
++    };
++  }) ?? [];
++  const toReturn = {
++    ...options,
++    user,
++    challenge,
++    excludeCredentials
++  };
++  return toReturn;
++}
++function parseRequestOptionsFromJSON(options) {
++  const challenge = Base64URL.decode(options.challenge);
++  const allowCredentials = options.allowCredentials?.map((cred) => {
++    return {
++      ...cred,
++      id: Base64URL.decode(cred.id),
++      transports: cred.transports
++    };
++  }) ?? [];
++  const toReturn = {
++    ...options,
++    allowCredentials,
++    challenge
++  };
++  return toReturn;
++}
++function toJSON() {
++  try {
++    const id = this.id;
++    const rawId = Base64URL.encode(this.rawId);
++    const authenticatorAttachment = this.authenticatorAttachment;
++    const clientExtensionResults = {};
++    const type = this.type;
++    if (isAuthenticatorAssertionResponse(this.response)) {
++      return {
++        id,
++        rawId,
++        response: {
++          authenticatorData: Base64URL.encode(this.response.authenticatorData),
++          clientDataJSON: Base64URL.encode(this.response.clientDataJSON),
++          signature: Base64URL.encode(this.response.signature),
++          userHandle: this.response.userHandle ? Base64URL.encode(this.response.userHandle) : void 0
++        },
++        authenticatorAttachment,
++        clientExtensionResults,
++        type
++      };
++    }
++    if (isAuthenticatorAttestationResponse(this.response)) {
++      return {
++        id,
++        rawId,
++        response: {
++          clientDataJSON: Base64URL.encode(this.response.clientDataJSON),
++          attestationObject: Base64URL.encode(this.response.attestationObject),
++          transports: this.response?.getTransports() || []
++        },
++        authenticatorAttachment,
++        clientExtensionResults,
++        type
++      };
++    }
++    throw new Error("Unexpected object.");
++  } catch (error) {
++    console.error(error);
++    throw error;
++  }
++}
++if (globalThis.PublicKeyCredential) {
++  if (!PublicKeyCredential.parseCreationOptionsFromJSON) {
++    Object.defineProperty(PublicKeyCredential, "parseCreationOptionsFromJSON", {
++      value: parseCreationOptionsFromJSON
++    });
++  }
++  if (!PublicKeyCredential.parseRequestOptionsFromJSON) {
++    Object.defineProperty(PublicKeyCredential, "parseRequestOptionsFromJSON", {
++      value: parseRequestOptionsFromJSON
++    });
++  }
++  if (!PublicKeyCredential.prototype.toJSON) {
++    Object.defineProperty(PublicKeyCredential.prototype, "toJSON", {
++      value: toJSON
++    });
++  }
++}
++
++// node_modules/.pnpm/webauthn-polyfills@0.1.7/node_modules/webauthn-polyfills/esm/is_version.js
++var import_ua_parser_js = __toESM(require_ua_parser(), 1);
++
++// node_modules/.pnpm/compare-versions@6.1.1/node_modules/compare-versions/lib/esm/utils.js
++var semver = /^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i;
++var validateAndParse = (version) => {
++  if (typeof version !== "string") {
++    throw new TypeError("Invalid argument expected string");
++  }
++  const match = version.match(semver);
++  if (!match) {
++    throw new Error(`Invalid argument not valid semver ('${version}' received)`);
++  }
++  match.shift();
++  return match;
++};
++var isWildcard = (s) => s === "*" || s === "x" || s === "X";
++var tryParse = (v) => {
++  const n = parseInt(v, 10);
++  return isNaN(n) ? v : n;
++};
++var forceType = (a, b) => typeof a !== typeof b ? [String(a), String(b)] : [a, b];
++var compareStrings = (a, b) => {
++  if (isWildcard(a) || isWildcard(b))
++    return 0;
++  const [ap, bp] = forceType(tryParse(a), tryParse(b));
++  if (ap > bp)
++    return 1;
++  if (ap < bp)
++    return -1;
++  return 0;
++};
++var compareSegments = (a, b) => {
++  for (let i = 0; i < Math.max(a.length, b.length); i++) {
++    const r = compareStrings(a[i] || "0", b[i] || "0");
++    if (r !== 0)
++      return r;
++  }
++  return 0;
++};
++
++// node_modules/.pnpm/compare-versions@6.1.1/node_modules/compare-versions/lib/esm/compareVersions.js
++var compareVersions = (v1, v2) => {
++  const n1 = validateAndParse(v1);
++  const n2 = validateAndParse(v2);
++  const p1 = n1.pop();
++  const p2 = n2.pop();
++  const r = compareSegments(n1, n2);
++  if (r !== 0)
++    return r;
++  if (p1 && p2) {
++    return compareSegments(p1.split("."), p2.split("."));
++  } else if (p1 || p2) {
++    return p1 ? -1 : 1;
++  }
++  return 0;
++};
++
++// node_modules/.pnpm/compare-versions@6.1.1/node_modules/compare-versions/lib/esm/compare.js
++var compare = (v1, v2, operator) => {
++  assertValidOperator(operator);
++  const res = compareVersions(v1, v2);
++  return operatorResMap[operator].includes(res);
++};
++var operatorResMap = {
++  ">": [1],
++  ">=": [0, 1],
++  "=": [0],
++  "<=": [-1, 0],
++  "<": [-1],
++  "!=": [-1, 1]
++};
++var allowedOperators = Object.keys(operatorResMap);
++var assertValidOperator = (op) => {
++  if (typeof op !== "string") {
++    throw new TypeError(`Invalid operator type, expected string but got ${typeof op}`);
++  }
++  if (allowedOperators.indexOf(op) === -1) {
++    throw new Error(`Invalid operator, expected one of ${allowedOperators.join("|")}`);
++  }
++};
++
++// node_modules/.pnpm/webauthn-polyfills@0.1.7/node_modules/webauthn-polyfills/esm/is_version.js
++var isVersion = class {
++  constructor(ua) {
++    Object.defineProperty(this, "iOS174To183", {
++      enumerable: true,
++      configurable: true,
++      writable: true,
++      value: void 0
++    });
++    Object.defineProperty(this, "safari174To183", {
++      enumerable: true,
++      configurable: true,
++      writable: true,
++      value: void 0
++    });
++    Object.defineProperty(this, "iOS18OrLater", {
++      enumerable: true,
++      configurable: true,
++      writable: true,
++      value: void 0
++    });
++    Object.defineProperty(this, "desktopBlink128OrLater", {
++      enumerable: true,
++      configurable: true,
++      writable: true,
++      value: void 0
++    });
++    Object.defineProperty(this, "desktopBlink135OrLater", {
++      enumerable: true,
++      configurable: true,
++      writable: true,
++      value: void 0
++    });
++    const { browser, engine, os } = (0, import_ua_parser_js.UAParser)(ua);
++    if (!browser?.version || !browser?.name) {
++      throw new Error("Browser version not found.");
++    }
++    if (!engine?.version || !engine?.name) {
++      throw new Error("Engine version not found.");
++    }
++    if (!os?.version || !os?.name) {
++      throw new Error("OS version not found.");
++    }
++    this.iOS174To183 = os.name === "iOS" && compare(os.version, "17.4", ">=") && compare(os.version, "18.4", "<");
++    this.safari174To183 = os.name === "Mac OS" && browser.name === "Safari" && compare(browser.version, "17.4", ">=") && compare(browser.version, "18.4", "<");
++    this.iOS18OrLater = os.name === "iOS" && compare(os.version, "18", ">=");
++    this.desktopBlink128OrLater = engine.name === "Blink" && ["Mac OS", "Windows", "Linux", "Chrome OS"].includes(os.name) && compare(engine.version, "128", ">=");
++    this.desktopBlink135OrLater = engine.name === "Blink" && ["macOS", "Windows", "Linux", "Chrome OS"].includes(os.name) && compare(engine.version, "135", ">=");
++  }
++};
++
++// node_modules/.pnpm/webauthn-polyfills@0.1.7/node_modules/webauthn-polyfills/esm/client_capabilities.js
++function prepareGetClientCapabilities(version) {
++  const originalGetClientCapabilities = PublicKeyCredential?.getClientCapabilities;
++  return async function() {
++    let conditionalCreate = false;
++    let conditionalGet = false;
++    let hybridTransport = void 0;
++    let passkeyPlatformAuthenticator = void 0;
++    let relatedOrigins = false;
++    let signalAllAcceptedCredentials = false;
++    let signalCurrentUserDetails = false;
++    let signalUnknownCredential = false;
++    let userVerifyingPlatformAuthenticator = false;
++    if ((version.safari174To183 || version.iOS174To183) && originalGetClientCapabilities) {
++      const capabilities2 = await originalGetClientCapabilities();
++      conditionalCreate = capabilities2?.conditionalCreate;
++      conditionalGet = capabilities2?.conditionalMediation;
++      hybridTransport = capabilities2?.hybridTransport;
++      passkeyPlatformAuthenticator = capabilities2?.passkeyPlatformAuthenticator;
++      relatedOrigins = capabilities2?.relatedOrigins;
++      signalAllAcceptedCredentials = capabilities2?.signalAllAcceptedCredentials;
++      signalCurrentUserDetails = capabilities2?.signalCurrentUserDetails;
++      signalUnknownCredential = capabilities2?.signalUnknownCredential;
++      userVerifyingPlatformAuthenticator = capabilities2?.userVerifyingPlatformAuthenticator;
++    } else {
++      if (PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
++        userVerifyingPlatformAuthenticator = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++      }
++      if (PublicKeyCredential?.isConditionalMediationAvailable) {
++        conditionalGet = await PublicKeyCredential.isConditionalMediationAvailable();
++      }
++      if (PublicKeyCredential?.signalAllAcceptedCredentials) {
++        signalAllAcceptedCredentials = true;
++      }
++      if (PublicKeyCredential?.signalCurrentUserDetails) {
++        signalCurrentUserDetails = true;
++      }
++      if (PublicKeyCredential?.signalUnknownCredential) {
++        signalUnknownCredential = true;
++      }
++      conditionalCreate = version.desktopBlink135OrLater || version.iOS18OrLater;
++      relatedOrigins = version.desktopBlink128OrLater || version.iOS18OrLater;
++    }
++    return Promise.resolve({
++      conditionalCreate,
++      conditionalGet,
++      hybridTransport,
++      passkeyPlatformAuthenticator,
++      relatedOrigins,
++      signalAllAcceptedCredentials,
++      signalCurrentUserDetails,
++      signalUnknownCredential,
++      userVerifyingPlatformAuthenticator
++    });
++  };
++}
++function applyPolyfill(ua = "") {
++  if (!globalThis.PublicKeyCredential) {
++    return;
++  }
++  let version;
++  try {
++    version = new isVersion(ua);
++  } catch {
++    console.info("expected exception for the test.");
++    return;
++  }
++  const getClientCapabilities = prepareGetClientCapabilities(version);
++  if (!PublicKeyCredential.getClientCapabilities || version.safari174To183 || version.iOS174To183) {
++    Object.defineProperty(PublicKeyCredential, "getClientCapabilities", {
++      value: getClientCapabilities
++    });
++  }
++}
++applyPolyfill();
++
++// src/providers.json
++var providers_default = {
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    name: "Windows Hello",
++    icon: "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    name: "Windows Hello",
++    icon: "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    name: "Windows Hello",
++    icon: "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    name: "Google Password Manager",
++    icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    name: "iCloud Keychain (Managed)",
++    icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    name: "1Password",
++    icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  }
++};
++
++// src/account.js
++var $ = (id) => document.getElementById(id);
++var state = { user: null, credentials: [] };
++var supported = false;
++var busy = false;
++var autofill;
++var ceremony;
++var capabilities = {};
++var mode = "signin";
++var autofillOptionsRequest = Promise.resolve();
++function status(message = "", error = false) {
++  $("account-status").textContent = message;
++  $("account-status").dataset.error = String(error);
++}
++async function api(path, body, method = "POST") {
++  const response = await fetch(`/api/${path}`, { method, credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...body !== void 0 && { body: JSON.stringify(body) } });
++  const data = await response.json().catch(() => ({}));
++  if (!response.ok) throw Object.assign(new Error(data.error || "The account service is unavailable. Please try again."), { status: response.status });
++  return data;
++}
++async function signal(method, args) {
++  try {
++    if (window.PublicKeyCredential?.[method]) await PublicKeyCredential[method](args);
++  } catch {
++  }
++}
++async function syncAccepted() {
++  if (state.user) await signal("signalAllAcceptedCredentials", { rpId: state.rpId, userId: state.user.id, allAcceptedCredentialIds: state.credentials.map((c) => c.id) });
++}
++function showMode(next) {
++  mode = next;
++  autofill?.abort();
++  $("signin-panel").hidden = mode !== "signin";
++  $("signup-panel").hidden = mode !== "signup";
++  $("signin-tab").setAttribute("aria-pressed", String(mode === "signin"));
++  $("signup-tab").setAttribute("aria-pressed", String(mode === "signup"));
++  status();
++  if (mode === "signin") initializeAutofill();
++}
++function errorMessage(error) {
++  if (error.name === "NotAllowedError") return "The passkey request was cancelled or timed out. You can try again.";
++  if (error.name === "InvalidStateError") return "A passkey already exists in this password manager. Try another device or security key.";
++  if (error.name === "SecurityError") return "Passkeys need a secure connection and a matching site address.";
++  if (error.name === "AbortError") return "";
++  if (error.name === "TypeError" && !error.status) return "Could not reach the account service. Check your connection and try again.";
++  return error.message || "Something went wrong. Please try again.";
++}
++async function run(task) {
++  if (busy) return;
++  busy = true;
++  autofill?.abort();
++  ceremony?.abort();
++  ceremony = new AbortController();
++  document.querySelectorAll("#account button, #nav-session").forEach((b) => {
++    b.disabled = true;
++  });
++  $("account-main").setAttribute("aria-busy", "true");
++  status("Waiting for your device\u2026");
++  try {
++    await autofillOptionsRequest.catch(() => {
++    });
++    await task();
++  } catch (e) {
++    status(errorMessage(e), true);
++  } finally {
++    busy = false;
++    $("account-main").removeAttribute("aria-busy");
++    document.querySelectorAll("#account button, #nav-session").forEach((b) => {
++      b.disabled = false;
++    });
++    document.querySelectorAll(".passkey-action").forEach((b) => {
++      b.disabled = !supported;
++    });
++    if (!state.user && mode === "signin") initializeAutofill();
++  }
++}
++function formatDate(value) {
++  return value ? new Intl.DateTimeFormat(void 0, { dateStyle: "medium" }).format(value) : "Not used yet";
++}
++function verificationLabel() {
++  $("verified-state").textContent = state.user && state.verifiedUntil > Date.now() ? "Identity verified. Sensitive changes are unlocked for 5 minutes." : "Sensitive changes require identity verification.";
++}
++function element(tag, className, content) {
++  const e = document.createElement(tag);
++  if (className) e.className = className;
++  if (content !== void 0) e.textContent = content;
++  return e;
++}
++function render() {
++  $("signed-in").hidden = !state.user;
++  $("signed-out").hidden = !!state.user;
++  $("nav-session").textContent = state.user ? "Sign out" : "Sign in";
++  $("account-title").textContent = state.user ? "Your account, your way." : "A better way to sign in.";
++  $("passkey-list").replaceChildren();
++  if (!state.user) return;
++  $("welcome-name").textContent = `Welcome, ${state.user.displayName}.`;
++  for (const field of ["name", "displayName"]) $("profile-form").elements[field].value = state.user[field];
++  verificationLabel();
++  if (!state.credentials.length) $("passkey-list").append(element("li", "muted", "No passkeys found. Add a passkey to secure your account."));
++  for (const c of state.credentials) {
++    const row = element("li", "passkey-row");
++    const provider = c.aaguid !== "00000000-0000-0000-0000-000000000000" ? providers_default[c.aaguid] : void 0;
++    const icon = element("span", "key-icon", provider?.icon ? "" : "\u26BF");
++    icon.setAttribute("aria-hidden", "true");
++    if (provider?.icon) {
++      const image = document.createElement("img");
++      image.src = provider.icon;
++      image.alt = "";
++      image.width = 24;
++      image.height = 24;
++      icon.append(image);
++    }
++    const details = element("div");
++    details.append(element("strong", "", c.name));
++    details.append(element("p", "muted", provider?.name || "Passkey provider not shared"));
++    details.append(element("p", "muted", `${c.credentialBackedUp ? "Synced passkey" : "Device or security key"} \xB7 Added ${formatDate(c.registeredAt)}`));
++    details.append(element("p", "muted", `Last used: ${formatDate(c.lastUsedAt)}`));
++    const actions = element("div", "row-actions");
++    const rename = element("button", "text-button", "Rename");
++    rename.type = "button";
++    rename.setAttribute("aria-label", `Rename ${c.name}`);
++    const remove = element("button", "text-button danger", "Remove");
++    remove.type = "button";
++    remove.setAttribute("aria-label", `Remove ${c.name}`);
++    remove.addEventListener("click", () => {
++      if (state.credentials.length < 2) return status("Add another passkey before removing your last one.", true);
++      $("delete-description").textContent = `\u201C${c.name}\u201D will no longer be able to sign in to your account.`;
++      $("delete-dialog").returnValue = "";
++      $("delete-dialog").showModal();
++      $("delete-dialog").onclose = () => {
++        if ($("delete-dialog").returnValue === "remove") run(async () => {
++          await ensureVerified();
++          state = await api(`credentials/${encodeURIComponent(c.id)}`, void 0, "DELETE");
++          render();
++          await syncAccepted();
++          status("Passkey removed. Remove the saved entry from your password manager too, if it still appears.");
++        });
++      };
++    });
++    const form = element("form");
++    form.hidden = true;
++    const label = element("label", "field", "Passkey name");
++    const input = element("input");
++    input.required = true;
++    input.maxLength = 80;
++    input.value = c.name;
++    label.append(input);
++    const save = element("button", "text-button", "Save name");
++    save.type = "submit";
++    const cancel = element("button", "text-button", "Cancel");
++    cancel.type = "button";
++    cancel.onclick = () => {
++      form.hidden = true;
++      rename.focus();
++    };
++    form.append(label, save, cancel);
++    rename.onclick = () => {
++      form.hidden = !form.hidden;
++      if (!form.hidden) input.focus();
++    };
++    form.onsubmit = (e) => {
++      e.preventDefault();
++      run(async () => {
++        state = await api(`credentials/${encodeURIComponent(c.id)}`, { name: input.value }, "PUT");
++        render();
++        status("Passkey name updated.");
++      });
++    };
++    actions.append(rename, remove);
++    details.append(actions, form);
++    row.append(icon, details);
++    $("passkey-list").append(row);
++  }
++}
++async function authenticate(kind, options, requestSignal, conditional = false) {
++  const credential = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options), signal: requestSignal, ...conditional && { mediation: "conditional" } });
++  if (!credential) throw new DOMException("Cancelled", "NotAllowedError");
++  const encoded = credential.toJSON();
++  try {
++    return await api(`${kind}/verify`, encoded);
++  } catch (e) {
++    if (kind === "login" && !state.user && e.status === 404) await signal("signalUnknownCredential", { rpId: options.rpId, credentialId: encoded.id });
++    throw e;
++  }
++}
++async function ensureVerified(force = false) {
++  if (!force && state.verifiedUntil > Date.now()) return;
++  const options = await api("reauth/options", {});
++  state = await authenticate("reauth", options, ceremony.signal);
++  verificationLabel();
++}
++async function register(details, name) {
++  const options = await api("register/options", details);
++  const credential = await navigator.credentials.create({ publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options), signal: ceremony.signal });
++  if (!credential) throw new DOMException("Cancelled", "NotAllowedError");
++  const encoded = credential.toJSON();
++  try {
++    state = await api("register/verify", { credential: encoded, name });
++  } catch (e) {
++    if (e.status && e.status < 500) await signal("signalUnknownCredential", { rpId: options.rp.id, credentialId: encoded.id });
++    throw e;
++  }
++  render();
++  await syncAccepted();
++  $("welcome-name").focus();
++  status("Passkey saved. You\u2019re ready for your next visit.");
++}
++async function initializeAutofill() {
++  if (!supported || !capabilities.conditionalGet || state.user || busy || mode !== "signin") return;
++  autofill?.abort();
++  const controller = new AbortController();
++  autofill = controller;
++  try {
++    autofillOptionsRequest = api("login/options", {});
++    const options = await autofillOptionsRequest;
++    if (controller.signal.aborted) return;
++    const next = await authenticate("login", options, controller.signal, true);
++    if (controller.signal.aborted) return;
++    state = next;
++    render();
++    await syncAccepted();
++    status("You\u2019re signed in. Welcome back.");
++  } catch (e) {
++    if (controller.signal.aborted || ["NotAllowedError", "AbortError"].includes(e.name)) return;
++    status(errorMessage(e), true);
++  }
++}
++async function signout() {
++  await api("logout", {});
++  state = { user: null, credentials: [] };
++  render();
++  status("You\u2019ve signed out. See you for the next cup.");
++}
++$("signin-tab").onclick = () => showMode("signin");
++$("signup-tab").onclick = () => showMode("signup");
++$("signin-form").onsubmit = (e) => {
++  e.preventDefault();
++  run(async () => {
++    const options = await api("login/options", {});
++    state = await authenticate("login", options, ceremony.signal);
++    render();
++    await syncAccepted();
++    $("welcome-name").focus();
++    status("You\u2019re signed in. Welcome back.");
++  });
++};
++$("signup-form").onsubmit = (e) => {
++  e.preventDefault();
++  const data = new FormData(e.currentTarget);
++  run(() => register({ name: data.get("name"), displayName: data.get("displayName") }, data.get("passkeyName")));
++};
++$("add-passkey").onclick = () => run(async () => {
++  await ensureVerified();
++  await register({}, "My additional passkey");
++});
++$("verify-identity").onclick = () => run(async () => {
++  await ensureVerified(true);
++  status("Identity verified. You can now make sensitive account changes.");
++});
++$("signout").onclick = () => run(signout);
++$("nav-session").onclick = () => {
++  if (state.user) run(signout);
++  else {
++    location.hash = "account";
++    $("signin-tab").focus();
++  }
++};
++$("profile-form").onsubmit = (e) => {
++  e.preventDefault();
++  const data = new FormData(e.currentTarget);
++  run(async () => {
++    await ensureVerified();
++    state = await api("user", { name: data.get("name"), displayName: data.get("displayName") }, "PUT");
++    render();
++    await signal("signalCurrentUserDetails", { rpId: state.rpId, userId: state.user.id, name: state.user.name, displayName: state.user.displayName });
++    status("Account details saved.");
++  });
++};
++async function initialize() {
++  try {
++    supported = !!(window.isSecureContext && window.PublicKeyCredential && navigator.credentials);
++    if (supported) {
++      try {
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++      } catch {
++        capabilities = {};
++      }
++    }
++    if (!supported) {
++      $("support-message").hidden = false;
++      $("support-message").textContent = "Passkeys aren\u2019t available in this browser or connection. Open this site over HTTPS in an updated browser, or use another device.";
++    }
++    document.querySelectorAll(".passkey-action").forEach((b) => {
++      b.disabled = !supported;
++    });
++    state = await api("session", void 0, "GET");
++    render();
++    await syncAccepted();
++    await initializeAutofill();
++  } catch (e) {
++    status(errorMessage(e), true);
++  }
++}
++window.addEventListener("pagehide", () => {
++  autofill?.abort();
++  ceremony?.abort();
++});
++setInterval(() => {
++  if (state.user) verificationLabel();
++}, 15e3);
++initialize();
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..113f1e6
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,11 @@
++import { mkdirSync } from 'node:fs';
++import { resolve } from 'node:path';
++import { openStore } from './src/store.mjs';
++import { createApp } from './src/app.mjs';
++const port = Number(process.env.PORT || 11222);
++const origin = process.env.ORIGIN || `http://localhost:${port}`;
++const directory = resolve(process.env.DATA_DIR || 'data');
++mkdirSync(directory, { recursive: true, mode: 0o700 });
++const store = openStore(resolve(directory, 'grind.sqlite'));
++const app = createApp({ store, origin, rpId: process.env.RP_ID || new URL(origin).hostname });
++app.listen(port, '0.0.0.0', () => console.log(`The Daily Grind is listening on port ${port}`));
+diff --git a/src/account.js b/src/account.js
+new file mode 100644
+index 0000000..8eb5573
+--- /dev/null
++++ b/src/account.js
+@@ -0,0 +1,270 @@
++import 'webauthn-polyfills';
++import providers from './providers.json';
++
++const $ = id => document.getElementById(id);
++let state = { user: null, credentials: [] };
++let supported = false;
++let busy = false;
++let autofill;
++let ceremony;
++let capabilities = {};
++let mode = 'signin';
++let autofillOptionsRequest = Promise.resolve();
++
++function status(message = '', error = false) {
++  $('account-status').textContent = message;
++  $('account-status').dataset.error = String(error);
++}
++async function api(path, body, method = 'POST') {
++  const response = await fetch(`/api/${path}`, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...(body !== undefined && { body: JSON.stringify(body) }) });
++  const data = await response.json().catch(() => ({}));
++  if (!response.ok) throw Object.assign(new Error(data.error || 'The account service is unavailable. Please try again.'), { status: response.status });
++  return data;
++}
++async function signal(method, args) {
++  try { if (window.PublicKeyCredential?.[method]) await PublicKeyCredential[method](args); }
++  catch { /* A password manager sync failure must not undo a successful account change. */ }
++}
++async function syncAccepted() {
++  if (state.user) await signal('signalAllAcceptedCredentials', { rpId: state.rpId, userId: state.user.id, allAcceptedCredentialIds: state.credentials.map(c => c.id) });
++}
++function showMode(next) {
++  mode = next;
++  autofill?.abort();
++  $('signin-panel').hidden = mode !== 'signin';
++  $('signup-panel').hidden = mode !== 'signup';
++  $('signin-tab').setAttribute('aria-pressed', String(mode === 'signin'));
++  $('signup-tab').setAttribute('aria-pressed', String(mode === 'signup'));
++  status();
++  if (mode === 'signin') initializeAutofill();
++}
++function errorMessage(error) {
++  if (error.name === 'NotAllowedError') return 'The passkey request was cancelled or timed out. You can try again.';
++  if (error.name === 'InvalidStateError') return 'A passkey already exists in this password manager. Try another device or security key.';
++  if (error.name === 'SecurityError') return 'Passkeys need a secure connection and a matching site address.';
++  if (error.name === 'AbortError') return '';
++  if (error.name === 'TypeError' && !error.status) return 'Could not reach the account service. Check your connection and try again.';
++  return error.message || 'Something went wrong. Please try again.';
++}
++async function run(task) {
++  if (busy) return;
++  busy = true;
++  autofill?.abort();
++  ceremony?.abort();
++  ceremony = new AbortController();
++  document.querySelectorAll('#account button, #nav-session').forEach(b => { b.disabled = true; });
++  $('account-main').setAttribute('aria-busy', 'true');
++  status('Waiting for your device…');
++  try {
++    // Let a pending autofill options request finish before replacing its challenge.
++    await autofillOptionsRequest.catch(() => {});
++    await task();
++  }
++  catch (e) { status(errorMessage(e), true); }
++  finally {
++    busy = false;
++    $('account-main').removeAttribute('aria-busy');
++    document.querySelectorAll('#account button, #nav-session').forEach(b => { b.disabled = false; });
++    document.querySelectorAll('.passkey-action').forEach(b => { b.disabled = !supported; });
++    if (!state.user && mode === 'signin') initializeAutofill();
++  }
++}
++function formatDate(value) {
++  return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(value) : 'Not used yet';
++}
++function verificationLabel() {
++  $('verified-state').textContent = state.user && state.verifiedUntil > Date.now() ? 'Identity verified. Sensitive changes are unlocked for 5 minutes.' : 'Sensitive changes require identity verification.';
++}
++function element(tag, className, content) {
++  const e = document.createElement(tag);
++  if (className) e.className = className;
++  if (content !== undefined) e.textContent = content;
++  return e;
++}
++function render() {
++  $('signed-in').hidden = !state.user;
++  $('signed-out').hidden = !!state.user;
++  $('nav-session').textContent = state.user ? 'Sign out' : 'Sign in';
++  $('account-title').textContent = state.user ? 'Your account, your way.' : 'A better way to sign in.';
++  $('passkey-list').replaceChildren();
++  if (!state.user) return;
++  $('welcome-name').textContent = `Welcome, ${state.user.displayName}.`;
++  for (const field of ['name', 'displayName']) $('profile-form').elements[field].value = state.user[field];
++  verificationLabel();
++  if (!state.credentials.length) $('passkey-list').append(element('li', 'muted', 'No passkeys found. Add a passkey to secure your account.'));
++  for (const c of state.credentials) {
++    const row = element('li', 'passkey-row');
++    // Provider metadata is a display hint, never an authentication decision.
++    const provider = c.aaguid !== '00000000-0000-0000-0000-000000000000' ? providers[c.aaguid] : undefined;
++    const icon = element('span', 'key-icon', provider?.icon ? '' : '⚿');
++    icon.setAttribute('aria-hidden', 'true');
++    if (provider?.icon) {
++      const image = document.createElement('img');
++      image.src = provider.icon;
++      image.alt = '';
++      image.width = 24;
++      image.height = 24;
++      icon.append(image);
++    }
++    const details = element('div');
++    details.append(element('strong', '', c.name));
++    details.append(element('p', 'muted', provider?.name || 'Passkey provider not shared'));
++    details.append(element('p', 'muted', `${c.credentialBackedUp ? 'Synced passkey' : 'Device or security key'} · Added ${formatDate(c.registeredAt)}`));
++    details.append(element('p', 'muted', `Last used: ${formatDate(c.lastUsedAt)}`));
++    const actions = element('div', 'row-actions');
++    const rename = element('button', 'text-button', 'Rename');
++    rename.type = 'button';
++    rename.setAttribute('aria-label', `Rename ${c.name}`);
++    const remove = element('button', 'text-button danger', 'Remove');
++    remove.type = 'button';
++    remove.setAttribute('aria-label', `Remove ${c.name}`);
++    remove.addEventListener('click', () => {
++      if (state.credentials.length < 2) return status('Add another passkey before removing your last one.', true);
++      $('delete-description').textContent = `“${c.name}” will no longer be able to sign in to your account.`;
++      $('delete-dialog').returnValue = '';
++      $('delete-dialog').showModal();
++      $('delete-dialog').onclose = () => {
++        if ($('delete-dialog').returnValue === 'remove') run(async () => {
++          await ensureVerified();
++          state = await api(`credentials/${encodeURIComponent(c.id)}`, undefined, 'DELETE');
++          render();
++          await syncAccepted();
++          status('Passkey removed. Remove the saved entry from your password manager too, if it still appears.');
++        });
++      };
++    });
++    const form = element('form');
++    form.hidden = true;
++    const label = element('label', 'field', 'Passkey name');
++    const input = element('input');
++    input.required = true;
++    input.maxLength = 80;
++    input.value = c.name;
++    label.append(input);
++    const save = element('button', 'text-button', 'Save name');
++    save.type = 'submit';
++    const cancel = element('button', 'text-button', 'Cancel');
++    cancel.type = 'button';
++    cancel.onclick = () => { form.hidden = true; rename.focus(); };
++    form.append(label, save, cancel);
++    rename.onclick = () => { form.hidden = !form.hidden; if (!form.hidden) input.focus(); };
++    form.onsubmit = e => { e.preventDefault(); run(async () => {
++      state = await api(`credentials/${encodeURIComponent(c.id)}`, { name: input.value }, 'PUT');
++      render();
++      status('Passkey name updated.');
++    }); };
++    actions.append(rename, remove);
++    details.append(actions, form);
++    row.append(icon, details);
++    $('passkey-list').append(row);
++  }
++}
++async function authenticate(kind, options, requestSignal, conditional = false) {
++  const credential = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options), signal: requestSignal, ...(conditional && { mediation: 'conditional' }) });
++  if (!credential) throw new DOMException('Cancelled', 'NotAllowedError');
++  const encoded = credential.toJSON();
++  try { return await api(`${kind}/verify`, encoded); }
++  catch (e) {
++    if (kind === 'login' && !state.user && e.status === 404) await signal('signalUnknownCredential', { rpId: options.rpId, credentialId: encoded.id });
++    throw e;
++  }
++}
++async function ensureVerified(force = false) {
++  if (!force && state.verifiedUntil > Date.now()) return;
++  const options = await api('reauth/options', {});
++  state = await authenticate('reauth', options, ceremony.signal);
++  verificationLabel();
++}
++async function register(details, name) {
++  const options = await api('register/options', details);
++  const credential = await navigator.credentials.create({ publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options), signal: ceremony.signal });
++  if (!credential) throw new DOMException('Cancelled', 'NotAllowedError');
++  const encoded = credential.toJSON();
++  try { state = await api('register/verify', { credential: encoded, name }); }
++  catch (e) {
++    // Only a definitive server rejection proves the new credential was not stored.
++    // Network failures are ambiguous; do not remove a possibly valid passkey.
++    if (e.status && e.status < 500) await signal('signalUnknownCredential', { rpId: options.rp.id, credentialId: encoded.id });
++    throw e;
++  }
++  render();
++  await syncAccepted();
++  $('welcome-name').focus();
++  status('Passkey saved. You’re ready for your next visit.');
++}
++async function initializeAutofill() {
++  if (!supported || !capabilities.conditionalGet || state.user || busy || mode !== 'signin') return;
++  autofill?.abort();
++  const controller = new AbortController();
++  autofill = controller;
++  try {
++    autofillOptionsRequest = api('login/options', {});
++    const options = await autofillOptionsRequest;
++    if (controller.signal.aborted) return;
++    const next = await authenticate('login', options, controller.signal, true);
++    if (controller.signal.aborted) return;
++    state = next;
++    render();
++    await syncAccepted();
++    status('You’re signed in. Welcome back.');
++  } catch (e) {
++    if (controller.signal.aborted || ['NotAllowedError', 'AbortError'].includes(e.name)) return;
++    status(errorMessage(e), true);
++  }
++}
++async function signout() {
++  await api('logout', {});
++  state = { user: null, credentials: [] };
++  render();
++  status('You’ve signed out. See you for the next cup.');
++}
++$('signin-tab').onclick = () => showMode('signin');
++$('signup-tab').onclick = () => showMode('signup');
++$('signin-form').onsubmit = e => { e.preventDefault(); run(async () => {
++  const options = await api('login/options', {});
++  state = await authenticate('login', options, ceremony.signal);
++  render();
++  await syncAccepted();
++  $('welcome-name').focus();
++  status('You’re signed in. Welcome back.');
++}); };
++$('signup-form').onsubmit = e => { e.preventDefault(); const data = new FormData(e.currentTarget); run(() => register({ name: data.get('name'), displayName: data.get('displayName') }, data.get('passkeyName'))); };
++$('add-passkey').onclick = () => run(async () => { await ensureVerified(); await register({}, 'My additional passkey'); });
++$('verify-identity').onclick = () => run(async () => { await ensureVerified(true); status('Identity verified. You can now make sensitive account changes.'); });
++$('signout').onclick = () => run(signout);
++$('nav-session').onclick = () => {
++  if (state.user) run(signout);
++  else { location.hash = 'account'; $('signin-tab').focus(); }
++};
++$('profile-form').onsubmit = e => {
++  e.preventDefault();
++  const data = new FormData(e.currentTarget);
++  run(async () => {
++    await ensureVerified();
++    state = await api('user', { name: data.get('name'), displayName: data.get('displayName') }, 'PUT');
++    render();
++    await signal('signalCurrentUserDetails', { rpId: state.rpId, userId: state.user.id, name: state.user.name, displayName: state.user.displayName });
++    status('Account details saved.');
++  });
++};
++async function initialize() {
++  try {
++    supported = !!(window.isSecureContext && window.PublicKeyCredential && navigator.credentials);
++    if (supported) {
++      // Capability discovery enhances autofill; explicit WebAuthn remains usable if it fails.
++      try { capabilities = await PublicKeyCredential.getClientCapabilities(); } catch { capabilities = {}; }
++    }
++    if (!supported) {
++      $('support-message').hidden = false;
++      $('support-message').textContent = 'Passkeys aren’t available in this browser or connection. Open this site over HTTPS in an updated browser, or use another device.';
++    }
++    document.querySelectorAll('.passkey-action').forEach(b => { b.disabled = !supported; });
++    state = await api('session', undefined, 'GET');
++    render();
++    await syncAccepted();
++    await initializeAutofill();
++  } catch (e) { status(errorMessage(e), true); }
++}
++window.addEventListener('pagehide', () => { autofill?.abort(); ceremony?.abort(); });
++setInterval(() => { if (state.user) verificationLabel(); }, 15000);
++initialize();
+diff --git a/src/app.mjs b/src/app.mjs
+new file mode 100644
+index 0000000..68a07dc
+--- /dev/null
++++ b/src/app.mjs
+@@ -0,0 +1,169 @@
++import express from 'express';
++import { randomBytes } from 'node:crypto';
++import { resolve } from 'node:path';
++import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++import { fail, requireUser, requireRecent, takeChallenge, checkOwnership, text, profile } from './security.mjs';
++
++const randomId = () => randomBytes(32).toString('base64url');
++export function createApp({ store, origin, rpId, root = process.cwd() }) {
++  const url = new URL(origin);
++  if (url.origin !== origin || (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error('ORIGIN must be an HTTPS origin (or localhost).');
++  if (url.hostname !== rpId && !url.hostname.endsWith(`.${rpId}`)) throw new Error('RP_ID must match the configured origin.');
++  const app = express();
++  const secure = url.protocol === 'https:';
++  const cookieName = secure ? '__Host-grind-session' : 'grind-session';
++  app.disable('x-powered-by');
++  app.use((req, res, next) => {
++    res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'Permissions-Policy': 'publickey-credentials-get=(self), publickey-credentials-create=(self)' });
++    next();
++  });
++  app.use('/api', (req, res, next) => {
++    res.set('Cache-Control', 'no-store');
++    if (!['GET', 'HEAD'].includes(req.method) && req.get('origin') !== origin) return res.status(403).json({ error: 'Request origin rejected.' });
++    next();
++  }, express.json({ limit: '32kb' }));
++  // Limit expensive unauthenticated ceremonies. Expired buckets are removed each request.
++  const attempts = new Map();
++  app.use('/api', (req, res, next) => {
++    if (req.method === 'GET') return next();
++    const now = Date.now();
++    for (const [key, bucket] of attempts) if (bucket.until < now) attempts.delete(key);
++    const bucket = attempts.get(req.ip) || { count: 0, until: now + 60000 };
++    attempts.set(req.ip, bucket);
++    if (++bucket.count > 60) return res.status(429).json({ error: 'Too many attempts. Please wait a minute.' });
++    next();
++  });
++  app.use('/api', (req, res, next) => {
++    store.prune();
++    const match = (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith(`${cookieName}=`));
++    const id = match?.slice(cookieName.length + 1);
++    req.sessionId = id && /^[\w-]{43}$/.test(id) && store.session(id) ? id : randomId();
++    req.session = store.session(req.sessionId) || {};
++    // Reloaded by every request; only server-side data is trusted.
++    req.save = () => store.saveSession(req.sessionId, req.session);
++    req.rotate = userId => {
++      store.deleteSession(req.sessionId);
++      req.sessionId = randomId();
++      req.session = { userId };
++      req.save();
++      res.cookie(cookieName, req.sessionId, { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 86400000 });
++    };
++    if (!id || id !== req.sessionId) res.cookie(cookieName, req.sessionId, { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 86400000 });
++    next();
++  });
++  const state = req => {
++    const user = req.session.userId && store.user(req.session.userId);
++    return { user: user || null, rpId, verifiedUntil: (req.session.verifiedAt || 0) + 300000,
++      credentials: user ? store.credentials(user.id).map(({ publicKey, counter, ...c }) => c) : [] };
++  };
++  const pending = (req, kind, options, extra = {}) => {
++    req.session.pending = { kind, challenge: options.challenge, userId: req.session.userId, uv: options.userVerification || options.authenticatorSelection?.userVerification, expires: Date.now() + 300000, ...extra };
++    req.save();
++    return options;
++  };
++  const consume = (req, kind) => {
++    try { return takeChallenge(req.session, kind, req.session.userId); }
++    finally { req.save(); } // Burn challenge before asynchronous verification, including failures.
++  };
++  app.get('/api/session', (req, res) => res.json(state(req)));
++  app.post('/api/logout', (req, res) => {
++    store.deleteSession(req.sessionId);
++    res.clearCookie(cookieName, { path: '/', secure, httpOnly: true, sameSite: 'lax' });
++    res.json({ success: true });
++  });
++  app.post('/api/register/options', async (req, res) => {
++    let user;
++    if (req.session.userId) {
++      user = requireUser(req.session, store);
++      requireRecent(req.session);
++    } else {
++      const details = profile(req.body);
++      if (store.byName(details.name)) fail(409, 'That username is unavailable. Choose another or sign in.');
++      user = { id: randomId(), ...details };
++    }
++    const options = await generateRegistrationOptions({ rpName: 'The Daily Grind', rpID: rpId,
++      userID: Buffer.from(user.id, 'base64url'), userName: user.name, userDisplayName: user.displayName,
++      attestationType: 'none', excludeCredentials: store.credentials(user.id).map(c => ({ id: c.id, transports: c.transports })),
++      authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'preferred' } });
++    res.json(pending(req, 'register', options, { user, isNew: !req.session.userId }));
++  });
++  app.post('/api/register/verify', async (req, res) => {
++    const p = consume(req, 'register');
++    if (!p.isNew) { requireUser(req.session, store); requireRecent(req.session); }
++    let result;
++    try { result = await verifyRegistrationResponse({ response: req.body.credential, expectedChallenge: p.challenge, expectedOrigin: origin, expectedRPID: rpId, requireUserVerification: p.uv === 'required' }); }
++    catch { fail(400, 'Passkey registration could not be verified. Please try again.'); }
++    if (!result.verified) fail(400, 'Passkey registration was not verified.');
++    const { credential, aaguid, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
++    const record = { id: credential.id, publicKey: Buffer.from(credential.publicKey).toString('base64url'), counter: credential.counter,
++      transports: credential.transports || [], userId: p.user.id, name: text(req.body.name || 'My passkey', 'Passkey name'),
++      aaguid, credentialType: 'public-key', credentialDeviceType, credentialBackedUp, registeredAt: Date.now(), lastUsedAt: null };
++    if (!store.session(req.sessionId)) fail(401, 'Your session ended. Please try again.');
++    try { store.register(p.user, record, p.isNew); } catch { fail(409, 'This account or passkey already exists. Please sign in or try another.'); }
++    if (p.isNew) req.rotate(p.user.id);
++    res.json(state(req));
++  });
++  for (const kind of ['login', 'reauth']) {
++    app.post(`/api/${kind}/options`, async (req, res) => {
++      if (kind === 'login' && req.session.userId) fail(409, 'Sign out before signing in to another account.');
++      let allowCredentials = [];
++      if (kind === 'reauth') {
++        const user = requireUser(req.session, store);
++        allowCredentials = store.credentials(user.id).map(c => ({ id: c.id, transports: c.transports }));
++        if (!allowCredentials.length) fail(409, 'No passkeys are registered to this account.');
++      }
++      const options = await generateAuthenticationOptions({ rpID: rpId, allowCredentials, userVerification: kind === 'reauth' ? 'required' : 'preferred' });
++      res.json(pending(req, kind, options));
++    });
++    app.post(`/api/${kind}/verify`, async (req, res) => {
++      const p = consume(req, kind);
++      const credential = store.credential(req.body.id);
++      if (!credential) fail(404, 'Passkey not found. Use another passkey or create an account.');
++      if (kind === 'reauth') checkOwnership(credential, requireUser(req.session, store).id);
++      const handle = req.body.response?.userHandle;
++      if ((handle && handle !== credential.userId) || (kind === 'login' && !handle)) fail(400, 'This passkey belongs to a different account.');
++      let result;
++      try { result = await verifyAuthenticationResponse({ response: req.body, expectedChallenge: p.challenge, expectedOrigin: origin, expectedRPID: rpId,
++        credential: { id: credential.id, publicKey: Buffer.from(credential.publicKey, 'base64url'), counter: credential.counter, transports: credential.transports }, requireUserVerification: p.uv === 'required' }); }
++      catch { fail(400, 'Your passkey could not be verified. Please try again.'); }
++      if (!result.verified) fail(400, 'Your passkey was not verified.');
++      if (!store.session(req.sessionId)) fail(401, 'Your session ended. Please sign in again.');
++      const current = store.credential(credential.id);
++      if (!current || current.counter !== credential.counter) fail(409, 'Passkey changed. Please try again.');
++      store.updateCredential({ ...current, counter: result.authenticationInfo.newCounter, lastUsedAt: Date.now(), credentialBackedUp: result.authenticationInfo.credentialBackedUp });
++      if (kind === 'login') req.rotate(credential.userId);
++      else { req.session.verifiedAt = Date.now(); req.save(); }
++      res.json(state(req));
++    });
++  }
++  app.put('/api/credentials/:id', (req, res) => {
++    const user = requireUser(req.session, store);
++    const c = store.credential(req.params.id);
++    checkOwnership(c, user.id);
++    store.updateCredential({ ...c, name: text(req.body.name, 'Passkey name') });
++    res.json(state(req));
++  });
++  app.delete('/api/credentials/:id', (req, res) => {
++    const user = requireUser(req.session, store);
++    requireRecent(req.session);
++    checkOwnership(store.credential(req.params.id), user.id);
++    store.deleteCredential(req.params.id, user.id);
++    res.json(state(req));
++  });
++  app.put('/api/user', (req, res) => {
++    const user = requireUser(req.session, store);
++    requireRecent(req.session);
++    const details = profile(req.body);
++    if (store.byName(details.name)?.id && store.byName(details.name).id !== user.id) fail(409, 'That username is unavailable.');
++    store.updateUser({ ...user, ...details });
++    res.json(state(req));
++  });
++  app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
++  app.get(['/account', '/logout'], (req, res) => res.redirect('/#account'));
++  app.get('/', (req, res) => res.sendFile(resolve(root, 'index.html')));
++  app.use('/assets', express.static(resolve(root, 'public/assets')));
++  app.use((error, req, res, next) => {
++    res.status(error.status || 500).json({ error: error.status ? error.message : 'Something went wrong. Please try again.' });
++  });
++  return app;
++}
+diff --git a/src/providers.json b/src/providers.json
+new file mode 100644
+index 0000000..3617a60
+--- /dev/null
++++ b/src/providers.json
+@@ -0,0 +1,26 @@
++{
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  }
++}
+diff --git a/src/security.mjs b/src/security.mjs
+new file mode 100644
+index 0000000..eacc565
+--- /dev/null
++++ b/src/security.mjs
+@@ -0,0 +1,27 @@
++export function fail(status, message) { throw Object.assign(new Error(message), { status }); }
++export function requireUser(session, store) {
++  const user = session.userId && store.user(session.userId);
++  if (!user) fail(401, 'Sign in to continue.');
++  return user;
++}
++export function requireRecent(session) {
++  if (!session.verifiedAt || Date.now() - session.verifiedAt > 300000) fail(403, 'Verify your identity to make this change.');
++}
++export function takeChallenge(session, kind, userId) {
++  const pending = session.pending;
++  delete session.pending;
++  if (!pending || pending.kind !== kind || pending.expires < Date.now() || pending.userId !== userId) fail(400, 'This request expired. Please try again.');
++  return pending;
++}
++export function checkOwnership(credential, userId) {
++  if (!credential || credential.userId !== userId) fail(404, 'Passkey not found.');
++}
++export function text(value, label, max = 80) {
++  if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail(400, `${label} must be between 1 and ${max} characters.`);
++  return value.trim();
++}
++export function profile(body) {
++  const name = text(body.name, 'Username', 40).toLowerCase();
++  if (!/^[a-z0-9._-]+$/.test(name)) fail(400, 'Use letters, numbers, dots, underscores, or hyphens for your username.');
++  return { name, displayName: text(body.displayName, 'Display name') };
++}
+diff --git a/src/store.mjs b/src/store.mjs
+new file mode 100644
+index 0000000..ef2bbb0
+--- /dev/null
++++ b/src/store.mjs
+@@ -0,0 +1,34 @@
++import { DatabaseSync } from 'node:sqlite';
++
++export function openStore(path) {
++  const db = new DatabaseSync(path);
++  db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
++    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, displayName TEXT NOT NULL);
++    CREATE TABLE IF NOT EXISTS credentials (id TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), data TEXT NOT NULL);
++    CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, expires INTEGER NOT NULL, data TEXT NOT NULL);`);
++  return {
++    db,
++    user: id => db.prepare('SELECT * FROM users WHERE id=?').get(id),
++    byName: name => db.prepare('SELECT * FROM users WHERE name=?').get(name),
++    credentials: userId => db.prepare('SELECT data FROM credentials WHERE userId=?').all(userId).map(r => JSON.parse(r.data)),
++    credential: id => { const r = db.prepare('SELECT data FROM credentials WHERE id=?').get(id); return r && JSON.parse(r.data); },
++    session: id => { const r = db.prepare('SELECT data FROM sessions WHERE id=? AND expires>?').get(id, Date.now()); return r && JSON.parse(r.data); },
++    saveSession: (id, data) => db.prepare('INSERT OR REPLACE INTO sessions VALUES (?,?,?)').run(id, Date.now() + 86400000, JSON.stringify(data)),
++    deleteSession: id => db.prepare('DELETE FROM sessions WHERE id=?').run(id),
++    prune: () => db.prepare('DELETE FROM sessions WHERE expires<=?').run(Date.now()),
++    register(user, credential, isNew) {
++      db.exec('BEGIN IMMEDIATE');
++      try {
++        if (isNew) db.prepare('INSERT INTO users VALUES (?,?,?)').run(user.id, user.name, user.displayName);
++        db.prepare('INSERT INTO credentials VALUES (?,?,?)').run(credential.id, user.id, JSON.stringify(credential));
++        db.exec('COMMIT');
++      } catch (e) { db.exec('ROLLBACK'); throw e; }
++    },
++    updateCredential: c => db.prepare('UPDATE credentials SET data=? WHERE id=? AND userId=?').run(JSON.stringify(c), c.id, c.userId),
++    deleteCredential(id, userId) {
++      if (this.credentials(userId).length < 2) throw Object.assign(new Error('Add another passkey before removing your last one.'), { status: 409 });
++      db.prepare('DELETE FROM credentials WHERE id=? AND userId=?').run(id, userId);
++    },
++    updateUser: user => db.prepare('UPDATE users SET name=?, displayName=? WHERE id=?').run(user.name, user.displayName, user.id),
++  };
++}
+diff --git a/test/passkeys.test.mjs b/test/passkeys.test.mjs
+new file mode 100644
+index 0000000..35c9492
+--- /dev/null
++++ b/test/passkeys.test.mjs
+@@ -0,0 +1,153 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { generateKeyPairSync, createHash, sign, randomBytes } from 'node:crypto';
++import { openStore } from '../src/store.mjs';
++import { createApp } from '../src/app.mjs';
++import { requireRecent, takeChallenge, checkOwnership, profile } from '../src/security.mjs';
++
++const origin = 'http://localhost:11222';
++const rpId = 'localhost';
++const user = { id: randomBytes(32).toString('base64url'), name: 'coffee', displayName: 'Coffee Lover' };
++const hash = data => createHash('sha256').update(data).digest();
++const b64 = data => Buffer.from(data).toString('base64url');
++// A software authenticator for signed WebAuthn test data; no browser or network listener.
++function authenticator() {
++  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
++  const jwk = publicKey.export({ format: 'jwk' });
++  const cose = Buffer.concat([Buffer.from('a5010203262001215820', 'hex'), Buffer.from(jwk.x, 'base64url'), Buffer.from('225820', 'hex'), Buffer.from(jwk.y, 'base64url')]);
++  const id = randomBytes(32);
++  const data = (type, challenge, clientOrigin = origin) => Buffer.from(JSON.stringify({ type, challenge, origin: clientOrigin, crossOrigin: false }));
++  const auth = (flags, counter = 0) => { const count = Buffer.alloc(4); count.writeUInt32BE(counter); return Buffer.concat([hash(rpId), Buffer.from([flags]), count]); };
++  return {
++    id: b64(id), cose,
++    registration(challenge) {
++      const client = data('webauthn.create', challenge);
++      const length = Buffer.alloc(2); length.writeUInt16BE(id.length);
++      const bytes = Buffer.concat([auth(0x45), Buffer.alloc(16), length, id, cose]);
++      // CBOR: {fmt:'none', attStmt:{}, authData:bytes}
++      const lengthBytes = Buffer.alloc(3); lengthBytes[0] = 0x59; lengthBytes.writeUInt16BE(bytes.length, 1);
++      const attestation = Buffer.concat([Buffer.from('a363666d74646e6f6e656761747453746d74a0686175746844617461', 'hex'), lengthBytes, bytes]);
++      return { id: b64(id), rawId: b64(id), type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: b64(client), attestationObject: b64(attestation), transports: ['internal'] } };
++    },
++    assertion(challenge, { counter = 1, flags = 0x05, clientOrigin = origin, userId = user.id } = {}) {
++      const client = data('webauthn.get', challenge, clientOrigin);
++      const bytes = auth(flags, counter);
++      return { id: b64(id), rawId: b64(id), type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: b64(client), authenticatorData: b64(bytes), signature: b64(sign('sha256', Buffer.concat([bytes, hash(client)]), privateKey)), userHandle: userId } };
++    },
++  };
++}
++function fixture(t) {
++  const store = openStore(':memory:');
++  t.after(() => store.db.close());
++  const app = createApp({ store, origin, rpId }); // App factory has no listener and is not the server entrypoint.
++  const req = { sessionId: 'test-session', session: {}, body: {}, params: {} };
++  req.save = () => store.saveSession(req.sessionId, req.session);
++  req.rotate = id => { store.deleteSession(req.sessionId); req.sessionId += '-rotated'; req.session = { userId: id }; req.save(); };
++  async function call(method, path, body = {}) {
++    req.body = body;
++    const layer = app.router.stack.find(l => l.route?.path === path && l.route.methods[method]);
++    assert.ok(layer, `Route ${method} ${path} exists`);
++    let result;
++    await layer.route.stack[0].handle(req, { json: value => { result = value; }, clearCookie() {} });
++    return result;
++  }
++  return { store, req, call };
++}
++async function enroll(f, auth = authenticator()) {
++  const options = await f.call('post', '/api/register/options', { name: user.name, displayName: user.displayName });
++  const state = await f.call('post', '/api/register/verify', { credential: auth.registration(options.challenge), name: 'Everyday key' });
++  return { auth, state };
++}
++
++test('real signed registration, logout, discoverable login, and strict reauthentication', async t => {
++  const f = fixture(t);
++  const { auth, state } = await enroll(f);
++  assert.equal(state.user.name, user.name);
++  assert.equal(state.credentials.length, 1);
++  assert.equal(state.credentials[0].publicKey, undefined);
++  const stored = f.store.credential(auth.id);
++  assert.ok(stored.publicKey);
++  await f.call('post', '/api/logout');
++  f.req.session = {}; f.req.sessionId = 'fresh';
++  const options = await f.call('post', '/api/login/options');
++  assert.deepEqual(options.allowCredentials, []);
++  const signedIn = await f.call('post', '/api/login/verify', auth.assertion(options.challenge, { userId: stored.userId }));
++  assert.equal(signedIn.user.id, stored.userId);
++  const reauth = await f.call('post', '/api/reauth/options');
++  assert.deepEqual(reauth.allowCredentials.map(c => c.id), [auth.id]);
++  assert.equal(reauth.userVerification, 'required');
++  const verified = await f.call('post', '/api/reauth/verify', auth.assertion(reauth.challenge, { counter: 2, userId: stored.userId }));
++  assert.ok(verified.verifiedUntil > Date.now());
++  assert.equal(f.store.credential(auth.id).counter, 2);
++  assert.ok(f.store.credential(auth.id).lastUsedAt);
++});
++
++test('management requires recent verification and preserves the last passkey', async t => {
++  const f = fixture(t);
++  const { auth } = await enroll(f);
++  await assert.rejects(f.call('post', '/api/register/options'), { status: 403 });
++  f.req.params.id = auth.id;
++  const renamed = await f.call('put', '/api/credentials/:id', { name: 'My laptop' });
++  assert.equal(renamed.credentials[0].name, 'My laptop');
++  await assert.rejects(f.call('delete', '/api/credentials/:id'), { status: 403 });
++  f.req.session.verifiedAt = Date.now(); f.req.save();
++  await assert.rejects(f.call('delete', '/api/credentials/:id'), { status: 409 });
++  const second = authenticator();
++  const options = await f.call('post', '/api/register/options');
++  assert.equal(options.excludeCredentials[0].id, auth.id);
++  assert.equal(options.authenticatorSelection.authenticatorAttachment, undefined);
++  await f.call('post', '/api/register/verify', { credential: second.registration(options.challenge) });
++  const deleted = await f.call('delete', '/api/credentials/:id');
++  assert.deepEqual(deleted.credentials.map(c => c.id), [second.id]);
++  const updated = await f.call('put', '/api/user', { name: 'new.coffee', displayName: 'New Name' });
++  assert.equal(updated.user.displayName, 'New Name');
++});
++
++test('challenge replay, wrong origin, wrong user, missing UV, and forged signatures are rejected', async t => {
++  const f = fixture(t);
++  const { auth, state } = await enroll(f);
++  const attempt = async (settings, change) => {
++    const options = await f.call('post', '/api/reauth/options');
++    const assertion = auth.assertion(options.challenge, { ...settings, userId: settings?.userId || state.user.id });
++    change?.(assertion);
++    await assert.rejects(f.call('post', '/api/reauth/verify', assertion));
++    await assert.rejects(f.call('post', '/api/reauth/verify', assertion), { status: 400 });
++  };
++  await attempt({ clientOrigin: 'https://attacker.example' });
++  await attempt({ flags: 0x01 });
++  await attempt({ userId: 'another-user' });
++  await attempt({}, response => { response.response.signature = b64(randomBytes(72)); });
++  const other = authenticator();
++  f.store.register({ id: 'other', name: 'other', displayName: 'Other' }, { id: other.id, userId: 'other', publicKey: b64(other.cose), counter: 0 }, true);
++  const options = await f.call('post', '/api/reauth/options');
++  await assert.rejects(f.call('post', '/api/reauth/verify', other.assertion(options.challenge, { userId: 'other' })), { status: 404 });
++});
++
++test('failed registration creates no account, and existing usernames cannot be claimed', async t => {
++  const f = fixture(t);
++  await f.call('post', '/api/register/options', { name: 'failed', displayName: 'Failed' });
++  await assert.rejects(f.call('post', '/api/register/verify', { credential: {} }), { status: 400 });
++  assert.equal(f.store.byName('failed'), undefined);
++  await enroll(f);
++  f.req.session = {}; f.req.sessionId = 'new-signup';
++  await assert.rejects(f.call('post', '/api/register/options', { name: user.name, displayName: 'Imposter' }), { status: 409 });
++});
++
++test('challenge expiry, ceremony type, ownership, freshness, and profile validation', () => {
++  const challenge = { kind: 'login', userId: undefined, expires: Date.now() - 1 };
++  const session = { pending: challenge };
++  assert.throws(() => takeChallenge(session, 'login'), { status: 400 });
++  assert.equal(session.pending, undefined);
++  assert.throws(() => takeChallenge({ pending: { ...challenge, expires: Date.now() + 10000 } }, 'register'), { status: 400 });
++  assert.throws(() => checkOwnership({ userId: 'a' }, 'b'), { status: 404 });
++  assert.throws(() => requireRecent({ verifiedAt: Date.now() - 300001 }), { status: 403 });
++  assert.throws(() => profile({ name: '<script>', displayName: 'Test' }), { status: 400 });
++});
++
++test('registration transaction rolls back on duplicate credential', t => {
++  const store = openStore(':memory:');
++  t.after(() => store.db.close());
++  store.register(user, { id: 'same-key', userId: user.id }, true);
++  assert.throws(() => store.register({ ...user, id: 'second', name: 'second' }, { id: 'same-key', userId: 'second' }, true));
++  assert.equal(store.user('second'), undefined);
++});

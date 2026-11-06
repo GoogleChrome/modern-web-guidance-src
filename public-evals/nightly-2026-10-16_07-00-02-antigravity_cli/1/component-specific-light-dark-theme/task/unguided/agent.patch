@@ -1,0 +1,382 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,13 +6,28 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --bg: #fafafa;
++      --nav-bg: #4e342e;
++      --nav-text: #ffffff;
++      --footer-bg: #d7ccc8;
++      --footer-text: #3e2723;
++      --card-bg: #ffffff;
++      --card-text: #3e2723;
++      --card-title: #4e342e;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover: #3e2723;
++      --btn-hover-text: #ffffff;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -23,22 +38,24 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      transition: background-color 0.3s;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -55,9 +72,9 @@
+       margin-left: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -99,60 +116,276 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .container h2,
++    section h2 {
++      color: var(--text);
++      transition: color 0.3s;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* Base Card Styling */
++    .card,
++    .themed-card {
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    /* Themed Cards (Default Light Theme container) */
++    .card {
++      background: var(--card-bg);
++      color: var(--card-text);
++      box-shadow: var(--card-shadow);
++    }
++
++    .themed-card {
++      --card-bg: #ffffff;
++      --card-text: #3e2723;
++      --card-title: #4e342e;
++      --text: #3e2723;
++      --primary: #4e342e;
++      --accent: #ffab40;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover: #3e2723;
++      --btn-hover-text: #ffffff;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++
++      background: var(--card-bg);
++      color: var(--card-text);
++      box-shadow: var(--card-shadow);
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
++    }
++
++    /* Dark Mode (System preference) */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --primary: #d7ccc8;
++        --secondary: #2d201c;
++        --accent: #ffab40;
++        --text: #f5ebe6;
++        --light: #181210;
++        --bg: #181210;
++        --nav-bg: #231714;
++        --nav-text: #ffffff;
++        --footer-bg: #231714;
++        --footer-text: #f5ebe6;
++        --card-bg: #261c18;
++        --card-text: #f5ebe6;
++        --card-title: #d7ccc8;
++        --btn-bg: #ffab40;
++        --btn-text: #2b1810;
++        --btn-hover: #ffa000;
++        --btn-hover-text: #2b1810;
++        --btn-accent: #ffab40;
++        --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++      }
++
++      .themed-card {
++        --card-bg: #261c18;
++        --card-text: #f5ebe6;
++        --card-title: #d7ccc8;
++        --text: #f5ebe6;
++        --primary: #d7ccc8;
++        --accent: #ffab40;
++        --btn-bg: #ffab40;
++        --btn-text: #2b1810;
++        --btn-hover: #ffa000;
++        --btn-hover-text: #2b1810;
++        --btn-accent: #ffab40;
++        --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++
++        background: var(--card-bg);
++        color: var(--card-text);
++        box-shadow: var(--card-shadow);
++      }
++    }
++
++    /* Support manual data-theme / dark class */
++    :root[data-theme="dark"],
++    html.dark,
++    body.dark {
++      --primary: #d7ccc8;
++      --secondary: #2d201c;
++      --accent: #ffab40;
++      --text: #f5ebe6;
++      --light: #181210;
++      --bg: #181210;
++      --nav-bg: #231714;
++      --nav-text: #ffffff;
++      --footer-bg: #231714;
++      --footer-text: #f5ebe6;
++      --card-bg: #261c18;
++      --card-text: #f5ebe6;
++      --card-title: #d7ccc8;
++      --btn-bg: #ffab40;
++      --btn-text: #2b1810;
++      --btn-hover: #ffa000;
++      --btn-hover-text: #2b1810;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++    }
++
++    :root[data-theme="dark"] .themed-card,
++    html.dark .themed-card,
++    body.dark .themed-card {
++      --card-bg: #261c18;
++      --card-text: #f5ebe6;
++      --card-title: #d7ccc8;
++      --text: #f5ebe6;
++      --primary: #d7ccc8;
++      --accent: #ffab40;
++      --btn-bg: #ffab40;
++      --btn-text: #2b1810;
++      --btn-hover: #ffa000;
++      --btn-hover-text: #2b1810;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++
++      background: var(--card-bg);
++      color: var(--card-text);
++      box-shadow: var(--card-shadow);
++    }
++
++    /* Force Dark Theme Container (e.g. Dark Roast Espresso card) */
++    .force-dark,
++    .themed-card.force-dark,
++    .grid > .themed-card:nth-child(2) {
++      --card-bg: #261c18;
++      --card-text: #f5ebe6;
++      --card-title: #d7ccc8;
++      --text: #f5ebe6;
++      --primary: #d7ccc8;
++      --accent: #ffab40;
++      --btn-bg: #ffab40;
++      --btn-text: #2b1810;
++      --btn-hover: #ffa000;
++      --btn-hover-text: #2b1810;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++
++      background: var(--card-bg);
++      color: var(--card-text);
++      box-shadow: var(--card-shadow);
++    }
++
++    /* Force Light Theme Container (overrides dark mode & force-dark) */
++    .force-light,
++    .themed-card.force-light,
++    .themed-card.force-dark.force-light,
++    .grid > .themed-card:nth-child(2).force-light,
++    .force-dark.force-light {
++      --card-bg: #ffffff;
++      --card-text: #3e2723;
++      --card-title: #4e342e;
++      --text: #3e2723;
++      --primary: #4e342e;
++      --accent: #ffab40;
++      --btn-bg: #4e342e;
++      --btn-text: #ffffff;
++      --btn-hover: #3e2723;
++      --btn-hover-text: #ffffff;
++      --btn-accent: #ffab40;
++      --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++
++      background: var(--card-bg);
++      color: var(--card-text);
++      box-shadow: var(--card-shadow);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      .force-light,
++      .themed-card.force-light,
++      .themed-card.force-dark.force-light,
++      .grid > .themed-card:nth-child(2).force-light,
++      .force-dark.force-light {
++        --card-bg: #ffffff;
++        --card-text: #3e2723;
++        --card-title: #4e342e;
++        --text: #3e2723;
++        --primary: #4e342e;
++        --accent: #ffab40;
++        --btn-bg: #4e342e;
++        --btn-text: #ffffff;
++        --btn-hover: #3e2723;
++        --btn-hover-text: #ffffff;
++        --btn-accent: #ffab40;
++        --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++
++        background: var(--card-bg);
++        color: var(--card-text);
++        box-shadow: var(--card-shadow);
++      }
++    }
++
++    /* Container element color adaptations */
++    .card h3,
++    .themed-card h3,
++    .force-dark h3,
++    .force-light h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-title, var(--primary));
++      transition: color 0.3s;
+     }
+ 
++    .card p,
++    .themed-card p,
++    .force-dark p,
++    .force-light p {
++      color: var(--card-text, var(--text));
++      transition: color 0.3s;
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg, var(--primary));
++      color: var(--btn-text, white);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover, #3e2723);
++      color: var(--btn-hover-text, var(--btn-text, white));
+     }
+ 
++    /* Footer */
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.3s;
+     }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -177,19 +410,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card force-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

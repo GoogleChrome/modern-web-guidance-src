@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -204,9 +204,68 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p id="card-expiry"></p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Card is valid through the END of its expiry month, so it lapses
++      // at the start of the following month (exclusive boundary).
++      var EXPIRY_YEAR = 2027;
++      var EXPIRY_MONTH = 12; // 1-12
++      var expiresOn = { y: EXPIRY_MONTH === 12 ? EXPIRY_YEAR + 1 : EXPIRY_YEAR,
++                        m: EXPIRY_MONTH === 12 ? 1 : EXPIRY_MONTH + 1,
++                        d: 1 };
++
++      // All math is done on calendar dates (year/month/day) in UTC, never on
++      // local-time durations, so DST and leap years can't skew results.
++      // Date.UTC handles leap years for us; no hand-rolled leap logic.
++      function utcDay(y, m, d) { return Date.UTC(y, m - 1, d); }
++      function daysInMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
++      function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
++
++      // Add whole months, clamping the day (e.g. Jan 31 + 1 month = Feb 28/29).
++      function addMonths(y, m, d, n) {
++        var total = y * 12 + (m - 1) + n;
++        var ny = Math.floor(total / 12);
++        var nm = (total % 12) + 1;
++        return { y: ny, m: nm, d: Math.min(d, daysInMonth(ny, nm)) };
++      }
++
++      var now = new Date();
++      var today = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
++      var todayUtc = utcDay(today.y, today.m, today.d);
++      var targetUtc = utcDay(expiresOn.y, expiresOn.m, expiresOn.d);
++
++      var el = document.getElementById('card-expiry');
++      var label = 'Your card on file expires ' + EXPIRY_MONTH + '/' + EXPIRY_YEAR + '. ';
++
++      if (todayUtc >= targetUtc) {
++        el.textContent = label + 'It has expired. Please update your payment method.';
++        return;
++      }
++
++      // Largest whole-month count that doesn't overshoot the target.
++      var months = (expiresOn.y - today.y) * 12 + (expiresOn.m - today.m);
++      var anchor = addMonths(today.y, today.m, today.d, months);
++      if (utcDay(anchor.y, anchor.m, anchor.d) > targetUtc) {
++        months--;
++        anchor = addMonths(today.y, today.m, today.d, months);
++      }
++      var days = daysBetween(utcDay(anchor.y, anchor.m, anchor.d), targetUtc);
++      var totalDays = daysBetween(todayUtc, targetUtc);
++
++      var parts = [];
++      if (months >= 12) parts.push(Math.floor(months / 12) + (months >= 24 ? ' years' : ' year'));
++      if (months % 12) parts.push((months % 12) + ((months % 12) === 1 ? ' month' : ' months'));
++      if (days || !parts.length) parts.push(days + (days === 1 ? ' day' : ' days'));
++
++      el.textContent = label + 'That’s ' + parts.join(', ') +
++        ' from now (' + totalDays + ' days total).';
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

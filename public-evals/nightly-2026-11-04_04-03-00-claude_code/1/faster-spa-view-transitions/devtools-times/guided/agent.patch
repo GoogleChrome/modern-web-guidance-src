@@ -1,0 +1,304 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8fa8fb1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -45,11 +45,21 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <!--
++          View container: each visited page lives in its own [data-spa-view].
++          Inactive views stay in the DOM (content-visibility: hidden) so going
++          back to them skips the fetch and re-render. See src/scripts/view-cache.ts.
++        -->
++        <main id="spa-views" class="bg-white relative">
++          <div data-spa-view tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </body>
+ </html>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..4cff3af
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,237 @@
++/**
++ * View cache for Astro's <ClientRouter />.
++ *
++ * By default the ClientRouter fetches, parses and swaps in a brand new <body>
++ * on every navigation, which throws away the DOM (and island state) of the
++ * page we came from. Going "back" then means another network round trip and a
++ * full layout/paint/hydration of a page the user has already seen.
++ *
++ * This module keeps the structural DOM of recently visited views alive inside
++ * the `#spa-views` container (see Layout.astro):
++ *
++ *  - Each page's content lives in its own `[data-spa-view]` element.
++ *  - Inactive views stay in the document but get `content-visibility: hidden`
++ *    (see global.css), so the browser skips their layout and paint while
++ *    keeping their cached rendering state. They're also `inert` and
++ *    `aria-hidden`, so they're out of the tab order and the accessibility tree.
++ *  - Navigating to a cached URL skips the fetch and just reactivates that view.
++ *  - The page shell (header/footer) is still swapped as usual on every
++ *    navigation, so overlays, menus, etc. reset like they did before. Cached
++ *    views are carried across the body swap with Astro's transition:persist
++ *    mechanism, which uses `moveBefore()` where it's supported so islands
++ *    aren't detached.
++ *  - An LRU limit (MAX_CACHED_VIEWS) caps memory use: this site has unbounded
++ *    dynamic routes (articles, categories), so we can't cache everything.
++ */
++import {
++  swapFunctions,
++  type TransitionBeforePreparationEvent,
++  type TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++const MAX_CACHED_VIEWS = 5;
++const ROOT_ID = "spa-views";
++const VIEW_SELECTOR = ":scope > [data-spa-view]";
++const INACTIVE_ATTR = "data-spa-inactive";
++const PERSIST_ATTR = "data-astro-transition-persist";
++
++interface CachedView {
++  view: HTMLElement;
++  /** Detached copy of the view's <head>, used to restore title, styles, meta. */
++  head: HTMLHeadElement;
++  /** Attributes of the view's <html> element (lang, etc.). */
++  rootAttrs: [string, string][];
++}
++
++/** Map insertion order doubles as LRU order (oldest first). */
++const cache = new Map<string, CachedView>();
++
++/**
++ * A clean (never hydrated) copy of the page shell with an empty view root.
++ * Restored views are rendered into a fresh copy of it, so restoring a view
++ * resets the header/footer exactly like a regular navigation does.
++ */
++let shellTemplate: HTMLElement | null = null;
++
++/** Key of the view that's currently shown. */
++let activeKey: string | null = null;
++
++/** Documents we built from the cache, mapped to the cache key they restore. */
++const restoreDocs = new WeakMap<Document, string>();
++
++/** Navigations whose result shouldn't be cached (e.g. form submissions). */
++const uncacheableNavigations = new WeakSet<AbortSignal>();
++
++const keyOf = (url: URL) => url.pathname + url.search;
++
++const viewsIn = (root: Element) =>
++  Array.from(root.querySelectorAll<HTMLElement>(VIEW_SELECTOR));
++
++function snapshot(doc: Document, view: HTMLElement): CachedView {
++  return {
++    view,
++    head: doc.head.cloneNode(true) as HTMLHeadElement,
++    rootAttrs: Array.from(doc.documentElement.attributes, (a) => [a.name, a.value]),
++  };
++}
++
++function setActive(view: HTMLElement, active: boolean) {
++  if (active) {
++    view.removeAttribute(INACTIVE_ATTR);
++    view.removeAttribute("aria-hidden");
++    view.inert = false;
++  } else {
++    view.setAttribute(INACTIVE_ATTR, "");
++    view.setAttribute("aria-hidden", "true");
++    view.inert = true;
++  }
++}
++
++function touch(key: string, entry: CachedView) {
++  cache.delete(key);
++  cache.set(key, entry);
++}
++
++function evict() {
++  for (const [key, entry] of cache) {
++    if (cache.size <= MAX_CACHED_VIEWS) break;
++    if (key === activeKey) continue;
++    // Removing the view unmounts its islands on the following astro:after-swap.
++    entry.view.remove();
++    cache.delete(key);
++  }
++}
++
++/** Builds a document for a cached view, in place of a fetched one. */
++function buildRestoreDocument(key: string, entry: CachedView): Document {
++  const doc = document.implementation.createHTMLDocument("");
++  for (const [name, value] of entry.rootAttrs) {
++    doc.documentElement.setAttribute(name, value);
++  }
++  doc.head.replaceWith(doc.importNode(entry.head, true));
++  doc.body.replaceWith(doc.importNode(shellTemplate!, true));
++  restoreDocs.set(doc, key);
++  return doc;
++}
++
++function onBeforePreparation(event: TransitionBeforePreparationEvent) {
++  if (event.formData) {
++    // POST results depend on the submission; never serve or store them from cache.
++    uncacheableNavigations.add(event.signal);
++    return;
++  }
++
++  const key = keyOf(event.to);
++  const entry = cache.get(key);
++  // Navigating to the page we're already on means "reload", so fetch it fresh.
++  if (!entry || !shellTemplate || key === activeKey) return;
++
++  event.loader = async () => {
++    event.newDocument = buildRestoreDocument(key, entry);
++  };
++}
++
++function onBeforeSwap(event: TransitionBeforeSwapEvent) {
++  const newDoc = event.newDocument;
++  const liveRoot = document.getElementById(ROOT_ID);
++  const newRoot = newDoc.getElementById(ROOT_ID);
++
++  // The target page doesn't use the view container: let Astro do a normal
++  // swap. All cached views go away with the old body.
++  if (!liveRoot || !newRoot) {
++    cache.clear();
++    activeKey = null;
++    return;
++  }
++
++  const restoreKey = restoreDocs.get(newDoc);
++  const restoreEntry = restoreKey !== undefined ? cache.get(restoreKey) : undefined;
++  if (restoreKey !== undefined && !restoreEntry) {
++    // The view was evicted while this navigation was in flight. Fall back to
++    // a full page load rather than showing an empty page.
++    event.swap = () => location.assign(event.to.href);
++    return;
++  }
++
++  // Incoming views come from freshly fetched documents only.
++  const incoming = restoreEntry ? null : (newRoot.querySelector<HTMLElement>(VIEW_SELECTOR) ?? null);
++  const incomingKey = keyOf(event.to);
++  const incomingEntry =
++    incoming && !uncacheableNavigations.has(event.signal) ? snapshot(newDoc, incoming) : null;
++
++  if (!restoreEntry) {
++    // Keep a clean copy of the shell for future restores. The fetched document
++    // hasn't been touched yet, so its islands are still un-hydrated.
++    const shell = newDoc.body.cloneNode(true) as HTMLElement;
++    shell.querySelector(`#${ROOT_ID}`)?.replaceChildren();
++    shellTemplate = shell;
++  }
++
++  event.swap = () => {
++    const { deselectScripts, swapRootAttributes, swapHeadElements, swapBodyElement } =
++      swapFunctions;
++
++    deselectScripts(newDoc);
++    swapRootAttributes(newDoc);
++    swapHeadElements(newDoc);
++
++    // Put a persist placeholder for every cached view into the new view root.
++    // swapBodyElement() then moves the live view nodes into the new body in
++    // place of the placeholders (with moveBefore() when supported), so the
++    // views' DOM, scroll containers and island state survive the swap.
++    // A view that isn't cached (e.g. a form submission result) gets no
++    // placeholder, so it goes away with the old body.
++    const persisted: HTMLElement[] = [];
++    let n = 0;
++    for (const { view } of cache.values()) {
++      if (view.parentElement !== liveRoot) continue;
++      const id = `spa-view-${n++}`;
++      const placeholder = newDoc.createElement("div");
++      placeholder.setAttribute(PERSIST_ATTR, id);
++      newRoot.insertBefore(placeholder, incoming);
++      view.setAttribute(PERSIST_ATTR, id);
++      persisted.push(view);
++    }
++
++    swapBodyElement(newDoc.body, document.body);
++
++    for (const view of persisted) view.removeAttribute(PERSIST_ATTR);
++
++    let active: HTMLElement | null;
++    if (restoreEntry) {
++      active = restoreEntry.view;
++      activeKey = restoreKey!;
++      touch(restoreKey!, restoreEntry);
++    } else {
++      active = incoming;
++      activeKey = incomingKey;
++      // Drop any older copy of the same URL (e.g. after a reload or a POST).
++      const stale = cache.get(incomingKey);
++      if (stale) {
++        stale.view.remove();
++        cache.delete(incomingKey);
++      }
++      if (incomingEntry) touch(incomingKey, incomingEntry);
++    }
++
++    for (const view of viewsIn(newRoot)) setActive(view, view === active);
++    evict();
++
++    // Move focus into the new view so keyboard and screen reader users start
++    // from the new content, not from a now-hidden link in the old view.
++    // Astro sets the scroll position after the swap, so don't scroll here.
++    active?.focus({ preventScroll: true });
++  };
++}
++
++function init() {
++  const root = document.getElementById(ROOT_ID);
++  const view = root?.querySelector<HTMLElement>(VIEW_SELECTOR);
++  if (!view) return;
++  activeKey = keyOf(new URL(location.href));
++  cache.set(activeKey, snapshot(document, view));
++}
++
++init();
++document.addEventListener("astro:before-preparation", onBeforePreparation);
++document.addEventListener("astro:before-swap", onBeforeSwap);
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d75e0ea 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,26 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/*
++ * Cached, inactive SPA views (see src/scripts/view-cache.ts).
++ * content-visibility: hidden skips layout and paint for the view's contents
++ * but keeps their rendering state, so reactivating a view is nearly instant.
++ * position: absolute takes the (zero-sized, size-contained) box out of flow.
++ */
++[data-spa-view][data-spa-inactive] {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-spa-view][data-spa-inactive] {
++    display: none;
++  }
++}
++
++/* Views receive programmatic focus on navigation; don't draw a ring around the whole page. */
++[data-spa-view]:focus {
++  outline: none;
++}

@@ -1,0 +1,73 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,68 @@
++# Site audit — October 20, 2026
++
++## Scope
++
++Reviewed the complete repository: one HTML page and its development server command. Audited navigation, content semantics, keyboard access, responsive layouts, image delivery, metadata, dependencies, and deployment output. Verification was automated; no manual browser inspection was performed.
++
++## Findings and changes
++
++| Priority | Finding | Resolution |
++| --- | --- | --- |
++| High | All 13 original links referenced nonexistent pages; there were no application services. | Replaced navigation with real section targets, replaced drink links with native expandable details, changed the ordering CTA to a menu CTA, and removed unsupported service links. |
++| High | Desktop navigation could overflow narrow screens. | Added wrapping navigation, flexible spacing, single-column cards, responsive headings, and narrow-screen rules. |
++| High | No skip link or explicit keyboard focus styling. | Added a visible-on-focus skip link with a focusable main target and high-contrast outlines for links and disclosures. |
++| Medium | CSS-only remote hero image delayed discovery and used one resolution for every device. | Moved the image into initial HTML, self-hosted three WebP sizes, added `srcset`, `sizes`, intrinsic dimensions, and `fetchpriority="high"`. Kept the image decorative with empty alt text. |
++| Medium | Repeated “View Details” labels did not distinguish drinks. | Each native disclosure names its drink and exposes its expanded state without custom JavaScript. |
++| Medium | No page description or social metadata. | Added a search description, Open Graph title/description/type, and theme color. Kept the existing document language and descriptive title. |
++| Medium | Development server was downloaded without a pinned version on startup; no lockfile, build, or automated checks. | Pinned development tools, committed a pnpm lockfile, added a public-files-only build and HTML/Playwright/axe checks. |
++| Medium | Enlarging text to 200% at 320px caused hero overflow during regression testing. | Removed the grid item's automatic minimum width, bounded the CTA, and allowed long text to wrap. |
++| Low | Missing favicon generated a 404 in the browser console. | Added a small local SVG coffee icon. |
++| Low | HTML was served without compression. | Added prebuilt gzip/Brotli variants, verified compressed delivery, and enabled ETags with cache revalidation on the included server. |
++| Low | Third-party image requests disclosed visitor request information to an external image host. | All page assets are now same-origin; added an accurate, limited privacy disclosure. |
++
++The brown coffee-shop identity and original three drinks are retained. The page has no visitor-side JavaScript or runtime package dependencies. System fonts avoid font downloads and font-related layout shifts. No new animation or application framework was introduced. No new business addresses, prices, certifications, or contact details were invented.
++
++## Image payload
++
++Measured file sizes from the original image endpoint and local optimized assets:
++
++| Resource | Bytes | Change from original |
++| --- | ---: | ---: |
++| Original 1350px image | 157,974 | — |
++| Local 640px WebP | 30,652 | 80.6% smaller |
++| Local 1280px WebP | 84,000 | 46.8% smaller |
++| Local 1920px WebP | 171,442 | Higher-resolution option for large/high-density displays |
++
++The browser selects a source based on viewport and pixel density; the smallest image is not guaranteed on every mobile device. Removing the external image connection also removes its DNS/TLS setup from the page's request chain. File-size reductions alone are not a measured improvement in real-user Core Web Vitals.
++
++## Automated verification
++
++- HTML validator: passes recommended validation rules.
++- Seven Playwright tests pass using headless Chromium.
++- axe WCAG 2 A/AA, WCAG 2.1 AA, and WCAG 2.2 AA checks: zero reported violations at 320, 375, 768, and 1440 CSS pixels.
++- No horizontal overflow at those widths; additional 320px/200% text-size check passes.
++- Skip-link focus and keyboard opening/closing of all drink disclosures pass.
++- All link fragments resolve, hero imagery loads, and the page makes zero external requests with no recorded script or request failures.
++- Requests for source/configuration files and absent application routes return HTTP 404 from the built site.
++- `pnpm audit`: no known vulnerabilities reported in the installed dependency tree at audit time.
++
++Automated accessibility checks do not establish full conformance or replace assistive-technology testing. No manual visual or screen-reader review was performed, as requested.
++
++## Lighthouse lab results
++
++Final headless Lighthouse 13.5.0 run against the built site and included server, using default simulated mobile settings:
++
++| Category | Score |
++| --- | ---: |
++| Performance | 100 |
++| Accessibility | 100 |
++| Best practices | 100 |
++| SEO | 100 |
++
++First contentful paint: 0.7 seconds; largest contentful paint: 1.4 seconds; cumulative layout shift: 0; total blocking time: 0 ms. No scored audit failures were reported. This is one local lab run, not a before/after benchmark or production/real-user measurement; scores may vary by environment. The missing favicon and additional image-compression opportunity found during an earlier run were fixed before this final run.
++
++## Deployment and remaining inputs
++
++Deploy `dist/`, not the repository root. Configure HTTPS, compression, security headers, and cache policy at the actual hosting layer. Revalidate HTML and give these non-fingerprinted image names a bounded cache lifetime, or introduce content hashes before enabling immutable caching. No deployment target or production URL was supplied, so production response headers, field Core Web Vitals, indexing, and actual hosting logs could not be audited.
++
++Add canonical and absolute social image URLs once a production origin is known. Publish verified addresses, opening hours, contact details, and business-specific structured data when available. Ordering, authentication, rewards, and careers require actual content/services before navigation to them can be restored.

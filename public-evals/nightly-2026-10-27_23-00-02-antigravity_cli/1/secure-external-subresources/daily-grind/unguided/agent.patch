@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+index 66c9173..e1da286 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,70 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Third-Party Stylesheets -->
++  <link
++    rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"
++    integrity="sha384-fRuya36Gb/YRGgzq/ichTstZs3FgqUTsL6+s+RTc8uT0oRO5zHMymXMJ+cS2dh3s"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++  <link
++    rel="stylesheet"
++    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
++    integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++
++  <!-- Third-Party Fonts (Preloaded WOFF2 + Fontsource Stylesheets) -->
++  <link
++    rel="preload"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.18/files/playfair-display-latin-700-normal.woff2"
++    as="font"
++    type="font/woff2"
++    integrity="sha384-NEbZ40gnJ1ljmDby9e5KAVxkEJaF1HL5JD/xR70bISIPduCrMl3f0/gvunrhPFz9"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++  <link
++    rel="preload"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.18/files/lato-latin-400-normal.woff2"
++    as="font"
++    type="font/woff2"
++    integrity="sha384-+chn3xqCWRPSXDBtVEFQn+0J9Gb0SYR2FO1WrXo+L/arnyr8lXLVX2p0BqZIUemc"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++  <link
++    rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.18/700.css"
++    integrity="sha384-uc0dbi7JO9VgiYbCVr5jEvvVAE3mHE0396bsiMOtRq0pRmx9yQZjaHW/w+XaJ/LM"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++  <link
++    rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.18/400.css"
++    integrity="sha384-vMDrkbYbHXrE4RIcrAoweAuUNrVLwnj8Z4w7kWqZnwRipNmTFXFng51fqinwKXab"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++
++  <!-- Hero Banner Preload -->
++  <link
++    rel="preload"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++    as="image"
++    integrity="sha384-MkCawIXxkhKfMCsafNM9LontDHX3W8n8sYbKwfQ5NE+0xJOWg9RoQMv3OfOjdF4b"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer">
++
++  <!-- Third-Party Scripts -->
++  <script
++    src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"
++    integrity="sha384-tTkFttkBclaU1cloKwOi9xk3pbao3VZxTjLNBt8iFABWDBQibbAbWpVmO28zMuxq"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++    defer></script>
++
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -21,12 +84,16 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3, .logo {
++      font-family: 'Playfair Display', Georgia, serif;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -44,6 +111,9 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 8px;
+     }
+ 
+     nav ul {
+@@ -74,11 +144,9 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: #2b1b17;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +154,26 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++    }
++
++    .hero-banner-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      filter: brightness(0.5);
++      z-index: 0;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .hero h1 {
+@@ -113,6 +201,17 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -158,7 +257,10 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo">
++      <i data-lucide="coffee" aria-hidden="true"></i>
++      <span>THE DAILY GRIND</span>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -169,9 +271,18 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <img
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++      alt="Artisanal coffee shop counter and freshly brewed cups"
++      class="hero-banner-img"
++      integrity="sha384-MkCawIXxkhKfMCsafNM9LontDHX3W8n8sYbKwfQ5NE+0xJOWg9RoQMv3OfOjdF4b"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -179,16 +290,40 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?fm=jpg&fit=crop&w=600&q=80"
++            alt="Maple Oat Latte with latte art"
++            class="card-img"
++            integrity="sha384-oug4SfvLgcaUUtbS3expkLusV898h1/vqA490CJCvOJ2QPvQYYPgvuqHNRXCe1JB"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++            loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=jpg&fit=crop&w=600&q=80"
++            alt="Rich Dark Roast Espresso shot"
++            class="card-img"
++            integrity="sha384-OsbsC55W2YslJ2rBgPzOJIPxbLMWNQsH+xA+kfrn4VmiOz1ywFAcOUEot3hXzHgg"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++            loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&q=80"
++            alt="Chilled Cold Brew coffee over ice"
++            class="card-img"
++            integrity="sha384-BjAkDYkLcHDcZPc+o/aK6nUxFh3ow4hC1WCSUkefnlstC6Mz+Btb1r6tAWhepxbg"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer"
++            loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +342,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      if (window.lucide) {
++        window.lucide.createIcons();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

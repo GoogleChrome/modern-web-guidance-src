@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -66,13 +66,65 @@
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      background: none;
+       border: 1px solid var(--accent);
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    dialog,
++    [popover] {
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++      text-align: left;
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2,
++    [popover] h4 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      gap: 10px;
++      justify-content: flex-end;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +215,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link" commandfor="logout-dialog" command="show-modal">Logout</button></li>
+     </ul>
+   </nav>
+ 
++  <dialog id="logout-dialog" aria-labelledby="logout-title" closedby="any">
++    <h2 id="logout-title">Log out?</h2>
++    <p>Are you sure you want to log out of your account?</p>
++    <div class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close">Cancel</button>
++      <a href="/logout" class="btn">Logout</a>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -180,14 +241,23 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="latte-nutrition">View Details</button>
++          <div id="latte-nutrition" popover>
++            <h4>Maple Oat Latte (12 oz)</h4>
++            <p>Calories: 190<br>Fat: 5 g<br>Carbs: 31 g<br>Sugar: 17 g<br>Protein: 3 g</p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="show">Show Details</button>
++          <div id="espresso-info" popover="manual">
++            <h4>Dark Roast Espresso (2 oz)</h4>
++            <p>Calories: 5<br>Fat: 0 g<br>Carbs: 1 g<br>Sugar: 0 g<br>Caffeine: 130 mg</p>
++            <button type="button" class="btn" popovertarget="espresso-info" popovertargetaction="hide">Hide Details</button>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>

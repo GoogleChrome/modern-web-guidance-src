@@ -1,0 +1,345 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..bd4db3c 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -15,11 +15,19 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const isoDate = article.data.date.toISOString().slice(0, 10);
++const displayDate = article.data.date.toLocaleDateString('en-US', {
++    month: 'short',
++    day: 'numeric',
++    year: 'numeric',
++    timeZone: 'UTC',
++});
+ ---
+ {large ? (
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
++                <span class="surface-badge mb-3">Lead story</span>
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+@@ -52,26 +60,30 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <article class="teaser group">
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-media">
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="teaser-image w-full object-cover rounded-md"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++        <div class="teaser-body">
++            <div class="teaser-meta">
++                <span class="surface-badge">Editor's pick</span>
++                <span class="teaser-category text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</span>
++                <time class="teaser-date text-sm text-gray-500" datetime={isoDate}>{displayDate}</time>
++            </div>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col flex-grow">
++                <h3 class="teaser-title font-brand text-gray-800 group-hover:text-amber-400 transition-colors">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="teaser-summary text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="teaser-footer flex justify-between text-gray-500">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+@@ -80,4 +92,147 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
++
++<style is:global>
++    /*
++     * ArticleTeaser reacts to the semantic `--surface` set by whatever
++     * layout it is placed in (see "Semantic surfaces" in global.css).
++     * Unscoped so the `:where(.surface-*)` fallbacks can match ancestors
++     * outside this component; every selector is `teaser-` prefixed.
++     */
++
++    /* ---- Default presentation ---- */
++    .teaser {
++        display: flex;
++        flex-direction: column;
++        block-size: 100%;
++    }
++
++    .teaser-image {
++        aspect-ratio: 16 / 9;
++    }
++
++    .teaser-body {
++        display: flex;
++        flex-direction: column;
++        flex-grow: 1;
++        margin-block-start: 0.75rem;
++    }
++
++    .teaser-meta {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: center;
++        gap: 0.25rem 0.5rem;
++    }
++
++    .teaser-title {
++        font-size: var(--text-lg);
++        line-height: var(--text-lg--line-height);
++    }
++
++    @media (width >= 48rem) {
++        .teaser-title {
++            font-size: var(--text-xl);
++            line-height: var(--text-xl--line-height);
++        }
++    }
++
++    .teaser-date {
++        display: none;
++    }
++
++    .teaser-footer {
++        margin-block-start: 0.5rem;
++        padding-block-start: 0.5rem;
++        border-block-start: 1px solid var(--color-gray-100);
++    }
++
++    /* ---- Archive: the category is already known, so show recency instead ---- */
++    :where(.surface-archive) .teaser-category {
++        display: none;
++    }
++
++    :where(.surface-archive) .teaser-date {
++        display: inline;
++    }
++
++    /* ---- Related: compact, scannable rows ---- */
++    :where(.surface-related) .teaser {
++        flex-direction: row;
++        align-items: flex-start;
++        gap: 1rem;
++    }
++
++    :where(.surface-related) .teaser-media {
++        flex: 0 0 6rem;
++    }
++
++    :where(.surface-related) .teaser-image {
++        aspect-ratio: 1;
++    }
++
++    :where(.surface-related) .teaser-body {
++        margin-block-start: 0;
++        align-self: stretch;
++    }
++
++    :where(.surface-related) .teaser-title {
++        font-size: var(--text-base);
++        line-height: var(--text-base--line-height);
++    }
++
++    :where(.surface-related) .teaser-summary {
++        display: none;
++    }
++
++    :where(.surface-related) .teaser-footer {
++        border-block-start: 0;
++    }
++
++    /* ---- Progressive enhancement: style queries override when supported ---- */
++    @container style(--surface: archive) {
++        .teaser-category {
++            display: none;
++        }
++
++        .teaser-date {
++            display: inline;
++        }
++    }
++
++    @container style(--surface: related) {
++        .teaser {
++            flex-direction: row;
++            align-items: flex-start;
++            gap: 1rem;
++        }
++
++        .teaser-media {
++            flex: 0 0 6rem;
++        }
++
++        .teaser-image {
++            aspect-ratio: 1;
++        }
++
++        .teaser-body {
++            margin-block-start: 0;
++            align-self: stretch;
++        }
++
++        .teaser-title {
++            font-size: var(--text-base);
++            line-height: var(--text-base--line-height);
++        }
++
++        .teaser-summary {
++            display: none;
++        }
++
++        .teaser-footer {
++            border-block-start: 0;
++        }
++    }
++</style>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..c0d26a6 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,9 +32,10 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <div class="surface-featured shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
++                <span class="surface-badge mb-3">Top story</span>
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..0f75d37 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -116,7 +116,8 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section class="surface-related max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8" aria-labelledby="related-heading">
++        <h2 id="related-heading" class="text-xl font-bold mb-4">Keep reading</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..d64e6ec 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section class="surface-featured mb-8 pb-8 border-b border-gray-200">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -76,6 +76,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
++                        <span class="surface-badge mb-2">Latest in {capitalizedCategory}</span>
+                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                             {featuredArticle.data.title}
+                         </h2>
+@@ -88,7 +89,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                <div class="surface-archive grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                     {otherArticles.map(article => <ArticleTeaser article={article} />)}
+                 </div>
+             ) : (
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..e7b2542 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="surface-featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..79fda9f 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,51 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* ------------------------------------------------------------------
++ * Semantic surfaces
++ *
++ * Layouts declare *what kind of place* they are by setting `--surface`.
++ * Components never ask who set it; they opt in to reacting via
++ * `@container style(--surface: …)`. Producers and consumers stay
++ * decoupled, so either side can be extended independently.
++ *
++ *   featured – editorially highlighted content (lead stories, picks)
++ *   archive  – listings already scoped to one category
++ *   related  – secondary "keep reading" suggestions
++ *
++ * The `.surface-*` classes are the public API for setting the context.
++ * Each reaction also ships a `:where(.surface-*)` selector fallback for
++ * browsers without style-query support; the style query (same
++ * specificity, later in source) wins when supported.
++ * ------------------------------------------------------------------ */
++.surface-featured { --surface: featured; }
++.surface-archive  { --surface: archive; }
++.surface-related  { --surface: related; }
++
++/* Shared badge: hidden by default, revealed only on featured surfaces. */
++.surface-badge {
++  display: none;
++  align-items: center;
++  gap: 0.25rem;
++  inline-size: fit-content;
++  padding: 0.125rem 0.5rem;
++  border-radius: 9999px;
++  background: var(--color-amber-400);
++  color: var(--color-gray-900);
++  font-size: var(--text-xs);
++  line-height: var(--text-xs--line-height);
++  font-weight: 700;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++}
++
++:where(.surface-featured) .surface-badge {
++  display: inline-flex;
++}
++
++@container style(--surface: featured) {
++  .surface-badge {
++    display: inline-flex;
++  }
++}

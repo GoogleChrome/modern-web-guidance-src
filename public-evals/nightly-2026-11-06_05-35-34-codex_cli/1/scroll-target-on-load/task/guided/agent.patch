@@ -1,0 +1,161 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('initial-scroll-fallback');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +104,69 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .media-feed {
++      position: relative;
++      height: 430px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
+       margin-top: 20px;
++      padding: 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #efebe9;
+     }
+ 
++    .initial-scroll-fallback .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed .card {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++      text-align: left;
++    }
++
++    .media-feed .card + .card {
++      margin-top: 20px;
++    }
++
++    .media-feed img {
++      display: block;
++      width: 240px;
++      height: 180px;
++      flex-shrink: 0;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .media-feed .target {
++      scroll-initial-target: nearest;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 600px) {
++      .media-feed .card {
++        flex-direction: column;
++        align-items: stretch;
++        gap: 12px;
++      }
++
++      .media-feed img {
++        width: 100%;
++        height: 160px;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,26 +234,61 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="favorites-heading" tabindex="0">
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Iced latte served in a tall glass">
++          <div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Freshly prepared espresso in a small cup">
++          <div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          </div>
++        </article>
++        <article class="card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Cold coffee served over ice">
++          <div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Cappuccino topped with delicate milk foam">
++          <div>
++            <h3>Classic Cappuccino</h3>
++            <p>Rich espresso, steamed milk, and a cloud of silky foam.</p>
++            <a href="/menu/cappuccino" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=480&amp;h=360&amp;q=80" width="240" height="180" alt="Fresh coffee and roasted coffee beans">
++          <div>
++            <h3>House Blend</h3>
++            <p>A balanced daily favorite with warm, chocolatey notes.</p>
++            <a href="/menu/house-blend" class="btn">View Details</a>
++          </div>
++        </article>
+       </div>
++      <script>
++        if (document.documentElement.classList.contains('initial-scroll-fallback')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          // Run synchronously after the cards are parsed, before revealing the feed.
++          // Only move this container, preserving the page's own scroll position.
++          feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++          document.documentElement.classList.remove('initial-scroll-fallback');
++        }
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

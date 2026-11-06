@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+index 66c9173..a88ad60 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./performance-monitor.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -157,7 +158,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav data-performance-target="navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,24 +172,24 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-performance-target="order-now">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-performance-target="seasonal-maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-target="seasonal-dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-performance-target="seasonal-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/performance-monitor.js b/performance-monitor.js
+new file mode 100644
+index 0000000..a60ed64
+--- /dev/null
++++ b/performance-monitor.js
+@@ -0,0 +1,144 @@
++// Native paint timings only: a click or URL change alone is not a contentful paint.
++const entryTypes = globalThis.PerformanceObserver?.supportedEntryTypes ?? [];
++const supports = (type) => entryTypes.includes(type);
++const reports = [];
++const recentInputs = [];
++const interactionTargets = new Map();
++let activeNavigation = null;
++let largestPaint = null;
++
++// Bounded local diagnostics; consumers can subscribe without an analytics vendor:
++// window.addEventListener('daily-grind:performance', ({ detail }) => { ... });
++// Durations are milliseconds. Interaction reports are successive paint candidates;
++// soft-navigation reports have final: true on the next navigation or page hide.
++// No reports are fabricated for unsupported APIs, unchanged content, or hard links.
++window.dailyGrindPerformance = {
++  supported: {
++    interactionPaint: supports('interaction-contentful-paint'),
++    softNavigation: supports('soft-navigation'),
++  },
++  reports,
++};
++
++function report(metric) {
++  reports.push(metric);
++  if (reports.length > 100) reports.shift();
++  window.dispatchEvent(new CustomEvent('daily-grind:performance', { detail: metric }));
++}
++
++function describeTarget(target) {
++  if (!(target instanceof Element)) return null;
++  const tracked = target.closest('[data-performance-target]');
++  if (!tracked) return null;
++  const link = target.closest('a');
++  return {
++    control: tracked.dataset.performanceTarget,
++    // Only explicit, public labels; never collect account text or URL queries.
++    destination: link ? new URL(link.href).pathname : null,
++  };
++}
++
++function rememberTarget(interactionId, target) {
++  if (!interactionId || !target) return;
++  interactionTargets.set(interactionId, target);
++  if (interactionTargets.size > 200) {
++    interactionTargets.delete(interactionTargets.keys().next().value);
++  }
++}
++
++function targetFor(entry) {
++  const known = interactionTargets.get(entry.interactionId);
++  if (known) return known;
++  // Event Timing omits very fast events. Match the initiating input timestamp,
++  // rather than attributing delayed paints to whichever control was clicked last.
++  const input = recentInputs.findLast((input) => Math.abs(input.time - entry.startTime) < 1);
++  if (input) rememberTarget(entry.interactionId, input.target);
++  return input?.target ?? null;
++}
++
++function updateLargest(entry) {
++  if (!entry || entry.interactionId !== activeNavigation?.interactionId) return;
++  if (!largestPaint || entry.largestContentfulPaint.size >= largestPaint.largestContentfulPaint.size) {
++    largestPaint = entry;
++  }
++}
++
++function reportNavigation(final) {
++  if (!activeNavigation) return;
++  report({
++    type: 'soft-navigation',
++    destination: new URL(activeNavigation.name, location.href).pathname,
++    interactionId: activeNavigation.interactionId,
++    navigationId: activeNavigation.navigationId,
++    fcpDuration: activeNavigation.duration,
++    lcpDuration: largestPaint?.duration ?? null,
++    lcpSize: largestPaint?.largestContentfulPaint.size ?? null,
++    source: targetFor(activeNavigation),
++    final,
++  });
++  if (final) {
++    activeNavigation = null;
++    largestPaint = null;
++  }
++}
++
++function processEntries(entries) {
++  // Resolve Event Timing targets first, independent of observer delivery order.
++  for (const entry of entries) {
++    if (entry.entryType === 'event') {
++      rememberTarget(entry.interactionId, describeTarget(entry.target));
++    }
++  }
++  for (const entry of entries) {
++    if (entry.entryType === 'soft-navigation') {
++      reportNavigation(true);
++      activeNavigation = entry;
++      // Includes paints that preceded the URL update and have an older navigationId.
++      largestPaint = null;
++      updateLargest(entry.getLargestInteractionContentfulPaint());
++      reportNavigation(false);
++    } else if (entry.entryType === 'interaction-contentful-paint') {
++      const source = targetFor(entry);
++      if (source) {
++        report({
++          type: 'interaction-contentful-paint',
++          interactionId: entry.interactionId,
++          ...source,
++          duration: entry.duration,
++          size: entry.largestContentfulPaint.size,
++        });
++      }
++      // interactionId preserves causality across asynchronous work and URL updates.
++      if (entry.interactionId === activeNavigation?.interactionId) {
++        updateLargest(entry);
++        reportNavigation(false);
++      }
++    }
++  }
++}
++
++if (supports('interaction-contentful-paint') || supports('soft-navigation')) {
++  for (const type of ['pointerdown', 'pointerup', 'click', 'keydown', 'keyup']) {
++    document.addEventListener(type, (event) => {
++      if (!event.isTrusted) return;
++      recentInputs.push({ time: event.timeStamp, target: describeTarget(event.target) });
++      if (recentInputs.length > 200) recentInputs.shift();
++    }, { capture: true, passive: true });
++  }
++
++  const observer = new PerformanceObserver((list) => processEntries(list.getEntries()));
++  for (const type of ['event', 'interaction-contentful-paint', 'soft-navigation']) {
++    if (supports(type)) {
++      observer.observe({ type, buffered: true, ...(type === 'event' ? { durationThreshold: 16 } : {}) });
++    }
++  }
++
++  function flush() {
++    processEntries(observer.takeRecords());
++    reportNavigation(true);
++  }
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') flush();
++  });
++  window.addEventListener('pagehide', flush);
++}

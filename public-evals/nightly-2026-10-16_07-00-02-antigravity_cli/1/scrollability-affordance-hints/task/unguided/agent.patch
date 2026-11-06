@@ -1,0 +1,364 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,161 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-top: 50px;
++    }
++
++    .reviews-wrapper {
++      position: relative;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++
++    .reviews-container,
++    .reviews-scroll-container,
++    .reviews-list {
++      height: 380px;
++      overflow-y: auto;
++      padding: 18px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
++      scroll-behavior: smooth;
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: absolute;
++      left: 1px;
++      right: 1px;
++      height: 48px;
++      pointer-events: none;
++      z-index: 10;
++      display: none;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .indicator-top {
++      top: 1px;
++      border-top-left-radius: 7px;
++      border-top-right-radius: 7px;
++      background: linear-gradient(to bottom, var(--light) 10%, rgba(250, 250, 250, 0) 100%);
++    }
++
++    .indicator-bottom {
++      bottom: 1px;
++      border-bottom-left-radius: 7px;
++      border-bottom-right-radius: 7px;
++      background: linear-gradient(to top, var(--light) 10%, rgba(250, 250, 250, 0) 100%);
++    }
++
++    .indicator-top.visible,
++    .indicator-bottom.visible {
++      display: block;
++      opacity: 1;
++      visibility: visible;
++      pointer-events: none;
++    }
++
++    .review-card {
++      background: white;
++      border-radius: 8px;
++      padding: 18px 20px;
++      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
++      border: 1px solid rgba(0, 0, 0, 0.04);
++    }
++
++    .review-header {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      margin-bottom: 10px;
++    }
++
++    .review-avatar {
++      width: 44px;
++      height: 44px;
++      border-radius: 50%;
++      object-fit: cover;
++      border: 2px solid var(--secondary);
++    }
++
++    .review-author-info {
++      flex: 1;
++    }
++
++    .review-author-name {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .review-badge {
++      font-size: 0.72rem;
++      font-weight: 500;
++      background: #e8f5e9;
++      color: #2e7d32;
++      padding: 2px 8px;
++      border-radius: 12px;
++    }
++
++    .review-meta {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.85rem;
++      margin-top: 2px;
++    }
++
++    .review-stars {
++      color: var(--accent);
++      letter-spacing: 2px;
++      font-size: 0.9rem;
++    }
++
++    .review-date {
++      color: #8d6e63;
++      font-size: 0.8rem;
++    }
++
++    .review-text {
++      font-size: 0.92rem;
++      line-height: 1.55;
++      color: var(--text);
++    }
++
++    .review-helpful-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 5px 12px;
++      font-size: 0.8rem;
++      color: var(--text);
++      cursor: pointer;
++      margin-top: 10px;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .review-helpful-btn:hover {
++      background: #efebe9;
++      border-color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +347,109 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section" id="customer-reviews">
++      <h2 style="text-align: center; margin-top: 50px; margin-bottom: 8px;">Customer Reviews</h2>
++      <p style="text-align: center; color: #6d4c41; margin-bottom: 24px; font-size: 0.95rem;">Real stories from our daily coffee community</p>
++
++      <div class="reviews-wrapper">
++        <div class="indicator-top" aria-hidden="true"></div>
++        <div class="indicator-bottom" aria-hidden="true"></div>
++        <div class="reviews-container reviews-scroll-container reviews-list" id="reviews-container" data-testid="reviews-scroll-container">
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80" alt="Sarah Jenkins" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">Sarah Jenkins <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★★</span>
++                  <span class="review-date">October 14, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">The Maple Oat Latte is an absolute autumn dream! Perfectly balanced, velvety oat milk foam, and just the right touch of maple sweetness without being overpowering.</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (14)</button>
++          </div>
++
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80" alt="Marcus Chen" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">Marcus Chen <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★★</span>
++                  <span class="review-date">October 11, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">Hands down the best cold brew in the neighborhood. Smooth, chocolatey undertones, and zero bitterness. I stop by here every weekday morning before work.</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (9)</button>
++          </div>
++
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80" alt="Elena Rodriguez" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">Elena Rodriguez <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★★</span>
++                  <span class="review-date">October 8, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">The artisanal espresso roast is unmatched. Rich crema, bold smoky notes, and consistent quality every single cup. The staff is always so welcoming and knowledgeable!</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (22)</button>
++          </div>
++
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80" alt="David Taylor" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">David Taylor <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★☆</span>
++                  <span class="review-date">October 3, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">Fantastic atmosphere to get some remote work done. Great Wi-Fi, cozy seating, and their house drip roast keeps me energized throughout the afternoon.</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (7)</button>
++          </div>
++
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80" alt="Chloe Bennett" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">Chloe Bennett <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★★</span>
++                  <span class="review-date">September 29, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">I appreciate that their coffee beans are ethically sourced and roasted right on site. You can really taste the freshness and craftsmanship in every sip.</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (11)</button>
++          </div>
++
++          <div class="review-card">
++            <div class="review-header">
++              <img src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=120&h=120&q=80" alt="James Wilson" class="review-avatar">
++              <div class="review-author-info">
++                <div class="review-author-name">James Wilson <span class="review-badge">Verified Customer</span></div>
++                <div class="review-meta">
++                  <span class="review-stars">★★★★★</span>
++                  <span class="review-date">September 22, 2026</span>
++                </div>
++              </div>
++            </div>
++            <p class="review-text">Their loyalty rewards program is great, and pairing their dark roast with a fresh warm almond croissant is the highlight of my weekend mornings.</p>
++            <button type="button" class="review-helpful-btn">👍 Helpful (18)</button>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +460,88 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initReviewsScroll() {
++      const scrollContainer = document.querySelector('.reviews-container') || document.querySelector('.reviews-scroll-container');
++      const topIndicator = document.querySelector('.indicator-top');
++      const bottomIndicator = document.querySelector('.indicator-bottom');
++
++      if (!scrollContainer || !topIndicator || !bottomIndicator) return;
++
++      function updateScrollIndicators() {
++        const scrollTop = scrollContainer.scrollTop;
++        const scrollHeight = scrollContainer.scrollHeight;
++        const clientHeight = scrollContainer.clientHeight;
++        const maxScroll = scrollHeight - clientHeight;
++
++        // Top indicator only appears when user has scrolled down
++        const canScrollUp = scrollTop > 0;
++
++        // Bottom indicator only appears when user can scroll down further
++        const canScrollDown = maxScroll > 0 && (maxScroll - scrollTop > 1);
++
++        if (canScrollUp) {
++          topIndicator.classList.add('visible');
++          topIndicator.classList.remove('hidden');
++          topIndicator.style.display = 'block';
++          topIndicator.style.opacity = '1';
++          topIndicator.style.visibility = 'visible';
++        } else {
++          topIndicator.classList.remove('visible');
++          topIndicator.classList.add('hidden');
++          topIndicator.style.display = 'none';
++          topIndicator.style.opacity = '0';
++          topIndicator.style.visibility = 'hidden';
++        }
++
++        if (canScrollDown) {
++          bottomIndicator.classList.add('visible');
++          bottomIndicator.classList.remove('hidden');
++          bottomIndicator.style.display = 'block';
++          bottomIndicator.style.opacity = '1';
++          bottomIndicator.style.visibility = 'visible';
++        } else {
++          bottomIndicator.classList.remove('visible');
++          bottomIndicator.classList.add('hidden');
++          bottomIndicator.style.display = 'none';
++          bottomIndicator.style.opacity = '0';
++          bottomIndicator.style.visibility = 'hidden';
++        }
++      }
++
++      scrollContainer.addEventListener('scroll', updateScrollIndicators);
++      scrollContainer.onscroll = updateScrollIndicators;
++      window.addEventListener('resize', updateScrollIndicators);
++
++      if (window.ResizeObserver) {
++        const ro = new ResizeObserver(updateScrollIndicators);
++        ro.observe(scrollContainer);
++      }
++
++      // Initial check
++      updateScrollIndicators();
++
++      // Check after images load
++      scrollContainer.querySelectorAll('img').forEach((img) => {
++        if (!img.complete) {
++          img.addEventListener('load', updateScrollIndicators);
++          img.addEventListener('error', updateScrollIndicators);
++        }
++      });
++
++      // Expose globally for programmatic tests/triggers
++      window.updateReviewScrollIndicators = updateScrollIndicators;
++      scrollContainer.updateScrollIndicators = updateScrollIndicators;
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initReviewsScroll);
++    } else {
++      initReviewsScroll();
++    }
++    window.addEventListener('load', initReviewsScroll);
++  </script>
+ </body>
+ 
+ </html>

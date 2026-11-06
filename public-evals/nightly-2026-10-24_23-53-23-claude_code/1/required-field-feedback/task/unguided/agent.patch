@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,56 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .newsletter {
++      margin-bottom: 30px;
++    }
++
++    .newsletter h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .newsletter input[type="email"] {
++      padding: 10px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font-size: 0.9rem;
++      min-width: 260px;
++    }
++
++    .newsletter button.btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .field-error {
++      display: none;
++      color: #b71c1c;
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    /* :user-invalid only matches after the user has interacted with the field
++       (blurred it or tried to submit), so no error shows on page load. */
++    .newsletter input:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .newsletter:has(input:user-invalid) .field-error {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +245,18 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" action="/newsletter" method="post">
++      <h3>Join our mailing list</h3>
++      <div class="newsletter-row">
++        <label for="newsletter-email" hidden>Email address</label>
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com" required
++          aria-describedby="newsletter-email-error">
++        <button type="submit" class="btn">Subscribe</button>
++      </div>
++      <p class="field-error" id="newsletter-email-error">Please enter a valid email address.</p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |

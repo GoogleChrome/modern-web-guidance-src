@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,117 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Parallax Section
++       Pure CSS scroll-driven animation. Layers are decorative (aria-hidden),
++       only animate transform (compositor-friendly), and the motion is applied
++       only when supported and the user hasn't asked for reduced motion.
++       Without that, the section renders as a static, fully readable layout. */
++    .parallax {
++      position: relative;
++      min-height: 80vh;
++      overflow: hidden;
++      display: grid;
++      place-items: center;
++      isolation: isolate;
++      background: var(--primary);
++      color: white;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      left: 0;
++      right: 0;
++      /* Oversized vertically so translation never reveals empty edges */
++      top: -25%;
++      bottom: -25%;
++      background-size: cover;
++      background-position: center;
++      pointer-events: none;
++    }
++
++    .parallax-back {
++      background-image: linear-gradient(rgba(30, 15, 10, 0.65), rgba(30, 15, 10, 0.65)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1350&q=70');
++      z-index: -3;
++    }
++
++    .parallax-mid,
++    .parallax-front {
++      top: 10%;
++      bottom: 10%;
++      background-repeat: no-repeat;
++      border-radius: 12px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
++    }
++
++    .parallax-mid {
++      left: 4%;
++      right: auto;
++      width: min(34vw, 380px);
++      background-image: url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=70');
++      z-index: -2;
++    }
++
++    .parallax-front {
++      left: auto;
++      right: 4%;
++      width: min(26vw, 300px);
++      background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&q=70');
++      z-index: -1;
++    }
++
++    .parallax-content {
++      max-width: 520px;
++      padding: 40px 20px;
++      text-align: center;
++    }
++
++    .parallax-content h2 {
++      font-size: 2.2rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Keep the side images from crowding the text on small screens */
++    @media (max-width: 700px) {
++      .parallax-mid,
++      .parallax-front {
++        opacity: 0.35;
++      }
++    }
++
++    @keyframes parallax-slow {
++      from { transform: translateY(-12%); }
++      to { transform: translateY(12%); }
++    }
++
++    @keyframes parallax-medium {
++      from { transform: translateY(20%); }
++      to { transform: translateY(-20%); }
++    }
++
++    @keyframes parallax-fast {
++      from { transform: translateY(45%); }
++      to { transform: translateY(-45%); }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          will-change: transform;
++          animation-timing-function: linear;
++          animation-fill-mode: both;
++          animation-timeline: view();
++          animation-range: cover 0% cover 100%;
++        }
++
++        .parallax-back { animation-name: parallax-slow; }
++        .parallax-mid { animation-name: parallax-medium; }
++        .parallax-front { animation-name: parallax-fast; }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +282,19 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax-layer parallax-back" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-mid" aria-hidden="true"></div>
++    <div class="parallax-layer parallax-front" aria-hidden="true"></div>
++    <div class="parallax-content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>Every batch is roasted in small lots, so what lands in your cup is as fresh and full of character as the farms it came from.</p>
++      <a href="/our-story" class="btn">Our Story</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

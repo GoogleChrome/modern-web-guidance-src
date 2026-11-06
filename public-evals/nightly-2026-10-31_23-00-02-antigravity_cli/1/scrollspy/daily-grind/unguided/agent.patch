@@ -1,0 +1,615 @@
+diff --git a/index.html b/index.html
+index 66c9173..d903ca1 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,10 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -38,6 +42,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+@@ -49,6 +54,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +65,23 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 6px 10px;
++      border-radius: 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      color: var(--accent);
++      font-weight: 600;
++      border-bottom: 2px solid var(--accent);
++      background-color: rgba(255, 171, 64, 0.15);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -96,23 +112,67 @@
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 0 auto;
+       padding: 0 20px;
+     }
+ 
++    .page-section {
++      padding: 70px 0;
++      scroll-margin-top: 65px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .page-section:last-of-type {
++      border-bottom: none;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 35px;
++    }
++
++    .section-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: #6d4c41;
++      font-size: 1.05rem;
++    }
++
++    .subsection-title {
++      text-align: center;
++      margin: 30px 0 15px;
++      color: var(--primary);
++      font-size: 1.4rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -120,6 +180,85 @@
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      display: inline-block;
++      font-weight: bold;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 4px 12px;
++      border-radius: 20px;
++      margin: 10px auto;
++      font-size: 0.95rem;
++    }
++
++    .meta-list {
++      list-style: none;
++      text-align: left;
++      margin: 12px 0;
++      font-size: 0.92rem;
++    }
++
++    .meta-list li {
++      margin-bottom: 6px;
++      padding-left: 8px;
++      border-left: 3px solid var(--accent);
++    }
++
++    .rewards-banner {
++      background: var(--primary);
++      color: white;
++      border-radius: 10px;
++      padding: 30px;
++      margin-bottom: 30px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .rewards-tier-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 6px 14px;
++      border-radius: 20px;
++      display: inline-block;
++      margin-bottom: 10px;
++      font-size: 0.85rem;
++      text-transform: uppercase;
++    }
++
++    .progress-bar {
++      width: 100%;
++      height: 12px;
++      background: var(--secondary);
++      border-radius: 6px;
++      overflow: hidden;
++      margin: 12px 0;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 68%;
++      background: var(--accent);
++      border-radius: 6px;
++    }
++
++    .account-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 0;
++      border-bottom: 1px solid #eee;
++      text-align: left;
++      font-size: 0.95rem;
++    }
++
++    .account-row:last-child {
++      border-bottom: none;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +274,16 @@
+       background: #3e2723;
+     }
+ 
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,13 +306,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" class="nav-link active" aria-current="true">Menu</a></li>
++      <li><a href="#locations" class="nav-link">Locations</a></li>
++      <li><a href="#rewards" class="nav-link">Rewards</a></li>
++      <li><a href="#account" class="nav-link">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +320,243 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Menu Section -->
++    <section id="menu" class="page-section">
++      <div class="section-header">
++        <h2>Menu</h2>
++        <p>Handcrafted espresso, small-batch brews, and freshly baked pastries.</p>
++      </div>
++
++      <h3 class="subsection-title">Seasonal Favorites &amp; Signature Drinks</h3>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <h3>Maple Oat Latte</h3>
++            <span class="price-tag">$5.75</span>
++            <p>Creamy steamed oat milk blended with rich espresso and a hint of pure Vermont maple syrup.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <h3>Dark Roast Espresso</h3>
++            <span class="price-tag">$3.50</span>
++            <p>Bold, smokey, and full-bodied double shot pulled to perfection for a morning boost.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <h3>18-Hour Cold Brew</h3>
++            <span class="price-tag">$4.75</span>
++            <p>Single-origin Colombian beans steeped cold for 18 hours for maximum smoothness and chocolate notes.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80" alt="Ceremonial Matcha Latte">
++            <h3>Ceremonial Matcha Latte</h3>
++            <span class="price-tag">$5.50</span>
++            <p>Stone-ground Uji matcha whisked to order with your choice of whole, almond, or oat milk.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80" alt="Ethiopian Pour-Over">
++            <h3>Ethiopian Yirgacheffe Pour-Over</h3>
++            <span class="price-tag">$5.25</span>
++            <p>Bright floral aroma with vibrant notes of bergamot, jasmine, and sweet Meyer lemon.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++        <div class="card">
++          <div>
++            <img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80" alt="Artisanal Almond Croissant">
++            <h3>Artisanal Almond Croissant</h3>
++            <span class="price-tag">$4.50</span>
++            <p>Flaky butter pastry filled with house-made sweet almond frangipane and toasted sliced almonds.</p>
++          </div>
++          <a href="#menu" class="btn">Add to Order</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Locations Section -->
++    <section id="locations" class="page-section">
++      <div class="section-header">
++        <h2>Locations</h2>
++        <p>Visit one of our neighborhood cafes for freshly roasted beans and warm hospitality.</p>
++      </div>
++
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown Roastery & Flagship">
++            <h3>Downtown Roastery &amp; Flagship</h3>
++            <p>Our original roastery featuring a slow-bar tasting counter and weekend cupping sessions.</p>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 412 Roast Ave, Suite 100</li>
++              <li><strong>Mon–Fri:</strong> 6:00 AM – 8:00 PM</li>
++              <li><strong>Sat–Sun:</strong> 7:00 AM – 7:00 PM</li>
++              <li><strong>Features:</strong> Roastery Tours, Free Wi-Fi, Patio</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Riverside Neighborhood Cafe">
++            <h3>Riverside Neighborhood Cafe</h3>
++            <p>Sunlit corner cafe overlooking the riverwalk with plenty of quiet study tables and greenery.</p>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 88 Riverwalk Blvd</li>
++              <li><strong>Mon–Fri:</strong> 6:30 AM – 7:00 PM</li>
++              <li><strong>Sat–Sun:</strong> 7:30 AM – 6:00 PM</li>
++              <li><strong>Features:</strong> Dog-Friendly Patio, Bike Racks</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80" alt="Arts District Espresso Bar">
++            <h3>Arts District Espresso Bar</h3>
++            <p>Vibrant industrial-chic lounge showcasing local gallery artists and late-night espresso flights.</p>
++            <ul class="meta-list">
++              <li><strong>Address:</strong> 1920 Gallery Row</li>
++              <li><strong>Mon–Fri:</strong> 7:00 AM – 9:00 PM</li>
++              <li><strong>Sat–Sun:</strong> 8:00 AM – 9:00 PM</li>
++              <li><strong>Features:</strong> Live Acoustic Nights, Reserve Bar</li>
++            </ul>
++          </div>
++          <a href="#locations" class="btn">Get Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Rewards Section -->
++    <section id="rewards" class="page-section">
++      <div class="section-header">
++        <h2>Rewards</h2>
++        <p>Turn every morning coffee ritual into free handcrafted drinks and exclusive roastery perks.</p>
++      </div>
++
++      <div class="rewards-banner">
++        <div>
++          <span class="rewards-tier-badge">Daily Grind Loyalty Club</span>
++          <h3>Earn 2 Golden Beans for Every $1 Spent</h3>
++          <p>Redeem Beans starting at just 50 Beans for espresso shots, pastries, or signature drinks.</p>
++        </div>
++        <a href="#account" class="btn btn-accent">Check Your Beans</a>
++      </div>
++
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>50 Beans — Espresso &amp; Customizations</h3>
++            <p>Add an extra shot of espresso, upgrade to oat or almond milk, or infuse house-made syrups for free.</p>
++          </div>
++          <span class="price-tag">50 Beans</span>
++        </div>
++        <div class="card">
++          <div>
++            <h3>150 Beans — Any Handcrafted Drink</h3>
++            <p>Enjoy your favorite seasonal latte, cold brew, or single-origin pour-over on the house.</p>
++          </div>
++          <span class="price-tag">150 Beans</span>
++        </div>
++        <div class="card">
++          <div>
++            <h3>300 Beans — Whole Bean Take-Home Bag</h3>
++            <p>Take home a 12oz bag of our freshly roasted house blend or rotating single-origin coffee.</p>
++          </div>
++          <span class="price-tag">300 Beans</span>
++        </div>
++      </div>
++    </section>
++
++    <!-- My Account Section -->
++    <section id="account" class="page-section">
++      <div class="section-header">
++        <h2>My Account</h2>
++        <p>Manage your rewards balance, quick-reorder favorites, and cafe pickup preferences.</p>
++      </div>
++
++      <div class="grid">
++        <div class="card">
++          <div>
++            <span class="rewards-tier-badge">Gold Roast Member</span>
++            <h3>Alex Rivera</h3>
++            <p><strong>340 Golden Beans</strong> available to redeem</p>
++            <div class="progress-bar" aria-label="Rewards progress">
++              <div class="progress-fill"></div>
++            </div>
++            <p style="font-size: 0.85rem; color: #6d4c41;">60 Beans away from your next Free Reserve Tasting pass</p>
++            <div style="margin-top: 15px;">
++              <div class="account-row">
++                <span>Member Since</span>
++                <strong>March 2024</strong>
++              </div>
++              <div class="account-row">
++                <span>Birthday Reward</span>
++                <strong>Available Nov 14</strong>
++              </div>
++            </div>
++          </div>
++          <a href="#rewards" class="btn">Redeem Rewards</a>
++        </div>
++
++        <div class="card">
++          <div>
++            <h3>Recent Orders</h3>
++            <p>Reorder your daily favorites in a single tap.</p>
++            <div style="margin-top: 15px;">
++              <div class="account-row">
++                <span><strong>Maple Oat Latte</strong> (16oz, Warm)</span>
++                <span>$5.75</span>
++              </div>
++              <div class="account-row">
++                <span><strong>18-Hour Cold Brew</strong> (Light Ice)</span>
++                <span>$4.75</span>
++              </div>
++              <div class="account-row">
++                <span><strong>Artisanal Almond Croissant</strong></span>
++                <span>$4.50</span>
++              </div>
++            </div>
++          </div>
++          <a href="#menu" class="btn">Reorder Favorites</a>
++        </div>
++
++        <div class="card">
++          <div>
++            <h3>Account Preferences</h3>
++            <p>Your saved pickup cafe and payment settings.</p>
++            <div style="margin-top: 15px;">
++              <div class="account-row">
++                <span>Preferred Cafe</span>
++                <strong>Downtown Roastery</strong>
++              </div>
++              <div class="account-row">
++                <span>Default Milk</span>
++                <strong>Barista Oat Milk</strong>
++              </div>
++              <div class="account-row">
++                <span>Grind Card Balance</span>
++                <strong>$24.50 (Auto-Reload On)</strong>
++              </div>
++            </div>
++          </div>
++          <a href="#account" class="btn">Edit Profile</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +572,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      const navLinks = Array.from(document.querySelectorAll('nav a[href^="#"]'));
++      const sections = navLinks
++        .map((link) => {
++          const id = link.getAttribute('href').slice(1);
++          return document.getElementById(id);
++        })
++        .filter(Boolean);
++
++      function setActiveLink(activeId) {
++        navLinks.forEach((link) => {
++          const isMatch = link.getAttribute('href') === '#' + activeId;
++          link.classList.toggle('active', isMatch);
++          if (isMatch) {
++            link.setAttribute('aria-current', 'true');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function updateActiveSection() {
++        if (!sections.length) return;
++
++        const navHeight = nav ? nav.offsetHeight : 0;
++        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
++        const scrollBottom = window.scrollY + viewportHeight;
++        const docHeight = document.documentElement.scrollHeight;
++
++        // If scrolled to the bottom of the document, highlight the last visible section
++        if (docHeight - scrollBottom <= 15) {
++          for (let i = sections.length - 1; i >= 0; i--) {
++            const rect = sections[i].getBoundingClientRect();
++            if (rect.bottom > navHeight && rect.top < viewportHeight) {
++              setActiveLink(sections[i].id);
++              return;
++            }
++          }
++        }
++
++        // Focal point 35% into the viewport below the sticky navigation bar
++        const focalPoint = navHeight + (viewportHeight - navHeight) * 0.35;
++
++        let activeSectionId = null;
++        let maxVisibleHeight = 0;
++        let bestVisibleId = null;
++
++        for (const section of sections) {
++          const rect = section.getBoundingClientRect();
++          const visibleTop = Math.max(rect.top, navHeight);
++          const visibleBottom = Math.min(rect.bottom, viewportHeight);
++          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
++
++          if (visibleHeight > maxVisibleHeight) {
++            maxVisibleHeight = visibleHeight;
++            bestVisibleId = section.id;
++          }
++
++          if (rect.top <= focalPoint && rect.bottom >= focalPoint) {
++            activeSectionId = section.id;
++          }
++        }
++
++        if (activeSectionId) {
++          setActiveLink(activeSectionId);
++        } else if (bestVisibleId) {
++          setActiveLink(bestVisibleId);
++        }
++      }
++
++      navLinks.forEach((link) => {
++        link.addEventListener('click', () => {
++          const targetId = link.getAttribute('href').slice(1);
++          setActiveLink(targetId);
++        });
++      });
++
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver(
++          () => {
++            updateActiveSection();
++          },
++          {
++            root: null,
++            rootMargin: '-10% 0px -10% 0px',
++            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1]
++          }
++        );
++        sections.forEach((section) => observer.observe(section));
++      }
++
++      window.addEventListener('scroll', updateActiveSection, { passive: true });
++      window.addEventListener('resize', updateActiveSection, { passive: true });
++      window.addEventListener('hashchange', updateActiveSection);
++      document.addEventListener('DOMContentLoaded', updateActiveSection);
++      updateActiveSection();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,49 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Identify the scripts most responsible for slow (long) animation frames.
++       Keep this above all other scripts so it's registered before they run. -->
++  <script>
++    if (PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) {
++      // Running totals per script source, kept across the whole page lifecycle.
++      const totalsBySource = new Map();
++
++      new PerformanceObserver(list => {
++        for (const frame of list.getEntries()) {
++          for (const script of frame.scripts) {
++            // Inline scripts and some callbacks have no sourceURL; fall back to the invoker.
++            const source = script.sourceURL || `(inline) ${script.invoker}`;
++            const totals = totalsBySource.get(source) ?? { source, count: 0, totalDuration: 0, maxDuration: 0, forcedLayoutDuration: 0 };
++            totals.count++;
++            totals.totalDuration += script.duration;
++            totals.maxDuration = Math.max(totals.maxDuration, script.duration);
++            totals.forcedLayoutDuration += script.forcedStyleAndLayoutDuration;
++            totalsBySource.set(source, totals);
++          }
++        }
++
++        // Only show scripts above a threshold to reduce noise, worst offenders first.
++        const heavyScripts = [...totalsBySource.values()]
++          .filter(script => script.totalDuration > 100)
++          .sort((a, b) => b.totalDuration - a.totalDuration)
++          .map(script => ({
++            ...script,
++            totalDuration: Math.round(script.totalDuration),
++            maxDuration: Math.round(script.maxDuration),
++            forcedLayoutDuration: Math.round(script.forcedLayoutDuration),
++          }));
++
++        if (heavyScripts.length) {
++          // For production, send this to your analytics service instead,
++          // e.g. navigator.sendBeacon('/analytics/heavy-scripts', JSON.stringify(heavyScripts)).
++          console.table(heavyScripts);
++        }
++      }).observe({ type: 'long-animation-frame', buffered: true });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 

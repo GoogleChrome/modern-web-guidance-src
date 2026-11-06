@@ -1,0 +1,398 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,169 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-up Form Section */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .signup-section {
++      margin-top: 60px;
++    }
++
++    .signup-card {
++      background: white;
++      max-width: 520px;
++      margin: 20px auto 0;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signup-card > p {
++      text-align: center;
++      margin-bottom: 1.5rem;
++      color: var(--text);
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++      padding: 10px 0;
++      margin-top: -10px;
++    }
++
++    .label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 0.25rem;
++    }
++
++    .label-row label {
++      margin-bottom: 0;
++    }
++
++    .hint,
++    .rules-list {
++      display: block;
++      color: #5f6368;
++      font-size: 0.875rem;
++      margin-bottom: 0.375rem;
++    }
++
++    .rules-list {
++      padding-left: 1.25rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background-color: white;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .toggle-password-btn:focus-visible,
++    .submit-btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .toggle-password-btn {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      min-block-size: 32px;
++      min-inline-size: 64px;
++      cursor: pointer;
++    }
++
++    .toggle-password-btn:hover {
++      background: var(--secondary);
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.25rem;
++    }
++
++    .form-group input:user-invalid,
++    .form-group input.user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .form-group input:user-invalid + .error-msg,
++    .form-group input.user-invalid-fallback + .error-msg {
++      display: block;
++    }
++
++    .form-group:has(input:user-invalid) .rules-list,
++    .form-group:has(input.user-invalid-fallback) .rules-list {
++      color: #d93025;
++      font-weight: 600;
++    }
++
++    .form-group input:user-valid,
++    .form-group input.user-valid-fallback {
++      border-color: #188038;
++    }
++
++    .form-group:has(input:user-valid) .rules-list,
++    .form-group:has(input.user-valid-fallback) .rules-list {
++      display: none;
++    }
++
++    .submit-btn {
++      width: 100%;
++      min-height: 48px;
++      font-size: 1rem;
++      font-weight: 600;
++      border: none;
++      cursor: pointer;
++      margin-top: 0.5rem;
++    }
++
++    .signup-status {
++      margin-top: 1rem;
++      font-weight: 600;
++      text-align: center;
++      color: #188038;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +355,97 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="sign-up-section" class="signup-section">
++      <h2 style="text-align: center;">Create Your Account</h2>
++      <div class="signup-card">
++        <p>Join The Daily Grind Rewards for free coffee, exclusive perks, and faster ordering.</p>
++        <form id="signup-form" action="/signup" method="POST">
++          <div class="form-group">
++            <label for="name">Full name</label>
++            <span id="name-hint" class="hint">Enter your full name as it appears on your order.</span>
++            <input
++              type="text"
++              id="name"
++              name="name"
++              autocomplete="name"
++              enterkeyhint="next"
++              required
++              maxlength="100"
++              pattern="[\p{L}\.\-' ]+"
++              aria-describedby="name-hint"
++              aria-errormessage="name-error"
++            >
++            <div id="name-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter your full name.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="email">Email address</label>
++            <span id="email-hint" class="hint">Format: you@example.com</span>
++            <input
++              type="email"
++              id="email"
++              name="email"
++              inputmode="email"
++              autocomplete="username"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              enterkeyhint="next"
++              required
++              aria-describedby="email-hint"
++              aria-errormessage="email-error"
++            >
++            <div id="email-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter a valid email address.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <div class="label-row">
++              <label for="new-password">Password</label>
++              <button
++                type="button"
++                id="toggle-password"
++                class="toggle-password-btn"
++                aria-pressed="false"
++                aria-label="Show password"
++                aria-describedby="toggle-warning"
++              >Show</button>
++              <span id="toggle-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
++            </div>
++            <ul id="password-rules" class="rules-list">
++              <li>At least 8 characters</li>
++              <li>One uppercase and one lowercase letter</li>
++              <li>One number</li>
++              <li>One special character</li>
++            </ul>
++            <input
++              type="password"
++              id="new-password"
++              name="new-password"
++              autocomplete="new-password"
++              enterkeyhint="done"
++              required
++              minlength="8"
++              pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
++              aria-describedby="password-rules"
++              aria-errormessage="password-error"
++            >
++            <div id="password-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Password must meet all requirements listed above.
++            </div>
++          </div>
++
++          <button type="submit" id="sign-up-submit" class="btn submit-btn">Create account</button>
++          <div id="signup-status" class="signup-status" aria-live="polite"></div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +456,126 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('signup-form');
++      const passwordInput = document.getElementById('new-password');
++      const togglePasswordBtn = document.getElementById('toggle-password');
++      const submitBtn = document.getElementById('sign-up-submit');
++      const statusMsg = document.getElementById('signup-status');
++
++      if (togglePasswordBtn && passwordInput) {
++        togglePasswordBtn.addEventListener('click', () => {
++          const isShowing = passwordInput.type === 'text';
++          passwordInput.type = isShowing ? 'password' : 'text';
++          togglePasswordBtn.setAttribute('aria-pressed', String(!isShowing));
++          togglePasswordBtn.setAttribute('aria-label', isShowing ? 'Show password' : 'Hide password');
++          togglePasswordBtn.textContent = isShowing ? 'Show' : 'Hide';
++        });
++      }
++
++      const syncAria = (el) => {
++        if (!el || typeof el.matches !== 'function' || !('validity' in el)) return;
++        const isUserInvalid =
++          (CSS.supports('selector(:user-invalid)') && el.matches(':user-invalid')) ||
++          el.classList.contains('user-invalid-fallback');
++        if (isUserInvalid) {
++          el.setAttribute('aria-invalid', 'true');
++        } else {
++          el.removeAttribute('aria-invalid');
++        }
++      };
++
++      const UserInvalidFallback = (() => {
++        const dirtyState = new WeakMap();
++
++        const updateState = (input) => {
++          const isValid = input.checkValidity();
++          input.classList.toggle('user-invalid-fallback', !isValid);
++          input.classList.toggle('user-valid-fallback', isValid);
++          if (!isValid) {
++            input.setAttribute('aria-invalid', 'true');
++          } else {
++            input.removeAttribute('aria-invalid');
++          }
++        };
++
++        const handleEvent = (event) => {
++          const input = event.target;
++          if (event.type === 'reset') {
++            const controls = input.elements || [];
++            for (const control of controls) {
++              dirtyState.delete(control);
++              control.classList.remove('user-invalid-fallback', 'user-valid-fallback');
++              control.removeAttribute('aria-invalid');
++            }
++            return;
++          }
++
++          if (!input || !input.checkValidity) return;
++
++          if (event.type === 'input' || event.type === 'change') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasInteracted = true;
++            dirtyState.set(input, state);
++            if (state.hasBlurred) {
++              updateState(input);
++            }
++          } else if (event.type === 'blur') {
++            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++            state.hasBlurred = true;
++            dirtyState.set(input, state);
++            if (state.hasInteracted) {
++              updateState(input);
++            }
++          }
++        };
++
++        const init = (root = document) => {
++          if (CSS.supports('selector(:user-invalid)')) return;
++          root.addEventListener('blur', handleEvent, true);
++          root.addEventListener('input', handleEvent);
++          root.addEventListener('change', handleEvent);
++          root.addEventListener('reset', handleEvent, true);
++        };
++
++        return { init };
++      })();
++
++      if (form) {
++        UserInvalidFallback.init(form);
++
++        form.addEventListener('blur', (e) => syncAria(e.target), true);
++        form.addEventListener('input', (e) => {
++          if (e.target && e.target.hasAttribute && e.target.hasAttribute('aria-invalid')) {
++            syncAria(e.target);
++          }
++        });
++
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          if (!form.checkValidity()) {
++            const firstInvalid = form.querySelector(':invalid');
++            if (firstInvalid) {
++              firstInvalid.classList.add('user-invalid-fallback');
++              firstInvalid.setAttribute('aria-invalid', 'true');
++              firstInvalid.focus();
++            }
++            return;
++          }
++          if (submitBtn) {
++            submitBtn.disabled = true;
++            submitBtn.textContent = 'Account created';
++          }
++          if (statusMsg) {
++            statusMsg.textContent = 'Welcome to The Daily Grind! Your account has been created.';
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

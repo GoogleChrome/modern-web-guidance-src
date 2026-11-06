@@ -1,0 +1,332 @@
+diff --git a/index.html b/index.html
+index 66c9173..2b451a1 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,12 @@
+       padding: 0;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -38,6 +44,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-target-group: auto;
+     }
+ 
+     .logo {
+@@ -49,6 +56,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +67,27 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding-bottom: 4px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    nav a:target-current {
++      color: var(--accent);
++      border-bottom-color: var(--accent);
++      font-weight: bold;
++    }
++
++    nav a:is(:target-current, .target-current) {
++      color: var(--accent);
++      border-bottom-color: var(--accent);
++      font-weight: bold;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +122,28 @@
+       padding: 0 20px;
+     }
+ 
++    main section {
++      padding: 4rem 0;
++      min-height: 60vh;
++      scroll-margin-top: 4.5rem;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    main section:last-child {
++      border-bottom: none;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 2rem;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -109,10 +153,13 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -120,6 +167,19 @@
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++      font-size: 1.1rem;
++    }
++
++    .meta-detail {
++      font-size: 0.9rem;
++      margin-top: 8px;
++      color: var(--text);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -157,13 +217,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,27 +231,134 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Explore Menu</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu">
++      <div class="section-header">
++        <h2>Seasonal Favorites &amp; Menu</h2>
++        <p>Handcrafted espresso drinks, slow-steeped brews, and freshly baked pastries.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
++          </div>
++          <p class="price-tag">$5.75</p>
++          <a href="/menu/seasonal" class="btn">View Maple Oat Latte</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey single-origin beans roasted for a rich morning boost.</p>
++          </div>
++          <p class="price-tag">$3.50</p>
++          <a href="/menu/espresso" class="btn">View Dark Roast Espresso</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours in cold filtered water for maximum smoothness.</p>
++          </div>
++          <p class="price-tag">$4.75</p>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations">
++      <div class="section-header">
++        <h2>Our Locations</h2>
++        <p>Visit one of our neighborhood cafes for freshly pulled shots and cozy seating.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>Downtown Roastery</h3>
++            <p>142 Bean Street, Suite 100</p>
++            <p class="meta-detail">Mon–Fri: 6:00 AM – 7:00 PM<br>Sat–Sun: 7:00 AM – 6:00 PM</p>
++          </div>
++          <a href="/locations/downtown" class="btn">Downtown Directions</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Riverside Cafe</h3>
++            <p>88 Harbor Walk Avenue</p>
++            <p class="meta-detail">Mon–Fri: 6:30 AM – 6:00 PM<br>Sat–Sun: 7:30 AM – 5:00 PM</p>
++          </div>
++          <a href="/locations/riverside" class="btn">Riverside Directions</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>University Corner</h3>
++            <p>510 College Way</p>
++            <p class="meta-detail">Daily: 6:00 AM – 9:00 PM<br>Free high-speed study Wi-Fi</p>
++          </div>
++          <a href="/locations/university" class="btn">University Directions</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards">
++      <div class="section-header">
++        <h2>Daily Grind Rewards</h2>
++        <p>Earn beans with every sip and redeem them for free handcrafted drinks and merchandise.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>Earn 2 Beans per $1</h3>
++            <p>Scan your member barcode in-store or order ahead to collect points on every purchase.</p>
++          </div>
++          <p class="price-tag">100 Beans = Free Drink</p>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Birthday Treat</h3>
++            <p>Celebrate your special day with any complimentary handcrafted beverage or pastry on us.</p>
++          </div>
++          <p class="price-tag">Included for All Members</p>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Gold Status Perks</h3>
++            <p>Unlock free extra espresso shots, dairy-free milk upgrades, and early seasonal tasting access.</p>
++          </div>
++          <p class="price-tag">500 Beans / Year</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account">
++      <div class="section-header">
++        <h2>My Account</h2>
++        <p>Manage your coffee preferences, reward balance, and recent orders in one place.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <div>
++            <h3>Member Profile</h3>
++            <p>Alex Rivera &bull; Gold Roast Member since 2024</p>
++            <p class="meta-detail">Current Balance: <strong>340 Beans</strong></p>
++          </div>
++          <a href="/account/profile" class="btn">Edit Profile Settings</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Usual Order</h3>
++            <p>16oz Iced Maple Oat Latte &bull; Extra Espresso Shot</p>
++            <p class="meta-detail">Pickup Location: Downtown Roastery</p>
++          </div>
++          <a href="/order-online" class="btn">Reorder Usual Drink</a>
++        </div>
++        <div class="card">
++          <div>
++            <h3>Payment &amp; Subscriptions</h3>
++            <p>Auto-reload enabled ($25.00 threshold) &bull; Bi-weekly Whole Bean Delivery</p>
++          </div>
++          <a href="/account/billing" class="btn">Manage Billing</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +374,39 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
++
++    if (supportsScrollTargetGroup) {
++      const syncAriaCurrent = () => {
++        const currentLink = document.querySelector('nav a:target-current');
++        document.querySelectorAll('nav a').forEach(link => {
++          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
++        });
++      };
++      syncAriaCurrent();
++      document.addEventListener('scrollend', syncAriaCurrent);
++    } else {
++      const navLinks = document.querySelectorAll('nav a');
++      const sections = document.querySelectorAll('main section');
++
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) {
++            const id = entry.target.getAttribute('id');
++            navLinks.forEach(link => {
++              const isActive = link.getAttribute('href') === `#${id}`;
++              link.classList.toggle('target-current', isActive);
++              link.setAttribute('aria-current', isActive);
++            });
++          }
++        });
++      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
++
++      sections.forEach(section => observer.observe(section));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

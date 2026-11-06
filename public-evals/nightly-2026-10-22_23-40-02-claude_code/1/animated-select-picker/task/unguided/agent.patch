@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,121 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store picker */
++    .store-picker {
++      margin-top: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.4rem;
++    }
++
++    .store-picker label {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++    }
++
++    .store-select {
++      min-width: 260px;
++      padding: 10px 14px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    /* Customizable select: lets us style and animate the native picker */
++    @supports (appearance: base-select) {
++      .store-select,
++      .store-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .store-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 12px;
++        text-align: left;
++        transition: border-color 0.3s, box-shadow 0.3s;
++      }
++
++      .store-select:hover,
++      .store-select:focus-visible {
++        border-color: var(--accent);
++        outline: none;
++        box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++      }
++
++      /* Arrow rotates while the picker is open */
++      .store-select::picker-icon {
++        content: '\25BE';
++        color: var(--primary);
++        transition: rotate 0.3s ease;
++      }
++
++      .store-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      /* Picker menu fades (and slides slightly) in and out */
++      .store-select::picker(select) {
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        padding: 4px;
++        margin-top: 6px;
++        background: white;
++        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++        opacity: 0;
++        translate: 0 -8px;
++        transition: opacity 0.3s ease, translate 0.3s ease,
++          display 0.3s allow-discrete, overlay 0.3s allow-discrete;
++      }
++
++      .store-select::picker(select):popover-open {
++        opacity: 1;
++        translate: 0 0;
++      }
++
++      @starting-style {
++        .store-select::picker(select):popover-open {
++          opacity: 0;
++          translate: 0 -8px;
++        }
++      }
++
++      .store-select option {
++        padding: 8px 12px;
++        border-radius: 4px;
++        transition: background 0.2s;
++      }
++
++      .store-select option:hover,
++      .store-select option:focus {
++        background: var(--secondary);
++      }
++
++      .store-select option:checked {
++        font-weight: bold;
++      }
++
++      .store-select option::checkmark {
++        color: var(--accent);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .store-select::picker-icon,
++      .store-select::picker(select) {
++        transition-duration: 0.01ms;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +283,18 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-picker">
++      <label for="store">Choose your store</label>
++      <select id="store" name="store" class="store-select">
++        <option value="" selected>Choose your store</option>
++        <option value="downtown">Downtown – 12 Main St</option>
++        <option value="riverside">Riverside – 88 River Rd</option>
++        <option value="uptown">Uptown – 301 Hill Ave</option>
++        <option value="airport">Airport – Terminal B</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

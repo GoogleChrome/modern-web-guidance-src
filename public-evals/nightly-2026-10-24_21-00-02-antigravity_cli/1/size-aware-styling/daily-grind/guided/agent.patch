@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..104ac80 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,75 @@
+       margin-top: 20px;
+     }
+ 
++    .card-container {
++      container: card / inline-size;
++    }
++
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: clamp(1rem, 4cqi, 1.75rem);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 1rem;
++      height: 100%;
++    }
++
++    .card-image {
++      display: block;
++      inline-size: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .card-content {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      flex: 1;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.15rem, 5cqi, 1.75rem);
++    }
++
++    .card-details {
++      display: none;
++      font-size: 0.9rem;
++      opacity: 0.85;
++      margin-top: 8px;
++    }
++
++    /* Styles for larger containers (side-by-side layout) */
++    @container (min-width: 400px) {
++      .card {
++        flex-direction: row;
++        align-items: center;
++        text-align: start;
++      }
++
++      .card-image {
++        width: 150px;
++        height: 150px;
++        aspect-ratio: 1 / 1;
++        flex-shrink: 0;
++      }
++
++      .card-content {
++        align-items: flex-start;
++      }
++    }
++
++    @container (min-width: 600px) {
++      .card-details {
++        display: block;
++      }
+     }
+ 
+     .btn {
+@@ -178,20 +236,38 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            <div class="card-content">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <p class="card-details">Crafted with a double shot of our signature espresso, steamed organic oat milk, and pure Grade A dark amber maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            <div class="card-content">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <p class="card-details">Single-origin beans roasted in small batches to bring out rich dark chocolate notes with a velvety crema finish.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <img class="card-image" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            <div class="card-content">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <p class="card-details">Coarse-ground Ethiopian and Colombian blend slow-steeped in cold filtered water for a naturally sweet, low-acid profile.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

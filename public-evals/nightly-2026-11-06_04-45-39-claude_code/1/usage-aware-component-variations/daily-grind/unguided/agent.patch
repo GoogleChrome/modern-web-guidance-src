@@ -1,0 +1,172 @@
+diff --git a/index.html b/index.html
+index 66c9173..3ed6007 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,156 @@
+       background: #3e2723;
+     }
+ 
++    /* ------------------------------------------------------------------
++       Context-aware themed cards
++       A section declares its semantic theme via data-theme. The theme only
++       sets custom properties; .card reads them, so any card placed inside
++       a themed section adapts automatically with no per-card classes.
++       ------------------------------------------------------------------ */
++    .themed-section {
++      /* Neutral defaults (used when no / unknown theme is set) */
++      --card-bg: white;
++      --card-border: var(--secondary);
++      --card-accent: var(--primary);
++      --card-heading: var(--primary);
++      --card-text: var(--text);
++      --card-btn-bg: var(--primary);
++      --card-btn-bg-hover: #3e2723;
++      --card-btn-text: white;
++      --card-shadow: rgba(0, 0, 0, 0.1);
++      --card-icon: "\2615"; /* hot beverage */
++      --section-heading: var(--primary);
++
++      container-type: inline-size;
++      container-name: themed-section;
++    }
++
++    .themed-section > h2 {
++      text-align: center;
++      color: var(--section-heading);
++    }
++
++    /* Autumn: warm maple, pumpkin and spice */
++    .themed-section[data-theme="autumn"] {
++      --card-bg: linear-gradient(160deg, #fff8f0 0%, #fbe3cc 100%);
++      --card-border: #e8a87c;
++      --card-accent: #c0592b;
++      --card-heading: #8a3b12;
++      --card-text: #5a2e14;
++      --card-btn-bg: #c0592b;
++      --card-btn-bg-hover: #8a3b12;
++      --card-shadow: rgba(192, 89, 43, 0.25);
++      --card-icon: "\1F341"; /* maple leaf */
++      --section-heading: #8a3b12;
++    }
++
++    /* Winter: cool, cosy peppermint and cocoa */
++    .themed-section[data-theme="winter"] {
++      --card-bg: linear-gradient(160deg, #f5f9ff 0%, #dde9f7 100%);
++      --card-border: #9bb8d9;
++      --card-accent: #2f5d8a;
++      --card-heading: #1f3f60;
++      --card-text: #23384d;
++      --card-btn-bg: #2f5d8a;
++      --card-btn-bg-hover: #1f3f60;
++      --card-shadow: rgba(47, 93, 138, 0.25);
++      --card-icon: "\2744"; /* snowflake */
++      --section-heading: #1f3f60;
++    }
++
++    /* Spring: fresh floral and matcha */
++    .themed-section[data-theme="spring"] {
++      --card-bg: linear-gradient(160deg, #fbfff7 0%, #e3f3d8 100%);
++      --card-border: #a8d08d;
++      --card-accent: #4f8a2f;
++      --card-heading: #335c1d;
++      --card-text: #2f4422;
++      --card-btn-bg: #4f8a2f;
++      --card-btn-bg-hover: #335c1d;
++      --card-shadow: rgba(79, 138, 47, 0.25);
++      --card-icon: "\1F338"; /* blossom */
++      --section-heading: #335c1d;
++    }
++
++    /* Summer: bright citrus and iced drinks */
++    .themed-section[data-theme="summer"] {
++      --card-bg: linear-gradient(160deg, #fffdf2 0%, #fff0c2 100%);
++      --card-border: #f5c84c;
++      --card-accent: #d98b00;
++      --card-heading: #8a5600;
++      --card-text: #5c3d00;
++      --card-btn-bg: #d98b00;
++      --card-btn-bg-hover: #8a5600;
++      --card-btn-text: #ffffff;
++      --card-shadow: rgba(217, 139, 0, 0.25);
++      --card-icon: "\2600"; /* sun */
++      --section-heading: #8a5600;
++    }
++
++    /* Cards consume the theme tokens of their parent section */
++    .themed-section .card {
++      position: relative;
++      overflow: hidden;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
++      border-top: 4px solid var(--card-accent);
++      box-shadow: 0 2px 6px var(--card-shadow);
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    .themed-section .card::before {
++      content: var(--card-icon);
++      display: block;
++      font-size: 1.75rem;
++      line-height: 1;
++      margin-bottom: 10px;
++    }
++
++    .themed-section .card:hover,
++    .themed-section .card:focus-within {
++      transform: translateY(-4px);
++      box-shadow: 0 10px 20px var(--card-shadow);
++    }
++
++    .themed-section .card h3 {
++      color: var(--card-heading);
++    }
++
++    .themed-section .card .btn {
++      background: var(--card-btn-bg);
++      color: var(--card-btn-text);
++    }
++
++    .themed-section .card .btn:hover,
++    .themed-section .card .btn:focus-visible {
++      background: var(--card-btn-bg-hover);
++    }
++
++    .themed-section .card .btn:focus-visible {
++      outline: 2px solid var(--card-accent);
++      outline-offset: 2px;
++    }
++
++    /* Wider sections get a more spacious, left-aligned card layout */
++    @container themed-section (min-width: 700px) {
++      .themed-section .card {
++        text-align: left;
++        padding: 24px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .themed-section .card {
++        transition: none;
++      }
++
++      .themed-section .card:hover,
++      .themed-section .card:focus-within {
++        transform: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +325,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="themed-section" data-theme="autumn" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

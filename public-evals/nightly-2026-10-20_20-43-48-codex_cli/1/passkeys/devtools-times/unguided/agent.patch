@@ -1,0 +1,850 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..0e3d0f5 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Local authentication database
++data/
+diff --git a/README.md b/README.md
+index 4479b53..bca87cf 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,39 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Accounts and passkeys
++
++Use Node.js 24 or later. Run `pnpm install`, `pnpm build`, then `pnpm start`.
++The app is served at `http://localhost:11224/devtools-times/`.
++
++Registration supports either a discoverable passkey or a password. Sign-in supports
++passkeys without entering a username, as well as password fallback. Account security
++at `/devtools-times/account/security` lets signed-in users add, rename, and remove
++passkeys, see their creation and last-use dates, and reauthenticate. Sensitive changes
++require verification within the last five minutes. A passwordless account cannot
++remove its last passkey. There is no account recovery flow; add a second passkey or
++use a synced password manager to avoid losing access.
++
++The old remote demo login/register calls have been replaced with local server-side
++accounts. Remote demo accounts are not migrated; register a new account locally.
++Passwords use salted scrypt hashes. Session tokens are stored as hashes, with
++HttpOnly, SameSite cookies (Secure over HTTPS). WebAuthn uses SimpleWebAuthn for
++signature, origin, RP ID, and required user-verification checks. Challenges expire
++after five minutes and are consumed once, including on failed verification.
++
++Deployment settings:
++
++- `AUTH_ORIGIN`: the public origin, e.g. `https://news.example.com` (no path). Set
++  explicitly in production, especially behind a reverse proxy. Defaults to the
++  request origin. Passkeys require HTTPS except on localhost.
++- `AUTH_DB_PATH`: SQLite file path, defaults to `./data/auth.sqlite`. Mount a
++  persistent writable volume and back it up. This implementation supports a single
++  application instance; multiple replicas need a shared database implementation.
++- Keep the same public hostname: passkeys are bound to its RP ID.
++
++Run `pnpm test` to build and execute API integration tests using generated ES256
++keys and real signed WebAuthn attestation/assertion data. Tests cover registration,
++authentication, replay and forgery rejection, management, reauthentication, ownership,
++password fallback, logout, and protection against removing the last sign-in method.
++No manual browser verification is required.
+diff --git a/package.json b/package.json
+index 2e1f2e8..ea5d0e1 100644
+--- a/package.json
++++ b/package.json
+@@ -7,12 +7,15 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test": "pnpm build && node --test tests/*.test.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.7",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -23,12 +26,17 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+       "esbuild",
+       "sharp"
+     ]
++  },
++  "engines": {
++    "node": ">=24.0.0"
+   }
+ }
+diff --git a/src/components/AuthForm.tsx b/src/components/AuthForm.tsx
+new file mode 100644
+index 0000000..170bb25
+--- /dev/null
++++ b/src/components/AuthForm.tsx
+@@ -0,0 +1,36 @@
++import { useState } from 'react';
++import { FingerPrintIcon, ArrowRightIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
++import { api, base, registerPasskey, authenticatePasskey, authError } from '../lib/auth-client';
++
++export default function AuthForm({ signup = false }: { signup?: boolean }) {
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [busy, setBusy] = useState<string | null>(null);
++  const [error, setError] = useState('');
++  async function run(kind: string) {
++    setBusy(kind); setError('');
++    try {
++      if (kind === 'passkey') {
++        if (signup) await registerPasskey(username); else await authenticatePasskey();
++      } else await api(signup ? 'signup' : 'login', { username, password });
++      window.location.assign(`${base}account/security`);
++    } catch (e) { setError(authError(e)); } finally { setBusy(null); }
++  }
++  return <div className="mx-auto max-w-[440px]">
++    <a href={base} className="text-xs font-semibold tracking-[0.15em] text-gray-500">THE DEVTOOLS TIMES / YOUR ACCOUNT</a>
++    <h1 className="mt-8 font-serif text-4xl text-gray-900">{signup ? 'Make yourself at home.' : 'Welcome back.'}</h1>
++    <p className="mt-3 mb-8 text-gray-500">{signup ? 'A world of stories. One account to make it yours.' : 'Sign in to keep your stories close.'}</p>
++    {error && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
++    <form onSubmit={e => { e.preventDefault(); void run('password'); }} className="space-y-5">
++      <div><label className="mb-2 block text-sm font-semibold" htmlFor="username">Username</label><input className="auth-input" id="username" name="username" autoComplete="username webauthn" required minLength={3} maxLength={40} value={username} onChange={e => setUsername(e.target.value)} placeholder="Your username" /></div>
++      {signup && <button type="button" disabled={!!busy} onClick={() => void run('passkey')} className="auth-primary"><FingerPrintIcon className="h-5 w-5" />{busy === 'passkey' ? 'Creating your passkey…' : 'Create account with a passkey'}</button>}
++      {signup && <p className="text-xs leading-5 text-gray-500">Use 3–40 letters, numbers, dots, hyphens, or underscores. Your passkey replaces a password.</p>}
++      {signup && <div className="auth-divider">or use a password</div>}
++      <div><label className="mb-2 block text-sm font-semibold" htmlFor="password">Password</label><input className="auth-input" type="password" id="password" autoComplete={signup ? 'new-password' : 'current-password'} required minLength={signup ? 8 : undefined} maxLength={256} value={password} onChange={e => setPassword(e.target.value)} placeholder={signup ? 'Create a password' : 'Enter your password'} />{signup && <p className="mt-2 text-xs text-gray-500">At least 8 characters, including a number.</p>}</div>
++      <button disabled={!!busy} className={signup ? 'auth-secondary' : 'auth-primary'}>{busy === 'password' ? 'Please wait…' : signup ? 'Create account with password' : 'Sign in'}<ArrowRightIcon className="h-4 w-4" /></button>
++    </form>
++    {!signup && <><div className="auth-divider">or, skip the password</div><button className="auth-secondary" disabled={!!busy} onClick={() => void run('passkey')}><FingerPrintIcon className="h-5 w-5" />{busy === 'passkey' ? 'Waiting for your passkey…' : 'Sign in with a passkey'}</button><p className="mt-3 text-center text-xs leading-5 text-gray-500">Use your fingerprint, face, or device PIN.<br />Your biometric data never leaves your device.</p></>}
++    <p className="mt-8 border-t border-gray-200 pt-6 text-center text-sm text-gray-500">{signup ? 'Already have an account?' : 'New to The Times?'} <a className="font-semibold text-gray-900 underline underline-offset-4" href={`${base}${signup ? 'signin' : 'signup'}`}>{signup ? 'Sign in' : 'Create an account'}</a></p>
++    <p className="mt-7 flex items-center justify-center gap-2 text-xs text-gray-400"><ShieldCheckIcon className="h-4 w-4" />Your account. A little more secure.</p>
++  </div>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..a6b082a 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,8 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++import { getSession } from '../lib/auth-store';
++const signedIn = !!getSession(Astro.cookies.get('times_auth')?.value);
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -26,18 +28,18 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
+         <a
+-          href={`${baseUrl}signup`}
++          href={`${baseUrl}${signedIn ? 'account/security' : 'signup'}`}
+           data-skip-tracking="true"
+           class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+         >
+-          Sign up
++          {signedIn ? 'Account security' : 'Sign up'}
+         </a>
+         <a
+-          href={`${baseUrl}signin`}
++          href={`${baseUrl}${signedIn ? 'account/security' : 'signin'}`}
+           data-skip-tracking="true"
+           class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+         >
+-          Sign in
++          {signedIn ? 'My account' : 'Sign in'}
+         </a>
+       </div>
+     </div>
+diff --git a/src/components/SecuritySettings.tsx b/src/components/SecuritySettings.tsx
+new file mode 100644
+index 0000000..63a43c7
+--- /dev/null
++++ b/src/components/SecuritySettings.tsx
+@@ -0,0 +1,71 @@
++import { useEffect, useState } from 'react';
++import { FingerPrintIcon, PlusIcon, ShieldCheckIcon, ArrowRightIcon, KeyIcon, CheckIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
++import { api, base, registerPasskey, authenticatePasskey, authError } from '../lib/auth-client';
++type Passkey = { id: string; name: string; created_at: number; last_used: number | null };
++type Account = { user: { username: string; hasPassword: boolean } | null; passkeys: Passkey[]; recent: boolean };
++export default function SecuritySettings() {
++  const [account, setAccount] = useState<Account | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [message, setMessage] = useState('');
++  const [rename, setRename] = useState<Passkey | null>(null);
++  const [remove, setRemove] = useState<Passkey | null>(null);
++  const [verify, setVerify] = useState(false);
++  const [password, setPassword] = useState('');
++  const dialogOpen = !!(rename || remove || verify);
++  useEffect(() => {
++    if (!dialogOpen) return;
++    const previous = document.activeElement as HTMLElement | null;
++    const dialog = document.getElementById('security-dialog');
++    dialog?.querySelector<HTMLElement>('input, button')?.focus();
++    return () => previous?.focus();
++  }, [dialogOpen]);
++  async function load() { const result = await api('me'); if (!result.user) { window.location.assign(`${base}signin`); return; } setAccount(result); }
++  useEffect(() => { load().catch(e => setError(authError(e))); }, []);
++  async function run(action: () => Promise<unknown>, success: string) {
++    setBusy(true); setError(''); setMessage('');
++    try { await action(); await load(); setMessage(success); }
++    catch (e) { setError(authError(e)); }
++    finally { setBusy(false); }
++  }
++  async function ensureRecent() {
++    const current = await api('me'); setAccount(current);
++    if (!current.recent) { setRename(null); setRemove(null); setVerify(true); throw new Error('For your security, verify your identity, then try your change again.'); }
++  }
++  const date = (time: number) => new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
++  return <div className="mx-auto max-w-5xl px-6 py-10 md:px-10 md:py-14">
++    <div className="mb-8 flex items-center justify-between border-b border-gray-200 pb-5"><span className="text-xs font-semibold tracking-[.18em] text-gray-500">YOUR TIMES ACCOUNT</span><button disabled={busy} onClick={() => void run(async () => { await api('logout', {}); window.location.assign(`${base}signin`); }, '')} className="text-sm text-gray-500 hover:underline">Sign out ↗</button></div>
++    <div className="mb-10"><p className="mb-3 text-sm text-gray-500">Account <span className="mx-2">/</span> <span className="text-gray-900">Security</span></p><h1 className="font-serif text-4xl md:text-5xl">A safer way to sign in.</h1><p className="mt-4 text-gray-500">Manage your passkeys and keep your account protected.</p></div>
++    {error && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
++    {message && <div role="status" className="mb-5 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900"><CheckIcon className="h-4 w-4" />{message}</div>}
++    {!account ? <p role="status" className="py-12 text-gray-500">Loading account security…</p> : <div className="grid gap-8 md:grid-cols-[1fr_270px]">
++      <div className="space-y-6">
++        <section className="overflow-hidden rounded-xl border border-gray-200">
++          <div className="border-b border-gray-200 p-6"><div className="mb-4 flex items-center gap-3"><div className="rounded-lg bg-[#edf2ee] p-2.5"><FingerPrintIcon className="h-6 w-6 text-[#34533f]" /></div><h2 className="text-xl font-semibold">Passkeys</h2><span className="ml-auto rounded-full bg-[#edf2ee] px-2.5 py-1 text-xs font-medium text-[#34533f]">Recommended</span></div><p className="text-sm leading-6 text-gray-500">Sign in with your fingerprint, face, or screen lock. A simpler, more secure alternative to passwords.</p></div>
++          <div className="p-6">
++            <div className="mb-4 flex items-center justify-between"><h3 className="text-sm font-semibold">Your passkeys <span className="ml-1 text-gray-400">({account.passkeys.length})</span></h3><span className="text-xs text-gray-400">{account.user?.username}</span></div>
++            {account.passkeys.length === 0 ? <div className="mb-5 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-5 py-7 text-center"><KeyIcon className="mx-auto mb-3 h-7 w-7 text-gray-400" /><p className="text-sm font-semibold">Your next sign-in, made simpler.</p><p className="mt-2 text-xs leading-5 text-gray-500">Add your first passkey to get started.<br />No password to remember. No code to type.</p></div> : <div className="mb-5 divide-y divide-gray-100">{account.passkeys.map(key => <div key={key.id} className="flex flex-wrap items-center gap-3 py-4"><DevicePhoneMobileIcon className="h-6 w-6 text-gray-400" /><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{key.name}</p><p className="mt-1 text-xs leading-5 text-gray-500">Added {date(key.created_at)}<br />{key.last_used ? `Last used ${date(key.last_used)}` : 'Not used to sign in yet'}</p></div><div className="flex gap-3 text-xs"><button disabled={busy} className="underline underline-offset-4" onClick={() => setRename({ ...key })}>Rename</button><button disabled={busy} className="text-red-700 underline underline-offset-4" onClick={() => setRemove(key)}>Remove</button></div></div>)}</div>}
++            <button disabled={busy} className="auth-primary" onClick={() => void run(async () => { await ensureRecent(); await registerPasskey(); }, 'Passkey added. You’re ready for a simpler sign-in.')}><PlusIcon className="h-4 w-4" />{busy ? 'Please wait…' : 'Add a passkey'}</button>
++            <p className="mt-3 text-center text-xs text-gray-400">Your device will guide you through the next step.</p>
++          </div>
++        </section>
++        <section className="flex gap-4 rounded-xl border border-gray-200 p-6"><ShieldCheckIcon className="h-6 w-6 shrink-0 text-gray-500" /><div className="flex-1"><h2 className="font-semibold">Verify your identity</h2><p className="mt-2 text-sm leading-6 text-gray-500">We ask for a quick verification before sensitive account changes. Verification lasts for 5 minutes.</p><button disabled={busy} className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#34533f]" onClick={() => setVerify(true)}>Verify now <ArrowRightIcon className="h-4 w-4" /></button></div></section>
++      </div>
++      <aside><div className="rounded-xl bg-[#f4f5f0] p-6"><div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-white"><ShieldCheckIcon className="h-6 w-6 text-[#34533f]" /></div><h2 className="font-serif text-2xl">More peace of mind.<br />Less to remember.</h2><div className="mt-6 space-y-5">{[['Built to protect you', 'Passkeys help protect against phishing and stolen passwords.'], ['Private by design', 'Your fingerprint and face data stay on your device. We never see them.'], ['Ready wherever you are', 'Your passkeys can sync across devices through your password manager.']].map(([title, text]) => <div key={title}><h3 className="mb-1 flex items-center gap-2 text-sm font-semibold"><CheckIcon className="h-4 w-4 text-[#34533f]" />{title}</h3><p className="ml-6 text-xs leading-5 text-gray-500">{text}</p></div>)}</div></div><p className="mt-5 px-2 text-xs leading-5 text-gray-400">Use a device you trust. On a shared computer, choose a passkey from your phone or security key.</p></aside>
++    </div>}
++    {(rename || remove || verify) && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><section id="security-dialog" role="dialog" onKeyDown={e => {
++        if (e.key === 'Escape' && !busy) { setRename(null); setRemove(null); setVerify(false); setPassword(''); }
++        if (e.key === 'Tab') {
++          const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)'));
++          const first = items[0], last = items[items.length - 1];
++          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
++          if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
++        }
++      }} aria-modal="true" aria-labelledby="dialog-title" className="w-full max-w-md rounded-xl bg-white p-7 shadow-xl"><h2 id="dialog-title" className="mb-3 font-serif text-2xl">{rename ? 'Rename your passkey' : remove ? 'Remove this passkey?' : 'Verify your identity'}</h2>
++      {rename && <form onSubmit={e => { e.preventDefault(); void run(async () => { await ensureRecent(); await api('rename', { id: rename.id, name: rename.name }); setRename(null); }, 'Passkey renamed.'); }}><label htmlFor="passkey-name" className="mb-2 block text-sm text-gray-500">Choose a name you’ll recognize.</label><input id="passkey-name" autoFocus required maxLength={60} className="auth-input mb-5" value={rename.name} onChange={e => setRename({ ...rename, name: e.target.value })} /><button disabled={busy} className="auth-primary">Save name</button></form>}
++      {remove && <><p className="mb-5 text-sm leading-6 text-gray-500">You’ll no longer be able to sign in with “{remove.name}”. This does not delete the passkey from your device’s password manager.</p><button disabled={busy} className="auth-primary" onClick={() => void run(async () => { await ensureRecent(); await api('delete', { id: remove.id }); setRemove(null); }, 'Passkey removed.')}>Remove passkey</button></>}
++      {verify && <><p className="mb-5 text-sm leading-6 text-gray-500">Confirm it’s you to continue with sensitive account changes.</p>{!!account?.passkeys.length && <button disabled={busy} className="auth-primary mb-5" onClick={() => void run(async () => { await authenticatePasskey(true); setVerify(false); }, 'Identity verified. You can now make changes.')}><FingerPrintIcon className="h-5 w-5" />Verify with a passkey</button>}{account?.user?.hasPassword && <form onSubmit={e => { e.preventDefault(); void run(async () => { await api('reauth-password', { password }); setPassword(''); setVerify(false); }, 'Identity verified. You can now make changes.'); }}><label htmlFor="verify-password" className="mb-2 block text-sm">Confirm your password</label><input id="verify-password" required type="password" autoComplete="current-password" className="auth-input mb-3" value={password} onChange={e => setPassword(e.target.value)} /><button disabled={busy} className="auth-secondary">Verify with password</button></form>}</>}
++      {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}<button disabled={busy} className="mt-5 w-full text-sm text-gray-500" onClick={() => { setRename(null); setRemove(null); setVerify(false); setPassword(''); setError(''); }}>Cancel</button>
++    </section></div>}
++  </div>;
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..54c77ab 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignInForm() { return <AuthForm />; }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..9e1e873 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignUpForm() { return <AuthForm signup />; }
+diff --git a/src/lib/auth-client.ts b/src/lib/auth-client.ts
+new file mode 100644
+index 0000000..7753f3c
+--- /dev/null
++++ b/src/lib/auth-client.ts
+@@ -0,0 +1,25 @@
++import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
++export const base = import.meta.env.BASE_URL;
++export async function api(action: string, body?: unknown) {
++  const response = await fetch(`${base}api/auth/${action}`, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
++  const data = await response.json();
++  if (!response.ok) throw new Error(data.error || 'Please try again.');
++  return data;
++}
++export async function registerPasskey(username?: string) {
++  if (!browserSupportsWebAuthn() || !window.isSecureContext) throw new Error('Passkeys require a supported browser and a secure connection (HTTPS or localhost).');
++  const optionsJSON = await api('register-options', { username });
++  const credential = await startRegistration({ optionsJSON });
++  return api('register-verify', { credential });
++}
++export async function authenticatePasskey(reauthenticate = false) {
++  if (!browserSupportsWebAuthn() || !window.isSecureContext) throw new Error('Passkeys require a supported browser and a secure connection (HTTPS or localhost).');
++  const optionsJSON = await api('authenticate-options', { reauthenticate });
++  const credential = await startAuthentication({ optionsJSON });
++  return api('authenticate-verify', { credential });
++}
++export function authError(error: unknown) {
++  if (error instanceof Error && ['NotAllowedError', 'AbortError'].includes(error.name)) return 'The passkey request was canceled or timed out. You can try again.';
++  if (error instanceof Error && error.name === 'InvalidStateError') return 'This device already has a passkey for your account. Try another device.';
++  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
++}
+diff --git a/src/lib/auth-store.ts b/src/lib/auth-store.ts
+new file mode 100644
+index 0000000..4d4fec6
+--- /dev/null
++++ b/src/lib/auth-store.ts
+@@ -0,0 +1,42 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname } from 'node:path';
++import { randomBytes, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
++
++const path = process.env.AUTH_DB_PATH || './data/auth.sqlite';
++mkdirSync(dirname(path), { recursive: true });
++export const db = new DatabaseSync(path);
++db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
++CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT);
++CREATE TABLE IF NOT EXISTS passkeys (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), public_key TEXT NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL, name TEXT NOT NULL, created_at INTEGER NOT NULL, last_used INTEGER);
++CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL, verified_at INTEGER NOT NULL);
++CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, value TEXT NOT NULL, expires INTEGER NOT NULL);
++CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);`);
++export type User = { id: string; username: string; password: string | null };
++export type Key = { id: string; user_id: string; public_key: string; counter: number; transports: string; name: string; created_at: number; last_used: number | null };
++export type Session = { id: string; user_id: string; expires: number; verified_at: number };
++export const random = () => randomBytes(32).toString('base64url');
++export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
++export function passwordHash(password: string) {
++  const salt = random();
++  return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`;
++}
++export function passwordMatches(password: string, hash: string) {
++  const [salt, value] = hash.split(':');
++  return timingSafeEqual(scryptSync(password, salt, 64), Buffer.from(value, 'hex'));
++}
++export function getSession(token?: string): Session | undefined {
++  if (!token) return;
++  return db.prepare('SELECT * FROM sessions WHERE id = ? AND expires > ?').get(digest(token), Date.now()) as Session | undefined;
++}
++export function takeChallenge(id: string) {
++  const row = db.prepare('DELETE FROM challenges WHERE id = ? RETURNING value, expires').get(digest(id)) as { value: string; expires: number } | undefined;
++  if (!row || row.expires < Date.now()) throw new Error('This request expired. Please try again.');
++  return JSON.parse(row.value);
++}
++export function rateLimit(id: string) {
++  const now = Date.now();
++  db.prepare('DELETE FROM attempts WHERE expires < ?').run(now);
++  const row = db.prepare(`INSERT INTO attempts VALUES (?, 1, ?) ON CONFLICT(id) DO UPDATE SET count = count + 1 RETURNING count`).get(id, now + 60_000) as { count: number };
++  if (row.count > 20) throw new Error('Too many attempts. Please wait a minute and try again.');
++}
+diff --git a/src/pages/account/security.astro b/src/pages/account/security.astro
+new file mode 100644
+index 0000000..15b9581
+--- /dev/null
++++ b/src/pages/account/security.astro
+@@ -0,0 +1,9 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import SecuritySettings from '../../components/SecuritySettings';
++import { getSession } from '../../lib/auth-store';
++if (!getSession(Astro.cookies.get('times_auth')?.value)) return Astro.redirect(`${import.meta.env.BASE_URL}signin`);
++---
++<Layout title="Account security | The DevTools Times">
++  <SecuritySettings client:load />
++</Layout>
+diff --git a/src/pages/api/auth/[action].ts b/src/pages/api/auth/[action].ts
+new file mode 100644
+index 0000000..7475f76
+--- /dev/null
++++ b/src/pages/api/auth/[action].ts
+@@ -0,0 +1,129 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++import type { AuthenticatorTransport } from '@simplewebauthn/server';
++import { db, random, digest, getSession, takeChallenge, passwordHash, passwordMatches, rateLimit, type User, type Key } from '../../../lib/auth-store';
++
++export const ALL: APIRoute = async ({ request, cookies, params, url }) => {
++  const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
++  const configured = process.env.AUTH_ORIGIN || url.origin;
++  const origin = new URL(configured).origin;
++  const rpID = new URL(origin).hostname;
++  const cookieOptions = { path: import.meta.env.BASE_URL, httpOnly: true, sameSite: 'lax' as const, secure: origin.startsWith('https:') };
++  const session = getSession(cookies.get('times_auth')?.value);
++  const user = session ? db.prepare('SELECT * FROM users WHERE id = ?').get(session.user_id) as User : undefined;
++  const keys = () => db.prepare('SELECT * FROM passkeys WHERE user_id = ? ORDER BY created_at DESC').all(user!.id) as Key[];
++  const establish = (userId: string) => {
++    if (session) db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
++    db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
++    const token = random();
++    db.prepare('INSERT INTO sessions VALUES (?, ?, ?, ?)').run(digest(token), userId, Date.now() + 7 * 86400_000, Date.now());
++    cookies.set('times_auth', token, { ...cookieOptions, maxAge: 7 * 86400 });
++  };
++  const challenge = (value: unknown) => {
++    const token = random();
++    db.prepare('DELETE FROM challenges WHERE expires < ?').run(Date.now());
++    db.prepare('INSERT INTO challenges VALUES (?, ?, ?)').run(digest(token), JSON.stringify(value), Date.now() + 300_000);
++    cookies.set('times_challenge', token, { ...cookieOptions, maxAge: 300 });
++  };
++  try {
++    if (request.method === 'GET' && params.action === 'me') {
++      return reply({ user: user ? { username: user.username, hasPassword: !!user.password } : null, passkeys: user ? keys().map(({ id, name, created_at, last_used }) => ({ id, name, created_at, last_used })) : [], recent: !!session && Date.now() - session.verified_at < 300_000 });
++    }
++    if (request.method !== 'POST') return reply({ error: 'Method not allowed' }, 405);
++    if (request.headers.get('origin') !== origin) return reply({ error: 'Invalid request origin' }, 403);
++    const body = await request.json();
++    if (['login', 'signup', 'register-options', 'authenticate-options'].includes(params.action!)) rateLimit(`${params.action}:${digest(cookies.get('times_auth')?.value || request.headers.get('x-forwarded-for') || 'anonymous')}`);
++    const requireUser = () => { if (!user) throw new Error('Please sign in to continue.'); };
++    const requireRecent = () => { requireUser(); if (Date.now() - session!.verified_at > 300_000) throw new Error('Please verify your identity before making this change.'); };
++    const username = () => {
++      if (typeof body.username !== 'string' || !/^[a-zA-Z0-9_.-]{3,40}$/.test(body.username.trim())) throw new Error('Use 3–40 letters, numbers, dots, hyphens, or underscores for your username.');
++      return body.username.trim().toLowerCase();
++    };
++    if (params.action === 'signup') {
++      const name = username();
++      if (typeof body.password !== 'string' || body.password.length < 8 || body.password.length > 256 || !/\d/.test(body.password)) throw new Error('Use a password of 8–256 characters with at least one number.');
++      if (db.prepare('SELECT id FROM users WHERE username = ?').get(name)) throw new Error('That username is already taken.');
++      const id = random();
++      db.prepare('INSERT INTO users VALUES (?, ?, ?)').run(id, name, passwordHash(body.password));
++      establish(id);
++      return reply({ ok: true });
++    }
++    if (params.action === 'login' || params.action === 'reauth-password') {
++      if (params.action === 'reauth-password') requireUser();
++      rateLimit(`password:${params.action === 'login' ? username() : user!.id}`);
++      const account = params.action === 'login' ? db.prepare('SELECT * FROM users WHERE username = ?').get(username()) as User | undefined : user;
++      const hash = account?.password || passwordHash(random());
++      if (typeof body.password !== 'string' || body.password.length > 256 || !passwordMatches(body.password, hash) || !account?.password) throw new Error('The username or password is incorrect.');
++      establish(account.id);
++      return reply({ ok: true });
++    }
++    if (params.action === 'logout') {
++      if (session) db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
++      cookies.delete('times_auth', cookieOptions);
++      return reply({ ok: true });
++    }
++    if (params.action === 'register-options') {
++      if (user) requireRecent();
++      const name = user?.username || username();
++      if (!user && db.prepare('SELECT id FROM users WHERE username = ?').get(name)) throw new Error('That username is already taken. Sign in to add a passkey.');
++      const userId = user?.id || random();
++      const options = await generateRegistrationOptions({ rpName: 'The DevTools Times', rpID, userName: name, userID: Buffer.from(userId), attestationType: 'none', excludeCredentials: user ? keys().map(k => ({ id: k.id })) : [], authenticatorSelection: { residentKey: 'required', userVerification: 'required' } });
++      challenge({ kind: 'register', challenge: options.challenge, userId, username: name, sessionId: session?.id || null });
++      return reply(options);
++    }
++    if (params.action === 'authenticate-options') {
++      if (body.reauthenticate) requireUser();
++      const options = await generateAuthenticationOptions({ rpID, userVerification: 'required', ...(body.reauthenticate ? { allowCredentials: keys().map(k => ({ id: k.id, transports: JSON.parse(k.transports) })) } : {}) });
++      if (body.reauthenticate && !keys().length) throw new Error('No passkey is available. Verify with your password.');
++      challenge({ kind: body.reauthenticate ? 'reauthenticate' : 'authenticate', challenge: options.challenge, userId: body.reauthenticate ? user!.id : null, sessionId: body.reauthenticate ? session!.id : null });
++      return reply(options);
++    }
++    if (params.action === 'register-verify' || params.action === 'authenticate-verify') {
++      const pending = takeChallenge(cookies.get('times_challenge')?.value || '');
++      cookies.delete('times_challenge', cookieOptions);
++      if ((pending.sessionId || null) !== (session?.id || null)) throw new Error('Your session changed. Please try again.');
++      if (params.action === 'register-verify') {
++        if (pending.kind !== 'register') throw new Error('Invalid registration request.');
++        if (pending.sessionId) requireRecent();
++        const result = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: pending.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true });
++        if (!result.verified || !result.registrationInfo) throw new Error('Could not verify this passkey.');
++        const { credential } = result.registrationInfo;
++        db.exec('BEGIN IMMEDIATE');
++        try {
++          if (!pending.sessionId) db.prepare('INSERT INTO users VALUES (?, ?, NULL)').run(pending.userId, pending.username);
++          db.prepare('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, NULL)').run(credential.id, pending.userId, Buffer.from(credential.publicKey).toString('base64url'), credential.counter, JSON.stringify(credential.transports || []), 'My passkey', Date.now());
++          db.exec('COMMIT');
++        } catch (error) { db.exec('ROLLBACK'); throw error; }
++        establish(pending.userId);
++      } else {
++        if (!['authenticate', 'reauthenticate'].includes(pending.kind)) throw new Error('Invalid authentication request.');
++        const key = db.prepare('SELECT * FROM passkeys WHERE id = ?').get(body.credential?.id || '') as Key | undefined;
++        if (!key || (pending.userId && key.user_id !== pending.userId)) throw new Error('This passkey is not registered for this account.');
++        if (body.credential.response?.userHandle && body.credential.response.userHandle !== Buffer.from(key.user_id).toString('base64url')) throw new Error('Invalid account identifier.');
++        const result = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: pending.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true, credential: { id: key.id, publicKey: Buffer.from(key.public_key, 'base64url'), counter: key.counter, transports: JSON.parse(key.transports) as AuthenticatorTransport[] } });
++        if (!result.verified) throw new Error('Could not verify this passkey.');
++        const update = db.prepare('UPDATE passkeys SET counter = ?, last_used = ? WHERE id = ? AND counter = ?').run(result.authenticationInfo.newCounter, Date.now(), key.id, key.counter);
++        if (update.changes !== 1) throw new Error('This passkey changed. Please try again.');
++        establish(key.user_id);
++      }
++      return reply({ ok: true });
++    }
++    if (params.action === 'rename' || params.action === 'delete') {
++      requireRecent();
++      const key = keys().find(k => k.id === body.id);
++      if (!key) return reply({ error: 'Passkey not found.' }, 404);
++      if (params.action === 'rename') {
++        if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 60) throw new Error('Enter a name between 1 and 60 characters.');
++        db.prepare('UPDATE passkeys SET name = ? WHERE id = ? AND user_id = ?').run(body.name.trim(), key.id, user!.id);
++      } else {
++        if (!user!.password && keys().length === 1) throw new Error('Add another passkey before removing your only way to sign in.');
++        db.prepare('DELETE FROM passkeys WHERE id = ? AND user_id = ?').run(key.id, user!.id);
++      }
++      return reply({ ok: true });
++    }
++    return reply({ error: 'Not found' }, 404);
++  } catch (error) {
++    const message = error instanceof Error ? error.message : '';
++    return reply({ error: /SQLITE|constraint|verification|signature|RP ID|Unexpected|JSON/i.test(message) ? 'We could not verify this request. Please try again.' : message || 'Something went wrong. Please try again.' }, 400);
++  }
++};
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..95b9319 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,14 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++.auth-input { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px 14px; font-size: 14px; background: white; }
++.auth-input:focus { outline: 2px solid #303d36; outline-offset: 2px; }
++.auth-primary, .auth-secondary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border-radius: 6px; padding: 13px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
++.auth-primary { background: #253b30; color: white; border: 1px solid #253b30; }
++.auth-primary:hover { background: #172a20; }
++.auth-secondary { background: white; border: 1px solid #d1d5db; color: #1f2937; }
++.auth-secondary:hover { background: #f9fafb; }
++.auth-primary:disabled, .auth-secondary:disabled { opacity: .5; cursor: wait; }
++.auth-divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; color: #9ca3af; font-size: 12px; }
++.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+diff --git a/tests/auth.test.mjs b/tests/auth.test.mjs
+new file mode 100644
+index 0000000..8c98169
+--- /dev/null
++++ b/tests/auth.test.mjs
+@@ -0,0 +1,125 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { spawn } from 'node:child_process';
++import { mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { DatabaseSync } from 'node:sqlite';
++import { generateKeyPairSync, randomBytes, createHash, sign } from 'node:crypto';
++import { isoCBOR } from '@simplewebauthn/server/helpers';
++
++const origin = 'http://localhost:11333';
++const base = `${origin}/devtools-times/api/auth/`;
++const sha = value => createHash('sha256').update(value).digest();
++const b64 = value => Buffer.from(value).toString('base64url');
++function client() {
++  const cookies = new Map();
++  return async (action, body, customOrigin = origin) => {
++    const response = await fetch(base + action, { method: body === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json', Origin: customOrigin, Cookie: [...cookies].map(([k,v]) => `${k}=${v}`).join('; ') }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
++    for (const cookie of response.headers.getSetCookie()) {
++      const [pair] = cookie.split(';'); const index = pair.indexOf('=');
++      cookies.set(pair.slice(0, index), pair.slice(index + 1));
++    }
++    return { status: response.status, data: await response.json() };
++  };
++}
++function authenticator(options) {
++  const userHandle = options.user.id;
++  const pair = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
++  const jwk = pair.publicKey.export({ format: 'jwk' });
++  const id = randomBytes(32);
++  const cose = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x, 'base64url')], [-3, Buffer.from(jwk.y, 'base64url')]]));
++  const length = Buffer.alloc(2); length.writeUInt16BE(id.length);
++  const authData = Buffer.concat([sha('localhost'), Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(16), length, id, cose]);
++  const clientData = { type: 'webauthn.create', challenge: options.challenge, origin };
++  return {
++    id: b64(id), userHandle,
++    registration: { id: b64(id), rawId: b64(id), type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: b64(JSON.stringify(clientData)), attestationObject: b64(isoCBOR.encode(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData]]))), transports: ['internal'] } },
++    assertion(options, count = 1, testOrigin = origin) {
++      const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: options.challenge, origin: testOrigin }));
++      const counter = Buffer.alloc(4); counter.writeUInt32BE(count);
++      const authenticatorData = Buffer.concat([sha('localhost'), Buffer.from([0x05]), counter]);
++      return { id: b64(id), rawId: b64(id), type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: b64(clientDataJSON), authenticatorData: b64(authenticatorData), signature: b64(sign('sha256', Buffer.concat([authenticatorData, sha(clientDataJSON)]), pair.privateKey)), userHandle } };
++    },
++  };
++}
++
++test('account and WebAuthn lifecycle with real signed credentials', async t => {
++  const directory = mkdtempSync(join(tmpdir(), 'times-auth-'));
++  const database = join(directory, 'auth.sqlite');
++  const server = spawn(process.execPath, ['dist/server/entry.mjs'], { env: { ...process.env, HOST: '127.0.0.1', PORT: '11333', AUTH_DB_PATH: database, AUTH_ORIGIN: origin }, stdio: 'pipe' });
++  let logs = ''; server.stderr.on('data', data => logs += data);
++  t.after(async () => { server.kill(); await new Promise(resolve => server.once('exit', resolve)); rmSync(directory, { recursive: true, force: true }); });
++  for (let i = 0; i < 100; i++) {
++    try { await fetch(base + 'me'); break; } catch { await new Promise(resolve => setTimeout(resolve, 100)); }
++    if (i === 99) throw new Error(logs);
++  }
++  const account = client(); const stranger = client();
++  let options; let key;
++  await t.test('requires a valid origin and signed-in management', async () => {
++    assert.equal((await account('signup', { username: 'reader', password: 'password123' }, 'https://evil.example')).status, 403);
++    assert.equal((await account('delete', { id: 'anything' })).status, 400);
++  });
++  await t.test('creates a passwordless account only after verified attestation', async () => {
++    options = (await account('register-options', { username: 'reader' })).data;
++    assert.equal((await account('me')).data.user, null);
++    key = authenticator(options);
++    assert.equal((await account('register-verify', { credential: key.registration })).status, 200);
++    const me = (await account('me')).data;
++    assert.equal(me.user.username, 'reader'); assert.equal(me.user.hasPassword, false);
++    assert.equal(me.passkeys.length, 1);
++    assert.equal((await account('register-verify', { credential: key.registration })).status, 400);
++  });
++  await t.test('renames passkeys and prevents account lockout', async () => {
++    assert.equal((await account('rename', { id: key.id, name: 'Personal laptop' })).status, 200);
++    assert.equal((await account('me')).data.passkeys[0].name, 'Personal laptop');
++    assert.match((await account('delete', { id: key.id })).data.error, /only way/);
++  });
++  await t.test('rejects forged assertions and consumes failed challenges', async () => {
++    const auth = (await stranger('authenticate-options', {})).data;
++    const credential = key.assertion(auth, 1); credential.response.signature = b64(randomBytes(64));
++    assert.equal((await stranger('authenticate-verify', { credential })).status, 400);
++    assert.equal((await stranger('authenticate-verify', { credential: key.assertion(auth, 1) })).status, 400);
++    assert.equal((await stranger('me')).data.user, null);
++  });
++  await t.test('authenticates using a real signature and rejects replay', async () => {
++    await account('logout', {});
++    const auth = (await account('authenticate-options', {})).data;
++    const credential = key.assertion(auth, 1);
++    assert.equal((await account('authenticate-verify', { credential })).status, 200);
++    assert.equal((await account('me')).data.user.username, 'reader');
++    assert.equal((await account('authenticate-verify', { credential })).status, 400);
++  });
++  await t.test('enforces recent verification for management and supports passkey reauthentication', async () => {
++    const db = new DatabaseSync(database);
++    db.exec('UPDATE sessions SET verified_at = 0');
++    assert.equal((await account('rename', { id: key.id, name: 'New name' })).status, 400);
++    assert.equal((await account('register-options', {})).status, 400);
++    const auth = (await account('authenticate-options', { reauthenticate: true })).data;
++    assert.equal((await account('authenticate-verify', { credential: key.assertion(auth, 2) })).status, 200);
++    assert.equal((await account('me')).data.recent, true);
++    assert.equal((await account('rename', { id: key.id, name: 'New name' })).status, 200);
++    db.close();
++  });
++  await t.test('adds a second passkey and removes the first', async () => {
++    const options2 = (await account('register-options', {})).data;
++    assert.ok(options2.excludeCredentials.some(k => k.id === key.id));
++    const second = authenticator(options2);
++    assert.equal((await account('register-verify', { credential: second.registration })).status, 200);
++    assert.equal((await account('delete', { id: key.id })).status, 200);
++    const auth = (await stranger('authenticate-options', {})).data;
++    assert.equal((await stranger('authenticate-verify', { credential: key.assertion(auth, 3) })).status, 400);
++  });
++  await t.test('supports password fallback, account isolation, and logout', async () => {
++    assert.equal((await stranger('signup', { username: 'another', password: 'password123' })).status, 200);
++    const id = (await account('me')).data.passkeys[0].id;
++    assert.equal((await stranger('delete', { id })).status, 404);
++    const auth = (await stranger('authenticate-options', { reauthenticate: true }));
++    assert.equal(auth.status, 400);
++    assert.equal((await stranger('reauth-password', { password: 'incorrect' })).status, 400);
++    assert.equal((await stranger('reauth-password', { password: 'password123' })).status, 200);
++    await stranger('logout', {});
++    assert.equal((await stranger('me')).data.user, null);
++    assert.equal((await stranger('login', { username: 'another', password: 'password123' })).status, 200);
++  });
++});

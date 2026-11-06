@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,72 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .calendar-tool {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .calendar-tool h3 {
++      color: var(--primary);
++    }
++
++    .calendar-tool label {
++      font-weight: bold;
++      margin-right: 8px;
++    }
++
++    .calendar-tool input[type="date"] {
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++    }
++
++    .calendar-tool input[type="date"]:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .calendar-card {
++      text-align: start;
++    }
++
++    .calendar-card .formatted-date {
++      font-size: 1.15rem;
++      font-weight: bold;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dt {
++      font-weight: bold;
++    }
++
++    .calendar-card dd {
++      margin: 0;
++    }
++
++    .calendar-card ul {
++      list-style: none;
++      padding: 0;
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
++      gap: 4px;
++      font-size: 0.85rem;
++    }
++
++    .calendar-card li.current-month {
++      font-weight: bold;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -193,8 +257,17 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="calendar-tool" id="calendar-tool">
++        <h3>Global Calendar Converter</h3>
++        <p>Pick a date to see it in other calendar systems.</p>
++        <label for="calendar-date-input">Date</label>
++        <input type="date" id="calendar-date-input" required>
++        <p id="calendar-status" role="status"></p>
++        <div class="grid" id="calendar-results" aria-live="polite"></div>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+@@ -206,7 +279,139 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Native Temporal where available; otherwise load the polyfill on demand.
++    if (typeof Temporal === 'undefined') {
++      try {
++        const mod = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = mod.Temporal;
++      } catch {
++        // handled below via status message
++      }
++    }
++
++    const CALENDARS = [
++      { id: 'islamic-umalqura', title: 'Islamic (Umm al-Qura)', formattedId: 'islamic-date' },
++      { id: 'hebrew', title: 'Hebrew' },
++      { id: 'japanese', title: 'Japanese' },
++    ];
++
++    const input = document.getElementById('calendar-date-input');
++    const results = document.getElementById('calendar-results');
++    const status = document.getElementById('calendar-status');
++
++    function isCalendarSupported(id) {
++      try {
++        if (Intl.supportedValuesOf('calendar').includes(id)) return true;
++      } catch {
++        // supportedValuesOf unavailable; probe with DateTimeFormat below
++      }
++      try {
++        return new Intl.DateTimeFormat('en-u-ca-' + id).resolvedOptions().calendar === id;
++      } catch {
++        return false;
++      }
++    }
++
++    function makeEl(tag, text, className) {
++      const el = document.createElement(tag);
++      if (text !== undefined) el.textContent = text;
++      if (className) el.className = className;
++      return el;
++    }
++
++    function localeFor(calendarId) {
++      const base = navigator.language || 'en';
++      try {
++        return new Intl.Locale(base, { calendar: calendarId }).toString();
++      } catch {
++        return 'en-u-ca-' + calendarId;
++      }
++    }
++
++    function timelineLabel(isoDate, calendarId) {
++      const today = Temporal.Now.plainDateISO().withCalendar(calendarId);
++      const cmp = Temporal.PlainDate.compare(isoDate.withCalendar(calendarId), today);
++      return cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++    }
++
++    function renderCard(cal, isoDate) {
++      const card = makeEl('div', undefined, 'card calendar-card');
++      card.append(makeEl('h3', cal.title));
++
++      if (!isCalendarSupported(cal.id)) {
++        card.append(makeEl('p', 'This calendar is not supported by your browser.'));
++        return card;
++      }
++
++      try {
++        const date = isoDate.withCalendar(cal.id);
++        const formatted = date.toLocaleString(localeFor(cal.id), {
++          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', era: 'long',
++        });
++        const formattedEl = makeEl('p', formatted, 'formatted-date');
++        if (cal.formattedId) formattedEl.id = cal.formattedId;
++        card.append(formattedEl);
++
++        const yearText = date.era
++          ? `${date.eraYear} (${date.era}; year ${date.year})`
++          : String(date.year);
++        const details = makeEl('dl');
++        const rows = [
++          ['Year', yearText],
++          ['Month', String(date.month)],
++          ['Month code', date.monthCode],
++          ['Months in year', String(date.monthsInYear)],
++          ['Timeline', timelineLabel(isoDate, cal.id)],
++        ];
++        for (const [k, v] of rows) {
++          details.append(makeEl('dt', k), makeEl('dd', v));
++        }
++        card.append(details);
++
++        card.append(makeEl('h4', 'Months'));
++        const list = makeEl('ul');
++        for (let m = 1; m <= date.monthsInYear; m++) {
++          const first = date.with({ month: m, day: 1 });
++          const li = makeEl('li', `${first.monthCode}: ${first.daysInMonth} days`);
++          if (m === date.month) li.className = 'current-month';
++          list.append(li);
++        }
++        card.append(list);
++      } catch {
++        card.append(makeEl('p', 'This date is outside the supported range for this calendar.'));
++      }
++      return card;
++    }
++
++    function update() {
++      results.replaceChildren();
++      status.textContent = '';
++      if (typeof Temporal === 'undefined') {
++        status.textContent = 'Calendar conversion is unavailable in this browser.';
++        return;
++      }
++      if (!input.value) {
++        status.textContent = 'Please choose a valid date.';
++        return;
++      }
++      let isoDate;
++      try {
++        isoDate = Temporal.PlainDate.from(input.value);
++      } catch {
++        status.textContent = 'Please choose a valid date.';
++        return;
++      }
++      results.append(...CALENDARS.map((cal) => renderCard(cal, isoDate)));
++    }
++
++    input.addEventListener('input', update);
++    if (typeof Temporal !== 'undefined') {
++      input.value = Temporal.Now.plainDateISO().toString();
++    }
++    update();
++  </script>
+ </body>
+ 
+ </html>

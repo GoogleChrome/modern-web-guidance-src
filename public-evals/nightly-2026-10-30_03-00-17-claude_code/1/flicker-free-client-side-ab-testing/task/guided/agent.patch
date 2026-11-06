@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,242 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Northwind — Ship faster together</title>
++  <meta name="description" content="Northwind helps teams plan, build, and ship work in one place.">
++  <meta name="color-scheme" content="light dark">
++
++  <!-- Start the hero image download early; it's the LCP element and rendering is held for the experiment SDK. -->
++  <link rel="preconnect" href="https://cdn.example.com">
++  <link rel="preload" as="image" fetchpriority="high"
++        href="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=70"
++        imagesrcset="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=70 800w,
++                     https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=70 1600w,
++                     https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2400&q=70 2400w"
++        imagesizes="100vw">
++
++  <style>
++    /* Anti-flicker fallback, only applied in browsers without blocking="render" support (see script below). */
++    .ab-loading { opacity: 0 !important; }
++
++    :root {
++      --text: #0f172a;
++      --muted: #475569;
++      --bg: #ffffff;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++      color: var(--text);
++      background: var(--bg);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --text: #e2e8f0;
++        --muted: #94a3b8;
++        --bg: #0b1120;
++      }
++    }
++
++    *, *::before, *::after { box-sizing: border-box; }
++    body { margin: 0; }
++
++    .site-header {
++      position: absolute;
++      inset: 0 0 auto;
++      z-index: 1;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1.25rem clamp(1.25rem, 5vw, 4rem);
++      color: #fff;
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; color: inherit; text-decoration: none; }
++    .site-header nav a { color: inherit; text-decoration: none; margin-inline-start: 1.5rem; opacity: 0.9; }
++    .site-header nav a:hover { opacity: 1; text-decoration: underline; }
++
++    .hero {
++      position: relative;
++      display: grid;
++      align-items: center;
++      min-height: 100svh;
++      padding: 6rem clamp(1.25rem, 5vw, 4rem) 4rem;
++      color: #fff;
++      isolation: isolate;
++    }
++    .hero__image {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: linear-gradient(100deg, rgb(15 23 42 / 0.88) 0%, rgb(15 23 42 / 0.6) 50%, rgb(15 23 42 / 0.2) 100%);
++    }
++    .hero__content { max-width: 40rem; }
++    .eyebrow {
++      display: inline-block;
++      margin: 0 0 1rem;
++      padding: 0.35rem 0.8rem;
++      border-radius: 999px;
++      background: rgb(255 255 255 / 0.15);
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++    .hero h1 {
++      margin: 0 0 1.25rem;
++      font-size: clamp(2.5rem, 6vw, 4.5rem);
++      line-height: 1.05;
++      letter-spacing: -0.03em;
++      text-wrap: balance;
++    }
++    .hero__lede {
++      margin: 0 0 2rem;
++      font-size: clamp(1.1rem, 2vw, 1.3rem);
++      line-height: 1.6;
++      color: rgb(255 255 255 / 0.85);
++      text-wrap: pretty;
++    }
++    .hero__actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
++
++    .cta {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 1rem 1.75rem;
++      border-radius: 0.75rem;
++      background: #4f46e5;
++      color: #fff;
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-decoration: none;
++      box-shadow: 0 10px 30px -10px rgb(79 70 229 / 0.8);
++      transition: background-color 0.15s, transform 0.15s;
++    }
++    .cta:hover { background: #4338ca; transform: translateY(-1px); }
++    .cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .cta--secondary {
++      background: transparent;
++      box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.6);
++    }
++    .cta--secondary:hover { background: rgb(255 255 255 / 0.1); }
++    .hero__note { margin: 1.25rem 0 0; font-size: 0.9rem; color: rgb(255 255 255 / 0.7); }
++
++    @media (prefers-reduced-motion: reduce) {
++      .cta { transition: none; }
++      .cta:hover { transform: none; }
++    }
++
++    .features {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
++      gap: 2rem;
++      max-width: 72rem;
++      margin: 0 auto;
++      padding: 5rem clamp(1.25rem, 5vw, 4rem);
++    }
++    .features h2 { margin: 0 0 0.5rem; font-size: 1.25rem; }
++    .features p { margin: 0; color: var(--muted); line-height: 1.6; }
++
++    footer { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.875rem; }
++  </style>
++
++  <!--
++    Anti-flicker fallback for browsers that don't support blocking="render" (e.g. Firefox).
++    Runs before the SDK tag so the page is hidden before an already-cached async SDK could execute.
++    Supporting browsers skip this entirely and rely on native render-blocking instead.
++  -->
++  <script>
++    (function () {
++      var root = document.documentElement;
++      var reveal = function () { root.classList.remove('ab-loading'); };
++      // The SDK can call this once variants are applied; also invoked on script load/error below.
++      window.onExperimentReady = reveal;
++      if (!('blocking' in HTMLScriptElement.prototype)) {
++        root.classList.add('ab-loading');
++        // Never leave the page blank if the SDK is slow or the CDN is down.
++        setTimeout(reveal, 4000);
++      }
++    })();
++  </script>
++
++  <!--
++    Experiment SDK: `async` keeps HTML parsing going while it downloads; `blocking="render"`
++    holds first paint until it has executed, so the original content is never shown before the variant.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++    onload="onExperimentReady()"
++    onerror="onExperimentReady()"
++  ></script>
++</head>
++<body>
++  <header class="site-header">
++    <a class="logo" href="/">Northwind</a>
++    <nav aria-label="Primary">
++      <a href="#features">Features</a>
++      <a href="#pricing">Pricing</a>
++      <a href="#login">Log in</a>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-title" data-experiment="hero">
++      <img
++        class="hero__image"
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=70"
++        srcset="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=70 800w,
++                https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=70 1600w,
++                https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2400&q=70 2400w"
++        sizes="100vw"
++        alt=""
++        width="1600"
++        height="1067"
++        fetchpriority="high"
++      >
++      <div class="hero__content">
++        <p class="eyebrow" data-experiment="hero-eyebrow">New: AI-powered planning</p>
++        <h1 id="hero-title" data-experiment="hero-headline">Ship faster, together.</h1>
++        <p class="hero__lede" data-experiment="hero-lede">
++          Northwind brings your roadmap, tasks, and team conversations into one place —
++          so everyone knows what to build next.
++        </p>
++        <div class="hero__actions">
++          <a class="cta" href="#signup" id="primary-cta" data-experiment="hero-cta">
++            Start free trial
++            <span aria-hidden="true">→</span>
++          </a>
++          <a class="cta cta--secondary" href="#demo">Watch demo</a>
++        </div>
++        <p class="hero__note">No credit card required · Free for teams up to 10</p>
++      </div>
++    </section>
++
++    <section class="features" id="features" aria-label="Features">
++      <article>
++        <h2>Plan with clarity</h2>
++        <p>Turn big goals into roadmaps your whole team can see and shape.</p>
++      </article>
++      <article>
++        <h2>Build in flow</h2>
++        <p>Tasks, docs, and discussions live side by side — no more tab hopping.</p>
++      </article>
++      <article>
++        <h2>Ship with confidence</h2>
++        <p>Real-time progress tracking keeps stakeholders in the loop automatically.</p>
++      </article>
++    </section>
++  </main>
++
++  <footer>
++    <p>© 2026 Northwind, Inc.</p>
++  </footer>
++</body>
++</html>

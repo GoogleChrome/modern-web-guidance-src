@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,24 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin: 15px 0 0;
++      padding: 10px;
++      border: 1px dashed var(--primary);
++      border-radius: 6px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +196,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Promo window is interpreted as wall-clock dates in the visitor's local time zone. -->
++          <div class="promo-timer" data-promo-start="2025-12-01" data-promo-end="2026-03-01">
++            <p data-promo-remaining>Offer ends March 1, 2026 at midnight.</p>
++            <p data-promo-elapsed></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +227,60 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the Temporal polyfill only where the native API is missing (e.g. Safari).
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const formatDuration = (duration) => {
++      // Intl.DurationFormat (via Duration#toLocaleString) for localized text;
++      // simple Intl.NumberFormat fallback for older engines without it.
++      if (typeof Intl.DurationFormat !== 'undefined') {
++        return new Intl.DurationFormat(undefined, { style: 'long' }).format(duration);
++      }
++      const unit = (value, name) =>
++        new Intl.NumberFormat(undefined, { style: 'unit', unit: name, unitDisplay: 'long' }).format(value);
++      return `${unit(duration.days, 'day')}, ${unit(duration.hours, 'hour')}`;
++    };
++
++    const setTime = (el, prefix, duration, suffix = '') => {
++      const time = document.createElement('time');
++      time.dateTime = duration.toString(); // machine-readable ISO 8601 duration
++      time.textContent = formatDuration(duration);
++      const strong = document.createElement('strong');
++      strong.append(time);
++      el.replaceChildren(prefix, strong, suffix);
++    };
++
++    for (const timer of document.querySelectorAll('.promo-timer')) {
++      // The visitor's local time zone, resolved at page load.
++      const timeZone = Temporal.Now.timeZoneId();
++      const now = Temporal.Now.zonedDateTimeISO(timeZone);
++      // Midnight (start of day) on each date, local time.
++      const start = Temporal.PlainDate.from(timer.dataset.promoStart).toZonedDateTime({ timeZone });
++      const end = Temporal.PlainDate.from(timer.dataset.promoEnd).toZonedDateTime({ timeZone });
++
++      const opts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++      const remaining = now.until(end, opts);
++      const remainingEl = timer.querySelector('[data-promo-remaining]');
++      const elapsedEl = timer.querySelector('[data-promo-elapsed]');
++      const endLabel = end.toLocaleString(undefined, { dateStyle: 'long' });
++
++      if (Temporal.ZonedDateTime.compare(now, start) < 0) {
++        setTime(remainingEl, 'Starts in ', now.until(start, opts), '.');
++        elapsedEl.hidden = true;
++      } else if (remaining.sign > 0) {
++        setTime(remainingEl, 'Ends in ', remaining, ` (midnight, ${endLabel}).`);
++        setTime(elapsedEl, 'Running for ', now.since(start, opts), '.');
++      } else {
++        remainingEl.textContent = `This offer ended at midnight on ${endLabel}.`;
++        setTime(elapsedEl, 'Promotion started ', now.since(start, opts), ' ago.');
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

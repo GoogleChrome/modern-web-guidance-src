@@ -1,0 +1,542 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -127,15 +127,324 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-Up Form Section */
++    .signup-section {
++      margin-top: 60px;
++      margin-bottom: 20px;
++    }
++
++    .signup-wrapper {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 8px 30px rgba(78, 52, 46, 0.12);
++      overflow: hidden;
++      display: grid;
++      grid-template-columns: 5fr 7fr;
++      border: 1px solid rgba(215, 204, 200, 0.6);
++    }
++
++    .signup-perks {
++      background: linear-gradient(145deg, var(--primary) 0%, #3e2723 100%);
++      color: white;
++      padding: 45px 35px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      position: relative;
++    }
++
++    .signup-badge {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.2);
++      color: var(--accent);
++      border: 1px solid rgba(255, 171, 64, 0.4);
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-bottom: 16px;
++      width: fit-content;
++    }
++
++    .signup-perks h2 {
++      font-size: 2rem;
++      line-height: 1.25;
++      margin-bottom: 14px;
++    }
++
++    .signup-perks > div > p {
++      color: var(--secondary);
++      font-size: 0.95rem;
++      margin-bottom: 28px;
++    }
++
++    .perks-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    .perks-list li {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      font-size: 0.92rem;
++    }
++
++    .perk-icon {
++      background: var(--accent);
++      color: var(--text);
++      width: 24px;
++      height: 24px;
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: bold;
++      font-size: 0.8rem;
++      flex-shrink: 0;
++      margin-top: 2px;
++    }
++
++    .perk-text strong {
++      display: block;
++      color: white;
++      font-size: 0.95rem;
++    }
++
++    .perk-text span {
++      color: var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    .signup-quote {
++      margin-top: 32px;
++      padding-top: 20px;
++      border-top: 1px solid rgba(215, 204, 200, 0.2);
++      font-size: 0.85rem;
++      color: var(--secondary);
++      font-style: italic;
++    }
++
++    .signup-form-container {
++      padding: 45px 40px;
++      background: white;
++    }
++
++    .signup-form-header {
++      margin-bottom: 26px;
++    }
++
++    .signup-form-header h3 {
++      font-size: 1.6rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .signup-form-header p {
++      color: #6d4c41;
++      font-size: 0.92rem;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 6px;
++    }
++
++    .form-group label .optional {
++      font-weight: 400;
++      color: #8d6e63;
++      font-size: 0.8rem;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 11px 14px;
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      background-color: white;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .form-control.input-error {
++      border-color: #c62828;
++      background-color: #fff8f8;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.78rem;
++      color: #795548;
++      margin-top: 4px;
++    }
++
++    .error-msg {
++      display: none;
++      font-size: 0.78rem;
++      color: #c62828;
++      margin-top: 4px;
++      font-weight: 500;
++    }
++
++    .error-msg.visible {
++      display: block;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      margin-bottom: 12px;
++      font-size: 0.88rem;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .checkbox-group input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 17px;
++      height: 17px;
++      margin-top: 3px;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .checkbox-group a {
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    .btn-submit {
++      width: 100%;
++      padding: 13px 24px;
++      font-size: 1rem;
++      background: var(--primary);
++      color: white;
++      border-radius: 6px;
++      margin-top: 10px;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.2);
++    }
++
++    .btn-submit:hover {
++      background: #3e2723;
++      transform: translateY(-1px);
++      box-shadow: 0 6px 16px rgba(78, 52, 46, 0.28);
++    }
++
++    .signup-footer-text {
++      text-align: center;
++      margin-top: 16px;
++      font-size: 0.88rem;
++      color: #6d4c41;
++    }
++
++    .signup-footer-text a {
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: none;
++    }
++
++    .signup-footer-text a:hover {
++      text-decoration: underline;
++    }
++
++    .signup-success {
++      display: none;
++      text-align: center;
++      padding: 30px 20px;
++      background: #fdfbf9;
++      border: 1.5px solid var(--accent);
++      border-radius: 8px;
++    }
++
++    .signup-success.visible {
++      display: block;
++    }
++
++    .success-icon {
++      width: 52px;
++      height: 52px;
++      background: var(--accent);
++      color: var(--text);
++      border-radius: 50%;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1.6rem;
++      font-weight: bold;
++      margin-bottom: 14px;
++    }
++
++    .signup-success h4 {
++      font-size: 1.4rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .signup-success p {
++      font-size: 0.95rem;
++      color: var(--text);
++      margin-bottom: 16px;
++    }
++
++    @media (max-width: 768px) {
++      .signup-wrapper {
++        grid-template-columns: 1fr;
++      }
++
++      .signup-perks,
++      .signup-form-container {
++        padding: 30px 24px;
++      }
++
++      .form-row {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -162,17 +471,21 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#signup" class="btn" style="background: var(--accent); color: var(--text); margin-left: 10px;">Join Rewards</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +507,129 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="signup" class="signup-section" aria-labelledby="signup-heading">
++      <div class="signup-wrapper">
++        <div class="signup-perks">
++          <div>
++            <span class="signup-badge">Daily Grind Rewards</span>
++            <h2 id="signup-heading">Sip, Earn &amp; Enjoy Free Coffee</h2>
++            <p>Create your account today to unlock artisanal perks, mobile ordering, and exclusive single-origin drops.</p>
++            <ul class="perks-list">
++              <li>
++                <span class="perk-icon">&#10003;</span>
++                <div class="perk-text">
++                  <strong>First Drink on the House</strong>
++                  <span>Enjoy a complimentary handcrafted beverage when you sign up.</span>
++                </div>
++              </li>
++              <li>
++                <span class="perk-icon">&#10003;</span>
++                <div class="perk-text">
++                  <strong>2 Beans Per $1 Spent</strong>
++                  <span>Redeem your Beans for free espresso shots, pastries, and whole-bean bags.</span>
++                </div>
++              </li>
++              <li>
++                <span class="perk-icon">&#10003;</span>
++                <div class="perk-text">
++                  <strong>Birthday Roast &amp; Early Access</strong>
++                  <span>Celebrate your birthday with a free treat and taste seasonal blends first.</span>
++                </div>
++              </li>
++            </ul>
++          </div>
++          <div class="signup-quote">
++            &ldquo;Best local roaster in town—ordering ahead on my morning commute is a lifesaver!&rdquo; &mdash; Maya R., Member since 2024
++          </div>
++        </div>
++
++        <div class="signup-form-container">
++          <div class="signup-form-header">
++            <h3>Create Your Account</h3>
++            <p>Fill out your details below to start earning rewards right away.</p>
++          </div>
++
++          <form id="signup-form" action="/signup" method="POST" novalidate>
++            <div class="form-row">
++              <div class="form-group">
++                <label for="firstName">First Name *</label>
++                <input type="text" id="firstName" name="firstName" class="form-control" placeholder="Jane" autocomplete="given-name" required>
++                <span class="error-msg" id="firstName-error">Please enter your first name.</span>
++              </div>
++              <div class="form-group">
++                <label for="lastName">Last Name *</label>
++                <input type="text" id="lastName" name="lastName" class="form-control" placeholder="Doe" autocomplete="family-name" required>
++                <span class="error-msg" id="lastName-error">Please enter your last name.</span>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="email">Email Address *</label>
++                <input type="email" id="email" name="email" class="form-control" placeholder="jane.doe@example.com" autocomplete="email" required>
++                <span class="error-msg" id="email-error">Please enter a valid email address.</span>
++              </div>
++              <div class="form-group">
++                <label for="phone">Phone Number <span class="optional">(Optional)</span></label>
++                <input type="tel" id="phone" name="phone" class="form-control" placeholder="(555) 234-5678" autocomplete="tel">
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="password">Password *</label>
++                <input type="password" id="password" name="password" class="form-control" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
++                <span class="error-msg" id="password-error">Password must be at least 8 characters.</span>
++              </div>
++              <div class="form-group">
++                <label for="confirmPassword">Confirm Password *</label>
++                <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Re-enter password" autocomplete="new-password" required>
++                <span class="error-msg" id="confirmPassword-error">Passwords do not match.</span>
++              </div>
++            </div>
++
++            <div class="form-group">
++              <label for="favoriteBrew">Favorite Coffee Style</label>
++              <select id="favoriteBrew" name="favoriteBrew" class="form-control">
++                <option value="espresso">Dark Roast &amp; Espresso</option>
++                <option value="latte" selected>Oat &amp; Craft Lattes</option>
++                <option value="cold-brew">Small-Batch Cold Brew</option>
++                <option value="pour-over">Single-Origin Pour Over</option>
++                <option value="tea">Artisanal Chai &amp; Matcha</option>
++              </select>
++              <span class="field-hint">We'll tailor your welcome reward to your taste.</span>
++            </div>
++
++            <label class="checkbox-group" for="newsletter">
++              <input type="checkbox" id="newsletter" name="newsletter" checked>
++              <span>Send me weekly roast releases, brewing tips, and member-only offers.</span>
++            </label>
++
++            <label class="checkbox-group" for="terms">
++              <input type="checkbox" id="terms" name="terms" required>
++              <span>I agree to the <a href="/rewards">Rewards Terms</a> and <a href="/privacy-policy">Privacy Policy</a>. *</span>
++            </label>
++            <span class="error-msg" id="terms-error" style="margin-top: -6px; margin-bottom: 10px;">You must agree to the terms to create an account.</span>
++
++            <button type="submit" class="btn btn-submit">Create Free Account</button>
++
++            <p class="signup-footer-text">
++              Already have a Daily Grind account? <a href="/account">Sign in</a>
++            </p>
++          </form>
++
++          <div id="signup-success" class="signup-success" role="status" aria-live="polite">
++            <div class="success-icon">&#9749;</div>
++            <h4>Welcome to The Daily Grind, <span id="welcome-name">Friend</span>!</h4>
++            <p>Your account has been created and your <strong>Free First Drink</strong> reward is ready on your profile.</p>
++            <a href="/menu" class="btn">Explore the Menu</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +640,59 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('signup-form');
++      const successBox = document.getElementById('signup-success');
++      const welcomeName = document.getElementById('welcome-name');
++
++      if (!form) return;
++
++      function setFieldError(inputEl, errorEl, hasError) {
++        if (hasError) {
++          inputEl.classList.add('input-error');
++          if (errorEl) errorEl.classList.add('visible');
++        } else {
++          inputEl.classList.remove('input-error');
++          if (errorEl) errorEl.classList.remove('visible');
++        }
++      }
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++
++        const firstName = document.getElementById('firstName');
++        const lastName = document.getElementById('lastName');
++        const email = document.getElementById('email');
++        const password = document.getElementById('password');
++        const confirmPassword = document.getElementById('confirmPassword');
++        const terms = document.getElementById('terms');
++
++        const isFirstValid = firstName.value.trim().length > 0;
++        const isLastValid = lastName.value.trim().length > 0;
++        const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
++        const isPasswordValid = password.value.length >= 8;
++        const isConfirmValid = confirmPassword.value === password.value && confirmPassword.value.length > 0;
++        const isTermsValid = terms.checked;
++
++        setFieldError(firstName, document.getElementById('firstName-error'), !isFirstValid);
++        setFieldError(lastName, document.getElementById('lastName-error'), !isLastValid);
++        setFieldError(email, document.getElementById('email-error'), !isEmailValid);
++        setFieldError(password, document.getElementById('password-error'), !isPasswordValid);
++        setFieldError(confirmPassword, document.getElementById('confirmPassword-error'), !isConfirmValid);
++        setFieldError(terms, document.getElementById('terms-error'), !isTermsValid);
++
++        if (isFirstValid && isLastValid && isEmailValid && isPasswordValid && isConfirmValid && isTermsValid) {
++          welcomeName.textContent = firstName.value.trim();
++          form.style.display = 'none';
++          document.querySelector('.signup-form-header').style.display = 'none';
++          successBox.classList.add('visible');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

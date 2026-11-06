@@ -1,0 +1,42 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,38 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = typeof performance.getEntriesByType === 'function'
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++
++      if (entries.length > 0) {
++        const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++        console.log({
++          initiallyBackgrounded: entries[0].name === 'hidden',
++          // Milliseconds relative to performance.timeOrigin, not Unix time.
++          // Zero means initially hidden; null means no hidden entry yet.
++          timeBackgrounded: firstHiddenEntry ? firstHiddenEntry.startTime : null,
++          fallbackActive: false,
++        });
++        return;
++      }
++
++      // UNRELIABLE LEGACY FALLBACK: this only samples the current state.
++      // Async/delayed execution may miss earlier visibility changes entirely;
++      // performance.now() is the observation time, not the actual hidden time.
++      const currentlyHidden = document.visibilityState === 'hidden';
++      console.warn('Visibility history unavailable: fallback detection and timing may be inaccurate.');
++      console.log({
++        initiallyBackgrounded: currentlyHidden,
++        timeBackgrounded: currentlyHidden ? performance.now() : null,
++        fallbackActive: true,
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

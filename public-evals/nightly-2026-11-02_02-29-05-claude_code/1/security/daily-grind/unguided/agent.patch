@@ -1,0 +1,235 @@
+diff --git a/index.html b/index.html
+index 66c9173..2ef9e7c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="{{CSP_NONCE}}">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -66,10 +66,28 @@
+       color: var(--accent);
+     }
+ 
++    .logout-form {
++      display: inline;
++    }
++
+     .logout-link {
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s;
++    }
++
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
++    .section-title {
++      text-align: center;
+     }
+ 
+     /* Hero Section */
+@@ -164,7 +182,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form action="/logout" method="post" class="logout-form">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +198,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..cd30aab 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,152 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++// CSP rollout mode: 'enforce' (default) or 'report-only'. Use report-only to
++// trial policy changes in production and watch /csp-report before enforcing.
++const CSP_REPORT_ONLY = process.env.CSP_MODE === 'report-only';
++const CSP_REPORT_PATH = '/csp-report';
++const MAX_REPORT_BYTES = 64 * 1024;
+ 
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
++// Loaded once at startup; the nonce placeholder is substituted per request.
++const INDEX_TEMPLATE = fs.readFileSync(path.join(WORK_DIR, 'index.html'), 'utf8');
++const NONCE_PLACEHOLDER = /\{\{CSP_NONCE\}\}/g;
++
++function buildCsp(nonce) {
++  return [
++    "default-src 'self'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
++    `style-src 'nonce-${nonce}'`,
++    "img-src 'self' https://images.unsplash.com",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    "require-trusted-types-for 'script'",
++    "trusted-types 'none'",
++    'upgrade-insecure-requests',
++    `report-uri ${CSP_REPORT_PATH}`,
++    'report-to csp-endpoint',
++  ].join('; ');
++}
++
++const BASE_HEADERS = {
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Reporting-Endpoints': `csp-endpoint="${CSP_REPORT_PATH}"`,
++};
++
++function send(res, status, headers, body) {
++  res.writeHead(status, { ...BASE_HEADERS, ...headers });
++  res.end(body);
++}
++
++function isSameOriginRequest(req) {
++  const site = req.headers['sec-fetch-site'];
++  if (site) return site === 'same-origin';
++  // Fallback for browsers without Fetch Metadata: Origin must match Host.
++  const origin = req.headers.origin;
++  if (!origin) return false;
++  try {
++    return new URL(origin).host === req.headers.host;
++  } catch {
++    return false;
++  }
++}
++
++function handleLogout(req, res) {
++  if (req.method !== 'POST') {
++    send(res, 405, { Allow: 'POST', 'Content-Type': 'text/plain; charset=utf-8' }, 'Method Not Allowed');
++    return;
++  }
++  if (!isSameOriginRequest(req)) {
++    send(res, 403, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Forbidden');
+     return;
+   }
++  send(res, 303, {
++    Location: '/',
++    'Clear-Site-Data': '"cache", "cookies", "storage"',
++    'Cache-Control': 'no-store',
++  }, '');
++}
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
++function handleCspReport(req, res) {
++  if (req.method !== 'POST') {
++    send(res, 405, { Allow: 'POST' }, '');
++    return;
++  }
++  let size = 0;
++  const chunks = [];
++  req.on('data', (chunk) => {
++    size += chunk.length;
++    if (size > MAX_REPORT_BYTES) {
++      send(res, 413, {}, '');
++      req.destroy();
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    chunks.push(chunk);
++  });
++  req.on('end', () => {
++    if (res.headersSent) return;
++    try {
++      const report = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      // Re-serialize so attacker-controlled fields can't inject log lines.
++      console.warn('CSP violation:', JSON.stringify(report));
++    } catch {
++      // Ignore malformed reports.
++    }
++    send(res, 204, {}, '');
+   });
++}
++
++function handleIndex(req, res) {
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    send(res, 405, { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' }, 'Method Not Allowed');
++    return;
++  }
++  const nonce = crypto.randomBytes(16).toString('base64');
++  const cspHeader = CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
++  const body = INDEX_TEMPLATE.replace(NONCE_PLACEHOLDER, nonce);
++  send(res, 200, {
++    'Content-Type': 'text/html; charset=utf-8',
++    [cspHeader]: buildCsp(nonce),
++    // Per-request nonces must never be served from a shared cache.
++    'Cache-Control': 'no-store',
++  }, req.method === 'HEAD' ? undefined : body);
++}
++
++const server = http.createServer((req, res) => {
++  // Fixed base: never trust the Host header for URL parsing.
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Bad Request');
++    return;
++  }
++
++  if (pathname === '/logout' || pathname === '/logout/') {
++    handleLogout(req, res);
++    return;
++  }
++  if (pathname === CSP_REPORT_PATH) {
++    handleCspReport(req, res);
++    return;
++  }
++  handleIndex(req, res);
+ });
+ 
+ server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
++  console.log(`Server running on port ${PORT} (CSP ${CSP_REPORT_ONLY ? 'report-only' : 'enforced'})`);
+ });

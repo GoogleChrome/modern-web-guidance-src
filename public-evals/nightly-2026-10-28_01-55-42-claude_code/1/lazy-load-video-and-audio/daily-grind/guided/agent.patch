@@ -1,0 +1,391 @@
+diff --git a/index.html b/index.html
+index 66c9173..b34cfad 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,13 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Hero media lives on Wikimedia Commons: warm up the connection early. -->
++  <link rel="preconnect" href="https://upload.wikimedia.org">
++  <!-- The hero video poster is the LCP candidate: fetch it before anything else. -->
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm/1280px-seek%3D12-Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm.jpg">
++
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,11 +81,11 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      min-height: 60vh;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,11 +95,61 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -2;
++    }
++
++    /* Darken the video so the headline stays legible. */
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-toggle {
++      position: absolute;
++      right: 16px;
++      bottom: 16px;
++      background: rgba(0, 0, 0, 0.55);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      border-radius: 999px;
++      padding: 6px 14px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .hero-toggle:hover,
++    .hero-toggle:focus-visible {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
++    .hero-credit {
++      position: absolute;
++      left: 16px;
++      bottom: 16px;
++      font-size: 0.7rem;
++      opacity: 0.8;
++    }
++
++    .hero-credit a {
++      color: inherit;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +157,20 @@
+       padding: 0 20px;
+     }
+ 
++    .container>section+section {
++      margin-top: 70px;
++    }
++
++    .section-heading {
++      text-align: center;
++    }
++
++    .section-intro {
++      max-width: 720px;
++      margin: 10px auto 24px;
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -135,6 +206,85 @@
+       background: #3e2723;
+     }
+ 
++    /* Roasting video */
++    .video-figure {
++      max-width: 960px;
++      margin: 0 auto;
++    }
++
++    .video-figure video {
++      display: block;
++      width: 100%;
++      height: auto;
++      border-radius: 8px;
++      background: #000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++    }
++
++    .video-figure figcaption,
++    .credit {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 10px;
++      text-align: center;
++    }
++
++    .credit a {
++      color: inherit;
++    }
++
++    /* Podcast */
++    .podcast-card {
++      display: grid;
++      grid-template-columns: 160px 1fr;
++      gap: 24px;
++      align-items: start;
++      max-width: 820px;
++      margin: 0 auto;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .podcast-art {
++      display: block;
++      width: 100%;
++      height: auto;
++      border-radius: 8px;
++    }
++
++    .podcast-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .podcast-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 10px;
++    }
++
++    .podcast-card audio {
++      display: block;
++      width: 100%;
++      margin-top: 16px;
++    }
++
++    .podcast-card .credit {
++      text-align: left;
++    }
++
++    @media (max-width: 600px) {
++      .podcast-card {
++        grid-template-columns: 1fr;
++      }
++
++      .podcast-art {
++        max-width: 160px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,14 +319,30 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: no loading="lazy" here so the poster and video start immediately.
++         The source only matches when the visitor has not asked for reduced motion;
++         otherwise the browser shows the poster alone and downloads no video data. -->
++    <video class="hero-video" autoplay muted loop playsinline disablepictureinpicture
++      width="854" height="480" aria-hidden="true" tabindex="-1"
++      poster="https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm/1280px-seek%3D12-Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm.jpg">
++      <source media="(prefers-reduced-motion: no-preference)" type="video/webm"
++        src="https://upload.wikimedia.org/wikipedia/commons/transcoded/8/83/Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm/Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_%2815-Second_Abridged_Version%29.webm.480p.vp9.webm">
++    </video>
++
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++
++    <button type="button" class="hero-toggle" hidden>Pause video</button>
++    <p class="hero-credit">
++      Video: <a href="https://commons.wikimedia.org/wiki/File:Sunday_Morning_Espresso_Routine_-_Grind_%2B_distribute_%2B_tamp_%2B_extraction_(15-Second_Abridged_Version).webm" rel="noopener">Scott Schiller</a>,
++      <a href="https://creativecommons.org/licenses/by/2.0/" rel="noopener">CC BY 2.0</a>
++    </p>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +361,73 @@
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="roast-heading">
++      <h2 id="roast-heading" class="section-heading">From Green Bean to Dark Roast</h2>
++      <p class="section-intro">
++        Every bag we sell starts the way coffee has been roasted for centuries: small batches, constant
++        motion, and a roaster who trusts their nose. Watch the beans crack, colour and bloom.
++      </p>
++
++      <!-- Below the fold. The poster and video URLs are held in data attributes and only moved into
++           place by the script at the end of the page, so nothing is requested while the player is
++           offscreen: browsers with native lazy media gate the fetch themselves, everyone else waits for
++           the IntersectionObserver. Explicit width/height keep a real layout box to intersect. -->
++      <figure class="video-figure">
++        <video controls loading="lazy" preload="none" width="960" height="540" aria-describedby="roast-caption"
++          data-poster="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/960px-seek%3D40-ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.jpg">
++          <source type="video/webm"
++            data-src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.480p.vp9.webm">
++        </video>
++        <noscript>
++          <video controls preload="none" width="960" height="540"
++            poster="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/960px-seek%3D40-ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.jpg">
++            <source type="video/webm"
++              src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.480p.vp9.webm">
++          </video>
++        </noscript>
++        <figcaption id="roast-caption">
++          Pan roasting green coffee over charcoal in Bahir Dar, Ethiopia, the birthplace of coffee.
++          Video: <a href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm" rel="noopener">A.Savin</a>,
++          Wikimedia Commons, <a href="https://artlibre.org/licence/lal/en/" rel="noopener">Free Art License</a>.
++        </figcaption>
++      </figure>
++    </section>
++
++    <section aria-labelledby="podcast-heading">
++      <h2 id="podcast-heading" class="section-heading">The Daily Grind Podcast</h2>
++      <p class="section-intro">
++        Stories from the farms, roasteries and cafés behind your cup. New episodes every other Tuesday.
++      </p>
++
++      <figure class="podcast-card">
++        <img class="podcast-art" loading="lazy" decoding="async" width="160" height="160"
++          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=400&amp;h=400&amp;q=70"
++          alt="">
++        <div>
++          <h3 id="episode-title">Episode 12: The Economics of Coffee</h3>
++          <p class="podcast-meta">14 min &middot; Narrated reading</p>
++          <p>
++            Who really earns what on a cup of coffee? We follow the money from smallholder farms through
++            exporters, roasters and cafés, and look at what fair trade and direct trade actually change.
++          </p>
++          <!-- Below the fold. controls is required: a lazy <audio> without controls has no box to
++               intersect and would never load. The src is applied by the script at the end of the page. -->
++          <audio controls loading="lazy" preload="metadata" aria-labelledby="episode-title"
++            data-src="https://upload.wikimedia.org/wikipedia/commons/d/de/Wikipedia_-_Economics_of_coffee.mp3"></audio>
++          <noscript>
++            <audio controls preload="metadata" aria-labelledby="episode-title"
++              src="https://upload.wikimedia.org/wikipedia/commons/d/de/Wikipedia_-_Economics_of_coffee.mp3"></audio>
++          </noscript>
++          <figcaption class="credit">
++            Audio: narration of the Wikipedia article
++            <a href="https://en.wikipedia.org/wiki/Economics_of_coffee" rel="noopener">Economics of coffee</a>
++            (read along for a full transcript), public domain via
++            <a href="https://commons.wikimedia.org/wiki/File:Wikipedia_-_Economics_of_coffee.mp3" rel="noopener">Wikimedia Commons</a>.
++          </figcaption>
++        </div>
++      </figure>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +440,79 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // ---- Offscreen media: defer poster + media requests until the player nears the viewport ----
++    (() => {
++      const lazyMedia = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"]');
++
++      // Move the deferred URLs into place and kick off resource selection.
++      const hydrate = (media) => {
++        if (media.dataset.poster) {
++          media.poster = media.dataset.poster;
++          delete media.dataset.poster;
++        }
++        if (media.dataset.src) {
++          media.src = media.dataset.src;
++          delete media.dataset.src;
++        }
++        for (const source of media.querySelectorAll('source[data-src]')) {
++          source.src = source.dataset.src;
++          delete source.dataset.src;
++        }
++        media.load();
++      };
++
++      // Native lazy media (Chrome/Edge 150+) gates every fetch on viewport distance itself,
++      // so the URLs can be applied right away.
++      if (Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++        lazyMedia.forEach(hydrate);
++        return;
++      }
++
++      // Everyone else: hold the URLs back until the player is within ~300px of the viewport.
++      const mediaObserver = new IntersectionObserver((entries, observer) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          hydrate(entry.target);
++          observer.unobserve(entry.target);
++        }
++      }, { rootMargin: '300px 0px' });
++
++      lazyMedia.forEach((media) => mediaObserver.observe(media));
++    })();
++
++    // ---- Hero video: respect reduced motion and offer a pause control ----
++    (() => {
++      const heroVideo = document.querySelector('.hero-video');
++      const toggle = document.querySelector('.hero-toggle');
++      if (!heroVideo || !toggle) return;
++
++      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const syncReducedMotion = (prefersReducedMotion) => {
++        if (prefersReducedMotion) {
++          heroVideo.removeAttribute('autoplay');
++          heroVideo.pause();
++        }
++      };
++      syncReducedMotion(reducedMotionQuery.matches);
++      reducedMotionQuery.addEventListener('change', (event) => syncReducedMotion(event.matches));
++
++      const syncToggle = () => {
++        toggle.hidden = false;
++        toggle.textContent = heroVideo.paused ? 'Play video' : 'Pause video';
++      };
++      heroVideo.addEventListener('play', syncToggle);
++      heroVideo.addEventListener('pause', syncToggle);
++      toggle.addEventListener('click', () => {
++        if (heroVideo.paused) {
++          heroVideo.play();
++        } else {
++          heroVideo.pause();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

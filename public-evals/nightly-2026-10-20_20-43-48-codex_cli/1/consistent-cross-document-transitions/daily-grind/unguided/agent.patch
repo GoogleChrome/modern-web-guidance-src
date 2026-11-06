@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+index 66c9173..4f23ac2 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,48 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <!-- Wait for the initial page content before capturing the incoming view.
++       Include these head declarations in every destination page as it is added.
++       Future critical scripts must also use blocking="render" in the head. -->
++  <link rel="expect" href="#page-ready" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root) {
++      animation: page-out 220ms ease-in both;
++    }
++
++    ::view-transition-new(root) {
++      animation: page-in 280ms ease-out both;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-6px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(6px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation: none;
++      }
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -206,6 +247,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  <!-- The parser reaches this marker only after all initial content is parsed. -->
++  <span id="page-ready" hidden></span>
+ 
+ </body>
+ 

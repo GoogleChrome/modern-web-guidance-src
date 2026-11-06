@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..3178b32 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .local-device {
++      text-align: center;
++      margin-top: 40px;
++    }
++
++    .local-device p {
++      margin-bottom: 10px;
++    }
++
++    button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin: 15px 5px 0;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +211,27 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="local-device" aria-labelledby="local-device-title">
++      <h2 id="local-device-title">Connect Your Local Device</h2>
++      <p>Link the Daily Grind companion app on this computer or a device on your network, such as a receipt printer.
++        Your browser will ask for permission first.</p>
++      <p>
++        <button type="button" class="btn" id="connect-loopback">Connect companion app</button>
++        <button type="button" class="btn" id="connect-local">Connect network printer</button>
++      </p>
++      <p>
++        Loopback permission: <strong data-permission-status="loopback-network">unknown</strong> &middot;
++        Local network permission: <strong data-permission-status="local-network">unknown</strong>
++      </p>
++      <p id="local-device-result" role="status"></p>
++      <p data-remediation="loopback-network" hidden>
++        Access to your computer is blocked. Re-enable "Loopback network" in your browser's site settings.
++      </p>
++      <p data-remediation="local-network" hidden>
++        Access to your local network is blocked. Re-enable "Local network" in your browser's site settings.
++      </p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +244,60 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Example endpoints; replace with your companion app / device addresses.
++    const TARGETS = {
++      'loopback-network': { url: 'http://127.0.0.1:45678/health', space: 'loopback' },
++      'local-network': { url: 'http://192.168.1.100:8080/api/status', space: 'local' },
++    };
++
++    function updatePermissionUI(name, state) {
++      const badge = document.querySelector(`[data-permission-status="${name}"]`);
++      const remediation = document.querySelector(`[data-remediation="${name}"]`);
++      if (badge) badge.textContent = state;
++      if (remediation) remediation.hidden = state !== 'denied';
++    }
++
++    // Never query the legacy 'local-network-access' name; unsupported browsers fall back to 'prompt'.
++    async function checkNetworkPermission(name) {
++      let state = 'prompt';
++      try {
++        const status = await navigator.permissions.query({ name });
++        state = status.state;
++        status.addEventListener('change', () => updatePermissionUI(name, status.state));
++      } catch {
++        // Unrecognized permission name: proceed on user gesture.
++      }
++      updatePermissionUI(name, state);
++      return state;
++    }
++
++    async function connect(name) {
++      const result = document.getElementById('local-device-result');
++      const { url, space } = TARGETS[name];
++      if (await checkNetworkPermission(name) === 'denied') {
++        result.textContent = '';
++        return;
++      }
++      result.textContent = 'Connecting…';
++      try {
++        const response = await fetch(new Request(url, {
++          mode: 'cors',
++          targetAddressSpace: space,
++        }));
++        if (!response.ok) throw new Error(`HTTP ${response.status}`);
++        result.textContent = 'Connected!';
++      } catch {
++        result.textContent = 'Could not connect. Check that the device is on, on the same network, and allowed in your browser permissions.';
++      }
++      checkNetworkPermission(name);
++    }
++
++    document.getElementById('connect-loopback').addEventListener('click', () => connect('loopback-network'));
++    document.getElementById('connect-local').addEventListener('click', () => connect('local-network'));
++    Object.keys(TARGETS).forEach(checkNetworkPermission);
++  </script>
++
+ </body>
+ 
+ </html>

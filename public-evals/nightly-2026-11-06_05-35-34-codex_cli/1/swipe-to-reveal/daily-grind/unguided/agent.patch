@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+index 66c9173..53a7c8f 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,76 @@
+       color: var(--primary);
+     }
+ 
++    .drink-card {
++      position: relative;
++      overflow: hidden;
++      padding: 0;
++    }
++
++    .drink-content {
++      position: relative;
++      z-index: 1;
++      min-height: 230px;
++      height: 100%;
++      padding: 20px;
++      background: white;
++      touch-action: pan-y;
++      transition: transform 0.2s ease;
++    }
++
++    .drink-card.is-open .drink-content {
++      transform: translateX(-160px);
++    }
++
++    .drink-actions {
++      position: absolute;
++      inset: 0 0 0 auto;
++      width: 160px;
++      padding: 16px;
++      background: var(--secondary);
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      gap: 12px;
++      visibility: hidden;
++    }
++
++    .drink-card.is-open .drink-actions {
++      visibility: visible;
++    }
++
++    .drink-card.is-open .action-toggle {
++      position: absolute;
++      left: calc(100% - 150px);
++      bottom: 12px;
++    }
++
++    .drink-actions .btn {
++      margin: 0;
++      padding: 10px;
++    }
++
++    .action-toggle {
++      margin-top: 15px;
++      padding: 8px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      background: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .swipe-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .drink-content { transition: none; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,21 +247,40 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="swipe-hint">Swipe a drink or select Actions to see its options.</p>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="maple-actions" aria-label="Maple Oat Latte actions" inert>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
++            <a href="/order-online?drink=maple-oat-latte" class="btn" aria-label="Order Maple Oat Latte">Order Drink</a>
++          </div>
++          <div class="drink-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <button type="button" class="action-toggle" aria-expanded="false" aria-controls="maple-actions" aria-label="Actions for Maple Oat Latte">Actions</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="espresso-actions" aria-label="Dark Roast Espresso actions" inert>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
++            <a href="/order-online?drink=dark-roast-espresso" class="btn" aria-label="Order Dark Roast Espresso">Order Drink</a>
++          </div>
++          <div class="drink-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="action-toggle" aria-expanded="false" aria-controls="espresso-actions" aria-label="Actions for Dark Roast Espresso">Actions</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card drink-card">
++          <div class="drink-actions" id="cold-brew-actions" aria-label="Cold Brew actions" inert>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
++            <a href="/order-online?drink=cold-brew" class="btn" aria-label="Order Cold Brew">Order Drink</a>
++          </div>
++          <div class="drink-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <button type="button" class="action-toggle" aria-expanded="false" aria-controls="cold-brew-actions" aria-label="Actions for Cold Brew">Actions</button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +296,78 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drinkCards = document.querySelectorAll('.drink-card');
++
++    function setActionsOpen(card, open) {
++      const actions = card.querySelector('.drink-actions');
++      const toggle = card.querySelector('.action-toggle');
++      if (!open && actions.contains(document.activeElement)) toggle.focus();
++      card.classList.toggle('is-open', open);
++      actions.inert = !open;
++      toggle.setAttribute('aria-expanded', String(open));
++      toggle.textContent = open ? 'Close' : 'Actions';
++    }
++
++    drinkCards.forEach(card => {
++      const content = card.querySelector('.drink-content');
++      const toggle = card.querySelector('.action-toggle');
++      let gesture = null;
++      let suppressClick = false;
++
++      function toggleActions() {
++        const open = !card.classList.contains('is-open');
++        drinkCards.forEach(other => setActionsOpen(other, other === card && open));
++      }
++
++      toggle.addEventListener('click', toggleActions);
++      content.addEventListener('pointerdown', event => {
++        if (!event.isPrimary || event.button !== 0) return;
++        suppressClick = false;
++        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, horizontal: false };
++      });
++      content.addEventListener('pointermove', event => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const dx = Math.abs(event.clientX - gesture.x);
++        const dy = Math.abs(event.clientY - gesture.y);
++        if (!gesture.horizontal && dy > 10 && dy >= dx) {
++          gesture = null;
++          return;
++        }
++        if (!gesture.horizontal && dx > 10 && dx > dy) {
++          gesture.horizontal = true;
++          content.setPointerCapture(event.pointerId);
++        }
++      });
++      content.addEventListener('pointerup', event => {
++        if (!gesture || gesture.id !== event.pointerId) return;
++        const swiped = gesture.horizontal && Math.abs(event.clientX - gesture.x) >= 40;
++        suppressClick = gesture.horizontal;
++        gesture = null;
++        if (swiped) toggleActions();
++      });
++      content.addEventListener('pointercancel', () => { gesture = null; });
++      content.addEventListener('pointerleave', () => {
++        if (gesture && !gesture.horizontal) gesture = null;
++      });
++      // A swipe ending over a button must never turn into a button click.
++      content.addEventListener('click', event => {
++        if (!suppressClick) return;
++        suppressClick = false;
++        event.preventDefault();
++        event.stopImmediatePropagation();
++      }, true);
++      card.addEventListener('keydown', event => {
++        if (event.key === 'Escape') setActionsOpen(card, false);
++      });
++    });
++
++    document.addEventListener('pointerdown', event => {
++      if (!event.target.closest('.drink-card')) {
++        drinkCards.forEach(card => setActionsOpen(card, false));
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

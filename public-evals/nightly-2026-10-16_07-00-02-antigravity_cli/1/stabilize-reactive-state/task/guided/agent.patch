@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,12 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -194,8 +198,30 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="deadline-section" style="margin-top: 40px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">Event Deadline Tracker</h2>
++      <div class="card" style="max-width: 600px; margin: 0 auto;">
++        <h3>Annual Barista Showdown</h3>
++        <p>Registration deadline tracked with Temporal immutable state updates.</p>
++        <div style="margin: 20px 0; font-size: 1.25rem;">
++          <strong>Deadline: </strong><span id="temporal-value"></span>
++        </div>
++        <div style="display: flex; justify-content: space-around; margin: 15px 0; padding: 10px; background: var(--light); border-radius: 6px;">
++          <div>
++            <span style="font-size: 0.85rem; color: #666; display: block;">Reference Changed:</span>
++            <strong id="temporal-ref-changed" style="font-size: 1.1rem; color: var(--primary);"></strong>
++          </div>
++          <div>
++            <span style="font-size: 0.85rem; color: #666; display: block;">Re-render Count:</span>
++            <strong id="temporal-render-count" style="font-size: 1.1rem; color: var(--primary);">0</strong>
++          </div>
++        </div>
++        <button id="extend-temporal-btn" class="btn" type="button">Extend Deadline</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +232,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (async function initTemporalTracker() {
++      // Conditionally load the Temporal polyfill only if not natively supported
++      if (typeof Temporal === "undefined") {
++        try {
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++        } catch (e) {
++          console.error("Failed to load Temporal polyfill:", e);
++        }
++      }
++
++      // Reactive state management using Temporal PlainDate
++      window.temporalState = {
++        deadline: Temporal.Now.plainDateISO()
++      };
++      let prevState = window.temporalState;
++      let reRenderCount = 0;
++
++      function render() {
++        const valElem = document.getElementById("temporal-value");
++        if (valElem && window.temporalState && window.temporalState.deadline) {
++          valElem.textContent = window.temporalState.deadline.toString();
++        }
++      }
++
++      function updateState(newState) {
++        const refChanged = !!(newState && prevState && newState.deadline !== prevState.deadline);
++        const refElem = document.getElementById("temporal-ref-changed");
++        if (refElem) {
++          refElem.textContent = refChanged ? "Yes" : "No";
++        }
++
++        if (refChanged) {
++          reRenderCount++;
++          const countElem = document.getElementById("temporal-render-count");
++          if (countElem) {
++            countElem.textContent = reRenderCount.toString();
++          }
++          prevState = newState;
++          window.temporalState = newState;
++          render();
++        }
++      }
++
++      function extendDeadline() {
++        // Immutable update using Temporal.add() returns a new instance
++        const newDeadline = window.temporalState.deadline.add({ days: 1 });
++        updateState({ deadline: newDeadline });
++      }
++
++      // Initial render
++      render();
++
++      const extendBtn = document.getElementById("extend-temporal-btn");
++      if (extendBtn) {
++        extendBtn.addEventListener("click", extendDeadline);
++      }
++
++      window.extendDeadline = extendDeadline;
++      window.updateState = updateState;
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,21 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promotion-timer {
++      margin-top: 16px;
++      padding: 12px;
++      background: #fff3e0;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .promotion-timer strong {
++      display: block;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +193,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Set data-start to the confirmed local promotion start, e.g. YYYY-MM-DDTHH:mm:ss. -->
++          <div class="promotion-timer" data-start="" data-end="2026-03-01T00:00:00">
++            <p>Offer ends <time datetime="2026-03-01T00:00:00">March 1, 2026 at midnight</time> (your local time).</p>
++            <div role="status" aria-live="polite" aria-atomic="true">
++              <strong id="promotion-remaining">Time remaining will be calculated on page load.</strong>
++              <p id="promotion-elapsed">Elapsed time unavailable until the promotion start is confirmed.</p>
++            </div>
++            <noscript>Enable JavaScript to calculate the promotion times.</noscript>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +228,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const timer = document.querySelector('.promotion-timer');
++    const remaining = document.querySelector('#promotion-remaining');
++    const elapsed = document.querySelector('#promotion-elapsed');
++
++    async function initializePromotionTimer() {
++      // Load the fallback only in browsers without native Temporal support.
++      const temporal = globalThis.Temporal ??
++        (await import('https://esm.sh/temporal-polyfill@0.3.0')).Temporal;
++      const durationFormatter = typeof Intl.DurationFormat === 'function'
++        ? new Intl.DurationFormat(undefined, { style: 'long', daysDisplay: 'always', hoursDisplay: 'always' })
++        : null;
++      const numberFormatter = new Intl.NumberFormat();
++      const pluralRules = new Intl.PluralRules('en');
++
++      function formatDuration(duration) {
++        const units = { days: duration.days, hours: duration.hours };
++        if (durationFormatter) return durationFormatter.format(units);
++        // Keep the English page readable in browsers without DurationFormat.
++        return Object.entries(units).map(([unit, value]) =>
++          `${numberFormatter.format(value)} ${pluralRules.select(value) === 'one' ? unit.slice(0, -1) : unit}`
++        ).join(', ');
++      }
++
++      function updatePromotionTimer() {
++        const now = temporal.Now.zonedDateTimeISO();
++        const end = temporal.PlainDateTime.from(timer.dataset.end).toZonedDateTime(now.timeZoneId);
++        const options = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++        const ended = temporal.ZonedDateTime.compare(now, end) >= 0;
++        const timeRemaining = ended ? temporal.Duration.from({ days: 0, hours: 0 }) : now.until(end, options);
++        const remainingText = `${ended ? 'Offer ended' : 'Time left'}: ${formatDuration(timeRemaining)}${
++          !ended && timeRemaining.blank ? ' (less than 1 hour left)' : ''}`;
++        if (remaining.textContent !== remainingText) remaining.textContent = remainingText;
++
++        if (!timer.dataset.start) return;
++        const start = temporal.PlainDateTime.from(timer.dataset.start).toZonedDateTime(now.timeZoneId);
++        if (temporal.ZonedDateTime.compare(start, end) >= 0) {
++          elapsed.textContent = 'Elapsed time unavailable: promotion start must precede the end.';
++          return;
++        }
++        const elapsedText = temporal.ZonedDateTime.compare(now, start) < 0
++          ? 'Promotion has not started yet.'
++          : `Since promotion started: ${formatDuration(now.since(start, options))}`;
++        if (elapsed.textContent !== elapsedText) elapsed.textContent = elapsedText;
++      }
++
++      updatePromotionTimer();
++      window.setInterval(updatePromotionTimer, 60_000);
++      document.addEventListener('visibilitychange', () => {
++        if (!document.hidden) updatePromotionTimer();
++      });
++    }
++
++    initializePromotionTimer().catch(() => {
++      remaining.textContent = 'Countdown unavailable. The offer ends March 1, 2026 at midnight in your local time.';
++    });
++  </script>
+ </body>
+ 
+ </html>

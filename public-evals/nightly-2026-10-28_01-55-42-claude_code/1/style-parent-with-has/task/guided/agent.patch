@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,100 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      background: white;
++      padding: 40px 20px;
++      margin: 40px auto 0;
++      max-width: 1100px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .contact h2 {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .contact > p {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .contact-form {
++      max-width: 560px;
++      margin: 0 auto;
++    }
++
++    .field {
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      padding: 12px 16px;
++      margin-block-end: 1.25rem;
++      transition: border-color 0.2s;
++    }
++
++    .field:focus-within {
++      border-color: var(--primary);
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .field input,
++    .field textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: transparent;
++      border: 0;
++      padding: 6px 0;
++      min-height: 2.5rem;
++    }
++
++    .field textarea {
++      min-height: 7rem;
++      resize: vertical;
++    }
++
++    .field input:focus-visible,
++    .field textarea:focus-visible {
++      outline: none; /* the wrapper's border-color change is the focus indicator */
++    }
++
++    .field .error-msg {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      margin-top: 4px;
++    }
++
++    /* Red border on the whole wrapper once the user has left a required field
++       empty or entered a malformed email (or tried to submit). */
++    .field:has(:user-invalid) {
++      border-color: #c62828;
++      background-color: #fff6f5;
++    }
++
++    .field:has(:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .contact-form .btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      font-size: 1rem;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +288,36 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Get in Touch</h2>
++    <p>Questions, feedback, or wholesale inquiries? Drop us a line.</p>
++    <form class="contact-form" action="/contact" method="POST">
++      <div class="field">
++        <label for="contact-name">Name <span aria-hidden="true">*</span></label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required
++          aria-describedby="name-error">
++        <p id="name-error" class="error-msg"><span aria-hidden="true">&#9888;</span> Please enter your name.</p>
++      </div>
++
++      <div class="field">
++        <label for="contact-email">Email <span aria-hidden="true">*</span></label>
++        <input type="email" id="contact-email" name="email" autocomplete="email" autocorrect="off"
++          autocapitalize="off" spellcheck="false" required aria-describedby="email-error">
++        <p id="email-error" class="error-msg"><span aria-hidden="true">&#9888;</span> Please enter a valid email address.</p>
++      </div>
++
++      <div class="field">
++        <label for="contact-message">Message <span aria-hidden="true">*</span></label>
++        <textarea id="contact-message" name="message" rows="5" required aria-describedby="message-error"></textarea>
++        <p id="message-error" class="error-msg"><span aria-hidden="true">&#9888;</span> Please enter a message.</p>
++      </div>
++
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Detect whether this tab was opened in the background during initial load.
++    (() => {
++      const LOG_LABEL = '[Daily Grind] Initial visibility:';
++
++      // Preferred: VisibilityStateEntry records visibility changes on the
++      // performance timeline, so it is accurate no matter when this script runs.
++      if ('VisibilityStateEntry' in window) {
++        const entries = performance.getEntriesByType('visibility-state');
++        if (entries.length > 0) {
++          const firstHidden = entries.find((entry) => entry.name === 'hidden');
++          console.log(LOG_LABEL, {
++            backgrounded: entries[0].name === 'hidden',
++            // High-resolution ms timestamp of when the page was first hidden (null if never).
++            timestamp: firstHidden ? firstHidden.startTime : null,
++            method: 'VisibilityStateEntry',
++          });
++          return;
++        }
++      }
++
++      // Fallback for browsers without VisibilityStateEntry (Firefox, Safari).
++      const backgrounded = document.visibilityState === 'hidden';
++      console.log(LOG_LABEL, {
++        backgrounded,
++        // If hidden now, approximate that it was hidden since load (time 0).
++        timestamp: backgrounded ? 0 : null,
++        method: 'document.visibilityState',
++        note:
++          'Fallback check is unreliable for async scripts: if the tab was opened in the ' +
++          'background and foregrounded before this script executed, it reads as "visible". ' +
++          'Timestamps are also approximate compared to the Performance API.',
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

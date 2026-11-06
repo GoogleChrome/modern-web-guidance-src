@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,80 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.theater-active {
++      height: auto;
++      min-height: 60vh;
++      padding: 40px 20px;
++    }
++
++    .hero-video {
++      width: 100%;
++      max-width: 1060px;
++      margin-top: 30px;
++    }
++
++    .roasting-video {
++      max-width: 800px;
++      margin: 40px auto 0;
++      text-align: center;
++    }
++
++    .video-slot {
++      position: relative;
++      padding-top: 56.25%;
++      background: var(--secondary);
++      border-radius: 8px;
++      scroll-margin-top: 90px;
++    }
++
++    .roasting-video .video-slot {
++      margin-top: 20px;
++    }
++
++    #roasting-player {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      border: 0;
++      border-radius: 8px;
++      background: #1e1613;
++    }
++
++    .video-placeholder {
++      position: absolute;
++      inset: 0;
++      padding: 20px;
++      align-content: center;
++    }
++
++    .theater-toggle {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .theater-toggle[hidden] {
++      display: none;
++    }
++
++    .hero .theater-toggle {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .theater-toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .hero .theater-toggle:focus-visible {
++      outline-color: white;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,8 +243,13 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-video" id="hero-video" hidden>
++      <div class="video-slot" id="hero-video-slot"></div>
++      <button type="button" class="btn theater-toggle" id="hero-theater-toggle"
++        aria-controls="roasting-player" aria-pressed="false">Theater mode</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +271,23 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="roasting-video">
++      <h2>From Green Bean to Perfect Roast</h2>
++      <p>Slow down and watch John Weaver roast coffee to the sound of meditation music.</p>
++      <button type="button" class="btn theater-toggle" id="theater-toggle"
++        aria-controls="roasting-player" aria-pressed="false" hidden>Theater mode</button>
++      <div class="video-slot" id="main-video-slot">
++        <p class="video-placeholder" id="video-placeholder" hidden>Now playing in the hero above.</p>
++        <iframe id="roasting-player" width="800" height="450"
++          src="https://www.youtube.com/embed/iDgBoPnZJl0?rel=0"
++          title="Weaver's Coffee Roasting Meditation — John Weaver roasting coffee"
++          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++      </div>
++      <p><a href="https://www.youtube.com/watch?v=iDgBoPnZJl0">Watch on YouTube</a></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +298,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const player = document.getElementById('roasting-player');
++    const mainSlot = document.getElementById('main-video-slot');
++    const heroSlot = document.getElementById('hero-video-slot');
++    const heroVideo = document.getElementById('hero-video');
++    const hero = document.querySelector('.hero');
++    const toggle = document.getElementById('theater-toggle');
++    const heroToggle = document.getElementById('hero-theater-toggle');
++    const placeholder = document.getElementById('video-placeholder');
++    const canMoveWithoutReload = typeof heroSlot.moveBefore === 'function';
++    let theaterMode = false;
++
++    function positionLegacyPlayer() {
++      if (canMoveWithoutReload || !theaterMode) return;
++
++      // Keep the iframe connected to its original parent: insertBefore/appendChild
++      // would reload it. Translate it over the hero's reserved slot instead.
++      const origin = mainSlot.getBoundingClientRect();
++      const destination = heroSlot.getBoundingClientRect();
++      player.style.transform = `translate(${destination.left - origin.left}px, ${destination.top - origin.top}px)`;
++      player.style.width = `${destination.width}px`;
++      player.style.height = `${destination.height}px`;
++      player.style.zIndex = '1';
++    }
++
++    function toggleTheaterMode() {
++      theaterMode = !theaterMode;
++      const destination = theaterMode ? heroSlot : mainSlot;
++
++      // Reveal the destination before moving; never recreate the iframe or set src.
++      if (theaterMode) heroVideo.hidden = false;
++      hero.classList.toggle('theater-active', theaterMode);
++
++      if (canMoveWithoutReload) {
++        destination.moveBefore(player, null);
++      } else if (theaterMode) {
++        positionLegacyPlayer();
++      } else {
++        ['transform', 'width', 'height', 'z-index'].forEach(property => {
++          player.style.removeProperty(property);
++        });
++      }
++
++      placeholder.hidden = !theaterMode;
++      toggle.setAttribute('aria-pressed', String(theaterMode));
++      heroToggle.setAttribute('aria-pressed', String(theaterMode));
++      // Transfer focus before hiding the hero's control on the return trip.
++      (theaterMode ? heroToggle : toggle).focus({ preventScroll: true });
++      heroVideo.hidden = !theaterMode;
++      destination.scrollIntoView({ block: 'center' });
++    }
++
++    toggle.hidden = false;
++    toggle.addEventListener('click', toggleTheaterMode);
++    heroToggle.addEventListener('click', toggleTheaterMode);
++
++    if (!canMoveWithoutReload) {
++      window.addEventListener('resize', positionLegacyPlayer);
++      window.addEventListener('load', positionLegacyPlayer);
++      if ('ResizeObserver' in window) {
++        const observer = new ResizeObserver(positionLegacyPlayer);
++        [hero, heroSlot, mainSlot].forEach(element => observer.observe(element));
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

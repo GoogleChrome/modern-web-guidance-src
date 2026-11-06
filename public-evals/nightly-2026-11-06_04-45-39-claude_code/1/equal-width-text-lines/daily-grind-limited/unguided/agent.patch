@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+index 66c9173..293083a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,7 +77,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,12 +88,38 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
++    }
++
++    /* Poster-style lockup: every line is scaled (via font-size, not spacing)
++       so its ink width matches the lockup width exactly. */
++    .hero-lockup {
++      --lockup-width: min(88vw, 760px);
++      width: var(--lockup-width);
++      margin: 0 auto 1.25rem;
++      font-family: 'Anton', 'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif;
++      font-weight: 400;
++      text-transform: uppercase;
++      line-height: 0.88;
++      letter-spacing: 0.01em;
++      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++    .hero-lockup .line {
++      display: block;
++      width: max-content;
++      margin: 0 auto;
++      white-space: nowrap;
++      /* No-JS fallback: approximate per-line sizes relative to lockup width */
++      font-size: calc(var(--lockup-width) * var(--fallback-scale, 0.2));
++    }
++
++    .hero-lockup .line + .line {
++      margin-top: 0.06em;
++    }
++
++    .hero-lockup .line--accent {
++      color: var(--accent);
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +198,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="hero-lockup" aria-label="Wake Up Your Senses">
++      <span class="line" style="--fallback-scale: 0.215" aria-hidden="true">Wake Up</span>
++      <span class="line line--accent" style="--fallback-scale: 0.42" aria-hidden="true">Your</span>
++      <span class="line" style="--fallback-scale: 0.255" aria-hidden="true">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +240,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fit each lockup line to the same width by solving for font-size.
++    (function () {
++      var lockups = document.querySelectorAll('.hero-lockup');
++      if (!lockups.length) return;
++
++      var REF = 100; // reference font-size in px used for measurement
++
++      function fit(lockup) {
++        var target = lockup.clientWidth;
++        if (!target || lockup._fitWidth === target) return;
++        lockup._fitWidth = target;
++        lockup.querySelectorAll('.line').forEach(function (line) {
++          line.style.fontSize = REF + 'px';
++          var w = line.getBoundingClientRect().width;
++          if (w) line.style.fontSize = (REF * target / w) + 'px';
++        });
++      }
++
++      function fitAll() { lockups.forEach(fit); }
++
++      fitAll();
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () {
++        lockups.forEach(function (l) { l._fitWidth = null; });
++        fitAll();
++      });
++      if ('ResizeObserver' in window) {
++        var ro = new ResizeObserver(fitAll);
++        lockups.forEach(function (l) { ro.observe(l); });
++      } else {
++        window.addEventListener('resize', fitAll);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

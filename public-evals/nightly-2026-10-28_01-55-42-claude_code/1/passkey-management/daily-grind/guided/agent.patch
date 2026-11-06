@@ -1,0 +1,1884 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..dea9105
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,46 @@
++# The Daily Grind
++
++Static marketing site for The Daily Grind Coffee Co., served with `pnpm start`.
++
++## Pages
++
++- `index.html` – home page.
++- `account/` – **My Account**, including passkey management (view, rename,
++  delete, create) for signed-in customers.
++
++## Passkey management
++
++`account/passkeys.js` renders the passkey list and keeps the browser's
++password manager in step with the account using the WebAuthn Signal API:
++
++- `signalAllAcceptedCredentials()` runs on page load and after every delete, so
++  a removed passkey also disappears from the user's authenticator.
++- `signalCurrentUserDetails()` runs after the display name is changed.
++- `signalUnknownCredential()` runs if the server rejects a newly created
++  passkey.
++
++All Signal API calls are feature-detected and skipped on browsers without them.
++
++### Backend contract
++
++`account/api.js` documents the JSON endpoints the page calls
++(`/api/user`, `/api/credentials`, `/api/credential/:id`,
++`/api/passkeys/register/*`). Implement them server-side with a vetted WebAuthn
++library (for example SimpleWebAuthn) and the page will use them automatically.
++
++When those endpoints are missing, which is the case on this static build, the
++page falls back to `account/local-store.js`, an in-browser store that keeps the
++demo customer's passkeys in `localStorage`. It is a demo convenience and not a
++security boundary: it checks challenge, origin and ceremony type but does not
++verify attestation signatures.
++
++### Provider names and icons
++
++`account/aaguids.json` is a trimmed copy of the community
++[passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids)
++registry: names for every provider, icons only for common consumer ones.
++Regenerate it with:
++
++```sh
++node scripts/build-aaguids.mjs
++```
+diff --git a/account/aaguids.json b/account/aaguids.json
+new file mode 100644
+index 0000000..1275281
+--- /dev/null
++++ b/account/aaguids.json
+@@ -0,0 +1 @@
++{"fcb1bcb4-f370-078c-6993-bc24d0ae3fbe":{"name":"Ledger Nano X FIDO2 Authenticator"},"6e8d1eae-8d40-4c25-bcf8-4633959afc71":{"name":"Veridium iOS SDK"},"e8b7f4a2-c3d5-e6f7-890a-b1c2d3e4f567":{"name":"Sherlocked"},"51787637-8ab8-460c-9302-de0b853d4ffb":{"name":"SpearID FIDO2 Standard"},"9eb7eabc-9db5-49a1-b6c3-555a802093f4":{"name":"YubiKey 5 Series with NFC KVZR57"},"4d41190c-7beb-4a84-8018-adf265a6352d":{"name":"Thales IDPrime FIDO Bio"},"2772ce93-eb4b-4090-8b73-330f48477d73":{"name":"Security Key NFC by Yubico - Enterprise Edition Preview"},"6dae43be-af9c-417b-8b9f-1b611168ec60":{"name":"Dapple Authenticator from Dapple Security Inc."},"5626bed4-e756-430b-a7ff-ca78c8b12738":{"name":"VALMIDO PRO FIDO"},"260e3021-482d-442d-838c-7edfbe153b7e":{"name":"Feitian ePass FIDO2-NFC Plus Authenticator"},"95e4d58c-056e-4a65-866d-f5a69659e880":{"name":"TruU Windows Authenticator"},"90636e1f-ef82-43bf-bdcf-5255f139d12f":{"name":"YubiKey Bio Series - Multi-protocol Edition"},"9c835346-796b-4c27-8898-d6032f515cc5":{"name":"Cryptnox FIDO2"},"c3f47802-de73-4dfc-ba22-671fe3304f90":{"name":"eToken Fusion NFC PIV Enterprise"},"0d9b2e56-566b-c393-2940-f821b7f15d6d":{"name":"Excelsecu eSecu FIDO2 Pro Security Key"},"2bff89f2-323a-48fc-b7c8-9ff7fe87c07e":{"name":"Feitian BioPass FIDO2 Pro (Enterprise Profile)"},"c5ef55ff-ad9a-4b9f-b580-adebafe026d0":{"name":"YubiKey 5 Series with Lightning"},"2194b428-9397-4046-8f39-007a1605a482":{"name":"IDPrime 931 Fido"},"39a5647e-1853-446c-a1f6-a79bae9f5bc7":{"name":"IDmelon"},"664d9f67-84a2-412a-9ff7-b4f7d8ee6d05":{"name":"OpenSK authenticator"},"3789da91-f943-46bc-95c3-50ea2012f03a":{"name":"NEOWAVE Winkeo FIDO2"},"fa2b99dc-9e39-4257-8f92-4a30d23c4118":{"name":"YubiKey 5 Series with NFC"},"341e4da9-3c2e-8103-5a9f-aad887135200":{"name":"Ledger Nano S FIDO2 Authenticator"},"69700f79-d1fb-472e-bd9b-a3a3b9a9eda0":{"name":"Pone Biometrics OFFPAD Authenticator"},"8da0e4dc-164b-454e-972e-88f362b23d59":{"name":"CardOS FIDO2 Token"},"89b19028-256b-4025-8872-255358d950e4":{"name":"Sentry Enterprises CTAP2 Authenticator"},"4e768f2c-5fab-48b3-b300-220eb487752b":{"name":"Hideez Key 4 FIDO2 SDK"},"47ab2fb4-66ac-4184-9ae1-86be814012d5":{"name":"Security Key NFC by Yubico - Enterprise Edition"},"931327dd-c89b-406c-a81e-ed7058ef36c6":{"name":"Swissbit iShield Key FIDO2"},"f8d5c4e9-e539-4c06-8662-ec2a4155a555":{"name":"StarSign Key Fob"},"b7d3f68e-88a6-471e-9ecf-2df26d041ede":{"name":"Security Key NFC by Yubico"},"8d1b1fcb-3c76-49a9-9129-5515b346aa02":{"name":"IDEMIA ID-ONE Card"},"30b5035e-d297-4ff7-020b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX7"},"454e5346-4944-4ffd-6c93-8e9267193e9a":{"name":"Ensurity ThinC"},"e1a96183-5016-4f24-b55b-e3ae23614cc6":{"name":"ATKey.Pro CTAP2.0"},"9ff4cc65-6154-4fff-ba09-9e2af7882ad2":{"name":"Security Key NFC by Yubico - Enterprise Edition (Enterprise Profile)"},"4599062e-6926-4fe7-9566-9e8fb1aedaa0":{"name":"YubiKey 5 Series (Enterprise Profile)"},"9d3df6ba-282f-11ed-a261-0242ac120002":{"name":"Arculus FIDO2/U2F Key Card"},"fbefdf68-fe86-0106-213e-4d5fa24cbe2e":{"name":"Excelsecu eSecu FIDO2 NFC Security Key"},"62e54e98-c209-4df3-b692-de71bb6a8528":{"name":"YubiKey 5 FIPS Series with NFC Preview"},"ab32f0c6-2239-afbb-c470-d2ef4e254db7":{"name":"TOKEN2 FIDO2 Security Key"},"ce6bf97f-9f69-4ba7-9032-97adc6ca5cf1":{"name":"YubiKey 5 FIPS Series with NFC (RC Preview)"},"ad08c78a-4e41-49b9-86a2-ac15b06899e2":{"name":"YubiKey Bio Series - FIDO Edition (Enterprise Profile)"},"930b0c03-ef46-4ac4-935c-538dccd1fcdb":{"name":"Chipwon Clife Key"},"7787a482-13e8-4784-8a06-c7ed49a7aaf4":{"name":"Swissbit iShield Key 2"},"72c6b72d-8512-4c66-8359-9d3d10d9222f":{"name":"Security Key NFC by Yubico - Enterprise Edition (Enterprise Profile)"},"99ed6c29-4573-4847-816d-78ad8f1c75ef":{"name":"VeroCard FIDO2 Authenticator"},"973446ca-e21c-9a9b-99f5-9b985a67af0f":{"name":"ACS FIDO Authenticator Card"},"238ab2f5-b57f-4917-b3c6-3d3c6c0c350f":{"name":"FEITIAN FT-JCOS BioCard"},"74820b05-a6c9-40f9-8fb0-9f86aca93998":{"name":"SafeNet eToken Fusion"},"1105e4ed-af1d-02ff-ffff-ffffffffffff":{"name":"Egomet FIDO2 Authenticator for Android"},"08987058-cadc-4b81-b6e1-30de50dcbe96":{"name":"Windows Hello","icon_light":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="},"a4e9fc6d-4cbe-4758-b8ba-37598bb5bbaa":{"name":"Security Key NFC by Yubico"},"8caf7e7b-6c8b-46a9-b36b-5d04740d7463":{"name":"cryptovision ePasslet Suite FIDO Authenticator"},"0acf3011-bc60-f375-fb53-6f05f43154e0":{"name":"Nymi FIDO2 Authenticator"},"d91c5288-0ef0-49b7-b8ae-21ca0aa6b3f3":{"name":"KEY-ID FIDO2 Authenticator"},"8eec9bf9-486c-46da-9a67-1fbb4f66b9ed":{"name":"HID Crescendo 4000 FIPS"},"4c50ff10-1057-4fc6-b8ed-43a529530c3c":{"name":"ImproveID Authenticator"},"c611b55c-77b2-4527-8082-590e931b2f08":{"name":"GoTrust Idem Key "},"ee041bce-25e5-4cdb-8f86-897fd6418464":{"name":"Feitian ePass FIDO2-NFC Authenticator"},"2588ae83-5a3b-4536-b8de-5e540200d191":{"name":"Dapple Authenticator from Dapple Security Inc."},"4b89f401-464e-4745-a520-486ddfc5d80e":{"name":"IIST FIDO2 Authenticator"},"2cd2f727-f6ca-44da-8f48-5c2e5da000a2":{"name":"Nitrokey 3 AM"},"10c70715-2a9a-4de1-b0aa-3cff6d496d39":{"name":"eToken Fusion NFC FIPS"},"efb96b10-a9ee-4b6c-a4a9-d32125ccd4a4":{"name":"Safenet eToken FIDO"},"24083bcb-3034-4867-99de-a3b52e1d426a":{"name":"Enterprise Security Key Series with NFC (Consumer Profile)"},"4b3f8944-d4f2-4d21-bb19-764a986ec160":{"name":"KeyXentic FIDO2 Secp256R1 FIDO2 CTAP2 Authenticator"},"4c0cf95d-2f40-43b5-ba42-4c83a11c04ba":{"name":"Feitian BioPass FIDO2 Pro Authenticator"},"5343502d-5343-5343-6172-644649444f32":{"name":"ESS Smart Card Inc. Authenticator"},"69e7c36f-f2f6-9e0d-07a6-bcc243262e6b":{"name":"OneKey FIDO2 Authenticator"},"524de2de-982f-49b4-a769-2b5e3b73ad79":{"name":"YubiKey 5 Series (Enterprise Profile)"},"09591fc6-9811-48f7-8f57-b9f23df6413f":{"name":"Pone Biometrics OFFPAD Authenticator"},"912435d9-4a88-42f3-972d-1244b0d51420":{"name":"SI0X FIDO CL WRIST v1.0"},"7e3f3d30-3557-4442-bdae-139312178b39":{"name":"RSA DS100"},"73bb0cd4-e502-49b8-9c6f-b59445bf720b":{"name":"YubiKey 5 FIPS Series"},"39589099-9a75-49fc-afaa-801ca211c62a":{"name":"Feitian ePass FIDO-NFC (Enterprise Profile) (CTAP2.1, CTAP2.0, U2F)"},"dc5e949d-f939-43b3-9877-a85c7186b753":{"name":"YubiKey Bio Multi-protocol Edition (Enterprise Profile)"},"149a2021-8ef6-4133-96b8-81f8d5b7f1f5":{"name":"Security Key by Yubico with NFC"},"5df66f62-5b47-43d3-aa1d-a6e31c8dbeb5":{"name":"Securitag Assembly Group FIDO Authenticator NFC"},"9a272558-5cfa-4424-be37-65509677b77d":{"name":"SECORA ID Key S USB by Infineon Consumer Edition"},"09619fbf-d75e-4a62-be1d-fe4d240864ae":{"name":"VeriMark(TM) Guard 2.1 Fingerprint Security Key"},"55fd881f-40ba-4eaf-8435-42c5fed08b76":{"name":"SECORA ID V2 by Infineon Consumer Edition"},"50cbf15a-238c-4457-8f16-812c43bf3c49":{"name":"Ensurity AUTH TouchPro"},"ee7fa1e0-9539-432f-bd43-9c2fc6d4f311":{"name":"VeriMark NFC+ USB-C Security Key"},"b90e7dc1-316e-4fee-a25a-56a666a670fe":{"name":"YubiKey 5 Series with Lightning (Enterprise Profile)"},"6d4aa745-dad5-40c4-b9b4-6a252fcee70f":{"name":"GoTrust Cyber Key"},"175cd298-83d2-4a26-b637-313c07a6434e":{"name":"Chunghwa Telecom FIDO2 Smart Card Authenticator"},"34744913-4f57-4e6e-a527-e9ec3c4b94e6":{"name":"YubiKey Bio Series - Multi-protocol Edition"},"5ea308b2-7ac7-48b9-ac09-7e2da9015f8c":{"name":"Veridium Android SDK"},"3b1adb99-0dfe-46fd-90b8-7f7614a4de2a":{"name":"GoTrust Idem Key"},"46544d5d-8f5d-4db4-89ac-ea8977073fff":{"name":"Foongtone FIDO Authenticator"},"0a357157-9b18-4c8a-920e-d156e972b2f8":{"name":"YubiKey 5 Series (Consumer Profile)"},"998f358b-2dd2-4cbe-a43a-e8107438dfb3":{"name":"OnlyKey Secp256R1 FIDO2 CTAP2 Authenticator"},"30b5035e-d297-4ff2-010b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX2-A"},"817cdab8-0d51-4de1-a821-e25b88519cf3":{"name":"Swissbit iShield Key 2 FIPS"},"61250591-b2bc-4456-b719-0b17be90bb30":{"name":"eWBM eFPA FIDO2 Authenticator"},"8c39ee86-7f9a-4a95-9ba3-f6b097e5c2ee":{"name":"YubiKey Bio Series - FIDO Edition (Enterprise Profile)"},"f8a011f3-8c0a-4d15-8006-17111f9edc7d":{"name":"Security Key by Yubico"},"8976631b-d4a0-427f-5773-0ec71c9e0279":{"name":"Solo Tap Secp256R1 FIDO2 CTAP2 Authenticator"},"7dab85a5-d16d-4eaf-a7ef-4c1385b151c5":{"name":"YubiKey 5 Series with NFC (Consumer Profile) KVZR57-2"},"516d3969-5a57-5651-5958-4e7a49434167":{"name":"SmartDisplayer BobeePass FIDO2 Authenticator"},"8681a073-5f50-4d52-bce4-e21658d207b3":{"name":"RSA Authenticator 4 for iOS"},"30b5035e-d297-4ff7-030b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX7-C"},"e41b42a3-60ac-4afb-8757-a98f2d7f6c9f":{"name":"Deepnet SafeKey/Classic (FP)"},"c89e6a38-6c00-5426-5aa5-c9cbf48f0382":{"name":"ACS FIDO Authenticator NFC"},"11544c3c-3693-40ba-9dbb-3b8d2b977988":{"name":"Thales PAY GFCX20.1 authenticator"},"eb7ef748-cbe0-4b40-b8f6-07bd2d592d35":{"name":"YubiKey 5 CCN Series with NFC (Consumer Profile)"},"a02167b9-ae71-4ac7-9a07-06432ebb6f1c":{"name":"YubiKey 5 Series with Lightning"},"82b0a720-127a-4788-b56d-d1d4b2d82eac":{"name":"ID-One Key"},"6169eb16-f87a-42d8-978d-e1ac0c3f319f":{"name":"GoTrust Idem Card"},"2c0df832-92de-4be1-8412-88a8f074df4a":{"name":"Feitian FIDO Smart Card"},"59f85fe7-faa5-4c92-9f52-697b9d4d5473":{"name":"RSA Authenticator 4 for Android"},"22682ee5-4f0e-4c19-be3e-797d5770ebfe":{"name":"Precision InnaIT Key FIDO 2 Level 2 certified"},"0fbb74b5-f1ac-4f14-a0f1-ec39b5edfdae":{"name":"Thales PAY GFCX19 authenticator"},"79f3c8ba-9e35-484b-8f47-53a5a0f5c630":{"name":"YubiKey 5 FIPS Series with NFC (Enterprise Profile)"},"6e34341a-88c7-483d-b777-a425c355be93":{"name":"WebComm OETHenticator"},"7a53c643-9dec-4219-b3a4-f9d24aca4e12":{"name":"G+D StarKey FIDO2-NFC"},"19bca99b-7c09-44fe-a969-8cba45764542":{"name":"HID Crescendo Key V3 FIPS"},"def8ab1a-9f91-44f1-a103-088d8dc7d681":{"name":"IDEMIA SOLVO Fly 80 R3 FIDO Card e"},"9955a1cd-564c-d388-ad68-9878a27be9f1":{"name":"StarSign Chase FIDO Card"},"9dd8d593-2213-438a-97f8-d6b813d51c27":{"name":"YubiKey Bio Fido Edition (Consumer Profile)"},"970c8d9c-19d2-46af-aa32-3f448db49e35":{"name":"WinMagic FIDO Eazy - TPM"},"c5703116-972b-4851-a3e7-ae1259843399":{"name":"NEOWAVE Badgeo FIDO2"},"c80dbd9a-533f-4a17-b941-1a2f1c7cedff":{"name":"HID Crescendo C3000"},"0b8b05a4-ebd4-4b0b-8f5f-33d7b6e606ab":{"name":"HID Crescendo 4000"},"5b0e46ba-db02-44ac-b979-ca9b84f5e335":{"name":"YubiKey 5 FIPS Series with Lightning Preview"},"12755c32-8ad1-46eb-881c-e0b38d848b09":{"name":"Feitian ePass FIDO Authenticator (CTAP2.1, CTAP2.0, U2F)"},"2a55aee6-27cb-42c0-bc6e-04efe999e88a":{"name":"HID Crescendo 4000"},"820d89ed-d65a-409e-85cb-f73f0578f82a":{"name":"IDmelon Authenticator"},"019614a3-2703-7e35-a453-285fd06c5d24":{"name":"ATLKey Authenticator"},"3124e301-f14e-4e38-876d-fbeeb090e7bf":{"name":"YubiKey 5 Series with Lightning Preview"},"b6ede29c-3772-412c-8a78-539c1f4c62d2":{"name":"Feitian BioPass FIDO2 Plus Authenticator"},"ed042a3a-4b22-4455-bb69-a267b652ae7e":{"name":"Security Key NFC by Yubico - Enterprise Edition"},"b2c1a50b-dad8-4dc7-ba4d-0ce9597904bc":{"name":"YubiKey 5 Series with NFC - Enhanced PIN (Enterprise Profile)"},"85203421-48f9-4355-9bc8-8a53846e5083":{"name":"YubiKey 5 FIPS Series with Lightning"},"fcc0118f-cd45-435b-8da1-9782b2da0715":{"name":"YubiKey 5 FIPS Series with NFC"},"d821a7d4-e97c-4cb6-bd82-4237731fd4be":{"name":"Hyper FIDO Bio Security Key"},"9876631b-d4a0-427f-5773-0ec71c9e0279":{"name":"Somu Secp256R1 FIDO2 CTAP2 Authenticator"},"522a3f91-5f5d-480d-be37-6cecfad5a27b":{"name":"Precision InnaIT Key FIDO 2 Level 2 certified"},"f56f58b3-d711-4afc-ba7d-6ac05f88cb19":{"name":"WinMagic FIDO Eazy - Phone"},"6ec5cff2-a0f9-4169-945b-f33b563f7b99":{"name":"YubiKey Bio Series - Multi-protocol Edition (Enterprise Profile)"},"882adaf5-3aa9-4708-8e7d-3957103775b4":{"name":"T-Shield TrustSec FIDO2 Bio and client PIN version"},"49a15c1c-3f63-3f51-23a7-b9e00096edd1":{"name":"IDEX CTAP2.1 Biometrics"},"f4c63eff-d26c-4248-801c-3736c7eaa93a":{"name":"FIDO KeyPass S3"},"d384db22-4d50-ebde-2eac-5765cf1e2a44":{"name":"Excelsecu eSecu FIDO2 Fingerprint Security Key"},"0db01cd6-5618-455b-bb46-1ec203d3213e":{"name":"GoldKey Security Token"},"b93fd961-f2e6-462f-b122-82002247de78":{"name":"Android Authenticator"},"aa79f476-ea00-417e-9628-1e8365123922":{"name":"HID Crescendo 4000 FIDO"},"1e906e14-77af-46bc-ae9f-fe6ef18257e4":{"name":"VeridiumID Passkey iOS SDK"},"2fc0579f-8113-47ea-b116-bb5a8db9202a":{"name":"YubiKey 5 Series with NFC"},"31c3f7ff-bf15-4327-83ec-9336abcbcd34":{"name":"WinMagic FIDO Eazy - Software"},"cb4f796c-a20a-af9e-d639-213c1ec247f3":{"name":"ACS PocketKey+ Bio"},"686de81e-fff2-41c1-bb83-2723aaf3e913":{"name":"IIST SASE USB KEY 1"},"9ddd1817-af5a-4672-a2b9-3e3dd95000a9":{"name":"Windows Hello","icon_light":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="},"18852056-063b-4042-9814-7d0d383081f9":{"name":"SECORA ID Key S USB by Infineon Enterprise Edition"},"d8522d9f-575b-4866-88a9-ba99fa02f35b":{"name":"YubiKey Bio Series - FIDO Edition"},"050dd0bc-ff20-4265-8d5d-305c4b215192":{"name":"eToken Fusion FIPS"},"50a45b0c-80e7-f944-bf29-f552bfa2e048":{"name":"ACS FIDO Authenticator"},"f7c558a0-f465-11e8-b568-0800200c9a66":{"name":"KONAI Secp256R1 FIDO2 Conformance Testing CTAP2 Authenticator"},"3f59672f-20aa-4afe-b6f4-7e5e916b6d98":{"name":"Arculus FIDO 2.1 Key Card [P71]"},"42b4fb4a-2866-43b2-9bf7-6c6669c2e5d3":{"name":"Google Titan Security Key v2"},"361a3082-0278-4583-a16f-72a527f973e4":{"name":"eWBM eFA500 FIDO2 Authenticator"},"2ffd6452-01da-471f-821b-ea4bf6c8676a":{"name":"IDPrime 941 Fido"},"9806a2c8-c0da-478e-b4ca-620005d34182":{"name":"YubiKey Bio Multi-protocol Edition (Consumer Profile) 1VDJSN-2"},"03012cb7-4fb2-42e7-9e8d-a81f10e2a5e9":{"name":"YubiKey 5 Series with Lightning (Consumer Profile)"},"30b5035e-d297-4ff7-b00b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX7"},"0f083f18-4105-43a8-ad69-24e812e38141":{"name":"Security Key Series with NFC (Consumer Profile)"},"5eaff75a-dd43-451f-af9f-87c9eeae293e":{"name":"Swissbit iShield Key 2 FIPS Enterprise"},"b415094c-49d3-4c8b-b3fe-7d0ad28a6bc4":{"name":"ZTPass SmartAuth"},"692db549-7ae5-44d5-a1e5-dd20a493b723":{"name":"HID Crescendo Key"},"0ebd9f2c-f685-441c-8c3e-a02a234a840a":{"name":"YubiKey 5 Series with NFC Enhanced PIN (Consumer Profile)"},"23315ad0-6aca-4ba1-952e-f044f1e36976":{"name":"Clife Key 2 NFC"},"1d1b4e33-76a1-47fb-97a0-14b10d0933f1":{"name":"Cryptnox FIDO2.1"},"bbf4b6a7-679d-f6fc-c4f2-8ac0ddf9015a":{"name":"Excelsecu eSecu FIDO2 PRO Security Key"},"3e22415d-7fdf-4ea4-8a0c-dd60c4249b9d":{"name":"Feitian iePass FIDO Authenticator"},"ab7d1767-3fa0-4388-b6c4-feef7a844809":{"name":"Enterprise Security Key Series with NFC (Enterprise Profile)"},"f4ce5fc0-57d3-46f5-a736-efb7d5bc63b5":{"name":"YubiKey 5 Series with NFC (Consumer Profile)"},"23786452-f02d-4344-87ed-aaf703726881":{"name":"SafeNet eToken Fusion CC"},"5e264d9d-28ef-4d34-95b4-5941e7a4faa8":{"name":"Ideem ZSM FIDO2 Authenticator"},"d2fbd093-ee62-488d-9dad-1e36389f8826":{"name":"YubiKey 5 FIPS Series (RC Preview)"},"234cd403-35a2-4cc2-8015-77ea280c77f5":{"name":"Feitian ePass FIDO2-NFC Series (CTAP2.1, CTAP2.0, U2F)"},"6999180d-630c-442d-b8f7-424b90a43fae":{"name":"Hyper FIDO Pro (CTAP2.1, CTAP2.0, U2F)"},"662ef48a-95e2-4aaa-a6c1-5b9c40375824":{"name":"YubiKey 5 Series with NFC - Enhanced PIN"},"aeb6569c-f8fb-4950-ac60-24ca2bbe2e52":{"name":"HID Crescendo C2300"},"87dbc5a1-4c94-4dc8-8a47-97d800fd1f3c":{"name":"eWBM eFA320 FIDO2 Authenticator"},"58276709-bb4b-4bb3-baf1-60eea99282a7":{"name":"YubiKey Bio Series - Multi-protocol Edition 1VDJSN"},"7d2afadd-bf6b-44a2-a66b-e831fceb8eff":{"name":"Taglio CTAP2.1 EP"},"30b5035e-d297-4ff1-020b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX1-C"},"04a8fcf2-19c1-457b-911e-69219f17583f":{"name":"Thales PAY GFCX13 authenticator"},"20ac7a17-c814-4833-93fe-539f0d5e3389":{"name":"YubiKey 5 Series (Enterprise Profile)"},"9012593f-43e4-4461-a97a-d92777b55d74":{"name":"VinCSS FIDO2 Fingerprint"},"d7781e5d-e353-46aa-afe2-3ca49f13332a":{"name":"YubiKey 5 Series with NFC"},"9f0d8150-baa5-4c00-9299-ad62c8bb4e87":{"name":"GoTrust Idem Card"},"244eb29e-e090-4e49-81fe-1f20f8d3b8f4":{"name":"CanoKey Canary"},"12ded745-4bed-47d4-abaa-e713f51d6393":{"name":"Feitian AllinOne FIDO2 Authenticator"},"88bbd2f0-342a-42e7-9729-dd158be5407a":{"name":"Precision InnaIT Key FIDO 2 Level 2 certified"},"1d8cac46-47a1-3386-af50-e88ae46fe802":{"name":"Ledger Flex FIDO2 Authenticator"},"dd86a2da-86a0-4cbe-b462-4bd31f57bc6f":{"name":"YubiKey Bio Series - FIDO Edition"},"773c30d9-5919-4e96-a4f5-db65e95cf890":{"name":"GSTAG OAK FIDO2 Authenticator"},"34f5766d-1536-4a24-9033-0e294e510fb0":{"name":"YubiKey 5 Series with NFC Preview"},"83c47309-aabb-4108-8470-8be838b573cb":{"name":"YubiKey Bio Series - FIDO Edition (Enterprise Profile)"},"c1288a5c-d66b-495c-a68f-4e81f9ec5b53":{"name":"Deepnet SafeKey/Classic (FP) XF"},"4e2ddbc2-2687-4709-8551-cb66c9776bfe":{"name":"SECORA ID V2 FIDO2.1 L1"},"be727034-574a-f799-5c76-0929e0430973":{"name":"Crayonic KeyVault K1 (USB-NFC-BLE FIDO2 Authenticator)"},"092277e5-8437-46b5-b911-ea64b294acb7":{"name":"Taglio CTAP2.1 CS"},"ca87cb70-4c1b-4579-a8e8-4efdd7c007e0":{"name":"FIDO Alliance TruU Sample FIDO2 Authenticator"},"23195a52-62d9-40fa-8ee5-23b173f4fb52":{"name":"Hyper FIDO Pro NFC"},"ba0a9266-40d8-4048-9786-d710b5474752":{"name":"YubiKey Bio Multi-protocol Edition (Consumer Profile)"},"3e9db280-256a-4e17-b08e-19d79e9be166":{"name":"SECORA ID V2 by Infineon Pay Edition"},"a7fc3f84-86a3-4da4-a3d7-eb6485a066d8":{"name":"NEOWAVE Badgeo FIDO2 (CTAP 2.1)"},"8791f7dc-418b-4510-bbf5-3baf30715324":{"name":"Virtual FIDO2 authenticator for Linux-based systems"},"1f8e43df-71ff-e11d-bea3-c4ee7003b232":{"name":"Thetis Pro FIDO2 Key"},"3ec9c8d3-a5a7-415b-a7b5-f1d606368d3f":{"name":"YubiKey 5 CCN Series with NFC (Enterprise Profile)"},"9e66c661-e428-452a-a8fb-51f7ed088acf":{"name":"YubiKey 5 FIPS Series with Lightning (RC Preview)"},"58b44d0b-0a7c-f33a-fd48-f7153c871352":{"name":"Ledger Nano S Plus FIDO2 Authenticator"},"9a3f2abd-a73d-439c-9ee7-1b53a857eaa7":{"name":"YubiKey 5 Series with NFC Enhanced PIN (Enterprise Profile)"},"454e5346-4944-4ffd-6c93-8e9267193e9b":{"name":"Ensurity AUTH BioPro"},"41e39911-c669-4811-b860-c6ad0b411b96":{"name":"YubiKey 5 Series with NFC (Enterprise Profile)"},"146e77ef-11eb-4423-b847-ce77864e9411":{"name":"eToken Fusion NFC PIV"},"c1bee13f-f347-4f53-9cd4-e8a2f98ee008":{"name":"ZTPass SmartAuth FIPS"},"13ac47cf-1d78-4fd5-9060-aedaabacf826":{"name":"HID Crescendo Key V3 - Enterprise Edition"},"e77e3c64-05e3-428b-8824-0cbeb04b829d":{"name":"Security Key NFC by Yubico"},"33d6d7d0-279f-4ef3-96b3-2d3282f4bde6":{"name":"Thales eToken Fusion BIO Enterprise"},"8d4378b0-725d-4432-b3c2-01fcdaf46286":{"name":"VeridiumID Passkey Android SDK"},"7409272d-1ff9-4e10-9fc9-ac0019c124fd":{"name":"YubiKey Bio Series - FIDO Edition"},"bb66c294-de08-47e4-b7aa-d12c2cd3fb20":{"name":"Mettlesemi Vishwaas Hawk Authenticator using FIDO2"},"c4ddaf11-3032-4e77-b3b9-3a340369b9ad":{"name":"HID Crescendo Fusion"},"add92433-0d69-4026-8166-29b25bce64e9":{"name":"YubiKey Bio Fido Edition (Enterprise Profile)"},"7d1351a6-e097-4852-b8bf-c9ac5c9ce4a3":{"name":"YubiKey Bio Series - Multi-protocol Edition"},"07a9f89c-6407-4594-9d56-621d5f1e358b":{"name":"NXP Semiconductros FIDO2 Conformance Testing CTAP2 Authenticator"},"d61d3b87-3e7c-4aea-9c50-441c371903ad":{"name":"KeyVault Secp256R1 FIDO2 CTAP2 Authenticator"},"c62100de-759b-4bf8-b22b-63b3e3a80401":{"name":"Token Ring 3 FIDO2 Authenticator"},"5ca1ab1e-1337-fa57-f1d0-a117e71ca702":{"name":"Allthenticator iOS App: roaming BLE FIDO2 Allthenticator for Windows, Mac, Linux, and Allthenticate door readers"},"b92c3f9a-c014-4056-887f-140a2501163b":{"name":"Security Key by Yubico"},"54d9fee8-e621-4291-8b18-7157b99c5bec":{"name":"HID Crescendo Enabled"},"72a2b5b1-95a5-4df9-a881-4192aff4f72e":{"name":"GoTrust Idem Key mini"},"a25342c0-3cdc-4414-8e46-f4807fca511c":{"name":"YubiKey 5 Series with NFC"},"3a662962-c6d4-4023-bebb-98ae92e78e20":{"name":"YubiKey 5 FIPS Series with Lightning (Enterprise Profile)"},"20f0be98-9af9-986a-4b42-8eca4acb28e4":{"name":"Excelsecu eSecu FIDO2 Fingerprint Security Key"},"ca4cff1b-5a81-4404-8194-59aabcf1660b":{"name":"IDPrime 3930 FIDO"},"ab32f0c6-2239-afbb-c470-d2ef4e254db6":{"name":"TEST (DUMMY RECORD)"},"760eda36-00aa-4d29-855b-4012a182cdeb":{"name":"Security Key NFC by Yubico Preview"},"6028b017-b1d4-4c02-b4b3-afcdafc96bb2":{"name":"Windows Hello"},"b12eac35-586c-4809-a4b1-d81af6c305cf":{"name":"Deepnet SafeKey/Classic (NFC)"},"30b5035e-d297-4fc1-b00b-addc96ba6a97":{"name":"OneSpan FIDO Touch"},"560a780c-b6ae-4f03-b110-082f856425b4":{"name":"KQC QuKey Bio FIDO2 Authenticator"},"1ac71f64-468d-4fe0-bef1-0e5f2f551f18":{"name":"YubiKey 5 Series with NFC (Enterprise Profile)"},"6d44ba9b-f6ec-2e49-b930-0c8fe920cb73":{"name":"Security Key by Yubico with NFC"},"b68c4b8d-65cb-42ae-b4f6-8606dfba3c22":{"name":"IDEMIA SOLVO Fly 80 R3 FIDO Card for j"},"6832d205-75f2-44c7-a864-e868c796d06e":{"name":"Precision InnaIT Key FIDO 2 Level 2 certified"},"9eb85bb6-9625-4a72-815d-0487830ccab2":{"name":"Ensurity AUTH BioPro Desktop"},"30b5035e-d297-4ff7-010b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX7-B"},"5ca1ab1e-fa57-1337-f1d0-a117371ca702":{"name":"Allthenticator Android App: roaming BLE FIDO2 Allthenticator for Windows, Mac, Linux, and Allthenticate door readers"},"eabb46cc-e241-80bf-ae9e-96fa6d2975cf":{"name":"TOKEN2 PIN Plus Security Key Series "},"53414d53-554e-4700-0000-000000000000":{"name":"Samsung Pass","icon_light":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHZlcnNpb249IjEuMSIgd2lkdGg9IjUycHgiIGhlaWdodD0iNTJweCIgdmlld0JveD0iMCAwIDUyLjAgNTIuMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGRlZnM+PGNsaXBQYXRoIGlkPSJpMCI+PHBhdGggZD0iTTM2MCwwIEwzNjAsODAwIEwwLDgwMCBMMCwwIEwzNjAsMCBaIj48L3BhdGg+PC9jbGlwUGF0aD48Y2xpcFBhdGggaWQ9ImkxIj48cGF0aCBkPSJNMjYsMCBDMzMuOTkxMDI3OCwwIDQxLjEzOTU4MzMsMC45NzUgNDUuOTA4Nzc3OCw1Ljc3Nzc3Nzc4IEM0OS43MTAxOTQ0LDkuNjA1OTE2NjcgNTIsMTUuODY1MDU1NiA1MiwyNiBDNTIsMzYuMTM0OTQ0NCA0OS43MDk4MzMzLDQyLjM5NDQ0NDQgNDUuOTA4MDU1Niw0Ni4yMjI1ODMzIEM0MS4xMzg4NjExLDUxLjAyNDYzODkgMzMuOTkwMzA1Niw1MiAyNiw1MiBDMTguMDA4OTcyMiw1MiAxMC44NjA3Nzc4LDUxLjAyNDYzODkgNi4wOTE1ODMzMyw0Ni4yMjI1ODMzIEMyLjI5MDE2NjY3LDQyLjM5NDQ0NDQgMCwzNi4xMzQ5NDQ0IDAsMjYgQzAsMTUuODY1MDU1NiAyLjI4OTgwNTU2LDkuNjA1NTU1NTYgNi4wOTA4NjExMSw1Ljc3Nzc3Nzc4IEMxMC44NjAwNTU2LDAuOTc1IDE4LjAwODYxMTEsMCAyNiwwIFoiPjwvcGF0aD48L2NsaXBQYXRoPjxsaW5lYXJHcmFkaWVudCBpZD0iaTIiIHgxPSIyNnB4IiB5MT0iNTJweCIgeDI9IjI2cHgiIHkyPSIwLjE5NTkyMTE0OHB4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzI5MjlCMiIgb2Zmc2V0PSIwJSI+PC9zdG9wPjxzdG9wIHN0b3AtY29sb3I9IiMxQTQwQ0MiIG9mZnNldD0iMTAwJSI+PC9zdG9wPjwvbGluZWFyR3JhZGllbnQ+PGNsaXBQYXRoIGlkPSJpMyI+PHBhdGggZD0iTTM3LjE5NDQ0NDQsMCBMMzcuMTk0NDQ0NCw1LjcyMjIyMjIyIEwwLDUuNzIyMjIyMjIgTDAsMCBMMzcuMTk0NDQ0NCwwIFoiPjwvcGF0aD48L2NsaXBQYXRoPjxjbGlwUGF0aCBpZD0iaTQiPjxwYXRoIGQ9Ik0xLjg4MzQyMjEzLDAgQzIuNjIwNzU5ODcsMCAzLjY0MzU2NDAyLDAuMTgxNjEwODcxIDMuNjQzNTY0MDIsMS4zMjExMTgxOSBMMy42NDM1NjQwMiwxLjY4OTExNTYyIEwyLjM0Mjc5MzM5LDEuNjg5MTE1NjIgTDIuMzQyNzkzMzksMS4zNjQ5MDY1OSBDMi4zNDI3OTMzOSwxLjA3OTU3NTczIDIuMTYzMTk2NjQsMC44ODkxNTMzNzEgMS44NTgxNzY4LDAuODg5MTUzMzcxIEMxLjUyOTMxNzg4LDAuODg5MTUzMzcxIDEuNDE2NDgzOTgsMS4wNzUyNzA4OCAxLjM4MDg1OTI3LDEuMjQyMTUxMDkgQzEuMzY2Nzk2ODgsMS4zMDAyNjY1NyAxLjM2MDkwNDA4LDEuNDExNzIxODQgMS4zODYxNDk0MSwxLjUxNzI1NzkzIEMxLjUzNDYwODAyLDIuMTMwNDk3MyAzLjUxMjQ0OTAyLDIuNDU2MTE4ODcgMy43MzI1NTg4MywzLjU1NTUzNzI3IEMzLjc1MzcxOTM3LDMuNjY3MDU5OCAzLjgwMDc5NDg4LDMuOTYxMTM0ODggMy43MzgwNDk4Niw0LjQxMzAwOTYzIEMzLjYxMTgyMzIxLDUuMjg5NjUyMDMgMi44MzgwNTcyLDUuNjEyMTc5NDkgMS44OTU4MTA0Myw1LjYxMjE3OTQ5IEMwLjkxNTcyOTEzNiw1LjYxMjE3OTQ5IDAsNS4yNTk5ODg5MiAwLDQuMDg4ODAwNiBMMCwzLjY4ODI0NzczIEwxLjM5OTQwODIzLDMuNjg4MjQ3NzMgTDEuNDAxMjE2MjUsNC4xOTIzMTg3OSBDMS40MDEyMTYyNSw0LjQ3ODY1ODYgMS41OTYwODA3Myw0LjY2OTI4Mjc1IDEuOTIxODU5MzIsNC42NjkyODI3NSBDMi4yNzA3NDA0LDQuNjY5MjgyNzUgMi4zODgzOTU2OSw0LjQ5MTUwNTg5IDIuNDMxMTg1NTIsNC4zMTU0MTA2MSBDMi40NTYyMjk5Niw0LjIxNjM5OTA1IDIuNDcxNDk3NjksNC4wNTQ2MzA4NSAyLjQyMTAwNzAzLDMuOTI4NjQ2NzEgQzIuMTUxMzQ0MDYsMy4yNTA5NjkxMSAwLjI5NzkyMTY3NywyLjk0MTI4ODk1IDAuMDcyMTE5OTQ3MywxLjg3MDMyMjkyIEMwLjAxNzM0MzYwODUsMS42MDU2NDE4OSAwLjAyMzgzOTA5MTIsMS4zOTkwNzYzNCAwLjA2MTc0MDU2NzcsMS4xNjQyNjAyMSBDMC4yMDAyMjE1ODEsMC4zMDg4NzMwMDcgMC45NTcxMTI3MjcsMCAxLjg4MzQyMjEzLDAgWiBNMTguODQxMTE4NiwwLjAyOTY2MzEwODkgQzE5LjU3MDQ4NzcsMC4wMjk2NjMxMDg5IDIwLjU3Nzg5MDEsMC4yMDY5NjkxMjkgMjAuNTc3ODkwMSwxLjMzNTY0NzA2IEwyMC41Nzc4OTAxLDEuNzAwNzUyMTcgTDE5LjI5MjE4NjQsMS43MDA3NTIxNyBMMTkuMjkyMTg2NCwxLjM4MDQ0NDQxIEMxOS4yOTIxODY0LDEuMDk3NDAwNSAxOS4xMTU2MDMsMC45MDg3OTQyNSAxOC44MTQ0MDAxLDAuOTA4Nzk0MjUgQzE4LjQ5MTIzMzEsMC45MDg3OTQyNSAxOC4zNzkwNjg4LDEuMDkxNjE1ODYgMTguMzQxNzcsMS4yNTkzNzA0OSBDMTguMzI5NzgzNSwxLjMxNjgxMzM0IDE4LjMyMzA4NzEsMS40MjY2NTQyOCAxOC4zNDYyNTY2LDEuNTMwMTcyNDggQzE4LjQ5NDMxMzQsMi4xMzY0MTY0NyAyMC40NTAzOTEyLDIuNDYzMTE0MjUgMjAuNjY2MDE0NCwzLjU0OTIxNDUyIEMyMC42ODk2NTI2LDMuNjU5MDU1NDcgMjAuNzM0MDQ5NiwzLjk1MDcwOTA3IDIwLjY3NTE4ODUsNC4zOTg0MTM1IEMyMC41NTE3NzQzLDUuMjY1MTAwOTMgMTkuNzgyNDk0OSw1LjU4NDgwMzMzIDE4Ljg1MTA5NjIsNS41ODQ4MDMzMyBDMTcuODc4NTgxOCw1LjU4NDgwMzMzIDE2Ljk3NTY0MjgsNS4yMzU0Mzc4MyAxNi45NzU2NDI4LDQuMDc3NTAwMzcgTDE2Ljk3NTY0MjgsMy42Nzc4ODkxOSBMMTguMzU5NTE1NCwzLjY3Nzg4OTE5IEwxOC4zNTk5MTcyLDQuMTgwNjE0OTggQzE4LjM1OTkxNzIsNC40NjMwNTM1MiAxOC41NTUxODM0LDQuNjUwNDQ5MDMgMTguODc5NzU2Nyw0LjY1MDQ0OTAzIEMxOS4yMjU3NTgzLDQuNjUwNDQ5MDMgMTkuMzQyNDc2MSw0LjQ3NTE2MDkxIDE5LjM4MjM4NjUsNC4zMDA4ODE3NCBDMTkuNDA2MzU5NSw0LjIwNTU2OTY2IDE5LjQxOTgxOTIsNC4wNDM4MDE0NiAxOS4zNzI4MTA3LDMuOTE2OTQyOSBDMTkuMTA2NDI4OSwzLjI0NzI2OTYzIDE3LjI3MTE1MzcsMi45NDAwNzgyMSAxNy4wNDc3NjI3LDEuODgxMTUyMyBDMTYuOTkwMTA2OSwxLjYxOTM2MzYgMTYuOTk5MDgwMSwxLjQxNDIxMDU4IDE3LjAzNTMwNzQsMS4xODMwOTM5MyBDMTcuMTcyMzE1MywwLjMzMzgyNzY4NiAxNy45MjI1MSwwLjAyOTY2MzEwODkgMTguODQxMTE4NiwwLjAyOTY2MzEwODkgWiBNMjMuMjM2NDg0NSwwLjE2Njg4MDIxMSBMMjMuMjM2MjI5MSw0LjExMTM3MzY2IEMyMy4yMzcyMDYzLDQuMTU3OTg0NjIgMjMuMjQwODgxOCw0LjIwNDA2NzQ1IDIzLjI0OTY3NjQsNC4yNDExNTE5NCBDMjMuMjc1MTIyNiw0LjM3MTIzOTEzIDIzLjM4Nzc1NTYsNC42MjE1OTMwOCAyMy43NDY5NDkxLDQuNjIxNTkzMDggQzI0LjExMDgzMDEsNC42MjE1OTMwOCAyNC4yMjA1ODM2LDQuMzcxMjM5MTMgMjQuMjQ4MTA1Nyw0LjI0MTE1MTk0IEMyNC4yNTk2OTA1LDQuMTg1NTI1MiAyNC4yNjE3NjYzLDQuMTA5NjUyMjIgMjQuMjU5NjkwNSw0LjA0MjExOTg4IEwyNC4yNTk2OTA1LDAuMTY2ODgwMjExIEwyNS41Nzg2MDgzLDAuMTY2ODgwMjExIEwyNS41Nzg2MDgzLDMuOTIxODUzMTIgQzI1LjU4NDMwMDIsNC4wMTg2NDQ5OSAyNS41NzQ3MjQ0LDQuMjE2Mzk5MDUgMjUuNTY3NDI1Myw0LjI2ODE5MTc4IEMyNS40NzQ3NDc1LDUuMjQ2NjcwNzkgMjQuNzA3NDc3LDUuNTY0MzU1MjkgMjMuNzQ2OTQ5MSw1LjU2NDM1NTI5IEMyMi43ODgyOTYyLDUuNTY0MzU1MjkgMjIuMDIwNTU3LDUuMjQ2NjcwNzkgMjEuOTI5NTUzMiw0LjI2ODE5MTc4IEMyMS45MjM4NjEzLDQuMjE2Mzk5MDUgMjEuOTE2Mjk0NCw0LjAxODY0NDk5IDIxLjkxNzk2ODUsMy45MjE4NTMxMiBMMjEuOTE3OTY4NSwwLjE2Njg4MDIxMSBMMjMuMjM2NDg0NSwwLjE2Njg4MDIxMSBaIE0zNC42Mjk3NjIxLDAuMDI1OTYzNjI4MiBDMzUuNTUzOTk1NiwwLjAyNTk2MzYyODIgMzYuMzYwMDM4MiwwLjMzNjg1NDUzNCAzNi40NTg3NDI3LDEuMzE5NTAzODcgQzM2LjQ2NTU3MywxLjM5MTE5NjkyIDM2LjQ2ODM4MTQsMS40NjUxMTM3OCAzNi40NjkzNjA3LDEuNTI2MTgwMjIgTDM2LjQ2OTAwNCwxLjY1NTc1NDAyIEwzNi40Njg3MjAzLDEuNjY2MTc4ODQgTDM2LjQ2ODcyMDMsMS44MzgwMzY1NCBMMzUuMTU1MzYwNSwxLjgzODAzNjU0IEwzNS4xNTUxNSwxLjUzMzU1NTU2IEMzNS4xNTQ0NDcxLDEuNDk4NzMzNjIgMzUuMTUxNDksMS40MDU2NDEyMyAzNS4xMzk0OTAxLDEuMzQ1MjY1NzEgQzM1LjExNjY1NTUsMS4yMzEzMjE3IDM1LjAxNzA4MDQsMC45NjYwMzUzMDYgMzQuNjE4MTc3NCwwLjk2NjAzNTMwNiBDMzQuMjM4MTU4MiwwLjk2NjAzNTMwNiAzNC4xMjU1OTIxLDEuMjE3NTk5OTkgMzQuMDk5Njc3MiwxLjM0NTI2NTcxIEMzNC4wODE3OTc4LDEuNDE1NDIxMzIgMzQuMDc2MTA1OSwxLjUwODExMDEyIDM0LjA3NjEwNTksMS41OTI3OTQ2IEwzNC4wNzYxMDU5LDMuOTg2ODk2NzIgQzM0LjA3NjEwNTksNC4wNTQ2MzA4NSAzNC4wODAxOTA3LDQuMTI3NjExNTEgMzQuMDg5NzY2NSw0LjE4NjEzMDU3IEMzNC4xMTI1MzQyLDQuMzI3NTE4IDM0LjI0Mzg1MDEsNC41NjgyNTMzIDM0LjYyMDk4OTksNC41NjgyNTMzIEMzNS4wMDA0MDY0LDQuNTY4MjUzMyAzNS4xMzQxMzMsNC4zMjc1MTggMzUuMTU1MzYwNSw0LjE4NjEzMDU3IEMzNS4xNjY5NDUyLDQuMTI3NjExNTEgMzUuMTcwNjI4Miw0LjA1NDYzMDg1IDM1LjE2ODk1NDEsMy45ODY4OTY3MiBMMzUuMTY4OTU0MSwzLjIyODkwNjc2IEwzNC42MzQ0NDk2LDMuMjI4OTA2NzYgTDM0LjYzNDQ0OTYsMi40NjQ5MzAzNiBMMzYuNDc5MTY2NywyLjQ2NDkzMDM2IEwzNi40NzkxNjY3LDMuODY4NTEzMzQgQzM2LjQ3NzA5MDgsMy45NjQ0MzA3OCAzNi40NzU0ODM3LDQuMDM4Njg5NDUgMzYuNDYwMDE1LDQuMjEzOTc3NTcgQzM2LjM3MjgyODIsNS4xNjk1ODcwNyAzNS41NTM5OTU2LDUuNTA4MzI0OTcgMzQuNjI2MDc5MSw1LjUwODMyNDk3IEMzMy43MDM4NTQ1LDUuNTA4MzI0OTcgMzIuODc5MzMsNS4xNjk1ODcwNyAzMi43OTM2MTY0LDQuMjEzOTc3NTcgQzMyLjc3NTkzOCw0LjAzODY4OTQ1IDMyLjc3Mjg1NzYsMy45NjQ0MzA3OCAzMi43NzI4NTc2LDMuODY4NTEzMzQgTDMyLjc3Mjg1NzYsMS42NjYxNzg4NCBDMzIuNzcyODU3NiwxLjU3MDI2MTQgMzIuNzg4NzI4LDEuNDA5MDk4NTcgMzIuNzk5MTA3NCwxLjMxOTUwMzg3IEMzMi45MTQxNTExLDAuMzM5NzQ2ODU1IDMzLjcwMzg1NDUsMC4wMjU5NjM2MjgyIDM0LjYyOTc2MjEsMC4wMjU5NjM2MjgyIFogTTEyLjE0NDc0NDcsMC4xNjY4ODAyMTEgTDEyLjgwMjI2MTYsNC4yNjE1OTk5OCBMMTMuNDYwMTgwNCwwLjE2Njg4MDIxMSBMMTUuNTg1Mjc0NiwwLjE2Njg4MDIxMSBMMTUuNzAxOTI1NSw1LjQwNTIxMDM2IEwxNC4zOTUyNjIsNS40MDUyMTAzNiBMMTQuMzU5ODM4MiwwLjU1NTkzMTA1NCBMMTMuNDYyMjU2Miw1LjQwNTIxMDM2IEwxMi4xMzk4NTYzLDUuNDA1MjEwMzYgTDExLjI0MzA3NzksMC41NTU5MzEwNTQgTDExLjIwNzc4OCw1LjQwNTIxMDM2IEw5LjkwNDQwNTgsNS40MDUyMTAzNiBMMTAuMDE3MjM5NywwLjE2Njg4MDIxMSBMMTIuMTQ0NzQ0NywwLjE2Njg4MDIxMSBaIE03LjkwMTI1MjUsMC4xNjY4ODAyMTEgTDguODYzMjUzNTgsNS40MDUyMTAzNiBMNy40NjQzMTQxLDUuNDA1MjEwMzYgTDYuNzUzODI4ODMsMC41NTU5MzEwNTQgTDYuMDI1ODY2MDIsNS40MDUyMTAzNiBMNC42MTcxNDk4Myw1LjQwNTIxMDM2IEw1LjU4MzE2ODczLDAuMTY2ODgwMjExIEw3LjkwMTI1MjUsMC4xNjY4ODAyMTEgWiBNMjguMzA0ODM2LDUuMzUwNTkyNTcgTDI3LjAyNDYyMzMsNS4zNTA1OTI1NyBMMjcuMDI0NjIzMywwLjE2Njg4MDIxMSBMMjguOTU5ODc1MywwLjE2Njg4MDIxMSBMMzAuMTg3OTkwMyw0LjM4NDM1NTQ3IEwzMC4xMTY4NzQ4LDAuMTY2ODgwMjExIEwzMS40MDU0NTgxLDAuMTY2ODgwMjExIEwzMS40MDU0NTgxLDUuMzUwNTkyNTcgTDI5LjU0OTQyNDEsNS4zNTA1OTI1NyBMMjguMjMsMC45OTkgTDI4LjMwNDgzNiw1LjM1MDU5MjU3IFoiPjwvcGF0aD48L2NsaXBQYXRoPjxjbGlwUGF0aCBpZD0iaTUiPjxwYXRoIGQ9Ik0yNC4zMzUyOTY2LDIuNDcwMDY0MzIgQzI1LjMwOTY1MDIsMi40NzAwNjQzMiAyNi4xMjEzMjMsMi42NTY2MDU2NCAyNi43NjkyNzY4LDMuMDI4OTczNTYgQzI3LjQxNzIzMDUsMy40MDE2OTg4MyAyNy45Mjk1MDE3LDMuOTA4NDMzNjcgMjguMzA2MDkwMiw0LjU1MDI1MDE1IEwyNi4zOTU0NTczLDUuNDgyNTk5MzcgQzI2LjE5NjA4NjksNS4xNDYzMjQ3IDI1LjkxOTE4MzYsNC44ODAwOTIzNiAyNS41NjQ3NDczLDQuNjg0NjE3MDggQzI1LjIxMDMxMTEsNC40ODkxNDE3OSAyNC44MDA0OTQyLDQuMzkxMjI1NDcgMjQuMzM1Mjk2Niw0LjM5MTIyNTQ3IEMyMy44MDM2NDIyLDQuMzkxMjI1NDcgMjMuNDEwNDM5NSw0LjQ5NDg1OTUzIDIzLjE1NTY4ODUsNC43MDIxMjc2NiBDMjIuOTAwNTkxMyw0LjkwOTM5NTc5IDIyLjc3MzU2MTksNS4xNDk1NDA5MyAyMi43NzM1NjE5LDUuNDIyMjA1NzMgQzIyLjc3MzU2MTksNS43Mzg0NjgzMSAyMi45NjE4NTYyLDUuOTY1MDMzODEgMjMuMzM4NDQ0Nyw2LjEwMDgzMDE3IEMyMy43MTQ2ODcsNi4yMzczNDEyNSAyNC4yNjg4Mzk4LDYuMzgyMDcxNTggMjQuOTk5ODY0Niw2LjUzNDY2MzgxIEMyNS4zOTg2MDU0LDYuNjExMTM4NiAyNS43OTk3NjksNi43MTE1NTY0NCAyNi4yMDQzOTQsNi44MzczNDY3NSBDMjYuNjA4NjcyOSw2Ljk2Mjc3OTcgMjYuOTc2OTU0Myw3LjEzMTgxMDQzIDI3LjMwOTIzODMsNy4zNDQ3OTYzMSBDMjcuNjQxNTIyMiw3LjU1NzQyNDgyIDI3LjkxMDExODUsNy44Mjk3MzIyNiAyOC4xMTUwMjY5LDguMTYyNzkwNyBDMjguMzE5OTM1NCw4LjQ5NTQ5MTc4IDI4LjQyMjM4OTYsOC45MTI1Mjk1NSAyOC40MjIzODk2LDkuNDE0MjYxMzcgQzI4LjQyMjM4OTYsOS43NTIzMjI4MyAyOC4zNDQ4NTY3LDEwLjEwNDMyMTMgMjguMTg5NzkwOCwxMC40Njk1NDIgQzI4LjAzNDM3ODgsMTAuODM0NzYyOCAyNy43OTM4MTkxLDExLjE3MzE4MTYgMjcuNDY3MDczMSwxMS40ODM3MjY0IEMyNy4xNDAzMjcyLDExLjc5NDk4NiAyNi43Mjc3NDEzLDEyLjA0ODM1MzQgMjYuMjI5MzE1MywxMi4yNDQ1NDM0IEMyNS43MzA4ODkzLDEyLjQ0MTA5MDggMjUuMTMyNzc4MiwxMi41MzkwMDcxIDI0LjQzNDk4MTgsMTIuNTM5MDA3MSBDMjMuMzYwNTk2OSwxMi41MzkwMDcxIDIyLjQ2ODk2ODIsMTIuMzMyODExIDIxLjc2MDA5NTcsMTEuOTIwMDYxNiBDMjEuMDUxMjIzMywxMS41MDY5NTQ4IDIwLjUwMjk1NDcsMTAuOTEwNTIyOCAyMC4xMTUyOSwxMC4xMzAwNTExIEwyMi4xOTIwNjQ5LDkuMTY1MTgyMjUgQzIyLjQyNDY2MzcsOS42MDQ3MzM2MyAyMi43NDAzMzM1LDkuOTQyNDM3NzQgMjMuMTM5MDc0MywxMC4xNzg2NTE5IEMyMy41Mzc4MTUxLDEwLjQxNDUwODggMjQuMDAzMDEyNiwxMC41MzIwNzk4IDI0LjUzNDY2NywxMC41MzIwNzk4IEMyNS4wODg0NzM2LDEwLjUzMjA3OTggMjUuNTAzODI4NiwxMC40MTc3MjUgMjUuNzgwNzMxOSwxMC4xODkwMTUzIEMyNi4wNTcyODkxLDkuOTU5OTQ4MzIgMjYuMTk2MDg2OSw5LjY4NzY0MDg4IDI2LjE5NjA4NjksOS4zNzEwMjA5NSBDMjYuMTk2MDg2OSw5LjE5NjYyOTgzIDI2LjEzMjM5OTIsOS4wNTUxMTU3MyAyNi4wMDUwMjM2LDguOTQ1NzYzOTIgQzI1Ljg3NzY0ODEsOC44MzcxMjY4MyAyNS43MTE1MDYxLDguNzQxMzU0NjYgMjUuNTA2NTk3Niw4LjY1OTg3Njg1IEMyNS4zMDEzNDMxLDguNTc4MDQxNjcgMjUuMDYwNzgzMyw4LjUxMDE0MzQ5IDI0Ljc4Mzg4LDguNDU1MTEwMjMgQzI0LjUwNjk3NjcsOC40MDA3OTE2OSAyNC4yMTg5OTcyLDguMzQwNzU1NCAyMy45MTk5NDE2LDguMjc1MzU4NzMgQzIzLjQ5ODcwMjUsOC4xODgxNjMxOCAyMy4wODY0NjI2LDguMDg0ODg2NDcgMjIuNjgyMTgzOCw3Ljk2NDgxMzkgQzIyLjI3NzkwNSw3Ljg0NTA5ODY5IDIxLjkxNTE2MTYsNy42Nzg1Njk0NyAyMS41OTM5NTM4LDcuNDY2Mjk4MzEgQzIxLjI3Mjc0NTksNy4yNTMzMTI0NCAyMS4wMTI0NTY4LDYuOTgwNjQ3NjQgMjAuODEzMDg2NCw2LjY0ODMwMzkyIEMyMC42MTM3MTYsNi4zMTU5NjAyIDIwLjUxNDAzMDgsNS44OTg5MjI0MyAyMC41MTQwMzA4LDUuMzk3NTQ3OTcgQzIwLjUxNDAzMDgsNS4wMTU1MzEzNyAyMC42MDU0MDg5LDQuNjQ3ODA5MTIgMjAuNzg4MTY1MSw0LjI5MzY2NjUgQzIwLjk3MDkyMTMsMy45MzkxNjY1MyAyMS4yMjg0NDE0LDMuNjI2MTIwMTggMjEuNTYwNzI1NCwzLjM1MzA5ODAzIEMyMS44OTMwMDkzLDMuMDgwNzkwNTkgMjIuMjk0MTczLDIuODY1NjYwNTYgMjIuNzY1MjU0OCwyLjcwNzM1MDYgQzIzLjIzNTk5MDQsMi41NDkwNDA2MyAyMy43NTkzMzc3LDIuNDcwMDY0MzIgMjQuMzM1Mjk2NiwyLjQ3MDA2NDMyIFogTTMzLjEwNzM1MTUsMi40NzAwNjQzMiBDMzQuMDgxNzA1LDIuNDcwMDY0MzIgMzQuODkzMzc3OSwyLjY1NjYwNTY0IDM1LjU0MTMzMTYsMy4wMjg5NzM1NiBDMzYuMTg5Mjg1NCwzLjQwMTY5ODgzIDM2LjcwMTU1NjUsMy45MDg0MzM2NyAzNy4wNzgxNDUxLDQuNTUwMjUwMTUgTDM1LjE2NzUxMjIsNS40ODI1OTkzNyBDMzQuOTY4MTQxOCw1LjE0NjMyNDcgMzQuNjkxMjM4NCw0Ljg4MDA5MjM2IDM0LjMzNjgwMjIsNC42ODQ2MTcwOCBDMzMuOTgyMzY1OSw0LjQ4OTE0MTc5IDMzLjU3MjU0OSw0LjM5MTIyNTQ3IDMzLjEwNzM1MTUsNC4zOTEyMjU0NyBDMzIuNTc1Njk3MSw0LjM5MTIyNTQ3IDMyLjE4MjQ5NDQsNC40OTQ4NTk1MyAzMS45Mjc3NDMzLDQuNzAyMTI3NjYgQzMxLjY3MjY0NjEsNC45MDkzOTU3OSAzMS41NDU2MTY3LDUuMTQ5NTQwOTMgMzEuNTQ1NjE2Nyw1LjQyMjIwNTczIEMzMS41NDU2MTY3LDUuNzM4NDY4MzEgMzEuNzMzOTExLDUuOTY1MDMzODEgMzIuMTEwNDk5NSw2LjEwMDgzMDE3IEMzMi40ODY3NDE5LDYuMjM3MzQxMjUgMzMuMDQwODk0Nyw2LjM4MjA3MTU4IDMzLjc3MTkxOTQsNi41MzQ2NjM4MSBDMzQuMTcwNjYwMiw2LjYxMTEzODYgMzQuNTcxODIzOSw2LjcxMTU1NjQ0IDM0Ljk3NjQ0ODksNi44MzczNDY3NSBDMzUuMzgwNzI3Nyw2Ljk2Mjc3OTcgMzUuNzQ5MDA5MSw3LjEzMTgxMDQzIDM2LjA4MTI5MzEsNy4zNDQ3OTYzMSBDMzYuNDEzNTc3MSw3LjU1NzQyNDgyIDM2LjY4MjE3MzMsNy44Mjk3MzIyNiAzNi44ODcwODE4LDguMTYyNzkwNyBDMzcuMDkxOTkwMiw4LjQ5NTQ5MTc4IDM3LjE5NDQ0NDQsOC45MTI1Mjk1NSAzNy4xOTQ0NDQ0LDkuNDE0MjYxMzcgQzM3LjE5NDQ0NDQsOS43NTIzMjI4MyAzNy4xMTY5MTE1LDEwLjEwNDMyMTMgMzYuOTYxODQ1NywxMC40Njk1NDIgQzM2LjgwNjQzMzcsMTAuODM0NzYyOCAzNi41NjU4NzM5LDExLjE3MzE4MTYgMzYuMjM5MTI4LDExLjQ4MzcyNjQgQzM1LjkxMjM4MjEsMTEuNzk0OTg2IDM1LjQ5OTc5NjEsMTIuMDQ4MzUzNCAzNS4wMDEzNzAyLDEyLjI0NDU0MzQgQzM0LjUwMjk0NDIsMTIuNDQxMDkwOCAzMy45MDQ4MzMsMTIuNTM5MDA3MSAzMy4yMDcwMzY3LDEyLjUzOTAwNzEgQzMyLjEzMjY1MTgsMTIuNTM5MDA3MSAzMS4yNDEwMjMxLDEyLjMzMjgxMSAzMC41MzIxNTA2LDExLjkyMDA2MTYgQzI5LjgyMzI3ODEsMTEuNTA2OTU0OCAyOS4yNzUwMDk1LDEwLjkxMDUyMjggMjguODg3MzQ0OSwxMC4xMzAwNTExIEwzMC45NjQxMTk4LDkuMTY1MTgyMjUgQzMxLjE5NjcxODYsOS42MDQ3MzM2MyAzMS41MTIzODgzLDkuOTQyNDM3NzQgMzEuOTExMTI5MSwxMC4xNzg2NTE5IEMzMi4zMDk4Njk5LDEwLjQxNDUwODggMzIuNzc1MDY3NSwxMC41MzIwNzk4IDMzLjMwNjcyMTgsMTAuNTMyMDc5OCBDMzMuODYwNTI4NSwxMC41MzIwNzk4IDM0LjI3NTg4MzUsMTAuNDE3NzI1IDM0LjU1Mjc4NjgsMTAuMTg5MDE1MyBDMzQuODI5MzQ0LDkuOTU5OTQ4MzIgMzQuOTY4MTQxOCw5LjY4NzY0MDg4IDM0Ljk2ODE0MTgsOS4zNzEwMjA5NSBDMzQuOTY4MTQxOCw5LjE5NjYyOTgzIDM0LjkwNDQ1NCw5LjA1NTExNTczIDM0Ljc3NzA3ODUsOC45NDU3NjM5MiBDMzQuNjQ5NzAyOSw4LjgzNzEyNjgzIDM0LjQ4MzU2MSw4Ljc0MTM1NDY2IDM0LjI3ODY1MjUsOC42NTk4NzY4NSBDMzQuMDczMzk3OSw4LjU3ODA0MTY3IDMzLjgzMjgzODIsOC41MTAxNDM0OSAzMy41NTU5MzQ4LDguNDU1MTEwMjMgQzMzLjI3OTAzMTUsOC40MDA3OTE2OSAzMi45OTEwNTIxLDguMzQwNzU1NCAzMi42OTE5OTY1LDguMjc1MzU4NzMgQzMyLjI3MDc1NzMsOC4xODgxNjMxOCAzMS44NTg1MTc1LDguMDg0ODg2NDcgMzEuNDU0MjM4Niw3Ljk2NDgxMzkgQzMxLjA0OTk1OTgsNy44NDUwOTg2OSAzMC42ODcyMTY1LDcuNjc4NTY5NDcgMzAuMzY2MDA4Niw3LjQ2NjI5ODMxIEMzMC4wNDQ4MDA4LDcuMjUzMzEyNDQgMjkuNzg0NTExNiw2Ljk4MDY0NzY0IDI5LjU4NTE0MTIsNi42NDgzMDM5MiBDMjkuMzg1NzcwOSw2LjMxNTk2MDIgMjkuMjg2MDg1Nyw1Ljg5ODkyMjQzIDI5LjI4NjA4NTcsNS4zOTc1NDc5NyBDMjkuMjg2MDg1Nyw1LjAxNTUzMTM3IDI5LjM3NzQ2MzgsNC42NDc4MDkxMiAyOS41NjAyMTk5LDQuMjkzNjY2NSBDMjkuNzQyOTc2MSwzLjkzOTE2NjUzIDMwLjAwMDQ5NjIsMy42MjYxMjAxOCAzMC4zMzI3ODAyLDMuMzUzMDk4MDMgQzMwLjY2NTA2NDIsMy4wODA3OTA1OSAzMS4wNjYyMjc5LDIuODY1NjYwNTYgMzEuNTM3MzA5NiwyLjcwNzM1MDYgQzMyLjAwODA0NTMsMi41NDkwNDA2MyAzMi41MzEzOTI2LDIuNDcwMDY0MzIgMzMuMTA3MzUxNSwyLjQ3MDA2NDMyIFogTTEzLjc3MzIwNTcsMi40NzAwMjg1OSBDMTQuNDE1NjIxNCwyLjQ3MDAyODU5IDE1LjAwODE5NDUsMi41OTAxMDExNiAxNS41NTA5MjUsMi44Mjk1MzE1OSBDMTYuMDkzMzA5NCwzLjA2OTY3NjczIDE2LjU0MjIzODksMy4zOTY2NjAwNyAxNi44OTY2NzUxLDMuODEwODM4OTcgTDE2Ljg5NjY3NTEsMi40ODcxODE4MSBMMTkuMTM5NTkyLDIuNDg3MTgxODEgTDE5LjEzOTU5MiwxMi41MjE4MTgxIEwxNi44OTY2NzUxLDEyLjUyMTgxODEgTDE2Ljg5NjY3NTEsMTEuMDk1OTU2MyBDMTYuNTQyMjM4OSwxMS41NDQwODQzIDE2LjA4ODExNzQsMTEuODk2Nzk3NSAxNS41MzQzMTA4LDEyLjE1MzczODUgQzE0Ljk4MDUwNDIsMTIuNDEwNjc5NSAxNC4zODIzOTMsMTIuNTM4OTcxNCAxMy43Mzk5NzczLDEyLjUzODk3MTQgQzEzLjE1Mjk0MjMsMTIuNTM4OTcxNCAxMi41NzQyMTQzLDEyLjQyNjQwMzMgMTIuMDAzNzkzNSwxMi4yMDA1NTI1IEMxMS40MzMzNzI2LDExLjk3NDM0NDQgMTAuOTIxMTAxNSwxMS42NDYyODkgMTAuNDY2OTgwMSwxMS4yMTYzODYzIEMxMC4wMTI4NTg2LDEwLjc4NjQ4MzYgOS42NDcwMDAxMSwxMC4yNjAwOTQgOS4zNzA0NDI5Miw5LjYzNzU3NDkxIEM5LjA5MzUzOTYsOS4wMTQ2OTg0NCA4Ljk1NTA4Nzk0LDguMzA2NDEzMjIgOC45NTUwODc5NCw3LjUxMzA3NjU4IEM4Ljk1NTA4Nzk0LDYuNzA4MzA0NDcgOS4wOTA0MjQ0NCw1Ljk5NTAxNjIyIDkuMzYyMTM1ODIsNS4zNzE3ODI0IEM5LjYzMzUwMTA3LDQuNzQ4OTA1OTMgOS45OTM0NzUzOSw0LjIyMjg3MzcxIDEwLjQ0MjA1ODgsMy43OTI5NzEwMyBDMTAuODkwNjQyMSwzLjM2MjcxMDk4IDExLjQwNTY4MjMsMy4wMzUwMTI5MiAxMS45ODcxNzkzLDIuODA5NTE5NDkgQzEyLjU2ODY3NjMsMi41ODMzMTEzNCAxMy4xNjQwMTg0LDIuNDcwMDI4NTkgMTMuNzczMjA1NywyLjQ3MDAyODU5IFogTTQuMTUzNTQ5NzgsMCBDNC43ODQ4ODkzNSwwIDUuMzY2Mzg2MzIsMC4xMTcyMTM3MDEgNS44OTgwNDA2OSwwLjM1MTk5ODQ2MSBDNi40Mjk2OTUwNiwwLjU4NjQyNTg2MiA2Ljg4OTAwODQ0LDAuOTAzNDAzMTU2IDcuMjc3MDE5MjIsMS4zMDQwMDI0MiBDNy42NjQ2ODM4NiwxLjcwNDI0NDMyIDcuOTY4OTMxMzgsMi4xNzU5NTggOC4xOTA4MDAxNywyLjcxOTE0MzQ0IEM4LjQxMjMyMjgyLDMuMjYxOTcxNTIgOC41MjMwODQxNSwzLjg0MjMyMjI4IDguNTIzMDg0MTUsNC40NjAxOTU3MiBDOC41MjMwODQxNSw1LjA3NzM1NDQ0IDguNDEyMzIyODIsNS42NjA1NjQwOCA4LjE5MDgwMDE3LDYuMjA5NDY3MjYgQzcuOTY4OTMxMzgsNi43NTgzNzA0NCA3LjY2NDY4Mzg2LDcuMjMyOTQyOTkgNy4yNzcwMTkyMiw3LjYzMzU0MjI1IEM2Ljg4OTAwODQ0LDguMDMzNzg0MTYgNi40MjY5MjYwMyw4LjM1MTExODgxIDUuODg5NzMzNTksOC41ODUxODg4NSBDNS4zNTIxOTUwMiw4LjgxOTYxNjI1IDQuNzY4Mjc1MTUsOC45MzY4Mjk5NSA0LjEzNjkzNTU4LDguOTM2ODI5OTUgTDIuMjU5NTMxMDgsOC45MzY4Mjk5NSBMMi4yNTk1MzEwOCwxMi41MjE4NTM5IEwwLDEyLjUyMTg1MzkgTDAsMCBMNC4xNTM1NDk3OCwwIFogTTE0LjEwNTQ4OTcsNC41ODAyMzI1NiBDMTMuNjk1NjcyOCw0LjU4MDIzMjU2IDEzLjMxMDc3NzEsNC42NTU2MzUyNyAxMi45NTA4MDI4LDQuODA1NzI1OTkgQzEyLjU5MDgyODUsNC45NTU4MTY3IDEyLjI3NzkyNzgsNS4xNjAyMjU5NiAxMi4wMTIxMDA2LDUuNDE3NTI0MzMgQzExLjc0NjI3MzQsNS42NzU1Mzc0MSAxMS41Mzg1OTU5LDUuOTgxNzkzOTQgMTEuMzg5MDY4MSw2LjMzNjI5MzkxIEMxMS4yMzk1NDAzLDYuNjkwNzkzODkgMTEuMTY0Nzc2NCw3LjA3MTczODQxIDExLjE2NDc3NjQsNy40ODAxOTk1NyBDMTEuMTY0Nzc2NCw3Ljg4ODMwMzM3IDExLjIzOTU0MDMsOC4yNzI0NjQxMyAxMS4zODkwNjgxLDguNjMxOTY3MTIgQzExLjUzODU5NTksOC45OTE0NzAxMiAxMS43NDYyNzM0LDkuMzAyNzI5NjcgMTIuMDEyMTAwNiw5LjU2NjQ2MDUgQzEyLjI3NzkyNzgsOS44Mjk0NzY2MSAxMi41OTA4Mjg1LDEwLjAzNjAzIDEyLjk1MDgwMjgsMTAuMTg2ODM1NCBDMTMuMzEwNzc3MSwxMC4zMzY5MjYyIDEzLjY5NTY3MjgsMTAuNDExOTcxNSAxNC4xMDU0ODk3LDEwLjQxMTk3MTUgQzE0LjUyNjM4MjcsMTAuNDExOTcxNSAxNC45MTM3MDEyLDEwLjMzNjkyNjIgMTUuMjY4NDgzNiwxMC4xODY4MzU0IEMxNS42MjI5MTk5LDEwLjAzNjAzIDE1LjkyNzE2NzQsOS44MjY2MTc3NCAxNi4xODIyNjQ2LDkuNTU3ODgzODkgQzE2LjQzNzAxNTYsOS4yODk1MDczOSAxNi42MzkxNTUsOC45Nzc4OTA0OCAxNi43ODg2ODI4LDguNjIzNzQ3ODcgQzE2LjkzODIxMDYsOC4yNjk2MDUyNiAxNy4wMTI5NzQ1LDcuODg4MzAzMzcgMTcuMDEyOTc0NSw3LjQ4MDE5OTU3IEMxNy4wMTI5NzQ1LDcuMDgyODE2NTQgMTYuOTM4MjEwNiw2LjcwNjg3NTAzIDE2Ljc4ODY4MjgsNi4zNTIzNzUwNiBDMTYuNjM5MTU1LDUuOTk3ODc1MDkgMTYuNDM3MDE1Niw1LjY4OTExNzA1IDE2LjE4MjI2NDYsNS40MjYxMDA5NCBDMTUuOTI3MTY3NCw1LjE2MjcyNzQ3IDE1LjYyMjkxOTksNC45NTU4MTY3IDE1LjI2ODQ4MzYsNC44MDU3MjU5OSBDMTQuOTEzNzAxMiw0LjY1NTYzNTI3IDE0LjUyNjM4MjcsNC41ODAyMzI1NiAxNC4xMDU0ODk3LDQuNTgwMjMyNTYgWiBNMy45ODc0MDc3OSwyLjE2MTMwNjI4IEwyLjI1OTUzMTA4LDIuMTYxMzA2MjggTDIuMjU5NTMxMDgsNi43NzU1MjM2NyBMMy45ODc0MDc3OSw2Ljc3NTUyMzY3IEM0LjMxOTY5MTc3LDYuNzc1NTIzNjcgNC42MjQyODU0Miw2LjcxNTQ4NzM4IDQuOTAxMTg4NzQsNi41OTU0MTQ4MSBDNS4xNzc3NDU5Myw2LjQ3NTM0MjI0IDUuNDE2MjI4OTIsNi4zMDk1Mjc3NCA1LjYxNTU5OTMsNi4wOTgzMjg2NiBDNS44MTQ5Njk2OSw1Ljg4Njc3MjIyIDUuOTcwMDM1NTUsNS42NDA1NTE5OCA2LjA4MDc5Njg4LDUuMzYwMzgyNjUgQzYuMTkxMjEyMDgsNS4wODA1NzA2NyA2LjI0NjkzODg3LDQuNzgwMDMxODkgNi4yNDY5Mzg4Nyw0LjQ2MDE5NTcyIEM2LjI0NjkzODg3LDQuMTM5NjQ0ODQgNi4xOTEyMTIwOCwzLjgzOTQ2MzQxIDYuMDgwNzk2ODgsMy41NTkyOTQwOCBDNS45NzAwMzU1NSwzLjI3OTEyNDc1IDUuODE0OTY5NjksMy4wMzYxMjA3MyA1LjYxNTU5OTMsMi44MzAyODIwNCBDNS40MTYyMjg5MiwyLjYyNDQ0MzM0IDUuMTc3NzQ1OTMsMi40NjE0ODc3MSA0LjkwMTE4ODc0LDIuMzQxNDE1MTQgQzQuNjI0Mjg1NDIsMi4yMjEzNDI1NyA0LjMxOTY5MTc3LDIuMTYxMzA2MjggMy45ODc0MDc3OSwyLjE2MTMwNjI4IFoiPjwvcGF0aD48L2NsaXBQYXRoPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjMzLjAgLTE2MC4wKSI+PGcgY2xpcC1wYXRoPSJ1cmwoI2kwKSI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjMzLjAgMTYwLjApIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMC4wMDAxODA1NTU1NTU1NTIwNzU0OCAwLjApIj48ZyBjbGlwLXBhdGg9InVybCgjaTEpIj48cG9seWdvbiBwb2ludHM9IjAsMCA1MiwwIDUyLDUyIDAsNTIgMCwwIiBzdHJva2U9Im5vbmUiIGZpbGw9InVybCgjaTIpIj48L3BvbHlnb24+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg3LjU4MzMzMzMzMzMzMzMzMiAxNC44MDU1NTU1NTU1NTU1NSkiPjxnIGNsaXAtcGF0aD0idXJsKCNpMykiPjxnIGNsaXAtcGF0aD0idXJsKCNpNCkiPjxwb2x5Z29uIHBvaW50cz0iMCwwIDM2LjQ3OTE2NjcsMCAzNi40NzkxNjY3LDUuNjEyMTc5NDkgMCw1LjYxMjE3OTQ5IDAsMCIgc3Ryb2tlPSJub25lIiBmaWxsPSIjRkZGRkZGIj48L3BvbHlnb24+PC9nPjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNy41ODMzMzMzMzMzMzMzNzEgMjQuNDMyMDgwMjU1NDc3MzMpIj48ZyBjbGlwLXBhdGg9InVybCgjaTUpIj48cG9seWdvbiBwb2ludHM9IjAsMCAzNy4xOTQ0NDQ0LDAgMzcuMTk0NDQ0NCwxMi41MzkwMDcxIDAsMTIuNTM5MDA3MSAwLDAiIHN0cm9rZT0ibm9uZSIgZmlsbD0iI0ZGRkZGRiI+PC9wb2x5Z29uPjwvZz48L2c+PC9nPjwvZz48L2c+PC9zdmc+","icon_dark":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHZlcnNpb249IjEuMSIgd2lkdGg9IjUycHgiIGhlaWdodD0iNTJweCIgdmlld0JveD0iMCAwIDUyLjAgNTIuMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGRlZnM+PGNsaXBQYXRoIGlkPSJpMCI+PHBhdGggZD0iTTM2MCwwIEwzNjAsODAwIEwwLDgwMCBMMCwwIEwzNjAsMCBaIj48L3BhdGg+PC9jbGlwUGF0aD48Y2xpcFBhdGggaWQ9ImkxIj48cGF0aCBkPSJNMjYsMCBDMzMuOTkxMDI3OCwwIDQxLjEzOTU4MzMsMC45NzUgNDUuOTA4Nzc3OCw1Ljc3Nzc3Nzc4IEM0OS43MTAxOTQ0LDkuNjA1OTE2NjcgNTIsMTUuODY1MDU1NiA1MiwyNiBDNTIsMzYuMTM0OTQ0NCA0OS43MDk4MzMzLDQyLjM5NDQ0NDQgNDUuOTA4MDU1Niw0Ni4yMjI1ODMzIEM0MS4xMzg4NjExLDUxLjAyNDYzODkgMzMuOTkwMzA1Niw1MiAyNiw1MiBDMTguMDA4OTcyMiw1MiAxMC44NjA3Nzc4LDUxLjAyNDYzODkgNi4wOTE1ODMzMyw0Ni4yMjI1ODMzIEMyLjI5MDE2NjY3LDQyLjM5NDQ0NDQgMCwzNi4xMzQ5NDQ0IDAsMjYgQzAsMTUuODY1MDU1NiAyLjI4OTgwNTU2LDkuNjA1NTU1NTYgNi4wOTA4NjExMSw1Ljc3Nzc3Nzc4IEMxMC44NjAwNTU2LDAuOTc1IDE4LjAwODYxMTEsMCAyNiwwIFoiPjwvcGF0aD48L2NsaXBQYXRoPjxsaW5lYXJHcmFkaWVudCBpZD0iaTIiIHgxPSIyNnB4IiB5MT0iNTJweCIgeDI9IjI2cHgiIHkyPSIwLjE5NTkyMTE0OHB4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzI5MjlCMiIgb2Zmc2V0PSIwJSI+PC9zdG9wPjxzdG9wIHN0b3AtY29sb3I9IiMxQTQwQ0MiIG9mZnNldD0iMTAwJSI+PC9zdG9wPjwvbGluZWFyR3JhZGllbnQ+PGNsaXBQYXRoIGlkPSJpMyI+PHBhdGggZD0iTTM3LjE5NDQ0NDQsMCBMMzcuMTk0NDQ0NCw1LjcyMjIyMjIyIEwwLDUuNzIyMjIyMjIgTDAsMCBMMzcuMTk0NDQ0NCwwIFoiPjwvcGF0aD48L2NsaXBQYXRoPjxjbGlwUGF0aCBpZD0iaTQiPjxwYXRoIGQ9Ik0xLjg4MzQyMjEzLDAgQzIuNjIwNzU5ODcsMCAzLjY0MzU2NDAyLDAuMTgxNjEwODcxIDMuNjQzNTY0MDIsMS4zMjExMTgxOSBMMy42NDM1NjQwMiwxLjY4OTExNTYyIEwyLjM0Mjc5MzM5LDEuNjg5MTE1NjIgTDIuMzQyNzkzMzksMS4zNjQ5MDY1OSBDMi4zNDI3OTMzOSwxLjA3OTU3NTczIDIuMTYzMTk2NjQsMC44ODkxNTMzNzEgMS44NTgxNzY4LDAuODg5MTUzMzcxIEMxLjUyOTMxNzg4LDAuODg5MTUzMzcxIDEuNDE2NDgzOTgsMS4wNzUyNzA4OCAxLjM4MDg1OTI3LDEuMjQyMTUxMDkgQzEuMzY2Nzk2ODgsMS4zMDAyNjY1NyAxLjM2MDkwNDA4LDEuNDExNzIxODQgMS4zODYxNDk0MSwxLjUxNzI1NzkzIEMxLjUzNDYwODAyLDIuMTMwNDk3MyAzLjUxMjQ0OTAyLDIuNDU2MTE4ODcgMy43MzI1NTg4MywzLjU1NTUzNzI3IEMzLjc1MzcxOTM3LDMuNjY3MDU5OCAzLjgwMDc5NDg4LDMuOTYxMTM0ODggMy43MzgwNDk4Niw0LjQxMzAwOTYzIEMzLjYxMTgyMzIxLDUuMjg5NjUyMDMgMi44MzgwNTcyLDUuNjEyMTc5NDkgMS44OTU4MTA0Myw1LjYxMjE3OTQ5IEMwLjkxNTcyOTEzNiw1LjYxMjE3OTQ5IDAsNS4yNTk5ODg5MiAwLDQuMDg4ODAwNiBMMCwzLjY4ODI0NzczIEwxLjM5OTQwODIzLDMuNjg4MjQ3NzMgTDEuNDAxMjE2MjUsNC4xOTIzMTg3OSBDMS40MDEyMTYyNSw0LjQ3ODY1ODYgMS41OTYwODA3Myw0LjY2OTI4Mjc1IDEuOTIxODU5MzIsNC42NjkyODI3NSBDMi4yNzA3NDA0LDQuNjY5MjgyNzUgMi4zODgzOTU2OSw0LjQ5MTUwNTg5IDIuNDMxMTg1NTIsNC4zMTU0MTA2MSBDMi40NTYyMjk5Niw0LjIxNjM5OTA1IDIuNDcxNDk3NjksNC4wNTQ2MzA4NSAyLjQyMTAwNzAzLDMuOTI4NjQ2NzEgQzIuMTUxMzQ0MDYsMy4yNTA5NjkxMSAwLjI5NzkyMTY3NywyLjk0MTI4ODk1IDAuMDcyMTE5OTQ3MywxLjg3MDMyMjkyIEMwLjAxNzM0MzYwODUsMS42MDU2NDE4OSAwLjAyMzgzOTA5MTIsMS4zOTkwNzYzNCAwLjA2MTc0MDU2NzcsMS4xNjQyNjAyMSBDMC4yMDAyMjE1ODEsMC4zMDg4NzMwMDcgMC45NTcxMTI3MjcsMCAxLjg4MzQyMjEzLDAgWiBNMTguODQxMTE4NiwwLjAyOTY2MzEwODkgQzE5LjU3MDQ4NzcsMC4wMjk2NjMxMDg5IDIwLjU3Nzg5MDEsMC4yMDY5NjkxMjkgMjAuNTc3ODkwMSwxLjMzNTY0NzA2IEwyMC41Nzc4OTAxLDEuNzAwNzUyMTcgTDE5LjI5MjE4NjQsMS43MDA3NTIxNyBMMTkuMjkyMTg2NCwxLjM4MDQ0NDQxIEMxOS4yOTIxODY0LDEuMDk3NDAwNSAxOS4xMTU2MDMsMC45MDg3OTQyNSAxOC44MTQ0MDAxLDAuOTA4Nzk0MjUgQzE4LjQ5MTIzMzEsMC45MDg3OTQyNSAxOC4zNzkwNjg4LDEuMDkxNjE1ODYgMTguMzQxNzcsMS4yNTkzNzA0OSBDMTguMzI5NzgzNSwxLjMxNjgxMzM0IDE4LjMyMzA4NzEsMS40MjY2NTQyOCAxOC4zNDYyNTY2LDEuNTMwMTcyNDggQzE4LjQ5NDMxMzQsMi4xMzY0MTY0NyAyMC40NTAzOTEyLDIuNDYzMTE0MjUgMjAuNjY2MDE0NCwzLjU0OTIxNDUyIEMyMC42ODk2NTI2LDMuNjU5MDU1NDcgMjAuNzM0MDQ5NiwzLjk1MDcwOTA3IDIwLjY3NTE4ODUsNC4zOTg0MTM1IEMyMC41NTE3NzQzLDUuMjY1MTAwOTMgMTkuNzgyNDk0OSw1LjU4NDgwMzMzIDE4Ljg1MTA5NjIsNS41ODQ4MDMzMyBDMTcuODc4NTgxOCw1LjU4NDgwMzMzIDE2Ljk3NTY0MjgsNS4yMzU0Mzc4MyAxNi45NzU2NDI4LDQuMDc3NTAwMzcgTDE2Ljk3NTY0MjgsMy42Nzc4ODkxOSBMMTguMzU5NTE1NCwzLjY3Nzg4OTE5IEwxOC4zNTk5MTcyLDQuMTgwNjE0OTggQzE4LjM1OTkxNzIsNC40NjMwNTM1MiAxOC41NTUxODM0LDQuNjUwNDQ5MDMgMTguODc5NzU2Nyw0LjY1MDQ0OTAzIEMxOS4yMjU3NTgzLDQuNjUwNDQ5MDMgMTkuMzQyNDc2MSw0LjQ3NTE2MDkxIDE5LjM4MjM4NjUsNC4zMDA4ODE3NCBDMTkuNDA2MzU5NSw0LjIwNTU2OTY2IDE5LjQxOTgxOTIsNC4wNDM4MDE0NiAxOS4zNzI4MTA3LDMuOTE2OTQyOSBDMTkuMTA2NDI4OSwzLjI0NzI2OTYzIDE3LjI3MTE1MzcsMi45NDAwNzgyMSAxNy4wNDc3NjI3LDEuODgxMTUyMyBDMTYuOTkwMTA2OSwxLjYxOTM2MzYgMTYuOTk5MDgwMSwxLjQxNDIxMDU4IDE3LjAzNTMwNzQsMS4xODMwOTM5MyBDMTcuMTcyMzE1MywwLjMzMzgyNzY4NiAxNy45MjI1MSwwLjAyOTY2MzEwODkgMTguODQxMTE4NiwwLjAyOTY2MzEwODkgWiBNMjMuMjM2NDg0NSwwLjE2Njg4MDIxMSBMMjMuMjM2MjI5MSw0LjExMTM3MzY2IEMyMy4yMzcyMDYzLDQuMTU3OTg0NjIgMjMuMjQwODgxOCw0LjIwNDA2NzQ1IDIzLjI0OTY3NjQsNC4yNDExNTE5NCBDMjMuMjc1MTIyNiw0LjM3MTIzOTEzIDIzLjM4Nzc1NTYsNC42MjE1OTMwOCAyMy43NDY5NDkxLDQuNjIxNTkzMDggQzI0LjExMDgzMDEsNC42MjE1OTMwOCAyNC4yMjA1ODM2LDQuMzcxMjM5MTMgMjQuMjQ4MTA1Nyw0LjI0MTE1MTk0IEMyNC4yNTk2OTA1LDQuMTg1NTI1MiAyNC4yNjE3NjYzLDQuMTA5NjUyMjIgMjQuMjU5NjkwNSw0LjA0MjExOTg4IEwyNC4yNTk2OTA1LDAuMTY2ODgwMjExIEwyNS41Nzg2MDgzLDAuMTY2ODgwMjExIEwyNS41Nzg2MDgzLDMuOTIxODUzMTIgQzI1LjU4NDMwMDIsNC4wMTg2NDQ5OSAyNS41NzQ3MjQ0LDQuMjE2Mzk5MDUgMjUuNTY3NDI1Myw0LjI2ODE5MTc4IEMyNS40NzQ3NDc1LDUuMjQ2NjcwNzkgMjQuNzA3NDc3LDUuNTY0MzU1MjkgMjMuNzQ2OTQ5MSw1LjU2NDM1NTI5IEMyMi43ODgyOTYyLDUuNTY0MzU1MjkgMjIuMDIwNTU3LDUuMjQ2NjcwNzkgMjEuOTI5NTUzMiw0LjI2ODE5MTc4IEMyMS45MjM4NjEzLDQuMjE2Mzk5MDUgMjEuOTE2Mjk0NCw0LjAxODY0NDk5IDIxLjkxNzk2ODUsMy45MjE4NTMxMiBMMjEuOTE3OTY4NSwwLjE2Njg4MDIxMSBMMjMuMjM2NDg0NSwwLjE2Njg4MDIxMSBaIE0zNC42Mjk3NjIxLDAuMDI1OTYzNjI4MiBDMzUuNTUzOTk1NiwwLjAyNTk2MzYyODIgMzYuMzYwMDM4MiwwLjMzNjg1NDUzNCAzNi40NTg3NDI3LDEuMzE5NTAzODcgQzM2LjQ2NTU3MywxLjM5MTE5NjkyIDM2LjQ2ODM4MTQsMS40NjUxMTM3OCAzNi40NjkzNjA3LDEuNTI2MTgwMjIgTDM2LjQ2OTAwNCwxLjY1NTc1NDAyIEwzNi40Njg3MjAzLDEuNjY2MTc4ODQgTDM2LjQ2ODcyMDMsMS44MzgwMzY1NCBMMzUuMTU1MzYwNSwxLjgzODAzNjU0IEwzNS4xNTUxNSwxLjUzMzU1NTU2IEMzNS4xNTQ0NDcxLDEuNDk4NzMzNjIgMzUuMTUxNDksMS40MDU2NDEyMyAzNS4xMzk0OTAxLDEuMzQ1MjY1NzEgQzM1LjExNjY1NTUsMS4yMzEzMjE3IDM1LjAxNzA4MDQsMC45NjYwMzUzMDYgMzQuNjE4MTc3NCwwLjk2NjAzNTMwNiBDMzQuMjM4MTU4MiwwLjk2NjAzNTMwNiAzNC4xMjU1OTIxLDEuMjE3NTk5OTkgMzQuMDk5Njc3MiwxLjM0NTI2NTcxIEMzNC4wODE3OTc4LDEuNDE1NDIxMzIgMzQuMDc2MTA1OSwxLjUwODExMDEyIDM0LjA3NjEwNTksMS41OTI3OTQ2IEwzNC4wNzYxMDU5LDMuOTg2ODk2NzIgQzM0LjA3NjEwNTksNC4wNTQ2MzA4NSAzNC4wODAxOTA3LDQuMTI3NjExNTEgMzQuMDg5NzY2NSw0LjE4NjEzMDU3IEMzNC4xMTI1MzQyLDQuMzI3NTE4IDM0LjI0Mzg1MDEsNC41NjgyNTMzIDM0LjYyMDk4OTksNC41NjgyNTMzIEMzNS4wMDA0MDY0LDQuNTY4MjUzMyAzNS4xMzQxMzMsNC4zMjc1MTggMzUuMTU1MzYwNSw0LjE4NjEzMDU3IEMzNS4xNjY5NDUyLDQuMTI3NjExNTEgMzUuMTcwNjI4Miw0LjA1NDYzMDg1IDM1LjE2ODk1NDEsMy45ODY4OTY3MiBMMzUuMTY4OTU0MSwzLjIyODkwNjc2IEwzNC42MzQ0NDk2LDMuMjI4OTA2NzYgTDM0LjYzNDQ0OTYsMi40NjQ5MzAzNiBMMzYuNDc5MTY2NywyLjQ2NDkzMDM2IEwzNi40NzkxNjY3LDMuODY4NTEzMzQgQzM2LjQ3NzA5MDgsMy45NjQ0MzA3OCAzNi40NzU0ODM3LDQuMDM4Njg5NDUgMzYuNDYwMDE1LDQuMjEzOTc3NTcgQzM2LjM3MjgyODIsNS4xNjk1ODcwNyAzNS41NTM5OTU2LDUuNTA4MzI0OTcgMzQuNjI2MDc5MSw1LjUwODMyNDk3IEMzMy43MDM4NTQ1LDUuNTA4MzI0OTcgMzIuODc5MzMsNS4xNjk1ODcwNyAzMi43OTM2MTY0LDQuMjEzOTc3NTcgQzMyLjc3NTkzOCw0LjAzODY4OTQ1IDMyLjc3Mjg1NzYsMy45NjQ0MzA3OCAzMi43NzI4NTc2LDMuODY4NTEzMzQgTDMyLjc3Mjg1NzYsMS42NjYxNzg4NCBDMzIuNzcyODU3NiwxLjU3MDI2MTQgMzIuNzg4NzI4LDEuNDA5MDk4NTcgMzIuNzk5MTA3NCwxLjMxOTUwMzg3IEMzMi45MTQxNTExLDAuMzM5NzQ2ODU1IDMzLjcwMzg1NDUsMC4wMjU5NjM2MjgyIDM0LjYyOTc2MjEsMC4wMjU5NjM2MjgyIFogTTEyLjE0NDc0NDcsMC4xNjY4ODAyMTEgTDEyLjgwMjI2MTYsNC4yNjE1OTk5OCBMMTMuNDYwMTgwNCwwLjE2Njg4MDIxMSBMMTUuNTg1Mjc0NiwwLjE2Njg4MDIxMSBMMTUuNzAxOTI1NSw1LjQwNTIxMDM2IEwxNC4zOTUyNjIsNS40MDUyMTAzNiBMMTQuMzU5ODM4MiwwLjU1NTkzMTA1NCBMMTMuNDYyMjU2Miw1LjQwNTIxMDM2IEwxMi4xMzk4NTYzLDUuNDA1MjEwMzYgTDExLjI0MzA3NzksMC41NTU5MzEwNTQgTDExLjIwNzc4OCw1LjQwNTIxMDM2IEw5LjkwNDQwNTgsNS40MDUyMTAzNiBMMTAuMDE3MjM5NywwLjE2Njg4MDIxMSBMMTIuMTQ0NzQ0NywwLjE2Njg4MDIxMSBaIE03LjkwMTI1MjUsMC4xNjY4ODAyMTEgTDguODYzMjUzNTgsNS40MDUyMTAzNiBMNy40NjQzMTQxLDUuNDA1MjEwMzYgTDYuNzUzODI4ODMsMC41NTU5MzEwNTQgTDYuMDI1ODY2MDIsNS40MDUyMTAzNiBMNC42MTcxNDk4Myw1LjQwNTIxMDM2IEw1LjU4MzE2ODczLDAuMTY2ODgwMjExIEw3LjkwMTI1MjUsMC4xNjY4ODAyMTEgWiBNMjguMzA0ODM2LDUuMzUwNTkyNTcgTDI3LjAyNDYyMzMsNS4zNTA1OTI1NyBMMjcuMDI0NjIzMywwLjE2Njg4MDIxMSBMMjguOTU5ODc1MywwLjE2Njg4MDIxMSBMMzAuMTg3OTkwMyw0LjM4NDM1NTQ3IEwzMC4xMTY4NzQ4LDAuMTY2ODgwMjExIEwzMS40MDU0NTgxLDAuMTY2ODgwMjExIEwzMS40MDU0NTgxLDUuMzUwNTkyNTcgTDI5LjU0OTQyNDEsNS4zNTA1OTI1NyBMMjguMjMsMC45OTkgTDI4LjMwNDgzNiw1LjM1MDU5MjU3IFoiPjwvcGF0aD48L2NsaXBQYXRoPjxjbGlwUGF0aCBpZD0iaTUiPjxwYXRoIGQ9Ik0yNC4zMzUyOTY2LDIuNDcwMDY0MzIgQzI1LjMwOTY1MDIsMi40NzAwNjQzMiAyNi4xMjEzMjMsMi42NTY2MDU2NCAyNi43NjkyNzY4LDMuMDI4OTczNTYgQzI3LjQxNzIzMDUsMy40MDE2OTg4MyAyNy45Mjk1MDE3LDMuOTA4NDMzNjcgMjguMzA2MDkwMiw0LjU1MDI1MDE1IEwyNi4zOTU0NTczLDUuNDgyNTk5MzcgQzI2LjE5NjA4NjksNS4xNDYzMjQ3IDI1LjkxOTE4MzYsNC44ODAwOTIzNiAyNS41NjQ3NDczLDQuNjg0NjE3MDggQzI1LjIxMDMxMTEsNC40ODkxNDE3OSAyNC44MDA0OTQyLDQuMzkxMjI1NDcgMjQuMzM1Mjk2Niw0LjM5MTIyNTQ3IEMyMy44MDM2NDIyLDQuMzkxMjI1NDcgMjMuNDEwNDM5NSw0LjQ5NDg1OTUzIDIzLjE1NTY4ODUsNC43MDIxMjc2NiBDMjIuOTAwNTkxMyw0LjkwOTM5NTc5IDIyLjc3MzU2MTksNS4xNDk1NDA5MyAyMi43NzM1NjE5LDUuNDIyMjA1NzMgQzIyLjc3MzU2MTksNS43Mzg0NjgzMSAyMi45NjE4NTYyLDUuOTY1MDMzODEgMjMuMzM4NDQ0Nyw2LjEwMDgzMDE3IEMyMy43MTQ2ODcsNi4yMzczNDEyNSAyNC4yNjg4Mzk4LDYuMzgyMDcxNTggMjQuOTk5ODY0Niw2LjUzNDY2MzgxIEMyNS4zOTg2MDU0LDYuNjExMTM4NiAyNS43OTk3NjksNi43MTE1NTY0NCAyNi4yMDQzOTQsNi44MzczNDY3NSBDMjYuNjA4NjcyOSw2Ljk2Mjc3OTcgMjYuOTc2OTU0Myw3LjEzMTgxMDQzIDI3LjMwOTIzODMsNy4zNDQ3OTYzMSBDMjcuNjQxNTIyMiw3LjU1NzQyNDgyIDI3LjkxMDExODUsNy44Mjk3MzIyNiAyOC4xMTUwMjY5LDguMTYyNzkwNyBDMjguMzE5OTM1NCw4LjQ5NTQ5MTc4IDI4LjQyMjM4OTYsOC45MTI1Mjk1NSAyOC40MjIzODk2LDkuNDE0MjYxMzcgQzI4LjQyMjM4OTYsOS43NTIzMjI4MyAyOC4zNDQ4NTY3LDEwLjEwNDMyMTMgMjguMTg5NzkwOCwxMC40Njk1NDIgQzI4LjAzNDM3ODgsMTAuODM0NzYyOCAyNy43OTM4MTkxLDExLjE3MzE4MTYgMjcuNDY3MDczMSwxMS40ODM3MjY0IEMyNy4xNDAzMjcyLDExLjc5NDk4NiAyNi43Mjc3NDEzLDEyLjA0ODM1MzQgMjYuMjI5MzE1MywxMi4yNDQ1NDM0IEMyNS43MzA4ODkzLDEyLjQ0MTA5MDggMjUuMTMyNzc4MiwxMi41MzkwMDcxIDI0LjQzNDk4MTgsMTIuNTM5MDA3MSBDMjMuMzYwNTk2OSwxMi41MzkwMDcxIDIyLjQ2ODk2ODIsMTIuMzMyODExIDIxLjc2MDA5NTcsMTEuOTIwMDYxNiBDMjEuMDUxMjIzMywxMS41MDY5NTQ4IDIwLjUwMjk1NDcsMTAuOTEwNTIyOCAyMC4xMTUyOSwxMC4xMzAwNTExIEwyMi4xOTIwNjQ5LDkuMTY1MTgyMjUgQzIyLjQyNDY2MzcsOS42MDQ3MzM2MyAyMi43NDAzMzM1LDkuOTQyNDM3NzQgMjMuMTM5MDc0MywxMC4xNzg2NTE5IEMyMy41Mzc4MTUxLDEwLjQxNDUwODggMjQuMDAzMDEyNiwxMC41MzIwNzk4IDI0LjUzNDY2NywxMC41MzIwNzk4IEMyNS4wODg0NzM2LDEwLjUzMjA3OTggMjUuNTAzODI4NiwxMC40MTc3MjUgMjUuNzgwNzMxOSwxMC4xODkwMTUzIEMyNi4wNTcyODkxLDkuOTU5OTQ4MzIgMjYuMTk2MDg2OSw5LjY4NzY0MDg4IDI2LjE5NjA4NjksOS4zNzEwMjA5NSBDMjYuMTk2MDg2OSw5LjE5NjYyOTgzIDI2LjEzMjM5OTIsOS4wNTUxMTU3MyAyNi4wMDUwMjM2LDguOTQ1NzYzOTIgQzI1Ljg3NzY0ODEsOC44MzcxMjY4MyAyNS43MTE1MDYxLDguNzQxMzU0NjYgMjUuNTA2NTk3Niw4LjY1OTg3Njg1IEMyNS4zMDEzNDMxLDguNTc4MDQxNjcgMjUuMDYwNzgzMyw4LjUxMDE0MzQ5IDI0Ljc4Mzg4LDguNDU1MTEwMjMgQzI0LjUwNjk3NjcsOC40MDA3OTE2OSAyNC4yMTg5OTcyLDguMzQwNzU1NCAyMy45MTk5NDE2LDguMjc1MzU4NzMgQzIzLjQ5ODcwMjUsOC4xODgxNjMxOCAyMy4wODY0NjI2LDguMDg0ODg2NDcgMjIuNjgyMTgzOCw3Ljk2NDgxMzkgQzIyLjI3NzkwNSw3Ljg0NTA5ODY5IDIxLjkxNTE2MTYsNy42Nzg1Njk0NyAyMS41OTM5NTM4LDcuNDY2Mjk4MzEgQzIxLjI3Mjc0NTksNy4yNTMzMTI0NCAyMS4wMTI0NTY4LDYuOTgwNjQ3NjQgMjAuODEzMDg2NCw2LjY0ODMwMzkyIEMyMC42MTM3MTYsNi4zMTU5NjAyIDIwLjUxNDAzMDgsNS44OTg5MjI0MyAyMC41MTQwMzA4LDUuMzk3NTQ3OTcgQzIwLjUxNDAzMDgsNS4wMTU1MzEzNyAyMC42MDU0MDg5LDQuNjQ3ODA5MTIgMjAuNzg4MTY1MSw0LjI5MzY2NjUgQzIwLjk3MDkyMTMsMy45MzkxNjY1MyAyMS4yMjg0NDE0LDMuNjI2MTIwMTggMjEuNTYwNzI1NCwzLjM1MzA5ODAzIEMyMS44OTMwMDkzLDMuMDgwNzkwNTkgMjIuMjk0MTczLDIuODY1NjYwNTYgMjIuNzY1MjU0OCwyLjcwNzM1MDYgQzIzLjIzNTk5MDQsMi41NDkwNDA2MyAyMy43NTkzMzc3LDIuNDcwMDY0MzIgMjQuMzM1Mjk2NiwyLjQ3MDA2NDMyIFogTTMzLjEwNzM1MTUsMi40NzAwNjQzMiBDMzQuMDgxNzA1LDIuNDcwMDY0MzIgMzQuODkzMzc3OSwyLjY1NjYwNTY0IDM1LjU0MTMzMTYsMy4wMjg5NzM1NiBDMzYuMTg5Mjg1NCwzLjQwMTY5ODgzIDM2LjcwMTU1NjUsMy45MDg0MzM2NyAzNy4wNzgxNDUxLDQuNTUwMjUwMTUgTDM1LjE2NzUxMjIsNS40ODI1OTkzNyBDMzQuOTY4MTQxOCw1LjE0NjMyNDcgMzQuNjkxMjM4NCw0Ljg4MDA5MjM2IDM0LjMzNjgwMjIsNC42ODQ2MTcwOCBDMzMuOTgyMzY1OSw0LjQ4OTE0MTc5IDMzLjU3MjU0OSw0LjM5MTIyNTQ3IDMzLjEwNzM1MTUsNC4zOTEyMjU0NyBDMzIuNTc1Njk3MSw0LjM5MTIyNTQ3IDMyLjE4MjQ5NDQsNC40OTQ4NTk1MyAzMS45Mjc3NDMzLDQuNzAyMTI3NjYgQzMxLjY3MjY0NjEsNC45MDkzOTU3OSAzMS41NDU2MTY3LDUuMTQ5NTQwOTMgMzEuNTQ1NjE2Nyw1LjQyMjIwNTczIEMzMS41NDU2MTY3LDUuNzM4NDY4MzEgMzEuNzMzOTExLDUuOTY1MDMzODEgMzIuMTEwNDk5NSw2LjEwMDgzMDE3IEMzMi40ODY3NDE5LDYuMjM3MzQxMjUgMzMuMDQwODk0Nyw2LjM4MjA3MTU4IDMzLjc3MTkxOTQsNi41MzQ2NjM4MSBDMzQuMTcwNjYwMiw2LjYxMTEzODYgMzQuNTcxODIzOSw2LjcxMTU1NjQ0IDM0Ljk3NjQ0ODksNi44MzczNDY3NSBDMzUuMzgwNzI3Nyw2Ljk2Mjc3OTcgMzUuNzQ5MDA5MSw3LjEzMTgxMDQzIDM2LjA4MTI5MzEsNy4zNDQ3OTYzMSBDMzYuNDEzNTc3MSw3LjU1NzQyNDgyIDM2LjY4MjE3MzMsNy44Mjk3MzIyNiAzNi44ODcwODE4LDguMTYyNzkwNyBDMzcuMDkxOTkwMiw4LjQ5NTQ5MTc4IDM3LjE5NDQ0NDQsOC45MTI1Mjk1NSAzNy4xOTQ0NDQ0LDkuNDE0MjYxMzcgQzM3LjE5NDQ0NDQsOS43NTIzMjI4MyAzNy4xMTY5MTE1LDEwLjEwNDMyMTMgMzYuOTYxODQ1NywxMC40Njk1NDIgQzM2LjgwNjQzMzcsMTAuODM0NzYyOCAzNi41NjU4NzM5LDExLjE3MzE4MTYgMzYuMjM5MTI4LDExLjQ4MzcyNjQgQzM1LjkxMjM4MjEsMTEuNzk0OTg2IDM1LjQ5OTc5NjEsMTIuMDQ4MzUzNCAzNS4wMDEzNzAyLDEyLjI0NDU0MzQgQzM0LjUwMjk0NDIsMTIuNDQxMDkwOCAzMy45MDQ4MzMsMTIuNTM5MDA3MSAzMy4yMDcwMzY3LDEyLjUzOTAwNzEgQzMyLjEzMjY1MTgsMTIuNTM5MDA3MSAzMS4yNDEwMjMxLDEyLjMzMjgxMSAzMC41MzIxNTA2LDExLjkyMDA2MTYgQzI5LjgyMzI3ODEsMTEuNTA2OTU0OCAyOS4yNzUwMDk1LDEwLjkxMDUyMjggMjguODg3MzQ0OSwxMC4xMzAwNTExIEwzMC45NjQxMTk4LDkuMTY1MTgyMjUgQzMxLjE5NjcxODYsOS42MDQ3MzM2MyAzMS41MTIzODgzLDkuOTQyNDM3NzQgMzEuOTExMTI5MSwxMC4xNzg2NTE5IEMzMi4zMDk4Njk5LDEwLjQxNDUwODggMzIuNzc1MDY3NSwxMC41MzIwNzk4IDMzLjMwNjcyMTgsMTAuNTMyMDc5OCBDMzMuODYwNTI4NSwxMC41MzIwNzk4IDM0LjI3NTg4MzUsMTAuNDE3NzI1IDM0LjU1Mjc4NjgsMTAuMTg5MDE1MyBDMzQuODI5MzQ0LDkuOTU5OTQ4MzIgMzQuOTY4MTQxOCw5LjY4NzY0MDg4IDM0Ljk2ODE0MTgsOS4zNzEwMjA5NSBDMzQuOTY4MTQxOCw5LjE5NjYyOTgzIDM0LjkwNDQ1NCw5LjA1NTExNTczIDM0Ljc3NzA3ODUsOC45NDU3NjM5MiBDMzQuNjQ5NzAyOSw4LjgzNzEyNjgzIDM0LjQ4MzU2MSw4Ljc0MTM1NDY2IDM0LjI3ODY1MjUsOC42NTk4NzY4NSBDMzQuMDczMzk3OSw4LjU3ODA0MTY3IDMzLjgzMjgzODIsOC41MTAxNDM0OSAzMy41NTU5MzQ4LDguNDU1MTEwMjMgQzMzLjI3OTAzMTUsOC40MDA3OTE2OSAzMi45OTEwNTIxLDguMzQwNzU1NCAzMi42OTE5OTY1LDguMjc1MzU4NzMgQzMyLjI3MDc1NzMsOC4xODgxNjMxOCAzMS44NTg1MTc1LDguMDg0ODg2NDcgMzEuNDU0MjM4Niw3Ljk2NDgxMzkgQzMxLjA0OTk1OTgsNy44NDUwOTg2OSAzMC42ODcyMTY1LDcuNjc4NTY5NDcgMzAuMzY2MDA4Niw3LjQ2NjI5ODMxIEMzMC4wNDQ4MDA4LDcuMjUzMzEyNDQgMjkuNzg0NTExNiw2Ljk4MDY0NzY0IDI5LjU4NTE0MTIsNi42NDgzMDM5MiBDMjkuMzg1NzcwOSw2LjMxNTk2MDIgMjkuMjg2MDg1Nyw1Ljg5ODkyMjQzIDI5LjI4NjA4NTcsNS4zOTc1NDc5NyBDMjkuMjg2MDg1Nyw1LjAxNTUzMTM3IDI5LjM3NzQ2MzgsNC42NDc4MDkxMiAyOS41NjAyMTk5LDQuMjkzNjY2NSBDMjkuNzQyOTc2MSwzLjkzOTE2NjUzIDMwLjAwMDQ5NjIsMy42MjYxMjAxOCAzMC4zMzI3ODAyLDMuMzUzMDk4MDMgQzMwLjY2NTA2NDIsMy4wODA3OTA1OSAzMS4wNjYyMjc5LDIuODY1NjYwNTYgMzEuNTM3MzA5NiwyLjcwNzM1MDYgQzMyLjAwODA0NTMsMi41NDkwNDA2MyAzMi41MzEzOTI2LDIuNDcwMDY0MzIgMzMuMTA3MzUxNSwyLjQ3MDA2NDMyIFogTTEzLjc3MzIwNTcsMi40NzAwMjg1OSBDMTQuNDE1NjIxNCwyLjQ3MDAyODU5IDE1LjAwODE5NDUsMi41OTAxMDExNiAxNS41NTA5MjUsMi44Mjk1MzE1OSBDMTYuMDkzMzA5NCwzLjA2OTY3NjczIDE2LjU0MjIzODksMy4zOTY2NjAwNyAxNi44OTY2NzUxLDMuODEwODM4OTcgTDE2Ljg5NjY3NTEsMi40ODcxODE4MSBMMTkuMTM5NTkyLDIuNDg3MTgxODEgTDE5LjEzOTU5MiwxMi41MjE4MTgxIEwxNi44OTY2NzUxLDEyLjUyMTgxODEgTDE2Ljg5NjY3NTEsMTEuMDk1OTU2MyBDMTYuNTQyMjM4OSwxMS41NDQwODQzIDE2LjA4ODExNzQsMTEuODk2Nzk3NSAxNS41MzQzMTA4LDEyLjE1MzczODUgQzE0Ljk4MDUwNDIsMTIuNDEwNjc5NSAxNC4zODIzOTMsMTIuNTM4OTcxNCAxMy43Mzk5NzczLDEyLjUzODk3MTQgQzEzLjE1Mjk0MjMsMTIuNTM4OTcxNCAxMi41NzQyMTQzLDEyLjQyNjQwMzMgMTIuMDAzNzkzNSwxMi4yMDA1NTI1IEMxMS40MzMzNzI2LDExLjk3NDM0NDQgMTAuOTIxMTAxNSwxMS42NDYyODkgMTAuNDY2OTgwMSwxMS4yMTYzODYzIEMxMC4wMTI4NTg2LDEwLjc4NjQ4MzYgOS42NDcwMDAxMSwxMC4yNjAwOTQgOS4zNzA0NDI5Miw5LjYzNzU3NDkxIEM5LjA5MzUzOTYsOS4wMTQ2OTg0NCA4Ljk1NTA4Nzk0LDguMzA2NDEzMjIgOC45NTUwODc5NCw3LjUxMzA3NjU4IEM4Ljk1NTA4Nzk0LDYuNzA4MzA0NDcgOS4wOTA0MjQ0NCw1Ljk5NTAxNjIyIDkuMzYyMTM1ODIsNS4zNzE3ODI0IEM5LjYzMzUwMTA3LDQuNzQ4OTA1OTMgOS45OTM0NzUzOSw0LjIyMjg3MzcxIDEwLjQ0MjA1ODgsMy43OTI5NzEwMyBDMTAuODkwNjQyMSwzLjM2MjcxMDk4IDExLjQwNTY4MjMsMy4wMzUwMTI5MiAxMS45ODcxNzkzLDIuODA5NTE5NDkgQzEyLjU2ODY3NjMsMi41ODMzMTEzNCAxMy4xNjQwMTg0LDIuNDcwMDI4NTkgMTMuNzczMjA1NywyLjQ3MDAyODU5IFogTTQuMTUzNTQ5NzgsMCBDNC43ODQ4ODkzNSwwIDUuMzY2Mzg2MzIsMC4xMTcyMTM3MDEgNS44OTgwNDA2OSwwLjM1MTk5ODQ2MSBDNi40Mjk2OTUwNiwwLjU4NjQyNTg2MiA2Ljg4OTAwODQ0LDAuOTAzNDAzMTU2IDcuMjc3MDE5MjIsMS4zMDQwMDI0MiBDNy42NjQ2ODM4NiwxLjcwNDI0NDMyIDcuOTY4OTMxMzgsMi4xNzU5NTggOC4xOTA4MDAxNywyLjcxOTE0MzQ0IEM4LjQxMjMyMjgyLDMuMjYxOTcxNTIgOC41MjMwODQxNSwzLjg0MjMyMjI4IDguNTIzMDg0MTUsNC40NjAxOTU3MiBDOC41MjMwODQxNSw1LjA3NzM1NDQ0IDguNDEyMzIyODIsNS42NjA1NjQwOCA4LjE5MDgwMDE3LDYuMjA5NDY3MjYgQzcuOTY4OTMxMzgsNi43NTgzNzA0NCA3LjY2NDY4Mzg2LDcuMjMyOTQyOTkgNy4yNzcwMTkyMiw3LjYzMzU0MjI1IEM2Ljg4OTAwODQ0LDguMDMzNzg0MTYgNi40MjY5MjYwMyw4LjM1MTExODgxIDUuODg5NzMzNTksOC41ODUxODg4NSBDNS4zNTIxOTUwMiw4LjgxOTYxNjI1IDQuNzY4Mjc1MTUsOC45MzY4Mjk5NSA0LjEzNjkzNTU4LDguOTM2ODI5OTUgTDIuMjU5NTMxMDgsOC45MzY4Mjk5NSBMMi4yNTk1MzEwOCwxMi41MjE4NTM5IEwwLDEyLjUyMTg1MzkgTDAsMCBMNC4xNTM1NDk3OCwwIFogTTE0LjEwNTQ4OTcsNC41ODAyMzI1NiBDMTMuNjk1NjcyOCw0LjU4MDIzMjU2IDEzLjMxMDc3NzEsNC42NTU2MzUyNyAxMi45NTA4MDI4LDQuODA1NzI1OTkgQzEyLjU5MDgyODUsNC45NTU4MTY3IDEyLjI3NzkyNzgsNS4xNjAyMjU5NiAxMi4wMTIxMDA2LDUuNDE3NTI0MzMgQzExLjc0NjI3MzQsNS42NzU1Mzc0MSAxMS41Mzg1OTU5LDUuOTgxNzkzOTQgMTEuMzg5MDY4MSw2LjMzNjI5MzkxIEMxMS4yMzk1NDAzLDYuNjkwNzkzODkgMTEuMTY0Nzc2NCw3LjA3MTczODQxIDExLjE2NDc3NjQsNy40ODAxOTk1NyBDMTEuMTY0Nzc2NCw3Ljg4ODMwMzM3IDExLjIzOTU0MDMsOC4yNzI0NjQxMyAxMS4zODkwNjgxLDguNjMxOTY3MTIgQzExLjUzODU5NTksOC45OTE0NzAxMiAxMS43NDYyNzM0LDkuMzAyNzI5NjcgMTIuMDEyMTAwNiw5LjU2NjQ2MDUgQzEyLjI3NzkyNzgsOS44Mjk0NzY2MSAxMi41OTA4Mjg1LDEwLjAzNjAzIDEyLjk1MDgwMjgsMTAuMTg2ODM1NCBDMTMuMzEwNzc3MSwxMC4zMzY5MjYyIDEzLjY5NTY3MjgsMTAuNDExOTcxNSAxNC4xMDU0ODk3LDEwLjQxMTk3MTUgQzE0LjUyNjM4MjcsMTAuNDExOTcxNSAxNC45MTM3MDEyLDEwLjMzNjkyNjIgMTUuMjY4NDgzNiwxMC4xODY4MzU0IEMxNS42MjI5MTk5LDEwLjAzNjAzIDE1LjkyNzE2NzQsOS44MjY2MTc3NCAxNi4xODIyNjQ2LDkuNTU3ODgzODkgQzE2LjQzNzAxNTYsOS4yODk1MDczOSAxNi42MzkxNTUsOC45Nzc4OTA0OCAxNi43ODg2ODI4LDguNjIzNzQ3ODcgQzE2LjkzODIxMDYsOC4yNjk2MDUyNiAxNy4wMTI5NzQ1LDcuODg4MzAzMzcgMTcuMDEyOTc0NSw3LjQ4MDE5OTU3IEMxNy4wMTI5NzQ1LDcuMDgyODE2NTQgMTYuOTM4MjEwNiw2LjcwNjg3NTAzIDE2Ljc4ODY4MjgsNi4zNTIzNzUwNiBDMTYuNjM5MTU1LDUuOTk3ODc1MDkgMTYuNDM3MDE1Niw1LjY4OTExNzA1IDE2LjE4MjI2NDYsNS40MjYxMDA5NCBDMTUuOTI3MTY3NCw1LjE2MjcyNzQ3IDE1LjYyMjkxOTksNC45NTU4MTY3IDE1LjI2ODQ4MzYsNC44MDU3MjU5OSBDMTQuOTEzNzAxMiw0LjY1NTYzNTI3IDE0LjUyNjM4MjcsNC41ODAyMzI1NiAxNC4xMDU0ODk3LDQuNTgwMjMyNTYgWiBNMy45ODc0MDc3OSwyLjE2MTMwNjI4IEwyLjI1OTUzMTA4LDIuMTYxMzA2MjggTDIuMjU5NTMxMDgsNi43NzU1MjM2NyBMMy45ODc0MDc3OSw2Ljc3NTUyMzY3IEM0LjMxOTY5MTc3LDYuNzc1NTIzNjcgNC42MjQyODU0Miw2LjcxNTQ4NzM4IDQuOTAxMTg4NzQsNi41OTU0MTQ4MSBDNS4xNzc3NDU5Myw2LjQ3NTM0MjI0IDUuNDE2MjI4OTIsNi4zMDk1Mjc3NCA1LjYxNTU5OTMsNi4wOTgzMjg2NiBDNS44MTQ5Njk2OSw1Ljg4Njc3MjIyIDUuOTcwMDM1NTUsNS42NDA1NTE5OCA2LjA4MDc5Njg4LDUuMzYwMzgyNjUgQzYuMTkxMjEyMDgsNS4wODA1NzA2NyA2LjI0NjkzODg3LDQuNzgwMDMxODkgNi4yNDY5Mzg4Nyw0LjQ2MDE5NTcyIEM2LjI0NjkzODg3LDQuMTM5NjQ0ODQgNi4xOTEyMTIwOCwzLjgzOTQ2MzQxIDYuMDgwNzk2ODgsMy41NTkyOTQwOCBDNS45NzAwMzU1NSwzLjI3OTEyNDc1IDUuODE0OTY5NjksMy4wMzYxMjA3MyA1LjYxNTU5OTMsMi44MzAyODIwNCBDNS40MTYyMjg5MiwyLjYyNDQ0MzM0IDUuMTc3NzQ1OTMsMi40NjE0ODc3MSA0LjkwMTE4ODc0LDIuMzQxNDE1MTQgQzQuNjI0Mjg1NDIsMi4yMjEzNDI1NyA0LjMxOTY5MTc3LDIuMTYxMzA2MjggMy45ODc0MDc3OSwyLjE2MTMwNjI4IFoiPjwvcGF0aD48L2NsaXBQYXRoPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjMzLjAgLTE2MC4wKSI+PGcgY2xpcC1wYXRoPSJ1cmwoI2kwKSI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjMzLjAgMTYwLjApIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMC4wMDAxODA1NTU1NTU1NTIwNzU0OCAwLjApIj48ZyBjbGlwLXBhdGg9InVybCgjaTEpIj48cG9seWdvbiBwb2ludHM9IjAsMCA1MiwwIDUyLDUyIDAsNTIgMCwwIiBzdHJva2U9Im5vbmUiIGZpbGw9InVybCgjaTIpIj48L3BvbHlnb24+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg3LjU4MzMzMzMzMzMzMzMzMiAxNC44MDU1NTU1NTU1NTU1NSkiPjxnIGNsaXAtcGF0aD0idXJsKCNpMykiPjxnIGNsaXAtcGF0aD0idXJsKCNpNCkiPjxwb2x5Z29uIHBvaW50cz0iMCwwIDM2LjQ3OTE2NjcsMCAzNi40NzkxNjY3LDUuNjEyMTc5NDkgMCw1LjYxMjE3OTQ5IDAsMCIgc3Ryb2tlPSJub25lIiBmaWxsPSIjRkZGRkZGIj48L3BvbHlnb24+PC9nPjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNy41ODMzMzMzMzMzMzMzNzEgMjQuNDMyMDgwMjU1NDc3MzMpIj48ZyBjbGlwLXBhdGg9InVybCgjaTUpIj48cG9seWdvbiBwb2ludHM9IjAsMCAzNy4xOTQ0NDQ0LDAgMzcuMTk0NDQ0NCwxMi41MzkwMDcxIDAsMTIuNTM5MDA3MSAwLDAiIHN0cm9rZT0ibm9uZSIgZmlsbD0iI0ZGRkZGRiI+PC9wb2x5Z29uPjwvZz48L2c+PC9nPjwvZz48L2c+PC9zdmc+"},"b2647539-a130-4aee-8c34-9e4b52339123":{"name":"ZTPass SmartAuth"},"e416201b-afeb-41ca-a03d-2281c28322aa":{"name":"ATKey.Pro CTAP2.1"},"905b4cb4-ed6f-4da9-92fc-45e0d4e9b5c7":{"name":"YubiKey 5 FIPS Series (Enterprise Profile)"},"dee49ee1-11cb-47b6-bed0-8e995e67a0fb":{"name":"SECORA Connect SLS21 D1 FIDO 2.1 v1.0 by Infineon - Consumer Edition"},"cfcb13a2-244f-4b36-9077-82b79d6a7de7":{"name":"USB/NFC Passcode Authenticator"},"76692dc1-c56a-48d9-8e7d-31b5ced430ac":{"name":"VeriMark NFC+ USB-A Security Key"},"91ad6b93-264b-4987-8737-3a690cad6917":{"name":"Token Ring FIDO2 Authenticator"},"a02140b7-0cbd-42e1-a9b5-a39da2545114":{"name":"Feitian BioPass FIDO2 Plus (Enterprise Profile)"},"5753362b-4e6b-6345-7b2f-255438404c75":{"name":"WiSECURE Blentity FIDO2 Authenticator"},"9f77e279-a6e2-4d58-b700-31e5943c6a98":{"name":"Hyper FIDO Pro"},"b9f6b7b6-f929-4189-bca9-dd951240c132":{"name":"Deepnet SafeKey/Classic (USB)"},"cc45f64e-52a2-451b-831a-4edd8022a202":{"name":"ToothPic Passkey Provider"},"0bb43545-fd2c-4185-87dd-feb0b2916ace":{"name":"Security Key NFC by Yubico - Enterprise Edition"},"73402251-f2a8-4f03-873e-3cb6db604b03":{"name":"uTrust FIDO2 Security Key"},"c1f9a0bc-1dd2-404a-b27f-8e29047a43fd":{"name":"YubiKey 5 FIPS Series with NFC"},"70e7c36f-f2f6-9e0d-07a6-bcc243262e6b":{"name":"OneKey FIDO2 Bluetooth Authenticator"},"4fc84f16-2545-4e53-b8fc-7bf4d7282a10":{"name":"YubiKey 5 CCN Series with NFC (Enterprise Profile)"},"6ab56fad-881f-4a43-acb2-0be065924522":{"name":"YubiKey 5 Series with NFC (Enterprise Profile)"},"504d7149-4e4c-3841-4555-55445a677357":{"name":"WiSECURE AuthTron USB FIDO2 Authenticator"},"2c2aeed8-8174-4159-814b-486e92a261d0":{"name":"NEOWAVE WINKEO V2.0"},"f2145e86-211e-4931-b874-e22bba7d01cc":{"name":"ID-One Key"},"53334693-4b3f-4198-8857-53772de2ab65":{"name":"Precision InnaIT Key FIDO 2 Level 2 certified"},"a3975549-b191-fd67-b8fb-017e2917fdb3":{"name":"Excelsecu eSecu FIDO2 NFC Security Key"},"19083c3d-8383-4b18-bc03-8f1c9ab2fd1b":{"name":"YubiKey 5 Series"},"da1fa263-8b25-42b6-a820-c0036f21ba7f":{"name":"ATKey.Card NFC"},"6002f033-3c07-ce3e-d0f7-0ffe5ed42543":{"name":"Excelsecu eSecu FIDO2 Fingerprint Key"},"5fdb81b8-53f0-4967-a881-f5ec26fe4d18":{"name":"VinCSS FIDO2 Authenticator"},"78ba3993-d784-4f44-8d6e-cc0a8ad5230e":{"name":"Feitian ePass FIDO-NFC(CTAP2.1, CTAP2.0, U2F)"},"57f7de54-c807-4eab-b1c6-1c9be7984e92":{"name":"YubiKey 5 FIPS Series"},"bb405265-40cf-4115-93e5-a332c1968d8c":{"name":"ID-One Card"},"2d3bec26-15ee-4f5d-88b2-53622490270b":{"name":"HID Crescendo Key V2"},"489ff376-b48d-6640-bb69-782a860ca795":{"name":"Mettlesemi Vishwaas Eagle Authenticator using FIDO2"},"3b24bf49-1d45-4484-a917-13175df0867b":{"name":"YubiKey 5 Series with Lightning (Enterprise Profile)"},"30b5035e-d297-4ff1-010b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX1a"},"cb69481e-8ff7-4039-93ec-0a2729a154a8":{"name":"YubiKey 5 Series"},"0076631b-d4a0-427f-5773-0ec71c9e0279":{"name":"HYPR FIDO2 Authenticator"},"d716019a-9f4e-4041-9750-17c78f8ae81a":{"name":"eToken Fusion BIO"},"57235694-51a5-4a4d-a81a-f42185df6502":{"name":"SHALO AUTH"},"24673149-6c86-42e7-98d9-433fb5b73296":{"name":"YubiKey 5 Series with Lightning"},"357f2718-434f-4124-8a58-7e28c5e4a2fc":{"name":"Deepnet SafeKey/Classic (NFC)"},"42df17de-06ba-4177-a2bb-6701be1380d6":{"name":"Feitian BioPass FIDO2 Plus Authenticator"},"d7a423ad-3e19-4492-9200-78137dccc136":{"name":"VivoKey Apex FIDO2"},"b3315166-f36c-b05f-fea8-66a3dfdad171":{"name":"Ledger Nano Gen5 FIDO2 Authenticator"},"ba76a271-6eb6-4171-874d-b6428dbe3437":{"name":"ATKey.ProS"},"97e6a830-c952-4740-95fc-7c78dc97ce47":{"name":"YubiKey Bio Series - Multi-protocol Edition (Enterprise Profile)"},"f573f209-b7fb-b261-671a-d7cf624cc812":{"name":"Excelsecu eSecu FIDO2 PRO+ Security Key"},"005b20e1-f146-4b87-8f3a-36848ff60ea6":{"name":"SECORA ID V2 by Infineon Pay Edition M"},"6e24d385-004a-16a0-7bfe-efd963845b34":{"name":"Ledger Stax FIDO2 Authenticator"},"ee882879-721c-4913-9775-3dfcce97072a":{"name":"YubiKey 5 Series"},"8876631b-d4a0-427f-5773-0ec71c9e0279":{"name":"Solo Secp256R1 FIDO2 CTAP2 Authenticator"},"fec067a1-f1d0-4c5e-b4c0-cc3237475461":{"name":"KX701 SmartToken FIDO"},"30b5035e-d297-4ff1-b00b-addc96ba6a98":{"name":"OneSpan DIGIPASS FX1 BIO"},"b267239b-954f-4041-a01b-ee4f33c145b6":{"name":"authenton1 - CTAP2.1"},"b50d5e0a-7f81-4959-9b12-f45407407503":{"name":"IDPrime 3940 FIDO"},"8c97a730-3f7b-41a6-87d6-1e9b62bda6f0":{"name":"FT-JCOS FIDO Fingerprint Card"},"99bf4610-ec26-4252-b31f-7380ccd59db5":{"name":"ZTPass SmartAuth"},"a1f52be5-dfab-4364-b51c-2bd496b14a56":{"name":"OCTATCO EzFinger2 FIDO2 AUTHENTICATOR"},"c3479970-e58a-4f70-836f-853bf42fb063":{"name":"YubiKey 5 Series with Lightning (Enterprise Profile)"},"0f00cc22-4640-41e7-9585-384ec73ffe9b":{"name":"Taglio CTAP2.1 BIO"},"ff4dac45-ede8-4ec2-aced-cf66103f4335":{"name":"YubiKey 5 Series"},"ba86dc56-635f-4141-aef6-00227b1b9af6":{"name":"TruU Windows Authenticator"},"3e078ffd-4c54-4586-8baa-a77da113aec5":{"name":"Hideez Key 3 FIDO2"},"fc5ca237-69a0-4f3c-afe4-1ebc66def6df":{"name":"Clife Key 2"},"ec31b4cc-2acc-4b8e-9c01-bade00ccbe26":{"name":"KeyXentic FIDO2 Secp256R1 FIDO2 CTAP2 Authenticator"},"531126d6-e717-415c-9320-3d9aa6981239":{"name":"Dashlane","icon_light":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTcuNDc0IDM1OS4yMDlDMjU3LjQ3NCAzNTYuMTg5IDI1NC40NTQgMzUzLjE2OSAyNTAuMjE1IDM1MS45NTlMMTk5LjQxMSAzMzMuMjMxQzE5MC44OTUgMzI5LjYwMSAxODEuMjY0IDMzMy44MzEgMTgxLjI2NCAzMzkuODlWNDc1Ljc3OUMxODEuMjY0IDQ3OC44MDkgMTg0LjI4MyA0ODIuNDM4IDE4Ny4zMDMgNDgzLjY0OEwyMzkuMzI2IDUwMi4zNzZDMjQ3LjE5NSA1MDUuMzk2IDI1Ny40NzQgNTAxLjE2NiAyNTcuNDc0IDQ5NC41MDhWMzU5LjIwOVoiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTM1Mi43MzYgMzIxLjEwM0MzNTIuNzM2IDMxOC4wODQgMzQ5LjcxNyAzMTUuMDY0IDM0NS40NzcgMzEzLjg1NEwyOTQuNjc0IDI5NS4xMjZDMjg2LjE1NyAyOTEuNDk2IDI3Ni41MjYgMjk1LjcyNiAyNzYuNTI2IDMwMS43ODVWNDM3LjY3NEMyNzYuNTI2IDQ0MC43MDQgMjc5LjU0NiA0NDQuMzMzIDI4Mi41NjYgNDQ1LjU0M0wzMzQuNTg5IDQ2NC4yNzFDMzQyLjQ1OCA0NjcuMjkxIDM1Mi43MzYgNDYzLjA2MSAzNTIuNzM2IDQ1Ni40MDNWMzIxLjEwM1oiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTI1Ny40NzQgMzUuMzIxMUMyNTcuNDc0IDMyLjMwMTMgMjU0LjQ1NCAyOS4yODE1IDI1MC4yMTUgMjguMDcxN0wxOTkuNDExIDkuMzQzNDNDMTkwLjg5NSA1LjcxMzk5IDE4MS4yNjQgOS45NDM1OCAxODEuMjY0IDE2LjAwMjJWMTUxLjg5MkMxODEuMjY0IDE1NC45MjEgMTg0LjI4MyAxNTguNTUxIDE4Ny4zMDMgMTU5Ljc2TDIzOS4zMjYgMTc4LjQ4OUMyNDcuMTk1IDE4MS41MDggMjU3LjQ3NCAxNzcuMjc5IDI1Ny40NzQgMTcwLjYyVjM1LjMyMTFaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDkyLjQ3NzdDMzUyLjczNiA4OS40NTc5IDM0OS43MTcgODYuNDM4MiAzNDUuNDc3IDg1LjIyODNMMjk0LjY3NCA2Ni41QzI4Ni4xNTcgNjIuODcwNiAyNzYuNTI2IDY3LjEwMDIgMjc2LjUyNiA3My4xNTg4VjIwOS4wNDhDMjc2LjUyNiAyMTIuMDc4IDI3OS41NDYgMjE1LjcwNyAyODIuNTY2IDIxNi45MTdMMzM0LjU4OSAyMzUuNjQ1QzM0Mi40NTggMjM4LjY2NSAzNTIuNzM2IDIzNC40MzYgMzUyLjczNiAyMjcuNzc3VjkyLjQ3NzdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik00NDggMTY4LjY4N0M0NDggMTY1LjY2NyA0NDQuOTggMTYyLjY0NyA0NDAuNzQxIDE2MS40MzdMMzg5LjkzNyAxNDIuNzA5QzM4MS40MjEgMTM5LjA3OSAzNzEuNzkgMTQzLjMwOSAzNzEuNzkgMTQ5LjM2OFYzNjEuNDY2QzM3MS43OSAzNjQuNDk1IDM3NC44MSAzNjguMTI1IDM3Ny44MjkgMzY5LjMzNUw0MjkuODUyIDM4OC4wNjNDNDM3LjcyMSAzOTEuMDgzIDQ0OCAzODYuODUzIDQ0OCAzODAuMTk0VjE2OC42ODdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0xNjIuMjEgMzUuMzMwNkMxNjIuMjEgMzIuMzEwOCAxNTkuMTkgMjkuMjgxNSAxNTQuOTUxIDI4LjA3MTdMMTA0LjE0OCA5LjM0MzQzQzk1LjY3ODcgNS43MTM5OSA4NiA5Ljk0MzU4IDg2IDE2LjAwMjJWNDc1Ljc4OUM4NiA0NzguODA4IDg5LjAxOTggNDgyLjQzOCA5Mi4wNDkyIDQ4My42NDhMMTQ0LjA2MyA1MDIuMzc2QzE1MS45MzEgNTA1LjM5NiAxNjIuMjEgNTAxLjE2NiAxNjIuMjEgNDk0LjUwN1YzNS4zMzA2WiIgZmlsbD0iIzA5MzYzRiIvPgo8L3N2Zz4K","icon_dark":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTcuNDc0IDM1OS4yMDlDMjU3LjQ3NCAzNTYuMTg5IDI1NC40NTQgMzUzLjE2OSAyNTAuMjE1IDM1MS45NTlMMTk5LjQxMSAzMzMuMjMxQzE5MC44OTUgMzI5LjYwMSAxODEuMjY0IDMzMy44MzEgMTgxLjI2NCAzMzkuODlWNDc1Ljc3OUMxODEuMjY0IDQ3OC44MDkgMTg0LjI4MyA0ODIuNDM4IDE4Ny4zMDMgNDgzLjY0OEwyMzkuMzI2IDUwMi4zNzZDMjQ3LjE5NSA1MDUuMzk2IDI1Ny40NzQgNTAxLjE2NiAyNTcuNDc0IDQ5NC41MDhWMzU5LjIwOVoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDMyMS4xMDRDMzUyLjczNiAzMTguMDg0IDM0OS43MTcgMzE1LjA2NCAzNDUuNDc3IDMxMy44NTRMMjk0LjY3NCAyOTUuMTI2QzI4Ni4xNTcgMjkxLjQ5NiAyNzYuNTI2IDI5NS43MjYgMjc2LjUyNiAzMDEuNzg1VjQzNy42NzRDMjc2LjUyNiA0NDAuNzA0IDI3OS41NDYgNDQ0LjMzMyAyODIuNTY2IDQ0NS41NDNMMzM0LjU4OSA0NjQuMjcxQzM0Mi40NTggNDY3LjI5MSAzNTIuNzM2IDQ2My4wNjEgMzUyLjczNiA0NTYuNDAzVjMyMS4xMDRaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjU3LjQ3NCAzNS4zMjExQzI1Ny40NzQgMzIuMzAxMyAyNTQuNDU0IDI5LjI4MTUgMjUwLjIxNSAyOC4wNzE3TDE5OS40MTEgOS4zNDM0M0MxOTAuODk1IDUuNzEzOTkgMTgxLjI2NCA5Ljk0MzU4IDE4MS4yNjQgMTYuMDAyMlYxNTEuODkyQzE4MS4yNjQgMTU0LjkyMSAxODQuMjgzIDE1OC41NTEgMTg3LjMwMyAxNTkuNzZMMjM5LjMyNiAxNzguNDg5QzI0Ny4xOTUgMTgxLjUwOSAyNTcuNDc0IDE3Ny4yNzkgMjU3LjQ3NCAxNzAuNjJWMzUuMzIxMVoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDkyLjQ3NzdDMzUyLjczNiA4OS40NTc5IDM0OS43MTcgODYuNDM4MiAzNDUuNDc3IDg1LjIyODNMMjk0LjY3NCA2Ni41QzI4Ni4xNTcgNjIuODcwNiAyNzYuNTI2IDY3LjEwMDIgMjc2LjUyNiA3My4xNTg4VjIwOS4wNDhDMjc2LjUyNiAyMTIuMDc4IDI3OS41NDYgMjE1LjcwNyAyODIuNTY2IDIxNi45MTdMMzM0LjU4OSAyMzUuNjQ1QzM0Mi40NTggMjM4LjY2NSAzNTIuNzM2IDIzNC40MzYgMzUyLjczNiAyMjcuNzc3VjkyLjQ3NzdaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNNDQ4IDE2OC42ODdDNDQ4IDE2NS42NjcgNDQ0Ljk4IDE2Mi42NDcgNDQwLjc0MSAxNjEuNDM3TDM4OS45MzcgMTQyLjcwOUMzODEuNDIxIDEzOS4wNzkgMzcxLjc5IDE0My4zMDkgMzcxLjc5IDE0OS4zNjhWMzYxLjQ2NkMzNzEuNzkgMzY0LjQ5NSAzNzQuODEgMzY4LjEyNSAzNzcuODI5IDM2OS4zMzVMNDI5Ljg1MiAzODguMDYzQzQzNy43MjEgMzkxLjA4MyA0NDggMzg2Ljg1MyA0NDggMzgwLjE5NFYxNjguNjg3WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTE2Mi4yMSAzNS4zMzA2QzE2Mi4yMSAzMi4zMTA4IDE1OS4xOSAyOS4yODE1IDE1NC45NTEgMjguMDcxN0wxMDQuMTQ4IDkuMzQzNDNDOTUuNjc4NyA1LjcxMzk5IDg2IDkuOTQzNTggODYgMTYuMDAyMlY0NzUuNzg5Qzg2IDQ3OC44MDggODkuMDE5OCA0ODIuNDM4IDkyLjA0OTIgNDgzLjY0OEwxNDQuMDYzIDUwMi4zNzZDMTUxLjkzMSA1MDUuMzk2IDE2Mi4yMSA1MDEuMTY2IDE2Mi4yMSA0OTQuNTA3VjM1LjMzMDZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"},"5d629218-d3a5-11ed-afa1-0242ac120002":{"name":"Swissbit iShield Key Pro"},"bb878d7b-cf54-4784-b390-357030497043":{"name":"TruU FIDO2 Authenticator"},"6f706c75-7366-6964-6f2d-70732d303031":{"name":"OPPO FIDO2 Authenticator"},"d41f5a69-b817-4144-a13c-9ebd6d9254d6":{"name":"ATKey.Card CTAP2.0"},"e86addcd-7711-47e5-b42a-c18257b0bf61":{"name":"IDCore 3121 Fido"},"39502df1-646d-4e31-81a1-2ef68b324678":{"name":"USB GoldKey Security Token"},"8108bdcd-8483-46b3-b3ce-359f8190325e":{"name":"SECORA ID V2 by Infineon Enterprise Edition"},"b113a455-cfb6-4c17-8cba-cd952feb7d48":{"name":"eToken FIDO NFC"},"e50e32f3-02ec-4afb-bdac-7205d12629df":{"name":"IDEMIA FIDO Card"},"95442b2e-f15e-4def-b270-efb106facb4e":{"name":"eWBM eFA310 FIDO2 Authenticator"},"dda9aa35-aaf1-4d3c-b6db-7902fd7dbbbf":{"name":"IDEMIA SOLVO Fly 80 R3 FIDO Card c"},"cdbdaea2-c415-5073-50f7-c04e968640b6":{"name":"Excelsecu eSecu FIDO2 Security Key"},"3aa78eb1-ddd8-46a8-a821-8f8ec57a7bd5":{"name":"YubiKey 5 CCN Series with NFC"},"bc2fe499-0d8e-4ffe-96f3-94a82840cf8c":{"name":"OCTATCO EzQuant FIDO2 AUTHENTICATOR"},"eb3b131e-59dc-536a-d176-cb7306da10f5":{"name":"ellipticSecure MIRkey USB Authenticator"},"3fd410dc-8ab7-4b86-a1cb-c7174620b2dc":{"name":"IDEMIA SOLVO Fly 80 R1 FIDO Card Draft"},"c09b3399-4a3d-306c-7bdc-967fef47241f":{"name":"Giesecke+Devrient StarSign FIDO Card 2.1"},"a6c5f5d8-2ad0-48b6-8257-e502c8970931":{"name":"eToken FIDO NFC Enterprise"},"e400ef8c-711d-4692-af46-7f2cf7da23ad":{"name":"Swissbit iShield Key 2 Enterprise"},"87c13177-85d6-40ac-8c61-fe7ab3de9dfb":{"name":"HID Crescendo Key V3"},"1c086528-58d5-f211-823c-356786e36140":{"name":"Atos CardOS FIDO2"},"77010bd7-212a-4fc9-b236-d2ca5e9d4084":{"name":"Feitian BioPass FIDO2 Authenticator"},"3b3faa7b-2c56-4489-bcd3-53b83ee75768":{"name":"SECORA Connect SLS21 D1 FIDO 2.1 v1.0 by Infineon - Enterprise Edition"},"d94a29d9-52dd-4247-9c2d-8b818b610389":{"name":"VeriMark Guard Fingerprint Key"},"7b96457d-e3cd-432b-9ceb-c9fdd7ef7432":{"name":"YubiKey 5 FIPS Series with Lightning"},"7991798a-a7f3-487f-98c0-3faf7a458a04":{"name":"HID Crescendo Key V3"},"833b721a-ff5f-4d00-bb2e-bdda3ec01e29":{"name":"Feitian ePass FIDO2 Authenticator"},"c89674e3-a765-4b07-888a-7c086fbdf04b":{"name":"StarSign FIDO Card"},"7c30bcef-f035-4e21-9175-5c985b4b239c":{"name":"TeamPass"},"6d6f6e69-6361-4d33-a001-706173736b79":{"name":"Monica Pass"},"a11a5faa-9f32-4b8c-8c5d-2f7d13e8c942":{"name":"AliasVault"},"ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4":{"name":"Google Password Manager","icon_light":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4=","icon_dark":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="},"adce0002-35bc-c60a-648b-0b25f1f05503":{"name":"Chrome on Mac","icon_light":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMy4yMTczIiB5MT0iMTUiIHgyPSI0NC43ODEyIiB5Mj0iMTUiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZDkzMDI1Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2VhNDMzNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjIwLjcyMTkiIHkxPSI0Ny42NzkxIiB4Mj0iNDEuNTAzOSIgeTI9IjExLjY4MzciIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmNjOTM0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZiYmMwNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjI2LjU5ODEiIHkxPSI0Ni41MDE1IiB4Mj0iNS44MTYxIiB5Mj0iMTAuNTA2IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzFlOGUzZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzNGE4NTMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAKICAgIDxwYXRoIGlkPSJwIiBkPSJNMTMuNjA4NiAzMC4wMDMxIDMuMjE4IDEyLjAwNkEyMy45OTQgMjMuOTk0IDAgMCAwIDI0LjAwMjUgNDhsMTAuMzkwNi0xNy45OTcxLS4wMDY3LS4wMDY4YTExLjk4NTIgMTEuOTg1MiAwIDAgMS0yMC43Nzc4LjAwN1oiLz4KICA8L2RlZnM+CiAgCiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNhKSIgdHJhbnNmb3JtPSJyb3RhdGUoMTIwIDI0IDI0KSIvPgogIDx1c2UgeGxpbms6aHJlZj0iI3AiIGZpbGw9InVybCgjYikiIHRyYW5zZm9ybT0icm90YXRlKC0xMjAgMjQgMjQpIi8+CiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNjKSIvPgogIAogIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjEyIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iOS41IiBzdHlsZT0iZmlsbDojMWE3M2U4Ii8+Cjwvc3ZnPg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMy4yMTczIiB5MT0iMTUiIHgyPSI0NC43ODEyIiB5Mj0iMTUiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZDkzMDI1Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2VhNDMzNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjIwLjcyMTkiIHkxPSI0Ny42NzkxIiB4Mj0iNDEuNTAzOSIgeTI9IjExLjY4MzciIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmNjOTM0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZiYmMwNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjI2LjU5ODEiIHkxPSI0Ni41MDE1IiB4Mj0iNS44MTYxIiB5Mj0iMTAuNTA2IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzFlOGUzZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzNGE4NTMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAKICAgIDxwYXRoIGlkPSJwIiBkPSJNMTMuNjA4NiAzMC4wMDMxIDMuMjE4IDEyLjAwNkEyMy45OTQgMjMuOTk0IDAgMCAwIDI0LjAwMjUgNDhsMTAuMzkwNi0xNy45OTcxLS4wMDY3LS4wMDY4YTExLjk4NTIgMTEuOTg1MiAwIDAgMS0yMC43Nzc4LjAwN1oiLz4KICA8L2RlZnM+CiAgCiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNhKSIgdHJhbnNmb3JtPSJyb3RhdGUoMTIwIDI0IDI0KSIvPgogIDx1c2UgeGxpbms6aHJlZj0iI3AiIGZpbGw9InVybCgjYikiIHRyYW5zZm9ybT0icm90YXRlKC0xMjAgMjQgMjQpIi8+CiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNjKSIvPgogIAogIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjEyIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iOS41IiBzdHlsZT0iZmlsbDojMWE3M2U4Ii8+Cjwvc3ZnPg=="},"dd4ec289-e01d-41c9-bb89-70fa845d4bf2":{"name":"iCloud Keychain (Managed)","icon_light":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iI0ZGRiIvPjwvc3ZnPg=="},"bada5566-a7aa-401f-bd96-45619a55120d":{"name":"1Password","icon_light":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjI1NyAxMjAuNDE3QzIzOS4yNTcgNTQuNDE5MyAxODUuNzU1IDAuOTE2NTA0IDExOS43NTcgMC45MTY1MDRDNTMuNzYwMSAwLjkxNjUwNCAwLjI1NzMyNCA1NC40MTkzIDAuMjU3MzI0IDEyMC40MTdDMC4yNTczMjQgMTg2LjQxNyA1My43NjAxIDIzOS45MTcgMTE5Ljc1NyAyMzkuOTE3QzE4NS43NTUgMjM5LjkxNyAyMzkuMjU3IDE4Ni40MTcgMjM5LjI1NyAxMjAuNDE3Wk05OC4wMDY5IDU0LjAyNzZDOTcuMDY3NCA1NS44NzE0IDk3LjA2NzQgNTguMjg1MSA5Ny4wNjc0IDYzLjExMjZWOTAuNDcyOUM5Ny4wNjc0IDkxLjY3ODggOTcuMDY3NCA5Mi4yODE3IDk3LjIxOTYgOTIuODM5MkM5Ny4zNTQ1IDkzLjMzMzEgOTcuNTc2MyA5My43OTkgOTcuODc0NiA5NC4yMTVDOTguMjExMyA5NC42ODQ3IDk4LjY3OTIgOTUuMDY0OCA5OS42MTUyIDk1LjgyNTFMMTA2LjUzNiAxMDEuNDQ3QzEwNy42NjQgMTAyLjM2NCAxMDguMjI4IDEwMi44MjIgMTA4LjQzMyAxMDMuMzc0QzEwOC42MTMgMTAzLjg1NyAxMDguNjEzIDEwNC4zOSAxMDguNDMzIDEwNC44NzNDMTA4LjIyOCAxMDUuNDI1IDEwNy42NjQgMTA1Ljg4MyAxMDYuNTM2IDEwNi44TDk5LjYxNTIgMTEyLjQyMkM5OC42NzkzIDExMy4xODIgOTguMjExMyAxMTMuNTYyIDk3Ljg3NDYgMTE0LjAzMkM5Ny41NzYzIDExNC40NDggOTcuMzU0NSAxMTQuOTE0IDk3LjIxOTYgMTE1LjQwOEM5Ny4wNjc0IDExNS45NjUgOTcuMDY3NCAxMTYuNTY4IDk3LjA2NzQgMTE3Ljc3NFYxNzcuNzE5Qzk3LjA2NzQgMTgyLjU0NyA5Ny4wNjc0IDE4NC45NjEgOTguMDA2OSAxODYuODA1Qzk4LjgzMzMgMTg4LjQyNiAxMDAuMTUyIDE4OS43NDUgMTAxLjc3NCAxOTAuNTcxQzEwMy42MTggMTkxLjUxMSAxMDYuMDMxIDE5MS41MTEgMTEwLjg1OSAxOTEuNTExSDEyOC42NTZDMTMzLjQ4MyAxOTEuNTExIDEzNS44OTcgMTkxLjUxMSAxMzcuNzQxIDE5MC41NzFDMTM5LjM2MyAxODkuNzQ1IDE0MC42ODEgMTg4LjQyNiAxNDEuNTA4IDE4Ni44MDVDMTQyLjQ0NyAxODQuOTYxIDE0Mi40NDcgMTgyLjU0NyAxNDIuNDQ3IDE3Ny43MTlWMTUwLjM1OUMxNDIuNDQ3IDE0OS4xNTMgMTQyLjQ0NyAxNDguNTUgMTQyLjI5NSAxNDcuOTkzQzE0Mi4xNiAxNDcuNDk5IDE0MS45MzggMTQ3LjAzMyAxNDEuNjQgMTQ2LjYxN0MxNDEuMzAzIDE0Ni4xNDcgMTQwLjgzNSAxNDUuNzY3IDEzOS44OTkgMTQ1LjAwN0wxMzIuOTc4IDEzOS4zODVDMTMxLjg1IDEzOC40NjggMTMxLjI4NiAxMzguMDEgMTMxLjA4MiAxMzcuNDU5QzEzMC45MDIgMTM2Ljk3NSAxMzAuOTAyIDEzNi40NDMgMTMxLjA4MiAxMzUuOTU5QzEzMS4yODYgMTM1LjQwNyAxMzEuODUgMTM0Ljk0OSAxMzIuOTc4IDEzNC4wMzNMMTM5Ljg5OSAxMjguNDFDMTQwLjgzNSAxMjcuNjUgMTQxLjMwMyAxMjcuMjcgMTQxLjY0IDEyNi44QzE0MS45MzggMTI2LjM4NCAxNDIuMTYgMTI1LjkxOCAxNDIuMjk1IDEyNS40MjRDMTQyLjQ0NyAxMjQuODY3IDE0Mi40NDcgMTI0LjI2NCAxNDIuNDQ3IDEyMy4wNThWNjMuMTEyNkMxNDIuNDQ3IDU4LjI4NTEgMTQyLjQ0NyA1NS44NzE0IDE0MS41MDggNTQuMDI3NkMxNDAuNjgxIDUyLjQwNTcgMTM5LjM2MyA1MS4wODcgMTM3Ljc0MSA1MC4yNjA2QzEzNS44OTcgNDkuMzIxMSAxMzMuNDgzIDQ5LjMyMTEgMTI4LjY1NiA0OS4zMjExSDExMC44NTlDMTA2LjAzMSA0OS4zMjExIDEwMy42MTggNDkuMzIxMSAxMDEuNzc0IDUwLjI2MDZDMTAwLjE1MiA1MS4wODcgOTguODMzMyA1Mi40MDU3IDk4LjAwNjkgNTQuMDI3NloiIGZpbGw9IiNGRkZFRkIiLz4KPC9zdmc+Cg=="},"b84e4048-15dc-4dd0-8640-f4f60813c8af":{"name":"NordPass","icon_light":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgODAgODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjYxMzQgNzBDMi44MjQzNSA2My4zNTIgMCA1NS4xNzIyIDAgNDYuMzI3M0MwIDI0LjA1NTIgMTcuOTA4NiA2IDQwIDZDNjIuMDkxNCA2IDgwIDI0LjA1NTIgODAgNDYuMzI3M0M4MCA1NS4xNzIxIDc3LjE3NTcgNjMuMzUxOCA3Mi4zODY3IDY5Ljk5OTlMNTMuMTc0NyAzOC41NDY2TDUxLjMxOTUgNDEuNzA0Nkw1My4yMDE4IDUwLjQ4NzdMNDAgMjcuNzE0N0wzMS44MzM0IDQxLjYxNjFMMzMuNzM0NiA1MC40ODc3TDI2LjgxNDcgMzguNTY0Nkw3LjYxMzQgNzBaIiBmaWxsPSIjMENBQUFCIi8+Cjwvc3ZnPgo=","icon_dark":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgODAgODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjYxMzQgNzBDMi44MjQzNSA2My4zNTIgMCA1NS4xNzIyIDAgNDYuMzI3M0MwIDI0LjA1NTIgMTcuOTA4NiA2IDQwIDZDNjIuMDkxNCA2IDgwIDI0LjA1NTIgODAgNDYuMzI3M0M4MCA1NS4xNzIxIDc3LjE3NTcgNjMuMzUxOCA3Mi4zODY3IDY5Ljk5OTlMNTMuMTc0NyAzOC41NDY2TDUxLjMxOTUgNDEuNzA0Nkw1My4yMDE4IDUwLjQ4NzdMNDAgMjcuNzE0N0wzMS44MzM0IDQxLjYxNjFMMzMuNzM0NiA1MC40ODc3TDI2LjgxNDcgMzguNTY0Nkw3LjYxMzQgNzBaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"},"0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6":{"name":"Keeper","icon_light":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzYwMzRfMzM2MjcpIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yMiAxMkMyMiAxNy41MjI4IDE3LjUyMjggMjIgMTIgMjJDNi40NzcxNSAyMiAyIDE3LjUyMjggMiAxMkMyIDYuNDc3MTUgNi40NzcxNSAyIDEyIDJDMTcuNTIyOCAyIDIyIDYuNDc3MTUgMjIgMTJaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMTAuMTIxOCAzLjI3MzI1SDExLjY2NjZWOS41MTUyN0gxNC44NTc1TDE4LjY5NiA2LjQ2MzE3TDE5LjY2MDcgNy42NjgyMUwxNS4zOTg5IDExLjA1NjRIMTAuMTIxOFYzLjI3MzI1WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTMuMTQzOCAzLjQ4MzY2TDE0LjY4ODcgMy44NzY5NFY2LjAzNDkyTDE2LjQxNzMgNC42MTgxMUwxNy43MDA4IDUuNTYwOTdMMTQuNDA3IDguMjYwMTNMMTMuMTQzOCA4LjI1MzQxVjMuNDgzNjZaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik00LjAzODcgMTUuMDg0OUw1LjU4MzU0IDE2LjM5NThWNy44MTQyN0w0LjAzODcgOS4yMjc3MlYxNS4wODQ5WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNOC42MTI1NyAxOC4yNDExTDcuMDY2MDQgMTkuNTgwNlY0LjQ5NDg1TDguNjEyNTcgNS44MzQzNFYxOC4yNDExWiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTQuNjg4NyAxOC4xMTc0TDE2LjQxNzMgMTkuNTM0MkwxNy43MDA4IDE4LjU4OTdMMTQuNDA3IDE1Ljg5MjJMMTMuMTQzOCAxNS44OTg5VjIwLjY2ODdMMTQuNjg4NyAyMC4yNzU0VjE4LjExNzRaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik0xOC42OTYgMTcuNDc4NkwxNC44NTc1IDE0LjQyNDhIMTEuNjY2NlYyMC42NjY4SDEwLjEyMThWMTIuODg1M0gxNS4zOTg5TDE5LjY2MDcgMTYuMjczNUwxOC42OTYgMTcuNDc4NloiIGZpbGw9IiNGRkM3MDAiLz4KPHBhdGggZD0iTTE2LjczNzYgMTEuOTcwNkwxOS44OTgxIDE0LjU3MDZMMjAuODgzIDEzLjM4MjNMMTkuMTY2MSAxMS45NzA2TDIwLjg4MyAxMC41NTg4TDE5Ljg5ODEgOS4zNzA1NkwxNi43Mzc2IDExLjk3MDZaIiBmaWxsPSIjRkZDNzAwIi8+CjwvZz4KPGRlZnM+CjxjbGlwUGF0aCBpZD0iY2xpcDBfNjAzNF8zMzYyNyI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K","icon_dark":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzYwMzRfMzM2MjcpIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yMiAxMkMyMiAxNy41MjI4IDE3LjUyMjggMjIgMTIgMjJDNi40NzcxNSAyMiAyIDE3LjUyMjggMiAxMkMyIDYuNDc3MTUgNi40NzcxNSAyIDEyIDJDMTcuNTIyOCAyIDIyIDYuNDc3MTUgMjIgMTJaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMTAuMTIxOCAzLjI3MzI1SDExLjY2NjZWOS41MTUyN0gxNC44NTc1TDE4LjY5NiA2LjQ2MzE3TDE5LjY2MDcgNy42NjgyMUwxNS4zOTg5IDExLjA1NjRIMTAuMTIxOFYzLjI3MzI1WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTMuMTQzOCAzLjQ4MzY2TDE0LjY4ODcgMy44NzY5NFY2LjAzNDkyTDE2LjQxNzMgNC42MTgxMUwxNy43MDA4IDUuNTYwOTdMMTQuNDA3IDguMjYwMTNMMTMuMTQzOCA4LjI1MzQxVjMuNDgzNjZaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik00LjAzODcgMTUuMDg0OUw1LjU4MzU0IDE2LjM5NThWNy44MTQyN0w0LjAzODcgOS4yMjc3MlYxNS4wODQ5WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNOC42MTI1NyAxOC4yNDExTDcuMDY2MDQgMTkuNTgwNlY0LjQ5NDg1TDguNjEyNTcgNS44MzQzNFYxOC4yNDExWiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTQuNjg4NyAxOC4xMTc0TDE2LjQxNzMgMTkuNTM0MkwxNy43MDA4IDE4LjU4OTdMMTQuNDA3IDE1Ljg5MjJMMTMuMTQzOCAxNS44OTg5VjIwLjY2ODdMMTQuNjg4NyAyMC4yNzU0VjE4LjExNzRaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik0xOC42OTYgMTcuNDc4NkwxNC44NTc1IDE0LjQyNDhIMTEuNjY2NlYyMC42NjY4SDEwLjEyMThWMTIuODg1M0gxNS4zOTg5TDE5LjY2MDcgMTYuMjczNUwxOC42OTYgMTcuNDc4NloiIGZpbGw9IiNGRkM3MDAiLz4KPHBhdGggZD0iTTE2LjczNzYgMTEuOTcwNkwxOS44OTgxIDE0LjU3MDZMMjAuODgzIDEzLjM4MjNMMTkuMTY2MSAxMS45NzA2TDIwLjg4MyAxMC41NTg4TDE5Ljg5ODEgOS4zNzA1NkwxNi43Mzc2IDExLjk3MDZaIiBmaWxsPSIjRkZDNzAwIi8+CjwvZz4KPGRlZnM+CjxjbGlwUGF0aCBpZD0iY2xpcDBfNjAzNF8zMzYyNyI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K"},"891494da-2c90-4d31-a9cd-4eab0aed1309":{"name":"Sésame"},"f3809540-7f14-49c1-a8b3-8f813b225541":{"name":"Enpass","icon_light":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTYuNDgzIDI4LjA1NTRDMzEzLjg5OSAyOC4wNTU0IDM3MS4zMTUgMjcuODg1NiA0MjguNzQ1IDI4LjE0MDVDNDQwLjY4IDI3LjkwNzYgNDUyLjUyMSAzMC4yODg5IDQ2My40NDEgMzUuMTE3OUM0NzQuMzYyIDM5Ljk0NjkgNDg0LjA5OSA0Ny4xMDczIDQ5MS45NzEgNTYuMDk4NEM1MDQuMDYyIDY5LjY5NjIgNTExLjEzMiA4Ny4wMzg3IDUxMiAxMDUuMjNDNTEyLjAyOCAxMjEuOTMzIDUxMC4wMzUgMTM4LjU3OCA1MDYuMDYzIDE1NC44MDFDNDk4LjQ0NCAxOTguNzA2IDQ5MC41MTUgMjQyLjUyNyA0ODIuNzI2IDI4Ni4zNzZDNDc2LjAxMiAzMjQuMTM0IDQ2OS41ODEgMzYxLjk1IDQ2Mi41MTMgMzk5LjY4QzQ1Ny42NzIgNDIwLjk2OSA0NDYuNTQ1IDQ0MC4zMDMgNDMwLjU4IDQ1NS4xNjVDNDE0LjYxNiA0NzAuMDI3IDM5NC41NTUgNDc5LjcyNyAzNzMuMDExIDQ4My4wMDJDMzY3Ljc1MiA0ODMuNjI5IDM2Mi40NjIgNDgzLjk0NiAzNTcuMTY2IDQ4My45NUMyOTAuMDUzIDQ4NC4wMTcgMjIyLjk0IDQ4NC4wMTcgMTU1LjgyOCA0ODMuOTVDMTMwLjQ2NiA0ODMuOSAxMDUuOTMgNDc0LjkxNSA4Ni41MTMyIDQ1OC41NjZDNjcuMDk2NSA0NDIuMjE4IDU0LjAzNjIgNDE5LjU0OCA0OS42MTggMzk0LjUyNUMzNi4xODA0IDMxOS4xNzcgMjIuNjI5NyAyNDMuODUzIDguOTY1OTcgMTY4LjU1M0M2LjI4MDM0IDE1My42MzkgMy4zMTIgMTM4LjgxMSAxLjIwNTkgMTIzLjc4NEMtMi40NjEwNSAxMDIuNzI5IDIuMzEwOTMgODEuMDc0NCAxNC40ODUyIDYzLjUyNDRDMjYuNjU5NiA0NS45NzQ1IDQ1LjI1MjkgMzMuOTQ2MiA2Ni4yMjY2IDMwLjA1MjVDNzMuMDU1NyAyOC43NDUxIDc5Ljk5NTkgMjguMTA5NCA4Ni45NDg0IDI4LjE1NDZDMTQzLjQ2IDI3Ljk5NDEgMTk5Ljk3MSAyNy45NjEgMjU2LjQ4MyAyOC4wNTU0Wk0yMTAuOTI2IDMzOS42NDNDMjEwLjkyNiAzNTQuNjcgMjEwLjkyNiAzNjkuNjk3IDIxMC45MjYgMzg0LjczOEMyMTAuNzczIDM4OC4yMDUgMjExLjM0MyAzOTEuNjY1IDIxMi41OTcgMzk0Ljg5OUMyMTMuODUyIDM5OC4xMzQgMjE1Ljc2NCA0MDEuMDcxIDIxOC4yMTMgNDAzLjUyNUMyMjAuNjYyIDQwNS45NzkgMjIzLjU5MyA0MDcuODk1IDIyNi44MjEgNDA5LjE1MkMyMzAuMDQ5IDQxMC40MDkgMjMzLjUwMyA0MTAuOTc5IDIzNi45NjIgNDEwLjgyNkMyNDkuMzg3IDQxMC44MjYgMjYxLjgxMiA0MTAuODI2IDI3NC4yMzYgNDEwLjgyNkMyNzcuOTIyIDQxMS4xODMgMjgxLjY0MiA0MTAuNzE3IDI4NS4xMjcgNDA5LjQ2MkMyODguNjEyIDQwOC4yMDggMjkxLjc3NyA0MDYuMTk2IDI5NC4zOTQgNDAzLjU3QzI5Ny4wMTIgNDAwLjk0NSAyOTkuMDE3IDM5Ny43NzIgMzAwLjI2NSAzOTQuMjc4QzMwMS41MTQgMzkwLjc4NSAzMDEuOTc1IDM4Ny4wNTggMzAxLjYxNSAzODMuMzY0QzMwMS42MTUgMzUzLjkxOSAzMDEuNjE2IDMyNC40NiAzMDEuNDc0IDI5NS4wMTVDMzAxLjMxMSAyOTMuMzMxIDMwMS42NyAyOTEuNjM3IDMwMi41MDIgMjkwLjE2NUMzMDMuMzM0IDI4OC42OTIgMzA0LjU5OSAyODcuNTEyIDMwNi4xMjUgMjg2Ljc4NkMzMjMuNzkgMjc2LjI5OCAzMzcuNTUxIDI2MC4zMTQgMzQ1LjMxMyAyNDEuMjY2QzM1My4wNzUgMjIyLjIxOSAzNTQuNDEzIDIwMS4xNTEgMzQ5LjEyMyAxODEuMjcyQzM0Mi4zNTYgMTU2Ljg1MyAzMjYuMjg2IDEzNi4wNzUgMzA0LjM3NiAxMjMuNDE0QzI4Mi40NjYgMTEwLjc1NCAyNTYuNDY5IDEwNy4yMjUgMjMxLjk4NyAxMTMuNTg2QzIxNy42NjkgMTE2LjU0NCAyMDQuMjg5IDEyMi45NTkgMTkzLjAwNyAxMzIuMjc0QzE4MS43MjYgMTQxLjU4OCAxNzIuODg0IDE1My41MjIgMTY3LjI0OSAxNjcuMDM4QzE1OS4wMjcgMTg4LjY4NiAxNTguNTQ4IDIxMi41MjEgMTY1Ljg5MyAyMzQuNDg0QzE3My4yMzggMjU2LjQ0NyAxODcuOTU0IDI3NS4xODEgMjA3LjUzMyAyODcuNDk1QzIwOC42NyAyODguMDM4IDIwOS42MTMgMjg4LjkxNyAyMTAuMjM3IDI5MC4wMTNDMjEwLjg2MSAyOTEuMTA5IDIxMS4xMzYgMjkyLjM3IDIxMS4wMjUgMjkzLjYyN0MyMTAuODQxIDMwOS4wMDggMjEwLjkyNiAzMjQuMzMzIDIxMC45MjYgMzM5LjY3MVYzMzkuNjQzWiIgZmlsbD0iIzBEMzM4RiIvPgo8L3N2Zz4K","icon_dark":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTYuNDgzIDI4LjA1NTRDMzEzLjg5OSAyOC4wNTU0IDM3MS4zMTUgMjcuODg1NiA0MjguNzQ1IDI4LjE0MDVDNDQwLjY4IDI3LjkwNzYgNDUyLjUyMSAzMC4yODg5IDQ2My40NDEgMzUuMTE3OUM0NzQuMzYyIDM5Ljk0NjkgNDg0LjA5OSA0Ny4xMDczIDQ5MS45NzEgNTYuMDk4NEM1MDQuMDYyIDY5LjY5NjIgNTExLjEzMiA4Ny4wMzg3IDUxMiAxMDUuMjNDNTEyLjAyOCAxMjEuOTMzIDUxMC4wMzUgMTM4LjU3OCA1MDYuMDYzIDE1NC44MDFDNDk4LjQ0NCAxOTguNzA2IDQ5MC41MTUgMjQyLjUyNyA0ODIuNzI2IDI4Ni4zNzZDNDc2LjAxMiAzMjQuMTM0IDQ2OS41ODEgMzYxLjk1IDQ2Mi41MTMgMzk5LjY4QzQ1Ny42NzIgNDIwLjk2OSA0NDYuNTQ1IDQ0MC4zMDMgNDMwLjU4IDQ1NS4xNjVDNDE0LjYxNiA0NzAuMDI3IDM5NC41NTUgNDc5LjcyNyAzNzMuMDExIDQ4My4wMDJDMzY3Ljc1MiA0ODMuNjI5IDM2Mi40NjIgNDgzLjk0NiAzNTcuMTY2IDQ4My45NUMyOTAuMDUzIDQ4NC4wMTcgMjIyLjk0IDQ4NC4wMTcgMTU1LjgyOCA0ODMuOTVDMTMwLjQ2NiA0ODMuOSAxMDUuOTMgNDc0LjkxNSA4Ni41MTMyIDQ1OC41NjZDNjcuMDk2NSA0NDIuMjE4IDU0LjAzNjIgNDE5LjU0OCA0OS42MTggMzk0LjUyNUMzNi4xODA0IDMxOS4xNzcgMjIuNjI5NyAyNDMuODUzIDguOTY1OTcgMTY4LjU1M0M2LjI4MDM0IDE1My42MzkgMy4zMTIgMTM4LjgxMSAxLjIwNTkgMTIzLjc4NEMtMi40NjEwNSAxMDIuNzI5IDIuMzEwOTMgODEuMDc0NCAxNC40ODUyIDYzLjUyNDRDMjYuNjU5NiA0NS45NzQ1IDQ1LjI1MjkgMzMuOTQ2MiA2Ni4yMjY2IDMwLjA1MjVDNzMuMDU1NyAyOC43NDUxIDc5Ljk5NTkgMjguMTA5NCA4Ni45NDg0IDI4LjE1NDZDMTQzLjQ2IDI3Ljk5NDEgMTk5Ljk3MSAyNy45NjEgMjU2LjQ4MyAyOC4wNTU0Wk0yMTAuOTI2IDMzOS42NDNDMjEwLjkyNiAzNTQuNjcgMjEwLjkyNiAzNjkuNjk3IDIxMC45MjYgMzg0LjczOEMyMTAuNzczIDM4OC4yMDUgMjExLjM0MyAzOTEuNjY1IDIxMi41OTcgMzk0Ljg5OUMyMTMuODUyIDM5OC4xMzQgMjE1Ljc2NCA0MDEuMDcxIDIxOC4yMTMgNDAzLjUyNUMyMjAuNjYyIDQwNS45NzkgMjIzLjU5MyA0MDcuODk1IDIyNi44MjEgNDA5LjE1MkMyMzAuMDQ5IDQxMC40MDkgMjMzLjUwMyA0MTAuOTc5IDIzNi45NjIgNDEwLjgyNkMyNDkuMzg3IDQxMC44MjYgMjYxLjgxMiA0MTAuODI2IDI3NC4yMzYgNDEwLjgyNkMyNzcuOTIyIDQxMS4xODMgMjgxLjY0MiA0MTAuNzE3IDI4NS4xMjcgNDA5LjQ2MkMyODguNjEyIDQwOC4yMDggMjkxLjc3NyA0MDYuMTk2IDI5NC4zOTQgNDAzLjU3QzI5Ny4wMTIgNDAwLjk0NSAyOTkuMDE3IDM5Ny43NzIgMzAwLjI2NSAzOTQuMjc4QzMwMS41MTQgMzkwLjc4NSAzMDEuOTc1IDM4Ny4wNTggMzAxLjYxNSAzODMuMzY0QzMwMS42MTUgMzUzLjkxOSAzMDEuNjE2IDMyNC40NiAzMDEuNDc0IDI5NS4wMTVDMzAxLjMxMSAyOTMuMzMxIDMwMS42NyAyOTEuNjM3IDMwMi41MDIgMjkwLjE2NUMzMDMuMzM0IDI4OC42OTIgMzA0LjU5OSAyODcuNTEyIDMwNi4xMjUgMjg2Ljc4NkMzMjMuNzkgMjc2LjI5OCAzMzcuNTUxIDI2MC4zMTQgMzQ1LjMxMyAyNDEuMjY2QzM1My4wNzUgMjIyLjIxOSAzNTQuNDEzIDIwMS4xNTEgMzQ5LjEyMyAxODEuMjcyQzM0Mi4zNTYgMTU2Ljg1MyAzMjYuMjg2IDEzNi4wNzUgMzA0LjM3NiAxMjMuNDE0QzI4Mi40NjYgMTEwLjc1NCAyNTYuNDY5IDEwNy4yMjUgMjMxLjk4NyAxMTMuNTg2QzIxNy42NjkgMTE2LjU0NCAyMDQuMjg5IDEyMi45NTkgMTkzLjAwNyAxMzIuMjc0QzE4MS43MjYgMTQxLjU4OCAxNzIuODg0IDE1My41MjIgMTY3LjI0OSAxNjcuMDM4QzE1OS4wMjcgMTg4LjY4NiAxNTguNTQ4IDIxMi41MjEgMTY1Ljg5MyAyMzQuNDg0QzE3My4yMzggMjU2LjQ0NyAxODcuOTU0IDI3NS4xODEgMjA3LjUzMyAyODcuNDk1QzIwOC42NyAyODguMDM4IDIwOS42MTMgMjg4LjkxNyAyMTAuMjM3IDI5MC4wMTNDMjEwLjg2MSAyOTEuMTA5IDIxMS4xMzYgMjkyLjM3IDIxMS4wMjUgMjkzLjYyN0MyMTAuODQxIDMwOS4wMDggMjEwLjkyNiAzMjQuMzMzIDIxMC45MjYgMzM5LjY3MVYzMzkuNjQzWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg=="},"b5397666-4885-aa6b-cebf-e52262a439a2":{"name":"Chromium Browser"},"771b48fd-d3d4-4f74-9232-fc157ab0507a":{"name":"Edge on Mac","icon_light":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOnVybCgjbGluZWFyLWdyYWRpZW50KTt9LmNscy0ye29wYWNpdHk6MC4zNTtmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50KTt9LmNscy0yLC5jbHMtNHtpc29sYXRpb246aXNvbGF0ZTt9LmNscy0ze2ZpbGw6dXJsKCNsaW5lYXItZ3JhZGllbnQtMik7fS5jbHMtNHtvcGFjaXR5OjAuNDE7ZmlsbDp1cmwoI3JhZGlhbC1ncmFkaWVudC0yKTt9LmNscy01e2ZpbGw6dXJsKCNyYWRpYWwtZ3JhZGllbnQtMyk7fS5jbHMtNntmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50LTQpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50IiB4MT0iNjMuMzMiIHkxPSI4NC4wMyIgeDI9IjI0MS42NyIgeTI9Ijg0LjAzIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGM1OWE0Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTE0YThiIi8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudCIgY3g9IjE2MS44MyIgY3k9IjY4LjkxIiByPSI5NS4zOCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgxLCAwLCAwLCAtMC45NSwgMCwgMjQ4Ljg0KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMC43MiIgc3RvcC1vcGFjaXR5PSIwIi8+PHN0b3Agb2Zmc2V0PSIwLjk1IiBzdG9wLW9wYWNpdHk9IjAuNTMiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNTcuMzUiIHkxPSIxNjEuMzkiIHgyPSI0NS45NiIgeTI9IjQwLjA2IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWI5ZGUyIi8+PHN0b3Agb2Zmc2V0PSIwLjE2IiBzdG9wLWNvbG9yPSIjMTU5NWRmIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMDY4MGQ3Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDA3OGQ0Ii8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC0yIiBjeD0iLTM0MC4yOSIgY3k9IjYyLjk5IiByPSIxNDMuMjQiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMC4xNSwgLTAuOTksIC0wLjgsIC0wLjEyLCAxNzYuNjQsIC0xMjUuNCkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAuNzYiIHN0b3Atb3BhY2l0eT0iMCIvPjxzdG9wIG9mZnNldD0iMC45NSIgc3RvcC1vcGFjaXR5PSIwLjUiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0icmFkaWFsLWdyYWRpZW50LTMiIGN4PSIxMTMuMzciIGN5PSI1NzAuMjEiIHI9IjIwMi40MyIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgtMC4wNCwgMSwgMi4xMywgMC4wOCwgLTExNzkuNTQsIC0xMDYuNjkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMzVjMWYxIi8+PHN0b3Agb2Zmc2V0PSIwLjExIiBzdG9wLWNvbG9yPSIjMzRjMWVkIi8+PHN0b3Agb2Zmc2V0PSIwLjIzIiBzdG9wLWNvbG9yPSIjMmZjMmRmIi8+PHN0b3Agb2Zmc2V0PSIwLjMxIiBzdG9wLWNvbG9yPSIjMmJjM2QyIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMzZjNzUyIi8+PC9yYWRpYWxHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC00IiBjeD0iMzc2LjUyIiBjeT0iNTY3Ljk3IiByPSI5Ny4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgwLjI4LCAwLjk2LCAwLjc4LCAtMC4yMywgLTMwMy43NiwgLTE0OC41KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48L2RlZnM+PHRpdGxlPkVkZ2VfTG9nb18yNjV4MjY1PC90aXRsZT48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik0xMTAuMzQsMjQ2LjM0QTc5LjIsNzkuMiwwLDAsMSw4Ny42LDIyNSw4MC43Miw4MC43MiwwLDAsMSwxMTcuMTMsMTA1YzMuMTItMS40Nyw4LjQ1LTQuMTMsMTUuNTQtNGEzMi4zNSwzMi4zNSwwLDAsMSwyNS42OSwxMywzMS44OCwzMS44OCwwLDAsMSw2LjM2LDE4LjY2YzAtLjIxLDI0LjQ2LTc5LjYtODAtNzkuNi00My45LDAtODAsNDEuNjYtODAsNzguMjFhMTMwLjE1LDEzMC4xNSwwLDAsMCwxMi4xMSw1NiwxMjgsMTI4LDAsMCwwLDE1Ni4zOCw2Ny4xMSw3NS41NSw3NS41NSwwLDAsMS02Mi43OC04WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJNMTEwLjM0LDI0Ni4zNEE3OS4yLDc5LjIsMCwwLDEsODcuNiwyMjUsODAuNzIsODAuNzIsMCwwLDEsMTE3LjEzLDEwNWMzLjEyLTEuNDcsOC40NS00LjEzLDE1LjU0LTRhMzIuMzUsMzIuMzUsMCwwLDEsMjUuNjksMTMsMzEuODgsMzEuODgsMCwwLDEsNi4zNiwxOC42NmMwLS4yMSwyNC40Ni03OS42LTgwLTc5LjYtNDMuOSwwLTgwLDQxLjY2LTgwLDc4LjIxYTEzMC4xNSwxMzAuMTUsMCwwLDAsMTIuMTEsNTYsMTI4LDEyOCwwLDAsMCwxNTYuMzgsNjcuMTEsNzUuNTUsNzUuNTUsMCwwLDEtNjIuNzgtOFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC00LjYzIC00LjkyKSIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0iTTE1Ni45NCwxNTMuNzhjLS44MSwxLjA1LTMuMywyLjUtMy4zLDUuNjYsMCwyLjYxLDEuNyw1LjEyLDQuNzIsNy4yMywxNC4zOCwxMCw0MS40OSw4LjY4LDQxLjU2LDguNjhBNTkuNTYsNTkuNTYsMCwwLDAsMjMwLjE5LDE2N2E2MS4zOCw2MS4zOCwwLDAsMCwzMC40My01Mi44OGMuMjYtMjIuNDEtOC0zNy4zMS0xMS4zNC00My45MUMyMjguMDksMjguNzYsMTgyLjM1LDQuOTIsMTMyLjYxLDQuOTJhMTI4LDEyOCwwLDAsMC0xMjgsMTI2LjJjLjQ4LTM2LjU0LDM2LjgtNjYuMDUsODAtNjYuMDUsMy41LDAsMjMuNDYuMzQsNDIsMTAuMDcsMTYuMzQsOC41OCwyNC45LDE4Ljk0LDMwLjg1LDI5LjIxLDYuMTgsMTAuNjcsNy4yOCwyNC4xNSw3LjI4LDI5LjUyUzE2MiwxNDcuMiwxNTYuOTQsMTUzLjc4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy02IiBkPSJNMTU2Ljk0LDE1My43OGMtLjgxLDEuMDUtMy4zLDIuNS0zLjMsNS42NiwwLDIuNjEsMS43LDUuMTIsNC43Miw3LjIzLDE0LjM4LDEwLDQxLjQ5LDguNjgsNDEuNTYsOC42OEE1OS41Niw1OS41NiwwLDAsMCwyMzAuMTksMTY3YTYxLjM4LDYxLjM4LDAsMCwwLDMwLjQzLTUyLjg4Yy4yNi0yMi40MS04LTM3LjMxLTExLjM0LTQzLjkxQzIyOC4wOSwyOC43NiwxODIuMzUsNC45MiwxMzIuNjEsNC45MmExMjgsMTI4LDAsMCwwLTEyOCwxMjYuMmMuNDgtMzYuNTQsMzYuOC02Ni4wNSw4MC02Ni4wNSwzLjUsMCwyMy40Ni4zNCw0MiwxMC4wNywxNi4zNCw4LjU4LDI0LjksMTguOTQsMzAuODUsMjkuMjEsNi4xOCwxMC42Nyw3LjI4LDI0LjE1LDcuMjgsMjkuNTJTMTYyLDE0Ny4yLDE1Ni45NCwxNTMuNzhaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48L3N2Zz4=","icon_dark":"data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOnVybCgjbGluZWFyLWdyYWRpZW50KTt9LmNscy0ye29wYWNpdHk6MC4zNTtmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50KTt9LmNscy0yLC5jbHMtNHtpc29sYXRpb246aXNvbGF0ZTt9LmNscy0ze2ZpbGw6dXJsKCNsaW5lYXItZ3JhZGllbnQtMik7fS5jbHMtNHtvcGFjaXR5OjAuNDE7ZmlsbDp1cmwoI3JhZGlhbC1ncmFkaWVudC0yKTt9LmNscy01e2ZpbGw6dXJsKCNyYWRpYWwtZ3JhZGllbnQtMyk7fS5jbHMtNntmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50LTQpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50IiB4MT0iNjMuMzMiIHkxPSI4NC4wMyIgeDI9IjI0MS42NyIgeTI9Ijg0LjAzIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGM1OWE0Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTE0YThiIi8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudCIgY3g9IjE2MS44MyIgY3k9IjY4LjkxIiByPSI5NS4zOCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgxLCAwLCAwLCAtMC45NSwgMCwgMjQ4Ljg0KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMC43MiIgc3RvcC1vcGFjaXR5PSIwIi8+PHN0b3Agb2Zmc2V0PSIwLjk1IiBzdG9wLW9wYWNpdHk9IjAuNTMiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNTcuMzUiIHkxPSIxNjEuMzkiIHgyPSI0NS45NiIgeTI9IjQwLjA2IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWI5ZGUyIi8+PHN0b3Agb2Zmc2V0PSIwLjE2IiBzdG9wLWNvbG9yPSIjMTU5NWRmIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMDY4MGQ3Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDA3OGQ0Ii8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC0yIiBjeD0iLTM0MC4yOSIgY3k9IjYyLjk5IiByPSIxNDMuMjQiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMC4xNSwgLTAuOTksIC0wLjgsIC0wLjEyLCAxNzYuNjQsIC0xMjUuNCkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAuNzYiIHN0b3Atb3BhY2l0eT0iMCIvPjxzdG9wIG9mZnNldD0iMC45NSIgc3RvcC1vcGFjaXR5PSIwLjUiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0icmFkaWFsLWdyYWRpZW50LTMiIGN4PSIxMTMuMzciIGN5PSI1NzAuMjEiIHI9IjIwMi40MyIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgtMC4wNCwgMSwgMi4xMywgMC4wOCwgLTExNzkuNTQsIC0xMDYuNjkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMzVjMWYxIi8+PHN0b3Agb2Zmc2V0PSIwLjExIiBzdG9wLWNvbG9yPSIjMzRjMWVkIi8+PHN0b3Agb2Zmc2V0PSIwLjIzIiBzdG9wLWNvbG9yPSIjMmZjMmRmIi8+PHN0b3Agb2Zmc2V0PSIwLjMxIiBzdG9wLWNvbG9yPSIjMmJjM2QyIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMzZjNzUyIi8+PC9yYWRpYWxHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC00IiBjeD0iMzc2LjUyIiBjeT0iNTY3Ljk3IiByPSI5Ny4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgwLjI4LCAwLjk2LCAwLjc4LCAtMC4yMywgLTMwMy43NiwgLTE0OC41KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48L2RlZnM+PHRpdGxlPkVkZ2VfTG9nb18yNjV4MjY1PC90aXRsZT48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik0xMTAuMzQsMjQ2LjM0QTc5LjIsNzkuMiwwLDAsMSw4Ny42LDIyNSw4MC43Miw4MC43MiwwLDAsMSwxMTcuMTMsMTA1YzMuMTItMS40Nyw4LjQ1LTQuMTMsMTUuNTQtNGEzMi4zNSwzMi4zNSwwLDAsMSwyNS42OSwxMywzMS44OCwzMS44OCwwLDAsMSw2LjM2LDE4LjY2YzAtLjIxLDI0LjQ2LTc5LjYtODAtNzkuNi00My45LDAtODAsNDEuNjYtODAsNzguMjFhMTMwLjE1LDEzMC4xNSwwLDAsMCwxMi4xMSw1NiwxMjgsMTI4LDAsMCwwLDE1Ni4zOCw2Ny4xMSw3NS41NSw3NS41NSwwLDAsMS02Mi43OC04WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJNMTEwLjM0LDI0Ni4zNEE3OS4yLDc5LjIsMCwwLDEsODcuNiwyMjUsODAuNzIsODAuNzIsMCwwLDEsMTE3LjEzLDEwNWMzLjEyLTEuNDcsOC40NS00LjEzLDE1LjU0LTRhMzIuMzUsMzIuMzUsMCwwLDEsMjUuNjksMTMsMzEuODgsMzEuODgsMCwwLDEsNi4zNiwxOC42NmMwLS4yMSwyNC40Ni03OS42LTgwLTc5LjYtNDMuOSwwLTgwLDQxLjY2LTgwLDc4LjIxYTEzMC4xNSwxMzAuMTUsMCwwLDAsMTIuMTEsNTYsMTI4LDEyOCwwLDAsMCwxNTYuMzgsNjcuMTEsNzUuNTUsNzUuNTUsMCwwLDEtNjIuNzgtOFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC00LjYzIC00LjkyKSIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0iTTE1Ni45NCwxNTMuNzhjLS44MSwxLjA1LTMuMywyLjUtMy4zLDUuNjYsMCwyLjYxLDEuNyw1LjEyLDQuNzIsNy4yMywxNC4zOCwxMCw0MS40OSw4LjY4LDQxLjU2LDguNjhBNTkuNTYsNTkuNTYsMCwwLDAsMjMwLjE5LDE2N2E2MS4zOCw2MS4zOCwwLDAsMCwzMC40My01Mi44OGMuMjYtMjIuNDEtOC0zNy4zMS0xMS4zNC00My45MUMyMjguMDksMjguNzYsMTgyLjM1LDQuOTIsMTMyLjYxLDQuOTJhMTI4LDEyOCwwLDAsMC0xMjgsMTI2LjJjLjQ4LTM2LjU0LDM2LjgtNjYuMDUsODAtNjYuMDUsMy41LDAsMjMuNDYuMzQsNDIsMTAuMDcsMTYuMzQsOC41OCwyNC45LDE4Ljk0LDMwLjg1LDI5LjIxLDYuMTgsMTAuNjcsNy4yOCwyNC4xNSw3LjI4LDI5LjUyUzE2MiwxNDcuMiwxNTYuOTQsMTUzLjc4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy02IiBkPSJNMTU2Ljk0LDE1My43OGMtLjgxLDEuMDUtMy4zLDIuNS0zLjMsNS42NiwwLDIuNjEsMS43LDUuMTIsNC43Miw3LjIzLDE0LjM4LDEwLDQxLjQ5LDguNjgsNDEuNTYsOC42OEE1OS41Niw1OS41NiwwLDAsMCwyMzAuMTksMTY3YTYxLjM4LDYxLjM4LDAsMCwwLDMwLjQzLTUyLjg4Yy4yNi0yMi40MS04LTM3LjMxLTExLjM0LTQzLjkxQzIyOC4wOSwyOC43NiwxODIuMzUsNC45MiwxMzIuNjEsNC45MmExMjgsMTI4LDAsMCwwLTEyOCwxMjYuMmMuNDgtMzYuNTQsMzYuOC02Ni4wNSw4MC02Ni4wNSwzLjUsMCwyMy40Ni4zNCw0MiwxMC4wNywxNi4zNCw4LjU4LDI0LjksMTguOTQsMzAuODUsMjkuMjEsNi4xOCwxMC42Nyw3LjI4LDI0LjE1LDcuMjgsMjkuNTJTMTYyLDE0Ny4yLDE1Ni45NCwxNTMuNzhaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48L3N2Zz4="},"d548826e-79b4-db40-a3d8-11116f7e8349":{"name":"Bitwarden","icon_light":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg==","icon_dark":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="},"fbfc3007-154e-4ecc-8c0b-6e020557d7bd":{"name":"Apple Passwords","icon_light":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIyIDMyMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWw6c3BhY2U9InByZXNlcnZlIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjIiPgogICAgPHBhdGggZD0iTTMyMS4zNDcgNzIuMTA2QzMyMS4zNDcgMzIuMzEgMjg5LjAzNyAwIDI0OS4yNDEgMEg3Mi4xMDZDMzIuMzEgMCAwIDMyLjMxIDAgNzIuMTA2djE3Ny4xMzVjMCAzOS43OTYgMzIuMzEgNzIuMTA2IDcyLjEwNiA3Mi4xMDZoMTc3LjEzNWMzOS43OTYgMCA3Mi4xMDYtMzIuMzEgNzIuMTA2LTcyLjEwNlY3Mi4xMDZaIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIgc3R5bGU9ImZpbGw6I2ViZWJlYiIvPgogICAgPGNsaXBQYXRoIGlkPSJhIj4KICAgICAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNhKSI+CiAgICAgICAgPHBhdGggZD0iTTEyNi41MzEgMjc3LjU0NVY0My42MDNINTUuMDI3djIzMy45NDJoNzEuNTA0WiIgc3R5bGU9ImZpbGw6dXJsKCNiKSIvPgogICAgPC9nPgogICAgPHBhdGggZD0iTTE2Ny42MTggMjY2LjU3NGMuNzc1Ljk2NS4zMDkgMi41MTcuMDE3IDIuNDNsLTcuNzczIDcuNzQxYy0xLjY4NiAxLjIwNi0zLjM2NSAxLjEzMi01LjAwOS4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTItLjY0OS0uNzYyLTEuMzI4LS44MzMtMi4wNTh2LTk0LjczNWMtMjIuODItOC42Ny0zOS4wNTYtMzAuNzU0LTM5LjA1Ni01Ni42IDAtMzMuMDA2IDI2LjQ3Ny01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTIgMTMuNTYzLTMwLjYxMSAzNS40ODgtMzAuNjExIDYwLjIwOCAwIDI4LjEwOSAxNS41OTMgNTIuNjA0IDM4LjU5MyA2NS4zMDF2ODcuODQxaC4wMDdjLS4wMDUuMTM3LS4wMDcuMjc1LS4wMDcuNDEzIDAgMy41NTEgMS42OTkgNi41MzUgMy43NjMgOS4xMDNaIiBzdHlsZT0iZmlsbDojZWJlYmViIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImMiPgogICAgICAgIDxwYXRoIGQ9Ik0xNjcuNjE4IDI2Ni41NzRjLjc3NS45NjUuMzA5IDIuNTE3LjAxNyAyLjQzbC03Ljc3MyA3Ljc0MWMtMS42ODYgMS4yMDYtMy4zNjUgMS4xMzItNS4wMDkuMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUyLS42NDktLjc2Mi0xLjMyOC0uODMzLTIuMDU4di05NC43MzVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1NC0zOS4wNTYtNTYuNiAwLTMzLjAwNiAyNi40NzctNTkuODc2IDU5LjMzMy02MC41MTEtMTguNTUyIDEzLjU2My0zMC42MTEgMzUuNDg4LTMwLjYxMSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA3Yy0uMDA1LjEzNy0uMDA3LjI3NS0uMDA3LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICAgICAgPHBhdGggZD0iTTE2OC4wNDMgMjc3LjU0NVY0My42MDNIOTYuNTR2MjMzLjk0Mmg3MS41MDNaIiBzdHlsZT0iZmlsbDp1cmwoI2QpIi8+CiAgICA8L2c+CiAgICA8cGF0aCBkPSJNMTc3LjAxNCAxNjAuNzI1Yy0yMi44Mi04LjY3LTM5LjA1Ni0zMC43NTMtMzkuMDU2LTU2LjU5OSAwLTMzLjQwNCAyNy4xMTktNjAuNTIzIDYwLjUyMy02MC41MjMgMzMuNDAzIDAgNjAuNTIzIDI3LjExOSA2MC41MjMgNjAuNTIzIDAgMjguMjItMTkuMzU3IDUxLjk1Ni00NS41MDYgNTguNjQybDI2LjM1OCAyNi44NjJjLjk5NCAxLjU4MS45NDMgMy4wMzctLjA1OSA0LjM3N2wtMjUuODgxIDI2LjQ2NCAxOC43NzcgMTguOTc5YzEuNTcxIDIuMTMyIDEuMzIzIDQuMTgyLS4yNTYgNi4xNzFsLTMxLjE1NyAzMS4wM2MtMS42ODYgMS4yMDctMy4zNjQgMS4xMzMtNS4wMDguMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUzLS42NDgtLjc2My0xLjMyNy0uODM0LTIuMDU3di05NC43MzZabTIxLjY2Mi05My40ODFjOC45MjQgMCAxNi4xNjkgNy4yNDUgMTYuMTY5IDE2LjE2OXMtNy4yNDUgMTYuMTY5LTE2LjE2OSAxNi4xNjktMTYuMTY5LTcuMjQ1LTE2LjE2OS0xNi4xNjkgNy4yNDUtMTYuMTY5IDE2LjE2OS0xNi4xNjlaIiBzdHlsZT0iZmlsbDpub25lIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImUiPgogICAgICAgIDxwYXRoIGQ9Ik0xNzcuMDE0IDE2MC43MjVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1My0zOS4wNTYtNTYuNTk5IDAtMzMuNDA0IDI3LjExOS02MC41MjMgNjAuNTIzLTYwLjUyMyAzMy40MDMgMCA2MC41MjMgMjcuMTE5IDYwLjUyMyA2MC41MjMgMCAyOC4yMi0xOS4zNTcgNTEuOTU2LTQ1LjUwNiA1OC42NDJsMjYuMzU4IDI2Ljg2MmMuOTk0IDEuNTgxLjk0MyAzLjAzNy0uMDU5IDQuMzc3bC0yNS44ODEgMjYuNDY0IDE4Ljc3NyAxOC45NzljMS41NzEgMi4xMzIgMS4zMjMgNC4xODItLjI1NiA2LjE3MWwtMzEuMTU3IDMxLjAzYy0xLjY4NiAxLjIwNy0zLjM2NCAxLjEzMy01LjAwOC4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTMtLjY0OC0uNzYzLTEuMzI3LS44MzQtMi4wNTd2LTk0LjczNlptMjEuNjYyLTkzLjQ4MWM4LjkyNCAwIDE2LjE2OSA3LjI0NSAxNi4xNjkgMTYuMTY5cy03LjI0NSAxNi4xNjktMTYuMTY5IDE2LjE2OS0xNi4xNjktNy4yNDUtMTYuMTY5LTE2LjE2OSA3LjI0NS0xNi4xNjkgMTYuMTY5LTE2LjE2OVoiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8ZyBjbGlwLXBhdGg9InVybCgjZSkiPgogICAgICAgIDxwYXRoIGQ9Ik0yNTkuMDA0IDI3Ny41NDVWNDMuNjAzSDEzNy45NTh2MjMzLjk0MmgxMjEuMDQ2WiIgc3R5bGU9ImZpbGw6dXJsKCNmKSIvPgogICAgPC9nPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMCAyMzMuOTQzIC03MS41MDMzIDAgOTAuNzggNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6I2ZmZGQ1MztzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmJmMDE7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtNzEuNTAzMyAwIDEzMi4yOTEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzUxZTM3NjtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMzNGM3NTk7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZiIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtMTIxLjA0NiAwIDE5OC40ODEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzYyY2NmODtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMDc5ZmY7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgo8L3N2Zz4K","icon_dark":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIyIDMyMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWw6c3BhY2U9InByZXNlcnZlIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjIiPgogICAgPHBhdGggZD0iTTMyMS4zNDcgNzIuMTA2QzMyMS4zNDcgMzIuMzEgMjg5LjAzNyAwIDI0OS4yNDEgMEg3Mi4xMDZDMzIuMzEgMCAwIDMyLjMxIDAgNzIuMTA2djE3Ny4xMzVjMCAzOS43OTYgMzIuMzEgNzIuMTA2IDcyLjEwNiA3Mi4xMDZoMTc3LjEzNWMzOS43OTYgMCA3Mi4xMDYtMzIuMzEgNzIuMTA2LTcyLjEwNlY3Mi4xMDZaIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIgc3R5bGU9ImZpbGw6I2ViZWJlYiIvPgogICAgPGNsaXBQYXRoIGlkPSJhIj4KICAgICAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNhKSI+CiAgICAgICAgPHBhdGggZD0iTTEyNi41MzEgMjc3LjU0NVY0My42MDNINTUuMDI3djIzMy45NDJoNzEuNTA0WiIgc3R5bGU9ImZpbGw6dXJsKCNiKSIvPgogICAgPC9nPgogICAgPHBhdGggZD0iTTE2Ny42MTggMjY2LjU3NGMuNzc1Ljk2NS4zMDkgMi41MTcuMDE3IDIuNDNsLTcuNzczIDcuNzQxYy0xLjY4NiAxLjIwNi0zLjM2NSAxLjEzMi01LjAwOS4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTItLjY0OS0uNzYyLTEuMzI4LS44MzMtMi4wNTh2LTk0LjczNWMtMjIuODItOC42Ny0zOS4wNTYtMzAuNzU0LTM5LjA1Ni01Ni42IDAtMzMuMDA2IDI2LjQ3Ny01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTIgMTMuNTYzLTMwLjYxMSAzNS40ODgtMzAuNjExIDYwLjIwOCAwIDI4LjEwOSAxNS41OTMgNTIuNjA0IDM4LjU5MyA2NS4zMDF2ODcuODQxaC4wMDdjLS4wMDUuMTM3LS4wMDcuMjc1LS4wMDcuNDEzIDAgMy41NTEgMS42OTkgNi41MzUgMy43NjMgOS4xMDNaIiBzdHlsZT0iZmlsbDojZWJlYmViIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImMiPgogICAgICAgIDxwYXRoIGQ9Ik0xNjcuNjE4IDI2Ni41NzRjLjc3NS45NjUuMzA5IDIuNTE3LjAxNyAyLjQzbC03Ljc3MyA3Ljc0MWMtMS42ODYgMS4yMDYtMy4zNjUgMS4xMzItNS4wMDkuMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUyLS42NDktLjc2Mi0xLjMyOC0uODMzLTIuMDU4di05NC43MzVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1NC0zOS4wNTYtNTYuNiAwLTMzLjAwNiAyNi40NzctNTkuODc2IDU5LjMzMy02MC41MTEtMTguNTUyIDEzLjU2My0zMC42MTEgMzUuNDg4LTMwLjYxMSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA3Yy0uMDA1LjEzNy0uMDA3LjI3NS0uMDA3LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICAgICAgPHBhdGggZD0iTTE2OC4wNDMgMjc3LjU0NVY0My42MDNIOTYuNTR2MjMzLjk0Mmg3MS41MDNaIiBzdHlsZT0iZmlsbDp1cmwoI2QpIi8+CiAgICA8L2c+CiAgICA8cGF0aCBkPSJNMTc3LjAxNCAxNjAuNzI1Yy0yMi44Mi04LjY3LTM5LjA1Ni0zMC43NTMtMzkuMDU2LTU2LjU5OSAwLTMzLjQwNCAyNy4xMTktNjAuNTIzIDYwLjUyMy02MC41MjMgMzMuNDAzIDAgNjAuNTIzIDI3LjExOSA2MC41MjMgNjAuNTIzIDAgMjguMjItMTkuMzU3IDUxLjk1Ni00NS41MDYgNTguNjQybDI2LjM1OCAyNi44NjJjLjk5NCAxLjU4MS45NDMgMy4wMzctLjA1OSA0LjM3N2wtMjUuODgxIDI2LjQ2NCAxOC43NzcgMTguOTc5YzEuNTcxIDIuMTMyIDEuMzIzIDQuMTgyLS4yNTYgNi4xNzFsLTMxLjE1NyAzMS4wM2MtMS42ODYgMS4yMDctMy4zNjQgMS4xMzMtNS4wMDguMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUzLS42NDgtLjc2My0xLjMyNy0uODM0LTIuMDU3di05NC43MzZabTIxLjY2Mi05My40ODFjOC45MjQgMCAxNi4xNjkgNy4yNDUgMTYuMTY5IDE2LjE2OXMtNy4yNDUgMTYuMTY5LTE2LjE2OSAxNi4xNjktMTYuMTY5LTcuMjQ1LTE2LjE2OS0xNi4xNjkgNy4yNDUtMTYuMTY5IDE2LjE2OS0xNi4xNjlaIiBzdHlsZT0iZmlsbDpub25lIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImUiPgogICAgICAgIDxwYXRoIGQ9Ik0xNzcuMDE0IDE2MC43MjVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1My0zOS4wNTYtNTYuNTk5IDAtMzMuNDA0IDI3LjExOS02MC41MjMgNjAuNTIzLTYwLjUyMyAzMy40MDMgMCA2MC41MjMgMjcuMTE5IDYwLjUyMyA2MC41MjMgMCAyOC4yMi0xOS4zNTcgNTEuOTU2LTQ1LjUwNiA1OC42NDJsMjYuMzU4IDI2Ljg2MmMuOTk0IDEuNTgxLjk0MyAzLjAzNy0uMDU5IDQuMzc3bC0yNS44ODEgMjYuNDY0IDE4Ljc3NyAxOC45NzljMS41NzEgMi4xMzIgMS4zMjMgNC4xODItLjI1NiA2LjE3MWwtMzEuMTU3IDMxLjAzYy0xLjY4NiAxLjIwNy0zLjM2NCAxLjEzMy01LjAwOC4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTMtLjY0OC0uNzYzLTEuMzI3LS44MzQtMi4wNTd2LTk0LjczNlptMjEuNjYyLTkzLjQ4MWM4LjkyNCAwIDE2LjE2OSA3LjI0NSAxNi4xNjkgMTYuMTY5cy03LjI0NSAxNi4xNjktMTYuMTY5IDE2LjE2OS0xNi4xNjktNy4yNDUtMTYuMTY5LTE2LjE2OSA3LjI0NS0xNi4xNjkgMTYuMTY5LTE2LjE2OVoiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8ZyBjbGlwLXBhdGg9InVybCgjZSkiPgogICAgICAgIDxwYXRoIGQ9Ik0yNTkuMDA0IDI3Ny41NDVWNDMuNjAzSDEzNy45NTh2MjMzLjk0MmgxMjEuMDQ2WiIgc3R5bGU9ImZpbGw6dXJsKCNmKSIvPgogICAgPC9nPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMCAyMzMuOTQzIC03MS41MDMzIDAgOTAuNzggNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6I2ZmZGQ1MztzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmJmMDE7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtNzEuNTAzMyAwIDEzMi4yOTEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzUxZTM3NjtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMzNGM3NTk7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZiIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtMTIxLjA0NiAwIDE5OC40ODEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzYyY2NmODtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMDc5ZmY7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgo8L3N2Zz4K"},"66a0ccb3-bd6a-191f-ee06-e375c50b9846":{"name":"Thales Bio iOS SDK"},"8836336a-f590-0921-301d-46427531eee6":{"name":"Thales Bio Android SDK"},"cd69adb5-3c7a-deb9-3177-6800ea6cb72a":{"name":"Thales PIN Android SDK"},"17290f1e-c212-34d0-1423-365d729f09d9":{"name":"Thales PIN iOS SDK"},"50726f74-6f6e-5061-7373-50726f746f6e":{"name":"Proton Pass"},"fdb141b2-5d84-443e-8a35-4698c205a502":{"name":"KeePassXC"},"eaecdef2-1c31-5634-8639-f1cbd9c00a08":{"name":"KeePassDX"},"9addb28c-b46f-4402-808f-019651441ff3":{"name":"KeePassPasskey"},"bfc748bb-3429-4faa-b9f9-7cfa9f3b76d0":{"name":"iPasswords"},"b35a26b2-8f6e-4697-ab1d-d44db4da28c6":{"name":"Zoho Vault"},"b78a0a55-6ef8-d246-a042-ba0f6d55050c":{"name":"LastPass"},"de503f9c-21a4-4f76-b4b7-558eb55c6f89":{"name":"Devolutions"},"22248c4c-7a12-46e2-9a41-44291b373a4d":{"name":"LogMeOnce"},"a10c6dd9-465e-4226-8198-c7c44b91c555":{"name":"Kaspersky Password Manager"},"d350af52-0351-4ba2-acd3-dfeeadc3f764":{"name":"pwSafe"},"d3452668-01fd-4c12-926c-83a4204853aa":{"name":"Microsoft Password Manager"},"6d212b28-a2c1-4638-b375-5932070f62e9":{"name":"initial"},"d49b2120-b865-4191-8cea-be84a52b0485":{"name":"Heimlane Vault"},"93fea28e-9b08-41d0-b663-20c36b008e70":{"name":"Share Credentials"},"d9be9d39-e6a6-4c28-a581-32b044d986e4":{"name":"Sticky Password Manager"},"70617373-7761-6c6c-6669-646f32303236":{"name":"Passwall"},"c9cadfc9-89a9-489e-a25a-c7e86a4d5f15":{"name":"Burp Suite Navigation Recorder"},"fa37f553-f9b6-4adb-ac53-8bbb57ebdf0d":{"name":"Norton Password Manager"},"a4a2d88e-9796-4356-9164-e2a5a8bd019c":{"name":"Avast Password Manager"},"e7db2bd3-f2fe-4d71-ad78-7e7aa166cfd1":{"name":"Avira Password Manager"},"6bb49926-160a-4306-a100-4eb39ba6ac45":{"name":"AVG Password Manager"},"da583154-ce16-4cdf-9fe6-1dba788c0998":{"name":"Hey Be Safe"},"d2717a32-9851-48a8-9961-b264c97a411a":{"name":"Fenko Vault"},"65c97700-f5ef-4d5c-8a42-f30e45ac94b7":{"name":"Royal Vault"},"5ca471bb-a56d-46ad-a496-67e70e9ed9fb":{"name":"Parcel"},"45e3057e-b2f9-48ed-912f-9b901e153b16":{"name":"Uniqkey"},"87f5ec51-f721-4feb-9fe4-be18c4971894":{"name":"PassCard"},"477b05cd-7f78-4fe7-b629-27247f296138":{"name":"WALLIX Vault"},"53e7a7a5-e75f-4d3d-9483-12fc779cdf23":{"name":"Password Depot"},"cb6f6666-38ea-4873-9161-ff456a82d316":{"name":"iPass Secure Auth"},"9c1f2b6e-4d3a-4f7c-8b21-5e6a7d8c9f01":{"name":"Idira"},"9f8a3b2c-1d4e-4f6a-8b0c-2e1d3c4b5a69":{"name":"U2 Secured"},"69840def-9dcf-4632-bf87-6ac2e451b4f5":{"name":"Keyholm"},"35d5ea15-ab24-4416-bdd1-f204c9bce1b6":{"name":"CyberFOX Password Manager"},"f1d0badc-0def-4f1d-8bad-c0def1d0badc":{"name":"fidont"},"c4ed941c-86d3-4532-a6a9-bc42b80d5c38":{"name":"Authn8"},"441f5bad-a8ec-4572-8094-ee73a1c7cec7":{"name":"Fobb Security"},"16a5a15d-7244-4563-856d-a5167d8b9783":{"name":"Pleasant Password Server"},"7c596f1a-3e42-4b8d-9a0f-5d2ce1b84493":{"name":"Cyclop Passkey"}}
+diff --git a/account/account.css b/account/account.css
+new file mode 100644
+index 0000000..fc58316
+--- /dev/null
++++ b/account/account.css
+@@ -0,0 +1,437 @@
++/* My Account page */
++
++.account-banner {
++  min-height: 34vh;
++  background: linear-gradient(rgba(62, 39, 35, 0.72), rgba(62, 39, 35, 0.72)),
++    url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80');
++  background-size: cover;
++  background-position: center;
++  color: white;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  padding: 48px 5%;
++}
++
++.account-banner .eyebrow {
++  text-transform: uppercase;
++  letter-spacing: 2px;
++  font-size: 0.8rem;
++  color: var(--accent);
++}
++
++.account-banner h1 {
++  font-size: clamp(1.8rem, 4vw, 2.6rem);
++  margin: 4px 0;
++}
++
++.account-layout {
++  display: grid;
++  grid-template-columns: 220px minmax(0, 1fr);
++  gap: 32px;
++  align-items: start;
++}
++
++@media (max-width: 760px) {
++  .account-layout {
++    grid-template-columns: 1fr;
++  }
++}
++
++.account-nav {
++  display: flex;
++  flex-direction: column;
++  gap: 4px;
++  position: sticky;
++  top: 90px;
++}
++
++.account-nav a {
++  color: var(--text);
++  text-decoration: none;
++  padding: 10px 14px;
++  border-radius: 6px;
++  font-size: 0.95rem;
++}
++
++.account-nav a:hover,
++.account-nav a:focus-visible {
++  background: var(--secondary);
++}
++
++@media (max-width: 760px) {
++  .account-nav {
++    position: static;
++    flex-direction: row;
++    flex-wrap: wrap;
++  }
++}
++
++.account-content {
++  display: flex;
++  flex-direction: column;
++  gap: 24px;
++}
++
++.panel {
++  background: white;
++  border-radius: 10px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++  padding: 28px;
++}
++
++.panel--muted {
++  background: #fff8f0;
++  box-shadow: none;
++  border: 1px solid #f3e3cc;
++}
++
++.panel h2 {
++  color: var(--primary);
++  font-size: 1.35rem;
++  margin-bottom: 4px;
++}
++
++.panel h2:focus-visible {
++  outline: 2px solid var(--accent);
++  outline-offset: 4px;
++}
++
++.panel-header {
++  margin-bottom: 20px;
++}
++
++.panel-header p {
++  color: var(--muted);
++  font-size: 0.95rem;
++  max-width: 60ch;
++}
++
++.panel-header--split {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  gap: 20px;
++  flex-wrap: wrap;
++}
++
++.panel-header--split .btn {
++  margin-top: 0;
++  flex-shrink: 0;
++}
++
++/* Buttons */
++.btn {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.btn:disabled {
++  opacity: 0.6;
++  cursor: progress;
++}
++
++.btn--accent {
++  background: var(--accent);
++  color: var(--text);
++  font-weight: 600;
++}
++
++.btn--accent:hover {
++  background: #ff9800;
++}
++
++.btn--ghost {
++  background: transparent;
++  color: var(--primary);
++  border: 1px solid var(--border);
++}
++
++.btn--ghost:hover {
++  background: var(--light);
++}
++
++.btn--danger {
++  background: var(--danger);
++}
++
++.btn--danger:hover {
++  background: #8c1d18;
++}
++
++.btn-link {
++  background: none;
++  border: 0;
++  font: inherit;
++  font-size: 0.9rem;
++  color: var(--primary);
++  text-decoration: underline;
++  text-underline-offset: 3px;
++  cursor: pointer;
++  padding: 6px 8px;
++  border-radius: 4px;
++}
++
++.btn-link:hover,
++.btn-link:focus-visible {
++  background: var(--light);
++}
++
++.btn-link--danger {
++  color: var(--danger);
++}
++
++/* Forms */
++.field {
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++  margin-bottom: 16px;
++}
++
++.field label {
++  font-weight: 600;
++  font-size: 0.9rem;
++}
++
++.field input {
++  font: inherit;
++  padding: 10px 12px;
++  border: 1px solid var(--border);
++  border-radius: 6px;
++  background: white;
++  color: var(--text);
++}
++
++.field input:read-only {
++  background: #f5f1ef;
++  color: var(--muted);
++}
++
++.field input:focus-visible {
++  outline: 2px solid var(--accent);
++  outline-offset: 1px;
++}
++
++.field input:user-invalid {
++  border-color: var(--danger);
++}
++
++.field-error {
++  color: var(--danger);
++  font-size: 0.85rem;
++  min-height: 1.3em;
++}
++
++.profile-form {
++  max-width: 440px;
++}
++
++.form-actions .btn {
++  margin-top: 4px;
++}
++
++/* Status messages */
++.status {
++  margin-top: 14px;
++  padding: 10px 14px;
++  border-radius: 6px;
++  font-size: 0.92rem;
++  background: #eef3f8;
++  border-left: 4px solid #5c7fa3;
++}
++
++.status[data-tone="success"] {
++  background: #edf7ee;
++  border-left-color: var(--success);
++}
++
++.status[data-tone="error"] {
++  background: #fbeeed;
++  border-left-color: var(--danger);
++}
++
++.note {
++  font-size: 0.9rem;
++  color: var(--muted);
++  background: #fff8f0;
++  border: 1px dashed #e4c9a5;
++  border-radius: 6px;
++  padding: 10px 14px;
++  margin-bottom: 16px;
++}
++
++/* Passkey list */
++.passkey-list {
++  list-style: none;
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  margin-top: 8px;
++}
++
++.passkey-list[aria-busy="true"]::after {
++  content: 'Loading your passkeys…';
++  display: block;
++  color: var(--muted);
++  padding: 20px 0;
++}
++
++.passkey-row {
++  display: grid;
++  grid-template-columns: auto minmax(0, 1fr) auto;
++  gap: 16px;
++  align-items: center;
++  padding: 16px;
++  border: 1px solid var(--border);
++  border-radius: 8px;
++  background: var(--light);
++}
++
++@media (max-width: 560px) {
++  .passkey-row {
++    grid-template-columns: auto minmax(0, 1fr);
++  }
++
++  .passkey-actions {
++    grid-column: 2;
++  }
++}
++
++.passkey-icon {
++  width: 44px;
++  height: 44px;
++  border-radius: 10px;
++  background: white;
++  border: 1px solid var(--border);
++  display: grid;
++  place-items: center;
++  color: var(--primary);
++  overflow: hidden;
++}
++
++.passkey-icon img {
++  width: 32px;
++  height: 32px;
++  object-fit: contain;
++}
++
++.passkey-title {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  flex-wrap: wrap;
++}
++
++.passkey-name {
++  font-weight: 600;
++  overflow-wrap: anywhere;
++}
++
++.passkey-badge {
++  font-size: 0.72rem;
++  text-transform: uppercase;
++  letter-spacing: 0.5px;
++  padding: 2px 8px;
++  border-radius: 999px;
++  background: var(--secondary);
++  color: var(--text);
++}
++
++.passkey-provider,
++.passkey-meta {
++  font-size: 0.85rem;
++  color: var(--muted);
++}
++
++.passkey-meta {
++  display: flex;
++  gap: 16px;
++  flex-wrap: wrap;
++}
++
++.passkey-actions {
++  display: flex;
++  gap: 4px;
++}
++
++.empty-state {
++  text-align: center;
++  padding: 36px 20px;
++  color: var(--muted);
++  border: 1px dashed var(--border);
++  border-radius: 8px;
++}
++
++.empty-state h3 {
++  color: var(--primary);
++  margin: 8px 0 4px;
++}
++
++.tips {
++  padding-left: 20px;
++  color: var(--muted);
++  font-size: 0.93rem;
++}
++
++.tips li+li {
++  margin-top: 6px;
++}
++
++/* Dialogs */
++dialog {
++  border: 0;
++  border-radius: 12px;
++  padding: 0;
++  max-width: min(92vw, 440px);
++  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++  color: var(--text);
++}
++
++dialog form {
++  padding: 28px;
++}
++
++dialog h2 {
++  color: var(--primary);
++  font-size: 1.25rem;
++  margin-bottom: 8px;
++}
++
++dialog p {
++  color: var(--muted);
++  font-size: 0.95rem;
++  margin-bottom: 16px;
++}
++
++dialog .field {
++  margin-bottom: 8px;
++}
++
++.dialog-actions {
++  display: flex;
++  justify-content: flex-end;
++  gap: 10px;
++  margin-top: 8px;
++}
++
++.dialog-actions--reverse {
++  flex-direction: row-reverse;
++  justify-content: flex-start;
++}
++
++.dialog-actions .btn {
++  margin-top: 0;
++}
++
++/* Keep scroll gestures inside the modal from scrolling the page behind it. */
++dialog:modal {
++  overscroll-behavior: contain;
++}
++
++dialog::backdrop {
++  background: rgba(62, 39, 35, 0.55);
++  overflow: hidden;
++  overscroll-behavior: contain;
++}
+diff --git a/account/api.js b/account/api.js
+new file mode 100644
+index 0000000..458f757
+--- /dev/null
++++ b/account/api.js
+@@ -0,0 +1,80 @@
++/**
++ * HTTP client for the account / passkey endpoints.
++ *
++ * Every method resolves with parsed JSON or rejects with an ApiError carrying
++ * the HTTP status. The shape mirrors the backend contract expected by
++ * passkeys.js; local-store.js implements the same interface in the browser for
++ * the static demo build.
++ *
++ *   GET    /api/user                          -> { id, name, displayName, rpId? }
++ *   PUT    /api/user                          <- { name, displayName }
++ *   GET    /api/credentials                   -> StoredPasskeyCredential[]
++ *   PUT    /api/credential/:id                <- { name }
++ *   DELETE /api/credential/:id
++ *   POST   /api/passkeys/register/options     -> PublicKeyCredentialCreationOptionsJSON
++ *   POST   /api/passkeys/register/verify      <- RegistrationResponseJSON
++ */
++
++export class ApiError extends Error {
++  constructor(message, { status = 0, contentType = '' } = {}) {
++    super(message);
++    this.name = 'ApiError';
++    this.status = status;
++    this.contentType = contentType;
++  }
++}
++
++async function request(url, { method = 'GET', body } = {}) {
++  let response;
++  try {
++    response = await fetch(url, {
++      method,
++      credentials: 'same-origin',
++      headers: {
++        Accept: 'application/json',
++        ...(body !== undefined && { 'Content-Type': 'application/json' }),
++      },
++      body: body === undefined ? undefined : JSON.stringify(body),
++    });
++  } catch (err) {
++    throw new ApiError(`Network error calling ${method} ${url}: ${err.message}`);
++  }
++
++  const contentType = response.headers.get('content-type') || '';
++  if (!response.ok) {
++    let detail = '';
++    if (contentType.includes('application/json')) {
++      detail = (await response.json().catch(() => ({})))?.error || '';
++    }
++    throw new ApiError(detail || `${method} ${url} failed with ${response.status}`, {
++      status: response.status,
++      contentType,
++    });
++  }
++  if (response.status === 204) return null;
++  if (!contentType.includes("application/json")) {
++    // A static host serving index.html for unknown routes, or a proxy error page.
++    throw new ApiError(`${method} ${url} returned ${contentType || "an unknown content type"} instead of JSON`, {
++      status: response.status,
++      contentType,
++    });
++  }
++  return response.json();
++}
++
++export function createRemoteApi(base = '') {
++  return {
++    kind: 'remote',
++    getUser: () => request(`${base}/api/user`),
++    updateUser: (fields) => request(`${base}/api/user`, { method: 'PUT', body: fields }),
++    listCredentials: () => request(`${base}/api/credentials`),
++    renameCredential: (id, name) =>
++      request(`${base}/api/credential/${encodeURIComponent(id)}`, { method: 'PUT', body: { name } }),
++    deleteCredential: (id) =>
++      request(`${base}/api/credential/${encodeURIComponent(id)}`, { method: 'DELETE' }),
++    registrationOptions: () =>
++      request(`${base}/api/passkeys/register/options`, { method: 'POST', body: { promotion: false } }),
++    verifyRegistration: (registrationResponse) =>
++      request(`${base}/api/passkeys/register/verify`, { method: 'POST', body: registrationResponse }),
++  };
++}
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..19dad5b
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,188 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/assets/site.css">
++  <link rel="stylesheet" href="/account/account.css">
++  <script type="module" src="/account/passkeys.js"></script>
++</head>
++
++<body>
++
++  <nav>
++    <a class="logo" href="/">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account/" aria-current="page">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="account-banner">
++    <p class="eyebrow">My Account</p>
++    <h1>Welcome back, <span id="welcome-name">friend</span></h1>
++    <p>Manage your profile, rewards and how you sign in.</p>
++  </header>
++
++  <main class="container account-layout">
++    <aside class="account-nav" aria-label="Account sections">
++      <a href="#profile">Profile</a>
++      <a href="#security">Sign-in &amp; security</a>
++      <a href="/rewards">Rewards</a>
++      <a href="/orders">Order history</a>
++    </aside>
++
++    <div class="account-content">
++
++      <section class="panel" id="profile" aria-labelledby="profile-heading">
++        <div class="panel-header">
++          <h2 id="profile-heading">Profile</h2>
++          <p>The display name appears in receipts and in the passkey picker on your devices.</p>
++        </div>
++        <form id="profile-form" class="profile-form" novalidate>
++          <div class="field">
++            <label for="profile-name">Email (username)</label>
++            <input id="profile-name" name="name" type="email" readonly autocomplete="username">
++          </div>
++          <div class="field">
++            <label for="profile-display-name">Display name</label>
++            <input id="profile-display-name" name="displayName" type="text" required maxlength="64"
++              autocomplete="name">
++          </div>
++          <div class="form-actions">
++            <button type="submit" class="btn">Save changes</button>
++          </div>
++          <p id="profile-status" class="status" role="status" hidden></p>
++        </form>
++      </section>
++
++      <section class="panel" id="security" aria-labelledby="passkeys-heading">
++        <div class="panel-header panel-header--split">
++          <div>
++            <h2 id="passkeys-heading" tabindex="-1">Passkeys</h2>
++            <p>Sign in with your face, fingerprint or device PIN instead of a password. Delete any passkey you no
++              longer use and it will be removed from your browser's saved passkeys too.</p>
++          </div>
++          <button type="button" id="create-passkey" class="btn btn--accent" hidden>
++            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++              <path d="M12 5v14M5 12h14" />
++            </svg>
++            Create a passkey
++          </button>
++        </div>
++
++        <p id="demo-note" class="note" hidden>
++          Demo mode: this site has no account server, so passkeys you create here are stored only in this browser.
++        </p>
++
++        <p id="passkey-status" class="status" role="status" hidden></p>
++
++        <ul id="passkey-list" class="passkey-list" aria-busy="true" aria-labelledby="passkeys-heading"></ul>
++
++        <div id="passkey-empty" class="empty-state" hidden>
++          <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
++            <circle cx="8" cy="12" r="4" />
++            <path d="M12 12h9l-2 2m0 -4l2 2M16 12v3" />
++          </svg>
++          <h3>No passkeys yet</h3>
++          <p>Create one to sign in faster and more securely on this device.</p>
++        </div>
++
++        <p id="passkey-unsupported" class="note" hidden>
++          This browser or device can't create passkeys. You can keep signing in with your password, and we recommend
++          turning on two-step verification from your security settings.
++        </p>
++      </section>
++
++      <section class="panel panel--muted" aria-labelledby="tips-heading">
++        <h2 id="tips-heading">About passkeys</h2>
++        <ul class="tips">
++          <li><strong>Synced</strong> passkeys live in your password manager (Apple Passwords, Google Password
++            Manager, 1Password and others) and follow you to new devices.</li>
++          <li><strong>This device only</strong> passkeys stay on the hardware security key or computer where you
++            made them.</li>
++          <li>Lost a device? Delete its passkey here and it can no longer be used to sign in.</li>
++        </ul>
++      </section>
++
++    </div>
++  </main>
++
++  <template id="passkey-row-template">
++    <li class="passkey-row">
++      <span class="passkey-icon" aria-hidden="true">
++        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
++          stroke-linecap="round" stroke-linejoin="round">
++          <circle cx="8" cy="12" r="4" />
++          <path d="M12 12h9l-2 2m0 -4l2 2M16 12v3" />
++        </svg>
++      </span>
++      <div class="passkey-details">
++        <div class="passkey-title">
++          <span class="passkey-name"></span>
++          <span class="passkey-badge"></span>
++        </div>
++        <p class="passkey-provider" hidden></p>
++        <p class="passkey-meta">
++          <span class="passkey-added">Added <time></time></span>
++          <span class="passkey-used">Last used <time></time></span>
++        </p>
++      </div>
++      <div class="passkey-actions">
++        <button type="button" class="btn-link rename-btn">Rename</button>
++        <button type="button" class="btn-link btn-link--danger delete-btn">Delete</button>
++      </div>
++    </li>
++  </template>
++
++  <dialog id="rename-dialog" aria-labelledby="rename-title" closedby="closerequest">
++    <form id="rename-form" method="dialog">
++      <h2 id="rename-title">Rename passkey</h2>
++      <p>Give this passkey a name you'll recognise, like “Work laptop” or “Phone”.</p>
++      <div class="field">
++        <label for="rename-input">Passkey name</label>
++        <input id="rename-input" name="name" type="text" required maxlength="64" autofocus
++          aria-describedby="rename-error">
++        <p id="rename-error" class="field-error" aria-live="polite"></p>
++      </div>
++      <!-- Save comes first in DOM order so Enter in the field submits it (implicit
++           submission uses the first submit button); CSS reverses the visual order. -->
++      <div class="dialog-actions dialog-actions--reverse">
++        <button type="submit" value="save" class="btn">Save</button>
++        <button type="submit" value="cancel" class="btn btn--ghost" formnovalidate>Cancel</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="delete-dialog" aria-labelledby="delete-title" closedby="closerequest">
++    <form method="dialog">
++      <h2 id="delete-title">Delete this passkey?</h2>
++      <p>“<span id="delete-passkey-name"></span>” will no longer be able to sign in to your Daily Grind account. We'll
++        also ask your browser to remove it from your saved passkeys.</p>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn--ghost" autofocus>Cancel</button>
++        <button type="submit" value="delete" class="btn btn--danger">Delete passkey</button>
++      </div>
++    </form>
++  </dialog>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/account/local-store.js b/account/local-store.js
+new file mode 100644
+index 0000000..b7b38c2
+--- /dev/null
++++ b/account/local-store.js
+@@ -0,0 +1,242 @@
++/**
++ * Browser-local stand-in for the passkey backend.
++ *
++ * The Daily Grind site is served as static files, so there is no server to
++ * store credentials. This module keeps the signed-in demo customer's profile
++ * and registered passkeys in localStorage and exposes the same interface as
++ * createRemoteApi() in api.js. passkeys.js falls back to it automatically when
++ * the real endpoints are absent.
++ *
++ * It performs the structural checks a server would (challenge, origin, type)
++ * but does NOT verify attestation signatures. It is a demo data store, not a
++ * security boundary. A production deployment must implement the endpoints in
++ * api.js with a vetted WebAuthn library such as SimpleWebAuthn.
++ */
++
++const STORAGE_KEY = 'daily-grind.account.v1';
++const ZERO_AAGUID = '00000000-0000-0000-0000-000000000000';
++const RP_NAME = 'The Daily Grind';
++
++// ---------- encoding helpers ----------
++
++export function toBase64Url(bytes) {
++  let binary = '';
++  for (const b of bytes) binary += String.fromCharCode(b);
++  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++}
++
++export function fromBase64Url(str) {
++  const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(str.length / 4) * 4, '=');
++  const binary = atob(padded);
++  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
++}
++
++function randomBase64Url(byteLength) {
++  return toBase64Url(crypto.getRandomValues(new Uint8Array(byteLength)));
++}
++
++function bytesToUuid(bytes) {
++  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
++  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
++}
++
++/**
++ * Pulls the fields we need out of raw authenticator data.
++ * Layout: rpIdHash(32) | flags(1) | signCount(4) | [aaguid(16) | credIdLen(2) | credId | pubKey]
++ */
++export function parseAuthenticatorData(authData) {
++  if (authData.length < 37) throw new Error('Authenticator data is too short.');
++  const flags = authData[32];
++  const view = new DataView(authData.buffer, authData.byteOffset, authData.byteLength);
++  const parsed = {
++    userPresent: Boolean(flags & 0x01),
++    userVerified: Boolean(flags & 0x04),
++    backupEligible: Boolean(flags & 0x08),
++    backedUp: Boolean(flags & 0x10),
++    attestedCredentialData: Boolean(flags & 0x40),
++    counter: view.getUint32(33, false),
++    aaguid: ZERO_AAGUID,
++  };
++  if (parsed.attestedCredentialData && authData.length >= 55) {
++    parsed.aaguid = bytesToUuid(authData.subarray(37, 53));
++  }
++  return parsed;
++}
++
++// ---------- AAGUID registry (trimmed copy, see scripts/build-aaguids.mjs) ----------
++
++let registryPromise;
++async function lookupProvider(aaguid) {
++  if (!aaguid || aaguid === ZERO_AAGUID) return null;
++  registryPromise ??= fetch(new URL('./aaguids.json', import.meta.url))
++    .then((r) => (r.ok ? r.json() : {}))
++    .catch(() => ({}));
++  const registry = await registryPromise;
++  return registry[aaguid] || null;
++}
++
++// ---------- persistence ----------
++
++function load() {
++  try {
++    const raw = localStorage.getItem(STORAGE_KEY);
++    if (raw) return JSON.parse(raw);
++  } catch {
++    /* corrupted or unavailable storage: start fresh */
++  }
++  return {
++    user: {
++      id: randomBase64Url(16),
++      name: 'jane.doe@example.com',
++      displayName: 'Jane Doe',
++    },
++    credentials: [],
++    pendingChallenge: null,
++  };
++}
++
++function save(state) {
++  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
++}
++
++class StoreError extends Error {
++  constructor(message, status = 400) {
++    super(message);
++    this.name = 'StoreError';
++    this.status = status;
++  }
++}
++
++const clone = (value) => JSON.parse(JSON.stringify(value));
++
++export function createLocalStore() {
++  const rpId = location.hostname;
++
++  return {
++    kind: 'local',
++
++    async getUser() {
++      const { user } = load();
++      return { ...user, rpId };
++    },
++
++    async updateUser({ name, displayName }) {
++      const state = load();
++      if (typeof name === 'string' && name.trim()) state.user.name = name.trim();
++      if (typeof displayName === 'string' && displayName.trim()) state.user.displayName = displayName.trim();
++      save(state);
++      return { ...state.user, rpId };
++    },
++
++    async listCredentials() {
++      return clone(load().credentials);
++    },
++
++    async renameCredential(id, name) {
++      const state = load();
++      const cred = state.credentials.find((c) => c.id === id);
++      if (!cred) throw new StoreError('Credential not found.', 404);
++      cred.name = String(name).trim();
++      save(state);
++      return clone(cred);
++    },
++
++    async deleteCredential(id) {
++      const state = load();
++      const before = state.credentials.length;
++      state.credentials = state.credentials.filter((c) => c.id !== id);
++      if (state.credentials.length === before) throw new StoreError('Credential not found.', 404);
++      save(state);
++      return { success: true };
++    },
++
++    async registrationOptions() {
++      const state = load();
++      state.pendingChallenge = randomBase64Url(32);
++      save(state);
++      return {
++        challenge: state.pendingChallenge,
++        rp: { id: rpId, name: RP_NAME },
++        user: {
++          id: state.user.id,
++          name: state.user.name,
++          displayName: state.user.displayName,
++        },
++        pubKeyCredParams: [
++          { type: 'public-key', alg: -7 },
++          { type: 'public-key', alg: -257 },
++        ],
++        excludeCredentials: state.credentials.map((c) => ({
++          type: 'public-key',
++          id: c.id,
++          transports: c.transports,
++        })),
++        // Management flow: no authenticatorAttachment so security keys work too.
++        authenticatorSelection: {
++          residentKey: 'required',
++          requireResidentKey: true,
++          userVerification: 'preferred',
++        },
++        attestation: 'none',
++        timeout: 120_000,
++      };
++    },
++
++    async verifyRegistration(registration) {
++      const state = load();
++      const expectedChallenge = state.pendingChallenge;
++      state.pendingChallenge = null;
++      save(state);
++
++      if (!registration || registration.type !== 'public-key' || !registration.id) {
++        throw new StoreError('Malformed registration response.');
++      }
++      if (!expectedChallenge) throw new StoreError('No registration in progress.');
++
++      let clientData;
++      try {
++        clientData = JSON.parse(new TextDecoder().decode(fromBase64Url(registration.response.clientDataJSON)));
++      } catch {
++        throw new StoreError('Unreadable client data.');
++      }
++      if (clientData.type !== 'webauthn.create') throw new StoreError('Unexpected ceremony type.');
++      if (clientData.challenge !== expectedChallenge) throw new StoreError('Challenge mismatch.');
++      if (clientData.origin !== location.origin) throw new StoreError('Origin mismatch.');
++      if (state.credentials.some((c) => c.id === registration.id)) {
++        throw new StoreError('This passkey is already registered.', 409);
++      }
++
++      let authInfo = { aaguid: ZERO_AAGUID, backupEligible: false, backedUp: false, counter: 0, userPresent: true };
++      if (registration.response.authenticatorData) {
++        authInfo = parseAuthenticatorData(fromBase64Url(registration.response.authenticatorData));
++        if (!authInfo.userPresent) throw new StoreError('User presence was not confirmed.');
++      }
++
++      const provider = await lookupProvider(authInfo.aaguid);
++      const providerName = provider?.name || 'Unknown passkey provider';
++
++      const credential = {
++        id: registration.id,
++        passkeyUserId: state.user.id,
++        credentialPublicKey: registration.response.publicKey || null,
++        credentialType: 'public-key',
++        credentialDeviceType: authInfo.backupEligible ? 'multiDevice' : 'singleDevice',
++        credentialBackedUp: authInfo.backedUp,
++        aaguid: authInfo.aaguid,
++        providerName,
++        providerIcon: provider?.icon_light,
++        name: providerName,
++        transports: registration.response.transports || [],
++        registeredAt: Date.now(),
++        lastUsedAt: undefined,
++        counter: authInfo.counter,
++      };
++
++      // Re-read in case another tab changed the list while we awaited the registry.
++      const fresh = load();
++      fresh.credentials.push(credential);
++      save(fresh);
++      return clone(credential);
++    },
++  };
++}
+diff --git a/account/passkeys.js b/account/passkeys.js
+new file mode 100644
+index 0000000..ad03c1a
+--- /dev/null
++++ b/account/passkeys.js
+@@ -0,0 +1,439 @@
++/**
++ * Passkey management for the My Account page.
++ *
++ * - Lists the customer's registered passkeys with provider, added and
++ *   last-used dates.
++ * - Renames a passkey (server-side nickname only).
++ * - Deletes a passkey, then tells the browser's password manager which
++ *   credentials remain via PublicKeyCredential.signalAllAcceptedCredentials().
++ * - Updates the display name and syncs it via signalCurrentUserDetails().
++ * - Registers a new passkey when the browser supports one.
++ *
++ * Signal API calls are feature-detected: browsers without them (Firefox at the
++ * time of writing) simply skip the sync.
++ */
++
++import { createRemoteApi, ApiError } from './api.js';
++import { createLocalStore } from './local-store.js';
++
++// ---------- DOM handles ----------
++
++const $ = (id) => document.getElementById(id);
++const els = {
++  heading: $('passkeys-heading'),
++  list: $('passkey-list'),
++  rowTemplate: $('passkey-row-template'),
++  empty: $('passkey-empty'),
++  unsupported: $('passkey-unsupported'),
++  status: $('passkey-status'),
++  createBtn: $('create-passkey'),
++  demoNote: $('demo-note'),
++  renameDialog: $('rename-dialog'),
++  renameForm: $('rename-form'),
++  renameInput: $('rename-input'),
++  renameError: $('rename-error'),
++  deleteDialog: $('delete-dialog'),
++  deleteName: $('delete-passkey-name'),
++  profileForm: $('profile-form'),
++  profileName: $('profile-name'),
++  profileDisplayName: $('profile-display-name'),
++  profileStatus: $('profile-status'),
++  welcomeName: $('welcome-name'),
++};
++
++// ---------- state ----------
++
++let api;
++let user; // { id (base64url), name, displayName, rpId }
++let credentials = [];
++let pendingCredentialId = null;
++
++const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
++
++// ---------- backend selection ----------
++
++/**
++ * Prefer the real endpoints. If the host is a plain static server (a 404, 405
++ * or an HTML fallback page instead of JSON), use the in-browser store so the
++ * page still works. Genuine server failures (5xx, JSON error bodies, network
++ * errors) are surfaced, not masked.
++ */
++async function selectApi() {
++  const remote = createRemoteApi();
++  try {
++    const remoteUser = await remote.getUser();
++    return { api: remote, user: remoteUser };
++  } catch (err) {
++    const staticHost =
++      err instanceof ApiError &&
++      [200, 404, 405].includes(err.status) &&
++      !err.contentType.includes('application/json');
++    if (!staticHost) throw err;
++  }
++  const local = createLocalStore();
++  els.demoNote.hidden = false;
++  return { api: local, user: await local.getUser() };
++}
++
++// ---------- capability detection ----------
++
++async function ensureWebAuthnJsonSupport() {
++  if (!window.PublicKeyCredential) return false;
++  if (!PublicKeyCredential.parseCreationOptionsFromJSON) {
++    try {
++      await import('https://unpkg.com/webauthn-polyfills@0.1.7/esm/index.js');
++    } catch (err) {
++      console.warn('WebAuthn JSON polyfill failed to load', err);
++    }
++  }
++  return typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function';
++}
++
++async function platformPasskeysAvailable() {
++  if (!(await ensureWebAuthnJsonSupport())) return false;
++  try {
++    const caps = (await PublicKeyCredential.getClientCapabilities?.()) || {};
++    if (typeof caps.passkeyPlatformAuthenticator === 'boolean') return caps.passkeyPlatformAuthenticator;
++    if (typeof caps.userVerifyingPlatformAuthenticator === 'boolean') return caps.userVerifyingPlatformAuthenticator;
++    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
++  } catch {
++    return false;
++  }
++}
++
++// ---------- Signal API ----------
++
++async function syncAcceptedCredentials(list) {
++  if (!window.PublicKeyCredential?.signalAllAcceptedCredentials) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId: user.rpId,
++      userId: user.id,
++      allAcceptedCredentialIds: list.map((c) => c.id),
++    });
++  } catch (err) {
++    console.error('signalAllAcceptedCredentials failed', err);
++  }
++}
++
++async function syncUserDetails() {
++  if (!window.PublicKeyCredential?.signalCurrentUserDetails) return;
++  try {
++    await PublicKeyCredential.signalCurrentUserDetails({
++      rpId: user.rpId,
++      userId: user.id,
++      name: user.name,
++      displayName: user.displayName,
++    });
++  } catch (err) {
++    console.error('signalCurrentUserDetails failed', err);
++  }
++}
++
++async function signalUnknownCredential(credentialId) {
++  if (!window.PublicKeyCredential?.signalUnknownCredential) return;
++  try {
++    await PublicKeyCredential.signalUnknownCredential({ rpId: user.rpId, credentialId });
++  } catch (err) {
++    console.error('signalUnknownCredential failed', err);
++  }
++}
++
++// ---------- rendering ----------
++
++function setStatus(el, message, tone = 'info') {
++  el.textContent = message;
++  el.dataset.tone = tone;
++  el.hidden = !message;
++}
++
++function formatDate(epochMs) {
++  const date = new Date(epochMs);
++  return { text: dateFormat.format(date), iso: date.toISOString() };
++}
++
++function renderCredentials(list) {
++  els.list.replaceChildren();
++  els.list.setAttribute('aria-busy', 'false');
++  els.empty.hidden = list.length > 0;
++
++  const sorted = [...list].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0));
++  for (const cred of sorted) {
++    const row = els.rowTemplate.content.firstElementChild.cloneNode(true);
++    row.dataset.id = cred.id;
++
++    const icon = row.querySelector('.passkey-icon');
++    if (cred.providerIcon) {
++      const img = document.createElement('img');
++      img.src = cred.providerIcon;
++      img.alt = '';
++      img.width = 32;
++      img.height = 32;
++      icon.replaceChildren(img);
++    }
++
++    const label = cred.name?.trim() || cred.providerName || 'Passkey';
++    row.querySelector('.passkey-name').textContent = label;
++
++    const providerEl = row.querySelector('.passkey-provider');
++    const showProvider = cred.providerName && cred.providerName !== label;
++    providerEl.textContent = showProvider ? cred.providerName : '';
++    providerEl.hidden = !showProvider;
++
++    const added = row.querySelector('.passkey-added time');
++    if (cred.registeredAt) {
++      const { text, iso } = formatDate(cred.registeredAt);
++      added.textContent = text;
++      added.dateTime = iso;
++    } else {
++      added.replaceWith('unknown');
++    }
++
++    const used = row.querySelector('.passkey-used time');
++    if (cred.lastUsedAt) {
++      const { text, iso } = formatDate(cred.lastUsedAt);
++      used.textContent = text;
++      used.dateTime = iso;
++    } else {
++      used.replaceWith('not yet');
++    }
++
++    const badge = row.querySelector('.passkey-badge');
++    if (cred.credentialDeviceType === 'multiDevice' || cred.credentialBackedUp) {
++      badge.textContent = 'Synced';
++      badge.title = 'Backed up by your passkey provider and available on your other devices.';
++    } else {
++      badge.textContent = 'This device only';
++      badge.title = 'Stored only on the device or security key where it was created.';
++    }
++
++    row.querySelector('.rename-btn').setAttribute('aria-label', `Rename passkey ${label}`);
++    row.querySelector('.delete-btn').setAttribute('aria-label', `Delete passkey ${label}`);
++    els.list.append(row);
++  }
++}
++
++async function refreshCredentials() {
++  credentials = await api.listCredentials();
++  renderCredentials(credentials);
++  return credentials;
++}
++
++// ---------- actions ----------
++
++function findCredential(id) {
++  return credentials.find((c) => c.id === id);
++}
++
++function openRename(cred) {
++  pendingCredentialId = cred.id;
++  els.renameInput.value = cred.name || cred.providerName || '';
++  els.renameError.textContent = '';
++  els.renameDialog.returnValue = '';
++  els.renameDialog.showModal();
++  els.renameInput.select();
++}
++
++function openDelete(cred) {
++  pendingCredentialId = cred.id;
++  els.deleteName.textContent = cred.name || cred.providerName || 'this passkey';
++  els.deleteDialog.returnValue = '';
++  els.deleteDialog.showModal();
++}
++
++async function performRename(id, newName) {
++  const cred = findCredential(id);
++  if (!cred) return;
++  const previous = cred.name;
++  try {
++    await api.renameCredential(id, newName);
++    await refreshCredentials();
++    setStatus(els.status, `Renamed “${previous}” to “${newName}”.`, 'success');
++  } catch (err) {
++    console.error(err);
++    setStatus(els.status, `Could not rename passkey: ${err.message}`, 'error');
++  }
++}
++
++async function performDelete(id) {
++  const cred = findCredential(id);
++  if (!cred) return;
++  const label = cred.name || cred.providerName;
++  try {
++    await api.deleteCredential(id);
++    const remaining = await refreshCredentials();
++    // Tell the browser / password manager which passkeys are still valid so it
++    // can hide or remove the one we just deleted.
++    await syncAcceptedCredentials(remaining);
++    setStatus(els.status, `Deleted passkey “${label}”.`, 'success');
++  } catch (err) {
++    console.error(err);
++    setStatus(els.status, `Could not delete passkey: ${err.message}`, 'error');
++  } finally {
++    // The row that held the Delete button is gone, so focus the section
++    // heading rather than letting focus fall back to <body>.
++    els.heading.focus();
++  }
++}
++
++async function registerPasskey() {
++  setStatus(els.status, '');
++  els.createBtn.disabled = true;
++  try {
++    const optionsJSON = await api.registrationOptions();
++    const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
++
++    let credential;
++    try {
++      credential = await navigator.credentials.create({ publicKey });
++    } catch (err) {
++      switch (err.name) {
++        case 'InvalidStateError':
++          setStatus(els.status, 'This device already has a passkey for your account.', 'info');
++          break;
++        case 'NotAllowedError':
++        case 'AbortError':
++          // User cancelled or timed out: nothing to report.
++          break;
++        case 'SecurityError':
++          setStatus(els.status, 'Passkeys need a secure (HTTPS) connection on this site’s domain.', 'error');
++          break;
++        default:
++          console.error(err);
++          setStatus(els.status, `Could not create a passkey: ${err.message}`, 'error');
++      }
++      return;
++    }
++
++    const registration = credential.toJSON();
++    try {
++      await api.verifyRegistration(registration);
++    } catch (err) {
++      // The authenticator saved a passkey the server will never accept:
++      // ask the password manager to drop it.
++      console.error(err);
++      await signalUnknownCredential(registration.id);
++      setStatus(els.status, `Your passkey could not be saved: ${err.message}`, 'error');
++      return;
++    }
++
++    const list = await refreshCredentials();
++    await syncAcceptedCredentials(list);
++    setStatus(els.status, 'Passkey created. You can rename it below.', 'success');
++  } catch (err) {
++    console.error(err);
++    setStatus(els.status, `Could not start passkey setup: ${err.message}`, 'error');
++  } finally {
++    els.createBtn.disabled = false;
++  }
++}
++
++async function saveProfile(event) {
++  event.preventDefault();
++  const displayName = els.profileDisplayName.value.trim();
++  if (!displayName) {
++    els.profileDisplayName.setCustomValidity('Please enter a display name.');
++    els.profileDisplayName.reportValidity();
++    return;
++  }
++  els.profileDisplayName.setCustomValidity('');
++  const submit = els.profileForm.querySelector('button[type="submit"]');
++  submit.disabled = true;
++  try {
++    user = { ...user, ...(await api.updateUser({ name: user.name, displayName })) };
++    els.welcomeName.textContent = user.displayName;
++    // Keep the name shown in the passkey picker in step with the account.
++    await syncUserDetails();
++    setStatus(els.profileStatus, 'Display name updated.', 'success');
++  } catch (err) {
++    console.error(err);
++    setStatus(els.profileStatus, `Could not update display name: ${err.message}`, 'error');
++  } finally {
++    submit.disabled = false;
++  }
++}
++
++// ---------- wiring ----------
++
++function wireEvents() {
++  els.list.addEventListener('click', (event) => {
++    const button = event.target.closest('button');
++    if (!button) return;
++    const row = button.closest('[data-id]');
++    const cred = row && findCredential(row.dataset.id);
++    if (!cred) return;
++    if (button.classList.contains('rename-btn')) openRename(cred);
++    else if (button.classList.contains('delete-btn')) openDelete(cred);
++  });
++
++  els.renameForm.addEventListener('submit', (event) => {
++    // Only the Save button carries value="save"; validate before the dialog closes.
++    if (event.submitter?.value !== 'save') return;
++    const value = els.renameInput.value.trim();
++    if (!value) {
++      event.preventDefault();
++      els.renameError.textContent = 'Please enter a name.';
++      els.renameInput.focus();
++    }
++  });
++
++  els.renameDialog.addEventListener('close', () => {
++    const choice = els.renameDialog.returnValue;
++    els.renameDialog.returnValue = '';
++    const id = pendingCredentialId;
++    pendingCredentialId = null;
++    if (choice === 'save' && id) {
++      const value = els.renameInput.value.trim();
++      const cred = findCredential(id);
++      if (cred && value && value !== cred.name) performRename(id, value);
++    }
++  });
++
++  els.deleteDialog.addEventListener('close', () => {
++    const choice = els.deleteDialog.returnValue;
++    els.deleteDialog.returnValue = '';
++    const id = pendingCredentialId;
++    pendingCredentialId = null;
++    if (choice === 'delete' && id) performDelete(id);
++  });
++
++  els.createBtn.addEventListener('click', registerPasskey);
++  els.profileForm.addEventListener('submit', saveProfile);
++  els.profileDisplayName.addEventListener('input', () => els.profileDisplayName.setCustomValidity(''));
++}
++
++async function init() {
++  wireEvents();
++  try {
++    ({ api, user } = await selectApi());
++  } catch (err) {
++    console.error(err);
++    els.list.setAttribute('aria-busy', 'false');
++    setStatus(els.status, `We couldn’t load your account right now: ${err.message}`, 'error');
++    return;
++  }
++  if (!user.rpId) user.rpId = location.hostname;
++
++  els.welcomeName.textContent = user.displayName;
++  els.profileName.value = user.name;
++  els.profileDisplayName.value = user.displayName;
++
++  try {
++    const list = await refreshCredentials();
++    // Initial sync so a passkey deleted elsewhere (another device, support
++    // tooling) disappears from this browser's password manager too.
++    await syncAcceptedCredentials(list);
++  } catch (err) {
++    console.error(err);
++    els.list.setAttribute('aria-busy', 'false');
++    setStatus(els.status, `We couldn’t load your passkeys: ${err.message}`, 'error');
++  }
++
++  if (await platformPasskeysAvailable()) {
++    els.createBtn.hidden = false;
++  } else {
++    els.unsupported.hidden = false;
++  }
++}
++
++init();
+diff --git a/assets/site.css b/assets/site.css
+new file mode 100644
+index 0000000..c9c343f
+--- /dev/null
++++ b/assets/site.css
+@@ -0,0 +1,169 @@
++/* Shared site chrome for The Daily Grind. */
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++  --muted: #6d4c41;
++  --border: #e6ddd9;
++  --danger: #b3261e;
++  --success: #2e7d32;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  color: white;
++  text-decoration: none;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover,
++nav a[aria-current="page"] {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++  border: 0;
++  font: inherit;
++  cursor: pointer;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.visually-hidden {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip-path: inset(50%);
++  white-space: nowrap;
++  border: 0;
++}
+diff --git a/index.html b/index.html
+index 66c9173..c2c7163 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/assets/site.css">
+ </head>
+ 
+ <body>
+@@ -163,7 +16,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/account/">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+diff --git a/scripts/build-aaguids.mjs b/scripts/build-aaguids.mjs
+new file mode 100644
+index 0000000..ed23ef4
+--- /dev/null
++++ b/scripts/build-aaguids.mjs
+@@ -0,0 +1,59 @@
++#!/usr/bin/env node
++// Builds account/aaguids.json from the community AAGUID registry.
++//
++// The upstream file is ~7 MB because every entry embeds light/dark icons as
++// data URIs. We keep the provider *name* for every entry (so any passkey can be
++// labelled) but only ship icons for the common consumer providers listed below.
++//
++// Usage:  node scripts/build-aaguids.mjs [path/to/combined_aaguid.json]
++// With no argument the registry is downloaded from GitHub.
++
++import { readFile, writeFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++
++const REGISTRY_URL =
++  'https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/refs/heads/main/combined_aaguid.json';
++
++// Providers whose icons are worth the bytes on a consumer site.
++const ICON_ALLOWLIST = new Set([
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4', // Google Password Manager
++  'adce0002-35bc-c60a-648b-0b25f1f05503', // Chrome on Mac
++  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd', // Apple Passwords / iCloud Keychain
++  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2', // iCloud Keychain (Managed)
++  '08987058-cadc-4b81-b6e1-30de50dcbe96', // Windows Hello
++  '9ddd1817-af5a-4672-a2b9-3e3dd95000a9', // Windows Hello
++  '771b48fd-d3d4-4f74-9232-fc157ab0507a', // Edge on Mac
++  'bada5566-a7aa-401f-bd96-45619a55120d', // 1Password
++  'd548826e-79b4-db40-a3d8-11116f7e8349', // Bitwarden
++  '531126d6-e717-415c-9320-3d9aa6981239', // Dashlane
++  'b84e4048-15dc-4dd0-8640-f4f60813c8af', // NordPass
++  '0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6', // Keeper
++  'f3809540-7f14-49c1-a8b3-8f813b225541', // Enpass
++  '53414d53-554e-4700-0000-000000000000', // Samsung Pass
++]);
++
++const here = path.dirname(fileURLToPath(import.meta.url));
++const outFile = path.join(here, '..', 'account', 'aaguids.json');
++
++async function loadRegistry(arg) {
++  if (arg) return JSON.parse(await readFile(arg, 'utf8'));
++  const res = await fetch(REGISTRY_URL);
++  if (!res.ok) throw new Error(`Registry download failed: ${res.status}`);
++  return res.json();
++}
++
++const registry = await loadRegistry(process.argv[2]);
++const trimmed = {};
++for (const [aaguid, entry] of Object.entries(registry)) {
++  if (!entry?.name) continue;
++  const out = { name: entry.name };
++  if (ICON_ALLOWLIST.has(aaguid)) {
++    if (entry.icon_light) out.icon_light = entry.icon_light;
++    if (entry.icon_dark) out.icon_dark = entry.icon_dark;
++  }
++  trimmed[aaguid] = out;
++}
++
++await writeFile(outFile, JSON.stringify(trimmed) + '\n');
++console.log(`Wrote ${Object.keys(trimmed).length} providers to ${path.relative(process.cwd(), outFile)}`);

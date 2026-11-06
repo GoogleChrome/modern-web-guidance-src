@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,65 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Mixed Fonts and Independent Theme</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      line-height: 1.6;
++    }
++
++    body {
++      margin: 2rem;
++      max-width: 800px;
++    }
++
++    /* Mixed fonts paragraph using automatic x-height normalization */
++    #mixed-fonts-container {
++      font-family: Georgia, serif;
++      font-size: 1.25rem;
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: 'Courier New', Courier, monospace;
++      background-color: rgba(128, 128, 128, 0.15);
++      padding: 0.1em 0.35em;
++      border-radius: 4px;
++    }
++
++    /* Independent theme container with numeric aspect-ratio override */
++    #independent-theme-container {
++      margin-top: 2rem;
++      padding: 1.5rem;
++      border: 1px solid rgba(128, 128, 128, 0.3);
++      border-radius: 8px;
++      font-family: 'Trebuchet MS', sans-serif;
++      font-size: 1.1rem;
++      font-size-adjust: 0.5;
++    }
++
++    /* Fallback strategy for browsers lacking font-size-adjust support */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++      #independent-theme-container {
++        line-height: 1.5;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    This paragraph contains regular text in a serif font and inline code like <code>console.log('Normalized x-height');</code> with visual heights automatically normalized.
++  </p>
++
++  <div id="independent-theme-container">
++    <h2>Independent Theme Container</h2>
++    <p>This independent theme container uses a numeric aspect-ratio override to lock down its visual proportions across different font families.</p>
++  </div>
++</body>
++</html>

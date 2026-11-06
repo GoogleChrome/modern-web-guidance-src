@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured promo badge */
++    .seasonal {
++      position: relative;
++    }
++
++    /*
++      Spin, slide and hover-scale each drive their own individual transform
++      property (rotate / translate / scale), so they compose instead of
++      overriding one another. Hovering only transitions `scale`; the running
++      keyframe animations are never replaced or restarted.
++    */
++    .target {
++      position: absolute;
++      top: 0;
++      right: 0;
++      z-index: 1;
++      isolation: isolate;
++      /* explicit stacking context, independent of the animated transforms */
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 90px;
++      height: 90px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.2;
++      text-transform: uppercase;
++      cursor: pointer;
++      scale: 1;
++      transition: scale 0.3s ease;
++      animation:
++        target-spin 6s linear infinite,
++        target-slide 4s ease-in-out infinite alternate;
++    }
++
++    .target:hover {
++      scale: 1.25;
++    }
++
++    @keyframes target-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes target-slide {
++      from { translate: 0 0; }
++      to { translate: -120px 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,9 +228,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
++      <div class="target">Featured Pick</div>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

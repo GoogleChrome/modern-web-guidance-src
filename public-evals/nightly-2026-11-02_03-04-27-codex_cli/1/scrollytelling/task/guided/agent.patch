@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,185 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* A readable, static layout is the default, including for reduced motion. */
++    .coffee-story {
++      margin-top: 80px;
++      padding: clamp(24px, 5vw, 56px);
++      background: #28201d;
++      color: #f5eee6;
++      border-radius: 12px;
++    }
++
++    .story-eyebrow {
++      color: #e6b77d;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .coffee-story h2 {
++      margin: 12px 0;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 3rem);
++      font-weight: 400;
++      line-height: 1.15;
++    }
++
++    .story-intro {
++      max-width: 48ch;
++      color: #d7c8bd;
++    }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: clamp(24px, 5vw, 64px);
++      margin-top: 40px;
++    }
++
++    #tracked,
++    #animated {
++      min-width: 0;
++      display: grid;
++      grid-auto-rows: minmax(360px, auto);
++      gap: 32px;
++    }
++
++    #tracked > section {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: flex-start;
++      padding-block: 32px;
++    }
++
++    .story-step {
++      color: #e6b77d;
++      font-size: 0.8rem;
++      letter-spacing: 0.12em;
++    }
++
++    #tracked h3 {
++      margin: 16px 0;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(1.6rem, 3vw, 2.25rem);
++      font-weight: 400;
++      line-height: 1.2;
++    }
++
++    #tracked p {
++      max-width: 35ch;
++      color: #d7c8bd;
++    }
++
++    #animated > section {
++      position: relative;
++      overflow: hidden;
++      border-radius: 8px;
++      background: #49372d;
++    }
++
++    #animated img {
++      position: absolute;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    #animated h3 {
++      position: absolute;
++      inset: auto 0 0;
++      padding: 64px 24px 24px;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
++      font-size: 0.8rem;
++      font-weight: 500;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    @media (max-width: 700px) {
++      .story-layout {
++        grid-template-columns: 1fr;
++      }
++
++      #tracked {
++        grid-auto-rows: auto;
++      }
++    }
++
++    /* Hoist the timelines to a shared ancestor so sibling branches can use them.
++       Check every required feature before enabling the overlapping layout. */
++    @supports (view-timeline: --source block) and (animation-timeline: --source) and (animation-range: 0% 100%) and (timeline-scope: --source) {
++      @media (prefers-reduced-motion: no-preference) {
++        .story-layout {
++          timeline-scope: --coffee-source, --coffee-roast, --coffee-brew;
++        }
++
++        #tracked {
++          display: block;
++        }
++
++        #tracked > section {
++          min-height: 80svh;
++        }
++
++        #tracked > section:nth-child(1) { view-timeline: --coffee-source block; }
++        #tracked > section:nth-child(2) { view-timeline: --coffee-roast block; }
++        #tracked > section:nth-child(3) { view-timeline: --coffee-brew block; }
++
++        #animated {
++          position: sticky;
++          top: 100px;
++          align-self: start;
++          height: min(65svh, 560px);
++          grid-template: 1fr / 1fr;
++          gap: 0;
++        }
++
++        #animated > section {
++          grid-area: 1 / 1;
++          /* Keep timeline/range after the shorthand, which resets them. */
++          animation: coffee-reveal auto linear both;
++          animation-range: cover 0% cover 100%;
++        }
++
++        #animated > section:nth-child(1) { animation-timeline: --coffee-source; }
++        #animated > section:nth-child(2) { animation-timeline: --coffee-roast; }
++        #animated > section:nth-child(3) { animation-timeline: --coffee-brew; }
++
++        @media (max-width: 700px) {
++          .story-layout {
++            display: flex;
++            flex-direction: column;
++            gap: 0;
++          }
++
++          #animated {
++            order: -1;
++            align-self: stretch;
++            flex-shrink: 0;
++            height: 30svh;
++            z-index: 1;
++          }
++
++          #tracked > section {
++            padding-top: calc(30svh + 32px);
++            min-height: 90svh;
++          }
++        }
++      }
++    }
++
++    /* Only compositor-friendly properties change as the page scrolls. */
++    @keyframes coffee-reveal {
++      0% { opacity: 0; transform: translateY(24px); }
++      25%, 75% { opacity: 1; transform: translateY(0); }
++      100% { opacity: 0; transform: translateY(-24px); }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +371,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-story" aria-labelledby="story-title">
++      <header>
++        <p class="story-eyebrow">A little care. Every step.</p>
++        <h2 id="story-title">Good coffee has a story.</h2>
++        <p class="story-intro">From the first bean to your favorite cup, follow the details that make the daily ritual worth slowing down for.</p>
++      </header>
++
++      <div class="story-layout">
++        <div id="tracked">
++          <section aria-labelledby="source-title">
++            <span class="story-step">01 / THE ORIGIN</span>
++            <h3 id="source-title">It starts with a better bean.</h3>
++            <p>Every great cup begins long before the brew. We choose ethically sourced coffee for its character, looking for the sweetness, depth, and unexpected notes that make each origin special.</p>
++          </section>
++          <section aria-labelledby="roast-title">
++            <span class="story-step">02 / THE ROAST</span>
++            <h3 id="roast-title">A little heat. A lot of character.</h3>
++            <p>Roasted locally with patience and purpose. We bring out each coffee’s natural flavor, finding that sweet spot between a rich aroma and a beautifully balanced finish.</p>
++          </section>
++          <section aria-labelledby="brew-title">
++            <span class="story-step">03 / THE RITUAL</span>
++            <h3 id="brew-title">Made for your moment.</h3>
++            <p>A careful grind, fresh water, and a little time. Whether it’s your first espresso or a slow afternoon pour-over, this is where the whole journey comes together.</p>
++            <a href="/menu" class="btn">Find your next cup &rarr;</a>
++          </section>
++        </div>
++
++        <div id="animated" aria-label="The coffee journey in pictures">
++          <section aria-labelledby="source-photo-title">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="A close-up of richly textured coffee beans" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="source-photo-title">01 &mdash; Rooted in good origins</h3>
++          </section>
++          <section aria-labelledby="roast-photo-title">
++            <img src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Coffee beans being roasted in a coffee roaster" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="roast-photo-title">02 &mdash; Roasted with intention</h3>
++          </section>
++          <section aria-labelledby="brew-photo-title">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Fresh coffee prepared for a daily coffee ritual" width="900" height="1100" loading="lazy" decoding="async">
++            <h3 id="brew-photo-title">03 &mdash; A moment worth savoring</h3>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

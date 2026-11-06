@@ -1,0 +1,291 @@
+diff --git a/index.html b/index.html
+index 66c9173..97a05ac 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,26 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    button, input { font: inherit; }
++    button { cursor: pointer; }
++    button:disabled { cursor: wait; opacity: 0.65; }
++    :focus-visible { outline: 3px solid #c46a00; outline-offset: 4px; }
++    .sign-in { background: #fff; border: 1px solid var(--secondary); border-radius: 8px; padding: 24px; }
++    .sign-in h2 { color: var(--primary); }
++    .sign-in form { max-width: 420px; margin-top: 20px; }
++    .sign-in label { display: block; margin-top: 16px; margin-bottom: 4px; }
++    .sign-in input { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #8d7870; border-radius: 4px; }
++    .sign-in button { min-height: 48px; }
++    .sign-in .btn { border: 0; }
++    .text-button { background: transparent; border: 0; color: var(--primary); text-decoration: underline; padding: 8px; }
++    .sign-in-status { margin-top: 12px; }
++    #sign-in { scroll-margin-top: 110px; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++    }
+   </style>
+ </head>
+ 
+@@ -162,18 +182,38 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-sign-in>Rewards</a></li>
++      <li><a href="/account" data-sign-in>My Account</a></li>
++      <li><a href="#sign-in" class="logout-link" data-sign-in>Sign in</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-sign-in>Order Now</a>
+   </header>
+ 
++  <section id="sign-in" class="container sign-in" aria-labelledby="sign-in-title">
++    <h2 id="sign-in-title">Your usual, one step closer.</h2>
++    <p id="sign-in-description">Sign in with a saved passkey or password to pick up where you left off.</p>
++    <button type="button" class="btn" id="quick-sign-in" aria-controls="sign-in-form" aria-expanded="false">Sign in here</button>
++    <p id="sign-in-status" class="sign-in-status" role="status" aria-live="polite"></p>
++    <form id="sign-in-form" action="/api/login/password" method="post" hidden aria-describedby="sign-in-status">
++      <p>Use your browser’s saved password or enter your details. Both fields are required.</p>
++      <label for="sign-in-email">Email address</label>
++      <input id="sign-in-email" name="username" type="email" autocomplete="username" spellcheck="false" required>
++      <label for="sign-in-password">Password</label>
++      <input id="sign-in-password" name="password" type="password" autocomplete="current-password" enterkeyhint="done" required>
++      <button type="button" class="text-button" id="show-password" aria-pressed="false">Show password</button>
++      <div>
++        <button type="submit" class="btn">Sign in</button>
++        <button type="button" class="text-button" id="cancel-sign-in">Keep browsing</button>
++      </div>
++    </form>
++    <noscript><p>Enable JavaScript to sign in on this page.</p></noscript>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +247,216 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.querySelector('#sign-in-form');
++      const status = document.querySelector('#sign-in-status');
++      const quickButton = document.querySelector('#quick-sign-in');
++      const password = document.querySelector('#sign-in-password');
++      let destination = null;
++      let trigger = quickButton;
++      let busy = false;
++      let signedIn = false;
++      let prepared = null;
++
++      // Backend contract: these same-origin endpoints must use secure session cookies,
++      // enforce Origin/CSRF protections, and send Cache-Control: no-store.
++      // POST /api/login/options returns { challenge, rpId, userVerification, csrfToken }.
++      // Store the random challenge in the server session, omit allowCredentials,
++      // and verify assertions/passwords on the server before returning { authenticated: true }.
++      async function post(path, body, csrfToken) {
++        const response = await fetch(path, {
++          method: 'POST', credentials: 'same-origin', cache: 'no-store',
++          headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) },
++          body: JSON.stringify(body)
++        });
++        return response;
++      }
++
++      // Prepare only options, never request credentials or open browser UI on load.
++      async function prepare() {
++        try {
++          const response = await post('/api/login/options', {});
++          if (!response.ok) throw new Error('Options unavailable');
++          const options = await response.json();
++          if (!options.challenge || !options.csrfToken) throw new Error('Invalid options');
++          prepared = { options, created: Date.now() };
++        } catch {
++          prepared = null;
++        }
++        return prepared;
++      }
++      let preparation = prepare();
++      let immediateSupported = false;
++      if (window.isSecureContext && window.PublicKeyCredential?.getClientCapabilities) {
++        PublicKeyCredential.getClientCapabilities()
++          .then(capabilities => { immediateSupported = Boolean(capabilities.immediateGet); })
++          .catch(() => {});
++      }
++
++      function setBusy(value) {
++        busy = value;
++        form.setAttribute('aria-busy', String(value));
++        document.querySelectorAll('#sign-in button').forEach(button => { button.disabled = value; });
++      }
++
++      function showForm(message) {
++        form.hidden = false;
++        quickButton.setAttribute('aria-expanded', 'true');
++        status.textContent = message;
++        document.querySelector('#sign-in-email').focus();
++      }
++
++      function finish() {
++        signedIn = true;
++        form.reset();
++        password.type = 'password';
++        form.hidden = true;
++        quickButton.hidden = true;
++        quickButton.setAttribute('aria-expanded', 'false');
++        document.querySelector('#sign-in-title').textContent = 'Welcome back.';
++        document.querySelector('#sign-in-description').textContent = 'You’re signed in. Enjoy your next cup.';
++        status.textContent = 'Signed in successfully.';
++        const headerSignIn = document.querySelector('nav a[href="#sign-in"]');
++        headerSignIn.textContent = 'My account';
++        headerSignIn.href = '/account';
++        if (destination) window.location.assign(destination);
++      }
++
++      async function verifyCredential(credential, publicKey, csrfToken) {
++        if (!credential) throw new DOMException('No saved account selected', 'NotAllowedError');
++        let response;
++        if (credential.type === 'public-key') {
++          const encoded = credential.toJSON ? credential.toJSON() : serializeAssertion(credential);
++          response = await post('/api/login/verify', encoded, csrfToken);
++          if (response.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            // A synchronization failure must not mask the verification failure.
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rpId || location.hostname, credentialId: encoded.id
++            }).catch(() => {});
++          }
++        } else if (credential.type === 'password') {
++          response = await post('/api/login/password', {
++            username: credential.id, password: credential.password
++          }, csrfToken);
++        } else {
++          throw new Error('Unsupported credential');
++        }
++        if (!response.ok || (await response.json()).authenticated !== true) {
++          throw new Error('Sign-in failed');
++        }
++        finish();
++      }
++
++      // Native JSON helpers are progressive enhancements; older engines use base64url conversion.
++      function decode(value) {
++        return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
++      }
++      function encode(buffer) {
++        return btoa(String.fromCharCode(...new Uint8Array(buffer)))
++          .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++      function serializeAssertion(credential) {
++        const r = credential.response;
++        return {
++          id: credential.id, rawId: encode(credential.rawId), type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment,
++          clientExtensionResults: credential.getClientExtensionResults(),
++          response: {
++            clientDataJSON: encode(r.clientDataJSON), authenticatorData: encode(r.authenticatorData),
++            signature: encode(r.signature), userHandle: r.userHandle ? encode(r.userHandle) : null
++          }
++        };
++      }
++
++      async function signIn(event) {
++        // Preserve modified clicks and opening a destination in another tab.
++        if (event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        if (signedIn) return;
++        event.preventDefault();
++        if (busy) return;
++        trigger = event.currentTarget;
++        destination = trigger.matches('a') && trigger.hash !== '#sign-in' ? trigger.pathname : null;
++        setBusy(true);
++        status.textContent = 'Looking for your saved account…';
++        try {
++          // Use prefetched options to retain transient activation for the browser chooser.
++          if (!immediateSupported || !prepared || Date.now() - prepared.created > 60000) {
++            throw new DOMException('Use the on-page form', 'NotAllowedError');
++          }
++          const { csrfToken, ...options } = prepared.options;
++          delete options.allowCredentials;
++          const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON
++            ? PublicKeyCredential.parseRequestOptionsFromJSON(options)
++            : { ...options, challenge: decode(options.challenge) };
++          const credential = await navigator.credentials.get({
++            publicKey, password: true, uiMode: 'immediate'
++          });
++          await verifyCredential(credential, publicKey, csrfToken);
++        } catch (error) {
++          showForm(error.name === 'NotAllowedError'
++            ? 'Sign in here to continue. Your browser can fill your saved password.'
++            : 'We couldn’t sign you in with that saved account. Try your password below.');
++        } finally {
++          prepared = null;
++          preparation = prepare();
++          setBusy(false);
++        }
++      }
++      document.querySelectorAll('[data-sign-in], #quick-sign-in').forEach(element => {
++        element.addEventListener('click', signIn);
++      });
++
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        if (busy) return;
++        setBusy(true);
++        status.textContent = 'Signing you in…';
++        try {
++          await preparation;
++          if (!prepared || Date.now() - prepared.created > 60000) await prepare();
++          if (!prepared) {
++            status.textContent = 'Sign-in is temporarily unavailable. Please try again later.';
++            return;
++          }
++          const response = await post(form.getAttribute('action'), {
++            username: form.elements.username.value, password: password.value
++          }, prepared.options.csrfToken);
++          if (!response.ok || (await response.json()).authenticated !== true) {
++            status.textContent = 'Unable to sign in. Check your details and try again.';
++            return;
++          }
++          finish();
++        } catch {
++          status.textContent = 'Unable to connect to sign-in. Please try again.';
++        } finally {
++          password.value = '';
++          password.type = 'password';
++          document.querySelector('#show-password').textContent = 'Show password';
++          document.querySelector('#show-password').setAttribute('aria-pressed', 'false');
++          setBusy(false);
++          preparation = prepare();
++        }
++      });
++      document.querySelector('#show-password').addEventListener('click', event => {
++        const show = password.type === 'password';
++        password.type = show ? 'text' : 'password';
++        event.currentTarget.textContent = show ? 'Hide password' : 'Show password';
++        event.currentTarget.setAttribute('aria-pressed', String(show));
++      });
++      document.querySelector('#cancel-sign-in').addEventListener('click', () => {
++        form.reset();
++        password.type = 'password';
++        document.querySelector('#show-password').textContent = 'Show password';
++        document.querySelector('#show-password').setAttribute('aria-pressed', 'false');
++        form.hidden = true;
++        quickButton.setAttribute('aria-expanded', 'false');
++        destination = null;
++        status.textContent = '';
++        trigger.focus();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

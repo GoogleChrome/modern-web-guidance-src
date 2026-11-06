@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,176 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure controls keep their keyboard and screen-reader behavior. */
++    .animated-disclosure {
++      interpolate-size: allow-keywords;
++    }
++
++    .animated-disclosure::details-content {
++      block-size: 0;
++      overflow: clip;
++      transition: block-size 400ms ease, content-visibility 400ms allow-discrete;
++    }
++
++    .animated-disclosure[open]::details-content {
++      block-size: auto;
++    }
++
++    summary {
++      cursor: pointer;
++      list-style: none;
++    }
++
++    summary::-webkit-details-marker {
++      display: none;
++    }
++
++    summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    #promo-alert {
++      position: relative;
++      background: var(--secondary);
++      text-align: center;
++    }
++
++    .promo-message {
++      padding: 12px 64px;
++      font-size: 0.9rem;
++    }
++
++    .promo-message a {
++      color: inherit;
++      text-underline-offset: 3px;
++      margin-left: 8px;
++      font-weight: 600;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      right: 16px;
++      top: 6px;
++      display: grid;
++      place-items: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    #promo-alert:not([open]) > summary {
++      visibility: hidden;
++      pointer-events: none;
++    }
++
++    .faq-section {
++      max-width: 760px;
++      margin: 72px auto 56px;
++    }
++
++    .faq-heading {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .faq-heading p {
++      color: #75645e;
++      margin-top: 6px;
++    }
++
++    .faq-item {
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .faq-item:first-of-type {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .faq-item > summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 24px;
++      padding: 22px 4px;
++      font-weight: 600;
++    }
++
++    .faq-item > summary::after {
++      content: '+';
++      font-size: 1.5rem;
++      font-weight: 400;
++      line-height: 1;
++      transition: transform 400ms ease;
++    }
++
++    .faq-item[open] > summary::after {
++      transform: rotate(45deg);
++    }
++
++    .faq-answer {
++      padding: 0 40px 24px 4px;
++      color: #75645e;
++    }
++
++    .faq-answer a {
++      color: var(--primary);
++      text-underline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .animated-disclosure::details-content,
++      .faq-item > summary::after {
++        transition: none;
++      }
++    }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.3rem;
++      }
++
++      .promo-message {
++        padding: 12px 56px 12px 20px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" class="animated-disclosure" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion"><span aria-hidden="true">&times;</span></summary>
++    <div class="promo-message">
++      <strong>A little perk for your morning.</strong> Join Rewards for a free coffee on your first visit.
++      <a href="/rewards">Join Rewards &rarr;</a>
++    </div>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +357,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section" aria-labelledby="faq-heading">
++      <div class="faq-heading">
++        <h2 id="faq-heading">Good coffee. Clear answers.</h2>
++        <p>A few things you might be wondering about.</p>
++      </div>
++      <details class="faq-item animated-disclosure">
++        <summary id="faq-trigger" aria-controls="faq-content">Where does your coffee come from?</summary>
++        <div id="faq-content" class="faq-answer">
++          <p>We source our beans ethically and roast them locally. From a bold espresso to a smooth cold brew, every cup starts with carefully selected coffee and a little extra care.</p>
++        </div>
++      </details>
++      <details class="faq-item animated-disclosure">
++        <summary>Do you have dairy-free options?</summary>
++        <div class="faq-answer">
++          <p>Yes! Try our Maple Oat Latte, made with creamy oat milk and a hint of Vermont maple syrup. Explore our <a href="/menu">menu</a> for more options, or ask your barista.</p>
++        </div>
++      </details>
++      <details class="faq-item animated-disclosure">
++        <summary>Can I order ahead?</summary>
++        <div class="faq-answer">
++          <p>Absolutely. <a href="/order-online">Order online</a> to get your favorites started before you arrive. Select your location to see available drinks and pickup options.</p>
++        </div>
++      </details>
++      <details class="faq-item animated-disclosure">
++        <summary>How do I join Rewards?</summary>
++        <div class="faq-answer">
++          <p>Visit our <a href="/rewards">Rewards page</a> to sign up and discover the perks waiting for you.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

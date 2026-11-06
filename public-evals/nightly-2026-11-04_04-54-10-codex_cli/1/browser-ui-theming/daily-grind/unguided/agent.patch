@@ -1,0 +1,358 @@
+diff --git a/index.html b/index.html
+index 66c9173..58baed2 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,10 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
+     }
+ 
+     * {
+@@ -27,6 +31,42 @@
+       background-color: var(--light);
+     }
+ 
++    ::selection {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    /* Native browser UI: keep the browser's controls and interactions. */
++    * {
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
++    }
++
++    ::-webkit-scrollbar {
++      width: 12px;
++      height: 12px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 10px;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    nav :focus-visible,
++    .hero :focus-visible {
++      outline-color: var(--accent);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -100,6 +140,212 @@
+       padding: 0 20px;
+     }
+ 
++    .order-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
++      gap: 30px;
++      align-items: start;
++    }
++
++    .section-intro {
++      margin-top: 6px;
++    }
++
++    .customize {
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-top: 5px solid var(--accent);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .customize form {
++      display: grid;
++      gap: 18px;
++      margin-top: 20px;
++    }
++
++    .field {
++      display: grid;
++      gap: 6px;
++      min-width: 0;
++    }
++
++    .field > label,
++    legend {
++      font-weight: 600;
++    }
++
++    input,
++    select,
++    textarea,
++    button {
++      font: inherit;
++      accent-color: var(--primary);
++    }
++
++    select,
++    textarea,
++    input[type="date"],
++    input[type="time"] {
++      width: 100%;
++      min-width: 0;
++      min-height: 44px;
++      padding: 9px 10px;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      caret-color: var(--primary);
++    }
++
++    select option {
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Progressive enhancement for the browser's built-in select picker. */
++    @supports (appearance: base-select) {
++      select,
++      select::picker(select) {
++        appearance: base-select;
++      }
++
++      select::picker(select) {
++        color: var(--text);
++        background: var(--light);
++        border: 1px solid var(--primary);
++        border-radius: 5px;
++      }
++
++      select::picker-icon {
++        color: var(--primary);
++      }
++
++      select option {
++        padding: 8px 10px;
++      }
++
++      select option:checked {
++        background: var(--secondary);
++      }
++
++      select option:hover,
++      select option:focus {
++        color: var(--text);
++        background: var(--accent);
++      }
++
++      select option::checkmark {
++        color: var(--primary);
++      }
++    }
++
++    input[type="date"]::-webkit-calendar-picker-indicator,
++    input[type="time"]::-webkit-calendar-picker-indicator {
++      background-color: var(--secondary);
++      border-radius: 3px;
++      padding: 4px;
++      cursor: pointer;
++    }
++
++    input::-webkit-datetime-edit-fields-wrapper {
++      color: var(--text);
++    }
++
++    input::-webkit-datetime-edit-day-field:focus,
++    input::-webkit-datetime-edit-month-field:focus,
++    input::-webkit-datetime-edit-year-field:focus,
++    input::-webkit-datetime-edit-hour-field:focus,
++    input::-webkit-datetime-edit-minute-field:focus,
++    input::-webkit-datetime-edit-ampm-field:focus {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    fieldset {
++      min-width: 0;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 10px 12px 12px;
++    }
++
++    legend {
++      padding: 0 5px;
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px 18px;
++    }
++
++    .choices label {
++      display: inline-flex;
++      gap: 8px;
++      align-items: center;
++      min-height: 32px;
++      cursor: pointer;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      min-height: 32px;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++    }
++
++    .pickup-fields {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    textarea {
++      resize: vertical;
++    }
++
++    textarea::placeholder {
++      color: #755b53;
++      opacity: 1;
++    }
++
++    .customize .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++    }
++
++    @media (max-width: 800px) {
++      .order-layout {
++        grid-template-columns: 1fr;
++      }
++
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
++    @media (max-width: 380px) {
++      .pickup-fields {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -174,9 +420,10 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container order-layout">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
++      <p class="section-intro">Find your favorite. Make it your own.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +442,72 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customize" aria-labelledby="customize-heading">
++      <h2 id="customize-heading">Your Coffee, Your Way</h2>
++      <p class="section-intro">A few little details for your perfect cup.</p>
++      <form action="/order-online" method="get">
++        <div class="field">
++          <label for="coffee">Coffee</label>
++          <select id="coffee" name="coffee">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="size">Cup size</label>
++          <select id="size" name="size">
++            <option value="small">Small · 8 oz</option>
++            <option value="medium" selected>Medium · 12 oz</option>
++            <option value="large">Large · 16 oz</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="milk">Milk</label>
++          <select id="milk" name="milk">
++            <option value="oat">Oat milk</option>
++            <option value="whole">Whole milk</option>
++            <option value="almond">Almond milk</option>
++            <option value="none">No milk</option>
++          </select>
++        </div>
++        <fieldset>
++          <legend>Serving preference</legend>
++          <div class="choices">
++            <label><input type="radio" name="temperature" value="hot" checked> Hot</label>
++            <label><input type="radio" name="temperature" value="iced"> Iced</label>
++          </div>
++        </fieldset>
++        <fieldset>
++          <legend>A little extra</legend>
++          <div class="choices">
++            <label><input type="checkbox" name="extras" value="extra-shot"> Extra shot</label>
++            <label><input type="checkbox" name="extras" value="decaf"> Decaf</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input type="range" id="sweetness" name="sweetness" min="0" max="4" step="1" value="2" aria-describedby="sweetness-hint">
++          <div class="range-labels" id="sweetness-hint"><span>0 · Unsweetened</span><span>4 · Extra sweet</span></div>
++        </div>
++        <div class="pickup-fields">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input type="date" id="pickup-date" name="pickup-date" required>
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input type="time" id="pickup-time" name="pickup-time" required>
++          </div>
++        </div>
++        <div class="field">
++          <label for="notes">Special requests (optional)</label>
++          <textarea id="notes" name="notes" rows="3" maxlength="300" placeholder="A dash of cinnamon, a little less ice…"></textarea>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

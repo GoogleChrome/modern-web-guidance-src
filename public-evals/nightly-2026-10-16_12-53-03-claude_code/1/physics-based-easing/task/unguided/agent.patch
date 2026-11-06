@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,52 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Spring: overshoots target scale, then settles */
++    .card.spring {
++      transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.7s ease;
++      transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
++      transition-timing-function: linear(
++        0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%,
++        1.077 22.4%, 1.121 25.8%, 1.149 29.3%, 1.159 33.4%, 1.133 40.5%,
++        1.04 53.3%, 1.003 60.4%, 0.989 67%, 0.992 78%, 1
++      );
++    }
++
++    .card.spring:hover {
++      transform: scale(1.08);
++      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
++    }
++
++    /* Bounce: lifts up and lands with decaying rebounds */
++    .card.bounce {
++      transition: transform 0.8s cubic-bezier(0.28, 0.84, 0.42, 1), box-shadow 0.8s ease;
++      transition-timing-function: linear(
++        0, 0.004, 0.016, 0.035, 0.063, 0.098, 0.141, 0.191, 0.25, 0.316, 0.391,
++        0.473, 0.563, 0.66, 0.766, 0.879, 1, 0.945 56%, 0.918 59%, 0.906 61%,
++        0.918 63%, 0.945 65%, 1 68%, 0.986 72%, 0.979 74%, 0.986 76%, 1 79%,
++        0.996 83%, 1 87%, 1
++      );
++    }
++
++    .card.bounce:hover {
++      transform: translateY(-14px);
++      box-shadow: 0 16px 20px rgba(0, 0, 0, 0.15);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card.spring,
++      .card.bounce {
++        transition: none;
++      }
++
++      .card.spring:hover,
++      .card.bounce:hover {
++        transform: none;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,14 +221,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

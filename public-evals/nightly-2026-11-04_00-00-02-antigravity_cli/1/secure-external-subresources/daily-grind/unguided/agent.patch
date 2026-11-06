@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+index 66c9173..d2eeb1d 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,46 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Preload Third-Party Fonts with Subresource Integrity, CORS, and Referrer Policy -->
++  <link rel="preload"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/files/playfair-display-latin-700-normal.woff2"
++    as="font" type="font/woff2"
++    integrity="sha384-YKFULmSzsvq8mSQim3ybWTX3BG9e7uBjdnYXId8lQagJd1K7X32V8+KGTxxfYdEy"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <link rel="preload"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.8/files/lato-latin-400-normal.woff2"
++    as="font" type="font/woff2"
++    integrity="sha384-+chn3xqCWRPSXDBtVEFQn+0J9Gb0SYR2FO1WrXo+L/arnyr8lXLVX2p0BqZIUemc"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++
++  <!-- Preload Hero Image with Subresource Integrity, CORS, and Referrer Policy -->
++  <link rel="preload"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++    as="image"
++    integrity="sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++
++  <!-- Third-Party Font & UI Stylesheets with Subresource Integrity, CORS, and Referrer Policy -->
++  <link rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/700.css"
++    integrity="sha384-uc0dbi7JO9VgiYbCVr5jEvvVAE3mHE0396bsiMOtRq0pRmx9yQZjaHW/w+XaJ/LM"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <link rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.8/index.css"
++    integrity="sha384-vMDrkbYbHXrE4RIcrAoweAuUNrVLwnj8Z4w7kWqZnwRipNmTFXFng51fqinwKXab"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <link rel="stylesheet"
++    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
++    integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <link rel="stylesheet"
++    href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css"
++    integrity="sha384-/rJKQnzOkEo+daG0jMjU1IwwY9unxt1NBw3Ef2fmOJ3PW/TfAg2KXVoWwMZQZtw9"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -21,12 +60,16 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3, .logo {
++      font-family: 'Playfair Display', Georgia, serif;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -74,11 +117,9 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,6 +127,26 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      background-color: #2c1b18;
++    }
++
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      filter: brightness(0.5);
++      z-index: 0;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .hero h1 {
+@@ -113,6 +174,17 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
+     }
+ 
+     .card h3 {
+@@ -158,40 +230,70 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><i class="fa-solid fa-mug-hot" aria-hidden="true"></i> THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" referrerpolicy="strict-origin-when-cross-origin">Menu</a></li>
++      <li><a href="/locations" referrerpolicy="strict-origin-when-cross-origin">Locations</a></li>
++      <li><a href="/rewards" referrerpolicy="strict-origin-when-cross-origin">Rewards</a></li>
++      <li><a href="/account" referrerpolicy="same-origin">My Account</a></li>
++      <li><a href="/logout" class="logout-link" referrerpolicy="no-referrer">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <img
++      class="hero-bg"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++      alt="Freshly brewed artisanal coffee on a wooden table"
++      integrity="sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn" referrerpolicy="strict-origin-when-cross-origin">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-aos="fade-up">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=jpg&fit=crop&w=600&q=80"
++            alt="Maple Oat Latte with latte art"
++            integrity="sha384-2WFWQLT/1Eqcaxll4bOFYFCC7h/cBXjjJnnmjOV+LCv2DD2clo3PTPGoTN08yR3F"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" referrerpolicy="strict-origin-when-cross-origin">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-aos="fade-up" data-aos-delay="100">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=jpg&fit=crop&w=600&q=80"
++            alt="Rich Dark Roast Espresso shot"
++            integrity="sha384-OsbsC55W2YslJ2rBgPzOJIPxbLMWNQsH+xA+kfrn4VmiOz1ywFAcOUEot3hXzHgg"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" referrerpolicy="strict-origin-when-cross-origin">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-aos="fade-up" data-aos-delay="200">
++          <img
++            class="card-img"
++            src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?fm=jpg&fit=crop&w=600&q=80"
++            alt="Iced Cold Brew coffee in a glass"
++            integrity="sha384-D7mgYW7GDipsrH/+0Gt8A9WsUlp/TQarakEq4VhqAuATRwPZKXwaajefXRJobzRK"
++            crossorigin="anonymous"
++            referrerpolicy="no-referrer">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" referrerpolicy="strict-origin-when-cross-origin">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +301,33 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" referrerpolicy="strict-origin-when-cross-origin">Our Story</a> |
++      <a href="/careers" referrerpolicy="strict-origin-when-cross-origin">Join the Team</a> |
++      <a href="/contact" referrerpolicy="strict-origin-when-cross-origin">Contact Us</a> |
++      <a href="/privacy-policy" referrerpolicy="strict-origin-when-cross-origin">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Third-Party Scripts with Subresource Integrity, CORS, and Referrer Policy -->
++  <script
++    src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"
++    integrity="sha384-n1AULnKdMJlK1oQCLNDL9qZsDgXtH6jRYFCpBtWFc+a9Yve0KSoMn575rk755NJZ"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"></script>
++  <script
++    src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"
++    integrity="sha384-tTkFttkBclaU1cloKwOi9xk3pbao3VZxTjLNBt8iFABWDBQibbAbWpVmO28zMuxq"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"></script>
++  <script>
++    if (window.AOS) {
++      AOS.init({ once: true, duration: 600 });
++    }
++    if (window.lucide) {
++      lucide.createIcons();
++    }
++  </script>
+ </body>
+ 
+ </html>

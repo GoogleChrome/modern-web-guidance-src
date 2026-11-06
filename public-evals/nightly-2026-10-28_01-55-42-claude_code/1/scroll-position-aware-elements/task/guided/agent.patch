@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,119 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container: the page scrolls inside .scroller so it can be a scroll-state query container */
++    html, body {
++      height: 100%;
++    }
++
++    .scroller {
++      height: 100dvh;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      container-type: scroll-state;
++      scroll-behavior: smooth;
++    }
++
++    /* Zero-size marker at the top: anchor target for the button and IntersectionObserver sentinel */
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    /* Back to top button */
++    .back-to-top {
++      --size: 48px;
++      position: sticky;
++      bottom: 20px;
++      z-index: 999;
++      display: grid;
++      place-items: center;
++      width: var(--size);
++      height: var(--size);
++      /* Pull the button up into the footer so it adds no extra scroll height */
++      margin-block-start: calc(-1 * var(--size));
++      margin-inline-start: auto;
++      margin-inline-end: 20px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 1.25rem;
++      line-height: 1;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      /* Fallback for browsers without scroll-state queries or JS: always visible */
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        translate 0.3s ease,
++        background 0.3s;
++    }
++
++    .back-to-top:hover,
++    .back-to-top:focus-visible {
++      background: #ff9100;
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Supported browsers: hide at top, reveal once the container can scroll back toward the top */
++    @supports (container-type: scroll-state) {
++      .back-to-top {
++        visibility: hidden;
++        opacity: 0;
++        translate: 0 20px;
++      }
++
++      @container scroll-state(scrollable: top) {
++        .back-to-top {
++          visibility: visible;
++          opacity: 1;
++          translate: 0 0;
++        }
++      }
++    }
++
++    /* IntersectionObserver fallback: JS toggles .scrolled on the scroller */
++    .scroller.io-fallback .back-to-top {
++      visibility: hidden;
++      opacity: 0;
++      translate: 0 20px;
++    }
++
++    .scroller.io-fallback.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .back-to-top {
++        transition: visibility 0s;
++        translate: 0 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller">
++  <div class="scroll-sentinel" id="top" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +312,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <a href="#top" class="back-to-top" aria-label="Back to top" title="Back to top">&uarr;</a>
++  </div>
++
++  <script>
++    // Fallback for browsers without CSS scroll-state container queries (Firefox, Safari).
++    // Uses IntersectionObserver on a top sentinel instead of a continuous scroll listener.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const scroller = document.querySelector('.scroller');
++      const sentinel = scroller.querySelector('.scroll-sentinel');
++      scroller.classList.add('io-fallback');
++      new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller }).observe(sentinel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

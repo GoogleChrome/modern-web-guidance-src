@@ -1,0 +1,228 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,112 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-selector {
++      position: relative;
++      margin: 1.25rem 0 0.25rem;
++      width: 240px;
++      text-align: left;
++    }
++
++    .roast-label {
++      display: block;
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--accent);
++      margin-bottom: 6px;
++      text-align: center;
++    }
++
++    .roast-trigger {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      padding: 10px 14px;
++      font: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .roast-trigger:hover {
++      background: #3e2723;
++    }
++
++    .roast-trigger:focus-visible,
++    .roast-option:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .roast-arrow {
++      width: 14px;
++      height: 14px;
++      flex-shrink: 0;
++      color: var(--accent);
++      transition: transform 0.2s;
++    }
++
++    .roast-trigger[aria-expanded="true"] .roast-arrow {
++      transform: rotate(180deg);
++    }
++
++    .roast-list {
++      position: absolute;
++      top: calc(100% + 4px);
++      left: 0;
++      right: 0;
++      list-style: none;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
++      overflow: hidden;
++      z-index: 10;
++    }
++
++    .roast-list[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      color: white;
++      cursor: pointer;
++    }
++
++    .roast-option.active {
++      background: #3e2723;
++      color: var(--accent);
++    }
++
++    .roast-option[aria-selected="true"] {
++      color: var(--accent);
++      font-weight: bold;
++    }
++
++    .roast-check {
++      width: 16px;
++      height: 16px;
++      color: var(--accent);
++      visibility: hidden;
++    }
++
++    .roast-option[aria-selected="true"] .roast-check {
++      visibility: visible;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +274,32 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-selector">
++      <span class="roast-label" id="roast-label">Choose Your Roast</span>
++      <button type="button" class="roast-trigger" id="roast-trigger" aria-haspopup="listbox" aria-expanded="false"
++        aria-labelledby="roast-label roast-trigger">
++        <span class="roast-value">Medium</span>
++        <svg class="roast-arrow" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
++      </button>
++      <ul class="roast-list" id="roast-list" role="listbox" tabindex="-1" aria-labelledby="roast-label" hidden>
++        <li class="roast-option" role="option" id="roast-opt-light" data-value="light" aria-selected="false">
++          <span>Light</span>
++          <svg class="roast-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
++        </li>
++        <li class="roast-option" role="option" id="roast-opt-medium" data-value="medium" aria-selected="true">
++          <span>Medium</span>
++          <svg class="roast-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
++        </li>
++        <li class="roast-option" role="option" id="roast-opt-dark" data-value="dark" aria-selected="false">
++          <span>Dark</span>
++          <svg class="roast-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
++        </li>
++      </ul>
++      <input type="hidden" name="roast" id="roast-input" value="medium">
++    </div>
++    <a href="/order-online?roast=medium" class="btn" id="order-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +333,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const root = document.querySelector('.roast-selector');
++      const trigger = root.querySelector('#roast-trigger');
++      const list = root.querySelector('#roast-list');
++      const valueEl = trigger.querySelector('.roast-value');
++      const input = root.querySelector('#roast-input');
++      const orderBtn = document.getElementById('order-btn');
++      const options = Array.from(list.querySelectorAll('.roast-option'));
++      let activeIndex = options.findIndex(o => o.getAttribute('aria-selected') === 'true');
++
++      function setActive(i) {
++        activeIndex = (i + options.length) % options.length;
++        options.forEach((o, idx) => o.classList.toggle('active', idx === activeIndex));
++        list.setAttribute('aria-activedescendant', options[activeIndex].id);
++      }
++
++      function open() {
++        list.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        setActive(options.findIndex(o => o.getAttribute('aria-selected') === 'true'));
++        list.focus();
++      }
++
++      function close(focusTrigger) {
++        list.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        if (focusTrigger) trigger.focus();
++      }
++
++      function select(i) {
++        options.forEach((o, idx) => o.setAttribute('aria-selected', idx === i ? 'true' : 'false'));
++        const opt = options[i];
++        valueEl.textContent = opt.textContent.trim();
++        input.value = opt.dataset.value;
++        orderBtn.href = '/order-online?roast=' + encodeURIComponent(opt.dataset.value);
++        close(true);
++      }
++
++      trigger.addEventListener('click', () => (list.hidden ? open() : close(true)));
++      trigger.addEventListener('keydown', e => {
++        if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
++          e.preventDefault();
++          open();
++        }
++      });
++
++      list.addEventListener('keydown', e => {
++        switch (e.key) {
++          case 'ArrowDown': e.preventDefault(); setActive(activeIndex + 1); break;
++          case 'ArrowUp': e.preventDefault(); setActive(activeIndex - 1); break;
++          case 'Home': e.preventDefault(); setActive(0); break;
++          case 'End': e.preventDefault(); setActive(options.length - 1); break;
++          case 'Enter': case ' ': e.preventDefault(); select(activeIndex); break;
++          case 'Escape': e.preventDefault(); close(true); break;
++          case 'Tab': close(false); break;
++        }
++      });
++
++      options.forEach((o, i) => {
++        o.addEventListener('mousemove', () => setActive(i));
++        o.addEventListener('click', () => select(i));
++      });
++
++      document.addEventListener('click', e => {
++        if (!root.contains(e.target) && !list.hidden) close(false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

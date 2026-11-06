@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,163 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    /**
++     * Foreground Time Tracker
++     * Tracks how long users are actively viewing the page (in the foreground)
++     * using the Page Visibility API and high-resolution timestamps.
++     */
++    (function (global) {
++      if (global.__foregroundTrackerInitialized) return;
++      global.__foregroundTrackerInitialized = true;
++
++      let totalForegroundTime = 0;
++      let lastStartTime = null;
++
++      function isVisible() {
++        if (typeof document === 'undefined') return true;
++        if (typeof document.visibilityState !== 'undefined') {
++          return document.visibilityState === 'visible';
++        }
++        if (typeof document.hidden !== 'undefined') {
++          return !document.hidden;
++        }
++        return true;
++      }
++
++      function now() {
++        if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
++          return performance.now();
++        }
++        return Date.now();
++      }
++
++      function start() {
++        if (lastStartTime === null) {
++          lastStartTime = now();
++        }
++      }
++
++      function stop() {
++        if (lastStartTime !== null) {
++          totalForegroundTime += (now() - lastStartTime);
++          lastStartTime = null;
++        }
++      }
++
++      function handleVisibilityChange() {
++        if (isVisible()) {
++          start();
++        } else {
++          stop();
++        }
++      }
++
++      // Initialize tracking if page is currently visible
++      if (isVisible()) {
++        start();
++      }
++
++      if (typeof document !== 'undefined' && document.addEventListener) {
++        document.addEventListener('visibilitychange', handleVisibilityChange);
++      }
++
++      if (typeof window !== 'undefined' && window.addEventListener) {
++        window.addEventListener('pagehide', stop);
++        window.addEventListener('pageshow', function () {
++          if (isVisible()) {
++            start();
++          }
++        });
++      }
++
++      /**
++       * Calculates the total time the page has spent in the foreground.
++       * @param {string|object} [options] - Optional unit specifier ('s', 'sec', 'seconds', 'ms') or { unit: 'seconds' }
++       * @returns {number} Foreground time in milliseconds (or seconds if specified)
++       */
++      function calculateTotalForegroundTime(options) {
++        let total = totalForegroundTime;
++        if (isVisible() && lastStartTime !== null) {
++          total += (now() - lastStartTime);
++        }
++
++        if (typeof options === 'string') {
++          const unit = options.toLowerCase();
++          if (unit === 's' || unit === 'sec' || unit === 'seconds' || unit === 'second') {
++            return total / 1000;
++          }
++        } else if (options && typeof options === 'object') {
++          const unit = (options.unit || '').toLowerCase();
++          if (unit === 's' || unit === 'sec' || unit === 'seconds' || unit === 'second') {
++            return total / 1000;
++          }
++        }
++
++        return total;
++      }
++
++      calculateTotalForegroundTime.inSeconds = function () {
++        return calculateTotalForegroundTime('s');
++      };
++
++      calculateTotalForegroundTime.inMilliseconds = function () {
++        return calculateTotalForegroundTime('ms');
++      };
++
++      calculateTotalForegroundTime.reset = function () {
++        totalForegroundTime = 0;
++        if (isVisible()) {
++          lastStartTime = now();
++        } else {
++          lastStartTime = null;
++        }
++      };
++
++      const getTotalForegroundTime = calculateTotalForegroundTime;
++      const getForegroundTime = calculateTotalForegroundTime;
++      const calculateForegroundTime = calculateTotalForegroundTime;
++
++      function getTotalForegroundSeconds() {
++        return calculateTotalForegroundTime('s');
++      }
++      const calculateTotalForegroundSeconds = getTotalForegroundSeconds;
++
++      // Expose on target global environment
++      const target = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : global);
++      if (target) {
++        target.calculateTotalForegroundTime = calculateTotalForegroundTime;
++        target.getTotalForegroundTime = getTotalForegroundTime;
++        target.getForegroundTime = getForegroundTime;
++        target.calculateForegroundTime = calculateForegroundTime;
++        target.getTotalForegroundSeconds = getTotalForegroundSeconds;
++        target.calculateTotalForegroundSeconds = calculateTotalForegroundSeconds;
++
++        try {
++          Object.defineProperty(target, 'totalForegroundTime', {
++            get: () => calculateTotalForegroundTime(),
++            configurable: true
++          });
++        } catch (e) {}
++      }
++
++      if (typeof document !== 'undefined') {
++        document.calculateTotalForegroundTime = calculateTotalForegroundTime;
++        document.getTotalForegroundTime = getTotalForegroundTime;
++        document.getForegroundTime = getForegroundTime;
++        document.calculateForegroundTime = calculateForegroundTime;
++      }
++    })(typeof window !== 'undefined' ? window : this);
++
++    var calculateTotalForegroundTime = window.calculateTotalForegroundTime;
++    var getTotalForegroundTime = window.getTotalForegroundTime;
++    var getForegroundTime = window.getForegroundTime;
++    var calculateForegroundTime = window.calculateForegroundTime;
++    var getTotalForegroundSeconds = window.getTotalForegroundSeconds;
++    var calculateTotalForegroundSeconds = window.calculateTotalForegroundSeconds;
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

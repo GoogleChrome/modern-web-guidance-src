@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-top: 50px;
++    }
++
++    .reviews-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .reviews-wrapper {
++      position: relative;
++      max-width: 800px;
++      margin: 0 auto;
++      border-radius: 8px;
++      background: white;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .scroll-container {
++      height: 320px;
++      overflow-y: auto;
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .review-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 16px;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
++    .reviewer-info {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .reviewer-avatar {
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      object-fit: cover;
++    }
++
++    .reviewer-name {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-stars {
++      color: var(--accent);
++      font-size: 1rem;
++      letter-spacing: 2px;
++    }
++
++    .review-text {
++      font-size: 0.95rem;
++      color: var(--text);
++      margin-bottom: 10px;
++    }
++
++    .review-helpful-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .review-helpful-btn:hover {
++      background: var(--secondary);
++    }
++
++    .indicator-top,
++    .indicator-bottom {
++      position: absolute;
++      left: 0;
++      right: 0;
++      height: 48px;
++      pointer-events: none;
++      z-index: 10;
++      opacity: 0;
++      visibility: hidden;
++    }
++
++    .indicator-top {
++      top: 0;
++      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
++    }
++
++    .indicator-bottom {
++      bottom: 0;
++      background: linear-gradient(to top, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
++    }
++
++    .indicator-top.visible,
++    .indicator-bottom.visible {
++      opacity: 1;
++      visibility: visible;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +309,89 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section" id="customer-reviews">
++      <h2>Customer Reviews</h2>
++      <div class="reviews-wrapper">
++        <div class="indicator-top" aria-hidden="true"></div>
++        <div class="scroll-container reviews-list reviews-container" id="reviews-scroll-container">
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" alt="Sarah Jenkins">
++                <span class="reviewer-name">Sarah Jenkins</span>
++              </div>
++              <span class="review-stars" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-text">The Maple Oat Latte is hands down the best seasonal drink in town. Perfectly balanced sweetness and smooth espresso!</p>
++            <button type="button" class="review-helpful-btn">Helpful (14)</button>
++          </article>
++
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Marcus Vance">
++                <span class="reviewer-name">Marcus Vance</span>
++              </div>
++              <span class="review-stars" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-text">I stop by every morning before work for the Dark Roast Espresso. Rich crema, bold flavor, and never bitter.</p>
++            <button type="button" class="review-helpful-btn">Helpful (9)</button>
++          </article>
++
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80" alt="Elena Rostova">
++                <span class="reviewer-name">Elena Rostova</span>
++              </div>
++              <span class="review-stars" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span>
++            </div>
++            <p class="review-text">Their 18-hour Cold Brew is dangerously smooth. Cozy atmosphere and friendly baristas who really know their craft.</p>
++            <button type="button" class="review-helpful-btn">Helpful (7)</button>
++          </article>
++
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" alt="David Kim">
++                <span class="reviewer-name">David Kim</span>
++              </div>
++              <span class="review-stars" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-text">Been buying their whole bean single-origin bags for my home pour-over setup. Freshly roasted and full of tasting notes.</p>
++            <button type="button" class="review-helpful-btn">Helpful (11)</button>
++          </article>
++
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Priya Patel">
++                <span class="reviewer-name">Priya Patel</span>
++              </div>
++              <span class="review-stars" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-text">Love the commitment to ethical sourcing. You can genuinely taste the quality in every cup, and the pastries are great too!</p>
++            <button type="button" class="review-helpful-btn">Helpful (6)</button>
++          </article>
++
++          <article class="review-card">
++            <div class="review-header">
++              <div class="reviewer-info">
++                <img class="reviewer-avatar" src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=100&q=80" alt="Liam O'Connor">
++                <span class="reviewer-name">Liam O'Connor</span>
++              </div>
++              <span class="review-stars" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
++            </div>
++            <p class="review-text">Fast online ordering and my drink is always waiting hot and fresh when I walk in. Best local coffee shop by far.</p>
++            <button type="button" class="review-helpful-btn">Helpful (4)</button>
++          </article>
++        </div>
++        <div class="indicator-bottom visible" aria-hidden="true"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +402,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const scrollContainer = document.getElementById('reviews-scroll-container');
++      const topIndicator = document.querySelector('.indicator-top');
++      const bottomIndicator = document.querySelector('.indicator-bottom');
++
++      function updateScrollIndicators() {
++        if (!scrollContainer || !topIndicator || !bottomIndicator) return;
++
++        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
++        const canScrollUp = scrollTop > 0;
++        const canScrollDown = scrollHeight - scrollTop - clientHeight > 1;
++
++        topIndicator.classList.toggle('visible', canScrollUp);
++        bottomIndicator.classList.toggle('visible', canScrollDown);
++      }
++
++      if (scrollContainer) {
++        scrollContainer.addEventListener('scroll', updateScrollIndicators, { passive: true });
++        window.addEventListener('resize', updateScrollIndicators);
++        window.addEventListener('load', updateScrollIndicators);
++        updateScrollIndicators();
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

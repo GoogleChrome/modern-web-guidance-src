@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+index 66c9173..df2013a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,57 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .floating-tip {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      width: 260px;
++      max-width: calc(100vw - 24px);
++      overflow: hidden;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 8px 30px rgba(62, 39, 35, 0.2);
++    }
++
++    .drag-handle {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 12px 16px;
++      border: 0;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-weight: 600;
++      text-align: left;
++      cursor: grab;
++      touch-action: none;
++      user-select: none;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -4px;
++    }
++
++    .floating-tip.is-dragging .drag-handle {
++      cursor: grabbing;
++    }
++
++    .floating-tip p {
++      padding: 16px;
++      font-size: 0.9rem;
++    }
++
++    .floating-tip small {
++      display: block;
++      margin-top: 8px;
++      color: #735d55;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +258,72 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-tip" aria-label="Coffee tip">
++    <button class="drag-handle" type="button" aria-label="Move coffee tip. Drag or use arrow keys.">
++      <span>Your daily coffee tip</span>
++      <span aria-hidden="true">⠿</span>
++    </button>
++    <p>Make time for a little coffee break.
++      <small>Drag the handle to move me.</small>
++    </p>
++  </aside>
++
++  <script>
++    const floatingTip = document.querySelector('.floating-tip');
++    const dragHandle = floatingTip.querySelector('.drag-handle');
++    let drag = null;
++
++    function moveTip(left, top) {
++      const maxLeft = Math.max(0, document.documentElement.clientWidth - floatingTip.offsetWidth);
++      const maxTop = Math.max(0, window.innerHeight - floatingTip.offsetHeight);
++      floatingTip.style.left = `${Math.min(Math.max(0, left), maxLeft)}px`;
++      floatingTip.style.top = `${Math.min(Math.max(0, top), maxTop)}px`;
++      floatingTip.style.right = 'auto';
++      floatingTip.style.bottom = 'auto';
++    }
++
++    dragHandle.addEventListener('pointerdown', (event) => {
++      if (!event.isPrimary || event.button !== 0 || drag) return;
++      const bounds = floatingTip.getBoundingClientRect();
++      drag = { pointerId: event.pointerId, offsetX: event.clientX - bounds.left, offsetY: event.clientY - bounds.top };
++      dragHandle.setPointerCapture(event.pointerId);
++      floatingTip.classList.add('is-dragging');
++    });
++
++    dragHandle.addEventListener('pointermove', (event) => {
++      if (!drag || event.pointerId !== drag.pointerId) return;
++      moveTip(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++    });
++
++    function stopDragging(event) {
++      if (!drag || event.pointerId !== drag.pointerId) return;
++      drag = null;
++      floatingTip.classList.remove('is-dragging');
++      if (dragHandle.hasPointerCapture(event.pointerId)) {
++        dragHandle.releasePointerCapture(event.pointerId);
++      }
++    }
++
++    dragHandle.addEventListener('pointerup', stopDragging);
++    dragHandle.addEventListener('pointercancel', stopDragging);
++    dragHandle.addEventListener('lostpointercapture', stopDragging);
++
++    dragHandle.addEventListener('keydown', (event) => {
++      const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
++      const direction = directions[event.key];
++      if (!direction) return;
++      event.preventDefault();
++      const bounds = floatingTip.getBoundingClientRect();
++      const step = event.shiftKey ? 40 : 10;
++      moveTip(bounds.left + direction[0] * step, bounds.top + direction[1] * step);
++    });
++
++    window.addEventListener('resize', () => {
++      const bounds = floatingTip.getBoundingClientRect();
++      moveTip(bounds.left, bounds.top);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

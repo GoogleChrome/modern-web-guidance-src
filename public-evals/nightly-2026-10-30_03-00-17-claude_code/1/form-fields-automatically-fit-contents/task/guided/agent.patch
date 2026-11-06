@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Form */
++    .order-section {
++      margin-top: 60px;
++    }
++
++    .order-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 640px;
++      margin: 20px auto 0;
++      display: flex;
++      flex-direction: column;
++      /* Keep flex from stretching auto-sized fields to full width */
++      align-items: start;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: start;
++      gap: 4px;
++      margin-bottom: 1.5rem;
++      inline-size: 100%;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .order-form input,
++    .order-form textarea,
++    .order-form select {
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      padding: 0.6rem 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      background: var(--light);
++      /* Grow and shrink to fit the content */
++      field-sizing: content;
++    }
++
++    .order-form input {
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 100%;
++    }
++
++    .order-form textarea {
++      height: auto;
++      /* Stable width; height follows the content */
++      width: 100%;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++      resize: vertical;
++    }
++
++    .order-form select {
++      max-inline-size: 100%;
++    }
++
++    .order-form input:focus-visible,
++    .order-form textarea:focus-visible,
++    .order-form select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +279,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section">
++      <h2 style="text-align: center;">Pre-Order for Pickup</h2>
++      <form class="order-form" action="/order-online" method="POST">
++        <div class="form-group">
++          <label for="pickup-name">Name for the cup</label>
++          <input type="text" id="pickup-name" name="pickup_name" autocomplete="name" placeholder="Your name" required>
++        </div>
++
++        <div class="form-group">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink" required>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="flat-white">Flat White</option>
++            <option value="americano">Americano</option>
++            <option value="chai">Chai</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="notes">Special instructions</label>
++          <textarea id="notes" name="notes" aria-describedby="notes-hint" maxlength="500" placeholder="Extra hot, half sweet, no foam…"></textarea>
++          <span id="notes-hint" class="hint">Optional. Up to 500 characters.</span>
++        </div>
++
++        <button type="submit" class="btn">Place pre-order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

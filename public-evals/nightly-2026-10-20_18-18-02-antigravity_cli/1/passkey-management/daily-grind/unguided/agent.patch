@@ -1,0 +1,3904 @@
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..a47e25e
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,1934 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account & Passkeys | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
++      --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
++      --accent: #ffab40;
++      --accent-hover: #ff9100;
++      --text: #3e2723;
++      --text-muted: #6d4c41;
++      --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --warning: #ef6c00;
++      --warning-bg: #fff3e0;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
++      --danger-border: #ffcdd2;
++      --shadow-sm: 0 2px 6px rgba(62, 39, 35, 0.08);
++      --shadow-md: 0 6px 20px rgba(62, 39, 35, 0.12);
++      --shadow-lg: 0 12px 32px rgba(62, 39, 35, 0.22);
++      --radius: 10px;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.2s, background 0.2s;
++    }
++
++    nav a:hover,
++    nav a.active {
++      color: var(--accent);
++    }
++
++    nav a.active {
++      font-weight: 600;
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Account Banner */
++    .account-header {
++      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
++      color: white;
++      padding: 36px 5%;
++      border-bottom: 4px solid var(--accent);
++    }
++
++    .account-header-inner {
++      max-width: 1100px;
++      margin: 0 auto;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .user-profile-summary {
++      display: flex;
++      align-items: center;
++      gap: 18px;
++    }
++
++    .avatar {
++      width: 68px;
++      height: 68px;
++      border-radius: 50%;
++      object-fit: cover;
++      border: 3px solid var(--accent);
++      background: var(--secondary);
++    }
++
++    .user-meta h1 {
++      font-size: 1.75rem;
++      margin-bottom: 2px;
++    }
++
++    .user-meta p {
++      color: var(--secondary);
++      font-size: 0.92rem;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .member-badge {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 9px;
++      border-radius: 999px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .security-status-pill {
++      background: rgba(255, 255, 255, 0.1);
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      padding: 10px 16px;
++      border-radius: var(--radius);
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      font-size: 0.88rem;
++    }
++
++    .status-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #66bb6a;
++      box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.25);
++    }
++
++    .status-dot.warning {
++      background: var(--accent);
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.25);
++    }
++
++    /* Main Layout */
++    .account-layout {
++      max-width: 1100px;
++      width: 100%;
++      margin: 32px auto;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: 250px 1fr;
++      gap: 28px;
++      flex: 1;
++    }
++
++    @media (max-width: 820px) {
++      .account-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Sidebar Navigation */
++    .account-sidebar {
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .sidebar-card {
++      background: var(--surface);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--border);
++      overflow: hidden;
++    }
++
++    .sidebar-nav {
++      list-style: none;
++    }
++
++    .sidebar-nav li {
++      border-bottom: 1px solid var(--border);
++    }
++
++    .sidebar-nav li:last-child {
++      border-bottom: none;
++    }
++
++    .sidebar-nav button {
++      width: 100%;
++      text-align: left;
++      background: none;
++      border: none;
++      padding: 14px 18px;
++      font-size: 0.95rem;
++      color: var(--text);
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      transition: background 0.15s, color 0.15s;
++      font-family: inherit;
++    }
++
++    .sidebar-nav button:hover {
++      background: var(--secondary-light);
++    }
++
++    .sidebar-nav button.active {
++      background: var(--secondary-light);
++      color: var(--primary);
++      font-weight: 600;
++      border-left: 4px solid var(--primary);
++    }
++
++    .sidebar-nav-label {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .nav-count-badge {
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .info-box {
++      padding: 16px;
++      background: var(--secondary-light);
++      border-radius: var(--radius);
++      border: 1px solid var(--border);
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .info-box h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++    }
++
++    /* Main Content Panel */
++    .content-panel {
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++    }
++
++    .panel-card {
++      background: var(--surface);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--border);
++      padding: 28px;
++    }
++
++    .panel-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      padding-bottom: 20px;
++      border-bottom: 1px solid var(--border);
++      margin-bottom: 22px;
++    }
++
++    .panel-title-group h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 4px;
++    }
++
++    .panel-title-group p {
++      color: var(--text-muted);
++      font-size: 0.92rem;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 18px;
++      text-decoration: none;
++      border-radius: 6px;
++      border: 1px solid transparent;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s;
++      font-family: inherit;
++    }
++
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
++      transform: translateY(-1px);
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover:not(:disabled) {
++      background: var(--accent-hover);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border-color: var(--border);
++    }
++
++    .btn-outline:hover:not(:disabled) {
++      background: var(--secondary-light);
++      border-color: var(--primary-light);
++    }
++
++    .btn-danger-outline {
++      background: transparent;
++      color: var(--danger);
++      border-color: var(--danger-border);
++    }
++
++    .btn-danger-outline:hover:not(:disabled) {
++      background: var(--danger-bg);
++      border-color: var(--danger);
++    }
++
++    .btn-danger {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger:hover:not(:disabled) {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.82rem;
++    }
++
++    /* Passkey Summary Metrics & Controls */
++    .passkey-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 18px;
++    }
++
++    .search-filter-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      flex: 1;
++      min-width: 240px;
++    }
++
++    .search-input-wrap {
++      position: relative;
++      flex: 1;
++      max-width: 320px;
++    }
++
++    .search-input-wrap svg {
++      position: absolute;
++      left: 11px;
++      top: 50%;
++      transform: translateY(-50%);
++      color: var(--text-muted);
++      pointer-events: none;
++    }
++
++    .search-input {
++      width: 100%;
++      padding: 8px 12px 8px 34px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: var(--light);
++      font-family: inherit;
++    }
++
++    .search-input:focus,
++    .filter-select:focus,
++    .form-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++      background: white;
++    }
++
++    .filter-select {
++      padding: 8px 12px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: var(--light);
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    /* Passkey List Items */
++    .passkeys-list {
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .passkey-item {
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 18px 20px;
++      background: var(--surface);
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .passkey-item:hover {
++      border-color: var(--secondary);
++      box-shadow: var(--shadow-sm);
++    }
++
++    .passkey-item.recently-used {
++      border-left: 4px solid var(--success);
++    }
++
++    .passkey-main {
++      display: flex;
++      align-items: flex-start;
++      gap: 16px;
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .passkey-icon {
++      width: 46px;
++      height: 46px;
++      border-radius: 10px;
++      background: var(--secondary-light);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++      border: 1px solid var(--border);
++    }
++
++    .passkey-details {
++      flex: 1;
++    }
++
++    .passkey-title-row {
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 4px;
++    }
++
++    .passkey-name {
++      font-size: 1.05rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .badge {
++      font-size: 0.72rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 999px;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .badge-synced {
++      background: #e3f2fd;
++      color: #1565c0;
++    }
++
++    .badge-hardware {
++      background: #f3e5f5;
++      color: #6a1b9a;
++    }
++
++    .badge-platform {
++      background: var(--secondary-light);
++      color: var(--primary);
++    }
++
++    .badge-current {
++      background: var(--success-bg);
++      color: var(--success);
++    }
++
++    .passkey-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 14px;
++      font-size: 0.83rem;
++      color: var(--text-muted);
++      margin-top: 6px;
++    }
++
++    .passkey-meta span {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++    }
++
++    .credential-id-pill {
++      font-family: 'Courier New', Courier, monospace;
++      background: var(--light);
++      border: 1px solid var(--border);
++      padding: 1px 6px;
++      border-radius: 4px;
++      font-size: 0.76rem;
++      color: var(--text-muted);
++    }
++
++    .passkey-actions {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    /* Inline Rename Editor */
++    .inline-rename-form {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 4px;
++    }
++
++    .form-input {
++      padding: 7px 11px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.92rem;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    /* Empty State */
++    .empty-state {
++      text-align: center;
++      padding: 44px 20px;
++      background: var(--light);
++      border: 2px dashed var(--border);
++      border-radius: var(--radius);
++    }
++
++    .empty-state-icon {
++      width: 60px;
++      height: 60px;
++      margin: 0 auto 14px;
++      border-radius: 50%;
++      background: var(--secondary-light);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .empty-state h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .empty-state p {
++      color: var(--text-muted);
++      font-size: 0.9rem;
++      max-width: 440px;
++      margin: 0 auto 18px;
++    }
++
++    /* Sign-In Preferences Card */
++    .preference-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 14px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .preference-row:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .preference-info h4 {
++      font-size: 0.96rem;
++      color: var(--text);
++      margin-bottom: 2px;
++    }
++
++    .preference-info p {
++      font-size: 0.84rem;
++      color: var(--text-muted);
++    }
++
++    /* Toggle Switch */
++    .toggle-switch {
++      position: relative;
++      display: inline-block;
++      width: 46px;
++      height: 26px;
++      flex-shrink: 0;
++    }
++
++    .toggle-switch input {
++      opacity: 0;
++      width: 0;
++      height: 0;
++    }
++
++    .toggle-slider {
++      position: absolute;
++      cursor: pointer;
++      inset: 0;
++      background-color: var(--secondary);
++      transition: 0.25s;
++      border-radius: 26px;
++    }
++
++    .toggle-slider:before {
++      position: absolute;
++      content: "";
++      height: 20px;
++      width: 20px;
++      left: 3px;
++      bottom: 3px;
++      background-color: white;
++      transition: 0.25s;
++      border-radius: 50%;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
++    }
++
++    .toggle-switch input:checked + .toggle-slider {
++      background-color: var(--primary);
++    }
++
++    .toggle-switch input:checked + .toggle-slider:before {
++      transform: translateX(20px);
++    }
++
++    /* Activity Log */
++    .activity-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .activity-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 14px;
++      background: var(--light);
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      font-size: 0.85rem;
++    }
++
++    .activity-time {
++      color: var(--text-muted);
++      font-size: 0.78rem;
++      white-space: nowrap;
++    }
++
++    /* Modals */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 15, 0.6);
++      backdrop-filter: blur(2px);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++      z-index: 2000;
++      opacity: 0;
++      pointer-events: none;
++      transition: opacity 0.2s ease;
++    }
++
++    .modal-backdrop.open {
++      opacity: 1;
++      pointer-events: auto;
++    }
++
++    .modal {
++      background: var(--surface);
++      border-radius: 12px;
++      max-width: 520px;
++      width: 100%;
++      box-shadow: var(--shadow-lg);
++      border: 1px solid var(--border);
++      overflow: hidden;
++      transform: translateY(10px);
++      transition: transform 0.2s ease;
++    }
++
++    .modal-backdrop.open .modal {
++      transform: translateY(0);
++    }
++
++    .modal-header {
++      padding: 20px 24px;
++      border-bottom: 1px solid var(--border);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .modal-header h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .modal-close {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      color: var(--text-muted);
++      cursor: pointer;
++      line-height: 1;
++      padding: 4px;
++    }
++
++    .modal-body {
++      padding: 24px;
++    }
++
++    .modal-footer {
++      padding: 16px 24px;
++      background: var(--light);
++      border-top: 1px solid var(--border);
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 6px;
++    }
++
++    .form-group .form-input,
++    .form-group .filter-select {
++      width: 100%;
++    }
++
++    .form-hint {
++      font-size: 0.78rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++    }
++
++    /* Authenticator Selector Grid */
++    .authenticator-options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    @media (max-width: 500px) {
++      .authenticator-options {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .auth-option-card {
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      padding: 12px 10px;
++      text-align: center;
++      cursor: pointer;
++      transition: all 0.15s;
++      background: var(--light);
++    }
++
++    .auth-option-card:hover {
++      border-color: var(--primary-light);
++    }
++
++    .auth-option-card.selected {
++      border-color: var(--primary);
++      background: var(--secondary-light);
++    }
++
++    .auth-option-card strong {
++      display: block;
++      font-size: 0.84rem;
++      color: var(--primary);
++      margin-top: 6px;
++    }
++
++    .auth-option-card span {
++      font-size: 0.72rem;
++      color: var(--text-muted);
++    }
++
++    /* Biometric Prompt Animation */
++    .biometric-prompt-box {
++      text-align: center;
++      padding: 20px 16px;
++      background: var(--secondary-light);
++      border-radius: 10px;
++      border: 1px solid var(--border);
++      margin-top: 12px;
++    }
++
++    .pulse-ring {
++      width: 56px;
++      height: 56px;
++      border-radius: 50%;
++      background: var(--primary);
++      color: var(--accent);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      margin: 0 auto 12px;
++      animation: pulse 1.4s infinite ease-in-out;
++    }
++
++    @keyframes pulse {
++      0% {
++        box-shadow: 0 0 0 0 rgba(78, 52, 46, 0.45);
++      }
++      70% {
++        box-shadow: 0 0 0 14px rgba(78, 52, 46, 0);
++      }
++      100% {
++        box-shadow: 0 0 0 0 rgba(78, 52, 46, 0);
++      }
++    }
++
++    /* Toast Notification */
++    .toast-container {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 3000;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .toast {
++      background: var(--primary-dark);
++      color: white;
++      padding: 12px 18px;
++      border-radius: 8px;
++      box-shadow: var(--shadow-md);
++      border-left: 4px solid var(--accent);
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.9rem;
++      animation: slideIn 0.25s ease;
++    }
++
++    @keyframes slideIn {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 60px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    .hidden {
++      display: none !important;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" class="active">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="account-header">
++    <div class="account-header-inner">
++      <div class="user-profile-summary">
++        <img
++          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80"
++          alt="Elena Rostova"
++          class="avatar"
++        >
++        <div class="user-meta">
++          <h1>Elena Rostova</h1>
++          <p>
++            <span>elena.rostova@example.com</span>
++            <span class="member-badge">Gold Bean Member • 1,420 pts</span>
++          </p>
++        </div>
++      </div>
++      <div class="security-status-pill" id="security-status-pill">
++        <span class="status-dot" id="security-status-dot"></span>
++        <div>
++          <strong id="security-status-title">Passkey Protection Active</strong>
++          <div id="security-status-subtitle" style="font-size: 0.78rem; color: var(--secondary);">
++            Phishing-resistant sign-in enabled
++          </div>
++        </div>
++      </div>
++    </div>
++  </header>
++
++  <main class="account-layout">
++    <!-- Left Sidebar -->
++    <aside class="account-sidebar">
++      <div class="sidebar-card">
++        <ul class="sidebar-nav" role="tablist" aria-label="Account sections">
++          <li>
++            <button type="button" class="active" data-tab="passkeys" role="tab" aria-selected="true">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++                Passkeys &amp; Security
++              </span>
++              <span class="nav-count-badge" id="sidebar-passkey-count">3</span>
++            </button>
++          </li>
++          <li>
++            <button type="button" data-tab="profile" role="tab" aria-selected="false">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
++                  <circle cx="12" cy="7" r="4"/>
++                </svg>
++                Profile Details
++              </span>
++            </button>
++          </li>
++          <li>
++            <button type="button" data-tab="activity" role="tab" aria-selected="false">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
++                </svg>
++                Security Activity
++              </span>
++            </button>
++          </li>
++        </ul>
++      </div>
++
++      <div class="info-box">
++        <h4>
++          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
++          </svg>
++          Why use Passkeys?
++        </h4>
++        <p>
++          Passkeys replace passwords with encrypted cryptographic keys stored on your devices. Sign in with Face ID, Touch ID, Windows Hello, or a hardware security key.
++        </p>
++      </div>
++    </aside>
++
++    <!-- Main Content -->
++    <div class="content-panel">
++      <!-- PASSKEYS SECTION -->
++      <section id="tab-passkeys" class="tab-section">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>
++                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++                Registered Passkeys
++              </h2>
++              <p>View, rename, test, or revoke passkeys registered to your Daily Grind account.</p>
++            </div>
++            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++              <button type="button" class="btn btn-outline" id="test-passkey-btn">
++                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <path d="M9 12l2 2 4-4"/>
++                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
++                </svg>
++                Verify a Passkey
++              </button>
++              <button type="button" class="btn btn-accent" id="add-passkey-btn">
++                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
++                  <line x1="12" y1="5" x2="12" y2="19"/>
++                  <line x1="5" y1="12" x2="19" y2="12"/>
++                </svg>
++                Register New Passkey
++              </button>
++            </div>
++          </div>
++
++          <!-- Search & Filter Bar -->
++          <div class="passkey-toolbar">
++            <div class="search-filter-group">
++              <div class="search-input-wrap">
++                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="11" cy="11" r="8"/>
++                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
++                </svg>
++                <input
++                  type="search"
++                  id="passkey-search"
++                  class="search-input"
++                  placeholder="Search by name, device, or ID..."
++                  aria-label="Search passkeys"
++                >
++              </div>
++              <select id="passkey-filter-type" class="filter-select" aria-label="Filter passkeys by type">
++                <option value="all">All Authenticator Types</option>
++                <option value="synced">Cloud Synced (iCloud / Google / 1Password)</option>
++                <option value="platform">This Device / Platform</option>
++                <option value="hardware">Hardware Security Key</option>
++              </select>
++            </div>
++            <div style="font-size: 0.84rem; color: var(--text-muted);" id="passkey-showing-summary">
++              Showing 3 passkeys
++            </div>
++          </div>
++
++          <!-- Passkey List Container -->
++          <div id="passkeys-list" class="passkeys-list" role="list" aria-live="polite"></div>
++        </div>
++
++        <!-- Sign-in Preferences -->
++        <div class="panel-card" style="margin-top: 22px;">
++          <div class="panel-header" style="margin-bottom: 10px; padding-bottom: 14px;">
++            <div class="panel-title-group">
++              <h2 style="font-size: 1.2rem;">Passkey Sign-In Preferences</h2>
++              <p>Control how passkeys work when signing in to order ahead or redeem rewards.</p>
++            </div>
++          </div>
++
++          <div class="preference-row">
++            <div class="preference-info">
++              <h4>Prompt for Passkey automatically on login</h4>
++              <p>Use browser autofill (Conditional UI) to sign in with a single tap on supported devices.</p>
++            </div>
++            <label class="toggle-switch" aria-label="Prompt for Passkey automatically on login">
++              <input type="checkbox" id="pref-autofill" checked>
++              <span class="toggle-slider"></span>
++            </label>
++          </div>
++
++          <div class="preference-row">
++            <div class="preference-info">
++              <h4>Require biometric verification for Reward Redemptions</h4>
++              <p>Ask for passkey confirmation before redeeming free drinks or gift card balances over $25.</p>
++            </div>
++            <label class="toggle-switch" aria-label="Require biometric verification for Reward Redemptions">
++              <input type="checkbox" id="pref-rewards-biometric" checked>
++              <span class="toggle-slider"></span>
++            </label>
++          </div>
++        </div>
++      </section>
++
++      <!-- PROFILE SECTION -->
++      <section id="tab-profile" class="tab-section hidden">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>Profile Details</h2>
++              <p>Manage your contact details and favorite coffee shop location.</p>
++            </div>
++          </div>
++          <form id="profile-form">
++            <div class="form-group">
++              <label for="profile-name">Full Name</label>
++              <input type="text" id="profile-name" class="form-input" value="Elena Rostova" required>
++            </div>
++            <div class="form-group">
++              <label for="profile-email">Email Address</label>
++              <input type="email" id="profile-email" class="form-input" value="elena.rostova@example.com" required>
++            </div>
++            <div class="form-group">
++              <label for="profile-store">Preferred Pickup Roastery</label>
++              <select id="profile-store" class="filter-select">
++                <option value="Downtown Flagship">Downtown Flagship — 412 Roast Ave</option>
++                <option value="Westside Espresso Bar">Westside Espresso Bar — 88 Maple St</option>
++                <option value="Harbor District Cafe">Harbor District Cafe — Pier 7</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Save Profile Changes</button>
++          </form>
++        </div>
++      </section>
++
++      <!-- SECURITY ACTIVITY SECTION -->
++      <section id="tab-activity" class="tab-section hidden">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>Recent Passkey &amp; Security Events</h2>
++              <p>Audit trail of passkey registrations, verifications, renames, and removals on your account.</p>
++            </div>
++          </div>
++          <ul id="activity-log-list" class="activity-list"></ul>
++        </div>
++      </section>
++    </div>
++  </main>
++
++  <!-- MODAL: Register New Passkey -->
++  <div class="modal-backdrop" id="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
++    <div class="modal">
++      <div class="modal-header">
++        <h3 id="register-modal-title">
++          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <circle cx="7.5" cy="15.5" r="5.5"/>
++            <path d="m21 2-9.6 9.6"/>
++            <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++          </svg>
++          Register a New Passkey
++        </h3>
++        <button type="button" class="modal-close" data-close-modal="register-modal" aria-label="Close modal">&times;</button>
++      </div>
++      <form id="register-passkey-form">
++        <div class="modal-body">
++          <div class="form-group">
++            <label>1. Choose Authenticator Type</label>
++            <div class="authenticator-options" id="authenticator-options">
++              <div class="auth-option-card selected" data-auth-type="synced" data-default-name="iCloud Keychain" data-provider="Apple iCloud Keychain" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
++                </svg>
++                <strong>Cloud Keychain</strong>
++                <span>iCloud / Google / 1Password</span>
++              </div>
++              <div class="auth-option-card" data-auth-type="platform" data-default-name="Chrome on Linux Desktop" data-provider="Platform Biometrics (Touch ID / Hello)" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <rect x="2" y="3" width="20" height="14" rx="2"/>
++                  <line x1="8" y1="21" x2="16" y2="21"/>
++                  <line x1="12" y1="17" x2="12" y2="21"/>
++                </svg>
++                <strong>This Device</strong>
++                <span>Touch ID / Windows Hello</span>
++              </div>
++              <div class="auth-option-card" data-auth-type="hardware" data-default-name="YubiKey 5C NFC" data-provider="FIDO2 Hardware Security Key" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
++                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
++                </svg>
++                <strong>Hardware Key</strong>
++                <span>YubiKey / Titan USB-C</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="new-passkey-name">2. Passkey Nickname</label>
++            <input
++              type="text"
++              id="new-passkey-name"
++              class="form-input"
++              placeholder="e.g., MacBook Pro Touch ID, YubiKey Backup"
++              value="iCloud Keychain"
++              required
++              maxlength="60"
++            >
++            <div class="form-hint">Give this passkey a recognizable name so you know which device or vault it belongs to.</div>
++          </div>
++
++          <div class="form-group" style="margin-bottom: 0;">
++            <label for="new-passkey-provider">Authenticator / Provider</label>
++            <input
++              type="text"
++              id="new-passkey-provider"
++              class="form-input"
++              value="Apple iCloud Keychain"
++              required
++              maxlength="60"
++            >
++          </div>
++
++          <div class="biometric-prompt-box hidden" id="biometric-prompt-box">
++            <div class="pulse-ring">
++              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
++              </svg>
++            </div>
++            <strong style="color: var(--primary); display: block; margin-bottom: 4px;">Waiting for Authenticator Verification...</strong>
++            <span style="font-size: 0.83rem; color: var(--text-muted);">Generating FIDO2/WebAuthn public-private keypair for thedailygrind.coffee</span>
++          </div>
++        </div>
++        <div class="modal-footer">
++          <button type="button" class="btn btn-outline" data-close-modal="register-modal">Cancel</button>
++          <button type="submit" class="btn btn-accent" id="confirm-register-btn">
++            Create Passkey
++          </button>
++        </div>
++      </form>
++    </div>
++  </div>
++
++  <!-- MODAL: Delete Confirmation -->
++  <div class="modal-backdrop" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
++    <div class="modal">
++      <div class="modal-header">
++        <h3 id="delete-modal-title" style="color: var(--danger);">
++          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
++            <line x1="12" y1="9" x2="12" y2="13"/>
++            <line x1="12" y1="17" x2="12.01" y2="17"/>
++          </svg>
++          Revoke Passkey?
++        </h3>
++        <button type="button" class="modal-close" data-close-modal="delete-modal" aria-label="Close modal">&times;</button>
++      </div>
++      <div class="modal-body">
++        <p style="margin-bottom: 12px;">
++          Are you sure you want to remove <strong id="delete-passkey-name-display"></strong> from your account?
++        </p>
++        <div style="background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); padding: 12px 14px; border-radius: 8px; font-size: 0.85rem;">
++          You will no longer be able to sign in to The Daily Grind using this passkey unless you register it again.
++        </div>
++      </div>
++      <div class="modal-footer">
++        <button type="button" class="btn btn-outline" data-close-modal="delete-modal">Keep Passkey</button>
++        <button type="button" class="btn btn-danger" id="confirm-delete-btn">Revoke Passkey</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Toast Container -->
++  <div class="toast-container" id="toast-container" aria-live="polite"></div>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_passkeys_v1';
++      const ACTIVITY_KEY = 'daily_grind_passkey_activity_v1';
++
++      const DEFAULT_PASSKEYS = [
++        {
++          id: 'pk_macbook_icloud_01',
++          credentialId: 'cred_9f8a...4b2e',
++          name: 'MacBook Pro — iCloud Keychain',
++          type: 'synced',
++          provider: 'Apple iCloud Keychain (Touch ID)',
++          createdAt: '2026-06-14T09:15:00Z',
++          lastUsedAt: '2026-10-20T18:45:00Z',
++          lastLocation: 'Seattle, WA • Chrome on macOS',
++          isCurrentDevice: true,
++          aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd'
++        },
++        {
++          id: 'pk_pixel_google_02',
++          credentialId: 'cred_3c1d...8a91',
++          name: 'Pixel 9 Pro',
++          type: 'synced',
++          provider: 'Google Password Manager (Biometric)',
++          createdAt: '2026-08-03T14:22:00Z',
++          lastUsedAt: '2026-10-18T08:10:00Z',
++          lastLocation: 'Seattle, WA • Android Mobile App',
++          isCurrentDevice: false,
++          aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4'
++        },
++        {
++          id: 'pk_yubikey_backup_03',
++          credentialId: 'cred_7e44...10cf',
++          name: 'YubiKey 5C NFC (Backup Key)',
++          type: 'hardware',
++          provider: 'Yubico FIDO2 Security Key',
++          createdAt: '2026-05-19T11:30:00Z',
++          lastUsedAt: '2026-09-29T16:04:00Z',
++          lastLocation: 'Portland, OR • Firefox Desktop',
++          isCurrentDevice: false,
++          aaguid: '2fc0579f-8113-47ea-b116-bb5a8db9202a'
++        }
++      ];
++
++      const DEFAULT_ACTIVITY = [
++        {
++          event: 'Signed in with passkey "MacBook Pro — iCloud Keychain"',
++          timestamp: 'Today at 6:45 PM'
++        },
++        {
++          event: 'Signed in with passkey "Pixel 9 Pro"',
++          timestamp: 'Oct 18, 2026'
++        },
++        {
++          event: 'Registered passkey "Pixel 9 Pro"',
++          timestamp: 'Aug 3, 2026'
++        },
++        {
++          event: 'Registered passkey "MacBook Pro — iCloud Keychain"',
++          timestamp: 'Jun 14, 2026'
++        }
++      ];
++
++      let passkeys = loadPasskeys();
++      let activities = loadActivities();
++      let editingPasskeyId = null;
++      let pendingDeletePasskeyId = null;
++      let selectedAuthType = 'synced';
++
++      function loadPasskeys() {
++        try {
++          const raw = localStorage.getItem(STORAGE_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (Array.isArray(parsed)) return parsed;
++          }
++        } catch (err) {
++          console.warn('Could not read passkeys from localStorage:', err);
++        }
++        return DEFAULT_PASSKEYS.slice();
++      }
++
++      function savePasskeys() {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(passkeys));
++        } catch (err) {
++          console.warn('Could not save passkeys to localStorage:', err);
++        }
++      }
++
++      function loadActivities() {
++        try {
++          const raw = localStorage.getItem(ACTIVITY_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (Array.isArray(parsed)) return parsed;
++          }
++        } catch (err) {
++          console.warn('Could not read activity log:', err);
++        }
++        return DEFAULT_ACTIVITY.slice();
++      }
++
++      function addActivity(eventText) {
++        const entry = {
++          event: eventText,
++          timestamp: 'Just now'
++        };
++        activities.unshift(entry);
++        try {
++          localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities.slice(0, 20)));
++        } catch (err) {}
++        renderActivityLog();
++      }
++
++      function formatDate(isoStr) {
++        if (!isoStr) return 'Never used';
++        if (isoStr === 'Just now') return 'Just now';
++        const d = new Date(isoStr);
++        if (isNaN(d.getTime())) return isoStr;
++        return d.toLocaleDateString('en-US', {
++          month: 'short',
++          day: 'numeric',
++          year: 'numeric'
++        });
++      }
++
++      function escapeHtml(str) {
++        return String(str)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;')
++          .replace(/'/g, '&#39;');
++      }
++
++      function getIconSvg(type) {
++        if (type === 'hardware') {
++          return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
++            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
++          </svg>`;
++        }
++        if (type === 'platform') {
++          return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <rect x="2" y="3" width="20" height="14" rx="2"/>
++            <line x1="8" y1="21" x2="16" y2="21"/>
++            <line x1="12" y1="17" x2="12" y2="21"/>
++          </svg>`;
++        }
++        return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++          <circle cx="7.5" cy="15.5" r="5.5"/>
++          <path d="m21 2-9.6 9.6"/>
++          <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++        </svg>`;
++      }
++
++      function getTypeBadge(type) {
++        if (type === 'hardware') {
++          return `<span class="badge badge-hardware">Hardware Key</span>`;
++        }
++        if (type === 'platform') {
++          return `<span class="badge badge-platform">Device Bound</span>`;
++        }
++        return `<span class="badge badge-synced">Cloud Synced</span>`;
++      }
++
++      function updateHeaderStatus() {
++        const countEl = document.getElementById('sidebar-passkey-count');
++        const dotEl = document.getElementById('security-status-dot');
++        const titleEl = document.getElementById('security-status-title');
++        const subtitleEl = document.getElementById('security-status-subtitle');
++
++        countEl.textContent = String(passkeys.length);
++
++        if (passkeys.length === 0) {
++          dotEl.classList.add('warning');
++          titleEl.textContent = 'No Passkeys Registered';
++          subtitleEl.textContent = 'Register a passkey for faster, phishing-resistant login';
++        } else {
++          dotEl.classList.remove('warning');
++          titleEl.textContent = `Passkey Protection Active (${passkeys.length})`;
++          subtitleEl.textContent = 'Phishing-resistant sign-in enabled';
++        }
++      }
++
++      function renderPasskeys() {
++        const listEl = document.getElementById('passkeys-list');
++        const searchVal = document.getElementById('passkey-search').value.trim().toLowerCase();
++        const typeFilter = document.getElementById('passkey-filter-type').value;
++        const summaryEl = document.getElementById('passkey-showing-summary');
++
++        updateHeaderStatus();
++
++        const filtered = passkeys.filter(pk => {
++          const matchesType = typeFilter === 'all' || pk.type === typeFilter;
++          const matchesSearch =
++            !searchVal ||
++            pk.name.toLowerCase().includes(searchVal) ||
++            pk.provider.toLowerCase().includes(searchVal) ||
++            pk.credentialId.toLowerCase().includes(searchVal);
++          return matchesType && matchesSearch;
++        });
++
++        summaryEl.textContent = `Showing ${filtered.length} of ${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}`;
++
++        if (filtered.length === 0) {
++          listEl.innerHTML = `
++            <div class="empty-state">
++              <div class="empty-state-icon">
++                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++              </div>
++              <h3>${passkeys.length === 0 ? 'No passkeys registered yet' : 'No matching passkeys found'}</h3>
++              <p>
++                ${
++                  passkeys.length === 0
++                    ? 'Add a passkey to sign in to your Daily Grind account with Touch ID, Face ID, Windows Hello, or a hardware security key.'
++                    : 'Try clearing your search query or switching the authenticator type filter.'
++                }
++              </p>
++              ${
++                passkeys.length === 0
++                  ? '<button type="button" class="btn btn-accent" id="empty-add-passkey-btn">Register Your First Passkey</button>'
++                  : ''
++              }
++            </div>
++          `;
++          const emptyBtn = document.getElementById('empty-add-passkey-btn');
++          if (emptyBtn) {
++            emptyBtn.addEventListener('click', openRegisterModal);
++          }
++          return;
++        }
++
++        listEl.innerHTML = filtered
++          .map(pk => {
++            const isEditing = editingPasskeyId === pk.id;
++            return `
++              <div class="passkey-item ${pk.isCurrentDevice ? 'recently-used' : ''}" role="listitem" data-passkey-id="${escapeHtml(pk.id)}">
++                <div class="passkey-main">
++                  <div class="passkey-icon" aria-hidden="true">
++                    ${getIconSvg(pk.type)}
++                  </div>
++                  <div class="passkey-details">
++                    ${
++                      isEditing
++                        ? `
++                          <form class="inline-rename-form" data-rename-form="${escapeHtml(pk.id)}">
++                            <input
++                              type="text"
++                              class="form-input"
++                              name="newName"
++                              value="${escapeHtml(pk.name)}"
++                              aria-label="New passkey name"
++                              required
++                              maxlength="60"
++                            >
++                            <button type="submit" class="btn btn-sm">Save</button>
++                            <button type="button" class="btn btn-outline btn-sm" data-cancel-rename="${escapeHtml(pk.id)}">Cancel</button>
++                          </form>
++                        `
++                        : `
++                          <div class="passkey-title-row">
++                            <span class="passkey-name">${escapeHtml(pk.name)}</span>
++                            ${getTypeBadge(pk.type)}
++                            ${pk.isCurrentDevice ? '<span class="badge badge-current">Current Session</span>' : ''}
++                          </div>
++                        `
++                    }
++                    <div style="font-size: 0.86rem; color: var(--text-muted);">
++                      ${escapeHtml(pk.provider)} • <span class="credential-id-pill" title="WebAuthn Credential ID">${escapeHtml(pk.credentialId)}</span>
++                    </div>
++                    <div class="passkey-meta">
++                      <span>
++                        <strong>Added:</strong> ${escapeHtml(formatDate(pk.createdAt))}
++                      </span>
++                      <span>
++                        <strong>Last used:</strong> ${escapeHtml(formatDate(pk.lastUsedAt))}
++                      </span>
++                      ${
++                        pk.lastLocation
++                          ? `<span><strong>Device:</strong> ${escapeHtml(pk.lastLocation)}</span>`
++                          : ''
++                      }
++                    </div>
++                  </div>
++                </div>
++                <div class="passkey-actions">
++                  ${
++                    !isEditing
++                      ? `
++                        <button type="button" class="btn btn-outline btn-sm" data-edit-passkey="${escapeHtml(pk.id)}" aria-label="Rename ${escapeHtml(pk.name)}">
++                          Rename
++                        </button>
++                      `
++                      : ''
++                  }
++                  <button type="button" class="btn btn-danger-outline btn-sm" data-delete-passkey="${escapeHtml(pk.id)}" aria-label="Revoke ${escapeHtml(pk.name)}">
++                    Revoke
++                  </button>
++                </div>
++              </div>
++            `;
++          })
++          .join('');
++      }
++
++      function renderActivityLog() {
++        const listEl = document.getElementById('activity-log-list');
++        if (!listEl) return;
++        listEl.innerHTML = activities
++          .map(
++            item => `
++            <li class="activity-item">
++              <span>${escapeHtml(item.event)}</span>
++              <span class="activity-time">${escapeHtml(item.timestamp)}</span>
++            </li>
++          `
++          )
++          .join('');
++      }
++
++      function showToast(message) {
++        const container = document.getElementById('toast-container');
++        const toast = document.createElement('div');
++        toast.className = 'toast';
++        toast.innerHTML = `
++          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2">
++            <path d="M20 6L9 17l-5-5"/>
++          </svg>
++          <span>${escapeHtml(message)}</span>
++        `;
++        container.appendChild(toast);
++        setTimeout(() => {
++          toast.remove();
++        }, 3600);
++      }
++
++      // Modal Helpers
++      function openModal(id) {
++        const el = document.getElementById(id);
++        if (el) el.classList.add('open');
++      }
++
++      function closeModal(id) {
++        const el = document.getElementById(id);
++        if (el) el.classList.remove('open');
++      }
++
++      function openRegisterModal() {
++        const promptBox = document.getElementById('biometric-prompt-box');
++        const submitBtn = document.getElementById('confirm-register-btn');
++        promptBox.classList.add('hidden');
++        submitBtn.disabled = false;
++        submitBtn.textContent = 'Create Passkey';
++        openModal('register-modal');
++        const nameInput = document.getElementById('new-passkey-name');
++        if (nameInput) nameInput.focus();
++      }
++
++      // Event Delegation for Passkey List Actions
++      document.getElementById('passkeys-list').addEventListener('click', e => {
++        const editBtn = e.target.closest('[data-edit-passkey]');
++        if (editBtn) {
++          editingPasskeyId = editBtn.getAttribute('data-edit-passkey');
++          renderPasskeys();
++          const input = document.querySelector(`[data-rename-form="${editingPasskeyId}"] input[name="newName"]`);
++          if (input) {
++            input.focus();
++            input.select();
++          }
++          return;
++        }
++
++        const cancelBtn = e.target.closest('[data-cancel-rename]');
++        if (cancelBtn) {
++          editingPasskeyId = null;
++          renderPasskeys();
++          return;
++        }
++
++        const deleteBtn = e.target.closest('[data-delete-passkey]');
++        if (deleteBtn) {
++          const id = deleteBtn.getAttribute('data-delete-passkey');
++          const pk = passkeys.find(item => item.id === id);
++          if (!pk) return;
++          pendingDeletePasskeyId = id;
++          document.getElementById('delete-passkey-name-display').textContent = pk.name;
++          openModal('delete-modal');
++        }
++      });
++
++      document.getElementById('passkeys-list').addEventListener('submit', e => {
++        const form = e.target.closest('[data-rename-form]');
++        if (!form) return;
++        e.preventDefault();
++        const id = form.getAttribute('data-rename-form');
++        const input = form.querySelector('input[name="newName"]');
++        const newName = input ? input.value.trim() : '';
++        if (!newName) return;
++
++        const pk = passkeys.find(item => item.id === id);
++        if (pk) {
++          const oldName = pk.name;
++          pk.name = newName;
++          savePasskeys();
++          addActivity(`Renamed passkey "${oldName}" to "${newName}"`);
++          showToast(`Passkey renamed to "${newName}"`);
++        }
++        editingPasskeyId = null;
++        renderPasskeys();
++      });
++
++      // Confirm Delete
++      document.getElementById('confirm-delete-btn').addEventListener('click', () => {
++        if (!pendingDeletePasskeyId) return;
++        const pk = passkeys.find(item => item.id === pendingDeletePasskeyId);
++        passkeys = passkeys.filter(item => item.id !== pendingDeletePasskeyId);
++        savePasskeys();
++        closeModal('delete-modal');
++        if (pk) {
++          addActivity(`Revoked passkey "${pk.name}"`);
++          showToast(`Revoked passkey "${pk.name}"`);
++        }
++        pendingDeletePasskeyId = null;
++        renderPasskeys();
++      });
++
++      // Authenticator Card Selection
++      document.getElementById('authenticator-options').addEventListener('click', e => {
++        const card = e.target.closest('.auth-option-card');
++        if (!card) return;
++        document.querySelectorAll('.auth-option-card').forEach(c => c.classList.remove('selected'));
++        card.classList.add('selected');
++        selectedAuthType = card.getAttribute('data-auth-type') || 'synced';
++        document.getElementById('new-passkey-name').value = card.getAttribute('data-default-name') || '';
++        document.getElementById('new-passkey-provider').value = card.getAttribute('data-provider') || '';
++      });
++
++      // Register Passkey Form Submission
++      document.getElementById('register-passkey-form').addEventListener('submit', async e => {
++        e.preventDefault();
++        const nameInput = document.getElementById('new-passkey-name');
++        const providerInput = document.getElementById('new-passkey-provider');
++        const promptBox = document.getElementById('biometric-prompt-box');
++        const submitBtn = document.getElementById('confirm-register-btn');
++
++        const name = nameInput.value.trim();
++        const provider = providerInput.value.trim() || 'WebAuthn Passkey Authenticator';
++        if (!name) return;
++
++        promptBox.classList.remove('hidden');
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Verifying...';
++
++        // Brief realistic WebAuthn handshake simulation
++        await new Promise(resolve => setTimeout(resolve, 550));
++
++        const randomHex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
++        const newPasskey = {
++          id: 'pk_' + Date.now(),
++          credentialId: `cred_${randomHex()}...${randomHex()}`,
++          name,
++          type: selectedAuthType,
++          provider,
++          createdAt: new Date().toISOString(),
++          lastUsedAt: 'Just now',
++          lastLocation: 'Current Browser Session',
++          isCurrentDevice: true
++        };
++
++        passkeys.forEach(p => {
++          p.isCurrentDevice = false;
++        });
++        passkeys.unshift(newPasskey);
++        savePasskeys();
++        addActivity(`Registered new passkey "${name}"`);
++        closeModal('register-modal');
++        renderPasskeys();
++        showToast(`Passkey "${name}" registered to your account`);
++      });
++
++      // Verify / Test Passkey Button
++      document.getElementById('test-passkey-btn').addEventListener('click', () => {
++        if (passkeys.length === 0) {
++          showToast('Register a passkey first to test verification');
++          return;
++        }
++        const activePk = passkeys.find(p => p.isCurrentDevice) || passkeys[0];
++        activePk.lastUsedAt = 'Just now';
++        savePasskeys();
++        renderPasskeys();
++        addActivity(`Verified passkey "${activePk.name}" via WebAuthn assertion`);
++        showToast(`Verified "${activePk.name}" successfully!`);
++      });
++
++      // Open & Close Modals
++      document.getElementById('add-passkey-btn').addEventListener('click', openRegisterModal);
++
++      document.querySelectorAll('[data-close-modal]').forEach(btn => {
++        btn.addEventListener('click', () => {
++          closeModal(btn.getAttribute('data-close-modal'));
++        });
++      });
++
++      document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
++        backdrop.addEventListener('click', e => {
++          if (e.target === backdrop) {
++            backdrop.classList.remove('open');
++          }
++        });
++      });
++
++      // Search & Filter Listeners
++      document.getElementById('passkey-search').addEventListener('input', renderPasskeys);
++      document.getElementById('passkey-filter-type').addEventListener('change', renderPasskeys);
++
++      // Sidebar Tab Switching
++      document.querySelectorAll('.sidebar-nav button[data-tab]').forEach(btn => {
++        btn.addEventListener('click', () => {
++          const targetTab = btn.getAttribute('data-tab');
++          document.querySelectorAll('.sidebar-nav button[data-tab]').forEach(b => {
++            b.classList.toggle('active', b === btn);
++            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
++          });
++          document.querySelectorAll('.tab-section').forEach(sec => {
++            sec.classList.toggle('hidden', sec.id !== `tab-${targetTab}`);
++          });
++        });
++      });
++
++      // Profile Form
++      document.getElementById('profile-form').addEventListener('submit', e => {
++        e.preventDefault();
++        const newName = document.getElementById('profile-name').value.trim();
++        const newEmail = document.getElementById('profile-email').value.trim();
++        if (newName) {
++          document.querySelector('.user-meta h1').textContent = newName;
++        }
++        if (newEmail) {
++          document.querySelector('.user-meta p span:first-child').textContent = newEmail;
++        }
++        showToast('Account profile updated');
++      });
++
++      // Preferences toggles toast
++      document.getElementById('pref-autofill').addEventListener('change', e => {
++        showToast(e.target.checked ? 'Passkey autofill enabled' : 'Passkey autofill disabled');
++      });
++      document.getElementById('pref-rewards-biometric').addEventListener('change', e => {
++        showToast(
++          e.target.checked
++            ? 'Biometric check enabled for reward redemptions'
++            : 'Biometric check disabled for reward redemptions'
++        );
++      });
++
++      // Initial render
++      renderPasskeys();
++      renderActivityLog();
++    })();
++  </script>
++</body>
++
++</html>
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..a47e25e
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,1934 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account & Passkeys | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
++      --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
++      --accent: #ffab40;
++      --accent-hover: #ff9100;
++      --text: #3e2723;
++      --text-muted: #6d4c41;
++      --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --warning: #ef6c00;
++      --warning-bg: #fff3e0;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
++      --danger-border: #ffcdd2;
++      --shadow-sm: 0 2px 6px rgba(62, 39, 35, 0.08);
++      --shadow-md: 0 6px 20px rgba(62, 39, 35, 0.12);
++      --shadow-lg: 0 12px 32px rgba(62, 39, 35, 0.22);
++      --radius: 10px;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++      min-height: 100vh;
++      display: flex;
++      flex-direction: column;
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.2s, background 0.2s;
++    }
++
++    nav a:hover,
++    nav a.active {
++      color: var(--accent);
++    }
++
++    nav a.active {
++      font-weight: 600;
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Account Banner */
++    .account-header {
++      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
++      color: white;
++      padding: 36px 5%;
++      border-bottom: 4px solid var(--accent);
++    }
++
++    .account-header-inner {
++      max-width: 1100px;
++      margin: 0 auto;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++    }
++
++    .user-profile-summary {
++      display: flex;
++      align-items: center;
++      gap: 18px;
++    }
++
++    .avatar {
++      width: 68px;
++      height: 68px;
++      border-radius: 50%;
++      object-fit: cover;
++      border: 3px solid var(--accent);
++      background: var(--secondary);
++    }
++
++    .user-meta h1 {
++      font-size: 1.75rem;
++      margin-bottom: 2px;
++    }
++
++    .user-meta p {
++      color: var(--secondary);
++      font-size: 0.92rem;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .member-badge {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 9px;
++      border-radius: 999px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .security-status-pill {
++      background: rgba(255, 255, 255, 0.1);
++      border: 1px solid rgba(255, 255, 255, 0.2);
++      padding: 10px 16px;
++      border-radius: var(--radius);
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      font-size: 0.88rem;
++    }
++
++    .status-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #66bb6a;
++      box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.25);
++    }
++
++    .status-dot.warning {
++      background: var(--accent);
++      box-shadow: 0 0 0 4px rgba(255, 171, 64, 0.25);
++    }
++
++    /* Main Layout */
++    .account-layout {
++      max-width: 1100px;
++      width: 100%;
++      margin: 32px auto;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: 250px 1fr;
++      gap: 28px;
++      flex: 1;
++    }
++
++    @media (max-width: 820px) {
++      .account-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Sidebar Navigation */
++    .account-sidebar {
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .sidebar-card {
++      background: var(--surface);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--border);
++      overflow: hidden;
++    }
++
++    .sidebar-nav {
++      list-style: none;
++    }
++
++    .sidebar-nav li {
++      border-bottom: 1px solid var(--border);
++    }
++
++    .sidebar-nav li:last-child {
++      border-bottom: none;
++    }
++
++    .sidebar-nav button {
++      width: 100%;
++      text-align: left;
++      background: none;
++      border: none;
++      padding: 14px 18px;
++      font-size: 0.95rem;
++      color: var(--text);
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      transition: background 0.15s, color 0.15s;
++      font-family: inherit;
++    }
++
++    .sidebar-nav button:hover {
++      background: var(--secondary-light);
++    }
++
++    .sidebar-nav button.active {
++      background: var(--secondary-light);
++      color: var(--primary);
++      font-weight: 600;
++      border-left: 4px solid var(--primary);
++    }
++
++    .sidebar-nav-label {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .nav-count-badge {
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .info-box {
++      padding: 16px;
++      background: var(--secondary-light);
++      border-radius: var(--radius);
++      border: 1px solid var(--border);
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .info-box h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++    }
++
++    /* Main Content Panel */
++    .content-panel {
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++    }
++
++    .panel-card {
++      background: var(--surface);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--border);
++      padding: 28px;
++    }
++
++    .panel-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      padding-bottom: 20px;
++      border-bottom: 1px solid var(--border);
++      margin-bottom: 22px;
++    }
++
++    .panel-title-group h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-bottom: 4px;
++    }
++
++    .panel-title-group p {
++      color: var(--text-muted);
++      font-size: 0.92rem;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 18px;
++      text-decoration: none;
++      border-radius: 6px;
++      border: 1px solid transparent;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.2s;
++      font-family: inherit;
++    }
++
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
++      transform: translateY(-1px);
++    }
++
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover:not(:disabled) {
++      background: var(--accent-hover);
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border-color: var(--border);
++    }
++
++    .btn-outline:hover:not(:disabled) {
++      background: var(--secondary-light);
++      border-color: var(--primary-light);
++    }
++
++    .btn-danger-outline {
++      background: transparent;
++      color: var(--danger);
++      border-color: var(--danger-border);
++    }
++
++    .btn-danger-outline:hover:not(:disabled) {
++      background: var(--danger-bg);
++      border-color: var(--danger);
++    }
++
++    .btn-danger {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger:hover:not(:disabled) {
++      background: #b71c1c;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.82rem;
++    }
++
++    /* Passkey Summary Metrics & Controls */
++    .passkey-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 18px;
++    }
++
++    .search-filter-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      flex: 1;
++      min-width: 240px;
++    }
++
++    .search-input-wrap {
++      position: relative;
++      flex: 1;
++      max-width: 320px;
++    }
++
++    .search-input-wrap svg {
++      position: absolute;
++      left: 11px;
++      top: 50%;
++      transform: translateY(-50%);
++      color: var(--text-muted);
++      pointer-events: none;
++    }
++
++    .search-input {
++      width: 100%;
++      padding: 8px 12px 8px 34px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: var(--light);
++      font-family: inherit;
++    }
++
++    .search-input:focus,
++    .filter-select:focus,
++    .form-input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++      background: white;
++    }
++
++    .filter-select {
++      padding: 8px 12px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.88rem;
++      color: var(--text);
++      background: var(--light);
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    /* Passkey List Items */
++    .passkeys-list {
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++    }
++
++    .passkey-item {
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 18px 20px;
++      background: var(--surface);
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .passkey-item:hover {
++      border-color: var(--secondary);
++      box-shadow: var(--shadow-sm);
++    }
++
++    .passkey-item.recently-used {
++      border-left: 4px solid var(--success);
++    }
++
++    .passkey-main {
++      display: flex;
++      align-items: flex-start;
++      gap: 16px;
++      flex: 1;
++      min-width: 260px;
++    }
++
++    .passkey-icon {
++      width: 46px;
++      height: 46px;
++      border-radius: 10px;
++      background: var(--secondary-light);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++      border: 1px solid var(--border);
++    }
++
++    .passkey-details {
++      flex: 1;
++    }
++
++    .passkey-title-row {
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 4px;
++    }
++
++    .passkey-name {
++      font-size: 1.05rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .badge {
++      font-size: 0.72rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 999px;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .badge-synced {
++      background: #e3f2fd;
++      color: #1565c0;
++    }
++
++    .badge-hardware {
++      background: #f3e5f5;
++      color: #6a1b9a;
++    }
++
++    .badge-platform {
++      background: var(--secondary-light);
++      color: var(--primary);
++    }
++
++    .badge-current {
++      background: var(--success-bg);
++      color: var(--success);
++    }
++
++    .passkey-meta {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 14px;
++      font-size: 0.83rem;
++      color: var(--text-muted);
++      margin-top: 6px;
++    }
++
++    .passkey-meta span {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++    }
++
++    .credential-id-pill {
++      font-family: 'Courier New', Courier, monospace;
++      background: var(--light);
++      border: 1px solid var(--border);
++      padding: 1px 6px;
++      border-radius: 4px;
++      font-size: 0.76rem;
++      color: var(--text-muted);
++    }
++
++    .passkey-actions {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    /* Inline Rename Editor */
++    .inline-rename-form {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-bottom: 4px;
++    }
++
++    .form-input {
++      padding: 7px 11px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.92rem;
++      color: var(--text);
++      font-family: inherit;
++    }
++
++    /* Empty State */
++    .empty-state {
++      text-align: center;
++      padding: 44px 20px;
++      background: var(--light);
++      border: 2px dashed var(--border);
++      border-radius: var(--radius);
++    }
++
++    .empty-state-icon {
++      width: 60px;
++      height: 60px;
++      margin: 0 auto 14px;
++      border-radius: 50%;
++      background: var(--secondary-light);
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .empty-state h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .empty-state p {
++      color: var(--text-muted);
++      font-size: 0.9rem;
++      max-width: 440px;
++      margin: 0 auto 18px;
++    }
++
++    /* Sign-In Preferences Card */
++    .preference-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 14px 0;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .preference-row:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .preference-info h4 {
++      font-size: 0.96rem;
++      color: var(--text);
++      margin-bottom: 2px;
++    }
++
++    .preference-info p {
++      font-size: 0.84rem;
++      color: var(--text-muted);
++    }
++
++    /* Toggle Switch */
++    .toggle-switch {
++      position: relative;
++      display: inline-block;
++      width: 46px;
++      height: 26px;
++      flex-shrink: 0;
++    }
++
++    .toggle-switch input {
++      opacity: 0;
++      width: 0;
++      height: 0;
++    }
++
++    .toggle-slider {
++      position: absolute;
++      cursor: pointer;
++      inset: 0;
++      background-color: var(--secondary);
++      transition: 0.25s;
++      border-radius: 26px;
++    }
++
++    .toggle-slider:before {
++      position: absolute;
++      content: "";
++      height: 20px;
++      width: 20px;
++      left: 3px;
++      bottom: 3px;
++      background-color: white;
++      transition: 0.25s;
++      border-radius: 50%;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
++    }
++
++    .toggle-switch input:checked + .toggle-slider {
++      background-color: var(--primary);
++    }
++
++    .toggle-switch input:checked + .toggle-slider:before {
++      transform: translateX(20px);
++    }
++
++    /* Activity Log */
++    .activity-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .activity-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 14px;
++      background: var(--light);
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      font-size: 0.85rem;
++    }
++
++    .activity-time {
++      color: var(--text-muted);
++      font-size: 0.78rem;
++      white-space: nowrap;
++    }
++
++    /* Modals */
++    .modal-backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 15, 0.6);
++      backdrop-filter: blur(2px);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 20px;
++      z-index: 2000;
++      opacity: 0;
++      pointer-events: none;
++      transition: opacity 0.2s ease;
++    }
++
++    .modal-backdrop.open {
++      opacity: 1;
++      pointer-events: auto;
++    }
++
++    .modal {
++      background: var(--surface);
++      border-radius: 12px;
++      max-width: 520px;
++      width: 100%;
++      box-shadow: var(--shadow-lg);
++      border: 1px solid var(--border);
++      overflow: hidden;
++      transform: translateY(10px);
++      transition: transform 0.2s ease;
++    }
++
++    .modal-backdrop.open .modal {
++      transform: translateY(0);
++    }
++
++    .modal-header {
++      padding: 20px 24px;
++      border-bottom: 1px solid var(--border);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .modal-header h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .modal-close {
++      background: none;
++      border: none;
++      font-size: 1.4rem;
++      color: var(--text-muted);
++      cursor: pointer;
++      line-height: 1;
++      padding: 4px;
++    }
++
++    .modal-body {
++      padding: 24px;
++    }
++
++    .modal-footer {
++      padding: 16px 24px;
++      background: var(--light);
++      border-top: 1px solid var(--border);
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 6px;
++    }
++
++    .form-group .form-input,
++    .form-group .filter-select {
++      width: 100%;
++    }
++
++    .form-hint {
++      font-size: 0.78rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++    }
++
++    /* Authenticator Selector Grid */
++    .authenticator-options {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    @media (max-width: 500px) {
++      .authenticator-options {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .auth-option-card {
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      padding: 12px 10px;
++      text-align: center;
++      cursor: pointer;
++      transition: all 0.15s;
++      background: var(--light);
++    }
++
++    .auth-option-card:hover {
++      border-color: var(--primary-light);
++    }
++
++    .auth-option-card.selected {
++      border-color: var(--primary);
++      background: var(--secondary-light);
++    }
++
++    .auth-option-card strong {
++      display: block;
++      font-size: 0.84rem;
++      color: var(--primary);
++      margin-top: 6px;
++    }
++
++    .auth-option-card span {
++      font-size: 0.72rem;
++      color: var(--text-muted);
++    }
++
++    /* Biometric Prompt Animation */
++    .biometric-prompt-box {
++      text-align: center;
++      padding: 20px 16px;
++      background: var(--secondary-light);
++      border-radius: 10px;
++      border: 1px solid var(--border);
++      margin-top: 12px;
++    }
++
++    .pulse-ring {
++      width: 56px;
++      height: 56px;
++      border-radius: 50%;
++      background: var(--primary);
++      color: var(--accent);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      margin: 0 auto 12px;
++      animation: pulse 1.4s infinite ease-in-out;
++    }
++
++    @keyframes pulse {
++      0% {
++        box-shadow: 0 0 0 0 rgba(78, 52, 46, 0.45);
++      }
++      70% {
++        box-shadow: 0 0 0 14px rgba(78, 52, 46, 0);
++      }
++      100% {
++        box-shadow: 0 0 0 0 rgba(78, 52, 46, 0);
++      }
++    }
++
++    /* Toast Notification */
++    .toast-container {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      z-index: 3000;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .toast {
++      background: var(--primary-dark);
++      color: white;
++      padding: 12px 18px;
++      border-radius: 8px;
++      box-shadow: var(--shadow-md);
++      border-left: 4px solid var(--accent);
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.9rem;
++      animation: slideIn 0.25s ease;
++    }
++
++    @keyframes slideIn {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 60px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    .hidden {
++      display: none !important;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account" class="active">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header class="account-header">
++    <div class="account-header-inner">
++      <div class="user-profile-summary">
++        <img
++          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80"
++          alt="Elena Rostova"
++          class="avatar"
++        >
++        <div class="user-meta">
++          <h1>Elena Rostova</h1>
++          <p>
++            <span>elena.rostova@example.com</span>
++            <span class="member-badge">Gold Bean Member • 1,420 pts</span>
++          </p>
++        </div>
++      </div>
++      <div class="security-status-pill" id="security-status-pill">
++        <span class="status-dot" id="security-status-dot"></span>
++        <div>
++          <strong id="security-status-title">Passkey Protection Active</strong>
++          <div id="security-status-subtitle" style="font-size: 0.78rem; color: var(--secondary);">
++            Phishing-resistant sign-in enabled
++          </div>
++        </div>
++      </div>
++    </div>
++  </header>
++
++  <main class="account-layout">
++    <!-- Left Sidebar -->
++    <aside class="account-sidebar">
++      <div class="sidebar-card">
++        <ul class="sidebar-nav" role="tablist" aria-label="Account sections">
++          <li>
++            <button type="button" class="active" data-tab="passkeys" role="tab" aria-selected="true">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++                Passkeys &amp; Security
++              </span>
++              <span class="nav-count-badge" id="sidebar-passkey-count">3</span>
++            </button>
++          </li>
++          <li>
++            <button type="button" data-tab="profile" role="tab" aria-selected="false">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
++                  <circle cx="12" cy="7" r="4"/>
++                </svg>
++                Profile Details
++              </span>
++            </button>
++          </li>
++          <li>
++            <button type="button" data-tab="activity" role="tab" aria-selected="false">
++              <span class="sidebar-nav-label">
++                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
++                </svg>
++                Security Activity
++              </span>
++            </button>
++          </li>
++        </ul>
++      </div>
++
++      <div class="info-box">
++        <h4>
++          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
++          </svg>
++          Why use Passkeys?
++        </h4>
++        <p>
++          Passkeys replace passwords with encrypted cryptographic keys stored on your devices. Sign in with Face ID, Touch ID, Windows Hello, or a hardware security key.
++        </p>
++      </div>
++    </aside>
++
++    <!-- Main Content -->
++    <div class="content-panel">
++      <!-- PASSKEYS SECTION -->
++      <section id="tab-passkeys" class="tab-section">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>
++                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++                Registered Passkeys
++              </h2>
++              <p>View, rename, test, or revoke passkeys registered to your Daily Grind account.</p>
++            </div>
++            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
++              <button type="button" class="btn btn-outline" id="test-passkey-btn">
++                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <path d="M9 12l2 2 4-4"/>
++                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
++                </svg>
++                Verify a Passkey
++              </button>
++              <button type="button" class="btn btn-accent" id="add-passkey-btn">
++                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
++                  <line x1="12" y1="5" x2="12" y2="19"/>
++                  <line x1="5" y1="12" x2="19" y2="12"/>
++                </svg>
++                Register New Passkey
++              </button>
++            </div>
++          </div>
++
++          <!-- Search & Filter Bar -->
++          <div class="passkey-toolbar">
++            <div class="search-filter-group">
++              <div class="search-input-wrap">
++                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="11" cy="11" r="8"/>
++                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
++                </svg>
++                <input
++                  type="search"
++                  id="passkey-search"
++                  class="search-input"
++                  placeholder="Search by name, device, or ID..."
++                  aria-label="Search passkeys"
++                >
++              </div>
++              <select id="passkey-filter-type" class="filter-select" aria-label="Filter passkeys by type">
++                <option value="all">All Authenticator Types</option>
++                <option value="synced">Cloud Synced (iCloud / Google / 1Password)</option>
++                <option value="platform">This Device / Platform</option>
++                <option value="hardware">Hardware Security Key</option>
++              </select>
++            </div>
++            <div style="font-size: 0.84rem; color: var(--text-muted);" id="passkey-showing-summary">
++              Showing 3 passkeys
++            </div>
++          </div>
++
++          <!-- Passkey List Container -->
++          <div id="passkeys-list" class="passkeys-list" role="list" aria-live="polite"></div>
++        </div>
++
++        <!-- Sign-in Preferences -->
++        <div class="panel-card" style="margin-top: 22px;">
++          <div class="panel-header" style="margin-bottom: 10px; padding-bottom: 14px;">
++            <div class="panel-title-group">
++              <h2 style="font-size: 1.2rem;">Passkey Sign-In Preferences</h2>
++              <p>Control how passkeys work when signing in to order ahead or redeem rewards.</p>
++            </div>
++          </div>
++
++          <div class="preference-row">
++            <div class="preference-info">
++              <h4>Prompt for Passkey automatically on login</h4>
++              <p>Use browser autofill (Conditional UI) to sign in with a single tap on supported devices.</p>
++            </div>
++            <label class="toggle-switch" aria-label="Prompt for Passkey automatically on login">
++              <input type="checkbox" id="pref-autofill" checked>
++              <span class="toggle-slider"></span>
++            </label>
++          </div>
++
++          <div class="preference-row">
++            <div class="preference-info">
++              <h4>Require biometric verification for Reward Redemptions</h4>
++              <p>Ask for passkey confirmation before redeeming free drinks or gift card balances over $25.</p>
++            </div>
++            <label class="toggle-switch" aria-label="Require biometric verification for Reward Redemptions">
++              <input type="checkbox" id="pref-rewards-biometric" checked>
++              <span class="toggle-slider"></span>
++            </label>
++          </div>
++        </div>
++      </section>
++
++      <!-- PROFILE SECTION -->
++      <section id="tab-profile" class="tab-section hidden">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>Profile Details</h2>
++              <p>Manage your contact details and favorite coffee shop location.</p>
++            </div>
++          </div>
++          <form id="profile-form">
++            <div class="form-group">
++              <label for="profile-name">Full Name</label>
++              <input type="text" id="profile-name" class="form-input" value="Elena Rostova" required>
++            </div>
++            <div class="form-group">
++              <label for="profile-email">Email Address</label>
++              <input type="email" id="profile-email" class="form-input" value="elena.rostova@example.com" required>
++            </div>
++            <div class="form-group">
++              <label for="profile-store">Preferred Pickup Roastery</label>
++              <select id="profile-store" class="filter-select">
++                <option value="Downtown Flagship">Downtown Flagship — 412 Roast Ave</option>
++                <option value="Westside Espresso Bar">Westside Espresso Bar — 88 Maple St</option>
++                <option value="Harbor District Cafe">Harbor District Cafe — Pier 7</option>
++              </select>
++            </div>
++            <button type="submit" class="btn">Save Profile Changes</button>
++          </form>
++        </div>
++      </section>
++
++      <!-- SECURITY ACTIVITY SECTION -->
++      <section id="tab-activity" class="tab-section hidden">
++        <div class="panel-card">
++          <div class="panel-header">
++            <div class="panel-title-group">
++              <h2>Recent Passkey &amp; Security Events</h2>
++              <p>Audit trail of passkey registrations, verifications, renames, and removals on your account.</p>
++            </div>
++          </div>
++          <ul id="activity-log-list" class="activity-list"></ul>
++        </div>
++      </section>
++    </div>
++  </main>
++
++  <!-- MODAL: Register New Passkey -->
++  <div class="modal-backdrop" id="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
++    <div class="modal">
++      <div class="modal-header">
++        <h3 id="register-modal-title">
++          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <circle cx="7.5" cy="15.5" r="5.5"/>
++            <path d="m21 2-9.6 9.6"/>
++            <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++          </svg>
++          Register a New Passkey
++        </h3>
++        <button type="button" class="modal-close" data-close-modal="register-modal" aria-label="Close modal">&times;</button>
++      </div>
++      <form id="register-passkey-form">
++        <div class="modal-body">
++          <div class="form-group">
++            <label>1. Choose Authenticator Type</label>
++            <div class="authenticator-options" id="authenticator-options">
++              <div class="auth-option-card selected" data-auth-type="synced" data-default-name="iCloud Keychain" data-provider="Apple iCloud Keychain" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
++                </svg>
++                <strong>Cloud Keychain</strong>
++                <span>iCloud / Google / 1Password</span>
++              </div>
++              <div class="auth-option-card" data-auth-type="platform" data-default-name="Chrome on Linux Desktop" data-provider="Platform Biometrics (Touch ID / Hello)" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <rect x="2" y="3" width="20" height="14" rx="2"/>
++                  <line x1="8" y1="21" x2="16" y2="21"/>
++                  <line x1="12" y1="17" x2="12" y2="21"/>
++                </svg>
++                <strong>This Device</strong>
++                <span>Touch ID / Windows Hello</span>
++              </div>
++              <div class="auth-option-card" data-auth-type="hardware" data-default-name="YubiKey 5C NFC" data-provider="FIDO2 Hardware Security Key" tabindex="0" role="button">
++                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto;">
++                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
++                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
++                </svg>
++                <strong>Hardware Key</strong>
++                <span>YubiKey / Titan USB-C</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="new-passkey-name">2. Passkey Nickname</label>
++            <input
++              type="text"
++              id="new-passkey-name"
++              class="form-input"
++              placeholder="e.g., MacBook Pro Touch ID, YubiKey Backup"
++              value="iCloud Keychain"
++              required
++              maxlength="60"
++            >
++            <div class="form-hint">Give this passkey a recognizable name so you know which device or vault it belongs to.</div>
++          </div>
++
++          <div class="form-group" style="margin-bottom: 0;">
++            <label for="new-passkey-provider">Authenticator / Provider</label>
++            <input
++              type="text"
++              id="new-passkey-provider"
++              class="form-input"
++              value="Apple iCloud Keychain"
++              required
++              maxlength="60"
++            >
++          </div>
++
++          <div class="biometric-prompt-box hidden" id="biometric-prompt-box">
++            <div class="pulse-ring">
++              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
++              </svg>
++            </div>
++            <strong style="color: var(--primary); display: block; margin-bottom: 4px;">Waiting for Authenticator Verification...</strong>
++            <span style="font-size: 0.83rem; color: var(--text-muted);">Generating FIDO2/WebAuthn public-private keypair for thedailygrind.coffee</span>
++          </div>
++        </div>
++        <div class="modal-footer">
++          <button type="button" class="btn btn-outline" data-close-modal="register-modal">Cancel</button>
++          <button type="submit" class="btn btn-accent" id="confirm-register-btn">
++            Create Passkey
++          </button>
++        </div>
++      </form>
++    </div>
++  </div>
++
++  <!-- MODAL: Delete Confirmation -->
++  <div class="modal-backdrop" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
++    <div class="modal">
++      <div class="modal-header">
++        <h3 id="delete-modal-title" style="color: var(--danger);">
++          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
++            <line x1="12" y1="9" x2="12" y2="13"/>
++            <line x1="12" y1="17" x2="12.01" y2="17"/>
++          </svg>
++          Revoke Passkey?
++        </h3>
++        <button type="button" class="modal-close" data-close-modal="delete-modal" aria-label="Close modal">&times;</button>
++      </div>
++      <div class="modal-body">
++        <p style="margin-bottom: 12px;">
++          Are you sure you want to remove <strong id="delete-passkey-name-display"></strong> from your account?
++        </p>
++        <div style="background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); padding: 12px 14px; border-radius: 8px; font-size: 0.85rem;">
++          You will no longer be able to sign in to The Daily Grind using this passkey unless you register it again.
++        </div>
++      </div>
++      <div class="modal-footer">
++        <button type="button" class="btn btn-outline" data-close-modal="delete-modal">Keep Passkey</button>
++        <button type="button" class="btn btn-danger" id="confirm-delete-btn">Revoke Passkey</button>
++      </div>
++    </div>
++  </div>
++
++  <!-- Toast Container -->
++  <div class="toast-container" id="toast-container" aria-live="polite"></div>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_passkeys_v1';
++      const ACTIVITY_KEY = 'daily_grind_passkey_activity_v1';
++
++      const DEFAULT_PASSKEYS = [
++        {
++          id: 'pk_macbook_icloud_01',
++          credentialId: 'cred_9f8a...4b2e',
++          name: 'MacBook Pro — iCloud Keychain',
++          type: 'synced',
++          provider: 'Apple iCloud Keychain (Touch ID)',
++          createdAt: '2026-06-14T09:15:00Z',
++          lastUsedAt: '2026-10-20T18:45:00Z',
++          lastLocation: 'Seattle, WA • Chrome on macOS',
++          isCurrentDevice: true,
++          aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd'
++        },
++        {
++          id: 'pk_pixel_google_02',
++          credentialId: 'cred_3c1d...8a91',
++          name: 'Pixel 9 Pro',
++          type: 'synced',
++          provider: 'Google Password Manager (Biometric)',
++          createdAt: '2026-08-03T14:22:00Z',
++          lastUsedAt: '2026-10-18T08:10:00Z',
++          lastLocation: 'Seattle, WA • Android Mobile App',
++          isCurrentDevice: false,
++          aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4'
++        },
++        {
++          id: 'pk_yubikey_backup_03',
++          credentialId: 'cred_7e44...10cf',
++          name: 'YubiKey 5C NFC (Backup Key)',
++          type: 'hardware',
++          provider: 'Yubico FIDO2 Security Key',
++          createdAt: '2026-05-19T11:30:00Z',
++          lastUsedAt: '2026-09-29T16:04:00Z',
++          lastLocation: 'Portland, OR • Firefox Desktop',
++          isCurrentDevice: false,
++          aaguid: '2fc0579f-8113-47ea-b116-bb5a8db9202a'
++        }
++      ];
++
++      const DEFAULT_ACTIVITY = [
++        {
++          event: 'Signed in with passkey "MacBook Pro — iCloud Keychain"',
++          timestamp: 'Today at 6:45 PM'
++        },
++        {
++          event: 'Signed in with passkey "Pixel 9 Pro"',
++          timestamp: 'Oct 18, 2026'
++        },
++        {
++          event: 'Registered passkey "Pixel 9 Pro"',
++          timestamp: 'Aug 3, 2026'
++        },
++        {
++          event: 'Registered passkey "MacBook Pro — iCloud Keychain"',
++          timestamp: 'Jun 14, 2026'
++        }
++      ];
++
++      let passkeys = loadPasskeys();
++      let activities = loadActivities();
++      let editingPasskeyId = null;
++      let pendingDeletePasskeyId = null;
++      let selectedAuthType = 'synced';
++
++      function loadPasskeys() {
++        try {
++          const raw = localStorage.getItem(STORAGE_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (Array.isArray(parsed)) return parsed;
++          }
++        } catch (err) {
++          console.warn('Could not read passkeys from localStorage:', err);
++        }
++        return DEFAULT_PASSKEYS.slice();
++      }
++
++      function savePasskeys() {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(passkeys));
++        } catch (err) {
++          console.warn('Could not save passkeys to localStorage:', err);
++        }
++      }
++
++      function loadActivities() {
++        try {
++          const raw = localStorage.getItem(ACTIVITY_KEY);
++          if (raw) {
++            const parsed = JSON.parse(raw);
++            if (Array.isArray(parsed)) return parsed;
++          }
++        } catch (err) {
++          console.warn('Could not read activity log:', err);
++        }
++        return DEFAULT_ACTIVITY.slice();
++      }
++
++      function addActivity(eventText) {
++        const entry = {
++          event: eventText,
++          timestamp: 'Just now'
++        };
++        activities.unshift(entry);
++        try {
++          localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities.slice(0, 20)));
++        } catch (err) {}
++        renderActivityLog();
++      }
++
++      function formatDate(isoStr) {
++        if (!isoStr) return 'Never used';
++        if (isoStr === 'Just now') return 'Just now';
++        const d = new Date(isoStr);
++        if (isNaN(d.getTime())) return isoStr;
++        return d.toLocaleDateString('en-US', {
++          month: 'short',
++          day: 'numeric',
++          year: 'numeric'
++        });
++      }
++
++      function escapeHtml(str) {
++        return String(str)
++          .replace(/&/g, '&amp;')
++          .replace(/</g, '&lt;')
++          .replace(/>/g, '&gt;')
++          .replace(/"/g, '&quot;')
++          .replace(/'/g, '&#39;');
++      }
++
++      function getIconSvg(type) {
++        if (type === 'hardware') {
++          return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
++            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
++          </svg>`;
++        }
++        if (type === 'platform') {
++          return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++            <rect x="2" y="3" width="20" height="14" rx="2"/>
++            <line x1="8" y1="21" x2="16" y2="21"/>
++            <line x1="12" y1="17" x2="12" y2="21"/>
++          </svg>`;
++        }
++        return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++          <circle cx="7.5" cy="15.5" r="5.5"/>
++          <path d="m21 2-9.6 9.6"/>
++          <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++        </svg>`;
++      }
++
++      function getTypeBadge(type) {
++        if (type === 'hardware') {
++          return `<span class="badge badge-hardware">Hardware Key</span>`;
++        }
++        if (type === 'platform') {
++          return `<span class="badge badge-platform">Device Bound</span>`;
++        }
++        return `<span class="badge badge-synced">Cloud Synced</span>`;
++      }
++
++      function updateHeaderStatus() {
++        const countEl = document.getElementById('sidebar-passkey-count');
++        const dotEl = document.getElementById('security-status-dot');
++        const titleEl = document.getElementById('security-status-title');
++        const subtitleEl = document.getElementById('security-status-subtitle');
++
++        countEl.textContent = String(passkeys.length);
++
++        if (passkeys.length === 0) {
++          dotEl.classList.add('warning');
++          titleEl.textContent = 'No Passkeys Registered';
++          subtitleEl.textContent = 'Register a passkey for faster, phishing-resistant login';
++        } else {
++          dotEl.classList.remove('warning');
++          titleEl.textContent = `Passkey Protection Active (${passkeys.length})`;
++          subtitleEl.textContent = 'Phishing-resistant sign-in enabled';
++        }
++      }
++
++      function renderPasskeys() {
++        const listEl = document.getElementById('passkeys-list');
++        const searchVal = document.getElementById('passkey-search').value.trim().toLowerCase();
++        const typeFilter = document.getElementById('passkey-filter-type').value;
++        const summaryEl = document.getElementById('passkey-showing-summary');
++
++        updateHeaderStatus();
++
++        const filtered = passkeys.filter(pk => {
++          const matchesType = typeFilter === 'all' || pk.type === typeFilter;
++          const matchesSearch =
++            !searchVal ||
++            pk.name.toLowerCase().includes(searchVal) ||
++            pk.provider.toLowerCase().includes(searchVal) ||
++            pk.credentialId.toLowerCase().includes(searchVal);
++          return matchesType && matchesSearch;
++        });
++
++        summaryEl.textContent = `Showing ${filtered.length} of ${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}`;
++
++        if (filtered.length === 0) {
++          listEl.innerHTML = `
++            <div class="empty-state">
++              <div class="empty-state-icon">
++                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <circle cx="7.5" cy="15.5" r="5.5"/>
++                  <path d="m21 2-9.6 9.6"/>
++                  <path d="m15.5 7.5 3 3L22 7l-3-3"/>
++                </svg>
++              </div>
++              <h3>${passkeys.length === 0 ? 'No passkeys registered yet' : 'No matching passkeys found'}</h3>
++              <p>
++                ${
++                  passkeys.length === 0
++                    ? 'Add a passkey to sign in to your Daily Grind account with Touch ID, Face ID, Windows Hello, or a hardware security key.'
++                    : 'Try clearing your search query or switching the authenticator type filter.'
++                }
++              </p>
++              ${
++                passkeys.length === 0
++                  ? '<button type="button" class="btn btn-accent" id="empty-add-passkey-btn">Register Your First Passkey</button>'
++                  : ''
++              }
++            </div>
++          `;
++          const emptyBtn = document.getElementById('empty-add-passkey-btn');
++          if (emptyBtn) {
++            emptyBtn.addEventListener('click', openRegisterModal);
++          }
++          return;
++        }
++
++        listEl.innerHTML = filtered
++          .map(pk => {
++            const isEditing = editingPasskeyId === pk.id;
++            return `
++              <div class="passkey-item ${pk.isCurrentDevice ? 'recently-used' : ''}" role="listitem" data-passkey-id="${escapeHtml(pk.id)}">
++                <div class="passkey-main">
++                  <div class="passkey-icon" aria-hidden="true">
++                    ${getIconSvg(pk.type)}
++                  </div>
++                  <div class="passkey-details">
++                    ${
++                      isEditing
++                        ? `
++                          <form class="inline-rename-form" data-rename-form="${escapeHtml(pk.id)}">
++                            <input
++                              type="text"
++                              class="form-input"
++                              name="newName"
++                              value="${escapeHtml(pk.name)}"
++                              aria-label="New passkey name"
++                              required
++                              maxlength="60"
++                            >
++                            <button type="submit" class="btn btn-sm">Save</button>
++                            <button type="button" class="btn btn-outline btn-sm" data-cancel-rename="${escapeHtml(pk.id)}">Cancel</button>
++                          </form>
++                        `
++                        : `
++                          <div class="passkey-title-row">
++                            <span class="passkey-name">${escapeHtml(pk.name)}</span>
++                            ${getTypeBadge(pk.type)}
++                            ${pk.isCurrentDevice ? '<span class="badge badge-current">Current Session</span>' : ''}
++                          </div>
++                        `
++                    }
++                    <div style="font-size: 0.86rem; color: var(--text-muted);">
++                      ${escapeHtml(pk.provider)} • <span class="credential-id-pill" title="WebAuthn Credential ID">${escapeHtml(pk.credentialId)}</span>
++                    </div>
++                    <div class="passkey-meta">
++                      <span>
++                        <strong>Added:</strong> ${escapeHtml(formatDate(pk.createdAt))}
++                      </span>
++                      <span>
++                        <strong>Last used:</strong> ${escapeHtml(formatDate(pk.lastUsedAt))}
++                      </span>
++                      ${
++                        pk.lastLocation
++                          ? `<span><strong>Device:</strong> ${escapeHtml(pk.lastLocation)}</span>`
++                          : ''
++                      }
++                    </div>
++                  </div>
++                </div>
++                <div class="passkey-actions">
++                  ${
++                    !isEditing
++                      ? `
++                        <button type="button" class="btn btn-outline btn-sm" data-edit-passkey="${escapeHtml(pk.id)}" aria-label="Rename ${escapeHtml(pk.name)}">
++                          Rename
++                        </button>
++                      `
++                      : ''
++                  }
++                  <button type="button" class="btn btn-danger-outline btn-sm" data-delete-passkey="${escapeHtml(pk.id)}" aria-label="Revoke ${escapeHtml(pk.name)}">
++                    Revoke
++                  </button>
++                </div>
++              </div>
++            `;
++          })
++          .join('');
++      }
++
++      function renderActivityLog() {
++        const listEl = document.getElementById('activity-log-list');
++        if (!listEl) return;
++        listEl.innerHTML = activities
++          .map(
++            item => `
++            <li class="activity-item">
++              <span>${escapeHtml(item.event)}</span>
++              <span class="activity-time">${escapeHtml(item.timestamp)}</span>
++            </li>
++          `
++          )
++          .join('');
++      }
++
++      function showToast(message) {
++        const container = document.getElementById('toast-container');
++        const toast = document.createElement('div');
++        toast.className = 'toast';
++        toast.innerHTML = `
++          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2">
++            <path d="M20 6L9 17l-5-5"/>
++          </svg>
++          <span>${escapeHtml(message)}</span>
++        `;
++        container.appendChild(toast);
++        setTimeout(() => {
++          toast.remove();
++        }, 3600);
++      }
++
++      // Modal Helpers
++      function openModal(id) {
++        const el = document.getElementById(id);
++        if (el) el.classList.add('open');
++      }
++
++      function closeModal(id) {
++        const el = document.getElementById(id);
++        if (el) el.classList.remove('open');
++      }
++
++      function openRegisterModal() {
++        const promptBox = document.getElementById('biometric-prompt-box');
++        const submitBtn = document.getElementById('confirm-register-btn');
++        promptBox.classList.add('hidden');
++        submitBtn.disabled = false;
++        submitBtn.textContent = 'Create Passkey';
++        openModal('register-modal');
++        const nameInput = document.getElementById('new-passkey-name');
++        if (nameInput) nameInput.focus();
++      }
++
++      // Event Delegation for Passkey List Actions
++      document.getElementById('passkeys-list').addEventListener('click', e => {
++        const editBtn = e.target.closest('[data-edit-passkey]');
++        if (editBtn) {
++          editingPasskeyId = editBtn.getAttribute('data-edit-passkey');
++          renderPasskeys();
++          const input = document.querySelector(`[data-rename-form="${editingPasskeyId}"] input[name="newName"]`);
++          if (input) {
++            input.focus();
++            input.select();
++          }
++          return;
++        }
++
++        const cancelBtn = e.target.closest('[data-cancel-rename]');
++        if (cancelBtn) {
++          editingPasskeyId = null;
++          renderPasskeys();
++          return;
++        }
++
++        const deleteBtn = e.target.closest('[data-delete-passkey]');
++        if (deleteBtn) {
++          const id = deleteBtn.getAttribute('data-delete-passkey');
++          const pk = passkeys.find(item => item.id === id);
++          if (!pk) return;
++          pendingDeletePasskeyId = id;
++          document.getElementById('delete-passkey-name-display').textContent = pk.name;
++          openModal('delete-modal');
++        }
++      });
++
++      document.getElementById('passkeys-list').addEventListener('submit', e => {
++        const form = e.target.closest('[data-rename-form]');
++        if (!form) return;
++        e.preventDefault();
++        const id = form.getAttribute('data-rename-form');
++        const input = form.querySelector('input[name="newName"]');
++        const newName = input ? input.value.trim() : '';
++        if (!newName) return;
++
++        const pk = passkeys.find(item => item.id === id);
++        if (pk) {
++          const oldName = pk.name;
++          pk.name = newName;
++          savePasskeys();
++          addActivity(`Renamed passkey "${oldName}" to "${newName}"`);
++          showToast(`Passkey renamed to "${newName}"`);
++        }
++        editingPasskeyId = null;
++        renderPasskeys();
++      });
++
++      // Confirm Delete
++      document.getElementById('confirm-delete-btn').addEventListener('click', () => {
++        if (!pendingDeletePasskeyId) return;
++        const pk = passkeys.find(item => item.id === pendingDeletePasskeyId);
++        passkeys = passkeys.filter(item => item.id !== pendingDeletePasskeyId);
++        savePasskeys();
++        closeModal('delete-modal');
++        if (pk) {
++          addActivity(`Revoked passkey "${pk.name}"`);
++          showToast(`Revoked passkey "${pk.name}"`);
++        }
++        pendingDeletePasskeyId = null;
++        renderPasskeys();
++      });
++
++      // Authenticator Card Selection
++      document.getElementById('authenticator-options').addEventListener('click', e => {
++        const card = e.target.closest('.auth-option-card');
++        if (!card) return;
++        document.querySelectorAll('.auth-option-card').forEach(c => c.classList.remove('selected'));
++        card.classList.add('selected');
++        selectedAuthType = card.getAttribute('data-auth-type') || 'synced';
++        document.getElementById('new-passkey-name').value = card.getAttribute('data-default-name') || '';
++        document.getElementById('new-passkey-provider').value = card.getAttribute('data-provider') || '';
++      });
++
++      // Register Passkey Form Submission
++      document.getElementById('register-passkey-form').addEventListener('submit', async e => {
++        e.preventDefault();
++        const nameInput = document.getElementById('new-passkey-name');
++        const providerInput = document.getElementById('new-passkey-provider');
++        const promptBox = document.getElementById('biometric-prompt-box');
++        const submitBtn = document.getElementById('confirm-register-btn');
++
++        const name = nameInput.value.trim();
++        const provider = providerInput.value.trim() || 'WebAuthn Passkey Authenticator';
++        if (!name) return;
++
++        promptBox.classList.remove('hidden');
++        submitBtn.disabled = true;
++        submitBtn.textContent = 'Verifying...';
++
++        // Brief realistic WebAuthn handshake simulation
++        await new Promise(resolve => setTimeout(resolve, 550));
++
++        const randomHex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
++        const newPasskey = {
++          id: 'pk_' + Date.now(),
++          credentialId: `cred_${randomHex()}...${randomHex()}`,
++          name,
++          type: selectedAuthType,
++          provider,
++          createdAt: new Date().toISOString(),
++          lastUsedAt: 'Just now',
++          lastLocation: 'Current Browser Session',
++          isCurrentDevice: true
++        };
++
++        passkeys.forEach(p => {
++          p.isCurrentDevice = false;
++        });
++        passkeys.unshift(newPasskey);
++        savePasskeys();
++        addActivity(`Registered new passkey "${name}"`);
++        closeModal('register-modal');
++        renderPasskeys();
++        showToast(`Passkey "${name}" registered to your account`);
++      });
++
++      // Verify / Test Passkey Button
++      document.getElementById('test-passkey-btn').addEventListener('click', () => {
++        if (passkeys.length === 0) {
++          showToast('Register a passkey first to test verification');
++          return;
++        }
++        const activePk = passkeys.find(p => p.isCurrentDevice) || passkeys[0];
++        activePk.lastUsedAt = 'Just now';
++        savePasskeys();
++        renderPasskeys();
++        addActivity(`Verified passkey "${activePk.name}" via WebAuthn assertion`);
++        showToast(`Verified "${activePk.name}" successfully!`);
++      });
++
++      // Open & Close Modals
++      document.getElementById('add-passkey-btn').addEventListener('click', openRegisterModal);
++
++      document.querySelectorAll('[data-close-modal]').forEach(btn => {
++        btn.addEventListener('click', () => {
++          closeModal(btn.getAttribute('data-close-modal'));
++        });
++      });
++
++      document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
++        backdrop.addEventListener('click', e => {
++          if (e.target === backdrop) {
++            backdrop.classList.remove('open');
++          }
++        });
++      });
++
++      // Search & Filter Listeners
++      document.getElementById('passkey-search').addEventListener('input', renderPasskeys);
++      document.getElementById('passkey-filter-type').addEventListener('change', renderPasskeys);
++
++      // Sidebar Tab Switching
++      document.querySelectorAll('.sidebar-nav button[data-tab]').forEach(btn => {
++        btn.addEventListener('click', () => {
++          const targetTab = btn.getAttribute('data-tab');
++          document.querySelectorAll('.sidebar-nav button[data-tab]').forEach(b => {
++            b.classList.toggle('active', b === btn);
++            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
++          });
++          document.querySelectorAll('.tab-section').forEach(sec => {
++            sec.classList.toggle('hidden', sec.id !== `tab-${targetTab}`);
++          });
++        });
++      });
++
++      // Profile Form
++      document.getElementById('profile-form').addEventListener('submit', e => {
++        e.preventDefault();
++        const newName = document.getElementById('profile-name').value.trim();
++        const newEmail = document.getElementById('profile-email').value.trim();
++        if (newName) {
++          document.querySelector('.user-meta h1').textContent = newName;
++        }
++        if (newEmail) {
++          document.querySelector('.user-meta p span:first-child').textContent = newEmail;
++        }
++        showToast('Account profile updated');
++      });
++
++      // Preferences toggles toast
++      document.getElementById('pref-autofill').addEventListener('change', e => {
++        showToast(e.target.checked ? 'Passkey autofill enabled' : 'Passkey autofill disabled');
++      });
++      document.getElementById('pref-rewards-biometric').addEventListener('change', e => {
++        showToast(
++          e.target.checked
++            ? 'Biometric check enabled for reward redemptions'
++            : 'Biometric check disabled for reward redemptions'
++        );
++      });
++
++      // Initial render
++      renderPasskeys();
++      renderActivityLog();
++    })();
++  </script>
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..7b0a613 100644
+--- a/index.html
++++ b/index.html
+@@ -163,11 +163,18 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/account">My Account &amp; Passkeys</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div style="background: #efebe9; border-bottom: 1px solid #d7ccc8; padding: 10px 5%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.9rem;">
++    <div>
++      <strong>Account Security:</strong> Signed in as <span>Elena Rostova</span> — Passkey protection is active on your account.
++    </div>
++    <a href="/account" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Manage Passkeys &rarr;</a>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>

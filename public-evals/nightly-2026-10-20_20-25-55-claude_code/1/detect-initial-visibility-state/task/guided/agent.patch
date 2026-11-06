@@ -1,0 +1,55 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,51 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Detects whether the page was initially loaded in a background tab and
++    // when it was first backgrounded (ms since time origin), logged to the console.
++    (() => {
++      const log = (info) => console.log('Background detection', info);
++
++      // Accurate path: VisibilityStateEntry records visibility changes on the
++      // performance timeline, so it is correct even if this script runs late.
++      if ('VisibilityStateEntry' in window) {
++        const entries = performance.getEntriesByType('visibility-state');
++        const firstHidden = entries.find((entry) => entry.name === 'hidden');
++        log({
++          isBackground: entries[0]?.name === 'hidden',
++          backgroundTime: firstHidden ? firstHidden.startTime : null,
++          usingFallback: false,
++        });
++        return;
++      }
++
++      // FALLBACK (Firefox, Safari): UNRELIABLE. document.visibilityState only
++      // reflects the state at the moment this script runs. If the tab was opened
++      // in the background and foregrounded before execution (e.g. slow or async
++      // script load), it reads 'visible' and the initial hidden state is missed.
++      // Timestamps are also approximate: 0 if hidden now, else the time our
++      // event listener fired rather than the browser's actual change time.
++      console.warn(
++        'Background detection: VisibilityStateEntry unsupported; using document.visibilityState fallback. ' +
++        'Results may be inaccurate if the page was foregrounded before this script ran.'
++      );
++      let isBackground = document.visibilityState === 'hidden';
++      let backgroundTime = isBackground ? 0 : null;
++      log({ isBackground, backgroundTime, usingFallback: true });
++
++      if (backgroundTime === null) {
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState === 'hidden' && backgroundTime === null) {
++            backgroundTime = performance.now();
++            log({ isBackground, backgroundTime, usingFallback: true });
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

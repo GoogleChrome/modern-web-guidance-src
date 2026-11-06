@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured Barista */
++    .barista-feature {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 60px;
++    }
++
++    .barista-feature h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .barista-feature p {
++      max-width: 45ch;
++    }
++
++    .shaped-avatar {
++      width: 260px;
++      height: 260px;
++      object-fit: cover;
++      object-position: top;
++      -webkit-mask-image: url(#splat-mask);
++      mask-image: url(#splat-mask);
++    }
++
++    /* Loyalty Banner */
++    .unified-card {
++      display: flex;
++      max-width: 700px;
++      margin: 60px auto 0;
++      filter: drop-shadow(0 8px 16px rgba(62, 39, 35, 0.3));
++    }
++
++    .card-body {
++      flex: 1;
++      background-color: var(--primary);
++      color: white;
++      padding: 30px;
++      border-top-left-radius: 16px;
++      border-bottom-left-radius: 16px;
++    }
++
++    .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .card-accent {
++      width: 80px;
++      background-color: var(--primary);
++      border-top-right-radius: 16px;
++      border-bottom-right-radius: 16px;
++      -webkit-mask-image: url(#accent-mask);
++      mask-image: url(#accent-mask);
++    }
++
++    /* Promo Card */
++    .gradient-masked-card {
++      max-width: 420px;
++      margin: 60px auto 0;
++      background: linear-gradient(135deg, var(--accent), #e65100);
++      color: var(--text);
++      padding: 50px 30px 30px;
++      border-radius: 16px;
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle at 50% 0, transparent 24px, black 25px);
++      mask-image: radial-gradient(circle at 50% 0, transparent 24px, black 25px);
++    }
++
++    .gradient-masked-card h3 {
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +275,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-feature">
++      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
++        alt="Portrait of Marco, our featured barista" class="shaped-avatar" width="260" height="260" loading="lazy">
++      <div>
++        <h2>Meet Our Featured Barista</h2>
++        <p>Marco has been pulling shots at The Daily Grind for six years. Stop by for his signature honey
++          cardamom cortado and a story about the farm it came from.</p>
++      </div>
++    </section>
++
++    <section class="unified-card">
++      <div class="card-body">
++        <h3>Grind Rewards</h3>
++        <p>Earn a star with every purchase. Collect 10 stars and your next drink is on us.</p>
++        <a href="/rewards" class="btn">Join Rewards</a>
++      </div>
++      <div class="card-accent"></div>
++    </section>
++
++    <section class="gradient-masked-card">
++      <h3>Pastry Pairing Week</h3>
++      <p>Get 50% off any pastry with the purchase of a handcrafted drink, through Sunday.</p>
++      <a href="/menu/pastries" class="btn">See Pastries</a>
++    </section>
+   </main>
+ 
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++    <defs>
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path
++          d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z"
++          fill="white" />
++      </mask>
++      <mask id="accent-mask" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured barista: organic splat clip (objectBoundingBox units scale with the image) */
++    .featured {
++      display: flex;
++      align-items: center;
++      gap: 40px;
++      margin-top: 60px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .shaped-avatar {
++      width: 280px;
++      height: 280px;
++      object-fit: cover;
++      display: block;
++      -webkit-clip-path: url(#paint-splat);
++      clip-path: url(#paint-splat);
++    }
++
++    .featured-text {
++      max-width: 420px;
++    }
++
++    .featured-text h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    /* Loyalty banner: shadow is a filter on the wrapper so it follows the accent's masked edge */
++    .unified-card {
++      display: flex;
++      margin-top: 60px;
++      filter: drop-shadow(0 8px 16px rgba(62, 39, 35, 0.25));
++    }
++
++    .card-body {
++      flex: 1;
++      background: white;
++      padding: 30px;
++      border-radius: 12px 0 0 12px;
++    }
++
++    .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .card-accent {
++      flex: 0 0 140px;
++      background: linear-gradient(135deg, var(--accent), #ff8f00);
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100C60 30 60 70 100 100H0Z'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100C60 30 60 70 100 100H0Z'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
++    }
++
++    /* Promo card: circular notch on the top edge via a radial-gradient mask */
++    .promo-wrap {
++      max-width: 420px;
++      margin: 60px auto 0;
++      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
++    }
++
++    .gradient-masked-card {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 50px 30px 30px;
++      border-radius: 12px;
++      -webkit-mask: radial-gradient(circle 28px at 50% 0, transparent 98%, #000 100%);
++      mask: radial-gradient(circle 28px at 50% 0, transparent 98%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +275,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="featured">
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=600&h=600&q=80"
++        alt="Smiling barista in a light blazer standing in our cafe">
++      <div class="featured-text">
++        <h2>Featured Barista: Jamie</h2>
++        <p>Jamie has been pulling shots with us for five years and dreams up our seasonal menu. Stop by and ask about
++          the single-origin pour-over of the week.</p>
++      </div>
++    </section>
++
++    <section class="unified-card">
++      <div class="card-body">
++        <h3>Grind Rewards</h3>
++        <p>Earn a star with every purchase. Collect 10 stars and your next drink is on us.</p>
++        <a href="/rewards" class="btn">Join Rewards</a>
++      </div>
++      <div class="card-accent" aria-hidden="true"></div>
++    </section>
++
++    <section class="promo-wrap">
++      <div class="gradient-masked-card">
++        <h3>Happy Hour</h3>
++        <p>Half-price cold brew every weekday from 2&ndash;4 PM.</p>
++        <a href="/menu/cold-brew" class="btn">See the Menu</a>
++      </div>
++    </section>
+   </main>
+ 
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true" focusable="false">
++    <defs>
++      <clipPath id="paint-splat" clipPathUnits="objectBoundingBox">
++        <path d="M0.50,0.04 C0.60,0.02 0.64,0.10 0.72,0.10 C0.82,0.09 0.92,0.06 0.94,0.16 C0.96,0.26 0.88,0.30 0.92,0.40
++          C0.96,0.48 1.00,0.54 0.96,0.64 C0.92,0.74 0.84,0.72 0.82,0.82 C0.80,0.92 0.72,0.98 0.62,0.94
++          C0.54,0.91 0.50,0.98 0.40,0.96 C0.28,0.94 0.24,0.86 0.16,0.84 C0.06,0.82 0.02,0.72 0.06,0.62
++          C0.09,0.54 0.02,0.48 0.04,0.38 C0.06,0.26 0.14,0.24 0.18,0.16 C0.22,0.06 0.32,0.08 0.40,0.07
++          C0.44,0.06 0.46,0.05 0.50,0.04 Z" />
++        <circle cx="0.97" cy="0.06" r="0.025" />
++        <circle cx="0.05" cy="0.92" r="0.035" />
++        <circle cx="0.88" cy="0.93" r="0.02" />
++      </clipPath>
++    </defs>
++  </svg>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

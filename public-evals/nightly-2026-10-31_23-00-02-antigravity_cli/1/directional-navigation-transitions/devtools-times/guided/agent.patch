@@ -1,0 +1,229 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..404b765 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -39,21 +39,114 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++    <div class="bg-white border-b border-gray-300" data-top-stories-slider>
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
++            <button
++                type="button"
++                data-slider-prev
++                aria-label="Previous story"
++                class="px-3 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++            >
++                Previous
++            </button>
++            <div class="top-stories-wrapper flex-1 min-w-0">
++                <div class="top-stories-scope overflow-hidden" data-slider-scope>
++                    <div class="top-story-content" data-slider-track>
++                        {topStories.map((article, index) => (
++                            <div
++                                data-story-slide={index}
++                                hidden={index !== 0}
++                                class={index === 0 ? "block" : "hidden"}
++                            >
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                    <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                                </a>
++                                <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                            </div>
++                        ))}
+                     </div>
+-                ))}
++                </div>
+             </div>
++            <button
++                type="button"
++                data-slider-next
++                aria-label="Next story"
++                class="px-3 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++            >
++                Next
++            </button>
+         </div>
+     </div>
+ 
++    <script>
++        function initTopStoriesSlider() {
++            const slider = document.querySelector('[data-top-stories-slider]');
++            if (!slider || slider.hasAttribute('data-initialized')) return;
++            slider.setAttribute('data-initialized', 'true');
++
++            const scopeEl = slider.querySelector('[data-slider-scope]') as HTMLElement | null;
++            const slides = Array.from(slider.querySelectorAll('[data-story-slide]')) as HTMLElement[];
++            const prevBtn = slider.querySelector('[data-slider-prev]') as HTMLButtonElement | null;
++            const nextBtn = slider.querySelector('[data-slider-next]') as HTMLButtonElement | null;
++
++            if (!scopeEl || slides.length === 0 || !prevBtn || !nextBtn) return;
++
++            let currentIndex = 0;
++
++            function showSlide(nextIndex: number, direction: 'forward' | 'backward') {
++                const updateDOM = () => {
++                    slides.forEach((slide, idx) => {
++                        const isActive = idx === nextIndex;
++                        slide.hidden = !isActive;
++                        slide.classList.toggle('hidden', !isActive);
++                        slide.classList.toggle('block', isActive);
++                    });
++                    currentIndex = nextIndex;
++                };
++
++                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++                if (prefersReducedMotion) {
++                    updateDOM();
++                    return;
++                }
++
++                const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++                if (supportsScopedTransition) {
++                    const transition = (scopeEl as any).startViewTransition({
++                        update: updateDOM,
++                        types: [direction],
++                    });
++                    transition.ready?.catch(() => {});
++                    return;
++                }
++
++                if (!document.startViewTransition) {
++                    updateDOM();
++                    return;
++                }
++
++                const transition = document.startViewTransition({
++                    update: updateDOM,
++                    types: [direction],
++                });
++                transition.ready?.catch(() => {});
++            }
++
++            prevBtn.addEventListener('click', () => {
++                const nextIndex = (currentIndex - 1 + slides.length) % slides.length;
++                showSlide(nextIndex, 'backward');
++            });
++
++            nextBtn.addEventListener('click', () => {
++                const nextIndex = (currentIndex + 1) % slides.length;
++                showSlide(nextIndex, 'forward');
++            });
++        }
++
++        initTopStoriesSlider();
++        document.addEventListener('astro:page-load', initTopStoriesSlider);
++    </script>
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ea44817 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,93 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Slide an element out to the left */
++@keyframes slide-to-left {
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++/* Slide an element in from the right */
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element out to the right */
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element in from the left */
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++.top-stories-wrapper {
++  overflow: clip;
++  view-transition-name: match-element;
++  view-transition-group: contain;
++  view-transition-class: top-stories-slider;
++}
++
++::view-transition-group-children(.top-stories-slider) {
++  overflow: clip;
++}
++
++.top-stories-scope {
++  view-transition-scope: all;
++}
++
++.top-story-content {
++  view-transition-name: top-story;
++}
++
++::view-transition-group(root),
++::view-transition-group(*) {
++  animation: 0.4s ease-in-out both;
++}
++
++html:active-view-transition-type(forward)::view-transition-old(root),
++html:active-view-transition-type(forward)::view-transition-old(top-story),
++.top-stories-scope:active-view-transition-type(forward)::view-transition-old(root),
++.top-stories-scope:active-view-transition-type(forward)::view-transition-old(top-story) {
++  animation-name: slide-to-left;
++}
++
++html:active-view-transition-type(forward)::view-transition-new(root),
++html:active-view-transition-type(forward)::view-transition-new(top-story),
++.top-stories-scope:active-view-transition-type(forward)::view-transition-new(root),
++.top-stories-scope:active-view-transition-type(forward)::view-transition-new(top-story) {
++  animation-name: slide-from-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-old(root),
++html:active-view-transition-type(backward)::view-transition-old(top-story),
++.top-stories-scope:active-view-transition-type(backward)::view-transition-old(root),
++.top-stories-scope:active-view-transition-type(backward)::view-transition-old(top-story) {
++  animation-name: slide-to-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-new(root),
++html:active-view-transition-type(backward)::view-transition-new(top-story),
++.top-stories-scope:active-view-transition-type(backward)::view-transition-new(root),
++.top-stories-scope:active-view-transition-type(backward)::view-transition-new(top-story) {
++  animation-name: slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(root),
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

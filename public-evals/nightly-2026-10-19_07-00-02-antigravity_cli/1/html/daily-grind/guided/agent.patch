@@ -1,0 +1,944 @@
+diff --git a/index.html b/index.html
+index 66c9173..d30c3ad 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,13 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="Artisanal, ethically sourced, locally roasted coffee delivered to your cup. Order online or visit our locations.">
++
++  <!-- Resource Prioritization: Preconnect and Preload for LCP Hero -->
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
++
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -27,70 +34,137 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Focus Management & Keyboard Accessibility */
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .skip-link {
++      position: absolute;
++      top: -100px;
++      left: 1rem;
+       background: var(--primary);
+       color: white;
++      padding: 0.6rem 1.2rem;
++      z-index: 2000;
++      text-decoration: none;
++      font-weight: 600;
++      border-radius: 4px;
++      transition: top 0.2s ease-in-out;
++    }
++
++    .skip-link:focus-visible {
++      top: 1rem;
++    }
++
++    /* Site Header & Navigation */
++    .site-header {
++      background: var(--primary);
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .header-nav-container {
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+-    nav ul {
++    .nav-list {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      gap: 20px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .nav-list a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
+     }
+ 
+-    nav a {
++    .nav-list a:hover {
++      color: var(--accent);
++    }
++
++    .nav-btn {
++      background: none;
++      border: none;
+       color: white;
+-      text-decoration: none;
++      font-family: inherit;
+       font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .nav-btn:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .logout-btn {
++      background: none;
+       border: 1px solid var(--accent);
++      color: white;
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .logout-btn:hover {
++      background: var(--accent);
++      color: var(--primary);
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section (Optimized LCP architecture) */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 380px;
+       display: flex;
+-      flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++    }
++
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      filter: brightness(0.45);
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      max-width: 800px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      line-height: 1.2;
+     }
+ 
+     /* Content Sections */
+@@ -100,26 +174,81 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 25px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
++    }
++
++    .card-figure {
++      margin: 0;
++      width: 100%;
++      aspect-ratio: 16 / 10;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-figure img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    .card:hover .card-figure img {
++      transform: scale(1.03);
++    }
++
++    .card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card-body h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
++    }
++
++    .card-body p {
++      flex-grow: 1;
++      color: var(--text);
++    }
++
++    .card-price {
++      font-weight: 700;
++      color: var(--primary);
++      margin-top: 10px;
++      font-size: 1.1rem;
+     }
+ 
++    /* Buttons */
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,85 +257,641 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      border: 1px solid transparent;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+-    footer {
++    .btn-secondary {
++      background: transparent;
++      color: var(--text);
++      border-color: var(--secondary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .btn-accent:hover {
++      background: #ff9800;
++    }
++
++    .btn-danger {
++      background: #c62828;
++      color: white;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    /* Native Overlays: Dialogs & Backdrop */
++    dialog {
++      border: none;
++      border-radius: 12px;
++      padding: 24px;
++      background: white;
++      color: var(--text);
++      max-width: 520px;
++      width: 90vw;
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
++      margin: auto;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0.6);
++      backdrop-filter: blur(3px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 1rem;
++    }
++
++    .dialog-header h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++    }
++
++    .dialog-close-btn {
++      background: none;
++      border: none;
++      font-size: 1.5rem;
++      line-height: 1;
++      color: var(--text);
++      cursor: pointer;
++      padding: 4px 8px;
++      border-radius: 4px;
++    }
++
++    .dialog-close-btn:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 1.5rem;
++    }
++
++    .dialog-img-preview {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 1rem;
++    }
++
++    /* Dialog Form Controls */
++    .form-group {
++      margin-bottom: 1rem;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.4rem;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-group select,
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .form-group select:focus-visible,
++    .form-group input:focus-visible,
++    .form-group textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    /* Native Overlays: Popovers */
++    [popover] {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 1.25rem;
++      background: white;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
++      color: var(--text);
++      max-width: 320px;
++      margin: 0;
++      inset: auto;
++    }
++
++    :popover-open, .\:popover-open {
++      display: block;
++    }
++
++    .nav-popover {
++      top: 60px;
++      right: 5%;
++    }
++
++    .nav-popover h3 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++      font-size: 1.1rem;
++    }
++
++    .nav-popover ul {
++      list-style: none;
++      margin-top: 0.5rem;
++    }
++
++    .nav-popover ul li {
++      margin: 8px 0;
++    }
++
++    .nav-popover ul a {
++      color: var(--primary);
++      text-decoration: none;
++      font-size: 0.9rem;
++    }
++
++    .nav-popover ul a:hover {
++      text-decoration: underline;
++    }
++
++    /* Native Disclosures (Details & Summary) */
++    .faq-section {
++      margin-top: 50px;
++      margin-bottom: 30px;
++    }
++
++    .faq-group {
++      max-width: 800px;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    details {
++      background: white;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      overflow: hidden;
++      transition: box-shadow 0.2s ease;
++    }
++
++    details[open] {
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
++    }
++
++    summary {
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      user-select: none;
++      transition: background-color 0.2s;
++    }
++
++    summary:hover {
++      background-color: #f7f3f1;
++    }
++
++    .details-content {
++      padding: 0 20px 16px 20px;
++      color: var(--text);
++      line-height: 1.6;
++    }
++
++    /* Footer */
++    .site-footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      list-style: none;
+       margin-bottom: 20px;
+     }
+ 
++    .footer-links li:not(:last-child)::after {
++      content: "|";
++      margin-left: 15px;
++      color: var(--text);
++      opacity: 0.4;
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    /* Inert state styling */
++    [inert], [inert] * {
++      cursor: default;
++      user-select: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <!-- Skip Link for Keyboard Navigability -->
++  <a href="#main-content" class="skip-link">Skip to main content</a>
++
++  <!-- Semantic Site Header with Navigation Landmark -->
++  <header class="site-header">
++    <div class="header-nav-container">
++      <a href="/" class="logo">THE DAILY GRIND</a>
++      <nav aria-label="Main navigation">
++        <ul class="nav-list">
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li>
++            <button type="button" class="nav-btn" popovertarget="rewards-popover">Rewards</button>
++          </li>
++          <li>
++            <button type="button" class="nav-btn" popovertarget="account-popover">My Account</button>
++          </li>
++          <li>
++            <button type="button" class="logout-btn" commandfor="logout-dialog" command="show-modal">Logout</button>
++          </li>
++        </ul>
++      </nav>
++    </div>
++  </header>
++
++  <!-- Non-Modal Native Overlays (Popovers) -->
++  <div id="rewards-popover" popover="auto" class="nav-popover" aria-labelledby="rewards-title">
++    <h3 id="rewards-title">Grind Rewards</h3>
++    <p><strong>420 Points</strong> available</p>
++    <p style="font-size: 0.85rem; color: #5d4037; margin-top: 4px;">Status: <em>Gold Bean Member</em></p>
++    <p style="font-size: 0.85rem; margin-top: 8px;">You're just 80 points away from a complimentary handcrafted beverage!</p>
++  </div>
++
++  <div id="account-popover" popover="auto" class="nav-popover" aria-labelledby="account-title">
++    <h3 id="account-title">My Account</h3>
++    <p style="font-size: 0.85rem;">Signed in as <strong>alex@dailygrind.coffee</strong></p>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/profile">Personal Profile</a></li>
++      <li><a href="/orders">Past Orders</a></li>
++      <li><a href="/cards">Saved Payment Cards</a></li>
+     </ul>
+-  </nav>
++  </div>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <!-- Primary Document Content -->
++  <main id="main-content">
++
++    <!-- Hero Section (Preloaded High-Priority LCP Image) -->
++    <section class="hero" aria-labelledby="hero-heading">
++      <img
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++        alt=""
++        fetchpriority="high"
++        width="1350"
++        height="800"
++        decoding="async"
++        class="hero-bg"
++      >
++      <div class="hero-content">
++        <h1 id="hero-heading">Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <button type="button" class="btn btn-accent" commandfor="order-dialog" command="show-modal">Order Now</button>
++      </div>
++    </section>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Seasonal Favorites Section -->
++    <section class="container" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++
++        <article class="card">
++          <figure class="card-figure">
++            <img
++              src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++              alt="Creamy Maple Oat Latte with foam art in ceramic cup"
++              width="600"
++              height="400"
++              loading="lazy"
++              decoding="async"
++            >
++          </figure>
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p class="card-price">$5.75</p>
++            <button
++              type="button"
++              class="btn btn-details"
++              commandfor="details-dialog"
++              command="show-modal"
++              data-name="Maple Oat Latte"
++              data-desc="Smooth espresso pulled over steaming organic oat milk and infused with Grade-A Vermont maple syrup and subtle warm cinnamon notes."
++              data-price="$5.75"
++              data-img="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            >
++              View Details
++            </button>
++          </div>
++        </article>
++
++        <article class="card">
++          <figure class="card-figure">
++            <img
++              src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++              alt="Dark roast espresso shot with thick golden crema"
++              width="600"
++              height="400"
++              loading="lazy"
++              decoding="async"
++            >
++          </figure>
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <p class="card-price">$3.85</p>
++            <button
++              type="button"
++              class="btn btn-details"
++              commandfor="details-dialog"
++              command="show-modal"
++              data-name="Dark Roast Espresso"
++              data-desc="Double shot extracted from small-batch Sumatra and Brazilian beans. Dark chocolate undertones with a full, velvety crema finish."
++              data-price="$3.85"
++              data-img="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++            >
++              View Details
++            </button>
++          </div>
++        </article>
++
++        <article class="card">
++          <figure class="card-figure">
++            <img
++              src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++              alt="Cold brew coffee with ice cubes in a tall glass"
++              width="600"
++              height="400"
++              loading="lazy"
++              decoding="async"
++            >
++          </figure>
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p class="card-price">$4.50</p>
++            <button
++              type="button"
++              class="btn btn-details"
++              commandfor="details-dialog"
++              command="show-modal"
++              data-name="Cold Brew"
++              data-desc="Slow cold-water extraction for 18 full hours yields naturally sweet, low-acidity coffee with nuanced cocoa and toasted hazelnut profiles."
++              data-price="$4.50"
++              data-img="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            >
++              View Details
++            </button>
++          </div>
++        </article>
++
++      </div>
++    </section>
++
++    <!-- Native Disclosures Section (Exclusive Accordion) -->
++    <section class="container faq-section" aria-labelledby="faq-heading">
++      <h2 id="faq-heading" class="section-title">Frequently Asked Questions</h2>
++      <div class="faq-group">
++        <details name="coffee-faq">
++          <summary>Where do you source your beans?</summary>
++          <div class="details-content">
++            <p>We work directly with certified organic micro-lot cooperatives across Colombia, Ethiopia, and Guatemala, ensuring ethical prices and regenerative agricultural practices.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>Do you offer dairy-free and plant milk options?</summary>
++          <div class="details-content">
++            <p>Yes! We provide certified organic oat milk, almond milk, and coconut milk at zero additional surcharge across all handcrafted hot and cold beverages.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>How fresh are your roasts?</summary>
++          <div class="details-content">
++            <p>Every single bean is roasted locally within 48 hours of service to guarantee exceptional aromatic complexity and cup freshness.</p>
++          </div>
++        </details>
+       </div>
+     </section>
++
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <!-- Modal Native Overlays (Dialog Elements) -->
++
++  <!-- 1. Product Details Modal -->
++  <dialog id="details-dialog" closedby="any" aria-labelledby="details-dialog-title">
++    <div class="dialog-header">
++      <h2 id="details-dialog-title">Beverage Details</h2>
++      <button type="button" class="dialog-close-btn" commandfor="details-dialog" command="close" aria-label="Close dialog">&times;</button>
++    </div>
++    <div class="dialog-body">
++      <img id="details-modal-img" src="" alt="" class="dialog-img-preview" width="600" height="400">
++      <p id="details-modal-desc"></p>
++      <p style="margin-top: 10px;">Price: <strong id="details-modal-price" style="color: var(--primary);"></strong></p>
++    </div>
++    <form method="dialog" class="dialog-actions">
++      <button type="submit" class="btn btn-secondary">Close</button>
++      <button type="button" id="details-order-action" class="btn btn-accent">Order This Now</button>
++    </form>
++  </dialog>
++
++  <!-- 2. Order Online Modal -->
++  <dialog id="order-dialog" closedby="any" aria-labelledby="order-dialog-title">
++    <div class="dialog-header">
++      <h2 id="order-dialog-title">Order Online</h2>
++      <button type="button" class="dialog-close-btn" commandfor="order-dialog" command="close" aria-label="Close dialog">&times;</button>
++    </div>
++    <form method="dialog">
++      <div class="form-group">
++        <label for="order-beverage">Select Coffee</label>
++        <select id="order-beverage" name="beverage" required>
++          <option value="maple-oat-latte">Maple Oat Latte ($5.75)</option>
++          <option value="espresso">Dark Roast Espresso ($3.85)</option>
++          <option value="cold-brew">Cold Brew ($4.50)</option>
++        </select>
++      </div>
++      <div class="form-group">
++        <label for="order-size">Cup Size</label>
++        <select id="order-size" name="size">
++          <option value="small">Small (12 oz)</option>
++          <option value="medium" selected>Medium (16 oz)</option>
++          <option value="large">Large (20 oz)</option>
++        </select>
++      </div>
++      <div class="form-group">
++        <label for="order-instructions">Special Instructions</label>
++        <input type="text" id="order-instructions" name="instructions" placeholder="e.g. Extra hot, light ice, cinnamon sprinkle" autocomplete="off">
++      </div>
++      <div class="dialog-actions">
++        <button type="button" class="btn btn-secondary" commandfor="order-dialog" command="close">Cancel</button>
++        <button type="submit" value="order-placed" class="btn">Place Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <!-- 3. Logout Confirmation Modal -->
++  <dialog id="logout-dialog" closedby="any" aria-labelledby="logout-dialog-title">
++    <div class="dialog-header">
++      <h2 id="logout-dialog-title">Confirm Sign Out</h2>
++      <button type="button" class="dialog-close-btn" commandfor="logout-dialog" command="close" aria-label="Close dialog">&times;</button>
+     </div>
++    <p>Are you sure you want to sign out of your Daily Grind account?</p>
++    <form method="dialog" class="dialog-actions">
++      <button type="button" class="btn btn-secondary" commandfor="logout-dialog" command="close">Cancel</button>
++      <button type="submit" value="confirmed-logout" class="btn btn-danger">Log Out</button>
++    </form>
++  </dialog>
++
++  <!-- Semantic Footer with Regional Navigation Landmark -->
++  <footer class="site-footer">
++    <nav aria-label="Footer navigation">
++      <ul class="footer-links">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Focus Management, Invoker Commands, and Overlay Fallbacks Script -->
++  <script type="module">
++    // 1. Invoker Commands Fallback for browsers lacking 'commandForElement'
++    const hasInvokerSupport = 'commandForElement' in HTMLButtonElement.prototype;
++    if (!hasInvokerSupport) {
++      document.addEventListener('click', (event) => {
++        const button = event.composedPath().find(el => el.matches?.('button[commandfor]'));
++        if (!button) return;
++
++        const targetId = button.getAttribute('commandfor');
++        const command = button.getAttribute('command');
++        const target = document.getElementById(targetId);
++        if (!target) return;
++
++        if (command === 'show-modal' && typeof target.showModal === 'function') {
++          target.showModal();
++        } else if (command === 'close' && typeof target.close === 'function') {
++          target.close();
++        }
++      });
++    }
++
++    // 2. Light Dismiss Fallback for browsers lacking 'closedBy' support on <dialog>
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      document.querySelectorAll('dialog[closedby]').forEach(dialog => {
++        dialog.addEventListener('click', (event) => {
++          if (event.target !== dialog) return;
++          const rect = dialog.getBoundingClientRect();
++          const isDialogContent = (
++            rect.top <= event.clientY &&
++            event.clientY <= rect.top + rect.height &&
++            rect.left <= event.clientX &&
++            event.clientX <= rect.left + rect.width
++          );
++          if (isDialogContent) return;
++          dialog.close();
++        });
++      });
++    }
++
++    // 3. Focus Management: Restore focus to invoker button upon modal close
++    let lastActiveTrigger = null;
++    document.addEventListener('click', (event) => {
++      const invokerBtn = event.composedPath().find(el => el.matches?.('button[commandfor], .btn-details'));
++      if (invokerBtn) {
++        lastActiveTrigger = invokerBtn;
++      }
++    });
++
++    document.querySelectorAll('dialog').forEach(dialog => {
++      dialog.addEventListener('close', () => {
++        if (lastActiveTrigger && typeof lastActiveTrigger.focus === 'function') {
++          lastActiveTrigger.focus();
++        }
++      });
++    });
++
++    // 4. Populate dynamic details dialog when "View Details" is activated
++    const detailsDialog = document.getElementById('details-dialog');
++    const detailsTitle = document.getElementById('details-dialog-title');
++    const detailsDesc = document.getElementById('details-modal-desc');
++    const detailsPrice = document.getElementById('details-modal-price');
++    const detailsImg = document.getElementById('details-modal-img');
++    const detailsOrderAction = document.getElementById('details-order-action');
++    const orderDialog = document.getElementById('order-dialog');
++    const orderBeverage = document.getElementById('order-beverage');
++
++    document.querySelectorAll('.btn-details').forEach(button => {
++      button.addEventListener('click', () => {
++        const name = button.getAttribute('data-name');
++        const desc = button.getAttribute('data-desc');
++        const price = button.getAttribute('data-price');
++        const img = button.getAttribute('data-img');
++
++        if (detailsTitle) detailsTitle.textContent = name || 'Beverage Details';
++        if (detailsDesc) detailsDesc.textContent = desc || '';
++        if (detailsPrice) detailsPrice.textContent = price || '';
++        if (detailsImg) {
++          detailsImg.src = img || '';
++          detailsImg.alt = name || 'Coffee image';
++        }
++
++        // Pre-select this item in the order form if user proceeds
++        if (detailsOrderAction) {
++          detailsOrderAction.onclick = () => {
++            detailsDialog.close();
++            if (orderBeverage) {
++              const matchedOption = Array.from(orderBeverage.options).find(opt => opt.text.includes(name));
++              if (matchedOption) orderBeverage.value = matchedOption.value;
++            }
++            orderDialog.showModal();
++          };
++        }
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

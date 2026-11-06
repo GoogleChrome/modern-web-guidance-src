@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,143 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Parallax Section (CSS scroll-driven animations, no JS) */
++    .parallax {
++      position: relative;
++      overflow: clip;
++      min-height: 100svh;
++      display: grid;
++      place-items: center;
++      padding: 15vh 20px;
++      background: var(--primary);
++      color: white;
++      isolation: isolate;
++      view-timeline: --parallax;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      pointer-events: none;
++    }
++
++    /* Layer 1 (farthest): oversized so the slow drift never exposes an edge */
++    .parallax__layer--back {
++      inset: -15vh 0;
++      z-index: -2;
++      background:
++        linear-gradient(rgba(30, 18, 14, 0.72), rgba(30, 18, 14, 0.72)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70') center / cover;
++      --parallax-from: -12vh;
++      --parallax-to: 12vh;
++    }
++
++    /* Layer 2: soft glow between background and content */
++    .parallax__layer--glow {
++      inset: 0;
++      z-index: -1;
++      background:
++        radial-gradient(circle at 25% 30%, rgba(255, 171, 64, 0.25), transparent 40%),
++        radial-gradient(circle at 80% 75%, rgba(215, 204, 200, 0.18), transparent 35%);
++      --parallax-from: -4vh;
++      --parallax-to: 4vh;
++    }
++
++    /* Layer 3: readable content, moves with the page */
++    .parallax__content {
++      position: relative;
++      z-index: 1;
++      max-width: 36rem;
++      text-align: center;
++      padding: 2.5rem 2rem;
++      background: rgba(30, 18, 14, 0.6);
++      border-radius: 12px;
++    }
++
++    .parallax__content h2 {
++      font-size: clamp(1.8rem, 4vw, 2.6rem);
++      margin-bottom: 1rem;
++      color: var(--accent);
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .parallax__content .btn:hover {
++      background: var(--secondary);
++    }
++
++    .parallax__content .btn:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    /* Layers 4 & 5 (nearest): photos that move fastest */
++    .parallax__photo {
++      z-index: 2;
++      width: clamp(110px, 18vw, 260px);
++      aspect-ratio: 2 / 3;
++      object-fit: cover;
++      border-radius: 10px;
++      border: 4px solid var(--light);
++      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
++    }
++
++    .parallax__photo--left {
++      left: 4%;
++      top: 18%;
++      rotate: -6deg;
++      --parallax-from: 20vh;
++      --parallax-to: -20vh;
++    }
++
++    .parallax__photo--right {
++      right: 4%;
++      bottom: 14%;
++      rotate: 5deg;
++      --parallax-from: 32vh;
++      --parallax-to: -32vh;
++    }
++
++    @media (max-width: 760px) {
++      .parallax__photo {
++        width: 90px;
++      }
++
++      .parallax__photo--left {
++        top: 4%;
++      }
++
++      .parallax__photo--right {
++        bottom: 4%;
++      }
++    }
++
++    @keyframes parallax-shift {
++      from {
++        translate: 0 var(--parallax-from);
++      }
++
++      to {
++        translate: 0 var(--parallax-to);
++      }
++    }
++
++    /* Progressive enhancement: decorative only, so unsupported browsers and
++       reduced-motion users simply get the static layout. */
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax__layer {
++          animation: parallax-shift linear both;
++          animation-timeline: --parallax;
++          animation-range: cover;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +308,27 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-title">
++    <div class="parallax__layer parallax__layer--back" aria-hidden="true"></div>
++    <div class="parallax__layer parallax__layer--glow" aria-hidden="true"></div>
++
++    <div class="parallax__content">
++      <h2 id="parallax-title">From Bean to Cup</h2>
++      <p>We roast in small batches every morning, then pour each cup by hand. Single-origin beans, traced from the farm
++        to your favorite mug.</p>
++      <a href="/our-roastery" class="btn">Meet Our Roasters</a>
++    </div>
++
++    <img class="parallax__layer parallax__photo parallax__photo--left"
++      src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=520&h=780&q=70"
++      alt="" width="520" height="780" loading="lazy" decoding="async">
++    <img class="parallax__layer parallax__photo parallax__photo--right"
++      src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=520&h=780&q=70"
++      alt="" width="520" height="780" loading="lazy" decoding="async">
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

@@ -1,0 +1,422 @@
+diff --git a/README.md b/README.md
+index 4479b53..deab905 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,19 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Local Network Access
++
++The app can reach resources on the user's loopback interface (`localhost`,
++`127.0.0.1`, `::1`) and private network (`10/8`, `172.16/12`, `192.168/16`,
++`*.local`) using Chrome's [Local Network Access](https://github.com/explainers-by-googlers/local-network-access) feature:
++
++- `src/middleware.ts` sends `Permissions-Policy: local-network-access=(self)` on
++  every response, opting the origin into the feature.
++- `src/utils/localNetwork.ts` exports `fetchLocalNetwork()`, which sets the
++  `targetAddressSpace` fetch option (`loopback` or `local`, inferred from the
++  hostname when not given). This is what triggers the permission prompt and
++  allows an `http://` local target from the `https://` site.
++- `/local-network` is a demo page where you can enter a local URL, pick the
++  address space, and inspect the response. The current permission state is read
++  through `navigator.permissions.query({ name: 'local-network-access' })`.
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..8fe6d42 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -94,6 +94,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+             <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+             <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href=`${baseUrl}local-network` class="hover:underline">Local Network Access</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+diff --git a/src/components/LocalNetworkAccess.tsx b/src/components/LocalNetworkAccess.tsx
+new file mode 100644
+index 0000000..8c9eca6
+--- /dev/null
++++ b/src/components/LocalNetworkAccess.tsx
+@@ -0,0 +1,226 @@
++import React, { useEffect, useState } from 'react';
++import {
++  fetchLocalNetwork,
++  inferAddressSpace,
++  queryLocalNetworkPermission,
++  type PermissionStatusName,
++  type TargetAddressSpace,
++} from '../utils/localNetwork';
++
++type AddressSpaceChoice = TargetAddressSpace | 'auto';
++
++interface FetchResult {
++  ok: boolean;
++  status: number;
++  statusText: string;
++  type: ResponseType;
++  contentType: string | null;
++  body: string;
++  durationMs: number;
++}
++
++const PERMISSION_LABELS: Record<PermissionStatusName, { label: string; className: string }> = {
++  granted: { label: 'Granted', className: 'bg-green-100 text-green-800' },
++  denied: { label: 'Denied', className: 'bg-red-100 text-red-800' },
++  prompt: { label: 'Will prompt', className: 'bg-yellow-100 text-yellow-800' },
++  unsupported: { label: 'Not supported in this browser', className: 'bg-gray-200 text-gray-700' },
++};
++
++const MAX_BODY_PREVIEW = 2000;
++
++export default function LocalNetworkAccess() {
++  const [url, setUrl] = useState('http://localhost:8080/');
++  const [addressSpace, setAddressSpace] = useState<AddressSpaceChoice>('auto');
++  const [noCors, setNoCors] = useState(false);
++  const [permission, setPermission] = useState<PermissionStatusName>('unsupported');
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [result, setResult] = useState<FetchResult | null>(null);
++
++  useEffect(() => {
++    let status: PermissionStatus | undefined;
++    const onChange = () => status && setPermission(status.state);
++
++    queryLocalNetworkPermission().then((res) => {
++      setPermission(res.state);
++      status = res.status;
++      status?.addEventListener('change', onChange);
++    });
++
++    return () => status?.removeEventListener('change', onChange);
++  }, []);
++
++  let inferredSpace: TargetAddressSpace | null = null;
++  try {
++    inferredSpace = inferAddressSpace(new URL(url).hostname);
++  } catch {
++    inferredSpace = null;
++  }
++  const effectiveSpace = addressSpace === 'auto' ? inferredSpace : addressSpace;
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setError(null);
++    setResult(null);
++    setLoading(true);
++
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 10_000);
++    const started = performance.now();
++
++    try {
++      const response = await fetchLocalNetwork(url, {
++        method: 'GET',
++        mode: noCors ? 'no-cors' : 'cors',
++        cache: 'no-store',
++        signal: controller.signal,
++        ...(addressSpace !== 'auto' ? { targetAddressSpace: addressSpace } : {}),
++      });
++
++      const text = response.type === 'opaque' ? '' : await response.text();
++      setResult({
++        ok: response.ok,
++        status: response.status,
++        statusText: response.statusText,
++        type: response.type,
++        contentType: response.headers.get('content-type'),
++        body: text.slice(0, MAX_BODY_PREVIEW),
++        durationMs: Math.round(performance.now() - started),
++      });
++    } catch (err) {
++      if (err instanceof DOMException && err.name === 'AbortError') {
++        setError('The request timed out after 10 seconds.');
++      } else {
++        setError(
++          `${err instanceof Error ? err.message : String(err)}. ` +
++            'If you denied the permission prompt, the browser blocks the request. ' +
++            'Open DevTools > Network and inspect the failed request for details.',
++        );
++      }
++    } finally {
++      clearTimeout(timeout);
++      setLoading(false);
++      queryLocalNetworkPermission().then((res) => setPermission(res.state));
++    }
++  };
++
++  const badge = PERMISSION_LABELS[permission];
++
++  return (
++    <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <div className="flex items-center justify-between mb-6">
++        <h2 className="text-xl font-bold text-gray-800">Request a local resource</h2>
++        <span
++          className={`text-xs font-semibold px-2 py-1 rounded ${badge.className}`}
++          data-testid="lna-permission-state"
++        >
++          Permission: {badge.label}
++        </span>
++      </div>
++
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++
++      <form onSubmit={handleSubmit} className="space-y-4">
++        <div>
++          <label htmlFor="lna-url" className="block text-sm font-medium text-gray-700 mb-1">
++            Resource URL
++          </label>
++          <input
++            type="url"
++            id="lna-url"
++            value={url}
++            onChange={(e) => setUrl(e.target.value)}
++            placeholder="http://192.168.1.50/status"
++            required
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++          />
++          <p className="mt-1 text-xs text-gray-500">
++            Examples: <code>http://localhost:3000/</code>, <code>http://127.0.0.1:8000/api</code>,{' '}
++            <code>http://192.168.1.1/</code>, <code>http://printer.local/</code>
++          </p>
++        </div>
++
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
++          <div>
++            <label htmlFor="lna-space" className="block text-sm font-medium text-gray-700 mb-1">
++              Target address space
++            </label>
++            <select
++              id="lna-space"
++              value={addressSpace}
++              onChange={(e) => setAddressSpace(e.target.value as AddressSpaceChoice)}
++              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
++            >
++              <option value="auto">
++                Auto{inferredSpace ? ` (${inferredSpace})` : ''}
++              </option>
++              <option value="loopback">loopback (localhost, 127.0.0.0/8, ::1)</option>
++              <option value="local">local (private IPs, .local hosts)</option>
++              <option value="public">public (no local network access)</option>
++            </select>
++          </div>
++
++          <div className="flex items-end">
++            <label className="flex items-center text-sm text-gray-700 pb-2">
++              <input
++                type="checkbox"
++                checked={noCors}
++                onChange={(e) => setNoCors(e.target.checked)}
++                className="mr-2 h-4 w-4"
++              />
++              Use <code className="mx-1">no-cors</code> (opaque response)
++            </label>
++          </div>
++        </div>
++
++        <button
++          type="submit"
++          disabled={loading}
++          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++            loading ? 'opacity-75 cursor-not-allowed' : ''
++          }`}
++        >
++          {loading ? 'Requesting…' : 'Fetch resource'}
++        </button>
++      </form>
++
++      <pre className="mt-4 p-3 text-xs bg-gray-100 rounded overflow-x-auto">
++        {`fetch(${JSON.stringify(url)}, {\n  mode: ${JSON.stringify(noCors ? 'no-cors' : 'cors')},\n  targetAddressSpace: ${JSON.stringify(effectiveSpace ?? 'public')},\n});`}
++      </pre>
++
++      {result && (
++        <div className="mt-6" data-testid="lna-result">
++          <h3 className="text-sm font-bold text-gray-800 mb-2">Response</h3>
++          <dl className="grid grid-cols-3 gap-y-1 text-sm">
++            <dt className="text-gray-500">Status</dt>
++            <dd className="col-span-2">
++              {result.type === 'opaque' ? (
++                <span>opaque (status hidden by no-cors)</span>
++              ) : (
++                <span className={result.ok ? 'text-green-700' : 'text-red-700'}>
++                  {result.status} {result.statusText}
++                </span>
++              )}
++            </dd>
++            <dt className="text-gray-500">Response type</dt>
++            <dd className="col-span-2">{result.type}</dd>
++            <dt className="text-gray-500">Content-Type</dt>
++            <dd className="col-span-2">{result.contentType ?? '—'}</dd>
++            <dt className="text-gray-500">Duration</dt>
++            <dd className="col-span-2">{result.durationMs} ms</dd>
++          </dl>
++          {result.body && (
++            <pre className="mt-3 p-3 text-xs bg-gray-100 rounded overflow-x-auto max-h-64">
++              {result.body}
++              {result.body.length >= MAX_BODY_PREVIEW ? '\n…' : ''}
++            </pre>
++          )}
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..fc48a04 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,18 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++/**
++ * Permissions-Policy directives applied to every response.
++ *
++ * `local-network-access` opts this origin into Chrome's Local Network Access
++ * feature, which lets scripts on the page fetch resources from the user's
++ * loopback interface (localhost, 127.0.0.0/8, ::1) and private network
++ * (10/8, 172.16/12, 192.168/16, link-local) after the user grants a
++ * permission prompt. `self` allows the top-level document and same-origin
++ * frames; cross-origin iframes would additionally need
++ * `allow="local-network-access"`.
++ */
++const PERMISSIONS_POLICY = 'local-network-access=(self)';
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +21,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  response.headers.set('Permissions-Policy', PERMISSIONS_POLICY);
++  return response;
+ });
+diff --git a/src/pages/local-network.astro b/src/pages/local-network.astro
+new file mode 100644
+index 0000000..765003f
+--- /dev/null
++++ b/src/pages/local-network.astro
+@@ -0,0 +1,23 @@
++---
++import Layout from '../layouts/Layout.astro';
++import LocalNetworkAccess from '../components/LocalNetworkAccess';
++---
++
++<Layout title="Local Network Access | The DevTools Times">
++  <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">
++      Local Network Access
++    </h1>
++    <div class="prose max-w-none mb-8">
++      <p>
++        This page lets The DevTools Times reach devices on your local network or
++        services running on your own machine, such as a development server on
++        <code>localhost</code> or a printer at <code>192.168.1.50</code>.
++        Chrome asks for your permission the first time a request targets a
++        loopback or private address, and you can revoke it at any time from the
++        site information panel.
++      </p>
++    </div>
++    <LocalNetworkAccess client:load />
++  </div>
++</Layout>
+diff --git a/src/utils/localNetwork.ts b/src/utils/localNetwork.ts
+new file mode 100644
+index 0000000..5bc6f17
+--- /dev/null
++++ b/src/utils/localNetwork.ts
+@@ -0,0 +1,85 @@
++/**
++ * Helpers for Chrome's Local Network Access (LNA) feature.
++ *
++ * LNA splits the network into three IP address spaces. A secure, public page
++ * that wants to reach a less-public space must declare the target space on
++ * the request so the browser can prompt the user for permission and relax
++ * mixed-content blocking for plain `http://` local targets.
++ *
++ * See https://github.com/explainers-by-googlers/local-network-access
++ */
++export type TargetAddressSpace = 'loopback' | 'local' | 'public';
++
++/** `fetch()` init options extended with the LNA `targetAddressSpace` member. */
++export interface LocalNetworkRequestInit extends RequestInit {
++  targetAddressSpace?: TargetAddressSpace;
++}
++
++const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0']);
++
++/** Best-effort guess of the address space a hostname belongs to. */
++export function inferAddressSpace(hostname: string): TargetAddressSpace {
++  const host = hostname.toLowerCase().replace(/\.$/, '');
++
++  if (LOOPBACK_HOSTS.has(host) || host.endsWith('.localhost') || /^127\.\d+\.\d+\.\d+$/.test(host)) {
++    return 'loopback';
++  }
++
++  if (host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.home.arpa')) {
++    return 'local';
++  }
++
++  const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
++  if (ipv4) {
++    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
++    if (a === 10) return 'local'; // 10.0.0.0/8
++    if (a === 172 && b >= 16 && b <= 31) return 'local'; // 172.16.0.0/12
++    if (a === 192 && b === 168) return 'local'; // 192.168.0.0/16
++    if (a === 169 && b === 254) return 'local'; // link-local
++    if (a === 100 && b >= 64 && b <= 127) return 'local'; // CGNAT 100.64.0.0/10
++    return 'public';
++  }
++
++  const ipv6 = host.replace(/^\[|\]$/g, '');
++  if (/^f[cd][0-9a-f]{2}:/i.test(ipv6)) return 'local'; // unique local fc00::/7
++  if (/^fe[89ab][0-9a-f]:/i.test(ipv6)) return 'local'; // link-local fe80::/10
++
++  return 'public';
++}
++
++export type PermissionStatusName = PermissionState | 'unsupported';
++
++/** Query the current state of the `local-network-access` permission. */
++export async function queryLocalNetworkPermission(): Promise<{
++  state: PermissionStatusName;
++  status?: PermissionStatus;
++}> {
++  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
++    return { state: 'unsupported' };
++  }
++  try {
++    const status = await navigator.permissions.query({
++      name: 'local-network-access' as PermissionName,
++    });
++    return { state: status.state, status };
++  } catch {
++    // Browsers without LNA reject unknown permission names with a TypeError.
++    return { state: 'unsupported' };
++  }
++}
++
++/**
++ * Fetch a resource on the user's local network or loopback interface.
++ *
++ * `targetAddressSpace` is required so Chrome can show the Local Network
++ * Access permission prompt and allow an `http://` target from an `https://`
++ * page. When omitted it is inferred from the URL's hostname.
++ */
++export function fetchLocalNetwork(
++  url: string | URL,
++  init: LocalNetworkRequestInit = {},
++): Promise<Response> {
++  const target = new URL(url, typeof location !== 'undefined' ? location.href : undefined);
++  const targetAddressSpace = init.targetAddressSpace ?? inferAddressSpace(target.hostname);
++  return fetch(target, { ...init, targetAddressSpace } as RequestInit);
++}

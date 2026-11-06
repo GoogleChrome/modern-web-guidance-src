@@ -1,0 +1,615 @@
+diff --git a/src/components/ArticleSignals.astro b/src/components/ArticleSignals.astro
+new file mode 100644
+index 0000000..62f8fb4
+--- /dev/null
++++ b/src/components/ArticleSignals.astro
+@@ -0,0 +1,43 @@
++---
++import type { ArticleContext } from '../utils/articleContext';
++import { BoltIcon, BookOpenIcon, ClockIcon } from '@heroicons/react/24/outline';
++
++export interface Props {
++    context: ArticleContext;
++    readingTime?: number;
++    size?: 'sm' | 'md';
++}
++
++const { context, readingTime, size = 'sm' } = Astro.props;
++const { length, freshness, tone, desk } = context;
++
++const icon = size === 'md' ? 'w-5 h-5' : 'w-4 h-4';
++const text = size === 'md' ? 'text-sm' : 'text-xs';
++
++// The reading-time cue changes with article length: quick reads get a bolt,
++// long reads are called out explicitly so readers can plan for them.
++const lengthLabel = {
++    quick: 'Quick read',
++    standard: 'Read',
++    longform: 'Long read',
++}[length];
++const LengthIcon = { quick: BoltIcon, standard: BookOpenIcon, longform: ClockIcon }[length];
++const lengthClass = length === 'longform' && tone !== 'sober' ? desk.accent : '';
++
++// Fresh stories get a badge; light-hearted ones may animate, sober ones never do.
++const freshClass = tone === 'sober' ? 'bg-gray-100 text-gray-700' : desk.soft;
++const freshLabel = tone === 'sober' ? 'Latest' : 'New';
++---
++<span class={`${text} font-medium flex items-center gap-2`}>
++    {freshness === 'new' && (
++        <span class={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 uppercase tracking-wider text-[0.65rem] font-bold ${freshClass}`}>
++            {tone === 'light' && <span class="w-1.5 h-1.5 rounded-full bg-current motion-safe:animate-pulse" aria-hidden="true"></span>}
++            {freshLabel}
++        </span>
++    )}
++    <span class={`flex items-center ${lengthClass}`} title={lengthLabel}>
++        <LengthIcon className={`${icon} inline-block mr-1 -mt-px`} />
++        {length !== 'standard' && <span class="mr-1">{lengthLabel} ·</span>}
++        {readingTime} Min.
++    </span>
++</span>
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..e007e3f 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -2,8 +2,10 @@
+ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
++import { getArticleContext, headlineHover, imageTreatment } from '../utils/articleContext';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import CategoryLabel from './CategoryLabel.astro';
++import ArticleSignals from './ArticleSignals.astro';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+@@ -14,15 +16,17 @@ const { article, large = false } = Astro.props;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+-const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const context = await getArticleContext(article);
++const hover = headlineHover(context);
++const imageClass = imageTreatment(context);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div class={`bg-white p-6 md:p-8 shadow-sm group border-t-4 ${context.tone === 'sober' ? 'border-gray-400' : context.desk.bar}`} data-desk={context.desk.id} data-tone={context.tone}>
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <CategoryLabel category={article.data.category} tone={context.tone} />
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class={`mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight ${hover}`}>
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -30,54 +34,48 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                     </p>
+                 </a>
+                 <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
++                    <ArticleSignals context={context} readingTime={article.data.readingTime} />
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
++            <div class="lg:col-span-2 overflow-hidden">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
++                    <Image
++                        src={image}
+                         alt=""
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        class={`w-full h-auto object-cover ${imageClass}`}
+                     />
+                 </a>
+             </div>
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++    <article class="flex flex-col h-full group" data-desk={context.desk.id} data-tone={context.tone}>
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="block overflow-hidden rounded-md">
++            <Image
++                src={image}
++                alt={article.data.title}
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class={`w-full object-cover flex-shrink-0 aspect-[16/9] ${imageClass}`}
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++            <div><CategoryLabel category={article.data.category} tone={context.tone} /></div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class={`text-lg md:text-xl font-brand text-gray-800 flex-grow ${hover}`}>
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
++                <ArticleSignals context={context} readingTime={article.data.readingTime} />
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/CategoryLabel.astro b/src/components/CategoryLabel.astro
+new file mode 100644
+index 0000000..3cdc49d
+--- /dev/null
++++ b/src/components/CategoryLabel.astro
+@@ -0,0 +1,40 @@
++---
++import type { Tone } from '../utils/articleContext';
++import { getDesk, formatCategory } from '../utils/articleContext';
++
++export interface Props {
++    category: string;
++    tone?: Tone;
++    /** Render as a link to the category page. */
++    link?: boolean;
++    /** `inverse` is used on top of dark imagery. */
++    variant?: 'default' | 'inverse';
++    class?: string;
++}
++
++const { category, tone = 'neutral', link = true, variant = 'default', class: className = '' } = Astro.props;
++const desk = getDesk(category);
++
++// Sober stories keep the desk's typography but drop the colour, so a crime
++// story doesn't shout in the same voice as a festival review.
++const color = variant === 'inverse'
++    ? 'text-white/90'
++    : tone === 'sober' ? 'text-gray-600' : desk.accent;
++
++const classes = [
++    'inline-flex items-center gap-1.5',
++    desk.label,
++    color,
++    link && 'hover:underline underline-offset-2',
++    className,
++].filter(Boolean).join(' ');
++
++const Tag = link ? 'a' : 'span';
++const href = link ? `${import.meta.env.BASE_URL}category/${category.toLowerCase()}` : undefined;
++---
++<Tag href={href} class={classes} data-desk={desk.id} data-tone={tone}>
++    {desk.id === 'news' && tone !== 'sober' && variant === 'default' && (
++        <span class="inline-block w-1.5 h-1.5 bg-red-700 rounded-full" aria-hidden="true"></span>
++    )}
++    {formatCategory(category)}
++</Tag>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..da8d4e8 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -2,8 +2,10 @@
+ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
++import { getArticleContext, headlineHover, imageTreatment } from '../utils/articleContext';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import CategoryLabel from './CategoryLabel.astro';
++import ArticleSignals from './ArticleSignals.astro';
+ 
+ export interface Props {
+     title: string;
+@@ -22,9 +24,10 @@ const bottomArticles = articles.slice(1, 4);
+ const topArticleImage = await getArticleImage(topArticle);
+ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+ 
+-const readingList = await Astro.session?.get('readingList') || [];
++const topContext = await getArticleContext(topArticle);
++const bottomContexts = await Promise.all(bottomArticles.map(getArticleContext));
+ 
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
++const readingList = await Astro.session?.get('readingList') || [];
+ ---
+ <section class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+@@ -32,30 +35,25 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8 group" data-desk={topContext.desk.id} data-tone={topContext.tone}>
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
++                <CategoryLabel category={topArticle.data.category} tone={topContext.tone} class="mb-2" />
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 class={`text-3xl lg:text-4xl font-brand mb-4 leading-tight ${headlineHover(topContext)}`}>
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+                 <p class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class="text-gray-500">
++                    <ArticleSignals context={topContext} readingTime={topArticle.data.readingTime} size="md" />
+                 </div>
+             </div>
+-            <div class="w-full order-first lg:order-last">
++            <div class="w-full order-first lg:order-last overflow-hidden">
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
++                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class={`w-full h-full object-cover aspect-video lg:aspect-auto ${imageTreatment(topContext)}`} />
+                 </a>
+             </div>
+         </div>
+@@ -64,21 +62,19 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+         {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++            const context = bottomContexts[index];
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <div class="flex flex-col shadow-sm overflow-hidden h-full group" data-desk={context.desk.id} data-tone={context.tone}>
+                     {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="overflow-hidden">
++                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class={`w-full h-auto object-cover aspect-video ${imageTreatment(context)}`} />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
++                        <CategoryLabel category={article.data.category} tone={context.tone} class="mb-2" />
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 class={`text-2xl font-brand mb-2 ${headlineHover(context)}`}>
+                                 {article.data.title}
+                             </h3>
+                         </a>
+@@ -88,10 +84,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                             </p>
+                         )}
+                         <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
++                            <ArticleSignals context={context} readingTime={article.data.readingTime} />
+                             <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                         </div>
+                     </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..f3e0dbd 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,9 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import CategoryLabel from '../../components/CategoryLabel.astro';
++import ArticleSignals from '../../components/ArticleSignals.astro';
++import { getArticleContext } from '../../utils/articleContext';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -33,13 +36,15 @@ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
++const context = await getArticleContext(article);
++const ruleColor = context.tone === 'sober' ? 'border-gray-400' : context.desk.bar;
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12" data-desk={context.desk.id} data-tone={context.tone}>
+         <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++        <div class={`mb-3 pl-3 border-l-4 ${ruleColor}`}>
++            <CategoryLabel category={article.data.category} tone={context.tone} />
+         </div>
+ 
+         <!-- Headline -->
+@@ -53,8 +58,9 @@ const isBookmarked = readingList.includes(article.slug);
+         </p>
+ 
+         <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++        <div class="flex flex-wrap justify-between items-center gap-2 text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++            <span>By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}</span>
++            <ArticleSignals context={context} readingTime={article.data.readingTime} size="md" />
+         </div>
+ 
+         <!-- Main Article Image -->
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..5007438 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,7 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import { getDesk } from '../../utils/articleContext';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -35,12 +36,13 @@ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForH
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++const desk = getDesk(category);
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header class={`relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800 border-b-4 ${desk.bar}`} data-desk={desk.id}>
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -52,10 +54,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+-            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
++            <div class={`absolute w-full h-full z-1 ${desk.overlay}`}></div>
+             <div class="absolute w-full h-full flex items-center justify-center z-2">
+                 <div class="text-center text-white">
+-                    <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
++                    <p class="text-lg font-semibold uppercase tracking-widest">{desk.id === 'general' ? 'Category' : `${desk.name} Desk`}</p>
+                     <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                         {capitalizedCategory}
+                     </h1>
+@@ -76,7 +78,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class={`text-2xl md:text-3xl font-bold text-gray-900 mb-2 ${desk.hover} transition-colors`}>
+                             {featuredArticle.data.title}
+                         </h2>
+                         <p class="text-base md:text-lg text-gray-700">
+diff --git a/src/utils/articleContext.ts b/src/utils/articleContext.ts
+new file mode 100644
+index 0000000..08a6433
+--- /dev/null
++++ b/src/utils/articleContext.ts
+@@ -0,0 +1,204 @@
++import { getCollection, type CollectionEntry } from 'astro:content';
++
++/**
++ * Semantic context for an article: which editorial desk it belongs to, how
++ * serious its subject is, how fresh it is and how long it takes to read.
++ * Components use this to adapt their visual treatment instead of hard-coding
++ * a single look for every story.
++ */
++
++export type DeskId = 'news' | 'business' | 'sports' | 'culture' | 'science' | 'lifestyle' | 'general';
++export type Tone = 'sober' | 'neutral' | 'light';
++export type Freshness = 'new' | 'recent' | 'archive';
++export type Length = 'quick' | 'standard' | 'longform';
++
++export interface DeskTheme {
++    id: DeskId;
++    name: string;
++    /** Accent text color, e.g. for category labels. */
++    accent: string;
++    /** Headline color on hover; applied inside a `group`. */
++    hover: string;
++    /** Soft background for badges and chips. */
++    soft: string;
++    /** Solid border/bar color. */
++    bar: string;
++    /** Color tint for overlays on top of imagery. */
++    overlay: string;
++    /** Typographic treatment of the category label. */
++    label: string;
++}
++
++// Class strings are spelled out in full so Tailwind can detect them.
++const DESKS: Record<DeskId, DeskTheme> = {
++    news: {
++        id: 'news',
++        name: 'News',
++        accent: 'text-red-700',
++        hover: 'group-hover:text-red-700',
++        soft: 'bg-red-50 text-red-800',
++        bar: 'border-red-700',
++        overlay: 'bg-red-950/60',
++        label: 'uppercase font-bold tracking-wider text-xs',
++    },
++    business: {
++        id: 'business',
++        name: 'Business',
++        accent: 'text-sky-800',
++        hover: 'group-hover:text-sky-800',
++        soft: 'bg-sky-50 text-sky-900',
++        bar: 'border-sky-800',
++        overlay: 'bg-sky-950/60',
++        label: 'uppercase font-semibold tracking-widest text-xs tabular-nums',
++    },
++    sports: {
++        id: 'sports',
++        name: 'Sports',
++        accent: 'text-emerald-700',
++        hover: 'group-hover:text-emerald-700',
++        soft: 'bg-emerald-50 text-emerald-800',
++        bar: 'border-emerald-600',
++        overlay: 'bg-emerald-950/55',
++        label: 'uppercase font-extrabold italic tracking-tight text-sm',
++    },
++    culture: {
++        id: 'culture',
++        name: 'Culture',
++        accent: 'text-fuchsia-800',
++        hover: 'group-hover:text-fuchsia-700',
++        soft: 'bg-fuchsia-50 text-fuchsia-900',
++        bar: 'border-fuchsia-700',
++        overlay: 'bg-fuchsia-950/55',
++        label: 'font-brand italic tracking-wide text-base',
++    },
++    science: {
++        id: 'science',
++        name: 'Science',
++        accent: 'text-indigo-700',
++        hover: 'group-hover:text-indigo-700',
++        soft: 'bg-indigo-50 text-indigo-800',
++        bar: 'border-indigo-600',
++        overlay: 'bg-indigo-950/60',
++        label: 'font-mono uppercase tracking-tight text-xs',
++    },
++    lifestyle: {
++        id: 'lifestyle',
++        name: 'Lifestyle',
++        accent: 'text-teal-700',
++        hover: 'group-hover:text-teal-600',
++        soft: 'bg-teal-50 text-teal-800',
++        bar: 'border-teal-500',
++        overlay: 'bg-teal-950/50',
++        label: 'font-brand lowercase tracking-wide text-base',
++    },
++    general: {
++        id: 'general',
++        name: 'General',
++        accent: 'text-amber-800',
++        hover: 'group-hover:text-amber-400',
++        soft: 'bg-amber-50 text-amber-900',
++        bar: 'border-amber-400',
++        overlay: 'bg-black/50',
++        label: 'font-brand tracking-widest text-sm',
++    },
++};
++
++const CATEGORY_TO_DESK: Record<string, DeskId> = {
++    news: 'news',
++    national: 'news',
++    politics: 'news',
++    labor: 'news',
++    media: 'news',
++    business: 'business',
++    economy: 'business',
++    'urban development': 'business',
++    sports: 'sports',
++    culture: 'culture',
++    science: 'science',
++    lifestyle: 'lifestyle',
++    pets: 'lifestyle',
++};
++
++// Words that signal a heavy subject. Such stories get a restrained treatment.
++const SOBER_TERMS = ['crime', 'criminal', 'killer', 'death', 'murder', 'crisis', 'decay', 'crumbling', 'strike', 'forensic', 'war', 'disaster'];
++// Words that signal a light-hearted story.
++const LIGHT_TERMS = ['humor', 'pets', 'dogs', 'festival', 'comedy', 'coffee', 'improv'];
++
++export function getDesk(category: string): DeskTheme {
++    return DESKS[CATEGORY_TO_DESK[category.trim().toLowerCase()] ?? 'general'];
++}
++
++export function formatCategory(category: string): string {
++    return category.charAt(0).toUpperCase() + category.slice(1);
++}
++
++function containsAny(haystack: string, terms: string[]): boolean {
++    return terms.some(term => new RegExp(`\\b${term}s?\\b`, 'i').test(haystack));
++}
++
++export function getTone(data: Pick<CollectionEntry<'articles'>['data'], 'title' | 'category' | 'tags'>): Tone {
++    const text = [data.title, data.category, ...(data.tags ?? [])].join(' ');
++    if (containsAny(text, SOBER_TERMS)) return 'sober';
++    if (containsAny(text, LIGHT_TERMS)) return 'light';
++    return 'neutral';
++}
++
++export function getLength(readingTime: number | undefined): Length {
++    if (!readingTime || readingTime <= 3) return 'quick';
++    if (readingTime >= 6) return 'longform';
++    return 'standard';
++}
++
++const DAY = 24 * 60 * 60 * 1000;
++
++let editionDatePromise: Promise<Date> | undefined;
++
++/**
++ * The date of the newest article. Freshness is measured against the latest
++ * edition rather than the wall clock, so the site keeps a sense of "what's new"
++ * even when content isn't published daily.
++ */
++export function getEditionDate(): Promise<Date> {
++    editionDatePromise ??= getCollection('articles').then(articles =>
++        new Date(Math.max(...articles.map(a => a.data.date.valueOf())))
++    );
++    return editionDatePromise;
++}
++
++export function getFreshness(date: Date, editionDate: Date): Freshness {
++    const age = editionDate.valueOf() - date.valueOf();
++    if (age < DAY) return 'new';
++    if (age < 7 * DAY) return 'recent';
++    return 'archive';
++}
++
++export interface ArticleContext {
++    desk: DeskTheme;
++    tone: Tone;
++    length: Length;
++    freshness: Freshness;
++    categoryLabel: string;
++}
++
++export async function getArticleContext(article: CollectionEntry<'articles'>): Promise<ArticleContext> {
++    const editionDate = await getEditionDate();
++    return {
++        desk: getDesk(article.data.category),
++        tone: getTone(article.data),
++        length: getLength(article.data.readingTime),
++        freshness: getFreshness(article.data.date, editionDate),
++        categoryLabel: formatCategory(article.data.category),
++    };
++}
++
++/** Headline hover color. Sober stories avoid flashy accent shifts. */
++export function headlineHover(ctx: ArticleContext): string {
++    return ctx.tone === 'sober' ? 'group-hover:underline decoration-1 underline-offset-4' : `${ctx.desk.hover} transition-colors`;
++}
++
++/** Image treatment. Sober stories are desaturated until the reader engages. */
++export function imageTreatment(ctx: ArticleContext): string {
++    if (ctx.tone === 'sober') return 'grayscale-[60%] group-hover:grayscale-0 transition duration-300';
++    if (ctx.tone === 'light') return 'group-hover:scale-[1.02] transition-transform duration-300';
++    return '';
++}

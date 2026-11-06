@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,91 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 60px;
++      background: white;
++      padding: 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .journal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 15px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .journal-meta {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      font-style: italic;
++      margin-bottom: 20px;
++    }
++
++    .journal-content p {
++      margin-bottom: 16px;
++      text-align: justify;
++    }
++
++    .summarize-btn {
++      margin-top: 0;
++      border: none;
++      font-size: 0.95rem;
++      font-family: inherit;
++      cursor: pointer;
++    }
++
++    .summary-box {
++      display: none;
++      background: #efebe9;
++      border-left: 4px solid var(--accent);
++      padding: 20px 25px;
++      border-radius: 4px;
++      margin-bottom: 25px;
++    }
++
++    .summary-box.visible {
++      display: block;
++    }
++
++    .summary-box h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.1rem;
++    }
++
++    .summary-box ul {
++      padding-left: 20px;
++    }
++
++    .summary-box li {
++      margin-bottom: 8px;
++    }
++
++    .summary-status {
++      font-size: 0.9rem;
++      color: var(--primary);
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +277,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="roasters-journal" class="journal-section">
++      <div class="journal-header">
++        <h2>Roaster's Journal</h2>
++        <button id="summarize-btn" class="btn summarize-btn" type="button">Summarize</button>
++      </div>
++      <p class="journal-meta">From Seed to Cup: How We Source Our Artisanal Coffee Beans</p>
++
++      <div id="journal-summary" class="summary-box" aria-live="polite">
++        <h3>Key Takeaways</h3>
++        <div id="summary-output"></div>
++      </div>
++
++      <article id="journal-text" class="journal-content">
++        <p>
++          At The Daily Grind, every exceptional cup begins thousands of miles away on high-altitude family farms across the coffee belt. Our bean sourcing process is rooted in direct-trade partnerships that bypass traditional commodity brokers entirely. Every harvest season, our head roasters travel to micro-lot estates in Ethiopia's Yirgacheffe region, Colombia's Huila highlands, and the volcanic slopes of Antigua, Guatemala. By working face-to-face with growers, we guarantee farm-gate prices that sit at least 40% above Fair Trade minimums, ensuring communities can invest in sustainable infrastructure, fair wages for pickers, and multi-generational agricultural stewardship.
++        </p>
++        <p>
++          Terroir and regenerative cultivation dictate the complexity of every cherry we select. We partner exclusively with farms practicing shade-grown agroforestry between 1,500 and 2,100 meters above sea level, where cool mountain nights slow the maturation of the coffee cherry and concentrate natural sugars and organic acids. Rather than relying on synthetic fertilizers or pesticides, our partner producers maintain native canopy trees that shelter migratory birds, enrich the soil with organic composted coffee pulp, and conserve mountain watershed ecosystems.
++        </p>
++        <p>
++          Harvesting and post-harvest processing are treated with equal precision. Only fully ripe, deep-crimson cherries are hand-picked over multiple passes through the groves. Depending on the regional varietal and desired flavor profile, lots undergo either crystal-clear mountain spring washed fermentation for crisp floral and citrus clarity, or raised-bed natural sun-drying that locks in lush berry and dark cocoa sweetness. Before any parchment coffee is approved for export, our quality team conducts rigorous blind cupping evaluations, selecting only specialty-grade micro-lots that score 86 points or higher on the Specialty Coffee Association scale.
++        </p>
++        <p>
++          Once the green beans arrive at our local roastery in breathable, moisture-controlled grain bags, we test moisture density and water activity to craft a custom roast curve for each individual lot. Roasting in small cast-iron drum batches allows us to highlight the distinct origin characteristics our farming partners spent a full year nurturing—bringing transparency, craftsmanship, and ethical traceability directly to your morning ritual.
++        </p>
++      </article>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,80 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const summaryBox = document.getElementById('journal-summary');
++    const summaryOutput = document.getElementById('summary-output');
++    const journalTextEl = document.getElementById('journal-text');
++
++    function renderBullets(summaryText) {
++      const lines = summaryText
++        .split(/\r?\n/)
++        .map((line) => line.replace(/^[\s*\-•+\d.)]+/, '').trim())
++        .filter(Boolean);
++
++      const ul = document.createElement('ul');
++      for (const item of lines) {
++        const li = document.createElement('li');
++        li.textContent = item;
++        ul.appendChild(li);
++      }
++      summaryOutput.replaceChildren(ul);
++    }
++
++    summarizeBtn.addEventListener('click', async () => {
++      const textToSummarize = journalTextEl.innerText.trim();
++      summaryBox.classList.add('visible');
++      summarizeBtn.disabled = true;
++      summarizeBtn.textContent = 'Summarizing...';
++      summaryOutput.innerHTML = '<p class="summary-status">Generating summary with browser AI...</p>';
++
++      let summarizer;
++      try {
++        const options = {
++          type: 'key-points',
++          format: 'markdown',
++          length: 'short',
++          sharedContext: 'An article from a coffee roaster explaining their ethical bean sourcing and roasting process.',
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              const percent = e.total ? Math.round((e.loaded / e.total) * 100) : Math.round(e.loaded * 100);
++              summaryOutput.innerHTML = `<p class="summary-status">Downloading on-device AI model (${percent}%)...</p>`;
++            });
++          }
++        };
++
++        if ('Summarizer' in self) {
++          const availability = await Summarizer.availability();
++          if (availability === 'unavailable') {
++            throw new Error('The browser Summarizer API is unavailable on this device.');
++          }
++          summarizer = await Summarizer.create(options);
++        } else if (self.ai && self.ai.summarizer) {
++          const capabilities = await self.ai.summarizer.capabilities();
++          if (capabilities.available === 'no') {
++            throw new Error('The browser Summarizer API is unavailable on this device.');
++          }
++          summarizer = await self.ai.summarizer.create(options);
++        } else {
++          throw new Error('Your browser does not support the built-in AI Summarizer API.');
++        }
++
++        const result = await summarizer.summarize(textToSummarize);
++        renderBullets(result);
++        summarizeBtn.textContent = 'Summarize';
++      } catch (err) {
++        summaryOutput.innerHTML = `<p class="summary-status">${err.message || 'Unable to generate summary using browser AI.'}</p>`;
++        summarizeBtn.textContent = 'Summarize';
++      } finally {
++        if (summarizer && typeof summarizer.destroy === 'function') {
++          summarizer.destroy();
++        }
++        summarizeBtn.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

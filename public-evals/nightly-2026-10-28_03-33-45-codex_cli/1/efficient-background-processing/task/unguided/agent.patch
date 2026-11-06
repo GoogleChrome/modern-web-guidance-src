@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      height: 400px;
++      contain-intrinsic-size: auto 400px;
++      content-visibility: auto;
++      overflow: hidden;
++      padding: 24px;
++      border-radius: 12px;
++      background: var(--primary);
++      color: white;
++      text-align: center;
++    }
++
++    #roasting-widget p {
++      color: var(--secondary);
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      height: 210px;
++      margin: 12px 0;
++      border-radius: 8px;
++      background: #281b17;
++    }
++
++    #roast-temp-value {
++      color: var(--accent);
++      font-size: 1.5rem;
++      font-variant-numeric: tabular-nums;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +227,18 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-title">
++    <h2 id="roast-title">Inside the Roaster</h2>
++    <p>A little heat. A lot of character.</p>
++    <canvas id="roast-canvas" width="1000" height="210" role="img"
++      aria-label="Animated coffee beans tumbling inside a simulated roaster">
++      Coffee beans tumbling inside a simulated roaster.
++    </canvas>
++    <div>Simulated temperature: <strong id="roast-temp-value">180°C</strong></div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +247,129 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var widget = document.getElementById('roasting-widget');
++      var canvas = document.getElementById('roast-canvas');
++      var temperatureValue = document.getElementById('roast-temp-value');
++      var context = canvas.getContext('2d');
++      var frameId = null;
++      var temperatureInterval = null;
++      var running = false;
++      var inView = false;
++      var renderingSkipped = false;
++      var lastFrameTime = null;
++      var elapsed = 0;
++      var temperature = 180;
++      var beans = [];
++
++      for (var i = 0; i < 36; i++) {
++        beans.push({
++          x: Math.random(),
++          y: Math.random(),
++          angle: Math.random() * Math.PI * 2,
++          speed: 0.5 + Math.random(),
++          size: 9 + Math.random() * 5
++        });
++      }
++
++      function drawBeans() {
++        if (!context) return;
++        context.clearRect(0, 0, canvas.width, canvas.height);
++        beans.forEach(function (bean) {
++          var x = ((bean.x + elapsed * bean.speed * 0.06) % 1) * canvas.width;
++          var y = 30 + bean.y * 150 + Math.sin(elapsed * 2 + bean.angle) * 15;
++          context.save();
++          context.translate(x, y);
++          context.rotate(bean.angle + elapsed * bean.speed);
++          context.fillStyle = '#a96b3d';
++          context.beginPath();
++          // Use curves instead of ellipse() for older canvas implementations.
++          context.moveTo(0, -bean.size);
++          context.bezierCurveTo(bean.size, -bean.size, bean.size, bean.size, 0, bean.size);
++          context.bezierCurveTo(-bean.size, bean.size, -bean.size, -bean.size, 0, -bean.size);
++          context.fill();
++          context.strokeStyle = '#4e2d1c';
++          context.lineWidth = 2;
++          context.beginPath();
++          context.moveTo(0, -bean.size * 0.7);
++          context.bezierCurveTo(-5, -3, 5, 3, 0, bean.size * 0.7);
++          context.stroke();
++          context.restore();
++        });
++      }
++
++      function animate(time) {
++        if (!running) return;
++        if (lastFrameTime !== null) elapsed += Math.min(time - lastFrameTime, 100) / 1000;
++        lastFrameTime = time;
++        drawBeans();
++        frameId = window.requestAnimationFrame(animate);
++      }
++
++      function syncActivity() {
++        var shouldRun = inView && !renderingSkipped && !document.hidden;
++        if (shouldRun === running) return;
++        running = shouldRun;
++        if (running) {
++          lastFrameTime = null;
++          if (context) frameId = window.requestAnimationFrame(animate);
++          temperatureInterval = window.setInterval(function () {
++            temperature = Math.max(175, Math.min(220, temperature + (Math.random() - 0.4) * 3));
++            temperatureValue.textContent = Math.round(temperature) + '°C';
++          }, 1000);
++        } else {
++          if (frameId !== null) window.cancelAnimationFrame(frameId);
++          window.clearInterval(temperatureInterval);
++          frameId = null;
++          temperatureInterval = null;
++          lastFrameTime = null;
++        }
++      }
++
++      // Native content-visibility notifications release work when rendering is skipped.
++      widget.addEventListener('contentvisibilityautostatechange', function (event) {
++        renderingSkipped = event.skipped;
++        syncActivity();
++      });
++
++      function checkViewport() {
++        var rect = widget.getBoundingClientRect();
++        inView = rect.bottom > 0 && rect.right > 0 &&
++          rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
++          rect.left < (window.innerWidth || document.documentElement.clientWidth);
++        syncActivity();
++      }
++
++      // IntersectionObserver also handles browsers without native rendering-state events.
++      if ('IntersectionObserver' in window) {
++        var observer = new IntersectionObserver(function (entries) {
++          var entry = entries[entries.length - 1];
++          inView = entry.isIntersecting && entry.intersectionRatio > 0;
++          syncActivity();
++        }, { threshold: 0 });
++        observer.observe(widget);
++      } else {
++        // No polling timer: legacy browsers check geometry only on viewport changes.
++        document.addEventListener('scroll', checkViewport, true);
++        window.addEventListener('resize', checkViewport);
++        window.addEventListener('orientationchange', checkViewport);
++        window.addEventListener('load', checkViewport);
++      }
++
++      document.addEventListener('visibilitychange', function () {
++        checkViewport();
++      });
++      window.addEventListener('pagehide', function () {
++        inView = false;
++        syncActivity();
++      });
++      window.addEventListener('pageshow', checkViewport);
++      drawBeans();
++      checkViewport();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,284 @@
+diff --git a/index.html b/index.html
+index 66c9173..32c9d7b 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,72 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#f7f8fa"><title>Scope — A little room for motion</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++<style>
++:root{--purple:#7960d8;--ink:#26252d;--muted:#929198;--line:#eae9ef;--bg:#f7f8fa}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px}button,a,input{font:inherit}button{cursor:pointer}button,a,input{ -webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #c2b1f6;outline-offset:4px}button{color:inherit}a{color:inherit;text-decoration:none}button{border:0;background:none}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}.sidebar{position:fixed;inset:0 auto 0 0;width:220px;background:#fff;border-right:1px solid var(--line);padding:35px 23px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;font:800 27px Manrope,sans-serif;letter-spacing:-1px;padding-left:10px}.brandmark{width:30px;height:30px;position:relative;display:block}.brandmark:before,.brandmark:after{content:'';position:absolute;border:2.5px solid #7960d8;border-radius:8px;width:19px;height:19px;transform:rotate(-12deg)}.brandmark:before{top:1px;left:2px}.brandmark:after{bottom:1px;right:0;background:#ffffffb0}.nav-label{font-size:10px;font-weight:650;letter-spacing:1.8px;color:#a1a0a9;margin:49px 12px 16px}.nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;margin:5px 0;color:#82818c;font-size:13px;border-radius:8px;width:100%;text-align:left}.nav-item.active{background:#f0ebfc;color:#7b60cf;font-weight:600}.nav-item svg{width:18px;height:18px}.nav-item .new{margin-left:auto;font-size:9px;color:#9a8cbd;background:#f1edf9;padding:3px 5px;border-radius:4px}.side-bottom{margin-top:auto}.mini-note{border:1px solid var(--line);border-radius:10px;padding:16px 13px;margin-bottom:24px;color:#92909c;font-size:11px;line-height:1.7}.mini-note svg{color:#9a86cf;margin-bottom:9px}.mini-note strong{display:block;color:#595462;font-size:12px;font-weight:550;margin-bottom:4px}.profile{display:flex;align-items:center;gap:10px;padding:0 9px}.avatar{background:#e8e1f3;color:#796593;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:650}.profile strong{font-size:11px;font-weight:600}.profile small{display:block;font-size:10px;color:#a4a0aa;margin-top:3px}.profile svg{margin-left:auto;width:15px;color:#a4a0aa}.main{margin-left:220px}.topbar{height:81px;background:#ffffffb0;border-bottom:1px solid var(--line);padding:0 48px;display:flex;justify-content:space-between;align-items:center;font-size:12px}.breadcrumb{display:flex;gap:13px;align-items:center;color:#a09da7}.breadcrumb strong{color:#625e6c;font-weight:500}.top-actions{display:flex;align-items:center;gap:22px}.doc-link{color:#85818e;font-size:11px;display:flex;gap:7px;align-items:center}.doc-link svg{width:14px}.status{font-size:10px;color:#8f8a98;background:#fff;border:1px solid var(--line);padding:7px 11px;border-radius:20px;display:flex;align-items:center;gap:6px}.dot{width:5px;height:5px;border-radius:50%;background:#89b49d;display:inline-block}.content{max-width:1320px;margin:auto;padding:45px 48px 25px}.intro{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px}.eyebrow{color:#9279c7;font-size:10px;font-weight:650;letter-spacing:1.9px;display:flex;gap:7px;align-items:center;margin-bottom:13px}.eyebrow svg{width:14px;height:14px}h1{font:650 37px/1.3 Manrope,sans-serif;letter-spacing:-1.4px;margin:0 0 11px}h1 span{color:#9a85c9}.intro p{margin:0;color:#96919e;font-size:12px;line-height:1.8}.outline-btn{display:flex;align-items:center;gap:7px;border:1px solid #e1dfe7;background:white;border-radius:7px;padding:9px 12px;font-size:11px;color:#77717e}.outline-btn svg{width:14px;height:14px}.intro .outline-btn{margin-bottom:4px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:22px}.demo-column{min-width:0}.panel{border:1px solid #e3e1e9;background:white;border-radius:12px;overflow:hidden;box-shadow:0 3px 5px #29223502}.panel-top{height:49px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px}.panel-label{display:flex;align-items:center;gap:8px;font-size:10px;color:#8b8499}.panel-label svg{width:13px;height:13px;color:#a395bb}.pill{font-size:9px;border-radius:4px;padding:4px 7px;color:#9b87bd;background:#f4f0fa;letter-spacing:.2px}.collection{padding:25px 24px 22px;min-height:353px;position:relative;isolation:isolate}.collection-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:21px}.collection-heading h2{font:650 18px Manrope,sans-serif;letter-spacing:-.5px;margin:0 0 6px}.collection-heading p{font-size:10px;color:#a29ba8;margin:0}.view-toggle{display:flex;background:#f5f4f7;border:1px solid #eeedf1;border-radius:7px;padding:3px;gap:2px}.view-toggle button{padding:5px 7px;color:#a9a2b2;border-radius:4px;display:grid;place-items:center}.view-toggle button.selected{background:#fff;color:#8d72bf;box-shadow:0 1px 4px #31234012}.view-toggle svg{width:14px;height:14px}.places{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;position:relative}.place[hidden]{display:none!important}.place{border:1px solid #ece9ef;border-radius:9px;overflow:hidden;position:relative;background:white;transform-origin:top left}.photo{height:143px;position:relative;overflow:hidden;background:#e4e9e6}.photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .7s}.place:hover .photo img{transform:scale(1.06)}.save{position:absolute;top:9px;right:9px;background:#fffdf5df;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;backdrop-filter:blur(5px);color:#686875}.save svg{width:12px;height:12px}.save.saved{color:#9163bf}.save.saved svg{fill:#9163bf}.place-info{padding:12px 12px 13px}.place h3{font-size:11px;font-weight:600;margin:0 0 5px}.location{font-size:9px;color:#a19ca5;display:flex;gap:3px;align-items:center}.location svg{width:10px;height:10px}.place-tag{position:absolute;left:9px;bottom:9px;background:#ffffffdf;border-radius:4px;padding:4px 6px;color:#4b5555;font-size:8px;backdrop-filter:blur(5px)}.collection-footer{display:flex;align-items:center;justify-content:space-between;margin-top:21px;color:#b2abb8;font-size:9px}.collection-footer span{display:flex;align-items:center;gap:5px}.collection-footer svg{width:11px;height:11px}.collection-footer .state{color:#a293b7}.places.list{grid-template-columns:1fr;gap:9px}.places.list .place{display:flex;height:67px;align-items:center}.places.list .photo{width:91px;height:100%;flex-shrink:0}.places.list .place-info{padding:10px 15px}.places.list .place-tag{display:none}.places.list .save{width:21px;height:21px;top:23px;right:8px}.places.list .photo{overflow:visible}.places.list .photo img{border-radius:0}.places.list .place{overflow:hidden}.places.list .save{right:auto;left:calc(100cqw - 128px)}.places{container-type:inline-size}.places.list .save{position:absolute;left:59px;top:7px}.demo-help{display:flex;gap:9px;align-items:center;font-size:10px;color:#a09aa9;padding:14px 5px}.demo-help svg{width:14px;height:14px;color:#ab9bc5}.demo-help strong{color:#8d789f;font-weight:500}.control-panel{margin-top:5px;padding:19px 21px}.control-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:21px;font-size:11px;font-weight:550}.control-title span{font-weight:400;font-size:9px;color:#ada6b4}.control-title svg{width:14px;margin-right:6px;color:#9c8cb2}.controls{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:22px}.field label{display:flex;justify-content:space-between;font-size:9px;color:#a19aa9;margin-bottom:10px}.field output{color:#8f72bc;font-size:9px;background:#f4effb;padding:2px 5px;border-radius:4px;margin-top:-3px}.field input{width:100%;accent-color:#9d80d1;height:4px;display:block;cursor:pointer;margin:12px 0 10px}.field select{width:100%;padding:8px 9px;border:1px solid #eae5ee;background:#fff;border-radius:5px;color:#83768e;font-size:10px;cursor:pointer}.replay{background:#8b6bc6;border:1px solid #8b6bc6;color:white;display:flex;align-items:center;gap:6px;border-radius:6px;padding:9px 12px;font-size:10px;height:33px}.replay:hover{background:#7b5ab6}.replay svg{width:12px;height:12px}.right-column{display:flex;flex-direction:column;gap:18px}.live-panel{padding:20px;background:#f0edf7;border:1px solid #e5dff0;border-radius:12px}.live-heading{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#827490}.live-heading>span{display:flex;gap:6px;align-items:center}.live-heading svg{width:14px;height:14px}.live-badge{font-size:8px;color:#8b7e9c;display:flex;gap:4px;align-items:center}.live-badge .dot{background:#a48ac9;width:4px;height:4px}.live-panel h2{font:600 16px Manrope,sans-serif;letter-spacing:-.4px;margin:20px 0 8px}.live-panel p{color:#9e92ac;font-size:10px;line-height:1.8;margin:0;max-width:190px}.timer-wrap{display:flex;align-items:center;justify-content:space-between;margin-top:25px}.timer{font:500 26px Manrope,sans-serif;letter-spacing:-1px;font-variant-numeric:tabular-nums;color:#86719e}.timer small{font-size:11px;margin-left:2px;color:#b0a3c1;letter-spacing:0}.play{border:1px solid #d8cde9;background:#f9f6ff;border-radius:50%;height:32px;width:32px;color:#947bb1;display:grid;place-items:center}.play svg{width:12px;height:12px}.wave{display:flex;align-items:center;gap:4px;height:32px;margin:19px 0 7px}.wave i{display:block;flex:1;background:#c7b5e2;border-radius:3px;height:45%;animation:wave 1.4s ease-in-out infinite alternate;animation-delay:calc(var(--i)*-130ms)}.wave i:nth-child(3n){background:#b49ad6}.wave.paused i{animation-play-state:paused}@keyframes wave{from{height:15%}to{height:95%}}.wave-footer{display:flex;justify-content:space-between;color:#b2a6c0;font-size:8px;letter-spacing:.3px}.scope-panel{padding:20px;flex:1}.scope-panel h3{font-size:11px;font-weight:550;margin:0 0 8px}.scope-panel>p{font-size:10px;color:#a39ba9;line-height:1.8;margin:0}.scope-diagram{margin-top:18px;padding:12px;border:1px solid #ebe7f0;border-radius:7px;background:#fcfbfd}.diagram-label{font-size:8px;color:#b0a6b9;display:flex;align-items:center;gap:5px}.diagram-label svg{width:10px;height:10px}.diagram-inner{display:flex;gap:6px;margin-top:10px}.diagram-active{height:44px;flex:1.8;background:#eee7f7;border:1px dashed #b89ed6;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:4px;color:#a184c0;font-size:8px}.diagram-active svg{width:11px;height:11px}.diagram-other{flex:1;display:flex;flex-direction:column;gap:5px}.diagram-other span{border:1px solid #eae7ef;border-radius:3px;flex:1;background:#f4f2f7}.legend{display:flex;align-items:center;gap:6px;color:#ada4b5;font-size:8px;margin-top:12px}.legend .dot{background:#b397d0;width:4px;height:4px}.legend .dot:nth-of-type(2){background:#d4cddc;margin-left:9px}.bottom-note{display:flex;align-items:center;justify-content:space-between;margin-top:31px;padding-top:20px;border-top:1px solid #e9e6ee;color:#aaa3b2;font-size:9px}.bottom-note span{display:flex;align-items:center;gap:6px}.bottom-note svg{width:12px;height:12px}.bottom-note a{color:#9483ad}.toast{position:fixed;bottom:26px;left:calc(50% + 70px);transform:translateX(-50%);padding:12px 18px;background:#39323f;color:white;border-radius:8px;font-size:12px;box-shadow:0 5px 25px #39323f20;z-index:9}.dialog-backdrop{position:fixed;inset:0;background:#2d233c44;backdrop-filter:blur(4px);display:grid;place-items:center;z-index:20;padding:20px}.dialog{background:white;border-radius:16px;padding:30px;max-width:440px;box-shadow:0 20px 80px #24163822}.dialog h2{font:650 23px Manrope,sans-serif;margin:0 0 15px}.dialog p{font-size:13px;line-height:1.9;color:#8d8496}.dialog button{margin-top:12px}.hidden{display:none!important}@media(min-width:1500px){.content{padding-top:60px}.collection{min-height:390px}.photo{height:180px}}@media(max-width:1150px){.sidebar{width:190px;padding:30px 16px}.main{margin-left:190px}.topbar{padding:0 30px}.content{padding:35px 30px}.workspace{grid-template-columns:minmax(0,1fr) 225px;gap:16px}.collection{padding:22px 18px}.photo{height:125px}.controls{gap:12px}.control-panel{padding:18px}.place-info{padding:10px 8px}h1{font-size:33px}}@media(max-width:960px){.sidebar{width:76px;padding:30px 12px}.brand{padding:0;justify-content:center}.brand>span:last-child,.nav-label,.nav-item>span,.mini-note,.profile>div:not(.avatar),.profile>svg{display:none}.nav-item{justify-content:center;padding:13px 8px}.nav-item .new{display:none}.sidebar nav{margin-top:45px}.profile{padding:0;justify-content:center}.main{margin-left:76px}.workspace{grid-template-columns:minmax(0,1fr) 225px}.topbar{height:68px}.content{padding:30px 24px}.collection-heading h2{font-size:16px}.places{gap:8px}.photo{height:120px}.place h3{font-size:10px}.location{font-size:8px}.control-title span{display:none}.controls{grid-template-columns:1fr 1fr}.replay{grid-column:1/-1;justify-content:center}.intro p{max-width:340px}}@media(max-width:760px){.workspace{grid-template-columns:1fr}.right-column{display:grid;grid-template-columns:1fr 1fr;gap:14px}.intro{gap:15px}.intro .outline-btn{font-size:0;padding:9px}.intro .outline-btn svg{width:16px}h1{font-size:30px}.photo{height:160px}.controls{grid-template-columns:1fr 1fr auto}.replay{grid-column:auto}.live-panel h2{margin-top:14px}.timer-wrap{margin-top:14px}.wave{margin-top:10px}.top-actions .status{display:none}.bottom-note{gap:15px;line-height:1.6}.scope-panel{padding:18px}.topbar{padding:0 24px}.toast{left:50%}}@media(max-width:480px){.sidebar{width:58px;padding:24px 7px}.brandmark{transform:scale(.85)}.main{margin-left:58px}.content{padding:26px 15px}.topbar{padding:0 16px}.breadcrumb{gap:8px;font-size:10px}.doc-link{font-size:0}.doc-link svg{width:16px}h1{font-size:26px;letter-spacing:-1px}.intro p{font-size:11px}.eyebrow{font-size:8px;letter-spacing:1.5px}.collection{padding:19px 13px}.collection-heading h2{font-size:14px}.collection-heading p{font-size:8px}.photo{height:111px}.place h3{font-size:9px}.place-info{padding:10px 6px}.location{font-size:7px}.place-tag{font-size:6px;left:5px;bottom:6px}.save{width:20px;height:20px;right:5px;top:6px}.places{gap:6px}.controls{gap:12px;grid-template-columns:1fr 1fr}.replay{grid-column:1/-1}.right-column{grid-template-columns:1fr}.scope-panel{display:none}.collection-footer{font-size:8px}.demo-help{font-size:9px;line-height:1.7}.bottom-note{align-items:flex-start}.bottom-note>span:last-child{display:none}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}.wave i{height:50%}}
++</style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<svg style="display:none" aria-hidden="true"><defs>
++<symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
++<symbol id="list" viewBox="0 0 24 24"><path d="M9 5h12M9 12h12M9 19h12M3 5h.01M3 12h.01M3 19h.01"/></symbol>
++<symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></symbol>
++<symbol id="arrow" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
++<symbol id="reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
++<symbol id="heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
++<symbol id="pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
++<symbol id="box" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M10 10v10"/></symbol>
++<symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
++<symbol id="code" viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></symbol>
++<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
++<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.01"/></symbol>
++<symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
++</defs></svg>
++<aside class="sidebar"><a class="brand" href="./" aria-label="Scope home"><span class="brandmark"></span><span>scope<span style="color:#9c7bd6">.</span></span></a><nav aria-label="Main navigation"><div class="nav-label">PLAYGROUND</div><button class="nav-item active" data-section="playground"><svg><use href="#box"/></svg><span>Overview</span></button><button class="nav-item" data-section="collections"><svg><use href="#grid"/></svg><span>Collections</span></button><button class="nav-item" data-section="saved"><svg><use href="#heart"/></svg><span>Saved items</span></button><div class="nav-label">RESOURCES</div><button class="nav-item" data-section="how"><svg><use href="#code"/></svg><span>How it works</span></button><button class="nav-item" data-section="notes"><svg><use href="#spark"/></svg><span>What's new</span><span class="new">NEW</span></button></nav><div class="side-bottom"><div class="mini-note"><svg><use href="#spark"/></svg><strong>A little room for motion.</strong>Small, intentional transitions.<br>A smoother experience.</div><div class="profile"><div class="avatar">JD</div><div><strong>Jamie Davis</strong><small>Personal workspace</small></div><svg><path d="m8 10 4 4 4-4"/></svg></div></div></aside>
++<div class="main"><header class="topbar"><div class="breadcrumb">Playground <span style="color:#d0cbd7">/</span> <strong>Scoped transitions</strong></div><div class="top-actions"><span class="status"><i class="dot"></i> All systems smooth</span><button class="doc-link" id="docs">Documentation <svg><use href="#arrow"/></svg></button></div></header>
++<main class="content"><div class="intro"><div><div class="eyebrow"><svg><use href="#spark"/></svg> THE MOTION PLAYGROUND</div><h1>Small changes.<br><span>Seamless transitions.</span></h1><p>A little motion, right where it matters.<br>Explore transitions that stay in their own space.</p></div><button class="outline-btn" id="reset"><svg><use href="#reset"/></svg> Reset playground</button></div>
++<div class="workspace"><div class="demo-column"><section class="panel" aria-label="Scoped collection demo"><div class="panel-top"><span class="panel-label"><svg><use href="#box"/></svg> The interactive canvas</span><span class="pill">Component scope</span></div><div class="collection" id="collection"><div class="collection-heading"><div><h2 id="collection-title">A change of scenery</h2><p id="collection-subtitle">Good places. Even better possibilities.</p></div><div class="view-toggle" aria-label="Collection view"><button class="selected" id="grid-view" aria-label="Grid view" aria-pressed="true"><svg><use href="#grid"/></svg></button><button id="list-view" aria-label="List view" aria-pressed="false"><svg><use href="#list"/></svg></button></div></div><div class="places" id="places">
++<article class="place" data-name="Alpine stillness"><div class="photo"><img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=85" alt="Clouds drifting around a dramatic Alpine mountain peak"><button class="save" aria-label="Save Alpine stillness" aria-pressed="false"><svg><use href="#heart"/></svg></button><span class="place-tag">Find your quiet</span></div><div class="place-info"><h3>Alpine stillness</h3><span class="location"><svg><use href="#pin"/></svg> Dolomites, Italy</span></div></article>
++<article class="place" data-name="Coastal daydream"><div class="photo"><img src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=600&q=85" alt="Colorful Italian coastal village overlooking the blue Mediterranean"><button class="save" aria-label="Save Coastal daydream" aria-pressed="false"><svg><use href="#heart"/></svg></button><span class="place-tag">Take the slow road</span></div><div class="place-info"><h3>Coastal daydream</h3><span class="location"><svg><use href="#pin"/></svg> Cinque Terre, Italy</span></div></article>
++<article class="place" data-name="Into the green"><div class="photo"><img src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=85" alt="Sunlight falling through a lush green forest"><button class="save" aria-label="Save Into the green" aria-pressed="false"><svg><use href="#heart"/></svg></button><span class="place-tag">A breath of fresh air</span></div><div class="place-info"><h3>Into the green</h3><span class="location"><svg><use href="#pin"/></svg> Black Forest, Germany</span></div></article>
++</div><div id="empty" class="hidden" style="padding:55px 10px;text-align:center;color:#a89bb5;font-size:12px">A little inspiration to keep.<br>Tap a heart in Collections to save a place.</div><div class="collection-footer"><span><svg><use href="#grid"/></svg><span id="place-count">3 places to get lost</span></span><span class="state"><i class="dot" style="background:#b19bcd;width:4px;height:4px"></i><span id="view-state">Grid view</span></span></div></div></section><div class="demo-help"><svg><use href="#info"/></svg><span>Switch the view. <strong>Only this collection transitions.</strong> The rest is yours to explore.</span></div>
++<section class="panel control-panel" aria-label="Animation controls"><div class="control-title"><div><svg><use href="#sliders"/></svg> Make it feel right</div><span>A little fine-tuning goes a long way.</span></div><div class="controls"><div class="field"><label for="duration">Duration <output id="duration-value">600 ms</output></label><input id="duration" type="range" min="150" max="1500" step="50" value="600"></div><div class="field"><label for="easing">Easing</label><select id="easing"><option value="cubic-bezier(0.22, 1, 0.36, 1)">Smooth ease out</option><option value="ease-in-out">Gentle ease in & out</option><option value="cubic-bezier(.34,1.56,.64,1)">A little spring</option><option value="linear">Steady & linear</option></select></div><button class="replay" id="replay"><svg><use href="#reset"/></svg> Replay transition</button></div></section></div>
++<aside class="right-column"><section class="live-panel"><div class="live-heading"><span><svg><use href="#clock"/></svg> Meanwhile, over here</span><span class="live-badge"><i class="dot"></i> LIVE</span></div><h2>Life keeps moving.</h2><p>This little timer has its own rhythm.<br>Try it while the collection changes.</p><div class="timer-wrap"><div class="timer"><span id="time">00:00</span><small>. <span id="tenths">0</span></small></div><button class="play" id="play" aria-label="Pause timer"><svg viewBox="0 0 24 24" id="play-icon"><path d="M9 5v14M15 5v14"/></svg></button></div><div class="wave" id="wave" aria-hidden="true"></div><div class="wave-footer"><span>INDEPENDENT BY DESIGN</span><span id="timer-state">Running freely</span></div></section>
++<section class="panel scope-panel"><h3>A boundary, not a barrier.</h3><p>The animation stays inside its component. Everything around it stays responsive.</p><div class="scope-diagram"><div class="diagram-label"><svg><use href="#box"/></svg> Your page</div><div class="diagram-inner"><div class="diagram-active"><svg><use href="#spark"/></svg> Transition</div><div class="diagram-other"><span></span><span></span></div></div></div><div class="legend"><i class="dot"></i> Scoped motion <i class="dot"></i> Still interactive</div></section></aside></div>
++<footer class="bottom-note"><span><svg><use href="#check"/></svg> Contained motion. Connected experience.</span><span>Made for the details. <svg><use href="#spark"/></svg></span></footer></main></div>
++<div class="dialog-backdrop hidden" id="modal"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><div id="dialog-body"></div><button class="replay" id="close-modal">Got it <svg><use href="#check"/></svg></button></section></div><div class="toast hidden" role="status" id="toast"></div>
++<script>
++const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
++const places=$('#places'),collection=$('#collection');let view='grid',filter='all',running=true,elapsed=0,last=performance.now(),toastTimeout,previousFocus;
++const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
++function duration(){return reduced?0:Number($('#duration').value)}
++function animateLayout(change){
++ const nodes=$$('.place');
++ const before=new Map(nodes.map(el=>[el,el.getBoundingClientRect()]));
++ const oldHeight=collection.getBoundingClientRect().height;
++ nodes.forEach(el=>el.getAnimations().forEach(a=>a.cancel()));collection.getAnimations().forEach(a=>a.cancel());
++ change();
++ const newHeight=collection.getBoundingClientRect().height;
++ nodes.forEach(el=>{const a=before.get(el),b=el.getBoundingClientRect();if(!a.width||!b.width||el.hidden){if(b.width&&!el.hidden)el.animate([{opacity:0},{opacity:1}],{duration:duration()});return;}const dx=a.left-b.left,dy=a.top-b.top;el.animate([{transform:`translate(${dx}px, ${dy}px) scale(${a.width/b.width}, ${a.height/b.height})`,opacity:.65},{transform:'none',opacity:1}],{duration:duration(),easing:$('#easing').value});});
++ collection.animate([{height:oldHeight+'px'},{height:newHeight+'px'}],{duration:duration(),easing:$('#easing').value});
++}
++function setView(next){if(next===view)return;animateLayout(()=>{view=next;places.classList.toggle('list',view==='list');$('#grid-view').classList.toggle('selected',view==='grid');$('#list-view').classList.toggle('selected',view==='list');$('#grid-view').setAttribute('aria-pressed',view==='grid');$('#list-view').setAttribute('aria-pressed',view==='list');$('#view-state').textContent=view==='grid'?'Grid view':'List view';});}
++$('#grid-view').onclick=()=>setView('grid');$('#list-view').onclick=()=>setView('list');$('#replay').onclick=()=>setView(view==='grid'?'list':'grid');
++$('#duration').oninput=()=>$('#duration-value').textContent=$('#duration').value+' ms';
++function notify(message){clearTimeout(toastTimeout);$('#toast').textContent=message;$('#toast').classList.remove('hidden');$('#toast').animate([{opacity:0,transform:'translate(-50%, 8px)'},{opacity:1,transform:'translate(-50%, 0)'}],{duration:200});toastTimeout=setTimeout(()=>$('#toast').classList.add('hidden'),2600)}
++function updateFilter(){let count=0;$$('.place').forEach(card=>{const show=filter==='all'||card.querySelector('.save').classList.contains('saved');card.hidden=!show;if(show)count++});$('#empty').classList.toggle('hidden',count>0);$('#place-count').textContent=filter==='saved'?`${count} saved ${count===1?'place':'places'}`:'3 places to get lost';$('#collection-title').textContent=filter==='saved'?'Your little escapes':'A change of scenery';$('#collection-subtitle').textContent=filter==='saved'?'A few places worth coming back to.':'Good places. Even better possibilities.';}
++$$('.save').forEach(button=>button.onclick=()=>{const saved=button.classList.toggle('saved');button.setAttribute('aria-pressed',saved);const name=button.closest('.place').dataset.name;button.setAttribute('aria-label',`${saved?'Unsave':'Save'} ${name}`);button.animate([{transform:'scale(.7)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:reduced?0:350});if(filter==='saved')animateLayout(updateFilter);notify(saved?`${name} saved to your escapes`:`${name} removed from saved places`)});
++for(let i=0;i<29;i++){const bar=document.createElement('i');bar.style.setProperty('--i',i);$('#wave').append(bar)}
++function tick(now){if(running)elapsed+=now-last;last=now;const seconds=Math.floor(elapsed/1000);$('#time').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');$('#tenths').textContent=Math.floor(elapsed/100)%10;requestAnimationFrame(tick)}requestAnimationFrame(tick);
++function updateTimer(){ $('#wave').classList.toggle('paused',!running);$('#play').setAttribute('aria-label',running?'Pause timer':'Resume timer');$('#play-icon').innerHTML=running?'<path d="M9 5v14M15 5v14"/>':'<path d="m9 5 10 7-10 7Z"/>';$('#timer-state').textContent=running?'Running freely':'Taking a breath';}
++$('#play').onclick=()=>{running=!running;updateTimer()};
++function showDialog(title,body){previousFocus=document.activeElement;$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=body;$('#modal').classList.remove('hidden');$('#close-modal').focus()}
++function closeDialog(){$('#modal').classList.add('hidden');previousFocus?.focus()}
++$('#close-modal').onclick=closeDialog;$('#modal').onclick=e=>{if(e.target===$('#modal'))closeDialog()};document.addEventListener('keydown',e=>{if(!$('#modal').classList.contains('hidden')){if(e.key==='Escape')closeDialog();if(e.key==='Tab'){e.preventDefault();$('#close-modal').focus()}}});
++const docs=()=>showDialog('Motion with a little focus.','<p>Switch between grid and list to animate the collection. Each element moves from its current position to its next one using the Web Animations API.</p><p>The animation belongs to the collection alone. The timer, saved items, and animation controls remain available throughout. Try a longer duration to see the transitions overlap.</p><p>Choose your timing and easing below the canvas. Your device’s reduced motion preference is respected automatically.</p>');$('#docs').onclick=docs;
++$$('.nav-item').forEach(button=>button.onclick=()=>{const section=button.dataset.section;if(section==='how'){docs();return}if(section==='notes'){showDialog('A smoother little playground.','<p>Meet component-scoped transitions: switch layouts, save your favorite places, and adjust the motion while an independent timer keeps its own rhythm.</p><p>New: four easing styles, adjustable duration, and support for reduced motion.</p>');return}$$('.nav-item').forEach(b=>b.classList.toggle('active',b===button));filter=section==='saved'?'saved':'all';animateLayout(updateFilter)});
++$('#reset').onclick=()=>{$('#duration').value=600;$('#duration-value').textContent='600 ms';$('#easing').selectedIndex=0;filter='all';$$('.save').forEach(b=>{b.classList.remove('saved');b.setAttribute('aria-pressed','false');b.setAttribute('aria-label','Save '+b.closest('.place').dataset.name)});animateLayout(updateFilter);setView('grid');$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.section==='playground'));elapsed=0;running=true;updateTimer();notify('A fresh start. Playground reset.')};
++</script>
++</body></html>

@@ -1,0 +1,22 @@
+diff --git a/index.html b/index.html
+index 66c9173..30052e4 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,17 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Local Network Access: fetch a resource on loopback or the user's LAN.
++    // `targetAddressSpace` tells Chrome which address space is targeted so it can
++    // show the local network permission prompt to the user.
++    // Usage: localFetch('http://localhost:3000/api/status', 'loopback')
++    //        localFetch('http://192.168.1.20/info', 'local')
++    window.localFetch = function (url, space = 'local', options = {}) {
++      return fetch(url, { ...options, targetAddressSpace: space });
++    };
++  </script>
++
+ </body>
+ 
+ </html>

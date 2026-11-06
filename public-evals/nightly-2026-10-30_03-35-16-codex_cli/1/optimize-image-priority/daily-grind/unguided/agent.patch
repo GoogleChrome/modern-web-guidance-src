@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+index 66c9173..64b971d 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +87,26 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-image,
++    .hero::before {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      z-index: -1;
++    }
++
++    .hero-image {
++      z-index: -2;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .hero::before {
++      content: '';
++      background: rgba(0, 0, 0, 0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -120,6 +139,16 @@
+       color: var(--primary);
+     }
+ 
++    .card-image {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 4px;
++      margin-bottom: 16px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -169,6 +198,14 @@
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-image"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;q=80 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;q=80 960w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1920&amp;q=80 1920w"
++      sizes="100vw" width="1350" height="900" alt=""
++      loading="eager" fetchpriority="high" decoding="async">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +216,28 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            width="600" height="400" alt="Latte with foam art in a ceramic cup"
++            loading="lazy" fetchpriority="low" decoding="async">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            width="600" height="400" alt="Freshly poured espresso in a cup"
++            loading="lazy" fetchpriority="low" decoding="async">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            width="600" height="400" alt="Cold coffee served over ice in a glass"
++            loading="lazy" fetchpriority="low" decoding="async">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

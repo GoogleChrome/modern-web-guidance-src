@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .coffee-preferences {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .preference-field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 8px;
++    }
++
++    .preference-field input {
++      width: 100%;
++      min-height: 44px;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++      background: white;
++      font: inherit;
++    }
++
++    .coffee-preferences button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .coffee-preferences :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #preferences-status {
++      margin-top: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +231,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card coffee-preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your Coffee Ritual</h2>
++      <p id="preferences-help">Choose your daily pickup reminder time and the date your coffee journey began. Your selections stay the same wherever you travel.</p>
++      <form id="coffee-preferences-form" aria-describedby="preferences-help storage-help">
++        <div class="grid">
++          <div class="preference-field">
++            <label for="pickup-reminder-time">Daily pickup reminder time</label>
++            <input type="time" id="pickup-reminder-time" name="pickupReminderTime" step="60">
++          </div>
++          <div class="preference-field">
++            <label for="coffee-anniversary-date">Coffee anniversary date</label>
++            <input type="date" id="coffee-anniversary-date" name="coffeeAnniversaryDate">
++          </div>
++        </div>
++        <button type="submit" class="btn">Save preferences</button>
++        <p id="storage-help">Saved in this browser. This sets your preferences; notifications are not sent.</p>
++        <p id="preferences-status" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +263,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const storageKey = 'daily-grind-coffee-preferences';
++    const form = document.querySelector('#coffee-preferences-form');
++    const pickupTime = document.querySelector('#pickup-reminder-time');
++    const anniversaryDate = document.querySelector('#coffee-anniversary-date');
++    const status = document.querySelector('#preferences-status');
++
++    let plainTypes = globalThis.Temporal;
++    if (!plainTypes?.PlainTime || !plainTypes?.PlainDate) {
++      // Progressive enhancement for browsers without native Temporal.
++      import('https://esm.sh/temporal-polyfill@0.3.0')
++        .then((module) => { plainTypes = module.Temporal; })
++        .catch(() => {
++          // Native controls also validate plain strings, so saving works offline.
++        });
++    }
++
++    function readPreferences() {
++      // These are a wall-clock time and a calendar date, never UTC instants.
++      // Persist only HH:mm and YYYY-MM-DD; never convert through Date or a zone.
++      return {
++        pickupReminderTime: pickupTime.value && plainTypes?.PlainTime
++          ? plainTypes.PlainTime.from(pickupTime.value).toString({ smallestUnit: 'minute' })
++          : pickupTime.value,
++        coffeeAnniversaryDate: anniversaryDate.value && plainTypes?.PlainDate
++          ? plainTypes.PlainDate.from(anniversaryDate.value).toString()
++          : anniversaryDate.value,
++      };
++    }
++
++    function describePreferences(preferences) {
++      return `Daily pickup reminder: ${preferences.pickupReminderTime || 'not set'}. Coffee anniversary: ${preferences.coffeeAnniversaryDate || 'not set'}.`;
++    }
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(storageKey));
++      if (saved && typeof saved === 'object') {
++        for (const [input, value] of [
++          [pickupTime, saved.pickupReminderTime],
++          [anniversaryDate, saved.coffeeAnniversaryDate],
++        ]) {
++          // Assigning through native inputs rejects malformed stored values.
++          input.value = typeof value === 'string' ? value : '';
++          if (!input.checkValidity()) input.value = '';
++        }
++        status.textContent = describePreferences(readPreferences());
++      }
++    } catch {
++      status.textContent = 'Saved preferences could not be loaded. You can still choose new values.';
++    }
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!form.reportValidity()) return;
++      const preferences = readPreferences();
++      try {
++        localStorage.setItem(storageKey, JSON.stringify(preferences));
++        status.textContent = `Saved. ${describePreferences(preferences)}`;
++      } catch {
++        status.textContent = 'Your selections are shown, but this browser could not save them. Please allow browser storage and try again.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,989 @@
+diff --git a/index.html b/index.html
+index 66c9173..98bb03e 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,18 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-glow: rgba(255, 171, 64, 0.35);
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
++      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
++      --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
++      --duration-fast: 200ms;
++      --duration-base: 380ms;
++      --duration-slow: 700ms;
+     }
+ 
+     * {
+@@ -20,11 +28,109 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-x: hidden;
++    }
++
++    /* Keyframe Animations */
++    @keyframes slideDownFade {
++      0% {
++        opacity: 0;
++        transform: translate3d(0, -18px, 0);
++      }
++      100% {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes fadeUp {
++      0% {
++        opacity: 0;
++        transform: translate3d(0, 28px, 0);
++      }
++      100% {
++        opacity: 1;
++        transform: translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes heroKenBurns {
++      0% {
++        transform: scale(1) translate3d(0, 0, 0);
++      }
++      50% {
++        transform: scale(1.06) translate3d(-1%, -1%, 0);
++      }
++      100% {
++        transform: scale(1) translate3d(0, 0, 0);
++      }
++    }
++
++    @keyframes steamRise {
++      0% {
++        opacity: 0;
++        transform: translate3d(0, 8px, 0) scaleX(0.9);
++      }
++      40% {
++        opacity: 0.55;
++      }
++      100% {
++        opacity: 0;
++        transform: translate3d(4px, -22px, 0) scaleX(1.15);
++      }
++    }
++
++    @keyframes shimmerSweep {
++      0% {
++        transform: translate3d(-120%, 0, 0) skewX(-20deg);
++      }
++      100% {
++        transform: translate3d(220%, 0, 0) skewX(-20deg);
++      }
++    }
++
++    @keyframes floatSlow {
++      0%, 100% {
++        transform: translate3d(0, 0, 0);
++      }
++      50% {
++        transform: translate3d(0, -6px, 0);
++      }
++    }
++
++    @keyframes pulseDot {
++      0%, 100% {
++        transform: scale(1);
++        opacity: 0.9;
++      }
++      50% {
++        transform: scale(1.3);
++        opacity: 0.4;
++      }
++    }
++
++    /* Scroll Progress Bar */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 3px;
++      background: linear-gradient(90deg, var(--accent), #ffd180);
++      transform-origin: 0 50%;
++      transform: scaleX(0);
++      z-index: 1100;
++      pointer-events: none;
++      will-change: transform;
+     }
+ 
+     /* Navigation */
+@@ -38,47 +144,147 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
++      transition: background-color var(--duration-base) var(--ease-smooth),
++        padding var(--duration-base) var(--ease-smooth),
++        box-shadow var(--duration-base) var(--ease-smooth),
++        backdrop-filter var(--duration-base) var(--ease-smooth);
++      animation: slideDownFade var(--duration-slow) var(--ease-out-expo) both;
++    }
++
++    nav.is-scrolled {
++      background: rgba(62, 39, 35, 0.94);
++      backdrop-filter: blur(10px);
++      padding: 0.75rem 5%;
++      box-shadow: 0 8px 28px rgba(30, 15, 10, 0.28);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      cursor: pointer;
++      transition: transform var(--duration-base) var(--ease-spring),
++        color var(--duration-fast) var(--ease-smooth);
++    }
++
++    .logo:hover {
++      transform: translate3d(0, -1px, 0) scale(1.02);
++      color: var(--accent);
++    }
++
++    .logo-icon {
++      width: 24px;
++      height: 24px;
++      display: inline-block;
++      position: relative;
++      color: var(--accent);
++      transition: transform var(--duration-base) var(--ease-spring);
++    }
++
++    .logo:hover .logo-icon {
++      transform: rotate(-10deg) scale(1.1);
++    }
++
++    .steam-path {
++      animation: steamRise 2.8s ease-in-out infinite;
++      transform-origin: center;
++    }
++
++    .steam-path:nth-child(2) {
++      animation-delay: 0.9s;
++    }
++
++    .steam-path:nth-child(3) {
++      animation-delay: 1.8s;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      opacity: 0;
++      animation: slideDownFade 600ms var(--ease-out-expo) forwards;
+     }
+ 
++    nav ul li:nth-child(1) { animation-delay: 100ms; }
++    nav ul li:nth-child(2) { animation-delay: 160ms; }
++    nav ul li:nth-child(3) { animation-delay: 220ms; }
++    nav ul li:nth-child(4) { animation-delay: 280ms; }
++    nav ul li:nth-child(5) { animation-delay: 340ms; }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      position: relative;
++      padding: 4px 2px;
++      transition: color var(--duration-fast) var(--ease-smooth),
++        transform var(--duration-fast) var(--ease-smooth);
++      display: inline-block;
+     }
+ 
+-    nav a:hover {
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: 0;
++      width: 100%;
++      height: 2px;
++      background: var(--accent);
++      border-radius: 2px;
++      transform: scaleX(0);
++      transform-origin: right center;
++      transition: transform var(--duration-base) var(--ease-out-expo);
++    }
++
++    nav a:not(.logout-link):hover,
++    nav a:not(.logout-link):focus-visible {
+       color: var(--accent);
++      transform: translate3d(0, -1px, 0);
++    }
++
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      transform: scaleX(1);
++      transform-origin: left center;
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      overflow: hidden;
++      transition: color var(--duration-fast) var(--ease-smooth),
++        background-color var(--duration-fast) var(--ease-smooth),
++        transform var(--duration-fast) var(--ease-spring),
++        box-shadow var(--duration-fast) var(--ease-smooth);
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: var(--accent);
++      color: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++      box-shadow: 0 4px 12px var(--accent-glow);
++    }
++
++    .logout-link:active {
++      transform: translate3d(0, 0, 0) scale(0.97);
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 380px;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,60 +292,344 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.6)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      z-index: -2;
++      will-change: transform;
++      animation: heroKenBurns 24s ease-in-out infinite;
++    }
++
++    .hero-ambient {
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(
++        600px circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
++        rgba(255, 171, 64, 0.16),
++        transparent 70%
++      );
++      z-index: -1;
++      pointer-events: none;
++      transition: opacity var(--duration-base) var(--ease-smooth);
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: rgba(255, 255, 255, 0.12);
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      backdrop-filter: blur(6px);
++      padding: 5px 14px;
++      border-radius: 999px;
++      font-size: 0.78rem;
++      letter-spacing: 1.2px;
++      text-transform: uppercase;
++      margin-bottom: 14px;
++      opacity: 0;
++      animation: fadeUp var(--duration-slow) var(--ease-out-expo) 120ms forwards;
++    }
++
++    .hero-badge-dot {
++      width: 7px;
++      height: 7px;
++      border-radius: 50%;
++      background: var(--accent);
++      animation: pulseDot 2.2s ease-in-out infinite;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.2rem, 5vw, 3.2rem);
++      margin-bottom: 0.85rem;
++      letter-spacing: 0.5px;
++      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
++      opacity: 0;
++      animation: fadeUp var(--duration-slow) var(--ease-out-expo) 240ms forwards;
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 540px;
++      color: rgba(255, 255, 255, 0.92);
++      opacity: 0;
++      animation: fadeUp var(--duration-slow) var(--ease-out-expo) 360ms forwards;
++    }
++
++    .hero .btn {
++      opacity: 0;
++      animation: fadeUp var(--duration-slow) var(--ease-out-expo) 480ms forwards;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 50px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      display: inline-block;
++      position: relative;
++      padding-bottom: 10px;
++    }
++
++    .section-header h2::after {
++      content: '';
++      position: absolute;
++      bottom: 0;
++      left: 50%;
++      width: 56px;
++      height: 3px;
++      background: var(--accent);
++      border-radius: 3px;
++      transform: translate3d(-50%, 0, 0) scaleX(0.6);
++      transition: transform var(--duration-base) var(--ease-spring),
++        width var(--duration-base) var(--ease-out-expo);
++    }
++
++    .section-header:hover h2::after,
++    .section-header.is-visible h2::after {
++      transform: translate3d(-50%, 0, 0) scaleX(1);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
++    /* Animated Cards */
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 26px 22px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
+       text-align: center;
++      position: relative;
++      overflow: hidden;
++      border: 1px solid rgba(215, 204, 200, 0.45);
++      transition: transform var(--duration-base) var(--ease-out-expo),
++        box-shadow var(--duration-base) var(--ease-out-expo),
++        border-color var(--duration-base) var(--ease-smooth);
++      will-change: transform;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .card::before {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      right: 0;
++      height: 4px;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      transform: scaleX(0);
++      transform-origin: left center;
++      transition: transform var(--duration-base) var(--ease-out-expo);
++    }
++
++    .card::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(
++        320px circle at var(--card-x, 50%) var(--card-y, 0%),
++        rgba(255, 171, 64, 0.1),
++        transparent 70%
++      );
++      opacity: 0;
++      transition: opacity var(--duration-base) var(--ease-smooth);
++      pointer-events: none;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translate3d(0, -8px, 0);
++      box-shadow: 0 16px 32px rgba(62, 39, 35, 0.14);
++      border-color: rgba(255, 171, 64, 0.5);
++    }
++
++    .card:hover::before,
++    .card:focus-within::before {
++      transform: scaleX(1);
++    }
++
++    .card:hover::after,
++    .card:focus-within::after {
++      opacity: 1;
++    }
++
++    .card-icon {
++      width: 52px;
++      height: 52px;
++      border-radius: 50%;
++      background: rgba(215, 204, 200, 0.35);
++      color: var(--primary);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      margin-bottom: 14px;
++      transition: transform var(--duration-base) var(--ease-spring),
++        background-color var(--duration-base) var(--ease-smooth),
++        color var(--duration-base) var(--ease-smooth);
++      animation: floatSlow 5s ease-in-out infinite;
++    }
++
++    .card:nth-child(2) .card-icon {
++      animation-delay: 0.8s;
++    }
++
++    .card:nth-child(3) .card-icon {
++      animation-delay: 1.6s;
++    }
++
++    .card:hover .card-icon,
++    .card:focus-within .card-icon {
++      transform: scale(1.12) rotate(-6deg);
++      background-color: var(--accent);
++      color: var(--primary-dark);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      transition: color var(--duration-fast) var(--ease-smooth),
++        transform var(--duration-fast) var(--ease-smooth);
++    }
++
++    .card:hover h3 {
++      color: var(--primary-dark);
++    }
++
++    .card p {
++      color: #5d4037;
++      font-size: 0.95rem;
+     }
+ 
++    /* Interactive Buttons */
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 22px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 18px;
++      font-weight: 500;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++      transition: background-color var(--duration-fast) var(--ease-smooth),
++        transform var(--duration-base) var(--ease-spring),
++        box-shadow var(--duration-base) var(--ease-smooth);
++      will-change: transform;
++    }
++
++    .btn::before {
++      content: '';
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 45%;
++      height: 100%;
++      background: linear-gradient(
++        90deg,
++        transparent,
++        rgba(255, 255, 255, 0.22),
++        transparent
++      );
++      transform: translate3d(-140%, 0, 0) skewX(-20deg);
++      z-index: 1;
++      pointer-events: none;
++    }
++
++    .btn:hover::before,
++    .btn:focus-visible::before {
++      animation: shimmerSweep 650ms var(--ease-out-expo);
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++      box-shadow: 0 8px 18px rgba(62, 39, 35, 0.25);
++    }
++
++    .btn:active {
++      transform: translate3d(0, 0, 0) scale(0.97);
++      box-shadow: 0 3px 8px rgba(62, 39, 35, 0.2);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn-arrow {
++      display: inline-block;
++      transition: transform var(--duration-fast) var(--ease-spring);
++    }
++
++    .btn:hover .btn-arrow,
++    .btn:focus-visible .btn-arrow {
++      transform: translate3d(4px, 0, 0);
++    }
++
++    .btn-ripple {
++      position: absolute;
++      border-radius: 50%;
++      background: rgba(255, 171, 64, 0.35);
++      transform: scale(0);
++      pointer-events: none;
++      animation: rippleExpand 550ms var(--ease-out-expo) forwards;
++    }
++
++    @keyframes rippleExpand {
++      to {
++        transform: scale(3.2);
++        opacity: 0;
++      }
++    }
++
++    /* Scroll Reveal States */
++    .reveal {
++      opacity: 0;
++      transform: translate3d(0, 26px, 0);
++      transition: opacity var(--duration-slow) var(--ease-out-expo),
++        transform var(--duration-slow) var(--ease-out-expo);
++      transition-delay: var(--reveal-delay, 0ms);
++    }
++
++    .reveal.is-visible {
++      opacity: 1;
++      transform: translate3d(0, 0, 0);
+     }
+ 
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
+     .footer-links {
+@@ -151,14 +641,106 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      position: relative;
++      display: inline-block;
++      transition: color var(--duration-fast) var(--ease-smooth),
++        transform var(--duration-fast) var(--ease-spring);
++    }
++
++    .footer-links a::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      bottom: -2px;
++      width: 100%;
++      height: 1.5px;
++      background: var(--primary);
++      transform: scaleX(0);
++      transform-origin: center;
++      transition: transform var(--duration-fast) var(--ease-out-expo);
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary-dark);
++      transform: translate3d(0, -2px, 0);
++    }
++
++    .footer-links a:hover::after,
++    .footer-links a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
++    /* Focus Accessibility */
++    a:focus-visible,
++    button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .hero-bg,
++      .card-icon,
++      .steam-path,
++      .hero-badge-dot {
++        animation: none !important;
++        transform: none !important;
++      }
++
++      nav,
++      nav ul li,
++      .hero-badge,
++      .hero h1,
++      .hero p,
++      .hero .btn,
++      .reveal {
++        opacity: 1 !important;
++        transform: none !important;
++        animation: none !important;
++        transition: none !important;
++      }
++
++      .card:hover,
++      .card:focus-within,
++      .btn:hover,
++      .btn:focus-visible,
++      .logo:hover,
++      nav a:hover,
++      .footer-links a:hover {
++        transform: none !important;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="mainNav">
++    <div class="logo">
++      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++        <path class="steam-path" d="M6 2v3" />
++        <path class="steam-path" d="M10 2v3" />
++        <path class="steam-path" d="M14 2v3" />
++        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
++        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
++      </svg>
++      <span>THE DAILY GRIND</span>
++    </div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,36 +750,86 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="heroSection">
++    <div class="hero-bg" id="heroBg" aria-hidden="true"></div>
++    <div class="hero-ambient" id="heroAmbient" aria-hidden="true"></div>
++    <div class="hero-badge">
++      <span class="hero-badge-dot" aria-hidden="true"></span>
++      <span>Freshly Roasted Daily</span>
++    </div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn">
++      <span>Order Now</span>
++      <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++    </a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header reveal">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card reveal" style="--reveal-delay: 80ms;">
++          <div>
++            <div class="card-icon" aria-hidden="true">
++              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
++                <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
++                <line x1="6" y1="2" x2="6" y2="4" />
++                <line x1="10" y1="2" x2="10" y2="4" />
++                <line x1="14" y1="2" x2="14" y2="4" />
++              </svg>
++            </div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn">
++            <span>View Details</span>
++            <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++          </a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card reveal" style="--reveal-delay: 180ms;">
++          <div>
++            <div class="card-icon" aria-hidden="true">
++              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                <path d="M12 2v20" />
++                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
++              </svg>
++            </div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <a href="/menu/espresso" class="btn">
++            <span>View Details</span>
++            <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++          </a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card reveal" style="--reveal-delay: 280ms;">
++          <div>
++            <div class="card-icon" aria-hidden="true">
++              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                <path d="m8 2 1.88 1.88" />
++                <path d="M14.12 3.88 16 2" />
++                <path d="M9 7h6" />
++                <path d="M10 22v-6.5a2 2 0 0 1 4 0V22" />
++                <path d="M5 7h14v11a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V7Z" />
++              </svg>
++            </div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn">
++            <span>View Details</span>
++            <span class="btn-arrow" aria-hidden="true">&rarr;</span>
++          </a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer class="reveal">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +839,129 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++      let prefersReducedMotion = motionQuery.matches;
++
++      const revealElements = document.querySelectorAll('.reveal');
++      const nav = document.getElementById('mainNav');
++      const scrollProgress = document.getElementById('scrollProgress');
++      const heroSection = document.getElementById('heroSection');
++      const cards = document.querySelectorAll('.card');
++      const buttons = document.querySelectorAll('.btn');
++
++      function showAllRevealsImmediately() {
++        revealElements.forEach((el) => el.classList.add('is-visible'));
++      }
++
++      // Listen for live changes to reduced-motion preference
++      if (typeof motionQuery.addEventListener === 'function') {
++        motionQuery.addEventListener('change', (event) => {
++          prefersReducedMotion = event.matches;
++          if (prefersReducedMotion) {
++            showAllRevealsImmediately();
++          }
++        });
++      }
++
++      // Scroll-triggered reveal observer
++      if (prefersReducedMotion || !('IntersectionObserver' in window)) {
++        showAllRevealsImmediately();
++      } else {
++        const revealObserver = new IntersectionObserver(
++          (entries, observer) => {
++            entries.forEach((entry) => {
++              if (entry.isIntersecting) {
++                entry.target.classList.add('is-visible');
++                observer.unobserve(entry.target);
++              }
++            });
++          },
++          { threshold: 0.12, rootMargin: '0px 0px -30px 0px' }
++        );
++
++        revealElements.forEach((el) => revealObserver.observe(el));
++      }
++
++      // Scroll progress & sticky nav condensation via requestAnimationFrame
++      let scrollTicking = false;
++      function updateScrollUI() {
++        const scrollTop = window.scrollY || document.documentElement.scrollTop;
++        if (nav) {
++          nav.classList.toggle('is-scrolled', scrollTop > 24);
++        }
++        if (scrollProgress) {
++          const docHeight =
++            document.documentElement.scrollHeight -
++            document.documentElement.clientHeight;
++          const progress = docHeight > 0 ? Math.min(scrollTop / docHeight, 1) : 0;
++          scrollProgress.style.transform = `scaleX(${progress})`;
++        }
++        scrollTicking = false;
++      }
++
++      window.addEventListener(
++        'scroll',
++        () => {
++          if (!scrollTicking) {
++            window.requestAnimationFrame(updateScrollUI);
++            scrollTicking = true;
++          }
++        },
++        { passive: true }
++      );
++      updateScrollUI();
++
++      // Pointer-tracked ambient spotlight for hero and cards (skipped if reduced motion)
++      if (heroSection) {
++        heroSection.addEventListener(
++          'pointermove',
++          (event) => {
++            if (prefersReducedMotion) return;
++            const rect = heroSection.getBoundingClientRect();
++            const x = ((event.clientX - rect.left) / rect.width) * 100;
++            const y = ((event.clientY - rect.top) / rect.height) * 100;
++            heroSection.style.setProperty('--pointer-x', `${x.toFixed(1)}%`);
++            heroSection.style.setProperty('--pointer-y', `${y.toFixed(1)}%`);
++          },
++          { passive: true }
++        );
++      }
++
++      cards.forEach((card) => {
++        card.addEventListener(
++          'pointermove',
++          (event) => {
++            if (prefersReducedMotion) return;
++            const rect = card.getBoundingClientRect();
++            const x = ((event.clientX - rect.left) / rect.width) * 100;
++            const y = ((event.clientY - rect.top) / rect.height) * 100;
++            card.style.setProperty('--card-x', `${x.toFixed(1)}%`);
++            card.style.setProperty('--card-y', `${y.toFixed(1)}%`);
++          },
++          { passive: true }
++        );
++      });
++
++      // Subtle tactile ripple on button press (skipped if reduced motion)
++      buttons.forEach((btn) => {
++        btn.addEventListener('pointerdown', (event) => {
++          if (prefersReducedMotion) return;
++          const rect = btn.getBoundingClientRect();
++          const size = Math.max(rect.width, rect.height);
++          const ripple = document.createElement('span');
++          ripple.className = 'btn-ripple';
++          ripple.style.width = `${size}px`;
++          ripple.style.height = `${size}px`;
++          ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
++          ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
++          btn.appendChild(ripple);
++          ripple.addEventListener('animationend', () => ripple.remove());
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

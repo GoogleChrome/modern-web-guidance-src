@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,168 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* A static composition is the default; scroll motion is an enhancement. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      display: grid;
++      place-items: center;
++      min-height: 580px;
++      padding: 100px 24px;
++      background: #241a15;
++      color: #fff8ee;
++      text-align: center;
++    }
++
++    .coffee-story__layer {
++      position: absolute;
++      pointer-events: none;
++    }
++
++    .coffee-story__landscape {
++      z-index: -3;
++      inset: -80px 0;
++      background: linear-gradient(rgba(24, 16, 11, 0.78), rgba(24, 16, 11, 0.88)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80') center / cover;
++      --drift: 60px;
++    }
++
++    .coffee-story__rings {
++      z-index: -2;
++      inset: -100px -60px;
++      --drift: -90px;
++    }
++
++    .coffee-story__rings::before,
++    .coffee-story__rings::after {
++      content: '';
++      position: absolute;
++      width: clamp(250px, 35vw, 480px);
++      aspect-ratio: 1;
++      border: 1px solid rgba(255, 218, 168, 0.24);
++      border-radius: 50%;
++      box-shadow: 0 0 0 35px rgba(255, 218, 168, 0.05),
++        0 0 0 70px rgba(255, 218, 168, 0.04);
++    }
++
++    .coffee-story__rings::before {
++      left: -12%;
++      top: 10%;
++    }
++
++    .coffee-story__rings::after {
++      right: -12%;
++      bottom: 0;
++    }
++
++    .coffee-story__beans {
++      z-index: -1;
++      inset: -100px 0;
++      --drift: -150px;
++    }
++
++    .coffee-story__beans::before,
++    .coffee-story__beans::after {
++      content: '';
++      position: absolute;
++      width: clamp(40px, 6vw, 85px);
++      aspect-ratio: 0.65;
++      border-radius: 50%;
++      background: linear-gradient(100deg, #69422b 43%, #24180f 46%, #24180f 50%, #8a5b3a 54%, #4c3020);
++      box-shadow: 10px 18px 25px rgba(0, 0, 0, 0.3);
++    }
++
++    .coffee-story__beans::before {
++      top: 28%;
++      left: 8%;
++      transform: rotate(-35deg);
++    }
++
++    .coffee-story__beans::after {
++      bottom: 20%;
++      right: 8%;
++      transform: rotate(30deg);
++    }
++
++    .coffee-story__content {
++      max-width: 640px;
++    }
++
++    .coffee-story__eyebrow {
++      margin-bottom: 20px;
++      color: #ffcc8b;
++      font-size: 0.75rem;
++      font-weight: 600;
++      letter-spacing: 0.22em;
++      text-transform: uppercase;
++    }
++
++    .coffee-story h2 {
++      margin-bottom: 24px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.5rem, 6vw, 4.5rem);
++      font-weight: normal;
++      line-height: 1.1;
++      text-wrap: balance;
++    }
++
++    .coffee-story__description {
++      max-width: 440px;
++      margin: 0 auto;
++      font-size: 1.05rem;
++    }
++
++    .coffee-story__link {
++      display: inline-block;
++      margin-top: 30px;
++      padding: 8px 0;
++      border-bottom: 1px solid #ffcc8b;
++      color: #ffcc8b;
++      text-decoration: none;
++    }
++
++    .coffee-story__link:hover {
++      color: white;
++    }
++
++    .coffee-story__link:focus-visible {
++      outline: 2px solid #ffcc8b;
++      outline-offset: 6px;
++    }
++
++    @keyframes coffee-drift {
++      from { transform: translateY(calc(0px - var(--drift))); }
++      to { transform: translateY(var(--drift)); }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) {
++        .coffee-story {
++          view-timeline-name: --coffee-depth;
++          view-timeline-axis: block;
++        }
++
++        .coffee-story__layer {
++          animation: coffee-drift 1s linear both;
++          animation-timeline: --coffee-depth;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .coffee-story {
++        min-height: 500px;
++        padding: 80px 28px;
++      }
++
++      .coffee-story__beans::before { left: 3%; top: 15%; }
++      .coffee-story__beans::after { right: 3%; bottom: 10%; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +333,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="coffee-story-title">
++      <div class="coffee-story__layer coffee-story__landscape" aria-hidden="true"></div>
++      <div class="coffee-story__layer coffee-story__rings" aria-hidden="true"></div>
++      <div class="coffee-story__layer coffee-story__beans" aria-hidden="true"></div>
++      <div class="coffee-story__content">
++        <p class="coffee-story__eyebrow">Rooted in care. Roasted with purpose.</p>
++        <h2 id="coffee-story-title">A little more depth.<br>In every cup.</h2>
++        <p class="coffee-story__description">From the first harvest to the final pour, good coffee takes its time. Slow down and savor the story behind your daily ritual.</p>
++        <a class="coffee-story__link" href="/about">Discover our story <span aria-hidden="true">&rarr;</span></a>
++      </div>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

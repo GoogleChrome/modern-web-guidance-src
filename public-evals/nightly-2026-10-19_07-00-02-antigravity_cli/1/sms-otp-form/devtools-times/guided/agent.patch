@@ -1,0 +1,227 @@
+diff --git a/src/pages/api/send-otp.ts b/src/pages/api/send-otp.ts
+new file mode 100644
+index 0000000..6cd1a14
+--- /dev/null
++++ b/src/pages/api/send-otp.ts
+@@ -0,0 +1,52 @@
++import type { APIRoute } from 'astro';
++import { generateAndStoreOtp, normalizePhone } from '../../utils/otpStore';
++
++export const POST: APIRoute = async ({ request, url }) => {
++  try {
++    const body = await request.json();
++    const phone = body?.phone;
++
++    if (!phone || typeof phone !== 'string' || normalizePhone(phone).length < 7) {
++      return new Response(
++        JSON.stringify({
++          success: false,
++          error: 'Please enter a valid phone number.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    // Determine host strictly conforming to origin-bound SMS specs (only host domain)
++    const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || url.hostname;
++    const { code, formattedSms, expiresAt } = generateAndStoreOtp(phone, hostHeader);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        message: 'Verification code sent successfully.',
++        phone,
++        formattedSms,
++        code,
++        expiresAt,
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch (err: any) {
++    return new Response(
++      JSON.stringify({
++        success: false,
++        error: 'Failed to process send-otp request: ' + (err?.message || 'Unknown error'),
++      }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/pages/api/verify-otp.ts b/src/pages/api/verify-otp.ts
+new file mode 100644
+index 0000000..703ecf1
+--- /dev/null
++++ b/src/pages/api/verify-otp.ts
+@@ -0,0 +1,74 @@
++import type { APIRoute } from 'astro';
++import { checkOtp, normalizePhone } from '../../utils/otpStore';
++
++export const POST: APIRoute = async ({ request }) => {
++  try {
++    const body = await request.json();
++    const phone = body?.phone;
++    const code = body?.code;
++
++    if (!phone || typeof phone !== 'string' || normalizePhone(phone).length < 7) {
++      return new Response(
++        JSON.stringify({
++          success: false,
++          error: 'Please provide a valid phone number.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    if (!code || typeof code !== 'string' || code.trim().length !== 6) {
++      return new Response(
++        JSON.stringify({
++          success: false,
++          error: 'Please enter a valid 6-digit verification code.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    const verificationResult = checkOtp(phone, code);
++
++    if (!verificationResult.valid) {
++      return new Response(
++        JSON.stringify({
++          success: false,
++          error: verificationResult.error || 'Invalid verification code.',
++        }),
++        {
++          status: 400,
++          headers: { 'Content-Type': 'application/json' },
++        }
++      );
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        verified: true,
++        message: 'Phone number verified successfully.',
++      }),
++      {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  } catch (err: any) {
++    return new Response(
++      JSON.stringify({
++        success: false,
++        error: 'Failed to process verify-otp request: ' + (err?.message || 'Unknown error'),
++      }),
++      {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/utils/otpStore.ts b/src/utils/otpStore.ts
+new file mode 100644
+index 0000000..7b26320
+--- /dev/null
++++ b/src/utils/otpStore.ts
+@@ -0,0 +1,83 @@
++interface OtpRecord {
++  code: string;
++  expiresAt: number;
++}
++
++// In-memory store for OTPs (phone number -> OTP record)
++const otpStorage = new Map<string, OtpRecord>();
++
++/**
++ * Normalize phone: strip spaces, dashes, parentheses
++ */
++export function normalizePhone(phone: string): string {
++  return phone.trim().replace(/[\s\-()]/g, '');
++}
++
++/**
++ * Format SMS message according to origin-bound SMS specifications:
++ * - Clear human-readable sentence containing the code first
++ * - Blank line
++ * - Final line strictly: @<domain> #<otp>
++ *   - @ is the first character
++ *   - Only host domain (no protocol, port, or path)
++ *   - Exactly one space between @domain and #otp
++ */
++export function formatOriginBoundSms(code: string, host: string): string {
++  let cleanHost = host.trim().toLowerCase();
++  cleanHost = cleanHost.replace(/^[a-z]+:\/\//, ''); // remove protocol
++  cleanHost = cleanHost.split('/')[0]; // remove path
++  cleanHost = cleanHost.split(':')[0]; // remove port
++
++  return `Your DevTools Times verification code is ${code}.\n\n@${cleanHost} #${code}`;
++}
++
++export function generateAndStoreOtp(
++  phone: string,
++  host: string
++): { code: string; formattedSms: string; expiresAt: number } {
++  const normalized = normalizePhone(phone);
++  // Generate secure 6-digit numeric OTP string (e.g. 100000 - 999999)
++  const code = Math.floor(100000 + Math.random() * 900000).toString();
++  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
++
++  otpStorage.set(normalized, { code, expiresAt });
++
++  const formattedSms = formatOriginBoundSms(code, host);
++
++  return { code, formattedSms, expiresAt };
++}
++
++export function checkOtp(
++  phone: string,
++  inputCode: string
++): { valid: boolean; error?: string } {
++  const normalized = normalizePhone(phone);
++  const cleanCode = inputCode.trim();
++
++  const record = otpStorage.get(normalized);
++  if (!record) {
++    return {
++      valid: false,
++      error: 'No verification code found for this phone number. Please request a new code.',
++    };
++  }
++
++  if (Date.now() > record.expiresAt) {
++    otpStorage.delete(normalized);
++    return {
++      valid: false,
++      error: 'Verification code has expired. Please request a new one.',
++    };
++  }
++
++  if (record.code !== cleanCode) {
++    return {
++      valid: false,
++      error: 'Invalid verification code. Please check and try again.',
++    };
++  }
++
++  // Once verified, consume the code to prevent reuse
++  otpStorage.delete(normalized);
++  return { valid: true };
++}

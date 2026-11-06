@@ -1,0 +1,561 @@
+diff --git a/assets/media/daily-grind-podcast.mp3 b/assets/media/daily-grind-podcast.mp3
+new file mode 100644
+index 0000000..4a1bc90
+Binary files /dev/null and b/assets/media/daily-grind-podcast.mp3 differ
+diff --git a/assets/media/hero-coffee.mp4 b/assets/media/hero-coffee.mp4
+new file mode 100644
+index 0000000..f73a037
+Binary files /dev/null and b/assets/media/hero-coffee.mp4 differ
+diff --git a/assets/media/roasting-process.mp4 b/assets/media/roasting-process.mp4
+new file mode 100644
+index 0000000..a6d4dc4
+Binary files /dev/null and b/assets/media/roasting-process.mp4 differ
+diff --git a/index.html b/index.html
+index 66c9173..2bb650a 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --card-bg: #ffffff;
+     }
+ 
+     * {
+@@ -72,13 +73,12 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Hero Section with Background Video */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      position: relative;
++      height: 75vh;
++      min-height: 480px;
++      overflow: hidden;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,60 +86,258 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      background-color: #2d1b17;
++    }
++
++    .hero-video {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: 1;
++    }
++
++    .hero-overlay {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 100%;
++      background: linear-gradient(rgba(30, 15, 10, 0.55), rgba(30, 15, 10, 0.65));
++      z-index: 2;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 3;
++      max-width: 720px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
++    }
++
++    .hero p {
++      font-size: 1.2rem;
++      margin-bottom: 0.5rem;
++      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 60px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-spacing {
++      margin-bottom: 80px;
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      max-width: 650px;
++      margin: 0 auto 32px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--card-bg);
++      padding: 28px 24px;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 12px;
+       color: var(--primary);
++      font-size: 1.35rem;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 12px 24px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 18px;
++      font-weight: 600;
++      transition: background 0.3s, transform 0.2s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    /* Craft & Philosophy Banner (ensures below-the-fold separation) */
++    .craft-highlights {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 24px;
++      background: #efebe9;
++      padding: 36px;
++      border-radius: 12px;
++      margin-top: 24px;
++    }
++
++    .craft-item h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      font-size: 1.15rem;
++    }
++
++    .craft-item p {
++      font-size: 0.95rem;
++      color: #5d4037;
++    }
++
++    /* Below-the-Fold Media Sections (Roasting Video & Podcast Audio) */
++    .media-showcase {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 48px;
++    }
++
++    .media-card {
++      background: var(--card-bg);
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
++      display: grid;
++      grid-template-columns: 1.15fr 0.85fr;
++      align-items: center;
++    }
++
++    @media (max-width: 820px) {
++      .media-card {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .media-player-wrapper {
++      background: #1e110d;
++      width: 100%;
++      height: 100%;
++      min-height: 300px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      position: relative;
++    }
++
++    .roasting-video {
++      width: 100%;
++      height: 100%;
++      max-height: 400px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .media-details {
++      padding: 36px;
++    }
++
++    .media-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++    }
++
++    .media-details h3 {
++      font-size: 1.65rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .media-details p {
++      color: #5d4037;
++      margin-bottom: 18px;
++    }
++
++    /* Podcast Audio Card */
++    .podcast-card {
++      background: var(--card-bg);
++      border-radius: 12px;
++      padding: 36px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
++      border-left: 6px solid var(--accent);
++    }
++
++    .podcast-header {
++      display: flex;
++      gap: 24px;
++      align-items: center;
++      margin-bottom: 24px;
++      flex-wrap: wrap;
++    }
++
++    .podcast-cover {
++      width: 110px;
++      height: 110px;
++      border-radius: 10px;
++      object-fit: cover;
++      background-color: var(--secondary);
++      flex-shrink: 0;
++    }
++
++    .podcast-meta h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .podcast-meta p {
++      color: #5d4037;
++      max-width: 680px;
++    }
++
++    .podcast-audio-player {
++      width: 100%;
++      margin-top: 8px;
++    }
++
++    .media-status {
++      font-size: 0.82rem;
++      color: #795548;
++      margin-top: 10px;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -169,31 +367,132 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <video
++      class="hero-video"
++      id="hero-video"
++      autoplay
++      muted
++      loop
++      playsinline
++      preload="metadata"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      src="/assets/media/hero-coffee.mp4"
++    >
++      <source src="/assets/media/hero-coffee.mp4" type="video/mp4">
++      Your browser does not support HTML5 video.
++    </video>
++    <div class="hero-overlay"></div>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section-spacing">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Handcrafted small-batch beverages curated for the season.</p>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup and a double shot of signature espresso.</p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and full-bodied with dark chocolate notes—perfect for a morning boost.</p>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Coarse-ground single-origin beans steeped for 18 hours for maximum smoothness.</p>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="craft-highlights">
++        <div class="craft-item">
++          <h3>Direct Trade Farms</h3>
++          <p>We partner directly with high-altitude growers across Colombia, Ethiopia, and Guatemala.</p>
++        </div>
++        <div class="craft-item">
++          <h3>Precision Roasting</h3>
++          <p>Every batch is profiled by our head roasters to unlock peak sweetness and origin character.</p>
++        </div>
++        <div class="craft-item">
++          <h3>Freshly Dispatched</h3>
++          <p>Whole bean orders ship within 24 hours of roasting so every cup tastes vibrant.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="roasting-and-podcast" class="section-spacing media-showcase">
++      <div>
++        <h2 class="section-title">Inside the Roastery &amp; Podcast</h2>
++        <p class="section-subtitle">Step behind the scenes of our daily roasting ritual and tune in to conversations with coffee producers and baristas.</p>
++      </div>
++
++      <!-- Below-the-fold Roasting Video Section (deferred loading until approaching viewport) -->
++      <article class="media-card" id="roasting-video-section">
++        <div class="media-player-wrapper">
++          <video
++            id="roasting-video"
++            class="roasting-video lazy-media"
++            controls
++            playsinline
++            preload="none"
++            data-poster="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=80"
++            data-src="/assets/media/roasting-process.mp4"
++             data-preload="metadata"
++          >
++            <source data-src="/assets/media/roasting-process.mp4" type="video/mp4">
++            Your browser does not support HTML5 video.
++          </video>
++        </div>
++        <div class="media-details">
++          <span class="media-badge">Behind the Beans</span>
++          <h3>Small-Batch Drum Roasting</h3>
++          <p>Watch our master roaster guide green washed-process beans through first crack, balancing caramelization and bright citrus acidity.</p>
++          <p class="media-status" id="roasting-video-status">Video assets deferred until scrolling near player.</p>
++        </div>
++      </article>
++
++      <!-- Below-the-fold Podcast Audio Section (deferred loading until approaching viewport) -->
++      <article class="podcast-card" id="podcast-audio-section">
++        <div class="podcast-header">
++          <img
++            class="podcast-cover lazy-poster"
++            alt="The Daily Grind Podcast cover art"
++            loading="lazy"
++            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
++            data-src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80"
++          >
++          <div class="podcast-meta">
++            <span class="media-badge">The Daily Grind Podcast &bull; Ep. 42</span>
++            <h3>Harvest Season in Huila &amp; Water Chemistry</h3>
++            <p>Host Elena Vance sits down with green buyer Mateo Silva to discuss microlot fermentation techniques and dialing in mineral balance for pour-over brewing.</p>
++          </div>
++        </div>
++        <audio
++          id="podcast-audio"
++          class="podcast-audio-player lazy-media"
++          controls
++          preload="none"
++          data-src="/assets/media/daily-grind-podcast.mp3"
++          data-preload="metadata"
++        >
++          <source data-src="/assets/media/daily-grind-podcast.mp3" type="audio/mpeg">
++          Your browser does not support the audio element.
++        </audio>
++        <p class="media-status" id="podcast-audio-status">Audio stream deferred until scrolling near player.</p>
++      </article>
+     </section>
+   </main>
+ 
+@@ -207,6 +506,101 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function hydrateMediaElement(mediaEl) {
++        if (!mediaEl || mediaEl.dataset.loaded === 'true') return;
++        mediaEl.dataset.loaded = 'true';
++
++        if (mediaEl.dataset.poster) {
++          mediaEl.setAttribute('poster', mediaEl.dataset.poster);
++          mediaEl.removeAttribute('data-poster');
++        }
++
++        var sources = mediaEl.querySelectorAll('source[data-src]');
++        sources.forEach(function (sourceEl) {
++          sourceEl.setAttribute('src', sourceEl.dataset.src);
++          sourceEl.removeAttribute('data-src');
++        });
++
++        if (mediaEl.dataset.src) {
++          mediaEl.setAttribute('src', mediaEl.dataset.src);
++          mediaEl.removeAttribute('data-src');
++        }
++
++        if (mediaEl.dataset.preload) {
++          mediaEl.setAttribute('preload', mediaEl.dataset.preload);
++        }
++
++        if (typeof mediaEl.load === 'function') {
++          mediaEl.load();
++        }
++
++        if (mediaEl.id === 'roasting-video') {
++          var vStatus = document.getElementById('roasting-video-status');
++          if (vStatus) vStatus.textContent = 'Roasting video ready to play.';
++        } else if (mediaEl.id === 'podcast-audio') {
++          var aStatus = document.getElementById('podcast-audio-status');
++          if (aStatus) aStatus.textContent = 'Episode audio ready to play.';
++        }
++      }
++
++      function hydrateImageElement(imgEl) {
++        if (!imgEl || imgEl.dataset.loaded === 'true') return;
++        imgEl.dataset.loaded = 'true';
++        if (imgEl.dataset.src) {
++          imgEl.setAttribute('src', imgEl.dataset.src);
++          imgEl.removeAttribute('data-src');
++        }
++      }
++
++      var lazyMediaElements = document.querySelectorAll('.lazy-media');
++      var lazyImages = document.querySelectorAll('.lazy-poster');
++
++      if ('IntersectionObserver' in window) {
++        var mediaObserver = new IntersectionObserver(
++          function (entries, observer) {
++            entries.forEach(function (entry) {
++              if (entry.isIntersecting) {
++                var target = entry.target;
++                if (target.classList.contains('lazy-media')) {
++                  hydrateMediaElement(target);
++                } else if (target.classList.contains('lazy-poster')) {
++                  hydrateImageElement(target);
++                }
++                observer.unobserve(target);
++              }
++            });
++          },
++          {
++            rootMargin: '200px 0px',
++            threshold: 0.01
++          }
++        );
++
++        lazyMediaElements.forEach(function (el) {
++          mediaObserver.observe(el);
++        });
++
++        lazyImages.forEach(function (img) {
++          mediaObserver.observe(img);
++        });
++      } else {
++        lazyMediaElements.forEach(hydrateMediaElement);
++        lazyImages.forEach(hydrateImageElement);
++      }
++
++      // Also hydrate immediately if user interacts directly before observer triggers
++      lazyMediaElements.forEach(function (el) {
++        ['play', 'pointerdown', 'focus'].forEach(function (evt) {
++          el.addEventListener(evt, function () {
++            hydrateMediaElement(el);
++          }, { once: true });
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

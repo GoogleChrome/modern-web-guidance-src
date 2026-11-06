@@ -1,0 +1,312 @@
+diff --git a/index.html b/index.html
+index 66c9173..a679026 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,96 @@
+       background: #3e2723;
+     }
+ 
++    /* Placeholder (skeleton) cards: same box as real cards to avoid layout shift */
++    .card {
++      min-height: 190px;
++    }
++
++    .card--skeleton {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .skeleton-line {
++      display: block;
++      height: 1rem;
++      width: 80%;
++      border-radius: 4px;
++      background: linear-gradient(90deg, #eee 0%, #f7f3f2 50%, #eee 100%);
++      background-size: 200% 100%;
++      animation: shimmer 1.4s ease-in-out infinite;
++    }
++
++    .skeleton-line--title {
++      height: 1.4rem;
++      width: 60%;
++    }
++
++    .skeleton-line--btn {
++      height: 2.4rem;
++      width: 40%;
++      margin-top: auto;
++    }
++
++    @keyframes shimmer {
++      from { background-position: 200% 0; }
++      to { background-position: -200% 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .skeleton-line {
++        animation: none;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    [aria-busy="true"] {
++      opacity: 0.6;
++      transition: opacity 0.2s;
++    }
++
++    /* CMS promo block */
++    .promo {
++      margin-top: 30px;
++      min-height: 120px;
++      padding: 20px;
++      border-radius: 8px;
++      background: var(--secondary);
++    }
++
++    /* Customer reviews */
++    .reviews {
++      margin-top: 30px;
++    }
++
++    .reviews h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .reviews-list {
++      display: grid;
++      gap: 15px;
++      min-height: 100px;
++    }
++
++    .reviews-list blockquote {
++      background: white;
++      padding: 15px 20px;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +243,16 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    // Declarative partial updates (<?start>/<?end> + <template for>) are native in
++    // Chromium 150+. Elsewhere, load the polyfill as early as possible so its
++    // MutationObserver patches templates while the document is still streaming.
++    if (!('htmlFor' in HTMLTemplateElement.prototype)) {
++      const s = document.createElement('script');
++      s.src = 'https://unpkg.com/template-for-polyfill@0.1.1/dist/template-for-polyfill.js';
++      document.head.append(s);
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -175,25 +275,48 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++
++      <!-- Placeholder cards. Everything between <?start> and <?end> is swapped out
++           when <template for="seasonal-cards"> arrives later in this document. -->
++      <div class="grid" id="seasonal-cards">
++        <?start name="seasonal-cards">
++          <p class="visually-hidden">Loading seasonal favorites…</p>
++          <div class="card card--skeleton" aria-hidden="true">
++            <span class="skeleton-line skeleton-line--title"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line skeleton-line--btn"></span>
++          </div>
++          <div class="card card--skeleton" aria-hidden="true">
++            <span class="skeleton-line skeleton-line--title"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line skeleton-line--btn"></span>
++          </div>
++          <div class="card card--skeleton" aria-hidden="true">
++            <span class="skeleton-line skeleton-line--title"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line"></span>
++            <span class="skeleton-line skeleton-line--btn"></span>
++          </div>
++        <?end>
+       </div>
++
++      <!-- Promo from our own CMS (trusted; includes its own widget script). -->
++      <aside class="promo" id="seasonal-promo" aria-label="Featured promotion">
++        <span class="skeleton-line skeleton-line--title" aria-hidden="true"></span>
++      </aside>
++
++      <!-- Customer-submitted reviews (untrusted; always sanitized before insertion). -->
++      <section class="reviews" aria-labelledby="reviews-heading">
++        <h3 id="reviews-heading">What our customers say</h3>
++        <div class="reviews-list" id="seasonal-reviews">
++          <span class="skeleton-line" aria-hidden="true"></span>
++          <span class="skeleton-line" aria-hidden="true"></span>
++        </div>
++      </section>
+     </section>
+   </main>
+ 
+@@ -207,6 +330,126 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Real cards, streamed later in the same HTML response (e.g. once the menu
++       service responds). Replaces the <?start name="seasonal-cards"> range above. -->
++  <template for="seasonal-cards">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <script type="module">
++    // Server endpoints returning HTML fragments.
++    const ENDPOINTS = {
++      cards: '/partials/seasonal-cards',     // our own menu markup, no scripts
++      reviews: '/partials/seasonal-reviews', // customer-submitted content: UNTRUSTED
++      promo: '/cms/promos/seasonal',         // our CMS, ships its own widget <script>
++      menuEvents: '/api/menu/events',        // Server-Sent Events: "menu-updated"
++    };
++
++    // Allowlists for the safe (sanitizing) setters. Elements not listed are
++    // removed together with their content; script/on* handlers are always stripped.
++    const CARD_SANITIZER = {
++      elements: ['div', 'h3', 'p', 'a', 'img', 'span', 'strong', 'em'],
++      attributes: ['class', 'href', 'src', 'alt', 'width', 'height', 'loading'],
++    };
++    const REVIEW_SANITIZER = {
++      elements: ['article', 'blockquote', 'p', 'footer', 'cite', 'strong', 'em', 'b', 'i', 'br'],
++      attributes: ['class'],
++    };
++
++    const cardsEl = document.getElementById('seasonal-cards');
++    const reviewsEl = document.getElementById('seasonal-reviews');
++    const promoEl = document.getElementById('seasonal-promo');
++
++    // HTML setters (streamHTML, streamHTMLUnsafe, ...) aren't shipped natively yet.
++    if (!('streamHTMLUnsafe' in Element.prototype)) {
++      await import('https://unpkg.com/html-setters-polyfill@0.1.1/index.min.js');
++    }
++
++    let domPurifyPromise;
++    const loadDOMPurify = () =>
++      (domPurifyPromise ??= import('https://cdn.jsdelivr.net/npm/dompurify@3.2.6/+esm')
++        .then((mod) => mod.default ?? mod));
++
++    async function fetchHTML(url, signal) {
++      const res = await fetch(url, { signal, headers: { Accept: 'text/html' } });
++      if (!res.ok) throw new Error(`${url} responded ${res.status}`);
++      return res;
++    }
++
++    // Sanitizing insert for anything that must never run script.
++    async function safeStreamInto(el, url, sanitizer, signal) {
++      const res = await fetchHTML(url, signal);
++      if ('streamHTML' in Element.prototype) {
++        await res.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(el.streamHTML({ sanitizer }), { signal });
++      } else {
++        // No native Sanitizer API (e.g. Safari): sanitize with DOMPurify instead.
++        const [html, DOMPurify] = await Promise.all([res.text(), loadDOMPurify()]);
++        el.innerHTML = DOMPurify.sanitize(html, {
++          ALLOWED_TAGS: [...sanitizer.elements, '#text'],
++          ALLOWED_ATTR: sanitizer.attributes,
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false,
++        });
++      }
++    }
++
++    // Trusted, script-executing insert. ONLY for first-party CMS markup —
++    // never route user-generated content through here.
++    async function trustedStreamInto(el, url, signal) {
++      const res = await fetchHTML(url, signal);
++      await res.body
++        .pipeThrough(new TextDecoderStream())
++        .pipeTo(el.streamHTMLUnsafe({ runScripts: true }), { signal });
++    }
++
++    async function update(el, task) {
++      el.setAttribute('aria-busy', 'true');
++      try {
++        await task();
++      } catch (err) {
++        if (err.name !== 'AbortError') console.error(err);
++      } finally {
++        el.removeAttribute('aria-busy');
++      }
++    }
++
++    let controller;
++    function refresh({ cards = true } = {}) {
++      controller?.abort(); // drop any in-flight refresh superseded by a newer one
++      controller = new AbortController();
++      const { signal } = controller;
++      return Promise.all([
++        cards && update(cardsEl, () => safeStreamInto(cardsEl, ENDPOINTS.cards, CARD_SANITIZER, signal)),
++        update(reviewsEl, () => safeStreamInto(reviewsEl, ENDPOINTS.reviews, REVIEW_SANITIZER, signal)),
++        update(promoEl, () => trustedStreamInto(promoEl, ENDPOINTS.promo, signal)),
++      ]);
++    }
++
++    // Initial load: cards arrive declaratively via <template for>; fetch the rest.
++    refresh({ cards: false });
++
++    // Pull fresh card HTML whenever the server reports a menu change.
++    const menuEvents = new EventSource(ENDPOINTS.menuEvents);
++    menuEvents.addEventListener('menu-updated', () => refresh());
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .sequencer { margin-top: 48px; border: 1px solid #e5dcd6; border-radius: 12px; overflow: hidden; background: #fff; }
++    .sequencer-heading { padding: 28px 30px 22px; display: flex; justify-content: space-between; gap: 20px; align-items: start; }
++    .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .16em; color: #8b6352; text-transform: uppercase; margin-bottom: 6px; }
++    .sequencer h2 { font-size: 1.6rem; letter-spacing: -.03em; }
++    .sequencer-heading p { font-size: .9rem; color: #806f65; }
++    .live-badge { white-space: nowrap; border: 1px solid #dce6db; background: #f3f7f1; color: #49633e; padding: 5px 10px; border-radius: 20px; font-size: .7rem; }
++    .live-badge::before { content: ''; display: inline-block; width: 6px; height: 6px; background: #678651; border-radius: 50%; margin-right: 6px; }
++    .order-controls { padding: 0 30px 25px; display: flex; align-items: end; gap: 14px; flex-wrap: wrap; }
++    .order-controls label { display: grid; gap: 5px; font-size: .75rem; font-weight: 600; }
++    .order-controls select { padding: 11px 36px 11px 12px; border: 1px solid #ded4cc; border-radius: 5px; color: var(--text); background: #faf8f5; font: inherit; font-size: .9rem; min-width: 220px; }
++    button { font: inherit; cursor: pointer; }
++    button.btn { border: 0; margin-top: 0; font-size: .9rem; padding: 11px 20px; }
++    button:disabled { opacity: .5; cursor: not-allowed; }
++    button:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .order-hint { color: #806f65; font-size: .75rem; align-self: center; margin-top: 22px; }
++    .metrics { background: #f8f5f1; border-top: 1px solid #eee5de; display: grid; grid-template-columns: repeat(3, 1fr); padding: 20px 30px; gap: 20px; }
++    .metric-label { color: #806f65; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
++    .metric-value { display: block; font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 3px; }
++    .metric-value small { font-size: .75rem; font-weight: 400; }
++    .trace-console { background: #242723; color: #e3e6db; }
++    .console-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 22px; border-bottom: 1px solid #3b3e37; }
++    .console-title { font: .75rem ui-monospace, monospace; display: flex; align-items: center; gap: 10px; }
++    .console-title span { color: #98ab84; font-size: .65rem; }
++    .console-actions { display: flex; gap: 16px; }
++    .console-actions button { color: #cbd1bf; font-size: .7rem; border: 0; background: transparent; }
++    .trace-scroll { overflow: auto; max-height: 340px; min-height: 170px; }
++    .trace-table { width: 100%; border-collapse: collapse; white-space: nowrap; font: .72rem ui-monospace, monospace; text-align: left; }
++    .trace-table th { color: #9aab8c; font-size: .65rem; letter-spacing: .06em; font-weight: 400; background: #242723; position: sticky; top: 0; }
++    .trace-table th, .trace-table td { padding: 13px 20px; border-bottom: 1px solid #343830; }
++    .trace-table td:first-child { color: #9aab8c; }
++    .trace-table td:last-child { color: #e4bd85; }
++    .trace-table .empty-log { padding: 48px 20px; text-align: center; color: #939b89; }
++    .telemetry-note { padding: 12px 22px; font-size: .7rem; color: #a7ae9e; border-top: 1px solid #3b3e37; }
++    #telemetry-status { color: #806f65; font-size: .8rem; padding: 12px 30px; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++      .sequencer-heading, .order-controls { padding-left: 20px; padding-right: 20px; }
++      .sequencer-heading { flex-wrap: wrap; }
++      .metrics { padding: 18px 20px; gap: 12px; }
++      .metric-value { font-size: 1rem; overflow-wrap: anywhere; }
++      .order-hint { margin-top: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +240,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="sequencer" aria-labelledby="sequencer-title">
++      <div class="sequencer-heading">
++        <div>
++          <div class="eyebrow">Behind the brew</div>
++          <h2 id="sequencer-title">Every order. In perfect sequence.</h2>
++          <p>A little coffee, a lot of precision. Send an order and follow its trace.</p>
++        </div>
++        <span class="live-badge">Live telemetry</span>
++      </div>
++      <div class="order-controls">
++        <label for="coffee-type">Your coffee
++          <select id="coffee-type">
++            <option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option>
++          </select>
++        </label>
++        <button class="btn" id="simulate-order" type="button">Simulate coffee order <span aria-hidden="true">↗</span></button>
++        <span class="order-hint">Click again to measure the interval.</span>
++      </div>
++      <div class="metrics">
++        <div><span class="metric-label">Orders sequenced</span><output id="order-count" class="metric-value">0</output></div>
++        <div><span class="metric-label">Last click interval</span><output id="last-interval" class="metric-value">— <small>ns</small></output></div>
++        <div><span class="metric-label">Timestamp resolution</span><span class="metric-value">Nanosecond <small>ns</small></span></div>
++      </div>
++      <div class="trace-console">
++        <div class="console-toolbar">
++          <div class="console-title">ORDER TRACE <span>↑ chronological</span></div>
++          <div class="console-actions"><button id="export-telemetry" type="button" disabled>Export JSON ↓</button><button id="clear-telemetry" type="button" disabled>Clear</button></div>
++        </div>
++        <div class="trace-scroll" tabindex="0" role="region" aria-label="Chronological order telemetry">
++          <table class="trace-table">
++            <thead><tr><th scope="col">SEQ</th><th scope="col">COFFEE ORDER</th><th scope="col">TIMESTAMP · UTC</th><th scope="col">INTERVAL · NS</th></tr></thead>
++            <tbody id="trace-body"><tr><td colspan="4" class="empty-log">Your next cup starts the timeline. Simulate an order to begin.</td></tr></tbody>
++          </table>
++        </div>
++        <p class="telemetry-note">order-service → payment-service → barista-service · Simulated operations, recorded in nanoseconds.</p>
++      </div>
++      <p id="telemetry-status" role="status">Intervals measure consecutive clicks at server receipt. UTC timestamps use a monotonic server clock.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +290,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/telemetry.js"></script>
+ </body>
+ 
+ </html>

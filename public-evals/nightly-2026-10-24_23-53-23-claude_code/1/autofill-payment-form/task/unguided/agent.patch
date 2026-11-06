@@ -1,0 +1,100 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,59 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment-form {
++      max-width: 480px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-row {
++      display: flex;
++      gap: 15px;
++    }
++
++    .form-row .form-group {
++      flex: 1;
++    }
++
++    .payment-form label {
++      display: block;
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .payment-form input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .payment-form input:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .payment-form .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +245,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="payment">
++      <h2 style="text-align: center; margin-top: 40px;">Payment Details</h2>
++      <form class="payment-form" action="/checkout" method="post" autocomplete="on">
++        <div class="form-group">
++          <label for="card-number">Card Number</label>
++          <input type="text" id="card-number" name="card-number" inputmode="numeric" autocomplete="cc-number"
++            placeholder="1234 5678 9012 3456" pattern="[0-9 ]{13,23}" maxlength="23" required>
++        </div>
++        <div class="form-group">
++          <label for="card-name">Name on Card</label>
++          <input type="text" id="card-name" name="card-name" autocomplete="cc-name" placeholder="Jane Doe" required>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="card-expiry">Expiry Date</label>
++            <input type="text" id="card-expiry" name="card-expiry" inputmode="numeric" autocomplete="cc-exp"
++              placeholder="MM/YY" pattern="(0[1-9]|1[0-2])\s?/\s?[0-9]{2}" maxlength="5" required>
++          </div>
++          <div class="form-group">
++            <label for="card-cvc">Security Code</label>
++            <input type="password" id="card-cvc" name="card-cvc" inputmode="numeric" autocomplete="cc-csc"
++              placeholder="123" pattern="[0-9]{3,4}" maxlength="4" required>
++          </div>
++        </div>
++        <button type="submit" class="btn">Pay Now</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

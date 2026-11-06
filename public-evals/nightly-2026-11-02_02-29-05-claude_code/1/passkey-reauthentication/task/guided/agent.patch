@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,39 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Account security */
++    .security-card {
++      max-width: 520px;
++      margin: 40px auto 0;
++    }
++
++    .security-card button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .security-card button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .reauth-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
++    .reauth-status[data-state="error"] {
++      color: #b71c1c;
++    }
++
++    .reauth-status[data-state="success"] {
++      color: #1b5e20;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +225,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card security-card" aria-labelledby="security-heading">
++      <h3 id="security-heading">Account Security</h3>
++      <p>Before changing sensitive account details, confirm it's you with your passkey.</p>
++      <button type="button" class="btn" id="reauth-btn" data-testid="reauth-button">Verify Identity</button>
++      <p class="reauth-status" id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +244,98 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "https://esm.sh/webauthn-polyfills"
++      }
++    }
++  </script>
++  <script type="module">
++    // Fills in parseRequestOptionsFromJSON / toJSON / getClientCapabilities where missing.
++    import 'webauthn-polyfills';
++
++    const reauthButton = document.getElementById('reauth-btn');
++    const reauthStatus = document.getElementById('reauth-status');
++    let reauthAbortController = new AbortController();
++
++    function setStatus(message, state = '') {
++      reauthStatus.textContent = message;
++      reauthStatus.dataset.state = state;
++    }
++
++    async function triggerButtonReauth() {
++      if (!window.PublicKeyCredential || !navigator.credentials) {
++        setStatus('Your browser does not support passkeys.', 'error');
++        return;
++      }
++
++      // Abort any in-flight WebAuthn request to avoid passkey prompt collisions
++      reauthAbortController.abort();
++      reauthAbortController = new AbortController();
++
++      reauthButton.disabled = true;
++      setStatus('Waiting for your passkey…');
++
++      try {
++        // Server scopes allowCredentials to the signed-in user's registered passkeys
++        const optionsResponse = await fetch('/api/reauth/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++        });
++        if (!optionsResponse.ok) {
++          throw new Error(`Options request failed (${optionsResponse.status})`);
++        }
++        const optionsJSON = await optionsResponse.json();
++        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: reauthAbortController.signal,
++        });
++        if (!credential) {
++          setStatus('Verification was not completed.', 'error');
++          return;
++        }
++
++        const encodedCredential = credential.toJSON();
++        const verifyResponse = await fetch('/api/reauth/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encodedCredential),
++        });
++
++        if (verifyResponse.ok) {
++          setStatus('Identity confirmed. You can now update your account.', 'success');
++          document.dispatchEvent(new CustomEvent('reauth:success'));
++        } else {
++          if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++            // Let the passkey provider hide a credential the server no longer recognizes
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: optionsJSON.rpId ?? location.hostname,
++              credentialId: encodedCredential.id,
++            }).catch(() => {});
++          }
++          setStatus('We could not verify your identity. Please try again.', 'error');
++        }
++      } catch (err) {
++        if (err.name === 'AbortError') return;
++        if (err.name === 'NotAllowedError') {
++          setStatus('Verification was cancelled.', 'error');
++        } else {
++          console.error(err);
++          setStatus('Something went wrong verifying your identity. Please try again.', 'error');
++        }
++      } finally {
++        reauthButton.disabled = false;
++      }
++    }
++
++    reauthButton.addEventListener('click', triggerButtonReauth);
++  </script>
++
+ </body>
+ 
+ </html>

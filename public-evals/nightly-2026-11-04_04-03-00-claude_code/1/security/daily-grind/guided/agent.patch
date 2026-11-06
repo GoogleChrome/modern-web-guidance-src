@@ -1,0 +1,290 @@
+diff --git a/index.html b/index.html
+index 66c9173..5252435 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="{{CSP_NONCE}}">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -66,17 +67,37 @@
+       color: var(--accent);
+     }
+ 
++    .logout-form {
++      display: inline;
++    }
++
+     .logout-link {
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      background: none;
++      cursor: pointer;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color 0.3s;
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      color: var(--accent);
+     }
+ 
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80");
++      /* Progressive enhancement: never send a Referer to the image CDN where supported.
++         (No integrity(): the CDN content-negotiates the format, so bytes are not stable.) */
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" referrer-policy(no-referrer));
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -142,6 +163,10 @@
+       margin-top: 40px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -164,7 +189,11 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form class="logout-form" method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +205,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/server.js b/server.js
+index 52c2fd5..82a551e 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,183 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++// Staged rollout controls:
++//   CSP_MODE=report-only  -> send CSP as Content-Security-Policy-Report-Only (dry run)
++//   CSP_MODE=enforce      -> (default) enforce CSP; reporting stays wired up
++//   HSTS_MAX_AGE          -> start short (300s) and ramp up to 31536000 once HTTPS is verified
++const CSP_MODE = process.env.CSP_MODE === 'report-only' ? 'report-only' : 'enforce';
++const HSTS_MAX_AGE = parseInt(process.env.HSTS_MAX_AGE || '300', 10);
++
++const REPORT_PATH = '/csp-reports';
++const REPORT_MAX_BYTES = 64 * 1024;
++const NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
++
++// Load the template once. It contains no user data; the nonce placeholder is only
++// present on developer-authored <script>/<style> tags.
++const TEMPLATE = fs.readFileSync(path.join(WORK_DIR, 'index.html'), 'utf8');
++
++function buildCsp(nonce) {
++  return [
++    "default-src 'none'",
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    `style-src 'nonce-${nonce}' 'report-sample'`,
++    "img-src 'self' https://images.unsplash.com",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "manifest-src 'self'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    "base-uri 'none'",
++    "object-src 'none'",
++    "require-trusted-types-for 'script'",
++    // No Trusted Types policies are needed today. Add policy names here when
++    // client-side code legitimately needs one (never a pass-through policy).
++    "trusted-types 'none'",
++    `report-uri ${REPORT_PATH}`, // legacy fallback for browsers without report-to
++    'report-to csp-endpoint',
++  ].join('; ');
++}
++
++function setSecurityHeaders(res, nonce) {
++  res.setHeader('Reporting-Endpoints', `csp-endpoint="${REPORT_PATH}", default="${REPORT_PATH}"`);
++  res.setHeader(
++    CSP_MODE === 'report-only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
++    buildCsp(nonce),
++  );
++  res.setHeader('X-Frame-Options', 'DENY');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader(
++    'Permissions-Policy',
++    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=(), focus-without-user-activation=()',
++  );
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Strict-Transport-Security', `max-age=${HSTS_MAX_AGE}; includeSubDomains`);
++  // Responses carry a per-request nonce and account-related content: never cache.
++  res.setHeader('Cache-Control', 'no-store');
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++}
++
++// Fetch Metadata resource isolation: reject cross-site requests that are not
++// top-level GET navigations. Runs before any other handling.
++function isAllowedByFetchMetadata(req) {
++  const site = req.headers['sec-fetch-site'];
++  if (!site) return true; // legacy browsers / non-browser clients
++  if (site === 'same-origin' || site === 'none') return true;
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++  return (
++    mode === 'navigate' &&
++    (req.method === 'GET' || req.method === 'HEAD') &&
++    dest !== 'object' &&
++    dest !== 'embed'
++  );
++}
++
++function send(res, status, body, extraHeaders = {}, method = 'GET') {
++  res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...extraHeaders });
++  res.end(method === 'HEAD' ? undefined : body);
++}
++
++// Strip query strings / fragments so tokens or PII never land in logs.
++function scrubUrl(value) {
++  if (typeof value !== 'string') return undefined;
++  try {
++    const u = new URL(value);
++    return `${u.origin}${u.pathname}`;
++  } catch {
++    return value.split(/[?#]/)[0].slice(0, 200);
++  }
++}
++
++function handleReport(req, res) {
++  const type = (req.headers['content-type'] || '').split(';')[0].trim();
++  if (type !== 'application/reports+json' && type !== 'application/csp-report') {
++    return send(res, 415, 'Unsupported Media Type');
++  }
++  let size = 0;
++  const chunks = [];
++  req.on('data', (chunk) => {
++    size += chunk.length;
++    if (size > REPORT_MAX_BYTES) {
++      send(res, 413, 'Payload Too Large');
++      req.destroy();
++      return;
++    }
++    chunks.push(chunk);
++  });
++  req.on('end', () => {
++    if (res.writableEnded) return;
++    try {
++      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      const reports = Array.isArray(parsed) ? parsed : [{ type: 'csp-violation', body: parsed['csp-report'] }];
++      for (const r of reports.slice(0, 50)) {
++        const b = (r && r.body) || {};
++        console.warn('[security-report]', JSON.stringify({
++          type: r && r.type,
++          directive: b.effectiveDirective || b['effective-directive'] || b.violatedDirective || b['violated-directive'],
++          blocked: scrubUrl(b.blockedURL || b['blocked-uri']),
++          document: scrubUrl(b.documentURL || b['document-uri']),
++          disposition: b.disposition,
++          sample: typeof (b.sample ?? b['script-sample']) === 'string' ? (b.sample ?? b['script-sample']).slice(0, 40) : undefined,
++        }));
++      }
++    } catch {
++      // Ignore malformed reports.
++    }
++    res.writeHead(204);
++    res.end();
++  });
++}
++
+ const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++  const nonce = crypto.randomBytes(16).toString('base64');
++  setSecurityHeaders(res, nonce);
++
++  if (!isAllowedByFetchMetadata(req)) {
++    return send(res, 403, 'Forbidden');
++  }
++
++  // Use a fixed base: the Host header is attacker-controlled and an invalid value
++  // would otherwise throw and crash the process.
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    return send(res, 400, 'Bad Request');
++  }
++
++  if (pathname === REPORT_PATH) {
++    if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed', { Allow: 'POST' });
++    return handleReport(req, res);
++  }
+ 
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    // State-changing: POST only (Fetch Metadata already rejects cross-site POSTs).
++    if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed', { Allow: 'POST' }, req.method);
++    res.writeHead(200, {
++      'Content-Type': 'text/plain; charset=utf-8',
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++    });
+     res.end('Logged out');
+     return;
+   }
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
+-      return;
+-    }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
+-  });
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    return send(res, 405, 'Method Not Allowed', { Allow: 'GET, HEAD' });
++  }
++
++  const body = TEMPLATE.split(NONCE_PLACEHOLDER).join(nonce);
++  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++  res.end(req.method === 'HEAD' ? undefined : body);
+ });
+ 
+ server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
++  console.log(`Server running on port ${PORT} (CSP ${CSP_MODE})`);
+ });

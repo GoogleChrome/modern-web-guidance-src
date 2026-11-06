@@ -1,0 +1,189 @@
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..467ad98
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,86 @@
++---
++const sections = [
++  { id: 'top-stories', label: 'Top Stories' },
++  { id: 'top-news', label: 'Top News' },
++  { id: 'world', label: 'World' },
++  { id: 'politics', label: 'Politics' },
++];
++---
++
++<section-navigation class="sticky top-0 z-20 block border-b border-gray-200 bg-white shadow-sm">
++  <nav aria-label="Page sections" class="flex overflow-x-auto px-4 sm:px-6 gap-6 text-sm font-semibold">
++    {sections.map(({ id, label }, index) => (
++      <a href={`#${id}`} aria-current={index === 0 ? 'location' : undefined}
++        class="section-link whitespace-nowrap border-b-2 border-transparent py-3 text-gray-600 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-600">
++        {label}
++      </a>
++    ))}
++  </nav>
++</section-navigation>
++
++<style>
++  .section-link[aria-current='location'] {
++    border-bottom-color: var(--color-amber-500);
++    color: var(--color-gray-900);
++  }
++</style>
++
++<script>
++  class SectionNavigation extends HTMLElement {
++    connectedCallback() {
++      const links = Array.from(this.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
++      const sections = links.flatMap(link => {
++        const section = document.getElementById(link.hash.slice(1));
++        return section ? [{ link, section }] : [];
++      });
++      let frame = 0;
++
++      const update = () => {
++        frame = 0;
++        // Track the section reaching the reading area just below the sticky menu.
++        const readingLine = Math.max(0, this.getBoundingClientRect().bottom) + 24;
++        let current = sections[0];
++        for (const entry of sections) {
++          if (entry.section.getBoundingClientRect().top <= readingLine) current = entry;
++        }
++        // The final section may be too short to reach the reading line.
++        const last = sections.at(-1);
++        if (last && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
++          && last.section.getBoundingClientRect().top < window.innerHeight) current = last;
++
++        for (const { link } of sections) {
++          if (link === current?.link) link.setAttribute('aria-current', 'location');
++          else link.removeAttribute('aria-current');
++        }
++      };
++
++      const scheduleUpdate = () => {
++        if (!frame) frame = requestAnimationFrame(update);
++      };
++      const resizeObserver = new ResizeObserver(scheduleUpdate);
++      resizeObserver.observe(document.body);
++      window.addEventListener('scroll', scheduleUpdate, { passive: true });
++      window.addEventListener('resize', scheduleUpdate);
++      window.addEventListener('hashchange', scheduleUpdate);
++      update();
++
++      this.cleanup = () => {
++        cancelAnimationFrame(frame);
++        resizeObserver.disconnect();
++        window.removeEventListener('scroll', scheduleUpdate);
++        window.removeEventListener('resize', scheduleUpdate);
++        window.removeEventListener('hashchange', scheduleUpdate);
++      };
++    }
++
++    private cleanup?: () => void;
++
++    disconnectedCallback() {
++      this.cleanup?.();
++    }
++  }
++
++  if (!customElements.get('section-navigation')) {
++    customElements.define('section-navigation', SectionNavigation);
++  }
++</script>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..4921ed6 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="scroll-mt-16 p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..659fb74 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -6,11 +6,12 @@ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
++    id?: string;
+     title: string;
+     articles: CollectionEntry<'articles'>[];
+ }
+ 
+-const { title, articles } = Astro.props;
++const { id, title, articles } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={id} class="scroll-mt-16 p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..46d025d 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNav from '../components/SectionNav.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,8 +39,9 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNav />
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <div id="top-stories" class="scroll-mt-16 bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+@@ -65,20 +67,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid id="top-news" title="Top News" articles={topNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid id="world" title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid id="politics" title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

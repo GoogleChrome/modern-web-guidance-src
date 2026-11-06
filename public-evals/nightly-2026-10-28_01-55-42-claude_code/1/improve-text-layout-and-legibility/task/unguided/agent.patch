@@ -1,0 +1,25 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,21 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Typography: scoped to specific elements (not body/*) to keep layout cost low */
++    h1,
++    h2 {
++      /* Balance line lengths so multi-line headings look symmetrical */
++      text-wrap: balance;
++    }
++
++    p,
++    blockquote {
++      /* Avoid orphans / lone words on the last line of running text */
++      text-wrap: pretty;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

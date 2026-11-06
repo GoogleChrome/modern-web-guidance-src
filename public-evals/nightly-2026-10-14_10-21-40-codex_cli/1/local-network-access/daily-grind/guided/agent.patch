@@ -1,0 +1,286 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..478e9d0
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,25 @@
++# The Daily Grind
++
++Run `pnpm start` to serve the site. Deploy behind HTTPS for local network access;
++localhost is a secure-context exception for development. A public HTTP deployment
++cannot request local network permissions.
++
++The local resource form reads a user-supplied HTTP or HTTPS endpoint on a LAN
++device or loopback service. It queries the granular `local-network` or
++`loopback-network` permission, then requests the resource only after submission.
++Unsupported permission queries fall back to a user-initiated connection attempt.
++Browsers without Local Network Access support may block HTTP endpoints from HTTPS;
++use an HTTPS local endpoint in that case.
++
++The target service must support standard CORS and allow the website's origin
++with `Access-Control-Allow-Origin`. No server proxy is used: localhost always
++refers to the user's computer. Requests omit credentials and reject redirects.
++Browser permission remains under the user's control.
++
++Top-level same-origin access uses the default `self` permissions policy. If this
++site is embedded, its HTTPS host must delegate `local-network; loopback-network`
++through the iframe's `allow` attribute and permit the site's origin in any
++`Permissions-Policy` header. A hosting policy that disables these features must
++be updated at the HTTP server; an HTML meta tag cannot override it.
++
++Run `node --test local-network.test.mjs` for automated connection-flow checks.
+diff --git a/index.html b/index.html
+index 66c9173..b4ba2e8 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,45 @@
+       background: #3e2723;
+     }
+ 
++    .local-resource {
++      margin-top: 40px;
++      text-align: left;
++    }
++
++    .local-resource label {
++      display: block;
++      margin-top: 15px;
++      font-weight: 600;
++    }
++
++    .local-resource input,
++    .local-resource select {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .local-resource button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++    }
++
++    .local-resource button:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .local-resource pre {
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++      max-height: 300px;
++      overflow: auto;
++      margin-top: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +234,23 @@
+         </div>
+       </div>
+     </section>
++    <section class="card local-resource" aria-labelledby="local-resource-title">
++      <h2 id="local-resource-title">Connect to a local resource</h2>
++      <p>Read a resource from a device on your network or a service running on this computer. Connect only to a service you trust. Your browser may ask for permission when you connect.</p>
++      <form id="local-resource-form">
++        <label for="address-space">Resource location</label>
++        <select id="address-space" name="address-space">
++          <option value="loopback">This computer (loopback)</option>
++          <option value="local">Local network device</option>
++        </select>
++        <label for="resource-url">Resource URL</label>
++        <input id="resource-url" name="resource-url" type="url" placeholder="http://localhost:8080/health" required autocomplete="off" spellcheck="false" aria-describedby="resource-help">
++        <p id="resource-help">Enter the full HTTP or HTTPS URL. The service must allow requests from this website through CORS.</p>
++        <button class="btn" id="connect-resource" type="submit">Connect</button>
++      </form>
++      <p id="resource-status" role="status" aria-live="polite"></p>
++      <pre id="resource-result" aria-label="Resource response" hidden></pre>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +263,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/local-resource.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/local-network.mjs b/local-network.mjs
+new file mode 100644
+index 0000000..18e27d4
+--- /dev/null
++++ b/local-network.mjs
+@@ -0,0 +1,53 @@
++export async function queryNetworkPermission(addressSpace) {
++  if (!['local', 'loopback'].includes(addressSpace)) {
++    throw new Error('Choose a local network or loopback resource.');
++  }
++  try {
++    return await navigator.permissions.query({ name: `${addressSpace}-network` });
++  } catch {
++    // Unsupported permission names and browsers without the Permissions API
++    // still allow a connection attempt initiated by the user.
++    return null;
++  }
++}
++
++export async function readLocalResource(urlValue, addressSpace) {
++  const url = new URL(urlValue);
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
++    throw new Error('Enter an HTTP or HTTPS URL without embedded credentials.');
++  }
++  if (!globalThis.isSecureContext) {
++    throw new Error('Open this website over HTTPS (or localhost for development) to connect to local resources.');
++  }
++  const permission = await queryNetworkPermission(addressSpace);
++  if (permission?.state === 'denied') {
++    throw new Error(`Allow ${addressSpace === 'local' ? 'Local network' : 'Loopback network'} access in your browser’s site settings, then try again.`);
++  }
++
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(), 15000);
++  try {
++    const response = await fetch(url.href, {
++      method: 'GET',
++      mode: 'cors',
++      credentials: 'omit',
++      redirect: 'error',
++      targetAddressSpace: addressSpace,
++      signal: controller.signal,
++    });
++    if (!response.ok) {
++      throw new Error(`The resource returned HTTP ${response.status}. Check the URL and local service.`);
++    }
++    return await response.text();
++  } catch (error) {
++    if (error.name === 'AbortError') {
++      throw new Error('The connection timed out. Check that the service is running and reachable.');
++    }
++    if (error instanceof TypeError) {
++      throw new Error('Could not read the resource. Check the URL and resource location, that the service is running on this computer or network, browser site permissions, and the service’s CORS settings. Your browser must also support connections to HTTP local resources from HTTPS pages.');
++    }
++    throw error;
++  } finally {
++    clearTimeout(timeout);
++  }
++}
+diff --git a/local-network.test.mjs b/local-network.test.mjs
+new file mode 100644
+index 0000000..87aa30c
+--- /dev/null
++++ b/local-network.test.mjs
+@@ -0,0 +1,66 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readLocalResource } from './local-network.mjs';
++
++function setup(t, permissionQuery, fetchHandler) {
++  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
++  const originalSecureContext = Object.getOwnPropertyDescriptor(globalThis, 'isSecureContext');
++  Object.defineProperty(globalThis, 'navigator', {
++    configurable: true,
++    value: { permissions: { query: permissionQuery } },
++  });
++  Object.defineProperty(globalThis, 'isSecureContext', { configurable: true, value: true });
++  t.mock.method(globalThis, 'fetch', fetchHandler);
++  t.after(() => {
++    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
++    else delete globalThis.navigator;
++    if (originalSecureContext) Object.defineProperty(globalThis, 'isSecureContext', originalSecureContext);
++    else delete globalThis.isSecureContext;
++  });
++}
++
++for (const space of ['local', 'loopback']) {
++  test(`reads a ${space} resource with the matching permission and address space`, async (t) => {
++    setup(t, async ({ name }) => {
++      assert.equal(name, `${space}-network`);
++      return { state: 'granted' };
++    }, async (url, options) => {
++      assert.equal(url, 'http://localhost:8080/health');
++      assert.equal(options.targetAddressSpace, space);
++      assert.equal(options.mode, 'cors');
++      assert.equal(options.credentials, 'omit');
++      assert.equal(options.redirect, 'error');
++      assert.ok(options.signal instanceof AbortSignal);
++      return new Response('ready');
++    });
++    assert.equal(await readLocalResource('http://localhost:8080/health', space), 'ready');
++  });
++}
++
++test('denied permission prevents a network request and explains recovery', async (t) => {
++  setup(t, async () => ({ state: 'denied' }), () => assert.fail('must not fetch'));
++  await assert.rejects(readLocalResource('http://localhost:8080', 'loopback'), /site settings/);
++});
++
++test('unsupported permission queries still attempt a user-requested connection', async (t) => {
++  setup(t, async () => { throw new TypeError('unsupported permission'); }, async () => new Response('ready'));
++  assert.equal(await readLocalResource('http://localhost:8080', 'loopback'), 'ready');
++});
++
++test('insecure contexts and non-HTTP URLs do not initiate requests', async (t) => {
++  setup(t, () => assert.fail('must not query'), () => assert.fail('must not fetch'));
++  await assert.rejects(readLocalResource('file:///etc/hosts', 'loopback'), /HTTP or HTTPS/);
++  await assert.rejects(readLocalResource('http://user:password@localhost', 'loopback'), /credentials/);
++  Object.defineProperty(globalThis, 'isSecureContext', { configurable: true, value: false });
++  await assert.rejects(readLocalResource('http://localhost:8080', 'loopback'), /HTTPS/);
++});
++
++test('network failures include permission and CORS remediation', async (t) => {
++  setup(t, async () => ({ state: 'prompt' }), async () => { throw new TypeError('failed to fetch'); });
++  await assert.rejects(readLocalResource('http://localhost:8080', 'loopback'), /CORS settings/);
++});
++
++test('HTTP errors are reported as unsuccessful connections', async (t) => {
++  setup(t, async () => ({ state: 'granted' }), async () => new Response('missing', { status: 404 }));
++  await assert.rejects(readLocalResource('http://localhost:8080', 'loopback'), /HTTP 404/);
++});
+diff --git a/local-resource.mjs b/local-resource.mjs
+new file mode 100644
+index 0000000..439d4aa
+--- /dev/null
++++ b/local-resource.mjs
+@@ -0,0 +1,36 @@
++import { readLocalResource } from './local-network.mjs';
++
++const form = document.querySelector('#local-resource-form');
++const location = document.querySelector('#address-space');
++const url = document.querySelector('#resource-url');
++const button = document.querySelector('#connect-resource');
++const status = document.querySelector('#resource-status');
++const result = document.querySelector('#resource-result');
++
++location.addEventListener('change', () => {
++  url.placeholder = location.value === 'local'
++    ? 'http://192.168.1.100:8080/status'
++    : 'http://localhost:8080/health';
++});
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  if (button.disabled) return;
++  button.disabled = true;
++  status.textContent = 'Connecting… If prompted, allow access to your local resource.';
++  result.hidden = true;
++  result.textContent = '';
++  try {
++    const text = await readLocalResource(url.value, location.value);
++    // Treat local responses as text, never as executable HTML.
++    result.textContent = text.slice(0, 20000);
++    result.hidden = false;
++    status.textContent = text.length > 20000
++      ? 'Connected. Showing the first 20,000 characters of the response.'
++      : 'Connected. Resource response received.';
++  } catch (error) {
++    status.textContent = error.message;
++  } finally {
++    button.disabled = false;
++  }
++});

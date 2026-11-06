@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,59 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      margin-bottom: 16px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signin button.btn {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .signin button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .auth-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      text-align: center;
++    }
++
++    .auth-status[data-state="success"] { color: #2e7d32; }
++    .auth-status[data-state="error"] { color: #c62828; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +225,18 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" novalidate>
++        <label for="username">Username</label>
++        <input id="username" type="text" name="username" autocomplete="username webauthn"
++          autocapitalize="none" spellcheck="false" data-testid="username-field">
++        <button type="button" id="passkey-button" class="btn" data-testid="auth-button">Sign in with passkey</button>
++      </form>
++      <p id="auth-status" class="auth-status" role="status" aria-live="polite" data-testid="auth-status"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +267,142 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Fills gaps for getClientCapabilities / parseRequestOptionsFromJSON / toJSON in older engines.
++    import 'https://esm.sh/webauthn-polyfills';
++
++    const OPTIONS_URL = '/api/login/options';
++    const VERIFY_URL = '/api/login/verify';
++
++    const button = document.getElementById('passkey-button');
++    const statusEl = document.getElementById('auth-status');
++
++    let autofillAbortController = new AbortController();
++    let rpId;
++
++    function setStatus(message, state = '') {
++      statusEl.textContent = message;
++      statusEl.dataset.state = state;
++    }
++
++    async function fetchLoginOptions() {
++      const res = await fetch(OPTIONS_URL, {
++        method: 'POST',
++        credentials: 'same-origin',
++        headers: { 'Content-Type': 'application/json' },
++      });
++      if (!res.ok) throw new Error(`Failed to load sign-in options (${res.status})`);
++      const optionsJSON = await res.json();
++      rpId = optionsJSON.rpId ?? location.hostname;
++      return PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++    }
++
++    async function verifyCredential(credential) {
++      const encoded = credential.toJSON();
++      let res;
++      try {
++        res = await fetch(VERIFY_URL, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(encoded),
++        });
++      } catch (err) {
++        console.error('Verification request error:', err);
++        setStatus('Network error while signing in. Please try again.', 'error');
++        return false;
++      }
++
++      if (res.ok) {
++        let name = '';
++        try { name = (await res.json())?.username ?? ''; } catch { /* body optional */ }
++        setStatus(name ? `Signed in as ${name}.` : 'Signed in successfully.', 'success');
++        return true;
++      }
++
++      if (res.status === 404) {
++        setStatus('This passkey is no longer registered. Please use another sign-in method.', 'error');
++        // Pre-authentication path: tell the passkey provider to hide this stale credential.
++        if (PublicKeyCredential.signalUnknownCredential) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId: encoded.id });
++          } catch (err) {
++            console.warn('signalUnknownCredential failed:', err);
++          }
++        }
++      } else {
++        setStatus('Sign-in failed. Please try again.', 'error');
++      }
++      return false;
++    }
++
++    async function initializeConditionalAutofill() {
++      if (!window.PublicKeyCredential) return;
++      let capabilities;
++      try {
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++      } catch {
++        return;
++      }
++      if (capabilities.conditionalGet !== true) return;
++
++      try {
++        const publicKey = await fetchLoginOptions();
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++          mediation: 'conditional',
++        });
++        await verifyCredential(credential);
++      } catch (err) {
++        if (['NotAllowedError', 'AbortError'].includes(err.name)) return;
++        console.error('Unexpected conditional get error:', err);
++      }
++    }
++
++    async function triggerButtonAuthentication() {
++      if (!window.PublicKeyCredential) {
++        setStatus('Passkeys are not supported in this browser.', 'error');
++        return;
++      }
++
++      // Cancel the pending autofill request so the two prompts don't collide.
++      autofillAbortController.abort();
++      autofillAbortController = new AbortController();
++
++      button.disabled = true;
++      setStatus('Waiting for your passkey…');
++
++      let credential;
++      try {
++        const publicKey = await fetchLoginOptions();
++        credential = await navigator.credentials.get({
++          publicKey,
++          signal: autofillAbortController.signal,
++        });
++      } catch (err) {
++        if (err.name === 'NotAllowedError') {
++          setStatus('Passkey sign-in was cancelled.');
++        } else if (err.name !== 'AbortError') {
++          console.error('Passkey sign-in error:', err);
++          setStatus('Could not sign in with a passkey.', 'error');
++        }
++        button.disabled = false;
++        // Re-arm autofill suggestions after a cancelled/failed explicit prompt.
++        initializeConditionalAutofill();
++        return;
++      }
++
++      const ok = await verifyCredential(credential);
++      button.disabled = false;
++      if (!ok) initializeConditionalAutofill();
++    }
++
++    button.addEventListener('click', triggerButtonAuthentication);
++    initializeConditionalAutofill();
++  </script>
++
+ </body>
+ 
+ </html>

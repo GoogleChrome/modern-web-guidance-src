@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,74 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 320px;
++      overflow-y: auto;
++      margin-top: 20px;
++      padding: 20px;
++      background: var(--secondary);
++      border: 2px solid var(--primary);
++      border-radius: 8px;
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-gutter: stable;
++    }
++
++    .feedback-log:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Legacy fallback for older WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-entry {
++      background: white;
++      padding: 15px 20px;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback-entry + .feedback-entry {
++      margin-top: 15px;
++    }
++
++    .feedback-entry blockquote {
++      font-style: italic;
++    }
++
++    .feedback-entry figcaption {
++      margin-top: 8px;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +260,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading" style="text-align: center;">Customer Feedback</h2>
++      <ul class="feedback-log" tabindex="0" aria-label="Customer feedback log">
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;The Maple Oat Latte is my new autumn ritual. Perfectly sweet without being overwhelming.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Sarah M., Portland</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Best cold brew in town, hands down. Smooth, rich, and never bitter.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; James T., Downtown</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;The baristas remember my order every single morning. That kind of service is rare.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Priya K., Riverside</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;I love knowing exactly where my beans come from. You can taste the care in every cup.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Daniel R., Eastside</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;The Dark Roast Espresso got me through finals week. Bold and full of flavor!&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Emily C., University District</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Ordering online is so easy, and my coffee is always ready when I arrive.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Marcus L., Westgate</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Cozy atmosphere, great music, and the best pastries to pair with a latte.&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Hannah W., Old Town</figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Rewards program is fantastic. I've earned three free drinks this month already!&rdquo;</p>
++              </blockquote>
++              <figcaption>&mdash; Luis G., Harbor View</figcaption>
++            </figure>
++          </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

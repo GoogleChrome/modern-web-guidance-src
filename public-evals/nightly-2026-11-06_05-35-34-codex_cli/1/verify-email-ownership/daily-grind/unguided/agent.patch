@@ -1,0 +1,627 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..97725b4
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++data/
++.env
++*.log
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..cb3cb4c
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,24 @@
++# The Daily Grind
++
++A responsive coffee homepage with rewards registration, Google email ownership verification, and durable SQLite membership storage. Requires Node.js 24+.
++
++## Setup
++
++1. Install dependencies with `pnpm install`.
++2. Create a **Web application OAuth client ID** in Google Cloud, configure its consent screen, and register the exact website origin under **Authorized JavaScript origins**. Use test users while the Google app is in testing. The Google Identity Services popup callback does not need a redirect endpoint.
++3. Set `GOOGLE_CLIENT_ID` to that client ID and `APP_ORIGIN` to the exact public origin (no trailing slash). Use HTTPS in production. See `.env.example`. The process reads environment variables; an `.env` file is not automatically loaded.
++4. `pnpm start` runs the Node server when you are ready. Default port: 11222. Set `PORT` if needed. For a local `.env`, Node 24 also supports `node --env-file=.env server.mjs`.
++5. Keep `data/` on a persistent disk, or set `DATABASE_PATH` to a persistent SQLite file. Run a single Node instance with this database. The database contains personal information and must not be published or served as a static file.
++
++No server or browser session was started during implementation. `pnpm build` performs syntax validation; `pnpm test` runs service tests with an in-memory database and fake provider verification, without listening on a port or importing `server.mjs`.
++
++## Verification and registration
++
++- `GET /api/auth/config` returns a public client ID and a random, ten-minute nonce tied to an HttpOnly, SameSite cookie (Secure on HTTPS).
++- Google Identity Services returns a signed ID token to the browser. `POST /api/verify-email` receives `{ credential, email }`. The official `google-auth-library` verifies the signature, expiry, issuer, and audience. The service checks the nonce, Google subject, verified-email claim, and the address entered in the form. A bare email, browser flag, unsigned token, or DNS check cannot confirm email ownership.
++- Only Gmail and verified Google Workspace addresses are accepted. Google is not authoritative for the current ownership of external addresses registered to a Google account. See [Google's server verification guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
++- `POST /api/rewards` receives `{ firstName, lastName, email, terms, marketing }`. It requires the matching server-side verification and explicit terms acceptance, then saves the member and consumes the registration session. Google subject and email are unique. Marketing defaults to off.
++- Missing provider configuration returns 503 with a useful message. No fake verification or email delivery fallback is used. Existing accounts return an explicit message after Google verification; account management and point redemption are outside this registration flow.
++- Requests require the configured origin and JSON; bodies are limited to 20 KB. Verification is limited to ten attempts per registration challenge. Deploy behind ordinary edge rate limiting for public traffic. The service does not log credentials or email addresses.
++
++Homepage photos are served from Unsplash, typefaces from Google Fonts, and the verification script from Google Identity Services.
+diff --git a/index.html b/index.html
+index 66c9173..3d98a29 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,32 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
++<meta name="theme-color" content="#234d3b"><meta name="description" content="Good coffee. Better mornings. Join Daily Grind Rewards and make your daily ritual a little more rewarding.">
++<title>The Daily Grind · A little more rewarding</title>
++<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="/styles.css"><script src="/signup.js" defer></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
+-</body>
+-
+-</html>
++<div class="announcement">YOUR DAILY RITUAL, WITH A LITTLE EXTRA. <a href="#rewards">Meet Daily Grind Rewards <span>↗</span></a></div>
++<header class="site-header"><a class="brand" href="/" aria-label="The Daily Grind home"><span class="brand-icon">☕</span><span>THE DAILY GRIND<small>COFFEE & GOOD COMPANY</small></span></a><nav aria-label="Main navigation"><a href="#favorites">Our coffee</a><a href="#story">Our story</a><a class="active" href="#rewards">Rewards</a></nav><a href="#rewards" class="header-cta">Join the good stuff <span>↗</span></a></header>
++<main>
++<section class="intro" id="rewards">
++<div class="hero-copy"><div class="eyebrow"><span class="little-star">✳</span> THE DAILY GRIND REWARDS</div><h1>Your daily grind.<br>A little more<br><em>rewarding.</em></h1><p>Good coffee brings you in. A little something extra<br class="desktop"> keeps you coming back. Make every cup count.</p><div class="benefits"><span><i>✓</i> Points with every sip</span><span><i>✓</i> A birthday treat</span><span><i>✓</i> Members-only perks</span></div><div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1000&q=85" alt="Freshly brewed coffee surrounded by roasted coffee beans"><div class="photo-caption">A good day starts here.<span>EST. 2016 ↗</span></div><div class="round-stamp">FRESH COFFEE<br><strong>✳</strong><br>FRESH PERKS</div></div></div>
++<div class="signup-card"><div class="card-top"><span class="eyebrow">A CUP FULL OF POSSIBILITIES</span><span class="mini-cup">♧</span></div><h2>Come on in.</h2><p class="card-description">Your next favorite ritual starts here.<br>Join our rewards family. It’s free.</p><form id="signup-form" method="post" action="/api/rewards"><noscript><p class="status">Please enable JavaScript to verify your email with Google and join Rewards.</p></noscript>
++<div class="field-row"><div class="field"><label for="first-name">First name</label><input id="first-name" name="firstName" placeholder="Jamie" autocomplete="given-name" maxlength="60" required></div><div class="field"><label for="last-name">Last name</label><input id="last-name" name="lastName" placeholder="Morgan" autocomplete="family-name" maxlength="60" required></div></div>
++<div class="field"><label for="email">Email address <span id="verified-badge" hidden>✓ Verified</span></label><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required></div>
++<div class="verification"><div class="verification-title"><span class="shield">◇</span><strong>A quick hello. No inbox detour.</strong></div><p>Confirm your email securely with Google.<br>No codes, no email links. Just you.</p><div id="google-button"></div><button id="verify-button" type="button" class="google-placeholder"><span class="google-g">G</span> Verify email with Google</button><p class="verification-note">Use a Gmail or Google Workspace address.</p><p id="verification-status" class="status" role="status" aria-live="polite"></p></div>
++<label class="checkbox-row"><input type="checkbox" name="marketing"><span>Send me fresh news, seasonal sips, and special offers.<small>Just the good stuff. Unsubscribe anytime.</small></span></label>
++<label class="checkbox-row terms"><input type="checkbox" name="terms" required><span>I agree to the <button type="button" class="text-link" data-dialog="terms-dialog">Rewards Terms</button> and <button type="button" class="text-link" data-dialog="privacy-dialog">Privacy Policy</button>.</span></label>
++<button type="submit" class="join-button" id="join-button">Create my rewards account <span>↗</span></button><p id="form-status" class="status" role="status" aria-live="polite"></p><div class="card-foot"><span>♧</span> Free to join. Good things to come.</div>
++</form><div id="success" hidden tabindex="-1"><div class="success-icon">✓</div><h2>You’re in!</h2><p>Welcome to the Daily Grind family, <span id="member-name"></span>. Your email is verified and your rewards account is ready.</p><p class="member-number">Member <strong id="member-id"></strong></p><a class="join-button" href="#favorites">Find your next favorite <span>↗</span></a></div></div>
++</section>
++<section class="perks-strip" aria-label="Rewards benefits"><div><span>01 /</span><h3>Sip. Earn. Repeat.</h3><p>Every coffee is a step closer to your next treat.</p></div><div><span>02 /</span><h3>Your birthday, on us.</h3><p>A little birthday joy, brewed just for you.</p></div><div><span>03 /</span><h3>In on the good stuff.</h3><p>First dibs on seasonal flavors and special offers.</p></div></section>
++<section class="favorites" id="favorites"><div class="section-heading"><div><div class="eyebrow">FRESH FROM THE COFFEE BAR</div><h2>Meet your next usual.</h2></div><span>Made with care. Enjoyed on repeat.</span></div><div class="coffee-grid"><article><div class="coffee-img"><img loading="lazy" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=650&q=80" alt="Iced latte in a glass"><span>THE SEASONAL SIP</span></div><h3>Maple Oat Latte <span>↗</span></h3><p>Creamy oat milk. A little maple magic.</p></article><article><div class="coffee-img"><img loading="lazy" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=650&q=80" alt="Rich espresso in a ceramic cup"><span>THE CLASSIC</span></div><h3>Dark Roast Espresso <span>↗</span></h3><p>Bold, rich, and beautifully uncomplicated.</p></article><article><div class="coffee-img"><img loading="lazy" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=650&q=80" alt="Cold coffee served over ice"><span>THE SLOW BREW</span></div><h3>Signature Cold Brew <span>↗</span></h3><p>Steeped for 18 hours. Smooth all day.</p></article></div></section>
++<section class="story" id="story"><span>✳</span><h2>More than a coffee stop.<br>A little piece of your day.</h2><p>Ethically sourced. Locally roasted. Always made with care.<br>We’re here for the early starts, the slow afternoons, and everything in between.</p></section>
++</main><footer><a class="footer-brand" href="/">THE DAILY GRIND<span>Good coffee. Good company.</span></a><p>© 2026 The Daily Grind Coffee Co.</p><button class="text-link" data-dialog="privacy-dialog">Privacy Policy ↗</button></footer>
++<dialog id="terms-dialog"><button class="close-dialog" aria-label="Close">×</button><h2>Rewards Terms</h2><p>Daily Grind Rewards is free to join. One account per person. Your verified email identifies your membership. Reward availability and offers may vary by location. Any purchase-specific earning or redemption terms will be shown with the offer. We may update the program and will notify members of material changes.</p></dialog>
++<dialog id="privacy-dialog"><button class="close-dialog" aria-label="Close">×</button><h2>Your privacy</h2><p>We store your name, verified email, Google account identifier, and rewards membership to run your account. Google confirms your email; we never receive your Google password. Marketing is optional and you can unsubscribe from any marketing email. We do not sell your personal information.</p></dialog>
++</body></html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d525567 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,18 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "node --check server.mjs && node --check rewards.mjs && node --check signup.js",
++    "test": "node --test rewards.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "google-auth-library": "^11.3.3"
++  },
++  "type": "module",
++  "engines": {
++    "node": ">=24"
+   }
+ }
+diff --git a/rewards.mjs b/rewards.mjs
+new file mode 100644
+index 0000000..5812aad
+--- /dev/null
++++ b/rewards.mjs
+@@ -0,0 +1,102 @@
++import { randomBytes, randomUUID } from 'node:crypto';
++import { DatabaseSync } from 'node:sqlite';
++import { OAuth2Client } from 'google-auth-library';
++
++export class HttpError extends Error {
++  constructor(status, message) { super(message); this.status = status; }
++}
++export function validateIdentity(payload, { clientId, nonce, email, now = Date.now() }) {
++  if (!payload || !['https://accounts.google.com', 'accounts.google.com'].includes(payload.iss)
++      || payload.aud !== clientId || !payload.exp || payload.exp * 1000 <= now
++      || typeof payload.sub !== 'string' || !payload.sub || payload.nonce !== nonce)
++    throw new HttpError(401, 'Verification expired or invalid. Please verify with Google again.');
++  if (payload.email_verified !== true || typeof payload.email !== 'string'
++      || !(payload.email.toLowerCase().endsWith('@gmail.com') || (typeof payload.hd === 'string' && payload.hd)))
++    throw new HttpError(400, 'Please use a Gmail or Google Workspace address so we can confirm ownership without an email.');
++  if (payload.email.toLowerCase() !== email.toLowerCase())
++    throw new HttpError(400, 'Your Google address does not match the email in the form. Update your email or choose the matching Google account.');
++  return { email: payload.email.toLowerCase(), subject: payload.sub };
++}
++export function openStore(path) {
++  const db = new DatabaseSync(path);
++  db.exec(`PRAGMA journal_mode=WAL;
++    CREATE TABLE IF NOT EXISTS challenges (
++      token TEXT PRIMARY KEY, expires INTEGER NOT NULL, email TEXT, subject TEXT, member TEXT, attempts INTEGER NOT NULL DEFAULT 0
++    );
++    CREATE TABLE IF NOT EXISTS members (
++      id TEXT PRIMARY KEY, subject TEXT NOT NULL UNIQUE, email TEXT NOT NULL UNIQUE,
++      first_name TEXT NOT NULL, last_name TEXT NOT NULL, marketing INTEGER NOT NULL,
++      terms_version TEXT NOT NULL, created_at TEXT NOT NULL
++    );`);
++  return db;
++}
++const json = (data, status = 200, cookie) => new Response(JSON.stringify(data), {
++  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...(cookie ? { 'Set-Cookie': cookie } : {}) }
++});
++const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++export function createApi({ db, clientId, origin, verifyToken, secure = true }) {
++  const google = new OAuth2Client(clientId);
++  const verify = verifyToken || (async credential => (await google.verifyIdToken({ idToken: credential, audience: clientId })).getPayload());
++  const cookieName = secure ? '__Host-dg_registration' : 'dg_registration';
++  const cookie = token => `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=600${secure ? '; Secure' : ''}`;
++  return async function api(request) {
++    try {
++      const url = new URL(request.url);
++      if (!['/api/auth/config', '/api/verify-email', '/api/rewards'].includes(url.pathname)) return json({ error: 'Not found.' }, 404);
++      if (request.method !== (url.pathname === '/api/auth/config' ? 'GET' : 'POST')) return json({ error: 'Method not allowed.' }, 405);
++      if (!clientId) return json({ error: 'Email verification is not available yet. Please try again later.' }, 503);
++      if (origin && url.origin !== origin) throw new HttpError(403, 'Invalid request origin.');
++      if (request.method === 'POST' && request.headers.get('origin') !== (origin || url.origin))
++        throw new HttpError(403, 'Please register from the Daily Grind website.');
++      db.prepare('DELETE FROM challenges WHERE expires < ?').run(Date.now());
++      const token = request.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
++      let challenge = token && db.prepare('SELECT * FROM challenges WHERE token = ? AND expires > ?').get(token, Date.now());
++      if (url.pathname === '/api/auth/config') {
++        if (challenge && !challenge.member) db.prepare('DELETE FROM challenges WHERE token = ?').run(token);
++        const nonce = randomBytes(32).toString('hex');
++        db.prepare('INSERT INTO challenges (token, expires) VALUES (?, ?)').run(nonce, Date.now() + 600_000);
++        return json({ clientId, nonce }, 200, cookie(nonce));
++      }
++      if (!challenge || challenge.member) throw new HttpError(401, 'Your registration session expired. Refresh the page and try again.');
++      if (!request.headers.get('content-type')?.startsWith('application/json')) throw new HttpError(415, 'Expected JSON.');
++      const raw = await request.text();
++      if (Buffer.byteLength(raw) > 20_000) throw new HttpError(413, 'Request too large.');
++      let body;
++      try { body = JSON.parse(raw); } catch { throw new HttpError(400, 'Invalid request.'); }
++      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'Invalid request.');
++      if (typeof body.email !== 'string' || body.email.length > 254 || !emailPattern.test(body.email.trim())) throw new HttpError(400, 'Enter a valid email address.');
++      const email = body.email.trim().toLowerCase();
++      if (url.pathname === '/api/verify-email') {
++        // Never retain a previous verification after an unsuccessful re-verification.
++        db.prepare('UPDATE challenges SET email = NULL, subject = NULL, attempts = attempts + 1 WHERE token = ?').run(token);
++        if (challenge.attempts >= 10) throw new HttpError(429, 'Too many attempts. Refresh the page to start again.');
++        if (typeof body.credential !== 'string' || body.credential.length > 16_000) throw new HttpError(400, 'Please verify with Google.');
++        let payload;
++        try { payload = await verify(body.credential); } catch { throw new HttpError(401, 'We could not verify your Google account. Please try again.'); }
++        const identity = validateIdentity(payload, { clientId, nonce: token, email });
++        const updated = db.prepare('UPDATE challenges SET email = ?, subject = ? WHERE token = ? AND expires > ? AND member IS NULL').run(identity.email, identity.subject, token, Date.now());
++        if (!updated.changes) throw new HttpError(401, 'Your session expired. Refresh the page.');
++        return json({ verified: true, email: identity.email });
++      }
++      if (!challenge.email || challenge.email !== email || !challenge.subject) throw new HttpError(403, 'Verify this email with Google before creating your account.');
++      const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : '';
++      const lastName = typeof body.lastName === 'string' ? body.lastName.trim() : '';
++      if (!firstName || !lastName || firstName.length > 60 || lastName.length > 60) throw new HttpError(400, 'Enter your first and last name (up to 60 characters each).');
++      if (body.terms !== true || typeof body.marketing !== 'boolean') throw new HttpError(400, 'Accept the Rewards Terms and Privacy Policy to continue.');
++      const existing = db.prepare('SELECT id FROM members WHERE email = ? OR subject = ?').get(email, challenge.subject);
++      if (existing) throw new HttpError(409, 'You already have a rewards account with this Google account.');
++      const id = `DG-${randomUUID()}`;
++      db.exec('BEGIN IMMEDIATE');
++      try {
++        db.prepare('INSERT INTO members VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(id, challenge.subject, email, firstName, lastName, Number(body.marketing), '2026-11-06', new Date().toISOString());
++        db.prepare('UPDATE challenges SET member = ? WHERE token = ?').run(id, token);
++        db.exec('COMMIT');
++      } catch (error) { db.exec('ROLLBACK'); throw error; }
++      return json({ memberId: id, firstName, email, verified: true }, 201);
++    } catch (error) {
++      if (!(error instanceof HttpError)) console.error('Rewards request failed:', error.name);
++      return json({ error: error instanceof HttpError ? error.message : 'Something went wrong. Please try again.' }, error.status || 500);
++    }
++  };
++}
+diff --git a/rewards.test.mjs b/rewards.test.mjs
+new file mode 100644
+index 0000000..ab6be79
+--- /dev/null
++++ b/rewards.test.mjs
+@@ -0,0 +1,70 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createApi, openStore, validateIdentity } from './rewards.mjs';
++
++const origin = 'https://dailygrind.example';
++const clientId = 'test-client.apps.googleusercontent.com';
++const identity = nonce => ({ iss: 'https://accounts.google.com', aud: clientId, exp: Math.floor(Date.now() / 1000) + 300, sub: 'google-user-123', email: 'jamie@gmail.com', email_verified: true, nonce });
++
++test('identity checks reject untrusted claims and third-party Google email accounts', () => {
++  const options = { clientId, nonce: 'challenge', email: 'jamie@gmail.com' };
++  assert.equal(validateIdentity(identity('challenge'), options).email, options.email);
++  for (const change of [{ iss: 'evil.example' }, { aud: 'other-client' }, { exp: 1 }, { nonce: 'replayed' }, { email_verified: false }, { sub: '' }, { email: 'someone@gmail.com' }, { email: 'jamie@third-party.example' }]) {
++    assert.throws(() => validateIdentity({ ...identity('challenge'), ...change }, options));
++  }
++  assert.equal(validateIdentity({ ...identity('challenge'), email: 'jamie@workspace.example', hd: 'workspace.example' }, { ...options, email: 'jamie@workspace.example' }).email, 'jamie@workspace.example');
++});
++
++test('registration enforces server verification, consent, uniqueness, and persists a member', async () => {
++  const db = openStore(':memory:');
++  let claims; let rejectSignature = false;
++  const api = createApi({ db, clientId, origin, verifyToken: async () => { if (rejectSignature) throw new Error('Invalid signature'); return claims; } });
++  let cookie;
++  const request = async (path, body, headers = {}) => {
++    const res = await api(new Request(origin + path, { method: body ? 'POST' : 'GET', headers: { ...(cookie ? { cookie } : {}), origin, 'content-type': 'application/json', ...headers }, ...(body ? { body: JSON.stringify(body) } : {}) }));
++    return { status: res.status, data: await res.json(), cookie: res.headers.get('set-cookie') };
++  };
++  const registration = { firstName: 'Jamie', lastName: 'Morgan', email: 'jamie@gmail.com', terms: true, marketing: false };
++  assert.equal((await request('/api/rewards', registration)).status, 401);
++  const config = await request('/api/auth/config');
++  assert.equal(config.status, 200);
++  assert.match(config.cookie, /HttpOnly; SameSite=Strict; Max-Age=600; Secure/);
++  cookie = config.cookie.split(';')[0]; claims = identity(config.data.nonce);
++  assert.equal((await request('/api/rewards', registration)).status, 403);
++  assert.equal((await request('/api/verify-email', { credential: 'signed', email: registration.email }, { origin: 'https://evil.example' })).status, 403);
++  rejectSignature = true;
++  assert.equal((await request('/api/verify-email', { credential: 'forged', email: registration.email })).status, 401);
++  rejectSignature = false;
++  assert.equal((await request('/api/verify-email', { credential: 'signed', email: 'other@gmail.com' })).status, 400);
++  assert.equal((await request('/api/verify-email', { credential: 'signed', email: registration.email })).status, 200);
++  assert.equal((await request('/api/rewards', { ...registration, email: 'changed@gmail.com' })).status, 403);
++  assert.equal((await request('/api/rewards', { ...registration, terms: false })).status, 400);
++  const created = await request('/api/rewards', registration);
++  assert.equal(created.status, 201);
++  const member = db.prepare('SELECT * FROM members WHERE id = ?').get(created.data.memberId);
++  assert.equal(member.email, registration.email);
++  assert.equal(member.marketing, 0);
++  assert.equal(member.terms_version, '2026-11-06');
++  assert.equal((await request('/api/rewards', registration)).status, 401);
++  const fresh = await request('/api/auth/config');
++  cookie = fresh.cookie.split(';')[0]; claims = identity(fresh.data.nonce);
++  assert.equal((await request('/api/verify-email', { credential: 'signed', email: registration.email })).status, 200);
++  assert.equal((await request('/api/rewards', registration)).status, 409);
++  db.close();
++});
++
++test('expired sessions and replayed nonces fail closed; absent provider configuration is explicit', async () => {
++  const db = openStore(':memory:');
++  let claims;
++  const api = createApi({ db, clientId, origin, verifyToken: async () => claims });
++  const config = await api(new Request(origin + '/api/auth/config'));
++  const cookie = config.headers.get('set-cookie').split(';')[0];
++  claims = identity('a-different-browser-nonce');
++  const verify = () => api(new Request(origin + '/api/verify-email', { method: 'POST', headers: { origin, cookie, 'content-type': 'application/json' }, body: JSON.stringify({ credential: 'signed-but-replayed', email: 'jamie@gmail.com' }) }));
++  assert.equal((await verify()).status, 401);
++  db.prepare('UPDATE challenges SET expires = 0').run();
++  assert.equal((await verify()).status, 401);
++  const unavailable = createApi({ db, origin });
++  assert.equal((await unavailable(new Request(origin + '/api/auth/config'))).status, 503);
++  db.close();
++});
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..90b99e0
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,34 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { mkdirSync } from 'node:fs';
++import { createApi, openStore } from './rewards.mjs';
++
++const port = Number(process.env.PORT || 11222);
++const origin = process.env.APP_ORIGIN || `http://localhost:${port}`;
++if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Set APP_ORIGIN to your public HTTPS origin.');
++mkdirSync(new URL('./data/', import.meta.url), { recursive: true });
++const api = createApi({ db: openStore(process.env.DATABASE_PATH || new URL('./data/rewards.sqlite', import.meta.url).pathname), clientId: process.env.GOOGLE_CLIENT_ID, origin, secure: origin.startsWith('https://') });
++const files = new Map([['/', ['index.html', 'text/html; charset=utf-8']], ['/styles.css', ['styles.css', 'text/css; charset=utf-8']], ['/signup.js', ['signup.js', 'text/javascript; charset=utf-8']]]);
++createServer(async (req, res) => {
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader('X-Frame-Options', 'DENY');
++  try {
++    const path = new URL(req.url, origin).pathname;
++    if (path.startsWith('/api/')) {
++      let size = 0; const chunks = [];
++      for await (const chunk of req) {
++        size += chunk.length;
++        if (size > 20_000) { res.writeHead(413, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Request too large.' })); return; }
++        chunks.push(chunk);
++      }
++      const response = await api(new Request(new URL(req.url, origin), { method: req.method, headers: req.headers, ...(!['GET', 'HEAD'].includes(req.method) ? { body: Buffer.concat(chunks) } : {}) }));
++      res.writeHead(response.status, Object.fromEntries(response.headers)); res.end(await response.text()); return;
++    }
++    const file = files.get(path);
++    if (!file) { res.writeHead(404); res.end('Not found'); return; }
++    if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end('Method not allowed'); return; }
++    res.writeHead(200, { 'Content-Type': file[1], 'Cache-Control': 'no-cache' });
++    res.end(req.method === 'HEAD' ? undefined : await readFile(new URL(file[0], import.meta.url)));
++  } catch { res.writeHead(500); res.end('Unable to complete the request.'); }
++}).listen(port, '0.0.0.0', () => console.log(`Daily Grind listening on port ${port}`));
+diff --git a/signup.js b/signup.js
+new file mode 100644
+index 0000000..18f265c
+--- /dev/null
++++ b/signup.js
+@@ -0,0 +1,82 @@
++const form = document.querySelector('#signup-form');
++const email = form.elements.email;
++const verifyButton = document.querySelector('#verify-button');
++const verificationStatus = document.querySelector('#verification-status');
++const formStatus = document.querySelector('#form-status');
++const badge = document.querySelector('#verified-badge');
++let verifiedEmail = '';
++let verificationBusy = false;
++let googleReady = false;
++const normalize = () => email.value.trim().toLowerCase();
++function message(element, text, ok = false) { element.textContent = text; element.classList.toggle('ok', ok); }
++async function api(path, body) {
++  const response = await fetch(path, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, ...(body ? { body: JSON.stringify(body) } : {}) });
++  const contentType = response.headers.get('content-type') || '';
++  if (!contentType.includes('application/json')) throw new Error('Email verification is currently unavailable. Please try again later.');
++  const data = await response.json();
++  if (!response.ok) throw new Error(data.error || 'Please try again.');
++  return data;
++}
++email.addEventListener('input', () => {
++  if (normalize() !== verifiedEmail) { badge.hidden = true; verifiedEmail = ''; message(verificationStatus, ''); }
++});
++verifyButton.addEventListener('click', () => {
++  if (!email.reportValidity()) return;
++  message(verificationStatus, googleReady ? 'Choose your account using the Google button above.' : 'Email verification is currently unavailable. Please try again later.');
++});
++async function onGoogleCredential({ credential }) {
++  if (verificationBusy) return;
++  if (!email.reportValidity()) return;
++  verificationBusy = true;
++  const requestedEmail = normalize();
++  verifiedEmail = ''; badge.hidden = true;
++  message(verificationStatus, 'Confirming your email…', true);
++  try {
++    const data = await api('/api/verify-email', { credential, email: requestedEmail });
++    if (normalize() !== requestedEmail) throw new Error('Your email changed. Please verify the new address.');
++    verifiedEmail = data.email;
++    badge.hidden = false;
++    message(verificationStatus, 'Email confirmed. You’re ready to join.', true);
++  } catch (error) { message(verificationStatus, error.message); }
++  finally { verificationBusy = false; }
++}
++async function setupGoogle() {
++  try {
++    const config = await api('/api/auth/config');
++    await new Promise((resolve, reject) => {
++      const script = document.createElement('script');
++      script.src = 'https://accounts.google.com/gsi/client'; script.async = true;
++      script.onload = resolve; script.onerror = () => reject(new Error('Google could not load. Check your connection and refresh the page.'));
++      document.head.append(script);
++    });
++    google.accounts.id.initialize({ client_id: config.clientId, nonce: config.nonce, callback: onGoogleCredential, auto_select: false });
++    google.accounts.id.renderButton(document.querySelector('#google-button'), { theme: 'outline', size: 'large', text: 'continue_with', width: Math.min(360, document.querySelector('.verification').clientWidth - 34) });
++    googleReady = true; verifyButton.hidden = true;
++  } catch (error) { message(verificationStatus, error.message); }
++}
++form.addEventListener('submit', async event => {
++  event.preventDefault();
++  if (!form.reportValidity()) return;
++  if (verificationBusy) { message(formStatus, 'Please wait while we confirm your email.'); return; }
++  if (!verifiedEmail || verifiedEmail !== normalize()) {
++    message(formStatus, 'Verify your email with Google first, then create your account.');
++    document.querySelector('.verification').scrollIntoView({ block: 'center' });
++    return;
++  }
++  const button = document.querySelector('#join-button');
++  button.disabled = true; message(formStatus, 'Creating your account…', true);
++  try {
++    const data = await api('/api/rewards', { firstName: form.elements.firstName.value, lastName: form.elements.lastName.value, email: normalize(), terms: form.elements.terms.checked, marketing: form.elements.marketing.checked });
++    document.querySelector('#member-name').textContent = data.firstName;
++    document.querySelector('#member-id').textContent = data.memberId;
++    form.hidden = true;
++    document.querySelector('.card-top').hidden = true;
++    document.querySelector('.signup-card > h2').hidden = true;
++    document.querySelector('.card-description').hidden = true;
++    const success = document.querySelector('#success'); success.hidden = false; success.focus();
++  } catch (error) { message(formStatus, error.message); }
++  finally { button.disabled = false; }
++});
++document.querySelectorAll('[data-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.dialog).showModal()));
++document.querySelectorAll('.close-dialog').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
++setupGoogle();
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..01041e0
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--green:#234d3b;--ink:#243e33;--cream:#f8f6ef;--muted:#7b8076;--line:#dfE2d8}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:25px}body{margin:0;background:var(--cream);color:var(--ink);font:14px/1.6 'DM Sans',sans-serif}button,input{font:inherit}a{color:inherit;text-decoration:none}button,a,input{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #bd934d;outline-offset:4px}[hidden]{display:none!important}.announcement{background:var(--green);color:#f7f6ed;text-align:center;font-size:10px;letter-spacing:1.7px;padding:10px 20px}.announcement a{margin-left:14px;text-decoration:underline;text-underline-offset:3px;letter-spacing:.2px}.announcement span{margin-left:8px}.site-header{max-width:1280px;margin:auto;display:flex;align-items:center;justify-content:space-between;padding:27px 54px;border-bottom:1px solid var(--line)}.brand{display:flex;gap:11px;align-items:center;font-size:18px;font-weight:700;letter-spacing:1px}.brand-icon{font-size:30px;filter:grayscale(1)}.brand small{display:block;font-size:8px;letter-spacing:2.5px;font-weight:500;margin-top:0}nav{display:flex;gap:32px;font-size:12px}nav .active{border-bottom:1px solid var(--green);padding-bottom:3px}.header-cta{border:1px solid #a5b2a4;border-radius:5px;padding:10px 17px;font-size:11px;font-weight:600}.header-cta span{margin-left:17px}.intro{max-width:1172px;margin:0 auto;padding:61px 0 58px;display:grid;grid-template-columns:1.1fr 1fr;gap:90px;align-items:start}.eyebrow{font-size:10px;font-weight:600;letter-spacing:1.8px}.hero-copy>.eyebrow{display:flex;gap:10px;align-items:center}.little-star{font-size:25px;line-height:1}h1,h2,h3,p{margin:0}h1{font-family:'Libre Caslon Display',Georgia,serif;font-size:78px;font-weight:400;line-height:1.01;letter-spacing:-2px;margin:24px 0}h1 em{font-weight:400;color:#618166}.hero-copy>p{font-size:14px;color:#72796f;line-height:1.9}.benefits{display:flex;flex-wrap:wrap;gap:15px;margin:25px 0 32px;font-size:10px}.benefits i{font-style:normal;margin-right:4px;color:#65836a}.hero-photo{height:236px;position:relative;border-radius:7px;overflow:visible;margin-right:18px}.hero-photo>img{width:100%;height:100%;object-fit:cover;border-radius:7px;filter:brightness(.8)}.photo-caption{position:absolute;bottom:20px;left:22px;right:20px;color:white;font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;display:flex;align-items:center;justify-content:space-between}.photo-caption span{font:8px 'DM Sans',sans-serif;letter-spacing:1px}.round-stamp{position:absolute;top:-27px;right:-24px;border-radius:50%;height:93px;width:93px;background:#e8eacb;color:var(--green);border:5px solid var(--cream);text-align:center;font-size:7px;letter-spacing:1.3px;line-height:1.3;display:flex;flex-direction:column;justify-content:center;transform:rotate(12deg)}.round-stamp strong{font-size:24px;line-height:.7}.signup-card{background:#fffefa;border:1px solid #e1e3d9;box-shadow:0 10px 35px #344b3320;border-radius:12px;padding:29px 34px 20px;position:relative}.card-top{display:flex;align-items:center;justify-content:space-between}.card-top .eyebrow{font-size:8px;letter-spacing:1.6px;color:#838a7e}.mini-cup{font-size:27px;color:#638269}.signup-card h2{font:44px/1.2 'Libre Caslon Display',Georgia,serif;margin:6px 0 9px;letter-spacing:-1px}.card-description{font-size:12px;color:#7b8076;line-height:1.8;margin-bottom:23px}.field-row{display:flex;gap:14px}.field{flex:1;min-width:0;margin-bottom:16px}.field label{display:block;font-size:11px;font-weight:600;margin-bottom:6px}input:not([type=checkbox]){width:100%;height:43px;border:1px solid #dcded5;border-radius:5px;background:#fffefa;padding:0 12px;font-size:12px;color:var(--ink)}input::placeholder{color:#a2a59c}input:focus{border-color:var(--green)}#verified-badge{float:right;color:#416947;font-size:10px}.verification{border:1px solid #dce3d4;background:#f3f6ed;border-radius:6px;padding:15px 16px;margin:1px 0 20px}.verification-title{display:flex;gap:8px;align-items:center;font-size:11px}.shield{font-size:23px;line-height:1;color:#5c7e52}.verification>p{font-size:10px;color:#7c8475;margin:4px 0 13px 25px;line-height:1.7}.google-placeholder{width:100%;background:#fff;border:1px solid #dce0d4;border-radius:4px;padding:10px;color:#3a443a;font-size:11px;font-weight:500}.google-g{font:700 16px Arial,sans-serif;color:#4285f4;margin-right:17px}.verification .verification-note{text-align:center;margin:7px 0 0;font-size:9px}.checkbox-row{display:flex;gap:9px;align-items:flex-start;font-size:10px;color:#757c71;line-height:1.65;margin:13px 0}.checkbox-row input{margin:2px 0 0;accent-color:var(--green);width:13px;height:13px;flex-shrink:0}.checkbox-row small{display:block;font-size:9px;color:#94998f}.text-link{border:0;padding:0;background:none;text-decoration:underline;text-underline-offset:2px;color:var(--green);font-size:inherit}.terms{font-size:9px;margin:15px 0 19px}.join-button{border:0;border-radius:5px;background:var(--green);color:white;width:100%;padding:14px 18px;text-align:left;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500}.join-button:hover{background:#346449}.join-button:disabled{opacity:.6;cursor:wait}.card-foot{border-top:1px solid #eceee5;margin-top:18px;padding-top:14px;text-align:center;font-size:9px;color:#989d91}.card-foot span{font-size:15px;margin-right:4px}.status{font-size:11px!important;line-height:1.6!important;margin:8px 0 0!important;color:#8e452e!important}.status:empty{display:none}.status.ok{color:var(--green)!important}.perks-strip{max-width:1172px;margin:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:29px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:36px}.perks-strip>div{position:relative;padding-left:38px}.perks-strip>div+div{border-left:1px solid var(--line);padding-left:60px}.perks-strip>div>span{position:absolute;left:0;top:5px;font-size:10px;color:#91a08a}.perks-strip>div+div>span{left:23px}.perks-strip h3{font-family:'Libre Caslon Display',Georgia,serif;font-size:24px;font-weight:400;margin-bottom:4px}.perks-strip p{font-size:10px;color:#83897f}.favorites{max-width:1172px;margin:57px auto 65px}.section-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:25px}.section-heading .eyebrow{font-size:8px;color:#838b7d}.section-heading h2{font:40px 'Libre Caslon Display',Georgia,serif;margin-top:7px}.section-heading>span{font-size:10px;color:#838b7d;margin-bottom:8px}.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.coffee-img{height:230px;position:relative;border-radius:6px;overflow:hidden}.coffee-img img{width:100%;height:100%;object-fit:cover}.coffee-img>span{position:absolute;bottom:13px;left:13px;background:var(--cream);padding:5px 9px;border-radius:3px;font-size:7px;letter-spacing:1.2px}.coffee-grid h3{font-size:14px;font-weight:500;margin:14px 0 3px}.coffee-grid h3>span{float:right;color:#7d8b74}.coffee-grid p{font-size:11px;color:#858b80}.story{padding:43px 20px;background:#e9eddf;text-align:center}.story>span{font-size:30px;color:#6f8866}.story h2{font:36px/1.1 'Libre Caslon Display',Georgia,serif;margin:9px 0 15px}.story p{font-size:11px;color:#77836f;line-height:1.9}footer{max-width:1280px;margin:auto;padding:33px 54px;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#8a9084}.footer-brand{font-weight:700;letter-spacing:1px;color:var(--green);font-size:12px}.footer-brand span{display:block;font-size:9px;letter-spacing:0;font-weight:400;margin-top:3px}dialog{max-width:480px;padding:35px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink)}dialog::backdrop{background:#142c25a8}dialog h2{font:36px 'Libre Caslon Display',Georgia,serif;margin-bottom:15px}.close-dialog{float:right;border:0;background:none;font-size:24px;color:var(--green)}#success{padding:40px 0}#success p{color:#7b8076;margin:16px 0}.success-icon{border-radius:50%;background:#e9eddf;width:55px;height:55px;display:grid;place-items:center;font-size:26px}#success .member-number{padding:18px;background:#f3f6ed;border-radius:5px;font-size:12px}@media(min-width:1450px){.intro{padding-top:75px;padding-bottom:70px}}@media(max-width:1250px){.intro,.favorites,.perks-strip{margin-left:45px;margin-right:45px}.intro{gap:55px}h1{font-size:72px}}@media(max-width:1000px){.site-header{padding:22px 30px}.intro,.favorites,.perks-strip{margin-left:30px;margin-right:30px}.intro{gap:35px}h1{font-size:62px}.signup-card{padding:25px}.benefits{gap:9px;font-size:9px}.hero-photo{height:220px}.photo-caption{font-size:20px}.perks-strip{gap:15px}.perks-strip>div+div{padding-left:40px}.perks-strip>div+div>span{left:10px}}@media(max-width:760px){.announcement{font-size:8px;letter-spacing:1px}.announcement a{display:inline-block;margin-left:5px}.site-header{padding:18px 22px}.brand{font-size:14px;gap:7px}.brand small{font-size:6px}.brand-icon{font-size:24px}nav{gap:18px;font-size:11px}.header-cta{display:none}.intro{display:block;margin:0 24px;padding:37px 0}.hero-copy{max-width:520px;margin:auto}h1{font-size:65px}.hero-copy>p{font-size:13px}.benefits{font-size:10px;gap:16px}.hero-photo{height:220px;margin-right:15px;margin-bottom:35px}.signup-card{max-width:520px;margin:auto;padding:26px}.perks-strip{margin:0 24px;grid-template-columns:1fr;gap:22px;padding:25px 0}.perks-strip>div+div{border:0;padding-left:38px}.perks-strip>div+div>span{left:0}.perks-strip p{font-size:11px}.favorites{margin:35px 24px}.section-heading>span{display:none}.section-heading h2{font-size:35px}.coffee-grid{grid-template-columns:1fr;gap:28px}.coffee-img{height:260px}.coffee-grid h3{font-size:16px}.coffee-grid p{font-size:12px}footer{padding:25px 24px;gap:20px;flex-wrap:wrap}.story h2{font-size:33px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

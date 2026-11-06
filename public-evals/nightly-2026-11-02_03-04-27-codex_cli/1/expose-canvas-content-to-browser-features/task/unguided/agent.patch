@@ -1,0 +1,268 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer {
++      margin-top: 48px;
++      padding: 32px 16px;
++      background: #eee6df;
++      border-radius: 16px;
++      text-align: center;
++    }
++
++    .customizer > p {
++      margin: 8px auto 0;
++      max-width: 480px;
++    }
++
++    .cup-stage {
++      position: relative;
++      max-width: 680px;
++      margin: 0 auto;
++      padding: 92px 18% 60px 8%;
++      isolation: isolate;
++    }
++
++    #canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      pointer-events: none;
++      z-index: -1;
++    }
++
++    .coffee-form {
++      display: grid;
++      gap: 16px;
++      padding: 20px 12px;
++      background: #fffaf2;
++      border-radius: 12px;
++      text-align: left;
++      min-width: 0;
++    }
++
++    .coffee-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .coffee-form input,
++    .coffee-form select {
++      width: 100%;
++      min-width: 0;
++      min-height: 44px;
++      padding: 10px;
++      border: 1px solid #94786a;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .coffee-form .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      min-height: 44px;
++    }
++
++    .coffee-form :focus-visible {
++      outline: 3px solid #85500c;
++      outline-offset: 3px;
++    }
++
++    .coffee-summary {
++      display: block;
++      max-width: 480px;
++      margin: 0 auto;
++      overflow-wrap: anywhere;
++    }
++
++    .coffee-status {
++      min-height: 1.6em;
++      margin-top: 8px;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +279,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Make it your daily grind</h2>
++      <p>A little milk, a little sweetness, all yours. Build your perfect coffee below.</p>
++      <div class="cup-stage">
++        <!-- Native HTML overlays the decorative canvas so all text and controls
++             remain accessible, searchable, and browser-translatable. -->
++        <canvas id="canvas" aria-hidden="true"></canvas>
++        <form class="coffee-form" id="coffee-form">
++          <div>
++            <label for="coffee-name">Name on your cup</label>
++            <input id="coffee-name" name="name" autocomplete="given-name" maxlength="60" placeholder="Your name" required>
++          </div>
++          <div>
++            <label for="coffee-milk">Milk</label>
++            <select id="coffee-milk" name="milk">
++              <option value="oat">Oat milk</option>
++              <option value="whole">Whole milk</option>
++              <option value="almond">Almond milk</option>
++              <option value="none">No milk</option>
++            </select>
++          </div>
++          <div>
++            <label for="coffee-syrup">Syrup</label>
++            <select id="coffee-syrup" name="syrup">
++              <option value="none">No syrup</option>
++              <option value="maple">Maple</option>
++              <option value="vanilla">Vanilla</option>
++              <option value="caramel">Caramel</option>
++            </select>
++          </div>
++          <button class="btn" type="submit">Save my coffee</button>
++        </form>
++      </div>
++      <output class="coffee-summary" id="coffee-summary" for="coffee-name coffee-milk coffee-syrup"></output>
++      <p class="coffee-status" id="coffee-status" role="status"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +328,124 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const canvas = document.getElementById('canvas');
++    const context = canvas.getContext('2d');
++    const stage = document.querySelector('.cup-stage');
++    const form = document.getElementById('coffee-form');
++    const nameInput = document.getElementById('coffee-name');
++    const milk = document.getElementById('coffee-milk');
++    const syrup = document.getElementById('coffee-syrup');
++    const summary = document.getElementById('coffee-summary');
++    const status = document.getElementById('coffee-status');
++
++    function drawCup() {
++      if (!context) return;
++      const bounds = stage.getBoundingClientRect();
++      const controls = form.getBoundingClientRect();
++      const ratio = window.devicePixelRatio || 1;
++      // CSS pixels are the shared coordinate system for the DOM and drawing.
++      canvas.width = Math.round(bounds.width * ratio);
++      canvas.height = Math.round(bounds.height * ratio);
++      context.setTransform(canvas.width / bounds.width, 0, 0, canvas.height / bounds.height, 0, 0);
++      const left = controls.left - bounds.left - 10;
++      const right = controls.right - bounds.left + 10;
++      const top = controls.top - bounds.top - 22;
++      const bottom = controls.bottom - bounds.top + 22;
++      const center = (left + right) / 2;
++      const radius = (right - left) / 2;
++      const handleWidth = Math.min(64, bounds.width - right - 12);
++
++      // Handle and saucer sit behind a cup measured around the actual form.
++      context.strokeStyle = '#8c6b59';
++      context.lineWidth = 12;
++      context.beginPath();
++      context.ellipse(right - 2, top + 110, handleWidth, 65, 0, -Math.PI / 2, Math.PI / 2);
++      context.stroke();
++      context.fillStyle = '#d7c4b5';
++      context.beginPath();
++      context.ellipse(center, bottom + 10, radius + 12, 15, 0, 0, Math.PI * 2);
++      context.fill();
++
++      context.fillStyle = '#fffaf2';
++      context.strokeStyle = '#8c6b59';
++      context.lineWidth = 2;
++      context.beginPath();
++      context.moveTo(left, top);
++      context.lineTo(left, bottom - 24);
++      context.quadraticCurveTo(left, bottom + 8, center, bottom + 8);
++      context.quadraticCurveTo(right, bottom + 8, right, bottom - 24);
++      context.lineTo(right, top);
++      context.closePath();
++      context.fill();
++      context.stroke();
++      context.beginPath();
++      context.ellipse(center, top, radius, 22, 0, 0, Math.PI * 2);
++      context.fill();
++      context.stroke();
++      context.fillStyle = { oat: '#c49a71', whole: '#d1ad88', almond: '#b98b63', none: '#503025' }[milk.value];
++      context.beginPath();
++      context.ellipse(center, top, radius - 8, 15, 0, 0, Math.PI * 2);
++      context.fill();
++    }
++
++    function updateCoffee() {
++      const name = nameInput.value.trim();
++      const milkLabel = milk.selectedOptions[0].textContent;
++      const syrupLabel = syrup.selectedOptions[0].textContent;
++      summary.textContent = `${name ? name + '’s coffee' : 'Your coffee'}: ${milkLabel}, ${syrupLabel.toLowerCase()}${syrup.value === 'none' ? '' : ' syrup'}.`;
++      status.textContent = '';
++      drawCup();
++    }
++
++    form.addEventListener('input', updateCoffee);
++    form.addEventListener('change', updateCoffee);
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!nameInput.value.trim()) {
++        nameInput.setCustomValidity('Please enter a name for your cup.');
++        nameInput.reportValidity();
++        return;
++      }
++      try {
++        localStorage.setItem('daily-grind-coffee', JSON.stringify({
++          name: nameInput.value.trim(), milk: milk.value, syrup: syrup.value
++        }));
++        status.textContent = 'Coffee saved on this device. Ready for your next visit!';
++      } catch {
++        status.textContent = 'Your coffee is customized, but this browser could not save it.';
++      }
++    });
++    nameInput.addEventListener('input', () => nameInput.setCustomValidity(''));
++
++    const observer = new ResizeObserver(drawCup);
++    observer.observe(stage);
++    observer.observe(form);
++    window.addEventListener('resize', drawCup);
++    // A monitor or zoom change can change pixel density without a layout resize.
++    let densityQuery;
++    function watchDensity() {
++      if (densityQuery) densityQuery.removeEventListener('change', watchDensity);
++      densityQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
++      densityQuery.addEventListener('change', watchDensity);
++      drawCup();
++    }
++    watchDensity();
++    if (document.fonts) document.fonts.ready.then(drawCup);
++    try {
++      const saved = JSON.parse(localStorage.getItem('daily-grind-coffee'));
++      if (saved && typeof saved.name === 'string') {
++        nameInput.value = saved.name.slice(0, 60);
++        if ([...milk.options].some(option => option.value === saved.milk)) milk.value = saved.milk;
++        if ([...syrup.options].some(option => option.value === saved.syrup)) syrup.value = saved.syrup;
++      }
++    } catch {
++      // The form also works when local storage is unavailable.
++    }
++    updateCoffee();
++  </script>
++
+ </body>
+ 
+ </html>

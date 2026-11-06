@@ -1,0 +1,31 @@
+diff --git a/ANALYTICS.md b/ANALYTICS.md
+new file mode 100644
+--- a/ANALYTICS.md
++++ b/ANALYTICS.md
+@@ -0,0 +1,26 @@
++The homepage loads `analytics.js` with `defer`. It records a `page_view` on
++load (and back/forward cache restoration) and delegated `click` events.
++Links use stable `data-analytics` labels. Events contain an ISO timestamp,
++the page pathname, and, for clicks, the target tag, optional label, and
++same-origin destination pathname. URL queries, fragments, text, and form values
++are excluded.
++
++Configure the hosting service to accept `POST /api/analytics` with JSON:
++
++```json
++{"events":[{"type":"page_view","timestamp":"2026-11-06T00:00:00.000Z","page":"/"}]}
++```
++
++This static repository does not include a collector. Change `ENDPOINT` in
++`analytics.js` if the hosting service provides a different collection route.
++
++Events debounce for 750 ms, then send during browser idle time (with a 1-second
++idle deadline or a timer fallback). A 5-second maximum wait prevents sustained
++interaction from starving delivery. Requests contain up to 50 events; the queue
++retains at most the latest 200 events. Remaining batches are deferred again.
++Hiding or leaving the page flushes pending batches with `sendBeacon`, falling
++back to a keepalive fetch. Normal fetches omit credentials. Delivery is best
++effort without retries, so collector failures never interrupt user interaction.
++
++Run automated checks with `node --test analytics.test.cjs`. They use simulated
++DOM events and timers; no browser or development server is required.

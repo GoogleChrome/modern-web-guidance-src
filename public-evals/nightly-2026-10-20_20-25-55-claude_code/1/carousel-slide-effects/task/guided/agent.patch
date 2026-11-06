@@ -1,0 +1,158 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,14 +145,94 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Product carousel */
++    .scroller {
++      --card-width: min(280px, 70vw);
++      display: flex;
++      gap: 1.5rem;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      /* Lets the first and last cards reach the center */
++      padding: 2rem calc(50% - var(--card-width) / 2);
++      scroll-padding-inline: calc(50% - var(--card-width) / 2);
++    }
++
++    .scroller:focus-visible,
++    .product-card a:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      overflow: hidden;
++      text-align: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .body {
++      padding: 16px 20px 20px;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++    }
++
++    .product-card .price {
++      font-weight: bold;
++    }
++
++    /* Scroll-driven scaling is a progressive enhancement: unsupported browsers show unscaled cards */
++    @keyframes scale-from-center {
++      0%, 100% {
++        scale: 0.8;
++        opacity: 0.6;
++      }
++
++      50% {
++        scale: 1.05;
++        opacity: 1;
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .product-card {
++          animation: scale-from-center auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +274,59 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section aria-labelledby="carousel-heading">
++      <h2 id="carousel-heading" style="text-align: center;">Shop Our Drinks</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="carousel-heading">
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="House Drip in a ceramic cup" loading="lazy" width="600" height="450">
++            <div class="body">
++              <h3>House Drip</h3>
++              <p>Smooth, balanced, and endlessly refillable.</p>
++              <p class="price">$3.25</p>
++              <a href="/menu/house-drip" class="btn">View Details<span class="visually-hidden"> for House Drip</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Flat White in a ceramic cup" loading="lazy" width="600" height="450">
++            <div class="body">
++              <h3>Flat White</h3>
++              <p>Velvety microfoam over a double ristretto.</p>
++              <p class="price">$4.50</p>
++              <a href="/menu/flat-white" class="btn">View Details<span class="visually-hidden"> for Flat White</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" alt="Single Origin Pour-Over in a ceramic cup" loading="lazy" width="600" height="450">
++            <div class="body">
++              <h3>Single Origin Pour-Over</h3>
++              <p>Brewed to order with beans from Ethiopia.</p>
++              <p class="price">$5.00</p>
++              <a href="/menu/pour-over" class="btn">View Details<span class="visually-hidden"> for Single Origin Pour-Over</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80" alt="Cappuccino in a ceramic cup" loading="lazy" width="600" height="450">
++            <div class="body">
++              <h3>Cappuccino</h3>
++              <p>Equal parts espresso, steamed milk, and foam.</p>
++              <p class="price">$4.25</p>
++              <a href="/menu/cappuccino" class="btn">View Details<span class="visually-hidden"> for Cappuccino</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Mocha in a ceramic cup" loading="lazy" width="600" height="450">
++            <div class="body">
++              <h3>Mocha</h3>
++              <p>Dark chocolate and espresso, topped with cream.</p>
++              <p class="price">$4.95</p>
++              <a href="/menu/mocha" class="btn">View Details<span class="visually-hidden"> for Mocha</span></a>
++            </div>
++          </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

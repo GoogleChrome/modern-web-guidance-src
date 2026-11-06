@@ -1,0 +1,733 @@
+diff --git a/index.html b/index.html
+index 66c9173..e951e59 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,181 @@
+       background: #3e2723;
+     }
+ 
++    /* Equipment Connection Panel */
++    .equipment {
++      margin-top: 60px;
++    }
++
++    .equipment > p.lead {
++      text-align: center;
++      max-width: 700px;
++      margin: 8px auto 0;
++      color: #6d4c41;
++    }
++
++    .equip-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .equip-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .equip-card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .equip-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      flex: 1;
++    }
++
++    .equip-body h3 {
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .equip-body .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .field-row {
++      display: flex;
++      gap: 10px;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: 600;
++      flex: 1;
++    }
++
++    .field.narrow {
++      flex: 0 0 100px;
++    }
++
++    .field input,
++    .field select {
++      margin-top: 4px;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      font-weight: normal;
++    }
++
++    .field input:focus,
++    .field select:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--accent);
++    }
++
++    .field input[aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .equip-actions {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .equip-actions button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 18px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s, opacity 0.3s;
++    }
++
++    .equip-actions button:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .equip-actions button.secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .equip-actions button:disabled {
++      opacity: 0.45;
++      cursor: not-allowed;
++    }
++
++    .status-pill {
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: #eeeeee;
++      color: #616161;
++      white-space: nowrap;
++    }
++
++    .status-pill[data-state="connecting"] { background: #fff3e0; color: #e65100; }
++    .status-pill[data-state="connected"]  { background: #e8f5e9; color: #2e7d32; }
++    .status-pill[data-state="error"]      { background: #ffebee; color: #c62828; }
++
++    .device-info {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++      font-size: 0.85rem;
++      background: #fbf8f6;
++      border-radius: 5px;
++      padding: 10px 12px;
++    }
++
++    .device-info[hidden] { display: none; }
++
++    .device-info dt { font-weight: 600; color: var(--primary); }
++
++    .equip-log {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++      font-size: 0.75rem;
++      background: #2b1d19;
++      color: #efebe9;
++      border-radius: 5px;
++      padding: 8px 10px;
++      height: 96px;
++      overflow-y: auto;
++      list-style: none;
++    }
++
++    .equip-log li.err { color: #ff8a80; }
++    .equip-log li.ok  { color: #b9f6ca; }
++
++    .equip-note {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      text-align: center;
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +370,88 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment" id="equipment" aria-labelledby="equipment-title">
++      <h2 id="equipment-title" style="text-align: center;">Connect Your Brewing Equipment</h2>
++      <p class="lead">Pair this page with the shop's Wi-Fi brewer or the Daily Grind Brew Helper on your own
++        computer. Connections are made directly from your browser &mdash; nothing is sent through our servers.</p>
++
++      <div class="equip-grid">
++        <!-- Wi-Fi brewer on the shop LAN -->
++        <article class="equip-card" id="brewer-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80"
++            alt="Espresso machine pulling a shot" loading="lazy">
++          <div class="equip-body">
++            <h3>Wi-Fi Coffee Brewer <span class="status-pill" data-role="status" data-state="idle">Not connected</span></h3>
++            <p class="hint">Enter the brewer's address on the shop network (shown on the brewer's display under
++              <em>Settings &rsaquo; Network</em>). Only private LAN addresses are accepted.</p>
++            <form data-role="form" novalidate>
++              <div class="field-row">
++                <label class="field">Brewer IP address
++                  <input type="text" name="host" inputmode="decimal" placeholder="192.168.1.50" autocomplete="off"
++                    spellcheck="false" required>
++                </label>
++                <label class="field narrow">Port
++                  <input type="number" name="port" min="1" max="65535" value="80" required>
++                </label>
++              </div>
++            </form>
++            <div class="equip-actions">
++              <button type="button" data-action="connect">Connect</button>
++              <button type="button" class="secondary" data-action="disconnect" disabled>Disconnect</button>
++            </div>
++            <dl class="device-info" data-role="info" hidden></dl>
++            <div class="field-row" data-role="brew-controls" hidden>
++              <label class="field">Recipe
++                <select name="recipe">
++                  <option value="house-drip">House Drip (12 oz)</option>
++                  <option value="dark-roast">Dark Roast (12 oz)</option>
++                  <option value="pour-over">Single-Origin Pour-Over (10 oz)</option>
++                  <option value="cold-brew-concentrate">Cold Brew Concentrate</option>
++                </select>
++              </label>
++            </div>
++            <div class="equip-actions" data-role="brew-actions" hidden>
++              <button type="button" data-action="brew">Start Brew</button>
++              <button type="button" class="secondary" data-action="stop">Stop</button>
++            </div>
++            <ol class="equip-log" data-role="log" aria-live="polite" aria-label="Brewer activity log"></ol>
++          </div>
++        </article>
++
++        <!-- Desktop Brew Helper on 127.0.0.1 -->
++        <article class="equip-card" id="helper-card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=800&q=80"
++            alt="Laptop next to a cup of coffee" loading="lazy">
++          <div class="equip-body">
++            <h3>Desktop Brew Helper <span class="status-pill" data-role="status" data-state="idle">Not connected</span></h3>
++            <p class="hint">Start the Daily Grind Brew Helper app on this computer, then enter the port and the
++              6-digit pairing code it displays. The helper only listens on <code>127.0.0.1</code>.</p>
++            <form data-role="form" novalidate>
++              <div class="field-row">
++                <label class="field narrow">Port
++                  <input type="number" name="port" min="1024" max="65535" value="8765" required>
++                </label>
++                <label class="field">Pairing code
++                  <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
++                    placeholder="123456" autocomplete="one-time-code" required>
++                </label>
++              </div>
++            </form>
++            <div class="equip-actions">
++              <button type="button" data-action="connect">Connect</button>
++              <button type="button" class="secondary" data-action="disconnect" disabled>Disconnect</button>
++              <button type="button" class="secondary" data-action="sync" disabled>Sync Recipes</button>
++            </div>
++            <dl class="device-info" data-role="info" hidden></dl>
++            <ol class="equip-log" data-role="log" aria-live="polite" aria-label="Brew Helper activity log"></ol>
++          </div>
++        </article>
++      </div>
++
++      <p class="equip-note">Your browser may ask for permission to access devices on your local network &mdash;
++        choose <strong>Allow</strong> to connect. Devices are only contacted when you press a button.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +464,457 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const REQUEST_TIMEOUT_MS = 5000;
++      const POLL_INTERVAL_MS = 10000;
++      const MAX_LOG_ENTRIES = 50;
++      const RECIPES = [
++        { id: 'house-drip', name: 'House Drip', grams: 22, waterMl: 355, tempC: 93 },
++        { id: 'dark-roast', name: 'Dark Roast', grams: 23, waterMl: 355, tempC: 91 },
++        { id: 'pour-over', name: 'Single-Origin Pour-Over', grams: 18, waterMl: 300, tempC: 94 },
++        { id: 'cold-brew-concentrate', name: 'Cold Brew Concentrate', grams: 100, waterMl: 800, tempC: 20 }
++      ];
++
++      // ---- Address validation -------------------------------------------------
++
++      /** Parse a dotted-quad IPv4 string strictly; returns array of 4 octets or null. */
++      function parseIPv4(str) {
++        const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(str);
++        if (!m) return null;
++        const octets = m.slice(1).map(Number);
++        if (octets.some((o, i) => o > 255 || (m[i + 1].length > 1 && m[i + 1][0] === '0'))) return null;
++        return octets;
++      }
++
++      /** Only RFC 1918 private ranges are allowed for the shop brewer. */
++      function isPrivateLanIPv4(octets) {
++        const [a, b] = octets;
++        return a === 10 ||
++          (a === 172 && b >= 16 && b <= 31) ||
++          (a === 192 && b === 168);
++      }
++
++      function parsePort(value, min) {
++        if (!/^\d{1,5}$/.test(String(value).trim())) return null;
++        const n = Number(value);
++        return n >= min && n <= 65535 ? n : null;
++      }
++
++      // ---- Networking ---------------------------------------------------------
++
++      /**
++       * Local Network Access uses 'local' (LAN) / 'loopback'; the older Private
++       * Network Access draft used 'private' / 'local'. Constructing a Request
++       * validates the option without any network traffic, so we can pick the
++       * value this browser understands (or none) and send exactly one request.
++       */
++      const addressSpaceCache = {};
++      function resolveAddressSpace(url, kind) {
++        if (kind in addressSpaceCache) return addressSpaceCache[kind];
++        const candidates = kind === 'loopback' ? ['loopback', 'local'] : ['local', 'private'];
++        let chosen = null;
++        for (const space of candidates) {
++          try {
++            new Request(url, { targetAddressSpace: space });
++            chosen = space;
++            break;
++          } catch (_) { /* unsupported value — try the next one */ }
++        }
++        return (addressSpaceCache[kind] = chosen);
++      }
++
++      /**
++       * fetch() wrapper for local devices:
++       *  - hard timeout via AbortController
++       *  - never sends cookies / credentials
++       *  - declares the target address space for Chrome's Local Network Access
++       *    (needed for https pages to reach http LAN/loopback devices).
++       */
++      async function deviceFetch(url, { addressSpace, method = 'GET', headers = {}, body, signal } = {}) {
++        const controller = new AbortController();
++        const timer = setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), REQUEST_TIMEOUT_MS);
++        const onOuterAbort = () => controller.abort(signal.reason);
++        if (signal) signal.addEventListener('abort', onOuterAbort, { once: true });
++
++        const init = {
++          method,
++          headers,
++          body,
++          mode: 'cors',
++          credentials: 'omit',
++          cache: 'no-store',
++          redirect: 'error',
++          referrerPolicy: 'no-referrer',
++          signal: controller.signal
++        };
++
++        const space = resolveAddressSpace(url, addressSpace);
++        if (space) init.targetAddressSpace = space;
++        try {
++          return await fetch(url, init);
++        } finally {
++          clearTimeout(timer);
++          if (signal) signal.removeEventListener('abort', onOuterAbort);
++        }
++      }
++
++      async function readJson(res) {
++        if (!res.ok) throw new Error(`Device responded with HTTP ${res.status}`);
++        const type = res.headers.get('content-type') || '';
++        if (!type.includes('application/json')) throw new Error('Unexpected response type from device');
++        return res.json();
++      }
++
++      function describeError(err) {
++        if (err && err.name === 'TimeoutError') return 'Timed out — is the device powered on and reachable?';
++        if (err && err.name === 'AbortError') return 'Request cancelled.';
++        if (err instanceof TypeError) {
++          return 'Could not reach device. Check the address, make sure you are on the same network, ' +
++            'and allow local network access if your browser asks.';
++        }
++        return (err && err.message) || 'Unknown error';
++      }
++
++      // Only show short, printable strings coming from devices.
++      function safeText(value, max = 60) {
++        if (value === undefined || value === null) return '—';
++        return String(value).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, max) || '—';
++      }
++
++      // ---- Generic panel UI ---------------------------------------------------
++
++      function createPanel(card) {
++        const $ = (sel) => card.querySelector(sel);
++        const statusEl = $('[data-role="status"]');
++        const logEl = $('[data-role="log"]');
++        const infoEl = $('[data-role="info"]');
++        const form = $('[data-role="form"]');
++        const btn = (name) => $(`[data-action="${name}"]`);
++
++        return {
++          form,
++          btn,
++          $,
++          setStatus(state, label) {
++            statusEl.dataset.state = state;
++            statusEl.textContent = label;
++          },
++          log(message, kind = '') {
++            const li = document.createElement('li');
++            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
++            li.textContent = `[${time}] ${message}`;
++            if (kind) li.className = kind;
++            logEl.appendChild(li);
++            while (logEl.children.length > MAX_LOG_ENTRIES) logEl.firstElementChild.remove();
++            logEl.scrollTop = logEl.scrollHeight;
++          },
++          showInfo(rows) {
++            infoEl.replaceChildren();
++            for (const [label, value] of rows) {
++              const dt = document.createElement('dt');
++              const dd = document.createElement('dd');
++              dt.textContent = label;
++              dd.textContent = safeText(value);
++              infoEl.append(dt, dd);
++            }
++            infoEl.hidden = rows.length === 0;
++          },
++          markInvalid(input, invalid) {
++            input.setAttribute('aria-invalid', invalid ? 'true' : 'false');
++          }
++        };
++      }
++
++      // ---- Wi-Fi brewer (shop LAN) -------------------------------------------
++
++      function initBrewer() {
++        const card = document.getElementById('brewer-card');
++        if (!card) return;
++        const ui = createPanel(card);
++        const hostInput = ui.form.elements.host;
++        const portInput = ui.form.elements.port;
++        const recipeSelect = ui.$('select[name="recipe"]');
++        const brewControls = ui.$('[data-role="brew-controls"]');
++        const brewActions = ui.$('[data-role="brew-actions"]');
++
++        let baseUrl = null;
++        let session = null; // AbortController for the current connection
++        let pollTimer = null;
++
++        const saved = localStorage.getItem('dg.brewer.host');
++        if (saved) hostInput.value = saved;
++
++        function validate() {
++          const host = hostInput.value.trim();
++          const octets = parseIPv4(host);
++          const hostOk = !!octets && isPrivateLanIPv4(octets);
++          const port = parsePort(portInput.value, 1);
++          ui.markInvalid(hostInput, !hostOk);
++          ui.markInvalid(portInput, port === null);
++          if (!octets) return { error: 'Enter a valid IPv4 address, e.g. 192.168.1.50.' };
++          if (!hostOk) return { error: 'Only private shop-network addresses (10.x, 172.16–31.x, 192.168.x) are allowed.' };
++          if (port === null) return { error: 'Enter a port between 1 and 65535.' };
++          return { host, port };
++        }
++
++        function setConnected(connected) {
++          ui.btn('connect').disabled = connected;
++          ui.btn('disconnect').disabled = !connected;
++          hostInput.disabled = connected;
++          portInput.disabled = connected;
++          brewControls.hidden = !connected;
++          brewActions.hidden = !connected;
++        }
++
++        function renderStatus(data) {
++          ui.showInfo([
++            ['Model', data.model],
++            ['Firmware', data.firmware],
++            ['State', data.state],
++            ['Water temp', typeof data.waterTempC === 'number' ? `${data.waterTempC.toFixed(1)} °C` : null],
++            ['Reservoir', typeof data.reservoirPct === 'number' ? `${Math.round(data.reservoirPct)}%` : null]
++          ]);
++        }
++
++        async function fetchStatus() {
++          const res = await deviceFetch(`${baseUrl}/api/v1/status`, { addressSpace: 'local', signal: session.signal });
++          return readJson(res);
++        }
++
++        async function poll() {
++          if (!session) return;
++          try {
++            renderStatus(await fetchStatus());
++          } catch (err) {
++            if (!session || session.signal.aborted) return;
++            ui.log(`Lost contact: ${describeError(err)}`, 'err');
++            disconnect('error', 'Connection lost');
++            return;
++          }
++          pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
++        }
++
++        async function connect() {
++          const v = validate();
++          if (v.error) { ui.log(v.error, 'err'); return; }
++
++          baseUrl = `http://${v.host}:${v.port}`;
++          session = new AbortController();
++          ui.btn('connect').disabled = true;
++          ui.setStatus('connecting', 'Connecting…');
++          ui.log(`Connecting to brewer at ${v.host}:${v.port}…`);
++
++          try {
++            const data = await fetchStatus();
++            localStorage.setItem('dg.brewer.host', v.host);
++            renderStatus(data);
++            setConnected(true);
++            ui.setStatus('connected', 'Connected');
++            ui.log(`Connected to ${safeText(data.model || 'brewer')}.`, 'ok');
++            pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
++          } catch (err) {
++            ui.log(describeError(err), 'err');
++            disconnect('error', 'Failed');
++          }
++        }
++
++        function disconnect(state = 'idle', label = 'Not connected') {
++          clearTimeout(pollTimer);
++          if (session) session.abort();
++          session = null;
++          baseUrl = null;
++          setConnected(false);
++          ui.showInfo([]);
++          ui.setStatus(state, label);
++        }
++
++        async function sendCommand(path, payload, successMsg) {
++          if (!session) return;
++          const buttons = [ui.btn('brew'), ui.btn('stop')];
++          buttons.forEach((b) => { b.disabled = true; });
++          try {
++            const res = await deviceFetch(`${baseUrl}${path}`, {
++              addressSpace: 'local',
++              method: 'POST',
++              headers: { 'Content-Type': 'application/json' },
++              body: JSON.stringify(payload),
++              signal: session.signal
++            });
++            if (!res.ok) throw new Error(`Brewer rejected command (HTTP ${res.status})`);
++            ui.log(successMsg, 'ok');
++            renderStatus(await fetchStatus());
++          } catch (err) {
++            if (session) ui.log(describeError(err), 'err');
++          } finally {
++            buttons.forEach((b) => { b.disabled = false; });
++          }
++        }
++
++        ui.btn('connect').addEventListener('click', connect);
++        ui.btn('disconnect').addEventListener('click', () => {
++          disconnect();
++          ui.log('Disconnected.');
++        });
++        ui.btn('brew').addEventListener('click', () => {
++          const recipe = RECIPES.find((r) => r.id === recipeSelect.value);
++          if (!recipe) return;
++          sendCommand('/api/v1/brew', { recipe: recipe.id, grams: recipe.grams, waterMl: recipe.waterMl, tempC: recipe.tempC },
++            `Brew started: ${recipe.name}.`);
++        });
++        ui.btn('stop').addEventListener('click', () => sendCommand('/api/v1/stop', {}, 'Stop command sent.'));
++        ui.form.addEventListener('submit', (e) => { e.preventDefault(); connect(); });
++        hostInput.addEventListener('input', () => ui.markInvalid(hostInput, false));
++      }
++
++      // ---- Desktop Brew Helper (127.0.0.1) -----------------------------------
++
++      function initHelper() {
++        const card = document.getElementById('helper-card');
++        if (!card) return;
++        const ui = createPanel(card);
++        const portInput = ui.form.elements.port;
++        const codeInput = ui.form.elements.code;
++
++        // Always loopback — the helper address is not user-editable.
++        const HOST = '127.0.0.1';
++        let baseUrl = null;
++        let token = null;   // short-lived session token, kept in memory only
++        let session = null;
++
++        const savedPort = localStorage.getItem('dg.helper.port');
++        if (savedPort && parsePort(savedPort, 1024)) portInput.value = savedPort;
++
++        function validate() {
++          const port = parsePort(portInput.value, 1024);
++          const code = codeInput.value.trim();
++          const codeOk = /^\d{6}$/.test(code);
++          ui.markInvalid(portInput, port === null);
++          ui.markInvalid(codeInput, !codeOk);
++          if (port === null) return { error: 'Enter the helper port (1024–65535).' };
++          if (!codeOk) return { error: 'Enter the 6-digit pairing code shown in the Brew Helper.' };
++          return { port, code };
++        }
++
++        function setConnected(connected) {
++          ui.btn('connect').disabled = connected;
++          ui.btn('disconnect').disabled = !connected;
++          ui.btn('sync').disabled = !connected;
++          portInput.disabled = connected;
++          codeInput.disabled = connected;
++        }
++
++        function authHeaders(extra = {}) {
++          return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
++        }
++
++        async function connect() {
++          const v = validate();
++          if (v.error) { ui.log(v.error, 'err'); return; }
++
++          baseUrl = `http://${HOST}:${v.port}`;
++          session = new AbortController();
++          ui.btn('connect').disabled = true;
++          ui.setStatus('connecting', 'Pairing…');
++          ui.log(`Pairing with Brew Helper on ${HOST}:${v.port}…`);
++
++          try {
++            const res = await deviceFetch(`${baseUrl}/pair`, {
++              addressSpace: 'loopback',
++              method: 'POST',
++              headers: { 'Content-Type': 'application/json' },
++              body: JSON.stringify({ code: v.code, client: 'daily-grind-web' }),
++              signal: session.signal
++            });
++            if (res.status === 401 || res.status === 403) throw new Error('Pairing code rejected. Check the code in the Brew Helper.');
++            const data = await readJson(res);
++            if (typeof data.token !== 'string' || !data.token) throw new Error('Brew Helper did not return a session token.');
++            token = data.token;
++            codeInput.value = '';
++            localStorage.setItem('dg.helper.port', String(v.port));
++
++            ui.showInfo([
++              ['App', data.app || 'Brew Helper'],
++              ['Version', data.version],
++              ['Computer', data.hostname],
++              ['Saved recipes', typeof data.recipeCount === 'number' ? data.recipeCount : null]
++            ]);
++            setConnected(true);
++            ui.setStatus('connected', 'Connected');
++            ui.log('Paired with Brew Helper.', 'ok');
++          } catch (err) {
++            ui.log(describeError(err), 'err');
++            disconnect('error', 'Failed', false);
++          }
++        }
++
++        async function disconnect(state = 'idle', label = 'Not connected', notify = true) {
++          const url = baseUrl;
++          const oldToken = token;
++          if (session) session.abort();
++          session = null;
++          token = null;
++          baseUrl = null;
++          setConnected(false);
++          ui.showInfo([]);
++          ui.setStatus(state, label);
++          if (notify && url && oldToken) {
++            // Best effort: tell the helper to revoke the token.
++            deviceFetch(`${url}/unpair`, {
++              addressSpace: 'loopback',
++              method: 'POST',
++              headers: { Authorization: `Bearer ${oldToken}` }
++            }).catch(() => {});
++          }
++        }
++
++        async function syncRecipes() {
++          if (!session) return;
++          const syncBtn = ui.btn('sync');
++          syncBtn.disabled = true;
++          ui.log('Sending house recipes to Brew Helper…');
++          try {
++            const res = await deviceFetch(`${baseUrl}/recipes`, {
++              addressSpace: 'loopback',
++              method: 'PUT',
++              headers: authHeaders({ 'Content-Type': 'application/json' }),
++              body: JSON.stringify({ source: 'The Daily Grind', recipes: RECIPES }),
++              signal: session.signal
++            });
++            if (res.status === 401) {
++              ui.log('Session expired — please pair again.', 'err');
++              disconnect('error', 'Session expired', false);
++              return;
++            }
++            if (!res.ok) throw new Error(`Brew Helper rejected sync (HTTP ${res.status})`);
++            ui.log(`Synced ${RECIPES.length} recipes.`, 'ok');
++          } catch (err) {
++            if (session) ui.log(describeError(err), 'err');
++          } finally {
++            if (session) syncBtn.disabled = false;
++          }
++        }
++
++        ui.btn('connect').addEventListener('click', connect);
++        ui.btn('disconnect').addEventListener('click', () => {
++          disconnect();
++          ui.log('Disconnected.');
++        });
++        ui.btn('sync').addEventListener('click', syncRecipes);
++        ui.form.addEventListener('submit', (e) => { e.preventDefault(); connect(); });
++        codeInput.addEventListener('input', () => {
++          codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
++          ui.markInvalid(codeInput, false);
++        });
++      }
++
++      initBrewer();
++      initHelper();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

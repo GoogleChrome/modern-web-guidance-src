@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+index 66c9173..23d6928 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,29 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards widget (sandboxed) */
++    .widget-wrap {
++      max-width: 420px;
++      margin: 40px auto 0;
++      text-align: center;
++    }
++
++    .widget-wrap iframe {
++      width: 100%;
++      height: 140px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .order-status {
++      margin-top: 20px;
++      text-align: center;
++      font-weight: bold;
++      color: var(--primary);
++      min-height: 1.6em;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +218,217 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="widget-wrap">
++      <h2>Your Rewards</h2>
++      <!-- Sandboxed without allow-same-origin: the widget runs in an opaque ("null") origin. -->
++      <iframe id="rewards-widget" title="Rewards balance" sandbox="allow-scripts" srcdoc="<!DOCTYPE html>
++<html><body style='font-family:sans-serif;margin:0;padding:16px;color:#3e2723'>
++<p id='pts'>Loading rewards…</p>
++<script>
++  // Messages go to the embedding page; the parent verifies our identity.
++  parent.postMessage({ type: 'widget:init', version: 1 }, '*');
++  var points = 120;
++  document.getElementById('pts').textContent = points + ' Grind Points';
++  parent.postMessage({ type: 'widget:points', points: points }, '*');
++  parent.postMessage({ type: 'widget:resize', height: document.body.scrollHeight + 4 }, '*');
++</script>
++  <script>
++    (function () {
++      'use strict';
++
++      // ---- Configuration -------------------------------------------------
++      // Exact origin of the trusted ordering application (scheme + host + port).
++      var TRUSTED_ORDER_ORIGIN = 'https://order.thedailygrind.com';
++      // Registrable domain that defines "our site" for redirects/links.
++      var SITE_DOMAIN = 'thedailygrind.com';
++
++      // ---- URL helpers ---------------------------------------------------
++      // Always parse with the URL API; never split/indexOf/startsWith on raw
++      // strings (those miss tricks like "//evil.com", "/\\evil.com",
++      // "https://thedailygrind.com.evil.com", "https://evil.com#thedailygrind.com",
++      // or "https://thedailygrind.com@evil.com").
++      function parseUrl(value) {
++        if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return null;
++        try {
++          return new URL(value, window.location.href);
++        } catch (e) {
++          return null;
++        }
++      }
++
++      function isHttpProtocol(url) {
++        return url.protocol === 'https:' || url.protocol === 'http:';
++      }
++
++      // Host-level check: exact domain or a true subdomain (label boundary).
++      function isSiteHost(hostname) {
++        var host = hostname.toLowerCase().replace(/\.$/, '');
++        return host === SITE_DOMAIN || host.endsWith('.' + SITE_DOMAIN);
++      }
++
++      // Same-site: same origin as this page, or https on our registrable domain.
++      function isSameSite(url) {
++        if (!url || !isHttpProtocol(url)) return false;
++        if (url.username || url.password) return false;
++        if (url.origin === window.location.origin) return true;
++        return url.protocol === 'https:' && isSiteHost(url.hostname);
++      }
++
++      // Returns a safe absolute URL string for a same-site redirect, or null.
++      function validateRedirect(value) {
++        var url = parseUrl(value);
++        return isSameSite(url) ? url.href : null;
++      }
++
++      // Returns a safe absolute URL string for an external link, or null.
++      function validateExternalLink(value) {
++        var url = parseUrl(value);
++        if (!url || url.protocol !== 'https:') return null;
++        if (url.username || url.password) return null;
++        return url.href;
++      }
++
++      function safeNavigate(value) {
++        var target = validateRedirect(value);
++        if (target) {
++          window.location.assign(target);
++        } else {
++          console.warn('[DailyGrind] Blocked non same-site redirect:', value);
++        }
++      }
++
++      // ---- Link hardening ------------------------------------------------
++      function hardenLinks(root) {
++        var links = root.querySelectorAll('a[href]');
++        for (var i = 0; i < links.length; i++) {
++          var a = links[i];
++          var raw = a.getAttribute('href');
++          var url = parseUrl(raw);
++          if (url && isSameSite(url)) continue;
++
++          var safe = validateExternalLink(raw);
++          if (safe) {
++            a.setAttribute('href', safe);
++            a.setAttribute('target', '_blank');
++            a.setAttribute('rel', 'noopener noreferrer');
++          } else {
++            // javascript:, data:, http: downgrades, credentials, malformed, etc.
++            console.warn('[DailyGrind] Neutralized unsafe link:', raw);
++            a.removeAttribute('href');
++            a.setAttribute('aria-disabled', 'true');
++          }
++        }
++      }
++
++      // Same-site "?next=" redirect support (e.g. after login/logout).
++      function handleNextParam() {
++        var next = new URLSearchParams(window.location.search).get('next');
++        if (next !== null) safeNavigate(next);
++      }
++
++      // ---- Sandboxed widget identity pinning -----------------------------
++      var widgetFrame = document.getElementById('rewards-widget');
++      var pinnedWidgetSource = null;
++
++      function handleWidgetMessage(event) {
++        var data = event.data;
++        // Sandboxed (no allow-same-origin) frames always report origin "null",
++        // so the origin cannot distinguish one sandboxed frame from another.
++        // Identity is established via the WindowProxy of *our* iframe instead.
++        if (event.origin !== 'null') return false;
++
++        if (pinnedWidgetSource === null) {
++          if (!data || data.type !== 'widget:init') return true; // not initialized: drop
++          if (!widgetFrame || event.source !== widgetFrame.contentWindow) {
++            console.warn('[DailyGrind] Rejected init from unknown sandboxed frame');
++            return true;
++          }
++          pinnedWidgetSource = event.source;
++          return true;
++        }
++
++        if (event.source !== pinnedWidgetSource) {
++          console.warn('[DailyGrind] Rejected message from unpinned sandboxed frame');
++          return true;
++        }
++
++        if (!data || typeof data.type !== 'string') return true;
++        switch (data.type) {
++          case 'widget:points':
++            if (Number.isInteger(data.points) && data.points >= 0 && data.points < 1e7) {
++              document.getElementById('rewards-summary').textContent =
++                'You have ' + data.points + ' points to redeem.';
++            }
++            break;
++          case 'widget:resize':
++            if (Number.isFinite(data.height)) {
++              var h = Math.max(60, Math.min(600, Math.round(data.height)));
++              widgetFrame.style.height = h + 'px';
++            }
++            break;
++          case 'widget:navigate':
++            safeNavigate(data.url);
++            break;
++        }
++        return true;
++      }
++
++      // Reset the pin if the widget frame reloads (new browsing context document).
++      if (widgetFrame) {
++        widgetFrame.addEventListener('load', function () {
++          if (pinnedWidgetSource !== null && pinnedWidgetSource !== widgetFrame.contentWindow) {
++            pinnedWidgetSource = null;
++          }
++        });
++      }
++
++      // ---- Trusted ordering origin ---------------------------------------
++      function handleOrderMessage(event) {
++        // Exact match only — no includes/startsWith/endsWith on origins.
++        if (event.origin !== TRUSTED_ORDER_ORIGIN) return false;
++
++        var data = event.data;
++        if (!data || typeof data !== 'object' || typeof data.type !== 'string') return true;
++
++        var status = document.getElementById('order-status');
++        switch (data.type) {
++          case 'order:status':
++            if (typeof data.message === 'string') {
++              status.textContent = data.message.slice(0, 200); // textContent: no HTML injection
++            }
++            break;
++          case 'order:complete':
++            status.textContent = 'Order placed! Redirecting…';
++            safeNavigate(data.redirect);
++            break;
++        }
++        return true;
++      }
++
++      window.addEventListener('message', function (event) {
++        if (handleOrderMessage(event)) return;
++        if (handleWidgetMessage(event)) return;
++        // Everything else is ignored.
++      });
++
++      hardenLinks(document);
++      handleNextParam();
++
++      // Expose validators for other scripts/tests on this page.
++      window.DailyGrindSecurity = Object.freeze({
++        validateRedirect: validateRedirect,
++        validateExternalLink: validateExternalLink,
++        isSameSite: function (v) { return isSameSite(parseUrl(v)); }
++      });
++    })();
++  </script>
++
++</body></html>"></iframe>
++      <p id="rewards-summary"></p>
++    </section>
++
++    <p id="order-status" class="order-status" role="status" aria-live="polite"></p>
+   </main>
+ 
+   <footer>

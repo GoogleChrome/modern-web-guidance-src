@@ -1,0 +1,430 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,115 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* AI Sections */
++    .ai-section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 40px;
++    }
++
++    .ai-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .ai-hint {
++      margin-bottom: 12px;
++    }
++
++    .ai-section textarea {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      resize: vertical;
++    }
++
++    .ai-section button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-right: 8px;
++    }
++
++    .ai-section button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .ai-section progress {
++      display: block;
++      width: 100%;
++      margin-top: 12px;
++    }
++
++    .ai-status {
++      margin-top: 8px;
++      font-size: 0.85rem;
++      min-height: 1.2em;
++    }
++
++    .ai-output {
++      margin-top: 12px;
++      padding: 12px;
++      background: var(--light);
++      border-radius: 5px;
++      white-space: pre-wrap;
++      min-height: 3em;
++      font-family: inherit;
++    }
++
++    .ai-output:empty {
++      display: none;
++    }
++
++    pre.ai-output {
++      font-family: Consolas, monospace;
++    }
++
++    .branch-list {
++      list-style: none;
++      margin-top: 12px;
++    }
++
++    .branch-list li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++    }
++
++    .branch-list li.active {
++      border-color: var(--accent);
++      background: #fff8e1;
++    }
++
++    .branch-list button {
++      cursor: pointer;
++      border: 1px solid var(--primary);
++      background: white;
++      border-radius: 4px;
++      padding: 2px 10px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +301,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ai-section" id="barista-section">
++      <h2>Ask the Barista</h2>
++      <p class="ai-hint">Ask anything about our Maple Oat Latte or Cold Brew.</p>
++      <label for="barista-question" class="sr-only">Your question</label>
++      <textarea id="barista-question" rows="3" placeholder="e.g. Is the Maple Oat Latte dairy-free?"></textarea>
++      <button id="ask-the-barista" class="btn" type="button">Ask the Barista</button>
++      <progress id="barista-progress" max="1" value="0" hidden></progress>
++      <div id="barista-status" class="ai-status" role="status" aria-live="polite"></div>
++      <div id="barista-answer" class="ai-output" aria-live="polite"></div>
++    </section>
++
++    <section class="ai-section" id="sentiment-section">
++      <h2>Customer Feedback Analyzer</h2>
++      <label for="feedback-text" class="sr-only">Customer feedback</label>
++      <textarea id="feedback-text" rows="3" placeholder="Paste a customer review...">The cold brew was incredibly smooth, but the wait was far too long.</textarea>
++      <button id="sentiment-btn" class="btn" type="button">Analyze Sentiment</button>
++      <progress id="sentiment-progress" max="1" value="0" hidden></progress>
++      <div id="sentiment-status" class="ai-status" role="status" aria-live="polite"></div>
++      <pre id="sentiment-result" class="ai-output"></pre>
++    </section>
++
++    <section class="ai-section" id="branch-section">
++      <h2>Conversation Branching</h2>
++      <p class="ai-hint">Chat with the active branch, or clone it to explore a different direction. Only the most recent branches are kept.</p>
++      <label for="branch-input" class="sr-only">Message for the active branch</label>
++      <textarea id="branch-input" rows="2" placeholder="Message the active branch..."></textarea>
++      <button id="branch-send-btn" class="btn" type="button">Send</button>
++      <button id="clone-btn" class="btn" type="button">Clone Active Session</button>
++      <progress id="branch-progress" max="1" value="0" hidden></progress>
++      <div id="branch-status" class="ai-status" role="status" aria-live="polite"></div>
++      <ul id="branch-list" class="branch-list"></ul>
++      <div id="branch-output" class="ai-output" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +347,267 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Built-in AI (Prompt API) helpers shared by the three sections.
++    const $ = (id) => document.getElementById(id);
++    const LANG = { expectedInputs: [{ type: 'text', languages: ['en'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] };
++
++    // Returns true if the model can be used (downloading it if needed); otherwise reports why.
++    async function checkModel(statusEl) {
++      if (!('LanguageModel' in self)) {
++        statusEl.textContent = 'Built-in AI is not supported in this browser.';
++        return false;
++      }
++      const availability = await LanguageModel.availability(LANG);
++      if (availability === 'unavailable') {
++        statusEl.textContent = 'The on-device model is unavailable on this device.';
++        return false;
++      }
++      if (availability === 'downloadable' || availability === 'downloading') {
++        statusEl.textContent = 'Preparing the on-device model (first use requires a download)...';
++      }
++      return true;
++    }
++
++    // Creates a session, reporting model download progress and honoring an abort signal.
++    function createSession({ statusEl, progressEl, signal, ...options }) {
++      return LanguageModel.create({
++        ...LANG,
++        ...options,
++        signal,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            progressEl.hidden = e.loaded >= 1;
++            progressEl.value = e.loaded;
++            statusEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
++          });
++        },
++      });
++    }
++
++    // Runs fn with the button disabled, always restoring UI state afterwards.
++    async function withBusy(btn, progressEl, statusEl, fn) {
++      btn.disabled = true;
++      try {
++        await fn();
++      } catch (err) {
++        statusEl.textContent = err.name === 'AbortError' ? 'Cancelled.' : `Error: ${err.message}`;
++      } finally {
++        btn.disabled = false;
++        progressEl.hidden = true;
++      }
++    }
++
++    const liveSessions = new Set();
++    function destroySession(session) {
++      if (!session) return;
++      liveSessions.delete(session);
++      session.destroy();
++    }
++    addEventListener('pagehide', () => {
++      barista.abort?.abort();
++      branches.forEach((b) => b.abort?.abort());
++      liveSessions.forEach((s) => s.destroy());
++      liveSessions.clear();
++    });
++
++    // ---------- Ask the Barista ----------
++    const barista = { session: null, abort: null };
++    const BARISTA_PROMPT =
++      'You are a friendly barista at The Daily Grind coffee shop. You only answer questions about two drinks: ' +
++      'the Maple Oat Latte (creamy oat milk with a hint of Vermont maple syrup) and the Cold Brew (steeped for 18 hours for maximum smoothness). ' +
++      'If asked about anything else, politely say you can only help with those two drinks. Keep answers short. ' +
++      'Do not invent prices, allergen guarantees, or facts you were not given.';
++
++    $('ask-the-barista').addEventListener('click', () => {
++      const btn = $('ask-the-barista');
++      const status = $('barista-status');
++      const progress = $('barista-progress');
++      const answer = $('barista-answer');
++      const question = $('barista-question').value.trim();
++      if (!question) { status.textContent = 'Please enter a question.'; return; }
++
++      withBusy(btn, progress, status, async () => {
++        answer.textContent = '';
++        status.textContent = 'Checking model availability...';
++        if (!(await checkModel(status))) return;
++
++        // Cancel any in-flight request and use a fresh signal.
++        barista.abort?.abort();
++        const abort = (barista.abort = new AbortController());
++
++        // Reuse one session so follow-up questions keep context.
++        if (!barista.session) {
++          barista.session = await createSession({
++            statusEl: status, progressEl: progress, signal: abort.signal,
++            initialPrompts: [{ role: 'system', content: BARISTA_PROMPT }],
++          });
++          liveSessions.add(barista.session);
++        }
++
++        status.textContent = 'Thinking...';
++        const stream = barista.session.promptStreaming(question, { signal: abort.signal });
++        for await (const chunk of stream) {
++          answer.textContent += chunk;
++        }
++        const { inputUsage, inputQuota } = barista.session;
++        status.textContent = `Done. Context used: ${inputUsage}/${inputQuota} tokens.`;
++      }).then(() => {
++        // Drop a session that has run out of room so the next question starts clean.
++        const s = barista.session;
++        if (s && s.inputUsage >= s.inputQuota * 0.9) {
++          destroySession(s);
++          barista.session = null;
++        }
++      });
++    });
++
++    // ---------- Customer Feedback Analyzer ----------
++    const SENTIMENT_SCHEMA = {
++      type: 'object',
++      properties: {
++        score: { type: 'number', minimum: -1, maximum: 1 },
++        category: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
++      },
++      required: ['score', 'category'],
++      additionalProperties: false,
++    };
++
++    $('sentiment-btn').addEventListener('click', () => {
++      const btn = $('sentiment-btn');
++      const status = $('sentiment-status');
++      const progress = $('sentiment-progress');
++      const result = $('sentiment-result');
++      const text = $('feedback-text').value.trim();
++      if (!text) { status.textContent = 'Please enter some feedback.'; return; }
++
++      withBusy(btn, progress, status, async () => {
++        result.textContent = '';
++        status.textContent = 'Checking model availability...';
++        if (!(await checkModel(status))) return;
++
++        // Each analysis is independent, so use a throwaway session and always destroy it.
++        const session = await createSession({
++          statusEl: status, progressEl: progress,
++          initialPrompts: [{
++            role: 'system',
++            content: 'You classify coffee shop customer feedback. score is -1 (very negative) to 1 (very positive).',
++          }],
++        });
++        liveSessions.add(session);
++        try {
++          status.textContent = 'Analyzing...';
++          const raw = await session.prompt(`Feedback: ${text}`, { responseConstraint: SENTIMENT_SCHEMA });
++          const parsed = JSON.parse(raw);
++          result.textContent = JSON.stringify({ score: parsed.score, category: parsed.category }, null, 2);
++          status.textContent = 'Done.';
++        } finally {
++          destroySession(session);
++        }
++      });
++    });
++
++    // ---------- Conversation Branching ----------
++    const MAX_BRANCHES = 3;
++    const branches = []; // { id, session, abort, label }
++    let activeBranch = null;
++    let branchCounter = 0;
++
++    function renderBranches() {
++      const list = $('branch-list');
++      list.replaceChildren();
++      for (const b of branches) {
++        const li = document.createElement('li');
++        li.className = b === activeBranch ? 'active' : '';
++        const { inputUsage, inputQuota } = b.session;
++        const label = document.createElement('span');
++        label.textContent = `${b.label}${b === activeBranch ? ' (active)' : ''} - ${inputUsage}/${inputQuota} tokens`;
++        li.append(label);
++        if (b !== activeBranch) {
++          const sel = document.createElement('button');
++          sel.type = 'button';
++          sel.textContent = 'Switch';
++          sel.addEventListener('click', () => { activeBranch = b; renderBranches(); });
++          li.append(sel);
++        }
++        list.append(li);
++      }
++    }
++
++    function addBranch(session, label) {
++      const branch = { id: ++branchCounter, session, abort: null, label };
++      liveSessions.add(session);
++      // Fires when a prompt would overflow the context window and old messages get evicted.
++      session.addEventListener('quotaoverflow', () => {
++        $('branch-status').textContent = `${branch.label}: context window full, oldest messages were dropped.`;
++      });
++      branches.push(branch);
++      activeBranch = branch;
++      return branch;
++    }
++
++    // Destroys the oldest inactive branches beyond the limit to free model memory.
++    function pruneBranches() {
++      while (branches.length > MAX_BRANCHES) {
++        const i = branches.findIndex((b) => b !== activeBranch);
++        const [old] = branches.splice(i, 1);
++        old.abort?.abort();
++        destroySession(old.session);
++      }
++    }
++
++    async function ensureRootBranch(status, progress) {
++      if (branches.length) return true;
++      status.textContent = 'Checking model availability...';
++      if (!(await checkModel(status))) return false;
++      const session = await createSession({
++        statusEl: status, progressEl: progress,
++        initialPrompts: [{ role: 'system', content: 'You are a helpful, concise coffee shop assistant for The Daily Grind.' }],
++      });
++      addBranch(session, 'Branch 1');
++      return true;
++    }
++
++    $('branch-send-btn').addEventListener('click', () => {
++      const btn = $('branch-send-btn');
++      const status = $('branch-status');
++      const progress = $('branch-progress');
++      const output = $('branch-output');
++      const message = $('branch-input').value.trim();
++      if (!message) { status.textContent = 'Please enter a message.'; return; }
++
++      withBusy(btn, progress, status, async () => {
++        output.textContent = '';
++        if (!(await ensureRootBranch(status, progress))) return;
++        const branch = activeBranch;
++        branch.abort?.abort();
++        branch.abort = new AbortController();
++        status.textContent = `Sending to ${branch.label}...`;
++        const stream = branch.session.promptStreaming(message, { signal: branch.abort.signal });
++        for await (const chunk of stream) output.textContent += chunk;
++        status.textContent = 'Done.';
++      }).finally(renderBranches);
++    });
++
++    $('clone-btn').addEventListener('click', () => {
++      const btn = $('clone-btn');
++      const status = $('branch-status');
++      const progress = $('branch-progress');
++
++      withBusy(btn, progress, status, async () => {
++        if (!(await ensureRootBranch(status, progress))) return;
++        const source = activeBranch;
++        // clone() copies the conversation history and parameters of the source session.
++        const copy = await source.session.clone({ signal: source.abort?.signal });
++        addBranch(copy, `Branch ${branchCounter + 1}`);
++        pruneBranches();
++        const { inputUsage, inputQuota } = copy;
++        status.textContent = `Cloned ${source.label}. Context used: ${inputUsage}/${inputQuota} tokens. Keeping ${branches.length}/${MAX_BRANCHES} branches.`;
++      }).finally(renderBranches);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

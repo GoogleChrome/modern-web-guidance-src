@@ -1,0 +1,56 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..3d20ef9 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,13 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
+-      overflow: hidden;
+-      position: fixed;
+-    }
+-
+-    dialog {
+-      overflow: visible;
++    dialog:modal {
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -212,10 +208,10 @@
+   </main>
+ 
+ 
+-  <dialog id="notice-dialog">
+-    <h2>Special Notice</h2>
++  <dialog id="notice-dialog" aria-labelledby="notice-title">
++    <h2 id="notice-title">Special Notice</h2>
+     <p>Our patio is open for the season.</p>
+-    <button type="button" id="close-notice" class="btn">Close</button>
++    <button type="button" id="close-notice" class="btn" autofocus>Close</button>
+   </dialog>
+ 
+   <footer>
+@@ -230,10 +226,12 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNoticeBtn = document.getElementById("close-notice");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
++      closeNoticeBtn?.addEventListener("click", () => {
++        noticeDialog.close();
++      });
+     }
+   </script>
+ </body>

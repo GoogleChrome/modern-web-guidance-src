@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+index 66c9173..f630274 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,31 @@
+       color: var(--accent);
+     }
+ 
++    nav ul {
++      position: relative;
++    }
++
++    nav a.active {
++      color: var(--accent);
++    }
++
++    .nav-underline {
++      position: absolute;
++      bottom: -6px;
++      left: 0;
++      height: 2px;
++      width: 0;
++      background: var(--accent);
++      border-radius: 2px;
++      opacity: 0;
++      pointer-events: none;
++      transition: transform 0.35s ease, width 0.35s ease, opacity 0.2s;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-underline { transition: none; }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -165,9 +190,73 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <span class="nav-underline" aria-hidden="true"></span>
+     </ul>
+   </nav>
+ 
++  <script>
++    (function () {
++      var list = document.querySelector('nav ul');
++      var bar = list.querySelector('.nav-underline');
++      var links = Array.prototype.slice.call(list.querySelectorAll('a:not(.logout-link)'));
++      var KEY = 'nav-active';
++
++      function find(href) {
++        return links.filter(function (a) { return a.getAttribute('href') === href; })[0];
++      }
++
++      function place(link) {
++        var l = link.getBoundingClientRect(), p = list.getBoundingClientRect();
++        bar.style.width = l.width + 'px';
++        bar.style.transform = 'translateX(' + (l.left - p.left) + 'px)';
++        bar.style.opacity = 1;
++      }
++
++      function activate(link) {
++        links.forEach(function (a) {
++          a.classList.toggle('active', a === link);
++          if (a === link) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        });
++        place(link);
++      }
++
++      // Restore the previously selected item, then slide to the current one
++      var current = find(location.pathname);
++      var previous = find(sessionStorage.getItem(KEY));
++      if (previous && current && previous !== current) {
++        place(previous);
++        bar.offsetWidth; // flush styles so the move below is animated
++        activate(current);
++      } else if (current || previous) {
++        bar.style.transition = 'none';
++        activate(current || previous);
++        bar.offsetWidth;
++        bar.style.transition = '';
++      }
++
++      links.forEach(function (a) {
++        a.addEventListener('click', function (e) {
++          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
++          e.preventDefault();
++          sessionStorage.setItem(KEY, a.getAttribute('href'));
++          activate(a);
++          // Let the slide finish before navigating
++          setTimeout(function () { location.href = a.href; }, 350);
++        });
++      });
++
++      window.addEventListener('resize', function () {
++        var active = list.querySelector('a.active');
++        if (!active) return;
++        bar.style.transition = 'none';
++        place(active);
++        bar.offsetWidth;
++        bar.style.transition = '';
++      });
++    })();
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>

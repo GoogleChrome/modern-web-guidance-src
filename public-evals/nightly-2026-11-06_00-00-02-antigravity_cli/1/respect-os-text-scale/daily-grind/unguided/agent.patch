@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+index 66c9173..fef99a9 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="text-scale" content="scale">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +13,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      font-size: 100%;
++      font-size: calc(1rem * env(preferred-text-scale, 1));
+     }
+ 
+     * {
+@@ -22,9 +25,11 @@
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 1rem;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: break-word;
+     }
+ 
+     /* Navigation */
+@@ -33,8 +38,10 @@
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.75rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -43,22 +50,27 @@
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+-      letter-spacing: 1px;
++      letter-spacing: 0.0625em;
++      line-height: 1.2;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.75rem 1.25rem;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin: 0;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      display: inline-block;
+       transition: color 0.3s;
+     }
+ 
+@@ -67,14 +79,15 @@
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      border: 0.0625rem solid var(--accent);
++      padding: 0.3125rem 0.75rem;
++      border-radius: 0.25rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
++      height: auto;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,49 +98,73 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 1.25rem;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
++      line-height: 1.2;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      font-size: 1.125rem;
++      max-width: 45ch;
++    }
++
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-width: 68.75rem;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
++    }
++
++    .container h2 {
++      font-size: 2rem;
++      line-height: 1.3;
++      margin-bottom: 0.5rem;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.625rem), 1fr));
++      gap: 1.25rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 1.25rem;
++      border-radius: 0.5rem;
++      box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      line-height: 1.3;
++      margin-bottom: 0.625rem;
+       color: var(--primary);
+     }
+ 
++    .card p {
++      font-size: 1rem;
++      flex-grow: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      font-size: 1rem;
++      padding: 0.625rem 1.25rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
++      border-radius: 0.3125rem;
++      margin-top: 0.9375rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,16 +175,20 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem 1.25rem;
++      margin-top: 2.5rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 1.25rem;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.5rem 0.625rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin: 0 0.625rem;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;

@@ -1,0 +1,51 @@
+diff --git a/README.md b/README.md
+index 4479b53..610cc4f 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,29 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Local network and loopback access
++
++The Astro middleware explicitly allows the application's own origin to use
++`local-network` and `loopback-network` through the `Permissions-Policy` response
++header. This permits the browser to request user approval; it does not grant
++permission automatically. If the app is embedded cross-origin, its parent must
++also delegate these permissions in its policy and iframe `allow` attribute.
++
++Serve the deployed application over HTTPS. Initiate connections from an explicit
++user action when permission has not already been granted. For HTTP endpoints,
++set `targetAddressSpace: 'local'` (LAN) or `targetAddressSpace: 'loopback'`
++(`localhost`, `127.0.0.1`, or `[::1]`) in the client-side `fetch` options. The target
++service must allow the application's origin through standard CORS headers to
++read responses. Requests must run in the user's browser: server-side requests
++connect to the hosting server's network instead.
++
++If checking permission before connecting, query `local-network` or
++`loopback-network` inside a `try/catch`, and fall back to a user-initiated request
++when the browser does not recognize the permission. Avoid querying the legacy
++`local-network-access` permission, which can crash older Chromium renderers.
++Handle connection failures and direct users who denied permission to their
++browser's site settings to re-enable access.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..d098b3a 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this origin to request LAN and loopback access with user permission.
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network=(self), loopback-network=(self)',
++  );
++  return response;
+ });

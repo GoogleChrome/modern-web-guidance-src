@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,48 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 360px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .signin form {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      text-align: center;
++      margin-bottom: 15px;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-top: 10px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      width: 100%;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +213,19 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin">
++    <form id="signin-form">
++      <h2>Sign In</h2>
++      <label for="username">Email</label>
++      <input id="username" name="username" type="email" autocomplete="username webauthn" required>
++      <label for="password">Password</label>
++      <input id="password" name="password" type="password" autocomplete="current-password" required>
++      <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +257,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Silently create a passkey after a successful password sign-in.
++    // Never surfaces UI: every failure is swallowed.
++    async function promotePasskey() {
++      try {
++        if (!window.PublicKeyCredential ||
++          !PublicKeyCredential.getClientCapabilities ||
++          !PublicKeyCredential.parseCreationOptionsFromJSON) return;
++        const caps = await PublicKeyCredential.getClientCapabilities();
++        if (!caps.conditionalCreate) return;
++
++        const post = (url, body) => fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(body || {})
++        });
++
++        const optionsRes = await post('/api/register/options');
++        if (!optionsRes.ok) return;
++        const options = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsRes.json());
++
++        const credential = await navigator.credentials.create({
++          publicKey: options,
++          mediation: 'conditional'
++        });
++        if (!credential) return;
++
++        await post('/api/register/verify', credential.toJSON());
++      } catch (e) {
++        // Intentionally silent: passkey promotion is best-effort.
++      }
++    }
++
++    document.getElementById('signin-form').addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const form = event.currentTarget;
++      try {
++        const res = await fetch('/api/signin', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: form.username.value,
++            password: form.password.value
++          })
++        });
++        if (res.ok) promotePasskey(); // fire and forget, in the background
++      } catch (e) {
++        // Sign-in errors are outside the scope of passkey promotion.
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

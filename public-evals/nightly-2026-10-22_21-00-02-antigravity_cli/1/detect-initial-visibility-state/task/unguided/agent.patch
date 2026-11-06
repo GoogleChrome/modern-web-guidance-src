@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,139 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Background Tab Load & Visibility Timestamp Detector
++     *
++     * Uses the modern Performance Timeline `visibility-state` entries
++     * (`VisibilityStateEntry` via `PerformanceObserver` / `performance.getEntriesByType('visibility-state')`)
++     * to accurately determine whether the page was initially loaded in a background tab
++     * (`name === 'hidden'` at `startTime === 0`) and record the exact high-resolution
++     * timestamp (in milliseconds) of when the page was backgrounded, even if this script
++     * executes asynchronously after the initial page load.
++     *
++     * WARNING / FALLBACK NOTE:
++     * When `visibility-state` performance entries are not supported by the browser,
++     * this script falls back to querying `document.visibilityState` (and listening to
++     * `visibilitychange` events). Legacy fallback queries (`document.visibilityState` /
++     * `document.hidden`) are HIGHLY INACCURATE and UNRELIABLE for async or deferred scripts:
++     * they only report the visibility state at the exact moment the script executes and
++     * cannot reconstruct historical visibility states from `navigationStart` (e.g., if the
++     * page loaded in a background tab and the user switched to it before the async script ran).
++     */
++    (function detectInitialBackgroundLoad() {
++      const supportsVisibilityStateEntries =
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.includes('visibility-state');
++
++      if (supportsVisibilityStateEntries) {
++        let initialReportLogged = false;
++
++        const processEntries = (entries) => {
++          if (!entries || entries.length === 0) return;
++
++          const initialEntry = entries[0];
++          const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++          const latestEntry = entries[entries.length - 1];
++
++          const loadedInBackground = initialEntry.name === 'hidden' && initialEntry.startTime === 0;
++          const isBackgrounded = Boolean(firstHiddenEntry) || latestEntry.name === 'hidden';
++          const backgroundTimeMs = firstHiddenEntry ? firstHiddenEntry.startTime : null;
++
++          const detectionInfo = {
++            backgroundStatus: isBackgrounded,
++            wasLoadedInBackground: loadedInBackground,
++            backgroundTime: backgroundTimeMs,
++            detectionMethod: 'visibility-state',
++            fallbackActive: false,
++            unreliableForAsync: false
++          };
++
++          console.log(detectionInfo);
++          initialReportLogged = true;
++        };
++
++        // Check buffered entries synchronously first if available
++        if (typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function') {
++          const bufferedEntries = performance.getEntriesByType('visibility-state');
++          if (bufferedEntries && bufferedEntries.length > 0) {
++            processEntries(bufferedEntries);
++          }
++        }
++
++        // Observe buffered and future visibility-state entries
++        const observer = new PerformanceObserver((list) => {
++          const entries = list.getEntries();
++          if (!initialReportLogged || entries.some((entry) => entry.name === 'hidden')) {
++            const allEntries =
++              typeof performance.getEntriesByType === 'function'
++                ? performance.getEntriesByType('visibility-state')
++                : entries;
++            processEntries(allEntries.length > 0 ? allEntries : entries);
++          }
++        });
++
++        observer.observe({ type: 'visibility-state', buffered: true });
++      } else {
++        // =========================================================================
++        // LEGACY FALLBACK DETECTION ACTIVE (POTENTIALLY UNRELIABLE FOR ASYNC SCRIPTS)
++        // =========================================================================
++        // Legacy `document.visibilityState` / `document.hidden` queries do NOT buffer
++        // historical visibility states from navigation start. If this script is loaded
++        // asynchronously or deferred, the tab visibility may have already changed before
++        // execution, making initial background-tab detection and timestamps inaccurate.
++        const isCurrentlyHidden =
++          document.visibilityState === 'hidden' || Boolean(document.hidden);
++        const fallbackTimestamp = isCurrentlyHidden
++          ? typeof performance !== 'undefined' && typeof performance.now === 'function'
++            ? performance.now()
++            : Date.now()
++          : null;
++
++        const fallbackDetectionInfo = {
++          backgroundStatus: isCurrentlyHidden,
++          wasLoadedInBackground: isCurrentlyHidden,
++          backgroundTime: fallbackTimestamp,
++          detectionMethod: 'legacy-document-visibilityState-fallback',
++          fallbackActive: true,
++          unreliableForAsync: true,
++          warning:
++            'Legacy fallback detection active: document.visibilityState is inaccurate for async scripts because pre-execution visibility history is not buffered.'
++        };
++
++        console.log(fallbackDetectionInfo);
++
++        document.addEventListener(
++          'visibilitychange',
++          (event) => {
++            if (document.visibilityState === 'hidden' || document.hidden) {
++              const hiddenTime =
++                typeof event.timeStamp === 'number'
++                  ? event.timeStamp
++                  : typeof performance !== 'undefined' && typeof performance.now === 'function'
++                    ? performance.now()
++                    : Date.now();
++
++              console.log({
++                backgroundStatus: true,
++                wasLoadedInBackground: fallbackDetectionInfo.wasLoadedInBackground,
++                backgroundTime: hiddenTime,
++                detectionMethod: 'legacy-document-visibilityState-fallback',
++                fallbackActive: true,
++                unreliableForAsync: true,
++                warning:
++                  'Legacy fallback detection active: visibilitychange timestamp may miss initial background load state in async scripts.'
++              });
++            }
++          },
++          { once: true }
++        );
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

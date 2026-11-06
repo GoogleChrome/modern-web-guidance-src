@@ -1,0 +1,20 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,16 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2 {
++      text-wrap: balance;
++    }
++
++    p, blockquote {
++      text-wrap: pretty;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

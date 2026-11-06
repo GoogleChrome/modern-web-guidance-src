@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,98 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 30rem;
++      margin: 0 auto 32px;
++      text-align: start;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-block-end: 0.25rem;
++    }
++
++    .newsletter-hint {
++      font-size: 0.9rem;
++      margin-block-end: 0.75rem;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.25rem;
++    }
++
++    .newsletter-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1 1 14rem;
++      min-height: 48px;
++      padding: 0.75rem;
++      font: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background: white;
++      border: 2px solid #6d4c41;
++      border-radius: 5px;
++    }
++
++    .newsletter input[type="email"]:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    /* Error styling appears only after the user has interacted */
++    .newsletter input[type="email"]:user-invalid {
++      border-color: #8c1d18;
++      background-color: #fce8e6;
++    }
++
++    .newsletter button {
++      min-height: 48px;
++      padding: 0.75rem 1.25rem;
++      font: inherit;
++      font-weight: 600;
++      color: white;
++      background: var(--primary);
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    /* Always in the accessibility tree so the live region is registered
++       before any message is injected; empty (and invisible) while valid. */
++    .newsletter-error {
++      margin-block-start: 0.375rem;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: #8c1d18;
++    }
++
++    .newsletter-error:not(:empty)::before {
++      content: "\26A0\FE0E  " / "";
++    }
++
++    .newsletter-status {
++      margin-block-start: 0.375rem;
++      font-weight: 600;
++      color: #1b5e20;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +287,24 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" id="newsletter-form" action="/newsletter" method="post"
++      aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join the Grind Newsletter</h2>
++      <p class="newsletter-hint" id="newsletter-hint">New roasts, seasonal drinks, and member offers. About once a month.</p>
++      <label for="newsletter-email">Email address <span aria-hidden="true">*</span></label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" required autocomplete="email"
++          autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"
++          aria-describedby="newsletter-hint newsletter-email-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <!-- Filled by script only while the field matches :user-invalid -->
++      <p class="newsletter-error" id="newsletter-email-error" aria-live="polite"></p>
++      <p class="newsletter-status" id="newsletter-status" role="status"></p>
++    </form>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +312,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('newsletter-form');
++      const email = document.getElementById('newsletter-email');
++      const error = document.getElementById('newsletter-email-error');
++      const status = document.getElementById('newsletter-status');
++
++      const messageFor = (input) =>
++        input.validity.valueMissing
++          ? 'Enter your email address to subscribe.'
++          : 'Enter a valid email address, like name@example.com.';
++
++      // Mirror the browser's interaction-aware :user-invalid state (which drives
++      // the visual error styling) into aria-invalid and the live error region,
++      // so assistive tech hears the error exactly when it becomes visible and
++      // stops hearing it the moment the value becomes valid.
++      const syncError = () => {
++        const isUserInvalid = email.matches(':user-invalid');
++        const message = isUserInvalid ? messageFor(email) : '';
++
++        if (isUserInvalid) {
++          email.setAttribute('aria-invalid', 'true');
++        } else {
++          email.removeAttribute('aria-invalid');
++        }
++
++        // Only touch the live region when the text actually changes, so it is
++        // not re-announced on every keystroke.
++        if (error.textContent !== message) {
++          error.textContent = message;
++        }
++      };
++
++      // blur: user finished with the field. input: clear (or update) as they type.
++      email.addEventListener('blur', syncError);
++      email.addEventListener('input', () => {
++        status.textContent = '';
++        syncError();
++      });
++
++      // Failed submit attempt: suppress the native tooltip (our inline message
++      // replaces it), sync state, and move focus to the field.
++      email.addEventListener('invalid', (event) => {
++        event.preventDefault();
++        syncError();
++        // Re-check next frame in case the engine flips :user-invalid after
++        // dispatching 'invalid'.
++        requestAnimationFrame(syncError);
++        email.focus();
++      });
++
++      form.addEventListener('submit', (event) => {
++        // Demo only: no backend yet, so confirm inline instead of navigating.
++        event.preventDefault();
++        status.textContent = `Thanks! We'll send the next issue to ${email.value}.`;
++        form.reset();
++      });
++
++      form.addEventListener('reset', () => {
++        // reset clears the browser's user-interacted flag; clear our mirror too.
++        requestAnimationFrame(syncError);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

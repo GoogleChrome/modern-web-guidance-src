@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,15 +85,62 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash block. Taken out of flow with a fixed aspect ratio,
++       so the hero layout is identical whether or not the photo or mask loads. */
++    .shaped-element {
++      --splash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M100 18C124 14 132 40 152 38C176 36 190 58 180 80C172 98 194 112 184 134C174 158 146 152 134 172C122 192 92 190 80 174C68 158 40 168 26 148C12 128 30 112 22 94C14 76 24 50 48 46C70 42 76 22 100 18Z'/%3E%3Ccircle cx='186' cy='28' r='8'/%3E%3Ccircle cx='170' cy='12' r='4'/%3E%3Ccircle cx='18' cy='180' r='7'/%3E%3Ccircle cx='36' cy='194' r='3.5'/%3E%3Cellipse cx='160' cy='188' rx='5' ry='7' transform='rotate(-30 160 188)'/%3E%3C/svg%3E");
++      position: absolute;
++      right: 4%;
++      bottom: 8%;
++      width: clamp(140px, 24vw, 320px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      /* Fallback fill if the photo fails to load */
++      background-color: var(--accent);
++      background-image: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=80'),
++        radial-gradient(circle at 35% 35%, var(--accent), var(--primary));
++      background-size: cover;
++      background-position: center;
++
++      -webkit-mask-image: var(--splash);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-image: var(--splash);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++    }
++
++    /* No mask support: fall back to an organic blob so it still reads as a shape */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        border-radius: 62% 38% 55% 45% / 48% 58% 42% 52%;
++      }
++    }
++
++    @media (max-width: 700px) {
++      .shaped-element {
++        right: -8%;
++        bottom: -6%;
++        opacity: 0.45;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,8 +218,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="shaped-element" aria-hidden="true"></div>
+   </header>
+ 
+   <main class="container">
+     <section>

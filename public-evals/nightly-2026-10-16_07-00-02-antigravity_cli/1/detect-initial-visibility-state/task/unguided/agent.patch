@@ -1,0 +1,186 @@
+diff --git a/background-detection.js b/background-detection.js
+new file mode 100644
+--- a/background-detection.js
++++ b/background-detection.js
+@@ -0,0 +1,181 @@
++/**
++ * Accurate Background Tab and Timing Detection Script
++ *
++ * Accurately detects whether the page was initially loaded in a background tab
++ * and records the exact timestamp of when it was backgrounded.
++ *
++ * Modern Performance Timeline API:
++ * - Uses performance.getEntriesByType('visibility-state') (VisibilityStateEntry).
++ * - Modern browsers record an initial entry at startTime: 0 reflecting the document's
++ *   visibility state at load time ('visible' or 'hidden').
++ * - If initial entry is 'hidden', backgroundStatus is true and backgroundTime is 0.
++ * - If initial entry is 'visible', backgroundStatus is false, and any subsequent
++ *   entry with name 'hidden' provides the exact high-resolution timestamp (ms).
++ *
++ * Legacy Fallback Detection:
++ * ============================================================================
++ * UNRELIABILITY WARNING FOR ASYNC SCRIPTS:
++ * When 'visibility-state' performance entries are not supported, fallback queries
++ * to document.visibilityState or document.hidden are used.
++ *
++ * Legacy fallback queries are highly inaccurate for async scripts because:
++ * 1. Async scripts execute after document parsing and navigation start.
++ * 2. If a page was loaded in the background but focused before an async script executes,
++ *    document.visibilityState will be 'visible' (False Negative).
++ * 3. If a page was loaded in the foreground but switched away before an async script executes,
++ *    document.visibilityState will be 'hidden' (False Positive, falsely reporting background
++ *    from 0ms).
++ * 4. The true transition timestamp is lost and cannot be retrieved retroactively.
++ * ============================================================================
++ */
++(function () {
++  function initBackgroundDetection() {
++    if (window.__backgroundDetectionInitialized) {
++      return;
++    }
++    window.__backgroundDetectionInitialized = true;
++
++    var isInitiallyBackground = false;
++    var backgroundTime = null;
++    var isFallback = false;
++
++    // Check support for modern Performance Timeline 'visibility-state' entries
++    var supportsVisibilityStateTiming =
++      typeof performance !== 'undefined' &&
++      typeof performance.getEntriesByType === 'function' &&
++      (
++        (typeof PerformanceObserver !== 'undefined' &&
++         Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++         PerformanceObserver.supportedEntryTypes.includes('visibility-state')) ||
++        (performance.getEntriesByType('visibility-state').length > 0)
++      );
++
++    if (supportsVisibilityStateTiming) {
++      isFallback = false;
++      var entries = performance.getEntriesByType('visibility-state');
++      var navEntry = performance.getEntriesByType('navigation')[0];
++      var activationStart = (navEntry && navEntry.activationStart) ? navEntry.activationStart : 0;
++
++      var initialEntry = entries.find(function (e) { return e.startTime === 0; }) || entries[0];
++
++      if (initialEntry && initialEntry.name === 'hidden' && (!document.prerendering)) {
++        isInitiallyBackground = true;
++        backgroundTime = initialEntry.startTime; // 0 ms
++      } else {
++        isInitiallyBackground = false;
++        var firstHidden = entries.find(function (e) {
++          return e.name === 'hidden' && e.startTime >= activationStart;
++        });
++        backgroundTime = firstHidden ? firstHidden.startTime : null;
++      }
++    } else {
++      /* ==========================================================================
++       * LEGACY FALLBACK DETECTION ACTIVE
++       * 
++       * WARNING: Legacy fallback queries are highly inaccurate for async scripts!
++       * document.visibilityState only checks instantaneous state at the moment
++       * this script executes, which may not reflect the initial tab state.
++       * ========================================================================== */
++      isFallback = true;
++      var isHidden = document.visibilityState === 'hidden' ||
++                     document.hidden ||
++                     document.webkitHidden ||
++                     document.msHidden;
++
++      if (isHidden && !document.prerendering) {
++        isInitiallyBackground = true;
++        backgroundTime = 0;
++      } else {
++        isInitiallyBackground = false;
++        backgroundTime = null;
++      }
++    }
++
++    // Detection info object logged to the console
++    var detectionInfo = {
++      backgroundStatus: isInitiallyBackground,
++      backgroundTime: backgroundTime,
++      // Field aliases for compatibility
++      background_status: isInitiallyBackground,
++      background_time: backgroundTime,
++      'background status': isInitiallyBackground,
++      'background time': backgroundTime,
++      wasInitiallyInBackground: isInitiallyBackground,
++      firstHiddenTime: backgroundTime !== null ? backgroundTime : Infinity,
++      // Clear flags indicating fallback detection and potential unreliability
++      isFallback: isFallback,
++      fallbackActive: isFallback,
++      unreliable: isFallback,
++      reliability: isFallback ? 'unreliable' : 'reliable',
++      detectionMethod: isFallback ? 'legacy-fallback' : 'performance-visibility-state',
++      warning: isFallback
++        ? 'Legacy fallback detection is active and potentially unreliable for async scripts.'
++        : null
++    };
++
++    // Warn in console if fallback detection is active and potentially unreliable
++    if (isFallback) {
++      console.warn(
++        '[Background Detection] Legacy fallback detection is active and potentially unreliable for async scripts. ' +
++        'document.visibilityState only reflects instantaneous state at script execution time rather than the initial state.'
++      );
++    }
++
++    // Log detection info object to the console
++    console.log(detectionInfo);
++
++    // Expose on window for programmatic inspection
++    window.backgroundDetection = detectionInfo;
++    window.__backgroundDetection = detectionInfo;
++
++    // Helper to update background time if the tab transitions to background later
++    function updateBackgroundTime(timestamp) {
++      if (detectionInfo.backgroundTime === null) {
++        detectionInfo.backgroundTime = timestamp;
++        detectionInfo.background_time = timestamp;
++        detectionInfo['background time'] = timestamp;
++        detectionInfo.firstHiddenTime = timestamp;
++        console.log(detectionInfo);
++      }
++    }
++
++    // Observe future visibility state changes via PerformanceObserver if available
++    if (typeof PerformanceObserver !== 'undefined' &&
++        PerformanceObserver.supportedEntryTypes &&
++        PerformanceObserver.supportedEntryTypes.includes('visibility-state')) {
++      try {
++        var observer = new PerformanceObserver(function (list) {
++          var obsEntries = list.getEntries();
++          for (var i = 0; i < obsEntries.length; i++) {
++            if (obsEntries[i].name === 'hidden') {
++              updateBackgroundTime(obsEntries[i].startTime);
++            }
++          }
++        });
++        observer.observe({ type: 'visibility-state', buffered: true });
++      } catch (e) {
++        // Ignore observer registration failures
++      }
++    }
++
++    // Listen to visibilitychange event
++    document.addEventListener('visibilitychange', function (event) {
++      if (document.visibilityState === 'hidden') {
++        var ts = (typeof event.timeStamp === 'number' && event.timeStamp > 0)
++          ? event.timeStamp
++          : (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
++        updateBackgroundTime(ts);
++      }
++    });
++
++    // Handle prerendering activation if page was loaded via Speculation Rules
++    if (document.prerendering) {
++      document.addEventListener('prerenderingchange', function () {
++        window.__backgroundDetectionInitialized = false;
++        initBackgroundDetection();
++      }, { once: true });
++    }
++  }
++
++  initBackgroundDetection();
++})();

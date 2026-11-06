@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,111 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: center;
++      gap: 20px;
++      margin-top: 30px;
++    }
++
++    /* Cross-Document View Transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root) {
++        animation: 0.4s ease-in both slide-out-next;
++      }
++
++      ::view-transition-new(root) {
++        animation: 0.4s ease-out both slide-in-next;
++      }
++
++      :active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-next;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-next;
++        }
++      }
++
++      :active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-previous;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-previous;
++        }
++      }
++    }
++
++    @keyframes slide-out-next {
++      to {
++        transform: translateX(-20%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-next {
++      from {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-out-previous {
++      to {
++        transform: translateX(20%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-previous {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++    }
+   </style>
++  <script blocking="render">
++    function determineTransitionType(fromEntry, toEntry) {
++      if (!fromEntry || !toEntry) return 'next';
++      const fromUrl = new URL(fromEntry.url);
++      const toUrl = new URL(toEntry.url);
++      const fromPage = parseInt(fromUrl.searchParams.get('page') || '1', 10);
++      const toPage = parseInt(toUrl.searchParams.get('page') || '1', 10);
++      if (toPage < fromPage) {
++        return 'previous';
++      }
++      if (toPage > fromPage) {
++        return 'next';
++      }
++      if (fromEntry.index !== undefined && toEntry.index !== undefined && toEntry.index < fromEntry.index) {
++        return 'previous';
++      }
++      return 'next';
++    }
++
++    if ('onpagereveal' in window) {
++      window.addEventListener("pagereveal", async (e) => {
++        if (e.viewTransition && window.navigation?.activation) {
++          const transitionType = determineTransitionType(
++            navigation.activation.from,
++            navigation.activation.entry
++          );
++          e.viewTransition.types.add(transitionType);
++        }
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -193,8 +295,12 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination">
++        <a href="?page=1" id="previous" class="btn">&larr; Previous</a>
++        <a href="?page=2" id="next" class="btn">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

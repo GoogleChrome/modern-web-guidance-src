@@ -1,0 +1,306 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..d7340a0 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,11 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // Local Network Access: https://wicg.github.io/local-network-access/
++  interface RequestInit {
++    targetAddressSpace?: 'local' | 'loopback' | 'public';
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..45c77fc 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -79,6 +79,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+                 <li><a href="#" class="hover:underline">Email Newsletters</a></li>
++                <li><a href=`${baseUrl}local-devices` class="hover:underline">Local Devices</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/components/LocalDeviceConnect.tsx b/src/components/LocalDeviceConnect.tsx
+new file mode 100644
+index 0000000..7533a2d
+--- /dev/null
++++ b/src/components/LocalDeviceConnect.tsx
+@@ -0,0 +1,164 @@
++import React, { useEffect, useState } from 'react';
++import {
++  fetchLocal,
++  inferAddressSpace,
++  permissionForAddressSpace,
++  queryLnaPermission,
++  type LnaPermissionState,
++} from '../utils/localNetwork';
++
++const STORAGE_KEY = 'localDeviceUrl';
++const DEFAULT_URL = 'http://127.0.0.1:45678/health';
++
++export default function LocalDeviceConnect() {
++  const [url, setUrl] = useState(DEFAULT_URL);
++  const [permission, setPermission] = useState<LnaPermissionState | null>(null);
++  const [secure, setSecure] = useState(true);
++  const [result, setResult] = useState<string | null>(null);
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++
++  let space: ReturnType<typeof inferAddressSpace> | null = null;
++  try {
++    space = inferAddressSpace(url);
++  } catch {
++    space = null;
++  }
++  const permissionName = space ? permissionForAddressSpace(space) : null;
++
++  const connect = async (targetUrl = url) => {
++    setError(null);
++    setResult(null);
++    setLoading(true);
++
++    try {
++      const response = await fetchLocal(targetUrl);
++      if (!response.ok) {
++        throw new Error(`Device responded with HTTP ${response.status}`);
++      }
++      const text = await response.text();
++      setResult(text);
++      localStorage.setItem(STORAGE_KEY, targetUrl);
++    } catch (err) {
++      // fetch() rejects with a TypeError when the permission is denied, the device
++      // is unreachable, CORS fails, or the host didn't resolve to the declared space.
++      setError(err instanceof Error && !(err instanceof TypeError)
++        ? err.message
++        : 'Could not reach the device. Make sure it is powered on, on the same network, allows this site via CORS, and that local network access is allowed for this site.');
++    } finally {
++      setLoading(false);
++      if (permissionName) {
++        setPermission(await queryLnaPermission(permissionName));
++      }
++    }
++  };
++
++  // Restore the last used device URL
++  useEffect(() => {
++    setSecure(window.isSecureContext);
++    const saved = localStorage.getItem(STORAGE_KEY);
++    if (saved) {
++      setUrl(saved);
++    }
++  }, []);
++
++  // Track permission state for the target address space; only connect
++  // automatically if access was already granted (never prompt on load).
++  useEffect(() => {
++    if (!permissionName) {
++      return;
++    }
++    let active = true;
++    queryLnaPermission(permissionName, (state) => active && setPermission(state)).then((state) => {
++      if (!active) return;
++      setPermission(state);
++      if (state === 'granted' && localStorage.getItem(STORAGE_KEY) === url) {
++        connect(url);
++      }
++    });
++    return () => {
++      active = false;
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [permissionName]);
++
++  const handleSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    connect();
++  };
++
++  const settingName = space === 'loopback' ? 'Loopback network' : 'Local network';
++
++  return (
++    <div className="max-w-xl mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
++      <h2 className="text-2xl font-bold mb-2 text-gray-800">Connect a Local Device</h2>
++      <p className="text-sm text-gray-600 mb-6">
++        Connect The DevTools Times to a device on your home network (such as a smart display or printer)
++        or to a companion app running on this computer. Your browser will ask for permission before
++        this site can reach your local network.
++      </p>
++
++      {!secure && (
++        <div className="mb-4 p-3 text-sm text-yellow-800 bg-yellow-100 rounded-lg" role="alert">
++          Local network access requires a secure (HTTPS) connection. Please reload this page over HTTPS.
++        </div>
++      )}
++
++      {permission === 'denied' && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          Access to your {space === 'loopback' ? 'device’s local apps' : 'local network'} is blocked.
++          To re-enable it, click the site settings icon next to the address bar and set
++          {' '}<strong>{settingName}</strong> to <strong>Allow</strong>, then try again.
++        </div>
++      )}
++
++      {error && (
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++          {error}
++        </div>
++      )}
++
++      <form onSubmit={handleSubmit} className="space-y-4">
++        <div>
++          <label htmlFor="device-url" className="block text-sm font-medium text-gray-700 mb-1">
++            Device address
++          </label>
++          <input
++            type="url"
++            id="device-url"
++            value={url}
++            onChange={(e) => setUrl(e.target.value)}
++            placeholder="http://192.168.1.100:8080/api/status"
++            required
++            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++          />
++          {space && (
++            <p className="mt-1 text-xs text-gray-500">
++              Target: {space === 'loopback' ? 'this computer (loopback)' : 'local network'}
++              {permission && permission !== 'unsupported' && <> &middot; Permission: {permission}</>}
++            </p>
++          )}
++        </div>
++
++        <button
++          type="submit"
++          disabled={loading || !space}
++          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
++            loading || !space ? 'opacity-75 cursor-not-allowed' : ''
++          }`}
++        >
++          {loading ? 'Connecting...' : 'Connect'}
++        </button>
++      </form>
++
++      {result !== null && (
++        <div className="mt-6">
++          <div className="mb-2 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
++            Connected!
++          </div>
++          <pre className="p-3 text-xs bg-gray-50 border border-gray-200 rounded-md overflow-auto max-h-64">{result}</pre>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..78d0ddc 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Local Network Access: allow this origin to request local-network and loopback
++  // resources (the default allowlist is 'self'; delegate to iframes here if needed).
++  response.headers.set('Permissions-Policy', 'local-network=(self), loopback-network=(self)');
++  return response;
+ });
+diff --git a/src/pages/local-devices.astro b/src/pages/local-devices.astro
+new file mode 100644
+index 0000000..40dd746
+--- /dev/null
++++ b/src/pages/local-devices.astro
+@@ -0,0 +1,10 @@
++---
++import Layout from '../layouts/Layout.astro';
++import LocalDeviceConnect from '../components/LocalDeviceConnect';
++---
++
++<Layout title="Local Devices | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <LocalDeviceConnect client:load />
++  </div>
++</Layout>
+diff --git a/src/utils/localNetwork.ts b/src/utils/localNetwork.ts
+new file mode 100644
+index 0000000..a02cd11
+--- /dev/null
++++ b/src/utils/localNetwork.ts
+@@ -0,0 +1,69 @@
++// Helpers for Local Network Access (LNA): requests from this public origin to a
++// user's private network (LAN devices) or loopback interface (local companion apps).
++// Browsers gate these behind the 'local-network' / 'loopback-network' permissions.
++
++export type TargetAddressSpace = 'local' | 'loopback';
++export type LnaPermissionName = 'local-network' | 'loopback-network';
++export type LnaPermissionState = PermissionState | 'unsupported';
++
++export const permissionForAddressSpace = (space: TargetAddressSpace): LnaPermissionName =>
++  space === 'loopback' ? 'loopback-network' : 'local-network';
++
++/**
++ * Infers the target address space from a URL's host. Unknown hostnames (custom DNS
++ * names resolving to a LAN IP) default to 'local'; the browser verifies after DNS.
++ */
++export function inferAddressSpace(url: string): TargetAddressSpace {
++  const host = new URL(url).hostname.replace(/^\[|\]$/g, '').toLowerCase();
++  if (host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127\./.test(host)) {
++    return 'loopback';
++  }
++  return 'local';
++}
++
++/**
++ * Queries the granular LNA permission. Never falls back to the legacy combined
++ * 'local-network-access' name, which crashes the renderer in older Chrome versions.
++ */
++export async function queryLnaPermission(
++  name: LnaPermissionName,
++  onChange?: (state: PermissionState) => void,
++): Promise<LnaPermissionState> {
++  if (!navigator.permissions?.query) {
++    return 'unsupported';
++  }
++  try {
++    const status = await navigator.permissions.query({ name: name as PermissionName });
++    if (onChange) {
++      // Keep UI in sync if the user changes the permission in site settings
++      status.addEventListener('change', () => onChange(status.state));
++    }
++    return status.state;
++  } catch {
++    // Unrecognized permission name: the browser doesn't implement LNA.
++    // Requests may still work; trigger them from a user gesture only.
++    return 'unsupported';
++  }
++}
++
++/**
++ * fetch() wrapper that declares targetAddressSpace so http:// endpoints on the
++ * LAN/loopback are exempt from Mixed Content blocking once permission is granted.
++ * Call the first request from a user gesture (not on load, not from a worker).
++ */
++export function fetchLocal(
++  url: string,
++  init: RequestInit = {},
++  targetAddressSpace: TargetAddressSpace = inferAddressSpace(url),
++): Promise<Response> {
++  return fetch(url, { mode: 'cors', ...init, targetAddressSpace });
++}
++
++/**
++ * Opens a WebSocket to a local/loopback endpoint. WebSocket has no targetAddressSpace
++ * option; ws:// is only exempt from Mixed Content when the host is a private/loopback
++ * IP literal, localhost or a .local hostname. Use wss:// for other hostnames.
++ */
++export function openLocalWebSocket(url: string, protocols?: string | string[]): WebSocket {
++  return new WebSocket(url, protocols);
++}

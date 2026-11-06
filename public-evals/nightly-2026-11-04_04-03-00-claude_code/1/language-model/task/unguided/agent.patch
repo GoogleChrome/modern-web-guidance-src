@@ -1,0 +1,692 @@
+diff --git a/ai.js b/ai.js
+new file mode 100644
+--- a/ai.js
++++ b/ai.js
+@@ -0,0 +1,687 @@
++/*
++ * On-device AI features for The Daily Grind, built on the browser's built-in
++ * Prompt API (`LanguageModel`, Gemini Nano in Chrome).
++ *
++ * Practices followed:
++ *  - Feature-detect the API and call `availability()` before every `create()`.
++ *  - Only create sessions from a user gesture (required when a download is needed)
++ *    and surface model download progress via the `monitor` option.
++ *  - Pass the same expectedInputs/expectedOutputs to `availability()` and `create()`.
++ *  - Reuse one primed "base" session per feature and `clone()` it per request, so
++ *    the system prompt is processed once and requests don't pollute each other's context.
++ *  - Use AbortControllers so in-flight work can be cancelled, and `destroy()` every
++ *    session as soon as it is no longer needed (and all of them on `pagehide`).
++ *  - Track context usage and react to context overflow.
++ *  - Never inject model output as HTML (textContent only).
++ */
++(() => {
++  'use strict';
++
++  const LANGUAGE_OPTIONS = {
++    expectedInputs: [{ type: 'text', languages: ['en'] }],
++    expectedOutputs: [{ type: 'text', languages: ['en'] }],
++  };
++
++  const MENU_FACTS = `
++Maple Oat Latte (seasonal): double shot of our house espresso, steamed oat milk, and real Vermont maple syrup.
++Sizes 12oz / 16oz / 20oz. About 150 mg caffeine (16oz). Dairy-free and vegan. Contains oats (may contain gluten traces).
++About 210 calories (16oz). Available hot or iced. Flavor: creamy, nutty, lightly sweet with warm caramel notes.
++
++Cold Brew: single-origin Colombian beans, coarsely ground and steeped in cold filtered water for 18 hours, then filtered.
++Served over ice, black by default; milk, oat milk, or sweet cream can be added. About 200 mg caffeine (16oz).
++About 5 calories black. Naturally low acidity, smooth, chocolatey finish. Not available hot.
++`.trim();
++
++  const BARISTA_SYSTEM_PROMPT = `You are a friendly, knowledgeable barista at The Daily Grind coffee shop.
++Answer customer questions ONLY about the Maple Oat Latte and the Cold Brew, using the facts below.
++If asked about anything else, politely say you can only help with those two drinks.
++If a fact isn't listed, say you're not sure rather than inventing it. Keep answers under 120 words, plain text.
++
++${MENU_FACTS}`;
++
++  const SENTIMENT_SYSTEM_PROMPT = `You analyze customer feedback for a coffee shop.
++For each piece of feedback, return a sentiment score from -1 (very negative) to 1 (very positive)
++and a single category describing the overall sentiment.`;
++
++  const SENTIMENT_SCHEMA = {
++    type: 'object',
++    properties: {
++      score: { type: 'number', minimum: -1, maximum: 1 },
++      category: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] },
++    },
++    required: ['score', 'category'],
++    additionalProperties: false,
++  };
++
++  const BRANCH_SYSTEM_PROMPT = `You are a helpful barista at The Daily Grind coffee shop. Our seasonal menu:
++${MENU_FACTS}
++Dark Roast Espresso: bold, smoky, great for a morning boost.
++Keep replies concise (under 100 words), plain text.`;
++
++  const MAX_BRANCHES = 4;
++
++  const $ = (id) => document.getElementById(id);
++  const hasPromptApi = 'LanguageModel' in self;
++
++  /** Every session we create is tracked here so it can be destroyed on pagehide. */
++  const liveSessions = new Set();
++  /** Every in-flight operation's controller, so it can be aborted on pagehide. */
++  const liveControllers = new Set();
++
++  // ---------------------------------------------------------------------------
++  // Shared helpers
++  // ---------------------------------------------------------------------------
++
++  function setStatus(el, message, isError = false) {
++    el.textContent = message;
++    el.classList.toggle('error', isError);
++  }
++
++  function track(session) {
++    liveSessions.add(session);
++    return session;
++  }
++
++  function destroySession(session) {
++    if (!session) return;
++    liveSessions.delete(session);
++    try {
++      session.destroy();
++    } catch {
++      /* already destroyed */
++    }
++  }
++
++  function newController() {
++    const controller = new AbortController();
++    liveControllers.add(controller);
++    return controller;
++  }
++
++  function releaseController(controller) {
++    liveControllers.delete(controller);
++  }
++
++  function isAbort(err) {
++    return err?.name === 'AbortError';
++  }
++
++  /** Context usage, supporting both current and earlier property names. */
++  function getUsage(session) {
++    const used = session.contextUsage ?? session.inputUsage ?? 0;
++    const total = session.contextWindow ?? session.inputQuota ?? 0;
++    return { used, total };
++  }
++
++  function onContextOverflow(session, handler) {
++    // `contextoverflow` is the current name; `quotaoverflow` is the earlier one.
++    session.addEventListener?.('contextoverflow', handler);
++    session.addEventListener?.('quotaoverflow', handler);
++  }
++
++  function describeError(err) {
++    switch (err?.name) {
++      case 'NotAllowedError':
++        return 'The built-in AI is blocked or needs a click to start. Please try again.';
++      case 'NotSupportedError':
++        return 'This request is not supported by the on-device model.';
++      case 'QuotaExceededError':
++        return 'The input is too long for the on-device model. Try something shorter.';
++      case 'InvalidStateError':
++        return 'The AI session was closed. Please try again.';
++      default:
++        return `Something went wrong: ${err?.message || err}`;
++    }
++  }
++
++  /**
++   * Check availability, then create a session with download-progress reporting.
++   * Must be called from (or shortly after) a user gesture.
++   */
++  async function createSession({ initialPrompts, progressEl, statusEl, signal }) {
++    if (!hasPromptApi) {
++      throw Object.assign(new Error('Built-in AI is not supported in this browser.'), {
++        name: 'UnsupportedBrowser',
++      });
++    }
++
++    const availability = await LanguageModel.availability(LANGUAGE_OPTIONS);
++    if (availability === 'unavailable') {
++      throw Object.assign(
++        new Error('The on-device model is unavailable on this device (check hardware/storage requirements).'),
++        { name: 'ModelUnavailable' },
++      );
++    }
++
++    if (availability === 'downloadable' || availability === 'downloading') {
++      setStatus(statusEl, 'Downloading the on-device model. This only happens once…');
++      progressEl.value = 0;
++      progressEl.hidden = false;
++    } else {
++      setStatus(statusEl, 'Starting the AI…');
++    }
++
++    try {
++      const session = await LanguageModel.create({
++        ...LANGUAGE_OPTIONS,
++        initialPrompts,
++        signal,
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            progressEl.hidden = false;
++            progressEl.value = e.loaded; // 0..1
++            setStatus(statusEl, `Downloading model… ${Math.round(e.loaded * 100)}%`);
++            if (e.loaded >= 1) setStatus(statusEl, 'Download complete. Loading model…');
++          });
++        },
++      });
++      return track(session);
++    } finally {
++      progressEl.hidden = true;
++    }
++  }
++
++  /**
++   * Lazily creates a single shared base session. Concurrent callers share the same
++   * pending promise; a failed attempt is cleared so the next click can retry.
++   */
++  function lazyBaseSession(options) {
++    let promise = null;
++    let session = null;
++    return {
++      get(extra) {
++        if (session) return Promise.resolve(session);
++        if (!promise) {
++          promise = createSession({ ...options, ...extra })
++            .then((s) => (session = s))
++            .catch((err) => {
++              promise = null;
++              throw err;
++            });
++        }
++        return promise;
++      },
++      reset() {
++        destroySession(session);
++        session = null;
++        promise = null;
++      },
++    };
++  }
++
++  function disableIfUnsupported(statusEl, buttons) {
++    if (hasPromptApi) return;
++    setStatus(
++      statusEl,
++      "Your browser doesn't support built-in AI yet. Try a recent version of Chrome on desktop.",
++      true,
++    );
++    buttons.forEach((b) => (b.disabled = true));
++  }
++
++  // ---------------------------------------------------------------------------
++  // 1. Ask the Barista — streaming answers
++  // ---------------------------------------------------------------------------
++
++  const barista = {
++    askBtn: $('ask-the-barista'),
++    stopBtn: $('barista-stop'),
++    input: $('barista-question'),
++    answer: $('barista-answer'),
++    status: $('barista-status'),
++    progress: $('barista-progress'),
++    controller: null,
++  };
++
++  const baristaBase = lazyBaseSession({
++    initialPrompts: [{ role: 'system', content: BARISTA_SYSTEM_PROMPT }],
++    progressEl: barista.progress,
++    statusEl: barista.status,
++  });
++
++  async function askBarista() {
++    const question = barista.input.value.trim();
++    if (!question) {
++      setStatus(barista.status, 'Please type a question first.', true);
++      barista.input.focus();
++      return;
++    }
++
++    // Cancel any answer that is still streaming.
++    barista.controller?.abort();
++    const controller = newController();
++    barista.controller = controller;
++
++    barista.askBtn.disabled = true;
++    barista.stopBtn.hidden = false;
++    barista.answer.textContent = '';
++
++    let turn = null;
++    try {
++      const base = await baristaBase.get({ signal: controller.signal });
++
++      // Clone so each question starts from the primed system prompt with a clean context.
++      turn = track(await base.clone({ signal: controller.signal }));
++
++      setStatus(barista.status, 'The barista is thinking…');
++      const stream = turn.promptStreaming(question, { signal: controller.signal });
++
++      let received = false;
++      for await (const chunk of stream) {
++        if (!received) {
++          received = true;
++          setStatus(barista.status, 'Answering…');
++        }
++        barista.answer.append(chunk);
++      }
++      setStatus(barista.status, '');
++    } catch (err) {
++      if (isAbort(err)) {
++        setStatus(barista.status, 'Stopped.');
++      } else {
++        console.error(err);
++        setStatus(barista.status, describeError(err), true);
++      }
++    } finally {
++      destroySession(turn);
++      releaseController(controller);
++      if (barista.controller === controller) {
++        barista.controller = null;
++        barista.askBtn.disabled = false;
++        barista.stopBtn.hidden = true;
++      }
++    }
++  }
++
++  barista.askBtn.addEventListener('click', askBarista);
++  barista.stopBtn.addEventListener('click', () => barista.controller?.abort());
++  barista.input.addEventListener('keydown', (e) => {
++    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) askBarista();
++  });
++  disableIfUnsupported(barista.status, [barista.askBtn]);
++
++  // ---------------------------------------------------------------------------
++  // 2. Customer Feedback Analyzer — structured JSON output
++  // ---------------------------------------------------------------------------
++
++  const sentiment = {
++    btn: $('sentiment-btn'),
++    input: $('feedback-input'),
++    result: $('sentiment-result'),
++    status: $('sentiment-status'),
++    progress: $('sentiment-progress'),
++  };
++
++  const sentimentBase = lazyBaseSession({
++    initialPrompts: [{ role: 'system', content: SENTIMENT_SYSTEM_PROMPT }],
++    progressEl: sentiment.progress,
++    statusEl: sentiment.status,
++  });
++
++  function validateSentiment(data) {
++    const categories = SENTIMENT_SCHEMA.properties.category.enum;
++    if (typeof data?.score !== 'number' || !Number.isFinite(data.score)) {
++      throw new Error('Model returned an invalid score.');
++    }
++    if (!categories.includes(data.category)) {
++      throw new Error('Model returned an invalid category.');
++    }
++    return {
++      score: Math.round(Math.max(-1, Math.min(1, data.score)) * 100) / 100,
++      category: data.category,
++    };
++  }
++
++  function renderSentiment(data) {
++    sentiment.result.replaceChildren();
++
++    const summary = document.createElement('div');
++    summary.className = 'sentiment-result';
++
++    const badge = document.createElement('span');
++    badge.className = `badge ${data.category}`;
++    badge.textContent = data.category;
++
++    const score = document.createElement('span');
++    score.textContent = `Score: ${data.score.toFixed(2)}`;
++
++    const meter = document.createElement('meter');
++    meter.min = -1;
++    meter.max = 1;
++    meter.low = -0.2;
++    meter.high = 0.2;
++    meter.optimum = 1;
++    meter.value = data.score;
++    meter.setAttribute('aria-label', 'Sentiment score');
++
++    summary.append(badge, score, meter);
++
++    const json = document.createElement('pre');
++    json.className = 'json-out';
++    json.textContent = JSON.stringify(data, null, 2);
++
++    sentiment.result.append(summary, json);
++  }
++
++  async function analyzeSentiment() {
++    const feedback = sentiment.input.value.trim();
++    if (!feedback) {
++      setStatus(sentiment.status, 'Please paste some customer feedback first.', true);
++      sentiment.input.focus();
++      return;
++    }
++
++    const controller = newController();
++    sentiment.btn.disabled = true;
++    sentiment.result.textContent = '';
++
++    let turn = null;
++    try {
++      const base = await sentimentBase.get({ signal: controller.signal });
++      turn = track(await base.clone({ signal: controller.signal }));
++
++      setStatus(sentiment.status, 'Analyzing…');
++      const raw = await turn.prompt(`Feedback:\n"""${feedback}"""`, {
++        responseConstraint: SENTIMENT_SCHEMA,
++        signal: controller.signal,
++      });
++
++      renderSentiment(validateSentiment(JSON.parse(raw)));
++      setStatus(sentiment.status, '');
++    } catch (err) {
++      if (!isAbort(err)) {
++        console.error(err);
++        setStatus(
++          sentiment.status,
++          err instanceof SyntaxError ? 'The model returned malformed JSON. Please try again.' : describeError(err),
++          true,
++        );
++      }
++    } finally {
++      destroySession(turn);
++      releaseController(controller);
++      sentiment.btn.disabled = false;
++    }
++  }
++
++  sentiment.btn.addEventListener('click', analyzeSentiment);
++  disableIfUnsupported(sentiment.status, [sentiment.btn]);
++
++  // ---------------------------------------------------------------------------
++  // 3. Conversation Branching — clone sessions, track context, clean up
++  // ---------------------------------------------------------------------------
++
++  const branching = {
++    sendBtn: $('branch-send'),
++    cloneBtn: $('clone-btn'),
++    resetBtn: $('branch-reset'),
++    input: $('branch-input'),
++    list: $('branch-list'),
++    output: $('branch-output'),
++    status: $('branch-status'),
++    progress: $('branch-progress'),
++    branches: [], // { id, name, session, parentName, overflowed, lastReply, createdAt }
++    activeId: null,
++    nextId: 1,
++    busy: false,
++    controller: null,
++  };
++
++  $('max-branches').textContent = String(MAX_BRANCHES);
++
++  const activeBranch = () => branching.branches.find((b) => b.id === branching.activeId) || null;
++
++  function addBranch(session, parentName = null) {
++    const branch = {
++      id: branching.nextId++,
++      name: parentName ? `Branch ${branching.nextId - 1}` : 'Main',
++      session,
++      parentName,
++      overflowed: false,
++      lastReply: '',
++      createdAt: Date.now(),
++    };
++    onContextOverflow(session, () => {
++      branch.overflowed = true;
++      renderBranches();
++    });
++    branching.branches.push(branch);
++    branching.activeId = branch.id;
++    return branch;
++  }
++
++  function removeBranch(id) {
++    const idx = branching.branches.findIndex((b) => b.id === id);
++    if (idx === -1) return;
++    const [branch] = branching.branches.splice(idx, 1);
++    destroySession(branch.session);
++    if (branching.activeId === id) {
++      branching.activeId = branching.branches.at(-1)?.id ?? null;
++      branching.output.textContent = activeBranch()?.lastReply ?? '';
++    }
++  }
++
++  /** Keep at most MAX_BRANCHES sessions alive by destroying the oldest inactive ones. */
++  function enforceBranchLimit() {
++    const removed = [];
++    while (branching.branches.length > MAX_BRANCHES) {
++      const victim = branching.branches
++        .filter((b) => b.id !== branching.activeId)
++        .sort((a, b) => a.createdAt - b.createdAt)[0];
++      if (!victim) break;
++      removed.push(victim.name);
++      removeBranch(victim.id);
++    }
++    return removed;
++  }
++
++  function resetBranches() {
++    branching.controller?.abort();
++    for (const b of branching.branches) destroySession(b.session);
++    branching.branches = [];
++    branching.activeId = null;
++    branching.nextId = 1;
++    branching.output.textContent = '';
++    renderBranches();
++  }
++
++  function renderBranches() {
++    const items = branching.branches.map((b) => {
++      const li = document.createElement('li');
++      li.className = b.id === branching.activeId ? 'active' : '';
++      li.tabIndex = 0;
++      li.setAttribute('aria-current', b.id === branching.activeId ? 'true' : 'false');
++
++      const label = document.createElement('strong');
++      label.textContent = b.parentName ? `${b.name} (from ${b.parentName})` : b.name;
++
++      const del = document.createElement('button');
++      del.type = 'button';
++      del.className = 'secondary';
++      del.textContent = 'Close';
++      del.disabled = branching.busy;
++      del.setAttribute('aria-label', `Close ${b.name}`);
++      del.addEventListener('click', (e) => {
++        e.stopPropagation();
++        removeBranch(b.id);
++        renderBranches();
++        setStatus(branching.status, `${b.name} closed and its session destroyed.`);
++      });
++
++      const { used, total } = getUsage(b.session);
++      const meter = document.createElement('meter');
++      meter.min = 0;
++      meter.max = total || 1;
++      meter.low = (total || 1) * 0.6;
++      meter.high = (total || 1) * 0.85;
++      meter.optimum = 0;
++      meter.value = used;
++      meter.setAttribute('aria-label', `${b.name} context usage`);
++
++      const usage = document.createElement('span');
++      usage.className = 'usage';
++      const pct = total ? Math.round((used / total) * 100) : 0;
++      usage.textContent =
++        `Context: ${used.toLocaleString()} / ${total ? total.toLocaleString() : '?'} tokens (${pct}%)` +
++        (b.overflowed ? ' — oldest messages were dropped to fit the context window' : '');
++
++      li.append(label, del, meter, usage);
++
++      const select = () => {
++        if (branching.busy || branching.activeId === b.id) return;
++        branching.activeId = b.id;
++        branching.output.textContent = b.lastReply;
++        renderBranches();
++      };
++      li.addEventListener('click', select);
++      li.addEventListener('keydown', (e) => {
++        if (e.key === 'Enter' || e.key === ' ') {
++          e.preventDefault();
++          select();
++        }
++      });
++      return li;
++    });
++    branching.list.replaceChildren(...items);
++  }
++
++  function setBranchBusy(busy) {
++    branching.busy = busy;
++    branching.sendBtn.disabled = busy;
++    branching.cloneBtn.disabled = busy;
++    renderBranches();
++  }
++
++  /** Ensure a root conversation exists (created from a user gesture). */
++  async function ensureRootBranch(signal) {
++    if (activeBranch()) return activeBranch();
++    const session = await createSession({
++      initialPrompts: [{ role: 'system', content: BRANCH_SYSTEM_PROMPT }],
++      progressEl: branching.progress,
++      statusEl: branching.status,
++      signal,
++    });
++    const branch = addBranch(session);
++    renderBranches();
++    return branch;
++  }
++
++  async function sendToBranch() {
++    const message = branching.input.value.trim();
++    if (!message) {
++      setStatus(branching.status, 'Type a message first.', true);
++      branching.input.focus();
++      return;
++    }
++    if (branching.busy) return;
++
++    const controller = newController();
++    branching.controller = controller;
++    setBranchBusy(true);
++
++    try {
++      const branch = await ensureRootBranch(controller.signal);
++
++      // Warn before the prompt would overflow the context window.
++      const { used, total } = getUsage(branch.session);
++      const measure = branch.session.measureContextUsage ?? branch.session.measureInputUsage;
++      if (measure && total) {
++        const needed = await measure.call(branch.session, message, { signal: controller.signal });
++        if (used + needed > total) {
++          setStatus(
++            branching.status,
++            'This branch is nearly full; older messages will be dropped. Consider starting fresh with "Reset All".',
++          );
++        }
++      }
++
++      setStatus(branching.status, `${branch.name} is replying…`);
++      branching.output.textContent = '';
++      let reply = '';
++      const stream = branch.session.promptStreaming(message, { signal: controller.signal });
++      for await (const chunk of stream) {
++        reply += chunk;
++        branching.output.append(chunk);
++      }
++      branch.lastReply = reply;
++      branching.input.value = '';
++      setStatus(branching.status, '');
++    } catch (err) {
++      if (!isAbort(err)) {
++        console.error(err);
++        setStatus(branching.status, describeError(err), true);
++      }
++    } finally {
++      releaseController(controller);
++      if (branching.controller === controller) branching.controller = null;
++      setBranchBusy(false);
++    }
++  }
++
++  async function cloneActiveBranch() {
++    if (branching.busy) return;
++    const controller = newController();
++    branching.controller = controller;
++    setBranchBusy(true);
++
++    try {
++      const parent = await ensureRootBranch(controller.signal);
++      setStatus(branching.status, `Cloning ${parent.name}…`);
++
++      // clone() copies the full conversation history and context into a new, independent session.
++      const session = track(await parent.session.clone({ signal: controller.signal }));
++      const child = addBranch(session, parent.name);
++      child.lastReply = parent.lastReply;
++      child.overflowed = parent.overflowed;
++      branching.output.textContent = child.lastReply;
++
++      const removed = enforceBranchLimit();
++      setStatus(
++        branching.status,
++        `Created ${child.name} from ${parent.name}.` +
++          (removed.length ? ` Cleaned up ${removed.join(', ')} to free memory.` : ''),
++      );
++    } catch (err) {
++      if (!isAbort(err)) {
++        console.error(err);
++        setStatus(branching.status, describeError(err), true);
++      }
++    } finally {
++      releaseController(controller);
++      if (branching.controller === controller) branching.controller = null;
++      setBranchBusy(false);
++    }
++  }
++
++  branching.sendBtn.addEventListener('click', sendToBranch);
++  branching.cloneBtn.addEventListener('click', cloneActiveBranch);
++  branching.resetBtn.addEventListener('click', () => {
++    resetBranches();
++    setStatus(branching.status, 'All branches closed and their sessions destroyed.');
++  });
++  disableIfUnsupported(branching.status, [branching.sendBtn, branching.cloneBtn, branching.resetBtn]);
++
++  // ---------------------------------------------------------------------------
++  // Global cleanup
++  // ---------------------------------------------------------------------------
++
++  window.addEventListener('pagehide', () => {
++    for (const c of liveControllers) c.abort();
++    liveControllers.clear();
++    for (const s of liveSessions) {
++      try {
++        s.destroy();
++      } catch {
++        /* ignore */
++      }
++    }
++    liveSessions.clear();
++    // Drop references so sessions are recreated lazily if the page is restored from bfcache.
++    baristaBase.reset();
++    sentimentBase.reset();
++    branching.branches = [];
++    branching.activeId = null;
++    branching.nextId = 1;
++    renderBranches();
++  });
++})();

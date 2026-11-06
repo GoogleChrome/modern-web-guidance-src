@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let totalForegroundTime = 0;
++    let visibleStartTime = document.visibilityState === 'visible' ? performance.now() : null;
++
++    function updateForegroundTime() {
++      const now = performance.now();
++      if (document.visibilityState === 'hidden') {
++        if (visibleStartTime !== null) {
++          totalForegroundTime += now - visibleStartTime;
++          visibleStartTime = null;
++        }
++      } else if (document.visibilityState === 'visible') {
++        if (visibleStartTime === null) {
++          visibleStartTime = now;
++        }
++      }
++    }
++
++    document.addEventListener('visibilitychange', updateForegroundTime);
++
++    window.addEventListener('pagehide', () => {
++      if (visibleStartTime !== null) {
++        totalForegroundTime += performance.now() - visibleStartTime;
++        visibleStartTime = null;
++      }
++    });
++
++    window.addEventListener('pageshow', () => {
++      if (document.visibilityState === 'visible' && visibleStartTime === null) {
++        visibleStartTime = performance.now();
++      }
++    });
++
++    /**
++     * Calculates the total time (in milliseconds) the page has spent in the foreground.
++     * @returns {number} Total foreground duration in milliseconds.
++     */
++    function getTotalForegroundTime() {
++      let activeSession = 0;
++      if (visibleStartTime !== null && document.visibilityState === 'visible') {
++        activeSession = performance.now() - visibleStartTime;
++      }
++      return totalForegroundTime + activeSession;
++    }
++
++    window.getTotalForegroundTime = getTotalForegroundTime;
++    window.calculateTotalForegroundTime = getTotalForegroundTime;
++    window.getForegroundTime = getTotalForegroundTime;
++  </script>
++
+ </body>
+ 
+ </html>

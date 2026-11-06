@@ -1,0 +1,51 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,47 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      // Start early so browsers without visibility history miss as little as possible.
++      let visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
++      let foregroundTime = 0;
++
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'visible') {
++          if (visibleSince === null) visibleSince = performance.now();
++        } else if (visibleSince !== null) {
++          foregroundTime += performance.now() - visibleSince;
++          visibleSince = null;
++        }
++      });
++
++      /**
++       * Returns total visible time for this page in milliseconds.
++       * Uses browser history when available; otherwise measures from script startup.
++       * Visibility measures foreground time, not attention or interaction.
++       */
++      window.getTotalForegroundTime = function getTotalForegroundTime() {
++        const entries = performance.getEntriesByType('visibility-state');
++        const now = performance.now();
++
++        if (entries.length === 0) {
++          return foregroundTime + (visibleSince === null ? 0 : now - visibleSince);
++        }
++
++        let total = 0;
++        for (let i = 0; i < entries.length; i++) {
++          if (entries[i].name === 'visible') {
++            const end = i + 1 < entries.length ? entries[i + 1].startTime : now;
++            total += end - entries[i].startTime;
++          }
++        }
++        return total;
++      };
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

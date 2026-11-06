@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+index 66c9173..638b7b7 100644
+--- a/index.html
++++ b/index.html
+@@ -108,16 +108,65 @@
+     }
+ 
+     .card {
++      container-type: inline-size;
++      container-name: card;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-content {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 10px;
++      height: 100%;
++    }
++
++    .card-body {
++      flex: 1;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 5cqi, 1.5rem);
++    }
++
++    .card p {
++      font-size: clamp(0.9rem, 3.5cqi, 1.05rem);
++    }
++
++    @container (max-width: 280px) {
++      .card-content {
++        gap: 6px;
++      }
++
++      .card .btn {
++        width: 100%;
++        padding: 8px 12px;
++        font-size: 0.85rem;
++      }
++    }
++
++    @container (min-width: 380px) {
++      .card-content {
++        flex-direction: row;
++        text-align: left;
++        justify-content: space-between;
++        align-items: center;
++        gap: 20px;
++      }
++
++      .card .btn {
++        margin-top: 0;
++        flex-shrink: 0;
++      }
+     }
+ 
+     .btn {
+@@ -179,19 +228,31 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-content">
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </div>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-content">
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++            </div>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-content">
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++            </div>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>

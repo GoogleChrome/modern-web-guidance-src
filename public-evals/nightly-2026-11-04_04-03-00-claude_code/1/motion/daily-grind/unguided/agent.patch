@@ -1,0 +1,1199 @@
+diff --git a/index.html b/index.html
+index 66c9173..394bfd6 100644
+--- a/index.html
++++ b/index.html
+@@ -5,13 +5,34 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #f57c00;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Motion tokens */
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
++      --dur-fast: 180ms;
++      --dur: 320ms;
++      --dur-slow: 600ms;
++      --lift: -6px;
++      --lift-sm: -2px;
++      --roast-duration: 40s;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      :root {
++        /* Keep colour/shadow feedback, drop movement. */
++        --lift: 0px;
++        --lift-sm: 0px;
++      }
+     }
+ 
+     * {
+@@ -20,6 +41,16 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -27,12 +58,32 @@
+       background-color: var(--light);
+     }
+ 
++    body.overlay-open {
++      overflow: hidden;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -48,6 +99,8 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,26 +109,60 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 2px 0;
++      transition: color var(--dur-fast) ease;
++    }
++
++    /* Animated underline that grows from the centre */
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -2px;
++      height: 2px;
++      border-radius: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: center;
++      transition: transform var(--dur) var(--ease-out);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:hover::after,
++    nav a:focus-visible::after {
++      transform: scaleX(1);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      transition: color var(--dur-fast) ease, background-color var(--dur-fast) ease,
++        transform var(--dur-fast) var(--ease-out);
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: var(--accent);
++      color: var(--primary-dark);
++      transform: translateY(var(--lift-sm));
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      position: relative;
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,14 +172,323 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px 110px;
++      overflow: hidden;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2.2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
++    /* Staggered entrance */
++    .hero-enter {
++      animation: hero-rise var(--dur-slow) var(--ease-out) both;
++    }
++
++    .hero-enter:nth-child(2) {
++      animation-delay: 90ms;
++    }
++
++    .hero-enter:nth-child(3) {
++      animation-delay: 180ms;
++    }
++
++    .hero-enter:nth-child(4) {
++      animation-delay: 300ms;
++    }
++
++    @keyframes hero-rise {
++      from {
++        opacity: 0;
++        transform: translate3d(0, 18px, 0);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes hero-fade {
++      from {
++        opacity: 0;
++      }
++
++      to {
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hero-enter {
++        animation-name: hero-fade;
++        animation-duration: 200ms;
++        animation-delay: 0s !important;
++      }
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
++      transition: background-color var(--dur-fast) ease,
++        box-shadow var(--dur) var(--ease-out),
++        transform var(--dur) var(--ease-out);
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      box-shadow: 0 6px 16px rgba(62, 39, 35, 0.3);
++      transform: translateY(var(--lift-sm));
++    }
++
++    .btn:active {
++      transform: translateY(0) scale(0.98);
++      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
++      transition-duration: 80ms;
++    }
++
++    /* Hero call-to-action */
++    .btn-hero {
++      position: relative;
++      overflow: hidden;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 14px 30px;
++      font-size: 1.05rem;
++      font-weight: 600;
++      letter-spacing: 0.3px;
++      background: var(--accent);
++      color: var(--primary-dark);
++      border-radius: 999px;
++      box-shadow: 0 6px 20px rgba(255, 171, 64, 0.35);
++      margin-top: 1.5rem;
++    }
++
++    .btn-hero::before {
++      /* Light sheen that sweeps across on hover */
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
++      transform: translateX(-120%);
++      transition: transform 700ms var(--ease-out);
++      pointer-events: none;
++    }
++
++    .btn-hero .btn-arrow {
++      display: inline-block;
++      transition: transform var(--dur) var(--ease-out);
++    }
++
++    .btn-hero:hover,
++    .btn-hero:focus-visible {
++      background: #ffb75e;
++      color: var(--primary-dark);
++      box-shadow: 0 12px 28px rgba(255, 171, 64, 0.45);
++      transform: translateY(var(--lift-sm)) scale(1.02);
++    }
++
++    .btn-hero:hover::before,
++    .btn-hero:focus-visible::before {
++      transform: translateX(120%);
++    }
++
++    .btn-hero:hover .btn-arrow,
++    .btn-hero:focus-visible .btn-arrow {
++      transform: translateX(4px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .btn-hero:hover,
++      .btn-hero:focus-visible {
++        transform: none;
++      }
++
++      .btn-hero::before {
++        display: none;
++      }
++
++      .btn-hero:hover .btn-arrow,
++      .btn-hero:focus-visible .btn-arrow {
++        transform: none;
++      }
++    }
++
++    /* Daily roast banner */
++    .roast-banner {
++      position: absolute;
++      left: 50%;
++      bottom: 24px;
++      transform: translateX(-50%);
++      width: min(920px, calc(100% - 32px));
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 8px 8px 8px 14px;
++      border-radius: 999px;
++      background: rgba(30, 18, 14, 0.6);
++      border: 1px solid rgba(255, 255, 255, 0.18);
++      -webkit-backdrop-filter: blur(8px);
++      backdrop-filter: blur(8px);
++      text-align: left;
++    }
++
++    .roast-banner.hero-enter {
++      animation-name: banner-rise;
++    }
++
++    @keyframes banner-rise {
++      from {
++        opacity: 0;
++        transform: translate3d(-50%, 18px, 0);
++      }
++
++      to {
++        opacity: 1;
++        transform: translate3d(-50%, 0, 0);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .roast-banner.hero-enter {
++        animation-name: hero-fade;
++      }
++    }
++
++    .roast-label {
++      flex: none;
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary-dark);
++      background: var(--accent);
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .roast-viewport {
++      flex: 1;
++      min-width: 0;
++      overflow: hidden;
++      -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
++      mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
++    }
++
++    .roast-track {
++      display: flex;
++      width: max-content;
++      animation: roast-scroll var(--roast-duration) linear infinite;
++      will-change: transform;
++    }
++
++    .roast-list {
++      display: flex;
++      flex: none;
++      list-style: none;
++      font-size: 0.9rem;
++      white-space: nowrap;
++    }
++
++    .roast-list li {
++      padding-right: 2.5rem;
++    }
++
++    .roast-list li::before {
++      content: '☕';
++      margin-right: 0.5rem;
++    }
++
++    .roast-list strong {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    @keyframes roast-scroll {
++      from {
++        transform: translate3d(0, 0, 0);
++      }
++
++      to {
++        /* Two identical lists: shifting by half loops seamlessly. */
++        transform: translate3d(-50%, 0, 0);
++      }
++    }
++
++    .roast-banner[data-paused="true"] .roast-track,
++    .roast-viewport:hover .roast-track {
++      animation-play-state: paused;
++    }
++
++    /* Without JS there is no toggle, so honour reduced motion by not animating. */
++    @media (prefers-reduced-motion: reduce) {
++      html:not(.js) .roast-track {
++        animation: none;
++      }
++    }
++
++    html:not(.js) .roast-toggle {
++      display: none;
++    }
++
++    .roast-toggle {
++      flex: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      background: rgba(255, 255, 255, 0.08);
++      color: white;
++      font: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 5px 12px;
++      border-radius: 999px;
++      cursor: pointer;
++      transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease,
++        transform var(--dur-fast) var(--ease-out);
++    }
++
++    .roast-toggle:hover,
++    .roast-toggle:focus-visible {
++      background: rgba(255, 255, 255, 0.2);
++      border-color: var(--accent);
++    }
++
++    .roast-toggle:active {
++      transform: scale(0.95);
++    }
++
++    .roast-toggle svg {
++      width: 12px;
++      height: 12px;
++      fill: currentColor;
++    }
++
++    .roast-banner[data-paused="true"] .icon-pause,
++    .roast-banner:not([data-paused="true"]) .icon-play {
++      display: none;
++    }
++
++    @media (max-width: 560px) {
++      .roast-label {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,11 +504,43 @@
+     }
+ 
+     .card {
++      display: flex;
++      flex-direction: column;
+       background: white;
+-      padding: 20px;
++      padding: 0 0 20px;
+       border-radius: 8px;
++      overflow: hidden;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
++    }
++
++    .card-media {
++      aspect-ratio: 16 / 10;
++      overflow: hidden;
++      background: var(--secondary);
++      margin-bottom: 16px;
++    }
++
++    .card-media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform var(--dur-slow) var(--ease-out);
++    }
++
++    .card h3,
++    .card p {
++      padding: 0 20px;
++    }
++
++    .card p {
++      flex: 1;
++    }
++
++    .card .btn {
++      align-self: center;
+     }
+ 
+     .card h3 {
+@@ -120,19 +548,195 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
++    @media (hover: hover) {
++      .card:hover {
++        transform: translateY(var(--lift));
++        box-shadow: 0 14px 30px rgba(62, 39, 35, 0.18);
++      }
++
++      .card:hover .card-media img {
++        transform: scale(1.06);
++      }
++    }
++
++    .card:focus-within {
++      box-shadow: 0 14px 30px rgba(62, 39, 35, 0.18);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card:hover .card-media img {
++        transform: none;
++      }
++    }
++
++    /* Drink details overlay */
++    .drink-overlay {
++      border: 0;
++      padding: 0;
++      background: transparent;
++      width: 100%;
++      height: 100%;
++      max-width: none;
++      max-height: none;
++      color: var(--text);
++      overflow: hidden;
++    }
++
++    .drink-overlay[open] {
++      display: grid;
++      place-items: center;
++      padding: 20px;
++    }
++
++    .drink-overlay::backdrop {
++      /* The scrim below is animated instead (::backdrop can't be reliably animated). */
++      background: transparent;
++    }
++
++    .drink-overlay__scrim {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 14, 0.6);
++      -webkit-backdrop-filter: blur(3px);
++      backdrop-filter: blur(3px);
++    }
++
++    .drink-overlay__panel {
++      position: relative;
++      width: min(560px, 100%);
++      max-height: calc(100vh - 40px);
++      overflow: auto;
++      background: white;
++      border-radius: 14px;
++      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
++      will-change: transform, opacity;
++    }
++
++    .drink-overlay__media {
++      aspect-ratio: 16 / 9;
++      background: var(--secondary);
++    }
++
++    .drink-overlay__media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .drink-overlay__close {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 38px;
++      height: 38px;
++      display: grid;
++      place-items: center;
++      border: 0;
++      border-radius: 50%;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--primary-dark);
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      transition: transform var(--dur) var(--ease-out), background-color var(--dur-fast) ease;
++    }
++
++    .drink-overlay__close:hover,
++    .drink-overlay__close:focus-visible {
++      background: var(--accent);
++      transform: rotate(90deg);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .drink-overlay__close:hover,
++      .drink-overlay__close:focus-visible {
++        transform: none;
++      }
++    }
++
++    .drink-overlay__body {
++      padding: 22px 26px 26px;
++    }
++
++    .drink-overlay__tag {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--accent-dark);
++    }
++
++    .drink-overlay__body h2 {
++      color: var(--primary);
++      margin: 2px 0 8px;
++    }
++
++    .drink-overlay__facts {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      margin: 18px 0;
++    }
++
++    .drink-overlay__facts div {
++      background: #f5efec;
++      border-radius: 8px;
++      padding: 8px 10px;
++      text-align: center;
++    }
++
++    .drink-overlay__facts dt {
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      color: #6d4c41;
++    }
++
++    .drink-overlay__facts dd {
++      font-weight: 700;
++      color: var(--primary-dark);
++    }
++
++    .drink-overlay__notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      list-style: none;
++    }
++
++    .drink-overlay__notes li {
++      font-size: 0.8rem;
++      padding: 3px 12px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--primary-dark);
++    }
++
++    .drink-overlay__actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 16px;
++      margin-top: 8px;
++    }
++
++    .text-link {
+       margin-top: 15px;
+-      transition: background 0.3s;
++      color: var(--primary);
++      font-weight: 600;
++      text-decoration: underline;
++      text-decoration-color: transparent;
++      text-underline-offset: 4px;
++      transition: text-decoration-color var(--dur-fast) ease, color var(--dur-fast) ease;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .text-link:hover,
++    .text-link:focus-visible {
++      color: var(--accent-dark);
++      text-decoration-color: currentColor;
+     }
+ 
+     footer {
+@@ -151,6 +755,14 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color var(--dur-fast) ease;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary);
++      text-decoration: underline;
++      text-underline-offset: 3px;
+     }
+   </style>
+ </head>
+@@ -169,9 +781,37 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 class="hero-enter">Wake Up Your Senses</h1>
++    <p class="hero-enter">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn btn-hero hero-enter">Order Now <span class="btn-arrow" aria-hidden="true">→</span></a>
++
++    <section class="roast-banner hero-enter" aria-label="Today's roasts" data-paused="false">
++      <span class="roast-label">Today's Roast</span>
++      <div class="roast-viewport">
++        <div class="roast-track">
++          <ul class="roast-list">
++            <li><strong>Ethiopia Yirgacheffe</strong> — jasmine, bergamot &amp; honey</li>
++            <li><strong>Colombia Huila</strong> — red apple, caramel &amp; cocoa</li>
++            <li><strong>House Espresso</strong> — dark chocolate &amp; toasted hazelnut</li>
++            <li><strong>Sumatra Mandheling</strong> — cedar, molasses &amp; spice</li>
++            <li><strong>Decaf Peru</strong> — milk chocolate &amp; brown sugar</li>
++          </ul>
++          <!-- Duplicate for a seamless loop; hidden from assistive tech. -->
++          <ul class="roast-list" aria-hidden="true">
++            <li><strong>Ethiopia Yirgacheffe</strong> — jasmine, bergamot &amp; honey</li>
++            <li><strong>Colombia Huila</strong> — red apple, caramel &amp; cocoa</li>
++            <li><strong>House Espresso</strong> — dark chocolate &amp; toasted hazelnut</li>
++            <li><strong>Sumatra Mandheling</strong> — cedar, molasses &amp; spice</li>
++            <li><strong>Decaf Peru</strong> — milk chocolate &amp; brown sugar</li>
++          </ul>
++        </div>
++      </div>
++      <button type="button" class="roast-toggle" aria-label="Pause daily roast banner">
++        <svg class="icon-pause" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1" width="3" height="10" rx="1" /><rect x="7.5" y="1" width="3" height="10" rx="1" /></svg>
++        <svg class="icon-play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L3.4.7a.6.6 0 0 0-.9.5z" /></svg>
++        <span class="roast-toggle__text" aria-hidden="true">Pause</span>
++      </button>
++    </section>
+   </header>
+ 
+   <main class="container">
+@@ -179,24 +819,72 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=70"
++              alt="Latte with leaf-shaped latte art" width="640" height="400" loading="lazy">
++          </div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-drink="maple-oat-latte" aria-haspopup="dialog">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=640&q=70"
++              alt="Espresso shot in a small cup" width="640" height="400" loading="lazy">
++          </div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-drink="dark-roast-espresso" aria-haspopup="dialog">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=70"
++              alt="Iced cold brew coffee in a glass" width="640" height="400" loading="lazy">
++          </div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-drink="cold-brew" aria-haspopup="dialog">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-overlay" class="drink-overlay" aria-labelledby="drink-overlay-title"
++    aria-describedby="drink-overlay-desc">
++    <div class="drink-overlay__scrim" data-overlay-close></div>
++    <article class="drink-overlay__panel">
++      <button type="button" class="drink-overlay__close" data-overlay-close aria-label="Close drink details">&times;</button>
++      <div class="drink-overlay__media">
++        <img id="drink-overlay-img" src="" alt="" width="1120" height="630">
++      </div>
++      <div class="drink-overlay__body">
++        <p class="drink-overlay__tag" id="drink-overlay-tag"></p>
++        <h2 id="drink-overlay-title"></h2>
++        <p id="drink-overlay-desc"></p>
++        <dl class="drink-overlay__facts">
++          <div>
++            <dt>Price</dt>
++            <dd id="drink-overlay-price"></dd>
++          </div>
++          <div>
++            <dt>Size</dt>
++            <dd id="drink-overlay-size"></dd>
++          </div>
++          <div>
++            <dt>Caffeine</dt>
++            <dd id="drink-overlay-caffeine"></dd>
++          </div>
++        </dl>
++        <h3 class="visually-hidden">Tasting notes</h3>
++        <ul class="drink-overlay__notes" id="drink-overlay-notes"></ul>
++        <div class="drink-overlay__actions">
++          <a href="/order-online" class="btn">Order this drink</a>
++          <a href="/menu" class="text-link" id="drink-overlay-more">See full menu page</a>
++        </div>
++      </div>
++    </article>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +895,326 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const body = document.body;
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      /* ------------------------------------------------------------------
++       * Animation state tracking
++       *
++       * CSS AnimationEvent / TransitionEvent only carry names, so we resolve
++       * the actual Animation object (CSSAnimation / CSSTransition) that fired
++       * the event via getAnimations(). Objects are cached when they start so
++       * they can still be inspected at end/cancel time, when the browser has
++       * already dropped them from getAnimations().
++       * Web Animations API objects are read straight from event.target.
++       * ------------------------------------------------------------------ */
++      const tracked = new WeakMap(); // Element -> Map<key, Animation>
++
++      const isCssAnimationEvent = (e) => e.type.startsWith('animation');
++      const eventKey = (e) =>
++        (isCssAnimationEvent(e) ? 'a:' + e.animationName : 't:' + e.propertyName) + '|' + (e.pseudoElement || '');
++
++      function matchesEvent(anim, e) {
++        const effect = anim.effect;
++        if (!effect || effect.target !== e.target) return false;
++        if ((effect.pseudoElement || '') !== (e.pseudoElement || '')) return false;
++        return isCssAnimationEvent(e)
++          ? anim.animationName === e.animationName
++          : anim.transitionProperty === e.propertyName;
++      }
++
++      function resolveAnimation(e) {
++        const target = e.target;
++        if (!(target instanceof Element)) return null;
++        const key = eventKey(e);
++        let byKey = tracked.get(target);
++
++        let anim = null;
++        if (typeof target.getAnimations === 'function') {
++          anim = target.getAnimations({ subtree: Boolean(e.pseudoElement) })
++            .find((a) => matchesEvent(a, e)) || null;
++        }
++
++        if (anim) {
++          if (!byKey) tracked.set(target, (byKey = new Map()));
++          byKey.set(key, anim);
++        } else if (byKey) {
++          anim = byKey.get(key) || null;
++        }
++
++        if (byKey && /end$|cancel$/.test(e.type)) {
++          byKey.delete(key);
++        }
++        return anim;
++      }
++
++      function fallbackPlayState(type) {
++        if (/end$/.test(type)) return 'finished';
++        if (/cancel$/.test(type)) return 'idle';
++        return 'running';
++      }
++
++      function animationName(anim, e) {
++        if (anim) {
++          if (anim.id) return anim.id;
++          if ('animationName' in anim) return anim.animationName;
++          if ('transitionProperty' in anim) return anim.transitionProperty;
++        }
++        if (e) return e.animationName || e.propertyName || 'unknown';
++        return 'anonymous';
++      }
++
++      function recordAnimationState(type, anim, e) {
++        const name = animationName(anim, e);
++        const playState = anim ? anim.playState : fallbackPlayState(type);
++        body.setAttribute('data-last-animation-state', `${type}:${name}:${playState}`);
++      }
++
++      const cssEvents = [
++        'animationstart', 'animationiteration', 'animationend', 'animationcancel',
++        'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel',
++      ];
++      cssEvents.forEach((type) => {
++        document.addEventListener(type, (e) => {
++          recordAnimationState(e.type, resolveAnimation(e), e);
++        }, { capture: true, passive: true });
++      });
++
++      // For Web Animations API animations the event's target *is* the Animation.
++      function trackWebAnimation(anim) {
++        const handler = (e) => recordAnimationState(e.type, e.target);
++        anim.addEventListener('finish', handler);
++        anim.addEventListener('cancel', handler);
++        anim.addEventListener('remove', handler);
++        return anim;
++      }
++
++      /* ------------------------------------------------------------------
++       * Daily roast banner: pause / resume
++       * ------------------------------------------------------------------ */
++      const banner = document.querySelector('.roast-banner');
++      const track = banner.querySelector('.roast-track');
++      const toggle = banner.querySelector('.roast-toggle');
++      const toggleText = toggle.querySelector('.roast-toggle__text');
++      let userChoice = null; // null = follow the reduced-motion preference
++
++      function setBannerPaused(paused) {
++        banner.dataset.paused = String(paused);
++        toggle.setAttribute('aria-label', paused ? 'Play daily roast banner' : 'Pause daily roast banner');
++        toggleText.textContent = paused ? 'Play' : 'Pause';
++
++        const anim = typeof track.getAnimations === 'function'
++          ? track.getAnimations().find((a) => a.animationName === 'roast-scroll')
++          : null;
++        if (anim) {
++          // play-state changes are applied on style recalc; read after that.
++          requestAnimationFrame(() => recordAnimationState(paused ? 'pause' : 'play', anim));
++        }
++      }
++
++      toggle.addEventListener('click', () => {
++        userChoice = banner.dataset.paused === 'true' ? 'play' : 'pause';
++        setBannerPaused(userChoice === 'pause');
++      });
++
++      setBannerPaused(reducedMotion.matches);
++
++      // Follow runtime preference changes unless the user chose explicitly.
++      // (Overlay animations are rebuilt on next open, see play().)
++      reducedMotion.addEventListener('change', () => {
++        if (userChoice === null) setBannerPaused(reducedMotion.matches);
++      });
++
++      /* ------------------------------------------------------------------
++       * Drink details overlay
++       * ------------------------------------------------------------------ */
++      const drinks = {
++        'maple-oat-latte': {
++          tag: 'Seasonal · Hot or iced',
++          name: 'Maple Oat Latte',
++          desc: 'Our house espresso pulled over silky steamed oat milk and finished with a drizzle of pure Vermont maple syrup. Cozy, gently sweet and entirely dairy-free.',
++          price: '$5.75',
++          size: '12 / 16 oz',
++          caffeine: 'Medium',
++          notes: ['Maple', 'Toasted oat', 'Caramel', 'Vanilla'],
++          img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1120&q=75',
++          alt: 'Latte with leaf-shaped latte art',
++          href: '/menu/seasonal',
++        },
++        'dark-roast-espresso': {
++          tag: 'Espresso bar',
++          name: 'Dark Roast Espresso',
++          desc: 'A double shot of our slow-roasted Sumatra blend, with a thick hazel crema and a long, smoky finish. The fastest way to start your morning.',
++          price: '$3.25',
++          size: 'Double · 2 oz',
++          caffeine: 'High',
++          notes: ['Dark chocolate', 'Smoke', 'Molasses', 'Cedar'],
++          img: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=1120&q=75',
++          alt: 'Espresso shot in a small cup',
++          href: '/menu/espresso',
++        },
++        'cold-brew': {
++          tag: 'Cold bar · Served over ice',
++          name: 'Cold Brew',
++          desc: 'Coarse-ground Colombian beans steeped in cold, filtered water for 18 hours. Naturally sweet, low in acidity and incredibly smooth.',
++          price: '$4.75',
++          size: '16 oz',
++          caffeine: 'High',
++          notes: ['Cocoa', 'Brown sugar', 'Low acidity', 'Smooth'],
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1120&q=75',
++          alt: 'Iced cold brew coffee in a glass',
++          href: '/menu/cold-brew',
++        },
++      };
++
++      const overlay = document.getElementById('drink-overlay');
++      if (typeof overlay.showModal !== 'function') return; // links fall back to their pages
++
++      const panel = overlay.querySelector('.drink-overlay__panel');
++      const scrim = overlay.querySelector('.drink-overlay__scrim');
++      const $ = (id) => document.getElementById(id);
++
++      let state = 'closed'; // closed | opening | open | closing
++      let lastTrigger = null;
++      let panelAnim = null;
++      let scrimAnim = null;
++      let animsReduced = null;
++
++      function populate(drink) {
++        $('drink-overlay-img').src = drink.img;
++        $('drink-overlay-img').alt = drink.alt;
++        $('drink-overlay-tag').textContent = drink.tag;
++        $('drink-overlay-title').textContent = drink.name;
++        $('drink-overlay-desc').textContent = drink.desc;
++        $('drink-overlay-price').textContent = drink.price;
++        $('drink-overlay-size').textContent = drink.size;
++        $('drink-overlay-caffeine').textContent = drink.caffeine;
++        $('drink-overlay-more').href = drink.href;
++        const notes = $('drink-overlay-notes');
++        notes.replaceChildren(...drink.notes.map((n) => {
++          const li = document.createElement('li');
++          li.textContent = n;
++          return li;
++        }));
++      }
++
++      /*
++       * One reusable Animation per element. Opening plays it forwards,
++       * closing plays it backwards from wherever it currently is, so an
++       * interrupted open/close reverses smoothly instead of jumping.
++       */
++      function createAnimations() {
++        const reduce = reducedMotion.matches;
++        panelAnim?.cancel();
++        scrimAnim?.cancel();
++
++        const panelFrames = reduce
++          ? [{ opacity: 0 }, { opacity: 1 }]
++          : [
++            { opacity: 0, transform: 'translate3d(0, 28px, 0) scale(0.94)' },
++            { opacity: 1, transform: 'none' },
++          ];
++        const timing = {
++          duration: reduce ? 150 : 420,
++          easing: reduce ? 'linear' : 'cubic-bezier(0.22, 1, 0.36, 1)',
++          fill: 'both',
++        };
++
++        panelAnim = trackWebAnimation(panel.animate(panelFrames, timing));
++        scrimAnim = trackWebAnimation(scrim.animate([{ opacity: 0 }, { opacity: 1 }], {
++          duration: timing.duration,
++          easing: 'linear',
++          fill: 'both',
++        }));
++        panelAnim.pause();
++        scrimAnim.pause();
++        panelAnim.currentTime = 0;
++        scrimAnim.currentTime = 0;
++        animsReduced = reduce;
++
++        panelAnim.addEventListener('finish', (e) => {
++          const anim = e.target;
++          if (anim.playbackRate < 0 && state === 'closing') {
++            state = 'closed';
++            overlay.close();
++          } else if (anim.playbackRate > 0 && state === 'opening') {
++            state = 'open';
++          }
++        });
++      }
++
++      function play(direction) {
++        if (!panelAnim || (state === 'closed' && animsReduced !== reducedMotion.matches)) {
++          createAnimations();
++        }
++        const forward = direction === 'open';
++        // Closing runs a little faster than opening.
++        const rate = forward ? 1 : -1.4;
++        [panelAnim, scrimAnim].forEach((anim) => {
++          anim.id = `drink-overlay-${direction}`;
++          anim.playbackRate = rate;
++          anim.play();
++        });
++      }
++
++      function openDrink(key, trigger) {
++        const drink = drinks[key];
++        if (!drink) return false;
++
++        if (state === 'closing') {
++          state = 'opening';
++          play('open');
++          return true;
++        }
++        if (state !== 'closed') return true;
++
++        populate(drink);
++        lastTrigger = trigger;
++        overlay.showModal();
++        body.classList.add('overlay-open');
++        state = 'opening';
++        play('open');
++        return true;
++      }
++
++      function requestClose() {
++        if (state === 'closed' || state === 'closing') return;
++        state = 'closing';
++        play('close');
++      }
++
++      document.querySelectorAll('[data-drink]').forEach((link) => {
++        link.addEventListener('click', (e) => {
++          // Let modified clicks open the full page in a new tab as usual.
++          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++          if (openDrink(link.dataset.drink, link)) e.preventDefault();
++        });
++      });
++
++      overlay.addEventListener('click', (e) => {
++        if (e.target.closest('[data-overlay-close]')) requestClose();
++      });
++
++      // Esc: animate out instead of closing instantly.
++      overlay.addEventListener('cancel', (e) => {
++        e.preventDefault();
++        requestClose();
++      });
++
++      // Runs for every close path (animated, or a forced Esc the browser
++      // wouldn't let us intercept).
++      overlay.addEventListener('close', () => {
++        state = 'closed';
++        body.classList.remove('overlay-open');
++        if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus({ preventScroll: true });
++        lastTrigger = null;
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

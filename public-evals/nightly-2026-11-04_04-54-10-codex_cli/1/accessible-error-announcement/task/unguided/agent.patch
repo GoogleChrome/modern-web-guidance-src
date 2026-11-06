@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,62 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 460px;
++      margin: 0 auto 30px;
++      text-align: left;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-top: 12px;
++      font-weight: 600;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 6px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter button {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border-color: #8b1e1e;
++    }
++
++    .newsletter-error {
++      color: #8b1e1e;
++      font-size: 0.9rem;
++    }
++
++    .newsletter-error:not(:empty) {
++      margin-top: 6px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +251,18 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" aria-labelledby="newsletter-title">
++      <h2 id="newsletter-title">Stay in the Grind</h2>
++      <p>Sign up for coffee news and seasonal favorites.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <div class="newsletter-controls">
++        <input id="newsletter-email" name="email" type="email" autocomplete="email" required>
++        <button class="btn" type="submit">Subscribe</button>
++      </div>
++      <p id="newsletter-error" class="newsletter-error" role="alert" aria-atomic="true"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +270,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.getElementById('newsletter-email');
++    const error = document.getElementById('newsletter-error');
++    let hasInteracted = false;
++
++    // Use one visible live region as the source of the error announcement.
++    // Disable native popups only once custom validation is ready.
++    newsletter.noValidate = true;
++
++    function updateEmailError() {
++      const showError = hasInteracted && !email.validity.valid;
++      const message = showError
++        ? (email.validity.valueMissing
++          ? 'Please enter your email address.'
++          : 'Please enter a valid email address.')
++        : '';
++
++      email.setAttribute('aria-invalid', String(showError));
++      if (showError) {
++        email.setAttribute('aria-describedby', error.id);
++      } else {
++        email.removeAttribute('aria-describedby');
++      }
++      // Avoid repeated announcements while the same error remains visible.
++      if (error.textContent !== message) error.textContent = message;
++    }
++
++    email.addEventListener('blur', () => {
++      hasInteracted = true;
++      updateEmailError();
++    });
++    email.addEventListener('input', updateEmailError);
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      hasInteracted = true;
++      updateEmailError();
++      if (!email.validity.valid) email.focus();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

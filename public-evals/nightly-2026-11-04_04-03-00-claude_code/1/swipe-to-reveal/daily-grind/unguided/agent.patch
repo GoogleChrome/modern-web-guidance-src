@@ -1,0 +1,382 @@
+diff --git a/index.html b/index.html
+index 66c9173..be1e654 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,125 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Swipeable drink cards */
++    .swipe-card {
++      position: relative;
++      padding: 0;
++      overflow: hidden;
++      --actions-width: 216px;
++    }
++
++    .card-actions {
++      position: absolute;
++      top: 0;
++      right: 0;
++      bottom: 0;
++      width: var(--actions-width);
++      display: flex;
++      align-items: stretch;
++      background: var(--secondary);
++    }
++
++    .card-action {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
++      border: none;
++      background: none;
++      color: white;
++      font: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: filter 0.2s;
++    }
++
++    .card-action:hover,
++    .card-action:focus-visible {
++      filter: brightness(1.15);
++    }
++
++    .card-action:focus-visible {
++      outline: 3px solid white;
++      outline-offset: -5px;
++    }
++
++    .card-action .icon {
++      font-size: 1.4rem;
++      line-height: 1;
++    }
++
++    .card-action.order { background: var(--primary); }
++    .card-action.customize { background: #8d6e63; }
++    .card-action.favorite { background: var(--accent); color: var(--text); }
++    .card-action.favorite[aria-pressed="true"] { background: #e65100; color: white; }
++
++    .card-content {
++      position: relative;
++      z-index: 1;
++      height: 100%;
++      padding: 20px;
++      background: white;
++      border-radius: inherit;
++      touch-action: pan-y;
++      user-select: none;
++      -webkit-user-select: none;
++      transition: transform 0.25s ease;
++      will-change: transform;
++    }
++
++    .swipe-card.dragging .card-content {
++      transition: none;
++      cursor: grabbing;
++    }
++
++    .swipe-card.open .card-content {
++      transform: translateX(calc(-1 * var(--actions-width)));
++      box-shadow: 4px 0 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .actions-toggle {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      width: 32px;
++      height: 32px;
++      border: none;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .actions-toggle:hover,
++    .actions-toggle:focus-visible {
++      background: var(--secondary);
++    }
++
++    .swipe-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #795548;
++      margin-top: 4px;
++    }
++
++    .action-status {
++      text-align: center;
++      min-height: 1.6em;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card-content { transition: none; }
++    }
+   </style>
+ </head>
+ 
+@@ -177,23 +296,70 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="swipe-hint">Swipe a drink left (or tap &#x22EF;) for quick actions.</p>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card swipe-card" data-drink="maple-oat-latte" data-drink-name="Maple Oat Latte">
++          <div class="card-actions" id="actions-maple-oat-latte" aria-label="Actions for Maple Oat Latte" role="group" inert>
++            <button type="button" class="card-action order" data-action="order">
++              <span class="icon" aria-hidden="true">&#x1F6D2;</span>Add to Order
++            </button>
++            <button type="button" class="card-action customize" data-action="customize">
++              <span class="icon" aria-hidden="true">&#x2699;&#xFE0E;</span>Customize
++            </button>
++            <button type="button" class="card-action favorite" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#x2665;&#xFE0E;</span><span class="label">Favorite</span>
++            </button>
++          </div>
++          <div class="card-content">
++            <button type="button" class="actions-toggle" aria-expanded="false" aria-controls="actions-maple-oat-latte"
++              aria-label="Show actions for Maple Oat Latte">&#x22EF;</button>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card swipe-card" data-drink="dark-roast-espresso" data-drink-name="Dark Roast Espresso">
++          <div class="card-actions" id="actions-dark-roast-espresso" aria-label="Actions for Dark Roast Espresso" role="group" inert>
++            <button type="button" class="card-action order" data-action="order">
++              <span class="icon" aria-hidden="true">&#x1F6D2;</span>Add to Order
++            </button>
++            <button type="button" class="card-action customize" data-action="customize">
++              <span class="icon" aria-hidden="true">&#x2699;&#xFE0E;</span>Customize
++            </button>
++            <button type="button" class="card-action favorite" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#x2665;&#xFE0E;</span><span class="label">Favorite</span>
++            </button>
++          </div>
++          <div class="card-content">
++            <button type="button" class="actions-toggle" aria-expanded="false" aria-controls="actions-dark-roast-espresso"
++              aria-label="Show actions for Dark Roast Espresso">&#x22EF;</button>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card swipe-card" data-drink="cold-brew" data-drink-name="Cold Brew">
++          <div class="card-actions" id="actions-cold-brew" aria-label="Actions for Cold Brew" role="group" inert>
++            <button type="button" class="card-action order" data-action="order">
++              <span class="icon" aria-hidden="true">&#x1F6D2;</span>Add to Order
++            </button>
++            <button type="button" class="card-action customize" data-action="customize">
++              <span class="icon" aria-hidden="true">&#x2699;&#xFE0E;</span>Customize
++            </button>
++            <button type="button" class="card-action favorite" data-action="favorite" aria-pressed="false">
++              <span class="icon" aria-hidden="true">&#x2665;&#xFE0E;</span><span class="label">Favorite</span>
++            </button>
++          </div>
++          <div class="card-content">
++            <button type="button" class="actions-toggle" aria-expanded="false" aria-controls="actions-cold-brew"
++              aria-label="Show actions for Cold Brew">&#x22EF;</button>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
++      <p class="action-status" role="status" aria-live="polite"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +373,168 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const cards = Array.from(document.querySelectorAll('.swipe-card'));
++      const status = document.querySelector('.action-status');
++      const DRAG_THRESHOLD = 8;   // px of movement before we decide a gesture direction
++      const FAVORITES_KEY = 'dg-favorite-drinks';
++
++      let favorites = [];
++      try { favorites = JSON.parse(localStorage.getItem(FAVORITES_KEY)) || []; } catch (e) { favorites = []; }
++
++      function actionsWidth(card) {
++        return card.querySelector('.card-actions').offsetWidth;
++      }
++
++      function setOpen(card, open) {
++        const content = card.querySelector('.card-content');
++        const actions = card.querySelector('.card-actions');
++        const toggle = card.querySelector('.actions-toggle');
++        card.classList.toggle('open', open);
++        content.style.transform = '';
++        actions.inert = !open;
++        toggle.setAttribute('aria-expanded', String(open));
++        toggle.setAttribute('aria-label', (open ? 'Hide' : 'Show') + ' actions for ' + card.dataset.drinkName);
++      }
++
++      function closeOthers(except) {
++        cards.forEach(c => { if (c !== except && c.classList.contains('open')) setOpen(c, false); });
++      }
++
++      function syncFavorite(card) {
++        const btn = card.querySelector('[data-action="favorite"]');
++        const on = favorites.includes(card.dataset.drink);
++        btn.setAttribute('aria-pressed', String(on));
++        btn.querySelector('.label').textContent = on ? 'Favorited' : 'Favorite';
++      }
++
++      cards.forEach(card => {
++        const content = card.querySelector('.card-content');
++        const toggle = card.querySelector('.actions-toggle');
++        let startX = 0, startY = 0, baseOffset = 0, offset = 0;
++        let pointerId = null, mode = null; // mode: null | 'swipe' | 'scroll'
++        let suppressClick = false;
++
++        syncFavorite(card);
++
++        content.addEventListener('pointerdown', e => {
++          if (e.pointerType === 'mouse' && e.button !== 0) return;
++          if (e.target.closest('.actions-toggle')) return;
++          pointerId = e.pointerId;
++          startX = e.clientX;
++          startY = e.clientY;
++          baseOffset = card.classList.contains('open') ? -actionsWidth(card) : 0;
++          offset = baseOffset;
++          mode = null;
++          suppressClick = false;
++        });
++
++        content.addEventListener('pointermove', e => {
++          if (e.pointerId !== pointerId) return;
++          const dx = e.clientX - startX;
++          const dy = e.clientY - startY;
++
++          if (mode === null) {
++            if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
++            mode = Math.abs(dx) > Math.abs(dy) ? 'swipe' : 'scroll';
++            if (mode === 'swipe') {
++              content.setPointerCapture(pointerId);
++              card.classList.add('dragging');
++              closeOthers(card);
++            }
++          }
++          if (mode !== 'swipe') return;
++
++          const max = actionsWidth(card);
++          offset = Math.min(0, Math.max(-max, baseOffset + dx));
++          content.style.transform = 'translateX(' + offset + 'px)';
++        });
++
++        function endGesture(e) {
++          if (e.pointerId !== pointerId) return;
++          if (mode === 'swipe') {
++            card.classList.remove('dragging');
++            // Snap open or closed based on how far it travelled. Never trigger an action here.
++            setOpen(card, offset < -actionsWidth(card) / 2);
++            suppressClick = true;
++          }
++          pointerId = null;
++          mode = null;
++        }
++        content.addEventListener('pointerup', endGesture);
++        content.addEventListener('pointercancel', e => {
++          if (e.pointerId !== pointerId) return;
++          card.classList.remove('dragging');
++          setOpen(card, card.classList.contains('open'));
++          pointerId = null;
++          mode = null;
++        });
++
++        // A swipe should never count as a click on "View Details" or anything else in the card.
++        content.addEventListener('click', e => {
++          if (suppressClick) {
++            e.preventDefault();
++            e.stopPropagation();
++            suppressClick = false;
++            return;
++          }
++          // Tapping an open card's face closes the tray instead of navigating.
++          if (card.classList.contains('open') && !e.target.closest('.actions-toggle')) {
++            e.preventDefault();
++            setOpen(card, false);
++          }
++        }, true);
++
++        content.addEventListener('dragstart', e => e.preventDefault());
++
++        toggle.addEventListener('click', () => {
++          const open = !card.classList.contains('open');
++          closeOthers(card);
++          setOpen(card, open);
++          if (open) card.querySelector('.card-action').focus();
++        });
++
++        // Actions only run when a button is explicitly tapped/clicked.
++        card.querySelector('.card-actions').addEventListener('click', e => {
++          const btn = e.target.closest('.card-action');
++          if (!btn) return;
++          const name = card.dataset.drinkName;
++          const slug = card.dataset.drink;
++
++          switch (btn.dataset.action) {
++            case 'order':
++              window.location.href = '/order-online?item=' + encodeURIComponent(slug);
++              break;
++            case 'customize':
++              window.location.href = '/order-online?item=' + encodeURIComponent(slug) + '&customize=1';
++              break;
++            case 'favorite': {
++              const idx = favorites.indexOf(slug);
++              if (idx === -1) favorites.push(slug); else favorites.splice(idx, 1);
++              try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)); } catch (err) { /* ignore */ }
++              syncFavorite(card);
++              status.textContent = name + (idx === -1 ? ' added to' : ' removed from') + ' your favorites.';
++              break;
++            }
++          }
++        });
++
++        card.addEventListener('keydown', e => {
++          if (e.key === 'Escape' && card.classList.contains('open')) {
++            setOpen(card, false);
++            toggle.focus();
++          }
++        });
++      });
++
++      // Tapping/clicking anywhere outside an open card closes it.
++      document.addEventListener('pointerdown', e => {
++        if (!e.target.closest('.swipe-card')) closeOthers(null);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

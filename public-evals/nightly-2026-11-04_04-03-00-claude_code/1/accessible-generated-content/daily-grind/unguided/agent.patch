@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+index 66c9173..d3f4bc4 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,204 @@
+       background: #3e2723;
+     }
+ 
++    /* ------------------------------------------------------------------
++       Decorative icons & flourishes
++       Accessibility approach:
++       - Shape-based icons use `content: ""` + CSS masks, so there is no
++         text for assistive tech to announce.
++       - Glyph-based flourishes (✦, →) use the CSS alt-text syntax
++         `content: "<glyph>" / ""`, which marks the generated content as
++         decorative (empty alternative text). They are wrapped in
++         @supports so browsers lacking alt-text support never render (or
++         announce) the glyph; those browsers get a drawn, text-free fallback.
++       - Accessible names of headings and links are unchanged by decoration.
++       ------------------------------------------------------------------ */
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Reusable masked icon: set --icon to an SVG data URI */
++    .drink-title::before,
++    .btn--order::before {
++      content: "";
++      flex: none;
++      width: 1.1em;
++      height: 1.1em;
++      background-color: currentColor;
++      -webkit-mask: var(--icon) center / contain no-repeat;
++      mask: var(--icon) center / contain no-repeat;
++    }
++
++    /* Section heading flourish: ornamental rules on either side */
++    .section-title {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.75rem;
++      color: var(--primary);
++    }
++
++    .section-title::before,
++    .section-title::after {
++      content: "";
++      flex: 0 1 4rem;
++      height: 2px;
++      background: linear-gradient(90deg, transparent, var(--accent));
++      border-radius: 2px;
++    }
++
++    .section-title::after {
++      background: linear-gradient(270deg, transparent, var(--accent));
++    }
++
++    @supports (content: "x" / "") {
++      .section-title::before,
++      .section-title::after {
++        content: "✦" / "";
++        flex: none;
++        height: auto;
++        color: var(--accent);
++        font-size: 0.8em;
++        /* rule line painted beside the decorative glyph */
++        background: linear-gradient(var(--accent), var(--accent)) no-repeat;
++        background-size: 2rem 2px;
++      }
++
++      .section-title::before {
++        padding-left: 2.5rem;
++        background-position: left center;
++      }
++
++      .section-title::after {
++        padding-right: 2.5rem;
++        background-position: right center;
++      }
++    }
++
++    /* Drink headings */
++    .drink-title {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding-bottom: 0.35rem;
++      background-image: linear-gradient(90deg, transparent, var(--accent), transparent);
++      background-repeat: no-repeat;
++      background-position: bottom center;
++      background-size: 80% 2px;
++    }
++
++    .drink-title--maple {
++      --icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 1l2 4.5 3-1.3-.8 4.3 4.3-.9-1.6 3.2 3.1 1.9-4.6 2 .9 2.8-4.3-.9V23h-2v-6.4l-4.3.9.9-2.8-4.6-2 3.1-1.9L5.5 7.6l4.3.9L9 4.2l3 1.3z'/></svg>");
++    }
++
++    .drink-title--maple::before {
++      color: #c0611b;
++    }
++
++    .drink-title--espresso {
++      --icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill-rule='evenodd' d='M12 2C7.2 2 4 6.8 4 12s3.2 10 8 10 8-4.8 8-10S16.8 2 12 2zm.6 3.2c-2.2 1.6-2.6 3.6-1.6 6.4s.8 5-1 7.2c3.4-.6 5-3.6 4-6.8s-1.2-5 .6-6.8z'/></svg>");
++    }
++
++    .drink-title--cold {
++      --icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><path d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 3.5l3 2 3-2M9 20.5l3-2 3 2M3 10.5l3.3-.2-1.3-3.3M21 13.5l-3.3.2 1.3 3.3M3 13.5l3.3.2-1.3 3.3M21 10.5l-3.3-.2 1.3-3.3'/></svg>");
++    }
++
++    .drink-title--cold::before {
++      color: #1e6f9f;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .btn--order {
++      --icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8h14v5a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6zm14 1.5h1.5a3 3 0 0 1 0 6H16.6l.4-2h1.5a1 1 0 0 0 0-2H17zM2 20.5h16V22H2zM7 2.5c1 1 1 2 0 3s-1 2 0 3h-1.4c-.9-1-.9-2 0-3s.9-2 0-3zm4 0c1 1 1 2 0 3s-1 2 0 3H9.6c-.9-1-.9-2 0-3s.9-2 0-3z'/></svg>");
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      box-shadow: 0 4px 14px rgba(255, 171, 64, 0.35);
++    }
++
++    .btn--order:hover {
++      background: #ffc174;
++    }
++
++    /* Trailing arrow on both button types */
++    .btn--order::after,
++    .btn--details::after {
++      /* Fallback: text-free chevron drawn with borders */
++      content: "";
++      width: 0.45em;
++      height: 0.45em;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 0.25s ease;
++    }
++
++    .btn--order:hover::after,
++    .btn--order:focus-visible::after,
++    .btn--details:hover::after,
++    .btn--details:focus-visible::after {
++      transform: translateX(3px) rotate(45deg);
++    }
++
++    @supports (content: "x" / "") {
++      .btn--order::after,
++      .btn--details::after {
++        content: "→" / "";
++        width: auto;
++        height: auto;
++        border: 0;
++        transform: none;
++      }
++
++      .btn--order:hover::after,
++      .btn--order:focus-visible::after,
++      .btn--details:hover::after,
++      .btn--details:focus-visible::after {
++        transform: translateX(4px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn,
++      .btn::after {
++        transition: none;
++      }
++    }
++
++    /* Windows High Contrast / forced colors: masked icons are painted with
++       background-color, which forced colors would otherwise erase. */
++    @media (forced-colors: active) {
++      .drink-title::before {
++        forced-color-adjust: none;
++        background-color: CanvasText;
++      }
++
++      .btn--order::before {
++        forced-color-adjust: none;
++        background-color: LinkText;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +369,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn--order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink-title drink-title--maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn btn--details">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink-title drink-title--espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn btn--details">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink-title drink-title--cold">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn btn--details">View Details<span class="visually-hidden"> about Cold Brew</span></a>
+         </div>
+       </div>
+     </section>

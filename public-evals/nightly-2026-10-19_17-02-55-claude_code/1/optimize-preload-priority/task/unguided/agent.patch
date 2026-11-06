@@ -1,0 +1,30 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,26 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Brand</title>
++<link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++<link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++<style>
++@font-face{font-family:Brand;src:url(brand-font.woff2) format("woff2");font-display:optional}
++@font-face{font-family:Secondary;src:url(secondary-font.woff2) format("woff2");font-display:swap}
++body{margin:0;font:16px/1.4 system-ui,sans-serif;background:#000;color:#fff}
++h1{font:700 2rem/1.2 Brand,system-ui,sans-serif;margin:0;padding:1rem}
++video{display:block;width:100%;max-width:1280px;aspect-ratio:1280/763;margin:0 auto;background:#000;object-fit:cover}
++nav{padding:1rem;font-family:Secondary,system-ui,sans-serif}
++a{color:#fff}
++</style>
++</head>
++<body>
++<h1>Brand</h1>
++<video controls preload="none" poster="poster.jpg" width="1280" height="763" playsinline>
++<source src="video.mp4" type="video/mp4">
++</video>
++<nav><a href="#">Watch</a> · <a href="#">About</a></nav>
++</body>
++</html>

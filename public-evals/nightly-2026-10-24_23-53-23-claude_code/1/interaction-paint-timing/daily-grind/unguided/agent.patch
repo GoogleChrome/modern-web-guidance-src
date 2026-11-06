@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+index 66c9173..608bea0 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,90 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Measures time from a user interaction / client-side navigation until
++    // new contentful content is painted. Results are stored in
++    // window.__interactionMetrics and logged to the console.
++    (function () {
++      var metrics = (window.__interactionMetrics = []);
++
++      function record(entry) {
++        metrics.push(entry);
++        console.log('[interaction-metric]', entry);
++      }
++
++      function observe(type, cb, opts) {
++        try {
++          if (!PerformanceObserver.supportedEntryTypes.includes(type)) return false;
++          new PerformanceObserver(function (list) { list.getEntries().forEach(cb); })
++            .observe(Object.assign({ type: type, buffered: true }, opts));
++          return true;
++        } catch (e) { return false; }
++      }
++
++      // Soft (client-side) navigations: start -> next contentful paint.
++      observe('soft-navigation', function (e) {
++        record({
++          kind: 'soft-navigation',
++          url: e.name,
++          startTime: e.startTime,
++          duration: e.duration
++        });
++      });
++
++      // Contentful paints attributed to an interaction or soft navigation.
++      var hasICP = observe('interaction-contentful-paint', function (e) {
++        record({
++          kind: 'interaction-contentful-paint',
++          element: e.element && e.element.tagName,
++          startTime: e.startTime,
++          renderTime: e.renderTime || e.startTime,
++          navigationId: e.navigationId
++        });
++      });
++
++      // Event timing: input delay + processing + presentation of next frame.
++      observe('event', function (e) {
++        if (!e.interactionId) return;
++        record({
++          kind: 'interaction',
++          type: e.name,
++          target: e.target && (e.target.id || e.target.tagName),
++          startTime: e.startTime,
++          duration: e.duration
++        });
++      }, { durationThreshold: 16 });
++
++      // Fallback: click/keypress -> first frame painted after DOM changes.
++      if (!hasICP) {
++        ['click', 'keydown', 'pointerdown'].forEach(function (type) {
++          addEventListener(type, function (ev) {
++            var start = ev.timeStamp;
++            var mutated = false;
++            var mo = new MutationObserver(function (muts) {
++              if (muts.some(function (m) {
++                return m.addedNodes.length || m.type === 'characterData';
++              })) mutated = true;
++            });
++            mo.observe(document.body, { childList: true, subtree: true, characterData: true });
++            requestAnimationFrame(function () {
++              setTimeout(function () {
++                mo.disconnect();
++                if (mutated) {
++                  record({
++                    kind: 'interaction-render',
++                    type: type,
++                    startTime: start,
++                    duration: performance.now() - start
++                  });
++                }
++              }, 0);
++            });
++          }, { capture: true, passive: true });
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

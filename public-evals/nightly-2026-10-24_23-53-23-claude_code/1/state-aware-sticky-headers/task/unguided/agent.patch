@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 60px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -36,8 +37,9 @@
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
++      height: var(--nav-height);
+       z-index: 1000;
+     }
+ 
+     .logo {
+@@ -151,8 +153,46 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sticky section headers (viewport is the scroll root; offset by the sticky nav) */
++    .sticky-container {
++      margin-top: 40px;
++    }
++
++    .sticky-header {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      padding: 24px 20px;
++      background: var(--light);
++      color: var(--primary);
++      text-align: center;
++      transition: background 0.2s, padding 0.2s, box-shadow 0.2s, color 0.2s;
++    }
++
++    .sticky-header.is-stuck {
++      padding: 8px 20px;
++      background: #1565c0;
++      color: white;
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
++    }
++
++    .sticky-container .grid {
++      margin-bottom: 20px;
++    }
++
++    .intro {
++      max-width: 700px;
++      margin: 0 auto;
++      padding: 60px 0;
++      text-align: center;
++    }
++
++    .intro p {
++      margin-bottom: 1.5rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,10 +214,17 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="intro">
++      <h2>Welcome to The Daily Grind</h2>
++      <p>We have been roasting small batches since 2012, working directly with farmers to bring you coffee you can feel good about.</p>
++      <p>Every bean is roasted within days of reaching your cup, so you taste it at its peak.</p>
++      <p>Browse our seasonal drinks, fresh bakery, and single-origin beans below.</p>
++    </div>
++
++    <section class="sticky-container">
++      <h2 class="sticky-header">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -192,10 +239,142 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++
++    <section class="sticky-container">
++      <h2 class="sticky-header">From the Bakery</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked fresh every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Packed with wild blueberries and a crumbly top.</p>
++          <a href="/menu/muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked fresh every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Packed with wild blueberries and a crumbly top.</p>
++          <a href="/menu/muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked fresh every morning.</p>
++          <a href="/menu/croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Packed with wild blueberries and a crumbly top.</p>
++          <a href="/menu/muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/biscotti" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="sticky-container">
++      <h2 class="sticky-header">Single-Origin Beans</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and bright with notes of citrus.</p>
++          <a href="/beans/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Supremo</h3>
++          <p>Smooth and balanced with caramel sweetness.</p>
++          <a href="/beans/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, and low in acidity.</p>
++          <a href="/beans/sumatra" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and bright with notes of citrus.</p>
++          <a href="/beans/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Supremo</h3>
++          <p>Smooth and balanced with caramel sweetness.</p>
++          <a href="/beans/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, and low in acidity.</p>
++          <a href="/beans/sumatra" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Floral and bright with notes of citrus.</p>
++          <a href="/beans/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Supremo</h3>
++          <p>Smooth and balanced with caramel sweetness.</p>
++          <a href="/beans/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sumatra Mandheling</h3>
++          <p>Earthy, full-bodied, and low in acidity.</p>
++          <a href="/beans/sumatra" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +385,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Toggle .is-stuck on sticky headers once they pin beneath the nav
++    (function () {
++      var headers = document.querySelectorAll('.sticky-header');
++      var navHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
++
++      function update() {
++        headers.forEach(function (h) {
++          // Stuck once its container's top has scrolled up to the nav's bottom edge
++          h.classList.toggle('is-stuck', h.parentElement.getBoundingClientRect().top <= navHeight);
++        });
++      }
++
++      window.addEventListener('scroll', update, { passive: true });
++      window.addEventListener('resize', update);
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

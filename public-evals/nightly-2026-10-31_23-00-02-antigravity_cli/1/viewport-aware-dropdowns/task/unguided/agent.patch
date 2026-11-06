@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -47,8 +47,9 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+     nav ul li {
+@@ -71,8 +72,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #trigger-btn {
++      anchor-name: --trigger-btn;
++      background: transparent;
++      color: white;
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn:focus-visible {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    #action-panel {
++      position-anchor: --trigger-btn;
++      position: fixed;
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin: 0;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      padding: 6px;
++      min-width: 160px;
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    #action-panel button {
++      display: block;
++      width: 100%;
++      background: transparent;
++      border: none;
++      color: var(--text);
++      text-align: left;
++      padding: 8px 12px;
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,8 +226,16 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button id="trigger-btn" type="button" popovertarget="action-panel">Options</button>
++        <div id="action-panel" popover="auto">
++          <button type="button">Seasonal Offers</button>
++          <button type="button">Account Settings</button>
++          <button type="button">Support</button>
++        </div>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 

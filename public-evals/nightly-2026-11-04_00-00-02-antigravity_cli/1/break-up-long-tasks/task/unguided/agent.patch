@@ -1,0 +1,848 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,309 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      background: #a1887f;
++      cursor: not-allowed;
++      opacity: 0.7;
++    }
++
++    .btn-secondary {
++      background: #795548;
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: #5d4037;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover:not(:disabled) {
++      background: #ff9100;
++    }
++
++    /* Flavor Profile Simulation Tool */
++    .simulator-section {
++      margin-top: 50px;
++      background: white;
++      border-radius: 12px;
++      padding: 32px;
++      box-shadow: 0 4px 16px rgba(62, 39, 35, 0.08);
++      border: 1px solid #efebe9;
++    }
++
++    .simulator-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 24px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 16px;
++    }
++
++    .simulator-header h2 {
++      color: var(--primary);
++      font-size: 1.75rem;
++      margin-bottom: 4px;
++    }
++
++    .simulator-subtitle {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .thread-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: #efebe9;
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .pulse-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      display: inline-block;
++      animation: pulse 1.2s infinite ease-in-out;
++    }
++
++    @keyframes pulse {
++      0%, 100% { transform: scale(1); opacity: 1; }
++      50% { transform: scale(1.35); opacity: 0.55; }
++    }
++
++    .sim-controls-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 18px;
++      background: #fbf9f8;
++      padding: 20px;
++      border-radius: 8px;
++      border: 1px solid #e0d6d1;
++      margin-bottom: 22px;
++    }
++
++    .control-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .control-group label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .control-group select,
++    .control-group input[type="number"],
++    .control-group input[type="range"] {
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .sim-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      margin-bottom: 24px;
++    }
++
++    .sim-actions .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .progress-panel {
++      background: #f5f0ee;
++      border-radius: 8px;
++      padding: 16px 20px;
++      margin-bottom: 24px;
++    }
++
++    .progress-meta {
++      display: flex;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 10px;
++      font-size: 0.88rem;
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .progress-bar-track {
++      width: 100%;
++      height: 12px;
++      background: #d7ccc8;
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .progress-bar-fill {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, var(--primary), var(--accent));
++      transition: width 0.08s linear;
++    }
++
++    .telemetry-strip {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-top: 14px;
++    }
++
++    .telemetry-item {
++      background: white;
++      padding: 10px 12px;
++      border-radius: 6px;
++      border: 1px solid #e0d6d1;
++    }
++
++    .telemetry-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #795548;
++    }
++
++    .telemetry-val {
++      font-size: 1.1rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .sim-results-layout {
++      display: grid;
++      grid-template-columns: 1fr 1.5fr;
++      gap: 24px;
++    }
++
++    @media (max-width: 820px) {
++      .sim-results-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .flavor-summary-panel,
++    .blend-table-panel {
++      background: #fffdfb;
++      border: 1px solid #e6dcd7;
++      border-radius: 8px;
++      padding: 18px;
++    }
++
++    .panel-title {
++      font-size: 1.05rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .metric-row {
++      margin-bottom: 12px;
++    }
++
++    .metric-header {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .metric-bar-bg {
++      height: 8px;
++      background: #efebe9;
++      border-radius: 4px;
++      overflow: hidden;
++    }
++
++    .metric-bar-val {
++      height: 100%;
++      background: var(--primary);
++      border-radius: 4px;
++      width: 0%;
++      transition: width 0.2s ease;
++    }
++
++    .blend-list {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      max-height: 360px;
++      overflow-y: auto;
++    }
++
++    .blend-item {
++      background: white;
++      border: 1px solid #e8dfdb;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      padding: 10px 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .blend-item-title {
++      font-weight: 700;
++      font-size: 0.93rem;
++      color: var(--primary);
++    }
++
++    .blend-item-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .blend-score-badge {
++      background: var(--primary);
++      color: white;
++      font-weight: 700;
++      font-size: 0.85rem;
++      padding: 4px 10px;
++      border-radius: 999px;
++      white-space: nowrap;
++    }
++
++    .interactive-probe {
++      margin-left: auto;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -160,8 +461,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#flavor-simulator">Flavor Simulator</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -194,8 +496,167 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="flavor-simulator" class="simulator-section" aria-labelledby="simulator-heading">
++      <div class="simulator-header">
++        <div>
++          <h2 id="simulator-heading">Coffee Flavor Profile Simulation Tool</h2>
++          <p class="simulator-subtitle">Batch-analyze thousands of artisanal recipe blends while yielding to the main thread for uninterrupted UI responsiveness.</p>
++        </div>
++        <div class="thread-badge" id="thread-status-badge">
++          <span class="pulse-dot" id="heartbeat-dot"></span>
++          <span id="thread-status-text">Main Thread Responsive (Yielding Active)</span>
++        </div>
++      </div>
++
++      <div class="sim-controls-grid">
++        <div class="control-group">
++          <label for="sim-batch-size">
++            <span>Recipe Batch Size</span>
++            <span id="batch-size-label">2,500 blends</span>
++          </label>
++          <input type="range" id="sim-batch-size" min="500" max="10000" step="250" value="2500">
++        </div>
++
++        <div class="control-group">
++          <label for="sim-roast-level">Target Roast Profile</label>
++          <select id="sim-roast-level">
++            <option value="all">All Roast Levels (Full Spectrum)</option>
++            <option value="light">Light Roast (Floral &amp; Citrus)</option>
++            <option value="medium" selected>Medium Roast (Caramel &amp; Balanced)</option>
++            <option value="dark">Dark Roast (Smokey &amp; Bold Cocoa)</option>
++          </select>
++        </div>
++
++        <div class="control-group">
++          <label for="sim-brew-method">Extraction Method</label>
++          <select id="sim-brew-method">
++            <option value="espresso" selected>High-Pressure Espresso (9 Bar)</option>
++            <option value="pourover">Artisanal V60 Pour-Over</option>
++            <option value="coldbrew">18-Hour Immersion Cold Brew</option>
++            <option value="aeropress">Inverted AeroPress Micro-Filter</option>
++          </select>
++        </div>
++
++        <div class="control-group">
++          <label for="sim-time-slice">
++            <span>Max Task Slice Budget</span>
++            <span id="time-slice-label">12 ms / chunk</span>
++          </label>
++          <input type="range" id="sim-time-slice" min="4" max="40" step="2" value="12">
++        </div>
++      </div>
++
++      <div class="sim-actions">
++        <button type="button" id="run-sim-btn" class="btn btn-accent">Simulate Recipe Batch</button>
++        <button type="button" id="cancel-sim-btn" class="btn btn-secondary" disabled>Cancel Batch</button>
++        <button type="button" id="preset-stress-btn" class="btn">Load Large 5,000-Blend Batch</button>
++
++        <div class="interactive-probe">
++          <button type="button" id="taste-note-ping-btn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">Test UI Click (<span id="ping-counter">0</span>)</button>
++        </div>
++      </div>
++
++      <div class="progress-panel" aria-live="polite">
++        <div class="progress-meta">
++          <span id="sim-status-label">Ready to simulate recipe blends</span>
++          <span id="sim-progress-percent">0% (0 / 2,500)</span>
++        </div>
++        <div class="progress-bar-track">
++          <div class="progress-bar-fill" id="sim-progress-bar"></div>
++        </div>
++
++        <div class="telemetry-strip">
++          <div class="telemetry-item">
++            <div class="telemetry-label">Blends Processed</div>
++            <div class="telemetry-val" id="stat-processed">0</div>
++          </div>
++          <div class="telemetry-item">
++            <div class="telemetry-label">Main Thread Yields</div>
++            <div class="telemetry-val" id="stat-yields">0</div>
++          </div>
++          <div class="telemetry-item">
++            <div class="telemetry-label">Avg Chunk Duration</div>
++            <div class="telemetry-val" id="stat-chunk-ms">0.0 ms</div>
++          </div>
++          <div class="telemetry-item">
++            <div class="telemetry-label">Yield Strategy</div>
++            <div class="telemetry-val" id="stat-scheduler-api">scheduler.yield</div>
++          </div>
++        </div>
++      </div>
++
++      <div class="sim-results-layout">
++        <div class="flavor-summary-panel">
++          <div class="panel-title">
++            <span>Aggregate Flavor Profile</span>
++            <span id="top-harmony-badge" style="font-size: 0.8rem; color: #6d4c41;">Harmony: --</span>
++          </div>
++
++          <div class="metric-row">
++            <div class="metric-header">
++              <span>Acidity &amp; Brightness</span>
++              <span id="metric-acidity-val">0.0 / 10</span>
++            </div>
++            <div class="metric-bar-bg">
++              <div class="metric-bar-val" id="metric-acidity-bar"></div>
++            </div>
++          </div>
++
++          <div class="metric-row">
++            <div class="metric-header">
++              <span>Body &amp; Mouthfeel</span>
++              <span id="metric-body-val">0.0 / 10</span>
++            </div>
++            <div class="metric-bar-bg">
++              <div class="metric-bar-val" id="metric-body-bar"></div>
++            </div>
++          </div>
++
++          <div class="metric-row">
++            <div class="metric-header">
++              <span>Caramel Sweetness</span>
++              <span id="metric-sweetness-val">0.0 / 10</span>
++            </div>
++            <div class="metric-bar-bg">
++              <div class="metric-bar-val" id="metric-sweetness-bar"></div>
++            </div>
++          </div>
++
++          <div class="metric-row">
++            <div class="metric-header">
++              <span>Roast Bitterness Balance</span>
++              <span id="metric-bitterness-val">0.0 / 10</span>
++            </div>
++            <div class="metric-bar-bg">
++              <div class="metric-bar-val" id="metric-bitterness-bar"></div>
++            </div>
++          </div>
++
++          <div class="metric-row" style="margin-bottom: 0;">
++            <div class="metric-header">
++              <span>Aromatic Complexity</span>
++              <span id="metric-aroma-val">0.0 / 10</span>
++            </div>
++            <div class="metric-bar-bg">
++              <div class="metric-bar-val" id="metric-aroma-bar"></div>
++            </div>
++          </div>
++        </div>
++
++        <div class="blend-table-panel">
++          <div class="panel-title">
++            <span>Top-Scoring Simulated Recipe Blends</span>
++            <span id="qualified-blends-count" style="font-size: 0.8rem; color: #6d4c41;">0 top matches</span>
++          </div>
++          <div class="blend-list" id="top-blends-list">
++            <p style="color: #795548; font-size: 0.9rem;">Run the batch simulator to evaluate origin ratios, extraction kinetics, and sensory balance across thousands of candidate blends.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +667,356 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ORIGINS = [
++        { name: 'Ethiopian Yirgacheffe', acidity: 8.9, body: 5.4, sweetness: 8.4, bitterness: 3.1, aroma: 9.5, notes: 'Bergamot, Jasmine, Peach', roastAffinity: 'light' },
++        { name: 'Colombian Huila Supremo', acidity: 7.2, body: 7.3, sweetness: 8.6, bitterness: 4.5, aroma: 8.1, notes: 'Caramel, Red Apple, Toasted Nut', roastAffinity: 'medium' },
++        { name: 'Sumatra Mandheling', acidity: 4.3, body: 9.4, sweetness: 6.5, bitterness: 7.8, aroma: 7.7, notes: 'Dark Cocoa, Cedar, Earthy Spice', roastAffinity: 'dark' },
++        { name: 'Guatemalan Antigua', acidity: 7.5, body: 7.8, sweetness: 8.0, bitterness: 5.2, aroma: 8.5, notes: 'Milk Chocolate, Orange Peel, Brown Sugar', roastAffinity: 'medium' },
++        { name: 'Kenyan AA Nyeri', acidity: 9.3, body: 6.8, sweetness: 7.7, bitterness: 3.8, aroma: 9.1, notes: 'Blackcurrant, Grapefruit, Winey', roastAffinity: 'light' },
++        { name: 'Brazilian Cerrado Natural', acidity: 5.1, body: 8.5, sweetness: 8.3, bitterness: 6.4, aroma: 7.2, notes: 'Hazelnut, Sweet Malt, Bittersweet Chocolate', roastAffinity: 'dark' }
++      ];
++
++      const BREW_MODIFIERS = {
++        espresso: { acidity: 0.96, body: 1.18, sweetness: 1.06, bitterness: 1.12, aroma: 1.10, label: '9-Bar Espresso' },
++        pourover: { acidity: 1.15, body: 0.88, sweetness: 1.08, bitterness: 0.85, aroma: 1.16, label: 'V60 Pour-Over' },
++        coldbrew: { acidity: 0.72, body: 1.10, sweetness: 1.15, bitterness: 0.78, aroma: 0.94, label: '18h Cold Brew' },
++        aeropress: { acidity: 1.05, body: 1.04, sweetness: 1.09, bitterness: 0.94, aroma: 1.07, label: 'AeroPress' }
++      };
++
++      const ROAST_MODIFIERS = {
++        all: { acidity: 1.0, body: 1.0, sweetness: 1.0, bitterness: 1.0, aroma: 1.0 },
++        light: { acidity: 1.18, body: 0.88, sweetness: 1.04, bitterness: 0.76, aroma: 1.14 },
++        medium: { acidity: 1.0, body: 1.04, sweetness: 1.12, bitterness: 0.95, aroma: 1.05 },
++        dark: { acidity: 0.78, body: 1.18, sweetness: 0.94, bitterness: 1.24, aroma: 0.96 }
++      };
++
++      // DOM elements
++      const batchSizeInput = document.getElementById('sim-batch-size');
++      const batchSizeLabel = document.getElementById('batch-size-label');
++      const roastLevelSelect = document.getElementById('sim-roast-level');
++      const brewMethodSelect = document.getElementById('sim-brew-method');
++      const timeSliceInput = document.getElementById('sim-time-slice');
++      const timeSliceLabel = document.getElementById('time-slice-label');
++
++      const runSimBtn = document.getElementById('run-sim-btn');
++      const cancelSimBtn = document.getElementById('cancel-sim-btn');
++      const presetStressBtn = document.getElementById('preset-stress-btn');
++      const pingBtn = document.getElementById('taste-note-ping-btn');
++      const pingCounterEl = document.getElementById('ping-counter');
++
++      const statusLabel = document.getElementById('sim-status-label');
++      const progressPercent = document.getElementById('sim-progress-percent');
++      const progressBar = document.getElementById('sim-progress-bar');
++      const statProcessed = document.getElementById('stat-processed');
++      const statYields = document.getElementById('stat-yields');
++      const statChunkMs = document.getElementById('stat-chunk-ms');
++      const statSchedulerApi = document.getElementById('stat-scheduler-api');
++      const threadStatusText = document.getElementById('thread-status-text');
++
++      const topHarmonyBadge = document.getElementById('top-harmony-badge');
++      const qualifiedBlendsCount = document.getElementById('qualified-blends-count');
++      const topBlendsList = document.getElementById('top-blends-list');
++
++      const metricElements = {
++        acidity: { val: document.getElementById('metric-acidity-val'), bar: document.getElementById('metric-acidity-bar') },
++        body: { val: document.getElementById('metric-body-val'), bar: document.getElementById('metric-body-bar') },
++        sweetness: { val: document.getElementById('metric-sweetness-val'), bar: document.getElementById('metric-sweetness-bar') },
++        bitterness: { val: document.getElementById('metric-bitterness-val'), bar: document.getElementById('metric-bitterness-bar') },
++        aroma: { val: document.getElementById('metric-aroma-val'), bar: document.getElementById('metric-aroma-bar') }
++      };
++
++      const hasSchedulerYield = typeof globalThis.scheduler !== 'undefined' && typeof globalThis.scheduler.yield === 'function';
++      statSchedulerApi.textContent = hasSchedulerYield ? 'scheduler.yield()' : 'MessageChannel / setTimeout';
++
++      let activeRunId = 0;
++      let isRunning = false;
++      let pingCount = 0;
++
++      /**
++       * Yields control back to the browser main thread so pending user input,
++       * rendering updates, and animations can execute without long-task jank.
++       */
++      function yieldToMain() {
++        if (typeof globalThis.scheduler !== 'undefined' && typeof globalThis.scheduler.yield === 'function') {
++          return globalThis.scheduler.yield();
++        }
++        return new Promise((resolve) => {
++          if (typeof MessageChannel !== 'undefined') {
++            const channel = new MessageChannel();
++            channel.port1.onmessage = () => resolve();
++            channel.port2.postMessage(null);
++          } else {
++            setTimeout(resolve, 0);
++          }
++        });
++      }
++
++      /**
++       * Simulates an individual coffee recipe blend with multi-step thermodynamic
++       * extraction kinetics and sensory compound diffusion modeling.
++       */
++      function simulateSingleRecipeBlend(index, roastFilter, brewMethod) {
++        const primaryOrigin = ORIGINS[index % ORIGINS.length];
++        const secondaryOrigin = ORIGINS[(index * 7 + 3) % ORIGINS.length];
++        const tertiaryOrigin = ORIGINS[(index * 13 + 5) % ORIGINS.length];
++
++        // Deterministic blend ratios (in %) summing to 100
++        const r1 = 45 + (index % 25);
++        const r2 = 30 + ((index * 3) % (90 - r1));
++        const r3 = 100 - r1 - r2;
++
++        const w1 = r1 / 100;
++        const w2 = r2 / 100;
++        const w3 = r3 / 100;
++
++        const brewMod = BREW_MODIFIERS[brewMethod] || BREW_MODIFIERS.espresso;
++        const roastMod = ROAST_MODIFIERS[roastFilter] || ROAST_MODIFIERS.all;
++
++        // Multi-pass chemical extraction curve calculation (simulates realistic CPU work per blend)
++        let extractionEfficiency = 0;
++        let maillardFactor = 0;
++        let volatileRetention = 0;
++        const waterTempC = 90 + (index % 7) * 0.8;
++        const grindMicrons = 250 + (index % 18) * 35;
++
++        for (let step = 1; step <= 60; step++) {
++          const t = step * 0.5;
++          const diffusion = Math.sin((waterTempC * t) / grindMicrons) * Math.cos(step * 0.13);
++          extractionEfficiency += Math.abs(diffusion) * 0.032;
++          maillardFactor += Math.sqrt(step * w1 + w2 * 4.2) * 0.015;
++          volatileRetention += Math.exp(-step * 0.035) * (w1 * primaryOrigin.aroma + w3 * tertiaryOrigin.aroma) * 0.018;
++        }
++
++        const clamp10 = (v) => Math.max(1.0, Math.min(10.0, v));
++
++        const rawAcidity = (primaryOrigin.acidity * w1 + secondaryOrigin.acidity * w2 + tertiaryOrigin.acidity * w3) * brewMod.acidity * roastMod.acidity;
++        const rawBody = (primaryOrigin.body * w1 + secondaryOrigin.body * w2 + tertiaryOrigin.body * w3) * brewMod.body * roastMod.body;
++        const rawSweetness = (primaryOrigin.sweetness * w1 + secondaryOrigin.sweetness * w2 + tertiaryOrigin.sweetness * w3) * brewMod.sweetness * roastMod.sweetness;
++        const rawBitterness = (primaryOrigin.bitterness * w1 + secondaryOrigin.bitterness * w2 + tertiaryOrigin.bitterness * w3) * brewMod.bitterness * roastMod.bitterness;
++        const rawAroma = (primaryOrigin.aroma * w1 + secondaryOrigin.aroma * w2 + tertiaryOrigin.aroma * w3) * brewMod.aroma * roastMod.aroma;
++
++        const acidity = clamp10(rawAcidity + (extractionEfficiency % 0.6) - 0.3);
++        const body = clamp10(rawBody + (maillardFactor % 0.7) - 0.35);
++        const sweetness = clamp10(rawSweetness + (volatileRetention % 0.8) - 0.3);
++        const bitterness = clamp10(rawBitterness + ((extractionEfficiency + maillardFactor) % 0.6) - 0.3);
++        const aroma = clamp10(rawAroma + (volatileRetention % 0.6) - 0.2);
++
++        // Calculate harmony score (0 - 100) rewarding sweetness, aroma, balanced acidity/body, and controlled bitterness
++        const bitternessPenalty = Math.abs(bitterness - 5.2) * 1.4;
++        const roastBonus = (roastFilter === 'all' || primaryOrigin.roastAffinity === roastFilter) ? 3.2 : 0.8;
++        const harmonyScore = Math.min(
++          99.8,
++          Math.max(
++            55.0,
++            acidity * 2.1 + body * 2.2 + sweetness * 2.8 + aroma * 2.5 - bitternessPenalty + roastBonus
++          )
++        );
++
++        return {
++          id: index + 1,
++          name: `Blend #${String(index + 1).padStart(4, '0')}: ${primaryOrigin.name.split(' ')[0]} / ${secondaryOrigin.name.split(' ')[0]}`,
++          composition: `${r1}% ${primaryOrigin.name}, ${r2}% ${secondaryOrigin.name}, ${r3}% ${tertiaryOrigin.name}`,
++          notes: `${primaryOrigin.notes.split(',')[0]}, ${secondaryOrigin.notes.split(',')[1].trim()}`,
++          brewLabel: brewMod.label,
++          acidity,
++          body,
++          sweetness,
++          bitterness,
++          aroma,
++          harmonyScore
++        };
++      }
++
++      function updateProgressUI(processed, total, yieldsCount, avgChunkDuration, sums, topBlends) {
++        const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
++        progressPercent.textContent = `${pct}% (${processed.toLocaleString()} / ${total.toLocaleString()})`;
++        progressBar.style.width = `${pct}%`;
++        statProcessed.textContent = processed.toLocaleString();
++        statYields.textContent = yieldsCount.toLocaleString();
++        statChunkMs.textContent = `${avgChunkDuration.toFixed(1)} ms`;
++
++        if (processed > 0) {
++          const avgAcidity = sums.acidity / processed;
++          const avgBody = sums.body / processed;
++          const avgSweetness = sums.sweetness / processed;
++          const avgBitterness = sums.bitterness / processed;
++          const avgAroma = sums.aroma / processed;
++          const avgHarmony = sums.harmony / processed;
++
++          metricElements.acidity.val.textContent = `${avgAcidity.toFixed(1)} / 10`;
++          metricElements.acidity.bar.style.width = `${avgAcidity * 10}%`;
++
++          metricElements.body.val.textContent = `${avgBody.toFixed(1)} / 10`;
++          metricElements.body.bar.style.width = `${avgBody * 10}%`;
++
++          metricElements.sweetness.val.textContent = `${avgSweetness.toFixed(1)} / 10`;
++          metricElements.sweetness.bar.style.width = `${avgSweetness * 10}%`;
++
++          metricElements.bitterness.val.textContent = `${avgBitterness.toFixed(1)} / 10`;
++          metricElements.bitterness.bar.style.width = `${avgBitterness * 10}%`;
++
++          metricElements.aroma.val.textContent = `${avgAroma.toFixed(1)} / 10`;
++          metricElements.aroma.bar.style.width = `${avgAroma * 10}%`;
++
++          topHarmonyBadge.textContent = `Avg Harmony: ${avgHarmony.toFixed(1)} pts`;
++        }
++
++        if (topBlends.length > 0) {
++          qualifiedBlendsCount.textContent = `Top ${topBlends.length} of ${processed.toLocaleString()} analyzed`;
++          topBlendsList.innerHTML = topBlends
++            .map(
++              (b) => `
++              <div class="blend-item">
++                <div>
++                  <div class="blend-item-title">${b.name}</div>
++                  <div class="blend-item-meta">${b.composition}</div>
++                  <div class="blend-item-meta">Tasting Notes: <strong>${b.notes}</strong> &bull; ${b.brewLabel}</div>
++                </div>
++                <span class="blend-score-badge">${b.harmonyScore.toFixed(1)} pts</span>
++              </div>
++            `
++            )
++            .join('');
++        }
++      }
++
++      /**
++       * Processes a large batch of coffee recipe blends in time-sliced chunks,
++       * yielding to the main thread whenever the slice budget is reached so the page
++       * remains responsive throughout execution.
++       */
++      async function runBatchSimulation() {
++        const runId = ++activeRunId;
++        isRunning = true;
++
++        const totalBlends = Number(batchSizeInput.value) || 2500;
++        const roastFilter = roastLevelSelect.value;
++        const brewMethod = brewMethodSelect.value;
++        const maxSliceMs = Number(timeSliceInput.value) || 12;
++
++        runSimBtn.disabled = true;
++        cancelSimBtn.disabled = false;
++        statusLabel.textContent = `Simulating ${totalBlends.toLocaleString()} recipe blends in non-blocking chunks...`;
++        threadStatusText.textContent = `Yielding every ~${maxSliceMs}ms slice`;
++
++        const sums = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0, harmony: 0 };
++        const topBlends = [];
++        let processed = 0;
++        let yieldsCount = 0;
++        let totalChunkTimeMs = 0;
++        let chunkCount = 0;
++
++        const startTimestamp = performance.now();
++        let sliceStart = performance.now();
++        let itemsInCurrentSlice = 0;
++
++        while (processed < totalBlends) {
++          if (runId !== activeRunId) {
++            return; // Cancelled or superseded
++          }
++
++          const result = simulateSingleRecipeBlend(processed, roastFilter, brewMethod);
++          processed++;
++          itemsInCurrentSlice++;
++
++          sums.acidity += result.acidity;
++          sums.body += result.body;
++          sums.sweetness += result.sweetness;
++          sums.bitterness += result.bitterness;
++          sums.aroma += result.aroma;
++          sums.harmony += result.harmonyScore;
++
++          if (topBlends.length < 6 || result.harmonyScore > topBlends[topBlends.length - 1].harmonyScore) {
++            topBlends.push(result);
++            topBlends.sort((a, b) => b.harmonyScore - a.harmonyScore);
++            if (topBlends.length > 6) {
++              topBlends.pop();
++            }
++          }
++
++          const now = performance.now();
++          const sliceElapsed = now - sliceStart;
++
++          // Break up long tasks well before the 50ms Long Task threshold (or every 150 items max)
++          if (sliceElapsed >= maxSliceMs || itemsInCurrentSlice >= 150 || processed === totalBlends) {
++            totalChunkTimeMs += sliceElapsed;
++            chunkCount++;
++            const avgChunk = totalChunkTimeMs / chunkCount;
++
++            updateProgressUI(processed, totalBlends, yieldsCount, avgChunk, sums, topBlends);
++
++            if (processed < totalBlends) {
++              yieldsCount++;
++              await yieldToMain();
++              sliceStart = performance.now();
++              itemsInCurrentSlice = 0;
++            }
++          }
++        }
++
++        if (runId !== activeRunId) {
++          return;
++        }
++
++        const totalElapsedSec = ((performance.now() - startTimestamp) / 1000).toFixed(2);
++        isRunning = false;
++        runSimBtn.disabled = false;
++        cancelSimBtn.disabled = true;
++        statusLabel.textContent = `Completed ${totalBlends.toLocaleString()} recipe simulations in ${totalElapsedSec}s (${yieldsCount} main-thread yields)`;
++        threadStatusText.textContent = 'Main Thread Responsive (Idle)';
++      }
++
++      function cancelSimulation() {
++        if (!isRunning) return;
++        activeRunId++;
++        isRunning = false;
++        runSimBtn.disabled = false;
++        cancelSimBtn.disabled = true;
++        statusLabel.textContent = 'Simulation paused / cancelled by user.';
++        threadStatusText.textContent = 'Main Thread Responsive (Cancelled)';
++      }
++
++      // Event Listeners
++      batchSizeInput.addEventListener('input', () => {
++        const val = Number(batchSizeInput.value);
++        batchSizeLabel.textContent = `${val.toLocaleString()} blends`;
++        if (!isRunning) {
++          progressPercent.textContent = `0% (0 / ${val.toLocaleString()})`;
++        }
++      });
++
++      timeSliceInput.addEventListener('input', () => {
++        timeSliceLabel.textContent = `${timeSliceInput.value} ms / chunk`;
++      });
++
++      runSimBtn.addEventListener('click', () => {
++        runBatchSimulation();
++      });
++
++      cancelSimBtn.addEventListener('click', () => {
++        cancelSimulation();
++      });
++
++      presetStressBtn.addEventListener('click', () => {
++        batchSizeInput.value = '5000';
++        batchSizeLabel.textContent = '5,000 blends';
++        runBatchSimulation();
++      });
++
++      pingBtn.addEventListener('click', () => {
++        pingCount++;
++        pingCounterEl.textContent = String(pingCount);
++      });
++
++      // Run an initial batch automatically on load so results are immediately visible and interactive
++      window.addEventListener('DOMContentLoaded', () => {
++        runBatchSimulation();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

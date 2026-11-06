@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+index 66c9173..06c0697 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,51 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Hold the first render (and thus any incoming view transition) until the
++       main content has been parsed, so the transition never animates a half-built page. -->
++  <link rel="expect" href="#main-content" blocking="render">
+   <style>
++    /* Smooth cross-document page transitions */
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-old(root) {
++      animation: page-out 0.25s ease-in both;
++    }
++
++    ::view-transition-new(root) {
++      animation: page-in 0.35s ease-out both;
++    }
++
++    /* Keep the sticky nav steady while page content crossfades */
++    nav {
++      view-transition-name: site-nav;
++    }
++
++    ::view-transition-group(site-nav) {
++      animation-duration: 0s;
++    }
++
++    @keyframes page-out {
++      to {
++        opacity: 0;
++        transform: translateY(-8px);
++      }
++    }
++
++    @keyframes page-in {
++      from {
++        opacity: 0;
++        transform: translateY(8px);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -153,6 +197,21 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- Synchronous (render-blocking) script: runs after the styles above are applied
++       and before the first paint, so the transition only starts from a stable state. -->
++  <script>
++    document.documentElement.classList.add('js');
++    window.addEventListener('pagereveal', async (e) => {
++      if (!e.viewTransition) return;
++      // Skip the animation if the user opted out of motion.
++      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
++        e.viewTransition.skipTransition();
++        return;
++      }
++      // Don't let a slow font/stylesheet race the transition: wait for fonts to settle.
++      try { await document.fonts.ready; } catch (_) {}
++    });
++  </script>
+ </head>
+ 
+ <body>
+@@ -174,7 +233,7 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

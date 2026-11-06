@@ -1,0 +1,332 @@
+diff --git a/index.html b/index.html
+index 66c9173..e009424 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,169 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Shop Locations Map Section */
++    .locations-section {
++      margin-top: 50px;
++    }
++
++    .locations-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++    }
++
++    .locations-subtitle {
++      text-align: center;
++      color: #5d4037;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .map-viewport {
++      width: 100%;
++      height: 520px;
++      overflow: auto;
++      touch-action: pan-x pan-y;
++      overscroll-behavior: contain;
++      position: relative;
++      border: 3px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      cursor: grab;
++      background-color: #efeae4;
++      user-select: none;
++    }
++
++    .map-viewport.is-panning {
++      cursor: grabbing;
++    }
++
++    .cafe-map-surface {
++      width: 2000px;
++      height: 1400px;
++      min-width: 2000px;
++      min-height: 1400px;
++      position: relative;
++      touch-action: pan-x pan-y;
++      background-color: #f3efe6;
++      background-image:
++        linear-gradient(rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.08) 1px, transparent 1px),
++        linear-gradient(rgba(78, 52, 46, 0.16) 2px, transparent 2px),
++        linear-gradient(90deg, rgba(78, 52, 46, 0.16) 2px, transparent 2px);
++      background-size: 50px 50px, 50px 50px, 250px 250px, 250px 250px;
++    }
++
++    /* Map Features: Parks, River, Roads, Labels */
++    .map-park {
++      position: absolute;
++      background: rgba(129, 199, 132, 0.28);
++      border: 2px dashed rgba(56, 142, 60, 0.45);
++      border-radius: 18px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      color: #2e7d32;
++      font-weight: 600;
++      font-size: 0.95rem;
++      letter-spacing: 0.5px;
++      pointer-events: none;
++    }
++
++    .map-river {
++      position: absolute;
++      top: 0;
++      left: 880px;
++      width: 140px;
++      height: 1400px;
++      background: linear-gradient(90deg, rgba(100, 181, 246, 0.35), rgba(30, 136, 229, 0.45), rgba(100, 181, 246, 0.35));
++      transform: skewX(-12deg);
++      pointer-events: none;
++    }
++
++    .map-road-h {
++      position: absolute;
++      left: 0;
++      width: 2000px;
++      height: 18px;
++      background: #ffffff;
++      border-top: 2px solid #d7ccc8;
++      border-bottom: 2px solid #d7ccc8;
++      pointer-events: none;
++    }
++
++    .map-road-v {
++      position: absolute;
++      top: 0;
++      width: 18px;
++      height: 1400px;
++      background: #ffffff;
++      border-left: 2px solid #d7ccc8;
++      border-right: 2px solid #d7ccc8;
++      pointer-events: none;
++    }
++
++    .map-district-label {
++      position: absolute;
++      font-size: 1.1rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 2px;
++      color: rgba(62, 39, 35, 0.35);
++      pointer-events: none;
++    }
++
++    /* Cafe Map Markers / Cards */
++    .cafe-marker {
++      position: absolute;
++      width: 230px;
++      background: white;
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      padding: 10px;
++      box-shadow: 0 6px 16px rgba(62, 39, 35, 0.18);
++      transform: translate(-50%, -50%);
++      transition: transform 0.2s, box-shadow 0.2s;
++      touch-action: pan-x pan-y;
++    }
++
++    .cafe-marker:hover {
++      transform: translate(-50%, -50%) scale(1.03);
++      box-shadow: 0 8px 22px rgba(62, 39, 35, 0.26);
++      z-index: 10;
++    }
++
++    .cafe-marker img {
++      width: 100%;
++      height: 90px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 8px;
++      pointer-events: none;
++    }
++
++    .cafe-pin-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: 700;
++      padding: 2px 7px;
++      border-radius: 999px;
++      margin-bottom: 4px;
++    }
++
++    .cafe-marker h4 {
++      color: var(--primary);
++      font-size: 0.95rem;
++      margin-bottom: 4px;
++    }
++
++    .cafe-marker p {
++      font-size: 0.78rem;
++      color: #5d4037;
++      line-height: 1.35;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +358,157 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="locations-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Coffee Shop Locations Map</h2>
++      <p class="locations-subtitle">Pan or scroll freely in any direction across our city-wide cafe map to explore neighborhood coffee shops.</p>
++
++      <div id="cafe-map-viewport" class="map-viewport" role="region" aria-label="Interactive two-dimensional coffee shop locations map" tabindex="0">
++        <div id="cafe-map-surface" class="cafe-map-surface">
++          <!-- Geographic features -->
++          <div class="map-river"></div>
++          <div class="map-park" style="top: 140px; left: 180px; width: 340px; height: 220px;">Roastery Botanical Gardens</div>
++          <div class="map-park" style="top: 560px; left: 1120px; width: 380px; height: 260px;">Cedar Grove Commons</div>
++          <div class="map-park" style="top: 980px; left: 320px; width: 320px; height: 230px;">Southside Meadow Park</div>
++
++          <!-- Horizontal and Vertical City Roads -->
++          <div class="map-road-h" style="top: 300px;"></div>
++          <div class="map-road-h" style="top: 700px;"></div>
++          <div class="map-road-h" style="top: 1100px;"></div>
++          <div class="map-road-v" style="left: 450px;"></div>
++          <div class="map-road-v" style="left: 1000px;"></div>
++          <div class="map-road-v" style="left: 1550px;"></div>
++
++          <!-- District Labels -->
++          <div class="map-district-label" style="top: 80px; left: 220px;">Northwest Arts District</div>
++          <div class="map-district-label" style="top: 80px; left: 1380px;">North Harbor</div>
++          <div class="map-district-label" style="top: 640px; left: 680px;">Downtown Core</div>
++          <div class="map-district-label" style="top: 1260px; left: 260px;">Southwest Quarter</div>
++          <div class="map-district-label" style="top: 1260px; left: 1420px;">Eastside Roastery District</div>
++
++          <!-- Cafe Locations across the 2D surface -->
++          <article class="cafe-marker" style="top: 280px; left: 420px;" data-location="arts-district">
++            <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" alt="Arts District Cafe">
++            <span class="cafe-pin-badge">Open Now</span>
++            <h4>Arts District Roastery</h4>
++            <p>214 Canvas Way &bull; 6:00 AM – 8:00 PM<br>Pour-over bar &amp; sunny courtyard</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 260px; left: 1020px;" data-location="riverfront">
++            <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=400&q=80" alt="Riverfront Espresso Bar">
++            <span class="cafe-pin-badge">Open Now</span>
++            <h4>Riverfront Espresso Bar</h4>
++            <p>88 Quay Blvd &bull; 6:30 AM – 7:00 PM<br>Waterfront seating &amp; nitro taps</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 310px; left: 1580px;" data-location="north-harbor">
++            <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=400&q=80" alt="North Harbor Coffee House">
++            <span class="cafe-pin-badge">Drive-Thru</span>
++            <h4>North Harbor Coffee House</h4>
++            <p>1420 Pier Ave &bull; 5:30 AM – 9:00 PM<br>Fresh pastries baked hourly</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 700px; left: 480px;" data-location="west-midtown">
++            <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=400&q=80" alt="West Midtown Lounge">
++            <span class="cafe-pin-badge">Quiet Study</span>
++            <h4>West Midtown Lounge</h4>
++            <p>510 Elm Street &bull; 7:00 AM – 9:00 PM<br>Cozy booths &amp; high-speed Wi-Fi</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 680px; left: 980px;" data-location="downtown-flagship">
++            <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=400&q=80" alt="Downtown Flagship Cafe">
++            <span class="cafe-pin-badge">Flagship</span>
++            <h4>Downtown Flagship Cafe</h4>
++            <p>100 Main Street &bull; 6:00 AM – 10:00 PM<br>Reserve tastings &amp; signature flights</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 720px; left: 1520px;" data-location="cedar-grove">
++            <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=400&q=80" alt="Cedar Grove Veranda">
++            <span class="cafe-pin-badge">Dog Friendly</span>
++            <h4>Cedar Grove Veranda</h4>
++            <p>742 Parkside Dr &bull; 6:30 AM – 8:00 PM<br>Shaded patio overlooking the park</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 1120px; left: 460px;" data-location="southside-commons">
++            <img src="https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=400&q=80" alt="Southside Commons">
++            <span class="cafe-pin-badge">Open Now</span>
++            <h4>Southside Meadow Cafe</h4>
++            <p>309 Meadow Ln &bull; 6:30 AM – 7:30 PM<br>Seasonal lattes &amp; artisan toast</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 1090px; left: 1040px;" data-location="university-corner">
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=400&q=80" alt="University Corner">
++            <span class="cafe-pin-badge">Late Night</span>
++            <h4>University Corner Grind</h4>
++            <p>915 College Ave &bull; 6:00 AM – 11:00 PM<br>Cold brew on tap &amp; study tables</p>
++          </article>
++
++          <article class="cafe-marker" style="top: 1110px; left: 1560px;" data-location="eastside-works">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=400&q=80" alt="Eastside Roastery Works">
++            <span class="cafe-pin-badge">Roastery Tour</span>
++            <h4>Eastside Roastery Works</h4>
++            <p>1890 Foundry Rd &bull; 7:00 AM – 8:00 PM<br>Small-batch roasting &amp; bean shop</p>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const viewport = document.getElementById('cafe-map-viewport');
++      if (!viewport) return;
++
++      // Start centered so users can immediately pan in any horizontal, vertical, or diagonal direction
++      viewport.scrollLeft = 450;
++      viewport.scrollTop = 380;
++
++      let isPanning = false;
++      let startX = 0;
++      let startY = 0;
++      let startScrollLeft = 0;
++      let startScrollTop = 0;
++
++      viewport.addEventListener('pointerdown', function (e) {
++        if (e.pointerType === 'mouse' && e.button !== 0) return;
++        isPanning = true;
++        startX = e.clientX;
++        startY = e.clientY;
++        startScrollLeft = viewport.scrollLeft;
++        startScrollTop = viewport.scrollTop;
++        viewport.classList.add('is-panning');
++        if (viewport.setPointerCapture) {
++          try {
++            viewport.setPointerCapture(e.pointerId);
++          } catch (_) {}
++        }
++      });
++
++      viewport.addEventListener('pointermove', function (e) {
++        if (!isPanning) return;
++        const dx = e.clientX - startX;
++        const dy = e.clientY - startY;
++        // Update both axes simultaneously without locking to a single axis
++        viewport.scrollLeft = startScrollLeft - dx;
++        viewport.scrollTop = startScrollTop - dy;
++      });
++
++      function stopPanning(e) {
++        if (!isPanning) return;
++        isPanning = false;
++        viewport.classList.remove('is-panning');
++        if (e && e.pointerId !== undefined && viewport.releasePointerCapture) {
++          try {
++            viewport.releasePointerCapture(e.pointerId);
++          } catch (_) {}
++        }
++      }
++
++      viewport.addEventListener('pointerup', stopPanning);
++      viewport.addEventListener('pointercancel', stopPanning);
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

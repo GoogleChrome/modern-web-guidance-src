@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..288f8b9 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,20 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #fff;
++      --muted: #75645e;
++      --border: #e7ded9;
++    }
++
++    :root[data-theme="dark"] {
++      color-scheme: dark;
++      --primary: #e5c4af;
++      --secondary: #302622;
++      --text: #f2e7df;
++      --light: #191513;
++      --surface: #251e1a;
++      --muted: #beaaa0;
++      --border: #4a3b33;
+     }
+ 
+     * {
+@@ -29,7 +43,7 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -108,7 +122,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -122,7 +136,7 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: #4e342e;
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -135,6 +149,94 @@
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-top: 40px;
++      padding: 24px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .preferences h2 {
++      font-size: 1.15rem;
++      margin-bottom: 16px;
++    }
++
++    .preference-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 24px;
++    }
++
++    .preference-label {
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .preference-description {
++      color: var(--muted);
++      font-size: 0.9rem;
++      margin-top: 3px;
++    }
++
++    .toggle-control {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      flex-shrink: 0;
++    }
++
++    .toggle-state {
++      min-width: 24px;
++      font-size: 0.85rem;
++      color: var(--muted);
++    }
++
++    .toggle {
++      appearance: none;
++      width: 48px;
++      height: 28px;
++      border: 1px solid var(--muted);
++      border-radius: 20px;
++      background: var(--secondary);
++      cursor: pointer;
++      position: relative;
++    }
++
++    .toggle::before {
++      content: '';
++      position: absolute;
++      width: 20px;
++      height: 20px;
++      top: 3px;
++      left: 3px;
++      border-radius: 50%;
++      background: #fff;
++      box-shadow: 0 1px 3px #0003;
++      transition: transform 0.2s;
++    }
++
++    .toggle:checked {
++      background: #a66b3f;
++      border-color: #a66b3f;
++    }
++
++    .toggle:checked::before {
++      transform: translateX(20px);
++    }
++
++    .toggle:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .toggle::before {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +255,15 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    try {
++      if (localStorage.getItem('daily-grind-dark-mode') === 'true') {
++        document.documentElement.dataset.theme = 'dark';
++      }
++    } catch {
++      // The preference still works when browser storage is unavailable.
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -195,6 +306,19 @@
+         </div>
+       </div>
+     </section>
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Preferences</h2>
++      <div class="preference-row">
++        <div>
++          <label class="preference-label" for="dark-mode">Dark mode</label>
++          <p class="preference-description" id="dark-mode-description">A darker palette for your daily coffee break.</p>
++        </div>
++        <div class="toggle-control">
++          <span class="toggle-state" id="dark-mode-state" aria-hidden="true">Off</span>
++          <input class="toggle" id="dark-mode" type="checkbox" role="switch" aria-describedby="dark-mode-description">
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +331,24 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const darkModeToggle = document.getElementById('dark-mode');
++    const darkModeState = document.getElementById('dark-mode-state');
++
++    darkModeToggle.checked = document.documentElement.dataset.theme === 'dark';
++    darkModeState.textContent = darkModeToggle.checked ? 'On' : 'Off';
++
++    darkModeToggle.addEventListener('change', () => {
++      const enabled = darkModeToggle.checked;
++      document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
++      darkModeState.textContent = enabled ? 'On' : 'Off';
++      try {
++        localStorage.setItem('daily-grind-dark-mode', String(enabled));
++      } catch {
++        // Keep the toggle usable even when the preference cannot be saved.
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

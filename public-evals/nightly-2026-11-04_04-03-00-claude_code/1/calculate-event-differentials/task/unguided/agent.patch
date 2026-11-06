@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,46 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promotion countdown */
++    .promo-timer {
++      margin-top: 15px;
++      padding: 12px;
++      border: 1px dashed var(--accent);
++      border-radius: 6px;
++      background: #fff8ee;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer__label {
++      display: block;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: #8d6e63;
++    }
++
++    .promo-timer__value {
++      display: block;
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .promo-timer__elapsed {
++      display: block;
++      margin-top: 6px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .promo-timer--ended {
++      border-style: solid;
++      border-color: var(--secondary);
++      background: #f5f5f5;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +218,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!--
++            Promotion window, interpreted as wall-clock times in the visitor's own time zone.
++            data-promo-end: midnight at the start of March 1, 2026.
++            data-promo-start: TODO confirm the real launch date with marketing.
++          -->
++          <div class="promo-timer" id="maple-promo-timer" role="status"
++            data-promo-start="2025-11-01T00:00" data-promo-end="2026-03-01T00:00">
++            <span class="promo-timer__label" data-role="label">Offer ends</span>
++            <span class="promo-timer__value" data-role="remaining">March 1, 2026 at midnight</span>
++            <span class="promo-timer__elapsed" data-role="elapsed"></span>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +255,117 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Maple Oat Latte promotion timer.
++     * Runs once on page load. Uses the Temporal API where available (DST-aware calendar
++     * math in the visitor's time zone), falling back to Date for browsers without it.
++     */
++    (function () {
++      var el = document.getElementById('maple-promo-timer');
++      if (!el) return;
++
++      var START = el.dataset.promoStart; // e.g. "2025-11-01T00:00" (local wall-clock)
++      var END = el.dataset.promoEnd;     // e.g. "2026-03-01T00:00" (local wall-clock)
++
++      // Returns whole calendar days + leftover hours between two instants (from <= to).
++      // Temporal path: ZonedDateTime.until with largestUnit "day" respects DST, so a
++      // "day" is a calendar day, not a fixed 24h block.
++      function diffTemporal(fromStr, toStr, now) {
++        var tz = Temporal.Now.timeZoneId();
++        var a = fromStr === 'now' ? now : Temporal.PlainDateTime.from(fromStr).toZonedDateTime(tz);
++        var b = toStr === 'now' ? now : Temporal.PlainDateTime.from(toStr).toZonedDateTime(tz);
++        var d = a.until(b, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++        return { sign: d.sign, days: Math.abs(d.days), hours: Math.abs(d.hours) };
++      }
++
++      // Date fallback: parse "YYYY-MM-DDTHH:mm" as LOCAL time explicitly (avoids any
++      // ambiguity in Date string parsing), then step whole calendar days so DST
++      // transitions don't skew the day count.
++      function parseLocal(str) {
++        var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(str);
++        return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
++      }
++      function diffDate(fromStr, toStr, now) {
++        var a = fromStr === 'now' ? new Date(now) : parseLocal(fromStr);
++        var b = toStr === 'now' ? new Date(now) : parseLocal(toStr);
++        var sign = b > a ? 1 : b < a ? -1 : 0;
++        if (sign < 0) { var t = a; a = b; b = t; }
++        var days = 0;
++        var cursor = new Date(a);
++        while (true) {
++          var next = new Date(cursor);
++          next.setDate(next.getDate() + 1);
++          if (next > b) break;
++          cursor = next;
++          days++;
++        }
++        var hours = Math.floor((b - cursor) / 3600000);
++        return { sign: sign, days: days, hours: hours };
++      }
++
++      // Detect the exact methods we use (partial/experimental Temporal builds exist),
++      // and fall back to Date if anything in the Temporal path throws.
++      var hasTemporal = typeof Temporal !== 'undefined' && Temporal.Now &&
++        typeof Temporal.Now.timeZoneId === 'function' &&
++        typeof Temporal.Now.zonedDateTimeISO === 'function' &&
++        Temporal.PlainDateTime && typeof Temporal.PlainDateTime.from === 'function';
++      var temporalNow = null;
++      var dateNow = Date.now();
++      if (hasTemporal) {
++        try { temporalNow = Temporal.Now.zonedDateTimeISO(); } catch (e) { temporalNow = null; }
++      }
++      function diff(f, t) {
++        if (temporalNow) {
++          try { return diffTemporal(f, t, temporalNow); } catch (e) { temporalNow = null; }
++        }
++        return diffDate(f, t, dateNow);
++      }
++
++      // Format "12 days, 5 hours" using Intl.DurationFormat when present.
++      function formatDuration(d) {
++        if (typeof Intl !== 'undefined' && Intl.DurationFormat) {
++          return new Intl.DurationFormat(undefined, { style: 'long' })
++            .format({ days: d.days, hours: d.hours }) || '0 hours';
++        }
++        var pr = new Intl.PluralRules(undefined);
++        var dd = d.days + (pr.select(d.days) === 'one' ? ' day' : ' days');
++        var hh = d.hours + (pr.select(d.hours) === 'one' ? ' hour' : ' hours');
++        return dd + ', ' + hh;
++      }
++
++      var endDate = parseLocal(END);
++      var endLabel = new Intl.DateTimeFormat(undefined, {
++        dateStyle: 'long', timeStyle: 'short'
++      }).format(endDate);
++
++      var label = el.querySelector('[data-role="label"]');
++      var remaining = el.querySelector('[data-role="remaining"]');
++      var elapsed = el.querySelector('[data-role="elapsed"]');
++
++      var untilStart = diff('now', START); // sign > 0 => promotion hasn't started
++      var untilEnd = diff('now', END);     // sign > 0 => promotion still running
++
++      if (untilStart.sign > 0) {
++        label.textContent = 'Offer starts in';
++        remaining.textContent = formatDuration(untilStart);
++        elapsed.textContent = 'Runs until ' + endLabel;
++      } else if (untilEnd.sign > 0) {
++        label.textContent = 'Offer ends in';
++        remaining.textContent = formatDuration(untilEnd);
++        elapsed.textContent = 'Promotion started ' + formatDuration(diff(START, 'now')) + ' ago';
++        el.setAttribute('aria-label', 'Offer ends in ' + remaining.textContent + ', on ' + endLabel);
++      } else {
++        el.classList.add('promo-timer--ended');
++        label.textContent = 'Offer ended';
++        remaining.textContent = endLabel;
++        elapsed.textContent = 'Promotion started ' + formatDuration(diff(START, 'now')) +
++          ' ago and ran for ' + formatDuration(diff(START, END));
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

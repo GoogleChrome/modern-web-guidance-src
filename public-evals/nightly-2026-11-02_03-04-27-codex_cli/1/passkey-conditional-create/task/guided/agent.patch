@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,41 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signin {
++      max-width: 420px;
++      margin: 40px auto 0;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin label {
++      display: block;
++      margin-top: 16px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .signin button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signin button:disabled {
++      opacity: 0.7;
++      cursor: wait;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,9 +196,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#signin" class="logout-link">Sign in</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -194,8 +227,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section id="signin" class="signin" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign in</h2>
++      <p>Welcome back to The Daily Grind.</p>
++      <form id="signin-form" action="/api/login" method="post">
++        <label for="username">Email or username</label>
++        <input id="username" name="username" autocomplete="username" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="submit" class="btn" data-testid="signin-button">Sign in</button>
++      </form>
++      <p id="signin-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +251,128 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signInForm = document.querySelector('#signin-form');
++    const signInButton = document.querySelector('[data-testid="signin-button"]');
++    const signInStatus = document.querySelector('#signin-status');
++
++    function decodeBase64url(value) {
++      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++      return Uint8Array.from(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')),
++        character => character.charCodeAt(0));
++    }
++
++    function encodeBase64url(value) {
++      return btoa(Array.from(new Uint8Array(value), byte => String.fromCharCode(byte)).join(''))
++        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++    }
++
++    function parseCreationOptions(options) {
++      if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++        return PublicKeyCredential.parseCreationOptionsFromJSON(options);
++      }
++      return {
++        ...options,
++        challenge: decodeBase64url(options.challenge),
++        user: { ...options.user, id: decodeBase64url(options.user.id) },
++        excludeCredentials: (options.excludeCredentials || []).map(credential => ({
++          ...credential, id: decodeBase64url(credential.id)
++        }))
++      };
++    }
++
++    function serializeCredential(credential) {
++      if (typeof credential.toJSON === 'function') return credential.toJSON();
++      return {
++        id: credential.id,
++        rawId: encodeBase64url(credential.rawId),
++        type: credential.type,
++        authenticatorAttachment: credential.authenticatorAttachment,
++        response: {
++          clientDataJSON: encodeBase64url(credential.response.clientDataJSON),
++          attestationObject: encodeBase64url(credential.response.attestationObject),
++          transports: credential.response.getTransports?.() || []
++        },
++        clientExtensionResults: credential.getClientExtensionResults()
++      };
++    }
++
++    async function promotePasskey() {
++      try {
++        if (!window.isSecureContext || !window.PublicKeyCredential ||
++            typeof PublicKeyCredential.getClientCapabilities !== 'function' ||
++            !navigator.credentials?.create) return;
++
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        if (capabilities.conditionalCreate !== true) return;
++
++        // The server binds the challenge and existing credential exclusions to the session.
++        // It must allow absent user presence only for this conditional ceremony.
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ conditional: true })
++        });
++        if (!optionsResponse.ok) return;
++
++        const publicKey = parseCreationOptions(await optionsResponse.json());
++        const credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional'
++        });
++        if (!credential) return;
++
++        const verification = await fetch('/api/register/verify', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(serializeCredential(credential))
++        });
++        // Only a definite rejection warrants removing the provider's credential.
++        // Network failures may occur after the server has saved it successfully.
++        if (!verification.ok && typeof PublicKeyCredential.signalUnknownCredential === 'function') {
++          await PublicKeyCredential.signalUnknownCredential({
++            rpId: publicKey.rp.id || location.hostname,
++            credentialId: credential.id
++          });
++        }
++      } catch {
++        // Automatic promotion is optional and must never interrupt password sign-in.
++      }
++    }
++
++    signInForm.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (signInButton.disabled) return;
++      signInButton.disabled = true;
++      signInStatus.textContent = 'Signing in…';
++
++      try {
++        const response = await fetch(signInForm.action, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            username: signInForm.elements.username.value,
++            password: signInForm.elements.password.value
++          })
++        });
++        // This endpoint must return success only once the full password login is complete.
++        if (!response.ok) throw new Error('Sign-in failed');
++
++        void promotePasskey();
++        signInForm.reset();
++        signInForm.hidden = true;
++        signInStatus.textContent = 'You’re signed in.';
++      } catch {
++        signInStatus.textContent = 'Unable to sign in. Please check your details and try again.';
++      } finally {
++        signInButton.disabled = false;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

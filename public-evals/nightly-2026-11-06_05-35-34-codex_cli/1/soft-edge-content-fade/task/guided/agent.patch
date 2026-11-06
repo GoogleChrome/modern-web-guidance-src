@@ -1,0 +1,57 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,35 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Fade the teaser itself so any page background shows through. */
++    .paywall-container {
++      max-width: 760px;
++      margin: 48px auto 0;
++      padding-top: 28px;
++      border-top: 1px solid var(--secondary);
++      -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
++    }
++
++    .paywall-container .eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 16px;
++    }
++
++    .paywall-container p + p {
++      margin-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +221,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-title">
++      <p class="eyebrow">Exclusive member preview</p>
++      <h2 id="roasters-secrets-title">Roaster's Secrets</h2>
++      <p>Step behind the counter for a taste of our members-only roasting notes, brewing rituals, and the little details that make a remarkable cup.</p>
++      <p>A great brew starts before the kettle boils. Our roasters taste each batch as it rests, looking for the moment when its sweetness, aroma, and body come into balance. That window is different for every coffee.</p>
++      <p>At home, try changing just one thing at a time. Keep your coffee-to-water ratio steady, adjust the grind, and notice how the finish changes. A small shift can bring a hidden note of cocoa or citrus into focus.</p>
++      <p>Inside the full collection, we share the tasting notes behind our seasonal blends and the brewing adjustments our team makes to bring out their best.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

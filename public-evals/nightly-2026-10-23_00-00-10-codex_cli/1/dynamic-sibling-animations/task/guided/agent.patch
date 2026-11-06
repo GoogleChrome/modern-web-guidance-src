@@ -1,0 +1,55 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,28 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .grid > .card {
++        animation: card-enter 500ms ease-out both;
++        animation-delay: calc((var(--sibling-index, 1) - 1) * 100ms);
++        animation-delay: calc((sibling-index() - 1) * 100ms);
++      }
++    }
++
++    @keyframes card-enter {
++      from {
++        opacity: 0;
++        transform: translateY(16px);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -177,19 +197,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" style="--sibling-index: 1;">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" style="--sibling-index: 2;">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" style="--sibling-index: 3;">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

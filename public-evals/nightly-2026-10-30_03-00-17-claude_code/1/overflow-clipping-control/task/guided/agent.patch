@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,101 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    /* Card wrapper: children are clipped at the content box, so their corners
++       follow the concentric inner curve (24px radius - 12px padding = 12px) */
++    .nested-curve-parent {
++      background: var(--primary);
++      padding: 12px;
++      border-radius: 24px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Fallback: clips roughly at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .nested-curve-footer {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 15px 20px;
++    }
++
++    .nested-curve-footer h3 {
++      color: var(--primary);
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        overflow: clip;
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /* Promos block: clips overflowing text, but leaves a 15px safety zone
++       so the button's glow isn't cut off at the container edge */
++    .safety-zone-parent {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      /* Fallback: clips overflowing content but truncates the button's glow */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .promo-ticker {
++      white-space: nowrap;
++      font-weight: bold;
++      letter-spacing: 2px;
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
++    .glowing-btn {
++      display: block;
++      width: 100%;
++      margin-top: 20px;
++      padding: 12px 20px;
++      border: none;
++      border-radius: 5px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++      /* Glow extends 40px; with 25px padding it bleeds ~15px past the edge */
++      box-shadow: 0 0 30px 10px rgba(255, 171, 64, 0.6);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        overflow-clip-margin: 15px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +266,27 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase" aria-label="Showcase">
++    <article class="nested-curve-parent">
++      <img
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++        alt="Latte with latte art on a wooden table" width="800" height="600" loading="lazy">
++      <div class="nested-curve-footer">
++        <h3>Roaster's Pick</h3>
++        <p>Single-origin Ethiopian Yirgacheffe with bright citrus and jasmine notes.</p>
++      </div>
++    </article>
++
++    <div class="safety-zone-parent">
++      <h2>This Week's Promos</h2>
++      <p class="promo-ticker">BOGO COLD BREW &bull; DOUBLE REWARDS POINTS &bull; FREE PASTRY WITH ANY LATTE &bull; HAPPY HOUR 2&ndash;4PM</p>
++      <p>Stop by any Daily Grind location this week and treat yourself. Offers valid while supplies last.</p>
++      <button type="button" class="glowing-btn">Claim Offer</button>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

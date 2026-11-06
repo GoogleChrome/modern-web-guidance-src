@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,50 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero {
++      position: relative;
++      overflow: hidden;
++    }
++
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative coffee-splash blob. Absolutely positioned, so it never affects
++       layout. The mask is an inline data-URI SVG (no network request). The
++       border-radius blob is the fallback if masking is unsupported, and the
++       element is hidden entirely if its sizing/paint fails. */
++    .shaped-element {
++      position: absolute;
++      right: -4%;
++      bottom: -12%;
++      width: clamp(180px, 32vw, 420px);
++      aspect-ratio: 1;
++      pointer-events: none;
++      z-index: 0;
++      background: radial-gradient(circle at 35% 30%, #8d6e63 0%, var(--accent) 45%, #6d4c41 100%);
++      opacity: 0.55;
++      border-radius: 58% 42% 63% 37% / 41% 55% 45% 59%;
++    }
++
++    @supports ((mask-image: url("")) or (-webkit-mask-image: url(""))) {
++      .shaped-element {
++        border-radius: 0;
++        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c22-3 36 14 52 22 20 10 44 14 41 40-2 20-22 24-26 42-4 20 12 38-6 54-20 18-44 4-62 14-16 9-24 28-44 22-22-7-18-32-30-48C14 136 0 124 4 102c4-22 28-26 36-44 8-20 4-44 26-52 10-4 22 0 35 2z' fill='%23000'/%3E%3Ccircle cx='178' cy='20' r='9' fill='%23000'/%3E%3Ccircle cx='20' cy='176' r='6' fill='%23000'/%3E%3Ccircle cx='190' cy='168' r='4' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
++        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M101 8c22-3 36 14 52 22 20 10 44 14 41 40-2 20-22 24-26 42-4 20 12 38-6 54-20 18-44 4-62 14-16 9-24 28-44 22-22-7-18-32-30-48C14 136 0 124 4 102c4-22 28-26 36-44 8-20 4-44 26-52 10-4 22 0 35 2z' fill='%23000'/%3E%3Ccircle cx='178' cy='20' r='9' fill='%23000'/%3E%3Ccircle cx='20' cy='176' r='6' fill='%23000'/%3E%3Ccircle cx='190' cy='168' r='4' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        right: -20%;
++        opacity: 0.35;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,8 +210,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

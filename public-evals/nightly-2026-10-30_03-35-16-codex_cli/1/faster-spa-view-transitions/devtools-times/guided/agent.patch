@@ -1,0 +1,191 @@
+diff --git a/README.md b/README.md
+index 4479b53..92b9889 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,19 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## View preservation
++
++Client navigation retains up to five content views, including the active view, in a
++persistent Astro container. Returning to a cached pathname and query string reuses
++the existing DOM and hydrated islands. Inactive views use `content-visibility:
++hidden` and `inert`; browsers without content visibility use `display: none`.
++The least recently used view is removed when the limit is exceeded.
++
++Astro still fetches the destination for current head metadata and shell content.
++Cached content keeps its client state until eviction or a full reload. Navigating
++to the same URL refreshes that view. Sign-in and sign-up use `cacheView={false}`
++on the shared layout so their form contents are discarded when leaving.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..417c9b3 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +36,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +49,10 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-view-cache transition:persist="view-cache">
++          <div class="spa-view" data-cacheable={String(cacheView)} tabindex="-1">
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..aa76359
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,69 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Includes the active view. Article routes are unbounded, so never retain them all.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++const viewKey = (url: URL) => url.pathname + url.search;
++const host = () => document.querySelector<HTMLElement>("[data-view-cache]");
++let activeKey = viewKey(new URL(location.href));
++let focusAfterNavigation = false;
++
++const initialView = host()?.querySelector<HTMLElement>(".spa-view");
++if (initialView) views.set(activeKey, initialView);
++
++document.addEventListener("astro:before-swap", (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const incoming = navigation.newDocument.querySelector<HTMLElement>(
++    "[data-view-cache] > .spa-view",
++  );
++  if (!host() || !incoming) return;
++
++  // Wrap Astro's swap so it still handles head, scripts, shell, history and scrolling.
++  // The persistent host keeps every retained view connected, including React islands.
++  const swap = navigation.swap;
++  navigation.swap = () => {
++    const key = viewKey(navigation.to);
++    const outgoing = views.get(activeKey);
++    // Same-URL navigation is an explicit refresh; never substitute stale DOM for it.
++    const cached = key !== activeKey && incoming.dataset.cacheable === "true"
++      ? views.get(key)
++      : undefined;
++
++    swap();
++    const container = host();
++    if (!container) return;
++
++    if (outgoing?.dataset.cacheable === "false" || key === activeKey) {
++      outgoing?.remove();
++      views.delete(activeKey);
++    }
++
++    const next = cached ?? incoming;
++    if (!cached) container.append(next);
++    // Reinsertion in the Map records the most recently used view.
++    views.delete(key);
++    views.set(key, next);
++    activeKey = key;
++
++    for (const view of views.values()) {
++      const inactive = view !== next;
++      view.classList.toggle("inactive", inactive);
++      view.inert = inactive;
++      if (inactive) view.setAttribute("aria-hidden", "true");
++      else view.removeAttribute("aria-hidden");
++    }
++
++    while (views.size > MAX_VIEWS) {
++      const oldest = views.keys().next().value!;
++      views.get(oldest)?.remove();
++      views.delete(oldest);
++    }
++    focusAfterNavigation = true;
++  };
++});
++
++document.addEventListener("astro:page-load", () => {
++  if (!focusAfterNavigation) return;
++  focusAfterNavigation = false;
++  views.get(activeKey)?.focus({ preventScroll: true });
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..fe8ea7c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,20 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Keep inactive DOM and rendering state without occupying the page or accepting input. */
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++  block-size: 0;
++  overflow: clip;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

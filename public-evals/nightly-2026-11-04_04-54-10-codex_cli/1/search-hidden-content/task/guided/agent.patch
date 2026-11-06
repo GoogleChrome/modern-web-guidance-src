@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,8 +130,105 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .page-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 250px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    .page-layout main {
++      min-width: 0;
++    }
++
++    .sidebar {
++      background: var(--secondary);
++      padding: 24px;
++      border-radius: 8px;
++    }
++
++    .sidebar h2 {
++      margin-bottom: 10px;
++    }
++
++    .btn[aria-disabled="true"] {
++      cursor: default;
++      background: var(--primary);
++    }
++
++    .wholesale-info {
++      margin-top: 40px;
++    }
++
++    .wholesale-info h2 {
++      margin-bottom: 15px;
++    }
++
++    .wholesale-tab {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      margin-top: 10px;
++      background: white;
++    }
++
++    .wholesale-tab summary {
++      padding: 16px 20px;
++      cursor: pointer;
++      font-weight: bold;
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--secondary);
++      border-radius: 7px 7px 0 0;
++    }
++
++    .wholesale-content {
++      padding: 20px;
++    }
++
++    /* Keep decoration off the until-found wrapper so it leaves no visible box. */
++    .coupon-content {
++      margin-top: 30px;
++      padding: 24px;
++      border: 2px dashed var(--primary);
++      border-radius: 8px;
++      background: #fff3e0;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      margin-top: 12px;
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++    }
++
++    .wholesale-tab summary:focus-visible,
++    .sidebar button:focus-visible,
++    #coupon-panel:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    #coupon-panel,
++    .wholesale-tab {
++      scroll-margin-top: 100px;
++    }
++
++    @media (max-width: 760px) {
++      .page-layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+@@ -173,9 +270,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container page-layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +292,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="coupon-panel" hidden="until-found" aria-labelledby="coupon-title" tabindex="-1">
++      <div class="coupon-content">
++        <h2 id="coupon-title">A little perk for your next cup</h2>
++        <p>Use this discount code at checkout for 10% off your next order.</p>
++        <p class="coupon-code">GRIND10</p>
++      </div>
++    </section>
++
++    <section class="wholesale-info">
++      <h2>Wholesale &amp; Catering</h2>
++      <details class="wholesale-tab" name="business-info" open>
++        <summary>Wholesale</summary>
++        <div class="wholesale-content">
++          <p>Bring The Daily Grind to your café, shop, or office with our locally roasted wholesale coffee. Get in touch to discuss bulk beans, roast options, and regular deliveries.</p>
++          <a href="/contact?subject=wholesale" class="btn">Ask about wholesale</a>
++        </div>
++      </details>
++      <details class="wholesale-tab" name="business-info">
++        <summary>Catering</summary>
++        <div class="wholesale-content">
++          <p>Keep your guests fueled with coffee catering for meetings, celebrations, and events. Contact our team to discuss group sizes, coffee service, and a menu for your occasion.</p>
++          <a href="/contact?subject=catering" class="btn">Ask about catering</a>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
++  <aside class="sidebar" aria-labelledby="perks-title">
++    <h2 id="perks-title">Your coffee perks</h2>
++    <p>A little extra to make your next coffee even sweeter.</p>
++    <button type="button" id="reveal-coupon" class="btn" aria-controls="coupon-panel" aria-expanded="false">Reveal coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +337,33 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const couponPanel = document.getElementById('coupon-panel');
++    const couponButton = document.getElementById('reveal-coupon');
++
++    // Both button activation and native search permanently reveal the panel.
++    function revealCoupon() {
++      couponPanel.removeAttribute('hidden');
++      couponButton.setAttribute('aria-expanded', 'true');
++      couponButton.setAttribute('aria-disabled', 'true');
++    }
++
++    couponButton.addEventListener('click', () => {
++      if (couponButton.getAttribute('aria-disabled') === 'true') return;
++      revealCoupon();
++      couponPanel.focus();
++    });
++
++    // Let find-in-page manage scrolling and focus when it discovers a match.
++    couponPanel.addEventListener('beforematch', revealCoupon);
++
++    // Preserve searchability on browsers without hidden="until-found" support.
++    if (!('onbeforematch' in HTMLElement.prototype)) {
++      revealCoupon();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,398 @@
+diff --git a/index.html b/index.html
+index 66c9173..6e42a85 100644
+--- a/index.html
++++ b/index.html
+@@ -152,11 +152,265 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Drink customization checkboxes */
++    .customize {
++      position: relative;
++      border: 0;
++      margin: 18px 0 0;
++      padding: 14px 0 0;
++      text-align: left;
++      min-width: 0;
++    }
++
++    .customize::before {
++      content: "";
++      position: absolute;
++      top: 0;
++      left: 10%;
++      right: 10%;
++      border-top: 1px dashed var(--secondary);
++    }
++
++    .customize legend {
++      padding: 0;
++      font-size: 0.72rem;
++      font-weight: 600;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      color: var(--primary);
++    }
++
++    .options {
++      list-style: none;
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 8px;
++      margin-top: 10px;
++    }
++
++    .option {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      cursor: pointer;
++      user-select: none;
++      transition: background-color 0.25s, border-color 0.25s, box-shadow 0.25s;
++    }
++
++    .option:hover {
++      border-color: var(--accent);
++      background: #fff;
++    }
++
++    /* The real checkbox stays in the DOM, focusable and clickable; it is only
++       visually hidden (never display:none / visibility:hidden). */
++    .option input[type="checkbox"] {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    .option .box {
++      flex: none;
++      display: grid;
++      place-items: center;
++      width: 22px;
++      height: 22px;
++      border: 2px solid var(--primary);
++      border-radius: 6px;
++      background: #fff;
++      /* uncheck: fill drains after the tick retracts */
++      transition: background-color 0.2s ease 0.12s, border-color 0.2s ease 0.12s, transform 0.2s ease;
++    }
++
++    .option .box svg {
++      width: 14px;
++      height: 14px;
++      overflow: visible;
++    }
++
++    .option .box path {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 3;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      stroke-dasharray: 22;
++      stroke-dashoffset: 22;
++      /* uncheck: tick retracts along its own path */
++      transition: stroke-dashoffset 0.18s ease-in;
++    }
++
++    .option .icon {
++      flex: none;
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.8;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      color: var(--primary);
++      opacity: 0.7;
++      transition: color 0.25s, opacity 0.25s, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
++    }
++
++    .option .text {
++      font-size: 0.9rem;
++      line-height: 1.25;
++      color: var(--text);
++    }
++
++    .option .price {
++      display: block;
++      font-size: 0.72rem;
++      color: #7a5c52;
++    }
++
++    /* Checked state */
++    .option input:checked ~ .box {
++      background: var(--primary);
++      border-color: var(--primary);
++      transition-delay: 0s;
++      animation: check-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
++    }
++
++    .option input:checked ~ .box path {
++      stroke-dashoffset: 0;
++      transition: stroke-dashoffset 0.25s ease-out 0.1s;
++    }
++
++    .option input:checked ~ .icon {
++      color: var(--accent);
++      opacity: 1;
++      transform: scale(1.15) rotate(-6deg);
++    }
++
++    .option:has(input:checked) {
++      border-color: var(--primary);
++      background: #fff6e8;
++    }
++
++    @keyframes check-pop {
++      0% { transform: scale(1); }
++      40% { transform: scale(0.82); }
++      70% { transform: scale(1.12); }
++      100% { transform: scale(1); }
++    }
++
++    /* Keyboard focus ring (shown only for keyboard focus) */
++    .option input:focus-visible ~ .box {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .option:has(input:focus-visible) {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    /* Disabled state */
++    .option:has(input:disabled) {
++      cursor: not-allowed;
++      opacity: 0.55;
++    }
++
++    .option input:disabled ~ .box {
++      background: var(--secondary);
++      border-color: var(--secondary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .option,
++      .option .box,
++      .option .box path,
++      .option .icon {
++        animation: none;
++        transition: none;
++      }
++    }
++
++    /* Windows High Contrast / forced colors: keep the control visible */
++    @media (forced-colors: active) {
++      .option .box {
++        border-color: ButtonText;
++        background: Canvas;
++      }
++
++      .option input:checked ~ .box {
++        background: Highlight;
++        border-color: Highlight;
++      }
++
++      .option .box path {
++        stroke: HighlightText;
++      }
++
++      .option input:focus-visible ~ .box {
++        outline-color: Highlight;
++      }
++    }
++
++    @media (max-width: 360px) {
++      .options {
++        grid-template-columns: 1fr;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Icon sprite for drink customization options -->
++  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
++    <symbol id="icon-shot" viewBox="0 0 24 24">
++      <path d="M4 9h12v5.5A4.5 4.5 0 0 1 11.5 19h-3A4.5 4.5 0 0 1 4 14.5z"/>
++      <path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/>
++      <path d="M8 3.5c0 1.2 1 1.3 1 2.5M11.5 3.5c0 1.2 1 1.3 1 2.5"/>
++    </symbol>
++    <symbol id="icon-drop" viewBox="0 0 24 24">
++      <path d="M12 3s6 7 6 11.5a6 6 0 0 1-12 0C6 10 12 3 12 3z"/>
++      <path d="M9.5 14.5a2.5 2.5 0 0 0 2 2.5"/>
++    </symbol>
++    <symbol id="icon-leaf" viewBox="0 0 24 24">
++      <path d="M20 4C9 4 4 10 4 20c10 0 16-5 16-16z"/>
++      <path d="M4 20c4-5 8-8 12-11"/>
++    </symbol>
++    <symbol id="icon-cloud" viewBox="0 0 24 24">
++      <path d="M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 17.9 11.5 3.3 3.3 0 0 1 17 18z"/>
++    </symbol>
++    <symbol id="icon-ice" viewBox="0 0 24 24">
++      <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/>
++      <path d="M12 3l-2 2M12 3l2 2M12 21l-2-2M12 21l2-2"/>
++    </symbol>
++    <symbol id="icon-sugar" viewBox="0 0 24 24">
++      <path d="M4 8l8-4 8 4-8 4z"/>
++      <path d="M4 8v8l8 4 8-4V8"/>
++      <path d="M12 12v8"/>
++    </symbol>
++    <symbol id="icon-sparkle" viewBox="0 0 24 24">
++      <path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>
++      <path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/>
++    </symbol>
++    <symbol id="icon-bubbles" viewBox="0 0 24 24">
++      <circle cx="8" cy="15" r="3.5"/>
++      <circle cx="15.5" cy="8.5" r="2.5"/>
++      <circle cx="16.5" cy="17" r="1.5"/>
++    </symbol>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -181,16 +435,127 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customize">
++            <legend>Customize your drink</legend>
++            <ul class="options">
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="maple-oat-latte" value="oat-milk" checked>
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-leaf"/></svg>
++                  <span class="text">Oat milk</span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="maple-oat-latte" value="extra-maple">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-drop"/></svg>
++                  <span class="text">Extra maple drizzle <small class="price">+$0.50</small></span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="maple-oat-latte" value="whipped-cream">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-cloud"/></svg>
++                  <span class="text">Whipped cream <small class="price">+$0.50</small></span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="maple-oat-latte" value="extra-shot">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-shot"/></svg>
++                  <span class="text">Extra espresso shot <small class="price">+$1.00</small></span>
++                </label>
++              </li>
++            </ul>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customize">
++            <legend>Customize your drink</legend>
++            <ul class="options">
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="dark-roast-espresso" value="double-shot">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-shot"/></svg>
++                  <span class="text">Make it a double <small class="price">+$1.00</small></span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="dark-roast-espresso" value="splash-cream">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-cloud"/></svg>
++                  <span class="text">Splash of cream</span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="dark-roast-espresso" value="raw-sugar">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sugar"/></svg>
++                  <span class="text">Raw sugar</span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="dark-roast-espresso" value="vanilla">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sparkle"/></svg>
++                  <span class="text">Vanilla syrup <small class="price">+$0.50</small></span>
++                </label>
++              </li>
++            </ul>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customize">
++            <legend>Customize your drink</legend>
++            <ul class="options">
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="cold-brew" value="extra-ice">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-ice"/></svg>
++                  <span class="text">Extra ice</span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="cold-brew" value="sweet-cream">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-sparkle"/></svg>
++                  <span class="text">Vanilla sweet cream <small class="price">+$0.75</small></span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="cold-brew" value="nitro">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-bubbles"/></svg>
++                  <span class="text">Nitro infused <small class="price">+$1.00</small></span>
++                </label>
++              </li>
++              <li>
++                <label class="option">
++                  <input type="checkbox" name="cold-brew" value="caramel">
++                  <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
++                  <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-drop"/></svg>
++                  <span class="text">Caramel drizzle <small class="price">+$0.50</small></span>
++                </label>
++              </li>
++            </ul>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

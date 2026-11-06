@@ -1,0 +1,437 @@
+diff --git a/index.html b/index.html
+index 66c9173..38964e4 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,146 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Default Card Context Tokens */
++      --card-bg: #ffffff;
++      --card-border: #eceff1;
++      --card-accent: var(--primary);
++      --card-accent-hover: #3e2723;
++      --card-title: var(--primary);
++      --card-text: var(--text);
++      --card-badge-bg: var(--secondary);
++      --card-badge-text: var(--primary);
++      --card-badge-label: "Signature";
++      --card-shadow: rgba(0, 0, 0, 0.08);
++    }
++
++    /* Parent Section Semantic Themes & Category Contexts */
++    section[data-theme="seasonal"],
++    section[data-category="seasonal"],
++    section.theme-seasonal {
++      --section-bg: linear-gradient(135deg, #fff8f0 0%, #fef3e6 100%);
++      --section-heading: #8c3b0c;
++      --section-subtitle: #7c4d33;
++      --card-bg: #fffdf9;
++      --card-border: #f5d7b8;
++      --card-accent: #c85a17;
++      --card-accent-hover: #9e430b;
++      --card-title: #6e2c00;
++      --card-text: #4e342e;
++      --card-badge-bg: #fde2c4;
++      --card-badge-text: #8c3b0c;
++      --card-badge-label: "Seasonal Harvest";
++      --card-shadow: rgba(200, 90, 23, 0.14);
++    }
++
++    section[data-theme="autumn"],
++    section[data-category="autumn"],
++    section.theme-autumn {
++      --section-bg: linear-gradient(135deg, #fbf4ef 0%, #f5e6d8 100%);
++      --section-heading: #7b341e;
++      --section-subtitle: #6d4c41;
++      --card-bg: #fffaf5;
++      --card-border: #ebccb0;
++      --card-accent: #b84a1b;
++      --card-accent-hover: #8f3510;
++      --card-title: #5d2510;
++      --card-text: #4a2c20;
++      --card-badge-bg: #f8dac2;
++      --card-badge-text: #7b341e;
++      --card-badge-label: "Autumn Harvest";
++      --card-shadow: rgba(123, 52, 30, 0.14);
++    }
++
++    section[data-theme="winter"],
++    section[data-category="winter"],
++    section.theme-winter {
++      --section-bg: linear-gradient(135deg, #f1f6f9 0%, #e3eef5 100%);
++      --section-heading: #1b3a4b;
++      --section-subtitle: #3d5a6c;
++      --card-bg: #ffffff;
++      --card-border: #c5dce8;
++      --card-accent: #255f7c;
++      --card-accent-hover: #19445a;
++      --card-title: #1b3a4b;
++      --card-text: #2c4452;
++      --card-badge-bg: #d9ebf4;
++      --card-badge-text: #1b3a4b;
++      --card-badge-label: "Winter Reserve";
++      --card-shadow: rgba(27, 58, 75, 0.12);
++    }
++
++    section[data-theme="spring"],
++    section[data-category="spring"],
++    section.theme-spring {
++      --section-bg: linear-gradient(135deg, #f3f9f4 0%, #e5f3e8 100%);
++      --section-heading: #235337;
++      --section-subtitle: #3e6b4f;
++      --card-bg: #fcfffd;
++      --card-border: #c6e4ce;
++      --card-accent: #2e7d52;
++      --card-accent-hover: #1f5c3b;
++      --card-title: #1c452d;
++      --card-text: #2b4c39;
++      --card-badge-bg: #d7f0df;
++      --card-badge-text: #235337;
++      --card-badge-label: "Spring Bloom";
++      --card-shadow: rgba(46, 125, 82, 0.12);
++    }
++
++    section[data-theme="summer"],
++    section[data-category="summer"],
++    section.theme-summer,
++    section[data-category="cold-brew"],
++    section.theme-cold-brew {
++      --section-bg: linear-gradient(135deg, #f0f9fa 0%, #dff2f5 100%);
++      --section-heading: #0e4d58;
++      --section-subtitle: #2c6670;
++      --card-bg: #ffffff;
++      --card-border: #bce3e8;
++      --card-accent: #00798c;
++      --card-accent-hover: #005967;
++      --card-title: #0d3f48;
++      --card-text: #234b52;
++      --card-badge-bg: #ccf0f5;
++      --card-badge-text: #0e4d58;
++      --card-badge-label: "Chilled Refresh";
++      --card-shadow: rgba(0, 121, 140, 0.12);
++    }
++
++    section[data-theme="espresso"],
++    section[data-category="espresso"],
++    section[data-theme="dark-roast"],
++    section.theme-espresso {
++      --section-bg: linear-gradient(135deg, #271b17 0%, #1a110e 100%);
++      --section-heading: #f8ede8;
++      --section-subtitle: #cbb6ad;
++      --card-bg: #33241f;
++      --card-border: #523b33;
++      --card-accent: #e09132;
++      --card-accent-hover: #c4791f;
++      --card-title: #ffeedb;
++      --card-text: #decbc3;
++      --card-badge-bg: #4d352c;
++      --card-badge-text: #ffbe73;
++      --card-badge-label: "Roaster's Reserve";
++      --card-shadow: rgba(0, 0, 0, 0.45);
++    }
++
++    /* Card-level category refinement that blends with parent section context */
++    .card[data-category="seasonal"] {
++      --card-item-accent: #c85a17;
++      --card-item-tag: "Seasonal Craft";
++    }
++
++    .card[data-category="espresso"] {
++      --card-item-accent: #6d3b27;
++      --card-item-tag: "Bold Espresso";
++    }
++
++    .card[data-category="cold-brew"] {
++      --card-item-accent: #1d697c;
++      --card-item-tag: "Slow Steeped";
+     }
+ 
+     * {
+@@ -100,39 +240,236 @@
+       padding: 0 20px;
+     }
+ 
++    section[data-theme],
++    section[data-category] {
++      background: var(--section-bg, transparent);
++      padding: 36px 28px;
++      border-radius: 16px;
++      border: 1px solid var(--card-border, transparent);
++      transition: background 0.35s ease, border-color 0.35s ease;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    section h2 {
++      color: var(--section-heading, var(--primary));
++      font-size: 2rem;
++      margin-bottom: 6px;
++      transition: color 0.3s ease;
++    }
++
++    .section-subtitle {
++      color: var(--section-subtitle, var(--text));
++      font-size: 0.95rem;
++      opacity: 0.9;
++    }
++
++    .theme-switcher {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .theme-pill {
++      background: var(--card-bg);
++      color: var(--card-title);
++      border: 1px solid var(--card-border);
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: all 0.25s ease;
++    }
++
++    .theme-pill:hover,
++    .theme-pill[aria-pressed="true"] {
++      background: var(--card-accent);
++      color: #ffffff;
++      border-color: var(--card-accent);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      position: relative;
++      background: var(--card-bg, white);
++      color: var(--card-text, var(--text));
++      padding: 28px 22px 24px;
++      border-radius: 12px;
++      border: 1px solid var(--card-border, #eceff1);
++      border-top: 4px solid var(--card-accent, var(--primary));
++      box-shadow: 0 6px 18px var(--card-shadow, rgba(0, 0, 0, 0.1));
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.3s ease, border-color 0.3s ease;
++      overflow: hidden;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 12px 24px var(--card-shadow, rgba(0, 0, 0, 0.15));
++    }
++
++    /* Contextual badge automatically rendered from parent section theme/category */
++    .card::before {
++      content: var(--card-badge-label, "Featured");
++      display: inline-block;
++      align-self: center;
++      background: var(--card-badge-bg, var(--secondary));
++      color: var(--card-badge-text, var(--primary));
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 14px;
++      transition: background 0.3s ease, color 0.3s ease;
++    }
++
++    .card-category-tag {
++      font-size: 0.75rem;
++      font-weight: 600;
++      color: var(--card-accent, var(--primary));
++      letter-spacing: 0.04em;
++      text-transform: uppercase;
++      margin-bottom: 6px;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-title, var(--primary));
++      font-size: 1.3rem;
++      transition: color 0.3s ease;
++    }
++
++    .card p {
++      color: var(--card-text, var(--text));
++      font-size: 0.95rem;
++      margin-bottom: 8px;
++      flex-grow: 1;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--card-accent, var(--primary));
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
++      border-radius: 6px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background 0.3s ease, transform 0.2s ease;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--card-accent-hover, #3e2723);
++    }
++
++    /* Pure CSS Interactive Context Switcher via :has() */
++    section:has(input[name="section-theme"][value="seasonal"]:checked) {
++      --section-bg: linear-gradient(135deg, #fff8f0 0%, #fef3e6 100%);
++      --section-heading: #8c3b0c;
++      --section-subtitle: #7c4d33;
++      --card-bg: #fffdf9;
++      --card-border: #f5d7b8;
++      --card-accent: #c85a17;
++      --card-accent-hover: #9e430b;
++      --card-title: #6e2c00;
++      --card-text: #4e342e;
++      --card-badge-bg: #fde2c4;
++      --card-badge-text: #8c3b0c;
++      --card-badge-label: "Seasonal Harvest";
++      --card-shadow: rgba(200, 90, 23, 0.14);
++    }
++
++    section:has(input[name="section-theme"][value="winter"]:checked) {
++      --section-bg: linear-gradient(135deg, #f1f6f9 0%, #e3eef5 100%);
++      --section-heading: #1b3a4b;
++      --section-subtitle: #3d5a6c;
++      --card-bg: #ffffff;
++      --card-border: #c5dce8;
++      --card-accent: #255f7c;
++      --card-accent-hover: #19445a;
++      --card-title: #1b3a4b;
++      --card-text: #2c4452;
++      --card-badge-bg: #d9ebf4;
++      --card-badge-text: #1b3a4b;
++      --card-badge-label: "Winter Reserve";
++      --card-shadow: rgba(27, 58, 75, 0.12);
++    }
++
++    section:has(input[name="section-theme"][value="spring"]:checked) {
++      --section-bg: linear-gradient(135deg, #f3f9f4 0%, #e5f3e8 100%);
++      --section-heading: #235337;
++      --section-subtitle: #3e6b4f;
++      --card-bg: #fcfffd;
++      --card-border: #c6e4ce;
++      --card-accent: #2e7d52;
++      --card-accent-hover: #1f5c3b;
++      --card-title: #1c452d;
++      --card-text: #2b4c39;
++      --card-badge-bg: #d7f0df;
++      --card-badge-text: #235337;
++      --card-badge-label: "Spring Bloom";
++      --card-shadow: rgba(46, 125, 82, 0.12);
++    }
++
++    section:has(input[name="section-theme"][value="espresso"]:checked) {
++      --section-bg: linear-gradient(135deg, #271b17 0%, #1a110e 100%);
++      --section-heading: #f8ede8;
++      --section-subtitle: #cbb6ad;
++      --card-bg: #33241f;
++      --card-border: #523b33;
++      --card-accent: #e09132;
++      --card-accent-hover: #c4791f;
++      --card-title: #ffeedb;
++      --card-text: #decbc3;
++      --card-badge-bg: #4d352c;
++      --card-badge-text: #ffbe73;
++      --card-badge-label: "Roaster's Reserve";
++      --card-shadow: rgba(0, 0, 0, 0.45);
++    }
++
++    section:has(input[name="section-theme"][value="cold-brew"]:checked) {
++      --section-bg: linear-gradient(135deg, #f0f9fa 0%, #dff2f5 100%);
++      --section-heading: #0e4d58;
++      --section-subtitle: #2c6670;
++      --card-bg: #ffffff;
++      --card-border: #bce3e8;
++      --card-accent: #00798c;
++      --card-accent-hover: #005967;
++      --card-title: #0d3f48;
++      --card-text: #234b52;
++      --card-badge-bg: #ccf0f5;
++      --card-badge-text: #0e4d58;
++      --card-badge-label: "Chilled Refresh";
++      --card-shadow: rgba(0, 121, 140, 0.12);
++    }
++
++    .theme-switcher input[type="radio"] {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .theme-switcher label.theme-pill:has(input[type="radio"]:checked) {
++      background: var(--card-accent);
++      color: #ffffff;
++      border-color: var(--card-accent);
+     }
+ 
+     footer {
+@@ -175,20 +512,33 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" class="theme-seasonal" data-theme="seasonal" data-category="seasonal">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p class="section-subtitle">Handcrafted selections styled dynamically by section theme &amp; category context.</p>
++        <div class="theme-switcher" role="radiogroup" aria-label="Section Theme Context">
++          <label class="theme-pill"><input type="radio" name="section-theme" value="seasonal" checked> Autumn Harvest</label>
++          <label class="theme-pill"><input type="radio" name="section-theme" value="winter"> Winter Reserve</label>
++          <label class="theme-pill"><input type="radio" name="section-theme" value="spring"> Spring Bloom</label>
++          <label class="theme-pill"><input type="radio" name="section-theme" value="espresso"> Dark Roast Reserve</label>
++          <label class="theme-pill"><input type="radio" name="section-theme" value="cold-brew"> Summer Cold Brew</label>
++        </div>
++      </div>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-category="seasonal">
++          <span class="card-category-tag">Signature Latte</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="espresso">
++          <span class="card-category-tag">Single Origin Roast</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="cold-brew">
++          <span class="card-category-tag">Small Batch Steeped</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

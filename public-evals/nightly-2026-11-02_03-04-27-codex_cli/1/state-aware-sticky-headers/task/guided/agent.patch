@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --site-nav-height: 71px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -99,8 +100,72 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro {
++      max-width: 720px;
++      padding: 40px 0 64px;
++    }
++
++    .intro h2,
++    .section-details h3 {
++      margin-bottom: 16px;
++    }
++
++    .content-section {
++      margin-bottom: 48px;
++      /* Compaction must not move the scroll anchor across the sticky boundary. */
++      overflow-anchor: none;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--site-nav-height);
++      container-type: scroll-state;
++      container-name: content-section-header;
++      z-index: 10;
++    }
++
++    .sticky-header {
++      padding: 24px;
++      background-color: var(--secondary);
++      color: var(--text);
++      border-radius: 8px;
++      font-size: 1.5rem;
++      transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
++    }
++
++    @container content-section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background-color: #0056b3;
++        color: white;
++        box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
++        padding: 10px 24px;
++      }
++    }
++
++    .sticky-container.is-stuck .sticky-header {
++      background-color: #0056b3;
++      color: white;
++      box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
++      padding: 10px 24px;
++    }
++
++    .section-details {
++      max-width: 760px;
++      padding: 48px 24px;
++    }
++
++    .section-details p + p {
++      margin-top: 20px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .sticky-header {
++        transition: none;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -174,10 +239,17 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="intro">
++      <h2>A little time for great coffee</h2>
++      <p>Start with a familiar favorite or discover something new. Our seasonal drinks bring together carefully roasted coffee, comforting flavors, and a little inspiration from the season.</p>
++    </div>
++
++    <section class="content-section" aria-labelledby="seasonal-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="seasonal-heading">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,9 +265,41 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="section-details">
++        <h3>Find your everyday favorite</h3>
++        <p>From the first warm sip of a maple oat latte to a refreshing afternoon cold brew, there’s a cup for every kind of day. Ask your barista about the roast behind your drink and the flavors you can expect.</p>
++        <p>Take your time, settle into a seat, and enjoy something made just for you. Explore our full menu for more espresso drinks, coffee classics, and seasonal discoveries.</p>
++        <a href="/menu" class="btn">Explore the Menu</a>
++      </div>
+     </section>
++
++    <section class="content-section" aria-labelledby="coffee-heading">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="coffee-heading">Behind Every Cup</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Thoughtfully Sourced</h3>
++          <p>Great coffee begins at its origin. Discover the people and places behind the beans in your cup.</p>
++        </div>
++        <div class="card">
++          <h3>Locally Roasted</h3>
++          <p>We roast close to home, bringing out the character that makes each coffee worth slowing down for.</p>
++        </div>
++        <div class="card">
++          <h3>Made for Your Day</h3>
++          <p>A quick morning espresso or a leisurely afternoon latte: make your daily coffee ritual your own.</p>
++        </div>
++      </div>
++      <div class="section-details">
++        <h3>Your neighborhood coffee stop</h3>
++        <p>Coffee is a reason to pause, connect, and share a moment. Whether you’re meeting a friend or taking a quiet break, there’s room for you at The Daily Grind.</p>
++        <p>Visit your nearest location to explore the day’s coffees and meet the team behind the counter. We’re happy to help you choose a drink or find a new favorite.</p>
++        <a href="/locations" class="btn">Find a Location</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +310,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const stickyHeaders = [...document.querySelectorAll('.sticky-container')];
++    const needsStickyFallback = !CSS.supports('container-type', 'scroll-state');
++    let navigationHeight = 0;
++    let pendingFrame = false;
++
++    // The document is the scroll root; keep headers below the actual nav height.
++    function updateStickyFallback() {
++      pendingFrame = false;
++      for (const container of stickyHeaders) {
++        const section = container.parentElement.getBoundingClientRect();
++        const header = container.getBoundingClientRect();
++        const stuck = section.top < navigationHeight && header.top >= navigationHeight - 1;
++        container.classList.toggle('is-stuck', stuck);
++      }
++    }
++
++    function queueStickyFallback() {
++      if (!pendingFrame) {
++        pendingFrame = true;
++        requestAnimationFrame(updateStickyFallback);
++      }
++    }
++
++    function updateNavigationHeight() {
++      navigationHeight = navigation.getBoundingClientRect().height;
++      document.documentElement.style.setProperty('--site-nav-height', `${navigationHeight}px`);
++      if (needsStickyFallback) queueStickyFallback();
++    }
++
++    new ResizeObserver(updateNavigationHeight).observe(navigation);
++    updateNavigationHeight();
++
++    if (needsStickyFallback) {
++      window.addEventListener('scroll', queueStickyFallback, { passive: true });
++      window.addEventListener('resize', queueStickyFallback);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

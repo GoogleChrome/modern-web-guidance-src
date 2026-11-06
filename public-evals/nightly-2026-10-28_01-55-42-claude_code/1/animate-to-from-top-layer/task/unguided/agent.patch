@@ -1,0 +1,372 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,246 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Logout confirmation modal */
++    .confirm-dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      width: min(92vw, 420px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
++    }
++
++    .confirm-dialog[open] {
++      animation: dialog-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
++    .confirm-dialog[open]::backdrop {
++      animation: backdrop-in 0.3s ease forwards;
++    }
++
++    .confirm-dialog.closing {
++      animation: dialog-out 0.22s ease-in forwards;
++    }
++
++    .confirm-dialog.closing::backdrop {
++      animation: backdrop-out 0.22s ease-in forwards;
++    }
++
++    .confirm-dialog__body {
++      padding: 28px 28px 20px;
++    }
++
++    .confirm-dialog h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 8px;
++    }
++
++    .confirm-dialog p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .confirm-dialog__actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      padding: 0 28px 24px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .confirm-dialog .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    @keyframes dialog-in {
++      from {
++        opacity: 0;
++        transform: translateY(-24px) scale(0.96);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @keyframes dialog-out {
++      from {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++
++      to {
++        opacity: 0;
++        transform: translateY(12px) scale(0.97);
++      }
++    }
++
++    @keyframes backdrop-in {
++      from {
++        background: rgba(62, 39, 35, 0);
++        backdrop-filter: blur(0);
++      }
++
++      to {
++        background: rgba(62, 39, 35, 0.55);
++        backdrop-filter: blur(2px);
++      }
++    }
++
++    @keyframes backdrop-out {
++      from {
++        background: rgba(62, 39, 35, 0.55);
++        backdrop-filter: blur(2px);
++      }
++
++      to {
++        background: rgba(62, 39, 35, 0);
++        backdrop-filter: blur(0);
++      }
++    }
++
++    /* Floating informational overlay */
++    .btn-ghost {
++      display: inline-block;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.8);
++      padding: 10px 20px;
++      border-radius: 5px;
++      margin-top: 15px;
++      margin-left: 10px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .btn-ghost:hover {
++      background: white;
++      color: var(--primary);
++    }
++
++    .info-overlay {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      max-width: min(92vw, 380px);
++      padding: 16px 18px;
++      background: var(--primary);
++      color: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
++    }
++
++    .info-overlay[hidden] {
++      display: none;
++    }
++
++    .info-overlay.entering {
++      animation: overlay-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
++    .info-overlay.leaving {
++      animation: overlay-out 0.25s ease-in forwards;
++    }
++
++    .info-overlay__icon {
++      flex-shrink: 0;
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++      display: grid;
++      place-items: center;
++      font-size: 0.95rem;
++    }
++
++    .info-overlay__text {
++      flex: 1;
++      font-size: 0.95rem;
++    }
++
++    .info-overlay__close {
++      flex-shrink: 0;
++      background: none;
++      border: none;
++      color: white;
++      font-size: 1.3rem;
++      line-height: 1;
++      cursor: pointer;
++      opacity: 0.8;
++      transition: opacity 0.3s;
++    }
++
++    .info-overlay__close:hover {
++      opacity: 1;
++    }
++
++    @keyframes overlay-in {
++      from {
++        opacity: 0;
++        transform: translateY(24px) scale(0.96);
++      }
++
++      to {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++    }
++
++    @keyframes overlay-out {
++      from {
++        opacity: 1;
++        transform: translateY(0) scale(1);
++      }
++
++      to {
++        opacity: 0;
++        transform: translateY(16px) scale(0.96);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .confirm-dialog[open],
++      .confirm-dialog.closing,
++      .confirm-dialog[open]::backdrop,
++      .confirm-dialog.closing::backdrop,
++      .info-overlay.entering,
++      .info-overlay.leaving {
++        animation-duration: 0.01ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,16 +401,19 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div>
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" class="btn-ghost" id="foobar">Online Ordering Status</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +447,99 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Logout confirmation modal -->
++  <dialog class="confirm-dialog" id="logout-dialog" aria-labelledby="logout-dialog-title">
++    <div class="confirm-dialog__body">
++      <h2 id="logout-dialog-title">Log out?</h2>
++      <p>You'll need to sign in again to view your rewards and order history.</p>
++    </div>
++    <div class="confirm-dialog__actions">
++      <button type="button" class="btn-outline" id="close-dialog-btn">Cancel</button>
++      <a href="/logout" class="btn" id="confirm-logout-btn">Log out</a>
++    </div>
++  </dialog>
++
++  <!-- Floating informational overlay -->
++  <div class="info-overlay" id="info-overlay" role="status" aria-live="polite" hidden>
++    <span class="info-overlay__icon" aria-hidden="true">i</span>
++    <span class="info-overlay__text">online ordering is currently offline</span>
++    <button type="button" class="info-overlay__close" id="info-overlay-close" aria-label="Dismiss">&times;</button>
++  </div>
++
++  <script>
++    (function () {
++      // --- Logout confirmation modal ---
++      var openBtn = document.getElementById('open-dialog-btn');
++      var closeBtn = document.getElementById('close-dialog-btn');
++      var dialog = document.getElementById('logout-dialog');
++
++      function openDialog() {
++        if (dialog.open) return;
++        dialog.classList.remove('closing');
++        dialog.showModal();
++      }
++
++      function closeDialog() {
++        if (!dialog.open || dialog.classList.contains('closing')) return;
++        dialog.classList.add('closing');
++        dialog.addEventListener('animationend', function onEnd(e) {
++          // Ignore the ::backdrop's animation; wait for the panel itself.
++          if (e.target !== dialog || e.pseudoElement) return;
++          dialog.removeEventListener('animationend', onEnd);
++          dialog.classList.remove('closing');
++          dialog.close();
++        });
++      }
++
++      openBtn.addEventListener('click', function (e) {
++        e.preventDefault();
++        openDialog();
++      });
++
++      closeBtn.addEventListener('click', closeDialog);
++
++      // Escape key: intercept the native close so the exit animation can play.
++      dialog.addEventListener('cancel', function (e) {
++        e.preventDefault();
++        closeDialog();
++      });
++
++      // Clicking the backdrop (outside the dialog box) dismisses it.
++      dialog.addEventListener('click', function (e) {
++        if (e.target === dialog) closeDialog();
++      });
++
++      // --- Floating informational overlay ---
++      var overlayBtn = document.getElementById('foobar');
++      var overlay = document.getElementById('info-overlay');
++      var overlayClose = document.getElementById('info-overlay-close');
++
++      function showOverlay() {
++        overlay.classList.remove('leaving');
++        overlay.hidden = false;
++        // Force a reflow so re-adding the class restarts the animation.
++        void overlay.offsetWidth;
++        overlay.classList.add('entering');
++      }
++
++      function hideOverlay() {
++        if (overlay.hidden || overlay.classList.contains('leaving')) return;
++        overlay.classList.remove('entering');
++        overlay.classList.add('leaving');
++        overlay.addEventListener('animationend', function onEnd(e) {
++          if (e.target !== overlay) return;
++          overlay.removeEventListener('animationend', onEnd);
++          overlay.classList.remove('leaving');
++          overlay.hidden = true;
++        });
++      }
++
++      overlayBtn.addEventListener('click', showOverlay);
++      overlayClose.addEventListener('click', hideOverlay);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

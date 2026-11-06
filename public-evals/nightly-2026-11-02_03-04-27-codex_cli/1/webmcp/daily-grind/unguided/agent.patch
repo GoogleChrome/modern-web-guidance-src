@@ -1,0 +1,383 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..20f9edb
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,21 @@
++# The Daily Grind
++
++A static homepage with client-side WebMCP tools. No backend or payment processing is included. Order drafts exist only in memory and reset on reload.
++
++## Browser tools
++
++The page feature-detects `document.modelContext.registerTool`, with a fallback to the older `navigator.modelContext.registerTool`. In browsers without WebMCP, the order form and drink buttons still work.
++
++| Tool | Input | Effect |
++| --- | --- | --- |
++| `get_seasonal_menu` | `{}` | Returns the displayed Seasonal Favorites menu, including drink IDs, names, descriptions, and details URLs. |
++| `order_drink` | `{"drinkId":"maple-oat-latte","quantity":2}` | Adds to the visible local order draft and scrolls to the order panel. Quantity defaults to 1; each drink is limited to 10 per draft. |
++| `highlight_drink` | `{"drinkId":"cold-brew"}` | Highlights, focuses, and scrolls to the chosen drink card. |
++
++Drink IDs are `maple-oat-latte`, `dark-roast-espresso`, and `cold-brew`. The menu is read from the page rather than maintained as a second list. Tool results include text content and structured data; invalid inputs return `isError: true` with an actionable error and do not change the order.
++
++The registration API follows the [WebMCP specification](https://webmachinelearning.github.io/webmcp/). Browser support is experimental and requires a compatible browser configuration.
++
++## Checks
++
++Run `npm test` for Node-based tests with a DOM test double. They cover registration, shared manual and agent ordering, input validation, highlighting, and operation without WebMCP. Run `node --check webmcp.js` for a syntax check. No build step is required for this static site.
+diff --git a/index.html b/index.html
+index 66c9173..d339611 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,30 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card.is-highlighted {
++      outline: 3px solid var(--accent);
++      background: #fff8ee;
++    }
++
++    #seasonal-favorites, #order-panel { scroll-margin-top: 100px; }
++    #order-panel { margin-top: 32px; padding: 24px; background: var(--secondary); border-radius: 8px; }
++    #order-form { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; margin: 16px 0; }
++    #order-form label { display: grid; gap: 4px; }
++    #order-form select, #order-form input { padding: 10px; font: inherit; max-width: 100%; }
++    #order-form .btn { margin-top: 0; }
++    #order-items { padding-left: 24px; }
++    #order-status { min-height: 1.6em; margin-top: 16px; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,30 +189,46 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-panel" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="maple-oat-latte">Add to order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="dark-roast-espresso">Add to order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="cold-brew">Add to order</button>
+         </div>
+       </div>
+     </section>
++    <section id="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Your drink order</h2>
++      <p>Build your order here. This is a local order draft; nothing is sent to the café or charged.</p>
++      <form id="order-form">
++        <label>Drink <select id="order-drink" name="drink" required></select></label>
++        <label>Quantity <input id="order-quantity" name="quantity" type="number" min="1" max="10" value="1" required></label>
++        <button class="btn" type="submit">Add to order</button>
++      </form>
++      <ul id="order-items" aria-label="Drinks in your order"></ul>
++      <p id="order-empty">Your order is empty.</p>
++      <button id="clear-order" class="btn" type="button" disabled>Clear order</button>
++      <p id="order-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +241,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./webmcp.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..a2a2adc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test tests/*.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/tests/webmcp.test.cjs b/tests/webmcp.test.cjs
+new file mode 100644
+index 0000000..0429a06
+--- /dev/null
++++ b/tests/webmcp.test.cjs
+@@ -0,0 +1,96 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const source = readFileSync(new URL('../webmcp.js', `file://${__filename}`), 'utf8');
++const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
++
++// A DOM test double exercises the client script without a browser or server.
++function element() {
++  return {
++    children: [], listeners: {}, dataset: {}, value: '', textContent: '',
++    append(child) { this.children.push(child); },
++    replaceChildren() { this.children = []; },
++    addEventListener(name, handler) { this.listeners[name] = handler; },
++    focus() { this.focused = true; },
++    scrollIntoView() { this.scrolled = true; },
++    classList: { toggle(name, active) { this[name] = active; } },
++  };
++}
++
++function setup(api = 'document') {
++  const nodes = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], element()]));
++  const cards = [...html.matchAll(/<div class="card" data-drink-id="([^"]+)"[^>]*>\s*<h3>(.*?)<\/h3>\s*<p>(.*?)<\/p>\s*<a href="([^"]+)"/g)].map(([, id, name, description, href]) => {
++    const card = element();
++    card.dataset.drinkId = id;
++    card.querySelector = selector => ({ h3: { textContent: name }, p: { textContent: description }, a: { getAttribute: () => href } })[selector];
++    return card;
++  });
++  const buttons = cards.map(card => Object.assign(element(), { dataset: { orderDrink: card.dataset.drinkId } }));
++  const tools = {};
++  const context = { registerTool(tool) { tools[tool.name] = tool; } };
++  const document = {
++    getElementById: id => nodes[id], createElement: element,
++    querySelectorAll: selector => selector === '[data-drink-id]' ? cards : buttons,
++  };
++  const navigator = {};
++  if (api === 'document') document.modelContext = context;
++  if (api === 'navigator') navigator.modelContext = context;
++  vm.runInNewContext(source, { document, navigator, console });
++  return { nodes, cards, buttons, tools };
++}
++
++test('registers tools with either WebMCP API and reads the displayed menu', async () => {
++  for (const api of ['document', 'navigator']) {
++    const { tools } = setup(api);
++    assert.deepEqual(Object.keys(tools), ['get_seasonal_menu', 'order_drink', 'highlight_drink']);
++    const { structuredContent: data } = await tools.get_seasonal_menu.execute({});
++    assert.equal(data.drinks.length, 3);
++    assert.equal(data.drinks[0].name, 'Maple Oat Latte');
++    assert.equal(data.drinks[2].id, 'cold-brew');
++    assert.equal(tools.get_seasonal_menu.annotations.readOnlyHint, true);
++  }
++});
++
++test('tool and manual actions share the order, reject invalid input, and clear it', async () => {
++  const { tools, nodes, buttons } = setup();
++  const response = await tools.order_drink.execute({ drinkId: 'cold-brew', quantity: 2 });
++  assert.equal(response.structuredContent.submitted, false);
++  assert.equal(nodes['order-items'].children[0].textContent, '2 × Cold Brew');
++  buttons[2].listeners.click();
++  assert.equal(nodes['order-items'].children[0].textContent, '3 × Cold Brew');
++  for (const input of [null, {}, { drinkId: '<script>' }, { drinkId: 'cold-brew', quantity: 0 }, { drinkId: 'cold-brew', quantity: 1.5 }, { drinkId: 'cold-brew', quantity: '2' }, { drinkId: 'cold-brew', quantity: 8 }]) {
++    assert.equal((await tools.order_drink.execute(input)).isError, true);
++    assert.equal(nodes['order-items'].children[0].textContent, '3 × Cold Brew');
++  }
++  nodes['order-drink'].value = 'maple-oat-latte';
++  nodes['order-quantity'].value = '2';
++  let prevented = false;
++  nodes['order-form'].listeners.submit({ preventDefault() { prevented = true; } });
++  assert.equal(prevented, true);
++  assert.equal(nodes['order-items'].children[1].textContent, '2 × Maple Oat Latte');
++  nodes['clear-order'].listeners.click();
++  assert.equal(nodes['order-items'].children.length, 0);
++  assert.equal(nodes['order-empty'].hidden, false);
++  assert.equal(nodes['clear-order'].disabled, true);
++});
++
++test('highlight changes focus and selection, and rejects unknown drinks', async () => {
++  const { tools, cards } = setup();
++  await tools.highlight_drink.execute({ drinkId: 'cold-brew' });
++  assert.equal(cards[2].focused, true);
++  assert.equal(cards[2].scrolled, true);
++  await tools.highlight_drink.execute({ drinkId: 'maple-oat-latte' });
++  assert.equal(cards[2].classList['is-highlighted'], false);
++  assert.equal(cards[0].classList['is-highlighted'], true);
++  assert.equal((await tools.highlight_drink.execute({ drinkId: 'unknown' })).isError, true);
++});
++
++test('manual ordering works without WebMCP', () => {
++  const { buttons, nodes, tools } = setup('unsupported');
++  assert.equal(Object.keys(tools).length, 0);
++  assert.equal(nodes['order-drink'].children.length, 3);
++  buttons[0].listeners.click();
++  assert.equal(nodes['order-items'].children[0].textContent, '1 × Maple Oat Latte');
++});
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..67ede1c
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,140 @@
++(() => {
++  'use strict';
++
++  // Read the displayed menu so browser agents and people see the same drinks.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map(card => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++    detailsUrl: card.querySelector('a').getAttribute('href'),
++  }));
++  const select = document.getElementById('order-drink');
++  const quantityInput = document.getElementById('order-quantity');
++  const status = document.getElementById('order-status');
++  const orderItems = document.getElementById('order-items');
++  const empty = document.getElementById('order-empty');
++  const clear = document.getElementById('clear-order');
++  const order = new Map();
++
++  for (const drink of menu) {
++    const option = document.createElement('option');
++    option.value = drink.id;
++    option.textContent = drink.name;
++    select.append(option);
++  }
++
++  function result(data, isError = false) {
++    return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: data, isError };
++  }
++
++  function error(message) {
++    return result({ error: message }, true);
++  }
++
++  function getOrder() {
++    return [...order].map(([id, quantity]) => ({
++      drinkId: id, name: menu.find(drink => drink.id === id).name, quantity,
++    }));
++  }
++
++  function renderOrder() {
++    orderItems.replaceChildren();
++    for (const item of getOrder()) {
++      const li = document.createElement('li');
++      li.textContent = `${item.quantity} × ${item.name}`;
++      orderItems.append(li);
++    }
++    empty.hidden = order.size > 0;
++    clear.disabled = order.size === 0;
++  }
++
++  function addDrink(input = {}) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) return error('Provide a drinkId and optional quantity.');
++    const { drinkId, quantity = 1 } = input;
++    const drink = menu.find(item => item.id === drinkId);
++    if (!drink) return error('Unknown drinkId. Use get_seasonal_menu to find available drinks.');
++    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) return error('Quantity must be an integer from 1 to 10.');
++    const total = (order.get(drinkId) || 0) + quantity;
++    if (total > 10) return error('A draft can contain at most 10 of each drink. Clear the order to start again.');
++    order.set(drinkId, total);
++    select.value = drinkId;
++    quantityInput.value = '1';
++    renderOrder();
++    status.textContent = `Added ${quantity} × ${drink.name} to your local order draft.`;
++    document.getElementById('order-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++    return result({ status: 'draft', message: status.textContent, items: getOrder(), submitted: false });
++  }
++
++  function highlightDrink(input = {}) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) return error('Provide a drinkId.');
++    const index = menu.findIndex(drink => drink.id === input.drinkId);
++    if (index < 0) return error('Unknown drinkId. Use get_seasonal_menu to find available drinks.');
++    cards.forEach((card, i) => card.classList.toggle('is-highlighted', i === index));
++    cards[index].focus({ preventScroll: true });
++    cards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
++    status.textContent = `Selected ${menu[index].name} in Seasonal Favorites.`;
++    return result({ highlightedDrink: menu[index] });
++  }
++
++  document.getElementById('order-form').addEventListener('submit', event => {
++    event.preventDefault();
++    const response = addDrink({ drinkId: select.value, quantity: Number(quantityInput.value) });
++    if (response.isError) status.textContent = response.structuredContent.error;
++  });
++  document.querySelectorAll('[data-order-drink]').forEach(button => {
++    button.addEventListener('click', () => {
++      const response = addDrink({ drinkId: button.dataset.orderDrink });
++      if (response.isError) status.textContent = response.structuredContent.error;
++    });
++  });
++  clear.addEventListener('click', () => {
++    order.clear();
++    renderOrder();
++    status.textContent = 'Your order draft has been cleared.';
++  });
++
++  const drinkIdSchema = { type: 'string', enum: menu.map(drink => drink.id) };
++  const tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Read the Seasonal Favorites drinks displayed on the Daily Grind homepage, including IDs, descriptions, and details links.',
++      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
++      execute: async () => result({ title: 'Seasonal Favorites', drinks: menu }),
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible local order draft and show the order panel. Repeated calls add quantities. Does not submit an order or charge money.',
++      inputSchema: {
++        type: 'object',
++        properties: { drinkId: drinkIdSchema, quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1 } },
++        required: ['drinkId'], additionalProperties: false,
++      },
++      execute: async input => addDrink(input),
++      annotations: { readOnlyHint: false },
++    },
++    {
++      name: 'highlight_drink',
++      description: 'Highlight and focus a seasonal drink card and scroll it into view on the homepage.',
++      inputSchema: { type: 'object', properties: { drinkId: drinkIdSchema }, required: ['drinkId'], additionalProperties: false },
++      execute: async input => highlightDrink(input),
++      annotations: { readOnlyHint: false },
++    },
++  ];
++
++  // Prefer the current API while supporting early-preview browsers.
++  const modelContext = document.modelContext ?? navigator.modelContext;
++  if (typeof modelContext?.registerTool === 'function') {
++    for (const tool of tools) {
++      try {
++        // Older implementations register synchronously; newer ones return promises.
++        Promise.resolve(modelContext.registerTool(tool)).catch(error => {
++          console.warn(`Could not register WebMCP tool ${tool.name}:`, error);
++        });
++      } catch (error) {
++        console.warn(`Could not register WebMCP tool ${tool.name}:`, error);
++      }
++    }
++  }
++})();

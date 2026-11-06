@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+index 66c9173..bcc5f08 100644
+--- a/index.html
++++ b/index.html
+@@ -31,17 +31,19 @@
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.65rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 10;
++      gap: 0.5rem 1.5rem;
++      flex-wrap: wrap;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.1rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+@@ -49,10 +51,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 1.25rem;
++      flex-wrap: wrap;
+     }
+ 
+     nav a {
+@@ -66,10 +66,10 @@
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    a:focus-visible,
++    summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
+     }
+ 
+     /* Hero Section */
+@@ -120,6 +120,37 @@
+       color: var(--primary);
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    summary {
++      cursor: pointer;
++      padding: 0.5rem;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    details[open] > summary {
++      margin-bottom: 0.75rem;
++    }
++
++    .card details {
++      margin-top: 0.5rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -138,33 +169,58 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 20px;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.75rem 1.25rem;
++      margin: 0.75rem 0 1.25rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    footer > p {
++      margin-top: 0.75rem;
++      font-size: 0.8rem;
++    }
++
++    @media (max-width: 480px) {
++      nav {
++        justify-content: center;
++        padding: 0.5rem 1rem;
++      }
++
++      nav ul {
++        justify-content: center;
++      }
++
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++
++      .grid {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -175,35 +231,49 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <details>
++            <summary>View details<span class="sr-only"> for Maple Oat Latte</span></summary>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">Explore Maple Oat Latte</a>
++          </details>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <details>
++            <summary>View details<span class="sr-only"> for Dark Roast Espresso</span></summary>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">Explore Dark Roast Espresso</a>
++          </details>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <details>
++            <summary>View details<span class="sr-only"> for Cold Brew</span></summary>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">Explore Cold Brew</a>
++          </details>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <details>
++      <summary>More from The Daily Grind</summary>
++      <div class="footer-links">
++        <a href="/about">Our Story</a>
++        <a href="/careers">Join the Team</a>
++        <a href="/contact">Contact Us</a>
++        <a href="/privacy-policy">Privacy</a>
++        <a href="/account">My Account</a>
++        <a href="/logout">Logout</a>
++      </div>
++    </details>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 

@@ -1,0 +1,433 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,127 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Stack navigation */
++    html,
++    body {
++      height: 100%;
++      overflow: hidden;
++    }
++
++    .Stack {
++      /* dvh tracks the mobile address bar as it shows/hides */
++      height: 100dvh;
++      display: grid;
++      grid-auto-flow: column;
++      grid-auto-columns: 100%;
++      grid-template-rows: 100%;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      overscroll-behavior: none;
++      scrollbar-width: none;
++    }
++
++    .Stack::-webkit-scrollbar {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .Stack {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .Stack-view {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      min-width: 0;
++    }
++
++    /* Transforms go on this inner element only; transforming the snap
++       target would feed back into the snap geometry. */
++    .Stack-viewContent {
++      width: 100%;
++      height: 100%;
++      background-color: var(--light);
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scrollbar-width: none;
++    }
++
++    .Stack-viewContent::-webkit-scrollbar {
++      display: none;
++    }
++
++    @supports (animation-timeline: view()) {
++      .Stack-viewContent {
++        animation: parallax linear both;
++        animation-timeline: view(inline);
++        animation-range: exit 0% exit 100%;
++      }
++
++      .Stack-view:not(:first-child) .Stack-viewContent {
++        animation: parallax linear both, shadow-fade linear both;
++        animation-timeline: view(inline), view(inline);
++        animation-range: exit 0% exit 100%, entry 0% exit 100%;
++      }
++
++      @keyframes parallax {
++        to {
++          transform: translateX(75%);
++          filter: brightness(0.8);
++        }
++      }
++
++      @keyframes shadow-fade {
++        0%, 100% { box-shadow: 0 0 1.5rem #0000; }
++        25%, 75% { box-shadow: 0 0 1.5rem #0004; }
++      }
++    }
++
++    /* Drill-down views */
++    .detail-header {
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++    }
++
++    .back {
++      font: inherit;
++      color: white;
++      background: none;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      padding: 5px 12px;
++      cursor: pointer;
++    }
++
++    .back:hover,
++    .back:focus-visible {
++      color: var(--accent);
++    }
++
++    .detail-body p {
++      margin-top: 1rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="Stack"></div>
++
++  <template id="root-template">
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -180,19 +294,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/view/1" class="btn item">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/view/2" class="btn item">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/view/3" class="btn item">View Details</a>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +320,278 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  </template>
++
++  <script>
++    const stack = document.querySelector('.Stack');
++    const rootTemplate = document.getElementById('root-template');
++
++    const ITEMS = {
++      1: {
++        title: 'Maple Oat Latte',
++        text: ['Creamy oat milk with a hint of Vermont maple syrup.', 'Pulled from a double shot of our house espresso, steamed with barista-grade oat milk, and finished with a drizzle of grade A amber maple. Available through the fall.']
++      },
++      2: {
++        title: 'Dark Roast Espresso',
++        text: ['Bold, smokey, and perfect for a morning boost.', 'A blend of Sumatran and Brazilian beans roasted dark in small batches, with notes of cocoa, toasted oak, and molasses.']
++      },
++      3: {
++        title: 'Cold Brew',
++        text: ['Steeped for 18 hours for maximum smoothness.', 'Coarsely ground beans steeped slowly in cold water, then filtered and served over ice. Low acidity, naturally sweet.']
++      }
++    };
++
++    let rootView = null;
++    const returnFocus = new WeakMap();
++    const entriesByDepth = new Map();
++    let currentDepth = 0;
++
++    // Routes live in the hash: "#/view/1". Anything else is the root ("/").
++    function getCurrentUrlPath() {
++      return location.hash.startsWith('#/') ? location.hash.slice(1) : '/';
++    }
++
++    function resolveUrl(urlPath) {
++      const match = /^\/view\/(\d+)$/.exec(urlPath);
++      return match && ITEMS[match[1]] || null;
++    }
++
++    function createRootView() {
++      const view = document.createElement('div');
++      view.className = 'Stack-view';
++      const content = document.createElement('div');
++      content.className = 'Stack-viewContent';
++      content.append(rootTemplate.content.cloneNode(true));
++      view.append(content);
++      return view;
++    }
++
++    function createDrillDownView(item) {
++      const view = document.createElement('div');
++      view.className = 'Stack-view';
++      view.innerHTML = `
++        <div class="Stack-viewContent">
++          <header class="detail-header">
++            <button type="button" class="back" aria-label="Back">&larr; Back</button>
++            <h2></h2>
++          </header>
++          <main class="container detail-body"></main>
++        </div>
++      `;
++      view.querySelector('h2').textContent = item.title;
++      view.querySelector('.detail-body').append(...item.text.map((t) => {
++        const p = document.createElement('p');
++        p.textContent = t;
++        return p;
++      }));
++      return view;
++    }
++
++    function drillDown(urlPath) {
++      const routeData = resolveUrl(urlPath);
++      if (!routeData) return;
++
++      const newDepth = currentDepth + 1;
++      history.pushState({depth: newDepth}, '', '#' + urlPath);
++      for (const d of entriesByDepth.keys()) {
++        if (d >= newDepth) entriesByDepth.delete(d);
++      }
++      currentDepth = newDepth;
++
++      const newView = createDrillDownView(routeData);
++      stack.appendChild(newView);
++      entriesByDepth.set(newDepth, {urlPath, view: newView});
++
++      // 'auto' defers to CSS scroll-behavior, which honors reduced motion.
++      stack.scrollBy({left: stack.clientWidth, behavior: 'auto'});
++    }
++
++    stack.addEventListener('click', (e) => {
++      if (e.target.closest('.back')) {
++        goBack();
++        return;
++      }
++
++      const link = e.target.closest('a.item');
++      if (!link || !stack.contains(link)) return;
++      // Leave modified and middle clicks to the browser (new tab/window).
++      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
++
++      const url = new URL(link.href);
++      if (url.origin !== location.origin || url.pathname !== location.pathname) return;
++      const urlPath = url.hash.slice(1);
++      const parentView = link.closest('.Stack-view');
++      if (!resolveUrl(urlPath) || !parentView) return;
++
++      e.preventDefault();
++      returnFocus.set(parentView, link);
++      drillDown(urlPath);
++    });
++
++    function goBack() {
++      // A deep link has nothing behind it, so synthesize the root first.
++      const atDeepLinkRoot = currentDepth === 0
++        && entriesByDepth.get(0)?.view !== rootView;
++      if (atDeepLinkRoot) {
++        synthesizeRootEntry();
++      } else {
++        history.back();
++      }
++    }
++
++    function synthesizeRootEntry() {
++      const newDepth = currentDepth + 1;
++      history.pushState({depth: newDepth}, '', location.pathname + location.search);
++
++      if (!rootView) {
++        rootView = createRootView();
++        stack.prepend(rootView);
++        // Keep the user on the deep-linked view while the root slides in behind it.
++        stack.scrollTo({left: stack.scrollLeft + stack.clientWidth, behavior: 'instant'});
++      }
++      entriesByDepth.set(newDepth, {urlPath: '/', view: rootView});
++
++      updateFromHistoryState(history.state);
++    }
++
++    window.addEventListener('popstate', (event) => {
++      updateFromHistoryState(event.state);
++    });
++
++    function updateFromHistoryState(state, behaviorOverride) {
++      const newDepth = state?.depth ?? 0;
++      const urlPath = getCurrentUrlPath();
++
++      const entry = entriesByDepth.get(newDepth) ?? {view: null};
++      if (entry.urlPath !== urlPath) {
++        entry.urlPath = urlPath;
++        entry.view = urlPath === '/' ? rootView : null;
++      }
++      entriesByDepth.set(newDepth, entry);
++
++      // Rebuild views that were pruned after a swipe-back.
++      for (let d = 0; d <= newDepth; d++) {
++        const e = entriesByDepth.get(d);
++        if (!e || e.view) continue;
++        if (e.urlPath === '/') {
++          rootView = createRootView();
++          stack.prepend(rootView);
++          e.view = rootView;
++          continue;
++        }
++        const routeData = resolveUrl(e.urlPath);
++        if (!routeData) continue;
++        const rebuilt = createDrillDownView(routeData);
++        stack.appendChild(rebuilt);
++        e.view = rebuilt;
++      }
++
++      currentDepth = newDepth;
++
++      const targetView = entriesByDepth.get(newDepth)?.view;
++      if (!targetView) return;
++
++      const toIdx = [...stack.children].indexOf(targetView);
++      const fromIdx = Math.round(stack.scrollLeft / stack.clientWidth);
++      if (fromIdx === toIdx) return;
++
++      // Instant for multi-step and spatially-forward jumps; smooth only for single-step back.
++      const forward = toIdx > fromIdx;
++      const multiStep = Math.abs(toIdx - fromIdx) > 1;
++      const behavior = behaviorOverride ?? (forward || multiStep ? 'instant' : 'auto');
++      stack.scrollTo({left: toIdx * stack.clientWidth, behavior});
++    }
++
++    function onActiveViewChanged(currentView) {
++      let seenCurrent = false;
++      for (const view of [...stack.children]) {
++        if (seenCurrent) {
++          for (const e of entriesByDepth.values()) {
++            if (e.view === view) e.view = null;
++          }
++          view.remove();
++        } else {
++          view.toggleAttribute('inert', view !== currentView);
++          if (view === currentView) seenCurrent = true;
++        }
++      }
++
++      // A swipe changed the visible view without touching history; sync it.
++      let currentViewDepth;
++      for (const [d, e] of entriesByDepth) {
++        if (e.view === currentView) currentViewDepth = d;
++      }
++      if (currentViewDepth !== undefined && currentViewDepth !== currentDepth) {
++        history.go(currentViewDepth - currentDepth);
++      }
++
++      const stored = returnFocus.get(currentView);
++      if (stored) {
++        stored.focus({preventScroll: true});
++        returnFocus.delete(currentView);
++      } else if (currentView !== rootView) {
++        currentView.querySelector('.back')?.focus({preventScroll: true});
++      }
++    }
++
++    stack.addEventListener('scrollsnapchange', (event) => {
++      onActiveViewChanged(event.snapTargetInline);
++    });
++
++    // Fallback for browsers without scroll snap events (Firefox, Safari).
++    if (!('onscrollsnapchange' in HTMLElement.prototype)) {
++      const viewObserver = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.intersectionRatio === 1) onActiveViewChanged(entry.target);
++        }
++      }, {root: stack, threshold: 1});
++
++      new MutationObserver((mutations) => {
++        for (const m of mutations) {
++          for (const node of m.addedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.observe(node);
++          }
++          for (const node of m.removedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.unobserve(node);
++          }
++        }
++      }).observe(stack, {childList: true});
++    }
++
++    // Fallback parallax for browsers without scroll-driven animations (Firefox).
++    if (!CSS.supports('animation-timeline: view()')) {
++      stack.addEventListener('scroll', () => {
++        const viewWidth = stack.clientWidth;
++        for (const view of stack.children) {
++          const progress = Math.min(1, Math.max(0, (stack.scrollLeft - view.offsetLeft) / viewWidth));
++          const content = view.firstElementChild;
++          content.style.transform = `translateX(${progress * 75}%)`;
++          content.style.filter = `brightness(${1 - progress * 0.2})`;
++        }
++      }, {passive: true});
++    }
++
++    // Init (handles deep links like #/view/1).
++    const initialUrlPath = getCurrentUrlPath();
++    const initialRouteData = resolveUrl(initialUrlPath);
++    let initialView;
++    if (initialRouteData) {
++      initialView = createDrillDownView(initialRouteData);
++    } else {
++      rootView = createRootView();
++      initialView = rootView;
++    }
++    stack.appendChild(initialView);
++    entriesByDepth.set(0, {urlPath: initialUrlPath, view: initialView});
++    history.replaceState({depth: 0}, '');
++    updateFromHistoryState(history.state, 'instant');
++
++    // Mark the initial view active (scrollsnapchange doesn't fire on load,
++    // and the IntersectionObserver fallback only reports it asynchronously).
++    if (!(rootView === initialView)) onActiveViewChanged(initialView);
++  </script>
++
+ </body>
+ 
+ </html>

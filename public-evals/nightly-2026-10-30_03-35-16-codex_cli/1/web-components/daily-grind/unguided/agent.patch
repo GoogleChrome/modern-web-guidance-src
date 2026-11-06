@@ -1,0 +1,493 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..f49581e
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,13 @@
++# The Daily Grind
++
++A static homepage using native Web Components and ES modules; no framework or build step is required. Serve `index.html` and `components/` together from the same static host.
++
++## Components
++
++- `<coffee-card name="Cold Brew" href="/menu/cold-brew">Description</coffee-card>` renders an article with an `h3`, slotted description, and a link named for the coffee. `name` and `href` react to attribute changes.
++- `<coffee-hero href="/order-online" action-label="Order Now">…</coffee-hero>` accepts a heading in `slot="heading"` and default content for the description. Supply an `h1` for the page hero. The action attributes react to changes.
++- `<site-navigation>` accepts brand text in `slot="brand"` and direct child anchors in its default slot. Add `data-outlined` to outline a link. Its mobile disclosure supports native button keyboard activation and Escape to close and restore focus. Links retain normal browser navigation behavior.
++
++Each component owns an open Shadow DOM and local styles. The page owns the grid, section headings, footer, and theme tokens (`--primary`, `--secondary`, `--accent`, `--text`, `--light`). The hero's optional `--hero-image` accepts a CSS `url(...)`; its default preserves the original Unsplash photo. Navigation is labelled “Primary”; use this component once per page. Shadow-local IDs can safely repeat across component instances.
++
++Run `npm run check` for JavaScript syntax checks. This does not start a server or exercise browser behavior.
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..50a28a1
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,52 @@
++import { baseStyles, buttonStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    ${buttonStyles}
++    :host { height: 100%; }
++    article {
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++    h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++    p { flex: 1; }
++  </style>
++  <article aria-labelledby="name">
++    <h3 id="name"></h3>
++    <p><slot></slot></p>
++    <a class="btn">View Details</a>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'href'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() { this.render(); }
++  attributeChangedCallback() { this.render(); }
++
++  render() {
++    const name = this.getAttribute('name') || 'Coffee';
++    this.shadowRoot.querySelector('h3').textContent = name;
++    const link = this.shadowRoot.querySelector('a');
++    link.setAttribute('aria-label', `View details for ${name}`);
++    // An omitted destination stays non-interactive rather than navigating to "null".
++    if (this.hasAttribute('href')) link.setAttribute('href', this.getAttribute('href'));
++    else link.removeAttribute('href');
++  }
++}
++
++if (!customElements.get('coffee-card')) customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/coffee-hero.js b/components/coffee-hero.js
+new file mode 100644
+index 0000000..3994544
+--- /dev/null
++++ b/components/coffee-hero.js
+@@ -0,0 +1,51 @@
++import { baseStyles, buttonStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    ${buttonStyles}
++    header {
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        var(--hero-image, url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 40px 20px;
++    }
++    ::slotted(h1) { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 1rem; }
++    ::slotted(p) { margin: 0; }
++  </style>
++  <header>
++    <slot name="heading"></slot>
++    <slot></slot>
++    <a class="btn"></a>
++  </header>
++`;
++
++export class CoffeeHero extends HTMLElement {
++  static observedAttributes = ['href', 'action-label'];
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() { this.render(); }
++  attributeChangedCallback() { this.render(); }
++
++  render() {
++    const link = this.shadowRoot.querySelector('a');
++    link.textContent = this.getAttribute('action-label') || 'Order Now';
++    if (this.hasAttribute('href')) link.setAttribute('href', this.getAttribute('href'));
++    else link.removeAttribute('href');
++  }
++}
++
++if (!customElements.get('coffee-hero')) customElements.define('coffee-hero', CoffeeHero);
+diff --git a/components/shared.js b/components/shared.js
+new file mode 100644
+index 0000000..b2cca5a
+--- /dev/null
++++ b/components/shared.js
+@@ -0,0 +1,24 @@
++// Theme tokens inherit through the shadow boundary; selectors stay local.
++export const baseStyles = `
++  :host { display: block; }
++  *, *::before, *::after { box-sizing: border-box; }
++  h1, h3, p { margin: 0; }
++  a:focus-visible, button:focus-visible {
++    outline: 3px solid var(--primary, #4e342e);
++    outline-offset: 4px;
++    box-shadow: 0 0 0 6px white;
++  }
++`;
++
++export const buttonStyles = `
++  .btn {
++    display: inline-block;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    text-decoration: none;
++    border-radius: 5px;
++    margin-top: 15px;
++  }
++  .btn:hover { background: #3e2723; }
++`;
+diff --git a/components/site-navigation.js b/components/site-navigation.js
+new file mode 100644
+index 0000000..f90aaf6
+--- /dev/null
++++ b/components/site-navigation.js
+@@ -0,0 +1,104 @@
++import { baseStyles } from './shared.js';
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    ${baseStyles}
++    :host { position: sticky; top: 0; z-index: 1000; }
++    nav {
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++    }
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++    .links { display: flex; align-items: center; gap: 20px; }
++    ::slotted(a) { color: white; text-decoration: none; font-size: 0.9rem; }
++    ::slotted(a:hover) { color: var(--accent, #ffab40); }
++    ::slotted(a:focus-visible) {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 4px;
++    }
++    ::slotted([data-outlined]) {
++      border: 1px solid var(--accent, #ffab40);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++    button {
++      display: none;
++      font: inherit;
++      color: white;
++      background: transparent;
++      border: 1px solid var(--accent, #ffab40);
++      border-radius: 4px;
++      padding: 10px 12px;
++      cursor: pointer;
++    }
++    @media (max-width: 760px) {
++      nav { flex-wrap: wrap; }
++      .logo { font-size: 1.2rem; }
++      button { display: block; }
++      .links { display: none; flex-basis: 100%; align-items: stretch; flex-direction: column; gap: 8px; }
++      nav[data-expanded] .links { display: flex; }
++      ::slotted(a) { padding: 10px 12px; }
++    }
++  </style>
++  <nav aria-label="Primary">
++    <div class="logo"><slot name="brand">THE DAILY GRIND</slot></div>
++    <button type="button" aria-expanded="false" aria-controls="navigation-links">Menu</button>
++    <div class="links" id="navigation-links"><slot></slot></div>
++  </nav>
++`;
++
++export class SiteNavigation extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
++    this.button = this.shadowRoot.querySelector('button');
++    this.nav = this.shadowRoot.querySelector('nav');
++  }
++
++  connectedCallback() {
++    // Reconnecting the element must not accumulate event listeners.
++    this.controller?.abort();
++    this.controller = new AbortController();
++    const { signal } = this.controller;
++    this.button.addEventListener('click', () => {
++      this.setExpanded(this.button.getAttribute('aria-expanded') !== 'true');
++    }, { signal });
++    this.shadowRoot.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && this.button.getAttribute('aria-expanded') === 'true') {
++        this.setExpanded(false);
++        this.button.focus();
++      }
++    }, { signal });
++    this.addEventListener('click', (event) => {
++      if (event.composedPath().some(node => node instanceof HTMLAnchorElement && node.hasAttribute('href'))) {
++        this.setExpanded(false);
++      }
++    }, { signal });
++    this.mobile = window.matchMedia('(max-width: 760px)');
++    this.mobile.addEventListener('change', () => {
++      const activeElement = this.shadowRoot.activeElement || document.activeElement;
++      const focusInLinks = activeElement instanceof HTMLAnchorElement && this.contains(activeElement);
++      this.setExpanded(false);
++      if (this.mobile.matches && focusInLinks) this.button.focus();
++      if (!this.mobile.matches && activeElement === this.button) {
++        this.querySelector('a[href]')?.focus();
++      }
++    }, { signal });
++    this.setExpanded(false);
++  }
++
++  disconnectedCallback() { this.controller?.abort(); }
++
++  setExpanded(expanded) {
++    this.button.setAttribute('aria-expanded', String(expanded));
++    this.nav.toggleAttribute('data-expanded', expanded);
++  }
++}
++
++if (!customElements.get('site-navigation')) customElements.define('site-navigation', SiteNavigation);
+diff --git a/index.html b/index.html
+index 66c9173..4e55fe2 100644
+--- a/index.html
++++ b/index.html
+@@ -27,72 +27,6 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -102,38 +36,27 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++    .section-title { text-align: center; }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
++    .skip-link {
++      position: fixed;
++      top: 8px;
++      left: 8px;
++      z-index: 2000;
+       padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      background: white;
++      color: var(--primary);
++      transform: translateY(-150%);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++    .skip-link:focus { transform: translateY(0); }
++    a:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
++    main { scroll-margin-top: 100px; }
+ 
+     footer {
+       background: var(--secondary);
+@@ -153,46 +76,42 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/site-navigation.js"></script>
++  <script type="module" src="./components/coffee-hero.js"></script>
++  <script type="module" src="./components/coffee-card.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <a class="skip-link" href="#main-content">Skip to content</a>
++
++  <site-navigation>
++    <span slot="brand">THE DAILY GRIND</span>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-outlined>Logout</a>
++  </site-navigation>
++
++  <coffee-hero href="/order-online" action-label="Order Now">
++    <h1 slot="heading">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  </coffee-hero>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" id="main-content" tabindex="-1">
++    <section aria-labelledby="seasonal-heading">
++      <h2 class="section-title" id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card name="Maple Oat Latte" href="/menu/seasonal">
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </coffee-card>
++        <coffee-card name="Dark Roast Espresso" href="/menu/espresso">
++          Bold, smokey, and perfect for a morning boost.
++        </coffee-card>
++        <coffee-card name="Cold Brew" href="/menu/cold-brew">
++          Steeped for 18 hours for maximum smoothness.
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..abc95c7 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,9 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
++    "check": "node --check components/shared.js && node --check components/coffee-card.js && node --check components/coffee-hero.js && node --check components/site-navigation.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

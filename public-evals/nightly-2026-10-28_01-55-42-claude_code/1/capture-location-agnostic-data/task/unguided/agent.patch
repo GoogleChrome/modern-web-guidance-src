@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,68 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Preferences (pickup reminder & coffee anniversary) */
++    .preferences {
++      margin-top: 60px;
++    }
++
++    .preferences .card {
++      text-align: left;
++    }
++
++    .preferences label {
++      display: block;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .preferences input[type="time"],
++    .preferences input[type="date"] {
++      width: 100%;
++      padding: 10px;
++      font: inherit;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++    }
++
++    .preferences .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .preferences .btn[disabled] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .preferences .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .preferences .saved {
++      margin-top: 12px;
++      font-size: 0.95rem;
++    }
++
++    .preferences .saved strong {
++      color: var(--primary);
++    }
++
++    .preferences .status {
++      font-size: 0.85rem;
++      color: #2e7d32;
++      margin-top: 8px;
++      min-height: 1.2em;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +254,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading" style="text-align: center;">My Coffee Preferences</h2>
++      <p style="text-align: center;">
++        These stay exactly as you set them, wherever you travel. No time zone adjustments, ever.
++      </p>
++      <div class="grid">
++        <form class="card" id="pickup-form" novalidate>
++          <h3>Daily Pickup Reminder</h3>
++          <label for="pickup-time">Remind me every day at</label>
++          <input type="time" id="pickup-time" name="pickup-time" required>
++          <p class="hint">Always the clock time you pick, in whatever city you wake up in.</p>
++          <button type="submit" class="btn">Save Reminder</button>
++          <p class="saved" id="pickup-saved" aria-live="polite"></p>
++          <p class="status" id="pickup-status" role="status"></p>
++        </form>
++
++        <form class="card" id="anniversary-form" novalidate>
++          <h3>Coffee Anniversary</h3>
++          <label for="anniversary-date">The day you became a regular</label>
++          <input type="date" id="anniversary-date" name="anniversary-date" required>
++          <p class="hint">Celebrated on this calendar date no matter where you are.</p>
++          <button type="submit" class="btn">Save Anniversary</button>
++          <p class="saved" id="anniversary-saved" aria-live="polite"></p>
++          <p class="status" id="anniversary-status" role="status"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +294,149 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Location-agnostic time & date storage.
++     *
++     * Both values are stored and displayed as the literal strings the user
++     * selected: "HH:MM" for the reminder and "YYYY-MM-DD" for the anniversary.
++     * They are NEVER converted to a Date object, a timestamp, or UTC. That is
++     * what keeps them stable when the device's time zone changes: a 07:30
++     * reminder is 07:30 on the wall clock in every city, and an anniversary on
++     * March 14 is March 14 even in a zone where "new Date('2024-03-14')"
++     * would roll back to March 13.
++     */
++    (function () {
++      'use strict';
++
++      var STORAGE_KEYS = {
++        pickupTime: 'dailyGrind.pickupReminderTime',   // "HH:MM" (24-hour)
++        anniversary: 'dailyGrind.coffeeAnniversaryDate' // "YYYY-MM-DD"
++      };
++
++      var TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
++      var DATE_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
++
++      var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
++        'July', 'August', 'September', 'October', 'November', 'December'];
++
++      function isValidTime(value) {
++        return TIME_PATTERN.test(value);
++      }
++
++      function isValidDate(value) {
++        var m = DATE_PATTERN.exec(value);
++        if (!m) return false;
++        var year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
++        var daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
++        return day <= daysInMonth[month - 1];
++      }
++
++      function isLeapYear(year) {
++        return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
++      }
++
++      // Formats "HH:MM" purely by string/arithmetic manipulation (no Date).
++      function formatTime(value) {
++        var m = TIME_PATTERN.exec(value);
++        var hours = Number(m[1]), minutes = m[2];
++        var suffix = hours < 12 ? 'AM' : 'PM';
++        var displayHour = hours % 12 === 0 ? 12 : hours % 12;
++        return displayHour + ':' + minutes + ' ' + suffix;
++      }
++
++      // Formats "YYYY-MM-DD" purely by string manipulation (no Date).
++      function formatDate(value) {
++        var m = DATE_PATTERN.exec(value);
++        var year = m[1], month = Number(m[2]), day = Number(m[3]);
++        return MONTHS[month - 1] + ' ' + day + ', ' + year;
++      }
++
++      function readStored(key, validate) {
++        try {
++          var value = window.localStorage.getItem(key);
++          return value && validate(value) ? value : '';
++        } catch (e) {
++          return '';
++        }
++      }
++
++      function writeStored(key, value) {
++        try {
++          window.localStorage.setItem(key, value);
++          return true;
++        } catch (e) {
++          return false;
++        }
++      }
++
++      function setupField(options) {
++        var form = document.getElementById(options.formId);
++        var input = document.getElementById(options.inputId);
++        var savedEl = document.getElementById(options.savedId);
++        var statusEl = document.getElementById(options.statusId);
++        if (!form || !input || !savedEl || !statusEl) return;
++
++        function render(value) {
++          savedEl.innerHTML = value
++            ? options.savedLabel + ' <strong>' + options.format(value) + '</strong>'
++            : options.emptyLabel;
++        }
++
++        var stored = readStored(options.storageKey, options.validate);
++        if (stored) input.value = stored;
++        render(stored);
++
++        form.addEventListener('submit', function (event) {
++          event.preventDefault();
++          // input.value is the raw "HH:MM" / "YYYY-MM-DD" string the user chose,
++          // independent of the browser's locale or time zone.
++          var value = input.value;
++          if (!options.validate(value)) {
++            statusEl.style.color = '#c62828';
++            statusEl.textContent = options.invalidMessage;
++            return;
++          }
++          if (writeStored(options.storageKey, value)) {
++            statusEl.style.color = '#2e7d32';
++            statusEl.textContent = 'Saved.';
++          } else {
++            statusEl.style.color = '#c62828';
++            statusEl.textContent = 'Saved for this visit only (storage unavailable).';
++          }
++          render(value);
++        });
++      }
++
++      setupField({
++        formId: 'pickup-form',
++        inputId: 'pickup-time',
++        savedId: 'pickup-saved',
++        statusId: 'pickup-status',
++        storageKey: STORAGE_KEYS.pickupTime,
++        validate: isValidTime,
++        format: formatTime,
++        savedLabel: 'Your daily reminder:',
++        emptyLabel: 'No reminder set yet.',
++        invalidMessage: 'Please choose a time for your reminder.'
++      });
++
++      setupField({
++        formId: 'anniversary-form',
++        inputId: 'anniversary-date',
++        savedId: 'anniversary-saved',
++        statusId: 'anniversary-status',
++        storageKey: STORAGE_KEYS.anniversary,
++        validate: isValidDate,
++        format: formatDate,
++        savedLabel: 'Your coffee anniversary:',
++        emptyLabel: 'No anniversary set yet.',
++        invalidMessage: 'Please choose a valid date.'
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

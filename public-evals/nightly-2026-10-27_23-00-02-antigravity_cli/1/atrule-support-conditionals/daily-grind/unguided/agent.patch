@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+index 66c9173..a6e78b8 100644
+--- a/index.html
++++ b/index.html
+@@ -40,6 +40,21 @@
+       z-index: 1000;
+     }
+ 
++    @supports (position: sticky) {
++      nav {
++        position: sticky;
++        top: 0;
++      }
++    }
++
++    @supports at-rule(@layer) {
++      @layer components {
++        nav {
++          backdrop-filter: blur(8px);
++        }
++      }
++    }
++
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+@@ -93,6 +108,38 @@
+       margin-bottom: 1rem;
+     }
+ 
++    @supports at-rule(@keyframes) {
++      @keyframes fadeIn {
++        from {
++          opacity: 0;
++          transform: translateY(10px);
++        }
++        to {
++          opacity: 1;
++          transform: translateY(0);
++        }
++      }
++
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        animation: fadeIn 0.8s ease-out forwards;
++      }
++    }
++
++    @supports at-rule(@starting-style) {
++      .hero {
++        transition: opacity 0.6s ease-out;
++        opacity: 1;
++      }
++
++      @starting-style {
++        .hero {
++          opacity: 0;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -107,6 +154,14 @@
+       margin-top: 20px;
+     }
+ 
++    @supports (display: grid) {
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++        gap: 20px;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -120,6 +175,37 @@
+       color: var(--primary);
+     }
+ 
++    @supports at-rule(@container) {
++      .grid {
++        container-type: inline-size;
++        container-name: favorites-grid;
++      }
++
++      @container favorites-grid (min-width: 600px) {
++        .card {
++          padding: 24px;
++          transition: transform 0.3s ease, box-shadow 0.3s ease;
++        }
++
++        .card:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
++
++    @supports at-rule(@scope) {
++      @scope (.card) {
++        h3 {
++          color: var(--primary);
++        }
++
++        p {
++          color: var(--text);
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);

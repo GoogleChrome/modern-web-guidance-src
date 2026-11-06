@@ -1,0 +1,719 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b1d175 100644
+--- a/index.html
++++ b/index.html
+@@ -152,61 +152,684 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SPA View Caching */
++    .spa-view {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++      /* Prevent hidden views from taking up physical space in layout flow */
++      position: absolute;
++      width: 0;
++      height: 0;
++      padding: 0;
++      margin: 0;
++      border: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .view-header {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .view-header h1,
++    .view-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .filter-tabs {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      margin-bottom: 24px;
++      flex-wrap: wrap;
++    }
++
++    .filter-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 8px 16px;
++      border-radius: 20px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: all 0.2s;
++    }
++
++    .filter-btn.active,
++    .filter-btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .price-tag {
++      display: inline-block;
++      margin-top: 8px;
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++      font-weight: 600;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .status-banner {
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      padding: 15px 20px;
++      border-radius: 4px;
++      margin-bottom: 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary Navigation">
++    <a href="/" class="logo" data-route="home" style="color: white; text-decoration: none;">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/" data-route="home" aria-current="page">Home</a></li>
++      <li><a href="/menu" data-route="menu">Menu</a></li>
++      <li><a href="/locations" data-route="locations">Locations</a></li>
++      <li><a href="/rewards" data-route="rewards">Rewards</a></li>
++      <li><a href="/account" data-route="account">My Account</a></li>
++      <li><a href="/logout" data-route="logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <main id="app-views">
++    <!-- Home View -->
++    <div id="view-home" class="spa-view" data-view="home" tabindex="-1" aria-hidden="false">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" data-route="order-online" class="btn">Order Now</a>
++      </header>
++
++      <div class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <span class="badge">Autumn Special</span>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <div class="price-tag">$5.75</div><br>
++              <a href="/menu/seasonal" data-route="menu" data-category="seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <span class="badge">Roaster's Pick</span>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <div class="price-tag">$3.50</div><br>
++              <a href="/menu/espresso" data-route="menu" data-category="espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <span class="badge">House Signature</span>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <div class="price-tag">$4.75</div><br>
++              <a href="/menu/cold-brew" data-route="menu" data-category="cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </div>
++    </div>
++
++    <!-- Menu View -->
++    <div id="view-menu" class="spa-view inactive" data-view="menu" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Our Artisanal Menu</h1>
++          <p>Filter our handcrafted beverages and customize your tasting notes—your filter &amp; search stay preserved as you navigate.</p>
++        </div>
++
++        <div class="filter-tabs" role="group" aria-label="Menu category filter">
++          <button type="button" class="filter-btn active" data-filter="all">All Drinks</button>
++          <button type="button" class="filter-btn" data-filter="seasonal">Seasonal</button>
++          <button type="button" class="filter-btn" data-filter="espresso">Espresso</button>
++          <button type="button" class="filter-btn" data-filter="cold-brew">Cold Brew</button>
++        </div>
++
++        <div class="form-group" style="max-width: 420px; margin: 0 auto 24px;">
++          <label for="menu-search">Search Menu</label>
++          <input type="search" id="menu-search" placeholder="Search drinks or tasting notes...">
++        </div>
++
++        <div class="grid" id="menu-grid">
++          <div class="card" data-item-category="seasonal">
++            <span class="badge">Seasonal</span>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy steamed oat milk blended with pure Grade-A Vermont maple syrup and a double shot of espresso.</p>
++            <div class="price-tag">$5.75</div><br>
++            <a href="/order-online" data-route="order-online" data-item="Maple Oat Latte" class="btn">Customize &amp; Order</a>
++          </div>
++          <div class="card" data-item-category="seasonal">
++            <span class="badge">Seasonal</span>
++            <h3>Cardamom Honey Cortado</h3>
++            <p>Equal parts rich espresso and warm velvety milk infused with wildflower honey and freshly ground cardamom.</p>
++            <div class="price-tag">$5.25</div><br>
++            <a href="/order-online" data-route="order-online" data-item="Cardamom Honey Cortado" class="btn">Customize &amp; Order</a>
++          </div>
++          <div class="card" data-item-category="espresso">
++            <span class="badge">Espresso</span>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey single-origin Sumatra beans pulled to perfection with a rich hazelnut crema.</p>
++            <div class="price-tag">$3.50</div><br>
++            <a href="/order-online" data-route="order-online" data-item="Dark Roast Espresso" class="btn">Customize &amp; Order</a>
++          </div>
++          <div class="card" data-item-category="espresso">
++            <span class="badge">Espresso</span>
++            <h3>Velvet Flat White</h3>
++            <p>Ristretto espresso shots topped with micro-foamed whole or plant milk for a silky finish.</p>
++            <div class="price-tag">$4.95</div><br>
++            <a href="/order-online" data-route="order-online" data-item="Velvet Flat White" class="btn">Customize &amp; Order</a>
++          </div>
++          <div class="card" data-item-category="cold-brew">
++            <span class="badge">Cold Brew</span>
++            <h3>18-Hour Classic Cold Brew</h3>
++            <p>Slow-steeped Ethiopian &amp; Colombian blend with natural dark chocolate and citrus notes.</p>
++            <div class="price-tag">$4.75</div><br>
++            <a href="/order-online" data-route="order-online" data-item="18-Hour Classic Cold Brew" class="btn">Customize &amp; Order</a>
++          </div>
++          <div class="card" data-item-category="cold-brew">
++            <span class="badge">Cold Brew</span>
++            <h3>Vanilla Sweet Cream Nitro</h3>
++            <p>Cascading nitrogen-infused cold brew topped with house-made Madagascar vanilla sweet cream.</p>
++            <div class="price-tag">$5.50</div><br>
++            <a href="/order-online" data-route="order-online" data-item="Vanilla Sweet Cream Nitro" class="btn">Customize &amp; Order</a>
++          </div>
++        </div>
++      </div>
++    </div>
++
++    <!-- Locations View -->
++    <div id="view-locations" class="spa-view inactive" data-view="locations" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Our Coffeehouses</h1>
++          <p>Find a neighborhood roastery near you and select your preferred pickup spot.</p>
++        </div>
++
++        <div class="form-group" style="max-width: 420px; margin: 0 auto 24px;">
++          <label for="preferred-store">Preferred Pickup Location</label>
++          <select id="preferred-store">
++            <option value="downtown">Downtown Roastery &amp; Reserve — 412 Main St</option>
++            <option value="riverside">Riverside Café — 88 Harbor Blvd</option>
++            <option value="university">University District — 1204 College Ave</option>
++          </select>
++        </div>
++
++        <div class="grid">
++          <div class="card">
++            <span class="badge">Flagship Roastery</span>
++            <h3>Downtown Roastery &amp; Reserve</h3>
++            <p>412 Main St &bull; Open Daily 6:00 AM – 8:00 PM</p>
++            <p style="margin-top: 8px; font-size: 0.9rem;">Pour-over bar, small-batch roasting tours, and shaded patio seating.</p>
++            <a href="/order-online" data-route="order-online" class="btn">Order From Here</a>
++          </div>
++          <div class="card">
++            <span class="badge">Waterfront</span>
++            <h3>Riverside Café</h3>
++            <p>88 Harbor Blvd &bull; Open Daily 6:30 AM – 7:00 PM</p>
++            <p style="margin-top: 8px; font-size: 0.9rem;">Freshly baked sourdough pastries, nitro on tap, and riverwalk views.</p>
++            <a href="/order-online" data-route="order-online" class="btn">Order From Here</a>
++          </div>
++          <div class="card">
++            <span class="badge">Study Lounge</span>
++            <h3>University District</h3>
++            <p>1204 College Ave &bull; Open Daily 6:00 AM – 10:00 PM</p>
++            <p style="margin-top: 8px; font-size: 0.9rem;">High-speed fiber Wi-Fi, quiet study booths, and late-night espresso.</p>
++            <a href="/order-online" data-route="order-online" class="btn">Order From Here</a>
++          </div>
++        </div>
++      </div>
++    </div>
++
++    <!-- Rewards View -->
++    <div id="view-rewards" class="spa-view inactive" data-view="rewards" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Daily Grind Perks</h1>
++          <p>Earn beans on every craft beverage and redeem for complimentary drinks and single-origin bags.</p>
++        </div>
++
++        <div class="status-banner">
++          <div>
++            <strong>Current Balance: <span id="rewards-points">340</span> Beans</strong>
++            <p style="font-size: 0.9rem;">Gold Roaster Status &bull; 60 Beans away from your next free handcrafted drink.</p>
++          </div>
++          <a href="/order-online" data-route="order-online" class="btn" style="margin-top: 0;">Earn More Beans</a>
++        </div>
++
++        <div class="grid">
++          <div class="card">
++            <span class="badge">100 Beans</span>
++            <h3>Free Espresso Shot or Syrup</h3>
++            <p>Add an extra single-origin shot or house-made syrup to any beverage.</p>
++            <button type="button" class="btn redeem-btn" data-cost="100" style="border: none; cursor: pointer;">Redeem 100 Beans</button>
++          </div>
++          <div class="card">
++            <span class="badge">200 Beans</span>
++            <h3>Artisanal Bakery Item</h3>
++            <p>Enjoy an almond croissant, maple scone, or morning bun fresh from the oven.</p>
++            <button type="button" class="btn redeem-btn" data-cost="200" style="border: none; cursor: pointer;">Redeem 200 Beans</button>
++          </div>
++          <div class="card">
++            <span class="badge">400 Beans</span>
++            <h3>Whole Bean Bag (12 oz)</h3>
++            <p>Take home a freshly roasted bag of our seasonal single-origin or signature blend.</p>
++            <button type="button" class="btn redeem-btn" data-cost="400" style="border: none; cursor: pointer;">Redeem 400 Beans</button>
++          </div>
++        </div>
++      </div>
++    </div>
++
++    <!-- Account View -->
++    <div id="view-account" class="spa-view inactive" data-view="account" tabindex="-1" aria-hidden="true">
++      <div class="container" style="max-width: 680px;">
++        <div class="view-header">
++          <h1>My Account Preferences</h1>
++          <p>Customize your default coffee profile. Any edits stay preserved in the DOM even if you switch tabs before saving.</p>
++        </div>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++        <div class="card" style="text-align: left;">
++          <form id="account-form">
++            <div class="form-group">
++              <label for="account-name">Full Name</label>
++              <input type="text" id="account-name" value="Alex Rivera">
++            </div>
++            <div class="form-group">
++              <label for="account-milk">Default Milk Preference</label>
++              <select id="account-milk">
++                <option value="oat" selected>Barista Oat Milk</option>
++                <option value="whole">Organic Whole Milk</option>
++                <option value="almond">Unsweetened Almond Milk</option>
++                <option value="none">Black / No Milk</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="account-notes">Barista Preparation Notes</label>
++              <textarea id="account-notes" rows="3" placeholder="e.g., Extra hot, light foam, reusable cup...">Extra hot, light cinnamon dusting</textarea>
++            </div>
++            <button type="submit" class="btn" style="border: none; cursor: pointer;">Save Preferences</button>
++            <span id="account-saved-msg" style="margin-left: 12px; font-size: 0.9rem; color: var(--primary);" aria-live="polite"></span>
++          </form>
++        </div>
++      </div>
++    </div>
++
++    <!-- Order Online View -->
++    <div id="view-order-online" class="spa-view inactive" data-view="order-online" tabindex="-1" aria-hidden="true">
++      <div class="container" style="max-width: 680px;">
++        <div class="view-header">
++          <h1>Order Online for Pickup</h1>
++          <p>Craft your drink order below. Navigate back to Menu or Locations anytime—your in-progress order state remains intact.</p>
++        </div>
++
++        <div class="card" style="text-align: left;">
++          <form id="order-form">
++            <div class="form-group">
++              <label for="order-drink">Select Handcrafted Drink</label>
++              <select id="order-drink">
++                <option value="Maple Oat Latte">Maple Oat Latte ($5.75)</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso ($3.50)</option>
++                <option value="18-Hour Classic Cold Brew">18-Hour Classic Cold Brew ($4.75)</option>
++                <option value="Cardamom Honey Cortado">Cardamom Honey Cortado ($5.25)</option>
++                <option value="Velvet Flat White">Velvet Flat White ($4.95)</option>
++                <option value="Vanilla Sweet Cream Nitro">Vanilla Sweet Cream Nitro ($5.50)</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="order-size">Cup Size</label>
++              <select id="order-size">
++                <option value="8oz">8 oz (Short)</option>
++                <option value="12oz" selected>12 oz (Regular)</option>
++                <option value="16oz">16 oz (Large)</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="order-instructions">Special Instructions</label>
++              <input type="text" id="order-instructions" placeholder="Add extra shot, half sweet, oat milk...">
++            </div>
++            <button type="submit" class="btn" style="border: none; cursor: pointer;">Place Pickup Order</button>
++            <span id="order-status-msg" style="margin-left: 12px; font-size: 0.9rem; color: var(--primary);" aria-live="polite"></span>
++          </form>
++        </div>
++      </div>
++    </div>
++
++    <!-- About View -->
++    <div id="view-about" class="spa-view inactive" data-view="about" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Our Story</h1>
++          <p>Direct-trade coffee roasted in small batches since 2014.</p>
++        </div>
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3>From Farm to Roastery</h3>
++          <p>We partner directly with sustainable smallholder farms in Ethiopia, Colombia, Sumatra, and Guatemala. Every batch is profiled and roasted daily in our vintage cast-iron drum roasters to highlight each origin's natural sweetness and terroir.</p>
++        </div>
++      </div>
++    </div>
++
++    <!-- Careers View -->
++    <div id="view-careers" class="spa-view inactive" data-view="careers" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Join the Team</h1>
++          <p>Passionate about specialty coffee and warm hospitality? Grow your craft with us.</p>
++        </div>
++        <div class="grid">
++          <div class="card">
++            <h3>Lead Barista</h3>
++            <p>Full-Time &bull; Downtown Roastery &bull; SCA certification stipend &amp; free weekly coffee beans.</p>
++          </div>
++          <div class="card">
++            <h3>Assistant Roaster</h3>
++            <p>Full-Time &bull; Roastery Production &bull; Sample roasting, cupping quality control, and bag fulfillment.</p>
++          </div>
++        </div>
++      </div>
++    </div>
++
++    <!-- Contact View -->
++    <div id="view-contact" class="spa-view inactive" data-view="contact" tabindex="-1" aria-hidden="true">
++      <div class="container" style="max-width: 680px;">
++        <div class="view-header">
++          <h1>Contact Us</h1>
++          <p>Questions about wholesale beans, catering, or your recent visit? Send us a note.</p>
++        </div>
++        <div class="card" style="text-align: left;">
++          <form id="contact-form">
++            <div class="form-group">
++              <label for="contact-email">Your Email</label>
++              <input type="email" id="contact-email" placeholder="you@example.com">
++            </div>
++            <div class="form-group">
++              <label for="contact-message">Message</label>
++              <textarea id="contact-message" rows="4" placeholder="How can we help?"></textarea>
++            </div>
++            <button type="submit" class="btn" style="border: none; cursor: pointer;">Send Message</button>
++            <span id="contact-status-msg" style="margin-left: 12px; font-size: 0.9rem; color: var(--primary);" aria-live="polite"></span>
++          </form>
++        </div>
++      </div>
++    </div>
++
++    <!-- Privacy Policy View -->
++    <div id="view-privacy-policy" class="spa-view inactive" data-view="privacy-policy" tabindex="-1" aria-hidden="true">
++      <div class="container">
++        <div class="view-header">
++          <h1>Privacy Policy</h1>
++          <p>How we safeguard your account, order history, and Daily Grind Perks data.</p>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3>Your Data &amp; Privacy</h3>
++          <p>We collect only the information needed to fulfill your coffee orders and track your loyalty beans. We never sell your personal information to third-party brokers.</p>
+         </div>
++      </div>
++    </div>
++
++    <!-- Logout View -->
++    <div id="view-logout" class="spa-view inactive" data-view="logout" tabindex="-1" aria-hidden="true">
++      <div class="container" style="max-width: 560px;">
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h2>You Have Signed Out</h2>
++          <p style="margin-top: 8px;">Thank you for visiting The Daily Grind. See you for your next cup soon!</p>
++          <a href="/" data-route="home" class="btn">Return Home</a>
+         </div>
+       </div>
+-    </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-route="about">Our Story</a> |
++      <a href="/careers" data-route="careers">Join the Team</a> |
++      <a href="/contact" data-route="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-route="privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ROUTE_MAP = {
++        '/': { viewId: 'view-home', routeKey: 'home' },
++        '/menu': { viewId: 'view-menu', routeKey: 'menu' },
++        '/menu/seasonal': { viewId: 'view-menu', routeKey: 'menu', category: 'seasonal' },
++        '/menu/espresso': { viewId: 'view-menu', routeKey: 'menu', category: 'espresso' },
++        '/menu/cold-brew': { viewId: 'view-menu', routeKey: 'menu', category: 'cold-brew' },
++        '/locations': { viewId: 'view-locations', routeKey: 'locations' },
++        '/rewards': { viewId: 'view-rewards', routeKey: 'rewards' },
++        '/account': { viewId: 'view-account', routeKey: 'account' },
++        '/logout': { viewId: 'view-logout', routeKey: 'logout' },
++        '/order-online': { viewId: 'view-order-online', routeKey: 'order-online' },
++        '/about': { viewId: 'view-about', routeKey: 'about' },
++        '/careers': { viewId: 'view-careers', routeKey: 'careers' },
++        '/contact': { viewId: 'view-contact', routeKey: 'contact' },
++        '/privacy-policy': { viewId: 'view-privacy-policy', routeKey: 'privacy-policy' }
++      };
++
++      function applyMenuFilter(category) {
++        const filterButtons = document.querySelectorAll('.filter-btn');
++        filterButtons.forEach((btn) => {
++          btn.classList.toggle('active', btn.dataset.filter === category);
++        });
++        updateMenuItems();
++      }
++
++      function updateMenuItems() {
++        const activeFilterBtn = document.querySelector('.filter-btn.active');
++        const activeCategory = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
++        const query = (document.getElementById('menu-search')?.value || '').trim().toLowerCase();
++
++        document.querySelectorAll('#menu-grid .card').forEach((card) => {
++          const matchesCategory = activeCategory === 'all' || card.dataset.itemCategory === activeCategory;
++          const matchesQuery = !query || card.textContent.toLowerCase().includes(query);
++          card.hidden = !(matchesCategory && matchesQuery);
++        });
++      }
++
++      function switchToView(viewId, options = {}) {
++        const targetView = document.getElementById(viewId);
++        if (!targetView) return;
++
++        // Hide all views while keeping their DOM structure & rendering state cached via content-visibility: hidden
++        document.querySelectorAll('.spa-view').forEach((view) => {
++          const isTarget = view === targetView;
++          view.classList.toggle('inactive', !isTarget);
++          view.setAttribute('aria-hidden', isTarget ? 'false' : 'true');
++        });
++
++        // Update active link indicator in navigation
++        const routeKey = targetView.dataset.view;
++        document.querySelectorAll('nav a[data-route]').forEach((navLink) => {
++          if (navLink.dataset.route === routeKey && !navLink.classList.contains('logo')) {
++            navLink.setAttribute('aria-current', 'page');
++          } else {
++            navLink.removeAttribute('aria-current');
++          }
++        });
++
++        if (options.category) {
++          applyMenuFilter(options.category);
++        }
++
++        if (options.item) {
++          const drinkSelect = document.getElementById('order-drink');
++          if (drinkSelect) {
++            drinkSelect.value = options.item;
++          }
++        }
++
++        if (options.moveFocus !== false) {
++          // MANDATORY: Move focus to the new view to ensure a logical tab-order
++          targetView.focus();
++        }
++      }
++
++      function resolvePath(pathname) {
++        const normalized = pathname.length > 1 && pathname.endsWith('/')
++          ? pathname.slice(0, -1)
++          : pathname;
++        return ROUTE_MAP[normalized] || ROUTE_MAP['/'];
++      }
++
++      function navigateTo(pathname, extraOptions = {}) {
++        const matched = resolvePath(pathname);
++        if (window.location.pathname !== pathname) {
++          window.history.pushState({ viewId: matched.viewId, pathname }, '', pathname);
++        }
++        switchToView(matched.viewId, {
++          category: extraOptions.category || matched.category,
++          item: extraOptions.item,
++          moveFocus: true
++        });
++      }
++
++      // Intercept internal SPA navigation clicks
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('a[href]');
++        if (!link) return;
++
++        const href = link.getAttribute('href');
++        if (!href || !href.startsWith('/') || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
++          return;
++        }
++
++        event.preventDefault();
++        navigateTo(href, {
++          category: link.dataset.category,
++          item: link.dataset.item
++        });
++      });
++
++      // Handle browser Back/Forward buttons
++      window.addEventListener('popstate', () => {
++        const matched = resolvePath(window.location.pathname);
++        switchToView(matched.viewId, {
++          category: matched.category,
++          moveFocus: true
++        });
++      });
++
++      // Menu interactive filtering & search
++      document.querySelectorAll('.filter-btn').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          applyMenuFilter(btn.dataset.filter);
++        });
++      });
++
++      const menuSearch = document.getElementById('menu-search');
++      if (menuSearch) {
++        menuSearch.addEventListener('input', updateMenuItems);
++      }
++
++      // Rewards redemption interaction
++      document.querySelectorAll('.redeem-btn').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const cost = Number(btn.dataset.cost || 0);
++          const pointsEl = document.getElementById('rewards-points');
++          const current = Number(pointsEl.textContent || 0);
++          if (current >= cost) {
++            pointsEl.textContent = String(current - cost);
++            btn.textContent = 'Redeemed!';
++          } else {
++            btn.textContent = 'Need More Beans';
++          }
++        });
++      });
++
++      // Preserve form state without full-page reloads
++      const accountForm = document.getElementById('account-form');
++      if (accountForm) {
++        accountForm.addEventListener('submit', (e) => {
++          e.preventDefault();
++          document.getElementById('account-saved-msg').textContent = 'Preferences saved!';
++        });
++      }
++
++      const orderForm = document.getElementById('order-form');
++      if (orderForm) {
++        orderForm.addEventListener('submit', (e) => {
++          e.preventDefault();
++          const drink = document.getElementById('order-drink').value;
++          const size = document.getElementById('order-size').value;
++          document.getElementById('order-status-msg').textContent = `Order queued: ${size} ${drink}`;
++        });
++      }
++
++      const contactForm = document.getElementById('contact-form');
++      if (contactForm) {
++        contactForm.addEventListener('submit', (e) => {
++          e.preventDefault();
++          document.getElementById('contact-status-msg').textContent = 'Message sent! We will reply shortly.';
++        });
++      }
++
++      // Initialize view based on initial URL path without stealing initial focus
++      const initialRoute = resolvePath(window.location.pathname);
++      switchToView(initialRoute.viewId, {
++        category: initialRoute.category,
++        moveFocus: false
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

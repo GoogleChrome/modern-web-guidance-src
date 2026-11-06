@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,8 +19,128 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scrollbars */
++    html {
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: auto;
++    }
++
++    ::-webkit-scrollbar {
++      width: 14px;
++      height: 14px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-left: 1px solid rgba(0, 0, 0, 0.15);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background-color: var(--primary);
++      border-radius: 7px;
++      border: 3px solid var(--secondary);
++      min-height: 40px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background-color: #3e2723;
++    }
++
++    ::-webkit-scrollbar-thumb:active {
++      background-color: #271815;
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--secondary);
++    }
++
++    /* High contrast support */
++    @media (prefers-contrast: more) {
++      html {
++        scrollbar-color: #000000 #ffffff;
++      }
++
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: #ffffff;
++        border-left: 2px solid #000000;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: #000000;
++        border-radius: 4px;
++        border: 2px solid #ffffff;
++        outline: 2px solid #000000;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background-color: #000000;
++        outline: 3px solid #000000;
++      }
++
++      ::-webkit-scrollbar-corner {
++        background: #ffffff;
++      }
++
++      @media (prefers-color-scheme: dark) {
++        html {
++          scrollbar-color: #ffffff #000000;
++        }
++
++        ::-webkit-scrollbar-track {
++          background: #000000;
++          border-left: 2px solid #ffffff;
++        }
++
++        ::-webkit-scrollbar-thumb {
++          background-color: #ffffff;
++          border: 2px solid #000000;
++          outline: 2px solid #ffffff;
++        }
++
++        ::-webkit-scrollbar-thumb:hover,
++        ::-webkit-scrollbar-thumb:active {
++          background-color: #ffffff;
++          outline: 3px solid #ffffff;
++        }
++
++        ::-webkit-scrollbar-corner {
++          background: #000000;
++        }
++      }
++    }
++
++    @media (forced-colors: active) {
++      html {
++        scrollbar-color: Highlight Canvas;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: Canvas;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background-color: Highlight;
++        border: 2px solid Canvas;
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background-color: Highlight;
++        outline: 2px solid HighlightText;
++      }
++
++      ::-webkit-scrollbar-corner {
++        background: Canvas;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

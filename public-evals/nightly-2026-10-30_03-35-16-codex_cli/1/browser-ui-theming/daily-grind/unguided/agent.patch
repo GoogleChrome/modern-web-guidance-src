@@ -1,0 +1,333 @@
+diff --git a/index.html b/index.html
+index 66c9173..37eeba4 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,44 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: auto;
++    }
++
++    ::selection {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    /* Native browser UI keeps its familiar behavior. */
++    ::-webkit-scrollbar {
++      width: 12px;
++      height: 12px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 10px;
++    }
++
++    ::-webkit-scrollbar-corner {
++      background: var(--secondary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    nav :focus-visible, .hero :focus-visible {
++      outline-color: var(--accent);
+     }
+ 
+     * {
+@@ -95,14 +133,18 @@
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1240px;
+       margin: 40px auto;
+       padding: 0 20px;
++      display: grid;
++      grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr);
++      gap: 30px;
++      align-items: start;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+@@ -135,6 +177,163 @@
+       background: #3e2723;
+     }
+ 
++    .order-panel {
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .order-panel h2 {
++      color: var(--primary);
++    }
++
++    .order-panel > p {
++      margin: 4px 0 20px;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 18px;
++    }
++
++    .field {
++      display: grid;
++      gap: 6px;
++      min-width: 0;
++    }
++
++    .field > label, legend {
++      font-weight: 600;
++    }
++
++    input, select, textarea, button {
++      font: inherit;
++      color: var(--text);
++      accent-color: var(--primary);
++      caret-color: var(--primary);
++    }
++
++    select, textarea, input[type="date"], input[type="time"] {
++      width: 100%;
++      min-width: 0;
++      padding: 9px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background-color: var(--light);
++    }
++
++    select:hover, textarea:hover, input[type="date"]:hover, input[type="time"]:hover {
++      border-color: var(--primary);
++    }
++
++    option {
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    input::-webkit-calendar-picker-indicator {
++      /* Tint the browser's own calendar and clock icons coffee brown. */
++      filter: invert(19%) sepia(22%) saturate(1037%) hue-rotate(327deg) brightness(94%) contrast(87%);
++      cursor: pointer;
++    }
++
++    input[type="range"] {
++      width: 100%;
++    }
++
++    textarea {
++      resize: vertical;
++      min-height: 90px;
++    }
++
++    textarea::placeholder {
++      color: #765b53;
++      opacity: 1;
++    }
++
++    fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    legend {
++      margin-bottom: 6px;
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px 18px;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      cursor: pointer;
++    }
++
++    .choice input {
++      width: 18px;
++      height: 18px;
++      flex-shrink: 0;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 14px;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++    }
++
++    .order-form .btn {
++      border: 0;
++      margin-top: 0;
++      cursor: pointer;
++    }
++
++    #order-status:empty {
++      display: none;
++    }
++
++    #order-status {
++      padding: 12px;
++      border-left: 3px solid var(--primary);
++      background: var(--secondary);
++    }
++
++    @media (max-width: 900px) {
++      .container {
++        grid-template-columns: 1fr;
++      }
++
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
++    @media (max-width: 400px) {
++      .field-row {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +374,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +394,60 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-panel" aria-labelledby="order-heading">
++      <h2 id="order-heading">Make It Yours</h2>
++      <p>Your daily ritual, just the way you like it.</p>
++      <form class="order-form" id="coffee-order">
++        <div class="field">
++          <label for="coffee">Coffee</label>
++          <select id="coffee" name="coffee">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++          </select>
++        </div>
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choices">
++            <label class="choice"><input type="radio" name="size" value="Small" checked> Small</label>
++            <label class="choice"><input type="radio" name="size" value="Medium"> Medium</label>
++            <label class="choice"><input type="radio" name="size" value="Large"> Large</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="milk">Milk preference</label>
++          <select id="milk" name="milk">
++            <option>Oat milk</option>
++            <option>Whole milk</option>
++            <option>Almond milk</option>
++            <option>No milk</option>
++          </select>
++        </div>
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input type="range" id="sweetness" name="sweetness" min="0" max="4" step="1" value="2" aria-describedby="sweetness-hint">
++          <div class="range-labels" id="sweetness-hint"><span>0 · Unsweetened</span><span>4 · Extra sweet</span></div>
++        </div>
++        <div class="field-row">
++          <div class="field">
++            <label for="pickup-date">Pickup date</label>
++            <input type="date" id="pickup-date" name="pickup-date" required>
++          </div>
++          <div class="field">
++            <label for="pickup-time">Pickup time</label>
++            <input type="time" id="pickup-time" name="pickup-time" required>
++          </div>
++        </div>
++        <label class="choice"><input type="checkbox" name="extra-shot"> Add an extra espresso shot</label>
++        <div class="field">
++          <label for="notes">Special requests (optional)</label>
++          <textarea id="notes" name="notes" maxlength="500" placeholder="A little extra foam, perhaps?"></textarea>
++        </div>
++        <button type="submit" class="btn">Review My Coffee</button>
++        <p id="order-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +460,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const orderForm = document.getElementById('coffee-order');
++    const pickupDate = document.getElementById('pickup-date');
++    const today = new Date();
++    const localDate = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
++    pickupDate.min = localDate;
++    pickupDate.value = localDate;
++
++    orderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const order = new FormData(orderForm);
++      const date = new Date(`${order.get('pickup-date')}T${order.get('pickup-time')}`);
++      const pickup = date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
++      const extra = order.has('extra-shot') ? ', with an extra espresso shot' : '';
++      const notes = order.get('notes').trim();
++      document.getElementById('order-status').textContent =
++        `Your coffee: ${order.get('size')} ${order.get('coffee')}, ${order.get('milk').toLowerCase()}, sweetness ${order.get('sweetness')}/4${extra}. Pickup: ${pickup}.${notes ? ` Special requests: ${notes}` : ''} This is a preview; no order has been placed.`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

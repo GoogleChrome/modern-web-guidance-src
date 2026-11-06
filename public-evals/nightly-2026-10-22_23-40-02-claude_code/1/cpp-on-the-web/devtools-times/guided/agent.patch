@@ -1,0 +1,309 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9ffd383 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,71 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
+ ---
+ 
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
++<Layout title="smallpt in WebAssembly">
++  <main class="mx-auto max-w-3xl p-6">
++    <h1 class="mb-2 text-3xl font-bold">smallpt, in your browser</h1>
++    <p class="mb-4 text-gray-700">
++      <a class="underline" href="http://www.kevinbeason.com/smallpt/">smallpt</a> by Kevin Beason is a 99-line C++ path tracer.
++      Here it is compiled to WebAssembly and rendered client-side in a Web Worker.
++    </p>
++    <canvas id="out" width="512" height="384" class="w-full rounded border bg-black" aria-label="Path traced Cornell box scene"></canvas>
++    <div class="mt-4 flex items-center gap-4">
++      <button id="rerun" type="button" class="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">
++        Render with random colors
++      </button>
++      <span id="status" role="status" class="text-sm text-gray-600"></span>
+     </div>
++  </main>
++</Layout>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++<script>
++  const W = 512, H = 384, SAMPLES = 25; // SAMPLES per subpixel (x4 subpixels)
++  const canvas = document.querySelector<HTMLCanvasElement>('#out')!;
++  const ctx = canvas.getContext('2d')!;
++  const button = document.querySelector<HTMLButtonElement>('#rerun')!;
++  const status = document.querySelector<HTMLElement>('#status')!;
+ 
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++  const worker = new Worker(new URL('../wasm/worker.js', import.meta.url), { type: 'module' });
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++  // left, right, back, glass ball tint, floor, ceiling, mirror ball tint (RGB each; front wall is black)
++  const original = [
++    .75, .25, .25,  .25, .25, .75,  .75, .75, .75,  1, 1, 1,  .75, .75, .75,  .75, .75, .75,  1, 1, 1,
++  ];
++  const randomColors = () =>
++    Array.from({ length: 7 }, () => {
++      const hue = Math.random() * 360;
++      const [r, g, b] = hsl(hue, 0.5 + Math.random() * 0.4, 0.4 + Math.random() * 0.25);
++      return [r, g, b];
++    }).flat();
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++  function hsl(h: number, s: number, l: number) {
++    const a = s * Math.min(l, 1 - l);
++    const f = (n: number) => {
++      const k = (n + h / 30) % 12;
++      return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
++    };
++    return [f(0), f(8), f(4)];
++  }
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++  let id = 0, started = 0;
++  function run(colors: number[]) {
++    button.disabled = true;
++    status.textContent = 'Rendering…';
++    started = performance.now();
++    worker.postMessage({ id: ++id, w: W, h: H, samples: SAMPLES, seed: (Math.random() * 65536) | 0, colors });
++  }
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++  worker.onmessage = ({ data }) => {
++    ctx.putImageData(new ImageData(new Uint8ClampedArray(data.pixels.buffer), data.w, data.h), 0, 0);
++    status.textContent = `Rendered in ${((performance.now() - started) / 1000).toFixed(1)}s`;
++    button.disabled = false;
++  };
++  worker.onerror = (e) => {
++    status.textContent = `Error: ${e.message}`;
++    button.disabled = false;
++  };
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++  button.addEventListener('click', () => run(randomColors()));
++  run(original);
++</script>
+diff --git a/src/wasm/smallpt.cpp b/src/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..6ce7533
+--- /dev/null
++++ b/src/wasm/smallpt.cpp
+@@ -0,0 +1,122 @@
++// smallpt: a Path Tracer by Kevin Beason, 2008 (MIT license)
++// http://www.kevinbeason.com/smallpt/
++// Adapted for WebAssembly: scene colors are parameters, output goes to an RGBA buffer, OpenMP removed.
++#include <math.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <emscripten.h>
++
++struct Vec {
++  double x, y, z;
++  Vec(double x_ = 0, double y_ = 0, double z_ = 0) { x = x_; y = y_; z = z_; }
++  Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec &norm() { return *this = *this * (1 / sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(Vec &b) { return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x); }
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };
++struct Sphere {
++  double rad; Vec p, e, c; Refl_t refl;
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_) : rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const {
++    Vec op = p - r.o;
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0) return 0; else det = sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
++};
++
++static Sphere *spheres[9];
++static const int numSpheres = 9;
++
++static inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
++static inline int toInt(double x) { return int(pow(clamp(x), 1 / 2.2) * 255 + .5); }
++static inline bool intersect(const Ray &r, double &t, int &id) {
++  double n = numSpheres, d, inf = t = 1e20;
++  for (int i = int(n); i--;) if ((d = spheres[i]->intersect(r)) && d < t) { t = d; id = i; }
++  return t < inf;
++}
++
++static Vec radiance(const Ray &r, int depth, unsigned short *Xi) {
++  double t; int id = 0;
++  if (!intersect(r, t, id)) return Vec();
++  const Sphere &obj = *spheres[id];
++  Vec x = r.o + r.d * t, n = (x - obj.p).norm(), nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
++  double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;
++  if (++depth > 5) { if (erand48(Xi) < p) f = f * (1 / p); else return obj.e; }
++  if (obj.refl == DIFF) {
++    double r1 = 2 * M_PI * erand48(Xi), r2 = erand48(Xi), r2s = sqrt(r2);
++    Vec w = nl, u = ((fabs(w.x) > .1 ? Vec(0, 1) : Vec(1)) % w).norm(), v = w % u;
++    Vec d = (u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x, d), depth, Xi));
++  } else if (obj.refl == SPEC)
++    return obj.e + f.mult(radiance(Ray(x, r.d - n * 2 * n.dot(r.d)), depth, Xi));
++  Ray reflRay(x, r.d - n * 2 * n.dot(r.d));
++  bool into = n.dot(nl) > 0;
++  double nc = 1, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.d.dot(nl), cos2t;
++  if ((cos2t = 1 - nnt * nnt * (1 - ddn * ddn)) < 0) return obj.e + f.mult(radiance(reflRay, depth, Xi));
++  Vec tdir = (r.d * nnt - n * ((into ? 1 : -1) * (ddn * nnt + sqrt(cos2t)))).norm();
++  double a = nt - nc, b = nt + nc, R0 = a * a / (b * b), c = 1 - (into ? -ddn : tdir.dot(n));
++  double Re = R0 + (1 - R0) * c * c * c * c * c, Tr = 1 - Re, P = .25 + .5 * Re, RP = Re / P, TP = Tr / (1 - P);
++  return obj.e + f.mult(depth > 2 ? (erand48(Xi) < P ?
++    radiance(reflRay, depth, Xi) * RP : radiance(Ray(x, tdir), depth, Xi) * TP) :
++    radiance(reflRay, depth, Xi) * Re + radiance(Ray(x, tdir), depth, Xi) * Tr);
++}
++
++static unsigned char *pixels = nullptr;
++
++extern "C" {
++
++// colors: 7 RGB triples (left, right, back, front, bottom, top walls, then the small ball tint)
++// in [0,1]. Returns a pointer to w*h*4 RGBA bytes, valid until the next call.
++EMSCRIPTEN_KEEPALIVE
++unsigned char *render(int w, int h, int samps, unsigned seed, const double *col) {
++  for (int i = 0; i < numSpheres; i++) { delete spheres[i]; spheres[i] = nullptr; }
++  auto C = [&](int i) { return Vec(col[i * 3], col[i * 3 + 1], col[i * 3 + 2]); };
++  const double R = 1e5;
++  spheres[0] = new Sphere(R, Vec(R + 1, 40.8, 81.6), Vec(), C(0), DIFF);    // Left
++  spheres[1] = new Sphere(R, Vec(-R + 99, 40.8, 81.6), Vec(), C(1), DIFF);  // Right
++  spheres[2] = new Sphere(R, Vec(50, 40.8, R), Vec(), C(2), DIFF);          // Back
++  spheres[3] = new Sphere(R, Vec(50, 40.8, -R + 170), Vec(), Vec(), DIFF);  // Front
++  spheres[4] = new Sphere(R, Vec(50, R, 81.6), Vec(), C(4), DIFF);          // Bottom
++  spheres[5] = new Sphere(R, Vec(50, -R + 81.6, 81.6), Vec(), C(5), DIFF);  // Top
++  spheres[6] = new Sphere(16.5, Vec(27, 16.5, 47), Vec(), C(6) * .999, SPEC); // Mirror
++  spheres[7] = new Sphere(16.5, Vec(73, 16.5, 78), Vec(), C(3) * .999, REFR); // Glass
++  spheres[8] = new Sphere(600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(), DIFF); // Light
++
++  free(pixels);
++  pixels = (unsigned char *)malloc((size_t)w * h * 4);
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm());
++  Vec cx = Vec(w * .5135 / h), cy = (cx % cam.d).norm() * .5135;
++  for (int y = 0; y < h; y++) {
++    unsigned short Xi[3] = {0, 0, (unsigned short)(y * y * y + seed)};
++    for (int x = 0; x < w; x++) {
++      Vec c;
++      for (int sy = 0; sy < 2; sy++)
++        for (int sx = 0; sx < 2; sx++) {
++          Vec r;
++          for (int s = 0; s < samps; s++) {
++            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) + cy * (((sy + .5 + dy) / 2 + (h - y - 1)) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / samps);
++          }
++          c = c + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      unsigned char *px = pixels + ((size_t)y * w + x) * 4;
++      px[0] = toInt(c.x); px[1] = toInt(c.y); px[2] = toInt(c.z); px[3] = 255;
++    }
++  }
++  return pixels;
++}
++
++EMSCRIPTEN_KEEPALIVE
++double *alloc_colors() { return (double *)malloc(sizeof(double) * 21); }
++EMSCRIPTEN_KEEPALIVE
++void free_colors(double *p) { free(p); }
++
++}
+diff --git a/src/wasm/smallpt.js b/src/wasm/smallpt.js
+new file mode 100644
+index 0000000..742736c
+--- /dev/null
++++ b/src/wasm/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=false;var ENVIRONMENT_IS_WORKER=true;var programArgs=[];var thisProgram="./this.program";var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);Module["HEAPF64"]=HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];while(Module["preRun"].length){addOnPreRun(Module["preRun"].shift())}}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["d"]()}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];while(Module["postRun"].length){addOnPostRun(Module["postRun"].shift())}}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(file==wasmBinaryFile&&wasmBinary){return new Uint8Array(wasmBinary)}if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();if(Module["instantiateWasm"]){return new Promise((resolve,reject)=>{Module["instantiateWasm"](info,(inst,mod)=>{resolve(receiveInstance(inst,mod))})})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var addOnPostRun=cb=>onPostRuns.push(cb);var onPreRuns=[];var addOnPreRun=cb=>onPreRuns.push(cb);var noExitRuntime=true;var __abort_js=()=>abort("");var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["wasmBinary"])wasmBinary=Module["wasmBinary"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];if(Module["preInit"]){if(typeof Module["preInit"]=="function")Module["preInit"]=[Module["preInit"]];while(Module["preInit"].length>0){Module["preInit"].shift()()}}}var _render,_alloc_colors,_free_colors,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_render=Module["_render"]=wasmExports["e"];_alloc_colors=Module["_alloc_colors"]=wasmExports["f"];_free_colors=Module["_free_colors"]=wasmExports["g"];memory=wasmMemory=wasmExports["c"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={a:__abort_js,b:_emscripten_resize_heap};async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default Module;
+diff --git a/src/wasm/smallpt.wasm b/src/wasm/smallpt.wasm
+new file mode 100755
+index 0000000..f2f890b
+Binary files /dev/null and b/src/wasm/smallpt.wasm differ
+diff --git a/src/wasm/worker.js b/src/wasm/worker.js
+new file mode 100644
+index 0000000..d2108f7
+--- /dev/null
++++ b/src/wasm/worker.js
+@@ -0,0 +1,14 @@
++import createModule from './smallpt.js';
++
++const modulePromise = createModule();
++
++self.onmessage = async ({ data: { id, w, h, samples, seed, colors } }) => {
++  const m = await modulePromise;
++  const ptr = m._alloc_colors();
++  m.HEAPF64.set(colors, ptr / 8);
++  const out = m._render(w, h, samples, seed, ptr);
++  m._free_colors(ptr);
++  // Copy out of wasm memory (it may be reused or grown) and transfer it.
++  const pixels = m.HEAPU8.slice(out, out + w * h * 4);
++  self.postMessage({ id, w, h, pixels }, [pixels.buffer]);
++};

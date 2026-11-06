@@ -1,0 +1,174 @@
+diff --git a/index.html b/index.html
+index 66c9173..fda53df 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,119 @@
+       color: var(--primary);
+     }
+ 
++    /* Keep native checkbox interaction; customize only its presentation. */
++    .customizations {
++      min-inline-size: 0;
++      margin-block-start: 20px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: #fffaf3;
++      text-align: start;
++    }
++
++    .customizations legend {
++      padding-inline: 6px;
++      color: var(--primary);
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .customization {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-block-size: 48px;
++      padding: 8px;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .customization:has(input:checked) {
++      background: #ffebce;
++    }
++
++    .customization:hover:not(:has(input:disabled)) {
++      background: #f5e9dd;
++    }
++
++    .customization input {
++      appearance: none;
++      display: inline-grid;
++      place-content: center;
++      flex: 0 0 auto;
++      inline-size: 1.4em;
++      block-size: 1.4em;
++      margin: 0;
++      border: 2px solid var(--primary);
++      border-radius: 0.3em;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: inherit;
++    }
++
++    .customization input::before {
++      content: "";
++      inline-size: 0.9em;
++      block-size: 0.9em;
++      background: currentColor;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E") center / contain no-repeat;
++      transform: scale(0) rotate(-20deg);
++      opacity: 0;
++    }
++
++    .customization input:checked {
++      background: var(--accent);
++    }
++
++    .customization input:checked::before {
++      transform: scale(1) rotate(0deg);
++      opacity: 1;
++    }
++
++    .customization input:indeterminate::before {
++      mask: none;
++      block-size: 0.2em;
++      transform: scale(1);
++      opacity: 1;
++    }
++
++    .customization input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .customization:has(input:disabled) {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .customization,
++      .customization input {
++        transition: background-color 180ms ease;
++      }
++
++      .customization input::before {
++        transition: transform 180ms ease, opacity 180ms ease;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization input {
++        appearance: auto;
++      }
++
++      .customization input::before {
++        display: none;
++      }
++
++      .customization input:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -181,16 +294,49 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations">
++            <legend>Customize your latte</legend>
++            <label class="customization" for="maple-extra-shot">
++              <input type="checkbox" id="maple-extra-shot" name="maple-customizations" value="extra-shot">
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="maple-cinnamon">
++              <input type="checkbox" id="maple-cinnamon" name="maple-customizations" value="cinnamon">
++              <span>Add cinnamon</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations">
++            <legend>Customize your espresso</legend>
++            <label class="customization" for="espresso-extra-shot">
++              <input type="checkbox" id="espresso-extra-shot" name="espresso-customizations" value="extra-shot">
++              <span>Extra espresso shot</span>
++            </label>
++            <label class="customization" for="espresso-oat-milk">
++              <input type="checkbox" id="espresso-oat-milk" name="espresso-customizations" value="oat-milk">
++              <span>Splash of oat milk</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations">
++            <legend>Customize your cold brew</legend>
++            <label class="customization" for="cold-brew-oat-milk">
++              <input type="checkbox" id="cold-brew-oat-milk" name="cold-brew-customizations" value="oat-milk">
++              <span>Splash of oat milk</span>
++            </label>
++            <label class="customization" for="cold-brew-vanilla">
++              <input type="checkbox" id="cold-brew-vanilla" name="cold-brew-customizations" value="vanilla">
++              <span>Add vanilla syrup</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

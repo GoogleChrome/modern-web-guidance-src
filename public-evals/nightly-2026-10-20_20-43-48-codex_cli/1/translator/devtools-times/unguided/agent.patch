@@ -1,0 +1,241 @@
+diff --git a/src/components/Translator.tsx b/src/components/Translator.tsx
+new file mode 100644
+index 0000000..98413cb
+--- /dev/null
++++ b/src/components/Translator.tsx
+@@ -0,0 +1,92 @@
++import { useEffect, useRef, useState } from 'react';
++import { ArrowPathIcon, ArrowRightIcon, ArrowsRightLeftIcon, BellIcon, BookmarkIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, ClockIcon, DocumentDuplicateIcon, GlobeAltIcon, LanguageIcon, MagnifyingGlassIcon, PlusIcon, SpeakerWaveIcon, SparklesIcon, TrashIcon, XMarkIcon, ArrowUpRightIcon, QuestionMarkCircleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
++
++const languages = [{ code: 'en', name: 'English', flag: '🇺🇸' }, { code: 'fr', name: 'French', flag: '🇫🇷' }, { code: 'es', name: 'Spanish', flag: '🇪🇸' }, { code: 'de', name: 'German', flag: '🇩🇪' }, { code: 'it', name: 'Italian', flag: '🇮🇹' }, { code: 'pt', name: 'Portuguese', flag: '🇵🇹' }, { code: 'ja', name: 'Japanese', flag: '🇯🇵' }, { code: 'ko', name: 'Korean', flag: '🇰🇷' }, { code: 'zh', name: 'Chinese', flag: '🇨🇳' }, { code: 'ar', name: 'Arabic', flag: '🇸🇦' }, { code: 'hi', name: 'Hindi', flag: '🇮🇳' }, { code: 'nl', name: 'Dutch', flag: '🇳🇱' }];
++const name = (code: string) => languages.find(l => l.code === code)?.name || code;
++type Entry = { id: string; source: string; target: string; text: string; translation: string; date: string; saved?: boolean };
++const initialHistory: Entry[] = [
++  { id: 'welcome', source: 'en', target: 'fr', text: 'The best journeys answer questions that, in the beginning, you didn’t even think to ask.', translation: 'Les plus beaux voyages répondent à des questions que vous ne pensiez même pas à poser au départ.', date: 'Example' },
++  { id: 'coffee', source: 'en', target: 'es', text: 'A coffee and a little conversation, please.', translation: 'Un café y un poco de conversación, por favor.', date: 'Example' },
++  { id: 'hello', source: 'en', target: 'ja', text: 'Hello! It’s so nice to meet you.', translation: 'こんにちは！お会いできてうれしいです。', date: 'Example' },
++];
++export default function Translator({ baseUrl }: { baseUrl: string }) {
++  const [page, setPage] = useState('Text translator');
++  const [source, setSource] = useState('en');
++  const [target, setTarget] = useState('fr');
++  const [text, setText] = useState('');
++  const [output, setOutput] = useState('');
++  const [loading, setLoading] = useState(false);
++  const [history, setHistory] = useState<Entry[]>(initialHistory);
++  const [toast, setToast] = useState('');
++  const [error, setError] = useState('');
++  const [query, setQuery] = useState('');
++  const [modal, setModal] = useState('');
++  const input = useRef<HTMLTextAreaElement>(null);
++  const requestId = useRef(0);
++  const bytes = new TextEncoder().encode(text).length;
++  useEffect(() => { try { const stored = localStorage.getItem('lingo-history'); if (stored) setHistory(JSON.parse(stored)); } catch {} }, []);
++  useEffect(() => { if (toast) { const timer = setTimeout(() => setToast(''), 3000); return () => clearTimeout(timer); } }, [toast]);
++  const persist = (entries: Entry[]) => { setHistory(entries); try { localStorage.setItem('lingo-history', JSON.stringify(entries)); } catch { setToast('Storage is unavailable. Changes will last for this session.'); } };
++  const invalidate = () => { requestId.current++; setLoading(false); setOutput(''); setError(''); };
++  async function translate() {
++    if (!text.trim() || bytes > 500) return;
++    const id = ++requestId.current;
++    setLoading(true); setError(''); setOutput('');
++    try {
++      const res = await fetch(`${baseUrl}api/translate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, source, target }) });
++      const data = await res.json();
++      if (!res.ok) throw new Error(data.error || 'Translation failed. Please try again.');
++      if (id !== requestId.current) return;
++      const decoder = document.createElement('textarea'); decoder.innerHTML = data.translation;
++      const translation = decoder.value;
++      setOutput(translation);
++      persist([{ id: crypto.randomUUID(), source, target, text, translation, date: new Date().toISOString() }, ...history].slice(0, 50));
++    } catch (e) { if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to connect. Please try again.'); }
++    finally { if (id === requestId.current) setLoading(false); }
++  }
++  function speak(value: string, lang: string) {
++    if (!value) return;
++    if (!('speechSynthesis' in window)) { setToast('Audio playback is unavailable in this browser.'); return; }
++    speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(value); utterance.lang = lang; utterance.onerror = () => setToast('Audio is unavailable for this language.'); speechSynthesis.speak(utterance);
++  }
++  async function copy(value: string) { try { await navigator.clipboard.writeText(value); setToast('Translation copied to clipboard'); } catch { setToast('Clipboard unavailable. Select the text to copy it.'); } }
++  function toggleSave(entry: Entry) { persist(history.map(h => h.id === entry.id ? { ...h, saved: !h.saved } : h)); }
++  function load(entry: Entry) { invalidate(); setText(entry.text); setOutput(entry.translation); setSource(entry.source); setTarget(entry.target); setPage('Text translator'); }
++  const saveCurrent = () => {
++    const match = history.find(h => h.text === text && h.translation === output && h.source === source && h.target === target);
++    if (match) { toggleSave(match); setToast(match.saved ? 'Removed from saved translations' : 'Translation saved'); }
++    else { persist([{ id: crypto.randomUUID(), source, target, text, translation: output, date: new Date().toISOString(), saved: true }, ...history].slice(0, 50)); setToast('Translation saved'); }
++  };
++  const visible = history.filter(h => (page !== 'Saved translations' || h.saved) && `${h.text} ${h.translation} ${name(h.target)}`.toLowerCase().includes(query.toLowerCase()));
++  const savedCurrent = history.some(h => h.text === text && h.translation === output && h.source === source && h.target === target && h.saved);
++  return <div className="app-shell">
++    <aside className="sidebar">
++      <a className="brand" href={baseUrl}><span className="brand-symbol"><LanguageIcon /></span>lingo<span className="brand-dot">.</span></a>
++      <div className="workspace"><div className="workspace-avatar">P<span /></div><div><strong>Personal workspace</strong><small>Free plan</small></div><ChevronDownIcon /></div>
++      <div className="nav-label">WORKSPACE</div>
++      <nav>{[{ title: 'Text translator', icon: LanguageIcon }, { title: 'Translation history', icon: ClockIcon }, { title: 'Saved translations', icon: BookmarkIcon }].map(({ title, icon: Icon }) => <button key={title} onClick={() => { setPage(title); setQuery(''); }} className={page === title ? 'nav-link active' : 'nav-link'}><Icon />{title}{title === 'Saved translations' && <span className="nav-count">{history.filter(h => h.saved).length}</span>}</button>)}</nav>
++      <div className="sidebar-bottom"><div className="world-card"><div className="mini-orbit"><GlobeAltIcon /><span className="orbit-spark">✦</span></div><strong>A little more connected.</strong><p>Big ideas. New places.<br />Let language take you there.</p><button onClick={() => { setSource('en'); setTarget('it'); setText('Every new language opens a new door.'); invalidate(); setPage('Text translator'); input.current?.focus(); }}>Try something new <ArrowUpRightIcon /></button></div>
++      <button className="nav-link" onClick={() => setModal('Help & feedback')}><QuestionMarkCircleIcon />Help & feedback<ArrowUpRightIcon className="end-icon" /></button>
++      <button className="nav-link" onClick={() => setModal('Settings')}><Cog6ToothIcon />Settings</button>
++      <div className="profile"><div className="user-avatar">JD</div><div><strong>Jamie Davis</strong><small>Personal account</small></div><button aria-label="Account details" onClick={() => setModal('Your workspace')}><ChevronDownIcon /></button></div></div>
++    </aside>
++    <div className="main-shell"><header className="topbar"><div className="breadcrumbs"><span>Workspace</span><ChevronRightIcon /><strong>{page}</strong></div><div className="topbar-right"><span className="local-status"><span />All systems ready</span><div className="topbar-divider" /><button aria-label="Notifications" onClick={() => setModal('Notifications')}><BellIcon /><i /></button><div className="user-avatar small">JD</div></div></header>
++    <main className="main-content"><div className="page-heading"><div><div className="eyebrow"><span />WORDS WITHOUT BORDERS</div><h1>{page}</h1><p>{page === 'Text translator' ? 'A different language. The same meaning. Make yourself understood.' : page === 'Saved translations' ? 'The words you want to come back to, all in one place.' : 'Pick up a conversation right where you left off.'}</p></div><span className="heading-badge"><GlobeAltIcon />Made for a connected world</span></div>
++    {page === 'Text translator' ? <>
++      <div className="editor-tabs"><div><LanguageIcon />Text translation<span className="tab-dot" /></div><span><span className="live-dot" />12 languages, endless possibilities</span></div>
++      <section className="translator-card" aria-label="Text translator"><div className="language-bar"><div className="language-select"><span>{languages.find(l => l.code === source)?.flag}</span><select aria-label="Source language" value={source} onChange={e => { setSource(e.target.value); invalidate(); }}>{languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}</select><ChevronDownIcon /></div><button className="swap-button" aria-label="Swap languages" onClick={() => { const old = source; setSource(target); setTarget(old); setText(output || text); setOutput(output ? text : ''); requestId.current++; setLoading(false); setError(''); }}><ArrowsRightLeftIcon /></button><div className="language-select target-select"><span>{languages.find(l => l.code === target)?.flag}</span><select aria-label="Target language" value={target} onChange={e => { setTarget(e.target.value); invalidate(); }}>{languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}</select><ChevronDownIcon /></div><span className="language-bar-label">TRANSLATION</span></div>
++        <div className="editor-panels"><div className="source-panel"><div className="panel-topline"><span>Original text</span>{text && <button aria-label="Clear text" onClick={() => { setText(''); invalidate(); input.current?.focus(); }}><XMarkIcon /></button>}</div><textarea dir="auto" ref={input} aria-label="Text to translate" placeholder="What would you like to say?" value={text} maxLength={500} onChange={e => { setText(e.target.value); invalidate(); }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); translate(); } }} /><div className="panel-footer"><button className="icon-button" aria-label="Listen to original text" disabled={!text} onClick={() => speak(text, source)}><SpeakerWaveIcon /></button><span className={bytes > 500 ? 'counter over-limit' : 'counter'}>{bytes} / 500 bytes</span></div></div><div className="target-panel"><div className="panel-topline"><span>{output ? 'Translated text' : 'Your translation'}</span><span className="powered-label"><SparklesIcon />A little language magic</span></div><div className={`translation-output ${!output ? 'empty' : ''}`} dir={target === 'ar' ? 'rtl' : 'auto'} aria-live="polite">{loading ? <span className="loading-text"><ArrowPathIcon />Finding the right words…</span> : error ? <span className="error-message" role="alert">{error}</span> : output || 'A new way to say it awaits…'}</div><div className="panel-footer"><button className="icon-button" aria-label="Listen to translation" disabled={!output} onClick={() => speak(output, target)}><SpeakerWaveIcon /></button><div className="output-actions"><button className={`icon-button ${savedCurrent ? 'is-saved' : ''}`} aria-label="Save translation" disabled={!output} onClick={saveCurrent}><BookmarkIcon /></button><button className="icon-button" aria-label="Copy translation" disabled={!output} onClick={() => copy(output)}><DocumentDuplicateIcon /></button></div></div></div></div>
++        <div className="translate-toolbar"><span><span className="privacy-icon">♧</span>Your words, handled with care.</span><div><span className="shortcut">Ctrl + Enter</span><button className="primary-button" disabled={!text.trim() || bytes > 500 || loading} onClick={translate}>{loading ? 'Translating…' : 'Translate text'}<ArrowRightIcon /></button></div></div>
++      </section>
++      <div className="try-example"><SparklesIcon /><span>A little inspiration?</span><button onClick={() => { invalidate(); setText('The world is full of wonderful things waiting to be discovered.'); input.current?.focus(); }}>Try an example <ArrowUpRightIcon /></button><span className="example-description">See where a few words can take you.</span></div>
++      <section className="recent-section"><div className="section-heading"><h2>Recent translations <span>{history.length}</span></h2><button onClick={() => setPage('Translation history')}>View all history <ArrowRightIcon /></button></div><div className="history-grid">{history.slice(0, 3).map(entry => <HistoryCard key={entry.id} entry={entry} onLoad={() => load(entry)} onSave={() => toggleSave(entry)} />)}</div></section>
++      <div className="bottom-note"><span className="note-icon"><GlobeAltIcon /></span><div><strong>More than words. A world of understanding.</strong><p>For the everyday hellos and the conversations that matter.</p></div><div className="note-art"><span>hello</span><span>hola</span><span>bonjour</span><span>ciao</span></div></div>
++    </> : <section className="history-page"><div className="history-tools"><div className="search-field"><MagnifyingGlassIcon /><input aria-label="Search translations" placeholder="Search your translations…" value={query} onChange={e => setQuery(e.target.value)} /></div><button className="primary-button" onClick={() => { setPage('Text translator'); setText(''); invalidate(); }}><PlusIcon />New translation</button></div><div className="history-grid">{visible.map(entry => <HistoryCard key={entry.id} entry={entry} onLoad={() => load(entry)} onSave={() => toggleSave(entry)} onDelete={() => persist(history.filter(h => h.id !== entry.id))} />)}</div>{visible.length === 0 && <div className="empty-history"><BookmarkIcon /><h2>{query ? 'No matching translations' : 'Your favorite words belong here'}</h2><p>{query ? 'Try a different word or language.' : 'Save a translation using the bookmark icon to find it here.'}</p></div>}</section>}
++    <footer className="workspace-footer"><span>Made for the way we connect.</span><span><span className="footer-logo">lingo.</span> A little more understanding.</span></footer></main></div>
++    {toast && <div className="toast" role="status"><CheckIcon />{toast}</div>}
++    {modal && <div className="modal-backdrop" onClick={() => setModal('')}><section className="modal" role="dialog" aria-modal="true" aria-label={modal} onClick={e => e.stopPropagation()}><button className="modal-close icon-button" aria-label="Close dialog" autoFocus onClick={() => setModal('')}><XMarkIcon /></button><span className="modal-symbol"><GlobeAltIcon /></span><h2>{modal}</h2>{modal === 'Settings' ? <><p>Translations and saved items are stored in this browser. Audio uses your device’s available voices.</p><button className="clear-history" onClick={() => { persist([]); setModal(''); setToast('Translation history cleared'); }}>Clear translation history</button></> : modal === 'Notifications' ? <p>You’re all caught up. Your next great conversation is waiting.</p> : modal === 'Help & feedback' ? <><p>Choose two languages, enter your text, and select Translate text. Use the speaker to listen or the bookmark to save a translation.</p><p>Translations are provided by MyMemory. Text is sent to this service when you translate. The free service allows up to 500 bytes per request and may have daily limits.</p><a href="https://mymemory.translated.net" target="_blank" rel="noreferrer">About the translation service ↗</a></> : <p>Your personal workspace. History and bookmarks stay on this device, ready for your next visit.</p>}</section></div>}
++  </div>;
++}
++function HistoryCard({ entry, onLoad, onSave, onDelete }: { entry: Entry; onLoad: () => void; onSave: () => void; onDelete?: () => void }) {
++  return <article className="history-card"><div className="history-card-top"><span>{name(entry.source)}<ArrowRightIcon />{name(entry.target)}</span><button className={`icon-button ${entry.saved ? 'is-saved' : ''}`} aria-label={entry.saved ? 'Unsave translation' : 'Save translation'} onClick={onSave}><BookmarkIcon /></button></div><button className="history-content" onClick={onLoad}><p>{entry.text}</p><p dir="auto">{entry.translation}</p></button><div className="history-card-bottom"><span><ClockIcon />{entry.date === 'Example' ? 'Example translation' : new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>{onDelete ? <button className="icon-button" aria-label="Delete translation" onClick={onDelete}><TrashIcon /></button> : <button className="icon-button reopen" aria-label="Open translation" onClick={onLoad}><ArrowUpRightIcon /></button>}</div></article>;
++}
+diff --git a/src/pages/api/translate.ts b/src/pages/api/translate.ts
+new file mode 100644
+index 0000000..3c7088a
+--- /dev/null
++++ b/src/pages/api/translate.ts
+@@ -0,0 +1,19 @@
++import type { APIRoute } from 'astro';
++const languages = new Set(['en', 'fr', 'es', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'ar', 'hi', 'nl']);
++export const POST: APIRoute = async ({ request }) => {
++  try {
++    const { text, source, target } = await request.json();
++    if (typeof text !== 'string' || !text.trim() || new TextEncoder().encode(text).length > 500 || !languages.has(source) || !languages.has(target)) {
++      return Response.json({ error: 'Enter text up to 500 bytes and choose supported languages.' }, { status: 400 });
++    }
++    if (source === target) return Response.json({ translation: text });
++    const params = new URLSearchParams({ q: text, langpair: `${source}|${target}` });
++    const result = await fetch(`https://api.mymemory.translated.net/get?${params}`, { signal: AbortSignal.timeout(15000) });
++    if (!result.ok) throw new Error('Service unavailable');
++    const data = await result.json();
++    if (Number(data.responseStatus) !== 200 || !data.responseData?.translatedText) throw new Error('Service unavailable');
++    return Response.json({ translation: data.responseData.translatedText });
++  } catch {
++    return Response.json({ error: 'Translation is unavailable right now. Please try again in a moment.' }, { status: 503 });
++  }
++};
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..afb64ce 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,18 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import Translator from '../components/Translator';
++import '../styles/translator.css';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="description" content="A little more understanding. Translate, listen, and save your words with Lingo." />
++    <title>Lingo — A world of understanding</title>
++    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%237a5af8'/%3E%3Ctext x='12' y='29' fill='white' font-size='30' font-family='Arial'%3El%3C/text%3E%3C/svg%3E" />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet" />
++  </head>
++  <body><Translator client:load baseUrl={import.meta.env.BASE_URL} /></body>
++</html>
+diff --git a/src/styles/translator.css b/src/styles/translator.css
+new file mode 100644
+index 0000000..4398308
+--- /dev/null
++++ b/src/styles/translator.css
+@@ -0,0 +1,6 @@
++:root{font-family:'DM Sans',sans-serif;color:#272832;background:#fbfbfd;font-synthesis:none;font-weight:400}*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button,a,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button{border:0;background:none;color:inherit}button:disabled{cursor:default}a{color:inherit;text-decoration:none}svg{width:20px;height:20px;stroke-width:1.65;flex-shrink:0}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #b9a5f9;outline-offset:4px}button:hover:not(:disabled){color:#7955d9}textarea:focus,input:focus{outline:0}.app-shell{display:flex;min-height:100vh}.sidebar{width:245px;background:#fff;border-right:1px solid #ecebf0;padding:34px 20px 0;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:5}.brand{display:flex;align-items:center;font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-1.7px;font-size:36px;margin:0 12px 36px;line-height:1}.brand-symbol{width:37px;height:38px;border-radius:12px;background:#8060d7;color:#fff;display:flex;align-items:center;justify-content:center;margin-right:9px;transform:rotate(-5deg)}.brand-symbol svg{width:26px;height:26px;transform:rotate(5deg)}.brand-dot{color:#8864d9}.workspace{display:flex;align-items:center;gap:10px;border:1px solid #e9e8ed;border-radius:9px;padding:12px 10px;margin-bottom:35px}.workspace-avatar{position:relative;background:#f0ebfb;color:#8b68d6;border-radius:7px;width:32px;height:34px;display:grid;place-items:center;font-weight:600}.workspace-avatar span{position:absolute;bottom:-1px;right:-2px;width:9px;height:9px;border:2px solid white;border-radius:50%;background:#75bda1}.workspace strong,.profile strong{font-size:11px;display:block;font-weight:600}.workspace small,.profile small{font-size:10px;color:#92929d;display:block;margin-top:4px}.workspace>svg{width:14px;margin-left:auto;color:#85838d}.nav-label{color:#a0a0ac;font-size:9px;font-weight:600;letter-spacing:1.6px;margin:0 13px 14px}.nav-link{width:100%;display:flex;align-items:center;gap:11px;text-align:left;font-size:12px;padding:13px 12px;color:#777783;border-radius:7px;margin-bottom:5px;font-weight:500}.nav-link svg{width:18px;height:18px}.nav-link.active{background:#efeafa;color:#8258d3}.nav-count{margin-left:auto;border-radius:4px;min-width:20px;padding:2px 5px;text-align:center;font-size:10px;background:#f3f2f6;color:#9993a2}.sidebar-bottom{margin-top:auto;padding-top:65px}.world-card{background:#f7f6fc;border:1px solid #efedf7;border-radius:10px;margin:0 5px 24px;padding:19px 14px}.mini-orbit{position:relative;color:#a18acb;width:55px;height:44px;margin-bottom:10px}.mini-orbit>svg{width:41px;height:41px;stroke-width:1.1;transform:rotate(-18deg)}.orbit-spark{font-size:19px;position:absolute;right:0;top:-4px;color:#af99da}.world-card strong{font-size:12px;font-weight:600}.world-card p{font-size:11px;line-height:1.8;color:#92909e;margin:8px 0 13px}.world-card button{font-size:11px;font-weight:600;color:#8761cd;display:flex;align-items:center;gap:13px;padding:0}.world-card button svg{width:14px}.end-icon{margin-left:auto;width:13px!important}.profile{display:flex;align-items:center;gap:10px;border-top:1px solid #eeedf2;padding:19px 4px 21px;margin-top:16px}.user-avatar{display:grid;place-items:center;border-radius:50%;width:33px;height:33px;background:#eeded2;border:3px solid #f8eee8;color:#80624f;font-size:10px;font-weight:700}.profile>button{margin-left:auto;padding:0}.profile>button svg{width:14px;color:#9a96a1}.main-shell{margin-left:245px;width:calc(100% - 245px)}.topbar{height:83px;background:#fff;border-bottom:1px solid #ecebf1;padding:0 43px;display:flex;align-items:center;justify-content:space-between}.breadcrumbs{display:flex;align-items:center;gap:17px;font-size:11px;color:#92929e}.breadcrumbs strong{font-weight:500;color:#555360}.breadcrumbs svg{width:12px;color:#b1aeb9}.topbar-right{display:flex;align-items:center;gap:22px}.local-status{display:flex;align-items:center;gap:7px;color:#8c8b97;font-size:10px}.local-status>span,.live-dot{width:5px;height:5px;background:#88b49b;border-radius:50%;display:inline-block}.topbar-divider{height:19px;border-right:1px solid #ebe9f0}.topbar-right button{position:relative;padding:0;height:22px;color:#81808d}.topbar-right button svg{width:18px}.topbar-right button i{position:absolute;top:0;right:2px;width:4px;height:4px;border-radius:50%;background:#9f80db;border:1px solid white}.user-avatar.small{width:29px;height:29px;font-size:9px}.main-content{max-width:1330px;margin:0 auto;padding:44px 43px 0}.page-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:38px;gap:20px}.eyebrow{font-size:8px;font-weight:600;letter-spacing:1.65px;color:#a2a0ac;display:flex;align-items:center;gap:7px;margin-bottom:13px}.eyebrow>span{width:5px;height:5px;border-radius:50%;background:#b7a1df}h1{font-family:Manrope,sans-serif;font-weight:750;font-size:31px;letter-spacing:-1.25px;margin:0 0 11px;line-height:1.25}.page-heading p{font-size:12px;color:#8d8c98;margin:0;line-height:1.7}.heading-badge{display:flex;align-items:center;gap:7px;font-size:9px;color:#97929e;border:1px solid #e9e7ed;border-radius:20px;padding:8px 11px;white-space:nowrap;margin-top:18px;background:#fff}.heading-badge svg{width:13px;height:13px;color:#a396b8}.editor-tabs{height:45px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e9e7ee;margin-bottom:19px}.editor-tabs>div{display:flex;align-items:center;gap:9px;color:#8057d2;font-size:11px;font-weight:600;height:45px;border-bottom:2px solid #8a60d4;padding:0 2px 13px}.editor-tabs>div svg{width:17px}.tab-dot{width:5px;height:5px;border-radius:50%;background:#9672dc;margin-left:8px}.editor-tabs>span{font-size:9px;color:#9b98a5;display:flex;gap:7px;align-items:center;padding-top:9px}.translator-card{border:1px solid #e4e1eb;border-radius:12px;background:#fff;box-shadow:0 4px 12px #4d326a03;overflow:hidden}.language-bar{height:65px;display:flex;align-items:center;position:relative;border-bottom:1px solid #eae7ef;padding:0 23px;gap:10px}.language-select{display:flex;align-items:center;gap:10px;width:calc(50% - 24px);position:relative}.language-select>span{font-size:20px;line-height:1}.language-select select{appearance:none;border:0;background:transparent;font-size:12px;font-weight:600;color:#41404c;padding:9px 25px 9px 0;cursor:pointer;max-width:150px;z-index:1}.language-select>svg{width:12px;height:12px;margin-left:-28px;pointer-events:none;color:#9992a4}.swap-button{position:absolute;left:50%;transform:translateX(-50%);width:30px;height:30px;border:1px solid #e7e3ee;background:#fff;border-radius:7px;display:grid;place-items:center;z-index:2}.swap-button svg{width:15px;color:#9c88be}.target-select{margin-left:33px}.language-bar-label{font-size:7px;letter-spacing:1.3px;color:#b2acbd;position:absolute;right:23px}.editor-panels{display:grid;grid-template-columns:1fr 1fr;min-height:277px}.source-panel,.target-panel{padding:20px 23px 15px;display:flex;flex-direction:column;min-width:0}.source-panel{border-right:1px solid #eae7ef}.target-panel{background:#fcfbfe}.panel-topline{height:25px;display:flex;justify-content:space-between;align-items:flex-start;color:#a3a0ac;font-size:9px}.panel-topline button{padding:0;color:#aaa2b5}.panel-topline button svg{width:13px;height:13px}.powered-label{display:flex;align-items:center;gap:4px;font-size:8px;color:#b4a7c8}.powered-label svg{width:11px;height:11px}.source-panel textarea{resize:none;width:100%;min-height:175px;flex:1;border:0;color:#55505f;background:transparent;font-size:16px;font-weight:400;line-height:1.8;padding:7px 0 0}.source-panel textarea::placeholder{color:#aaa5b3}.translation-output{min-height:175px;flex:1;font-size:16px;line-height:1.8;color:#655378;padding-top:7px;white-space:pre-wrap;overflow-wrap:anywhere}.translation-output.empty{color:#b7adca}.panel-footer{display:flex;align-items:center;justify-content:space-between;padding-top:9px}.icon-button{width:27px;height:27px;display:inline-flex;justify-content:center;align-items:center;padding:4px;color:#9e97ab;border-radius:5px}.icon-button svg{width:17px;height:17px}.icon-button:disabled{opacity:.4}.icon-button:hover:not(:disabled){background:#f2edf9}.counter{font-size:9px;color:#aaa3b4}.counter.over-limit{color:#bd5151}.output-actions{display:flex;gap:10px}.translate-toolbar{height:71px;padding:0 23px;border-top:1px solid #ebe7f0;display:flex;align-items:center;justify-content:space-between}.translate-toolbar>span{display:flex;align-items:center;gap:6px;font-size:9px;color:#a7a0b1}.privacy-icon{font-size:17px;line-height:1;color:#a79ab7}.translate-toolbar>div{display:flex;align-items:center;gap:17px}.shortcut{font-size:9px;color:#b0a7ba}.primary-button{display:inline-flex;align-items:center;justify-content:center;gap:16px;background:#8660cf;color:#fff;border-radius:7px;padding:12px 17px;font-size:11px;font-weight:500;box-shadow:0 2px 2px #6e449714;min-height:39px}.primary-button svg{width:15px;height:15px}.primary-button:disabled{background:#a88bdc;opacity:.8}.primary-button:hover:not(:disabled){background:#754cbf;color:white}.try-example{display:flex;gap:7px;align-items:center;margin-top:17px;font-size:9px;color:#9993a4}.try-example>svg{width:13px;color:#b29acb}.try-example>span:first-of-type{color:#92909e}.try-example>button{font-size:9px;display:flex;align-items:center;gap:3px;color:#9066d2;padding:0}.try-example>button svg{width:11px;height:11px}.example-description{border-left:1px solid #e4dfeb;padding-left:10px;margin-left:3px;color:#b1aab9}.recent-section{margin-top:37px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.section-heading h2{font-size:14px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:9px;margin:0}.section-heading h2>span{font-size:9px;font-weight:500;letter-spacing:0;border:1px solid #e8e4ee;border-radius:5px;padding:2px 5px;color:#a69bad}.section-heading>button{color:#96909f;font-size:9px;display:flex;align-items:center;gap:7px}.section-heading>button svg{width:13px;height:13px}.history-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.history-card{border:1px solid #e8e5ed;border-radius:10px;background:#fff;padding:14px 16px 10px;min-width:0}.history-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}.history-card-top>span{display:flex;align-items:center;gap:7px;font-size:9px;color:#625a6b;font-weight:500}.history-card-top>span>svg{width:10px;height:10px;color:#b6acbf}.history-card .icon-button svg{width:14px;height:14px}.history-card .icon-button{width:22px;height:22px}.history-content{display:block;text-align:left;padding:0;width:100%}.history-content p{font-size:11px;line-height:1.8;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px;color:#77707f}.history-content p+p{color:#b0a6ba;margin-top:10px}.history-card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:16px;border-top:1px solid #f0edf3;padding-top:10px}.history-card-bottom>span{font-size:8px;color:#b3aabf;display:flex;align-items:center;gap:5px}.history-card-bottom>span svg{width:11px;height:11px}.is-saved svg{fill:#e7dafa;stroke:#9265cd}.bottom-note{margin-top:28px;background:#f2f5f2;border:1px solid #e9eee9;border-radius:10px;min-height:89px;display:flex;align-items:center;padding:20px 24px;gap:17px;overflow:hidden}.note-icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#e6ede6;color:#8caa94}.note-icon svg{width:22px;height:22px;stroke-width:1.3}.bottom-note strong{font-size:11px;font-weight:500;color:#6d8171}.bottom-note p{font-size:9px;color:#9caaa0;margin:6px 0 0}.note-art{margin-left:auto;display:flex;align-items:center;gap:5px;transform:rotate(-7deg);opacity:.65}.note-art span{color:#8fa197;background:#fff;border:1px solid #dce5df;padding:7px 10px;font-size:11px;border-radius:6px;box-shadow:0 3px 4px #78877808}.note-art span:nth-child(2n){transform:translateY(13px) rotate(12deg)}.note-art span:nth-child(3){transform:translateY(-8px) rotate(10deg)}.workspace-footer{display:flex;justify-content:space-between;padding:26px 0;color:#b6b1bf;font-size:8px}.workspace-footer>span:last-child{display:flex;align-items:center;gap:10px}.footer-logo{color:#aaa1b3;font-family:Manrope,sans-serif;font-weight:800;font-size:14px;letter-spacing:-.7px}.loading-text{display:flex;gap:8px;align-items:center;font-size:14px}.loading-text svg{animation:spin 1.5s linear infinite;width:16px}.error-message{color:#b25a6a;font-size:13px}.toast{position:fixed;bottom:25px;left:calc(50% + 100px);transform:translateX(-50%);background:#393044;color:#fff;padding:13px 20px;border-radius:10px;box-shadow:0 4px 25px #30213f25;display:flex;align-items:center;gap:10px;font-size:12px;z-index:20}.toast svg{width:17px}.history-tools{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:25px 0}.search-field{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e7e1ef;padding:10px 15px;border-radius:8px;color:#aaa0b6}.search-field svg{width:16px}.search-field input{border:0;background:transparent;font-size:12px;max-width:100%}.empty-history{padding:70px 20px;text-align:center;color:#aaa0b6}.empty-history>svg{width:35px;height:35px}.empty-history h2{font-size:18px;color:#766384}.empty-history p{font-size:12px}.modal-backdrop{position:fixed;inset:0;background:#27223255;backdrop-filter:blur(4px);z-index:30;display:flex;align-items:center;justify-content:center;padding:20px}.modal{position:relative;background:#fff;border-radius:18px;padding:35px;width:440px;box-shadow:0 20px 80px #25143d25}.modal-close{position:absolute;top:15px;right:15px}.modal-symbol{display:grid;place-items:center;color:#9671d2;background:#f2ebfb;border-radius:12px;width:45px;height:45px;margin-bottom:20px}.modal h2{font-family:Manrope,sans-serif;font-size:22px}.modal p{font-size:13px;line-height:1.9;color:#93869e}.modal a{font-size:12px;color:#8860cc}.clear-history{margin-top:15px;background:#faeeee;color:#bc6666;padding:12px 17px;border-radius:7px;font-size:12px}@keyframes spin{to{transform:rotate(360deg)}}
++@media(min-width:1500px){.main-content{padding-top:55px}.editor-panels{min-height:320px}.source-panel textarea,.translation-output{min-height:215px}.page-heading{margin-bottom:45px}.recent-section{margin-top:43px}.history-card{padding:19px 20px 13px}.history-content p{font-size:12px;min-height:43px}.bottom-note{margin-top:35px}}
++@media(max-width:1150px){.sidebar{width:215px;padding-left:14px;padding-right:14px}.main-shell{margin-left:215px;width:calc(100% - 215px)}.main-content{padding:35px 28px 0}.topbar{padding:0 28px}.heading-badge{display:none}.note-art span:last-child{display:none}.powered-label{display:none}.nav-link{font-size:11px}.brand{font-size:33px}.history-card{padding:12px}.example-description{display:none}}
++@media(max-width:850px){.sidebar{width:73px;padding:27px 10px 0}.brand{margin:0 auto 40px;font-size:0;letter-spacing:0}.brand-symbol{width:37px;margin:0 auto}.workspace,.nav-label,.world-card,.profile,.sidebar-bottom .nav-link{display:none}.nav-link{font-size:0;justify-content:center;padding:14px 0;margin-bottom:10px;gap:0}.nav-link svg{width:22px;height:22px}.nav-count{display:none}.main-shell{margin-left:73px;width:calc(100% - 73px)}.main-content{padding:32px 24px 0}.topbar{height:69px;padding:0 24px}.history-grid{gap:10px}.history-card-top>span{font-size:8px;gap:4px}.history-content p{font-size:10px}.note-art{display:none}.local-status{display:none}.topbar-divider{display:none}.history-page .history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toast{left:50%;width:max-content;max-width:90%}}
++@media(max-width:600px){.sidebar{width:58px;padding:24px 7px 0}.brand-symbol{width:32px;height:33px;border-radius:10px}.brand-symbol svg{width:22px;height:22px}.main-shell{margin-left:58px;width:calc(100% - 58px)}.main-content{padding:27px 16px 0}.topbar{padding:0 16px;height:64px}.breadcrumbs{gap:9px;font-size:9px}.topbar-right{gap:10px}.topbar-right .user-avatar{display:none}.page-heading{margin-bottom:24px}h1{font-size:25px}.page-heading p{font-size:11px;max-width:270px}.eyebrow{font-size:7px}.editor-tabs>span{display:none}.editor-panels{grid-template-columns:1fr}.source-panel{border-right:0;border-bottom:1px solid #eae7ef}.source-panel,.target-panel{padding:15px 17px 10px}.source-panel textarea,.translation-output{min-height:135px;font-size:15px}.language-bar{height:60px;padding:0 17px}.language-select{width:calc(50% - 14px);gap:7px}.language-select select{font-size:11px;width:100%;padding-right:17px}.language-select>svg{margin-left:-22px}.target-select{margin-left:18px}.language-bar-label{display:none}.translate-toolbar{padding:12px 15px;height:auto;gap:12px}.translate-toolbar>span{font-size:8px;max-width:110px;line-height:1.6;gap:3px}.shortcut{display:none}.primary-button{padding:11px 13px;font-size:10px;gap:8px;white-space:nowrap}.try-example{gap:4px;font-size:8px}.try-example>button{font-size:8px}.recent-section{margin-top:30px}.section-heading h2{font-size:12px;gap:5px}.section-heading>button{font-size:8px;gap:4px}.history-grid,.history-page .history-grid{grid-template-columns:1fr}.history-card{padding:13px 16px 10px}.history-card-top>span{font-size:10px}.history-content p{font-size:12px;min-height:0;-webkit-line-clamp:2}.history-card-bottom{margin-top:10px}.bottom-note{padding:17px 13px;gap:10px;margin-top:22px}.bottom-note strong{font-size:10px}.bottom-note p{font-size:8px;line-height:1.6}.note-icon{min-width:30px;width:30px;height:30px}.workspace-footer{font-size:7px;gap:10px;line-height:1.7}.workspace-footer>span:last-child{gap:6px}.footer-logo{font-size:12px}.history-tools{align-items:stretch;flex-direction:column}.search-field input{width:100%}.history-tools .primary-button{align-self:flex-end}.modal{padding:25px}}
++@media(prefers-reduced-motion:reduce){*{animation:none!important}}

@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Action Playground */
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin-top: 20px;
++    }
++
++    .actions button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .actions button:hover {
++      background: #3e2723;
++    }
++
++    #action-target {
++      width: 120px;
++      margin: 30px auto 0;
++      padding: 20px;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      font-weight: bold;
++      border-radius: 8px;
++      transition: transform 0.4s, border-radius 0.4s, background 0.4s;
++    }
++
++    #action-target.is-spun {
++      transform: rotate(360deg);
++    }
++
++    #action-target.is-grown {
++      transform: scale(1.5);
++    }
++
++    #action-target.is-spun.is-grown {
++      transform: rotate(360deg) scale(1.5);
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++      aspect-ratio: 1;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +250,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Play With the Cup</h2>
++      <div class="actions">
++        <button type="button" commandfor="action-target" command="--spin">Spin</button>
++        <button type="button" commandfor="action-target" command="--grow">Grow</button>
++        <button type="button" commandfor="action-target" command="--round">Make Round</button>
++        <button type="button" commandfor="action-target" command="--reset">Reset All</button>
++      </div>
++      <div id="action-target">&#9749;</div>
++    </section>
+   </main>
+ 
++  <script>
++    const target = document.getElementById('action-target');
++    const toggles = {
++      '--spin': 'is-spun',
++      '--grow': 'is-grown',
++      '--round': 'is-rounded'
++    };
++
++    target.addEventListener('command', (event) => {
++      if (event.command in toggles) {
++        target.classList.toggle(toggles[event.command]);
++      } else if (event.command === '--reset') {
++        target.classList.remove(...Object.values(toggles));
++      }
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

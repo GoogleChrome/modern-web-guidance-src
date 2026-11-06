@@ -1,0 +1,203 @@
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..84be3cb 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -58,6 +58,27 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         );
+     }, [articles, searchTerm]);
+ 
++    const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++        e.preventDefault();
++        const { agentInvoked, respondWith } = e.nativeEvent as SubmitEvent & {
++            agentInvoked?: boolean;
++            respondWith?: (result: Promise<string>) => void;
++        };
++        if (!agentInvoked) return;
++        // Read from the form rather than state, which may not have flushed yet
++        const query = String(new FormData(e.currentTarget).get('query') ?? '').trim();
++        setSearchTerm(query);
++        const q = query.toLowerCase();
++        const results = q
++            ? articles.filter(a => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q))
++            : [];
++        respondWith?.(Promise.resolve(JSON.stringify(results.map(({ slug, title, summary }) => ({
++            title,
++            summary,
++            url: `${import.meta.env.BASE_URL}articles/${slug}`,
++        })))));
++    };
++
+     return (
+         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+             <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+@@ -86,14 +107,22 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                         </div>
+                     )}
+                     <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
++                    <form
++                        role="search"
++                        onSubmit={handleSearchSubmit}
++                        {...({ toolname: 'search-articles', tooldescription: 'Search the site\'s articles by title and summary', toolautosubmit: '' } as object)}
++                    >
+                     <input
+-                        type="text"
++                        type="search"
++                        name="query"
++                        aria-label="Search articles"
+                         placeholder="Search for articles..."
+                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                         value={searchTerm}
+                         onChange={e => setSearchTerm(e.target.value)}
+                         autoFocus
+                     />
++                    </form>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..29b6530 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -7,8 +7,17 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = (e: React.FormEvent) => {
+     e.preventDefault();
++    const result = submit();
++    const { agentInvoked, respondWith } = e.nativeEvent as SubmitEvent & {
++      agentInvoked?: boolean;
++      respondWith?: (result: Promise<string>) => void;
++    };
++    if (agentInvoked) respondWith?.(result);
++  };
++
++  const submit = async (): Promise<string> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -27,13 +36,18 @@ export default function SignInForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const message = `Login failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return message;
+       } else {
+         setSuccess('Login successful!');
++        return 'Login successful!';
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return message;
+     } finally {
+       setLoading(false);
+     }
+@@ -55,7 +69,11 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({ toolname: 'sign-in', tooldescription: 'Sign in to the site with an existing account' } as object)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +81,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +96,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..72de9fe 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -7,8 +7,17 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
++  const handleSubmit = (e: React.FormEvent) => {
+     e.preventDefault();
++    const result = submit();
++    const { agentInvoked, respondWith } = e.nativeEvent as SubmitEvent & {
++      agentInvoked?: boolean;
++      respondWith?: (result: Promise<string>) => void;
++    };
++    if (agentInvoked) respondWith?.(result);
++  };
++
++  const submit = async (): Promise<string> => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -27,14 +36,19 @@ export default function SignUpForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const message = `Registration failed: ${data.error || 'Unknown error'}`;
++        setError(message);
++        return message;
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
++        return 'User registered successfully! You can now sign in.';
+         setUsername('');
+         setPassword('');
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const message = 'An unexpected error occurred. Please try again later.';
++      setError(message);
++      return message;
+     } finally {
+       setLoading(false);
+     }
+@@ -56,7 +70,11 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({ toolname: 'sign-up', tooldescription: 'Create a new account on the site' } as object)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +82,7 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,6 +97,7 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required

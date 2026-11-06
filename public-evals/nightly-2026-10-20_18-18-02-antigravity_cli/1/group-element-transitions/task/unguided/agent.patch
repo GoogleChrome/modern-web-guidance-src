@@ -1,0 +1,280 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,145 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Bean Selections & View Transitions */
++    :root {
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    .bean-section {
++      margin-top: 50px;
++    }
++
++    .bean-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin: 20px 0 25px;
++      flex-wrap: wrap;
++    }
++
++    .bean-controls .btn {
++      margin-top: 0;
++    }
++
++    .bean-input {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      min-width: 240px;
++      color: var(--text);
++    }
++
++    .bean-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 15px;
++      max-width: 750px;
++      margin: 0 auto;
++    }
++
++    .item {
++      view-transition-class: item;
++      background: white;
++      padding: 18px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      border-left: 5px solid var(--primary);
++      cursor: pointer;
++    }
++
++    .item-info h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .item-info p {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .remove-btn {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 6px 14px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: background 0.2s, color 0.2s;
++      flex-shrink: 0;
++    }
++
++    .remove-btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    ::view-transition-group(.item) {
++      animation-timing-function: ease-in-out;
++      animation-duration: 0.5s;
++    }
++
++    @keyframes slide-in {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @keyframes slide-out {
++      from {
++        transform: translateX(0);
++        opacity: 1;
++      }
++      to {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++    }
++
++    ::view-transition-new(.item):only-child {
++      animation: slide-in 1s ease-in-out both;
++    }
++
++    ::view-transition-old(.item):only-child {
++      animation: slide-out 1s ease-in-out both;
++    }
++
++    @media (prefers-reduced-motion) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +325,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-section">
++      <h2 style="text-align: center;">Coffee Bean Selections</h2>
++      <div class="bean-controls">
++        <input type="text" id="bean-input" class="bean-input" placeholder="Custom bean name (optional)" aria-label="Custom bean name">
++        <button type="button" id="add-item-btn" class="btn">Add Item</button>
++      </div>
++      <ul id="bean-list" class="bean-list">
++        <li class="item" id="item-1" style="view-transition-name: item-1;">
++          <div class="item-info">
++            <h3>Colombian Supremo</h3>
++            <p>Medium roast — smooth caramel sweetness with a toasted walnut finish.</p>
++          </div>
++          <button type="button" class="remove-btn" aria-label="Remove Colombian Supremo">Remove</button>
++        </li>
++        <li class="item" id="item-2" style="view-transition-name: item-2;">
++          <div class="item-info">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Light roast — bright bergamot citrus notes and floral jasmine aroma.</p>
++          </div>
++          <button type="button" class="remove-btn" aria-label="Remove Ethiopian Yirgacheffe">Remove</button>
++        </li>
++        <li class="item" id="item-3" style="view-transition-name: item-3;">
++          <div class="item-info">
++            <h3>Sumatra Mandheling</h3>
++            <p>Dark roast — full-bodied earthy spice with rich dark chocolate undertones.</p>
++          </div>
++          <button type="button" class="remove-btn" aria-label="Remove Sumatra Mandheling">Remove</button>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +368,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const beanList = document.getElementById('bean-list');
++    const addItemBtn = document.getElementById('add-item-btn');
++    const beanInput = document.getElementById('bean-input');
++
++    const customBeans = [
++      { name: 'Guatemala Antigua', desc: 'Medium-dark roast — velvety cocoa body with subtle smoky spice.' },
++      { name: 'Kenya AA', desc: 'Medium roast — vibrant berry acidity with a wine-like finish.' },
++      { name: 'Costa Rica Tarrazu', desc: 'Medium roast — crisp honey sweetness with bright green apple notes.' },
++      { name: 'Brazil Santos', desc: 'Light-medium roast — creamy hazelnut aroma and mild chocolate flavor.' },
++      { name: 'House Espresso Reserve', desc: 'Dark roast — syrupy crema with caramelized sugar and roasted almond.' }
++    ];
++
++    let itemCounter = 3;
++
++    function runWithViewTransition(updateCallback) {
++      if (!document.startViewTransition) {
++        updateCallback();
++        return;
++      }
++      document.startViewTransition(() => {
++        updateCallback();
++      });
++    }
++
++    function createBeanItem() {
++      itemCounter += 1;
++      const customName = beanInput ? beanInput.value.trim() : '';
++      const preset = customBeans[(itemCounter - 4) % customBeans.length];
++      const title = customName || `${preset.name} #${itemCounter}`;
++      const description = customName
++        ? 'Custom artisanal single-origin roast tailored to your taste.'
++        : preset.desc;
++
++      const li = document.createElement('li');
++      li.className = 'item';
++      li.id = `item-${itemCounter}`;
++      li.style.viewTransitionName = `item-${itemCounter}`;
++
++      const infoDiv = document.createElement('div');
++      infoDiv.className = 'item-info';
++
++      const h3 = document.createElement('h3');
++      h3.textContent = title;
++
++      const p = document.createElement('p');
++      p.textContent = description;
++
++      infoDiv.appendChild(h3);
++      infoDiv.appendChild(p);
++
++      const removeBtn = document.createElement('button');
++      removeBtn.type = 'button';
++      removeBtn.className = 'remove-btn';
++      removeBtn.setAttribute('aria-label', `Remove ${title}`);
++      removeBtn.textContent = 'Remove';
++
++      li.appendChild(infoDiv);
++      li.appendChild(removeBtn);
++
++      if (beanInput) {
++        beanInput.value = '';
++      }
++
++      return li;
++    }
++
++    addItemBtn.addEventListener('click', () => {
++      const newItem = createBeanItem();
++      runWithViewTransition(() => {
++        beanList.appendChild(newItem);
++      });
++    });
++
++    beanList.addEventListener('click', (event) => {
++      const item = event.target.closest('.item');
++      if (!item) return;
++      runWithViewTransition(() => {
++        item.remove();
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

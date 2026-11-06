@@ -1,0 +1,79 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -48,14 +48,46 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
++    /* Fallback for unsupported browsers */
++    nav ul li.active {
++      border-bottom: 2px solid var(--accent);
++    }
++
++    @supports (anchor-name: --active-tab) {
++      nav ul li.active {
++        anchor-name: --active-tab;
++        border-bottom: none;
++      }
++
++      nav ul::before {
++        content: "";
++        position: absolute;
++        position-anchor: --active-tab;
++        left: anchor(left);
++        right: anchor(right);
++        bottom: anchor(bottom);
++        height: 2px;
++        background: var(--accent);
++        pointer-events: none;
++        transition: inset 0.3s ease;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav ul::before {
++        transition: none;
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -159,9 +191,9 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -206,7 +238,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('nav ul li').forEach((item) => {
++      item.addEventListener('click', (event) => {
++        event.preventDefault();
++        document.querySelector('nav ul li.active')?.classList.remove('active');
++        item.classList.add('active');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

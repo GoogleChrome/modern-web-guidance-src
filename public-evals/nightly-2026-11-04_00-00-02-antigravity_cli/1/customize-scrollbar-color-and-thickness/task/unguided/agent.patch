@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,86 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container {
++      max-height: 280px;
++      height: 280px;
++      overflow-y: scroll;
++      background: white;
++      border-radius: 8px;
++      padding: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--secondary);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-container::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-container::-webkit-scrollbar-track {
++      background: #4e342e;
++      background-color: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      background-color: #ffab40;
++      border-radius: 4px;
++    }
++
++    .testimonial-item {
++      padding: 15px;
++      border-bottom: 1px solid var(--secondary);
++      margin-bottom: 12px;
++    }
++
++    .testimonial-item:last-child {
++      border-bottom: none;
++      margin-bottom: 0;
++    }
++
++    .testimonial-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 6px;
++    }
++
++    .testimonial-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .testimonial-meta {
++      font-size: 0.85rem;
++      color: #795548;
++    }
++
++    .testimonial-rating {
++      color: var(--accent);
++      font-weight: bold;
++      margin-right: 8px;
++    }
++
++    .testimonial-text {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +272,63 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" id="customer-feedback">
++      <h2>Customer Feedback Log</h2>
++      <div class="feedback-container feedback-log" id="feedback-log" role="region" aria-label="Customer Feedback Log" tabindex="0">
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Sarah Jenkins</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 28, 2026</span>
++          </div>
++          <p class="testimonial-text">"The Maple Oat Latte is hands-down the best seasonal drink in town! Perfectly balanced sweetness and the espresso notes still shine right through."</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Marcus Vance</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 25, 2026</span>
++          </div>
++          <p class="testimonial-text">"I stop by every morning before work for the 18-hour Cold Brew. Never bitter, always rich and chocolatey. The baristas remember my order by heart!"</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Elena Rostova</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 21, 2026</span>
++          </div>
++          <p class="testimonial-text">"Such a cozy atmosphere for remote work. Their Dark Roast Espresso gives me the exact morning boost I need, and the freshly baked croissants pair wonderfully."</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">David Kim</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★☆</span> Oct 18, 2026</span>
++          </div>
++          <p class="testimonial-text">"Love knowing that the beans are ethically sourced and roasted locally. I bought two bags of the house blend for my pour-over setup at home."</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Priya Patel</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 14, 2026</span>
++          </div>
++          <p class="testimonial-text">"Ordered online through the rewards program and my cappuccino was piping hot and waiting at the counter when I walked in. Fantastic service!"</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Liam O'Connor</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 10, 2026</span>
++          </div>
++          <p class="testimonial-text">"The attention to detail in every pour is unmatched. Whether you're grabbing a quick cortado or lingering over a single-origin drip, The Daily Grind delivers."</p>
++        </article>
++        <article class="testimonial-item">
++          <div class="testimonial-header">
++            <span class="testimonial-author">Hannah Abbott</span>
++            <span class="testimonial-meta"><span class="testimonial-rating">★★★★★</span> Oct 05, 2026</span>
++          </div>
++          <p class="testimonial-text">"Best artisanal coffee shop in the neighborhood! The seasonal menu never disappoints, and the loyalty perks add up super fast."</p>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

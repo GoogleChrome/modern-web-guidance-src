@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+index 66c9173..cb07dd9 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -135,6 +136,10 @@
+       background: #3e2723;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -164,7 +169,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" rel="nofollow" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +181,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +212,110 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "source": "document",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout*" } },
++              { "not": { "selector_matches": "[data-no-prefetch]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
++  <script>
++    (function () {
++      if (window.trustedTypes && window.trustedTypes.createPolicy) {
++        try {
++          window.trustedTypes.createPolicy('default', {
++            createHTML: (str) => str.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
++            createScriptURL: (url) => {
++              const parsed = new URL(url, window.location.origin);
++              if (parsed.origin === window.location.origin) {
++                return parsed.href;
++              }
++              throw new TypeError('Untrusted script URL blocked by Trusted Types policy.');
++            },
++            createScript: () => {
++              throw new TypeError('Dynamic script evaluation blocked by Trusted Types policy.');
++            }
++          });
++        } catch (e) {
++          // Policy already registered
++        }
++      }
++
++      if ('SecurityPolicyViolationEvent' in window) {
++        document.addEventListener('securitypolicyviolation', (event) => {
++          const payload = {
++            type: 'csp-violation',
++            blockedURI: event.blockedURI,
++            violatedDirective: event.violatedDirective,
++            effectiveDirective: event.effectiveDirective,
++            originalPolicy: event.originalPolicy,
++            disposition: event.disposition,
++            sourceFile: event.sourceFile,
++            lineNumber: event.lineNumber,
++            columnNumber: event.columnNumber,
++            statusCode: event.statusCode,
++            sample: event.sample
++          };
++          console.warn('CSP Violation intercepted:', payload);
++          if (navigator.sendBeacon) {
++            navigator.sendBeacon('/csp-report', JSON.stringify(payload));
++          }
++        });
++      }
++
++      if ('ReportingObserver' in window) {
++        try {
++          const observer = new ReportingObserver((reports) => {
++            for (const report of reports) {
++              const payload = {
++                type: report.type,
++                url: report.url,
++                body: report.body ? report.body.toJSON() : null
++              };
++              console.warn('ReportingObserver report:', payload);
++              if (navigator.sendBeacon) {
++                navigator.sendBeacon('/csp-report', JSON.stringify(payload));
++              }
++            }
++          }, { buffered: true });
++          observer.observe();
++        } catch (e) {
++          // ReportingObserver unsupported or failed
++        }
++      }
++
++      const logoutLink = document.querySelector('.logout-link');
++      if (logoutLink) {
++        logoutLink.addEventListener('click', (event) => {
++          event.preventDefault();
++          fetch('/logout', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: {
++              'X-Requested-With': 'XMLHttpRequest'
++            }
++          }).then((res) => {
++            if (res.ok) {
++              window.location.href = '/logout';
++            }
++          }).catch(() => {
++            window.location.href = '/logout';
++          });
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/server.js b/server.js
+index 52c2fd5..23b0a99 100644
+--- a/server.js
++++ b/server.js
+@@ -1,29 +1,98 @@
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+ const WORK_DIR = __dirname;
+ 
++function getSecurityHeaders(nonce) {
++  const cspDirectives = [
++    "default-src 'self'",
++    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
++    `style-src 'self' 'nonce-${nonce}'`,
++    "img-src 'self' https://images.unsplash.com data:",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    "require-trusted-types-for 'script'",
++    "trusted-types default",
++    "report-uri /csp-report",
++    "report-to csp-endpoint"
++  ].join('; ');
++
++  return {
++    'Content-Type': 'text/html; charset=utf-8',
++    'Content-Security-Policy': cspDirectives,
++    'Content-Security-Policy-Report-Only': cspDirectives,
++    'Reporting-Endpoints': 'csp-endpoint="/csp-report"',
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
++    'Cache-Control': 'no-store, max-age=0'
++  };
++}
++
+ const server = http.createServer((req, res) => {
+   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const pathname = parsedUrl.pathname;
+ 
++  if (pathname === '/csp-report' && req.method === 'POST') {
++    let body = '';
++    req.on('data', (chunk) => {
++      body += chunk.toString();
++    });
++    req.on('end', () => {
++      res.writeHead(204);
++      res.end();
++    });
++    return;
++  }
++
++  const nonce = crypto.randomBytes(16).toString('base64');
++  const headers = getSecurityHeaders(nonce);
++
+   if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    const purpose = (
++      req.headers['sec-purpose'] ||
++      req.headers['purpose'] ||
++      req.headers['x-moz'] ||
++      ''
++    ).toLowerCase();
++
++    if (purpose.includes('prefetch') || purpose.includes('preview') || purpose.includes('prerender')) {
++      res.writeHead(400, headers);
++      res.end('Prefetching logout is not allowed.');
++      return;
++    }
++
++    res.writeHead(200, {
++      ...headers,
++      'Clear-Site-Data': '"cache", "cookies", "storage"'
++    });
+     res.end('Logged out');
+     return;
+   }
+ 
+   const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
++  fs.readFile(filePath, 'utf8', (err, data) => {
+     if (err) {
+-      res.writeHead(500);
++      res.writeHead(500, headers);
+       res.end('Server error');
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    const htmlWithNonce = data
++      .replace(/<style>/g, `<style nonce="${nonce}">`)
++      .replace(/<script(?=[ >])/g, `<script nonce="${nonce}"`);
++    res.writeHead(200, headers);
++    res.end(htmlWithNonce);
+   });
+ });
+ 

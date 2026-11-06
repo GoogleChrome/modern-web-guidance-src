@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,155 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean selections */
++    .bean-section {
++      margin-top: 48px;
++    }
++
++    .bean-section > p {
++      margin: 6px 0 20px;
++    }
++
++    .bean-form {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .bean-field {
++      flex: 1 1 240px;
++    }
++
++    .bean-field label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .bean-field input {
++      width: 100%;
++      padding: 11px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .bean-form .btn {
++      margin: 0;
++      border: 0;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .bean-list {
++      display: grid;
++      gap: 12px;
++      list-style: none;
++    }
++
++    .item {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 18px 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      view-transition-class: bean-item;
++    }
++
++    .remove-bean {
++      flex-shrink: 0;
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      color: var(--primary);
++      background: transparent;
++    }
++
++    .remove-bean:hover {
++      background: var(--secondary);
++    }
++
++    .bean-status {
++      min-height: 1.6em;
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    /* Capture only the beans, with no full-page snapshot or input-blocking overlay. */
++    :root {
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root) {
++      animation: none;
++    }
++
++    ::view-transition-group(.bean-item) {
++      animation-duration: 0.5s;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-old(.bean-item),
++    ::view-transition-new(.bean-item) {
++      animation-duration: 0.5s;
++      animation-timing-function: ease-in-out;
++      pointer-events: none;
++    }
++
++    ::view-transition-new(.bean-item):only-child {
++      animation: bean-enter 1s ease-in-out both;
++    }
++
++    ::view-transition-old(.bean-item):only-child {
++      animation: bean-exit 1s ease-in-out both;
++    }
++
++    @keyframes bean-enter {
++      from { opacity: 0; transform: translateX(-100%); }
++      to { opacity: 1; transform: translateX(0); }
++    }
++
++    @keyframes bean-exit {
++      from { opacity: 1; transform: translateX(0); }
++      to { opacity: 0; transform: translateX(-100%); }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after {
++        animation: none !important;
++        transition: none !important;
++        scroll-behavior: auto !important;
++      }
++
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +341,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="bean-section" aria-labelledby="bean-heading">
++      <h2 id="bean-heading">Find Your Daily Grind</h2>
++      <p>Start with a favorite origin or add your own coffee bean selection.</p>
++      <form class="bean-form" id="bean-form">
++        <div class="bean-field">
++          <label for="bean-name">Custom bean name</label>
++          <input id="bean-name" name="bean-name" maxlength="80" placeholder="e.g. Costa Rica Honey" aria-describedby="bean-hint">
++          <small id="bean-hint">Leave blank to add a new custom blend.</small>
++        </div>
++        <button class="btn" type="submit">Add Item</button>
++      </form>
++      <ul class="bean-list" id="bean-list" aria-label="Coffee bean selections">
++        <li class="item" style="view-transition-name: bean-1">
++          <span>Ethiopian Yirgacheffe</span>
++          <button class="remove-bean" type="button" aria-label="Remove Ethiopian Yirgacheffe">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: bean-2">
++          <span>Colombian Supremo</span>
++          <button class="remove-bean" type="button" aria-label="Remove Colombian Supremo">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: bean-3">
++          <span>Sumatra Mandheling</span>
++          <button class="remove-bean" type="button" aria-label="Remove Sumatra Mandheling">Remove</button>
++        </li>
++      </ul>
++      <p class="bean-status" id="bean-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +380,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const beanForm = document.querySelector('#bean-form');
++    const beanInput = document.querySelector('#bean-name');
++    const beanList = document.querySelector('#bean-list');
++    const beanStatus = document.querySelector('#bean-status');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let nextBeanId = 4;
++    let customBlendNumber = 1;
++    let activeTransition;
++    let pendingUpdate = Promise.resolve();
++
++    function updateBeans(update) {
++      // Wait only for DOM updates, never for animation completion, so rapid clicks work.
++      pendingUpdate = pendingUpdate.then(() => {
++        activeTransition?.skipTransition();
++        if (reducedMotion.matches || !document.startViewTransition ||
++            !CSS.supports('view-transition-class', 'bean-item')) {
++          update();
++          return;
++        }
++        activeTransition = document.startViewTransition(update);
++        return activeTransition.updateCallbackDone;
++      }).catch(console.error);
++    }
++
++    reducedMotion.addEventListener('change', (event) => {
++      if (event.matches) activeTransition?.skipTransition();
++    });
++
++    beanForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const name = beanInput.value.trim() || `Custom Blend ${customBlendNumber++}`;
++      const item = document.createElement('li');
++      item.className = 'item';
++      item.style.viewTransitionName = `bean-${nextBeanId++}`;
++      const label = document.createElement('span');
++      label.textContent = name;
++      const removeButton = document.createElement('button');
++      removeButton.type = 'button';
++      removeButton.className = 'remove-bean';
++      removeButton.textContent = 'Remove';
++      removeButton.setAttribute('aria-label', `Remove ${name}`);
++      item.append(label, removeButton);
++      beanInput.value = '';
++      updateBeans(() => {
++        beanList.append(item);
++        beanStatus.textContent = `${name} added. ${beanList.children.length} selections.`;
++      });
++    });
++
++    beanList.addEventListener('click', (event) => {
++      const button = event.target.closest('.remove-bean');
++      if (!button) return;
++      const item = button.closest('.item');
++      updateBeans(() => {
++        if (!item.isConnected) return;
++        const focusTarget = (item.nextElementSibling || item.previousElementSibling)
++          ?.querySelector('button') || beanForm.querySelector('button');
++        const restoreFocus = item.contains(document.activeElement);
++        const name = item.querySelector('span').textContent;
++        item.remove();
++        if (restoreFocus) focusTarget.focus({ preventScroll: true });
++        beanStatus.textContent = `${name} removed. ${beanList.children.length} selections.`;
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

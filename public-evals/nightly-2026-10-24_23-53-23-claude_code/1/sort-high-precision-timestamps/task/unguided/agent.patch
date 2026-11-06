@@ -1,0 +1,131 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,41 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .events {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .events button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .events table {
++      width: 100%;
++      margin-top: 20px;
++      border-collapse: collapse;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: left;
++    }
++
++    .events th,
++    .events td {
++      padding: 8px 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .events td.mono {
++      font-family: ui-monospace, Menlo, Consolas, monospace;
++      font-size: 0.85rem;
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +227,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="events">
++      <h2>Order Event Timeline</h2>
++      <p>Events from distributed services arrive out of order. Load them to sort and measure the gaps.</p>
++      <button type="button" id="load-events" class="btn">Load Order Events</button>
++      <div id="events-output" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +246,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Events as collected from backend services. Timestamps are RFC 3339 UTC strings with
++    // nanosecond precision; they must stay strings/BigInt, since Date and Number only hold ms/~53 bits.
++    const COLLECTED_EVENTS = [
++      { service: 'pickup-display', type: 'order.ready', orderId: 'A-1042', ts: '2026-10-25T08:15:03.481920517Z' },
++      { service: 'pos', type: 'order.placed', orderId: 'A-1042', ts: '2026-10-25T08:15:00.120000004Z' },
++      { service: 'barista-queue', type: 'brew.started', orderId: 'A-1042', ts: '2026-10-25T08:15:01.907345120Z' },
++      { service: 'payments', type: 'payment.captured', orderId: 'A-1042', ts: '2026-10-25T08:15:00.120411873Z' },
++      { service: 'barista-queue', type: 'brew.finished', orderId: 'A-1042', ts: '2026-10-25T08:15:03.481920499Z' },
++      { service: 'inventory', type: 'beans.reserved', orderId: 'A-1042', ts: '2026-10-25T08:15:00.120411873Z' },
++      { service: 'barista-queue', type: 'order.assigned', orderId: 'A-1042', ts: '2026-10-25T08:15:00.874002650Z' },
++    ];
++
++    // Parse an RFC 3339 UTC timestamp to integer nanoseconds since the epoch (BigInt).
++    function parseNs(ts) {
++      const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?Z$/.exec(ts);
++      if (!m) throw new Error('Invalid timestamp: ' + ts);
++      const seconds = BigInt(Date.parse(m[1] + 'Z') / 1000);
++      const frac = BigInt((m[2] || '').padEnd(9, '0'));
++      return seconds * 1000000000n + frac;
++    }
++
++    function sortEvents(events) {
++      return events
++        .map(e => ({ ...e, ns: parseNs(e.ts) }))
++        .sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : 0)); // stable for ties
++    }
++
++    // Format a nanosecond duration exactly, e.g. 1234567n -> "1.234567 ms".
++    function formatInterval(ns) {
++      if (ns === 0n) return '0 ns';
++      const units = [[1000000000n, 's', 9], [1000000n, 'ms', 6], [1000n, 'µs', 3]];
++      for (const [size, label, digits] of units) {
++        if (ns >= size) {
++          const frac = (ns % size).toString().padStart(digits, '0').replace(/0+$/, '');
++          return (ns / size).toString() + (frac ? '.' + frac : '') + ' ' + label;
++        }
++      }
++      return ns + ' ns';
++    }
++
++    function escapeHtml(s) {
++      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++    }
++
++    function renderTimeline(sorted) {
++      const rows = sorted.map((e, i) => {
++        const gap = i === 0 ? '—' : '+' + formatInterval(e.ns - sorted[i - 1].ns);
++        return '<tr><td>' + (i + 1) + '</td><td class="mono">' + escapeHtml(e.ts) + '</td><td>' +
++          escapeHtml(e.service) + '</td><td>' + escapeHtml(e.type) + '</td><td class="mono">' + gap + '</td></tr>';
++      }).join('');
++      const total = formatInterval(sorted[sorted.length - 1].ns - sorted[0].ns);
++      document.getElementById('events-output').innerHTML =
++        '<table><thead><tr><th>#</th><th>Timestamp (UTC)</th><th>Service</th><th>Event</th><th>Since previous</th></tr></thead><tbody>' +
++        rows + '</tbody></table><p>' + sorted.length + ' events, total span ' + total + '</p>';
++    }
++
++    document.getElementById('load-events').addEventListener('click', () => {
++      renderTimeline(sortEvents(COLLECTED_EVENTS));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

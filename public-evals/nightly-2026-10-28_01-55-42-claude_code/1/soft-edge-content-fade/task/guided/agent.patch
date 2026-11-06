@@ -1,0 +1,93 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,57 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roaster's Secrets preview (paywall teaser) */
++    .paywall-container {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .paywall-container h2 {
++      margin-bottom: 20px;
++    }
++
++    .paywall-content {
++      text-align: left;
++      max-width: 760px;
++      margin: 0 auto;
++      /* Fade the content itself into the page background (not a color overlay):
++         fully opaque until 40%, then eases down to absolute transparency at the bottom. */
++      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
++    }
++
++    .paywall-content img {
++      display: block;
++      width: 100%;
++      height: 260px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 20px;
++    }
++
++    .paywall-content h3 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin-bottom: 10px;
++    }
++
++    .paywall-content p {
++      margin-bottom: 1rem;
++    }
++
++    .paywall-cta {
++      margin-top: -10px;
++    }
++
++    .paywall-cta p {
++      font-size: 0.9rem;
++      opacity: 0.8;
++      margin-bottom: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +243,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container" aria-labelledby="roasters-secrets-heading">
++      <h2 id="roasters-secrets-heading">Roaster's Secrets</h2>
++      <div class="paywall-content">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
++          alt="Freshly roasted coffee beans cooling in a drum roaster" loading="lazy">
++        <h3>Inside the Roastery: Why We Rest Our Beans for Exactly Nine Days</h3>
++        <p>Every batch that leaves our roaster is held back before it reaches your cup. Most people assume coffee is at its
++          best the moment it's roasted, but freshly roasted beans are still releasing carbon dioxide. Brew them too early
++          and that gas blocks water from extracting the flavors you actually paid for.</p>
++        <p>Our head roaster tested rest windows from two days to three weeks across our Ethiopian, Colombian, and Sumatran
++          lots. Nine days turned out to be the sweet spot for our medium roasts, while the dark roast espresso behaves
++          very differently. Here's the schedule we follow, and the one brewing variable most home baristas get wrong
++          when their beans are...</p>
++        <p>The first step happens before the beans ever hit the drum. We pull a small sample from each green lot and
++          measure its moisture content and density, because those two numbers decide how aggressively we can charge
++          the roaster and how long the development phase should run.</p>
++      </div>
++      <div class="paywall-cta">
++        <p>This story is exclusive to Daily Grind Rewards members.</p>
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

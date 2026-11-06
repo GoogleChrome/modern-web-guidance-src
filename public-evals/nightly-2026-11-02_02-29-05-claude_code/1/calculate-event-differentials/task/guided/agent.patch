@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,17 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .promo-timer {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 4px 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +189,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-timer" data-start="2025-11-01" data-end="2026-03-01">
++            <p class="promo-remaining"></p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +219,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const timer = document.getElementById('maple-timer');
++    const tz = Temporal.Now.timeZoneId();
++    const now = Temporal.Now.zonedDateTimeISO(tz);
++    // Promotion boundaries are midnight in the visitor's own time zone
++    const start = Temporal.PlainDate.from(timer.dataset.start).toZonedDateTime({ timeZone: tz });
++    const end = Temporal.PlainDate.from(timer.dataset.end).toZonedDateTime({ timeZone: tz });
++    const diffOptions = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++    const formatOptions = { style: 'long', hoursDisplay: 'always' };
++
++    const renderDuration = (el, prefix, duration, suffix = '') => {
++      const time = document.createElement('time');
++      time.dateTime = duration.toString();
++      time.textContent = duration.toLocaleString(undefined, formatOptions);
++      el.replaceChildren(prefix, time, suffix);
++    };
++
++    const remainingEl = timer.querySelector('.promo-remaining');
++    const elapsedEl = timer.querySelector('.promo-elapsed');
++
++    if (Temporal.ZonedDateTime.compare(now, start) < 0) {
++      renderDuration(remainingEl, 'Offer starts in ', now.until(start, diffOptions));
++      elapsedEl.hidden = true;
++    } else if (Temporal.ZonedDateTime.compare(now, end) >= 0) {
++      remainingEl.textContent = 'This offer has ended.';
++      renderDuration(elapsedEl, 'Ran for ', start.until(end, diffOptions));
++    } else {
++      renderDuration(remainingEl, '', now.until(end, diffOptions), ' left');
++      renderDuration(elapsedEl, 'Running for ', now.since(start, diffOptions));
++    }
++  </script>
+ </body>
+ 
+ </html>

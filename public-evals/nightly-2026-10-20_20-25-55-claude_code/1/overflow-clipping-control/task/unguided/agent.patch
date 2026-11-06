@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      margin-top: 60px;
++    }
++
++    /* Children are clipped at the content box edge; the browser derives the
++       concentric inner curve from border-radius minus border and padding. */
++    .nested-curve-parent {
++      background: white;
++      border: 4px solid var(--primary);
++      border-radius: 32px;
++      padding: 24px 28px;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++    }
++
++    .nested-curve-parent h3 {
++      margin: 16px 0 8px;
++      color: var(--primary);
++    }
++
++    .nested-curve-footer {
++      background: var(--secondary);
++      padding: 12px 16px;
++      margin-top: 16px;
++      font-size: 0.9rem;
++    }
++
++    /* Normal overflow is clipped, but 15px beyond the box is left visible
++       so the button's glow isn't cut off. */
++    .safety-zone-parent {
++      background: var(--primary);
++      color: white;
++      border-radius: 16px;
++      padding: 32px;
++      text-align: center;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
++    .glow-btn {
++      margin-top: 24px;
++      padding: 14px 32px;
++      font-size: 1rem;
++      font-weight: bold;
++      color: var(--primary);
++      background: var(--accent);
++      border: none;
++      border-radius: 8px;
++      cursor: pointer;
++      /* total reach stays within the 15px safety zone */
++      box-shadow: 0 0 6px 2px rgba(255, 171, 64, 0.9),
++        0 0 10px 5px rgba(255, 171, 64, 0.5);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +245,24 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase">
++      <article class="nested-curve-parent">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++          alt="A cup of freshly poured coffee">
++        <h3>Single Origin Spotlight</h3>
++        <p>Our roasters pick one standout farm each month.</p>
++        <div class="nested-curve-footer">Small batch &middot; Roasted Fridays</div>
++      </article>
++
++      <div class="safety-zone-parent">
++        <h3>Today's Promos</h3>
++        <p>Free pastry with any large drink before 10am. Double rewards points every Wednesday.</p>
++        <button type="button" class="glow-btn">Claim Offer</button>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

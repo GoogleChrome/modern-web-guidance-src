@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+index 1bacf96..d4a77e4 100644
+--- a/index.html
++++ b/index.html
+@@ -31,6 +31,7 @@
+     nav {
+       background: var(--primary);
+       color: white;
++      color: contrast-color(var(--primary));
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +57,13 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      text-decoration: underline;
+     }
+ 
+     .logout-link {
+@@ -121,21 +121,25 @@
+     }
+ 
+     .btn {
++      --button-background: var(--primary);
+       display: inline-block;
+-      background: var(--primary);
++      background: var(--button-background);
++      color: white;
++      color: contrast-color(var(--button-background));
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      --button-background: #3e2723;
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
++      color: contrast-color(var(--secondary));
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +151,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

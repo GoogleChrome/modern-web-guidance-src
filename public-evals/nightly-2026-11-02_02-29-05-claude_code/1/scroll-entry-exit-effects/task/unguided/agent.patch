@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,40 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /* Scroll-driven reveal: cards grow from half size to full size as they
++       enter the viewport and shrink back as they leave. Pure CSS; only applied
++       when the browser supports scroll-driven animations and the user has not
++       asked for reduced motion. Content stays visible and readable throughout. */
++    @keyframes card-reveal {
++      entry 0% {
++        scale: 0.5;
++      }
++
++      entry 100% {
++        scale: 1;
++      }
++
++      exit 0% {
++        scale: 1;
++      }
++
++      exit 100% {
++        scale: 0.5;
++      }
++    }
++
++    @supports (animation-timeline: view()) {
++      @media (prefers-reduced-motion: no-preference) {
++        .card {
++          animation: card-reveal linear both;
++          animation-timeline: view();
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

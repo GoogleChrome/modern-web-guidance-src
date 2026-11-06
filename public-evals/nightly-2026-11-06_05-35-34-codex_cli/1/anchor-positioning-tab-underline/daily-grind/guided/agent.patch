@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+index 66c9173..e6563a8 100644
+--- a/index.html
++++ b/index.html
+@@ -47,10 +47,42 @@
+     }
+ 
+     nav ul {
++      position: relative;
+       display: flex;
+       list-style: none;
+     }
+ 
++    nav ul::before {
++      content: '';
++      position: absolute;
++      left: var(--indicator-left, 20px);
++      top: var(--indicator-top, 100%);
++      width: var(--indicator-width, 0px);
++      height: 3px;
++      border-radius: 2px;
++      background: var(--accent);
++      pointer-events: none;
++    }
++
++    nav a[aria-current] {
++      anchor-name: --active-nav;
++    }
++
++    @supports (left: anchor(left)) and (width: anchor-size(width)) {
++      nav ul::before {
++        position-anchor: --active-nav;
++        left: anchor(left);
++        top: calc(anchor(bottom) + 4px);
++        width: anchor-size(width);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul.indicator-ready::before {
++        transition: left 0.3s ease, top 0.3s ease, width 0.3s ease;
++      }
++    }
++
+     nav ul li {
+       margin-left: 20px;
+     }
+@@ -157,10 +189,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -207,6 +239,45 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    const navLinks = [...navList.querySelectorAll('a:not(.logout-link)')];
++    let activeLink = navLinks.find(link => link.pathname === location.pathname) || navLinks[0];
++
++    function positionIndicator() {
++      const listRect = navList.getBoundingClientRect();
++      const linkRect = activeLink.getBoundingClientRect();
++      navList.style.setProperty('--indicator-left', `${linkRect.left - listRect.left}px`);
++      navList.style.setProperty('--indicator-top', `${linkRect.bottom - listRect.top + 4}px`);
++      navList.style.setProperty('--indicator-width', `${linkRect.width}px`);
++    }
++
++    function selectLink(link) {
++      navLinks.forEach(item => item.removeAttribute('aria-current'));
++      activeLink = link;
++      activeLink.setAttribute('aria-current', 'page');
++      positionIndicator();
++    }
++
++    navLinks.forEach(link => {
++      link.addEventListener('click', event => {
++        // Keep ordinary selections on this page so the shared indicator can slide.
++        // Modified clicks retain the link's normal new-tab behavior.
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        event.preventDefault();
++        selectLink(link);
++      });
++    });
++
++    selectLink(activeLink);
++    requestAnimationFrame(() => {
++      requestAnimationFrame(() => navList.classList.add('indicator-ready'));
++    });
++    const navResizeObserver = new ResizeObserver(positionIndicator);
++    navResizeObserver.observe(navList);
++    navLinks.forEach(link => navResizeObserver.observe(link));
++    document.fonts.ready.then(positionIndicator);
++  </script>
+ </body>
+ 
+ </html>

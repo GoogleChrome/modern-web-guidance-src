@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,110 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .signup {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: center;
++      margin-top: 60px;
++      padding: 40px;
++      background: #f0e9e5;
++      border-radius: 12px;
++      scroll-margin-top: 100px;
++    }
++
++    .signup-eyebrow {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++    }
++
++    .signup h2 {
++      font-size: 2rem;
++      line-height: 1.2;
++      margin: 12px 0 16px;
++    }
++
++    .signup-form {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++    }
++
++    .signup-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .signup-form input {
++      width: 100%;
++      padding: 11px 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .signup-field + .signup-field {
++      margin-top: 16px;
++    }
++
++    .signup-note {
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    .signup-form .btn {
++      width: 100%;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .signup-status:not(:empty) {
++      margin-top: 16px;
++    }
++
++    a:focus-visible,
++    button:focus-visible,
++    input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .signup {
++        grid-template-columns: 1fr;
++        gap: 24px;
++        padding: 24px;
++        scroll-margin-top: 160px;
++      }
++
++      .signup-form {
++        padding: 20px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,8 +265,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="#signup">Sign Up</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -194,8 +297,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="signup" id="signup" aria-labelledby="signup-heading">
++      <div>
++        <p class="signup-eyebrow">The Daily Grind community</p>
++        <h2 id="signup-heading">Good days start with great coffee.</h2>
++        <p>Make yourself at home. Sign up and bring a little more Daily Grind to your daily routine.</p>
++      </div>
++      <form class="signup-form" id="signup-form" aria-describedby="signup-availability">
++        <div class="signup-field">
++          <label for="signup-name">Full name</label>
++          <input id="signup-name" name="name" type="text" autocomplete="name" required>
++        </div>
++        <div class="signup-field">
++          <label for="signup-email">Email address</label>
++          <input id="signup-email" name="email" type="email" autocomplete="email" required>
++        </div>
++        <div class="signup-field">
++          <label for="signup-password">Password</label>
++          <input id="signup-password" name="password" type="password" autocomplete="new-password"
++            minlength="8" aria-describedby="password-hint" required>
++          <p class="signup-note" id="password-hint">Use at least 8 characters.</p>
++        </div>
++        <button class="btn" type="submit">Sign Up</button>
++        <p class="signup-note" id="signup-availability">Preview form only. Account creation is not connected yet; your details will not be sent or saved.</p>
++        <p class="signup-status" id="signup-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +336,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('signup-form').addEventListener('submit', function (event) {
++      event.preventDefault();
++      document.getElementById('signup-status').textContent =
++        'Your details pass validation. Account creation will be available once sign-up is connected.';
++    });
++  </script>
+ </body>
+ 
+ </html>

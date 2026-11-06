@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,142 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative layers stay static unless scroll animation is fully supported. */
++    .roast-story {
++      position: relative;
++      isolation: isolate;
++      overflow: clip;
++      display: grid;
++      place-items: center;
++      min-height: 560px;
++      padding: 100px 24px;
++      background: #241610;
++      color: #fff;
++      text-align: center;
++    }
++
++    .roast-layer {
++      position: absolute;
++      inset: -100px 0;
++      pointer-events: none;
++    }
++
++    .roast-layer--back {
++      --travel: 28px;
++      z-index: -3;
++    }
++
++    .roast-layer--back img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .roast-layer--back::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(24, 12, 7, 0.78);
++    }
++
++    .roast-layer--middle {
++      --travel: 56px;
++      z-index: -2;
++      background:
++        radial-gradient(circle at 8% 42%, transparent 110px, rgba(255, 171, 64, 0.22) 112px, transparent 114px),
++        radial-gradient(circle at 92% 65%, transparent 170px, rgba(255, 171, 64, 0.18) 172px, transparent 174px);
++    }
++
++    .roast-layer--front {
++      --travel: 88px;
++      z-index: -1;
++    }
++
++    .roast-bean {
++      position: absolute;
++      width: 42px;
++      height: 64px;
++      border-radius: 50%;
++      background: linear-gradient(100deg, #68422c 44%, #29170f 46%, #29170f 52%, #895638 55%);
++      box-shadow: 8px 12px 18px rgba(0, 0, 0, 0.25);
++      rotate: -30deg;
++    }
++
++    .roast-bean:nth-child(1) { top: 25%; left: 9%; }
++    .roast-bean:nth-child(2) { bottom: 19%; left: 18%; rotate: 28deg; }
++    .roast-bean:nth-child(3) { top: 23%; right: 16%; rotate: 40deg; }
++    .roast-bean:nth-child(4) { bottom: 24%; right: 7%; rotate: -15deg; }
++
++    .roast-copy {
++      max-width: 580px;
++    }
++
++    .roast-eyebrow {
++      margin-bottom: 16px;
++      color: #ffd399;
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.2em;
++      text-transform: uppercase;
++    }
++
++    .roast-copy h2 {
++      margin-bottom: 20px;
++      font-size: clamp(2rem, 5vw, 3.5rem);
++      line-height: 1.15;
++    }
++
++    .roast-copy .btn {
++      margin-top: 28px;
++      background: var(--accent);
++      color: #241610;
++      font-weight: 700;
++    }
++
++    .roast-copy .btn:hover {
++      background: #ffc477;
++    }
++
++    .roast-copy .btn:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 5px;
++    }
++
++    @keyframes roast-parallax {
++      from { transform: translateY(var(--travel)); }
++      to { transform: translateY(calc(0px - var(--travel))); }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .roast-story {
++          view-timeline: --roast-story block;
++        }
++
++        .roast-layer {
++          /* Keep timeline/range after the shorthand, which resets both. */
++          animation: roast-parallax auto linear both;
++          animation-timeline: --roast-story;
++          animation-range: entry 0% exit 100%;
++        }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .roast-story {
++        min-height: 480px;
++        padding: 80px 24px;
++      }
++
++      .roast-bean {
++        width: 26px;
++        height: 40px;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +307,33 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="roast-story" aria-labelledby="roast-heading">
++    <div class="roast-layer roast-layer--back" aria-hidden="true">
++      <img
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1440&amp;q=80"
++        srcset="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=640&amp;q=80 640w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=960&amp;q=80 960w,
++                https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=1440&amp;q=80 1440w"
++        sizes="100vw" width="1440" height="960" alt="" loading="lazy" decoding="async">
++    </div>
++    <div class="roast-layer roast-layer--middle" aria-hidden="true"></div>
++    <div class="roast-layer roast-layer--front" aria-hidden="true">
++      <span class="roast-bean"></span>
++      <span class="roast-bean"></span>
++      <span class="roast-bean"></span>
++      <span class="roast-bean"></span>
++    </div>
++    <div class="roast-copy">
++      <p class="roast-eyebrow">From the bean to the bloom</p>
++      <h2 id="roast-heading">Good coffee has depth.</h2>
++      <p>Thoughtfully sourced beans. Patiently developed roasts. A little care at every layer,
++        for a cup worth slowing down for.</p>
++      <a href="/about" class="btn">Discover Our Story</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

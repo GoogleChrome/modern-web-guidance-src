@@ -1,0 +1,859 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,26 +19,109 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      height: 100%;
++      /* The stack owns all scrolling: horizontally between views, and each
++         view scrolls its own content vertically. */
++      overflow: hidden;
++    }
++
++    body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* ---------- Drill-down navigation stack ---------- */
++
++    .Stack {
++      height: 100dvh;
++      display: grid;
++      grid-auto-flow: column;
++      grid-auto-columns: 100%;
++      grid-template-rows: 100%;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      overscroll-behavior-x: none;
++      scrollbar-width: none;
++    }
++
++    .Stack::-webkit-scrollbar {
++      display: none;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .Stack {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .Stack-view {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      min-width: 0;
++    }
++
++    /* Transforms (parallax) go on this inner element, never on the snap
++       target itself, so they don't disturb snap geometry. */
++    .Stack-viewContent {
++      width: 100%;
++      height: 100%;
++      background-color: var(--light);
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++    }
++
++    @supports (animation-timeline: view()) {
++      .Stack-viewContent {
++        animation: parallax linear both;
++        animation-timeline: view(inline);
++        animation-range: exit 0% exit 100%;
++      }
++
++      .Stack-view:not(:first-child) .Stack-viewContent {
++        animation: parallax linear both, shadow-fade linear both;
++        animation-timeline: view(inline), view(inline);
++        animation-range: exit 0% exit 100%, entry 0% exit 100%;
++      }
++
++      @keyframes parallax {
++        to {
++          transform: translateX(75%);
++          filter: brightness(0.8);
++        }
++      }
++
++      @keyframes shadow-fade {
++        0%, 100% { box-shadow: 0 0 1.5rem #0000; }
++        25%, 75% { box-shadow: 0 0 1.5rem #0006; }
++      }
++    }
++
++    /* ---------- Root view ---------- */
++
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 10;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -47,15 +130,13 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.25rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -71,11 +152,10 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -88,13 +168,12 @@
+       padding: 0 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+-    /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+@@ -107,15 +186,33 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
++      position: relative;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
++      transition: box-shadow 0.2s, translate 0.2s;
+     }
+ 
++    .card:hover {
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
++      translate: 0 -2px;
++    }
++
++    .card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .card-body {
++      padding: 20px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -151,62 +248,618 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Detail view ---------- */
++
++    .detail-bar {
++      position: sticky;
++      top: 0;
++      z-index: 10;
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      padding: 0.75rem 5%;
++      background: var(--primary);
++      color: white;
++    }
++
++    .back {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.25rem;
++      font: inherit;
++      font-size: 0.95rem;
++      color: white;
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      padding: 4px 10px 4px 4px;
++      cursor: pointer;
++    }
++
++    .back:hover {
++      color: var(--accent);
++    }
++
++    .back svg {
++      width: 1.25rem;
++      height: 1.25rem;
++    }
++
++    .detail-bar-title {
++      font-size: 1rem;
++      font-weight: 600;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .detail-hero {
++      display: block;
++      width: 100%;
++      height: min(50vh, 420px);
++      object-fit: cover;
++    }
++
++    .detail {
++      max-width: 760px;
++      margin: 0 auto;
++      padding: 32px 20px 48px;
++    }
++
++    .detail-kicker {
++      text-transform: uppercase;
++      letter-spacing: 0.1em;
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .detail h1 {
++      font-size: clamp(1.8rem, 5vw, 2.5rem);
++      line-height: 1.2;
++      color: var(--primary);
++      margin: 0.25rem 0 0.75rem;
++    }
++
++    .detail-price {
++      font-size: 1.25rem;
++      font-weight: 600;
++    }
++
++    .detail-description {
++      margin: 1rem 0 1.5rem;
++      font-size: 1.05rem;
++    }
++
++    .detail-facts {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
++      gap: 12px;
++      margin-bottom: 1.5rem;
++    }
++
++    .detail-facts div {
++      background: white;
++      border-radius: 8px;
++      padding: 12px 16px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    .detail-facts dt {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++      color: #8d6e63;
++    }
++
++    .detail-facts dd {
++      font-weight: 600;
++    }
++
++    .detail h2 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin: 2rem 0 0.75rem;
++    }
++
++    .detail-notes {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      list-style: none;
++    }
++
++    .detail-notes li {
++      background: var(--secondary);
++      border-radius: 999px;
++      padding: 4px 12px;
++      font-size: 0.9rem;
++    }
++
++    .related {
++      list-style: none;
++      display: grid;
++      gap: 10px;
++    }
++
++    .related a {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px;
++      background: white;
++      border-radius: 8px;
++      color: var(--text);
++      text-decoration: none;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    .related a:hover {
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
++    }
++
++    .related img {
++      width: 56px;
++      height: 56px;
++      border-radius: 6px;
++      object-fit: cover;
++      flex: none;
++    }
++
++    .related strong {
++      display: block;
++      color: var(--primary);
++    }
++
++    .related span {
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <!-- Views are built from the templates below and appended by script. -->
++  <div class="Stack"></div>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <template id="root-view-template">
++    <div class="Stack-view" data-title="The Daily Grind | Artisanal Coffee">
++      <div class="Stack-viewContent">
++        <nav>
++          <div class="logo">THE DAILY GRIND</div>
++          <ul>
++            <li><a href="/menu">Menu</a></li>
++            <li><a href="/locations">Locations</a></li>
++            <li><a href="/rewards">Rewards</a></li>
++            <li><a href="/account">My Account</a></li>
++            <li><a href="/logout" class="logout-link">Logout</a></li>
++          </ul>
++        </nav>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <header class="hero">
++          <h1>Wake Up Your Senses</h1>
++          <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++          <a href="/order-online" class="btn">Order Now</a>
++        </header>
++
++        <main class="container">
++          <section aria-labelledby="seasonal-heading">
++            <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++            <div class="grid" data-seasonal-grid></div>
++          </section>
++        </main>
++
++        <footer>
++          <div class="footer-links">
++            <a href="/about">Our Story</a> |
++            <a href="/careers">Join the Team</a> |
++            <a href="/contact">Contact Us</a> |
++            <a href="/privacy-policy">Privacy</a>
++          </div>
++          <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++        </footer>
+       </div>
+-    </section>
+-  </main>
++    </div>
++  </template>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <template id="card-template">
++    <article class="card">
++      <img alt="" loading="lazy" width="400" height="300">
++      <div class="card-body">
++        <h3></h3>
++        <p></p>
++        <a class="btn">View Details</a>
++      </div>
++    </article>
++  </template>
++
++  <template id="detail-view-template">
++    <div class="Stack-view">
++      <div class="Stack-viewContent">
++        <header class="detail-bar">
++          <button class="back" type="button">
++            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
++              stroke-linejoin="round" aria-hidden="true">
++              <path d="M15 18l-6-6 6-6" />
++            </svg>
++            Back
++          </button>
++          <span class="detail-bar-title" aria-hidden="true"></span>
++        </header>
++        <img class="detail-hero" alt="" width="1350" height="420">
++        <main class="detail">
++          <p class="detail-kicker">Seasonal Favorite</p>
++          <h1></h1>
++          <p class="detail-price"></p>
++          <p class="detail-description"></p>
++          <dl class="detail-facts"></dl>
++          <h2>Tasting notes</h2>
++          <ul class="detail-notes"></ul>
++          <a href="/order-online" class="btn">Order Now</a>
++          <h2>You might also like</h2>
++          <ul class="related"></ul>
++        </main>
++      </div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </template>
+ 
++  <script>
++    // ---------- App data ----------
++
++    const img = (id, w) =>
++      `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
++
++    const MENU_ITEMS = [
++      {
++        path: '/menu/seasonal',
++        name: 'Maple Oat Latte',
++        blurb: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        description:
++          'Our house espresso pulled over steamed oat milk and sweetened with grade A amber maple syrup ' +
++          'from a family sugarhouse in Vermont. Finished with a dusting of cinnamon for a cozy, autumn-ready cup.',
++        price: '$5.75',
++        image: '1509042239860-f550ce710b93',
++        imageAlt: 'Two lattes with heart-shaped latte art on a wooden table surrounded by plants',
++        facts: { Sizes: '12 / 16 / 20 oz', Caffeine: '150 mg (16 oz)', Milk: 'Oat (dairy on request)', Calories: '210 (16 oz)' },
++        notes: ['Maple', 'Toasted oats', 'Cinnamon', 'Brown sugar'],
++      },
++      {
++        path: '/menu/espresso',
++        name: 'Dark Roast Espresso',
++        blurb: 'Bold, smokey, and perfect for a morning boost.',
++        description:
++          'A double shot of our signature dark roast, a blend of Sumatran and Brazilian beans roasted ' +
++          'past second crack. Syrupy body, low acidity, and a long bittersweet finish under a thick crema.',
++        price: '$3.25',
++        image: '1510707577719-ae7c14805e3a',
++        imageAlt: 'A cup of espresso with golden crema on a dark surface',
++        facts: { Size: 'Double shot (2 oz)', Caffeine: '125 mg', Origin: 'Sumatra & Brazil', Roast: 'Dark' },
++        notes: ['Dark chocolate', 'Smoke', 'Molasses', 'Cedar'],
++      },
++      {
++        path: '/menu/cold-brew',
++        name: 'Cold Brew',
++        blurb: 'Steeped for 18 hours for maximum smoothness.',
++        description:
++          'Coarse-ground Colombian beans steeped in cold filtered water for 18 hours, then slowly filtered. ' +
++          'The result is naturally sweet, ultra-smooth, and low in acidity. Served over ice, black or with a splash of cream.',
++        price: '$4.50',
++        image: '1461023058943-07fcbe16d735',
++        imageAlt: 'A tall glass of iced cold brew with cream swirling through it',
++        facts: { Sizes: '16 / 24 oz', Caffeine: '200 mg (16 oz)', Origin: 'Huila, Colombia', 'Steep time': '18 hours' },
++        notes: ['Cocoa', 'Caramel', 'Toffee', 'Smooth finish'],
++      },
++    ];
++
++    const ITEMS_BY_PATH = new Map(MENU_ITEMS.map((item) => [item.path, item]));
++    const ROOT_PATH = '/';
++
++    // ---------- Stack state ----------
++
++    const stack = document.querySelector('.Stack');
++    let rootView = null;
++    const returnFocus = new WeakMap();
++    // depth -> {urlPath, view}. history only exposes the *current* entry's
++    // state, so we remember URLs for every depth to rebuild pruned views.
++    const entriesByDepth = new Map();
++    let currentDepth = 0;
++
++    // ---------- App-specific routing and view builders ----------
++
++    function resolveUrl(urlPath) {
++      // Tolerate a trailing slash on deep links (e.g. /menu/espresso/).
++      const normalized = urlPath.length > 1 ? urlPath.replace(/\/+$/, '') : urlPath;
++      return ITEMS_BY_PATH.get(normalized) ?? null;
++    }
++
++    function cloneTemplate(id) {
++      return document.getElementById(id).content.firstElementChild.cloneNode(true);
++    }
++
++    function createRootView() {
++      const view = cloneTemplate('root-view-template');
++      const grid = view.querySelector('[data-seasonal-grid]');
++      for (const item of MENU_ITEMS) {
++        const card = cloneTemplate('card-template');
++        const image = card.querySelector('img');
++        image.src = img(item.image, 600);
++        card.querySelector('h3').textContent = item.name;
++        card.querySelector('p').textContent = item.blurb;
++        const link = card.querySelector('a');
++        link.href = item.path;
++        link.setAttribute('aria-label', `View details for ${item.name}`);
++        grid.append(card);
++      }
++      return view;
++    }
++
++    function createDrillDownView(item) {
++      const view = cloneTemplate('detail-view-template');
++      view.dataset.title = `${item.name} | The Daily Grind`;
++      view.setAttribute('aria-label', item.name);
++
++      view.querySelector('.detail-bar-title').textContent = item.name;
++      const hero = view.querySelector('.detail-hero');
++      hero.src = img(item.image, 1350);
++      hero.alt = item.imageAlt;
++      view.querySelector('h1').textContent = item.name;
++      view.querySelector('.detail-price').textContent = item.price;
++      view.querySelector('.detail-description').textContent = item.description;
++
++      const facts = view.querySelector('.detail-facts');
++      for (const [label, value] of Object.entries(item.facts)) {
++        const row = document.createElement('div');
++        const dt = document.createElement('dt');
++        const dd = document.createElement('dd');
++        dt.textContent = label;
++        dd.textContent = value;
++        row.append(dt, dd);
++        facts.append(row);
++      }
++
++      const notes = view.querySelector('.detail-notes');
++      for (const note of item.notes) {
++        const li = document.createElement('li');
++        li.textContent = note;
++        notes.append(li);
++      }
++
++      // Further drill-down links into the other seasonal favorites.
++      const related = view.querySelector('.related');
++      for (const other of MENU_ITEMS) {
++        if (other === item) continue;
++        const li = document.createElement('li');
++        const a = document.createElement('a');
++        a.href = other.path;
++        const thumb = document.createElement('img');
++        thumb.src = img(other.image, 120);
++        thumb.alt = '';
++        thumb.loading = 'lazy';
++        const text = document.createElement('div');
++        const strong = document.createElement('strong');
++        strong.textContent = other.name;
++        const span = document.createElement('span');
++        span.textContent = other.blurb;
++        text.append(strong, span);
++        a.append(thumb, text);
++        li.append(a);
++        related.append(li);
++      }
++
++      return view;
++    }
++
++    function getCurrentUrlPath() {
++      return location.pathname;
++    }
++
++    // ---------- Drill down ----------
++
++    function drillDown(urlPath) {
++      const item = resolveUrl(urlPath);
++      if (!item) return;
++
++      const newDepth = currentDepth + 1;
++      history.pushState({ depth: newDepth }, '', urlPath);
++
++      // pushState truncates forward history; mirror that here.
++      for (const d of entriesByDepth.keys()) {
++        if (d >= newDepth) entriesByDepth.delete(d);
++      }
++      currentDepth = newDepth;
++
++      const newView = createDrillDownView(item);
++      stack.appendChild(newView);
++      entriesByDepth.set(newDepth, { urlPath, view: newView });
++
++      // 'auto' defers to CSS scroll-behavior (smooth unless reduced motion).
++      stack.scrollBy({ left: stack.clientWidth, behavior: 'auto' });
++    }
++
++    // ---------- Click and back handling ----------
++
++    stack.addEventListener('click', (e) => {
++      if (e.target.closest('.back')) {
++        goBack();
++        return;
++      }
++
++      const link = e.target.closest('a');
++      if (!link || !stack.contains(link)) return;
++      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
++
++      const url = new URL(link.href);
++      if (url.origin !== location.origin) return;
++      const parentView = link.closest('.Stack-view');
++      if (!resolveUrl(url.pathname) || !parentView) return;
++
++      e.preventDefault();
++      returnFocus.set(parentView, link);
++      drillDown(url.pathname);
++    });
++
++    // From a deep link there is no in-app entry behind us; history.back()
++    // would leave the site. Synthesize a root entry instead.
++    function goBack() {
++      const atDeepLinkRoot = currentDepth === 0
++        && entriesByDepth.get(0)?.view !== rootView;
++      if (atDeepLinkRoot) {
++        synthesizeRootEntry();
++      } else {
++        history.back();
++      }
++    }
++
++    function synthesizeRootEntry() {
++      const newDepth = currentDepth + 1;
++      history.pushState({ depth: newDepth }, '', ROOT_PATH);
++
++      if (!rootView) {
++        rootView = createRootView();
++        stack.prepend(rootView);
++        stack.scrollLeft += stack.clientWidth;
++      }
++      entriesByDepth.set(newDepth, { urlPath: ROOT_PATH, view: rootView });
++
++      updateFromHistoryState(history.state);
++    }
++
++    // ---------- Sync from history ----------
++
++    window.addEventListener('popstate', (event) => {
++      updateFromHistoryState(event.state);
++    });
++
++    function updateFromHistoryState(state, behaviorOverride) {
++      const newDepth = state?.depth ?? 0;
++      const urlPath = getCurrentUrlPath();
++
++      const entry = entriesByDepth.get(newDepth) ?? { view: null };
++      if (entry.urlPath !== urlPath) {
++        entry.urlPath = urlPath;
++        entry.view = resolveUrl(urlPath) ? null : rootView;
++      }
++      entriesByDepth.set(newDepth, entry);
++
++      // Rebuild views pruned earlier (forward navigation after swipe-back).
++      for (let d = 0; d <= newDepth; d++) {
++        const e = entriesByDepth.get(d);
++        if (!e || e.view) continue;
++        const item = resolveUrl(e.urlPath);
++        if (!item) continue;
++        const rebuilt = createDrillDownView(item);
++        stack.appendChild(rebuilt);
++        e.view = rebuilt;
++      }
++
++      currentDepth = newDepth;
++
++      const targetView = entriesByDepth.get(newDepth)?.view;
++      if (!targetView) return;
++
++      const toIdx = [...stack.children].indexOf(targetView);
++      const fromIdx = Math.round(stack.scrollLeft / stack.clientWidth);
++      if (fromIdx === toIdx) return;
++
++      // Back one step animates; forward and multi-step jumps are instant.
++      const forward = toIdx > fromIdx;
++      const multiStep = Math.abs(toIdx - fromIdx) > 1;
++      const behavior = behaviorOverride ?? (forward || multiStep ? 'instant' : 'auto');
++      stack.scrollTo({ left: toIdx * stack.clientWidth, behavior });
++    }
++
++    // ---------- Active view changed (single source of truth) ----------
++
++    function onActiveViewChanged(currentView) {
++      if (!currentView) return;
++
++      let seenCurrent = false;
++      for (const view of [...stack.children]) {
++        if (seenCurrent) {
++          for (const e of entriesByDepth.values()) {
++            if (e.view === view) e.view = null;
++          }
++          view.remove();
++        } else {
++          view.toggleAttribute('inert', view !== currentView);
++          if (view === currentView) seenCurrent = true;
++        }
++      }
++
++      if (currentView.dataset.title) document.title = currentView.dataset.title;
++
++      // A swipe-back changes the view without touching history; reconcile.
++      let currentViewDepth;
++      for (const [d, e] of entriesByDepth) {
++        if (e.view === currentView) currentViewDepth = d;
++      }
++      if (currentViewDepth !== undefined && currentViewDepth !== currentDepth) {
++        history.go(currentViewDepth - currentDepth);
++      }
++
++      const stored = returnFocus.get(currentView);
++      if (stored) {
++        stored.focus({ preventScroll: true });
++        returnFocus.delete(currentView);
++      } else if (currentView !== rootView) {
++        currentView.querySelector('.back')?.focus({ preventScroll: true });
++      }
++    }
++
++    stack.addEventListener('scrollsnapchange', (event) => {
++      onActiveViewChanged(event.snapTargetInline);
++    });
++
++    // Fallback for browsers without scroll snap events (Firefox, Safari).
++    if (!('onscrollsnapchange' in HTMLElement.prototype)) {
++      const viewObserver = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (entry.intersectionRatio === 1) onActiveViewChanged(entry.target);
++        }
++      }, { root: stack, threshold: 1 });
++
++      new MutationObserver((mutations) => {
++        for (const m of mutations) {
++          for (const node of m.addedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.observe(node);
++          }
++          for (const node of m.removedNodes) {
++            if (node.classList?.contains('Stack-view')) viewObserver.unobserve(node);
++          }
++        }
++      }).observe(stack, { childList: true });
++
++      for (const view of stack.children) viewObserver.observe(view);
++    }
++
++    // Keep the active view aligned when the viewport is resized/rotated.
++    new ResizeObserver(() => {
++      const target = entriesByDepth.get(currentDepth)?.view;
++      const idx = target ? [...stack.children].indexOf(target) : -1;
++      if (idx >= 0) stack.scrollTo({ left: idx * stack.clientWidth, behavior: 'instant' });
++    }).observe(stack);
++
++    // ---------- Init (handles deep links) ----------
++
++    const initialUrlPath = getCurrentUrlPath();
++    const initialItem = resolveUrl(initialUrlPath);
++
++    let initialView;
++    if (initialItem) {
++      initialView = createDrillDownView(initialItem);
++    } else {
++      rootView = createRootView();
++      initialView = rootView;
++    }
++    stack.appendChild(initialView);
++    if (initialView.dataset.title) document.title = initialView.dataset.title;
++
++    entriesByDepth.set(0, { urlPath: initialUrlPath, view: initialView });
++    history.replaceState({ depth: 0 }, '');
++
++    updateFromHistoryState(history.state, 'instant');
++  </script>
+ </body>
+ 
+ </html>

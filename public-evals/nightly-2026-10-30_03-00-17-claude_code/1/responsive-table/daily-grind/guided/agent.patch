@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+index 66c9173..ce58c5f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,129 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutrition & Pricing Table */
++    .table-section {
++      margin-top: 40px;
++    }
++
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      margin-top: 20px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      font-size: 0.95rem;
++    }
++
++    .nutrition-table caption {
++      padding: 12px 16px;
++      text-align: start;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 10px 16px;
++      text-align: start;
++      border-block-end: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .nutrition-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .nutrition-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++      color: var(--primary);
++    }
++
++    .nutrition-table .num {
++      text-align: end;
++      font-variant-numeric: tabular-nums;
++    }
++
++    @container (width < 600px) {
++      .nutrition-table,
++      .nutrition-table thead,
++      .nutrition-table tbody,
++      .nutrition-table tr,
++      .nutrition-table th,
++      .nutrition-table td {
++        display: block;
++      }
++
++      .nutrition-table thead {
++        display: none;
++      }
++
++      .nutrition-table {
++        --label-2: "Size";
++        --label-3: "Price";
++        --label-4: "Calories";
++        --label-5: "Caffeine";
++        --label-6: "Sugar";
++        --label-7: "Fat";
++      }
++
++      .nutrition-table tbody tr {
++        margin: 0 12px 1.5rem;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++      }
++
++      .nutrition-table tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 2;
++        background: var(--secondary);
++      }
++
++      .nutrition-table td,
++      .nutrition-table .num {
++        display: flex;
++        justify-content: space-between;
++        gap: 1rem;
++        text-align: end;
++      }
++
++      .nutrition-table td::before {
++        font-weight: 600;
++        text-align: start;
++      }
++
++      .nutrition-table td:nth-child(2)::before { content: var(--label-2) ": "; }
++      .nutrition-table td:nth-child(3)::before { content: var(--label-3) ": "; }
++      .nutrition-table td:nth-child(4)::before { content: var(--label-4) ": "; }
++      .nutrition-table td:nth-child(5)::before { content: var(--label-5) ": "; }
++      .nutrition-table td:nth-child(6)::before { content: var(--label-6) ": "; }
++      .nutrition-table td:nth-child(7)::before { content: var(--label-7) ": "; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +318,55 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="table-section">
++      <h2 style="text-align: center;">Seasonal Favorites: Nutrition &amp; Pricing</h2>
++      <div tabindex="0" role="region" aria-labelledby="nutrition-table-caption" class="table-wrapper">
++        <table class="nutrition-table">
++          <caption id="nutrition-table-caption">Nutrition and pricing per standard serving</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Size</th>
++              <th scope="col" class="num">Price</th>
++              <th scope="col" class="num">Calories</th>
++              <th scope="col" class="num">Caffeine</th>
++              <th scope="col" class="num">Sugar</th>
++              <th scope="col" class="num">Fat</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>16 oz</td>
++              <td class="num">$5.75</td>
++              <td class="num">240</td>
++              <td class="num">150 mg</td>
++              <td class="num">22 g</td>
++              <td class="num">7 g</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 oz (double)</td>
++              <td class="num">$3.25</td>
++              <td class="num">5</td>
++              <td class="num">130 mg</td>
++              <td class="num">0 g</td>
++              <td class="num">0 g</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>16 oz</td>
++              <td class="num">$4.50</td>
++              <td class="num">5</td>
++              <td class="num">200 mg</td>
++              <td class="num">0 g</td>
++              <td class="num">0 g</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>

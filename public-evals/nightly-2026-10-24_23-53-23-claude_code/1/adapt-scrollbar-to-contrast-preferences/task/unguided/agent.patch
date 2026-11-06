@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,41 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scrollbars: dark thumb on light track (~6.8:1 contrast) */
++    html {
++      scrollbar-width: auto;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    ::-webkit-scrollbar {
++      width: 16px;
++      height: 16px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-left: 1px solid var(--primary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background: var(--text);
++    }
++
++    /* Let the OS palette drive scrollbars in high-contrast modes */
++    @media (forced-colors: active) {
++      html {
++        scrollbar-color: auto;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

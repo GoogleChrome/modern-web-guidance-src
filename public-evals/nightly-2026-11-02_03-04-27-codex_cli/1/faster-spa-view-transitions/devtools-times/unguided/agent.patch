@@ -1,0 +1,234 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..b998dc4 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,11 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  cacheView?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cacheView = true } = Astro.props;
++const viewKey = Astro.url.pathname + Astro.url.search;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +37,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +50,10 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" transition:persist="visited-views" data-view-cache>
++          <div data-view-key={viewKey} data-cache-view={String(cacheView)}>
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..e06ec64 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..b2f5b71 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" cacheView={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..e558274
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,54 @@
++import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
++
++// Includes the active view. Evicted views are rebuilt on their next visit.
++const MAX_VIEWS = 5;
++const views = new Map<string, HTMLElement>();
++
++document.addEventListener("astro:before-swap", (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const host = document.querySelector<HTMLElement>("[data-view-cache]");
++  const incomingHost = navigation.newDocument.querySelector<HTMLElement>("[data-view-cache]");
++  const incoming = incomingHost?.querySelector<HTMLElement>("[data-view-key]");
++  if (!host || !incoming) return;
++
++  const swap = navigation.swap;
++  navigation.swap = () => {
++    const current = host.querySelector<HTMLElement>("[data-view-key]:not([hidden])");
++    const key = incoming.dataset.viewKey!;
++
++    if (current) {
++      const currentKey = current.dataset.viewKey!;
++      if (current.dataset.cacheView === "true") views.set(currentKey, current);
++      // Do not restore focus to a control inside an inactive view.
++      if (document.activeElement instanceof HTMLElement && current.contains(document.activeElement)) {
++        document.activeElement.blur();
++      }
++      current.hidden = true;
++      current.inert = true;
++    }
++
++    // Keep Astro's head updates, script handling, and persistent island lifecycle.
++    // The persistent host carries every cached subtree through the body swap.
++    swap();
++
++    // A navigation to the current URL is a refresh, so use the new response.
++    const cached = current?.dataset.viewKey === key ? undefined : views.get(key);
++    const active = incoming.dataset.cacheView === "true" && cached ? cached : incoming;
++    const stale = views.get(key);
++    if (stale && stale !== active) stale.remove();
++    views.delete(key);
++
++    if (current?.dataset.cacheView !== "true") current?.remove();
++    if (active === incoming) host.append(active);
++    active.hidden = false;
++    active.inert = false;
++    if (active.dataset.cacheView === "true") views.set(key, active);
++
++    // Map insertion order gives a bounded least-recently-used cache.
++    while (views.size > MAX_VIEWS) {
++      const oldest = views.keys().next().value!;
++      views.get(oldest)!.remove();
++      views.delete(oldest);
++    }
++  };
++});
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..6f7eaa3
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,102 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { stripTypeScriptTypes } from 'node:module';
++import test from 'node:test';
++import vm from 'node:vm';
++
++const source = stripTypeScriptTypes(readFileSync(new URL('../src/scripts/view-cache.ts', import.meta.url), 'utf8'));
++
++// A minimal DOM harness keeps these navigation checks independent of a server.
++class Element {
++  constructor(key, cache = true) {
++    this.dataset = { viewKey: key, cacheView: String(cache) };
++    this.children = [];
++    this.hidden = false;
++    this.inert = false;
++  }
++  append(child) { child.parent = this; this.children.push(child); }
++  remove() {
++    if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this);
++    this.parent = undefined;
++  }
++  contains(child) { return child === this || this.children.some(node => node.contains(child)); }
++  querySelector(selector) {
++    return this.children.find(child => !selector.includes(':not([hidden])') || !child.hidden);
++  }
++}
++
++function setup() {
++  const host = new Element();
++  const initial = new Element('/');
++  host.append(initial);
++  let beforeSwap;
++  const document = {
++    activeElement: null,
++    querySelector: () => host,
++    addEventListener: (name, callback) => { beforeSwap = callback; },
++  };
++  vm.runInNewContext(source, { document, HTMLElement: Element });
++  function visit(key, cache = true) {
++    const incoming = new Element(key, cache);
++    const incomingHost = new Element();
++    incomingHost.append(incoming);
++    let swaps = 0;
++    const event = {
++      newDocument: { querySelector: () => incomingHost },
++      swap: () => { swaps++; }, // Astro preserves the host during its default swap.
++    };
++    beforeSwap(event);
++    event.swap();
++    assert.equal(swaps, 1, 'Astro must still perform its default swap');
++    const visible = host.children.filter(child => !child.hidden);
++    assert.equal(visible.length, 1);
++    assert.equal(visible[0].inert, false);
++    for (const child of host.children.filter(child => child.hidden)) assert.equal(child.inert, true);
++    return visible[0];
++  }
++  return { host, initial, document, visit };
++}
++
++test('returning via links or history reuses the exact DOM subtree and its state', () => {
++  const { initial, visit } = setup();
++  initial.customState = { expanded: true };
++  const article = visit('/articles/example');
++  assert.equal(visit('/'), initial);
++  assert.deepEqual(initial.customState, { expanded: true });
++  assert.equal(visit('/articles/example'), article);
++});
++
++test('cache is bounded and retains recently revisited views', () => {
++  const { host, initial, visit } = setup();
++  for (let i = 1; i <= 4; i++) visit(`/${i}`);
++  visit('/');
++  visit('/5');
++  assert.equal(host.children.length, 5);
++  assert.equal(visit('/'), initial);
++  assert.equal(host.children.some(child => child.dataset.viewKey === '/1'), false);
++});
++
++test('queries identify distinct views and same-URL navigation refreshes content', () => {
++  const { visit } = setup();
++  const first = visit('/reports?sort=date');
++  visit('/reports?sort=title');
++  assert.equal(visit('/reports?sort=date'), first);
++  assert.notEqual(visit('/reports?sort=date'), first);
++});
++
++test('uncached forms are removed when leaving and rebuilt when revisited', () => {
++  const { host, visit } = setup();
++  const form = visit('/signin', false);
++  visit('/');
++  assert.equal(host.children.includes(form), false);
++  assert.notEqual(visit('/signin', false), form);
++});
++
++test('focus is released before the current view becomes hidden', () => {
++  const { initial, document, visit } = setup();
++  let blurred = false;
++  initial.blur = () => { blurred = true; assert.equal(initial.hidden, false); };
++  document.activeElement = initial;
++  visit('/reports');
++  assert.equal(blurred, true);
++});

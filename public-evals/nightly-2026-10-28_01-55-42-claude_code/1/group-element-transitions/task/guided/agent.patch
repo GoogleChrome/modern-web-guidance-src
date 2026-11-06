@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,217 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Bean Box: interactive selection with shared view-transition logic */
++    .bean-box {
++      margin-top: 60px;
++    }
++
++    .bean-box h2,
++    .bean-box > p {
++      text-align: center;
++    }
++
++    .bean-box > p {
++      max-width: 60ch;
++      margin: 8px auto 0;
++    }
++
++    .bean-box h3 {
++      color: var(--primary);
++      margin-top: 32px;
++      margin-bottom: 4px;
++    }
++
++    .bean-box .hint {
++      font-size: 0.9rem;
++      opacity: 0.75;
++    }
++
++    .bean-list {
++      list-style: none;
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
++      gap: 16px;
++      margin-top: 16px;
++      min-height: 60px;
++    }
++
++    .bean-list.is-selection {
++      padding: 16px;
++      border: 2px dashed var(--secondary);
++      border-radius: 12px;
++    }
++
++    .bean {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      /* Every bean card shares the same transition logic via one class */
++      view-transition-class: bean;
++    }
++
++    .bean img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .bean-body {
++      padding: 14px 16px 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      flex: 1;
++    }
++
++    .bean-body strong {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .bean-body .origin {
++      font-size: 0.85rem;
++      opacity: 0.8;
++    }
++
++    .bean-body .notes {
++      font-size: 0.9rem;
++      flex: 1;
++    }
++
++    .bean-body .price {
++      font-weight: 600;
++    }
++
++    .bean-btn {
++      font: inherit;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      padding: 8px 14px;
++      margin-top: 6px;
++      background: var(--primary);
++      color: white;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .bean-btn:hover {
++      background: #3e2723;
++    }
++
++    .bean-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .is-selection .bean-btn {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    .is-selection .bean-btn:hover {
++      background: var(--secondary);
++    }
++
++    .bean-empty {
++      grid-column: 1 / -1;
++      text-align: center;
++      padding: 24px;
++      opacity: 0.7;
++      view-transition-name: bean-empty;
++    }
++
++    .bean-list.is-selection:has(.bean) .bean-empty {
++      display: none;
++    }
++
++    .bean-summary {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      margin-top: 16px;
++      padding: 16px 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++    }
++
++    .bean-summary .btn {
++      margin-top: 0;
++    }
++
++    /* Shared view-transition logic for the whole group of bean cards */
++    :root {
++      /* Only specific elements transition, so skip the full-page root snapshot */
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      /* Keep the rest of the page interactive while beans animate */
++      pointer-events: none;
++    }
++
++    ::view-transition-group(.bean) {
++      animation-duration: 0.45s;
++      animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    /* Cards that move between lists morph; stack the snapshots cleanly */
++    ::view-transition-old(.bean),
++    ::view-transition-new(.bean) {
++      height: 100%;
++      object-fit: cover;
++      overflow: clip;
++    }
++
++    /* A new snapshot with no old partner is a freshly added bean */
++    ::view-transition-new(.bean):only-child {
++      animation: bean-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
++    }
++
++    /* An old snapshot with no new partner is a removed bean */
++    ::view-transition-old(.bean):only-child {
++      animation: bean-out 0.3s ease-in both;
++    }
++
++    @keyframes bean-in {
++      from {
++        opacity: 0;
++        scale: 0.85;
++      }
++    }
++
++    @keyframes bean-out {
++      to {
++        opacity: 0;
++        scale: 0.85;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +403,90 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="bean-box" aria-labelledby="bean-box-heading">
++      <h2 id="bean-box-heading">Build Your Bean Box</h2>
++      <p>Pick the whole-bean roasts you want in this month's delivery. Add or remove beans and watch your box take shape.</p>
++
++      <h3 id="bean-catalog-heading">Our Roasts</h3>
++      <p class="hint">Tap a bean to add it to your box.</p>
++      <ul class="bean-list is-catalog" id="bean-catalog" aria-labelledby="bean-catalog-heading">
++        <li class="bean" id="bean-ethiopia" style="view-transition-name: bean-ethiopia">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Light roasted coffee beans spilling from a burlap sack">
++          <div class="bean-body">
++            <strong>Yirgacheffe</strong>
++            <span class="origin">Ethiopia · Light Roast</span>
++            <span class="notes">Jasmine, bergamot, and bright lemon.</span>
++            <span class="price">$18 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Yirgacheffe to your box">Add to Box</button>
++          </div>
++        </li>
++        <li class="bean" id="bean-colombia" style="view-transition-name: bean-colombia">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Close-up of roasted coffee beans">
++          <div class="bean-body">
++            <strong>Huila Reserve</strong>
++            <span class="origin">Colombia · Medium Roast</span>
++            <span class="notes">Caramel, red apple, and milk chocolate.</span>
++            <span class="price">$16 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Huila Reserve to your box">Add to Box</button>
++          </div>
++        </li>
++        <li class="bean" id="bean-sumatra" style="view-transition-name: bean-sumatra">
++          <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Dark roasted coffee beans piled on a wooden table">
++          <div class="bean-body">
++            <strong>Mandheling</strong>
++            <span class="origin">Sumatra · Dark Roast</span>
++            <span class="notes">Earthy, cedar, and dark cocoa.</span>
++            <span class="price">$17 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Mandheling to your box">Add to Box</button>
++          </div>
++        </li>
++        <li class="bean" id="bean-guatemala" style="view-transition-name: bean-guatemala">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Coffee beans scattered beside a freshly brewed cup">
++          <div class="bean-body">
++            <strong>Antigua Valley</strong>
++            <span class="origin">Guatemala · Medium Roast</span>
++            <span class="notes">Brown sugar, orange, and toasted almond.</span>
++            <span class="price">$16 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Antigua Valley to your box">Add to Box</button>
++          </div>
++        </li>
++        <li class="bean" id="bean-kenya" style="view-transition-name: bean-kenya">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Cup of black coffee surrounded by coffee beans">
++          <div class="bean-body">
++            <strong>Nyeri AA</strong>
++            <span class="origin">Kenya · Light Roast</span>
++            <span class="notes">Blackcurrant, tomato leaf, and brown sugar.</span>
++            <span class="price">$19 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Nyeri AA to your box">Add to Box</button>
++          </div>
++        </li>
++        <li class="bean" id="bean-house" style="view-transition-name: bean-house">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=400&h=300&q=80" width="400" height="300" loading="lazy" alt="Barista pouring a fresh cup of coffee">
++          <div class="bean-body">
++            <strong>Daily Grind Blend</strong>
++            <span class="origin">House Blend · Medium-Dark Roast</span>
++            <span class="notes">Balanced, nutty, and built for every morning.</span>
++            <span class="price">$15 / 12 oz</span>
++            <button type="button" class="bean-btn" data-bean-toggle aria-label="Add Daily Grind Blend to your box">Add to Box</button>
++          </div>
++        </li>
++      </ul>
++
++      <h3 id="bean-selection-heading">Your Box</h3>
++      <p class="hint">Remove a bean to send it back to the shelf.</p>
++      <ul class="bean-list is-selection" id="bean-selection" aria-labelledby="bean-selection-heading">
++        <li class="bean-empty">Your box is empty. Add a few roasts to get started.</li>
++      </ul>
++
++      <div class="bean-summary">
++        <p><strong id="bean-count">0 beans</strong> selected · <span id="bean-total">$0</span> per month</p>
++        <a href="/order-online" class="btn">Checkout Box</a>
++      </div>
++      <p class="visually-hidden" id="bean-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +497,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const catalog = document.getElementById('bean-catalog');
++      const selection = document.getElementById('bean-selection');
++      const countEl = document.getElementById('bean-count');
++      const totalEl = document.getElementById('bean-total');
++      const statusEl = document.getElementById('bean-status');
++
++      const beanName = (bean) => bean.querySelector('strong').textContent;
++      const beanPrice = (bean) => Number(bean.querySelector('.price').textContent.match(/\d+/)[0]);
++
++      function moveBean(bean, target) {
++        // moveBefore keeps the button's focus/state; append is the fallback
++        if (typeof target.moveBefore === 'function') {
++          target.moveBefore(bean, null);
++        } else {
++          target.append(bean);
++        }
++      }
++
++      function updateBean(bean, isSelected) {
++        const button = bean.querySelector('[data-bean-toggle]');
++        const name = beanName(bean);
++        button.textContent = isSelected ? 'Remove' : 'Add to Box';
++        button.setAttribute('aria-label', isSelected ? `Remove ${name} from your box` : `Add ${name} to your box`);
++      }
++
++      function updateSummary() {
++        const beans = selection.querySelectorAll('.bean');
++        const total = [...beans].reduce((sum, bean) => sum + beanPrice(bean), 0);
++        countEl.textContent = `${beans.length} ${beans.length === 1 ? 'bean' : 'beans'}`;
++        totalEl.textContent = `$${total}`;
++      }
++
++      function toggleBean(bean) {
++        const isSelected = bean.parentElement === selection;
++        const target = isSelected ? catalog : selection;
++        const button = bean.querySelector('[data-bean-toggle]');
++
++        const updateDOM = () => {
++          moveBean(bean, target);
++          updateBean(bean, !isSelected);
++          updateSummary();
++          button.focus({ preventScroll: true });
++        };
++
++        const name = beanName(bean);
++        statusEl.textContent = isSelected ? `${name} removed from your box.` : `${name} added to your box.`;
++
++        // Progressive enhancement: update instantly where view transitions are unsupported
++        if (!document.startViewTransition) {
++          updateDOM();
++          return;
++        }
++        document.startViewTransition(updateDOM);
++      }
++
++      document.querySelector('.bean-box').addEventListener('click', (event) => {
++        const button = event.target.closest('[data-bean-toggle]');
++        if (!button) return;
++        toggleBean(button.closest('.bean'));
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

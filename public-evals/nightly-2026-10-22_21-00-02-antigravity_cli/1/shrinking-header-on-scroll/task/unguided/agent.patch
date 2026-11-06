@@ -1,0 +1,253 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -28,28 +28,35 @@
+     }
+ 
+     /* Navigation */
+     nav {
++      --scroll-progress: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 1.25rem 5%;
++      padding: calc(1.25rem - 0.75rem * var(--scroll-progress, 0)) 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, calc(0.25 * var(--scroll-progress, 0)));
++      transition: padding 0.2s ease-out, box-shadow 0.2s ease-out;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
++      font-size: calc(1.5rem - 0.35rem * var(--scroll-progress, 0));
+       font-weight: bold;
+       letter-spacing: 1px;
++      transition: font-size 0.2s ease-out;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -58,9 +65,10 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: calc(0.9rem - 0.05rem * var(--scroll-progress, 0));
++      transition: color 0.3s, font-size 0.2s ease-out, padding 0.2s ease-out;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+@@ -68,11 +76,100 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
++      padding: calc(5px - 2px * var(--scroll-progress, 0)) calc(12px - 2px * var(--scroll-progress, 0));
+       border-radius: 4px;
+     }
+ 
++    /* Fallback class for browsers without CSS custom properties or JS scroll interpolation */
++    nav.scrolled {
++      padding: 0.5rem 5%;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
++    }
++
++    nav.scrolled .logo {
++      font-size: 1.15rem;
++    }
++
++    nav.scrolled a {
++      font-size: 0.85rem;
++    }
++
++    nav.scrolled .logout-link {
++      padding: 3px 10px;
++    }
++
++    /* Modern CSS Scroll-Driven Animations */
++    @supports (animation-timeline: scroll()) {
++      @keyframes shrink-nav {
++        from {
++          padding-top: 1.25rem;
++          padding-bottom: 1.25rem;
++          box-shadow: 0 2px 10px rgba(0, 0, 0, 0);
++        }
++        to {
++          padding-top: 0.5rem;
++          padding-bottom: 0.5rem;
++          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
++        }
++      }
++
++      @keyframes shrink-logo {
++        from {
++          font-size: 1.5rem;
++        }
++        to {
++          font-size: 1.15rem;
++        }
++      }
++
++      @keyframes shrink-nav-link {
++        from {
++          font-size: 0.9rem;
++        }
++        to {
++          font-size: 0.85rem;
++        }
++      }
++
++      @keyframes shrink-logout-btn {
++        from {
++          padding: 5px 12px;
++        }
++        to {
++          padding: 3px 10px;
++        }
++      }
++
++      nav {
++        animation: shrink-nav linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      .logo {
++        animation: shrink-logo linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++        transition: none;
++      }
++
++      nav a {
++        animation: shrink-nav-link linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++        transition: color 0.3s;
++      }
++
++      .logout-link {
++        animation: shrink-logout-btn linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 150px;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -194,8 +291,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Our Craft &amp; Story</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Direct Trade Sourcing</h3>
++          <p>We partner directly with small-lot farmers in Ethiopia, Colombia, and Guatemala to ensure fair wages and exceptional bean quality.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Roasting</h3>
++          <p>Every batch is roasted in-house daily to bring out the unique floral, fruity, and chocolatey notes of each origin.</p>
++        </div>
++        <div class="card">
++          <h3>Community First</h3>
++          <p>Our cafes are designed as welcoming neighborhood spaces to read, work, and connect over a thoughtfully prepared cup.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +321,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++
++      var supportsScrollTimeline =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports('animation-timeline: scroll()');
++
++      // Fallback for browsers that do not support CSS Scroll-Driven Animations
++      if (!supportsScrollTimeline) {
++        var scrollRange = 150;
++        var ticking = false;
++
++        // Disable transition lag during continuous custom-property updates if supported
++        var supportsCustomProps =
++          typeof CSS !== 'undefined' &&
++          typeof CSS.supports === 'function' &&
++          CSS.supports('--scroll-progress: 0');
++
++        if (supportsCustomProps) {
++          nav.style.transition = 'none';
++          var logo = nav.querySelector('.logo');
++          if (logo) logo.style.transition = 'none';
++        }
++
++        function updateNavOnScroll() {
++          var scrollY = window.scrollY !== undefined ? window.scrollY : window.pageYOffset || 0;
++          var progress = Math.min(Math.max(scrollY / scrollRange, 0), 1);
++
++          // Continuous scroll-linked interpolation via CSS variable
++          nav.style.setProperty('--scroll-progress', progress.toFixed(4));
++
++          // Class-based fallback for older browsers without CSS variable / calc() support
++          if (!supportsCustomProps) {
++            if (scrollY > 50) {
++              nav.classList.add('scrolled');
++            } else {
++              nav.classList.remove('scrolled');
++            }
++          }
++
++          ticking = false;
++        }
++
++        window.addEventListener(
++          'scroll',
++          function () {
++            if (!ticking) {
++              if (window.requestAnimationFrame) {
++                window.requestAnimationFrame(updateNavOnScroll);
++              } else {
++                updateNavOnScroll();
++              }
++              ticking = true;
++            }
++          },
++          { passive: true }
++        );
++
++        updateNavOnScroll();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

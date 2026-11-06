@@ -1,0 +1,279 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,8 +128,11 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -151,8 +154,143 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Toast Notification System */
++    .toast-trigger {
++      anchor-name: --toast-trigger;
++    }
++
++    .toast {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      padding: 12px 18px;
++      background: var(--primary);
++      color: #fff;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
++      font-size: 0.95rem;
++      pointer-events: auto;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      min-width: 220px;
++      max-width: 380px;
++
++      /* CSS dynamic stacking offset */
++      --toast-index: 0;
++      bottom: calc(20px + var(--toast-index) * 64px);
++      right: 20px;
++
++      /* Smooth entry and exit transitions */
++      opacity: 0;
++      transform: translateY(16px) scale(0.96);
++      transition:
++        opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++        bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1),
++        overlay 0.3s ease allow-discrete,
++        display 0.3s ease allow-discrete;
++    }
++
++    /* Open state in Top Layer */
++    .toast:popover-open,
++    .toast.toast-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    /* Entry animation starting point */
++    @starting-style {
++      .toast:popover-open {
++        opacity: 0;
++        transform: translateY(16px) scale(0.96);
++      }
++    }
++
++    /* Smooth exit animation state */
++    .toast.toast-closing {
++      opacity: 0 !important;
++      transform: translateY(16px) scale(0.96) !important;
++      pointer-events: none;
++    }
++
++    /* Guarantee no backdrop blocks page interactions */
++    .toast::backdrop {
++      display: none;
++      pointer-events: none;
++    }
++
++    .toast-message {
++      flex: 1;
++      font-weight: 500;
++    }
++
++    .toast-close {
++      background: transparent;
++      border: none;
++      color: var(--light);
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 0 2px;
++      opacity: 0.8;
++      transition: opacity 0.2s, transform 0.2s;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .toast-close:hover {
++      opacity: 1;
++      transform: scale(1.15);
++    }
++
++    /* Pure CSS dynamic vertical stacking offsets without wrapper containers or JS math */
++    .toast ~ .toast { --toast-index: 1; }
++    .toast ~ .toast ~ .toast { --toast-index: 2; }
++    .toast ~ .toast ~ .toast ~ .toast { --toast-index: 3; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 4; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 5; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 6; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 7; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 8; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 9; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 10; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 11; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 12; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 13; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 14; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 15; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 16; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 17; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 18; }
++    .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast ~ .toast { --toast-index: 19; }
++
++    .toast:nth-child(1 of .toast) { --toast-index: 0; }
++    .toast:nth-child(2 of .toast) { --toast-index: 1; }
++    .toast:nth-child(3 of .toast) { --toast-index: 2; }
++    .toast:nth-child(4 of .toast) { --toast-index: 3; }
++    .toast:nth-child(5 of .toast) { --toast-index: 4; }
++    .toast:nth-child(6 of .toast) { --toast-index: 5; }
++    .toast:nth-child(7 of .toast) { --toast-index: 6; }
++    .toast:nth-child(8 of .toast) { --toast-index: 7; }
++    .toast:nth-child(9 of .toast) { --toast-index: 8; }
++    .toast:nth-child(10 of .toast) { --toast-index: 9; }
++    .toast:nth-child(11 of .toast) { --toast-index: 10; }
++    .toast:nth-child(12 of .toast) { --toast-index: 11; }
++    .toast:nth-child(13 of .toast) { --toast-index: 12; }
++    .toast:nth-child(14 of .toast) { --toast-index: 13; }
++    .toast:nth-child(15 of .toast) { --toast-index: 14; }
++    .toast:nth-child(16 of .toast) { --toast-index: 15; }
++    .toast:nth-child(17 of .toast) { --toast-index: 16; }
++    .toast:nth-child(18 of .toast) { --toast-index: 17; }
++    .toast:nth-child(19 of .toast) { --toast-index: 18; }
++    .toast:nth-child(20 of .toast) { --toast-index: 19; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +308,9 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn toast-trigger">Order Now</button>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -180,19 +318,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn toast-trigger">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +344,85 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function showToast(message = 'added to cart!') {
++      const toast = document.createElement('div');
++      toast.className = 'toast';
++      toast.setAttribute('popover', 'manual');
++      toast.setAttribute('role', 'status');
++      toast.setAttribute('aria-live', 'polite');
++
++      const messageSpan = document.createElement('span');
++      messageSpan.className = 'toast-message';
++      messageSpan.textContent = message;
++
++      const closeButton = document.createElement('button');
++      closeButton.type = 'button';
++      closeButton.className = 'toast-close';
++      closeButton.setAttribute('aria-label', 'Close');
++      closeButton.innerHTML = '&times;';
++
++      toast.appendChild(messageSpan);
++      toast.appendChild(closeButton);
++
++      document.body.appendChild(toast);
++
++      if (typeof toast.showPopover === 'function') {
++        toast.showPopover();
++      }
++
++      requestAnimationFrame(() => {
++        toast.classList.add('toast-open');
++      });
++
++      let dismissed = false;
++      function dismiss() {
++        if (dismissed) return;
++        dismissed = true;
++        clearTimeout(autoDismissTimer);
++
++        toast.classList.remove('toast-open');
++        toast.classList.add('toast-closing');
++
++        const finishDismiss = () => {
++          try {
++            if (typeof toast.hidePopover === 'function' && toast.matches(':popover-open')) {
++              toast.hidePopover();
++            }
++          } catch (err) {}
++          if (toast.parentNode) {
++            toast.remove();
++          }
++        };
++
++        toast.addEventListener('transitionend', finishDismiss, { once: true });
++        setTimeout(finishDismiss, 350);
++      }
++
++      closeButton.addEventListener('click', (e) => {
++        e.stopPropagation();
++        dismiss();
++      });
++
++      const autoDismissTimer = setTimeout(dismiss, 3000);
++    }
++
++    window.showToast = showToast;
++
++    document.addEventListener('click', (event) => {
++      const trigger = event.target.closest('.toast-trigger, button, a');
++      if (!trigger) return;
++
++      const isToastTrigger = trigger.classList.contains('toast-trigger');
++      const text = trigger.textContent.trim().toLowerCase();
++
++      if (isToastTrigger || text === 'order now' || text === 'view details') {
++        event.preventDefault();
++        showToast('added to cart!');
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

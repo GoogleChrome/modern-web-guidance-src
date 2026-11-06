@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Feedback Section */
++    .feedback {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .feedback label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .feedback textarea {
++      width: 100%;
++      min-height: 120px;
++      padding: 10px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      resize: vertical;
++      field-sizing: content;
++    }
++
++    .feedback textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .feedback button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .feedback button.btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .feedback progress {
++      display: block;
++      width: 100%;
++      margin-top: 15px;
++      accent-color: var(--primary);
++    }
++
++    .feedback progress[hidden] {
++      display: none;
++    }
++
++    .feedback-status {
++      margin-top: 15px;
++      min-height: 1.6em;
++    }
++
++    .feedback-status.error {
++      color: #b71c1c;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Feedback</h2>
++      <p>Tell us what you think — in any language.</p>
++      <form id="feedback-form">
++        <label for="feedback-message">Your message</label>
++        <textarea id="feedback-message" name="message" required></textarea>
++        <button type="submit" class="btn" id="detect-btn">Detect</button>
++        <progress id="detect-progress" max="100" value="0" hidden aria-label="Language model download progress"></progress>
++        <output id="detect-status" class="feedback-status" for="feedback-message" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +284,106 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const form = document.getElementById('feedback-form');
++    const textarea = document.getElementById('feedback-message');
++    const button = document.getElementById('detect-btn');
++    const progress = document.getElementById('detect-progress');
++    const status = document.getElementById('detect-status');
++
++    const displayNames = new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' });
++    const percent = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
++
++    let detectorPromise = null;
++
++    function setStatus(message, isError = false) {
++      status.textContent = message;
++      status.classList.toggle('error', isError);
++    }
++
++    function disable(message) {
++      button.disabled = true;
++      textarea.disabled = true;
++      setStatus(message, true);
++    }
++
++    function languageName(code) {
++      try {
++        return displayNames.of(code) ?? code;
++      } catch {
++        return code;
++      }
++    }
++
++    // Must be called from a user gesture: create() may trigger a model download.
++    function getDetector() {
++      detectorPromise ??= LanguageDetector.create({
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            const pct = Math.round(e.loaded * 100);
++            progress.hidden = false;
++            progress.value = pct;
++            setStatus(`Downloading language model… ${pct}%`);
++          });
++        },
++      }).catch((err) => {
++        detectorPromise = null; // allow retry
++        throw err;
++      });
++      return detectorPromise;
++    }
++
++    async function init() {
++      if (!('LanguageDetector' in self)) {
++        disable('Language detection isn\'t supported in this browser.');
++        return;
++      }
++      try {
++        const availability = await LanguageDetector.availability();
++        if (availability === 'unavailable') {
++          disable('Language detection is unavailable on this device.');
++        } else if (availability !== 'available') {
++          setStatus('The language model will be downloaded the first time you click Detect.');
++        }
++      } catch (err) {
++        disable('Language detection could not be initialized.');
++        console.error(err);
++      }
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      const text = textarea.value.trim();
++      if (!text) {
++        setStatus('Please enter a message first.', true);
++        textarea.focus();
++        return;
++      }
++
++      button.disabled = true;
++      setStatus('Detecting…');
++      try {
++        const detector = await getDetector();
++        progress.hidden = true;
++        const [top] = await detector.detect(text);
++        if (!top || top.detectedLanguage === 'und') {
++          setStatus('Couldn\'t determine the language. Try writing a longer message.');
++        } else {
++          setStatus(`Language: ${languageName(top.detectedLanguage)} (${percent.format(top.confidence)} confidence)`);
++        }
++      } catch (err) {
++        progress.hidden = true;
++        setStatus(`Language detection failed: ${err.message}`, true);
++        console.error(err);
++      } finally {
++        button.disabled = false;
++      }
++    });
++
++    init();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,139 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..0bd5df7 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,19 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  /**
++   * id of the element that ends the content visible in the user's initial
++   * view of the page. Rendering (and thus the incoming cross-document view
++   * transition) is blocked until this element has been fully parsed.
++   * Defaults to the <main> wrapper, which is fine for short pages; long pages
++   * should point at an element near the bottom of the first viewport.
++   */
++  renderBlockingElementId?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, renderBlockingElementId = "main-content" } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -19,6 +25,15 @@ const baseUrl = import.meta.env.BASE_URL;
+   <head>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++
++    <!--
++      Hold the first render (and the incoming cross-document view transition)
++      until the HTML for the initial viewport has been parsed. Without this the
++      transition could capture a partially parsed page. Render-blocking
++      stylesheets and synchronous scripts in <head> already block rendering, so
++      critical CSS is applied and critical JS has run before the transition.
++    -->
++    <link rel="expect" href={`#${renderBlockingElementId}`} blocking="render" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+@@ -33,8 +48,6 @@ const baseUrl = import.meta.env.BASE_URL;
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,7 +58,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="main-content" class="bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..a1d9e39 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} renderBlockingElementId="article-hero">
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+@@ -58,7 +58,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Main Article Image -->
+-        <figure class="mb-5">
++        <figure id="article-hero" class="mb-5">
+             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+             {article.data.prompt_comment ? (
+                 <img 
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..0f7fdc4 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,10 +37,10 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} renderBlockingElementId="category-hero">
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="category-hero" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..3783f9f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,7 +37,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" renderBlockingElementId="top-story">
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9361a09 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,5 +1,12 @@
+ @import "tailwindcss";
+ 
++/* Opt in to native cross-document (MPA) view transitions on same-origin
++   navigations. Lives in the render-blocking global stylesheet so it is
++   applied before the new page is first rendered. */
++@view-transition {
++  navigation: auto;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;

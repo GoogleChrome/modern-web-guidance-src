@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+index 66c9173..e5fa2ab 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,141 @@
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews */
++    .reviews-container {
++      margin-top: 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reviews-container h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .review-form {
++      display: grid;
++      gap: 15px;
++      margin-top: 15px;
++      margin-bottom: 30px;
++      padding-bottom: 25px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 5px;
++      font-size: 0.9rem;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .form-group textarea {
++      min-height: 100px;
++      resize: vertical;
++    }
++
++    .form-hint {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .review-submit-btn {
++      justify-self: start;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      margin-top: 5px;
++    }
++
++    .reviews-list {
++      display: grid;
++      gap: 15px;
++    }
++
++    .review-item {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 15px 20px;
++      border-radius: 4px;
++      text-align: left;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 8px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .review-drink-badge {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-weight: 600;
++      font-size: 0.8rem;
++    }
++
++    .review-rating {
++      color: #f57c00;
++      letter-spacing: 1px;
++    }
++
++    .review-content {
++      margin-top: 8px;
++      font-size: 0.95rem;
++      overflow-wrap: break-word;
++    }
++
++    .review-content ul,
++    .review-content ol {
++      padding-left: 20px;
++      margin: 6px 0;
++    }
++
++    .review-content blockquote {
++      border-left: 3px solid var(--secondary);
++      padding-left: 10px;
++      font-style: italic;
++      margin: 6px 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +310,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,6 +329,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="reviews-container">
++        <h3>Customer Reviews</h3>
++        <p>Share your thoughts on our seasonal drinks! Rich HTML formatting (such as <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;strong&gt;</code>, and lists) is supported and safely sanitized.</p>
++
++        <form id="review-form" class="review-form">
++          <div class="form-row">
++            <div class="form-group">
++              <label for="reviewer-name">Your Name</label>
++              <input type="text" id="reviewer-name" name="reviewerName" placeholder="e.g., Alex Rivera" required>
++            </div>
++            <div class="form-group">
++              <label for="review-drink">Select Drink</label>
++              <select id="review-drink" name="drink" required>
++                <option value="Maple Oat Latte">Maple Oat Latte</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                <option value="Cold Brew">Cold Brew</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="review-rating">Rating</label>
++              <select id="review-rating" name="rating" required>
++                <option value="5">5 Stars - Excellent</option>
++                <option value="4">4 Stars - Very Good</option>
++                <option value="3">3 Stars - Good</option>
++                <option value="2">2 Stars - Fair</option>
++                <option value="1">1 Star - Poor</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="review-feedback">Your Review (HTML formatting allowed)</label>
++            <textarea id="review-feedback" name="feedback" placeholder="Write your review here... e.g., Absolutely <strong>loved</strong> the <em>velvety</em> texture!" required></textarea>
++            <span class="form-hint">Unsafe elements and attributes are automatically stripped before display.</span>
++          </div>
++
++          <button type="submit" id="submit-review-btn" class="btn review-submit-btn">Submit Review</button>
++        </form>
++
++        <div id="reviews-list" class="reviews-list" aria-live="polite"></div>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +384,148 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const INITIAL_REVIEWS = [
++        {
++          name: 'Maya Lin',
++          drink: 'Maple Oat Latte',
++          rating: 5,
++          feedback: 'The <strong>Maple Oat Latte</strong> has the <em>perfect</em> balance of sweetness and roast!<ul><li>Silky oat foam</li><li>Real Vermont maple flavor</li></ul>'
++        },
++        {
++          name: 'Jordan Vance',
++          drink: 'Cold Brew',
++          rating: 5,
++          feedback: 'Steeped for <b>18 hours</b> and you can truly taste the difference. Zero bitterness and <i>super refreshing</i>.'
++        }
++      ];
++
++      /**
++       * Renders untrusted HTML safely into the target element using the browser's
++       * built-in safe HTML parsing and sanitization capabilities (Element.prototype.setHTML
++       * or Document.parseHTML) to strip out unsafe elements and attributes.
++       */
++      function renderSanitizedHTML(targetElement, untrustedHTML) {
++        const htmlString = String(untrustedHTML ?? '');
++
++        if (typeof targetElement.setHTML === 'function') {
++          targetElement.setHTML(htmlString);
++          return;
++        }
++
++        if (typeof Document.parseHTML === 'function') {
++          const parsedDoc = Document.parseHTML(htmlString);
++          targetElement.replaceChildren(...parsedDoc.body.childNodes);
++          return;
++        }
++
++        // Fallback DOM-based sanitizer if running in a browser without native Sanitizer API support
++        const parser = new DOMParser();
++        const doc = parser.parseFromString(htmlString, 'text/html');
++        const allowedTags = new Set([
++          'B', 'I', 'EM', 'STRONG', 'U', 'S', 'SMALL', 'MARK', 'SUB', 'SUP',
++          'P', 'BR', 'HR', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'CODE', 'PRE', 'SPAN', 'DIV',
++          'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A'
++        ]);
++        const allowedAttrs = new Set(['href', 'title', 'class']);
++
++        function cleanNode(node) {
++          const children = Array.from(node.childNodes);
++          for (const child of children) {
++            if (child.nodeType === Node.ELEMENT_NODE) {
++              if (!allowedTags.has(child.tagName)) {
++                child.remove();
++                continue;
++              }
++              for (const attr of Array.from(child.attributes)) {
++                const name = attr.name.toLowerCase();
++                const val = attr.value.trim().toLowerCase();
++                if (!allowedAttrs.has(name) || (name === 'href' && (val.startsWith('javascript:') || val.startsWith('data:') || val.startsWith('vbscript:')))) {
++                  child.removeAttribute(attr.name);
++                }
++              }
++              cleanNode(child);
++            } else if (child.nodeType !== Node.TEXT_NODE) {
++              child.remove();
++            }
++          }
++        }
++
++        cleanNode(doc.body);
++        targetElement.replaceChildren(...doc.body.childNodes);
++      }
++
++      function createReviewElement(review) {
++        const item = document.createElement('article');
++        item.className = 'review-item';
++
++        const header = document.createElement('div');
++        header.className = 'review-header';
++
++        const leftMeta = document.createElement('div');
++        const author = document.createElement('span');
++        author.className = 'review-author';
++        author.textContent = review.name;
++
++        const badge = document.createElement('span');
++        badge.className = 'review-drink-badge';
++        badge.style.marginLeft = '8px';
++        badge.textContent = review.drink;
++
++        leftMeta.appendChild(author);
++        leftMeta.appendChild(badge);
++
++        const ratingEl = document.createElement('div');
++        ratingEl.className = 'review-rating';
++        const starsCount = Math.min(5, Math.max(1, Number(review.rating) || 5));
++        ratingEl.textContent = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
++        ratingEl.setAttribute('aria-label', starsCount + ' out of 5 stars');
++
++        header.appendChild(leftMeta);
++        header.appendChild(ratingEl);
++
++        const content = document.createElement('div');
++        content.className = 'review-content';
++        renderSanitizedHTML(content, review.feedback);
++
++        item.appendChild(header);
++        item.appendChild(content);
++
++        return item;
++      }
++
++      const reviewsList = document.getElementById('reviews-list');
++      const reviewForm = document.getElementById('review-form');
++
++      INITIAL_REVIEWS.forEach(function (review) {
++        reviewsList.appendChild(createReviewElement(review));
++      });
++
++      reviewForm.addEventListener('submit', function (event) {
++        event.preventDefault();
++
++        const nameInput = document.getElementById('reviewer-name');
++        const drinkSelect = document.getElementById('review-drink');
++        const ratingSelect = document.getElementById('review-rating');
++        const feedbackInput = document.getElementById('review-feedback');
++
++        const newReview = {
++          name: nameInput.value.trim() || 'Anonymous Customer',
++          drink: drinkSelect.value,
++          rating: parseInt(ratingSelect.value, 10) || 5,
++          feedback: feedbackInput.value
++        };
++
++        const reviewEl = createReviewElement(newReview);
++        reviewsList.prepend(reviewEl);
++
++        feedbackInput.value = '';
++        nameInput.value = '';
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,138 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dffd5dd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..eedf2a6
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,118 @@
++import { swapFunctions } from "astro:transitions/client";
++
++/**
++ * Keeps recently visited views alive in a hidden holder instead of destroying
++ * them on navigation. Revisiting a cached URL moves the original <main> subtree
++ * back into the page (islands, scroll containers, media and focus state intact)
++ * and skips the network fetch.
++ */
++
++const MAX_ENTRIES = 5;
++const MAX_AGE_MS = 5 * 60 * 1000;
++
++interface Entry {
++  main: HTMLElement | null; // live, parked subtree (null while it is on screen)
++  html: string | null; // server HTML used to skip the fetch on revisit
++  storedAt: number;
++}
++
++// Map iteration order doubles as LRU order.
++const entries = new Map<string, Entry>();
++
++const holder = document.createElement("div");
++holder.id = "view-cache";
++holder.hidden = true;
++holder.inert = true;
++document.documentElement.append(holder);
++
++const key = (url: URL) => url.origin + url.pathname + url.search;
++
++const isFresh = (e: Entry | undefined): e is Entry =>
++  !!e && Date.now() - e.storedAt < MAX_AGE_MS;
++
++// moveBefore keeps element state; Safari falls back to a plain insert.
++function move(parent: Node, node: Node, before: Node | null) {
++  if ("moveBefore" in parent && node.isConnected === parent.isConnected) {
++    try {
++      (parent as any).moveBefore(node, before);
++      return;
++    } catch {
++      /* fall through */
++    }
++  }
++  parent.insertBefore(node, before);
++}
++
++function evict() {
++  while (entries.size > MAX_ENTRIES) {
++    const [oldest, entry] = entries.entries().next().value!;
++    entry.main?.remove();
++    entries.delete(oldest);
++  }
++}
++
++// Serve revisits from the cache without hitting the network.
++document.addEventListener("astro:before-preparation", (event) => {
++  const e = event as any;
++  if (e.formData || e.navigationType === "reload") return;
++  const entry = entries.get(key(e.to));
++  if (!isFresh(entry) || !entry.html) return;
++  e.loader = async () => {
++    e.newDocument = new DOMParser().parseFromString(entry.html!, "text/html");
++  };
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const e = event as any;
++  const fromKey = key(e.from);
++  const toKey = key(e.to);
++  const newDoc: Document = e.newDocument;
++
++  const oldMain = document.querySelector<HTMLElement>("main");
++  const newMain = newDoc.querySelector<HTMLElement>("main");
++  if (!oldMain || !newMain || fromKey === toKey) return;
++
++  const target = entries.get(toKey);
++  const restore = isFresh(target) && target.main ? target : null;
++  const html = restore ? target!.html : newDoc.documentElement.outerHTML;
++
++  // Park the outgoing view (still connected, so its islands stay mounted).
++  const prev = entries.get(fromKey);
++  prev?.main?.remove();
++  entries.delete(fromKey);
++  entries.set(fromKey, {
++    main: oldMain,
++    html: prev?.html ?? null,
++    storedAt: Date.now(),
++  });
++  move(holder, oldMain, null);
++
++  // Don't render (or run scripts of) a view we are about to restore.
++  if (restore) newMain.replaceChildren();
++
++  e.swap = () => {
++    swapFunctions.deselectScripts(newDoc);
++    swapFunctions.swapRootAttributes(newDoc);
++    swapFunctions.swapHeadElements(newDoc);
++    const saved = swapFunctions.saveFocus();
++    swapFunctions.swapBodyElement(newDoc.body, document.body);
++    if (restore) {
++      const placeholder = document.querySelector("main")!;
++      const cached = restore.main!;
++      restore.main = null;
++      move(placeholder.parentNode!, cached, placeholder);
++      placeholder.remove();
++    }
++    saved();
++  };
++
++  // Record the destination so a later visit can restore it.
++  if (!restore) entries.get(toKey)?.main?.remove();
++  entries.delete(toKey);
++  entries.set(toKey, {
++    main: null,
++    html,
++    storedAt: restore ? restore.storedAt : Date.now(),
++  });
++  evict();
++});

@@ -1,0 +1,207 @@
+diff --git a/index.html b/index.html
+index 66c9173..1f60807 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,125 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 60px;
++    }
++
++    .rewards h2 {
++      text-align: center;
++    }
++
++    .rewards-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      border-top: 4px solid var(--accent);
++    }
++
++    .progress-ring {
++      position: relative;
++      width: 200px;
++      height: 200px;
++      flex-shrink: 0;
++    }
++
++    .progress-ring svg {
++      width: 100%;
++      height: 100%;
++      transform: rotate(-90deg);
++    }
++
++    .progress-ring .ring-track {
++      fill: none;
++      stroke: var(--secondary);
++      stroke-width: 12;
++    }
++
++    .progress-ring .ring-fill {
++      fill: none;
++      stroke: var(--accent);
++      stroke-width: 12;
++      stroke-linecap: round;
++      transition: stroke-dashoffset 1s ease-out;
++    }
++
++    .ring-center {
++      position: absolute;
++      inset: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .ring-count {
++      font-size: 2.5rem;
++      font-weight: bold;
++      line-height: 1;
++    }
++
++    .ring-count span {
++      font-size: 1.25rem;
++      font-weight: normal;
++      color: var(--text);
++      opacity: 0.7;
++    }
++
++    .ring-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      margin-top: 6px;
++    }
++
++    .rewards-info {
++      max-width: 420px;
++    }
++
++    .rewards-info h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .rewards-info p {
++      margin-bottom: 8px;
++    }
++
++    .rewards-info strong {
++      color: var(--primary);
++    }
++
++    .stamps {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++      margin: 15px 0 5px;
++    }
++
++    .stamps li {
++      width: 22px;
++      height: 22px;
++      border-radius: 50%;
++      border: 2px solid var(--secondary);
++      background: var(--light);
++    }
++
++    .stamps li.earned {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +314,33 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Your Loyalty Rewards</h2>
++      <div class="rewards-card">
++        <div class="progress-ring" id="loyalty-ring" data-current="7" data-goal="10"
++          role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="7"
++          aria-label="Loyalty progress: 7 of 10 drinks toward your next free drink">
++          <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
++            <circle class="ring-track" cx="60" cy="60" r="52"></circle>
++            <!-- circumference = 2 * PI * 52 ≈ 326.73; offset = circumference * (1 - 7/10) -->
++            <circle class="ring-fill" cx="60" cy="60" r="52"
++              stroke-dasharray="326.73" stroke-dashoffset="98.02"></circle>
++          </svg>
++          <div class="ring-center" aria-hidden="true">
++            <div class="ring-count"><span class="ring-current">7</span><span>/<span class="ring-goal">10</span></span></div>
++            <div class="ring-label">Drinks</div>
++          </div>
++        </div>
++        <div class="rewards-info">
++          <h3>You're almost there!</h3>
++          <p>Only <strong><span class="ring-remaining">3</span> more <span class="ring-remaining-noun">drinks</span></strong> until your next free drink.</p>
++          <ul class="stamps" aria-hidden="true"></ul>
++          <p>Every handcrafted drink earns a stamp. Collect 10 and your next one's on us &mdash; any size, any flavor.</p>
++          <a href="/rewards" class="btn">View My Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +353,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var ring = document.getElementById('loyalty-ring');
++      if (!ring) return;
++      var goal = Math.max(1, parseInt(ring.dataset.goal, 10) || 10);
++      var current = Math.min(goal, Math.max(0, parseInt(ring.dataset.current, 10) || 0));
++      var remaining = goal - current;
++      var card = ring.closest('.rewards-card');
++      var fill = ring.querySelector('.ring-fill');
++      var circumference = 2 * Math.PI * fill.r.baseVal.value;
++
++      fill.style.strokeDasharray = circumference;
++      fill.style.strokeDashoffset = circumference * (1 - current / goal);
++
++      ring.setAttribute('aria-valuemax', goal);
++      ring.setAttribute('aria-valuenow', current);
++      ring.setAttribute('aria-label', 'Loyalty progress: ' + current + ' of ' + goal + ' drinks toward your next free drink');
++      ring.querySelector('.ring-current').textContent = current;
++      ring.querySelector('.ring-goal').textContent = goal;
++
++      card.querySelector('.ring-remaining').textContent = remaining;
++      card.querySelector('.ring-remaining-noun').textContent = remaining === 1 ? 'drink' : 'drinks';
++      if (remaining === 0) {
++        card.querySelector('h3').textContent = 'Your free drink is ready!';
++        card.querySelector('.ring-remaining').parentNode.parentNode.textContent = 'Redeem it on your next visit.';
++      }
++
++      var stamps = card.querySelector('.stamps');
++      for (var i = 0; i < goal; i++) {
++        var li = document.createElement('li');
++        if (i < current) li.className = 'earned';
++        stamps.appendChild(li);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

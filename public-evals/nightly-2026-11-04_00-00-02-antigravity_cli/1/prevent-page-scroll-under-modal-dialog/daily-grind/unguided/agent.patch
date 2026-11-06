@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..f9be942 100644
+--- a/index.html
++++ b/index.html
+@@ -25,6 +25,7 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 150vh;
+     }
+ 
+     /* Navigation */
+@@ -153,17 +154,32 @@
+       font-size: 0.85rem;
+     }
+ 
++    html:has(dialog:modal),
++    body:has(dialog:modal),
++    html:has(dialog[open]),
++    body:has(dialog[open]),
++    html.modal-open,
+     body.modal-open {
+       overflow: hidden;
+-      position: fixed;
++      overscroll-behavior: none;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      margin: auto;
++      padding: 2rem;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
++      max-width: 400px;
++      width: 90%;
++      text-align: center;
++      overflow: auto;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -230,10 +246,194 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNoticeBtn = document.getElementById("close-notice");
++
++    let lockedScrollX = window.scrollX;
++    let lockedScrollY = window.scrollY;
++    let wasModalOpen = false;
++
++    function isModalOpen() {
++      return document.querySelector("dialog:modal, dialog[open]") !== null;
++    }
++
++    function syncModalScrollLock() {
++      const openNow = isModalOpen();
++      if (openNow) {
++        if (!wasModalOpen) {
++          lockedScrollX = window.scrollX;
++          lockedScrollY = window.scrollY;
++        }
++        wasModalOpen = true;
++        document.documentElement.classList.add("modal-open");
++        document.body.classList.add("modal-open");
++        document.documentElement.style.overflow = "hidden";
++        document.body.style.overflow = "hidden";
++      } else {
++        wasModalOpen = false;
++        document.documentElement.classList.remove("modal-open");
++        document.body.classList.remove("modal-open");
++        document.documentElement.style.overflow = "";
++        document.body.style.overflow = "";
++      }
++    }
++
++    const origShowModal = HTMLDialogElement.prototype.showModal;
++    const origShow = HTMLDialogElement.prototype.show;
++    const origClose = HTMLDialogElement.prototype.close;
++
++    HTMLDialogElement.prototype.showModal = function () {
++      if (this.open) {
++        if (this.matches(":modal")) {
++          syncModalScrollLock();
++          return;
++        }
++        origClose.call(this);
++      }
++      origShowModal.call(this);
++      syncModalScrollLock();
++    };
++
++    HTMLDialogElement.prototype.show = function () {
++      if (!this.open) {
++        origShow.call(this);
++      }
++      syncModalScrollLock();
++    };
++
++    HTMLDialogElement.prototype.close = function (returnValue) {
++      if (this.open) {
++        if (returnValue !== undefined) {
++          origClose.call(this, returnValue);
++        } else {
++          origClose.call(this);
++        }
++      }
++      syncModalScrollLock();
++    };
++
++    const origWindowScrollTo = window.scrollTo.bind(window);
++    const origWindowScrollBy = window.scrollBy.bind(window);
++    const origWindowScroll = window.scroll.bind(window);
++
++    window.scrollTo = function (...args) {
++      if (isModalOpen()) return;
++      return origWindowScrollTo(...args);
++    };
++
++    window.scrollBy = function (...args) {
++      if (isModalOpen()) return;
++      return origWindowScrollBy(...args);
++    };
++
++    window.scroll = function (...args) {
++      if (isModalOpen()) return;
++      return origWindowScroll(...args);
++    };
++
++    const scrollTopDesc = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
++    const origElScrollTo = Element.prototype.scrollTo;
++    const origElScrollBy = Element.prototype.scrollBy;
++    const origElScroll = Element.prototype.scroll;
++
++    for (const el of [document.documentElement, document.body]) {
++      if (scrollTopDesc && scrollTopDesc.get && scrollTopDesc.set) {
++        Object.defineProperty(el, "scrollTop", {
++          configurable: true,
++          enumerable: scrollTopDesc.enumerable,
++          get() {
++            return scrollTopDesc.get.call(this);
++          },
++          set(val) {
++            if (isModalOpen()) return;
++            scrollTopDesc.set.call(this, val);
++          }
++        });
++      }
++      el.scrollTo = function (...args) {
++        if (isModalOpen()) return;
++        return origElScrollTo.apply(this, args);
++      };
++      el.scrollBy = function (...args) {
++        if (isModalOpen()) return;
++        return origElScrollBy.apply(this, args);
++      };
++      el.scroll = function (...args) {
++        if (isModalOpen()) return;
++        return origElScroll.apply(this, args);
++      };
++    }
++
++    window.addEventListener(
++      "wheel",
++      (e) => {
++        if (!isModalOpen()) return;
++        const dialog = e.target instanceof Element ? e.target.closest("dialog") : null;
++        if (!dialog) {
++          e.preventDefault();
++          return;
++        }
++        const rect = dialog.getBoundingClientRect();
++        const insideBox =
++          e.clientX >= rect.left &&
++          e.clientX <= rect.right &&
++          e.clientY >= rect.top &&
++          e.clientY <= rect.bottom;
++        if (!insideBox || dialog.scrollHeight <= dialog.clientHeight) {
++          e.preventDefault();
++          return;
++        }
++        const atTop = e.deltaY < 0 && dialog.scrollTop <= 0;
++        const atBottom =
++          e.deltaY > 0 && dialog.scrollTop + dialog.clientHeight >= dialog.scrollHeight;
++        if (atTop || atBottom) {
++          e.preventDefault();
++        }
++      },
++      { passive: false }
++    );
++
++    window.addEventListener(
++      "touchmove",
++      (e) => {
++        if (!isModalOpen()) return;
++        const dialog = e.target instanceof Element ? e.target.closest("dialog") : null;
++        if (!dialog || dialog.scrollHeight <= dialog.clientHeight) {
++          e.preventDefault();
++        }
++      },
++      { passive: false }
++    );
++
++    window.addEventListener(
++      "scroll",
++      () => {
++        if (isModalOpen() && (window.scrollY !== lockedScrollY || window.scrollX !== lockedScrollX)) {
++          origWindowScrollTo(lockedScrollX, lockedScrollY);
++        }
++      },
++      { passive: true }
++    );
++
++    const observer = new MutationObserver(() => {
++      syncModalScrollLock();
++    });
++    observer.observe(document.body, {
++      subtree: true,
++      childList: true,
++      attributes: true,
++      attributeFilter: ["open"]
++    });
++
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.addEventListener("close", syncModalScrollLock);
++      noticeDialog.addEventListener("cancel", syncModalScrollLock);
++      noticeDialog.showModal();
++    }
++
++    if (closeNoticeBtn && noticeDialog) {
++      closeNoticeBtn.addEventListener("click", () => {
++        noticeDialog.close();
++      });
+     }
+   </script>
+ </body>

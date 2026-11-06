@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,63 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: 0 auto 40px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      margin-bottom: 15px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin button {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      margin-top: 0;
++    }
++
++    .signin button:disabled {
++      opacity: 0.7;
++      cursor: wait;
++    }
++
++    .signin-message {
++      min-height: 1.5em;
++      margin-top: 10px;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .signin-message.error {
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +229,20 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" id="signin-section" aria-labelledby="signin-heading">
++      <h2 id="signin-heading">Sign In</h2>
++      <form id="signin-form" novalidate>
++        <label for="username">Email or username</label>
++        <input id="username" name="username" type="text" autocomplete="username webauthn" required>
++        <label for="password">Password</label>
++        <input id="password" name="password" type="password" autocomplete="current-password" required>
++        <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++        <p class="signin-message" id="signin-message" role="status" aria-live="polite"></p>
++      </form>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +273,159 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('signin-form');
++      const button = form.querySelector('[data-testid="signin-button"]');
++      const message = document.getElementById('signin-message');
++
++      // ---- base64url helpers (fallback when the JSON (de)serialization APIs are unavailable) ----
++      const b64urlToBuffer = (value) => {
++        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
++        const binary = atob(padded);
++        const bytes = new Uint8Array(binary.length);
++        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
++        return bytes.buffer;
++      };
++
++      const bufferToB64url = (buffer) => {
++        const bytes = new Uint8Array(buffer);
++        let binary = '';
++        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
++        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      };
++
++      const parseCreationOptions = (json) => {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuffer(json.challenge),
++          user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++          excludeCredentials: (json.excludeCredentials || []).map((c) => ({
++            ...c,
++            id: b64urlToBuffer(c.id),
++          })),
++        };
++      };
++
++      const serializeCredential = (credential) => {
++        if (typeof credential.toJSON === 'function') {
++          return credential.toJSON();
++        }
++        const { response } = credential;
++        return {
++          id: credential.id,
++          rawId: bufferToB64url(credential.rawId),
++          type: credential.type,
++          authenticatorAttachment: credential.authenticatorAttachment ?? undefined,
++          clientExtensionResults: credential.getClientExtensionResults(),
++          response: {
++            clientDataJSON: bufferToB64url(response.clientDataJSON),
++            attestationObject: bufferToB64url(response.attestationObject),
++            transports: typeof response.getTransports === 'function' ? response.getTransports() : [],
++          },
++        };
++      };
++
++      // ---- Feature detection for conditional (automatic) passkey creation ----
++      const supportsConditionalCreate = async () => {
++        if (!window.PublicKeyCredential || !navigator.credentials?.create) return false;
++        if (typeof PublicKeyCredential.getClientCapabilities !== 'function') return false;
++        try {
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          return capabilities?.conditionalCreate === true;
++        } catch {
++          return false;
++        }
++      };
++
++      // ---- Silent post-login passkey promotion ----
++      // Runs in the background after a successful password sign-in. Never shows UI;
++      // any failure (unsupported, declined, already registered, network) is swallowed.
++      const promotePasskey = async () => {
++        try {
++          if (!(await supportsConditionalCreate())) return;
++
++          const optionsRes = await fetch('/api/register/options', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify({}),
++          });
++          if (!optionsRes.ok) return;
++          const optionsJSON = await optionsRes.json();
++          const publicKey = parseCreationOptions(optionsJSON.publicKey ?? optionsJSON);
++
++          const credential = await navigator.credentials.create({
++            publicKey,
++            mediation: 'conditional',
++          });
++          if (!credential) return;
++
++          await fetch('/api/register/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify(serializeCredential(credential)),
++          });
++        } catch (err) {
++          // Intentionally silent: conditional creation must not interrupt the user.
++          console.debug('Automatic passkey registration skipped:', err?.name || err);
++        }
++      };
++
++      // ---- Password sign-in ----
++      const setMessage = (text, isError = false) => {
++        message.textContent = text;
++        message.classList.toggle('error', isError);
++      };
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        const username = form.username.value.trim();
++        const password = form.password.value;
++
++        if (!username || !password) {
++          setMessage('Please enter your username and password.', true);
++          return;
++        }
++
++        button.disabled = true;
++        setMessage('Signing in…');
++
++        let signedIn = false;
++        try {
++          const res = await fetch('/api/signin', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify({ username, password }),
++          });
++          signedIn = res.ok;
++          if (!signedIn) {
++            setMessage('Invalid username or password.', true);
++          }
++        } catch {
++          setMessage('Unable to sign in right now. Please try again.', true);
++        } finally {
++          button.disabled = false;
++        }
++
++        if (!signedIn) return;
++
++        form.password.value = '';
++        setMessage(`Welcome back, ${username}!`);
++
++        // Fire-and-forget: silently upgrade the user to a passkey in the background.
++        promotePasskey();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

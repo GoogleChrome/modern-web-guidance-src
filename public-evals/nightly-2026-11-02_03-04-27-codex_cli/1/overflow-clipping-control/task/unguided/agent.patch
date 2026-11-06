@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,144 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase: let the browser derive the concentric content-box curves. */
++    .showcase {
++      margin-bottom: 56px;
++    }
++
++    .showcase-heading {
++      margin-bottom: 24px;
++      text-align: center;
++    }
++
++    .eyebrow {
++      color: #795548;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .showcase-heading h2 {
++      margin: 6px 0;
++      font-size: clamp(1.7rem, 4vw, 2.2rem);
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: 1.3fr 1fr;
++      gap: 32px;
++      align-items: center;
++    }
++
++    .showcase-grid > * {
++      min-width: 0;
++    }
++
++    .nested-curve-parent {
++      padding: 18px 22px 22px;
++      border: 1px solid #dfd2c6;
++      border-radius: 38px;
++      background: #eee5db;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .showcase-photo {
++      display: block;
++      width: 100%;
++      height: 210px;
++      object-fit: cover;
++    }
++
++    .showcase-story {
++      padding: 24px;
++      background: #fffdf9;
++    }
++
++    .showcase-story h3 {
++      margin: 6px 0 8px;
++      font-size: 1.5rem;
++    }
++
++    .nested-curve-parent .showcase-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px 16px;
++      margin: 0;
++      padding: 16px 24px;
++      background: var(--primary);
++      color: white;
++      text-align: left;
++      font-size: 0.85rem;
++    }
++
++    .showcase-footer a {
++      color: #ffd398;
++      text-underline-offset: 4px;
++    }
++
++    .safety-zone-parent {
++      padding: 32px;
++      border: 1px solid #e4c6a0;
++      border-radius: 24px;
++      background: #fff0da;
++      overflow: clip;
++      /* Permit ink (including the button glow) up to 15px past the edge. */
++      overflow-clip-margin: 15px;
++    }
++
++    /* A separate text clip keeps the parent's safety zone for the glow. */
++    .promo-copy {
++      overflow: clip;
++      overflow-wrap: anywhere;
++    }
++
++    .promo-copy h3 {
++      margin: 10px 0 12px;
++      font-size: clamp(1.8rem, 4vw, 2.4rem);
++      line-height: 1.15;
++    }
++
++    .promo-copy p:last-child {
++      color: #6d5144;
++    }
++
++    .promo-button {
++      display: block;
++      width: 100%;
++      margin-top: 28px;
++      padding: 15px 20px;
++      border: 0;
++      border-radius: 12px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-weight: 700;
++      cursor: pointer;
++      box-shadow: 0 0 36px 12px rgb(255 171 64 / 65%);
++      transition: background 0.2s;
++    }
++
++    .promo-button:hover {
++      background: #6d4538;
++    }
++
++    .promo-button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 700px) {
++      .showcase-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +310,44 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" aria-labelledby="showcase-title">
++      <div class="showcase-heading">
++        <p class="eyebrow">A little more to love</p>
++        <h2 id="showcase-title">Good coffee. Better moments.</h2>
++        <p>Meet your next daily ritual.</p>
++      </div>
++
++      <div class="showcase-grid">
++        <article class="nested-curve-parent" aria-labelledby="roast-title">
++          <img class="showcase-photo"
++            src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1000&q=80"
++            alt="Freshly roasted coffee beans" width="1000" height="600" loading="lazy">
++          <div class="showcase-story">
++            <p class="eyebrow">From our roastery</p>
++            <h3 id="roast-title">Crafted for your everyday.</h3>
++            <p>Thoughtfully sourced beans, roasted in small batches. Find a cup that feels like you.</p>
++          </div>
++          <footer class="showcase-footer">
++            <span>Fresh roasts. Full of character.</span>
++            <a href="/menu">Explore our coffee &rarr;</a>
++          </footer>
++        </article>
++
++        <aside class="safety-zone-parent" aria-labelledby="promo-title">
++          <div class="promo-copy">
++            <p class="eyebrow">Your daily bright spot</p>
++            <h3 id="promo-title">Make every<br>sip count.</h3>
++            <p>Join Daily Grind Rewards to discover member perks and a little extra joy with your coffee.</p>
++          </div>
++          <form action="/rewards" method="get">
++            <button class="promo-button" type="submit">Discover your perks &rarr;</button>
++          </form>
++        </aside>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

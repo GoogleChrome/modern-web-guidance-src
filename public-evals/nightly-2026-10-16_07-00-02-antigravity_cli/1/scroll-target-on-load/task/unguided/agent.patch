@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,69 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Vertical Scroll Container & Media Cards */
++    .media-scroll-container {
++      height: 480px;
++      max-height: 480px;
++      overflow-y: auto;
++      overflow-x: hidden;
++      scroll-behavior: auto;
++      scroll-snap-type: y mandatory;
++      padding: 16px;
++      scroll-padding: 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++      background: #efebe9;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      position: relative;
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 8px;
++      padding: 16px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      scroll-snap-align: start;
++      flex-shrink: 0;
++    }
++
++    .media-card img {
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++      display: block;
++      border-radius: 6px;
++      aspect-ratio: 600 / 400;
++    }
++
++    .media-card-content {
++      padding-top: 12px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.25rem;
++    }
++
++    .media-card p {
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin-bottom: 12px;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      scroll-start-target: auto;
++      scroll-start-target-y: auto;
++      scroll-start-target-block: auto;
++      border: 2px solid var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +255,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 50px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">Featured Brews &amp; Roasts</h2>
++      <div class="scroll-container media-scroll-container" id="media-scroll-container">
++        <!-- Media Card 1 -->
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=400&q=80" width="600" height="400" alt="Pour-over coffee dripping into carafe">
++          <div class="media-card-content">
++            <h3>Signature Espresso Blend</h3>
++            <p>A rich, balanced blend with notes of dark chocolate and toasted almond.</p>
++            <a href="/menu/espresso-blend" class="btn">Explore Blend</a>
++          </div>
++        </article>
++
++        <!-- Media Card 2 -->
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&h=400&q=80" width="600" height="400" alt="Fresh hot cup of artisanal coffee">
++          <div class="media-card-content">
++            <h3>Colombian Supremo Single Origin</h3>
++            <p>Hand-picked beans from Huila with bright citrus acidity and caramel finish.</p>
++            <a href="/menu/colombian-supremo" class="btn">Explore Origin</a>
++          </div>
++        </article>
++
++        <!-- Media Card 3 (Target) -->
++        <article class="media-card target" id="target">
++          <img src="https://images.unsplash.com/photo-1497636577773-f1231844b336?auto=format&fit=crop&w=600&h=400&q=80" width="600" height="400" alt="Roasted specialty coffee beans with scoop">
++          <div class="media-card-content">
++            <h3>Ethiopian Yirgacheffe Reserve</h3>
++            <p>Floral aroma, crisp bergamot notes, and a clean honey sweetness.</p>
++            <a href="/menu/ethiopian-yirgacheffe" class="btn">Explore Reserve</a>
++          </div>
++        </article>
++
++        <!-- Media Card 4 -->
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&h=400&q=80" width="600" height="400" alt="Artisan latte with rosetta art in ceramic cup">
++          <div class="media-card-content">
++            <h3>Nitro Cold Brew Infusion</h3>
++            <p>Velvety microbubbles meet slow-steeped Colombian roast for ultra-smooth sipping.</p>
++            <a href="/menu/nitro-cold-brew" class="btn">Explore Brew</a>
++          </div>
++        </article>
++
++        <!-- Media Card 5 -->
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&h=400&q=80" width="600" height="400" alt="Chilled iced coffee with sweet cream swirl">
++          <div class="media-card-content">
++            <h3>Vanilla Bourbon Cold Foam</h3>
++            <p>House-made Madagascar vanilla foam cascaded over slow-dripped iced espresso.</p>
++            <a href="/menu/vanilla-bourbon" class="btn">Explore Creation</a>
++          </div>
++        </article>
++      </div>
++      <script>
++        (function () {
++          function initScroll() {
++            var container = document.getElementById('media-scroll-container');
++            var target = document.querySelector('.target');
++            if (container && target) {
++              if (container.scrollTop === 0) {
++                container.scrollTop = target.offsetTop - container.offsetTop;
++              }
++            }
++          }
++          initScroll();
++          document.addEventListener('DOMContentLoaded', initScroll);
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

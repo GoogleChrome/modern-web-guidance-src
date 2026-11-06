@@ -1,0 +1,246 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..010faf9
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,148 @@
++import { useEffect, useRef, useState } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStory {
++  id: string;
++  title: string;
++  href: string;
++  /** Pre-formatted on the server so markup matches between SSR and hydration. */
++  date: string;
++}
++
++interface Props {
++  stories: TopStory[];
++}
++
++type Direction = 'next' | 'prev';
++
++interface OutgoingSlide {
++  index: number;
++  direction: Direction;
++  /** Monotonic id so React remounts the element (and restarts its animation) on every move. */
++  key: number;
++}
++
++const ANIMATION_MS = 300;
++
++function usePrefersReducedMotion() {
++  const [reduced, setReduced] = useState(false);
++
++  useEffect(() => {
++    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const update = () => setReduced(mql.matches);
++    update();
++    mql.addEventListener('change', update);
++    return () => mql.removeEventListener('change', update);
++  }, []);
++
++  return reduced;
++}
++
++function Slide({ story }: { story: TopStory }) {
++  return (
++    <>
++      <a href={story.href} className="block">
++        <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{story.title}</h3>
++      </a>
++      <span className="text-xs text-gray-500">{story.date}</span>
++    </>
++  );
++}
++
++export default function TopStoriesSlider({ stories }: Props) {
++  const [current, setCurrent] = useState(0);
++  const [direction, setDirection] = useState<Direction | null>(null);
++  const [outgoing, setOutgoing] = useState<OutgoingSlide | null>(null);
++  const moveCount = useRef(0);
++  const reducedMotion = usePrefersReducedMotion();
++  const count = stories.length;
++
++  // Safety net: if `animationend` never fires (e.g. the tab is hidden), still drop the outgoing slide.
++  useEffect(() => {
++    if (!outgoing) return;
++    const timer = window.setTimeout(() => setOutgoing(null), ANIMATION_MS + 100);
++    return () => window.clearTimeout(timer);
++  }, [outgoing]);
++
++  if (count === 0) return null;
++
++  const go = (dir: Direction) => {
++    const next = dir === 'next' ? (current + 1) % count : (current - 1 + count) % count;
++    if (next === current) return;
++
++    moveCount.current += 1;
++    setDirection(dir);
++    // With reduced motion there is no exit animation, so never render the outgoing slide.
++    setOutgoing(reducedMotion ? null : { index: current, direction: dir, key: moveCount.current });
++    setCurrent(next);
++  };
++
++  const enterClass =
++    direction === null || reducedMotion
++      ? ''
++      : direction === 'next'
++        ? 'motion-safe:animate-slide-in-from-right'
++        : 'motion-safe:animate-slide-in-from-left';
++
++  const exitClass =
++    outgoing?.direction === 'next'
++      ? 'motion-safe:animate-slide-out-to-left'
++      : 'motion-safe:animate-slide-out-to-right';
++
++  const story = stories[current];
++
++  return (
++    <div
++      role="region"
++      aria-roledescription="carousel"
++      aria-label="Top stories"
++      className="flex items-center gap-3 sm:gap-4"
++    >
++      <button
++        type="button"
++        onClick={() => go('prev')}
++        aria-label="Previous story"
++        disabled={count < 2}
++        className="shrink-0 rounded-full border border-gray-300 p-1.5 text-gray-700 hover:border-amber-400 hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-colors"
++      >
++        <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
++      </button>
++
++      <div className="relative flex-1 min-w-0 overflow-hidden" aria-live="polite" aria-atomic="true">
++        {outgoing && (
++          <div
++            key={`out-${outgoing.key}`}
++            aria-hidden="true"
++            onAnimationEnd={() => setOutgoing(null)}
++            className={`pointer-events-none absolute inset-0 ${exitClass}`}
++          >
++            <Slide story={stories[outgoing.index]} />
++          </div>
++        )}
++        <div
++          key={`in-${current}-${moveCount.current}`}
++          role="group"
++          aria-roledescription="slide"
++          aria-label={`${current + 1} of ${count}`}
++          className={enterClass}
++        >
++          <Slide story={story} />
++        </div>
++      </div>
++
++      <span className="shrink-0 text-xs tabular-nums text-gray-500" aria-hidden="true">
++        {current + 1} / {count}
++      </span>
++
++      <button
++        type="button"
++        onClick={() => go('next')}
++        aria-label="Next story"
++        disabled={count < 2}
++        className="shrink-0 rounded-full border border-gray-300 p-1.5 text-gray-700 hover:border-amber-400 hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-colors"
++      >
++        <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
++      </button>
++    </div>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5f507ed 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -17,6 +18,15 @@ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new gri
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+ 
++// Serialisable props for the top stories slider (a React island). The date is
++// formatted here so the server-rendered markup matches what React hydrates.
++const topStorySlides = topStories.map(article => ({
++    id: article.id,
++    title: article.data.title,
++    href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++    date: article.data.date.toLocaleDateString(),
++}));
++
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+     id: 'public-transit-overhaul',
+@@ -41,16 +51,7 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider client:load stories={topStorySlides} />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..a7f3f6e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,39 @@
+ @import "tailwindcss";
+ 
++/*
++ * Slide animations for the top stories slider. Each is exposed as an
++ * `animate-*` utility; the component applies them behind the `motion-safe:`
++ * variant so they never run for users who prefer reduced motion.
++ */
++@theme {
++  --animate-slide-in-from-right: slide-in-from-right 300ms ease-out both;
++  --animate-slide-in-from-left: slide-in-from-left 300ms ease-out both;
++  --animate-slide-out-to-left: slide-out-to-left 300ms ease-out both;
++  --animate-slide-out-to-right: slide-out-to-right 300ms ease-out both;
++
++  @keyframes slide-in-from-right {
++    from { transform: translateX(100%); opacity: 0; }
++    to { transform: translateX(0); opacity: 1; }
++  }
++
++  @keyframes slide-in-from-left {
++    from { transform: translateX(-100%); opacity: 0; }
++    to { transform: translateX(0); opacity: 1; }
++  }
++
++  @keyframes slide-out-to-left {
++    from { transform: translateX(0); opacity: 1; }
++    to { transform: translateX(-100%); opacity: 0; }
++  }
++
++  @keyframes slide-out-to-right {
++    from { transform: translateX(0); opacity: 1; }
++    to { transform: translateX(100%); opacity: 0; }
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

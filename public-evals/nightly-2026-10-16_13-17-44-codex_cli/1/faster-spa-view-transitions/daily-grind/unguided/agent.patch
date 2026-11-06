@@ -1,0 +1,333 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..5d0fcc0
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,9 @@
++# The Daily Grind
++
++Run `pnpm install` and `pnpm start` to serve the site. Run `pnpm test` for the automated DOM navigation tests.
++
++`navigation.js` keeps visited views mounted inside `#view-outlet`, hiding inactive views with the native `hidden` attribute. Returning to a view reuses its nodes, including input values and event listeners, without another request. The cache lasts until the document is unloaded and uses pathname plus query string as the view key. Titles, focus, scroll positions, and Back/Forward navigation are updated when switching views.
++
++Each destination must be served as an HTML document containing `#view-outlet > [data-view]`, with its page content inside that view. The navigation and footer remain shared. This repository currently provides only the home page; destination content must be provided by the server. Failed requests, redirects, incompatible pages, and views containing scripts fall back to a regular page load. Page-specific scripts that require initialization should use a full page load via `data-no-spa` on their links.
++
++External links, downloads, links opening other targets, modifier clicks, same-view anchors, and logout retain normal browser navigation. Add `data-no-spa` to any other link that needs a full page load. Inactive views remain in memory for the lifetime of the document, so this approach is intended for a bounded set of views.
+diff --git a/index.html b/index.html
+index 66c9173..1a9cbe2 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,10 @@
+       background-color: var(--light);
+     }
+ 
++    [hidden] {
++      display: none !important;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -168,6 +172,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="view-outlet">
++  <div data-view>
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -197,6 +203,9 @@
+     </section>
+   </main>
+ 
++  </div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +216,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/navigation.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/navigation.js b/navigation.js
+new file mode 100644
+index 0000000..bc2b188
+--- /dev/null
++++ b/navigation.js
+@@ -0,0 +1,108 @@
++(() => {
++  const outlet = document.getElementById('view-outlet');
++  const initialView = outlet?.querySelector('[data-view]');
++  if (!initialView) return;
++
++  const keyFor = (url) => url.pathname + url.search;
++  const views = new Map();
++  const pending = new Map();
++  let activeKey = keyFor(new URL(location.href));
++  let navigation = 0;
++
++  views.set(activeKey, {
++    element: initialView,
++    title: document.title,
++    scroll: [scrollX, scrollY],
++  });
++
++  async function loadView(url) {
++    const key = keyFor(url);
++    if (views.has(key)) return views.get(key);
++    if (pending.has(key)) return pending.get(key);
++
++    const request = (async () => {
++      const response = await fetch(url.pathname + url.search, {
++        headers: { Accept: 'text/html' },
++      });
++      if (!response.ok || response.redirected ||
++          !response.headers.get('content-type')?.includes('text/html')) {
++        throw new Error('Navigation requires a full page load');
++      }
++      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
++      const source = page.querySelector('#view-outlet > [data-view]');
++      if (!source) throw new Error('Page does not provide a view');
++
++      const element = document.importNode(source, true);
++      // Scripts must run through a full page load, never a cached insertion.
++      if (element.querySelector('script')) throw new Error('View contains scripts');
++      element.hidden = true;
++      outlet.append(element);
++      const view = { element, title: page.title, scroll: [0, 0] };
++      views.set(key, view);
++      return view;
++    })();
++    pending.set(key, request);
++    try {
++      return await request;
++    } finally {
++      pending.delete(key);
++    }
++  }
++
++  async function navigate(url, fromHistory = false) {
++    const version = ++navigation;
++    const key = keyFor(url);
++    try {
++      const next = await loadView(url);
++      if (version !== navigation) return;
++      if (!fromHistory) history.pushState(null, '', url);
++
++      const previous = views.get(activeKey);
++      previous.scroll = [scrollX, scrollY];
++      previous.element.hidden = true;
++      next.element.hidden = false;
++      activeKey = key;
++      document.title = next.title;
++
++      // Move focus out of the hidden view without changing its form state.
++      const heading = next.element.querySelector('h1, h2, main');
++      if (heading) {
++        const tabindex = heading.getAttribute('tabindex');
++        heading.setAttribute('tabindex', '-1');
++        heading.focus({ preventScroll: true });
++        if (tabindex === null) heading.removeAttribute('tabindex');
++        else heading.setAttribute('tabindex', tabindex);
++      }
++      const anchor = url.hash && Array.from(next.element.querySelectorAll('[id]'))
++        .find((element) => element.id === decodeURIComponent(url.hash.slice(1)));
++      if (anchor) anchor.scrollIntoView();
++      else window.scrollTo(...next.scroll);
++    } catch {
++      if (version === navigation) location.assign(url.href);
++    }
++  }
++
++  document.addEventListener('click', (event) => {
++    if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
++        event.ctrlKey || event.shiftKey || event.altKey) return;
++    const link = event.target.closest?.('a[href]');
++    if (!link || link.hasAttribute('download') ||
++        (link.target && link.target !== '_self') || link.hasAttribute('data-no-spa')) return;
++    const url = new URL(link.href, location.href);
++    if (url.origin !== location.origin || !['http:', 'https:'].includes(url.protocol) ||
++        /^\/logout\/?$/.test(url.pathname)) return;
++    // Let the browser handle anchors within the current view.
++    if (keyFor(url) === activeKey && url.hash) {
++      ++navigation;
++      return;
++    }
++    event.preventDefault();
++    if (keyFor(url) !== activeKey) void navigate(url);
++    else ++navigation;
++  });
++
++  history.scrollRestoration = 'manual';
++  window.addEventListener('popstate', () => {
++    void navigate(new URL(location.href), true);
++  });
++})();
+diff --git a/navigation.test.cjs b/navigation.test.cjs
+new file mode 100644
+index 0000000..061c038
+--- /dev/null
++++ b/navigation.test.cjs
+@@ -0,0 +1,131 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const { JSDOM } = require('jsdom');
++
++const script = readFileSync('navigation.js', 'utf8');
++const html = readFileSync('index.html', 'utf8');
++const tick = () => new Promise((resolve) => setImmediate(resolve));
++const page = (title) => `<!doctype html><title>${title}</title>
++  <div id="view-outlet"><div data-view><h1>${title}</h1><input><button>Save</button></div></div>`;
++
++function setup(fetch) {
++  const dom = new JSDOM(html, { url: 'https://coffee.test/', runScripts: 'outside-only' });
++  dom.window.fetch = fetch;
++  dom.window.scrollTo = () => {};
++  dom.window.eval(script);
++  const click = (path, options = {}) => {
++    const link = dom.window.document.createElement('a');
++    link.href = path;
++    dom.window.document.body.append(link);
++    const event = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...options });
++    link.dispatchEvent(event);
++    link.remove();
++    return event;
++  };
++  return { dom, window: dom.window, document: dom.window.document, click };
++}
++
++function response(title) {
++  return { ok: true, redirected: false, headers: new Headers({ 'content-type': 'text/html' }), text: async () => page(title) };
++}
++
++test('revisits preserve nodes, form values and listeners without fetching again', async () => {
++  const requests = [];
++  const { dom, document, window, click } = setup(async (url) => {
++    requests.push(url);
++    return response(url);
++  });
++  const home = document.querySelector('[data-view]');
++  click('/menu');
++  await tick();
++  const menu = document.querySelector('[data-view]:not([hidden])');
++  menu.querySelector('input').value = 'Oat milk';
++  let saves = 0;
++  menu.querySelector('button').addEventListener('click', () => saves++);
++  click('/locations');
++  await tick();
++  assert.equal(menu.hidden, true);
++  click('/menu');
++  await tick();
++  assert.equal(document.querySelector('[data-view]:not([hidden])'), menu);
++  assert.equal(menu.querySelector('input').value, 'Oat milk');
++  menu.querySelector('button').click();
++  assert.equal(saves, 1);
++  assert.equal(document.title, '/menu');
++  assert.equal(window.location.pathname, '/menu');
++  click('/');
++  await tick();
++  assert.equal(document.querySelector('[data-view]:not([hidden])'), home);
++  assert.deepEqual(requests, ['/menu', '/locations']);
++  dom.window.close();
++});
++
++test('Back and Forward restore the cached view and title', async () => {
++  const { dom, window, document, click } = setup(async (url) => response(url));
++  click('/menu');
++  await tick();
++  const menu = document.querySelector('[data-view]:not([hidden])');
++  click('/locations');
++  await tick();
++  const popped = () => new Promise((resolve) => window.addEventListener('popstate', () => setImmediate(resolve), { once: true }));
++  let done = popped();
++  window.history.back();
++  await done;
++  assert.equal(document.querySelector('[data-view]:not([hidden])'), menu);
++  assert.equal(document.title, '/menu');
++  done = popped();
++  window.history.forward();
++  await done;
++  assert.equal(document.title, '/locations');
++  dom.window.close();
++});
++
++test('a slower request cannot replace the latest navigation', async () => {
++  let finish;
++  const { dom, window, click } = setup((url) => url === '/menu'
++    ? new Promise((resolve) => { finish = resolve; }) : Promise.resolve(response(url)));
++  click('/menu');
++  click('/locations');
++  await tick();
++  finish(response('/menu'));
++  await tick();
++  assert.equal(window.location.pathname, '/locations');
++  click('/menu');
++  await tick();
++  assert.equal(window.location.pathname, '/menu');
++  dom.window.close();
++});
++
++test('selecting the active view cancels a pending transition', async () => {
++  let finish;
++  const { dom, window, click } = setup(() => new Promise((resolve) => { finish = resolve; }));
++  click('/menu');
++  click('/');
++  finish(response('/menu'));
++  await tick();
++  assert.equal(window.location.pathname, '/');
++  dom.window.close();
++});
++
++test('query strings identify distinct views and concurrent requests are shared', async () => {
++  let finish;
++  let requests = 0;
++  const { dom, window, document, click } = setup(() => {
++    requests++;
++    return new Promise((resolve) => { finish = resolve; });
++  });
++  click('/menu?category=coffee');
++  click('/menu?category=coffee');
++  finish(response('Coffee'));
++  await tick();
++  const coffee = document.querySelector('[data-view]:not([hidden])');
++  assert.equal(requests, 1);
++  click('/menu?category=tea');
++  finish(response('Tea'));
++  await tick();
++  assert.equal(requests, 2);
++  assert.equal(coffee.hidden, true);
++  assert.equal(window.location.search, '?category=tea');
++  dom.window.close();
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..ad4823e 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test navigation.test.cjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3"
+   }
+ }

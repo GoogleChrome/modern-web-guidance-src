@@ -1,0 +1,481 @@
+diff --git a/index.html b/index.html
+index 66c9173..75dbe1e 100644
+--- a/index.html
++++ b/index.html
+@@ -49,20 +49,27 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    nav button {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      background: none;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav button:hover {
+       color: var(--accent);
+     }
+ 
+@@ -72,6 +79,11 @@
+       border-radius: 4px;
+     }
+ 
++    form.inline-tool-form {
++      display: inline;
++      margin: 0;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -129,12 +141,83 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .tool-section {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .tool-section h2 {
++      color: var(--primary);
++      margin-bottom: 15px;
++      text-align: center;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++      align-items: end;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 5px;
++      font-size: 0.9rem;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .status-banner {
++      margin-top: 15px;
++      padding: 12px 16px;
++      border-radius: 5px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      display: none;
++    }
++
++    .status-banner.visible {
++      display: block;
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      outline-offset: 4px;
++    }
++
++    button:tool-submit-active,
++    input[type="submit"]:tool-submit-active {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -146,11 +229,21 @@
+       margin-bottom: 20px;
+     }
+ 
+-    .footer-links a {
++    .footer-links a,
++    .footer-links button {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      background: none;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .footer-links a:hover,
++    .footer-links button:hover {
++      text-decoration: underline;
+     }
+   </style>
+ </head>
+@@ -160,53 +253,310 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <form action="/menu" method="get" class="inline-tool-form" toolname="view_menu" tooldescription="Navigate to the full coffee and beverage menu page." toolautosubmit>
++          <button type="submit">Menu</button>
++        </form>
++      </li>
++      <li>
++        <form action="/locations" method="get" class="inline-tool-form" toolname="view_locations" tooldescription="Navigate to the store locations page to find nearby coffee shops." toolautosubmit>
++          <button type="submit">Locations</button>
++        </form>
++      </li>
++      <li>
++        <form action="/rewards" method="get" class="inline-tool-form" toolname="view_rewards" tooldescription="Navigate to the loyalty rewards program page." toolautosubmit>
++          <button type="submit">Rewards</button>
++        </form>
++      </li>
++      <li>
++        <form action="/account" method="get" class="inline-tool-form" toolname="view_account" tooldescription="Navigate to the user's account settings and profile page." toolautosubmit>
++          <button type="submit">My Account</button>
++        </form>
++      </li>
++      <li>
++        <form action="/logout" method="post" class="inline-tool-form" toolname="logout" tooldescription="Log out of the current user account session.">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form action="/order-online" method="get" class="inline-tool-form" toolname="start_online_order" tooldescription="Navigate to the online ordering page to start a coffee order." toolautosubmit>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
++    <div id="global-status" class="status-banner" role="status" aria-live="polite"></div>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="menu-grid">
++        <div class="card" data-category="seasonal" data-name="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <form action="/menu/seasonal" method="get" class="inline-tool-form" toolname="view_maple_oat_latte_details" tooldescription="View nutritional details, ingredients, and pricing for the Maple Oat Latte." toolautosubmit>
++            <input type="hidden" name="item" value="maple-oat-latte" toolparamtitle="Menu Item" toolparamdescription="Identifier for the Maple Oat Latte seasonal drink.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="espresso" data-name="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <form action="/menu/espresso" method="get" class="inline-tool-form" toolname="view_dark_roast_espresso_details" tooldescription="View nutritional details, ingredients, and pricing for the Dark Roast Espresso." toolautosubmit>
++            <input type="hidden" name="item" value="dark-roast-espresso" toolparamtitle="Menu Item" toolparamdescription="Identifier for the Dark Roast Espresso drink.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+-        <div class="card">
++        <div class="card" data-category="cold-brew" data-name="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <form action="/menu/cold-brew" method="get" class="inline-tool-form" toolname="view_cold_brew_details" tooldescription="View nutritional details, ingredients, and pricing for the Cold Brew." toolautosubmit>
++            <input type="hidden" name="item" value="cold-brew" toolparamtitle="Menu Item" toolparamdescription="Identifier for the 18-hour steeped Cold Brew drink.">
++            <button type="submit" class="btn">View Details</button>
++          </form>
+         </div>
+       </div>
+     </section>
++
++    <section class="tool-section" id="search-section">
++      <h2>Search &amp; Filter Menu</h2>
++      <form id="search-menu-form" action="/menu" method="get" toolname="search_menu" tooldescription="Search and filter The Daily Grind coffee menu by keyword and beverage category." toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="search-query">Keyword</label>
++            <input type="search" id="search-query" name="query" placeholder="e.g., Maple, Espresso, Cold Brew" toolparamtitle="Search Query" toolparamdescription="Keyword or drink name to search for in the menu.">
++          </div>
++          <div class="form-group">
++            <label for="search-category">Category</label>
++            <select id="search-category" name="category" toolparamtitle="Beverage Category" toolparamdescription="Filter menu items by category (all, seasonal, espresso, cold-brew).">
++              <option value="all">All Categories</option>
++              <option value="seasonal">Seasonal Favorites</option>
++              <option value="espresso">Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <button type="submit" class="btn" style="margin-top: 0;">Search Menu</button>
++          </div>
++        </div>
++      </form>
++    </section>
++
++    <section class="tool-section" id="order-section">
++      <h2>Quick Order</h2>
++      <form id="order-coffee-form" action="/order-online" method="post" toolname="order_coffee" tooldescription="Place a customized coffee order by selecting a drink, size, milk preference, and quantity.">
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="order-drink">Drink</label>
++            <select id="order-drink" name="drink" required toolparamtitle="Drink Selection" toolparamdescription="The coffee beverage to order from The Daily Grind menu.">
++              <option value="Maple Oat Latte">Maple Oat Latte</option>
++              <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++              <option value="Cold Brew">Cold Brew</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-size">Size</label>
++            <select id="order-size" name="size" required toolparamtitle="Cup Size" toolparamdescription="Cup size for the beverage: small, medium, or large.">
++              <option value="small">Small (8 oz)</option>
++              <option value="medium" selected>Medium (12 oz)</option>
++              <option value="large">Large (16 oz)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-milk">Milk Option</label>
++            <select id="order-milk" name="milk" toolparamtitle="Milk Preference" toolparamdescription="Type of milk to include: oat, whole, almond, soy, or none.">
++              <option value="oat">Oat Milk</option>
++              <option value="whole">Whole Milk</option>
++              <option value="almond">Almond Milk</option>
++              <option value="soy">Soy Milk</option>
++              <option value="none">No Milk (Black)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-quantity">Quantity</label>
++            <input type="number" id="order-quantity" name="quantity" min="1" max="10" value="1" required toolparamtitle="Quantity" toolparamdescription="Number of drinks to order (between 1 and 10).">
++          </div>
++          <div class="form-group">
++            <label for="order-notes">Special Instructions</label>
++            <input type="text" id="order-notes" name="notes" placeholder="e.g., Extra hot, light ice" toolparamtitle="Special Instructions" toolparamdescription="Optional customization notes such as extra hot, decaf, or light ice.">
++          </div>
++          <div class="form-group">
++            <button type="submit" class="btn" style="margin-top: 0;">Place Order</button>
++          </div>
++        </div>
++      </form>
++    </section>
++
++    <section class="tool-section" id="contact-section">
++      <h2>Contact Us</h2>
++      <form id="contact-support-form" action="/contact" method="post" toolname="contact_support" tooldescription="Send a customer inquiry, feedback, or support message to The Daily Grind team.">
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="contact-name">Your Name</label>
++            <input type="text" id="contact-name" name="name" required placeholder="Jane Doe" toolparamtitle="Customer Name" toolparamdescription="Full name of the person contacting support.">
++          </div>
++          <div class="form-group">
++            <label for="contact-email">Email Address</label>
++            <input type="email" id="contact-email" name="email" required placeholder="jane@example.com" toolparamtitle="Email Address" toolparamdescription="Email address for replying to the customer inquiry.">
++          </div>
++          <div class="form-group">
++            <label for="contact-message">Message</label>
++            <input type="text" id="contact-message" name="message" required placeholder="How can we help?" toolparamtitle="Support Message" toolparamdescription="The question, feedback, or support message content.">
++          </div>
++          <div class="form-group">
++            <button type="submit" class="btn" style="margin-top: 0;">Send Message</button>
++          </div>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <form action="/about" method="get" class="inline-tool-form" toolname="view_our_story" tooldescription="Navigate to the About Us page to read The Daily Grind's story." toolautosubmit>
++        <button type="submit">Our Story</button>
++      </form> |
++      <form action="/careers" method="get" class="inline-tool-form" toolname="view_careers" tooldescription="Navigate to the Careers page to view open positions and join the team." toolautosubmit>
++        <button type="submit">Join the Team</button>
++      </form> |
++      <form action="/contact" method="get" class="inline-tool-form" toolname="view_contact_page" tooldescription="Navigate to the Contact Us information page." toolautosubmit>
++        <button type="submit">Contact Us</button>
++      </form> |
++      <form action="/privacy-policy" method="get" class="inline-tool-form" toolname="view_privacy_policy" tooldescription="Navigate to the Privacy Policy page." toolautosubmit>
++        <button type="submit">Privacy</button>
++      </form>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const statusBanner = document.getElementById('global-status');
++
++    function showStatus(message) {
++      if (!statusBanner) return;
++      statusBanner.textContent = message;
++      statusBanner.classList.add('visible');
++    }
++
++    // Handle menu search & filter client-side
++    const searchForm = document.getElementById('search-menu-form');
++    if (searchForm) {
++      searchForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const formData = new FormData(searchForm);
++        const query = (formData.get('query') || '').toString().trim().toLowerCase();
++        const category = (formData.get('category') || 'all').toString();
++
++        const cards = Array.from(document.querySelectorAll('#menu-grid .card'));
++        const matches = [];
++
++        cards.forEach((card) => {
++          const cardCategory = card.getAttribute('data-category') || '';
++          const cardText = card.textContent.toLowerCase();
++          const matchesQuery = !query || cardText.includes(query);
++          const matchesCategory = category === 'all' || cardCategory === category;
++          const visible = matchesQuery && matchesCategory;
++          card.style.display = visible ? '' : 'none';
++          if (visible) {
++            matches.push(card.getAttribute('data-name') || card.querySelector('h3')?.textContent || '');
++          }
++        });
++
++        const summary = matches.length > 0
++          ? `Found ${matches.length} item(s): ${matches.join(', ')}.`
++          : 'No menu items matched your search criteria.';
++        showStatus(summary);
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve({
++            status: 'success',
++            query,
++            category,
++            count: matches.length,
++            items: matches
++          }));
++        }
++      });
++    }
++
++    // Handle coffee order form client-side
++    const orderForm = document.getElementById('order-coffee-form');
++    if (orderForm) {
++      orderForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const formData = new FormData(orderForm);
++        const order = {
++          drink: formData.get('drink'),
++          size: formData.get('size'),
++          milk: formData.get('milk'),
++          quantity: Number(formData.get('quantity') || 1),
++          notes: formData.get('notes') || ''
++        };
++
++        const message = `Order received: ${order.quantity}x ${order.size} ${order.drink} (${order.milk} milk)${order.notes ? ' - Notes: ' + order.notes : ''}.`;
++        showStatus(message);
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve({
++            status: 'success',
++            message,
++            order
++          }));
++        }
++      });
++    }
++
++    // Handle contact form client-side
++    const contactForm = document.getElementById('contact-support-form');
++    if (contactForm) {
++      contactForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const formData = new FormData(contactForm);
++        const submission = {
++          name: formData.get('name'),
++          email: formData.get('email'),
++          message: formData.get('message')
++        };
++
++        const feedbackMessage = `Thank you, ${submission.name}! Your message has been sent to our team.`;
++        showStatus(feedbackMessage);
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.respondWith(Promise.resolve({
++            status: 'success',
++            message: feedbackMessage,
++            submission
++          }));
++        }
++      });
++    }
++
++    // Handle inline action/navigation forms when invoked by an AI agent
++    document.querySelectorAll('form.inline-tool-form').forEach((form) => {
++      form.addEventListener('submit', (event) => {
++        const toolName = form.getAttribute('toolname');
++        const action = form.getAttribute('action');
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          event.preventDefault();
++          const formData = new FormData(form);
++          const params = Object.fromEntries(formData.entries());
++          const message = `Executed tool "${toolName}" targeting ${action}.`;
++          showStatus(message);
++          event.respondWith(Promise.resolve({
++            status: 'success',
++            tool: toolName,
++            action,
++            params,
++            message
++          }));
++        }
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

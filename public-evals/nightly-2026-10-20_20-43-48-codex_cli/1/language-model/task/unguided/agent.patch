@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="stylesheet" href="barista.css">
++  <script src="barista.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+@@ -194,8 +196,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="coffee-lab" aria-labelledby="lab-title">
++      <div class="lab-heading">
++        <div><span class="eyebrow">A little coffee know-how</span><h2 id="lab-title">Meet your digital barista</h2></div>
++        <span class="local-badge">On-device AI</span>
++      </div>
++      <p class="lab-intro">Find your next favorite, share your thoughts, and explore a different conversation. Powered by AI that runs in your browser.</p>
++      <div class="ai-status" role="status" aria-live="polite"><span id="model-status">Ask a question to check local AI availability. A first-time model download may be needed.</span><progress id="model-progress" max="1" hidden aria-label="Model download progress"></progress></div>
++
++      <section class="lab-panel" aria-labelledby="barista-title">
++        <span class="eyebrow">01 / Your coffee companion</span>
++        <h3 id="barista-title">Ask the barista</h3>
++        <p>Curious about our Maple Oat Latte or our 18-hour Cold Brew? Pull up a chair.</p>
++        <form id="barista-form">
++          <label for="barista-question">What would you like to know?</label>
++          <textarea id="barista-question" rows="3" maxlength="2000" required placeholder="How does the Maple Oat Latte compare to the Cold Brew?"></textarea>
++          <div class="lab-actions"><button type="submit" class="btn" id="ask-the-barista">Ask the barista <span aria-hidden="true">↗</span></button><button type="button" class="text-button" id="stop-ai" disabled>Stop response</button></div>
++        </form>
++        <div id="barista-answer" class="ai-output" role="region" aria-label="Barista answer" aria-live="polite">Your next coffee discovery starts with a question.</div>
++      </section>
++
++      <div class="lab-columns">
++        <section class="lab-panel" aria-labelledby="feedback-title">
++          <span class="eyebrow">02 / Every sip matters</span>
++          <h3 id="feedback-title">Customer feedback analyzer</h3>
++          <p>Turn a customer's words into a little insight.</p>
++          <form id="sentiment-form">
++            <label for="customer-feedback">Customer feedback</label>
++            <textarea id="customer-feedback" rows="4" maxlength="3000" required placeholder="The cold brew was so smooth. I'll be back for another!"></textarea>
++            <button type="submit" class="btn" id="sentiment-btn">Analyze feedback <span aria-hidden="true">↗</span></button>
++          </form>
++          <p class="field-note">Score: −1 (negative) to 1 (positive). Category: negative, neutral, or positive.</p>
++          <pre id="sentiment-answer" class="ai-output json-output" aria-live="polite">Your structured JSON result will appear here.</pre>
++        </section>
++
++        <section class="lab-panel" aria-labelledby="branch-title">
++          <span class="eyebrow">03 / Take another route</span>
++          <h3 id="branch-title">Conversation branching</h3>
++          <p>Keep your conversation and try a new direction. A branch remembers everything up to this point.</p>
++          <label for="active-session">Active conversation</label>
++          <select id="active-session" disabled><option>No conversation yet</option></select>
++          <div class="lab-actions"><button type="button" class="btn" id="clone-btn" disabled>Branch conversation <span aria-hidden="true">⑂</span></button><button type="button" class="text-button" id="delete-session" disabled>Delete branch</button></div>
++          <div class="context-card"><div><span>Context usage</span><strong id="context-usage">No active session</strong></div><progress id="context-progress" max="1" value="0" aria-label="Conversation context usage"></progress></div>
++          <p id="branch-status" class="field-note" role="status">Ask the barista to start a conversation. Up to three conversations are kept; older inactive branches are released automatically.</p>
++          <button type="button" id="clear-sessions" class="text-button" disabled>Clear all conversations</button>
++        </section>
++      </div>
++      <p class="lab-footnote">AI responses can make mistakes. Ask our team for confirmed ingredient or allergy information.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

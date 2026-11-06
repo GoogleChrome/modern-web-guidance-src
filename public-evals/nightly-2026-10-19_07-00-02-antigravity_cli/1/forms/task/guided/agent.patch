@@ -1,0 +1,1967 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,33 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="The Daily Grind - Artisanal coffee, ethically sourced and locally roasted. Join our Daily Grind Rewards program for exclusive roasts and perks.">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://images.unsplash.com data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:;">
++  <title>The Daily Grind | Artisanal Coffee &amp; Rewards</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #7b5e57;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
+-      --text: #3e2723;
++      --accent-dark: #b26a00;
++      --text: #211512;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --white: #ffffff;
++      --error: #b71c1c;
++      --error-bg: #ffebee;
++      --success: #1b5e20;
++      --success-bg: #e8f5e9;
++      --border-color: #a1887f;
++      --focus-ring: #ffab40;
++      --focus-ring-dark: #b26a00;
++      --radius: 8px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -20,193 +37,1850 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Accessibility: Skip Navigation Link */
++    .skip-link {
++      position: absolute;
++      top: -100px;
++      left: 1rem;
++      background: var(--accent);
++      color: #1a0f00;
++      font-weight: 700;
++      padding: 0.75rem 1.25rem;
++      border-radius: 0 0 var(--radius) var(--radius);
++      z-index: 9999;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      transition: top 0.2s ease-in-out;
++    }
++
++    .skip-link:focus {
++      top: 0;
++      outline: 3px solid var(--text);
++      outline-offset: 2px;
++    }
++
++    /* Universal Focus Indicators */
++    :focus-visible {
++      outline: 3px solid var(--focus-ring-dark);
++      outline-offset: 3px;
++    }
++
++    /* Visually Hidden Utility (Canonical accessible pattern) */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+-    nav {
++    nav[aria-label="Main navigation"] {
+       background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
++      color: var(--white);
++      padding: 0.75rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      font-size: 1.4rem;
++      font-weight: 800;
++      letter-spacing: 1.5px;
++      color: var(--white);
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 0.5rem 0;
++      min-height: 48px;
+     }
+ 
+-    nav ul {
++    .logo:hover,
++    .logo:focus-visible {
++      color: var(--accent);
++    }
++
++    .nav-links {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      gap: 12px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
++    .nav-links a {
++      color: var(--white);
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      font-weight: 500;
++      padding: 8px 12px;
++      min-height: 44px;
++      display: inline-flex;
++      align-items: center;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
+     }
+ 
+-    nav a:hover {
++    .nav-links a:hover {
+       color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
+     }
+ 
+-    .logout-link {
++    .nav-links a:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    .logout-form {
++      display: inline;
++      margin: 0;
++      padding: 0;
++    }
++
++    .logout-btn {
++      background: transparent;
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      color: var(--accent);
++      padding: 8px 16px;
++      min-height: 44px;
+       border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++      font-family: inherit;
++      display: inline-flex;
++      align-items: center;
++      transition: background-color 0.2s, color 0.2s;
+     }
+ 
++    .logout-btn:hover {
++      background: var(--accent);
++      color: #1a0f00;
++    }
++
++    .logout-btn:focus-visible {
++      outline-color: var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 55vh;
++      background: linear-gradient(rgba(26, 15, 0, 0.65), rgba(26, 15, 0, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--white);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
++    .hero-content {
++      max-width: 750px;
++    }
++
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3.25rem);
+       margin-bottom: 1rem;
++      line-height: 1.2;
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+     }
+ 
+-    /* Content Sections */
++    .hero p {
++      font-size: clamp(1rem, 2.5vw, 1.25rem);
++      margin-bottom: 1.5rem;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 16px;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-height: 48px;
++      background: var(--primary);
++      color: var(--white);
++      padding: 12px 24px;
++      text-decoration: none;
++      border: 2px solid transparent;
++      border-radius: 6px;
++      font-weight: 600;
++      font-size: 1rem;
++      font-family: inherit;
++      cursor: pointer;
++      transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
++    }
++
++    .btn:hover {
++      background: var(--primary-dark);
++    }
++
++    .btn:active {
++      transform: translateY(1px);
++    }
++
++    .btn-hero {
++      background: var(--accent);
++      color: #1a0f00;
++      font-weight: 700;
++    }
++
++    .btn-hero:hover {
++      background: #ffb74d;
++    }
++
++    .btn-hero-secondary {
++      background: rgba(255, 255, 255, 0.15);
++      color: var(--white);
++      border-color: var(--white);
++      backdrop-filter: blur(4px);
++    }
++
++    .btn-hero-secondary:hover {
++      background: var(--white);
++      color: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      border: 1px solid var(--border-color);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-submit {
++      background: #2e7d32;
++      color: var(--white);
++    }
++
++    .btn-submit:hover:not(:disabled) {
++      background: #1b5e20;
++    }
++
++    .btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++      pointer-events: none;
++    }
++
++    /* Content Layout */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      font-size: 1.1rem;
++      color: var(--text-muted);
++      max-width: 650px;
++      margin: 0 auto 30px auto;
++    }
++
++    /* Seasonal Favorites Grid */
++    .seasonal-section {
++      margin-bottom: 60px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 28px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: var(--white);
++      border-radius: var(--radius);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
++      border: 1px solid rgba(0, 0, 0, 0.06);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++      background-color: var(--secondary-light);
++    }
++
++    .card-body {
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card-body h3 {
++      font-size: 1.35rem;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+-    .btn {
++    .card-body p {
++      color: var(--text-muted);
++      margin-bottom: 20px;
++      flex-grow: 1;
++    }
++
++    .card-body .btn {
++      align-self: center;
++    }
++
++    /* Rewards Section & Multi-Step Form */
++    .rewards-section {
++      background: var(--white);
++      border-radius: calc(var(--radius) * 1.5);
++      padding: clamp(24px, 5vw, 48px);
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++      margin-top: 50px;
++      margin-bottom: 40px;
++    }
++
++    .rewards-header {
++      text-align: center;
++      margin-bottom: 32px;
++    }
++
++    .rewards-badge {
+       display: inline-block;
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      font-weight: 700;
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      padding: 6px 14px;
++      border-radius: 20px;
++      margin-bottom: 12px;
++      border: 1px solid var(--secondary);
++    }
++
++    .perks-ribbon {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      margin: 24px 0 36px 0;
++    }
++
++    .perk-card {
++      background: var(--secondary-light);
++      padding: 16px;
++      border-radius: var(--radius);
++      border-left: 4px solid var(--accent);
++      text-align: left;
++    }
++
++    .perk-card strong {
++      display: block;
++      color: var(--primary-dark);
++      font-size: 0.95rem;
++      margin-bottom: 4px;
++    }
++
++    .perk-card p {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      margin: 0;
++    }
++
++    /* Multi-Step Progress Tracker */
++    .step-progress-wrapper {
++      margin-bottom: 36px;
++    }
++
++    .step-progress {
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      position: relative;
++      max-width: 600px;
++      margin: 0 auto;
++      padding: 0;
++    }
++
++    .step-progress::before {
++      content: '';
++      position: absolute;
++      top: 20px;
++      left: 10%;
++      right: 10%;
++      height: 3px;
++      background: var(--secondary);
++      z-index: 1;
++    }
++
++    .step-item {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      position: relative;
++      z-index: 2;
++      flex: 1;
++      text-align: center;
++    }
++
++    .step-num {
++      width: 40px;
++      height: 40px;
++      border-radius: 50%;
++      background: var(--white);
++      border: 3px solid var(--secondary);
++      color: var(--text-muted);
++      font-weight: 700;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 1rem;
++      margin-bottom: 8px;
++      transition: all 0.3s ease;
++    }
++
++    .step-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text-muted);
++      max-width: 120px;
++    }
++
++    .step-item.is-active .step-num {
++      border-color: var(--primary);
+       background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      color: var(--white);
++      box-shadow: 0 0 0 4px rgba(78, 52, 46, 0.2);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .step-item.is-active .step-label {
++      color: var(--primary-dark);
++      font-weight: 700;
+     }
+ 
++    .step-item.is-completed .step-num {
++      border-color: #2e7d32;
++      background: #2e7d32;
++      color: var(--white);
++    }
++
++    .step-item.is-completed .step-label {
++      color: #2e7d32;
++    }
++
++    /* Form Fields & Layout */
++    .rewards-form {
++      max-width: 680px;
++      margin: 0 auto;
++    }
++
++    .form-step {
++      border: 0;
++      padding: 0;
++      margin: 0;
++    }
++
++    .form-step.is-hidden {
++      display: none;
++    }
++
++    .step-legend {
++      font-size: 1.4rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 24px;
++      padding-bottom: 8px;
++      border-bottom: 2px solid var(--secondary-light);
++      width: 100%;
++    }
++
++    .field-group {
++      margin-bottom: 24px;
++    }
++
++    .field-label {
++      display: block;
++      font-weight: 600;
++      color: var(--primary-dark);
++      margin-bottom: 6px;
++      font-size: 0.95rem;
++    }
++
++    .req {
++      color: var(--error);
++      font-weight: 700;
++    }
++
++    .input-text,
++    .select-control {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 14px;
++      font-size: 1rem;
++      font-family: inherit;
++      border: 2px solid var(--border-color);
++      border-radius: 6px;
++      background-color: var(--white);
++      color: var(--text);
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .input-text:hover,
++    .select-control:hover {
++      border-color: var(--primary);
++    }
++
++    .input-text:focus-visible,
++    .select-control:focus-visible {
++      border-color: var(--focus-ring-dark);
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Password Input with Accessible Visibility Toggle */
++    .password-input-group {
++      position: relative;
++      display: flex;
++      align-items: center;
++    }
++
++    .password-input-group .input-text {
++      padding-right: 90px;
++    }
++
++    .pw-toggle-btn {
++      position: absolute;
++      right: 6px;
++      top: 50%;
++      transform: translateY(-50%);
++      background: var(--secondary-light);
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 6px 12px;
++      min-height: 36px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      font-family: inherit;
++      color: var(--primary-dark);
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .pw-toggle-btn:hover {
++      background: var(--secondary);
++    }
++
++    /* Inline Validation & Accessible Messaging */
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      margin-top: 6px;
++    }
++
++    .field-error {
++      display: none;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--error);
++      margin-top: 6px;
++      padding: 4px 8px;
++      background-color: var(--error-bg);
++      border-radius: 4px;
++      border-left: 3px solid var(--error);
++    }
++
++    /* Synchronized native :user-invalid and programmatic .is-user-invalid styling */
++    .input-text:user-invalid,
++    .select-control:user-invalid,
++    .input-text.is-user-invalid,
++    .select-control.is-user-invalid {
++      border-color: var(--error);
++      background-color: #fff9f9;
++    }
++
++    .input-text:user-invalid ~ .field-error,
++    .select-control:user-invalid ~ .field-error,
++    .input-text.is-user-invalid ~ .field-error,
++    .select-control.is-user-invalid ~ .field-error,
++    .password-input-group:has(.input-text:user-invalid) ~ .field-error,
++    .password-input-group:has(.input-text.is-user-invalid) ~ .field-error,
++    .terms-wrapper:has(input:user-invalid) ~ .field-error,
++    .terms-wrapper:has(input.is-user-invalid) ~ .field-error {
++      display: block;
++    }
++
++    /* Inner Fieldsets (Roast, Dietary, Birthday) */
++    .inner-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: var(--radius);
++      padding: 18px;
++      margin-bottom: 24px;
++      background-color: #fdfdfd;
++    }
++
++    .inner-legend {
++      font-weight: 700;
++      color: var(--primary-dark);
++      padding: 0 8px;
++      font-size: 0.95rem;
++    }
++
++    /* Birthday Multi-field Group */
++    .birthday-grid {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 16px;
++      margin-top: 8px;
++    }
++
++    /* Option Cards (Radios & Checkboxes) */
++    .options-grid {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 10px;
++      margin-top: 10px;
++    }
++
++    @media (min-width: 550px) {
++      .options-grid {
++        grid-template-columns: 1fr 1fr;
++      }
++    }
++
++    .radio-card,
++    .checkbox-card {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      padding: 12px 14px;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--white);
++      cursor: pointer;
++      min-height: 48px;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .radio-card:hover,
++    .checkbox-card:hover {
++      border-color: var(--primary-light);
++      background-color: var(--secondary-light);
++    }
++
++    .radio-card input,
++    .checkbox-card input {
++      margin-top: 3px;
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    .radio-card:has(input:checked),
++    .checkbox-card:has(input:checked) {
++      border-color: var(--primary);
++      background-color: #fbf7f5;
++    }
++
++    .option-text strong {
++      display: block;
++      color: var(--primary-dark);
++      font-size: 0.95rem;
++    }
++
++    .option-text small {
++      display: block;
++      color: var(--text-muted);
++      font-size: 0.8rem;
++    }
++
++    /* Step 3: Review Details Box */
++    .review-box {
++      background: var(--secondary-light);
++      border: 1px solid var(--secondary);
++      border-radius: var(--radius);
++      padding: 24px;
++      margin-bottom: 24px;
++    }
++
++    .review-box-title {
++      font-size: 1.2rem;
++      color: var(--primary-dark);
++      margin-bottom: 12px;
++    }
++
++    .review-box-desc {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      margin-bottom: 16px;
++    }
++
++    .review-list {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 12px;
++    }
++
++    .review-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      background: var(--white);
++      border-radius: 6px;
++      border: 1px solid rgba(0, 0, 0, 0.05);
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .review-label {
++      font-weight: 700;
++      color: var(--primary);
++      min-width: 120px;
++    }
++
++    .review-val {
++      color: var(--text);
++      word-break: break-word;
++      flex-grow: 1;
++    }
++
++    .btn-edit-step {
++      background: transparent;
++      border: 1px solid var(--primary-light);
++      color: var(--primary-dark);
++      padding: 4px 10px;
++      min-height: 36px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .btn-edit-step:hover {
++      background: var(--primary);
++      color: var(--white);
++    }
++
++    /* Terms and Communication Checkboxes */
++    .terms-wrapper {
++      margin: 20px 0;
++    }
++
++    .custom-checkbox-label {
++      display: flex;
++      align-items: flex-start;
++      gap: 12px;
++      cursor: pointer;
++      font-size: 0.95rem;
++      color: var(--text);
++      min-height: 44px;
++    }
++
++    .custom-checkbox-label input {
++      margin-top: 3px;
++      width: 20px;
++      height: 20px;
++      accent-color: var(--primary);
++      flex-shrink: 0;
++    }
++
++    .custom-checkbox-label a {
++      color: var(--primary-dark);
++      text-decoration: underline;
++      font-weight: 600;
++    }
++
++    .custom-checkbox-label a:hover {
++      color: var(--accent-dark);
++    }
++
++    /* Form Action Buttons */
++    .step-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-top: 32px;
++      flex-wrap: wrap;
++    }
++
++    .step-actions .btn {
++      flex: 1;
++      min-width: 180px;
++    }
++
++    .step-actions-single {
++      justify-content: flex-end;
++    }
++
++    /* Loading Spinner */
++    .spinner {
++      display: inline-block;
++      width: 18px;
++      height: 18px;
++      border: 3px solid rgba(255, 255, 255, 0.3);
++      border-radius: 50%;
++      border-top-color: var(--white);
++      animation: spin 0.8s linear infinite;
++      margin-right: 8px;
++      vertical-align: middle;
++    }
++
++    @keyframes spin {
++      to {
++        transform: rotate(360deg);
++      }
++    }
++
++    /* Success Card */
++    .rewards-success-card {
++      background: var(--white);
++      border-radius: var(--radius);
++      padding: clamp(24px, 4vw, 40px);
++      text-align: center;
++      border: 2px solid #2e7d32;
++      box-shadow: 0 8px 24px rgba(46, 125, 50, 0.12);
++      max-width: 620px;
++      margin: 0 auto;
++    }
++
++    .success-icon {
++      font-size: 3rem;
++      margin-bottom: 12px;
++      display: block;
++    }
++
++    .rewards-success-card h3 {
++      color: #1b5e20;
++      font-size: 1.8rem;
++      margin-bottom: 8px;
++    }
++
++    .success-subtitle {
++      color: var(--text-muted);
++      font-size: 1.05rem;
++      margin-bottom: 24px;
++    }
++
++    .member-digital-card {
++      background: linear-gradient(135deg, #4e342e 0%, #2b1d19 100%);
++      color: var(--white);
++      border-radius: 12px;
++      padding: 24px;
++      text-align: left;
++      margin: 0 auto 28px auto;
++      max-width: 440px;
++      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
++      border: 1px solid rgba(255, 255, 255, 0.1);
++      position: relative;
++    }
++
++    .digital-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 24px;
++    }
++
++    .digital-brand {
++      font-weight: 800;
++      letter-spacing: 1px;
++      font-size: 0.9rem;
++      color: var(--accent);
++    }
++
++    .digital-tier {
++      font-size: 0.75rem;
++      background: rgba(255, 255, 255, 0.15);
++      padding: 4px 8px;
++      border-radius: 4px;
++      font-weight: 600;
++    }
++
++    .digital-member-name {
++      font-size: 1.3rem;
++      font-weight: 700;
++      margin-bottom: 4px;
++    }
++
++    .digital-member-details {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      color: var(--secondary);
++      margin-bottom: 20px;
++    }
++
++    .digital-barcode {
++      background: var(--white);
++      color: #000;
++      padding: 8px;
++      border-radius: 4px;
++      text-align: center;
++      font-family: monospace;
++      font-size: 1.1rem;
++      letter-spacing: 4px;
++      user-select: none;
++    }
++
++    .success-buttons {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 14px;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
++      border-top: 1px solid var(--border-color);
+     }
+ 
+-    .footer-links {
++    .footer-nav {
+       margin-bottom: 20px;
+     }
+ 
++    .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 8px 20px;
++      list-style: none;
++      padding: 0;
++      margin: 0;
++    }
++
+     .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
++      color: var(--primary-dark);
+       text-decoration: none;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 8px 10px;
++      min-height: 44px;
++      display: inline-flex;
++      align-items: center;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
++    }
++
++    .footer-links a:hover {
++      color: var(--accent-dark);
++      text-decoration: underline;
++    }
++
++    .copyright {
+       font-size: 0.85rem;
++      color: var(--text-muted);
+     }
++
++    /* Accessibility: Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        animation-duration: 0.01ms !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
++  <!-- Accessible Skip Navigation Link -->
++  <a href="#main-content" class="skip-link">Skip to main content</a>
++
++  <!-- Primary Navigation Landmark -->
++  <nav aria-label="Main navigation">
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul class="nav-links">
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- Secure POST Logout Form with Anti-CSRF Token -->
++        <form method="POST" action="/logout" class="logout-form">
++          <input type="hidden" name="csrf_token" value="grind-csrf-8f3a9e1b2c4d">
++          <button type="submit" class="logout-btn" aria-label="Log out of account">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <!-- Hero Landmark -->
++  <header class="hero" role="banner">
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered fresh to your cup.</p>
++      <div class="hero-actions">
++        <a href="/order-online" class="btn btn-hero">Order Now</a>
++        <a href="#rewards" class="btn btn-hero-secondary">Join Rewards</a>
++      </div>
++    </div>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <!-- Main Content Landmark -->
++  <main class="container" id="main-content" tabindex="-1">
++
++    <!-- Seasonal Favorites Section -->
++    <section class="seasonal-section" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Crafted with single-origin beans and seasonal ingredients by our master baristas.</p>
++      
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++            alt="Maple Oat Latte served in a ceramic cup with leaf latte art"
++            class="card-img" width="600" height="400" loading="lazy">
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk steamed with pure Vermont maple syrup and a hint of cinnamon.</p>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++            alt="Freshly pulled double shot of dark roast espresso with golden crema"
++            class="card-img" width="600" height="400" loading="lazy">
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey dark roast with rich cocoa notes, pulled for an intense morning boost.</p>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
++          </div>
++        </article>
++
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80"
++            alt="Glass of cold brew coffee served over ice cubes"
++            class="card-img" width="600" height="400" loading="lazy">
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p>Steeped cold for 18 hours for maximum smoothness, zero bitterness, and deep flavor.</p>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Comprehensive, Accessible, and Secure Rewards Registration Multi-Step Form -->
++    <section class="rewards-section" id="rewards" aria-labelledby="rewards-heading">
++      <div class="rewards-header">
++        <span class="rewards-badge">Exclusive Membership</span>
++        <h2 id="rewards-heading" class="section-title">The Daily Grind Rewards</h2>
++        <p class="section-subtitle">Join our community of artisanal coffee enthusiasts. Unlock free drinks, secret roaster drops, and customized brewing perks.</p>
++
++        <!-- Rewards Program Highlights -->
++        <div class="perks-ribbon">
++          <div class="perk-card">
++            <strong>☕ Free Birthday Drink</strong>
++            <p>Celebrate your special day with any hand-crafted beverage on us.</p>
++          </div>
++          <div class="perk-card">
++            <strong>⭐ 10 Beans per $1</strong>
++            <p>Turn your daily brew into complimentary pastries, beans, and drinks.</p>
++          </div>
++          <div class="perk-card">
++            <strong>🎁 50 Welcome Beans</strong>
++            <p>Receive immediate bonus points deposited upon registration.</p>
++          </div>
++          <div class="perk-card">
++            <strong>🚚 Free Bean Delivery</strong>
++            <p>Complimentary local courier delivery on fresh whole-bean orders.</p>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <!-- Live Screen Reader Announcer for Dynamic Step Transitions and Errors -->
++      <div id="form-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
++
++      <!-- Accessible Step Progress Bar -->
++      <nav class="step-progress-wrapper" aria-label="Registration progress">
++        <ol class="step-progress">
++          <li class="step-item is-active" id="progress-step-1" aria-current="step">
++            <span class="step-num" aria-hidden="true">1</span>
++            <span class="step-label">Account Setup</span>
++          </li>
++          <li class="step-item" id="progress-step-2">
++            <span class="step-num" aria-hidden="true">2</span>
++            <span class="step-label">Taste Profile</span>
++          </li>
++          <li class="step-item" id="progress-step-3">
++            <span class="step-num" aria-hidden="true">3</span>
++            <span class="step-label">Review &amp; Security</span>
++          </li>
++        </ol>
++      </nav>
++
++      <!-- Multi-Step Registration Form -->
++      <form id="rewards-form" class="rewards-form" method="POST" action="/api/rewards/register" novalidate>
++        
++        <!-- Anti-CSRF Protection Token -->
++        <input type="hidden" name="csrf_token" id="rewards-csrf-token" value="grind-csrf-8f3a9e1b2c4d">
++
++        <!-- Anti-Bot Honeypot Field (Hidden from real users & screen readers) -->
++        <div class="visually-hidden" aria-hidden="true">
++          <label for="rewards-hp-website">Leave this field blank</label>
++          <input type="text" id="rewards-hp-website" name="website_url_hp" tabindex="-1" autocomplete="off">
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <!-- ==============================================
++             STEP 1: ACCOUNT CREDENTIALS
++             ============================================== -->
++        <fieldset class="form-step" id="form-step-1" aria-labelledby="step-1-title">
++          <legend id="step-1-title" class="step-legend">Step 1 of 3: Account Credentials</legend>
++
++          <!-- Full Name -->
++          <div class="field-group">
++            <label for="rewards-name" class="field-label">
++              Full Name <span class="req" aria-hidden="true">*</span>
++            </label>
++            <input type="text" id="rewards-name" name="name" class="input-text"
++              autocomplete="name" required minlength="2" maxlength="100"
++              enterkeyhint="next"
++              aria-describedby="name-desc" aria-errormessage="name-error">
++            <span id="name-desc" class="field-hint">Enter your preferred first and last name.</span>
++            <span id="name-error" class="field-error" aria-live="polite">Please enter your name (minimum 2 characters).</span>
++          </div>
++
++          <!-- Email Address -->
++          <div class="field-group">
++            <label for="rewards-email" class="field-label">
++              Email Address <span class="req" aria-hidden="true">*</span>
++            </label>
++            <input type="email" id="rewards-email" name="email" class="input-text"
++              autocomplete="username" inputmode="email" required
++              spellcheck="false" autocorrect="off" autocapitalize="off"
++              enterkeyhint="next"
++              aria-describedby="email-desc" aria-errormessage="email-error">
++            <span id="email-desc" class="field-hint">We will send your digital rewards card and verification notice here.</span>
++            <span id="email-error" class="field-error" aria-live="polite">Please enter a valid email address (e.g., alex@example.com).</span>
++          </div>
++
++          <!-- Phone Number -->
++          <div class="field-group">
++            <label for="rewards-phone" class="field-label">
++              Mobile Phone Number <span class="req" aria-hidden="true">*</span>
++            </label>
++            <input type="tel" id="rewards-phone" name="phone" class="input-text"
++              autocomplete="tel" inputmode="tel" required
++              pattern="^\+?[0-9\s\-\(\)]{10,20}$"
++              enterkeyhint="next"
++              aria-describedby="phone-desc" aria-errormessage="phone-error">
++            <span id="phone-desc" class="field-hint">Used for quick lookup at our cafe counter (e.g., 555-019-2834).</span>
++            <span id="phone-error" class="field-error" aria-live="polite">Please enter a valid phone number (at least 10 digits).</span>
++          </div>
++
++          <!-- Password with Accessible Show/Hide Toggle -->
++          <div class="field-group">
++            <label for="rewards-password" class="field-label">
++              Create Password <span class="req" aria-hidden="true">*</span>
++            </label>
++            <div class="password-input-group">
++              <input type="password" id="rewards-password" name="password" class="input-text"
++                autocomplete="new-password" required minlength="8"
++                enterkeyhint="done"
++                aria-describedby="password-rules password-toggle-notice"
++                aria-errormessage="password-error">
++              <button type="button" class="pw-toggle-btn" id="toggle-pw-btn"
++                aria-label="Show password in plain text" aria-pressed="false">
++                <span class="pw-toggle-text" id="toggle-pw-text">Show</span>
++              </button>
++            </div>
++            <span id="password-toggle-notice" class="visually-hidden">Selecting toggle will switch password visibility between masked and plain text.</span>
++            <span id="password-rules" class="field-hint">Minimum 8 characters. Password managers and pasting are fully enabled.</span>
++            <span id="password-error" class="field-error" aria-live="polite">Password must be at least 8 characters long.</span>
++          </div>
++
++          <!-- Step 1 Actions -->
++          <div class="step-actions step-actions-single">
++            <button type="button" class="btn btn-next" data-next-step="2">
++              Continue to Taste Profile &rarr;
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- ==============================================
++             STEP 2: TASTE PROFILE & PREFERENCES
++             ============================================== -->
++        <fieldset class="form-step is-hidden" id="form-step-2" aria-labelledby="step-2-title">
++          <legend id="step-2-title" class="step-legend">Step 2 of 3: Taste &amp; Brewing Preferences</legend>
++
++          <!-- Birthday Group for Annual Reward -->
++          <fieldset class="inner-fieldset">
++            <legend class="inner-legend">
++              Birthday (For your annual complimentary beverage) <span class="req" aria-hidden="true">*</span>
++            </legend>
++            <div class="birthday-grid">
++              <div>
++                <label for="rewards-bday-month" class="field-label">Month</label>
++                <select id="rewards-bday-month" name="bday_month" class="select-control"
++                  autocomplete="bday-month" required aria-describedby="bday-desc" aria-errormessage="bday-error">
++                  <option value="">Select Month</option>
++                  <option value="01">January</option>
++                  <option value="02">February</option>
++                  <option value="03">March</option>
++                  <option value="04">April</option>
++                  <option value="05">May</option>
++                  <option value="06">June</option>
++                  <option value="07">July</option>
++                  <option value="08">August</option>
++                  <option value="09">September</option>
++                  <option value="10">October</option>
++                  <option value="11">November</option>
++                  <option value="12">December</option>
++                </select>
++              </div>
++              <div>
++                <label for="rewards-bday-day" class="field-label">Day</label>
++                <input type="number" id="rewards-bday-day" name="bday_day" class="input-text"
++                  min="1" max="31" inputmode="numeric" placeholder="DD" required
++                  autocomplete="bday-day" aria-describedby="bday-desc" aria-errormessage="bday-error">
++              </div>
++            </div>
++            <span id="bday-desc" class="field-hint">We ask only for month and day to celebrate your birthday with a free artisanal drink.</span>
++            <span id="bday-error" class="field-error" aria-live="polite">Please select your birthday month and enter a valid day between 1 and 31.</span>
++          </fieldset>
++
++          <!-- Roast Profile Selection (1-5 Mutually Exclusive: Accessible Radio Buttons) -->
++          <fieldset class="inner-fieldset">
++            <legend class="inner-legend">
++              Preferred Roast Profile <span class="req" aria-hidden="true">*</span>
++            </legend>
++            <div class="options-grid">
++              <label class="radio-card">
++                <input type="radio" name="roast" value="Light Roast" required>
++                <span class="option-text">
++                  <strong>Light Roast</strong>
++                  <small>Floral, stone fruit, bright delicate acidity</small>
++                </span>
++              </label>
++
++              <label class="radio-card">
++                <input type="radio" name="roast" value="Medium Roast" checked>
++                <span class="option-text">
++                  <strong>Medium Roast</strong>
++                  <small>Balanced, milk chocolate, roasted hazelnut</small>
++                </span>
++              </label>
++
++              <label class="radio-card">
++                <input type="radio" name="roast" value="Dark Roast">
++                <span class="option-text">
++                  <strong>Dark Roast</strong>
++                  <small>Smokey cocoa, full-bodied, low acidity</small>
++                </span>
++              </label>
++
++              <label class="radio-card">
++                <input type="radio" name="roast" value="Cold Brew Blend">
++                <span class="option-text">
++                  <strong>Cold Brew &amp; Nitro</strong>
++                  <small>Velvety texture, low bitterness, steeped 18h</small>
++                </span>
++              </label>
++
++              <label class="radio-card">
++                <input type="radio" name="roast" value="Swiss Water Decaf">
++                <span class="option-text">
++                  <strong>Swiss Water Decaf</strong>
++                  <small>100% chemical-free decaffeination, rich body</small>
++                </span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- Milk & Dietary Preferences (Checkboxes) -->
++          <fieldset class="inner-fieldset">
++            <legend class="inner-legend">Preferred Milk &amp; Preparation (Select all you enjoy)</legend>
++            <div class="options-grid">
++              <label class="checkbox-card">
++                <input type="checkbox" name="milk" value="Oat Milk">
++                <span class="option-text">
++                  <strong>Oat Milk</strong>
++                  <small>Barista-grade organic steamed oat</small>
++                </span>
++              </label>
++
++              <label class="checkbox-card">
++                <input type="checkbox" name="milk" value="Organic Whole Milk">
++                <span class="option-text">
++                  <strong>Organic Whole Milk</strong>
++                  <small>Locally sourced dairy farm whole milk</small>
++                </span>
++              </label>
++
++              <label class="checkbox-card">
++                <input type="checkbox" name="milk" value="Almond Milk">
++                <span class="option-text">
++                  <strong>Almond Milk</strong>
++                  <small>House-pressed unsweetened almond</small>
++                </span>
++              </label>
++
++              <label class="checkbox-card">
++                <input type="checkbox" name="milk" value="Black / Straight">
++                <span class="option-text">
++                  <strong>Black / Pure Pour</strong>
++                  <small>Straight black coffee or neat espresso</small>
++                </span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- Home Brewing Equipment -->
++          <div class="field-group">
++            <label for="brew-method" class="field-label">Primary Home Brewing Equipment</label>
++            <select id="brew-method" name="brew_method" class="select-control" aria-describedby="brew-desc">
++              <option value="Pour-over">Pour-Over (Chemex / V60 / Kalita)</option>
++              <option value="Espresso Machine">Home Espresso Machine</option>
++              <option value="French Press">French Press / Immersion</option>
++              <option value="Automatic Drip">Precision Automatic Drip</option>
++              <option value="AeroPress">AeroPress</option>
++              <option value="Cold Brew Jar">Cold Brew Pitcher</option>
++              <option value="Cafe Only">I enjoy coffee exclusively in-store</option>
++            </select>
++            <span id="brew-desc" class="field-hint">We will tailor custom grind size and brewing recipes to your gear.</span>
++          </div>
++
++          <!-- Primary Roastery Location -->
++          <div class="field-group">
++            <label for="home-store" class="field-label">
++              Primary Daily Grind Roastery <span class="req" aria-hidden="true">*</span>
++            </label>
++            <select id="home-store" name="home_store" class="select-control" required
++              aria-describedby="store-desc" aria-errormessage="store-error">
++              <option value="Downtown Flagship (Main &amp; 4th)">Downtown Flagship (Main &amp; 4th)</option>
++              <option value="Uptown Roastery &amp; Labs (Pine Ave)">Uptown Roastery &amp; Labs (Pine Ave)</option>
++              <option value="Arts District (Gallery Row)">Arts District (Gallery Row)</option>
++              <option value="Harbor Pier (Marina Blvd)">Harbor Pier (Marina Blvd)</option>
++            </select>
++            <span id="store-desc" class="field-hint">Select your favorite shop for in-person perk pick-ups.</span>
++            <span id="store-error" class="field-error" aria-live="polite">Please select your primary roastery location.</span>
++          </div>
++
++          <!-- Step 2 Actions -->
++          <div class="step-actions">
++            <button type="button" class="btn btn-secondary btn-prev" data-prev-step="1">
++              &larr; Back to Account
++            </button>
++            <button type="button" class="btn btn-next" data-next-step="3">
++              Continue to Review &amp; Security &rarr;
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- ==============================================
++             STEP 3: REVIEW, SECURITY & CONFIRMATION
++             ============================================== -->
++        <fieldset class="form-step is-hidden" id="form-step-3" aria-labelledby="step-3-title">
++          <legend id="step-3-title" class="step-legend">Step 3 of 3: Review Details &amp; Confirmation</legend>
++
++          <!-- Live Review Summary Card (Safe DOM updates using textContent) -->
++          <div class="review-box" aria-live="polite">
++            <h3 class="review-box-title">Registration Summary</h3>
++            <p class="review-box-desc">Please verify your details below. You can easily adjust any section before final submission.</p>
++            
++            <div class="review-list">
++              <div class="review-row">
++                <span class="review-label">Full Name:</span>
++                <span class="review-val" id="review-name">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="1" aria-label="Edit Full Name in Step 1">Edit</button>
++              </div>
++
++              <div class="review-row">
++                <span class="review-label">Email Address:</span>
++                <span class="review-val" id="review-email">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="1" aria-label="Edit Email Address in Step 1">Edit</button>
++              </div>
++
++              <div class="review-row">
++                <span class="review-label">Phone:</span>
++                <span class="review-val" id="review-phone">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="1" aria-label="Edit Phone Number in Step 1">Edit</button>
++              </div>
++
++              <div class="review-row">
++                <span class="review-label">Birthday:</span>
++                <span class="review-val" id="review-birthday">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="2" aria-label="Edit Birthday in Step 2">Edit</button>
++              </div>
++
++              <div class="review-row">
++                <span class="review-label">Roast Profile:</span>
++                <span class="review-val" id="review-roast">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="2" aria-label="Edit Roast Profile in Step 2">Edit</button>
++              </div>
++
++              <div class="review-row">
++                <span class="review-label">Primary Store:</span>
++                <span class="review-val" id="review-store">—</span>
++                <button type="button" class="btn-edit-step" data-jump-step="2" aria-label="Edit Primary Roastery Store in Step 2">Edit</button>
++              </div>
++            </div>
++          </div>
++
++          <!-- Notification Preferences -->
++          <fieldset class="inner-fieldset">
++            <legend class="inner-legend">Communications &amp; Alerts</legend>
++            <div class="field-group" style="margin-bottom: 12px;">
++              <label class="custom-checkbox-label">
++                <input type="checkbox" name="opt_in_sms" value="true">
++                <span>Receive SMS alerts for double bean points days and mobile order readiness.</span>
++              </label>
++            </div>
++            <div class="field-group" style="margin-bottom: 0;">
++              <label class="custom-checkbox-label">
++                <input type="checkbox" name="opt_in_email" value="true" checked>
++                <span>Receive weekly tasting notes, seasonal roast announcements, and rewards balance summaries.</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- Terms & Conditions Agreement -->
++          <div class="terms-wrapper">
++            <label class="custom-checkbox-label">
++              <input type="checkbox" id="rewards-terms" name="terms_consent" required
++                aria-describedby="terms-desc" aria-errormessage="terms-error">
++              <span>
++                I agree to the <a href="/rewards/terms" target="_blank" rel="noopener">Daily Grind Rewards Terms</a> and acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. <span class="req" aria-hidden="true">*</span>
++              </span>
++            </label>
++            <span id="terms-desc" class="visually-hidden">You must accept the terms and conditions to join the rewards program.</span>
++            <span id="terms-error" class="field-error" aria-live="polite">You must agree to the program terms to create your rewards account.</span>
++          </div>
++
++          <!-- Step 3 Actions -->
++          <div class="step-actions">
++            <button type="button" class="btn btn-secondary btn-prev" data-prev-step="2">
++              &larr; Back to Preferences
++            </button>
++            <button type="submit" id="rewards-submit-btn" class="btn btn-submit">
++              <span id="submit-btn-text">Complete Rewards Registration</span>
++            </button>
++          </div>
++        </fieldset>
++      </form>
++
++      <!-- Registration Success Confirmation Panel (Hidden initially) -->
++      <div id="rewards-success-panel" class="rewards-success-card" style="display: none;" role="status" aria-live="polite">
++        <span class="success-icon" aria-hidden="true">☕</span>
++        <h3>Welcome to Daily Grind Rewards!</h3>
++        <p class="success-subtitle">Your membership has been activated and <strong>50 bonus beans</strong> have been credited to your account.</p>
++
++        <!-- Digital Membership Card Preview -->
++        <div class="member-digital-card">
++          <div class="digital-card-top">
++            <span class="digital-brand">THE DAILY GRIND</span>
++            <span class="digital-tier">ARTISANAL MEMBER</span>
++          </div>
++          <div class="digital-member-name" id="success-member-name">Artisanal Coffee Lover</div>
++          <div class="digital-member-details">
++            <span id="success-member-id">Member # DG-884219</span>
++            <span>Balance: 50 Beans</span>
++          </div>
++          <div class="digital-barcode" aria-label="Digital barcode for scanning at counter">
++            ||| | |||| | ||||| || |||| ||| |||| | |||
++          </div>
+         </div>
++
++        <div class="success-buttons">
++          <a href="/order-online" class="btn btn-hero">Start Your First Order</a>
++          <button type="button" class="btn btn-secondary" id="register-another-btn">Register Another Account</button>
++        </div>
+       </div>
+     </section>
++
+   </main>
+ 
++  <!-- Footer Landmark -->
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <nav class="footer-nav" aria-label="Footer navigation">
++      <ul class="footer-links">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy Policy</a></li>
++        <li><a href="/rewards/terms">Rewards Terms</a></li>
++      </ul>
++    </nav>
++    <p class="copyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Application Logic: Multi-Step Navigation, Accessible Validation, and Security -->
++  <script>
++    (function () {
++      'use strict';
++
++      // Cache DOM Elements
++      const form = document.getElementById('rewards-form');
++      const announcer = document.getElementById('form-announcer');
++      const successPanel = document.getElementById('rewards-success-panel');
++      const submitBtn = document.getElementById('rewards-submit-btn');
++      const submitBtnText = document.getElementById('submit-btn-text');
++      const togglePwBtn = document.getElementById('toggle-pw-btn');
++      const pwInput = document.getElementById('rewards-password');
++      const togglePwText = document.getElementById('toggle-pw-text');
++      const registerAnotherBtn = document.getElementById('register-another-btn');
++
++      let currentStep = 1;
++      const totalSteps = 3;
++
++      /**
++       * Announce status messages for screen reader users
++       */
++      function announce(message) {
++        if (!announcer) return;
++        announcer.textContent = '';
++        // Use timeout to ensure browser accessibility tree registers the change
++        setTimeout(function () {
++          announcer.textContent = message;
++        }, 50);
++      }
++
++      /**
++       * Synchronize visual and programmatic validity states
++       * Follows modern-web-guidance for accessible error announcements
++       */
++      function updateFieldAria(input) {
++        if (!input || !input.checkValidity) return;
++
++        // Check native constraint validity
++        const isValid = input.checkValidity();
++        const errorSpan = document.getElementById(input.getAttribute('aria-errormessage'));
++
++        if (!isValid) {
++          input.setAttribute('aria-invalid', 'true');
++          input.classList.add('is-user-invalid');
++          if (errorSpan) {
++            errorSpan.style.display = 'block';
++          }
++        } else {
++          input.removeAttribute('aria-invalid');
++          input.classList.remove('is-user-invalid');
++          if (errorSpan) {
++            errorSpan.style.display = 'none';
++          }
++        }
++      }
++
++      /**
++       * Event listeners for non-intrusive validation:
++       * - Validate and show errors on blur
++       * - Clear error state on input once corrected
++       */
++      document.addEventListener('blur', function (event) {
++        const target = event.target;
++        if (target && target.matches && target.matches('#rewards-form input, #rewards-form select')) {
++          // If the field has a value or was touched, check validity
++          if (target.value.length > 0 || target.required) {
++            updateFieldAria(target);
++          }
++        }
++      }, true);
++
++      document.addEventListener('input', function (event) {
++        const target = event.target;
++        if (target && target.matches && target.matches('#rewards-form input, #rewards-form select')) {
++          // If it was previously marked invalid, clear error immediately upon fixing
++          if (target.getAttribute('aria-invalid') === 'true' || target.classList.contains('is-user-invalid')) {
++            updateFieldAria(target);
++          }
++        }
++      });
++
++      /**
++       * Password Show/Hide Toggle (accessible unmasking)
++       */
++      if (togglePwBtn && pwInput) {
++        togglePwBtn.addEventListener('click', function () {
++          const isPressed = togglePwBtn.getAttribute('aria-pressed') === 'true';
++          const nextState = !isPressed;
++
++          togglePwBtn.setAttribute('aria-pressed', String(nextState));
++          if (nextState) {
++            pwInput.type = 'text';
++            togglePwText.textContent = 'Hide';
++            togglePwBtn.setAttribute('aria-label', 'Hide password in plain text');
++            announce('Password unmasked and visible in plain text.');
++          } else {
++            pwInput.type = 'password';
++            togglePwText.textContent = 'Show';
++            togglePwBtn.setAttribute('aria-label', 'Show password in plain text');
++            announce('Password masked.');
++          }
++        });
++      }
++
++      /**
++       * Validate all inputs within a specific step
++       */
++      function validateStep(stepNum) {
++        const stepFieldset = document.getElementById('form-step-' + stepNum);
++        if (!stepFieldset) return true;
++
++        const inputs = stepFieldset.querySelectorAll('input, select');
++        let isStepValid = true;
++        let firstInvalidField = null;
++
++        inputs.forEach(function (input) {
++          // Skip honeypot or non-required optional inputs without value
++          if (input.name === 'website_url_hp') return;
++
++          if (!input.checkValidity()) {
++            isStepValid = false;
++            updateFieldAria(input);
++            if (!firstInvalidField) {
++              firstInvalidField = input;
++            }
++          } else {
++            updateFieldAria(input);
++          }
++        });
++
++        if (!isStepValid && firstInvalidField) {
++          firstInvalidField.focus();
++          announce('Step ' + stepNum + ' has input errors. Please review the highlighted fields.');
++        }
++
++        return isStepValid;
++      }
++
++      /**
++       * Populate the Step 3 review summary box using safe DOM textContent methods
++       */
++      function populateReviewSummary() {
++        const nameVal = document.getElementById('rewards-name').value.trim() || '—';
++        const emailVal = document.getElementById('rewards-email').value.trim() || '—';
++        const phoneVal = document.getElementById('rewards-phone').value.trim() || '—';
++
++        const monthSelect = document.getElementById('rewards-bday-month');
++        const monthText = monthSelect.options[monthSelect.selectedIndex]?.text || '';
++        const dayVal = document.getElementById('rewards-bday-day').value.trim();
++        const bdaySummary = (monthText && dayVal) ? (monthText + ' ' + dayVal) : '—';
++
++        const selectedRoast = form.querySelector('input[name="roast"]:checked');
++        const roastVal = selectedRoast ? selectedRoast.value : '—';
++
++        const storeSelect = document.getElementById('home-store');
++        const storeVal = storeSelect.options[storeSelect.selectedIndex]?.text || '—';
++
++        // Safe DOM updates via textContent to prevent DOM XSS
++        document.getElementById('review-name').textContent = nameVal;
++        document.getElementById('review-email').textContent = emailVal;
++        document.getElementById('review-phone').textContent = phoneVal;
++        document.getElementById('review-birthday').textContent = bdaySummary;
++        document.getElementById('review-roast').textContent = roastVal;
++        document.getElementById('review-store').textContent = storeVal;
++      }
++
++      /**
++       * Switch to a specific step with focus management and ARIA updates
++       */
++      function goToStep(targetStep) {
++        if (targetStep < 1 || targetStep > totalSteps) return;
++
++        // Hide all steps and show target step
++        for (let i = 1; i <= totalSteps; i++) {
++          const stepEl = document.getElementById('form-step-' + i);
++          const progressEl = document.getElementById('progress-step-' + i);
++
++          if (i === targetStep) {
++            stepEl.classList.remove('is-hidden');
++            progressEl.classList.add('is-active');
++            progressEl.setAttribute('aria-current', 'step');
++          } else {
++            stepEl.classList.add('is-hidden');
++            progressEl.classList.remove('is-active');
++            progressEl.removeAttribute('aria-current');
++
++            if (i < targetStep) {
++              progressEl.classList.add('is-completed');
++            } else {
++              progressEl.classList.remove('is-completed');
++            }
++          }
++        }
++
++        currentStep = targetStep;
++
++        if (targetStep === 3) {
++          populateReviewSummary();
++        }
++
++        // Move focus smoothly to the target step's legend for screen readers
++        const targetLegend = document.getElementById('step-' + targetStep + '-title');
++        if (targetLegend) {
++          targetLegend.setAttribute('tabindex', '-1');
++          targetLegend.focus();
++        }
++
++        announce('Step ' + targetStep + ' of ' + totalSteps + ' loaded.');
++      }
++
++      // Handle "Next" Step Navigation
++      document.querySelectorAll('.btn-next').forEach(function (button) {
++        button.addEventListener('click', function () {
++          const nextStep = parseInt(button.getAttribute('data-next-step'), 10);
++          if (validateStep(currentStep)) {
++            goToStep(nextStep);
++          }
++        });
++      });
++
++      // Handle "Previous" Step Navigation
++      document.querySelectorAll('.btn-prev').forEach(function (button) {
++        button.addEventListener('click', function () {
++          const prevStep = parseInt(button.getAttribute('data-prev-step'), 10);
++          goToStep(prevStep);
++        });
++      });
++
++      // Handle "Edit" Jump Navigation from Step 3 Review Box
++      document.querySelectorAll('.btn-edit-step').forEach(function (button) {
++        button.addEventListener('click', function () {
++          const jumpStep = parseInt(button.getAttribute('data-jump-step'), 10);
++          goToStep(jumpStep);
++        });
++      });
++
++      /**
++       * Handle Form Submission
++       */
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++
++        // 1. Verify Step 3 validity
++        if (!validateStep(3)) {
++          return;
++        }
++
++        // 2. Anti-spam Honeypot Check
++        const hpInput = document.getElementById('rewards-hp-website');
++        if (hpInput && hpInput.value.trim() !== '') {
++          // Quietly drop bot submissions
++          console.warn('Bot submission deflected by honeypot.');
++          return;
++        }
++
++        // 3. Prevent Double-Post & show loading state
++        submitBtn.disabled = true;
++        submitBtnText.innerHTML = '<span class="spinner" aria-hidden="true"></span> Creating Your Account...';
++        announce('Submitting registration details, please wait.');
++
++        // 4. Simulate secure backend mutation & response
++        setTimeout(function () {
++          const nameInput = document.getElementById('rewards-name');
++          const memberName = nameInput ? nameInput.value.trim() : 'Artisanal Member';
++          const randomId = 'DG-' + Math.floor(100000 + Math.random() * 900000);
++
++          // Update success card safely via textContent
++          const successNameEl = document.getElementById('success-member-name');
++          const successIdEl = document.getElementById('success-member-id');
++          if (successNameEl) successNameEl.textContent = memberName;
++          if (successIdEl) successIdEl.textContent = 'Member # ' + randomId;
++
++          // Transition UI: Hide form, show success panel
++          form.style.display = 'none';
++          document.querySelector('.step-progress-wrapper').style.display = 'none';
++          successPanel.style.display = 'block';
++
++          // Set focus to the success heading
++          const successHeading = successPanel.querySelector('h3');
++          if (successHeading) {
++            successHeading.setAttribute('tabindex', '-1');
++            successHeading.focus();
++          }
++
++          announce('Registration complete! Welcome to Daily Grind Rewards. Your membership ID is ' + randomId + '.');
++        }, 600);
++      });
++
++      /**
++       * Reset and Register Another Member
++       */
++      if (registerAnotherBtn) {
++        registerAnotherBtn.addEventListener('click', function () {
++          form.reset();
++          submitBtn.disabled = false;
++          submitBtnText.textContent = 'Complete Rewards Registration';
++
++          successPanel.style.display = 'none';
++          document.querySelector('.step-progress-wrapper').style.display = 'block';
++          form.style.display = 'block';
++
++          // Reset step progress classes
++          for (let i = 1; i <= totalSteps; i++) {
++            const stepEl = document.getElementById('form-step-' + i);
++            const progressEl = document.getElementById('progress-step-' + i);
++            progressEl.classList.remove('is-active', 'is-completed');
++            stepEl.classList.add('is-hidden');
++          }
++
++          goToStep(1);
++        });
++      }
++
++    })();
++  </script>
+ </body>
+ 
+ </html>

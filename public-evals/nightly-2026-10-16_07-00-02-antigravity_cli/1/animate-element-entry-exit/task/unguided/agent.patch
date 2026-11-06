@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,81 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo Controls & Special Promo Area */
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++    }
++
++    .promo-section {
++      margin-top: 50px;
++      padding-top: 30px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .promo-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .promo-controls {
++      display: flex;
++      justify-content: center;
++      gap: 15px;
++      margin-bottom: 25px;
++      flex-wrap: wrap;
++    }
++
++    .promo-controls .btn {
++      margin-top: 0;
++    }
++
++    /* Promo Cards Animations */
++    @keyframes promoFadeIn {
++      0% {
++        opacity: 0;
++        transform: scale(0.8);
++      }
++      100% {
++        opacity: 1;
++        transform: scale(1);
++      }
++    }
++
++    @keyframes promoFadeOut {
++      0% {
++        opacity: 1;
++        transform: scale(1);
++      }
++      100% {
++        opacity: 0;
++        transform: scale(0.8);
++      }
++    }
++
++    #domContainer .card {
++      transition: opacity 0.3s ease, transform 0.3s ease;
++      animation: promoFadeIn 0.3s ease forwards;
++    }
++
++    #domContainer .card.removing,
++    #domContainer .card.fade-out {
++      animation: promoFadeOut 0.3s ease forwards;
++      opacity: 0;
++      transform: scale(0.8);
++      pointer-events: none;
++    }
++
++    #domContainer .card[hidden],
++    [hidden] {
++      display: none !important;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +267,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="promo-section">
++      <h2>Special Promotions</h2>
++      <div class="promo-controls">
++        <button id="addBtn" class="btn">Add Promo Card</button>
++        <button id="removeBtn" class="btn">Remove Promo Card</button>
++        <button id="toggleBtn" class="btn">Toggle Promo Card</button>
++      </div>
++      <div id="domContainer" class="grid">
++        <div id="toggleCard" class="card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Special Promo" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;">
++          <h3>Featured Special: 20% Off</h3>
++          <p>Get 20% off all whole-bean coffee varieties this week only!</p>
++          <a href="/menu/special" class="btn">Claim Offer</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +295,103 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const domContainer = document.getElementById('domContainer');
++      const addBtn = document.getElementById('addBtn');
++      const removeBtn = document.getElementById('removeBtn');
++      const toggleBtn = document.getElementById('toggleBtn');
++
++      const promoData = [
++        {
++          title: 'Weekend Cold Brew Deal',
++          description: 'Get 25% off all cold brew growler refills this Saturday & Sunday.',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80',
++          link: '/menu/cold-brew'
++        },
++        {
++          title: 'Free Artisan Pastry',
++          description: 'Enjoy a complimentary flaky almond croissant with any large latte.',
++          image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
++          link: '/menu/pastries'
++        },
++        {
++          title: 'Single-Origin Discovery',
++          description: 'Save 15% on monthly hand-curated single-origin coffee subscriptions.',
++          image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80',
++          link: '/subscriptions'
++        },
++        {
++          title: 'Afternoon Espresso Boost',
++          description: 'Double espresso shots for half price every weekday after 2 PM.',
++          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
++          link: '/menu/espresso'
++        }
++      ];
++
++      let promoIndex = 0;
++
++      function createPromoCard(data) {
++        const card = document.createElement('div');
++        card.className = 'card';
++        card.innerHTML = `
++          <img src="${data.image}" alt="${data.title}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;">
++          <h3>${data.title}</h3>
++          <p>${data.description}</p>
++          <a href="${data.link}" class="btn">View Details</a>
++        `;
++        return card;
++      }
++
++      if (addBtn && domContainer) {
++        addBtn.addEventListener('click', function () {
++          const data = promoData[promoIndex % promoData.length];
++          promoIndex++;
++          const newCard = createPromoCard(data);
++          domContainer.appendChild(newCard);
++        });
++      }
++
++      if (removeBtn && domContainer) {
++        removeBtn.addEventListener('click', function () {
++          const cards = domContainer.querySelectorAll('.card:not(.removing)');
++          if (cards.length === 0) return;
++          const lastCard = cards[cards.length - 1];
++
++          lastCard.classList.add('removing', 'fade-out');
++          lastCard.style.opacity = '0';
++          lastCard.style.transform = 'scale(0.8)';
++
++          let removed = false;
++          const finishRemoval = function () {
++            if (!removed) {
++              removed = true;
++              if (lastCard.parentNode === domContainer) {
++                domContainer.removeChild(lastCard);
++              }
++            }
++          };
++
++          lastCard.addEventListener('animationend', finishRemoval, { once: true });
++          lastCard.addEventListener('transitionend', finishRemoval, { once: true });
++          setTimeout(finishRemoval, 320);
++        });
++      }
++
++      if (toggleBtn) {
++        toggleBtn.addEventListener('click', function () {
++          const toggleCard = document.getElementById('toggleCard');
++          if (!toggleCard) return;
++          if (toggleCard.hasAttribute('hidden')) {
++            toggleCard.removeAttribute('hidden');
++          } else {
++            toggleCard.setAttribute('hidden', '');
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

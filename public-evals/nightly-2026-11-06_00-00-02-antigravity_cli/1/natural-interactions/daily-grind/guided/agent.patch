@@ -1,0 +1,335 @@
+diff --git a/index.html b/index.html
+index 66c9173..e03ff46 100644
+--- a/index.html
++++ b/index.html
+@@ -48,6 +48,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,22 +57,72 @@
+     }
+ 
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 150ms ease-out, scale 150ms ease-out, box-shadow 150ms ease-out;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 4px;
+     }
+ 
+     .logout-link {
++      background: transparent;
++      color: white;
++      font-size: 0.9rem;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
++    }
++
++    /* Interactive feedback for links and buttons */
++    :where(button, .btn) {
++      font: inherit;
++      cursor: pointer;
++      border: none;
++      transition: box-shadow 150ms ease-out, scale 150ms ease-out, background-color 150ms ease-out;
++    }
++
++    :where(a) {
++      transition: color 150ms ease-out, scale 150ms ease-out, box-shadow 150ms ease-out;
++    }
++
++    button:hover,
++    .btn:hover {
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
++    }
++
++    a:hover {
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 3px;
++    }
++
++    button:active,
++    .btn:active,
++    a:active {
++      scale: 0.97;
++    }
++
++    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
++      outline: 2px solid CanvasText;
++      outline-offset: 3px;
++    }
++
++    :where(nav, .hero) :where(a, button, [tabindex]):focus-visible {
++      outline-color: var(--accent);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -100,11 +151,20 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .grid,
++    .scroller {
++      display: flex;
++      gap: 1rem;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
+       margin-top: 20px;
++      padding: 8px 4px 16px;
++    }
++
++    .grid > *,
++    .scroller > * {
++      flex: 0 0 85%;
++      scroll-snap-align: start;
+     }
+ 
+     .card {
+@@ -113,6 +173,12 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: box-shadow 150ms ease-out;
++    }
++
++    .card:hover,
++    .card:focus-within {
++      box-shadow: 0 4px 12px rgb(0 0 0 / 0.16);
+     }
+ 
+     .card h3 {
+@@ -120,6 +186,21 @@
+       color: var(--primary);
+     }
+ 
++    .card .actions {
++      opacity: 0;
++      transition: opacity 150ms ease-out;
++
++      .card:hover &,
++      .card:focus-within &,
++      .card:has(:is(:popover-open, .\:popover-open)) & {
++        opacity: 1;
++      }
++
++      @media (hover: none) {
++        opacity: 1;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,11 +209,82 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: box-shadow 150ms ease-out, scale 150ms ease-out, background-color 150ms ease-out;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
++    }
++
++    /* Trigger-anchored disclosure popovers */
++    [popover]:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    .dropdown {
++      /* popovertarget makes the trigger the popover's anchor. */
++      position-area: bottom span-right;
++      inset: auto;
++      margin: 0;
++      /* The corner touching the trigger; change it whenever the placement changes. */
++      transform-origin: top left;
++      max-width: min(340px, 90vw);
++      background: white;
++      color: var(--text);
++      padding: 16px 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
++      text-align: left;
++    }
++
++    .dropdown h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.05rem;
++    }
++
++    .dropdown p {
++      font-size: 0.9rem;
++      margin-bottom: 8px;
++    }
++
++    .dropdown .detail-meta {
++      font-size: 0.82rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .dropdown a {
++      display: inline-block;
++      color: var(--primary);
++      font-weight: 600;
++      font-size: 0.88rem;
++      text-decoration: underline;
++    }
++
++    .dropdown:is(:popover-open, .\:popover-open) {
++      animation: fade-in 150ms ease-out both;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .dropdown:is(:popover-open, .\:popover-open) {
++        animation: grow 300ms ease-out both, fade-in 150ms ease-out both;
++        animation: grow 300ms linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1) both, fade-in 150ms ease-out both;
++      }
++    }
++
++    @keyframes grow {
++      from {
++        scale: 0.9;
++      }
++    }
++
++    @keyframes fade-in {
++      from {
++        opacity: 0;
++      }
+     }
+ 
+     footer {
+@@ -147,6 +299,7 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -157,14 +310,14 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link">Logout</button></li>
+     </ul>
+   </nav>
+ 
+@@ -177,21 +330,45 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid scroller">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="title-maple-oat">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" id="btn-maple-oat" popovertarget="detail-maple-oat" aria-describedby="title-maple-oat">View Details</button>
++          </div>
++          <div id="detail-maple-oat" class="dropdown" popover>
++            <h4>Maple Oat Latte</h4>
++            <p>Rich double-shot espresso blended with velvety steamed oat milk and pure Grade A Vermont amber maple syrup, topped with a warm cinnamon sprinkle.</p>
++            <p class="detail-meta"><strong>Sizes:</strong> 12oz / 16oz &bull; <strong>210 kcal</strong></p>
++            <a href="/menu/seasonal">Full Menu Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="title-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" id="btn-espresso" popovertarget="detail-espresso" aria-describedby="title-espresso">View Details</button>
++          </div>
++          <div id="detail-espresso" class="dropdown" popover>
++            <h4>Dark Roast Espresso</h4>
++            <p>Single-origin Sumatra beans slow-roasted to a deep caramel finish with tasting notes of dark chocolate, toasted cedar, and molasses.</p>
++            <p class="detail-meta"><strong>Sizes:</strong> Single / Double &bull; <strong>10 kcal</strong></p>
++            <a href="/menu/espresso">Full Menu Details</a>
++          </div>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="title-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" id="btn-cold-brew" popovertarget="detail-cold-brew" aria-describedby="title-cold-brew">View Details</button>
++          </div>
++          <div id="detail-cold-brew" class="dropdown" popover>
++            <h4>Cold Brew</h4>
++            <p>Coarse-ground Colombian beans cold-steeped in filtered water for 18 hours, delivering a naturally sweet, low-acidity cup served over artisan ice.</p>
++            <p class="detail-meta"><strong>Sizes:</strong> 16oz / 20oz &bull; <strong>15 kcal</strong></p>
++            <a href="/menu/cold-brew">Full Menu Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +384,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    if (!CSS.supports("position-area: bottom")) {
++      document.querySelectorAll("[popover]").forEach((popover) => {
++        const trigger = document.querySelector(`[popovertarget="${popover.id}"]`);
++        popover.addEventListener("beforetoggle", (event) => {
++          if (event.newState === "open" && trigger) {
++            const rect = trigger.getBoundingClientRect();
++            popover.style.position = "fixed";
++            popover.style.top = `${rect.bottom + 8}px`;
++            popover.style.left = `${rect.left}px`;
++          }
++        });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

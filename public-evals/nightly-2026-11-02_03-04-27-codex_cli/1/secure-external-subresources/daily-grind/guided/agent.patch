@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+index 66c9173..308ec42 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,14 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <!-- Pin CDN versions and hashes together; never replace these with floating URLs. -->
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
++    integrity="sha384-M86HUGbBFILBBZ9ykMAbT3nVb0+2C7yZlF8X2CiKNpDOQjKroMJqIeGZ/Le8N2Qp"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <script defer src="https://cdn.jsdelivr.net/npm/focus-visible@5.2.0/dist/focus-visible.min.js"
++    integrity="sha384-xRa5B8rCDfdg0npZcxAh+RXswrbFk3g6dlHVeABeluN8EIwdyljz/LqJgc2R3KNA"
++    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -75,8 +83,8 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      /* A verified photo is added below; keep a readable fallback on failure. */
++      background-color: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -93,6 +101,28 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero h1,
++    h2,
++    .card h3 {
++      font-family: 'Daily Grind Lora', Georgia, serif;
++      font-weight: 400;
++    }
++
++    a:focus-visible,
++    a.focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .card img {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 4px;
++      margin-bottom: 15px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -179,16 +209,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img id="latte-photo" width="600" height="400" alt="A glass of creamy iced latte" hidden>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img id="espresso-photo" width="600" height="400" alt="A freshly poured espresso" hidden>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img id="coldbrew-photo" width="600" height="400" alt="An iced coffee served in a glass" hidden>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +240,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Release-time SHA-384 digests pin the exact font and fixed JPEG renditions.
++    // fetch integrity works across browsers; img integrity and CSS URL modifiers
++    // are not universally supported. Never display an unverified remote fallback.
++    // If a provider changes these bytes, review the asset before updating its hash.
++    const assets = {
++      "font": {
++        "url": "https://cdn.jsdelivr.net/npm/@fontsource/lora@5.2.6/files/lora-latin-400-normal.woff2",
++        "integrity": "sha384-aFxA3BDBa0FQEb3YpbJCAXLunGfquJVh+SIk8+aJiR4VNizJ/CAi9XDHEN9FvMPY"
++      },
++      "hero": {
++        "url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80",
++        "integrity": "sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H"
++      },
++      "latte": {
++        "url": "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-x2K/bA51pQugUJAdiAyKc3oWHrr4/9gsaNZcD9LJa6aOD7gBgsdD6mqy1z7Ziqsu"
++      },
++      "espresso": {
++        "url": "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-Yl309C3L1ztIQVEAWthyto6bmQ0NCfR6Fh0FKlo8X3ivrTz/hzKSRVHh4ZXfJ2SX"
++      },
++      "coldbrew": {
++        "url": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=600&h=400&q=80",
++        "integrity": "sha384-8BVYoeCa4BfhP0cdbKGlxiGxgD6YRYCANIIF9K4gA7wJ+qrwR9xBeHLywbueB0EJ"
++      }
++    };
++
++    async function fetchVerifiedAsset(asset) {
++      const response = await fetch(asset.url, {
++        integrity: asset.integrity,
++        mode: 'cors',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++      });
++      if (!response.ok) throw new Error(`Asset request failed: ${response.status}`);
++      return response;
++    }
++
++    async function loadBrandFont() {
++      const response = await fetchVerifiedAsset(assets.font);
++      const font = new FontFace('Daily Grind Lora', await response.arrayBuffer(), {
++        weight: '400',
++        style: 'normal',
++        display: 'swap',
++      });
++      document.fonts.add(await font.load());
++    }
++
++    const imageUrls = [];
++    async function loadPhoto(name) {
++      const response = await fetchVerifiedAsset(assets[name]);
++      const objectUrl = URL.createObjectURL(await response.blob());
++      imageUrls.push(objectUrl);
++      if (name === 'hero') {
++        document.querySelector('.hero').style.backgroundImage =
++          `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("${objectUrl}")`;
++      } else {
++        const image = document.getElementById(`${name}-photo`);
++        image.src = objectUrl;
++        await image.decode();
++        image.hidden = false;
++      }
++    }
++
++    // Each failure leaves the system font / solid hero / text cards usable.
++    for (const [name, load] of [
++      ['font', loadBrandFont],
++      ...['hero', 'latte', 'espresso', 'coldbrew'].map(name => [name, () => loadPhoto(name)]),
++    ]) {
++      load().catch(() => console.warn(`Verified ${name} asset unavailable; keeping fallback.`));
++    }
++
++    window.addEventListener('pagehide', (event) => {
++      // Keep blob URLs alive while the document is in the back/forward cache.
++      if (!event.persisted) imageUrls.forEach(url => URL.revokeObjectURL(url));
++    });
++  </script>
++
+ </body>
+ 
+ </html>

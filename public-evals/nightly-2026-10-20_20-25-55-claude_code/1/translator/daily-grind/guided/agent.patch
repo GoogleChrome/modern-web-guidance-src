@@ -1,0 +1,173 @@
+diff --git a/index.html b/index.html
+index 66c9173..1686ded 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,30 @@
+       color: var(--accent);
+     }
+ 
++    .lang-picker select {
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 4px 8px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.6;
++    }
++
++    .translate-status {
++      background: var(--secondary);
++      text-align: center;
++      font-size: 0.85rem;
++      padding: 6px 20px;
++    }
++
++    .translate-status:empty {
++      display: none;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -165,8 +189,29 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="lang-picker" translate="no">
++        <label class="visually-hidden" for="lang-select" style="position:absolute;left:-9999px">Language</label>
++        <select id="lang-select">
++          <option value="en" selected>English</option>
++          <option value="ar">العربية</option>
++          <option value="de">Deutsch</option>
++          <option value="es">Español</option>
++          <option value="fr">Français</option>
++          <option value="hi">हिन्दी</option>
++          <option value="it">Italiano</option>
++          <option value="ja">日本語</option>
++          <option value="ko">한국어</option>
++          <option value="nl">Nederlands</option>
++          <option value="pt">Português</option>
++          <option value="ru">Русский</option>
++          <option value="tr">Türkçe</option>
++          <option value="vi">Tiếng Việt</option>
++          <option value="zh">中文</option>
++        </select>
++      </li>
+     </ul>
+   </nav>
++  <div class="translate-status" id="translate-status" role="status" aria-live="polite"></div>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -207,6 +252,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const SOURCE = 'en';
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('translate-status');
++      const originals = new Map(); // text node -> original English text
++      const translators = new Map(); // target language -> Translator
++      let requestId = 0;
++
++      if (!('Translator' in self)) {
++        select.disabled = true;
++        select.title = 'Client-side translation is currently unsupported in this browser';
++        status.textContent = 'Client-side translation is currently unsupported in this browser.';
++        return;
++      }
++
++      function textNodes() {
++        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
++          acceptNode(node) {
++            if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
++            const parent = node.parentElement;
++            if (!parent || parent.closest('script, style, [translate="no"], #translate-status')) {
++              return NodeFilter.FILTER_REJECT;
++            }
++            return NodeFilter.FILTER_ACCEPT;
++          },
++        });
++        const nodes = [];
++        while (walker.nextNode()) nodes.push(walker.currentNode);
++        return nodes;
++      }
++
++      function restore() {
++        for (const [node, text] of originals) node.nodeValue = text;
++        originals.clear();
++        document.documentElement.lang = SOURCE;
++        document.documentElement.dir = 'ltr';
++        document.title = document.documentElement.dataset.title;
++      }
++
++      async function getTranslator(target) {
++        if (translators.has(target)) return translators.get(target);
++        const options = { sourceLanguage: SOURCE, targetLanguage: target };
++        const availability = await Translator.availability(options);
++        if (availability === 'unavailable') return null;
++        // Called from a change event, so the user gesture requirement for downloads is met.
++        const translator = await Translator.create({
++          ...options,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              status.textContent = `Downloading language pack… ${Math.round(e.loaded * 100)}%`;
++            });
++          },
++        });
++        translators.set(target, translator);
++        return translator;
++      }
++
++      document.documentElement.dataset.title = document.title;
++
++      select.addEventListener('change', async () => {
++        const target = select.value;
++        const id = ++requestId;
++        if (target === SOURCE) {
++          restore();
++          status.textContent = '';
++          return;
++        }
++        select.disabled = true;
++        status.textContent = 'Translating…';
++        try {
++          const translator = await getTranslator(target);
++          if (!translator) {
++            status.textContent = 'This language is not available on this device.';
++            select.value = document.documentElement.lang;
++            return;
++          }
++          // Always translate from the original English text.
++          for (const node of textNodes()) if (!originals.has(node)) originals.set(node, node.nodeValue);
++          const entries = [...originals];
++          const results = await Promise.all(entries.map(([, text]) => translator.translate(text.trim())));
++          if (id !== requestId) return;
++          entries.forEach(([node, text], i) => {
++            const lead = text.match(/^\s*/)[0];
++            const trail = text.match(/\s*$/)[0];
++            node.nodeValue = lead + results[i] + trail;
++          });
++          document.title = await translator.translate(document.documentElement.dataset.title);
++          document.documentElement.lang = target;
++          document.documentElement.dir = target === 'ar' ? 'rtl' : 'ltr';
++          status.textContent = '';
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Sorry, translation failed. Please try again.';
++          select.value = document.documentElement.lang;
++        } finally {
++          select.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

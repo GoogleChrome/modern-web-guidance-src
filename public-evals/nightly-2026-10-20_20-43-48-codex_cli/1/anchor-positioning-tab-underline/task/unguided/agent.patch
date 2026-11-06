@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -46,16 +46,52 @@
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
++      position: relative;
+       display: flex;
+       list-style: none;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      border-bottom: 2px solid transparent;
+     }
+ 
++    /* Static underline fallback for browsers without anchor positioning. */
++    nav ul li.active {
++      border-bottom-color: var(--accent);
++    }
++
++    @supports (anchor-name: --active-tab) and (position-anchor: --active-tab) and (top: anchor(bottom)) {
++      nav ul li.active {
++        anchor-name: --active-tab;
++        border-bottom-color: transparent;
++      }
++
++      nav ul::before {
++        content: '';
++        position: absolute;
++        position-anchor: --active-tab;
++        inset-block-start: calc(anchor(bottom) - 2px);
++        inset-inline-start: anchor(left);
++        inset-inline-end: anchor(right);
++        block-size: 2px;
++        background: var(--accent);
++        pointer-events: none;
++      }
++
++      nav ul:not(:has(> li.active))::before {
++        content: none;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        nav ul::before {
++          transition: inset 0.25s ease;
++        }
++      }
++    }
++
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -156,12 +192,12 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>

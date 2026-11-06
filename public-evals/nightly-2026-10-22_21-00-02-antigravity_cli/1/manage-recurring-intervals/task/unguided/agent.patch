@@ -1,0 +1,202 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,92 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Subscription Delivery Planner */
++    .planner-section {
++      margin-top: 50px;
++    }
++
++    .planner-card {
++      max-width: 650px;
++      margin: 20px auto 0;
++      text-align: left;
++      padding: 30px;
++    }
++
++    .planner-description {
++      color: #5d4037;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      margin-bottom: 24px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: #fff;
++      font-family: inherit;
++      transition: border-color 0.2s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--primary);
++    }
++
++    .result-box {
++      background-color: var(--light);
++      border-left: 4px solid var(--primary);
++      padding: 16px 20px;
++      border-radius: 4px;
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .result-label {
++      font-size: 0.85rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .result-value {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .result-value.error {
++      color: #c62828;
++      font-size: 1rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +278,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="planner-section">
++      <h2 style="text-align: center;">Coffee Subscription Delivery Planner</h2>
++      <div class="card planner-card">
++        <h3>Plan Your Next Recurring Shipment</h3>
++        <p class="planner-description">Calculate when your next artisanal roast delivery will arrive based on your subscription start date and recurrence interval.</p>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="startDateInput">Start Date</label>
++            <input type="date" id="startDateInput" value="2026-01-31">
++          </div>
++          <div class="form-group">
++            <label for="yearsInput">Years to Add</label>
++            <input type="number" id="yearsInput" value="0" step="1">
++          </div>
++          <div class="form-group">
++            <label for="monthsInput">Months to Add</label>
++            <input type="number" id="monthsInput" value="1" step="1">
++          </div>
++          <div class="form-group">
++            <label for="overflowSelect">Month-End Strategy</label>
++            <select id="overflowSelect">
++              <option value="constrain" selected>constrain</option>
++              <option value="reject">reject</option>
++            </select>
++          </div>
++        </div>
++        <div class="result-box">
++          <span class="result-label">Next Delivery Date</span>
++          <div id="resultDate" class="result-value" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +323,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    let TemporalAPI = globalThis.Temporal;
++
++    async function getTemporal() {
++      if (TemporalAPI) {
++        return TemporalAPI;
++      }
++      if ('Temporal' in globalThis) {
++        TemporalAPI = globalThis.Temporal;
++        return TemporalAPI;
++      }
++      const mod = await import('https://esm.sh/@js-temporal/polyfill');
++      TemporalAPI = mod.Temporal;
++      return TemporalAPI;
++    }
++
++    const startDateInput = document.getElementById('startDateInput');
++    const yearsInput = document.getElementById('yearsInput');
++    const monthsInput = document.getElementById('monthsInput');
++    const overflowSelect = document.getElementById('overflowSelect');
++    const resultDate = document.getElementById('resultDate');
++
++    async function updateDeliveryDate() {
++      try {
++        const Temporal = await getTemporal();
++        const rawDate = startDateInput.value.trim();
++        if (!rawDate) {
++          throw new Error('Please enter a valid start date.');
++        }
++
++        const startDate = Temporal.PlainDate.from(rawDate);
++        const years = Number(yearsInput.value || 0);
++        const months = Number(monthsInput.value || 0);
++        if (!Number.isInteger(years) || !Number.isInteger(months)) {
++          throw new RangeError('Years and months must be whole numbers.');
++        }
++
++        const duration = Temporal.Duration.from({ years, months });
++        const overflow = overflowSelect.value;
++
++        const nextDelivery = startDate.add(duration, { overflow });
++        resultDate.textContent = nextDelivery.toString();
++        resultDate.classList.remove('error');
++      } catch (err) {
++        resultDate.textContent = `Error: ${err.message || 'Invalid date calculation'}`;
++        resultDate.classList.add('error');
++      }
++    }
++
++    [startDateInput, yearsInput, monthsInput, overflowSelect].forEach((el) => {
++      el.addEventListener('input', updateDeliveryDate);
++      el.addEventListener('change', updateDeliveryDate);
++    });
++
++    updateDeliveryDate();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,308 @@
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..4e2b149
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,85 @@
++// Hydrates server-rendered <drink-card> elements in place.
++// The shadow tree (markup + styles) ships in the HTML via Declarative Shadow DOM,
++// so this script only attaches behavior — it never re-renders.
++
++const STORAGE_KEY = 'daily-grind:favorites';
++
++function readFavorites() {
++  try {
++    return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []);
++  } catch {
++    return new Set();
++  }
++}
++
++function writeFavorites(favorites) {
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites]));
++  } catch {
++    // Storage unavailable (private mode, quota); state stays in-memory only.
++  }
++}
++
++class DrinkCard extends HTMLElement {
++  #button;
++
++  constructor() {
++    super();
++
++    // Fallback for engines that don't parse `shadowrootmode`: attach the shadow
++    // root imperatively from the same server-rendered template.
++    if (!this.shadowRoot) {
++      const template = this.querySelector(':scope > template[shadowrootmode]');
++      if (template) {
++        this.attachShadow({ mode: 'open' }).append(template.content);
++        template.remove();
++      }
++    }
++
++    // Hydrate: wire up the existing button once (constructor runs once per element,
++    // unlike connectedCallback which re-runs when the element is moved).
++    this.#button = this.shadowRoot?.querySelector('.fav');
++    this.#button?.addEventListener('click', () => {
++      this.favorite = !this.favorite;
++    });
++  }
++
++  connectedCallback() {
++    if (!this.#button) return;
++    this.#setPressed(readFavorites().has(this.drinkId));
++    this.#button.disabled = false;
++  }
++
++  get drinkId() {
++    return this.getAttribute('drink-id');
++  }
++
++  get favorite() {
++    return this.#button?.getAttribute('aria-pressed') === 'true';
++  }
++
++  set favorite(value) {
++    const on = Boolean(value);
++    this.#setPressed(on);
++
++    const favorites = readFavorites();
++    if (on) favorites.add(this.drinkId);
++    else favorites.delete(this.drinkId);
++    writeFavorites(favorites);
++
++    this.dispatchEvent(
++      new CustomEvent('favorite-change', {
++        bubbles: true,
++        composed: true,
++        detail: { drinkId: this.drinkId, favorite: on },
++      }),
++    );
++  }
++
++  #setPressed(on) {
++    this.#button?.setAttribute('aria-pressed', String(on));
++    this.toggleAttribute('favorite', on);
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..a248e73 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +165,171 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <drink-card drink-id="maple-oat-latte">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              .card { position: relative; }
++              .title { margin: 0 2.5rem 10px; }
++              ::slotted(h3) { color: var(--primary, #4e342e); }
++              .fav {
++                position: absolute;
++                inset-block-start: -8px;
++                inset-inline-end: -8px;
++                display: grid;
++                place-items: center;
++                inline-size: 2.5rem;
++                block-size: 2.5rem;
++                padding: 0;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary, #4e342e);
++                cursor: pointer;
++                transition: background 0.2s, color 0.2s, transform 0.2s;
++              }
++              .fav:disabled { cursor: default; opacity: 0.6; }
++              .fav:not(:disabled):hover { transform: scale(1.08); }
++              .fav:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++              .fav[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              .fav svg { inline-size: 1.25rem; block-size: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; }
++              .fav[aria-pressed="true"] svg { fill: currentColor; }
++              @media (prefers-reduced-motion: reduce) { .fav { transition: none; } }
++            </style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Maple Oat Latte" disabled>
++                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.8 0 6 3.8 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
++              </button>
++              <div class="title"><slot name="title"></slot></div>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="action" href="/menu/seasonal" class="btn">View Details</a>
++        </drink-card>
++        <drink-card drink-id="dark-roast-espresso">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              .card { position: relative; }
++              .title { margin: 0 2.5rem 10px; }
++              ::slotted(h3) { color: var(--primary, #4e342e); }
++              .fav {
++                position: absolute;
++                inset-block-start: -8px;
++                inset-inline-end: -8px;
++                display: grid;
++                place-items: center;
++                inline-size: 2.5rem;
++                block-size: 2.5rem;
++                padding: 0;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary, #4e342e);
++                cursor: pointer;
++                transition: background 0.2s, color 0.2s, transform 0.2s;
++              }
++              .fav:disabled { cursor: default; opacity: 0.6; }
++              .fav:not(:disabled):hover { transform: scale(1.08); }
++              .fav:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++              .fav[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              .fav svg { inline-size: 1.25rem; block-size: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; }
++              .fav[aria-pressed="true"] svg { fill: currentColor; }
++              @media (prefers-reduced-motion: reduce) { .fav { transition: none; } }
++            </style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Dark Roast Espresso" disabled>
++                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.8 0 6 3.8 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
++              </button>
++              <div class="title"><slot name="title"></slot></div>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="action" href="/menu/espresso" class="btn">View Details</a>
++        </drink-card>
++        <drink-card drink-id="cold-brew">
++          <template shadowrootmode="open">
++            <style>
++              :host {
++                display: block;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++              }
++              .card { position: relative; }
++              .title { margin: 0 2.5rem 10px; }
++              ::slotted(h3) { color: var(--primary, #4e342e); }
++              .fav {
++                position: absolute;
++                inset-block-start: -8px;
++                inset-inline-end: -8px;
++                display: grid;
++                place-items: center;
++                inline-size: 2.5rem;
++                block-size: 2.5rem;
++                padding: 0;
++                border: 1px solid var(--secondary, #d7ccc8);
++                border-radius: 50%;
++                background: white;
++                color: var(--primary, #4e342e);
++                cursor: pointer;
++                transition: background 0.2s, color 0.2s, transform 0.2s;
++              }
++              .fav:disabled { cursor: default; opacity: 0.6; }
++              .fav:not(:disabled):hover { transform: scale(1.08); }
++              .fav:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++              .fav[aria-pressed="true"] {
++                background: var(--accent, #ffab40);
++                border-color: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++              }
++              .fav svg { inline-size: 1.25rem; block-size: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; }
++              .fav[aria-pressed="true"] svg { fill: currentColor; }
++              @media (prefers-reduced-motion: reduce) { .fav { transition: none; } }
++            </style>
++            <div class="card">
++              <button class="fav" type="button" aria-pressed="false" aria-label="Favorite Cold Brew" disabled>
++                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.3 3.2 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.8 0 6 3.8 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
++              </button>
++              <div class="title"><slot name="title"></slot></div>
++              <slot></slot>
++              <slot name="action"></slot>
++            </div>
++          </template>
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="action" href="/menu/cold-brew" class="btn">View Details</a>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +344,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/drink-card.js"></script>
++
+ </body>
+ 
+ </html>

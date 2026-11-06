@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,9 +114,9 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card h2 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+@@ -151,8 +151,67 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    [hidden] { display: none !important; }
++    html { scroll-behavior: auto; }
++    .thumbnail {
++      position: relative;
++      display: flex;
++      align-items: flex-end;
++      min-height: 260px;
++      padding: 24px;
++      margin: -20px -20px 18px;
++      overflow: hidden;
++      border-radius: 8px 8px 0 0;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 30%, rgba(25, 15, 10, .8)), var(--coffee-image);
++      background-size: cover;
++      background-position: center;
++      color: white;
++      text-align: left;
++      text-decoration: none;
++    }
++    .thumbnail .title { color: white; margin: 0; font-size: 1.5rem; }
++    .thumbnail:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
++    #list-heading { text-align: center; }
++    #list-heading:focus, #title:focus { outline: none; }
++    #hero {
++      width: 100%;
++      height: clamp(280px, 52vw, 560px);
++      border-radius: 12px;
++      background-color: var(--primary);
++      background-image: linear-gradient(transparent 30%, rgba(25, 15, 10, .8)), var(--coffee-image);
++      background-size: cover;
++      background-position: center;
++    }
++    #title { width: fit-content; max-width: 100%; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.2; margin: 28px 0 20px; }
++    .detail-copy { max-width: 650px; font-size: 1.15rem; }
++    #back { margin: 0 0 24px; }
++    ::view-transition-group(coffee-image), ::view-transition-group(coffee-title) {
++      animation-duration: 550ms;
++      animation-timing-function: cubic-bezier(.22, 1, .36, 1);
++    }
++    ::view-transition-old(coffee-image), ::view-transition-new(coffee-image) {
++      width: 100%; height: 100%; object-fit: cover; object-position: center;
++      mix-blend-mode: normal; animation-duration: 550ms;
++    }
++    /* Keep each text snapshot at its natural size while its group moves.
++       Crossfading the two font sizes avoids scaling or stretching glyphs. */
++    ::view-transition-old(coffee-title), ::view-transition-new(coffee-title) {
++      width: auto; height: auto; max-width: none; mix-blend-mode: normal; animation-duration: 550ms;
++    }
++    @media (max-width: 640px) {
++      nav { gap: 16px; flex-wrap: wrap; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
++      ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,35 +226,45 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main>
++    <section id="list-page" aria-labelledby="list-heading">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
++      <div class="container">
++        <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
++        <div class="grid">
++          <article class="card">
++            <a class="thumbnail" href="#maple-oat-latte" data-coffee="maple-oat-latte" style="--coffee-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80')">
++              <h2 class="title">Maple Oat Latte</h2>
++            </a>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </article>
++          <article class="card">
++            <a class="thumbnail" href="#dark-roast-espresso" data-coffee="dark-roast-espresso" style="--coffee-image: url('https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1350&amp;q=80')">
++              <h2 class="title">Dark Roast Espresso</h2>
++            </a>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </article>
++          <article class="card">
++            <a class="thumbnail" href="#cold-brew" data-coffee="cold-brew" style="--coffee-image: url('https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=1350&amp;q=80')">
++              <h2 class="title">Cold Brew</h2>
++            </a>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
++    <section id="detail-page" class="container" aria-labelledby="title" hidden>
++      <a id="back" href="#" class="btn">← Back to seasonal favorites</a>
++      <div id="hero" role="img"></div>
++      <h1 id="title" tabindex="-1"></h1>
++      <p id="description" class="detail-copy"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +275,116 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const listPage = document.querySelector('#list-page');
++    const detailPage = document.querySelector('#detail-page');
++    const hero = document.querySelector('#hero');
++    const title = document.querySelector('#title');
++    const thumbnails = [...document.querySelectorAll('.thumbnail')];
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    const details = {
++      'maple-oat-latte': 'A little comfort in every cup. Our signature espresso meets creamy oat milk and a touch of Vermont maple syrup for a gently sweet, warming seasonal favorite.',
++      'dark-roast-espresso': 'Rich, bold, and beautifully balanced. Our dark roast brings deep, smoky notes and a velvety crema to a small cup with plenty of character.',
++      'cold-brew': 'Slow mornings start here. Steeped for 18 hours, our cold brew is smooth and refreshing, with a mellow sweetness. Served over ice, just as it should be.'
++    };
++    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++    let activeCard = null;
++    let listScroll = 0;
++    let runningTransition = null;
++    let navigation = Promise.resolve();
++
++    function cardFromLocation() {
++      return thumbnails.find(card => card.hash === location.hash) || null;
++    }
++
++    async function showPage(card) {
++      if (card === activeCard) return;
++      const previousCard = activeCard;
++      if (!previousCard) listScroll = window.scrollY;
++      const sharedCard = card || previousCard;
++      const sharedTitle = sharedCard.querySelector('.title');
++      const temporaryElements = [sharedCard, sharedTitle, hero, title];
++      const clearNames = () => temporaryElements.forEach(element => element.style.removeProperty('view-transition-name'));
++      const namePair = (surface, heading) => {
++        surface.style.viewTransitionName = 'coffee-image';
++        heading.style.viewTransitionName = 'coffee-title';
++      };
++      const update = () => {
++        clearNames();
++        if (card) {
++          hero.style.setProperty('--coffee-image', card.style.getPropertyValue('--coffee-image'));
++          title.textContent = card.querySelector('.title').textContent;
++          hero.setAttribute('aria-label', title.textContent);
++          document.querySelector('#description').textContent = details[card.dataset.coffee];
++        }
++        listPage.hidden = Boolean(card);
++        detailPage.hidden = !card;
++        activeCard = card;
++        document.title = card ? `${title.textContent} | The Daily Grind` : 'The Daily Grind | Artisanal Coffee';
++        window.scrollTo(0, card ? 0 : listScroll);
++        if (runningTransition) namePair(card ? hero : sharedCard, card ? title : sharedTitle);
++      };
++      const focusHeading = () => (card ? title : document.querySelector('#list-heading')).focus({ preventScroll: true });
++
++      try {
++        if (!document.startViewTransition || reducedMotion.matches) {
++          update();
++        } else {
++          namePair(previousCard ? hero : sharedCard, previousCard ? title : sharedTitle);
++          runningTransition = document.startViewTransition(update);
++          // A skipped animation must still finish the DOM update before focus moves.
++          await runningTransition.updateCallbackDone;
++          focusHeading();
++          await runningTransition.finished;
++        }
++      } finally {
++        runningTransition = null;
++        clearNames();
++        focusHeading();
++      }
++    }
++
++    function navigate() {
++      // Serialize rapid clicks and history changes so snapshot names cannot collide.
++      navigation = navigation.then(() => showPage(cardFromLocation())).catch(error => {
++        console.error('Could not complete page transition:', error);
++      });
++    }
++    thumbnails.forEach(card => card.addEventListener('click', event => {
++      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      event.preventDefault();
++      history.pushState({ seasonalDetail: true }, '', card.hash);
++      navigate();
++    }));
++    document.querySelector('#back').addEventListener('click', event => {
++      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      event.preventDefault();
++      if (history.state?.seasonalDetail) history.back();
++      else {
++        history.replaceState(null, '', location.pathname + location.search);
++        navigate();
++      }
++    });
++    window.addEventListener('popstate', navigate);
++    window.addEventListener('hashchange', navigate);
++    reducedMotion.addEventListener('change', () => {
++      if (reducedMotion.matches) runningTransition?.skipTransition();
++    });
++    // Render deep links without an entrance animation.
++    if (cardFromLocation()) {
++      const initialCard = cardFromLocation();
++      hero.style.setProperty('--coffee-image', initialCard.style.getPropertyValue('--coffee-image'));
++      title.textContent = initialCard.querySelector('.title').textContent;
++      hero.setAttribute('aria-label', title.textContent);
++      document.querySelector('#description').textContent = details[initialCard.dataset.coffee];
++      listPage.hidden = true;
++      detailPage.hidden = false;
++      activeCard = initialCard;
++      document.title = `${title.textContent} | The Daily Grind`;
++      title.focus({ preventScroll: true });
++    }
++  </script>
+ </body>
+ 
+ </html>

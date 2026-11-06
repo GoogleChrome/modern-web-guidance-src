@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,155 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onINP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.js?module';
++
++    function sendToAnalytics(data) {
++      console.log('[INP Attribution]', data);
++      if (navigator.sendBeacon) {
++        // Send diagnostic payload to analytics endpoint when available
++        // navigator.sendBeacon('/analytics', JSON.stringify(data));
++      }
++    }
++
++    // 1. Use the web-vitals attribution build to measure INP and identify root causes
++    onINP(({ name, value, rating, id, attribution }) => {
++      const {
++        interactionTarget,
++        interactionTargetElement,
++        interactionType,
++        interactionTime,
++        nextPaintTime,
++        loadState,
++        inputDelay,
++        processingDuration,
++        presentationDelay,
++        longAnimationFrameEntries = [],
++      } = attribution;
++
++      // Determine which phase contributed most to the interaction latency
++      const phases = [
++        { phase: 'inputDelay', duration: inputDelay },
++        { phase: 'processingDuration', duration: processingDuration },
++        { phase: 'presentationDelay', duration: presentationDelay },
++      ];
++      const primaryBottleneck = phases.reduce((max, current) =>
++        current.duration > max.duration ? current : max
++      );
++
++      // Extract script attribution from Long Animation Frame (LoAF) entries
++      const scripts = longAnimationFrameEntries.flatMap((entry) =>
++        (entry.scripts || []).map((script) => ({
++          duration: script.duration,
++          invoker: script.invoker,
++          invokerType: script.invokerType,
++          sourceURL: script.sourceURL,
++          sourceFunctionName: script.sourceFunctionName,
++          sourceCharPosition: script.sourceCharPosition,
++          forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
++        }))
++      );
++
++      const slowestScript =
++        scripts.sort((a, b) => b.duration - a.duration)[0] || null;
++
++      const diagnosticReport = {
++        metric: name,
++        id,
++        value,
++        rating,
++        primaryBottleneck: primaryBottleneck.phase,
++        // Interaction target & context
++        interactionTarget,
++        interactionTargetElement,
++        interactionType,
++        interactionTime,
++        nextPaintTime,
++        loadState,
++        // Sub-part phase breakdown
++        inputDelay,
++        processingDuration,
++        presentationDelay,
++        // LoAF & script-level diagnostics
++        longAnimationFrameEntries,
++        slowestScript,
++        scripts,
++      };
++
++      sendToAnalytics(diagnosticReport);
++    }, { reportAllChanges: true });
++
++    // 2. Fallback / direct PerformanceObserver for Long Animation Frames (LoAF) and Event Timing
++    if ('PerformanceObserver' in window) {
++      const supported = PerformanceObserver.supportedEntryTypes || [];
++
++      if (supported.includes('long-animation-frame')) {
++        const loafObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            // Focus on long animation frames that block user interactions
++            if (entry.firstUIEventTimestamp > 0 && entry.blockingDuration > 0) {
++              const culpritScripts = (entry.scripts || [])
++                .filter((s) => s.duration > 5)
++                .sort((a, b) => b.duration - a.duration)
++                .map((s) => ({
++                  duration: s.duration,
++                  invoker: s.invoker,
++                  invokerType: s.invokerType,
++                  sourceURL: s.sourceURL,
++                  sourceFunctionName: s.sourceFunctionName,
++                  sourceCharPosition: s.sourceCharPosition,
++                  forcedStyleAndLayoutDuration: s.forcedStyleAndLayoutDuration,
++                }));
++
++              console.debug('[INP LoAF Diagnostic]', {
++                startTime: entry.startTime,
++                duration: entry.duration,
++                blockingDuration: entry.blockingDuration,
++                renderStart: entry.renderStart,
++                styleAndLayoutStart: entry.styleAndLayoutStart,
++                firstUIEventTimestamp: entry.firstUIEventTimestamp,
++                scripts: culpritScripts,
++              });
++            }
++          }
++        });
++        loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++      }
++
++      if (supported.includes('event')) {
++        const eventObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            if (!entry.interactionId) continue;
++
++            const inputDelay = entry.processingStart - entry.startTime;
++            const processingDuration = entry.processingEnd - entry.processingStart;
++            const presentationDelay = Math.max(
++              0,
++              entry.startTime + entry.duration - entry.processingEnd
++            );
++
++            if (entry.duration > 200) {
++              console.warn('[Slow Interaction Detected]', {
++                interactionId: entry.interactionId,
++                name: entry.name,
++                target: entry.target,
++                duration: entry.duration,
++                inputDelay,
++                processingDuration,
++                presentationDelay,
++              });
++            }
++          }
++        });
++        eventObserver.observe({
++          type: 'event',
++          durationThreshold: 40,
++          buffered: true,
++        });
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

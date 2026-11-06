@@ -1,0 +1,304 @@
+diff --git a/index.html b/index.html
+index 66c9173..31e21d9 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,156 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Locations Map */
++    .locations {
++      margin-top: 60px;
++    }
++
++    .locations>p {
++      text-align: center;
++      max-width: 600px;
++      margin: 0.5rem auto 0;
++    }
++
++    .map-viewport {
++      position: relative;
++      inline-size: 100%;
++      block-size: min(70vh, 560px);
++      margin-top: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      background: #efe6d8;
++      cursor: grab;
++
++      /* 2D scroll container */
++      overflow: auto;
++      /* Disable axis-locking ("railing") so diagonal / curved gestures pan freely */
++      scroll-axis-lock: none;
++      /* Keep panning from chaining to the page or triggering swipe navigation */
++      overscroll-behavior: none;
++    }
++
++    .map-viewport.is-dragging {
++      cursor: grabbing;
++      user-select: none;
++    }
++
++    .map-viewport:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Only disable native touch scrolling when the JS pointer fallback is active */
++    @supports not (scroll-axis-lock: none) {
++      .map-viewport {
++        touch-action: none;
++      }
++    }
++
++    .map-surface {
++      position: relative;
++      inline-size: 2400px;
++      block-size: 1600px;
++      background:
++        /* major avenues */
++        repeating-linear-gradient(90deg, transparent 0 296px, #fff 296px 304px),
++        repeating-linear-gradient(0deg, transparent 0 296px, #fff 296px 304px),
++        /* minor streets */
++        repeating-linear-gradient(90deg, transparent 0 98px, #faf6ef 98px 101px),
++        repeating-linear-gradient(0deg, transparent 0 98px, #faf6ef 98px 101px),
++        #efe6d8;
++    }
++
++    .map-river {
++      position: absolute;
++      inset: 0;
++      pointer-events: none;
++    }
++
++    .map-park {
++      position: absolute;
++      background: #c5dcb0;
++      border-radius: 6px;
++      display: grid;
++      place-items: center;
++      color: #4f6b3a;
++      font-size: 0.85rem;
++      font-weight: 600;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++    }
++
++    .map-label {
++      position: absolute;
++      color: #8d7b6a;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      pointer-events: none;
++    }
++
++    .map-pin {
++      position: absolute;
++      transform: translate(-50%, -100%);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-decoration: none;
++      color: var(--text);
++    }
++
++    .map-pin__marker {
++      inline-size: 36px;
++      block-size: 36px;
++      border-radius: 50% 50% 50% 0;
++      transform: rotate(-45deg);
++      background: var(--primary);
++      border: 3px solid var(--accent);
++      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
++      display: grid;
++      place-items: center;
++    }
++
++    .map-pin__marker::after {
++      content: "";
++      inline-size: 10px;
++      block-size: 10px;
++      border-radius: 50%;
++      background: var(--accent);
++    }
++
++    .map-pin__card {
++      order: -1;
++      margin-bottom: 8px;
++      background: white;
++      padding: 8px 12px;
++      border-radius: 6px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++      font-size: 0.8rem;
++      line-height: 1.35;
++      white-space: nowrap;
++      text-align: center;
++    }
++
++    .map-pin__card strong {
++      display: block;
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    .map-pin:hover .map-pin__marker,
++    .map-pin:focus-visible .map-pin__marker {
++      background: var(--accent);
++      border-color: var(--primary);
++    }
++
++    .map-pin:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 6px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +345,59 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" style="text-align: center;">Find a Daily Grind Near You</h2>
++      <p>Drag, swipe, or scroll in any direction to explore our cafés around town.</p>
++      <div class="map-viewport" tabindex="0" role="region" aria-label="Coffee shop locations map. Use arrow keys to pan.">
++        <div class="map-surface">
++          <svg class="map-river" viewBox="0 0 2400 1600" preserveAspectRatio="none" aria-hidden="true">
++            <path d="M-20 700 C 300 640, 520 900, 820 960 S 1300 760, 1560 980 S 2050 1300, 2420 1180"
++              fill="none" stroke="#a9cbe0" stroke-width="70" stroke-linecap="round" />
++          </svg>
++          <div class="map-park" style="left: 1310px; top: 110px; width: 280px; height: 180px;">Grove Park</div>
++          <div class="map-park" style="left: 110px; top: 110px; width: 180px; height: 280px;">Elm Commons</div>
++          <div class="map-park" style="left: 1710px; top: 1310px; width: 380px; height: 180px;">Lakeshore Green</div>
++          <span class="map-label" style="left: 40px; top: 1460px;">Old Town</span>
++          <span class="map-label" style="left: 640px; top: 420px;">Downtown</span>
++          <span class="map-label" style="left: 1900px; top: 700px;">University District</span>
++          <span class="map-label" style="left: 1000px; top: 1040px;">Harbor</span>
++          <span class="map-label" style="left: 2050px; top: 160px;">Eastside</span>
++          <a class="map-pin" href="/locations/downtown-roastery" style="left: 620px; top: 560px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Downtown Roastery</strong>142 Main St · 6am–8pm</span>
++          </a>
++          <a class="map-pin" href="/locations/riverside-kiosk" style="left: 1180px; top: 880px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Riverside Kiosk</strong>8 Harbor Walk · 7am–5pm</span>
++          </a>
++          <a class="map-pin" href="/locations/old-town-corner" style="left: 340px; top: 1220px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Old Town Corner</strong>77 Elm Ave · 6am–6pm</span>
++          </a>
++          <a class="map-pin" href="/locations/parkview-café" style="left: 1640px; top: 420px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Parkview Café</strong>310 Grove Rd · 7am–7pm</span>
++          </a>
++          <a class="map-pin" href="/locations/university-square" style="left: 2020px; top: 1060px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>University Square</strong>21 College Blvd · 6am–10pm</span>
++          </a>
++          <a class="map-pin" href="/locations/market-hall-bar" style="left: 900px; top: 260px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Market Hall Bar</strong>5 Market Ln · 8am–4pm</span>
++          </a>
++          <a class="map-pin" href="/locations/eastside-drive-thru" style="left: 2180px; top: 300px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Eastside Drive-Thru</strong>990 Sunrise Hwy · 5am–9pm</span>
++          </a>
++          <a class="map-pin" href="/locations/lakeshore-loft" style="left: 1460px; top: 1400px;">
++            <span class="map-pin__marker" aria-hidden="true"></span>
++            <span class="map-pin__card"><strong>Lakeshore Loft</strong>64 Shore Dr · 7am–6pm</span>
++          </a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +410,82 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const viewport = document.querySelector('.map-viewport');
++      if (!viewport) return;
++
++      // Start centered on the map
++      viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
++      viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
++
++      // Native CSS handles unrestricted 2D panning where scroll-axis-lock is supported.
++      if (CSS.supports('scroll-axis-lock', 'none')) return;
++
++      // Fallback: apply raw (unlocked) 2D deltas directly to scrollLeft/scrollTop.
++      viewport.addEventListener('wheel', (e) => {
++        if (e.ctrlKey) return; // leave pinch-zoom / ctrl+wheel to the browser
++        e.preventDefault();
++        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? viewport.clientHeight : 1;
++        viewport.scrollLeft += e.deltaX * unit;
++        viewport.scrollTop += e.deltaY * unit;
++      }, { passive: false });
++
++      const DRAG_THRESHOLD = 5;
++      let start = null;
++      let last = null;
++      let dragging = false;
++      let suppressClick = false;
++
++      viewport.addEventListener('pointerdown', (e) => {
++        const rect = viewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
++          e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
++        ) return;
++        start = last = { x: e.clientX, y: e.clientY, id: e.pointerId };
++        dragging = false;
++      });
++
++      viewport.addEventListener('pointermove', (e) => {
++        if (!last || e.pointerId !== last.id) return;
++        if (!dragging) {
++          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < DRAG_THRESHOLD) return;
++          // Capture only once a real drag starts so taps on location pins still click.
++          dragging = true;
++          viewport.setPointerCapture(e.pointerId);
++          viewport.classList.add('is-dragging');
++        }
++        viewport.scrollLeft -= e.clientX - last.x;
++        viewport.scrollTop -= e.clientY - last.y;
++        last = { x: e.clientX, y: e.clientY, id: e.pointerId };
++      });
++
++      const endPan = () => {
++        suppressClick = dragging;
++        start = last = null;
++        dragging = false;
++        viewport.classList.remove('is-dragging');
++      };
++      viewport.addEventListener('pointerup', endPan);
++      viewport.addEventListener('pointercancel', endPan);
++
++      // Don't follow a pin link when the gesture was a drag.
++      viewport.addEventListener('click', (e) => {
++        if (suppressClick) {
++          e.preventDefault();
++          e.stopPropagation();
++          suppressClick = false;
++        }
++      }, true);
++      viewport.addEventListener('pointerdown', () => { suppressClick = false; }, true);
++      // Prevent native link/image dragging from hijacking the pan.
++      viewport.addEventListener('dragstart', (e) => e.preventDefault());
++    })();
++  </script>
+ </body>
+ 
+ </html>

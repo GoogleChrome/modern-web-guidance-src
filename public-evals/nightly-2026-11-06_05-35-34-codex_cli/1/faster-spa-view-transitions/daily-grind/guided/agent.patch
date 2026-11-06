@@ -1,0 +1,276 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..f85f9ad
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,73 @@
++(() => {
++  const views = new Map(
++    [...document.querySelectorAll('[data-view]')].map(view => [view.dataset.view, view])
++  );
++  const links = document.querySelectorAll('[data-view-link]');
++  const scrollPositions = new Map();
++  const titles = { home: 'Artisanal Coffee', menu: 'Menu', locations: 'Locations', rewards: 'Rewards', account: 'My Account' };
++  let activeView;
++
++  // Hash routes also work on static hosting without a server-side route fallback.
++  function routeFromHash() {
++    const route = window.location.hash.slice(2);
++    return window.location.hash.startsWith('#/') && views.has(route) ? route : 'home';
++  }
++
++  function showView() {
++    const nextView = routeFromHash();
++    if (nextView === activeView) return;
++    if (activeView) scrollPositions.set(activeView, window.scrollY);
++
++    // Never replace, detach, or rebuild a visited view's DOM.
++    for (const [name, view] of views) {
++      const inactive = name !== nextView;
++      view.classList.toggle('inactive', inactive);
++      view.inert = inactive;
++      view.setAttribute('aria-hidden', String(inactive));
++    }
++    for (const link of links) {
++      if (link.dataset.viewLink === nextView) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    }
++    document.title = `The Daily Grind | ${titles[nextView]}`;
++    const navigating = activeView !== undefined;
++    activeView = nextView;
++    if (navigating) {
++      views.get(nextView).focus({ preventScroll: true });
++      window.scrollTo({ top: scrollPositions.get(nextView) || 0, behavior: 'instant' });
++    }
++  }
++
++  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
++  window.addEventListener('hashchange', showView);
++  // Re-selecting the active route should not jump to the top or add history.
++  for (const link of links) {
++    link.addEventListener('click', event => {
++      if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey &&
++          link.dataset.viewLink === activeView) event.preventDefault();
++    });
++  }
++  showView();
++
++  document.getElementById('menu-filter').addEventListener('change', event => {
++    for (const card of document.querySelectorAll('[data-category]')) {
++      card.hidden = event.target.value !== 'all' && card.dataset.category !== event.target.value;
++    }
++  });
++
++  document.getElementById('location-search').addEventListener('input', event => {
++    const query = event.target.value.trim().toLowerCase();
++    let count = 0;
++    for (const location of document.querySelectorAll('[data-location]')) {
++      location.hidden = !location.dataset.location.includes(query);
++      if (!location.hidden) count++;
++    }
++    document.getElementById('location-count').textContent = count
++      ? `${count} location${count === 1 ? '' : 's'}` : 'No locations match your search.';
++  });
++
++  document.getElementById('account-form').addEventListener('submit', event => {
++    event.preventDefault();
++    document.getElementById('account-status').textContent = 'Preferences saved for this visit.';
++  });
++})();
+diff --git a/index.html b/index.html
+index 66c9173..f41192a 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,46 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 5px;
++    }
++
++    .view-stack { position: relative; }
++
++    /* Keep these five bounded views mounted and retain their rendering state. */
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 0 auto;
++      block-size: 0;
++      overflow: clip;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive { display: none; }
++    }
++
++    .view-heading { margin-bottom: 12px; }
++    .field { display: grid; gap: 6px; margin: 16px 0; }
++    input, select, button { font: inherit; }
++    input, select { padding: 10px; border: 1px solid #8d6e63; border-radius: 4px; }
++    button.btn { border: 0; cursor: pointer; }
++    .account-form { max-width: 480px; }
++    details { padding: 16px 0; border-bottom: 1px solid var(--secondary); }
++    summary { cursor: pointer; font-weight: 600; }
++    :focus-visible { outline: 3px solid #b56800; outline-offset: 4px; }
++    nav :focus-visible { outline-color: var(--accent); }
++
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,44 +197,126 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Main navigation">
++    <a class="logo" href="#/home" data-view-link="home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/menu" data-view-link="menu">Menu</a></li>
++      <li><a href="#/locations" data-view-link="locations">Locations</a></li>
++      <li><a href="#/rewards" data-view-link="rewards">Rewards</a></li>
++      <li><a href="#/account" data-view-link="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <main class="view-stack">
++  <section id="view-home" class="spa-view" data-view="home" tabindex="-1" aria-label="Home">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#/menu" data-view-link="menu" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="#/menu" data-view-link="menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="#/menu" data-view-link="menu" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="#/menu" data-view-link="menu" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++  </div>
++  </section>
++
++  <section id="view-menu" class="spa-view inactive" data-view="menu" tabindex="-1" aria-labelledby="menu-heading" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="menu-heading" class="view-heading">Our Menu</h1>
++      <p>Find your daily favorite, from a bold espresso to a slow-steeped cold brew.</p>
++      <label class="field" for="menu-filter">Browse drinks
++        <select id="menu-filter">
++          <option value="all">All drinks</option>
++          <option value="seasonal">Seasonal favorites</option>
++          <option value="coffee">Hot coffee</option>
++          <option value="cold">Cold coffee</option>
++        </select>
++      </label>
++      <div class="grid">
++        <article class="card" data-category="seasonal">
++          <h2>Maple Oat Latte</h2>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <details><summary>Drink details</summary><p>Espresso, steamed oat milk, and maple syrup. Available hot or iced.</p></details>
++        </article>
++        <article class="card" data-category="coffee">
++          <h2>Dark Roast Espresso</h2>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <details><summary>Drink details</summary><p>A concentrated shot of our locally roasted dark blend. Enjoy on its own or with steamed milk.</p></details>
++        </article>
++        <article class="card" data-category="cold">
++          <h2>Cold Brew</h2>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <details><summary>Drink details</summary><p>Slow-steeped coffee served over ice. Add your favorite milk to taste.</p></details>
++        </article>
++      </div>
++    </div>
++  </section>
++
++  <section id="view-locations" class="spa-view inactive" data-view="locations" tabindex="-1" aria-labelledby="locations-heading" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="locations-heading" class="view-heading">Locations</h1>
++      <p>Find a place to make yourself at home.</p>
++      <label class="field" for="location-search">Search by neighborhood
++        <input id="location-search" type="search" placeholder="Try Downtown or Riverside" aria-controls="location-results">
++      </label>
++      <p id="location-count" role="status">2 locations</p>
++      <div id="location-results" class="grid">
++        <article class="card" data-location="downtown"><h2>Downtown</h2><p>A cozy spot for your morning coffee or an afternoon pause.</p></article>
++        <article class="card" data-location="riverside"><h2>Riverside</h2><p>Take a break and enjoy your favorite brew by the river.</p></article>
++      </div>
++    </div>
++  </section>
++
++  <section id="view-rewards" class="spa-view inactive" data-view="rewards" tabindex="-1" aria-labelledby="rewards-heading" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="rewards-heading" class="view-heading">Daily Grind Rewards</h1>
++      <p>Make your daily coffee a little more rewarding.</p>
++      <div class="grid">
++        <article class="card"><h2>Sip</h2><p>Enjoy your favorite drinks and discover something new.</p></article>
++        <article class="card"><h2>Collect</h2><p>Ask your barista about earning rewards with your visits.</p></article>
++        <article class="card"><h2>Enjoy</h2><p>Find out about member treats and seasonal offers in store.</p></article>
++      </div>
++      <details><summary>How do I get started?</summary><p>Ask at your local Daily Grind for current rewards availability and enrollment details.</p></details>
++      <a class="btn" href="#/account" data-view-link="account">My Account</a>
++    </div>
++  </section>
++
++  <section id="view-account" class="spa-view inactive" data-view="account" tabindex="-1" aria-labelledby="account-heading" aria-hidden="true" inert>
++    <div class="container">
++      <h1 id="account-heading" class="view-heading">My Account</h1>
++      <p>Set your coffee preferences. Your changes stay here while you explore the site.</p>
++      <form id="account-form" class="account-form">
++        <label class="field" for="account-name">Name<input id="account-name" name="name" autocomplete="name"></label>
++        <label class="field" for="account-email">Email<input id="account-email" name="email" type="email" autocomplete="email"></label>
++        <label class="field" for="favorite-drink">Favorite drink
++          <select id="favorite-drink" name="drink"><option>Maple Oat Latte</option><option>Dark Roast Espresso</option><option>Cold Brew</option></select>
++        </label>
++        <button class="btn" type="submit">Save preferences</button>
++        <p>This demo keeps preferences for this visit only.</p>
++        <p id="account-status" role="status"></p>
++      </form>
++    </div>
++  </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +329,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./app.js" defer></script>
+ </body>
+ 
+ </html>

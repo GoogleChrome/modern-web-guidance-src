@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+index 66c9173..2a5a49e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,65 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .floating-panel {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1001;
++      width: 280px;
++      max-width: calc(100vw - 24px);
++      max-height: calc(100dvh - 24px);
++      overflow: auto;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 8px 30px rgb(62 39 35 / 20%);
++    }
++
++    .panel-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 12px 16px;
++      background: var(--secondary);
++    }
++
++    .panel-heading h2 {
++      font-size: 1rem;
++    }
++
++    .drag-handle {
++      display: none;
++      padding: 6px 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++    }
++
++    .drag-handle.is-ready {
++      display: inline-block;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle.dragging {
++      cursor: grabbing;
++    }
++
++    .drag-handle:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .panel-content {
++      padding: 16px;
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +266,86 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="floating-panel" aria-labelledby="coffee-panel-title">
++    <div class="panel-heading">
++      <h2 id="coffee-panel-title">Your next coffee</h2>
++      <button class="drag-handle" type="button"
++        aria-label="Move coffee panel. Drag or use arrow keys.">Move</button>
++    </div>
++    <div class="panel-content">
++      <p>A little pick-me-up, wherever your day takes you.</p>
++      <a href="/order-online" class="btn">Order a coffee</a>
++    </div>
++  </aside>
++
++  <script>
++    const panel = document.querySelector('.floating-panel');
++    const handle = panel.querySelector('.drag-handle');
++    let drag = null;
++
++    function moveTo(left, top) {
++      const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++      const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++      panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++      panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++      panel.style.right = 'auto';
++      panel.style.bottom = 'auto';
++    }
++
++    handle.addEventListener('pointerdown', (event) => {
++      if (event.button !== 0 || !event.isPrimary || drag) return;
++      const rect = panel.getBoundingClientRect();
++      drag = {
++        pointerId: event.pointerId,
++        offsetX: event.clientX - rect.left,
++        offsetY: event.clientY - rect.top,
++      };
++      handle.setPointerCapture(event.pointerId);
++      handle.classList.add('dragging');
++    });
++
++    handle.addEventListener('pointermove', (event) => {
++      if (drag?.pointerId !== event.pointerId) return;
++      moveTo(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++    });
++
++    function stopDragging(event) {
++      if (drag?.pointerId !== event.pointerId) return;
++      drag = null;
++      handle.classList.remove('dragging');
++      if (handle.hasPointerCapture(event.pointerId)) {
++        handle.releasePointerCapture(event.pointerId);
++      }
++    }
++
++    handle.addEventListener('pointerup', stopDragging);
++    handle.addEventListener('pointercancel', stopDragging);
++    handle.addEventListener('lostpointercapture', stopDragging);
++
++    handle.addEventListener('keydown', (event) => {
++      const directions = {
++        ArrowLeft: [-15, 0],
++        ArrowRight: [15, 0],
++        ArrowUp: [0, -15],
++        ArrowDown: [0, 15],
++      };
++      if (!Object.hasOwn(directions, event.key)) return;
++      event.preventDefault();
++      const rect = panel.getBoundingClientRect();
++      const [dx, dy] = directions[event.key];
++      moveTo(rect.left + dx, rect.top + dy);
++    });
++
++    function keepInViewport() {
++      const rect = panel.getBoundingClientRect();
++      moveTo(rect.left, rect.top);
++    }
++
++    window.addEventListener('resize', keepInViewport);
++    new ResizeObserver(keepInViewport).observe(panel);
++    handle.classList.add('is-ready');
++  </script>
++
+ </body>
+ 
+ </html>

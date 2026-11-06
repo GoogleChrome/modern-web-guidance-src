@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,94 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Elevate priority for the LCP video poster image -->
++  <link rel="preload" href="poster.jpg" as="image" fetchpriority="high">
++
++  <!-- Preload critical header font (fonts are high priority by default) -->
++  <link rel="preload" href="brand-font.woff2" as="font" type="font/woff2" crossorigin>
++
++  <!-- Deprioritize secondary font to avoid network contention with critical assets -->
++  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
++
++  <style>
++    @font-face {
++      font-family: 'BrandFont';
++      src: url('brand-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'SecondaryFont';
++      src: url('secondary-font.woff2') format('woff2');
++      font-display: swap;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: 'SecondaryFont', system-ui, sans-serif;
++      font-size-adjust: from-font;
++      background-color: #0f172a;
++      color: #f8fafc;
++      display: grid;
++      place-items: center;
++      min-height: 100dvh;
++    }
++
++    main {
++      max-width: 960px;
++      width: 100%;
++      text-align: center;
++    }
++
++    h1 {
++      font-family: 'BrandFont', system-ui, sans-serif;
++      font-size-adjust: from-font;
++      font-size: clamp(2rem, 5vw, 3.5rem);
++      margin-block: 0 1rem;
++    }
++
++    p {
++      margin-block: 0 2rem;
++      color: #94a3b8;
++    }
++
++    video {
++      width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      border-radius: 0.5rem;
++      background-color: #1e293b;
++      display: block;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Next-Gen Video</h1>
++      <p>Minimal LCP-optimized video experience</p>
++    </header>
++
++    <video
++      controls
++      width="1280"
++      height="720"
++      poster="poster.jpg"
++      preload="none"
++    >
++      <source src="video.webm" type="video/webm">
++      <source src="video.mp4" type="video/mp4">
++      <track src="captions.vtt" kind="captions" srclang="en" label="English">
++    </video>
++  </main>
++</body>
++</html>

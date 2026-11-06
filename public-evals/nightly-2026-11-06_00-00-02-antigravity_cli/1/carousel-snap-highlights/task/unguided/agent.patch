@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,23 +99,75 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .carousel {
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      gap: 30px;
++      padding: 50px calc(50% - 150px);
+       margin-top: 20px;
++      scroll-behavior: smooth;
++      align-items: center;
+     }
+ 
++    .carousel-item {
++      flex: 0 0 300px;
++      scroll-snap-align: center;
++      container-type: scroll-state;
++    }
++
+     .card {
+-      background: white;
++      background-color: #e0e0e0;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: none;
+       text-align: center;
++      transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+     }
+ 
++    @container scroll-state(snapped: x) {
++      .card {
++        transform: scale(1.15);
++        background-color: #007bff;
++        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
++      }
++    }
++
++    @container scroll-state(snapped: inline) {
++      .card {
++        transform: scale(1.15);
++        background-color: #007bff;
++        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel {
++        scroll-behavior: auto;
++      }
++
++      .card {
++        transition: none;
++        transform: none;
++      }
++
++      @container scroll-state(snapped: x) {
++        .card {
++          transition: none;
++          transform: none;
++        }
++      }
++
++      @container scroll-state(snapped: inline) {
++        .card {
++          transition: none;
++          transform: none;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -176,23 +228,29 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="carousel">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

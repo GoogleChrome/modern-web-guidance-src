@@ -1,0 +1,577 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,235 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Gift Card Designer */
++    .gift-designer {
++      margin-top: 60px;
++    }
++
++    .gift-designer>h2 {
++      text-align: center;
++    }
++
++    .gift-designer .subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    .designer-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
++      gap: 30px;
++      align-items: center;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    @media (max-width: 760px) {
++      .designer-layout {
++        grid-template-columns: 1fr;
++        padding: 20px;
++      }
++    }
++
++    .card-stage {
++      display: flex;
++      justify-content: center;
++    }
++
++    /* The canvas renders its laid-out children (via HTML-in-Canvas) */
++    #gift-canvas {
++      display: block;
++      width: 100%;
++      max-width: 480px;
++      aspect-ratio: 8 / 5;
++      border-radius: 16px;
++      box-shadow: 0 10px 25px rgba(62, 39, 35, 0.25);
++    }
++
++    /* The styled card that gets drawn into the canvas and exported */
++    #export_element {
++      --card-bg: #4e342e;
++      --card-fg: #fafafa;
++      position: relative;
++      width: 100%;
++      max-width: 480px;
++      aspect-ratio: 8 / 5;
++      overflow: hidden;
++      border-radius: 16px;
++      padding: 26px 28px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      background-color: var(--card-bg);
++      background-image:
++        radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.18) 0 70px, transparent 71px),
++        radial-gradient(circle at 100% 100%, rgba(255, 171, 64, 0.35) 0 110px, transparent 111px);
++      color: var(--card-fg);
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    }
++
++    /* Inside the canvas the card fills the canvas box exactly */
++    #gift-canvas>#export_element {
++      max-width: none;
++      height: 100%;
++    }
++
++    /* Fallback (no HTML-in-Canvas support): card shown as regular HTML */
++    .card-stage.is-fallback #export_element {
++      box-shadow: 0 10px 25px rgba(62, 39, 35, 0.25);
++    }
++
++    .gift-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++    }
++
++    .gift-card-brand {
++      font-weight: bold;
++      letter-spacing: 2px;
++      font-size: 0.95rem;
++    }
++
++    .gift-card-label {
++      font-size: 0.7rem;
++      letter-spacing: 3px;
++      text-transform: uppercase;
++      opacity: 0.85;
++    }
++
++    .gift-card-cup {
++      font-size: 2.2rem;
++      line-height: 1;
++    }
++
++    .gift-card-body {
++      min-width: 0;
++    }
++
++    .gift-card-to {
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      opacity: 0.85;
++    }
++
++    .gift-card-name {
++      font-size: 1.7rem;
++      font-weight: bold;
++      line-height: 1.2;
++      overflow-wrap: anywhere;
++    }
++
++    .gift-card-message {
++      margin-top: 6px;
++      font-family: Georgia, 'Times New Roman', serif;
++      font-style: italic;
++      font-size: 1rem;
++      line-height: 1.4;
++      overflow-wrap: anywhere;
++    }
++
++    .designer-controls {
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    .designer-controls label,
++    .designer-controls legend {
++      display: block;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .designer-controls input[type="text"],
++    .designer-controls textarea {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      resize: vertical;
++    }
++
++    .designer-controls input[type="text"]:focus,
++    .designer-controls textarea:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .char-count {
++      display: block;
++      text-align: right;
++      font-size: 0.75rem;
++      color: #8d6e63;
++    }
++
++    .designer-controls fieldset {
++      border: none;
++    }
++
++    .swatches {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .swatch input {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++    }
++
++    .swatch span {
++      display: block;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      background: var(--swatch);
++      border: 3px solid white;
++      box-shadow: 0 0 0 1px var(--secondary);
++      cursor: pointer;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .swatch input:checked+span {
++      box-shadow: 0 0 0 3px var(--accent);
++      transform: scale(1.08);
++    }
++
++    .swatch input:focus-visible+span {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .designer-controls .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++      align-self: flex-start;
++    }
++
++    .designer-controls .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .export-status {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      min-height: 1.3em;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +421,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="gift-designer" aria-labelledby="gift-designer-title">
++      <h2 id="gift-designer-title">Design a Gift Card</h2>
++      <p class="subtitle">Personalize a Daily Grind gift card, then download it to share.</p>
++
++      <div class="designer-layout">
++        <div class="card-stage" id="card-stage">
++          <!-- layoutsubtree: children are laid out and drawn into the canvas via drawElementImage() -->
++          <canvas id="gift-canvas" layoutsubtree role="img" aria-label="Gift card preview">
++            <div id="export_element">
++              <div class="gift-card-top">
++                <div>
++                  <div class="gift-card-brand">THE DAILY GRIND</div>
++                  <div class="gift-card-label">Gift Card</div>
++                </div>
++                <div class="gift-card-cup" aria-hidden="true">&#9749;</div>
++              </div>
++              <div class="gift-card-body">
++                <div class="gift-card-to">For</div>
++                <div class="gift-card-name" id="card-name">A Coffee Lover</div>
++                <div class="gift-card-message" id="card-message">Enjoy a cup on me!</div>
++              </div>
++            </div>
++          </canvas>
++        </div>
++
++        <form class="designer-controls" id="gift-form" novalidate>
++          <div>
++            <label for="gift-name">Recipient name</label>
++            <input type="text" id="gift-name" maxlength="30" placeholder="A Coffee Lover" autocomplete="off">
++          </div>
++          <div>
++            <label for="gift-message">Custom message</label>
++            <textarea id="gift-message" rows="3" maxlength="120" placeholder="Enjoy a cup on me!"
++              aria-describedby="gift-message-count"></textarea>
++            <span class="char-count" id="gift-message-count">0 / 120</span>
++          </div>
++          <fieldset>
++            <legend>Background color</legend>
++            <div class="swatches">
++              <label class="swatch" title="Espresso"><input type="radio" name="gift-bg" value="#4e342e"
++                  data-fg="#fafafa" checked aria-label="Espresso"><span style="--swatch:#4e342e"></span></label>
++              <label class="swatch" title="Latte"><input type="radio" name="gift-bg" value="#d7ccc8" data-fg="#3e2723"
++                  aria-label="Latte"><span style="--swatch:#d7ccc8"></span></label>
++              <label class="swatch" title="Caramel"><input type="radio" name="gift-bg" value="#ffab40"
++                  data-fg="#3e2723" aria-label="Caramel"><span style="--swatch:#ffab40"></span></label>
++              <label class="swatch" title="Matcha"><input type="radio" name="gift-bg" value="#5b7f4f" data-fg="#fafafa"
++                  aria-label="Matcha"><span style="--swatch:#5b7f4f"></span></label>
++              <label class="swatch" title="Berry"><input type="radio" name="gift-bg" value="#8e3b5a" data-fg="#fafafa"
++                  aria-label="Berry"><span style="--swatch:#8e3b5a"></span></label>
++              <label class="swatch" title="Midnight"><input type="radio" name="gift-bg" value="#263238"
++                  data-fg="#fafafa" aria-label="Midnight"><span style="--swatch:#263238"></span></label>
++            </div>
++          </fieldset>
++          <button type="submit" class="btn" id="gift-export">Download Gift Card</button>
++          <p class="export-status" id="export-status" role="status" aria-live="polite"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +492,269 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('gift-canvas');
++      const card = document.getElementById('export_element');
++      const stage = document.getElementById('card-stage');
++      const form = document.getElementById('gift-form');
++      const nameInput = document.getElementById('gift-name');
++      const messageInput = document.getElementById('gift-message');
++      const messageCount = document.getElementById('gift-message-count');
++      const nameOut = document.getElementById('card-name');
++      const messageOut = document.getElementById('card-message');
++      const exportBtn = document.getElementById('gift-export');
++      const status = document.getElementById('export-status');
++
++      const DEFAULT_NAME = 'A Coffee Lover';
++      const DEFAULT_MESSAGE = 'Enjoy a cup on me!';
++      const MIN_EXPORT_SCALE = 2; // export at >= 2x for crisp images
++
++      const ctx = canvas.getContext('2d');
++
++      // Feature detection for the HTML-in-Canvas API
++      // (canvas[layoutsubtree] + ctx.drawElementImage + canvas paint event).
++      const supportsHTMLInCanvas =
++        !!ctx &&
++        typeof ctx.drawElementImage === 'function' &&
++        'onpaint' in HTMLCanvasElement.prototype;
++
++      const requestPaint = () => {
++        if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
++      };
++
++      // ---- Card content updates (textContent only: user input is never parsed as HTML) ----
++      function updateCard() {
++        nameOut.textContent = nameInput.value.trim() || DEFAULT_NAME;
++        messageOut.textContent = messageInput.value.trim() || DEFAULT_MESSAGE;
++        messageCount.textContent = `${messageInput.value.length} / ${messageInput.maxLength}`;
++
++        const selected = form.querySelector('input[name="gift-bg"]:checked');
++        card.style.setProperty('--card-bg', selected.value);
++        card.style.setProperty('--card-fg', selected.dataset.fg);
++
++        // Child rendering changes trigger a paint event automatically;
++        // requesting one explicitly keeps us in sync if the UA batches.
++        requestPaint();
++      }
++
++      nameInput.addEventListener('input', updateCard);
++      messageInput.addEventListener('input', updateCard);
++      form.addEventListener('change', updateCard);
++
++      // ---- HTML-in-Canvas rendering path ----
++      let paintWaiters = [];
++
++      function waitForPaint(timeout = 1000) {
++        return new Promise((resolve) => {
++          const timer = setTimeout(() => {
++            paintWaiters = paintWaiters.filter((w) => w !== done);
++            resolve();
++          }, timeout);
++          const done = () => { clearTimeout(timer); resolve(); };
++          paintWaiters.push(done);
++          requestPaint();
++        });
++      }
++
++      function setupHTMLInCanvas() {
++        // Keep the canvas backing store matched to its rendered size so the
++        // drawn element is pixel-perfect (and at least 2x for export).
++        const resize = (cssW, cssH, devW, devH) => {
++          const scale = Math.max(devW / cssW || 1, MIN_EXPORT_SCALE);
++          const w = Math.round(Math.max(devW, cssW * scale));
++          const h = Math.round(Math.max(devH, cssH * scale));
++          if (canvas.width !== w || canvas.height !== h) {
++            canvas.width = w; // resizing clears the canvas...
++            canvas.height = h;
++            requestPaint(); // ...so repaint
++          }
++        };
++
++        const ro = new ResizeObserver(([entry]) => {
++          const css = entry.contentBoxSize?.[0];
++          const dev = entry.devicePixelContentBoxSize?.[0];
++          const cssW = css ? css.inlineSize : entry.contentRect.width;
++          const cssH = css ? css.blockSize : entry.contentRect.height;
++          if (!cssW || !cssH) return;
++          const dpr = window.devicePixelRatio || 1;
++          resize(cssW, cssH, dev ? dev.inlineSize : cssW * dpr, dev ? dev.blockSize : cssH * dpr);
++        });
++        try {
++          ro.observe(canvas, { box: 'device-pixel-content-box' });
++        } catch {
++          ro.observe(canvas); // device-pixel-content-box unsupported
++        }
++
++        // Draw inside the paint event: it fires after layout/style of the
++        // canvas children is up to date, right before the canvas is presented.
++        canvas.addEventListener('paint', () => {
++          ctx.reset();
++          const transform = ctx.drawElementImage(card, 0, 0, canvas.width, canvas.height);
++          // Keep the element's hit-testing / a11y box aligned with where it was drawn.
++          if (transform) card.style.transform = transform.toString();
++
++          const waiters = paintWaiters;
++          paintWaiters = [];
++          waiters.forEach((fn) => fn());
++        });
++
++        requestPaint();
++      }
++
++      // ---- Fallback path: show the card as normal HTML, rasterize with 2D API on export ----
++      function setupFallback() {
++        // Canvas children are fallback content and wouldn't render, so move the card out.
++        stage.classList.add('is-fallback');
++        stage.appendChild(card);
++        canvas.remove();
++      }
++
++      function wrapLines(c, text, maxWidth, maxLines) {
++        const words = text.split(/\s+/).filter(Boolean);
++        const lines = [];
++        let line = '';
++        const pushBroken = (word) => {
++          // Break overly long words character-by-character
++          let chunk = '';
++          for (const ch of word) {
++            if (c.measureText(chunk + ch).width > maxWidth && chunk) { lines.push(chunk); chunk = ch; }
++            else chunk += ch;
++          }
++          return chunk;
++        };
++        for (const word of words) {
++          const test = line ? `${line} ${word}` : word;
++          if (c.measureText(test).width <= maxWidth) { line = test; continue; }
++          if (line) lines.push(line);
++          line = c.measureText(word).width > maxWidth ? pushBroken(word) : word;
++        }
++        if (line) lines.push(line);
++        if (lines.length > maxLines) {
++          lines.length = maxLines;
++          let last = lines[maxLines - 1];
++          while (last && c.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
++          lines[maxLines - 1] = `${last}…`;
++        }
++        return lines;
++      }
++
++      async function renderFallbackCanvas() {
++        await document.fonts?.ready;
++        const rect = card.getBoundingClientRect();
++        const W = rect.width, H = rect.height;
++        const scale = Math.max(window.devicePixelRatio || 1, MIN_EXPORT_SCALE);
++        const out = document.createElement('canvas');
++        out.width = Math.round(W * scale);
++        out.height = Math.round(H * scale);
++        const c = out.getContext('2d');
++        c.scale(scale, scale);
++
++        const styles = getComputedStyle(card);
++        const bg = styles.getPropertyValue('--card-bg').trim();
++        const fg = styles.getPropertyValue('--card-fg').trim();
++        const font = styles.fontFamily;
++        const pad = 27;
++
++        // Card shape + background
++        c.beginPath();
++        c.roundRect(0, 0, W, H, 16);
++        c.clip();
++        c.fillStyle = bg;
++        c.fillRect(0, 0, W, H);
++        c.fillStyle = 'rgba(255,255,255,0.18)';
++        c.beginPath(); c.arc(W * 0.88, H * 0.18, 70, 0, Math.PI * 2); c.fill();
++        c.fillStyle = 'rgba(255,171,64,0.35)';
++        c.beginPath(); c.arc(W, H, 110, 0, Math.PI * 2); c.fill();
++
++        // Header
++        c.fillStyle = fg;
++        c.textBaseline = 'top';
++        c.font = `bold 15px ${font}`;
++        c.letterSpacing = '2px';
++        c.fillText('THE DAILY GRIND', pad, pad);
++        c.globalAlpha = 0.85;
++        c.font = `11px ${font}`;
++        c.letterSpacing = '3px';
++        c.fillText('GIFT CARD', pad, pad + 22);
++        c.globalAlpha = 1;
++        c.letterSpacing = '0px';
++        c.font = `35px ${font}`;
++        c.textAlign = 'right';
++        c.fillText('☕', W - pad, pad - 4);
++        c.textAlign = 'left';
++
++        // Body, laid out bottom-up
++        const maxW = W - pad * 2;
++        c.font = `italic 16px Georgia, 'Times New Roman', serif`;
++        const msgLines = wrapLines(c, messageOut.textContent, maxW, 3);
++        c.font = `bold 27px ${font}`;
++        const nameLines = wrapLines(c, nameOut.textContent, maxW, 2);
++
++        let y = H - pad - msgLines.length * 22;
++        c.font = `italic 16px Georgia, 'Times New Roman', serif`;
++        msgLines.forEach((l, i) => c.fillText(l, pad, y + i * 22));
++        y -= 6 + nameLines.length * 32;
++        c.font = `bold 27px ${font}`;
++        nameLines.forEach((l, i) => c.fillText(l, pad, y + i * 32));
++        y -= 20;
++        c.globalAlpha = 0.85;
++        c.font = `13px ${font}`;
++        c.letterSpacing = '1px';
++        c.fillText('FOR', pad, y);
++        return out;
++      }
++
++      // ---- Export ----
++      function canvasToBlob(source) {
++        return new Promise((resolve, reject) => {
++          source.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode image'))), 'image/png');
++        });
++      }
++
++      function fileName() {
++        const slug = (nameInput.value.trim() || 'gift')
++          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'gift';
++        return `daily-grind-gift-card-${slug}.png`;
++      }
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        exportBtn.disabled = true;
++        status.textContent = 'Preparing your gift card…';
++        try {
++          let source;
++          if (supportsHTMLInCanvas) {
++            // Make sure the canvas reflects the latest DOM state before reading pixels.
++            await waitForPaint();
++            source = canvas;
++          } else {
++            source = await renderFallbackCanvas();
++          }
++          const blob = await canvasToBlob(source);
++          const url = URL.createObjectURL(blob);
++          const link = document.createElement('a');
++          link.href = url;
++          link.download = fileName();
++          document.body.appendChild(link);
++          link.click();
++          link.remove();
++          setTimeout(() => URL.revokeObjectURL(url), 1000);
++          status.textContent = 'Your gift card has been downloaded.';
++        } catch (err) {
++          console.error(err);
++          status.textContent = 'Sorry, the gift card could not be exported. Please try again.';
++        } finally {
++          exportBtn.disabled = false;
++        }
++      });
++
++      if (supportsHTMLInCanvas) setupHTMLInCanvas();
++      else setupFallback();
++      updateCard();
++    })();
++  </script>
+ </body>
+ 
+ </html>

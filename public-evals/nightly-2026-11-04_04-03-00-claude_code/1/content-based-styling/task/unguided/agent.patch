@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,30 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Seasonal cards with an image switch to a side-by-side layout */
++    .seasonal .card:has(img) {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 20px;
++      text-align: left;
++    }
++
++    .seasonal .card:has(img) img {
++      flex: 1 1 120px;
++      width: 100%;
++      max-width: 100%;
++      aspect-ratio: 1;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .seasonal .card:has(img) .card-body {
++      flex: 2 1 160px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,15 +196,19 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&q=80"
++            alt="Latte with foam art in a ceramic cup">
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

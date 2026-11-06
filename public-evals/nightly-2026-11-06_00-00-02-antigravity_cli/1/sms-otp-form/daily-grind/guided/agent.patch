@@ -1,0 +1,491 @@
+diff --git a/index.html b/index.html
+index 66c9173..a48376a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,17 +152,187 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SMS Verification Section */
++    .verification-section {
++      margin-top: 48px;
++      background: white;
++      border-radius: 10px;
++      padding: 32px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border-top: 4px solid var(--accent);
++      max-width: 640px;
++      margin-inline: auto;
++    }
++
++    .verification-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .verification-intro {
++      text-align: center;
++      color: #5d4037;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: inline-block;
++      font-weight: 600;
++      color: var(--primary);
++      padding: 10px 0;
++      margin: -10px 0 4px 0;
++    }
++
++    .field-hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 8px;
++    }
++
++    .form-control {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 2px solid #8d6e63;
++      border-radius: 6px;
++      color: var(--text);
++      background-color: #fff;
++      box-sizing: border-box;
++    }
++
++    #otp-input {
++      font-family: ui-monospace, monospace;
++      font-size: 1.25rem;
++      letter-spacing: 0.35em;
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      box-sizing: border-box;
++    }
++
++    @media (pointer: coarse) {
++      .form-control,
++      #otp-input,
++      .btn-submit,
++      .btn-secondary {
++        min-height: 52px;
++      }
++    }
++
++    :where(a:any-link, button, input):focus-visible {
++      outline: 3px solid #bf360c;
++      outline-offset: 2px;
++    }
++
++    input:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .error-msg {
++      color: #b71c1c;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 6px;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++    }
++
++    .btn-submit {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 12px 24px;
++      font-size: 1rem;
++      font-weight: 600;
++      border-radius: 6px;
++      min-height: 48px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn-submit:hover {
++      background: #3e2723;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++      padding: 10px 18px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      border-radius: 6px;
++      min-height: 48px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .status-banner {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-weight: 500;
++    }
++
++    .status-banner.success {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #81c784;
++    }
++
++    .status-banner.info {
++      background-color: #fff8e1;
++      color: #4e342e;
++      border: 1px solid var(--accent);
++    }
++
++    .sms-preview {
++      margin-top: 20px;
++      padding: 14px;
++      background: #f5f5f5;
++      border-left: 4px solid var(--primary);
++      border-radius: 4px;
++      font-size: 0.85rem;
++    }
++
++    .sms-preview pre {
++      margin-top: 6px;
++      font-family: ui-monospace, monospace;
++      white-space: pre-wrap;
++      background: #fff;
++      padding: 8px 10px;
++      border-radius: 4px;
++      border: 1px solid #d7ccc8;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#sms-verification" id="nav-rewards-link">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -171,7 +341,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#sms-verification" id="hero-order-link" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +365,77 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="sms-verification" class="verification-section" aria-labelledby="verification-heading">
++      <h2 id="verification-heading">Rewards &amp; Online Order Verification</h2>
++      <p id="verification-context" class="verification-intro">
++        Verify your phone number with a one-time passcode to sign into Daily Grind Rewards or place an online order.
++      </p>
++
++      <form id="phone-form" action="/send-otp" method="POST">
++        <div class="form-group">
++          <label for="phone-input">Mobile phone number (optional to request a new code)</label>
++          <p id="phone-format-hint" class="field-hint">
++            Enter your mobile number to receive a 6-digit SMS verification code.
++          </p>
++          <input
++            type="tel"
++            id="phone-input"
++            name="phone"
++            class="form-control"
++            autocomplete="tel"
++            inputmode="tel"
++            enterkeyhint="send"
++            aria-describedby="phone-format-hint"
++            placeholder="+1 (555) 019-2834">
++        </div>
++        <div class="form-actions">
++          <button type="submit" id="send-code-btn" class="btn-secondary">Send SMS code</button>
++        </div>
++      </form>
++
++      <hr style="border: 0; border-top: 1px solid var(--secondary); margin: 24px 0;">
++
++      <form id="otp-form" action="/verify-otp" method="POST">
++        <div class="form-group">
++          <label for="otp-input">Verification code</label>
++          <!-- Place the hint above the input so autofill popovers and mobile keyboards do not obscure it -->
++          <p id="otp-format-hint" class="field-hint">
++            Enter the 6-digit code sent to your phone.
++          </p>
++          <!-- MANDATORY: Use a single input with type="text", inputmode="numeric", and autocomplete="one-time-code" -->
++          <input
++            type="text"
++            id="otp-input"
++            name="otp"
++            class="form-control"
++            inputmode="numeric"
++            autocomplete="one-time-code"
++            autocorrect="off"
++            autocapitalize="off"
++            spellcheck="false"
++            enterkeyhint="done"
++            pattern="\d{6}"
++            maxlength="6"
++            aria-describedby="otp-format-hint otp-error"
++            required>
++          <p id="otp-error" class="error-msg" hidden></p>
++        </div>
++        <div class="form-actions">
++          <button type="submit" id="verify-btn" class="btn-submit">Verify code</button>
++          <button type="button" id="resend-code-btn" class="btn-secondary">Resend code</button>
++        </div>
++      </form>
++
++      <div id="otp-status" class="status-banner" role="status" aria-live="polite" hidden></div>
++
++      <div class="sms-preview" aria-label="Origin-bound SMS format preview">
++        <strong>Origin-bound SMS format sent to your device:</strong>
++        <pre id="sms-message-preview">Your Daily Grind verification code is 482910.
++
++@dailygrind.example #482910</pre>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +448,209 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const phoneForm = document.getElementById('phone-form');
++    const phoneInput = document.getElementById('phone-input');
++    const otpForm = document.getElementById('otp-form');
++    const otpInput = document.getElementById('otp-input');
++    const otpError = document.getElementById('otp-error');
++    const verifyBtn = document.getElementById('verify-btn');
++    const resendCodeBtn = document.getElementById('resend-code-btn');
++    const otpStatus = document.getElementById('otp-status');
++    const smsPreview = document.getElementById('sms-message-preview');
++    const verificationContext = document.getElementById('verification-context');
++    const navRewardsLink = document.getElementById('nav-rewards-link');
++    const heroOrderLink = document.getElementById('hero-order-link');
++
++    let otpAbortController = null;
++
++    function formatOriginBoundSms(code) {
++      const host = window.location.hostname || 'dailygrind.example';
++      return `Your Daily Grind verification code is ${code}.\n\n@${host} #${code}`;
++    }
++
++    if (smsPreview) {
++      smsPreview.textContent = formatOriginBoundSms('482910');
++    }
++
++    function showStatus(message, type = 'info') {
++      if (!otpStatus) return;
++      otpStatus.textContent = message;
++      otpStatus.className = `status-banner ${type}`;
++      otpStatus.hidden = false;
++    }
++
++    function clearOtpError() {
++      if (!otpInput || !otpError) return;
++      otpInput.setCustomValidity('');
++      otpInput.removeAttribute('aria-invalid');
++      otpError.textContent = '';
++      otpError.hidden = true;
++    }
++
++    function validateOtpField() {
++      if (!otpInput || !otpError) return true;
++      otpInput.setCustomValidity('');
++      if (!otpInput.checkValidity()) {
++        const msg = 'Please enter the 6-digit numeric verification code.';
++        otpInput.setCustomValidity(msg);
++        otpInput.setAttribute('aria-invalid', 'true');
++        otpError.textContent = `Error: ${msg}`;
++        otpError.hidden = false;
++        return false;
++      }
++      clearOtpError();
++      return true;
++    }
++
++    function stopSmsOtpListener() {
++      if (otpAbortController) {
++        otpAbortController.abort();
++        otpAbortController = null;
++      }
++    }
++
++    async function startSmsOtpListener() {
++      // Feature-detect WebOTP support
++      if (!otpInput || !('OTPCredential' in window)) {
++        return;
++      }
++
++      // Cancel any previous pending WebOTP request (e.g., when re-sending an SMS code)
++      stopSmsOtpListener();
++      const ac = new AbortController();
++      otpAbortController = ac;
++
++      try {
++        const otp = await navigator.credentials.get({
++          otp: { transport: ['sms'] },
++          signal: ac.signal,
++        });
++
++        if (!otp) return;
++        otpInput.value = otp.code;
++        clearOtpError();
++
++        // Trigger standard form submission so submit event listeners and validation run
++        if (otpForm) {
++          otpForm.requestSubmit();
++        }
++      } catch (err) {
++        // Expected when aborted by manual submission, resend, unmount, or user dismissal
++        if (err && err.name === 'AbortError') {
++          return;
++        }
++        console.error('WebOTP verification error:', err);
++      }
++    }
++
++    if (otpInput) {
++      otpInput.addEventListener('input', () => {
++        clearOtpError();
++      });
++
++      otpInput.addEventListener('blur', () => {
++        if (otpInput.value.length > 0) {
++          validateOtpField();
++        }
++      });
++
++      otpInput.addEventListener('invalid', () => {
++        const msg = 'Please enter the 6-digit numeric verification code.';
++        otpInput.setCustomValidity(msg);
++        otpInput.setAttribute('aria-invalid', 'true');
++        if (otpError) {
++          otpError.textContent = `Error: ${msg}`;
++          otpError.hidden = false;
++        }
++      });
++    }
++
++    if (phoneForm) {
++      phoneForm.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const phoneVal = phoneInput && phoneInput.value.trim() ? phoneInput.value.trim() : 'your mobile phone';
++        if (smsPreview) {
++          smsPreview.textContent = formatOriginBoundSms('482910');
++        }
++        showStatus(`Sent a 6-digit verification code via SMS to ${phoneVal}.`, 'info');
++        startSmsOtpListener();
++        if (otpInput) {
++          otpInput.focus();
++        }
++      });
++    }
++
++    if (resendCodeBtn) {
++      resendCodeBtn.addEventListener('click', () => {
++        if (verifyBtn) {
++          verifyBtn.disabled = false;
++        }
++        clearOtpError();
++        if (smsPreview) {
++          smsPreview.textContent = formatOriginBoundSms('482910');
++        }
++        showStatus('A new 6-digit verification code has been sent to your phone.', 'info');
++        startSmsOtpListener();
++        if (otpInput) {
++          otpInput.value = '';
++          otpInput.focus();
++        }
++      });
++    }
++
++    if (otpForm) {
++      otpForm.addEventListener('submit', async (event) => {
++        // MANDATORY: Abort any in-flight WebOTP request when the form is submitted
++        stopSmsOtpListener();
++        event.preventDefault();
++
++        if (!validateOtpField()) {
++          otpInput.focus();
++          return;
++        }
++
++        if (verifyBtn) {
++          verifyBtn.disabled = true;
++        }
++
++        const formData = new FormData(otpForm);
++        const code = formData.get('otp');
++
++        try {
++          await fetch(otpForm.action, { method: 'POST', body: formData });
++        } catch {
++          // Graceful fallback when running as a static demo without a backend endpoint
++        }
++
++        showStatus(`Code ${code} verified! You are now signed in to Daily Grind Rewards and ready to order.`, 'success');
++      });
++    }
++
++    if (navRewardsLink) {
++      navRewardsLink.addEventListener('click', () => {
++        if (verificationContext) {
++          verificationContext.textContent = 'Sign in to Daily Grind Rewards: enter the 6-digit SMS code sent to your phone.';
++        }
++        startSmsOtpListener();
++      });
++    }
++
++    if (heroOrderLink) {
++      heroOrderLink.addEventListener('click', () => {
++        if (verificationContext) {
++          verificationContext.textContent = 'Confirm your phone number for online ordering: enter the 6-digit SMS code sent to your phone.';
++        }
++        startSmsOtpListener();
++      });
++    }
++
++    window.addEventListener('pagehide', stopSmsOtpListener);
++
++    // Start listening when the OTP verification step becomes active
++    startSmsOtpListener();
++  </script>
++
+ </body>
+ 
+ </html>

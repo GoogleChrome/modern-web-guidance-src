@@ -1,0 +1,178 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,174 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f6f5f1">
++  <title>Form & Type — A little type harmony</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
++  <style>
++    :root { color-scheme: light; --paper: #f6f5f1; --ink: #292d27; --muted: #7a7c73; --line: #ddded5; --green: #425841; --accent: #d5e6bd; }
++    * { box-sizing: border-box; }
++    body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', Arial, sans-serif; font-size: .9375rem; line-height: 1.5; }
++    button, input, select { font: inherit; }
++    button, select, input[type=range], input[type=checkbox] { cursor: pointer; }
++    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #879f67; outline-offset: 5px; }
++    button { color: inherit; }
++    .shell { width: min(1184px, calc(100% - 80px)); margin: auto; }
++    header { border-bottom: 1px solid var(--line); }
++    .header-inner { height: 88px; display: flex; align-items: center; justify-content: space-between; }
++    .brand { display: flex; align-items: center; gap: 11px; font-size: 1.2rem; font-weight: 650; letter-spacing: -.055em; }
++    .brand-mark { display: grid; place-items: center; width: 29px; height: 29px; background: var(--ink); color: var(--paper); border-radius: 7px; font-family: Georgia, serif; font-size: 1.4rem; font-weight: 400; }
++    .header-note { color: var(--muted); display: flex; align-items: center; gap: 10px; font-size: .75rem; }
++    .dot { height: 6px; width: 6px; display: inline-block; border-radius: 50%; background: #6e8357; }
++    .hero { display: grid; grid-template-columns: 1fr 350px; gap: 40px; align-items: center; padding: 67px 0 55px; }
++    .eyebrow { font-size: .6875rem; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--green); display: flex; align-items: center; gap: 9px; }
++    .eyebrow::before { content: ''; width: 19px; height: 1px; background: currentColor; }
++    h1 { margin: 17px 0 19px; font-size: clamp(2.8rem, 1.8rem + 3vw, 4.125rem); line-height: 1.08; font-weight: 500; letter-spacing: -.065em; text-wrap: balance; }
++    h1 span { color: #76876b; }
++    .intro { color: #74776e; max-width: 490px; line-height: 1.75; margin: 0; }
++    .specimen { position: relative; height: 182px; display: flex; align-items: center; justify-content: center; gap: 13px; margin-top: 20px; }
++    .specimen::before, .specimen::after { content: ''; position: absolute; left: 4%; right: 4%; border-top: 1px dashed #c6cbbd; z-index: -1; }
++    .specimen::before { top: 55px; } .specimen::after { bottom: 40px; }
++    .specimen span { font-size: 7.5rem; letter-spacing: -.08em; line-height: 1; color: #4f6247; }
++    .specimen .serif { font-family: Georgia, serif; font-size: 8.5rem; color: #95a584; }
++    .specimen .mono { font-family: 'IBM Plex Mono', monospace; font-size: 6.7rem; color: #bfcaaf; }
++    .specimen-label { position: absolute; bottom: -3px; font-size: .625rem; letter-spacing: .13em; color: #8a8f81; }
++    .toolbar { padding: 19px 0; border-block: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
++    .toolbar-title { font-size: .8125rem; font-weight: 550; display: flex; align-items: center; gap: 10px; }
++    .toolbar-title svg { width: 17px; height: 17px; }
++    .toolbar-controls { display: flex; align-items: center; gap: 29px; }
++    .size-control { display: flex; align-items: center; gap: 12px; font-size: .75rem; color: var(--muted); }
++    input[type=range] { accent-color: var(--green); width: 95px; height: 3px; }
++    output { color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: .6875rem; min-width: 38px; }
++    .toggle-label { display: flex; align-items: center; gap: 10px; font-size: .75rem; }
++    .switch { appearance: none; width: 31px; height: 18px; border-radius: 20px; background: #bbbfaf; position: relative; margin: 0; transition: background .2s; }
++    .switch:checked { background: var(--green); }
++    .switch::after { content: ''; width: 12px; height: 12px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform .2s; }
++    .switch:checked::after { transform: translateX(13px); }
++    .examples { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; }
++    .card { background: #fffefa; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
++    .card-heading { padding: 22px 25px 19px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
++    .card-title { display: flex; align-items: center; gap: 12px; }
++    .number { color: #93968a; font: .6875rem 'IBM Plex Mono', monospace; }
++    h2 { font-size: .9375rem; font-weight: 550; margin: 0; letter-spacing: -.025em; }
++    .badge { font-size: .625rem; background: #eef2e8; color: #637555; padding: 4px 8px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; }
++    .preview { min-height: 252px; padding: 30px 30px 28px; border-block: 1px solid #e7e8df; display: flex; flex-direction: column; justify-content: center; }
++    .preview-label { font-family: 'IBM Plex Mono', monospace; font-size: .625rem; letter-spacing: .1em; text-transform: uppercase; color: #8b907e; margin-bottom: 23px; }
++    #mixed-fonts-container { font-family: 'DM Sans', Arial, sans-serif; font-size: var(--preview-size, 1.5rem); font-size-adjust: from-font; line-height: 1.85; letter-spacing: -.025em; margin: 0; max-width: 70ch; overflow-wrap: anywhere; text-wrap: pretty; }
++    #mixed-fonts-container code { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 1em; padding: 2px 6px; border: 1px solid #dde3d2; border-radius: 4px; background: #edf0e7; color: #526347; letter-spacing: -.045em; }
++    #independent-theme-container { font-family: Georgia, 'Times New Roman', serif; font-size: var(--preview-size, 1.5rem); font-size-adjust: 0.5; line-height: 1.7; color: #f2f2df; background: #354331; border-color: #354331; }
++    #independent-theme-container .preview-label { color: #b1bda3; }
++    .theme-quote { margin: 0; max-width: 70ch; overflow-wrap: anywhere; }
++    .theme-quote em { color: #c5d7a7; }
++    .theme-credit { font-family: 'DM Sans', Arial, sans-serif; font-size: .625rem; font-size-adjust: none; color: #adbaa1; margin-top: 20px; letter-spacing: .03em; }
++    .card-footer { padding: 17px 25px; display: flex; gap: 10px; justify-content: space-between; align-items: center; min-height: 61px; }
++    .font-label { color: #8b8f82; font-size: .6875rem; }
++    .font-name { color: #4d5346; font-size: .6875rem; }
++    select { border: none; background: transparent; color: #4d5346; padding: 3px 20px 3px 2px; font-size: .6875rem; max-width: 155px; }
++    .explanations { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 13px 0 31px; }
++    .explanations p { font-size: .75rem; color: #85887b; line-height: 1.7; margin: 0; padding: 0 2px; max-width: 65ch; }
++    .explanations strong { font-weight: 500; color: #656e5c; }
++    .code-panel { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
++    .code-heading { background: #eeeee7; padding: 13px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
++    .code-title { display: flex; align-items: center; gap: 10px; font-size: .75rem; font-weight: 500; }
++    .code-title span { font: .6875rem 'IBM Plex Mono', monospace; color: #8c9380; }
++    .copy-button { border: 1px solid #d7dace; border-radius: 5px; background: #f9f9f4; padding: 5px 10px; display: flex; align-items: center; gap: 7px; font-size: .625rem; }
++    .copy-button svg { width: 12px; height: 12px; }
++    .code-content { display: grid; grid-template-columns: 1fr 1fr; padding: 22px 25px; gap: 25px; background: #f0f1ea; }
++    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: .6875rem/1.9 'IBM Plex Mono', monospace; color: #505747; }
++    .comment { color: #919785; } .property { color: #7b775c; } .value { color: #506e44; }
++    .support { display: flex; align-items: center; gap: 7px; font-size: .6875rem; color: #858b7c; margin-top: 18px; }
++    .support .dot { width: 5px; height: 5px; }
++    footer { margin-top: 54px; padding: 23px 0 26px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; font-size: .6875rem; color: #919487; }
++    footer span:last-child { display: flex; align-items: center; gap: 7px; }
++    .no-adjust #mixed-fonts-container, .no-adjust #independent-theme-container { font-size-adjust: none; }
++    @supports not (font-size-adjust: from-font) { #mixed-fonts-container { line-height: 1.85; } #mixed-fonts-container code { font-size: .94em; } }
++    @supports not (font-size-adjust: 0.5) { #independent-theme-container { font-size: calc(var(--preview-size, 1.5rem) * 1.08); line-height: 1.7; } }
++    @media (max-width: 800px) { .shell { width: calc(100% - 40px); } .hero { grid-template-columns: 1fr; padding: 45px 0 35px; } .specimen { display: none; } .examples { gap: 16px; } .preview { padding: 25px 20px; min-height: 290px; } .card-heading, .card-footer { padding-inline: 17px; } .toolbar-controls { gap: 15px; } }
++    @media (max-width: 580px) { .header-inner { height: 72px; } .header-note { font-size: .625rem; } .toolbar { align-items: flex-start; flex-direction: column; gap: 18px; } .toolbar-controls { justify-content: space-between; width: 100%; } .examples, .explanations, .code-content { grid-template-columns: 1fr; } .examples { gap: 24px; } .preview { min-height: 240px; } .explanations { gap: 8px; } .code-content { gap: 20px; } footer { gap: 20px; align-items: flex-start; } }
++  </style>
++</head>
++<body>
++  <header><div class="shell header-inner"><div class="brand"><span class="brand-mark" aria-hidden="true">f.</span>form & type</div><div class="header-note"><span class="dot"></span>A small exploration of modern CSS</div></div></header>
++  <main class="shell">
++    <section class="hero" aria-labelledby="page-title">
++      <div><div class="eyebrow">The typography playground</div><h1 id="page-title">Different fonts.<br><span>Same visual rhythm.</span></h1><p class="intro">Good typography is a matter of balance. Explore how a little CSS brings mixed fonts into harmony, automatically.</p></div>
++      <div class="specimen" aria-hidden="true"><span>a</span><span class="serif">a</span><span class="mono">a</span><div class="specimen-label">THREE FAMILIES. ONE X-HEIGHT.</div></div>
++    </section>
++    <section aria-label="Interactive font examples">
++      <div class="toolbar">
++        <div class="toolbar-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></svg>Make yourself a little type harmony</div>
++        <div class="toolbar-controls"><label class="size-control" for="font-size">Font size <input id="font-size" type="range" min="18" max="32" value="24"><output id="size-value" for="font-size">24px</output></label><label class="toggle-label"><input class="switch" id="normalize" type="checkbox" checked>Normalize fonts</label></div>
++      </div>
++      <div class="examples">
++        <article class="card">
++          <div class="card-heading"><div class="card-title"><span class="number">01</span><h2>Mixed fonts, in sync</h2></div><span class="badge">from-font</span></div>
++          <div class="preview"><div class="preview-label">Sans serif meets monospace</div><p id="mixed-fonts-container">A little <code>const harmony</code> goes a long way. Different fonts, one consistent <code>x-height</code>.</p></div>
++          <div class="card-footer"><span class="font-label">Font pairing</span><span class="font-name">DM Sans <span aria-hidden="true">↔</span> IBM Plex Mono</span></div>
++        </article>
++        <article class="card">
++          <div class="card-heading"><div class="card-title"><span class="number">02</span><h2>A theme of its own</h2></div><span class="badge" id="ratio-badge">0.5</span></div>
++          <div id="independent-theme-container" class="preview"><div class="preview-label">Independent theme</div><p class="theme-quote">“Details make the difference.<br>Let every letter find its<br><em>own sense of balance.</em>”</p><div class="theme-credit">A different family. The same attention to detail.</div></div>
++          <div class="card-footer"><label class="font-label" for="theme-ratio">X-height ratio</label><select id="theme-ratio"><option value="0.5">0.50 · Balanced</option><option value="0.45">0.45 · Compact</option><option value="0.55">0.55 · Generous</option><option value="0.6">0.60 · Expressive</option></select></div>
++        </article>
++      </div>
++      <div class="explanations"><p><strong>Automatically aligned.</strong> The primary font sets the x-height, and inline code follows its lead. No manual size adjustments.</p><p><strong>Independently balanced.</strong> An explicit ratio gives this theme its own visual proportions, regardless of its surroundings.</p></div>
++    </section>
++    <section class="code-panel" aria-label="CSS for these examples">
++      <div class="code-heading"><div class="code-title"><span aria-hidden="true">{ }</span>The CSS behind the balance</div><button class="copy-button" id="copy-css"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5"/><path d="M10 5V2H2v9h3"/></svg><span id="copy-label" aria-live="polite">Copy CSS</span></button></div>
++      <div class="code-content"><pre><span class="comment">/* Let the primary font lead */</span>
++#mixed-fonts-container {
++  <span class="property">font-size-adjust</span>: <span class="value" id="mixed-code-value">from-font</span>;
++}</pre><pre><span class="comment">/* Give a theme its own proportions */</span>
++#independent-theme-container {
++  <span class="property">font-size-adjust</span>: <span class="value" id="theme-code-value">0.5</span>;
++}</pre></div>
++    </section>
++    <div class="support"><span class="dot"></span><span id="support-note">Progressive by nature. Natural font sizing in older browsers.</span></div>
++  </main>
++  <footer class="shell"><span>A little CSS. A lot more harmony.</span><span>Made for the love of type <span aria-hidden="true">↗</span></span></footer>
++  <script>
++    const size = document.querySelector('#font-size');
++    const normalize = document.querySelector('#normalize');
++    const ratio = document.querySelector('#theme-ratio');
++    const theme = document.querySelector('#independent-theme-container');
++    const mixedCode = document.querySelector('#mixed-code-value');
++    const themeCode = document.querySelector('#theme-code-value');
++    function update() {
++      const ratioValue = String(Number(ratio.value));
++      document.documentElement.style.setProperty('--preview-size', `${Number(size.value) / 16}rem`);
++      document.querySelector('#size-value').value = `${size.value}px`;
++      document.body.classList.toggle('no-adjust', !normalize.checked);
++      theme.style.fontSizeAdjust = normalize.checked ? ratioValue : 'none';
++      mixedCode.textContent = normalize.checked ? 'from-font' : 'none';
++      themeCode.textContent = normalize.checked ? ratioValue : 'none';
++      document.querySelector('#ratio-badge').textContent = ratioValue;
++    }
++    size.addEventListener('input', update);
++    normalize.addEventListener('change', update);
++    ratio.addEventListener('change', update);
++    document.querySelector('#copy-css').addEventListener('click', async () => {
++      const css = `#mixed-fonts-container {\n  font-size-adjust: ${mixedCode.textContent};\n}\n\n#independent-theme-container {\n  font-size-adjust: ${themeCode.textContent};\n}`;
++      const label = document.querySelector('#copy-label');
++      try {
++        await navigator.clipboard.writeText(css);
++        label.textContent = 'Copied!';
++      } catch {
++        label.textContent = 'Select CSS to copy';
++        const selection = window.getSelection();
++        const range = document.createRange();
++        range.selectNodeContents(document.querySelector('.code-content'));
++        selection.removeAllRanges();
++        selection.addRange(range);
++      }
++      setTimeout(() => { label.textContent = 'Copy CSS'; }, 2500);
++    });
++    if (!CSS.supports('font-size-adjust', 'from-font')) {
++      document.querySelector('#support-note').textContent = 'Your browser is using fallback font sizing. Try a current browser for automatic normalization.';
++    }
++  </script>
++</body>
++</html>

@@ -1,0 +1,259 @@
+diff --git a/card-navigation.mjs b/card-navigation.mjs
+new file mode 100644
+index 0000000..eb4cc26
+--- /dev/null
++++ b/card-navigation.mjs
+@@ -0,0 +1,71 @@
++const directions = {
++  ArrowLeft: { axis: 'x', sign: -1 },
++  ArrowRight: { axis: 'x', sign: 1 },
++  ArrowUp: { axis: 'y', sign: -1 },
++  ArrowDown: { axis: 'y', sign: 1 },
++};
++
++// Rectangles are measured on every keypress so resizing, CSS order, and RTL
++// layouts all follow the current visual arrangement instead of DOM indices.
++export function findSpatialNeighbor(current, candidates, key) {
++  if (!Object.hasOwn(directions, key)) return null;
++  const direction = directions[key];
++
++  const horizontal = direction.axis === 'x';
++  const start = horizontal ? 'left' : 'top';
++  const end = horizontal ? 'right' : 'bottom';
++  const crossStart = horizontal ? 'top' : 'left';
++  const crossEnd = horizontal ? 'bottom' : 'right';
++  const center = rect => (rect[start] + rect[end]) / 2;
++  const crossCenter = rect => (rect[crossStart] + rect[crossEnd]) / 2;
++  let nearest = null;
++  let bestDistance = Infinity;
++  let bestOffset = Infinity;
++
++  for (const candidate of candidates) {
++    const rect = candidate.rect;
++    const distance = (center(rect) - center(current)) * direction.sign;
++    const overlap = Math.min(current[crossEnd], rect[crossEnd]) -
++      Math.max(current[crossStart], rect[crossStart]);
++    // Stay within the visible row/column; never wrap at an edge or jump
++    // diagonally into an incomplete row.
++    if (distance <= 0 || overlap <= 0) continue;
++
++    const offset = Math.abs(crossCenter(rect) - crossCenter(current));
++    if (distance < bestDistance || (distance === bestDistance && offset < bestOffset)) {
++      nearest = candidate;
++      bestDistance = distance;
++      bestOffset = offset;
++    }
++  }
++
++  return nearest;
++}
++
++export function enableCardNavigation(grid) {
++  grid.addEventListener('keydown', event => {
++    if (!Object.hasOwn(directions, event.key) || event.defaultPrevented ||
++        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
++
++    const cards = Array.from(grid.children).filter(child => child.matches('.card'));
++    const entries = cards.flatMap(card => {
++      const link = card.querySelector('a[href]');
++      if (!link || link.tabIndex < 0 || link.closest('[inert]') ||
++          link.getAttribute('aria-disabled') === 'true' ||
++          link.getClientRects().length === 0 ||
++          getComputedStyle(link).visibility !== 'visible') return [];
++      return [{ link, rect: card.getBoundingClientRect() }];
++    });
++    const current = entries.find(entry => entry.link === event.target);
++    // Leave keys from other controls inside a card to those controls.
++    if (!current) return;
++
++    event.preventDefault();
++    const next = findSpatialNeighbor(current.rect, entries, event.key);
++    if (next) next.link.focus();
++  });
++}
++
++if (typeof document !== 'undefined') {
++  document.querySelectorAll('[data-card-navigation]').forEach(enableCardNavigation);
++}
+diff --git a/card-navigation.test.mjs b/card-navigation.test.mjs
+new file mode 100644
+index 0000000..01c4710
+--- /dev/null
++++ b/card-navigation.test.mjs
+@@ -0,0 +1,106 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { findSpatialNeighbor, enableCardNavigation } from './card-navigation.mjs';
++
++const card = (id, left, top, width = 250, height = 180) => ({
++  id, rect: { left, top, right: left + width, bottom: top + height },
++});
++const neighbor = (cards, index, key) =>
++  findSpatialNeighbor(cards[index].rect, cards, key)?.id ?? null;
++
++test('wide layout follows horizontal positions and stops at edges', () => {
++  const cards = [card('a', 0, 0), card('b', 270, 0), card('c', 540, 0)];
++  assert.equal(neighbor(cards, 0, 'ArrowRight'), 'b');
++  assert.equal(neighbor(cards, 2, 'ArrowLeft'), 'b');
++  assert.equal(neighbor(cards, 2, 'ArrowRight'), null);
++  assert.equal(neighbor(cards, 0, 'ArrowLeft'), null);
++  assert.equal(neighbor(cards, 1, 'ArrowDown'), null);
++  assert.equal(neighbor(cards, 1, 'ArrowUp'), null);
++});
++
++test('two columns preserve rows and columns, including an incomplete last row', () => {
++  const cards = [card('a', 0, 0), card('b', 270, 0), card('c', 0, 200)];
++  assert.equal(neighbor(cards, 0, 'ArrowDown'), 'c');
++  assert.equal(neighbor(cards, 2, 'ArrowUp'), 'a');
++  assert.equal(neighbor(cards, 1, 'ArrowDown'), null);
++  assert.equal(neighbor(cards, 1, 'ArrowRight'), null);
++  assert.equal(neighbor(cards, 2, 'ArrowRight'), null);
++});
++
++test('single column uses vertical navigation after layout changes', () => {
++  const cards = [card('a', 0, 0), card('b', 0, 200), card('c', 0, 400)];
++  assert.equal(neighbor(cards, 0, 'ArrowDown'), 'b');
++  assert.equal(neighbor(cards, 2, 'ArrowUp'), 'b');
++  assert.equal(neighbor(cards, 1, 'ArrowRight'), null);
++  assert.equal(neighbor(cards, 2, 'ArrowDown'), null);
++});
++
++test('visual order, including RTL, takes priority over DOM order', () => {
++  const cards = [card('a', 540, 0), card('b', 270, 0), card('c', 0, 0)];
++  assert.equal(neighbor(cards, 0, 'ArrowLeft'), 'b');
++  assert.equal(neighbor(cards, 2, 'ArrowRight'), 'b');
++  assert.equal(neighbor(cards, 0, 'ArrowRight'), null);
++});
++
++test('unequal card heights still navigate within their overlapping row', () => {
++  const cards = [card('a', 0, 0, 250, 230), card('b', 270, 20)];
++  assert.equal(neighbor(cards, 0, 'ArrowRight'), 'b');
++  assert.equal(neighbor(cards, 1, 'ArrowLeft'), 'a');
++  assert.equal(findSpatialNeighbor(cards[0].rect, cards, 'Tab'), null);
++});
++
++test('handler preserves native keys and excludes unrelated controls', () => {
++  let handler;
++  enableCardNavigation({ children: [], addEventListener: (_, listener) => { handler = listener; } });
++  for (const overrides of [
++    { key: 'Tab' }, { key: 'Enter' }, { altKey: true }, { ctrlKey: true },
++    { metaKey: true }, { shiftKey: true }, { defaultPrevented: true }, {},
++  ]) {
++    handler({ key: 'ArrowRight', preventDefault: () => assert.fail('native key intercepted'), ...overrides });
++  }
++});
++
++test('handler uses fresh geometry, skips hidden links, and consumes arrows at edges', () => {
++  const originalStyle = globalThis.getComputedStyle;
++  globalThis.getComputedStyle = () => ({ visibility: 'visible' });
++  try {
++    let handler;
++    let focused = null;
++    const items = [card('a', 0, 0), card('b', 270, 0), card('c', 540, 0)];
++    const children = items.map(item => {
++      item.visible = true;
++      item.link = {
++        tabIndex: 0,
++        closest: () => null,
++        getAttribute: () => null,
++        getClientRects: () => item.visible ? [item.rect] : [],
++        focus: () => { focused = item.id; },
++      };
++      return {
++        matches: () => true,
++        querySelector: () => item.link,
++        getBoundingClientRect: () => item.rect,
++      };
++    });
++    enableCardNavigation({ children, addEventListener: (_, listener) => { handler = listener; } });
++    const press = key => {
++      let prevented = false;
++      focused = null;
++      handler({ key, target: items[0].link, preventDefault: () => { prevented = true; } });
++      assert.equal(prevented, true);
++      return focused;
++    };
++    assert.equal(press('ArrowRight'), 'b');
++    items[1].visible = false;
++    assert.equal(press('ArrowRight'), 'c');
++    items[1].visible = true;
++    items[1].rect = card('b', 0, 200).rect;
++    items[2].rect = card('c', 0, 400).rect;
++    assert.equal(press('ArrowDown'), 'b');
++    assert.equal(press('ArrowRight'), null);
++    assert.equal(press('ArrowUp'), null);
++  } finally {
++    if (originalStyle === undefined) delete globalThis.getComputedStyle;
++    else globalThis.getComputedStyle = originalStyle;
++  }
++});
+diff --git a/index.html b/index.html
+index 66c9173..3712680 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,28 @@
+       color: var(--primary);
+     }
+ 
++    .card:focus-within {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .card a:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -176,22 +198,23 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="card-navigation-help" class="sr-only">Use the arrow keys to move between cards in the direction shown on screen. Use Tab to move through links and Enter to open details.</p>
++      <div class="grid" data-card-navigation role="group" aria-labelledby="seasonal-heading" aria-describedby="card-navigation-help">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte" aria-describedby="card-navigation-help">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso" aria-describedby="card-navigation-help">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew" aria-describedby="card-navigation-help">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +230,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./card-navigation.mjs"></script>
+ </body>
+ 
+ </html>

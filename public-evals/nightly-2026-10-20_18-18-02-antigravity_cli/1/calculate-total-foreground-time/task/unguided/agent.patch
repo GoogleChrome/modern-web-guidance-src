@@ -1,0 +1,40 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    let accumulatedForegroundTime = 0;
++    let foregroundStartTime = document.visibilityState === 'visible' ? performance.now() : null;
++
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        if (foregroundStartTime !== null) {
++          accumulatedForegroundTime += performance.now() - foregroundStartTime;
++          foregroundStartTime = null;
++        }
++      } else if (document.visibilityState === 'visible') {
++        foregroundStartTime = performance.now();
++      }
++    });
++
++    /**
++     * Returns the total time (in milliseconds) the page has been visible in the foreground.
++     */
++    function getTotalForegroundTime() {
++      let total = accumulatedForegroundTime;
++      if (foregroundStartTime !== null && document.visibilityState === 'visible') {
++        total += performance.now() - foregroundStartTime;
++      }
++      return Math.round(total);
++    }
++
++    window.getTotalForegroundTime = getTotalForegroundTime;
++  </script>
++
+ </body>
+ 
+ </html>

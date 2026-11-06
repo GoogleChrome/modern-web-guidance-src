@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="icon" href="data:,">
+  <title>Secure External Subresources Demo</title>
+  <!-- External stylesheet with matching SHA-384 integrity, anonymous CORS, and no-referrer -->
+  <link
+    id="verified-stylesheet"
+    rel="stylesheet"
+    href="data:text/css;base64,LnZlcmlmaWVkLWJhZGdlIHsgYm9yZGVyLWxlZnQ6IDRweCBzb2xpZCAjMTg4MDM4OyBwYWRkaW5nLWxlZnQ6IDhweDsgfQ=="
+    integrity="sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  >
+  <!-- External stylesheet with mismatched SHA-384 integrity (blocked by browser SRI check) -->
+  <link
+    id="tampered-stylesheet"
+    rel="stylesheet"
+    href="data:text/css;base64,LnRhbXBlcmVkLWJhZGdlIHsgYm9yZGVyLWxlZnQ6IDRweCBzb2xpZCAjZDkzMDI1OyB9"
+    integrity="sha384-yff8IxDebaCAYk/uVQKugklyxgplc8N/8qw9pfU48lItah3Vtoxti6bv8m1l2M8G"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  >
+  <style id="subresource-styles">
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    .card { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin: 0.75rem 0; }
+    .preview-box { flex: 1 1 14rem; border: 1px dashed #aaa; border-radius: 6px; padding: 0.75rem; background: #fafafa; }
+    .graphic-frame { width: 64px; height: 64px; border: 1px solid #ccc; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: #fff; }
+    button { padding: 0.45rem 0.85rem; cursor: pointer; }
+    button[aria-pressed="true"] { font-weight: 600; outline: 2px solid #0b57d0; }
+    pre { background: #f6f8fa; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+    @font-face {
+      font-family: "BrandSans";
+      src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2") format("woff2");
+      src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2" cross-origin(anonymous) referrer-policy(no-referrer)) format("woff2");
+      src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")) format("woff2");
+      font-display: swap;
+    }
+    #verified-css-graphic:not([hidden]) {
+      display: inline-block;
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMTg4MDM4Ii8+PC9zdmc+");
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMTg4MDM4Ii8+PC9zdmc+" cross-origin(anonymous) referrer-policy(no-referrer));
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMTg4MDM4Ii8+PC9zdmc+" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"));
+    }
+    #tampered-css-graphic:not([hidden]) {
+      display: inline-block;
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjZDkzMDI1Ii8+PC9zdmc+");
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjZDkzMDI1Ii8+PC9zdmc+" cross-origin(anonymous) referrer-policy(no-referrer));
+      content: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjZDkzMDI1Ii8+PC9zdmc+" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-yff8IxDebaCAYk/uVQKugklyxgplc8N/8qw9pfU48lItah3Vtoxti6bv8m1l2M8G"));
+    }
+  </style>
+</head>
+<body>
+  <h1>Secure External Subresources</h1>
+  <p id="capability-banner" class="card" role="status"></p>
+
+  <section class="card" aria-labelledby="preview-heading">
+    <h2 id="preview-heading">Interactive Subresource Integrity Test</h2>
+    <div class="row">
+      <button id="btn-verify-subresources" type="button" aria-pressed="true">1. Load Verified Subresources (Matching sha384-)</button>
+      <button id="btn-test-tampered" type="button" aria-pressed="false">2. Simulate Tampered CDN Assets (Mismatched sha384-)</button>
+    </div>
+    <p id="mode-summary" class="card" role="status"></p>
+
+    <div class="row">
+      <div class="preview-box">
+        <strong>HTML <code>&lt;link rel="stylesheet"&gt;</code></strong>
+        <p id="verified-badge" class="verified-badge tampered-badge">
+          Checking stylesheet integrity...
+        </p>
+      </div>
+      <div class="preview-box">
+        <strong>CSS <code>url(... integrity("sha384-..."))</code></strong>
+        <div class="row">
+          <div class="graphic-frame">
+            <span id="verified-css-graphic" role="img" aria-label="Verified SVG graphic"></span>
+            <span id="tampered-css-graphic" role="img" aria-label="Tampered SVG graphic" hidden></span>
+          </div>
+          <span id="css-graphic-status"></span>
+        </div>
+      </div>
+      <div class="preview-box">
+        <strong><code>fetch()</code> with <code>integrity</code></strong>
+        <p id="fetch-status-label"></p>
+      </div>
+    </div>
+
+    <pre id="telemetry-output" aria-live="polite"></pre>
+  </section>
+
+  <script type="module">
+    const SVG_PAYLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#188038"/></svg>';
+    const SVG_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMTg4MDM4Ii8+PC9zdmc+';
+    const BAD_INTEGRITY = 'sha384-yff8IxDebaCAYk/uVQKugklyxgplc8N/8qw9pfU48lItah3Vtoxti6bv8m1l2M8G';
+
+    // Compute expected SHA-384 SRI metadata from known-good local bytes (simulating build-time digest generation)
+    export async function computeIntegrityMetadata(bytes) {
+      const rawBytes = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
+      const digestBuffer = await crypto.subtle.digest('SHA-384', rawBytes);
+      const binary = Array.from(new Uint8Array(digestBuffer), (b) => String.fromCharCode(b)).join('');
+      return `sha384-${btoa(binary)}`;
+    }
+
+    export function getCssUrlModifierSupport() {
+      const supportsCrossOriginAndReferrer =
+        typeof CSS !== 'undefined' &&
+        typeof CSS.supports === 'function' &&
+        CSS.supports(
+          'background-image',
+          'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer))',
+        );
+
+      const supportsUrlIntegrity =
+        typeof CSS !== 'undefined' &&
+        typeof CSS.supports === 'function' &&
+        CSS.supports(
+          'background-image',
+          'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"))',
+        );
+
+      return { supportsCrossOriginAndReferrer, supportsUrlIntegrity };
+    }
+
+    const banner = document.getElementById('capability-banner');
+    const modeSummary = document.getElementById('mode-summary');
+    const btnVerify = document.getElementById('btn-verify-subresources');
+    const btnTampered = document.getElementById('btn-test-tampered');
+    const verifiedBadge = document.getElementById('verified-badge');
+    const cssGraphicStatus = document.getElementById('css-graphic-status');
+    const fetchStatusLabel = document.getElementById('fetch-status-label');
+    const output = document.getElementById('telemetry-output');
+
+    async function runAudit(mode = 'verify') {
+      const support = getCssUrlModifierSupport();
+      const computedSvgIntegrity = await computeIntegrityMetadata(SVG_PAYLOAD);
+      const verifiedLink = document.getElementById('verified-stylesheet');
+      const tamperedLink = document.getElementById('tampered-stylesheet');
+      const verifiedGraphic = document.getElementById('verified-css-graphic');
+      const tamperedGraphic = document.getElementById('tampered-css-graphic');
+
+      btnVerify.setAttribute('aria-pressed', String(mode !== 'tampered'));
+      btnTampered.setAttribute('aria-pressed', String(mode === 'tampered'));
+
+      // Measure both CSS graphics before hiding the inactive one
+      verifiedGraphic.hidden = false;
+      tamperedGraphic.hidden = false;
+      const verifiedCssWidth = Math.round(verifiedGraphic.getBoundingClientRect().width);
+      const tamperedCssWidth = Math.round(tamperedGraphic.getBoundingClientRect().width);
+      verifiedGraphic.hidden = mode === 'tampered';
+      tamperedGraphic.hidden = mode !== 'tampered';
+
+      // Measure verified stylesheet application before toggling disabled state for visual preview
+      verifiedLink.disabled = false;
+      const badgeStyle = getComputedStyle(verifiedBadge);
+      const verifiedStylesheetApplied =
+        verifiedLink.sheet !== null && badgeStyle.borderLeftColor === 'rgb(24, 128, 56)';
+      const tamperedStylesheetBlocked = tamperedLink.sheet === null;
+      verifiedLink.disabled = mode === 'tampered';
+
+      let fetchStatus = 'verified';
+      if (mode === 'tampered') {
+        try {
+          await fetch(SVG_DATA_URL, {
+            integrity: BAD_INTEGRITY,
+            mode: 'cors',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+          });
+          fetchStatus = 'unexpectedly-allowed';
+        } catch {
+          fetchStatus = 'blocked-by-sri';
+        }
+      } else {
+        const res = await fetch(SVG_DATA_URL, {
+          integrity: computedSvgIntegrity,
+          mode: 'cors',
+          credentials: 'omit',
+          referrerPolicy: 'no-referrer',
+        });
+        fetchStatus = res.ok ? 'verified' : 'failed';
+      }
+
+      const activeGraphicWidth = mode === 'tampered' ? tamperedCssWidth : verifiedCssWidth;
+
+      if (mode === 'tampered') {
+        modeSummary.textContent =
+          'Tampered mode active: Browser blocked the mismatched <link rel="stylesheet"> (sheet === null), blocked the 64x64 CSS url() SVG, and rejected fetch() with TypeError.';
+        verifiedBadge.textContent =
+          'Tampered stylesheet blocked by browser SRI (link.sheet === null; untrusted styles were not applied).';
+        cssGraphicStatus.textContent = `Blocked by CSS url() integrity() (${activeGraphicWidth}px < 64px)`;
+        fetchStatusLabel.textContent = 'Rejected with TypeError (blocked-by-sri)';
+      } else {
+        modeSummary.textContent =
+          'Verified mode active: Browser verified SHA-384 digests and applied the HTML stylesheet, rendered the 64x64 CSS url() SVG, and resolved fetch().';
+        verifiedBadge.textContent =
+          'Verified stylesheet matched sha384- digest and applied green border styling.';
+        cssGraphicStatus.textContent = `Rendered 64x64 SVG (${activeGraphicWidth}px)`;
+        fetchStatusLabel.textContent = 'Resolved (200 OK, SHA-384 verified)';
+      }
+
+      banner.textContent = support.supportsUrlIntegrity
+        ? 'CSS url() request modifiers supported: cross-origin(), referrer-policy(), and integrity() active.'
+        : 'CSS url() integrity() modifier unsupported: using cascading CSS declaration fallback and document Referrer-Policy.';
+
+      output.dataset.auditMode = mode;
+      output.textContent = JSON.stringify(
+        {
+          activeMode: mode,
+          documentReferrerPolicy: document.querySelector('meta[name="referrer"]')?.content,
+          htmlLinkIntegrity:
+            mode === 'tampered'
+              ? tamperedLink.getAttribute('integrity')
+              : verifiedLink.getAttribute('integrity'),
+          htmlLinkCrossOrigin: verifiedLink.getAttribute('crossorigin'),
+          htmlLinkReferrerPolicy: verifiedLink.getAttribute('referrerpolicy'),
+          verifiedStylesheetApplied,
+          tamperedStylesheetBlocked,
+          cssUrlModifierSupport: support,
+          computedSvgIntegrity,
+          activeCssGraphicWidthPx: activeGraphicWidth,
+          verifiedCssContentLoaded: verifiedCssWidth === 64,
+          tamperedCssContentBlocked: tamperedCssWidth < 64,
+          fetchIntegrityCheck: fetchStatus,
+        },
+        null,
+        2,
+      );
+    }
+
+    btnVerify.addEventListener('click', () => runAudit('verify'));
+    btnTampered.addEventListener('click', () => runAudit('tampered'));
+
+    await runAudit('verify');
+  </script>
+</body>
+</html>

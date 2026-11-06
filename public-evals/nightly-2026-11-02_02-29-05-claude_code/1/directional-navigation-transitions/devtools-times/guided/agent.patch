@@ -1,0 +1,187 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..4b3f16f
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,145 @@
++---
++import type { CollectionEntry } from 'astro:content';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++<section class="top-stories-slider bg-white border-b border-gray-300" aria-roledescription="carousel" aria-label="Top stories">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
++        <button type="button" data-slider-prev class="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-amber-400 cursor-pointer">
++            <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++            Previous
++        </button>
++
++        <div class="top-stories-viewport flex-1 min-w-0" aria-live="polite">
++            <div class="top-stories-track">
++                {articles.map((article, index) => (
++                    <div
++                        class="top-stories-slide text-center"
++                        role="group"
++                        aria-roledescription="slide"
++                        aria-label={`${index + 1} of ${articles.length}`}
++                        data-active={index === 0 ? '' : undefined}
++                    >
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++
++        <button type="button" data-slider-next class="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-amber-400 cursor-pointer">
++            Next
++            <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++        </button>
++    </div>
++</section>
++
++<style is:global>
++    .top-stories-viewport {
++        /* Clips the sliding snapshots to the viewport during the scoped transition */
++        overflow: clip;
++    }
++
++    .top-stories-track {
++        display: grid;
++        view-transition-name: top-stories-track;
++    }
++
++    /* Stack all slides in one cell so the height fits the tallest story */
++    .top-stories-slide {
++        grid-area: 1 / 1;
++        visibility: hidden;
++    }
++
++    .top-stories-slide[data-active] {
++        visibility: visible;
++    }
++
++    @keyframes top-stories-slide-to-left {
++        to { transform: translateX(-100%); }
++    }
++
++    @keyframes top-stories-slide-from-right {
++        from { transform: translateX(100%); }
++    }
++
++    @keyframes top-stories-slide-to-right {
++        to { transform: translateX(100%); }
++    }
++
++    @keyframes top-stories-slide-from-left {
++        from { transform: translateX(-100%); }
++    }
++
++    .top-stories-viewport::view-transition-old(top-stories-track),
++    .top-stories-viewport::view-transition-new(top-stories-track) {
++        animation-duration: 0.4s;
++        animation-timing-function: ease-in-out;
++        animation-fill-mode: both;
++    }
++
++    .top-stories-viewport:active-view-transition-type(forward)::view-transition-old(top-stories-track) {
++        animation-name: top-stories-slide-to-left;
++    }
++
++    .top-stories-viewport:active-view-transition-type(forward)::view-transition-new(top-stories-track) {
++        animation-name: top-stories-slide-from-right;
++    }
++
++    .top-stories-viewport:active-view-transition-type(backward)::view-transition-old(top-stories-track) {
++        animation-name: top-stories-slide-to-right;
++    }
++
++    .top-stories-viewport:active-view-transition-type(backward)::view-transition-new(top-stories-track) {
++        animation-name: top-stories-slide-from-left;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++        .top-stories-viewport::view-transition-group(*),
++        .top-stories-viewport::view-transition-old(*),
++        .top-stories-viewport::view-transition-new(*) {
++            animation: none !important;
++        }
++    }
++</style>
++
++<script>
++    type ScopedTransitionElement = HTMLElement & {
++        startViewTransition(options: { update: () => void; types: string[] }): { ready: Promise<void> };
++    };
++
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    document.querySelectorAll<HTMLElement>('.top-stories-slider').forEach((slider) => {
++        const viewport = slider.querySelector<HTMLElement>('.top-stories-viewport')!;
++        const slides = Array.from(slider.querySelectorAll<HTMLElement>('.top-stories-slide'));
++        let current = 0;
++
++        const show = (index: number, direction: 'forward' | 'backward') => {
++            const update = () => {
++                slides[current].removeAttribute('data-active');
++                current = (index + slides.length) % slides.length;
++                slides[current].setAttribute('data-active', '');
++            };
++
++            if (!supportsScopedTransition) {
++                update();
++                return;
++            }
++
++            const transition = (viewport as ScopedTransitionElement).startViewTransition({ update, types: [direction] });
++            // Rapid clicks skip the running transition, which rejects `ready`
++            transition.ready.catch(() => {});
++        };
++
++        slider.querySelector('[data-slider-prev]')!.addEventListener('click', () => show(current - 1, 'backward'));
++        slider.querySelector('[data-slider-next]')!.addEventListener('click', () => show(current + 1, 'forward'));
++    });
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..d8eeda9 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <!-- Top Stories Slider -->
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">

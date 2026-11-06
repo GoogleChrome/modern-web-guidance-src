@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,20 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @function --cool-gradient(--start-color: #f3e5f5, --end-color: #e1f5fe, --angle: 135deg) {
++      result: linear-gradient(var(--angle), var(--start-color), var(--end-color));
++    }
++
++    @function --responsive-columns(--mobile-cols: 1fr, --desktop-cols: repeat(2, 1fr)) {
++      result: var(--mobile-cols);
++
++      @media (width >= 700px) {
++        result: var(--desktop-cols);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,10 +36,18 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      background-image: --cool-gradient(#fff8f0, #d7ccc8, 135deg);
+     }
+ 
++    h2 {
++      background-image: --cool-gradient(var(--primary), var(--accent), 90deg);
++      color: white;
++      padding: 10px 20px;
++      border-radius: 6px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,11 +119,17 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    main {
++      display: grid;
++      grid-template-columns: --responsive-columns();
++      gap: 20px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: --responsive-columns();
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 

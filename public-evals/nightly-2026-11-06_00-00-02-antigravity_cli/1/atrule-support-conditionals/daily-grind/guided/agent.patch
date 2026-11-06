@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+index 66c9173..ba35254 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,31 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --supports-atproperty: ;
++    }
++
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --hero-glow {
++      syntax: "<color>";
++      inherits: false;
++      initial-value: rgba(0, 0, 0, 0.5);
++    }
++
++    @keyframes hero-glow-pulse {
++      0%, 100% {
++        --hero-glow: rgba(78, 52, 46, 0.65);
++      }
++      50% {
++        --hero-glow: rgba(255, 171, 64, 0.35);
++      }
++    }
++
++    @function --surface-tint(--color, --ratio: 12%) {
++      result: color-mix(in oklch, var(--color), white var(--ratio));
+     }
+ 
+     * {
+@@ -38,6 +63,26 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      container-type: scroll-state;
++
++      @supports (container-type: scroll-state) {
++        transition: background-color 0.3s, box-shadow 0.3s, backdrop-filter 0.3s;
++      }
++
++      @supports at-rule(@function) {
++        border-block-end: 1px solid --surface-tint(var(--primary), 25%);
++      }
++
++      @supports (color: --surface-tint(var(--primary))) {
++        background: --surface-tint(var(--primary), 8%);
++      }
++    }
++
++    @container scroll-state(stuck: top) {
++      nav {
++        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++        backdrop-filter: blur(8px);
++      }
+     }
+ 
+     .logo {
+@@ -77,6 +122,10 @@
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: var(--supports-atproperty,
++        linear-gradient(135deg, var(--hero-glow), rgba(0, 0, 0, 0.65)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++      animation: var(--supports-atproperty, hero-glow-pulse 6s ease-in-out infinite);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -86,6 +135,13 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++
++      @supports at-rule(@property) {
++        background-image:
++          linear-gradient(135deg, var(--hero-glow), rgba(0, 0, 0, 0.65)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        animation: hero-glow-pulse 6s ease-in-out infinite;
++      }
+     }
+ 
+     .hero h1 {
+@@ -108,11 +164,39 @@
+     }
+ 
+     .card {
++      --featured: 0;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      container-type: inline-size;
++
++      &:first-child {
++        --featured: 1;
++      }
++
++      @supports (container-type: inline-size) {
++        padding: clamp(16px, 6cqi, 28px);
++      }
++
++      @supports at-rule(@function) {
++        background: --surface-tint(var(--secondary), 70%);
++      }
++
++      @container style(--featured: 1) or (not (style(--featured: 1))) {
++        border: 1px solid var(--secondary);
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++
++        &:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
++        }
++      }
++
++      @container style(--featured: 1) {
++        border-color: var(--accent);
++      }
+     }
+ 
+     .card h3 {

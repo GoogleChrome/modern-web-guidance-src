@@ -1,0 +1,339 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..20b4080 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -6,9 +6,13 @@ export default function SignInForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [ready, setReady] = useState(false);
++
++  useEffect(() => setReady(true), []);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,25 +20,25 @@ export default function SignInForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+         method: 'POST',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
++        redirect: 'error',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        setError('Unable to sign in. Check your username and password and try again.');
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -50,12 +54,20 @@ export default function SignInForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <p id="auth-privacy" className="mb-4 text-sm text-gray-600">
++        We only ask for a username and password.
++        When you submit, these are sent to our authentication service hosted on Google Cloud
++        (us-central1-web-devrel-apps.cloudfunctions.net) to check your credentials.
++        Your password is cleared from this form after each attempt.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read our privacy policy</a>.
++      </p>
++      <noscript><p>JavaScript is required to securely submit this form.</p></noscript>
++      <form method="post" onSubmit={handleSubmit} aria-describedby="auth-privacy" aria-busy={loading} data-skip-tracking="true" className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,6 +75,11 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            data-skip-tracking="true"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +94,9 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="current-password"
++            data-skip-tracking="true"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -86,7 +106,8 @@ export default function SignInForm() {
+ 
+         <button
+           type="submit"
+-          disabled={loading}
++          data-skip-tracking="true"
++          disabled={!ready || loading}
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..81b5ece 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useState } from 'react';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -6,9 +6,13 @@ export default function SignUpForm() {
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
++  const [ready, setReady] = useState(false);
++
++  useEffect(() => setReady(true), []);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (loading) return;
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -16,26 +20,27 @@ export default function SignUpForm() {
+     try {
+       const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+         method: 'POST',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++        cache: 'no-store',
++        redirect: 'error',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ username, password }),
+       });
+ 
+-      const data = await response.json();
+-
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        setError('Unable to create an account with these details. Please try again.');
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
++      setPassword('');
+       setLoading(false);
+     }
+   };
+@@ -51,12 +56,20 @@ export default function SignUpForm() {
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <p id="auth-privacy" className="mb-4 text-sm text-gray-600">
++        Choose a username that does not identify you. We only ask for a username and password.
++        When you submit, these are sent to our authentication service hosted on Google Cloud
++        (us-central1-web-devrel-apps.cloudfunctions.net) to create your account.
++        Your password is cleared from this form after each attempt.{' '}
++        <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline">Read our privacy policy</a>.
++      </p>
++      <noscript><p>JavaScript is required to securely submit this form.</p></noscript>
++      <form method="post" onSubmit={handleSubmit} aria-describedby="auth-privacy" aria-busy={loading} data-skip-tracking="true" className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,6 +77,11 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
++            autoComplete="username"
++            autoCapitalize="none"
++            spellCheck={false}
++            data-skip-tracking="true"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -78,19 +96,25 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
++            autoComplete="new-password"
++            data-skip-tracking="true"
++            minLength={8}
++            pattern=".*[0-9].*"
++            aria-describedby="password-help"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
++          <p id="password-help" className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+ 
+         <button
+           type="submit"
+-          disabled={loading}
++          disabled={!ready || loading}
+           data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..46aad21 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,20 +17,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="utf-8" />
++    <meta name="referrer" content="no-referrer" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <!-- Keep optional analytics, advertising, and remote fonts disabled by default. -->
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..a69a563 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,17 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+-  if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+-    const readingList = await context.session.get('readingList');
+-    if (readingList === undefined) {
+-      await context.session.set('readingList', []);
+-    }
++  // Reading-list storage is created by its POST handler only when a reader saves an article.
++  const response = await next();
++  response.headers.set('Referrer-Policy', 'no-referrer');
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
++
++  const path = context.url.pathname.replace(/\/+$/, '');
++  const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
++  if ([`${base}/signin`, `${base}/signup`, `${base}/api/reading-list.json`].includes(path)) {
++    response.headers.set('Cache-Control', 'no-store');
+   }
+-  return next();
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..4a3700b 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -2,16 +2,17 @@
+ import LegalLayout from '../../layouts/LegalLayout.astro';
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <h2>Signing in and creating an account</h2>
++    <p>Both forms ask only for a username and password. You can choose a username that does not identify you; an email address, real name, phone number, and date of birth are not requested.</p>
++    <p>Only when you submit a form, your username and password are sent over HTTPS to the authentication service at <code>us-central1-web-devrel-apps.cloudfunctions.net</code>, hosted on Google Cloud. Sign-in uses this service to check your credentials; sign-up uses it to create an account. Like other network services, it also receives connection information such as your IP address.</p>
++    <p>The forms omit cookies and referrer information from these requests, do not intentionally cache the requests, and do not save credentials or authentication tokens in browser storage. The password field is cleared after each submission attempt. Your browser or password manager may separately offer to remember credentials under your own settings.</p>
++    <p>This website's source does not establish the authentication service's storage, retention, or deletion practices. Those practices need to be confirmed with the service operator; clearing the form does not delete an account or data held by that service.</p>
++
++    <h2>Page resources and tracking</h2>
++    <p>The shared page layout does not load third-party analytics or advertising scripts or request remote fonts. No optional tracking consent is required for those disabled resources. The site uses a no-referrer policy to prevent its page address being sent with outgoing requests.</p>
++    <p>Some editorial images and links use external services. When an external resource loads, or you follow a link, that provider receives connection information such as your IP address and handles it under its own policies.</p>
++
++    <h2>Reading list and other cookies</h2>
++    <p>Saving an article uses a server-side reading list and a session cookie so the site can retrieve that list on later requests. Simply visiting a page does not initialize a reading list. Clearing your site's cookies removes your browser's connection to that session; it does not by itself delete server-side data.</p>
++    <p>Some interactive articles contain their own scripts and may set feature-specific cookies. The disabled analytics and advertising scripts are not needed to read articles or use the account forms.</p>
+ </LegalLayout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce4e27d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,7 @@
+ @import "tailwindcss";
+ 
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: Georgia, "Times New Roman", serif;
+   font-weight: 500;
+   font-style: normal;
+ }
+\ No newline at end of file

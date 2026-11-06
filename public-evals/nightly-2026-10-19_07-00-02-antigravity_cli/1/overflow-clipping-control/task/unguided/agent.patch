@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,123 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase {
++      margin-bottom: 50px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 20px;
++      align-items: start;
++    }
++
++    /* Nested Curve Parent */
++    .nested-curve-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 36px;
++      overflow: clip;
++      overflow-clip-margin: content-box;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++    }
++
++    .nested-curve-parent .card-media img {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-parent .card-body {
++      padding: 16px 0;
++    }
++
++    .nested-curve-parent .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-parent footer,
++    .nested-curve-parent .card-footer {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 12px 16px;
++      margin-top: 15px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++    }
++
++    /* Promos Block & Safety Zone Parent */
++    .safety-zone-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 12px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent .promo-tag {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 4px 10px;
++      border-radius: 4px;
++      margin-bottom: 12px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .safety-zone-parent .promo-overflow-text {
++      white-space: nowrap;
++      font-weight: 600;
++      color: var(--primary);
++      background: rgba(215, 204, 200, 0.35);
++      padding: 8px 12px;
++      border-radius: 4px;
++      margin: 12px 0;
++      font-size: 0.85rem;
++      letter-spacing: 0.5px;
++    }
++
++    .safety-zone-parent .glow-btn {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary);
++      padding: 12px 24px;
++      text-decoration: none;
++      border: none;
++      border-radius: 5px;
++      font-weight: bold;
++      font-size: 1rem;
++      cursor: pointer;
++      margin-top: 15px;
++      box-shadow: 0 0 15px var(--accent), 0 0 25px rgba(255, 171, 64, 0.7);
++      transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
++    }
++
++    .safety-zone-parent .glow-btn:hover {
++      background: #ffa000;
++      box-shadow: 0 0 15px #ffa000, 0 0 30px rgba(255, 160, 0, 0.9);
++      transform: translateY(-1px);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +289,35 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase" id="showcase">
++      <h2 style="text-align: center;">Featured Showcase</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80" alt="Artisan Roast Coffee">
++          </div>
++          <div class="card-body">
++            <h3>Artisan Single-Origin Roast</h3>
++            <p>Hand-harvested Ethiopian heirloom beans with tasting notes of wild honey, bergamot, and ripe stone fruit. Roasted fresh daily in micro-batches.</p>
++          </div>
++          <footer class="card-footer">
++            <span>Specialty Grade &bull; Light Roast</span>
++            <span class="price">$18.50</span>
++          </footer>
++        </div>
++
++        <div class="promos safety-zone-parent">
++          <span class="promo-tag">Special Offer</span>
++          <h3>Roaster's Club Subscription</h3>
++          <p class="promo-overflow-text">LIMITED EDITION COFFEE CLUB &bull; GET 25% OFF YOUR FIRST ROAST SUBSCRIPTION &bull; FREE CERAMIC TASTING MUG INCLUDED WITH CODE DAILY2026 &bull; FREE PRIORITY SHIPPING NATIONWIDE</p>
++          <p>Freshly roasted specialty beans delivered straight from our roastery to your door every Monday. Enjoy early access to limited micro-lots and member-only pricing.</p>
++          <button class="btn glow-btn" type="button">Claim Special Offer</button>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

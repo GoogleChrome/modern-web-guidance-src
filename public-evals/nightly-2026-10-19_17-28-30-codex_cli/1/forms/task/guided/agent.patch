@@ -1,0 +1,44 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,39 @@
++# Accessibility and security audit
++
++The original project contained a static HTML page and no forms or account backend. The rewards registration at the bottom of the page is a functional three-step **preview**; it does not create memberships. This limitation is disclosed before data entry, on review, and on completion.
++
++## Changes
++
++| Finding                                                        | Resolution                                                                                                                                                                                |
++| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| No skip navigation or named navigation landmarks               | Added a skip link, focusable main target, and distinct main, footer, and registration navigation.                                                                                         |
++| Repeated “View Details” links had ambiguous destinations       | Named each product control and implemented accessible native detail dialogs.                                                                                                              |
++| Navigation pointed to routes absent from this project          | Connected the menu and rewards sections; added informational dialogs for other content, with explicit unavailable-service messaging.                                                      |
++| A logout link performed an account-changing operation with GET | Removed the logout control; this project has no authenticated session.                                                                                                                    |
++| Focus and mobile target styling were incomplete                | Added visible outlines, larger targets, responsive layouts, reduced-motion handling, and forced-color support.                                                                            |
++| External hero image requested a third-party resource           | Bundled the stock photographs locally and disabled referrer transmission.                                                                                                                 |
++| No content security policy                                     | Restricted scripts, styles, images, and fonts to this origin; blocked network connections, native form submissions, plugins, and base URL changes. Scripts and styles are external files. |
++
++## Registration behavior
++
++- Native labels, fieldsets, autocomplete hints, required attributes, and input types. Unicode names are accepted. Birth year, phone number, and address are not requested.
++- Step indicators expose the active step. Hidden steps are disabled and absent from keyboard navigation. Going back or editing preserves values.
++- Validation occurs on leaving a field or continuing; typing clears its error. A focused error summary and associated inline messages communicate failures. Optional birthday pairs are validated against the selected month, including February 29.
++- Passwords support paste, password managers, 12–128 characters, and a stateful visibility toggle. Passwords are masked again when moving forward or hiding the tab.
++- Marketing is optional and unchecked. Required terms acknowledgement is separate, with keyboard-operable terms and privacy dialogs.
++- Review values are inserted using `textContent`, never interpreted as markup. No credentials are logged, transmitted, placed in URLs, or stored in local/session storage. Completion and page restoration clear entered values.
++- If JavaScript is unavailable, an explanatory message appears; the action button remains disabled and CSP blocks native submission.
++
++## Automated verification
++
++Run `pnpm install`, `pnpm exec playwright install chromium`, then `pnpm test` (Python 3 serves the test fixture).
++
++The suite covers the full flow, deferred validation, invalid birthdays, back/edit persistence, Unicode names, password visibility, terms consent, safe rendering of markup-like input, completion data clearing, storage/network behavior, skip navigation, dialog keyboard dismissal/focus restoration, local image loading, and page runtime errors. Axe checks run on the initial page, error state, every registration step, completion, and a dialog. Responsive tests cover 320, 390, 768, and 1440 pixel widths.
++
++No manual browser verification was performed, as requested. Automated checks cannot establish complete WCAG conformance or replace assistive-technology user testing.
++
++## Production integration boundary
++
++There is no server to audit or registration endpoint to connect in this repository. Before accepting real enrollment, supply a same-origin HTTPS POST endpoint with server-side validation, password hashing, email verification, request limits, anti-CSRF protection appropriate to the session design, and secure session cookies. Update the client, privacy/terms content, and CSP together. The current `connect-src 'none'` and `form-action 'none'` intentionally prevent submission. Configure deployment headers such as CSP `frame-ancestors` (unsupported in a meta policy), HSTS, and `X-Content-Type-Options` at the host.
++
++Stock photographs: Unsplash photo IDs `1495474472287-4d71bcdd2085`, `1461023058943-07fcbe16d735`, `1510707577719-ae7c14805e3a`, and `1517701604599-bb29b565090c`.

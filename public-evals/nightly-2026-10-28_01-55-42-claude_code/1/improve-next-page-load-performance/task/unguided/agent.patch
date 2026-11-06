@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Link prefetching.
++    1) Speculation Rules (Chromium): prefetch same-origin links when the user
++       hovers/starts interacting with them ("moderate" eagerness).
++    2) Fallback (<link rel="prefetch">) for browsers without Speculation Rules.
++    Links are excluded from BOTH paths if they carry data-no-prefetch or point
++    at /logout, so state-changing URLs are never fetched by accident.
++    To opt any other link out, add data-no-prefetch to it.
++  -->
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "source": "document",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "href_matches": "/logout/*" } },
++              { "not": { "selector_matches": "[data-no-prefetch]" } },
++              { "not": { "selector_matches": "[download]" } },
++              { "not": { "selector_matches": "[target=_blank]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
++  <script>
++    (function () {
++      // Browsers with Speculation Rules handle prefetching natively; nothing else to do.
++      if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) return;
++
++      // Respect reduced-data preferences and offline state.
++      var conn = navigator.connection;
++      if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
++
++      var EXCLUDED_PATHS = /^\/logout(\/|$)/;
++      var prefetched = Object.create(null);
++
++      function prefetchable(a) {
++        if (!a || a.hasAttribute('data-no-prefetch')) return null;
++        if (a.hasAttribute('download') || a.target === '_blank') return null;
++        var href = a.getAttribute('href');
++        if (!href || href.charAt(0) === '#') return null;
++        var url;
++        try { url = new URL(a.href, location.href); } catch (e) { return null; }
++        if (url.origin !== location.origin) return null;
++        if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
++        if (EXCLUDED_PATHS.test(url.pathname)) return null;
++        url.hash = '';
++        if (url.href === location.href.replace(/#.*$/, '')) return null;
++        return url.href;
++      }
++
++      function prefetch(a) {
++        var href = prefetchable(a);
++        if (!href || prefetched[href]) return;
++        prefetched[href] = true;
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = href;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      function onIntent(e) {
++        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
++        if (a) prefetch(a);
++      }
++
++      // Hover / touch / keyboard focus all signal likely navigation.
++      document.addEventListener('mouseover', onIntent, { passive: true });
++      document.addEventListener('touchstart', onIntent, { passive: true });
++      document.addEventListener('focusin', onIntent, { passive: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -186,8 +186,61 @@
+       margin: 2rem auto;
+       text-align: center;
+       color: #64748b;
+     }
++    /* Cards below the initial viewport: skip layout/paint until scrolled near. */
++    .off-screen-card {
++      content-visibility: auto;
++      /* Estimated card height; 'auto' remembers the real size once rendered. */
++      contain-intrinsic-size: auto none auto 366px;
++    }
++
++    /* Debug panel: hidden by default. content-visibility: hidden keeps the
++       rendering state cached so toggling is instant (vs. display: none). */
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 0 1rem;
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++      }
++    }
++
++    .debug-panel.is-active {
++      display: block;
++      content-visibility: visible;
++    }
++
++    .debug-panel-inner {
++      background: #0f172a;
++      color: #e2e8f0;
++      font-family: monospace;
++      font-size: 0.85rem;
++      border-radius: 0.75rem;
++      padding: 1rem 1.25rem;
++    }
++
++    .debug-panel-inner h2 {
++      font-size: 0.9rem;
++      margin: 0 0 0.5rem;
++      color: #93c5fd;
++    }
++
++    .debug-panel-inner dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 1rem;
++      margin: 0;
++    }
++
++    .debug-panel-inner dd {
++      margin: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -207,8 +260,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn off" aria-expanded="false" aria-controls="debug-panel">Debug: Off</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +273,38 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section class="debug-panel" id="debug-panel" aria-label="Debug panel">
++    <div class="debug-panel-inner">
++      <h2>Debug</h2>
++      <dl>
++        <dt>Total cards</dt><dd id="debug-total">0</dd>
++        <dt>Rendered eagerly</dt><dd id="debug-eager">0</dd>
++        <dt>Deferred (.off-screen-card)</dt><dd id="debug-deferred">0</dd>
++        <dt>Last render</dt><dd id="debug-render">–</dd>
++        <dt>Viewport</dt><dd id="debug-viewport">–</dd>
++      </dl>
++    </div>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Approximate rendered card height incl. margin, used to estimate how many
++    // cards fit in the initial viewport. Those render eagerly; the rest defer.
++    const approxCardHeight = 300;
++    const debugPanel = document.getElementById('debug-panel');
++    const debugBtn = document.getElementById('toggle-debug');
+ 
+ 
+ 
+-    function createCard(index) {
++    function createCard(index, deferred) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = deferred ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +337,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          document.getElementById('debug-render').textContent = `${duration}ms`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -283,24 +356,37 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      const eagerCount = Math.min(cardCount, Math.ceil(window.innerHeight / approxCardHeight) + 1);
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        fragment.appendChild(createCard(i, i >= eagerCount));
+       }
+       feed.appendChild(fragment);
+ 
+       measureRender(startTime);
++
++      document.getElementById('debug-total').textContent = cardCount;
++      document.getElementById('debug-eager').textContent = eagerCount;
++      document.getElementById('debug-deferred').textContent = cardCount - eagerCount;
++      document.getElementById('debug-viewport').textContent = `${window.innerWidth}×${window.innerHeight}`;
+     }
+ 
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const active = debugPanel.classList.toggle('is-active');
++      debugBtn.classList.toggle('off', !active);
++      debugBtn.setAttribute('aria-expanded', String(active));
++      debugBtn.textContent = active ? 'Debug: On' : 'Debug: Off';
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

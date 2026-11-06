@@ -1,0 +1,327 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,118 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Promo Area */
++    .promo {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .promo-sub {
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .promo-controls button {
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 8px 18px;
++      border-radius: 5px;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .promo-controls button:hover,
++    .promo-controls button:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .promo-controls button:disabled {
++      opacity: 0.45;
++      cursor: not-allowed;
++      background: white;
++      color: var(--primary);
++    }
++
++    .promo-stage {
++      position: relative;
++    }
++
++    #domContainer {
++      min-height: 40px;
++    }
++
++    .promo-card,
++    .promo-ghost {
++      padding: 0 0 20px;
++      overflow: hidden;
++      transform-origin: center;
++    }
++
++    .promo-ghost {
++      position: absolute;
++      margin: 0;
++      pointer-events: none;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .promo-card img,
++    .promo-ghost img {
++      display: block;
++      width: 100%;
++      height: 150px;
++      object-fit: cover;
++      background: var(--secondary);
++      margin-bottom: 14px;
++    }
++
++    .promo-card h3,
++    .promo-card p,
++    .promo-ghost h3,
++    .promo-ghost p {
++      padding: 0 20px;
++    }
++
++    .promo-ghost h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .promo-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.5px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++    }
++
++    /* Keep a card visible while its hide animation plays; the hidden
++       attribute is set immediately so the DOM state stays accurate. */
++    .card[hidden].is-leaving {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +304,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo" aria-labelledby="promoTitle">
++      <h2 id="promoTitle">Special Promotions</h2>
++      <p class="promo-sub">Limited-time deals, freshly brewed.</p>
++
++      <div class="promo-controls">
++        <button type="button" id="addBtn">Add Promo</button>
++        <button type="button" id="removeBtn">Remove Last Promo</button>
++        <button type="button" id="toggleBtn" aria-controls="toggleCard" aria-expanded="true">Toggle Featured Promo</button>
++      </div>
++
++      <div class="promo-stage">
++        <div id="domContainer" class="grid" aria-live="polite">
++          <article class="card promo-card" id="toggleCard">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=70"
++              alt="Latte with latte art in a white cup" loading="lazy">
++            <span class="promo-badge">FEATURED</span>
++            <h3>Happy Hour: 2-for-1 Lattes</h3>
++            <p>Every weekday from 2&ndash;4pm. Bring a friend and share the warmth.</p>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +339,172 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const container = document.getElementById('domContainer');
++      const stage = container.parentElement;
++      const addBtn = document.getElementById('addBtn');
++      const removeBtn = document.getElementById('removeBtn');
++      const toggleBtn = document.getElementById('toggleBtn');
++      const toggleCard = document.getElementById('toggleCard');
++
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
++
++      const ENTER = [
++        { opacity: 0, transform: 'scale(0.85)' },
++        { opacity: 1, transform: 'scale(1)' }
++      ];
++      const EXIT = [
++        { opacity: 1, transform: 'scale(1)' },
++        { opacity: 0, transform: 'scale(0.85)' }
++      ];
++
++      function animate(el, frames) {
++        if (typeof el.animate !== 'function') return Promise.resolve();
++        // Respect reduced-motion: fade only, very short, no scaling.
++        const opts = reduceMotion.matches
++          ? { duration: 120, easing: 'linear' }
++          : { duration: 320, easing: EASE };
++        const kf = reduceMotion.matches
++          ? frames.map(f => ({ opacity: f.opacity }))
++          : frames;
++        const anim = el.animate(kf, opts);
++        return anim.finished.catch(() => { });
++      }
++
++      const PROMOS = [
++        {
++          title: 'Free Pastry Friday',
++          text: 'Get a free croissant with any large drink every Friday.',
++          img: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=70',
++          alt: 'Cup of coffee on a wooden table'
++        },
++        {
++          title: 'Cold Brew Club',
++          text: 'Double reward stars on every cold brew this month.',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70',
++          alt: 'Iced coffee in a glass'
++        },
++        {
++          title: 'Bean Bundle Deal',
++          text: 'Buy two bags of house roast, get the third 50% off.',
++          img: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=70',
++          alt: 'Coffee being brewed'
++        }
++      ];
++      let promoCount = 0;
++
++      function createPromoCard() {
++        const data = PROMOS[promoCount % PROMOS.length];
++        promoCount += 1;
++
++        const card = document.createElement('article');
++        card.className = 'card promo-card';
++
++        const img = document.createElement('img');
++        img.src = data.img;
++        img.alt = data.alt;
++        img.loading = 'lazy';
++
++        const badge = document.createElement('span');
++        badge.className = 'promo-badge';
++        badge.textContent = 'PROMO #' + promoCount;
++
++        const h3 = document.createElement('h3');
++        h3.textContent = data.title;
++
++        const p = document.createElement('p');
++        p.textContent = data.text;
++
++        card.append(img, badge, h3, p);
++        return card;
++      }
++
++      function getCards() {
++        return container.querySelectorAll(':scope > .card');
++      }
++
++      function updateButtons() {
++        removeBtn.disabled = getCards().length === 0;
++        const present = container.contains(toggleCard);
++        toggleBtn.disabled = !present;
++        toggleBtn.setAttribute('aria-expanded', String(present && !toggleCard.hidden));
++      }
++
++      // Add: append immediately, then fade + scale in.
++      addBtn.addEventListener('click', function () {
++        const card = createPromoCard();
++        container.appendChild(card);
++        animate(card, ENTER);
++        updateButtons();
++      });
++
++      // Remove: detach the real card right away (so the DOM reflects the new
++      // state synchronously) and play the fade + scale out on a visual-only
++      // ghost copy positioned exactly where the card was.
++      removeBtn.addEventListener('click', function () {
++        const cards = getCards();
++        const card = cards[cards.length - 1];
++        if (!card) return;
++
++        const wasVisible = !card.hidden || card.classList.contains('is-leaving');
++        let ghost = null;
++
++        if (wasVisible) {
++          const stageRect = stage.getBoundingClientRect();
++          const rect = card.getBoundingClientRect();
++          ghost = card.cloneNode(true);
++          ghost.removeAttribute('id');
++          ghost.removeAttribute('hidden');
++          ghost.className = 'promo-ghost';
++          ghost.setAttribute('aria-hidden', 'true');
++          // Carry over any in-flight transform/opacity for a seamless handoff.
++          const cs = getComputedStyle(card);
++          ghost.style.opacity = cs.opacity;
++          ghost.style.left = (rect.left - stageRect.left) + 'px';
++          ghost.style.top = (rect.top - stageRect.top) + 'px';
++          ghost.style.width = rect.width + 'px';
++          ghost.style.height = rect.height + 'px';
++        }
++
++        card.getAnimations && card.getAnimations().forEach(a => a.cancel());
++        card.classList.remove('is-leaving');
++        card.remove();
++        updateButtons();
++
++        if (ghost) {
++          stage.appendChild(ghost);
++          animate(ghost, EXIT).then(() => ghost.remove());
++        }
++      });
++
++      // Toggle: flip the hidden attribute immediately, animating either way.
++      toggleBtn.addEventListener('click', function () {
++        if (!container.contains(toggleCard)) return;
++
++        toggleCard.getAnimations && toggleCard.getAnimations().forEach(a => a.cancel());
++
++        if (toggleCard.hasAttribute('hidden')) {
++          toggleCard.classList.remove('is-leaving');
++          toggleCard.removeAttribute('hidden');
++          animate(toggleCard, ENTER);
++        } else {
++          toggleCard.setAttribute('hidden', '');
++          toggleCard.classList.add('is-leaving');
++          animate(toggleCard, EXIT).then(() => {
++            // Only finish if it wasn't re-shown mid-animation.
++            if (toggleCard.hidden) toggleCard.classList.remove('is-leaving');
++          });
++        }
++        updateButtons();
++      });
++
++      updateButtons();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

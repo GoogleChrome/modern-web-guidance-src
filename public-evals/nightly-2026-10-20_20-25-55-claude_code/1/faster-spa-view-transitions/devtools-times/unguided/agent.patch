@@ -1,0 +1,37 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..93fd784 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -53,3 +53,32 @@ const baseUrl = import.meta.env.BASE_URL;
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  // Keep the DOM of previously visited views so navigating back to them
++  // swaps in the preserved structure instead of the freshly fetched markup.
++  const MAX_CACHED_VIEWS = 10;
++  const UNCACHED_PATHS = /\/(signin|signup)\/?$/;
++  const viewCache = new Map<string, HTMLElement>();
++
++  const cacheKey = (url: URL) => url.pathname + url.search;
++
++  document.addEventListener("astro:before-swap", (event) => {
++    // Runs before the swap, so document.body is still the view being left.
++    const from = new URL(event.from);
++    if (!UNCACHED_PATHS.test(from.pathname)) {
++      const key = cacheKey(from);
++      viewCache.delete(key); // refresh insertion order (LRU)
++      viewCache.set(key, document.body.cloneNode(true) as HTMLElement);
++      if (viewCache.size > MAX_CACHED_VIEWS) {
++        viewCache.delete(viewCache.keys().next().value!);
++      }
++    }
++
++    const cached = viewCache.get(cacheKey(event.to));
++    if (cached) {
++      // Islands re-hydrate from the preserved markup after the swap.
++      event.newDocument.body.replaceWith(cached.cloneNode(true));
++    }
++  });
++</script>

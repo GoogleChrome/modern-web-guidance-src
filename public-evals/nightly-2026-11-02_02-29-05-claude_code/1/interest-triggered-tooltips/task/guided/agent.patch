@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,68 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Nutrition tooltips on "View Details" */
++    .btn[interestfor] {
++      --interest-delay-start: 0.2s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.2s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .btn[interestfor]::after {
++      content: "\24D8";
++      margin-left: 6px;
++      font-size: 0.85em;
++      opacity: 0.8;
++    }
++
++    .btn:is(:interest-source, .interest-source) {
++      background: #3e2723;
++    }
++
++    a[interestfor="info-maple"] { anchor-name: --info-maple; }
++    a[interestfor="info-espresso"] { anchor-name: --info-espresso; }
++    a[interestfor="info-cold-brew"] { anchor-name: --info-cold-brew; }
++    #info-maple { position-anchor: --info-maple; }
++    #info-espresso { position-anchor: --info-espresso; }
++    #info-cold-brew { position-anchor: --info-cold-brew; }
++
++    .nutrition-tip {
++      inset: auto;
++      top: anchor(top);
++      left: anchor(right);
++      margin: 0 0 0 10px;
++      position-try-fallbacks: flip-inline;
++      width: max-content;
++      max-width: 220px;
++      padding: 10px 14px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .nutrition-tip strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++    }
++
++    .nutrition-tip dl {
++      display: grid;
++      grid-template-columns: auto auto;
++      gap: 2px 12px;
++    }
++
++    .nutrition-tip dd {
++      text-align: right;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +212,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++    if (!("anchorName" in document.documentElement.style)) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -180,19 +251,46 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="info-maple">View Details</a>
++          <div popover="hint" id="info-maple" class="nutrition-tip">
++            <strong>Maple Oat Latte (16 oz)</strong>
++            <dl>
++              <dt>Calories</dt><dd>240</dd>
++              <dt>Sugar</dt><dd>28 g</dd>
++              <dt>Caffeine</dt><dd>150 mg</dd>
++              <dt>Dairy-free</dt><dd>Yes</dd>
++            </dl>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="info-espresso">View Details</a>
++          <div popover="hint" id="info-espresso" class="nutrition-tip">
++            <strong>Dark Roast Espresso (double)</strong>
++            <dl>
++              <dt>Calories</dt><dd>5</dd>
++              <dt>Sugar</dt><dd>0 g</dd>
++              <dt>Caffeine</dt><dd>130 mg</dd>
++              <dt>Dairy-free</dt><dd>Yes</dd>
++            </dl>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="info-cold-brew">View Details</a>
++          <div popover="hint" id="info-cold-brew" class="nutrition-tip">
++            <strong>Cold Brew (16 oz)</strong>
++            <dl>
++              <dt>Calories</dt><dd>5</dd>
++              <dt>Sugar</dt><dd>0 g</dd>
++              <dt>Caffeine</dt><dd>205 mg</dd>
++              <dt>Dairy-free</dt><dd>Yes</dd>
++            </dl>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

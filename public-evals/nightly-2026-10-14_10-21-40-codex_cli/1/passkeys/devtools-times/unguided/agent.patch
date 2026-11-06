@@ -1,0 +1,748 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..c1028dd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Local authentication database
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..fa34e65 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,41 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Accounts and passkeys
++
++The app provides local account registration and authentication through password or
++passkey, plus passkey addition, renaming, removal, and reauthentication at
++`/devtools-times/account`. WebAuthn is implemented with
++[SimpleWebAuthn](https://simplewebauthn.dev/docs/packages/server/). Discoverable
++credentials allow sign-in without entering a username. Both registration and
++sign-in require authenticator user verification.
++
++Run with Node.js 22.13 or later. Configure:
++
++- `AUTH_ORIGIN`: the exact public origin, e.g. `https://news.example.com` (no path
++  or trailing slash). The hostname is the WebAuthn relying party ID. When unset,
++  the request origin is used for local development. Set it explicitly in deployment.
++- `AUTH_DB_PATH`: SQLite database path, default `.data/auth.sqlite`. Deploy on a
++  single Node server with a persistent volume for the database and its WAL files.
++  A horizontally scaled deployment needs a shared database implementation.
++
++Passkeys require HTTPS, with localhost allowed for development. Private keys and
++biometric data never reach the server. The database stores credential public
++keys, counters, metadata, salted scrypt password hashes, and hashed session IDs.
++Session cookies are HttpOnly, SameSite Strict, and Secure on HTTPS. Challenges
++are bound to a browser cookie, expire after five minutes, and are consumed once.
++Management requires identity verification within the last five minutes. Removing
++the last passkey is blocked for accounts without a password.
++
++The former forms called an external Cloud Function. Local accounts are a separate
++authentication store; existing external-service users and password hashes are not
++migrated. Import those accounts through a trusted backend migration before using
++this replacement with existing users. A passkey-only account should add a backup
++passkey: this implementation does not provide account recovery.
++
++Run `pnpm test:auth` for automated API integration tests. These exercise actual
++WebAuthn registration and signed authentication responses using a software
++fixture, plus reauthentication, credential ownership, replay and origin rejection,
++challenge expiry, password fallback, and last-credential protection. No manual
++browser verification is required.
+diff --git a/package.json b/package.json
+index 66c3a6d..c7f5dec 100644
+--- a/package.json
++++ b/package.json
+@@ -7,12 +7,15 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test:auth": "pnpm build && node --test tests/auth.test.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.3",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -23,12 +26,17 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+       "esbuild",
+       "sharp"
+     ]
++  },
++  "engines": {
++    "node": ">=22.13.0"
+   }
+ }
+diff --git a/src/components/AccountSecurity.tsx b/src/components/AccountSecurity.tsx
+new file mode 100644
+index 0000000..3f508c4
+--- /dev/null
++++ b/src/components/AccountSecurity.tsx
+@@ -0,0 +1,66 @@
++import { useEffect, useRef, useState } from 'react';
++import { FingerPrintIcon, ShieldCheckIcon, PlusIcon, ArrowRightIcon, KeyIcon, CheckIcon, ArrowLeftIcon, LockClosedIcon } from '@heroicons/react/24/outline';
++import { api, base, passkey } from '../lib/auth-client';
++type Passkey = { id: string; name: string; createdAt: number; lastUsed: number | null };
++type Account = { user: { username: string; hasPassword: boolean } | null; verified: boolean; passkeys: Passkey[] };
++export default function AccountSecurity() {
++  const modalRef = useRef<HTMLElement>(null);
++  const [account, setAccount] = useState<Account | null>(null);
++  const [error, setError] = useState(''); const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
++  const [dialog, setDialog] = useState<'add' | 'verify' | 'rename' | 'remove' | null>(null);
++  const [selected, setSelected] = useState<Passkey | null>(null); const [name, setName] = useState(''); const [password, setPassword] = useState('');
++  useEffect(() => {
++    if (!dialog) return;
++    const previous = document.activeElement as HTMLElement | null;
++    const modal = modalRef.current;
++    const focusable = () => Array.from(modal?.querySelectorAll<HTMLElement>('button:not(:disabled), input, a[href]') || []);
++    focusable()[0]?.focus();
++    function handleKey(event: KeyboardEvent) {
++      if (event.key === 'Escape' && !busy) { setDialog(null); setError(''); setPassword(''); }
++      if (event.key === 'Tab') {
++        const elements = focusable(); const first = elements[0]; const last = elements.at(-1);
++        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
++        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
++      }
++    }
++    document.addEventListener('keydown', handleKey);
++    return () => { document.removeEventListener('keydown', handleKey); previous?.focus(); };
++  }, [dialog, busy]);
++  async function refresh() { setAccount(await api('account')); }
++  useEffect(() => { refresh().catch(e => setError(e.message)); }, []);
++  async function run(action: () => Promise<void>, success = '') {
++    setBusy(true); setError(''); setMessage('');
++    try { await action(); await refresh(); setDialog(null); setMessage(success); }
++    catch (e) { setError(e instanceof Error ? e.message : 'Please try again.'); }
++    finally { setBusy(false); }
++  }
++  function open(kind: 'add' | 'rename' | 'remove', key?: Passkey) {
++    setError(''); setMessage(''); setSelected(key || null); setName(key?.name || '');
++    setDialog(account?.verified ? kind : 'verify');
++  }
++  const date = (value: number) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++  if (!account) return <div className="security-page"><p role="status">{error || 'Loading your account…'}</p></div>;
++  if (!account.user) return <div className="security-page"><div className="empty-state"><LockClosedIcon /><h1>Your account, protected.</h1><p>Sign in to manage your passkeys and account security.</p><a className="primary-button" href={`${base}signin`}>Sign in <ArrowRightIcon /></a></div></div>;
++  return <div className="security-page">
++    <a className="back-link" href={base}><ArrowLeftIcon /> Back to the Times</a>
++    <div className="account-heading"><div><span className="eyebrow">YOUR ACCOUNT</span><h1>Account & security</h1><p className="muted">A little peace of mind for your daily read.</p></div><div className="account-profile"><span className="avatar">{account.user.username.slice(0, 1).toUpperCase()}</span><div><strong>{account.user.username}</strong><button disabled={busy} onClick={() => run(async () => { await api('logout', {}); window.location.assign(`${base}signin`); })}>Sign out ↗</button></div></div></div>
++    <div className="account-tabs"><span><ShieldCheckIcon /> Security</span></div>
++    <div className="security-banner"><div className="icon-tile"><ShieldCheckIcon /></div><div><span className="eyebrow">GOOD NEWS FOR YOUR SECURITY</span><h2>Your face. Your fingerprint. Your way in.</h2><p>Passkeys make signing in easier and help keep your account safe. No passwords, no guesswork.</p></div><span className="badge"><CheckIcon /> Built-in protection</span></div>
++    {error && !dialog && <p className="notice error" role="alert">{error}</p>}{message && <p className="notice success" role="status">{message}</p>}
++    <div className="security-columns"><section className="passkeys-panel"><div className="panel-heading"><div><h2>Passkeys <span className="count">{account.passkeys.length}</span></h2><p className="muted">A secure, password-free way to sign in.</p></div><button className="primary-button compact" disabled={busy} onClick={() => open('add')}><PlusIcon /> Add a passkey</button></div>
++      {account.passkeys.length === 0 ? <div className="empty-state"><FingerPrintIcon /><h3>Your first passkey is one tap away.</h3><p>Create a passkey on this device, or use a security key.<br />Your private key always stays with you.</p><button className="secondary-button" onClick={() => open('add')}>Create your first passkey <ArrowRightIcon /></button></div> : <div className="passkey-list">{account.passkeys.map(key => <div className="passkey-row" key={key.id}><div className="key-icon"><KeyIcon /></div><div className="key-details"><h3>{key.name}</h3><p>Added {date(key.createdAt)}</p><p>Last used: {key.lastUsed ? date(key.lastUsed) : 'Not used yet'}</p></div><div className="key-actions"><button disabled={busy} onClick={() => open('rename', key)}>Rename</button><button disabled={busy} onClick={() => open('remove', key)}>Remove</button></div></div>)}</div>}
++      <div className="panel-footnote"><LockClosedIcon /> Your biometric data is never shared with the Times.</div>
++    </section><aside className="security-help"><div className="small-icon"><FingerPrintIcon /></div><h3>What's a passkey?</h3><p>Think of it as a digital key to your account. Unlock it with the same fingerprint, face, or PIN you use on your device.</p><div className="help-item"><CheckIcon /><span><strong>Safer by design</strong><br />Passkeys help protect against phishing.</span></div><div className="help-item"><CheckIcon /><span><strong>Ready when you are</strong><br />Your password manager can sync passkeys across devices.</span></div><div className="help-item"><CheckIcon /><span><strong>Made for you</strong><br />Use your phone, computer, or a physical security key.</span></div></aside></div>
++    <section className="reauth-panel"><div className="key-icon"><ShieldCheckIcon /></div><div><h3>Verify it's you</h3><p>Confirm your identity before changing your sign-in methods.</p></div><button className="secondary-button" disabled={busy} onClick={() => { setDialog('verify'); setError(''); }}>Verify identity <ArrowRightIcon /></button></section>
++    <p className="security-bottom"><LockClosedIcon /> A safer sign-in. More time for the stories that matter.</p>
++    {dialog && <div className="modal-backdrop"><section ref={modalRef} className="security-modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div className="icon-tile">{dialog === 'verify' ? <ShieldCheckIcon /> : <FingerPrintIcon />}</div><h2 id="dialog-title">{dialog === 'add' ? 'Add a passkey' : dialog === 'verify' ? 'Confirm your identity' : dialog === 'rename' ? 'Rename your passkey' : 'Remove this passkey?'}</h2><p className="muted">{dialog === 'verify' ? 'Use a passkey or your password to securely confirm it’s you. Verification lasts for 5 minutes.' : dialog === 'remove' ? `You’ll no longer be able to sign in with “${selected?.name}”. This won’t delete it from your password manager.` : 'Give your passkey a name you’ll recognize, like “Personal laptop”.'}</p>
++      <form onSubmit={e => { e.preventDefault(); run(async () => { if (dialog === 'add') await passkey('add', undefined, name); else if (dialog === 'verify') await passkey('reauth'); else await api(dialog, { id: selected?.id, name }); }, dialog === 'verify' ? 'Identity verified. You can now manage your passkeys.' : dialog === 'remove' ? 'Passkey removed.' : 'Passkey saved.'); }}>
++        {(dialog === 'add' || dialog === 'rename') && <label className="field-label">Passkey name<input autoFocus required maxLength={60} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Personal laptop" /></label>}
++        {error && <p role="alert" className="notice error">{error}</p>}
++        <button className="primary-button" disabled={busy || (dialog === 'verify' && !account.passkeys.length)}>{busy ? 'Please wait…' : dialog === 'add' ? 'Create passkey' : dialog === 'verify' ? 'Verify with a passkey' : dialog === 'remove' ? 'Remove passkey' : 'Save name'}</button>
++      </form>
++      {dialog === 'verify' && account.user.hasPassword && <form onSubmit={e => { e.preventDefault(); run(async () => { await api('reauth-password', { password }); setPassword(''); }, 'Identity verified. You can now manage your passkeys.'); }}><div className="divider"><span>or use your password</span></div><label className="field-label">Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><button className="secondary-button" disabled={busy}>Verify with password</button></form>}
++      <button className="cancel-button" disabled={busy} onClick={() => { setDialog(null); setError(''); setPassword(''); }}>Cancel</button>
++    </section></div>}
++  </div>;
++}
+diff --git a/src/components/AuthForm.tsx b/src/components/AuthForm.tsx
+new file mode 100644
+index 0000000..8557a0b
+--- /dev/null
++++ b/src/components/AuthForm.tsx
+@@ -0,0 +1,34 @@
++import { useState } from 'react';
++import { FingerPrintIcon, ArrowRightIcon, LockClosedIcon } from '@heroicons/react/24/outline';
++import { api, base, passkey } from '../lib/auth-client';
++export default function AuthForm({ signup = false }: { signup?: boolean }) {
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [passwordMode, setPasswordMode] = useState(false);
++  async function submit(usePasskey: boolean) {
++    setBusy(true); setError('');
++    try {
++      if (usePasskey) await passkey(signup ? 'register' : 'login', username, 'My first passkey');
++      else await api(signup ? 'register' : 'login', { username, password });
++      window.location.assign(`${base}account`);
++    } catch (e) { setError(e instanceof Error ? e.message : 'Please try again.'); }
++    finally { setBusy(false); }
++  }
++  return <div className="auth-shell">
++    <div className="auth-intro"><span className="eyebrow">YOUR TIMES. YOUR WAY.</span><h1>{signup ? 'A better way to stay informed.' : 'Welcome back to your Times.'}</h1><p>Independent stories, fresh perspectives, and the news that matters. All in one place.</p><div className="auth-note"><FingerPrintIcon /><div><strong>A little simpler. A lot more secure.</strong><p>Use a passkey to sign in with your fingerprint, face, or device PIN.</p></div></div></div>
++    <div className="auth-card"><div className="icon-tile"><FingerPrintIcon /></div><h2>{signup ? 'Create your account' : 'Sign in'}</h2><p className="muted">{signup ? 'Your next great read starts here.' : 'Pick up where you left off.'}</p>
++      <form onSubmit={e => { e.preventDefault(); submit(!passwordMode); }}>
++        {(signup || passwordMode) && <label className="field-label">Username<input autoComplete="username webauthn" value={username} onChange={e => setUsername(e.target.value)} required minLength={3} maxLength={80} placeholder="Choose your username" /></label>}
++        {passwordMode && <label className="field-label">Password<input type="password" autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={signup ? 8 : undefined} maxLength={128} placeholder="Enter your password" />{signup && <small>At least 8 characters, including a number.</small>}</label>}
++        {error && <p className="notice error" role="alert">{error}</p>}
++        <button className="primary-button" disabled={busy}>{passwordMode ? <LockClosedIcon /> : <FingerPrintIcon />}{busy ? 'Please wait…' : passwordMode ? signup ? 'Create account' : 'Sign in' : signup ? 'Create account with a passkey' : 'Sign in with a passkey'}{!busy && <ArrowRightIcon />}</button>
++      </form>
++      <p className="passkey-caption">{passwordMode ? 'Your password is securely protected.' : 'No password to remember. No password to forget.'}</p>
++      <div className="divider"><span>or</span></div><button className="secondary-button" disabled={busy} onClick={() => { setPasswordMode(!passwordMode); setError(''); }}>{passwordMode ? 'Use a passkey instead' : signup ? 'Create account with a password' : 'Sign in with a password'}</button>
++      <p className="auth-switch">{signup ? 'Already have an account?' : 'New to The DevTools Times?'} <a href={`${base}${signup ? 'signin' : 'signup'}`}>{signup ? 'Sign in' : 'Create an account'} <span aria-hidden="true">↗</span></a></p>
++      <div className="secure-caption"><LockClosedIcon /> Secure, private, and always yours.</div>
++    </div>
++  </div>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..07acac9 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account`} class="text-xs font-semibold text-gray-600 hover:text-gray-900">Account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..54c77ab 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignInForm() { return <AuthForm />; }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..9e1e873 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignUpForm() { return <AuthForm signup />; }
+diff --git a/src/lib/auth-client.ts b/src/lib/auth-client.ts
+new file mode 100644
+index 0000000..bd53ac6
+--- /dev/null
++++ b/src/lib/auth-client.ts
+@@ -0,0 +1,19 @@
++import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
++export const base = import.meta.env.BASE_URL;
++export async function api(action: string, body?: unknown) {
++  const response = await fetch(`${base}api/auth/${action}`, { method: body === undefined ? 'GET' : 'POST', headers: body === undefined ? {} : { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
++  const data = await response.json();
++  if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
++  return data;
++}
++export async function passkey(purpose: 'register' | 'add' | 'login' | 'reauth', username?: string, name?: string) {
++  if (!browserSupportsWebAuthn() || !window.isSecureContext) throw new Error('Passkeys require a supported browser and a secure connection.');
++  try {
++    const optionsJSON = await api('options', { purpose, username });
++    const credential = purpose === 'register' || purpose === 'add' ? await startRegistration({ optionsJSON }) : await startAuthentication({ optionsJSON });
++    await api('verify', { credential, name });
++  } catch (error) {
++    if (error instanceof Error && (error.name === 'NotAllowedError' || error.message.includes('timed out'))) throw new Error('The passkey request was canceled or timed out. You can try again.');
++    throw error;
++  }
++}
+diff --git a/src/lib/auth-store.ts b/src/lib/auth-store.ts
+new file mode 100644
+index 0000000..29072f4
+--- /dev/null
++++ b/src/lib/auth-store.ts
+@@ -0,0 +1,24 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname } from 'node:path';
++import { randomBytes, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
++const path = process.env.AUTH_DB_PATH || '.data/auth.sqlite';
++mkdirSync(dirname(path), { recursive: true });
++export const db = new DatabaseSync(path);
++db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
++CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT);
++CREATE TABLE IF NOT EXISTS passkeys (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), name TEXT NOT NULL, public_key TEXT NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL, created_at INTEGER NOT NULL, last_used INTEGER);
++CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL, verified_at INTEGER NOT NULL);
++CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, challenge TEXT NOT NULL, purpose TEXT NOT NULL, user_id TEXT, username TEXT, expires INTEGER NOT NULL);
++CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);`);
++export type User = { id: string; username: string; password: string | null };
++export type Key = { id: string; user_id: string; name: string; public_key: string; counter: number; transports: string; created_at: number; last_used: number | null };
++export const token = () => randomBytes(32).toString('base64url');
++export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
++export function passwordHash(password: string) { const salt = token(); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
++export function passwordMatches(password: string, stored: string) { const [salt, digest] = stored.split(':'); return timingSafeEqual(scryptSync(password, salt, 64), Buffer.from(digest, 'hex')); }
++export const userByName = (name: string) => db.prepare('SELECT * FROM users WHERE username = ?').get(name) as User | undefined;
++export const keysFor = (id: string) => db.prepare('SELECT * FROM passkeys WHERE user_id = ? ORDER BY created_at DESC').all(id) as Key[];
++export function takeChallenge(id: string) {
++  return db.prepare('DELETE FROM challenges WHERE id = ? RETURNING *').get(hash(id)) as { challenge: string; purpose: string; user_id: string | null; username: string | null; expires: number } | undefined;
++}
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..d762c8a
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,5 @@
++---
++import Layout from '../layouts/Layout.astro';
++import AccountSecurity from '../components/AccountSecurity';
++---
++<Layout title="Account security | The DevTools Times"><AccountSecurity client:load /></Layout>
+diff --git a/src/pages/api/auth/[action].ts b/src/pages/api/auth/[action].ts
+new file mode 100644
+index 0000000..3645dc0
+--- /dev/null
++++ b/src/pages/api/auth/[action].ts
+@@ -0,0 +1,119 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++import { db, token, hash, passwordHash, passwordMatches, userByName, keysFor, takeChallenge, type User, type Key } from '../../../lib/auth-store';
++
++export const ALL: APIRoute = async ({ request, cookies, params, url }) => {
++  const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
++  const origin = process.env.AUTH_ORIGIN || url.origin;
++  const rpID = new URL(origin).hostname;
++  const cookieOptions = { path: import.meta.env.BASE_URL, httpOnly: true, sameSite: 'strict' as const, secure: new URL(origin).protocol === 'https:' };
++  const now = Date.now();
++  const sessionToken = cookies.get('auth_session')?.value;
++  const session = sessionToken ? db.prepare('SELECT sessions.*, users.username, users.password FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.id = ? AND expires > ?').get(hash(sessionToken), now) as { id: string; user_id: string; username: string; password: string | null; verified_at: number } | undefined : undefined;
++  const requireSession = () => { if (!session) throw new Error('Please sign in to continue.'); return session; };
++  const requireRecent = () => { const s = requireSession(); if (now - s.verified_at > 300000) throw new Error('Please verify your identity before making this change.'); return s; };
++  const signIn = (userID: string) => {
++    if (sessionToken) db.prepare('DELETE FROM sessions WHERE id = ?').run(hash(sessionToken));
++    const value = token();
++    db.prepare('INSERT INTO sessions VALUES (?, ?, ?, ?)').run(hash(value), userID, now + 7 * 86400000, now);
++    cookies.set('auth_session', value, { ...cookieOptions, maxAge: 7 * 86400 });
++  };
++  try {
++    if (request.method === 'GET' && params.action === 'account') {
++      if (!session) return reply({ user: null });
++      return reply({ user: { username: session.username, hasPassword: !!session.password }, verified: now - session.verified_at < 300000, passkeys: keysFor(session.user_id).map(k => ({ id: k.id, name: k.name, createdAt: k.created_at, lastUsed: k.last_used })) });
++    }
++    if (request.method !== 'POST') return reply({ error: 'Method not allowed.' }, 405);
++    if (request.headers.get('origin') !== origin) return reply({ error: 'Invalid request origin.' }, 403);
++    if (Number(request.headers.get('content-length') || 0) > 65536) return reply({ error: 'Request too large.' }, 413);
++    db.prepare('DELETE FROM sessions WHERE expires < ?').run(now);
++    db.prepare('DELETE FROM limits WHERE expires < ?').run(now);
++    const rateKey = session?.id || hash(cookies.get('auth_challenge')?.value || request.headers.get('x-forwarded-for') || 'anonymous');
++    const limit = db.prepare('INSERT INTO limits VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1 RETURNING count').get(rateKey, now + 60000) as { count: number };
++    if (limit.count > 60) return reply({ error: 'Too many attempts. Please wait a minute.' }, 429);
++    const body = await request.json();
++    const username = typeof body.username === 'string' ? body.username.trim() : '';
++    const validName = () => { if (!/^[a-zA-Z0-9_.@+-]{3,80}$/.test(username)) throw new Error('Use 3–80 characters: letters, numbers, or . _ @ + -'); };
++    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : 'My passkey';
++    if (params.action === 'logout') {
++      if (session) db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
++      cookies.delete('auth_session', cookieOptions); return reply({ ok: true });
++    }
++    if (params.action === 'register') {
++      validName();
++      if (typeof body.password !== 'string' || body.password.length < 8 || body.password.length > 128 || !/\d/.test(body.password)) throw new Error('Password must be 8–128 characters and include a number.');
++      if (userByName(username)) throw new Error('This username is already taken.');
++      const id = token(); db.prepare('INSERT INTO users VALUES (?, ?, ?)').run(id, username, passwordHash(body.password)); signIn(id); return reply({ ok: true });
++    }
++    if (params.action === 'login' || params.action === 'reauth-password') {
++      const user = params.action === 'login' ? userByName(username) : db.prepare('SELECT * FROM users WHERE id = ?').get(requireSession().user_id) as User;
++      const password = typeof body.password === 'string' && body.password.length <= 128 ? body.password : '';
++      const matched = passwordMatches(password, user?.password || passwordHash('invalid-password'));
++      if (!user?.password || !matched) throw new Error('The username or password is incorrect.');
++      if (params.action === 'login') signIn(user.id);
++      else db.prepare('UPDATE sessions SET verified_at = ? WHERE id = ?').run(now, session!.id);
++      return reply({ ok: true });
++    }
++    if (params.action === 'rename' || params.action === 'remove') {
++      const s = requireRecent(); const keys = keysFor(s.user_id); const key = keys.find(k => k.id === body.id);
++      if (!key) throw new Error('Passkey not found.');
++      if (params.action === 'rename') { if (!name) throw new Error('Enter a name for this passkey.'); db.prepare('UPDATE passkeys SET name = ? WHERE id = ?').run(name, key.id); }
++      else { if (keys.length === 1 && !s.password) throw new Error('Add another passkey before removing your only sign-in method.'); db.prepare('DELETE FROM passkeys WHERE id = ?').run(key.id); }
++      return reply({ ok: true });
++    }
++    if (params.action === 'options') {
++      const purpose = body.purpose;
++      if (!['register', 'add', 'login', 'reauth'].includes(purpose)) throw new Error('Invalid operation.');
++      let userID: string | null = null;
++      if (purpose === 'register') { validName(); if (userByName(username)) throw new Error('This username is already taken.'); userID = token(); }
++      if (purpose === 'add') userID = requireRecent().user_id;
++      if (purpose === 'reauth') userID = requireSession().user_id;
++      const options = purpose === 'register' || purpose === 'add'
++        ? await generateRegistrationOptions({ rpName: 'The DevTools Times', rpID, userID: Buffer.from(userID!), userName: purpose === 'add' ? session!.username : username, attestationType: 'none', excludeCredentials: keysFor(userID!).map(k => ({ id: k.id })), authenticatorSelection: { residentKey: 'required', userVerification: 'required' } })
++        : await generateAuthenticationOptions({ rpID, userVerification: 'required', ...(purpose === 'reauth' ? { allowCredentials: keysFor(userID!).map(k => ({ id: k.id })) } : {}) });
++      const previous = cookies.get('auth_challenge')?.value;
++      if (previous) takeChallenge(previous);
++      db.prepare('DELETE FROM challenges WHERE expires < ?').run(now);
++      const challengeToken = token();
++      db.prepare('INSERT INTO challenges VALUES (?, ?, ?, ?, ?, ?)').run(hash(challengeToken), options.challenge, purpose, userID, username || null, now + 300000);
++      cookies.set('auth_challenge', challengeToken, { ...cookieOptions, maxAge: 300 });
++      return reply(options);
++    }
++    if (params.action === 'verify') {
++      const challengeToken = cookies.get('auth_challenge')?.value;
++      const challenge = challengeToken ? takeChallenge(challengeToken) : undefined;
++      cookies.delete('auth_challenge', cookieOptions);
++      if (!challenge || challenge.expires < now) throw new Error('This request expired. Please try again.');
++      const { purpose, user_id: userID } = challenge;
++      if ((purpose === 'add' || purpose === 'reauth') && requireSession().user_id !== userID) throw new Error('Account changed. Please try again.');
++      if (purpose === 'register' || purpose === 'add') {
++        if (purpose === 'add') requireRecent();
++        const result = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true });
++        if (!result.verified || !result.registrationInfo) throw new Error('Passkey verification failed.');
++        const { credential } = result.registrationInfo;
++        db.exec('BEGIN IMMEDIATE');
++        try {
++          if (purpose === 'register') db.prepare('INSERT INTO users VALUES (?, ?, NULL)').run(userID!, challenge.username!);
++          db.prepare('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, NULL)').run(credential.id, userID!, name || 'My passkey', Buffer.from(credential.publicKey).toString('base64url'), credential.counter, JSON.stringify(credential.transports || []), now);
++          db.exec('COMMIT');
++        } catch (error) { db.exec('ROLLBACK'); throw error; }
++        if (purpose === 'register') signIn(userID!);
++      } else {
++        const key = db.prepare('SELECT * FROM passkeys WHERE id = ?').get(body.credential?.id || '') as Key | undefined;
++        if (!key || (purpose === 'reauth' && key.user_id !== userID)) throw new Error('This passkey is not registered for this account.');
++        if (body.credential.response?.userHandle && body.credential.response.userHandle !== Buffer.from(key.user_id).toString('base64url')) throw new Error('Account verification failed.');
++        const result = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true, credential: { id: key.id, publicKey: Buffer.from(key.public_key, 'base64url'), counter: key.counter, transports: JSON.parse(key.transports) } });
++        if (!result.verified) throw new Error('Passkey verification failed.');
++        const updated = db.prepare('UPDATE passkeys SET counter = ?, last_used = ? WHERE id = ? AND counter = ?').run(result.authenticationInfo.newCounter, now, key.id, key.counter);
++        if (!updated.changes) throw new Error('Passkey changed. Please try again.');
++        if (purpose === 'login') signIn(key.user_id);
++        else db.prepare('UPDATE sessions SET verified_at = ? WHERE id = ?').run(now, session!.id);
++      }
++      return reply({ ok: true });
++    }
++    return reply({ error: 'Not found.' }, 404);
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Request failed.';
++    return reply({ error: /UNIQUE constraint/.test(message) ? 'This account or passkey already exists.' : /Please|Password|username|passkey|Passkey|request|Account|Enter|sign-in|operation/.test(message) ? message : 'Verification failed. Please try again.' }, 400);
++  }
++};
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7326c58 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,7 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Account and authentication */
++.security-page,.auth-shell{font-family:Arial,Helvetica,sans-serif;color:#202a31}.security-page{max-width:1000px;margin:auto;padding:38px 32px 50px}.back-link{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#637078;margin-bottom:30px}.back-link svg{width:15px}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:700;color:#467365}.account-heading{display:flex;justify-content:space-between;align-items:center;gap:24px}.account-heading h1{font-family:Georgia,serif;font-size:37px;line-height:1.2;margin:10px 0}.muted{color:#748087;font-size:13px;line-height:1.7}.account-profile{display:flex;align-items:center;gap:12px;font-size:13px}.avatar{display:grid;place-items:center;width:42px;height:42px;background:#edf2ee;color:#365c4e;border:1px solid #dce5dd;border-radius:50%;font-family:Georgia,serif;font-size:20px}.account-profile button{display:block;font-size:11px;color:#748087;margin-top:5px}.account-tabs{margin-top:32px;border-bottom:1px solid #e3e6e4}.account-tabs span{display:inline-flex;align-items:center;gap:8px;padding:0 5px 14px;border-bottom:2px solid #365e4f;font-size:13px;font-weight:600;color:#365e4f}.account-tabs svg{width:17px}.security-banner{display:flex;align-items:center;gap:20px;padding:26px;background:#f0f5f1;border:1px solid #e0e9e2;border-radius:6px;margin:28px 0}.icon-tile{width:48px;height:48px;background:#e1ece4;color:#3c6753;border-radius:12px;display:grid;place-items:center;flex-shrink:0}.icon-tile svg{width:26px;height:26px}.security-banner h2{font-family:Georgia,serif;font-size:23px;margin:7px 0}.security-banner p{font-size:12px;color:#64766a;line-height:1.7;max-width:470px}.badge{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border:1px solid #cddfcf;background:#f8fbf8;padding:6px 9px;border-radius:20px;color:#446a50;font-size:10px;margin-left:auto}.badge svg{width:12px}.security-columns{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:22px}.passkeys-panel{border:1px solid #e0e4e3;border-radius:6px;overflow:hidden;align-self:start}.panel-heading{display:flex;justify-content:space-between;align-items:center;padding:24px;gap:14px;border-bottom:1px solid #edf0ee}.panel-heading h2{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:5px}.count{background:#eef2ef;color:#65726b;border-radius:5px;padding:2px 6px;font-size:10px}.primary-button,.secondary-button{display:inline-flex;justify-content:center;align-items:center;gap:9px;border-radius:4px;padding:12px 17px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}.primary-button{background:#365d4c;color:white;border:1px solid #365d4c}.primary-button:hover{background:#274737}.secondary-button{border:1px solid #d9dfdc;background:white;color:#344139}.secondary-button:hover{background:#f2f5f3}.primary-button svg,.secondary-button svg{width:16px;height:16px}.primary-button.compact{padding:10px 12px;white-space:nowrap;font-size:11px}button:disabled{opacity:.5;cursor:wait}.empty-state{text-align:center;padding:38px 20px}.empty-state>svg{width:40px;height:40px;margin:0 auto 17px;color:#567865}.empty-state h3{font-family:Georgia,serif;font-size:19px;margin-bottom:10px}.empty-state p{font-size:12px;line-height:1.8;color:#7b8680;margin-bottom:22px}.panel-footnote{display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;border-top:1px solid #edf0ee;background:#fafbf9;font-size:10px;color:#7b8680}.panel-footnote svg{width:12px}.security-help{background:#fafbf9;border:1px solid #e9ede8;border-radius:6px;padding:25px}.small-icon svg{width:25px;color:#557661;margin-bottom:15px}.security-help h3{font-family:Georgia,serif;font-size:19px;margin-bottom:10px}.security-help>p{font-size:12px;line-height:1.8;color:#778078}.help-item{display:flex;gap:8px;font-size:11px;color:#7b857d;line-height:1.7;margin-top:22px}.help-item svg{width:14px;height:14px;color:#537b61;flex-shrink:0;margin-top:3px}.help-item strong{color:#3a4b3f;font-weight:600}.reauth-panel{display:flex;align-items:center;gap:15px;margin-top:25px;border:1px solid #e0e4e3;border-radius:6px;padding:20px 24px}.reauth-panel h3{font-size:13px;font-weight:600;margin-bottom:5px}.reauth-panel p{font-size:12px;color:#7a847d}.reauth-panel button{margin-left:auto;white-space:nowrap}.key-icon{width:37px;height:37px;border:1px solid #e3e8e3;background:#f5f7f4;border-radius:8px;display:grid;place-items:center;flex-shrink:0}.key-icon svg{width:19px;color:#5a7662}.security-bottom{display:flex;justify-content:center;gap:6px;color:#89918a;font-size:10px;margin-top:32px}.security-bottom svg{width:12px}.passkey-row{display:flex;align-items:center;gap:14px;padding:24px;border-bottom:1px solid #edf0ee}.key-details h3{font-size:13px;font-weight:600;margin-bottom:5px;overflow-wrap:anywhere}.key-details p{font-size:10px;color:#818b85;line-height:1.8}.key-actions{margin-left:auto;display:flex;flex-direction:column;gap:12px;font-size:10px;color:#547160}.key-actions button:last-child{color:#94665e}.modal-backdrop{position:fixed;inset:0;z-index:100;background:#17241d70;display:grid;place-items:center;padding:20px;overflow-y:auto}.security-modal{background:white;border-radius:10px;width:100%;max-width:420px;padding:30px;box-shadow:0 15px 80px #0002}.security-modal h2{font-family:Georgia,serif;font-size:25px;margin:20px 0 10px}.security-modal .primary-button,.security-modal .secondary-button{width:100%;margin-top:10px}.field-label{display:block;font-size:12px;font-weight:600;margin:20px 0;color:#3c4740}.field-label input{display:block;border:1px solid #d7ded9;border-radius:4px;padding:12px;width:100%;margin-top:8px;font-size:13px;background:white}.field-label small{display:block;margin-top:6px;font-weight:400;color:#7b857e}.cancel-button{display:block;margin:20px auto 0;font-size:12px;color:#7a847e}.notice{padding:12px 15px;border-radius:4px;font-size:12px;margin:15px 0;line-height:1.6}.error{background:#fff0ec;color:#9b4b3b}.success{background:#edf5ed;color:#41694a}.auth-shell{display:grid;grid-template-columns:1fr 1fr;gap:75px;max-width:940px;margin:40px auto 65px;align-items:center}.auth-intro h1{font-family:Georgia,serif;font-size:42px;line-height:1.22;letter-spacing:-1px;margin:20px 0}.auth-intro>p{font-size:14px;color:#7a827c;line-height:1.9}.auth-note{display:flex;gap:15px;padding-top:30px;margin-top:30px;border-top:1px solid #e4e8e2}.auth-note>svg{width:29px;height:29px;color:#567663;flex-shrink:0}.auth-note strong{font-size:12px}.auth-note p{font-size:12px;color:#7b857e;line-height:1.8;margin-top:7px}.auth-card{border:1px solid #e1e6e1;border-radius:8px;padding:32px;box-shadow:0 8px 30px #243c2706}.auth-card h2{font-family:Georgia,serif;font-size:28px;margin:20px 0 8px}.auth-card form{margin-top:24px}.auth-card .primary-button,.auth-card .secondary-button{width:100%}.auth-card .primary-button svg:last-child{margin-left:auto}.passkey-caption{font-size:10px;color:#8a928b;text-align:center;margin-top:12px}.divider{display:flex;align-items:center;gap:12px;font-size:10px;color:#919891;margin:22px 0}.divider:before,.divider:after{content:'';height:1px;flex:1;background:#e7eae5}.auth-switch{text-align:center;font-size:11px;color:#828b83;margin:24px 0}.auth-switch a{color:#3b6750;font-weight:600}.secure-caption{border-top:1px solid #e8ece7;padding-top:20px;display:flex;align-items:center;justify-content:center;gap:6px;color:#919891;font-size:10px}.secure-caption svg{width:12px}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #719780;outline-offset:4px}
++@media(max-width:800px){.security-page{padding:25px 20px}.security-banner{flex-wrap:wrap;padding:20px}.badge{margin-left:68px}.security-columns{grid-template-columns:1fr}.security-help{display:none}.auth-shell{gap:30px}.auth-intro h1{font-size:32px}.account-heading h1{font-size:30px}}@media(max-width:600px){.auth-shell{display:block;margin:0 auto 30px;max-width:410px}.auth-intro{display:none}.auth-card{padding:24px}.account-heading{align-items:flex-start;flex-direction:column}.account-profile{align-self:flex-start}.security-banner{gap:14px}.security-banner .icon-tile{display:none}.badge{margin-left:0}.security-banner h2{font-size:22px}.panel-heading{padding:18px;flex-wrap:wrap}.reauth-panel{flex-wrap:wrap;padding:18px}.reauth-panel button{margin-left:52px}.passkey-row{padding:18px}.security-bottom{font-size:9px}}
+diff --git a/tests/auth.test.mjs b/tests/auth.test.mjs
+new file mode 100644
+index 0000000..0ac2dfc
+--- /dev/null
++++ b/tests/auth.test.mjs
+@@ -0,0 +1,97 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { spawn } from 'node:child_process';
++import { mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { generateKeyPairSync, createHash, randomBytes, sign } from 'node:crypto';
++import { DatabaseSync } from 'node:sqlite';
++import { isoCBOR } from '@simplewebauthn/server/helpers';
++
++const origin = 'http://localhost:14329';
++const directory = mkdtempSync(`${tmpdir()}/times-auth-`);
++const server = spawn(process.execPath, ['dist/server/entry.mjs'], { env: { ...process.env, HOST: '127.0.0.1', PORT: '14329', AUTH_ORIGIN: origin, AUTH_DB_PATH: `${directory}/auth.sqlite` }, stdio: 'pipe' });
++let logs = ''; server.stderr.on('data', chunk => { logs += chunk; });
++const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
++const sha = value => createHash('sha256').update(value).digest();
++const b64 = value => Buffer.from(value).toString('base64url');
++function client() {
++  const jar = new Map();
++  return async (action, body, customOrigin = origin) => {
++    const res = await fetch(`${origin}/devtools-times/api/auth/${action}`, { method: body === undefined ? 'GET' : 'POST', headers: { Origin: customOrigin, 'Content-Type': 'application/json', Cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; ') }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
++    for (const value of res.headers.getSetCookie()) { const [key, val] = value.split(';')[0].split('='); jar.set(key, val); }
++    return { status: res.status, data: await res.json() };
++  };
++}
++function authenticator() {
++  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
++  const jwk = publicKey.export({ format: 'jwk' });
++  const credentialID = randomBytes(32); let userHandle; let counter = 0;
++  const rpHash = sha('localhost');
++  return {
++    id: b64(credentialID),
++    registration(options, customOrigin = origin) {
++      userHandle = options.user.id;
++      const publicCose = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x, 'base64url')], [-3, Buffer.from(jwk.y, 'base64url')]]));
++      const size = Buffer.alloc(2); size.writeUInt16BE(credentialID.length);
++      const authData = Buffer.concat([rpHash, Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(16), size, credentialID, publicCose]);
++      const attestationObject = isoCBOR.encode(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData]]));
++      return { id: b64(credentialID), rawId: b64(credentialID), type: 'public-key', response: { clientDataJSON: b64(JSON.stringify({ type: 'webauthn.create', challenge: options.challenge, origin: customOrigin })), attestationObject: b64(attestationObject), transports: ['internal'] }, clientExtensionResults: {} };
++    },
++    authentication(options, customOrigin = origin, flags = 5) {
++      const count = Buffer.alloc(4); count.writeUInt32BE(++counter);
++      const authenticatorData = Buffer.concat([rpHash, Buffer.from([flags]), count]);
++      const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: options.challenge, origin: customOrigin }));
++      return { id: b64(credentialID), rawId: b64(credentialID), type: 'public-key', response: { clientDataJSON: b64(clientData), authenticatorData: b64(authenticatorData), signature: b64(sign('sha256', Buffer.concat([authenticatorData, sha(clientData)]), privateKey)), userHandle }, clientExtensionResults: {} };
++    },
++  };
++}
++
++test('verified passkey lifecycle and security boundaries', async t => {
++  t.after(() => { server.kill(); rmSync(directory, { recursive: true, force: true }); });
++  let ready = false;
++  for (let i = 0; i < 60; i++) { try { await fetch(`${origin}/devtools-times/api/auth/account`); ready = true; break; } catch { await sleep(100); } }
++  assert.ok(ready, logs);
++  const owner = client(); const stranger = client(); const key = authenticator();
++  assert.equal((await owner('register', { username: 'blocked', password: 'password1' }, 'https://evil.example')).status, 403);
++  assert.equal((await stranger('options', { purpose: 'add' })).status, 400);
++  let options = (await owner('options', { purpose: 'register', username: 'reader' })).data;
++  const registration = key.registration(options);
++  assert.equal((await owner('verify', { credential: registration, name: 'Personal laptop' })).status, 200);
++  assert.equal((await owner('verify', { credential: registration })).status, 400, 'challenge cannot be replayed');
++  let account = (await owner('account')).data;
++  assert.equal(account.user.username, 'reader'); assert.equal(account.passkeys.length, 1);
++  assert.equal((await owner('remove', { id: key.id })).status, 400, 'cannot remove only sign-in method');
++  assert.equal((await owner('rename', { id: key.id, name: 'My laptop' })).status, 200);
++  assert.equal((await owner('account')).data.passkeys[0].name, 'My laptop');
++  await owner('logout', {});
++  assert.equal((await owner('account')).data.user, null);
++  options = (await owner('options', { purpose: 'login' })).data;
++  assert.equal((await owner('verify', { credential: key.authentication(options, 'https://evil.example') })).status, 400, 'reject wrong authenticator origin');
++  options = (await owner('options', { purpose: 'login' })).data;
++  assert.equal((await owner('verify', { credential: key.authentication(options) })).status, 200);
++  options = (await owner('options', { purpose: 'reauth' })).data;
++  assert.equal((await owner('verify', { credential: key.authentication(options, origin, 1) })).status, 400, 'require biometric or PIN verification');
++  options = (await owner('options', { purpose: 'reauth' })).data;
++  const forged = key.authentication(options); forged.response.signature = b64(randomBytes(64));
++  assert.equal((await owner('verify', { credential: forged })).status, 400, 'reject invalid signature');
++  const db = new DatabaseSync(`${directory}/auth.sqlite`);
++  db.prepare('UPDATE sessions SET verified_at = 0').run();
++  assert.equal((await owner('rename', { id: key.id, name: 'Blocked' })).status, 400, 'management requires recent verification');
++  options = (await owner('options', { purpose: 'reauth' })).data;
++  assert.equal((await owner('verify', { credential: key.authentication(options) })).status, 200);
++  const second = authenticator(); options = (await owner('options', { purpose: 'add' })).data;
++  assert.equal((await owner('verify', { credential: second.registration(options), name: 'Backup key' })).status, 200);
++  assert.equal((await owner('remove', { id: key.id })).status, 200);
++  assert.equal((await owner('account')).data.passkeys.length, 1);
++  assert.equal((await stranger('register', { username: 'passwordreader', password: 'password1' })).status, 200);
++  assert.equal((await stranger('rename', { id: second.id, name: 'Stolen' })).status, 400, 'enforce credential ownership');
++  db.prepare('UPDATE sessions SET verified_at = 0').run();
++  assert.equal((await stranger('reauth-password', { password: 'wrong' })).status, 400);
++  assert.equal((await stranger('reauth-password', { password: 'password1' })).status, 200);
++  await stranger('logout', {});
++  assert.equal((await stranger('login', { username: 'passwordreader', password: 'password1' })).status, 200);
++  options = (await stranger('options', { purpose: 'register', username: 'expired' })).data;
++  db.prepare('UPDATE challenges SET expires = 0').run();
++  assert.equal((await stranger('verify', { credential: authenticator().registration(options) })).status, 400);
++  db.close();
++});

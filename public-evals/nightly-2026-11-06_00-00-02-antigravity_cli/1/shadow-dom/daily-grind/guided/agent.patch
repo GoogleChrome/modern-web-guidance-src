@@ -1,0 +1,366 @@
+diff --git a/index.html b/index.html
+index 66c9173..4448ce3 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,15 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    drink-card:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
+     }
+ 
+     .btn {
+@@ -178,21 +176,22 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card drink-title="Maple Oat Latte" description="Creamy oat milk with a hint of Vermont maple syrup." action-href="/menu/seasonal" limited>
++          <span slot="badge">Limited</span>
++          <span slot="title">Maple Oat Latte</span>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++        </drink-card>
++        <drink-card drink-title="Dark Roast Espresso" description="Bold, smokey, and perfect for a morning boost." action-href="/menu/espresso">
++          <span slot="title">Dark Roast Espresso</span>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </drink-card>
++        <drink-card drink-title="Cold Brew" description="Steeped for 18 hours for maximum smoothness." action-href="/menu/cold-brew">
++          <span slot="title">Cold Brew</span>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +206,298 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <template id="drink-card-template">
++    <article class="card" part="card">
++      <div class="badge-wrapper" part="badge" hidden>
++        <slot name="badge"><span class="badge-text">Limited</span></slot>
++      </div>
++      <h3 class="card-title" part="title">
++        <slot name="title"></slot>
++      </h3>
++      <div class="card-description" part="description">
++        <slot name="description"></slot>
++        <slot></slot>
++      </div>
++      <div class="card-action">
++        <slot name="action">
++          <a class="btn" part="action" href="#">View Details</a>
++        </slot>
++      </div>
++    </article>
++  </template>
++
++  <script>
++    const drinkCardSheet = new CSSStyleSheet();
++    drinkCardSheet.replaceSync(`
++      :host {
++        display: block;
++        --_primary: var(--primary, #4e342e);
++        --_accent: var(--accent, #ffab40);
++        --_text: var(--text, #3e2723);
++        --_card-bg: var(--card-bg, white);
++      }
++
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
++
++      .card {
++        position: relative;
++        background: var(--_card-bg);
++        color: var(--_text);
++        padding: 20px;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        text-align: center;
++        height: 100%;
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++        align-items: center;
++      }
++
++      .badge-wrapper {
++        display: inline-block;
++        background: var(--_accent);
++        color: var(--_text);
++        font-size: 0.75rem;
++        font-weight: 700;
++        text-transform: uppercase;
++        letter-spacing: 0.05em;
++        padding: 3px 10px;
++        border-radius: 999px;
++        margin-bottom: 10px;
++      }
++
++      .badge-wrapper[hidden] {
++        display: none;
++      }
++
++      .card-title {
++        margin-bottom: 10px;
++        color: var(--_primary);
++        font-size: 1.17rem;
++      }
++
++      ::slotted([slot="title"]) {
++        color: inherit;
++        font: inherit;
++        margin: 0;
++      }
++
++      .card-description {
++        flex-grow: 1;
++      }
++
++      ::slotted([slot="description"]),
++      ::slotted(p) {
++        margin: 0;
++      }
++
++      .card-action {
++        margin-top: 15px;
++      }
++
++      .btn,
++      ::slotted([slot="action"]) {
++        display: inline-block !important;
++        background: var(--_primary) !important;
++        color: white !important;
++        padding: 10px 20px !important;
++        text-decoration: none !important;
++        border-radius: 5px !important;
++        transition: background 0.3s !important;
++        font: inherit;
++      }
++
++      .btn:hover,
++      ::slotted([slot="action"]:hover) {
++        background: var(--_text) !important;
++      }
++    `);
++
++    const drinkCardTemplate = document.getElementById('drink-card-template');
++
++    class DrinkCard extends HTMLElement {
++      static observedAttributes = [
++        'drink-title',
++        'title',
++        'description',
++        'action-href',
++        'href',
++        'action-text',
++        'action-label',
++        'badge',
++        'limited'
++      ];
++
++      #badgeWrapper;
++      #badgeSlot;
++      #badgeText;
++      #titleSlot;
++      #descSlot;
++      #actionSlot;
++      #defaultActionLink;
++
++      constructor() {
++        super();
++        const shadowRoot = this.attachShadow({ mode: 'open', delegatesFocus: true });
++        shadowRoot.adoptedStyleSheets = [drinkCardSheet];
++        shadowRoot.append(drinkCardTemplate.content.cloneNode(true));
++
++        this.#badgeWrapper = shadowRoot.querySelector('.badge-wrapper');
++        this.#badgeSlot = shadowRoot.querySelector('slot[name="badge"]');
++        this.#badgeText = shadowRoot.querySelector('.badge-text');
++        this.#titleSlot = shadowRoot.querySelector('slot[name="title"]');
++        this.#descSlot = shadowRoot.querySelector('slot[name="description"]');
++        this.#actionSlot = shadowRoot.querySelector('slot[name="action"]');
++        this.#defaultActionLink = shadowRoot.querySelector('.btn');
++
++        this.#badgeSlot.addEventListener('slotchange', () => this.#syncBadge());
++        this.#titleSlot.addEventListener('slotchange', () => this.#syncTitle());
++        this.#descSlot.addEventListener('slotchange', () => this.#syncDescription());
++        this.#actionSlot.addEventListener('slotchange', () => this.#syncAction());
++      }
++
++      connectedCallback() {
++        this.#syncAll();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal !== newVal) {
++          this.#syncAll();
++        }
++      }
++
++      get drinkTitle() {
++        return this.getAttribute('drink-title') ?? this.getAttribute('title') ?? '';
++      }
++      set drinkTitle(val) {
++        if (val) {
++          this.setAttribute('drink-title', String(val));
++        } else {
++          this.removeAttribute('drink-title');
++        }
++      }
++
++      get description() {
++        return this.getAttribute('description') ?? '';
++      }
++      set description(val) {
++        if (val) {
++          this.setAttribute('description', String(val));
++        } else {
++          this.removeAttribute('description');
++        }
++      }
++
++      get actionHref() {
++        return this.getAttribute('action-href') ?? this.getAttribute('href') ?? '#';
++      }
++      set actionHref(val) {
++        if (val) {
++          this.setAttribute('action-href', String(val));
++        } else {
++          this.removeAttribute('action-href');
++        }
++      }
++
++      get actionText() {
++        return this.getAttribute('action-text') ?? this.getAttribute('action-label') ?? 'View Details';
++      }
++      set actionText(val) {
++        if (val) {
++          this.setAttribute('action-text', String(val));
++        } else {
++          this.removeAttribute('action-text');
++        }
++      }
++
++      get badge() {
++        return this.getAttribute('badge') ?? (this.hasAttribute('limited') ? 'Limited' : '');
++      }
++      set badge(val) {
++        if (val) {
++          this.setAttribute('badge', String(val));
++        } else {
++          this.removeAttribute('badge');
++        }
++      }
++
++      get limited() {
++        return this.hasAttribute('limited') || this.hasAttribute('badge') || this.#badgeSlot.assignedNodes({ flatten: false }).length > 0;
++      }
++      set limited(val) {
++        const isTrue = Boolean(val) && val !== 'false';
++        this.toggleAttribute('limited', isTrue);
++        if (!isTrue) {
++          this.removeAttribute('badge');
++          for (const node of this.#badgeSlot.assignedNodes({ flatten: false })) {
++            node.remove();
++          }
++        }
++      }
++
++      #syncAll() {
++        this.#syncBadge();
++        this.#syncTitle();
++        this.#syncDescription();
++        this.#syncAction();
++      }
++
++      #syncBadge() {
++        const slottedNodes = this.#badgeSlot.assignedNodes({ flatten: false }).filter(
++          (n) => n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '')
++        );
++        const hasSlottedBadge = slottedNodes.length > 0;
++        const badgeAttr = this.getAttribute('badge');
++        const limitedAttr = this.getAttribute('limited');
++        const hasAttrBadge =
++          (badgeAttr !== null && badgeAttr !== '' && badgeAttr !== 'false') ||
++          (this.hasAttribute('limited') && limitedAttr !== 'false');
++
++        if (hasSlottedBadge || hasAttrBadge) {
++          const text =
++            badgeAttr && badgeAttr !== 'true'
++              ? badgeAttr
++              : limitedAttr && limitedAttr !== '' && limitedAttr !== 'true'
++                ? limitedAttr
++                : 'Limited';
++          if (this.#badgeText) {
++            this.#badgeText.textContent = text;
++          }
++          this.#badgeWrapper.hidden = false;
++        } else {
++          this.#badgeWrapper.hidden = true;
++        }
++      }
++
++      #syncTitle() {
++        if (this.#titleSlot.assignedNodes({ flatten: false }).length === 0) {
++          this.#titleSlot.textContent = this.drinkTitle;
++        }
++      }
++
++      #syncDescription() {
++        if (this.#descSlot.assignedNodes({ flatten: false }).length === 0) {
++          this.#descSlot.textContent = this.description;
++        }
++      }
++
++      #syncAction() {
++        if (this.#defaultActionLink) {
++          this.#defaultActionLink.setAttribute('href', this.actionHref);
++          this.#defaultActionLink.textContent = this.actionText;
++        }
++      }
++    }
++
++    customElements.define('drink-card', DrinkCard);
++  </script>
+ </body>
+ 
+ </html>

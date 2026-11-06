@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -125,17 +125,88 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-family: inherit;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background 0.3s, outline-color 0.2s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    .btn[aria-pressed="true"] {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .section-heading {
++      text-align: center;
++    }
++
++    .interactive-showcase {
++      margin-top: 50px;
++      background: white;
++      padding: 30px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .target-stage {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-height: 220px;
++      margin: 20px 0;
++    }
++
++    #action-target {
++      width: 140px;
++      height: 140px;
++      background: var(--primary);
++      color: white;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      font-weight: bold;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      transition: rotate 0.4s ease, scale 0.3s ease, border-radius 0.3s ease;
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    #action-target.is-spun {
++      rotate: 180deg;
++    }
++
++    #action-target.is-grown {
++      scale: 1.25;
++    }
++
++    #action-target.is-rounded {
++      border-radius: 50%;
++    }
++
++    .command-controls {
++      display: flex;
++      justify-content: center;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,9 +246,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,8 +265,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="interactive-showcase">
++      <h2 class="section-heading">Customize Your Roast Badge</h2>
++      <p>Use the controls below to preview badge transformations.</p>
++      <div class="target-stage">
++        <div id="action-target">
++          Daily Grind
++        </div>
++      </div>
++      <div class="command-controls">
++        <button type="button" class="btn" commandfor="action-target" command="--spin" aria-pressed="false">
++          Spin
++        </button>
++        <button type="button" class="btn" commandfor="action-target" command="--grow" aria-pressed="false">
++          Grow
++        </button>
++        <button type="button" class="btn" commandfor="action-target" command="--round" aria-pressed="false">
++          Make Round
++        </button>
++        <button type="button" class="btn" commandfor="action-target" command="--reset">
++          Reset All
++        </button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +301,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
++
++    if (!hasNativeSupport) {
++      if (!globalThis.CommandEvent) {
++        globalThis.CommandEvent = class CommandEvent extends Event {
++          constructor(type, { source, command, ...options } = {}) {
++            super(type, options);
++            this.source = source;
++            this.command = command;
++          }
++        };
++      }
++
++      let polyfillLoaded = false;
++      (async () => {
++        try {
++          await import('https://esm.run/invokers-polyfill');
++          polyfillLoaded = true;
++        } catch (err) {
++          console.error('Error loading fallback:', err);
++        }
++      })();
++
++      document.addEventListener('click', (event) => {
++        if (polyfillLoaded) return;
++        const button = event.composedPath().find((el) => el.matches?.('button[commandfor]'));
++        if (!button) return;
++
++        const target = document.getElementById(button.getAttribute('commandfor'));
++        const command = button.getAttribute('command');
++
++        if (target && command) {
++          target.dispatchEvent(new CommandEvent('command', {
++            command,
++            source: button,
++          }));
++        }
++      });
++    }
++
++    const commandRegistry = {
++      '--spin': (target, source) => {
++        const isSpun = target.classList.toggle('is-spun');
++        source?.setAttribute('aria-pressed', String(isSpun));
++      },
++      '--grow': (target, source) => {
++        const isGrown = target.classList.toggle('is-grown');
++        source?.setAttribute('aria-pressed', String(isGrown));
++      },
++      '--round': (target, source) => {
++        const isRounded = target.classList.toggle('is-rounded');
++        source?.setAttribute('aria-pressed', String(isRounded));
++      },
++      '--reset': (target) => {
++        target.classList.remove('is-spun', 'is-grown', 'is-rounded');
++        document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach((btn) => {
++          btn.setAttribute('aria-pressed', 'false');
++        });
++      },
++    };
++
++    document.getElementById('action-target').addEventListener('command', (event) => {
++      const command = event.command;
++      const target = event.target;
++      const source = event.source;
++      const action = commandRegistry[command];
++
++      if (action) {
++        action(target, source);
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

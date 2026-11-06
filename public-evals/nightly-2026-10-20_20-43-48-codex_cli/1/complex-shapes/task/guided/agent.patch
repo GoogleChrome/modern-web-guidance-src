@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,14 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
++      min-height: 360px;
++      overflow: hidden;
++      background-color: var(--primary);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -87,8 +92,38 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .shaped-element {
++      position: absolute;
++      z-index: -1;
++      pointer-events: none;
++      inline-size: min(760px, 95%);
++      aspect-ratio: 760 / 360;
++      /* A soft organic fallback when CSS masking is unavailable. */
++      border-radius: 43% 57% 62% 38% / 54% 38% 62% 46%;
++      background: linear-gradient(125deg, var(--primary) 10%, #80543b 65%, #b27a46);
++      opacity: 0.9;
++      transform: rotate(-7deg);
++    }
++
++    @supports (mask-image: url('')) or (-webkit-mask-image: url('')) {
++      .shaped-element {
++        /* Embedded vector scales with the block and needs no network request.
++           If masking fails, this decorative layer cannot move hero content. */
++        --splash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 360'%3E%3Cpath fill='white' d='M58 173C24 144 65 110 115 106C80 70 149 65 198 74C235 34 298 52 341 40C394 20 440 53 486 42C529 29 557 55 577 76C619 62 666 78 653 106C707 99 747 128 711 153C754 181 721 208 682 213C716 248 669 269 625 262C615 301 557 290 524 308C481 335 434 306 396 320C341 344 303 309 264 318C222 326 194 304 173 286C124 301 97 276 113 251C64 254 34 229 65 209C29 204 27 181 58 173Z'/%3E%3Cellipse fill='white' cx='36' cy='124' rx='15' ry='8' transform='rotate(-25 36 124)'/%3E%3Cellipse fill='white' cx='721' cy='266' rx='17' ry='10' transform='rotate(25 721 266)'/%3E%3Ccircle fill='white' cx='680' cy='63' r='8'/%3E%3C/svg%3E");
++        border-radius: 0;
++        -webkit-mask-image: var(--splash-mask);
++        mask-image: var(--splash-mask);
++        -webkit-mask-size: 100% 100%;
++        mask-size: 100% 100%;
++        -webkit-mask-repeat: no-repeat;
++        mask-repeat: no-repeat;
++        -webkit-mask-position: center;
++        mask-position: center;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +203,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

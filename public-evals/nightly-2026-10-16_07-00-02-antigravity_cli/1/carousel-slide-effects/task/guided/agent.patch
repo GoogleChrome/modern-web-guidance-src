@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,157 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Product Carousel Section */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .carousel-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .carousel-header p {
++      color: #6d4c41;
++      font-size: 1rem;
++    }
++
++    .scroller {
++      display: flex;
++      gap: 2rem;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      scroll-snap-type: inline mandatory;
++      scroll-padding-inline: max(1.5rem, calc(50% - 140px));
++      padding-inline: max(1.5rem, calc(50% - 140px));
++      padding-block: 2.5rem;
++      list-style: none;
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) transparent;
++      outline: none;
++    }
++
++    .scroller:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .product-card {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      display: flex;
++      flex-direction: column;
++      transform-origin: center center;
++    }
++
++    .product-img-wrap {
++      position: relative;
++      width: 100%;
++      height: 190px;
++      overflow: hidden;
++      background-color: var(--secondary);
++    }
++
++    .product-img-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.3s ease;
++    }
++
++    .product-badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: rgba(78, 52, 46, 0.85);
++      backdrop-filter: blur(4px);
++      color: white;
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 4px 10px;
++      border-radius: 20px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .product-details {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++      text-align: left;
++    }
++
++    .product-details h3 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .product-price {
++      font-size: 1.1rem;
++      font-weight: 700;
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .product-desc {
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-bottom: 16px;
++      flex-grow: 1;
++    }
++
++    .product-details .btn {
++      width: 100%;
++      text-align: center;
++      margin-top: auto;
++    }
++
++    /* Scroll-driven animations */
++    @keyframes scale-card {
++      0% {
++        scale: 0.75;
++        opacity: 0.75;
++      }
++      50% {
++        scale: 1.05;
++        opacity: 1;
++      }
++      100% {
++        scale: 0.75;
++        opacity: 0.75;
++      }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      .scroller > * {
++        animation: scale-card auto linear both;
++        animation-timeline: view(inline);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller > * {
++        animation: none;
++        scale: 1;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +343,89 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section" aria-labelledby="carousel-title">
++      <div class="carousel-header">
++        <h2 id="carousel-title">Featured Products</h2>
++        <p>Explore our freshly roasted artisanal blends and handcrafted coffee equipment.</p>
++      </div>
++      <ul class="scroller" tabindex="0" role="region" aria-label="Featured products carousel">
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe coffee beans" loading="lazy" width="280" height="190">
++            <span class="product-badge">Single Origin</span>
++          </div>
++          <div class="product-details">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <div class="product-price">$19.50</div>
++            <p class="product-desc">Floral jasmine notes with bright citrus acidity and a delicate honey finish.</p>
++            <a href="/products/ethiopian-yirgacheffe" class="btn" aria-label="Add Ethiopian Yirgacheffe to cart">Add to Cart</a>
++          </div>
++        </li>
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Bag of Dark Roast Midnight Velvet Espresso beans" loading="lazy" width="280" height="190">
++            <span class="product-badge">Dark Roast</span>
++          </div>
++          <div class="product-details">
++            <h3>Midnight Velvet</h3>
++            <div class="product-price">$18.00</div>
++            <p class="product-desc">Decadent dark chocolate, caramelized sugar, and a heavy, lingering crema.</p>
++            <a href="/products/midnight-velvet" class="btn" aria-label="Add Midnight Velvet to cart">Add to Cart</a>
++          </div>
++        </li>
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Ceramic Pour-Over coffee dripper and brewed cup" loading="lazy" width="280" height="190">
++            <span class="product-badge">Equipment</span>
++          </div>
++          <div class="product-details">
++            <h3>Ceramic Pour-Over</h3>
++            <div class="product-price">$34.00</div>
++            <p class="product-desc">Artisanal ceramic dripper designed for precise thermal retention and clean extraction.</p>
++            <a href="/products/ceramic-dripper" class="btn" aria-label="Add Ceramic Pour-Over to cart">Add to Cart</a>
++          </div>
++        </li>
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Glass bottle of cold brew coffee concentrate" loading="lazy" width="280" height="190">
++            <span class="product-badge">Cold Brew</span>
++          </div>
++          <div class="product-details">
++            <h3>Craft Cold Brew Batch</h3>
++            <div class="product-price">$16.50</div>
++            <p class="product-desc">Slow-steeped for 24 hours with notes of dark cocoa and toasted hazelnut.</p>
++            <a href="/products/cold-brew-batch" class="btn" aria-label="Add Craft Cold Brew Batch to cart">Add to Cart</a>
++          </div>
++        </li>
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Modern stainless steel and glass French Press" loading="lazy" width="280" height="190">
++            <span class="product-badge">Brewing Gear</span>
++          </div>
++          <div class="product-details">
++            <h3>Barista French Press</h3>
++            <div class="product-price">$29.00</div>
++            <p class="product-desc">Heat-resistant borosilicate glass with an ultra-fine double filter mesh.</p>
++            <a href="/products/french-press" class="btn" aria-label="Add Barista French Press to cart">Add to Cart</a>
++          </div>
++        </li>
++        <li class="product-card">
++          <div class="product-img-wrap">
++            <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Freshly roasted Colombian Supremo coffee beans in cup" loading="lazy" width="280" height="190">
++            <span class="product-badge">Medium Roast</span>
++          </div>
++          <div class="product-details">
++            <h3>Colombian Supremo</h3>
++            <div class="product-price">$17.50</div>
++            <p class="product-desc">Silky body with toasted walnuts, sweet red apple notes, and a balanced finish.</p>
++            <a href="/products/colombian-supremo" class="btn" aria-label="Add Colombian Supremo to cart">Add to Cart</a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

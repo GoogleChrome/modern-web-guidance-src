@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,36 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scroll progress indicator */
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 4px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: 0 50%;
++      z-index: 1001;
++      pointer-events: none;
++    }
++
++    /* Enhancement: pure CSS, runs off the main thread where supported */
++    @supports (animation-timeline: scroll()) {
++      .scroll-progress {
++        animation: scroll-progress linear both;
++        animation-timeline: scroll(root block);
++      }
++    }
++
++    @keyframes scroll-progress {
++      to {
++        transform: scaleX(1);
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +184,10 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="scroll-progress" id="scroll-progress" role="presentation" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +236,35 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()')) return;
++      var bar = document.getElementById('scroll-progress');
++      if (!bar) return;
++      var ticking = false;
++
++      function update() {
++        var doc = document.documentElement;
++        var max = doc.scrollHeight - doc.clientHeight;
++        var top = window.pageYOffset || doc.scrollTop || 0;
++        var ratio = max > 0 ? Math.min(Math.max(top / max, 0), 1) : 0;
++        bar.style.transform = 'scaleX(' + ratio + ')';
++        ticking = false;
++      }
++
++      function onScroll() {
++        if (ticking) return;
++        ticking = true;
++        (window.requestAnimationFrame || setTimeout)(update);
++      }
++
++      window.addEventListener('scroll', onScroll, { passive: true });
++      window.addEventListener('resize', onScroll);
++      update();
++    })();
++  </script>
+ </body>
+ 
+ </html>

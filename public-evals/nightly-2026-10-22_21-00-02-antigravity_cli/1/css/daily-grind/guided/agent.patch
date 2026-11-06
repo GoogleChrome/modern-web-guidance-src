@@ -1,0 +1,375 @@
+diff --git a/index.html b/index.html
+index 66c9173..e153047 100644
+--- a/index.html
++++ b/index.html
+@@ -6,151 +6,240 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    @layer reset, base, theme, components, utilities;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    @layer theme {
++      :root {
++        /* Tier 1: Literal & core tokens */
++        --color-brown-90: #3e2723;
++        --color-brown-80: #4e342e;
++        --color-brown-20: #d7ccc8;
++        --color-amber-50: #ffab40;
++        --color-neutral-10: #fafafa;
++        --color-white: #ffffff;
++        --color-overlay: rgb(0 0 0 / 0.5);
++        --color-shadow: rgb(0 0 0 / 0.1);
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++        --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --line-height-base: 1.6;
++        --tracking-wide: 1px;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --space-2xs: 5px;
++        --space-xs: 10px;
++        --space-sm: 12px;
++        --space-md: 15px;
++        --space-lg: 20px;
++        --space-xl: 40px;
++        --space-fluid-inline: 5%;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --radius-sm: 4px;
++        --radius-md: 5px;
++        --radius-lg: 8px;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        --size-container: 1100px;
++        --size-card-min: 250px;
++        --size-hero-block: 60vh;
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --border-thin: 1px solid;
++        --shadow-sm: 0 2px 5px var(--color-shadow);
++        --transition-duration: 0.3s;
++        --z-sticky: 1000;
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++        /* Tier 2: Semantic tokens */
++        --primary: var(--color-brown-80);
++        --primary-hover: var(--color-brown-90);
++        --secondary: var(--color-brown-20);
++        --accent: var(--color-amber-50);
++        --text: var(--color-brown-90);
++        --light: var(--color-neutral-10);
++        --surface: var(--color-white);
++        --text-on-primary: var(--color-white);
++      }
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++    @layer reset {
++      :where(html, body, nav, header, main, section, footer, div, h1, h2, h3, p, ul, li, a) {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++      :where(ul) {
++        list-style: none;
++      }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++    @layer base {
++      body {
++        font-family: var(--font-sans);
++        line-height: var(--line-height-base);
++        color: var(--text);
++        background-color: var(--light);
++      }
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++      h1 {
++        font-size: 3em;
++        margin-block-end: 0.333em;
++      }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++      h2 {
++        text-align: center;
++      }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      h3 {
++        margin-block-end: var(--space-xs);
++        color: var(--primary);
++      }
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
++    @layer components {
++      /* Navigation */
++      nav {
++        background: var(--primary);
++        color: var(--text-on-primary);
++        padding-block: 1em;
++        padding-inline: var(--space-fluid-inline);
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        position: sticky;
++        inset-block-start: 0;
++        z-index: var(--z-sticky);
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
++        .logo {
++          font-size: 1.5em;
++          font-weight: bold;
++          letter-spacing: var(--tracking-wide);
++        }
+ 
+-    .btn:hover {
+-      background: #3e2723;
+-    }
++        ul {
++          display: flex;
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
++          li:not(:first-child) {
++            margin-inline-start: var(--space-lg);
++          }
++        }
++
++        a {
++          color: inherit;
++          font-size: 0.9em;
++          transition: color var(--transition-duration);
++
++          &:where(:hover, :focus-visible) {
++            color: var(--accent);
++          }
++
++          &.logout-link {
++            border: var(--border-thin) var(--accent);
++            padding-block: var(--space-2xs);
++            padding-inline: var(--space-sm);
++            border-radius: var(--radius-sm);
++            corner-shape: squircle;
++          }
++        }
++      }
++
++      /* Hero Section */
++      @scope (.hero) {
++        :scope {
++          min-block-size: var(--size-hero-block);
++          background:
++            linear-gradient(var(--color-overlay), var(--color-overlay)),
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++              center / cover;
++          display: flex;
++          flex-direction: column;
++          justify-content: center;
++          align-items: center;
++          color: var(--text-on-primary);
++          text-align: center;
++          padding-inline: var(--space-lg);
++        }
++
++        h1 {
++          font-size: 3em;
++          margin-block-end: 0.333em;
++        }
++      }
++
++      /* Content Sections */
++      .container {
++        max-inline-size: var(--size-container);
++        margin-block: var(--space-xl);
++        margin-inline: auto;
++        padding-inline: var(--space-lg);
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--size-card-min)), 1fr));
++        gap: var(--space-lg);
++        margin-block-start: var(--space-lg);
++      }
++
++      /* Card Component */
++      @scope (.card) {
++        :scope {
++          background: var(--surface);
++          padding: var(--space-lg);
++          border-radius: var(--radius-lg);
++          corner-shape: squircle;
++          box-shadow: var(--shadow-sm);
++          text-align: center;
++        }
++
++        h3 {
++          margin-block-end: var(--space-xs);
++          color: var(--primary);
++        }
++      }
++
++      /* Button Component */
++      .btn {
++        display: inline-block;
++        background: var(--primary);
++        color: var(--text-on-primary);
++        padding-block: var(--space-xs);
++        padding-inline: var(--space-lg);
++        border-radius: var(--radius-md);
++        corner-shape: squircle;
++        margin-block-start: var(--space-md);
++        transition: background-color var(--transition-duration);
++
++        &:where(:hover, :focus-visible):not(:disabled) {
++          background: var(--primary-hover);
++        }
++      }
++
++      /* Footer */
++      footer {
++        background: var(--secondary);
++        text-align: center;
++        padding-block: var(--space-xl);
++        padding-inline: var(--space-lg);
++        margin-block-start: var(--space-xl);
++
++        .footer-links {
++          margin-block-end: var(--space-lg);
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++          a {
++            margin-inline: var(--space-xs);
++            color: inherit;
++            font-size: 0.85em;
++          }
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +265,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

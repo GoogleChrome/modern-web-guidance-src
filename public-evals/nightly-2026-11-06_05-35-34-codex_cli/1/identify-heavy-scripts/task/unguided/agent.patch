@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,10 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <link rel="stylesheet" href="performance-monitor.css">
++  <script src="performance-monitor.js" defer></script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -174,8 +176,24 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="perf" aria-labelledby="perf-title" id="script-performance">
++      <div class="perf-topline"><span class="perf-eyebrow"><span class="perf-dot"></span> WEBSITE DIAGNOSTICS</span><span class="perf-local">Local to this browser · No data sent</span></div>
++      <div class="perf-heading"><div><h2 id="perf-title">A little insight. A faster website.</h2><p>See which scripts take time to load and keep your visitors waiting.</p></div><button type="button" id="perf-collapse" aria-expanded="true" aria-controls="perf-body" class="perf-icon" title="Collapse diagnostics">−</button></div>
++      <div id="perf-body">
++        <div class="perf-metrics">
++          <div><span>Scripts detected</span><strong id="perf-count">0</strong><small>Excludes this diagnostic tool</small></div>
++          <div><span>Script load time <span title="Sum of resource request durations. Requests may overlap.">ⓘ</span></span><strong id="perf-load">0 <em>ms</em></strong><small>Combined request duration</small></div>
++          <div><span>Slow-frame script time</span><strong id="perf-cpu">—</strong><small>Execution observed in slow frames</small></div>
++          <div><span>Long frames / tasks</span><strong id="perf-long">0</strong><small id="perf-long-label">Frames longer than 50 ms</small></div>
++        </div>
++        <div class="perf-toolbar"><div class="perf-tabs" role="group" aria-label="Script filter"><button type="button" class="active" data-perf-filter="all" aria-pressed="true">All scripts</button><button type="button" data-perf-filter="slow" aria-pressed="false">Needs attention <span id="perf-slow-count">0</span></button></div><div class="perf-actions"><button type="button" id="perf-pause">Ⅱ Pause</button><button type="button" id="perf-clear">↺ Clear</button><button type="button" id="perf-export">↓ Export report</button></div></div>
++        <div class="perf-table-wrap"><table class="perf-table"><thead><tr><th scope="col">Script / source</th><th scope="col"><button type="button" data-perf-sort="load">Load time ↕</button></th><th scope="col"><button type="button" data-perf-sort="cpu">Slow-frame time ↕</button></th><th scope="col">Assessment</th></tr></thead><tbody id="perf-rows"><tr><td colspan="4" class="perf-empty"><span class="perf-empty-icon">⌁</span><strong>No website scripts detected</strong><p>We’re listening. Scripts will appear here as they load.</p></td></tr></tbody></table></div>
++        <div class="perf-footer"><span id="perf-status" role="status"><span class="perf-dot"></span> Collecting live measurements</span><span>Slow load ≥ 250 ms · Slow execution ≥ 50 ms</span></div>
++        <details class="perf-help"><summary>How to read these measurements</summary><p id="perf-support">Checking browser support…</p><p>Load time measures a request, including network and server delays; it does not measure JavaScript execution. Slow-frame time only includes script execution attributed by the browser to frames longer than 50 ms. A long request alone does not prove that a script blocks the page.</p><p>Start with scripts with high execution time. Defer nonessential scripts, load third-party tools on demand, and split expensive work. Cross-origin frames, workers, and very short tasks may not be attributed. Transfer size may be unavailable without a Timing-Allow-Origin header. Script URLs in this panel and exported reports omit query strings and fragments.</p></details>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

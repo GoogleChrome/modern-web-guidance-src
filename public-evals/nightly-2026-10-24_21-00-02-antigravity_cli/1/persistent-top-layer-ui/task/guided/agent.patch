@@ -1,0 +1,363 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,181 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Trigger & Relocation Host Containers */
++    .feedback-fab {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      padding: 12px 20px;
++      border-radius: 999px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      transition: transform 0.2s, background 0.3s;
++      z-index: 900;
++    }
++
++    .feedback-fab:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
++
++    .dialog-host-zone {
++      margin-top: 30px;
++      padding: 16px 20px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      background: white;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .dialog-host-zone .host-badge {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 4px 10px;
++      border-radius: 4px;
++    }
++
++    /* Persistent Feedback Modal (<dialog>) */
++    dialog#feedback-modal {
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 12px;
++      max-width: 480px;
++      width: 90%;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog#feedback-modal::backdrop {
++      background: rgba(62, 39, 35, 0.6);
++      backdrop-filter: blur(3px);
++    }
++
++    .modal-inner {
++      padding: 24px;
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      margin-bottom: 16px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .modal-header h2 {
++      font-size: 1.35rem;
++      color: var(--primary);
++    }
++
++    .parent-status {
++      font-size: 0.8rem;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      padding: 6px 10px;
++      border-radius: 6px;
++      margin-bottom: 16px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .parent-status code {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .form-group select,
++    .form-group input,
++    .form-group textarea {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .form-group select:focus,
++    .form-group input:focus,
++    .form-group textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 20px;
++      padding-top: 14px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 9px 14px;
++      border-radius: 5px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 9px 18px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,9 +346,9 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,11 +367,75 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="dialog-host-zone" id="primary-dialog-host" aria-label="Primary Feedback Host">
++      <div>
++        <strong>Feedback Overlay Container (Main)</strong>
++        <p style="font-size: 0.85rem;">Initial DOM host for the persistent feedback modal.</p>
++      </div>
++      <span class="host-badge" id="primary-host-status">Contains Modal</span>
++
++      <dialog id="feedback-modal" aria-labelledby="feedback-modal-title">
++        <div class="modal-inner">
++          <div class="modal-header">
++            <h2 id="feedback-modal-title">Share Your Coffee Feedback</h2>
++            <form method="dialog">
++              <button type="submit" value="cancel" class="btn-secondary" aria-label="Close feedback modal">Close</button>
++            </form>
++          </div>
++
++          <div class="parent-status" aria-live="polite">
++            <span>Current DOM Parent: <code id="modal-parent-label">#primary-dialog-host</code></span>
++            <span id="move-method-badge">Ready</span>
++          </div>
++
++          <form id="feedback-form" method="dialog">
++            <div class="form-group">
++              <label for="feedback-drink">Favorite Drink</label>
++              <select id="feedback-drink" name="drink">
++                <option value="maple-oat-latte">Maple Oat Latte</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="feedback-email">Email (optional)</label>
++              <input type="email" id="feedback-email" name="email" autocomplete="email" inputmode="email" placeholder="coffee.lover@example.com">
++            </div>
++
++            <div class="form-group">
++              <label for="feedback-notes">Your Thoughts</label>
++              <textarea id="feedback-notes" name="notes" rows="3" placeholder="Tell us about your visit or roast experience..."></textarea>
++            </div>
++
++            <div class="modal-actions">
++              <button type="button" id="move-dialog-btn" class="btn-secondary">
++                Move Modal in DOM
++              </button>
++              <div>
++                <button type="submit" value="cancel" formmethod="dialog" class="btn-secondary">Cancel</button>
++                <button type="submit" value="submit" class="btn-primary">Send Feedback</button>
++              </div>
++            </div>
++          </form>
++        </div>
++      </dialog>
++    </section>
+   </main>
+ 
+-  <footer>
++  <footer id="site-footer">
++    <div class="container" style="margin-top: 0; margin-bottom: 20px;">
++      <div class="dialog-host-zone" id="secondary-dialog-host" aria-label="Secondary Feedback Host">
++        <div>
++          <strong>Feedback Overlay Container (Footer)</strong>
++          <p style="font-size: 0.85rem;">Secondary DOM target for reparenting the open modal.</p>
++        </div>
++        <span class="host-badge" id="secondary-host-status">Empty</span>
++      </div>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +443,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" id="open-feedback-btn" class="feedback-fab" aria-haspopup="dialog" aria-controls="feedback-modal">
++    Give Feedback
++  </button>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-modal');
++    const openFeedbackBtn = document.getElementById('open-feedback-btn');
++    const moveDialogBtn = document.getElementById('move-dialog-btn');
++    const primaryHost = document.getElementById('primary-dialog-host');
++    const secondaryHost = document.getElementById('secondary-dialog-host');
++    const parentLabel = document.getElementById('modal-parent-label');
++    const moveMethodBadge = document.getElementById('move-method-badge');
++    const primaryStatus = document.getElementById('primary-host-status');
++    const secondaryStatus = document.getElementById('secondary-host-status');
++
++    function updateHostIndicators() {
++      const currentParent = feedbackDialog.parentElement;
++      const isPrimary = currentParent === primaryHost;
++      parentLabel.textContent = currentParent ? `#${currentParent.id}` : 'unknown';
++      primaryStatus.textContent = isPrimary ? 'Contains Modal' : 'Empty';
++      secondaryStatus.textContent = !isPrimary ? 'Contains Modal' : 'Empty';
++    }
++
++    openFeedbackBtn.addEventListener('click', () => {
++      if (!feedbackDialog.open) {
++        feedbackDialog.showModal();
++      }
++    });
++
++    moveDialogBtn.addEventListener('click', () => {
++      const targetParent =
++        feedbackDialog.parentElement === primaryHost ? secondaryHost : primaryHost;
++
++      // Relocate the open dialog in the DOM while preserving top-layer modal and focus state
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(feedbackDialog, null);
++        moveMethodBadge.textContent = 'Moved via moveBefore()';
++      } else {
++        // Fallback: traditional move closes <dialog> and resets focus/selection state
++        const wasOpen =
++          feedbackDialog.hasAttribute('open') || feedbackDialog.matches(':popover-open');
++        const activeEl = document.activeElement;
++        const hadFocusInside = feedbackDialog.contains(activeEl);
++        const selectionStart =
++          hadFocusInside && typeof activeEl.selectionStart === 'number'
++            ? activeEl.selectionStart
++            : null;
++        const selectionEnd =
++          hadFocusInside && typeof activeEl.selectionEnd === 'number'
++            ? activeEl.selectionEnd
++            : null;
++
++        targetParent.insertBefore(feedbackDialog, null);
++
++        // Manually re-open and restore modal & focus state in unsupported browsers
++        if (wasOpen && typeof feedbackDialog.showModal === 'function') {
++          feedbackDialog.showModal();
++        } else if (wasOpen && typeof feedbackDialog.showPopover === 'function') {
++          feedbackDialog.showPopover();
++        }
++
++        if (hadFocusInside && activeEl && typeof activeEl.focus === 'function') {
++          activeEl.focus();
++          if (
++            selectionStart !== null &&
++            selectionEnd !== null &&
++            typeof activeEl.setSelectionRange === 'function'
++          ) {
++            try {
++              activeEl.setSelectionRange(selectionStart, selectionEnd);
++            } catch (_) {
++              // Ignore inputs that do not support selection ranges (e.g., type="email")
++            }
++          }
++        }
++        moveMethodBadge.textContent = 'Moved via insertBefore() fallback';
++      }
++
++      updateHostIndicators();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

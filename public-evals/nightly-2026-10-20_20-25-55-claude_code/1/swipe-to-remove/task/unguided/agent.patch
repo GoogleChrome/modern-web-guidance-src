@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,84 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shopping Cart / Swipeable List */
++    .cart {
++      margin-top: 50px;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 600px;
++      margin: 20px auto 0;
++    }
++
++    .SwipeableList-item {
++      position: relative;
++      overflow: hidden;
++      margin-bottom: 10px;
++      border-radius: 8px;
++      background: #bdbdbd;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      transition: background 0.2s;
++    }
++
++    .SwipeableList-item.is-armed {
++      background: #c62828;
++    }
++
++    .SwipeableList-item::after {
++      content: 'Remove';
++      position: absolute;
++      top: 0;
++      bottom: 0;
++      right: 20px;
++      display: flex;
++      align-items: center;
++      color: white;
++      font-weight: 600;
++      opacity: 0.8;
++    }
++
++    .SwipeableList-item.is-removing {
++      transition: height 0.3s ease, margin 0.3s ease, opacity 0.3s ease;
++      height: 0;
++      margin-bottom: 0;
++      opacity: 0;
++    }
++
++    .SwipeableList-track {
++      position: relative;
++      z-index: 1;
++      touch-action: pan-y;
++      cursor: grab;
++      user-select: none;
++      will-change: transform;
++    }
++
++    .SwipeableList-track.is-settling {
++      transition: transform 0.25s ease;
++    }
++
++    .SwipeableList-content {
++      background: white;
++      padding: 16px 20px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .SwipeableList-content strong {
++      color: var(--primary);
++    }
++
++    .cart-empty {
++      text-align: center;
++      margin-top: 20px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +270,96 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart">
++      <h2 style="text-align: center;">Shopping Cart</h2>
++      <ul class="SwipeableList">
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content"><strong>Maple Oat Latte</strong><span>$5.50</span></div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content"><strong>Dark Roast Espresso</strong><span>$3.75</span></div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content"><strong>Cold Brew</strong><span>$4.50</span></div>
++          </div>
++        </li>
++      </ul>
++      <p class="cart-empty" hidden>Your cart is empty.</p>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      var THRESHOLD = 0.4; // fraction of item width that triggers removal
++      var list = document.querySelector('.SwipeableList');
++      var emptyMsg = document.querySelector('.cart-empty');
++
++      function remove(item) {
++        item.style.height = item.offsetHeight + 'px';
++        void item.offsetHeight; // commit height so it can transition to 0
++        item.classList.add('is-removing');
++        var done = false;
++        function finish() {
++          if (done) return;
++          done = true;
++          item.remove();
++          emptyMsg.hidden = list.children.length > 0;
++        }
++        item.addEventListener('transitionend', function (e) {
++          if (e.propertyName === 'height') finish();
++        });
++        setTimeout(finish, 500); // fallback if transitionend never fires
++      }
++
++      function setup(item) {
++        var track = item.querySelector('.SwipeableList-track');
++        var startX = 0, dx = 0, dragging = false;
++
++        track.addEventListener('pointerdown', function (e) {
++          if (item.classList.contains('is-removing')) return;
++          dragging = true;
++          startX = e.clientX;
++          dx = 0;
++          track.classList.remove('is-settling');
++          track.setPointerCapture(e.pointerId);
++        });
++
++        track.addEventListener('pointermove', function (e) {
++          if (!dragging) return;
++          dx = Math.max(0, e.clientX - startX); // swipe right only
++          track.style.transform = 'translateX(' + dx + 'px)';
++          item.classList.toggle('is-armed', dx > item.offsetWidth * THRESHOLD);
++        });
++
++        function end() {
++          if (!dragging) return;
++          dragging = false;
++          if (dx > item.offsetWidth * THRESHOLD) {
++            track.classList.add('is-settling');
++            track.style.transform = 'translateX(100%)';
++            remove(item);
++          } else {
++            track.classList.add('is-settling');
++            track.style.transform = '';
++            item.classList.remove('is-armed');
++          }
++        }
++        track.addEventListener('pointerup', end);
++        track.addEventListener('pointercancel', end);
++      }
++
++      list.querySelectorAll('.SwipeableList-item').forEach(setup);
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,106 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scroll container: the whole page scrolls inside .scroller */
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      /* Lets descendants query this container's scroll state (no JS needed) */
++      container-type: scroll-state;
++
++      @media (prefers-reduced-motion: no-preference) {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    /* Floating "back to top" button */
++    .back-to-top {
++      --size: 3rem;
++      position: sticky;
++      bottom: 1.25rem;
++      z-index: 1001;
++      display: grid;
++      place-items: center;
++      width: var(--size);
++      height: var(--size);
++      /* Negative top margin so it takes no extra space below the footer */
++      margin: calc(-1 * var(--size)) 1.25rem 0 auto;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      font-size: 1.25rem;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .back-to-top:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .back-to-top svg {
++      width: 1.25rem;
++      height: 1.25rem;
++    }
++
++    /* Hidden state. visibility:hidden also removes it from the tab order
++       and the accessibility tree, so keyboard users never land on it. */
++    .back-to-top {
++      visibility: hidden;
++      opacity: 0;
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        background-color 0.2s;
++
++      @media (prefers-reduced-motion: no-preference) {
++        translate: 0 1.25rem;
++        transition:
++          visibility 0.3s,
++          opacity 0.3s ease,
++          translate 0.3s ease,
++          background-color 0.2s;
++      }
++    }
++
++    /* Visible state: native scroll-state query (Chromium 133+) */
++    @container scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* Visible state: IntersectionObserver fallback for other browsers */
++    .scroller.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller">
++    <div class="scroll-sentinel" id="top"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +299,27 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++    <a href="#top" class="back-to-top" aria-label="Back to top">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
++        stroke-linejoin="round" aria-hidden="true">
++        <path d="M12 19V5M5 12l7-7 7 7" />
++      </svg>
++    </a>
++  </div>
++
++  <script>
++    // Fallback for browsers without container scroll-state queries:
++    // observe a zero-size sentinel at the top of the scroller (no scroll listeners).
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const scroller = document.querySelector('.scroller');
++      const sentinel = scroller.querySelector('.scroll-sentinel');
++      new IntersectionObserver(([entry]) => {
++        scroller.classList.toggle('scrolled', !entry.isIntersecting);
++      }, { root: scroller }).observe(sentinel);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

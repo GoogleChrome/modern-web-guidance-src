@@ -1,0 +1,72 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose menu lookup to AI assistants (only in browsers that support it).
++    (() => {
++      if (!('modelContext' in document)) return;
++
++      // Menu details are read from the cards rendered on the page.
++      const getMenuItems = () =>
++        [...document.querySelectorAll('.card')].map((card) => ({
++          name: card.querySelector('h3').textContent.trim(),
++          description: card.querySelector('p').textContent.trim(),
++          detailsUrl: new URL(card.querySelector('a').getAttribute('href'), location.href).href,
++        }));
++
++      let controller;
++
++      async function registerMenuTool() {
++        controller?.abort();
++        controller = new AbortController();
++        try {
++          await document.modelContext.registerTool({
++            name: 'get_menu_item_details',
++            description: 'Looks up a Daily Grind menu item and returns its description and details page link. Use when the user asks about a specific drink.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                itemName: {
++                  type: 'string',
++                  description: 'Name of the menu item, as the customer says it (e.g. "maple oat latte"). Case-insensitive.',
++                },
++              },
++              required: ['itemName'],
++            },
++            execute({ itemName } = {}) {
++              const items = getMenuItems();
++              if (typeof itemName !== 'string' || !itemName.trim()) {
++                return { error: 'Pass the name of a menu item.', availableItems: items.map((i) => i.name) };
++              }
++              const query = itemName.trim().toLowerCase();
++              const item =
++                items.find((i) => i.name.toLowerCase() === query) ??
++                items.find((i) => i.name.toLowerCase().includes(query) || query.includes(i.name.toLowerCase()));
++              if (!item) {
++                return { error: `Menu item "${itemName}" not found.`, availableItems: items.map((i) => i.name) };
++              }
++              return item;
++            },
++            annotations: { readOnlyHint: true },
++          }, { signal: controller.signal });
++        } catch (err) {
++          console.warn('Could not register menu tool:', err);
++        }
++      }
++
++      registerMenuTool();
++
++      // Unregister when the page is unloaded; re-register if restored from the back/forward cache.
++      addEventListener('pagehide', () => controller?.abort());
++      addEventListener('pageshow', (e) => { if (e.persisted) registerMenuTool(); });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,1515 @@
+diff --git a/index.html b/index.html
+index 66c9173..0c62854 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,27 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Artisanal Coffee & Cryptographic Trust</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border: #e0d6d2;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
++      --quantum: #4a148c;
++      --quantum-bg: #f3e5f5;
++      --classical: #0d47a1;
++      --classical-bg: #e3f2fd;
+     }
+ 
+     * {
+@@ -38,6 +51,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+@@ -49,6 +63,8 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
+     }
+ 
+     nav ul li {
+@@ -74,8 +90,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 55vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,29 +106,63 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 15px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++      justify-content: center;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1180px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      max-width: 720px;
++      margin: 0 auto;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      border: 1px solid var(--border);
++    }
++
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
+     }
+ 
+     .card h3 {
+@@ -128,11 +178,385 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.25s, transform 0.15s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.92rem;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: #2d1810;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-hover);
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.82rem;
++      margin-top: 0;
++    }
++
++    /* Cryptographic Suite Styling */
++    .crypto-section {
++      margin-top: 60px;
++      background: #f5f0ee;
++      border-radius: 12px;
++      padding: 32px;
++      border: 1px solid var(--secondary);
++    }
++
++    .key-bench {
++      background: white;
++      border-radius: 10px;
++      padding: 22px;
++      border: 1px solid var(--border);
++      margin-bottom: 28px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++    }
++
++    .key-bench-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      border-bottom: 1px solid var(--border);
++      padding-bottom: 16px;
++      margin-bottom: 16px;
++    }
++
++    .key-controls {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    select, input, textarea {
++      font-family: inherit;
++      font-size: 0.92rem;
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      background: #fff;
++      color: var(--text);
++      width: 100%;
++    }
++
++    select:focus, input:focus, textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .key-controls select {
++      width: auto;
++      min-width: 280px;
++      font-weight: 600;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.78rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .badge-quantum {
++      background: var(--quantum-bg);
++      color: var(--quantum);
++      border: 1px solid #ce93d8;
++    }
++
++    .badge-classical {
++      background: var(--classical-bg);
++      color: var(--classical);
++      border: 1px solid #90caf9;
++    }
++
++    .key-meta-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 14px;
++      margin-bottom: 14px;
++    }
++
++    .meta-box {
++      background: #faf7f5;
++      padding: 10px 14px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      font-size: 0.85rem;
++    }
++
++    .meta-box strong {
++      display: block;
++      color: var(--text-muted);
++      font-size: 0.75rem;
++      text-transform: uppercase;
++    }
++
++    .mono {
++      font-family: 'Courier New', Courier, monospace;
++      word-break: break-all;
++      font-size: 0.82rem;
++    }
++
++    .workspace-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 24px;
++    }
++
++    @media (max-width: 900px) {
++      .workspace-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel {
++      background: white;
++      border-radius: 10px;
++      padding: 24px;
++      border: 1px solid var(--border);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
++      display: flex;
++      flex-direction: column;
++    }
++
++    .panel h3 {
++      color: var(--primary);
++      margin-bottom: 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid var(--border);
++      padding-bottom: 10px;
++    }
++
++    .tabs {
++      display: flex;
++      gap: 8px;
++      margin-bottom: 18px;
++    }
++
++    .tab-btn {
++      flex: 1;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      background: #faf7f5;
++      color: var(--text);
++      font-weight: 600;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .tab-btn.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    .item-checklist {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 8px;
++      background: #faf7f5;
++      padding: 10px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++    }
++
++    .item-check {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.86rem;
++      cursor: pointer;
++    }
++
++    .item-check input {
++      width: auto;
++    }
++
++    /* Visual Receipt / Voucher Card */
++    .document-preview {
++      margin-top: 18px;
++      background: #fffdf9;
++      border: 2px dashed #bcaaa4;
++      border-radius: 8px;
++      padding: 18px;
++      position: relative;
++    }
++
++    .document-preview.voucher-style {
++      background: linear-gradient(135deg, #fff8e1 0%, #fffdf9 100%);
++      border: 2px solid var(--accent);
++    }
++
++    .doc-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      border-bottom: 1px solid var(--border);
++      padding-bottom: 10px;
++      margin-bottom: 10px;
++    }
++
++    .doc-title {
++      font-weight: 800;
++      color: var(--primary);
++      font-size: 1.05rem;
++      letter-spacing: 0.5px;
++    }
++
++    .doc-lines {
++      font-size: 0.88rem;
++      margin-bottom: 12px;
++    }
++
++    .doc-line {
++      display: flex;
++      justify-content: space-between;
++      padding: 3px 0;
++    }
++
++    .doc-total {
++      border-top: 1px solid var(--primary);
++      margin-top: 6px;
++      padding-top: 6px;
++      font-weight: 700;
++      font-size: 1rem;
++    }
++
++    .sig-block {
++      background: #f3efec;
++      padding: 10px;
++      border-radius: 6px;
++      font-size: 0.78rem;
++      margin-top: 10px;
++      border: 1px solid var(--border);
++    }
++
++    /* Verification Status */
++    .verify-banner {
++      padding: 16px;
++      border-radius: 8px;
++      margin-top: 16px;
++      display: flex;
++      align-items: flex-start;
++      gap: 14px;
++      border: 1px solid var(--border);
++      background: #faf7f5;
++    }
++
++    .verify-banner.valid {
++      background: var(--success-bg);
++      border-color: #81c784;
++      color: var(--success);
++    }
++
++    .verify-banner.invalid {
++      background: var(--danger-bg);
++      border-color: #e57373;
++      color: var(--danger);
++    }
++
++    .verify-icon {
++      font-size: 1.6rem;
++      line-height: 1;
++    }
++
++    .verify-details h4 {
++      margin-bottom: 4px;
++      font-size: 1rem;
++    }
++
++    .verify-details p {
++      font-size: 0.85rem;
++      line-height: 1.4;
++    }
++
++    .ledger-section {
++      margin-top: 28px;
++      background: white;
++      border-radius: 10px;
++      padding: 20px;
++      border: 1px solid var(--border);
++    }
++
++    .ledger-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 14px;
++      margin-top: 12px;
++    }
++
++    .ledger-item {
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 12px;
++      background: #faf7f5;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .ledger-item-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.82rem;
++    }
++
++    .toolbar-row {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      margin-top: 10px;
+     }
+ 
+     footer {
+@@ -161,6 +585,7 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#crypto-trust-center">Receipts &amp; Vouchers</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -170,31 +595,293 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, and cryptographically verifiable in your cup.</p>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <a href="#crypto-trust-center" class="btn btn-accent">Sign &amp; Verify Receipts / Vouchers</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted daily using single-origin beans and house-made syrups.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Cryptographic Digital Signing & Verification Section -->
++    <section id="crypto-trust-center" class="crypto-section" aria-label="Cryptographic Signing and Verification">
++      <div class="section-header">
++        <h2>Cryptographic Receipt &amp; Gift Voucher Trust Center</h2>
++        <p>
++          Guarantee authenticity and tamper-proof integrity for every Daily Grind coffee order receipt and gift voucher
++          directly in your browser using <strong>Quantum-Resistant (NIST FIPS 204 ML-DSA)</strong> or
++          <strong>Classical (ECDSA / RSA-PSS)</strong> asymmetric keys.
++        </p>
++      </div>
++
++      <!-- Asymmetric Key Workbench -->
++      <div class="key-bench">
++        <div class="key-bench-header">
++          <div>
++            <h3 style="color: var(--primary); margin-bottom: 4px;">Asymmetric Key Management Workbench</h3>
++            <p style="font-size: 0.86rem; color: var(--text-muted);">
++              Select a classical or post-quantum signature algorithm to generate keys and sign or verify documents.
++            </p>
++          </div>
++          <div class="key-controls">
++            <label for="algorithm-select" style="font-weight: 600; font-size: 0.88rem;">Signature Suite:</label>
++            <select id="algorithm-select" aria-label="Signature Algorithm">
++              <option value="ML-DSA-65">Quantum-Resistant: ML-DSA-65 (FIPS 204 Dilithium3)</option>
++              <option value="ML-DSA-44">Quantum-Resistant: ML-DSA-44 (FIPS 204 Dilithium2)</option>
++              <option value="ML-DSA-87">Quantum-Resistant: ML-DSA-87 (FIPS 204 Dilithium5)</option>
++              <option value="ECDSA-P256">Classical: ECDSA P-256 (SHA-256)</option>
++              <option value="RSA-PSS-2048">Classical: RSA-PSS 2048-bit (SHA-256)</option>
++            </select>
++            <button type="button" id="generate-keypair-btn" class="btn btn-sm">Generate New Keypair</button>
++          </div>
++        </div>
++
++        <div class="key-meta-grid">
++          <div class="meta-box">
++            <strong>Active Algorithm &amp; Security Class</strong>
++            <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
++              <span id="active-algo-label" style="font-weight: 700;">ML-DSA-65</span>
++              <span id="security-class-badge" class="badge badge-quantum">Quantum-Resistant (Post-Quantum)</span>
++            </div>
++          </div>
++          <div class="meta-box">
++            <strong>Key Fingerprint (SHA-256)</strong>
++            <div id="key-fingerprint" class="mono" style="margin-top: 4px; font-weight: 700; color: var(--primary);">Generating...</div>
++          </div>
++          <div class="meta-box">
++            <strong>Public Key &amp; Signature Sizes</strong>
++            <div id="key-size-info" style="margin-top: 4px;">Public Key: -- bytes | Sig: -- bytes</div>
++          </div>
++        </div>
++
++        <div class="form-group" style="margin-bottom: 0;">
++          <label for="active-public-key">Active Cashier / Issuer Public Key (Base64):</label>
++          <textarea id="active-public-key" rows="2" class="mono" readonly aria-label="Active Public Key"></textarea>
++        </div>
++      </div>
++
++      <!-- Dual Panel: Signer & Verifier -->
++      <div class="workspace-grid">
++        <!-- Left Panel: Signer -->
++        <div class="panel">
++          <h3>
++            <span>1. Issue &amp; Sign Document</span>
++            <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">Private Key Signer</span>
++          </h3>
++
++          <div class="tabs" role="tablist">
++            <button type="button" id="tab-receipt" class="tab-btn active" role="tab" aria-selected="true">
++              Coffee Order Receipt
++            </button>
++            <button type="button" id="tab-voucher" class="tab-btn" role="tab" aria-selected="false">
++              Gift Voucher
++            </button>
++          </div>
++
++          <!-- Coffee Order Receipt Form -->
++          <div id="form-receipt">
++            <div class="form-row">
++              <div class="form-group">
++                <label for="receipt-order-id">Order ID</label>
++                <input type="text" id="receipt-order-id" value="ORD-2026-8492">
++              </div>
++              <div class="form-group">
++                <label for="receipt-customer">Customer Name</label>
++                <input type="text" id="receipt-customer" value="Elena Vance">
++              </div>
++            </div>
++
++            <div class="form-group">
++              <label>Ordered Beverages &amp; Bakery Items</label>
++              <div class="item-checklist" id="receipt-items-list">
++                <label class="item-check">
++                  <input type="checkbox" value="Maple Oat Latte|5.75" checked> Maple Oat Latte ($5.75)
++                </label>
++                <label class="item-check">
++                  <input type="checkbox" value="Dark Roast Espresso|3.50" checked> Dark Roast Espresso ($3.50)
++                </label>
++                <label class="item-check">
++                  <input type="checkbox" value="18-Hr Cold Brew|4.75"> 18-Hr Cold Brew ($4.75)
++                </label>
++                <label class="item-check">
++                  <input type="checkbox" value="Almond Croissant|4.25"> Almond Croissant ($4.25)
++                </label>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="receipt-barista">Roastery Location / Barista</label>
++                <input type="text" id="receipt-barista" value="Downtown Roastery - Barista Mateo">
++              </div>
++              <div class="form-group">
++                <label for="receipt-total">Total Paid ($ USD)</label>
++                <input type="text" id="receipt-total" value="10.08" readonly>
++              </div>
++            </div>
++          </div>
++
++          <!-- Gift Voucher Form -->
++          <div id="form-voucher" style="display: none;">
++            <div class="form-row">
++              <div class="form-group">
++                <label for="voucher-code">Voucher Serial Code</label>
++                <input type="text" id="voucher-code" value="GIFT-DG-2026-9941">
++              </div>
++              <div class="form-group">
++                <label for="voucher-amount">Gift Value ($ USD)</label>
++                <select id="voucher-amount">
++                  <option value="25.00">$25.00 - Coffee Lover's Pack</option>
++                  <option value="50.00" selected>$50.00 - Artisanal Connoisseur</option>
++                  <option value="100.00">$100.00 - Golden Bean VIP</option>
++                </select>
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="voucher-recipient">Recipient Name</label>
++                <input type="text" id="voucher-recipient" value="Marcus Sterling">
++              </div>
++              <div class="form-group">
++                <label for="voucher-sender">From (Sender)</label>
++                <input type="text" id="voucher-sender" value="Sofia Chen">
++              </div>
++            </div>
++
++            <div class="form-row">
++              <div class="form-group">
++                <label for="voucher-expiry">Expiration Date</label>
++                <input type="date" id="voucher-expiry" value="2027-12-31">
++              </div>
++              <div class="form-group">
++                <label for="voucher-note">Personal Message</label>
++                <input type="text" id="voucher-note" value="Enjoy a month of artisanal espressos!">
++              </div>
++            </div>
++          </div>
++
++          <div class="toolbar-row">
++            <button type="button" id="sign-document-btn" class="btn" style="flex: 1; margin-top: 4px;">
++              Digitally Sign Coffee Order Receipt
++            </button>
++          </div>
++
++          <!-- Signed Document Visual Preview -->
++          <div id="signed-preview-card" class="document-preview">
++            <div class="doc-header">
++              <div>
++                <div class="doc-title" id="preview-doc-title">THE DAILY GRIND — ORDER RECEIPT</div>
++                <div style="font-size: 0.78rem; color: var(--text-muted);" id="preview-doc-sub">Issued: --</div>
++              </div>
++              <span id="preview-algo-badge" class="badge badge-quantum">ML-DSA-65</span>
++            </div>
++
++            <div id="preview-doc-body" class="doc-lines"></div>
++
++            <div class="sig-block">
++              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
++                <strong>SHA-256 Payload Digest:</strong>
++                <span id="preview-payload-hash" class="mono">--</span>
++              </div>
++              <div>
++                <strong>Cryptographic Signature (Truncated):</strong>
++                <div id="preview-sig-short" class="mono" style="color: var(--primary); margin-top: 2px;">--</div>
++              </div>
++            </div>
++
++            <div class="toolbar-row">
++              <button type="button" id="send-to-verifier-btn" class="btn btn-sm btn-secondary">Load into Verifier</button>
++              <button type="button" id="copy-bundle-btn" class="btn btn-sm btn-secondary">Copy Signed Bundle JSON</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Right Panel: Verifier -->
++        <div class="panel">
++          <h3>
++            <span>2. Verify Authenticity &amp; Integrity</span>
++            <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">Public Key Verifier</span>
++          </h3>
++
++          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
++            Inspect or paste any signed coffee order receipt or gift voucher JSON bundle below. Try modifying any character in the payload or signature to see tamper detection in action.
++          </p>
++
++          <div class="form-group">
++            <label for="verifier-bundle-input">Signed Receipt / Voucher Bundle (JSON):</label>
++            <textarea id="verifier-bundle-input" rows="10" class="mono" aria-label="Signed Bundle JSON"></textarea>
++          </div>
++
++          <div class="toolbar-row" style="margin-top: 0; margin-bottom: 8px;">
++            <button type="button" id="verify-bundle-btn" class="btn" style="flex: 1; margin-top: 0;">
++              Verify Cryptographic Signature
++            </button>
++            <button type="button" id="tamper-payload-btn" class="btn btn-sm btn-secondary" title="Modify the total or amount without re-signing to test integrity protection">
++              Simulate Payload Tampering
++            </button>
++            <button type="button" id="tamper-sig-btn" class="btn btn-sm btn-secondary" title="Corrupt a byte in the cryptographic signature">
++              Corrupt Signature
++            </button>
++            <button type="button" id="restore-valid-btn" class="btn btn-sm btn-secondary">
++              Restore Original
++            </button>
++          </div>
++
++          <!-- Verification Result Status -->
++          <div id="verification-result" class="verify-banner valid" role="status" aria-live="polite">
++            <div class="verify-icon" id="verify-status-icon">&#10004;</div>
++            <div class="verify-details">
++              <h4 id="verify-status-title">Authentic &amp; Intact — Signature Verified</h4>
++              <p id="verify-status-desc">
++                Initializing cryptographic verification engine...
++              </p>
++              <div id="verify-status-meta" class="mono" style="margin-top: 6px; font-size: 0.78rem;"></div>
++            </div>
++          </div>
++        </div>
++      </div>
++
++      <!-- Recent Signed Receipts & Vouchers Ledger -->
++      <div class="ledger-section">
++        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
++          <div>
++            <h3 style="color: var(--primary);">Signed Receipts &amp; Gift Vouchers Ledger</h3>
++            <p style="font-size: 0.84rem; color: var(--text-muted);">
++              Click any signed document below to load and verify its classical or quantum-resistant signature.
++            </p>
++          </div>
++        </div>
++        <div id="signed-ledger-list" class="ledger-list"></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +894,673 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { ml_dsa44, ml_dsa65, ml_dsa87 } from './ml-dsa.bundle.mjs';
++
++    const PQC_ENGINES = {
++      'ML-DSA-44': {
++        impl: ml_dsa44,
++        label: 'ML-DSA-44 (FIPS 204)',
++        family: 'Quantum-Resistant (Post-Quantum Lattice)',
++        isQuantum: true
++      },
++      'ML-DSA-65': {
++        impl: ml_dsa65,
++        label: 'ML-DSA-65 (FIPS 204)',
++        family: 'Quantum-Resistant (Post-Quantum Lattice)',
++        isQuantum: true
++      },
++      'ML-DSA-87': {
++        impl: ml_dsa87,
++        label: 'ML-DSA-87 (FIPS 204)',
++        family: 'Quantum-Resistant (Post-Quantum Lattice)',
++        isQuantum: true
++      }
++    };
++
++    const CLASSICAL_ENGINES = {
++      'ECDSA-P256': {
++        label: 'ECDSA P-256 (SHA-256)',
++        family: 'Classical Asymmetric (Elliptic Curve)',
++        isQuantum: false
++      },
++      'RSA-PSS-2048': {
++        label: 'RSA-PSS 2048-bit (SHA-256)',
++        family: 'Classical Asymmetric (RSA-PSS)',
++        isQuantum: false
++      }
++    };
++
++    // Utility: Uint8Array <-> Base64 / Hex
++    function bytesToBase64(bytes) {
++      let binary = '';
++      const chunk = 0x8000;
++      for (let i = 0; i < bytes.length; i += chunk) {
++        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
++      }
++      return btoa(binary);
++    }
++
++    function base64ToBytes(base64) {
++      const cleaned = base64.trim();
++      const binary = atob(cleaned);
++      const out = new Uint8Array(binary.length);
++      for (let i = 0; i < binary.length; i++) {
++        out[i] = binary.charCodeAt(i);
++      }
++      return out;
++    }
++
++    function bytesToHex(bytes) {
++      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
++    }
++
++    async function sha256Hex(inputBytesOrString) {
++      const bytes = typeof inputBytesOrString === 'string'
++        ? new TextEncoder().encode(inputBytesOrString)
++        : inputBytesOrString;
++      const digest = await crypto.subtle.digest('SHA-256', bytes);
++      return bytesToHex(new Uint8Array(digest));
++    }
++
++    // Deterministic canonical JSON serialization for signing & verification
++    function canonicalizePayload(obj) {
++      if (obj === null || typeof obj !== 'object') {
++        return JSON.stringify(obj);
++      }
++      if (Array.isArray(obj)) {
++        return '[' + obj.map(canonicalizePayload).join(',') + ']';
++      }
++      const sortedKeys = Object.keys(obj).sort();
++      const parts = sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalizePayload(obj[k]));
++      return '{' + parts.join(',') + '}';
++    }
++
++    // State
++    const keyStore = {}; // algorithmId -> { publicKeyB64, publicKeyBytes, privateKey, fingerprint, pubLen }
++    let currentAlgorithm = 'ML-DSA-65';
++    let currentDocType = 'receipt'; // 'receipt' | 'voucher'
++    let lastValidBundleJson = '';
++    const signedLedger = [];
++
++    // Generate or retrieve keypair for an algorithm
++    async function generateKeyPairForAlgorithm(algoId, forceNew = false) {
++      if (keyStore[algoId] && !forceNew) {
++        return keyStore[algoId];
++      }
++
++      if (PQC_ENGINES[algoId]) {
++        const engine = PQC_ENGINES[algoId].impl;
++        const { publicKey, secretKey } = engine.keygen();
++        const publicKeyB64 = bytesToBase64(publicKey);
++        const fullHash = await sha256Hex(publicKey);
++        const fingerprint = fullHash.slice(0, 32).match(/.{1,4}/g).join(':').toUpperCase();
++        keyStore[algoId] = {
++          algorithm: algoId,
++          isQuantum: true,
++          publicKeyBytes: publicKey,
++          publicKeyB64,
++          privateKey: secretKey,
++          fingerprint,
++          pubLen: publicKey.length
++        };
++        return keyStore[algoId];
++      }
++
++      if (algoId === 'ECDSA-P256') {
++        const keyPair = await crypto.subtle.generateKey(
++          { name: 'ECDSA', namedCurve: 'P-256' },
++          true,
++          ['sign', 'verify']
++        );
++        const spki = new Uint8Array(await crypto.subtle.exportKey('spki', keyPair.publicKey));
++        const publicKeyB64 = bytesToBase64(spki);
++        const fullHash = await sha256Hex(spki);
++        const fingerprint = fullHash.slice(0, 32).match(/.{1,4}/g).join(':').toUpperCase();
++        keyStore[algoId] = {
++          algorithm: algoId,
++          isQuantum: false,
++          publicKeyBytes: spki,
++          publicKeyB64,
++          privateKey: keyPair.privateKey,
++          publicKeyCrypto: keyPair.publicKey,
++          fingerprint,
++          pubLen: spki.length
++        };
++        return keyStore[algoId];
++      }
++
++      if (algoId === 'RSA-PSS-2048') {
++        const keyPair = await crypto.subtle.generateKey(
++          {
++            name: 'RSA-PSS',
++            modulusLength: 2048,
++            publicExponent: new Uint8Array([1, 0, 1]),
++            hash: 'SHA-256'
++          },
++          true,
++          ['sign', 'verify']
++        );
++        const spki = new Uint8Array(await crypto.subtle.exportKey('spki', keyPair.publicKey));
++        const publicKeyB64 = bytesToBase64(spki);
++        const fullHash = await sha256Hex(spki);
++        const fingerprint = fullHash.slice(0, 32).match(/.{1,4}/g).join(':').toUpperCase();
++        keyStore[algoId] = {
++          algorithm: algoId,
++          isQuantum: false,
++          publicKeyBytes: spki,
++          publicKeyB64,
++          privateKey: keyPair.privateKey,
++          publicKeyCrypto: keyPair.publicKey,
++          fingerprint,
++          pubLen: spki.length
++        };
++        return keyStore[algoId];
++      }
++
++      throw new Error('Unsupported algorithm: ' + algoId);
++    }
++
++    // Sign canonical payload bytes
++    async function signPayload(algoId, payloadObj) {
++      const keyData = await generateKeyPairForAlgorithm(algoId, false);
++      const canonicalStr = canonicalizePayload(payloadObj);
++      const msgBytes = new TextEncoder().encode(canonicalStr);
++      const payloadHash = await sha256Hex(msgBytes);
++
++      let sigBytes;
++      if (PQC_ENGINES[algoId]) {
++        sigBytes = PQC_ENGINES[algoId].impl.sign(keyData.privateKey, msgBytes);
++      } else if (algoId === 'ECDSA-P256') {
++        const rawSig = await crypto.subtle.sign(
++          { name: 'ECDSA', hash: { name: 'SHA-256' } },
++          keyData.privateKey,
++          msgBytes
++        );
++        sigBytes = new Uint8Array(rawSig);
++      } else if (algoId === 'RSA-PSS-2048') {
++        const rawSig = await crypto.subtle.sign(
++          { name: 'RSA-PSS', saltLength: 32 },
++          keyData.privateKey,
++          msgBytes
++        );
++        sigBytes = new Uint8Array(rawSig);
++      } else {
++        throw new Error('Unknown signing algorithm: ' + algoId);
++      }
++
++      const meta = PQC_ENGINES[algoId] || CLASSICAL_ENGINES[algoId];
++      return {
++        protocol: 'DAILY-GRIND-CRYPTO-V1',
++        documentType: payloadObj.type,
++        algorithm: algoId,
++        securityModel: meta.family,
++        quantumResistant: meta.isQuantum,
++        keyFingerprint: keyData.fingerprint,
++        payloadHashSha256: payloadHash,
++        payload: payloadObj,
++        publicKey: keyData.publicKeyB64,
++        signature: bytesToBase64(sigBytes)
++      };
++    }
++
++    // Verify any signed bundle using embedded publicKey + signature + payload
++    async function verifySignedBundle(bundle) {
++      if (!bundle || typeof bundle !== 'object') {
++        return { valid: false, reason: 'Bundle is not a valid JSON object.' };
++      }
++      const { algorithm, payload, publicKey, signature } = bundle;
++      if (!algorithm || !payload || !publicKey || !signature) {
++        return { valid: false, reason: 'Missing required fields (algorithm, payload, publicKey, or signature).' };
++      }
++
++      let pubBytes, sigBytes;
++      try {
++        pubBytes = base64ToBytes(publicKey);
++        sigBytes = base64ToBytes(signature);
++      } catch (err) {
++        return { valid: false, reason: 'Invalid Base64 encoding in publicKey or signature.' };
++      }
++
++      const canonicalStr = canonicalizePayload(payload);
++      const msgBytes = new TextEncoder().encode(canonicalStr);
++      const computedHash = await sha256Hex(msgBytes);
++      const keyFpFull = await sha256Hex(pubBytes);
++      const computedFp = keyFpFull.slice(0, 32).match(/.{1,4}/g).join(':').toUpperCase();
++
++      try {
++        let isSignatureValid = false;
++        if (PQC_ENGINES[algorithm]) {
++          isSignatureValid = PQC_ENGINES[algorithm].impl.verify(pubBytes, msgBytes, sigBytes);
++        } else if (algorithm === 'ECDSA-P256') {
++          const cryptoKey = await crypto.subtle.importKey(
++            'spki',
++            pubBytes.buffer,
++            { name: 'ECDSA', namedCurve: 'P-256' },
++            false,
++            ['verify']
++          );
++          isSignatureValid = await crypto.subtle.verify(
++            { name: 'ECDSA', hash: { name: 'SHA-256' } },
++            cryptoKey,
++            sigBytes.buffer,
++            msgBytes
++          );
++        } else if (algorithm === 'RSA-PSS-2048') {
++          const cryptoKey = await crypto.subtle.importKey(
++            'spki',
++            pubBytes.buffer,
++            { name: 'RSA-PSS', hash: 'SHA-256' },
++            false,
++            ['verify']
++          );
++          isSignatureValid = await crypto.subtle.verify(
++            { name: 'RSA-PSS', saltLength: 32 },
++            cryptoKey,
++            sigBytes.buffer,
++            msgBytes
++          );
++        } else {
++          return { valid: false, reason: `Unsupported signature algorithm "${algorithm}".` };
++        }
++
++        if (!isSignatureValid) {
++          const hashMismatch = bundle.payloadHashSha256 && bundle.payloadHashSha256 !== computedHash;
++          return {
++            valid: false,
++            reason: hashMismatch
++              ? 'Payload Integrity Failure: Document fields were modified after signing (SHA-256 digest mismatch & asymmetric signature rejected).'
++              : 'Cryptographic Signature Rejected: Signature bytes or public key do not match the canonical document payload.',
++            computedHash,
++            computedFp,
++            sigByteLength: sigBytes.length
++          };
++        }
++
++        return {
++          valid: true,
++          reason: `Cryptographic signature verified with ${algorithm}. Document authenticity and integrity are guaranteed.`,
++          computedHash,
++          computedFp,
++          sigByteLength: sigBytes.length
++        };
++      } catch (err) {
++        return {
++          valid: false,
++          reason: `Verification error (${ err.message || 'malformed key or signature' }).`,
++          computedHash,
++          computedFp
++        };
++      }
++    }
++
++    // UI Helpers
++    const algoSelect = document.getElementById('algorithm-select');
++    const generateKeyBtn = document.getElementById('generate-keypair-btn');
++    const activeAlgoLabel = document.getElementById('active-algo-label');
++    const securityClassBadge = document.getElementById('security-class-badge');
++    const keyFingerprintEl = document.getElementById('key-fingerprint');
++    const keySizeInfoEl = document.getElementById('key-size-info');
++    const activePubKeyEl = document.getElementById('active-public-key');
++
++    const tabReceipt = document.getElementById('tab-receipt');
++    const tabVoucher = document.getElementById('tab-voucher');
++    const formReceipt = document.getElementById('form-receipt');
++    const formVoucher = document.getElementById('form-voucher');
++    const signDocBtn = document.getElementById('sign-document-btn');
++
++    const previewCard = document.getElementById('signed-preview-card');
++    const previewTitle = document.getElementById('preview-doc-title');
++    const previewSub = document.getElementById('preview-doc-sub');
++    const previewBadge = document.getElementById('preview-algo-badge');
++    const previewBody = document.getElementById('preview-doc-body');
++    const previewHash = document.getElementById('preview-payload-hash');
++    const previewSig = document.getElementById('preview-sig-short');
++
++    const verifierInput = document.getElementById('verifier-bundle-input');
++    const verifyBtn = document.getElementById('verify-bundle-btn');
++    const tamperPayloadBtn = document.getElementById('tamper-payload-btn');
++    const tamperSigBtn = document.getElementById('tamper-sig-btn');
++    const restoreValidBtn = document.getElementById('restore-valid-btn');
++    const sendToVerifierBtn = document.getElementById('send-to-verifier-btn');
++    const copyBundleBtn = document.getElementById('copy-bundle-btn');
++
++    const verifyBanner = document.getElementById('verification-result');
++    const verifyIcon = document.getElementById('verify-status-icon');
++    const verifyTitle = document.getElementById('verify-status-title');
++    const verifyDesc = document.getElementById('verify-status-desc');
++    const verifyMeta = document.getElementById('verify-status-meta');
++    const ledgerListEl = document.getElementById('signed-ledger-list');
++
++    function calculateReceiptTotal() {
++      const checks = document.querySelectorAll('#receipt-items-list input[type="checkbox"]:checked');
++      let subtotal = 0;
++      checks.forEach(ch => {
++        const parts = ch.value.split('|');
++        subtotal += parseFloat(parts[1] || '0');
++      });
++      if (subtotal === 0) subtotal = 4.50;
++      const tax = subtotal * 0.0895;
++      const total = (subtotal + tax).toFixed(2);
++      document.getElementById('receipt-total').value = total;
++      return { subtotal: subtotal.toFixed(2), tax: tax.toFixed(2), total };
++    }
++
++    document.querySelectorAll('#receipt-items-list input[type="checkbox"]').forEach(cb => {
++      cb.addEventListener('change', calculateReceiptTotal);
++    });
++
++    function buildCurrentPayload() {
++      const timestamp = new Date().toISOString();
++      if (currentDocType === 'receipt') {
++        const checks = document.querySelectorAll('#receipt-items-list input[type="checkbox"]:checked');
++        const items = Array.from(checks).map(ch => {
++          const [name, price] = ch.value.split('|');
++          return { item: name, priceUSD: parseFloat(price).toFixed(2) };
++        });
++        if (items.length === 0) {
++          items.push({ item: 'House Drip Coffee', priceUSD: '4.50' });
++        }
++        const totals = calculateReceiptTotal();
++        return {
++          type: 'COFFEE_ORDER_RECEIPT',
++          merchant: 'The Daily Grind Coffee Co.',
++          orderId: document.getElementById('receipt-order-id').value.trim() || 'ORD-2026-0001',
++          customerName: document.getElementById('receipt-customer').value.trim() || 'Valued Guest',
++          roasteryLocation: document.getElementById('receipt-barista').value.trim() || 'Main Street Roastery',
++          items,
++          subtotalUSD: totals.subtotal,
++          taxUSD: totals.tax,
++          totalUSD: totals.total,
++          issuedAt: timestamp
++        };
++      } else {
++        const val = parseFloat(document.getElementById('voucher-amount').value || '50').toFixed(2);
++        return {
++          type: 'GIFT_VOUCHER',
++          issuer: 'The Daily Grind Coffee Co.',
++          voucherCode: document.getElementById('voucher-code').value.trim() || 'GIFT-DG-2026-1000',
++          amountUSD: val,
++          recipientName: document.getElementById('voucher-recipient').value.trim() || 'Coffee Lover',
++          senderName: document.getElementById('voucher-sender').value.trim() || 'A Friend',
++          expiresOn: document.getElementById('voucher-expiry').value || '2027-12-31',
++          personalMessage: document.getElementById('voucher-note').value.trim() || 'Enjoy your coffee!',
++          redeemableAt: 'All Daily Grind Locations & Online',
++          issuedAt: timestamp
++        };
++      }
++    }
++
++    async function updateKeyWorkbenchUI(algoId, forceNew = false) {
++      const keyData = await generateKeyPairForAlgorithm(algoId, forceNew);
++      const meta = PQC_ENGINES[algoId] || CLASSICAL_ENGINES[algoId];
++
++      activeAlgoLabel.textContent = meta.label;
++      if (meta.isQuantum) {
++        securityClassBadge.textContent = 'Quantum-Resistant (Post-Quantum)';
++        securityClassBadge.className = 'badge badge-quantum';
++      } else {
++        securityClassBadge.textContent = 'Classical Asymmetric';
++        securityClassBadge.className = 'badge badge-classical';
++      }
++
++      keyFingerprintEl.textContent = keyData.fingerprint;
++      activePubKeyEl.value = keyData.publicKeyB64;
++
++      const expectedSigSize =
++        algoId === 'ML-DSA-44' ? 2420 :
++        algoId === 'ML-DSA-65' ? 3309 :
++        algoId === 'ML-DSA-87' ? 4627 :
++        algoId === 'ECDSA-P256' ? 64 : 256;
++      keySizeInfoEl.textContent = `Public Key: ${keyData.pubLen} bytes | Signature: ${expectedSigSize} bytes`;
++    }
++
++    function renderSignedPreview(bundle) {
++      const p = bundle.payload;
++      const isVoucher = bundle.documentType === 'GIFT_VOUCHER';
++      previewCard.classList.toggle('voucher-style', isVoucher);
++
++      previewTitle.textContent = isVoucher
++        ? `THE DAILY GRIND — GIFT VOUCHER (${p.voucherCode})`
++        : `THE DAILY GRIND — ORDER RECEIPT (${p.orderId})`;
++      previewSub.textContent = `Issued: ${p.issuedAt} | Key FP: ${bundle.keyFingerprint.slice(0, 19)}...`;
++
++      previewBadge.textContent = bundle.algorithm;
++      previewBadge.className = 'badge ' + (bundle.quantumResistant ? 'badge-quantum' : 'badge-classical');
++
++      if (isVoucher) {
++        previewBody.innerHTML = `
++          <div class="doc-line"><span>Recipient:</span><strong>${p.recipientName}</strong></div>
++          <div class="doc-line"><span>From:</span><span>${p.senderName}</span></div>
++          <div class="doc-line"><span>Expires:</span><span>${p.expiresOn}</span></div>
++          <div class="doc-line"><span>Note:</span><em>"${p.personalMessage}"</em></div>
++          <div class="doc-line doc-total"><span>Redeemable Gift Value:</span><span>$${p.amountUSD} USD</span></div>
++        `;
++      } else {
++        const itemsHtml = (p.items || [])
++          .map(it => `<div class="doc-line"><span>1x ${it.item}</span><span>$${it.priceUSD}</span></div>`)
++          .join('');
++        previewBody.innerHTML = `
++          <div class="doc-line"><span>Customer:</span><strong>${p.customerName}</strong></div>
++          <div class="doc-line"><span>Location:</span><span>${p.roasteryLocation}</span></div>
++          <hr style="border: none; border-top: 1px dotted #ccc; margin: 6px 0;">
++          ${itemsHtml}
++          <div class="doc-line" style="color: var(--text-muted);"><span>Tax:</span><span>$${p.taxUSD}</span></div>
++          <div class="doc-line doc-total"><span>Total Paid:</span><span>$${p.totalUSD} USD</span></div>
++        `;
++      }
++
++      previewHash.textContent = bundle.payloadHashSha256.slice(0, 24) + '...';
++      previewSig.textContent = bundle.signature.slice(0, 68) + '...' + bundle.signature.slice(-20);
++    }
++
++    function renderLedger() {
++      ledgerListEl.innerHTML = '';
++      signedLedger.forEach((bundle, idx) => {
++        const p = bundle.payload;
++        const isVoucher = bundle.documentType === 'GIFT_VOUCHER';
++        const itemEl = document.createElement('div');
++        itemEl.className = 'ledger-item';
++        const badgeCls = bundle.quantumResistant ? 'badge-quantum' : 'badge-classical';
++        const title = isVoucher
++          ? `Gift Voucher ${p.voucherCode} ($${p.amountUSD})`
++          : `Order Receipt ${p.orderId} ($${p.totalUSD})`;
++        const person = isVoucher ? `To: ${p.recipientName}` : `Customer: ${p.customerName}`;
++
++        itemEl.innerHTML = `
++          <div>
++            <div class="ledger-item-top">
++              <strong>${title}</strong>
++              <span class="badge ${badgeCls}">${bundle.algorithm}</span>
++            </div>
++            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
++              ${person}
++            </div>
++            <div class="mono" style="font-size: 0.74rem; color: var(--primary); margin-top: 4px;">
++              Sig: ${bundle.signature.slice(0, 32)}...
++            </div>
++          </div>
++          <button type="button" class="btn btn-sm btn-secondary" data-ledger-idx="${idx}">
++            Inspect &amp; Verify
++          </button>
++        `;
++        itemEl.querySelector('button').addEventListener('click', async () => {
++          const jsonStr = JSON.stringify(bundle, null, 2);
++          lastValidBundleJson = jsonStr;
++          verifierInput.value = jsonStr;
++          renderSignedPreview(bundle);
++          await runVerificationFromInput();
++        });
++        ledgerListEl.appendChild(itemEl);
++      });
++    }
++
++    async function runVerificationFromInput() {
++      const rawText = verifierInput.value.trim();
++      let parsed;
++      try {
++        parsed = JSON.parse(rawText);
++      } catch (e) {
++        verifyBanner.className = 'verify-banner invalid';
++        verifyIcon.innerHTML = '&#10008;';
++        verifyTitle.textContent = 'Invalid JSON Format';
++        verifyDesc.textContent = 'The bundle could not be parsed as valid JSON: ' + e.message;
++        verifyMeta.textContent = '';
++        return;
++      }
++
++      const result = await verifySignedBundle(parsed);
++      if (result.valid) {
++        verifyBanner.className = 'verify-banner valid';
++        verifyIcon.innerHTML = '&#10004;';
++        const docLabel = parsed.documentType === 'GIFT_VOUCHER' ? 'Gift Voucher' : 'Coffee Order Receipt';
++        verifyTitle.textContent = `Authentic & Intact — ${docLabel} Verified`;
++        verifyDesc.textContent = result.reason;
++        verifyMeta.textContent = `SHA-256: ${result.computedHash.slice(0, 32)}... | Key FP: ${result.computedFp} | Sig Size: ${result.sigByteLength} B`;
++      } else {
++        verifyBanner.className = 'verify-banner invalid';
++        verifyIcon.innerHTML = '&#10008;';
++        verifyTitle.textContent = 'Verification Failed — Tampering or Forgery Detected';
++        verifyDesc.textContent = result.reason;
++        verifyMeta.textContent = result.computedHash
++          ? `Computed SHA-256: ${result.computedHash.slice(0, 32)}...`
++          : '';
++      }
++    }
++
++    // Event Listeners
++    algoSelect.addEventListener('change', async () => {
++      currentAlgorithm = algoSelect.value;
++      await updateKeyWorkbenchUI(currentAlgorithm, false);
++    });
++
++    generateKeyBtn.addEventListener('click', async () => {
++      await updateKeyWorkbenchUI(currentAlgorithm, true);
++      await signCurrentFormAndVerify();
++    });
++
++    tabReceipt.addEventListener('click', () => {
++      currentDocType = 'receipt';
++      tabReceipt.classList.add('active');
++      tabReceipt.setAttribute('aria-selected', 'true');
++      tabVoucher.classList.remove('active');
++      tabVoucher.setAttribute('aria-selected', 'false');
++      formReceipt.style.display = '';
++      formVoucher.style.display = 'none';
++      signDocBtn.textContent = 'Digitally Sign Coffee Order Receipt';
++    });
++
++    tabVoucher.addEventListener('click', () => {
++      currentDocType = 'voucher';
++      tabVoucher.classList.add('active');
++      tabVoucher.setAttribute('aria-selected', 'true');
++      tabReceipt.classList.remove('active');
++      tabReceipt.setAttribute('aria-selected', 'false');
++      formVoucher.style.display = '';
++      formReceipt.style.display = 'none';
++      signDocBtn.textContent = 'Digitally Sign Gift Voucher';
++    });
++
++    async function signCurrentFormAndVerify() {
++      const payload = buildCurrentPayload();
++      const signedBundle = await signPayload(currentAlgorithm, payload);
++      const jsonStr = JSON.stringify(signedBundle, null, 2);
++      lastValidBundleJson = jsonStr;
++      verifierInput.value = jsonStr;
++      renderSignedPreview(signedBundle);
++
++      // Prepend to ledger (keep max 6)
++      signedLedger.unshift(signedBundle);
++      if (signedLedger.length > 6) signedLedger.pop();
++      renderLedger();
++
++      await runVerificationFromInput();
++    }
++
++    signDocBtn.addEventListener('click', signCurrentFormAndVerify);
++
++    sendToVerifierBtn.addEventListener('click', async () => {
++      if (lastValidBundleJson) {
++        verifierInput.value = lastValidBundleJson;
++        await runVerificationFromInput();
++      }
++    });
++
++    copyBundleBtn.addEventListener('click', async () => {
++      try {
++        await navigator.clipboard.writeText(verifierInput.value);
++        const orig = copyBundleBtn.textContent;
++        copyBundleBtn.textContent = 'Copied!';
++        setTimeout(() => { copyBundleBtn.textContent = orig; }, 1200);
++      } catch (_) {}
++    });
++
++    verifyBtn.addEventListener('click', runVerificationFromInput);
++    verifierInput.addEventListener('input', runVerificationFromInput);
++
++    tamperPayloadBtn.addEventListener('click', async () => {
++      try {
++        const bundle = JSON.parse(verifierInput.value);
++        if (bundle.payload) {
++          if (bundle.payload.type === 'GIFT_VOUCHER') {
++            bundle.payload.amountUSD = '9999.00';
++          } else {
++            bundle.payload.totalUSD = '0.01';
++          }
++          verifierInput.value = JSON.stringify(bundle, null, 2);
++          await runVerificationFromInput();
++        }
++      } catch (_) {}
++    });
++
++    tamperSigBtn.addEventListener('click', async () => {
++      try {
++        const bundle = JSON.parse(verifierInput.value);
++        if (bundle.signature && bundle.signature.length > 10) {
++          const sigBytes = base64ToBytes(bundle.signature);
++          sigBytes[0] ^= 0xff;
++          sigBytes[Math.floor(sigBytes.length / 2)] ^= 0x55;
++          bundle.signature = bytesToBase64(sigBytes);
++          verifierInput.value = JSON.stringify(bundle, null, 2);
++          await runVerificationFromInput();
++        }
++      } catch (_) {}
++    });
++
++    restoreValidBtn.addEventListener('click', async () => {
++      if (lastValidBundleJson) {
++        verifierInput.value = lastValidBundleJson;
++        await runVerificationFromInput();
++      }
++    });
++
++    // Initialize default signed gift voucher (Classical ECDSA) and coffee receipt (Quantum-Resistant ML-DSA-65)
++    (async function initTrustCenter() {
++      calculateReceiptTotal();
++      await updateKeyWorkbenchUI('ECDSA-P256', false);
++      const sampleVoucherPayload = {
++        type: 'GIFT_VOUCHER',
++        issuer: 'The Daily Grind Coffee Co.',
++        voucherCode: 'GIFT-DG-2026-9941',
++        amountUSD: '50.00',
++        recipientName: 'Marcus Sterling',
++        senderName: 'Sofia Chen',
++        expiresOn: '2027-12-31',
++        personalMessage: 'Enjoy a month of artisanal espressos!',
++        redeemableAt: 'All Daily Grind Locations & Online',
++        issuedAt: new Date().toISOString()
++      };
++      const signedVoucher = await signPayload('ECDSA-P256', sampleVoucherPayload);
++      signedLedger.push(signedVoucher);
++
++      // Now switch to default Quantum-Resistant ML-DSA-65 and sign the initial Coffee Order Receipt
++      currentAlgorithm = 'ML-DSA-65';
++      algoSelect.value = 'ML-DSA-65';
++      await updateKeyWorkbenchUI('ML-DSA-65', false);
++      await signCurrentFormAndVerify();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/ml-dsa.bundle.mjs b/ml-dsa.bundle.mjs
+new file mode 100644
+index 0000000..7dec081
+--- /dev/null
++++ b/ml-dsa.bundle.mjs
+@@ -0,0 +1,12 @@
++/* esm.sh - @noble/post-quantum@0.2.1/ml-dsa */
++function Tt(t){if(!Number.isSafeInteger(t)||t<0)throw new Error("positive integer expected, got "+t)}function Te(t){return t instanceof Uint8Array||ArrayBuffer.isView(t)&&t.constructor.name==="Uint8Array"}function W(t,...e){if(!Te(t))throw new Error("Uint8Array expected");if(e.length>0&&!e.includes(t.length))throw new Error("Uint8Array expected of length "+e+", got length="+t.length)}function _t(t,e=!0){if(t.destroyed)throw new Error("Hash instance has been destroyed");if(e&&t.finished)throw new Error("Hash#digest() has already been called")}function Zt(t,e){W(t);let n=e.outputLen;if(t.length<n)throw new Error("digestInto() expects output buffer of length at least "+n)}var gt=BigInt(4294967295),qt=BigInt(32);function _e(t,e=!1){return e?{h:Number(t&gt),l:Number(t>>qt&gt)}:{h:Number(t>>qt&gt)|0,l:Number(t&gt)|0}}function Qt(t,e=!1){let n=new Uint32Array(t.length),o=new Uint32Array(t.length);for(let r=0;r<t.length;r++){let{h:f,l:c}=_e(t[r],e);[n[r],o[r]]=[f,c]}return[n,o]}var Jt=(t,e,n)=>t<<n|e>>>32-n,te=(t,e,n)=>e<<n|t>>>32-n,ee=(t,e,n)=>e<<n-32|t>>>64-n,ne=(t,e,n)=>t<<n-32|e>>>64-n;var tt=typeof globalThis=="object"&&"crypto"in globalThis?globalThis.crypto:void 0;var oe=t=>new Uint32Array(t.buffer,t.byteOffset,Math.floor(t.byteLength/4));var Et=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68,Ee=t=>t<<24&4278190080|t<<8&16711680|t>>>8&65280|t>>>24&255;function Mt(t){for(let e=0;e<t.length;e++)t[e]=Ee(t[e])}function Me(t){if(typeof t!="string")throw new Error("utf8ToBytes expected string, got "+typeof t);return new Uint8Array(new TextEncoder().encode(t))}function wt(t){return typeof t=="string"&&(t=Me(t)),W(t),t}function Ot(...t){let e=0;for(let o=0;o<t.length;o++){let r=t[o];W(r),e+=r.length}let n=new Uint8Array(e);for(let o=0,r=0;o<t.length;o++){let f=t[o];n.set(f,r),r+=f.length}return n}var xt=class{clone(){return this._cloneInto()}};function re(t){let e=o=>t().update(wt(o)).digest(),n=t();return e.outputLen=n.outputLen,e.blockLen=n.blockLen,e.create=()=>t(),e}function se(t){let e=(o,r)=>t(r).update(wt(o)).digest(),n=t({});return e.outputLen=n.outputLen,e.blockLen=n.blockLen,e.create=o=>t(o),e}function ce(t=32){if(tt&&typeof tt.getRandomValues=="function")return tt.getRandomValues(new Uint8Array(t));if(tt&&typeof tt.randomBytes=="function")return tt.randomBytes(t);throw new Error("crypto.getRandomValues must be defined")}var le=[],ue=[],ae=[],Oe=BigInt(0),lt=BigInt(1),Se=BigInt(2),Ie=BigInt(7),Ue=BigInt(256),Ce=BigInt(113);for(let t=0,e=lt,n=1,o=0;t<24;t++){[n,o]=[o,(2*n+3*o)%5],le.push(2*(5*o+n)),ue.push((t+1)*(t+2)/2%64);let r=Oe;for(let f=0;f<7;f++)e=(e<<lt^(e>>Ie)*Ce)%Ue,e&Se&&(r^=lt<<(lt<<BigInt(f))-lt);ae.push(r)}var[He,Re]=Qt(ae,!0),ie=(t,e,n)=>n>32?ee(t,e,n):Jt(t,e,n),fe=(t,e,n)=>n>32?ne(t,e,n):te(t,e,n);function je(t,e=24){let n=new Uint32Array(10);for(let o=24-e;o<24;o++){for(let c=0;c<10;c++)n[c]=t[c]^t[c+10]^t[c+20]^t[c+30]^t[c+40];for(let c=0;c<10;c+=2){let u=(c+8)%10,A=(c+2)%10,B=n[A],_=n[A+1],Y=ie(B,_,1)^n[u],q=fe(B,_,1)^n[u+1];for(let H=0;H<50;H+=10)t[c+H]^=Y,t[c+H+1]^=q}let r=t[2],f=t[3];for(let c=0;c<24;c++){let u=ue[c],A=ie(r,f,u),B=fe(r,f,u),_=le[c];r=t[_],f=t[_+1],t[_]=A,t[_+1]=B}for(let c=0;c<50;c+=10){for(let u=0;u<10;u++)n[u]=t[c+u];for(let u=0;u<10;u++)t[c+u]^=~n[(u+2)%10]&n[(u+4)%10]}t[0]^=He[o],t[1]^=Re[o]}n.fill(0)}var bt=class t extends xt{constructor(e,n,o,r=!1,f=24){if(super(),this.blockLen=e,this.suffix=n,this.outputLen=o,this.enableXOF=r,this.rounds=f,this.pos=0,this.posOut=0,this.finished=!1,this.destroyed=!1,Tt(o),0>=this.blockLen||this.blockLen>=200)throw new Error("Sha3 supports only keccak-f1600 function");this.state=new Uint8Array(200),this.state32=oe(this.state)}keccak(){Et||Mt(this.state32),je(this.state32,this.rounds),Et||Mt(this.state32),this.posOut=0,this.pos=0}update(e){_t(this);let{blockLen:n,state:o}=this;e=wt(e);let r=e.length;for(let f=0;f<r;){let c=Math.min(n-this.pos,r-f);for(let u=0;u<c;u++)o[this.pos++]^=e[f++];this.pos===n&&this.keccak()}return this}finish(){if(this.finished)return;this.finished=!0;let{state:e,suffix:n,pos:o,blockLen:r}=this;e[o]^=n,(n&128)!==0&&o===r-1&&this.keccak(),e[r-1]^=128,this.keccak()}writeInto(e){_t(this,!1),W(e),this.finish();let n=this.state,{blockLen:o}=this;for(let r=0,f=e.length;r<f;){this.posOut>=o&&this.keccak();let c=Math.min(o-this.posOut,f-r);e.set(n.subarray(this.posOut,this.posOut+c),r),this.posOut+=c,r+=c}return e}xofInto(e){if(!this.enableXOF)throw new Error("XOF is not possible for this instance");return this.writeInto(e)}xof(e){return Tt(e),this.xofInto(new Uint8Array(e))}digestInto(e){if(Zt(e,this),this.finished)throw new Error("digest() was already called");return this.writeInto(e),this.destroy(),e}digest(){return this.digestInto(new Uint8Array(this.outputLen))}destroy(){this.destroyed=!0,this.state.fill(0)}_cloneInto(e){let{blockLen:n,suffix:o,outputLen:r,rounds:f,enableXOF:c}=this;return e||(e=new t(n,o,r,c,f)),e.state32.set(this.state32),e.pos=this.pos,e.posOut=this.posOut,e.finished=this.finished,e.rounds=f,e.suffix=o,e.outputLen=r,e.enableXOF=c,e.destroyed=this.destroyed,e}},$=(t,e,n)=>re(()=>new bt(e,t,n)),qe=$(6,144,224/8),Qe=$(6,136,256/8),Je=$(6,104,384/8),tn=$(6,72,512/8),en=$(1,144,224/8),nn=$(1,136,256/8),on=$(1,104,384/8),rn=$(1,72,512/8),de=(t,e,n)=>se((o={})=>new bt(e,t,o.dkLen===void 0?n:o.dkLen,!0)),pe=de(31,168,128/8),C=de(31,136,256/8);var z=W,he=ce;function ye(t,e){if(t.length!==e.length)return!1;let n=0;for(let o=0;o<t.length;o++)n|=t[o]^e[o];return n===0}function ut(...t){let e=o=>typeof o=="number"?o:o.bytesLen,n=t.reduce((o,r)=>o+e(r),0);return{bytesLen:n,encode:o=>{let r=new Uint8Array(n);for(let f=0,c=0;f<t.length;f++){let u=t[f],A=e(u),B=typeof u=="number"?o[f]:u.encode(o[f]);z(B,A),r.set(B,c),typeof u!="number"&&B.fill(0),c+=A}return r},decode:o=>{z(o,n);let r=[];for(let f of t){let c=e(f),u=o.subarray(0,c);r.push(typeof f=="number"?u:f.decode(u)),o=o.subarray(c)}return r}}}function et(t,e){let n=e*t.bytesLen;return{bytesLen:n,encode:o=>{if(o.length!==e)throw new Error(`vecCoder.encode: wrong length=${o.length}. Expected: ${e}`);let r=new Uint8Array(n);for(let f=0,c=0;f<o.length;f++){let u=t.encode(o[f]);r.set(u,c),u.fill(0),c+=u.length}return r},decode:o=>{z(o,n);let r=[];for(let f=0;f<o.length;f+=t.bytesLen)r.push(t.decode(o.subarray(f,f+t.bytesLen)));return r}}}function St(...t){for(let e of t)if(Array.isArray(e))for(let n of e)n.fill(0);else e.fill(0)}function It(t){return(1<<t)-1}function Fe(t,e=8){let r=t.toString(2).padStart(8,"0").slice(-e).padStart(7,"0").split("").reverse().join("");return Number.parseInt(r,2)}var ge=t=>{let{newPoly:e,N:n,Q:o,F:r,ROOT_OF_UNITY:f,brvBits:c,isKyber:u}=t,A=(h,w=o)=>{let g=h%w|0;return(g>=0?g|0:w+g|0)|0},B=(h,w=o)=>{let g=A(h,w)|0;return(g>w>>1?g-w|0:g)|0};function _(){let h=e(n);for(let w=0;w<n;w++){let g=Fe(w,c),T=BigInt(f)**BigInt(g)%BigInt(o);h[w]=Number(T)|0}return h}let Y=_(),q=u?128:n,H=u?1:0;return{mod:A,smod:B,nttZetas:Y,NTT:{encode:h=>{for(let w=1,g=128;g>H;g>>=1)for(let T=0;T<n;T+=2*g){let N=Y[w++];for(let m=T;m<T+g;m++){let E=A(N*h[m+g]);h[m+g]=A(h[m]-E)|0,h[m]=A(h[m]+E)|0}}return h},decode:h=>{for(let w=q-1,g=1+H;g<q+H;g<<=1)for(let T=0;T<n;T+=2*g){let N=Y[w--];for(let m=T;m<T+g;m++){let E=h[m];h[m]=A(E+h[m+g]),h[m+g]=A(N*(h[m+g]-E))}}for(let w=0;w<h.length;w++)h[w]=A(r*h[w]);return h}},bitsCoder:(h,w)=>{let g=It(h),T=h*(n/8);return{bytesLen:T,encode:N=>{let m=new Uint8Array(T);for(let E=0,X=0,S=0,ct=0;E<N.length;E++)for(X|=(w.encode(N[E])&g)<<S,S+=h;S>=8;S-=8,X>>=8)m[ct++]=X&It(S);return m},decode:N=>{let m=e(n);for(let E=0,X=0,S=0,ct=0;E<N.length;E++)for(X|=N[E]<<S,S+=8;S>=h;S-=h,X>>=h)m[ct++]=w.decode(X&g);return m}}}}},xe=t=>(e,n)=>{n||(n=t.blockLen);let o=new Uint8Array(e.length+2);o.set(e);let r=e.length,f=new Uint8Array(n),c=t.create({}),u=0,A=0;return{stats:()=>({calls:u,xofs:A}),get:(B,_)=>(o[r+0]=B,o[r+1]=_,c.destroy(),c=t.create({}).update(o),u++,()=>(A++,c.xofInto(f))),clean:()=>{c.destroy(),f.fill(0),o.fill(0)}}},At=xe(pe),mt=xe(C);var L=256,Z=8380417,Ne=1753,Pe=8347681,rt=13,Ht=Math.floor((Z-1)/88)|0,Rt=Math.floor((Z-1)/32)|0,jt={2:{K:4,L:4,D:rt,GAMMA1:2**17,GAMMA2:Ht,TAU:39,ETA:2,OMEGA:80},3:{K:6,L:5,D:rt,GAMMA1:2**19,GAMMA2:Rt,TAU:49,ETA:4,OMEGA:55},5:{K:8,L:7,D:rt,GAMMA1:2**19,GAMMA2:Rt,TAU:60,ETA:2,OMEGA:75}},F=t=>new Int32Array(t),{mod:ot,smod:Lt,NTT:O,bitsCoder:Ge}=ge({N:L,Q:Z,F:Pe,ROOT_OF_UNITY:Ne,newPoly:F,isKyber:!1,brvBits:8}),we=t=>t,at=(t,e=we,n=we)=>Ge(t,{encode:o=>e(n(o)),decode:o=>n(e(o))}),st=(t,e)=>{for(let n=0;n<t.length;n++)t[n]=ot(t[n]+e[n]);return t},be=(t,e)=>{for(let n=0;n<t.length;n++)t[n]=ot(t[n]-e[n]);return t},Ye=t=>{for(let e=0;e<L;e++)t[e]<<=rt;return t},dt=(t,e)=>{for(let n=0;n<L;n++)if(Math.abs(Lt(t[n]))>=e)return!0;return!1},nt=(t,e)=>{let n=F(L);for(let o=0;o<t.length;o++)n[o]=ot(t[o]*e[o]);return n};function Ut(t){let e=F(L);for(let n=0;n<L;){let o=t();if(o.length%3)throw new Error("RejNTTPoly: unaligned block");for(let r=0;n<L&&r<=o.length-3;r+=3){let f=(o[r+0]|o[r+1]<<8|o[r+2]<<16)&8388607;f<Z&&(e[n++]=f)}}return e}var Ct=new Uint8Array(0);function Ft(t){let{K:e,L:n,GAMMA1:o,GAMMA2:r,TAU:f,ETA:c,OMEGA:u}=t,{CRH_BYTES:A,TR_BYTES:B,C_TILDE_BYTES:_,XOF128:Y,XOF256:q}=t;if(![2,4].includes(c))throw new Error("Wrong ETA");if(![1<<17,1<<19].includes(o))throw new Error("Wrong GAMMA1");if(![Ht,Rt].includes(r))throw new Error("Wrong GAMMA2");let H=f*c,pt=s=>{let l=ot(s),i=Lt(l,2*r)|0;return l-i===Z-1?{r1:0,r0:i-1|0}:{r1:Math.floor((l-i)/(2*r))|0,r0:i}},Nt=s=>pt(s).r1,h=s=>pt(s).r0,w=(s,l)=>s<=r||s>Z-r||s===Z-r&&l===0?0:1,g=(s,l)=>{let i=Math.floor((Z-1)/(2*r)),{r1:a,r0:p}=pt(l);return s===1?p>0?ot(a+1,i)|0:ot(a-1,i)|0:a|0},T=s=>{let l=ot(s),i=Lt(l,2**rt)|0;return{r1:Math.floor((l-i)/2**rt)|0,r0:i}},N={bytesLen:u+e,encode:s=>{if(s===!1)throw new Error("hint.encode: hint is false");let l=new Uint8Array(u+e);for(let i=0,a=0;i<e;i++){for(let p=0;p<L;p++)s[i][p]!==0&&(l[a++]=p);l[u+i]=a}return l},decode:s=>{let l=[],i=0;for(let a=0;a<e;a++){let p=F(L);if(s[u+a]<i||s[u+a]>u)return!1;for(let y=i;y<s[u+a];y++){if(y>i&&s[y]<=s[y-1])return!1;p[s[y]]=1}i=s[u+a],l.push(p)}for(let a=i;a<u;a++)if(s[a]!==0)return!1;return l}},m=at(c===2?3:4,s=>c-s,s=>{if(!(-c<=s&&s<=c))throw new Error(`malformed key s1/s3 ${s} outside of ETA range [${-c}, ${c}]`);return s}),E=at(13,s=>(1<<rt-1)-s),X=at(10),S=at(o===1<<17?18:20,s=>Lt(o-s)),ct=at(r===Ht?6:4),Pt=et(ct,e),Gt=ut(32,et(X,e)),Yt=ut(32,32,B,et(m,n),et(m,e),et(E,e)),kt=ut(_,et(S,n),N),Xt=c===2?s=>s<15?2-s%5:!1:s=>s<9?4-s:!1;function vt(s){let l=F(L);for(let i=0;i<L;){let a=s();for(let p=0;i<L&&p<a.length;p+=1){let y=Xt(a[p]&15),k=Xt(a[p]>>4&15);y!==!1&&(l[i++]=y),i<L&&k!==!1&&(l[i++]=k)}}return l}let Dt=s=>{let l=F(L),i=C.create({}).update(s),a=new Uint8Array(C.blockLen);i.xofInto(a);let p=a.slice(0,8);for(let y=L-f,k=8,M=0,I=0;y<L;y++){let U=y+1;for(;U>y;)U=a[k++],!(k<C.blockLen)&&(i.xofInto(a),k=0);l[y]=l[U],l[U]=1-((p[M]>>I++&1)<<1),I>=8&&(M++,I=0)}return l},Ae=s=>{let l=F(L),i=F(L);for(let a=0;a<s.length;a++){let{r0:p,r1:y}=T(s[a]);l[a]=p,i[a]=y}return{r0:l,r1:i}},me=(s,l)=>{for(let i=0;i<L;i++)s[i]=g(l[i],s[i]);return s},Le=(s,l)=>{let i=F(L),a=0;for(let p=0;p<L;p++){let y=w(s[p],l[p]);i[p]=y,a+=y}return{v:i,cnt:a}},ke=32,Kt=ut(32,64,32),it={signRandBytes:ke,keygen:(s=he(32))=>{let l=new Uint8Array(34);l.set(s),l[32]=e,l[33]=n;let[i,a,p]=Kt.decode(C(l,{dkLen:Kt.bytesLen})),y=q(a),k=[];for(let x=0;x<n;x++)k.push(vt(y.get(x&255,x>>8&255)));let M=[];for(let x=n;x<n+e;x++)M.push(vt(y.get(x&255,x>>8&255)));let I=k.map(x=>O.encode(x.slice())),U=[],K=[],v=Y(i),P=F(L);for(let x=0;x<e;x++){P.fill(0);for(let j=0;j<n;j++){let J=Ut(v.get(j,x));st(P,nt(J,I[j]))}O.decode(P);let{r0:R,r1:G}=Ae(st(P,M[x]));U.push(R),K.push(G)}let D=Gt.encode([i,K]),Q=C(D,{dkLen:B}),d=Yt.encode([i,p,Q,k,M,U]);return v.clean(),y.clean(),St(i,a,p,k,M,I,P,U,K,Q,l),{publicKey:D,secretKey:d}},sign:(s,l,i)=>{let[a,p,y,k,M,I]=Yt.decode(s),U=[],K=Y(a);for(let d=0;d<e;d++){let x=[];for(let R=0;R<n;R++)x.push(Ut(K.get(R,d)));U.push(x)}K.clean();for(let d=0;d<n;d++)O.encode(k[d]);for(let d=0;d<e;d++)O.encode(M[d]),O.encode(I[d]);let v=C.create({dkLen:A}).update(y).update(l).digest(),P=i||new Uint8Array(32);z(P);let D=C.create({dkLen:A}).update(p).update(P).update(v).digest();z(D,A);let Q=q(D,S.bytesLen);t:for(let d=0;;){let x=[];for(let b=0;b<n;b++,d++)x.push(S.decode(Q.get(d&255,d>>8)()));let R=x.map(b=>O.encode(b.slice())),G=[];for(let b=0;b<e;b++){let ft=F(L);for(let V=0;V<n;V++)st(ft,nt(U[b][V],R[V]));O.decode(ft),G.push(ft)}let j=G.map(b=>b.map(Nt)),J=C.create({dkLen:_}).update(v).update(Pt.encode(j)).digest(),ht=O.encode(Dt(J)),yt=k.map(b=>nt(b,ht));for(let b=0;b<n;b++)if(st(O.decode(yt[b]),x[b]),dt(yt[b],o-H))continue t;let Wt=0,Bt=[];for(let b=0;b<e;b++){let ft=O.decode(nt(M[b],ht)),V=be(G[b],ft).map(h);if(dt(V,r-H))continue t;let $t=O.decode(nt(I[b],ht));if(dt($t,r))continue t;st(V,$t);let zt=Le(V,j[b]);Bt.push(zt.v),Wt+=zt.cnt}if(Wt>u)continue;Q.clean();let Be=kt.encode([J,yt,Bt]);return St(J,yt,Bt,ht,j,G,R,x,D,v,k,M,I,...U),Be}throw new Error("Unreachable code path reached, report this error")},verify:(s,l,i)=>{let[a,p]=Gt.decode(s),y=C(s,{dkLen:B});if(i.length!==kt.bytesLen)return!1;let[k,M,I]=kt.decode(i);if(I===!1)return!1;for(let d=0;d<n;d++)if(dt(M[d],o-H))return!1;let U=C.create({dkLen:A}).update(y).update(l).digest(),K=O.encode(Dt(k)),v=M.map(d=>d.slice());for(let d=0;d<n;d++)O.encode(v[d]);let P=[],D=Y(a);for(let d=0;d<e;d++){let x=nt(O.encode(Ye(p[d])),K),R=F(L);for(let j=0;j<n;j++){let J=Ut(D.get(j,d));st(R,nt(J,v[j]))}let G=O.decode(be(R,x));P.push(me(G,I[d]))}D.clean();let Q=C.create({dkLen:_}).update(U).update(Pt.encode(P)).digest();for(let d of I)if(!(d.reduce((R,G)=>R+G,0)<=u))return!1;for(let d of M)if(dt(d,o-H))return!1;return ye(k,Q)}},Vt=(s,l=Ct)=>{if(z(s),z(l),l.length>255)throw new Error("context should be less than 255 bytes");return Ot(new Uint8Array([0,l.length]),l,s)};return{internal:it,keygen:it.keygen,signRandBytes:it.signRandBytes,sign:(s,l,i=Ct,a)=>{let p=Vt(l,i),y=it.sign(s,p,a);return p.fill(0),y},verify:(s,l,i,a=Ct)=>it.verify(s,Vt(l,a),i)}}var gn=Ft({...jt[2],CRH_BYTES:64,TR_BYTES:64,C_TILDE_BYTES:32,XOF128:At,XOF256:mt}),xn=Ft({...jt[3],CRH_BYTES:64,TR_BYTES:64,C_TILDE_BYTES:48,XOF128:At,XOF256:mt}),wn=Ft({...jt[5],CRH_BYTES:64,TR_BYTES:64,C_TILDE_BYTES:64,XOF128:At,XOF256:mt});export{jt as PARAMS,gn as ml_dsa44,xn as ml_dsa65,wn as ml_dsa87};
++/*! Bundled license information:
++
++@noble/hashes/esm/utils.js:
++  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
++
++@noble/post-quantum/esm/utils.js:
++@noble/post-quantum/esm/_crystals.js:
++@noble/post-quantum/esm/ml-dsa.js:
++  (*! noble-post-quantum - MIT License (c) 2024 Paul Miller (paulmillr.com) *)
++*/

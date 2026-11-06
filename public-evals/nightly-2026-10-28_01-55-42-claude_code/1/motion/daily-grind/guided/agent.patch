@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+index 66c9173..0c5457e 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,18 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Motion tokens: one easing family and three durations keep every
++         transition on the page feeling like part of the same system. */
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++      --duration-fast: 150ms;
++      --duration-base: 250ms;
++      --duration-slow: 600ms;
+     }
+ 
+     * {
+@@ -27,6 +35,14 @@
+       background-color: var(--light);
+     }
+ 
++    /* Shared keyboard focus treatment so hover-only affordances never leave
++       keyboard users without feedback. */
++    :is(a, button):focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++      border-radius: 4px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -56,20 +72,79 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
++      padding: 4px 0;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color var(--duration-fast) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
++    /* Underline reveal: a pseudo-element scaled on the x-axis instead of an
++       animated border/background, so the hover motion stays on the compositor.
++       The origin flips so the line draws in from the left and retreats to the
++       right on exit. */
++    nav a:not(.logout-link)::after {
++      content: "";
++      position: absolute;
++      inset-inline: 0;
++      bottom: 0;
++      height: 2px;
++      border-radius: 1px;
++      background: var(--accent);
++      scale: 0 1;
++      transform-origin: right center;
++      transition: scale var(--duration-base) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    nav a:not(.logout-link):is(:hover, :focus-visible)::after {
++      scale: 1 1;
++      transform-origin: left center;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      isolation: isolate;
++    }
++
++    /* Fill fades in via opacity on a pseudo-element rather than transitioning
++       background-color on the link itself. */
++    .logout-link::before {
++      content: "";
++      position: absolute;
++      inset: -1px;
++      z-index: -1;
++      border-radius: inherit;
++      background: var(--accent);
++      opacity: 0;
++      transition: opacity var(--duration-fast) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .logout-link:is(:hover, :focus-visible) {
++      color: var(--primary-dark);
++    }
++
++    .logout-link:is(:hover, :focus-visible)::before {
++      opacity: 1;
+     }
+ 
+     /* Hero Section */
+@@ -93,6 +168,32 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Staggered entrance for the hero copy and call-to-action. Opt-in only
++       when the user has not asked for reduced motion; otherwise the content
++       simply renders in place. `backwards` fill (not `both`) so the finished
++       animation releases `translate` back to the stylesheet and does not
++       override the button's own hover lift. */
++    .hero > * {
++      @media (prefers-reduced-motion: no-preference) {
++        animation: hero-rise var(--duration-slow) var(--ease-out) backwards;
++      }
++    }
++
++    .hero > :nth-child(2) {
++      animation-delay: 120ms;
++    }
++
++    .hero > :nth-child(3) {
++      animation-delay: 240ms;
++    }
++
++    @keyframes hero-rise {
++      from {
++        opacity: 0;
++        translate: 0 18px;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,11 +209,59 @@
+     }
+ 
+     .card {
++      position: relative;
++      isolation: isolate;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      /* Identity transform up front so hovering never creates a new stacking
++         context mid-interaction. */
++      translate: 0 0;
++      transition: translate var(--duration-base) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    /* The hover shadow lives on a pseudo-element and is cross-faded with
++       opacity; animating box-shadow directly would repaint every frame. */
++    .card::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      border-radius: inherit;
++      box-shadow: 0 16px 32px -12px rgba(62, 39, 35, 0.4);
++      opacity: 0;
++      transition: opacity var(--duration-base) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .card:is(:hover, :focus-within) {
++      z-index: 1;
++    }
++
++    .card:is(:hover, :focus-within)::after {
++      opacity: 1;
++    }
++
++    /* Only lift on devices with a real hover pointer so touch users do not
++       get a stuck "raised" card after tapping. Reduced-motion users keep the
++       shadow feedback but not the movement. */
++    @media (hover: hover) {
++      .card:hover {
++        translate: 0 -6px;
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: 0 0;
++        }
++      }
+     }
+ 
+     .card h3 {
+@@ -121,6 +270,8 @@
+     }
+ 
+     .btn {
++      position: relative;
++      isolation: isolate;
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,11 +279,64 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      translate: 0 0;
++      scale: 1;
++      transition:
++        translate var(--duration-base) var(--ease-out),
++        scale var(--duration-fast) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    /* ::before carries the darker hover fill, ::after carries the hover
++       shadow. Both fade with opacity so no background or shadow repaints. */
++    .btn::before,
++    .btn::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      border-radius: inherit;
++      opacity: 0;
++      transition: opacity var(--duration-base) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .btn::before {
++      background: var(--primary-dark);
++    }
++
++    .btn::after {
++      box-shadow: 0 10px 22px -8px rgba(62, 39, 35, 0.6);
++    }
++
++    .btn:is(:hover, :focus-visible)::before,
++    .btn:is(:hover, :focus-visible)::after {
++      opacity: 1;
++    }
++
++    @media (hover: hover) {
++      .btn:hover {
++        translate: 0 -2px;
++
++        @media (prefers-reduced-motion: reduce) {
++          translate: 0 0;
++        }
++      }
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:active {
++      translate: 0 0;
++      scale: 0.97;
++
++      @media (prefers-reduced-motion: reduce) {
++        scale: 1;
++      }
+     }
+ 
+     footer {
+@@ -149,8 +353,22 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration: underline;
++      text-decoration-color: transparent;
++      text-underline-offset: 0.2em;
+       font-size: 0.85rem;
++      transition:
++        color var(--duration-fast) var(--ease-out),
++        text-decoration-color var(--duration-fast) var(--ease-out);
++
++      @media (prefers-reduced-motion: reduce) {
++        transition: none;
++      }
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      color: var(--primary);
++      text-decoration-color: currentColor;
+     }
+   </style>
+ </head>

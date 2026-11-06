@@ -1,0 +1,204 @@
+diff --git a/src/components/TopStoriesSlider.astro b/src/components/TopStoriesSlider.astro
+new file mode 100644
+index 0000000..95a0833
+--- /dev/null
++++ b/src/components/TopStoriesSlider.astro
+@@ -0,0 +1,162 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++export interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++const baseUrl = import.meta.env.BASE_URL;
++const sliderId = 'top-stories-slider';
++---
++<section
++    class="top-stories-slider bg-white border-b border-gray-300"
++    aria-roledescription="carousel"
++    aria-label="Top stories"
++    data-top-stories-slider
++>
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
++        <span class="hidden sm:block shrink-0 text-xs font-bold uppercase tracking-wider text-amber-500">
++            Top stories
++        </span>
++
++        <!-- All slides share one grid cell so the slider keeps the height of the tallest story (no layout shift). -->
++        <div
++            id={sliderId}
++            class="top-stories-viewport grid flex-1 min-w-0"
++            aria-live="polite"
++            data-slides
++        >
++            {articles.map((article, i) => (
++                <div
++                    class:list={['top-story-slide col-start-1 row-start-1', { invisible: i !== 0 }]}
++                    role="group"
++                    aria-roledescription="slide"
++                    aria-label={`${i + 1} of ${articles.length}`}
++                    data-slide
++                >
++                    <a href={`${baseUrl}articles/${article.id}`}>
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400">{article.data.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                </div>
++            ))}
++        </div>
++
++        <div class="flex shrink-0 items-center gap-2">
++            <button
++                type="button"
++                class="rounded-full border border-gray-300 p-2 text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
++                aria-controls={sliderId}
++                data-prev
++            >
++                <svg aria-hidden="true" class="size-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
++                <span class="sr-only">Previous story</span>
++            </button>
++            <span class="text-xs tabular-nums text-gray-500" aria-hidden="true" data-counter>1 / {articles.length}</span>
++            <button
++                type="button"
++                class="rounded-full border border-gray-300 p-2 text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
++                aria-controls={sliderId}
++                data-next
++            >
++                <svg aria-hidden="true" class="size-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
++                <span class="sr-only">Next story</span>
++            </button>
++        </div>
++    </div>
++</section>
++
++<style is:global>
++    /* Shared settings for the slider's view transition. The group clips its
++       snapshots so stories slide within the slider's box instead of across the page. */
++    ::view-transition-group(top-story) {
++        overflow: clip;
++        animation-duration: 0.35s;
++        animation-timing-function: ease-in-out;
++    }
++
++    /* Only add spatial motion for users who haven't asked for reduced motion. */
++    @media (prefers-reduced-motion: no-preference) {
++        html:active-view-transition-type(slide-next)::view-transition-old(top-story) {
++            animation: 0.35s ease-in-out both top-story-slide-to-left;
++        }
++        html:active-view-transition-type(slide-next)::view-transition-new(top-story) {
++            animation: 0.35s ease-in-out both top-story-slide-from-right;
++        }
++        html:active-view-transition-type(slide-prev)::view-transition-old(top-story) {
++            animation: 0.35s ease-in-out both top-story-slide-to-right;
++        }
++        html:active-view-transition-type(slide-prev)::view-transition-new(top-story) {
++            animation: 0.35s ease-in-out both top-story-slide-from-left;
++        }
++    }
++
++    @keyframes top-story-slide-to-left {
++        to { transform: translateX(-100%); }
++    }
++    @keyframes top-story-slide-from-right {
++        from { transform: translateX(100%); }
++    }
++    @keyframes top-story-slide-to-right {
++        to { transform: translateX(100%); }
++    }
++    @keyframes top-story-slide-from-left {
++        from { transform: translateX(-100%); }
++    }
++</style>
++
++<script>
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++    function initSlider(root: HTMLElement) {
++        if (root.dataset.initialized) return;
++        root.dataset.initialized = 'true';
++
++        const viewport = root.querySelector<HTMLElement>('[data-slides]')!;
++        const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
++        const counter = root.querySelector<HTMLElement>('[data-counter]');
++        let current = 0;
++
++        const show = (index: number) => {
++            current = (index + slides.length) % slides.length;
++            slides.forEach((slide, i) => slide.classList.toggle('invisible', i !== current));
++            if (counter) counter.textContent = `${current + 1} / ${slides.length}`;
++        };
++
++        const go = (direction: 'slide-next' | 'slide-prev') => {
++            const target = current + (direction === 'slide-next' ? 1 : -1);
++
++            // Fall back to an instant swap without View Transitions support or with reduced motion.
++            if (!document.startViewTransition || reducedMotion.matches) {
++                show(target);
++                return;
++            }
++
++            // Name the viewport only for this transition so it doesn't take part
++            // in the ClientRouter's page-navigation transitions.
++            viewport.style.viewTransitionName = 'top-story';
++            let transition: ViewTransition;
++            try {
++                transition = document.startViewTransition({
++                    update: () => show(target),
++                    types: [direction],
++                });
++            } catch {
++                // Browsers without transition-type support only accept a callback.
++                transition = document.startViewTransition(() => show(target));
++            }
++            transition.finished.finally(() => {
++                viewport.style.viewTransitionName = '';
++            });
++        };
++
++        root.querySelector('[data-next]')?.addEventListener('click', () => go('slide-next'));
++        root.querySelector('[data-prev]')?.addEventListener('click', () => go('slide-prev'));
++    }
++
++    // Runs on initial load and after every ClientRouter navigation.
++    document.addEventListener('astro:page-load', () => {
++        document.querySelectorAll<HTMLElement>('[data-top-stories-slider]').forEach(initSlider);
++    });
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..46091ae 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -38,21 +39,8 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <!-- Top Stories Slider -->
++    <TopStoriesSlider articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">

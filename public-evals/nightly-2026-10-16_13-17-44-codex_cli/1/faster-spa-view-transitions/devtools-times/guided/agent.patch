@@ -1,0 +1,265 @@
+diff --git a/README.md b/README.md
+index 4479b53..ac529dd 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,18 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++Visited page content stays mounted inside a persistent Astro container. Inactive
++views use `content-visibility: hidden` (with a `display: none` fallback), are inert,
++and are excluded from the accessibility tree. Navigation focuses the active main
++region without changing Astro's scroll restoration. The cache holds at most five
++views, including the active one, and evicts the least recently visited view.
++Paths and query strings identify views; hash fragments share the same view.
++Astro still fetches each destination and updates its head and shared page shell;
++return visits reuse cached content, including local form and component state.
++Reloading clears the cache and fetches fresh page content.
++
++Run `pnpm test` for automated DOM cache tests and `pnpm build` for the production build.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/package.json b/package.json
+index 66c3a6d..90cc4d7 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -23,7 +24,8 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "happy-dom": "^21.0.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4f81a00 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -45,11 +45,18 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
++        <div data-view-cache transition:persist="visited-views" class="relative">
++          <main data-cached-view class="bg-white relative" tabindex="-1">
++            <slot />
++          </main>
++        </div>
+       </div>
+     </div>
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  import { installViewCache } from '../scripts/view-cache';
++  installViewCache(document);
++</script>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..4e5627e
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,56 @@
++import type { TransitionBeforeSwapEvent } from 'astro:transitions/client';
++
++// Includes the active view. Article routes must not grow the DOM indefinitely.
++const MAX_VIEWS = 5;
++const keyFor = (url: URL) => url.pathname + url.search;
++
++export function installViewCache(doc: Document) {
++  const host = doc.querySelector<HTMLElement>('[data-view-cache]');
++  const initial = host?.querySelector<HTMLElement>('[data-cached-view]');
++  if (!host || !initial) return;
++
++  const views = new Map<string, HTMLElement>([
++    [keyFor(new URL(doc.URL)), initial],
++  ]);
++  let focusTarget: HTMLElement | undefined;
++
++  doc.addEventListener('astro:before-swap', (rawEvent) => {
++    const event = rawEvent as TransitionBeforeSwapEvent;
++    const incoming = event.newDocument.querySelector<HTMLElement>('[data-cached-view]');
++    if (!incoming || !event.newDocument.querySelector('[data-view-cache]')) return;
++
++    const swap = event.swap;
++    event.swap = () => {
++      const key = keyFor(event.to);
++      const next = views.get(key) ?? incoming;
++
++      // Let Astro update the head, scripts, history and persistent shell normally.
++      // Its transition:persist host keeps cached islands connected after the swap.
++      swap();
++      if (next === incoming) host.append(next);
++      views.delete(key);
++      views.set(key, next); // Move the active view to the most-recent end.
++
++      for (const view of views.values()) {
++        const inactive = view !== next;
++        view.classList.toggle('is-inactive', inactive);
++        view.inert = inactive;
++        if (inactive) view.setAttribute('aria-hidden', 'true');
++        else view.removeAttribute('aria-hidden');
++      }
++
++      while (views.size > MAX_VIEWS) {
++        const oldest = views.keys().next().value!;
++        views.get(oldest)!.remove();
++        views.delete(oldest);
++      }
++      focusTarget = next;
++    };
++  });
++
++  doc.addEventListener('astro:after-swap', () => {
++    // Run after Astro restores focus and scroll, so focus cannot stay in an inert view.
++    focusTarget?.focus({ preventScroll: true });
++    focusTarget = undefined;
++  });
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..73afaed 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,24 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++[data-cached-view].is-inactive {
++  content-visibility: hidden;
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 100%;
++  height: 0;
++  overflow: clip;
++  padding: 0;
++  margin: 0;
++  border: 0;
++  background: transparent;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-cached-view].is-inactive {
++    display: none;
++  }
++}
+diff --git a/tests/view-cache.test.mjs b/tests/view-cache.test.mjs
+new file mode 100644
+index 0000000..3942360
+--- /dev/null
++++ b/tests/view-cache.test.mjs
+@@ -0,0 +1,95 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { Window } from 'happy-dom';
++import { installViewCache } from '../src/scripts/view-cache.ts';
++
++function setup() {
++  const window = new Window({ url: 'https://example.com/devtools-times/' });
++  const doc = window.document;
++  const markup = '<div data-view-cache><main data-cached-view tabindex="-1"><input></main></div>';
++  doc.body.innerHTML = markup;
++  installViewCache(doc);
++  const host = doc.querySelector('[data-view-cache]');
++  function prepare(path) {
++    const newDocument = new window.DOMParser().parseFromString(markup, 'text/html');
++    const event = new window.Event('astro:before-swap');
++    event.to = new URL(path, window.location.href);
++    event.newDocument = newDocument;
++    event.swap = () => {
++      // Model Astro's body swap with transition:persist on the cache host.
++      newDocument.querySelector('[data-view-cache]').replaceWith(host);
++      doc.body.replaceChildren(...newDocument.body.childNodes);
++    };
++    doc.dispatchEvent(event);
++    return event;
++  }
++  function navigate(path) {
++    prepare(path).swap();
++    doc.dispatchEvent(new window.Event('astro:after-swap'));
++    return host.querySelector('[data-cached-view]:not(.is-inactive)');
++  }
++  return { window, doc, host, prepare, navigate };
++}
++
++test('return navigation reuses DOM identity, input values and event handlers', () => {
++  const { doc, navigate } = setup();
++  const initial = doc.querySelector('main');
++  const input = initial.querySelector('input');
++  input.value = 'unfinished draft';
++  let clicks = 0;
++  input.addEventListener('click', () => clicks++);
++  navigate('/devtools-times/reports');
++  assert.equal(initial.isConnected, true);
++  assert.equal(navigate('/devtools-times/'), initial);
++  assert.equal(input.value, 'unfinished draft');
++  input.click();
++  assert.equal(clicks, 1);
++});
++
++test('inactive views are inert and excluded from accessibility; focus follows navigation', () => {
++  const { doc, navigate } = setup();
++  const initial = doc.querySelector('main');
++  initial.querySelector('input').focus();
++  const next = navigate('/devtools-times/reports');
++  assert.equal(initial.inert, true);
++  assert.equal(initial.getAttribute('aria-hidden'), 'true');
++  assert.equal(initial.classList.contains('is-inactive'), true);
++  assert.equal(doc.activeElement, next);
++  navigate('/devtools-times/');
++  assert.equal(initial.inert, false);
++  assert.equal(initial.hasAttribute('aria-hidden'), false);
++  assert.equal(doc.activeElement, initial);
++});
++
++test('cache distinguishes query strings while sharing hash variants', () => {
++  const { navigate } = setup();
++  const first = navigate('/devtools-times/reports?q=one');
++  const second = navigate('/devtools-times/reports?q=two');
++  assert.notEqual(first, second);
++  assert.equal(navigate('/devtools-times/reports?q=one#section'), first);
++});
++
++test('LRU eviction bounds connected views and rebuilds evicted routes', () => {
++  const { host, navigate } = setup();
++  const first = navigate('/devtools-times/articles/first');
++  const second = navigate('/devtools-times/articles/second');
++  navigate('/devtools-times/articles/third');
++  navigate('/devtools-times/articles/fourth');
++  navigate('/devtools-times/articles/fifth');
++  navigate('/devtools-times/articles/first'); // Touch first, making second oldest.
++  navigate('/devtools-times/articles/sixth');
++  assert.equal(host.children.length, 5);
++  assert.equal(first.isConnected, true);
++  assert.equal(second.isConnected, false);
++  assert.notEqual(navigate('/devtools-times/articles/second'), second);
++  assert.equal(host.children.length, 5);
++});
++
++test('preparation without a completed swap leaves current state untouched', () => {
++  const { doc, host, prepare } = setup();
++  const initial = doc.querySelector('main');
++  prepare('/devtools-times/reports');
++  assert.equal(host.children.length, 1);
++  assert.equal(initial.inert, false);
++  assert.equal(initial.classList.contains('is-inactive'), false);
++});

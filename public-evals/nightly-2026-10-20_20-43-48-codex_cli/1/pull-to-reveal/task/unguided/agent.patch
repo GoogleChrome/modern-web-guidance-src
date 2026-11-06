@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,68 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull down from the navigation to reveal search. */
++    .search-bar {
++      background: var(--secondary);
++      padding: 1rem 5%;
++      scroll-snap-align: start;
++    }
++
++    .search-field {
++      display: flex;
++      max-width: 1100px;
++      margin: 0 auto;
++      background: white;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .search-field:focus-within {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .search-field input {
++      flex: 1;
++      min-width: 0;
++      padding: 12px 16px;
++      border: 0;
++      background: transparent;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .search-field input:focus {
++      outline: none;
++    }
++
++    .search-field button {
++      padding: 12px 20px;
++      border: 0;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .search-field button:hover {
++      background: var(--text);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +90,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +211,15 @@
+ </head>
+ 
+ <body>
+ 
++  <form class="search-bar" role="search" action="/menu" method="get">
++    <div class="search-field">
++      <input type="search" name="q" aria-label="Search the menu" placeholder="Search coffees, drinks, and more…" required>
++      <button type="submit">Search</button>
++    </div>
++  </form>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -167,8 +229,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <script>
++    // Preserve the initial nav position where the CSS property is unsupported.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      window.scrollTo({ top: document.querySelector('nav').offsetTop, behavior: 'instant' });
++    }
++  </script>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

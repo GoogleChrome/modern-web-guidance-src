@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,105 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .rewards-btn {
++      background: none;
++      border: 1px solid transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      padding: 0;
++      transition: color 0.3s;
++    }
++
++    .rewards-btn:hover,
++    .rewards-btn:focus-visible,
++    .rewards-btn[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    /* Rewards Popover */
++    #rewards-popover {
++      position: fixed;
++      inset: 4.5rem 5% auto auto;
++      margin: 0;
++      padding: 0;
++      width: min(340px, 90vw);
++      border: none;
++      border-radius: 8px;
++      overflow: hidden;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    .rewards-header {
++      background: #3e2723;
++      color: white;
++      padding: 16px 20px;
++    }
++
++    .rewards-header h2 {
++      font-size: 1.1rem;
++    }
++
++    .rewards-points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--accent);
++      line-height: 1.2;
++    }
++
++    .rewards-points small {
++      font-size: 0.8rem;
++      font-weight: normal;
++      color: var(--secondary);
++    }
++
++    .rewards-body {
++      padding: 16px 20px 20px;
++      font-size: 0.9rem;
++    }
++
++    .rewards-body h3 {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .tier-list {
++      list-style: none;
++      margin-bottom: 16px;
++    }
++
++    .tier-list li {
++      padding: 8px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .tier-list li.current {
++      font-weight: 600;
++    }
++
++    .tier-list .tier-name {
++      display: flex;
++      justify-content: space-between;
++    }
++
++    .tier-list .tier-perks {
++      font-size: 0.8rem;
++      font-weight: normal;
++    }
++
++    .rewards-body ul.benefits {
++      padding-left: 18px;
++      margin-bottom: 8px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,14 +258,48 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" class="rewards-btn" popovertarget="rewards-popover" aria-haspopup="dialog"
++          aria-expanded="false">Rewards</button>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" popover role="dialog" aria-label="Rewards">
++    <div class="rewards-header">
++      <h2>Grind Rewards</h2>
++      <div class="rewards-points">320 <small>points &middot; Silver member</small></div>
++    </div>
++    <div class="rewards-body">
++      <h3>Membership Tiers</h3>
++      <ul class="tier-list">
++        <li>
++          <span class="tier-name"><span>Bronze</span><span>0&ndash;199 pts</span></span>
++          <span class="tier-perks">1 point per $1 spent</span>
++        </li>
++        <li class="current">
++          <span class="tier-name"><span>Silver (current)</span><span>200&ndash;499 pts</span></span>
++          <span class="tier-perks">1.25&times; points &amp; free size upgrades</span>
++        </li>
++        <li>
++          <span class="tier-name"><span>Gold</span><span>500+ pts</span></span>
++          <span class="tier-perks">1.5&times; points &amp; a free drink every month</span>
++        </li>
++      </ul>
++      <h3>Your Benefits</h3>
++      <ul class="benefits">
++        <li>Free size upgrade on any drink</li>
++        <li>Birthday treat</li>
++        <li>180 points to Gold</li>
++      </ul>
++      <a href="/account" class="btn">View Account</a>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +337,30 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var pop = document.getElementById('rewards-popover');
++      var btn = document.querySelector('[popovertarget="rewards-popover"]');
++
++      // Polyfill is only fetched (async, non-blocking) when the browser lacks the Popover API.
++      if (!HTMLElement.prototype.hasOwnProperty('popover')) {
++        var css = document.createElement('link');
++        css.rel = 'stylesheet';
++        css.href = 'https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@0.5.2/dist/popover.css';
++        document.head.appendChild(css);
++        var js = document.createElement('script');
++        js.type = 'module';
++        js.async = true;
++        js.src = 'https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@0.5.2/dist/popover.min.js';
++        document.head.appendChild(js);
++      }
++
++      pop.addEventListener('toggle', function (e) {
++        btn.setAttribute('aria-expanded', e.newState === 'open');
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

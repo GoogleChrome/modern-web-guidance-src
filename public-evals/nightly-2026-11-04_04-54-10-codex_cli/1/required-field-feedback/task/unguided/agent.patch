@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,67 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 460px;
++      margin: 0 auto 30px;
++    }
++
++    .mailing-list form {
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .mailing-list label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: 600;
++    }
++
++    .signup-fields {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .signup-fields input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .signup-fields input:focus-visible,
++    .signup-fields button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .signup-fields input[aria-invalid="true"] {
++      border-color: #9b1c1c;
++    }
++
++    .signup-fields .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signup-error {
++      color: #9b1c1c;
++      font-size: 0.9rem;
++      margin-top: 6px;
++    }
++
++    .signup-status {
++      margin-top: 6px;
++      font-size: 0.9rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +256,22 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="mailing-list" aria-labelledby="mailing-list-heading">
++      <h2 id="mailing-list-heading">Join our mailing list</h2>
++      <p>Stay in the loop on fresh roasts and seasonal favorites.</p>
++      <form id="mailing-list-form" novalidate>
++        <label for="mailing-list-email">Email address (required)</label>
++        <div class="signup-fields">
++          <input id="mailing-list-email" name="email" type="email" autocomplete="email" required
++            aria-describedby="mailing-list-error">
++          <button class="btn" type="submit">Join mailing list</button>
++        </div>
++        <p id="mailing-list-error" class="signup-error" aria-live="polite"></p>
++        <p id="mailing-list-status" class="signup-status" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +279,53 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const signupForm = document.querySelector('#mailing-list-form');
++    const signupEmail = document.querySelector('#mailing-list-email');
++    const signupError = document.querySelector('#mailing-list-error');
++    const signupStatus = document.querySelector('#mailing-list-status');
++    let emailTouched = false;
++
++    function validateEmail() {
++      const message = signupEmail.validity.valueMissing
++        ? 'Please enter your email address.'
++        : signupEmail.validity.typeMismatch
++          ? 'Please enter a valid email address.'
++          : '';
++
++      signupError.textContent = emailTouched ? message : '';
++      if (emailTouched && message) {
++        signupEmail.setAttribute('aria-invalid', 'true');
++      } else {
++        signupEmail.removeAttribute('aria-invalid');
++      }
++      return !message;
++    }
++
++    signupEmail.addEventListener('blur', () => {
++      emailTouched = true;
++      validateEmail();
++    });
++
++    signupEmail.addEventListener('input', () => {
++      signupStatus.textContent = '';
++      validateEmail();
++    });
++
++    signupForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      signupStatus.textContent = '';
++      if (!validateEmail()) {
++        signupEmail.focus();
++        return;
++      }
++
++      // Connect a mailing-list service here before accepting subscriptions.
++      signupStatus.textContent = 'Mailing list signup is not available yet. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

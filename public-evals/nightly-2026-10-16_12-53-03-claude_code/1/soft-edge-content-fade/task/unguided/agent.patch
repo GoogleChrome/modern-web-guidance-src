@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Preview */
++    .paywall-container {
++      margin-top: 60px;
++    }
++
++    .paywall-teaser {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-wrap: wrap;
++      margin-top: 20px;
++      /* Fade the content itself to transparent so it blends into the page background */
++      -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      pointer-events: none;
++      user-select: none;
++    }
++
++    .paywall-teaser img {
++      flex: 1 1 280px;
++      min-width: 0;
++      max-height: 320px;
++      object-fit: cover;
++    }
++
++    .paywall-text {
++      flex: 2 1 340px;
++      padding: 30px;
++    }
++
++    .paywall-text h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-text p {
++      margin-bottom: 12px;
++    }
++
++    .paywall-cta {
++      text-align: center;
++      margin-top: -20px;
++      position: relative;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +241,29 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2 style="text-align: center;">Roaster's Secrets</h2>
++      <p style="text-align: center;">Exclusive for members: go behind the scenes of our roastery.</p>
++      <div class="paywall-teaser" aria-hidden="true">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++          alt="Freshly roasted coffee beans">
++        <div class="paywall-text">
++          <h3>The 12-Minute Roast Curve</h3>
++          <p>Every batch of our single-origin Ethiopian beans follows a carefully timed profile, and the
++            tiny adjustments we make at first crack are what bring out the blueberry and jasmine notes.</p>
++          <p>We rest each roast for exactly five days before bagging. Here's why that window matters, and how
++            to replicate the process at home with a simple kitchen scale and a thermometer.</p>
++          <p>Plus: our head roaster's brew ratios for pour-over, French press, and AeroPress, along with
++            the grind settings we use behind the counter every morning.</p>
++        </div>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock with Membership</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,27 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="speculationrules">
++    {
++      "tag": "prefetch-links",
++      "prefetch": [{
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout" } },
++            { "not": { "selector_matches": ".logout-link" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 

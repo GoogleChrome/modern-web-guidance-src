@@ -1,0 +1,435 @@
+diff --git a/index.html b/index.html
+index 66c9173..ae92e9d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,16 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface-card: #ffffff;
++      --map-bg: #f3ede4;
++      --map-grid-line: rgba(78, 52, 46, 0.08);
++      --map-road: #e4d9c8;
++      --map-road-border: #cbbba4;
++      --map-water: #cde3e8;
++      --map-park: #d8e5d1;
++      --focus-ring: #005fcc;
++      --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --shadow-md: 0 6px 16px rgba(62, 39, 35, 0.15);
+     }
+ 
+     * {
+@@ -132,7 +142,217 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--text);
++    }
++
++    /* Cafe Locations Map Section */
++    .locations-section {
++      margin-block-start: 3.5rem;
++    }
++
++    .locations-header {
++      text-align: center;
++      margin-block-end: 1.25rem;
++    }
++
++    .locations-header h2 {
++      color: var(--primary);
++      margin-block-end: 0.35rem;
++    }
++
++    .locations-hint {
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .pan-viewport {
++      inline-size: 100%;
++      block-size: 520px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: none;
++      border-radius: 12px;
++      border: 2px solid var(--secondary);
++      box-shadow: var(--shadow-md);
++      background-color: var(--map-bg);
++      cursor: grab;
++      position: relative;
++
++      &:active {
++        cursor: grabbing;
++      }
++
++      &:focus-visible {
++        outline: 3px solid var(--focus-ring);
++        outline-offset: 2px;
++      }
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .pan-viewport {
++        touch-action: none;
++      }
++    }
++
++    .pan-surface {
++      inline-size: 2400px;
++      block-size: 1600px;
++      position: relative;
++      background-color: var(--map-bg);
++      background-image:
++        linear-gradient(to right, var(--map-grid-line) 1px, transparent 1px),
++        linear-gradient(to bottom, var(--map-grid-line) 1px, transparent 1px);
++      background-size: 80px 80px;
++      user-select: none;
++    }
++
++    /* Decorative Map Features */
++    .map-feature {
++      position: absolute;
++      pointer-events: none;
++    }
++
++    .map-river {
++      left: 0;
++      top: 620px;
++      width: 2400px;
++      height: 140px;
++      background: var(--map-water);
++      border-block: 3px solid var(--map-road-border);
++      transform: rotate(-4deg);
++    }
++
++    .map-park {
++      background: var(--map-park);
++      border: 2px dashed var(--map-road-border);
++      border-radius: 18px;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: 600;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      color: var(--primary);
++      font-size: 0.85rem;
++    }
++
++    .map-park-central {
++      left: 880px;
++      top: 220px;
++      width: 460px;
++      height: 300px;
++    }
++
++    .map-park-south {
++      left: 1520px;
++      top: 980px;
++      width: 520px;
++      height: 340px;
++    }
++
++    .map-avenue-h {
++      left: 0;
++      width: 2400px;
++      height: 28px;
++      background: var(--map-road);
++      border-block: 2px solid var(--map-road-border);
++    }
++
++    .map-avenue-v {
++      top: 0;
++      width: 28px;
++      height: 1600px;
++      background: var(--map-road);
++      border-inline: 2px solid var(--map-road-border);
++    }
++
++    .map-district-label {
++      position: absolute;
++      font-size: 0.85rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      color: var(--primary);
++      opacity: 0.65;
++      pointer-events: none;
++    }
++
++    .map-avenue-h-1 { top: 340px; }
++    .map-avenue-h-2 { top: 880px; }
++    .map-avenue-h-3 { top: 1320px; }
++
++    .map-avenue-v-1 { left: 480px; }
++    .map-avenue-v-2 { left: 1180px; }
++    .map-avenue-v-3 { left: 1840px; }
++
++    .map-district-nw { left: 120px; top: 80px; }
++    .map-district-ne { left: 1620px; top: 90px; }
++    .map-district-central { left: 1240px; top: 560px; }
++    .map-district-sw { left: 160px; top: 1120px; }
++    .map-district-se { left: 1920px; top: 1420px; }
++
++    /* Cafe Location Markers List */
++    .cafe-markers {
++      list-style: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .cafe-pin {
++      position: absolute;
++      inline-size: 260px;
++      background: var(--surface-card);
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      padding-block: 0.85rem;
++      padding-inline: 1rem;
++      box-shadow: var(--shadow-md);
++    }
++
++    .cafe-pin-roastery { left: 180px; top: 160px; }
++    .cafe-pin-botanical { left: 960px; top: 270px; }
++    .cafe-pin-harbor { left: 1640px; top: 210px; }
++    .cafe-pin-riverside { left: 540px; top: 650px; }
++    .cafe-pin-midtown { left: 1260px; top: 760px; }
++    .cafe-pin-arts { left: 260px; top: 1020px; }
++    .cafe-pin-conservatory { left: 1620px; top: 1080px; }
++    .cafe-pin-station { left: 1020px; top: 1240px; }
++
++    .cafe-pin-header {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      margin-block-end: 0.35rem;
++    }
++
++    .cafe-pin-icon {
++      inline-size: 1.5rem;
++      block-size: 1.5rem;
++      flex-shrink: 0;
++      color: var(--primary);
++    }
++
++    .cafe-pin h3 {
++      font-size: 1.05rem;
++      color: var(--primary);
++    }
++
++    .cafe-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      padding-block: 0.1rem;
++      padding-inline: 0.5rem;
++      border-radius: 999px;
++      margin-block-end: 0.4rem;
++    }
++
++    .cafe-pin p {
++      font-size: 0.85rem;
++      color: var(--text);
++      margin-block-end: 0.2rem;
+     }
+ 
+     footer {
+@@ -195,6 +415,141 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations-section">
++      <div class="locations-header">
++        <h2>Explore Our Cafe Locations</h2>
++        <p id="map-instructions" class="locations-hint">
++          Pan or scroll freely in any direction across our city-wide cafe map (including diagonally) using touch, trackpad, mouse drag, or keyboard arrow keys.
++        </p>
++      </div>
++
++      <div
++        class="pan-viewport"
++        tabindex="0"
++        role="region"
++        aria-label="Interactive coffee shop locations map"
++        aria-describedby="map-instructions"
++      >
++        <div class="pan-surface">
++          <!-- Decorative Map Backdrop -->
++          <div class="map-feature map-river" aria-hidden="true"></div>
++          <div class="map-feature map-park map-park-central" aria-hidden="true">Roasters Commons Park</div>
++          <div class="map-feature map-park map-park-south" aria-hidden="true">South Conservatory Gardens</div>
++          <div class="map-feature map-avenue-h map-avenue-h-1" aria-hidden="true"></div>
++          <div class="map-feature map-avenue-h map-avenue-h-2" aria-hidden="true"></div>
++          <div class="map-feature map-avenue-h map-avenue-h-3" aria-hidden="true"></div>
++          <div class="map-feature map-avenue-v map-avenue-v-1" aria-hidden="true"></div>
++          <div class="map-feature map-avenue-v map-avenue-v-2" aria-hidden="true"></div>
++          <div class="map-feature map-avenue-v map-avenue-v-3" aria-hidden="true"></div>
++
++          <span class="map-district-label map-district-nw" aria-hidden="true">Foundry District</span>
++          <span class="map-district-label map-district-ne" aria-hidden="true">North Harbor</span>
++          <span class="map-district-label map-district-central" aria-hidden="true">Midtown Crossing</span>
++          <span class="map-district-label map-district-sw" aria-hidden="true">West Arts Quarter</span>
++          <span class="map-district-label map-district-se" aria-hidden="true">South Terrace</span>
++
++          <!-- Cafe Locations -->
++          <ul class="cafe-markers" role="list">
++            <li class="cafe-pin cafe-pin-roastery">
++              <span class="cafe-badge">Flagship Roastery</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Foundry Roastery &amp; Lab</h3>
++              </div>
++              <p>142 Copperworks Ave</p>
++              <p>Open Daily: 6:00 AM – 8:00 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-botanical">
++              <span class="cafe-badge">Patio Seating</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Commons Park Pavilion</h3>
++              </div>
++              <p>880 Parkside Promenade</p>
++              <p>Open Daily: 6:30 AM – 7:00 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-harbor">
++              <span class="cafe-badge">Pour-Over Bar</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>North Harbor Pier 4</h3>
++              </div>
++              <p>410 Maritime Wharf</p>
++              <p>Open Daily: 6:00 AM – 6:30 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-riverside">
++              <span class="cafe-badge">Riverfront Deck</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Riverwalk Overlook</h3>
++              </div>
++              <p>515 Waterstreet Quay</p>
++              <p>Open Daily: 7:00 AM – 8:00 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-midtown">
++              <span class="cafe-badge">Express Window</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Midtown Exchange</h3>
++              </div>
++              <p>1200 Grand Concourse</p>
++              <p>Mon–Fri: 5:30 AM – 7:30 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-arts">
++              <span class="cafe-badge">Late Night Study</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Gallery Row Espresso</h3>
++              </div>
++              <p>275 Canvas Alley</p>
++              <p>Open Daily: 7:00 AM – 10:00 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-conservatory">
++              <span class="cafe-badge">Bakery &amp; Cafe</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Conservatory Glasshouse</h3>
++              </div>
++              <p>1610 Botanical Way</p>
++              <p>Open Daily: 7:00 AM – 6:00 PM</p>
++            </li>
++
++            <li class="cafe-pin cafe-pin-station">
++              <span class="cafe-badge">Nitro Taproom</span>
++              <div class="cafe-pin-header">
++                <svg class="cafe-pin-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
++                </svg>
++                <h3>Union Station South</h3>
++              </div>
++              <p>990 Transit Plaza</p>
++              <p>Open Daily: 5:30 AM – 9:00 PM</p>
++            </li>
++          </ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +562,52 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('scroll-axis-lock', 'none')) {
++      const viewport = document.querySelector('.pan-viewport');
++      let lastPointer = null;
++
++      // 1. Trackpad and mouse wheel fallback
++      viewport.addEventListener(
++        'wheel',
++        (e) => {
++          e.preventDefault();
++          viewport.scrollLeft += e.deltaX;
++          viewport.scrollTop += e.deltaY;
++        },
++        { passive: false },
++      );
++
++      // 2. Touch and pointer drag fallback
++      viewport.addEventListener('pointerdown', (e) => {
++        // Ignore non-primary buttons and clicks on native scrollbars
++        const rect = viewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
++          e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
++        ) {
++          return;
++        }
++        lastPointer = { x: e.clientX, y: e.clientY };
++        viewport.setPointerCapture(e.pointerId);
++      });
++
++      viewport.addEventListener('pointermove', (e) => {
++        if (!lastPointer) return;
++        viewport.scrollLeft -= e.clientX - lastPointer.x;
++        viewport.scrollTop -= e.clientY - lastPointer.y;
++        lastPointer = { x: e.clientX, y: e.clientY };
++      });
++
++      const endPointerPan = () => {
++        lastPointer = null;
++      };
++      viewport.addEventListener('pointerup', endPointerPan);
++      viewport.addEventListener('pointercancel', endPointerPan);
++    }
++  </script>
+ </body>
+ 
+ </html>

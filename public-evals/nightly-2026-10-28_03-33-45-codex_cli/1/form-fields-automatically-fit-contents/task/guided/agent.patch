@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .coffee-notes {
++      margin-block-start: 40px;
++      padding: clamp(20px, 4vw, 36px);
++      background: #f3eeeb;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .coffee-notes > p {
++      margin-block: 6px 24px;
++    }
++
++    .notes-form,
++    .notes-field {
++      display: grid;
++      justify-items: start;
++      min-inline-size: 0;
++    }
++
++    .notes-form {
++      gap: 20px;
++    }
++
++    .notes-field {
++      gap: 6px;
++      inline-size: 100%;
++    }
++
++    .notes-field label {
++      font-weight: 600;
++    }
++
++    .notes-field input,
++    .notes-field textarea,
++    .notes-field select {
++      field-sizing: content;
++      inline-size: auto;
++      min-inline-size: min(12ch, 100%);
++      max-inline-size: 100%;
++      min-block-size: 48px;
++      padding: 10px 12px;
++      border: 1px solid #947e76;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++    }
++
++    .notes-field textarea {
++      inline-size: min(100%, 56ch);
++      block-size: auto;
++      max-block-size: 12lh;
++      overflow-y: auto;
++      resize: vertical;
++      overflow-wrap: anywhere;
++    }
++
++    .notes-field :is(input, textarea, select):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-notes" aria-labelledby="notes-title">
++      <h2 id="notes-title">Coffee notes</h2>
++      <p>A little space for your next great cup. Fields fit what you write.</p>
++      <form class="notes-form" aria-labelledby="notes-title">
++        <div class="notes-field">
++          <label for="coffee-name">Your coffee</label>
++          <input type="text" id="coffee-name" name="coffee" placeholder="Maple Oat Latte">
++        </div>
++        <div class="notes-field">
++          <label for="coffee-style">How do you take it?</label>
++          <select id="coffee-style" name="style">
++            <option value="hot">Hot</option>
++            <option value="iced">Iced</option>
++            <option value="oat-milk">With oat milk</option>
++            <option value="extra-shot">With an extra shot of espresso</option>
++          </select>
++        </div>
++        <div class="notes-field">
++          <label for="coffee-note">Tasting notes</label>
++          <textarea id="coffee-note" name="notes" rows="1" placeholder="What makes it your favorite?"></textarea>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +293,44 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const notesForm = document.querySelector('.notes-form');
++    // This is a writing space, with no remote submission destination.
++    notesForm.addEventListener('submit', (event) => event.preventDefault());
++
++    if (!CSS.supports('field-sizing', 'content')) {
++      const measuringContext = document.createElement('canvas').getContext('2d');
++      const fitControls = () => {
++        notesForm.querySelectorAll('input, select, textarea').forEach((control) => {
++          if (control instanceof HTMLTextAreaElement) {
++            // Reset first so deleting text also shrinks the textarea.
++            control.style.height = 'auto';
++            const style = getComputedStyle(control);
++            const borders = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
++            control.style.height = `${control.scrollHeight + borders}px`;
++          } else if (measuringContext) {
++            const style = getComputedStyle(control);
++            measuringContext.font = style.font;
++            const text = control instanceof HTMLSelectElement
++              ? control.selectedOptions[0].text
++              : control.value || control.placeholder || ' ';
++            const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
++            const borders = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++            const arrow = control instanceof HTMLSelectElement ? 24 : 2;
++            control.style.width = `${Math.ceil(measuringContext.measureText(text).width + padding + borders + arrow)}px`;
++          }
++        });
++      };
++      notesForm.addEventListener('input', fitControls);
++      notesForm.addEventListener('change', fitControls);
++      window.addEventListener('resize', fitControls);
++      window.addEventListener('pageshow', fitControls);
++      document.fonts.ready.then(fitControls);
++      fitControls();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

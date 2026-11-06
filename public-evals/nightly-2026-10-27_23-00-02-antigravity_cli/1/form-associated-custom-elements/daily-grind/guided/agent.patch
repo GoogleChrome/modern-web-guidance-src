@@ -1,0 +1,548 @@
+diff --git a/index.html b/index.html
+index 66c9173..3c07c62 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,159 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Form Section */
++    .feedback-section {
++      margin-top: 60px;
++    }
++
++    .feedback-card {
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 640px;
++      margin: 20px auto 0;
++    }
++
++    .feedback-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .feedback-fieldset:disabled {
++      opacity: 0.65;
++    }
++
++    .feedback-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 10px;
++      font-size: 1.15rem;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label,
++    .form-group .field-label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      color: var(--primary);
++    }
++
++    .hint {
++      display: block;
++      color: #5f4339;
++      font-size: 0.85rem;
++      margin-block-end: 0.35rem;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #b0a09a;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++    }
++
++    .form-group textarea {
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .form-group :where(input, select, textarea):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .form-group :where(input, select, textarea):user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .form-group :where(input, select, textarea):user-valid {
++      border-color: #188038;
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      align-items: center;
++      margin-top: 8px;
++    }
++
++    .btn-submit,
++    .btn-reset {
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 12px 24px;
++      min-height: 48px;
++      border-radius: 5px;
++      cursor: pointer;
++      border: none;
++      font-weight: 600;
++      transition: background 0.3s, opacity 0.2s;
++    }
++
++    .btn-submit {
++      background: var(--primary);
++      color: white;
++    }
++
++    .btn-submit:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .btn-reset {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-reset:hover:not(:disabled) {
++      background: #c4b5b0;
++    }
++
++    .btn-submit:focus-visible,
++    .btn-reset:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .feedback-status {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++      font-weight: 500;
++    }
++
++    .feedback-status[hidden] {
++      display: none;
++    }
++
++    star-rating:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +348,85 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" id="coffee-feedback">
++      <h2 style="text-align: center;">Coffee Feedback</h2>
++      <div class="feedback-card">
++        <form id="feedback-form" action="/feedback" method="POST">
++          <fieldset class="feedback-fieldset" id="feedback-fieldset">
++            <legend>Share Your Daily Grind Experience</legend>
++
++            <div class="form-group">
++              <label for="customer-name">Full Name (Required)</label>
++              <input
++                type="text"
++                id="customer-name"
++                name="customer_name"
++                autocomplete="name"
++                required
++              >
++            </div>
++
++            <div class="form-group">
++              <label for="customer-email">Email Address (Required)</label>
++              <span id="email-hint" class="hint">Format: you@example.com</span>
++              <input
++                type="email"
++                id="customer-email"
++                name="email"
++                autocomplete="email"
++                autocorrect="off"
++                autocapitalize="off"
++                spellcheck="false"
++                aria-describedby="email-hint"
++                required
++              >
++            </div>
++
++            <div class="form-group">
++              <label for="coffee-blend">Coffee Ordered (Required)</label>
++              <select id="coffee-blend" name="coffee_blend" required>
++                <option value="">Select your drink...</option>
++                <option value="maple-oat-latte">Maple Oat Latte</option>
++                <option value="dark-roast-espresso">Dark Roast Espresso</option>
++                <option value="cold-brew">Cold Brew</option>
++                <option value="pour-over">Single-Origin Pour Over</option>
++                <option value="cappuccino">Artisanal Cappuccino</option>
++                <option value="matcha-latte">Ceremonial Matcha Latte</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label id="rating-label" for="coffee-rating">Overall Rating (Required)</label>
++              <span id="rating-hint" class="hint">Choose from 1 to 5 stars</span>
++              <star-rating
++                id="coffee-rating"
++                name="rating"
++                required
++                aria-describedby="rating-hint"
++              ></star-rating>
++            </div>
++
++            <div class="form-group">
++              <label for="coffee-comments">Tasting Notes &amp; Comments</label>
++              <span id="comments-hint" class="hint">Let us know about the roast, temperature, or barista service.</span>
++              <textarea
++                id="coffee-comments"
++                name="comments"
++                aria-describedby="comments-hint"
++                rows="4"
++              ></textarea>
++            </div>
++
++            <div class="form-actions">
++              <button type="submit" class="btn-submit" id="submit-feedback">Submit Feedback</button>
++              <button type="reset" class="btn-reset" id="reset-feedback">Reset Form</button>
++            </div>
++          </fieldset>
++          <div id="feedback-status" class="feedback-status" role="status" aria-live="polite" hidden></div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +439,297 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class StarRating extends HTMLElement {
++      static formAssociated = true;
++      static observedAttributes = ['value', 'required', 'disabled'];
++
++      #internals;
++      #value = '';
++      #defaultValue = '';
++      #initialValueCaptured = false;
++      #buttons = [];
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++        this.#render();
++      }
++
++      connectedCallback() {
++        if (!this.#initialValueCaptured) {
++          this.#defaultValue = this.getAttribute('value') ?? '';
++          this.#initialValueCaptured = true;
++          if (this.#defaultValue && !this.#value) {
++            this.#value = this.#defaultValue;
++          }
++        }
++        this.#internals.setFormValue(this.#value);
++        this.#updateStars();
++        this.#validate();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal === newVal) return;
++        if (name === 'value') {
++          const normalized = newVal ?? '';
++          if (this.#value !== normalized) {
++            this.#value = normalized;
++            this.#internals.setFormValue(this.#value);
++            this.#updateStars();
++            this.#validate();
++          }
++        } else if (name === 'required') {
++          this.#validate();
++        } else if (name === 'disabled') {
++          this.formDisabledCallback(this.hasAttribute('disabled'));
++        }
++      }
++
++      get value() {
++        return this.#value;
++      }
++
++      set value(v) {
++        const normalized = v == null ? '' : String(v);
++        this.#value = normalized;
++        this.#internals.setFormValue(this.#value);
++        this.#updateStars();
++        this.#validate();
++      }
++
++      get form() {
++        return this.#internals.form;
++      }
++
++      get name() {
++        return this.getAttribute('name');
++      }
++
++      get type() {
++        return this.localName;
++      }
++
++      get validity() {
++        return this.#internals.validity;
++      }
++
++      get validationMessage() {
++        return this.#internals.validationMessage;
++      }
++
++      get willValidate() {
++        return this.#internals.willValidate;
++      }
++
++      checkValidity() {
++        return this.#internals.checkValidity();
++      }
++
++      reportValidity() {
++        return this.#internals.reportValidity();
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(val) {
++        this.toggleAttribute('required', Boolean(val));
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++
++      set disabled(val) {
++        this.toggleAttribute('disabled', Boolean(val));
++      }
++
++      #validate() {
++        if (this.hasAttribute('required') && !this.#value) {
++          this.#internals.setValidity(
++            { valueMissing: true },
++            'Please choose a star rating.',
++            this.shadowRoot.querySelector('button')
++          );
++        } else {
++          this.#internals.setValidity({});
++        }
++      }
++
++      formResetCallback() {
++        this.value = this.#defaultValue;
++        this.#internals.states?.delete('invalid');
++      }
++
++      formDisabledCallback(disabled) {
++        // Disable internal controls so they leave the tab order and ignore clicks.
++        // Do NOT toggle `disabled` on `this`, or a `<fieldset disabled>` toggle will
++        // leave the host permanently stuck with its own `disabled` attribute.
++        for (const btn of this.#buttons) {
++          btn.disabled = disabled;
++        }
++      }
++
++      formStateRestoreCallback(state, _mode) {
++        this.value = state ?? '';
++      }
++
++      #selectRating(ratingValue) {
++        if (this.#buttons[0]?.disabled) return;
++        const changed = this.#value !== ratingValue;
++        this.value = ratingValue;
++        this.#internals.states?.delete('invalid');
++        this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++        if (changed) {
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      #updateStars() {
++        const numericVal = Number(this.#value) || 0;
++        this.#buttons.forEach((btn, idx) => {
++          const starNum = idx + 1;
++          const isSelected = starNum <= numericVal;
++          const isExact = starNum === numericVal;
++          btn.classList.toggle('filled', isSelected);
++          btn.setAttribute('aria-checked', isExact ? 'true' : 'false');
++        });
++        const statusEl = this.shadowRoot.querySelector('.rating-text');
++        if (statusEl) {
++          statusEl.textContent = numericVal ? `${numericVal} out of 5 stars` : 'No rating selected';
++        }
++      }
++
++      #render() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            :host {
++              display: inline-block;
++              --_star-active: var(--star-active, #ffab40);
++              --_star-inactive: var(--star-inactive, #d7ccc8);
++              --_star-focus: var(--star-focus, #4e342e);
++            }
++            .stars-group {
++              display: inline-flex;
++              align-items: center;
++              gap: 6px;
++              flex-wrap: wrap;
++            }
++            button {
++              font: inherit;
++              color: var(--_star-inactive);
++              background: transparent;
++              border: 2px solid transparent;
++              border-radius: 6px;
++              min-width: 48px;
++              min-height: 48px;
++              padding: 4px;
++              cursor: pointer;
++              display: inline-flex;
++              align-items: center;
++              justify-content: center;
++              transition: transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
++            }
++            button.filled {
++              color: var(--_star-active);
++            }
++            button:hover:not(:disabled) {
++              transform: scale(1.1);
++              color: var(--_star-active);
++            }
++            button:focus-visible {
++              outline: 3px solid var(--_star-focus);
++              outline-offset: 2px;
++            }
++            button:disabled {
++              cursor: not-allowed;
++              opacity: 0.55;
++            }
++            svg {
++              width: 32px;
++              height: 32px;
++              fill: currentColor;
++              pointer-events: none;
++            }
++            .rating-text {
++              margin-inline-start: 8px;
++              font-size: 0.9rem;
++              color: #5f4339;
++              font-weight: 500;
++            }
++          </style>
++          <div class="stars-group" role="radiogroup" aria-label="Star rating">
++            ${[1, 2, 3, 4, 5].map(num => `
++              <button
++                type="button"
++                role="radio"
++                aria-checked="false"
++                aria-label="${num} ${num === 1 ? 'star' : 'stars'}"
++                data-value="${num}"
++                part="star"
++              >
++                <svg aria-hidden="true" viewBox="0 0 24 24">
++                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
++                </svg>
++              </button>
++            `).join('')}
++            <span class="rating-text" part="status">No rating selected</span>
++          </div>
++        `;
++
++        this.#buttons = Array.from(this.shadowRoot.querySelectorAll('button'));
++
++        this.#buttons.forEach((btn, idx) => {
++          btn.addEventListener('click', () => {
++            this.#selectRating(String(idx + 1));
++          });
++
++          btn.addEventListener('keydown', (e) => {
++            if (btn.disabled) return;
++            let targetIndex = null;
++            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
++              e.preventDefault();
++              targetIndex = Math.min(this.#buttons.length - 1, idx + 1);
++            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
++              e.preventDefault();
++              targetIndex = Math.max(0, idx - 1);
++            }
++            if (targetIndex !== null) {
++              this.#buttons[targetIndex].focus();
++              this.#selectRating(String(targetIndex + 1));
++            }
++          });
++        });
++      }
++    }
++
++    customElements.define('star-rating', StarRating);
++
++    const feedbackForm = document.getElementById('feedback-form');
++    const feedbackStatus = document.getElementById('feedback-status');
++
++    feedbackForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      if (!feedbackForm.checkValidity()) {
++        feedbackForm.reportValidity();
++        return;
++      }
++      const data = new FormData(feedbackForm);
++      const name = data.get('customer_name');
++      const rating = data.get('rating');
++      const blend = data.get('coffee_blend');
++      feedbackStatus.textContent = `Thank you, ${name}! Your ${rating}-star review for ${blend} has been recorded.`;
++      feedbackStatus.hidden = false;
++    });
++
++    feedbackForm.addEventListener('reset', () => {
++      feedbackStatus.hidden = true;
++      feedbackStatus.textContent = '';
++    });
++  </script>
+ </body>
+ 
+ </html>

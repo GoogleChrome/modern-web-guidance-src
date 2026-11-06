@@ -1,0 +1,29 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..a3a3c27 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,14 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++// Allow this origin to reach the user's local network and loopback interface
++// (Chrome Local Network Access). `local-network-access` is the original
++// feature name; `local-network` and `loopback-network` are its newer split.
++const PERMISSIONS_POLICY = [
++  'local-network-access=(self)',
++  'local-network=(self)',
++  'loopback-network=(self)',
++].join(', ');
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +17,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  response.headers.set('Permissions-Policy', PERMISSIONS_POLICY);
++  return response;
+ });

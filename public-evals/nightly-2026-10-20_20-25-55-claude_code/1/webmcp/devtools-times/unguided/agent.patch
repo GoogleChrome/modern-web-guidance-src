@@ -1,0 +1,205 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..f248501 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -10,6 +10,14 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  useEffect(() => {
++    const onChange = (e: Event) => {
++      setIsBookmarked((e as CustomEvent<{ readingList: string[] }>).detail.readingList.includes(slug));
++    };
++    window.addEventListener('reading-list-changed', onChange);
++    return () => window.removeEventListener('reading-list-changed', onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..a8e8f36 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/webmcp";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/webmcp.ts b/src/scripts/webmcp.ts
+new file mode 100644
+index 0000000..7339246
+--- /dev/null
++++ b/src/scripts/webmcp.ts
+@@ -0,0 +1,166 @@
++import { navigate } from 'astro:transitions/client';
++
++// WebMCP (https://webmachinelearning.github.io/webmcp/): exposes client-side
++// functionality as tools to AI agents via navigator.modelContext.
++
++const BASE = import.meta.env.BASE_URL;
++
++interface Article {
++  slug: string;
++  title: string;
++  summary: string;
++  image: string;
++}
++
++interface ToolDefinition {
++  name: string;
++  description: string;
++  inputSchema: Record<string, unknown>;
++  annotations?: { readOnlyHint?: boolean };
++  execute: (args: any) => Promise<{ content: { type: 'text'; text: string }[] }>;
++}
++
++const result = (data: unknown) => ({
++  content: [{ type: 'text' as const, text: JSON.stringify(data) }],
++});
++
++let articlesPromise: Promise<Article[]> | undefined;
++const getArticles = () =>
++  (articlesPromise ??= fetch(`${BASE}api/articles.json`)
++    .then((r) => r.json() as Promise<Article[]>)
++    .catch((e) => {
++      articlesPromise = undefined;
++      throw e;
++    }));
++
++const getReadingList = async (): Promise<string[]> => {
++  const response = await fetch(`${BASE}api/reading-list.json`);
++  return (await response.json()).readingList;
++};
++
++// The API only supports toggling, so check the current state first to make
++// add/remove idempotent.
++const setBookmarked = async (slug: string, wanted: boolean): Promise<string[]> => {
++  let list = await getReadingList();
++  if (list.includes(slug) !== wanted) {
++    const response = await fetch(`${BASE}api/reading-list.json`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ slug }),
++    });
++    list = (await response.json()).readingList;
++  }
++  // Lets on-page bookmark buttons stay in sync.
++  window.dispatchEvent(new CustomEvent('reading-list-changed', { detail: { readingList: list } }));
++  return list;
++};
++
++const slugSchema = {
++  type: 'string',
++  description: 'Article slug, as returned by list_articles or search_articles.',
++};
++
++const tools: ToolDefinition[] = [
++  {
++    name: 'list_articles',
++    description: 'List all articles published on The DevTools Times (slug, title, summary).',
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: async () => {
++      const articles = await getArticles();
++      return result(articles.map(({ slug, title, summary }) => ({ slug, title, summary })));
++    },
++  },
++  {
++    name: 'search_articles',
++    description: 'Search articles by a case-insensitive keyword matched against title and summary.',
++    inputSchema: {
++      type: 'object',
++      properties: { query: { type: 'string', description: 'Search keyword or phrase.' } },
++      required: ['query'],
++    },
++    annotations: { readOnlyHint: true },
++    execute: async ({ query }) => {
++      const q = String(query ?? '').toLowerCase();
++      const articles = await getArticles();
++      const matches = articles.filter(
++        (a) => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q),
++      );
++      return result(matches.map(({ slug, title, summary }) => ({ slug, title, summary })));
++    },
++  },
++  {
++    name: 'open_article',
++    description: 'Navigate the browser to the page of an article.',
++    inputSchema: { type: 'object', properties: { slug: slugSchema }, required: ['slug'] },
++    execute: async ({ slug }) => {
++      const articles = await getArticles();
++      if (!articles.some((a) => a.slug === slug)) {
++        return result({ error: `Unknown article slug: ${slug}` });
++      }
++      await navigate(`${BASE}articles/${slug}`);
++      return result({ navigatedTo: `${BASE}articles/${slug}` });
++    },
++  },
++  {
++    name: 'open_category',
++    description: 'Navigate the browser to a category page (e.g. "sports", "politics").',
++    inputSchema: {
++      type: 'object',
++      properties: { category: { type: 'string', description: 'Category name.' } },
++      required: ['category'],
++    },
++    execute: async ({ category }) => {
++      const path = `${BASE}category/${encodeURIComponent(String(category).toLowerCase())}`;
++      await navigate(path);
++      return result({ navigatedTo: path });
++    },
++  },
++  {
++    name: 'get_reading_list',
++    description: "Get the current user's reading list (bookmarked articles).",
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: async () => {
++      const [slugs, articles] = await Promise.all([getReadingList(), getArticles()]);
++      return result(
++        slugs.map((slug) => {
++          const a = articles.find((x) => x.slug === slug);
++          return { slug, title: a?.title, summary: a?.summary };
++        }),
++      );
++    },
++  },
++  {
++    name: 'add_to_reading_list',
++    description: 'Bookmark an article by adding it to the reading list. No-op if already present.',
++    inputSchema: { type: 'object', properties: { slug: slugSchema }, required: ['slug'] },
++    execute: async ({ slug }) => {
++      const articles = await getArticles();
++      if (!articles.some((a) => a.slug === slug)) {
++        return result({ error: `Unknown article slug: ${slug}` });
++      }
++      return result({ readingList: await setBookmarked(slug, true) });
++    },
++  },
++  {
++    name: 'remove_from_reading_list',
++    description: 'Remove an article from the reading list. No-op if not present.',
++    inputSchema: { type: 'object', properties: { slug: slugSchema }, required: ['slug'] },
++    execute: async ({ slug }) => result({ readingList: await setBookmarked(slug, false) }),
++  },
++];
++
++const registerTools = () => {
++  const modelContext = (navigator as any).modelContext;
++  if (!modelContext?.registerTool) return; // WebMCP not supported in this browser
++  for (const tool of tools) {
++    try {
++      modelContext.registerTool(tool);
++    } catch (e) {
++      console.warn(`WebMCP: failed to register ${tool.name}`, e);
++    }
++  }
++};
++
++registerTools();

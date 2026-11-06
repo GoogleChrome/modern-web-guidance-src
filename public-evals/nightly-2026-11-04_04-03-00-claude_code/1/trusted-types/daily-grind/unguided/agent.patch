@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+index 66c9173..da2c1d1 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,8 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'; require-trusted-types-for 'script'; trusted-types daily-grind-inert-parse">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -115,6 +117,19 @@
+       text-align: center;
+     }
+ 
++    .card img {
++      display: block;
++      width: calc(100% + 40px);
++      height: 180px;
++      margin: -20px -20px 15px;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++    }
++
++    .section-title {
++      text-align: center;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -176,23 +191,11 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <div class="grid" id="seasonal-favorites" aria-live="polite">
++        <noscript>
++          <p>Enable JavaScript to see our seasonal favorites, or <a href="/menu/seasonal">browse the seasonal menu</a>.</p>
++        </noscript>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +210,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="js/seasonal-favorites.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/js/seasonal-favorites.js b/js/seasonal-favorites.js
+new file mode 100644
+index 0000000..096aca6
+--- /dev/null
++++ b/js/seasonal-favorites.js
+@@ -0,0 +1,183 @@
++/*
++ * Seasonal Favorites renderer.
++ *
++ * Cards are authored as HTML strings, but no string is ever written to a live
++ * DOM sink (innerHTML, outerHTML, insertAdjacentHTML, document.write, ...).
++ * Instead each string is:
++ *   1. parsed into an inert, script-less document via DOMParser,
++ *   2. rebuilt node-by-node from a strict allowlist of tags/attributes/URLs,
++ *   3. inserted as DOM nodes with replaceChildren().
++ *
++ * The page CSP enforces Trusted Types (require-trusted-types-for 'script') and
++ * only allows the single policy defined here, so any other code that tries to
++ * push a raw string into an HTML sink will throw instead of executing.
++ */
++(function () {
++  'use strict';
++
++  const SEASONAL_FAVORITES = [
++    `<div class="card">
++       <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="Latte with latte art in a ceramic cup" loading="lazy">
++       <h3>Maple Oat Latte</h3>
++       <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++       <a href="/menu/seasonal" class="btn">View Details</a>
++     </div>`,
++    `<div class="card">
++       <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80"
++            alt="Shot of dark espresso" loading="lazy">
++       <h3>Dark Roast Espresso</h3>
++       <p>Bold, smokey, and perfect for a morning boost.</p>
++       <a href="/menu/espresso" class="btn">View Details</a>
++     </div>`,
++    `<div class="card">
++       <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++            alt="Glass of iced cold brew coffee" loading="lazy">
++       <h3>Cold Brew</h3>
++       <p>Steeped for 18 hours for maximum smoothness.</p>
++       <a href="/menu/cold-brew" class="btn">View Details</a>
++     </div>`,
++  ];
++
++  // ---- Sanitizer configuration -------------------------------------------
++
++  // Tags that may be kept. Anything else is unwrapped (children kept) unless
++  // it is in DROP_WITH_CONTENT, in which case it is removed entirely.
++  const ALLOWED_TAGS = new Set([
++    'DIV', 'SPAN', 'H3', 'H4', 'P', 'A', 'IMG', 'STRONG', 'EM', 'BR', 'SMALL',
++  ]);
++  const DROP_WITH_CONTENT = new Set([
++    'SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'NOSCRIPT',
++    'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'LINK',
++    'META', 'BASE', 'FRAME', 'FRAMESET',
++  ]);
++
++  // Attributes allowed per tag ('*' applies to all allowed tags).
++  const ALLOWED_ATTRS = {
++    '*': new Set(['class']),
++    A: new Set(['href']),
++    IMG: new Set(['src', 'alt', 'loading', 'width', 'height']),
++  };
++
++  const CLASS_RE = /^[A-Za-z0-9_\- ]*$/;
++  const IMAGE_HOSTS = new Set(['images.unsplash.com']);
++
++  function isSafeHref(value) {
++    const v = value.trim();
++    // Same-origin root-relative paths only (reject protocol-relative "//").
++    if (/^\/(?!\/)/.test(v)) return true;
++    try {
++      const url = new URL(v, window.location.origin);
++      return url.protocol === 'https:' || url.protocol === 'mailto:';
++    } catch (_) {
++      return false;
++    }
++  }
++
++  function isSafeImageSrc(value) {
++    try {
++      const url = new URL(value.trim());
++      return url.protocol === 'https:' && IMAGE_HOSTS.has(url.hostname);
++    } catch (_) {
++      return false;
++    }
++  }
++
++  function isSafeAttr(tag, name, value) {
++    const allowed =
++      ALLOWED_ATTRS['*'].has(name) ||
++      (ALLOWED_ATTRS[tag] && ALLOWED_ATTRS[tag].has(name));
++    if (!allowed) return false;
++
++    switch (name) {
++      case 'class':
++        return CLASS_RE.test(value);
++      case 'href':
++        return isSafeHref(value);
++      case 'src':
++        return isSafeImageSrc(value);
++      case 'loading':
++        return value === 'lazy' || value === 'eager';
++      case 'width':
++      case 'height':
++        return /^\d{1,4}$/.test(value);
++      default:
++        return true; // e.g. alt: plain text, set via setAttribute (no parsing)
++    }
++  }
++
++  // ---- Trusted Types -----------------------------------------------------
++
++  // The only policy the CSP permits. It is used solely to hand markup to
++  // DOMParser, which produces an inert document (no script execution, no
++  // resource loading). Its output is never assigned to a live-DOM sink.
++  const parsePolicy =
++    window.trustedTypes && window.trustedTypes.createPolicy
++      ? window.trustedTypes.createPolicy('daily-grind-inert-parse', {
++          createHTML: (input) => String(input),
++        })
++      : null;
++
++  function parseInert(html) {
++    const markup = parsePolicy ? parsePolicy.createHTML(html) : html;
++    return new DOMParser().parseFromString(markup, 'text/html').body;
++  }
++
++  // ---- Sanitizing rebuild -----------------------------------------------
++
++  // Rebuild a node tree in the *live* document using only createElement,
++  // createTextNode and setAttribute with validated values.
++  function rebuild(node, out) {
++    for (const child of Array.from(node.childNodes)) {
++      if (child.nodeType === Node.TEXT_NODE) {
++        out.appendChild(document.createTextNode(child.nodeValue));
++        continue;
++      }
++      if (child.nodeType !== Node.ELEMENT_NODE) continue; // drop comments etc.
++
++      const tag = child.tagName.toUpperCase();
++      if (DROP_WITH_CONTENT.has(tag)) continue;
++
++      if (!ALLOWED_TAGS.has(tag)) {
++        rebuild(child, out); // unwrap: keep safe children only
++        continue;
++      }
++
++      const el = document.createElement(tag.toLowerCase());
++      for (const attr of Array.from(child.attributes)) {
++        const name = attr.name.toLowerCase();
++        if (isSafeAttr(tag, name, attr.value)) {
++          el.setAttribute(name, attr.value.trim());
++        }
++      }
++      if (tag === 'A' && /^https?:/i.test(el.getAttribute('href') || '')) {
++        el.setAttribute('rel', 'noopener noreferrer');
++      }
++      rebuild(child, el);
++      out.appendChild(el);
++    }
++    return out;
++  }
++
++  function sanitizeToFragment(html) {
++    return rebuild(parseInert(html), document.createDocumentFragment());
++  }
++
++  // ---- Render ------------------------------------------------------------
++
++  function renderSeasonalFavorites() {
++    const grid = document.getElementById('seasonal-favorites');
++    if (!grid) return;
++    const fragment = document.createDocumentFragment();
++    for (const cardHtml of SEASONAL_FAVORITES) {
++      fragment.appendChild(sanitizeToFragment(cardHtml));
++    }
++    grid.replaceChildren(fragment); // node insertion, not an HTML sink
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', renderSeasonalFavorites);
++  } else {
++    renderSeasonalFavorites();
++  }
++})();

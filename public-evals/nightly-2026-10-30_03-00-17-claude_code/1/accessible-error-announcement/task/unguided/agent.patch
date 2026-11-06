@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,95 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-form {
++      text-align: left;
++    }
++
++    .newsletter-form label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 10px;
++    }
++
++    .newsletter-form input {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++    }
++
++    .newsletter-form input:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter-form input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .newsletter-form button {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 6px;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    .form-status {
++      color: #1b5e20;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 8px;
++    }
++
++    .form-status:empty {
++      display: none;
++    }
++
++    @media (max-width: 480px) {
++      .newsletter-row {
++        flex-direction: column;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +284,23 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join Our Newsletter</h2>
++      <p>Get seasonal drops, roasting notes, and member-only offers.</p>
++      <form class="newsletter-form" id="newsletter-form" novalidate>
++        <label for="newsletter-email">Email address <span aria-hidden="true">(required)</span></label>
++        <div class="newsletter-row">
++          <input type="email" id="newsletter-email" name="email" autocomplete="email" required
++            aria-required="true">
++          <button type="submit" class="btn">Subscribe</button>
++        </div>
++        <!-- Live region stays in the DOM so text changes are announced; it is only filled when the error is visible. -->
++        <p class="field-error" id="newsletter-email-error" aria-live="polite" aria-atomic="true"></p>
++        <p class="form-status" id="newsletter-status" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +308,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const input = document.getElementById('newsletter-email');
++      const error = document.getElementById('newsletter-email-error');
++      const status = document.getElementById('newsletter-status');
++      // Errors only surface after the user has left the field or tried to submit.
++      let interacted = false;
++
++      function getErrorMessage() {
++        if (input.validity.valueMissing) return 'Please enter your email address.';
++        if (!input.validity.valid) return 'Please enter a valid email address, like name@example.com.';
++        return '';
++      }
++
++      // Single source of truth: the visual message, aria-invalid, and the live region change together.
++      function render() {
++        const message = interacted ? getErrorMessage() : '';
++        if (error.textContent !== message) error.textContent = message;
++        if (message) {
++          input.setAttribute('aria-invalid', 'true');
++          input.setAttribute('aria-describedby', error.id);
++        } else {
++          input.removeAttribute('aria-invalid');
++          input.removeAttribute('aria-describedby');
++        }
++        return !message;
++      }
++
++      input.addEventListener('blur', function () {
++        if (input.value !== '') interacted = true;
++        render();
++      });
++
++      input.addEventListener('input', function () {
++        status.textContent = '';
++        render();
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        interacted = true;
++        if (!render()) {
++          input.focus();
++          return;
++        }
++        status.textContent = 'Thanks for subscribing! Check your inbox to confirm.';
++        form.reset();
++        interacted = false;
++        render();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

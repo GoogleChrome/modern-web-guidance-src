@@ -1,0 +1,890 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..78168a6 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -15,68 +15,80 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const categoryUrl = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <div class="surface-lead" data-surface="lead">
++        <article class="article-teaser group">
++            <div class="article-teaser__layout">
++                <a href={articleUrl} class="article-teaser__media">
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        class="article-teaser__image"
+                     />
+                 </a>
++                <div class="article-teaser__body">
++                    <span class="article-teaser__badge">Featured Story</span>
++                    <a href={categoryUrl} class="article-teaser__category font-brand hover:underline">{capitalizedCategory}</a>
++                    <a href={articleUrl} class="flex flex-col flex-grow">
++                        <h3 class="article-teaser__title font-brand group-hover:text-amber-400 transition-colors">
++                            {article.data.title}
++                        </h3>
++                        <p class="article-teaser__summary">
++                            {article.data.summary}
++                        </p>
++                    </a>
++                    <div class="article-teaser__footer">
++                        <div class="flex items-center gap-3">
++                            <span class="text-xs font-medium flex items-center">
++                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                                {article.data.readingTime} Min.
++                            </span>
++                            <a href={articleUrl} class="article-teaser__cta">Read Story</a>
++                        </div>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
++                </div>
+             </div>
+-        </div>
++        </article>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <article class="article-teaser group">
++        <div class="article-teaser__layout">
++            <a href={articleUrl} class="article-teaser__media">
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={800}
++                    height={450}
++                    format="webp"
++                    class="article-teaser__image"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="article-teaser__body">
++                <span class="article-teaser__badge">Featured</span>
++                <a href={categoryUrl} class="article-teaser__category font-brand hover:underline">{capitalizedCategory}</a>
++                <a href={articleUrl} class="flex flex-col flex-grow">
++                    <h3 class="article-teaser__title font-brand group-hover:text-amber-400 transition-colors">
++                        {article.data.title}
++                    </h3>
++                    <p class="article-teaser__summary">{article.data.summary}</p>
++                </a>
++                <div class="article-teaser__footer">
++                    <div class="flex items-center gap-3">
++                        <span class="text-xs font-medium flex items-center">
++                            <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                            {article.data.readingTime} Min.
++                        </span>
++                        <a href={articleUrl} class="article-teaser__cta">Read Story</a>
++                    </div>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..aa68ec3 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      onClick={handleClick}
++      className="bookmark-button hover:text-amber-500 cursor-pointer"
++      aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++      aria-pressed={isBookmarked}
++    >
++      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`} />
++      <span className="bookmark-button__label">{isBookmarked ? 'Saved' : 'Save'}</span>
+     </button>
+   );
+ }
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..a317147 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -1,9 +1,6 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+-import { Image } from 'astro:assets';
+-import { getArticleImage } from '../utils/images';
+-import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import ArticleTeaser from './ArticleTeaser.astro';
+ 
+ export interface Props {
+     title: string;
+@@ -18,85 +15,26 @@ if (articles.length < 4) {
+ 
+ const topArticle = articles[0];
+ const bottomArticles = articles.slice(1, 4);
+-
+-const topArticleImage = await getArticleImage(topArticle);
+-const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+-
+-const readingList = await Astro.session?.get('readingList') || [];
+-
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+ <section class="p-4 md:p-6">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+-                        {topArticle.data.title}
+-                    </h3>
+-                </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+-                    {topArticle.data.summary}
+-                </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
+-                </div>
+-            </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+-                </a>
+-            </div>
+-        </div>
++    <!-- Top Section: Featured Semantic Surface -->
++    <div class="surface-featured mb-6 lg:mb-8" data-surface="featured">
++        <ArticleTeaser article={topArticle} />
+     </div>
+ 
+-    <!-- Bottom Section: Three Smaller Articles -->
++    <!-- Bottom Section: Three Smaller Articles with Contextual Surfaces -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+         {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+-            const isBookmarked = readingList.includes(article.id);
++            const surface = index === 1 ? 'spotlight' : 'compact';
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
+-                    {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+-                        </a>
+-                    )}
+-                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+-                                {article.data.title}
+-                            </h3>
+-                        </a>
+-                        {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
+-                                {article.data.summary}
+-                            </p>
+-                        )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
+-                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                                {article.data.readingTime} Min.
+-                            </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                        </div>
+-                    </div>
++                <div class={`surface-${surface} h-full`} data-surface={surface}>
++                    <ArticleTeaser article={article} />
+                 </div>
+-            )
++            );
+         })}
+     </div>
+ </section>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..ea64707 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -116,7 +116,7 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section class="surface-related max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8" data-surface="related">
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..93b9165 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -65,24 +65,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
++            {featuredArticle && (
++                <section class="surface-featured mb-8 pb-8 border-b border-gray-200" data-surface="featured">
++                    <ArticleTeaser article={featuredArticle} />
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0929d72 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="surface-lead max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6" data-surface="lead">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..05fdcb1 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,561 @@
+ @import "tailwindcss";
+ 
++:root {
++  --brand-accent: #f59e0b;
++  --brand-accent-dark: #92400e;
++  --surface-bg: #ffffff;
++  --surface-featured-bg: #fffbeb;
++  --border-subtle: #f3f4f6;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* 1. Semantic Context Containers */
++.surface-lead,
++[data-surface="lead"] {
++  --surface: lead;
++}
++
++.surface-featured,
++[data-surface="featured"] {
++  --surface: featured;
++}
++
++.surface-spotlight,
++[data-surface="spotlight"] {
++  --surface: spotlight;
++}
++
++.surface-compact,
++[data-surface="compact"] {
++  --surface: compact;
++}
++
++.surface-related,
++[data-surface="related"] {
++  --surface: related;
++}
++
++/* 2. Default Component Styles (Work everywhere) */
++.article-teaser {
++  display: flex;
++  flex-direction: column;
++  height: 100%;
++  background: var(--surface-bg);
++}
++
++.article-teaser__layout {
++  display: flex;
++  flex-direction: column;
++  height: 100%;
++  gap: 0.75rem;
++}
++
++.article-teaser__media {
++  display: block;
++  overflow: clip;
++  border-radius: 0.375rem;
++  flex-shrink: 0;
++}
++
++.article-teaser__image {
++  width: 100%;
++  height: auto;
++  object-fit: cover;
++  aspect-ratio: 16 / 9;
++}
++
++.article-teaser__body {
++  display: flex;
++  flex-direction: column;
++  flex-grow: 1;
++}
++
++.article-teaser__badge {
++  display: none;
++  align-self: flex-start;
++  font-size: 0.75rem;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  padding: 0.125rem 0.5rem;
++  border-radius: 9999px;
++  background: var(--brand-accent);
++  color: #111827;
++  margin-block-end: 0.5rem;
++}
++
++.article-teaser__category {
++  color: var(--brand-accent-dark);
++  font-size: 0.875rem;
++  letter-spacing: 0.1em;
++}
++
++.article-teaser__title {
++  font-size: 1.25rem;
++  line-height: 1.35;
++  color: #1f2937;
++  margin-block-start: 0.25rem;
++}
++
++.article-teaser__summary {
++  color: #4b5563;
++  margin-block-start: 0.25rem;
++  flex-grow: 1;
++}
++
++.article-teaser__footer {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  color: #6b7280;
++  margin-block-start: 0.75rem;
++  padding-block-start: 0.5rem;
++  border-block-start: 1px solid var(--border-subtle);
++}
++
++.article-teaser__cta {
++  /* Default: Outlined informational style */
++  display: inline-flex;
++  align-items: center;
++  gap: 0.25rem;
++  padding: 0.25rem 0.625rem;
++  font-size: 0.75rem;
++  font-weight: 600;
++  border-radius: 0.25rem;
++  background: transparent;
++  color: #374151;
++  border: 1px solid currentColor;
++  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
++}
++
++.article-teaser__cta:hover {
++  color: #111827;
++}
++
++.bookmark-button {
++  display: inline-flex;
++  align-items: center;
++  gap: 0.25rem;
++  padding: 0.25rem;
++  border-radius: 0.25rem;
++  background: transparent;
++  border: 1px solid transparent;
++  color: #9ca3af;
++  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
++}
++
++.bookmark-button__label {
++  display: none;
++  font-size: 0.75rem;
++  font-weight: 600;
++}
++
++/* 3. Selector-based Contextual Fallbacks (:where() keeps specificity matching style queries) */
++
++/* Lead surface fallback */
++:where(.surface-lead, [data-surface="lead"]) .article-teaser {
++  padding: 1.5rem;
++  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++}
++
++@media (min-width: 1024px) {
++  :where(.surface-lead, [data-surface="lead"]) .article-teaser__layout {
++    display: grid;
++    grid-template-columns: repeat(3, minmax(0, 1fr));
++    gap: 2rem;
++    align-items: stretch;
++  }
++
++  :where(.surface-lead, [data-surface="lead"]) .article-teaser__body {
++    grid-column: span 1 / span 1;
++    order: -1;
++  }
++
++  :where(.surface-lead, [data-surface="lead"]) .article-teaser__media {
++    grid-column: span 2 / span 2;
++    border-radius: 0;
++  }
++}
++
++:where(.surface-lead, [data-surface="lead"]) .article-teaser__badge {
++  display: inline-block;
++}
++
++:where(.surface-lead, [data-surface="lead"]) .article-teaser__title {
++  font-size: 2.25rem;
++  line-height: 1.15;
++  color: #111827;
++  margin-block-start: 0.5rem;
++}
++
++:where(.surface-lead, [data-surface="lead"]) .article-teaser__summary {
++  font-size: 1.125rem;
++  color: #374151;
++  margin-block-start: 1rem;
++}
++
++:where(.surface-lead, [data-surface="lead"]) .article-teaser__cta {
++  background: var(--brand-accent);
++  color: #111827;
++  border-color: transparent;
++}
++
++:where(.surface-lead, [data-surface="lead"]) .bookmark-button {
++  padding: 0.25rem 0.5rem;
++  border-color: #e5e7eb;
++  color: #4b5563;
++}
++
++:where(.surface-lead, [data-surface="lead"]) .bookmark-button__label {
++  display: inline;
++}
++
++/* Featured surface fallback */
++:where(.surface-featured, [data-surface="featured"]) .article-teaser {
++  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
++  overflow: clip;
++}
++
++@media (min-width: 1024px) {
++  :where(.surface-featured, [data-surface="featured"]) .article-teaser__layout {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 0;
++  }
++
++  :where(.surface-featured, [data-surface="featured"]) .article-teaser__body {
++    order: -1;
++    justify-content: center;
++    padding: 2rem;
++  }
++
++  :where(.surface-featured, [data-surface="featured"]) .article-teaser__media {
++    border-radius: 0;
++    height: 100%;
++  }
++
++  :where(.surface-featured, [data-surface="featured"]) .article-teaser__image {
++    height: 100%;
++    aspect-ratio: auto;
++  }
++}
++
++:where(.surface-featured, [data-surface="featured"]) .article-teaser__badge {
++  display: inline-block;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .article-teaser__category {
++  color: var(--brand-accent);
++  font-weight: 600;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .article-teaser__title {
++  font-size: 2rem;
++  line-height: 1.2;
++  margin-block-end: 0.75rem;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .article-teaser__summary {
++  font-size: 1.0625rem;
++  margin-block-end: 1rem;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .article-teaser__cta {
++  background: var(--brand-accent);
++  color: #111827;
++  border-color: transparent;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .bookmark-button {
++  padding: 0.25rem 0.5rem;
++  border-color: #e5e7eb;
++  color: #4b5563;
++}
++
++:where(.surface-featured, [data-surface="featured"]) .bookmark-button__label {
++  display: inline;
++}
++
++/* Spotlight surface fallback (media-forward card, hides summary, shows badge) */
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser {
++  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++  overflow: clip;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__media {
++  border-radius: 0;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__body {
++  padding: 1.25rem;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__badge {
++  display: inline-block;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__category {
++  color: var(--brand-accent);
++  font-weight: 600;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__title {
++  font-size: 1.5rem;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__summary {
++  display: none;
++}
++
++:where(.surface-spotlight, [data-surface="spotlight"]) .article-teaser__cta {
++  background: var(--brand-accent);
++  color: #111827;
++  border-color: transparent;
++}
++
++/* Compact surface fallback (text-forward card, hides media) */
++:where(.surface-compact, [data-surface="compact"]) .article-teaser {
++  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++  overflow: clip;
++}
++
++:where(.surface-compact, [data-surface="compact"]) .article-teaser__media {
++  display: none;
++}
++
++:where(.surface-compact, [data-surface="compact"]) .article-teaser__body {
++  padding: 1.25rem;
++}
++
++:where(.surface-compact, [data-surface="compact"]) .article-teaser__category {
++  color: var(--brand-accent);
++  font-weight: 600;
++}
++
++:where(.surface-compact, [data-surface="compact"]) .article-teaser__title {
++  font-size: 1.5rem;
++}
++
++/* Related surface fallback (streamlined recommendation context) */
++:where(.surface-related, [data-surface="related"]) .article-teaser__summary {
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  line-clamp: 2;
++  overflow: clip;
++  font-size: 0.875rem;
++}
++
++:where(.surface-related, [data-surface="related"]) .article-teaser__cta {
++  display: none;
++}
++
++/* 4. Progressive Enhancement: CSS Container Style Queries */
++
++@container style(--surface: lead) {
++  .article-teaser {
++    padding: 1.5rem;
++    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++  }
++
++  @media (min-width: 1024px) {
++    .article-teaser__layout {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 2rem;
++      align-items: stretch;
++    }
++
++    .article-teaser__body {
++      grid-column: span 1 / span 1;
++      order: -1;
++    }
++
++    .article-teaser__media {
++      grid-column: span 2 / span 2;
++      border-radius: 0;
++    }
++  }
++
++  .article-teaser__badge {
++    display: inline-block;
++  }
++
++  .article-teaser__title {
++    font-size: 2.25rem;
++    line-height: 1.15;
++    color: #111827;
++    margin-block-start: 0.5rem;
++  }
++
++  .article-teaser__summary {
++    font-size: 1.125rem;
++    color: #374151;
++    margin-block-start: 1rem;
++  }
++
++  .article-teaser__cta {
++    background: var(--brand-accent);
++    color: #111827;
++    border-color: transparent;
++  }
++
++  .bookmark-button {
++    padding: 0.25rem 0.5rem;
++    border-color: #e5e7eb;
++    color: #4b5563;
++  }
++
++  .bookmark-button__label {
++    display: inline;
++  }
++}
++
++@container style(--surface: featured) {
++  .article-teaser {
++    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
++    overflow: clip;
++  }
++
++  @media (min-width: 1024px) {
++    .article-teaser__layout {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 0;
++    }
++
++    .article-teaser__body {
++      order: -1;
++      justify-content: center;
++      padding: 2rem;
++    }
++
++    .article-teaser__media {
++      border-radius: 0;
++      height: 100%;
++    }
++
++    .article-teaser__image {
++      height: 100%;
++      aspect-ratio: auto;
++    }
++  }
++
++  .article-teaser__badge {
++    display: inline-block;
++  }
++
++  .article-teaser__category {
++    color: var(--brand-accent);
++    font-weight: 600;
++  }
++
++  .article-teaser__title {
++    font-size: 2rem;
++    line-height: 1.2;
++    margin-block-end: 0.75rem;
++  }
++
++  .article-teaser__summary {
++    font-size: 1.0625rem;
++    margin-block-end: 1rem;
++  }
++
++  .article-teaser__cta {
++    background: var(--brand-accent);
++    color: #111827;
++    border-color: transparent;
++  }
++
++  .bookmark-button {
++    padding: 0.25rem 0.5rem;
++    border-color: #e5e7eb;
++    color: #4b5563;
++  }
++
++  .bookmark-button__label {
++    display: inline;
++  }
++}
++
++@container style(--surface: spotlight) {
++  .article-teaser {
++    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++    overflow: clip;
++  }
++
++  .article-teaser__media {
++    border-radius: 0;
++  }
++
++  .article-teaser__body {
++    padding: 1.25rem;
++  }
++
++  .article-teaser__badge {
++    display: inline-block;
++  }
++
++  .article-teaser__category {
++    color: var(--brand-accent);
++    font-weight: 600;
++  }
++
++  .article-teaser__title {
++    font-size: 1.5rem;
++  }
++
++  .article-teaser__summary {
++    display: none;
++  }
++
++  .article-teaser__cta {
++    background: var(--brand-accent);
++    color: #111827;
++    border-color: transparent;
++  }
++}
++
++@container style(--surface: compact) {
++  .article-teaser {
++    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
++    overflow: clip;
++  }
++
++  .article-teaser__media {
++    display: none;
++  }
++
++  .article-teaser__body {
++    padding: 1.25rem;
++  }
++
++  .article-teaser__category {
++    color: var(--brand-accent);
++    font-weight: 600;
++  }
++
++  .article-teaser__title {
++    font-size: 1.5rem;
++  }
++}
++
++@container style(--surface: related) {
++  .article-teaser__summary {
++    display: -webkit-box;
++    -webkit-line-clamp: 2;
++    -webkit-box-orient: vertical;
++    line-clamp: 2;
++    overflow: clip;
++    font-size: 0.875rem;
++  }
++
++  .article-teaser__cta {
++    display: none;
++  }
++}

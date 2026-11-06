@@ -1,0 +1,7481 @@
+diff --git a/about.html b/about.html
+new file mode 100644
+index 0000000..f6c496b
+--- /dev/null
++++ b/about.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Our Story | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Crafted With Purpose</h1>
++    <p>Direct-trade beans, small-batch roasting, and neighborhood roots since 2016.</p>
++    <a href="/locations" class="btn">Find Us</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Values</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethical Sourcing</h3>
++          <p>Partnering directly with sustainable family farms.</p>
++          <a href="/menu" class="btn">Taste the Difference</a>
++        </div>
++        <div class="card">
++          <h3>Local Roasting</h3>
++          <p>Roasted fresh every week in our Downtown Roastery.</p>
++          <a href="/locations" class="btn">Visit Roastery</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/about/index.html b/about/index.html
+new file mode 100644
+index 0000000..f6c496b
+--- /dev/null
++++ b/about/index.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Our Story | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Crafted With Purpose</h1>
++    <p>Direct-trade beans, small-batch roasting, and neighborhood roots since 2016.</p>
++    <a href="/locations" class="btn">Find Us</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Values</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Ethical Sourcing</h3>
++          <p>Partnering directly with sustainable family farms.</p>
++          <a href="/menu" class="btn">Taste the Difference</a>
++        </div>
++        <div class="card">
++          <h3>Local Roasting</h3>
++          <p>Roasted fresh every week in our Downtown Roastery.</p>
++          <a href="/locations" class="btn">Visit Roastery</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/account.html b/account.html
+new file mode 100644
+index 0000000..5352b84
+--- /dev/null
++++ b/account.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Welcome Back</h1>
++    <p>Manage your favorite orders, rewards balance, and subscriptions.</p>
++    <a href="/order-online" class="btn">Start an Order</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Account Overview</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Rewards Balance</h3>
++          <p>You have 240 Beans ready to redeem toward your next coffee.</p>
++          <a href="/rewards" class="btn">Redeem Rewards</a>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p>Re-order your go-to Maple Oat Latte or Cold Brew in one click.</p>
++          <a href="/menu" class="btn">Browse Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..5352b84
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>My Account | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Welcome Back</h1>
++    <p>Manage your favorite orders, rewards balance, and subscriptions.</p>
++    <a href="/order-online" class="btn">Start an Order</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Account Overview</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Rewards Balance</h3>
++          <p>You have 240 Beans ready to redeem toward your next coffee.</p>
++          <a href="/rewards" class="btn">Redeem Rewards</a>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p>Re-order your go-to Maple Oat Latte or Cold Brew in one click.</p>
++          <a href="/menu" class="btn">Browse Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/careers.html b/careers.html
+new file mode 100644
+index 0000000..1a2eafd
+--- /dev/null
++++ b/careers.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Careers | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Join the Team</h1>
++    <p>Build your craft with passionate baristas and roasters.</p>
++    <a href="/contact" class="btn">Apply Today</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Open Roles</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Lead Barista</h3>
++          <p>Full-time at our Downtown and Market Square locations.</p>
++          <a href="/contact" class="btn">Inquire</a>
++        </div>
++        <div class="card">
++          <h3>Assistant Roaster</h3>
++          <p>Learn the art of small-batch profiling and quality control.</p>
++          <a href="/contact" class="btn">Inquire</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/careers/index.html b/careers/index.html
+new file mode 100644
+index 0000000..1a2eafd
+--- /dev/null
++++ b/careers/index.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Careers | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Join the Team</h1>
++    <p>Build your craft with passionate baristas and roasters.</p>
++    <a href="/contact" class="btn">Apply Today</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Open Roles</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Lead Barista</h3>
++          <p>Full-time at our Downtown and Market Square locations.</p>
++          <a href="/contact" class="btn">Inquire</a>
++        </div>
++        <div class="card">
++          <h3>Assistant Roaster</h3>
++          <p>Learn the art of small-batch profiling and quality control.</p>
++          <a href="/contact" class="btn">Inquire</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/contact.html b/contact.html
+new file mode 100644
+index 0000000..576bd5a
+--- /dev/null
++++ b/contact.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Contact Us | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Get in Touch</h1>
++    <p>Questions about catering, wholesale beans, or your visit? We are here to help.</p>
++    <a href="/locations" class="btn">Our Locations</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Reach Out</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Customer Care</h3>
++          <p>hello@thedailygrind.example — Response within 24 hours.</p>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++        <div class="card">
++          <h3>Wholesale Inquiries</h3>
++          <p>Partner with us to serve Daily Grind coffee at your venue.</p>
++          <a href="/about" class="btn">Our Story</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/contact/index.html b/contact/index.html
+new file mode 100644
+index 0000000..576bd5a
+--- /dev/null
++++ b/contact/index.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Contact Us | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Get in Touch</h1>
++    <p>Questions about catering, wholesale beans, or your visit? We are here to help.</p>
++    <a href="/locations" class="btn">Our Locations</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Reach Out</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Customer Care</h3>
++          <p>hello@thedailygrind.example — Response within 24 hours.</p>
++          <a href="/" class="btn">Back Home</a>
++        </div>
++        <div class="card">
++          <h3>Wholesale Inquiries</h3>
++          <p>Partner with us to serve Daily Grind coffee at your venue.</p>
++          <a href="/about" class="btn">Our Story</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..3d05731 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,14 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -38,12 +45,19 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      view-transition-name: site-nav;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+@@ -62,7 +76,8 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="page"] {
+       color: var(--accent);
+     }
+ 
+@@ -86,11 +101,13 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      view-transition-name: page-hero;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      view-transition-name: hero-title;
+     }
+ 
+     /* Content Sections */
+@@ -98,6 +115,7 @@
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
++      view-transition-name: main-content;
+     }
+ 
+     .grid {
+@@ -140,6 +158,7 @@
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      view-transition-name: site-footer;
+     }
+ 
+     .footer-links {
+@@ -152,13 +171,51 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,14 +225,14 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header id="hero" class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main id="main-content" class="container">
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+diff --git a/locations.html b/locations.html
+new file mode 100644
+index 0000000..93527bf
+--- /dev/null
++++ b/locations.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Locations | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Visit a Cafe Near You</h1>
++    <p>Warm spaces built for community, conversation, and great coffee.</p>
++    <a href="/order-online" class="btn">Order Pickup</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Cafes</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>124 Main Street — Open daily 6:30am to 7:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>450 River Road — Open daily 7:00am to 6:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++        <div class="card">
++          <h3>Market Square</h3>
++          <p>88 Market Plaza — Open daily 6:00am to 8:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/locations/index.html b/locations/index.html
+new file mode 100644
+index 0000000..93527bf
+--- /dev/null
++++ b/locations/index.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Locations | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Visit a Cafe Near You</h1>
++    <p>Warm spaces built for community, conversation, and great coffee.</p>
++    <a href="/order-online" class="btn">Order Pickup</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Cafes</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>124 Main Street — Open daily 6:30am to 7:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++        <div class="card">
++          <h3>Riverside Cafe</h3>
++          <p>450 River Road — Open daily 7:00am to 6:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++        <div class="card">
++          <h3>Market Square</h3>
++          <p>88 Market Plaza — Open daily 6:00am to 8:00pm.</p>
++          <a href="/order-online" class="btn">Order Here</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/logout.html b/logout.html
+new file mode 100644
+index 0000000..1635fa4
+--- /dev/null
++++ b/logout.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Signed Out | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>See You Soon</h1>
++    <p>You have been safely signed out of your Daily Grind account.</p>
++    <a href="/" class="btn">Return Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Continue Exploring</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Sign Back In</h3>
++          <p>Access your saved favorites and rewards anytime.</p>
++          <a href="/account" class="btn">My Account</a>
++        </div>
++        <div class="card">
++          <h3>Browse Our Menu</h3>
++          <p>Check out our latest seasonal drinks and roasts.</p>
++          <a href="/menu" class="btn">View Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/logout/index.html b/logout/index.html
+new file mode 100644
+index 0000000..1635fa4
+--- /dev/null
++++ b/logout/index.html
+@@ -0,0 +1,264 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Signed Out | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>See You Soon</h1>
++    <p>You have been safely signed out of your Daily Grind account.</p>
++    <a href="/" class="btn">Return Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Continue Exploring</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Sign Back In</h3>
++          <p>Access your saved favorites and rewards anytime.</p>
++          <a href="/account" class="btn">My Account</a>
++        </div>
++        <div class="card">
++          <h3>Browse Our Menu</h3>
++          <p>Check out our latest seasonal drinks and roasts.</p>
++          <a href="/menu" class="btn">View Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu.html b/menu.html
+new file mode 100644
+index 0000000..cf31f65
+--- /dev/null
++++ b/menu.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Menu | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Our Artisanal Menu</h1>
++    <p>Handcrafted beverages and freshly baked pastries.</p>
++    <a href="/order-online" class="btn">Order Now</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Featured Selections</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/cold-brew.html b/menu/cold-brew.html
+new file mode 100644
+index 0000000..a061900
+--- /dev/null
++++ b/menu/cold-brew.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Cold Brew | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>18-Hour Cold Brew</h1>
++    <p>Slow-steeped in cool filtered water for a naturally sweet, smooth finish.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness with zero bitterness.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/cold-brew/index.html b/menu/cold-brew/index.html
+new file mode 100644
+index 0000000..a061900
+--- /dev/null
++++ b/menu/cold-brew/index.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Cold Brew | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>18-Hour Cold Brew</h1>
++    <p>Slow-steeped in cool filtered water for a naturally sweet, smooth finish.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness with zero bitterness.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/espresso.html b/menu/espresso.html
+new file mode 100644
+index 0000000..363f240
+--- /dev/null
++++ b/menu/espresso.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dark Roast Espresso | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Dark Roast Espresso</h1>
++    <p>Bold, smokey, and full-bodied single-origin roast.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Roasted in small batches with notes of dark chocolate, toasted walnut, and caramelized sugar.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/espresso/index.html b/menu/espresso/index.html
+new file mode 100644
+index 0000000..363f240
+--- /dev/null
++++ b/menu/espresso/index.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dark Roast Espresso | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Dark Roast Espresso</h1>
++    <p>Bold, smokey, and full-bodied single-origin roast.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Roasted in small batches with notes of dark chocolate, toasted walnut, and caramelized sugar.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/index.html b/menu/index.html
+new file mode 100644
+index 0000000..cf31f65
+--- /dev/null
++++ b/menu/index.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Menu | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Our Artisanal Menu</h1>
++    <p>Handcrafted beverages and freshly baked pastries.</p>
++    <a href="/order-online" class="btn">Order Now</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Featured Selections</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/seasonal.html b/menu/seasonal.html
+new file mode 100644
+index 0000000..8fbc375
+--- /dev/null
++++ b/menu/seasonal.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Maple Oat Latte | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Maple Oat Latte</h1>
++    <p>Seasonal Favorite — Rich espresso, velvety oat milk, and pure Vermont maple.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Double shot of signature espresso paired with steamed barista oat milk and organic Grade A Vermont maple syrup.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/menu/seasonal/index.html b/menu/seasonal/index.html
+new file mode 100644
+index 0000000..8fbc375
+--- /dev/null
++++ b/menu/seasonal/index.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Maple Oat Latte | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Maple Oat Latte</h1>
++    <p>Seasonal Favorite — Rich espresso, velvety oat milk, and pure Vermont maple.</p>
++    <a href="/order-online" class="btn">Order This Drink</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Tasting Notes & Details</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>Double shot of signature espresso paired with steamed barista oat milk and organic Grade A Vermont maple syrup.</p>
++          <a href="/menu" class="btn">Back to Menu</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/order-online.html b/order-online.html
+new file mode 100644
+index 0000000..9a71d7e
+--- /dev/null
++++ b/order-online.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Order Online | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Order Ahead & Skip the Line</h1>
++    <p>Freshly brewed and ready the moment you walk in.</p>
++    <a href="/menu" class="btn">Full Menu</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Quick Order Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>$5.50 — Ready in 5 mins.</p>
++          <a href="/menu/seasonal" class="btn">Customize</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>$3.75 — Ready in 3 mins.</p>
++          <a href="/menu/espresso" class="btn">Customize</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>$4.75 — Ready in 3 mins.</p>
++          <a href="/menu/cold-brew" class="btn">Customize</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/order-online/index.html b/order-online/index.html
+new file mode 100644
+index 0000000..9a71d7e
+--- /dev/null
++++ b/order-online/index.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Order Online | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Order Ahead & Skip the Line</h1>
++    <p>Freshly brewed and ready the moment you walk in.</p>
++    <a href="/menu" class="btn">Full Menu</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Quick Order Favorites</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Maple Oat Latte</h3>
++          <p>$5.50 — Ready in 5 mins.</p>
++          <a href="/menu/seasonal" class="btn">Customize</a>
++        </div>
++        <div class="card">
++          <h3>Dark Roast Espresso</h3>
++          <p>$3.75 — Ready in 3 mins.</p>
++          <a href="/menu/espresso" class="btn">Customize</a>
++        </div>
++        <div class="card">
++          <h3>Cold Brew</h3>
++          <p>$4.75 — Ready in 3 mins.</p>
++          <a href="/menu/cold-brew" class="btn">Customize</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..edd7a5f
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Privacy Policy | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Privacy & Transparency</h1>
++    <p>How we protect and respect your personal information.</p>
++    <a href="/" class="btn">Back to Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Commitment</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Data Protection</h3>
++          <p>We only collect information needed to fulfill your orders and rewards.</p>
++          <a href="/account" class="btn">Account Settings</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/privacy-policy/index.html b/privacy-policy/index.html
+new file mode 100644
+index 0000000..edd7a5f
+--- /dev/null
++++ b/privacy-policy/index.html
+@@ -0,0 +1,259 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Privacy Policy | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Privacy & Transparency</h1>
++    <p>How we protect and respect your personal information.</p>
++    <a href="/" class="btn">Back to Home</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Our Commitment</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Data Protection</h3>
++          <p>We only collect information needed to fulfill your orders and rewards.</p>
++          <a href="/account" class="btn">Account Settings</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/rewards.html b/rewards.html
+new file mode 100644
+index 0000000..142e061
+--- /dev/null
++++ b/rewards.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Rewards | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Daily Grind Rewards</h1>
++    <p>Earn beans on every cup and redeem for free handcrafted drinks.</p>
++    <a href="/account" class="btn">View My Points</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Member Perks</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn 2 Beans per $1</h3>
++          <p>Collect beans with every purchase online or in-store.</p>
++          <a href="/account" class="btn">Join Now</a>
++        </div>
++        <div class="card">
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your day with any handcrafted beverage on us.</p>
++          <a href="/menu" class="btn">Explore Menu</a>
++        </div>
++        <div class="card">
++          <h3>Early Seasonal Access</h3>
++          <p>Taste new seasonal roasts before anyone else.</p>
++          <a href="/menu/seasonal" class="btn">See Seasonal</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/rewards/index.html b/rewards/index.html
+new file mode 100644
+index 0000000..142e061
+--- /dev/null
++++ b/rewards/index.html
+@@ -0,0 +1,269 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Rewards | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css" blocking="render">
++  <script src="/transitions.js" blocking="render"></script>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style blocking="render">
++    @view-transition {
++      navigation: auto;
++    }
++
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      view-transition-name: site-nav;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      view-transition-name: site-logo;
++    }
++
++    .logo a {
++      color: white;
++      text-decoration: none;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover,
++    nav a[aria-current="page"] {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++      view-transition-name: page-hero;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++      view-transition-name: hero-title;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++      view-transition-name: main-content;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      view-transition-name: site-footer;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++    @keyframes vt-fade-in {
++      from {
++        opacity: 0;
++        transform: translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @keyframes vt-fade-out {
++      from {
++        opacity: 1;
++        transform: translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: translateY(-12px);
++      }
++    }
++
++    ::view-transition-old(root) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(root) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++
++    ::view-transition-old(main-content) {
++      animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++    }
++
++    ::view-transition-new(main-content) {
++      animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++    }
++  </style>
++</head>
++
++<body>
++
++  <nav id="site-nav">
++    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <header id="hero" class="hero">
++    <h1>Daily Grind Rewards</h1>
++    <p>Earn beans on every cup and redeem for free handcrafted drinks.</p>
++    <a href="/account" class="btn">View My Points</a>
++  </header>
++
++  <main id="main-content" class="container">
++    <section>
++      <h2 style="text-align: center;">Member Perks</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn 2 Beans per $1</h3>
++          <p>Collect beans with every purchase online or in-store.</p>
++          <a href="/account" class="btn">Join Now</a>
++        </div>
++        <div class="card">
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your day with any handcrafted beverage on us.</p>
++          <a href="/menu" class="btn">Explore Menu</a>
++        </div>
++        <div class="card">
++          <h3>Early Seasonal Access</h3>
++          <p>Taste new seasonal roasts before anyone else.</p>
++          <a href="/menu/seasonal" class="btn">See Seasonal</a>
++        </div>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++</body>
++
++</html>
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..3a905cc
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,209 @@
++@view-transition {
++  navigation: auto;
++}
++
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  view-transition-name: site-nav;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  view-transition-name: site-logo;
++}
++
++.logo a {
++  color: white;
++  text-decoration: none;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover,
++nav a[aria-current="page"] {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++  view-transition-name: page-hero;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++  view-transition-name: hero-title;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++  view-transition-name: main-content;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++  view-transition-name: site-footer;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++/* View Transition Animations */
++@keyframes vt-fade-in {
++  from {
++    opacity: 0;
++    transform: translateY(12px);
++  }
++  to {
++    opacity: 1;
++    transform: translateY(0);
++  }
++}
++
++@keyframes vt-fade-out {
++  from {
++    opacity: 1;
++    transform: translateY(0);
++  }
++  to {
++    opacity: 0;
++    transform: translateY(-12px);
++  }
++}
++
++::view-transition-old(root) {
++  animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++}
++
++::view-transition-new(root) {
++  animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++}
++
++::view-transition-old(main-content) {
++  animation: 250ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
++}
++
++::view-transition-new(main-content) {
++  animation: 300ms cubic-bezier(0, 0, 0.2, 1) both vt-fade-in;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation-duration: 0.01ms !important;
++  }
++}
+diff --git a/transitions.js b/transitions.js
+new file mode 100644
+index 0000000..9c4f5f4
+--- /dev/null
++++ b/transitions.js
+@@ -0,0 +1,88 @@
++(function () {
++  const root = document.documentElement;
++  root.setAttribute('data-page-ready', 'true');
++  root.classList.add('vt-ready');
++
++  function normalizePath(pathname) {
++    if (!pathname) return '/';
++    const cleaned = pathname.replace(/\/index\.html$/, '').replace(/\.html$/, '').replace(/\/+$/, '');
++    return cleaned || '/';
++  }
++
++  function applyCriticalNavState() {
++    const currentPath = normalizePath(window.location.pathname);
++    const navLinks = document.querySelectorAll('nav a[href]');
++    navLinks.forEach((link) => {
++      const linkPath = normalizePath(link.getAttribute('href'));
++      if (linkPath === currentPath || (linkPath !== '/' && currentPath.startsWith(linkPath + '/'))) {
++        link.setAttribute('aria-current', 'page');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    });
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', applyCriticalNavState, { once: true });
++  } else {
++    applyCriticalNavState();
++  }
++
++  window.addEventListener('pageswap', (event) => {
++    if (!event.viewTransition) return;
++
++    const targetUrl = event.activation && event.activation.entry && event.activation.entry.url
++      ? new URL(event.activation.entry.url)
++      : null;
++
++    if (targetUrl) {
++      const targetPath = normalizePath(targetUrl.pathname);
++      try {
++        sessionStorage.setItem('vt-last-from', normalizePath(window.location.pathname));
++        sessionStorage.setItem('vt-last-to', targetPath);
++      } catch (_) {}
++
++      const matchingLink = document.querySelector(`.card a[href="${targetPath}"]`);
++      if (matchingLink) {
++        const card = matchingLink.closest('.card');
++        if (card) {
++          card.style.viewTransitionName = 'featured-item';
++        }
++      }
++    }
++  });
++
++  window.addEventListener('pagereveal', (event) => {
++    applyCriticalNavState();
++    if (!event.viewTransition) return;
++
++    root.setAttribute('data-transitioning', 'true');
++    const currentPath = normalizePath(window.location.pathname);
++    let fromPath = null;
++    try {
++      fromPath = sessionStorage.getItem('vt-last-from');
++    } catch (_) {}
++
++    if (fromPath && fromPath.startsWith('/menu/')) {
++      const matchingLink = document.querySelector(`.card a[href="${fromPath}"]`);
++      if (matchingLink) {
++        const card = matchingLink.closest('.card');
++        if (card) {
++          card.style.viewTransitionName = 'featured-item';
++        }
++      }
++    } else if (currentPath.startsWith('/menu/')) {
++      const detailCard = document.querySelector('.card');
++      if (detailCard) {
++        detailCard.style.viewTransitionName = 'featured-item';
++      }
++    }
++
++    event.viewTransition.finished.finally(() => {
++      root.removeAttribute('data-transitioning');
++      document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
++        el.style.viewTransitionName = '';
++      });
++    });
++  });
++})();

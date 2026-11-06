@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .contact h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .field {
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++      padding: 10px 12px;
++      margin-bottom: 15px;
++    }
++
++    .field label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field textarea {
++      width: 100%;
++      border: none;
++      outline: none;
++      font: inherit;
++      color: var(--text);
++      background: transparent;
++      resize: vertical;
++    }
++
++    .field:focus-within {
++      border-color: var(--accent);
++    }
++
++    /* :user-invalid only matches after the user has interacted with or tried to submit the field */
++    .field:has(:user-invalid) {
++      border-color: #d32f2f;
++    }
++
++    .contact button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +250,27 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact">
++    <h2>Get in Touch</h2>
++    <form action="/contact" method="post">
++      <div class="field">
++        <label for="name">Name</label>
++        <input type="text" id="name" name="name" required>
++      </div>
++      <div class="field">
++        <label for="email">Email</label>
++        <input type="email" id="email" name="email" required pattern="[^@\s]+@[^@\s]+\.[^@\s]+">
++      </div>
++      <div class="field">
++        <label for="message">Message</label>
++        <textarea id="message" name="message" rows="5" required></textarea>
++      </div>
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

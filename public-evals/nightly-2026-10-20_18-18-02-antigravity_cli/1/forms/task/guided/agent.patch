@@ -1,0 +1,1759 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,52 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://images.unsplash.com data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self';">
++  <title>Rewards Program &amp; Seasonal Coffee | The Daily Grind</title>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
++      --primary-hover: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #c67100;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #795548;
++      --error: #d93025;
++      --error-bg: #fce8e6;
++      --success: #188038;
++      --success-bg: #e6f4ea;
++      --focus-ring: #0b57d0;
+     }
+ 
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --primary: #3e2723;
++        --primary-hover: #5d4037;
++        --secondary: #2c1b18;
++        --accent: #ffd180;
++        --accent-dark: #ffab40;
++        --text: #f5f5f5;
++        --text-muted: #d7ccc8;
++        --light: #18100e;
++        --surface: #241715;
++        --border: #a1887f;
++        --error: #f28b82;
++        --error-bg: #3c1917;
++        --success: #81c995;
++        --success-bg: #132a1a;
++        --focus-ring: #8ab4f8;
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,189 +58,1621 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      accent-color: var(--primary);
+     }
+ 
++    /* Visually Hidden Utility (keeps content in accessibility tree; reveals on focus for skip links) */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link {
++      position: fixed;
++      top: 1rem;
++      inset-inline-start: 1rem;
++      z-index: 2000;
++      background: var(--surface);
++      color: var(--text);
++      padding: 0.75rem 1.25rem;
++      border: 3px solid var(--focus-ring);
++      border-radius: 6px;
++      font-weight: 700;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    /* Global Focus Indicators */
++    :where(a:any-link, button, input, select, textarea):focus-visible {
++      outline: 3px solid var(--focus-ring);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+-    nav {
++    nav.primary-nav {
+       background: var(--primary);
+-      color: white;
++      color: #ffffff;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      gap: 1rem;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: #ffffff;
++      text-decoration: none;
+     }
+ 
+-    nav ul {
++    nav.primary-nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
+       list-style: none;
++      gap: 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
++    nav.primary-nav a {
++      color: #ffffff;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.95rem;
++      padding: 0.5rem 0.25rem;
++      min-block-size: 24px;
++      display: inline-flex;
++      align-items: center;
++      transition: color 0.2s;
+     }
+ 
+-    nav a:hover {
++    nav.primary-nav a:hover {
+       color: var(--accent);
++      text-decoration: underline;
+     }
+ 
+-    .logout-link {
++    nav.primary-nav a:focus-visible,
++    .logout-btn:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    .logout-form {
++      display: inline;
++    }
++
++    .logout-btn {
++      background: transparent;
++      color: #ffffff;
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 0.45rem 0.85rem;
++      min-block-size: 36px;
+       border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
+     }
+ 
++    .logout-btn:hover {
++      background: var(--accent);
++      color: #241715;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-block-size: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #ffffff;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 2rem 1.25rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vw, 3rem);
++      margin-block-end: 1rem;
+     }
+ 
++    .hero p {
++      font-size: 1.15rem;
++      max-inline-size: 60ch;
++    }
++
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: 1100px;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
+     }
+ 
++    .section-title {
++      text-align: center;
++      font-size: 2rem;
++      margin-block-end: 0.5rem;
++      color: var(--text);
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: var(--text-muted);
++      max-inline-size: 65ch;
++      margin: 0 auto 2rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 1.5rem;
++      margin-block-start: 1.25rem;
++      list-style: none;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      background: var(--surface);
++      padding: 1.5rem;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--border);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
++    .card img {
++      inline-size: 100%;
++      block-size: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-block-end: 1rem;
++    }
++
+     .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      margin-block-end: 0.5rem;
++      color: var(--text);
++      font-size: 1.25rem;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
+       background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      color: #ffffff;
++      padding: 0.75rem 1.5rem;
++      min-block-size: 48px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-block-start: 1rem;
++      font-weight: 600;
++      font-size: 1rem;
++      border: 2px solid transparent;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--text);
++      border: 2px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    /* Multi-Step Rewards Registration Section */
++    .rewards-section {
++      margin-block-start: 4rem;
++      background: var(--surface);
++      border: 2px solid var(--border);
++      border-radius: 12px;
++      padding: clamp(1.5rem, 4vw, 3rem);
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
++    }
++
++    .rewards-banner {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 2rem;
++      align-items: center;
++      margin-block-end: 2.5rem;
++      padding-block-end: 2rem;
++      border-block-end: 1px solid var(--border);
++    }
++
++    .rewards-banner-img {
++      inline-size: 100%;
++      block-size: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++    }
++
++    .rewards-perks {
++      list-style: none;
++      margin-block-start: 1rem;
++      display: grid;
++      gap: 0.5rem;
++    }
++
++    .rewards-perks li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      font-weight: 500;
++    }
++
++    /* Progress Tracker & Styled <progress> */
++    .progress-wrapper {
++      max-inline-size: 680px;
++      margin: 0 auto 2rem;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-block-end: 0.5rem;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    progress.rewards-progress {
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      inline-size: 100%;
++      block-size: 12px;
++      --progress-bar-radius: 1e5px;
++      --progress-bar-track: var(--secondary);
++      --progress-bar-fill: var(--primary);
++      border-radius: var(--progress-bar-radius);
++      background: var(--progress-bar-track);
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.15);
++      display: block;
++      margin-block-end: 1.25rem;
++    }
++
++    progress.rewards-progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    progress.rewards-progress::-webkit-progress-value {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s ease;
++    }
++
++    progress.rewards-progress::-moz-progress-bar {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s ease;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      progress.rewards-progress::-webkit-progress-value {
++        transition: none;
++      }
++      progress.rewards-progress::-moz-progress-bar {
++        transition: none;
++      }
++    }
++
++    .progress-tracker {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 0.75rem;
++      list-style: none;
++    }
++
++    .step-indicator {
++      padding: 0.65rem 0.75rem;
++      border-radius: 6px;
++      border: 2px solid var(--border);
++      font-size: 0.9rem;
++      font-weight: 600;
++      text-align: center;
++      background: var(--light);
++      color: var(--text-muted);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.4rem;
++    }
++
++    .step-indicator[aria-current="step"] {
++      background: var(--primary);
++      color: #ffffff;
++      border-color: var(--primary);
++    }
++
++    .step-indicator.step-done {
++      border-color: var(--success);
++      color: var(--text);
++      background: var(--success-bg);
++    }
++
++    /* Form Layout & Fieldsets */
++    .rewards-form {
++      max-inline-size: 680px;
++      margin: 0 auto;
++    }
++
++    .form-step {
++      border: 2px solid var(--border);
++      border-inline-start-width: 6px;
++      border-radius: 8px;
++      padding: clamp(1.25rem, 3vw, 2rem);
++      background: var(--light);
++      margin-block-end: 1.5rem;
++    }
++
++    /* Style parent fieldset when any descendant input is user-invalid */
++    .form-step:has(:user-invalid),
++    .form-step.has-error-fallback {
++      border-inline-start-color: var(--error);
++    }
++
++    .form-step legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      padding: 0 0.5rem;
++      color: var(--text);
++    }
++
++    .step-status-banner {
++      display: none;
++      background: var(--error-bg);
++      color: var(--error);
++      border: 1px solid var(--error);
++      border-radius: 6px;
++      padding: 0.75rem 1rem;
++      margin-block-end: 1.25rem;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    .form-step:has(:user-invalid) .step-status-banner,
++    .form-step.has-error-fallback .step-status-banner {
++      display: block;
++    }
++
++    /* Gestalt Proximity Rule: vertical margin between label/hint and input is smaller than between form groups */
++    .form-group {
++      margin-block-end: 1.5rem;
++      scroll-margin-block: 6rem;
++    }
++
++    .form-group > label,
++    .fieldset-group > legend {
++      display: block;
++      font-weight: 600;
++      font-size: 1rem;
++      margin-block-end: 0.25rem;
++      color: var(--text);
++    }
++
++    .required-marker {
++      color: var(--error);
++      font-weight: 700;
++      margin-inline-start: 0.15rem;
++    }
++
++    .optional-marker {
++      font-weight: 400;
++      font-size: 0.875rem;
++      color: var(--text-muted);
++      margin-inline-start: 0.25rem;
++    }
++
++    /* Place hints above inputs so autocomplete popovers or mobile keyboards don't cover them */
++    .hint,
++    .rules-list {
++      display: block;
++      color: var(--text-muted);
++      font-size: 0.875rem;
++      margin-block-end: 0.4rem;
++    }
++
++    .rules-list {
++      padding-inline-start: 1.25rem;
++    }
++
++    .privacy-note {
++      background: var(--surface);
++      border-inline-start: 3px solid var(--accent-dark);
++      padding: 0.5rem 0.75rem;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      margin-block-end: 0.5rem;
++      border-radius: 0 4px 4px 0;
++    }
++
++    /* Text Inputs, Selects, Textareas */
++    .form-control {
++      inline-size: 100%;
++      font-family: inherit;
++      font-size: 1rem; /* At least 1rem (16px) to prevent iOS auto-zoom */
++      padding: 0.75rem;
++      min-block-size: 48px;
++      border: 2px solid var(--border);
++      border-radius: 6px;
++      background-color: var(--surface);
++      color: var(--text);
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    textarea.form-control {
++      min-block-size: 96px;
++      resize: vertical;
++    }
++
++    @media (pointer: coarse) {
++      .form-control,
++      .btn {
++        min-block-size: 52px;
++      }
++    }
++
++    /* Password wrapper with Show/Hide toggle */
++    .password-wrapper {
++      display: flex;
++      gap: 0.5rem;
++      align-items: stretch;
++    }
++
++    .password-wrapper .form-control {
++      flex: 1;
++    }
++
++    .toggle-password-btn {
++      background: var(--surface);
++      color: var(--text);
++      border: 2px solid var(--border);
++      border-radius: 6px;
++      padding: 0 1rem;
++      min-inline-size: 88px;
++      min-block-size: 48px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.35rem;
++    }
++
++    .toggle-password-btn:hover {
++      background: var(--secondary);
++    }
++
++    /* Validation States (:user-invalid / :user-valid + Fallbacks) */
++    .error-msg {
++      display: none;
++      color: var(--error);
++      font-size: 0.875rem;
++      font-weight: 600;
++      margin-block-start: 0.35rem;
++    }
++
++    .form-control:user-invalid,
++    .form-control.user-invalid-fallback {
++      border-color: var(--error);
++      background-color: var(--error-bg);
++    }
++
++    .form-control:user-valid,
++    .form-control.user-valid-fallback {
++      border-color: var(--success);
++    }
++
++    /* Reveal error message for standard fields and password wrapper fields */
++    .form-control:user-invalid ~ .error-msg,
++    .form-control.user-invalid-fallback ~ .error-msg,
++    .form-group:has(.form-control:user-invalid) .error-msg,
++    .form-group:has(.form-control.user-invalid-fallback) .error-msg {
++      display: block;
++    }
++
++    /* Highlight password rules when invalid; hide when satisfied */
++    .form-group:has(input:user-invalid) .rules-list,
++    .form-group:has(input.user-invalid-fallback) .rules-list {
++      color: var(--error);
++      font-weight: 600;
++    }
++
++    .form-group:has(input:user-valid) .rules-list,
++    .form-group:has(input.user-valid-fallback) .rules-list {
++      display: none;
++    }
++
++    /* Radio & Checkbox Groups */
++    .fieldset-group {
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 1rem;
++      margin-block-end: 1.5rem;
++      background: var(--surface);
++    }
++
++    .choice-list {
++      display: grid;
++      gap: 0.65rem;
++      margin-block-start: 0.5rem;
++    }
++
++    .choice-label {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      padding: 0.5rem 0.65rem;
++      min-block-size: 48px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      cursor: pointer;
++      background: var(--light);
++      font-weight: 500;
++    }
++
++    .choice-label:hover {
++      background: var(--secondary);
++    }
++
++    .choice-label input[type="radio"],
++    .choice-label input[type="checkbox"] {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      margin: 0;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    /* Fallback for browsers without accent-color */
++    @supports not (accent-color: #4e342e) {
++      .choice-label input[type="checkbox"],
++      .choice-label input[type="radio"] {
++        appearance: none;
++        border: 2px solid var(--border);
++        background: var(--surface);
++        position: relative;
++      }
++      .choice-label input[type="checkbox"] {
++        border-radius: 4px;
++      }
++      .choice-label input[type="radio"] {
++        border-radius: 50%;
++      }
++      .choice-label input[type="checkbox"]:checked,
++      .choice-label input[type="radio"]:checked {
++        background-color: var(--primary);
++        border-color: var(--primary);
++      }
++      .choice-label input[type="checkbox"]:checked::after {
++        content: "✓";
++        position: absolute;
++        inset: 0;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        color: #ffffff;
++        font-size: 0.85rem;
++        font-weight: bold;
++      }
++    }
++
++    /* Review Card on Step 3 */
++    .review-card {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 1rem 1.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .review-card h3 {
++      font-size: 1.1rem;
++      margin-block-end: 0.75rem;
++      color: var(--text);
++    }
++
++    .review-dl {
++      display: grid;
++      grid-template-columns: minmax(130px, auto) 1fr;
++      gap: 0.5rem 1rem;
++      font-size: 0.95rem;
++    }
++
++    .review-dl dt {
++      font-weight: 700;
++      color: var(--text-muted);
++    }
++
++    .review-dl dd {
++      margin: 0;
++      word-break: break-word;
++    }
++
++    /* Form Actions Navigation */
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-block-start: 1.5rem;
++    }
++
++    .form-actions .btn {
++      margin-block-start: 0;
++    }
++
++    /* Error Summary & Success Message */
++    .error-summary {
++      background: var(--error-bg);
++      color: var(--error);
++      border: 2px solid var(--error);
++      border-radius: 8px;
++      padding: 1rem 1.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .error-summary h3 {
++      font-size: 1.1rem;
++      margin-block-end: 0.5rem;
++    }
++
++    .error-summary ul {
++      padding-inline-start: 1.25rem;
++    }
++
++    .error-summary a {
++      color: var(--error);
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    .submission-confirmation {
++      background: var(--success-bg);
++      border: 2px solid var(--success);
++      border-radius: 8px;
++      padding: 2rem;
++      text-align: center;
++      max-inline-size: 680px;
++      margin: 0 auto;
++    }
++
++    .submission-confirmation h3 {
++      color: var(--success);
++      font-size: 1.5rem;
++      margin-block-end: 0.75rem;
++    }
++
++    /* Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 2.5rem 1.25rem;
++      margin-block-start: 4rem;
++      border-block-start: 1px solid var(--border);
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.75rem 1.5rem;
++      list-style: none;
++      margin-block-end: 1.25rem;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++      text-decoration: underline;
++      font-size: 0.95rem;
++      padding: 0.35rem 0.5rem;
++      min-block-size: 24px;
++      display: inline-flex;
++      align-items: center;
+     }
++
++    /* Forced Colors Mode Support */
++    @media (forced-colors: active) {
++      .card,
++      .rewards-section,
++      .form-step,
++      .form-control,
++      .btn,
++      .step-indicator {
++        border: 2px solid CanvasText;
++      }
++      .step-indicator[aria-current="step"] {
++        background: Highlight;
++        color: HighlightText;
++        border-color: Highlight;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <!-- Skip Link for Keyboard Navigation -->
++  <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <header>
++    <nav class="primary-nav" aria-label="Primary">
++      <a href="/" class="logo">THE DAILY GRIND</a>
++      <ul role="list">
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="#rewards-signup">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li>
++          <!-- Security Fix: Use POST form with anti-CSRF token instead of GET link for logout -->
++          <form action="/logout" method="POST" class="logout-form">
++            <input type="hidden" name="csrf_token" value="dg_csrf_logout_9f8a7b6c5d4e">
++            <button type="submit" class="logout-btn">Log Out</button>
++          </form>
++        </li>
++      </ul>
++    </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Online Now</a>
++    </div>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <main id="main-content" class="container" tabindex="-1">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" class="section-title">Seasonal Favorites</h2>
++      <p class="section-subtitle">Handcrafted small-batch drinks celebrating the flavors of the season.</p>
++      <ul class="grid" role="list">
++        <li class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80"
++              alt="Steaming mug of Maple Oat Latte topped with microfoam art"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of pure Vermont maple syrup and a double espresso shot.</p>
++          </div>
++          <!-- Accessibility Fix: Disambiguated accessible link text instead of identical "View Details" -->
++          <a href="/menu/seasonal" class="btn">View Maple Oat Latte<span class="visually-hidden"> details</span></a>
++        </li>
++        <li class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++              alt="Rich shot of Dark Roast Espresso with golden crema in a demitasse cup"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, velvety, and smokey single-origin roast—perfect for a crisp morning boost.</p>
++          </div>
++          <a href="/menu/espresso" class="btn">View Dark Roast Espresso<span class="visually-hidden"> details</span></a>
++        </li>
++        <li class="card">
++          <div>
++            <img
++              src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++              alt="Tall glass of Cold Brew coffee poured over ice"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++            <h3>18-Hour Cold Brew</h3>
++            <p>Coarse-ground beans steeped cold for 18 hours for maximum smoothness and low acidity.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn">View Cold Brew<span class="visually-hidden"> details</span></a>
++        </li>
++      </ul>
++    </section>
++
++    <!-- Multi-Step Rewards Program Registration Section -->
++    <section id="rewards-signup" class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" class="section-title">Join The Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn beans on every cup, enjoy a complimentary drink during your birthday month, and unlock exclusive tasting roasts.</p>
++
++      <div class="rewards-banner">
++        <img
++          class="rewards-banner-img"
++          src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80"
++          alt="Barista pouring latte art at The Daily Grind coffee bar"
++          width="800"
++          height="440"
++          loading="lazy"
++        >
++        <div>
++          <h3>Member Perks &amp; Privacy Guarantee</h3>
++          <p>Sign up in three quick steps. We practice strict data minimization—we only collect what is needed to run your rewards account and never sell your personal data.</p>
++          <ul class="rewards-perks" role="list">
++            <li><span aria-hidden="true">☕</span> <strong>Free Welcome Drink:</strong> Loaded to your account right after registration.</li>
++            <li><span aria-hidden="true">🎂</span> <strong>Birthday Month Treat:</strong> Choose your birth month—no exact date of birth required.</li>
++            <li><span aria-hidden="true">🔒</span> <strong>Privacy First:</strong> Manage or delete your rewards data anytime with one click.</li>
++          </ul>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <!-- Centralized Live Regions for Screen Reader Announcements -->
++      <div id="form-live-polite" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
++      <div id="form-live-assertive" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
++
++      <!-- Multi-Step Progress Tracker -->
++      <div class="progress-wrapper">
++        <div class="progress-header">
++          <label id="progress-label" for="registration-progress">Step 1 of 3: Account Credentials</label>
++          <span id="progress-percent" aria-hidden="true">33%</span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <progress id="registration-progress" class="rewards-progress" max="3" value="1"></progress>
++
++        <nav aria-label="Registration progress">
++          <ol class="progress-tracker" role="list">
++            <li id="tracker-step-1" class="step-indicator" aria-current="step">
++              <span aria-hidden="true">1.</span> Account
++            </li>
++            <li id="tracker-step-2" class="step-indicator">
++              <span aria-hidden="true">2.</span> Coffee Perks
++            </li>
++            <li id="tracker-step-3" class="step-indicator">
++              <span aria-hidden="true">3.</span> Delivery &amp; Join
++            </li>
++          </ol>
++        </nav>
++      </div>
++
++      <!-- Error Summary Container (populated if a user attempts to advance or submit with invalid fields) -->
++      <div id="form-error-summary" class="error-summary" role="alert" tabindex="-1" hidden>
++        <h3 id="error-summary-heading">Please check the highlighted fields before continuing:</h3>
++        <ul id="error-summary-list"></ul>
++      </div>
++
++      <form id="rewards-registration-form" class="rewards-form" action="/api/rewards/register" method="POST" novalidate>
++        <!-- Security: Cryptographic anti-CSRF token & spam honeypot -->
++        <input type="hidden" name="csrf_token" id="csrf-token" value="dg_csrf_reg_4d91a8c2e7f0">
++        <div class="visually-hidden" aria-hidden="true">
++          <label for="company-website-hp">Do not fill this field if you are human</label>
++          <input type="text" id="company-website-hp" name="company_website_hp" tabindex="-1" autocomplete="off">
+         </div>
++
++        <!-- STEP 1: Account Credentials -->
++        <fieldset id="step-1" class="form-step" data-step="1">
++          <legend>Step 1: Account &amp; Security</legend>
++          <div class="step-status-banner" aria-hidden="true">
++            ⚠️ Some fields in this step need attention.
++          </div>
++
++          <div class="form-group">
++            <label for="full-name">Full Name <span class="required-marker" aria-hidden="true">*</span></label>
++            <span id="full-name-hint" class="hint">Enter your name as you would like it called out at the pickup counter (all international characters supported).</span>
++            <input
++              type="text"
++              id="full-name"
++              name="full_name"
++              class="form-control"
++              autocomplete="name"
++              required
++              minlength="2"
++              maxlength="100"
++              pattern="[\p{L}\p{M}'.\- ]+"
++              enterkeyhint="next"
++              aria-describedby="full-name-hint"
++              aria-errormessage="full-name-error"
++            >
++            <div id="full-name-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter your full name (at least 2 characters).
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="email">Email Address <span class="required-marker" aria-hidden="true">*</span></label>
++            <span id="email-hint" class="hint">Used as your sign-in identifier and to send digital reward receipts. Format: name@example.com</span>
++            <input
++              type="email"
++              id="email"
++              name="email"
++              class="form-control"
++              autocomplete="username"
++              inputmode="email"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required
++              enterkeyhint="next"
++              aria-describedby="email-hint"
++              aria-errormessage="email-error"
++            >
++            <div id="email-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter a valid email address (for example, alex@example.com).
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="phone">Mobile Phone Number <span class="optional-marker">(Optional)</span></label>
++            <div id="phone-privacy" class="privacy-note">
++              <strong>Why we ask:</strong> Optional—used only to look up your rewards balance by phone at the register or send SMS order-ready alerts if enabled.
++            </div>
++            <input
++              type="tel"
++              id="phone"
++              name="phone"
++              class="form-control"
++              autocomplete="tel"
++              inputmode="tel"
++              pattern="[\d\+\-\(\) ]{7,20}"
++              enterkeyhint="next"
++              aria-describedby="phone-privacy"
++              aria-errormessage="phone-error"
++            >
++            <div id="phone-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter a valid phone number (7–20 digits) or leave blank.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="new-password">Create Password <span class="required-marker" aria-hidden="true">*</span></label>
++            <ul id="password-rules" class="rules-list">
++              <li>At least 8 characters (pasting from your password manager is supported)</li>
++              <li>At least one uppercase letter and one lowercase letter</li>
++              <li>At least one number and one special character (e.g., !@#$%)</li>
++            </ul>
++            <div class="password-wrapper">
++              <input
++                type="password"
++                id="new-password"
++                name="new-password"
++                class="form-control"
++                autocomplete="new-password"
++                required
++                minlength="8"
++                maxlength="128"
++                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
++                enterkeyhint="next"
++                aria-describedby="password-rules"
++                aria-errormessage="password-error"
++              >
++              <button
++                type="button"
++                id="toggle-password"
++                class="toggle-password-btn"
++                aria-pressed="false"
++                aria-label="Show password"
++                aria-describedby="toggle-password-warning"
++              >
++                <span aria-hidden="true" id="toggle-password-icon">👁️</span>
++                <span id="toggle-password-text">Show</span>
++              </button>
++            </div>
++            <span id="toggle-password-warning" class="visually-hidden">Warning: activating this button displays your password in plain text on the screen.</span>
++            <div id="password-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol.
++            </div>
++          </div>
++
++          <div class="form-actions">
++            <span></span>
++            <button type="button" class="btn" id="to-step-2-btn" enterkeyhint="next">
++              Continue to Coffee Perks &rarr;
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- STEP 2: Coffee Preferences & Perks -->
++        <fieldset id="step-2" class="form-step" data-step="2" hidden inert>
++          <legend>Step 2: Coffee Preferences &amp; Perks</legend>
++          <div class="step-status-banner" aria-hidden="true">
++            ⚠️ Please complete the required preference fields below.
++          </div>
++
++          <!-- 4 mutually exclusive choices (< 6) -> Radio buttons for zero-click scanning -->
++          <fieldset class="fieldset-group">
++            <legend>Favorite Roast Profile <span class="required-marker" aria-hidden="true">*</span></legend>
++            <span id="roast-hint" class="hint">Helps us tailor your complimentary tasting bags and seasonal drink coupons.</span>
++            <div class="choice-list" role="radiogroup" aria-describedby="roast-hint">
++              <label class="choice-label" for="roast-light">
++                <input type="radio" id="roast-light" name="roast_preference" value="Light &amp; Floral" required checked>
++                <span><strong>Light &amp; Bright:</strong> Floral, citrusy single-origin pour-overs</span>
++              </label>
++              <label class="choice-label" for="roast-medium">
++                <input type="radio" id="roast-medium" name="roast_preference" value="Medium &amp; Balanced">
++                <span><strong>Medium &amp; Balanced:</strong> Smooth caramel and toasted nut notes</span>
++              </label>
++              <label class="choice-label" for="roast-dark">
++                <input type="radio" id="roast-dark" name="roast_preference" value="Dark &amp; Bold">
++                <span><strong>Dark &amp; Bold:</strong> Rich cocoa, smokey espresso roasts</span>
++              </label>
++              <label class="choice-label" for="roast-decaf">
++                <input type="radio" id="roast-decaf" name="roast_preference" value="Swiss Water Decaf">
++                <span><strong>Swiss Water Decaf:</strong> All the flavor without the caffeine</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- 5 Milk/Dietary Choices -> Radio buttons -->
++          <fieldset class="fieldset-group">
++            <legend>Default Milk or Creamer <span class="optional-marker">(Optional)</span></legend>
++            <div class="choice-list">
++              <label class="choice-label" for="milk-oat">
++                <input type="radio" id="milk-oat" name="milk_preference" value="Barista Oat Milk" checked>
++                <span>Barista Oat Milk (Plant-based)</span>
++              </label>
++              <label class="choice-label" for="milk-whole">
++                <input type="radio" id="milk-whole" name="milk_preference" value="Organic Whole Dairy">
++                <span>Organic Whole Dairy</span>
++              </label>
++              <label class="choice-label" for="milk-almond">
++                <input type="radio" id="milk-almond" name="milk_preference" value="Unsweetened Almond">
++                <span>Unsweetened Almond (Plant-based)</span>
++              </label>
++              <label class="choice-label" for="milk-none">
++                <input type="radio" id="milk-none" name="milk_preference" value="Black / No Milk">
++                <span>Black / No Milk</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- 12 options (6+) -> Select dropdown for Birthday Reward Month (Data Minimization: Month only, not full DOB) -->
++          <div class="form-group">
++            <label for="birth-month">Birthday Reward Month <span class="required-marker" aria-hidden="true">*</span></label>
++            <div id="birth-month-privacy" class="privacy-note">
++              <strong>Privacy by Design:</strong> We only ask for your birth month (not your full date of birth or year) so we can issue your free birthday drink voucher while protecting your identity.
++            </div>
++            <select
++              id="birth-month"
++              name="birth_month"
++              class="form-control"
++              required
++              aria-describedby="birth-month-privacy"
++              aria-errormessage="birth-month-error"
++            >
++              <option value="" disabled selected>Select your birth month...</option>
++              <option value="01">January</option>
++              <option value="02">February</option>
++              <option value="03">March</option>
++              <option value="04">April</option>
++              <option value="05">May</option>
++              <option value="06">June</option>
++              <option value="07">July</option>
++              <option value="08">August</option>
++              <option value="09">September</option>
++              <option value="10">October</option>
++              <option value="11">November</option>
++              <option value="12">December</option>
++            </select>
++            <div id="birth-month-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please select a month for your free birthday drink reward.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="card-pin">4-Digit In-Store Rewards PIN <span class="required-marker" aria-hidden="true">*</span></label>
++            <span id="card-pin-hint" class="hint">Enter 4 digits to quickly redeem points at the cafe register without scanning your phone.</span>
++            <!-- Use type="text" with inputmode="numeric" and pattern="\d{4}" instead of type="number" to preserve leading zeros -->
++            <input
++              type="text"
++              id="card-pin"
++              name="rewards_pin"
++              class="form-control"
++              inputmode="numeric"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required
++              minlength="4"
++              maxlength="4"
++              pattern="\d{4}"
++              enterkeyhint="next"
++              aria-describedby="card-pin-hint"
++              aria-errormessage="card-pin-error"
++            >
++            <div id="card-pin-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter exactly 4 numeric digits (0–9).
++            </div>
++          </div>
++
++          <div class="form-actions">
++            <button type="button" class="btn btn-secondary" id="back-to-step-1-btn" enterkeyhint="previous">
++              &larr; Back to Account
++            </button>
++            <button type="button" class="btn" id="to-step-3-btn" enterkeyhint="next">
++              Continue to Delivery &amp; Review &rarr;
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- STEP 3: Welcome Kit Delivery & Confirmation -->
++        <fieldset id="step-3" class="form-step" data-step="3" hidden inert>
++          <legend>Step 3: Welcome Kit Delivery &amp; Review</legend>
++          <div class="step-status-banner" aria-hidden="true">
++            ⚠️ Please complete the required fields and accept the program terms to finish registration.
++          </div>
++
++          <!-- Live summary of data entered in Steps 1 & 2 (populated securely via textContent) -->
++          <div class="review-card" aria-labelledby="review-summary-heading">
++            <h3 id="review-summary-heading">Your Rewards Profile Summary</h3>
++            <dl class="review-dl">
++              <dt>Member Name:</dt>
++              <dd id="summary-name">—</dd>
++              <dt>Email Address:</dt>
++              <dd id="summary-email">—</dd>
++              <dt>Favorite Roast:</dt>
++              <dd id="summary-roast">—</dd>
++              <dt>Birthday Treat:</dt>
++              <dd id="summary-birth-month">—</dd>
++            </dl>
++          </div>
++
++          <div class="form-group">
++            <label for="street-address">Mailing Address for Welcome Tasting Kit <span class="optional-marker">(Optional)</span></label>
++            <span id="address-hint" class="hint">Provide a mailing address if you would like us to ship your physical membership card and welcome coffee sample bag. Supports multi-line international addresses.</span>
++            <!-- Use <textarea autocomplete="street-address"> to accommodate varied local and international address formats -->
++            <textarea
++              id="street-address"
++              name="street_address"
++              class="form-control"
++              autocomplete="street-address"
++              maxlength="300"
++              aria-describedby="address-hint"
++            ></textarea>
++          </div>
++
++          <div class="form-group">
++            <label for="postal-code">ZIP or Postal Code <span class="optional-marker">(Optional)</span></label>
++            <span id="postal-hint" class="hint">Used to notify you of seasonal tastings at your nearest Daily Grind cafe.</span>
++            <input
++              type="text"
++              id="postal-code"
++              name="postal_code"
++              class="form-control"
++              autocomplete="postal-code"
++              autocorrect="off"
++              autocapitalize="characters"
++              spellcheck="false"
++              maxlength="20"
++              enterkeyhint="done"
++              aria-describedby="postal-hint"
++            >
++          </div>
++
++          <fieldset class="fieldset-group">
++            <legend>Notifications &amp; Program Terms</legend>
++            <div class="choice-list">
++              <label class="choice-label" for="opt-in-roasts">
++                <input type="checkbox" id="opt-in-roasts" name="opt_in_roasts" value="yes">
++                <span>Send me early-access alerts when limited micro-lot roasts arrive (optional, unsubscribe anytime)</span>
++              </label>
++              <label class="choice-label" for="terms-agree">
++                <input
++                  type="checkbox"
++                  id="terms-agree"
++                  name="terms_agree"
++                  value="accepted"
++                  required
++                  aria-errormessage="terms-error"
++                >
++                <span>I agree to The Daily Grind Rewards Terms and acknowledge the <a href="/privacy-policy">Privacy Notice</a> <span class="required-marker" aria-hidden="true">*</span></span>
++              </label>
++            </div>
++            <div id="terms-error" class="error-msg">
++              <span aria-hidden="true">❌</span> You must accept the Rewards Terms to create your membership account.
++            </div>
++          </fieldset>
++
++          <div class="form-actions">
++            <button type="button" class="btn btn-secondary" id="back-to-step-2-btn" enterkeyhint="previous">
++              &larr; Back to Perks
++            </button>
++            <button type="submit" class="btn" id="submit-rewards-btn" enterkeyhint="done">
++              Create Rewards Account
++            </button>
++          </div>
++        </fieldset>
++      </form>
++
++      <!-- Accessible Confirmation Panel (Revealed after valid submission) -->
++      <div id="registration-success" class="submission-confirmation" role="status" tabindex="-1" hidden>
++        <h3>🎉 Welcome to The Daily Grind Rewards!</h3>
++        <p id="success-welcome-msg"></p>
++        <p style="margin-block-start: 0.75rem;">Your complimentary welcome drink voucher has been added to your account, and your first birthday reward is scheduled for <strong id="success-birthday-label"></strong>.</p>
+       </div>
+     </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <nav aria-label="Footer">
++      <ul class="footer-links" role="list">
++        <li><a href="/about">Our Story</a></li>
++        <li><a href="/careers">Join the Team</a></li>
++        <li><a href="/contact">Contact Us</a></li>
++        <li><a href="/privacy-policy">Privacy &amp; Data Rights</a></li>
++      </ul>
++    </nav>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const form = document.getElementById('rewards-registration-form');
++      if (!form) return;
++
++      const steps = Array.from(form.querySelectorAll('.form-step'));
++      const progressEl = document.getElementById('registration-progress');
++      const progressLabel = document.getElementById('progress-label');
++      const progressPercent = document.getElementById('progress-percent');
++      const livePolite = document.getElementById('form-live-polite');
++      const errorSummary = document.getElementById('form-error-summary');
++      const errorSummaryList = document.getElementById('error-summary-list');
++      const successBanner = document.getElementById('registration-success');
++
++      const stepTitles = [
++        'Step 1 of 3: Account Credentials',
++        'Step 2 of 3: Coffee Preferences & Perks',
++        'Step 3 of 3: Welcome Kit Delivery & Review'
++      ];
++
++      let currentStepIndex = 0;
++
++      // 1. Generate a fresh cryptographic CSRF token using Web Crypto API if available
++      const csrfInput = document.getElementById('csrf-token');
++      if (csrfInput && window.crypto?.getRandomValues) {
++        const bytes = new Uint8Array(16);
++        window.crypto.getRandomValues(bytes);
++        csrfInput.value = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
++      }
++
++      // 2. Synchronize ARIA state (aria-invalid) with visual :user-invalid state & provide fallback
++      const supportsUserInvalid = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:user-invalid)');
++      const supportsHas = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:has(*))');
++      const dirtyState = new WeakMap();
++
++      const setFieldAriaState = (input, isInvalid) => {
++        if (isInvalid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      };
++
++      const syncParentFallback = (input) => {
++        if (supportsHas) return;
++        const stepContainer = input.closest('.form-step');
++        if (!stepContainer) return;
++        const hasError = stepContainer.querySelector('.user-invalid-fallback, [aria-invalid="true"]');
++        stepContainer.classList.toggle('has-error-fallback', Boolean(hasError));
++      };
++
++      const syncFieldValidity = (input, forceCheck = false) => {
++        if (!input || !input.matches?.('input, select, textarea')) return true;
++
++        // Clear custom validity before checking native constraints
++        input.setCustomValidity('');
++
++        // Additional custom message for 4-digit PIN
++        if (input.id === 'card-pin' && input.validity.patternMismatch) {
++          input.setCustomValidity('Please enter exactly 4 numeric digits (0-9).');
++        }
++
++        const isValid = input.checkValidity();
++
++        if (supportsUserInvalid && !forceCheck) {
++          const matchesUserInvalid = input.matches(':user-invalid');
++          setFieldAriaState(input, matchesUserInvalid);
++        } else {
++          // Force check (e.g., on step transition or fallback)
++          input.classList.toggle('user-invalid-fallback', !isValid);
++          input.classList.toggle('user-valid-fallback', isValid && input.value !== '');
++          setFieldAriaState(input, !isValid);
++        }
++
++        // Handle checkbox error message visibility for terms checkbox
++        if (input.id === 'terms-agree') {
++          const termsErr = document.getElementById('terms-error');
++          if (termsErr) {
++            const showErr = !isValid && (forceCheck || (supportsUserInvalid && input.matches(':user-invalid')));
++            termsErr.style.display = showErr ? 'block' : '';
++          }
++        }
++
++        syncParentFallback(input);
++        return isValid;
++      };
++
++      // Listen in capture phase for blur/focus so non-bubbling events are caught
++      form.addEventListener('blur', (e) => {
++        const input = e.target;
++        if (!input.matches?.('input, select, textarea')) return;
++        const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++        state.hasBlurred = true;
++        dirtyState.set(input, state);
++
++        if (supportsUserInvalid) {
++          syncFieldValidity(input, false);
++        } else if (state.hasInteracted) {
++          syncFieldValidity(input, true);
++        }
++      }, true);
++
++      // Clear errors immediately on input when user fixes the field
++      form.addEventListener('input', (e) => {
++        const input = e.target;
++        if (!input.matches?.('input, select, textarea')) return;
++        const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++        state.hasInteracted = true;
++        dirtyState.set(input, state);
++
++        if (input.getAttribute('aria-invalid') === 'true' || state.hasBlurred) {
++          syncFieldValidity(input, !supportsUserInvalid);
++        }
++      });
++
++      form.addEventListener('change', (e) => {
++        const input = e.target;
++        if (!input.matches?.('input, select, textarea')) return;
++        const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++        state.hasInteracted = true;
++        dirtyState.set(input, state);
++        syncFieldValidity(input, !supportsUserInvalid);
++      });
++
++      // 3. Password Unmasking Toggle
++      const togglePasswordBtn = document.getElementById('toggle-password');
++      const passwordInput = document.getElementById('new-password');
++      const togglePasswordText = document.getElementById('toggle-password-text');
++      const togglePasswordIcon = document.getElementById('toggle-password-icon');
++
++      if (togglePasswordBtn && passwordInput) {
++        togglePasswordBtn.addEventListener('click', () => {
++          const isVisible = passwordInput.type === 'text';
++          passwordInput.type = isVisible ? 'password' : 'text';
++          togglePasswordBtn.setAttribute('aria-pressed', String(!isVisible));
++          togglePasswordBtn.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
++          if (togglePasswordText) togglePasswordText.textContent = isVisible ? 'Show' : 'Hide';
++          if (togglePasswordIcon) togglePasswordIcon.textContent = isVisible ? '👁️' : '🙈';
++        });
++      }
++
++      // 4. Validate all fields within a step & build accessible error summary if invalid
++      const validateStep = (stepIndex) => {
++        const stepEl = steps[stepIndex];
++        if (!stepEl) return true;
++
++        const controls = Array.from(stepEl.querySelectorAll('input, select, textarea'));
++        const invalidControls = [];
++
++        controls.forEach((control) => {
++          const valid = syncFieldValidity(control, true);
++          if (!valid) {
++            invalidControls.push(control);
++          }
++        });
++
++        if (invalidControls.length > 0) {
++          // Populate error summary safely using createElement and textContent (no innerHTML)
++          errorSummaryList.replaceChildren();
++          invalidControls.forEach((control) => {
++            const li = document.createElement('li');
++            const link = document.createElement('a');
++            link.href = `#${control.id}`;
++            const labelEl = form.querySelector(`label[for="${control.id}"]`);
++            const labelText = labelEl ? labelEl.textContent.replace('*', '').trim() : control.name;
++            const errElId = control.getAttribute('aria-errormessage');
++            const errEl = errElId ? document.getElementById(errElId) : null;
++            const errText = errEl ? errEl.textContent.replace('❌', '').trim() : control.validationMessage;
++
++            link.textContent = `${labelText}: ${errText}`;
++            link.addEventListener('click', (ev) => {
++              ev.preventDefault();
++              control.focus();
++            });
++            li.appendChild(link);
++            errorSummaryList.appendChild(li);
++          });
++
++          errorSummary.hidden = false;
++          invalidControls[0].focus();
++          return false;
++        }
++
++        errorSummary.hidden = true;
++        errorSummaryList.replaceChildren();
++        return true;
++      };
++
++      // 5. Populate Step 3 Review Summary safely using textContent and Temporal API (with fallback) for birth month
++      const formatBirthMonth = (monthVal) => {
++        if (!monthVal) return 'Not selected';
++        const monthNumber = Number.parseInt(monthVal, 10);
++        if (Number.isNaN(monthNumber) || monthNumber < 1 || monthNumber > 12) return 'Not selected';
++
++        // Use Temporal.PlainDate when available for location-agnostic calendar date formatting
++        if (typeof Temporal !== 'undefined' && Temporal.PlainDate) {
++          try {
++            const plainDate = Temporal.PlainDate.from({ year: 2026, month: monthNumber, day: 1 });
++            return plainDate.toLocaleString('en-US', { month: 'long' });
++          } catch {
++            // Fall through to select option text
++          }
++        }
++        const selectEl = document.getElementById('birth-month');
++        const selectedOption = selectEl?.selectedOptions?.[0];
++        return selectedOption ? selectedOption.textContent : `Month ${monthNumber}`;
++      };
++
++      const updateReviewSummary = () => {
++        const nameVal = document.getElementById('full-name')?.value.trim() || '—';
++        const emailVal = document.getElementById('email')?.value.trim() || '—';
++        const roastChecked = form.querySelector('input[name="roast_preference"]:checked');
++        const roastVal = roastChecked ? roastChecked.value : '—';
++        const birthMonthVal = document.getElementById('birth-month')?.value || '';
++
++        document.getElementById('summary-name').textContent = nameVal;
++        document.getElementById('summary-email').textContent = emailVal;
++        document.getElementById('summary-roast').textContent = roastVal;
++        document.getElementById('summary-birth-month').textContent = `${formatBirthMonth(birthMonthVal)} (Free Drink Voucher)`;
++      };
++
++      // 6. Step Transition Logic (Manages hidden, inert, progress bar, aria-current, and focus)
++      const goToStep = (targetIndex) => {
++        if (targetIndex < 0 || targetIndex >= steps.length) return;
++
++        steps.forEach((stepEl, idx) => {
++          const isTarget = idx === targetIndex;
++          stepEl.hidden = !isTarget;
++          if (isTarget) {
++            stepEl.removeAttribute('inert');
++          } else {
++            stepEl.setAttribute('inert', '');
++          }
++
++          const trackerItem = document.getElementById(`tracker-step-${idx + 1}`);
++          if (trackerItem) {
++            if (isTarget) {
++              trackerItem.setAttribute('aria-current', 'step');
++              trackerItem.classList.remove('step-done');
++            } else {
++              trackerItem.removeAttribute('aria-current');
++              trackerItem.classList.toggle('step-done', idx < targetIndex);
++            }
++          }
++        });
++
++        currentStepIndex = targetIndex;
++
++        // Update <progress> and visible labels
++        const stepNumber = targetIndex + 1;
++        progressEl.value = stepNumber;
++        progressLabel.textContent = stepTitles[targetIndex];
++        const pct = Math.round((stepNumber / steps.length) * 100);
++        progressPercent.textContent = `${pct}%`;
++
++        if (targetIndex === 2) {
++          updateReviewSummary();
++        }
++
++        // Announce step change politely to assistive technology
++        if (livePolite) {
++          livePolite.textContent = `Now on ${stepTitles[targetIndex]}`;
++        }
++
++        // Move focus to first input in the new step
++        const firstInput = steps[targetIndex].querySelector('input:not([type="hidden"]), select, textarea');
++        if (firstInput) {
++          firstInput.focus();
++        }
++      };
++
++      // Step Navigation Buttons
++      document.getElementById('to-step-2-btn')?.addEventListener('click', () => {
++        if (validateStep(0)) {
++          goToStep(1);
++        }
++      });
++
++      document.getElementById('back-to-step-1-btn')?.addEventListener('click', () => {
++        errorSummary.hidden = true;
++        goToStep(0);
++      });
++
++      document.getElementById('to-step-3-btn')?.addEventListener('click', () => {
++        if (validateStep(1)) {
++          goToStep(2);
++        }
++      });
++
++      document.getElementById('back-to-step-2-btn')?.addEventListener('click', () => {
++        errorSummary.hidden = true;
++        goToStep(1);
++      });
++
++      // IME-safe Enter key handling for multi-step progression on non-final steps
++      form.addEventListener('keydown', (e) => {
++        if (e.key !== 'Enter' || e.isComposing) return;
++        const target = e.target;
++        if (!target.matches?.('input')) return;
++
++        if (currentStepIndex < steps.length - 1) {
++          e.preventDefault();
++          if (validateStep(currentStepIndex)) {
++            goToStep(currentStepIndex + 1);
++          }
++        }
++      });
++
++      // 7. Final Form Submission Handler
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++
++        // Spam Honeypot Check
++        const honeypot = document.getElementById('company-website-hp');
++        if (honeypot && honeypot.value.trim() !== '') {
++          return;
++        }
++
++        // Validate all steps in order
++        for (let i = 0; i < steps.length; i += 1) {
++          if (!validateStep(i)) {
++            if (currentStepIndex !== i) {
++              goToStep(i);
++            }
++            return;
++          }
++        }
++
++        // Prevent double submission by disabling submit button after valid check
++        const submitBtn = document.getElementById('submit-rewards-btn');
++        if (submitBtn) {
++          submitBtn.disabled = true;
++          submitBtn.textContent = 'Creating Account...';
++        }
++
++        // Safely populate confirmation message using textContent (preventing DOM XSS)
++        const memberName = document.getElementById('full-name')?.value.trim() || 'Coffee Lover';
++        const memberEmail = document.getElementById('email')?.value.trim() || '';
++        const birthMonth = document.getElementById('birth-month')?.value || '';
++
++        document.getElementById('success-welcome-msg').textContent =
++          `Thank you, ${memberName}! We have sent a verification link to ${memberEmail}.`;
++        document.getElementById('success-birthday-label').textContent = formatBirthMonth(birthMonth);
++
++        form.hidden = true;
++        form.setAttribute('inert', '');
++        errorSummary.hidden = true;
++        successBanner.hidden = false;
++        successBanner.focus();
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

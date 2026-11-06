@@ -1,0 +1,103 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..024f840 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,46 +17,48 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++    <div class="@container/article min-w-0">
++        <div class="bg-white p-6 @min-[32rem]/article:p-8 shadow-sm">
++            <div class="grid grid-cols-1 @min-[48rem]/article:grid-cols-3 gap-8">
++                <div class="@min-[48rem]/article:col-span-1 min-w-0 flex flex-col">
++                    <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
++                        <h1 class="mt-2 text-3xl @min-[32rem]/article:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                            {article.data.title}
++                        </h1>
++                        <p class="mt-4 text-lg text-gray-700">
++                            {article.data.summary}
++                        </p>
++                    </a>
++                    <div class="flex justify-between items-center mt-6 text-gray-500">
++                        <span class="text-xs font-medium flex items-center">
++                            <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
++                            {article.data.readingTime} Min.
++                        </span>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
++                </div>
++                <div class="@min-[48rem]/article:col-span-2 min-w-0">
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <Image
++                            src={image}
++                            alt=""
++                            width={800}
++                            height={533}
++                            format="webp"
++                            class="w-full h-auto object-cover"
++                        />
++                    </a>
+                 </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+             </div>
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
++    <article class="@container/article min-w-0 flex flex-col h-full group">
+         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++            <Image
++                src={image}
++                alt={article.data.title}
+                 width={400}
+                 height={225}
+                 format="webp"
+@@ -66,7 +68,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                <h3 class="text-lg @min-[24rem]/article:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+@@ -80,4 +82,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}

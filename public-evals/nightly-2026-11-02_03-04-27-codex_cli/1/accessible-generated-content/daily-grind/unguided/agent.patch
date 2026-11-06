@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+index 66c9173..02549e3 100644
+--- a/index.html
++++ b/index.html
+@@ -120,8 +120,88 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
++    .card h3::after {
++      content: "";
++      display: block;
++      width: 36px;
++      height: 3px;
++      margin: 12px auto;
++      border-radius: 3px;
++      background: var(--accent);
++    }
++
++    /* Decorative shapes have no text content; their containers are aria-hidden. */
++    .drink-icon {
++      position: relative;
+       display: inline-block;
++      width: 1em;
++      height: 1em;
++      margin-inline-end: 0.55em;
++      vertical-align: -0.12em;
++      color: inherit;
++    }
++
++    .drink-icon::before,
++    .drink-icon::after,
++    .button-arrow::before,
++    .button-arrow::after {
++      content: "";
++      position: absolute;
++    }
++
++    .drink-icon--cup::before {
++      inset: 0.18em 0.2em 0.08em 0;
++      border: 2px solid currentColor;
++      border-radius: 0.05em 0.05em 0.3em 0.3em;
++    }
++
++    .drink-icon--cup::after {
++      top: 0.28em;
++      right: 0;
++      width: 0.2em;
++      height: 0.35em;
++      border: 2px solid currentColor;
++      border-inline-start: 0;
++      border-radius: 0 0.3em 0.3em 0;
++    }
++
++    .drink-icon--bean {
++      width: 0.75em;
++      border: 2px solid currentColor;
++      border-radius: 50%;
++      transform: rotate(35deg);
++    }
++
++    .drink-icon--bean::before {
++      top: 0;
++      bottom: 0;
++      left: 35%;
++      width: 0.2em;
++      border-inline-end: 2px solid currentColor;
++      border-radius: 50%;
++    }
++
++    .drink-icon--cold::before {
++      inset: 0.2em 0.15em 0;
++      border: 2px solid currentColor;
++      border-radius: 0.05em 0.05em 0.2em 0.2em;
++      background: linear-gradient(transparent 40%, currentColor 40%, currentColor 50%, transparent 50%);
++    }
++
++    .drink-icon--cold::after {
++      top: -0.12em;
++      left: 0.55em;
++      width: 0.3em;
++      height: 0.55em;
++      border-top: 2px solid currentColor;
++      border-inline-start: 2px solid currentColor;
++    }
++
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.65em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +215,39 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .btn .drink-icon {
++      flex: 0 0 1em;
++      margin: 0;
++    }
++
++    .button-arrow {
++      position: relative;
++      flex: 0 0 0.9em;
++      height: 0.9em;
++    }
++
++    .button-arrow::before {
++      top: calc(50% - 1px);
++      left: 0;
++      width: 100%;
++      border-top: 2px solid currentColor;
++    }
++
++    .button-arrow::after {
++      top: calc(50% - 0.25em);
++      right: 0;
++      width: 0.5em;
++      height: 0.5em;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: rotate(45deg);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +284,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="drink-icon drink-icon--cup" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +292,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3><span class="drink-icon drink-icon--cup" aria-hidden="true"></span>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="button-arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3><span class="drink-icon drink-icon--bean" aria-hidden="true"></span>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="button-arrow" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3><span class="drink-icon drink-icon--cold" aria-hidden="true"></span>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="button-arrow" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,375 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8eb00b7 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,15 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  /**
++   * Keep this view alive (hidden) after navigating away so that returning to
++   * it is instant and preserves its DOM/island state. Disable for views that
++   * should always be fresh or must not linger in the DOM (e.g. auth forms).
++   */
++  keepAlive?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, keepAlive = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -35,6 +41,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -46,7 +55,11 @@ const baseUrl = import.meta.env.BASE_URL;
+           <Header />
+         </div>
+         <main class="bg-white relative">
+-          <slot />
++          <div id="view-outlet">
++            <div data-view-pane data-view-cache={keepAlive ? "on" : "off"}>
++              <slot />
++            </div>
++          </div>
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..85ea43b 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" keepAlive={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..95eebc3 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" keepAlive={false}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..521110a
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,299 @@
++/**
++ * Keep-alive view cache for Astro's <ClientRouter />.
++ *
++ * Default ClientRouter behaviour: every navigation fetches the target page,
++ * parses it, replaces <body>, and unmounts every island that was detached.
++ * Going back to a page you just saw repeats all of that work.
++ *
++ * Instead, the page-specific part of every Layout page lives in a "pane"
++ * inside a single, persistent outlet:
++ *
++ *   <div id="view-outlet">
++ *     <div data-view-pane data-view-key="/articles/foo">…</div>   (visible)
++ *     <div data-view-pane data-view-key="/" hidden inert>…</div>   (kept alive)
++ *   </div>
++ *
++ * - On navigation the outlet itself is carried over into the new body (using
++ *   Astro's transition-persist machinery), so panes are never disconnected and
++ *   their islands never receive `astro:unmount`.
++ * - Panes you navigate away from are hidden (+ inert) instead of destroyed, so
++ *   their DOM, island state, form input, etc. survive.
++ * - When navigating to a URL whose pane is still alive and fresh, the network
++ *   fetch + HTML parse is skipped entirely: a lightweight document (that
++ *   page's <head> + the shared page shell) is synthesized and the cached pane
++ *   is simply revealed again.
++ *
++ * Panes can opt out with `data-view-cache="off"` (see Layout `keepAlive`).
++ */
++import {
++  swapFunctions,
++  type TransitionBeforePreparationEvent,
++  type TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++const OUTLET_ID = "view-outlet";
++const PANE_ATTR = "data-view-pane";
++const KEY_ATTR = "data-view-key";
++const OPT_OUT_ATTR = "data-view-cache";
++const PERSIST_ATTR = "data-astro-transition-persist";
++const PERSIST_ID = "view-outlet";
++
++/** Maximum number of panes kept alive (including the visible one). */
++const MAX_ENTRIES = 8;
++/** After this, a cached pane is considered stale and is re-fetched. */
++const MAX_AGE_MS = 5 * 60 * 1000;
++
++interface CacheEntry {
++  /** Serialized <head> of the page (as originally delivered by the server). */
++  head: string;
++  /** Attributes of the <html> element. */
++  rootAttrs: [string, string][];
++  /** When the pane's content was obtained from the server. */
++  fetchedAt: number;
++}
++
++/** Insertion order === LRU order (oldest first). */
++const cache = new Map<string, CacheEntry>();
++/**
++ * The page shell (<body> minus pane content) taken from the most recently
++ * *fetched* document. It is identical for all Layout pages and must come from
++ * server HTML (not the live, hydrated DOM) so islands in it hydrate normally.
++ */
++let shellHtml: string | null = null;
++/** Documents synthesized from the cache, i.e. navigations that restore a pane. */
++const restoredDocs = new WeakSet<Document>();
++
++const keyOf = (url: URL | Location) => url.pathname + url.search;
++
++const getOutlet = (doc: Document = document) => doc.getElementById(OUTLET_ID);
++
++const panesOf = (outlet: Element) =>
++  Array.from(outlet.children).filter((el): el is HTMLElement =>
++    el instanceof HTMLElement && el.hasAttribute(PANE_ATTR),
++  );
++
++const findPane = (key: string) => {
++  const outlet = getOutlet();
++  return outlet ? panesOf(outlet).find((p) => p.getAttribute(KEY_ATTR) === key) : undefined;
++};
++
++const isCacheable = (pane: Element) => pane.getAttribute(OPT_OUT_ATTR) !== "off";
++
++const touch = (key: string, entry: CacheEntry) => {
++  cache.delete(key);
++  cache.set(key, entry);
++};
++
++const rootAttrsOf = (doc: Document): [string, string][] =>
++  Array.from(doc.documentElement.attributes, (a) => [a.name, a.value]);
++
++/** Capture the shared shell from a freshly fetched (not yet swapped) document. */
++function captureShell(doc: Document) {
++  const body = doc.body.cloneNode(true) as HTMLElement;
++  const outlet = body.querySelector(`#${OUTLET_ID}`);
++  if (!outlet) return;
++  outlet.replaceChildren();
++  shellHtml = body.outerHTML;
++}
++
++/** Build a document that the ClientRouter can swap in without a fetch. */
++function synthesizeDocument(entry: CacheEntry): Document | null {
++  if (!shellHtml) return null;
++  const doc = new DOMParser().parseFromString(
++    `<!doctype html><html><head>${entry.head}</head>${shellHtml}</html>`,
++    "text/html",
++  );
++  for (const [name, value] of entry.rootAttrs) doc.documentElement.setAttribute(name, value);
++  restoredDocs.add(doc);
++  return doc;
++}
++
++/** Elements from a DOMParser document never get a media stack; recreate them. */
++function reifyMedia(root: Element) {
++  for (const media of root.querySelectorAll("video, audio")) {
++    const fresh = document.createElement(media.localName);
++    for (const attr of media.attributes) fresh.setAttribute(attr.name, attr.value);
++    fresh.innerHTML = media.innerHTML;
++    if (fresh.hasAttribute("muted")) (fresh as HTMLMediaElement).muted = true;
++    media.replaceWith(fresh);
++  }
++}
++
++function moveToFront(outlet: Element, pane: Element) {
++  if (outlet.firstElementChild === pane) return;
++  // moveBefore keeps the subtree connected (no disconnect/connect callbacks).
++  const parent = outlet as Element & { moveBefore?: (n: Node, c: Node | null) => void };
++  if (typeof parent.moveBefore === "function") parent.moveBefore(pane, outlet.firstChild);
++  else outlet.insertBefore(pane, outlet.firstChild);
++}
++
++/** Show `active`, hide all others, and drop panes that are no longer cached. */
++function activate(outlet: Element, active: HTMLElement) {
++  // Keep the visible pane first so e.g. getElementById() prefers it over
++  // hidden panes that may contain the same ids.
++  moveToFront(outlet, active);
++  active.hidden = false;
++  active.inert = false;
++  active.removeAttribute("aria-hidden");
++
++  // Enforce the LRU limit.
++  const activeKey = active.getAttribute(KEY_ATTR);
++  for (const key of cache.keys()) {
++    if (cache.size <= MAX_ENTRIES) break;
++    if (key !== activeKey) cache.delete(key);
++  }
++
++  for (const pane of panesOf(outlet)) {
++    if (pane === active) continue;
++    const key = pane.getAttribute(KEY_ATTR);
++    if (!key || !isCacheable(pane) || !cache.has(key)) {
++      pane.remove(); // islands inside unmount on the upcoming astro:after-swap
++      continue;
++    }
++    pane.hidden = true;
++    pane.inert = true;
++    pane.setAttribute("aria-hidden", "true");
++  }
++}
++
++/** Initialise the pane of the first, server-rendered page. */
++function initFirstPane() {
++  const outlet = getOutlet();
++  const pane = outlet && panesOf(outlet)[0];
++  if (!pane) return;
++  const key = keyOf(location);
++  pane.setAttribute(KEY_ATTR, key);
++  if (isCacheable(pane)) {
++    touch(key, {
++      head: document.head.innerHTML,
++      rootAttrs: rootAttrsOf(document),
++      fetchedAt: Date.now(),
++    });
++  }
++}
++
++function clearCache() {
++  cache.clear();
++}
++
++/* ------------------------------------------------------------------------ */
++/* Router hooks                                                             */
++/* ------------------------------------------------------------------------ */
++
++document.addEventListener("astro:before-preparation", (e) => {
++  const event = e as TransitionBeforePreparationEvent;
++
++  // Non-idempotent navigation (form POST etc.): server state may have
++  // changed, so nothing cached can be trusted anymore.
++  if (event.formData) {
++    clearCache();
++    return;
++  }
++
++  const key = keyOf(event.to);
++  const entry = cache.get(key);
++  if (!entry) return;
++  if (Date.now() - entry.fetchedAt > MAX_AGE_MS || !findPane(key)) {
++    cache.delete(key);
++    return;
++  }
++
++  const originalLoader = event.loader;
++  event.loader = async () => {
++    const doc = synthesizeDocument(entry);
++    if (!doc || !findPane(key)) return originalLoader();
++    event.newDocument = doc;
++  };
++});
++
++document.addEventListener("astro:before-swap", (e) => {
++  const event = e as TransitionBeforeSwapEvent;
++  const doc = event.newDocument;
++  const incomingOutlet = getOutlet(doc);
++  const liveOutlet = getOutlet();
++
++  // A page without the outlet (or coming from one): plain ClientRouter swap.
++  if (!incomingOutlet || !liveOutlet) {
++    clearCache();
++    return;
++  }
++
++  const key = keyOf(event.to);
++  const restoring = restoredDocs.has(doc);
++
++  event.swap = () => {
++    const {
++      deselectScripts,
++      swapRootAttributes,
++      swapHeadElements,
++      swapBodyElement,
++      saveFocus,
++    } = swapFunctions;
++
++    let pane: HTMLElement | undefined;
++    if (restoring) {
++      pane = findPane(key);
++      const entry = cache.get(key);
++      if (!pane || !entry) {
++        // Should not happen (checked in the loader), but never show a blank page.
++        cache.delete(key);
++        location.href = event.to.href;
++        return;
++      }
++      touch(key, entry);
++    } else {
++      // Fresh server HTML: remember its head + shell before the swap consumes it.
++      captureShell(doc);
++      const incomingPane = panesOf(incomingOutlet)[0];
++      if (incomingPane) {
++        incomingPane.setAttribute(KEY_ATTR, key);
++        if (isCacheable(incomingPane)) {
++          touch(key, {
++            head: doc.head.innerHTML,
++            rootAttrs: rootAttrsOf(doc),
++            fetchedAt: Date.now(),
++          });
++        } else {
++          cache.delete(key);
++        }
++        // A stale pane for the same URL is replaced by the fresh one.
++        findPane(key)?.remove();
++        incomingPane.remove();
++        pane = incomingPane;
++      }
++    }
++
++    deselectScripts(doc);
++    swapRootAttributes(doc);
++    swapHeadElements(doc);
++    const restoreFocus = saveFocus();
++
++    // Carry the live outlet (with all kept-alive panes) over into the new
++    // body without ever disconnecting it.
++    liveOutlet.setAttribute(PERSIST_ATTR, PERSIST_ID);
++    incomingOutlet.setAttribute(PERSIST_ATTR, PERSIST_ID);
++    swapBodyElement(doc.body, document.body);
++    liveOutlet.removeAttribute(PERSIST_ATTR);
++
++    if (pane) {
++      if (!pane.isConnected) {
++        const adopted = document.adoptNode(pane);
++        liveOutlet.prepend(adopted);
++        reifyMedia(adopted);
++      }
++      activate(liveOutlet, pane);
++    }
++
++    restoreFocus();
++  };
++});
++
++initFirstPane();
++
++// Small escape hatch for debugging / programmatic invalidation.
++declare global {
++  interface Window {
++    __viewCache?: { clear(): void; keys(): string[] };
++  }
++}
++window.__viewCache = { clear: clearCache, keys: () => [...cache.keys()] };

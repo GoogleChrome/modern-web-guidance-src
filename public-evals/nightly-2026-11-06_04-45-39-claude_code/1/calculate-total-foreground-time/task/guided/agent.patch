@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,63 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    // Foreground-time tracking. Inline in <head> so the fallback listener is
++    // attached as early as possible in the page lifecycle.
++    (() => {
++      const supportsVisibilityEntries =
++        'VisibilityStateEntry' in window &&
++        PerformanceObserver.supportedEntryTypes?.includes('visibility-state');
++
++      // Fallback for browsers without VisibilityStateEntry (Firefox, Safari):
++      // accumulate visible time from visibilitychange events. Less precise, and
++      // can't see visibility changes that happened before this script ran.
++      let fallbackTotal = 0;
++      let visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
++
++      if (!supportsVisibilityEntries) {
++        document.addEventListener('visibilitychange', () => {
++          const now = performance.now();
++          if (document.visibilityState === 'hidden' && visibleSince !== null) {
++            fallbackTotal += now - visibleSince;
++            visibleSince = null;
++          } else if (document.visibilityState === 'visible' && visibleSince === null) {
++            visibleSince = now;
++          }
++        });
++      }
++
++      /**
++       * Calculates the total time the page has been in the visible (foreground)
++       * state since navigation start, excluding time spent in a background tab.
++       *
++       * @returns {number} Total foreground time in milliseconds.
++       */
++      function getTotalForegroundTime() {
++        const now = performance.now();
++
++        if (supportsVisibilityEntries) {
++          const entries = performance.getEntriesByType('visibility-state');
++          if (entries.length > 0) {
++            let total = 0;
++            for (let i = 0; i < entries.length; i++) {
++              if (entries[i].name !== 'visible') continue;
++              const start = entries[i].startTime;
++              const end = i + 1 < entries.length ? entries[i + 1].startTime : now;
++              total += end - start;
++            }
++            return total;
++          }
++        }
++
++        return fallbackTotal + (visibleSince !== null ? now - visibleSince : 0);
++      }
++
++      window.getTotalForegroundTime = getTotalForegroundTime;
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

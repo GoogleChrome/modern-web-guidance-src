@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,44 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #roasting-widget {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 400px;
++      height: 400px;
++      padding: 24px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: var(--light);
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .roast-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px 20px;
++    }
++
++    .roast-temperature {
++      color: var(--accent);
++      font-variant-numeric: tabular-nums;
++      white-space: nowrap;
++    }
++
++    #roast-canvas {
++      display: block;
++      width: 100%;
++      flex: 1;
++      min-height: 0;
++      border-radius: 6px;
++      background: #281b17;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +232,20 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="roasting-widget" class="container" aria-labelledby="roast-heading">
++    <div class="roast-header">
++      <h2 id="roast-heading">Inside the Roaster</h2>
++      <p class="roast-temperature">Temperature: <span id="roast-temp-value">180</span> °C</p>
++    </div>
++    <p>A simulated glimpse of our beans tumbling toward a rich, even roast.</p>
++    <canvas id="roast-canvas" width="1000" height="240" role="img"
++      aria-label="Coffee beans tumbling inside a roaster">
++      Coffee beans tumble in a warm roasting drum. The simulated temperature is shown above.
++    </canvas>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +254,131 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const widget = document.getElementById('roasting-widget');
++      const canvas = document.getElementById('roast-canvas');
++      const temperature = document.getElementById('roast-temp-value');
++      const context = canvas.getContext('2d');
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const beans = Array.from({ length: 42 }, () => ({
++        x: Math.random() * canvas.width,
++        y: 35 + Math.random() * (canvas.height - 70),
++        angle: Math.random() * Math.PI * 2,
++        speed: 25 + Math.random() * 45,
++        shade: Math.floor(75 + Math.random() * 45)
++      }));
++      let inView = false;
++      let renderingSkipped = false;
++      let running = false;
++      let frameId = null;
++      let intervalId = null;
++      let lastFrame = null;
++      let roastTime = 0;
++
++      function drawBeans(delta) {
++        if (!context) return;
++        context.clearRect(0, 0, canvas.width, canvas.height);
++        for (const bean of beans) {
++          bean.x = (bean.x + bean.speed * delta) % (canvas.width + 40);
++          bean.angle += delta * 1.2;
++          context.save();
++          context.translate(bean.x - 20, bean.y + Math.sin(bean.angle) * 12);
++          context.rotate(bean.angle);
++          context.fillStyle = `rgb(${bean.shade + 45}, ${bean.shade}, ${bean.shade - 25})`;
++          context.beginPath();
++          context.ellipse(0, 0, 18, 11, 0, 0, Math.PI * 2);
++          context.fill();
++          context.strokeStyle = '#321c12';
++          context.lineWidth = 2;
++          context.beginPath();
++          context.moveTo(-12, 0);
++          context.bezierCurveTo(-4, -5, 4, 5, 12, 0);
++          context.stroke();
++          context.restore();
++        }
++      }
++
++      function animate(timestamp) {
++        frameId = null;
++        if (!running || reducedMotion.matches) return;
++        const delta = lastFrame === null ? 0 : Math.min((timestamp - lastFrame) / 1000, 0.05);
++        lastFrame = timestamp;
++        drawBeans(delta);
++        frameId = requestAnimationFrame(animate);
++      }
++
++      function stopSimulation() {
++        running = false;
++        if (frameId !== null) cancelAnimationFrame(frameId);
++        if (intervalId !== null) clearInterval(intervalId);
++        frameId = null;
++        intervalId = null;
++        lastFrame = null;
++      }
++
++      function syncSimulation() {
++        const shouldRun = inView && !renderingSkipped && !document.hidden;
++        if (!shouldRun) {
++          stopSimulation();
++          return;
++        }
++        if (running) return;
++        running = true;
++        drawBeans(0);
++        if (context && !reducedMotion.matches) frameId = requestAnimationFrame(animate);
++        intervalId = setInterval(() => {
++          roastTime += 1;
++          temperature.textContent = Math.round(180 + 25 * (1 - Math.cos(roastTime / 20)));
++        }, 1000);
++      }
++
++      // Attach directly: rendering-state events do not consistently bubble.
++      if ('oncontentvisibilityautostatechange' in widget) {
++        widget.addEventListener('contentvisibilityautostatechange', (event) => {
++          renderingSkipped = event.skipped;
++          syncSimulation();
++        });
++      }
++
++      // Also enforce actual viewport visibility: native rendering may begin offscreen.
++      // This observer doubles as the fallback when rendering-state events are absent.
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          inView = entries[entries.length - 1].isIntersecting;
++          syncSimulation();
++        }, { threshold: 0 });
++        observer.observe(widget);
++      } else {
++        // Older browsers without either API still stop both tasks offscreen.
++        const checkVisibility = () => {
++          const rect = widget.getBoundingClientRect();
++          inView = rect.bottom > 0 && rect.top < window.innerHeight &&
++            rect.right > 0 && rect.left < window.innerWidth;
++          syncSimulation();
++        };
++        window.addEventListener('scroll', checkVisibility, { passive: true, capture: true });
++        window.addEventListener('resize', checkVisibility, { passive: true });
++        window.addEventListener('pageshow', checkVisibility);
++        checkVisibility();
++      }
++
++      document.addEventListener('visibilitychange', syncSimulation);
++      window.addEventListener('pagehide', stopSimulation);
++      window.addEventListener('pageshow', syncSimulation);
++      const handleMotionChange = () => {
++        stopSimulation();
++        syncSimulation();
++      };
++      if (reducedMotion.addEventListener) {
++        reducedMotion.addEventListener('change', handleMotionChange);
++      } else {
++        reducedMotion.addListener(handleMotionChange);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

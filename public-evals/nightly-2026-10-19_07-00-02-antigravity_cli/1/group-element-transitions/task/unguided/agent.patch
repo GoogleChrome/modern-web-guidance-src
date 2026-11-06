@@ -1,0 +1,329 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,169 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Disable full-page transition effects so Add Item button remains clickable and responsive */
++    :root,
++    html {
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    /* Coffee Bean Selections */
++    .beans-section {
++      margin-top: 60px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #5d4037;
++      margin-top: 8px;
++      margin-bottom: 24px;
++      font-size: 1.05rem;
++    }
++
++    .bean-actions {
++      display: flex;
++      justify-content: center;
++      margin-bottom: 28px;
++    }
++
++    .bean-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++      max-width: 800px;
++      margin: 0 auto;
++      padding: 0;
++    }
++
++    .item {
++      background: white;
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      view-transition-class: item;
++    }
++
++    .item-content {
++      flex: 1;
++    }
++
++    .item-content h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.25rem;
++    }
++
++    .item-content p {
++      color: var(--text);
++      font-size: 0.95rem;
++      margin-bottom: 8px;
++    }
++
++    .bean-badge {
++      display: inline-block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 4px 12px;
++      border-radius: 20px;
++    }
++
++    .btn-remove {
++      background: #8d6e63;
++      color: white;
++      border: none;
++      cursor: pointer;
++      padding: 8px 16px;
++      border-radius: 5px;
++      font-size: 0.85rem;
++      transition: background 0.3s;
++      margin-top: 0;
++      flex-shrink: 0;
++    }
++
++    .btn-remove:hover {
++      background: #d32f2f;
++    }
++
++    #add-item-btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: bold;
++      padding: 12px 28px;
++      background: var(--primary);
++      color: white;
++      border-radius: 5px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: background 0.3s;
++    }
++
++    #add-item-btn:hover {
++      background: #3e2723;
++    }
++
++    /* Transition for all items in the list: ease-in-out of 0.5s duration */
++    ::view-transition-group(.item) {
++      animation-duration: 0.5s;
++      animation-timing-function: ease-in-out;
++    }
++
++    /* New items entering slide in from the left over 1 second */
++    ::view-transition-new(.item) {
++      animation: 1s ease-in-out slide-in-left;
++    }
++
++    /* Exiting items slide out to the left over 1 second */
++    ::view-transition-old(.item) {
++      animation: 1s ease-in-out slide-out-left;
++    }
++
++    @keyframes slide-in-left {
++      from {
++        transform: translateX(-100%);
++      }
++      to {
++        transform: translateX(0);
++      }
++    }
++
++    @keyframes slide-out-left {
++      from {
++        transform: translateX(0);
++      }
++      to {
++        transform: translateX(-100%);
++      }
++    }
++
++    /* Disable all animations if user has prefers-reduced-motion set */
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after,
++      ::view-transition,
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++        animation-duration: 0.001ms !important;
++        transition: none !important;
++        transition-duration: 0.001ms !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +355,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans-section" id="coffee-beans">
++      <h2 style="text-align: center;">Coffee Bean Selections</h2>
++      <p class="section-subtitle">Ethically sourced, freshly roasted whole beans curated for your daily brew.</p>
++
++      <div class="bean-actions">
++        <button id="add-item-btn" class="btn" type="button">Add Item</button>
++      </div>
++
++      <ul id="bean-list" class="bean-list">
++        <li class="item" style="view-transition-name: item-1;">
++          <div class="item-content">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Floral notes of jasmine and bright bergamot with a sweet citrus honey finish.</p>
++            <span class="bean-badge">Light Roast &bull; Single Origin</span>
++          </div>
++          <button class="btn-remove" type="button" aria-label="Remove item" onclick="removeBean(this)">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: item-2;">
++          <div class="item-content">
++            <h3>Colombian Supremo</h3>
++            <p>Rich and balanced with notes of toasted walnut, milk chocolate, and sweet cane sugar.</p>
++            <span class="bean-badge">Medium Roast &bull; Organic</span>
++          </div>
++          <button class="btn-remove" type="button" aria-label="Remove item" onclick="removeBean(this)">Remove</button>
++        </li>
++        <li class="item" style="view-transition-name: item-3;">
++          <div class="item-content">
++            <h3>Sumatra Mandheling</h3>
++            <p>Deep, full-bodied cup with earthy cedar undertones and dark cocoa aroma.</p>
++            <span class="bean-badge">Dark Roast &bull; Fair Trade</span>
++          </div>
++          <button class="btn-remove" type="button" aria-label="Remove item" onclick="removeBean(this)">Remove</button>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +403,110 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const customBeans = [
++        {
++          name: "Guatemala Antigua",
++          desc: "Velvety cocoa with hints of baking spice and subtle smoky sweetness.",
++          roast: "Medium Roast &bull; Volcanic Valley"
++        },
++        {
++          name: "Costa Rica Tarrazú",
++          desc: "Crisp green apple acidity with a clean honeyed finish and citrus florals.",
++          roast: "Light Roast &bull; Honey Process"
++        },
++        {
++          name: "Kenya AA Highlands",
++          desc: "Complex berry sweetness, black currant, and bright wine-like acidity.",
++          roast: "Medium Roast &bull; High Altitude"
++        },
++        {
++          name: "Panama Boquete Geisha",
++          desc: "Exquisite floral aroma with bergamot, peach nectar, and delicate jasmine.",
++          roast: "Light Roast &bull; Reserve Selection"
++        },
++        {
++          name: "Rwanda Bourbon",
++          desc: "Silky body with sweet mandarin orange, red currant, and warm clove.",
++          roast: "Medium-Dark Roast &bull; Fair Trade"
++        },
++        {
++          name: "Java Estate Blawan",
++          desc: "Syrupy sweetness with heavy body and subtle herbal spiciness.",
++          roast: "Dark Roast &bull; Washed Arabica"
++        },
++        {
++          name: "Brazil Cerrado Natural",
++          desc: "Creamy peanut butter, milk chocolate fudge, and low citric acidity.",
++          roast: "Medium Roast &bull; Solar Dried"
++        }
++      ];
++
++      let beanCounter = 3;
++      const beanList = document.getElementById('bean-list');
++      const addItemBtn = document.getElementById('add-item-btn');
++
++      function addItem() {
++        beanCounter++;
++        const beanData = customBeans[(beanCounter - 4) % customBeans.length] || {
++          name: 'Custom Artisanal Roast #' + beanCounter,
++          desc: 'Specialty single-batch coffee beans roasted to perfection.',
++          roast: 'Custom Roast &bull; Small Batch'
++        };
++
++        const newItem = document.createElement('li');
++        newItem.className = 'item';
++        newItem.style.viewTransitionName = 'item-' + beanCounter;
++        newItem.innerHTML = `
++          <div class="item-content">
++            <h3>${beanData.name}</h3>
++            <p>${beanData.desc}</p>
++            <span class="bean-badge">${beanData.roast}</span>
++          </div>
++          <button class="btn-remove" type="button" aria-label="Remove item" onclick="removeBean(this)">Remove</button>
++        `;
++
++        if (document.startViewTransition) {
++          document.startViewTransition(() => {
++            beanList.appendChild(newItem);
++          });
++        } else {
++          beanList.appendChild(newItem);
++        }
++      }
++
++      function removeBean(target) {
++        const item = target && target.closest ? target.closest('.item') : target;
++        if (!item) return;
++
++        if (document.startViewTransition) {
++          document.startViewTransition(() => {
++            item.remove();
++          });
++        } else {
++          item.remove();
++        }
++      }
++
++      if (addItemBtn) {
++        addItemBtn.addEventListener('click', addItem);
++      }
++
++      if (beanList) {
++        beanList.addEventListener('click', (e) => {
++          const removeBtn = e.target.closest('.btn-remove');
++          if (removeBtn) {
++            removeBean(removeBtn);
++          }
++        });
++      }
++
++      window.addItem = addItem;
++      window.removeBean = removeBean;
++    })();
++  </script>
+ </body>
+ 
+ </html>

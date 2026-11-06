@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,67 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-block-start: 48px;
++      padding: clamp(24px, 5vw, 48px);
++      background: #f1ebe7;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .preferences .eyebrow {
++      color: #76564a;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      margin-block-end: 6px;
++    }
++
++    .preferences h2 { font-size: 1.8rem; }
++    .preferences .intro { margin-block: 6px 26px; }
++    .preferences form { max-inline-size: 640px; }
++    .preference-field { margin-block-end: 22px; }
++    .preference-field label { display: block; font-weight: 600; margin-block-end: 6px; }
++
++    .preference-field :is(input, textarea, select) {
++      field-sizing: content;
++      display: block;
++      width: auto;
++      max-inline-size: 100%;
++      min-block-size: 48px;
++      padding: 10px 14px;
++      border: 1px solid #a38f84;
++      border-radius: 5px;
++      background: #fff;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++      line-height: 1.6;
++    }
++
++    .preference-field input { min-inline-size: min(12ch, 100%); }
++    .preference-field select { cursor: pointer; padding-inline-end: 32px; }
++    .preference-field textarea {
++      width: 100%;
++      height: auto;
++      min-block-size: calc(1.6em + 22px);
++      max-block-size: 18em;
++      resize: vertical;
++      overflow-wrap: anywhere;
++    }
++
++    .preferences :is(input, textarea, select, button):focus-visible {
++      outline: 3px solid #8b5115;
++      outline-offset: 3px;
++    }
++
++    .preferences .hint { font-size: 0.85rem; color: #6e554a; margin-block-start: 6px; }
++    .preferences button { border: 0; font: inherit; cursor: pointer; margin-top: 0; min-block-size: 48px; }
++    .preferences .save-status { margin-block-start: 12px; font-size: 0.9rem; }
++    .preferences .save-status:empty { display: none; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +253,39 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <p class="eyebrow">MAKE IT YOURS</p>
++      <h2 id="preferences-heading">Your coffee, your way.</h2>
++      <p class="intro">Keep your favorite cup close. Save a little note for your next coffee run.</p>
++      <form id="coffee-preferences" action="#preferences-heading" method="get">
++        <div class="preference-field">
++          <label for="coffee-name">Your name</label>
++          <input type="text" id="coffee-name" name="name" autocomplete="given-name" placeholder="First name" maxlength="100">
++        </div>
++        <div class="preference-field">
++          <label for="favorite-coffee">Your usual</label>
++          <select id="favorite-coffee" name="coffee">
++            <option value="latte">Latte</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="americano">Americano</option>
++          </select>
++        </div>
++        <div class="preference-field">
++          <label for="coffee-notes">Make it special <span style="font-weight: normal;">(optional)</span></label>
++          <textarea id="coffee-notes" name="notes" rows="1" maxlength="2000" placeholder="Oat milk, an extra shot…" aria-describedby="notes-hint"></textarea>
++          <p class="hint" id="notes-hint">A little or a lot — this space grows with your notes.</p>
++        </div>
++        <button type="submit" class="btn">Save my preferences</button>
++        <p class="hint">Saved in this browser for your next visit.</p>
++        <p class="save-status" id="save-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +296,63 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const preferencesForm = document.getElementById('coffee-preferences');
++    const preferenceFields = [...preferencesForm.querySelectorAll('input, textarea, select')];
++    const saveStatus = document.getElementById('save-status');
++    const storageKey = 'daily-grind-coffee-preferences';
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
++      if (saved && typeof saved === 'object') {
++        for (const field of preferenceFields) {
++          if (typeof saved[field.name] === 'string') field.value = saved[field.name];
++        }
++      }
++    } catch { /* The form remains usable when storage is unavailable. */ }
++
++    if (!CSS.supports('field-sizing', 'content')) {
++      const measure = document.createElement('span');
++      measure.setAttribute('aria-hidden', 'true');
++      Object.assign(measure.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre', pointerEvents: 'none' });
++      document.body.append(measure);
++      const fitFields = () => {
++        for (const field of preferenceFields) {
++          const style = getComputedStyle(field);
++          if (field.tagName === 'TEXTAREA') {
++            field.style.height = 'auto';
++            field.style.height = `${field.scrollHeight + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
++          } else {
++            measure.style.font = style.font;
++            measure.style.letterSpacing = style.letterSpacing;
++            measure.textContent = field.tagName === 'SELECT'
++              ? field.selectedOptions[0]?.textContent || ''
++              : field.value || field.placeholder;
++            const extra = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
++              + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
++            field.style.width = `${Math.ceil(measure.getBoundingClientRect().width + extra + 2)}px`;
++          }
++        }
++      };
++      preferencesForm.addEventListener('input', fitFields);
++      preferencesForm.addEventListener('change', fitFields);
++      window.addEventListener('resize', fitFields);
++      document.fonts.ready.then(fitFields);
++      fitFields();
++    }
++
++    preferencesForm.addEventListener('input', () => { saveStatus.textContent = ''; });
++    preferencesForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(new FormData(preferencesForm))));
++        saveStatus.textContent = 'Your preferences are saved. Here’s to your next cup!';
++      } catch {
++        saveStatus.textContent = 'This browser couldn’t save your preferences. Your notes are still here until you leave this page.';
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

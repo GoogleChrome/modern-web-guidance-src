@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+index 66c9173..462ed53 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal context: the section declares its semantic surface;
++       cards opt in to react to it without naming the section. */
++    .seasonal {
++      --surface: seasonal;
++      --seasonal-bg: linear-gradient(160deg, #fff8ef 0%, #ffe9cc 100%);
++      --seasonal-ink: #8d3b12;
++      --seasonal-accent: #e8772e;
++    }
++
++    .card {
++      position: relative;
++    }
++
++    .card::before {
++      /* Badge hidden by default; revealed only in seasonal surfaces */
++      display: none;
++    }
++
++    /* Fallback for browsers without container style queries */
++    :where(.seasonal) .card {
++      background: var(--seasonal-bg);
++      border-top: 4px solid var(--seasonal-accent);
++      box-shadow: 0 6px 18px rgba(141, 59, 18, 0.15);
++      padding-top: 36px;
++    }
++
++    :where(.seasonal) .card::before {
++      content: "Limited Season";
++      display: block;
++      position: absolute;
++      top: 10px;
++      left: 50%;
++      translate: -50% 0;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: var(--seasonal-accent);
++      color: #fff;
++      font-size: 0.7rem;
++      font-weight: 600;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++    }
++
++    :where(.seasonal) .card h3 {
++      color: var(--seasonal-ink);
++    }
++
++    :where(.seasonal) .card .btn {
++      background: var(--seasonal-accent);
++    }
++
++    :where(.seasonal) .card .btn:hover {
++      background: var(--seasonal-ink);
++    }
++
++    /* Progressive enhancement: react to the inherited semantic flag */
++    @container style(--surface: seasonal) {
++      .card {
++        background: var(--seasonal-bg);
++        border-top: 4px solid var(--seasonal-accent);
++        box-shadow: 0 6px 18px rgba(141, 59, 18, 0.15);
++        padding-top: 36px;
++      }
++
++      .card::before {
++        content: "Limited Season";
++        display: block;
++        position: absolute;
++        top: 10px;
++        left: 50%;
++        translate: -50% 0;
++        padding: 2px 10px;
++        border-radius: 999px;
++        background: var(--seasonal-accent);
++        color: #fff;
++        font-size: 0.7rem;
++        font-weight: 600;
++        letter-spacing: 0.08em;
++        text-transform: uppercase;
++      }
++
++      .card h3 {
++        color: var(--seasonal-ink);
++      }
++
++      .card .btn {
++        background: var(--seasonal-accent);
++      }
++
++      .card .btn:hover {
++        background: var(--seasonal-ink);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +269,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

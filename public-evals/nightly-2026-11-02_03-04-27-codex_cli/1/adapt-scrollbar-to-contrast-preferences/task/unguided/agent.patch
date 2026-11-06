@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,63 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --scrollbar-thumb: #4e342e;
++      --scrollbar-track: #f1ebe8;
++      --scrollbar-thumb-hover: #2b1b17;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Keep native sizing and let system high-contrast themes choose colors. */
++    * {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-thumb: #000;
++        --scrollbar-track: #fff;
++        --scrollbar-thumb-hover: #000;
++      }
++    }
++
++    @media (forced-colors: active) {
++      * {
++        scrollbar-color: auto;
++      }
++    }
++
++    /* Fallback for browsers using WebKit scrollbar styling. */
++    @media (forced-colors: none) {
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track,
++      ::-webkit-scrollbar-corner {
++        background: var(--scrollbar-track);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border: 2px solid var(--scrollbar-track);
++        border-radius: 8px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background: var(--scrollbar-thumb-hover);
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);

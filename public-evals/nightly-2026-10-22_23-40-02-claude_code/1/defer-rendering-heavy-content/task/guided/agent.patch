@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -180,8 +180,43 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Cards below the initial viewport skip layout/paint until they near the screen */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 380px;
++    }
++
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 1rem 1.5rem;
++      background: var(--card-bg);
++      border: 1px solid #e2e8f0;
++      border-radius: 1rem;
++      font-family: monospace;
++      /* Hidden by default; skips rendering but keeps style state, so toggling is instant */
++      display: none;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        display: block;
++        content-visibility: hidden;
++      }
++
++      .debug-panel.is-open {
++        content-visibility: visible;
++      }
++    }
++
++    @supports not (content-visibility: hidden) {
++      .debug-panel.is-open {
++        display: block;
++      }
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +242,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn secondary" aria-expanded="false" aria-controls="debug-panel">Debug
++      Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +256,30 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel" aria-label="Debug panel">
++    <div>Cards: <span id="debug-cards">0</span></div>
++    <div>Deferred (off-screen) cards: <span id="debug-deferred">0</span></div>
++    <div>Last render: <span id="debug-render">-</span></div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Cards expected to fit in the initial viewport; everything after is deferred
++    const aboveFoldCount = 3;
++    const debugToggle = document.getElementById('debug-toggle');
++    const debugPanel = document.getElementById('debug-panel');
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = index < aboveFoldCount ? 'card' : 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +312,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          document.getElementById('debug-render').textContent = `${duration}ms`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -289,11 +337,19 @@
+         fragment.appendChild(createCard(i));
+       }
+       feed.appendChild(fragment);
+ 
++      document.getElementById('debug-cards').textContent = cardCount;
++      document.getElementById('debug-deferred').textContent = feed.querySelectorAll('.off-screen-card').length;
++
+       measureRender(startTime);
+     }
+ 
++    debugToggle.addEventListener('click', () => {
++      const open = debugPanel.classList.toggle('is-open');
++      debugToggle.setAttribute('aria-expanded', open);
++    });
++
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 

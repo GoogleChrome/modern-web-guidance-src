@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <style>
+    .toast {
+      position: absolute;
+      z-index: 10;
+      top: 20px;
+      right: 20px;
+      background: salmon;
+      padding: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="document.getElementById('t1').style.display='block'; document.getElementById('t2').style.display='none'">Show 1</button>
+  <button onclick="document.getElementById('t2').style.display='block'; document.getElementById('t1').style.display='none'">Show 2</button>
+  
+  <div id="t1" class="toast">Error 1</div>
+  <div id="t2" class="toast">Error 2</div>
+
+  <script>
+    window.onclick = function(e) {
+      if(e.target.tagName !== 'BUTTON') {
+        document.getElementById('t1').style.display = 'none';
+        document.getElementById('t2').style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>

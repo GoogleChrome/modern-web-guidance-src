@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="gift-card.css">
++  <script src="vendor/html2canvas.min.js" defer></script>
++  <script src="gift-card.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +197,55 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="gift-designer" aria-labelledby="gift-heading">
++      <div class="gift-heading">
++        <p class="eyebrow">A LITTLE COFFEE. A LOT OF LOVE.</p>
++        <h2 id="gift-heading">Make their daily grind a little sweeter.</h2>
++        <p>A thoughtful note, their favorite color, and a little pick-me-up. Make it theirs.</p>
++      </div>
++      <div class="gift-workspace">
++        <div class="gift-controls">
++          <h3>Your personal touch</h3>
++          <label for="gift-name">Who’s the lucky one?</label>
++          <input id="gift-name" type="text" maxlength="35" placeholder="e.g. Jamie" autocomplete="off">
++          <label for="gift-message">Leave a little love</label>
++          <textarea id="gift-message" rows="3" maxlength="120" placeholder="You deserve a coffee break. This one's on me!"></textarea>
++          <p class="gift-count"><span id="gift-count">0</span> / 120</p>
++          <fieldset class="gift-colors">
++            <legend>Pick a background <span id="gift-color-name">· Oat milk</span></legend>
++            <div class="gift-swatches">
++              <label title="Oat milk"><input type="radio" name="gift-color" value="#f3e5cf" data-name="Oat milk" checked><span style="--swatch: #f3e5cf"></span><span class="sr-only">Oat milk</span></label>
++              <label title="Sage"><input type="radio" name="gift-color" value="#d8e1d1" data-name="Sage"><span style="--swatch: #d8e1d1"></span><span class="sr-only">Sage</span></label>
++              <label title="Rose"><input type="radio" name="gift-color" value="#eed4cf" data-name="Rose"><span style="--swatch: #eed4cf"></span><span class="sr-only">Rose</span></label>
++              <label title="Sky"><input type="radio" name="gift-color" value="#d7e4eb" data-name="Sky"><span style="--swatch: #d7e4eb"></span><span class="sr-only">Sky</span></label>
++              <label title="Honey"><input type="radio" name="gift-color" value="#efd39b" data-name="Honey"><span style="--swatch: #efd39b"></span><span class="sr-only">Honey</span></label>
++            </div>
++          </fieldset>
++          <button class="btn gift-download" id="gift-download" type="button" disabled><span aria-hidden="true">↓ &nbsp;</span> Download gift card</button>
++          <p class="gift-file-note">Made by you. Ready to share as a PNG.</p>
++          <p id="gift-status" class="gift-status" role="status" aria-live="polite"></p>
++        </div>
++        <div class="gift-preview">
++          <p class="gift-preview-label"><span class="gift-live-dot"></span> YOUR CARD, COMING TO LIFE</p>
++          <div id="gift-stage" class="gift-stage">
++            <div id="export_element" class="gift-art" drawable>
++              <div class="gift-art-top"><span>THE DAILY GRIND</span><span>MADE TO MAKE YOUR DAY</span></div>
++              <div class="gift-art-body">
++                <div class="gift-art-copy"><p class="gift-art-kicker">A LITTLE PICK-ME-UP</p><h3>Coffee’s<br>on me.</h3></div>
++                <svg class="gift-cup" viewBox="0 0 150 160" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M53 34C37 16 67 15 54 2M78 33C63 16 93 15 80 2M103 34C88 17 118 16 105 3" stroke="#8e6951" stroke-width="3" stroke-linecap="round"/><ellipse cx="73" cy="140" rx="66" ry="10" fill="#4e342e" fill-opacity=".1"/><path d="M113 66h12c30 0 25 41-9 39" stroke="#4e342e" stroke-width="9"/><path d="M24 57h94l-8 61c-3 23-70 23-77 0z" fill="#fffaf1" stroke="#4e342e" stroke-width="3"/><ellipse cx="71" cy="57" rx="47" ry="12" fill="#4e342e"/><ellipse cx="71" cy="56" rx="38" ry="7" fill="#9c6b48"/><path d="M61 87c-10-11-25 8 10 25 35-17 20-36 10-25l-10 10z" fill="#b56645"/></svg>
++              </div>
++              <div class="gift-art-note"><p class="gift-recipient">For <span id="gift-recipient">someone special</span></p><p id="gift-note">You deserve a coffee break. This one's on me!</p></div>
++              <div class="gift-art-bottom"><span>GOOD COFFEE. GREAT COMPANY.</span><span>♥</span></div>
++            </div>
++          </div>
++          <p class="gift-preview-note">A small gesture. A whole latte love.</p>
++        </div>
++      </div>
++      <p class="gift-disclaimer">A personal greeting to share with someone special. This design has no monetary value.</p>
++      <noscript><p>Enable JavaScript to personalize and download your card.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

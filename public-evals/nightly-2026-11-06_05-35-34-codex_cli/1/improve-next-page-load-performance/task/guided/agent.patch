@@ -1,0 +1,38 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,23 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Prefetch same-origin pages on intent; never fetch logout speculatively. -->
++  <script type="speculationrules">
++    {
++      "prefetch": [{
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout*" } },
++            { "not": { "selector_matches": "[data-no-prefetch], .logout-link, [download]" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -163,9 +178,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">

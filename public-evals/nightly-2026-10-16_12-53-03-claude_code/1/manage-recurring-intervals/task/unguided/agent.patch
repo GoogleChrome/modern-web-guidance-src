@@ -1,0 +1,269 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Delivery Planner */
++    .planner {
++      margin-top: 60px;
++    }
++
++    .planner-card {
++      max-width: 520px;
++      margin: 0 auto;
++      padding: 30px;
++      text-align: left;
++    }
++
++    .planner-card h2 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .planner-intro {
++      margin-bottom: 20px;
++      opacity: 0.8;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      margin-bottom: 16px;
++      flex: 1;
++    }
++
++    .field-row {
++      display: flex;
++      gap: 16px;
++    }
++
++    .field label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field select {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      width: 100%;
++    }
++
++    .field input:focus-visible,
++    .field select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field small {
++      font-size: 0.75rem;
++      opacity: 0.7;
++    }
++
++    .result-box {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 5px;
++      padding: 14px 16px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .result-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      opacity: 0.7;
++    }
++
++    #resultDate {
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    #resultDate.error {
++      color: #b3261e;
++      font-size: 1rem;
++    }
++
++    @media (max-width: 480px) {
++      .field-row {
++        flex-direction: column;
++        gap: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +291,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="planner" aria-labelledby="planner-title">
++      <div class="card planner-card">
++        <h2 id="planner-title">Delivery Planner</h2>
++        <p class="planner-intro">Find out when your next recurring coffee subscription delivery will arrive.</p>
++
++        <div class="field">
++          <label for="startDateInput">Start date</label>
++          <input type="date" id="startDateInput">
++        </div>
++
++        <div class="field-row">
++          <div class="field">
++            <label for="yearsInput">Years to add</label>
++            <input type="number" id="yearsInput" min="0" max="1000" step="1" value="0" inputmode="numeric">
++          </div>
++          <div class="field">
++            <label for="monthsInput">Months to add</label>
++            <input type="number" id="monthsInput" min="0" max="12000" step="1" value="1" inputmode="numeric">
++          </div>
++        </div>
++
++        <div class="field">
++          <label for="overflowSelect">Month-end handling</label>
++          <select id="overflowSelect">
++            <option value="constrain">constrain</option>
++            <option value="reject">reject</option>
++          </select>
++          <small>"constrain" clamps to the last day of the month; "reject" reports an error instead.</small>
++        </div>
++
++        <div class="result-box">
++          <span class="result-label">Next delivery</span>
++          <output id="resultDate" for="startDateInput yearsInput monthsInput overflowSelect" aria-live="polite"></output>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +340,113 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const startInput = document.getElementById('startDateInput');
++    const yearsInput = document.getElementById('yearsInput');
++    const monthsInput = document.getElementById('monthsInput');
++    const overflowSelect = document.getElementById('overflowSelect');
++    const resultEl = document.getElementById('resultDate');
++
++    const POLYFILL_URL = 'https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.5.1/+esm';
++
++    // Progressive enhancement: native Temporal -> polyfill -> manual calendar math.
++    let Temporal = globalThis.Temporal ?? null;
++
++    const pad = (n, len = 2) => String(n).padStart(len, '0');
++    const daysInMonth = (year, month) => new Date(Date.UTC(year, month, 0)).getUTCDate();
++
++    // Exact calendar addition of years + months with an overflow strategy.
++    // Returns { year, month, day }; throws RangeError when "reject" hits a missing day.
++    function addManual({ year, month, day }, years, months, overflow) {
++      const total = year * 12 + (month - 1) + years * 12 + months;
++      const y = Math.floor(total / 12);
++      const m = (total % 12) + 1;
++      const max = daysInMonth(y, m);
++      if (day > max) {
++        if (overflow === 'reject') {
++          throw new RangeError(`${pad(y, 4)}-${pad(m)} has only ${max} days, so day ${day} does not exist.`);
++        }
++        day = max;
++      }
++      return { year: y, month: m, day };
++    }
++
++    function calculate(startValue, years, months, overflow) {
++      if (Temporal) {
++        const sum = Temporal.PlainDate.from(startValue).add({ years, months }, { overflow });
++        return { iso: sum.toString(), year: sum.year, month: sum.month, day: sum.day };
++      }
++      const [year, month, day] = startValue.split('-').map(Number);
++      const r = addManual({ year, month, day }, years, months, overflow);
++      return { iso: `${pad(r.year, 4)}-${pad(r.month)}-${pad(r.day)}`, ...r };
++    }
++
++    function format({ year, month, day }) {
++      // Noon UTC avoids any timezone date shift; format in UTC for the same reason.
++      const d = new Date(Date.UTC(2000, month - 1, day, 12));
++      d.setUTCFullYear(year);
++      return d.toLocaleDateString(undefined, {
++        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
++      });
++    }
++
++    function parseCount(input, label) {
++      const raw = input.value.trim();
++      if (raw === '') return { value: 0 };
++      const n = Number(raw);
++      const max = Number(input.max);
++      if (!Number.isInteger(n) || n < 0) return { error: `${label} must be a whole number of 0 or more.` };
++      if (n > max) return { error: `${label} must be ${max} or fewer.` };
++      return { value: n };
++    }
++
++    function showError(message) {
++      resultEl.classList.add('error');
++      resultEl.textContent = message;
++    }
++
++    function update() {
++      resultEl.classList.remove('error');
++
++      if (!startInput.value || startInput.validity.badInput) {
++        return showError('Please choose a valid start date.');
++      }
++      const years = parseCount(yearsInput, 'Years');
++      if (years.error) return showError(years.error);
++      const months = parseCount(monthsInput, 'Months');
++      if (months.error) return showError(months.error);
++
++      try {
++        const result = calculate(startInput.value, years.value, months.value, overflowSelect.value);
++        resultEl.textContent = format(result);
++      } catch (err) {
++        showError(err instanceof RangeError
++          ? `Can't calculate delivery date: ${err.message}`
++          : 'Something went wrong calculating the delivery date.');
++      }
++    }
++
++    // Default start date to today (local).
++    const now = new Date();
++    startInput.value = `${pad(now.getFullYear(), 4)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
++
++    for (const el of [startInput, yearsInput, monthsInput, overflowSelect]) {
++      el.addEventListener('input', update);
++      el.addEventListener('change', update);
++    }
++    update();
++
++    // Load the polyfill only when native Temporal is missing; fall back silently on failure.
++    if (!Temporal) {
++      import(POLYFILL_URL)
++        .then((mod) => {
++          Temporal = mod.Temporal;
++          update();
++        })
++        .catch(() => { /* manual calculation stays in use */ });
++    }
++  </script>
+ </body>
+ 
+ </html>

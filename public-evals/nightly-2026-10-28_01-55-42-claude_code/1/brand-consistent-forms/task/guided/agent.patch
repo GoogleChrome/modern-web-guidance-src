@@ -1,0 +1,692 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,127 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Brand palette */
++      --brown-900: #3e2723;
++      --brown-800: #4e342e;
++      --brown-700: #5d4037;
++      --brown-500: #8d6e63;
++      --brown-200: #d7ccc8;
++      --orange-400: #ffab40;
++      --orange-300: #ffbd66;
++      --orange-800: #a84b08;
++      --orange-50: #fff3e0;
++
++      --primary: var(--brown-800);
++      --secondary: var(--brown-200);
++      --accent: var(--orange-400);
++
++      /* Light / dark pairs. Every pair was contrast-checked against its surface. */
++      --bg-light: #fafafa;
++      --bg-dark: #1a110e;
++      --surface-light: #ffffff;
++      --surface-dark: #2b1d18;
++      --text-light: var(--brown-900);
++      --text-dark: #f3eae5;
++      --text-muted-light: var(--brown-700);
++      --text-muted-dark: var(--brown-200);
++      --heading-light: var(--brown-800);
++      --heading-dark: var(--orange-400);
++      --border-light: var(--brown-500);
++      --border-dark: var(--brown-500);
++      --track-light: var(--brown-200);
++      --track-dark: var(--brown-700);
++      /* Tint for native checkbox / radio / range / progress */
++      --control-light: var(--brown-800);
++      --control-dark: var(--orange-400);
++      /* Indicator (check mark, radio dot) drawn on top of the control tint */
++      --control-contrast-light: #ffffff;
++      --control-contrast-dark: #1a110e;
++      /* Orange used for text, focus rings, and selected borders. Light mode uses a
++         burnt orange because #ffab40 only reaches 1.9:1 on white. */
++      --highlight-light: var(--orange-800);
++      --highlight-dark: var(--orange-400);
++      --choice-checked-bg-light: var(--orange-50);
++      --choice-checked-bg-dark: #3b2a20;
++      --btn-bg-light: var(--brown-800);
++      --btn-bg-dark: var(--orange-400);
++      --btn-bg-hover-light: var(--brown-900);
++      --btn-bg-hover-dark: var(--orange-300);
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #1a110e;
++      --footer-bg-light: var(--brown-200);
++      --footer-bg-dark: var(--surface-dark);
++
++      /* Resolved tokens: light by default */
++      --bg: var(--bg-light);
++      --surface: var(--surface-light);
++      --text: var(--text-light);
++      --text-muted: var(--text-muted-light);
++      --heading: var(--heading-light);
++      --border: var(--border-light);
++      --track: var(--track-light);
++      --control: var(--control-light);
++      --control-contrast: var(--control-contrast-light);
++      --highlight: var(--highlight-light);
++      --choice-checked-bg: var(--choice-checked-bg-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text: var(--btn-text-light);
++      --footer-bg: var(--footer-bg-light);
++
++      /* Let the browser theme scrollbars, pickers, and form controls per mode */
++      color-scheme: light dark;
++      /* Brand tint for checkbox, radio, range, and progress */
++      accent-color: var(--control);
+     }
+ 
++    /* Fallback for browsers without light-dark() */
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --bg: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --text: var(--text-dark);
++        --text-muted: var(--text-muted-dark);
++        --heading: var(--heading-dark);
++        --border: var(--border-dark);
++        --track: var(--track-dark);
++        --control: var(--control-dark);
++        --control-contrast: var(--control-contrast-dark);
++        --highlight: var(--highlight-dark);
++        --choice-checked-bg: var(--choice-checked-bg-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --footer-bg: var(--footer-bg-dark);
++      }
++    }
++
++    @supports (color: light-dark(white, black)) {
++      :root {
++        --bg: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --border: light-dark(var(--border-light), var(--border-dark));
++        --track: light-dark(var(--track-light), var(--track-dark));
++        --control: light-dark(var(--control-light), var(--control-dark));
++        --control-contrast: light-dark(var(--control-contrast-light), var(--control-contrast-dark));
++        --highlight: light-dark(var(--highlight-light), var(--highlight-dark));
++        --choice-checked-bg: light-dark(var(--choice-checked-bg-light), var(--choice-checked-bg-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -23,9 +132,9 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -107,37 +216,367 @@
+       margin-top: 20px;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
++    /* Subscription form */
++    .subscribe {
++      margin-top: 60px;
++    }
++
++    .subscribe-intro {
++      text-align: center;
++      max-width: 60ch;
++      margin-inline: auto;
++    }
++
++    .subscribe-intro p {
++      color: var(--text-muted);
++      margin-top: 0.5rem;
++    }
++
++    .subscribe-form {
++      background: var(--surface);
++      border-radius: 12px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: clamp(1.25rem, 4vw, 2.5rem);
++      margin: 24px auto 0;
++      max-width: 720px;
++      display: grid;
++      gap: 2rem;
++    }
++
++    .subscribe-form :focus-visible {
++      outline: 3px solid var(--highlight);
++      outline-offset: 3px;
++    }
++
++    /* Progress */
++    .form-progress {
++      display: grid;
++      gap: 0.35rem;
++    }
++
++    .form-progress label {
++      font-weight: 600;
++    }
++
++    .form-progress progress {
++      display: block;
++      inline-size: 100%;
++    }
++
++    .progress-status {
++      font-size: 0.9rem;
++      color: var(--text-muted);
++    }
++
++    /* Field groups */
++    .field-group {
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 1rem 1.25rem 1.5rem;
++      min-inline-size: 0;
++    }
++
++    .field-group legend {
++      padding-inline: 0.5rem;
++      font-weight: 700;
++      font-size: 1.05rem;
++      color: var(--heading);
++    }
++
++    .field-hint {
++      color: var(--text-muted);
++      font-size: 0.9rem;
++      margin-block-end: 1rem;
++    }
++
++    /* Checkbox and radio choices */
++    .choice-list {
++      display: grid;
++      gap: 0.75rem;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      border: 2px solid var(--border);
++      border-radius: 8px;
++      background: var(--surface);
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .choice:has(:checked) {
++      border-color: var(--highlight);
++      background: var(--choice-checked-bg);
++    }
++
++    .choice input[type="checkbox"],
++    .choice input[type="radio"] {
++      inline-size: 1.35rem;
++      block-size: 1.35rem;
++      flex-shrink: 0;
++      margin: 0 0 0 1rem;
++      cursor: pointer;
++    }
++
++    .choice label {
++      flex: 1;
++      padding: 0.75rem 1rem 0.75rem 0;
++      cursor: pointer;
++      line-height: 1.4;
++    }
++
++    .choice-title {
++      display: block;
++      font-weight: 600;
++    }
++
++    .choice-desc {
++      display: block;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    /* Range slider */
++    .range-field {
++      display: grid;
++      gap: 0.5rem;
++    }
++
++    .range-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 1rem;
++    }
++
++    .range-header label {
++      font-weight: 600;
++    }
++
++    .range-header output {
++      font-weight: 700;
++      color: var(--highlight);
++    }
++
++    .range-field input[type="range"] {
++      inline-size: 100%;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    .range-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    /* Submit */
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++    }
++
++    .form-actions .btn {
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .form-note {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    /* Fallback for browsers without accent-color: rebuild the controls by hand */
++    @supports not (accent-color: auto) {
++      .choice input[type="checkbox"],
++      .choice input[type="radio"] {
++        position: absolute;
++        clip-path: inset(50%);
++        overflow: hidden;
++        inline-size: 1px;
++        block-size: 1px;
++        margin: -1px;
++        padding: 0;
++        border: 0;
++        white-space: nowrap;
++      }
++
++      .choice {
++        position: relative;
++      }
++
++      .choice label {
++        padding-inline-start: 3.25rem;
++      }
++
++      .choice input + label::before {
++        content: "";
++        position: absolute;
++        inset-inline-start: 1rem;
++        top: 50%;
++        translate: 0 -50%;
++        inline-size: 1.35rem;
++        block-size: 1.35rem;
++        border: 2px solid var(--border);
++        border-radius: 4px;
++        background: var(--surface);
++        transition: background-color 0.2s, border-color 0.2s;
++      }
++
++      .choice input[type="radio"] + label::before {
++        border-radius: 50%;
++      }
++
++      .choice input:focus-visible + label::before {
++        outline: 3px solid var(--highlight);
++        outline-offset: 3px;
++      }
++
++      .choice input:checked + label::before {
++        background: var(--control);
++        border-color: var(--control);
++      }
++
++      .choice input[type="checkbox"]:checked + label::after {
++        content: "\2713";
++        position: absolute;
++        inset-inline-start: 1rem;
++        top: 50%;
++        translate: 0 -50%;
++        inline-size: 1.35rem;
++        text-align: center;
++        line-height: 1;
++        font-size: 0.95rem;
++        font-weight: 700;
++        color: var(--control-contrast);
++      }
++
++      .choice input[type="radio"]:checked + label::after {
++        content: "";
++        position: absolute;
++        inset-inline-start: calc(1rem + 0.4rem);
++        top: 50%;
++        translate: 0 -50%;
++        inline-size: 0.55rem;
++        block-size: 0.55rem;
++        border-radius: 50%;
++        background: var(--control-contrast);
++      }
++
++      /* Range */
++      .range-field input[type="range"] {
++        -webkit-appearance: none;
++        appearance: none;
++        background: transparent;
++        block-size: 1.5rem;
++      }
++
++      .range-field input[type="range"]::-webkit-slider-runnable-track {
++        block-size: 8px;
++        border-radius: 4px;
++        background: linear-gradient(to right,
++            var(--control) var(--progress, 50%),
++            var(--track) var(--progress, 50%));
++      }
++
++      .range-field input[type="range"]::-webkit-slider-thumb {
++        -webkit-appearance: none;
++        appearance: none;
++        inline-size: 20px;
++        block-size: 20px;
++        margin-top: -6px;
++        border-radius: 50%;
++        border: 2px solid var(--surface);
++        background: var(--control);
++      }
++
++      .range-field input[type="range"]::-moz-range-track {
++        block-size: 8px;
++        border-radius: 4px;
++        background: var(--track);
++      }
++
++      .range-field input[type="range"]::-moz-range-progress {
++        block-size: 8px;
++        border-radius: 4px;
++        background: var(--control);
++      }
++
++      .range-field input[type="range"]::-moz-range-thumb {
++        inline-size: 20px;
++        block-size: 20px;
++        border-radius: 50%;
++        border: 2px solid var(--surface);
++        background: var(--control);
++      }
++
++      /* Progress */
++      .form-progress progress {
++        appearance: none;
++        border: 0 solid;
++        overflow: clip;
++        block-size: 0.75rem;
++        border-radius: 1e5px;
++        background: var(--track);
++      }
++
++      .form-progress progress::-webkit-progress-bar {
++        background: transparent;
++      }
++
++      .form-progress progress::-webkit-progress-value {
++        background: var(--control);
++        border-radius: 1e5px;
++        transition: inline-size 0.3s;
++      }
++
++      .form-progress progress::-moz-progress-bar {
++        background: var(--control);
++        border-radius: 1e5px;
++        transition: inline-size 0.3s;
++      }
++    }
++
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -194,8 +633,92 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="subscribe" aria-labelledby="subscribe-heading">
++      <div class="subscribe-intro">
++        <h2 id="subscribe-heading">Build Your Personal Subscription</h2>
++        <p>Tell us how you take your coffee and we'll roast, bag, and ship it on your schedule.</p>
++      </div>
++
++      <form class="subscribe-form" id="subscription-form" action="/subscribe" method="post">
++        <div class="form-progress">
++          <label for="setup-progress">Subscription setup progress</label>
++          <progress id="setup-progress" max="3" value="0" aria-describedby="setup-progress-status"></progress>
++          <p id="setup-progress-status" class="progress-status" role="status">0 of 3 steps complete</p>
++        </div>
++
++        <fieldset class="field-group">
++          <legend>Step 1: Delivery frequency</legend>
++          <p class="field-hint">How often should a fresh bag land on your doorstep?</p>
++          <div class="choice-list">
++            <div class="choice">
++              <input type="radio" id="frequency-weekly" name="frequency" value="weekly" required>
++              <label for="frequency-weekly">
++                <span class="choice-title">Every week</span>
++                <span class="choice-desc">For the daily drinker</span>
++              </label>
++            </div>
++            <div class="choice">
++              <input type="radio" id="frequency-biweekly" name="frequency" value="biweekly">
++              <label for="frequency-biweekly">
++                <span class="choice-title">Every two weeks</span>
++                <span class="choice-desc">Our most popular plan</span>
++              </label>
++            </div>
++            <div class="choice">
++              <input type="radio" id="frequency-monthly" name="frequency" value="monthly">
++              <label for="frequency-monthly">
++                <span class="choice-title">Every month</span>
++                <span class="choice-desc">For the weekend brewer</span>
++              </label>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset class="field-group">
++          <legend>Step 2: Roast preference</legend>
++          <p class="field-hint" id="roast-hint">Slide toward Light for bright, fruity notes or toward Dark for bold and smoky.</p>
++          <div class="range-field">
++            <div class="range-header">
++              <label for="roast-level">Roast level</label>
++              <output id="roast-value" for="roast-level">Medium</output>
++            </div>
++            <input type="range" id="roast-level" name="roast_level" min="1" max="5" step="1" value="3"
++              list="roast-ticks" aria-describedby="roast-hint" aria-valuetext="Medium">
++            <datalist id="roast-ticks">
++              <option value="1"></option>
++              <option value="2"></option>
++              <option value="3"></option>
++              <option value="4"></option>
++              <option value="5"></option>
++            </datalist>
++            <div class="range-scale" aria-hidden="true">
++              <span>Light</span>
++              <span>Dark</span>
++            </div>
++          </div>
++        </fieldset>
++
++        <fieldset class="field-group">
++          <legend>Email preferences</legend>
++          <p class="field-hint">Optional. You can change this any time from My Account.</p>
++          <div class="choice">
++            <input type="checkbox" id="email-opt-in" name="email_opt_in" value="yes">
++            <label for="email-opt-in">
++              <span class="choice-title">Email me about my subscription</span>
++              <span class="choice-desc">Roast notes, shipping updates, and subscriber-only offers</span>
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <p class="form-note">Step 3: Confirm to start your subscription. Pause or cancel any time.</p>
++          <button type="submit" class="btn">Start my subscription</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +729,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.getElementById('subscription-form');
++      const progress = document.getElementById('setup-progress');
++      const status = document.getElementById('setup-progress-status');
++      const roast = document.getElementById('roast-level');
++      const roastOutput = document.getElementById('roast-value');
++
++      const ROAST_NAMES = ['Light', 'Medium-light', 'Medium', 'Medium-dark', 'Dark'];
++      const TOTAL_STEPS = Number(progress.max);
++      let roastReviewed = false;
++      let confirmed = false;
++
++      function describeRoast() {
++        const name = ROAST_NAMES[roast.valueAsNumber - 1] || roast.value;
++        roastOutput.value = name;
++        roast.setAttribute('aria-valuetext', name);
++      }
++
++      function updateProgress() {
++        let done = 0;
++        // RadioNodeList.value is "" until one radio is checked
++        if (form.elements.frequency.value) done += 1;
++        if (roastReviewed) done += 1;
++        if (confirmed) done += 1;
++
++        progress.value = done;
++        status.textContent = done === TOTAL_STEPS
++          ? 'All set! Your subscription is ready to start.'
++          : `${done} of ${TOTAL_STEPS} steps complete`;
++      }
++
++      function markRoastReviewed() {
++        roastReviewed = true;
++        updateProgress();
++      }
++
++      roast.addEventListener('input', () => {
++        describeRoast();
++        markRoastReviewed();
++      });
++      roast.addEventListener('focus', markRoastReviewed);
++      form.addEventListener('change', updateProgress);
++      form.addEventListener('submit', () => {
++        confirmed = true;
++        updateProgress();
++      });
++
++      // Fill the range track up to the thumb in WebKit browsers without accent-color
++      if (!(window.CSS && CSS.supports('accent-color', 'auto'))) {
++        const setFill = () => {
++          const min = Number(roast.min);
++          const max = Number(roast.max);
++          const pct = ((roast.valueAsNumber - min) / (max - min)) * 100;
++          roast.style.setProperty('--progress', `${pct}%`);
++        };
++        roast.addEventListener('input', setFill);
++        setFill();
++      }
++
++      // Re-sync after the browser restores form values (back navigation, reload)
++      const sync = () => {
++        describeRoast();
++        updateProgress();
++      };
++      window.addEventListener('pageshow', sync);
++      sync();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

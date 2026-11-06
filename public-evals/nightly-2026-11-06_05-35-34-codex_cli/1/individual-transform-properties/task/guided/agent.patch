@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,8 +99,59 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .seasonal-promo {
++      display: flex;
++      justify-content: center;
++      padding: 32px 24px;
++    }
++
++    .target {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      width: 112px;
++      height: 112px;
++      padding: 16px;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      line-height: 1.3;
++      text-align: center;
++      /* Identity transforms establish a stable stacking context before hover. */
++      translate: 0;
++      rotate: 0deg;
++      scale: 1;
++      animation: promo-spin 12s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.12;
++    }
++
++    /* Each animation owns one property; hover only changes scale. */
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -16px 0; }
++      to { translate: 16px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation-duration: 120s, 24s;
++        transition-duration: 0s;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -176,8 +227,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-promo">
++        <span class="target">Featured<br>Seasonal Sips</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

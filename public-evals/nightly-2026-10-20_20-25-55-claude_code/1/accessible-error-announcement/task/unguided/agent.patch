@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,61 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter */
++    .newsletter {
++      max-width: 420px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .newsletter input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      background: white;
++    }
++
++    .newsletter button {
++      padding: 10px 20px;
++      border: 0;
++      border-radius: 5px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter input:user-invalid {
++      border-color: #b71c1c;
++      background: #fff5f5;
++    }
++
++    .newsletter-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      margin-top: 6px;
++      min-height: 1.4em;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -203,10 +256,67 @@
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <form class="newsletter" id="newsletter-form" action="/newsletter" method="post">
++      <label for="newsletter-email">Join our newsletter</label>
++      <div class="newsletter-row">
++        <input type="email" id="newsletter-email" name="email" placeholder="you@example.com"
++          autocomplete="email" required aria-describedby="newsletter-error">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p class="newsletter-error" id="newsletter-error"></p>
++    </form>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var input = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-error');
++
++      function isUserInvalid() {
++        try {
++          return input.matches(':user-invalid');
++        } catch (e) {
++          // Browser without :user-invalid support: approximate it.
++          return input.dataset.touched === 'true' && !input.validity.valid;
++        }
++      }
++
++      function message() {
++        var v = input.validity;
++        if (v.valueMissing) return 'Please enter your email address.';
++        if (v.typeMismatch) return 'Please enter a valid email address, like you@example.com.';
++        return input.validationMessage;
++      }
++
++      // Mirror :user-invalid into aria-invalid so nothing is announced
++      // until the user has actually interacted with the field.
++      function sync() {
++        var invalid = isUserInvalid();
++        if (invalid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++        error.textContent = invalid ? message() : '';
++      }
++
++      input.addEventListener('blur', function () {
++        input.dataset.touched = 'true';
++        sync();
++      });
++      input.addEventListener('input', sync);
++      // Fires on a failed submit attempt, after which :user-invalid applies.
++      // Suppress the native bubble; the inline error replaces it.
++      input.addEventListener('invalid', function (e) {
++        e.preventDefault();
++        input.dataset.touched = 'true';
++        sync();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

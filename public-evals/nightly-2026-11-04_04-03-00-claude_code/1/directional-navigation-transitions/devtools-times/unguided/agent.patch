@@ -1,0 +1,175 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..314c0e1
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,94 @@
++import { useState } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStory {
++  id: string;
++  title: string;
++  href: string;
++  date: string;
++  /** Machine-readable date (ISO 8601) */
++  dateTime: string;
++}
++
++interface Props {
++  stories: TopStory[];
++}
++
++type Direction = 'next' | 'prev' | null;
++
++export default function TopStoriesSlider({ stories }: Props) {
++  const [index, setIndex] = useState(0);
++  const [direction, setDirection] = useState<Direction>(null);
++  // Incremented on every navigation so the slide re-mounts and the animation
++  // replays even when only two stories are cycling.
++  const [step, setStep] = useState(0);
++
++  if (stories.length === 0) return null;
++
++  const count = stories.length;
++  const story = stories[index];
++
++  const go = (dir: Exclude<Direction, null>) => {
++    setDirection(dir);
++    setIndex((i) => (dir === 'next' ? (i + 1) % count : (i - 1 + count) % count));
++    setStep((s) => s + 1);
++  };
++
++  const animationClass =
++    direction === 'next'
++      ? 'top-stories-slide-from-right'
++      : direction === 'prev'
++        ? 'top-stories-slide-from-left'
++        : '';
++
++  return (
++    <section
++      className="flex items-center gap-3"
++      aria-roledescription="carousel"
++      aria-label="Top stories"
++    >
++      <button
++        type="button"
++        onClick={() => go('prev')}
++        disabled={count < 2}
++        className="shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-amber-400 hover:text-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-700"
++      >
++        <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
++        <span>Previous</span>
++      </button>
++
++      <div className="relative min-w-0 flex-1 overflow-hidden" aria-live="polite">
++        <div
++          key={step}
++          className={animationClass}
++          role="group"
++          aria-roledescription="slide"
++          aria-label={`${index + 1} of ${count}`}
++        >
++          <a href={story.href}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++              {story.title}
++            </h3>
++          </a>
++          <time className="text-xs text-gray-500" dateTime={story.dateTime}>
++            {story.date}
++          </time>
++        </div>
++      </div>
++
++      <span className="shrink-0 text-xs tabular-nums text-gray-500" aria-hidden="true">
++        {index + 1} / {count}
++      </span>
++
++      <button
++        type="button"
++        onClick={() => go('next')}
++        disabled={count < 2}
++        className="shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-amber-400 hover:text-amber-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-700"
++      >
++        <span>Next</span>
++        <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
++      </button>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5d8c096 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+@@ -41,16 +42,16 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider
++                client:load
++                stories={topStories.map(article => ({
++                    id: article.id,
++                    title: article.data.title,
++                    href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++                    date: article.data.date.toLocaleDateString(),
++                    dateTime: article.data.date.toISOString(),
++                }))}
++            />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..23944f6 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,29 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Top stories slider */
++@keyframes top-stories-in-from-right {
++  from { transform: translateX(100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++@keyframes top-stories-in-from-left {
++  from { transform: translateX(-100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++.top-stories-slide-from-right {
++  animation: top-stories-in-from-right 350ms ease-out;
++}
++
++.top-stories-slide-from-left {
++  animation: top-stories-in-from-left 350ms ease-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .top-stories-slide-from-right,
++  .top-stories-slide-from-left {
++    animation: none;
++  }
++}

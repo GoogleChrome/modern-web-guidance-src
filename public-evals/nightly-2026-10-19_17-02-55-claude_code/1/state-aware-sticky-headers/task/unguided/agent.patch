@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 64px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -30,9 +31,10 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      height: var(--nav-height);
++      padding: 0 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -134,8 +136,43 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers: stick just below the sticky nav */
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-sticky;
++      margin-top: 40px;
++    }
++
++    .sticky-header {
++      background: var(--light);
++      color: var(--primary);
++      padding: 20px;
++      text-align: center;
++      transition: background 0.2s, padding 0.2s, box-shadow 0.2s, color 0.2s;
++    }
++
++    @container section-sticky scroll-state(stuck: top) {
++      .sticky-header {
++        background: #1565c0;
++        color: white;
++        padding: 6px 20px;
++        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
++      }
++    }
++
++    .section-body p {
++      margin: 20px 0;
++    }
++
++    .section-body .grid {
++      margin-bottom: 40px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,27 +212,74 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="section-body" style="text-align: center;">
++        <h2>Our Story</h2>
++        <p>Every cup at The Daily Grind starts long before it reaches the counter. We partner directly with small farms across Colombia, Ethiopia, and Guatemala, paying well above fair-trade minimums.</p>
++        <p>Our beans are roasted in small batches each morning in the back of our flagship shop, so what you drink is never more than a few days off the roaster.</p>
++        <p>We believe coffee is a ritual: the grinding, the blooming, the first aromatic sip. Our baristas train for months to make that ritual feel effortless.</p>
++        <p>Whether you are a pour-over purist or an oat-milk latte devotee, there is a seat for you here. Scroll down to explore our seasonal favorites, brewing guides, and sourcing stories.</p>
++        <p>Our shops are built from reclaimed wood and local ceramics, and every cup you take away is compostable. Sustainability is not a side project for us; it is how we do business.</p>
++        <p>Stop by on a weekday morning and you will likely catch the roasting team pulling a fresh batch. Ask for a taste of the first crack; it is a ritual we love sharing.</p>
++      </div>
++    </section>
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
++      <div class="section-body">
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Brewing Guides</h2>
++      </div>
++      <div class="section-body">
++        <p>Great coffee at home takes three things: fresh beans, a good grinder, and patience. Start with a 1:16 ratio of coffee to water and adjust to taste.</p>
++        <p>For pour-over, bloom the grounds with twice their weight in water for 30 seconds, then pour in slow circles. Aim for a total brew time of about three minutes.</p>
++        <p>For cold brew, steep coarse grounds in cold water for 18 hours, then filter twice. Dilute to taste and serve over ice.</p>
++        <p>Store beans in an opaque, airtight container at room temperature. Never refrigerate them, and grind only what you need right before brewing.</p>
++      </div>
++    </section>
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Our Sourcing</h2>
++      </div>
++      <div class="section-body">
++        <p>We visit every farm we buy from at least once a year, and we publish the price we pay per pound for every lot.</p>
++        <p>Our Ethiopian beans come from washing stations near Yirgacheffe, where cooperatives dry the cherries on raised beds for a bright, floral cup.</p>
++        <p>Our Colombian beans are grown in Huila at high altitude, giving a sweet, caramel-forward profile that anchors our house blend.</p>
++        <p>Packaging is fully compostable, and we run a spent-grounds program that sends used coffee to local community gardens.</p>
++      </div>
++    </section>
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Visit Us</h2>
++      </div>
++      <div class="section-body">
++        <p>Find us in more than a dozen neighborhoods. Every location features rotating single-origin offerings and house-baked pastries.</p>
++        <p>Weekday hours are 6am to 7pm, with extended weekend hours until 9pm. Many locations host live acoustic music on Friday evenings.</p>
++        <p>Join our rewards program to earn a free drink after every ten purchases, plus early access to limited seasonal releases.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,318 @@
+diff --git a/index.html b/index.html
+index 66c9173..efb4c58 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,10 @@
+       background: #3e2723;
+     }
+ 
++    .btn[hidden] {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +199,13 @@
+         </div>
+       </div>
+     </section>
++    <section aria-labelledby="order-updates-heading" style="margin-top: 40px;">
++      <h2 id="order-updates-heading">Order updates</h2>
++      <iframe id="order-widget" title="Coffee order updates"
++        sandbox="allow-scripts" style="width: 100%; max-width: 440px; height: 120px; border: 0;"></iframe>
++      <p id="order-status" role="status">Waiting for the order widget.</p>
++      <a id="order-link" class="btn" hidden>View order details</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +218,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/page-security.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/order-widget.html b/order-widget.html
+new file mode 100644
+index 0000000..7d0f36b
+--- /dev/null
++++ b/order-widget.html
+@@ -0,0 +1,24 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Coffee order updates</title>
++  <style>
++    body { margin: 12px 0; color: #3e2723; font: 16px 'Segoe UI', sans-serif; }
++    button { padding: 10px 16px; border: 0; border-radius: 5px; background: #4e342e; color: white; cursor: pointer; }
++  </style>
++</head>
++<body>
++  <p>Ready for your next coffee?</p>
++  <button type="button" id="order-help">How to order</button>
++  <script>
++    // An opaque-origin sandbox cannot derive a trustworthy parent origin.
++    // These messages contain only public display text; the parent pins source.
++    parent.postMessage({ type: 'widget:ready' }, '*');
++    document.getElementById('order-help').addEventListener('click', () => {
++      parent.postMessage({ type: 'widget:status', status: 'Choose Order Now to start your coffee order.' }, '*');
++    });
++  </script>
++</body>
++</html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/page-security.js b/page-security.js
+new file mode 100644
+index 0000000..680bf46
+--- /dev/null
++++ b/page-security.js
+@@ -0,0 +1,92 @@
++(() => {
++  'use strict';
++
++  // Deployment configuration: this must be the ordering service's exact origin.
++  const ORDERING_ORIGIN = new URL('https://orders.thedailygrind.com').origin;
++  const pageURL = new URL(window.location.href);
++  const widget = document.getElementById('order-widget');
++  // Capture the intended WindowProxy at initialization. Never trust the first
++  // sender claiming origin "null": every sandboxed iframe can have that origin.
++  const widgetWindow = widget.contentWindow;
++  const status = document.getElementById('order-status');
++  const orderLink = document.getElementById('order-link');
++
++  function parseWebURL(value) {
++    if (typeof value !== 'string' || !value.trim()) return null;
++    try {
++      const url = new URL(value, pageURL);
++      if (!['https:', 'http:'].includes(url.protocol)) return null;
++      if (url.username || url.password) return null;
++      return url;
++    } catch {
++      return null;
++    }
++  }
++
++  function redirectURL(value) {
++    const url = parseWebURL(value);
++    // Deliberately stricter than shared-domain checks: redirects must stay on
++    // this exact origin, including scheme and port.
++    return url && url.origin === pageURL.origin ? url : null;
++  }
++
++  function linkURL(value) {
++    const url = parseWebURL(value);
++    return url && (url.origin === pageURL.origin || url.protocol === 'https:') ? url : null;
++  }
++
++  function setStatus(value) {
++    if (typeof value === 'string' && value.length <= 500) {
++      status.textContent = value;
++    }
++  }
++
++  window.addEventListener('message', (event) => {
++    const data = event.data;
++    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
++
++    if (event.origin === 'null' && widgetWindow && event.source === widgetWindow) {
++      // The opaque-origin widget only has permission to update status text.
++      if (data.type === 'widget:ready') setStatus('Order widget ready.');
++      if (data.type === 'widget:status') setStatus(data.status);
++      return;
++    }
++
++    if (event.origin !== ORDERING_ORIGIN) return;
++    switch (data.type) {
++      case 'order:status':
++        setStatus(data.status);
++        break;
++      case 'order:redirect': {
++        const url = redirectURL(data.url);
++        if (url) window.location.assign(url.href);
++        break;
++      }
++      case 'order:link': {
++        const url = linkURL(data.url);
++        if (!url) return;
++        orderLink.href = url.href;
++        orderLink.rel = 'noopener noreferrer';
++        orderLink.target = url.origin === pageURL.origin ? '_self' : '_blank';
++        orderLink.hidden = false;
++        break;
++      }
++    }
++  });
++
++  document.addEventListener('click', (event) => {
++    const anchor = event.target.closest?.('a[href]');
++    if (!anchor) return;
++    const url = linkURL(anchor.getAttribute('href'));
++    if (!url) {
++      event.preventDefault();
++      return;
++    }
++    if (url.origin !== pageURL.origin) {
++      anchor.relList.add('noopener', 'noreferrer');
++    }
++  });
++
++  // Start the widget only after its sender is pinned and the listener is ready.
++  widget.src = '/order-widget.html';
++})();
+diff --git a/page-security.test.cjs b/page-security.test.cjs
+new file mode 100644
+index 0000000..fec7d43
+--- /dev/null
++++ b/page-security.test.cjs
+@@ -0,0 +1,135 @@
++const { test } = require('node:test');
++const assert = require('node:assert/strict');
++const { readFileSync } = require('node:fs');
++const vm = require('node:vm');
++
++const script = readFileSync(`${__dirname}/page-security.js`, 'utf8');
++const trustedOrigin = 'https://orders.thedailygrind.com';
++
++function setup() {
++  const listeners = {};
++  const widgetWindow = {};
++  const elements = {
++    'order-widget': { contentWindow: widgetWindow },
++    'order-status': { textContent: 'Waiting' },
++    'order-link': { hidden: true },
++  };
++  const redirects = [];
++  vm.runInNewContext(script, {
++    URL,
++    window: {
++      location: { href: 'https://www.thedailygrind.com/account', assign: url => redirects.push(url) },
++      addEventListener: (type, handler) => { listeners[type] = handler; },
++    },
++    document: {
++      getElementById: id => elements[id],
++      addEventListener: (type, handler) => { listeners[type] = handler; },
++    },
++  });
++  return {
++    elements, redirects, widgetWindow, listeners,
++    send: (data, origin = trustedOrigin, source = {}) => listeners.message({ data, origin, source }),
++  };
++}
++
++test('ordering messages require the exact trusted origin', () => {
++  const app = setup();
++  for (const origin of [
++    'null', 'http://orders.thedailygrind.com', 'https://orders.thedailygrind.com:444',
++    'https://orders.thedailygrind.com.evil.test', 'https://evil.test',
++  ]) {
++    app.send({ type: 'order:status', status: 'forged' }, origin);
++    app.send({ type: 'order:redirect', url: '/stolen' }, origin);
++    app.send({ type: 'order:link', url: 'https://evil.test' }, origin);
++  }
++  assert.equal(app.elements['order-status'].textContent, 'Waiting');
++  assert.equal(app.elements['order-link'].hidden, true);
++  assert.deepEqual(app.redirects, []);
++  app.send({ type: 'order:status', status: 'Brewing' });
++  assert.equal(app.elements['order-status'].textContent, 'Brewing');
++});
++
++test('redirects use parsed origins, schemes, ports and credentials', () => {
++  const app = setup();
++  for (const url of [
++    '//evil.test/path', 'https://www.thedailygrind.com.evil.test/',
++    'https://www.thedailygrind.com@evil.test/', 'https://evil.test/?www.thedailygrind.com',
++    'https://www.thedailygrind.com:444/', 'http://www.thedailygrind.com/',
++    'https://user:password@www.thedailygrind.com/', 'javascript:alert(1)',
++    'data:text/html,hello', 'blob:https://www.thedailygrind.com/id',
++    'https://[invalid', '\\\\evil.test/path', '', null, {},
++    'https://orders.thedailygrind.com/',
++  ]) app.send({ type: 'order:redirect', url });
++  assert.deepEqual(app.redirects, []);
++  for (const url of ['/menu?item=latte#details', 'rewards', 'https://www.thedailygrind.com:443/order']) {
++    app.send({ type: 'order:redirect', url });
++  }
++  assert.deepEqual(app.redirects, [
++    'https://www.thedailygrind.com/menu?item=latte#details',
++    'https://www.thedailygrind.com/rewards', 'https://www.thedailygrind.com/order',
++  ]);
++});
++
++test('external links require HTTPS and open with opener protection', () => {
++  const app = setup();
++  for (const url of ['javascript:alert(1)', 'data:text/html,hello', 'http://external.test',
++    'https://user:pass@external.test', 'https://[invalid', null]) {
++    app.send({ type: 'order:link', url });
++    assert.equal(app.elements['order-link'].hidden, true);
++  }
++  // A hostname containing the site's name is still classified as external.
++  app.send({ type: 'order:link', url: 'https://www.thedailygrind.com.evil.test/' });
++  const link = app.elements['order-link'];
++  assert.equal(link.target, '_blank');
++  assert.equal(link.rel, 'noopener noreferrer');
++  assert.equal(link.hidden, false);
++  app.send({ type: 'order:link', url: '/menu' });
++  assert.equal(link.target, '_self');
++  assert.equal(link.href, 'https://www.thedailygrind.com/menu');
++});
++
++test('opaque widget source is pinned at initialization and cannot redirect', () => {
++  const app = setup();
++  const update = { type: 'widget:status', status: 'Widget update' };
++  app.send(update, 'null', {});
++  app.send({ type: 'widget:ready' }, 'null', {});
++  assert.equal(app.elements['order-status'].textContent, 'Waiting');
++  app.send({ type: 'widget:ready' }, 'null', app.widgetWindow);
++  assert.equal(app.elements['order-status'].textContent, 'Order widget ready.');
++  // Even a changed DOM reference cannot replace the captured sender identity.
++  const replacement = {};
++  app.elements['order-widget'].contentWindow = replacement;
++  app.send(update, 'null', replacement);
++  assert.equal(app.elements['order-status'].textContent, 'Order widget ready.');
++  app.send(update, 'null', app.widgetWindow);
++  assert.equal(app.elements['order-status'].textContent, 'Widget update');
++  app.send({ type: 'order:redirect', url: '/menu' }, 'null', app.widgetWindow);
++  assert.deepEqual(app.redirects, []);
++  app.send({ type: 'widget:status', status: 'wrong origin' }, 'https://evil.test', app.widgetWindow);
++  assert.equal(app.elements['order-status'].textContent, 'Widget update');
++  assert.equal(app.elements['order-widget'].src, '/order-widget.html');
++});
++
++test('malformed messages are ignored and status is rendered as text', () => {
++  const app = setup();
++  for (const data of [null, undefined, [], 'message', 3, {}, { type: 'order:status', status: {} },
++    { type: 'order:status', status: 'x'.repeat(501) }]) app.send(data);
++  assert.equal(app.elements['order-status'].textContent, 'Waiting');
++  app.send({ type: 'order:status', status: '<img src=x onerror=alert(1)>' });
++  assert.equal(app.elements['order-status'].textContent, '<img src=x onerror=alert(1)>');
++});
++
++test('page link clicks block unsafe URLs and protect external links', () => {
++  const app = setup();
++  function click(href) {
++    let prevented = false;
++    const rel = new Set();
++    const anchor = { getAttribute: () => href, relList: { add: (...tokens) => tokens.forEach(t => rel.add(t)) } };
++    app.listeners.click({ target: { closest: () => anchor }, preventDefault: () => { prevented = true; } });
++    return { prevented, rel: [...rel] };
++  }
++  assert.equal(click('javascript:alert(1)').prevented, true);
++  assert.equal(click('http://external.test').prevented, true);
++  assert.deepEqual(click('/menu'), { prevented: false, rel: [] });
++  assert.deepEqual(click('https://external.test'), { prevented: false, rel: ['noopener', 'noreferrer'] });
++});

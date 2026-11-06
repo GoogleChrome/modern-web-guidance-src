@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,111 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Info button & Popover Tooltip with Anchored Container Queries */
++    .info-btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      font-size: 1.1rem;
++      font-weight: bold;
++      cursor: pointer;
++      margin-left: 8px;
++      vertical-align: middle;
++      margin-top: 15px;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #anchor {
++      anchor-name: --anchor;
++    }
++
++    @supports (anchor-name: --anchor) {
++      [popover] {
++        inset: auto;
++        margin: unset;
++      }
++    }
++
++    #tooltip {
++      position: fixed;
++      position-anchor: --anchor;
++      position-area: block-start;
++      position-try-fallbacks: flip-block;
++      position-try: flip-block;
++
++      /* Enable anchored container queries */
++      container-type: anchored;
++
++      inset: auto;
++      margin: unset;
++      padding: 0;
++      border: none;
++      background: transparent;
++      color: inherit;
++      overflow: visible;
++    }
++
++    .tooltip-content {
++      position: relative;
++      background: var(--primary);
++      color: white;
++      padding: 8px 14px;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      border-radius: .5rem .5rem 0 0;
++      margin-block-end: 0.25rem;
++      margin-block-start: 0;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      max-width: 240px;
++      text-align: left;
++    }
++
++    .tooltip-content::before {
++      /* Default "down" arrow for the 'top' position */
++      content: "▼";
++      position: absolute;
++      inset-block-end: 0;
++      inset-inline-start: 1rem;
++      color: var(--accent);
++      font-size: 0.75rem;
++      line-height: 1;
++    }
++
++    /* Update to an "up" arrow when the 'flip-block' fallback (bottom) is active */
++    @container anchored(fallback: flip-block) {
++      .tooltip-content::before {
++        content: "▲";
++        inset-block-start: 0;
++        inset-block-end: auto;
++      }
++    }
++
++    /* Alter border radius and margins when flipped to the bottom */
++    @container anchored(fallback: flip-block) {
++      #tooltip,
++      .tooltip-content {
++        border-radius: 0 0 .5rem .5rem;
++        margin-block-start: 0.25rem;
++        margin-block-end: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;

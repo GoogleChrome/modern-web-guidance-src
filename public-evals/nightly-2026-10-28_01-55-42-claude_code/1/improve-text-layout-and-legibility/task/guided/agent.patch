@@ -1,0 +1,28 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,24 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Typography: text wrapping
++       Scoped to specific elements (not body or *) since both algorithms
++       cost more than default greedy wrapping. Unsupported browsers
++       simply fall back to normal wrapping. */
++    h1,
++    h2 {
++      /* Short headings: distribute words evenly across lines */
++      text-wrap: balance;
++    }
++
++    p,
++    blockquote {
++      /* Body copy: avoid orphaned single words on the last line */
++      text-wrap: pretty;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

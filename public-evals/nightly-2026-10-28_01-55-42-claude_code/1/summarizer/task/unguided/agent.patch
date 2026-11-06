@@ -1,0 +1,291 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,115 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roaster's Journal */
++    .journal {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 320px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    .journal h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .journal .byline {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 20px;
++    }
++
++    .journal-body p {
++      margin-bottom: 1em;
++    }
++
++    .journal-body h3 {
++      color: var(--primary);
++      margin: 1.4em 0 0.4em;
++      font-size: 1.1rem;
++    }
++
++    .journal-aside {
++      position: sticky;
++      top: 90px;
++    }
++
++    .journal-aside img {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++      display: block;
++      margin-bottom: 15px;
++    }
++
++    .summary-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .summary-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .summary-card .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 10px;
++    }
++
++    .summary-card .btn {
++      margin-top: 0;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .summary-card .btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .summary-status {
++      font-size: 0.85rem;
++      margin-top: 12px;
++      min-height: 1.2em;
++    }
++
++    .summary-status.error {
++      color: #b71c1c;
++    }
++
++    .summary-list {
++      margin: 12px 0 0 1.2em;
++      display: none;
++    }
++
++    .summary-list li {
++      margin-bottom: 8px;
++    }
++
++    .summary-list li::marker {
++      color: var(--accent);
++    }
++
++    @media (max-width: 800px) {
++      .journal {
++        grid-template-columns: 1fr;
++      }
++
++      .journal-aside {
++        position: static;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +301,66 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" id="journal" aria-labelledby="journal-title">
++      <article class="journal-body" id="journal-text">
++        <h2 id="journal-title">Roaster's Journal</h2>
++        <p class="byline">On how we find, buy, and roast our beans &mdash; from the head roaster's notebook</p>
++
++        <p>Every bag we sell starts a long way from the roastery. Twice a year our sourcing team travels to the
++          growing regions we work with &mdash; the Huila and Nari&ntilde;o departments of Colombia, the Sidama and
++          Yirgacheffe zones of Ethiopia, and a small cluster of farms above 1,600 meters in Chiapas, Mexico. We go
++          during harvest, because that is the only time you can really see how a farm works: how the cherries are
++          picked, how quickly they move to processing, and how carefully the washing station sorts out the underripe
++          fruit. Those details matter more to the cup than almost anything we do back home.</p>
++
++        <h3>Relationships before contracts</h3>
++        <p>We do not buy coffee on the commodity market. Roughly eighty percent of what we roast comes from producers we
++          have worked with for at least three consecutive seasons, and several of those relationships now stretch past
++          a decade. We agree on prices before the harvest, not after, so a farmer knows what their crop is worth
++          while they are still deciding how much to invest in fertilizer, labor, and drying space. Our average price
++          paid last year was a little over 2.4 times the Fairtrade minimum, and we publish the number for every lot
++          on the back of the bag. When a cooperative has a difficult year &mdash; a late frost, a leaf rust outbreak,
++          a shipping delay that strands a container in port &mdash; we take the coffee anyway and work out the
++          quality adjustments together rather than walking away.</p>
++
++        <h3>Cupping, and cupping again</h3>
++        <p>Before any lot is approved, it is cupped at least three times: once at origin on the farm or at the dry
++          mill, once as a pre-shipment sample in our lab, and once more as an arrival sample when the container
++          lands. We score on the standard 100-point form and will not buy anything below 84, but the number is only
++          part of it. We are looking for coffees that are distinct &mdash; the bright, tea-like florals of a washed
++          Ethiopian heirloom, the heavy chocolate and dried-fruit body of a Colombian natural &mdash; and that will
++          hold those qualities for the eight to ten months we expect to be roasting them. Samples that taste
++          wonderful on day one but fade quickly do not make the cut.</p>
++
++        <h3>From green to roasted</h3>
++        <p>Green coffee is stored in GrainPro-lined bags in a climate-controlled room kept near 60&deg;F and 60
++          percent humidity, and we roast in small batches of 12 to 15 kilograms on a drum roaster so each coffee can
++          get its own profile. Lighter, washed lots get a quick, bright development; denser naturals get a slower
++          ramp to keep the sugars from scorching. Every batch is logged, and we cup one production roast a day
++          against the approved reference profile. If a roast drifts, it goes to the staff coffee pot instead of onto
++          the shelf. Nothing we sell is more than fourteen days off roast when it leaves the building.</p>
++
++        <p>None of this is the cheapest way to run a coffee company. It is, however, the only way we have found to
++          put a cup in front of you that we can honestly say we are proud of &mdash; and to make sure the people who
++          grew it are proud of it, too.</p>
++      </article>
++
++      <aside class="journal-aside">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++          alt="Freshly roasted coffee beans spilling from a burlap sack" loading="lazy">
++        <div class="summary-card">
++          <h3>Short on time?</h3>
++          <p class="hint">Let your browser's built-in AI boil the journal down to a few key points. Nothing leaves
++            your device.</p>
++          <button type="button" class="btn" id="summarize-btn">Summarize</button>
++          <p class="summary-status" id="summary-status" role="status" aria-live="polite"></p>
++          <ul class="summary-list" id="summary-list"></ul>
++        </div>
++      </aside>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +371,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var button = document.getElementById('summarize-btn');
++      var status = document.getElementById('summary-status');
++      var list = document.getElementById('summary-list');
++      var article = document.getElementById('journal-text');
++      var summarizer = null;
++
++      function setStatus(message, isError) {
++        status.textContent = message;
++        status.classList.toggle('error', Boolean(isError));
++      }
++
++      function renderBullets(markdown) {
++        var items = markdown
++          .split(/\r?\n/)
++          .map(function (line) { return line.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '').trim(); })
++          .filter(Boolean);
++        list.innerHTML = '';
++        items.forEach(function (text) {
++          var li = document.createElement('li');
++          li.textContent = text;
++          list.appendChild(li);
++        });
++        list.style.display = items.length ? 'block' : 'none';
++      }
++
++      function journalText() {
++        var clone = article.cloneNode(true);
++        var byline = clone.querySelector('.byline');
++        var title = clone.querySelector('h2');
++        if (byline) byline.remove();
++        if (title) title.remove();
++        return clone.textContent.replace(/\s+/g, ' ').trim();
++      }
++
++      async function getSummarizer() {
++        if (summarizer) return summarizer;
++
++        var availability = await Summarizer.availability();
++        if (availability === 'unavailable') {
++          throw new Error('unsupported');
++        }
++        if (availability !== 'available') {
++          setStatus('Downloading the on-device model (one-time)\u2026');
++        }
++
++        summarizer = await Summarizer.create({
++          type: 'key-points',
++          format: 'markdown',
++          length: 'short',
++          sharedContext: 'A specialty coffee roaster\'s blog post explaining how the company sources, evaluates, and roasts its coffee beans.',
++          monitor: function (m) {
++            m.addEventListener('downloadprogress', function (e) {
++              var pct = Math.round((e.loaded / (e.total || 1)) * 100);
++              setStatus('Downloading the on-device model\u2026 ' + pct + '%');
++            });
++          }
++        });
++        return summarizer;
++      }
++
++      async function summarize() {
++        if (!('Summarizer' in self)) {
++          setStatus('Built-in AI summarization is not available in this browser. Try a recent version of Chrome.', true);
++          return;
++        }
++
++        button.disabled = true;
++        list.style.display = 'none';
++        setStatus('Summarizing\u2026');
++
++        try {
++          var instance = await getSummarizer();
++          setStatus('Summarizing\u2026');
++          var result = await instance.summarize(journalText());
++          renderBullets(result);
++          setStatus('Summarized on your device.');
++          button.textContent = 'Summarize again';
++        } catch (err) {
++          if (err && err.message === 'unsupported') {
++            setStatus('Your browser does not support on-device summarization right now.', true);
++          } else if (err && err.name === 'NotAllowedError') {
++            setStatus('Model download was blocked. Check your browser\'s AI settings and try again.', true);
++          } else {
++            setStatus('Sorry, something went wrong while summarizing. Please try again.', true);
++            console.error('Summarizer error:', err);
++          }
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      button.addEventListener('click', summarize);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

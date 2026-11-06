@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..7ce8069 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +85,38 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      container-type: inline-size;
++      width: min(88vw, 440px);
++      margin-bottom: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.9;
++      letter-spacing: -0.02em;
++    }
++
++    .hero h1 .poster-line {
++      display: inline-block;
++      white-space: nowrap;
++      line-height: 0.9;
++    }
++
++    .hero h1 .poster-line:nth-child(1) {
++      font-size: 21cqw;
++    }
++
++    .hero h1 .poster-line:nth-child(2) {
++      font-size: 35.5cqw;
++    }
++
++    .hero h1 .poster-line:nth-child(3) {
++      font-size: 25.5cqw;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +195,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 aria-label="Wake Up Your Senses">
++      <span class="poster-line">Wake Up</span>
++      <span class="poster-line">Your</span>
++      <span class="poster-line">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +237,42 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const heading = document.querySelector('.hero h1');
++      if (!heading) return;
++      const lines = Array.from(heading.querySelectorAll('.poster-line'));
++
++      function fitPosterLines() {
++        const targetWidth = heading.clientWidth;
++        if (!targetWidth) return;
++
++        lines.forEach((line) => {
++          const baseSize = 100;
++          line.style.fontSize = baseSize + 'px';
++          const measuredWidth = line.getBoundingClientRect().width;
++          if (measuredWidth > 0) {
++            const firstPassSize = (targetWidth / measuredWidth) * baseSize;
++            line.style.fontSize = firstPassSize + 'px';
++            const refinedWidth = line.getBoundingClientRect().width;
++            if (refinedWidth > 0) {
++              line.style.fontSize = ((targetWidth / refinedWidth) * firstPassSize).toFixed(2) + 'px';
++            }
++          }
++        });
++      }
++
++      fitPosterLines();
++      window.addEventListener('resize', fitPosterLines);
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(fitPosterLines).observe(heading);
++      }
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(fitPosterLines);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

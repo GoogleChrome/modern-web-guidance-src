@@ -1,0 +1,212 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,35 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Promotion countdown */
++    .promo-timer {
++      margin: 12px 0 4px;
++      padding: 10px 12px;
++      background: #fff8e1;
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      line-height: 1.5;
++    }
++
++    .promo-timer__remaining {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo-timer__elapsed,
++    .promo-timer__note {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .promo-timer--ended {
++      background: #efebe9;
++      border-color: var(--secondary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -180,8 +207,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!--
++            Promotion window, expressed as local wall-clock times (no offset) so
++            the countdown is evaluated in each visitor's own time zone.
++            Format: YYYY-MM-DDTHH:MM:SS
++          -->
++          <div class="promo-timer" data-promo-timer data-promo-start="2025-12-01T00:00:00"
++            data-promo-end="2026-03-01T00:00:00">
++            <p class="promo-timer__remaining" data-role="remaining" aria-live="polite">Loading offer timer&hellip;</p>
++            <p class="promo-timer__elapsed" data-role="elapsed"></p>
++            <p class="promo-timer__note">Offer ends <time data-role="end-date"></time></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +244,152 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var root = document.querySelector('[data-promo-timer]');
++      if (!root) { return; }
++
++      var remainingEl = root.querySelector('[data-role="remaining"]');
++      var elapsedEl = root.querySelector('[data-role="elapsed"]');
++      var endDateEl = root.querySelector('[data-role="end-date"]');
++      var startStr = root.getAttribute('data-promo-start');
++      var endStr = root.getAttribute('data-promo-end');
++
++      var MS_PER_HOUR = 60 * 60 * 1000;
++      var MS_PER_DAY = 24 * MS_PER_HOUR;
++
++      // Temporal is still "limited availability" (not Baseline) per MDN, so it is
++      // used only when present. It gives calendar-aware day arithmetic in the
++      // visitor's zone (a day spanning a DST change is 23 or 25 hours). The
++      // fallback counts whole 24-hour periods from millisecond differences.
++      // Some engines ship an outdated draft of Temporal (e.g. V8 behind a flag,
++      // which lacks Temporal.Now.timeZoneId), so check every method used here
++      // rather than just the global, and fall back if setup throws.
++      var hasTemporal = typeof Temporal !== 'undefined' &&
++        !!Temporal.Now && typeof Temporal.Now.zonedDateTimeISO === 'function' &&
++        typeof Temporal.Now.timeZoneId === 'function' &&
++        !!Temporal.PlainDateTime && typeof Temporal.PlainDateTime.from === 'function' &&
++        !!Temporal.ZonedDateTime && typeof Temporal.ZonedDateTime.compare === 'function';
++
++      // Parse "YYYY-MM-DDTHH:MM:SS" into components. Avoids Date.parse(), whose
++      // handling of offset-less strings has differed between engines.
++      function parseLocal(str) {
++        var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(str);
++        if (!m) { throw new Error('Bad promo date: ' + str); }
++        return {
++          year: +m[1], month: +m[2], day: +m[3],
++          hour: +m[4], minute: +m[5], second: +m[6]
++        };
++      }
++
++      function localDate(c) {
++        return new Date(c.year, c.month - 1, c.day, c.hour, c.minute, c.second);
++      }
++
++      // Returns { days, hours } for the span from a to b, truncated to whole
++      // hours. a and b are ZonedDateTime (Temporal path) or Date (fallback).
++      function spanDaysHours(a, b) {
++        if (hasTemporal) {
++          var d = a.until(b, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++          return { days: d.days, hours: d.hours };
++        }
++        var ms = b.getTime() - a.getTime();
++        return {
++          days: Math.floor(ms / MS_PER_DAY),
++          hours: Math.floor((ms % MS_PER_DAY) / MS_PER_HOUR)
++        };
++      }
++
++      // Prefer Intl.DurationFormat (Baseline 2025) for locale-aware wording;
++      // fall back to a simple English string elsewhere.
++      var durationFormatter = null;
++      if (typeof Intl !== 'undefined' && typeof Intl.DurationFormat === 'function') {
++        try {
++          durationFormatter = new Intl.DurationFormat(undefined, {
++            style: 'long', daysDisplay: 'always', hoursDisplay: 'always'
++          });
++        } catch (e) { durationFormatter = null; }
++      }
++
++      function plural(n, unit) {
++        return n + ' ' + unit + (n === 1 ? '' : 's');
++      }
++
++      function formatDuration(span) {
++        if (durationFormatter) {
++          return durationFormatter.format({ days: span.days, hours: span.hours });
++        }
++        return plural(span.days, 'day') + ', ' + plural(span.hours, 'hour');
++      }
++
++      var startC = parseLocal(startStr);
++      var endC = parseLocal(endStr);
++      var start, end, endAsDate;
++
++      if (hasTemporal) {
++        try {
++          var tz = Temporal.Now.timeZoneId();
++          start = Temporal.PlainDateTime.from(startC).toZonedDateTime(tz);
++          end = Temporal.PlainDateTime.from(endC).toZonedDateTime(tz);
++          endAsDate = new Date(end.epochMilliseconds);
++          // Smoke-test the arithmetic so an incomplete implementation falls back.
++          start.until(end, { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' });
++        } catch (e) {
++          hasTemporal = false;
++        }
++      }
++      if (!hasTemporal) {
++        start = localDate(startC);
++        end = localDate(endC);
++        endAsDate = end;
++      }
++
++      // Static end-date label in the visitor's locale and zone.
++      var dateFormatter = new Intl.DateTimeFormat(undefined, {
++        dateStyle: 'long', timeStyle: 'short'
++      });
++      endDateEl.textContent = dateFormatter.format(endAsDate);
++      endDateEl.setAttribute('datetime', endAsDate.toISOString());
++
++      function isBefore(a, b) {
++        return hasTemporal
++          ? Temporal.ZonedDateTime.compare(a, b) < 0
++          : a.getTime() < b.getTime();
++      }
++
++      function render() {
++        var now = hasTemporal ? Temporal.Now.zonedDateTimeISO() : new Date();
++
++        if (!isBefore(now, end)) {
++          root.classList.add('promo-timer--ended');
++          remainingEl.textContent = 'This offer has ended.';
++          elapsedEl.textContent = 'The promotion ran for ' + formatDuration(spanDaysHours(start, end)) + '.';
++          return false;
++        }
++
++        root.classList.remove('promo-timer--ended');
++        remainingEl.textContent = formatDuration(spanDaysHours(now, end)) + ' left';
++
++        if (isBefore(now, start)) {
++          elapsedEl.textContent = 'Promotion has not started yet.';
++        } else {
++          elapsedEl.textContent = 'Running for ' + formatDuration(spanDaysHours(start, now)) + ' so far.';
++        }
++        return true;
++      }
++
++      // Evaluate on page load, then keep the hours figure current for open tabs.
++      if (render()) {
++        var timer = setInterval(function () {
++          if (!render()) { clearInterval(timer); }
++        }, 60 * 1000);
++      }
++    }());
++  </script>
++
+ </body>
+ 
+ </html>

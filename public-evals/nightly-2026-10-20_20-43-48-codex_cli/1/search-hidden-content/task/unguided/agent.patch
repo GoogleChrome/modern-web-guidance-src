@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,123 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible,
++    .wholesale-tab summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .product-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 230px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    .sidebar {
++      background: var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .sidebar h2 {
++      margin-bottom: 8px;
++      font-size: 1.25rem;
++    }
++
++    .btn:disabled {
++      cursor: default;
++      background: var(--primary);
++      opacity: 0.7;
++    }
++
++    #coupon-panel {
++      scroll-margin-top: 90px;
++    }
++
++    /* Keep decoration inside the searchable hidden container so it collapses cleanly. */
++    .coupon-content {
++      margin-top: 30px;
++      padding: 24px;
++      background: #fff3e0;
++      border: 2px dashed var(--primary);
++      border-radius: 8px;
++    }
++
++    .coupon-code {
++      display: inline-block;
++      margin-top: 12px;
++      padding: 8px 16px;
++      background: white;
++      font-size: 1.4rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++    }
++
++    .business-info {
++      margin-top: 40px;
++    }
++
++    .business-info h2 {
++      margin-bottom: 16px;
++    }
++
++    .wholesale-tabs {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      align-items: start;
++    }
++
++    .wholesale-tab {
++      min-width: 0;
++    }
++
++    .wholesale-tab summary {
++      padding: 14px 20px;
++      background: var(--secondary);
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      font-weight: bold;
++    }
++
++    .wholesale-tab[open] summary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .wholesale-tab .tab-content {
++      width: 200%;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 0 0 8px 8px;
++    }
++
++    .wholesale-tab:last-child .tab-content {
++      margin-left: -100%;
++    }
++
++    .tab-content p + p {
++      margin-top: 12px;
++    }
++
++    @media (max-width: 760px) {
++      .product-layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +282,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container product-layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +304,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Unlike plain hidden/display:none, until-found permits native find-in-page. -->
++    <section id="coupon-panel" hidden="until-found" aria-labelledby="coupon-heading" tabindex="-1">
++      <div class="coupon-content">
++        <h2 id="coupon-heading">A little treat for your next cup</h2>
++        <p>Enjoy 10% off your next order with this discount code:</p>
++        <code class="coupon-code">GRIND10</code>
++      </div>
++    </section>
++
++    <section class="business-info" aria-labelledby="business-heading">
++      <h2 id="business-heading">Coffee for your business &amp; events</h2>
++      <div class="wholesale-tabs">
++        <!-- A shared name makes these native disclosures mutually exclusive. -->
++        <details class="wholesale-tab" name="business-info" open>
++          <summary>Wholesale</summary>
++          <div class="tab-content">
++            <h3>Bring The Daily Grind to your business</h3>
++            <p>Stock your café, restaurant, or office with our ethically sourced, locally roasted coffee. Explore bulk beans and recurring deliveries tailored to your team.</p>
++            <p>Contact us to discuss wholesale pricing, roast selections, and ordering options.</p>
++            <a href="/contact?topic=wholesale" class="btn">Ask about wholesale</a>
++          </div>
++        </details>
++        <details class="wholesale-tab" name="business-info">
++          <summary>Catering</summary>
++          <div class="tab-content">
++            <h3>Make your next gathering a little warmer</h3>
++            <p>From team breakfasts to celebrations, bring freshly brewed coffee and seasonal favorites to your next event.</p>
++            <p>Tell us your date, guest count, and location so we can help plan your catering order.</p>
++            <a href="/contact?topic=catering" class="btn">Ask about catering</a>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
++  <aside class="sidebar" aria-labelledby="offer-heading">
++    <h2 id="offer-heading">Your next coffee, on offer</h2>
++    <p>A little extra to brighten your daily ritual.</p>
++    <button type="button" class="btn" id="reveal-coupon" aria-controls="coupon-panel" aria-expanded="false">Reveal coupon</button>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +357,28 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const couponPanel = document.getElementById('coupon-panel');
++    const revealCouponButton = document.getElementById('reveal-coupon');
++
++    // Both the button and native search permanently reveal the same panel.
++    function revealCoupon() {
++      couponPanel.removeAttribute('hidden');
++      revealCouponButton.setAttribute('aria-expanded', 'true');
++      revealCouponButton.textContent = 'Coupon revealed';
++      revealCouponButton.disabled = true;
++    }
++
++    revealCouponButton.addEventListener('click', () => {
++      revealCoupon();
++      couponPanel.focus({ preventScroll: true });
++      couponPanel.scrollIntoView({ block: 'nearest' });
++    });
++
++    couponPanel.addEventListener('beforematch', revealCoupon);
++  </script>
++
+ </body>
+ 
+ </html>

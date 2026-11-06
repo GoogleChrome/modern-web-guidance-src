@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+index 66c9173..98c1c70 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -59,7 +60,6 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -72,6 +72,11 @@
+       border-radius: 4px;
+     }
+ 
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -128,7 +133,6 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+@@ -152,6 +156,96 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Motion is opt-in; the default remains fully visible and static. */
++    @media (prefers-reduced-motion: no-preference) {
++      html {
++        scroll-behavior: smooth;
++      }
++
++      nav {
++        animation: appear 500ms var(--motion-ease) both;
++      }
++
++      .hero > * {
++        animation: rise-in 700ms var(--motion-ease) both;
++      }
++
++      .hero > :nth-child(2) { animation-delay: 100ms; }
++      .hero > :nth-child(3) { animation-delay: 200ms; }
++
++      nav a,
++      .footer-links a {
++        display: inline-block;
++        transition: transform 180ms var(--motion-ease);
++      }
++
++      .btn {
++        transition: transform 180ms var(--motion-ease);
++      }
++
++      .card {
++        transition: transform 250ms var(--motion-ease);
++      }
++
++      .card:focus-within {
++        transform: translateY(-4px);
++      }
++
++      .motion-ready [data-reveal] {
++        opacity: 0;
++        translate: 0 18px;
++        transition: opacity 600ms var(--motion-ease),
++          translate 600ms var(--motion-ease),
++          transform 250ms var(--motion-ease);
++      }
++
++      .motion-ready [data-reveal].is-visible {
++        opacity: 1;
++        translate: 0 0;
++        transition-delay: var(--reveal-delay, 0ms), var(--reveal-delay, 0ms), 0ms;
++      }
++
++      @media (hover: hover) and (pointer: fine) {
++        nav a:hover,
++        .footer-links a:hover {
++          transform: translateY(-2px);
++        }
++
++        .card:hover {
++          transform: translateY(-4px);
++        }
++
++        .btn:hover {
++          transform: translateY(-2px);
++        }
++      }
++
++      nav a:active,
++      .footer-links a:active,
++      .btn:active {
++        transform: scale(0.97);
++      }
++    }
++
++    @keyframes appear {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @keyframes rise-in {
++      from { opacity: 0; translate: 0 18px; }
++      to { opacity: 1; translate: 0 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html { scroll-behavior: auto; }
++
++      *, *::before, *::after {
++        animation: none !important;
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,19 +270,19 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 data-reveal style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-reveal>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-reveal style="--reveal-delay: 80ms;">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-reveal style="--reveal-delay: 160ms;">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -197,7 +291,7 @@
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer data-reveal>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +301,45 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const elements = document.querySelectorAll('[data-reveal]');
++      let observer;
++
++      function updateMotion() {
++        observer?.disconnect();
++        document.documentElement.classList.remove('motion-ready');
++
++        if (preference.matches || !('IntersectionObserver' in window)) return;
++
++        observer = new IntersectionObserver((entries) => {
++          entries.forEach((entry) => {
++            if (!entry.isIntersecting) return;
++            entry.target.classList.add('is-visible');
++            observer.unobserve(entry.target);
++          });
++        }, { threshold: 0.1 });
++
++        elements.forEach((element) => {
++          if (!element.classList.contains('is-visible')) observer.observe(element);
++        });
++        document.documentElement.classList.add('motion-ready');
++      }
++
++      // Keyboard navigation reveals an element immediately, even before scrolling.
++      document.addEventListener('focusin', (event) => {
++        const element = event.target.closest('[data-reveal]');
++        if (!element) return;
++        element.classList.add('is-visible');
++        observer?.unobserve(element);
++      });
++
++      preference.addEventListener('change', updateMotion);
++      updateMotion();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

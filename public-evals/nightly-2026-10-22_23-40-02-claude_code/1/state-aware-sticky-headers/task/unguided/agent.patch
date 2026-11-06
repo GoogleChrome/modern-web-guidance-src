@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 4.5rem;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -34,8 +35,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -134,8 +136,50 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers: stick below the sticky nav, scroll root is the viewport */
++    .section {
++      margin-bottom: 60px;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: sticky-container;
++    }
++
++    .sticky-header {
++      padding: 1.25rem 1rem;
++      text-align: center;
++      background: var(--secondary);
++      color: var(--primary);
++      border-radius: 8px;
++      transition: padding 0.2s, background-color 0.2s, box-shadow 0.2s, color 0.2s;
++    }
++
++    .sticky-header h2 {
++      font-size: 1.75rem;
++      line-height: 1.2;
++      transition: font-size 0.2s;
++    }
++
++    @container sticky-container scroll-state(stuck: top) {
++      .sticky-header {
++        padding: 0.4rem 1rem;
++        background: #1976d2;
++        color: white;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
++      }
++
++      .sticky-header h2 {
++        font-size: 1.1rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,10 +218,14 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Seasonal Favorites</h2>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -192,10 +240,103 @@
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        <div class="card">
++          <h3>Pumpkin Spice Latte</h3>
++          <p>Real pumpkin, warm spices, and steamed milk.</p>
++          <a href="/menu/seasonal" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Chai Latte</h3>
++          <p>Black tea simmered with cinnamon, cardamom, and ginger.</p>
++          <a href="/menu/tea" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Caramel Macchiato</h3>
++          <p>Vanilla, espresso, and a ribbon of salted caramel.</p>
++          <a href="/menu/espresso" class="btn">View Details</a>
++        </div>
+       </div>
+     </section>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Fresh Bakes</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky layers baked fresh every morning.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Studded with wild blueberries and lemon zest.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Warm, gooey, and topped with cream cheese icing.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Twice-baked and made for dunking.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist, tender, and loaded with walnuts.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Sourdough Toast</h3>
++          <p>Thick-cut with house-made jam.</p>
++          <a href="/menu/bakery" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++    <section class="section">
++      <div class="sticky-container">
++        <div class="sticky-header">
++          <h2>Beans & Brewing Gear</h2>
++        </div>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Single-Origin Ethiopia</h3>
++          <p>Floral and bright with notes of bergamot.</p>
++          <a href="/shop/beans" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>House Blend</h3>
++          <p>Balanced, chocolatey, and easy to love.</p>
++          <a href="/shop/beans" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Pour-Over Kit</h3>
++          <p>Everything you need for a perfect slow cup.</p>
++          <a href="/shop/gear" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>French Press</h3>
++          <p>Classic full-bodied brewing for the whole table.</p>
++          <a href="/shop/gear" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Burr Grinder</h3>
++          <p>Consistent grind size for better flavor.</p>
++          <a href="/shop/gear" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Ceramic Mug Set</h3>
++          <p>Hand-glazed mugs, set of four.</p>
++          <a href="/shop/gear" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

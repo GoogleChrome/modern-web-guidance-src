@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+index 66c9173..5aca070 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Hero video poster is the likely LCP element: fetch it early and at high priority. -->
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Macro_Espresso_Process.webm/1280px--Macro_Espresso_Process.webm.jpg">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,11 +77,11 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +91,44 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    /* Darkening overlay keeps the headline readable over the moving footage */
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .hero-toggle {
++      position: absolute;
++      right: 16px;
++      bottom: 16px;
++      background: rgba(0, 0, 0, 0.6);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      border-radius: 4px;
++      padding: 6px 12px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .hero-toggle:hover,
++    .hero-toggle:focus-visible {
++      border-color: var(--accent);
++      color: var(--accent);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -135,6 +176,63 @@
+       background: #3e2723;
+     }
+ 
++    /* Media sections */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .media-section .lede {
++      text-align: center;
++      max-width: 60ch;
++      margin: 0 auto 20px;
++    }
++
++    .media-section video {
++      display: block;
++      /* width/height attributes reserve a 16:9 box before the lazy video loads */
++      width: 100%;
++      height: auto;
++      border-radius: 8px;
++      background: var(--primary);
++    }
++
++    .media-section figcaption,
++    .credit {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .podcast {
++      display: grid;
++      gap: 12px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .podcast .episode-title {
++      font-size: 1.1rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .podcast audio {
++      width: 100%;
++    }
++
++    .podcast summary {
++      cursor: pointer;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -169,9 +267,19 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- Above the fold: no loading="lazy" so the poster and media load immediately.
++         Playback is started from script only when the user hasn't asked for reduced motion. -->
++    <video class="hero-video" id="hero-video" muted loop playsinline preload="auto"
++      width="1280" height="720" aria-hidden="true"
++      poster="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Macro_Espresso_Process.webm/1280px--Macro_Espresso_Process.webm.jpg">
++      <source
++        src="https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.720p.vp9.webm"
++        type="video/webm">
++    </video>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="hero-toggle" id="hero-toggle" hidden>Pause background video</button>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +303,57 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Below the fold. Poster and preload are authored as data-* attributes so no browser
++         fetches them during parsing; the script at the end of the page promotes them either
++         immediately (native loading="lazy" defers the fetch) or via IntersectionObserver. -->
++    <section class="media-section" aria-labelledby="roasting-heading">
++      <h2 id="roasting-heading">From Bean to Cup</h2>
++      <p class="lede">Roasting is where green coffee becomes something worth waking up for. Watch beans
++        darken and crackle over an open flame in Bahir Dar, Ethiopia, the way they have for generations.</p>
++      <figure>
++        <video controls loading="lazy" preload="none" playsinline width="1280" height="720"
++          data-preload="metadata"
++          data-poster="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/1280px--ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.jpg"
++          aria-describedby="roasting-caption">
++          <source
++            src="https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7d/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm/ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm.720p.vp9.webm"
++            type="video/webm">
++          <a
++            href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm">Watch
++            the coffee roasting video</a>
++        </video>
++        <figcaption id="roasting-caption">Coffee beans are stirred in a pan over charcoal until they
++          reach a deep, even roast. Video:
++          <a href="https://commons.wikimedia.org/wiki/File:ET_Bahir_Dar_asv2018-02_coffee_roasting_video.webm">A.Savin</a>,
++          Free Art License.</figcaption>
++      </figure>
++    </section>
++
++    <section class="media-section" aria-labelledby="podcast-heading">
++      <h2 id="podcast-heading">The Daily Grind Podcast</h2>
++      <p class="lede">Stories from farm to counter, for your commute or your second cup.</p>
++      <figure class="podcast">
++        <figcaption>
++          <p class="episode-title" id="episode-title">Episode 1: The Economics of Coffee</p>
++          <p>Where your coffee dollar goes, from growers and exporters to roasters and cafés.</p>
++        </figcaption>
++        <!-- controls is required: lazy <audio> without visible controls never intersects the viewport. -->
++        <audio controls loading="lazy" preload="none" data-preload="metadata"
++          src="https://upload.wikimedia.org/wikipedia/commons/d/de/Wikipedia_-_Economics_of_coffee.mp3"
++          aria-labelledby="episode-title" aria-details="episode-transcript">
++          <a href="https://upload.wikimedia.org/wikipedia/commons/d/de/Wikipedia_-_Economics_of_coffee.mp3">Download
++            the episode (MP3)</a>
++        </audio>
++        <details id="episode-transcript">
++          <summary>View transcript</summary>
++          <p>This episode is a reading of the Wikipedia article
++            <a href="https://en.wikipedia.org/wiki/Economics_of_coffee">Economics of coffee</a>,
++            which serves as the full transcript.</p>
++        </details>
++        <p class="credit">Audio: Spoken Wikipedia, public domain.</p>
++      </figure>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -205,8 +364,60 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="credit">Hero video:
++      <a href="https://commons.wikimedia.org/wiki/File:Macro_Espresso_Process.webm">Scott Schiller</a>, CC BY 2.0.</p>
+   </footer>
+ 
++  <script type="module">
++    // --- Hero video: autoplay only when motion is welcome, with a pause control (WCAG 2.2.2) ---
++    const heroVideo = document.getElementById('hero-video');
++    const heroToggle = document.getElementById('hero-toggle');
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++    function setHeroPlaying(playing) {
++      if (playing) {
++        heroVideo.play().catch(() => setHeroPlaying(false));
++      } else {
++        heroVideo.pause();
++      }
++      heroToggle.textContent = playing ? 'Pause background video' : 'Play background video';
++    }
++
++    heroToggle.hidden = false;
++    heroToggle.addEventListener('click', () => setHeroPlaying(heroVideo.paused));
++    setHeroPlaying(!reducedMotion.matches);
++    reducedMotion.addEventListener('change', (event) => setHeroPlaying(!event.matches));
++
++    // --- Lazy media: defer posters and preloaded data until the player nears the viewport ---
++    const lazyMedia = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]');
++
++    function activate(media) {
++      if (media.dataset.poster) {
++        media.poster = media.dataset.poster;
++        delete media.dataset.poster;
++      }
++      if (media.dataset.preload) {
++        media.preload = media.dataset.preload;
++        delete media.dataset.preload;
++      }
++    }
++
++    if (Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++      // Native support: the browser itself defers the poster and preload fetches.
++      lazyMedia.forEach(activate);
++    } else {
++      // Firefox/Safari: hold back fetches until the player approaches the viewport.
++      const observer = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          activate(entry.target);
++          observer.unobserve(entry.target);
++        }
++      }, { rootMargin: '400px 0px' });
++      lazyMedia.forEach((media) => observer.observe(media));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

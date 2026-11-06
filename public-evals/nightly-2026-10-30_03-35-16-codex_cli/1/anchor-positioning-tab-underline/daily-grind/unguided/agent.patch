@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..452eaca 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,29 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav ul::after {
++      content: '';
++      position: absolute;
++      bottom: -6px;
++      left: 0;
++      height: 2px;
++      width: var(--indicator-width, 0px);
++      background: var(--accent);
++      transform: translateX(var(--indicator-left, 0px));
++      pointer-events: none;
++    }
++
++    nav ul.indicator-ready::after {
++      transition: transform 0.3s ease, width 0.3s ease;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      nav ul.indicator-ready::after {
++        transition: none;
++      }
+     }
+ 
+     nav ul li {
+@@ -160,10 +183,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-nav-item aria-current="page">Menu</a></li>
++      <li><a href="/locations" data-nav-item>Locations</a></li>
++      <li><a href="/rewards" data-nav-item>Rewards</a></li>
++      <li><a href="/account" data-nav-item>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +230,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    const navItems = [...navList.querySelectorAll('[data-nav-item]')];
++    const currentPath = window.location.pathname.replace(/\/$/, '');
++    let selectedItem = navItems.find(item => item.pathname === currentPath) || navItems[0];
++
++    function updateIndicator() {
++      const listBounds = navList.getBoundingClientRect();
++      const itemBounds = selectedItem.getBoundingClientRect();
++      navList.style.setProperty('--indicator-left', `${itemBounds.left - listBounds.left}px`);
++      navList.style.setProperty('--indicator-width', `${itemBounds.width}px`);
++    }
++
++    function selectItem(item) {
++      navItems.forEach(link => link.removeAttribute('aria-current'));
++      selectedItem = item;
++      selectedItem.setAttribute('aria-current', 'page');
++      updateIndicator();
++    }
++
++    navItems.forEach(item => {
++      item.addEventListener('click', event => {
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        event.preventDefault();
++        selectItem(item);
++      });
++    });
++
++    selectItem(selectedItem);
++    // Commit the initial position before enabling transitions between selections.
++    navList.getBoundingClientRect();
++    navList.classList.add('indicator-ready');
++    new ResizeObserver(updateIndicator).observe(navList);
++    document.fonts.ready.then(updateIndicator);
++  </script>
+ </body>
+ 
+ </html>

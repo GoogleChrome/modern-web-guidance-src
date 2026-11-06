@@ -1,0 +1,272 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..72a41c7
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,147 @@
++import React, { useState, useRef } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStoryItem {
++  id: string;
++  title: string;
++  dateFormatted: string;
++  href: string;
++}
++
++interface TopStoriesSliderProps {
++  stories: TopStoryItem[];
++}
++
++export default function TopStoriesSlider({ stories }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [prevIndex, setPrevIndex] = useState<number | null>(null);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [animKey, setAnimKey] = useState(0);
++  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const total = stories.length;
++
++  const navigate = (dir: 'next' | 'prev') => {
++    if (total <= 1) return;
++
++    const prefersReducedMotion =
++      typeof window !== 'undefined' &&
++      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++    const nextIdx =
++      dir === 'next'
++        ? (currentIndex + 1) % total
++        : (currentIndex - 1 + total) % total;
++
++    if (timeoutRef.current) {
++      clearTimeout(timeoutRef.current);
++      timeoutRef.current = null;
++    }
++
++    if (prefersReducedMotion) {
++      setPrevIndex(null);
++      setDirection(null);
++      setCurrentIndex(nextIdx);
++      return;
++    }
++
++    setPrevIndex(currentIndex);
++    setDirection(dir);
++    setCurrentIndex(nextIdx);
++    setAnimKey((k) => k + 1);
++
++    timeoutRef.current = setTimeout(() => {
++      setPrevIndex(null);
++      setDirection(null);
++      timeoutRef.current = null;
++    }, 350);
++  };
++
++  const handlePrev = () => navigate('prev');
++  const handleNext = () => navigate('next');
++
++  return (
++    <section
++      aria-label="Top Stories"
++      aria-roledescription="carousel"
++      className="flex items-center justify-between gap-4"
++    >
++      <button
++        type="button"
++        onClick={handlePrev}
++        aria-label="Previous story"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded border border-gray-300 transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
++      >
++        <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++        <span>Previous</span>
++      </button>
++
++      <div
++        className="relative flex-1 overflow-hidden"
++        aria-live="polite"
++        aria-atomic="true"
++      >
++        <div className="grid grid-cols-1">
++          {stories.map((story, idx) => {
++            const isCurrent = idx === currentIndex;
++            const isExiting = idx === prevIndex && direction !== null;
++
++            let animClass = '';
++            if (isCurrent && direction === 'next') {
++              animClass = 'top-story-slide-in-right';
++            } else if (isCurrent && direction === 'prev') {
++              animClass = 'top-story-slide-in-left';
++            } else if (isExiting && direction === 'next') {
++              animClass = 'top-story-slide-out-left';
++            } else if (isExiting && direction === 'prev') {
++              animClass = 'top-story-slide-out-right';
++            }
++
++            const isVisible = isCurrent || isExiting;
++
++            return (
++              <div
++                key={`${story.id}-${isCurrent || isExiting ? animKey : 0}`}
++                role="group"
++                aria-roledescription="slide"
++                aria-label={`${idx + 1} of ${total}`}
++                aria-hidden={!isCurrent}
++                inert={!isCurrent ? true : undefined}
++                className={`col-start-1 row-start-1 flex flex-col justify-center text-center px-2 ${animClass} ${
++                  isVisible ? '' : ' invisible pointer-events-none'
++                }`}
++              >
++                <a
++                  href={story.href}
++                  tabIndex={isCurrent ? 0 : -1}
++                  className="inline-block"
++                >
++                  <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++                    {story.title}
++                  </h3>
++                </a>
++                <span className="text-xs text-gray-500 mt-0.5">
++                  {story.dateFormatted}
++                </span>
++              </div>
++            );
++          })}
++        </div>
++      </div>
++
++      <button
++        type="button"
++        onClick={handleNext}
++        aria-label="Next story"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded border border-gray-300 transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
++      >
++        <span>Next</span>
++        <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++      </button>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..ae48a2c 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -41,16 +42,15 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider
++                client:load
++                stories={topStories.map(article => ({
++                    id: article.id,
++                    title: article.data.title,
++                    dateFormatted: article.data.date.toLocaleDateString(),
++                    href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++                }))}
++            />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..67230fd 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,74 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slideInFromRight {
++  from {
++    transform: translateX(100%);
++    opacity: 0;
++  }
++  to {
++    transform: translateX(0);
++    opacity: 1;
++  }
++}
++
++@keyframes slideInFromLeft {
++  from {
++    transform: translateX(-100%);
++    opacity: 0;
++  }
++  to {
++    transform: translateX(0);
++    opacity: 1;
++  }
++}
++
++@keyframes slideOutToLeft {
++  from {
++    transform: translateX(0);
++    opacity: 1;
++  }
++  to {
++    transform: translateX(-100%);
++    opacity: 0;
++  }
++}
++
++@keyframes slideOutToRight {
++  from {
++    transform: translateX(0);
++    opacity: 1;
++  }
++  to {
++    transform: translateX(100%);
++    opacity: 0;
++  }
++}
++
++.top-story-slide-in-right {
++  animation: slideInFromRight 300ms ease-out forwards;
++}
++
++.top-story-slide-in-left {
++  animation: slideInFromLeft 300ms ease-out forwards;
++}
++
++.top-story-slide-out-left {
++  animation: slideOutToLeft 300ms ease-out forwards;
++}
++
++.top-story-slide-out-right {
++  animation: slideOutToRight 300ms ease-out forwards;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .top-story-slide-in-right,
++  .top-story-slide-in-left,
++  .top-story-slide-out-left,
++  .top-story-slide-out-right {
++    animation: none !important;
++    transition: none !important;
++  }
++}

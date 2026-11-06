@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,113 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines visibility state history using the Performance API.
++     */
++    function getVisibilityInfo() {
++      // Retrieve VisibilityStateEntry members:
++      const entries = performance.getEntriesByType('visibility-state');
++
++      if (entries.length > 0) {
++        const firstEntry = entries[0];
++
++        // If the first performance entry for visibility is 'hidden',
++        // the page was loaded in the background.
++        const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++        // Find the precise, high-resolution timestamp of when the page
++        // was first backgrounded.
++        let timeBackgrounded = null;
++        for (const entry of entries) {
++          if (entry.name === 'hidden') {
++            // entry.startTime is used because it provides the exact browser
++            // timestamp of the visibility change, which is required for precision.
++            timeBackgrounded = entry.startTime;
++            break;
++          }
++        }
++
++        const info = {
++          initiallyBackgrounded,
++          timeBackgrounded
++        };
++
++        console.log(info);
++        return info;
++      }
++
++      // If no entries are present even when VisibilityStateEntry is supported,
++      // fall back to legacy detection.
++      return getFallbackVisibilityInfo();
++    }
++
++    /**
++     * Fallback implementation using document.visibilityState.
++     * WARNING: This fallback approach is highly inaccurate and potentially unreliable
++     * for determining initial background state when scripts load asynchronously.
++     * A page could be opened in a background tab and foregrounded before this script
++     * executes, causing `document.visibilityState` to synchronously read as 'visible'
++     * and completely miss the initial hidden state. Additionally, the timestamp lacks
++     * the internal precision of the Performance API.
++     */
++    function getFallbackVisibilityInfo() {
++      // Check the state exactly when this script executes.
++      // This will fail to detect an initial background state if the user
++      // foregrounded the page before this script executed.
++      let initiallyBackgrounded = document.visibilityState === 'hidden';
++
++      // If it's hidden now, we approximate that it was hidden from load (time 0).
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++
++      // Listen for future visibility changes to capture if it is backgrounded later.
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
++          // performance.now() is used here as a fallback, but it only gives
++          // us the time the event listener fired, not the precise internal
++          // browser time the visibility actually changed.
++          timeBackgrounded = performance.now();
++          console.log({
++            initiallyBackgrounded,
++            timeBackgrounded,
++            isFallback: true,
++            unreliableForAsyncScripts: true
++          });
++        }
++      });
++
++      const fallbackInfo = {
++        get initiallyBackgrounded() { return initiallyBackgrounded; },
++        get timeBackgrounded() { return timeBackgrounded; },
++        isFallback: true,
++        unreliableForAsyncScripts: true
++      };
++
++      console.warn(
++        '[Visibility Detection] Using legacy document.visibilityState fallback. ' +
++        'This detection is potentially unreliable for async scripts due to race conditions.'
++      );
++      console.log({
++        initiallyBackgrounded: fallbackInfo.initiallyBackgrounded,
++        timeBackgrounded: fallbackInfo.timeBackgrounded,
++        isFallback: true,
++        unreliableForAsyncScripts: true
++      });
++
++      return fallbackInfo;
++    }
++
++    // Detect if the VisibilityStateEntry API is available
++    if ('VisibilityStateEntry' in window) {
++      // If VisibilityStateEntry is available, use it first:
++      getVisibilityInfo();
++    } else {
++      // If VisibilityStateEntry is unavailable, fall back to `document.visibilityState`:
++      getFallbackVisibilityInfo();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

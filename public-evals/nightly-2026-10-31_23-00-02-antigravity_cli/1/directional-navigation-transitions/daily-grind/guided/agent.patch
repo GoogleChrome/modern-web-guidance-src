@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+index 66c9173..2747077 100644
+--- a/index.html
++++ b/index.html
+@@ -115,11 +115,110 @@
+       text-align: center;
+     }
+ 
++    .card[hidden] {
++      display: none;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .favorites-carousel {
++      max-width: 500px;
++      margin: 20px auto 0;
++    }
++
++    .favorites-viewport {
++      overflow: clip;
++      border-radius: 8px;
++      padding: 5px;
++    }
++
++    .favorites-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .favorites-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .favorites-status {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++      min-width: 60px;
++      text-align: center;
++    }
++
++    /* Directional View Transition Keyframes */
++    @keyframes slide-to-left {
++      to { transform: translateX(-100%); }
++    }
++
++    @keyframes slide-from-right {
++      from { transform: translateX(100%); }
++    }
++
++    @keyframes slide-to-right {
++      to { transform: translateX(100%); }
++    }
++
++    @keyframes slide-from-left {
++      from { transform: translateX(-100%); }
++    }
++
++    ::view-transition-group(root),
++    ::view-transition-group(*) {
++      animation: 0.4s ease-in-out both;
++    }
++
++    .card:not([hidden]) {
++      view-transition-name: favorite-card;
++    }
++
++    /* Apply directional animations on both document-scoped and element-scoped active view transitions */
++    html:active-view-transition-type(forward)::view-transition-old(root),
++    html:active-view-transition-type(forward)::view-transition-old(favorite-card),
++    :active-view-transition-type(forward)::view-transition-old(favorite-card) {
++      animation-name: slide-to-left;
++    }
++
++    html:active-view-transition-type(forward)::view-transition-new(root),
++    html:active-view-transition-type(forward)::view-transition-new(favorite-card),
++    :active-view-transition-type(forward)::view-transition-new(favorite-card) {
++      animation-name: slide-from-right;
++    }
++
++    html:active-view-transition-type(backward)::view-transition-old(root),
++    html:active-view-transition-type(backward)::view-transition-old(favorite-card),
++    :active-view-transition-type(backward)::view-transition-old(favorite-card) {
++      animation-name: slide-to-right;
++    }
++
++    html:active-view-transition-type(backward)::view-transition-new(root),
++    html:active-view-transition-type(backward)::view-transition-new(favorite-card),
++    :active-view-transition-type(backward)::view-transition-new(favorite-card) {
++      animation-name: slide-from-left;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(root),
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,23 +274,30 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="favorites-carousel">
++        <div class="favorites-viewport" id="favorites-viewport" aria-live="polite">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card" hidden>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card" hidden>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="favorites-controls">
++          <button type="button" class="btn" id="prev-favorite" aria-label="Previous seasonal favorite">Previous</button>
++          <span class="favorites-status" id="favorites-status" aria-live="polite">1 / 3</span>
++          <button type="button" class="btn" id="next-favorite" aria-label="Next seasonal favorite">Next</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +313,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const viewport = document.getElementById('favorites-viewport');
++    const cards = Array.from(viewport.querySelectorAll('.card'));
++    const prevBtn = document.getElementById('prev-favorite');
++    const nextBtn = document.getElementById('next-favorite');
++    const statusEl = document.getElementById('favorites-status');
++
++    let currentIndex = 0;
++
++    function renderActiveCard(index) {
++      cards.forEach((card, i) => {
++        card.hidden = i !== index;
++      });
++      statusEl.textContent = `${index + 1} / ${cards.length}`;
++    }
++
++    /**
++     * Navigates to a new favorite card with a directional view transition.
++     * @param {Function} updateDOM - Callback to update the DOM state.
++     * @param {string} direction - Either 'forward' or 'backward'.
++     */
++    function navigateFavorite(updateDOM, direction) {
++      if ('startViewTransition' in Element.prototype) {
++        const transition = viewport.startViewTransition({
++          update: updateDOM,
++          types: [direction]
++        });
++        transition.ready.catch(() => {});
++        return;
++      }
++
++      if (document.startViewTransition) {
++        const transition = document.startViewTransition({
++          update: updateDOM,
++          types: [direction]
++        });
++        transition.ready.catch(() => {});
++        return;
++      }
++
++      updateDOM();
++    }
++
++    nextBtn.addEventListener('click', () => {
++      const nextIndex = (currentIndex + 1) % cards.length;
++      navigateFavorite(() => {
++        currentIndex = nextIndex;
++        renderActiveCard(currentIndex);
++      }, 'forward');
++    });
++
++    prevBtn.addEventListener('click', () => {
++      const prevIndex = (currentIndex - 1 + cards.length) % cards.length;
++      navigateFavorite(() => {
++        currentIndex = prevIndex;
++        renderActiveCard(currentIndex);
++      }, 'backward');
++    });
++  </script>
++
+ </body>
+ 
+ </html>

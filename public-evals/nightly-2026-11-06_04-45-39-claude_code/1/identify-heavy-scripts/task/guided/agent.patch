@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,113 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    /*
++     * Slow-script attribution via the Long Animation Frames (LoAF) API.
++     *
++     * Every animation frame that takes > 50ms produces a `long-animation-frame`
++     * entry listing the scripts that ran during it. We aggregate those per
++     * script source across the page lifetime, so both single long scripts and
++     * scripts that are individually short but run often show up.
++     *
++     * - Console: a table of the heaviest scripts is logged whenever it changes.
++     * - On demand: run `scriptAttribution()` in DevTools for the full report.
++     * - Field data: set ANALYTICS_ENDPOINT to beacon the report when the page
++     *   is hidden (tab switch, navigation, close).
++     *
++     * Supported in Chromium 123+. Other browsers ignore it, which is harmless;
++     * the offenders it finds are usually slow everywhere.
++     */
++    (() => {
++      const ANALYTICS_ENDPOINT = null; // e.g. '/analytics'
++      const REPORT_THRESHOLD_MS = 50;  // hide scripts below this total time
++      const TOP_N = 10;
++
++      if (!PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return;
++
++      const bySource = new Map();
++      let frameCount = 0;
++      let totalBlockingMs = 0;
++      let lastLogged = '';
++
++      // Inline scripts and event-handler attributes have no sourceURL, so
++      // fall back to the invoker (e.g. "BUTTON#buy.onclick") for a label.
++      const labelFor = (s) => s.sourceURL || `(inline) ${s.invoker || s.invokerType}`;
++
++      const record = (frame) => {
++        frameCount++;
++        totalBlockingMs += frame.blockingDuration ?? 0;
++
++        for (const s of frame.scripts) {
++          const key = labelFor(s);
++          let agg = bySource.get(key);
++          if (!agg) {
++            agg = { source: key, count: 0, totalMs: 0, maxMs: 0, forcedStyleLayoutMs: 0, worst: null };
++            bySource.set(key, agg);
++          }
++          agg.count++;
++          agg.totalMs += s.duration;
++          agg.forcedStyleLayoutMs += s.forcedStyleAndLayoutDuration ?? 0;
++          if (s.duration > agg.maxMs) {
++            agg.maxMs = s.duration;
++            agg.worst = {
++              invokerType: s.invokerType,
++              invoker: s.invoker,
++              functionName: s.sourceFunctionName || '(anonymous)',
++              charPosition: s.sourceCharPosition,
++            };
++          }
++        }
++      };
++
++      const report = () => {
++        const scripts = [...bySource.values()]
++          .filter((a) => a.totalMs >= REPORT_THRESHOLD_MS)
++          .sort((a, b) => b.totalMs - a.totalMs)
++          .slice(0, TOP_N)
++          .map((a) => ({
++            source: a.source,
++            count: a.count,
++            totalMs: Math.round(a.totalMs),
++            maxMs: Math.round(a.maxMs),
++            forcedStyleLayoutMs: Math.round(a.forcedStyleLayoutMs),
++            worstInvoker: a.worst && `${a.worst.invokerType}: ${a.worst.invoker}`,
++            worstFunction: a.worst && `${a.worst.functionName} @ char ${a.worst.charPosition}`,
++          }));
++        return {
++          page: location.pathname,
++          longFrames: frameCount,
++          totalBlockingMs: Math.round(totalBlockingMs),
++          scripts,
++        };
++      };
++
++      new PerformanceObserver((list) => {
++        list.getEntries().forEach(record);
++        const { scripts } = report();
++        const snapshot = JSON.stringify(scripts);
++        if (scripts.length && snapshot !== lastLogged) {
++          lastLogged = snapshot;
++          console.groupCollapsed(`[perf] Heaviest scripts (${frameCount} long animation frames)`);
++          console.table(scripts);
++          console.groupEnd();
++        }
++      }).observe({ type: 'long-animation-frame', buffered: true });
++
++      window.scriptAttribution = report;
++
++      if (ANALYTICS_ENDPOINT) {
++        let sentFrames = 0;
++        document.addEventListener('visibilitychange', () => {
++          if (document.visibilityState !== 'hidden' || frameCount === sentFrames) return;
++          sentFrames = frameCount;
++          navigator.sendBeacon(ANALYTICS_ENDPOINT, JSON.stringify({ type: 'script-attribution', ...report() }));
++        });
++      }
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

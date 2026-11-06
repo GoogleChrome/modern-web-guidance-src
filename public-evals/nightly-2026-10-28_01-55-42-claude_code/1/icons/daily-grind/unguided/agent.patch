@@ -1,0 +1,206 @@
+diff --git a/index.html b/index.html
+index 66c9173..bf551e8 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,28 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /*
++       * Icon library.
++       * Each icon is a 24x24 stroke-based SVG stored as an inline data URI,
++       * so there are no extra network requests and the artwork is a vector
++       * that stays crisp at any pixel density. Icons are applied as CSS
++       * masks and painted with `currentColor`, which means their colour,
++       * size and hover states are controlled entirely from CSS.
++       *
++       * Assign an icon with `--icon: var(--icon-<name>)` on any `.icon`
++       * element, or use one of the `.icon-<name>` helper classes below.
++       */
++      --icon-coffee: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 8h1a4 4 0 1 1 0 8h-1'/><path d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/><path d='M6 2v2M10 2v2M14 2v2'/></svg>");
++      --icon-map-pin: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg>");
++      --icon-star: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/></svg>");
++      --icon-user: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>");
++      --icon-log-out: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><polyline points='16 17 21 12 16 7'/><path d='M21 12H9'/></svg>");
++      --icon-leaf: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/><path d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/></svg>");
++      --icon-flame: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/></svg>");
++      --icon-snowflake: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 12h20M12 2v20'/><path d='m20 16-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4'/></svg>");
++      --icon-shopping-bag: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/><path d='M3 6h18'/><path d='M16 10a4 4 0 0 1-8 0'/></svg>");
++      --icon-arrow-right: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='m12 5 7 7-7 7'/></svg>");
+     }
+ 
+     * {
+@@ -27,6 +49,51 @@
+       background-color: var(--light);
+     }
+ 
++    /* Icon system */
++    .icon {
++      --icon-size: 1em;
++      display: inline-block;
++      flex: none;
++      width: var(--icon-size);
++      height: var(--icon-size);
++      vertical-align: -0.125em;
++      /* The mask punches the icon shape out of a solid fill, so the icon
++         always matches the surrounding text colour (including :hover). */
++      background-color: currentColor;
++      -webkit-mask: var(--icon) no-repeat center / contain;
++      mask: var(--icon) no-repeat center / contain;
++    }
++
++    /*
++     * Accessibility contract:
++     *  - Decorative icons (every icon on this page sits next to a visible
++     *    text label) must carry aria-hidden="true" so screen readers skip
++     *    the empty span and read only the label.
++     *  - An icon that is the ONLY content of a control must instead be
++     *    exposed: <span class="icon icon-user" role="img" aria-label="My Account"></span>
++     */
++
++    /* Icon assignment helpers */
++    .icon-coffee       { --icon: var(--icon-coffee); }
++    .icon-map-pin      { --icon: var(--icon-map-pin); }
++    .icon-star         { --icon: var(--icon-star); }
++    .icon-user         { --icon: var(--icon-user); }
++    .icon-log-out      { --icon: var(--icon-log-out); }
++    .icon-leaf         { --icon: var(--icon-leaf); }
++    .icon-flame        { --icon: var(--icon-flame); }
++    .icon-snowflake    { --icon: var(--icon-snowflake); }
++    .icon-shopping-bag { --icon: var(--icon-shopping-bag); }
++    .icon-arrow-right  { --icon: var(--icon-arrow-right); }
++
++    /* Keep icons visible in Windows High Contrast / forced-colors mode,
++       where background colours are normally stripped. */
++    @media (forced-colors: active) {
++      .icon {
++        forced-color-adjust: none;
++        background-color: currentColor;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -56,12 +123,19 @@
+     }
+ 
+     nav a {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4em;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
++    nav a .icon {
++      --icon-size: 1.1em;
++    }
++
+     nav a:hover {
+       color: var(--accent);
+     }
+@@ -120,8 +194,23 @@
+       color: var(--primary);
+     }
+ 
++    .card-icon {
++      --icon-size: 1.75rem;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 3.5rem;
++      height: 3.5rem;
++      margin-bottom: 12px;
++      border-radius: 50%;
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5em;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +224,24 @@
+       background: #3e2723;
+     }
+ 
++    .btn .icon-arrow-right {
++      transition: transform 0.3s;
++    }
++
++    .btn:hover .icon-arrow-right {
++      transform: translateX(3px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn .icon-arrow-right {
++        transition: none;
++      }
++
++      .btn:hover .icon-arrow-right {
++        transform: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,18 +267,18 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span class="icon icon-coffee" aria-hidden="true"></span>Menu</a></li>
++      <li><a href="/locations"><span class="icon icon-map-pin" aria-hidden="true"></span>Locations</a></li>
++      <li><a href="/rewards"><span class="icon icon-star" aria-hidden="true"></span>Rewards</a></li>
++      <li><a href="/account"><span class="icon icon-user" aria-hidden="true"></span>My Account</a></li>
++      <li><a href="/logout" class="logout-link"><span class="icon icon-log-out" aria-hidden="true"></span>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn"><span class="icon icon-shopping-bag" aria-hidden="true"></span>Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -179,19 +286,22 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-icon" aria-hidden="true"><span class="icon icon-leaf"></span></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="icon icon-arrow-right" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <div class="card-icon" aria-hidden="true"><span class="icon icon-flame"></span></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="icon icon-arrow-right" aria-hidden="true"></span></a>
+         </div>
+         <div class="card">
++          <div class="card-icon" aria-hidden="true"><span class="icon icon-snowflake"></span></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="icon icon-arrow-right" aria-hidden="true"></span></a>
+         </div>
+       </div>
+     </section>

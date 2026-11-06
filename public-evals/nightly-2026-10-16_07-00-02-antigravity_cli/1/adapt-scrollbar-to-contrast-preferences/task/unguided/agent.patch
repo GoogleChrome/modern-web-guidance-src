@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,88 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scrollbar Styling */
++    html, * {
++      scrollbar-width: auto;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    ::-webkit-scrollbar {
++      width: 14px;
++      height: 14px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border-radius: 7px;
++      border: 3px solid var(--secondary);
++    }
++
++    ::-webkit-scrollbar-thumb:hover {
++      background: #3e2723;
++    }
++
++    ::-webkit-scrollbar-thumb:active {
++      background: #271613;
++    }
++
++    /* High Contrast Scrollbars */
++    @media (prefers-contrast: more) {
++      html, * {
++        scrollbar-color: #000000 #ffffff;
++      }
++
++      ::-webkit-scrollbar {
++        width: 16px;
++        height: 16px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: #ffffff;
++        border-left: 2px solid #000000;
++        border-top: 2px solid #000000;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: #000000;
++        border: 2px solid #ffffff;
++        outline: 2px solid #000000;
++        border-radius: 2px;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background: #2a2a2a;
++      }
++    }
++
++    @media (forced-colors: active) {
++      html, * {
++        scrollbar-color: Highlight Canvas;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: Canvas;
++        border-left: 2px solid CanvasText;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: Highlight;
++        border: 2px solid Canvas;
++      }
++
++      ::-webkit-scrollbar-thumb:hover,
++      ::-webkit-scrollbar-thumb:active {
++        background: Highlight;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

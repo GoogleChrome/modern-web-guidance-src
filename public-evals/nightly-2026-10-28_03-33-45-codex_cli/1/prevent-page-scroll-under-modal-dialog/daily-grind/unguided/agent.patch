@@ -1,0 +1,50 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..def127a 100644
+--- a/index.html
++++ b/index.html
+@@ -156,14 +156,16 @@
+     body.modal-open {
+       overflow: hidden;
+       position: fixed;
++      width: 100%;
+     }
+ 
+     dialog {
+-      overflow: visible;
++      max-height: 100dvh;
++      overflow: auto;
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -231,9 +233,24 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
++      const scrollX = window.scrollX;
++      const scrollY = window.scrollY;
++
++      document.getElementById("close-notice").addEventListener("click", () => {
++        noticeDialog.close();
++      });
++
++      noticeDialog.addEventListener("close", () => {
++        document.body.classList.remove("modal-open");
++        document.body.style.removeProperty("top");
++        document.body.style.removeProperty("left");
++        window.scrollTo(scrollX, scrollY);
++      });
++
++      document.body.style.top = `-${scrollY}px`;
++      document.body.style.left = `-${scrollX}px`;
+       document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

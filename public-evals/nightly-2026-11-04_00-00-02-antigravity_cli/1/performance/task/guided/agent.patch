@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,39 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "tag": "daily-grind-prefetch",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "eager"
++        }
++      ],
++      "prerender": [
++        {
++          "tag": "daily-grind-prerender",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,22 +104,43 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      isolation: isolate;
+     }
+ 
++    .hero-bg {
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++    }
++
++    .hero-bg::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    .hero-bg img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      display: block;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -99,8 +151,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -112,10 +168,20 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      contain: layout style paint;
+     }
+ 
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      display: block;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -168,28 +234,86 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <picture class="hero-bg">
++      <source
++        type="image/avif"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1080&q=80 1080w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++      >
++      <source
++        type="image/webp"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=1080&q=80 1080w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++      >
++      <img
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++        srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80 640w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1080&q=80 1080w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w"
++        sizes="100vw"
++        alt=""
++        width="1350"
++        height="900"
++        fetchpriority="high"
++        loading="eager"
++      >
++    </picture>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <picture>
++            <source type="image/avif" srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=avif&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=avif&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <source type="image/webp" srcset="https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=webp&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1541167760496-1628856ab772?fm=webp&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <img
++              class="card-img"
++              src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80"
++              alt="Maple Oat Latte with latte art"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++          </picture>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <picture>
++            <source type="image/avif" srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=avif&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=avif&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <source type="image/webp" srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=webp&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?fm=webp&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <img
++              class="card-img"
++              src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80"
++              alt="Cup of Dark Roast Espresso"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++          </picture>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <picture>
++            <source type="image/avif" srcset="https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=avif&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=avif&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <source type="image/webp" srcset="https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=webp&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=webp&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 350px">
++            <img
++              class="card-img"
++              src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
++              alt="Glass of iced Cold Brew coffee"
++              width="600"
++              height="360"
++              loading="lazy"
++            >
++          </picture>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

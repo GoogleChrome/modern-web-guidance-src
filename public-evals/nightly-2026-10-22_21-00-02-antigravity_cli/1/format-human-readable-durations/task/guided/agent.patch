@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,133 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Steeping Calculator Widget */
++    .calculator-section {
++      margin-block-start: 40px;
++    }
++
++    .calculator-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 600px;
++      margin: 20px auto 0;
++    }
++
++    .calculator-card p.description {
++      text-align: center;
++      margin-block-end: 1.5rem;
++      color: var(--text);
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .input-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 1.5rem;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      color: var(--primary);
++    }
++
++    .field input[type="number"] {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .unit-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 1rem 1.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .unit-fieldset legend {
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 0.5rem;
++    }
++
++    .radio-group {
++      display: flex;
++      gap: 1.5rem;
++      flex-wrap: wrap;
++      margin-block-start: 0.5rem;
++    }
++
++    .radio-option {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .radio-option input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.25rem;
++      height: 1.25rem;
++      cursor: pointer;
++    }
++
++    .radio-option label {
++      font-size: 1rem;
++      cursor: pointer;
++      padding: 10px 0;
++      margin: -10px 0;
++    }
++
++    input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    @media (pointer: coarse) {
++      .field input[type="number"],
++      .radio-option {
++        min-height: 52px;
++      }
++    }
++
++    .duration-display {
++      background: var(--light);
++      border-inline-start: 4px solid var(--accent);
++      padding: 1.25rem;
++      border-radius: 4px;
++      text-align: center;
++    }
++
++    .duration-display .label {
++      display: block;
++      font-size: 0.9rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      margin-block-end: 0.25rem;
++    }
++
++    #humanValue {
++      font-size: 1.5rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +319,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calculator-section">
++      <h2 style="text-align: center;">Coffee Steeping Time Calculator</h2>
++      <div class="calculator-card">
++        <p class="description">Calculate and format your ideal cold brew or immersion steeping time.</p>
++        <form id="steepingForm" action="/steeping-calculator" method="GET">
++          <div class="form-group input-row">
++            <div class="field">
++              <label for="hoursInput">Hours</label>
++              <input type="number" id="hoursInput" name="hours" min="0" value="1" inputmode="numeric">
++            </div>
++            <div class="field">
++              <label for="minutesInput">Minutes</label>
++              <input type="number" id="minutesInput" name="minutes" min="0" value="30" inputmode="numeric">
++            </div>
++          </div>
++
++          <fieldset class="unit-fieldset">
++            <legend>Display Format (Largest Unit)</legend>
++            <div class="radio-group">
++              <div class="radio-option">
++                <input type="radio" id="unitHours" name="largestUnit" value="hours" checked>
++                <label for="unitHours">Hours and minutes</label>
++              </div>
++              <div class="radio-option">
++                <input type="radio" id="unitMinutes" name="largestUnit" value="minutes">
++                <label for="unitMinutes">Total minutes</label>
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="duration-display" aria-live="polite">
++            <span class="label">Total Steeping Duration</span>
++            <output id="humanValue" for="hoursInput minutesInput unitHours unitMinutes">1 hour and 30 minutes</output>
++          </div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +369,90 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hoursInput = document.getElementById('hoursInput');
++    const minutesInput = document.getElementById('minutesInput');
++    const unitRadios = document.querySelectorAll('input[name="largestUnit"]');
++    const humanValue = document.getElementById('humanValue');
++    const steepingForm = document.getElementById('steepingForm');
++
++    steepingForm.addEventListener('submit', (e) => {
++      e.preventDefault();
++      updateSteepingDuration();
++    });
++
++    function formatManualFallback(balanced, largestUnit) {
++      const h = balanced.hours;
++      const m = balanced.minutes;
++
++      const hoursStr = `${h} hour${h === 1 ? '' : 's'}`;
++      const minutesStr = `${m} minute${m === 1 ? '' : 's'}`;
++
++      if (largestUnit === 'minutes' || h === 0) {
++        return minutesStr;
++      }
++      if (m === 0) {
++        return hoursStr;
++      }
++      return `${hoursStr} and ${minutesStr}`;
++    }
++
++    function updateSteepingDuration() {
++      if (typeof Temporal === 'undefined') {
++        return;
++      }
++
++      const rawHours = parseInt(hoursInput.value, 10);
++      const rawMinutes = parseInt(minutesInput.value, 10);
++      const hours = Number.isNaN(rawHours) || rawHours < 0 ? 0 : rawHours;
++      const minutes = Number.isNaN(rawMinutes) || rawMinutes < 0 ? 0 : rawMinutes;
++
++      const selectedRadio = document.querySelector('input[name="largestUnit"]:checked');
++      const largestUnit = selectedRadio ? selectedRadio.value : 'hours';
++
++      // 1. Create a duration from user input
++      const duration = Temporal.Duration.from({ hours, minutes });
++
++      // 2. Balance units based on largestUnit ('hours' or 'minutes')
++      const balanced = duration.round({ largestUnit });
++
++      // 3. Format using Intl.DurationFormat with fallback to manual string construction
++      if (typeof Intl !== 'undefined' && typeof Intl.DurationFormat !== 'undefined') {
++        const formatter = new Intl.DurationFormat('en', { style: 'long' });
++        humanValue.textContent = formatter.format(balanced);
++      } else {
++        humanValue.textContent = formatManualFallback(balanced, largestUnit);
++      }
++    }
++
++    function initializeApp() {
++      hoursInput.addEventListener('input', updateSteepingDuration);
++      hoursInput.addEventListener('change', updateSteepingDuration);
++      minutesInput.addEventListener('input', updateSteepingDuration);
++      minutesInput.addEventListener('change', updateSteepingDuration);
++      unitRadios.forEach((radio) => {
++        radio.addEventListener('change', updateSteepingDuration);
++      });
++      updateSteepingDuration();
++    }
++
++    // Check if Temporal is supported natively
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        try {
++          // Load the polyfill conditionally
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++          // Extend Date.prototype if needed
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        } catch (err) {
++          console.error("Failed to load Temporal polyfill:", err);
++        }
++      }
++      initializeApp();
++    })();
++  </script>
+ </body>
+ 
+ </html>

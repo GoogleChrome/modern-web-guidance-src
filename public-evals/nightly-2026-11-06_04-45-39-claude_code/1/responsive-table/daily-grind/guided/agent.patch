@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..dbd2c9b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,157 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Nutrition & pricing table */
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      margin-top: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      font-size: 0.95rem;
++      --label-2: "Serving size";
++      --label-3: "Calories";
++      --label-4: "Total fat";
++      --label-5: "Sugar";
++      --label-6: "Caffeine";
++      --label-7: "Price";
++    }
++
++    .nutrition-table caption {
++      caption-side: top;
++      text-align: start;
++      padding: 16px 20px 4px;
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .nutrition-table caption span {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: var(--text);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 12px 16px;
++      text-align: start;
++      border-block-end: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .nutrition-table td {
++      font-variant-numeric: tabular-nums;
++    }
++
++    /* Sticky column headers */
++    .nutrition-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    /* Sticky row headers */
++    .nutrition-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++      color: var(--primary);
++    }
++
++    @container (width >= 600px) {
++      .nutrition-table tbody tr:last-child > * {
++        border-block-end: none;
++      }
++    }
++
++    /* Stacked card layout when the table's container is narrow */
++    @container (width < 600px) {
++      .nutrition-table,
++      .nutrition-table thead,
++      .nutrition-table tbody,
++      .nutrition-table tr,
++      .nutrition-table th,
++      .nutrition-table td {
++        display: block;
++      }
++
++      .nutrition-table thead {
++        display: none;
++      }
++
++      .nutrition-table caption {
++        display: block;
++        padding: 16px 16px 8px;
++      }
++
++      .nutrition-table tbody {
++        padding: 0 16px 16px;
++      }
++
++      .nutrition-table tr {
++        margin-block-end: 1rem;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        overflow: clip;
++      }
++
++      .nutrition-table tbody tr:last-child {
++        margin-block-end: 0;
++      }
++
++      .nutrition-table tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 2;
++        background: var(--secondary);
++      }
++
++      .nutrition-table td {
++        display: flex;
++        justify-content: space-between;
++        gap: 1rem;
++        white-space: normal;
++      }
++
++      .nutrition-table td::before {
++        font-weight: 600;
++        color: var(--primary);
++      }
++
++      .nutrition-table td:nth-child(2)::before { content: var(--label-2); }
++      .nutrition-table td:nth-child(3)::before { content: var(--label-3); }
++      .nutrition-table td:nth-child(4)::before { content: var(--label-4); }
++      .nutrition-table td:nth-child(5)::before { content: var(--label-5); }
++      .nutrition-table td:nth-child(6)::before { content: var(--label-6); }
++      .nutrition-table td:nth-child(7)::before { content: var(--label-7); }
++
++      .nutrition-table td:last-child {
++        border-block-end: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,6 +345,55 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div tabindex="0" role="region" aria-labelledby="seasonal-nutrition-caption" class="table-wrapper">
++        <table class="nutrition-table" role="table">
++          <caption id="seasonal-nutrition-caption">
++            Seasonal Favorites: nutrition &amp; pricing
++            <span>Values per standard serving. Latte made with oat milk.</span>
++          </caption>
++          <thead role="rowgroup">
++            <tr role="row">
++              <th scope="col" role="columnheader">Drink</th>
++              <th scope="col" role="columnheader">Serving size</th>
++              <th scope="col" role="columnheader">Calories</th>
++              <th scope="col" role="columnheader">Total fat</th>
++              <th scope="col" role="columnheader">Sugar</th>
++              <th scope="col" role="columnheader">Caffeine</th>
++              <th scope="col" role="columnheader">Price</th>
++            </tr>
++          </thead>
++          <tbody role="rowgroup">
++            <tr role="row">
++              <th scope="row" role="rowheader">Maple Oat Latte</th>
++              <td role="cell">12 oz</td>
++              <td role="cell">190 kcal</td>
++              <td role="cell">6 g</td>
++              <td role="cell">18 g</td>
++              <td role="cell">150 mg</td>
++              <td role="cell">$5.25</td>
++            </tr>
++            <tr role="row">
++              <th scope="row" role="rowheader">Dark Roast Espresso</th>
++              <td role="cell">2 oz (double shot)</td>
++              <td role="cell">5 kcal</td>
++              <td role="cell">0 g</td>
++              <td role="cell">0 g</td>
++              <td role="cell">150 mg</td>
++              <td role="cell">$3.25</td>
++            </tr>
++            <tr role="row">
++              <th scope="row" role="rowheader">Cold Brew</th>
++              <td role="cell">16 oz</td>
++              <td role="cell">5 kcal</td>
++              <td role="cell">0 g</td>
++              <td role="cell">0 g</td>
++              <td role="cell">205 mg</td>
++              <td role="cell">$4.50</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 

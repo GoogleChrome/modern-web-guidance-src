@@ -1,0 +1,46 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,31 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Weathered / rustic grunge effect.
++       grunge-texture.svg is a seamless distress tile used as an alpha mask:
++       its transparent pits, blotches and scratches punch through the hero so
++       the page background shows through, as if the surface has worn away. */
++    .weathered-bg {
++      -webkit-mask-image: url('grunge-texture.svg');
++      mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      mask-repeat: repeat;
++      -webkit-mask-size: 512px 512px;
++      mask-size: 512px 512px;
++      -webkit-mask-position: center;
++      mask-position: center;
++      mask-mode: alpha;
++    }
++
++    /* Warm, aged tint over the photo to match the distressed surface */
++    .hero.weathered-bg {
++      background-image: linear-gradient(rgba(62, 39, 35, 0.55), rgba(33, 19, 15, 0.6)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      filter: sepia(0.2) contrast(1.05);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -167,9 +190,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

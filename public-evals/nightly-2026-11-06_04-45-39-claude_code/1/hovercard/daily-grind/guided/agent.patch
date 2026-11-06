@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+index 66c9173..fc25577 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,174 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Drink hovercards */
++    .card .btn[interestfor] {
++      --interest-delay-start: 0.3s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.2s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    :root:has(:is(:interest-source, .interest-source)) .card .btn[interestfor] {
++      --interest-delay-start: 0s;
++      interest-delay-start: var(--interest-delay-start);
++    }
++
++    .card:nth-child(1) .btn { anchor-name: --drink-seasonal; }
++    .card:nth-child(2) .btn { anchor-name: --drink-espresso; }
++    .card:nth-child(3) .btn { anchor-name: --drink-cold-brew; }
++    #hc-seasonal { position-anchor: --drink-seasonal; }
++    #hc-espresso { position-anchor: --drink-espresso; }
++    #hc-cold-brew { position-anchor: --drink-cold-brew; }
++
++    [popover].hovercard {
++      /* Explicit anchor() insets (not position-area) so the anchor polyfill can position it too. */
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(center);
++      translate: -50% 0;
++      margin: 10px 0 0;
++      position-try-fallbacks: flip-block;
++      width: min(320px, calc(100vw - 32px));
++      padding: 0;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.22);
++      overflow: hidden;
++      text-align: left;
++      opacity: 0;
++      transform: translateY(-8px) scale(0.96);
++      transform-origin: top center;
++    }
++
++    [popover].hovercard:is(:popover-open, .\:popover-open) {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      [popover].hovercard:is(:popover-open, .\:popover-open) {
++        opacity: 0;
++        transform: translateY(-8px) scale(0.96);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      [popover].hovercard {
++        transition: opacity, transform, display, overlay;
++        transition-duration: 0.25s;
++        transition-behavior: allow-discrete;
++      }
++    }
++
++    .hovercard img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .hovercard-body {
++      padding: 14px 16px 16px;
++    }
++
++    .hovercard-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++    }
++
++    .hovercard h4 {
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .hovercard .price {
++      font-weight: bold;
++      white-space: nowrap;
++    }
++
++    .hovercard .path {
++      font-size: 0.75rem;
++      color: #8d6e63;
++      margin-bottom: 8px;
++    }
++
++    .hovercard p {
++      font-size: 0.9rem;
++    }
++
++    .hovercard .tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++      margin: 10px 0;
++    }
++
++    .hovercard .tags li {
++      font-size: 0.75rem;
++      background: #efebe9;
++      border-radius: 999px;
++      padding: 2px 10px;
++    }
++
++    .hovercard dl {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 8px;
++      text-align: center;
++      border-top: 1px solid #efebe9;
++      padding-top: 10px;
++      font-size: 0.8rem;
++    }
++
++    .hovercard dt {
++      color: #8d6e63;
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .hovercard dd {
++      font-weight: 600;
++    }
++
++    .hovercard .order-link {
++      display: block;
++      margin-top: 12px;
++      text-align: center;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++      font-size: 0.9rem;
++      padding: 8px 12px;
++      border-radius: 6px;
++      text-decoration: none;
++    }
++
++    .hovercard .order-link:hover,
++    .hovercard .order-link:focus-visible {
++      background: #ff9100;
++    }
+   </style>
++  <!-- Conditionally load polyfills only where native support is missing. -->
++  <script type="module">
++    if (!("popover" in HTMLElement.prototype)) {
++      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
++      import("https://unpkg.com/interestfor@latest");
++    }
++    if (!CSS.supports("anchor-name: --a")) {
++      import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -181,19 +348,62 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="hc-seasonal">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="hc-espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="hc-cold-brew">View Details</a>
+         </div>
+       </div>
++
++        <div id="hc-seasonal" popover="hint" class="hovercard">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=80" alt="Latte with leaf-shaped foam art" width="320" height="180" loading="lazy">
++          <div class="hovercard-body">
++            <div class="hovercard-header">
++              <h4>Maple Oat Latte</h4>
++              <span class="price">$5.25</span>
++            </div>
++            <div class="path">/menu/seasonal</div>
++            <p>Double espresso, steamed oat milk and pure Vermont maple syrup, finished with a dusting of cinnamon.</p>
++            <ul class="tags"><li>Seasonal</li><li>Dairy-free</li><li>Hot or iced</li></ul>
++            <dl><div><dt>Size</dt><dd>12–20 oz</dd></div><div><dt>Caffeine</dt><dd>150 mg</dd></div><div><dt>Calories</dt><dd>210</dd></div></dl>
++            <a href="/order-online?item=maple-oat-latte" class="order-link">Add to order</a>
++          </div>
++        </div>
++        <div id="hc-espresso" popover="hint" class="hovercard">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=640&q=80" alt="Espresso shot in a small ceramic cup" width="320" height="180" loading="lazy">
++          <div class="hovercard-body">
++            <div class="hovercard-header">
++              <h4>Dark Roast Espresso</h4>
++              <span class="price">$3.25</span>
++            </div>
++            <div class="path">/menu/espresso</div>
++            <p>Our house dark roast pulled as a rich double shot, with notes of cocoa, toasted walnut and smoke.</p>
++            <ul class="tags"><li>Single origin</li><li>Vegan</li><li>Double shot</li></ul>
++            <dl><div><dt>Size</dt><dd>2 oz</dd></div><div><dt>Caffeine</dt><dd>130 mg</dd></div><div><dt>Calories</dt><dd>5</dd></div></dl>
++            <a href="/order-online?item=dark-roast-espresso" class="order-link">Add to order</a>
++          </div>
++        </div>
++        <div id="hc-cold-brew" popover="hint" class="hovercard">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&q=80" alt="Iced coffee in a tall glass" width="320" height="180" loading="lazy">
++          <div class="hovercard-body">
++            <div class="hovercard-header">
++              <h4>Cold Brew</h4>
++              <span class="price">$4.50</span>
++            </div>
++            <div class="path">/menu/cold-brew</div>
++            <p>Coarse-ground beans steeped cold for 18 hours, then served over ice for a smooth, low-acid finish.</p>
++            <ul class="tags"><li>Low acid</li><li>Vegan</li><li>Add sweet cream</li></ul>
++            <dl><div><dt>Size</dt><dd>16–24 oz</dd></div><div><dt>Caffeine</dt><dd>200 mg</dd></div><div><dt>Calories</dt><dd>5</dd></div></dl>
++            <a href="/order-online?item=cold-brew" class="order-link">Add to order</a>
++          </div>
++        </div>
+     </section>
+   </main>
+ 

@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,54 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      max-width: 650px;
++      margin: 40px auto 0;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback label {
++      display: block;
++      margin: 16px 0 6px;
++      font-weight: 600;
++    }
++
++    .feedback textarea {
++      display: block;
++      width: 100%;
++      padding: 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      resize: vertical;
++      min-height: 120px;
++    }
++
++    .feedback .btn {
++      border: 0;
++      font: inherit;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .feedback textarea:focus-visible,
++    .feedback button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .feedback-hint,
++    #feedback-status {
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +240,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Share your feedback</h2>
++      <p>We'd love to hear what you think.</p>
++      <form id="feedback-form">
++        <label for="feedback-message">Your feedback (required)</label>
++        <textarea id="feedback-message" name="feedback" rows="4" required
++          maxlength="5000" enterkeyhint="send" aria-describedby="feedback-hint"></textarea>
++        <p class="feedback-hint" id="feedback-hint">Enter to send · Shift+Enter for a new line. Feedback is saved on this device.</p>
++        <button class="btn" type="submit">Send</button>
++        <p id="feedback-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +265,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const feedbackForm = document.getElementById('feedback-form');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const feedbackStatus = document.getElementById('feedback-status');
++
++    feedbackMessage.addEventListener('input', () => {
++      feedbackMessage.setCustomValidity('');
++      feedbackStatus.textContent = '';
++    });
++
++    feedbackMessage.addEventListener('keydown', (event) => {
++      if (event.key !== 'Enter' || event.shiftKey) return;
++      // Safari may report the IME confirmation key after composition has ended.
++      if (event.isComposing || event.keyCode === 229) return;
++      event.preventDefault();
++      if (!event.repeat) feedbackForm.requestSubmit();
++    });
++
++    feedbackForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const message = feedbackMessage.value.trim();
++      if (!message) {
++        feedbackMessage.setCustomValidity('Please enter your feedback.');
++        feedbackMessage.reportValidity();
++        return;
++      }
++
++      try {
++        const storageKey = 'daily-grind-feedback';
++        const submissions = JSON.parse(localStorage.getItem(storageKey) || '[]');
++        submissions.push({ message, createdAt: new Date().toISOString() });
++        localStorage.setItem(storageKey, JSON.stringify(submissions));
++        feedbackForm.reset();
++        feedbackStatus.textContent = 'Thank you! Your feedback has been saved on this device.';
++      } catch {
++        feedbackStatus.textContent = 'Your feedback could not be saved. Please try again.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

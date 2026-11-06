@@ -1,0 +1,90 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,86 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Scrollbars
++       Defaults are hard to see on the cream background, so the thumb uses the
++       dark brand brown on a visible track. The standard properties cover
++       Firefox and modern Chromium/Safari; the ::-webkit- rules cover older
++       WebKit engines. */
++    :root {
++      --scrollbar-track: #e6dcd7;
++      --scrollbar-thumb: var(--primary);
++      --scrollbar-thumb-hover: var(--text);
++    }
++
++    html {
++      scrollbar-width: auto;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    ::-webkit-scrollbar {
++      width: 14px;
++      height: 14px;
++    }
++
++    ::-webkit-scrollbar-track {
++      background: var(--scrollbar-track);
++      border-left: 1px solid rgba(0, 0, 0, 0.15);
++    }
++
++    ::-webkit-scrollbar-thumb {
++      background: var(--scrollbar-thumb);
++      border-radius: 7px;
++      border: 2px solid var(--scrollbar-track);
++    }
++
++    ::-webkit-scrollbar-thumb:hover,
++    ::-webkit-scrollbar-thumb:active {
++      background: var(--scrollbar-thumb-hover);
++    }
++
++    /* High-contrast preference: pure black thumb on white track with a
++       visible outline, and a slightly thicker bar for easier targeting. */
++    @media (prefers-contrast: more) {
++      :root {
++        --scrollbar-track: #ffffff;
++        --scrollbar-thumb: #000000;
++        --scrollbar-thumb-hover: #000000;
++      }
++
++      ::-webkit-scrollbar {
++        width: 18px;
++        height: 18px;
++      }
++
++      ::-webkit-scrollbar-track {
++        border-left: 2px solid #000000;
++      }
++
++      ::-webkit-scrollbar-thumb {
++        border-radius: 0;
++        border: 2px solid #ffffff;
++        outline: 2px solid #000000;
++        outline-offset: -2px;
++      }
++    }
++
++    /* Windows High Contrast / forced colors: defer to the user's system
++       palette instead of overriding it. */
++    @media (forced-colors: active) {
++      html {
++        scrollbar-color: auto;
++      }
++
++      ::-webkit-scrollbar-track,
++      ::-webkit-scrollbar-thumb {
++        background: revert;
++        border: revert;
++        outline: revert;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;

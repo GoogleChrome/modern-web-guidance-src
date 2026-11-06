@@ -1,0 +1,405 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..4491852 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,31 @@
++interface ModelContextTool {
++  name: string;
++  description: string;
++  inputSchema?: Record<string, any>;
++  execute: (input: any, context?: any) => any;
++}
++
++interface ModelContext {
++  registerTool(tool: ModelContextTool, options?: { signal?: AbortSignal }): void | Promise<void>;
++  unregisterTool?(name: string): void | Promise<void>;
++  provideContext?(options: { tools: ModelContextTool[] }): void | Promise<void>;
++  clearContext?(): void | Promise<void>;
++}
++
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++  interface Navigator {
++    modelContext?: ModelContext;
++  }
++  interface Document {
++    modelContext?: ModelContext;
++  }
++  interface SubmitEvent {
++    agentInvoked?: boolean;
++    respondWith?: (response: Promise<any> | any) => void;
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9aadce4 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +7,7 @@ export default function SignInForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const performSignIn = async (submittedUsername: string, submittedPassword: string) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,7 +18,7 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: submittedUsername, password: submittedPassword }),
+       });
+ 
+       const data = await response.json();
+@@ -27,18 +26,103 @@ export default function SignInForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const errorMsg = `Login failed: ${data.error || 'Unknown error'}`;
++        setError(errorMsg);
++        return {
++          status: 'error',
++          error: errorMsg,
++          content: [{ type: 'text', text: errorMsg }],
++        };
+       } else {
+-        setSuccess('Login successful!');
++        const successMsg = 'Login successful!';
++        setSuccess(successMsg);
+         // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        return {
++          status: 'success',
++          message: successMsg,
++          content: [{ type: 'text', text: successMsg }],
++        };
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const errorMsg = 'An unexpected error occurred. Please try again later.';
++      setError(errorMsg);
++      return {
++        status: 'error',
++        error: errorMsg,
++        content: [{ type: 'text', text: errorMsg }],
++      };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const performSignInRef = useRef(performSignIn);
++  performSignInRef.current = performSignIn;
++
++  useEffect(() => {
++    const modelContext =
++      (navigator as any).modelContext || (document as any).modelContext;
++    if (!modelContext?.registerTool) return;
++
++    const controller = new AbortController();
++    const toolDef = {
++      name: 'sign_in',
++      description: 'Sign in an existing user to The DevTools Times with their username and password.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          username: {
++            type: 'string',
++            description: 'The username of the account to sign in with.',
++          },
++          password: {
++            type: 'string',
++            description: 'The password of the account.',
++          },
++        },
++        required: ['username', 'password'],
++      },
++      execute: async ({ username: u, password: p }: { username: string; password: string }) => {
++        setUsername(u);
++        setPassword(p);
++        return await performSignInRef.current(u, p);
++      },
++    };
++
++    try {
++      modelContext.registerTool(toolDef, { signal: controller.signal });
++    } catch (e) {
++      try {
++        modelContext.registerTool(toolDef);
++      } catch (_) {}
++    }
++
++    return () => {
++      controller.abort();
++      try {
++        modelContext.unregisterTool?.('sign_in');
++      } catch (_) {}
++    };
++  }, []);
++
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    const formData = new FormData(e.currentTarget);
++    const submittedUsername = (formData.get('username') as string) ?? username;
++    const submittedPassword = (formData.get('password') as string) ?? password;
++    setUsername(submittedUsername);
++    setPassword(submittedPassword);
++
++    const nativeEvent = e.nativeEvent as any;
++    const resultPromise = performSignIn(submittedUsername, submittedPassword);
++
++    if (nativeEvent?.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++      nativeEvent.respondWith(resultPromise);
++    }
++
++    await resultPromise;
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+@@ -55,7 +139,15 @@ export default function SignInForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({
++          toolname: 'sign_in',
++          tooldescription: 'Sign in an existing user to The DevTools Times with their username and password.',
++          toolautosubmit: 'true',
++        } as any)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,10 +155,14 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            {...({
++              toolparamdescription: 'The username of the account to sign in with.',
++            } as any)}
+           />
+         </div>
+         
+@@ -77,10 +173,14 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            {...({
++              toolparamdescription: 'The password of the account.',
++            } as any)}
+           />
+         </div>
+ 
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..464f575 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+@@ -7,8 +7,7 @@ export default function SignUpForm() {
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  const performSignUp = async (submittedUsername: string, submittedPassword: string) => {
+     setError(null);
+     setSuccess(null);
+     setLoading(true);
+@@ -19,7 +18,7 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
+-        body: JSON.stringify({ username, password }),
++        body: JSON.stringify({ username: submittedUsername, password: submittedPassword }),
+       });
+ 
+       const data = await response.json();
+@@ -27,19 +26,104 @@ export default function SignUpForm() {
+       if (!response.ok) {
+         // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+         // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const errorMsg = `Registration failed: ${data.error || 'Unknown error'}`;
++        setError(errorMsg);
++        return {
++          status: 'error',
++          error: errorMsg,
++          content: [{ type: 'text', text: errorMsg }],
++        };
+       } else {
+-        setSuccess('User registered successfully! You can now sign in.');
++        const successMsg = 'User registered successfully! You can now sign in.';
++        setSuccess(successMsg);
+         setUsername('');
+         setPassword('');
++        return {
++          status: 'success',
++          message: successMsg,
++          content: [{ type: 'text', text: successMsg }],
++        };
+       }
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      const errorMsg = 'An unexpected error occurred. Please try again later.';
++      setError(errorMsg);
++      return {
++        status: 'error',
++        error: errorMsg,
++        content: [{ type: 'text', text: errorMsg }],
++      };
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const performSignUpRef = useRef(performSignUp);
++  performSignUpRef.current = performSignUp;
++
++  useEffect(() => {
++    const modelContext =
++      (navigator as any).modelContext || (document as any).modelContext;
++    if (!modelContext?.registerTool) return;
++
++    const controller = new AbortController();
++    const toolDef = {
++      name: 'sign_up',
++      description: 'Register a new user account on The DevTools Times with a username and password (must be at least 8 characters and contain a number).',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          username: {
++            type: 'string',
++            description: 'The desired username for the new account.',
++          },
++          password: {
++            type: 'string',
++            description: 'The password for the new account (must be at least 8 characters and contain a number).',
++          },
++        },
++        required: ['username', 'password'],
++      },
++      execute: async ({ username: u, password: p }: { username: string; password: string }) => {
++        setUsername(u);
++        setPassword(p);
++        return await performSignUpRef.current(u, p);
++      },
++    };
++
++    try {
++      modelContext.registerTool(toolDef, { signal: controller.signal });
++    } catch (e) {
++      try {
++        modelContext.registerTool(toolDef);
++      } catch (_) {}
++    }
++
++    return () => {
++      controller.abort();
++      try {
++        modelContext.unregisterTool?.('sign_up');
++      } catch (_) {}
++    };
++  }, []);
++
++  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault();
++    const formData = new FormData(e.currentTarget);
++    const submittedUsername = (formData.get('username') as string) ?? username;
++    const submittedPassword = (formData.get('password') as string) ?? password;
++    setUsername(submittedUsername);
++    setPassword(submittedPassword);
++
++    const nativeEvent = e.nativeEvent as any;
++    const resultPromise = performSignUp(submittedUsername, submittedPassword);
++
++    if (nativeEvent?.agentInvoked && typeof nativeEvent.respondWith === 'function') {
++      nativeEvent.respondWith(resultPromise);
++    }
++
++    await resultPromise;
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+@@ -56,7 +140,15 @@ export default function SignUpForm() {
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        onSubmit={handleSubmit}
++        className="space-y-4"
++        {...({
++          toolname: 'sign_up',
++          tooldescription: 'Register a new user account on The DevTools Times with a username and password (must be at least 8 characters and contain a number).',
++          toolautosubmit: 'true',
++        } as any)}
++      >
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,10 +156,14 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            {...({
++              toolparamdescription: 'The desired username for the new account.',
++            } as any)}
+           />
+         </div>
+         
+@@ -78,10 +174,14 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            {...({
++              toolparamdescription: 'The password for the new account (must be at least 8 characters and contain a number).',
++            } as any)}
+           />
+           <p className="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters and contain a number.

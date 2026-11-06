@@ -1,0 +1,80 @@
+diff --git a/index.html b/index.html
+index 66c9173..10ebdfa 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -88,9 +88,24 @@
+       padding: 0 20px;
+     }
+ 
++    /* Poster lockup: each line is sized (via JS below) to fill the same width */
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(90vw, 460px);
++      margin: 2rem 0 1rem;
++      font-weight: 900;
++      line-height: 0.9;
++      text-transform: uppercase;
++      text-align: center;
++    }
++
++    .hero h1 .line {
++      display: block;
++      white-space: nowrap;
++      font-size: 3rem; /* fallback before fitting */
++    }
++
++    .hero h1 .line > span {
++      display: inline-block;
+     }
+ 
+     /* Content Sections */
+@@ -169,7 +184,11 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1>
++      <span class="line"><span>Wake Up</span></span>
++      <span class="line"><span>Your</span></span>
++      <span class="line"><span>Senses</span></span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +226,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Size each heading line's font so its text fills the heading width exactly.
++    (function () {
++      var h1 = document.querySelector('.hero h1');
++      var lines = h1.querySelectorAll('.line');
++      function fit() {
++        var width = h1.clientWidth;
++        lines.forEach(function (line) {
++          var text = line.firstElementChild;
++          var probe = 100;
++          line.style.fontSize = probe + 'px';
++          line.style.fontSize = (probe * width / text.getBoundingClientRect().width) + 'px';
++        });
++      }
++      fit();
++      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
++      window.addEventListener('resize', fit);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

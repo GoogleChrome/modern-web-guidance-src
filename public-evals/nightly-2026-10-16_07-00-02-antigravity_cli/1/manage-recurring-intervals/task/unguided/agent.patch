@@ -1,0 +1,380 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Polyfill for TC39 Temporal API with progressive feature detection -->
++  <script src="temporal-polyfill.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -151,8 +153,128 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Subscription Delivery Planner Section */
++    .planner-section {
++      margin-top: 50px;
++    }
++
++    .planner-card {
++      max-width: 600px;
++      margin: 20px auto 0;
++      text-align: left;
++      padding: 30px;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      border: 1px solid #e0d7d3;
++    }
++
++    .planner-header {
++      text-align: center;
++      margin-bottom: 25px;
++    }
++
++    .planner-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .planner-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .planner-form {
++      display: flex;
++      flex-direction: column;
++      gap: 18px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 16px;
++    }
++
++    .form-group label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select {
++      padding: 10px 12px;
++      border: 1px solid #c7b8b2;
++      border-radius: 6px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #fff;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group input:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .result-container {
++      margin-top: 10px;
++      padding: 16px 20px;
++      background: #fdfaf7;
++      border-radius: 8px;
++      border-left: 5px solid var(--accent);
++      transition: all 0.3s ease;
++    }
++
++    .result-container.error {
++      background: #fdf2f2;
++      border-left-color: #d32f2f;
++    }
++
++    .result-label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++      margin-bottom: 6px;
++    }
++
++    .result-container.error .result-label {
++      color: #c62828;
++    }
++
++    #resultDate {
++      font-size: 1.3rem;
++      font-weight: 700;
++      color: var(--primary);
++      word-break: break-word;
++    }
++
++    #resultDate.error {
++      color: #d32f2f;
++      font-size: 1rem;
++      font-weight: 600;
++    }
++
++    @media (max-width: 500px) {
++      .form-row {
++        grid-template-columns: 1fr;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +316,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Coffee Subscription Delivery Planner Section -->
++    <section class="planner-section" id="subscriptionPlanner">
++      <div class="planner-header">
++        <h2>Coffee Subscription Delivery Planner</h2>
++        <p>Calculate your next recurring delivery date with precision calendar duration additions.</p>
++      </div>
++
++      <div class="card planner-card">
++        <form class="planner-form" onsubmit="event.preventDefault();">
++          <div class="form-group">
++            <label for="startDateInput">Start Date / Current Delivery</label>
++            <input type="date" id="startDateInput" value="2026-10-16" required>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="yearsInput">Years to Add</label>
++              <input type="number" id="yearsInput" value="0" min="0" step="1" required>
++            </div>
++            <div class="form-group">
++              <label for="monthsInput">Months to Add</label>
++              <input type="number" id="monthsInput" value="1" min="0" step="1" required>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="overflowSelect">Month-End Overflow Strategy</label>
++            <select id="overflowSelect">
++              <option value="constrain">constrain</option>
++              <option value="reject">reject</option>
++            </select>
++          </div>
++
++          <div class="result-container" id="resultContainer">
++            <div class="result-label" id="resultLabel">Next Delivery Date</div>
++            <div id="resultDate"></div>
++          </div>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +369,186 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Progressive Polyfill Feature Detection for TC39 Temporal API
++    function getTemporal() {
++      // 1. Native browser Temporal implementation
++      if (typeof globalThis.Temporal !== 'undefined' && globalThis.Temporal.PlainDate) {
++        return globalThis.Temporal;
++      }
++      // 2. Check if UMD polyfill set globalThis.temporal.Temporal
++      if (typeof globalThis.temporal !== 'undefined' && globalThis.temporal.Temporal) {
++        globalThis.Temporal = globalThis.temporal.Temporal;
++        return globalThis.Temporal;
++      }
++      // 3. Fallback spec-compliant PlainDate implementation
++      return initTemporalFallback();
++    }
++
++    function initTemporalFallback() {
++      if (globalThis.Temporal && globalThis.Temporal.PlainDate) {
++        return globalThis.Temporal;
++      }
++
++      function isLeapYear(year) {
++        return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
++      }
++
++      function daysInMonth(year, month) {
++        const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
++        return days[month - 1];
++      }
++
++      function pad(num, len = 2) {
++        return String(num).padStart(len, '0');
++      }
++
++      class FallbackPlainDate {
++        constructor(year, month, day) {
++          this.year = Number(year);
++          this.month = Number(month);
++          this.day = Number(day);
++        }
++
++        static from(item) {
++          if (item instanceof FallbackPlainDate) {
++            return new FallbackPlainDate(item.year, item.month, item.day);
++          }
++          if (typeof item === 'string') {
++            const match = item.match(/^(\d{4,6})-(\d{2})-(\d{2})/);
++            if (!match) throw new RangeError('Invalid ISO date format: ' + item);
++            const year = parseInt(match[1], 10);
++            const month = parseInt(match[2], 10);
++            const day = parseInt(match[3], 10);
++            if (month < 1 || month > 12) throw new RangeError('Month out of range: ' + month);
++            const max = daysInMonth(year, month);
++            if (day < 1 || day > max) throw new RangeError('Day out of range: ' + day);
++            return new FallbackPlainDate(year, month, day);
++          }
++          if (typeof item === 'object' && item !== null) {
++            return new FallbackPlainDate(item.year, item.month, item.day);
++          }
++          throw new TypeError('Invalid PlainDate argument');
++        }
++
++        add(duration, options = {}) {
++          const overflow = options.overflow || 'constrain';
++          if (overflow !== 'constrain' && overflow !== 'reject') {
++            throw new RangeError('Invalid overflow option: ' + overflow);
++          }
++
++          const yearsToAdd = Number(duration.years || 0);
++          const monthsToAdd = Number(duration.months || 0);
++
++          let targetYear = this.year + yearsToAdd;
++          let totalMonths = (this.month - 1) + monthsToAdd;
++          targetYear += Math.floor(totalMonths / 12);
++          let targetMonth = ((totalMonths % 12) + 12) % 12 + 1;
++
++          const maxDays = daysInMonth(targetYear, targetMonth);
++          let targetDay = this.day;
++
++          if (overflow === 'reject') {
++            if (targetDay > maxDays) {
++              throw new RangeError('value out of range: 1 <= ' + targetDay + ' <= ' + maxDays);
++            }
++          } else {
++            if (targetDay > maxDays) {
++              targetDay = maxDays;
++            }
++          }
++
++          return new FallbackPlainDate(targetYear, targetMonth, targetDay);
++        }
++
++        toString() {
++          return `${pad(this.year, 4)}-${pad(this.month, 2)}-${pad(this.day, 2)}`;
++        }
++      }
++
++      globalThis.Temporal = globalThis.Temporal || {};
++      globalThis.Temporal.PlainDate = FallbackPlainDate;
++      return globalThis.Temporal;
++    }
++
++    function calculateDeliveryDate() {
++      const startDateInput = document.getElementById('startDateInput');
++      const yearsInput = document.getElementById('yearsInput');
++      const monthsInput = document.getElementById('monthsInput');
++      const overflowSelect = document.getElementById('overflowSelect');
++      const resultDate = document.getElementById('resultDate');
++      const resultContainer = document.getElementById('resultContainer');
++      const resultLabel = document.getElementById('resultLabel');
++
++      if (!startDateInput || !yearsInput || !monthsInput || !overflowSelect || !resultDate) {
++        return;
++      }
++
++      const startDateVal = startDateInput.value ? startDateInput.value.trim() : '';
++      if (!startDateVal) {
++        resultDate.textContent = 'Please select a start date.';
++        resultDate.classList.add('error');
++        if (resultContainer) resultContainer.classList.add('error');
++        if (resultLabel) resultLabel.textContent = 'Status';
++        return;
++      }
++
++      const years = yearsInput.value === '' ? 0 : Number(yearsInput.value);
++      const months = monthsInput.value === '' ? 0 : Number(monthsInput.value);
++      const overflow = overflowSelect.value;
++
++      if (isNaN(years) || isNaN(months)) {
++        resultDate.textContent = 'Error: Please enter valid numbers for years and months.';
++        resultDate.classList.add('error');
++        if (resultContainer) resultContainer.classList.add('error');
++        if (resultLabel) resultLabel.textContent = 'Error';
++        return;
++      }
++
++      try {
++        const TemporalAPI = getTemporal();
++        const startDate = TemporalAPI.PlainDate.from(startDateVal);
++        const nextDelivery = startDate.add({ years, months }, { overflow });
++        const resultString = nextDelivery.toString();
++
++        resultDate.textContent = resultString;
++        resultDate.classList.remove('error');
++        if (resultContainer) resultContainer.classList.remove('error');
++        if (resultLabel) resultLabel.textContent = 'Next Delivery Date';
++      } catch (err) {
++        const errorDetails = err && err.message ? err.message : 'Invalid date calculation';
++        if (overflow === 'reject') {
++          resultDate.textContent = `Error: Month-end overflow rejected (${errorDetails})`;
++        } else {
++          resultDate.textContent = `Error: ${errorDetails}`;
++        }
++        resultDate.classList.add('error');
++        if (resultContainer) resultContainer.classList.add('error');
++        if (resultLabel) resultLabel.textContent = 'Calculation Error';
++      }
++    }
++
++    // Attach listeners for automatic updates on any input change
++    function initPlanner() {
++      const inputs = ['startDateInput', 'yearsInput', 'monthsInput', 'overflowSelect'];
++      inputs.forEach(id => {
++        const el = document.getElementById(id);
++        if (el) {
++          el.addEventListener('input', calculateDeliveryDate);
++          el.addEventListener('change', calculateDeliveryDate);
++        }
++      });
++      // Initial calculation
++      calculateDeliveryDate();
++    }
++
++    // Call initPlanner immediately since elements are already parsed before </body>
++    initPlanner();
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initPlanner);
++    }
++  </script>
+ </body>
+ 
+ </html>

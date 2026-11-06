@@ -1,0 +1,229 @@
+diff --git a/browser-tools.js b/browser-tools.js
+new file mode 100644
+index 0000000..f9b05dc
+--- /dev/null
++++ b/browser-tools.js
+@@ -0,0 +1,148 @@
++(() => {
++  // Read the visible menu so agent results and the page share a source of truth.
++  const cards = [...document.querySelectorAll('[data-drink-id]')];
++  const menu = cards.map(card => ({
++    id: card.dataset.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++    detailsUrl: card.querySelector('a').getAttribute('href'),
++  }));
++  const orders = new Map();
++  const status = document.getElementById('order-status');
++  const orderList = document.getElementById('order-items');
++  const clearButton = document.getElementById('clear-order');
++  const drinkIds = menu.map(drink => drink.id);
++  const drinkSchema = {
++    type: 'string', enum: drinkIds, description: 'The seasonal drink to act on.',
++  };
++
++  function validate(input, allowed) {
++    if (!input || typeof input !== 'object' || Array.isArray(input)) {
++      return { error: 'Provide an object containing the tool arguments.' };
++    }
++    if (Object.keys(input).some(key => !allowed.includes(key))) {
++      return { error: 'Unknown argument.', allowedArguments: allowed };
++    }
++    return null;
++  }
++
++  function renderOrder(message) {
++    orderList.replaceChildren(...[...orders].map(([id, quantity]) => {
++      const item = document.createElement('li');
++      item.textContent = `${quantity} × ${menu.find(drink => drink.id === id).name}`;
++      return item;
++    }));
++    clearButton.disabled = orders.size === 0;
++    status.textContent = message;
++  }
++
++  function orderDrink(input) {
++    const error = validate(input, ['drinkId', 'quantity']);
++    if (error) return error;
++    const { drinkId, quantity = 1 } = input;
++    const drink = menu.find(item => item.id === drinkId);
++    if (!drink) return { error: 'Choose a seasonal drink.', availableDrinkIds: drinkIds };
++    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
++      return { error: 'Quantity must be an integer from 1 to 20.' };
++    }
++    const total = (orders.get(drinkId) || 0) + quantity;
++    if (total > 20) return { error: 'An order can contain at most 20 of each drink.' };
++    orders.set(drinkId, total);
++    renderOrder(`Added ${quantity} × ${drink.name} to your local order.`);
++    return {
++      status: 'added_to_local_order',
++      items: [...orders].map(([id, count]) => ({ drinkId: id, quantity: count })),
++      message: 'No purchase has been placed. This order lasts only in this tab.',
++    };
++  }
++
++  const tools = [
++    {
++      name: 'get_seasonal_menu',
++      description: 'Query the Daily Grind Seasonal Favorites menu to find drinks and their details.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: { query: { type: 'string', description: 'Words to match in drink names or descriptions.', default: '' } },
++      },
++      execute(input) {
++        const error = validate(input, ['query']);
++        if (error) return error;
++        const { query = '' } = input;
++        if (typeof query !== 'string') return { error: 'Query must be text.' };
++        const search = query.trim().toLowerCase();
++        return { section: 'Seasonal Favorites', drinks: menu.filter(drink =>
++          `${drink.name} ${drink.description}`.toLowerCase().includes(search)) };
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'order_drink',
++      description: 'Add a seasonal drink to the visible, tab-local order planner. No purchase is placed.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: {
++          drinkId: drinkSchema,
++          quantity: { type: 'integer', minimum: 1, maximum: 20, default: 1, description: 'Number of drinks to add.' },
++        },
++        required: ['drinkId'],
++      },
++      execute: orderDrink,
++      annotations: { readOnlyHint: false, consequentialHint: false },
++    },
++    {
++      name: 'highlight_drink',
++      description: 'Highlight a seasonal drink on the page and bring it into view for the user.',
++      inputSchema: {
++        type: 'object', additionalProperties: false,
++        properties: { drinkId: drinkSchema }, required: ['drinkId'],
++      },
++      execute(input) {
++        const error = validate(input, ['drinkId']);
++        if (error) return error;
++        const selected = cards.find(card => card.dataset.drinkId === input.drinkId);
++        if (!selected) return { error: 'Choose a seasonal drink.', availableDrinkIds: drinkIds };
++        cards.forEach(card => card.classList.toggle('is-highlighted', card === selected));
++        selected.scrollIntoView({ block: 'center', behavior: 'instant' });
++        selected.focus({ preventScroll: true });
++        return { status: 'highlighted', drinkId: input.drinkId };
++      },
++      annotations: { readOnlyHint: false },
++    },
++  ];
++
++  document.querySelectorAll('[data-order-drink]').forEach(button => {
++    button.addEventListener('click', () => {
++      const result = orderDrink({ drinkId: button.dataset.orderDrink });
++      if (result.error) status.textContent = result.error;
++    });
++  });
++  clearButton.addEventListener('click', () => {
++    orders.clear();
++    renderOrder('Your order is empty.');
++  });
++
++  // Progressive enhancement: the ordinary UI works without the experimental API.
++  // Abort registrations on navigation and re-register on back/forward restoration.
++  let registration;
++  async function registerTools() {
++    if (!document.modelContext?.registerTool || registration) return;
++    const controller = new AbortController();
++    registration = controller;
++    try {
++      for (const tool of tools) {
++        if (controller.signal.aborted) return;
++        await document.modelContext.registerTool(tool, { signal: controller.signal });
++      }
++    } catch (error) {
++      controller.abort();
++      if (registration === controller) registration = undefined;
++      console.warn('Daily Grind browser tools could not be registered.', error);
++    }
++  }
++  window.addEventListener('pagehide', () => {
++    registration?.abort();
++    registration = undefined;
++  });
++  window.addEventListener('pageshow', () => { void registerTools(); });
++  void registerTools();
++})();
+diff --git a/index.html b/index.html
+index 66c9173..f16b549 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/browser-tools.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -129,12 +130,21 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card { scroll-margin-top: 100px; }
++    .card.is-highlighted { outline: 3px solid var(--accent); }
++    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .order-summary { margin-top: 24px; padding: 20px; background: var(--secondary); border-radius: 8px; }
++    #order-items { padding-left: 24px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +185,35 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink-id="maple-oat-latte" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="maple-oat-latte" aria-label="Add Maple Oat Latte to order">Add to order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="dark-roast-espresso" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="dark-roast-espresso" aria-label="Add Dark Roast Espresso to order">Add to order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink-id="cold-brew" tabindex="-1">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-order-drink="cold-brew" aria-label="Add Cold Brew to order">Add to order</button>
+         </div>
+       </div>
++      <div class="order-summary">
++        <h3>Your drink order</h3>
++        <p>Plan your order here. This stays in this tab; no purchase is placed.</p>
++        <ul id="order-items" aria-label="Drinks in your order"></ul>
++        <p id="order-status" role="status" aria-live="polite" aria-atomic="true">Your order is empty.</p>
++        <button type="button" class="btn" id="clear-order" disabled>Clear order</button>
++      </div>
+     </section>
+   </main>
+ 

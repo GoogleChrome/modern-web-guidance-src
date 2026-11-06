@@ -1,0 +1,204 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..d6efbf9 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="masthead" class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8f623e1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,20 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
++  /**
++   * id of the page's above-the-fold lead element (e.g. the lead story).
++   * Rendering — and therefore the cross-document view transition — is held
++   * until this element has been parsed, so the transition never animates to
++   * a half-built page. Content below it (incl. the footer) is not waited on.
++   */
++  leadId?: string;
++  /** Critical above-the-fold image to preload so it's decoded for the transition snapshot. */
++  leadImage?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, leadId, leadImage } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -34,7 +41,16 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    {leadImage && <link rel="preload" as="image" href={leadImage} fetchpriority="high" />}
++
++    <!--
++      Hold the first render (and the incoming view-transition snapshot) until
++      the above-the-fold content has been parsed. Stylesheets in <head> are
++      already render-blocking. The footer and below-the-fold content are
++      intentionally not waited on.
++    -->
++    <link rel="expect" href="#masthead" blocking="render" />
++    {leadId && <link rel="expect" href={`#${leadId}`} blocking="render" />}
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..a80a146 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -4,7 +4,7 @@ import Ad from '../../components/AdSlotBanner.tsx';
+ 
+ import { getCollection, getEntry, render } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+-import { Image } from 'astro:assets';
++import { getImage } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
+@@ -30,13 +30,19 @@ const allArticles = await getCollection('articles');
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
++// Generated once and reused for both the <img> and its preload so the URLs match.
++const heroImage = article.data.prompt_comment
++    ? undefined
++    : await getImage({ src: articleImage, width: 1200, height: 675, format: 'webp' });
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout title={article.data.title} leadId="lead-story" leadImage={heroImage?.src}>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++        <!-- Above-the-fold lead: rendering waits until this block is parsed -->
++        <header id="lead-story">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -70,12 +76,11 @@ const isBookmarked = readingList.includes(article.slug);
+                     crossorigin="use-credentials"
+                 />
+             ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
++                <img
++                    src={heroImage!.src}
++                    {...heroImage!.attributes}
++                    alt={article.data.title}
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                 />
+             )}
+@@ -85,6 +90,7 @@ const isBookmarked = readingList.includes(article.slug);
+                 </figcaption>
+             )}
+         </figure>
++        </header>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..c7e3f06 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import { getImage } from 'astro:assets';
++import { getArticleImage } from '../utils/images';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -37,7 +39,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title="The DevTools Times" leadId="lead-story" leadImage={leadImage.src}>
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,7 +57,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="lead-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..237743c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,48 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* ---------- Cross-document page transitions ---------- */
++
++@view-transition {
++  navigation: auto;
++}
++
++/* Users who prefer reduced motion get standard instant navigations. */
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}
++
++/* The masthead is identical on every page: keep it pinned instead of fading it. */
++#masthead {
++  view-transition-name: masthead;
++}
++
++::view-transition-group(masthead) {
++  animation-duration: 0s;
++}
++
++/* Page content: quick fade + slight lift, compositor-only (opacity/translate). */
++::view-transition-old(root) {
++  animation: 180ms ease-in both vt-page-out;
++}
++
++::view-transition-new(root) {
++  animation: 280ms ease-out 60ms both vt-page-in;
++}
++
++@keyframes vt-page-out {
++  to {
++    opacity: 0;
++    translate: 0 -8px;
++  }
++}
++
++@keyframes vt-page-in {
++  from {
++    opacity: 0;
++    translate: 0 12px;
++  }
++}

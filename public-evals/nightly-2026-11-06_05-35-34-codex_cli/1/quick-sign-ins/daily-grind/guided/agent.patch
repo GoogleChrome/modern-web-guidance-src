@@ -1,0 +1,378 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/auth-polyfills.js b/auth-polyfills.js
+new file mode 100644
+index 0000000..56ff0b7
+--- /dev/null
++++ b/auth-polyfills.js
+@@ -0,0 +1 @@
++var Be=Object.create;var Se=Object.defineProperty;var Le=Object.getOwnPropertyDescriptor;var qe=Object.getOwnPropertyNames;var De=Object.getPrototypeOf,Ie=Object.prototype.hasOwnProperty;var Ve=(o,n)=>()=>{try{return n||o((n={exports:{}}).exports,n),n.exports}catch(s){throw n=0,s}};var Ke=(o,n,s,w)=>{if(n&&typeof n=="object"||typeof n=="function")for(let u of qe(n))!Ie.call(o,u)&&u!==s&&Se(o,u,{get:()=>n[u],enumerable:!(w=Le(n,u))||w.enumerable});return o};var Fe=(o,n,s)=>(s=o!=null?Be(De(o)):{},Ke(n||!o||!o.__esModule?Se(s,"default",{value:o,enumerable:!0}):s,o));var Ce=Ve((V,Y)=>{(function(o,n){"use strict";var s="1.0.41",w="",u="?",g="function",x="undefined",N="object",T="string",_="major",i="model",r="name",e="type",t="vendor",a="version",S="architecture",U="console",b="mobile",c="tablet",v="smarttv",k="wearable",j="embedded",Q=500,K="Amazon",R="Apple",ce="ASUS",de="BlackBerry",F="Browser",G="Chrome",Re="Edge",H="Firefox",J="Google",we="Honor",ue="Huawei",Me="Lenovo",W="LG",ee="Microsoft",ie="Motorola",te="Nvidia",pe="OnePlus",z="Opera",re="OPPO",B="Samsung",me="Sharp",L="Sony",oe="Xiaomi",ae="Zebra",fe="Facebook",he="Chromium OS",ge="Mac OS",ve=" Browser",Ue=function(p,m){var d={};for(var h in p)m[h]&&m[h].length%2===0?d[h]=m[h].concat(p[h]):d[h]=p[h];return d},$=function(p){for(var m={},d=0;d<p.length;d++)m[p[d].toUpperCase()]=p[d];return m},ye=function(p,m){return typeof p===T?q(m).indexOf(q(p))!==-1:!1},q=function(p){return p.toLowerCase()},je=function(p){return typeof p===T?p.replace(/[^\d\.]/g,w).split(".")[0]:n},ne=function(p,m){if(typeof p===T)return p=p.replace(/^\s\s*/,w),typeof m===x?p:p.substring(0,Q)},D=function(p,m){for(var d=0,h,P,C,f,l,A;d<m.length&&!l;){var se=m[d],Oe=m[d+1];for(h=P=0;h<se.length&&!l&&se[h];)if(l=se[h++].exec(p),l)for(C=0;C<Oe.length;C++)A=l[++P],f=Oe[C],typeof f===N&&f.length>0?f.length===2?typeof f[1]==g?this[f[0]]=f[1].call(this,A):this[f[0]]=f[1]:f.length===3?typeof f[1]===g&&!(f[1].exec&&f[1].test)?this[f[0]]=A?f[1].call(this,A,f[2]):n:this[f[0]]=A?A.replace(f[1],f[2]):n:f.length===4&&(this[f[0]]=A?f[3].call(this,A.replace(f[1],f[2])):n):this[f]=A||n;d+=2}},I=function(p,m){for(var d in m)if(typeof m[d]===N&&m[d].length>0){for(var h=0;h<m[d].length;h++)if(ye(m[d][h],p))return d===u?n:d}else if(ye(m[d],p))return d===u?n:d;return m.hasOwnProperty("*")?m["*"]:p},ze={"1.0":"/8","1.2":"/1","1.3":"/3","2.0":"/412","2.0.2":"/416","2.0.3":"/417","2.0.4":"/419","?":"/"},xe={ME:"4.90","NT 3.11":"NT3.51","NT 4.0":"NT4.0",2e3:"NT 5.0",XP:["NT 5.1","NT 5.2"],Vista:"NT 6.0",7:"NT 6.1",8:"NT 6.2","8.1":"NT 6.3",10:["NT 6.4","NT 10.0"],RT:"ARM"},ke={browser:[[/\b(?:crmo|crios)\/([\w\.]+)/i],[a,[r,"Chrome"]],[/edg(?:e|ios|a)?\/([\w\.]+)/i],[a,[r,"Edge"]],[/(opera mini)\/([-\w\.]+)/i,/(opera [mobiletab]{3,6})\b.+version\/([-\w\.]+)/i,/(opera)(?:.+version\/|[\/ ]+)([\w\.]+)/i],[r,a],[/opios[\/ ]+([\w\.]+)/i],[a,[r,z+" Mini"]],[/\bop(?:rg)?x\/([\w\.]+)/i],[a,[r,z+" GX"]],[/\bopr\/([\w\.]+)/i],[a,[r,z]],[/\bb[ai]*d(?:uhd|[ub]*[aekoprswx]{5,6})[\/ ]?([\w\.]+)/i],[a,[r,"Baidu"]],[/\b(?:mxbrowser|mxios|myie2)\/?([-\w\.]*)\b/i],[a,[r,"Maxthon"]],[/(kindle)\/([\w\.]+)/i,/(lunascape|maxthon|netfront|jasmine|blazer|sleipnir)[\/ ]?([\w\.]*)/i,/(avant|iemobile|slim(?:browser|boat|jet))[\/ ]?([\d\.]*)/i,/(?:ms|\()(ie) ([\w\.]+)/i,/(flock|rockmelt|midori|epiphany|silk|skyfire|ovibrowser|bolt|iron|vivaldi|iridium|phantomjs|bowser|qupzilla|falkon|rekonq|puffin|brave|whale(?!.+naver)|qqbrowserlite|duckduckgo|klar|helio|(?=comodo_)?dragon)\/([-\w\.]+)/i,/(heytap|ovi|115)browser\/([\d\.]+)/i,/(weibo)__([\d\.]+)/i],[r,a],[/quark(?:pc)?\/([-\w\.]+)/i],[a,[r,"Quark"]],[/\bddg\/([\w\.]+)/i],[a,[r,"DuckDuckGo"]],[/(?:\buc? ?browser|(?:juc.+)ucweb)[\/ ]?([\w\.]+)/i],[a,[r,"UC"+F]],[/microm.+\bqbcore\/([\w\.]+)/i,/\bqbcore\/([\w\.]+).+microm/i,/micromessenger\/([\w\.]+)/i],[a,[r,"WeChat"]],[/konqueror\/([\w\.]+)/i],[a,[r,"Konqueror"]],[/trident.+rv[: ]([\w\.]{1,9})\b.+like gecko/i],[a,[r,"IE"]],[/ya(?:search)?browser\/([\w\.]+)/i],[a,[r,"Yandex"]],[/slbrowser\/([\w\.]+)/i],[a,[r,"Smart Lenovo "+F]],[/(avast|avg)\/([\w\.]+)/i],[[r,/(.+)/,"$1 Secure "+F],a],[/\bfocus\/([\w\.]+)/i],[a,[r,H+" Focus"]],[/\bopt\/([\w\.]+)/i],[a,[r,z+" Touch"]],[/coc_coc\w+\/([\w\.]+)/i],[a,[r,"Coc Coc"]],[/dolfin\/([\w\.]+)/i],[a,[r,"Dolphin"]],[/coast\/([\w\.]+)/i],[a,[r,z+" Coast"]],[/miuibrowser\/([\w\.]+)/i],[a,[r,"MIUI"+ve]],[/fxios\/([\w\.-]+)/i],[a,[r,H]],[/\bqihoobrowser\/?([\w\.]*)/i],[a,[r,"360"]],[/\b(qq)\/([\w\.]+)/i],[[r,/(.+)/,"$1Browser"],a],[/(oculus|sailfish|huawei|vivo|pico)browser\/([\w\.]+)/i],[[r,/(.+)/,"$1"+ve],a],[/samsungbrowser\/([\w\.]+)/i],[a,[r,B+" Internet"]],[/metasr[\/ ]?([\d\.]+)/i],[a,[r,"Sogou Explorer"]],[/(sogou)mo\w+\/([\d\.]+)/i],[[r,"Sogou Mobile"],a],[/(electron)\/([\w\.]+) safari/i,/(tesla)(?: qtcarbrowser|\/(20\d\d\.[-\w\.]+))/i,/m?(qqbrowser|2345(?=browser|chrome|explorer))\w*[\/ ]?v?([\w\.]+)/i],[r,a],[/(lbbrowser|rekonq)/i,/\[(linkedin)app\]/i],[r],[/ome\/([\w\.]+) \w* ?(iron) saf/i,/ome\/([\w\.]+).+qihu (360)[es]e/i],[a,r],[/((?:fban\/fbios|fb_iab\/fb4a)(?!.+fbav)|;fbav\/([\w\.]+);)/i],[[r,fe],a],[/(Klarna)\/([\w\.]+)/i,/(kakao(?:talk|story))[\/ ]([\w\.]+)/i,/(naver)\(.*?(\d+\.[\w\.]+).*\)/i,/(daum)apps[\/ ]([\w\.]+)/i,/safari (line)\/([\w\.]+)/i,/\b(line)\/([\w\.]+)\/iab/i,/(alipay)client\/([\w\.]+)/i,/(twitter)(?:and| f.+e\/([\w\.]+))/i,/(chromium|instagram|snapchat)[\/ ]([-\w\.]+)/i],[r,a],[/\bgsa\/([\w\.]+) .*safari\//i],[a,[r,"GSA"]],[/musical_ly(?:.+app_?version\/|_)([\w\.]+)/i],[a,[r,"TikTok"]],[/headlesschrome(?:\/([\w\.]+)| )/i],[a,[r,G+" Headless"]],[/ wv\).+(chrome)\/([\w\.]+)/i],[[r,G+" WebView"],a],[/droid.+ version\/([\w\.]+)\b.+(?:mobile safari|safari)/i],[a,[r,"Android "+F]],[/(chrome|omniweb|arora|[tizenoka]{5} ?browser)\/v?([\w\.]+)/i],[r,a],[/version\/([\w\.\,]+) .*mobile\/\w+ (safari)/i],[a,[r,"Mobile Safari"]],[/version\/([\w(\.|\,)]+) .*(mobile ?safari|safari)/i],[a,r],[/webkit.+?(mobile ?safari|safari)(\/[\w\.]+)/i],[r,[a,I,ze]],[/(webkit|khtml)\/([\w\.]+)/i],[r,a],[/(navigator|netscape\d?)\/([-\w\.]+)/i],[[r,"Netscape"],a],[/(wolvic|librewolf)\/([\w\.]+)/i],[r,a],[/mobile vr; rv:([\w\.]+)\).+firefox/i],[a,[r,H+" Reality"]],[/ekiohf.+(flow)\/([\w\.]+)/i,/(swiftfox)/i,/(icedragon|iceweasel|camino|chimera|fennec|maemo browser|minimo|conkeror)[\/ ]?([\w\.\+]+)/i,/(seamonkey|k-meleon|icecat|iceape|firebird|phoenix|palemoon|basilisk|waterfox)\/([-\w\.]+)$/i,/(firefox)\/([\w\.]+)/i,/(mozilla)\/([\w\.]+) .+rv\:.+gecko\/\d+/i,/(amaya|dillo|doris|icab|ladybird|lynx|mosaic|netsurf|obigo|polaris|w3m|(?:go|ice|up)[\. ]?browser)[-\/ ]?v?([\w\.]+)/i,/\b(links) \(([\w\.]+)/i],[r,[a,/_/g,"."]],[/(cobalt)\/([\w\.]+)/i],[r,[a,/master.|lts./,""]]],cpu:[[/\b((amd|x|x86[-_]?|wow|win)64)\b/i],[[S,"amd64"]],[/(ia32(?=;))/i,/\b((i[346]|x)86)(pc)?\b/i],[[S,"ia32"]],[/\b(aarch64|arm(v?[89]e?l?|_?64))\b/i],[[S,"arm64"]],[/\b(arm(v[67])?ht?n?[fl]p?)\b/i],[[S,"armhf"]],[/( (ce|mobile); ppc;|\/[\w\.]+arm\b)/i],[[S,"arm"]],[/((ppc|powerpc)(64)?)( mac|;|\))/i],[[S,/ower/,w,q]],[/ sun4\w[;\)]/i],[[S,"sparc"]],[/\b(avr32|ia64(?=;)|68k(?=\))|\barm(?=v([1-7]|[5-7]1)l?|;|eabi)|(irix|mips|sparc)(64)?\b|pa-risc)/i],[[S,q]]],device:[[/\b(sch-i[89]0\d|shw-m380s|sm-[ptx]\w{2,4}|gt-[pn]\d{2,4}|sgh-t8[56]9|nexus 10)/i],[i,[t,B],[e,c]],[/\b((?:s[cgp]h|gt|sm)-(?![lr])\w+|sc[g-]?[\d]+a?|galaxy nexus)/i,/samsung[- ]((?!sm-[lr])[-\w]+)/i,/sec-(sgh\w+)/i],[i,[t,B],[e,b]],[/(?:\/|\()(ip(?:hone|od)[\w, ]*)(?:\/|;)/i],[i,[t,R],[e,b]],[/\((ipad);[-\w\),; ]+apple/i,/applecoremedia\/[\w\.]+ \((ipad)/i,/\b(ipad)\d\d?,\d\d?[;\]].+ios/i],[i,[t,R],[e,c]],[/(macintosh);/i],[i,[t,R]],[/\b(sh-?[altvz]?\d\d[a-ekm]?)/i],[i,[t,me],[e,b]],[/\b((?:brt|eln|hey2?|gdi|jdn)-a?[lnw]09|(?:ag[rm]3?|jdn2|kob2)-a?[lw]0[09]hn)(?: bui|\)|;)/i],[i,[t,we],[e,c]],[/honor([-\w ]+)[;\)]/i],[i,[t,we],[e,b]],[/\b((?:ag[rs][2356]?k?|bah[234]?|bg[2o]|bt[kv]|cmr|cpn|db[ry]2?|jdn2|got|kob2?k?|mon|pce|scm|sht?|[tw]gr|vrd)-[ad]?[lw][0125][09]b?|605hw|bg2-u03|(?:gem|fdr|m2|ple|t1)-[7a]0[1-4][lu]|t1-a2[13][lw]|mediapad[\w\. ]*(?= bui|\)))\b(?!.+d\/s)/i],[i,[t,ue],[e,c]],[/(?:huawei)([-\w ]+)[;\)]/i,/\b(nexus 6p|\w{2,4}e?-[atu]?[ln][\dx][012359c][adn]?)\b(?!.+d\/s)/i],[i,[t,ue],[e,b]],[/oid[^\)]+; (2[\dbc]{4}(182|283|rp\w{2})[cgl]|m2105k81a?c)(?: bui|\))/i,/\b((?:red)?mi[-_ ]?pad[\w- ]*)(?: bui|\))/i],[[i,/_/g," "],[t,oe],[e,c]],[/\b(poco[\w ]+|m2\d{3}j\d\d[a-z]{2})(?: bui|\))/i,/\b; (\w+) build\/hm\1/i,/\b(hm[-_ ]?note?[_ ]?(?:\d\w)?) bui/i,/\b(redmi[\-_ ]?(?:note|k)?[\w_ ]+)(?: bui|\))/i,/oid[^\)]+; (m?[12][0-389][01]\w{3,6}[c-y])( bui|; wv|\))/i,/\b(mi[-_ ]?(?:a\d|one|one[_ ]plus|note lte|max|cc)?[_ ]?(?:\d?\w?)[_ ]?(?:plus|se|lite|pro)?)(?: bui|\))/i,/ ([\w ]+) miui\/v?\d/i],[[i,/_/g," "],[t,oe],[e,b]],[/; (\w+) bui.+ oppo/i,/\b(cph[12]\d{3}|p(?:af|c[al]|d\w|e[ar])[mt]\d0|x9007|a101op)\b/i],[i,[t,re],[e,b]],[/\b(opd2(\d{3}a?))(?: bui|\))/i],[i,[t,I,{OnePlus:["304","403","203"],"*":re}],[e,c]],[/vivo (\w+)(?: bui|\))/i,/\b(v[12]\d{3}\w?[at])(?: bui|;)/i],[i,[t,"Vivo"],[e,b]],[/\b(rmx[1-3]\d{3})(?: bui|;|\))/i],[i,[t,"Realme"],[e,b]],[/\b(milestone|droid(?:[2-4x]| (?:bionic|x2|pro|razr))?:?( 4g)?)\b[\w ]+build\//i,/\bmot(?:orola)?[- ](\w*)/i,/((?:moto(?! 360)[\w\(\) ]+|xt\d{3,4}|nexus 6)(?= bui|\)))/i],[i,[t,ie],[e,b]],[/\b(mz60\d|xoom[2 ]{0,2}) build\//i],[i,[t,ie],[e,c]],[/((?=lg)?[vl]k\-?\d{3}) bui| 3\.[-\w; ]{10}lg?-([06cv9]{3,4})/i],[i,[t,W],[e,c]],[/(lm(?:-?f100[nv]?|-[\w\.]+)(?= bui|\))|nexus [45])/i,/\blg[-e;\/ ]+((?!browser|netcast|android tv|watch)\w+)/i,/\blg-?([\d\w]+) bui/i],[i,[t,W],[e,b]],[/(ideatab[-\w ]+|602lv|d-42a|a101lv|a2109a|a3500-hv|s[56]000|pb-6505[my]|tb-?x?\d{3,4}(?:f[cu]|xu|[av])|yt\d?-[jx]?\d+[lfmx])( bui|;|\)|\/)/i,/lenovo ?(b[68]0[08]0-?[hf]?|tab(?:[\w- ]+?)|tb[\w-]{6,7})( bui|;|\)|\/)/i],[i,[t,Me],[e,c]],[/(nokia) (t[12][01])/i],[t,i,[e,c]],[/(?:maemo|nokia).*(n900|lumia \d+|rm-\d+)/i,/nokia[-_ ]?(([-\w\. ]*))/i],[[i,/_/g," "],[e,b],[t,"Nokia"]],[/(pixel (c|tablet))\b/i],[i,[t,J],[e,c]],[/droid.+; (pixel[\daxl ]{0,6})(?: bui|\))/i],[i,[t,J],[e,b]],[/droid.+; (a?\d[0-2]{2}so|[c-g]\d{4}|so[-gl]\w+|xq-a\w[4-7][12])(?= bui|\).+chrome\/(?![1-6]{0,1}\d\.))/i],[i,[t,L],[e,b]],[/sony tablet [ps]/i,/\b(?:sony)?sgp\w+(?: bui|\))/i],[[i,"Xperia Tablet"],[t,L],[e,c]],[/ (kb2005|in20[12]5|be20[12][59])\b/i,/(?:one)?(?:plus)? (a\d0\d\d)(?: b|\))/i],[i,[t,pe],[e,b]],[/(alexa)webm/i,/(kf[a-z]{2}wi|aeo(?!bc)\w\w)( bui|\))/i,/(kf[a-z]+)( bui|\)).+silk\//i],[i,[t,K],[e,c]],[/((?:sd|kf)[0349hijorstuw]+)( bui|\)).+silk\//i],[[i,/(.+)/g,"Fire Phone $1"],[t,K],[e,b]],[/(playbook);[-\w\),; ]+(rim)/i],[i,t,[e,c]],[/\b((?:bb[a-f]|st[hv])100-\d)/i,/\(bb10; (\w+)/i],[i,[t,de],[e,b]],[/(?:\b|asus_)(transfo[prime ]{4,10} \w+|eeepc|slider \w+|nexus 7|padfone|p00[cj])/i],[i,[t,ce],[e,c]],[/ (z[bes]6[027][012][km][ls]|zenfone \d\w?)\b/i],[i,[t,ce],[e,b]],[/(nexus 9)/i],[i,[t,"HTC"],[e,c]],[/(htc)[-;_ ]{1,2}([\w ]+(?=\)| bui)|\w+)/i,/(zte)[- ]([\w ]+?)(?: bui|\/|\))/i,/(alcatel|geeksphone|nexian|panasonic(?!(?:;|\.))|sony(?!-bra))[-_ ]?([-\w]*)/i],[t,[i,/_/g," "],[e,b]],[/droid [\w\.]+; ((?:8[14]9[16]|9(?:0(?:48|60|8[01])|1(?:3[27]|66)|2(?:6[69]|9[56])|466))[gqswx])\w*(\)| bui)/i],[i,[t,"TCL"],[e,c]],[/(itel) ((\w+))/i],[[t,q],i,[e,I,{tablet:["p10001l","w7001"],"*":"mobile"}]],[/droid.+; ([ab][1-7]-?[0178a]\d\d?)/i],[i,[t,"Acer"],[e,c]],[/droid.+; (m[1-5] note) bui/i,/\bmz-([-\w]{2,})/i],[i,[t,"Meizu"],[e,b]],[/; ((?:power )?armor(?:[\w ]{0,8}))(?: bui|\))/i],[i,[t,"Ulefone"],[e,b]],[/; (energy ?\w+)(?: bui|\))/i,/; energizer ([\w ]+)(?: bui|\))/i],[i,[t,"Energizer"],[e,b]],[/; cat (b35);/i,/; (b15q?|s22 flip|s48c|s62 pro)(?: bui|\))/i],[i,[t,"Cat"],[e,b]],[/((?:new )?andromax[\w- ]+)(?: bui|\))/i],[i,[t,"Smartfren"],[e,b]],[/droid.+; (a(?:015|06[35]|142p?))/i],[i,[t,"Nothing"],[e,b]],[/; (x67 5g|tikeasy \w+|ac[1789]\d\w+)( b|\))/i,/archos ?(5|gamepad2?|([\w ]*[t1789]|hello) ?\d+[\w ]*)( b|\))/i],[i,[t,"Archos"],[e,c]],[/archos ([\w ]+)( b|\))/i,/; (ac[3-6]\d\w{2,8})( b|\))/i],[i,[t,"Archos"],[e,b]],[/(imo) (tab \w+)/i,/(infinix) (x1101b?)/i],[t,i,[e,c]],[/(blackberry|benq|palm(?=\-)|sonyericsson|acer|asus(?! zenw)|dell|jolla|meizu|motorola|polytron|infinix|tecno|micromax|advan)[-_ ]?([-\w]*)/i,/; (hmd|imo) ([\w ]+?)(?: bui|\))/i,/(hp) ([\w ]+\w)/i,/(microsoft); (lumia[\w ]+)/i,/(lenovo)[-_ ]?([-\w ]+?)(?: bui|\)|\/)/i,/(oppo) ?([\w ]+) bui/i],[t,i,[e,b]],[/(kobo)\s(ereader|touch)/i,/(hp).+(touchpad(?!.+tablet)|tablet)/i,/(kindle)\/([\w\.]+)/i,/(nook)[\w ]+build\/(\w+)/i,/(dell) (strea[kpr\d ]*[\dko])/i,/(le[- ]+pan)[- ]+(\w{1,9}) bui/i,/(trinity)[- ]*(t\d{3}) bui/i,/(gigaset)[- ]+(q\w{1,9}) bui/i,/(vodafone) ([\w ]+)(?:\)| bui)/i],[t,i,[e,c]],[/(surface duo)/i],[i,[t,ee],[e,c]],[/droid [\d\.]+; (fp\du?)(?: b|\))/i],[i,[t,"Fairphone"],[e,b]],[/(u304aa)/i],[i,[t,"AT&T"],[e,b]],[/\bsie-(\w*)/i],[i,[t,"Siemens"],[e,b]],[/\b(rct\w+) b/i],[i,[t,"RCA"],[e,c]],[/\b(venue[\d ]{2,7}) b/i],[i,[t,"Dell"],[e,c]],[/\b(q(?:mv|ta)\w+) b/i],[i,[t,"Verizon"],[e,c]],[/\b(?:barnes[& ]+noble |bn[rt])([\w\+ ]*) b/i],[i,[t,"Barnes & Noble"],[e,c]],[/\b(tm\d{3}\w+) b/i],[i,[t,"NuVision"],[e,c]],[/\b(k88) b/i],[i,[t,"ZTE"],[e,c]],[/\b(nx\d{3}j) b/i],[i,[t,"ZTE"],[e,b]],[/\b(gen\d{3}) b.+49h/i],[i,[t,"Swiss"],[e,b]],[/\b(zur\d{3}) b/i],[i,[t,"Swiss"],[e,c]],[/\b((zeki)?tb.*\b) b/i],[i,[t,"Zeki"],[e,c]],[/\b([yr]\d{2}) b/i,/\b(dragon[- ]+touch |dt)(\w{5}) b/i],[[t,"Dragon Touch"],i,[e,c]],[/\b(ns-?\w{0,9}) b/i],[i,[t,"Insignia"],[e,c]],[/\b((nxa|next)-?\w{0,9}) b/i],[i,[t,"NextBook"],[e,c]],[/\b(xtreme\_)?(v(1[045]|2[015]|[3469]0|7[05])) b/i],[[t,"Voice"],i,[e,b]],[/\b(lvtel\-)?(v1[12]) b/i],[[t,"LvTel"],i,[e,b]],[/\b(ph-1) /i],[i,[t,"Essential"],[e,b]],[/\b(v(100md|700na|7011|917g).*\b) b/i],[i,[t,"Envizen"],[e,c]],[/\b(trio[-\w\. ]+) b/i],[i,[t,"MachSpeed"],[e,c]],[/\btu_(1491) b/i],[i,[t,"Rotor"],[e,c]],[/((?:tegranote|shield t(?!.+d tv))[\w- ]*?)(?: b|\))/i],[i,[t,te],[e,c]],[/(sprint) (\w+)/i],[t,i,[e,b]],[/(kin\.[onetw]{3})/i],[[i,/\./g," "],[t,ee],[e,b]],[/droid.+; (cc6666?|et5[16]|mc[239][23]x?|vc8[03]x?)\)/i],[i,[t,ae],[e,c]],[/droid.+; (ec30|ps20|tc[2-8]\d[kx])\)/i],[i,[t,ae],[e,b]],[/smart-tv.+(samsung)/i],[t,[e,v]],[/hbbtv.+maple;(\d+)/i],[[i,/^/,"SmartTV"],[t,B],[e,v]],[/(nux; netcast.+smarttv|lg (netcast\.tv-201\d|android tv))/i],[[t,W],[e,v]],[/(apple) ?tv/i],[t,[i,R+" TV"],[e,v]],[/crkey/i],[[i,G+"cast"],[t,J],[e,v]],[/droid.+aft(\w+)( bui|\))/i],[i,[t,K],[e,v]],[/(shield \w+ tv)/i],[i,[t,te],[e,v]],[/\(dtv[\);].+(aquos)/i,/(aquos-tv[\w ]+)\)/i],[i,[t,me],[e,v]],[/(bravia[\w ]+)( bui|\))/i],[i,[t,L],[e,v]],[/(mi(tv|box)-?\w+) bui/i],[i,[t,oe],[e,v]],[/Hbbtv.*(technisat) (.*);/i],[t,i,[e,v]],[/\b(roku)[\dx]*[\)\/]((?:dvp-)?[\d\.]*)/i,/hbbtv\/\d+\.\d+\.\d+ +\([\w\+ ]*; *([\w\d][^;]*);([^;]*)/i],[[t,ne],[i,ne],[e,v]],[/droid.+; ([\w- ]+) (?:android tv|smart[- ]?tv)/i],[i,[e,v]],[/\b(android tv|smart[- ]?tv|opera tv|tv; rv:)\b/i],[[e,v]],[/(ouya)/i,/(nintendo) ([wids3utch]+)/i],[t,i,[e,U]],[/droid.+; (shield)( bui|\))/i],[i,[t,te],[e,U]],[/(playstation \w+)/i],[i,[t,L],[e,U]],[/\b(xbox(?: one)?(?!; xbox))[\); ]/i],[i,[t,ee],[e,U]],[/\b(sm-[lr]\d\d[0156][fnuw]?s?|gear live)\b/i],[i,[t,B],[e,k]],[/((pebble))app/i,/(asus|google|lg|oppo) ((pixel |zen)?watch[\w ]*)( bui|\))/i],[t,i,[e,k]],[/(ow(?:19|20)?we?[1-3]{1,3})/i],[i,[t,re],[e,k]],[/(watch)(?: ?os[,\/]|\d,\d\/)[\d\.]+/i],[i,[t,R],[e,k]],[/(opwwe\d{3})/i],[i,[t,pe],[e,k]],[/(moto 360)/i],[i,[t,ie],[e,k]],[/(smartwatch 3)/i],[i,[t,L],[e,k]],[/(g watch r)/i],[i,[t,W],[e,k]],[/droid.+; (wt63?0{2,3})\)/i],[i,[t,ae],[e,k]],[/droid.+; (glass) \d/i],[i,[t,J],[e,k]],[/(pico) (4|neo3(?: link|pro)?)/i],[t,i,[e,k]],[/; (quest( \d| pro)?)/i],[i,[t,fe],[e,k]],[/(tesla)(?: qtcarbrowser|\/[-\w\.]+)/i],[t,[e,j]],[/(aeobc)\b/i],[i,[t,K],[e,j]],[/(homepod).+mac os/i],[i,[t,R],[e,j]],[/windows iot/i],[[e,j]],[/droid .+?; ([^;]+?)(?: bui|; wv\)|\) applew).+? mobile safari/i],[i,[e,b]],[/droid .+?; ([^;]+?)(?: bui|\) applew).+?(?! mobile) safari/i],[i,[e,c]],[/\b((tablet|tab)[;\/]|focus\/\d(?!.+mobile))/i],[[e,c]],[/(phone|mobile(?:[;\/]| [ \w\/\.]*safari)|pda(?=.+windows ce))/i],[[e,b]],[/droid .+?; ([\w\. -]+)( bui|\))/i],[i,[t,"Generic"]]],engine:[[/windows.+ edge\/([\w\.]+)/i],[a,[r,Re+"HTML"]],[/(arkweb)\/([\w\.]+)/i],[r,a],[/webkit\/537\.36.+chrome\/(?!27)([\w\.]+)/i],[a,[r,"Blink"]],[/(presto)\/([\w\.]+)/i,/(webkit|trident|netfront|netsurf|amaya|lynx|w3m|goanna|servo)\/([\w\.]+)/i,/ekioh(flow)\/([\w\.]+)/i,/(khtml|tasman|links)[\/ ]\(?([\w\.]+)/i,/(icab)[\/ ]([23]\.[\d\.]+)/i,/\b(libweb)/i],[r,a],[/ladybird\//i],[[r,"LibWeb"]],[/rv\:([\w\.]{1,9})\b.+(gecko)/i],[a,r]],os:[[/microsoft (windows) (vista|xp)/i],[r,a],[/(windows (?:phone(?: os)?|mobile|iot))[\/ ]?([\d\.\w ]*)/i],[r,[a,I,xe]],[/windows nt 6\.2; (arm)/i,/windows[\/ ]([ntce\d\. ]+\w)(?!.+xbox)/i,/(?:win(?=3|9|n)|win 9x )([nt\d\.]+)/i],[[a,I,xe],[r,"Windows"]],[/[adehimnop]{4,7}\b(?:.*os ([\w]+) like mac|; opera)/i,/(?:ios;fbsv\/|iphone.+ios[\/ ])([\d\.]+)/i,/cfnetwork\/.+darwin/i],[[a,/_/g,"."],[r,"iOS"]],[/(mac os x) ?([\w\. ]*)/i,/(macintosh|mac_powerpc\b)(?!.+haiku)/i],[[r,ge],[a,/_/g,"."]],[/droid ([\w\.]+)\b.+(android[- ]x86|harmonyos)/i],[a,r],[/(ubuntu) ([\w\.]+) like android/i],[[r,/(.+)/,"$1 Touch"],a],[/(android|bada|blackberry|kaios|maemo|meego|openharmony|qnx|rim tablet os|sailfish|series40|symbian|tizen|webos)\w*[-\/; ]?([\d\.]*)/i],[r,a],[/\(bb(10);/i],[a,[r,de]],[/(?:symbian ?os|symbos|s60(?=;)|series ?60)[-\/ ]?([\w\.]*)/i],[a,[r,"Symbian"]],[/mozilla\/[\d\.]+ \((?:mobile|tablet|tv|mobile; [\w ]+); rv:.+ gecko\/([\w\.]+)/i],[a,[r,H+" OS"]],[/web0s;.+rt(tv)/i,/\b(?:hp)?wos(?:browser)?\/([\w\.]+)/i],[a,[r,"webOS"]],[/watch(?: ?os[,\/]|\d,\d\/)([\d\.]+)/i],[a,[r,"watchOS"]],[/crkey\/([\d\.]+)/i],[a,[r,G+"cast"]],[/(cros) [\w]+(?:\)| ([\w\.]+)\b)/i],[[r,he],a],[/panasonic;(viera)/i,/(netrange)mmh/i,/(nettv)\/(\d+\.[\w\.]+)/i,/(nintendo|playstation) ([wids345portablevuch]+)/i,/(xbox); +xbox ([^\);]+)/i,/\b(joli|palm)\b ?(?:os)?\/?([\w\.]*)/i,/(mint)[\/\(\) ]?(\w*)/i,/(mageia|vectorlinux)[; ]/i,/([kxln]?ubuntu|debian|suse|opensuse|gentoo|arch(?= linux)|slackware|fedora|mandriva|centos|pclinuxos|red ?hat|zenwalk|linpus|raspbian|plan 9|minix|risc os|contiki|deepin|manjaro|elementary os|sabayon|linspire)(?: gnu\/linux)?(?: enterprise)?(?:[- ]linux)?(?:-gnu)?[-\/ ]?(?!chrom|package)([-\w\.]*)/i,/(hurd|linux)(?: arm\w*| x86\w*| ?)([\w\.]*)/i,/(gnu) ?([\w\.]*)/i,/\b([-frentopcghs]{0,5}bsd|dragonfly)[\/ ]?(?!amd|[ix346]{1,2}86)([\w\.]*)/i,/(haiku) (\w+)/i],[r,a],[/(sunos) ?([\w\.\d]*)/i],[[r,"Solaris"],a],[/((?:open)?solaris)[-\/ ]?([\w\.]*)/i,/(aix) ((\d)(?=\.|\)| )[\w\.])*/i,/\b(beos|os\/2|amigaos|morphos|openvms|fuchsia|hp-ux|serenityos)/i,/(unix) ?([\w\.]*)/i],[r,a]]},O=function(p,m){if(typeof p===N&&(m=p,p=n),!(this instanceof O))return new O(p,m).getResult();var d=typeof o!==x&&o.navigator?o.navigator:n,h=p||(d&&d.userAgent?d.userAgent:w),P=d&&d.userAgentData?d.userAgentData:n,C=m?Ue(ke,m):ke,f=d&&d.userAgent==h;return this.getBrowser=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.browser),l[_]=je(l[a]),f&&d&&d.brave&&typeof d.brave.isBrave==g&&(l[r]="Brave"),l},this.getCPU=function(){var l={};return l[S]=n,D.call(l,h,C.cpu),l},this.getDevice=function(){var l={};return l[t]=n,l[i]=n,l[e]=n,D.call(l,h,C.device),f&&!l[e]&&P&&P.mobile&&(l[e]=b),f&&l[i]=="Macintosh"&&d&&typeof d.standalone!==x&&d.maxTouchPoints&&d.maxTouchPoints>2&&(l[i]="iPad",l[e]=c),l},this.getEngine=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.engine),l},this.getOS=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.os),f&&!l[r]&&P&&P.platform&&P.platform!="Unknown"&&(l[r]=P.platform.replace(/chrome os/i,he).replace(/macos/i,ge)),l},this.getResult=function(){return{ua:this.getUA(),browser:this.getBrowser(),engine:this.getEngine(),os:this.getOS(),device:this.getDevice(),cpu:this.getCPU()}},this.getUA=function(){return h},this.setUA=function(l){return h=typeof l===T&&l.length>Q?ne(l,Q):l,this},this.setUA(h),this};O.VERSION=s,O.BROWSER=$([r,a,_]),O.CPU=$([S]),O.DEVICE=$([i,t,e,U,b,v,c,k,j]),O.ENGINE=O.OS=$([r,a]),typeof V!==x?(typeof Y!==x&&Y.exports&&(V=Y.exports=O),V.UAParser=O):typeof define===g&&define.amd?define(function(){return O}):typeof o!==x&&(o.UAParser=O);var M=typeof o!==x&&(o.jQuery||o.Zepto);if(M&&!M.ua){var X=new O;M.ua=X.getResult(),M.ua.get=function(){return X.getUA()},M.ua.set=function(p){X.setUA(p);var m=X.getResult();for(var d in m)M.ua[d]=m[d]}}})(typeof window=="object"?window:V)});var y=class{static encode(n){return globalThis.btoa(String.fromCharCode(...new Uint8Array(n))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}static decode(n){let s=n.replace(/-/g,"+").replace(/_/g,"/"),w=globalThis.atob(s),u=new Uint8Array(w.length);for(let g=0;g<w.length;g++)u[g]=w.charCodeAt(g);return u.buffer}};function Ge(o){return!(typeof o!="object"||o?.authenticatorData===void 0||typeof o?.authenticatorData!="object")}function He(o){return!(typeof o!="object"||o?.attestationObject===void 0||typeof o?.attestationObject!="object")}function Je(o){let n={...o.user,id:y.decode(o.user.id)},s=y.decode(o.challenge),w=o.excludeCredentials?.map(g=>({...g,id:y.decode(g.id),transports:g.transports}))??[];return{...o,user:n,challenge:s,excludeCredentials:w}}function We(o){let n=y.decode(o.challenge),s=o.allowCredentials?.map(u=>({...u,id:y.decode(u.id),transports:u.transports}))??[];return{...o,allowCredentials:s,challenge:n}}function $e(){try{let o=this.id,n=y.encode(this.rawId),s=this.authenticatorAttachment,w={},u=this.type;if(Ge(this.response))return{id:o,rawId:n,response:{authenticatorData:y.encode(this.response.authenticatorData),clientDataJSON:y.encode(this.response.clientDataJSON),signature:y.encode(this.response.signature),userHandle:this.response.userHandle?y.encode(this.response.userHandle):void 0},authenticatorAttachment:s,clientExtensionResults:w,type:u};if(He(this.response))return{id:o,rawId:n,response:{clientDataJSON:y.encode(this.response.clientDataJSON),attestationObject:y.encode(this.response.attestationObject),transports:this.response?.getTransports()||[]},authenticatorAttachment:s,clientExtensionResults:w,type:u};throw new Error("Unexpected object.")}catch(o){throw console.error(o),o}}globalThis.PublicKeyCredential&&(PublicKeyCredential.parseCreationOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseCreationOptionsFromJSON",{value:Je}),PublicKeyCredential.parseRequestOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseRequestOptionsFromJSON",{value:We}),PublicKeyCredential.prototype.toJSON||Object.defineProperty(PublicKeyCredential.prototype,"toJSON",{value:$e}));var _e=Fe(Ce(),1);var Xe=/^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i,le=o=>{if(typeof o!="string")throw new TypeError("Invalid argument expected string");let n=o.match(Xe);if(!n)throw new Error(`Invalid argument not valid semver ('${o}' received)`);return n.shift(),n},Ae=o=>o==="*"||o==="x"||o==="X",Pe=o=>{let n=parseInt(o,10);return isNaN(n)?o:n},Ye=(o,n)=>typeof o!=typeof n?[String(o),String(n)]:[o,n],Ze=(o,n)=>{if(Ae(o)||Ae(n))return 0;let[s,w]=Ye(Pe(o),Pe(n));return s>w?1:s<w?-1:0},be=(o,n)=>{for(let s=0;s<Math.max(o.length,n.length);s++){let w=Ze(o[s]||"0",n[s]||"0");if(w!==0)return w}return 0};var Ee=(o,n)=>{let s=le(o),w=le(n),u=s.pop(),g=w.pop(),x=be(s,w);return x!==0?x:u&&g?be(u.split("."),g.split(".")):u||g?u?-1:1:0};var E=(o,n,s)=>{Qe(s);let w=Ee(o,n);return Ne[s].includes(w)},Ne={">":[1],">=":[0,1],"=":[0],"<=":[-1,0],"<":[-1],"!=":[-1,1]},Te=Object.keys(Ne),Qe=o=>{if(typeof o!="string")throw new TypeError(`Invalid operator type, expected string but got ${typeof o}`);if(Te.indexOf(o)===-1)throw new Error(`Invalid operator, expected one of ${Te.join("|")}`)};var Z=class{constructor(n){Object.defineProperty(this,"iOS174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"safari174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"iOS18OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink128OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink135OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0});let{browser:s,engine:w,os:u}=(0,_e.UAParser)(n);if(!s?.version||!s?.name)throw new Error("Browser version not found.");if(!w?.version||!w?.name)throw new Error("Engine version not found.");if(!u?.version||!u?.name)throw new Error("OS version not found.");this.iOS174To183=u.name==="iOS"&&E(u.version,"17.4",">=")&&E(u.version,"18.4","<"),this.safari174To183=u.name==="Mac OS"&&s.name==="Safari"&&E(s.version,"17.4",">=")&&E(s.version,"18.4","<"),this.iOS18OrLater=u.name==="iOS"&&E(u.version,"18",">="),this.desktopBlink128OrLater=w.name==="Blink"&&["Mac OS","Windows","Linux","Chrome OS"].includes(u.name)&&E(w.version,"128",">="),this.desktopBlink135OrLater=w.name==="Blink"&&["macOS","Windows","Linux","Chrome OS"].includes(u.name)&&E(w.version,"135",">=")}};function ei(o){let n=PublicKeyCredential?.getClientCapabilities;return async function(){let s=!1,w=!1,u,g,x=!1,N=!1,T=!1,_=!1,i=!1;if((o.safari174To183||o.iOS174To183)&&n){let r=await n();s=r?.conditionalCreate,w=r?.conditionalMediation,u=r?.hybridTransport,g=r?.passkeyPlatformAuthenticator,x=r?.relatedOrigins,N=r?.signalAllAcceptedCredentials,T=r?.signalCurrentUserDetails,_=r?.signalUnknownCredential,i=r?.userVerifyingPlatformAuthenticator}else PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable&&(i=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()),PublicKeyCredential?.isConditionalMediationAvailable&&(w=await PublicKeyCredential.isConditionalMediationAvailable()),PublicKeyCredential?.signalAllAcceptedCredentials&&(N=!0),PublicKeyCredential?.signalCurrentUserDetails&&(T=!0),PublicKeyCredential?.signalUnknownCredential&&(_=!0),s=o.desktopBlink135OrLater||o.iOS18OrLater,x=o.desktopBlink128OrLater||o.iOS18OrLater;return Promise.resolve({conditionalCreate:s,conditionalGet:w,hybridTransport:u,passkeyPlatformAuthenticator:g,relatedOrigins:x,signalAllAcceptedCredentials:N,signalCurrentUserDetails:T,signalUnknownCredential:_,userVerifyingPlatformAuthenticator:i})}}function ii(o=""){if(!globalThis.PublicKeyCredential)return;let n;try{n=new Z(o)}catch{console.info("expected exception for the test.");return}let s=ei(n);(!PublicKeyCredential.getClientCapabilities||n.safari174To183||n.iOS174To183)&&Object.defineProperty(PublicKeyCredential,"getClientCapabilities",{value:s})}ii();
+diff --git a/index.html b/index.html
+index 66c9173..d3a6e53 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,40 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .signin-panel {
++      max-width: 700px;
++      margin: 32px auto;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++    .signin-panel h2 { color: var(--primary); }
++    .signin-panel p { margin-bottom: 12px; }
++    .signin-fields { display: flex; flex-wrap: wrap; gap: 16px; }
++    .signin-fields label { flex: 1 1 220px; font-weight: 600; }
++    .signin-fields input {
++      display: block;
++      width: 100%;
++      padding: 10px;
++      border: 1px solid #88736b;
++      border-radius: 4px;
++      font: inherit;
++    }
++    button { font: inherit; cursor: pointer; }
++    button.btn { border: 0; }
++    button:disabled { opacity: .6; cursor: wait; }
++    .signin-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
++    .signin-actions a { color: var(--primary); }
++    #signin-status { min-height: 1.6em; margin-top: 12px; }
++    :focus-visible { outline: 3px solid #b56500; outline-offset: 4px; }
++    [hidden] { display: none !important; }
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .signin-panel { margin: 24px 20px; }
++    }
+   </style>
+ </head>
+ 
+@@ -162,18 +196,44 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-signin>Rewards</a></li>
++      <li><a href="/account" data-signin>My Account</a></li>
++      <li><a href="#signin" class="logout-link" id="signin-link" data-signin>Sign in</a></li>
++      <li hidden id="logout-item"><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-signin>Order Now</a>
+   </header>
+ 
++  <section class="signin-panel" id="signin" aria-labelledby="signin-title">
++    <h2 id="signin-title">Welcome back</h2>
++    <p id="signin-description">Sign in with your saved passkey or password, and keep your day brewing.</p>
++    <form id="signin-form" action="/api/login/password" method="post">
++      <div class="signin-fields">
++        <label for="signin-email">Email
++          <input id="signin-email" name="username" type="email" autocomplete="username webauthn"
++            spellcheck="false" required>
++        </label>
++        <label for="signin-password">Password
++          <input id="signin-password" name="password" type="password" autocomplete="current-password" required>
++        </label>
++      </div>
++      <label><input id="show-password" type="checkbox"> Show password</label>
++      <div class="signin-actions">
++        <button class="btn" type="submit">Sign in</button>
++        <button class="btn" id="passkey-signin" type="button" hidden>Use a passkey</button>
++        <a href="/forgot-password">Forgot password?</a>
++        <button type="button" id="cancel-signin" hidden>Keep browsing</button>
++      </div>
++    </form>
++    <p id="signin-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    <noscript>On-page sign-in requires JavaScript.</noscript>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +267,247 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script type="module">
++    // Backend contract: all endpoints are same-origin, cookie-based and return JSON.
++    // POST /api/login/options: session-bound challenge, rpId, userVerification, no allowlist.
++    // POST /api/login/verify: verify challenge, origin, RP ID and signature; return {user}.
++    // POST /api/login/password: verify {username,password}; return {user}.
++    // GET /api/session: {user} or {user:null}. Server must validate Origin/CSRF on POSTs,
++    // rotate the session on login and set a Secure, HttpOnly, SameSite session cookie.
++    // A static host cannot authenticate customers; no client-side success is simulated.
++    const form = document.querySelector('#signin-form');
++    const panel = document.querySelector('#signin');
++    const status = document.querySelector('#signin-status');
++    const email = document.querySelector('#signin-email');
++    const password = document.querySelector('#signin-password');
++    const passkeyButton = document.querySelector('#passkey-signin');
++    const cancelButton = document.querySelector('#cancel-signin');
++    let user = null;
++    let busy = false;
++    let destination = null;
++    let publicKey = null;
++    let optionsTime = 0;
++    let capabilities = {};
++    let requestController = null;
++    let preparing = null;
++
++    async function api(path, body, signal) {
++      const response = await fetch(path, {
++        method: body === undefined ? 'GET' : 'POST',
++        credentials: 'same-origin', cache: 'no-store', signal,
++        headers: { Accept: 'application/json', ...(body === undefined ? {} : {'Content-Type': 'application/json'}) },
++        ...(body === undefined ? {} : { body: JSON.stringify(body) })
++      });
++      if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
++        const error = new Error(response.status === 401
++          ? 'Sign-in failed. Please check your details and try again.'
++          : 'Sign-in is temporarily unavailable. Please try again later.');
++        error.status = response.status;
++        throw error;
++      }
++      return response.json();
++    }
++
++    function setBusy(value) {
++      busy = value;
++      form.setAttribute('aria-busy', String(value));
++      form.querySelectorAll('button').forEach(button => { button.disabled = value; });
++    }
++
++    function stopAutofill() {
++      requestController?.abort();
++      requestController = null;
++    }
++
++    function showForm(message = 'Choose a saved account or enter your sign-in details below.') {
++      status.textContent = message;
++      cancelButton.hidden = false;
++      panel.scrollIntoView({ block: 'center' });
++      email.focus({ preventScroll: true });
++      startAutofill();
++    }
++
++    function showUser(nextUser) {
++      user = nextUser;
++      stopAutofill();
++      form.reset();
++      password.type = 'password';
++      form.hidden = true;
++      document.querySelector('#signin-link').hidden = true;
++      document.querySelector('#logout-item').hidden = false;
++      document.querySelector('#signin-title').textContent = 'Welcome back';
++      document.querySelector('#signin-description').textContent =
++        `You're signed in${user.name ? ', ' + user.name : ''}. Enjoy your next cup.`;
++    }
++
++    function finish(result) {
++      if (!result?.user || typeof result.user !== 'object') {
++        throw new Error('Unable to confirm sign-in. Please try again.');
++      }
++      showUser(result.user);
++      status.textContent = 'You’re signed in.';
++      const next = destination;
++      destination = null;
++      if (next) window.location.assign(next);
++    }
++
++    async function prepareOptions() {
++      if (publicKey && Date.now() - optionsTime < 60000) return publicKey;
++      if (preparing) return preparing;
++      preparing = (async () => {
++        const options = await api('/api/login/options', {});
++        if (!options.rpId || options.allowCredentials?.length) {
++          throw new Error('Unable to prepare sign-in. Please try again later.');
++        }
++        publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options);
++        optionsTime = Date.now();
++        return publicKey;
++      })();
++      try { return await preparing; } finally { preparing = null; }
++    }
++
++    async function verifyCredential(credential, options) {
++      publicKey = null; // Each assertion consumes its server-issued challenge.
++      if (!credential) throw new DOMException('No saved account selected', 'NotAllowedError');
++      if (credential.type === 'password') {
++        return api('/api/login/password', { username: credential.id, password: credential.password });
++      }
++      if (credential.type !== 'public-key') throw new Error('Please use the sign-in form.');
++      const encoded = credential.toJSON();
++      try {
++        return await api('/api/login/verify', encoded);
++      } catch (error) {
++        // Only an authoritative credential-not-found response may remove a stale passkey.
++        if (error.status === 404 && PublicKeyCredential.signalUnknownCredential) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({ rpId: options.rpId, credentialId: encoded.id });
++          } catch { /* Password-manager synchronization is optional. */ }
++        }
++        throw error;
++      }
++    }
++
++    async function startAutofill() {
++      if (user || busy || requestController || !capabilities.conditionalGet) return;
++      const controller = new AbortController();
++      requestController = controller;
++      try {
++        const options = await prepareOptions();
++        if (controller.signal.aborted || user || busy) return;
++        const credential = await navigator.credentials.get({
++          publicKey: options, mediation: 'conditional', signal: controller.signal
++        });
++        if (controller.signal.aborted) return;
++        setBusy(true);
++        finish(await verifyCredential(credential, options));
++      } catch (error) {
++        if (controller.signal.aborted) return;
++        if (!['NotAllowedError', 'AbortError'].includes(error.name)) status.textContent = error.message;
++      } finally {
++        if (requestController === controller) {
++          requestController = null;
++          setBusy(false);
++        }
++      }
++    }
++
++    // Immediate requests are only made within clicks, with options prefetched so
++    // network latency cannot consume the browser's transient user activation.
++    document.querySelectorAll('[data-signin]').forEach(link => {
++      link.addEventListener('click', async event => {
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        if (user && link.hash !== '#signin') return;
++        event.preventDefault();
++        if (busy) return;
++        destination = link.hash === '#signin' ? null : link.getAttribute('href');
++        if (!capabilities.immediateGet || !publicKey || Date.now() - optionsTime >= 60000) {
++          showForm();
++          return;
++        }
++        stopAutofill();
++        setBusy(true);
++        try {
++          const options = publicKey;
++          // Do not add signal or a credential allowlist to Immediate UI requests.
++          const credential = await navigator.credentials.get({ password: true, publicKey: options, uiMode: 'immediate' });
++          finish(await verifyCredential(credential, options));
++        } catch (error) {
++          publicKey = null;
++          showForm(error.name === 'NotAllowedError' ? undefined : error.message);
++        } finally {
++          setBusy(false);
++          startAutofill();
++        }
++      });
++    });
++
++    passkeyButton.addEventListener('click', async () => {
++      if (busy) return;
++      stopAutofill();
++      setBusy(true);
++      const controller = new AbortController();
++      requestController = controller;
++      try {
++        const options = await prepareOptions();
++        const credential = await navigator.credentials.get({ publicKey: options, signal: controller.signal });
++        if (!controller.signal.aborted) finish(await verifyCredential(credential, options));
++      } catch (error) {
++        if (error.name !== 'AbortError') status.textContent = error.name === 'NotAllowedError'
++          ? 'No passkey selected. Try again or use your password.' : error.message;
++        publicKey = null;
++      } finally {
++        if (requestController === controller) requestController = null;
++        setBusy(false);
++        startAutofill();
++      }
++    });
++
++    form.addEventListener('submit', async event => {
++      event.preventDefault();
++      if (busy) return;
++      stopAutofill();
++      setBusy(true);
++      status.textContent = 'Signing you in…';
++      try {
++        finish(await api('/api/login/password', { username: email.value, password: password.value }));
++      } catch (error) {
++        status.textContent = error.message;
++      } finally {
++        password.value = '';
++        setBusy(false);
++        startAutofill();
++      }
++    });
++
++    document.querySelector('#show-password').addEventListener('change', event => {
++      password.type = event.target.checked ? 'text' : 'password';
++    });
++    cancelButton.addEventListener('click', () => {
++      destination = null;
++      cancelButton.hidden = true;
++      status.textContent = 'Keep exploring. You can sign in whenever you’re ready.';
++      form.reset();
++      password.type = 'password';
++    });
++
++    // A failed session check leaves the visitor signed out; no local storage is trusted.
++    api('/api/session').then(result => { if (result?.user) showUser(result.user); }).catch(() => {});
++    async function initializePasskeys() {
++      if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return;
++      try {
++        await import('./auth-polyfills.js');
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++        passkeyButton.hidden = false;
++        if (!user) {
++          await prepareOptions();
++          startAutofill();
++        }
++      } catch { /* Password autofill and the on-page form remain available. */ }
++    }
++    initializePasskeys();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..731291a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,16 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "esbuild node_modules/webauthn-polyfills/esm/index.js --bundle --format=esm --minify --outfile=auth-polyfills.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "webauthn-polyfills": "0.1.7"
++  },
++  "devDependencies": {
++    "esbuild": "^0.28.2"
+   }
+ }

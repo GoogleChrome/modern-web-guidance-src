@@ -1,0 +1,1143 @@
+diff --git a/index.html b/index.html
+index 66c9173..825ef1f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --muted: #8d6e63;
+     }
+ 
+     * {
+@@ -46,32 +47,64 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-links {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .nav-links > li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .nav-links > li > a,
++    .nav-links .menu-trigger {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .nav-links > li > a:hover,
++    .nav-links .menu-trigger:hover,
++    .nav-links .menu-trigger[aria-expanded="true"] {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .nav-links .menu-trigger {
++      background: none;
++      border: 0;
++      padding: 0;
++    }
++
++    .nav-links .menu-trigger:focus-visible,
++    .nav-links > li > a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    .order-link {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .order-count {
++      min-width: 1.4em;
++      padding: 0 5px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-align: center;
++      line-height: 1.4;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -113,6 +146,8 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
+     }
+ 
+     .card h3 {
+@@ -120,21 +155,256 @@
+       color: var(--primary);
+     }
+ 
++    .card__price {
++      margin-top: 12px;
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .card__summary {
++      min-height: 2.6em;
++      font-size: 0.8rem;
++      color: var(--muted);
++    }
++
++    .card__actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: auto;
++      padding-top: 15px;
++    }
++
++    .card__actions .btn {
++      margin-top: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: 2px solid var(--primary);
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn--outline {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    .btn--outline:hover,
++    .btn--outline[aria-expanded="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Menu component */
++    .menu {
++      position: relative;
++      display: inline-block;
++    }
++
++    .menu-trigger {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5em;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .menu-trigger::after {
++      content: '';
++      width: 0.4em;
++      height: 0.4em;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: translateY(-25%) rotate(45deg);
++      transition: transform 0.2s;
++    }
++
++    .menu-trigger[aria-expanded="true"]::after {
++      transform: translateY(20%) rotate(-135deg);
++    }
++
++    .dropdown {
++      position: absolute;
++      top: calc(100% + 8px);
++      left: 0;
++      z-index: 1100;
++      min-width: 230px;
++      padding: 6px;
++      list-style: none;
++      background: white;
++      color: var(--text);
++      text-align: left;
++      font-size: 0.9rem;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
++    }
++
++    .dropdown[hidden] {
++      display: none;
++    }
++
++    .dropdown:not([hidden]) {
++      animation: dropdown-in 0.12s ease-out;
++    }
++
++    @keyframes dropdown-in {
++      from {
++        opacity: 0;
++        transform: translateY(-4px);
++      }
++    }
++
++    .dropdown--end {
++      left: auto;
++      right: 0;
++    }
++
++    .dropdown .dropdown {
++      top: -6px;
++      left: calc(100% + 4px);
++    }
++
++    .dropdown .dropdown.dropdown--flip {
++      left: auto;
++      right: calc(100% + 4px);
++    }
++
++    .dropdown__group {
++      list-style: none;
++    }
++
++    .dropdown__heading {
++      padding: 6px 10px 2px;
++      font-size: 0.7rem;
++      font-weight: 600;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      color: var(--muted);
++    }
++
++    .dropdown__separator {
++      height: 1px;
++      margin: 6px 4px;
++      background: #eee;
++    }
++
++    .dropdown__item {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      width: 100%;
++      padding: 8px 10px;
++      border: 0;
++      border-radius: 5px;
++      background: none;
++      color: inherit;
++      font: inherit;
++      text-align: left;
++      text-decoration: none;
++      white-space: nowrap;
++      cursor: pointer;
++    }
++
++    .dropdown__item:focus {
++      outline: none;
++      background: var(--secondary);
++    }
++
++    .dropdown__item:focus-visible {
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .dropdown__item[aria-expanded="true"]:not(:focus) {
++      background: #efebe9;
++    }
++
++    .dropdown__item--danger {
++      color: #c62828;
++    }
++
++    .dropdown__check {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex: none;
++      width: 1em;
++      font-weight: bold;
++    }
++
++    .dropdown__item--checkbox[aria-checked="true"] .dropdown__check::before {
++      content: '\2713';
++    }
++
++    .dropdown__item--radio[aria-checked="true"] .dropdown__check::before {
++      content: '';
++      width: 0.5em;
++      height: 0.5em;
++      border-radius: 50%;
++      background: currentColor;
++    }
++
++    .dropdown__label {
++      flex: 1;
++    }
++
++    .dropdown__hint {
++      color: var(--muted);
++      font-size: 0.8rem;
++    }
++
++    .dropdown__chevron::after {
++      content: '';
++      display: block;
++      width: 0.4em;
++      height: 0.4em;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(-45deg);
++    }
++
++    /* Toast */
++    .toast {
++      position: fixed;
++      left: 50%;
++      bottom: 24px;
++      z-index: 1200;
++      max-width: min(90vw, 480px);
++      padding: 12px 18px;
++      border-radius: 6px;
++      background: var(--text);
++      color: white;
++      font-size: 0.9rem;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      transform: translate(-50%, 150%);
++      opacity: 0;
++      transition: transform 0.25s, opacity 0.25s;
++    }
++
++    .toast--visible {
++      transform: translate(-50%, 0);
++      opacity: 1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,19 +422,86 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 720px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 10px;
++      }
++
++      .nav-links {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      .nav-links > li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++    }
++
++    /* On small screens, nested submenus expand inline instead of flying out */
++    @media (max-width: 600px) {
++      .dropdown {
++        max-width: calc(100vw - 24px);
++      }
++
++      .dropdown .dropdown,
++      .dropdown .dropdown.dropdown--flip {
++        position: static;
++        min-width: 0;
++        padding: 0 0 0 14px;
++        box-shadow: none;
++        animation: none;
++      }
++
++      .dropdown__item {
++        white-space: normal;
++      }
++
++      .dropdown__item[aria-expanded="true"] .dropdown__chevron::after {
++        transform: rotate(45deg);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .dropdown:not([hidden]) {
++        animation: none;
++      }
++
++      .toast,
++      .menu-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
++    <ul class="nav-links">
++      <li>
++        <div class="menu" id="drinks-menu">
++          <button type="button" class="menu-trigger">Menu</button>
++        </div>
++      </li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <div class="menu" id="account-menu">
++          <button type="button" class="menu-trigger">My Account</button>
++        </div>
++      </li>
++      <li>
++        <a href="/order-online" class="order-link" id="order-link" aria-label="Your order, 0 items">
++          Order <span class="order-count" id="order-count" aria-hidden="true">0</span>
++        </a>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -178,20 +515,41 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="card__price" data-price></p>
++          <p class="card__summary" data-summary></p>
++          <div class="card__actions">
++            <button type="button" class="btn" data-add>Add to Order</button>
++            <div class="menu">
++              <button type="button" class="btn btn--outline menu-trigger" aria-label="Customize Maple Oat Latte">Customize</button>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="card__price" data-price></p>
++          <p class="card__summary" data-summary></p>
++          <div class="card__actions">
++            <button type="button" class="btn" data-add>Add to Order</button>
++            <div class="menu">
++              <button type="button" class="btn btn--outline menu-trigger" aria-label="Customize Dark Roast Espresso">Customize</button>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="card__price" data-price></p>
++          <p class="card__summary" data-summary></p>
++          <div class="card__actions">
++            <button type="button" class="btn" data-add>Add to Order</button>
++            <div class="menu">
++              <button type="button" class="btn btn--outline menu-trigger" aria-label="Customize Cold Brew">Customize</button>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +565,653 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div class="toast" id="toast" role="status" aria-live="polite"></div>
++
++  <script>
++    (() => {
++      'use strict';
++
++      /*
++       * MenuButton: an accessible menu button (WAI-ARIA APG pattern) with
++       * arbitrarily nested submenus. Items are plain objects:
++       *   { label, href }                       link
++       *   { label, action }                     action, reported via onSelect
++       *   { label, items: [...] }               submenu
++       *   { type: 'radio', name, value, label } single choice bound to state[name]
++       *   { type: 'checkbox', name, value?, label }
++       *                                         toggles value in array state[name],
++       *                                         or boolean state[name] if no value
++       *   { type: 'group', label, items }       labelled group
++       *   { type: 'separator' }
++       * `hint` may be a string or a function of state, re-evaluated on change.
++       */
++      const ITEM = '[role^="menuitem"]';
++      const HOVER_DELAY = 150;
++      const instances = new Set();
++      let uid = 0;
++
++      class MenuButton {
++        constructor(host, items, options = {}) {
++          this.host = host;
++          this.trigger = host.querySelector('.menu-trigger');
++          this.options = options;
++          this.state = options.state || {};
++          this.data = new WeakMap();
++          this.hoverTimer = 0;
++          this.typeahead = { buffer: '', timer: 0 };
++
++          const label = this.trigger.getAttribute('aria-label') || this.trigger.textContent.trim();
++          this.root = this.buildMenu(items, label);
++          host.append(this.root);
++
++          this.trigger.setAttribute('aria-haspopup', 'menu');
++          this.trigger.setAttribute('aria-expanded', 'false');
++          this.trigger.setAttribute('aria-controls', this.root.id);
++
++          this.sync();
++          this.bind();
++          instances.add(this);
++        }
++
++        get isOpen() {
++          return !this.root.hidden;
++        }
++
++        buildMenu(items, label) {
++          const menu = document.createElement('ul');
++          menu.className = 'dropdown';
++          menu.id = `dropdown-${++uid}`;
++          menu.setAttribute('role', 'menu');
++          menu.setAttribute('aria-label', label);
++          menu.hidden = true;
++          const isCheckable = (i) => i.type === 'radio' || i.type === 'checkbox' ||
++            (i.type === 'group' && i.items.some(isCheckable));
++          const checkable = items.some(isCheckable);
++          items.forEach((item) => menu.append(this.buildEntry(item, checkable)));
++          return menu;
++        }
++
++        buildEntry(item, checkable) {
++          const li = document.createElement('li');
++
++          if (item.type === 'separator') {
++            li.className = 'dropdown__separator';
++            li.setAttribute('role', 'separator');
++            return li;
++          }
++
++          if (item.type === 'group') {
++            li.setAttribute('role', 'group');
++            li.setAttribute('aria-label', item.label);
++            const heading = document.createElement('div');
++            heading.className = 'dropdown__heading';
++            heading.setAttribute('aria-hidden', 'true');
++            heading.textContent = item.label;
++            const list = document.createElement('ul');
++            list.className = 'dropdown__group';
++            list.setAttribute('role', 'none');
++            item.items.forEach((child) => list.append(this.buildEntry(child, checkable)));
++            li.append(heading, list);
++            return li;
++          }
++
++          li.setAttribute('role', 'none');
++          const el = document.createElement(item.href ? 'a' : 'button');
++          if (item.href) el.href = item.href;
++          else el.type = 'button';
++          el.className = 'dropdown__item';
++          if (item.danger) el.classList.add('dropdown__item--danger');
++          el.tabIndex = -1;
++
++          if (item.type === 'radio' || item.type === 'checkbox') {
++            el.setAttribute('role', item.type === 'radio' ? 'menuitemradio' : 'menuitemcheckbox');
++            el.setAttribute('aria-checked', 'false');
++            el.classList.add(`dropdown__item--${item.type}`);
++          } else {
++            el.setAttribute('role', 'menuitem');
++          }
++
++          if (checkable) el.append(this.span('dropdown__check', '', true));
++          el.append(this.span('dropdown__label', item.label));
++          if (item.hint) {
++            el.append(this.span('dropdown__hint', typeof item.hint === 'string' ? item.hint : ''));
++          }
++          li.append(el);
++
++          if (item.items) {
++            const submenu = this.buildMenu(item.items, item.label);
++            el.setAttribute('aria-haspopup', 'menu');
++            el.setAttribute('aria-expanded', 'false');
++            el.setAttribute('aria-controls', submenu.id);
++            el.append(this.span('dropdown__chevron', '', true));
++            li.append(submenu);
++          }
++
++          this.data.set(el, item);
++          return li;
++        }
++
++        span(className, text, decorative = false) {
++          const span = document.createElement('span');
++          span.className = className;
++          span.textContent = text;
++          if (decorative) span.setAttribute('aria-hidden', 'true');
++          return span;
++        }
++
++        /* Reflect this.state into aria-checked and dynamic hints. */
++        sync() {
++          for (const el of this.root.querySelectorAll(ITEM)) {
++            const item = this.data.get(el);
++            const value = this.state[item.name];
++            if (item.type === 'radio') {
++              el.setAttribute('aria-checked', String(value === item.value));
++            } else if (item.type === 'checkbox') {
++              const checked = Array.isArray(value) ? value.includes(item.value) : Boolean(value);
++              el.setAttribute('aria-checked', String(checked));
++            }
++            if (typeof item.hint === 'function') {
++              el.querySelector('.dropdown__hint').textContent = item.hint(this.state);
++            }
++          }
++        }
++
++        bind() {
++          this.trigger.addEventListener('click', () => {
++            if (this.isOpen) this.close(true);
++            else this.open('first');
++          });
++          this.trigger.addEventListener('keydown', (e) => {
++            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
++              e.preventDefault();
++              this.open(e.key === 'ArrowDown' ? 'first' : 'last');
++            }
++          });
++          this.root.addEventListener('keydown', (e) => this.onKeydown(e));
++          this.root.addEventListener('click', (e) => this.onClick(e));
++          this.root.addEventListener('mouseover', (e) => this.onHover(e));
++          this.host.addEventListener('focusout', (e) => {
++            if (this.isOpen && e.relatedTarget && !this.host.contains(e.relatedTarget)) this.close();
++          });
++          document.addEventListener('pointerdown', (e) => {
++            if (this.isOpen && !this.host.contains(e.target)) this.close();
++          });
++        }
++
++        open(focus) {
++          instances.forEach((menu) => menu !== this && menu.close());
++          this.trigger.setAttribute('aria-expanded', 'true');
++          this.show(this.root);
++          const items = this.itemsOf(this.root);
++          if (focus) (focus === 'last' ? items[items.length - 1] : items[0]).focus();
++        }
++
++        close(returnFocus = false) {
++          if (!this.isOpen) return;
++          clearTimeout(this.hoverTimer);
++          this.hide(this.root);
++          this.trigger.setAttribute('aria-expanded', 'false');
++          if (returnFocus) this.trigger.focus();
++        }
++
++        /* Show a menu, flipping it if it would overflow the viewport. */
++        show(menu) {
++          menu.hidden = false;
++          menu.classList.remove('dropdown--flip');
++          if (menu === this.root) menu.classList.toggle('dropdown--end', this.options.align === 'end');
++          if (getComputedStyle(menu).position !== 'absolute') return;
++
++          const rect = menu.getBoundingClientRect();
++          if (menu === this.root) {
++            if (this.options.align !== 'end' && rect.right > innerWidth - 8) menu.classList.add('dropdown--end');
++            if (this.options.align === 'end' && rect.left < 8) menu.classList.remove('dropdown--end');
++          } else if (rect.right > innerWidth - 8) {
++            menu.classList.add('dropdown--flip');
++          }
++        }
++
++        hide(menu) {
++          menu.querySelectorAll('.dropdown').forEach((submenu) => { submenu.hidden = true; });
++          menu.querySelectorAll('[aria-expanded="true"]').forEach((el) => el.setAttribute('aria-expanded', 'false'));
++          menu.hidden = true;
++          if (menu !== this.root) this.parentItemOf(menu).setAttribute('aria-expanded', 'false');
++        }
++
++        openSubmenu(el, focusFirst) {
++          this.closeSubmenusIn(this.menuOf(el), el);
++          const submenu = this.submenuOf(el);
++          el.setAttribute('aria-expanded', 'true');
++          this.show(submenu);
++          if (focusFirst) this.itemsOf(submenu)[0].focus();
++        }
++
++        closeSubmenusIn(menu, except = null) {
++          for (const el of this.itemsOf(menu)) {
++            if (el !== except && el.getAttribute('aria-expanded') === 'true') this.hide(this.submenuOf(el));
++          }
++        }
++
++        menuOf(el) {
++          return el.closest('[role="menu"]');
++        }
++
++        itemsOf(menu) {
++          return [...menu.querySelectorAll(ITEM)].filter((el) => this.menuOf(el) === menu);
++        }
++
++        submenuOf(el) {
++          return el.hasAttribute('aria-controls') ? document.getElementById(el.getAttribute('aria-controls')) : null;
++        }
++
++        parentItemOf(menu) {
++          return menu.parentElement.querySelector(':scope > .dropdown__item');
++        }
++
++        onKeydown(e) {
++          const el = e.target.closest(ITEM);
++          if (!el) return;
++          const menu = this.menuOf(el);
++          const items = this.itemsOf(menu);
++          const index = items.indexOf(el);
++          const submenu = this.submenuOf(el);
++
++          switch (e.key) {
++            case 'ArrowDown':
++              items[(index + 1) % items.length].focus();
++              break;
++            case 'ArrowUp':
++              items[(index - 1 + items.length) % items.length].focus();
++              break;
++            case 'Home':
++            case 'PageUp':
++              items[0].focus();
++              break;
++            case 'End':
++            case 'PageDown':
++              items[items.length - 1].focus();
++              break;
++            case 'ArrowRight':
++              if (submenu) this.openSubmenu(el, true);
++              break;
++            case 'ArrowLeft':
++            case 'Escape':
++              if (menu !== this.root) {
++                this.hide(menu);
++                this.parentItemOf(menu).focus();
++              } else if (e.key === 'Escape') {
++                this.close(true);
++              }
++              break;
++            case 'Enter':
++            case ' ':
++              if (submenu) this.openSubmenu(el, true);
++              else el.click();
++              break;
++            case 'Tab':
++              this.close();
++              return;
++            default:
++              if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
++              this.focusByTypeahead(items, index, e.key);
++          }
++          e.preventDefault();
++          e.stopPropagation();
++        }
++
++        focusByTypeahead(items, index, char) {
++          clearTimeout(this.typeahead.timer);
++          this.typeahead.timer = setTimeout(() => { this.typeahead.buffer = ''; }, 500);
++          const buffer = (this.typeahead.buffer += char.toLowerCase());
++          // A fresh search starts after the current item; a continued one includes it.
++          const start = buffer.length > 1 ? index : index + 1;
++          const ordered = [...items.slice(start), ...items.slice(0, start)];
++          const match = ordered.find((el) => this.data.get(el).label.toLowerCase().startsWith(buffer));
++          if (match) match.focus();
++        }
++
++        onClick(e) {
++          const el = e.target.closest(ITEM);
++          if (!el) return;
++          const item = this.data.get(el);
++
++          if (item.items) {
++            this.openSubmenu(el, true);
++            return;
++          }
++
++          if (item.type === 'radio' || item.type === 'checkbox') {
++            const current = this.state[item.name];
++            if (item.type === 'radio') {
++              this.state[item.name] = item.value;
++            } else if (Array.isArray(current)) {
++              this.state[item.name] = current.includes(item.value)
++                ? current.filter((v) => v !== item.value)
++                : [...current, item.value];
++            } else {
++              this.state[item.name] = !current;
++            }
++            this.sync();
++            this.options.onChange?.(item, this.state);
++            return;
++          }
++
++          // Links navigate on their own; actions return focus to the trigger.
++          this.close(!item.href);
++          this.options.onSelect?.(item, this.state);
++        }
++
++        onHover(e) {
++          const el = e.target.closest(ITEM);
++          if (!el) return;
++          el.focus({ preventScroll: true });
++          clearTimeout(this.hoverTimer);
++          this.hoverTimer = setTimeout(() => {
++            if (this.submenuOf(el)) this.openSubmenu(el, false);
++            else this.closeSubmenusIn(this.menuOf(el));
++          }, HOVER_DELAY);
++        }
++      }
++
++      window.addEventListener('resize', () => instances.forEach((menu) => menu.close()));
++
++      /* ---------- Toast & order ---------- */
++
++      const toast = document.getElementById('toast');
++      let toastTimer = 0;
++      function notify(message) {
++        toast.textContent = message;
++        toast.classList.add('toast--visible');
++        clearTimeout(toastTimer);
++        toastTimer = setTimeout(() => toast.classList.remove('toast--visible'), 3500);
++      }
++
++      const order = [];
++      function addToOrder(entry) {
++        order.push(entry);
++        const count = order.length;
++        document.getElementById('order-count').textContent = count;
++        document.getElementById('order-link').setAttribute('aria-label', `Your order, ${count} item${count === 1 ? '' : 's'}`);
++      }
++
++      /* ---------- Navigation menus ---------- */
++
++      const STORES = { downtown: 'Downtown', riverside: 'Riverside', uptown: 'Uptown' };
++
++      new MenuButton(document.getElementById('drinks-menu'), [
++        {
++          label: 'Espresso Bar', items: [
++            {
++              label: 'Classics', items: [
++                { label: 'Espresso', href: '/menu/espresso' },
++                { label: 'Americano', href: '/menu/americano' },
++                { label: 'Macchiato', href: '/menu/macchiato' },
++              ]
++            },
++            {
++              label: 'Milk Drinks', items: [
++                { label: 'Latte', href: '/menu/latte' },
++                { label: 'Cappuccino', href: '/menu/cappuccino' },
++                { label: 'Flat White', href: '/menu/flat-white' },
++                { label: 'Cortado', href: '/menu/cortado' },
++                { label: 'Mocha', href: '/menu/mocha' },
++              ]
++            },
++          ]
++        },
++        {
++          label: 'Cold Drinks', items: [
++            { label: 'Cold Brew', href: '/menu/cold-brew' },
++            { label: 'Nitro Cold Brew', href: '/menu/nitro' },
++            { label: 'Iced Latte', href: '/menu/iced-latte' },
++            {
++              label: 'Frozen Blends', items: [
++                { label: 'Mocha Frappé', href: '/menu/mocha-frappe' },
++                { label: 'Caramel Frappé', href: '/menu/caramel-frappe' },
++              ]
++            },
++          ]
++        },
++        {
++          label: 'Tea', items: [
++            {
++              label: 'Lattes', items: [
++                { label: 'Chai Latte', href: '/menu/chai-latte' },
++                { label: 'Matcha Latte', href: '/menu/matcha-latte' },
++                { label: 'London Fog', href: '/menu/london-fog' },
++              ]
++            },
++            {
++              label: 'Brewed', items: [
++                { label: 'Earl Grey', href: '/menu/earl-grey' },
++                { label: 'Jasmine Green', href: '/menu/jasmine-green' },
++                { label: 'Peppermint Herbal', href: '/menu/peppermint' },
++              ]
++            },
++          ]
++        },
++        {
++          label: 'Seasonal', hint: 'New', items: [
++            { label: 'Maple Oat Latte', href: '/menu/seasonal' },
++            { label: 'Pumpkin Spice Latte', href: '/menu/pumpkin-spice' },
++            { label: 'Apple Crisp Cold Brew', href: '/menu/apple-crisp' },
++          ]
++        },
++        { label: 'Bakery', href: '/menu/bakery' },
++        { type: 'separator' },
++        { label: 'View Full Menu', href: '/menu' },
++      ]);
++
++      new MenuButton(document.getElementById('account-menu'), [
++        { label: 'Profile', href: '/account' },
++        { label: 'Order History', href: '/account/orders' },
++        {
++          label: 'Rewards', hint: '240 ★', items: [
++            { label: 'Redeem a Reward', href: '/rewards/redeem' },
++            { label: 'Rewards Activity', href: '/rewards/activity' },
++            { label: 'How It Works', href: '/rewards' },
++          ]
++        },
++        {
++          label: 'Preferences', items: [
++            {
++              type: 'group', label: 'Notifications', items: [
++                { type: 'checkbox', name: 'emailOffers', label: 'Email offers' },
++                { type: 'checkbox', name: 'orderAlerts', label: 'Order-ready alerts' },
++              ]
++            },
++            { type: 'separator' },
++            {
++              label: 'Home Store', hint: (s) => STORES[s.store], items: Object.entries(STORES).map(
++                ([value, label]) => ({ type: 'radio', name: 'store', value, label })
++              )
++            },
++          ]
++        },
++        { type: 'separator' },
++        { label: 'Logout', href: '/logout', danger: true },
++      ], {
++        align: 'end',
++        state: { emailOffers: true, orderAlerts: true, store: 'downtown' },
++        onChange: (item, state) => {
++          if (item.name === 'store') notify(`Home store set to ${STORES[state.store]}.`);
++        },
++      });
++
++      /* ---------- Seasonal favorites ---------- */
++
++      const CUP_SIZES = [
++        { value: 'small', label: 'Small · 12 oz', short: 'Small', delta: 0 },
++        { value: 'medium', label: 'Medium · 16 oz', short: 'Medium', delta: 0.5 },
++        { value: 'large', label: 'Large · 20 oz', short: 'Large', delta: 1 },
++      ];
++      const MILKS = [
++        { value: 'whole', label: 'Whole', kind: 'dairy' },
++        { value: 'two-percent', label: '2%', kind: 'dairy' },
++        { value: 'skim', label: 'Skim', kind: 'dairy' },
++        { value: 'breve', label: 'Half & Half', kind: 'dairy' },
++        { value: 'oat', label: 'Oat', kind: 'plant', delta: 0.7 },
++        { value: 'almond', label: 'Almond', kind: 'plant', delta: 0.7 },
++        { value: 'soy', label: 'Soy', kind: 'plant', delta: 0.7 },
++        { value: 'coconut', label: 'Coconut', kind: 'plant', delta: 0.7 },
++        { value: 'none', label: 'No milk' },
++      ];
++      const TEMPS = [
++        { value: 'hot', label: 'Hot' },
++        { value: 'extra-hot', label: 'Extra hot' },
++        { value: 'iced', label: 'Iced' },
++      ];
++      const SYRUPS = [
++        { value: 'maple', label: 'Maple' },
++        { value: 'vanilla', label: 'Vanilla' },
++        { value: 'caramel', label: 'Caramel' },
++        { value: 'hazelnut', label: 'Hazelnut' },
++        { value: 'brown-sugar', label: 'Brown Sugar' },
++      ];
++      const SYRUP_PRICE = 0.6;
++      const SWEETNESS = [
++        { value: 'unsweetened', label: 'Unsweetened' },
++        { value: 'light', label: 'Light' },
++        { value: 'regular', label: 'Regular' },
++        { value: 'extra', label: 'Extra sweet' },
++      ];
++      const EXTRAS = [
++        { value: 'shot', label: 'Extra espresso shot', delta: 0.9 },
++        { value: 'cold-foam', label: 'Sweet cream cold foam', delta: 1.25 },
++        { value: 'whip', label: 'Whipped cream', delta: 0.5 },
++        { value: 'cinnamon', label: 'Cinnamon dusting', delta: 0 },
++      ];
++
++      const DRINKS = {
++        'maple-oat-latte': {
++          name: 'Maple Oat Latte', base: 4.75, details: '/menu/seasonal',
++          sizes: CUP_SIZES, temps: TEMPS,
++          defaults: { size: 'medium', milk: 'oat', temp: 'hot', syrups: ['maple'], sweetness: 'regular', extras: [], favorite: false },
++          included: { milk: 'oat', syrups: ['maple'] },
++        },
++        'dark-roast-espresso': {
++          name: 'Dark Roast Espresso', base: 2.95, details: '/menu/espresso',
++          sizeLabel: 'Shots',
++          sizes: [
++            { value: 'single', label: 'Single', short: 'Single', delta: 0 },
++            { value: 'double', label: 'Double', short: 'Double', delta: 1 },
++            { value: 'triple', label: 'Triple', short: 'Triple', delta: 1.75 },
++          ],
++          defaults: { size: 'double', milk: 'none', syrups: [], sweetness: 'unsweetened', extras: [], favorite: false },
++        },
++        'cold-brew': {
++          name: 'Cold Brew', base: 4.25, details: '/menu/cold-brew',
++          sizes: CUP_SIZES,
++          defaults: { size: 'medium', milk: 'none', syrups: [], sweetness: 'unsweetened', extras: [], favorite: false },
++        },
++      };
++
++      const money = (n) => `$${n.toFixed(2)}`;
++      const surcharge = (n) => (n ? `+${money(n)}` : '');
++      const find = (list, value) => list.find((o) => o.value === value);
++      const cloneState = (state) => JSON.parse(JSON.stringify(state));
++
++      function price(drink, state) {
++        const included = drink.included || {};
++        const milk = state.milk === included.milk ? 0 : find(MILKS, state.milk).delta || 0;
++        const syrups = state.syrups.filter((s) => !(included.syrups || []).includes(s)).length * SYRUP_PRICE;
++        const extras = state.extras.reduce((sum, v) => sum + find(EXTRAS, v).delta, 0);
++        return drink.base + find(drink.sizes, state.size).delta + milk + syrups + extras;
++      }
++
++      function summary(drink, state) {
++        const parts = [find(drink.sizes, state.size).short];
++        if (drink.temps) parts.push(find(drink.temps, state.temp).label);
++        if (state.milk !== 'none') parts.push(`${find(MILKS, state.milk).label} milk`);
++        if (state.syrups.length) parts.push(state.syrups.map((v) => find(SYRUPS, v).label).join(' + '));
++        if (state.sweetness !== drink.defaults.sweetness) parts.push(find(SWEETNESS, state.sweetness).label);
++        parts.push(...state.extras.map((v) => find(EXTRAS, v).label));
++        return parts.join(' · ');
++      }
++
++      function customizeItems(drink) {
++        const radio = (name, extra = () => ({})) => (o) => ({ type: 'radio', name, value: o.value, label: o.label, ...extra(o) });
++        const milkRadio = radio('milk');
++        const items = [
++          {
++            type: 'group', label: drink.sizeLabel || 'Size',
++            items: drink.sizes.map(radio('size', (o) => ({ hint: surcharge(o.delta) }))),
++          },
++          { type: 'separator' },
++          {
++            label: 'Milk', hint: (s) => find(MILKS, s.milk).label, items: [
++              { label: 'Dairy', items: MILKS.filter((m) => m.kind === 'dairy').map(milkRadio) },
++              { label: 'Plant-based', hint: surcharge(0.7), items: MILKS.filter((m) => m.kind === 'plant').map(milkRadio) },
++              { type: 'separator' },
++              milkRadio(find(MILKS, 'none')),
++            ]
++          },
++        ];
++        if (drink.temps) {
++          items.push({ label: 'Temperature', hint: (s) => find(TEMPS, s.temp).label, items: drink.temps.map(radio('temp')) });
++        }
++        items.push(
++          {
++            label: 'Sweetener', hint: (s) => find(SWEETNESS, s.sweetness).label, items: [
++              {
++                label: 'Syrups', hint: (s) => (s.syrups.length ? `${s.syrups.length} added` : 'None'),
++                items: SYRUPS.map((o) => ({ type: 'checkbox', name: 'syrups', value: o.value, label: o.label, hint: surcharge(SYRUP_PRICE) })),
++              },
++              { type: 'separator' },
++              { type: 'group', label: 'Sweetness', items: SWEETNESS.map(radio('sweetness')) },
++            ]
++          },
++          {
++            label: 'Extras', hint: (s) => (s.extras.length ? `${s.extras.length} added` : ''),
++            items: EXTRAS.map((o) => ({ type: 'checkbox', name: 'extras', value: o.value, label: o.label, hint: surcharge(o.delta) || 'Free' })),
++          },
++          { type: 'separator' },
++          { label: 'Add to Order', action: 'add', hint: (s) => money(price(drink, s)) },
++          { type: 'checkbox', name: 'favorite', label: 'Save as Favorite' },
++          { label: 'View Details', href: drink.details },
++          { label: 'Reset to Default', action: 'reset' },
++        );
++        return items;
++      }
++
++      document.querySelectorAll('.card[data-drink]').forEach((card) => {
++        const drink = DRINKS[card.dataset.drink];
++        const state = cloneState(drink.defaults);
++
++        const render = () => {
++          card.querySelector('[data-price]').textContent = money(price(drink, state));
++          card.querySelector('[data-summary]').textContent = summary(drink, state);
++        };
++
++        const add = () => {
++          addToOrder({ drink: drink.name, options: cloneState(state), price: price(drink, state) });
++          notify(`Added ${drink.name} (${summary(drink, state)}) to your order — ${money(price(drink, state))}.`);
++        };
++
++        const menu = new MenuButton(card.querySelector('.menu'), customizeItems(drink), {
++          state,
++          onChange: (item) => {
++            render();
++            if (item.name === 'favorite') {
++              notify(state.favorite ? `${drink.name} saved to your favorites.` : `${drink.name} removed from your favorites.`);
++            }
++          },
++          onSelect: (item) => {
++            if (item.action === 'add') add();
++            if (item.action === 'reset') {
++              Object.assign(state, cloneState(drink.defaults), { favorite: state.favorite });
++              menu.sync();
++              render();
++              notify(`${drink.name} reset to the default recipe.`);
++            }
++          },
++        });
++
++        card.querySelector('[data-add]').addEventListener('click', add);
++        render();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

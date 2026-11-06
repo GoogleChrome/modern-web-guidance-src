@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+index 66c9173..4e9d24f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --seasonal-warm: #fff3e0;
++      --seasonal-deep: #bf360c;
+     }
+ 
+     * {
+@@ -120,6 +122,85 @@
+       color: var(--primary);
+     }
+ 
++    /* Contextual cards: sections declare a semantic --surface, cards react to it */
++    .seasonal {
++      --surface: seasonal;
++    }
++
++    .card {
++      position: relative;
++      overflow: hidden;
++      transition: transform 0.3s, box-shadow 0.3s;
++    }
++
++    /* Selector fallback for browsers without container style queries */
++    :where(.seasonal) .card {
++      background: linear-gradient(160deg, var(--seasonal-warm), white 70%);
++      border-block-start: 4px solid var(--accent);
++      padding-block-start: 44px;
++    }
++
++    :where(.seasonal) .card::before {
++      content: "Limited Time" / "";
++      position: absolute;
++      inset-block-start: 12px;
++      inset-inline-end: 12px;
++      background: var(--seasonal-deep);
++      color: white;
++      font-size: 0.7rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    :where(.seasonal) .card .btn {
++      background: var(--seasonal-deep);
++    }
++
++    @container style(--surface: seasonal) {
++      .card {
++        background: linear-gradient(160deg, var(--seasonal-warm), white 70%);
++        border-block-start: 4px solid var(--accent);
++        padding-block-start: 44px;
++      }
++
++      .card::before {
++        content: "Limited Time" / "";
++        position: absolute;
++        inset-block-start: 12px;
++        inset-inline-end: 12px;
++        background: var(--seasonal-deep);
++        color: white;
++        font-size: 0.7rem;
++        font-weight: bold;
++        letter-spacing: 1px;
++        text-transform: uppercase;
++        padding: 2px 10px;
++        border-radius: 999px;
++      }
++
++      .card h3 {
++        color: var(--seasonal-deep);
++      }
++
++      .card .btn {
++        background: var(--seasonal-deep);
++      }
++
++      .card .btn:hover {
++        background: var(--primary);
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        .card:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 8px 20px rgba(191, 54, 12, 0.2);
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,8 +256,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

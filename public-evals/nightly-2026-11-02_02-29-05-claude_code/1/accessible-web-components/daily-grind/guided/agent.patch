@@ -1,0 +1,253 @@
+diff --git a/favorite-toggle.js b/favorite-toggle.js
+new file mode 100644
+index 0000000..c66e2ed
+--- /dev/null
++++ b/favorite-toggle.js
+@@ -0,0 +1,192 @@
++/**
++ * <favorite-toggle> — an on/off switch for marking an item as a favorite.
++ *
++ * Attributes:
++ *   item     Name of the thing being favorited (used in the accessible name
++ *            and as the localStorage key so the choice survives reloads).
++ *   label    Visible label text. Defaults to "Favorite".
++ *   checked  Present when the item is a favorite.
++ *
++ * Events:
++ *   favorite-change  Bubbles from the host; detail = { item, checked }.
++ *
++ * Styling hooks: --favorite-accent, --favorite-focus, ::part(label|switch),
++ * and :state(checked) on the host.
++ */
++
++const STORAGE_KEY = 'daily-grind:favorites';
++const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: inline-block;
++      font: inherit;
++      color: inherit;
++    }
++
++    label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.6em;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    input {
++      accent-color: var(--favorite-accent, #ffab40);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input:focus-visible {
++      outline: 3px solid var(--favorite-focus, #4e342e);
++      outline-offset: 4px;
++    }
++
++    /* Fallback track/thumb for browsers without <input type="checkbox" switch>. */
++    input.fallback {
++      appearance: none;
++      position: relative;
++      inline-size: 2.5em;
++      block-size: 1.4em;
++      border-radius: 1em;
++      background: #bcaaa4;
++      transition: background-color 0.2s;
++    }
++
++    input.fallback::before {
++      content: '';
++      position: absolute;
++      inset-block-start: 0.2em;
++      inset-inline-start: 0.2em;
++      inline-size: 1em;
++      block-size: 1em;
++      border-radius: 50%;
++      background: white;
++      box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
++      transition: translate 0.2s;
++    }
++
++    input.fallback:checked {
++      background: var(--favorite-accent, #ffab40);
++    }
++
++    input.fallback:checked::before {
++      translate: 1.1em 0;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      input.fallback,
++      input.fallback::before {
++        transition: none;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++  </style>
++  <label part="label">
++    <span><span class="text"></span><span class="visually-hidden item"></span></span>
++    <input type="checkbox" switch part="switch">
++  </label>
++`;
++
++function readFavorites() {
++  try {
++    return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []);
++  } catch {
++    return new Set();
++  }
++}
++
++function writeFavorite(item, on) {
++  const favorites = readFavorites();
++  on ? favorites.add(item) : favorites.delete(item);
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites]));
++  } catch {
++    // Storage may be unavailable (private mode, quota); the toggle still works for this visit.
++  }
++}
++
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['item', 'label', 'checked'];
++
++  #internals;
++  #input;
++  #text;
++  #item;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++
++    this.#input = root.querySelector('input');
++    this.#text = root.querySelector('.text');
++    this.#item = root.querySelector('.item');
++
++    if (!supportsNativeSwitch) {
++      this.#input.classList.add('fallback');
++      this.#input.setAttribute('role', 'switch');
++    }
++
++    this.#input.addEventListener('change', () => {
++      this.checked = this.#input.checked;
++      if (this.item) writeFavorite(this.item, this.checked);
++      this.dispatchEvent(new CustomEvent('favorite-change', {
++        bubbles: true,
++        composed: true,
++        detail: { item: this.item, checked: this.checked },
++      }));
++    });
++  }
++
++  connectedCallback() {
++    // Restore a saved choice unless markup already set the state explicitly.
++    if (this.item && !this.hasAttribute('checked') && readFavorites().has(this.item)) {
++      this.checked = true;
++    }
++    this.#render();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) this.#render();
++  }
++
++  get item() { return this.getAttribute('item') ?? ''; }
++  set item(v) { v ? this.setAttribute('item', v) : this.removeAttribute('item'); }
++
++  get label() { return this.getAttribute('label') || 'Favorite'; }
++  set label(v) { v ? this.setAttribute('label', v) : this.removeAttribute('label'); }
++
++  get checked() { return this.hasAttribute('checked'); }
++  set checked(on) { this.toggleAttribute('checked', !!on); }
++
++  toggle() {
++    this.checked = !this.checked;
++    if (this.item) writeFavorite(this.item, this.checked);
++  }
++
++  #render() {
++    this.#text.textContent = this.label;
++    this.#item.textContent = this.item ? ` ${this.item}` : '';
++    this.#input.checked = this.checked;
++    if (this.checked) {
++      this.#internals.states.add('checked');
++    } else {
++      this.#internals.states.delete('checked');
++    }
++  }
++}
++
++customElements.define('favorite-toggle', FavoriteToggle);
+diff --git a/index.html b/index.html
+index 66c9173..8bbc6ac 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,22 @@
+       background: #3e2723;
+     }
+ 
++    .card favorite-toggle {
++      display: block;
++      margin-top: 15px;
++    }
++
++    favorite-toggle:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +169,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/favorite-toggle.js"></script>
+ </head>
+ 
+ <body>
+@@ -181,16 +198,19 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <favorite-toggle item="Maple Oat Latte"></favorite-toggle>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <favorite-toggle item="Dark Roast Espresso"></favorite-toggle>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <favorite-toggle item="Cold Brew"></favorite-toggle>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

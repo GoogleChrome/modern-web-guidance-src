@@ -1,0 +1,56 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,52 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const hasVisibilityTimeline = 'VisibilityStateEntry' in window;
++      const entries = hasVisibilityTimeline
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const fallbackActive = entries.length === 0;
++      const initiallyBackgrounded = fallbackActive
++        ? document.visibilityState === 'hidden'
++        : entries[0].name === 'hidden';
++      const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++
++      // Times are milliseconds since navigation (performance.timeOrigin), not Unix time.
++      // null means no background transition has been recorded; 0 is a valid time.
++      let timeBackgrounded = firstHiddenEntry ? firstHiddenEntry.startTime : null;
++      if (fallbackActive) {
++        // UNRELIABLE FALLBACK: current visibility cannot reconstruct initial state
++        // for async scripts. Hidden at execution only approximates hidden since load.
++        timeBackgrounded = initiallyBackgrounded ? 0 : null;
++        console.warn('Visibility fallback active: initial background status and time may be inaccurate, especially for async scripts.');
++      }
++
++      const logVisibilityInfo = () => console.log({
++        initiallyBackgrounded,
++        timeBackgrounded,
++        fallbackActive
++      });
++      logVisibilityInfo();
++
++      if (timeBackgrounded === null) {
++        const recordFirstBackground = () => {
++          if (document.visibilityState !== 'hidden') return;
++          const hiddenEntry = fallbackActive ? undefined : performance
++            .getEntriesByType('visibility-state')
++            .find((entry) => entry.name === 'hidden');
++          // Fallback measures listener execution, not the browser's transition time.
++          timeBackgrounded = hiddenEntry ? hiddenEntry.startTime : performance.now();
++          logVisibilityInfo();
++          document.removeEventListener('visibilitychange', recordFirstBackground);
++        };
++        document.addEventListener('visibilitychange', recordFirstBackground);
++      }
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

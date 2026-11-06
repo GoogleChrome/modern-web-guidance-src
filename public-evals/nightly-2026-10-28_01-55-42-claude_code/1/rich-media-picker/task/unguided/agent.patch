@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,16 +84,147 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero > p {
++      margin-bottom: 1.5rem;
++    }
++
++    /* Roast picker (custom listbox dropdown) */
++    .roast-picker {
++      position: relative;
++      width: min(100%, 360px);
++      margin-bottom: 4px;
++    }
++
++    .roast-picker__label {
++      display: block;
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .roast-picker__trigger {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 14px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      border: 2px solid transparent;
++      border-radius: 8px;
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .roast-picker__trigger:hover,
++    .roast-picker__trigger:focus-visible {
++      border-color: var(--accent);
++      outline: none;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    .roast-picker__selected {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      min-width: 0;
++    }
++
++    .roast-picker__chevron {
++      width: 18px;
++      height: 18px;
++      margin-left: auto;
++      flex-shrink: 0;
++      color: var(--primary);
++      transition: transform 0.2s;
++    }
++
++    .roast-picker[data-open="true"] .roast-picker__chevron {
++      transform: rotate(180deg);
++    }
++
++    .roast-picker__list {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      right: 0;
++      margin: 0;
++      padding: 6px;
++      list-style: none;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      max-height: 320px;
++      overflow-y: auto;
++      z-index: 50;
++    }
++
++    .roast-picker__list:focus {
++      outline: none;
++    }
++
++    .roast-picker__list[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px 12px;
++      border-radius: 6px;
++      cursor: pointer;
++      text-align: left;
++    }
++
++    .roast-option:hover,
++    .roast-option.is-active {
++      background: var(--secondary);
++    }
++
++    .roast-option[aria-selected="true"] {
++      background: #efebe9;
++      box-shadow: inset 3px 0 0 var(--accent);
++    }
++
++    .roast-option__icon {
++      width: 32px;
++      height: 32px;
++      flex-shrink: 0;
++      color: var(--primary);
++    }
++
++    .roast-option__text {
++      display: flex;
++      flex-direction: column;
++      line-height: 1.3;
++      min-width: 0;
++    }
++
++    .roast-option__title {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .roast-option__desc {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +301,62 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++
++    <div class="roast-picker" id="roast-picker" data-open="false">
++      <span class="roast-picker__label" id="roast-picker-label">Choose your roast</span>
++      <button type="button" class="roast-picker__trigger" id="roast-picker-trigger" aria-haspopup="listbox"
++        aria-expanded="false" aria-controls="roast-picker-list" aria-labelledby="roast-picker-label roast-picker-selected">
++        <span class="roast-picker__selected" id="roast-picker-selected">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="6" ry="9" transform="rotate(-35 12 12)"/><path d="M8.5 5.5c4 2.5 3 10.5 7 13"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Medium Roast</span>
++            <span class="roast-option__desc">Balanced and smooth with notes of caramel and nut.</span>
++          </span>
++        </span>
++        <svg class="roast-picker__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
++      </button>
++      <ul class="roast-picker__list" id="roast-picker-list" role="listbox" aria-labelledby="roast-picker-label" tabindex="-1" hidden>
++        <li class="roast-option" role="option" id="roast-option-light-roast" data-value="light-roast" aria-selected="false">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Light Roast</span>
++            <span class="roast-option__desc">Bright and floral with a gentle, tea-like body.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-option-medium-roast" data-value="medium-roast" aria-selected="true">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="6" ry="9" transform="rotate(-35 12 12)"/><path d="M8.5 5.5c4 2.5 3 10.5 7 13"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Medium Roast</span>
++            <span class="roast-option__desc">Balanced and smooth with notes of caramel and nut.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-option-dark-roast" data-value="dark-roast" aria-selected="false">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-2.5 1.2-4 2.5-5.2.2 2 1.2 3.2 2.5 3.2C11 9 11 5.5 12 3z"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Dark Roast</span>
++            <span class="roast-option__desc">Bold and smoky with low acidity and a rich finish.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-option-espresso" data-value="espresso" aria-selected="false">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 10h10v4a5 5 0 0 1-10 0v-4z"/><path d="M15 11h2a2 2 0 0 1 0 4h-2"/><path d="M3 21h16"/><path d="M8 7V5M12 7V4"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Espresso</span>
++            <span class="roast-option__desc">Intense, syrupy shots pulled from our house blend.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-option-cold-brew" data-value="cold-brew" aria-selected="false">
++          <svg class="roast-option__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l-1.4 16.1A2 2 0 0 1 14.6 21H9.4a2 2 0 0 1-2-1.9L6 3z"/><path d="M7 8h10"/><rect x="9" y="11" width="3" height="3" rx=".5"/><rect x="12.5" y="14.5" width="3" height="3" rx=".5"/></svg>
++          <span class="roast-option__text">
++            <span class="roast-option__title">Cold Brew</span>
++            <span class="roast-option__desc">Steeped 18 hours for a sweet, ultra-smooth sip.</span>
++          </span>
++        </li>
++      </ul>
++    </div>
++
++    <a href="/order-online?roast=medium-roast" class="btn" id="order-now-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +390,127 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var picker = document.getElementById('roast-picker');
++      var trigger = document.getElementById('roast-picker-trigger');
++      var list = document.getElementById('roast-picker-list');
++      var selectedSlot = document.getElementById('roast-picker-selected');
++      var orderBtn = document.getElementById('order-now-btn');
++      var options = Array.prototype.slice.call(list.querySelectorAll('[role="option"]'));
++      var activeIndex = -1;
++
++      function selectedIndex() {
++        for (var i = 0; i < options.length; i++) {
++          if (options[i].getAttribute('aria-selected') === 'true') return i;
++        }
++        return 0;
++      }
++
++      function setActive(index) {
++        activeIndex = Math.max(0, Math.min(options.length - 1, index));
++        options.forEach(function (opt, i) {
++          opt.classList.toggle('is-active', i === activeIndex);
++        });
++        list.setAttribute('aria-activedescendant', options[activeIndex].id);
++        if (typeof options[activeIndex].scrollIntoView === 'function') {
++          options[activeIndex].scrollIntoView({ block: 'nearest' });
++        }
++      }
++
++      function openList() {
++        picker.setAttribute('data-open', 'true');
++        list.hidden = false;
++        trigger.setAttribute('aria-expanded', 'true');
++        setActive(selectedIndex());
++        list.focus();
++      }
++
++      function closeList(returnFocus) {
++        picker.setAttribute('data-open', 'false');
++        list.hidden = true;
++        trigger.setAttribute('aria-expanded', 'false');
++        list.removeAttribute('aria-activedescendant');
++        options.forEach(function (opt) { opt.classList.remove('is-active'); });
++        if (returnFocus) trigger.focus();
++      }
++
++      function isOpen() {
++        return !list.hidden;
++      }
++
++      function selectOption(index) {
++        var opt = options[index];
++        options.forEach(function (o, i) {
++          o.setAttribute('aria-selected', i === index ? 'true' : 'false');
++        });
++        selectedSlot.innerHTML = opt.innerHTML;
++
++        var url = new URL(orderBtn.getAttribute('href'), window.location.href);
++        url.searchParams.set('roast', opt.getAttribute('data-value'));
++        orderBtn.setAttribute('href', url.pathname + url.search + url.hash);
++
++        closeList(true);
++      }
++
++      trigger.addEventListener('click', function () {
++        if (isOpen()) closeList(true); else openList();
++      });
++
++      trigger.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
++          e.preventDefault();
++          openList();
++        }
++      });
++
++      list.addEventListener('keydown', function (e) {
++        switch (e.key) {
++          case 'ArrowDown':
++            e.preventDefault();
++            setActive(activeIndex + 1);
++            break;
++          case 'ArrowUp':
++            e.preventDefault();
++            setActive(activeIndex - 1);
++            break;
++          case 'Home':
++            e.preventDefault();
++            setActive(0);
++            break;
++          case 'End':
++            e.preventDefault();
++            setActive(options.length - 1);
++            break;
++          case 'Enter':
++          case ' ':
++            e.preventDefault();
++            selectOption(activeIndex);
++            break;
++          case 'Escape':
++            e.preventDefault();
++            closeList(true);
++            break;
++          case 'Tab':
++            closeList(false);
++            break;
++        }
++      });
++
++      options.forEach(function (opt, i) {
++        opt.addEventListener('click', function () { selectOption(i); });
++        opt.addEventListener('mousemove', function () {
++          if (activeIndex !== i) setActive(i);
++        });
++      });
++
++      document.addEventListener('click', function (e) {
++        if (isOpen() && !picker.contains(e.target)) closeList(false);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

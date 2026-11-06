@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,111 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Selector */
++    .roast-select {
++      position: relative;
++      width: 220px;
++      margin-bottom: 1.2rem;
++      text-align: left;
++    }
++
++    .roast-label {
++      display: block;
++      font-size: 0.8rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      margin-bottom: 6px;
++    }
++
++    .roast-toggle {
++      width: 100%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      padding: 10px 14px;
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .roast-toggle:focus-visible {
++      outline: 2px solid white;
++      outline-offset: 2px;
++    }
++
++    /* Arrow */
++    .roast-toggle::after {
++      content: '';
++      width: 8px;
++      height: 8px;
++      border-right: 2px solid var(--accent);
++      border-bottom: 2px solid var(--accent);
++      transform: translateY(-2px) rotate(45deg);
++      transition: transform 0.2s;
++    }
++
++    .roast-toggle[aria-expanded="true"]::after {
++      transform: translateY(2px) rotate(-135deg);
++    }
++
++    .roast-list {
++      display: none;
++      position: absolute;
++      top: calc(100% + 4px);
++      left: 0;
++      right: 0;
++      z-index: 10;
++      list-style: none;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      overflow: hidden;
++    }
++
++    .roast-toggle[aria-expanded="true"]+.roast-list {
++      display: block;
++    }
++
++    .roast-list li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 14px;
++      color: white;
++      cursor: pointer;
++    }
++
++    .roast-list li.active,
++    .roast-list li:hover {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    /* Checkmark */
++    .roast-list li::after {
++      content: '';
++      width: 5px;
++      height: 10px;
++      border-right: 2px solid var(--accent);
++      border-bottom: 2px solid var(--accent);
++      transform: rotate(45deg);
++      visibility: hidden;
++    }
++
++    .roast-list li[aria-selected="true"]::after {
++      visibility: visible;
++    }
++
++    .roast-list li.active::after,
++    .roast-list li:hover::after {
++      border-color: var(--primary);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,11 +273,80 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-select" id="roast-select">
++      <span class="roast-label" id="roast-label">Choose your roast</span>
++      <button type="button" class="roast-toggle" aria-haspopup="listbox" aria-expanded="false"
++        aria-labelledby="roast-label roast-value"><span id="roast-value">Medium</span></button>
++      <ul class="roast-list" role="listbox" aria-labelledby="roast-label" tabindex="-1">
++        <li role="option" data-value="light">Light</li>
++        <li role="option" data-value="medium" aria-selected="true">Medium</li>
++        <li role="option" data-value="dark">Dark</li>
++      </ul>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <script>
++    (function () {
++      var root = document.getElementById('roast-select');
++      var toggle = root.querySelector('.roast-toggle');
++      var list = root.querySelector('.roast-list');
++      var options = Array.prototype.slice.call(list.children);
++      var valueEl = document.getElementById('roast-value');
++      var active = 1;
++
++      function setActive(i) {
++        active = (i + options.length) % options.length;
++        options.forEach(function (o, n) { o.classList.toggle('active', n === active); });
++      }
++      function open() {
++        toggle.setAttribute('aria-expanded', 'true');
++        setActive(options.findIndex(function (o) { return o.getAttribute('aria-selected') === 'true'; }));
++        list.focus();
++      }
++      function close(refocus) {
++        toggle.setAttribute('aria-expanded', 'false');
++        options.forEach(function (o) { o.classList.remove('active'); });
++        if (refocus) toggle.focus();
++      }
++      function choose(i) {
++        options.forEach(function (o, n) { o.setAttribute('aria-selected', n === i ? 'true' : 'false'); });
++        valueEl.textContent = options[i].textContent;
++        root.dataset.value = options[i].dataset.value;
++        root.dispatchEvent(new CustomEvent('roastchange', { detail: root.dataset.value }));
++        close(true);
++      }
++
++      root.dataset.value = 'medium';
++      toggle.addEventListener('click', function () {
++        toggle.getAttribute('aria-expanded') === 'true' ? close() : open();
++      });
++      options.forEach(function (o, i) {
++        o.addEventListener('mouseenter', function () { setActive(i); });
++        o.addEventListener('click', function () { choose(i); });
++      });
++      list.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown') setActive(active + 1);
++        else if (e.key === 'ArrowUp') setActive(active - 1);
++        else if (e.key === 'Home') setActive(0);
++        else if (e.key === 'End') setActive(options.length - 1);
++        else if (e.key === 'Enter' || e.key === ' ') choose(active);
++        else if (e.key === 'Escape') close(true);
++        else if (e.key === 'Tab') close();
++        else return;
++        e.preventDefault();
++      });
++      toggle.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
++      });
++      document.addEventListener('click', function (e) {
++        if (!root.contains(e.target)) close();
++      });
++    })();
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

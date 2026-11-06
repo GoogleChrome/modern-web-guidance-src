@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .search-container {
++      display: flex;
++      justify-content: center;
++      margin: 20px 0 10px;
++    }
++
++    #search-input {
++      width: 100%;
++      max-width: 400px;
++      padding: 10px 16px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 25px;
++      outline: none;
++      color: var(--text);
++      background-color: white;
++      transition: border-color 0.3s, box-shadow 0.3s;
++    }
++
++    #search-input:focus {
++      border-color: var(--primary);
++      box-shadow: 0 0 6px rgba(78, 52, 46, 0.2);
++    }
++
++    mark,
++    .highlight {
++      background-color: gold;
++      color: inherit;
++      padding: 0;
++      border-radius: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +208,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="search-container">
++        <input type="text" id="search-input" placeholder="Search seasonal favorites..." aria-label="Search seasonal favorites">
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +241,58 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const searchInput = document.getElementById('search-input');
++      const cardTextElements = document.querySelectorAll('.grid .card h3, .grid .card p');
++
++      cardTextElements.forEach((el) => {
++        el.dataset.originalText = el.textContent;
++      });
++
++      function escapeRegExp(str) {
++        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++      }
++
++      function updateHighlights() {
++        const query = searchInput.value;
++
++        cardTextElements.forEach((el) => {
++          const originalText = el.dataset.originalText || '';
++          el.textContent = originalText;
++
++          if (!query || !query.trim()) {
++            return;
++          }
++
++          const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
++          const parts = originalText.split(regex);
++
++          if (parts.length > 1) {
++            const fragment = document.createDocumentFragment();
++            parts.forEach((part, index) => {
++              if (index % 2 === 1) {
++                const mark = document.createElement('mark');
++                mark.className = 'highlight';
++                mark.style.backgroundColor = 'gold';
++                mark.textContent = part;
++                fragment.appendChild(mark);
++              } else if (part) {
++                fragment.appendChild(document.createTextNode(part));
++              }
++            });
++            el.textContent = '';
++            el.appendChild(fragment);
++          }
++        });
++      }
++
++      searchInput.addEventListener('input', updateHighlights);
++      searchInput.addEventListener('keyup', updateHighlights);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

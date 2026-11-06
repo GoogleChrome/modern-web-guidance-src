@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,103 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form Section */
++    .payment-section {
++      max-width: 520px;
++      margin: 60px auto 20px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment-section h2 {
++      color: var(--primary);
++      margin-block-end: 1.5rem;
++      text-align: center;
++    }
++
++    .payment-fieldset {
++      border: 0;
++      padding: 0;
++      margin: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--text);
++      margin-block-end: 0.25rem;
++    }
++
++    .hint {
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-block-end: 0.375rem;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      line-height: 1.5;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++      border-color: var(--primary);
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    .payment-submit {
++      width: 100%;
++      border: none;
++      font-size: 1rem;
++      font-weight: 600;
++      min-height: 48px;
++      cursor: pointer;
++    }
++
++    .payment-submit:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +289,88 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment-section" aria-labelledby="payment-heading">
++      <h2 id="payment-heading">Payment Details</h2>
++      <form id="payment-form" action="/checkout" method="POST">
++        <fieldset class="payment-fieldset">
++          <legend class="visually-hidden">Credit or Debit Card Information</legend>
++
++          <div class="form-group">
++            <label for="cc-number">Card number</label>
++            <span id="cc-number-hint" class="hint">Enter your 13 to 19 digit card number (spaces allowed)</span>
++            <input
++              id="cc-number"
++              name="cc-number"
++              type="text"
++              autocomplete="cc-number"
++              inputmode="numeric"
++              aria-describedby="cc-number-hint"
++              maxlength="19"
++              pattern="[\d ]{13,19}"
++              enterkeyhint="next"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-name">Name on card</label>
++            <input
++              id="cc-name"
++              name="cc-name"
++              type="text"
++              autocomplete="cc-name"
++              maxlength="50"
++              pattern="[\p{L} \-\.]+"
++              enterkeyhint="next"
++              required>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-exp">Expiry date</label>
++            <span id="exp-hint" class="hint">Format: MM/YY</span>
++            <input
++              id="cc-exp"
++              name="cc-exp"
++              type="text"
++              autocomplete="cc-exp"
++              aria-describedby="exp-hint"
++              maxlength="5"
++              pattern="(0[1-9]|1[0-2])\/[0-9]{2}"
++              enterkeyhint="next"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required>
++          </div>
++
++          <div class="form-group">
++            <label for="cc-csc">Security code</label>
++            <span id="csc-hint" class="hint">3 or 4 digits on the back or front of your card</span>
++            <input
++              id="cc-csc"
++              name="cc-csc"
++              type="text"
++              autocomplete="cc-csc"
++              inputmode="numeric"
++              aria-describedby="csc-hint"
++              maxlength="4"
++              pattern="[0-9]{3,4}"
++              enterkeyhint="done"
++              autocorrect="off"
++              autocapitalize="off"
++              spellcheck="false"
++              required>
++          </div>
++
++          <button type="submit" id="payment-submit-btn" class="btn payment-submit">Complete Payment</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

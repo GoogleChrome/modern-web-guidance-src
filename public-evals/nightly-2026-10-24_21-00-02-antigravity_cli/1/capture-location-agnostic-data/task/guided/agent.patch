@@ -1,0 +1,357 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,161 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Location-Agnostic Schedule & Anniversary Form */
++    .preferences-section {
++      margin-top: 48px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .preferences-section h2 {
++      text-align: center;
++      margin-bottom: 8px;
++      color: var(--primary);
++    }
++
++    .preferences-intro {
++      text-align: center;
++      margin-bottom: 24px;
++      font-size: 0.95rem;
++    }
++
++    .preferences-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px;
++      align-items: start;
++    }
++
++    fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++    }
++
++    .form-group {
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-block-end: 0.35rem;
++      padding: 10px 0;
++      margin-top: -10px;
++    }
++
++    .form-group input {
++      width: 100%;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #9e9e9e;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .form-group input {
++        min-height: 52px;
++      }
++    }
++
++    .form-group input:focus-visible,
++    .btn-submit:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .form-group input:invalid:user-invalid {
++      border-color: #b71c1c;
++    }
++
++    .field-hint {
++      display: block;
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-top: 4px;
++    }
++
++    .btn-submit {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 24px;
++      min-height: 48px;
++      border: none;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++      width: 100%;
++    }
++
++    .btn-submit:hover {
++      background: #3e2723;
++    }
++
++    .schedule-summary {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .schedule-summary h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .summary-list {
++      list-style: none;
++    }
++
++    .summary-list li {
++      padding: 10px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .summary-list li:last-child {
++      border-bottom: none;
++    }
++
++    .summary-label {
++      font-weight: 600;
++      display: block;
++      font-size: 0.9rem;
++    }
++
++    .summary-value {
++      font-size: 1.05rem;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.8rem;
++      font-weight: bold;
++      padding: 2px 8px;
++      border-radius: 4px;
++      margin-inline-start: 6px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +347,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences-section" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Coffee Routine &amp; Anniversary</h2>
++      <p class="preferences-intro">
++        Set your daily pickup reminder and coffee anniversary. Both use location-agnostic calendar and wall-clock time so your selections never shift when traveling across time zones.
++      </p>
++
++      <div class="preferences-layout">
++        <form id="coffee-preferences-form" action="/account/preferences" method="POST">
++          <fieldset>
++            <legend>Your Travel-Safe Schedule</legend>
++
++            <div class="form-group">
++              <label for="pickup-reminder-time">Daily Pickup Reminder Time (Required)</label>
++              <input
++                type="time"
++                id="pickup-reminder-time"
++                name="pickup_reminder_time"
++                value="08:00"
++                required
++                aria-describedby="pickup-reminder-hint"
++              >
++              <span id="pickup-reminder-hint" class="field-hint">
++                Wall-clock time (e.g., 08:00 wherever you are—no UTC offset drift).
++              </span>
++            </div>
++
++            <div class="form-group">
++              <label for="coffee-anniversary-date">Coffee Anniversary Date (Required)</label>
++              <input
++                type="date"
++                id="coffee-anniversary-date"
++                name="coffee_anniversary_date"
++                value="2023-10-24"
++                required
++                aria-describedby="coffee-anniversary-hint"
++              >
++              <span id="coffee-anniversary-hint" class="field-hint">
++                Calendar date when you joined The Daily Grind rewards club.
++              </span>
++            </div>
++
++            <button type="submit" class="btn-submit" id="save-preferences-btn">
++              Save Routine &amp; Anniversary
++            </button>
++          </fieldset>
++        </form>
++
++        <div class="schedule-summary" aria-live="polite" id="schedule-summary">
++          <h3>Saved Location-Agnostic Details</h3>
++          <ul class="summary-list">
++            <li>
++              <span class="summary-label">Daily Pickup Reminder (<code>Temporal.PlainTime</code>)</span>
++              <span class="summary-value" id="display-pickup-time">08:00</span>
++            </li>
++            <li>
++              <span class="summary-label">Coffee Anniversary Date (<code>Temporal.PlainDate</code>)</span>
++              <span class="summary-value" id="display-anniversary-date">2023-10-24</span>
++            </li>
++            <li>
++              <span class="summary-label">Annual Reward Milestone (<code>Temporal.PlainMonthDay</code>)</span>
++              <span class="summary-value" id="display-annual-milestone">10-24</span>
++              <span class="badge" id="anniversary-status-badge" hidden>Happy Coffee Anniversary!</span>
++            </li>
++            <li>
++              <span class="summary-label">Anniversary Pickup Appointment (<code>Temporal.PlainDateTime</code>)</span>
++              <span class="summary-value" id="display-anniversary-appointment">2023-10-24T08:00:00</span>
++            </li>
++          </ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +431,110 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initializeApp() {
++      const form = document.getElementById('coffee-preferences-form');
++      const timeInput = document.getElementById('pickup-reminder-time');
++      const dateInput = document.getElementById('coffee-anniversary-date');
++
++      const displayPickupTime = document.getElementById('display-pickup-time');
++      const displayAnniversaryDate = document.getElementById('display-anniversary-date');
++      const displayAnnualMilestone = document.getElementById('display-annual-milestone');
++      const displayAnniversaryAppointment = document.getElementById('display-anniversary-appointment');
++      const anniversaryStatusBadge = document.getElementById('anniversary-status-badge');
++
++      const STORAGE_TIME_KEY = 'dailyGrind_pickupReminderTime';
++      const STORAGE_DATE_KEY = 'dailyGrind_coffeeAnniversaryDate';
++
++      // Restore saved ISO plain strings if available
++      const savedTimeStr = localStorage.getItem(STORAGE_TIME_KEY);
++      const savedDateStr = localStorage.getItem(STORAGE_DATE_KEY);
++
++      if (savedTimeStr) {
++        timeInput.value = savedTimeStr;
++      }
++      if (savedDateStr) {
++        dateInput.value = savedDateStr;
++      }
++
++      function renderSchedule(rawDate, rawTime) {
++        if (!rawDate || !rawTime) return;
++
++        // Parse location-agnostic calendar date and wall-clock time via Temporal Plain types
++        const anniversaryDate = Temporal.PlainDate.from(rawDate);
++        const reminderTime = Temporal.PlainTime.from(rawTime);
++
++        // Combine into a location-agnostic PlainDateTime without binding to a time zone
++        const localAppointment = anniversaryDate.toPlainDateTime(reminderTime);
++
++        // Read calendar fields directly from the PlainDate without formatToParts()
++        const { year, month, day } = anniversaryDate;
++
++        // Construct PlainMonthDay for the recurring annual anniversary with explicit iso8601 calendar
++        const annualAnniversary = Temporal.PlainMonthDay.from({
++          month,
++          day,
++          calendar: 'iso8601',
++        });
++
++        const today = Temporal.Now.plainDateISO();
++        const isTodayAnniversary = annualAnniversary.equals(today.toPlainMonthDay());
++
++        // Convert PlainMonthDay to a PlainDate with a specific year before date arithmetic
++        const occurrenceThisYear = annualAnniversary.toPlainDate({ year: today.year });
++        const nextYearOccurrence = occurrenceThisYear.add({ years: 1 }, { overflow: 'constrain' });
++
++        // Format and display without time zone conversion
++        displayPickupTime.textContent = `${reminderTime.toLocaleString()} (${reminderTime.toString().slice(0, 5)})`;
++        displayAnniversaryDate.textContent = `${anniversaryDate.toLocaleString()} (${anniversaryDate.toString()})`;
++        displayAnnualMilestone.textContent = `${annualAnniversary.toLocaleString()} — Next: ${
++           Temporal.PlainDate.compare(occurrenceThisYear, today) >= 0
++            ? occurrenceThisYear.toString()
++            : nextYearOccurrence.toString()
++        }`;
++        displayAnniversaryAppointment.textContent = localAppointment.toString();
++
++        anniversaryStatusBadge.hidden = !isTodayAnniversary;
++
++        // Persist plain ISO representations so traveling across time zones never shifts values
++        localStorage.setItem(STORAGE_TIME_KEY, reminderTime.toString().slice(0, 5));
++        localStorage.setItem(STORAGE_DATE_KEY, anniversaryDate.toString());
++      }
++
++      // Clear custom validity on active input
++      [timeInput, dateInput].forEach((input) => {
++        input.addEventListener('input', () => {
++          input.setCustomValidity('');
++        });
++        input.addEventListener('blur', () => {
++          if (input.checkValidity()) {
++            renderSchedule(dateInput.value, timeInput.value);
++          }
++        });
++      });
++
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        if (form.checkValidity()) {
++          renderSchedule(dateInput.value, timeInput.value);
++        }
++      });
++
++      renderSchedule(dateInput.value, timeInput.value);
++    }
++
++    // Check if Temporal is supported natively; load temporal-polyfill conditionally
++    (async () => {
++      if (typeof Temporal === 'undefined') {
++        const module = await import('https://esm.sh/temporal-polyfill');
++        globalThis.Temporal = module.Temporal;
++        Date.prototype.toTemporalInstant = module.toTemporalInstant;
++      }
++      initializeApp();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

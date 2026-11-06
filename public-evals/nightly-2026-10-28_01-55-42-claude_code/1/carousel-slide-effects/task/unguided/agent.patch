@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,20 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -134,8 +146,157 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Product Carousel */
++    .carousel {
++      margin-top: 60px;
++    }
++
++    .carousel h2 {
++      text-align: center;
++    }
++
++    .carousel-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .scroller {
++      --card-width: 260px;
++      --card-gap: 24px;
++      --scale-min: 0.84;
++      /* Inline padding lets the first and last cards reach the center. */
++      --edge-padding: max(16px, calc(50% - var(--card-width) / 2));
++      margin-top: 20px;
++      padding: 24px var(--edge-padding) 32px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      scroll-padding-inline: var(--edge-padding);
++      scrollbar-color: var(--primary) var(--secondary);
++      border-radius: 8px;
++    }
++
++    /* The scroller is keyboard-focusable so arrow keys can scroll it. */
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .product-list {
++      display: grid;
++      grid-auto-flow: column;
++      grid-auto-columns: var(--card-width);
++      gap: var(--card-gap);
++      list-style: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .product-card {
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      text-align: center;
++      /* Browsers without scroll-driven animations simply show cards at full size. */
++      transform: scale(1);
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .product-body {
++      padding: 16px 18px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.1rem;
++    }
++
++    .product-card p {
++      font-size: 0.9rem;
++      flex: 1;
++    }
++
++    .product-card .price {
++      display: block;
++      font-weight: bold;
++      color: var(--text);
++      margin-top: 10px;
++      font-size: 1.05rem;
++    }
++
++    .product-card .unit {
++      font-weight: normal;
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .product-card .btn {
++      margin-top: 12px;
++      align-self: center;
++    }
++
++    .product-card .btn:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Scale cards toward the center of the scrollport using a CSS view timeline (no JavaScript). */
++    @supports (animation-timeline: view()) {
++      .product-card {
++        animation: scale-toward-center linear both;
++        animation-timeline: view(inline);
++        /* Map 0% -> card fully off the left edge, 50% -> centered, 100% -> fully off the right edge. */
++        animation-range: cover 0% cover 100%;
++      }
++    }
++
++    @keyframes scale-toward-center {
++      0% {
++        transform: scale(var(--scale-min));
++        opacity: 0.7;
++      }
++
++      50% {
++        transform: scale(1);
++        opacity: 1;
++      }
++
++      100% {
++        transform: scale(var(--scale-min));
++        opacity: 0.7;
++      }
++    }
++
++    /* Respect users who prefer reduced motion: cards stay full size with no scaling. */
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        animation: none;
++        transform: none;
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +355,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel" aria-labelledby="shop-beans-heading">
++      <h2 id="shop-beans-heading">Shop Our Beans</h2>
++      <p class="carousel-hint" id="shop-beans-hint">Scroll sideways, or focus the list and use the arrow keys, to browse.</p>
++      <div class="scroller" role="region" tabindex="0" aria-labelledby="shop-beans-heading"
++        aria-describedby="shop-beans-hint">
++        <ul class="product-list" role="list">
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
++              alt="Roasted coffee beans spilling from a burlap sack" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>House Blend</h3>
++              <p>Balanced and smooth with notes of cocoa and toasted almond. Our everyday favorite.</p>
++              <span class="price">$14.00 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/house-blend" class="btn">Add to Cart<span class="visually-hidden">: House Blend</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80"
++              alt="Close-up of dark roasted coffee beans" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>Midnight Dark Roast</h3>
++              <p>Bold, smoky, and low in acidity. Built for French press and espresso lovers.</p>
++              <span class="price">$15.50 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/midnight-dark" class="btn">Add to Cart<span class="visually-hidden">: Midnight Dark Roast</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80"
++              alt="Cup of coffee surrounded by scattered coffee beans" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>Ethiopian Yirgacheffe</h3>
++              <p>Bright and floral single origin with hints of bergamot and stone fruit.</p>
++              <span class="price">$18.00 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/ethiopian-yirgacheffe" class="btn">Add to Cart<span class="visually-hidden">: Ethiopian Yirgacheffe</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++              alt="Pour-over coffee being brewed into a glass carafe" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>Colombian Supremo</h3>
++              <p>Classic medium roast with caramel sweetness and a clean, nutty finish.</p>
++              <span class="price">$16.00 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/colombian-supremo" class="btn">Add to Cart<span class="visually-hidden">: Colombian Supremo</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++              alt="Latte with heart-shaped foam art in a white cup" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>Espresso Forte</h3>
++              <p>A dense, syrupy espresso blend with dark chocolate and a lingering crema.</p>
++              <span class="price">$17.00 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/espresso-forte" class="btn">Add to Cart<span class="visually-hidden">: Espresso Forte</span></a>
++            </div>
++          </li>
++          <li class="product-card">
++            <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80"
++              alt="Cup of coffee on a wooden table beside a notebook" width="600" height="450" loading="lazy">
++            <div class="product-body">
++              <h3>Swiss Water Decaf</h3>
++              <p>All the flavor, none of the jitters. Chemical-free decaf with a mellow body.</p>
++              <span class="price">$15.00 <span class="unit">&middot; 12 oz bag</span></span>
++              <a href="/shop/swiss-water-decaf" class="btn">Add to Cart<span class="visually-hidden">: Swiss Water Decaf</span></a>
++            </div>
++          </li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

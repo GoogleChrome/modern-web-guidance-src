@@ -1,0 +1,459 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,170 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites Two-Column Layout */
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: 260px 1fr;
++      gap: 24px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--secondary);
++      overflow: hidden;
++      margin-top: 24px;
++    }
++
++    /* Left Sidebar: Table of Contents */
++    .toc-sidebar {
++      background: #fdfbf7;
++      padding: 24px 16px;
++      border-right: 1px solid var(--secondary);
++      display: flex;
++      flex-direction: column;
++    }
++
++    .toc-sidebar ul {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      padding: 0;
++      margin: 0;
++    }
++
++    .toc-sidebar ul li {
++      margin-left: 0;
++    }
++
++    .toc-sidebar a {
++      display: block;
++      padding: 14px 18px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.95rem;
++      font-weight: 500;
++      border-radius: 6px;
++      border-left: 4px solid transparent;
++      transition: all 0.25s ease;
++      cursor: pointer;
++    }
++
++    .toc-sidebar a:hover {
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    /* Visual highlight for active TOC link */
++    .toc-sidebar a.active,
++    .toc-sidebar a[aria-current="true"],
++    .toc-sidebar a[aria-current] {
++      background: var(--primary);
++      color: white;
++      border-left-color: var(--accent);
++      font-weight: 600;
++      box-shadow: 0 2px 6px rgba(78, 52, 46, 0.2);
++    }
++
++    /* Right Panel: Scroll-snapping seasonal panel */
++    .seasonal-panel {
++      height: 480px;
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      scroll-behavior: smooth;
++      position: relative;
++      overscroll-behavior-y: contain;
++    }
++
++    /* Drink Section articles */
++    .drink-section {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      min-height: 480px;
++      box-sizing: border-box;
++      padding: 0 32px 32px 32px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      border-bottom: 1px solid #f0ebe8;
++    }
++
++    .drink-section:last-child {
++      border-bottom: none;
++    }
++
++    .drink-section header,
++    article.drink-section > header {
++      scroll-snap-align: start;
++      scroll-snap-stop: always;
++      padding-top: 32px;
++      margin-bottom: 16px;
++    }
++
++    .drink-section header h3 {
++      font-size: 1.8rem;
++      color: var(--primary);
++      margin: 0;
++    }
++
++    .drink-content {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++    }
++
++    .drink-image {
++      width: 160px;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 10px;
++      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
++      flex-shrink: 0;
++    }
++
++    .drink-details {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 12px;
++    }
++
++    .drink-details p {
++      font-size: 1.05rem;
++      color: var(--text);
++      line-height: 1.5;
++    }
++
++    @media (max-width: 768px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++
++      .toc-sidebar {
++        border-right: none;
++        border-bottom: 1px solid var(--secondary);
++      }
++
++      .seasonal-panel {
++        height: 420px;
++      }
++
++      .drink-section {
++        min-height: 420px;
++        padding: 0 20px 20px 20px;
++      }
++
++      .drink-content {
++        flex-direction: column;
++        text-align: center;
++      }
++
++      .drink-details {
++        align-items: center;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,26 +336,56 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal-favorites" id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="seasonal-layout">
++        <nav class="toc-sidebar" aria-label="Seasonal Favorites Table of Contents">
++          <ul class="toc-list">
++            <li><a href="#maple-oat-latte" class="toc-link active" aria-current="true">Maple Oat Latte</a></li>
++            <li><a href="#dark-roast-espresso" class="toc-link">Dark Roast Espresso</a></li>
++            <li><a href="#cold-brew" class="toc-link">Cold Brew</a></li>
++          </ul>
++        </nav>
++        <div class="seasonal-panel" tabindex="0" role="region" aria-label="Seasonal Favorites">
++          <article class="drink-section" id="maple-oat-latte">
++            <header>
++              <h3>Maple Oat Latte</h3>
++            </header>
++            <div class="drink-content">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="drink-image">
++              <div class="drink-details">
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="/menu/seasonal" class="btn">View Details</a>
++              </div>
++            </div>
++          </article>
++          <article class="drink-section" id="dark-roast-espresso">
++            <header>
++              <h3>Dark Roast Espresso</h3>
++            </header>
++            <div class="drink-content">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="drink-image">
++              <div class="drink-details">
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="/menu/espresso" class="btn">View Details</a>
++              </div>
++            </div>
++          </article>
++          <article class="drink-section" id="cold-brew">
++            <header>
++              <h3>Cold Brew</h3>
++            </header>
++            <div class="drink-content">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="drink-image">
++              <div class="drink-details">
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="/menu/cold-brew" class="btn">View Details</a>
++              </div>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+       </div>
+     </section>
+   </main>
+ 
+@@ -206,7 +398,211 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function initSeasonalNav() {
++      const seasonalPanel = document.querySelector('.seasonal-panel');
++      const tocSidebar = document.querySelector('.toc-sidebar');
++      if (!seasonalPanel || !tocSidebar) return;
++
++      const tocLinks = Array.from(tocSidebar.querySelectorAll('a'));
++      const drinkSections = Array.from(seasonalPanel.querySelectorAll('.drink-section'));
++      let isClickScrolling = false;
++      let scrollTimeout = null;
++
++      function setActiveSection(targetId) {
++        if (!targetId) return;
++        const cleanId = targetId.replace(/^#/, '');
++
++        tocLinks.forEach(link => {
++          const href = link.getAttribute('href') || '';
++          const linkId = href.replace(/^#/, '');
++          const isCurrent = (linkId === cleanId);
++
++          if (isCurrent) {
++            link.classList.add('active');
++            link.setAttribute('aria-current', 'true');
++            if (link.parentElement && link.parentElement.tagName === 'LI') {
++              link.parentElement.classList.add('active');
++            }
++          } else {
++            link.classList.remove('active');
++            link.removeAttribute('aria-current');
++            if (link.parentElement && link.parentElement.tagName === 'LI') {
++              link.parentElement.classList.remove('active');
++            }
++          }
++        });
++      }
++
++      function getSnappedSection() {
++        const panelRect = seasonalPanel.getBoundingClientRect();
++        const panelScrollTop = seasonalPanel.scrollTop;
++        let closestSection = null;
++        let minDistance = Infinity;
++
++        drinkSections.forEach(section => {
++          const sectionRect = section.getBoundingClientRect();
++          if (panelRect.height > 0 && sectionRect.height > 0) {
++            const distance = Math.abs(sectionRect.top - panelRect.top);
++            if (distance < minDistance) {
++              minDistance = distance;
++              closestSection = section;
++            }
++          } else {
++            const sectionOffset = section.offsetTop - seasonalPanel.offsetTop;
++            const distance = Math.abs(sectionOffset - panelScrollTop);
++            if (distance < minDistance) {
++              minDistance = distance;
++              closestSection = section;
++            }
++          }
++        });
++
++        return closestSection || drinkSections[0];
++      }
++
++      function onScroll() {
++        if (isClickScrolling) return;
++        const snapped = getSnappedSection();
++        if (snapped && snapped.id) {
++          setActiveSection(snapped.id);
++        }
++      }
++
++      // Intersection Observer for scroll snapping detection
++      const visibilityMap = new Map();
++      if ('IntersectionObserver' in window) {
++        const observer = new IntersectionObserver((entries) => {
++          if (isClickScrolling) return;
++
++          entries.forEach(entry => {
++            const section = entry.target.closest('.drink-section') || entry.target;
++            if (section) {
++              if (entry.isIntersecting) {
++                visibilityMap.set(section, entry.intersectionRatio);
++              } else {
++                visibilityMap.delete(section);
++              }
++            }
++          });
++
++          let bestSection = null;
++          let maxRatio = 0;
++          visibilityMap.forEach((ratio, section) => {
++            if (ratio > maxRatio) {
++              maxRatio = ratio;
++              bestSection = section;
++            }
++          });
++
++          if (bestSection && bestSection.id) {
++            setActiveSection(bestSection.id);
++          }
++        }, {
++          root: seasonalPanel,
++          threshold: [0.1, 0.25, 0.5, 0.75, 1.0]
++        });
++
++        drinkSections.forEach(section => {
++          observer.observe(section);
++          const header = section.querySelector('header');
++          if (header) observer.observe(header);
++        });
++      }
++
++      seasonalPanel.addEventListener('scroll', onScroll, { passive: true });
++      seasonalPanel.addEventListener('scrollend', () => {
++        isClickScrolling = false;
++        onScroll();
++      }, { passive: true });
++
++      // Handle clicking TOC links
++      tocLinks.forEach(link => {
++        link.addEventListener('click', (e) => {
++          e.preventDefault();
++          const href = link.getAttribute('href');
++          if (!href) return;
++          const targetId = href.replace(/^#/, '');
++          const targetSection = document.getElementById(targetId);
++          if (!targetSection) return;
++
++          // Highlight link and set aria-current immediately
++          setActiveSection(targetId);
++
++          isClickScrolling = true;
++          clearTimeout(scrollTimeout);
++          scrollTimeout = setTimeout(() => {
++            isClickScrolling = false;
++            onScroll();
++          }, 800);
++
++          // Calculate target scroll offset
++          const panelRect = seasonalPanel.getBoundingClientRect();
++          const targetRect = targetSection.getBoundingClientRect();
++          let targetScrollTop;
++
++          if (panelRect.height > 0 && targetRect.height > 0) {
++            targetScrollTop = seasonalPanel.scrollTop + (targetRect.top - panelRect.top);
++          } else {
++            targetScrollTop = targetSection.offsetTop - seasonalPanel.offsetTop;
++            if (isNaN(targetScrollTop) || targetScrollTop < 0) {
++              targetScrollTop = targetSection.offsetTop;
++            }
++          }
++
++          // Smoothly scroll the panel to the target section
++          if (typeof seasonalPanel.scrollTo === 'function') {
++            seasonalPanel.scrollTo({
++              top: targetScrollTop,
++              behavior: 'smooth'
++            });
++          } else {
++            seasonalPanel.scrollTop = targetScrollTop;
++          }
++
++          const targetHeader = targetSection.querySelector('header') || targetSection;
++          if (typeof targetHeader.scrollIntoView === 'function') {
++            try {
++              targetHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
++            } catch (err) {
++              targetHeader.scrollIntoView(true);
++            }
++          }
++
++          if (window.history && window.history.pushState) {
++            history.pushState(null, '', '#' + targetId);
++          }
++        });
++      });
++
++      // Initialize initial state
++      if (drinkSections.length > 0) {
++        if (window.location.hash) {
++          const initialId = window.location.hash.replace(/^#/, '');
++          const initialSection = document.getElementById(initialId);
++          if (initialSection) {
++            setActiveSection(initialId);
++            setTimeout(() => {
++              seasonalPanel.scrollTo({
++                top: initialSection.offsetTop - seasonalPanel.offsetTop,
++                behavior: 'smooth'
++              });
++            }, 100);
++            return;
++          }
++        }
++        setActiveSection(drinkSections[0].id);
++      }
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initSeasonalNav);
++    } else {
++      initSeasonalNav();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

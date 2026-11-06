@@ -1,0 +1,199 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..0fdd47a
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,115 @@
++import React, { useState, useEffect } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++interface StoryItem {
++  id: string;
++  data: {
++    title: string;
++    date: Date | string;
++  };
++}
++
++interface TopStoriesSliderProps {
++  stories: StoryItem[];
++}
++
++export default function TopStoriesSlider({ stories }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [slideStep, setSlideStep] = useState(0);
++  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
++
++  useEffect(() => {
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    setPrefersReducedMotion(mediaQuery.matches);
++
++    const handleChange = (e: MediaQueryListEvent) => {
++      setPrefersReducedMotion(e.matches);
++    };
++
++    mediaQuery.addEventListener('change', handleChange);
++    return () => mediaQuery.removeEventListener('change', handleChange);
++  }, []);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handleNext = () => {
++    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    setPrefersReducedMotion(reduced);
++    setDirection('next');
++    setSlideStep((s) => s + 1);
++    setCurrentIndex((prev) => (prev + 1) % stories.length);
++  };
++
++  const handlePrev = () => {
++    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    setPrefersReducedMotion(reduced);
++    setDirection('prev');
++    setSlideStep((s) => s + 1);
++    setCurrentIndex((prev) => (prev - 1 + stories.length) % stories.length);
++  };
++
++  const currentStory = stories[currentIndex];
++  const dateObj =
++    currentStory.data.date instanceof Date
++      ? currentStory.data.date
++      : new Date(currentStory.data.date);
++  const formattedDate = dateObj.toLocaleDateString();
++
++  const slideClass =
++    direction === 'next'
++      ? 'top-story-slide top-story-slide-next'
++      : direction === 'prev'
++      ? 'top-story-slide top-story-slide-prev'
++      : 'top-story-slide';
++
++  return (
++    <div
++      className="flex items-center justify-between gap-4"
++      role="region"
++      aria-label="Top Stories"
++    >
++      <button
++        type="button"
++        onClick={handlePrev}
++        aria-label="Previous"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer shrink-0"
++      >
++        <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++        <span>Previous</span>
++      </button>
++
++      <div className="overflow-hidden flex-1 text-center">
++        <div
++          key={`${currentStory.id}-${slideStep}`}
++          data-direction={direction ?? undefined}
++          className={slideClass}
++          style={
++            prefersReducedMotion
++              ? { animation: 'none', transition: 'none', transform: 'none' }
++              : undefined
++          }
++        >
++          <a href={`${import.meta.env.BASE_URL}articles/${currentStory.id}`}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++              {currentStory.data.title}
++            </h3>
++          </a>
++          <span className="text-xs text-gray-500">{formattedDate}</span>
++        </div>
++      </div>
++
++      <button
++        type="button"
++        onClick={handleNext}
++        aria-label="Next"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer shrink-0"
++      >
++        <span>Next</span>
++        <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++      </button>
++    </div>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..054a83f 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -41,16 +42,7 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider client:load stories={topStories} />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..ce05c4f 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,42 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++@keyframes slide-in-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-in-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.top-story-slide-next {
++  animation: slide-in-right 300ms ease-out;
++  transition: transform 300ms ease-out;
++}
++
++.top-story-slide-prev {
++  animation: slide-in-left 300ms ease-out;
++  transition: transform 300ms ease-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .top-story-slide,
++  .top-story-slide-next,
++  .top-story-slide-prev {
++    animation: none !important;
++    transition: none !important;
++    transform: none !important;
++  }
+ }
+\ No newline at end of file

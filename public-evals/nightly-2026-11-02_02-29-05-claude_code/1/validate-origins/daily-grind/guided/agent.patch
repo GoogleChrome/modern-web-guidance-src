@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..96f45ba 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,35 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .order-status {
++      max-width: 1100px;
++      margin: 20px auto 0;
++      padding: 12px 20px;
++      background: var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++    }
++
++    .order-status[hidden] {
++      display: none;
++    }
++
++    .rewards-widget {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      height: 120px;
++      margin: 20px auto 0;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .rewards-balance {
++      text-align: center;
++      margin-top: 10px;
++    }
+   </style>
+ </head>
+ 
+@@ -174,6 +203,8 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <p class="order-status" id="order-status" role="status" hidden></p>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -195,6 +226,21 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Your Rewards</h2>
++      <!-- Sandboxed without allow-same-origin, so the widget runs in an opaque ("null") origin -->
++      <iframe class="rewards-widget" id="rewards-widget" title="Rewards balance widget" sandbox="allow-scripts"
++        srcdoc="<!DOCTYPE html><html><body style='font-family:sans-serif;text-align:center;color:#3e2723'>
++<p>Daily Grind Rewards</p><p id='stars'>Loading&hellip;</p>
++<script>
++  const stars = 120;
++  document.getElementById('stars').textContent = stars + ' stars';
++  parent.postMessage({ type: 'init' }, '*');
++  parent.postMessage({ type: 'balance', stars }, '*');
++</script></body></html>"></iframe>
++      <p class="rewards-balance" id="rewards-balance"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -202,11 +248,136 @@
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <a href="https://www.instagram.com/">Instagram</a> |
++      <a href="https://www.facebook.com/">Facebook</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Trusted ordering service allowed to post order updates to this page
++    const ORDERING_ORIGIN = 'https://order.thedailygrind.com';
++    const hasOriginApi = 'Origin' in globalThis;
++
++    // Prefer the browser-dispatched origin on MessageEvents (keeps opaque origins distinct);
++    // synthetic events only carry the serialized event.origin string.
++    function extractOrigin(candidate) {
++      try {
++        return Origin.from(candidate);
++      } catch (err) {
++        if (candidate instanceof MessageEvent) {
++          return Origin.from(candidate.origin);
++        }
++        throw err;
++      }
++    }
++
++    function extractUrlString(candidate) {
++      if (typeof candidate === 'string') return candidate;
++      if (candidate instanceof MessageEvent) return candidate.origin;
++      return candidate?.href ?? '';
++    }
++
++    function isTrustedOrderingMessage(event) {
++      try {
++        if (hasOriginApi) {
++          return extractOrigin(event).isSameOrigin(Origin.from(ORDERING_ORIGIN));
++        }
++        const senderOrigin = new URL(extractUrlString(event)).origin;
++        return senderOrigin !== 'null' && senderOrigin === new URL(ORDERING_ORIGIN).origin;
++      } catch {
++        return false;
++      }
++    }
++
++    // Same-site check (schemeful, Public Suffix List aware) against this page's own origin.
++    // Without the Origin API there is no PSL access, so fall back to a strict same-origin match.
++    function isSameSiteUrl(candidate) {
++      try {
++        if (hasOriginApi) {
++          const target = typeof candidate === 'string' ? new URL(candidate, location.href) : candidate;
++          return extractOrigin(target).isSameSite(Origin.from(self));
++        }
++        const targetOrigin = new URL(extractUrlString(candidate), location.href).origin;
++        return targetOrigin !== 'null' && targetOrigin === location.origin;
++      } catch {
++        return false;
++      }
++    }
++
++    function safeRedirect(target) {
++      if (isSameSiteUrl(target)) {
++        location.assign(new URL(target, location.href).href);
++      }
++    }
++
++    // Honor ?returnTo= only when it points back to our own site
++    const returnTo = new URLSearchParams(location.search).get('returnTo');
++    if (returnTo) {
++      safeRedirect(returnTo);
++    }
++
++    // Open off-site links in a new tab without handing them a reference to this window
++    for (const link of document.querySelectorAll('a[href]')) {
++      if (!isSameSiteUrl(link)) {
++        link.target = '_blank';
++        link.rel = 'noopener noreferrer external';
++      }
++    }
++
++    const orderStatus = document.getElementById('order-status');
++
++    window.addEventListener('message', (event) => {
++      if (!isTrustedOrderingMessage(event)) return;
++
++      const { type, status, redirectTo } = event.data ?? {};
++      if (type === 'order-status' && typeof status === 'string') {
++        orderStatus.textContent = status;
++        orderStatus.hidden = false;
++      } else if (type === 'order-redirect' && typeof redirectTo === 'string') {
++        safeRedirect(redirectTo);
++      }
++    });
++
++    // Sandboxed rewards widget: its serialized origin is "null", like every other sandboxed
++    // frame, so pin the widget's actual opaque origin from its init message instead.
++    const rewardsFrame = document.getElementById('rewards-widget');
++    const rewardsBalance = document.getElementById('rewards-balance');
++    let pinnedWidgetOrigin = hasOriginApi ? new Origin() : null; // matches nothing until pinned
++    let isWidgetPinned = false;
++
++    function isTrustedWidgetMessage(event) {
++      // Only ever accept messages coming from our own widget's window
++      if (event.source !== rewardsFrame.contentWindow) return false;
++      if (!hasOriginApi) {
++        // No opaque origin identity without the Origin API; rely on the window reference
++        if (!isWidgetPinned && event.data?.type === 'init') isWidgetPinned = true;
++        return isWidgetPinned;
++      }
++      try {
++        const senderOrigin = Origin.from(event);
++        if (!isWidgetPinned && event.data?.type === 'init') {
++          if (!senderOrigin.opaque) return false;
++          pinnedWidgetOrigin = senderOrigin;
++          isWidgetPinned = true;
++        }
++        return senderOrigin.isSameOrigin(pinnedWidgetOrigin);
++      } catch {
++        return false;
++      }
++    }
++
++    window.addEventListener('message', (event) => {
++      if (!isTrustedWidgetMessage(event)) return;
++
++      const { type, stars } = event.data ?? {};
++      if (type === 'balance' && Number.isInteger(stars) && stars >= 0) {
++        rewardsBalance.textContent = `You have ${stars} stars available.`;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

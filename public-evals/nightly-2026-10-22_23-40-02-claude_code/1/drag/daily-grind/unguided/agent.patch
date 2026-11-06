@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+index 66c9173..a0ba3ff 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,29 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Floating draggable element */
++    .floating-order {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1100;
++      background: var(--accent);
++      color: var(--text);
++      padding: 12px 20px;
++      border-radius: 999px;
++      font-weight: bold;
++      text-decoration: none;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
++      cursor: grab;
++      user-select: none;
++      touch-action: none;
++    }
++
++    .floating-order.dragging {
++      cursor: grabbing;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +230,72 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <a href="/order-online" class="floating-order" id="floating-order" draggable="false">☕ Order Now</a>
++
++  <script>
++    (function () {
++      const el = document.getElementById('floating-order');
++      const THRESHOLD = 5; // px of movement before a press counts as a drag
++      let startX, startY, originLeft, originTop, dragging = false, moved = false;
++
++      el.addEventListener('pointerdown', (e) => {
++        if (e.button !== 0) return;
++        const rect = el.getBoundingClientRect();
++        startX = e.clientX;
++        startY = e.clientY;
++        originLeft = rect.left;
++        originTop = rect.top;
++        dragging = true;
++        moved = false;
++        el.setPointerCapture(e.pointerId);
++      });
++
++      el.addEventListener('pointermove', (e) => {
++        if (!dragging) return;
++        const dx = e.clientX - startX;
++        const dy = e.clientY - startY;
++        if (!moved && Math.hypot(dx, dy) < THRESHOLD) return;
++        if (!moved) {
++          moved = true;
++          el.classList.add('dragging');
++          // Switch from right/bottom anchoring to left/top so we can position freely
++          el.style.right = 'auto';
++          el.style.bottom = 'auto';
++        }
++        const maxLeft = document.documentElement.clientWidth - el.offsetWidth;
++        const maxTop = document.documentElement.clientHeight - el.offsetHeight;
++        el.style.left = Math.min(Math.max(0, originLeft + dx), maxLeft) + 'px';
++        el.style.top = Math.min(Math.max(0, originTop + dy), maxTop) + 'px';
++      });
++
++      function endDrag(e) {
++        if (!dragging) return;
++        dragging = false;
++        el.classList.remove('dragging');
++        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
++      }
++      el.addEventListener('pointerup', endDrag);
++      el.addEventListener('pointercancel', endDrag);
++
++      // Don't follow the link when the press was a drag
++      el.addEventListener('click', (e) => {
++        if (moved) {
++          e.preventDefault();
++          moved = false;
++        }
++      });
++
++      // Keep the element on-screen if the window shrinks
++      window.addEventListener('resize', () => {
++        if (!el.style.left) return;
++        const maxLeft = document.documentElement.clientWidth - el.offsetWidth;
++        const maxTop = document.documentElement.clientHeight - el.offsetHeight;
++        el.style.left = Math.min(parseFloat(el.style.left), Math.max(0, maxLeft)) + 'px';
++        el.style.top = Math.min(parseFloat(el.style.top), Math.max(0, maxTop)) + 'px';
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

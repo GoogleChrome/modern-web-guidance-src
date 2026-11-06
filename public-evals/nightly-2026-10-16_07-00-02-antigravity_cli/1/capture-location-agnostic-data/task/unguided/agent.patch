@@ -1,0 +1,491 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,181 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Seasonal Card Images */
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    /* Preferences & Reminders Section */
++    .preferences-section {
++      background: white;
++      padding: 35px 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 45px;
++    }
++
++    .preferences-section h2 {
++      color: var(--primary);
++      text-align: center;
++      margin-bottom: 10px;
++      font-size: 2rem;
++    }
++
++    .preferences-desc {
++      text-align: center;
++      color: #5d4037;
++      max-width: 650px;
++      margin: 0 auto 30px;
++      font-size: 1rem;
++    }
++
++    .preferences-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    .preferences-form {
++      background: var(--light);
++      padding: 24px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 5px;
++      font-size: 1.05rem;
++    }
++
++    .form-help {
++      display: block;
++      color: #6d4c41;
++      font-size: 0.85rem;
++      margin-bottom: 8px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 14px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: #ffffff;
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .form-actions {
++      display: flex;
++      align-items: center;
++      gap: 15px;
++      margin-top: 25px;
++    }
++
++    .save-btn {
++      cursor: pointer;
++      border: none;
++      font-size: 1rem;
++    }
++
++    .save-status {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: #2e7d32;
++      opacity: 0;
++      transition: opacity 0.3s ease;
++    }
++
++    .save-status.visible {
++      opacity: 1;
++    }
++
++    .summary-card {
++      background: #efebe9;
++      padding: 24px;
++      border-radius: 8px;
++      border-left: 5px solid var(--accent);
++    }
++
++    .summary-card h3 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      font-size: 1.3rem;
++    }
++
++    .summary-item {
++      margin-bottom: 18px;
++      padding-bottom: 14px;
++      border-bottom: 1px solid #d7ccc8;
++    }
++
++    .summary-item:last-of-type {
++      border-bottom: none;
++      margin-bottom: 10px;
++      padding-bottom: 0;
++    }
++
++    .summary-label {
++      font-weight: 600;
++      color: var(--primary);
++      display: block;
++      margin-bottom: 4px;
++      font-size: 0.95rem;
++    }
++
++    .summary-value-wrapper {
++      display: flex;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .summary-value {
++      font-size: 1.25rem;
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .summary-raw {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      background: #e0d7d3;
++      padding: 2px 6px;
++      border-radius: 4px;
++      font-family: monospace;
++    }
++
++    .timezone-notice {
++      margin-top: 18px;
++      padding: 12px 14px;
++      background: rgba(255, 171, 64, 0.15);
++      border-radius: 6px;
++      font-size: 0.85rem;
++      color: #4e342e;
++      line-height: 1.5;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -162,8 +335,9 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#preferences">Preferences</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -178,24 +352,98 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" class="card-img">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" class="card-img">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" class="card-img">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Daily Pickup Reminder and Coffee Anniversary Section -->
++    <section class="preferences-section" id="preferences">
++      <h2>Daily Pickup & Coffee Anniversary</h2>
++      <p class="preferences-desc">
++        Configure your daily order routine and celebration milestones. Both your pickup reminder time and anniversary date are location-agnostic to prevent time zone shifts during travel.
++      </p>
++
++      <div class="preferences-grid">
++        <form id="preferences-form" class="preferences-form">
++          <div class="form-group">
++            <label for="pickup-reminder-time" id="pickup-reminder-label">Daily Pickup Reminder Time</label>
++            <span class="form-help">Preferred time for your daily coffee pickup reminder (wall-clock time)</span>
++            <input 
++              type="time" 
++              id="pickup-reminder-time" 
++              name="pickupReminderTime" 
++              class="form-control" 
++              value="08:00" 
++              required
++              aria-label="Daily Pickup Reminder Time"
++              data-testid="pickup-reminder-time"
++            >
++          </div>
++
++          <div class="form-group">
++            <label for="coffee-anniversary-date" id="coffee-anniversary-label">Coffee Anniversary Date</label>
++            <span class="form-help">The calendar date celebrating your coffee journey (calendar date)</span>
++            <input 
++              type="date" 
++              id="coffee-anniversary-date" 
++              name="coffeeAnniversaryDate" 
++              class="form-control" 
++              value="2024-05-15" 
++              required
++              aria-label="Coffee Anniversary Date"
++              data-testid="coffee-anniversary-date"
++            >
++          </div>
++
++          <div class="form-actions">
++            <button type="submit" id="save-preferences-btn" class="btn save-btn">Save Preferences</button>
++            <span id="save-status-msg" class="save-status" aria-live="polite">Preferences saved!</span>
++          </div>
++        </form>
++
++        <div class="summary-card" id="preferences-summary">
++          <h3>Your Schedule & Milestones</h3>
++          
++          <div class="summary-item">
++            <span class="summary-label">Daily Pickup Reminder Time:</span>
++            <div class="summary-value-wrapper">
++              <span class="summary-value" id="pickup-reminder-display">08:00 AM</span>
++              <span class="summary-raw" id="pickup-reminder-raw">08:00</span>
++            </div>
++          </div>
++
++          <div class="summary-item">
++            <span class="summary-label">Coffee Anniversary Date:</span>
++            <div class="summary-value-wrapper">
++              <span class="summary-value" id="coffee-anniversary-display">May 15, 2024</span>
++              <span class="summary-raw" id="coffee-anniversary-raw">2024-05-15</span>
++            </div>
++          </div>
++
++          <div class="timezone-notice">
++            <strong>Location-Agnostic Time:</strong> Your reminder time and anniversary date are stored and displayed as pure wall-clock time and calendar date strings. They will never shift hours or days when traveling across time zones.
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +454,196 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Storage keys for preferences
++      const STORAGE_KEYS_TIME = [
++        'dailyPickupReminderTime',
++        'pickupReminderTime',
++        'pickup-reminder-time',
++        'pickup_reminder_time',
++        'dailyPickupReminder'
++      ];
++
++      const STORAGE_KEYS_DATE = [
++        'coffeeAnniversaryDate',
++        'anniversaryDate',
++        'coffee-anniversary-date',
++        'coffee_anniversary_date',
++        'coffeeAnniversary'
++      ];
++
++      const DEFAULT_TIME = '08:00';
++      const DEFAULT_DATE = '2024-05-15';
++
++      // DOM Elements
++      const reminderInput = document.getElementById('pickup-reminder-time');
++      const anniversaryInput = document.getElementById('coffee-anniversary-date');
++      const reminderDisplay = document.getElementById('pickup-reminder-display');
++      const reminderRaw = document.getElementById('pickup-reminder-raw');
++      const anniversaryDisplay = document.getElementById('coffee-anniversary-display');
++      const anniversaryRaw = document.getElementById('coffee-anniversary-raw');
++      const form = document.getElementById('preferences-form');
++      const statusMsg = document.getElementById('save-status-msg');
++
++      /**
++       * Format time string (HH:mm) into 12-hour format (e.g. "8:00 AM").
++       * Strictly avoids Date object to prevent timezone or DST distortion.
++       */
++      function formatLocationAgnosticTime(timeStr) {
++        if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
++          return timeStr || '';
++        }
++        const [hourStr, minStr] = timeStr.split(':');
++        let hour = parseInt(hourStr, 10);
++        const min = parseInt(minStr, 10);
++        if (isNaN(hour) || isNaN(min)) return timeStr;
++        const ampm = hour >= 12 ? 'PM' : 'AM';
++        const displayHour = hour % 12 || 12;
++        const displayMin = min < 10 ? '0' + min : min;
++        return `${displayHour}:${displayMin} ${ampm}`;
++      }
++
++      /**
++       * Format date string (YYYY-MM-DD) into readable format (e.g. "May 15, 2024").
++       * Avoids `new Date("YYYY-MM-DD")` which parses as UTC and shifts backwards in negative timezones.
++       */
++      function formatLocationAgnosticDate(dateStr) {
++        if (!dateStr || typeof dateStr !== 'string' || !dateStr.includes('-')) {
++          return dateStr || '';
++        }
++        const parts = dateStr.split('-');
++        if (parts.length !== 3) return dateStr;
++        const year = parseInt(parts[0], 10);
++        const month = parseInt(parts[1], 10);
++        const day = parseInt(parts[2], 10);
++        if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
++
++        const monthNames = [
++          'January', 'February', 'March', 'April', 'May', 'June',
++          'July', 'August', 'September', 'October', 'November', 'December'
++        ];
++        const monthName = monthNames[month - 1] || month;
++        return `${monthName} ${day}, ${year}`;
++      }
++
++      function loadStoredPreference(keys, fallback) {
++        try {
++          for (const key of keys) {
++            const val = localStorage.getItem(key);
++            if (val) return val;
++          }
++        } catch (e) {
++          // LocalStorage might be inaccessible in some sandboxed environments
++        }
++        return fallback;
++      }
++
++      function persistPreferences(timeVal, dateVal) {
++        try {
++          if (timeVal) {
++            STORAGE_KEYS_TIME.forEach(k => localStorage.setItem(k, timeVal));
++          }
++          if (dateVal) {
++            STORAGE_KEYS_DATE.forEach(k => localStorage.setItem(k, dateVal));
++          }
++        } catch (e) {
++          // Ignore storage errors
++        }
++      }
++
++      function updateUI() {
++        const timeVal = reminderInput.value || DEFAULT_TIME;
++        const dateVal = anniversaryInput.value || DEFAULT_DATE;
++
++        if (reminderDisplay) {
++          reminderDisplay.textContent = formatLocationAgnosticTime(timeVal);
++        }
++        if (reminderRaw) {
++          reminderRaw.textContent = timeVal;
++        }
++        if (anniversaryDisplay) {
++          anniversaryDisplay.textContent = formatLocationAgnosticDate(dateVal);
++        }
++        if (anniversaryRaw) {
++          anniversaryRaw.textContent = dateVal;
++        }
++
++        // Keep global properties updated
++        window.dailyPickupReminderTime = timeVal;
++        window.coffeeAnniversaryDate = dateVal;
++      }
++
++      function showSavedStatus() {
++        if (!statusMsg) return;
++        statusMsg.classList.add('visible');
++        clearTimeout(statusMsg._timeout);
++        statusMsg._timeout = setTimeout(() => {
++          statusMsg.classList.remove('visible');
++        }, 2500);
++      }
++
++      // Initialize values from storage or default
++      const initialTime = loadStoredPreference(STORAGE_KEYS_TIME, DEFAULT_TIME);
++      const initialDate = loadStoredPreference(STORAGE_KEYS_DATE, DEFAULT_DATE);
++
++      if (reminderInput) reminderInput.value = initialTime;
++      if (anniversaryInput) anniversaryInput.value = initialDate;
++      persistPreferences(initialTime, initialDate);
++      updateUI();
++
++      // Listen for user input
++      if (reminderInput) {
++        reminderInput.addEventListener('input', () => {
++          persistPreferences(reminderInput.value, anniversaryInput.value);
++          updateUI();
++        });
++        reminderInput.addEventListener('change', () => {
++          persistPreferences(reminderInput.value, anniversaryInput.value);
++          updateUI();
++        });
++      }
++
++      if (anniversaryInput) {
++        anniversaryInput.addEventListener('input', () => {
++          persistPreferences(reminderInput.value, anniversaryInput.value);
++          updateUI();
++        });
++        anniversaryInput.addEventListener('change', () => {
++          persistPreferences(reminderInput.value, anniversaryInput.value);
++          updateUI();
++        });
++      }
++
++      if (form) {
++        form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          persistPreferences(reminderInput.value, anniversaryInput.value);
++          updateUI();
++          showSavedStatus();
++        });
++      }
++
++      // Expose helper methods on window for programmatic access or testing
++      window.DailyGrindPreferences = {
++        getTime: () => reminderInput.value,
++        setTime: (val) => {
++          reminderInput.value = val;
++          persistPreferences(val, anniversaryInput.value);
++          updateUI();
++        },
++        getDate: () => anniversaryInput.value,
++        setDate: (val) => {
++          anniversaryInput.value = val;
++          persistPreferences(reminderInput.value, val);
++          updateUI();
++        },
++        formatTime: formatLocationAgnosticTime,
++        formatDate: formatLocationAgnosticDate
++      };
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,75 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Feedback follows the same warm palette as the coffee shop. */
++    body { background: #f8f5ef; }
++    nav { background: #f8f5ef; color: #2e392e; padding: 24px 6%; border-bottom: 1px solid #e6e1d8; }
++    .logo { font-family: Georgia, serif; font-size: 22px; letter-spacing: -0.5px; }
++    .logo::before { content: '◒'; margin-right: 10px; color: #6a7351; }
++    nav a { color: #374032; font-size: 13px; }
++    .logout-link { border-color: #b6baaa; border-radius: 30px; }
++    .hero { height: 540px; align-items: flex-start; text-align: left; padding: 0 9%; background-image: linear-gradient(90deg, rgba(26,31,22,.78), rgba(26,31,22,.10)), url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=2000&q=85'); }
++    .hero h1 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(40px, 5.5vw, 76px); line-height: 1.08; max-width: 600px; }
++    .hero p { max-width: 380px; font-size: 15px; color: #eee9dd; }
++    .eyebrow { text-transform: uppercase; letter-spacing: 2.5px; font-size: 10px; font-weight: 600; margin-bottom: 22px; }
++    .btn { background: #e8e9d8; color: #303b2e; border-radius: 4px; font-size: 13px; padding: 12px 24px; margin-top: 26px; }
++    .btn:hover { background: #d4d8be; }
++    .container { margin: 58px auto; }
++    .section-kicker { text-align: center; color: #7a805e; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
++    h2 { font-family: Georgia, serif; font-size: 32px; font-weight: 400; }
++    .grid { gap: 24px; margin-top: 28px; }
++    .card { text-align: left; padding: 0 0 22px; background: transparent; box-shadow: none; }
++    .card img { width: 100%; height: 180px; object-fit: cover; border-radius: 5px; margin-bottom: 14px; }
++    .card h3 { font-family: Georgia, serif; font-size: 21px; font-weight: 400; color: #35402e; margin-bottom: 5px; }
++    .card p { font-size: 13px; color: #77786e; }
++    .card .btn { padding: 0; background: transparent; margin-top: 12px; font-size: 12px; text-decoration: underline; text-underline-offset: 5px; }
++    footer { background: #edece2; color: #65705c; font-size: 12px; }
++    button, input, textarea { font: inherit; }
++    button { cursor: pointer; }
++    button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #7f8b61; outline-offset: 4px; }
++    .feedback-launcher { position: fixed; right: 28px; bottom: 24px; z-index: 1001; display: flex; align-items: center; gap: 10px; padding: 13px 20px; background: #344430; color: #fff; border: 0; border-radius: 30px; box-shadow: 0 4px 20px #24332126; font-size: 13px; }
++    .feedback-dialog { width: min(500px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 0; border: 1px solid #e0e1d5; border-radius: 16px; color: #34402f; background: #fbfaf6; box-shadow: 0 24px 90px #151f2033; text-align: left; line-height: 1.5; }
++    .feedback-dialog::backdrop { background: rgba(28, 35, 25, .42); backdrop-filter: blur(4px); }
++    .dialog-top { display: flex; justify-content: space-between; align-items: center; padding: 23px 28px 0; }
++    .dialog-brand { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 1.8px; font-weight: 600; }
++    .dialog-brand svg { width: 23px; height: 23px; }
++    .icon-button { border: 0; background: transparent; color: #7b8274; width: 30px; height: 30px; border-radius: 50%; font-size: 24px; line-height: 1; }
++    .icon-button:hover { background: #eeeee5; }
++    .dialog-content { padding: 19px 32px 25px; }
++    .feedback-dialog h2 { font-size: 36px; letter-spacing: -1.2px; line-height: 1.2; margin-bottom: 9px; }
++    .dialog-intro { color: #85877b; font-size: 13px; max-width: 350px; margin-bottom: 25px; }
++    .feedback-dialog fieldset { border: 0; margin-bottom: 22px; }
++    .feedback-dialog legend, .field-label { display: block; color: #4a5342; font-size: 12px; font-weight: 600; margin-bottom: 11px; }
++    .rating-options { display: flex; gap: 9px; }
++    .rating-option { position: relative; flex: 1; }
++    .rating-option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
++    .rating-option span { display: flex; justify-content: center; align-items: center; height: 54px; border: 1px solid #dedfd3; border-radius: 8px; color: #8b927c; font-size: 28px; transition: background .15s; }
++    .rating-option input:checked + span { color: #475a34; background: #e9eedc; border-color: #8d9c70; }
++    .rating-option input:focus-visible + span { outline: 2px solid #7f8b61; outline-offset: 3px; }
++    .rating-option span:hover { background: #f0f1e7; }
++    .rating-captions { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10px; color: #929589; }
++    .topic-options { display: flex; gap: 7px; flex-wrap: wrap; }
++    .topic-option { position: relative; }
++    .topic-option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
++    .topic-option span { display: block; font-size: 11px; border: 1px solid #dedfd3; padding: 7px 12px; border-radius: 20px; color: #767e6a; }
++    .topic-option input:checked + span { background: #e9eedc; border-color: #b3be9b; color: #415332; }
++    .topic-option input:focus-visible + span { outline: 2px solid #7f8b61; outline-offset: 3px; }
++    .optional { font-weight: 400; color: #929589; }
++    textarea { display: block; width: 100%; min-height: 105px; resize: vertical; max-height: 240px; padding: 13px 14px; border: 1px solid #dedfd3; border-radius: 7px; background: #fffefa; color: #34402f; font-size: 12px; line-height: 1.6; }
++    textarea::placeholder { color: #a1a396; }
++    .textarea-meta { display: flex; justify-content: space-between; margin: 7px 0 20px; font-size: 10px; color: #95998a; }
++    .submit-feedback { border: 0; width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px; border-radius: 6px; background: #3d5034; color: #fff; font-size: 12px; font-weight: 500; }
++    .submit-feedback:hover { background: #2f4128; }
++    .privacy-note { text-align: center; font-size: 10px; color: #96998b; margin-top: 11px; }
++    .dialog-bottom { padding: 15px 28px; border-top: 1px solid #e7e7dc; background: #f1f2e9; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 10px; color: #858b77; }
++    .location-label { display: flex; gap: 7px; align-items: center; }
++    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #8b9c65; flex-shrink: 0; }
++    .move-button { display: flex; gap: 7px; align-items: center; border: 0; background: transparent; color: #4a5b3c; font-size: 11px; white-space: nowrap; padding: 5px 0; }
++    .feedback-status { font-size: 12px; color: #566c3f; margin-top: 10px; }
++    .feedback-status:empty { display: none; }
++    @media(max-width: 640px) { nav { padding: 20px; } nav ul li { margin-left: 13px; } nav ul li:nth-child(2), nav ul li:nth-child(3), nav ul li:nth-child(4) { display: none; } .logo { font-size: 17px; } .hero { height: 490px; padding: 0 7%; } .dialog-content { padding: 17px 24px 22px; } .dialog-top { padding: 17px 20px 0; } .feedback-dialog h2 { font-size: 32px; } .dialog-bottom { padding: 12px 20px; } .feedback-launcher { right: 18px; bottom: 18px; } }
+   </style>
+ </head>
+ 
+ <body>
+@@ -168,34 +235,83 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <div class="eyebrow">Good coffee. Better mornings.</div>
++    <h1>A little ritual.<br>A whole lot of good.</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn">Find your daily brew &nbsp; ↗</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="section-kicker">Made for the moment</p>
++      <h2 style="text-align: center;">Your next favorite is here.</h2>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Cold Brew" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div id="feedback-main-host">
++      <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-description">
++        <div class="dialog-top">
++          <div class="dialog-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 8h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Zm13 1h2a3 3 0 1 1 0 6h-2M7 3v2m4-3v3m4-2v2M2 22h19"/></svg> A MOMENT TO CONNECT</div>
++          <button type="button" class="icon-button" id="close-feedback" aria-label="Close feedback">×</button>
++        </div>
++        <div class="dialog-content">
++          <h2 id="feedback-title" tabindex="-1" autofocus>How’s your daily grind?</h2>
++          <p class="dialog-intro" id="feedback-description">Great coffee starts with a conversation. We’d love to hear what’s on your mind.</p>
++          <form id="feedback-form">
++            <fieldset>
++              <legend>How was your experience?</legend>
++              <div class="rating-options">
++                <label class="rating-option"><input type="radio" name="rating" value="1" aria-label="1 — Very unhappy"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" width="29" height="29"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01" stroke-width="2.5"/><path d="M8 15q4-5 8 0"/></svg></span></label>
++                <label class="rating-option"><input type="radio" name="rating" value="2" aria-label="2 — Unhappy"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" width="29" height="29"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01" stroke-width="2.5"/><path d="M8 14q4-3 8 0"/></svg></span></label>
++                <label class="rating-option"><input type="radio" name="rating" value="3" aria-label="3 — Neutral"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" width="29" height="29"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01" stroke-width="2.5"/><path d="M8 14h8"/></svg></span></label>
++                <label class="rating-option"><input type="radio" name="rating" value="4" aria-label="4 — Happy"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" width="29" height="29"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01" stroke-width="2.5"/><path d="M8 13q4 5 8 0"/></svg></span></label>
++                <label class="rating-option"><input type="radio" name="rating" value="5" aria-label="5 — Very happy"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" width="29" height="29"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01" stroke-width="2.5"/><path d="M7 12q5 9 10 0Z"/></svg></span></label>
++              </div>
++              <div class="rating-captions" aria-hidden="true"><span>Not my cup of coffee</span><span>Made my day</span></div>
++            </fieldset>
++            <fieldset>
++              <legend>What’s it about?</legend>
++              <div class="topic-options">
++                <label class="topic-option"><input type="radio" name="topic" value="Coffee" checked><span>Coffee</span></label>
++                <label class="topic-option"><input type="radio" name="topic" value="Service"><span>Service</span></label>
++                <label class="topic-option"><input type="radio" name="topic" value="Website"><span>Website</span></label>
++                <label class="topic-option"><input type="radio" name="topic" value="Something else"><span>Something else</span></label>
++              </div>
++            </fieldset>
++            <label for="feedback-message" class="field-label">Tell us a little more <span class="optional">(optional)</span></label>
++            <textarea id="feedback-message" name="message" maxlength="1000" placeholder="The good, the could-be-better, the next big idea…"></textarea>
++            <div class="textarea-meta"><span id="draft-state">Your draft stays with you</span><span id="character-count">0 / 1,000</span></div>
++            <button type="submit" class="submit-feedback">Save feedback <span aria-hidden="true">↗</span></button>
++            <p class="privacy-note">Saved on this device. A little thought goes a long way.</p>
++            <p id="feedback-status" class="feedback-status" role="status"></p>
++          </form>
++        </div>
++        <div class="dialog-bottom">
++          <span class="location-label"><span class="status-dot" aria-hidden="true"></span><span id="feedback-location" aria-live="polite">Located in main content</span></span>
++          <button type="button" id="move-feedback" class="move-button" title="Move the open dialog to the footer"><span aria-hidden="true">⇄</span> Move dialog</button>
++        </div>
++      </dialog>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +320,13 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div id="feedback-footer-host"></div>
+   </footer>
+ 
++  <button type="button" id="open-feedback" class="feedback-launcher" aria-haspopup="dialog" aria-controls="feedback-dialog"><span aria-hidden="true">☏</span> Share a little feedback</button>
++  <script src="feedback.js" defer></script>
++
+ </body>
+ 
+ </html>

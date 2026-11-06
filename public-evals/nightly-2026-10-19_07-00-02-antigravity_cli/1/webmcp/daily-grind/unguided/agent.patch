@@ -1,0 +1,1984 @@
+diff --git a/js/app.js b/js/app.js
+new file mode 100644
+index 0000000..7f9e71a
+--- /dev/null
++++ b/js/app.js
+@@ -0,0 +1,655 @@
++/**
++ * The Daily Grind Coffee Co. - Application Logic & WebMCP Integration
++ */
++
++(function (global) {
++  'use strict';
++
++  // Coffee Store State
++  class CoffeeStore {
++    constructor(data) {
++      this.menuItems = [...(data?.MENU_ITEMS || [])];
++      this.locations = [...(data?.LOCATIONS || [])];
++      this.rewards = JSON.parse(JSON.stringify(data?.REWARDS_PROFILE || { stars: 0, availableRewards: [] }));
++      this.cart = [];
++      this.appliedReward = null;
++      this.activeCategory = 'all';
++      this.searchQuery = '';
++      this.lastOrder = null;
++      this.eventLogs = [];
++    }
++
++    // --- Menu Methods ---
++    getMenu(category = 'all') {
++      if (!category || category === 'all') {
++        return [...this.menuItems];
++      }
++      return this.menuItems.filter((item) => item.category === category);
++    }
++
++    searchMenu({ query = '', maxPrice = null, dietary = null } = {}) {
++      const q = (query || '').toLowerCase().trim();
++      return this.menuItems.filter((item) => {
++        const matchesQuery =
++          !q ||
++          item.name.toLowerCase().includes(q) ||
++          item.description.toLowerCase().includes(q) ||
++          item.category.toLowerCase().includes(q);
++
++        const matchesPrice = maxPrice === null || maxPrice === undefined || item.price <= maxPrice;
++
++        const matchesDietary =
++          !dietary ||
++          (item.tags && item.tags.includes(dietary.toLowerCase().replace('-', '_')));
++
++        return matchesQuery && matchesPrice && matchesDietary;
++      });
++    }
++
++    getItemDetails(itemId) {
++      const item = this.menuItems.find((i) => i.id === itemId);
++      if (!item) return null;
++      return JSON.parse(JSON.stringify(item));
++    }
++
++    filterMenuInUI(category = 'all', query = '') {
++      this.activeCategory = category || 'all';
++      this.searchQuery = query || '';
++      if (typeof window !== 'undefined' && window.updateMenuUI) {
++        window.updateMenuUI();
++      }
++      const filtered = this.searchMenu({
++        query: this.searchQuery,
++        dietary: this.activeCategory !== 'all' ? this.activeCategory : null,
++      });
++      return {
++        activeCategory: this.activeCategory,
++        searchQuery: this.searchQuery,
++        resultCount: filtered.length,
++        items: filtered.map((i) => ({ id: i.id, name: i.name, price: i.price })),
++      };
++    }
++
++    // --- Cart Methods ---
++    addToCart(itemId, quantity = 1, customizations = {}) {
++      const item = this.getItemDetails(itemId);
++      if (!item) {
++        throw new Error(`Menu item '${itemId}' not found.`);
++      }
++      if (quantity <= 0) {
++        throw new Error('Quantity must be greater than zero.');
++      }
++
++      let unitPrice = item.price;
++      if (customizations?.size === 'medium') unitPrice += 0.50;
++      if (customizations?.size === 'large') unitPrice += 0.90;
++      if (customizations?.extraShots) unitPrice += Number(customizations.extraShots) * 0.85;
++
++      const cartItemId = `cart_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
++      const cartEntry = {
++        cartItemId,
++        itemId: item.id,
++        name: item.name,
++        unitPrice: Number(unitPrice.toFixed(2)),
++        quantity: Number(quantity),
++        customizations: { ...customizations },
++        totalPrice: Number((unitPrice * quantity).toFixed(2)),
++      };
++
++      this.cart.push(cartEntry);
++      if (typeof window !== 'undefined' && window.updateCartUI) {
++        window.updateCartUI();
++      }
++
++      return {
++        success: true,
++        addedItem: cartEntry,
++        cartSummary: this.getCart(),
++      };
++    }
++
++    getCart() {
++      const subtotal = this.cart.reduce((sum, item) => sum + item.totalPrice, 0);
++      let discount = 0;
++
++      if (this.appliedReward) {
++        if (this.appliedReward.discountAmount) {
++          discount = Math.min(this.appliedReward.discountAmount, subtotal);
++        } else if (this.appliedReward.discountPercent) {
++          discount = subtotal * (this.appliedReward.discountPercent / 100);
++        }
++      }
++
++      const taxableAmount = Math.max(0, subtotal - discount);
++      const estimatedTax = Number((taxableAmount * 0.085).toFixed(2));
++      const total = Number((taxableAmount + estimatedTax).toFixed(2));
++
++      return {
++        items: [...this.cart],
++        itemCount: this.cart.reduce((sum, item) => sum + item.quantity, 0),
++        subtotal: Number(subtotal.toFixed(2)),
++        appliedReward: this.appliedReward ? { ...this.appliedReward } : null,
++        discount: Number(discount.toFixed(2)),
++        estimatedTax,
++        total,
++      };
++    }
++
++    updateCartItem(cartItemId, quantity) {
++      const index = this.cart.findIndex((i) => i.cartItemId === cartItemId);
++      if (index === -1) {
++        throw new Error(`Cart item '${cartItemId}' not found.`);
++      }
++
++      if (quantity <= 0) {
++        const removed = this.cart.splice(index, 1)[0];
++        if (typeof window !== 'undefined' && window.updateCartUI) window.updateCartUI();
++        return { success: true, removedItem: removed, cartSummary: this.getCart() };
++      }
++
++      this.cart[index].quantity = quantity;
++      this.cart[index].totalPrice = Number((this.cart[index].unitPrice * quantity).toFixed(2));
++      if (typeof window !== 'undefined' && window.updateCartUI) window.updateCartUI();
++
++      return { success: true, updatedItem: this.cart[index], cartSummary: this.getCart() };
++    }
++
++    clearCart() {
++      this.cart = [];
++      this.appliedReward = null;
++      if (typeof window !== 'undefined' && window.updateCartUI) window.updateCartUI();
++      return { success: true, message: 'Cart cleared successfully.' };
++    }
++
++    // --- Rewards Methods ---
++    getRewardsBalance() {
++      return {
++        customerName: this.rewards.customerName,
++        tier: this.rewards.tier,
++        stars: this.rewards.stars,
++        availableRewards: [...this.rewards.availableRewards],
++        appliedReward: this.appliedReward,
++      };
++    }
++
++    applyReward(rewardId) {
++      const reward = this.rewards.availableRewards.find((r) => r.id === rewardId);
++      if (!reward) {
++        throw new Error(`Reward with ID '${rewardId}' not found.`);
++      }
++      if (this.rewards.stars < reward.starCost) {
++        throw new Error(`Insufficient stars. You have ${this.rewards.stars} stars, but ${reward.starCost} are required.`);
++      }
++
++      this.appliedReward = { ...reward };
++      if (typeof window !== 'undefined' && window.updateCartUI) window.updateCartUI();
++
++      return {
++        success: true,
++        message: `Applied reward: ${reward.name}`,
++        reward,
++        cartSummary: this.getCart(),
++      };
++    }
++
++    // --- Order & Checkout Methods ---
++    checkout({
++      customerName = 'Jordan Miller',
++      orderType = 'pickup',
++      locationId = 'loc-downtown',
++      deliveryAddress = '',
++      specialInstructions = '',
++    } = {}) {
++      if (this.cart.length === 0) {
++        throw new Error('Cannot checkout with an empty cart.');
++      }
++      if (orderType === 'delivery' && !deliveryAddress.trim()) {
++        throw new Error('A delivery address is required for delivery orders.');
++      }
++
++      const cartSummary = this.getCart();
++      const orderId = `ORD-${Date.now().toString().slice(-6)}`;
++      const orderDate = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
++
++      // Deduct reward stars if used
++      if (this.appliedReward) {
++        this.rewards.stars = Math.max(0, this.rewards.stars - this.appliedReward.starCost);
++      }
++      // Earn 2 stars per dollar spent
++      const earnedStars = Math.floor(cartSummary.total * 2);
++      this.rewards.stars += earnedStars;
++
++      const order = {
++        orderId,
++        orderDate,
++        customerName,
++        orderType,
++        locationId,
++        deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
++        specialInstructions,
++        items: [...this.cart],
++        subtotal: cartSummary.subtotal,
++        discount: cartSummary.discount,
++        tax: cartSummary.estimatedTax,
++        total: cartSummary.total,
++        earnedStars,
++        estimatedTimeMinutes: orderType === 'pickup' ? 10 : 25,
++      };
++
++      this.lastOrder = order;
++      this.cart = [];
++      this.appliedReward = null;
++
++      if (typeof window !== 'undefined') {
++        if (window.updateCartUI) window.updateCartUI();
++        if (window.showOrderConfirmationUI) window.showOrderConfirmationUI(order);
++      }
++
++      return {
++        success: true,
++        message: `Order #${order.orderId} placed successfully!`,
++        order,
++      };
++    }
++
++    // --- Store Locations ---
++    getLocations(zipCode = '') {
++      if (!zipCode) return [...this.locations];
++      const match = this.locations.filter((loc) => loc.zipCode === zipCode);
++      return match.length > 0 ? match : [...this.locations];
++    }
++
++    logEvent(name, detail) {
++      this.eventLogs.unshift({
++        time: new Date().toLocaleTimeString(),
++        name,
++        detail,
++      });
++      if (this.eventLogs.length > 20) this.eventLogs.pop();
++      if (typeof window !== 'undefined' && window.updateEventLogsUI) {
++        window.updateEventLogsUI();
++      }
++    }
++  }
++
++  // Register WebMCP Tools
++  async function registerCoffeeTools(modelContext, store) {
++    if (!modelContext || typeof modelContext.registerTool !== 'function') {
++      console.warn('[WebMCP] ModelContext not available for registering tools.');
++      return;
++    }
++
++    // Tool 1: get_menu
++    await modelContext.registerTool({
++      name: 'get_menu',
++      title: 'Get Menu Catalog',
++      description: 'Retrieve the coffee shop menu items, with optional category filtering (all, seasonal, espresso, cold_brew, tea, bakery).',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          category: {
++            type: 'string',
++            enum: ['all', 'seasonal', 'espresso', 'cold_brew', 'tea', 'bakery'],
++            description: 'Filter items by menu category',
++          },
++        },
++      },
++      annotations: {
++        readOnlyHint: true,
++        consequentialHint: false,
++      },
++      execute: async ({ category = 'all' } = {}) => {
++        store.logEvent('tool_call:get_menu', { category });
++        const items = store.getMenu(category);
++        return {
++          category,
++          count: items.length,
++          items: items.map((i) => ({
++            id: i.id,
++            name: i.name,
++            category: i.category,
++            price: i.price,
++            description: i.description,
++            caffeineMg: i.caffeineMg,
++            tags: i.tags,
++            image: i.image,
++          })),
++        };
++      },
++    });
++
++    // Tool 2: search_menu
++    await modelContext.registerTool({
++      name: 'search_menu',
++      title: 'Search Menu',
++      description: 'Search for drinks and pastries by keyword (e.g. "oat", "latte", "croissant"), max price, or dietary preferences (vegan, gluten_free, dairy_free).',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          query: {
++            type: 'string',
++            description: 'Search keyword or ingredient',
++          },
++          maxPrice: {
++            type: 'number',
++            description: 'Maximum price in USD',
++          },
++          dietary: {
++            type: 'string',
++            enum: ['vegan', 'gluten_free', 'dairy_free', 'vegetarian'],
++            description: 'Dietary restriction tag',
++          },
++        },
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async (params = {}) => {
++        store.logEvent('tool_call:search_menu', params);
++        const results = store.searchMenu(params);
++        return {
++          query: params.query || '',
++          count: results.length,
++          results: results.map((i) => ({
++            id: i.id,
++            name: i.name,
++            category: i.category,
++            price: i.price,
++            description: i.description,
++            tags: i.tags,
++          })),
++        };
++      },
++    });
++
++    // Tool 3: get_item_details
++    await modelContext.registerTool({
++      name: 'get_item_details',
++      title: 'Get Item Details',
++      description: 'Get complete recipe details and customization options (sizes, milks, syrups, extra shots) for a specific item.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          itemId: {
++            type: 'string',
++            description: 'The unique ID of the menu item (e.g. "maple-oat-latte")',
++          },
++        },
++        required: ['itemId'],
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async ({ itemId }) => {
++        store.logEvent('tool_call:get_item_details', { itemId });
++        const item = store.getItemDetails(itemId);
++        if (!item) {
++          throw new Error(`Menu item '${itemId}' was not found.`);
++        }
++        return item;
++      },
++    });
++
++    // Tool 4: filter_menu_in_ui
++    await modelContext.registerTool({
++      name: 'filter_menu_in_ui',
++      title: 'Filter Menu in UI',
++      description: 'Controls the live webpage menu grid, filtering items by category or keyword so the customer sees the matching items highlighted on screen.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          category: {
++            type: 'string',
++            enum: ['all', 'seasonal', 'espresso', 'cold_brew', 'tea', 'bakery'],
++            description: 'Category tab to activate',
++          },
++          query: {
++            type: 'string',
++            description: 'Search string to filter visually in the UI',
++          },
++        },
++      },
++      annotations: {
++        readOnlyHint: false,
++      },
++      execute: async ({ category = 'all', query = '' } = {}) => {
++        store.logEvent('tool_call:filter_menu_in_ui', { category, query });
++        return store.filterMenuInUI(category, query);
++      },
++    });
++
++    // Tool 5: add_to_cart
++    await modelContext.registerTool({
++      name: 'add_to_cart',
++      title: 'Add to Cart',
++      description: 'Add a coffee, drink, or bakery item to the customer cart with optional customizations, updating the cart UI in real-time.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          itemId: {
++            type: 'string',
++            description: 'Item ID (e.g. "maple-oat-latte", "dark-roast-espresso")',
++          },
++          quantity: {
++            type: 'integer',
++            minimum: 1,
++            default: 1,
++            description: 'Number of items to add',
++          },
++          customizations: {
++            type: 'object',
++            properties: {
++              size: { type: 'string', enum: ['small', 'medium', 'large'] },
++              milk: { type: 'string', enum: ['oat', 'almond', 'whole', 'skim', 'none'] },
++              extraShots: { type: 'integer', minimum: 0, maximum: 4 },
++              syrup: { type: 'string', enum: ['maple', 'vanilla', 'caramel', 'cinnamon'] },
++              ice: { type: 'string', enum: ['none', 'light', 'regular', 'extra'] },
++            },
++            description: 'Drink preparation preferences',
++          },
++        },
++        required: ['itemId'],
++      },
++      annotations: {
++        consequentialHint: false,
++      },
++      execute: async ({ itemId, quantity = 1, customizations = {} }) => {
++        store.logEvent('tool_call:add_to_cart', { itemId, quantity, customizations });
++        return store.addToCart(itemId, quantity, customizations);
++      },
++    });
++
++    // Tool 6: get_cart
++    await modelContext.registerTool({
++      name: 'get_cart',
++      title: 'Get Current Cart',
++      description: 'Inspect the current contents of the customer cart, including items, quantities, subtotal, discounts, tax, and final total.',
++      inputSchema: {
++        type: 'object',
++        properties: {},
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async () => {
++        store.logEvent('tool_call:get_cart', {});
++        return store.getCart();
++      },
++    });
++
++    // Tool 7: update_cart_item
++    await modelContext.registerTool({
++      name: 'update_cart_item',
++      title: 'Update Cart Item',
++      description: 'Update the quantity of an item in the cart, or remove it by setting quantity to 0.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          cartItemId: {
++            type: 'string',
++            description: 'The cart item ID to update',
++          },
++          quantity: {
++            type: 'integer',
++            minimum: 0,
++            description: 'The updated quantity (set to 0 to remove)',
++          },
++        },
++        required: ['cartItemId', 'quantity'],
++      },
++      execute: async ({ cartItemId, quantity }) => {
++        store.logEvent('tool_call:update_cart_item', { cartItemId, quantity });
++        return store.updateCartItem(cartItemId, quantity);
++      },
++    });
++
++    // Tool 8: clear_cart
++    await modelContext.registerTool({
++      name: 'clear_cart',
++      title: 'Clear Cart',
++      description: 'Remove all items from the customer cart.',
++      inputSchema: {
++        type: 'object',
++        properties: {},
++      },
++      execute: async () => {
++        store.logEvent('tool_call:clear_cart', {});
++        return store.clearCart();
++      },
++    });
++
++    // Tool 9: get_rewards_balance
++    await modelContext.registerTool({
++      name: 'get_rewards_balance',
++      title: 'Get Loyalty Rewards',
++      description: 'Retrieve the customer loyalty rewards status, star balance, and list of available redeemable rewards.',
++      inputSchema: {
++        type: 'object',
++        properties: {},
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async () => {
++        store.logEvent('tool_call:get_rewards_balance', {});
++        return store.getRewardsBalance();
++      },
++    });
++
++    // Tool 10: apply_reward
++    await modelContext.registerTool({
++      name: 'apply_reward',
++      title: 'Apply Loyalty Reward',
++      description: 'Apply an eligible loyalty reward coupon to the cart for a discount.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          rewardId: {
++            type: 'string',
++            description: 'The reward ID (e.g. "rew_pastry", "rew_free_shot", "rew_discount_20")',
++          },
++        },
++        required: ['rewardId'],
++      },
++      execute: async ({ rewardId }) => {
++        store.logEvent('tool_call:apply_reward', { rewardId });
++        return store.applyReward(rewardId);
++      },
++    });
++
++    // Tool 11: checkout
++    await modelContext.registerTool({
++      name: 'checkout',
++      title: 'Place Order / Checkout',
++      description: 'Finalize and place the order for items currently in the cart, specifying pickup or delivery. Updates the UI with order confirmation.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          customerName: {
++            type: 'string',
++            description: 'Name for the order pickup/delivery',
++          },
++          orderType: {
++            type: 'string',
++            enum: ['pickup', 'delivery'],
++            description: 'Pickup in store or local courier delivery',
++          },
++          locationId: {
++            type: 'string',
++            description: 'Store location ID (e.g. "loc-downtown")',
++          },
++          deliveryAddress: {
++            type: 'string',
++            description: 'Delivery street address (required if orderType is delivery)',
++          },
++          specialInstructions: {
++            type: 'string',
++            description: 'Barista notes or delivery directions',
++          },
++        },
++        required: ['customerName', 'orderType'],
++      },
++      annotations: {
++        consequentialHint: true,
++      },
++      execute: async (checkoutDetails) => {
++        store.logEvent('tool_call:checkout', checkoutDetails);
++        return store.checkout(checkoutDetails);
++      },
++    });
++
++    // Tool 12: get_locations
++    await modelContext.registerTool({
++      name: 'get_locations',
++      title: 'Get Store Locations',
++      description: 'List coffee shop store locations, operating hours, addresses, phone numbers, and amenities.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          zipCode: {
++            type: 'string',
++            description: 'Optional 5-digit zip code to filter locations',
++          },
++        },
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async ({ zipCode = '' } = {}) => {
++        store.logEvent('tool_call:get_locations', { zipCode });
++        const locs = store.getLocations(zipCode);
++        return {
++          count: locs.length,
++          locations: locs,
++        };
++      },
++    });
++
++    // Listen to WebMCP tool execution events for observability
++    modelContext.addEventListener('toolactivated', (e) => {
++      store.logEvent('event:toolactivated', { toolName: e.toolName });
++    });
++
++    modelContext.addEventListener('toolcancel', (e) => {
++      store.logEvent('event:toolcancel', { toolName: e.toolName });
++    });
++
++    modelContext.addEventListener('toolchange', () => {
++      store.logEvent('event:toolchange', { totalRegistered: 'updated' });
++      if (typeof window !== 'undefined' && window.updateInspectorUI) {
++        window.updateInspectorUI();
++      }
++    });
++  }
++
++  // Exports for Node / Test environments
++  if (typeof module !== 'undefined' && module.exports) {
++    module.exports = {
++      CoffeeStore,
++      registerCoffeeTools,
++    };
++  } else {
++    global.CoffeeStore = CoffeeStore;
++    global.registerCoffeeTools = registerCoffeeTools;
++  }
++})(typeof globalThis !== 'undefined' ? globalThis : this);
+diff --git a/js/coffee-data.js b/js/coffee-data.js
+new file mode 100644
+index 0000000..1408e76
+--- /dev/null
++++ b/js/coffee-data.js
+@@ -0,0 +1,234 @@
++/**
++ * The Daily Grind Coffee Co. - Product & Store Data Catalog
++ */
++
++(function (global) {
++  'use strict';
++
++  const MENU_ITEMS = [
++    {
++      id: 'maple-oat-latte',
++      name: 'Maple Oat Latte',
++      category: 'seasonal',
++      price: 5.75,
++      description: 'Creamy oat milk with a hint of Vermont maple syrup and double espresso.',
++      calories: 220,
++      caffeineMg: 150,
++      tags: ['vegan', 'dairy_free', 'seasonal'],
++      image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [
++          { id: 'small', label: '12 oz (Small)', modifier: 0 },
++          { id: 'medium', label: '16 oz (Medium)', modifier: 0.50 },
++          { id: 'large', label: '20 oz (Large)', modifier: 0.90 }
++        ],
++        milks: ['oat', 'almond', 'whole', 'skim'],
++        syrups: ['maple', 'vanilla', 'caramel', 'cinnamon'],
++        extraShotsMax: 3
++      }
++    },
++    {
++      id: 'pumpkin-cold-foam',
++      name: 'Spiced Pumpkin Cold Foam Brew',
++      category: 'seasonal',
++      price: 5.95,
++      description: 'Slow-steeped cold brew topped with velvety pumpkin spice cold foam.',
++      calories: 190,
++      caffeineMg: 200,
++      tags: ['seasonal', 'vegetarian'],
++      image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [
++          { id: 'small', label: '12 oz', modifier: 0 },
++          { id: 'medium', label: '16 oz', modifier: 0.50 },
++          { id: 'large', label: '20 oz', modifier: 0.90 }
++        ],
++        milks: ['whole', 'oat', 'almond'],
++        iceLevels: ['none', 'light', 'regular', 'extra']
++      }
++    },
++    {
++      id: 'dark-roast-espresso',
++      name: 'Dark Roast Double Espresso',
++      category: 'espresso',
++      price: 3.75,
++      description: 'Bold, smoky, and complex with notes of dark cacao and hazelnut.',
++      calories: 5,
++      caffeineMg: 160,
++      tags: ['vegan', 'gluten_free', 'dairy_free'],
++      image: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [{ id: 'double', label: 'Double Shot', modifier: 0 }],
++        extraShotsMax: 2
++      }
++    },
++    {
++      id: 'artisanal-cappuccino',
++      name: 'Artisanal Cappuccino',
++      category: 'espresso',
++      price: 4.85,
++      description: 'Equal parts rich espresso, steamed milk, and dense microfoam dusted with cocoa.',
++      calories: 140,
++      caffeineMg: 150,
++      tags: ['vegetarian', 'gluten_free'],
++      image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [
++          { id: 'small', label: '12 oz', modifier: 0 },
++          { id: 'medium', label: '16 oz', modifier: 0.50 }
++        ],
++        milks: ['whole', 'oat', 'almond', 'skim']
++      }
++    },
++    {
++      id: 'velvet-flat-white',
++      name: 'Velvet Flat White',
++      category: 'espresso',
++      price: 5.10,
++      description: 'Ristretto double shot folded gently into silky textured whole or oat milk.',
++      calories: 160,
++      caffeineMg: 160,
++      tags: ['vegetarian', 'gluten_free'],
++      image: 'https://images.unsplash.com/photo-1577968897966-3d4325b36b61?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [{ id: 'small', label: '8 oz', modifier: 0 }],
++        milks: ['whole', 'oat', 'almond']
++      }
++    },
++    {
++      id: 'cold-brew-classic',
++      name: 'Single-Origin Cold Brew',
++      category: 'cold_brew',
++      price: 4.50,
++      description: 'Steeped for 18 hours in cold filtered mountain water for maximum smoothness.',
++      calories: 5,
++      caffeineMg: 210,
++      tags: ['vegan', 'dairy_free', 'gluten_free'],
++      image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [
++          { id: 'small', label: '12 oz', modifier: 0 },
++          { id: 'medium', label: '16 oz', modifier: 0.50 },
++          { id: 'large', label: '20 oz', modifier: 0.90 }
++        ],
++        iceLevels: ['none', 'light', 'regular', 'extra'],
++        milks: ['none', 'oat', 'whole', 'almond']
++      }
++    },
++    {
++      id: 'nitro-cold-brew',
++      name: 'Nitrogen-Infused Draft Cold Brew',
++      category: 'cold_brew',
++      price: 5.25,
++      description: 'Infused with nitrogen on tap for a cascading, velvety stout-like head.',
++      calories: 5,
++      caffeineMg: 230,
++      tags: ['vegan', 'dairy_free', 'gluten_free'],
++      image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80',
++      customizable: false
++    },
++    {
++      id: 'ceremonial-matcha-latte',
++      name: 'Uji Ceremonial Matcha Latte',
++      category: 'tea',
++      price: 5.85,
++      description: 'Stone-ground ceremonial green tea from Kyoto whisked with steamed oat milk.',
++      calories: 170,
++      caffeineMg: 70,
++      tags: ['vegan', 'dairy_free', 'antioxidants'],
++      image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80',
++      customizable: true,
++      customizations: {
++        sizes: [
++          { id: 'small', label: '12 oz', modifier: 0 },
++          { id: 'medium', label: '16 oz', modifier: 0.50 }
++        ],
++        milks: ['oat', 'almond', 'whole']
++      }
++    },
++    {
++      id: 'almond-croissant',
++      name: 'French Almond Croissant',
++      category: 'bakery',
++      price: 4.50,
++      description: 'Flaky twice-baked butter pastry filled with rich almond frangipane cream.',
++      calories: 380,
++      caffeineMg: 0,
++      tags: ['vegetarian'],
++      image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80',
++      customizable: false
++    },
++    {
++      id: 'avocado-sourdough-toast',
++      name: 'Heritage Sourdough Avocado Toast',
++      category: 'bakery',
++      price: 8.50,
++      description: 'Toasted country sourdough with smashed Haas avocado, chili flakes, radish & microgreens.',
++      calories: 340,
++      caffeineMg: 0,
++      tags: ['vegan', 'dairy_free'],
++      image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80',
++      customizable: false
++    }
++  ];
++
++  const LOCATIONS = [
++    {
++      id: 'loc-downtown',
++      name: 'Downtown Flagship & Espresso Bar',
++      address: '450 Market St, San Francisco, CA 94105',
++      zipCode: '94105',
++      phone: '(415) 555-0142',
++      hours: 'Mon-Fri: 6:30 AM - 8:00 PM | Sat-Sun: 7:30 AM - 6:00 PM',
++      amenities: ['High-speed WiFi', 'Outdoor Seating', 'Mobile Pickup Counter', 'Pour-Over Bar']
++    },
++    {
++      id: 'loc-arts-district',
++      name: 'Arts District Roastery & Lab',
++      address: '820 Industrial Ave, San Francisco, CA 94107',
++      zipCode: '94107',
++      phone: '(415) 555-0199',
++      hours: 'Mon-Sun: 7:00 AM - 7:00 PM',
++      amenities: ['Roastery Tours', 'Coffee Cupping Classes', 'Spacious Seating', 'Pet Friendly Patio']
++    },
++    {
++      id: 'loc-westside',
++      name: 'Westside Cafe & Garden',
++      address: '1240 Ocean Ave, San Francisco, CA 94112',
++      zipCode: '94112',
++      phone: '(415) 555-0188',
++      hours: 'Mon-Sun: 7:00 AM - 6:00 PM',
++      amenities: ['Garden Patio', 'Drive-Thru Window', 'Free Parking', 'Kid Friendly']
++    }
++  ];
++
++  const REWARDS_PROFILE = {
++    customerName: 'Jordan Miller',
++    tier: 'Gold Roaster',
++    stars: 145,
++    availableRewards: [
++      { id: 'rew_free_shot', name: 'Free Extra Espresso Shot', starCost: 25, discountAmount: 0.85 },
++      { id: 'rew_pastry', name: 'Free Artisanal Pastry', starCost: 50, discountAmount: 4.50 },
++      { id: 'rew_discount_20', name: '20% Off Cold Brew or Latte', starCost: 75, discountPercent: 20 },
++      { id: 'rew_free_drink', name: 'Free Any Handcrafted Drink', starCost: 150, discountAmount: 5.95 }
++    ]
++  };
++
++  const CoffeeData = {
++    MENU_ITEMS,
++    LOCATIONS,
++    REWARDS_PROFILE
++  };
++
++  if (typeof module !== 'undefined' && module.exports) {
++    module.exports = CoffeeData;
++  } else {
++    global.CoffeeData = CoffeeData;
++  }
++})(typeof globalThis !== 'undefined' ? globalThis : this);
+diff --git a/js/webmcp.js b/js/webmcp.js
+new file mode 100644
+index 0000000..c0258f8
+--- /dev/null
++++ b/js/webmcp.js
+@@ -0,0 +1,595 @@
++/**
++ * WebMCP - Web Model Context Protocol Implementation & Polyfill
++ * Conforming to W3C Web Machine Learning Community Group WebMCP Specification
++ * https://webmachinelearning.github.io/webmcp/
++ */
++
++(function (global) {
++  'use strict';
++
++  // Custom event classes according to WebMCP specification
++  class ToolActivatedEvent extends Event {
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.toolName = eventInitDict.toolName || '';
++    }
++  }
++
++  class ToolCancelEvent extends Event {
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.toolName = eventInitDict.toolName || '';
++    }
++  }
++
++  // ModelContext implementation
++  class ModelContext extends EventTarget {
++    #tools = new Map();
++    #declarativeTools = new Map();
++    #document = null;
++    #window = null;
++    #ontoolchange = null;
++    #ontoolactivated = null;
++    #ontoolcancel = null;
++
++    constructor(doc, win) {
++      super();
++      this.#document = doc || (typeof document !== 'undefined' ? document : null);
++      this.#window = win || (typeof window !== 'undefined' ? window : global);
++    }
++
++    // Event Handler getters and setters
++    get ontoolchange() {
++      return this.#ontoolchange;
++    }
++    set ontoolchange(handler) {
++      if (this.#ontoolchange) {
++        this.removeEventListener('toolchange', this.#ontoolchange);
++      }
++      this.#ontoolchange = typeof handler === 'function' ? handler : null;
++      if (this.#ontoolchange) {
++        this.addEventListener('toolchange', this.#ontoolchange);
++      }
++    }
++
++    get ontoolactivated() {
++      return this.#ontoolactivated;
++    }
++    set ontoolactivated(handler) {
++      if (this.#ontoolactivated) {
++        this.removeEventListener('toolactivated', this.#ontoolactivated);
++      }
++      this.#ontoolactivated = typeof handler === 'function' ? handler : null;
++      if (this.#ontoolactivated) {
++        this.addEventListener('toolactivated', this.#ontoolactivated);
++      }
++    }
++
++    get ontoolcancel() {
++      return this.#ontoolcancel;
++    }
++    set ontoolcancel(handler) {
++      if (this.#ontoolcancel) {
++        this.removeEventListener('toolcancel', this.#ontoolcancel);
++      }
++      this.#ontoolcancel = typeof handler === 'function' ? handler : null;
++      if (this.#ontoolcancel) {
++        this.addEventListener('toolcancel', this.#ontoolcancel);
++      }
++    }
++
++    /**
++     * Register a tool that AI agents can discover and invoke
++     * @param {Object} tool - The ModelContextTool dictionary
++     * @param {Object} [options] - ModelContextRegisterToolOptions
++     * @returns {Promise<void>}
++     */
++    async registerTool(tool, options = {}) {
++      if (!tool || typeof tool !== 'object') {
++        throw new TypeError('Tool must be an object');
++      }
++
++      const { name, title = '', description, inputSchema, execute, annotations } = tool;
++
++      // 1. Validate tool name
++      if (typeof name !== 'string' || !name) {
++        throw new DOMException('Tool name must be a non-empty string', 'InvalidStateError');
++      }
++      if (name.length > 128) {
++        throw new DOMException('Tool name must not exceed 128 characters', 'InvalidStateError');
++      }
++      if (!/^[A-Za-z0-9_.-]+$/.test(name)) {
++        throw new DOMException(
++          `Tool name must only consist of ASCII alphanumeric code points, '_', '-', or '.': ${name}`,
++          'InvalidStateError'
++        );
++      }
++      if (this.#tools.has(name)) {
++        throw new DOMException(`A tool named '${name}' is already registered`, 'InvalidStateError');
++      }
++
++      // 2. Validate description
++      if (typeof description !== 'string' || !description.trim()) {
++        throw new DOMException('Tool description cannot be empty', 'InvalidStateError');
++      }
++
++      // 3. Validate execute callback
++      if (typeof execute !== 'function') {
++        throw new TypeError('Tool execute callback must be a function');
++      }
++
++      // 4. Validate inputSchema if provided
++      let serializedSchema = '';
++      if (inputSchema !== undefined) {
++        if (typeof inputSchema !== 'object' || inputSchema === null) {
++          throw new TypeError('inputSchema must be an object');
++        }
++        try {
++          serializedSchema = JSON.stringify(inputSchema);
++          if (serializedSchema === undefined) {
++            throw new TypeError('inputSchema is not JSON-serializable');
++          }
++        } catch (err) {
++          throw new TypeError('Failed to serialize inputSchema: ' + err.message);
++        }
++      }
++
++      // 5. Signal check
++      const signal = options?.signal;
++      if (signal?.aborted) {
++        throw (signal.reason || new DOMException('Registration aborted', 'AbortError'));
++      }
++
++      // 6. Annotations
++      const parsedAnnotations = annotations
++        ? {
++            readOnlyHint: Boolean(annotations.readOnlyHint),
++            untrustedContentHint: Boolean(annotations.untrustedContentHint),
++            consequentialHint: Boolean(annotations.consequentialHint),
++            debugging: Boolean(annotations.debugging),
++          }
++        : {
++            readOnlyHint: false,
++            untrustedContentHint: false,
++            consequentialHint: false,
++            debugging: false,
++          };
++
++      const toolRecord = {
++        name,
++        title: title ? String(title) : '',
++        description,
++        inputSchema: inputSchema ? JSON.parse(serializedSchema) : undefined,
++        serializedSchema,
++        execute,
++        annotations: parsedAnnotations,
++        exposedTo: Array.isArray(options?.exposedTo) ? [...options.exposedTo] : [],
++        isDeclarative: Boolean(tool._isDeclarative),
++      };
++
++      // Set tool in map
++      this.#tools.set(name, toolRecord);
++
++      // Handle unregistration via AbortSignal
++      if (signal) {
++        const onAbort = () => {
++          if (this.#tools.has(name)) {
++            this.#tools.delete(name);
++            this._notifyToolChange();
++          }
++        };
++        signal.addEventListener('abort', onAbort, { once: true });
++      }
++
++      this._notifyToolChange();
++    }
++
++    /**
++     * Unregister a tool by name
++     * @param {string} name
++     * @returns {boolean}
++     */
++    unregisterTool(name) {
++      if (this.#tools.has(name)) {
++        this.#tools.delete(name);
++        this._notifyToolChange();
++        return true;
++      }
++      return false;
++    }
++
++    /**
++     * Retrieve all tools available to the caller
++     * @param {Object} [options]
++     * @returns {Promise<Array<RegisteredTool>>}
++     */
++    async getTools(options = {}) {
++      const origin =
++        this.#window?.location?.origin ||
++        (this.#document?.location?.origin) ||
++        'http://localhost';
++
++      const win = this.#window || global;
++
++      const registered = [];
++      for (const [name, tool] of this.#tools.entries()) {
++        registered.push({
++          name: tool.name,
++          title: tool.title || '',
++          description: tool.description,
++          inputSchema: tool.inputSchema ? JSON.parse(JSON.stringify(tool.inputSchema)) : undefined,
++          annotations: { ...tool.annotations },
++          origin,
++          window: win,
++        });
++      }
++
++      // W3C spec: sort ascending by name
++      registered.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
++      return registered;
++    }
++
++    /**
++     * Execute a registered tool
++     * @param {Object|string} tool - RegisteredTool dictionary or tool name
++     * @param {Object} [inputObject={}] - Input arguments matching inputSchema
++     * @param {Object} [options={}] - ModelContextExecuteToolOptions
++     * @returns {Promise<string>} Stringified JSON result
++     */
++    async executeTool(tool, inputObject = {}, options = {}) {
++      const toolName = typeof tool === 'string' ? tool : tool?.name;
++      if (!toolName || typeof toolName !== 'string') {
++        throw new DOMException('Invalid tool specified for executeTool', 'DataError');
++      }
++
++      const toolRecord = this.#tools.get(toolName);
++      if (!toolRecord) {
++        throw new DOMException(`Tool '${toolName}' not found`, 'NotFoundError');
++      }
++
++      if (inputObject !== undefined && (typeof inputObject !== 'object' || inputObject === null)) {
++        throw new DOMException('inputObject must be an object', 'DataError');
++      }
++
++      // Clone inputObject via JSON serialization to match IPC semantics
++      let clonedInput = {};
++      try {
++        clonedInput = inputObject ? JSON.parse(JSON.stringify(inputObject)) : {};
++      } catch (err) {
++        throw new DOMException('Failed to serialize inputObject: ' + err.message, 'DataError');
++      }
++
++      const callerSignal = options?.signal;
++      if (callerSignal?.aborted) {
++        throw (callerSignal.reason || new DOMException('Execution aborted before start', 'AbortError'));
++      }
++
++      const executionController = new AbortController();
++      let aborted = false;
++
++      const handleCallerAbort = () => {
++        aborted = true;
++        executionController.abort(callerSignal.reason);
++        // Dispatch toolcancel event
++        const cancelEvt = new ToolCancelEvent('toolcancel', { toolName });
++        this.dispatchEvent(cancelEvt);
++      };
++
++      if (callerSignal) {
++        callerSignal.addEventListener('abort', handleCallerAbort, { once: true });
++      }
++
++      // Dispatch toolactivated event
++      const activatedEvt = new ToolActivatedEvent('toolactivated', { toolName });
++      this.dispatchEvent(activatedEvt);
++
++      try {
++        const rawResult = await toolRecord.execute(clonedInput, {
++          signal: executionController.signal,
++        });
++
++        if (callerSignal?.aborted) {
++          throw (callerSignal.reason || new DOMException('Execution aborted', 'AbortError'));
++        }
++
++        // Return stringified result per spec
++        if (typeof rawResult === 'string') {
++          return rawResult;
++        }
++        try {
++          return JSON.stringify(rawResult ?? null);
++        } catch (err) {
++          throw new DOMException('Unserializable tool execution result', 'OperationError');
++        }
++      } catch (err) {
++        if (callerSignal?.aborted || err?.name === 'AbortError') {
++          const cancelEvt = new ToolCancelEvent('toolcancel', { toolName });
++          this.dispatchEvent(cancelEvt);
++          throw (callerSignal?.reason || new DOMException('Tool execution was cancelled', 'AbortError'));
++        }
++        throw err instanceof DOMException ? err : new DOMException(err?.message || 'Tool execution rejected', 'OperationError');
++      } finally {
++        if (callerSignal) {
++          callerSignal.removeEventListener('abort', handleCallerAbort);
++        }
++      }
++    }
++
++    _notifyToolChange() {
++      // Dispatch asynchronous toolchange event
++      queueMicrotask(() => {
++        this.dispatchEvent(new Event('toolchange'));
++      });
++    }
++
++    /**
++     * Helper to register declarative tools from HTML forms
++     * Scans forms with [toolname] / [data-toolname] attributes
++     */
++    syncDeclarativeForms() {
++      if (!this.#document) return;
++      const forms = this.#document.querySelectorAll('form[toolname], form[data-toolname]');
++      const activeDeclarativeNames = new Set();
++
++      forms.forEach((form) => {
++        const name = (form.getAttribute('toolname') || form.getAttribute('data-toolname') || '').trim();
++        const description = (
++          form.getAttribute('tooldescription') ||
++          form.getAttribute('data-tooldescription') ||
++          form.getAttribute('aria-label') ||
++          `Form action for ${name}`
++        ).trim();
++
++        if (!name || !/^[A-Za-z0-9_.-]+$/.test(name)) return;
++
++        activeDeclarativeNames.add(name);
++        if (this.#tools.has(name) && !this.#tools.get(name).isDeclarative) {
++          // Don't overwrite imperative tools
++          return;
++        }
++
++        // Synthesize JSON Schema from form inputs
++        const properties = {};
++        const required = [];
++
++        const elements = form.querySelectorAll('input, select, textarea');
++        elements.forEach((el) => {
++          const inputName = el.name || el.id;
++          if (!inputName || el.type === 'submit' || el.type === 'button' || el.type === 'reset') return;
++
++          const desc = el.getAttribute('aria-label') || el.placeholder || inputName;
++          const propDef = {
++            description: desc,
++          };
++
++          if (el.type === 'number' || el.type === 'range') {
++            propDef.type = 'number';
++            if (el.min !== '') propDef.minimum = Number(el.min);
++            if (el.max !== '') propDef.maximum = Number(el.max);
++          } else if (el.type === 'checkbox') {
++            propDef.type = 'boolean';
++          } else if (el.tagName.toLowerCase() === 'select') {
++            propDef.type = 'string';
++            const options = Array.from(el.options)
++              .map((opt) => opt.value)
++              .filter((v) => v !== '');
++            if (options.length > 0) {
++              propDef.enum = options;
++            }
++          } else {
++            propDef.type = 'string';
++          }
++
++          properties[inputName] = propDef;
++          if (el.required) {
++            required.push(inputName);
++          }
++        });
++
++        const inputSchema = {
++          type: 'object',
++          properties,
++        };
++        if (required.length > 0) {
++          inputSchema.required = required;
++        }
++
++        const execute = async (inputArgs, { signal }) => {
++          if (signal?.aborted) throw new DOMException('Execution aborted', 'AbortError');
++
++          // Populate form fields
++          for (const [key, value] of Object.entries(inputArgs || {})) {
++            const field = form.elements[key] || form.querySelector(`[name="${key}"], #${key}`);
++            if (field) {
++              if (field.type === 'checkbox') {
++                field.checked = Boolean(value);
++              } else {
++                field.value = String(value);
++              }
++              field.dispatchEvent(new Event('input', { bubbles: true }));
++              field.dispatchEvent(new Event('change', { bubbles: true }));
++            }
++          }
++
++          // Trigger submit event
++          let prevented = false;
++          let responseData = null;
++
++          const submitEvt = new CustomEvent('submit', {
++            bubbles: true,
++            cancelable: true,
++          });
++
++          // WebMCP Declarative SubmitEvent#respondWith extension
++          submitEvt.respondWith = (data) => {
++            responseData = data;
++          };
++
++          prevented = !form.dispatchEvent(submitEvt);
++
++          return {
++            success: true,
++            message: `Form '${name}' submitted successfully.`,
++            data: responseData || inputArgs,
++          };
++        };
++
++        // If tool already exists, unregister old declarative version first
++        if (this.#tools.has(name)) {
++          this.#tools.delete(name);
++        }
++
++        this.registerTool({
++          name,
++          title: form.getAttribute('tooltitle') || name,
++          description,
++          inputSchema,
++          execute,
++          _isDeclarative: true,
++        }).catch((err) => {
++          console.warn(`[WebMCP] Could not register declarative tool ${name}:`, err);
++        });
++      });
++
++      // Cleanup deleted declarative tools
++      for (const [name, tool] of this.#tools.entries()) {
++        if (tool.isDeclarative && !activeDeclarativeNames.has(name)) {
++          this.#tools.delete(name);
++          this._notifyToolChange();
++        }
++      }
++    }
++  }
++
++  // Setup PostMessage bridge for browser extensions, external agents & iframes
++  function setupAgentBridge(modelContext, win) {
++    if (!win || typeof win.addEventListener !== 'function') return;
++
++    win.addEventListener('message', async (event) => {
++      const data = event.data;
++      if (!data || typeof data !== 'object' || !data.type || !data.type.startsWith('webmcp:')) return;
++
++      const source = event.source || win;
++      const origin = event.origin || '*';
++
++      if (data.type === 'webmcp:ping') {
++        source.postMessage({ type: 'webmcp:pong', id: data.id, version: '1.0.0' }, origin);
++        return;
++      }
++
++      if (data.type === 'webmcp:getTools') {
++        try {
++          const tools = await modelContext.getTools();
++          source.postMessage({ type: 'webmcp:getTools:response', id: data.id, tools }, origin);
++        } catch (err) {
++          source.postMessage({ type: 'webmcp:getTools:error', id: data.id, error: err.message }, origin);
++        }
++        return;
++      }
++
++      if (data.type === 'webmcp:executeTool') {
++        try {
++          const result = await modelContext.executeTool(data.toolName, data.inputObject);
++          source.postMessage({ type: 'webmcp:executeTool:response', id: data.id, result }, origin);
++        } catch (err) {
++          source.postMessage({ type: 'webmcp:executeTool:error', id: data.id, error: err.message }, origin);
++        }
++        return;
++      }
++    });
++  }
++
++  /**
++   * Initialize WebMCP polyfill on global environment
++   */
++  function initializeWebMCP(doc, win) {
++    const targetDoc = doc || (typeof document !== 'undefined' ? document : null);
++    const targetWin = win || (typeof window !== 'undefined' ? window : global);
++
++    // Create shared ModelContext instance
++    let instance = null;
++
++    if (targetDoc && targetDoc.modelContext instanceof ModelContext) {
++      instance = targetDoc.modelContext;
++    } else {
++      instance = new ModelContext(targetDoc, targetWin);
++
++      // Define on document
++      if (targetDoc) {
++        try {
++          Object.defineProperty(targetDoc, 'modelContext', {
++            value: instance,
++            writable: false,
++            configurable: true,
++            enumerable: true,
++          });
++        } catch (e) {
++          targetDoc.modelContext = instance;
++        }
++      }
++
++      // Define on navigator (for compatibility with early drafts and agents)
++      const targetNav = targetWin?.navigator || (typeof navigator !== 'undefined' ? navigator : null);
++      if (targetNav) {
++        try {
++          Object.defineProperty(targetNav, 'modelContext', {
++            value: instance,
++            writable: false,
++            configurable: true,
++            enumerable: true,
++          });
++        } catch (e) {
++          targetNav.modelContext = instance;
++        }
++      }
++
++      // Expose interfaces globally
++      targetWin.ModelContext = ModelContext;
++      targetWin.ToolActivatedEvent = ToolActivatedEvent;
++      targetWin.ToolCancelEvent = ToolCancelEvent;
++
++      // Setup PostMessage bridge
++      setupAgentBridge(instance, targetWin);
++
++      // Setup Declarative API MutationObserver if in browser
++      if (targetDoc && typeof MutationObserver !== 'undefined') {
++        const sync = () => instance.syncDeclarativeForms();
++        if (targetDoc.readyState === 'loading') {
++          targetDoc.addEventListener('DOMContentLoaded', sync, { once: true });
++        } else {
++          sync();
++        }
++
++        const observer = new MutationObserver(() => sync());
++        if (targetDoc.body) {
++          observer.observe(targetDoc.body, { childList: true, subtree: true, attributes: true });
++        } else {
++          targetDoc.addEventListener('DOMContentLoaded', () => {
++            if (targetDoc.body) {
++              observer.observe(targetDoc.body, { childList: true, subtree: true, attributes: true });
++            }
++          });
++        }
++      }
++    }
++
++    return instance;
++  }
++
++  // Auto-initialize if running in browser
++  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
++    initializeWebMCP(document, window);
++  }
++
++  // Export for modules / Node
++  if (typeof module !== 'undefined' && module.exports) {
++    module.exports = {
++      ModelContext,
++      ToolActivatedEvent,
++      ToolCancelEvent,
++      initializeWebMCP,
++    };
++  } else {
++    global.initializeWebMCP = initializeWebMCP;
++  }
++})(typeof globalThis !== 'undefined' ? globalThis : this);
+diff --git a/tests/webmcp.test.js b/tests/webmcp.test.js
+new file mode 100644
+index 0000000..6d9a5cc
+--- /dev/null
++++ b/tests/webmcp.test.js
+@@ -0,0 +1,476 @@
++const { test, describe, beforeEach } = require('node:test');
++const assert = require('node:assert/strict');
++
++const { ModelContext, ToolActivatedEvent, ToolCancelEvent } = require('../js/webmcp.js');
++const { MENU_ITEMS, LOCATIONS, REWARDS_PROFILE } = require('../js/coffee-data.js');
++const { CoffeeStore, registerCoffeeTools } = require('../js/app.js');
++
++describe('WebMCP Core Specification Tests', () => {
++  let context;
++
++  beforeEach(() => {
++    context = new ModelContext();
++  });
++
++  test('registers tool and discovers it via getTools()', async () => {
++    await context.registerTool({
++      name: 'echo_message',
++      title: 'Echo Message',
++      description: 'Echo back an input text string.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          message: { type: 'string' },
++        },
++        required: ['message'],
++      },
++      annotations: {
++        readOnlyHint: true,
++      },
++      execute: async ({ message }) => ({ echo: message }),
++    });
++
++    const tools = await context.getTools();
++    assert.equal(tools.length, 1);
++    assert.equal(tools[0].name, 'echo_message');
++    assert.equal(tools[0].title, 'Echo Message');
++    assert.equal(tools[0].description, 'Echo back an input text string.');
++    assert.deepEqual(tools[0].annotations, { readOnlyHint: true });
++  });
++
++  test('validates tool registration parameters', async () => {
++    // Non-object
++    await assert.rejects(
++      () => context.registerTool(null),
++      { name: 'TypeError' }
++    );
++
++    // Invalid tool names
++    await assert.rejects(
++      () => context.registerTool({ name: '', execute: () => {} }),
++      /Tool name must be a non-empty string/
++    );
++    await assert.rejects(
++      () => context.registerTool({ name: 'invalid tool name with spaces', execute: () => {} }),
++      /must only contain/
++    );
++    await assert.rejects(
++      () => context.registerTool({ name: 'a'.repeat(129), execute: () => {} }),
++      /must not exceed 128 characters/
++    );
++
++    // Invalid description
++    await assert.rejects(
++      () => context.registerTool({ name: 'test_tool', description: 123, execute: () => {} }),
++      /must be a string/
++    );
++    await assert.rejects(
++      () => context.registerTool({ name: 'test_tool', description: 'a'.repeat(1025), execute: () => {} }),
++      /must not exceed 1024 characters/
++    );
++
++    // Missing execute function
++    await assert.rejects(
++      () => context.registerTool({ name: 'no_execute', description: 'desc' }),
++      /must provide an execute function/
++    );
++
++    // Duplicate registration without overwrite
++    await context.registerTool({
++      name: 'dup_tool',
++      description: 'First definition',
++      execute: () => 'ok',
++    });
++    await assert.rejects(
++      () => context.registerTool({
++        name: 'dup_tool',
++        description: 'Second definition',
++        execute: () => 'fail',
++      }),
++      /already registered/
++    );
++  });
++
++  test('supports tool unregistration directly and via AbortSignal', async () => {
++    const controller = new AbortController();
++
++    await context.registerTool({
++      name: 'temp_tool',
++      description: 'Temporary tool',
++      execute: () => 'done',
++    }, { signal: controller.signal });
++
++    let tools = await context.getTools();
++    assert.equal(tools.length, 1);
++
++    // Abort signal triggers unregister
++    controller.abort();
++    tools = await context.getTools();
++    assert.equal(tools.length, 0);
++
++    // Direct unregisterTool
++    await context.registerTool({
++      name: 'temp_tool_2',
++      description: 'Temporary tool 2',
++      execute: () => 'done',
++    });
++    assert.equal(context.hasTool('temp_tool_2'), true);
++    context.unregisterTool('temp_tool_2');
++    assert.equal(context.hasTool('temp_tool_2'), false);
++  });
++
++  test('executes tool with arguments and dispatches toolactivated event', async () => {
++    let activatedEventReceived = null;
++    context.addEventListener('toolactivated', (e) => {
++      activatedEventReceived = e;
++    });
++
++    await context.registerTool({
++      name: 'calculate_tax',
++      description: 'Calculate sales tax for an amount',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          subtotal: { type: 'number' },
++          rate: { type: 'number' },
++        },
++        required: ['subtotal'],
++      },
++      execute: async ({ subtotal, rate = 0.0825 }) => {
++        return { tax: Number((subtotal * rate).toFixed(2)) };
++      },
++    });
++
++    const result = await context.executeTool('calculate_tax', { subtotal: 100, rate: 0.1 });
++    assert.deepEqual(result, { tax: 10.0 });
++    assert.ok(activatedEventReceived instanceof ToolActivatedEvent);
++    assert.equal(activatedEventReceived.toolName, 'calculate_tax');
++  });
++
++  test('handles tool execution cancellation with AbortSignal and fires toolcancel event', async () => {
++    let cancelEventReceived = null;
++    context.addEventListener('toolcancel', (e) => {
++      cancelEventReceived = e;
++    });
++
++    await context.registerTool({
++      name: 'slow_task',
++      description: 'Simulates a slow async task',
++      execute: async (args, { signal }) => {
++        return new Promise((resolve, reject) => {
++          const timer = setTimeout(() => resolve('done'), 500);
++          if (signal) {
++            signal.addEventListener('abort', () => {
++              clearTimeout(timer);
++              const err = new Error('Task was cancelled');
++              err.name = 'AbortError';
++              reject(err);
++            });
++          }
++        });
++      },
++    });
++
++    const abortController = new AbortController();
++    const executePromise = context.executeTool('slow_task', {}, { signal: abortController.signal });
++
++    // Cancel after 10ms
++    setTimeout(() => abortController.abort(), 10);
++
++    await assert.rejects(executePromise, { name: 'AbortError' });
++    assert.ok(cancelEventReceived instanceof ToolCancelEvent);
++    assert.equal(cancelEventReceived.toolName, 'slow_task');
++  });
++
++  test('dispatches toolchange event on register and unregister', async () => {
++    let changeCount = 0;
++    context.addEventListener('toolchange', () => {
++      changeCount++;
++    });
++
++    await context.registerTool({
++      name: 'test_a',
++      description: 'tool A',
++      execute: () => 'A',
++    });
++
++    // toolchange is dispatched on microtask
++    await new Promise((resolve) => setTimeout(resolve, 10));
++    assert.equal(changeCount, 1);
++
++    context.unregisterTool('test_a');
++    await new Promise((resolve) => setTimeout(resolve, 10));
++    assert.equal(changeCount, 2);
++  });
++});
++
++describe('Coffee Store WebMCP Application Integration', () => {
++  let context;
++  let store;
++
++  beforeEach(async () => {
++    context = new ModelContext();
++    store = new CoffeeStore({ MENU_ITEMS, LOCATIONS, REWARDS_PROFILE });
++    await registerCoffeeTools(context, store);
++  });
++
++  test('registers all 12 core coffee shop WebMCP tools', async () => {
++    const tools = await context.getTools();
++    const toolNames = tools.map((t) => t.name);
++
++    const expectedTools = [
++      'get_menu',
++      'search_menu',
++      'get_item_details',
++      'filter_menu_in_ui',
++      'add_to_cart',
++      'get_cart',
++      'update_cart_item',
++      'clear_cart',
++      'get_rewards_balance',
++      'apply_reward',
++      'checkout',
++      'get_locations',
++    ];
++
++    for (const name of expectedTools) {
++      assert.ok(toolNames.includes(name), `Missing expected tool: ${name}`);
++    }
++    assert.equal(tools.length, 12);
++  });
++
++  test('tool: get_menu retrieves all or filtered menu items', async () => {
++    const allResult = await context.executeTool('get_menu', {});
++    assert.ok(allResult.count > 0);
++    assert.equal(allResult.category, 'all');
++
++    const espressoResult = await context.executeTool('get_menu', { category: 'espresso' });
++    assert.ok(espressoResult.count > 0);
++    assert.ok(espressoResult.items.every((i) => i.category === 'espresso'));
++  });
++
++  test('tool: search_menu filters by query, maxPrice, and dietary tag', async () => {
++    const queryResult = await context.executeTool('search_menu', { query: 'maple' });
++    assert.ok(queryResult.count >= 1);
++    assert.ok(queryResult.items[0].name.toLowerCase().includes('maple'));
++
++    const priceResult = await context.executeTool('search_menu', { maxPrice: 5.0 });
++    assert.ok(priceResult.items.every((i) => i.price <= 5.0));
++
++    const veganResult = await context.executeTool('search_menu', { dietary: 'vegan' });
++    assert.ok(veganResult.items.every((i) => i.tags && i.tags.includes('vegan')));
++  });
++
++  test('tool: get_item_details returns complete item specs', async () => {
++    const item = await context.executeTool('get_item_details', { itemId: 'maple-oat-latte' });
++    assert.equal(item.id, 'maple-oat-latte');
++    assert.equal(item.name, 'Maple Oat Latte');
++    assert.ok(item.price > 0);
++    assert.ok(Array.isArray(item.tags));
++    assert.ok(Array.isArray(item.customizationOptions?.milks));
++
++    await assert.rejects(
++      () => context.executeTool('get_item_details', { itemId: 'non-existent-beverage' }),
++      /not found/
++    );
++  });
++
++  test('tool: filter_menu_in_ui updates store UI state', async () => {
++    const filterResult = await context.executeTool('filter_menu_in_ui', {
++      category: 'cold_brew',
++      query: 'nitro',
++    });
++    assert.equal(filterResult.activeCategory, 'cold_brew');
++    assert.equal(filterResult.searchQuery, 'nitro');
++    assert.equal(store.activeCategory, 'cold_brew');
++  });
++
++  test('tool: add_to_cart, get_cart, update_cart_item, and clear_cart', async () => {
++    // Add first item
++    const addRes1 = await context.executeTool('add_to_cart', {
++      itemId: 'nitro-cold-brew',
++      quantity: 2,
++      customizations: { size: 'large', sweetness: 'sweet' },
++    });
++    assert.equal(addRes1.addedItem.name, 'Nitro Cold Brew');
++    assert.equal(addRes1.cartSummary.itemCount, 2);
++
++    // Add second item with extra espresso shot
++    const addRes2 = await context.executeTool('add_to_cart', {
++      itemId: 'cortado',
++      quantity: 1,
++      customizations: { extraShots: 1 },
++    });
++    assert.equal(addRes2.cartSummary.itemCount, 3);
++
++    // Retrieve cart
++    const cart = await context.executeTool('get_cart');
++    assert.equal(cart.itemCount, 3);
++    assert.ok(cart.subtotal > 0);
++    assert.ok(cart.estimatedTax > 0);
++    assert.equal(cart.total, Number((cart.subtotal + cart.estimatedTax).toFixed(2)));
++
++    // Update quantity of first item
++    const firstCartItemId = cart.items[0].cartItemId;
++    const updateRes = await context.executeTool('update_cart_item', {
++      cartItemId: firstCartItemId,
++      quantity: 1,
++    });
++    assert.equal(updateRes.cartSummary.itemCount, 2);
++
++    // Remove item by setting quantity to 0
++    const removeRes = await context.executeTool('update_cart_item', {
++      cartItemId: firstCartItemId,
++      quantity: 0,
++    });
++    assert.equal(removeRes.cartSummary.itemCount, 1);
++
++    // Clear cart
++    const clearRes = await context.executeTool('clear_cart');
++    assert.equal(clearRes.cartSummary.itemCount, 0);
++    assert.equal(clearRes.cartSummary.total, 0);
++  });
++
++  test('tool: get_rewards_balance and apply_reward', async () => {
++    const rewards = await context.executeTool('get_rewards_balance');
++    assert.equal(rewards.stars, 145);
++    assert.equal(rewards.tier, 'Gold');
++    assert.ok(rewards.availableRewards.length >= 3);
++
++    // Add item to cart to apply reward to
++    await context.executeTool('add_to_cart', {
++      itemId: 'cardamom-rose-latte',
++      quantity: 1,
++    });
++
++    // Apply valid reward ($2 off = 100 stars)
++    const applyRes = await context.executeTool('apply_reward', { rewardId: 'rew-discount-2' });
++    assert.equal(applyRes.applied, true);
++    assert.equal(applyRes.reward.id, 'rew-discount-2');
++    assert.equal(applyRes.cartSummary.discount, 2.0);
++
++    // Attempt to apply non-existent reward
++    await assert.rejects(
++      () => context.executeTool('apply_reward', { rewardId: 'non-existent-rew' }),
++      /not found/
++    );
++  });
++
++  test('tool: checkout validates inputs, computes stars, and empties cart', async () => {
++    // Empty cart checkout should fail
++    await assert.rejects(
++      () => context.executeTool('checkout', {
++        customerName: 'Sam Taylor',
++        orderType: 'pickup',
++      }),
++      /Cannot checkout with an empty cart/
++    );
++
++    // Add items
++    await context.executeTool('add_to_cart', {
++      itemId: 'cardamom-rose-latte',
++      quantity: 1,
++    });
++
++    // Delivery requires address
++    await assert.rejects(
++      () => context.executeTool('checkout', {
++        customerName: 'Sam Taylor',
++        orderType: 'delivery',
++        deliveryAddress: '',
++      }),
++      /delivery address is required/
++    );
++
++    // Successful pickup checkout
++    const initialStars = store.rewards.stars;
++    const checkoutRes = await context.executeTool('checkout', {
++      customerName: 'Sam Taylor',
++      orderType: 'pickup',
++      locationId: 'loc-downtown',
++      specialInstructions: 'Extra napkin please',
++    });
++
++    assert.equal(checkoutRes.success, true);
++    assert.ok(checkoutRes.order.orderId.startsWith('ORD-'));
++    assert.equal(checkoutRes.order.customerName, 'Sam Taylor');
++    assert.equal(checkoutRes.order.orderType, 'pickup');
++    assert.ok(checkoutRes.order.earnedStars > 0);
++    assert.equal(store.rewards.stars, initialStars + checkoutRes.order.earnedStars);
++    assert.equal(store.cart.length, 0);
++  });
++
++  test('tool: get_locations returns stores and filters by zipCode', async () => {
++    const allLocs = await context.executeTool('get_locations');
++    assert.equal(allLocs.count, 3);
++
++    const filteredLocs = await context.executeTool('get_locations', { zipCode: '94103' });
++    assert.equal(filteredLocs.count, 1);
++    assert.equal(filteredLocs.locations[0].id, 'loc-arts-district');
++  });
++
++  test('complete autonomous AI agent interaction workflow', async () => {
++    // 1. Agent queries available tools
++    const tools = await context.getTools();
++    assert.ok(tools.length >= 12);
++
++    // 2. Agent searches for dairy-free morning coffee under $7
++    const searchResult = await context.executeTool('search_menu', {
++      query: 'latte',
++      maxPrice: 7.0,
++      dietary: 'dairy_free',
++    });
++    assert.ok(searchResult.count >= 1);
++    const chosenItem = searchResult.items[0];
++
++    // 3. Agent inspects chosen item specifications
++    const details = await context.executeTool('get_item_details', {
++      itemId: chosenItem.id,
++    });
++    assert.equal(details.id, chosenItem.id);
++
++    // 4. Agent adds customized beverage to cart
++    await context.executeTool('add_to_cart', {
++      itemId: details.id,
++      quantity: 2,
++      customizations: {
++        size: 'medium',
++        milk: 'oat',
++        sweetness: 'half_sweet',
++      },
++    });
++
++    // 5. Agent inspects cart
++    const cart = await context.executeTool('get_cart');
++    assert.equal(cart.itemCount, 2);
++
++    // 6. Agent checks rewards and applies $2 discount
++    const rewards = await context.executeTool('get_rewards_balance');
++    assert.ok(rewards.stars >= 100);
++    const discountReward = rewards.availableRewards.find((r) => r.id === 'rew-discount-2');
++    await context.executeTool('apply_reward', { rewardId: discountReward.id });
++
++    // 7. Agent checks store locations
++    const locs = await context.executeTool('get_locations');
++    const primaryLocation = locs.locations[0];
++
++    // 8. Agent executes checkout
++    const orderResult = await context.executeTool('checkout', {
++      customerName: 'Autonomous Agent Alex',
++      orderType: 'pickup',
++      locationId: primaryLocation.id,
++      specialInstructions: 'Will arrive in 10 minutes.',
++    });
++
++    assert.equal(orderResult.success, true);
++    assert.equal(orderResult.order.customerName, 'Autonomous Agent Alex');
++    assert.equal(orderResult.order.items.length, 1);
++    assert.equal(orderResult.order.items[0].quantity, 2);
++    assert.equal(orderResult.order.discount, 2.0);
++    assert.equal(store.cart.length, 0);
++
++    // Verify event logs captured the agent workflow
++    const toolLogs = store.eventLogs.filter((log) => log.name.startsWith('tool_call:'));
++    assert.ok(toolLogs.length >= 5);
++  });
++});

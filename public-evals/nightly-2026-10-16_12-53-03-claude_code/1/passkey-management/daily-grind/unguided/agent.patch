@@ -1,0 +1,259 @@
+diff --git a/account/passkeys/index.html b/account/passkeys/index.html
+new file mode 100644
+index 0000000..754eed0
+--- /dev/null
++++ b/account/passkeys/index.html
+@@ -0,0 +1,241 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Passkeys | The Daily Grind</title>
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++      --danger: #b71c1c;
++    }
++
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; color: white; text-decoration: none; }
++    nav ul { display: flex; list-style: none; }
++    nav ul li { margin-left: 20px; }
++    nav a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++    nav a:hover { color: var(--accent); }
++    .logout-link { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++    .container { max-width: 760px; margin: 40px auto; padding: 0 20px; }
++    h1 { color: var(--primary); margin-bottom: 0.25rem; }
++    .lead { margin-bottom: 1.5rem; }
++
++    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
++
++    .btn {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++    .btn:hover { background: #3e2723; }
++    .btn.secondary { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
++    .btn.secondary:hover { background: var(--secondary); }
++    .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
++    .btn.danger:hover { background: #fdecea; }
++    .btn.small { padding: 5px 12px; font-size: 0.85rem; }
++    .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++
++    ul.passkeys { list-style: none; display: grid; gap: 12px; }
++    .passkey {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 16px 20px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      flex-wrap: wrap;
++    }
++    .passkey h2 { font-size: 1.05rem; color: var(--primary); }
++    .passkey p { font-size: 0.85rem; opacity: 0.8; }
++    .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
++    .passkey input[type=text] {
++      font: inherit; padding: 6px 10px; border: 1px solid var(--secondary); border-radius: 4px; min-width: 200px;
++    }
++
++    .empty { background: white; border-radius: 8px; padding: 30px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
++    #status { min-height: 1.5rem; margin-bottom: 12px; font-size: 0.9rem; }
++    #status.error { color: var(--danger); }
++
++    footer { background: var(--secondary); text-align: center; padding: 30px 20px; margin-top: 40px; }
++  </style>
++</head>
++
++<body>
++
++  <nav>
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <ul>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/locations">Locations</a></li>
++      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/account">My Account</a></li>
++      <li><a href="/logout" class="logout-link">Logout</a></li>
++    </ul>
++  </nav>
++
++  <main class="container">
++    <h1>Passkeys</h1>
++    <p class="lead">Passkeys let you sign in with your fingerprint, face, or device PIN instead of a password. Remove any you no longer recognize or use.</p>
++
++    <div class="toolbar">
++      <span id="count" aria-live="polite"></span>
++      <button class="btn" id="add" type="button">Add a passkey</button>
++    </div>
++    <div id="status" role="status"></div>
++    <ul class="passkeys" id="list"></ul>
++  </main>
++
++  <footer>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <script>
++    // Passkeys are kept in localStorage until a server API exists.
++    const KEY = 'dailygrind.passkeys';
++    const list = document.getElementById('list');
++    const statusEl = document.getElementById('status');
++    const countEl = document.getElementById('count');
++
++    function load() {
++      try {
++        const stored = JSON.parse(localStorage.getItem(KEY));
++        if (Array.isArray(stored)) return stored;
++      } catch (e) { /* fall through to seed data */ }
++      const now = Date.now(), day = 864e5;
++      return [
++        { id: 'seed-1', name: 'MacBook Pro (Touch ID)', created: now - 120 * day, lastUsed: now - 2 * day },
++        { id: 'seed-2', name: 'iPhone (Face ID)', created: now - 45 * day, lastUsed: now - 9 * day },
++      ];
++    }
++
++    let passkeys = load();
++    let editing = null;
++
++    function save() { localStorage.setItem(KEY, JSON.stringify(passkeys)); }
++    function say(msg, isError) { statusEl.textContent = msg; statusEl.className = isError ? 'error' : ''; }
++    const fmt = t => t ? new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Never';
++
++    function render() {
++      countEl.textContent = passkeys.length === 1 ? '1 passkey' : passkeys.length + ' passkeys';
++      list.replaceChildren();
++      if (!passkeys.length) {
++        const li = document.createElement('li');
++        li.className = 'empty';
++        li.textContent = 'You have no passkeys yet. Add one to sign in faster.';
++        list.append(li);
++        return;
++      }
++      for (const pk of passkeys) {
++        const li = document.createElement('li');
++        li.className = 'passkey';
++
++        const info = document.createElement('div');
++        const actions = document.createElement('div');
++        actions.className = 'actions';
++
++        if (editing === pk.id) {
++          const input = document.createElement('input');
++          input.type = 'text';
++          input.value = pk.name;
++          input.maxLength = 60;
++          input.setAttribute('aria-label', 'Passkey name');
++          const commit = () => {
++            const name = input.value.trim();
++            if (!name) return say('Name cannot be empty.', true);
++            pk.name = name; editing = null; save(); say('Passkey renamed.'); render();
++          };
++          input.addEventListener('keydown', e => {
++            if (e.key === 'Enter') commit();
++            if (e.key === 'Escape') { editing = null; render(); }
++          });
++          info.append(input);
++          actions.append(button('Save', 'btn small', commit), button('Cancel', 'btn secondary small', () => { editing = null; render(); }));
++          setTimeout(() => input.focus(), 0);
++        } else {
++          const h = document.createElement('h2'); h.textContent = pk.name;
++          const p = document.createElement('p');
++          p.textContent = 'Added ' + fmt(pk.created) + ' · Last used ' + fmt(pk.lastUsed);
++          info.append(h, p);
++          actions.append(
++            button('Rename', 'btn secondary small', () => { editing = pk.id; render(); }),
++            button('Remove', 'btn danger small', () => remove(pk))
++          );
++        }
++        li.append(info, actions);
++        list.append(li);
++      }
++    }
++
++    function button(label, cls, onClick) {
++      const b = document.createElement('button');
++      b.type = 'button'; b.className = cls; b.textContent = label;
++      b.addEventListener('click', onClick);
++      return b;
++    }
++
++    function remove(pk) {
++      const warning = passkeys.length === 1 ? '\n\nThis is your only passkey; you will need your password to sign in.' : '';
++      if (!confirm('Remove "' + pk.name + '"? Devices using it will no longer be able to sign in with it.' + warning)) return;
++      passkeys = passkeys.filter(p => p.id !== pk.id);
++      save(); say('Passkey removed.'); render();
++    }
++
++    document.getElementById('add').addEventListener('click', async () => {
++      if (!window.PublicKeyCredential) return say('This browser does not support passkeys.', true);
++      try {
++        // A real deployment would fetch these options from the server.
++        const cred = await navigator.credentials.create({
++          publicKey: {
++            challenge: crypto.getRandomValues(new Uint8Array(32)),
++            rp: { name: 'The Daily Grind' },
++            user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'account', displayName: 'My Account' },
++            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
++            authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
++          },
++        });
++        passkeys.push({ id: cred.id, name: 'New passkey ' + (passkeys.length + 1), created: Date.now(), lastUsed: null });
++        save(); say('Passkey added. You can rename it below.'); render();
++      } catch (e) {
++        say(e.name === 'NotAllowedError' ? 'Passkey setup was cancelled.' : 'Could not add passkey: ' + e.message, true);
++      }
++    });
++
++    render();
++  </script>
++</body>
++
++</html>
+diff --git a/index.html b/index.html
+index 66c9173..7de8c5d 100644
+--- a/index.html
++++ b/index.html
+@@ -164,6 +164,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><a href="/account/passkeys">Passkeys</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>

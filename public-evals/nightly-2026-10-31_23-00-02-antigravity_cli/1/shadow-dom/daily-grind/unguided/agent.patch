@@ -1,0 +1,456 @@
+diff --git a/index.html b/index.html
+index 66c9173..cae996a 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,25 +165,416 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card
++          title="Maple Oat Latte"
++          description="Creamy oat milk with a hint of Vermont maple syrup."
++          href="/menu/seasonal"
++          link-text="View Details"
++          badge="Limited"
++          limited
++        ></drink-card>
++        <drink-card
++          title="Dark Roast Espresso"
++          description="Bold, smokey, and perfect for a morning boost."
++          href="/menu/espresso"
++          link-text="View Details"
++        ></drink-card>
++        <drink-card
++          title="Cold Brew"
++          description="Steeped for 18 hours for maximum smoothness."
++          href="/menu/cold-brew"
++          link-text="View Details"
++        ></drink-card>
+       </div>
+     </section>
+   </main>
+ 
++  <template id="drink-card-template">
++    <style>
++      :host {
++        display: block;
++      }
++
++      * {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
++
++      .card {
++        position: relative;
++        background: white;
++        padding: 20px;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        text-align: center;
++        height: 100%;
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++        align-items: center;
++      }
++
++      .badge {
++        display: inline-block;
++        background: var(--accent, #ffab40);
++        color: var(--text, #3e2723);
++        font-size: 0.75rem;
++        font-weight: bold;
++        text-transform: uppercase;
++        letter-spacing: 0.5px;
++        padding: 4px 10px;
++        border-radius: 999px;
++        margin-bottom: 10px;
++      }
++
++      h3 {
++        margin-bottom: 10px;
++        color: var(--primary, #4e342e);
++      }
++
++      p {
++        color: var(--text, #3e2723);
++      }
++
++      .btn {
++        display: inline-block;
++        background: var(--primary, #4e342e);
++        color: white;
++        padding: 10px 20px;
++        text-decoration: none;
++        border-radius: 5px;
++        margin-top: 15px;
++        transition: background 0.3s;
++      }
++
++      .btn:hover {
++        background: #3e2723;
++      }
++    </style>
++    <div class="card" part="card">
++      <h3 part="title"></h3>
++      <p part="description"></p>
++      <a class="btn" part="action" href="#">View Details</a>
++    </div>
++  </template>
++
++  <script>
++    class DrinkCard extends HTMLElement {
++      static get observedAttributes() {
++        return [
++          'title',
++          'name',
++          'heading',
++          'description',
++          'desc',
++          'href',
++          'link',
++          'action-link',
++          'action-href',
++          'url',
++          'link-text',
++          'action-text',
++          'action-label',
++          'button-text',
++          'cta',
++          'badge',
++          'limited',
++          'is-limited'
++        ];
++      }
++
++      constructor() {
++        super();
++        this._syncing = false;
++        this.attachShadow({ mode: 'open' });
++
++        const template = document.getElementById('drink-card-template');
++        if (template) {
++          this.shadowRoot.appendChild(template.content.cloneNode(true));
++        } else {
++          this.shadowRoot.innerHTML = `
++            <style>
++              :host { display: block; }
++              * { box-sizing: border-box; margin: 0; padding: 0; }
++              .card {
++                position: relative;
++                background: white;
++                padding: 20px;
++                border-radius: 8px;
++                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                text-align: center;
++                height: 100%;
++                display: flex;
++                flex-direction: column;
++                justify-content: space-between;
++                align-items: center;
++              }
++              .badge {
++                display: inline-block;
++                background: var(--accent, #ffab40);
++                color: var(--text, #3e2723);
++                font-size: 0.75rem;
++                font-weight: bold;
++                text-transform: uppercase;
++                letter-spacing: 0.5px;
++                padding: 4px 10px;
++                border-radius: 999px;
++                margin-bottom: 10px;
++              }
++              h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
++              p { color: var(--text, #3e2723); }
++              .btn {
++                display: inline-block;
++                background: var(--primary, #4e342e);
++                color: white;
++                padding: 10px 20px;
++                text-decoration: none;
++                border-radius: 5px;
++                margin-top: 15px;
++                transition: background 0.3s;
++              }
++              .btn:hover { background: #3e2723; }
++            </style>
++            <div class="card" part="card">
++              <h3 part="title"></h3>
++              <p part="description"></p>
++              <a class="btn" part="action" href="#">View Details</a>
++            </div>
++          `;
++        }
++
++        this._observer = new MutationObserver(() => this.render());
++      }
++
++      connectedCallback() {
++        this._observer.observe(this, {
++          childList: true,
++          subtree: true,
++          characterData: true,
++          attributes: false
++        });
++        this.render();
++      }
++
++      disconnectedCallback() {
++        this._observer.disconnect();
++      }
++
++      attributeChangedCallback(name, oldValue, newValue) {
++        if (this._syncing || oldValue === newValue) return;
++
++        if (name === 'badge' || name === 'limited' || name === 'is-limited') {
++          const isRemovedOrCleared =
++            newValue === null ||
++            newValue.toLowerCase() === 'false' ||
++            newValue.toLowerCase() === 'none' ||
++            (name === 'badge' && oldValue !== null && oldValue !== '' && newValue === '');
++
++          this._syncing = true;
++          if (isRemovedOrCleared) {
++            ['badge', 'limited', 'is-limited'].forEach((attr) => {
++              if (this.hasAttribute(attr)) {
++                this.removeAttribute(attr);
++              }
++            });
++          } else {
++            const badgeVal =
++              newValue.trim() === '' || newValue.toLowerCase() === 'true' ? 'Limited' : newValue;
++            if (this.getAttribute('badge') !== badgeVal) {
++              this.setAttribute('badge', badgeVal);
++            }
++            if (!this.hasAttribute('limited')) {
++              this.setAttribute('limited', '');
++            }
++          }
++          this._syncing = false;
++        }
++
++        this.render();
++      }
++
++      get title() {
++        return this.getAttribute('title') || this.getAttribute('name') || this.getAttribute('heading') || '';
++      }
++
++      set title(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('title');
++        } else {
++          this.setAttribute('title', val);
++        }
++      }
++
++      get description() {
++        return this.getAttribute('description') || this.getAttribute('desc') || '';
++      }
++
++      set description(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('description');
++        } else {
++          this.setAttribute('description', val);
++        }
++      }
++
++      get href() {
++        return (
++          this.getAttribute('href') ||
++          this.getAttribute('link') ||
++          this.getAttribute('action-link') ||
++          this.getAttribute('action-href') ||
++          this.getAttribute('url') ||
++          '#'
++        );
++      }
++
++      set href(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('href');
++        } else {
++          this.setAttribute('href', val);
++        }
++      }
++
++      get linkText() {
++        return (
++          this.getAttribute('link-text') ||
++          this.getAttribute('action-text') ||
++          this.getAttribute('action-label') ||
++          this.getAttribute('button-text') ||
++          this.getAttribute('cta') ||
++          'View Details'
++        );
++      }
++
++      set linkText(val) {
++        if (val === null || val === undefined) {
++          this.removeAttribute('link-text');
++        } else {
++          this.setAttribute('link-text', val);
++        }
++      }
++
++      get limited() {
++        return this._getBadgeText() !== null;
++      }
++
++      set limited(val) {
++        if (val) {
++          this.setAttribute('limited', '');
++        } else {
++          this.removeAttribute('limited');
++          this.removeAttribute('badge');
++          this.removeAttribute('is-limited');
++        }
++      }
++
++      get badge() {
++        return this._getBadgeText() || '';
++      }
++
++      set badge(val) {
++        if (!val || val === 'false') {
++          this.removeAttribute('badge');
++          this.removeAttribute('limited');
++          this.removeAttribute('is-limited');
++        } else {
++          this.setAttribute('badge', val === true ? 'Limited' : String(val));
++        }
++      }
++
++      _getBadgeText() {
++        const slottedBadge = this.querySelector('[slot="badge"], .badge');
++        if (slottedBadge && slottedBadge.textContent.trim()) {
++          return slottedBadge.textContent.trim();
++        }
++
++        if (this.hasAttribute('badge')) {
++          const val = this.getAttribute('badge');
++          if (val !== null && val.toLowerCase() !== 'false' && val.toLowerCase() !== 'none') {
++            return val.trim() === '' || val.toLowerCase() === 'true' ? 'Limited' : val;
++          }
++          return null;
++        }
++
++        if (this.hasAttribute('limited')) {
++          const val = this.getAttribute('limited');
++          if (val === null || val.toLowerCase() === 'false') return null;
++          return val.trim() === '' || val.toLowerCase() === 'true' ? 'Limited' : val;
++        }
++
++        if (this.hasAttribute('is-limited')) {
++          const val = this.getAttribute('is-limited');
++          if (val === null || val.toLowerCase() === 'false') return null;
++          return val.trim() === '' || val.toLowerCase() === 'true' ? 'Limited' : val;
++        }
++
++        return null;
++      }
++
++      render() {
++        const cardEl = this.shadowRoot.querySelector('.card');
++        if (!cardEl) return;
++
++        const titleEl = cardEl.querySelector('h3');
++        const descEl = cardEl.querySelector('p');
++        const actionEl = cardEl.querySelector('a.btn');
++
++        const slottedTitle = this.querySelector('[slot="title"], h3');
++        const slottedDesc = this.querySelector('[slot="description"], p');
++        const slottedAction = this.querySelector('[slot="action"], a');
++
++        if (titleEl) {
++          titleEl.textContent = slottedTitle ? slottedTitle.textContent : this.title;
++        }
++
++        if (descEl) {
++          descEl.textContent = slottedDesc ? slottedDesc.textContent : this.description;
++        }
++
++        if (actionEl) {
++          const hrefVal =
++            slottedAction && slottedAction.getAttribute('href')
++              ? slottedAction.getAttribute('href')
++              : this.href;
++          const textVal =
++            slottedAction && slottedAction.textContent.trim()
++              ? slottedAction.textContent.trim()
++              : this.linkText;
++          actionEl.setAttribute('href', hrefVal);
++          actionEl.textContent = textVal;
++        }
++
++        const badgeText = this._getBadgeText();
++        let badgeEl = cardEl.querySelector('.badge');
++
++        if (badgeText) {
++          if (!badgeEl) {
++            badgeEl = document.createElement('span');
++            badgeEl.className = 'badge';
++            badgeEl.setAttribute('part', 'badge');
++            cardEl.insertBefore(badgeEl, cardEl.firstChild);
++          }
++          badgeEl.hidden = false;
++          badgeEl.style.display = '';
++          badgeEl.textContent = badgeText;
++        } else if (badgeEl) {
++          badgeEl.textContent = '';
++          badgeEl.hidden = true;
++          badgeEl.style.display = 'none';
++          badgeEl.remove();
++        }
++      }
++    }
++
++    customElements.define('drink-card', DrinkCard);
++    customElements.define('seasonal-card', class extends DrinkCard {});
++    customElements.define('favorite-card', class extends DrinkCard {});
++    customElements.define('coffee-card', class extends DrinkCard {});
++    customElements.define('product-card', class extends DrinkCard {});
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

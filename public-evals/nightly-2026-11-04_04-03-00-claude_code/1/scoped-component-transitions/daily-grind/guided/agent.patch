@@ -1,0 +1,456 @@
+diff --git a/index.html b/index.html
+index 66c9173..6aaceca 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,207 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Scoped component transitions ---------- */
++    .grid {
++      /* Cards size independently so expanding one doesn't stretch its row-mates */
++      align-items: start;
++    }
++
++    .card {
++      position: relative;
++      /* Clip children so the scoped transition's group-children clip too */
++      overflow: clip;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 6px;
++    }
++
++    /* Each part of a card moves independently inside the card's own transition */
++    .card > * {
++      view-transition-name: match-element;
++    }
++
++    .card .price {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      padding: 2px 10px;
++      border-radius: 999px;
++    }
++
++    .card-details {
++      width: 100%;
++      background: #f5efed;
++      border-radius: 6px;
++      padding: 12px 16px;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .card-details dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 12px;
++    }
++
++    .card-details dt {
++      font-weight: 600;
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++      justify-content: center;
++      margin-top: 8px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-ghost {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 9px 18px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-ghost:hover {
++      background: var(--secondary);
++    }
++
++    .card .more-link {
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    /* Order panel */
++    .order {
++      margin-top: 40px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px 24px;
++      overflow: clip;
++    }
++
++    .order-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-bottom: 12px;
++    }
++
++    .order-header select {
++      font: inherit;
++      padding: 4px 8px;
++      margin-left: 6px;
++    }
++
++    .order-list {
++      list-style: none;
++    }
++
++    .order-list li {
++      view-transition-name: match-element;
++      view-transition-class: order-item;
++      display: grid;
++      grid-template-columns: 1fr auto auto auto;
++      align-items: center;
++      gap: 16px;
++      padding: 10px 0;
++      border-bottom: 1px solid var(--secondary);
++      background: white;
++    }
++
++    .order-list .qty {
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .order-list .remove {
++      background: none;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 2px 10px;
++      font: inherit;
++      cursor: pointer;
++      color: var(--text);
++    }
++
++    .order-list .remove:hover {
++      background: var(--secondary);
++    }
++
++    .order-empty,
++    .order-total {
++      view-transition-name: match-element;
++    }
++
++    .order-empty {
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .order-total {
++      text-align: right;
++      font-weight: 700;
++      margin-top: 12px;
++    }
++
++    /* Transition timing */
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    /* New order items slide in rather than just fading */
++    ::view-transition-new(.order-item):only-child {
++      animation: 300ms ease-out both slide-in;
++    }
++
++    ::view-transition-old(.order-item):only-child {
++      animation: 250ms ease-in both slide-out;
++    }
++
++    @keyframes slide-in {
++      from { opacity: 0; translate: -24px 0; }
++    }
++
++    @keyframes slide-out {
++      to { opacity: 0; translate: 24px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -178,22 +379,77 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card" data-id="maple" data-name="Maple Oat Latte" data-price="5.25">
++          <span class="card-badge" hidden></span>
+           <h3>Maple Oat Latte</h3>
++          <p class="price">$5.25</p>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-details" id="maple-details" hidden>
++            <dl>
++              <dt>Beans</dt><dd>Espresso, oat milk, maple</dd>
++              <dt>Calories</dt><dd>190</dd>
++              <dt>Caffeine</dt><dd>150 mg</dd>
++            </dl>
++          </div>
++          <div class="card-actions">
++            <button type="button" class="btn-ghost" data-action="toggle" aria-expanded="false" aria-controls="maple-details">Quick look</button>
++            <button type="button" class="btn" data-action="add">Add to order</button>
++          </div>
++          <a href="/menu/seasonal" class="more-link">View full details</a>
++        </article>
++        <article class="card" data-id="espresso" data-name="Dark Roast Espresso" data-price="3.50">
++          <span class="card-badge" hidden></span>
+           <h3>Dark Roast Espresso</h3>
++          <p class="price">$3.50</p>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <div class="card-details" id="espresso-details" hidden>
++            <dl>
++              <dt>Beans</dt><dd>Sumatra dark roast</dd>
++              <dt>Calories</dt><dd>5</dd>
++              <dt>Caffeine</dt><dd>130 mg</dd>
++            </dl>
++          </div>
++          <div class="card-actions">
++            <button type="button" class="btn-ghost" data-action="toggle" aria-expanded="false" aria-controls="espresso-details">Quick look</button>
++            <button type="button" class="btn" data-action="add">Add to order</button>
++          </div>
++          <a href="/menu/espresso" class="more-link">View full details</a>
++        </article>
++        <article class="card" data-id="coldbrew" data-name="Cold Brew" data-price="4.75">
++          <span class="card-badge" hidden></span>
+           <h3>Cold Brew</h3>
++          <p class="price">$4.75</p>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <div class="card-details" id="coldbrew-details" hidden>
++            <dl>
++              <dt>Beans</dt><dd>Colombian medium roast</dd>
++              <dt>Calories</dt><dd>10</dd>
++              <dt>Caffeine</dt><dd>200 mg</dd>
++            </dl>
++          </div>
++          <div class="card-actions">
++            <button type="button" class="btn-ghost" data-action="toggle" aria-expanded="false" aria-controls="coldbrew-details">Quick look</button>
++            <button type="button" class="btn" data-action="add">Add to order</button>
++          </div>
++          <a href="/menu/cold-brew" class="more-link">View full details</a>
++        </article>
+       </div>
++
++      <section class="order" id="order" aria-labelledby="order-heading">
++        <div class="order-header">
++          <h2 id="order-heading">Your Order</h2>
++          <label>Sort by
++            <select id="order-sort">
++              <option value="added">Recently added</option>
++              <option value="name">Name</option>
++              <option value="price">Price</option>
++            </select>
++          </label>
++        </div>
++        <ul class="order-list" id="order-list"></ul>
++        <p class="order-empty" id="order-empty">Your order is empty.</p>
++        <p class="order-total" id="order-total" hidden aria-live="polite"></p>
++      </section>
+     </section>
+   </main>
+ 
+@@ -207,6 +463,156 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    // Element-scoped view transitions: each component animates in its own
++    // subtree, so the rest of the page stays interactive and transitions in
++    // different components (e.g. a card and the order panel) run concurrently.
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        // Graceful fallback: apply the update immediately without animation.
++        updateDOM();
++        return;
++      }
++      const transition = scopeEl.startViewTransition(updateDOM);
++      // Re-triggering on the same scope skips the active transition; swallow that.
++      transition.ready.catch(() => {});
++    }
++
++    const money = (n) => `$${n.toFixed(2)}`;
++    const orderEl = document.getElementById('order');
++    const listEl = document.getElementById('order-list');
++    const emptyEl = document.getElementById('order-empty');
++    const totalEl = document.getElementById('order-total');
++    const sortEl = document.getElementById('order-sort');
++    const cards = new Map(
++      Array.from(document.querySelectorAll('.card'), (card) => [card.dataset.id, card]),
++    );
++    let addedCounter = 0;
++    const quantities = new Map(); // source of truth: id -> qty
++
++    // ----- Card: badge + quick look -----
++    function updateCardBadge(id, qty) {
++      const card = cards.get(id);
++      const badge = card.querySelector('.card-badge');
++      const text = qty > 0 ? `${qty} in order` : '';
++      if (badge.textContent === text && badge.hidden === !qty) return;
++      runScopedTransition(card, () => {
++        badge.textContent = text;
++        badge.hidden = !qty;
++      });
++    }
++
++    function toggleDetails(card, button) {
++      const details = card.querySelector('.card-details');
++      const expand = details.hidden;
++      runScopedTransition(card, () => {
++        details.hidden = !expand;
++        button.setAttribute('aria-expanded', String(expand));
++        button.textContent = expand ? 'Hide details' : 'Quick look';
++      });
++    }
++
++    // ----- Order panel -----
++    function sortedItems(items, mode) {
++      const by = {
++        added: (a, b) => b.dataset.added - a.dataset.added,
++        name: (a, b) => a.dataset.name.localeCompare(b.dataset.name),
++        price: (a, b) => b.dataset.price - a.dataset.price,
++      }[mode];
++      return [...items].sort(by);
++    }
++
++    function applySort() {
++      // Move existing nodes (match-element tracks DOM identity).
++      for (const li of sortedItems(listEl.children, sortEl.value)) listEl.append(li);
++    }
++
++    function refreshSummary() {
++      const items = Array.from(listEl.children);
++      const total = items.reduce((sum, li) => sum + li.dataset.price * li.dataset.qty, 0);
++      emptyEl.hidden = items.length > 0;
++      totalEl.hidden = items.length === 0;
++      totalEl.textContent = `Total: ${money(total)}`;
++    }
++
++    function renderQty(li) {
++      const qty = Number(li.dataset.qty);
++      li.querySelector('.qty').textContent = `× ${qty}`;
++      li.querySelector('.line-price').textContent = money(li.dataset.price * qty);
++    }
++
++    function createOrderItem(card) {
++      const { id, name, price } = card.dataset;
++      const li = document.createElement('li');
++      Object.assign(li.dataset, { id, name, price, qty: '0' });
++      li.innerHTML = `
++        <span class="name"></span>
++        <span class="qty"></span>
++        <span class="line-price"></span>
++        <button type="button" class="remove"></button>`;
++      li.querySelector('.name').textContent = name;
++      const remove = li.querySelector('.remove');
++      remove.textContent = 'Remove';
++      remove.setAttribute('aria-label', `Remove ${name}`);
++      return li;
++    }
++
++    function addToOrder(card) {
++      const id = card.dataset.id;
++      // The update callback runs asynchronously, so compute the new state now.
++      const qty = (quantities.get(id) ?? 0) + 1;
++      quantities.set(id, qty);
++      const added = ++addedCounter;
++      runScopedTransition(orderEl, () => {
++        // Re-query: an earlier, skipped transition may have already created it.
++        let li = listEl.querySelector(`li[data-id="${id}"]`);
++        if (!li) {
++          li = createOrderItem(card);
++          listEl.append(li);
++        }
++        li.dataset.qty = qty;
++        li.dataset.added = added;
++        renderQty(li);
++        applySort();
++        refreshSummary();
++      });
++      // The card's badge animates in its own scope, concurrently with the panel.
++      updateCardBadge(id, qty);
++    }
++
++    function removeFromOrder(li) {
++      const hadFocus = li.contains(document.activeElement);
++      const nextFocusTarget =
++        li.nextElementSibling?.querySelector('button') ??
++        li.previousElementSibling?.querySelector('button') ??
++        sortEl;
++      quantities.delete(li.dataset.id);
++      runScopedTransition(orderEl, () => {
++        li.remove();
++        refreshSummary();
++        if (hadFocus) nextFocusTarget.focus();
++      });
++      updateCardBadge(li.dataset.id, 0);
++    }
++
++    document.querySelector('.grid').addEventListener('click', (event) => {
++      const button = event.target.closest('button[data-action]');
++      if (!button) return;
++      const card = button.closest('.card');
++      if (button.dataset.action === 'toggle') toggleDetails(card, button);
++      else if (button.dataset.action === 'add') addToOrder(card);
++    });
++
++    listEl.addEventListener('click', (event) => {
++      const button = event.target.closest('.remove');
++      if (button) removeFromOrder(button.closest('li'));
++    });
++
++    sortEl.addEventListener('change', () => runScopedTransition(orderEl, applySort));
++  </script>
+ </body>
+ 
+ </html>

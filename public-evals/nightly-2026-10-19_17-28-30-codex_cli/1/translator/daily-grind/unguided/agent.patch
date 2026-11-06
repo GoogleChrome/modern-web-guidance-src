@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+index 66c9173..517c49c 100644
+--- a/index.html
++++ b/index.html
+@@ -72,6 +72,52 @@
+       border-radius: 4px;
+     }
+ 
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 24px;
++    }
++
++    .language-control {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++    }
++
++    .language-control select {
++      padding: 7px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .language-control select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    @media (max-width: 900px) {
++      nav, .nav-actions { flex-wrap: wrap; gap: 16px; }
++      nav ul { flex-wrap: wrap; gap: 12px 20px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -159,39 +205,50 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
++    <div class="nav-actions">
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-i18n="menu">Menu</a></li>
++      <li><a href="/locations" data-i18n="locations">Locations</a></li>
++      <li><a href="/rewards" data-i18n="rewards">Rewards</a></li>
++      <li><a href="/account" data-i18n="account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-i18n="logout">Logout</a></li>
+     </ul>
++    <div class="language-control">
++      <label for="language" data-i18n="language">Language</label>
++      <select id="language" name="language">
++        <option value="en" lang="en">English</option>
++        <option value="es" lang="es">Español</option>
++        <option value="fr" lang="fr">Français</option>
++        <option value="de" lang="de">Deutsch</option>
++      </select>
++    </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 data-i18n="headline">Wake Up Your Senses</h1>
++    <p data-i18n="tagline">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" class="btn" data-i18n="order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;" data-i18n="seasonal">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <h3 data-i18n="maple">Maple Oat Latte</h3>
++          <p data-i18n="mapleDescription">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a href="/menu/seasonal" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3 data-i18n="espresso">Dark Roast Espresso</h3>
++          <p data-i18n="espressoDescription">Bold, smokey, and perfect for a morning boost.</p>
++          <a href="/menu/espresso" class="btn" data-i18n="details">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3 data-i18n="coldBrew">Cold Brew</h3>
++          <p data-i18n="coldBrewDescription">Steeped for 18 hours for maximum smoothness.</p>
++          <a href="/menu/cold-brew" class="btn" data-i18n="details">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -199,14 +256,16 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-i18n="story">Our Story</a> |
++      <a href="/careers" data-i18n="careers">Join the Team</a> |
++      <a href="/contact" data-i18n="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-i18n="privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p data-i18n="copyright">&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <p id="language-status" class="sr-only" role="status" aria-live="polite"></p>
++  <script src="translations.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/translations.js b/translations.js
+new file mode 100644
+index 0000000..a40553e
+--- /dev/null
++++ b/translations.js
+@@ -0,0 +1,85 @@
++(() => {
++  'use strict';
++
++  const translations = {
++    en: {
++      title: 'The Daily Grind | Artisanal Coffee', language: 'Language',
++      menu: 'Menu', locations: 'Locations', rewards: 'Rewards', account: 'My Account', logout: 'Logout',
++      headline: 'Wake Up Your Senses', tagline: 'Ethically sourced, locally roasted, delivered to your cup.',
++      order: 'Order Now', seasonal: 'Seasonal Favorites', maple: 'Maple Oat Latte',
++      mapleDescription: 'Creamy oat milk with a hint of Vermont maple syrup.', details: 'View Details',
++      espresso: 'Dark Roast Espresso', espressoDescription: 'Bold, smokey, and perfect for a morning boost.',
++      coldBrew: 'Cold Brew', coldBrewDescription: 'Steeped for 18 hours for maximum smoothness.',
++      story: 'Our Story', careers: 'Join the Team', contact: 'Contact Us', privacy: 'Privacy',
++      copyright: '© 2026 The Daily Grind Coffee Co. All rights reserved.', status: 'Language changed to English.'
++    },
++    es: {
++      title: 'The Daily Grind | Café artesanal', language: 'Idioma',
++      menu: 'Menú', locations: 'Locales', rewards: 'Recompensas', account: 'Mi cuenta', logout: 'Cerrar sesión',
++      headline: 'Despierta tus sentidos', tagline: 'De origen ético, tostado localmente y servido en tu taza.',
++      order: 'Pide ahora', seasonal: 'Favoritos de temporada', maple: 'Latte de avena y arce',
++      mapleDescription: 'Cremosa leche de avena con un toque de sirope de arce de Vermont.', details: 'Ver detalles',
++      espresso: 'Espresso de tueste oscuro', espressoDescription: 'Intenso, ahumado y perfecto para empezar el día con energía.',
++      coldBrew: 'Café de extracción en frío', coldBrewDescription: 'Infusionado durante 18 horas para una suavidad máxima.',
++      story: 'Nuestra historia', careers: 'Únete al equipo', contact: 'Contáctanos', privacy: 'Privacidad',
++      copyright: '© 2026 The Daily Grind Coffee Co. Todos los derechos reservados.', status: 'Idioma cambiado a español.'
++    },
++    fr: {
++      title: 'The Daily Grind | Café artisanal', language: 'Langue',
++      menu: 'Carte', locations: 'Nos cafés', rewards: 'Fidélité', account: 'Mon compte', logout: 'Déconnexion',
++      headline: 'Éveillez vos sens', tagline: 'Un café issu de sources éthiques, torréfié localement et servi dans votre tasse.',
++      order: 'Commander', seasonal: 'Les favoris de saison', maple: 'Latte à l’avoine et à l’érable',
++      mapleDescription: 'Du lait d’avoine onctueux avec une touche de sirop d’érable du Vermont.', details: 'Voir les détails',
++      espresso: 'Espresso à torréfaction foncée', espressoDescription: 'Intense et fumé, idéal pour bien commencer la journée.',
++      coldBrew: 'Café infusé à froid', coldBrewDescription: 'Infusé pendant 18 heures pour une douceur incomparable.',
++      story: 'Notre histoire', careers: 'Rejoignez l’équipe', contact: 'Nous contacter', privacy: 'Confidentialité',
++      copyright: '© 2026 The Daily Grind Coffee Co. Tous droits réservés.', status: 'La langue sélectionnée est le français.'
++    },
++    de: {
++      title: 'The Daily Grind | Handwerklich gerösteter Kaffee', language: 'Sprache',
++      menu: 'Speisekarte', locations: 'Standorte', rewards: 'Treueprogramm', account: 'Mein Konto', logout: 'Abmelden',
++      headline: 'Wecke deine Sinne', tagline: 'Ethisch bezogen, lokal geröstet und direkt in deine Tasse.',
++      order: 'Jetzt bestellen', seasonal: 'Saisonale Favoriten', maple: 'Haferlatte mit Ahornsirup',
++      mapleDescription: 'Cremige Hafermilch mit einem Hauch Ahornsirup aus Vermont.', details: 'Details ansehen',
++      espresso: 'Dunkel gerösteter Espresso', espressoDescription: 'Kräftig, rauchig und perfekt für einen schwungvollen Morgen.',
++      coldBrew: 'Kalt gebrühter Kaffee', coldBrewDescription: 'Für maximale Milde 18 Stunden lang kalt aufgebrüht.',
++      story: 'Unsere Geschichte', careers: 'Komm ins Team', contact: 'Kontakt', privacy: 'Datenschutz',
++      copyright: '© 2026 The Daily Grind Coffee Co. Alle Rechte vorbehalten.', status: 'Sprache auf Deutsch geändert.'
++    }
++  };
++
++  const selector = document.getElementById('language');
++  const status = document.getElementById('language-status');
++  const storageKey = 'daily-grind-language';
++  const isSupported = language => Object.hasOwn(translations, language);
++
++  function setLanguage(language, announce = false) {
++    const selected = isSupported(language) ? language : 'en';
++    const messages = translations[selected];
++    document.querySelectorAll('[data-i18n]').forEach(element => {
++      const key = element.dataset.i18n;
++      if (Object.hasOwn(messages, key)) element.textContent = messages[key];
++    });
++    document.documentElement.lang = selected;
++    document.title = messages.title;
++    selector.value = selected;
++    if (announce) status.textContent = messages.status;
++  }
++
++  let savedLanguage;
++  try {
++    savedLanguage = localStorage.getItem(storageKey);
++  } catch {
++    // Translation still works when browser storage is unavailable.
++  }
++  setLanguage(savedLanguage);
++
++  selector.addEventListener('change', () => {
++    setLanguage(selector.value, true);
++    try {
++      localStorage.setItem(storageKey, selector.value);
++    } catch {
++      // Keep the selection for this page even if it cannot be saved.
++    }
++  });
++})();

@@ -1,0 +1,249 @@
+diff --git a/components/favorite-toggle.js b/components/favorite-toggle.js
+new file mode 100644
+index 0000000..925c467
+--- /dev/null
++++ b/components/favorite-toggle.js
+@@ -0,0 +1,186 @@
++/**
++ * <favorite-toggle> — a reusable on/off toggle for marking an item as a favorite.
++ *
++ * Attributes:
++ *   item-id   Unique id for the item. When set, state is persisted in localStorage.
++ *   label     Accessible name of the item (e.g. "Cold Brew"). Defaults to "this item".
++ *   pressed   Boolean; present when the item is favorited. Reflects state.
++ *   disabled  Boolean; disables interaction.
++ *
++ * Properties:
++ *   pressed (boolean, read/write), disabled (boolean, read/write)
++ *
++ * Methods:
++ *   toggle()
++ *
++ * Events:
++ *   favorite-change  { detail: { itemId, label, pressed } } — bubbles, composed.
++ *
++ * CSS custom properties:
++ *   --favorite-color (active heart color), --favorite-idle-color, --favorite-size
++ */
++const STORAGE_KEY = 'daily-grind:favorites';
++
++function readStore() {
++  try {
++    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
++    return new Set(Array.isArray(parsed) ? parsed : []);
++  } catch {
++    return new Set();
++  }
++}
++
++function writeStore(set) {
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
++  } catch {
++    /* storage unavailable (private mode, quota) — state stays in-memory */
++  }
++}
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: inline-block;
++      --_size: var(--favorite-size, 1.5rem);
++    }
++    :host([hidden]) { display: none; }
++    button {
++      all: unset;
++      box-sizing: border-box;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: calc(var(--_size) + 1rem);
++      height: calc(var(--_size) + 1rem);
++      border-radius: 50%;
++      cursor: pointer;
++      color: var(--favorite-idle-color, #8d6e63);
++      background: rgba(255, 255, 255, 0.9);
++      transition: transform 0.15s ease, color 0.2s ease, background 0.2s ease;
++    }
++    button:hover { background: #fff3e0; }
++    button:active { transform: scale(0.9); }
++    button:focus-visible {
++      outline: 3px solid var(--favorite-color, #ffab40);
++      outline-offset: 2px;
++    }
++    button[aria-pressed="true"] { color: var(--favorite-color, #e65100); }
++    button:disabled { cursor: not-allowed; opacity: 0.5; }
++    svg { width: var(--_size); height: var(--_size); }
++    path {
++      fill: transparent;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linejoin: round;
++      transition: fill 0.2s ease;
++    }
++    button[aria-pressed="true"] path { fill: currentColor; }
++    @media (prefers-reduced-motion: reduce) {
++      button, path { transition: none; }
++      button:active { transform: none; }
++    }
++  </style>
++  <button type="button" part="button" aria-pressed="false">
++    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++      <path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/>
++    </svg>
++  </button>
++`;
++
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['pressed', 'label', 'disabled', 'item-id'];
++
++  #button;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.appendChild(template.content.cloneNode(true));
++    this.#button = root.querySelector('button');
++    this.#button.addEventListener('click', () => this.toggle());
++  }
++
++  connectedCallback() {
++    // Upgrade properties set before the element was defined.
++    for (const prop of ['pressed', 'disabled']) {
++      if (Object.prototype.hasOwnProperty.call(this, prop)) {
++        const value = this[prop];
++        delete this[prop];
++        this[prop] = value;
++      }
++    }
++    // Restore persisted state if available; otherwise keep the markup default.
++    const id = this.itemId;
++    if (id && readStore().has(id)) this.toggleAttribute('pressed', true);
++    this.#render();
++  }
++
++  attributeChangedCallback() {
++    this.#render();
++  }
++
++  get itemId() {
++    return this.getAttribute('item-id');
++  }
++
++  get label() {
++    return this.getAttribute('label') || 'this item';
++  }
++
++  get pressed() {
++    return this.hasAttribute('pressed');
++  }
++
++  set pressed(value) {
++    this.toggleAttribute('pressed', Boolean(value));
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(value) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  toggle() {
++    if (this.disabled) return;
++    this.pressed = !this.pressed;
++    this.#persist();
++    this.dispatchEvent(
++      new CustomEvent('favorite-change', {
++        bubbles: true,
++        composed: true,
++        detail: { itemId: this.itemId, label: this.label, pressed: this.pressed },
++      })
++    );
++  }
++
++  #persist() {
++    const id = this.itemId;
++    if (!id) return;
++    const store = readStore();
++    if (this.pressed) store.add(id);
++    else store.delete(id);
++    writeStore(store);
++  }
++
++  #render() {
++    if (!this.#button) return;
++    const pressed = this.pressed;
++    this.#button.setAttribute('aria-pressed', String(pressed));
++    this.#button.setAttribute('aria-label', `Favorite ${this.label}`);
++    this.#button.title = pressed
++      ? `Remove ${this.label} from favorites`
++      : `Add ${this.label} to favorites`;
++    this.#button.disabled = this.disabled;
++  }
++}
++
++if (!customElements.get('favorite-toggle')) {
++  customElements.define('favorite-toggle', FavoriteToggle);
++}
++
++export { FavoriteToggle };
+diff --git a/index.html b/index.html
+index 66c9173..b86ed74 100644
+--- a/index.html
++++ b/index.html
+@@ -113,9 +113,24 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++    }
++
++    .card favorite-toggle {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++    }
++
++    /* Reserve space before the element upgrades to avoid layout shift */
++    favorite-toggle:not(:defined) {
++      display: inline-block;
++      width: 2.5rem;
++      height: 2.5rem;
+     }
+ 
+     .card h3 {
++      padding: 0 2.75rem;
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+@@ -153,6 +168,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/favorite-toggle.js"></script>
+ </head>
+ 
+ <body>
+@@ -179,16 +195,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <favorite-toggle item-id="maple-oat-latte" label="Maple Oat Latte"></favorite-toggle>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <favorite-toggle item-id="dark-roast-espresso" label="Dark Roast Espresso"></favorite-toggle>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <favorite-toggle item-id="cold-brew" label="Cold Brew"></favorite-toggle>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

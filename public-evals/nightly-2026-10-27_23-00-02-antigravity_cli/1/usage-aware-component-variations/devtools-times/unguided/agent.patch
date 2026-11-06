@@ -1,0 +1,2305 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..7fdd564 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,42 +3,99 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import SemanticBadge from './SemanticBadge';
++import {
++    resolveSemanticProfile,
++    type SemanticDomain,
++    type SemanticIntent,
++    type SemanticPlacement,
++} from '../utils/semanticContext';
++import { BookOpenIcon } from '@heroicons/react/24/outline';
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+     large?: boolean;
++    placement?: SemanticPlacement;
++    overrideDomain?: SemanticDomain;
++    overrideIntent?: SemanticIntent;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const {
++    article,
++    large = false,
++    placement = large ? 'lead' : 'grid',
++    overrideDomain,
++    overrideIntent,
++} = Astro.props;
++
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+-const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++
++const semantic = resolveSemanticProfile({
++    title: article.data.title,
++    summary: article.data.summary,
++    category: article.data.category,
++    tags: article.data.tags,
++    readingTime: article.data.readingTime,
++    contentKind: 'article',
++    placement,
++    overrideDomain,
++    overrideIntent,
++});
++
++const categoryHref = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
++const articleHref = `${import.meta.env.BASE_URL}articles/${article.id}`;
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div
++        class={`p-6 md:p-8 shadow-sm transition-all ${semantic.containerBorderClass} ${semantic.surfaceBgClass}`}
++        data-semantic-domain={semantic.domain}
++        data-semantic-intent={semantic.intent}
++        data-semantic-placement="lead"
++    >
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                <div class="mb-2">
++                    <SemanticBadge
++                        client:visible
++                        category={article.data.category}
++                        title={article.data.title}
++                        summary={article.data.summary}
++                        tags={article.data.tags}
++                        readingTime={article.data.readingTime}
++                        placement="lead"
++                        overrideDomain={overrideDomain}
++                        overrideIntent={overrideIntent}
++                        href={categoryHref}
++                        showIntent={true}
++                        showDepth={true}
++                    />
++                </div>
++                <a href={articleHref} class="flex-grow group">
++                    <h1 class={`mt-2 text-3xl md:text-4xl leading-tight transition-colors ${semantic.headlineFontClass} ${semantic.headlineHoverClass}`}>
+                         {article.data.title}
+                     </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
++                    <p class={`mt-4 text-lg ${semantic.summaryTextClass}`}>
+                         {article.data.summary}
+                     </p>
+                 </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
++                <div class={`mt-4 p-3 rounded-xs text-xs bg-white/85 ${semantic.calloutBorderClass}`}>
++                    <div class="flex justify-between items-center font-semibold text-gray-900">
++                        <span>{semantic.metricLabel}</span>
++                        <span class={semantic.badgeTextClass}>{semantic.metricValue}</span>
++                    </div>
++                </div>
++                <div class="flex justify-between items-center mt-5 pt-3 border-t border-black/10 text-gray-500">
++                    <span class={`text-xs font-medium flex items-center ${semantic.metaTextClass}`}>
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
++                        {article.data.readingTime} Min. ({semantic.readingDepthLabel})
+                     </span>
+                     <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <a href={articleHref} class="block relative overflow-hidden">
+                     <Image 
+                         src={image} 
+                         alt=""
+@@ -47,32 +104,73 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         format="webp"
+                         class="w-full h-auto object-cover"
+                     />
++                    <div class="absolute bottom-3 right-3 bg-black/75 text-white text-[11px] font-mono uppercase px-2.5 py-1 rounded-xs">
++                        {semantic.domainLabel} • {semantic.intentLabel}
++                    </div>
+                 </a>
+             </div>
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <article
++        class={`flex flex-col h-full group rounded-sm overflow-hidden p-4 transition-all hover:shadow-md ${semantic.containerBorderClass} ${semantic.surfaceBgClass}`}
++        data-semantic-domain={semantic.domain}
++        data-semantic-intent={semantic.intent}
++        data-semantic-placement={placement}
++    >
++        {semantic.domain === 'discovery' && (
++            <div class="bg-slate-900 text-teal-300 font-mono text-[10px] px-2.5 py-1 -mx-4 -mt-4 mb-3 flex items-center justify-between">
++                <span>SPEC // {article.data.category.toUpperCase()}</span>
++                <span>{semantic.readingDepthLabel.toUpperCase()}</span>
++            </div>
++        )}
++        <a href={articleHref} class="block relative overflow-hidden rounded-xs">
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+                 width={400}
+                 height={225}
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                class="w-full object-cover rounded-xs flex-shrink-0 aspect-[16/9] group-hover:scale-[1.02] transition-transform duration-300"
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++            <div class="mb-2">
++                <SemanticBadge
++                    client:visible
++                    category={article.data.category}
++                    title={article.data.title}
++                    summary={article.data.summary}
++                    tags={article.data.tags}
++                    readingTime={article.data.readingTime}
++                    placement={placement}
++                    overrideDomain={overrideDomain}
++                    overrideIntent={overrideIntent}
++                    href={categoryHref}
++                    showIntent={true}
++                    showDepth={false}
++                />
++            </div>
++            <a href={articleHref} class="flex flex-col flex-grow">
++                <h3 class={`text-lg md:text-xl transition-colors ${semantic.headlineFontClass} ${semantic.headlineHoverClass}`}>
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                {semantic.domain === 'culture' ? (
++                    <p class={`mt-2 text-sm border-l-2 border-purple-300 pl-3 italic flex-grow ${semantic.summaryTextClass}`}>
++                        {article.data.summary}
++                    </p>
++                ) : (
++                    <p class={`mt-2 text-sm flex-grow ${semantic.summaryTextClass}`}>
++                        {article.data.summary}
++                    </p>
++                )}
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
++            <div class="mt-3 pt-2 border-t border-black/5 flex items-center justify-between text-[11px]">
++                <span class="text-gray-500">{semantic.metricLabel}:</span>
++                <span class={`font-semibold ${semantic.badgeTextClass}`}>{semantic.metricValue}</span>
++            </div>
++            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t border-black/10">
++                <span class={`text-xs font-medium flex items-center ${semantic.metaTextClass}`}>
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+@@ -80,4 +178,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/SemanticBadge.tsx b/src/components/SemanticBadge.tsx
+new file mode 100644
+index 0000000..b97b608
+--- /dev/null
++++ b/src/components/SemanticBadge.tsx
+@@ -0,0 +1,131 @@
++import React from 'react';
++import {
++  useSemanticContext,
++} from '../context/SemanticContext';
++import type {
++  ContentKind,
++  SemanticDomain,
++  SemanticIntent,
++  SemanticPlacement,
++} from '../utils/semanticContext';
++
++export interface SemanticBadgeProps {
++  category?: string;
++  title?: string;
++  summary?: string;
++  tags?: string[];
++  readingTime?: number;
++  contentKind?: ContentKind;
++  placement?: SemanticPlacement;
++  overrideDomain?: SemanticDomain;
++  overrideIntent?: SemanticIntent;
++  showIntent?: boolean;
++  showDepth?: boolean;
++  href?: string;
++  className?: string;
++}
++
++const DOMAIN_ICONS: Record<SemanticDomain, React.ReactNode> = {
++  civic: (
++    <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
++    </svg>
++  ),
++  discovery: (
++    <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
++    </svg>
++  ),
++  culture: (
++    <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
++    </svg>
++  ),
++  vitality: (
++    <svg className="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
++    </svg>
++  ),
++};
++
++export const SemanticBadge: React.FC<SemanticBadgeProps> = ({
++  category = 'General',
++  title,
++  summary,
++  tags,
++  readingTime,
++  contentKind = 'article',
++  placement = 'grid',
++  overrideDomain,
++  overrideIntent,
++  showIntent = true,
++  showDepth = false,
++  href,
++  className = '',
++}) => {
++  const { context, tokens } = useSemanticContext({
++    category,
++    title,
++    summary,
++    tags,
++    readingTime,
++    contentKind,
++    placement,
++    overrideDomain,
++    overrideIntent,
++  });
++
++  const displayCategory =
++    category.charAt(0).toUpperCase() + category.slice(1);
++
++  const badgeShapeClass =
++    tokens.domain === 'discovery'
++      ? 'rounded-none font-mono tracking-wider uppercase text-[11px] px-2 py-0.5'
++      : tokens.domain === 'culture'
++        ? 'rounded-full font-serif italic text-xs px-2.5 py-0.5'
++        : tokens.domain === 'civic'
++          ? 'rounded-sm font-serif uppercase tracking-widest text-[11px] px-2 py-0.5'
++          : 'rounded-md font-sans font-bold uppercase tracking-wide text-[11px] px-2 py-0.5';
++
++  const categoryNode = (
++    <span
++      className={`inline-flex items-center ${tokens.badgeBgClass} ${badgeShapeClass} transition-opacity hover:opacity-90`}
++    >
++      {DOMAIN_ICONS[tokens.domain]}
++      <span>{displayCategory}</span>
++    </span>
++  );
++
++  return (
++    <div
++      className={`inline-flex flex-wrap items-center gap-1.5 ${className}`}
++      data-semantic-domain={tokens.domain}
++      data-semantic-intent={tokens.intent}
++    >
++      {href ? <a href={href}>{categoryNode}</a> : categoryNode}
++
++      {showIntent && context.showSemanticAnnotations && (
++        <span
++          className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium ${
++            tokens.domain === 'discovery'
++              ? 'font-mono rounded-none'
++              : 'rounded'
++          } ${tokens.intentBadgeClass}`}
++        >
++          {tokens.intent === 'urgent' && (
++            <span className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5 animate-pulse" />
++          )}
++          {tokens.intentLabel}
++        </span>
++      )}
++
++      {showDepth && context.showSemanticAnnotations && (
++        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-700 rounded border border-gray-200">
++          {tokens.readingDepthLabel}
++        </span>
++      )}
++    </div>
++  );
++};
++
++export default SemanticBadge;
+diff --git a/src/components/SemanticCallout.tsx b/src/components/SemanticCallout.tsx
+new file mode 100644
+index 0000000..1c2afb8
+--- /dev/null
++++ b/src/components/SemanticCallout.tsx
+@@ -0,0 +1,242 @@
++import React, { useState } from 'react';
++import { useSemanticContext } from '../context/SemanticContext';
++import type {
++  ContentKind,
++  SemanticDomain,
++  SemanticIntent,
++  SemanticPlacement,
++} from '../utils/semanticContext';
++
++export interface SemanticCalloutProps {
++  title: string;
++  summary: string;
++  category: string;
++  author?: string;
++  tags?: string[];
++  readingTime?: number;
++  contentKind?: ContentKind;
++  placement?: SemanticPlacement;
++  overrideDomain?: SemanticDomain;
++  overrideIntent?: SemanticIntent;
++  interactiveLens?: boolean;
++}
++
++export const SemanticCallout: React.FC<SemanticCalloutProps> = ({
++  title,
++  summary,
++  category,
++  author,
++  tags = [],
++  readingTime = 4,
++  contentKind = 'article',
++  placement = 'inline',
++  overrideDomain,
++  overrideIntent,
++  interactiveLens = true,
++}) => {
++  const [localDomainOverride, setLocalDomainOverride] = useState<
++    SemanticDomain | undefined
++  >(overrideDomain);
++
++  const { tokens } = useSemanticContext({
++    title,
++    summary,
++    category,
++    tags,
++    readingTime,
++    contentKind,
++    placement,
++    overrideDomain: localDomainOverride,
++    overrideIntent,
++  });
++
++  const displayTags =
++    tags.length > 0
++      ? tags
++      : [category.toLowerCase(), tokens.domain, tokens.intent];
++
++  return (
++    <aside
++      className={`my-6 p-5 rounded-md shadow-xs transition-all duration-200 ${tokens.calloutBorderClass} ${tokens.calloutBgClass}`}
++      data-semantic-domain={tokens.domain}
++      data-semantic-intent={tokens.intent}
++      aria-label={tokens.calloutTitle}
++    >
++      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-black/10">
++        <div className="flex items-center gap-2">
++          <span
++            className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-xs ${tokens.badgeBgClass}`}
++          >
++            {tokens.domainLabel}
++          </span>
++          <span
++            className={`px-2 py-0.5 text-[11px] font-medium rounded-xs ${tokens.intentBadgeClass}`}
++          >
++            {tokens.intentLabel}
++          </span>
++        </div>
++
++        {interactiveLens && (
++          <div className="flex items-center gap-1 text-xs">
++            <span className="text-gray-500 mr-1 font-medium">Context Lens:</span>
++            {(['auto', 'civic', 'discovery', 'culture', 'vitality'] as const).map(
++              (lens) => {
++                const isSelected =
++                  (lens === 'auto' && !localDomainOverride) ||
++                  localDomainOverride === lens;
++                return (
++                  <button
++                    key={lens}
++                    type="button"
++                    onClick={() =>
++                      setLocalDomainOverride(lens === 'auto' ? undefined : lens)
++                    }
++                    className={`px-2 py-0.5 rounded text-[11px] capitalize transition-colors cursor-pointer ${
++                      isSelected
++                        ? 'bg-gray-900 text-white font-semibold'
++                        : 'bg-white/80 text-gray-700 hover:bg-gray-200 border border-gray-300'
++                    }`}
++                  >
++                    {lens}
++                  </button>
++                );
++              }
++            )}
++          </div>
++        )}
++      </div>
++
++      {/* Domain-Adaptive Visual Body */}
++      {tokens.domain === 'civic' && (
++        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
++          <div className="md:col-span-2">
++            <h4 className="font-brand text-xl text-rose-950 mb-1">
++              {tokens.calloutTitle}
++            </h4>
++            <p className="text-sm text-stone-700 font-serif leading-relaxed">
++              {summary}
++            </p>
++          </div>
++          <div className="bg-white/90 border border-rose-200 p-3 rounded-xs">
++            <div className="text-[11px] font-bold uppercase tracking-widest text-rose-900 mb-1">
++              {tokens.metricLabel}
++            </div>
++            <div className="text-sm font-semibold text-stone-900 mb-2">
++              {tokens.metricValue}
++            </div>
++            <div className="flex items-center gap-1" title={`Urgency Score: ${tokens.urgencyScore}/5`}>
++              {[1, 2, 3, 4, 5].map((lvl) => (
++                <span
++                  key={lvl}
++                  className={`h-2 flex-1 rounded-xs ${
++                    lvl <= tokens.urgencyScore ? 'bg-rose-700' : 'bg-rose-200'
++                  }`}
++                />
++              ))}
++            </div>
++            <div className="mt-2 text-[11px] text-stone-500 flex justify-between">
++              <span>Accountability Scope</span>
++              <span>{readingTime} min dossier</span>
++            </div>
++          </div>
++        </div>
++      )}
++
++      {tokens.domain === 'discovery' && (
++        <div className="font-mono text-xs space-y-3">
++          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-teal-300 px-3 py-2 rounded-xs">
++            <span>SYS_CONTEXT // {tokens.domainLabel.toUpperCase()}</span>
++            <span>
++              DEPTH: {tokens.readingDepth.toUpperCase()} ({readingTime}M) | RIGOR:{' '}
++              {tokens.metricValue.toUpperCase()}
++            </span>
++          </div>
++          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
++            <div className="md:col-span-2 bg-white/90 p-3 border border-teal-200">
++              <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold mb-1">
++                Abstract & Empirical Scope
++              </div>
++              <p className="font-sans text-sm text-slate-700 leading-relaxed">
++                {summary}
++              </p>
++            </div>
++            <div className="bg-white/90 p-3 border border-teal-200 flex flex-col justify-between">
++              <div>
++                <div className="text-[10px] uppercase tracking-wider text-teal-800 font-bold mb-1">
++                  Research Vectors
++                </div>
++                <div className="flex flex-wrap gap-1 mt-1">
++                  {displayTags.map((t) => (
++                    <span
++                      key={t}
++                      className="px-1.5 py-0.5 bg-teal-50 text-teal-900 border border-teal-300 text-[10px]"
++                    >
++                      #{t}
++                    </span>
++                  ))}
++                </div>
++              </div>
++              {author && (
++                <div className="mt-2 pt-2 border-t border-slate-200 text-[11px] text-slate-500">
++                  LEAD: {author}
++                </div>
++              )}
++            </div>
++          </div>
++        </div>
++      )}
++
++      {tokens.domain === 'culture' && (
++        <div className="relative px-2 py-1">
++          <div className="font-serif italic text-purple-900 text-xs uppercase tracking-widest mb-1">
++            {tokens.calloutTitle} — {tokens.metricValue}
++          </div>
++          <blockquote className="font-brand italic text-xl md:text-2xl text-gray-900 leading-snug border-l-2 border-purple-400 pl-4 my-2">
++            “{summary}”
++          </blockquote>
++          <div className="flex flex-wrap items-center justify-between gap-2 mt-3 text-xs text-purple-950/75 font-serif">
++            <span>
++              Curated in <strong>{category}</strong>
++              {author ? ` • Critique by ${author}` : ''}
++            </span>
++            <div className="flex flex-wrap gap-1.5">
++              {displayTags.map((t) => (
++                <span
++                  key={t}
++                  className="px-2 py-0.5 rounded-full bg-purple-100/80 text-purple-900 italic"
++                >
++                  {t}
++                </span>
++              ))}
++            </div>
++          </div>
++        </div>
++      )}
++
++      {tokens.domain === 'vitality' && (
++        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
++          <div className="md:col-span-3">
++            <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-1 flex items-center gap-1.5">
++              <span className="inline-block w-2 h-2 rounded-full bg-emerald-600" />
++              {tokens.calloutTitle}
++            </div>
++            <p className="text-sm text-gray-800 font-medium leading-snug">
++              {summary}
++            </p>
++          </div>
++          <div className="bg-emerald-900 text-white p-3 rounded-md text-center">
++            <div className="text-[10px] uppercase tracking-widest text-emerald-200 font-semibold">
++              {tokens.metricLabel}
++            </div>
++            <div className="text-base font-bold mt-0.5">{tokens.metricValue}</div>
++            <div className="text-[11px] text-emerald-200 mt-1">
++              Est. {readingTime} min active read
++            </div>
++          </div>
++        </div>
++      )}
++    </aside>
++  );
++};
++
++export default SemanticCallout;
+diff --git a/src/components/SemanticCard.tsx b/src/components/SemanticCard.tsx
+new file mode 100644
+index 0000000..0c8b84f
+--- /dev/null
++++ b/src/components/SemanticCard.tsx
+@@ -0,0 +1,333 @@
++import React from 'react';
++import { BookOpenIcon } from '@heroicons/react/24/outline';
++import { useSemanticContext } from '../context/SemanticContext';
++import SemanticBadge from './SemanticBadge';
++import BookmarkButton from './BookmarkButton';
++import type {
++  ContentKind,
++  SemanticDomain,
++  SemanticIntent,
++  SemanticPlacement,
++} from '../utils/semanticContext';
++
++export interface SemanticCardItem {
++  id: string;
++  slug?: string;
++  title: string;
++  summary: string;
++  category: string;
++  author?: string;
++  date?: string;
++  imageUrl?: string;
++  readingTime?: number;
++  tags?: string[];
++  href: string;
++  categoryHref?: string;
++  contentKind?: ContentKind;
++  isBookmarked?: boolean;
++}
++
++export interface SemanticCardProps {
++  item: SemanticCardItem;
++  placement?: SemanticPlacement;
++  overrideDomain?: SemanticDomain;
++  overrideIntent?: SemanticIntent;
++  showBookmark?: boolean;
++}
++
++export const SemanticCard: React.FC<SemanticCardProps> = ({
++  item,
++  placement,
++  overrideDomain,
++  overrideIntent,
++  showBookmark = true,
++}) => {
++  const { context, tokens } = useSemanticContext({
++    title: item.title,
++    summary: item.summary,
++    category: item.category,
++    tags: item.tags,
++    readingTime: item.readingTime,
++    contentKind: item.contentKind ?? 'article',
++    placement,
++    overrideDomain,
++    overrideIntent,
++  });
++
++  const effectivePlacement = tokens.placement;
++  const readingTime = item.readingTime ?? (item.contentKind === 'report' ? 8 : 4);
++
++  // 1. COMPACT / WIRE PLACEMENT: High-density ticker/rail layout
++  if (effectivePlacement === 'compact') {
++    return (
++      <article
++        className={`group relative flex items-start justify-between gap-4 p-3.5 transition-colors rounded-xs ${tokens.containerBorderClass} ${tokens.surfaceBgClass} hover:bg-white`}
++        data-semantic-domain={tokens.domain}
++        data-semantic-intent={tokens.intent}
++        data-semantic-placement="compact"
++      >
++        <div className="flex-1 min-w-0">
++          <div className="flex flex-wrap items-center gap-2 mb-1">
++            <SemanticBadge
++              category={item.category}
++              title={item.title}
++              summary={item.summary}
++              tags={item.tags}
++              readingTime={readingTime}
++              contentKind={item.contentKind}
++              placement="compact"
++              overrideDomain={overrideDomain}
++              overrideIntent={overrideIntent}
++              href={item.categoryHref}
++              showIntent={true}
++              showDepth={false}
++            />
++            {item.date && (
++              <span className={`text-[11px] ${tokens.metaTextClass}`}>
++                {item.date}
++              </span>
++            )}
++          </div>
++          <a href={item.href} className="block">
++            <h3
++              className={`text-base font-semibold leading-snug transition-colors ${tokens.headlineFontClass} ${tokens.headlineHoverClass}`}
++            >
++              {item.title}
++            </h3>
++          </a>
++        </div>
++        <div className="flex items-center gap-2 flex-shrink-0 self-center">
++          <span
++            className={`text-xs px-2 py-0.5 rounded border border-black/10 bg-white/80 ${tokens.metaTextClass}`}
++          >
++            {readingTime}m
++          </span>
++          {showBookmark && item.contentKind !== 'report' && item.contentKind !== 'multimedia' && (
++            <BookmarkButton
++              slug={item.id}
++              initialIsBookmarked={Boolean(item.isBookmarked)}
++            />
++          )}
++        </div>
++      </article>
++    );
++  }
++
++  // 2. LEAD / HERO PLACEMENT: Expansive focal layout with contextual telemetry panel
++  if (effectivePlacement === 'lead') {
++    return (
++      <article
++        className={`group relative overflow-hidden rounded-sm shadow-xs transition-all ${tokens.containerBorderClass} ${tokens.surfaceBgClass}`}
++        data-semantic-domain={tokens.domain}
++        data-semantic-intent={tokens.intent}
++        data-semantic-placement="lead"
++      >
++        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-5 md:p-7 items-center">
++          <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-4">
++            <div>
++              <SemanticBadge
++                category={item.category}
++                title={item.title}
++                summary={item.summary}
++                tags={item.tags}
++                readingTime={readingTime}
++                contentKind={item.contentKind}
++                placement="lead"
++                overrideDomain={overrideDomain}
++                overrideIntent={overrideIntent}
++                href={item.categoryHref}
++                showIntent={true}
++                showDepth={true}
++                className="mb-3"
++              />
++
++              <a href={item.href} className="block">
++                <h2
++                  className={`text-2xl md:text-4xl leading-tight transition-colors ${tokens.headlineFontClass} ${tokens.headlineHoverClass}`}
++                >
++                  {item.title}
++                </h2>
++                <p className={`mt-3 text-base md:text-lg ${tokens.summaryTextClass}`}>
++                  {item.summary}
++                </p>
++              </a>
++            </div>
++
++            {/* Domain-specific semantic context footer inside lead card */}
++            {context.showSemanticAnnotations && (
++              <div
++                className={`p-3 rounded-xs text-xs ${tokens.calloutBorderClass} bg-white/90`}
++              >
++                <div className="flex items-center justify-between font-semibold text-gray-900">
++                  <span>{tokens.metricLabel}</span>
++                  <span className={tokens.badgeTextClass}>{tokens.metricValue}</span>
++                </div>
++                <p className="text-gray-600 mt-1 text-[11px]">
++                  {tokens.calloutDescription}
++                </p>
++              </div>
++            )}
++
++            <div className="flex items-center justify-between pt-3 border-t border-black/10">
++              <div className={`flex items-center gap-3 text-xs ${tokens.metaTextClass}`}>
++                <span className="inline-flex items-center">
++                  <BookOpenIcon className="w-4 h-4 mr-1" />
++                  {readingTime} Min.
++                </span>
++                {item.author && <span>By {item.author}</span>}
++              </div>
++              {showBookmark && item.contentKind !== 'report' && item.contentKind !== 'multimedia' && (
++                <BookmarkButton
++                  slug={item.id}
++                  initialIsBookmarked={Boolean(item.isBookmarked)}
++                />
++              )}
++            </div>
++          </div>
++
++          <div className="lg:col-span-7">
++            {item.imageUrl ? (
++              <a href={item.href} className="block overflow-hidden rounded-xs relative">
++                <img
++                  src={item.imageUrl}
++                  alt={item.title}
++                  className="w-full h-auto aspect-[16/9] object-cover group-hover:scale-[1.01] transition-transform duration-300"
++                />
++                <div className="absolute bottom-2 right-2 bg-black/75 text-white text-[10px] font-mono uppercase px-2 py-0.5 rounded-xs">
++                  {tokens.domainLabel} • {tokens.intentLabel}
++                </div>
++              </a>
++            ) : (
++              <a
++                href={item.href}
++                className={`flex flex-col justify-center items-center p-8 aspect-[16/9] rounded-xs border border-black/10 ${tokens.calloutBgClass}`}
++              >
++                <span className={`text-xs uppercase tracking-widest ${tokens.kickerTextClass}`}>
++                  {tokens.domainLabel}
++                </span>
++                <span className={`text-2xl mt-2 text-center ${tokens.headlineFontClass}`}>
++                  {item.title}
++                </span>
++              </a>
++            )}
++          </div>
++        </div>
++      </article>
++    );
++  }
++
++  // 3. STANDARD / GRID OR FEATURED PLACEMENT: Domain-specialized card logic
++  return (
++    <article
++      className={`group flex flex-col h-full rounded-sm shadow-xs overflow-hidden transition-all duration-200 hover:shadow-md ${tokens.containerBorderClass} ${tokens.surfaceBgClass}`}
++      data-semantic-domain={tokens.domain}
++      data-semantic-intent={tokens.intent}
++      data-semantic-placement={effectivePlacement}
++    >
++      {/* Discovery domain renders a top technical telemetry bar */}
++      {tokens.domain === 'discovery' && context.showSemanticAnnotations && (
++        <div className="bg-slate-900 text-teal-300 font-mono text-[10px] px-3 py-1 flex items-center justify-between">
++          <span>SPEC // {item.category.toUpperCase()}</span>
++          <span>{tokens.readingDepthLabel.toUpperCase()}</span>
++        </div>
++      )}
++
++      {/* Civic urgent/investigative renders an impact header bar */}
++      {tokens.domain === 'civic' &&
++        (tokens.intent === 'urgent' || tokens.intent === 'investigative') &&
++        context.showSemanticAnnotations && (
++          <div className="bg-rose-900 text-rose-50 text-[10px] font-bold uppercase tracking-widest px-3 py-1 flex items-center justify-between">
++            <span className="flex items-center gap-1.5">
++              <span className="w-1.5 h-1.5 rounded-full bg-rose-300 animate-pulse" />
++              {tokens.intentLabel}
++            </span>
++            <span>Impact {tokens.urgencyScore}/5</span>
++          </div>
++        )}
++
++      {item.imageUrl && (
++        <a href={item.href} className="block relative overflow-hidden">
++          <img
++            src={item.imageUrl}
++            alt={item.title}
++            className="w-full object-cover aspect-[16/9] group-hover:scale-[1.02] transition-transform duration-300"
++          />
++          {tokens.domain === 'vitality' && context.showSemanticAnnotations && (
++            <span className="absolute top-2 right-2 bg-emerald-900/90 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
++              {tokens.metricValue}
++            </span>
++          )}
++        </a>
++      )}
++
++      <div className="p-4 flex flex-col flex-grow">
++        <SemanticBadge
++          category={item.category}
++          title={item.title}
++          summary={item.summary}
++          tags={item.tags}
++          readingTime={readingTime}
++          contentKind={item.contentKind}
++          placement={effectivePlacement}
++          overrideDomain={overrideDomain}
++          overrideIntent={overrideIntent}
++          href={item.categoryHref}
++          showIntent={true}
++          showDepth={effectivePlacement === 'featured'}
++          className="mb-2.5"
++        />
++
++        <a href={item.href} className="flex flex-col flex-grow">
++          <h3
++            className={`text-lg md:text-xl leading-snug transition-colors ${tokens.headlineFontClass} ${tokens.headlineHoverClass}`}
++          >
++            {item.title}
++          </h3>
++
++          {/* Culture domain frames summary as an editorial note */}
++          {tokens.domain === 'culture' ? (
++            <p
++              className={`mt-2 text-sm border-l-2 border-purple-300 pl-3 italic flex-grow ${tokens.summaryTextClass}`}
++            >
++              {item.summary}
++            </p>
++          ) : (
++            <p className={`mt-2 text-sm flex-grow ${tokens.summaryTextClass}`}>
++              {item.summary}
++            </p>
++          )}
++        </a>
++
++        {/* Semantic Context Signal Row */}
++        {context.showSemanticAnnotations && (
++          <div className="mt-3 pt-2 border-t border-black/5 flex items-center justify-between text-[11px]">
++            <span className="text-gray-500">{tokens.metricLabel}:</span>
++            <span className={`font-semibold ${tokens.badgeTextClass}`}>
++              {tokens.metricValue}
++            </span>
++          </div>
++        )}
++
++        <div className="flex justify-between items-center mt-2 pt-2 border-t border-black/10">
++          <span className={`text-xs flex items-center ${tokens.metaTextClass}`}>
++            <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++            {readingTime} Min.
++            {item.contentKind && item.contentKind !== 'article' && (
++              <span className="ml-2 uppercase text-[10px] px-1.5 py-0.5 rounded bg-black/5">
++                {item.contentKind}
++              </span>
++            )}
++          </span>
++          {showBookmark && item.contentKind !== 'report' && item.contentKind !== 'multimedia' && (
++            <BookmarkButton
++              slug={item.id}
++              initialIsBookmarked={Boolean(item.isBookmarked)}
++            />
++          )}
++        </div>
++      </div>
++    </article>
++  );
++};
++
++export default SemanticCard;
+diff --git a/src/components/SemanticSectionExplorer.tsx b/src/components/SemanticSectionExplorer.tsx
+new file mode 100644
+index 0000000..76b57c9
+--- /dev/null
++++ b/src/components/SemanticSectionExplorer.tsx
+@@ -0,0 +1,178 @@
++import React from 'react';
++import {
++  SemanticContextProvider,
++  useSemanticContext,
++  type SemanticLensMode,
++} from '../context/SemanticContext';
++import SemanticCard, { type SemanticCardItem } from './SemanticCard';
++import type { ContentKind, SemanticPlacement } from '../utils/semanticContext';
++
++export interface SemanticSectionExplorerProps {
++  title: string;
++  subtitle?: string;
++  items: SemanticCardItem[];
++  defaultLensMode?: SemanticLensMode;
++  defaultPlacement?: SemanticPlacement;
++  defaultContentKind?: ContentKind;
++  showControls?: boolean;
++}
++
++const LENS_OPTIONS: { id: SemanticLensMode; label: string; badgeClass: string }[] = [
++  { id: 'auto', label: 'Auto Semantic Context', badgeClass: 'bg-gray-900 text-white' },
++  { id: 'civic', label: 'Civic & Policy', badgeClass: 'bg-rose-800 text-white' },
++  { id: 'discovery', label: 'Science & Systems', badgeClass: 'bg-teal-800 text-white' },
++  { id: 'culture', label: 'Arts & Criticism', badgeClass: 'bg-purple-800 text-white' },
++  { id: 'vitality', label: 'Pulse & Action', badgeClass: 'bg-emerald-800 text-white' },
++];
++
++const PLACEMENT_OPTIONS: { id: SemanticPlacement; label: string }[] = [
++  { id: 'grid', label: 'Editorial Grid' },
++  { id: 'lead', label: 'Focal Lead + Grid' },
++  { id: 'compact', label: 'High-Density Wire' },
++];
++
++const SemanticSectionInner: React.FC<{
++  title: string;
++  subtitle?: string;
++  items: SemanticCardItem[];
++  showControls: boolean;
++}> = ({ title, subtitle, items, showControls }) => {
++  const { context } = useSemanticContext();
++
++  if (items.length === 0) return null;
++
++  const isLeadMode = context.defaultPlacement === 'lead';
++  const isCompactMode = context.defaultPlacement === 'compact';
++
++  const leadItem = isLeadMode ? items[0] : null;
++  const remainingItems = isLeadMode ? items.slice(1) : items;
++
++  return (
++    <section
++      className="p-4 md:p-6"
++      data-semantic-lens={context.lensMode}
++      data-semantic-placement={context.defaultPlacement}
++    >
++      <div className="border-b-2 border-gray-900 pb-3 mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
++        <div>
++          <div className="flex items-center gap-2">
++            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
++              {title}
++            </h2>
++            <span className="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-300">
++              Context-Adaptive
++            </span>
++          </div>
++          {subtitle && (
++            <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
++          )}
++        </div>
++
++        {showControls && (
++          <div className="flex flex-wrap items-center gap-3 bg-gray-50 p-2 rounded border border-gray-200 text-xs">
++            <div className="flex flex-wrap items-center gap-1">
++              <span className="text-gray-500 font-semibold mr-1">
++                Semantic Lens:
++              </span>
++              {LENS_OPTIONS.map((opt) => {
++                const active = context.lensMode === opt.id;
++                return (
++                  <button
++                    key={opt.id}
++                    type="button"
++                    onClick={() => context.setLensMode(opt.id)}
++                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
++                      active
++                        ? opt.badgeClass
++                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
++                    }`}
++                  >
++                    {opt.label}
++                  </button>
++                );
++              })}
++            </div>
++
++            <div className="h-4 w-px bg-gray-300 hidden sm:block" />
++
++            <div className="flex items-center gap-1">
++              <span className="text-gray-500 font-semibold mr-1">
++                Placement:
++              </span>
++              {PLACEMENT_OPTIONS.map((opt) => {
++                const active = context.defaultPlacement === opt.id;
++                return (
++                  <button
++                    key={opt.id}
++                    type="button"
++                    onClick={() => context.setDefaultPlacement(opt.id)}
++                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
++                      active
++                        ? 'bg-amber-500 text-gray-950 font-semibold'
++                        : 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-300'
++                    }`}
++                  >
++                    {opt.label}
++                  </button>
++                );
++              })}
++            </div>
++          </div>
++        )}
++      </div>
++
++      {/* Lead Card when in 'lead' placement context */}
++      {leadItem && (
++        <div className="mb-6">
++          <SemanticCard item={leadItem} placement="lead" />
++        </div>
++      )}
++
++      {/* Remaining items rendered in either compact wire or responsive grid */}
++      {remainingItems.length > 0 && (
++        <div
++          className={
++            isCompactMode
++              ? 'grid grid-cols-1 md:grid-cols-2 gap-3'
++              : 'grid grid-cols-1 md:grid-cols-3 gap-6'
++          }
++        >
++          {remainingItems.map((item) => (
++            <SemanticCard
++              key={item.id}
++              item={item}
++              placement={isCompactMode ? 'compact' : 'grid'}
++            />
++          ))}
++        </div>
++      )}
++    </section>
++  );
++};
++
++export const SemanticSectionExplorer: React.FC<SemanticSectionExplorerProps> = ({
++  title,
++  subtitle,
++  items,
++  defaultLensMode = 'auto',
++  defaultPlacement = 'grid',
++  defaultContentKind = 'article',
++  showControls = true,
++}) => {
++  return (
++    <SemanticContextProvider
++      initialLensMode={defaultLensMode}
++      initialPlacement={defaultPlacement}
++      initialContentKind={defaultContentKind}
++    >
++      <SemanticSectionInner
++        title={title}
++        subtitle={subtitle}
++        items={items}
++        showControls={showControls}
++      />
++    </SemanticContextProvider>
++  );
++};
++
++export default SemanticSectionExplorer;
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..575f25a 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -1,6 +1,7 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import { resolveSemanticProfile } from '../utils/semanticContext';
+ 
+ export interface Props {
+     title: string;
+@@ -8,13 +9,23 @@ export interface Props {
+ }
+ 
+ const { title, articles } = Astro.props;
++const sectionSemantic = resolveSemanticProfile({
++    category: title,
++    title,
++    placement: 'grid',
++});
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section class="p-4 md:p-6" data-semantic-section={sectionSemantic.domain}>
++    <div class="flex flex-wrap items-baseline justify-between border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8 gap-2">
++        <h2 class="text-3xl font-bold text-gray-900">
++            {title}
++        </h2>
++        <span class={`text-xs font-semibold px-2.5 py-0.5 rounded-xs ${sectionSemantic.badgeBgClass}`}>
++            {sectionSemantic.domainLabel} Context
++        </span>
++    </div>
+ 
+     <div class="grid md:grid-cols-3 gap-6">
+-      {articles.map(article => <ArticleTeaser article={article} />)}
++      {articles.map(article => <ArticleTeaser article={article} placement="grid" />)}
+     </div>
+ </section>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..652213d 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,7 +3,9 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import SemanticBadge from './SemanticBadge';
++import { resolveSemanticProfile } from '../utils/semanticContext';
++import { BookOpenIcon } from '@heroicons/react/24/outline';
+ 
+ export interface Props {
+     title: string;
+@@ -24,37 +26,76 @@ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage
+ 
+ const readingList = await Astro.session?.get('readingList') || [];
+ 
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
++const sectionSemantic = resolveSemanticProfile({
++    category: title,
++    title,
++    placement: 'lead',
++});
++
++const topSemantic = resolveSemanticProfile({
++    title: topArticle.data.title,
++    summary: topArticle.data.summary,
++    category: topArticle.data.category,
++    tags: topArticle.data.tags,
++    readingTime: topArticle.data.readingTime,
++    placement: 'featured',
++});
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section class="p-4 md:p-6" data-semantic-section={sectionSemantic.domain}>
++    <div class="flex flex-wrap items-baseline justify-between border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8 gap-2">
++        <h2 class="text-3xl font-bold text-gray-900">
++            {title}
++        </h2>
++        <span class={`text-xs font-semibold px-2.5 py-0.5 rounded-xs ${sectionSemantic.badgeBgClass}`}>
++            {sectionSemantic.domainLabel} Context
++        </span>
++    </div>
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <!-- Top Section: Featured Lead Article -->
++    <div
++        class={`shadow-sm overflow-hidden mb-6 lg:mb-8 rounded-xs ${topSemantic.containerBorderClass} ${topSemantic.surfaceBgClass}`}
++        data-semantic-domain={topSemantic.domain}
++        data-semantic-intent={topSemantic.intent}
++        data-semantic-placement="featured"
++    >
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
++            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first group">
++                <div class="mb-3">
++                    <SemanticBadge
++                        client:visible
++                        category={topArticle.data.category}
++                        title={topArticle.data.title}
++                        summary={topArticle.data.summary}
++                        tags={topArticle.data.tags}
++                        readingTime={topArticle.data.readingTime}
++                        placement="featured"
++                        href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`}
++                        showIntent={true}
++                        showDepth={true}
++                    />
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 class={`text-3xl lg:text-4xl mb-4 leading-tight transition-colors ${topSemantic.headlineFontClass} ${topSemantic.headlineHoverClass}`}>
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p class={`mb-4 text-base lg:text-lg ${topSemantic.summaryTextClass}`}>
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class={`flex items-center justify-between text-sm pt-3 border-t border-black/10 ${topSemantic.metaTextClass}`}>
++                    <div class="flex items-center">
++                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++                        </svg>
++                        <span>{topArticle.data.readingTime} Min Read</span>
++                    </div>
++                    <span class={`text-xs font-semibold ${topSemantic.badgeTextClass}`}>
++                        {topSemantic.metricLabel}: {topSemantic.metricValue}
++                    </span>
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
++                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="block h-full">
+                     <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+@@ -64,31 +105,54 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+         {bottomArticles.map((article, index) => {
+-            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
++            const itemSemantic = resolveSemanticProfile({
++                title: article.data.title,
++                summary: article.data.summary,
++                category: article.data.category,
++                tags: article.data.tags,
++                readingTime: article.data.readingTime,
++                placement: 'grid',
++            });
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <div
++                    class={`flex flex-col shadow-sm overflow-hidden h-full group rounded-xs ${itemSemantic.containerBorderClass} ${itemSemantic.surfaceBgClass}`}
++                    data-semantic-domain={itemSemantic.domain}
++                    data-semantic-intent={itemSemantic.intent}
++                    data-semantic-placement="grid"
++                >
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
++                        <div class="mb-2.5">
++                            <SemanticBadge
++                                client:visible
++                                category={article.data.category}
++                                title={article.data.title}
++                                summary={article.data.summary}
++                                tags={article.data.tags}
++                                readingTime={article.data.readingTime}
++                                placement="grid"
++                                href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`}
++                                showIntent={true}
++                                showDepth={false}
++                            />
++                        </div>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                            <h3 class={`text-2xl mb-2 transition-colors ${itemSemantic.headlineFontClass} ${itemSemantic.headlineHoverClass}`}>
+                                 {article.data.title}
+                             </h3>
+                         </a>
+                         {index !== 1 && (
+-                             <p class="text-gray-700 mb-4 flex-grow">
++                             <p class={`mb-4 flex-grow text-sm ${itemSemantic.summaryTextClass}`}>
+                                 {article.data.summary}
+                             </p>
+                         )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                            <span class="text-xs font-medium flex items-center">
++                        <div class="flex justify-between items-center text-gray-500 mt-auto pt-2 border-t border-black/10">
++                            <span class={`text-xs font-medium flex items-center ${itemSemantic.metaTextClass}`}>
+                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+diff --git a/src/context/SemanticContext.tsx b/src/context/SemanticContext.tsx
+new file mode 100644
+index 0000000..79efb62
+--- /dev/null
++++ b/src/context/SemanticContext.tsx
+@@ -0,0 +1,134 @@
++import React, { createContext, useContext, useMemo, useState } from 'react';
++import {
++  resolveSemanticProfile,
++  type ContentKind,
++  type SemanticDomain,
++  type SemanticInput,
++  type SemanticIntent,
++  type SemanticPlacement,
++  type SemanticVisualTokens,
++} from '../utils/semanticContext';
++
++export type SemanticLensMode =
++  | 'auto'
++  | 'civic'
++  | 'discovery'
++  | 'culture'
++  | 'vitality';
++
++export interface SemanticContextState {
++  lensMode: SemanticLensMode;
++  setLensMode: (mode: SemanticLensMode) => void;
++  defaultPlacement: SemanticPlacement;
++  setDefaultPlacement: (placement: SemanticPlacement) => void;
++  defaultContentKind: ContentKind;
++  overrideIntent?: SemanticIntent;
++  setOverrideIntent: (intent: SemanticIntent | undefined) => void;
++  showSemanticAnnotations: boolean;
++  setShowSemanticAnnotations: (show: boolean) => void;
++  resolveForItem: (input: SemanticInput) => SemanticVisualTokens;
++}
++
++const SemanticContext = createContext<SemanticContextState | null>(null);
++
++export interface SemanticProviderProps {
++  children: React.ReactNode;
++  initialLensMode?: SemanticLensMode;
++  initialPlacement?: SemanticPlacement;
++  initialContentKind?: ContentKind;
++  initialIntent?: SemanticIntent;
++  initialAnnotations?: boolean;
++}
++
++export const SemanticContextProvider: React.FC<SemanticProviderProps> = ({
++  children,
++  initialLensMode = 'auto',
++  initialPlacement = 'grid',
++  initialContentKind = 'article',
++  initialIntent,
++  initialAnnotations = true,
++}) => {
++  const [lensMode, setLensMode] = useState<SemanticLensMode>(initialLensMode);
++  const [defaultPlacement, setDefaultPlacement] =
++    useState<SemanticPlacement>(initialPlacement);
++  const [overrideIntent, setOverrideIntent] = useState<
++    SemanticIntent | undefined
++  >(initialIntent);
++  const [showSemanticAnnotations, setShowSemanticAnnotations] =
++    useState<boolean>(initialAnnotations);
++
++  const value = useMemo<SemanticContextState>(() => {
++    const resolveForItem = (input: SemanticInput): SemanticVisualTokens => {
++      const effectiveDomain: SemanticDomain | undefined =
++        input.overrideDomain ??
++        (lensMode !== 'auto' ? lensMode : undefined);
++
++      return resolveSemanticProfile({
++        ...input,
++        contentKind: input.contentKind ?? initialContentKind,
++        placement: input.placement ?? defaultPlacement,
++        overrideDomain: effectiveDomain,
++        overrideIntent: input.overrideIntent ?? overrideIntent,
++      });
++    };
++
++    return {
++      lensMode,
++      setLensMode,
++      defaultPlacement,
++      setDefaultPlacement,
++      defaultContentKind: initialContentKind,
++      overrideIntent,
++      setOverrideIntent,
++      showSemanticAnnotations,
++      setShowSemanticAnnotations,
++      resolveForItem,
++    };
++  }, [
++    lensMode,
++    defaultPlacement,
++    initialContentKind,
++    overrideIntent,
++    showSemanticAnnotations,
++  ]);
++
++  return (
++    <SemanticContext.Provider value={value}>
++      {children}
++    </SemanticContext.Provider>
++  );
++};
++
++export function useSemanticContext(itemInput?: SemanticInput): {
++  context: SemanticContextState;
++  tokens: SemanticVisualTokens;
++} {
++  const ctx = useContext(SemanticContext);
++
++  const fallbackContext = useMemo<SemanticContextState>(() => {
++    return {
++      lensMode: 'auto',
++      setLensMode: () => {},
++      defaultPlacement: itemInput?.placement ?? 'grid',
++      setDefaultPlacement: () => {},
++      defaultContentKind: itemInput?.contentKind ?? 'article',
++      overrideIntent: itemInput?.overrideIntent,
++      setOverrideIntent: () => {},
++      showSemanticAnnotations: true,
++      setShowSemanticAnnotations: () => {},
++      resolveForItem: (input: SemanticInput) => resolveSemanticProfile(input),
++    };
++  }, [
++    itemInput?.placement,
++    itemInput?.contentKind,
++    itemInput?.overrideIntent,
++  ]);
++
++  const activeContext = ctx ?? fallbackContext;
++  const tokens = activeContext.resolveForItem(itemInput ?? {});
++
++  return {
++    context: activeContext,
++    tokens,
++  };
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..2866748 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,9 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SemanticBadge from '../../components/SemanticBadge.tsx';
++import SemanticCallout from '../../components/SemanticCallout.tsx';
++import { resolveSemanticProfile } from '../../utils/semanticContext';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -22,39 +25,79 @@ if (!slug) throw new Error('Slug not found');
+ const article = await getEntry('articles', slug);
+ if (!article) return Astro.redirect('/404');
+ 
+-
+-
+-
+ const { Content } = await render(article);
+ const allArticles = await getCollection('articles');
+-const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
++
++const semantic = resolveSemanticProfile({
++  title: article.data.title,
++  summary: article.data.summary,
++  category: article.data.category,
++  tags: article.data.tags,
++  readingTime: article.data.readingTime,
++  contentKind: 'article',
++  placement: 'inline',
++});
++
++// Sort related articles so those sharing the same semantic domain or category appear first
++const relatedArticles = allArticles
++  .filter(a => a.id !== article.id)
++  .sort((a, b) => {
++    const aDomain = resolveSemanticProfile({ category: a.data.category, tags: a.data.tags }).domain;
++    const bDomain = resolveSemanticProfile({ category: b.data.category, tags: b.data.tags }).domain;
++    const aScore = (a.data.category === article.data.category ? 2 : 0) + (aDomain === semantic.domain ? 1 : 0);
++    const bScore = (b.data.category === article.data.category ? 2 : 0) + (bDomain === semantic.domain ? 1 : 0);
++    return bScore - aScore;
++  })
++  .slice(0, 3);
+ 
+ const articleImage = await getArticleImage(article);
+-const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++    <article
++        class="max-w-3xl mx-auto px-4 py-8 md:py-12"
++        data-semantic-domain={semantic.domain}
++        data-semantic-intent={semantic.intent}
++    >
++        <!-- Breadcrumbs/Category & Semantic Context Badges -->
++        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
++            <SemanticBadge
++                client:visible
++                category={article.data.category}
++                title={article.data.title}
++                summary={article.data.summary}
++                tags={article.data.tags}
++                readingTime={article.data.readingTime}
++                placement="inline"
++                href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`}
++                showIntent={true}
++                showDepth={true}
++            />
++            <span class={`text-xs font-medium ${semantic.metaTextClass}`}>
++                {semantic.domainLabel} • {article.data.readingTime ?? 4} Min Read
++            </span>
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 class={`text-3xl md:text-5xl mb-4 leading-tight ${semantic.headlineFontClass}`}>
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p class={`text-lg md:text-xl mb-5 ${semantic.summaryTextClass}`}>
+             {article.data.summary}
+         </p>
+ 
+         <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5 flex flex-wrap justify-between items-center gap-2">
++            <div>
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            </div>
++            <div class={`text-xs font-semibold ${semantic.badgeTextClass}`}>
++                {semantic.metricLabel}: {semantic.metricValue}
++            </div>
+         </div>
+ 
+         <!-- Main Article Image -->
+@@ -101,9 +144,21 @@ const isBookmarked = readingList.includes(article.slug);
+                 </a>
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+-
+         </div>
+ 
++        <!-- Semantic Context Synthesis Callout -->
++        <SemanticCallout
++            client:visible
++            title={article.data.title}
++            summary={article.data.summary}
++            category={article.data.category}
++            author={article.data.author}
++            tags={article.data.tags}
++            readingTime={article.data.readingTime}
++            contentKind="article"
++            placement="inline"
++        />
++
+         <!-- Article Body Content -->
+         <div class="prose max-w-none">
+             <Content />
+@@ -117,10 +172,14 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+     <!-- RELATED ARTICLES SECTION -->
+     <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++        <div class="flex items-center justify-between mb-6">
++            <h2 class="text-2xl font-bold text-gray-900">Contextually Related Stories</h2>
++            <span class={`text-xs font-semibold px-2.5 py-1 rounded-xs ${semantic.badgeBgClass}`}>
++                Aligned with {semantic.domainLabel}
++            </span>
++        </div>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+     </section>
+-
+-
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..bcd506a 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -1,11 +1,12 @@
+-
+ ---
+ import Layout from '../../layouts/Layout.astro';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SemanticBadge from '../../components/SemanticBadge';
+ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import { resolveSemanticProfile } from '../../utils/semanticContext';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -34,13 +35,20 @@ const randomArticleForHero = allArticlesInCategory.length > 0
+ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+-const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++const capitalizedCategory = category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Category';
++
++const categorySemantic = resolveSemanticProfile({
++    category: capitalizedCategory,
++    title: featuredArticle?.data.title,
++    summary: featuredArticle?.data.summary,
++    placement: 'lead',
++});
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+-    <div class="pb-8">
+-        <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++    <div class="pb-8" data-semantic-domain={categorySemantic.domain}>
++        <!-- Dynamic Category Header with Semantic Context Styling -->
++        <header class={`relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-900 border-b-4 ${categorySemantic.containerBorderClass}`}>
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+@@ -52,13 +60,18 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+-            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
+-            <div class="absolute w-full h-full flex items-center justify-center z-2">
+-                <div class="text-center text-white">
+-                    <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
++            <div class="absolute w-full h-full bg-black opacity-55 z-1"></div>
++            <div class="absolute w-full h-full flex items-center justify-center z-2 px-4">
++                <div class="text-center text-white max-w-2xl">
++                    <span class={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-xs mb-3 ${categorySemantic.badgeBgClass}`}>
++                        {categorySemantic.domainLabel} • {categorySemantic.metricValue}
++                    </span>
+                     <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                         {capitalizedCategory}
+                     </h1>
++                    <p class="mt-2 text-xs md:text-sm text-gray-200 max-w-xl mx-auto">
++                        {categorySemantic.calloutDescription}
++                    </p>
+                 </div>
+             </div>
+         </header>
+@@ -66,7 +79,20 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section class={`mb-8 p-6 rounded-xs ${categorySemantic.containerBorderClass} ${categorySemantic.surfaceBgClass}`}>
++                    <div class="mb-3">
++                        <SemanticBadge
++                            client:visible
++                            category={featuredArticle.data.category}
++                            title={featuredArticle.data.title}
++                            summary={featuredArticle.data.summary}
++                            tags={featuredArticle.data.tags}
++                            readingTime={featuredArticle.data.readingTime}
++                            placement="lead"
++                            showIntent={true}
++                            showDepth={true}
++                        />
++                    </div>
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -74,12 +100,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
++                            class="w-full h-auto object-cover mb-4 aspect-[16/9] rounded-xs"
+                         />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        <h2 class={`text-2xl md:text-3xl mb-2 transition-colors ${categorySemantic.headlineFontClass} ${categorySemantic.headlineHoverClass}`}>
+                             {featuredArticle.data.title}
+                         </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
++                        <p class={`text-base md:text-lg ${categorySemantic.summaryTextClass}`}>
+                             {featuredArticle.data.summary}
+                         </p>
+                     </a>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..0b07816 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,9 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SemanticSectionExplorer from '../components/SemanticSectionExplorer';
++import SemanticBadge from '../components/SemanticBadge';
++import { resolveSemanticProfile } from '../utils/semanticContext';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -35,28 +38,77 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++const readingList = await Astro.session?.get('readingList') || [];
++const explorerArticles = articles.slice(15, 21).map((article) => ({
++    id: article.id,
++    slug: article.id,
++    title: article.data.title,
++    summary: article.data.summary,
++    category: article.data.category,
++    author: article.data.author,
++    date: article.data.date.toLocaleDateString(),
++    readingTime: article.data.readingTime,
++    tags: article.data.tags,
++    href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++    categoryHref: `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`,
++    contentKind: 'article' as const,
++    isBookmarked: readingList.includes(article.id),
++}));
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <!-- Top Stories Bar (Compact Wire Semantic Context) -->
++    <div class="bg-white border-b border-gray-300" data-semantic-placement="compact">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++                {topStories.map(article => {
++                    const semantic = resolveSemanticProfile({
++                        title: article.data.title,
++                        summary: article.data.summary,
++                        category: article.data.category,
++                        tags: article.data.tags,
++                        readingTime: article.data.readingTime,
++                        placement: 'compact',
++                    });
++                    return (
++                        <div
++                            class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0 flex flex-col justify-between"
++                            data-semantic-domain={semantic.domain}
++                            data-semantic-intent={semantic.intent}
++                        >
++                            <div>
++                                <div class="mb-1">
++                                    <SemanticBadge
++                                        client:visible
++                                        category={article.data.category}
++                                        title={article.data.title}
++                                        summary={article.data.summary}
++                                        tags={article.data.tags}
++                                        readingTime={article.data.readingTime}
++                                        placement="compact"
++                                        href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`}
++                                        showIntent={true}
++                                        showDepth={false}
++                                    />
++                                </div>
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                    <h3 class={`font-bold text-gray-900 hover:text-amber-500 cursor-pointer leading-snug ${semantic.headlineFontClass}`}>
++                                        {article.data.title}
++                                    </h3>
++                                </a>
++                            </div>
++                            <span class="text-xs text-gray-500 mt-1">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    );
++                })}
+             </div>
+         </div>
+     </div>
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
++        <ArticleTeaser article={topArticle} large={true} placement="lead" />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+@@ -79,6 +131,16 @@ politicsArticles[2] = {
+ 
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++
++        <!-- Interactive Semantic Context Explorer -->
++        <SemanticSectionExplorer
++            client:visible
++            title="Semantic Perspectives"
++            subtitle="Components below automatically adapt their visual logic, typography, and telemetry based on semantic domain, editorial intent, and placement context."
++            items={explorerArticles}
++            defaultLensMode="auto"
++            defaultPlacement="grid"
++            showControls={true}
++        />
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..8d65eaa 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,21 +1,33 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import SemanticSectionExplorer from '../components/SemanticSectionExplorer';
+ 
+ const multimedia = await getCollection('multimedia');
++
++const multimediaItems = multimedia.map((item) => ({
++    id: item.id,
++    slug: item.slug ?? item.id,
++    title: item.data.title,
++    summary: item.data.description,
++    category: item.data.category,
++    date: item.data.publishDate,
++    readingTime: 5,
++    href: `/multimedia/${item.slug ?? item.id}`,
++    contentKind: 'multimedia' as const,
++}));
+ ---
+ <Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+-            <ul>
+-                {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
++    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12">
++        <SemanticSectionExplorer
++            client:load
++            title="Multimedia"
++            subtitle="Watch our latest multimedia content. Cards adapt their visual framing across News & Politics, Science & Tech, Arts & Culture, and Lifestyle & Sports."
++            items={multimediaItems}
++            defaultLensMode="auto"
++            defaultPlacement="grid"
++            defaultContentKind="multimedia"
++            showControls={true}
++        />
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..13700dd 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,33 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import SemanticSectionExplorer from '../components/SemanticSectionExplorer';
+ 
+ const reports = await getCollection('reports');
++
++const reportItems = reports.map((report) => ({
++    id: report.id,
++    slug: report.slug ?? report.id,
++    title: report.data.title,
++    summary: report.data.description,
++    category: report.data.category,
++    date: report.data.publishDate,
++    readingTime: 8,
++    href: `/reports/${report.slug ?? report.id}`,
++    contentKind: 'report' as const,
++}));
+ ---
+ <Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
++    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12">
++        <SemanticSectionExplorer
++            client:load
++            title="Reports"
++            subtitle="Read our latest analytical reports. Cards adapt their visual hierarchy and telemetry to each report's domain and analytical depth."
++            items={reportItems}
++            defaultLensMode="auto"
++            defaultPlacement="grid"
++            defaultContentKind="report"
++            showControls={true}
++        />
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/utils/semanticContext.ts b/src/utils/semanticContext.ts
+new file mode 100644
+index 0000000..9813422
+--- /dev/null
++++ b/src/utils/semanticContext.ts
+@@ -0,0 +1,349 @@
++export type SemanticDomain = 'civic' | 'discovery' | 'culture' | 'vitality';
++
++export type SemanticIntent =
++  | 'urgent'
++  | 'investigative'
++  | 'analytical'
++  | 'narrative'
++  | 'dispatch';
++
++export type SemanticPlacement =
++  | 'lead'
++  | 'featured'
++  | 'grid'
++  | 'compact'
++  | 'inline';
++
++export type ContentKind = 'article' | 'report' | 'multimedia';
++
++export interface SemanticVisualTokens {
++  domain: SemanticDomain;
++  domainLabel: string;
++  intent: SemanticIntent;
++  intentLabel: string;
++  placement: SemanticPlacement;
++  contentKind: ContentKind;
++  readingDepth: 'quick' | 'standard' | 'deep';
++  readingDepthLabel: string;
++  urgencyScore: number; // 1 - 5
++  // Tailored visual styling tokens
++  containerBorderClass: string;
++  accentBarClass: string;
++  surfaceBgClass: string;
++  badgeBgClass: string;
++  badgeTextClass: string;
++  intentBadgeClass: string;
++  kickerTextClass: string;
++  headlineFontClass: string;
++  headlineHoverClass: string;
++  summaryTextClass: string;
++  metaTextClass: string;
++  calloutBorderClass: string;
++  calloutBgClass: string;
++  calloutTitle: string;
++  calloutDescription: string;
++  metricLabel: string;
++  metricValue: string;
++}
++
++export interface SemanticInput {
++  title?: string;
++  summary?: string;
++  description?: string;
++  category?: string;
++  tags?: string[];
++  readingTime?: number;
++  contentKind?: ContentKind;
++  placement?: SemanticPlacement;
++  overrideDomain?: SemanticDomain;
++  overrideIntent?: SemanticIntent;
++}
++
++const DOMAIN_CATEGORY_MAP: Record<string, SemanticDomain> = {
++  // Civic & Policy
++  politics: 'civic',
++  national: 'civic',
++  economy: 'civic',
++  labor: 'civic',
++  business: 'civic',
++  news: 'civic',
++  'news & politics': 'civic',
++  world: 'civic',
++  'top news': 'civic',
++
++  // Science, Tech & Discovery
++  science: 'discovery',
++  'web development': 'discovery',
++  'science & tech': 'discovery',
++  technology: 'discovery',
++  tech: 'discovery',
++
++  // Arts, Media & Culture
++  culture: 'culture',
++  media: 'culture',
++  'arts & culture': 'culture',
++  arts: 'culture',
++
++  // Sports, Lifestyle & Vitality
++  sports: 'vitality',
++  lifestyle: 'vitality',
++  'urban development': 'vitality',
++  pets: 'vitality',
++  'lifestyle & sports': 'vitality',
++};
++
++const URGENT_KEYWORDS = [
++  'crisis',
++  'strike',
++  'strikes',
++  'ticking time bomb',
++  'decay',
++  'unrest',
++  'existential',
++  'criminal',
++  'killer',
++  'emergency',
++  'breaking',
++];
++
++const ANALYTICAL_KEYWORDS = [
++  'research',
++  'science',
++  'outlook',
++  'analysis',
++  'trends',
++  'review',
++  'data',
++  'alchemy',
++  'architects',
++  'devtools',
++  'forensic',
++  'profiling',
++  'overhaul',
++];
++
++const NARRATIVE_KEYWORDS = [
++  'swan lake',
++  'improv',
++  'indie fest',
++  'charlie',
++  'coastal',
++  'open water',
++  'cyclist',
++  'dreams',
++  'behind the scenes',
++];
++
++export function inferSemanticDomain(category = '', tags: string[] = []): SemanticDomain {
++  const normalized = category.trim().toLowerCase();
++  if (DOMAIN_CATEGORY_MAP[normalized]) {
++    return DOMAIN_CATEGORY_MAP[normalized];
++  }
++
++  for (const tag of tags) {
++    const t = tag.trim().toLowerCase();
++    if (DOMAIN_CATEGORY_MAP[t]) {
++      return DOMAIN_CATEGORY_MAP[t];
++    }
++  }
++
++  if (normalized.includes('politic') || normalized.includes('econ') || normalized.includes('news')) {
++    return 'civic';
++  }
++  if (normalized.includes('sci') || normalized.includes('tech') || normalized.includes('dev')) {
++    return 'discovery';
++  }
++  if (normalized.includes('art') || normalized.includes('cult') || normalized.includes('media')) {
++    return 'culture';
++  }
++  return 'vitality';
++}
++
++export function inferSemanticIntent(input: SemanticInput): SemanticIntent {
++  if (input.overrideIntent) return input.overrideIntent;
++
++  const text = `${input.title || ''} ${input.summary || ''} ${input.description || ''} ${(input.tags || []).join(' ')}`.toLowerCase();
++  const readingTime = input.readingTime ?? 4;
++
++  if (input.contentKind === 'report') {
++    return 'analytical';
++  }
++
++  if (URGENT_KEYWORDS.some((kw) => text.includes(kw))) {
++    if (readingTime >= 6) {
++      return 'investigative';
++    }
++    return 'urgent';
++  }
++
++  if (readingTime >= 6) {
++    return 'investigative';
++  }
++
++  if (ANALYTICAL_KEYWORDS.some((kw) => text.includes(kw))) {
++    return 'analytical';
++  }
++
++  if (NARRATIVE_KEYWORDS.some((kw) => text.includes(kw))) {
++    return 'narrative';
++  }
++
++  return 'dispatch';
++}
++
++export function resolveSemanticProfile(input: SemanticInput): SemanticVisualTokens {
++  const domain = input.overrideDomain ?? inferSemanticDomain(input.category, input.tags);
++  const intent = inferSemanticIntent(input);
++  const placement = input.placement ?? 'grid';
++  const contentKind = input.contentKind ?? 'article';
++  const readingTime = input.readingTime ?? (contentKind === 'report' ? 8 : 4);
++
++  const readingDepth: 'quick' | 'standard' | 'deep' =
++    readingTime <= 3 ? 'quick' : readingTime >= 6 ? 'deep' : 'standard';
++
++  const readingDepthLabel =
++    readingDepth === 'quick'
++      ? 'Quick Read'
++      : readingDepth === 'deep'
++        ? 'Deep Dive'
++        : 'Standard Read';
++
++  const urgencyScore =
++    intent === 'urgent'
++      ? 5
++      : intent === 'investigative'
++        ? 4
++        : intent === 'analytical'
++          ? 3
++          : intent === 'dispatch'
++            ? 3
++            : 2;
++
++  const intentLabels: Record<SemanticIntent, string> = {
++    urgent: 'High-Impact Alert',
++    investigative: 'In-Depth Dossier',
++    analytical: 'Analytical Brief',
++    narrative: 'Feature Essay',
++    dispatch: 'Field Dispatch',
++  };
++
++  const domainProfiles: Record<
++    SemanticDomain,
++    Omit<
++      SemanticVisualTokens,
++      | 'domain'
++      | 'intent'
++      | 'intentLabel'
++      | 'placement'
++      | 'contentKind'
++      | 'readingDepth'
++      | 'readingDepthLabel'
++      | 'urgencyScore'
++      | 'intentBadgeClass'
++    >
++  > = {
++    civic: {
++      domainLabel: 'Civic & Policy',
++      containerBorderClass: 'border-t-4 border-t-rose-800 border-x border-b border-stone-200',
++      accentBarClass: 'bg-rose-800',
++      surfaceBgClass: 'bg-stone-50/70',
++      badgeBgClass: 'bg-rose-900 text-white',
++      badgeTextClass: 'text-rose-900',
++      kickerTextClass: 'text-rose-800 font-serif uppercase tracking-widest',
++      headlineFontClass: 'font-brand tracking-tight text-stone-950',
++      headlineHoverClass: 'group-hover:text-rose-800',
++      summaryTextClass: 'text-stone-700 font-serif leading-relaxed',
++      metaTextClass: 'text-stone-500 font-sans',
++      calloutBorderClass: 'border-l-4 border-rose-800',
++      calloutBgClass: 'bg-rose-50/70 text-stone-900',
++      calloutTitle: 'Civic Impact & Policy Context',
++      calloutDescription:
++        'Visual hierarchy adapts to emphasize public accountability, systemic stakes, and institutional timeline.',
++      metricLabel: 'Public Impact Index',
++      metricValue: intent === 'urgent' ? 'Critical Stakes' : 'Systemic Policy',
++    },
++    discovery: {
++      domainLabel: 'Science & Systems',
++      containerBorderClass: 'border-t-4 border-t-teal-700 border-x border-b border-slate-200',
++      accentBarClass: 'bg-teal-700',
++      surfaceBgClass: 'bg-slate-50/80',
++      badgeBgClass: 'bg-teal-900 text-teal-50',
++      badgeTextClass: 'text-teal-800',
++      kickerTextClass: 'text-teal-700 font-mono uppercase tracking-wider text-xs',
++      headlineFontClass: 'font-sans font-bold tracking-tight text-slate-900',
++      headlineHoverClass: 'group-hover:text-teal-700',
++      summaryTextClass: 'text-slate-600 font-sans leading-relaxed',
++      metaTextClass: 'text-slate-500 font-mono text-xs',
++      calloutBorderClass: 'border-l-4 border-teal-700',
++      calloutBgClass: 'bg-teal-50/60 text-slate-900',
++      calloutTitle: 'Technical & Empirical Synthesis',
++      calloutDescription:
++        'Visual logic switches to structured specification density, monospace telemetry, and empirical methodology cues.',
++      metricLabel: 'Empirical Rigor',
++      metricValue: readingDepth === 'deep' ? 'Peer-Reviewed Depth' : 'Technical Brief',
++    },
++    culture: {
++      domainLabel: 'Arts & Criticism',
++      containerBorderClass: 'border-t-4 border-t-purple-800 border-x border-b border-amber-200/80',
++      accentBarClass: 'bg-purple-800',
++      surfaceBgClass: 'bg-amber-50/35',
++      badgeBgClass: 'bg-purple-900 text-amber-50',
++      badgeTextClass: 'text-purple-900',
++      kickerTextClass: 'text-purple-800 italic font-serif tracking-wide',
++      headlineFontClass: 'font-brand italic text-gray-900',
++      headlineHoverClass: 'group-hover:text-purple-800',
++      summaryTextClass: 'text-gray-700 font-serif leading-relaxed',
++      metaTextClass: 'text-purple-900/60 font-serif italic',
++      calloutBorderClass: 'border-l-4 border-purple-800',
++      calloutBgClass: 'bg-purple-50/50 text-gray-900',
++      calloutTitle: 'Critical Lens & Cultural Curations',
++      calloutDescription:
++        'Editorial presentation shifts toward expressive serif typography, gallery framing, and critical commentary.',
++      metricLabel: 'Editorial Mode',
++      metricValue: 'Curated Critique',
++    },
++    vitality: {
++      domainLabel: 'Pulse & Action',
++      containerBorderClass: 'border-t-4 border-t-emerald-700 border-x border-b border-emerald-100',
++      accentBarClass: 'bg-emerald-700',
++      surfaceBgClass: 'bg-emerald-50/25',
++      badgeBgClass: 'bg-emerald-800 text-white',
++      badgeTextClass: 'text-emerald-800',
++      kickerTextClass: 'text-emerald-700 font-sans font-extrabold uppercase tracking-wider',
++      headlineFontClass: 'font-brand text-gray-900 tracking-normal',
++      headlineHoverClass: 'group-hover:text-emerald-700',
++      summaryTextClass: 'text-gray-600 font-sans leading-snug',
++      metaTextClass: 'text-emerald-800/70 font-semibold',
++      calloutBorderClass: 'border-l-4 border-emerald-600',
++      calloutBgClass: 'bg-emerald-50/60 text-gray-900',
++      calloutTitle: 'Field Tempo & Lifestyle Pulse',
++      calloutDescription:
++        'Component layout prioritizes kinetic momentum, real-time field conditions, and high-scannability indicators.',
++      metricLabel: 'Tempo & Pace',
++      metricValue: readingTime <= 4 ? 'Fast-Paced Dispatch' : 'Endurance Feature',
++    },
++  };
++
++  const intentBadgeMap: Record<SemanticIntent, string> = {
++    urgent: 'bg-red-100 text-red-900 border border-red-300',
++    investigative: 'bg-amber-100 text-amber-900 border border-amber-300',
++    analytical: 'bg-cyan-100 text-cyan-900 border border-cyan-300',
++    narrative: 'bg-purple-100 text-purple-900 border border-purple-300',
++    dispatch: 'bg-emerald-100 text-emerald-900 border border-emerald-300',
++  };
++
++  const baseProfile = domainProfiles[domain];
++
++  return {
++    domain,
++    intent,
++    intentLabel: intentLabels[intent],
++    placement,
++    contentKind,
++    readingDepth,
++    readingDepthLabel,
++    urgencyScore,
++    intentBadgeClass: intentBadgeMap[intent],
++    ...baseProfile,
++  };
++}

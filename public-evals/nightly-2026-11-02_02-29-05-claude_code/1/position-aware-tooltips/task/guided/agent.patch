@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,97 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Info tooltip */
++    .info-btn {
++      display: inline-grid;
++      place-items: center;
++      width: 2rem;
++      height: 2rem;
++      margin-top: 15px;
++      margin-left: 6px;
++      vertical-align: bottom;
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      cursor: pointer;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .info-btn:hover,
++    .info-btn:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    #tooltip {
++      /* Strip UA popover chrome; the inner wrapper is the visible bubble */
++      border: 0;
++      padding: 0;
++      background: transparent;
++      overflow: visible;
++      /* Restore UA centering that the global * reset removes (no-anchor fallback) */
++      margin: auto;
++      position-area: block-start;
++      position-try-fallbacks: flip-block;
++      /* Lets descendants query which fallback is active */
++      container-type: anchored;
++    }
++
++    @supports (anchor-name: --a) {
++      #tooltip {
++        inset: auto;
++        margin: unset;
++      }
++    }
++
++    .tooltip-content {
++      --arrow-size: 8px;
++      position: relative;
++      max-width: 240px;
++      margin-block-end: calc(var(--arrow-size) + 4px);
++      padding: 10px 14px;
++      border-radius: 12px 12px 4px 4px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: center;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    @supports (container-type: anchored) {
++      /* Default: tooltip above the trigger, arrow points down */
++      .tooltip-content::before {
++        content: "";
++        position: absolute;
++        inset-block-start: 100%;
++        inset-inline-start: 50%;
++        translate: -50% 0;
++        width: calc(var(--arrow-size) * 2);
++        height: var(--arrow-size);
++        background: inherit;
++        clip-path: polygon(0 0, 100% 0, 50% 100%);
++      }
++
++      /* Flipped below the trigger: arrow points up, radius and gap mirror */
++      @container anchored(fallback: flip-block) {
++        .tooltip-content {
++          margin-block-end: 0;
++          margin-block-start: calc(var(--arrow-size) + 4px);
++          border-radius: 4px 4px 12px 12px;
++        }
++
++        .tooltip-content::before {
++          inset-block-start: auto;
++          inset-block-end: 100%;
++          clip-path: polygon(50% 0, 100% 100%, 0 100%);
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -181,8 +270,13 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" id="anchor" class="info-btn" popovertarget="tooltip" aria-describedby="tooltip"
++            aria-label="Maple Oat Latte info">i</button>
++          <div id="tooltip" popover role="tooltip">
++            <div class="tooltip-content">Available through November. Made with 100% pure Grade A Vermont maple syrup.</div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,34 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .simulator {
++      margin-top: 40px;
++      border: 1px solid var(--secondary);
++    }
++
++    .simulator .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .simulator .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .simulator .btn:disabled {
++      opacity: 0.65;
++      cursor: wait;
++    }
++
++    #output {
++      margin-top: 15px;
++      min-height: 1.6em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +220,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card simulator" aria-labelledby="simulator-title">
++      <h2 id="simulator-title">Coffee Flavor Profile Simulator</h2>
++      <p>Explore 1,000 recipe blends to discover new coffee flavor possibilities.</p>
++      <button id="start-btn" class="btn" type="button">Start Simulation</button>
++      <div id="output" role="status" aria-live="polite" aria-atomic="true">Ready to explore your next blend.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +239,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const startButton = document.getElementById('start-btn');
++    const output = document.getElementById('output');
++    const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
++
++    // Stand in for the approximately 2ms of flavor analysis per recipe.
++    function processBlend() {
++      const started = performance.now();
++      while (performance.now() - started < 2) {
++        // Simulate CPU work for this blend.
++      }
++    }
++
++    startButton.addEventListener('click', async () => {
++      if (startButton.disabled) return;
++
++      startButton.disabled = true;
++      output.textContent = 'Processing...';
++
++      try {
++        // Let the initial status render before starting the CPU work.
++        await yieldToBrowser();
++        let batchStarted = performance.now();
++
++        for (let processed = 1; processed <= 1000; processed++) {
++          processBlend();
++
++          if (performance.now() - batchStarted >= 50) {
++            output.textContent = `Processed ${processed} of 1000...`;
++            // A new task lets the browser render and handle input between batches.
++            await yieldToBrowser();
++            batchStarted = performance.now();
++          }
++        }
++
++        output.textContent = 'Done! All items processed.';
++      } catch (error) {
++        output.textContent = 'Simulation interrupted. Please try again.';
++        console.error(error);
++      } finally {
++        startButton.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

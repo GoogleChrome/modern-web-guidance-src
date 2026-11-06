@@ -1,0 +1,258 @@
+diff --git a/index.html b/index.html
+index 66c9173..1fb8a5f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,161 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Switch & Preferences Section */
++    .preferences-card {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .preferences-card fieldset {
++      border: none;
++      padding: 0;
++      margin: 0;
++    }
++
++    .preferences-card legend {
++      font-size: 1.5rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .preferences-intro {
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    .switch-list {
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .switch-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      padding: 12px 16px;
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .switch-info {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .switch-label {
++      display: inline-flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.75rem;
++      min-block-size: 48px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .switch-hint {
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--accent-color, var(--primary));
++      margin: 0;
++      cursor: pointer;
++      font-size: 1.25rem;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--focus-color, var(--accent));
++      outline-offset: 4px;
++    }
++
++    input[type="checkbox"][switch]:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    /* Fallback for older browsers without accent-color */
++    @supports not (accent-color: var(--primary)) {
++      form input[type="checkbox"].visually-hidden {
++        position: absolute !important;
++        clip-path: inset(50%) !important;
++        overflow: hidden !important;
++        width: 1px !important;
++        height: 1px !important;
++        margin: -1px !important;
++        padding: 0 !important;
++        border: 0 !important;
++        white-space: nowrap !important;
++      }
++
++      .switch-label {
++        position: relative;
++        padding-left: 2rem;
++      }
++
++      input[type="checkbox"] + span::before {
++        content: "";
++        position: absolute;
++        left: 0;
++        top: 50%;
++        transform: translateY(-50%);
++        width: 1.2rem;
++        height: 1.2rem;
++        border: 2px solid #ccc;
++        background: white;
++        border-radius: 4px;
++        box-sizing: border-box;
++        transition: all 0.2s ease;
++      }
++
++      input[type="checkbox"]:focus-visible + span::before {
++        outline: 2px solid #000;
++        outline-offset: 2px;
++      }
++
++      input[type="checkbox"]:checked + span::before {
++        background-color: var(--primary, #4e342e);
++        border-color: var(--primary, #4e342e);
++      }
++
++      input[type="checkbox"]:checked + span::after {
++        content: "✓";
++        position: absolute;
++        left: 0.25rem;
++        top: 50%;
++        transform: translateY(-50%);
++        color: white;
++        font-weight: bold;
++        font-size: 0.9rem;
++      }
++    }
++
++    .status-banner {
++      margin-top: 16px;
++      font-size: 0.9rem;
++      color: var(--primary);
++      font-weight: 500;
++      min-height: 1.5em;
++    }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "input-switch-polyfill": "./node_modules/input-switch-polyfill/input-switch-polyfill.js"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -195,6 +349,48 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences-card">
++      <form id="preferences-form" action="/preferences" method="POST">
++        <fieldset>
++          <legend>Order &amp; Notification Preferences</legend>
++          <p class="preferences-intro">Customize your pickup alerts and default drink options below.</p>
++          <div class="switch-list">
++            <div class="switch-item">
++              <div class="switch-info">
++                <label for="notifications" class="switch-label">
++                  <input id="notifications" name="notifications" type="checkbox" switch class="visually-hidden" aria-describedby="notifications-hint" checked>
++                  <span>Enable pickup notifications</span>
++                </label>
++                <span id="notifications-hint" class="switch-hint">Receive an instant alert when your handcrafted drink is ready at the bar.</span>
++              </div>
++            </div>
++
++            <div class="switch-item">
++              <div class="switch-info">
++                <label for="oat-milk-default" class="switch-label">
++                  <input id="oat-milk-default" name="oat_milk_default" type="checkbox" switch class="visually-hidden" aria-describedby="oat-milk-hint">
++                  <span>Default to oat milk</span>
++                </label>
++                <span id="oat-milk-hint" class="switch-hint">Automatically substitute creamy barista-blend oat milk on all espresso orders.</span>
++              </div>
++            </div>
++
++            <div class="switch-item">
++              <div class="switch-info">
++                <label for="reusable-cup" class="switch-label">
++                  <input id="reusable-cup" name="reusable_cup" type="checkbox" switch class="visually-hidden" aria-describedby="reusable-cup-hint">
++                  <span>Bring my own reusable cup</span>
++                </label>
++                <span id="reusable-cup-hint" class="switch-hint">Save $0.25 and earn 10 bonus rewards stars on every visit.</span>
++              </div>
++            </div>
++          </div>
++          <div id="preferences-status" class="status-banner" aria-live="polite"></div>
++          <button type="submit" class="btn">Save Preferences</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +403,29 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('input-switch-polyfill');
++    }
++
++    const preferencesForm = document.getElementById('preferences-form');
++    const statusBanner = document.getElementById('preferences-status');
++
++    preferencesForm.addEventListener('change', (event) => {
++      const target = event.target;
++      if (target instanceof HTMLInputElement && target.type === 'checkbox') {
++        const labelSpan = target.closest('label')?.querySelector('span');
++        const labelText = labelSpan ? labelSpan.textContent.trim() : target.name;
++        const stateText = target.checked ? 'enabled' : 'disabled';
++        statusBanner.textContent = `${labelText}: ${stateText}.`;
++      }
++    });
++
++    preferencesForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      statusBanner.textContent = 'Preferences saved.';
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..2c1f499 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "input-switch-polyfill": "^1.12.0"
+   }
+ }

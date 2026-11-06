@@ -1,0 +1,429 @@
+diff --git a/components/components.css b/components/components.css
+new file mode 100644
+index 0000000..d5f5027
+--- /dev/null
++++ b/components/components.css
+@@ -0,0 +1,112 @@
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* { box-sizing: border-box; margin: 0; padding: 0; }
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Button: <a class="btn"> or <button class="btn">; variants: btn-accent, btn-outline */
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  border: 1px solid var(--primary);
++  padding: 10px 20px;
++  font: inherit;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  cursor: pointer;
++  transition: background 0.3s, color 0.3s;
++}
++.btn:hover { background: var(--primary-dark); }
++.btn-accent { background: var(--accent); border-color: var(--accent); color: var(--primary-dark); }
++.btn-accent:hover { background: #ffc470; }
++.btn-outline { background: transparent; color: var(--primary); }
++.btn-outline:hover { background: var(--primary); color: white; }
++
++/* Layout */
++.container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
++.section-title { text-align: center; }
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++/* Card */
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++.card h3 { margin-bottom: 10px; color: var(--primary); }
++.card img { width: 100%; border-radius: 6px; margin-bottom: 12px; display: block; }
++
++/* Badge */
++.badge {
++  display: inline-block;
++  background: var(--accent);
++  color: var(--primary-dark);
++  font-size: 0.75rem;
++  font-weight: 600;
++  padding: 2px 10px;
++  border-radius: 999px;
++  margin-bottom: 8px;
++}
++
++/* Site nav */
++site-nav {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 10px;
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++site-nav .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; color: white; text-decoration: none; }
++site-nav ul { display: flex; flex-wrap: wrap; list-style: none; }
++site-nav li { margin-left: 20px; }
++site-nav li a { color: white; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
++site-nav li a:hover, site-nav li a[aria-current="page"] { color: var(--accent); }
++site-nav li a.nav-cta { border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; }
++
++/* Hero */
++hero-banner {
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  height: 60vh;
++  padding: 0 20px;
++  color: white;
++  text-align: center;
++  background-size: cover;
++  background-position: center;
++}
++hero-banner h1 { font-size: 3rem; margin-bottom: 1rem; }
++
++/* Footer */
++site-footer { display: block; background: var(--secondary); text-align: center; padding: 40px 20px; margin-top: 40px; }
++site-footer .footer-links { margin-bottom: 20px; }
++site-footer .footer-links a { margin: 0 10px; color: var(--text); text-decoration: none; font-size: 0.85rem; }
++site-footer .footer-links a:hover { text-decoration: underline; }
+diff --git a/components/components.js b/components/components.js
+new file mode 100644
+index 0000000..009f030
+--- /dev/null
++++ b/components/components.js
+@@ -0,0 +1,82 @@
++/**
++ * Reusable UI components (light-DOM custom elements, styled by components.css).
++ *
++ *   <site-nav>          links via `links` JSON attr, or defaults below
++ *   <hero-banner>       image="" heading="" ; slotted children become the body
++ *   <product-card>      title="" href="" image="" badge="" cta="" ; children = description
++ *   <site-footer>       links via `links` JSON attr; year auto-filled
++ */
++const esc = (s = '') =>
++  String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++
++const parseLinks = (el, fallback) => {
++  try { return JSON.parse(el.getAttribute('links')) || fallback; } catch { return fallback; }
++};
++
++const NAV_LINKS = [
++  { label: 'Menu', href: '/menu' },
++  { label: 'Locations', href: '/locations' },
++  { label: 'Rewards', href: '/rewards' },
++  { label: 'My Account', href: '/account' },
++  { label: 'Logout', href: '/logout', cta: true },
++];
++
++const FOOTER_LINKS = [
++  { label: 'Our Story', href: '/about' },
++  { label: 'Join the Team', href: '/careers' },
++  { label: 'Contact Us', href: '/contact' },
++  { label: 'Privacy', href: '/privacy-policy' },
++];
++
++class SiteNav extends HTMLElement {
++  connectedCallback() {
++    const brand = esc(this.getAttribute('brand') || 'THE DAILY GRIND');
++    const items = parseLinks(this, NAV_LINKS).map(l => {
++      const current = l.href === location.pathname ? ' aria-current="page"' : '';
++      return `<li><a href="${esc(l.href)}"${l.cta ? ' class="nav-cta"' : ''}${current}>${esc(l.label)}</a></li>`;
++    }).join('');
++    this.innerHTML = `<a class="logo" href="/">${brand}</a><nav aria-label="Main"><ul>${items}</ul></nav>`;
++  }
++}
++
++class HeroBanner extends HTMLElement {
++  connectedCallback() {
++    if (this.dataset.ready) return;
++    this.dataset.ready = '1';
++    const image = this.getAttribute('image');
++    if (image) {
++      this.style.backgroundImage = `linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url('${image.replace(/'/g, '%27')}')`;
++    }
++    const heading = this.getAttribute('heading');
++    if (heading) this.insertAdjacentHTML('afterbegin', `<h1>${esc(heading)}</h1>`);
++  }
++}
++
++class ProductCard extends HTMLElement {
++  connectedCallback() {
++    if (this.dataset.ready) return;
++    this.dataset.ready = '1';
++    const g = n => this.getAttribute(n);
++    const body = this.innerHTML;
++    this.innerHTML = `<div class="card">
++      ${g('image') ? `<img src="${esc(g('image'))}" alt="${esc(g('title'))}" loading="lazy">` : ''}
++      ${g('badge') ? `<span class="badge">${esc(g('badge'))}</span>` : ''}
++      <h3>${esc(g('title'))}</h3>
++      <p>${body}</p>
++      ${g('href') ? `<a href="${esc(g('href'))}" class="btn">${esc(g('cta') || 'View Details')}</a>` : ''}
++    </div>`;
++  }
++}
++
++class SiteFooter extends HTMLElement {
++  connectedCallback() {
++    const links = parseLinks(this, FOOTER_LINKS).map(l => `<a href="${esc(l.href)}">${esc(l.label)}</a>`).join(' | ');
++    const owner = esc(this.getAttribute('owner') || 'The Daily Grind Coffee Co.');
++    this.innerHTML = `<div class="footer-links">${links}</div><p>&copy; ${new Date().getFullYear()} ${owner} All rights reserved.</p>`;
++  }
++}
++
++customElements.define('site-nav', SiteNav);
++customElements.define('hero-banner', HeroBanner);
++customElements.define('product-card', ProductCard);
++customElements.define('site-footer', SiteFooter);
+diff --git a/index.html b/index.html
+index 66c9173..f279150 100644
+--- a/index.html
++++ b/index.html
+@@ -5,207 +5,32 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="components/components.css">
++  <script src="components/components.js" defer></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <site-nav></site-nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <hero-banner heading="Wake Up Your Senses"
++    image="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  </hero-banner>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <product-card title="Maple Oat Latte" href="/menu/seasonal">Creamy oat milk with a hint of Vermont maple syrup.</product-card>
++        <product-card title="Dark Roast Espresso" href="/menu/espresso">Bold, smokey, and perfect for a morning boost.</product-card>
++        <product-card title="Cold Brew" href="/menu/cold-brew">Steeped for 18 hours for maximum smoothness.</product-card>
+       </div>
+     </section>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  <site-footer></site-footer>
+ 
+ </body>
+ 

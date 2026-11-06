@@ -1,0 +1,1497 @@
+diff --git a/package.json b/package.json
+index 66c3a6d..712b70c 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,8 @@
+     "@astrojs/node": "^11.1.3",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+new file mode 100644
+index 0000000..ddc805a
+--- /dev/null
++++ b/src/lib/auth.ts
+@@ -0,0 +1,66 @@
++import type { User } from './db';
++
++export const REAUTH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
++
++export interface SessionUser {
++  id: string;
++  username: string;
++  displayName: string;
++}
++
++export async function getSessionUser(session?: any): Promise<SessionUser | null> {
++  if (!session) return null;
++  const user = await session.get('user');
++  return user || null;
++}
++
++export async function setSessionUser(session: any, user: User | SessionUser): Promise<void> {
++  if (!session) return;
++  await session.set('user', {
++    id: user.id,
++    username: user.username,
++    displayName: user.displayName,
++  });
++  // Logging in also establishes initial reauthentication
++  await setSessionReauth(session);
++}
++
++export async function clearSessionUser(session?: any): Promise<void> {
++  if (!session) return;
++  await session.set('user', null);
++  await session.set('lastReauthAt', null);
++  await session.set('currentChallenge', null);
++}
++
++export async function setSessionReauth(session?: any): Promise<void> {
++  if (!session) return;
++  await session.set('lastReauthAt', Date.now());
++}
++
++export async function isReauthenticated(session?: any): Promise<boolean> {
++  if (!session) return false;
++  const lastReauthAt = await session.get('lastReauthAt');
++  if (!lastReauthAt || typeof lastReauthAt !== 'number') return false;
++  return Date.now() - lastReauthAt < REAUTH_TIMEOUT_MS;
++}
++
++export async function getReauthStatus(session?: any): Promise<{
++  isReauthenticated: boolean;
++  lastReauthAt: number | null;
++  timeRemainingMs: number;
++}> {
++  if (!session) {
++    return { isReauthenticated: false, lastReauthAt: null, timeRemainingMs: 0 };
++  }
++  const lastReauthAt = (await session.get('lastReauthAt')) as number | null;
++  if (!lastReauthAt || typeof lastReauthAt !== 'number') {
++    return { isReauthenticated: false, lastReauthAt: null, timeRemainingMs: 0 };
++  }
++  const elapsed = Date.now() - lastReauthAt;
++  const timeRemainingMs = Math.max(0, REAUTH_TIMEOUT_MS - elapsed);
++  return {
++    isReauthenticated: timeRemainingMs > 0,
++    lastReauthAt,
++    timeRemainingMs,
++  };
++}
+diff --git a/src/lib/db.ts b/src/lib/db.ts
+new file mode 100644
+index 0000000..0fe42ce
+--- /dev/null
++++ b/src/lib/db.ts
+@@ -0,0 +1,329 @@
++import { DatabaseSync } from 'node:sqlite';
++import fs from 'node:fs';
++import path from 'node:path';
++import crypto from 'node:crypto';
++
++export interface User {
++  id: string;
++  username: string;
++  displayName: string;
++  passwordHash?: string | null;
++  createdAt: string;
++}
++
++export interface Passkey {
++  id: string; // base64url credential ID
++  userId: string;
++  name: string;
++  publicKey: string; // base64url encoded public key
++  counter: number;
++  transports?: string[] | null;
++  deviceType?: 'singleDevice' | 'multiDevice' | null;
++  backedUp: boolean;
++  aaguid?: string | null;
++  createdAt: string;
++  lastUsedAt?: string | null;
++}
++
++export interface ChallengeRecord {
++  challenge: string;
++  type: 'registration' | 'authentication' | 'reauth';
++  userId?: string | null;
++  expiresAt: number;
++}
++
++let dbInstance: DatabaseSync | null = null;
++
++export function getDb(): DatabaseSync {
++  if (dbInstance) {
++    return dbInstance;
++  }
++
++  const dataDir = path.resolve(process.cwd(), 'data');
++  if (!fs.existsSync(dataDir)) {
++    fs.mkdirSync(dataDir, { recursive: true });
++  }
++
++  const dbPath = path.join(dataDir, 'app.db');
++  const db = new DatabaseSync(dbPath);
++
++  // Enable WAL mode for better concurrency
++  db.exec('PRAGMA journal_mode = WAL;');
++  db.exec('PRAGMA foreign_keys = ON;');
++
++  // Initialize tables
++  db.exec(`
++    CREATE TABLE IF NOT EXISTS users (
++      id TEXT PRIMARY KEY,
++      username TEXT UNIQUE NOT NULL COLLATE NOCASE,
++      displayName TEXT NOT NULL,
++      passwordHash TEXT,
++      createdAt TEXT NOT NULL
++    );
++
++    CREATE TABLE IF NOT EXISTS passkeys (
++      id TEXT PRIMARY KEY,
++      userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
++      name TEXT NOT NULL,
++      publicKey TEXT NOT NULL,
++      counter INTEGER NOT NULL DEFAULT 0,
++      transports TEXT,
++      deviceType TEXT,
++      backedUp INTEGER NOT NULL DEFAULT 0,
++      aaguid TEXT,
++      createdAt TEXT NOT NULL,
++      lastUsedAt TEXT
++    );
++
++    CREATE TABLE IF NOT EXISTS challenges (
++      challenge TEXT PRIMARY KEY,
++      type TEXT NOT NULL,
++      userId TEXT,
++      expiresAt INTEGER NOT NULL
++    );
++  `);
++
++  dbInstance = db;
++  return dbInstance;
++}
++
++// Password hashing utilities using Node built-in crypto (scrypt)
++export function hashPassword(password: string): string {
++  const salt = crypto.randomBytes(16).toString('hex');
++  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
++  return `${salt}:${hash}`;
++}
++
++export function verifyPassword(password: string, storedHash: string): boolean {
++  try {
++    const [salt, key] = storedHash.split(':');
++    if (!salt || !key) return false;
++    const keyBuffer = Buffer.from(key, 'hex');
++    const derivedKey = crypto.scryptSync(password, salt, 64);
++    return crypto.timingSafeEqual(keyBuffer, derivedKey);
++  } catch {
++    return false;
++  }
++}
++
++// User operations
++export function createUser(username: string, displayName?: string, password?: string): User {
++  const db = getDb();
++  const id = crypto.randomUUID();
++  const now = new Date().toISOString();
++  const effectiveDisplayName = displayName?.trim() || username.trim();
++  const passwordHash = password ? hashPassword(password) : null;
++
++  const stmt = db.prepare(`
++    INSERT INTO users (id, username, displayName, passwordHash, createdAt)
++    VALUES (?, ?, ?, ?, ?)
++  `);
++  stmt.run(id, username.trim().toLowerCase(), effectiveDisplayName, passwordHash, now);
++
++  return {
++    id,
++    username: username.trim().toLowerCase(),
++    displayName: effectiveDisplayName,
++    passwordHash,
++    createdAt: now,
++  };
++}
++
++export function getUserById(id: string): User | null {
++  const db = getDb();
++  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
++  const row = stmt.get(id) as any;
++  if (!row) return null;
++  return {
++    id: row.id,
++    username: row.username,
++    displayName: row.displayName,
++    passwordHash: row.passwordHash,
++    createdAt: row.createdAt,
++  };
++}
++
++export function getUserByUsername(username: string): User | null {
++  const db = getDb();
++  const stmt = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE');
++  const row = stmt.get(username.trim()) as any;
++  if (!row) return null;
++  return {
++    id: row.id,
++    username: row.username,
++    displayName: row.displayName,
++    passwordHash: row.passwordHash,
++    createdAt: row.createdAt,
++  };
++}
++
++// Passkey operations
++export function addPasskey(passkey: {
++  id: string;
++  userId: string;
++  name: string;
++  publicKey: string;
++  counter: number;
++  transports?: string[];
++  deviceType?: 'singleDevice' | 'multiDevice';
++  backedUp: boolean;
++  aaguid?: string;
++}): Passkey {
++  const db = getDb();
++  const now = new Date().toISOString();
++  const transportsJson = passkey.transports ? JSON.stringify(passkey.transports) : null;
++
++  const stmt = db.prepare(`
++    INSERT INTO passkeys (id, userId, name, publicKey, counter, transports, deviceType, backedUp, aaguid, createdAt, lastUsedAt)
++    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
++  `);
++  stmt.run(
++    passkey.id,
++    passkey.userId,
++    passkey.name,
++    passkey.publicKey,
++    passkey.counter,
++    transportsJson,
++    passkey.deviceType || null,
++    passkey.backedUp ? 1 : 0,
++    passkey.aaguid || null,
++    now,
++    null
++  );
++
++  return {
++    id: passkey.id,
++    userId: passkey.userId,
++    name: passkey.name,
++    publicKey: passkey.publicKey,
++    counter: passkey.counter,
++    transports: passkey.transports || null,
++    deviceType: passkey.deviceType || null,
++    backedUp: passkey.backedUp,
++    aaguid: passkey.aaguid || null,
++    createdAt: now,
++    lastUsedAt: null,
++  };
++}
++
++export function getPasskeysByUserId(userId: string): Passkey[] {
++  const db = getDb();
++  const stmt = db.prepare('SELECT * FROM passkeys WHERE userId = ? ORDER BY createdAt DESC');
++  const rows = stmt.all(userId) as any[];
++
++  return rows.map((row) => ({
++    id: row.id,
++    userId: row.userId,
++    name: row.name,
++    publicKey: row.publicKey,
++    counter: Number(row.counter),
++    transports: row.transports ? JSON.parse(row.transports) : null,
++    deviceType: row.deviceType,
++    backedUp: Boolean(row.backedUp),
++    aaguid: row.aaguid,
++    createdAt: row.createdAt,
++    lastUsedAt: row.lastUsedAt,
++  }));
++}
++
++export function getPasskeyById(id: string): (Passkey & { user?: User }) | null {
++  const db = getDb();
++  const stmt = db.prepare(`
++    SELECT p.*, u.username, u.displayName, u.createdAt as userCreatedAt
++    FROM passkeys p
++    JOIN users u ON p.userId = u.id
++    WHERE p.id = ?
++  `);
++  const row = stmt.get(id) as any;
++  if (!row) return null;
++
++  return {
++    id: row.id,
++    userId: row.userId,
++    name: row.name,
++    publicKey: row.publicKey,
++    counter: Number(row.counter),
++    transports: row.transports ? JSON.parse(row.transports) : null,
++    deviceType: row.deviceType,
++    backedUp: Boolean(row.backedUp),
++    aaguid: row.aaguid,
++    createdAt: row.createdAt,
++    lastUsedAt: row.lastUsedAt,
++    user: {
++      id: row.userId,
++      username: row.username,
++      displayName: row.displayName,
++      createdAt: row.userCreatedAt,
++    },
++  };
++}
++
++export function updatePasskeyCounter(id: string, counter: number, lastUsedAt?: string): void {
++  const db = getDb();
++  const effectiveLastUsed = lastUsedAt || new Date().toISOString();
++  const stmt = db.prepare(`
++    UPDATE passkeys
++    SET counter = ?, lastUsedAt = ?
++    WHERE id = ?
++  `);
++  stmt.run(counter, effectiveLastUsed, id);
++}
++
++export function renamePasskey(id: string, userId: string, newName: string): boolean {
++  const db = getDb();
++  const stmt = db.prepare(`
++    UPDATE passkeys
++    SET name = ?
++    WHERE id = ? AND userId = ?
++  `);
++  const info = stmt.run(newName.trim(), id, userId);
++  return info.changes > 0;
++}
++
++export function deletePasskey(id: string, userId: string): boolean {
++  const db = getDb();
++  const stmt = db.prepare(`
++    DELETE FROM passkeys
++    WHERE id = ? AND userId = ?
++  `);
++  const info = stmt.run(id, userId);
++  return info.changes > 0;
++}
++
++// Challenge storage with TTL (5 minutes)
++export function saveChallenge(challenge: string, type: 'registration' | 'authentication' | 'reauth', userId?: string): void {
++  const db = getDb();
++  const now = Date.now();
++  const expiresAt = now + 5 * 60 * 1000;
++
++  // Clean expired
++  db.prepare('DELETE FROM challenges WHERE expiresAt < ?').run(now);
++
++  const stmt = db.prepare(`
++    INSERT OR REPLACE INTO challenges (challenge, type, userId, expiresAt)
++    VALUES (?, ?, ?, ?)
++  `);
++  stmt.run(challenge, type, userId || null, expiresAt);
++}
++
++export function consumeChallenge(challenge: string, type: 'registration' | 'authentication' | 'reauth'): ChallengeRecord | null {
++  const db = getDb();
++  const now = Date.now();
++
++  const stmt = db.prepare(`
++    SELECT * FROM challenges
++    WHERE challenge = ? AND type = ? AND expiresAt > ?
++  `);
++  const row = stmt.get(challenge, type, now) as any;
++  if (!row) return null;
++
++  // Delete consumed challenge (single use)
++  db.prepare('DELETE FROM challenges WHERE challenge = ?').run(challenge);
++
++  return {
++    challenge: row.challenge,
++    type: row.type,
++    userId: row.userId,
++    expiresAt: Number(row.expiresAt),
++  };
++}
+diff --git a/src/lib/webauthn.ts b/src/lib/webauthn.ts
+new file mode 100644
+index 0000000..fe84e76
+--- /dev/null
++++ b/src/lib/webauthn.ts
+@@ -0,0 +1,163 @@
++import {
++  generateRegistrationOptions,
++  verifyRegistrationResponse,
++  generateAuthenticationOptions,
++  verifyAuthenticationResponse,
++  type VerifiedRegistrationResponse,
++  type VerifiedAuthenticationResponse,
++} from '@simplewebauthn/server';
++import type {
++  RegistrationResponseJSON,
++  AuthenticationResponseJSON,
++  AuthenticatorTransportFuture,
++} from '@simplewebauthn/server';
++import type { Passkey } from './db';
++
++export interface RPConfig {
++  rpName: string;
++  rpID: string;
++  origin: string;
++  expectedOrigins: string[];
++}
++
++export function getRPConfig(request: Request): RPConfig {
++  const url = new URL(request.url);
++
++  // Determine host and protocol from headers or URL
++  const forwardedHost = request.headers.get('x-forwarded-host');
++  const hostHeader = request.headers.get('host');
++  const rawHost = forwardedHost || hostHeader || url.host;
++  
++  // rpID is the domain without port
++  const rpID = rawHost.split(':')[0] || 'localhost';
++
++  const forwardedProto = request.headers.get('x-forwarded-proto');
++  const protocol = forwardedProto || url.protocol.replace(':', '') || (rpID === 'localhost' || rpID === '127.0.0.1' ? 'http' : 'https');
++
++  const originHeader = request.headers.get('origin');
++  const computedOrigin = `${protocol}://${rawHost}`;
++
++  // Allow computed origin, header origin, and local fallback origins
++  const origins = new Set<string>();
++  origins.add(computedOrigin);
++  origins.add(url.origin);
++  if (originHeader) {
++    origins.add(originHeader);
++  }
++  if (rpID === 'localhost' || rpID === '127.0.0.1') {
++    origins.add(`http://localhost:${url.port || '11224'}`);
++    origins.add(`http://127.0.0.1:${url.port || '11224'}`);
++    origins.add('http://localhost:11224');
++    origins.add('http://localhost:4321');
++  }
++
++  return {
++    rpName: 'The DevTools Times',
++    rpID,
++    origin: originHeader || computedOrigin,
++    expectedOrigins: Array.from(origins),
++  };
++}
++
++export async function createRegistrationOptions(params: {
++  username: string;
++  displayName?: string;
++  userId: string;
++  existingPasskeys?: Passkey[];
++  rpConfig: RPConfig;
++}) {
++  const { username, displayName, userId, existingPasskeys = [], rpConfig } = params;
++
++  // WebAuthn requires userID as Uint8Array
++  const userIDBuffer = Buffer.from(userId, 'utf-8');
++
++  // Prevent re-registering existing passkeys
++  const excludeCredentials = existingPasskeys.map((passkey) => ({
++    id: passkey.id,
++    type: 'public-key' as const,
++    transports: (passkey.transports as AuthenticatorTransportFuture[]) || undefined,
++  }));
++
++  const options = await generateRegistrationOptions({
++    rpName: rpConfig.rpName,
++    rpID: rpConfig.rpID,
++    userName: username,
++    userDisplayName: displayName || username,
++    userID: new Uint8Array(userIDBuffer),
++    attestationType: 'none',
++    excludeCredentials,
++    authenticatorSelection: {
++      residentKey: 'preferred',
++      userVerification: 'preferred',
++    },
++    supportedAlgorithmIDs: [-7, -257], // ES256, RS256
++  });
++
++  return options;
++}
++
++export async function verifyRegistration(params: {
++  response: RegistrationResponseJSON;
++  expectedChallenge: string;
++  rpConfig: RPConfig;
++}): Promise<VerifiedRegistrationResponse> {
++  const { response, expectedChallenge, rpConfig } = params;
++
++  const verification = await verifyRegistrationResponse({
++    response,
++    expectedChallenge,
++    expectedOrigin: rpConfig.expectedOrigins,
++    expectedRPID: rpConfig.rpID,
++    requireUserVerification: false, // preferred in options
++  });
++
++  return verification;
++}
++
++export async function createAuthenticationOptions(params: {
++  allowPasskeys?: Passkey[];
++  rpConfig: RPConfig;
++}) {
++  const { allowPasskeys, rpConfig } = params;
++
++  const allowCredentials = allowPasskeys?.length
++    ? allowPasskeys.map((passkey) => ({
++        id: passkey.id,
++        type: 'public-key' as const,
++        transports: (passkey.transports as AuthenticatorTransportFuture[]) || undefined,
++      }))
++    : undefined;
++
++  const options = await generateAuthenticationOptions({
++    rpID: rpConfig.rpID,
++    allowCredentials,
++    userVerification: 'preferred',
++  });
++
++  return options;
++}
++
++export async function verifyAuthentication(params: {
++  response: AuthenticationResponseJSON;
++  expectedChallenge: string;
++  passkey: Passkey;
++  rpConfig: RPConfig;
++}): Promise<VerifiedAuthenticationResponse> {
++  const { response, expectedChallenge, passkey, rpConfig } = params;
++
++  const verification = await verifyAuthenticationResponse({
++    response,
++    expectedChallenge,
++    expectedOrigin: rpConfig.expectedOrigins,
++    expectedRPID: rpConfig.rpID,
++    credential: {
++      id: passkey.id,
++      publicKey: new Uint8Array(Buffer.from(passkey.publicKey, 'base64url')),
++      counter: passkey.counter,
++      transports: (passkey.transports as AuthenticatorTransportFuture[]) || undefined,
++    },
++    requireUserVerification: false, // allows devices with UP
++  });
++
++  return verification;
++}
+diff --git a/src/pages/api/auth/login-options.ts b/src/pages/api/auth/login-options.ts
+new file mode 100644
+index 0000000..d2731f0
+--- /dev/null
++++ b/src/pages/api/auth/login-options.ts
+@@ -0,0 +1,47 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, createAuthenticationOptions } from '../../../lib/webauthn';
++import { getUserByUsername, getPasskeysByUserId, saveChallenge } from '../../../lib/db';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json().catch(() => ({}));
++    const rpConfig = getRPConfig(request);
++
++    let allowPasskeys = undefined;
++    let userId: string | undefined = undefined;
++
++    if (body.username && String(body.username).trim()) {
++      const user = getUserByUsername(String(body.username).trim());
++      if (user) {
++        userId = user.id;
++        const passkeys = getPasskeysByUserId(user.id);
++        if (passkeys.length > 0) {
++          allowPasskeys = passkeys;
++        }
++      }
++    }
++
++    const options = await createAuthenticationOptions({
++      allowPasskeys,
++      rpConfig,
++    });
++
++    // Store challenge in session & DB
++    await session?.set('currentChallenge', options.challenge);
++    if (userId) {
++      await session?.set('authUserId', userId);
++    }
++    saveChallenge(options.challenge, 'authentication', userId);
++
++    return new Response(JSON.stringify({ options }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (error: any) {
++    console.error('Error generating authentication options:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to generate authentication options' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/login-verify.ts b/src/pages/api/auth/login-verify.ts
+new file mode 100644
+index 0000000..ddea2aa
+--- /dev/null
++++ b/src/pages/api/auth/login-verify.ts
+@@ -0,0 +1,106 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, verifyAuthentication } from '../../../lib/webauthn';
++import { getPasskeyById, getUserById, updatePasskeyCounter, consumeChallenge } from '../../../lib/db';
++import { setSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json();
++    const { response } = body;
++
++    if (!response || !response.id) {
++      return new Response(JSON.stringify({ error: 'Missing WebAuthn authentication response' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const rpConfig = getRPConfig(request);
++
++    // Retrieve expected challenge
++    let expectedChallenge = await session?.get('currentChallenge');
++
++    if (!expectedChallenge) {
++      try {
++        const clientData = JSON.parse(
++          Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf8')
++        );
++        const record = consumeChallenge(clientData.challenge, 'authentication');
++        if (record) {
++          expectedChallenge = record.challenge;
++        }
++      } catch (e) {
++        // Ignored
++      }
++    }
++
++    if (!expectedChallenge) {
++      return new Response(
++        JSON.stringify({ error: 'Authentication session expired or invalid. Please try again.' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    // Lookup passkey by credential ID
++    const passkeyData = getPasskeyById(response.id);
++    if (!passkeyData) {
++      return new Response(
++        JSON.stringify({ error: 'Passkey not recognized. Please register first.' }),
++        { status: 401, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const verification = await verifyAuthentication({
++      response,
++      expectedChallenge,
++      passkey: passkeyData,
++      rpConfig,
++    });
++
++    if (!verification.verified || !verification.authenticationInfo) {
++      return new Response(JSON.stringify({ error: 'Passkey authentication failed' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    // Update credential counter and last used timestamp
++    updatePasskeyCounter(
++      passkeyData.id,
++      verification.authenticationInfo.newCounter,
++      new Date().toISOString()
++    );
++
++    // Clear challenge
++    await session?.set('currentChallenge', null);
++
++    // Lookup user and establish session
++    const user = passkeyData.user || getUserById(passkeyData.userId);
++    if (!user) {
++      return new Response(JSON.stringify({ error: 'User account not found' }), {
++        status: 404,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    await setSessionUser(session, user);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        },
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error verifying authentication:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Authentication verification failed' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/login.ts b/src/pages/api/auth/login.ts
+new file mode 100644
+index 0000000..331a704
+--- /dev/null
++++ b/src/pages/api/auth/login.ts
+@@ -0,0 +1,54 @@
++import type { APIRoute } from 'astro';
++import { getUserByUsername, verifyPassword } from '../../../lib/db';
++import { setSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json();
++    const username = body.username ? String(body.username).trim() : '';
++    const password = body.password ? String(body.password) : '';
++
++    if (!username || !password) {
++      return new Response(
++        JSON.stringify({ error: 'Username and password are required' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const user = getUserByUsername(username);
++    if (!user || !user.passwordHash) {
++      return new Response(
++        JSON.stringify({ error: 'Invalid username or password' }),
++        { status: 401, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const valid = verifyPassword(password, user.passwordHash);
++    if (!valid) {
++      return new Response(
++        JSON.stringify({ error: 'Invalid username or password' }),
++        { status: 401, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    await setSessionUser(session, user);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        },
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Login error:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Login failed' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/logout.ts b/src/pages/api/auth/logout.ts
+new file mode 100644
+index 0000000..cbc432d
+--- /dev/null
++++ b/src/pages/api/auth/logout.ts
+@@ -0,0 +1,10 @@
++import type { APIRoute } from 'astro';
++import { clearSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ session }) => {
++  await clearSessionUser(session);
++  return new Response(JSON.stringify({ success: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/auth/me.ts b/src/pages/api/auth/me.ts
+new file mode 100644
+index 0000000..3371154
+--- /dev/null
++++ b/src/pages/api/auth/me.ts
+@@ -0,0 +1,32 @@
++import type { APIRoute } from 'astro';
++import { getSessionUser, getReauthStatus } from '../../../lib/auth';
++import { getUserById, getPasskeysByUserId } from '../../../lib/db';
++
++export const GET: APIRoute = async ({ session }) => {
++  const sessionUser = await getSessionUser(session);
++  if (!sessionUser) {
++    return new Response(JSON.stringify({ user: null, authenticated: false }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const user = getUserById(sessionUser.id);
++  const passkeys = getPasskeysByUserId(sessionUser.id);
++  const reauthStatus = await getReauthStatus(session);
++
++  return new Response(
++    JSON.stringify({
++      authenticated: true,
++      user: {
++        id: sessionUser.id,
++        username: sessionUser.username,
++        displayName: user?.displayName || sessionUser.displayName,
++        createdAt: user?.createdAt,
++        passkeyCount: passkeys.length,
++      },
++      reauthStatus,
++    }),
++    { status: 200, headers: { 'Content-Type': 'application/json' } }
++  );
++};
+diff --git a/src/pages/api/auth/passkeys/[id].ts b/src/pages/api/auth/passkeys/[id].ts
+new file mode 100644
+index 0000000..35338eb
+--- /dev/null
++++ b/src/pages/api/auth/passkeys/[id].ts
+@@ -0,0 +1,125 @@
++import type { APIRoute } from 'astro';
++import { getPasskeyById, renamePasskey, deletePasskey } from '../../../../lib/db';
++import { getSessionUser, isReauthenticated } from '../../../../lib/auth';
++
++export const PATCH: APIRoute = async ({ params, request, session }) => {
++  try {
++    const currentUser = await getSessionUser(session);
++    if (!currentUser) {
++      return new Response(JSON.stringify({ error: 'Authentication required' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const passkeyId = params.id;
++    if (!passkeyId) {
++      return new Response(JSON.stringify({ error: 'Passkey ID is required' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const body = await request.json();
++    const newName = body.name ? String(body.name).trim() : '';
++    if (!newName) {
++      return new Response(JSON.stringify({ error: 'Passkey name cannot be empty' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const passkey = getPasskeyById(passkeyId);
++    if (!passkey || passkey.userId !== currentUser.id) {
++      return new Response(JSON.stringify({ error: 'Passkey not found or access denied' }), {
++        status: 404,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const updated = renamePasskey(passkeyId, currentUser.id, newName);
++    if (!updated) {
++      return new Response(JSON.stringify({ error: 'Failed to update passkey name' }), {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        id: passkeyId,
++        name: newName,
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error renaming passkey:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to rename passkey' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
++
++export const DELETE: APIRoute = async ({ params, session }) => {
++  try {
++    const currentUser = await getSessionUser(session);
++    if (!currentUser) {
++      return new Response(JSON.stringify({ error: 'Authentication required' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const passkeyId = params.id;
++    if (!passkeyId) {
++      return new Response(JSON.stringify({ error: 'Passkey ID is required' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    // Security check: Passkey deletion requires recent reauthentication!
++    const reauthed = await isReauthenticated(session);
++    if (!reauthed) {
++      return new Response(
++        JSON.stringify({
++          error: 'REAUTH_REQUIRED',
++          message: 'Passkey reauthentication is required to delete credentials.',
++        }),
++        { status: 403, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const passkey = getPasskeyById(passkeyId);
++    if (!passkey || passkey.userId !== currentUser.id) {
++      return new Response(JSON.stringify({ error: 'Passkey not found or access denied' }), {
++        status: 404,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const deleted = deletePasskey(passkeyId, currentUser.id);
++    if (!deleted) {
++      return new Response(JSON.stringify({ error: 'Failed to delete passkey' }), {
++        status: 500,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        deletedId: passkeyId,
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error deleting passkey:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to delete passkey' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/passkeys/index.ts b/src/pages/api/auth/passkeys/index.ts
+new file mode 100644
+index 0000000..f2e95ff
+--- /dev/null
++++ b/src/pages/api/auth/passkeys/index.ts
+@@ -0,0 +1,43 @@
++import type { APIRoute } from 'astro';
++import { getPasskeysByUserId } from '../../../../lib/db';
++import { getSessionUser, getReauthStatus } from '../../../../lib/auth';
++
++export const GET: APIRoute = async ({ session }) => {
++  try {
++    const currentUser = await getSessionUser(session);
++    if (!currentUser) {
++      return new Response(JSON.stringify({ error: 'Authentication required' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const passkeys = getPasskeysByUserId(currentUser.id);
++    const reauthStatus = await getReauthStatus(session);
++
++    const safePasskeys = passkeys.map((p) => ({
++      id: p.id,
++      name: p.name,
++      createdAt: p.createdAt,
++      lastUsedAt: p.lastUsedAt,
++      deviceType: p.deviceType,
++      backedUp: p.backedUp,
++      transports: p.transports,
++      counter: p.counter,
++    }));
++
++    return new Response(
++      JSON.stringify({
++        passkeys: safePasskeys,
++        reauthStatus,
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error fetching passkeys:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to fetch passkeys' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/reauth-options.ts b/src/pages/api/auth/reauth-options.ts
+new file mode 100644
+index 0000000..2ad63eb
+--- /dev/null
++++ b/src/pages/api/auth/reauth-options.ts
+@@ -0,0 +1,46 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, createAuthenticationOptions } from '../../../lib/webauthn';
++import { getPasskeysByUserId, saveChallenge } from '../../../lib/db';
++import { getSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const currentUser = await getSessionUser(session);
++    if (!currentUser) {
++      return new Response(JSON.stringify({ error: 'Authentication required' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const passkeys = getPasskeysByUserId(currentUser.id);
++    if (passkeys.length === 0) {
++      return new Response(
++        JSON.stringify({
++          error: 'No passkeys registered on your account. Please register a passkey first.',
++        }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const rpConfig = getRPConfig(request);
++    const options = await createAuthenticationOptions({
++      allowPasskeys: passkeys,
++      rpConfig,
++    });
++
++    await session?.set('reauthChallenge', options.challenge);
++    saveChallenge(options.challenge, 'reauth', currentUser.id);
++
++    return new Response(JSON.stringify({ options }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (error: any) {
++    console.error('Error generating reauth options:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to generate reauthentication options' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/reauth-verify.ts b/src/pages/api/auth/reauth-verify.ts
+new file mode 100644
+index 0000000..4ec6039
+--- /dev/null
++++ b/src/pages/api/auth/reauth-verify.ts
+@@ -0,0 +1,102 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, verifyAuthentication } from '../../../lib/webauthn';
++import { getPasskeyById, updatePasskeyCounter, consumeChallenge } from '../../../lib/db';
++import { getSessionUser, setSessionReauth } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const currentUser = await getSessionUser(session);
++    if (!currentUser) {
++      return new Response(JSON.stringify({ error: 'Authentication required' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const body = await request.json();
++    const { response } = body;
++
++    if (!response || !response.id) {
++      return new Response(JSON.stringify({ error: 'Missing WebAuthn reauthentication response' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const rpConfig = getRPConfig(request);
++
++    // Retrieve expected challenge
++    let expectedChallenge = await session?.get('reauthChallenge');
++
++    if (!expectedChallenge) {
++      try {
++        const clientData = JSON.parse(
++          Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf8')
++        );
++        const record = consumeChallenge(clientData.challenge, 'reauth');
++        if (record && record.userId === currentUser.id) {
++          expectedChallenge = record.challenge;
++        }
++      } catch (e) {
++        // Ignored
++      }
++    }
++
++    if (!expectedChallenge) {
++      return new Response(
++        JSON.stringify({ error: 'Reauthentication session expired. Please try again.' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const passkeyData = getPasskeyById(response.id);
++    if (!passkeyData || passkeyData.userId !== currentUser.id) {
++      return new Response(
++        JSON.stringify({ error: 'Passkey not recognized or does not belong to your account.' }),
++        { status: 403, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const verification = await verifyAuthentication({
++      response,
++      expectedChallenge,
++      passkey: passkeyData,
++      rpConfig,
++    });
++
++    if (!verification.verified || !verification.authenticationInfo) {
++      return new Response(JSON.stringify({ error: 'Passkey verification failed' }), {
++        status: 401,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    // Update credential counter and last used timestamp
++    updatePasskeyCounter(
++      passkeyData.id,
++      verification.authenticationInfo.newCounter,
++      new Date().toISOString()
++    );
++
++    // Clear challenge
++    await session?.set('reauthChallenge', null);
++
++    // Update reauthentication timestamp
++    await setSessionReauth(session);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        reauthenticated: true,
++        reauthTime: Date.now(),
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error verifying reauthentication:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Reauthentication verification failed' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/register-options.ts b/src/pages/api/auth/register-options.ts
+new file mode 100644
+index 0000000..8abbfc5
+--- /dev/null
++++ b/src/pages/api/auth/register-options.ts
+@@ -0,0 +1,77 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, createRegistrationOptions } from '../../../lib/webauthn';
++import { getUserByUsername, getPasskeysByUserId, saveChallenge } from '../../../lib/db';
++import { getSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json().catch(() => ({}));
++    const rpConfig = getRPConfig(request);
++    const currentUser = await getSessionUser(session);
++
++    let username = body.username ? String(body.username).trim() : '';
++    let displayName = body.displayName ? String(body.displayName).trim() : '';
++    let userId: string;
++    let existingPasskeys: any[] = [];
++
++    if (currentUser) {
++      // Adding a passkey to logged-in user's account
++      userId = currentUser.id;
++      username = currentUser.username;
++      displayName = currentUser.displayName;
++      existingPasskeys = getPasskeysByUserId(currentUser.id);
++    } else {
++      // New user registering via passkey
++      if (!username) {
++        return new Response(
++          JSON.stringify({ error: 'Username is required to create a passkey' }),
++          { status: 400, headers: { 'Content-Type': 'application/json' } }
++        );
++      }
++
++      const existingUser = getUserByUsername(username);
++      if (existingUser) {
++        const passkeys = getPasskeysByUserId(existingUser.id);
++        if (passkeys.length > 0) {
++          return new Response(
++            JSON.stringify({ error: 'User already exists with passkeys. Please sign in instead.' }),
++            { status: 400, headers: { 'Content-Type': 'application/json' } }
++          );
++        }
++        // User exists with password but no passkey yet - allow adding passkey
++        userId = existingUser.id;
++        displayName = existingUser.displayName;
++      } else {
++        // Will create user during verify step
++        userId = crypto.randomUUID();
++      }
++    }
++
++    const options = await createRegistrationOptions({
++      username,
++      displayName: displayName || username,
++      userId,
++      existingPasskeys,
++      rpConfig,
++    });
++
++    // Save challenge in session and DB cache
++    await session?.set('currentChallenge', options.challenge);
++    await session?.set('regUserId', userId);
++    await session?.set('regUsername', username);
++    await session?.set('regDisplayName', displayName || username);
++
++    saveChallenge(options.challenge, 'registration', userId);
++
++    return new Response(JSON.stringify({ options }), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (error: any) {
++    console.error('Error generating registration options:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Failed to generate registration options' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/register-verify.ts b/src/pages/api/auth/register-verify.ts
+new file mode 100644
+index 0000000..b90fa8a
+--- /dev/null
++++ b/src/pages/api/auth/register-verify.ts
+@@ -0,0 +1,139 @@
++import type { APIRoute } from 'astro';
++import { getRPConfig, verifyRegistration } from '../../../lib/webauthn';
++import {
++  getUserByUsername,
++  getUserById,
++  createUser,
++  addPasskey,
++  consumeChallenge,
++} from '../../../lib/db';
++import { getSessionUser, setSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json();
++    const { response, passkeyName } = body;
++
++    if (!response) {
++      return new Response(JSON.stringify({ error: 'Missing WebAuthn response' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const rpConfig = getRPConfig(request);
++
++    // Retrieve expected challenge
++    let expectedChallenge = await session?.get('currentChallenge');
++    let userId = await session?.get('regUserId');
++    let username = body.username || (await session?.get('regUsername'));
++    let displayName = body.displayName || (await session?.get('regDisplayName'));
++
++    if (!expectedChallenge) {
++      // Fallback: extract challenge from clientDataJSON and check DB
++      try {
++        const clientData = JSON.parse(
++          Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf8')
++        );
++        const record = consumeChallenge(clientData.challenge, 'registration');
++        if (record) {
++          expectedChallenge = record.challenge;
++          if (record.userId) userId = record.userId;
++        }
++      } catch (e) {
++        // Ignored
++      }
++    }
++
++    if (!expectedChallenge) {
++      return new Response(
++        JSON.stringify({ error: 'Registration session expired or invalid. Please try again.' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    // Verify the WebAuthn registration
++    const verification = await verifyRegistration({
++      response,
++      expectedChallenge,
++      rpConfig,
++    });
++
++    if (!verification.verified || !verification.registrationInfo) {
++      return new Response(
++        JSON.stringify({ error: 'Verification failed. Authenticator could not be registered.' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    // Clear current challenge
++    await session?.set('currentChallenge', null);
++
++    // Identify or create the user
++    const currentUser = await getSessionUser(session);
++    let user;
++
++    if (currentUser) {
++      user = getUserById(currentUser.id);
++    } else if (userId) {
++      user = getUserById(userId);
++    }
++
++    if (!user && username) {
++      user = getUserByUsername(username);
++    }
++
++    if (!user) {
++      if (!username) {
++        return new Response(
++          JSON.stringify({ error: 'User information missing during registration verification.' }),
++          { status: 400, headers: { 'Content-Type': 'application/json' } }
++        );
++      }
++      user = createUser(username, displayName);
++    }
++
++    const { credential, credentialDeviceType, credentialBackedUp, aaguid } =
++      verification.registrationInfo;
++
++    const savedPasskey = addPasskey({
++      id: credential.id,
++      userId: user.id,
++      name:
++        passkeyName?.trim() ||
++        `Passkey (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})`,
++      publicKey: Buffer.from(credential.publicKey).toString('base64url'),
++      counter: credential.counter,
++      transports: response.response.transports || undefined,
++      deviceType: credentialDeviceType,
++      backedUp: credentialBackedUp,
++      aaguid,
++    });
++
++    // Update user session and mark reauthenticated
++    await setSessionUser(session, user);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        },
++        passkey: {
++          id: savedPasskey.id,
++          name: savedPasskey.name,
++          createdAt: savedPasskey.createdAt,
++        },
++      }),
++      { status: 200, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Error verifying registration:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Registration verification failed' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};
+diff --git a/src/pages/api/auth/register.ts b/src/pages/api/auth/register.ts
+new file mode 100644
+index 0000000..0714e01
+--- /dev/null
++++ b/src/pages/api/auth/register.ts
+@@ -0,0 +1,55 @@
++import type { APIRoute } from 'astro';
++import { getUserByUsername, createUser } from '../../../lib/db';
++import { setSessionUser } from '../../../lib/auth';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  try {
++    const body = await request.json();
++    const username = body.username ? String(body.username).trim() : '';
++    const password = body.password ? String(body.password) : '';
++    const displayName = body.displayName ? String(body.displayName).trim() : '';
++
++    if (!username) {
++      return new Response(JSON.stringify({ error: 'Username is required' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    if (!password || password.length < 8) {
++      return new Response(
++        JSON.stringify({ error: 'Password must be at least 8 characters long' }),
++        { status: 400, headers: { 'Content-Type': 'application/json' } }
++      );
++    }
++
++    const existingUser = getUserByUsername(username);
++    if (existingUser) {
++      return new Response(JSON.stringify({ error: 'Username is already taken' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const user = createUser(username, displayName || username, password);
++    await setSessionUser(session, user);
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        user: {
++          id: user.id,
++          username: user.username,
++          displayName: user.displayName,
++        },
++      }),
++      { status: 201, headers: { 'Content-Type': 'application/json' } }
++    );
++  } catch (error: any) {
++    console.error('Registration error:', error);
++    return new Response(
++      JSON.stringify({ error: error.message || 'Registration failed' }),
++      { status: 500, headers: { 'Content-Type': 'application/json' } }
++    );
++  }
++};

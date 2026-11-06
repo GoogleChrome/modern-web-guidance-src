@@ -1,0 +1,1024 @@
+diff --git a/index.html b/index.html
+index 66c9173..0d9c3ae 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,23 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-strong: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --track-bg: #e6dedb;
++      --track-border: #cbbab4;
++      --fill-start: #8d6e63;
++      --fill-end: #4e342e;
++      --thumb-bg: #fff8f0;
++      --thumb-border: #4e342e;
++      --thumb-hover-border: #ff9100;
++      --focus-ring: rgba(255, 145, 0, 0.45);
++      --focus-outline: #e65100;
+     }
+ 
+     * {
+@@ -152,6 +165,553 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================================
++       Custom Brew & Roast Configurator Section
++       ========================================================================== */
++    .customizer-section {
++      margin-top: 3rem;
++      background: var(--surface);
++      border-radius: 16px;
++      padding: 2.25rem;
++      box-shadow: 0 8px 28px rgba(62, 39, 35, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.12);
++    }
++
++    .customizer-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: flex-end;
++      gap: 1rem;
++      margin-bottom: 1.75rem;
++      padding-bottom: 1.25rem;
++      border-bottom: 1px solid var(--track-bg);
++    }
++
++    .customizer-header h2 {
++      font-size: 1.75rem;
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .customizer-subtitle {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++
++    .preset-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++    }
++
++    .preset-btn {
++      appearance: none;
++      border: 1px solid var(--track-border);
++      background: var(--light);
++      color: var(--text);
++      padding: 0.45rem 0.9rem;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
++    }
++
++    .preset-btn:hover {
++      border-color: var(--primary);
++      background: #f3ece9;
++    }
++
++    .preset-btn:focus-visible {
++      outline: 2px solid var(--focus-outline);
++      outline-offset: 2px;
++      box-shadow: 0 0 0 4px var(--focus-ring);
++    }
++
++    .preset-btn[aria-pressed="true"] {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: #ffffff;
++    }
++
++    .customizer-layout {
++      display: grid;
++      grid-template-columns: 1.6fr 1fr;
++      gap: 2rem;
++      align-items: start;
++    }
++
++    @media (max-width: 820px) {
++      .customizer-layout {
++        grid-template-columns: 1fr;
++      }
++      .customizer-section {
++        padding: 1.5rem;
++      }
++    }
++
++    .sliders-panel {
++      display: flex;
++      flex-direction: column;
++      gap: 1.5rem;
++    }
++
++    .slider-field {
++      background: #fdfcfb;
++      border: 1px solid #ede6e3;
++      border-radius: 12px;
++      padding: 1.15rem 1.25rem;
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .slider-field:focus-within {
++      border-color: var(--accent-strong);
++      box-shadow: 0 4px 16px rgba(255, 145, 0, 0.12);
++    }
++
++    .slider-label-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 0.75rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .slider-label {
++      font-weight: 700;
++      font-size: 1rem;
++      color: var(--primary-dark);
++      cursor: pointer;
++    }
++
++    .slider-output {
++      font-variant-numeric: tabular-nums;
++      font-weight: 700;
++      font-size: 0.92rem;
++      color: var(--primary-dark);
++      background: #f5ebe6;
++      border: 1px solid #e0cfc8;
++      padding: 0.2rem 0.65rem;
++      border-radius: 999px;
++      min-width: 4.5rem;
++      text-align: center;
++      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
++    }
++
++    .slider-field:focus-within .slider-output {
++      background: #fff3e0;
++      border-color: var(--accent-strong);
++      color: #bf360c;
++    }
++
++    .slider-description {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      margin-bottom: 0.75rem;
++    }
++
++    /* ==========================================================================
++       Native Range Slider: Custom Track, Fill, Thumb & Focus States
++       ========================================================================== */
++    .range-control-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++      width: 100%;
++    }
++
++    input[type="range"].custom-range {
++      --range-progress: 50%;
++      --track-height: 10px;
++      --thumb-size: 24px;
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 36px; /* Generous interactive hit area for accessibility */
++      background: transparent;
++      cursor: pointer;
++      margin: 0;
++      padding: 0;
++      touch-action: pan-y;
++    }
++
++    /* Reset default focus outline so we can apply a high-visibility accessible focus state */
++    input[type="range"].custom-range:focus {
++      outline: none;
++    }
++
++    /*Visible keyboard & focus ring on input container and thumb */
++    input[type="range"].custom-range:focus-visible {
++      outline: 2px solid var(--focus-outline);
++      outline-offset: 4px;
++      border-radius: 999px;
++    }
++
++    /* ----- WebKit / Blink Track & Fill ----- */
++    input[type="range"].custom-range::-webkit-slider-runnable-track {
++      width: 100%;
++      height: var(--track-height);
++      border-radius: 999px;
++      border: 1px solid var(--track-border);
++      background: linear-gradient(
++        to right,
++        var(--fill-start) 0%,
++        var(--fill-end) var(--range-progress),
++        var(--track-bg) var(--range-progress),
++        var(--track-bg) 100%
++      );
++      box-shadow: inset 0 1px 2px rgba(62, 39, 35, 0.14);
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    input[type="range"].custom-range:hover:not(:disabled)::-webkit-slider-runnable-track {
++      border-color: var(--primary);
++    }
++
++    input[type="range"].custom-range:focus-visible::-webkit-slider-runnable-track {
++      border-color: var(--focus-outline);
++      box-shadow:
++        inset 0 1px 2px rgba(62, 39, 35, 0.14),
++        0 0 0 3px rgba(255, 145, 0, 0.25);
++    }
++
++    /* ----- WebKit / Blink Thumb ----- */
++    input[type="range"].custom-range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb-size);
++      height: var(--thumb-size);
++      margin-top: calc((var(--track-height) - var(--thumb-size)) / 2 - 1px);
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 35%, #ffffff, var(--thumb-bg) 70%);
++      border: 3px solid var(--thumb-border);
++      box-shadow:
++        0 2px 6px rgba(62, 39, 35, 0.28),
++        inset 0 0 0 2px rgba(255, 171, 64, 0.25);
++      transition:
++        transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
++        border-color 0.18s ease,
++        box-shadow 0.18s ease,
++        background-color 0.18s ease;
++    }
++
++    input[type="range"].custom-range:hover:not(:disabled)::-webkit-slider-thumb {
++      border-color: var(--thumb-hover-border);
++      transform: scale(1.08);
++      box-shadow:
++        0 3px 8px rgba(62, 39, 35, 0.34),
++        0 0 0 4px rgba(255, 171, 64, 0.22);
++    }
++
++    input[type="range"].custom-range:active:not(:disabled)::-webkit-slider-thumb {
++      transform: scale(1.14);
++      background: var(--accent);
++      border-color: var(--primary-dark);
++      box-shadow:
++        0 2px 8px rgba(62, 39, 35, 0.4),
++        0 0 0 6px var(--focus-ring);
++    }
++
++    input[type="range"].custom-range:focus::-webkit-slider-thumb,
++    input[type="range"].custom-range:focus-visible::-webkit-slider-thumb {
++      border-color: var(--focus-outline);
++      box-shadow:
++        0 2px 6px rgba(62, 39, 35, 0.3),
++        0 0 0 5px var(--focus-ring);
++    }
++
++    /* ----- Firefox Track & Native Progress Fill ----- */
++    input[type="range"].custom-range::-moz-range-track {
++      width: 100%;
++      height: var(--track-height);
++      border-radius: 999px;
++      border: 1px solid var(--track-border);
++      background: linear-gradient(
++        to right,
++        var(--fill-start) 0%,
++        var(--fill-end) var(--range-progress),
++        var(--track-bg) var(--range-progress),
++        var(--track-bg) 100%
++      );
++      box-shadow: inset 0 1px 2px rgba(62, 39, 35, 0.14);
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    input[type="range"].custom-range::-moz-range-progress {
++      height: var(--track-height);
++      border-radius: 999px 0 0 999px;
++      background: linear-gradient(to right, var(--fill-start), var(--fill-end));
++    }
++
++    input[type="range"].custom-range:hover:not(:disabled)::-moz-range-track {
++      border-color: var(--primary);
++    }
++
++    input[type="range"].custom-range:focus-visible::-moz-range-track {
++      border-color: var(--focus-outline);
++      box-shadow:
++        inset 0 1px 2px rgba(62, 39, 35, 0.14),
++        0 0 0 3px rgba(255, 145, 0, 0.25);
++    }
++
++    /* ----- Firefox Thumb ----- */
++    input[type="range"].custom-range::-moz-range-thumb {
++      width: var(--thumb-size);
++      height: var(--thumb-size);
++      box-sizing: border-box;
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 35%, #ffffff, var(--thumb-bg) 70%);
++      border: 3px solid var(--thumb-border);
++      box-shadow:
++        0 2px 6px rgba(62, 39, 35, 0.28),
++        inset 0 0 0 2px rgba(255, 171, 64, 0.25);
++      transition:
++        transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
++        border-color 0.18s ease,
++        box-shadow 0.18s ease,
++        background-color 0.18s ease;
++    }
++
++    input[type="range"].custom-range:hover:not(:disabled)::-moz-range-thumb {
++      border-color: var(--thumb-hover-border);
++      transform: scale(1.08);
++      box-shadow:
++        0 3px 8px rgba(62, 39, 35, 0.34),
++        0 0 0 4px rgba(255, 171, 64, 0.22);
++    }
++
++    input[type="range"].custom-range:active:not(:disabled)::-moz-range-thumb {
++      transform: scale(1.14);
++      background: var(--accent);
++      border-color: var(--primary-dark);
++      box-shadow:
++        0 2px 8px rgba(62, 39, 35, 0.4),
++        0 0 0 6px var(--focus-ring);
++    }
++
++    input[type="range"].custom-range:focus::-moz-range-thumb,
++    input[type="range"].custom-range:focus-visible::-moz-range-thumb {
++      border-color: var(--focus-outline);
++      box-shadow:
++        0 2px 6px rgba(62, 39, 35, 0.3),
++        0 0 0 5px var(--focus-ring);
++    }
++
++    /* ----- Disabled State ----- */
++    input[type="range"].custom-range:disabled {
++      cursor: not-allowed;
++      opacity: 0.55;
++    }
++
++    input[type="range"].custom-range:disabled::-webkit-slider-runnable-track {
++      background: linear-gradient(
++        to right,
++        #b0a49f 0%,
++        #b0a49f var(--range-progress),
++        #ebe6e4 var(--range-progress),
++        #ebe6e4 100%
++      );
++      border-color: #d5ccc8;
++    }
++
++    input[type="range"].custom-range:disabled::-webkit-slider-thumb {
++      background: #f0ece9;
++      border-color: #9e918c;
++      box-shadow: none;
++    }
++
++    input[type="range"].custom-range:disabled::-moz-range-track {
++      background: #ebe6e4;
++      border-color: #d5ccc8;
++    }
++
++    input[type="range"].custom-range:disabled::-moz-range-progress {
++      background: #b0a49f;
++    }
++
++    input[type="range"].custom-range:disabled::-moz-range-thumb {
++      background: #f0ece9;
++      border-color: #9e918c;
++      box-shadow: none;
++    }
++
++    /* ----- Scale / Tick Labels under the Slider ----- */
++    .slider-scale {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 0.35rem;
++      font-size: 0.76rem;
++      color: var(--text-muted);
++      user-select: none;
++    }
++
++    .slider-scale span {
++      position: relative;
++    }
++
++    /* ----- Toggle row for optional Decaf slider ----- */
++    .slider-toggle-row {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      margin-bottom: 0.5rem;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .slider-toggle-row input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 1rem;
++      height: 1rem;
++      cursor: pointer;
++    }
++
++    /* ----- Live Summary Card ----- */
++    .brew-summary-card {
++      background: linear-gradient(160deg, #4e342e 0%, #3e2723 100%);
++      color: #ffffff;
++      border-radius: 14px;
++      padding: 1.75rem;
++      position: sticky;
++      top: 5.5rem;
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.22);
++    }
++
++    .brew-summary-card h3 {
++      font-size: 1.3rem;
++      margin-bottom: 0.35rem;
++      color: var(--accent);
++    }
++
++    .brew-summary-tagline {
++      font-size: 0.88rem;
++      color: var(--secondary);
++      margin-bottom: 1.25rem;
++    }
++
++    .summary-metrics {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 0.85rem;
++      margin-bottom: 1.25rem;
++    }
++
++    .metric-box {
++      background: rgba(255, 255, 255, 0.08);
++      border: 1px solid rgba(255, 255, 255, 0.14);
++      border-radius: 10px;
++      padding: 0.75rem;
++    }
++
++    .metric-label {
++      font-size: 0.74rem;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      color: var(--secondary);
++      display: block;
++      margin-bottom: 0.2rem;
++    }
++
++    .metric-value {
++      font-size: 1.05rem;
++      font-weight: 700;
++      color: #ffffff;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .flavor-notes-box {
++      background: rgba(0, 0, 0, 0.22);
++      border-radius: 10px;
++      padding: 0.9rem 1rem;
++      margin-bottom: 1.25rem;
++      font-size: 0.88rem;
++      line-height: 1.5;
++    }
++
++    .flavor-notes-box strong {
++      color: var(--accent);
++      display: block;
++      margin-bottom: 0.2rem;
++    }
++
++    .summary-actions {
++      display: flex;
++      gap: 0.75rem;
++      flex-wrap: wrap;
++    }
++
++    .summary-actions .btn-primary-action {
++      flex: 1;
++      background: var(--accent);
++      color: var(--primary-dark);
++      border: none;
++      padding: 0.7rem 1rem;
++      border-radius: 8px;
++      font-weight: 700;
++      font-size: 0.92rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease, transform 0.15s ease;
++    }
++
++    .summary-actions .btn-primary-action:hover {
++      background: var(--accent-strong);
++    }
++
++    .summary-actions .btn-reset {
++      background: transparent;
++      color: #ffffff;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      padding: 0.7rem 1rem;
++      border-radius: 8px;
++      font-weight: 600;
++      font-size: 0.88rem;
++      cursor: pointer;
++      transition: border-color 0.2s ease, background-color 0.2s ease;
++    }
++
++    .summary-actions .btn-reset:hover {
++      border-color: #ffffff;
++      background: rgba(255, 255, 255, 0.1);
++    }
++
++    .summary-actions button:focus-visible {
++      outline: 2px solid #ffffff;
++      outline-offset: 2px;
++    }
++
++    .status-toast {
++      margin-top: 0.85rem;
++      font-size: 0.84rem;
++      color: #ffe0b2;
++      min-height: 1.3em;
++    }
++
++    /* ----- Reduced Motion & Forced Colors Accessibility ----- */
++    @media (prefers-reduced-motion: reduce) {
++      input[type="range"].custom-range::-webkit-slider-thumb,
++      input[type="range"].custom-range::-moz-range-thumb,
++      input[type="range"].custom-range::-webkit-slider-runnable-track,
++      input[type="range"].custom-range::-moz-range-track,
++      .preset-btn,
++      .slider-field,
++      .slider-output {
++        transition: none !important;
++      }
++    }
++
++    @media (forced-colors: active) {
++      input[type="range"].custom-range::-webkit-slider-runnable-track,
++      input[type="range"].custom-range::-moz-range-track {
++        border: 1px solid ButtonText;
++      }
++      input[type="range"].custom-range::-webkit-slider-thumb,
++      input[type="range"].custom-range::-moz-range-thumb {
++        background: Highlight;
++        border: 2px solid ButtonText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +755,222 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer-section" aria-labelledby="customizer-heading">
++      <div class="customizer-header">
++        <div>
++          <h2 id="customizer-heading">Custom Roast &amp; Brew Dial-In</h2>
++          <p class="customizer-subtitle">Fine-tune your roast level, grind size, water temperature, and extraction ratio.</p>
++        </div>
++        <div class="preset-group" role="group" aria-label="Brew method presets">
++          <button type="button" class="preset-btn" data-preset="pourover" aria-pressed="true">Pour Over</button>
++          <button type="button" class="preset-btn" data-preset="espresso" aria-pressed="false">Espresso</button>
++          <button type="button" class="preset-btn" data-preset="frenchpress" aria-pressed="false">French Press</button>
++          <button type="button" class="preset-btn" data-preset="coldbrew" aria-pressed="false">Cold Steep</button>
++        </div>
++      </div>
++
++      <form id="brew-customizer-form" class="customizer-layout" novalidate>
++        <div class="sliders-panel">
++          <!-- 1. Roast Level Slider -->
++          <div class="slider-field">
++            <div class="slider-label-row">
++              <label class="slider-label" for="roast-slider">Roast Profile</label>
++              <output id="roast-output" class="slider-output" for="roast-slider">Medium (3 / 5)</output>
++            </div>
++            <p id="roast-desc" class="slider-description">Balances origin acidity with caramelized sweetness and body.</p>
++            <div class="range-control-wrapper">
++              <input
++                type="range"
++                id="roast-slider"
++                name="roast"
++                class="custom-range"
++                min="1"
++                max="5"
++                step="1"
++                value="3"
++                aria-describedby="roast-desc"
++                aria-valuemin="1"
++                aria-valuemax="5"
++                aria-valuenow="3"
++                aria-valuetext="Medium Roast (3 out of 5)"
++              >
++            </div>
++            <div class="slider-scale" aria-hidden="true">
++              <span>1 · Blonde</span>
++              <span>2 · Light</span>
++              <span>3 · Medium</span>
++              <span>4 · Full City</span>
++              <span>5 · Dark Roast</span>
++            </div>
++          </div>
++
++          <!-- 2. Grind Size Slider -->
++          <div class="slider-field">
++            <div class="slider-label-row">
++              <label class="slider-label" for="grind-slider">Grind Size (Microns)</label>
++              <output id="grind-output" class="slider-output" for="grind-slider">600 μm · Medium</output>
++            </div>
++            <p id="grind-desc" class="slider-description">Controls surface area and flow rate during water contact.</p>
++            <div class="range-control-wrapper">
++              <input
++                type="range"
++                id="grind-slider"
++                name="grind"
++                class="custom-range"
++                min="200"
++                max="1200"
++                step="50"
++                value="600"
++                aria-describedby="grind-desc"
++                aria-valuemin="200"
++                aria-valuemax="1200"
++                aria-valuenow="600"
++                aria-valuetext="600 microns, Medium grind"
++              >
++            </div>
++            <div class="slider-scale" aria-hidden="true">
++              <span>200 μm (Extra Fine)</span>
++              <span>600 μm (Drip)</span>
++              <span>1200 μm (Coarse)</span>
++            </div>
++          </div>
++
++          <!-- 3. Water Temperature Slider -->
++          <div class="slider-field">
++            <div class="slider-label-row">
++              <label class="slider-label" for="temp-slider">Water Temperature</label>
++              <output id="temp-output" class="slider-output" for="temp-slider">202 °F (94 °C)</output>
++            </div>
++            <p id="temp-desc" class="slider-description">SCA optimal hot extraction window is 195 °F – 205 °F.</p>
++            <div class="range-control-wrapper">
++              <input
++                type="range"
++                id="temp-slider"
++                name="temperature"
++                class="custom-range"
++                min="185"
++                max="212"
++                step="1"
++                value="202"
++                aria-describedby="temp-desc"
++                aria-valuemin="185"
++                aria-valuemax="212"
++                aria-valuenow="202"
++                aria-valuetext="202 degrees Fahrenheit (94 degrees Celsius)"
++              >
++            </div>
++            <div class="slider-scale" aria-hidden="true">
++              <span>185 °F (Gentle)</span>
++              <span>200 °F (Ideal)</span>
++              <span>212 °F (Boil)</span>
++            </div>
++          </div>
++
++          <!-- 4. Brew Ratio Slider -->
++          <div class="slider-field">
++            <div class="slider-label-row">
++              <label class="slider-label" for="ratio-slider">Water-to-Coffee Ratio</label>
++              <output id="ratio-output" class="slider-output" for="ratio-slider">1 : 16.0</output>
++            </div>
++            <p id="ratio-desc" class="slider-description">Grams of water per gram of freshly ground coffee.</p>
++            <div class="range-control-wrapper">
++              <input
++                type="range"
++                id="ratio-slider"
++                name="ratio"
++                class="custom-range"
++                min="10"
++                max="20"
++                step="0.5"
++                value="16"
++                aria-describedby="ratio-desc"
++                aria-valuemin="10"
++                aria-valuemax="20"
++                aria-valuenow="16"
++                aria-valuetext="1 to 16.0 water to coffee ratio"
++              >
++            </div>
++            <div class="slider-scale" aria-hidden="true">
++              <span>1:10 (Rich)</span>
++              <span>1:15 (Golden)</span>
++              <span>1:20 (Light Tea-like)</span>
++            </div>
++          </div>
++
++          <!-- 5. Optional Swiss Water Decaf Blend Slider (Demonstrates Disabled / Enabled State) -->
++          <div class="slider-field">
++            <div class="slider-label-row">
++              <label class="slider-label" for="decaf-slider">Swiss Water Decaf Blend</label>
++              <output id="decaf-output" class="slider-output" for="decaf-slider">0% (Full Caf)</output>
++            </div>
++            <div class="slider-toggle-row">
++              <input type="checkbox" id="enable-decaf-toggle" checked>
++              <label for="enable-decaf-toggle">Enable custom decaf blending ratio</label>
++            </div>
++            <p id="decaf-desc" class="slider-description">Blend our chemical-free Swiss Water decaf beans to reduce caffeine.</p>
++            <div class="range-control-wrapper">
++              <input
++                type="range"
++                id="decaf-slider"
++                name="decaf"
++                class="custom-range"
++                min="0"
++                max="100"
++                step="10"
++                value="0"
++                aria-describedby="decaf-desc"
++                aria-valuemin="0"
++                aria-valuemax="100"
++                aria-valuenow="0"
++                aria-valuetext="0 percent decaf, Full Caffeine"
++              >
++            </div>
++            <div class="slider-scale" aria-hidden="true">
++              <span>0% (Full Caf)</span>
++              <span>50% (Half-Caff)</span>
++              <span>100% (Decaf)</span>
++            </div>
++          </div>
++        </div>
++
++        <!-- Live Brew Profile Summary -->
++        <aside class="brew-summary-card" aria-live="polite" aria-atomic="true">
++          <h3>Your Custom Bag Profile</h3>
++          <p class="brew-summary-tagline">Tailored to order &amp; roasted fresh in small batches.</p>
++
++          <div class="summary-metrics">
++            <div class="metric-box">
++              <span class="metric-label">Roast</span>
++              <span class="metric-value" id="summary-roast">Medium</span>
++            </div>
++            <div class="metric-box">
++              <span class="metric-label">Grind</span>
++              <span class="metric-value" id="summary-grind">600 μm</span>
++            </div>
++            <div class="metric-box">
++              <span class="metric-label">Brew Temp</span>
++              <span class="metric-value" id="summary-temp">202 °F</span>
++            </div>
++            <div class="metric-box">
++              <span class="metric-label">Dose (300g H₂O)</span>
++              <span class="metric-value" id="summary-dose">18.8 g</span>
++            </div>
++          </div>
++
++          <div class="flavor-notes-box">
++            <strong>Expected Cup Notes</strong>
++            <span id="summary-notes">Toasted hazelnut, milk chocolate, and bright stone fruit finish with balanced sweetness.</span>
++          </div>
++
++          <div class="summary-actions">
++            <button type="submit" class="btn-primary-action">Save Custom Profile</button>
++            <button type="reset" class="btn-reset">Reset</button>
++          </div>
++          <p id="customizer-status" class="status-toast" role="status"></p>
++        </aside>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +983,218 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const ROAST_PROFILES = {
++        1: {
++          name: 'Blonde',
++          desc: 'Delicate, floral aromatics with vibrant citrus acidity and light body.',
++          notes: 'Jasmine blossom, Meyer lemon, and crisp honey sweetness.'
++        },
++        2: {
++          name: 'Light',
++          desc: 'Bright origin character with juicy stone fruit notes and silky finish.',
++          notes: 'White peach, bergamot, and golden caramel undertones.'
++        },
++        3: {
++          name: 'Medium',
++          desc: 'Balances origin acidity with caramelized sweetness and rounded body.',
++          notes: 'Toasted hazelnut, milk chocolate, and bright stone fruit finish with balanced sweetness.'
++        },
++        4: {
++          name: 'Full City',
++          desc: 'Rich bittersweet cocoa with low acidity and velvety mouthfeel.',
++          notes: 'Dark cacao nibs, roasted almond, and warm brown spice.'
++        },
++        5: {
++          name: 'Dark Roast',
++          desc: 'Bold, smokey intensity with syrupy body and lingering toasted finish.',
++          notes: 'Bittersweet espresso, caramelized molasses, and smoky cedar finish.'
++        }
++      };
++
++      const PRESETS = {
++        pourover: { roast: 3, grind: 600, temp: 202, ratio: 16, decaf: 0 },
++        espresso: { roast: 4, grind: 250, temp: 200, ratio: 12, decaf: 0 },
++        frenchpress: { roast: 4, grind: 950, temp: 205, ratio: 15, decaf: 0 },
++        coldbrew: { roast: 3, grind: 1150, temp: 185, ratio: 11, decaf: 0 }
++      };
++
++      const form = document.getElementById('brew-customizer-form');
++      const roastSlider = document.getElementById('roast-slider');
++      const grindSlider = document.getElementById('grind-slider');
++      const tempSlider = document.getElementById('temp-slider');
++      const ratioSlider = document.getElementById('ratio-slider');
++      const decafSlider = document.getElementById('decaf-slider');
++      const enableDecafToggle = document.getElementById('enable-decaf-toggle');
++
++      const roastOutput = document.getElementById('roast-output');
++      const roastDesc = document.getElementById('roast-desc');
++      const grindOutput = document.getElementById('grind-output');
++      const tempOutput = document.getElementById('temp-output');
++      const ratioOutput = document.getElementById('ratio-output');
++      const decafOutput = document.getElementById('decaf-output');
++
++      const summaryRoast = document.getElementById('summary-roast');
++      const summaryGrind = document.getElementById('summary-grind');
++      const summaryTemp = document.getElementById('summary-temp');
++      const summaryDose = document.getElementById('summary-dose');
++      const summaryNotes = document.getElementById('summary-notes');
++      const statusToast = document.getElementById('customizer-status');
++      const presetButtons = document.querySelectorAll('.preset-btn');
++
++      function updateSliderFill(slider) {
++        const min = parseFloat(slider.min) || 0;
++        const max = parseFloat(slider.max) || 100;
++        const val = parseFloat(slider.value) || 0;
++        const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
++        slider.style.setProperty('--range-progress', pct.toFixed(2) + '%');
++      }
++
++      function getGrindLabel(microns) {
++        if (microns <= 300) return 'Extra Fine';
++        if (microns <= 450) return 'Fine';
++        if (microns <= 700) return 'Medium';
++        if (microns <= 950) return 'Medium-Coarse';
++        return 'Coarse';
++      }
++
++      function syncAllControls() {
++        // 1. Roast
++        const roastVal = parseInt(roastSlider.value, 10);
++        const roastInfo = ROAST_PROFILES[roastVal] || ROAST_PROFILES[3];
++        updateSliderFill(roastSlider);
++        roastOutput.value = roastInfo.name + ' (' + roastVal + ' / 5)';
++        roastDesc.textContent = roastInfo.desc;
++        roastSlider.setAttribute('aria-valuenow', String(roastVal));
++        roastSlider.setAttribute('aria-valuetext', roastInfo.name + ' Roast (' + roastVal + ' out of 5)');
++
++        // 2. Grind
++        const grindVal = parseInt(grindSlider.value, 10);
++        const grindCategory = getGrindLabel(grindVal);
++        updateSliderFill(grindSlider);
++        grindOutput.value = grindVal + ' μm · ' + grindCategory;
++        grindSlider.setAttribute('aria-valuenow', String(grindVal));
++        grindSlider.setAttribute('aria-valuetext', grindVal + ' microns, ' + grindCategory + ' grind');
++
++        // 3. Temperature
++        const tempF = parseInt(tempSlider.value, 10);
++        const tempC = Math.round(((tempF - 32) * 5) / 9);
++        updateSliderFill(tempSlider);
++        tempOutput.value = tempF + ' °F (' + tempC + ' °C)';
++        tempSlider.setAttribute('aria-valuenow', String(tempF));
++        tempSlider.setAttribute('aria-valuetext', tempF + ' degrees Fahrenheit (' + tempC + ' degrees Celsius)');
++
++        // 4. Ratio
++        const ratioVal = parseFloat(ratioSlider.value);
++        updateSliderFill(ratioSlider);
++        ratioOutput.value = '1 : ' + ratioVal.toFixed(1);
++        ratioSlider.setAttribute('aria-valuenow', String(ratioVal));
++        ratioSlider.setAttribute('aria-valuetext', '1 to ' + ratioVal.toFixed(1) + ' water to coffee ratio');
++
++        // 5. Decaf
++        const decafVal = parseInt(decafSlider.value, 10);
++        updateSliderFill(decafSlider);
++        let decafText = decafVal + '% Decaf';
++        if (decafVal === 0) decafText = '0% (Full Caf)';
++        else if (decafVal === 50) decafText = '50% (Half-Caff)';
++        else if (decafVal === 100) decafText = '100% (Pure Decaf)';
++        decafOutput.value = decafSlider.disabled ? 'Disabled (Full Caf)' : decafText;
++        decafSlider.setAttribute('aria-valuenow', String(decafVal));
++        decafSlider.setAttribute('aria-valuetext', decafText);
++
++        // Update Live Summary
++        summaryRoast.textContent = roastInfo.name;
++        summaryGrind.textContent = grindVal + ' μm';
++        summaryTemp.textContent = tempF + ' °F';
++        const doseGrams = (300 / ratioVal).toFixed(1);
++        summaryDose.textContent = doseGrams + ' g';
++        summaryNotes.textContent = roastInfo.notes;
++      }
++
++      function updateActivePresetButton() {
++        const r = parseInt(roastSlider.value, 10);
++        const g = parseInt(grindSlider.value, 10);
++        const t = parseInt(tempSlider.value, 10);
++        const ratio = parseFloat(ratioSlider.value);
++
++        presetButtons.forEach((btn) => {
++          const key = btn.getAttribute('data-preset');
++          const p = PRESETS[key];
++          const matches = p && p.roast === r && p.grind === g && p.temp === t && p.ratio === ratio;
++          btn.setAttribute('aria-pressed', matches ? 'true' : 'false');
++        });
++      }
++
++      [roastSlider, grindSlider, tempSlider, ratioSlider, decafSlider].forEach((slider) => {
++        slider.addEventListener('input', () => {
++          syncAllControls();
++          updateActivePresetButton();
++          statusToast.textContent = '';
++        });
++        slider.addEventListener('change', () => {
++          syncAllControls();
++          updateActivePresetButton();
++        });
++      });
++
++      enableDecafToggle.addEventListener('change', () => {
++        decafSlider.disabled = !enableDecafToggle.checked;
++        if (decafSlider.disabled) {
++          decafSlider.value = '0';
++        }
++        syncAllControls();
++      });
++
++      presetButtons.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const key = btn.getAttribute('data-preset');
++          const preset = PRESETS[key];
++          if (!preset) return;
++          roastSlider.value = String(preset.roast);
++          grindSlider.value = String(preset.grind);
++          tempSlider.value = String(preset.temp);
++          ratioSlider.value = String(preset.ratio);
++          if (!decafSlider.disabled) {
++            decafSlider.value = String(preset.decaf);
++          }
++          syncAllControls();
++          updateActivePresetButton();
++          statusToast.textContent = 'Applied ' + btn.textContent + ' preset.';
++        });
++      });
++
++      form.addEventListener('reset', () => {
++        // Wait for native form reset to restore default input values
++        requestAnimationFrame(() => {
++          enableDecafToggle.checked = true;
++          decafSlider.disabled = false;
++          syncAllControls();
++          updateActivePresetButton();
++          statusToast.textContent = 'Restored default Pour Over profile.';
++        });
++      });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const roastName = ROAST_PROFILES[parseInt(roastSlider.value, 10)].name;
++        statusToast.textContent =
++          'Saved profile: ' +
++          roastName +
++          ' roast, ' +
++          grindSlider.value +
++          ' μm grind, ' +
++          tempSlider.value +
++          ' °F, 1:' +
++          parseFloat(ratioSlider.value).toFixed(1) +
++          ' ratio.';
++      });
++
++      // Initial render synchronization
++      syncAllControls();
++      updateActivePresetButton();
++    })();
++  </script>
+ </body>
+ 
+ </html>

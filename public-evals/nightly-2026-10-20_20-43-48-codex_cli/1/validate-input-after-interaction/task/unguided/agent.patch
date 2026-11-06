@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,63 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++    }
++
++    .newsletter label {
++      display: block;
++      margin: 12px 0 6px;
++      text-align: left;
++      font-size: 0.9rem;
++    }
++
++    .newsletter-fields {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      padding: 12px;
++      border: 1px solid #79665f;
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input:focus-visible,
++    .newsletter button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .newsletter input[aria-invalid="true"] {
++      border-color: #9c2525;
++    }
++
++    .newsletter button {
++      margin: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .newsletter-message {
++      min-height: 1.6em;
++      margin-top: 6px;
++      text-align: left;
++      font-size: 0.85rem;
++    }
++
++    .newsletter-error {
++      color: #9c2525;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +252,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" novalidate>
++      <h2>A fresh brew in your inbox</h2>
++      <p>Sign up for coffee news and seasonal favorites.</p>
++      <label for="newsletter-email">Email address</label>
++      <div class="newsletter-fields">
++        <input id="newsletter-email" name="email" type="email" autocomplete="email"
++          placeholder="you@example.com" aria-describedby="newsletter-message" required>
++        <button class="btn" type="submit">Sign up</button>
++      </div>
++      <p id="newsletter-message" class="newsletter-message" aria-live="polite"></p>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +272,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.querySelector('#newsletter-email');
++    const message = document.querySelector('#newsletter-message');
++
++    function clearMessage() {
++      email.removeAttribute('aria-invalid');
++      message.textContent = '';
++      message.classList.remove('newsletter-error');
++    }
++
++    function validateEmail() {
++      email.value = email.value.trim();
++      const valid = email.validity.valid;
++      email.setAttribute('aria-invalid', String(!valid));
++      message.classList.toggle('newsletter-error', !valid);
++      message.textContent = valid ? '' : 'Please enter a valid email address.';
++      return valid;
++    }
++
++    email.addEventListener('blur', validateEmail);
++    email.addEventListener('input', clearMessage);
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!validateEmail()) return;
++      message.textContent = 'Online signup is coming soon. Please check back later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

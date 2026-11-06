@@ -1,0 +1,520 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,19 +73,47 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
++      overflow: hidden;
++      /* Static background: shown as-is in browsers without HTML-in-Canvas,
++         and underneath the transparent canvas until the WebGL copy of the
++         photo has loaded. */
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
++      color: white;
++      text-align: center;
++      /* Let vertical touch scrolling pass through while the pointer ripples. */
++      touch-action: pan-y;
++    }
++
++    /* The WebGL layer. It is only displayed once the effect is enabled. */
++    .hero-canvas {
++      position: absolute;
++      inset: 0;
++      display: block;
++      width: 100%;
++      height: 100%;
++    }
++
++    .hero:not(.hero--gl) .hero-canvas {
++      display: none;
++    }
++
++    /* The real, selectable, clickable hero content. It lives either as a
++       sibling of the canvas (fallback) or inside the canvas (WebGL path);
++       either way it fills the hero. */
++    .hero-content {
++      position: absolute;
++      inset: 0;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+       padding: 0 20px;
+     }
+ 
+     .hero h1 {
+@@ -167,12 +195,20 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero">
++    <canvas id="hero-canvas" class="hero-canvas" content="drawable"></canvas>
++    <!-- Authored outside the canvas so it renders normally everywhere.
++         When HTML-in-Canvas is supported, the script moves it inside the
++         canvas, where it stays a live DOM subtree: text remains selectable,
++         the link remains clickable and focusable, and it stays in the
++         accessibility tree. -->
++    <div class="hero-content" id="hero-content" drawable>
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +242,441 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    /**
++     * Hero ripple effect.
++     *
++     * Uses the HTML-in-Canvas API to copy the live hero DOM (headline, tagline,
++     * "Order Now" link) into a WebGL texture every time it repaints, then draws
++     * it through a ripple-distortion fragment shader together with the hero
++     * photo. `updateElementGeometry()` keeps the real DOM aligned with the
++     * drawn pixels, so hit-testing, text selection, focus rings and screen
++     * readers all keep working on the actual elements.
++     *
++     * Progressive enhancement:
++     *  - No HTML-in-Canvas / no WebGL2  -> plain CSS hero (as authored).
++     *  - prefers-reduced-motion: reduce -> plain CSS hero, no distortion.
++     *  - Hero scrolled out of view      -> render loop paused.
++     */
++    const hero = document.getElementById('hero');
++    const canvas = document.getElementById('hero-canvas');
++    const content = document.getElementById('hero-content');
++    const HERO_IMAGE =
++      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80';
++
++    const supportsHtmlInCanvas =
++      'content' in HTMLCanvasElement.prototype &&
++      typeof canvas.requestPaint === 'function' &&
++      typeof canvas.updateElementGeometry === 'function';
++
++    const gl = supportsHtmlInCanvas
++      ? canvas.getContext('webgl2', { alpha: true, antialias: false, premultipliedAlpha: true })
++      : null;
++
++    if (gl && typeof gl.texElementSubImage2D === 'function') {
++      initRippleHero(gl);
++    }
++    // Otherwise: fallback. The hero content is already positioned on top of
++    // the static CSS background and works as a normal page section.
++
++    function initRippleHero(gl) {
++      // ---------------------------------------------------------------- shaders
++      const VERTEX_SHADER = `#version 300 es
++        out vec2 vUv;
++        void main() {
++          // Full-screen triangle; vUv is (0,0) bottom-left, (1,1) top-right.
++          vec2 pos = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
++          vUv = pos;
++          gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
++        }`;
++
++      const FRAGMENT_SHADER = `#version 300 es
++        precision highp float;
++
++        const int MAX_RIPPLES = 8;
++
++        in vec2 vUv;
++        out vec4 outColor;
++
++        uniform sampler2D uContent;      // premultiplied RGBA copy of the hero DOM
++        uniform sampler2D uBackground;   // hero photo
++        uniform float uHasBackground;    // 1.0 once the photo texture is ready
++        uniform vec2 uResolution;        // canvas backing-store size
++        uniform vec2 uImageSize;         // photo size, for "cover" fitting
++        uniform float uTime;             // seconds
++        uniform float uAmbient;          // 0..1 strength of the idle wave
++        uniform vec4 uRipples[MAX_RIPPLES]; // x, y (0..1, y up), start time, strength
++
++        vec2 coverUv(vec2 uv) {
++          float canvasAspect = uResolution.x / uResolution.y;
++          float imageAspect = uImageSize.x / uImageSize.y;
++          vec2 scale = canvasAspect > imageAspect
++            ? vec2(1.0, imageAspect / canvasAspect)
++            : vec2(canvasAspect / imageAspect, 1.0);
++          return (uv - 0.5) * scale + 0.5;
++        }
++
++        void main() {
++          float aspect = uResolution.x / uResolution.y;
++          // Work in a space where one unit is the same length on both axes
++          // so the ripples are circular, not elliptical.
++          vec2 p = vec2(vUv.x * aspect, vUv.y);
++
++          vec2 offset = vec2(0.0);
++          float height = 0.0;
++
++          // Gentle idle shimmer so the hero feels alive before any interaction.
++          float idle = uAmbient * 0.0022;
++          offset += idle * vec2(
++            sin(vUv.y * 13.0 + uTime * 1.2) + 0.5 * sin(vUv.x * 7.0 - uTime * 0.8),
++            cos(vUv.x * 11.0 - uTime * 1.1) + 0.5 * cos(vUv.y * 9.0 + uTime * 0.7));
++
++          // Expanding pointer ripples: a damped sine ring travelling outwards.
++          for (int i = 0; i < MAX_RIPPLES; i++) {
++            vec4 r = uRipples[i];
++            float age = uTime - r.z;
++            if (r.w <= 0.0 || age < 0.0 || age > 4.0) continue;
++            vec2 c = vec2(r.x * aspect, r.y);
++            vec2 d = p - c;
++            float dist = length(d);
++            float front = age * 0.45;                // wave speed, units / second
++            float band = dist - front;               // distance from the wave front
++            float ring = exp(-band * band * 55.0);   // ring thickness
++            float decay = exp(-age * 1.7) * r.w;     // fade out over time
++            float h = sin(band * 42.0) * ring * decay;
++            height += h;
++            offset += (d / max(dist, 1e-4)) * h * 0.03;
++          }
++
++          vec2 uv = vUv + vec2(offset.x / aspect, offset.y);
++          // Textures are stored top-down (row 0 = top of the element).
++          vec2 texUv = clamp(vec2(uv.x, 1.0 - uv.y), 0.0, 1.0);
++
++          vec4 ui = texture(uContent, texUv); // premultiplied alpha
++
++          if (uHasBackground > 0.5) {
++            vec3 photo = texture(uBackground, clamp(coverUv(texUv), 0.0, 1.0)).rgb;
++            photo *= 0.5;                 // same 50% black overlay as the CSS hero
++            photo += height * 0.35;       // catch-light on the wave crests
++            // Composite UI over the photo (premultiplied "over").
++            outColor = vec4(ui.rgb + photo * (1.0 - ui.a), 1.0);
++          } else {
++            // Photo not available yet: draw only the UI; the CSS background
++            // shows through the transparent canvas.
++            outColor = vec4(ui.rgb + vec3(height * 0.35) * ui.a, ui.a);
++          }
++        }`;
++
++      function compileShader(type, source) {
++        const shader = gl.createShader(type);
++        gl.shaderSource(shader, source);
++        gl.compileShader(shader);
++        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++          const log = gl.getShaderInfoLog(shader);
++          gl.deleteShader(shader);
++          throw new Error(`Shader compile failed: ${log}`);
++        }
++        return shader;
++      }
++
++      const program = gl.createProgram();
++      gl.attachShader(program, compileShader(gl.VERTEX_SHADER, VERTEX_SHADER));
++      gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
++      gl.linkProgram(program);
++      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++        console.error('Hero shader link failed:', gl.getProgramInfoLog(program));
++        return;
++      }
++      gl.useProgram(program);
++      const u = {};
++      for (const name of ['uContent', 'uBackground', 'uHasBackground', 'uResolution',
++        'uImageSize', 'uTime', 'uAmbient', 'uRipples']) {
++        u[name] = gl.getUniformLocation(program, name);
++      }
++      gl.uniform1i(u.uContent, 0);
++      gl.uniform1i(u.uBackground, 1);
++      gl.disable(gl.BLEND); // compositing is done in the shader (premultiplied)
++      gl.disable(gl.DEPTH_TEST);
++
++      // --------------------------------------------------- canvas backing store
++      const supportsDevicePixelContentBox =
++        typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++
++      let geometryDirty = true;
++      const resizeObserver = new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc
++          ? dpc[0].inlineSize
++          : Math.round(entry.contentRect.width * window.devicePixelRatio);
++        canvas.height = dpc
++          ? dpc[0].blockSize
++          : Math.round(entry.contentRect.height * window.devicePixelRatio);
++        geometryDirty = true;
++        if (enabled) canvas.requestPaint();
++      });
++      resizeObserver.observe(canvas, supportsDevicePixelContentBox
++        ? { box: 'device-pixel-content-box' }
++        : {});
++
++      // ------------------------------------------- DOM -> texture (HTML-in-Canvas)
++      // Returns the element's size in canvas grid pixels, or null if the
++      // element has no paint record yet.
++      function getElementImageSize(canvas, element) {
++        let elementImage;
++        try {
++          elementImage = canvas.captureElementImage(element);
++        } catch (err) {
++          canvas.requestPaint(); // No paint record yet: retry on the next paint event.
++          return null;
++        }
++        const width = Math.ceil(elementImage.width);
++        const height = Math.ceil(elementImage.height);
++        elementImage.close();
++        return width > 0 && height > 0 ? { width, height } : null;
++      }
++
++      // Binds the texture and (re)allocates mutable storage only on first use
++      // or when the element size changes, because reallocating clears it.
++      function allocateElementTexture(gl, texture, state, width, height) {
++        gl.bindTexture(gl.TEXTURE_2D, texture);
++        if (state.width === width && state.height === height) return;
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        state.width = width;
++        state.height = height;
++      }
++
++      // Uploads the element into the texture. Returns false if the element has
++      // no paint record yet (it is uploaded on the next paint event instead).
++      function uploadElementWebGL(gl, canvas, texture, element, state) {
++        const size = getElementImageSize(canvas, element);
++        if (!size) return false;
++        const { width, height } = size;
++        gl.activeTexture(gl.TEXTURE0);
++        allocateElementTexture(gl, texture, state, width, height);
++        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++        gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
++        return true;
++      }
++
++      // Maps the element's border box (CSS px) to the canvas (CSS px) for a quad
++      // spanning -0.5..0.5 in model space drawn with `mvp`.
++      function computeCanvasTransform(canvas, element, mvp) {
++        const width = element.offsetWidth;
++        const height = element.offsetHeight;
++        const toGLModel = new DOMMatrix()
++          .scale(1 / width, -1 / height, 1 / height)
++          .translate(-width / 2, -height / 2);
++        const mvpDOM = new DOMMatrix(Array.from(mvp));
++        const clipToCanvasViewport = new DOMMatrix()
++          .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
++          .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
++        return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++      }
++      // The hero content is drawn across the whole canvas (clip -1..1), i.e.
++      // the unit quad scaled by 2.
++      const CONTENT_MVP = [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
++
++      const contentTexture = gl.createTexture();
++      const contentTextureState = { width: 0, height: 0 };
++      let contentTextureReady = false;
++
++      // ------------------------------------------------------- hero photo texture
++      const backgroundTexture = gl.createTexture();
++      let backgroundReady = false;
++      let imageSize = [1, 1];
++      gl.activeTexture(gl.TEXTURE1);
++      gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
++      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
++        new Uint8Array([0, 0, 0, 255]));
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++
++      const photo = new Image();
++      photo.crossOrigin = 'anonymous';
++      photo.decoding = 'async';
++      photo.src = HERO_IMAGE;
++      photo.decode().then(() => {
++        gl.activeTexture(gl.TEXTURE1);
++        gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
++        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, photo);
++        imageSize = [photo.naturalWidth, photo.naturalHeight];
++        backgroundReady = true;
++      }).catch(() => {
++        // CORS or network failure: keep the CSS background visible beneath the
++        // transparent canvas and only ripple the UI layer.
++        backgroundReady = false;
++      });
++
++      // ------------------------------------------------------------------ ripples
++      const MAX_RIPPLES = 8;
++      const ripples = new Float32Array(MAX_RIPPLES * 4);
++      let rippleCursor = 0;
++      const startTime = performance.now();
++      const now = () => (performance.now() - startTime) / 1000;
++
++      function addRipple(x, y, strength) {
++        const i = rippleCursor * 4;
++        ripples[i] = x;
++        ripples[i + 1] = y;
++        ripples[i + 2] = now();
++        ripples[i + 3] = strength;
++        rippleCursor = (rippleCursor + 1) % MAX_RIPPLES;
++      }
++
++      function pointerToUv(event) {
++        const rect = canvas.getBoundingClientRect();
++        return [
++          (event.clientX - rect.left) / rect.width,
++          1 - (event.clientY - rect.top) / rect.height,
++        ];
++      }
++
++      let lastMoveTime = 0;
++      let lastX = 0;
++      let lastY = 0;
++      hero.addEventListener('pointermove', (event) => {
++        if (!enabled) return;
++        const t = performance.now();
++        const dx = event.clientX - lastX;
++        const dy = event.clientY - lastY;
++        if (t - lastMoveTime < 70 || dx * dx + dy * dy < 36) return;
++        lastMoveTime = t;
++        lastX = event.clientX;
++        lastY = event.clientY;
++        addRipple(...pointerToUv(event), 0.35);
++      }, { passive: true });
++
++      hero.addEventListener('pointerdown', (event) => {
++        if (!enabled) return;
++        // No preventDefault: the "Order Now" link and text selection keep working.
++        addRipple(...pointerToUv(event), 1.0);
++      }, { passive: true });
++
++      // ------------------------------------------------------------------- render
++      function render() {
++        gl.viewport(0, 0, canvas.width, canvas.height);
++        gl.clearColor(0, 0, 0, 0);
++        gl.clear(gl.COLOR_BUFFER_BIT);
++        gl.useProgram(program);
++        gl.activeTexture(gl.TEXTURE0);
++        gl.bindTexture(gl.TEXTURE_2D, contentTexture);
++        gl.activeTexture(gl.TEXTURE1);
++        gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
++        gl.uniform1f(u.uHasBackground, backgroundReady ? 1 : 0);
++        gl.uniform2f(u.uResolution, canvas.width, canvas.height);
++        gl.uniform2f(u.uImageSize, imageSize[0], imageSize[1]);
++        gl.uniform1f(u.uTime, now());
++        gl.uniform1f(u.uAmbient, 1);
++        gl.uniform4fv(u.uRipples, ripples);
++        gl.drawArrays(gl.TRIANGLES, 0, 3);
++      }
++
++      canvas.onpaint = (event) => {
++        if (!enabled) return;
++        // Only re-copy the DOM when something inside it actually repainted
++        // (hover state on the button, selection highlight, font load, ...).
++        const changed = !event.changedElements || event.changedElements.length > 0;
++        if (!contentTextureReady || changed) {
++          try {
++            if (uploadElementWebGL(gl, canvas, contentTexture, content, contentTextureState)) {
++              contentTextureReady = true;
++            }
++          } catch (err) {
++            console.error('texElementSubImage2D copy failed:', err);
++          }
++        }
++        if (!contentTextureReady) return;
++
++        render();
++
++        if (geometryDirty) {
++          // Keep the live DOM aligned with its drawn pixels so clicks, taps,
++          // text selection, focus rings and a11y bounds land on the real
++          // elements.
++          canvas.updateElementGeometry(content, {
++            canvasTransform: computeCanvasTransform(canvas, content, CONTENT_MVP),
++            preserveHitTestOrder: true,
++          });
++          geometryDirty = false;
++        }
++      };
++
++      // ---------------------------------------------------------- loop control
++      let rafId = 0;
++      let running = false;
++      function frame() {
++        rafId = 0;
++        if (!running) return;
++        canvas.requestPaint(); // triggers onpaint -> upload (if changed) + render
++        rafId = requestAnimationFrame(frame);
++      }
++      function startLoop() {
++        if (running) return;
++        running = true;
++        if (!rafId) rafId = requestAnimationFrame(frame);
++      }
++      function stopLoop() {
++        running = false;
++        if (rafId) cancelAnimationFrame(rafId);
++        rafId = 0;
++      }
++
++      // Pause the GPU work while the hero is scrolled out of view.
++      let heroInView = true;
++      new IntersectionObserver(([entry]) => {
++        heroInView = entry.isIntersecting;
++        syncLoop();
++      }, { rootMargin: '200px' }).observe(hero);
++
++      function syncLoop() {
++        if (enabled && heroInView) startLoop();
++        else stopLoop();
++      }
++
++      // ------------------------------------------------------ enable / disable
++      let enabled = false;
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      function enableEffect() {
++        if (enabled) return;
++        enabled = true;
++        if (content.parentNode !== canvas) canvas.append(content);
++        hero.classList.add('hero--gl');
++        contentTextureReady = false;
++        geometryDirty = true;
++        addRipple(0.5, 0.5, 0.9); // welcome ripple from the centre
++        syncLoop();
++      }
++
++      function disableEffect() {
++        if (!enabled) return;
++        enabled = false;
++        stopLoop();
++        if (typeof canvas.clearElementGeometry === 'function') {
++          canvas.clearElementGeometry(content);
++        }
++        hero.classList.remove('hero--gl');
++        if (content.parentNode === canvas) hero.append(content);
++      }
++
++      function applyMotionPreference() {
++        if (reducedMotion.matches) disableEffect();
++        else enableEffect();
++      }
++      reducedMotion.addEventListener('change', applyMotionPreference);
++      applyMotionPreference();
++    }
++  </script>
++
+ </body>
+ 
+ </html>

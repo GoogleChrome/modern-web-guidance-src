@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -30,9 +30,9 @@
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 1.25rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -45,8 +45,38 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    @keyframes shrink-nav {
++      to {
++        padding-top: 0.4rem;
++        padding-bottom: 0.4rem;
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      }
++    }
++
++    @keyframes shrink-logo {
++      to {
++        font-size: 1.15rem;
++      }
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav {
++          animation: shrink-nav auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 150px;
++        }
++
++        .logo {
++          animation: shrink-logo auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 150px;
++        }
++      }
++    }
++
+     nav ul {
+       display: flex;
+       list-style: none;
+     }
+@@ -206,7 +236,60 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback solution for older browsers that do not support scroll-driven animations
++    if (!window.CSS || !CSS.supports || !CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')) {
++      const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      if (!prefersReducedMotion) {
++        const nav = document.querySelector('nav');
++        const logo = document.querySelector('.logo');
++        const scrollDistance = 150;
++
++        const getSizes = () => {
++          const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
++          return {
++            initialPadding: 1.25 * rootFontSize,
++            targetPadding: 0.4 * rootFontSize,
++            initialLogoSize: 1.5,
++            targetLogoSize: 1.15
++          };
++        };
++
++        let sizes = getSizes();
++        window.addEventListener('resize', () => { sizes = getSizes(); }, { passive: true });
++
++        let ticking = false;
++        const updateNavbar = () => {
++          const scrollY = window.scrollY || window.pageYOffset || 0;
++          const scrollPercent = Math.min(1, Math.max(0, scrollY / scrollDistance));
++          const currentPadding = sizes.initialPadding - (sizes.initialPadding - sizes.targetPadding) * scrollPercent;
++          const currentLogoSize = sizes.initialLogoSize - (sizes.initialLogoSize - sizes.targetLogoSize) * scrollPercent;
++
++          nav.style.paddingTop = `${currentPadding}px`;
++          nav.style.paddingBottom = `${currentPadding}px`;
++          nav.style.boxShadow = scrollPercent > 0
++            ? `0 4px 12px rgba(0, 0, 0, ${0.25 * scrollPercent})`
++            : 'none';
++
++          if (logo) {
++            logo.style.fontSize = `${currentLogoSize}rem`;
++          }
++          ticking = false;
++        };
++
++        window.addEventListener('scroll', () => {
++          if (!ticking) {
++            window.requestAnimationFrame(updateNavbar);
++            ticking = true;
++          }
++        }, { passive: true });
++
++        // Run once on load to handle mid-page refreshes
++        updateNavbar();
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

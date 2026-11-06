@@ -1,0 +1,252 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,104 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast dropdown */
++    .roast-picker {
++      position: relative;
++      width: min(100%, 340px);
++      margin-top: 1rem;
++      text-align: left;
++    }
++
++    .roast-toggle {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      background: white;
++      color: var(--text);
++      border: 2px solid transparent;
++      border-radius: 8px;
++      padding: 10px 14px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-toggle:focus-visible,
++    .roast-option:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .roast-toggle .chevron {
++      margin-left: auto;
++      transition: transform 0.2s;
++    }
++
++    .roast-toggle[aria-expanded="true"] .chevron {
++      transform: rotate(180deg);
++    }
++
++    .roast-menu {
++      position: absolute;
++      bottom: calc(100% + 6px);
++      left: 0;
++      right: 0;
++      list-style: none;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
++      padding: 6px;
++      z-index: 10;
++    }
++
++    .roast-menu[hidden] {
++      display: none;
++    }
++
++    .roast-option {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 8px 10px;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    .roast-option:hover,
++    .roast-option.active {
++      background: var(--secondary);
++    }
++
++    .roast-option[aria-selected="true"] {
++      box-shadow: inset 3px 0 0 var(--accent);
++    }
++
++    .roast-icon {
++      flex: none;
++      width: 32px;
++      height: 32px;
++      color: var(--primary);
++    }
++
++    .roast-text {
++      display: flex;
++      flex-direction: column;
++      line-height: 1.3;
++      min-width: 0;
++    }
++
++    .roast-title {
++      font-weight: 600;
++    }
++
++    .roast-desc {
++      font-size: 0.8rem;
++      opacity: 0.75;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +266,71 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-picker" id="roast-picker">
++      <button type="button" class="roast-toggle" id="roast-toggle" aria-haspopup="listbox" aria-expanded="false"
++        aria-controls="roast-menu">
++        <span class="roast-text">
++          <span class="roast-title">Choose your roast</span>
++          <span class="roast-desc">Pick a style to start your order</span>
++        </span>
++        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++          <path d="M6 9l6 6 6-6" />
++        </svg>
++      </button>
++      <ul class="roast-menu" id="roast-menu" role="listbox" aria-label="Choose your roast" tabindex="-1" hidden>
++        <li class="roast-option" role="option" id="roast-light" data-value="light" aria-selected="false">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"
++            stroke-linecap="round" aria-hidden="true">
++            <circle cx="16" cy="16" r="5" fill="#ffab40" stroke="#ffab40" />
++            <path d="M16 4v4M16 24v4M4 16h4M24 16h4M7.5 7.5l2.8 2.8M21.7 21.7l2.8 2.8M7.5 24.5l2.8-2.8M21.7 10.3l2.8-2.8" />
++          </svg>
++          <span class="roast-text">
++            <span class="roast-title">Light Roast</span>
++            <span class="roast-desc">Bright, fruity and floral with high acidity.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-medium" data-value="medium" aria-selected="false">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"
++            stroke-linecap="round" aria-hidden="true">
++            <path d="M8 13h14v7a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z" fill="#d7ccc8" />
++            <path d="M22 15h2a3 3 0 0 1 0 6h-2" />
++            <path d="M12 5c-1.5 2 1.5 3 0 5M17 5c-1.5 2 1.5 3 0 5" />
++          </svg>
++          <span class="roast-text">
++            <span class="roast-title">Medium Roast</span>
++            <span class="roast-desc">Balanced, smooth with notes of caramel.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-dark" data-value="dark" aria-selected="false">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"
++            stroke-linecap="round" aria-hidden="true">
++            <ellipse cx="16" cy="16" rx="9" ry="12" transform="rotate(30 16 16)" fill="#4e342e" />
++            <path d="M11 6c4 4-2 8 2 12s-1 6 2 9" stroke="#d7ccc8" transform="translate(2 -1)" />
++          </svg>
++          <span class="roast-text">
++            <span class="roast-title">Dark Roast</span>
++            <span class="roast-desc">Bold, smoky and rich with a bittersweet finish.</span>
++          </span>
++        </li>
++        <li class="roast-option" role="option" id="roast-cold-brew" data-value="cold-brew" aria-selected="false">
++          <svg class="roast-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"
++            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++            <path d="M8 8h16l-2 18H10z" fill="#d7ccc8" />
++            <path d="M9 15h14l-1 11H10z" fill="#4e342e" />
++            <rect x="12" y="17" width="5" height="5" rx="1" fill="#fafafa" transform="rotate(12 14 19)" />
++            <path d="M18 8l3-5" />
++          </svg>
++          <span class="roast-text">
++            <span class="roast-title">Cold Brew</span>
++            <span class="roast-desc">Steeped 18 hours, ultra smooth and chilled.</span>
++          </span>
++        </li>
++      </ul>
++    </div>
++    <a href="/order-online" class="btn" id="order-btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +364,70 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var picker = document.getElementById('roast-picker');
++      var toggle = document.getElementById('roast-toggle');
++      var menu = document.getElementById('roast-menu');
++      var orderBtn = document.getElementById('order-btn');
++      var options = Array.prototype.slice.call(menu.querySelectorAll('[role="option"]'));
++      var active = -1;
++
++      function setActive(i) {
++        active = (i + options.length) % options.length;
++        options.forEach(function (o, n) { o.classList.toggle('active', n === active); });
++        menu.setAttribute('aria-activedescendant', options[active].id);
++      }
++
++      function open() {
++        menu.hidden = false;
++        toggle.setAttribute('aria-expanded', 'true');
++        var sel = options.findIndex(function (o) { return o.getAttribute('aria-selected') === 'true'; });
++        setActive(sel < 0 ? 0 : sel);
++        menu.focus();
++      }
++
++      function close(refocus) {
++        menu.hidden = true;
++        toggle.setAttribute('aria-expanded', 'false');
++        if (refocus) toggle.focus();
++      }
++
++      function select(i) {
++        options.forEach(function (o, n) { o.setAttribute('aria-selected', n === i ? 'true' : 'false'); });
++        var opt = options[i];
++        // Mirror the chosen option's icon, title and description in the toggle button
++        var icon = opt.querySelector('svg').cloneNode(true);
++        var current = toggle.querySelector('.roast-icon');
++        if (current) current.remove();
++        toggle.insertBefore(icon, toggle.firstChild);
++        toggle.querySelector('.roast-title').textContent = opt.querySelector('.roast-title').textContent;
++        toggle.querySelector('.roast-desc').textContent = opt.querySelector('.roast-desc').textContent;
++        orderBtn.href = '/order-online?roast=' + encodeURIComponent(opt.dataset.value);
++        close(true);
++      }
++
++      toggle.addEventListener('click', function () { menu.hidden ? open() : close(false); });
++      options.forEach(function (o, i) {
++        o.addEventListener('click', function () { select(i); });
++        o.addEventListener('mousemove', function () { if (active !== i) setActive(i); });
++      });
++      menu.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
++        else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
++        else if (e.key === 'Home') { e.preventDefault(); setActive(0); }
++        else if (e.key === 'End') { e.preventDefault(); setActive(options.length - 1); }
++        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(active); }
++        else if (e.key === 'Escape') { e.preventDefault(); close(true); }
++        else if (e.key === 'Tab') { close(false); }
++      });
++      toggle.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (menu.hidden) open(); }
++      });
++      document.addEventListener('click', function (e) { if (!picker.contains(e.target)) close(false); });
++    })();
++  </script>
+ </body>
+ 
+ </html>

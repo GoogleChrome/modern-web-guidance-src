@@ -1,0 +1,183 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..c66aa4e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,19 +41,169 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++            <div class="flex items-center justify-between gap-4">
++                <button
++                    type="button"
++                    id="top-stories-prev"
++                    aria-label="Previous story"
++                    class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++                >
++                    Previous
++                </button>
++                <div id="top-stories-slider" class="top-stories-scope flex-1 overflow-hidden">
++                    {topStories.map((article, index) => (
++                        <div
++                            data-story-slide
++                            data-index={index}
++                            hidden={index !== 0}
++                            class="text-center"
++                        >
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
++                <button
++                    type="button"
++                    id="top-stories-next"
++                    aria-label="Next story"
++                    class="px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer shrink-0"
++                >
++                    Next
++                </button>
+             </div>
+         </div>
+     </div>
+ 
++    <style is:global>
++        @keyframes slide-to-left {
++            to { transform: translateX(-100%); }
++        }
++        @keyframes slide-from-right {
++            from { transform: translateX(100%); }
++        }
++        @keyframes slide-to-right {
++            to { transform: translateX(100%); }
++        }
++        @keyframes slide-from-left {
++            from { transform: translateX(-100%); }
++        }
++
++        .top-stories-scope {
++            view-transition-scope: all;
++        }
++
++        [data-story-slide] {
++            view-transition-name: top-story-item;
++        }
++
++        @media (prefers-reduced-motion: no-preference) {
++            ::view-transition-group(root),
++            .top-stories-scope::view-transition-group(top-story-item),
++            ::view-transition-group(top-story-item) {
++                animation: 0.4s ease-in-out both;
++            }
++
++            .top-stories-scope:active-view-transition-type(forward)::view-transition-old(root),
++            .top-stories-scope:active-view-transition-type(forward)::view-transition-old(top-story-item),
++            html:active-view-transition-type(forward)::view-transition-old(top-story-item) {
++                animation-name: slide-to-left;
++            }
++            .top-stories-scope:active-view-transition-type(forward)::view-transition-new(root),
++            .top-stories-scope:active-view-transition-type(forward)::view-transition-new(top-story-item),
++            html:active-view-transition-type(forward)::view-transition-new(top-story-item) {
++                animation-name: slide-from-right;
++            }
++
++            .top-stories-scope:active-view-transition-type(backward)::view-transition-old(root),
++            .top-stories-scope:active-view-transition-type(backward)::view-transition-old(top-story-item),
++            html:active-view-transition-type(backward)::view-transition-old(top-story-item) {
++                animation-name: slide-to-right;
++            }
++            .top-stories-scope:active-view-transition-type(backward)::view-transition-new(root),
++            .top-stories-scope:active-view-transition-type(backward)::view-transition-new(top-story-item),
++            html:active-view-transition-type(backward)::view-transition-new(top-story-item) {
++                animation-name: slide-from-left;
++            }
++        }
++
++        @media (prefers-reduced-motion: reduce) {
++            ::view-transition-group(root),
++            ::view-transition-group(*),
++            ::view-transition-old(*),
++            ::view-transition-new(*),
++            .top-stories-scope::view-transition-group(*),
++            .top-stories-scope::view-transition-old(*),
++            .top-stories-scope::view-transition-new(*) {
++                animation: none !important;
++            }
++        }
++    </style>
++
++    <script>
++        function initTopStoriesSlider() {
++            const scopeEl = document.getElementById('top-stories-slider');
++            const prevBtn = document.getElementById('top-stories-prev');
++            const nextBtn = document.getElementById('top-stories-next');
++            if (!scopeEl || !prevBtn || !nextBtn) return;
++
++            const slides = Array.from(scopeEl.querySelectorAll<HTMLElement>('[data-story-slide]'));
++            if (slides.length === 0) return;
++
++            let currentIndex = slides.findIndex((slide) => !slide.hidden);
++            if (currentIndex === -1) currentIndex = 0;
++
++            const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++            function navigate(nextIndex: number, direction: 'forward' | 'backward') {
++                const updateDOM = () => {
++                    slides[currentIndex].hidden = true;
++                    currentIndex = nextIndex;
++                    slides[currentIndex].hidden = false;
++                };
++
++                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++                    updateDOM();
++                    return;
++                }
++
++                if (supportsScopedTransition) {
++                    const transition = (scopeEl as any).startViewTransition({
++                        update: updateDOM,
++                        types: [direction],
++                    });
++                    transition.ready?.catch(() => {});
++                    return;
++                }
++
++                if (!document.startViewTransition) {
++                    updateDOM();
++                    return;
++                }
++
++                const transition = document.startViewTransition({
++                    update: updateDOM,
++                    types: [direction],
++                });
++                transition.ready?.catch(() => {});
++            }
++
++            prevBtn.addEventListener('click', () => {
++                const nextIndex = (currentIndex - 1 + slides.length) % slides.length;
++                navigate(nextIndex, 'backward');
++            });
++
++            nextBtn.addEventListener('click', () => {
++                const nextIndex = (currentIndex + 1) % slides.length;
++                navigate(nextIndex, 'forward');
++            });
++        }
++
++        document.addEventListener('astro:page-load', initTopStoriesSlider);
++    </script>
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />

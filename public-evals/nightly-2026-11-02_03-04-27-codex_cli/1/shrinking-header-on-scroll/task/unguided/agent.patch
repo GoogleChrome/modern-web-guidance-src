@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,18 +27,27 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
++    /* Keep the document height stable while the visible navigation shrinks. */
++    .nav-shell {
++      --nav-height: 4.4rem;
++      height: var(--nav-height);
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      pointer-events: none;
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
++      height: var(--nav-height);
++      pointer-events: auto;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -71,8 +80,46 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @keyframes compact-nav {
++      from { height: var(--nav-height); }
++      to { height: calc(var(--nav-height) - 1.2rem); }
++    }
++
++    @keyframes compact-logo {
++      from { font-size: 1.5rem; }
++      to { font-size: 1.125rem; }
++    }
++
++    @supports (animation-timeline: scroll(root block)) and (animation-range: 0px 160px) {
++      nav, .logo {
++        animation: compact-nav 1s linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0px 160px;
++      }
++
++      .logo {
++        animation-name: compact-logo;
++      }
++    }
++
++    @media (max-width: 640px) {
++      .nav-shell { --nav-height: 6.8rem; }
++      nav { flex-direction: column; justify-content: center; gap: 0.5rem; }
++      nav ul { gap: 12px; flex-wrap: wrap; justify-content: center; }
++      nav ul li { margin-left: 0; }
++      nav a { font-size: 0.8rem; }
++      .logout-link { padding: 5px 8px; }
++    }
++
++    /* Use a stable compact header when reduced motion is requested. */
++    @media (prefers-reduced-motion: reduce) {
++      nav, .logo { animation: none; }
++      nav { height: calc(var(--nav-height) - 1.2rem); }
++      .logo { font-size: 1.125rem; }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,9 +203,10 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <div class="nav-shell">
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -166,8 +214,9 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
++  </div>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -206,7 +255,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var nav = document.querySelector('nav');
++      var logo = nav.querySelector('.logo');
++      var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
++      var nativeScrollAnimation = window.CSS && window.CSS.supports &&
++        window.CSS.supports('animation-timeline', 'scroll(root block)') &&
++        window.CSS.supports('animation-range', '0px 160px');
++
++      if (nativeScrollAnimation) return;
++
++      // Older browsers get the same continuous, clamped scroll interpolation.
++      var scheduled = false;
++      var requestFrame = window.requestAnimationFrame || function (callback) {
++        return window.setTimeout(callback, 16);
++      };
++
++      function update() {
++        scheduled = false;
++        if (reducedMotion && reducedMotion.matches) {
++          nav.style.height = '';
++          logo.style.fontSize = '';
++          return;
++        }
++        var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
++        var progress = Math.max(0, Math.min(scrollTop / 160, 1));
++        var mobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
++        nav.style.height = ((mobile ? 6.8 : 4.4) - 1.2 * progress) + 'rem';
++        logo.style.fontSize = (1.5 - 0.375 * progress) + 'rem';
++      }
++
++      function scheduleUpdate() {
++        if (!scheduled) {
++          scheduled = true;
++          requestFrame.call(window, update);
++        }
++      }
++
++      window.addEventListener('scroll', scheduleUpdate, false);
++      window.addEventListener('resize', scheduleUpdate, false);
++      window.addEventListener('pageshow', scheduleUpdate, false);
++      if (reducedMotion && reducedMotion.addListener) reducedMotion.addListener(scheduleUpdate);
++      update();
++    }());
++  </script>
+ </body>
+ 
+ </html>

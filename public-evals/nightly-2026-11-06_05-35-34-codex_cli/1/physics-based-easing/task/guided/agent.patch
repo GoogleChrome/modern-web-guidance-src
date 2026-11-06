@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,40 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .card.spring {
++        /* Damped oscillations overshoot the target, then settle. */
++        --spring-easing: linear(
++          0, 0.12 4%, 0.4 8%, 0.73 12%, 1 16%,
++          1.17 20%, 1.23 24%, 1.21 28%, 1.14 32%,
++          1.06 36%, 1 40%, 0.96 44%, 0.95 48%,
++          0.96 52%, 0.98 58%, 1 64%, 1.01 72%, 1 88%, 1
++        );
++        transition: transform 0.7s var(--spring-easing);
++      }
++
++      .card.spring:is(:hover, :focus-within) {
++        transform: scale(1.04);
++      }
++
++      .card.bounce {
++        /* Each rebound loses energy as the card reaches its raised position. */
++        --bounce-easing: linear(
++          0, 0.214 14.7%, 0.386 23.7%, 0.598 31.9%,
++          0.999 44.7%, 0.807 52.6%, 0.762 56%, 0.747 59.4%,
++          0.758 62.4%, 0.793 65.6%, 0.999 77.4%,
++          0.961 81.2%, 0.949 84.8%, 0.956 88%, 0.993 95.5%, 1
++        );
++        transition: transform 0.75s var(--bounce-easing);
++      }
++
++      .card.bounce:is(:hover, :focus-within) {
++        transform: translateY(-8px) scale(1.025);
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,14 +209,14 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spring">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card bounce">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>

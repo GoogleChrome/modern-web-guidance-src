@@ -1,0 +1,1315 @@
+diff --git a/index.html b/index.html
+index 66c9173..e0256fe 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,127 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive Sections & Modals */
++    .section-title {
++      text-align: center;
++      margin: 40px 0 20px;
++      color: var(--primary);
++    }
++
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 30px;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 15px;
++      margin-top: 15px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 5px;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    .btn-secondary {
++      background: #795548;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++    }
++
++    .status-banner {
++      margin-top: 15px;
++      padding: 12px;
++      border-radius: 5px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++      display: none;
++    }
++
++    .status-banner.active {
++      display: block;
++    }
++
++    .cart-summary {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      padding-top: 15px;
++      border-top: 1px solid var(--secondary);
++      margin-top: 15px;
++    }
++
++    .cart-items-list {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .cart-items-list li {
++      display: flex;
++      justify-content: space-between;
++      padding: 6px 0;
++      border-bottom: 1px dashed var(--secondary);
++    }
+   </style>
+ </head>
+ 
+@@ -160,53 +281,1163 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu-section" id="nav-menu">Menu</a></li>
++      <li><a href="#locations-section" id="nav-locations">Locations</a></li>
++      <li><a href="#rewards-section" id="nav-rewards">Rewards</a></li>
++      <li><a href="#account-section" id="nav-account">My Account</a></li>
++      <li><a href="#cart-section" id="nav-cart">Cart (<span id="nav-cart-count">0</span>)</a></li>
++      <li><a href="/logout" id="nav-logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order-section" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <div id="agent-notification" class="status-banner" role="status" aria-live="polite"></div>
++
++    <section id="seasonal-section">
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <div class="grid" id="featured-grid">
++        <div class="card" data-item-id="maple-oat-latte">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++          <span class="badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="price-tag">$5.50</div>
++          <button type="button" class="btn" onclick="window.dailyGrindApp.quickAddToCart('maple-oat-latte', 'medium', 'oat')">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="dark-roast-espresso">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++          <span class="badge">Espresso</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="price-tag">$3.75</div>
++          <button type="button" class="btn" onclick="window.dailyGrindApp.quickAddToCart('dark-roast-espresso', 'medium', 'none')">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="cold-brew">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++          <span class="badge">Cold Brew</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="price-tag">$4.75</div>
++          <button type="button" class="btn" onclick="window.dailyGrindApp.quickAddToCart('cold-brew', 'medium', 'none')">Add to Order</button>
+         </div>
+       </div>
+     </section>
++
++    <!-- Full Menu & Declarative WebMCP Search Form -->
++    <section id="menu-section" class="panel">
++      <h2>Explore Our Menu</h2>
++      <p>Search or filter our handcrafted drinks and freshly baked pastries.</p>
++      <form id="menu-search-form"
++            toolname="search_menu"
++            tooldescription="Search and filter The Daily Grind coffee shop menu by keyword, category, or dietary preference"
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="search-query">Search Keyword</label>
++            <input type="text" id="search-query" name="query" placeholder="e.g. latte, espresso, croissant..."
++                   toolparamtitle="query"
++                   toolparamdescription="Keyword to match against menu item name or description">
++          </div>
++          <div class="form-group">
++            <label for="search-category">Category</label>
++            <select id="search-category" name="category"
++                    toolparamtitle="category"
++                    toolparamdescription="Menu category to filter by (all, seasonal, espresso, cold-brew, pastry)">
++              <option value="all">All Categories</option>
++              <option value="seasonal">Seasonal Favorites</option>
++              <option value="espresso">Espresso &amp; Hot Drinks</option>
++              <option value="cold-brew">Iced &amp; Cold Brew</option>
++              <option value="pastry">Bakery &amp; Pastries</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="search-dietary">Dietary Filter</label>
++            <select id="search-dietary" name="dietary"
++                    toolparamtitle="dietary"
++                    toolparamdescription="Optional dietary preference filter (any, vegan, dairy-free, gluten-free)">
++              <option value="any">Any Dietary Preference</option>
++              <option value="vegan">Vegan</option>
++              <option value="dairy-free">Dairy-Free</option>
++              <option value="gluten-free">Gluten-Free</option>
++            </select>
++          </div>
++        </div>
++        <button type="submit" class="btn">Filter Menu</button>
++      </form>
++      <div class="grid" id="menu-results-grid" style="margin-top: 20px;"></div>
++    </section>
++
++    <!-- Declarative WebMCP Custom Order Form -->
++    <section id="order-section" class="panel">
++      <h2>Quick Drink Customizer &amp; Order</h2>
++      <p>Customize a drink and add it directly to your cart.</p>
++      <form id="custom-order-form"
++            toolname="add_drink_to_cart"
++            tooldescription="Customize a coffee or tea drink with size, milk, and quantity and add it to the shopping cart"
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="order-item">Drink / Item</label>
++            <select id="order-item" name="itemId" required
++                    toolparamtitle="itemId"
++                    toolparamdescription="ID of the menu item to add (maple-oat-latte, dark-roast-espresso, cold-brew, vanilla-matcha-latte, caramel-macchiato, almond-croissant)">
++              <option value="maple-oat-latte">Maple Oat Latte ($5.50)</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso ($3.75)</option>
++              <option value="cold-brew">Cold Brew ($4.75)</option>
++              <option value="vanilla-matcha-latte">Vanilla Matcha Latte ($5.25)</option>
++              <option value="caramel-macchiato">Caramel Macchiato ($5.00)</option>
++              <option value="almond-croissant">Almond Croissant ($4.25)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-size">Size</label>
++            <select id="order-size" name="size"
++                    toolparamtitle="size"
++                    toolparamdescription="Drink size: small, medium, or large">
++              <option value="small">Small (-$0.50)</option>
++              <option value="medium" selected>Medium (Standard)</option>
++              <option value="large">Large (+$0.75)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-milk">Milk Option</label>
++            <select id="order-milk" name="milk"
++                    toolparamtitle="milk"
++                    toolparamdescription="Milk preference: none, whole, oat, almond, or soy">
++              <option value="oat">Oat Milk</option>
++              <option value="whole">Whole Milk</option>
++              <option value="almond">Almond Milk</option>
++              <option value="soy">Soy Milk</option>
++              <option value="none">No Milk / Black</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="order-quantity">Quantity</label>
++            <input type="number" id="order-quantity" name="quantity" min="1" max="20" value="1" required
++                   toolparamtitle="quantity"
++                   toolparamdescription="Number of items to add to the cart (1 to 20)">
++          </div>
++        </div>
++        <button type="submit" class="btn">Add to Cart</button>
++      </form>
++    </section>
++
++    <!-- Shopping Cart & Checkout Form -->
++    <section id="cart-section" class="panel">
++      <h2>Your Shopping Cart</h2>
++      <ul id="cart-items" class="cart-items-list">
++        <li>Your cart is currently empty.</li>
++      </ul>
++      <div class="cart-summary">
++        <div>
++          <strong>Total: $<span id="cart-total">0.00</span></strong>
++          <span id="applied-promo-badge" class="badge" style="display:none; margin-left: 10px;"></span>
++        </div>
++        <button type="button" class="btn btn-secondary" onclick="window.dailyGrindApp.clearCart()">Clear Cart</button>
++      </div>
++
++      <form id="checkout-form" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--secondary);"
++            toolname="submit_order"
++            tooldescription="Submit and place the coffee order for pickup at a selected cafe location">
++        <h3>Checkout &amp; Pickup Details</h3>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="checkout-name">Customer Name</label>
++            <input type="text" id="checkout-name" name="customerName" value="Alex Rivera" required
++                   toolparamtitle="customerName"
++                   toolparamdescription="Full name for the pickup order">
++          </div>
++          <div class="form-group">
++            <label for="checkout-location">Pickup Location</label>
++            <select id="checkout-location" name="locationId" required
++                    toolparamtitle="locationId"
++                    toolparamdescription="Store location ID for pickup (downtown-roastery, mission-district, capitol-hill, brooklyn-heights)">
++              <option value="downtown-roastery">Downtown Roastery (Seattle)</option>
++              <option value="capitol-hill">Capitol Hill Cafe (Seattle)</option>
++              <option value="mission-district">Mission District Espresso Bar (SF)</option>
++              <option value="brooklyn-heights">Brooklyn Heights Corner (NYC)</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="checkout-notes">Special Instructions</label>
++            <input type="text" id="checkout-notes" name="notes" placeholder="Extra hot, light ice..."
++                   toolparamtitle="notes"
++                   toolparamdescription="Optional preparation instructions or pickup notes">
++          </div>
++        </div>
++        <button type="submit" class="btn btn-accent">Place Pickup Order</button>
++      </form>
++      <div id="order-confirmation" class="status-banner"></div>
++    </section>
++
++    <!-- Store Locations & Rewards Info -->
++    <div class="grid">
++      <section id="locations-section" class="panel" style="margin-top: 0;">
++        <h2>Our Locations</h2>
++        <div id="locations-list" style="margin-top: 12px;"></div>
++      </section>
++
++      <section id="rewards-section" class="panel" style="margin-top: 0;">
++        <h2>Rewards &amp; Account</h2>
++        <div id="account-summary" style="margin-top: 12px;">
++          <p><strong>Member:</strong> <span id="account-member-name">Alex Rivera</span> (<span id="account-tier">Gold Bean</span>)</p>
++          <p><strong>Available Points:</strong> <span id="account-points">420</span> pts</p>
++          <p><strong>Active Reward:</strong> <span id="account-active-reward">None applied</span></p>
++          <div style="margin-top: 12px;">
++            <button type="button" class="btn" onclick="window.dailyGrindApp.redeemReward('free-pastry')">Redeem Free Pastry (150 pts)</button>
++            <button type="button" class="btn btn-secondary" onclick="window.dailyGrindApp.redeemReward('free-drink')">Redeem Free Drink (300 pts)</button>
++          </div>
++        </div>
++      </section>
++    </div>
++
++    <!-- Contact Us Declarative Form -->
++    <section id="contact-section" class="panel">
++      <h2>Contact &amp; Catering Inquiries</h2>
++      <form id="contact-form"
++            toolname="send_contact_inquiry"
++            tooldescription="Send a customer support message, feedback, or catering inquiry to The Daily Grind team"
++            toolautosubmit>
++        <div class="form-grid">
++          <div class="form-group">
++            <label for="contact-topic">Topic</label>
++            <select id="contact-topic" name="topic"
++                    toolparamtitle="topic"
++                    toolparamdescription="Inquiry topic (general, catering, wholesale, feedback)">
++              <option value="general">General Question</option>
++              <option value="catering">Event Catering</option>
++              <option value="wholesale">Wholesale Beans</option>
++              <option value="feedback">Store Feedback</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="contact-email">Email</label>
++            <input type="email" id="contact-email" name="email" value="alex.rivera@example.com" required
++                   toolparamtitle="email"
++                   toolparamdescription="Customer contact email address">
++          </div>
++          <div class="form-group">
++            <label for="contact-message">Message</label>
++            <input type="text" id="contact-message" name="message" placeholder="How can we help?" required
++                   toolparamtitle="message"
++                   toolparamdescription="Detailed message or inquiry text">
++          </div>
++        </div>
++        <button type="submit" class="btn">Send Message</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#seasonal-section">Our Story</a> |
++      <a href="#locations-section">Join the Team</a> |
++      <a href="#contact-section">Contact Us</a> |
++      <a href="#account-section">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      // Application Data & State
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.50,
++          calories: 210,
++          dietary: ['vegan', 'dairy-free'],
++          description: 'Creamy oat milk with a hint of Vermont maple syrup and double espresso.',
++          image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.75,
++          calories: 15,
++          dietary: ['vegan', 'dairy-free', 'gluten-free'],
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          category: 'cold-brew',
++          price: 4.75,
++          calories: 10,
++          dietary: ['vegan', 'dairy-free', 'gluten-free'],
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        },
++        {
++          id: 'vanilla-matcha-latte',
++          name: 'Vanilla Matcha Latte',
++          category: 'seasonal',
++          price: 5.25,
++          calories: 190,
++          dietary: ['gluten-free'],
++          description: 'Ceremonial grade Uji matcha whisked with Madagascar vanilla and steamed milk.',
++          image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        },
++        {
++          id: 'caramel-macchiato',
++          name: 'Caramel Macchiato',
++          category: 'espresso',
++          price: 5.00,
++          calories: 250,
++          dietary: ['gluten-free'],
++          description: 'Rich espresso layered over velvety steamed milk and topped with house-made caramel drizzle.',
++          image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        },
++        {
++          id: 'almond-croissant',
++          name: 'Almond Croissant',
++          category: 'pastry',
++          price: 4.25,
++          calories: 340,
++          dietary: [],
++          description: 'Flaky, buttery pastry filled with sweet almond frangipane and topped with toasted sliced almonds.',
++          image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80',
++          inStock: true
++        }
++      ];
++
++      const LOCATIONS = [
++        {
++          id: 'downtown-roastery',
++          name: 'Downtown Roastery',
++          city: 'Seattle',
++          address: '412 Pike St, Seattle, WA 98101',
++          hours: '6:00 AM - 7:00 PM',
++          features: ['Pour-over Bar', 'Wi-Fi', 'Outdoor Seating', 'Roastery Tours']
++        },
++        {
++          id: 'capitol-hill',
++          name: 'Capitol Hill Cafe',
++          city: 'Seattle',
++          address: '1508 E Olive Way, Seattle, WA 98122',
++          hours: '6:30 AM - 8:00 PM',
++          features: ['Wi-Fi', 'Pastry Kitchen', 'Pet Friendly']
++        },
++        {
++          id: 'mission-district',
++          name: 'Mission District Espresso Bar',
++          city: 'San Francisco',
++          address: '742 Valencia St, San Francisco, CA 94110',
++          hours: '7:00 AM - 6:00 PM',
++          features: ['Wi-Fi', 'Outdoor Seating', 'Nitro Cold Brew']
++        },
++        {
++          id: 'brooklyn-heights',
++          name: 'Brooklyn Heights Corner',
++          city: 'New York',
++          address: '128 Montague St, Brooklyn, NY 11201',
++          hours: '6:00 AM - 7:30 PM',
++          features: ['Wi-Fi', 'Mobile Pickup Lane']
++        }
++      ];
++
++      const REWARD_TIERS = {
++        'free-pastry': { id: 'free-pastry', name: 'Free Artisanal Pastry', cost: 150, discount: 4.25 },
++        'free-drink': { id: 'free-drink', name: 'Free Handcrafted Drink', cost: 300, discount: 5.50 },
++        'dollar-off': { id: 'dollar-off', name: '$2.00 Off Order', cost: 100, discount: 2.00 }
++      };
++
++      const state = {
++        cart: [],
++        account: {
++          id: 'usr-9841',
++          name: 'Alex Rivera',
++          email: 'alex.rivera@example.com',
++          tier: 'Gold Bean',
++          points: 420,
++          activeReward: null,
++          favoriteDrink: 'maple-oat-latte',
++          loggedIn: true
++        },
++        orders: [],
++        inquiries: []
++      };
++
++      const SIZE_MODIFIERS = {
++        small: -0.50,
++        medium: 0,
++        large: 0.75
++      };
++
++      // UI Helper Functions
++      function showNotification(message) {
++        const banner = document.getElementById('agent-notification');
++        if (!banner) return;
++        banner.textContent = message;
++        banner.classList.add('active');
++      }
++
++      function renderMenu(items) {
++        const grid = document.getElementById('menu-results-grid');
++        if (!grid) return;
++        if (!items || items.length === 0) {
++          grid.innerHTML = '<p>No matching menu items found.</p>';
++          return;
++        }
++        grid.innerHTML = items.map(item => `
++          <div class="card" data-item-id="${item.id}">
++            <img src="${item.image}" alt="${item.name}">
++            <span class="badge">${item.category}</span>
++            <h3>${item.name}</h3>
++            <p>${item.description}</p>
++            <p style="font-size: 0.8rem; color: #6d4c41; margin-top: 4px;">${item.calories} cal ${item.dietary.length ? '• ' + item.dietary.join(', ') : ''}</p>
++            <div class="price-tag">$${item.price.toFixed(2)}</div>
++            <button type="button" class="btn" onclick="window.dailyGrindApp.quickAddToCart('${item.id}', 'medium', 'oat')">Add to Cart</button>
++          </div>
++        `).join('');
++      }
++
++      function renderLocations(locations) {
++        const container = document.getElementById('locations-list');
++        if (!container) return;
++        container.innerHTML = locations.map(loc => `
++          <div style="padding: 10px 0; border-bottom: 1px solid var(--secondary);">
++            <strong>${loc.name}</strong> (${loc.city})<br>
++            <span style="font-size: 0.9rem;">${loc.address} • ${loc.hours}</span><br>
++            <span style="font-size: 0.8rem; color: #5d4037;">Features: ${loc.features.join(', ')}</span>
++          </div>
++        `).join('');
++      }
++
++      function calculateCartTotals() {
++        const subtotal = state.cart.reduce((sum, entry) => sum + entry.unitPrice * entry.quantity, 0);
++        const discount = state.account.activeReward ? Math.min(subtotal, state.account.activeReward.discount) : 0;
++        const total = Math.max(0, Number((subtotal - discount).toFixed(2)));
++        const itemCount = state.cart.reduce((sum, entry) => sum + entry.quantity, 0);
++        return {
++          subtotal: Number(subtotal.toFixed(2)),
++          discount: Number(discount.toFixed(2)),
++          total,
++          itemCount
++        };
++      }
++
++      function renderCart() {
++        const list = document.getElementById('cart-items');
++        const totalEl = document.getElementById('cart-total');
++        const countEl = document.getElementById('nav-cart-count');
++        const promoBadge = document.getElementById('applied-promo-badge');
++        const totals = calculateCartTotals();
++
++        if (countEl) countEl.textContent = String(totals.itemCount);
++        if (totalEl) totalEl.textContent = totals.total.toFixed(2);
++
++        if (promoBadge) {
++          if (state.account.activeReward) {
++            promoBadge.style.display = 'inline-block';
++            promoBadge.textContent = `${state.account.activeReward.name} (-$${totals.discount.toFixed(2)})`;
++          } else {
++            promoBadge.style.display = 'none';
++          }
++        }
++
++        if (!list) return;
++        if (state.cart.length === 0) {
++          list.innerHTML = '<li>Your cart is currently empty.</li>';
++          return;
++        }
++
++        list.innerHTML = state.cart.map((entry, idx) => `
++          <li>
++            <span><strong>${entry.quantity}x ${entry.name}</strong> (${entry.size}, ${entry.milk} milk)</span>
++            <span>$${(entry.unitPrice * entry.quantity).toFixed(2)}</span>
++          </li>
++        `).join('');
++      }
++
++      function renderAccount() {
++        const nameEl = document.getElementById('account-member-name');
++        const tierEl = document.getElementById('account-tier');
++        const ptsEl = document.getElementById('account-points');
++        const rewardEl = document.getElementById('account-active-reward');
++
++        if (nameEl) nameEl.textContent = state.account.loggedIn ? state.account.name : 'Guest (Logged Out)';
++        if (tierEl) tierEl.textContent = state.account.loggedIn ? state.account.tier : 'None';
++        if (ptsEl) ptsEl.textContent = String(state.account.points);
++        if (rewardEl) {
++          rewardEl.textContent = state.account.activeReward
++            ? `${state.account.activeReward.name} (-$${state.account.activeReward.discount.toFixed(2)})`
++            : 'None applied';
++        }
++      }
++
++      // Core Business Logic Actions (shared by UI and WebMCP tools)
++      function searchMenu({ query = '', category = 'all', dietary = 'any', maxPrice } = {}) {
++        const normalizedQuery = String(query || '').trim().toLowerCase();
++        const normalizedCategory = String(category || 'all').toLowerCase();
++        const normalizedDietary = String(dietary || 'any').toLowerCase();
++
++        const filtered = MENU_ITEMS.filter(item => {
++          const matchesQuery = !normalizedQuery ||
++            item.name.toLowerCase().includes(normalizedQuery) ||
++            item.description.toLowerCase().includes(normalizedQuery) ||
++            item.id.toLowerCase().includes(normalizedQuery);
++          const matchesCategory = normalizedCategory === 'all' || !normalizedCategory || item.category === normalizedCategory;
++          const matchesDietary = normalizedDietary === 'any' || !normalizedDietary || item.dietary.includes(normalizedDietary);
++          const matchesPrice = typeof maxPrice !== 'number' || Number.isNaN(maxPrice) || item.price <= maxPrice;
++          return matchesQuery && matchesCategory && matchesDietary && matchesPrice;
++        });
++
++        renderMenu(filtered);
++        return {
++          count: filtered.length,
++          items: filtered
++        };
++      }
++
++      function getMenuItemDetails({ itemId }) {
++        const normalized = String(itemId || '').trim().toLowerCase();
++        const item = MENU_ITEMS.find(
++          m => m.id === normalized || m.name.toLowerCase() === normalized
++        );
++        if (!item) {
++          throw new Error(`Menu item "${itemId}" not found.`);
++        }
++        return {
++          ...item,
++          availableSizes: ['small', 'medium', 'large'],
++          availableMilks: ['none', 'whole', 'oat', 'almond', 'soy']
++        };
++      }
++
++      function addToCart({ itemId, size = 'medium', milk = 'oat', quantity = 1, specialInstructions = '' }) {
++        const normalizedId = String(itemId || '').trim().toLowerCase();
++        const menuItem = MENU_ITEMS.find(
++          m => m.id === normalizedId || m.name.toLowerCase() === normalizedId
++        );
++        if (!menuItem) {
++          throw new Error(`Menu item "${itemId}" not found. Available IDs: ${MENU_ITEMS.map(m => m.id).join(', ')}`);
++        }
++
++        const normalizedSize = ['small', 'medium', 'large'].includes(String(size).toLowerCase())
++          ? String(size).toLowerCase()
++          : 'medium';
++        const normalizedMilk = String(milk || 'oat').toLowerCase();
++        const qty = Math.max(1, Math.min(20, parseInt(quantity, 10) || 1));
++        const unitPrice = Number((menuItem.price + (SIZE_MODIFIERS[normalizedSize] || 0)).toFixed(2));
++
++        const existing = state.cart.find(
++          c => c.itemId === menuItem.id && c.size === normalizedSize && c.milk === normalizedMilk && c.specialInstructions === specialInstructions
++        );
++
++        if (existing) {
++          existing.quantity += qty;
++        } else {
++          state.cart.push({
++            itemId: menuItem.id,
++            name: menuItem.name,
++            size: normalizedSize,
++            milk: normalizedMilk,
++            quantity: qty,
++            unitPrice,
++            specialInstructions
++          });
++        }
++
++        renderCart();
++        const totals = calculateCartTotals();
++        showNotification(`Added ${qty}x ${menuItem.name} (${normalizedSize}) to your cart.`);
++        return {
++          success: true,
++          addedItem: {
++            itemId: menuItem.id,
++            name: menuItem.name,
++            size: normalizedSize,
++            milk: normalizedMilk,
++            quantity: qty,
++            unitPrice
++          },
++          cart: state.cart,
++          totals
++        };
++      }
++
++      function removeFromCart({ itemId, size }) {
++        const normalizedId = String(itemId || '').trim().toLowerCase();
++        const beforeCount = state.cart.length;
++        state.cart = state.cart.filter(entry => {
++          const idMatch = entry.itemId === normalizedId || entry.name.toLowerCase() === normalizedId;
++          const sizeMatch = !size || entry.size === String(size).toLowerCase();
++          return !(idMatch && sizeMatch);
++        });
++        renderCart();
++        const totals = calculateCartTotals();
++        return {
++          success: state.cart.length < beforeCount,
++          cart: state.cart,
++          totals
++        };
++      }
++
++      function clearCart() {
++        state.cart = [];
++        renderCart();
++        showNotification('Shopping cart cleared.');
++        return {
++          success: true,
++          cart: state.cart,
++          totals: calculateCartTotals()
++        };
++      }
++
++      function getCart() {
++        return {
++          items: state.cart,
++          totals: calculateCartTotals(),
++          activeReward: state.account.activeReward
++        };
++      }
++
++      function findLocations({ city = '', feature = '' } = {}) {
++        const normalizedCity = String(city || '').trim().toLowerCase();
++        const normalizedFeature = String(feature || '').trim().toLowerCase();
++
++        const matches = LOCATIONS.filter(loc => {
++          const cityMatch = !normalizedCity ||
++            loc.city.toLowerCase().includes(normalizedCity) ||
++            loc.name.toLowerCase().includes(normalizedCity) ||
++            loc.address.toLowerCase().includes(normalizedCity);
++          const featureMatch = !normalizedFeature ||
++            loc.features.some(f => f.toLowerCase().includes(normalizedFeature));
++          return cityMatch && featureMatch;
++        });
++
++        renderLocations(matches);
++        return {
++          count: matches.length,
++          locations: matches
++        };
++      }
++
++      function getAccountRewards() {
++        return {
++          account: { ...state.account },
++          availableRewards: Object.values(REWARD_TIERS)
++        };
++      }
++
++      function redeemReward(rewardIdInput) {
++        const rewardId = typeof rewardIdInput === 'string'
++          ? rewardIdInput
++          : (rewardIdInput && rewardIdInput.rewardId);
++        const reward = REWARD_TIERS[rewardId];
++        if (!reward) {
++          throw new Error(`Invalid reward ID "${rewardId}". Valid IDs: ${Object.keys(REWARD_TIERS).join(', ')}`);
++        }
++        if (!state.account.loggedIn) {
++          throw new Error('User must be logged in to redeem rewards.');
++        }
++        if (state.account.points < reward.cost) {
++          throw new Error(`Insufficient points (${state.account.points} available, ${reward.cost} required).`);
++        }
++
++        state.account.points -= reward.cost;
++        state.account.activeReward = reward;
++        renderAccount();
++        renderCart();
++        showNotification(`Redeemed "${reward.name}"! Discount applied to your cart.`);
++        return {
++          success: true,
++          redeemedReward: reward,
++          remainingPoints: state.account.points,
++          cartTotals: calculateCartTotals()
++        };
++      }
++
++      function submitOrder({ customerName = 'Alex Rivera', locationId = 'downtown-roastery', notes = '' } = {}) {
++        if (state.cart.length === 0) {
++          throw new Error('Cannot place an order with an empty cart. Please add items first.');
++        }
++        const location = LOCATIONS.find(l => l.id === locationId) || LOCATIONS[0];
++        const totals = calculateCartTotals();
++        const order = {
++          orderId: 'DG-' + (1000 + state.orders.length + 1),
++          customerName,
++          location: {
++            id: location.id,
++            name: location.name,
++            address: location.address
++          },
++          items: [...state.cart],
++          totals,
++          notes,
++          estimatedPickupMinutes: 10,
++          status: 'confirmed',
++          createdAt: new Date().toISOString()
++        };
++
++        state.orders.push(order);
++        const earnedPoints = Math.round(totals.total * 10);
++        if (state.account.loggedIn) {
++          state.account.points += earnedPoints;
++        }
++        state.cart = [];
++        state.account.activeReward = null;
++        renderCart();
++        renderAccount();
++
++        const confirmBanner = document.getElementById('order-confirmation');
++        if (confirmBanner) {
++          confirmBanner.textContent = `Order ${order.orderId} confirmed for ${order.customerName} at ${location.name}! Total: $${totals.total.toFixed(2)}. Ready in ~${order.estimatedPickupMinutes} mins.`;
++          confirmBanner.classList.add('active');
++        }
++        showNotification(`Order ${order.orderId} placed successfully!`);
++        return order;
++      }
++
++      function sendContactInquiry({ topic = 'general', email = '', message = '' } = {}) {
++        if (!message) {
++          throw new Error('Inquiry message is required.');
++        }
++        const ticket = {
++          ticketId: 'INQ-' + (500 + state.inquiries.length + 1),
++          topic,
++          email: email || state.account.email,
++          message,
++          status: 'received',
++          submittedAt: new Date().toISOString()
++        };
++        state.inquiries.push(ticket);
++        showNotification(`Inquiry ${ticket.ticketId} received! We'll reply to ${ticket.email}.`);
++        return ticket;
++      }
++
++      function logoutUser() {
++        state.account.loggedIn = false;
++        state.account.activeReward = null;
++        renderAccount();
++        renderCart();
++        showNotification('You have been logged out.');
++        return {
++          success: true,
++          loggedIn: false,
++          message: 'User successfully logged out.'
++        };
++      }
++
++      // Format tool response according to MCP / WebMCP conventions
++      function formatToolResponse(data) {
++        return {
++          content: [
++            {
++              type: 'text',
++              text: JSON.stringify(data)
++            }
++          ],
++          structuredContent: data
++        };
++      }
++
++      // Bind Declarative WebMCP Forms (supporting SubmitEvent.agentInvoked & SubmitEvent.respondWith)
++      function setupDeclarativeForms() {
++        const menuSearchForm = document.getElementById('menu-search-form');
++        if (menuSearchForm) {
++          menuSearchForm.addEventListener('submit', (e) => {
++            e.preventDefault();
++            const formData = new FormData(menuSearchForm);
++            const result = searchMenu({
++              query: formData.get('query') || '',
++              category: formData.get('category') || 'all',
++              dietary: formData.get('dietary') || 'any'
++            });
++            if (typeof e.respondWith === 'function') {
++              e.respondWith(Promise.resolve(formatToolResponse(result)));
++            }
++          });
++        }
++
++        const customOrderForm = document.getElementById('custom-order-form');
++        if (customOrderForm) {
++          customOrderForm.addEventListener('submit', (e) => {
++            e.preventDefault();
++            const formData = new FormData(customOrderForm);
++            const result = addToCart({
++              itemId: formData.get('itemId'),
++              size: formData.get('size') || 'medium',
++              milk: formData.get('milk') || 'oat',
++              quantity: Number(formData.get('quantity') || 1)
++            });
++            if (typeof e.respondWith === 'function') {
++              e.respondWith(Promise.resolve(formatToolResponse(result)));
++            }
++          });
++        }
++
++        const checkoutForm = document.getElementById('checkout-form');
++        if (checkoutForm) {
++          checkoutForm.addEventListener('submit', (e) => {
++            e.preventDefault();
++            try {
++              const formData = new FormData(checkoutForm);
++              const order = submitOrder({
++                customerName: formData.get('customerName') || state.account.name,
++                locationId: formData.get('locationId') || 'downtown-roastery',
++                notes: formData.get('notes') || ''
++              });
++              if (typeof e.respondWith === 'function') {
++                e.respondWith(Promise.resolve(formatToolResponse(order)));
++              }
++            } catch (err) {
++              const errorPayload = { error: err.message };
++              showNotification(err.message);
++              if (typeof e.respondWith === 'function') {
++                e.respondWith(Promise.resolve(formatToolResponse(errorPayload)));
++              }
++            }
++          });
++        }
++
++        const contactForm = document.getElementById('contact-form');
++        if (contactForm) {
++          contactForm.addEventListener('submit', (e) => {
++            e.preventDefault();
++            const formData = new FormData(contactForm);
++            const ticket = sendContactInquiry({
++              topic: formData.get('topic') || 'general',
++              email: formData.get('email') || state.account.email,
++              message: formData.get('message') || ''
++            });
++            if (typeof e.respondWith === 'function') {
++              e.respondWith(Promise.resolve(formatToolResponse(ticket)));
++            }
++          });
++        }
++
++        const logoutLink = document.getElementById('nav-logout');
++        if (logoutLink) {
++          logoutLink.addEventListener('click', (e) => {
++            e.preventDefault();
++            logoutUser();
++          });
++        }
++      }
++
++      // Define WebMCP Imperative Tool Definitions
++      const WEBMCP_TOOLS = [
++        {
++          name: 'get_menu',
++          description: 'Search and retrieve items from The Daily Grind coffee shop menu, optionally filtered by keyword, category, dietary restriction, or maximum price.',
++          annotations: { readOnlyHint: true },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              query: {
++                type: 'string',
++                description: 'Optional search keyword to match item name or description (e.g., "latte", "espresso", "cold brew").'
++              },
++              category: {
++                type: 'string',
++                enum: ['all', 'seasonal', 'espresso', 'cold-brew', 'pastry'],
++                description: 'Menu category to filter by.'
++              },
++              dietary: {
++                type: 'string',
++                enum: ['any', 'vegan', 'dairy-free', 'gluten-free'],
++                description: 'Dietary preference filter.'
++              },
++              maxPrice: {
++                type: 'number',
++                description: 'Maximum price in USD.'
++              }
++            }
++          },
++          async execute(params = {}) {
++            const result = searchMenu(params);
++            return formatToolResponse(result);
++          }
++        },
++        {
++          name: 'get_menu_item_details',
++          description: 'Get detailed nutritional, pricing, and customization options for a specific menu item by ID or name.',
++          annotations: { readOnlyHint: true },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemId: {
++                type: 'string',
++                description: 'The ID or name of the menu item (e.g., "maple-oat-latte", "dark-roast-espresso", "cold-brew").'
++              }
++            },
++            required: ['itemId']
++          },
++          async execute(params = {}) {
++            const details = getMenuItemDetails(params);
++            return formatToolResponse(details);
++          }
++        },
++        {
++          name: 'add_to_cart',
++          description: 'Add a coffee drink or bakery item to the customer shopping cart with size, milk choice, and quantity.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemId: {
++                type: 'string',
++                description: 'Menu item ID or name (e.g., "maple-oat-latte", "dark-roast-espresso", "cold-brew", "vanilla-matcha-latte", "caramel-macchiato", "almond-croissant").'
++              },
++              size: {
++                type: 'string',
++                enum: ['small', 'medium', 'large'],
++                description: 'Drink size (small, medium, or large). Defaults to medium.'
++              },
++              milk: {
++                type: 'string',
++                enum: ['none', 'whole', 'oat', 'almond', 'soy'],
++                description: 'Milk choice. Defaults to oat.'
++              },
++              quantity: {
++                type: 'number',
++                description: 'Number of items to add (1-20). Defaults to 1.'
++              },
++              specialInstructions: {
++                type: 'string',
++                description: 'Optional preparation instructions (e.g., "extra hot", "half sweet").'
++              }
++            },
++            required: ['itemId']
++          },
++          async execute(params = {}) {
++            const result = addToCart(params);
++            return formatToolResponse(result);
++          }
++        },
++        {
++          name: 'get_cart',
++          description: 'Retrieve the current shopping cart contents, item count, applied rewards, and subtotal/total prices.',
++          annotations: { readOnlyHint: true },
++          inputSchema: {
++            type: 'object',
++            properties: {}
++          },
++          async execute() {
++            return formatToolResponse(getCart());
++          }
++        },
++        {
++          name: 'remove_from_cart',
++          description: 'Remove an item from the shopping cart by itemId (and optional size), or clear the entire cart.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              itemId: {
++                type: 'string',
++                description: 'Menu item ID or name to remove, or "all" to clear the entire cart.'
++              },
++              size: {
++                type: 'string',
++                enum: ['small', 'medium', 'large'],
++                description: 'Optional size filter when removing a specific drink.'
++              }
++            },
++            required: ['itemId']
++          },
++          async execute(params = {}) {
++            if (String(params.itemId).toLowerCase() === 'all') {
++              return formatToolResponse(clearCart());
++            }
++            return formatToolResponse(removeFromCart(params));
++          }
++        },
++        {
++          name: 'checkout_order',
++          description: 'Place and submit the current shopping cart order for pickup at a Daily Grind cafe location.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              customerName: {
++                type: 'string',
++                description: 'Customer name for the pickup order.'
++              },
++              locationId: {
++                type: 'string',
++                enum: ['downtown-roastery', 'capitol-hill', 'mission-district', 'brooklyn-heights'],
++                description: 'Store location ID where the order will be picked up.'
++              },
++              notes: {
++                type: 'string',
++                description: 'Optional pickup or preparation notes.'
++              }
++            },
++            required: ['locationId']
++          },
++          async execute(params = {}) {
++            const order = submitOrder(params);
++            return formatToolResponse(order);
++          }
++        },
++        {
++          name: 'find_store_locations',
++          description: 'Find Daily Grind coffee shop locations by city, neighborhood, or store amenity/feature.',
++          annotations: { readOnlyHint: true },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              city: {
++                type: 'string',
++                description: 'City or neighborhood name (e.g., "Seattle", "San Francisco", "New York").'
++              },
++              feature: {
++                type: 'string',
++                description: 'Optional store feature filter (e.g., "Wi-Fi", "Outdoor Seating", "Roastery Tours").'
++              }
++            }
++          },
++          async execute(params = {}) {
++            return formatToolResponse(findLocations(params));
++          }
++        },
++        {
++          name: 'get_rewards_account',
++          description: 'Get the current customer loyalty account profile, points balance, membership tier, and redeemable reward tiers.',
++          annotations: { readOnlyHint: true },
++          inputSchema: {
++            type: 'object',
++            properties: {}
++          },
++          async execute() {
++            return formatToolResponse(getAccountRewards());
++          }
++        },
++        {
++          name: 'redeem_reward',
++          description: 'Redeem loyalty reward points for a discount or free item on the current order.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              rewardId: {
++                type: 'string',
++                enum: ['free-pastry', 'free-drink', 'dollar-off'],
++                description: 'The reward tier ID to redeem ("free-pastry" for 150 pts, "free-drink" for 300 pts, or "dollar-off" for 100 pts).'
++              }
++            },
++            required: ['rewardId']
++          },
++          async execute(params = {}) {
++            return formatToolResponse(redeemReward(params.rewardId));
++          }
++        },
++        {
++          name: 'contact_support',
++          description: 'Submit a customer support question, feedback, or catering inquiry to The Daily Grind.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {
++              topic: {
++                type: 'string',
++                enum: ['general', 'catering', 'wholesale', 'feedback'],
++                description: 'Inquiry category.'
++              },
++              email: {
++                type: 'string',
++                description: 'Customer email address for follow-up.'
++              },
++              message: {
++                type: 'string',
++                description: 'Detailed inquiry or feedback message.'
++              }
++            },
++            required: ['message']
++          },
++          async execute(params = {}) {
++            return formatToolResponse(sendContactInquiry(params));
++          }
++        },
++        {
++          name: 'logout_account',
++          description: 'Log out the current user from their Daily Grind account session.',
++          annotations: { readOnlyHint: false },
++          inputSchema: {
++            type: 'object',
++            properties: {}
++          },
++          async execute() {
++            return formatToolResponse(logoutUser());
++          }
++        }
++      ];
++
++      // Register tools with WebMCP (navigator.modelContext)
++      function registerWebMCPTools() {
++        const modelContext = navigator.modelContext || document.modelContext;
++        if (!modelContext) {
++          return;
++        }
++
++        // If provideContext is available and registerTool is not, or to initialize context:
++        if (typeof modelContext.registerTool === 'function') {
++          for (const tool of WEBMCP_TOOLS) {
++            try {
++              modelContext.registerTool(tool);
++            } catch (err) {
++              console.warn(`Failed to register WebMCP tool "${tool.name}":`, err);
++            }
++          }
++        } else if (typeof modelContext.provideContext === 'function') {
++          try {
++            modelContext.provideContext({ tools: WEBMCP_TOOLS });
++          } catch (err) {
++            console.warn('Failed to provide WebMCP context:', err);
++          }
++        }
++      }
++
++      // Expose application controller for UI interactions and testing
++      window.dailyGrindApp = {
++        state,
++        tools: WEBMCP_TOOLS,
++        quickAddToCart(itemId, size, milk) {
++          return addToCart({ itemId, size, milk, quantity: 1 });
++        },
++        searchMenu,
++        getMenuItemDetails,
++        addToCart,
++        removeFromCart,
++        clearCart,
++        getCart,
++        findLocations,
++        getAccountRewards,
++        redeemReward,
++        submitOrder,
++        sendContactInquiry,
++        logoutUser,
++        registerWebMCPTools
++      };
++
++      // Initialize UI and WebMCP registrations
++      renderMenu(MENU_ITEMS);
++      renderLocations(LOCATIONS);
++      renderCart();
++      renderAccount();
++      setupDeclarativeForms();
++      registerWebMCPTools();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

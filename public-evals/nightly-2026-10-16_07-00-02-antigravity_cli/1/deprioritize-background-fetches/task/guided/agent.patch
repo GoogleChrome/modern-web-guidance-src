@@ -1,0 +1,33 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,29 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Fetch</title>
++</head>
++<body>
++  <button id="load-btn">Load Data</button>
++
++  <script>
++    document.getElementById('load-btn').addEventListener('click', () => {
++      // Mission-critical data request with boosted priority
++      fetch('/api/data', { priority: 'high' });
++
++      // Non-critical background analytics request
++      fetch('/api/analytics', {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json'
++        },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      });
++    });
++  </script>
++</body>
++</html>

@@ -1,0 +1,92 @@
+diff --git a/index.html b/index.html
+index 66c9173..2ad51b6 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,65 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Generated content.
++       Each declaration is written twice: the first is a fallback for browsers
++       without alt-text support, the second uses the `content: <value> / <alt>`
++       syntax. An empty alt ("") hides purely decorative content from assistive
++       technology; a non-empty alt gives meaningful content a text equivalent. */
++    .logo::before {
++      content: "\2615 ";
++      content: "\2615 " / "";
++    }
++
++    .hero h1::after {
++      content: "";
++      content: "" / "";
++      display: block;
++      width: 80px;
++      height: 3px;
++      margin: 1rem auto 0;
++      background: var(--accent);
++    }
++
++    .container h2::before,
++    .container h2::after {
++      content: " \2726 ";
++      content: " \2726 " / "";
++      color: var(--accent);
++      font-size: 0.8em;
++    }
++
++    .card h3::before {
++      content: "\2615 ";
++      content: "\2615 " / "";
++    }
++
++    .card.is-new::before {
++      content: "NEW";
++      content: "NEW" / "New item";
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++      padding: 2px 8px;
++      border-radius: 10px;
++      margin-bottom: 10px;
++    }
++
++    .btn::after {
++      content: " \2192";
++      content: " \2192" / "";
++    }
++
++    .footer-links a + a::before {
++      content: "|";
++      content: "|" / "";
++      margin-right: 20px;
++      opacity: 0.6;
++    }
+   </style>
+ </head>
+ 
+@@ -178,7 +237,7 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card is-new">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -199,9 +258,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>

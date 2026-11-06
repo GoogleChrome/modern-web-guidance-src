@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,83 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase {
++      max-width: 1100px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: start;
++    }
++
++    .nested-curve-parent {
++      background: white;
++      padding: 16px;
++      border-radius: 28px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* Fallback: clips at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: white;
++      padding: 14px 18px;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        overflow: clip;
++        /* Clips children along the inner content-box curve (outer radius minus padding) */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    .safety-zone-parent {
++      background: var(--secondary);
++      padding: 30px;
++      border-radius: 12px;
++      /* Fallback: clips text but also truncates the glow */
++      overflow: hidden;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .glow-btn {
++      margin-top: 20px;
++      padding: 12px 28px;
++      border: none;
++      border-radius: 6px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 1rem;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 0 25px 8px rgba(255, 171, 64, 0.8);
++    }
++
++    @supports (overflow-clip-margin: 15px) {
++      .safety-zone-parent {
++        overflow: clip;
++        /* 15px safety zone so the button glow can bleed past the container edge */
++        overflow-clip-margin: 15px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +248,22 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="showcase">
++    <article class="nested-curve-parent">
++      <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
++        alt="A cup of freshly brewed coffee on a wooden table">
++      <div class="nested-curve-footer">Single-origin pour over, brewed to order</div>
++    </article>
++
++    <aside class="safety-zone-parent">
++      <h3>Today's Promos</h3>
++      <p>Buy any seasonal latte before noon and get a free pastry. Loyalty members earn double points all week long.</p>
++      <button type="button" class="glow-btn">Claim Offer</button>
++    </aside>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

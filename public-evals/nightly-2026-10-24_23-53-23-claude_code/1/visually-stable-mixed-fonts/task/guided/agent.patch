@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,62 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Mixed Fonts</title>
++  <style>
++    body {
++      font-family: system-ui, sans-serif;
++      font-size: 1.125rem;
++      line-height: 1.6;
++      max-width: 40rem;
++      margin: 2rem auto;
++      padding: 0 1rem;
++    }
++
++    #mixed-fonts-container {
++      font-family: Georgia, serif;
++      /* Take the x-height ratio from the primary font and apply it to nested fonts */
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Courier New", monospace;
++    }
++
++    #independent-theme-container {
++      font-family: Verdana, sans-serif;
++      /* Numeric x-height ratio, independent of any parent font */
++      font-size-adjust: 0.52;
++      margin-top: 2rem;
++      padding: 1rem;
++      border: 1px solid currentColor;
++    }
++
++    /* Fallback for browsers without font-size-adjust */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container {
++        line-height: 1.6;
++      }
++
++      #mixed-fonts-container code {
++        font-size: 0.9em;
++      }
++
++      #independent-theme-container {
++        font-size: 1rem;
++      }
++    }
++  </style>
++</head>
++<body>
++  <p id="mixed-fonts-container">
++    Regular serif text sits beside inline code like <code>const x = document.querySelector("p");</code>
++    and the two fonts keep a matching visual height.
++  </p>
++
++  <div id="independent-theme-container">
++    This independent theme uses its own font family with a fixed x-height ratio.
++  </div>
++</body>
++</html>

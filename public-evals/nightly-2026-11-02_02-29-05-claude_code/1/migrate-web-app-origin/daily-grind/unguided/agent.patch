@@ -1,0 +1,120 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..50f457e
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example/": {
++    "allow_migration": true
++  }
++}
+diff --git a/icons/icon-192.png b/icons/icon-192.png
+new file mode 100644
+index 0000000..6f17931
+Binary files /dev/null and b/icons/icon-192.png differ
+diff --git a/icons/icon-512.png b/icons/icon-512.png
+new file mode 100644
+index 0000000..6d3cd9b
+Binary files /dev/null and b/icons/icon-512.png differ
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..afb3c53
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,7 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <path d="M206 96c-18 24 18 40 0 64M256 96c-18 24 18 40 0 64M306 96c-18 24 18 40 0 64" fill="none" stroke="#d7ccc8" stroke-width="14" stroke-linecap="round"/>
++  <path d="M128 200h232v96a96 96 0 0 1-96 96h-40a96 96 0 0 1-96-96z" fill="#ffab40"/>
++  <path d="M360 224h20a44 44 0 0 1 0 88h-26" fill="none" stroke="#ffab40" stroke-width="22"/>
++  <rect x="112" y="400" width="288" height="20" rx="10" fill="#d7ccc8"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..0cd03e3 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,18 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/icon-192.png">
++  <link rel="manifest" href="/manifest.webmanifest" id="app-manifest">
++  <script>
++    // The app is moving from www.dailygrind.example to app.dailygrind.example.
++    // While the old origin still serves this page, it must keep advertising the
++    // old app identity (with migrate_to) so installed copies get the migration prompt.
++    if (location.origin === 'https://www.dailygrind.example') {
++      document.getElementById('app-manifest').href = '/legacy.webmanifest';
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/legacy.webmanifest b/legacy.webmanifest
+new file mode 100644
+index 0000000..bdf357d
+--- /dev/null
++++ b/legacy.webmanifest
+@@ -0,0 +1,25 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
++    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
++  ],
++  "shortcuts": [
++    { "name": "Order Now", "url": "/order-online" },
++    { "name": "Menu", "url": "/menu" },
++    { "name": "Rewards", "url": "/rewards" }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.example/",
++    "install_url": "https://app.dailygrind.example/"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..3a0ce4c
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,28 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
++    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
++  ],
++  "shortcuts": [
++    { "name": "Order Now", "url": "/order-online" },
++    { "name": "Menu", "url": "/menu" },
++    { "name": "Rewards", "url": "/rewards" }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.dailygrind.example/",
++      "install_url": "https://www.dailygrind.example/",
++      "behavior": "suggest"
++    }
++  ]
++}

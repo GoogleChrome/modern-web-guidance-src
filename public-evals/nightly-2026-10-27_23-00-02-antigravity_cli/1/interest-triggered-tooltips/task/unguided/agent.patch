@@ -1,0 +1,230 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,138 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip / Popover Styles */
++    .card {
++      position: relative;
++    }
++
++    .tooltip-wrapper {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tooltip-wrapper .btn {
++      margin-top: 0;
++    }
++
++    .tooltip-popover {
++      visibility: hidden;
++      opacity: 0;
++      position: absolute;
++      left: calc(100% + 12px);
++      top: 50%;
++      transform: translateY(-50%) translateX(-6px);
++      width: 220px;
++      background: #ffffff;
++      color: var(--text);
++      text-align: left;
++      padding: 12px 14px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.18);
++      font-size: 0.82rem;
++      line-height: 1.45;
++      z-index: 200;
++      pointer-events: none;
++      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
++    }
++
++    .tooltip-popover::before {
++      content: '';
++      position: absolute;
++      right: 100%;
++      top: 50%;
++      transform: translateY(-50%);
++      border-width: 7px;
++      border-style: solid;
++      border-color: transparent var(--secondary) transparent transparent;
++    }
++
++    .tooltip-popover::after {
++      content: '';
++      position: absolute;
++      right: 100%;
++      top: 50%;
++      transform: translateY(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: transparent #ffffff transparent transparent;
++    }
++
++    .tooltip-popover.flip-left {
++      left: auto;
++      right: calc(100% + 12px);
++      transform: translateY(-50%) translateX(6px);
++    }
++
++    .tooltip-popover.flip-left::before {
++      right: auto;
++      left: 100%;
++      border-color: transparent transparent transparent var(--secondary);
++    }
++
++    .tooltip-popover.flip-left::after {
++      right: auto;
++      left: 100%;
++      border-color: transparent transparent transparent #ffffff;
++    }
++
++    .tooltip-wrapper:hover .tooltip-popover,
++    .tooltip-wrapper:focus-within .tooltip-popover {
++      visibility: visible;
++      opacity: 1;
++      transform: translateY(-50%) translateX(0);
++    }
++
++    .tooltip-title {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.88rem;
++      margin-bottom: 6px;
++      padding-bottom: 4px;
++      border-bottom: 1px solid var(--secondary);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .calorie-badge {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 0.75rem;
++      padding: 2px 6px;
++      border-radius: 999px;
++    }
++
++    .tooltip-meta {
++      list-style: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .tooltip-meta li {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 4px;
++      color: #5d4037;
++    }
++
++    .tooltip-meta li span:last-child {
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .tooltip-note {
++      margin-top: 6px;
++      font-size: 0.75rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +310,61 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tooltip-maple-oat">View Details</a>
++            <div class="tooltip-popover" id="tooltip-maple-oat" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition &amp; Info</span>
++                <span class="calorie-badge">210 kcal</span>
++              </div>
++              <ul class="tooltip-meta">
++                <li><span>Serving Size</span><span>12 oz (Grande)</span></li>
++                <li><span>Caffeine</span><span>150 mg</span></li>
++                <li><span>Total Sugars</span><span>18g</span></li>
++              </ul>
++              <div class="tooltip-note">100% dairy-free &bull; Pure Grade A maple</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/espresso" class="btn" aria-describedby="tooltip-espresso">View Details</a>
++            <div class="tooltip-popover" id="tooltip-espresso" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition &amp; Info</span>
++                <span class="calorie-badge">10 kcal</span>
++              </div>
++              <ul class="tooltip-meta">
++                <li><span>Serving Size</span><span>2 oz (Double Shot)</span></li>
++                <li><span>Caffeine</span><span>165 mg</span></li>
++                <li><span>Total Sugars</span><span>0g</span></li>
++              </ul>
++              <div class="tooltip-note">Notes of dark cocoa &amp; toasted walnut</div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tooltip-wrapper">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tooltip-cold-brew">View Details</a>
++            <div class="tooltip-popover" id="tooltip-cold-brew" role="tooltip">
++              <div class="tooltip-title">
++                <span>Nutrition &amp; Info</span>
++                <span class="calorie-badge">5 kcal</span>
++              </div>
++              <ul class="tooltip-meta">
++                <li><span>Serving Size</span><span>16 oz</span></li>
++                <li><span>Caffeine</span><span>205 mg</span></li>
++                <li><span>Total Sugars</span><span>0g</span></li>
++              </ul>
++              <div class="tooltip-note">Ultra-low acidity &bull; Served over ice</div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +378,22 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
++      const popover = wrapper.querySelector('.tooltip-popover');
++      const adjustPosition = () => {
++        if (!popover) return;
++        popover.classList.remove('flip-left');
++        const rect = popover.getBoundingClientRect();
++        if (rect.right > window.innerWidth - 12) {
++          popover.classList.add('flip-left');
++        }
++      };
++      wrapper.addEventListener('mouseenter', adjustPosition);
++      wrapper.addEventListener('focusin', adjustPosition);
++    });
++  </script>
+ </body>
+ 
+ </html>

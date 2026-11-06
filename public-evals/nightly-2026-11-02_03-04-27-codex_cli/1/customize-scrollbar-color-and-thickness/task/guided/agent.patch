@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,65 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback-section {
++      margin-top: 40px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++      max-height: 300px;
++      overflow-y: auto;
++      padding: 0 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .feedback-log figure {
++      padding: 20px 0;
++    }
++
++    .feedback-log figure + figure {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .feedback-log figcaption {
++      margin-top: 8px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 6px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 8px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +251,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <figure>
++          <blockquote><p>“The maple oat latte is my new fall favorite. Just the right amount of sweetness!”</p></blockquote>
++          <figcaption>— Alex M.</figcaption>
++        </figure>
++        <figure>
++          <blockquote><p>“Rich espresso, friendly baristas, and a cozy spot to start the morning.”</p></blockquote>
++          <figcaption>— Jordan R.</figcaption>
++        </figure>
++        <figure>
++          <blockquote><p>“The cold brew is so smooth. It’s become my afternoon pick-me-up.”</p></blockquote>
++          <figcaption>— Sam K.</figcaption>
++        </figure>
++        <figure>
++          <blockquote><p>“I love having a neighborhood coffee shop that cares about where its beans come from.”</p></blockquote>
++          <figcaption>— Taylor L.</figcaption>
++        </figure>
++        <figure>
++          <blockquote><p>“Great coffee and a warm welcome every time. Already looking forward to my next visit!”</p></blockquote>
++          <figcaption>— Casey D.</figcaption>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

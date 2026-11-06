@@ -1,0 +1,556 @@
+diff --git a/index.html b/index.html
+index 66c9173..a7589d9 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,261 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 1px var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Menu + order layout */
++    .menu-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 30px;
++      align-items: start;
++      margin-top: 20px;
++    }
++
++    @media (min-width: 900px) {
++      .menu-layout {
++        grid-template-columns: 1fr 300px;
++      }
++    }
++
++    .menu-layout .grid {
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      /* Cards size independently so one expanding card doesn't stretch its
++         row-mates outside of its own scoped transition */
++      align-items: start;
++      margin-top: 0;
++    }
++
++    /* Each card is its own transition scope */
++    .card {
++      overflow: clip;
++      view-transition-scope: all;
++    }
++
++    .card .price {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++      view-transition-name: price;
++    }
++
++    .sizes {
++      display: inline-flex;
++      gap: 4px;
++      margin-top: 12px;
++      padding: 4px;
++      border-radius: 999px;
++      background: var(--light);
++      view-transition-name: sizes;
++    }
++
++    .sizes button {
++      border: 0;
++      background: transparent;
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 4px 12px;
++      border-radius: 999px;
++      cursor: pointer;
++      color: var(--text);
++    }
++
++    .sizes button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .card-details {
++      margin-top: 15px;
++      padding-top: 15px;
++      border-top: 1px solid var(--secondary);
++      font-size: 0.9rem;
++      text-align: left;
++      view-transition-name: details;
++    }
++
++    .card-details dt {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .card-details dd {
++      margin-bottom: 8px;
++    }
++
++    .card-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 8px;
++      view-transition-name: actions;
++    }
++
++    .card-link {
++      display: inline-block;
++      margin-top: 12px;
++      font-size: 0.85rem;
++      color: var(--primary);
++      view-transition-name: link;
++    }
++
++    /* Order panel is a separate transition scope */
++    .order {
++      position: sticky;
++      top: 90px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: clip;
++      view-transition-scope: all;
++    }
++
++    .order-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      view-transition-name: order-header;
++    }
++
++    .order-header h2 {
++      font-size: 1.25rem;
++    }
++
++    .order-header .btn {
++      margin-top: 0;
++      padding: 4px 10px;
++      font-size: 0.8rem;
++    }
++
++    .order-empty {
++      margin-top: 15px;
++      color: #6d4c41;
++      font-size: 0.9rem;
++      view-transition-name: order-empty;
++    }
++
++    .order-list {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .order-list li {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid var(--secondary);
++      background: white;
++      view-transition-name: match-element;
++      view-transition-class: order-item;
++    }
++
++    .order-list .item-label {
++      flex: 1;
++      font-size: 0.9rem;
++    }
++
++    .order-list .item-label small {
++      display: block;
++      color: #6d4c41;
++    }
++
++    .order-list .item-price {
++      font-weight: bold;
++      font-size: 0.9rem;
++    }
++
++    .order-list .remove {
++      border: 0;
++      background: transparent;
++      font: inherit;
++      font-size: 1.1rem;
++      line-height: 1;
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      cursor: pointer;
++      color: var(--primary);
++    }
++
++    .order-list .remove:hover {
++      background: var(--secondary);
++    }
++
++    .order-total {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 15px;
++      font-weight: bold;
++      view-transition-name: order-total;
++    }
++
++    /* Scoped view transition styling */
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-new(.order-item):only-child {
++      animation: 300ms ease-out both item-in;
++    }
++
++    ::view-transition-old(.order-item):only-child {
++      animation: 250ms ease-in both item-out;
++    }
++
++    @keyframes item-in {
++      from {
++        opacity: 0;
++        translate: 40px 0;
++      }
++    }
++
++    @keyframes item-out {
++      to {
++        opacity: 0;
++        translate: -40px 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,23 +432,99 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      <div class="menu-layout">
++        <div class="grid">
++          <article class="card" data-item="maple" data-name="Maple Oat Latte" data-price="5.25">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="sizes" role="group" aria-label="Size">
++              <button type="button" data-size="Small" aria-pressed="false">12 oz</button>
++              <button type="button" data-size="Medium" aria-pressed="true">16 oz</button>
++              <button type="button" data-size="Large" aria-pressed="false">20 oz</button>
++            </div>
++            <p class="price"></p>
++            <div class="card-details" id="details-maple" hidden>
++              <dl>
++                <dt>Tasting notes</dt>
++                <dd>Toasted grain, brown sugar, soft vanilla finish.</dd>
++                <dt>Origin</dt>
++                <dd>Colombia &amp; Brazil house blend</dd>
++                <dt>Caffeine</dt>
++                <dd>Medium &middot; ~130 mg (16 oz)</dd>
++              </dl>
++            </div>
++            <div class="card-actions">
++              <button type="button" class="btn btn-secondary" data-action="details" aria-expanded="false"
++                aria-controls="details-maple">More info</button>
++              <button type="button" class="btn" data-action="add">Add to order</button>
++            </div>
++            <a href="/menu/seasonal" class="card-link">View full details</a>
++          </article>
++          <article class="card" data-item="espresso" data-name="Dark Roast Espresso" data-price="3.50">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="sizes" role="group" aria-label="Size">
++              <button type="button" data-size="Small" aria-pressed="false">12 oz</button>
++              <button type="button" data-size="Medium" aria-pressed="true">16 oz</button>
++              <button type="button" data-size="Large" aria-pressed="false">20 oz</button>
++            </div>
++            <p class="price"></p>
++            <div class="card-details" id="details-espresso" hidden>
++              <dl>
++                <dt>Tasting notes</dt>
++                <dd>Dark chocolate, smoke, toasted walnut.</dd>
++                <dt>Origin</dt>
++                <dd>Sumatra Mandheling</dd>
++                <dt>Caffeine</dt>
++                <dd>High &middot; ~150 mg (16 oz)</dd>
++              </dl>
++            </div>
++            <div class="card-actions">
++              <button type="button" class="btn btn-secondary" data-action="details" aria-expanded="false"
++                aria-controls="details-espresso">More info</button>
++              <button type="button" class="btn" data-action="add">Add to order</button>
++            </div>
++            <a href="/menu/espresso" class="card-link">View full details</a>
++          </article>
++          <article class="card" data-item="cold-brew" data-name="Cold Brew" data-price="4.75">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="sizes" role="group" aria-label="Size">
++              <button type="button" data-size="Small" aria-pressed="false">12 oz</button>
++              <button type="button" data-size="Medium" aria-pressed="true">16 oz</button>
++              <button type="button" data-size="Large" aria-pressed="false">20 oz</button>
++            </div>
++            <p class="price"></p>
++            <div class="card-details" id="details-cold-brew" hidden>
++              <dl>
++                <dt>Tasting notes</dt>
++                <dd>Cocoa, stone fruit, low acidity.</dd>
++                <dt>Origin</dt>
++                <dd>Ethiopia Guji</dd>
++                <dt>Caffeine</dt>
++                <dd>High &middot; ~200 mg (16 oz)</dd>
++              </dl>
++            </div>
++            <div class="card-actions">
++              <button type="button" class="btn btn-secondary" data-action="details" aria-expanded="false"
++                aria-controls="details-cold-brew">More info</button>
++              <button type="button" class="btn" data-action="add">Add to order</button>
++            </div>
++            <a href="/menu/cold-brew" class="card-link">View full details</a>
++          </article>
+         </div>
++
++        <aside class="order" aria-labelledby="order-heading">
++          <div class="order-header">
++            <h2 id="order-heading">Your Order</h2>
++            <button type="button" class="btn btn-secondary" data-action="sort" hidden>Sort: price &uarr;</button>
++          </div>
++          <p class="order-empty">Nothing here yet. Add a drink to get started.</p>
++          <ul class="order-list"></ul>
++          <p class="order-total"><span>Total</span><span class="total-amount"></span></p>
++        </aside>
+       </div>
++      <p class="visually-hidden" role="status" id="order-status"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +538,174 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const SIZE_UPCHARGE = { Small: -0.5, Medium: 0, Large: 0.75 };
++    const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    // Animate a DOM update scoped to one component subtree, so the rest of the
++    // page stays interactive and other components can transition concurrently.
++    function runScopedTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++      const transition = scopeEl.startViewTransition(updateDOM);
++      // Re-triggering on the same scope skips the active transition and rejects `ready`
++      transition.ready.catch(() => {});
++    }
++
++    function priceFor(card, size) {
++      return Number(card.dataset.price) + SIZE_UPCHARGE[size];
++    }
++
++    function selectedSize(card) {
++      return card.querySelector('.sizes [aria-pressed="true"]').dataset.size;
++    }
++
++    function renderCardPrice(card) {
++      card.querySelector('.price').textContent = currency.format(priceFor(card, selectedSize(card)));
++    }
++
++    // Menu cards
++    const grid = document.querySelector('.menu-layout .grid');
++    grid.querySelectorAll('.card').forEach(renderCardPrice);
++
++    grid.addEventListener('click', (event) => {
++      const card = event.target.closest('.card');
++      if (!card) return;
++
++      const sizeButton = event.target.closest('.sizes button');
++      if (sizeButton && sizeButton.getAttribute('aria-pressed') !== 'true') {
++        runScopedTransition(card, () => {
++          card.querySelectorAll('.sizes button').forEach((button) => {
++            button.setAttribute('aria-pressed', String(button === sizeButton));
++          });
++          renderCardPrice(card);
++        });
++        return;
++      }
++
++      const action = event.target.closest('[data-action]')?.dataset.action;
++      if (action === 'details') {
++        const toggle = event.target.closest('[data-action]');
++        const details = card.querySelector('.card-details');
++        runScopedTransition(card, () => {
++          const expanded = details.hidden;
++          details.hidden = !expanded;
++          toggle.setAttribute('aria-expanded', String(expanded));
++          toggle.textContent = expanded ? 'Less info' : 'More info';
++        });
++      } else if (action === 'add') {
++        addToOrder(card);
++      }
++    });
++
++    // Order panel
++    const order = document.querySelector('.order');
++    const orderList = order.querySelector('.order-list');
++    const orderEmpty = order.querySelector('.order-empty');
++    const orderTotal = order.querySelector('.total-amount');
++    const sortButton = order.querySelector('[data-action="sort"]');
++    const orderStatus = document.getElementById('order-status');
++    let sortAscending = true;
++
++    function lineTotal(li) {
++      return Number(li.dataset.unitPrice) * Number(li.dataset.qty);
++    }
++
++    function renderLine(li) {
++      const qty = Number(li.dataset.qty);
++      li.querySelector('.item-label small').textContent = `${li.dataset.size}${qty > 1 ? ` × ${qty}` : ''}`;
++      li.querySelector('.item-price').textContent = currency.format(lineTotal(li));
++    }
++
++    function renderOrderSummary() {
++      const items = [...orderList.children];
++      orderEmpty.hidden = items.length > 0;
++      sortButton.hidden = items.length < 2;
++      orderTotal.textContent = currency.format(items.reduce((sum, li) => sum + lineTotal(li), 0));
++    }
++
++    function createLine(card, size) {
++      const li = document.createElement('li');
++      li.dataset.id = `${card.dataset.item}-${size}`;
++      li.dataset.size = size;
++      li.dataset.qty = '0';
++      li.dataset.unitPrice = String(priceFor(card, size));
++
++      const label = document.createElement('span');
++      label.className = 'item-label';
++      label.append(card.dataset.name, document.createElement('small'));
++
++      const price = document.createElement('span');
++      price.className = 'item-price';
++
++      const remove = document.createElement('button');
++      remove.type = 'button';
++      remove.className = 'remove';
++      remove.textContent = '×';
++      remove.setAttribute('aria-label', `Remove ${card.dataset.name} (${size})`);
++
++      li.append(label, price, remove);
++      return li;
++    }
++
++    function addToOrder(card) {
++      const size = selectedSize(card);
++      const id = `${card.dataset.item}-${size}`;
++      runScopedTransition(order, () => {
++        let li = orderList.querySelector(`li[data-id="${id}"]`);
++        if (!li) {
++          li = createLine(card, size);
++          orderList.append(li);
++        }
++        li.dataset.qty = String(Number(li.dataset.qty) + 1);
++        renderLine(li);
++        renderOrderSummary();
++      });
++      orderStatus.textContent = `Added ${card.dataset.name} (${size}) to your order.`;
++    }
++
++    function removeLine(li) {
++      const hadFocus = li.contains(document.activeElement);
++      const nextFocusTarget =
++        li.nextElementSibling?.querySelector('.remove') ??
++        li.previousElementSibling?.querySelector('.remove') ??
++        grid.querySelector('[data-action="add"]');
++      const name = li.querySelector('.item-label').firstChild.textContent;
++
++      runScopedTransition(order, () => {
++        li.remove();
++        renderOrderSummary();
++        if (hadFocus) nextFocusTarget?.focus();
++      });
++      orderStatus.textContent = `Removed ${name} (${li.dataset.size}) from your order.`;
++    }
++
++    function sortOrder() {
++      // Move existing nodes so `match-element` can track each line's identity
++      const sorted = [...orderList.children].sort((a, b) =>
++        sortAscending ? lineTotal(a) - lineTotal(b) : lineTotal(b) - lineTotal(a));
++      runScopedTransition(orderList, () => {
++        orderList.append(...sorted);
++      });
++      sortAscending = !sortAscending;
++      sortButton.innerHTML = `Sort: price ${sortAscending ? '&uarr;' : '&darr;'}`;
++    }
++
++    order.addEventListener('click', (event) => {
++      const remove = event.target.closest('.remove');
++      if (remove) {
++        removeLine(remove.closest('li'));
++      } else if (event.target.closest('[data-action="sort"]')) {
++        sortOrder();
++      }
++    });
++
++    renderOrderSummary();
++  </script>
++
+ </body>
+ 
+ </html>

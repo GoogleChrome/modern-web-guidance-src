@@ -1,0 +1,351 @@
+diff --git a/index.html b/index.html
+index 66c9173..1df2232 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,7 +85,7 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+@@ -152,10 +152,168 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    :root {
++      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 5px;
++    }
++
++    nav { gap: 16px; flex-wrap: wrap; }
++    nav ul { gap: 8px 20px; flex-wrap: wrap; }
++    nav ul li { margin-left: 0; }
++    nav a { position: relative; display: inline-block; padding-block: 5px; }
++    nav a::after {
++      content: '';
++      position: absolute;
++      inset: auto 0 -2px;
++      height: 2px;
++      background: var(--accent);
++      opacity: 0;
++      transition: opacity 180ms ease;
++    }
++    nav a:is(:hover, :focus-visible) { color: var(--accent); }
++    nav a:is(:hover, :focus-visible)::after { opacity: 1; }
++    nav .logout-link { padding: 5px 12px; }
++    nav .logout-link::after { content: none; }
++    .logout-link { transition: color 180ms ease, background-color 180ms ease; }
++    .logout-link:is(:hover, :focus-visible) { background: #65463d; }
++
++    .hero h1 { font-size: clamp(2.2rem, 6vw, 3.5rem); line-height: 1.15; }
++    .hero > .btn { background: var(--accent); color: var(--text); font-weight: 700; }
++    .hero > .btn:is(:hover, :focus-visible) { background: #ffc16e; }
++    .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      transition: background-color 180ms ease, color 180ms ease;
++    }
++    .btn:is(:hover, :focus-visible) { background: #3e2723; }
++    .card { border: 1px solid #ece4df; }
++    .card p { flex: 1; }
++    .card { display: flex; flex-direction: column; align-items: center; }
++    .footer-links a { transition: color 180ms ease; }
++    .footer-links a:is(:hover, :focus-visible) { color: #785126; text-decoration: underline; }
++
++    .roast-banner {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      width: min(100%, 570px);
++      margin-top: 32px;
++      padding: 12px 16px;
++      border: 1px solid #ffffff50;
++      border-radius: 8px;
++      background: #291c18db;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++    .roast-window { flex: 1; min-width: 0; overflow: hidden; }
++    .roast-track { display: flex; width: max-content; }
++    .roast-copy { padding-right: 32px; white-space: nowrap; }
++    .roast-copy[aria-hidden] { display: none; }
++    .roast-copy strong { color: #ffd49a; }
++    .roast-toggle {
++      flex: none;
++      border: 1px solid #ffffff70;
++      border-radius: 4px;
++      padding: 5px 10px;
++      color: white;
++      background: transparent;
++      cursor: pointer;
++      font: inherit;
++      transition: background-color 180ms ease;
++    }
++    .roast-toggle:is(:hover, :focus-visible) { background: #ffffff20; }
++    .roast-toggle:disabled { cursor: default; opacity: 0.75; }
++    .roast-banner[data-paused="true"] .roast-track { animation-play-state: paused; }
++
++    dialog {
++      margin: auto;
++      width: min(500px, calc(100% - 32px));
++      max-height: calc(100% - 48px);
++      padding: clamp(24px, 5vw, 40px);
++      border: 1px solid #e4d7ca;
++      border-radius: 16px;
++      background: #fffaf4;
++      color: var(--text);
++      box-shadow: 0 24px 80px #1d100b50;
++      opacity: 0;
++      transition: opacity 160ms ease, display 160ms, overlay 160ms;
++      transition-behavior: allow-discrete;
++    }
++    dialog:modal { overscroll-behavior: contain; }
++    dialog::backdrop {
++      background: #20150fd9;
++      opacity: 0;
++      overflow: hidden;
++      overscroll-behavior: contain;
++      transition: opacity 160ms ease, display 160ms, overlay 160ms;
++      transition-behavior: allow-discrete;
++    }
++    dialog[open]:not([data-closing]),
++    dialog[open]:not([data-closing])::backdrop { opacity: 1; }
++    .detail-eyebrow {
++      color: #76512c;
++      text-transform: uppercase;
++      letter-spacing: 0.15em;
++      font-size: 0.75rem;
++      font-weight: 700;
++      margin-bottom: 12px;
++    }
++    dialog h2 { font-size: 1.85rem; line-height: 1.2; margin-bottom: 16px; }
++    .detail-notes { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e4d7ca; }
++    .detail-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
++    .detail-close { background: #e7dcd2; color: var(--text); }
++    .detail-close:is(:hover, :focus-visible) { background: #d8c8ba; }
++
++    @starting-style {
++      dialog[open]:not([data-closing]),
++      dialog[open]:not([data-closing])::backdrop { opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a::after { transform: scaleX(0); transform-origin: left; transition: transform 220ms var(--ease-out), opacity 180ms ease; }
++      nav a:is(:hover, :focus-visible)::after { transform: scaleX(1); }
++      .btn { transition: transform 250ms var(--ease-out), background-color 180ms ease, color 180ms ease; }
++      .btn:is(:hover, :focus-visible) { transform: translateY(-3px); }
++      .btn:active { transform: translateY(0) scale(0.98); }
++      .card { transition: transform 350ms var(--ease-out); }
++      .card:is(:hover, :focus-within) { transform: translateY(-7px); }
++      .hero h1 { animation: rise-in 700ms var(--ease-out) both; }
++      .hero > p { animation: rise-in 700ms 100ms var(--ease-out) both; }
++      .hero > .btn { animation: rise-in 700ms 200ms var(--ease-out) both; }
++      .roast-track { animation: daily-roast 22s linear infinite; }
++      .roast-copy[aria-hidden] { display: block; }
++      dialog { transform: translateY(18px) scale(0.97); transition-duration: 280ms; }
++      dialog[open]:not([data-closing]) { transform: translateY(0) scale(1); }
++      dialog::backdrop { transition-duration: 280ms; }
++      @starting-style {
++        dialog[open]:not([data-closing]) { transform: translateY(18px) scale(0.97); }
++      }
++    }
++    @media (prefers-reduced-motion: reduce) {
++      .roast-copy { white-space: normal; padding-right: 0; }
++    }
++    @keyframes rise-in {
++      from { opacity: 0; transform: translateY(16px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++    @keyframes daily-roast { to { transform: translateX(-50%); } }
++    @media (max-width: 600px) {
++      nav { padding-block: 16px; }
++      nav ul { gap: 8px 16px; }
++      .roast-banner { gap: 10px; padding: 10px 12px; }
++      .grid { grid-template-columns: 1fr; }
++    }
+   </style>
+ </head>
+ 
+-<body>
++<body data-last-animation-state="idle">
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+@@ -172,6 +330,15 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-banner" data-paused="false" aria-label="Daily roast">
++      <div class="roast-window" id="daily-roast">
++        <div class="roast-track">
++          <span class="roast-copy"><strong>THE DAILY ROAST</strong> &nbsp;•&nbsp; Small batches. Fresh mornings. Your daily ritual.</span>
++          <span class="roast-copy" aria-hidden="true"><strong>THE DAILY ROAST</strong> &nbsp;•&nbsp; Small batches. Fresh mornings. Your daily ritual.</span>
++        </div>
++      </div>
++      <button type="button" class="roast-toggle" aria-controls="daily-roast" aria-label="Pause daily roast animation" aria-pressed="false">Pause</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +348,33 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only"> for Maple Oat Latte</span></button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="espresso" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only"> for Dark Roast Espresso</span></button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only"> for Cold Brew</span></button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-details" aria-labelledby="drink-title" aria-describedby="drink-description" closedby="any">
++    <p class="detail-eyebrow">Seasonal favorites · The Daily Grind</p>
++    <h2 id="drink-title"></h2>
++    <p id="drink-description"></p>
++    <p class="detail-notes" id="drink-notes"></p>
++    <div class="detail-actions">
++      <a class="btn" id="drink-menu" href="/menu">Explore this drink</a>
++      <button type="button" class="btn detail-close" autofocus>Close details</button>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +385,105 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    // Prefer the exact animation supplied by the event, including pseudo-elements.
++    // Older engines don't expose event.animation; keep lifecycle reporting useful there.
++    function recordAnimationState(event) {
++      const animation = event.animation;
++      const fallbackStates = {
++        animationstart: 'running', animationiteration: 'running', animationend: 'finished', animationcancel: 'idle',
++        transitionrun: 'running', transitionstart: 'running', transitionend: 'finished', transitioncancel: 'idle'
++      };
++      document.body.dataset.lastAnimationState = animation?.playState ?? fallbackStates[event.type];
++    }
++    for (const type of ['animationstart', 'animationiteration', 'animationend', 'animationcancel',
++      'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel']) {
++      document.addEventListener(type, recordAnimationState);
++    }
++
++    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const banner = document.querySelector('.roast-banner');
++    const toggle = document.querySelector('.roast-toggle');
++    let userPaused = false;
++    function updateRoastMotion() {
++      const reduced = motionPreference.matches;
++      const paused = userPaused || reduced;
++      banner.dataset.paused = String(paused);
++      toggle.disabled = reduced;
++      toggle.textContent = reduced ? 'Motion off' : userPaused ? 'Resume' : 'Pause';
++      toggle.setAttribute('aria-pressed', String(paused));
++      toggle.setAttribute('aria-label', reduced ? 'Daily roast animation off: reduced motion preference' :
++        `${userPaused ? 'Resume' : 'Pause'} daily roast animation`);
++      document.body.dataset.lastAnimationState = paused ? 'paused' : 'running';
++    }
++    toggle.addEventListener('click', () => { userPaused = !userPaused; updateRoastMotion(); });
++    motionPreference.addEventListener('change', updateRoastMotion);
++    updateRoastMotion();
++
++    const drinks = {
++      maple: {
++        title: 'Maple Oat Latte',
++        description: 'Creamy oat milk meets rich espresso and a hint of Vermont maple syrup. A cozy, gently sweet cup for slow mornings.',
++        notes: 'Tasting notes: maple, toasted oats, caramel. Made with oat milk.',
++        href: '/menu/seasonal'
++      },
++      espresso: {
++        title: 'Dark Roast Espresso',
++        description: 'A concentrated shot of our dark roast: bold, smoky, and full-bodied, with a rich crema and a lingering finish.',
++        notes: 'Tasting notes: dark cocoa, toasted nuts, smoky finish. Served as an espresso.',
++        href: '/menu/espresso'
++      },
++      'cold-brew': {
++        title: 'Cold Brew',
++        description: 'Steeped for 18 hours to bring out deep coffee flavor with a mellow finish. Smooth, refreshing, and poured over ice.',
++        notes: 'Tasting notes: cocoa, subtle sweetness, smooth finish. Served chilled.',
++        href: '/menu/cold-brew'
++      }
++    };
++    const dialog = document.querySelector('#drink-details');
++    for (const button of document.querySelectorAll('[data-drink]')) {
++      button.addEventListener('click', () => {
++        const drink = drinks[button.dataset.drink];
++        document.querySelector('#drink-title').textContent = drink.title;
++        document.querySelector('#drink-description').textContent = drink.description;
++        document.querySelector('#drink-notes').textContent = drink.notes;
++        document.querySelector('#drink-menu').href = drink.href;
++        dialog.showModal();
++      });
++    }
++
++    // Hold the native modal in the top layer until exit effects settle. This also
++    // supports engines that parse allow-discrete but cannot transition display/overlay.
++    async function closeDetails() {
++      if (!dialog.open || dialog.hasAttribute('data-closing')) return;
++      dialog.setAttribute('data-closing', '');
++      const effects = dialog.getAnimations({ subtree: true });
++      let timeout;
++      await Promise.race([
++        Promise.allSettled(effects.map(animation => animation.finished)),
++        new Promise(resolve => { timeout = setTimeout(resolve, 800); })
++      ]);
++      clearTimeout(timeout);
++      dialog.close();
++      dialog.removeAttribute('data-closing');
++    }
++    dialog.querySelector('.detail-close').addEventListener('click', closeDetails);
++    dialog.addEventListener('cancel', event => { event.preventDefault(); closeDetails(); });
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = event => {
++        const rect = dialog.getBoundingClientRect();
++        return event.clientX < rect.left || event.clientX > rect.right ||
++          event.clientY < rect.top || event.clientY > rect.bottom;
++      };
++      let pressedOutside = false;
++      dialog.addEventListener('pointerdown', event => { pressedOutside = outside(event); });
++      dialog.addEventListener('pointerup', event => {
++        if (pressedOutside && outside(event)) closeDetails();
++        pressedOutside = false;
++      });
++      dialog.addEventListener('pointercancel', () => { pressedOutside = false; });
++    }
++  </script>
+ </body>
+ 
+ </html>

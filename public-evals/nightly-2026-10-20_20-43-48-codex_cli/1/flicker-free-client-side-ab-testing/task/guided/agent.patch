@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,79 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#f7f5f1">
++  <meta name="description" content="Forma brings your projects, notes, and team together in one beautifully simple workspace.">
++  <title>Forma — Make room for your best work.</title>
++  <style>html.experiment-pending { visibility: hidden; }</style>
++  <script>
++    // Install the fallback before requesting the SDK, including on a warm cache.
++    (() => {
++      const root = document.documentElement;
++      if (!('blocking' in HTMLScriptElement.prototype)) {
++        root.classList.add('experiment-pending');
++      }
++      const settle = (event) => {
++        if (event.target.id !== 'experiment-sdk') return;
++        // An SDK that applies changes at DOMContentLoaded gets to finish first.
++        const reveal = () => {
++          root.classList.remove('experiment-pending');
++          root.dataset.experimentStatus = event.type === 'error' ? 'unavailable' : 'loaded';
++        };
++        if (document.readyState === 'loading') {
++          document.addEventListener('DOMContentLoaded', reveal, { once: true });
++        } else reveal();
++        document.removeEventListener('load', settle, true);
++        document.removeEventListener('error', settle, true);
++      };
++      document.addEventListener('load', settle, true);
++      document.addEventListener('error', settle, true);
++    })();
++  </script>
++  <script id="experiment-sdk" src="https://cdn.example.com/experiment-sdk.js" async blocking="render"></script>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="styles.css">
++  <script src="app.js" defer></script>
++</head>
++<body>
++  <header class="site-header wrap">
++    <a class="brand" href="#" aria-label="Forma home"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>forma<span class="brand-dot">®</span></a>
++    <nav aria-label="Main navigation"><a href="#features">Why Forma</a><a href="#workspace">Product</a><a href="#pricing">Pricing</a></nav>
++    <button class="button button-dark header-cta" data-signup>Get started <span aria-hidden="true">↗</span></button>
++  </header>
++  <main>
++    <section class="hero wrap" aria-labelledby="hero-title">
++      <div class="hero-copy">
++        <div class="eyebrow"><span></span> LESS BUSYWORK. MORE POSSIBILITY.</div>
++        <h1 id="hero-title" data-experiment="headline">Make room for<br>your <span>best work.</span></h1>
++        <p class="hero-description">A little less chaos. A lot more clarity. Bring your<br class="desktop-break"> projects, ideas, and people together in one calm<br class="desktop-break"> workspace. That’s Forma.</p>
++        <div class="hero-actions"><button class="button button-primary" data-signup data-experiment="cta">Find your flow <span aria-hidden="true">↗</span></button><span class="trial-note">Free to start.<br>No credit card needed.</span></div>
++        <div class="social-proof"><div class="avatars" aria-hidden="true"><span>JL</span><span>AM</span><span>SK</span><span>RB</span></div><div><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><p>Good company for <strong>12,000+ teams</strong></p></div></div>
++      </div>
++      <div class="hero-art" id="workspace" aria-label="Preview of the Forma project workspace">
++        <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
++        <div class="floating-note"><span class="note-icon">✳</span> A clear space.<br><strong>A clearer mind.</strong><svg viewBox="0 0 100 35" aria-hidden="true"><path d="M4 11 Q 43 34 87 11 M78 5 L91 10 L84 23"/></svg></div>
++        <div class="workspace-window">
++          <div class="window-top"><div class="window-dots"><i></i><i></i><i></i></div><span>Good things are taking shape.</span><span>↗</span></div>
++          <div class="workspace-body">
++            <aside class="app-sidebar"><div class="app-brand"><span>◧</span> Studio North <small>⌄</small></div><div class="sidebar-link">⌕ <span>Search anything</span> <small>⌘ K</small></div><div class="sidebar-link">⌂ <span>Overview</span></div><div class="sidebar-link active">▦ <span>Projects</span> <small>6</small></div><div class="sidebar-link">▤ <span>My tasks</span></div><div class="sidebar-link">◷ <span>Calendar</span></div><div class="sidebar-label">YOUR WORKSPACES <span>+</span></div><div class="sidebar-link"><i class="little-dot pink"></i><span>Brand & design</span></div><div class="sidebar-link"><i class="little-dot purple"></i><span>Marketing</span></div><div class="sidebar-link"><i class="little-dot green"></i><span>Product</span></div><div class="sidebar-bottom"><span class="mini-avatar">J</span> Jamie’s workspace <span>⌄</span></div></aside>
++            <div class="app-main"><div class="breadcrumbs">Workspace <span>/</span> Projects <span>···</span></div><div class="project-heading"><div><div class="project-icon">✳</div><h2>A fresh perspective</h2><p>Big ideas start with a little space.</p></div><span class="invite">+ Invite</span></div><div class="project-tabs"><span class="selected">▦ &nbsp; Board</span><span>☷ &nbsp; List</span><span>▣ &nbsp; Timeline</span><span class="filter">⚙ &nbsp; Filter</span></div>
++            <div class="kanban"><div class="kanban-column"><div class="column-title"><span><i class="little-dot neutral"></i> To do <small>3</small></span><span>+</span></div><div class="task-card"><span class="tag lilac">Strategy</span><h3>Make space for what’s next</h3><p>Ideas, inspiration & a fresh start.</p><div class="task-footer"><span>☷ 4 &nbsp; ◷ Apr 24</span><span class="mini-avatar mauve">A</span></div></div><div class="task-card"><span class="tag peach">Brand</span><h3>A new kind of moodboard</h3><div class="moodboard"><div></div><div></div><div><span>less,<br>but better.</span></div></div><div class="task-footer"><span>▧ 3</span><span class="mini-avatar tan">M</span></div></div><div class="add-task">+ &nbsp; Add a task</div></div><div class="kanban-column"><div class="column-title"><span><i class="little-dot pink"></i> In progress <small>2</small></span><span>+</span></div><div class="task-card"><span class="tag mint">Website</span><h3>A home for our ideas</h3><p>A thoughtful first impression.</p><div class="task-check">◉ &nbsp; Wireframes</div><div class="task-check">◉ &nbsp; Visual direction</div><div class="progress-track"><span></span></div><div class="task-footer"><span>☷ 2/3</span><span class="mini-avatar mauve">J</span></div></div><div class="task-card"><span class="tag peach">Brand</span><h3>Finding our voice</h3><p>Words that feel like us.</p><div class="task-footer"><span>☏ 6 &nbsp; ◷ Apr 25</span><span class="mini-avatar tan">S</span></div></div><div class="add-task">+ &nbsp; Add a task</div></div></div>
++            </div>
++          </div>
++        </div>
++        <div class="floating-progress"><div class="progress-icon">↗</div><div><strong>A little more in flow.</strong><span>Less managing. More making.</span></div><div class="sparkle">✧</div></div>
++        <div class="handwritten">Your next big thing starts here.<svg viewBox="0 0 80 40" aria-hidden="true"><path d="M75 30 Q30 38 10 7 M8 20 L8 5 L24 7"/></svg></div>
++      </div>
++    </section>
++    <section class="trusted wrap" aria-label="Teams using Forma"><p>FOR TEAMS THAT DO THINGS A LITTLE DIFFERENTLY.</p><div class="company-logos"><span class="logo-capsule">◒ Capsule</span><span class="logo-luminous">✳ Luminous</span><span class="logo-nietzsche">▥ Nietzsche</span><span class="logo-spherule">◉ Spherule</span><span class="logo-layers">▱ Layers</span></div></section>
++    <section class="features wrap" id="features"><div class="section-heading"><div class="eyebrow">A LITTLE STRUCTURE. A LOT OF FREEDOM.</div><h2>Everything in its happy place.</h2><p>All the tools you need. None of the noise you don’t.</p></div><div class="feature-grid"><article><span class="feature-icon pink-bg">▦</span><div><h3>Big-picture clarity</h3><p>See the plan. Know what’s next.<br>Keep everyone moving together.</p></div></article><article><span class="feature-icon yellow-bg">✧</span><div><h3>Space for your ideas</h3><p>From a fleeting thought to the next<br>big thing. Give your ideas a home.</p></div></article><article><span class="feature-icon green-bg">⌘</span><div><h3>Better, together</h3><p>Less back-and-forth. More in sync.<br>Make good work a team thing.</p></div></article></div></section>
++    <section class="pricing wrap" id="pricing"><div><span class="eyebrow">A FRESH START</span><h2>Your best work is ahead of you.</h2><p>Start free with up to 3 projects and a workspace for your team.</p></div><button class="button button-dark" data-signup>Make yourself at home <span aria-hidden="true">↗</span></button></section>
++  </main>
++  <footer class="wrap"><a class="brand" href="#">forma<span class="brand-dot">®</span></a><span>A little more space for good work.</span><small>© 2026 Forma</small></footer>
++  <dialog id="signup-dialog" aria-labelledby="signup-title"><form method="dialog" class="dialog-close"><button aria-label="Close">×</button></form><span class="dialog-mark">✳</span><h2 id="signup-title">Make yourself at home.</h2><p>A calmer workspace is on its way. Join the early access list and we’ll keep you in the loop.</p><form id="signup-form"><label for="email">Your work email</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required><button class="button button-primary" type="submit">Join the list <span aria-hidden="true">↗</span></button><p class="form-note">No spam. Just a little good news.</p></form><p id="signup-success" role="status" hidden>You’re on the list! Your next chapter starts here.</p></dialog>
++</body>
++</html>

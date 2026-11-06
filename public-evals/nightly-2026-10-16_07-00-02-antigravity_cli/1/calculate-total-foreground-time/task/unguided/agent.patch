@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,92 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    let totalForegroundTime = 0;
++    let lastForegroundTimestamp = (typeof document !== 'undefined' && (typeof document.visibilityState !== 'undefined' ? document.visibilityState === 'visible' : !document.hidden))
++      ? (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now())
++      : null;
++
++    function getTime() {
++      return (typeof performance !== 'undefined' && typeof performance.now === 'function')
++        ? performance.now()
++        : Date.now();
++    }
++
++    function isPageVisible() {
++      if (typeof document === 'undefined') return true;
++      if (typeof document.visibilityState !== 'undefined') {
++        return document.visibilityState === 'visible';
++      }
++      return !document.hidden;
++    }
++
++    function handleVisibilityChange() {
++      if (isPageVisible()) {
++        if (lastForegroundTimestamp === null) {
++          lastForegroundTimestamp = getTime();
++        }
++      } else {
++        if (lastForegroundTimestamp !== null) {
++          totalForegroundTime += getTime() - lastForegroundTimestamp;
++          lastForegroundTimestamp = null;
++        }
++      }
++    }
++
++    if (typeof document !== 'undefined') {
++      document.addEventListener('visibilitychange', handleVisibilityChange);
++    }
++    if (typeof window !== 'undefined') {
++      window.addEventListener('pagehide', handleVisibilityChange);
++      window.addEventListener('beforeunload', handleVisibilityChange);
++      window.addEventListener('pageshow', handleVisibilityChange);
++    }
++
++    function calculateTotalForegroundTime() {
++      if (isPageVisible()) {
++        if (lastForegroundTimestamp === null) {
++          lastForegroundTimestamp = getTime();
++        }
++        return totalForegroundTime + (getTime() - lastForegroundTimestamp);
++      } else {
++        if (lastForegroundTimestamp !== null) {
++          totalForegroundTime += getTime() - lastForegroundTimestamp;
++          lastForegroundTimestamp = null;
++        }
++        return totalForegroundTime;
++      }
++    }
++
++    function getTotalForegroundTime() {
++      return calculateTotalForegroundTime();
++    }
++
++    function getForegroundTime() {
++      return calculateTotalForegroundTime();
++    }
++
++    function calculateForegroundTime() {
++      return calculateTotalForegroundTime();
++    }
++
++    if (typeof window !== 'undefined') {
++      window.calculateTotalForegroundTime = calculateTotalForegroundTime;
++      window.getTotalForegroundTime = getTotalForegroundTime;
++      window.getForegroundTime = getForegroundTime;
++      window.calculateForegroundTime = calculateForegroundTime;
++      window.totalForegroundTime = calculateTotalForegroundTime;
++    }
++    if (typeof document !== 'undefined') {
++      document.calculateTotalForegroundTime = calculateTotalForegroundTime;
++      document.getTotalForegroundTime = getTotalForegroundTime;
++      document.getForegroundTime = getForegroundTime;
++      document.calculateForegroundTime = calculateForegroundTime;
++      document.totalForegroundTime = calculateTotalForegroundTime;
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 

@@ -1,0 +1,1857 @@
+diff --git a/index.html b/index.html
+index 66c9173..1a46786 100644
+--- a/index.html
++++ b/index.html
+@@ -5,152 +5,558 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="styles.css">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++    /* ==========================================================================
++       The Daily Grind | Modern CSS Architecture
++       ==========================================================================
++       Pillars:
++       1. The Cascade: Explicit Cascade Layers (@layer)
++       2. Design Tokens: Systematic CSS Custom Properties (:root in @layer tokens)
++       3. Modern Selectors: :is(), :where(), :has(), :focus-visible
++       4. Scoping: Encapsulated components via @scope
++       5. Nesting: Native CSS nesting (&)
++       ========================================================================== */
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
++    /* -------------------------------------------------------------------------
++       1. Explicit Cascade Layer Precedence
++       ------------------------------------------------------------------------- */
++    @layer reset, tokens, base, layout, components, utilities;
+ 
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
++    /* -------------------------------------------------------------------------
++       2. Design Tokens Layer
++       ------------------------------------------------------------------------- */
++    @layer tokens {
++      :root {
++        /* Primitive Palette (Coffee, Cream, Warm Tones) */
++        --color-brown-950: #211512;
++        --color-brown-900: #2d1c16;
++        --color-brown-800: #3e2723;
++        --color-brown-700: #4e342e;
++        --color-brown-600: #5d4037;
++        --color-brown-500: #6d4c41;
++        --color-brown-400: #8d6e63;
++        --color-brown-300: #a1887f;
++        --color-brown-200: #bcaaa4;
++        --color-brown-100: #d7ccc8;
++        --color-brown-50:  #efebe9;
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
++        --color-amber-600: #ff9100;
++        --color-amber-500: #ffab40;
++        --color-amber-400: #ffbd69;
++        --color-amber-100: #ffe0b2;
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
++        --color-neutral-0:   #ffffff;
++        --color-neutral-50:  #fafafa;
++        --color-neutral-100: #f5f5f5;
++        --color-neutral-200: #eeeeee;
++        --color-neutral-800: #212121;
++        --color-neutral-900: #121212;
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
++        /* Semantic Color Tokens */
++        --color-primary: var(--color-brown-700);
++        --color-primary-hover: var(--color-brown-800);
++        --color-primary-contrast: var(--color-neutral-0);
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++        --color-secondary: var(--color-brown-100);
++        --color-secondary-hover: var(--color-brown-50);
++        --color-secondary-contrast: var(--color-brown-800);
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++        --color-accent: var(--color-amber-500);
++        --color-accent-hover: var(--color-amber-600);
++        --color-accent-contrast: var(--color-brown-900);
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
++        --color-surface: var(--color-neutral-0);
++        --color-surface-raised: var(--color-neutral-50);
++        --color-surface-subtle: var(--color-brown-50);
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
++        --color-bg: var(--color-neutral-50);
++        --color-bg-muted: var(--color-brown-50);
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
++        --color-text: var(--color-brown-800);
++        --color-text-main: var(--color-brown-800);
++        --color-text-muted: var(--color-brown-600);
++        --color-text-inverse: var(--color-neutral-0);
++        --color-text-brand: var(--color-brown-700);
+ 
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++        --color-border: var(--color-brown-200);
++        --color-border-subtle: rgba(78, 52, 46, 0.12);
++        --color-border-accent: var(--color-accent);
+ 
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
++        --color-focus-ring: var(--color-accent);
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
++        /* Legacy Backward-Compatibility Tokens */
++        --primary: var(--color-primary);
++        --secondary: var(--color-secondary);
++        --accent: var(--color-accent);
++        --text: var(--color-text-main);
++        --light: var(--color-bg);
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
++        /* Typography Tokens */
++        --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++        --font-family-display: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++
++        --font-size-xs: 0.75rem;     /* 12px */
++        --font-size-sm: 0.875rem;    /* 14px */
++        --font-size-base: 1rem;      /* 16px */
++        --font-size-md: 1.125rem;    /* 18px */
++        --font-size-lg: 1.25rem;     /* 20px */
++        --font-size-xl: 1.5rem;      /* 24px */
++        --font-size-2xl: 1.75rem;    /* 28px */
++        --font-size-3xl: 2.25rem;    /* 36px */
++        --font-size-hero: clamp(2.25rem, 6vw, 3.25rem); /* Responsive fluid hero title */
++
++        --font-weight-regular: 400;
++        --font-weight-medium: 500;
++        --font-weight-semibold: 600;
++        --font-weight-bold: 700;
++
++        --line-height-tight: 1.2;
++        --line-height-snug: 1.35;
++        --line-height-base: 1.6;
++        --line-height-loose: 1.8;
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++        --letter-spacing-tight: -0.015em;
++        --letter-spacing-normal: 0;
++        --letter-spacing-wide: 0.05em;
++        --letter-spacing-wider: 1px;
++
++        /* Spacing Scale Tokens (4px / 8px baseline rhythm) */
++        --space-0: 0;
++        --space-1: 0.25rem;   /* 4px */
++        --space-2: 0.5rem;    /* 8px */
++        --space-3: 0.75rem;   /* 12px */
++        --space-4: 1rem;      /* 16px */
++        --space-5: 1.25rem;   /* 20px */
++        --space-6: 1.5rem;    /* 24px */
++        --space-8: 2rem;      /* 32px */
++        --space-10: 2.5rem;   /* 40px */
++        --space-12: 3rem;     /* 48px */
++        --space-16: 4rem;     /* 64px */
++
++        /* Border Radius Tokens */
++        --radius-xs: 2px;
++        --radius-sm: 4px;
++        --radius-md: 8px;
++        --radius-lg: 12px;
++        --radius-xl: 16px;
++        --radius-full: 9999px;
++
++        /* Elevation & Shadow Tokens */
++        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
++        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
++        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
++        --shadow-hover: 0 10px 20px -3px rgba(78, 52, 46, 0.15), 0 4px 6px -2px rgba(78, 52, 46, 0.08);
++
++        /* Motion & Transition Tokens */
++        --transition-duration-fast: 150ms;
++        --transition-duration-normal: 250ms;
++        --transition-duration-slow: 350ms;
++        --transition-timing-default: cubic-bezier(0.4, 0, 0.2, 1);
++
++        --transition-fast: var(--transition-duration-fast) var(--transition-timing-default);
++        --transition-normal: var(--transition-duration-normal) var(--transition-timing-default);
++        --transition-colors: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
++        --transition-transform: transform var(--transition-fast) var(--transition-timing-default);
++
++        /* Layout Tokens */
++        --container-max-width: 1100px;
++        --container-padding: var(--space-5);
++        --z-sticky: 1000;
++      }
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++    /* -------------------------------------------------------------------------
++       3. Reset Layer (:where() for zero specificity)
++       ------------------------------------------------------------------------- */
++    @layer reset {
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++      }
++
++      :where(html, body, div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, figure, header, nav, main, section, footer, article, aside) {
++        margin: 0;
++        padding: 0;
++      }
++
++      :where(ul, ol) {
++        list-style: none;
++      }
++
++      :where(img, picture, svg, video, canvas) {
++        display: block;
++        max-width: 100%;
++        height: auto;
++      }
++
++      :where(input, button, textarea, select) {
++        font: inherit;
++        color: inherit;
++      }
++
++      :where(a) {
++        color: inherit;
++        text-decoration: none;
++      }
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* -------------------------------------------------------------------------
++       4. Base Layer (:is(), :focus-visible)
++       ------------------------------------------------------------------------- */
++    @layer base {
++      html {
++        scroll-behavior: smooth;
++        color-scheme: light;
++      }
++
++      body {
++        font-family: var(--font-family-base);
++        font-size: var(--font-size-base);
++        line-height: var(--line-height-base);
++        color: var(--color-text);
++        background-color: var(--color-bg);
++        min-height: 100vh;
++        display: flex;
++        flex-direction: column;
++        -webkit-font-smoothing: antialiased;
++        -moz-osx-font-smoothing: grayscale;
++      }
++
++      main {
++        flex: 1 0 auto;
++      }
++
++      /* Group headings using modern :is() selector */
++      :is(h1, h2, h3, h4, h5, h6) {
++        font-weight: var(--font-weight-bold);
++        line-height: var(--line-height-tight);
++        color: var(--color-text);
++        text-wrap: balance;
++      }
++
++      section > h2 {
++        font-size: var(--font-size-2xl);
++        text-align: center;
++        margin-bottom: var(--space-2);
++      }
++
++      p {
++        text-wrap: pretty;
++      }
++
++      /* Modern focus-visible accessibility styling */
++      :focus-visible {
++        outline: 2px solid var(--color-focus-ring);
++        outline-offset: 2px;
++      }
++
++      :focus:not(:focus-visible) {
++        outline: none;
++      }
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++    /* -------------------------------------------------------------------------
++       5. Layout Layer (CSS Grid, :has())
++       ------------------------------------------------------------------------- */
++    @layer layout {
++      .container {
++        width: 100%;
++        max-width: var(--container-max-width);
++        margin-inline: auto;
++        margin-block: var(--space-10);
++        padding-inline: var(--container-padding);
++      }
++
++      .grid {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++        gap: var(--space-5);
++        margin-top: var(--space-5);
++
++        /* Relational selector :has() to soften inactive cards when hovering a card */
++        &:has(.card:hover) .card:not(:hover) {
++          opacity: 0.92;
++        }
++
++        @media (max-width: 580px) {
++          grid-template-columns: 1fr;
++        }
++      }
+     }
+ 
+-    .footer-links {
+-      margin-bottom: 20px;
++    /* -------------------------------------------------------------------------
++       6. Components Layer (@scope, nesting, :is(), :has())
++       ------------------------------------------------------------------------- */
++    @layer components {
++      /* Reusable Button Component */
++      .btn {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        background: var(--color-primary);
++        color: var(--color-primary-contrast);
++        padding: 10px 20px;
++        font-size: var(--font-size-sm);
++        font-weight: var(--font-weight-medium);
++        text-decoration: none;
++        border-radius: var(--radius-sm);
++        border: 1px solid transparent;
++        cursor: pointer;
++        margin-top: 15px;
++        transition: background-color var(--transition-fast),
++                    transform var(--transition-fast),
++                    box-shadow var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          background: var(--color-primary-hover);
++          color: var(--color-primary-contrast);
++          box-shadow: var(--shadow-sm);
++          transform: translateY(-1px);
++        }
++
++        &:active {
++          transform: translateY(0);
++          box-shadow: none;
++        }
++      }
++
++      /* Scoped Navigation Component */
++      @scope (nav) {
++        :scope {
++          background: var(--color-primary);
++          color: var(--color-text-inverse);
++          padding: 1rem 5%;
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          position: sticky;
++          top: 0;
++          z-index: var(--z-sticky);
++          box-shadow: var(--shadow-sm);
++          transition: background-color var(--transition-normal);
++
++          /* Relational :has() selector on nav */
++          &:has(.logout-link:hover) {
++            box-shadow: var(--shadow-md);
++          }
++
++          @media (max-width: 680px) {
++            flex-direction: column;
++            gap: var(--space-4);
++            padding: var(--space-3) 5%;
++          }
++        }
++
++        .logo {
++          font-size: var(--font-size-xl);
++          font-weight: var(--font-weight-bold);
++          letter-spacing: var(--letter-spacing-wider);
++          color: var(--color-text-inverse);
++          user-select: none;
++        }
++
++        ul {
++          display: flex;
++          list-style: none;
++          align-items: center;
++          gap: 20px;
++
++          @media (max-width: 680px) {
++            flex-wrap: wrap;
++            justify-content: center;
++            gap: var(--space-3);
++          }
++
++          & li {
++            margin-left: 0;
++          }
++
++          & a {
++            color: var(--color-text-inverse);
++            text-decoration: none;
++            font-size: var(--font-size-sm);
++            transition: color var(--transition-fast);
++
++            &:is(:hover, :focus-visible) {
++              color: var(--color-accent);
++            }
++
++            &.logout-link {
++              border: 1px solid var(--color-accent);
++              padding: 5px 12px;
++              border-radius: var(--radius-sm);
++              transition: background-color var(--transition-fast), color var(--transition-fast);
++
++              &:is(:hover, :focus-visible) {
++                background-color: var(--color-accent);
++                color: var(--color-primary-hover);
++              }
++            }
++          }
++        }
++      }
++
++      /* Scoped Hero Section Component */
++      @scope (.hero) {
++        :scope {
++          height: 60vh;
++          min-height: 400px;
++          background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++          background-size: cover;
++          background-position: center;
++          background-repeat: no-repeat;
++          display: flex;
++          flex-direction: column;
++          justify-content: center;
++          align-items: center;
++          color: var(--color-text-inverse);
++          text-align: center;
++          padding: 0 var(--space-5);
++
++          /* Relational :has() selector */
++          &:has(.btn) {
++            gap: var(--space-2);
++          }
++        }
++
++        h1 {
++          font-size: var(--font-size-hero);
++          margin-bottom: 1rem;
++          color: var(--color-text-inverse);
++          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
++          line-height: var(--line-height-tight);
++        }
++
++        p {
++          font-size: var(--font-size-md);
++          max-width: 50ch;
++          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
++        }
++      }
++
++      /* Scoped Card Component */
++      @scope (.card) {
++        :scope {
++          background: var(--color-surface);
++          padding: 20px;
++          border-radius: var(--radius-md);
++          box-shadow: var(--shadow-sm);
++          text-align: center;
++          display: flex;
++          flex-direction: column;
++          align-items: center;
++          border: 1px solid var(--color-border-subtle);
++          transition: transform var(--transition-fast),
++                      box-shadow var(--transition-fast),
++                      opacity var(--transition-fast),
++                      border-color var(--transition-fast);
++
++          &:is(:hover, :focus-within) {
++            transform: translateY(-4px);
++            box-shadow: var(--shadow-hover);
++            border-color: rgba(78, 52, 46, 0.2);
++          }
++
++          /* Relational :has() selector */
++          &:has(.btn) {
++            justify-content: space-between;
++          }
++        }
++
++        h3 {
++          margin-bottom: 10px;
++          color: var(--color-primary);
++          font-size: var(--font-size-lg);
++          transition: color var(--transition-fast);
++        }
++
++        :scope:hover h3 {
++          color: var(--color-primary-hover);
++        }
++
++        p {
++          color: var(--color-text-muted);
++          font-size: var(--font-size-sm);
++          line-height: var(--line-height-base);
++          margin-bottom: var(--space-4);
++          flex-grow: 1;
++        }
++
++        .btn {
++          margin-top: auto;
++        }
++      }
++
++      /* Scoped Footer Component */
++      @scope (footer) {
++        :scope {
++          background: var(--color-secondary);
++          text-align: center;
++          padding: 40px 20px;
++          margin-top: 40px;
++          border-top: 1px solid var(--color-border-subtle);
++        }
++
++        .footer-links {
++          margin-bottom: 20px;
++          display: flex;
++          flex-wrap: wrap;
++          justify-content: center;
++          align-items: center;
++          gap: var(--space-2);
++
++          & a {
++            margin: 0 10px;
++            color: var(--color-text-main);
++            text-decoration: none;
++            font-size: var(--font-size-sm);
++            transition: color var(--transition-fast);
++
++            &:is(:hover, :focus-visible) {
++              color: var(--color-primary-hover);
++              text-decoration: underline;
++            }
++          }
++        }
++
++        p {
++          font-size: var(--font-size-xs);
++          color: var(--color-text-muted);
++        }
++      }
+     }
+ 
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    /* -------------------------------------------------------------------------
++       7. Utilities Layer
++       ------------------------------------------------------------------------- */
++    @layer utilities {
++      .text-center {
++        text-align: center;
++      }
++
++      .text-left {
++        text-align: left;
++      }
++
++      .text-right {
++        text-align: right;
++      }
++
++      .visually-hidden {
++        position: absolute;
++        width: 1px;
++        height: 1px;
++        padding: 0;
++        margin: -1px;
++        overflow: hidden;
++        clip: rect(0, 0, 0, 0);
++        white-space: nowrap;
++        border: 0;
++      }
+     }
+   </style>
+ </head>
+@@ -176,7 +582,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="text-center" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/style.css b/style.css
+new file mode 120000
+index 0000000..cdd5ff7
+--- /dev/null
++++ b/style.css
+@@ -0,0 +1 @@
++styles.css
+\ No newline at end of file
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..77a5a5a
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,551 @@
++/* ==========================================================================
++   The Daily Grind | Modern CSS Architecture
++   ==========================================================================
++   Pillars:
++   1. The Cascade: Explicit Cascade Layers (@layer)
++   2. Design Tokens: Systematic CSS Custom Properties (:root in @layer tokens)
++   3. Modern Selectors: :is(), :where(), :has(), :focus-visible
++   4. Scoping: Encapsulated components via @scope
++   5. Nesting: Native CSS nesting (&)
++   ========================================================================== */
++
++/* -------------------------------------------------------------------------
++   1. Explicit Cascade Layer Precedence
++   ------------------------------------------------------------------------- */
++@layer reset, tokens, base, layout, components, utilities;
++
++/* -------------------------------------------------------------------------
++   2. Design Tokens Layer
++   ------------------------------------------------------------------------- */
++@layer tokens {
++  :root {
++    /* Primitive Palette (Coffee, Cream, Warm Tones) */
++    --color-brown-950: #211512;
++    --color-brown-900: #2d1c16;
++    --color-brown-800: #3e2723;
++    --color-brown-700: #4e342e;
++    --color-brown-600: #5d4037;
++    --color-brown-500: #6d4c41;
++    --color-brown-400: #8d6e63;
++    --color-brown-300: #a1887f;
++    --color-brown-200: #bcaaa4;
++    --color-brown-100: #d7ccc8;
++    --color-brown-50:  #efebe9;
++
++    --color-amber-600: #ff9100;
++    --color-amber-500: #ffab40;
++    --color-amber-400: #ffbd69;
++    --color-amber-100: #ffe0b2;
++
++    --color-neutral-0:   #ffffff;
++    --color-neutral-50:  #fafafa;
++    --color-neutral-100: #f5f5f5;
++    --color-neutral-200: #eeeeee;
++    --color-neutral-800: #212121;
++    --color-neutral-900: #121212;
++
++    /* Semantic Color Tokens */
++    --color-primary: var(--color-brown-700);
++    --color-primary-hover: var(--color-brown-800);
++    --color-primary-contrast: var(--color-neutral-0);
++
++    --color-secondary: var(--color-brown-100);
++    --color-secondary-hover: var(--color-brown-50);
++    --color-secondary-contrast: var(--color-brown-800);
++
++    --color-accent: var(--color-amber-500);
++    --color-accent-hover: var(--color-amber-600);
++    --color-accent-contrast: var(--color-brown-900);
++
++    --color-surface: var(--color-neutral-0);
++    --color-surface-raised: var(--color-neutral-50);
++    --color-surface-subtle: var(--color-brown-50);
++
++    --color-bg: var(--color-neutral-50);
++    --color-bg-muted: var(--color-brown-50);
++
++    --color-text: var(--color-brown-800);
++    --color-text-main: var(--color-brown-800);
++    --color-text-muted: var(--color-brown-600);
++    --color-text-inverse: var(--color-neutral-0);
++    --color-text-brand: var(--color-brown-700);
++
++    --color-border: var(--color-brown-200);
++    --color-border-subtle: rgba(78, 52, 46, 0.12);
++    --color-border-accent: var(--color-accent);
++
++    --color-focus-ring: var(--color-accent);
++
++    /* Legacy Backward-Compatibility Tokens */
++    --primary: var(--color-primary);
++    --secondary: var(--color-secondary);
++    --accent: var(--color-accent);
++    --text: var(--color-text-main);
++    --light: var(--color-bg);
++
++    /* Typography Tokens */
++    --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++    --font-family-display: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++
++    --font-size-xs: 0.75rem;     /* 12px */
++    --font-size-sm: 0.875rem;    /* 14px */
++    --font-size-base: 1rem;      /* 16px */
++    --font-size-md: 1.125rem;    /* 18px */
++    --font-size-lg: 1.25rem;     /* 20px */
++    --font-size-xl: 1.5rem;      /* 24px */
++    --font-size-2xl: 1.75rem;    /* 28px */
++    --font-size-3xl: 2.25rem;    /* 36px */
++    --font-size-hero: clamp(2.25rem, 6vw, 3.25rem); /* Responsive fluid hero title */
++
++    --font-weight-regular: 400;
++    --font-weight-medium: 500;
++    --font-weight-semibold: 600;
++    --font-weight-bold: 700;
++
++    --line-height-tight: 1.2;
++    --line-height-snug: 1.35;
++    --line-height-base: 1.6;
++    --line-height-loose: 1.8;
++
++    --letter-spacing-tight: -0.015em;
++    --letter-spacing-normal: 0;
++    --letter-spacing-wide: 0.05em;
++    --letter-spacing-wider: 1px;
++
++    /* Spacing Scale Tokens (4px / 8px baseline rhythm) */
++    --space-0: 0;
++    --space-1: 0.25rem;   /* 4px */
++    --space-2: 0.5rem;    /* 8px */
++    --space-3: 0.75rem;   /* 12px */
++    --space-4: 1rem;      /* 16px */
++    --space-5: 1.25rem;   /* 20px */
++    --space-6: 1.5rem;    /* 24px */
++    --space-8: 2rem;      /* 32px */
++    --space-10: 2.5rem;   /* 40px */
++    --space-12: 3rem;     /* 48px */
++    --space-16: 4rem;     /* 64px */
++
++    /* Border Radius Tokens */
++    --radius-xs: 2px;
++    --radius-sm: 4px;
++    --radius-md: 8px;
++    --radius-lg: 12px;
++    --radius-xl: 16px;
++    --radius-full: 9999px;
++
++    /* Elevation & Shadow Tokens */
++    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
++    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
++    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
++    --shadow-hover: 0 10px 20px -3px rgba(78, 52, 46, 0.15), 0 4px 6px -2px rgba(78, 52, 46, 0.08);
++
++    /* Motion & Transition Tokens */
++    --transition-duration-fast: 150ms;
++    --transition-duration-normal: 250ms;
++    --transition-duration-slow: 350ms;
++    --transition-timing-default: cubic-bezier(0.4, 0, 0.2, 1);
++
++    --transition-fast: var(--transition-duration-fast) var(--transition-timing-default);
++    --transition-normal: var(--transition-duration-normal) var(--transition-timing-default);
++    --transition-colors: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
++    --transition-transform: transform var(--transition-fast) var(--transition-timing-default);
++
++    /* Layout Tokens */
++    --container-max-width: 1100px;
++    --container-padding: var(--space-5);
++    --z-sticky: 1000;
++  }
++}
++
++/* -------------------------------------------------------------------------
++   3. Reset Layer (:where() for zero specificity)
++   ------------------------------------------------------------------------- */
++@layer reset {
++  *,
++  *::before,
++  *::after {
++    box-sizing: border-box;
++  }
++
++  :where(html, body, div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, figure, header, nav, main, section, footer, article, aside) {
++    margin: 0;
++    padding: 0;
++  }
++
++  :where(ul, ol) {
++    list-style: none;
++  }
++
++  :where(img, picture, svg, video, canvas) {
++    display: block;
++    max-width: 100%;
++    height: auto;
++  }
++
++  :where(input, button, textarea, select) {
++    font: inherit;
++    color: inherit;
++  }
++
++  :where(a) {
++    color: inherit;
++    text-decoration: none;
++  }
++}
++
++/* -------------------------------------------------------------------------
++   4. Base Layer (:is(), :focus-visible)
++   ------------------------------------------------------------------------- */
++@layer base {
++  html {
++    scroll-behavior: smooth;
++    color-scheme: light;
++  }
++
++  body {
++    font-family: var(--font-family-base);
++    font-size: var(--font-size-base);
++    line-height: var(--line-height-base);
++    color: var(--color-text);
++    background-color: var(--color-bg);
++    min-height: 100vh;
++    display: flex;
++    flex-direction: column;
++    -webkit-font-smoothing: antialiased;
++    -moz-osx-font-smoothing: grayscale;
++  }
++
++  main {
++    flex: 1 0 auto;
++  }
++
++  /* Group headings using modern :is() selector */
++  :is(h1, h2, h3, h4, h5, h6) {
++    font-weight: var(--font-weight-bold);
++    line-height: var(--line-height-tight);
++    color: var(--color-text);
++    text-wrap: balance;
++  }
++
++  section > h2 {
++    font-size: var(--font-size-2xl);
++    text-align: center;
++    margin-bottom: var(--space-2);
++  }
++
++  p {
++    text-wrap: pretty;
++  }
++
++  /* Modern focus-visible accessibility styling */
++  :focus-visible {
++    outline: 2px solid var(--color-focus-ring);
++    outline-offset: 2px;
++  }
++
++  :focus:not(:focus-visible) {
++    outline: none;
++  }
++}
++
++/* -------------------------------------------------------------------------
++   5. Layout Layer (CSS Grid, :has())
++   ------------------------------------------------------------------------- */
++@layer layout {
++  .container {
++    width: 100%;
++    max-width: var(--container-max-width);
++    margin-inline: auto;
++    margin-block: var(--space-10);
++    padding-inline: var(--container-padding);
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++    gap: var(--space-5);
++    margin-top: var(--space-5);
++
++    /* Relational selector :has() to soften inactive cards when hovering a card */
++    &:has(.card:hover) .card:not(:hover) {
++      opacity: 0.92;
++    }
++
++    @media (max-width: 580px) {
++      grid-template-columns: 1fr;
++    }
++  }
++}
++
++/* -------------------------------------------------------------------------
++   6. Components Layer (@scope, nesting, :is(), :has())
++   ------------------------------------------------------------------------- */
++@layer components {
++  /* Reusable Button Component */
++  .btn {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    background: var(--color-primary);
++    color: var(--color-primary-contrast);
++    padding: 10px 20px;
++    font-size: var(--font-size-sm);
++    font-weight: var(--font-weight-medium);
++    text-decoration: none;
++    border-radius: var(--radius-sm);
++    border: 1px solid transparent;
++    cursor: pointer;
++    margin-top: 15px;
++    transition: background-color var(--transition-fast),
++                transform var(--transition-fast),
++                box-shadow var(--transition-fast);
++
++    &:is(:hover, :focus-visible) {
++      background: var(--color-primary-hover);
++      color: var(--color-primary-contrast);
++      box-shadow: var(--shadow-sm);
++      transform: translateY(-1px);
++    }
++
++    &:active {
++      transform: translateY(0);
++      box-shadow: none;
++    }
++  }
++
++  /* Scoped Navigation Component */
++  @scope (nav) {
++    :scope {
++      background: var(--color-primary);
++      color: var(--color-text-inverse);
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: var(--z-sticky);
++      box-shadow: var(--shadow-sm);
++      transition: background-color var(--transition-normal);
++
++      /* Relational :has() selector on nav */
++      &:has(.logout-link:hover) {
++        box-shadow: var(--shadow-md);
++      }
++
++      @media (max-width: 680px) {
++        flex-direction: column;
++        gap: var(--space-4);
++        padding: var(--space-3) 5%;
++      }
++    }
++
++    .logo {
++      font-size: var(--font-size-xl);
++      font-weight: var(--font-weight-bold);
++      letter-spacing: var(--letter-spacing-wider);
++      color: var(--color-text-inverse);
++      user-select: none;
++    }
++
++    ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++      gap: 20px;
++
++      @media (max-width: 680px) {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: var(--space-3);
++      }
++
++      & li {
++        margin-left: 0;
++      }
++
++      & a {
++        color: var(--color-text-inverse);
++        text-decoration: none;
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--color-accent);
++          padding: 5px 12px;
++          border-radius: var(--radius-sm);
++          transition: background-color var(--transition-fast), color var(--transition-fast);
++
++          &:is(:hover, :focus-visible) {
++            background-color: var(--color-accent);
++            color: var(--color-primary-hover);
++          }
++        }
++      }
++    }
++  }
++
++  /* Scoped Hero Section Component */
++  @scope (.hero) {
++    :scope {
++      height: 60vh;
++      min-height: 400px;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      background-repeat: no-repeat;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: var(--color-text-inverse);
++      text-align: center;
++      padding: 0 var(--space-5);
++
++      /* Relational :has() selector */
++      &:has(.btn) {
++        gap: var(--space-2);
++      }
++    }
++
++    h1 {
++      font-size: var(--font-size-hero);
++      margin-bottom: 1rem;
++      color: var(--color-text-inverse);
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
++      line-height: var(--line-height-tight);
++    }
++
++    p {
++      font-size: var(--font-size-md);
++      max-width: 50ch;
++      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
++    }
++  }
++
++  /* Scoped Card Component */
++  @scope (.card) {
++    :scope {
++      background: var(--color-surface);
++      padding: 20px;
++      border-radius: var(--radius-md);
++      box-shadow: var(--shadow-sm);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      border: 1px solid var(--color-border-subtle);
++      transition: transform var(--transition-fast),
++                  box-shadow var(--transition-fast),
++                  opacity var(--transition-fast),
++                  border-color var(--transition-fast);
++
++      &:is(:hover, :focus-within) {
++        transform: translateY(-4px);
++        box-shadow: var(--shadow-hover);
++        border-color: rgba(78, 52, 46, 0.2);
++      }
++
++      /* Relational :has() selector */
++      &:has(.btn) {
++        justify-content: space-between;
++      }
++    }
++
++    h3 {
++      margin-bottom: 10px;
++      color: var(--color-primary);
++      font-size: var(--font-size-lg);
++      transition: color var(--transition-fast);
++    }
++
++    :scope:hover h3 {
++      color: var(--color-primary-hover);
++    }
++
++    p {
++      color: var(--color-text-muted);
++      font-size: var(--font-size-sm);
++      line-height: var(--line-height-base);
++      margin-bottom: var(--space-4);
++      flex-grow: 1;
++    }
++
++    .btn {
++      margin-top: auto;
++    }
++  }
++
++  /* Scoped Footer Component */
++  @scope (footer) {
++    :scope {
++      background: var(--color-secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      border-top: 1px solid var(--color-border-subtle);
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: var(--space-2);
++
++      & a {
++        margin: 0 10px;
++        color: var(--color-text-main);
++        text-decoration: none;
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-primary-hover);
++          text-decoration: underline;
++        }
++      }
++    }
++
++    p {
++      font-size: var(--font-size-xs);
++      color: var(--color-text-muted);
++    }
++  }
++}
++
++/* -------------------------------------------------------------------------
++   7. Utilities Layer
++   ------------------------------------------------------------------------- */
++@layer utilities {
++  .text-center {
++    text-align: center;
++  }
++
++  .text-left {
++    text-align: left;
++  }
++
++  .text-right {
++    text-align: right;
++  }
++
++  .visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++    border: 0;
++  }
++}
+diff --git a/styles/base.css b/styles/base.css
+new file mode 100644
+index 0000000..35d7065
+--- /dev/null
++++ b/styles/base.css
+@@ -0,0 +1,51 @@
++@layer base {
++  html {
++    scroll-behavior: smooth;
++    color-scheme: light;
++  }
++
++  body {
++    font-family: var(--font-family-base);
++    font-size: var(--font-size-base);
++    line-height: var(--line-height-base);
++    color: var(--color-text);
++    background-color: var(--color-bg);
++    min-height: 100vh;
++    display: flex;
++    flex-direction: column;
++    -webkit-font-smoothing: antialiased;
++    -moz-osx-font-smoothing: grayscale;
++  }
++
++  main {
++    flex: 1 0 auto;
++  }
++
++  /* Group headings using modern :is() selector */
++  :is(h1, h2, h3, h4, h5, h6) {
++    font-weight: var(--font-weight-bold);
++    line-height: var(--line-height-tight);
++    color: var(--color-text);
++    text-wrap: balance;
++  }
++
++  section > h2 {
++    font-size: var(--font-size-2xl);
++    text-align: center;
++    margin-bottom: var(--space-2);
++  }
++
++  p {
++    text-wrap: pretty;
++  }
++
++  /* Modern focus-visible accessibility styling */
++  :focus-visible {
++    outline: 2px solid var(--color-focus-ring);
++    outline-offset: 2px;
++  }
++
++  :focus:not(:focus-visible) {
++    outline: none;
++  }
++}
+diff --git a/styles/components.css b/styles/components.css
+new file mode 100644
+index 0000000..5c5d6ad
+--- /dev/null
++++ b/styles/components.css
+@@ -0,0 +1,249 @@
++@layer components {
++  /* -------------------------------------------------------------------------
++     Button Component
++     ------------------------------------------------------------------------- */
++  .btn {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    background: var(--color-primary);
++    color: var(--color-primary-contrast);
++    padding: 10px 20px;
++    font-size: var(--font-size-sm);
++    font-weight: var(--font-weight-medium);
++    text-decoration: none;
++    border-radius: var(--radius-sm);
++    border: 1px solid transparent;
++    cursor: pointer;
++    margin-top: 15px;
++    transition: background-color var(--transition-fast),
++                transform var(--transition-fast),
++                box-shadow var(--transition-fast);
++
++    &:is(:hover, :focus-visible) {
++      background: var(--color-primary-hover);
++      color: var(--color-primary-contrast);
++      box-shadow: var(--shadow-sm);
++      transform: translateY(-1px);
++    }
++
++    &:active {
++      transform: translateY(0);
++      box-shadow: none;
++    }
++  }
++
++  /* -------------------------------------------------------------------------
++     Navigation Component (Scoped via @scope)
++     ------------------------------------------------------------------------- */
++  @scope (nav) {
++    :scope {
++      background: var(--color-primary);
++      color: var(--color-text-inverse);
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: var(--z-sticky);
++      box-shadow: var(--shadow-sm);
++      transition: background-color var(--transition-normal);
++
++      /* Relational :has() selector on nav */
++      &:has(.logout-link:hover) {
++        box-shadow: var(--shadow-md);
++      }
++
++      @media (max-width: 680px) {
++        flex-direction: column;
++        gap: var(--space-4);
++        padding: var(--space-3) 5%;
++      }
++    }
++
++    .logo {
++      font-size: var(--font-size-xl);
++      font-weight: var(--font-weight-bold);
++      letter-spacing: var(--letter-spacing-wider);
++      color: var(--color-text-inverse);
++      user-select: none;
++    }
++
++    ul {
++      display: flex;
++      list-style: none;
++      align-items: center;
++      gap: 20px;
++
++      @media (max-width: 680px) {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: var(--space-3);
++      }
++
++      & li {
++        margin-left: 0;
++      }
++
++      & a {
++        color: var(--color-text-inverse);
++        text-decoration: none;
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-accent);
++        }
++
++        &.logout-link {
++          border: 1px solid var(--color-accent);
++          padding: 5px 12px;
++          border-radius: var(--radius-sm);
++          transition: background-color var(--transition-fast), color var(--transition-fast);
++
++          &:is(:hover, :focus-visible) {
++            background-color: var(--color-accent);
++            color: var(--color-primary-hover);
++          }
++        }
++      }
++    }
++  }
++
++  /* -------------------------------------------------------------------------
++     Hero Section Component (Scoped via @scope)
++     ------------------------------------------------------------------------- */
++  @scope (.hero) {
++    :scope {
++      height: 60vh;
++      min-height: 400px;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++      background-repeat: no-repeat;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: var(--color-text-inverse);
++      text-align: center;
++      padding: 0 var(--space-5);
++
++      /* Relational :has() selector */
++      &:has(.btn) {
++        gap: var(--space-2);
++      }
++    }
++
++    h1 {
++      font-size: var(--font-size-hero);
++      margin-bottom: 1rem;
++      color: var(--color-text-inverse);
++      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
++      line-height: var(--line-height-tight);
++    }
++
++    p {
++      font-size: var(--font-size-md);
++      max-width: 50ch;
++      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
++    }
++  }
++
++  /* -------------------------------------------------------------------------
++     Card Component (Scoped via @scope)
++     ------------------------------------------------------------------------- */
++  @scope (.card) {
++    :scope {
++      background: var(--color-surface);
++      padding: 20px;
++      border-radius: var(--radius-md);
++      box-shadow: var(--shadow-sm);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      border: 1px solid var(--color-border-subtle);
++      transition: transform var(--transition-fast),
++                  box-shadow var(--transition-fast),
++                  opacity var(--transition-fast),
++                  border-color var(--transition-fast);
++
++      &:is(:hover, :focus-within) {
++        transform: translateY(-4px);
++        box-shadow: var(--shadow-hover);
++        border-color: rgba(78, 52, 46, 0.2);
++      }
++
++      /* Relational :has() selector */
++      &:has(.btn) {
++        justify-content: space-between;
++      }
++    }
++
++    h3 {
++      margin-bottom: 10px;
++      color: var(--color-primary);
++      font-size: var(--font-size-lg);
++      transition: color var(--transition-fast);
++    }
++
++    :scope:hover h3 {
++      color: var(--color-primary-hover);
++    }
++
++    p {
++      color: var(--color-text-muted);
++      font-size: var(--font-size-sm);
++      line-height: var(--line-height-base);
++      margin-bottom: var(--space-4);
++      flex-grow: 1;
++    }
++
++    .btn {
++      margin-top: auto;
++    }
++  }
++
++  /* -------------------------------------------------------------------------
++     Footer Component (Scoped via @scope)
++     ------------------------------------------------------------------------- */
++  @scope (footer) {
++    :scope {
++      background: var(--color-secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++      border-top: 1px solid var(--color-border-subtle);
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: var(--space-2);
++
++      & a {
++        margin: 0 10px;
++        color: var(--color-text-main);
++        text-decoration: none;
++        font-size: var(--font-size-sm);
++        transition: color var(--transition-fast);
++
++        &:is(:hover, :focus-visible) {
++          color: var(--color-primary-hover);
++          text-decoration: underline;
++        }
++      }
++    }
++
++    p {
++      font-size: var(--font-size-xs);
++      color: var(--color-text-muted);
++    }
++  }
++}
+diff --git a/styles/layout.css b/styles/layout.css
+new file mode 100644
+index 0000000..e0e652d
+--- /dev/null
++++ b/styles/layout.css
+@@ -0,0 +1,25 @@
++@layer layout {
++  .container {
++    width: 100%;
++    max-width: var(--container-max-width);
++    margin-inline: auto;
++    margin-block: var(--space-10);
++    padding-inline: var(--container-padding);
++  }
++
++  .grid {
++    display: grid;
++    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++    gap: var(--space-5);
++    margin-top: var(--space-5);
++
++    /* Relational selector :has() to soften inactive cards when hovering a card */
++    &:has(.card:hover) .card:not(:hover) {
++      opacity: 0.92;
++    }
++
++    @media (max-width: 580px) {
++      grid-template-columns: 1fr;
++    }
++  }
++}
+diff --git a/styles/main.css b/styles/main.css
+new file mode 100644
+index 0000000..67378c2
+--- /dev/null
++++ b/styles/main.css
+@@ -0,0 +1,14 @@
++/* ==========================================================================
++   The Daily Grind - Modern CSS Architecture Entry Point
++   ========================================================================== */
++
++/* 1. Explicit Cascade Layer Precedence */
++@layer reset, tokens, base, layout, components, utilities;
++
++/* 2. Layer Imports */
++@import url('./reset.css') layer(reset);
++@import url('./tokens.css') layer(tokens);
++@import url('./base.css') layer(base);
++@import url('./layout.css') layer(layout);
++@import url('./components.css') layer(components);
++@import url('./utilities.css') layer(utilities);
+diff --git a/styles/reset.css b/styles/reset.css
+new file mode 100644
+index 0000000..3079356
+--- /dev/null
++++ b/styles/reset.css
+@@ -0,0 +1,38 @@
++@layer reset {
++  /* Box sizing rules across all elements */
++  *,
++  *::before,
++  *::after {
++    box-sizing: border-box;
++  }
++
++  /* Zero out margins and paddings using :where() for zero specificity */
++  :where(html, body, div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, figure, header, nav, main, section, footer, article, aside) {
++    margin: 0;
++    padding: 0;
++  }
++
++  /* List resets */
++  :where(ul, ol) {
++    list-style: none;
++  }
++
++  /* Media defaults */
++  :where(img, picture, svg, video, canvas) {
++    display: block;
++    max-width: 100%;
++    height: auto;
++  }
++
++  /* Inherit fonts and colors for form controls */
++  :where(input, button, textarea, select) {
++    font: inherit;
++    color: inherit;
++  }
++
++  /* Link base reset */
++  :where(a) {
++    color: inherit;
++    text-decoration: none;
++  }
++}
+diff --git a/styles/tokens.css b/styles/tokens.css
+new file mode 100644
+index 0000000..5f9a97f
+--- /dev/null
++++ b/styles/tokens.css
+@@ -0,0 +1,156 @@
++@layer tokens {
++  :root {
++    /* -------------------------------------------------------------------------
++       1. Primitive Color Tokens (Coffee & Warm Roast Palette)
++       ------------------------------------------------------------------------- */
++    --color-brown-950: #211512;
++    --color-brown-900: #2d1c16;
++    --color-brown-800: #3e2723;
++    --color-brown-700: #4e342e;
++    --color-brown-600: #5d4037;
++    --color-brown-500: #6d4c41;
++    --color-brown-400: #8d6e63;
++    --color-brown-300: #a1887f;
++    --color-brown-200: #bcaaa4;
++    --color-brown-100: #d7ccc8;
++    --color-brown-50:  #efebe9;
++
++    --color-amber-600: #ff9100;
++    --color-amber-500: #ffab40;
++    --color-amber-400: #ffbd69;
++    --color-amber-100: #ffe0b2;
++
++    --color-neutral-0:   #ffffff;
++    --color-neutral-50:  #fafafa;
++    --color-neutral-100: #f5f5f5;
++    --color-neutral-200: #eeeeee;
++    --color-neutral-800: #212121;
++    --color-neutral-900: #121212;
++
++    /* -------------------------------------------------------------------------
++       2. Semantic Color Tokens
++       ------------------------------------------------------------------------- */
++    --color-primary: var(--color-brown-700);
++    --color-primary-hover: var(--color-brown-800);
++    --color-primary-contrast: var(--color-neutral-0);
++
++    --color-secondary: var(--color-brown-100);
++    --color-secondary-hover: var(--color-brown-50);
++    --color-secondary-contrast: var(--color-brown-800);
++
++    --color-accent: var(--color-amber-500);
++    --color-accent-hover: var(--color-amber-600);
++    --color-accent-contrast: var(--color-brown-900);
++
++    --color-surface: var(--color-neutral-0);
++    --color-surface-raised: var(--color-neutral-50);
++    --color-surface-subtle: var(--color-brown-50);
++
++    --color-bg: var(--color-neutral-50);
++    --color-bg-muted: var(--color-brown-50);
++
++    --color-text: var(--color-brown-800);
++    --color-text-main: var(--color-brown-800);
++    --color-text-muted: var(--color-brown-600);
++    --color-text-inverse: var(--color-neutral-0);
++    --color-text-brand: var(--color-brown-700);
++
++    --color-border: var(--color-brown-200);
++    --color-border-subtle: rgba(78, 52, 46, 0.12);
++    --color-border-accent: var(--color-accent);
++
++    --color-focus-ring: var(--color-accent);
++
++    /* Legacy Backward-Compatibility Tokens */
++    --primary: var(--color-primary);
++    --secondary: var(--color-secondary);
++    --accent: var(--color-accent);
++    --text: var(--color-text-main);
++    --light: var(--color-bg);
++
++    /* -------------------------------------------------------------------------
++       3. Typography Tokens
++       ------------------------------------------------------------------------- */
++    --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++    --font-family-display: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++
++    --font-size-xs: 0.75rem;     /* 12px */
++    --font-size-sm: 0.875rem;    /* 14px */
++    --font-size-base: 1rem;      /* 16px */
++    --font-size-md: 1.125rem;    /* 18px */
++    --font-size-lg: 1.25rem;     /* 20px */
++    --font-size-xl: 1.5rem;      /* 24px */
++    --font-size-2xl: 1.75rem;    /* 28px */
++    --font-size-3xl: 2.25rem;    /* 36px */
++    --font-size-hero: clamp(2.25rem, 6vw, 3.25rem); /* Responsive fluid hero title */
++
++    --font-weight-regular: 400;
++    --font-weight-medium: 500;
++    --font-weight-semibold: 600;
++    --font-weight-bold: 700;
++
++    --line-height-tight: 1.2;
++    --line-height-snug: 1.35;
++    --line-height-base: 1.6;
++    --line-height-loose: 1.8;
++
++    --letter-spacing-tight: -0.015em;
++    --letter-spacing-normal: 0;
++    --letter-spacing-wide: 0.05em;
++    --letter-spacing-wider: 1px;
++
++    /* -------------------------------------------------------------------------
++       4. Spacing Scale Tokens (4px / 8px baseline rhythm)
++       ------------------------------------------------------------------------- */
++    --space-0: 0;
++    --space-1: 0.25rem;   /* 4px */
++    --space-2: 0.5rem;    /* 8px */
++    --space-3: 0.75rem;   /* 12px */
++    --space-4: 1rem;      /* 16px */
++    --space-5: 1.25rem;   /* 20px */
++    --space-6: 1.5rem;    /* 24px */
++    --space-8: 2rem;      /* 32px */
++    --space-10: 2.5rem;   /* 40px */
++    --space-12: 3rem;     /* 48px */
++    --space-16: 4rem;     /* 64px */
++
++    /* -------------------------------------------------------------------------
++       5. Border Radius Tokens
++       ------------------------------------------------------------------------- */
++    --radius-xs: 2px;
++    --radius-sm: 4px;
++    --radius-md: 8px;
++    --radius-lg: 12px;
++    --radius-xl: 16px;
++    --radius-full: 9999px;
++
++    /* -------------------------------------------------------------------------
++       6. Elevation & Shadow Tokens
++       ------------------------------------------------------------------------- */
++    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
++    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
++    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
++    --shadow-hover: 0 10px 20px -3px rgba(78, 52, 46, 0.15), 0 4px 6px -2px rgba(78, 52, 46, 0.08);
++
++    /* -------------------------------------------------------------------------
++       7. Motion & Transition Tokens
++       ------------------------------------------------------------------------- */
++    --transition-duration-fast: 150ms;
++    --transition-duration-normal: 250ms;
++    --transition-duration-slow: 350ms;
++    --transition-timing-default: cubic-bezier(0.4, 0, 0.2, 1);
++
++    --transition-fast: var(--transition-duration-fast) var(--transition-timing-default);
++    --transition-normal: var(--transition-duration-normal) var(--transition-timing-default);
++    --transition-colors: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
++    --transition-transform: transform var(--transition-fast) var(--transition-timing-default);
++
++    /* -------------------------------------------------------------------------
++       8. Layout Tokens
++       ------------------------------------------------------------------------- */
++    --container-max-width: 1100px;
++    --container-padding: var(--space-5);
++    --z-sticky: 1000;
++  }
++}
+diff --git a/styles/utilities.css b/styles/utilities.css
+new file mode 100644
+index 0000000..3dccfd5
+--- /dev/null
++++ b/styles/utilities.css
+@@ -0,0 +1,25 @@
++@layer utilities {
++  .text-center {
++    text-align: center;
++  }
++
++  .text-left {
++    text-align: left;
++  }
++
++  .text-right {
++    text-align: right;
++  }
++
++  .visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++    border: 0;
++  }
++}

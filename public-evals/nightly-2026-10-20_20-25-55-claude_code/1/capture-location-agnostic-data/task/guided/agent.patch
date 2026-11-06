@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,32 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .preferences {
++      margin-top: 40px;
++    }
++
++    .prefs-card {
++      max-width: 420px;
++      margin: 20px auto 0;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .prefs-card input {
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .prefs-card button {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +218,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences">
++      <h2 style="text-align: center;">Your Coffee Preferences</h2>
++      <form id="prefs-form" class="card prefs-card">
++        <label for="pickup-time">Daily pickup reminder</label>
++        <input type="time" id="pickup-time" name="pickupTime" required>
++        <label for="coffee-anniversary">Coffee anniversary</label>
++        <input type="date" id="coffee-anniversary" name="coffeeAnniversary" required>
++        <button type="submit" class="btn">Save</button>
++        <p id="prefs-summary" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +242,47 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Both values are location-agnostic: a wall-clock time and a calendar date.
++    // They are stored as plain ISO strings ("HH:MM", "YYYY-MM-DD") and handled
++    // with Temporal.PlainTime / PlainDate, never Date, so time zone shifts
++    // (travel, DST) cannot change them.
++    if (typeof Temporal === 'undefined') {
++      const module = await import('https://esm.sh/@js-temporal/polyfill');
++      globalThis.Temporal = module.Temporal;
++    }
++
++    const STORAGE_KEY = 'dailyGrindPrefs';
++    const form = document.getElementById('prefs-form');
++    const summary = document.getElementById('prefs-summary');
++
++    function render({ pickupTime, coffeeAnniversary }) {
++      const time = Temporal.PlainTime.from(pickupTime);
++      const date = Temporal.PlainDate.from(coffeeAnniversary);
++      summary.textContent =
++        `Reminder every day at ${time.toLocaleString(undefined, { timeStyle: 'short' })}. ` +
++        `Coffee anniversary: ${date.toLocaleString(undefined, { dateStyle: 'long' })}.`;
++    }
++
++    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
++    if (saved) {
++      form.elements.pickupTime.value = saved.pickupTime;
++      form.elements.coffeeAnniversary.value = saved.coffeeAnniversary;
++      render(saved);
++    }
++
++    form.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const prefs = {
++        pickupTime: Temporal.PlainTime.from(form.elements.pickupTime.value)
++          .toString({ smallestUnit: 'minute' }),
++        coffeeAnniversary: Temporal.PlainDate.from(form.elements.coffeeAnniversary.value).toString(),
++      };
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
++      render(prefs);
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,76 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #tour-step {
++      /* popover="manual" puts this in the top layer; no light-dismiss */
++      position: fixed;
++      position-anchor: --rewards-link;
++      margin: 0;
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(center);
++      translate: -50% 12px;
++      width: 260px;
++      padding: 16px 18px;
++      border: none;
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
++      font-size: 0.9rem;
++      overflow: visible;
++      z-index: 1100;
++    }
++
++    #tour-step::before {
++      content: "";
++      position: absolute;
++      top: -8px;
++      left: 50%;
++      translate: -50% 0;
++      border: 8px solid transparent;
++      border-top: 0;
++      border-bottom-color: white;
++    }
++
++    #tour-step h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    #tour-step .tour-close {
++      margin-top: 12px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 6px 14px;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    #tour-step .tour-close:hover {
++      background: #3e2723;
++    }
++
++    /* JS fallback for browsers without CSS anchor positioning */
++    #tour-step.js-positioned {
++      translate: none;
++    }
++
++    #feature.tour-highlight {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +229,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +274,87 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-step-title" aria-describedby="tour-step-desc">
++    <h4 id="tour-step-title">New: Daily Grind Rewards</h4>
++    <p id="tour-step-desc">Earn points with every purchase and redeem them for free drinks and treats.</p>
++    <button type="button" class="tour-close">Got it</button>
++  </div>
++
++  <script>
++    (function () {
++      var link = document.getElementById('feature');
++      var tip = document.getElementById('tour-step');
++      var closeBtn = tip.querySelector('.tour-close');
++      var supportsPopover = typeof tip.showPopover === 'function';
++      var supportsAnchor = window.CSS && CSS.supports && CSS.supports('anchor-name', '--a');
++      var open = false;
++      var rafId = null;
++
++      function position() {
++        var r = link.getBoundingClientRect();
++        var w = tip.offsetWidth;
++        var left = r.left + r.width / 2 - w / 2;
++        left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
++        tip.style.top = (r.bottom + 12) + 'px';
++        tip.style.left = left + 'px';
++        tip.style.right = 'auto';
++        tip.style.bottom = 'auto';
++      }
++
++      // Fallback tracking loop keeps the step attached to the link through
++      // scroll, resize, font loading and layout shifts.
++      function track() {
++        if (!open) return;
++        position();
++        rafId = requestAnimationFrame(track);
++      }
++
++      function show() {
++        open = true;
++        link.classList.add('tour-highlight');
++        if (supportsPopover) {
++          tip.showPopover();
++        } else {
++          tip.classList.add('tour-open-fallback');
++        }
++        if (!supportsAnchor) {
++          tip.classList.add('js-positioned');
++          track();
++        }
++      }
++
++      function hide() {
++        open = false;
++        link.classList.remove('tour-highlight');
++        if (rafId) cancelAnimationFrame(rafId);
++        if (supportsPopover) {
++          if (tip.matches(':popover-open')) tip.hidePopover();
++        } else {
++          tip.classList.remove('tour-open-fallback');
++        }
++      }
++
++      if (!supportsPopover) {
++        tip.style.display = 'none';
++        var obs = new MutationObserver(function () {
++          tip.style.display = tip.classList.contains('tour-open-fallback') ? 'block' : 'none';
++        });
++        obs.observe(tip, { attributes: true, attributeFilter: ['class'] });
++      }
++
++      // Keep the user on the page while the tour is active.
++      link.addEventListener('click', function (e) {
++        if (open) e.preventDefault();
++      });
++
++      // Only the explicit close button dismisses the step.
++      closeBtn.addEventListener('click', hide);
++
++      show();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

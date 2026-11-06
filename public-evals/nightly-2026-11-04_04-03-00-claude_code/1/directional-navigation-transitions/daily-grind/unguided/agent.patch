@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+index 66c9173..da55a39 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites carousel */
++    .carousel {
++      max-width: 480px;
++      margin: 20px auto 0;
++    }
++
++    .carousel-viewport {
++      overflow: hidden;
++      /* room for the card shadow inside the clipped area */
++      padding: 6px;
++    }
++
++    .carousel-track {
++      display: grid;
++    }
++
++    /* Stack every slide in the same grid cell so the viewport keeps the
++       height of the tallest slide and nothing jumps while stepping. */
++    .carousel-track > .card {
++      grid-area: 1 / 1;
++    }
++
++    .carousel-track > .card:not(.is-active):not(.is-leaving) {
++      visibility: hidden;
++    }
++
++    .carousel-controls {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 16px;
++      margin-top: 16px;
++    }
++
++    .carousel-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 18px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .carousel-btn:hover {
++      background: #3e2723;
++    }
++
++    .carousel-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .carousel-status {
++      min-width: 4.5em;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .slide-in-from-right { animation: slide-in-from-right 0.4s ease both; }
++    .slide-in-from-left { animation: slide-in-from-left 0.4s ease both; }
++    .slide-out-to-left { animation: slide-out-to-left 0.4s ease both; }
++    .slide-out-to-right { animation: slide-out-to-right 0.4s ease both; }
++
++    @keyframes slide-in-from-right {
++      from { transform: translateX(100%); opacity: 0; }
++      to { transform: translateX(0); opacity: 1; }
++    }
++
++    @keyframes slide-in-from-left {
++      from { transform: translateX(-100%); opacity: 0; }
++      to { transform: translateX(0); opacity: 1; }
++    }
++
++    @keyframes slide-out-to-left {
++      from { transform: translateX(0); opacity: 1; }
++      to { transform: translateX(-100%); opacity: 0; }
++    }
++
++    @keyframes slide-out-to-right {
++      from { transform: translateX(0); opacity: 1; }
++      to { transform: translateX(100%); opacity: 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .slide-in-from-right,
++      .slide-in-from-left,
++      .slide-out-to-left,
++      .slide-out-to-right {
++        animation: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,9 +269,9 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="grid" data-carousel>
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,6 +288,99 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <script>
++        // Progressive enhancement: without JS the cards stay in the grid.
++        (function () {
++          var track = document.querySelector('[data-carousel]');
++          if (!track) return;
++          var slides = Array.prototype.slice.call(track.children);
++          if (slides.length < 2) return;
++
++          var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++          var ANIM_CLASSES = ['slide-in-from-right', 'slide-in-from-left', 'slide-out-to-left', 'slide-out-to-right'];
++          var current = 0;
++
++          // Build carousel structure around the existing cards.
++          var carousel = document.createElement('div');
++          carousel.className = 'carousel';
++          carousel.setAttribute('role', 'region');
++          carousel.setAttribute('aria-roledescription', 'carousel');
++          carousel.setAttribute('aria-labelledby', 'seasonal-heading');
++
++          var viewport = document.createElement('div');
++          viewport.className = 'carousel-viewport';
++
++          track.parentNode.insertBefore(carousel, track);
++          track.className = 'carousel-track';
++          track.setAttribute('aria-live', 'polite');
++          viewport.appendChild(track);
++          carousel.appendChild(viewport);
++
++          var controls = document.createElement('div');
++          controls.className = 'carousel-controls';
++          controls.innerHTML =
++            '<button type="button" class="carousel-btn" data-dir="prev" aria-label="Previous item">&larr; Previous</button>' +
++            '<span class="carousel-status" aria-hidden="true"></span>' +
++            '<button type="button" class="carousel-btn" data-dir="next" aria-label="Next item">Next &rarr;</button>';
++          carousel.appendChild(controls);
++          var status = controls.querySelector('.carousel-status');
++
++          slides.forEach(function (slide, i) {
++            slide.setAttribute('role', 'group');
++            slide.setAttribute('aria-roledescription', 'slide');
++            slide.setAttribute('aria-label', (i + 1) + ' of ' + slides.length);
++            slide.addEventListener('animationend', function (e) {
++              if (e.target !== slide) return;
++              clearAnimation(slide);
++            });
++          });
++
++          function clearAnimation(slide) {
++            ANIM_CLASSES.forEach(function (c) { slide.classList.remove(c); });
++            slide.classList.remove('is-leaving');
++          }
++
++          function render() {
++            slides.forEach(function (slide, i) {
++              var active = i === current;
++              slide.classList.toggle('is-active', active);
++              slide.inert = !active;
++              slide.setAttribute('aria-hidden', active ? 'false' : 'true');
++            });
++            status.textContent = (current + 1) + ' / ' + slides.length;
++          }
++
++          function go(dir) {
++            var prev = current;
++            current = (current + (dir === 'next' ? 1 : -1) + slides.length) % slides.length;
++
++            // Settle any in-flight animation before starting a new one.
++            slides.forEach(clearAnimation);
++            render();
++
++            if (reduceMotion.matches) return;
++
++            var incoming = slides[current];
++            var outgoing = slides[prev];
++            // Force a reflow so re-adding the same class restarts the animation.
++            void incoming.offsetWidth;
++            outgoing.classList.add('is-leaving', dir === 'next' ? 'slide-out-to-left' : 'slide-out-to-right');
++            incoming.classList.add(dir === 'next' ? 'slide-in-from-right' : 'slide-in-from-left');
++          }
++
++          controls.addEventListener('click', function (e) {
++            var btn = e.target.closest('[data-dir]');
++            if (btn) go(btn.getAttribute('data-dir'));
++          });
++
++          carousel.addEventListener('keydown', function (e) {
++            if (e.key === 'ArrowRight') { go('next'); e.preventDefault(); }
++            else if (e.key === 'ArrowLeft') { go('prev'); e.preventDefault(); }
++          });
++
++          render();
++        })();
++      </script>
+     </section>
+   </main>
+ 

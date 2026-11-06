@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Paywall Preview */
++    .paywall-container {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .paywall-teaser {
++      text-align: left;
++      /* Mask fades the content itself to fully transparent, so it blends into the page background */
++      -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
++      pointer-events: none;
++      user-select: none;
++    }
++
++    .paywall-teaser img {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin: 20px 0;
++    }
++
++    .paywall-teaser h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .paywall-teaser p {
++      margin-bottom: 12px;
++    }
++
++    .paywall-cta {
++      margin-top: -20px;
++      position: relative;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +231,27 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="paywall-container">
++      <h2>Roaster's Secrets</h2>
++      <p>Exclusive insider notes, straight from our roasting room.</p>
++      <div class="paywall-teaser" aria-hidden="true">
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1100&q=80"
++          alt="">
++        <h3>The 12-Minute Roast Curve We Never Share</h3>
++        <p>Every batch of our single-origin Ethiopian starts the same way: a gentle charge temperature of 400°F,
++          followed by a slow, deliberate climb that coaxes out blueberry and jasmine notes before first crack.</p>
++        <p>The real secret is what happens in the final ninety seconds. We drop the heat just before development
++          begins, letting the sugars caramelize without losing the delicate floral top notes that make it sing.</p>
++        <p>Members also get our exact brew ratios, grind settings, and water temperatures for each seasonal
++          offering, plus first access to limited micro-lot releases that sell out within hours of roasting.</p>
++      </div>
++      <div class="paywall-cta">
++        <a href="/rewards" class="btn">Unlock Roaster's Secrets</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

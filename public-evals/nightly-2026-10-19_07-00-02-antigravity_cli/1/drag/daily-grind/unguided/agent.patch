@@ -1,0 +1,356 @@
+diff --git a/index.html b/index.html
+index 66c9173..84fb14a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,103 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Floating Draggable Element */
++    .floating-element {
++      position: fixed;
++      top: 120px;
++      right: 24px;
++      width: 270px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
++      border: 1px solid rgba(78, 52, 46, 0.15);
++      z-index: 10000;
++      overflow: hidden;
++      cursor: grab;
++      user-select: none;
++      -webkit-user-select: none;
++      touch-action: none;
++      transition: box-shadow 0.2s ease;
++    }
++
++    .floating-element.is-dragging {
++      cursor: grabbing !important;
++      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.3);
++      opacity: 0.95;
++    }
++
++    .floating-header {
++      background: var(--primary);
++      color: white;
++      padding: 10px 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      cursor: grab;
++    }
++
++    .floating-element.is-dragging .floating-header {
++      cursor: grabbing !important;
++    }
++
++    .drag-hint {
++      font-size: 0.75rem;
++      opacity: 0.85;
++      background: rgba(255, 255, 255, 0.2);
++      padding: 2px 8px;
++      border-radius: 10px;
++      pointer-events: none;
++    }
++
++    .floating-body {
++      padding: 14px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .floating-img {
++      width: 100%;
++      height: 130px;
++      object-fit: cover;
++      border-radius: 8px;
++      pointer-events: none;
++      user-select: none;
++      -webkit-user-drag: none;
++    }
++
++    .floating-content h4 {
++      color: var(--primary);
++      font-size: 1.05rem;
++      margin-bottom: 4px;
++    }
++
++    .floating-content p {
++      font-size: 0.82rem;
++      color: #5d4037;
++      line-height: 1.4;
++      margin-bottom: 8px;
++    }
++
++    .floating-btn {
++      width: 100%;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 9px 12px;
++      border-radius: 6px;
++      font-weight: 700;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .floating-btn:hover {
++      background: #ffa000;
++    }
+   </style>
+ </head>
+ 
+@@ -197,6 +294,22 @@
+     </section>
+   </main>
+ 
++  <!-- Floating Draggable Element -->
++  <div id="floating-element" class="floating-element draggable floating" data-testid="floating-element" role="region" aria-label="Daily Special Floating Widget">
++    <div class="floating-header" id="drag-handle">
++      <span class="drag-title">☕ Today's Special</span>
++      <span class="drag-hint">✥ Drag me</span>
++    </div>
++    <div class="floating-body">
++      <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80" alt="Caramel Macchiato Special" class="floating-img" draggable="false">
++      <div class="floating-content">
++        <h4>Caramel Macchiato</h4>
++        <p>Hand-crafted espresso with vanilla & house-made caramel drizzle.</p>
++        <button type="button" class="floating-btn" id="floating-action-btn">Claim 20% Off</button>
++      </div>
++    </div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +320,224 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const floatingElement = document.getElementById('floating-element');
++      if (!floatingElement) return;
++
++      let isDragging = false;
++      let hasBeenMoved = false;
++      let startX = 0;
++      let startY = 0;
++      let initialLeft = 0;
++      let initialTop = 0;
++
++      // Initialize position in style attributes
++      function initPosition() {
++        if (hasBeenMoved) return;
++        const rect = floatingElement.getBoundingClientRect();
++        if (rect.width > 0 || rect.height > 0) {
++          initialLeft = rect.left;
++          initialTop = rect.top;
++          floatingElement.style.left = initialLeft + 'px';
++          floatingElement.style.top = initialTop + 'px';
++          floatingElement.style.right = 'auto';
++          floatingElement.style.bottom = 'auto';
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initPosition);
++      } else {
++        initPosition();
++      }
++      window.addEventListener('load', initPosition);
++      window.addEventListener('resize', function () {
++        if (!hasBeenMoved && !isDragging) {
++          floatingElement.style.left = '';
++          floatingElement.style.top = '120px';
++          floatingElement.style.right = '24px';
++          floatingElement.style.bottom = 'auto';
++          initPosition();
++        }
++      });
++
++      function shouldIgnoreTarget(target) {
++        return !!(target && target.closest && target.closest('button, a, input, textarea, select'));
++      }
++
++      function startDrag(clientX, clientY, target) {
++        if (shouldIgnoreTarget(target)) return false;
++
++        isDragging = true;
++        hasBeenMoved = true;
++        startX = clientX;
++        startY = clientY;
++
++        const rect = floatingElement.getBoundingClientRect();
++        initialLeft = parseFloat(floatingElement.style.left) || rect.left;
++        initialTop = parseFloat(floatingElement.style.top) || rect.top;
++
++        floatingElement.style.position = 'fixed';
++        floatingElement.style.left = initialLeft + 'px';
++        floatingElement.style.top = initialTop + 'px';
++        floatingElement.style.right = 'auto';
++        floatingElement.style.bottom = 'auto';
++        floatingElement.classList.add('is-dragging');
++        return true;
++      }
++
++      function moveDrag(clientX, clientY) {
++        if (!isDragging) return;
++
++        const deltaX = clientX - startX;
++        const deltaY = clientY - startY;
++
++        let newLeft = initialLeft + deltaX;
++        let newTop = initialTop + deltaY;
++
++        const winWidth = window.innerWidth || document.documentElement.clientWidth || 0;
++        const winHeight = window.innerHeight || document.documentElement.clientHeight || 0;
++        const elWidth = floatingElement.offsetWidth || 0;
++        const elHeight = floatingElement.offsetHeight || 0;
++
++        if (winWidth > 0 && elWidth > 0) {
++          const maxLeft = Math.max(0, winWidth - elWidth);
++          newLeft = Math.max(0, Math.min(newLeft, maxLeft));
++        }
++        if (winHeight > 0 && elHeight > 0) {
++          const maxTop = Math.max(0, winHeight - elHeight);
++          newTop = Math.max(0, Math.min(newTop, maxTop));
++        }
++
++        floatingElement.style.left = newLeft + 'px';
++        floatingElement.style.top = newTop + 'px';
++      }
++
++      function endDrag() {
++        if (!isDragging) return;
++        isDragging = false;
++        floatingElement.classList.remove('is-dragging');
++      }
++
++      // Pointer Events
++      floatingElement.addEventListener('pointerdown', function (e) {
++        if (e.button !== undefined && e.button !== 0) return;
++        if (startDrag(e.clientX, e.clientY, e.target)) {
++          try {
++            floatingElement.setPointerCapture(e.pointerId);
++          } catch (_) {}
++          if (e.cancelable) e.preventDefault();
++        }
++      });
++
++      floatingElement.addEventListener('pointermove', function (e) {
++        if (isDragging) {
++          moveDrag(e.clientX, e.clientY);
++          if (e.cancelable) e.preventDefault();
++        }
++      });
++
++      floatingElement.addEventListener('pointerup', function (e) {
++        if (isDragging) {
++          try {
++            floatingElement.releasePointerCapture(e.pointerId);
++          } catch (_) {}
++          endDrag();
++        }
++      });
++
++      floatingElement.addEventListener('pointercancel', function (e) {
++        if (isDragging) {
++          try {
++            floatingElement.releasePointerCapture(e.pointerId);
++          } catch (_) {}
++          endDrag();
++        }
++      });
++
++      // Mouse Events fallback
++      floatingElement.addEventListener('mousedown', function (e) {
++        if (isDragging) return;
++        if (e.button !== undefined && e.button !== 0) return;
++        if (startDrag(e.clientX, e.clientY, e.target)) {
++          if (e.cancelable) e.preventDefault();
++        }
++      });
++
++      window.addEventListener('mousemove', function (e) {
++        if (isDragging) {
++          moveDrag(e.clientX, e.clientY);
++        }
++      });
++
++      window.addEventListener('mouseup', function () {
++        if (isDragging) {
++          endDrag();
++        }
++      });
++
++      // Touch Events fallback
++      floatingElement.addEventListener('touchstart', function (e) {
++        if (isDragging) return;
++        if (e.touches && e.touches[0]) {
++          if (startDrag(e.touches[0].clientX, e.touches[0].clientY, e.target)) {
++            if (e.cancelable) e.preventDefault();
++          }
++        }
++      }, { passive: false });
++
++      window.addEventListener('touchmove', function (e) {
++        if (isDragging && e.touches && e.touches[0]) {
++          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
++          if (e.cancelable) e.preventDefault();
++        }
++      }, { passive: false });
++
++      window.addEventListener('touchend', function () {
++        if (isDragging) {
++          endDrag();
++        }
++      });
++
++      // Drag and drop events fallback
++      floatingElement.addEventListener('dragstart', function (e) {
++        if (shouldIgnoreTarget(e.target)) {
++          e.preventDefault();
++          return;
++        }
++        startDrag(e.clientX, e.clientY, e.target);
++        if (e.dataTransfer) {
++          e.dataTransfer.setData('text/plain', 'floating-element');
++          e.dataTransfer.effectAllowed = 'move';
++        }
++      });
++
++      floatingElement.addEventListener('drag', function (e) {
++        if (e.clientX || e.clientY) {
++          moveDrag(e.clientX, e.clientY);
++        }
++      });
++
++      floatingElement.addEventListener('dragend', function (e) {
++        if (e.clientX || e.clientY) {
++          moveDrag(e.clientX, e.clientY);
++        }
++        endDrag();
++      });
++
++      // Button interaction
++      const actionBtn = document.getElementById('floating-action-btn');
++      if (actionBtn) {
++        actionBtn.addEventListener('click', function (e) {
++          e.stopPropagation();
++          actionBtn.textContent = '✓ 20% Discount Applied!';
++          actionBtn.style.backgroundColor = '#66bb6a';
++          actionBtn.style.color = '#ffffff';
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,234 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,141 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shipping address */
++    .shipping-section {
++      display: grid;
++      grid-template-columns: 1fr 1.5fr;
++      align-items: start;
++      gap: 48px;
++      margin-top: 64px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .shipping-intro {
++      padding-top: 12px;
++    }
++
++    .shipping-eyebrow {
++      color: #75584d;
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .shipping-intro h2 {
++      font-size: 2rem;
++      line-height: 1.2;
++      margin-bottom: 16px;
++    }
++
++    .shipping-intro p:last-child {
++      max-width: 32ch;
++    }
++
++    .shipping-form {
++      min-width: 0;
++      padding: 32px;
++      background: white;
++      border: 1px solid #e5ddd8;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
++    }
++
++    .shipping-form fieldset {
++      border: 0;
++      min-width: 0;
++    }
++
++    .shipping-form legend {
++      font-size: 1.15rem;
++      font-weight: 700;
++      margin-bottom: 4px;
++    }
++
++    .form-hint {
++      color: #705e58;
++      font-size: 0.875rem;
++      margin-bottom: 24px;
++    }
++
++    .shipping-field {
++      margin-bottom: 18px;
++    }
++
++    .shipping-field label {
++      display: block;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .shipping-field label span {
++      color: #705e58;
++      font-weight: 400;
++    }
++
++    .shipping-field input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #a89992;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++    }
++
++    .shipping-form :focus-visible {
++      outline: 3px solid #98601c;
++      outline-offset: 3px;
++    }
++
++    .shipping-field input:user-invalid {
++      border: 2px solid #a32620;
++    }
++
++    .shipping-form .btn {
++      width: 100%;
++      min-height: 48px;
++      margin-top: 6px;
++      border: 0;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .address-preview:not(:empty) {
++      margin-top: 24px;
++      padding: 16px;
++      border-inline-start: 3px solid var(--primary);
++      border-radius: 4px;
++      background: #f6f2ef;
++      overflow-wrap: anywhere;
++      white-space: pre-line;
++    }
++
++    @media (max-width: 700px) {
++      .shipping-section {
++        grid-template-columns: 1fr;
++        gap: 24px;
++        margin-top: 40px;
++      }
++
++      .shipping-intro p:last-child {
++        max-width: none;
++      }
++
++      .shipping-form {
++        padding: 24px 20px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +327,55 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shipping-section" id="shipping-address" aria-labelledby="shipping-heading">
++      <div class="shipping-intro">
++        <p class="shipping-eyebrow">From our roastery to your door</p>
++        <h2 id="shipping-heading">Shipping address</h2>
++        <p>Good mornings start here. Tell us where your next coffee delivery should go.</p>
++      </div>
++
++      <form class="shipping-form" id="shipping-form" action="#shipping-address" method="post">
++        <fieldset aria-describedby="shipping-hint">
++          <legend>Delivery details</legend>
++          <p class="form-hint" id="shipping-hint">All fields are required unless marked optional.</p>
++
++          <div class="shipping-field">
++            <label for="shipping-name">Full name</label>
++            <input id="shipping-name" name="full_name" autocomplete="shipping name" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-country">Country or region</label>
++            <input id="shipping-country" name="country" autocomplete="shipping country-name" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-line1">Street address</label>
++            <input id="shipping-line1" name="address_line1" autocomplete="shipping address-line1" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-line2">Apartment, suite, etc. <span>(optional)</span></label>
++            <input id="shipping-line2" name="address_line2" autocomplete="shipping address-line2">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-city">City or town</label>
++            <input id="shipping-city" name="city" autocomplete="shipping address-level2" required>
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-region">State, province or region <span>(optional)</span></label>
++            <input id="shipping-region" name="region" autocomplete="shipping address-level1">
++          </div>
++          <div class="shipping-field">
++            <label for="shipping-postal">ZIP or postal code <span>(optional)</span></label>
++            <input id="shipping-postal" name="postal_code" autocomplete="shipping postal-code" autocapitalize="off" autocorrect="off" spellcheck="false">
++          </div>
++        </fieldset>
++        <button class="btn" type="submit" id="review-address" disabled>Review address</button>
++        <noscript><p>Enable JavaScript to preview your shipping address.</p></noscript>
++        <p class="address-preview" id="address-preview" role="status" aria-live="polite" aria-atomic="true"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +386,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const shippingForm = document.getElementById('shipping-form');
++    const addressPreview = document.getElementById('address-preview');
++
++    shippingForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const data = new FormData(shippingForm);
++      const lines = [
++        'Your shipping address preview',
++        ...['full_name', 'address_line1', 'address_line2', 'city', 'region', 'postal_code', 'country']
++          .map((name) => data.get(name).trim())
++          .filter(Boolean),
++        '',
++        'This address has not been saved or submitted.'
++      ];
++      addressPreview.textContent = lines.join('\n');
++    });
++
++    shippingForm.addEventListener('input', () => {
++      addressPreview.textContent = '';
++    });
++
++    document.getElementById('review-address').disabled = false;
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,786 @@
+diff --git a/index.html b/index.html
+index 66c9173..c64e060 100644
+--- a/index.html
++++ b/index.html
+@@ -152,49 +152,298 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive States & Views */
++    .card {
++      cursor: pointer;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++      border: 2px solid transparent;
++    }
++
++    .card:hover,
++    .card.selected {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
++      border-color: var(--accent);
++    }
++
++    nav a.active {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 3px;
++    }
++
++    .view-banner {
++      background: white;
++      border-left: 5px solid var(--accent);
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      margin-bottom: 30px;
++      display: none;
++    }
++
++    .view-banner.visible {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      flex-wrap: wrap;
++    }
++
++    .view-banner h2 {
++      color: var(--primary);
++      font-size: 1.35rem;
++      margin-bottom: 4px;
++    }
++
++    .view-banner p {
++      color: #5d4037;
++      font-size: 0.95rem;
++    }
++
++    /* Performance Monitoring Panel */
++    .perf-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 40px;
++      border-top: 4px solid var(--primary);
++    }
++
++    .perf-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 18px;
++    }
++
++    .perf-header h2 {
++      color: var(--primary);
++      font-size: 1.35rem;
++    }
++
++    .perf-controls {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .perf-btn {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 6px 12px;
++      border-radius: 4px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .perf-btn:hover,
++    .perf-btn.active {
++      background: var(--accent);
++      color: #212121;
++    }
++
++    .perf-summary-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 14px;
++      margin-bottom: 20px;
++    }
++
++    .perf-stat-card {
++      background: var(--light);
++      border: 1px solid #e0e0e0;
++      border-radius: 6px;
++      padding: 12px 16px;
++    }
++
++    .perf-stat-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .perf-stat-value {
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 4px;
++    }
++
++    .perf-stat-sub {
++      font-size: 0.75rem;
++      color: #795548;
++      margin-top: 2px;
++    }
++
++    .perf-table-wrap {
++      overflow-x: auto;
++    }
++
++    .perf-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.88rem;
++      text-align: left;
++    }
++
++    .perf-table th,
++    .perf-table td {
++      padding: 10px 12px;
++      border-bottom: 1px solid #eee;
++    }
++
++    .perf-table th {
++      background: #f5f5f5;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .perf-badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    .perf-badge.fast {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .perf-badge.moderate {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .perf-badge.slow {
++      background: #ffebee;
++      color: #c62828;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="main-nav">
++    <div class="logo" data-view="home" style="cursor: pointer;">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-view="menu">Menu</a></li>
++      <li><a href="/locations" data-view="locations">Locations</a></li>
++      <li><a href="/rewards" data-view="rewards">Rewards</a></li>
++      <li><a href="/account" data-view="account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-view="logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1 id="hero-title">Wake Up Your Senses</h1>
++    <p id="hero-subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" id="order-now-btn" class="btn" data-view="order-online">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="active-view-banner" class="view-banner" aria-live="polite">
++      <div>
++        <h2 id="view-banner-title">Current View</h2>
++        <p id="view-banner-desc">View details and quick actions.</p>
++      </div>
++      <button type="button" class="perf-btn" id="reset-view-btn">Return to Home View</button>
++    </section>
++
++    <section id="seasonal-favorites-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="seasonal-favorites-grid">
++        <div class="card" data-item="Maple Oat Latte" data-view="menu-seasonal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-item="Dark Roast Espresso" data-view="menu-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-item="Cold Brew" data-view="menu-cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="perf-monitor-section" class="perf-panel" aria-label="Client-Side Performance Monitor">
++      <div class="perf-header">
++        <div>
++          <h2>Interaction &amp; Paint Performance Monitor</h2>
++          <p style="font-size: 0.85rem; color: #5d4037;">
++            Measures time from interaction start (<code>performance.now()</code>) until browser next-paint completion across navigation, "Order Now", "Seasonal Favorites" cards, and client-side view switches.
++          </p>
++        </div>
++        <div class="perf-controls">
++          <button type="button" class="perf-btn" data-switch-view="menu">Switch View: Menu</button>
++          <button type="button" class="perf-btn" data-switch-view="locations">Switch View: Locations</button>
++          <button type="button" class="perf-btn" data-switch-view="rewards">Switch View: Rewards</button>
++          <button type="button" class="perf-btn" id="clear-perf-btn">Clear Log</button>
++        </div>
++      </div>
++
++      <div class="perf-summary-grid" id="perf-summary-grid">
++        <div class="perf-stat-card" data-category="navigation">
++          <div class="perf-stat-label">Navigation Bar Clicks</div>
++          <div class="perf-stat-value" id="stat-nav-latest">—</div>
++          <div class="perf-stat-sub" id="stat-nav-meta">0 interactions (avg: —)</div>
++        </div>
++        <div class="perf-stat-card" data-category="order-now">
++          <div class="perf-stat-label">"Order Now" Button</div>
++          <div class="perf-stat-value" id="stat-order-latest">—</div>
++          <div class="perf-stat-sub" id="stat-order-meta">0 interactions (avg: —)</div>
++        </div>
++        <div class="perf-stat-card" data-category="seasonal-card">
++          <div class="perf-stat-label">"Seasonal Favorites" Cards</div>
++          <div class="perf-stat-value" id="stat-seasonal-latest">—</div>
++          <div class="perf-stat-sub" id="stat-seasonal-meta">0 interactions (avg: —)</div>
++        </div>
++        <div class="perf-stat-card" data-category="view-switch">
++          <div class="perf-stat-label">Client-Side View Switches</div>
++          <div class="perf-stat-value" id="stat-view-latest">—</div>
++          <div class="perf-stat-sub" id="stat-view-meta">0 transitions (avg: —)</div>
++        </div>
++      </div>
++
++      <div class="perf-table-wrap">
++        <table class="perf-table" id="perf-log-table">
++          <thead>
++            <tr>
++              <th>#</th>
++              <th>Category</th>
++              <th>Target / Action</th>
++              <th>View State</th>
++              <th>Handler / DOM Update</th>
++              <th>Total Time to Paint</th>
++              <th>Status</th>
++            </tr>
++          </thead>
++          <tbody id="perf-log-tbody">
++            <tr id="perf-empty-row">
++              <td colspan="7" style="text-align: center; color: #795548;">
++                Click the navigation bar, "Order Now" button, "Seasonal Favorites" cards, or view switch controls to record paint timings.
++              </td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +456,467 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      const VIEW_CONFIGS = {
++        'home': {
++          title: 'Home — Artisanal Coffee',
++          description: 'Explore our seasonal favorites and freshly roasted blends.',
++          heroTitle: 'Wake Up Your Senses',
++          heroSubtitle: 'Ethically sourced, locally roasted, delivered to your cup.',
++          isHome: true
++        },
++        'menu': {
++          title: 'Full Coffee & Pastry Menu',
++          description: 'Browse our handcrafted espresso drinks, pour-overs, cold brews, and bakery items.',
++          heroTitle: 'Crafted Beverages & Bites',
++          heroSubtitle: 'Made to order with organic milk options and house-made syrups.'
++        },
++        'locations': {
++          title: 'Our Cafe Locations',
++          description: 'Find your neighborhood Daily Grind coffeehouse—open daily from 6:00 AM to 7:00 PM.',
++          heroTitle: 'Visit Us In Person',
++          heroSubtitle: 'Cozy seating, fast Wi-Fi, and friendly baristas in 12 neighborhood spots.'
++        },
++        'rewards': {
++          title: 'Daily Grind Rewards',
++          description: 'Earn 2 beans for every $1 spent. Redeem for free drinks, whole bean bags, and merch.',
++          heroTitle: 'Sip & Earn Beans',
++          heroSubtitle: 'Members enjoy free birthday drinks and early access to seasonal roasts.'
++        },
++        'account': {
++          title: 'My Account & Saved Orders',
++          description: 'Manage your default pickup location, payment methods, and favorite drink customizations.',
++          heroTitle: 'Welcome Back, Coffee Lover',
++          heroSubtitle: 'Reorder your morning ritual in just two taps.'
++        },
++        'logout': {
++          title: 'Signed Out',
++          description: 'You have been safely signed out of your Daily Grind account.',
++          heroTitle: 'See You Tomorrow Morning',
++          heroSubtitle: 'Sign back in anytime to track your rewards and order ahead.'
++        },
++        'order-online': {
++          title: 'Order Online — Express Pickup',
++          description: 'Customize your drink and skip the line at your nearest Daily Grind cafe.',
++          heroTitle: 'Order Ahead for Express Pickup',
++          heroSubtitle: 'Freshly brewed and waiting at the pickup counter when you arrive.'
++        },
++        'menu-seasonal': {
++          title: 'Seasonal Spotlight: Maple Oat Latte',
++          description: 'Double shot of house espresso, steamed creamy oat milk, and pure Vermont amber maple syrup.',
++          heroTitle: 'Maple Oat Latte',
++          heroSubtitle: 'Available hot or iced for a limited autumn run ($5.75).'
++        },
++        'menu-espresso': {
++          title: 'Signature Roast: Dark Roast Espresso',
++          description: 'Notes of dark baker’s chocolate, toasted walnut, and caramelized sugar.',
++          heroTitle: 'Dark Roast Espresso',
++          heroSubtitle: 'Pulled at 9 bars for a rich, velvety crema ($3.50).'
++        },
++        'menu-cold-brew': {
++          title: 'House Favorite: 18-Hour Cold Brew',
++          description: 'Coarse-ground Colombian beans steeped cold for 18 hours for ultra-low acidity.',
++          heroTitle: '18-Hour Slow-Steeped Cold Brew',
++          heroSubtitle: 'Served over artisan ice with optional sweet cream cold foam ($4.75).'
++        }
++      };
++
++      const entries = [];
++      let currentView = 'home';
++
++      /**
++       * Waits until the browser has completed the next visual paint frame
++       * using double requestAnimationFrame (the standard web performance technique
++       * for measuring time-to-next-paint after DOM mutations).
++       */
++      function afterNextPaint(callback) {
++        requestAnimationFrame(function () {
++          requestAnimationFrame(function () {
++            const paintEndTime = performance.now();
++            callback(paintEndTime);
++          });
++        });
++      }
++
++      function getInputTimestamp(event) {
++        if (event && typeof event.timeStamp === 'number' && event.timeStamp > 0 && event.timeStamp <= performance.now()) {
++          return event.timeStamp;
++        }
++        return performance.now();
++      }
++
++      function formatMs(ms) {
++        return ms.toFixed(2) + ' ms';
++      }
++
++      function getStatusBadge(durationMs) {
++        if (durationMs < 50) {
++          return { label: 'Good (<50ms)', cls: 'fast' };
++        }
++        if (durationMs < 200) {
++          return { label: 'Needs Improvement', cls: 'moderate' };
++        }
++        return { label: 'Poor (>200ms)', cls: 'slow' };
++      }
++
++      function updateSummaryStats() {
++        const categories = [
++          { key: 'navigation', latestId: 'stat-nav-latest', metaId: 'stat-nav-meta', unit: 'interactions' },
++          { key: 'order-now', latestId: 'stat-order-latest', metaId: 'stat-order-meta', unit: 'interactions' },
++          { key: 'seasonal-card', latestId: 'stat-seasonal-latest', metaId: 'stat-seasonal-meta', unit: 'interactions' },
++          { key: 'view-switch', latestId: 'stat-view-latest', metaId: 'stat-view-meta', unit: 'transitions' }
++        ];
++
++        categories.forEach(function (cat) {
++          const matching = entries.filter(function (e) { return e.category === cat.key; });
++          const latestEl = document.getElementById(cat.latestId);
++          const metaEl = document.getElementById(cat.metaId);
++          if (!latestEl || !metaEl) return;
++
++          if (matching.length === 0) {
++            latestEl.textContent = '—';
++            metaEl.textContent = '0 ' + cat.unit + ' (avg: —)';
++          } else {
++            const latest = matching[matching.length - 1];
++            const sum = matching.reduce(function (acc, item) { return acc + item.paintDuration; }, 0);
++            const avg = sum / matching.length;
++            latestEl.textContent = formatMs(latest.paintDuration);
++            metaEl.textContent = matching.length + ' ' + cat.unit + ' (avg: ' + formatMs(avg) + ')';
++          }
++        });
++      }
++
++      function appendLogRow(entry) {
++        const tbody = document.getElementById('perf-log-tbody');
++        const emptyRow = document.getElementById('perf-empty-row');
++        if (emptyRow) {
++          emptyRow.remove();
++        }
++        if (!tbody) return;
++
++        const tr = document.createElement('tr');
++        const badge = getStatusBadge(entry.paintDuration);
++
++        tr.innerHTML =
++          '<td>' + entry.id + '</td>' +
++          '<td><code>' + entry.category + '</code></td>' +
++          '<td>' + entry.label + '</td>' +
++          '<td><code>' + entry.view + '</code></td>' +
++          '<td>' + formatMs(entry.domDuration) + '</td>' +
++          '<td><strong>' + formatMs(entry.paintDuration) + '</strong></td>' +
++          '<td><span class="perf-badge ' + badge.cls + '">' + badge.label + '</span></td>';
++
++        tbody.insertBefore(tr, tbody.firstChild);
++      }
++
++      /**
++       * Records a performance measurement from interaction/transition start through
++       * synchronous DOM mutation and asynchronous browser paint completion.
++       */
++      function measureInteractionPaint(options, domMutationFn) {
++        const startTime = typeof options.startTime === 'number' ? options.startTime : performance.now();
++        const markPrefix = 'dg-' + options.category + '-' + (entries.length + 1);
++
++        if (performance.mark) {
++          performance.mark(markPrefix + '-start', { startTime: startTime });
++        }
++
++        if (typeof domMutationFn === 'function') {
++          domMutationFn();
++        }
++
++        const domEndTime = performance.now();
++        const domDuration = Math.max(0, domEndTime - startTime);
++
++        return new Promise(function (resolve) {
++          afterNextPaint(function (paintEndTime) {
++            const paintDuration = Math.max(0, paintEndTime - startTime);
++
++            if (performance.mark && performance.measure) {
++              performance.mark(markPrefix + '-paint-end', { startTime: paintEndTime });
++              try {
++                performance.measure(
++                  'DailyGrind:' + options.category + ':' + options.label,
++                  markPrefix + '-start',
++                  markPrefix + '-paint-end'
++                );
++              } catch (err) {
++                // Fallback if startTime options are unsupported in older environments
++              }
++            }
++
++            const entry = {
++              id: entries.length + 1,
++              category: options.category,
++              label: options.label,
++              target: options.target || options.label,
++              view: options.view || currentView,
++              startTime: startTime,
++              domEndTime: domEndTime,
++              paintEndTime: paintEndTime,
++              domDuration: domDuration,
++              paintDuration: paintDuration,
++              duration: paintDuration,
++              timestamp: new Date().toISOString()
++            };
++
++            entries.push(entry);
++            updateSummaryStats();
++            appendLogRow(entry);
++
++            window.dispatchEvent(new CustomEvent('dailygrind:perf-measure', { detail: entry }));
++            resolve(entry);
++          });
++        });
++      }
++
++      /**
++       * Applies visual updates for a client-side view switch.
++       */
++      function applyViewDOMUpdates(viewKey, selectedCardEl) {
++        const config = VIEW_CONFIGS[viewKey] || {
++          title: 'View: ' + viewKey,
++          description: 'Viewing ' + viewKey + ' section.',
++          heroTitle: 'The Daily Grind',
++          heroSubtitle: 'Ethically sourced, locally roasted, delivered to your cup.'
++        };
++
++        currentView = viewKey;
++
++        const banner = document.getElementById('active-view-banner');
++        const bannerTitle = document.getElementById('view-banner-title');
++        const bannerDesc = document.getElementById('view-banner-desc');
++        const heroTitle = document.getElementById('hero-title');
++        const heroSubtitle = document.getElementById('hero-subtitle');
++
++        if (banner && bannerTitle && bannerDesc) {
++          if (config.isHome) {
++            banner.classList.remove('visible');
++          } else {
++            bannerTitle.textContent = config.title;
++            bannerDesc.textContent = config.description;
++            banner.classList.add('visible');
++          }
++        }
++
++        if (heroTitle && config.heroTitle) {
++          heroTitle.textContent = config.heroTitle;
++        }
++        if (heroSubtitle && config.heroSubtitle) {
++          heroSubtitle.textContent = config.heroSubtitle;
++        }
++
++        // Update active state on navigation links
++        document.querySelectorAll('#main-nav a').forEach(function (link) {
++          if (link.getAttribute('data-view') === viewKey) {
++            link.classList.add('active');
++          } else {
++            link.classList.remove('active');
++          }
++        });
++
++        // Update active state on quick view switch buttons
++        document.querySelectorAll('[data-switch-view]').forEach(function (btn) {
++          if (btn.getAttribute('data-switch-view') === viewKey) {
++            btn.classList.add('active');
++          } else {
++            btn.classList.remove('active');
++          }
++        });
++
++        // Update selected card highlight
++        document.querySelectorAll('#seasonal-favorites-grid .card').forEach(function (card) {
++          if (selectedCardEl && card === selectedCardEl) {
++            card.classList.add('selected');
++          } else if (card.getAttribute('data-view') === viewKey) {
++            card.classList.add('selected');
++          } else {
++            card.classList.remove('selected');
++          }
++        });
++
++        // Update URL hash/history state without triggering a page reload
++        if (window.history && window.history.pushState) {
++          const newUrl = viewKey === 'home' ? window.location.pathname : '#' + viewKey;
++          try {
++            window.history.pushState({ view: viewKey }, '', newUrl);
++          } catch (e) {
++            // Ignore in restricted origins
++          }
++        }
++      }
++
++      /**
++       * Public helper to trigger and measure a client-side view switch.
++       */
++      function switchView(viewKey, options) {
++        const opts = options || {};
++        const startTime = typeof opts.startTime === 'number' ? opts.startTime : performance.now();
++        const label = opts.label || ('View Switch -> ' + viewKey);
++
++        return measureInteractionPaint({
++          category: 'view-switch',
++          label: label,
++          view: viewKey,
++          startTime: startTime
++        }, function () {
++          applyViewDOMUpdates(viewKey, opts.selectedCardEl);
++        });
++      }
++
++      // 1. Navigation Bar Clicks + Client-Side View Switch
++      const navEl = document.getElementById('main-nav');
++      if (navEl) {
++        navEl.addEventListener('click', function (event) {
++          const linkOrLogo = event.target.closest('a, .logo');
++          if (!linkOrLogo) return;
++
++          event.preventDefault();
++          const startTime = getInputTimestamp(event);
++          const targetView = linkOrLogo.getAttribute('data-view') || 'home';
++          const textLabel = (linkOrLogo.textContent || targetView).trim();
++
++          measureInteractionPaint({
++            category: 'navigation',
++            label: 'Nav: ' + textLabel,
++            view: targetView,
++            startTime: startTime
++          }, function () {
++            applyViewDOMUpdates(targetView);
++          });
++
++          // Also record the client-side view switch metric
++          measureInteractionPaint({
++            category: 'view-switch',
++            label: 'View Switch: ' + textLabel,
++            view: targetView,
++            startTime: startTime
++          });
++        });
++      }
++
++      // 2. "Order Now" Button Click + Client-Side View Switch
++      const orderBtn = document.getElementById('order-now-btn');
++      if (orderBtn) {
++        orderBtn.addEventListener('click', function (event) {
++          event.preventDefault();
++          const startTime = getInputTimestamp(event);
++          const targetView = orderBtn.getAttribute('data-view') || 'order-online';
++
++          measureInteractionPaint({
++            category: 'order-now',
++            label: 'Hero CTA: Order Now',
++            view: targetView,
++            startTime: startTime
++          }, function () {
++            applyViewDOMUpdates(targetView);
++          });
++
++          measureInteractionPaint({
++            category: 'view-switch',
++            label: 'View Switch: Order Online',
++            view: targetView,
++            startTime: startTime
++          });
++        });
++      }
++
++      // 3. "Seasonal Favorites" Cards Click + Client-Side View Switch
++      const seasonalGrid = document.getElementById('seasonal-favorites-grid');
++      if (seasonalGrid) {
++        seasonalGrid.addEventListener('click', function (event) {
++          const card = event.target.closest('.card');
++          if (!card) return;
++
++          event.preventDefault();
++          const startTime = getInputTimestamp(event);
++          const itemName = card.getAttribute('data-item') || (card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : 'Seasonal Card');
++          const targetView = card.getAttribute('data-view') || 'menu-seasonal';
++
++          measureInteractionPaint({
++            category: 'seasonal-card',
++            label: 'Seasonal Card: ' + itemName,
++            view: targetView,
++            startTime: startTime
++          }, function () {
++            applyViewDOMUpdates(targetView, card);
++          });
++
++          measureInteractionPaint({
++            category: 'view-switch',
++            label: 'View Switch: ' + itemName,
++            view: targetView,
++            startTime: startTime
++          });
++        });
++      }
++
++      // 4. Dedicated Client-Side View Switch Controls & Popstate
++      document.querySelectorAll('[data-switch-view]').forEach(function (btn) {
++        btn.addEventListener('click', function (event) {
++          const startTime = getInputTimestamp(event);
++          const targetView = btn.getAttribute('data-switch-view') || 'home';
++          switchView(targetView, {
++            startTime: startTime,
++            label: 'Direct View Switch: ' + targetView
++          });
++        });
++      });
++
++      const resetViewBtn = document.getElementById('reset-view-btn');
++      if (resetViewBtn) {
++        resetViewBtn.addEventListener('click', function (event) {
++          const startTime = getInputTimestamp(event);
++          switchView('home', {
++            startTime: startTime,
++            label: 'Reset View: Home'
++          });
++        });
++      }
++
++      window.addEventListener('popstate', function (event) {
++        const startTime = performance.now();
++        const targetView = (event.state && event.state.view) || (window.location.hash ? window.location.hash.slice(1) : 'home');
++        switchView(targetView, {
++          startTime: startTime,
++          label: 'History View Switch: ' + targetView
++        });
++      });
++
++      const clearBtn = document.getElementById('clear-perf-btn');
++      if (clearBtn) {
++        clearBtn.addEventListener('click', function () {
++          entries.length = 0;
++          if (performance.clearMarks) performance.clearMarks();
++          if (performance.clearMeasures) performance.clearMeasures();
++          updateSummaryStats();
++          const tbody = document.getElementById('perf-log-tbody');
++          if (tbody) {
++            tbody.innerHTML =
++              '<tr id="perf-empty-row">' +
++              '<td colspan="7" style="text-align: center; color: #795548;">' +
++              'Click the navigation bar, "Order Now" button, "Seasonal Favorites" cards, or view switch controls to record paint timings.' +
++              '</td></tr>';
++          }
++        });
++      }
++
++      // Expose performance monitoring API globally for programmatic inspection
++      window.DailyGrindPerfMonitor = {
++        entries: entries,
++        getEntries: function () { return entries.slice(); },
++        getEntriesByCategory: function (category) {
++          return entries.filter(function (e) { return e.category === category; });
++        },
++        measureInteractionPaint: measureInteractionPaint,
++        switchView: switchView
++      };
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

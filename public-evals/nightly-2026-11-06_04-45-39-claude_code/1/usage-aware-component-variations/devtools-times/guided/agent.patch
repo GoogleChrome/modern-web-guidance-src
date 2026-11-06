@@ -1,0 +1,684 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..95928b7 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -1,4 +1,16 @@
+ ---
++/**
++ * Context-adaptive article teaser.
++ *
++ * There is a single markup structure; the visual logic (layout, which parts
++ * are shown, which badge appears) is decided in CSS by the semantic surface
++ * the teaser is placed in — see `src/utils/surface.ts` and the
++ * "Article teaser" block in `src/styles/global.css`.
++ *
++ *   <div class="surface-featured"><ArticleTeaser … /></div>  → hero layout
++ *   <div class="surface-compact"><ArticleTeaser … /></div>   → headline + date
++ *   <section class="surface-breaking">…</section>            → "Breaking" badge
++ */
+ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+@@ -7,77 +19,54 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+-    large?: boolean;
++    /** Document outline level only — has no influence on visual styling. */
++    headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
++    /** Load the image eagerly with high priority (e.g. above-the-fold hero). */
++    priority?: boolean;
+ }
+ 
+-const { article, large = false } = Astro.props;
++const { article, headingLevel = 3, priority = false } = Astro.props;
++const Heading = `h${headingLevel}` as const;
+ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const categoryUrl = `${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`;
+ ---
+-{large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
+-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
+-                    <span class="text-xs font-medium flex items-center">
+-                        <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+-                        {article.data.readingTime} Min.
+-                    </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+-                </div>
+-            </div>
+-            <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
+-                        alt=""
+-                        width={800}
+-                        height={533}
+-                        format="webp"
+-                        class="w-full h-auto object-cover"
+-                    />
+-                </a>
+-            </div>
+-        </div>
+-    </div>
+-) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
++<article class="teaser">
++    <div class="teaser__layout">
++        <a href={articleUrl} class="teaser__media" tabindex="-1" aria-hidden="true">
++            <Image
++                src={image}
++                alt=""
++                widths={[400, 800, 1200]}
++                sizes="(min-width: 1024px) 66vw, 100vw"
+                 format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                loading={priority ? 'eager' : 'lazy'}
++                fetchpriority={priority ? 'high' : undefined}
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
+-            </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++        <div class="teaser__body">
++            <div class="teaser__kicker">
++                <span class="teaser__badge teaser__badge--featured">Featured</span>
++                <span class="teaser__badge teaser__badge--breaking">Breaking</span>
++                <a href={categoryUrl} class="teaser__category">{capitalizedCategory}</a>
++            </div>
++            <Heading class="teaser__title">
++                <a href={articleUrl}>{article.data.title}</a>
++            </Heading>
++            <p class="teaser__summary">{article.data.summary}</p>
++            <time class="teaser__date" datetime={article.data.date.toISOString()}>
++                {article.data.date.toLocaleDateString()}
++            </time>
++            <div class="teaser__meta">
++                <span class="teaser__reading-time">
++                    <BookOpenIcon className="w-4 h-4" aria-hidden="true" />
+                     {article.data.readingTime} Min.
+                 </span>
+                 <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
+             </div>
+         </div>
+-    </article>
+-)}
+\ No newline at end of file
++    </div>
++</article>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..1b53c27 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,10 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button onClick={handleClick} className="bookmark-button" aria-pressed={isBookmarked}>
++      <BookmarkIcon aria-hidden="true" className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++      {/* Visually hidden by default; revealed in a `featured` surface via a container style query. */}
++      <span className="bookmark-button__label">{isBookmarked ? 'Saved' : 'Save'}</span>
+     </button>
+   );
+ }
+diff --git a/src/components/SectionHeading.astro b/src/components/SectionHeading.astro
+new file mode 100644
+index 0000000..a19d51b
+--- /dev/null
++++ b/src/components/SectionHeading.astro
+@@ -0,0 +1,16 @@
++---
++/**
++ * Section heading that adapts to its semantic surface.
++ * In a `breaking` surface it reveals a live indicator and switches to the
++ * urgent accent colour — without the section having to know about it.
++ */
++export interface Props {
++    title: string;
++}
++
++const { title } = Astro.props;
++---
++<h2 class="section-heading">
++    <span>{title}</span>
++    <span class="section-heading__live">Live</span>
++</h2>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..3c63906 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -1,18 +1,20 @@
+ ---
+ import type { CollectionEntry } from 'astro:content';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
++import SectionHeading from './SectionHeading.astro';
++import { surfaceClass, type Surface } from '../utils/surface';
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    /** Optional semantic context for everything inside this section. */
++    surface?: Surface;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, surface } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section class:list={['p-4 md:p-6', surfaceClass(surface)]}>
++    <SectionHeading title={title} />
+ 
+     <div class="grid md:grid-cols-3 gap-6">
+       {articles.map(article => <ArticleTeaser article={article} />)}
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..79a19de 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -4,13 +4,18 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
++import ArticleTeaser from './ArticleTeaser.astro';
++import SectionHeading from './SectionHeading.astro';
++import { surfaceClass, type Surface } from '../utils/surface';
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    /** Optional semantic context for the section; the lead story is always `featured`. */
++    surface?: Surface;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, surface } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -19,46 +24,16 @@ if (articles.length < 4) {
+ const topArticle = articles[0];
+ const bottomArticles = articles.slice(1, 4);
+ 
+-const topArticleImage = await getArticleImage(topArticle);
+ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+ 
+ const readingList = await Astro.session?.get('readingList') || [];
+-
+-const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
+-    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+-        {title}
+-    </h2>
++<section class:list={['p-4 md:p-6', surfaceClass(surface)]}>
++    <SectionHeading title={title} />
+ 
+-    <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+-            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+-                        {topArticle.data.title}
+-                    </h3>
+-                </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+-                    {topArticle.data.summary}
+-                </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
+-                </div>
+-            </div>
+-            <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+-                </a>
+-            </div>
+-        </div>
++    <!-- Top Section: lead story adapts to its featured surface -->
++    <div class="surface-featured mb-6 lg:mb-8">
++        <ArticleTeaser article={topArticle} />
+     </div>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..34da62a 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -32,7 +32,6 @@ const randomArticleForHero = allArticlesInCategory.length > 0
+     : null;
+ 
+ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+-const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+@@ -65,24 +64,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
++            {featuredArticle && (
++                <section class="surface-featured mb-8 pb-8 border-b border-gray-200">
++                    <ArticleTeaser article={featuredArticle} headingLevel={2} priority />
+                 </section>
+             )}
+ 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..90f2fcb 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,13 +41,10 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++            <div class="surface-compact grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        <ArticleTeaser article={article} />
+                     </div>
+                 ))}
+             </div>
+@@ -55,8 +52,8 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
++    <main class="surface-featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} headingLevel={1} priority />
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+@@ -71,7 +68,8 @@ politicsArticles[2] = {
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <!-- "World" is a live section: teasers and heading adapt via the breaking surface -->
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} surface="breaking" />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7cd4d96 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,289 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* ==========================================================================
++   Semantic surfaces
++   --------------------------------------------------------------------------
++   Producers only declare *what kind of place* they are. They never name the
++   components that react, and components never name their producers — both
++   sides meet on the inherited `--surface` custom property and
++   `@container style(--surface: …)`. The nearest producer wins, so a
++   `.surface-featured` slot nested inside a `.surface-breaking` section is
++   treated as featured.
++
++   No `container-type` is needed for style queries: every element is a style
++   container for the custom properties it (inherits and) holds.
++
++   Browser support: container style queries are Baseline "newly available"
++   (2026-05). Each variant therefore ships a `:where(.surface-*)` selector
++   fallback first; the style query (same specificity, later in source)
++   overrides it where supported. Drop the fallbacks once style queries are
++   widely available.
++   ========================================================================== */
++@layer components {
++  .surface-featured { --surface: featured; }
++  .surface-compact  { --surface: compact; }
++  .surface-breaking { --surface: breaking; }
++}
++
++/* ==========================================================================
++   Base component styles (context-free defaults)
++   ========================================================================== */
++@layer components {
++  /* ---- Article teaser --------------------------------------------------- */
++  .teaser {
++    container: teaser / inline-size; /* size container for the featured split layout */
++    height: 100%;
++  }
++
++  .teaser__layout {
++    display: flex;
++    flex-direction: column;
++    gap: 0.75rem;
++    height: 100%;
++  }
++
++  .teaser__media img {
++    display: block;
++    width: 100%;
++    height: auto;
++    aspect-ratio: 16 / 9;
++    object-fit: cover;
++    border-radius: var(--radius-md);
++  }
++
++  .teaser__body {
++    display: flex;
++    flex-direction: column;
++    flex-grow: 1;
++  }
++
++  .teaser__kicker {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    gap: 0.5rem;
++  }
++
++  .teaser__category {
++    font-family: "Grenze", serif;
++    font-size: var(--text-sm);
++    letter-spacing: var(--tracking-widest);
++    color: var(--color-amber-800);
++
++    &:hover { text-decoration: underline; }
++  }
++
++  .teaser__badge {
++    display: none; /* only revealed by a matching surface */
++    padding: 0.125rem 0.5rem;
++    border-radius: 9999px;
++    font-size: 0.6875rem;
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    line-height: 1.4;
++    text-transform: uppercase;
++  }
++
++  .teaser__badge--featured {
++    background: var(--color-amber-100);
++    color: var(--color-amber-900);
++  }
++
++  .teaser__badge--breaking {
++    background: var(--color-red-700);
++    color: var(--color-white);
++  }
++
++  .teaser__title {
++    font-family: "Grenze", serif;
++    font-weight: 500;
++    font-size: var(--text-xl);
++    line-height: 1.2;
++    text-wrap: balance;
++    color: var(--color-gray-800);
++    transition: color 150ms;
++  }
++
++  .teaser:hover .teaser__title,
++  .teaser__title a:focus-visible {
++    color: var(--color-amber-700);
++  }
++
++  .teaser__summary {
++    margin-top: 0.25rem;
++    margin-bottom: 0.5rem;
++    color: var(--color-gray-600);
++    text-wrap: pretty;
++  }
++
++  .teaser__date {
++    display: none; /* only shown in compact surfaces */
++    font-size: var(--text-xs);
++    color: var(--color-gray-500);
++  }
++
++  .teaser__meta {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    margin-top: auto;
++    padding-top: 0.5rem;
++    border-top: 1px solid var(--color-gray-100);
++    font-size: var(--text-sm);
++    color: var(--color-gray-500);
++  }
++
++  .teaser__reading-time {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.25rem;
++    font-weight: 500;
++  }
++
++  /* ---- Bookmark button -------------------------------------------------- */
++  .bookmark-button {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.375rem;
++    padding: 0.25rem;
++    border-radius: var(--radius-md);
++    cursor: pointer;
++  }
++
++  .bookmark-button__label {
++    /* visually hidden, still announced */
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    overflow: hidden;
++    clip-path: inset(50%);
++    white-space: nowrap;
++  }
++
++  /* ---- Section heading -------------------------------------------------- */
++  .section-heading {
++    display: flex;
++    align-items: center;
++    gap: 0.75rem;
++    margin-bottom: 1.5rem;
++    padding-bottom: 0.5rem;
++    border-bottom: 2px solid var(--color-gray-900);
++    font-size: var(--text-3xl);
++    font-weight: 700;
++
++    @media (min-width: 64rem) { margin-bottom: 2rem; }
++  }
++
++  .section-heading__live {
++    display: none; /* only shown in breaking surfaces */
++    align-items: center;
++    gap: 0.375rem;
++    padding: 0.125rem 0.625rem;
++    border-radius: 9999px;
++    background: var(--color-red-700);
++    color: var(--color-white);
++    font-size: var(--text-xs);
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    text-transform: uppercase;
++
++    &::before {
++      content: "";
++      width: 0.5rem;
++      height: 0.5rem;
++      border-radius: 9999px;
++      background: currentColor;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      &::before { animation: live-pulse 1.6s ease-in-out infinite; }
++    }
++  }
++
++  @keyframes live-pulse {
++    50% { opacity: 0.25; }
++  }
++}
++
++/* ==========================================================================
++   Surface: featured — hero slot
++   ========================================================================== */
++@layer components {
++  /* Fallback (selector-based) */
++  :where(.surface-featured) {
++    .teaser { padding: 1.5rem; background: var(--color-white); box-shadow: var(--shadow-sm); }
++    .teaser__layout { gap: 1.5rem; }
++    .teaser__media img { aspect-ratio: 3 / 2; border-radius: 0; }
++    .teaser__badge--featured { display: inline-block; }
++    .teaser__title { margin-top: 0.5rem; font-size: clamp(var(--text-3xl), 1.5rem + 2cqi, var(--text-4xl)); line-height: 1.1; color: var(--color-gray-900); }
++    .teaser__summary { margin-top: 1rem; font-size: var(--text-lg); color: var(--color-gray-700); }
++    .bookmark-button__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; font-weight: 500; }
++  }
++  @container teaser (min-width: 48rem) {
++    :where(.surface-featured) .teaser__layout { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
++    :where(.surface-featured) .teaser__media { order: 1; }
++  }
++
++  /* Progressive enhancement (style query) */
++  @container style(--surface: featured) {
++    .teaser { padding: 1.5rem; background: var(--color-white); box-shadow: var(--shadow-sm); }
++    .teaser__layout { gap: 1.5rem; }
++    .teaser__media img { aspect-ratio: 3 / 2; border-radius: 0; }
++    .teaser__badge--featured { display: inline-block; }
++    .teaser__title { margin-top: 0.5rem; font-size: clamp(var(--text-3xl), 1.5rem + 2cqi, var(--text-4xl)); line-height: 1.1; color: var(--color-gray-900); }
++    .teaser__summary { margin-top: 1rem; font-size: var(--text-lg); color: var(--color-gray-700); }
++    .bookmark-button__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; font-weight: 500; }
++
++    @container teaser (min-width: 48rem) {
++      .teaser__layout { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
++      .teaser__media { order: 1; }
++    }
++  }
++}
++
++/* ==========================================================================
++   Surface: compact — dense headline lists
++   ========================================================================== */
++@layer components {
++  /* Fallback (selector-based) */
++  :where(.surface-compact) {
++    .teaser__layout { gap: 0.25rem; }
++    .teaser__media, .teaser__kicker, .teaser__summary, .teaser__meta { display: none; }
++    .teaser__title { font-family: inherit; font-size: var(--text-base); font-weight: 700; color: var(--color-gray-900); }
++    .teaser__date { display: block; }
++  }
++
++  /* Progressive enhancement (style query) */
++  @container style(--surface: compact) {
++    .teaser__layout { gap: 0.25rem; }
++    .teaser__media, .teaser__kicker, .teaser__summary, .teaser__meta { display: none; }
++    .teaser__title { font-family: inherit; font-size: var(--text-base); font-weight: 700; color: var(--color-gray-900); }
++    .teaser__date { display: block; }
++  }
++}
++
++/* ==========================================================================
++   Surface: breaking — live / developing news
++   ========================================================================== */
++@layer components {
++  /* Fallback (selector-based) */
++  :where(.surface-breaking) {
++    .teaser__badge--breaking { display: inline-block; }
++    .teaser__category { color: var(--color-red-700); }
++    .teaser__body { padding-left: 0.75rem; border-left: 3px solid var(--color-red-700); }
++    .section-heading { border-bottom-color: var(--color-red-700); }
++    .section-heading__live { display: inline-flex; }
++  }
++
++  /* Progressive enhancement (style query) */
++  @container style(--surface: breaking) {
++    .teaser__badge--breaking { display: inline-block; }
++    .teaser__category { color: var(--color-red-700); }
++    .teaser__body { padding-left: 0.75rem; border-left: 3px solid var(--color-red-700); }
++    .section-heading { border-bottom-color: var(--color-red-700); }
++    .section-heading__live { display: inline-flex; }
++  }
++}
+diff --git a/src/utils/surface.ts b/src/utils/surface.ts
+new file mode 100644
+index 0000000..a07c0d9
+--- /dev/null
++++ b/src/utils/surface.ts
+@@ -0,0 +1,20 @@
++/**
++ * Semantic surface contexts.
++ *
++ * A layout container marks *what kind of place* it is by setting the
++ * inherited `--surface` custom property (via one of the `.surface-*` classes
++ * in `global.css`). Components never ask *who* their parent is — they react
++ * to `@container style(--surface: …)` and decide for themselves what to
++ * render, how to arrange themselves and which variant to present.
++ *
++ * - `featured`  – a hero / lead-story slot: promotional badge, large
++ *                 split layout, labelled actions.
++ * - `compact`   – a dense list such as a ticker bar: text only, date shown.
++ * - `breaking`  – a live / developing news section: urgent accent colour,
++ *                 "Breaking" badges and a live indicator on headings.
++ */
++export type Surface = 'featured' | 'compact' | 'breaking';
++
++export function surfaceClass(surface?: Surface): string | undefined {
++    return surface ? `surface-${surface}` : undefined;
++}

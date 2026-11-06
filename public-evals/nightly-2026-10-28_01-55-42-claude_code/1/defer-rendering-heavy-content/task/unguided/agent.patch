@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -186,8 +186,81 @@
+       margin: 2rem auto;
+       text-align: center;
+       color: #64748b;
+     }
++
++    /*
++     * Offscreen cards skip layout, style and paint entirely until they are
++     * scrolled near the viewport. contain-intrinsic-size gives the browser a
++     * placeholder height so the scrollbar stays stable; the `auto` keyword
++     * remembers each card's real size once it has been rendered.
++     */
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 320px;
++    }
++
++    /*
++     * The debug panel lives outside the document flow (fixed) with its own
++     * containment and compositor layer, so showing/hiding it never triggers
++     * layout or repaint of the card feed.
++     */
++    .debug-panel {
++      position: fixed;
++      left: 50%;
++      bottom: 1rem;
++      transform: translateX(-50%) translateZ(0);
++      width: min(800px, calc(100vw - 2rem));
++      box-sizing: border-box;
++      padding: 0.75rem 1rem;
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 0.75rem;
++      font-family: monospace;
++      font-size: 0.8rem;
++      z-index: 200;
++      contain: content;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++    }
++
++    .debug-panel[hidden] {
++      display: none;
++    }
++
++    .debug-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 0.5rem;
++      font-weight: bold;
++      color: #93c5fd;
++    }
++
++    .debug-panel-close {
++      background: transparent;
++      border: 1px solid #334155;
++      color: #e2e8f0;
++      border-radius: 0.25rem;
++      padding: 0.1rem 0.5rem;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    .debug-panel dl {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
++      gap: 0.25rem 1rem;
++      margin: 0;
++    }
++
++    .debug-panel dt {
++      color: #94a3b8;
++    }
++
++    .debug-panel dd {
++      margin: 0 0 0.25rem;
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -207,8 +280,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn off" aria-controls="debug-panel" aria-expanded="false">Debug Panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +293,54 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <aside id="debug-panel" class="debug-panel" hidden aria-label="Debug panel">
++    <div class="debug-panel-header">
++      <span>Debug</span>
++      <button id="debug-close" class="debug-panel-close" type="button" aria-label="Close debug panel">&times;</button>
++    </div>
++    <dl>
++      <dt>Total cards</dt>
++      <dd id="dbg-total">0</dd>
++      <dt>Cards currently rendered</dt>
++      <dd id="dbg-rendered">0</dd>
++      <dt>Last render time</dt>
++      <dd id="dbg-render-time">-</dd>
++      <dt>Scroll position</dt>
++      <dd id="dbg-scroll">0px</dd>
++      <dt>Viewport</dt>
++      <dd id="dbg-viewport">-</dd>
++      <dt>content-visibility support</dt>
++      <dd id="dbg-cv">-</dd>
++    </dl>
++  </aside>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
++    const debugPanel = document.getElementById('debug-panel');
++    const debugToggleBtn = document.getElementById('debug-toggle');
++    const debugCloseBtn = document.getElementById('debug-close');
++    const dbgTotal = document.getElementById('dbg-total');
++    const dbgRendered = document.getElementById('dbg-rendered');
++    const dbgRenderTime = document.getElementById('dbg-render-time');
++    const dbgScroll = document.getElementById('dbg-scroll');
++    const dbgViewport = document.getElementById('dbg-viewport');
++    const dbgCv = document.getElementById('dbg-cv');
+ 
++    let lastRenderDuration = null;
++    // Cards whose contents are currently being rendered (i.e. near the viewport).
++    let renderedCardCount = 0;
+ 
++
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +373,10 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          lastRenderDuration = duration;
++          scheduleDebugUpdate();
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -281,8 +391,9 @@
+     function renderCards() {
+       const info = feed.querySelector('.info-text');
+       feed.innerHTML = '';
+       feed.appendChild(info);
++      renderedCardCount = 0;
+ 
+       const startTime = performance.now();
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+@@ -292,8 +403,68 @@
+ 
+       measureRender(startTime);
+     }
+ 
++    // Fired by the browser whenever a content-visibility: auto card starts or
++    // stops being rendered. Lets us count rendered cards without any
++    // layout-forcing DOM queries.
++    feed.addEventListener('contentvisibilityautostatechange', (event) => {
++      if (!event.target.classList.contains('off-screen-card')) return;
++      renderedCardCount += event.skipped ? -1 : 1;
++      scheduleDebugUpdate();
++    });
++
++    // ---- Debug panel ----
++    // Updates are rAF-coalesced and only run while the panel is visible, so a
++    // hidden panel costs nothing and a visible one never does more than one
++    // DOM write per frame.
++    let debugUpdateQueued = false;
++
++    function scheduleDebugUpdate() {
++      if (debugPanel.hidden || debugUpdateQueued) return;
++      debugUpdateQueued = true;
++      requestAnimationFrame(() => {
++        debugUpdateQueued = false;
++        updateDebugPanel();
++      });
++    }
++
++    function updateDebugPanel() {
++      dbgTotal.textContent = String(cardCount);
++      dbgRendered.textContent = String(Math.max(0, renderedCardCount));
++      dbgRenderTime.textContent = lastRenderDuration === null ? '-' : `${lastRenderDuration}ms`;
++      dbgScroll.textContent = `${Math.round(window.scrollY)}px`;
++      dbgViewport.textContent = `${window.innerWidth} x ${window.innerHeight}`;
++      dbgCv.textContent = CSS.supports('content-visibility', 'auto') ? 'yes' : 'no';
++    }
++
++    function setDebugPanelVisible(visible) {
++      // Toggling `hidden` on a fixed, contained element only affects the
++      // panel's own layer; the 500-card feed is left untouched.
++      debugPanel.hidden = !visible;
++      debugToggleBtn.setAttribute('aria-expanded', String(visible));
++      debugToggleBtn.classList.toggle('off', !visible);
++      if (visible) scheduleDebugUpdate();
++    }
++
++    function toggleDebugPanel() {
++      setDebugPanelVisible(debugPanel.hidden);
++    }
++
++    debugToggleBtn.addEventListener('click', toggleDebugPanel);
++    debugCloseBtn.addEventListener('click', () => setDebugPanelVisible(false));
++
++    // Keyboard shortcut: press "d" (outside of inputs) to toggle the panel.
++    document.addEventListener('keydown', (event) => {
++      if (event.key !== 'd' || event.ctrlKey || event.metaKey || event.altKey) return;
++      const tag = event.target.tagName;
++      if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return;
++      toggleDebugPanel();
++    });
++
++    window.addEventListener('scroll', scheduleDebugUpdate, { passive: true });
++    window.addEventListener('resize', scheduleDebugUpdate, { passive: true });
++
+     window.addEventListener('load', () => {
+       setTimeout(renderCards, 500);
+     });
+ 

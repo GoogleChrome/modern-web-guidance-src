@@ -1,0 +1,62 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,30 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promotion-timer {
++      margin-top: 16px;
++      padding: 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fff8ee;
++    }
++
++    .promotion-timer strong {
++      display: block;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .promotion-timer p + p {
++      margin-top: 6px;
++    }
++
++    .promotion-timer small {
++      display: block;
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +202,18 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Assumed promotion start; replace with the confirmed start date. -->
++          <div class="promotion-timer" id="maple-promotion"
++            data-start="2026-01-01" data-end="2026-03-01"
++            role="status" aria-live="polite" aria-atomic="true">
++            <p>Offer ends <time datetime="2026-03-01T00:00:00">March 1, 2026 at midnight</time> in your local time zone.</p>
++            <p data-remaining>Calculating time remaining…</p>
++            <p data-elapsed></p>
++            <small data-period></small>
++            <noscript>Enable JavaScript to see time remaining and elapsed time.</noscript>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +238,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./promotion-timer.mjs"></script>
+ </body>
+ 
+ </html>

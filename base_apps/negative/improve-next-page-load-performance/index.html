@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Application Dashboard</title>
+</head>
+<body>
+    <div id="root">
+        <header>
+            <h1>User Dashboard</h1>
+            <nav>
+                <a href="#/dashboard">Dashboard</a>
+                <a href="#/reports">Reports</a>
+                <a href="#/settings">Settings</a>
+                <a href="#/admin">Admin Panel</a>
+                <a href="/logout">Sign Out</a>
+            </nav>
+        </header>
+        <main id="view-container">
+            <p>Select a navigation item to begin.</p>
+        </main>
+    </div>
+
+    <script type="text/speculation-rules">
+    {
+        "fetch-priority": [
+            {
+                "source": "list",
+                "links": [
+                    "/logout",
+                    "/account/delete-confirm",
+                    "/system/reboot",
+                    "/api/v1/flush-cache",
+                    "/api/v1/reset-database",
+                    "/api/v1/terminate-session",
+                    "/api/v1/clear-history",
+                    "/api/v1/wipe-data",
+                    "/api/v1/revoke-access",
+                    "/api/v1/disable-mfa",
+                    "/api/v1/purge-logs",
+                    "/api/v1/drop-tables"
+                ]
+                "urgency": "immediate"
+            }
+        ]
+    }
+    </script>
+
+    <script>
+        const routes = {
+            '#/dashboard': 'Dashboard View Content',
+            '#/reports': 'Reports View Content',
+            '#/settings': 'Settings View Content',
+            '#/admin': 'Admin View Content'
+        };
+
+        function router() {
+            const path = window.location.hash || '#/dashboard';
+            const container = document.getElementById('view-container');
+            container.innerHTML = `<h2>${path.slice(2).toUpperCase()}</h2><p>${routes[path] || 'Not Found'}</p>`;
+        }
+
+        window.addEventListener('hashchange', router);
+        window.addEventListener('load', router);
+    </script>
+</body>
+</html>

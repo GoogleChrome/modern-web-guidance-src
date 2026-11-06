@@ -1,0 +1,438 @@
+diff --git a/index.html b/index.html
+index 66c9173..868470a 100644
+--- a/index.html
++++ b/index.html
+@@ -4,18 +4,155 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      /* Core coffee-brown brand & raw light/dark palette tokens */
++      --brand-coffee: #4e342e;
++      --brand-espresso: #3e2723;
++      --brand-crema: #d7ccc8;
++
++      --bg-canvas-light: #faf6f3;
++      --bg-canvas-dark: #181210;
++
++      --bg-surface-light: #ffffff;
++      --bg-surface-dark: #261c19;
++
++      --border-surface-light: #d7ccc8;
++      --border-surface-dark: #4e342e;
++
++      --text-primary-light: #2d1b17;
++      --text-primary-dark: #f5ebe6;
++
++      --text-muted-light: #5d4037;
++      --text-muted-dark: #d7ccc8;
++
++      --text-heading-light: #4e342e;
++      --text-heading-dark: #f0dfd6;
++
++      --nav-bg-light: #4e342e;
++      --nav-bg-dark: #221613;
++      --nav-text-light: #ffffff;
++      --nav-text-dark: #f5ebe6;
++      --nav-accent-light: #ffab40;
++      --nav-accent-dark: #ffb74d;
++
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #d49a6a;
++      --btn-bg-hover-light: #3e2723;
++      --btn-bg-hover-dark: #e3b083;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #181210;
++
++      --footer-bg-light: #ebe0da;
++      --footer-bg-dark: #120d0b;
++      --footer-border-light: #d7ccc8;
++      --footer-border-dark: #3e2723;
++
++      --badge-new-bg-light: #ffab40;
++      --badge-new-bg-dark: #ffb74d;
++      --badge-new-text-fallback: #181210;
++
++      --badge-sold-out-bg-light: #5d4037;
++      --badge-sold-out-bg-dark: #bcaaa4;
++      --badge-sold-out-text-light: #ffffff;
++      --badge-sold-out-text-dark: #181210;
++
++      --card-shadow-light: 0 4px 12px rgb(62 39 35 / 0.08);
++      --card-shadow-dark: 0 4px 14px rgb(0 0 0 / 0.45);
++
++      /* Default (light) semantic tokens */
++      --bg-canvas: var(--bg-canvas-light);
++      --bg-surface: var(--bg-surface-light);
++      --border-surface: var(--border-surface-light);
++      --text-primary: var(--text-primary-light);
++      --text-muted: var(--text-muted-light);
++      --text-heading: var(--text-heading-light);
++      --nav-bg: var(--nav-bg-light);
++      --nav-text: var(--nav-text-light);
++      --nav-accent: var(--nav-accent-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text-fallback: var(--btn-text-light);
++      --footer-bg: var(--footer-bg-light);
++      --footer-border: var(--footer-border-light);
++      --badge-new-bg: var(--badge-new-bg-light);
++      --badge-sold-out-bg: var(--badge-sold-out-bg-light);
++      --badge-sold-out-text-fallback: var(--badge-sold-out-text-light);
++      --card-shadow: var(--card-shadow-light);
++
++      /* Legacy aliases for compatibility */
++      --primary: var(--btn-bg);
++      --secondary: var(--footer-bg);
++      --accent: var(--nav-accent);
++      --text: var(--text-primary);
++      --light: var(--bg-canvas);
++
++      /* Fallback for browsers without light-dark() support */
++      @media (prefers-color-scheme: dark) {
++        --bg-canvas: var(--bg-canvas-dark);
++        --bg-surface: var(--bg-surface-dark);
++        --border-surface: var(--border-surface-dark);
++        --text-primary: var(--text-primary-dark);
++        --text-muted: var(--text-muted-dark);
++        --text-heading: var(--text-heading-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --nav-text: var(--nav-text-dark);
++        --nav-accent: var(--nav-accent-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text-fallback: var(--btn-text-dark);
++        --footer-bg: var(--footer-bg-dark);
++        --footer-border: var(--footer-border-dark);
++        --badge-new-bg: var(--badge-new-bg-dark);
++        --badge-sold-out-bg: var(--badge-sold-out-bg-dark);
++        --badge-sold-out-text-fallback: var(--badge-sold-out-text-dark);
++        --card-shadow: var(--card-shadow-dark);
++      }
++
++      /* Modern in-gamut tints and shades derived from --brand-coffee */
++      @supports (color: color-mix(in oklab, white, black)) {
++        --bg-canvas-light: color-mix(in oklab, var(--brand-coffee) 6%, white);
++        --bg-canvas-dark: color-mix(in oklab, var(--brand-coffee) 35%, black);
++        --bg-surface-dark: color-mix(in oklab, var(--brand-coffee) 55%, black);
++        --border-surface-light: color-mix(in oklab, var(--brand-coffee) 22%, white);
++        --nav-bg-dark: color-mix(in oklab, var(--brand-coffee) 45%, black);
++        --footer-bg-light: color-mix(in oklab, var(--brand-coffee) 14%, white);
++        --footer-bg-dark: color-mix(in oklab, var(--brand-coffee) 25%, black);
++      }
++
++      /* Modern light-dark() token resolution */
++      @supports (color: light-dark(white, black)) {
++        --bg-canvas: light-dark(var(--bg-canvas-light), var(--bg-canvas-dark));
++        --bg-surface: light-dark(var(--bg-surface-light), var(--bg-surface-dark));
++        --border-surface: light-dark(var(--border-surface-light), var(--border-surface-dark));
++        --text-primary: light-dark(var(--text-primary-light), var(--text-primary-dark));
++        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
++        --text-heading: light-dark(var(--text-heading-light), var(--text-heading-dark));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++        --nav-accent: light-dark(var(--nav-accent-light), var(--nav-accent-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++        --btn-text-fallback: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --footer-bg: light-dark(var(--footer-bg-light), var(--footer-bg-dark));
++        --footer-border: light-dark(var(--footer-border-light), var(--footer-border-dark));
++        --badge-new-bg: light-dark(var(--badge-new-bg-light), var(--badge-new-bg-dark));
++        --badge-sold-out-bg: light-dark(var(--badge-sold-out-bg-light), var(--badge-sold-out-bg-dark));
++        --badge-sold-out-text-fallback: light-dark(var(--badge-sold-out-text-light), var(--badge-sold-out-text-dark));
++      }
++
++      accent-color: var(--btn-bg);
+     }
+ 
+-    * {
++    :where(*, *::before, *::after) {
+       box-sizing: border-box;
++    }
++
++    :where(body, h1, h2, h3, p, ul) {
+       margin: 0;
+       padding: 0;
+     }
+@@ -23,14 +160,15 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--text-primary);
++      background-color: var(--bg-canvas);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--nav-bg);
++      color: var(--nav-text);
++      border-block-end: 1px solid var(--border-surface-dark);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -52,22 +190,22 @@
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,7 +213,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(rgb(45 27 23 / 0.68), rgb(24 18 16 / 0.76)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,14 +221,14 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #faf6f3;
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-block-end: 1rem;
+     }
+ 
+     /* Content Sections */
+@@ -100,58 +238,149 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--text-heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+-      margin-top: 20px;
++      margin-block-start: 20px;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      position: relative;
++      background-color: var(--bg-surface);
++      border: 1px solid var(--border-surface);
++      padding: 24px 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .card-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      margin-block-end: 10px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--text-heading);
++    }
++
++    .card p {
++      color: var(--text-muted);
++    }
++
++    /* Status Badges */
++    .badge {
++      --badge-bg: var(--badge-new-bg);
++      --badge-text-fallback: var(--badge-new-text-fallback);
++      display: inline-flex;
++      align-items: center;
++      gap: 4px;
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.03em;
++      text-transform: uppercase;
++      background-color: var(--badge-bg);
++      color: var(--badge-text-fallback);
++      border: 1px solid currentColor;
++    }
++
++    .badge-new {
++      --badge-bg: var(--badge-new-bg);
++      --badge-text-fallback: var(--badge-new-text-fallback);
+     }
+ 
++    .badge-sold-out {
++      --badge-bg: var(--badge-sold-out-bg);
++      --badge-text-fallback: var(--badge-sold-out-text-fallback);
++      border-style: dashed;
++    }
++
++    /* Buttons */
+     .btn {
++      --button-bg: var(--btn-bg);
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--button-bg);
++      color: var(--btn-text-fallback);
++      border: 1px solid transparent;
+       padding: 10px 20px;
+       text-decoration: none;
++      font-weight: 600;
+       border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      margin-block-start: 15px;
++      transition: background-color 0.3s, color 0.3s;
++    }
++
++    .btn:hover:not([aria-disabled="true"]) {
++      --button-bg: var(--btn-bg-hover);
++    }
++
++    .btn[aria-disabled="true"] {
++      opacity: 0.75;
++      cursor: not-allowed;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    @supports (color: oklch(from red l c h)) {
++      .badge {
++        --threshold: 0.623;
++        --l: max(0, sign(var(--threshold) - l));
++        color: oklch(from var(--badge-bg) var(--l) 0 h);
++      }
++
++      .btn {
++        --threshold: 0.623;
++        --l: max(0, sign(var(--threshold) - l));
++        color: oklch(from var(--button-bg) var(--l) 0 h);
++      }
++    }
++
++    @supports (color: contrast-color(red)) {
++      .badge {
++        color: contrast-color(var(--badge-bg));
++      }
++
++      .btn {
++        color: contrast-color(var(--button-bg));
++      }
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--footer-bg);
++      color: var(--text-primary);
++      border-block-start: 1px solid var(--footer-border);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-block-start: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: 20px;
+     }
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--text-primary);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--text-heading);
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+@@ -176,20 +405,28 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <div class="card-header">
++            <h3>Maple Oat Latte</h3>
++            <span class="badge badge-new"><span aria-hidden="true">✦</span> New</span>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <div class="card-header">
++            <h3>Dark Roast Espresso</h3>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <div class="card-header">
++            <h3>Cold Brew</h3>
++            <span class="badge badge-sold-out"><span aria-hidden="true">⊘</span> Sold out</span>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

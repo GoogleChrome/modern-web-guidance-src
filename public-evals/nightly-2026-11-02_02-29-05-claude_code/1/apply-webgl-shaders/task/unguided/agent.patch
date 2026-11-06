@@ -1,0 +1,305 @@
+diff --git a/hero-ripple.js b/hero-ripple.js
+new file mode 100644
+--- a/hero-ripple.js
++++ b/hero-ripple.js
+@@ -0,0 +1,300 @@
++/*
++ * GPU ripple distortion for the hero section.
++ *
++ * The hero's photo, headline, tagline and button are rasterised into an
++ * offscreen 2D canvas (using the live DOM layout), uploaded as a WebGL
++ * texture and displaced by a ripple shader. The original DOM elements stay
++ * on top with transparent text, so selection, links, focus and screen
++ * readers keep working exactly as before. If WebGL or the image is
++ * unavailable, or the user prefers reduced motion, the page is left as-is.
++ */
++(function () {
++  'use strict';
++
++  var hero = document.querySelector('.hero');
++  var canvas = hero && hero.querySelector('.hero-fx');
++  if (!canvas) return;
++  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++
++  var gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: false });
++  if (!gl) return;
++
++  var IMAGE_URL = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1600&q=80';
++  var MAX_RIPPLES = 12;
++  var RIPPLE_LIFE = 2.6; // seconds
++
++  var content = hero.querySelector('.hero-content');
++  var button = content.querySelector('.btn');
++  var textEls = Array.prototype.slice.call(content.querySelectorAll('h1, p'));
++
++  var VERT = [
++    'attribute vec2 a_pos;',
++    'varying vec2 v_uv;',
++    'void main() {',
++    '  v_uv = a_pos * 0.5 + 0.5;',
++    '  gl_Position = vec4(a_pos, 0.0, 1.0);',
++    '}'
++  ].join('\n');
++
++  var FRAG = [
++    'precision mediump float;',
++    '#define MAX_RIPPLES ' + MAX_RIPPLES,
++    '#define LIFE ' + RIPPLE_LIFE.toFixed(2),
++    'uniform sampler2D u_tex;',
++    'uniform vec2 u_res;',
++    'uniform float u_time;',
++    'uniform vec4 u_ripples[MAX_RIPPLES];', // xy = uv centre, z = start time, w = strength
++    'varying vec2 v_uv;',
++    'void main() {',
++    '  vec2 uv = v_uv;',
++    '  float aspect = u_res.x / u_res.y;',
++    // Gentle ambient "liquid surface" motion.
++    '  vec2 offset = 0.0012 * vec2(',
++    '    sin(uv.y * 14.0 + u_time * 1.3) + sin(uv.x * 9.0 - u_time * 0.7),',
++    '    cos(uv.x * 11.0 + u_time * 1.1) + cos(uv.y * 7.0 + u_time * 0.9));',
++    '  for (int i = 0; i < MAX_RIPPLES; i++) {',
++    '    vec4 r = u_ripples[i];',
++    '    float age = u_time - r.z;',
++    '    if (r.w <= 0.0 || age < 0.0 || age > LIFE) continue;',
++    '    vec2 d = uv - r.xy;',
++    '    d.x *= aspect;',
++    '    float dist = length(d);',
++    '    float band = dist - age * 0.45;',
++    '    float env = exp(-band * band * 90.0) * (1.0 - age / LIFE);',
++    '    float wave = sin(band * 70.0) * env * r.w;',
++    '    vec2 dir = dist > 0.0001 ? d / dist : vec2(0.0);',
++    '    dir.x /= aspect;',
++    '    offset += dir * wave * 0.018;',
++    '  }',
++    // Slight chromatic split proportional to the displacement.
++    '  vec2 ca = offset * 0.35;',
++    '  float cr = texture2D(u_tex, uv + offset + ca).r;',
++    '  vec4 cg = texture2D(u_tex, uv + offset);',
++    '  float cb = texture2D(u_tex, uv + offset - ca).b;',
++    '  float shine = clamp(dot(offset, vec2(-0.7, 0.7)) * 25.0, -0.08, 0.12);',
++    '  gl_FragColor = vec4(vec3(cr, cg.g, cb) + shine, 1.0);',
++    '}'
++  ].join('\n');
++
++  function compile(type, src) {
++    var sh = gl.createShader(type);
++    gl.shaderSource(sh, src);
++    gl.compileShader(sh);
++    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
++      console.warn('hero-ripple shader:', gl.getShaderInfoLog(sh));
++      return null;
++    }
++    return sh;
++  }
++
++  var vs = compile(gl.VERTEX_SHADER, VERT);
++  var fs = compile(gl.FRAGMENT_SHADER, FRAG);
++  if (!vs || !fs) return;
++  var program = gl.createProgram();
++  gl.attachShader(program, vs);
++  gl.attachShader(program, fs);
++  gl.linkProgram(program);
++  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
++  gl.useProgram(program);
++
++  var quad = gl.createBuffer();
++  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
++  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
++  var aPos = gl.getAttribLocation(program, 'a_pos');
++  gl.enableVertexAttribArray(aPos);
++  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
++
++  var uRes = gl.getUniformLocation(program, 'u_res');
++  var uTime = gl.getUniformLocation(program, 'u_time');
++  var uRipples = gl.getUniformLocation(program, 'u_ripples');
++
++  var texture = gl.createTexture();
++  gl.bindTexture(gl.TEXTURE_2D, texture);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
++
++  var ripples = new Float32Array(MAX_RIPPLES * 4);
++  var rippleIndex = 0;
++  var source = document.createElement('canvas');
++  var sctx = source.getContext('2d');
++  var image = new Image();
++  var width = 0, height = 0, dpr = 1;
++  var dirty = true, running = false, visible = true, active = false;
++  var hovered = false;
++  var start = performance.now();
++
++  function now() { return (performance.now() - start) / 1000; }
++
++  function addRipple(x, y, strength) {
++    var o = rippleIndex * 4;
++    ripples[o] = x / width;
++    ripples[o + 1] = 1 - y / height;
++    ripples[o + 2] = now();
++    ripples[o + 3] = strength;
++    rippleIndex = (rippleIndex + 1) % MAX_RIPPLES;
++  }
++
++  // ---- Rasterise the hero into the source canvas -------------------------
++
++  function drawCover(img) {
++    var ir = img.naturalWidth / img.naturalHeight;
++    var cr = width / height;
++    var w = width, h = height;
++    if (ir > cr) w = height * ir; else h = width / ir;
++    sctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
++  }
++
++  // Draws every word of an element's text at its exact DOM position, which
++  // preserves line wrapping, alignment and letter spacing as laid out.
++  function drawText(el, color, origin) {
++    var cs = getComputedStyle(el);
++    sctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
++    sctx.fillStyle = color;
++    sctx.textBaseline = 'alphabetic';
++    var m = sctx.measureText('Hg');
++    var asc = m.fontBoundingBoxAscent || m.actualBoundingBoxAscent;
++    var desc = m.fontBoundingBoxDescent || m.actualBoundingBoxDescent;
++    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
++    var range = document.createRange();
++    var node, match, re = /\S+/g;
++    while ((node = walker.nextNode())) {
++      re.lastIndex = 0;
++      while ((match = re.exec(node.data))) {
++        range.setStart(node, match.index);
++        range.setEnd(node, match.index + match[0].length);
++        var r = range.getClientRects()[0];
++        if (!r) continue;
++        var baseline = r.top - origin.top + (r.height - (asc + desc)) / 2 + asc;
++        sctx.fillText(match[0], r.left - origin.left, baseline);
++      }
++    }
++  }
++
++  function roundRect(x, y, w, h, rad) {
++    rad = Math.min(rad, w / 2, h / 2);
++    sctx.beginPath();
++    sctx.moveTo(x + rad, y);
++    sctx.arcTo(x + w, y, x + w, y + h, rad);
++    sctx.arcTo(x + w, y + h, x, y + h, rad);
++    sctx.arcTo(x, y + h, x, y, rad);
++    sctx.arcTo(x, y, x + w, y, rad);
++    sctx.closePath();
++  }
++
++  function renderSource() {
++    var origin = hero.getBoundingClientRect();
++    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
++    sctx.clearRect(0, 0, width, height);
++    drawCover(image);
++    sctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
++    sctx.fillRect(0, 0, width, height);
++
++    var root = getComputedStyle(document.documentElement);
++    textEls.forEach(function (el) { drawText(el, '#fff', origin); });
++
++    var b = button.getBoundingClientRect();
++    var bcs = getComputedStyle(button);
++    sctx.fillStyle = root.getPropertyValue(hovered ? '--btn-hover' : '--primary').trim();
++    roundRect(b.left - origin.left, b.top - origin.top, b.width, b.height, parseFloat(bcs.borderTopLeftRadius) || 0);
++    sctx.fill();
++    drawText(button, '#fff', origin);
++
++    gl.bindTexture(gl.TEXTURE_2D, texture);
++    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
++    dirty = false;
++  }
++
++  // ---- Loop ---------------------------------------------------------------
++
++  function resize() {
++    var rect = hero.getBoundingClientRect();
++    dpr = Math.min(window.devicePixelRatio || 1, 2);
++    width = rect.width;
++    height = rect.height;
++    canvas.width = source.width = Math.max(1, Math.round(width * dpr));
++    canvas.height = source.height = Math.max(1, Math.round(height * dpr));
++    gl.viewport(0, 0, canvas.width, canvas.height);
++    dirty = true;
++  }
++
++  function frame() {
++    if (!visible || document.hidden) { running = false; return; }
++    if (dirty) renderSource();
++    gl.uniform2f(uRes, width, height);
++    gl.uniform1f(uTime, now());
++    gl.uniform4fv(uRipples, ripples);
++    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++    requestAnimationFrame(frame);
++  }
++
++  function startLoop() {
++    if (active && !running && visible && !document.hidden) {
++      running = true;
++      requestAnimationFrame(frame);
++    }
++  }
++
++  // ---- Interaction --------------------------------------------------------
++
++  var last = { x: -1e4, y: -1e4, t: 0 };
++  hero.addEventListener('pointermove', function (e) {
++    var rect = hero.getBoundingClientRect();
++    var x = e.clientX - rect.left, y = e.clientY - rect.top;
++    var dx = x - last.x, dy = y - last.y;
++    var dist = Math.sqrt(dx * dx + dy * dy);
++    var t = performance.now();
++    if (dist < 40 && t - last.t < 120) return;
++    var speed = dist / Math.max(16, t - last.t);
++    addRipple(x, y, Math.min(1, 0.25 + speed * 0.5));
++    last = { x: x, y: y, t: t };
++  });
++
++  hero.addEventListener('pointerdown', function (e) {
++    var rect = hero.getBoundingClientRect();
++    addRipple(e.clientX - rect.left, e.clientY - rect.top, 1.6);
++  });
++
++  function setHover(state) {
++    return function () { hovered = state; dirty = true; };
++  }
++  button.addEventListener('pointerenter', setHover(true));
++  button.addEventListener('pointerleave', setHover(false));
++  button.addEventListener('focus', setHover(true));
++  button.addEventListener('blur', setHover(false));
++
++  new ResizeObserver(function () { resize(); }).observe(hero);
++  new IntersectionObserver(function (entries) {
++    visible = entries[0].isIntersecting;
++    startLoop();
++  }).observe(hero);
++  document.addEventListener('visibilitychange', startLoop);
++
++  // Ambient ripples so the effect is visible without interaction.
++  setInterval(function () {
++    if (!running) return;
++    addRipple(width * (0.15 + Math.random() * 0.7), height * (0.2 + Math.random() * 0.6), 0.45);
++  }, 3200);
++
++  // ---- Boot ---------------------------------------------------------------
++
++  image.crossOrigin = 'anonymous';
++  image.onload = function () {
++    var fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
++    fontsReady.then(function () {
++      resize();
++      try {
++        renderSource();
++      } catch (err) {
++        return; // e.g. tainted canvas: keep the plain DOM hero
++      }
++      active = true;
++      hero.classList.add('fx-active');
++      addRipple(width / 2, height / 2, 1.2);
++      startLoop();
++    });
++  };
++  image.src = IMAGE_URL;
++})();

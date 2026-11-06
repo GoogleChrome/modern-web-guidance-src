@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="cart.css">
++  <script src="cart.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +196,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="shopping-cart" aria-labelledby="cart-heading">
++      <div class="cart-heading">
++        <h2 id="cart-heading">Your Shopping Cart</h2>
++        <span id="cart-count">3 items</span>
++      </div>
++      <p id="cart-instructions">A little something to look forward to. Swipe an item left or right to remove it.</p>
++      <ul class="SwipeableList" aria-describedby="cart-instructions">
++        <li class="SwipeableList-item" data-name="Maple Oat Latte">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Maple Oat Latte, swipe to remove">
++            <div class="SwipeableList-content">
++              <div><h3>Maple Oat Latte</h3><p>Oat milk · Vermont maple syrup</p></div>
++              <span class="cart-quantity">Qty 1</span>
++              <button type="button" class="cart-remove" aria-label="Remove Maple Oat Latte">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" data-name="Dark Roast Espresso">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Dark Roast Espresso, swipe to remove">
++            <div class="SwipeableList-content">
++              <div><h3>Dark Roast Espresso</h3><p>Bold roast · Rich, smoky finish</p></div>
++              <span class="cart-quantity">Qty 1</span>
++              <button type="button" class="cart-remove" aria-label="Remove Dark Roast Espresso">Remove</button>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item" data-name="Cold Brew">
++          <div class="SwipeableList-track" tabindex="0" aria-label="Cold Brew, swipe to remove">
++            <div class="SwipeableList-content">
++              <div><h3>Cold Brew</h3><p>Slow steeped · Smooth &amp; refreshing</p></div>
++              <span class="cart-quantity">Qty 1</span>
++              <button type="button" class="cart-remove" aria-label="Remove Cold Brew">Remove</button>
++            </div>
++          </div>
++        </li>
++      </ul>
++      <p id="cart-empty" hidden>Your cart is empty. There’s always room for another coffee.</p>
++      <div class="cart-feedback">
++        <p id="cart-status" role="status" aria-live="polite"></p>
++        <button type="button" id="cart-undo" hidden>Undo removal</button>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

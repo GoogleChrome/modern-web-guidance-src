@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,54 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Section */
++    .feedback-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .feedback-section h2 {
++      margin-bottom: 15px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .feedback-section textarea {
++      width: 100%;
++      min-height: 120px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 1rem;
++      resize: vertical;
++      margin-bottom: 10px;
++    }
++
++    .feedback-section button {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .detection-output {
++      margin-top: 15px;
++      font-weight: 500;
++      color: var(--primary);
++    }
++
++    .download-progress {
++      margin-top: 10px;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +240,18 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="feedback" class="feedback-section">
++      <h2>Leave Us Feedback</h2>
++      <textarea id="feedback-message" placeholder="Write your feedback message here..."></textarea>
++      <div>
++        <button id="detect-btn" type="button" class="btn">Detect</button>
++      </div>
++      <div id="download-progress" class="download-progress" aria-live="polite"></div>
++      <div id="detection-result" class="detection-output" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +262,79 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const detectBtn = document.getElementById('detect-btn');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const downloadProgress = document.getElementById('download-progress');
++    const detectionResult = document.getElementById('detection-result');
++
++    let detectorInstance = null;
++
++    function getLanguageName(code) {
++      if (!code) return 'Unknown';
++      try {
++        const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
++        return displayNames.of(code) || code;
++      } catch {
++        return code;
++      }
++    }
++
++    detectBtn.addEventListener('click', async () => {
++      const text = feedbackMessage.value.trim();
++      detectionResult.textContent = '';
++      downloadProgress.textContent = '';
++
++      if (!text) {
++        detectionResult.textContent = 'Please enter a message to detect its language.';
++        return;
++      }
++
++      if (!('LanguageDetector' in self)) {
++        detectionResult.textContent = 'Language detection is not supported in this browser.';
++        return;
++      }
++
++      try {
++        const availability = await LanguageDetector.availability();
++
++        if (availability === 'unavailable') {
++          detectionResult.textContent = 'Language detection is currently unavailable on this device.';
++          return;
++        }
++
++        if (!detectorInstance) {
++          if (availability === 'downloadable' || availability === 'downloading') {
++            downloadProgress.textContent = 'Downloading model: 0%';
++            detectorInstance = await LanguageDetector.create({
++              monitor(m) {
++                m.addEventListener('downloadprogress', (e) => {
++                  const pct = Math.round(e.loaded * 100);
++                  downloadProgress.textContent = `Downloading model: ${pct}%`;
++                });
++              }
++            });
++            downloadProgress.textContent = 'Downloading model: 100%';
++          } else {
++            detectorInstance = await LanguageDetector.create();
++          }
++        }
++
++        const results = await detectorInstance.detect(text);
++        if (results && results.length > 0) {
++          const topResult = results[0];
++          const languageName = getLanguageName(topResult.detectedLanguage);
++          const confidencePct = (topResult.confidence * 100).toFixed(1);
++          detectionResult.textContent = `Language: ${languageName} (${topResult.detectedLanguage}) — Confidence: ${confidencePct}%`;
++        } else {
++          detectionResult.textContent = 'Could not detect the language.';
++        }
++      } catch (err) {
++        detectionResult.textContent = `Error detecting language: ${err.message || err}`;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

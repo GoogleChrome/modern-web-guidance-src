@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,86 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Section */
++    .feedback-section {
++      margin-top: 50px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-container,
++    .customer-feedback-log {
++      max-height: 300px;
++      overflow-y: auto;
++      background: white;
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: #ffab40 #4e342e;
++    }
++
++    .feedback-container::-webkit-scrollbar,
++    .customer-feedback-log::-webkit-scrollbar {
++      width: 8px;
++    }
++
++    .feedback-container::-webkit-scrollbar-track,
++    .customer-feedback-log::-webkit-scrollbar-track {
++      background: #4e342e;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb,
++    .customer-feedback-log::-webkit-scrollbar-thumb {
++      background: #ffab40;
++      border-radius: 4px;
++    }
++
++    .feedback-container::-webkit-scrollbar-thumb:hover,
++    .customer-feedback-log::-webkit-scrollbar-thumb:hover {
++      background: #ffa000;
++    }
++
++    .feedback-item {
++      padding: 16px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-item:last-child {
++      border-bottom: none;
++    }
++
++    .feedback-user {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 8px;
++    }
++
++    .feedback-avatar {
++      width: 44px;
++      height: 44px;
++      border-radius: 50%;
++      object-fit: cover;
++    }
++
++    .feedback-rating {
++      color: var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .feedback-text {
++      font-style: italic;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +272,79 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section">
++      <h2>Customer Feedback Log</h2>
++      <div id="customer-feedback-log" class="feedback-container customer-feedback-log">
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" alt="Sarah M." class="feedback-avatar">
++            <div>
++              <strong>Sarah M.</strong>
++              <div class="feedback-rating">★★★★★</div>
++            </div>
++          </div>
++          <p class="feedback-text">"The Maple Oat Latte is hands down the best seasonal drink I've ever tasted! Perfectly balanced sweetness and super smooth."</p>
++        </div>
++
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="David K." class="feedback-avatar">
++            <div>
++              <strong>David K.</strong>
++              <div class="feedback-rating">★★★★★</div>
++            </div>
++          </div>
++          <p class="feedback-text">"The Dark Roast Espresso hits the spot every single morning. Bold and robust flavor without any unpleasant bitterness."</p>
++        </div>
++
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80" alt="Elena R." class="feedback-avatar">
++            <div>
++              <strong>Elena R.</strong>
++              <div class="feedback-rating">★★★★☆</div>
++            </div>
++          </div>
++          <p class="feedback-text">"The Cold Brew steeped for 18 hours is wonderfully smooth. It's become my essential afternoon pick-me-up during busy workdays."</p>
++        </div>
++
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" alt="Marcus T." class="feedback-avatar">
++            <div>
++              <strong>Marcus T.</strong>
++              <div class="feedback-rating">★★★★★</div>
++            </div>
++          </div>
++          <p class="feedback-text">"Outstanding service and cozy ambiance. The baristas really care about the craft and it shows in every single pour."</p>
++        </div>
++
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" alt="Chloe B." class="feedback-avatar">
++            <div>
++              <strong>Chloe B.</strong>
++              <div class="feedback-rating">★★★★★</div>
++            </div>
++          </div>
++          <p class="feedback-text">"Knowing the beans are ethically sourced and locally roasted makes every morning cup feel special. Keep up the amazing work!"</p>
++        </div>
++
++        <div class="feedback-item">
++          <div class="feedback-user">
++            <img src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=100&q=80" alt="James W." class="feedback-avatar">
++            <div>
++              <strong>James W.</strong>
++              <div class="feedback-rating">★★★★☆</div>
++            </div>
++          </div>
++          <p class="feedback-text">"Easy online ordering and consistently high quality. Fast pickup in the mornings is a lifesaver."</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

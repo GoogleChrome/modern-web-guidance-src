@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+index 66c9173..e3784de 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,12 @@
+       color: var(--accent);
+     }
+ 
++    nav a:focus-visible,
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -128,7 +134,7 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.2s ease, box-shadow 0.2s ease;
+     }
+ 
+     .btn:hover {
+@@ -146,6 +152,71 @@
+       margin-bottom: 20px;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      /* Hover feedback (compositor-only properties) */
++      .card {
++        transition: transform 0.3s ease, box-shadow 0.3s ease;
++      }
++
++      .card:hover {
++        transform: translateY(-6px);
++        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
++      }
++
++      .btn:hover {
++        transform: translateY(-2px);
++      }
++
++      .btn:active {
++        transform: translateY(0) scale(0.97);
++      }
++
++      /* Page-load entrance */
++      @keyframes fade-up {
++        from {
++          opacity: 0;
++          transform: translateY(24px);
++        }
++      }
++
++      @keyframes fade-down {
++        from {
++          opacity: 0;
++          transform: translateY(-100%);
++        }
++      }
++
++      nav {
++        animation: fade-down 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
++      }
++
++      .hero > * {
++        animation: fade-up 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
++      }
++
++      .hero > :nth-child(1) { animation-delay: 0.15s; }
++      .hero > :nth-child(2) { animation-delay: 0.3s; }
++      .hero > :nth-child(3) { animation-delay: 0.45s; }
++
++      /* Scroll-driven reveals (progressive enhancement: decorative only) */
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        @keyframes reveal {
++          from {
++            opacity: 0;
++            transform: translateY(40px) scale(0.96);
++          }
++        }
++
++        main h2,
++        .card,
++        footer > * {
++          animation: reveal linear backwards;
++          animation-timeline: view();
++          animation-range: entry 0% entry 60%;
++        }
++      }
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);

@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,143 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shape definitions stay in the document without taking up layout space. */
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .community-section {
++      margin-block-start: 64px;
++      padding-block-start: 36px;
++      border-block-start: 1px solid var(--secondary);
++    }
++
++    .community-heading {
++      text-align: center;
++      margin-block-end: 32px;
++    }
++
++    .eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.14em;
++      text-transform: uppercase;
++      margin-block-end: 8px;
++    }
++
++    .community-grid {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
++      gap: 40px;
++      align-items: center;
++    }
++
++    .barista-profile {
++      text-align: center;
++      padding: 16px;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: min(100%, 280px);
++      height: auto;
++      aspect-ratio: 1;
++      object-fit: cover;
++      object-position: center 40%;
++      margin: 0 auto 24px;
++      -webkit-mask-image: url(#barista-splat);
++      mask-image: url(#barista-splat);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .barista-profile h3 {
++      font-size: 1.5rem;
++    }
++
++    .barista-profile p:last-child {
++      max-width: 34ch;
++      margin: 10px auto 0;
++    }
++
++    .community-offers {
++      display: grid;
++      gap: 28px;
++      min-width: 0;
++    }
++
++    .unified-card {
++      --loyalty-background: var(--primary);
++      display: flex;
++      /* Filter the combined silhouette; a box shadow would fill the cutout. */
++      filter: drop-shadow(0 8px 10px rgb(62 39 35 / 0.18));
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      padding: 28px;
++      color: white;
++      background: var(--loyalty-background);
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h3,
++    .gradient-masked-card h3 {
++      font-size: 1.5rem;
++      margin-block-end: 8px;
++    }
++
++    .card-body .eyebrow {
++      color: var(--accent);
++    }
++
++    .card-body .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .card-body .btn:hover {
++      background: #ffbc66;
++    }
++
++    .card-accent {
++      flex: 0 0 clamp(36px, 7vw, 76px);
++      background: var(--loyalty-background);
++      border-radius: 0 16px 16px 0;
++      -webkit-mask-image: url(#loyalty-curve);
++      mask-image: url(#loyalty-curve);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      --notch-radius: 22px;
++      padding: calc(var(--notch-radius) + 24px) 28px 28px;
++      border-radius: 16px;
++      background: linear-gradient(135deg, #ffe0ad, var(--accent));
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent var(--notch-radius), black calc(var(--notch-radius) + 1px));
++      mask-image: radial-gradient(circle at 50% 0%, transparent var(--notch-radius), black calc(var(--notch-radius) + 1px));
++    }
++
++    @media (max-width: 700px) {
++      .community-grid {
++        grid-template-columns: minmax(0, 1fr);
++        gap: 28px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +291,27 @@
+ </head>
+ 
+ <body>
+ 
++  <svg class="shape-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
++    <defs>
++      <!-- Normalized coordinates stretch with both dimensions of the image. -->
++      <mask id="barista-splat" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <path fill="white" d="M .50 .07 C .57 .07 .57 .20 .66 .17 C .75 .14 .78 .06 .84 .13 C .90 .20 .82 .31 .88 .37 C .94 .43 1 .44 .97 .54 C .94 .64 .81 .61 .79 .71 C .77 .81 .87 .91 .78 .95 C .69 .99 .63 .86 .54 .91 C .45 .96 .43 1 .35 .96 C .27 .92 .31 .79 .22 .77 C .13 .75 .03 .85 .03 .75 C .03 .65 .17 .61 .15 .51 C .13 .41 .01 .38 .05 .29 C .09 .20 .23 .27 .29 .19 C .35 .11 .30 .02 .40 .03 C .47 .03 .43 .07 .50 .07 Z" />
++        <circle cx=".12" cy=".12" r=".025" fill="white" />
++        <circle cx=".92" cy=".82" r=".03" fill="white" />
++        <circle cx=".16" cy=".93" r=".018" fill="white" />
++      </mask>
++      <mask id="loyalty-curve" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" mask-type="luminance">
++        <rect width="1" height="1" fill="white" />
++        <!-- Extend beyond the edge so the cutout cannot leave a thin seam. -->
++        <path d="M 1.1 0 C .32 .12 .32 .88 1.1 1 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +348,43 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="community-section" aria-labelledby="community-title">
++      <div class="community-heading">
++        <p class="eyebrow">Good coffee. Great company.</p>
++        <h2 id="community-title">A Little More Daily Grind</h2>
++      </div>
++      <div class="community-grid">
++        <article class="barista-profile" aria-labelledby="barista-name">
++          <img class="shaped-avatar"
++            src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&amp;fit=crop&amp;w=600&amp;h=600&amp;q=80"
++            width="600" height="600" loading="lazy" decoding="async"
++            alt="Portrait of Alex, our featured barista">
++          <p class="eyebrow">Meet your barista</p>
++          <h3 id="barista-name">Alex Morgan</h3>
++          <p>Latte art enthusiast. Early bird. Always happy to help you find your next favorite cup.</p>
++        </article>
++        <div class="community-offers">
++          <article class="unified-card" aria-labelledby="loyalty-title">
++            <div class="card-body">
++              <p class="eyebrow">The Daily Grind Rewards</p>
++              <h3 id="loyalty-title">Your daily ritual, rewarded.</h3>
++              <p>Make every coffee count. Earn points with each visit and enjoy a little something on us.</p>
++              <a class="btn" href="/rewards">Explore Rewards</a>
++            </div>
++            <div class="card-accent" aria-hidden="true"></div>
++          </article>
++          <article class="gradient-masked-card" aria-labelledby="promo-title">
++            <p class="eyebrow">A fresh pairing</p>
++            <h3 id="promo-title">Better Together</h3>
++            <p>A warm pastry. Your favorite coffee. Find your perfect morning pairing on our menu.</p>
++            <a class="btn" href="/menu">Find Your Pairing</a>
++          </article>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

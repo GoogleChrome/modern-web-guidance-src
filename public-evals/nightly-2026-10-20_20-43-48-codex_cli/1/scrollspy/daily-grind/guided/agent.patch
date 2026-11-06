@@ -1,0 +1,156 @@
+diff --git a/index.html b/index.html
+index 66c9173..506e21f 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      scroll-target-group: auto;
+     }
+ 
+     nav ul li {
+@@ -66,6 +67,24 @@
+       color: var(--accent);
+     }
+ 
++    nav a:is(:target-current, .is-current) {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 6px;
++    }
++
++    section[id] {
++      scroll-margin-top: var(--nav-height, 80px);
++    }
++
++    .info-section {
++      margin-top: 60px;
++      padding: 32px;
++      background: white;
++      border-radius: 8px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,9 +179,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +194,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +214,18 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="info-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Find Your Daily Grind</h2>
++      <p>Make time for your next coffee break. Find a location near you.</p>
++      <a href="/locations" class="btn">Explore Locations</a>
++    </section>
++
++    <section id="rewards" class="info-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Daily Grind Rewards</h2>
++      <p>Bring a little more to your daily coffee ritual. Explore our rewards program.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +238,75 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const navigation = document.querySelector('nav');
++    const links = [...navigation.querySelectorAll('a[href^="#"]')];
++    const sections = links.map(link => document.querySelector(link.hash));
++    const nativeTracking = CSS.supports('scroll-target-group: auto') &&
++      CSS.supports('selector(a:target-current)');
++
++    function setCurrent(current) {
++      links.forEach(link => {
++        const active = link === current;
++        link.classList.toggle('is-current', !nativeTracking && active);
++        if (active) link.setAttribute('aria-current', 'location');
++        else link.removeAttribute('aria-current');
++      });
++    }
++
++    function syncCurrent() {
++      if (nativeTracking) {
++        setCurrent(links.find(link => link.matches(':target-current')));
++        return;
++      }
++
++      const top = navigation.getBoundingClientRect().bottom;
++      let current = 0;
++      let mostVisible = 0;
++      sections.forEach((section, index) => {
++        const bounds = section.getBoundingClientRect();
++        const visible = Math.max(0,
++          Math.min(bounds.bottom, window.innerHeight) - Math.max(bounds.top, top));
++        if (visible > mostVisible) {
++          mostVisible = visible;
++          current = index;
++        }
++      });
++      if (Math.ceil(window.scrollY + window.innerHeight) >=
++          document.documentElement.scrollHeight) current = links.length - 1;
++      setCurrent(links[current]);
++    }
++
++    let frame;
++    function scheduleSync() {
++      if (frame) return;
++      frame = requestAnimationFrame(() => {
++        frame = undefined;
++        syncCurrent();
++      });
++    }
++
++    const navigationSize = new ResizeObserver(() => {
++      document.documentElement.style.setProperty('--nav-height',
++        `${navigation.getBoundingClientRect().height + 16}px`);
++      scheduleSync();
++    });
++    navigationSize.observe(navigation);
++
++    if (!nativeTracking) {
++      const observer = new IntersectionObserver(scheduleSync, {
++        threshold: [0, 0.25, 0.5, 0.75, 1]
++      });
++      sections.forEach(section => observer.observe(section));
++    }
++
++    document.addEventListener('scroll', scheduleSync, { passive: true });
++    document.addEventListener('scrollend', scheduleSync);
++    window.addEventListener('resize', scheduleSync);
++    window.addEventListener('hashchange', scheduleSync);
++    scheduleSync();
++  </script>
++
+ </body>
+ 
+ </html>

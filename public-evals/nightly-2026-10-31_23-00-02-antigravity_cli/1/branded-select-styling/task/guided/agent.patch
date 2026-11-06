@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,88 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roast Selector */
++    .roast-selector-group {
++      margin-top: 1.5rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .roast-selector-group label {
++      font-weight: 600;
++      font-size: 0.95rem;
++      letter-spacing: 0.5px;
++      color: var(--light);
++    }
++
++    /* Enable customization for the select and its picker */
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    /* Style the visible trigger button */
++    .roast-select {
++      font-family: inherit;
++      background-color: var(--primary);
++      color: var(--accent);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      padding: 0.75rem 1rem;
++      font-size: 1rem;
++      min-height: 48px;
++      min-width: 220px;
++      cursor: pointer;
++    }
++
++    .roast-select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Style the dropdown options list */
++    .roast-select::picker(select) {
++      font-family: inherit;
++      background-color: var(--primary);
++      color: var(--accent);
++      border: 2px solid var(--accent);
++      border-radius: 5px;
++      padding: 0.5rem;
++    }
++
++    /* Customize internal part colors to match palette */
++    .roast-select::picker-icon {
++      color: var(--accent);
++    }
++
++    .roast-select option::checkmark {
++      color: var(--accent);
++    }
++
++    /* Style individual options and hover effects */
++    .roast-select option {
++      padding: 0.6rem 0.75rem;
++      border-radius: 4px;
++      background-color: var(--primary);
++      color: var(--accent);
++      cursor: pointer;
++    }
++
++    .roast-select option:hover,
++    .roast-select option:focus-visible {
++      background-color: var(--accent);
++      color: var(--primary);
++    }
++
++    .roast-select option:hover::checkmark,
++    .roast-select option:focus-visible::checkmark {
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,8 +250,19 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector-group">
++      <label for="roast-select">Choose Your Roast</label>
++      <select class="roast-select" id="roast-select" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">Light Roast</option>
++        <option value="medium" selected>Medium Roast</option>
++        <option value="dark">Dark Roast</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

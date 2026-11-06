@@ -1,0 +1,157 @@
+diff --git a/index.html b/index.html
+index 66c9173..4de95c3 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,99 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutrition & Pricing Table */
++    .table-heading {
++      margin-top: 40px;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .table-wrapper {
++      margin-top: 15px;
++      overflow-x: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      width: 100%;
++      min-width: 560px;
++      border-collapse: collapse;
++      font-size: 0.95rem;
++    }
++
++    .nutrition-table caption {
++      caption-side: bottom;
++      padding: 10px 15px;
++      font-size: 0.8rem;
++      text-align: left;
++      color: #5d4037;
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 12px 15px;
++      text-align: left;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .nutrition-table td {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .nutrition-table thead th {
++      background: var(--primary);
++      color: white;
++      white-space: nowrap;
++    }
++
++    .nutrition-table thead th:not(:first-child) {
++      text-align: right;
++    }
++
++    .nutrition-table tbody th {
++      color: var(--primary);
++      background: white;
++    }
++
++    .nutrition-table tbody tr:nth-child(even) th,
++    .nutrition-table tbody tr:nth-child(even) td {
++      background: #f5f0ee;
++    }
++
++    /* Keep the drink name column visible while scrolling horizontally */
++    .nutrition-table th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 1;
++    }
++
++    .scroll-hint {
++      display: none;
++      margin-top: 8px;
++      font-size: 0.8rem;
++      text-align: center;
++      color: #5d4037;
++    }
++
++    @media (max-width: 600px) {
++      .scroll-hint {
++        display: block;
++      }
++
++      .nutrition-table th,
++      .nutrition-table td {
++        padding: 10px 12px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +287,52 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <h3 id="nutrition-heading" class="table-heading">Nutrition &amp; Pricing</h3>
++      <div class="table-wrapper" role="region" aria-labelledby="nutrition-heading" tabindex="0">
++        <table class="nutrition-table">
++          <caption>
++            Values are per 12 oz (tall) serving, except Dark Roast Espresso (double shot, 2 oz).
++          </caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Price</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Fat (g)</th>
++              <th scope="col">Sugar (g)</th>
++              <th scope="col">Caffeine (mg)</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>$5.25</td>
++              <td>190</td>
++              <td>7</td>
++              <td>18</td>
++              <td>130</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>$3.25</td>
++              <td>5</td>
++              <td>0</td>
++              <td>0</td>
++              <td>150</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>$4.50</td>
++              <td>5</td>
++              <td>0</td>
++              <td>0</td>
++              <td>205</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p class="scroll-hint" aria-hidden="true">Swipe the table sideways to see all columns.</p>
+     </section>
+   </main>
+ 

@@ -1,0 +1,66 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -106,8 +106,50 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    .seasonal-promo {
++      display: flex;
++      justify-content: center;
++      padding: 24px 48px;
++    }
++
++    .target {
++      display: grid;
++      place-content: center;
++      width: 108px;
++      height: 108px;
++      border: 2px dashed var(--primary);
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.85rem;
++      font-weight: 700;
++      line-height: 1.3;
++      text-align: center;
++      /* Keep a stacking context before, during, and after hover. */
++      isolation: isolate;
++      /* Independent properties let both animations and the transition compose. */
++      animation: promo-spin 12s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transform: scale(1);
++      transition: transform 0.3s ease;
++    }
++
++    .target:hover {
++      transform: scale(1.15);
++    }
++
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -28px 0; }
++      to { translate: 28px 0; }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -176,8 +218,11 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-promo">
++        <span class="target">Featured<br>Seasonal Sip</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

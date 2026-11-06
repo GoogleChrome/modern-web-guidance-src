@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -203,10 +203,73 @@
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
++    <p id="card-expiry-status" style="margin-bottom: 10px; font-weight: 500;"></p>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Calculates exact calendar duration until a credit card expires (end of the expiration month).
++     * Avoids leap year and daylight saving time rollover bugs by clamping day-of-month
++     * to the target month's actual length before computing calendar differences.
++     */
++    function calculateTimeUntilCardExpiry(expiryYear = 2027, expiryMonth = 12, fromDate = new Date()) {
++      // Credit cards expire at the very end of the expiration month (e.g., Dec 31, 2027 23:59:59.999)
++      const lastDayOfExpiryMonth = new Date(expiryYear, expiryMonth, 0).getDate();
++      const expiryDate = new Date(expiryYear, expiryMonth - 1, lastDayOfExpiryMonth, 23, 59, 59, 999);
++
++      if (fromDate >= expiryDate) {
++        return { expired: true, years: 0, months: 0, days: 0, totalDays: 0, formatted: 'Expired' };
++      }
++
++      let years = expiryDate.getFullYear() - fromDate.getFullYear();
++      let months = expiryDate.getMonth() - fromDate.getMonth();
++      let days = expiryDate.getDate() - fromDate.getDate();
++
++      if (days < 0) {
++        months -= 1;
++        // Clamp fromDate's day to the previous month's max days to prevent Feb 29 leap year overflow
++        const daysInPrevMonth = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), 0).getDate();
++        const clampedFromDay = Math.min(fromDate.getDate(), daysInPrevMonth);
++        days = expiryDate.getDate() + (daysInPrevMonth - clampedFromDay);
++      }
++
++      if (months < 0) {
++        years -= 1;
++        months += 12;
++      }
++
++      // Use UTC midnight dates for exact total calendar days without DST or leap-year 365-day division errors
++      const utcFrom = Date.UTC(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
++      const utcExpiry = Date.UTC(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
++      const totalDays = Math.round((utcExpiry - utcFrom) / (1000 * 60 * 60 * 24));
++
++      const parts = [];
++      if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
++      if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
++      if (days > 0 || parts.length === 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
++
++      return {
++        expired: false,
++        years,
++        months,
++        days,
++        totalDays,
++        formatted: `${parts.join(', ')} (${totalDays} total days)`
++      };
++    }
++
++    (function updateCardExpiryBanner() {
++      const expiryInfo = calculateTimeUntilCardExpiry(2027, 12);
++      const statusEl = document.getElementById('card-expiry-status');
++      if (statusEl) {
++        statusEl.textContent = expiryInfo.expired
++          ? 'Your saved credit card (12/2027) has expired.'
++          : `Saved card (exp. 12/2027) expires in ${expiryInfo.formatted}.`;
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

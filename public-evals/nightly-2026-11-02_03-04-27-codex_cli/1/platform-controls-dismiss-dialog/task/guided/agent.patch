@@ -1,0 +1,128 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,45 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .coffee-dialog {
++      width: min(480px, calc(100% - 2rem));
++      max-height: calc(100% - 2rem);
++      margin: auto;
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++      background: var(--light);
++      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
++    }
++
++    .coffee-dialog h2,
++    .coffee-dialog p {
++      margin-bottom: 1rem;
++    }
++
++    .coffee-dialog a {
++      color: var(--primary);
++    }
++
++    .coffee-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .coffee-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.55);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +217,60 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="maple-oat-details"
++            aria-haspopup="dialog" aria-controls="maple-oat-details"
++            aria-label="View Details for Maple Oat Latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="espresso-details"
++            aria-haspopup="dialog" aria-controls="espresso-details"
++            aria-label="View Details for Dark Roast Espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-dialog="cold-brew-details"
++            aria-haspopup="dialog" aria-controls="cold-brew-details"
++            aria-label="View Details for Cold Brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="maple-oat-details" class="coffee-dialog" closedby="closerequest"
++    aria-labelledby="maple-oat-title" aria-describedby="maple-oat-description">
++    <h2 id="maple-oat-title">Maple Oat Latte</h2>
++    <p id="maple-oat-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <a href="/menu/seasonal">Explore the seasonal menu</a>
++    <form method="dialog">
++      <button type="submit" class="btn" autofocus>Close</button>
++    </form>
++  </dialog>
++
++  <dialog id="espresso-details" class="coffee-dialog" closedby="closerequest"
++    aria-labelledby="espresso-title" aria-describedby="espresso-description">
++    <h2 id="espresso-title">Dark Roast Espresso</h2>
++    <p id="espresso-description">Bold, smokey, and perfect for a morning boost.</p>
++    <a href="/menu/espresso">Explore the espresso menu</a>
++    <form method="dialog">
++      <button type="submit" class="btn" autofocus>Close</button>
++    </form>
++  </dialog>
++
++  <dialog id="cold-brew-details" class="coffee-dialog" closedby="closerequest"
++    aria-labelledby="cold-brew-title" aria-describedby="cold-brew-description">
++    <h2 id="cold-brew-title">Cold Brew</h2>
++    <p id="cold-brew-description">Steeped for 18 hours for maximum smoothness.</p>
++    <a href="/menu/cold-brew">Explore the cold brew menu</a>
++    <form method="dialog">
++      <button type="submit" class="btn" autofocus>Close</button>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +279,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('button[data-dialog]').forEach((button) => {
++      button.addEventListener('click', () => {
++        document.getElementById(button.dataset.dialog).showModal();
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

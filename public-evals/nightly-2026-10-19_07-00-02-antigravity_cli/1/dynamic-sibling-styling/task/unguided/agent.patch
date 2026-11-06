@@ -1,0 +1,388 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -112,15 +112,241 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      transition: transform 0.2s ease, box-shadow 0.2s ease;
+     }
+ 
++    .spectrum-card {
++      --spectrum-hue: calc((sibling-index() - 1) * (360deg / sibling-count()));
++      background-color: hsl(var(--spectrum-hue), 70%, 92%);
++      border: 1px solid hsl(var(--spectrum-hue), 55%, 82%);
++    }
++
++    .spectrum-card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Loyalty Fan Section */
++    .fan-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .fan-container {
++      position: relative;
++      width: 100%;
++      max-width: 650px;
++      height: 300px;
++      margin: 40px auto 20px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++    }
++
++    .fan-card {
++      position: absolute;
++      width: 240px;
++      height: 150px;
++      border-radius: 14px;
++      padding: 16px 18px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      color: #fff;
++      transform-origin: 50% 120%;
++      cursor: pointer;
++      user-select: none;
++      
++      /* Dynamic symmetrical fan layout adapting automatically to sibling count */
++      --fan-offset: calc(sibling-index() - (sibling-count() + 1) / 2);
++      --angle-step: clamp(5deg, calc(40deg / max(1, sibling-count() - 1)), 12deg);
++      --x-step: clamp(30px, calc(200px / max(1, sibling-count() - 1)), 52px);
++      --fan-angle: calc(var(--fan-offset) * var(--angle-step));
++      --fan-x: calc(var(--fan-offset) * var(--x-step));
++      --fan-y: calc(abs(var(--fan-offset)) * 5px);
++      
++      z-index: sibling-index();
++      transform: translate(var(--fan-x), var(--fan-y)) rotate(var(--fan-angle));
++      transition: box-shadow 0.3s ease;
++    }
++
++    .fan-card:hover {
++      z-index: 100;
++      transform: translate(var(--fan-x), calc(var(--fan-y) - 25px)) rotate(var(--fan-angle)) scale(1.06);
++      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
++      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
++    }
++
++    .fan-card.tier-1 {
++      background: linear-gradient(135deg, #a05a2c, #703b17);
++      border: 1px solid #c87d4e;
++    }
++
++    .fan-card.tier-2 {
++      background: linear-gradient(135deg, #78909c, #455a64);
++      border: 1px solid #b0bec5;
++    }
++
++    .fan-card.tier-3 {
++      background: linear-gradient(135deg, #d4af37, #aa820a);
++      border: 1px solid #ffd54f;
++      color: #3e2723;
++    }
++
++    .fan-card.tier-4 {
++      background: linear-gradient(135deg, #5c6bc0, #303f9f);
++      border: 1px solid #9fa8da;
++    }
++
++    .fan-card.tier-5 {
++      background: linear-gradient(135deg, #263238, #101416);
++      border: 1px solid #ffab40;
++    }
++
++    .fan-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .fan-tier-badge {
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 1.5px;
++      padding: 3px 8px;
++      border-radius: 4px;
++      background: rgba(255, 255, 255, 0.2);
++    }
++
++    .fan-card.tier-3 .fan-tier-badge {
++      background: rgba(0, 0, 0, 0.15);
++    }
++
++    .fan-card-body h4 {
++      font-size: 1.05rem;
++      font-weight: 600;
++      margin-bottom: 2px;
++    }
++
++    .fan-card-body p {
++      font-size: 0.75rem;
++      opacity: 0.9;
++    }
++
++    .fan-card-footer {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.65rem;
++      letter-spacing: 1px;
++      opacity: 0.8;
++      border-top: 1px solid rgba(255, 255, 255, 0.2);
++      padding-top: 6px;
++    }
++
++    /* Coffee Origins Circular Layout */
++    .circle-section {
++      margin-top: 70px;
++      margin-bottom: 40px;
++      text-align: center;
++    }
++
++    .circle-container {
++      position: relative;
++      width: 360px;
++      height: 360px;
++      margin: 40px auto 20px;
++      border-radius: 50%;
++      border: 2px dashed var(--secondary);
++      display: flex;
++      justify-content: center;
++      align-items: center;
++    }
++
++    .circle-container::before {
++      content: '🌍\A ORIGINS';
++      white-space: pre-line;
++      text-align: center;
++      font-size: 0.95rem;
++      font-weight: 700;
++      letter-spacing: 1px;
++      color: var(--primary);
++      width: 90px;
++      height: 90px;
++      border-radius: 50%;
++      background: white;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      transform: translate(-50%, -50%);
++      pointer-events: none;
++    }
++
++    .circle-orb {
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      width: 82px;
++      height: 82px;
++      border-radius: 50%;
++      background: white;
++      border: 2px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      padding: 4px;
++      cursor: pointer;
++      user-select: none;
++      
++      /* Dynamic circular positioning using sibling functions & trigonometry */
++      --radius: 140px;
++      --angle: calc((sibling-index() - 1) * (360deg / sibling-count()) - 90deg);
++      --x: calc(cos(var(--angle)) * var(--radius));
++      --y: calc(sin(var(--angle)) * var(--radius));
++      transform: translate(-50%, -50%) translate(var(--x), var(--y));
++      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
++    }
++
++    .circle-orb:hover {
++      transform: translate(-50%, -50%) translate(var(--x), var(--y)) scale(1.15);
++      border-color: var(--primary);
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
++      z-index: 10;
++    }
++
++    .orb-flag {
++      font-size: 1.15rem;
++      line-height: 1.1;
++    }
++
++    .orb-country {
++      font-size: 0.7rem;
++      font-weight: 700;
++      color: var(--primary);
++      line-height: 1.1;
++      margin-top: 2px;
++    }
++
++    .orb-region {
++      font-size: 0.6rem;
++      color: #6d4c41;
++      line-height: 1;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +403,139 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="fan-section">
++      <h2>Grind Rewards Club</h2>
++      <p style="color: #6d4c41; margin-top: 5px;">Earn beans with every visit to unlock exclusive perks.</p>
++      <div class="fan-container">
++        <div class="fan-card tier-1">
++          <div class="fan-card-header">
++            <span class="fan-tier-badge">BRONZE</span>
++            <span>☕</span>
++          </div>
++          <div class="fan-card-body">
++            <h4>Welcome Sipper</h4>
++            <p>50 Beans &bull; Free Flavor Shots</p>
++          </div>
++          <div class="fan-card-footer">
++            <span>MEMBER #01</span>
++            <span>DAILY GRIND</span>
++          </div>
++        </div>
++        <div class="fan-card tier-2">
++          <div class="fan-card-header">
++            <span class="fan-tier-badge">SILVER</span>
++            <span>🥐</span>
++          </div>
++          <div class="fan-card-body">
++            <h4>Daily Regular</h4>
++            <p>150 Beans &bull; Free Bakery Treat</p>
++          </div>
++          <div class="fan-card-footer">
++            <span>MEMBER #02</span>
++            <span>DAILY GRIND</span>
++          </div>
++        </div>
++        <div class="fan-card tier-3">
++          <div class="fan-card-header">
++            <span class="fan-tier-badge">GOLD</span>
++            <span>✨</span>
++          </div>
++          <div class="fan-card-body">
++            <h4>Espresso Artisan</h4>
++            <p>300 Beans &bull; Free Drink of Choice</p>
++          </div>
++          <div class="fan-card-footer">
++            <span>MEMBER #03</span>
++            <span>DAILY GRIND</span>
++          </div>
++        </div>
++        <div class="fan-card tier-4">
++          <div class="fan-card-header">
++            <span class="fan-tier-badge">PLATINUM</span>
++            <span>🌟</span>
++          </div>
++          <div class="fan-card-body">
++            <h4>Master Roaster</h4>
++            <p>600 Beans &bull; 12oz Whole Bean Bag</p>
++          </div>
++          <div class="fan-card-footer">
++            <span>MEMBER #04</span>
++            <span>DAILY GRIND</span>
++          </div>
++        </div>
++        <div class="fan-card tier-5">
++          <div class="fan-card-header">
++            <span class="fan-tier-badge">RESERVE</span>
++            <span>👑</span>
++          </div>
++          <div class="fan-card-body">
++            <h4>Grand Connoisseur</h4>
++            <p>1000 Beans &bull; Private Tasting Tour</p>
++          </div>
++          <div class="fan-card-footer">
++            <span>MEMBER #05</span>
++            <span>DAILY GRIND</span>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <section class="circle-section">
++      <h2>Our Coffee Origins</h2>
++      <p style="color: #6d4c41; margin-top: 5px;">Single-origin beans ethically sourced directly from smallholder farms.</p>
++      <div class="circle-container">
++        <div class="circle-orb">
++          <span class="orb-flag">🇪🇹</span>
++          <span class="orb-country">Ethiopia</span>
++          <span class="orb-region">Yirgacheffe</span>
++        </div>
++        <div class="circle-orb">
++          <span class="orb-flag">🇨🇴</span>
++          <span class="orb-country">Colombia</span>
++          <span class="orb-region">Huila</span>
++        </div>
++        <div class="circle-orb">
++          <span class="orb-flag">🇬🇹</span>
++          <span class="orb-country">Guatemala</span>
++          <span class="orb-region">Antigua</span>
++        </div>
++        <div class="circle-orb">
++          <span class="orb-flag">🇨🇷</span>
++          <span class="orb-country">Costa Rica</span>
++          <span class="orb-region">Tarrazú</span>
++        </div>
++        <div class="circle-orb">
++          <span class="orb-flag">🇰🇪</span>
++          <span class="orb-country">Kenya</span>
++          <span class="orb-region">Nyeri</span>
++        </div>
++        <div class="circle-orb">
++          <span class="orb-flag">🇮🇩</span>
++          <span class="orb-country">Sumatra</span>
++          <span class="orb-region">Mandheling</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

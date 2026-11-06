@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :where(a:any-link, button, .scroller):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Product Carousel */
++    .carousel-section {
++      margin-top: 40px;
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: scroll;
++      scroll-snap-type: x mandatory;
++      padding: 40px calc(50% - 140px);
++      margin-top: 20px;
++      scroll-behavior: smooth;
++    }
++
++    .scroller > .entry {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-top: 10px;
++    }
++
++    @keyframes animate {
++      0% {
++        scale: 0.75;
++      }
++
++      50% {
++        scale: 1;
++      }
++
++      100% {
++        scale: 0.75;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .scroller > * {
++          animation: animate auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section">
++      <h2 id="roasts-heading" style="text-align: center;">Featured Single-Origin Roasts</h2>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="roasts-heading">
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with hints of bergamot and Meyer lemon.</p>
++          </div>
++          <div>
++            <p class="price">$18.50</p>
++            <a href="/shop/ethiopian-yirgacheffe" class="btn">Shop Ethiopian Yirgacheffe</a>
++          </div>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed cup of Colombian Supremo coffee">
++            <h3>Colombian Supremo</h3>
++            <p>Velvety medium roast with rich caramel sweetness and toasted walnut finish.</p>
++          </div>
++          <div>
++            <p class="price">$16.00</p>
++            <a href="/shop/colombian-supremo" class="btn">Shop Colombian Supremo</a>
++          </div>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" alt="Latte art poured with Sumatra Mandheling espresso">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied dark roast featuring earthy cocoa, cedar, and warm spice notes.</p>
++          </div>
++          <div>
++            <p class="price">$19.00</p>
++            <a href="/shop/sumatra-mandheling" class="btn">Shop Sumatra Mandheling</a>
++          </div>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Overhead view of Guatemala Antigua pour-over coffee">
++            <h3>Guatemala Antigua</h3>
++            <p>Balanced and complex with milk chocolate richness and subtle orange zest.</p>
++          </div>
++          <div>
++            <p class="price">$17.50</p>
++            <a href="/shop/guatemala-antigua" class="btn">Shop Guatemala Antigua</a>
++          </div>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Roasted Kenya AA coffee beans close-up">
++            <h3>Kenya AA Reserve</h3>
++            <p>Vibrant acidity bursting with blackcurrant, grapefruit, and cane sugar.</p>
++          </div>
++          <div>
++            <p class="price">$21.00</p>
++            <a href="/shop/kenya-aa-reserve" class="btn">Shop Kenya AA Reserve</a>
++          </div>
++        </li>
++        <li class="card entry">
++          <div>
++            <img class="card-img" src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Warm cup of Costa Rica Tarrazú coffee on a wooden table">
++            <h3>Costa Rica Tarrazú</h3>
++            <p>Crisp honey-processed roast with notes of brown sugar, green apple, and almond.</p>
++          </div>
++          <div>
++            <p class="price">$18.00</p>
++            <a href="/shop/costa-rica-tarrazu" class="btn">Shop Costa Rica Tarrazú</a>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

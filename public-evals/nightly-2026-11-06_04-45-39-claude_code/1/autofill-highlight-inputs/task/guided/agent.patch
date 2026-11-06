@@ -1,0 +1,21 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,17 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Autofilled form fields: green border + inset ring (no layout shift).
++       :-webkit-autofill covers older Chrome/Safari; :is() keeps the rule valid
++       in browsers that don't recognize one of the names. */
++    :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
++      --autofill-ring-color: #2e7d32;
++      border-color: var(--autofill-ring-color);
++      box-shadow: inset 0 0 0 2px var(--autofill-ring-color);
++    }
+   </style>
+ </head>
+ 
+ <body>

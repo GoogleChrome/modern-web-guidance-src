@@ -1,0 +1,105 @@
+diff --git a/index.html b/index.html
+index 66c9173..c298cd6 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,100 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /*
++     * Measures time from a user interaction or client-side navigation until
++     * new contentful updates (text/images) are painted.
++     * Results: window.__renderMetrics, console, and "render-metric" events.
++     */
++    (function () {
++      var metrics = (window.__renderMetrics = []);
++
++      function report(entry) {
++        metrics.push(entry);
++        console.log('[render-metric] ' + entry.type + ' (' + entry.source + '): ' +
++          entry.duration.toFixed(1) + 'ms', entry);
++        window.dispatchEvent(new CustomEvent('render-metric', { detail: entry }));
++      }
++
++      // Native APIs, where supported (Chrome soft navigations / ICP origin trials).
++      function observe(type, handler) {
++        try {
++          new PerformanceObserver(function (list) {
++            list.getEntries().forEach(handler);
++          }).observe({ type: type, buffered: true });
++          return true;
++        } catch (e) { return false; }
++      }
++
++      var nativeNav = observe('soft-navigation', function (e) {
++        report({ type: 'navigation', source: 'native', url: e.name, duration: e.duration, startTime: e.startTime });
++      });
++      var nativeIcp = observe('interaction-contentful-paint', function (e) {
++        report({ type: 'interaction', source: 'native', element: e.id || (e.element && e.element.tagName), duration: e.startTime - (e.interactionStart || e.startTime), startTime: e.startTime });
++      });
++      if (nativeNav && nativeIcp) return;
++
++      // Fallback: track DOM changes after an interaction until the next paint.
++      var pending = null;
++
++      function isContentful(node) {
++        if (node.nodeType === 3) return node.nodeValue.trim().length > 0;
++        if (node.nodeType !== 1) return false;
++        var tag = node.tagName;
++        if (tag === 'SCRIPT' || tag === 'STYLE') return false;
++        return tag === 'IMG' || tag === 'SVG' || tag === 'CANVAS' || tag === 'VIDEO' ||
++          !!node.querySelector('img,svg,canvas,video') || node.textContent.trim().length > 0;
++      }
++
++      function start(type, label, startTime) {
++        if (pending) pending.observer.disconnect();
++        var p = (pending = { type: type, label: label, startTime: startTime, scheduled: false });
++        p.observer = new MutationObserver(function (records) {
++          if (p.scheduled) return;
++          var contentful = records.some(function (r) {
++            if (r.type === 'characterData') return r.target.nodeValue.trim().length > 0;
++            if (r.type === 'attributes') return r.target.tagName === 'IMG' && r.attributeName === 'src';
++            return Array.prototype.some.call(r.addedNodes, isContentful);
++          });
++          if (!contentful) return;
++          p.scheduled = true;
++          p.observer.disconnect();
++          // Next frame after the update is committed approximates first paint.
++          requestAnimationFrame(function () {
++            setTimeout(function () {
++              if (pending === p) pending = null;
++              report({ type: p.type, source: 'fallback', label: p.label, duration: performance.now() - p.startTime, startTime: p.startTime });
++            }, 0);
++          });
++        });
++        p.observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['src'] });
++        // Give up if nothing contentful shows up.
++        setTimeout(function () {
++          if (pending === p && !p.scheduled) { p.observer.disconnect(); pending = null; }
++        }, 5000);
++      }
++
++      ['pointerdown', 'keydown'].forEach(function (name) {
++        document.addEventListener(name, function (e) {
++          var t = e.target;
++          start('interaction', name + ':' + (t && t.tagName ? t.tagName.toLowerCase() : ''), e.timeStamp || performance.now());
++        }, true);
++      });
++
++      // Client-side navigations (History API / Navigation API).
++      ['pushState', 'replaceState'].forEach(function (fn) {
++        var orig = history[fn];
++        history[fn] = function () {
++          start('navigation', String(arguments[2] || location.href), performance.now());
++          return orig.apply(this, arguments);
++        };
++      });
++      window.addEventListener('popstate', function () {
++        start('navigation', location.href, performance.now());
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

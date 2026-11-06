@@ -1,0 +1,52 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -65,8 +65,33 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active;
++      inset-block-start: calc(anchor(bottom) + .1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: .25lh;
++      background: var(--accent);
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: inset .2s;
++      }
++    }
++
++    li.active {
++      anchor-name: --active;
++    }
++
++    ul li.active {
++      @supports not (position-anchor: auto) {
++        border-bottom: .25lh var(--accent) solid;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -156,12 +181,12 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>

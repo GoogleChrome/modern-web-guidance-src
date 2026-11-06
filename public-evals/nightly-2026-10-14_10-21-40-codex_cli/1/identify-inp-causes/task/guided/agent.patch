@@ -1,0 +1,47 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,42 @@
++# The Daily Grind
++
++Run `pnpm install` and `pnpm start` to serve the site. After changing the INP
++instrumentation in `src/`, run `pnpm build` to regenerate `assets/inp.js`.
++The generated bundle is committed so the static page works without a build step.
++
++## Diagnose slow interactions
++
++The locally bundled `web-vitals/attribution` library measures INP during real
++interactions. It reports when the page is hidden, including when navigating away.
++No interaction means no INP report; this is not a page-load metric.
++
++Set the `inp-report-endpoint` meta tag in `index.html` to an existing analytics
++collector URL to send reports using `sendBeacon`, with a keepalive fetch fallback.
++The collector must accept JSON in a `text/plain` POST body. This static app does
++not provide a collector. With an empty endpoint, no analytics requests are sent.
++Aggregate the latest `value` per metric `id`, rather than counting repeated reports
++as separate visits. Back/forward cache restores receive a new metric ID.
++
++For local integrations, read `window.inpDiagnostics.latest` or subscribe to
++`window.addEventListener('inp-report', ({ detail }) => { /* consume report */ })`.
++Reports become available after the library reports the metric, typically when
++the tab is hidden. `supported` identifies Event Timing support;
++`scriptAttributionSupported` identifies Long Animation Frames support.
++
++Start with the three durations (all times are milliseconds):
++
++- `inputDelay`: the main thread was busy before event handlers could run.
++- `processingDuration`: event handlers took too long.
++- `presentationDelay`: work after event processing delayed the next paint.
++
++Use `interactionTarget` and `interactionType` to locate the slow interaction.
++When present, `longestScript` identifies the script URL, function, character
++position, overlapping phase, and forced style/layout time. This is a diagnostic
++lead rather than proof that a single function caused the entire delay.
++Additional script, style/layout, and paint totals help explain rendering work.
++Browsers without Long Animation Frames still report INP phases but return
++`longestScript: null`; browsers without Event Timing skip measurement.
++Reports include the page pathname, selector, and script URL, but no input values
++or element text. Review collector configuration for your deployment.
++
++Run `pnpm test` for serialization and transport checks.

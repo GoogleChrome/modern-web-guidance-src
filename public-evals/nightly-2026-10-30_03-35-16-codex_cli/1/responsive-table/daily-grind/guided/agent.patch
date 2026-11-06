@@ -1,0 +1,146 @@
+diff --git a/index.html b/index.html
+index 66c9173..5c9a16a 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,82 @@
+       color: var(--primary);
+     }
+ 
++    .nutrition-heading {
++      margin-block-start: 2rem;
++    }
++
++    .nutrition-note,
++    .table-hint {
++      margin-block: 0.5rem;
++    }
++
++    .nutrition-scroll {
++      max-inline-size: 100%;
++      max-block-size: 70vh;
++      overflow: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .nutrition-scroll:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      min-inline-size: 48rem;
++      border-collapse: separate;
++      border-spacing: 0;
++      background: white;
++    }
++
++    .nutrition-table caption {
++      padding: 0.75rem 1rem;
++      text-align: start;
++      font-weight: bold;
++      background: var(--secondary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 0.75rem;
++      border-block-end: 1px solid var(--secondary);
++      text-align: end;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .nutrition-table thead th {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 2;
++      background: var(--primary);
++      color: white;
++    }
++
++    .nutrition-table tr > :first-child {
++      position: sticky;
++      inset-inline-start: 0;
++      inline-size: 9rem;
++      min-inline-size: 9rem;
++      max-inline-size: 9rem;
++      text-align: start;
++      border-inline-end: 1px solid var(--secondary);
++    }
++
++    .nutrition-table tbody th {
++      z-index: 1;
++      background: white;
++    }
++
++    .nutrition-table thead th:first-child {
++      z-index: 3;
++    }
++
++    .nutrition-table tbody tr:last-child > * {
++      border-block-end: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +270,58 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <h3 class="nutrition-heading" id="nutrition-heading">Nutrition &amp; pricing</h3>
++      <p class="nutrition-note" id="nutrition-note">Illustrative sample values per serving, not verified menu data. Espresso and cold brew are served black; the latte includes oat milk and maple syrup. Prices are in US dollars, before tax.</p>
++      <p class="table-hint" id="nutrition-hint">On small screens, scroll sideways to compare all columns. Keyboard users can focus the table area and use the left and right arrow keys.</p>
++      <div class="nutrition-scroll" role="region" aria-labelledby="nutrition-heading" aria-describedby="nutrition-hint" tabindex="0">
++        <table class="nutrition-table" aria-describedby="nutrition-note">
++          <caption>Seasonal Favorites — nutrition and prices per serving</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Serving (fl oz)</th>
++              <th scope="col">Price (USD)</th>
++              <th scope="col">Calories (kcal)</th>
++              <th scope="col">Total fat (g)</th>
++              <th scope="col">Carbohydrates (g)</th>
++              <th scope="col">Total sugars (g)</th>
++              <th scope="col">Protein (g)</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>12</td>
++              <td>$5.50</td>
++              <td>220</td>
++              <td>7</td>
++              <td>36</td>
++              <td>22</td>
++              <td>3</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2</td>
++              <td>$3.00</td>
++              <td>10</td>
++              <td>0</td>
++              <td>2</td>
++              <td>0</td>
++              <td>0</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>16</td>
++              <td>$4.25</td>
++              <td>5</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++              <td>0</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 

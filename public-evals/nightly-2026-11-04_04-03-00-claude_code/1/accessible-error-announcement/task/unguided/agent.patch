@@ -1,0 +1,213 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Newsletter signup */
++    .newsletter {
++      max-width: 480px;
++      margin: 0 auto 30px;
++    }
++
++    .newsletter h2 {
++      font-size: 1.2rem;
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .newsletter p {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++    }
++
++    .newsletter-form {
++      text-align: left;
++    }
++
++    .newsletter-form label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 10px;
++    }
++
++    .newsletter-form input[type="email"] {
++      flex: 1;
++      min-width: 0;
++      padding: 10px 12px;
++      font: inherit;
++      border: 2px solid #8d6e63;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter-form input[type="email"]:focus {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .newsletter-form input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .newsletter-form button {
++      padding: 10px 20px;
++      font: inherit;
++      font-weight: 600;
++      color: white;
++      background: var(--primary);
++      border: none;
++      border-radius: 5px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .newsletter-form button:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 6px;
++      min-height: 1.3em;
++    }
++
++    .field-error:empty {
++      margin-top: 0;
++    }
++
++    .newsletter-success {
++      color: #1b5e20;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-top: 6px;
++    }
++
++    .required-mark {
++      color: #b71c1c;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +293,25 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="newsletter" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join the Grind Newsletter</h2>
++      <p>Seasonal drops, roasting notes, and member-only offers.</p>
++      <form class="newsletter-form" id="newsletter-form" action="/newsletter/subscribe" method="post" novalidate>
++        <label for="newsletter-email">
++          Email address <span class="required-mark" aria-hidden="true">*</span>
++        </label>
++        <div class="newsletter-row">
++          <input type="email" id="newsletter-email" name="email" autocomplete="email" required
++            aria-required="true" aria-describedby="newsletter-email-error">
++          <button type="submit">Subscribe</button>
++        </div>
++        <!-- Live region is always in the DOM (empty) so text insertion is reliably announced. -->
++        <p class="field-error" id="newsletter-email-error" aria-live="assertive" aria-atomic="true"></p>
++        <p class="newsletter-success" id="newsletter-success" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +319,78 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('newsletter-form');
++      var input = document.getElementById('newsletter-email');
++      var error = document.getElementById('newsletter-email-error');
++      var success = document.getElementById('newsletter-success');
++
++      // Errors stay hidden (visually and to AT) until the user has interacted:
++      // leaving the field after editing it, or attempting to submit.
++      var interacted = false;
++
++      function getErrorMessage() {
++        var value = input.value.trim();
++        if (!value) return 'Please enter your email address.';
++        if (input.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
++          return 'Please enter a valid email address, like name@example.com.';
++        }
++        return '';
++      }
++
++      // Single source of truth: the visible message text IS the live region
++      // content, so screen readers announce exactly when the error appears and
++      // the announcement clears the moment the error disappears.
++      function render() {
++        var message = interacted ? getErrorMessage() : '';
++        // Only touch the DOM when the message actually changes, so repeated
++        // keystrokes don't re-announce the same error.
++        if (error.textContent !== message) {
++          error.textContent = message;
++        }
++        if (message) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++        return !message;
++      }
++
++      var dirty = false;
++
++      input.addEventListener('input', function () {
++        dirty = true;
++        success.textContent = '';
++        // Before interaction: stay silent. After an error is shown: re-validate
++        // live so the error clears as soon as the email becomes valid.
++        if (interacted) render();
++      });
++
++      input.addEventListener('blur', function () {
++        if (dirty) {
++          interacted = true;
++          render();
++        }
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        interacted = true;
++        if (!render()) {
++          input.focus();
++          return;
++        }
++        success.textContent = 'Thanks! You\'re subscribed with ' + input.value.trim() + '.';
++        form.reset();
++        interacted = false;
++        dirty = false;
++        render();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+index 66c9173..f044385 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,48 @@
+       background: #3e2723;
+     }
+ 
++    .signin {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++      margin-bottom: 40px;
++      scroll-margin-top: 100px;
++    }
++
++    .signin form {
++      display: grid;
++      grid-template-columns: 1fr 1fr auto;
++      gap: 16px;
++      align-items: end;
++      margin-top: 16px;
++    }
++
++    .signin label { display: block; font-weight: 600; }
++    .signin input {
++      width: 100%;
++      font: inherit;
++      padding: 10px;
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    button.btn { font: inherit; border: 0; cursor: pointer; margin-top: 0; }
++    button:disabled { opacity: 0.65; cursor: wait; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    #signin-status { margin-top: 12px; }
++    #signin-status[data-error="true"] { color: #a12616; }
++    .signin-actions { display: flex; gap: 16px; align-items: center; margin-top: 16px; }
++    .signin [hidden] { display: none; }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .signin form { grid-template-columns: 1fr; }
++      .hero h1 { font-size: 2.25rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -162,8 +204,8 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#signin" data-signin="Rewards">Rewards</a></li>
++      <li><a href="#signin" data-signin="My Account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,10 +213,30 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#signin" class="btn" data-signin="Order Now">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin" id="signin" aria-labelledby="signin-title">
++      <h2 id="signin-title">Welcome back</h2>
++      <p id="signin-intro">Sign in here and keep browsing. Use your saved password or choose a saved passkey from the email field.</p>
++      <form id="signin-form" action="/api/auth/password" method="post" autocomplete="on">
++        <div>
++          <label for="signin-email">Email</label>
++          <input id="signin-email" name="username" type="email" autocomplete="username webauthn" required>
++        </div>
++        <div>
++          <label for="signin-password">Password</label>
++          <input id="signin-password" name="password" type="password" autocomplete="current-password" required>
++        </div>
++        <button class="btn" type="submit">Sign in</button>
++      </form>
++      <div class="signin-actions">
++        <button class="btn" id="signin-passkey" type="button" hidden>Sign in with a passkey</button>
++      </div>
++      <p id="signin-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      <noscript>Enable JavaScript to sign in without leaving this page.</noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +269,179 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const form = document.querySelector('#signin-form');
++      const email = document.querySelector('#signin-email');
++      const password = document.querySelector('#signin-password');
++      const passkeyButton = document.querySelector('#signin-passkey');
++      const status = document.querySelector('#signin-status');
++      let pendingPasskey;
++      let busy = false;
++      let authenticated = false;
++
++      // Backend contract (same-origin HTTPS, HttpOnly session cookie):
++      // POST /api/auth/passkey/options -> PublicKeyCredentialRequestOptions JSON
++      // with a server-generated, session-bound challenge and base64url binary fields.
++      // POST /api/auth/passkey/verify -> { authenticated: true } only after verifying
++      // the assertion, challenge, origin and RP ID. POST /api/auth/password takes
++      // { username, password } and returns the same result after credential validation.
++      // Both authentication endpoints must validate origin/CSRF and rate-limit attempts.
++      async function request(path, body, signal) {
++        const response = await fetch(path, {
++          method: 'POST',
++          credentials: 'same-origin',
++          redirect: 'error',
++          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          body: JSON.stringify(body),
++          signal
++        });
++        if (!response.ok) {
++          if (response.status === 401 || response.status === 403) {
++            throw new Error('Unable to sign in. Check your details or try another sign-in method.');
++          }
++          throw new Error('Sign-in is temporarily unavailable. Please try again later.');
++        }
++        if (!response.headers.get('content-type')?.includes('application/json')) {
++          throw new Error('Sign-in is temporarily unavailable. Please try again later.');
++        }
++        return response.json();
++      }
++
++      function message(text, error = false) {
++        status.textContent = text;
++        status.dataset.error = String(error);
++      }
++
++      function setBusy(value) {
++        busy = value;
++        form.setAttribute('aria-busy', String(value));
++        form.querySelector('button').disabled = value;
++        passkeyButton.disabled = value;
++      }
++
++      function finish(result) {
++        if (result.authenticated !== true) {
++          throw new Error('Sign-in could not be confirmed. Please try again.');
++        }
++        authenticated = true;
++        pendingPasskey?.abort();
++        password.value = '';
++        form.hidden = true;
++        passkeyButton.hidden = true;
++        document.querySelector('#signin-intro').textContent = 'You’re signed in. Enjoy your next cup.';
++        message('Signed in successfully. You can keep browsing this page.');
++        // Restore the requested destinations only after the server confirms sign-in.
++        const destinations = { Rewards: '/rewards', 'My Account': '/account', 'Order Now': '/order-online' };
++        document.querySelectorAll('[data-signin]').forEach(link => {
++          link.href = destinations[link.dataset.signin];
++        });
++      }
++
++      document.querySelectorAll('[data-signin]').forEach(link => {
++        link.addEventListener('click', event => {
++          if (authenticated || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++          event.preventDefault();
++          document.querySelector('#signin').scrollIntoView({ block: 'center' });
++          email.focus({ preventScroll: true });
++          message(`Sign in here to access ${link.dataset.signin}.`);
++        });
++      });
++
++      const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), char => char.charCodeAt(0));
++      const encode = buffer => btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++
++      async function signInWithPasskey(conditional = false) {
++        pendingPasskey?.abort();
++        const controller = new AbortController();
++        pendingPasskey = controller;
++        if (!conditional) setBusy(true);
++        try {
++          const options = await request('/api/auth/passkey/options', {}, controller.signal);
++          options.challenge = decode(options.challenge);
++          if (options.allowCredentials) {
++            options.allowCredentials = options.allowCredentials.map(item => ({ ...item, id: decode(item.id) }));
++          }
++          // Conditional mediation uses discoverable passkeys in browser autofill.
++          if (conditional) options.allowCredentials = [];
++          const credential = await navigator.credentials.get({
++            publicKey: options,
++            mediation: conditional ? 'conditional' : 'optional',
++            signal: controller.signal
++          });
++          if (!credential || controller.signal.aborted) return;
++          setBusy(true);
++          const result = await request('/api/auth/passkey/verify', {
++            id: credential.id,
++            rawId: encode(credential.rawId),
++            type: credential.type,
++            authenticatorAttachment: credential.authenticatorAttachment,
++            response: {
++              clientDataJSON: encode(credential.response.clientDataJSON),
++              authenticatorData: encode(credential.response.authenticatorData),
++              signature: encode(credential.response.signature),
++              userHandle: credential.response.userHandle ? encode(credential.response.userHandle) : null
++            },
++            clientExtensionResults: credential.getClientExtensionResults()
++          }, controller.signal);
++          finish(result);
++        } catch (error) {
++          if (controller.signal.aborted) return;
++          // Background autofill must never interrupt browsing or password sign-in.
++          if (!conditional) {
++            message(error.name === 'NotAllowedError'
++              ? 'Passkey sign-in was canceled or unavailable. Try again or use your password.'
++              : 'Passkey sign-in is unavailable. Please try again or use your password.', true);
++          }
++        } finally {
++          if (pendingPasskey === controller) {
++            pendingPasskey = undefined;
++            setBusy(false);
++          }
++        }
++      }
++
++      form.addEventListener('submit', async event => {
++        event.preventDefault();
++        if (busy || authenticated) return;
++        pendingPasskey?.abort();
++        pendingPasskey = undefined;
++        setBusy(true);
++        message('Signing in…');
++        try {
++          finish(await request('/api/auth/password', { username: email.value.trim(), password: password.value }));
++        } catch (error) {
++          message(error.message === 'Failed to fetch' ? 'Unable to connect. Please try again.' : error.message, true);
++        } finally {
++          setBusy(false);
++          if (!authenticated) startAutofill();
++        }
++      });
++
++      passkeyButton.addEventListener('click', async () => {
++        if (busy || authenticated) return;
++        await signInWithPasskey();
++        if (!authenticated) startAutofill();
++      });
++
++      async function startAutofill() {
++        try {
++          if (!busy && !authenticated && !pendingPasskey &&
++              await window.PublicKeyCredential?.isConditionalMediationAvailable?.()) {
++            if (!busy && !authenticated && !pendingPasskey) void signInWithPasskey(true);
++          }
++        } catch { /* Password autofill remains available in unsupported browsers. */ }
++      }
++
++      if (window.isSecureContext && window.PublicKeyCredential && navigator.credentials) {
++        passkeyButton.hidden = false;
++        void startAutofill();
++      }
++      window.addEventListener('pagehide', () => pendingPasskey?.abort());
++      window.addEventListener('pageshow', () => void startAutofill());
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

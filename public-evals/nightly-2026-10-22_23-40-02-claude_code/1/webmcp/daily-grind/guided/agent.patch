@@ -1,0 +1,86 @@
+diff --git a/index.html b/index.html
+index 66c9173..8a16468 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,81 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WebMCP: expose the page's client-side functionality as tools for AI agents.
++    if ('modelContext' in document) {
++      const controller = new AbortController();
++      const options = { signal: controller.signal };
++      addEventListener('pagehide', () => controller.abort());
++
++      // Links are read from the DOM so the tools always match what the page shows.
++      const links = () => [...document.querySelectorAll('nav a:not(.logout-link), .footer-links a, .hero .btn')]
++        .map((a) => ({ label: a.textContent.trim(), path: a.getAttribute('href') }));
++
++      const drinks = () => [...document.querySelectorAll('.card')].map((card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        path: card.querySelector('a').getAttribute('href'),
++      }));
++
++      document.modelContext.registerTool({
++        name: 'list-seasonal-favorites',
++        description: 'Lists the seasonal favorite drinks featured on the home page. Use when the user asks what is on offer or wants a recommendation.',
++        inputSchema: { type: 'object', properties: {} },
++        execute: () => drinks(),
++        annotations: { readOnlyHint: true },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'view-drink-details',
++        description: 'Opens the details page of a seasonal favorite drink.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: { type: 'string', description: 'Name of the drink, as returned by list-seasonal-favorites.' },
++          },
++          required: ['name'],
++        },
++        execute({ name }) {
++          const drink = typeof name === 'string' && drinks().find((d) => d.name.toLowerCase() === name.trim().toLowerCase());
++          if (!drink) {
++            return { error: `Drink "${name}" not found.`, availableDrinks: drinks().map((d) => d.name) };
++          }
++          location.href = drink.path;
++          return { opened: drink.name, path: drink.path };
++        },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'list-site-pages',
++        description: 'Lists the pages reachable from the site navigation, footer and call to action.',
++        inputSchema: { type: 'object', properties: {} },
++        execute: () => links(),
++        annotations: { readOnlyHint: true },
++      }, options);
++
++      document.modelContext.registerTool({
++        name: 'navigate-to-page',
++        description: 'Navigates the browser to a page of the site, such as the menu, locations or rewards.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            path: { type: 'string', description: 'Path of the page, as returned by list-site-pages.' },
++          },
++          required: ['path'],
++        },
++        execute({ path }) {
++          const page = links().find((l) => l.path === path);
++          if (!page) {
++            return { error: `Unknown page "${path}".`, availablePages: links() };
++          }
++          location.href = page.path;
++          return { navigatedTo: page.path };
++        },
++      }, options);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

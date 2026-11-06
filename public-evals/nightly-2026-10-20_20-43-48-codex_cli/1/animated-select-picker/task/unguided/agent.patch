@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,93 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .store-select {
++      width: 300px;
++      max-width: 100%;
++      min-height: 48px;
++      margin-top: 24px;
++      padding: 12px 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--primary);
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++      transition: border-color 0.2s ease, background-color 0.2s ease;
++    }
++
++    .store-select:hover {
++      border-color: var(--accent);
++      background-color: white;
++    }
++
++    .store-select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Keep native selection, keyboard controls, and dismissal behavior. */
++    @supports (appearance: base-select) {
++      .store-select,
++      .store-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .store-select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.25s ease;
++      }
++
++      .store-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .store-select::picker(select) {
++        margin-block: 8px;
++        border: 1px solid var(--secondary);
++        border-radius: 6px;
++        background: var(--light);
++        color: var(--primary);
++        box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
++        opacity: 0;
++        transition: opacity 0.25s ease,
++          display 0.25s allow-discrete,
++          overlay 0.25s allow-discrete;
++      }
++
++      .store-select:open::picker(select) {
++        opacity: 1;
++      }
++
++      @starting-style {
++        .store-select:open::picker(select) {
++          opacity: 0;
++        }
++      }
++
++      .store-select option {
++        padding: 12px 16px;
++        cursor: pointer;
++      }
++
++      .store-select option:hover,
++      .store-select option:focus,
++      .store-select option:checked {
++        background: var(--secondary);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .store-select,
++      .store-select::picker-icon,
++      .store-select::picker(select) {
++        transition: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +255,14 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <select class="store-select" id="store" name="store" aria-label="Choose your store">
++      <option value="" selected disabled>Choose your store</option>
++      <option value="downtown">Downtown</option>
++      <option value="riverside">Riverside</option>
++      <option value="university">University</option>
++    </select>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

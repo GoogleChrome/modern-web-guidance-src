@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,133 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Analytics: page views and clicks are queued and sent together in a single
++    // deferred beacon. Each new event resets the batch window, so rapid
++    // interactions coalesce into one request. Pending data is still delivered
++    // if the user leaves the page before the window expires.
++    (() => {
++      // Replace with the real analytics endpoint.
++      const ANALYTICS_ENDPOINT = '/api/analytics';
++      // Events occurring within this window are batched together.
++      const BATCH_WINDOW = 10 * 1000;
++      // Keep payloads well under the ~64KB per-origin fetchLater() quota.
++      const MAX_QUEUE_SIZE = 100;
++
++      // Minimal fetchLater() polyfill for browsers without native support.
++      // Sends when the timeout expires or when the page becomes hidden.
++      globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++        let timeoutHandle;
++        let activated = false;
++
++        function sendNow() {
++          if (!(init.signal && init.signal.aborted)) {
++            if (
++              'keepalive' in Request.prototype ||
++              init.method !== 'POST' ||
++              init.headers
++            ) {
++              fetch(url, Object.assign({}, init, { keepalive: true })).catch(() => {});
++              activated = true;
++            } else {
++              activated = navigator.sendBeacon(url, init.body);
++            }
++          }
++          destroy();
++        }
++
++        function destroy() {
++          document.removeEventListener('visibilitychange', sendNow);
++          clearTimeout(timeoutHandle);
++        }
++
++        if (document.visibilityState === 'hidden') {
++          queueMicrotask(sendNow);
++        } else {
++          document.addEventListener('visibilitychange', sendNow);
++          if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++            timeoutHandle = setTimeout(sendNow, init.activateAfter);
++          }
++        }
++
++        if (init.signal) {
++          init.signal.addEventListener('abort', destroy);
++        }
++
++        return {
++          get activated() {
++            return activated;
++          },
++        };
++      };
++
++      const eventQueue = [];
++      let fetchLaterResult;
++      let fetchLaterController;
++
++      function trackEvent(type, data = {}) {
++        // Start a fresh batch once the previous beacon has been sent, or when
++        // the queue is full (the pending beacon is left to send as-is).
++        if (fetchLaterResult?.activated || eventQueue.length >= MAX_QUEUE_SIZE) {
++          fetchLaterController = null;
++          fetchLaterResult = null;
++          eventQueue.length = 0;
++        }
++
++        eventQueue.push({
++          type,
++          url: location.href,
++          timestamp: Date.now(),
++          ...data,
++        });
++
++        // Replace the pending beacon with one carrying the full queue.
++        fetchLaterController?.abort();
++        fetchLaterController = new AbortController();
++
++        try {
++          fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++            method: 'POST',
++            headers: { 'content-type': 'application/json' },
++            body: JSON.stringify(eventQueue),
++            signal: fetchLaterController.signal,
++            activateAfter: BATCH_WINDOW,
++          });
++        } catch {
++          // Quota exceeded or unsupported; drop this batch silently.
++        }
++      }
++
++      function describeElement(el) {
++        const target = el.closest('a, button, [data-track]') ?? el;
++        return {
++          tag: target.tagName.toLowerCase(),
++          id: target.id || undefined,
++          className: target.getAttribute('class') || undefined,
++          text: target.textContent.trim().replace(/\s+/g, ' ').slice(0, 100) || undefined,
++          href: target.getAttribute('href') ?? undefined,
++          track: target.dataset.track,
++        };
++      }
++
++      // pageshow fires on the initial load and on back/forward cache restores,
++      // so both count as page views.
++      window.addEventListener('pageshow', (event) => {
++        trackEvent('page_view', {
++          title: document.title,
++          referrer: document.referrer || undefined,
++          restored: event.persisted,
++        });
++      });
++
++      document.addEventListener('click', (event) => {
++        if (!(event.target instanceof Element)) return;
++        trackEvent('click', { target: describeElement(event.target) });
++      }, { passive: true });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

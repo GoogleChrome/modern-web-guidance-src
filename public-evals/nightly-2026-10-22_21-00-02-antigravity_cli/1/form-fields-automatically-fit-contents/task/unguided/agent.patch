@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -132,10 +132,82 @@
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      cursor: pointer;
+     }
+ 
++    /* Form Section */
++    .form-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-section h2 {
++      color: var(--primary);
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .coffee-form {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 20px;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 6px;
++      max-width: 100%;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .coffee-form input,
++    .coffee-form textarea,
++    .coffee-form select {
++      field-sizing: content;
++      font: inherit;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 12px;
++      min-width: 8ch;
++      max-width: 100%;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .coffee-form textarea {
++      min-height: 2.5lh;
++    }
++
++    .coffee-form input:focus,
++    .coffee-form textarea:focus,
++    .coffee-form select:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++    }
++
++    .coffee-form button.btn {
++      border: none;
++      font: inherit;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +266,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="form-section">
++      <h2>Custom Order &amp; Feedback</h2>
++      <form class="coffee-form" action="/submit-order" method="post">
++        <div class="form-group">
++          <label for="customer-name">Your Name</label>
++          <input type="text" id="customer-name" name="customerName" placeholder="Alex">
++        </div>
++
++        <div class="form-group">
++          <label for="drink-choice">Select Drink</label>
++          <select id="drink-choice" name="drinkChoice">
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="ethiopian-pour-over">Single-Origin Ethiopian Yirgacheffe Pour Over</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="special-instructions">Special Instructions</label>
++          <textarea id="special-instructions" name="specialInstructions" placeholder="Extra hot, oat milk..."></textarea>
++        </div>
++
++        <button type="submit" class="btn">Submit Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

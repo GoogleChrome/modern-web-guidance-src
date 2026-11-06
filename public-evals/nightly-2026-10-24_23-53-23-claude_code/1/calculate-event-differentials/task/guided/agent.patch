@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,23 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .promo-timer {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer strong {
++      display: block;
++      color: var(--primary);
++    }
++
++    .promo-timer small {
++      display: block;
++      opacity: 0.75;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +195,13 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Dates are wall-clock times, interpreted in the visitor's local time zone -->
++          <p class="promo-timer" data-start="2025-12-01T00:00" data-end="2026-03-01T00:00">
++            <strong data-remaining>Calculating&hellip;</strong>
++            <small data-elapsed></small>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +226,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Temporal is not yet supported in Safari; load a polyfill when missing.
++    if (typeof Temporal === 'undefined') {
++      const { Temporal: T } = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = T;
++    }
++
++    const timer = document.querySelector('.promo-timer');
++    const tz = Temporal.Now.timeZoneId();
++    const toZoned = (value) => Temporal.PlainDateTime.from(value).toZonedDateTime(tz);
++    const start = toZoned(timer.dataset.start);
++    const end = toZoned(timer.dataset.end);
++    const now = Temporal.Now.zonedDateTimeISO(tz);
++    const units = { largestUnit: 'day', smallestUnit: 'hour' };
++    const fmt = (duration) => duration.toLocaleString(undefined, { style: 'long' });
++
++    const remaining = now.until(end, units);
++    timer.querySelector('[data-remaining]').textContent =
++      remaining.sign > 0 ? `${fmt(remaining)} left` : 'This offer has ended';
++
++    const elapsedEnd = Temporal.ZonedDateTime.compare(now, end) > 0 ? end : now;
++    const elapsed = elapsedEnd.since(start, units);
++    timer.querySelector('[data-elapsed]').textContent =
++      elapsed.sign > 0
++        ? `${fmt(elapsed)} ${remaining.sign > 0 ? 'since the promotion began' : 'was the promotion length'}`
++        : 'Promotion starts soon';
++  </script>
+ </body>
+ 
+ </html>

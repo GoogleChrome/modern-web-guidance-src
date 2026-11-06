@@ -1,0 +1,39 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..70b25f8 100644
+--- a/index.html
++++ b/index.html
+@@ -153,9 +153,12 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    /* Lock page scroll while a modal dialog is open */
++    html.modal-open,
++    html:has(dialog:modal) {
+       overflow: hidden;
+-      position: fixed;
++      overscroll-behavior: none;
++      scrollbar-gutter: stable;
+     }
+ 
+     dialog {
+@@ -231,9 +234,16 @@
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+     if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++      // "close" fires for the button, Escape key, and form method="dialog"
++      noticeDialog.addEventListener("close", () => {
++        document.documentElement.classList.remove("modal-open");
++      });
++      document.getElementById("close-notice").addEventListener("click", () => {
++        noticeDialog.close();
++      });
++
++      document.documentElement.classList.add("modal-open");
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

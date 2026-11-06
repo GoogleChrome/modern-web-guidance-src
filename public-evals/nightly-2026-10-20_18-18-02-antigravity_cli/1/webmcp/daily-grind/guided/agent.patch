@@ -1,0 +1,947 @@
+diff --git a/index.html b/index.html
+index 66c9173..94fac63 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,156 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive Sections & Layout */
++    .section-header {
++      text-align: center;
++      margin: 40px 0 20px;
++    }
++
++    .filter-bar {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++      margin-bottom: 24px;
++      background: white;
++      padding: 16px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .filter-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++      gap: 4px;
++    }
++
++    .filter-group label {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .filter-bar input,
++    .filter-bar select,
++    .order-form input,
++    .order-form select,
++    .order-form textarea {
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin: 8px 0;
++    }
++
++    .two-col {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 40px;
++    }
++
++    .panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .panel h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .cart-list {
++      list-style: none;
++      margin-bottom: 16px;
++    }
++
++    .cart-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 8px 0;
++      border-bottom: 1px solid #eee;
++    }
++
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .form-field label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .status-banner {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 6px;
++      background: #efebe9;
++      color: var(--primary);
++      font-size: 0.9rem;
++      display: none;
++    }
++
++    .status-banner.visible {
++      display: block;
++    }
++
++    /* WebMCP Visual Feedback Pseudo-classes */
++    form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      background-color: rgba(255, 171, 64, 0.08);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #d32f2f;
++      animation: pulse 2s infinite;
++    }
++
++    @keyframes pulse {
++      0%, 100% { transform: scale(1); }
++      50% { transform: scale(1.03); }
++    }
+   </style>
+ </head>
+ 
+@@ -160,10 +310,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#order">Order &amp; Cart (<span id="nav-cart-count">0</span>)</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,30 +321,150 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section id="menu">
++      <h2 class="section-header">Artisanal Menu &amp; Seasonal Favorites</h2>
++
++      <!-- Declarative WebMCP Tool: Read-only menu search/filter form (uses toolautosubmit) -->
++      <form id="menu-search-form"
++            class="filter-bar"
++            toolname="filter-menu"
++            tooldescription="Filters and searches the coffee shop menu on the page. Use when the user wants to browse or narrow down drinks and pastries."
++            toolautosubmit>
++        <div class="filter-group">
++          <label for="search-query">Search Keyword</label>
++          <input type="text"
++                 id="search-query"
++                 name="query"
++                 placeholder="e.g., oat, espresso, cold..."
++                 toolparamdescription="Keyword to match against item name or flavor notes (e.g., maple, espresso, matcha)">
++        </div>
++        <div class="filter-group">
++          <label for="filter-category">Category</label>
++          <select id="filter-category"
++                  name="category"
++                  toolparamdescription="Menu category to filter by">
++            <option value="all">All Categories</option>
++            <option value="seasonal">Seasonal</option>
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="bakery">Bakery</option>
++          </select>
++        </div>
++        <div class="filter-group">
++          <label for="filter-dietary">Dietary Preference</label>
++          <select id="filter-dietary"
++                  name="dietary"
++                  toolparamdescription="Dietary restriction that items must satisfy">
++            <option value="any">Any</option>
++            <option value="vegan">Vegan</option>
++            <option value="dairy-free">Dairy-Free</option>
++            <option value="gluten-free">Gluten-Free</option>
++          </select>
++        </div>
++        <div class="filter-group" style="justify-content: flex-end;">
++          <button type="submit" class="btn" style="margin-top: 0; border: none; cursor: pointer;">Apply Filters</button>
++        </div>
++      </form>
++
++      <div id="menu-grid" class="grid" aria-live="polite">
++        <div class="card" data-item-id="maple-oat-latte">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++          <span class="badge">Seasonal • Vegan</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="price">$5.75</p>
++          <button type="button" class="btn add-to-cart-btn" data-item-id="maple-oat-latte" style="border: none; cursor: pointer;">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="dark-roast-espresso">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++          <span class="badge">Espresso • Vegan</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="price">$3.50</p>
++          <button type="button" class="btn add-to-cart-btn" data-item-id="dark-roast-espresso" style="border: none; cursor: pointer;">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-id="cold-brew">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++          <span class="badge">Cold Brew • Vegan</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="price">$4.75</p>
++          <button type="button" class="btn add-to-cart-btn" data-item-id="cold-brew" style="border: none; cursor: pointer;">Add to Order</button>
+         </div>
+       </div>
+     </section>
++
++    <div class="two-col" id="order">
++      <!-- Shopping Cart & Checkout Panel -->
++      <section class="panel">
++        <h2>Your Order Cart</h2>
++        <ul id="cart-list" class="cart-list">
++          <li style="color: #777;">Your cart is currently empty.</li>
++        </ul>
++        <p style="font-weight: bold; font-size: 1.1rem; margin-bottom: 16px;">
++          Total: $<span id="cart-total">0.00</span>
++        </p>
++
++        <!-- Declarative WebMCP Tool: Checkout form (omits toolautosubmit for financial/transactional safety) -->
++        <form id="checkout-form"
++              class="order-form"
++              toolname="submit-pickup-order"
++              tooldescription="Prepares and submits the customer's coffee pickup order for the items currently in the cart. Use when the customer is ready to place their order for pickup.">
++          <div class="form-field">
++            <label for="customer-name">Customer Name</label>
++            <input type="text"
++                   id="customer-name"
++                   name="customerName"
++                   required
++                   placeholder="Jane Doe"
++                   toolparamdescription="Full name for the pickup cup label">
++          </div>
++          <div class="form-field">
++            <label for="pickup-location">Pickup Location</label>
++            <select id="pickup-location"
++                    name="locationId"
++                    required
++                    toolparamdescription="Store location where the customer will pick up the order">
++              <option value="downtown">Downtown Roastery (120 Main St)</option>
++              <option value="riverside">Riverside Cafe (45 River Rd)</option>
++              <option value="uptown">Uptown Espresso Bar (880 Oak Ave)</option>
++            </select>
++          </div>
++          <div class="form-field">
++            <label for="pickup-notes">Barista Notes (Optional)</label>
++            <input type="text"
++                   id="pickup-notes"
++                   name="notes"
++                   placeholder="Extra hot, light ice, etc."
++                   toolparamdescription="Special preparation instructions for the barista">
++          </div>
++          <button type="submit" class="btn" style="border: none; cursor: pointer;">Place Pickup Order</button>
++        </form>
++        <div id="order-status" class="status-banner" role="status"></div>
++      </section>
++
++      <!-- Store Locations & Rewards Panel -->
++      <section class="panel" id="locations">
++        <h2>Locations &amp; Rewards</h2>
++        <div id="locations-list" style="margin-bottom: 24px;">
++          <p style="margin-bottom: 8px;"><strong>Downtown Roastery:</strong> 120 Main St — Open 6:00 AM - 7:00 PM</p>
++          <p style="margin-bottom: 8px;"><strong>Riverside Cafe:</strong> 45 River Rd — Open 6:30 AM - 6:00 PM</p>
++          <p style="margin-bottom: 8px;"><strong>Uptown Espresso Bar:</strong> 880 Oak Ave — Open 7:00 AM - 5:00 PM</p>
++        </div>
++
++        <div id="rewards" style="border-top: 1px solid #eee; padding-top: 16px;">
++          <h3 style="color: var(--primary); margin-bottom: 8px;">Daily Grind Rewards</h3>
++          <p>Member: <strong id="rewards-member">Alex Rivera (Gold Tier)</strong></p>
++          <p>Available Points: <strong id="rewards-points">420</strong> pts</p>
++          <p>Active Reward: <span id="rewards-active">None applied</span></p>
++          <div id="agent-activity-log" class="status-banner" role="status"></div>
++        </div>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+@@ -207,6 +477,609 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Application State & Catalog
++    const MENU_CATALOG = [
++      {
++        id: 'maple-oat-latte',
++        name: 'Maple Oat Latte',
++        category: 'seasonal',
++        price: 5.75,
++        calories: 210,
++        caffeineMg: 150,
++        dietary: ['vegan', 'dairy-free'],
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++        image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
++      },
++      {
++        id: 'dark-roast-espresso',
++        name: 'Dark Roast Espresso',
++        category: 'espresso',
++        price: 3.50,
++        calories: 15,
++        caffeineMg: 180,
++        dietary: ['vegan', 'dairy-free', 'gluten-free'],
++        description: 'Bold, smokey, and perfect for a morning boost.',
++        image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80',
++      },
++      {
++        id: 'cold-brew',
++        name: 'Cold Brew',
++        category: 'cold-brew',
++        price: 4.75,
++        calories: 10,
++        caffeineMg: 200,
++        dietary: ['vegan', 'dairy-free', 'gluten-free'],
++        description: 'Steeped for 18 hours for maximum smoothness.',
++        image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80',
++      },
++      {
++        id: 'honey-lavender-cortado',
++        name: 'Honey Lavender Cortado',
++        category: 'seasonal',
++        price: 5.25,
++        calories: 130,
++        caffeineMg: 130,
++        dietary: ['gluten-free'],
++        description: 'Equal parts rich espresso and steamed milk infused with wildflower honey and lavender.',
++        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
++      },
++      {
++        id: 'cardamom-kouign-amann',
++        name: 'Cardamom Kouign-Amann',
++        category: 'bakery',
++        price: 4.50,
++        calories: 340,
++        caffeineMg: 0,
++        dietary: [],
++        description: 'Flaky caramelized Breton pastry dusted with freshly ground green cardamom.',
++        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80',
++      }
++    ];
++
++    const STORE_LOCATIONS = [
++      {
++        id: 'downtown',
++        name: 'Downtown Roastery',
++        address: '120 Main St',
++        hours: '6:00 AM - 7:00 PM',
++        features: ['pour-over-bar', 'wifi', 'patio', 'roastery-tours'],
++        waitTimeMinutes: 4
++      },
++      {
++        id: 'riverside',
++        name: 'Riverside Cafe',
++        address: '45 River Rd',
++        hours: '6:30 AM - 6:00 PM',
++        features: ['wifi', 'patio', 'dog-friendly'],
++        waitTimeMinutes: 6
++      },
++      {
++        id: 'uptown',
++        name: 'Uptown Espresso Bar',
++        address: '880 Oak Ave',
++        hours: '7:00 AM - 5:00 PM',
++        features: ['wifi', 'express-pickup'],
++        waitTimeMinutes: 2
++      }
++    ];
++
++    const DRINK_SIZES = ['small', 'medium', 'large'];
++    const MILK_OPTIONS = ['whole', 'oat', 'almond', 'none'];
++    const CATEGORIES = ['all', 'seasonal', 'espresso', 'cold-brew', 'bakery'];
++    const DIETARY_TAGS = ['any', 'vegan', 'dairy-free', 'gluten-free'];
++
++    const appState = {
++      cart: [],
++      rewards: {
++        memberName: 'Alex Rivera',
++        tier: 'Gold',
++        points: 420,
++        appliedDiscount: 0,
++        activeRewardName: null
++      },
++      orders: []
++    };
++
++    // UI Rendering Helpers
++    function renderMenu(items) {
++      const grid = document.getElementById('menu-grid');
++      if (!grid) return;
++      if (items.length === 0) {
++        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No menu items match your current filters.</p>';
++        return;
++      }
++      grid.innerHTML = items.map((item) => `
++        <div class="card" data-item-id="${item.id}">
++          <img src="${item.image}" alt="${item.name}">
++          <span class="badge">${item.category} • ${item.calories} cal</span>
++          <h3>${item.name}</h3>
++          <p>${item.description}</p>
++          <p class="price">$${item.price.toFixed(2)}</p>
++          <button type="button" class="btn add-to-cart-btn" data-item-id="${item.id}" style="border: none; cursor: pointer;">Add to Order</button>
++        </div>
++      `).join('');
++    }
++
++    function calculateCartTotals() {
++      const subtotal = appState.cart.reduce((sum, entry) => sum + entry.unitPrice * entry.quantity, 0);
++      const discount = Math.min(subtotal, appState.rewards.appliedDiscount);
++      const total = Math.max(0, subtotal - discount);
++      return {
++        subtotal: Number(subtotal.toFixed(2)),
++        discount: Number(discount.toFixed(2)),
++        total: Number(total.toFixed(2)),
++        itemCount: appState.cart.reduce((count, entry) => count + entry.quantity, 0)
++      };
++    }
++
++    function renderCart() {
++      const cartList = document.getElementById('cart-list');
++      const cartTotalEl = document.getElementById('cart-total');
++      const navCountEl = document.getElementById('nav-cart-count');
++      const totals = calculateCartTotals();
++
++      if (navCountEl) navCountEl.textContent = String(totals.itemCount);
++      if (cartTotalEl) cartTotalEl.textContent = totals.total.toFixed(2);
++
++      if (!cartList) return;
++      if (appState.cart.length === 0) {
++        cartList.innerHTML = '<li style="color: #777;">Your cart is currently empty.</li>';
++        return;
++      }
++
++      cartList.innerHTML = appState.cart.map((entry) => `
++        <li class="cart-item">
++          <div>
++            <strong>${entry.quantity}x ${entry.name}</strong>
++            <small style="display: block; color: #666;">Size: ${entry.size}, Milk: ${entry.milk}</small>
++          </div>
++          <span>$${(entry.unitPrice * entry.quantity).toFixed(2)}</span>
++        </li>
++      `).join('');
++    }
++
++    function renderRewards() {
++      const pointsEl = document.getElementById('rewards-points');
++      const activeEl = document.getElementById('rewards-active');
++      if (pointsEl) pointsEl.textContent = String(appState.rewards.points);
++      if (activeEl) {
++        activeEl.textContent = appState.rewards.activeRewardName
++          ? `${appState.rewards.activeRewardName} (-$${appState.rewards.appliedDiscount.toFixed(2)})`
++          : 'None applied';
++      }
++    }
++
++    function showStatus(elementId, message) {
++      const el = document.getElementById(elementId);
++      if (!el) return;
++      el.textContent = message;
++      el.classList.add('visible');
++    }
++
++    function filterCatalog({ query = '', category = 'all', dietary = 'any' } = {}) {
++      const normalizedQuery = String(query).trim().toLowerCase();
++      return MENU_CATALOG.filter((item) => {
++        const matchesQuery = !normalizedQuery ||
++          item.name.toLowerCase().includes(normalizedQuery) ||
++          item.description.toLowerCase().includes(normalizedQuery);
++        const matchesCategory = category === 'all' || item.category === category;
++        const matchesDietary = dietary === 'any' || item.dietary.includes(dietary);
++        return matchesQuery && matchesCategory && matchesDietary;
++      });
++    }
++
++    function addItemToCart({ itemId, size = 'medium', milk = 'oat', quantity = 1 }) {
++      const catalogItem = MENU_CATALOG.find(
++        (entry) => entry.id === itemId || entry.name.toLowerCase() === String(itemId).toLowerCase()
++      );
++      if (!catalogItem) {
++        return {
++          error: `Menu item "${itemId}" was not found.`,
++          availableItems: MENU_CATALOG.map((entry) => ({ id: entry.id, name: entry.name }))
++        };
++      }
++      if (!DRINK_SIZES.includes(size)) {
++        return { error: `Invalid size "${size}".`, supportedSizes: DRINK_SIZES };
++      }
++      if (!MILK_OPTIONS.includes(milk)) {
++        return { error: `Invalid milk option "${milk}".`, supportedMilkOptions: MILK_OPTIONS };
++      }
++      const parsedQty = Number(quantity);
++      if (!Number.isInteger(parsedQty) || parsedQty < 1 || parsedQty > 20) {
++        return { error: 'Quantity must be a whole number between 1 and 20.' };
++      }
++
++      const sizeUpcharge = size === 'large' ? 0.75 : size === 'small' ? -0.50 : 0;
++      const unitPrice = Number((catalogItem.price + sizeUpcharge).toFixed(2));
++      const existing = appState.cart.find(
++        (entry) => entry.itemId === catalogItem.id && entry.size === size && entry.milk === milk
++      );
++
++      if (existing) {
++        existing.quantity += parsedQty;
++      } else {
++        appState.cart.push({
++          itemId: catalogItem.id,
++          name: catalogItem.name,
++          size,
++          milk,
++          quantity: parsedQty,
++          unitPrice
++        });
++      }
++
++      renderCart();
++      return {
++        added: {
++          itemId: catalogItem.id,
++          name: catalogItem.name,
++          size,
++          milk,
++          quantity: parsedQty,
++          unitPrice
++        },
++        cart: appState.cart,
++        totals: calculateCartTotals()
++      };
++    }
++
++    // Wire up standard DOM interactions
++    renderMenu(MENU_CATALOG);
++    renderCart();
++    renderRewards();
++
++    document.getElementById('menu-grid').addEventListener('click', (event) => {
++      const btn = event.target.closest('.add-to-cart-btn');
++      if (!btn) return;
++      const itemId = btn.getAttribute('data-item-id');
++      const result = addItemToCart({ itemId });
++      if (!result.error) {
++        showStatus('order-status', `Added ${result.added.name} to your order cart.`);
++      }
++    });
++
++    // Declarative WebMCP Form 1: Menu Search & Filter
++    document.getElementById('menu-search-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++      const formData = new FormData(event.target);
++      const query = String(formData.get('query') ?? '').trim();
++      const category = String(formData.get('category') ?? 'all');
++      const dietary = String(formData.get('dietary') ?? 'any');
++
++      const validationErrors = [];
++      if (!CATEGORIES.includes(category)) {
++        validationErrors.push({ field: 'category', message: 'Unsupported menu category' });
++      }
++      if (!DIETARY_TAGS.includes(dietary)) {
++        validationErrors.push({ field: 'dietary', message: 'Unsupported dietary filter' });
++      }
++
++      if (validationErrors.length > 0) {
++        if (event.agentInvoked) {
++          const errorString = 'Validation failed: ' +
++            validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++          event.respondWith(Promise.resolve(errorString));
++        }
++        return;
++      }
++
++      const filteredItems = filterCatalog({ query, category, dietary });
++      renderMenu(filteredItems);
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve({
++          count: filteredItems.length,
++          filters: { query, category, dietary },
++          items: filteredItems
++        }));
++      }
++    });
++
++    // Declarative WebMCP Form 2: Pickup Order Checkout
++    document.getElementById('checkout-form').addEventListener('submit', (event) => {
++      event.preventDefault();
++      const formData = new FormData(event.target);
++      const customerName = String(formData.get('customerName') ?? '').trim();
++      const locationId = String(formData.get('locationId') ?? '').trim();
++      const notes = String(formData.get('notes') ?? '').trim();
++
++      const validationErrors = [];
++      if (!customerName) {
++        validationErrors.push({ field: 'customerName', message: 'Customer name is required' });
++      }
++      const store = STORE_LOCATIONS.find((loc) => loc.id === locationId);
++      if (!store) {
++        validationErrors.push({ field: 'locationId', message: 'Valid pickup store location is required' });
++      }
++      if (appState.cart.length === 0) {
++        validationErrors.push({ field: 'cart', message: 'Cannot submit an order with an empty cart' });
++      }
++
++      if (validationErrors.length > 0) {
++        const errorString = 'Validation failed: ' +
++          validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++        showStatus('order-status', errorString);
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(errorString));
++        }
++        return;
++      }
++
++      const totals = calculateCartTotals();
++      const orderConfirmation = {
++        orderId: `DG-${Date.now().toString().slice(-6)}`,
++        customerName,
++        pickupLocation: store.name,
++        estimatedReadyMinutes: store.waitTimeMinutes,
++        notes: notes || null,
++        items: [...appState.cart],
++        totals
++      };
++
++      appState.orders.push(orderConfirmation);
++      appState.cart = [];
++      appState.rewards.appliedDiscount = 0;
++      appState.rewards.activeRewardName = null;
++      renderCart();
++      renderRewards();
++
++      const confirmationMessage = `Order ${orderConfirmation.orderId} confirmed for ${customerName} at ${store.name}! Ready in ~${store.waitTimeMinutes} mins.`;
++      showStatus('order-status', confirmationMessage);
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve(orderConfirmation));
++      }
++    });
++
++    // Imperative WebMCP API Registration & Lifecycle Management
++    const webMcpController = new AbortController();
++
++    window.addEventListener('pagehide', () => {
++      webMcpController.abort();
++    });
++
++    async function registerDailyGrindWebMcpTools() {
++      if (!('modelContext' in document) || !document.modelContext) {
++        return;
++      }
++
++      const registrationOptions = { signal: webMcpController.signal };
++
++      // 1. Read-Only Tool: Search and filter menu items
++      await document.modelContext.registerTool({
++        name: 'search_menu_items',
++        description: 'Searches the coffee shop menu and updates the visible menu grid. Use when the user asks about available drinks, pastries, calories, caffeine, or dietary options.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            query: {
++              type: 'string',
++              description: 'Keyword to match against item names or flavor descriptions.'
++            },
++            category: {
++              type: 'string',
++              enum: CATEGORIES,
++              default: 'all',
++              description: 'Menu section to filter by.'
++            },
++            dietary: {
++              type: 'string',
++              enum: DIETARY_TAGS,
++              default: 'any',
++              description: 'Dietary requirement that returned items must satisfy.'
++            },
++            maxPrice: {
++              type: 'number',
++              minimum: 0,
++              description: 'Maximum item base price in US dollars.'
++            }
++          }
++        },
++        execute({ query = '', category = 'all', dietary = 'any', maxPrice } = {}) {
++          if (typeof query !== 'string' || !CATEGORIES.includes(category) || !DIETARY_TAGS.includes(dietary)) {
++            return {
++              error: 'Invalid search filter arguments.',
++              supportedCategories: CATEGORIES,
++              supportedDietary: DIETARY_TAGS
++            };
++          }
++          if (maxPrice !== undefined && (typeof maxPrice !== 'number' || Number.isNaN(maxPrice) || maxPrice < 0)) {
++            return { error: 'maxPrice must be a non-negative number.' };
++          }
++
++          let results = filterCatalog({ query, category, dietary });
++          if (maxPrice !== undefined) {
++            results = results.filter((item) => item.price <= maxPrice);
++          }
++
++          renderMenu(results);
++          return {
++            count: results.length,
++            items: results
++          };
++        },
++        annotations: { readOnlyHint: true }
++      }, registrationOptions);
++
++      // 2. State-Mutating Tool: Add an item to the order cart
++      await document.modelContext.registerTool({
++        name: 'add_item_to_cart',
++        description: 'Adds a coffee or bakery item to the current order cart and updates the cart display. Use when the user asks to add a drink or pastry to their order.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            itemId: {
++              type: 'string',
++              enum: MENU_CATALOG.map((item) => item.id),
++              description: 'Identifier of the menu item to add.'
++            },
++            size: {
++              type: 'string',
++              enum: DRINK_SIZES,
++              default: 'medium',
++              description: 'Cup size for the beverage.'
++            },
++            milk: {
++              type: 'string',
++              enum: MILK_OPTIONS,
++              default: 'oat',
++              description: 'Milk choice for the beverage.'
++            },
++            quantity: {
++              type: 'integer',
++              minimum: 1,
++              maximum: 20,
++              default: 1,
++              description: 'Number of items to add.'
++            }
++          },
++          required: ['itemId']
++        },
++        execute({ itemId, size = 'medium', milk = 'oat', quantity = 1 } = {}) {
++          const result = addItemToCart({ itemId, size, milk, quantity });
++          if (result.error) {
++            return result;
++          }
++          showStatus('order-status', `Added ${result.added.quantity}x ${result.added.name} (${result.added.size}) to your cart.`);
++          return result;
++        },
++        annotations: {
++          readOnlyHint: false,
++          consequentialHint: false,
++          untrustedContentHint: false
++        }
++      }, registrationOptions);
++
++      // 3. Read-Only Tool: Get current shopping cart and rewards summary
++      await document.modelContext.registerTool({
++        name: 'get_cart_summary',
++        description: 'Retrieves the items currently in the order cart, the price breakdown, and the customer loyalty rewards balance. Use when the user asks what is in their cart or how many points they have.',
++        inputSchema: {
++          type: 'object',
++          properties: {}
++        },
++        execute() {
++          return {
++            items: appState.cart,
++            totals: calculateCartTotals(),
++            rewards: { ...appState.rewards }
++          };
++        },
++        annotations: { readOnlyHint: true }
++      }, registrationOptions);
++
++      // 4. Consequential Tool: Redeem loyalty points for an order discount
++      await document.modelContext.registerTool({
++        name: 'redeem_rewards_points',
++        description: 'Redeems loyalty points from the customer account to apply a dollar discount to the current order. Use when the user explicitly asks to spend their rewards points.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            pointsToRedeem: {
++              type: 'integer',
++              enum: [100, 200, 400],
++              default: 100,
++              description: 'Number of loyalty points to spend (100 points = $2.00 discount).'
++            }
++          },
++          required: ['pointsToRedeem']
++        },
++        execute({ pointsToRedeem } = {}) {
++          const validTiers = [100, 200, 400];
++          if (!validTiers.includes(pointsToRedeem)) {
++            return {
++              error: 'Unsupported redemption amount.',
++              supportedPointTiers: validTiers
++            };
++          }
++          if (appState.rewards.points < pointsToRedeem) {
++            return {
++              error: `Insufficient loyalty points. Available: ${appState.rewards.points}.`,
++              availablePoints: appState.rewards.points
++            };
++          }
++
++          const discountAmount = (pointsToRedeem / 100) * 2;
++          appState.rewards.points -= pointsToRedeem;
++          appState.rewards.appliedDiscount += discountAmount;
++          appState.rewards.activeRewardName = `${pointsToRedeem} Pts Redeemed`;
++
++          renderRewards();
++          renderCart();
++          showStatus('order-status', `Redeemed ${pointsToRedeem} points for a $${discountAmount.toFixed(2)} discount.`);
++
++          return {
++            redeemedPoints: pointsToRedeem,
++            discountApplied: discountAmount,
++            remainingPoints: appState.rewards.points,
++            totals: calculateCartTotals()
++          };
++        },
++        annotations: {
++          readOnlyHint: false,
++          consequentialHint: true,
++          untrustedContentHint: false
++        }
++      }, registrationOptions);
++
++      // 5. Read-Only Async Tool: Find store locations with AbortSignal support
++      await document.modelContext.registerTool({
++        name: 'find_store_locations',
++        description: 'Finds The Daily Grind coffee shop locations and current pickup wait times. Use when the user asks where stores are located, opening hours, or store amenities.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            feature: {
++              type: 'string',
++              enum: ['pour-over-bar', 'wifi', 'patio', 'roastery-tours', 'dog-friendly', 'express-pickup'],
++              description: 'Store amenity to filter locations by.'
++            }
++          }
++        },
++        async execute({ feature } = {}, { signal } = {}) {
++          if (signal?.aborted) {
++            signal.throwIfAborted();
++          }
++
++          if (feature !== undefined) {
++            const validFeatures = ['pour-over-bar', 'wifi', 'patio', 'roastery-tours', 'dog-friendly', 'express-pickup'];
++            if (!validFeatures.includes(feature)) {
++              return {
++                error: `Unsupported store feature "${feature}".`,
++                supportedFeatures: validFeatures
++              };
++            }
++          }
++
++          const matches = feature
++            ? STORE_LOCATIONS.filter((loc) => loc.features.includes(feature))
++            : STORE_LOCATIONS;
++
++          return {
++            count: matches.length,
++            locations: matches
++          };
++        },
++        annotations: { readOnlyHint: true }
++      }, registrationOptions);
++    }
++
++    // Lifecycle Events (`toolactivated` & `toolcancel`) with backward-compatible target detection
++    const targetFor = (type, listener, options) =>
++      (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++        .addEventListener(type, listener, options);
++
++    targetFor('toolactivated', ({ toolName }) => {
++      showStatus('agent-activity-log', `AI Agent invoked tool: ${toolName}`);
++    }, { signal: webMcpController.signal });
++
++    targetFor('toolcancel', ({ toolName }) => {
++      showStatus('agent-activity-log', `AI Agent cancelled tool: ${toolName}`);
++    }, { signal: webMcpController.signal });
++
++    registerDailyGrindWebMcpTools();
++  </script>
+ </body>
+ 
+ </html>

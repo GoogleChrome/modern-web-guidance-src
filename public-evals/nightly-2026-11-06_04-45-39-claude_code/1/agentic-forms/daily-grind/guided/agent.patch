@@ -1,0 +1,373 @@
+diff --git a/index.html b/index.html
+index 66c9173..f7f315e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,172 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Finder */
++    .finder {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 2rem;
++    }
++
++    .finder h2 {
++      text-align: center;
++    }
++
++    .finder-intro {
++      text-align: center;
++      margin-bottom: 1.5rem;
++    }
++
++    .finder form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 1.5rem;
++      border-radius: 8px;
++      padding: 0.5rem;
++      transition: outline-color 0.3s, background-color 0.3s;
++    }
++
++    .finder fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 0.75rem 1rem 1rem;
++    }
++
++    .finder legend,
++    .finder .field > label {
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 0.25rem;
++    }
++
++    .finder .option {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .finder input[type="radio"],
++    .finder input[type="checkbox"] {
++      accent-color: var(--primary);
++      width: 1.15rem;
++      height: 1.15rem;
++    }
++
++    .finder .field {
++      display: flex;
++      flex-direction: column;
++      gap: 0.35rem;
++    }
++
++    .finder select,
++    .finder input[type="number"] {
++      font: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      border: 1px solid #8d6e63;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++    }
++
++    .finder .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .finder .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.875rem;
++    }
++
++    .finder input:user-invalid {
++      border-color: #b3261e;
++      background-color: #fce8e6;
++    }
++
++    .finder input:user-invalid + .error-msg {
++      display: block;
++    }
++
++    .finder :is(input, select, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .finder-actions {
++      grid-column: 1 / -1;
++      display: flex;
++      gap: 1rem;
++      justify-content: center;
++      flex-wrap: wrap;
++    }
++
++    .finder-actions button {
++      font: inherit;
++      font-size: 1rem;
++      min-height: 48px;
++      padding: 0.6rem 1.5rem;
++      border-radius: 5px;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++    }
++
++    .finder-actions button[type="submit"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .finder-actions button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .finder-actions button[type="reset"] {
++      background: white;
++      color: var(--primary);
++    }
++
++    /* Highlight while an AI agent is filling in the form (WebMCP) */
++    .finder form:tool-form-active {
++      outline: 2px dashed var(--accent);
++      background-color: rgba(255, 171, 64, 0.08);
++    }
++
++    .finder button:tool-submit-active {
++      outline: 3px dashed var(--accent);
++      outline-offset: 3px;
++    }
++
++    .finder-status {
++      text-align: center;
++      margin: 1.5rem 0 0.5rem;
++      font-weight: 600;
++    }
++
++    .finder-results {
++      list-style: none;
++    }
++
++    .finder-results .card {
++      text-align: left;
++    }
++
++    .finder-results .meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 0.5rem;
++    }
++
++    .finder-results .price {
++      font-weight: 700;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +361,81 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Find Your Perfect Cup</h2>
++      <p class="finder-intro">Tell us how you like your coffee and we'll match you with drinks from our menu.</p>
++
++      <form id="coffee-finder" action="/menu" method="GET"
++            toolname="find-coffee"
++            tooldescription="Search The Daily Grind's drink menu for coffees matching the customer's taste preferences and budget. Returns the matching drinks with prices and descriptions."
++            toolautosubmit>
++        <fieldset toolparamdescription="How dark the coffee beans are roasted. Light is bright and acidic, dark is bold and smoky.">
++          <legend>Roast</legend>
++          <label class="option"><input type="radio" name="roast" value="any" checked> No preference</label>
++          <label class="option"><input type="radio" name="roast" value="light"> Light</label>
++          <label class="option"><input type="radio" name="roast" value="medium"> Medium</label>
++          <label class="option"><input type="radio" name="roast" value="dark"> Dark</label>
++        </fieldset>
++
++        <fieldset toolparamdescription="Whether the drink is served hot or over ice.">
++          <legend>Temperature</legend>
++          <label class="option"><input type="radio" name="temperature" value="any" checked> Either</label>
++          <label class="option"><input type="radio" name="temperature" value="hot"> Hot</label>
++          <label class="option"><input type="radio" name="temperature" value="iced"> Iced</label>
++        </fieldset>
++
++        <fieldset toolparamdescription="Flavor notes the customer enjoys. Leave all unchecked for no preference.">
++          <legend>Flavor notes</legend>
++          <label class="option"><input type="checkbox" name="flavor" value="chocolate"> Chocolatey</label>
++          <label class="option"><input type="checkbox" name="flavor" value="nutty"> Nutty</label>
++          <label class="option"><input type="checkbox" name="flavor" value="fruity"> Fruity</label>
++          <label class="option"><input type="checkbox" name="flavor" value="caramel"> Sweet &amp; caramel</label>
++          <label class="option"><input type="checkbox" name="flavor" value="spice"> Spiced</label>
++        </fieldset>
++
++        <div class="finder-fields">
++          <div class="field">
++            <label for="finder-milk">Milk</label>
++            <select id="finder-milk" name="milk"
++                    toolparamdescription="Milk the customer wants in the drink. 'black' means no milk at all.">
++              <option value="any">No preference</option>
++              <option value="black">Black (no milk)</option>
++              <option value="dairy">Dairy milk</option>
++              <option value="oat">Oat milk</option>
++              <option value="almond">Almond milk</option>
++            </select>
++          </div>
++
++          <div class="field" style="margin-top: 1rem;">
++            <label for="finder-caffeine">Caffeine</label>
++            <select id="finder-caffeine" name="caffeine">
++              <option value="any">No preference</option>
++              <option value="regular">Regular</option>
++              <option value="decaf">Decaf</option>
++            </select>
++          </div>
++
++          <div class="field" style="margin-top: 1rem;">
++            <label for="finder-budget">Maximum price (USD)</label>
++            <span id="finder-budget-hint" class="hint">Leave blank for any price.</span>
++            <input type="number" id="finder-budget" name="max_price" min="2" max="15" step="0.5"
++                   inputmode="decimal" placeholder="e.g. 5.50"
++                   aria-describedby="finder-budget-hint" aria-errormessage="finder-budget-error"
++                   toolparamdescription="Highest price in US dollars the customer is willing to pay for one drink, e.g. 5.50.">
++            <span id="finder-budget-error" class="error-msg"><span aria-hidden="true">⚠</span> Enter an amount between $2 and $15.</span>
++          </div>
++        </div>
++
++        <div class="finder-actions">
++          <button type="submit">Find my coffee</button>
++          <button type="reset">Clear</button>
++        </div>
++      </form>
++
++      <p id="finder-status" class="finder-status" role="status" aria-live="polite"></p>
++      <ul id="finder-results" class="grid finder-results"></ul>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +448,113 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const MENU = [
++        { name: 'Maple Oat Latte', roast: 'medium', temps: ['hot', 'iced'], milk: ['oat'], caffeine: 'regular', flavors: ['caramel', 'spice'], price: 5.75, description: 'Creamy oat milk with a hint of Vermont maple syrup.', url: '/menu/seasonal' },
++        { name: 'Dark Roast Espresso', roast: 'dark', temps: ['hot'], milk: ['black'], caffeine: 'regular', flavors: ['chocolate'], price: 3.25, description: 'Bold, smokey, and perfect for a morning boost.', url: '/menu/espresso' },
++        { name: 'Cold Brew', roast: 'medium', temps: ['iced'], milk: ['black', 'dairy', 'oat', 'almond'], caffeine: 'regular', flavors: ['chocolate', 'nutty'], price: 4.50, description: 'Steeped for 18 hours for maximum smoothness.', url: '/menu/cold-brew' },
++        { name: 'Ethiopian Pour-Over', roast: 'light', temps: ['hot'], milk: ['black'], caffeine: 'regular', flavors: ['fruity'], price: 4.75, description: 'Hand-poured single origin with bright blueberry and citrus notes.', url: '/menu/pour-over' },
++        { name: 'Hazelnut Cappuccino', roast: 'medium', temps: ['hot'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular', flavors: ['nutty', 'caramel'], price: 5.25, description: 'Velvety foam over espresso with toasted hazelnut.', url: '/menu/cappuccino' },
++        { name: 'Mocha', roast: 'dark', temps: ['hot', 'iced'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular', flavors: ['chocolate'], price: 5.50, description: 'Dark roast espresso with house-made chocolate sauce.', url: '/menu/mocha' },
++        { name: 'Iced Caramel Macchiato', roast: 'medium', temps: ['iced'], milk: ['dairy', 'oat', 'almond'], caffeine: 'regular', flavors: ['caramel'], price: 5.75, description: 'Layered milk and espresso finished with caramel drizzle.', url: '/menu/macchiato' },
++        { name: 'Chai-Spiced Americano', roast: 'light', temps: ['hot', 'iced'], milk: ['black', 'dairy', 'oat'], caffeine: 'regular', flavors: ['spice'], price: 4.25, description: 'Americano warmed with cinnamon, cardamom, and clove.', url: '/menu/americano' },
++        { name: 'Swiss Water Decaf', roast: 'medium', temps: ['hot'], milk: ['black', 'dairy', 'oat', 'almond'], caffeine: 'decaf', flavors: ['chocolate', 'nutty'], price: 3.75, description: 'Chemical-free decaf drip with cocoa and almond notes.', url: '/menu/decaf' },
++        { name: 'Decaf Almond Latte', roast: 'medium', temps: ['hot', 'iced'], milk: ['almond'], caffeine: 'decaf', flavors: ['nutty'], price: 5.25, description: 'Smooth decaf espresso with toasted almond milk.', url: '/menu/decaf-latte' },
++      ];
++
++      const form = document.getElementById('coffee-finder');
++      const status = document.getElementById('finder-status');
++      const results = document.getElementById('finder-results');
++      const budget = document.getElementById('finder-budget');
++      const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++      const findMatches = (data) => {
++        const roast = data.get('roast') || 'any';
++        const temperature = data.get('temperature') || 'any';
++        const milk = data.get('milk') || 'any';
++        const caffeine = data.get('caffeine') || 'any';
++        const flavors = data.getAll('flavor');
++        const maxPrice = data.get('max_price') ? Number(data.get('max_price')) : Infinity;
++
++        return MENU.filter((d) =>
++          (roast === 'any' || d.roast === roast) &&
++          (temperature === 'any' || d.temps.includes(temperature)) &&
++          (milk === 'any' || d.milk.includes(milk)) &&
++          (caffeine === 'any' || d.caffeine === caffeine) &&
++          (flavors.length === 0 || flavors.some((f) => d.flavors.includes(f))) &&
++          d.price <= maxPrice
++        );
++      };
++
++      const render = (matches) => {
++        results.replaceChildren(...matches.map((d) => {
++          const li = document.createElement('li');
++          li.className = 'card';
++          const h3 = document.createElement('h3');
++          h3.textContent = d.name;
++          const desc = document.createElement('p');
++          desc.textContent = d.description;
++          const meta = document.createElement('p');
++          meta.className = 'meta';
++          meta.textContent = `${d.roast[0].toUpperCase() + d.roast.slice(1)} roast · ${d.temps.join(' or ')} · ${d.caffeine}`;
++          const price = document.createElement('p');
++          price.className = 'price';
++          price.textContent = fmt.format(d.price);
++          const link = document.createElement('a');
++          link.className = 'btn';
++          link.href = d.url;
++          link.textContent = 'View Details';
++          link.setAttribute('aria-label', `View details for ${d.name}`);
++          li.append(h3, desc, meta, price, link);
++          return li;
++        }));
++        status.textContent = matches.length
++          ? `We found ${matches.length} drink${matches.length === 1 ? '' : 's'} for you.`
++          : 'No drinks match all of those preferences. Try loosening a filter.';
++      };
++
++      // Keep aria-invalid in sync with the visual :user-invalid state.
++      const syncAria = () => budget.setAttribute('aria-invalid', budget.matches(':user-invalid') ? 'true' : 'false');
++      budget.addEventListener('blur', syncAria);
++      budget.addEventListener('input', () => { if (budget.hasAttribute('aria-invalid')) syncAria(); });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++
++        // Agent submissions may bypass interactive constraint validation; check explicitly.
++        if (!form.checkValidity()) {
++          if (event.agentInvoked) {
++            event.respondWith(Promise.resolve(
++              `Validation failed: max_price (${budget.validationMessage || 'must be between 2 and 15 USD'})`
++            ));
++          }
++          form.reportValidity();
++          return;
++        }
++
++        const matches = findMatches(new FormData(form));
++        render(matches);
++
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(JSON.stringify({
++            count: matches.length,
++            drinks: matches.map(({ name, description, roast, temps, milk, caffeine, flavors, price, url }) => ({
++              name, description, roast, temperatures: temps, milkOptions: milk, caffeine, flavors,
++              priceUSD: price, detailsUrl: new URL(url, location.href).href,
++            })),
++          })));
++        }
++      });
++
++      form.addEventListener('reset', () => {
++        results.replaceChildren();
++        status.textContent = '';
++        budget.removeAttribute('aria-invalid');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

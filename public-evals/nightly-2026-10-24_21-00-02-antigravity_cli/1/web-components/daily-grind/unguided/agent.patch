@@ -1,0 +1,2819 @@
+diff --git a/components/daily-grind-components.js b/components/daily-grind-components.js
+new file mode 100644
+index 0000000..a84cbcb
+--- /dev/null
++++ b/components/daily-grind-components.js
+@@ -0,0 +1,2392 @@
++/**
++ * Daily Grind Web Components
++ * Reusable, accessible Custom Elements with Shadow DOM encapsulation.
++ */
++
++// ============================================================================
++// 1. <dg-navbar> — Sticky site navigation with responsive mobile drawer & cart
++// ============================================================================
++const navbarTemplate = document.createElement('template');
++navbarTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    nav {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      padding: 0.9rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
++    }
++
++    .brand {
++      display: flex;
++      align-items: center;
++      gap: 0.6rem;
++      color: #ffffff;
++      text-decoration: none;
++      font-size: 1.4rem;
++      font-weight: 800;
++      letter-spacing: 1.2px;
++    }
++
++    .brand:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    .brand-icon {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 32px;
++      height: 32px;
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      border-radius: 50%;
++      font-size: 1.1rem;
++    }
++
++    .nav-actions {
++      display: flex;
++      align-items: center;
++      gap: 1.5rem;
++    }
++
++    ul {
++      display: flex;
++      align-items: center;
++      list-style: none;
++      margin: 0;
++      padding: 0;
++      gap: 1.25rem;
++    }
++
++    a {
++      color: #ffffff;
++      text-decoration: none;
++      font-size: 0.95rem;
++      font-weight: 500;
++      padding: 0.35rem 0.5rem;
++      border-radius: 4px;
++      transition: color 0.2s ease, background-color 0.2s ease;
++    }
++
++    a:hover,
++    a[aria-current="page"] {
++      color: var(--accent, #ffab40);
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent, #ffab40);
++      padding: 0.35rem 0.85rem;
++      border-radius: 4px;
++    }
++
++    .logout-link:hover {
++      background: rgba(255, 171, 64, 0.15);
++    }
++
++    .cart-btn {
++      position: relative;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.45rem;
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      border: none;
++      padding: 0.45rem 0.9rem;
++      border-radius: 999px;
++      font-weight: 700;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: transform 0.15s ease, background-color 0.2s ease;
++    }
++
++    .cart-btn:hover {
++      background: #ffc166;
++      transform: translateY(-1px);
++    }
++
++    .cart-btn:focus-visible {
++      outline: 2px solid #ffffff;
++      outline-offset: 2px;
++    }
++
++    .cart-badge {
++      background: var(--text, #3e2723);
++      color: #ffffff;
++      font-size: 0.75rem;
++      min-width: 20px;
++      height: 20px;
++      padding: 0 6px;
++      border-radius: 999px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    .menu-toggle {
++      display: none;
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      color: #ffffff;
++      padding: 0.45rem 0.65rem;
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .menu-toggle:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    @media (max-width: 768px) {
++      .menu-toggle {
++        display: inline-flex;
++        align-items: center;
++        gap: 0.35rem;
++      }
++
++      ul {
++        display: none;
++        position: absolute;
++        top: 100%;
++        left: 0;
++        right: 0;
++        background: var(--primary, #4e342e);
++        flex-direction: column;
++        align-items: stretch;
++        padding: 1rem 5%;
++        gap: 0.5rem;
++        border-top: 1px solid rgba(255, 255, 255, 0.15);
++        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
++      }
++
++      ul[data-open="true"] {
++        display: flex;
++      }
++
++      li {
++        width: 100%;
++      }
++
++      a {
++        display: block;
++        padding: 0.6rem 0.75rem;
++      }
++    }
++  </style>
++  <nav aria-label="Primary Navigation">
++    <a href="/" class="brand" part="brand">
++      <span class="brand-icon" aria-hidden="true">&#9749;</span>
++      <span class="brand-text">THE DAILY GRIND</span>
++    </a>
++
++    <div class="nav-actions">
++      <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="primary-nav-list" aria-label="Toggle navigation menu">
++        <span aria-hidden="true">&#9776;</span> Menu
++      </button>
++
++      <ul id="primary-nav-list" data-open="false" role="list">
++        <li><a href="#seasonal-menu" data-nav="menu">Menu</a></li>
++        <li><a href="#brew-guide" data-nav="brew-guide">Brew Guide</a></li>
++        <li><a href="/locations" data-nav="locations">Locations</a></li>
++        <li><a href="#rewards" data-nav="rewards">Rewards</a></li>
++        <li><a href="/account" data-nav="account">My Account</a></li>
++        <li><a href="/logout" class="logout-link" data-nav="logout">Logout</a></li>
++      </ul>
++
++      <button type="button" class="cart-btn" aria-label="Shopping bag, 0 items" part="cart-button">
++        <span aria-hidden="true">&#128717;</span>
++        <span>Bag</span>
++        <span class="cart-badge" aria-live="polite">0</span>
++      </button>
++    </div>
++  </nav>
++`;
++
++export class DgNavbar extends HTMLElement {
++  static get observedAttributes() {
++    return ['brand', 'cart-count', 'active-link'];
++  }
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(navbarTemplate.content.cloneNode(true));
++
++    this._brandText = this.shadowRoot.querySelector('.brand-text');
++    this._menuToggle = this.shadowRoot.querySelector('.menu-toggle');
++    this._navList = this.shadowRoot.querySelector('#primary-nav-list');
++    this._cartBtn = this.shadowRoot.querySelector('.cart-btn');
++    this._cartBadge = this.shadowRoot.querySelector('.cart-badge');
++
++    this._onToggleMenu = this._onToggleMenu.bind(this);
++    this._onCartClick = this._onCartClick.bind(this);
++    this._onKeyDown = this._onKeyDown.bind(this);
++  }
++
++  connectedCallback() {
++    this._menuToggle.addEventListener('click', this._onToggleMenu);
++    this._cartBtn.addEventListener('click', this._onCartClick);
++    this.shadowRoot.addEventListener('keydown', this._onKeyDown);
++    this._syncAttributes();
++  }
++
++  disconnectedCallback() {
++    this._menuToggle.removeEventListener('click', this._onToggleMenu);
++    this._cartBtn.removeEventListener('click', this._onCartClick);
++    this.shadowRoot.removeEventListener('keydown', this._onKeyDown);
++  }
++
++  attributeChangedCallback() {
++    this._syncAttributes();
++  }
++
++  get cartCount() {
++    return Number(this.getAttribute('cart-count') || 0);
++  }
++
++  set cartCount(val) {
++    this.setAttribute('cart-count', String(val));
++  }
++
++  _syncAttributes() {
++    const brand = this.getAttribute('brand') || 'THE DAILY GRIND';
++    if (this._brandText) {
++      this._brandText.textContent = brand;
++    }
++
++    const count = this.cartCount;
++    if (this._cartBadge && this._cartBtn) {
++      this._cartBadge.textContent = String(count);
++      this._cartBtn.setAttribute(
++        'aria-label',
++        `Shopping bag, ${count} ${count === 1 ? 'item' : 'items'}`
++      );
++    }
++
++    const active = this.getAttribute('active-link');
++    const links = this.shadowRoot.querySelectorAll('a[data-nav]');
++    links.forEach((link) => {
++      if (active && link.getAttribute('data-nav') === active) {
++        link.setAttribute('aria-current', 'page');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    });
++  }
++
++  _onToggleMenu() {
++    const isOpen = this._navList.getAttribute('data-open') === 'true';
++    const nextState = !isOpen;
++    this._navList.setAttribute('data-open', String(nextState));
++    this._menuToggle.setAttribute('aria-expanded', String(nextState));
++  }
++
++  _onKeyDown(event) {
++    if (event.key === 'Escape' && this._navList.getAttribute('data-open') === 'true') {
++      this._navList.setAttribute('data-open', 'false');
++      this._menuToggle.setAttribute('aria-expanded', 'false');
++      this._menuToggle.focus();
++    }
++  }
++
++  _onCartClick() {
++    this.dispatchEvent(
++      new CustomEvent('dg-cart-toggle', {
++        bubbles: true,
++        composed: true,
++        detail: { count: this.cartCount }
++      })
++    );
++  }
++}
++
++// ============================================================================
++// 2. <dg-hero> — Accessible Hero Banner with encapsulated styling
++// ============================================================================
++const heroTemplate = document.createElement('template');
++heroTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    .hero {
++      min-height: 58vh;
++      background-color: #2d1e18;
++      background-image:
++        linear-gradient(rgba(30, 18, 14, 0.62), rgba(30, 18, 14, 0.68)),
++        var(--hero-bg, url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: #ffffff;
++      text-align: center;
++      padding: 4rem 1.5rem;
++    }
++
++    .eyebrow {
++      display: inline-block;
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent, #ffab40);
++      color: var(--accent, #ffab40);
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 0.3rem 0.9rem;
++      border-radius: 999px;
++      margin-bottom: 1rem;
++    }
++
++    h1 {
++      font-size: clamp(2.2rem, 5vw, 3.4rem);
++      line-height: 1.15;
++      margin: 0 0 0.85rem;
++      max-width: 760px;
++      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
++    }
++
++    p {
++      font-size: clamp(1.05rem, 2vw, 1.25rem);
++      max-width: 600px;
++      margin: 0 0 1.75rem;
++      color: rgba(255, 255, 255, 0.92);
++    }
++
++    .cta-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
++      justify-content: center;
++    }
++
++    .btn-primary {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      font-weight: 700;
++      padding: 0.8rem 1.65rem;
++      text-decoration: none;
++      border-radius: 6px;
++      transition: transform 0.2s ease, background-color 0.2s ease;
++    }
++
++    .btn-primary:hover {
++      background: #ffc166;
++      transform: translateY(-2px);
++    }
++
++    .btn-secondary {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      background: rgba(255, 255, 255, 0.12);
++      color: #ffffff;
++      border: 1px solid rgba(255, 255, 255, 0.6);
++      font-weight: 600;
++      padding: 0.8rem 1.5rem;
++      text-decoration: none;
++      border-radius: 6px;
++      transition: background-color 0.2s ease;
++    }
++
++    .btn-secondary:hover {
++      background: rgba(255, 255, 255, 0.24);
++    }
++
++    .btn-primary:focus-visible,
++    .btn-secondary:focus-visible {
++      outline: 3px solid #ffffff;
++      outline-offset: 3px;
++    }
++  </style>
++  <header class="hero" part="hero">
++    <span class="eyebrow">Small-Batch Roastery</span>
++    <h1 id="hero-heading">Wake Up Your Senses</h1>
++    <p id="hero-subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="cta-group">
++      <a href="/order-online" class="btn-primary" id="hero-cta">Order Now</a>
++      <a href="#seasonal-menu" class="btn-secondary">Explore Seasonal Menu</a>
++    </div>
++  </header>
++`;
++
++export class DgHero extends HTMLElement {
++  static get observedAttributes() {
++    return ['heading', 'subtitle', 'cta-text', 'cta-href', 'background-image', 'eyebrow'];
++  }
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(heroTemplate.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    this._render();
++  }
++
++  attributeChangedCallback() {
++    this._render();
++  }
++
++  _render() {
++    const heading = this.getAttribute('heading') || 'Wake Up Your Senses';
++    const subtitle =
++      this.getAttribute('subtitle') ||
++      'Ethically sourced, locally roasted, delivered to your cup.';
++    const ctaText = this.getAttribute('cta-text') || 'Order Now';
++    const ctaHref = this.getAttribute('cta-href') || '/order-online';
++    const eyebrow = this.getAttribute('eyebrow') || 'Small-Batch Roastery';
++    const bgImage = this.getAttribute('background-image');
++
++    this.shadowRoot.getElementById('hero-heading').textContent = heading;
++    this.shadowRoot.getElementById('hero-subtitle').textContent = subtitle;
++    this.shadowRoot.querySelector('.eyebrow').textContent = eyebrow;
++
++    const ctaEl = this.shadowRoot.getElementById('hero-cta');
++    ctaEl.textContent = ctaText;
++    ctaEl.setAttribute('href', ctaHref);
++
++    if (bgImage) {
++      this.style.setProperty('--hero-bg', `url('${bgImage}')`);
++    }
++  }
++}
++
++// ============================================================================
++// 3. <coffee-card> — Reusable, accessible Coffee Product Card Web Component
++// ============================================================================
++const coffeeCardTemplate = document.createElement('template');
++coffeeCardTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      height: 100%;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    article.card {
++      background: #ffffff;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.1);
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++      transition: transform 0.22s ease, box-shadow 0.22s ease;
++    }
++
++    article.card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.15);
++    }
++
++    .media-wrap {
++      position: relative;
++      width: 100%;
++      height: 200px;
++      background: var(--secondary, #d7ccc8);
++      overflow: hidden;
++    }
++
++    .media-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    article.card:hover .media-wrap img {
++      transform: scale(1.04);
++    }
++
++    .badge {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      padding: 0.28rem 0.65rem;
++      border-radius: 999px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++    }
++
++    .fav-btn {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--primary, #4e342e);
++      font-size: 1.1rem;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
++    }
++
++    .fav-btn:hover {
++      transform: scale(1.08);
++      background: #ffffff;
++    }
++
++    .fav-btn[aria-pressed="true"] {
++      color: #c62828;
++      background: #ffebee;
++    }
++
++    .fav-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .card-body {
++      padding: 1.25rem;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      text-align: left;
++    }
++
++    .header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 0.5rem;
++      margin-bottom: 0.4rem;
++    }
++
++    h3 {
++      margin: 0;
++      font-size: 1.2rem;
++      color: var(--primary, #4e342e);
++      line-height: 1.3;
++    }
++
++    .price {
++      font-size: 1.1rem;
++      font-weight: 800;
++      color: var(--text, #3e2723);
++      white-space: nowrap;
++    }
++
++    .meta-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.4rem;
++      margin-bottom: 0.65rem;
++    }
++
++    .meta-pill {
++      font-size: 0.73rem;
++      font-weight: 600;
++      background: #f3ecea;
++      color: var(--primary, #4e342e);
++      padding: 0.18rem 0.55rem;
++      border-radius: 4px;
++    }
++
++    .description {
++      margin: 0 0 0.85rem;
++      color: #5d4037;
++      font-size: 0.93rem;
++      line-height: 1.5;
++    }
++
++    .tasting-notes {
++      font-size: 0.82rem;
++      color: #6d4c41;
++      margin-bottom: 1rem;
++      padding: 0.5rem 0.65rem;
++      background: #faf6f5;
++      border-left: 3px solid var(--accent, #ffab40);
++      border-radius: 0 4px 4px 0;
++    }
++
++    .controls {
++      margin-top: auto;
++      border-top: 1px solid #eee5e2;
++      padding-top: 0.9rem;
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++    }
++
++    .Option-group {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.5rem;
++    }
++
++    .size-label {
++      font-size: 0.8rem;
++      font-weight: 700;
++      color: var(--text, #3e2723);
++    }
++
++    .size-selector {
++      display: inline-flex;
++      background: #f3ecea;
++      border-radius: 6px;
++      padding: 2px;
++      gap: 2px;
++    }
++
++    .size-btn {
++      border: none;
++      background: transparent;
++      color: var(--text, #3e2723);
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 0.28rem 0.6rem;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background-color 0.15s ease, color 0.15s ease;
++    }
++
++    .size-btn[aria-checked="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++    }
++
++    .size-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 1px;
++    }
++
++    .actions {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 0.5rem;
++      align-items: center;
++    }
++
++    .btn-order {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border: none;
++      padding: 0.65rem 1rem;
++      border-radius: 6px;
++      font-weight: 700;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease, transform 0.1s ease;
++    }
++
++    .btn-order:hover {
++      background: #3e2723;
++    }
++
++    .btn-order:active {
++      transform: scale(0.98);
++    }
++
++    .btn-details {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: transparent;
++      color: var(--primary, #4e342e);
++      border: 1px solid var(--primary, #4e342e);
++      padding: 0.58rem 0.85rem;
++      border-radius: 6px;
++      text-decoration: none;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transition: background-color 0.2s ease, color 0.2s ease;
++    }
++
++    .btn-details:hover {
++      background: #f3ecea;
++    }
++
++    .btn-order:focus-visible,
++    .btn-details:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++  </style>
++
++  <article class="card" part="card">
++    <div class="media-wrap">
++      <img id="coffee-img" src="" alt="" loading="lazy" />
++      <span class="badge" id="coffee-badge" hidden></span>
++      <button type="button" class="fav-btn" id="fav-btn" aria-pressed="false" aria-label="Save to favorites">
++        <span aria-hidden="true" id="fav-icon">&#9825;</span>
++      </button>
++    </div>
++
++    <div class="card-body">
++      <div class="header-row">
++        <h3 id="coffee-title"><slot name="title">Artisanal Coffee</slot></h3>
++        <span class="price" id="coffee-price" aria-live="polite">$4.50</span>
++      </div>
++
++      <div class="meta-tags">
++        <span class="meta-pill" id="roast-pill">Medium Roast</span>
++        <span class="meta-pill" id="origin-pill">Single Origin</span>
++      </div>
++
++      <p class="description" id="coffee-desc">
++        <slot name="description">Handcrafted coffee roasted in small batches.</slot>
++      </p>
++
++      <div class="tasting-notes" id="tasting-notes">
++        <strong>Notes:</strong> <span id="notes-text">Caramel, Toasted Almond</span>
++      </div>
++
++      <div class="controls">
++        <div class="Option-group">
++          <span class="size-label" id="size-group-label">Size</span>
++          <div class="size-selector" role="radiogroup" aria-labelledby="size-group-label">
++            <button type="button" class="size-btn" role="radio" aria-checked="false" data-size="8oz" data-offset="-0.50">8oz</button>
++            <button type="button" class="size-btn" role="radio" aria-checked="true" data-size="12oz" data-offset="0">12oz</button>
++            <button type="button" class="size-btn" role="radio" aria-checked="false" data-size="16oz" data-offset="0.75">16oz</button>
++          </div>
++        </div>
++
++        <div class="actions">
++          <button type="button" class="btn-order" id="add-btn" part="add-button">Add to Order</button>
++          <a href="/menu" class="btn-details" id="details-link" part="details-link">View Details</a>
++        </div>
++      </div>
++    </div>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static get observedAttributes() {
++    return [
++      'name',
++      'description',
++      'price',
++      'image',
++      'alt',
++      'category',
++      'roast',
++      'origin',
++      'notes',
++      'badge',
++      'href',
++      'favorited',
++      'selected-size'
++    ];
++  }
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(coffeeCardTemplate.content.cloneNode(true));
++
++    this._selectedSize = '12oz';
++    this._sizeOffset = 0;
++
++    this._imgEl = this.shadowRoot.getElementById('coffee-img');
++    this._badgeEl = this.shadowRoot.getElementById('coffee-badge');
++    this._favBtn = this.shadowRoot.getElementById('fav-btn');
++    this._favIcon = this.shadowRoot.getElementById('fav-icon');
++    this._titleEl = this.shadowRoot.getElementById('coffee-title');
++    this._priceEl = this.shadowRoot.getElementById('coffee-price');
++    this._roastPill = this.shadowRoot.getElementById('roast-pill');
++    this._originPill = this.shadowRoot.getElementById('origin-pill');
++    this._descEl = this.shadowRoot.getElementById('coffee-desc');
++    this._notesWrap = this.shadowRoot.getElementById('tasting-notes');
++    this._notesText = this.shadowRoot.getElementById('notes-text');
++    this._addBtn = this.shadowRoot.getElementById('add-btn');
++    this._detailsLink = this.shadowRoot.getElementById('details-link');
++    this._sizeButtons = Array.from(this.shadowRoot.querySelectorAll('.size-btn'));
++
++    this._onFavClick = this._onFavClick.bind(this);
++    this._onAddClick = this._onAddClick.bind(this);
++    this._onDetailsClick = this._onDetailsClick.bind(this);
++    this._onSizeClick = this._onSizeClick.bind(this);
++    this._onSizeKeyDown = this._onSizeKeyDown.bind(this);
++  }
++
++  connectedCallback() {
++    this._favBtn.addEventListener('click', this._onFavClick);
++    this._addBtn.addEventListener('click', this._onAddClick);
++    this._detailsLink.addEventListener('click', this._onDetailsClick);
++
++    this._sizeButtons.forEach((btn) => {
++      btn.addEventListener('click', this._onSizeClick);
++      btn.addEventListener('keydown', this._onSizeKeyDown);
++    });
++
++    this._render();
++  }
++
++  disconnectedCallback() {
++    this._favBtn.removeEventListener('click', this._onFavClick);
++    this._addBtn.removeEventListener('click', this._onAddClick);
++    this._detailsLink.removeEventListener('click', this._onDetailsClick);
++
++    this._sizeButtons.forEach((btn) => {
++      btn.removeEventListener('click', this._onSizeClick);
++      btn.removeEventListener('keydown', this._onSizeKeyDown);
++    });
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) {
++      if (name === 'selected-size' && newVal) {
++        this._selectSize(newVal, false);
++      }
++      this._render();
++    }
++  }
++
++  get basePrice() {
++    const raw = parseFloat(this.getAttribute('price') || '4.50');
++    return Number.isNaN(raw) ? 4.5 : raw;
++  }
++
++  get currentPrice() {
++    return Math.max(0, this.basePrice + this._sizeOffset);
++  }
++
++  get coffeeName() {
++    return this.getAttribute('name') || 'Artisanal Coffee';
++  }
++
++  _render() {
++    const name = this.coffeeName;
++    const desc = this.getAttribute('description');
++    const img =
++      this.getAttribute('image') ||
++      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80';
++    const alt = this.getAttribute('alt') || `${name} served in a ceramic cup`;
++    const roast = this.getAttribute('roast') || 'Medium Roast';
++    const origin = this.getAttribute('origin') || 'House Blend';
++    const notes = this.getAttribute('notes');
++    const badge = this.getAttribute('badge');
++    const href = this.getAttribute('href') || '/menu';
++    const isFav = this.hasAttribute('favorited') && this.getAttribute('favorited') !== 'false';
++
++    if (this.hasAttribute('name')) {
++      this._titleEl.textContent = name;
++    }
++    if (desc !== null) {
++      this._descEl.textContent = desc;
++    }
++
++    this._imgEl.src = img;
++    this._imgEl.alt = alt;
++
++    if (badge) {
++      this._badgeEl.textContent = badge;
++      this._badgeEl.hidden = false;
++    } else {
++      this._badgeEl.hidden = true;
++    }
++
++    this._roastPill.textContent = roast;
++    this._originPill.textContent = origin;
++
++    if (notes) {
++      this._notesText.textContent = notes;
++      this._notesWrap.hidden = false;
++    } else {
++      this._notesWrap.hidden = true;
++    }
++
++    this._priceEl.textContent = `$${this.currentPrice.toFixed(2)}`;
++    this._detailsLink.setAttribute('href', href);
++    this._detailsLink.setAttribute('aria-label', `View details for ${name}`);
++    this._addBtn.setAttribute('aria-label', `Add ${this._selectedSize} ${name} to order`);
++
++    this._favBtn.setAttribute('aria-pressed', String(isFav));
++    this._favBtn.setAttribute(
++      'aria-label',
++      isFav ? `Remove ${name} from favorites` : `Save ${name} to favorites`
++    );
++    this._favIcon.innerHTML = isFav ? '&#9829;' : '&#9825;';
++  }
++
++  _selectSize(size, emitEvent = true) {
++    const targetBtn = this._sizeButtons.find((b) => b.dataset.size === size);
++    if (!targetBtn) return;
++
++    this._selectedSize = size;
++    this._sizeOffset = parseFloat(targetBtn.dataset.offset || '0');
++
++    this._sizeButtons.forEach((btn) => {
++      const checked = btn === targetBtn;
++      btn.setAttribute('aria-checked', String(checked));
++      btn.tabIndex = checked ? 0 : -1;
++    });
++
++    this._render();
++
++    if (emitEvent) {
++      this.dispatchEvent(
++        new CustomEvent('coffee-size-change', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.coffeeName,
++            size: this._selectedSize,
++            price: this.currentPrice
++          }
++        })
++      );
++    }
++  }
++
++  _onSizeClick(event) {
++    const size = event.currentTarget.dataset.size;
++    this._selectSize(size, true);
++  }
++
++  _onSizeKeyDown(event) {
++    const currentIndex = this._sizeButtons.indexOf(event.currentTarget);
++    if (currentIndex === -1) return;
++
++    let nextIndex = -1;
++    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
++      nextIndex = (currentIndex + 1) % this._sizeButtons.length;
++    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
++      nextIndex = (currentIndex - 1 + this._sizeButtons.length) % this._sizeButtons.length;
++    }
++
++    if (nextIndex !== -1) {
++      event.preventDefault();
++      const nextBtn = this._sizeButtons[nextIndex];
++      this._selectSize(nextBtn.dataset.size, true);
++      nextBtn.focus();
++    }
++  }
++
++  _onFavClick() {
++    const isFav = this._favBtn.getAttribute('aria-pressed') === 'true';
++    const nextState = !isFav;
++    if (nextState) {
++      this.setAttribute('favorited', '');
++    } else {
++      this.removeAttribute('favorited');
++    }
++
++    this.dispatchEvent(
++      new CustomEvent('coffee-favorite', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          name: this.coffeeName,
++          favorited: nextState
++        }
++      })
++    );
++  }
++
++  _onAddClick() {
++    this.dispatchEvent(
++      new CustomEvent('coffee-order', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          name: this.coffeeName,
++          size: this._selectedSize,
++          price: this.currentPrice,
++          category: this.getAttribute('category') || 'seasonal',
++          image: this._imgEl.src
++        }
++      })
++    );
++  }
++
++  _onDetailsClick(event) {
++    // Allow progressive enhancement modal preview while preserving normal link semantics for modifier keys
++    if (!event.metaKey && !event.ctrlKey && !event.shiftKey) {
++      event.preventDefault();
++      this.dispatchEvent(
++        new CustomEvent('coffee-details', {
++          bubbles: true,
++          composed: true,
++          detail: {
++            name: this.coffeeName,
++            description: this.getAttribute('description') || '',
++            price: this.currentPrice,
++            size: this._selectedSize,
++            roast: this.getAttribute('roast') || 'Medium Roast',
++            origin: this.getAttribute('origin') || 'House Blend',
++            notes: this.getAttribute('notes') || 'Balanced & Smooth',
++            href: this.getAttribute('href') || '/menu',
++            image: this._imgEl.src
++          }
++        })
++      );
++    }
++  }
++}
++
++// ============================================================================
++// 4. <coffee-menu-section> — Interactive Filterable Coffee Menu Section
++// ============================================================================
++const menuSectionTemplate = document.createElement('template');
++menuSectionTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    section {
++      padding: 1rem 0 2rem;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 1.75rem;
++    }
++
++    h2 {
++      font-size: clamp(1.75rem, 3vw, 2.25rem);
++      color: var(--primary, #4e342e);
++      margin: 0 0 0.4rem;
++    }
++
++    .subtitle {
++      color: #5d4037;
++      margin: 0 auto;
++      max-width: 600px;
++      font-size: 1rem;
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-bottom: 1.5rem;
++      background: #ffffff;
++      padding: 0.85rem 1.15rem;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(62, 39, 35, 0.06);
++      border: 1px solid rgba(78, 52, 46, 0.08);
++    }
++
++    .filter-tabs {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.4rem;
++    }
++
++    .filter-btn {
++      background: transparent;
++      border: 1px solid rgba(78, 52, 46, 0.2);
++      color: var(--text, #3e2723);
++      padding: 0.45rem 0.95rem;
++      border-radius: 999px;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++    }
++
++    .filter-btn:hover {
++      background: #f3ecea;
++    }
++
++    .filter-btn[aria-pressed="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border-color: var(--primary, #4e342e);
++    }
++
++    .filter-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .search-box {
++      position: relative;
++      flex: 1;
++      min-width: 220px;
++      max-width: 320px;
++    }
++
++    .search-box input {
++      width: 100%;
++      padding: 0.5rem 0.85rem;
++      border: 1px solid rgba(78, 52, 46, 0.28);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      color: var(--text, #3e2723);
++      background: #faf7f5;
++    }
++
++    .search-box input:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      background: #ffffff;
++    }
++
++    .status-bar {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 1rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 1.5rem;
++    }
++
++    .empty-state {
++      text-align: center;
++      padding: 2.5rem 1rem;
++      background: #ffffff;
++      border-radius: 10px;
++      border: 1px dashed rgba(78, 52, 46, 0.25);
++      color: #5d4037;
++    }
++
++    .reset-btn {
++      margin-top: 0.75rem;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border: none;
++      padding: 0.5rem 1rem;
++      border-radius: 6px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++  </style>
++
++  <section aria-labelledby="menu-section-heading">
++    <div class="section-header">
++      <h2 id="menu-section-heading">Seasonal Favorites</h2>
++      <p class="subtitle" id="menu-section-subtitle">
++        Handcrafted signature drinks and small-batch roasts curated for the season.
++      </p>
++    </div>
++
++    <div class="toolbar" role="region" aria-label="Filter coffee menu">
++      <div class="filter-tabs" role="group" aria-label="Coffee category filter">
++        <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">All Drinks</button>
++        <button type="button" class="filter-btn" data-filter="seasonal" aria-pressed="false">Seasonal</button>
++        <button type="button" class="filter-btn" data-filter="espresso" aria-pressed="false">Espresso</button>
++        <button type="button" class="filter-btn" data-filter="cold-brew" aria-pressed="false">Cold Brew</button>
++      </div>
++
++      <div class="search-box">
++        <input
++          type="search"
++          id="coffee-search"
++          placeholder="Search drinks or tasting notes..."
++          aria-label="Search coffee drinks or tasting notes"
++        />
++      </div>
++    </div>
++
++    <div class="status-bar">
++      <span id="results-count" aria-live="polite">Showing all drinks</span>
++    </div>
++
++    <div class="grid" role="list">
++      <slot></slot>
++    </div>
++
++    <div class="empty-state" id="empty-state" hidden>
++      <p>No coffee drinks match your current filter criteria.</p>
++      <button type="button" class="reset-btn" id="reset-filters">Reset Filters</button>
++    </div>
++  </section>
++`;
++
++export class CoffeeMenuSection extends HTMLElement {
++  static get observedAttributes() {
++    return ['heading', 'subtitle', 'active-filter'];
++  }
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(menuSectionTemplate.content.cloneNode(true));
++
++    this._activeFilter = 'all';
++    this._searchQuery = '';
++
++    this._headingEl = this.shadowRoot.getElementById('menu-section-heading');
++    this._subtitleEl = this.shadowRoot.getElementById('menu-section-subtitle');
++    this._searchInput = this.shadowRoot.getElementById('coffee-search');
++    this._resultsCount = this.shadowRoot.getElementById('results-count');
++    this._emptyState = this.shadowRoot.getElementById('empty-state');
++    this._resetBtn = this.shadowRoot.getElementById('reset-filters');
++    this._slot = this.shadowRoot.querySelector('slot');
++    this._filterBtns = Array.from(this.shadowRoot.querySelectorAll('.filter-btn'));
++
++    this._onFilterClick = this._onFilterClick.bind(this);
++    this._onSearchInput = this._onSearchInput.bind(this);
++    this._onReset = this._onReset.bind(this);
++    this._applyFilters = this._applyFilters.bind(this);
++  }
++
++  connectedCallback() {
++    this._filterBtns.forEach((btn) => btn.addEventListener('click', this._onFilterClick));
++    this._searchInput.addEventListener('input', this._onSearchInput);
++    this._resetBtn.addEventListener('click', this._onReset);
++    this._slot.addEventListener('slotchange', this._applyFilters);
++
++    this._syncHeader();
++    this._applyFilters();
++  }
++
++  disconnectedCallback() {
++    this._filterBtns.forEach((btn) => btn.removeEventListener('click', this._onFilterClick));
++    this._searchInput.removeEventListener('input', this._onSearchInput);
++    this._resetBtn.removeEventListener('click', this._onReset);
++    this._slot.removeEventListener('slotchange', this._applyFilters);
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) {
++      this._syncHeader();
++      if (name === 'active-filter' && newVal) {
++        this._setFilter(newVal);
++      }
++    }
++  }
++
++  _syncHeader() {
++    if (this.hasAttribute('heading')) {
++      this._headingEl.textContent = this.getAttribute('heading');
++    }
++    if (this.hasAttribute('subtitle')) {
++      this._subtitleEl.textContent = this.getAttribute('subtitle');
++    }
++  }
++
++  _setFilter(filter) {
++    this._activeFilter = filter;
++    this._filterBtns.forEach((btn) => {
++      const isMatch = btn.dataset.filter === filter;
++      btn.setAttribute('aria-pressed', String(isMatch));
++    });
++    this._applyFilters();
++  }
++
++  _onFilterClick(event) {
++    const filter = event.currentTarget.dataset.filter || 'all';
++    this._setFilter(filter);
++    this.dispatchEvent(
++      new CustomEvent('menu-filter-change', {
++        bubbles: true,
++        composed: true,
++        detail: { filter: this._activeFilter, query: this._searchQuery }
++      })
++    );
++  }
++
++  _onSearchInput(event) {
++    this._searchQuery = event.target.value.trim().toLowerCase();
++    this._applyFilters();
++  }
++
++  _onReset() {
++    this._searchInput.value = '';
++    this._searchQuery = '';
++    this._setFilter('all');
++  }
++
++  _applyFilters() {
++    const cards = Array.from(this.querySelectorAll('coffee-card'));
++    if (cards.length === 0) return;
++
++    let visibleCount = 0;
++
++    cards.forEach((card) => {
++      card.setAttribute('role', 'listitem');
++      const category = (card.getAttribute('category') || '').toLowerCase();
++      const name = (card.getAttribute('name') || '').toLowerCase();
++      const desc = (card.getAttribute('description') || '').toLowerCase();
++      const notes = (card.getAttribute('notes') || '').toLowerCase();
++      const roast = (card.getAttribute('roast') || '').toLowerCase();
++
++      const matchesCategory =
++        this._activeFilter === 'all' || category.split(',').map((s) => s.trim()).includes(this._activeFilter);
++
++      const matchesQuery =
++        !this._searchQuery ||
++        name.includes(this._searchQuery) ||
++        desc.includes(this._searchQuery) ||
++        notes.includes(this._searchQuery) ||
++        roast.includes(this._searchQuery);
++
++      if (matchesCategory && matchesQuery) {
++        card.hidden = false;
++        visibleCount++;
++      } else {
++        card.hidden = true;
++      }
++    });
++
++    this._emptyState.hidden = visibleCount > 0;
++    this._resultsCount.textContent =
++      visibleCount === cards.length
++        ? `Showing all ${cards.length} artisanal drinks`
++        : `Showing ${visibleCount} of ${cards.length} artisanal drinks`;
++  }
++}
++
++// ============================================================================
++// 5. <dg-brew-guide> — Accessible WAI-ARIA Tabs & Ratio Calculator Component
++// ============================================================================
++const brewGuideTemplate = document.createElement('template');
++brewGuideTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      margin: 3rem 0;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    .brew-section {
++      background: #ffffff;
++      border-radius: 14px;
++      padding: 2rem;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.08);
++      border: 1px solid rgba(78, 52, 46, 0.1);
++    }
++
++    .header {
++      text-align: center;
++      margin-bottom: 1.5rem;
++    }
++
++    h2 {
++      color: var(--primary, #4e342e);
++      margin: 0 0 0.4rem;
++      font-size: clamp(1.6rem, 2.8vw, 2rem);
++    }
++
++    .header p {
++      color: #5d4037;
++      margin: 0;
++    }
++
++    .tablist {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.5rem;
++      border-bottom: 2px solid #eee5e2;
++      padding-bottom: 1rem;
++      margin-bottom: 1.5rem;
++    }
++
++    .tab {
++      background: #f5efed;
++      color: var(--text, #3e2723);
++      border: 1px solid transparent;
++      padding: 0.6rem 1.25rem;
++      border-radius: 8px;
++      font-weight: 700;
++      font-size: 0.92rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease, color 0.2s ease;
++    }
++
++    .tab[aria-selected="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++    }
++
++    .tab:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .panel-layout {
++      display: grid;
++      grid-template-columns: 1.3fr 1fr;
++      gap: 2rem;
++      align-items: center;
++    }
++
++    @media (max-width: 768px) {
++      .panel-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel h3 {
++      margin: 0 0 0.5rem;
++      color: var(--primary, #4e342e);
++      font-size: 1.35rem;
++    }
++
++    .specs {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 0.75rem;
++      margin: 1rem 0;
++    }
++
++    .spec-box {
++      background: #faf6f5;
++      padding: 0.75rem;
++      border-radius: 8px;
++      text-align: center;
++      border: 1px solid #ede3df;
++    }
++
++    .spec-label {
++      display: block;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      color: #6d4c41;
++      font-weight: 700;
++    }
++
++    .spec-value {
++      font-size: 1rem;
++      font-weight: 800;
++      color: var(--primary, #4e342e);
++    }
++
++    .steps {
++      margin: 0;
++      padding-left: 1.2rem;
++      color: #4e342e;
++    }
++
++    .steps li {
++      margin-bottom: 0.4rem;
++    }
++
++    .calculator {
++      background: #faf6f5;
++      padding: 1.35rem;
++      border-radius: 10px;
++      border: 1px solid #e6dad5;
++    }
++
++    .calculator h4 {
++      margin: 0 0 0.75rem;
++      color: var(--primary, #4e342e);
++      font-size: 1.05rem;
++    }
++
++    .slider-row {
++      display: flex;
++      flex-direction: column;
++      gap: 0.4rem;
++      margin-bottom: 1rem;
++    }
++
++    .slider-row label {
++      font-size: 0.88rem;
++      font-weight: 700;
++      display: flex;
++      justify-content: space-between;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      accent-color: var(--primary, #4e342e);
++      cursor: pointer;
++    }
++
++    .calc-results {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 0.75rem;
++      background: #ffffff;
++      padding: 0.85rem;
++      border-radius: 8px;
++      text-align: center;
++    }
++
++    .calc-num {
++      font-size: 1.3rem;
++      font-weight: 800;
++      color: var(--primary, #4e342e);
++      display: block;
++    }
++
++    .calc-unit {
++      font-size: 0.78rem;
++      color: #6d4c41;
++    }
++  </style>
++
++  <section class="brew-section" aria-labelledby="brew-guide-title">
++    <div class="header">
++      <h2 id="brew-guide-title">Interactive Brew Guide &amp; Ratio Calculator</h2>
++      <p>Dial in café-quality extraction at home for your favorite Daily Grind beans.</p>
++    </div>
++
++    <div class="tablist" role="tablist" aria-label="Brewing methods">
++      <button type="button" class="tab" role="tab" id="tab-pourover" aria-selected="true" aria-controls="panel-pourover" tabindex="0" data-method="pourover">
++        Pour-Over V60
++      </button>
++      <button type="button" class="tab" role="tab" id="tab-espresso" aria-selected="false" aria-controls="panel-espresso" tabindex="-1" data-method="espresso">
++        Espresso
++      </button>
++      <button type="button" class="tab" role="tab" id="tab-frenchpress" aria-selected="false" aria-controls="panel-frenchpress" tabindex="-1" data-method="frenchpress">
++        French Press
++      </button>
++      <button type="button" class="tab" role="tab" id="tab-coldbrew" aria-selected="false" aria-controls="panel-coldbrew" tabindex="-1" data-method="coldbrew">
++        Cold Brew
++      </button>
++    </div>
++
++    <div class="panel-layout">
++      <div class="panel" id="panel-pourover" role="tabpanel" aria-labelledby="tab-pourover" tabindex="0">
++        <h3 id="method-title">Pour-Over V60</h3>
++        <p id="method-desc">Clean, aromatic extraction that highlights floral and citrus notes.</p>
++        <div class="specs">
++          <div class="spec-box">
++            <span class="spec-label">Grind Size</span>
++            <span class="spec-value" id="spec-grind">Medium-Fine</span>
++          </div>
++          <div class="spec-box">
++            <span class="spec-label">Water Temp</span>
++            <span class="spec-value" id="spec-temp">202&deg;F (94&deg;C)</span>
++          </div>
++          <div class="spec-box">
++            <span class="spec-label">Brew Time</span>
++            <span class="spec-value" id="spec-time">2:45 - 3:15</span>
++          </div>
++        </div>
++        <ol class="steps" id="method-steps">
++          <li>Rinse paper filter with hot water and add freshly ground coffee.</li>
++          <li>Bloom with double the coffee weight in water for 35 seconds.</li>
++          <li>Pour remaining water in slow concentric spirals.</li>
++        </ol>
++      </div>
++
++      <div class="calculator" aria-label="Coffee to water ratio calculator">
++        <h4>Golden Ratio Calculator</h4>
++        <div class="slider-row">
++          <label for="cups-range">
++            <span>Servings:</span>
++            <strong id="cups-display">2 cups</strong>
++          </label>
++          <input type="range" id="cups-range" min="1" max="8" value="2" />
++        </div>
++        <div class="calc-results" aria-live="polite">
++          <div>
++            <span class="calc-num" id="calc-coffee">28g</span>
++            <span class="calc-unit">Whole Bean Coffee</span>
++          </div>
++          <div>
++            <span class="calc-num" id="calc-water">450ml</span>
++            <span class="calc-unit">Filtered Water</span>
++          </div>
++        </div>
++      </div>
++    </div>
++  </section>
++`;
++
++const BREW_METHODS = {
++  pourover: {
++    title: 'Pour-Over V60',
++    desc: 'Clean, aromatic extraction that highlights floral and maple notes.',
++    grind: 'Medium-Fine',
++    temp: '202°F (94°C)',
++    time: '2:45 - 3:15',
++    coffeePerCup: 15,
++    waterPerCup: 240,
++    steps: [
++      'Rinse paper filter with hot water and add freshly ground coffee.',
++      'Bloom with double the coffee weight in water for 35 seconds.',
++      'Pour remaining water in slow concentric spirals.'
++    ]
++  },
++  espresso: {
++    title: 'Double Shot Espresso',
++    desc: 'Rich, syrupy crema with bold dark chocolate and smokey undertones.',
++    grind: 'Fine',
++    temp: '200°F (93°C)',
++    time: '0:26 - 0:30',
++    coffeePerCup: 18,
++    waterPerCup: 36,
++    steps: [
++      'Dose finely ground Dark Roast Espresso into warm portafilter.',
++      'Distribute evenly and tamp with 30 lbs of level pressure.',
++      'Extract 1:2 ratio until rich hazelnut crema streams evenly.'
++    ]
++  },
++  frenchpress: {
++    title: 'Immersion French Press',
++    desc: 'Full-bodied, velvety mouthfeel ideal for cozy morning mugs.',
++    grind: 'Coarse',
++    temp: '200°F (93°C)',
++    time: '4:00',
++    coffeePerCup: 17,
++    waterPerCup: 250,
++    steps: [
++      'Add coarse coffee grounds to warmed carafe and pour hot water.',
++      'Steep for 4 minutes, then gently break the top crust with a spoon.',
++      'Press plunger slowly and decant immediately.'
++    ]
++  },
++  coldbrew: {
++    title: '18-Hour Artisanal Cold Brew',
++    desc: 'Ultra-smooth, low-acidity concentrate steeped cold for 18 hours.',
++    grind: 'Extra Coarse',
++    temp: 'Cold Filtered',
++    time: '18 Hours',
++    coffeePerCup: 28,
++    waterPerCup: 220,
++    steps: [
++      'Combine extra-coarse grounds with cold filtered water in a mason jar.',
++      'Steep covered at room temperature or refrigerated for 18 hours.',
++      'Strain through fine mesh and serve over ice with oat milk.'
++    ]
++  }
++};
++
++export class DgBrewGuide extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(brewGuideTemplate.content.cloneNode(true));
++
++    this._currentMethod = 'pourover';
++    this._tabs = Array.from(this.shadowRoot.querySelectorAll('.tab'));
++    this._panel = this.shadowRoot.querySelector('.panel');
++    this._cupsRange = this.shadowRoot.getElementById('cups-range');
++
++    this._onTabClick = this._onTabClick.bind(this);
++    this._onTabKeyDown = this._onTabKeyDown.bind(this);
++    this._updateCalculator = this._updateCalculator.bind(this);
++  }
++
++  connectedCallback() {
++    this._tabs.forEach((tab) => {
++      tab.addEventListener('click', this._onTabClick);
++      tab.addEventListener('keydown', this._onTabKeyDown);
++    });
++    this._cupsRange.addEventListener('input', this._updateCalculator);
++    this._renderMethod();
++  }
++
++  disconnectedCallback() {
++    this._tabs.forEach((tab) => {
++      tab.removeEventListener('click', this._onTabClick);
++      tab.removeEventListener('keydown', this._onTabKeyDown);
++    });
++    this._cupsRange.removeEventListener('input', this._updateCalculator);
++  }
++
++  _selectMethod(method) {
++    if (!BREW_METHODS[method]) return;
++    this._currentMethod = method;
++
++    this._tabs.forEach((tab) => {
++      const selected = tab.dataset.method === method;
++      tab.setAttribute('aria-selected', String(selected));
++      tab.tabIndex = selected ? 0 : -1;
++      if (selected) {
++        this._panel.id = `panel-${method}`;
++        this._panel.setAttribute('aria-labelledby', tab.id);
++      }
++    });
++
++    this._renderMethod();
++  }
++
++  _renderMethod() {
++    const data = BREW_METHODS[this._currentMethod];
++    this.shadowRoot.getElementById('method-title').textContent = data.title;
++    this.shadowRoot.getElementById('method-desc').textContent = data.desc;
++    this.shadowRoot.getElementById('spec-grind').textContent = data.grind;
++    this.shadowRoot.getElementById('spec-temp').textContent = data.temp;
++    this.shadowRoot.getElementById('spec-time').textContent = data.time;
++
++    const stepsList = this.shadowRoot.getElementById('method-steps');
++    stepsList.innerHTML = '';
++    data.steps.forEach((step) => {
++      const li = document.createElement('li');
++      li.textContent = step;
++      stepsList.appendChild(li);
++    });
++
++    this._updateCalculator();
++  }
++
++  _updateCalculator() {
++    const cups = Number(this._cupsRange.value || 2);
++    const data = BREW_METHODS[this._currentMethod];
++    this.shadowRoot.getElementById('cups-display').textContent =
++      `${cups} ${cups === 1 ? 'serving' : 'servings'}`;
++    this.shadowRoot.getElementById('calc-coffee').textContent = `${cups * data.coffeePerCup}g`;
++    this.shadowRoot.getElementById('calc-water').textContent = `${cups * data.waterPerCup}ml`;
++  }
++
++  _onTabClick(event) {
++    this._selectMethod(event.currentTarget.dataset.method);
++  }
++
++  _onTabKeyDown(event) {
++    const idx = this._tabs.indexOf(event.currentTarget);
++    if (idx === -1) return;
++
++    let nextIdx = -1;
++    if (event.key === 'ArrowRight') {
++      nextIdx = (idx + 1) % this._tabs.length;
++    } else if (event.key === 'ArrowLeft') {
++      nextIdx = (idx - 1 + this._tabs.length) % this._tabs.length;
++    } else if (event.key === 'Home') {
++      nextIdx = 0;
++    } else if (event.key === 'End') {
++      nextIdx = this._tabs.length - 1;
++    }
++
++    if (nextIdx !== -1) {
++      event.preventDefault();
++      const nextTab = this._tabs[nextIdx];
++      this._selectMethod(nextTab.dataset.method);
++      nextTab.focus();
++    }
++  }
++}
++
++// ============================================================================
++// 6. <dg-rewards-banner> — Interactive Coffee Bean Subscription & Rewards Club
++// ============================================================================
++const rewardsBannerTemplate = document.createElement('template');
++rewardsBannerTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      margin: 2.5rem 0;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    .rewards-card {
++      background: linear-gradient(135deg, #4e342e 0%, #3e2723 100%);
++      color: #ffffff;
++      border-radius: 14px;
++      padding: 2.25rem;
++      display: grid;
++      grid-template-columns: 1.2fr 1fr;
++      gap: 2rem;
++      align-items: center;
++      box-shadow: 0 8px 24px rgba(62, 39, 35, 0.2);
++    }
++
++    @media (max-width: 768px) {
++      .rewards-card {
++        grid-template-columns: 1fr;
++        padding: 1.5rem;
++      }
++    }
++
++    .badge {
++      display: inline-block;
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      font-size: 0.75rem;
++      font-weight: 800;
++      text-transform: uppercase;
++      padding: 0.25rem 0.7rem;
++      border-radius: 999px;
++      margin-bottom: 0.75rem;
++    }
++
++    h2 {
++      margin: 0 0 0.6rem;
++      font-size: clamp(1.5rem, 2.5vw, 2rem);
++    }
++
++    p {
++      margin: 0 0 1rem;
++      color: rgba(255, 255, 255, 0.9);
++    }
++
++    .perks {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.85rem;
++      list-style: none;
++      padding: 0;
++      margin: 0;
++      font-size: 0.88rem;
++    }
++
++    .perks li {
++      background: rgba(255, 255, 255, 0.1);
++      padding: 0.35rem 0.75rem;
++      border-radius: 6px;
++    }
++
++    form {
++      background: rgba(255, 255, 255, 0.08);
++      padding: 1.35rem;
++      border-radius: 10px;
++      border: 1px solid rgba(255, 255, 255, 0.16);
++      display: flex;
++      flex-direction: column;
++      gap: 0.85rem;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 0.3rem;
++    }
++
++    label {
++      font-size: 0.82rem;
++      font-weight: 700;
++    }
++
++    input,
++    select {
++      padding: 0.6rem 0.8rem;
++      border-radius: 6px;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      font-size: 0.92rem;
++      background: #ffffff;
++      color: var(--text, #3e2723);
++    }
++
++    input:focus-visible,
++    select:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    button[type="submit"] {
++      background: var(--accent, #ffab40);
++      color: var(--text, #3e2723);
++      border: none;
++      padding: 0.7rem 1.2rem;
++      border-radius: 6px;
++      font-weight: 800;
++      font-size: 0.95rem;
++      cursor: pointer;
++      transition: background-color 0.2s ease;
++    }
++
++    button[type="submit"]:hover {
++      background: #ffc166;
++    }
++
++    .feedback {
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--accent, #ffab40);
++      min-height: 1.2em;
++    }
++  </style>
++
++  <section class="rewards-card" aria-labelledby="rewards-heading">
++    <div>
++      <span class="badge">Daily Grind Rewards</span>
++      <h2 id="rewards-heading">Never Run Out of Freshly Roasted Beans</h2>
++      <p>Join our Coffee Club for free priority delivery, 15% off seasonal releases, and a free birthday drink.</p>
++      <ul class="perks">
++        <li>&#10003; Ethically Sourced Single Origins</li>
++        <li>&#10003; Pause or Cancel Anytime</li>
++        <li>&#10003; Earn 2x Bean Points</li>
++      </ul>
++    </div>
++
++    <form id="rewards-form" novalidate>
++      <div class="field">
++        <label for="member-email">Email Address</label>
++        <input type="email" id="member-email" name="email" placeholder="you@example.com" required aria-required="true" />
++      </div>
++      <div class="field">
++        <label for="roast-pref">Preferred Roast Profile</label>
++        <select id="roast-pref" name="roast">
++          <option value="Seasonal Favorites">Seasonal Favorites</option>
++          <option value="Light & Floral">Light &amp; Floral</option>
++          <option value="Medium Balanced">Medium Balanced</option>
++          <option value="Bold Dark Roast">Bold Dark Roast</option>
++        </select>
++      </div>
++      <button type="submit">Claim Free Tasting Bag</button>
++      <div class="feedback" id="form-feedback" role="status" aria-live="polite"></div>
++    </form>
++  </section>
++`;
++
++export class DgRewardsBanner extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(rewardsBannerTemplate.content.cloneNode(true));
++
++    this._form = this.shadowRoot.getElementById('rewards-form');
++    this._emailInput = this.shadowRoot.getElementById('member-email');
++    this._roastSelect = this.shadowRoot.getElementById('roast-pref');
++    this._feedback = this.shadowRoot.getElementById('form-feedback');
++
++    this._onSubmit = this._onSubmit.bind(this);
++  }
++
++  connectedCallback() {
++    this._form.addEventListener('submit', this._onSubmit);
++  }
++
++  disconnectedCallback() {
++    this._form.removeEventListener('submit', this._onSubmit);
++  }
++
++  _onSubmit(event) {
++    event.preventDefault();
++    const email = this._emailInput.value.trim();
++    const roast = this._roastSelect.value;
++
++    if (!email || !email.includes('@')) {
++      this._feedback.textContent = 'Please enter a valid email address to join.';
++      this._emailInput.focus();
++      return;
++    }
++
++    this._feedback.textContent = `Welcome to the club! Your ${roast} tasting perk has been sent to ${email}.`;
++    this._form.reset();
++
++    this.dispatchEvent(
++      new CustomEvent('dg-rewards-signup', {
++        bubbles: true,
++        composed: true,
++        detail: { email, roast }
++      })
++    );
++  }
++}
++
++// ============================================================================
++// 7. <dg-order-drawer> — Accessible Slide-Over Order Bag & Details Modal
++// ============================================================================
++const orderDrawerTemplate = document.createElement('template');
++orderDrawerTemplate.innerHTML = `
++  <style>
++    :host {
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    .backdrop {
++      position: fixed;
++      inset: 0;
++      background: rgba(30, 18, 14, 0.55);
++      z-index: 1500;
++      display: flex;
++      justify-content: flex-end;
++    }
++
++    .backdrop[hidden] {
++      display: none !important;
++    }
++
++    .drawer {
++      background: #ffffff;
++      width: min(400px, 100vw);
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.25);
++    }
++
++    .drawer-header {
++      padding: 1.25rem;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .drawer-header h2 {
++      margin: 0;
++      font-size: 1.2rem;
++    }
++
++    .close-btn {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.5);
++      color: #ffffff;
++      width: 34px;
++      height: 34px;
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 1.1rem;
++    }
++
++    .drawer-body {
++      padding: 1.25rem;
++      flex: 1;
++      overflow-y: auto;
++    }
++
++    .item-list {
++      list-style: none;
++      padding: 0;
++      margin: 0;
++      display: flex;
++      flex-direction: column;
++      gap: 0.85rem;
++    }
++
++    .item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 0.75rem;
++      background: #faf6f5;
++      border-radius: 8px;
++      border: 1px solid #ede3df;
++    }
++
++    .item-title {
++      font-weight: 700;
++      color: var(--primary, #4e342e);
++      display: block;
++    }
++
++    .item-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .remove-btn {
++      background: transparent;
++      border: none;
++      color: #b71c1c;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      padding: 0.25rem 0.5rem;
++    }
++
++    .drawer-footer {
++      padding: 1.25rem;
++      border-top: 1px solid #eee5e2;
++      background: #faf6f5;
++    }
++
++    .total-row {
++      display: flex;
++      justify-content: space-between;
++      font-weight: 800;
++      font-size: 1.1rem;
++      margin-bottom: 0.85rem;
++      color: var(--text, #3e2723);
++    }
++
++    .checkout-btn {
++      display: block;
++      width: 100%;
++      text-align: center;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      text-decoration: none;
++      padding: 0.8rem;
++      border-radius: 6px;
++      font-weight: 700;
++    }
++
++    .toast {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      padding: 0.8rem 1.2rem;
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      border-left: 4px solid var(--accent, #ffab40);
++      z-index: 1600;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .toast[hidden] {
++      display: none !important;
++    }
++  </style>
++
++  <div class="backdrop" id="backdrop" hidden>
++    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
++      <div class="drawer-header">
++        <h2 id="drawer-title">Your Coffee Order</h2>
++        <button type="button" class="close-btn" id="close-btn" aria-label="Close order bag">&times;</button>
++      </div>
++      <div class="drawer-body">
++        <p id="empty-msg">Your bag is currently empty. Add a seasonal drink to get started!</p>
++        <ul class="item-list" id="item-list"></ul>
++      </div>
++      <div class="drawer-footer">
++        <div class="total-row">
++          <span>Estimated Total</span>
++          <span id="total-price">$0.00</span>
++        </div>
++        <a href="/order-online" class="checkout-btn">Proceed to Pickup Checkout</a>
++      </div>
++    </aside>
++  </div>
++
++  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
++`;
++
++export class DgOrderDrawer extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(orderDrawerTemplate.content.cloneNode(true));
++
++    this._items = [];
++    this._backdrop = this.shadowRoot.getElementById('backdrop');
++    this._closeBtn = this.shadowRoot.getElementById('close-btn');
++    this._itemList = this.shadowRoot.getElementById('item-list');
++    this._emptyMsg = this.shadowRoot.getElementById('empty-msg');
++    this._totalPrice = this.shadowRoot.getElementById('total-price');
++    this._toast = this.shadowRoot.getElementById('toast');
++
++    this.open = this.open.bind(this);
++    this.close = this.close.bind(this);
++    this._onKeyDown = this._onKeyDown.bind(this);
++  }
++
++  connectedCallback() {
++    this._closeBtn.addEventListener('click', this.close);
++    this._backdrop.addEventListener('click', (e) => {
++      if (e.target === this._backdrop) this.close();
++    });
++    window.addEventListener('keydown', this._onKeyDown);
++  }
++
++  disconnectedCallback() {
++    this._closeBtn.removeEventListener('click', this.close);
++    window.removeEventListener('keydown', this._onKeyDown);
++  }
++
++  addItem(item) {
++    this._items.push({ ...item, id: Date.now() + Math.random() });
++    this._render();
++    this.showToast(`Added ${item.size} ${item.name} ($${item.price.toFixed(2)}) to bag`);
++    this._emitUpdate();
++  }
++
++  showToast(message) {
++    this._toast.textContent = message;
++    this._toast.hidden = false;
++    clearTimeout(this._toastTimer);
++    this._toastTimer = setTimeout(() => {
++      this._toast.hidden = true;
++    }, 3200);
++  }
++
++  open() {
++    this._backdrop.hidden = false;
++    this._closeBtn.focus();
++  }
++
++  close() {
++    this._backdrop.hidden = true;
++  }
++
++  _onKeyDown(event) {
++    if (event.key === 'Escape' && !this._backdrop.hidden) {
++      this.close();
++    }
++  }
++
++  _emitUpdate() {
++    this.dispatchEvent(
++      new CustomEvent('dg-cart-updated', {
++        bubbles: true,
++        composed: true,
++        detail: { count: this._items.length, items: [...this._items] }
++      })
++    );
++  }
++
++  _render() {
++    this._itemList.innerHTML = '';
++    this._emptyMsg.hidden = this._items.length > 0;
++
++    let total = 0;
++    this._items.forEach((item) => {
++      total += item.price;
++      const li = document.createElement('li');
++      li.className = 'item';
++      li.innerHTML = `
++        <div>
++          <span class="item-title"></span>
++          <span class="item-meta"></span>
++        </div>
++        <button type="button" class="remove-btn">Remove</button>
++      `;
++      li.querySelector('.item-title').textContent = item.name;
++      li.querySelector('.item-meta').textContent = `${item.size} • $${item.price.toFixed(2)}`;
++      li.querySelector('.remove-btn').addEventListener('click', () => {
++        this._items = this._items.filter((i) => i.id !== item.id);
++        this._render();
++        this._emitUpdate();
++      });
++      this._itemList.appendChild(li);
++    });
++
++    this._totalPrice.textContent = `$${total.toFixed(2)}`;
++  }
++}
++
++// ============================================================================
++// 8. <dg-footer> — Accessible Site Footer Component
++// ============================================================================
++const footerTemplate = document.createElement('template');
++footerTemplate.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
++    }
++
++    footer {
++      background: var(--secondary, #d7ccc8);
++      color: var(--text, #3e2723);
++      text-align: center;
++      padding: 2.5rem 1.25rem;
++      margin-top: 3rem;
++    }
++
++    .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.75rem 1.25rem;
++      margin-bottom: 1.25rem;
++    }
++
++    .footer-links a {
++      color: var(--text, #3e2723);
++      text-decoration: none;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    .footer-links a:focus-visible {
++      outline: 2px solid var(--primary, #4e342e);
++      outline-offset: 2px;
++      border-radius: 2px;
++    }
++
++    p {
++      margin: 0;
++      font-size: 0.88rem;
++    }
++  </style>
++
++  <footer role="contentinfo">
++    <nav class="footer-links" aria-label="Footer Navigation">
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
++      <a href="/privacy-policy">Privacy</a>
++    </nav>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++`;
++
++export class DgFooter extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(footerTemplate.content.cloneNode(true));
++  }
++}
++
++// Register all Custom Elements idempotently
++const registry = [
++  ['dg-navbar', DgNavbar],
++  ['dg-hero', DgHero],
++  ['coffee-card', CoffeeCard],
++  ['coffee-menu-section', CoffeeMenuSection],
++  ['dg-brew-guide', DgBrewGuide],
++  ['dg-rewards-banner', DgRewardsBanner],
++  ['dg-order-drawer', DgOrderDrawer],
++  ['dg-footer', DgFooter]
++];
++
++registry.forEach(([tagName, ctor]) => {
++  if (!customElements.get(tagName)) {
++    customElements.define(tagName, ctor);
++  }
++});
+diff --git a/index.html b/index.html
+index 66c9173..962c081 100644
+--- a/index.html
++++ b/index.html
+@@ -12,201 +12,274 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+     }
+ 
+-    * {
++    *,
++    *::before,
++    *::after {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: var(--font-sans);
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++    .skip-link {
++      position: absolute;
++      left: -9999px;
++      top: 0.5rem;
++      z-index: 2000;
++      background: var(--accent);
++      color: var(--text);
++      padding: 0.6rem 1rem;
++      border-radius: 6px;
++      font-weight: 700;
++      text-decoration: none;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++    .skip-link:focus {
++      left: 1rem;
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++    .container {
++      max-width: 1120px;
++      margin: 2.5rem auto;
++      padding: 0 1.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    /* Quick-view accessible dialog */
++    dialog.details-modal {
++      margin: auto;
++      border: none;
++      border-radius: 12px;
++      max-width: 480px;
++      width: calc(100% - 2rem);
++      padding: 0;
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++      overflow: hidden;
+     }
+ 
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++    dialog.details-modal::backdrop {
++      background: rgba(30, 18, 14, 0.6);
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    .modal-media {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      display: block;
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .modal-content {
++      padding: 1.5rem;
+     }
+ 
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++    .modal-header {
+       display: flex;
+-      flex-direction: column;
+-      justify-content: center;
++      justify-content: space-between;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin-bottom: 0.5rem;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .modal-header h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    .modal-meta {
++      font-size: 0.85rem;
++      font-weight: 700;
++      color: #6d4c41;
++      margin-bottom: 0.75rem;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 0.75rem;
++      margin-top: 1.25rem;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
++      color: #ffffff;
++      padding: 0.6rem 1.2rem;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
++      border-radius: 6px;
++      border: none;
++      font-weight: 700;
++      cursor: pointer;
+     }
+ 
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
+     }
+   </style>
++  <script type="module" src="./components/daily-grind-components.js"></script>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
++  <!-- Encapsulated Sticky Navigation Web Component -->
++  <dg-navbar id="site-nav" brand="THE DAILY GRIND" cart-count="0" active-link="menu"></dg-navbar>
++
++  <!-- Encapsulated Hero Banner Web Component -->
++  <dg-hero
++    eyebrow="Small-Batch Artisanal Roastery"
++    heading="Wake Up Your Senses"
++    subtitle="Ethically sourced, locally roasted, delivered to your cup."
++    cta-text="Order Now"
++    cta-href="/order-online"
++    background-image="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
++  </dg-hero>
++
++  <main id="main-content" class="container">
++    <!-- Interactive Filterable Coffee Menu Section & Reusable Coffee Cards -->
++    <coffee-menu-section
++      id="seasonal-menu"
++      heading="Seasonal Favorites"
++      subtitle="Explore our handcrafted seasonal lattes, signature espressos, and slow-steeped cold brews.">
++
++      <coffee-card
++        name="Maple Oat Latte"
++        description="Creamy oat milk with a hint of Vermont maple syrup."
++        price="5.25"
++        category="seasonal"
++        roast="Medium Roast"
++        origin="Vermont &amp; Colombia"
++        notes="Pure Grade-A Maple, Toasted Oat, Warm Cinnamon"
++        badge="Seasonal Hit"
++        href="/menu/seasonal"
++        image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=80"
++        alt="Maple Oat Latte with latte art in a ceramic mug">
++      </coffee-card>
++
++      <coffee-card
++        name="Dark Roast Espresso"
++        description="Bold, smokey, and perfect for a morning boost."
++        price="3.75"
++        category="espresso"
++        roast="Dark Roast"
++        origin="Sumatra &amp; Brazil"
++        notes="Bittersweet Cocoa, Cedar Smoke, Molasses"
++        badge="Roaster's Choice"
++        href="/menu/espresso"
++        image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++        alt="Freshly pulled shot of Dark Roast Espresso with rich crema">
++      </coffee-card>
++
++      <coffee-card
++        name="Cold Brew"
++        description="Steeped for 18 hours for maximum smoothness."
++        price="4.75"
++        category="cold-brew, seasonal"
++        roast="Medium-Dark"
++        origin="Ethiopian Yirgacheffe"
++        notes="Velvety Chocolate, Sweet Berries, Low Acidity"
++        badge="18-Hr Steep"
++        href="/menu/cold-brew"
++        image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++        alt="Chilled glass of artisanal 18-hour Cold Brew coffee over ice">
++      </coffee-card>
++    </coffee-menu-section>
++
++    <!-- Interactive Brew Guide & Ratio Calculator Web Component -->
++    <dg-brew-guide id="brew-guide"></dg-brew-guide>
++
++    <!-- Interactive Rewards & Coffee Club Subscription Web Component -->
++    <dg-rewards-banner id="rewards"></dg-rewards-banner>
+   </main>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++  <!-- Interactive Slide-over Order Bag Drawer Web Component -->
++  <dg-order-drawer id="order-drawer"></dg-order-drawer>
++
++  <!-- Accessible Quick-View Details Dialog -->
++  <dialog class="details-modal" id="coffee-details-modal" aria-labelledby="modal-coffee-title">
++    <img class="modal-media" id="modal-coffee-img" src="" alt="" />
++    <div class="modal-content">
++      <div class="modal-header">
++        <h2 id="modal-coffee-title">Coffee Details</h2>
++        <strong id="modal-coffee-price">$0.00</strong>
++      </div>
++      <p class="modal-meta" id="modal-coffee-meta"></p>
++      <p id="modal-coffee-desc"></p>
++      <p style="margin-top: 0.6rem; font-size: 0.9rem;">
++        <strong>Tasting Notes:</strong> <span id="modal-coffee-notes"></span>
++      </p>
++      <div class="modal-actions">
++        <button type="button" class="btn btn-outline" id="modal-close-btn">Close</button>
++        <a href="/menu" class="btn" id="modal-full-link">Full Product Page</a>
++      </div>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </dialog>
++
++  <!-- Encapsulated Footer Web Component -->
++  <dg-footer></dg-footer>
++
++  <script type="module">
++    const nav = document.getElementById('site-nav');
++    const drawer = document.getElementById('order-drawer');
++    const detailsModal = document.getElementById('coffee-details-modal');
++    const modalCloseBtn = document.getElementById('modal-close-btn');
++
++    // Connect <coffee-card> order events to <dg-order-drawer> and <dg-navbar>
++    document.addEventListener('coffee-order', (event) => {
++      drawer.addItem(event.detail);
++    });
++
++    document.addEventListener('dg-cart-updated', (event) => {
++      nav.cartCount = event.detail.count;
++    });
++
++    document.addEventListener('dg-cart-toggle', () => {
++      drawer.open();
++    });
++
++    document.addEventListener('coffee-favorite', (event) => {
++      const { name, favorited } = event.detail;
++      drawer.showToast(
++        favorited ? `Saved ${name} to your favorites` : `Removed ${name} from favorites`
++      );
++    });
++
++    // Connect <coffee-card> quick-details event to accessible dialog
++    document.addEventListener('coffee-details', (event) => {
++      const d = event.detail;
++      document.getElementById('modal-coffee-img').src = d.image;
++      document.getElementById('modal-coffee-img').alt = d.name;
++      document.getElementById('modal-coffee-title').textContent = `${d.name} (${d.size})`;
++      document.getElementById('modal-coffee-price').textContent = `$${d.price.toFixed(2)}`;
++      document.getElementById('modal-coffee-meta').textContent = `${d.roast} • ${d.origin}`;
++      document.getElementById('modal-coffee-desc').textContent = d.description;
++      document.getElementById('modal-coffee-notes').textContent = d.notes;
++      document.getElementById('modal-full-link').href = d.href;
++
++      if (typeof detailsModal.showModal === 'function') {
++        detailsModal.showModal();
++      }
++    });
++
++    modalCloseBtn.addEventListener('click', () => {
++      detailsModal.close();
++    });
+ 
++    detailsModal.addEventListener('click', (event) => {
++      if (event.target === detailsModal) {
++        detailsModal.close();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

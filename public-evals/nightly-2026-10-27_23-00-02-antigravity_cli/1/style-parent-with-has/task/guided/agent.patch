@@ -1,0 +1,199 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,105 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form Section */
++    .contact-section {
++      max-width: 600px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .contact-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .field {
++      border: 2px solid transparent;
++      border-radius: 6px;
++      padding: 12px;
++      margin-block-end: 1.25rem;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    /* Style the entire wrapper div with a red border when its input/textarea is user-invalid */
++    .field:has(:user-invalid) {
++      border-color: #d93025;
++      background-color: #fff8f8;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++      color: var(--primary);
++    }
++
++    .hint {
++      display: block;
++      color: #5f6368;
++      font-size: 0.85rem;
++      margin-bottom: 0.35rem;
++    }
++
++    .field input,
++    .field textarea {
++      width: 100%;
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    .field textarea {
++      min-height: 120px;
++      resize: vertical;
++    }
++
++    .field input:focus-visible,
++    .field textarea:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .field input:user-invalid,
++    .field textarea:user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    .field input:user-valid,
++    .field textarea:user-valid {
++      border-color: #188038;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.35rem;
++    }
++
++    .field :user-invalid + .error-msg {
++      display: block;
++    }
++
++    .contact-form button[type="submit"] {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 1rem;
++      width: 100%;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +293,63 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact-section" aria-labelledby="contact-heading">
++    <h2 id="contact-heading" style="text-align: center;">Get in Touch</h2>
++    <form id="contact-form" class="contact-form" action="/contact" method="POST">
++      <div class="field">
++        <label for="name">Name <span aria-hidden="true">*</span></label>
++        <input
++          type="text"
++          id="name"
++          name="name"
++          required
++          autocomplete="name"
++          aria-errormessage="name-error"
++        >
++        <div id="name-error" class="error-msg">
++          <span aria-hidden="true">❌</span> Please enter your name.
++        </div>
++      </div>
++
++      <div class="field">
++        <label for="email">Email Address <span aria-hidden="true">*</span></label>
++        <span id="email-hint" class="hint">Format: you@example.com</span>
++        <input
++          type="email"
++          id="email"
++          name="email"
++          required
++          autocomplete="email"
++          autocorrect="off"
++          autocapitalize="off"
++          spellcheck="false"
++          aria-describedby="email-hint"
++          aria-errormessage="email-error"
++        >
++        <div id="email-error" class="error-msg">
++          <span aria-hidden="true">❌</span> Please enter a valid email address.
++        </div>
++      </div>
++
++      <div class="field">
++        <label for="message">Message <span aria-hidden="true">*</span></label>
++        <textarea
++          id="message"
++          name="message"
++          required
++          aria-errormessage="message-error"
++        ></textarea>
++        <div id="message-error" class="error-msg">
++          <span aria-hidden="true">❌</span> Please enter a message.
++        </div>
++      </div>
++
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +358,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Sync aria-invalid with the CSS :user-invalid state for accessibility
++    const contactForm = document.getElementById('contact-form');
++    const syncAria = (el) => {
++      if (el.matches && el.matches('input, textarea')) {
++        el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
++      }
++    };
++
++    contactForm.addEventListener('blur', (e) => syncAria(e.target), true);
++    contactForm.addEventListener('input', (e) => {
++      if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++    });
++    contactForm.addEventListener('submit', () => {
++      contactForm.querySelectorAll('input, textarea').forEach(syncAria);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

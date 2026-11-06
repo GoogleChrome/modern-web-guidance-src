@@ -1,0 +1,309 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,186 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Layout: main content + sidebar */
++    .layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 280px;
++      gap: 30px;
++      align-items: start;
++    }
++
++    @media (max-width: 800px) {
++      .layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .sidebar {
++      position: sticky;
++      top: 90px;
++    }
++
++    .sidebar-card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .sidebar-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    /* Reveal coupon button: a real <button>, fully themeable */
++    .coupon-btn {
++      appearance: none;
++      font: inherit;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      margin-top: 15px;
++      width: 100%;
++      padding: 12px 20px;
++      border: 2px dashed var(--primary);
++      border-radius: 6px;
++      background: var(--accent);
++      color: var(--text);
++      cursor: pointer;
++      transition: background 0.3s, transform 0.15s;
++    }
++
++    .coupon-btn:hover {
++      background: #ff9100;
++    }
++
++    .coupon-btn:active {
++      transform: scale(0.98);
++    }
++
++    .coupon-btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .coupon-btn:disabled {
++      background: var(--secondary);
++      border-style: solid;
++      cursor: default;
++      transform: none;
++    }
++
++    /*
++      #coupon-panel uses hidden="until-found", which hides via
++      content-visibility rather than display:none, so the box itself still
++      renders. Keep #coupon-panel unstyled and put visuals on the inner
++      element so nothing shows while it's hidden.
++    */
++    .coupon-card {
++      margin-top: 30px;
++      padding: 25px;
++      border: 2px dashed var(--accent);
++      border-radius: 8px;
++      background: #fff8e1;
++      text-align: center;
++    }
++
++    .coupon-card h3 {
++      color: var(--primary);
++    }
++
++    .coupon-code {
++      display: inline-block;
++      margin: 12px 0;
++      padding: 8px 18px;
++      font-family: 'Courier New', monospace;
++      font-size: 1.6rem;
++      font-weight: bold;
++      letter-spacing: 3px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      user-select: all;
++    }
++
++    /*
++      Wholesale & catering tabs: exclusive <details name="..."> group.
++      Native find-in-page searches closed <details> and auto-opens the match.
++      The tab-strip look is a grid where <details> uses display:contents so
++      every <summary> sits on row 1 and the open panel spans row 2.
++    */
++    .tabs {
++      margin-top: 50px;
++    }
++
++    .tabs > h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .tab-group {
++      display: grid;
++      grid-template-columns: repeat(2, auto) 1fr;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .wholesale-tab {
++      display: contents;
++    }
++
++    .wholesale-tab > summary {
++      grid-row: 1;
++      list-style: none;
++      cursor: pointer;
++      padding: 14px 24px;
++      font-weight: 600;
++      color: var(--primary);
++      background: var(--secondary);
++      border-bottom: 3px solid transparent;
++      transition: background 0.3s;
++    }
++
++    .wholesale-tab > summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .wholesale-tab > summary:hover {
++      background: #c8b7b2;
++    }
++
++    .wholesale-tab > summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .wholesale-tab[open] > summary {
++      background: white;
++      border-bottom-color: var(--accent);
++    }
++
++    .wholesale-tab::details-content {
++      grid-row: 2;
++      grid-column: 1 / -1;
++    }
++
++    .tab-panel {
++      padding: 25px;
++    }
++
++    .tab-panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .tab-panel ul {
++      margin: 10px 0 0 20px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,9 +351,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <div class="container layout">
++  <main>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,10 +373,67 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!--
++      hidden="until-found": the code stays out of view but is still matched
++      by the browser's find-in-page, which reveals it automatically.
++    -->
++    <div id="coupon-panel" hidden="until-found">
++      <div class="coupon-card" role="region" aria-label="Your discount code">
++        <h3>Your Discount Code</h3>
++        <p>Enjoy 15% off your next order, online or in store.</p>
++        <span class="coupon-code">GRIND15</span>
++        <p><small>Enter this code at checkout. One use per customer.</small></p>
++      </div>
++    </div>
++
++    <section class="tabs">
++      <h2>Wholesale &amp; Catering</h2>
++      <div class="tab-group">
++        <details class="wholesale-tab" name="wholesale-catering" open>
++          <summary>Wholesale</summary>
++          <div class="tab-panel">
++            <h3>Wholesale Coffee Partnerships</h3>
++            <p>Serve The Daily Grind at your café, office, or restaurant. We roast to order every week and deliver fresh
++              beans across the region.</p>
++            <ul>
++              <li>Minimum order: 10 lb per roast profile</li>
++              <li>Tiered volume pricing and net-30 terms for approved accounts</li>
++              <li>Free barista training and equipment consultation</li>
++            </ul>
++            <a href="/wholesale" class="btn">Apply for a Wholesale Account</a>
++          </div>
++        </details>
++        <details class="wholesale-tab" name="wholesale-catering">
++          <summary>Catering</summary>
++          <div class="tab-panel">
++            <h3>Coffee Catering for Events</h3>
++            <p>From morning meetings to weddings, our mobile espresso bar brings handcrafted drinks to your guests.</p>
++            <ul>
++              <li>Coffee boxes serve 10–12 cups, ready in 2 hours</li>
++              <li>Full-service espresso bar for 25–300 guests</li>
++              <li>Pastry platters and dairy-free options available</li>
++            </ul>
++            <a href="/catering" class="btn">Request a Catering Quote</a>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
++  <aside class="sidebar">
++    <div class="sidebar-card">
++      <h3>Member Perk</h3>
++      <p>Unlock an exclusive discount on your next order.</p>
++      <button type="button" class="coupon-btn" aria-controls="coupon-panel" aria-expanded="false">
++        Reveal Coupon
++      </button>
++    </div>
++  </aside>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +442,38 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Tabs: keep one tab always open (clicking the active tab does nothing).
++    document.querySelectorAll('.wholesale-tab > summary').forEach((summary) => {
++      summary.addEventListener('click', (e) => {
++        if (summary.parentElement.open) e.preventDefault();
++      });
++    });
++
++    // Coupon: reveal once, never hide again.
++    (() => {
++      const panel = document.getElementById('coupon-panel');
++      const button = document.querySelector('.coupon-btn');
++
++      const markRevealed = () => {
++        button.disabled = true;
++        button.setAttribute('aria-expanded', 'true');
++        button.textContent = 'Coupon Revealed';
++      };
++
++      button.addEventListener('click', () => {
++        panel.hidden = false;
++        markRevealed();
++        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      });
++
++      // Fired when find-in-page reveals the panel; the browser removes
++      // the hidden attribute itself, we just sync the button state.
++      panel.addEventListener('beforematch', markRevealed);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

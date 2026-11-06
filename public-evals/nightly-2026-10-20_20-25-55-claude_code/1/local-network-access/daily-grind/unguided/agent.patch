@@ -1,0 +1,23 @@
+diff --git a/index.html b/index.html
+index 66c9173..d13231c 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,18 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Chrome's Local Network Access: requests from a public site to a private
++    // network or loopback address prompt the user for permission, and must
++    // declare the address space they target. Use this for such requests, e.g.
++    //   fetchLocal('http://localhost:8080/status')
++    //   fetchLocal('http://192.168.1.20/api', { space: 'local' })
++    async function fetchLocal(url, { space = 'loopback', ...init } = {}) {
++      return fetch(url, { ...init, targetAddressSpace: space });
++    }
++    window.fetchLocal = fetchLocal;
++  </script>
++
+ </body>
+ 
+ </html>

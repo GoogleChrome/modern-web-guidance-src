@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+index 7400c85..a8368a5 100644
+--- a/index.html
++++ b/index.html
+@@ -35,29 +35,25 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+-    }
+-
+-    nav::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.75rem 1.5rem;
+     }
+ 
+     .logo {
+-      float: left;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+-      float: right;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      display: inline-block;
+-      margin-left: 20px;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
+     }
+ 
+     nav a {
+@@ -79,19 +75,28 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       color: white;
+       text-align: center;
+-      padding: 15vh 20px 0;
++      padding: 4rem 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 6vw, 3rem);
++      line-height: 1.2;
++    }
++
++    .hero .btn {
++      margin-top: 0.5rem;
+     }
+ 
+     /* Content Sections */
+@@ -101,32 +106,67 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      margin: 20px -10px 0;
++    .section-title {
++      text-align: center;
+     }
+ 
+-    .grid::after {
+-      content: "";
+-      display: table;
+-      clear: both;
++    /* Cards: columns fit the available width; each card spans three
++       subgrid rows so headings, descriptions and buttons line up
++       across a row regardless of content length. */
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
++      gap: 20px;
++      margin-top: 20px;
+     }
+ 
+     .card {
+-      float: left;
+-      width: calc(33.333% - 20px);
+-      margin: 0 10px 20px;
++      display: grid;
++      grid-row: span 3;
++      grid-template-rows: subgrid;
++      row-gap: 10px;
++      justify-items: center;
++      align-content: start;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      container-type: inline-size;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card .btn {
++      align-self: end;
++      margin-top: 5px;
++    }
++
++    /* When a card gets wide (e.g. single-column layouts), left-align its content for readability. */
++    @container (min-width: 480px) {
++      .card > * {
++        justify-self: start;
++        text-align: left;
++      }
++    }
++
++    /* Fallback for browsers without subgrid: stack and pin buttons to the bottom. */
++    @supports not (grid-template-rows: subgrid) {
++      .card {
++        grid-row: auto;
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .card .btn {
++        margin-top: auto;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -134,7 +174,6 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+@@ -183,7 +222,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

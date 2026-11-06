@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -6,8 +6,9 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -151,13 +152,134 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native disclosure controls keep keyboard and expanded states in sync. */
++    #promo-alert {
++      position: relative;
++      block-size: auto;
++      overflow: hidden;
++      background: var(--accent);
++      transition: block-size 400ms ease;
++    }
++
++    #promo-alert:not([open]) {
++      block-size: 0;
++    }
++
++    .promo-message {
++      padding: 14px 64px;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      inset-block-start: 4px;
++      inset-inline-end: 12px;
++      display: grid;
++      place-items: center;
++      inline-size: 44px;
++      block-size: 44px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 1.75rem;
++      line-height: 1;
++    }
++
++    #promo-alert:not([open]) #alert-dismiss {
++      visibility: hidden;
++    }
++
++    .faq {
++      margin-top: 48px;
++    }
++
++    .faq h2 {
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .faq-item {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 20px;
++      cursor: pointer;
++      font-weight: 600;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.5rem;
++      line-height: 1;
++      transition: transform 400ms ease;
++    }
++
++    .faq-item[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    #faq-trigger::-webkit-details-marker,
++    #alert-dismiss::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    #faq-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 400ms ease;
++    }
++
++    .faq-item[open] #faq-content {
++      block-size: auto;
++    }
++
++    .faq-answer {
++      padding: 0 20px 20px;
++    }
++
++    /* Keep native content rendered until the closing animation finishes.
++       Unsupported browsers retain working, instant native disclosures. */
++    .faq-item::details-content,
++    #promo-alert::details-content {
++      transition: content-visibility 400ms allow-discrete;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #faq-content,
++      #faq-trigger::after,
++      .faq-item::details-content,
++      #promo-alert::details-content {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <details id="promo-alert" open>
++    <summary id="alert-dismiss" aria-label="Dismiss promotion">
++      <span aria-hidden="true">&times;</span>
++    </summary>
++    <p class="promo-message"><strong>A little something to perk up your day.</strong> Join Rewards and enjoy a free coffee on your birthday.</p>
++  </details>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +316,20 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger" aria-controls="faq-content">Where does your coffee come from?</summary>
++        <section id="faq-content" aria-labelledby="faq-trigger">
++          <div class="faq-answer">
++            <p>We source our coffee from farmers who share our commitment to quality and ethical growing practices. Every batch is roasted locally to bring out its unique flavor, then brewed fresh for your cup.</p>
++          </div>
++        </section>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

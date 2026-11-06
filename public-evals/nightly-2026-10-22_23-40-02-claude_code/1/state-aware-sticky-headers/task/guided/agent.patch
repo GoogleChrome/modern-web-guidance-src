@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 64px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -37,8 +38,9 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      height: var(--nav-height);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -134,8 +136,40 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers (viewport is the scroll root) */
++    .menu-section {
++      margin-top: 40px;
++      /* Padding changes when stuck; stop scroll anchoring from fighting them */
++      overflow-anchor: none;
++    }
++
++    .sticky-container {
++      position: sticky;
++      top: var(--nav-height);
++      z-index: 10;
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 1.25rem 20px;
++      border-radius: 8px;
++      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s, color 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: #0056b3;
++        color: white;
++        box-shadow: 0 4px 6px rgb(0 0 0 / 0.25);
++        padding: 0.4rem 20px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +228,122 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Hot Coffee</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Classic Drip</h3>
++          <p>Smooth, balanced, and brewed fresh all day.</p>
++          <a href="/menu/classic-drip" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Flat White</h3>
++          <p>Velvety microfoam over a double ristretto.</p>
++          <a href="/menu/flat-white" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cortado</h3>
++          <p>Equal parts espresso and warm milk.</p>
++          <a href="/menu/cortado" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Americano</h3>
++          <p>Espresso lengthened with hot water.</p>
++          <a href="/menu/americano" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Mocha</h3>
++          <p>Dark chocolate meets rich espresso.</p>
++          <a href="/menu/mocha" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Airy foam, bold espresso, perfectly balanced.</p>
++          <a href="/menu/cappuccino" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Iced & Cold</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Iced Latte</h3>
++          <p>Chilled espresso and milk over ice.</p>
++          <a href="/menu/iced-latte" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Silky, cascading and naturally sweet.</p>
++          <a href="/menu/nitro-cold-brew" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Iced Mocha</h3>
++          <p>Chocolatey and refreshing.</p>
++          <a href="/menu/iced-mocha" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Affogato</h3>
++          <p>Espresso poured over vanilla gelato.</p>
++          <a href="/menu/affogato" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Vanilla Cold Foam</h3>
++          <p>Cold brew topped with sweet vanilla foam.</p>
++          <a href="/menu/vanilla-cold-foam" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Iced Americano</h3>
++          <p>Crisp, bold, and simple.</p>
++          <a href="/menu/iced-americano" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="menu-section">
++      <div class="sticky-container">
++        <h2 class="sticky-header">Pastries & Bites</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky layers baked fresh each morning.</p>
++          <a href="/menu/butter-croissant" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Blueberry Muffin</h3>
++          <p>Bursting with wild blueberries.</p>
++          <a href="/menu/blueberry-muffin" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Almond Biscotti</h3>
++          <p>Crunchy, perfect for dunking.</p>
++          <a href="/menu/almond-biscotti" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Cinnamon Roll</h3>
++          <p>Warm, gooey, and generously iced.</p>
++          <a href="/menu/cinnamon-roll" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Banana Bread</h3>
++          <p>Moist and lightly spiced.</p>
++          <a href="/menu/banana-bread" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Avocado Toast</h3>
++          <p>Sourdough, smashed avocado, chili flakes.</p>
++          <a href="/menu/avocado-toast" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

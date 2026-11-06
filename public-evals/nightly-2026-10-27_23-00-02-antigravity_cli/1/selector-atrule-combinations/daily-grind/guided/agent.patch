@@ -1,0 +1,338 @@
+diff --git a/index.html b/index.html
+index 66c9173..05fc08c 100644
+--- a/index.html
++++ b/index.html
+@@ -4,20 +4,156 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
++      color-scheme: light dark;
++      --color-scheme: light;
+ 
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
++      --primary-light: #4e342e;
++      --primary-dark: #3e2723;
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #2c1e1a;
++      --accent-light: #ffab40;
++      --accent-dark: #ffbc66;
++      --text-light: #3e2723;
++      --text-dark: #f5ebe6;
++      --bg-light: #fafafa;
++      --bg-dark: #18110f;
++      --nav-bg-light: #4e342e;
++      --nav-bg-dark: #261815;
++      --nav-text-light: #ffffff;
++      --nav-text-dark: #f5ebe6;
++      --card-bg-light: #ffffff;
++      --card-bg-dark: #261a17;
++      --card-heading-light: #4e342e;
++      --card-heading-dark: #ffcc80;
++      --card-border-light: #e0d6d2;
++      --card-border-dark: #3d2b26;
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #ffab40;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #261815;
++      --btn-hover-bg-light: #3e2723;
++      --btn-hover-bg-dark: #ffbc66;
++      --hero-overlay-light: rgba(24, 15, 12, 0.5);
++      --hero-overlay-dark: rgba(12, 7, 5, 0.72);
++      --hero-text-light: #ffffff;
++      --hero-text-dark: #f5ebe6;
++      --hero-image-light: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      --hero-image-dark: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80');
++      --light-type: ;
++      --dark-type: type("image/do-not-use");
++
++      /* Fallback tokens for browsers without light-dark() support */
++      --primary: var(--primary-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --text: var(--text-light);
++      --light: var(--bg-light);
++      --nav-bg: var(--nav-bg-light);
++      --nav-text: var(--nav-text-light);
++      --card-bg: var(--card-bg-light);
++      --card-heading: var(--card-heading-light);
++      --card-border: var(--card-border-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-text: var(--btn-text-light);
++      --btn-hover-bg: var(--btn-hover-bg-light);
++      --hero-overlay: var(--hero-overlay-light);
++      --hero-text: var(--hero-text-light);
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++        --light-type: type("image/do-not-use");
++        --dark-type: ;
++      }
++
++      &:where(
++        .dark,
++        .theme-dark,
++        [data-theme="dark"],
++        [data-color-scheme="dark"],
++        [theme="dark"],
++        :has(> head > meta[name="color-scheme"][content="dark"])
++      ) {
++        color-scheme: dark;
++        --color-scheme: dark;
++        --light-type: type("image/do-not-use");
++        --dark-type: ;
++      }
++
++      &:where(
++        .light,
++        .theme-light,
++        [data-theme="light"],
++        [data-color-scheme="light"],
++        [theme="light"],
++        :has(> head > meta[name="color-scheme"][content="light"])
++      ) {
++        color-scheme: light;
++        --color-scheme: light;
++        --light-type: ;
++        --dark-type: type("image/do-not-use");
++      }
++
++      @supports not (color: light-dark(white, black)) {
++        @media (prefers-color-scheme: dark) {
++          &:not(:where(.light, .theme-light, [data-theme="light"], [data-color-scheme="light"], [theme="light"])) {
++            --primary: var(--primary-dark);
++            --secondary: var(--secondary-dark);
++            --accent: var(--accent-dark);
++            --text: var(--text-dark);
++            --light: var(--bg-dark);
++            --nav-bg: var(--nav-bg-dark);
++            --nav-text: var(--nav-text-dark);
++            --card-bg: var(--card-bg-dark);
++            --card-heading: var(--card-heading-dark);
++            --card-border: var(--card-border-dark);
++            --btn-bg: var(--btn-bg-dark);
++            --btn-text: var(--btn-text-dark);
++            --btn-hover-bg: var(--btn-hover-bg-dark);
++            --hero-overlay: var(--hero-overlay-dark);
++            --hero-text: var(--hero-text-dark);
++          }
++        }
++
++        &:where(.dark, .theme-dark, [data-theme="dark"], [data-color-scheme="dark"], [theme="dark"]) {
++          --primary: var(--primary-dark);
++          --secondary: var(--secondary-dark);
++          --accent: var(--accent-dark);
++          --text: var(--text-dark);
++          --light: var(--bg-dark);
++          --nav-bg: var(--nav-bg-dark);
++          --nav-text: var(--nav-text-dark);
++          --card-bg: var(--card-bg-dark);
++          --card-heading: var(--card-heading-dark);
++          --card-border: var(--card-border-dark);
++          --btn-bg: var(--btn-bg-dark);
++          --btn-text: var(--btn-text-dark);
++          --btn-hover-bg: var(--btn-hover-bg-dark);
++          --hero-overlay: var(--hero-overlay-dark);
++          --hero-text: var(--hero-text-dark);
++        }
++      }
++
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --light: light-dark(var(--bg-light), var(--bg-dark));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++        --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
++        --card-heading: light-dark(var(--card-heading-light), var(--card-heading-dark));
++        --card-border: light-dark(var(--card-border-light), var(--card-border-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --btn-hover-bg: light-dark(var(--btn-hover-bg-light), var(--btn-hover-bg-dark));
++        --hero-overlay: light-dark(var(--hero-overlay-light), var(--hero-overlay-dark));
++        --hero-text: light-dark(var(--hero-text-light), var(--hero-text-dark));
++      }
+     }
+ 
+     body {
+@@ -25,12 +161,14 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      margin: 0;
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--card-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -49,14 +187,16 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      margin: 0;
++      padding: 0;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,22 +215,36 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image:
++        linear-gradient(var(--hero-overlay), var(--hero-overlay)),
++        image-set(
++          var(--hero-image-light) var(--light-type),
++          var(--hero-image-dark) var(--dark-type)
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
++
++      @supports (background-image: light-dark(url("a"), url("b"))) {
++        background-image:
++          linear-gradient(var(--hero-overlay), var(--hero-overlay)),
++          light-dark(var(--hero-image-light), var(--hero-image-dark));
++      }
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin: 0 0 1rem;
++    }
++
++    .hero p {
++      margin: 0;
+     }
+ 
+     /* Content Sections */
+@@ -100,6 +254,12 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--card-heading);
++      margin: 0;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,31 +268,49 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid var(--card-border);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      margin: 0 0 10px;
++      color: var(--card-heading);
++    }
++
++    .card p {
++      margin: 0;
++    }
++
++    /* Single non-color theme rule block keyed via container style query */
++    @container style(--color-scheme: dark) {
++      .hero {
++        box-shadow: inset 0 -24px 48px rgba(0, 0, 0, 0.45);
++      }
++
++      .card {
++        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
++      font-weight: 600;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+@@ -152,6 +330,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    footer p {
++      margin: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +358,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

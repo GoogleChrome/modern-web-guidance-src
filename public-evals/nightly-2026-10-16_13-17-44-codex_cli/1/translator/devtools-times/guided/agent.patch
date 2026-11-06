@@ -1,0 +1,248 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..8a52250 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -21,6 +21,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <a href={`${baseUrl}translate`} class="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">Translate</a>
+       </div>
+ 
+       <!-- Right: Buttons -->
+diff --git a/src/components/TextTranslator.tsx b/src/components/TextTranslator.tsx
+new file mode 100644
+index 0000000..5a14db7
+--- /dev/null
++++ b/src/components/TextTranslator.tsx
+@@ -0,0 +1,180 @@
++import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
++import type { LocalTranslator } from '../types/translator';
++
++const languages = [
++  ['ar', 'Arabic'], ['bn', 'Bengali'], ['zh', 'Chinese (Simplified)'],
++  ['zh-Hant', 'Chinese (Traditional)'], ['cs', 'Czech'], ['da', 'Danish'],
++  ['nl', 'Dutch'], ['en', 'English'], ['fi', 'Finnish'], ['fr', 'French'],
++  ['de', 'German'], ['el', 'Greek'], ['he', 'Hebrew'], ['hi', 'Hindi'],
++  ['hu', 'Hungarian'], ['id', 'Indonesian'], ['it', 'Italian'], ['ja', 'Japanese'],
++  ['ko', 'Korean'], ['no', 'Norwegian'], ['pl', 'Polish'], ['pt', 'Portuguese'],
++  ['ro', 'Romanian'], ['ru', 'Russian'], ['es', 'Spanish'], ['sv', 'Swedish'],
++  ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
++];
++const limit = 5000;
++const control = 'rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-50';
++
++export default function TextTranslator() {
++  const id = useId();
++  const [source, setSource] = useState('en');
++  const [target, setTarget] = useState('es');
++  const [text, setText] = useState('');
++  const [output, setOutput] = useState('');
++  const [availability, setAvailability] = useState<'checking' | 'ready' | 'unsupported' | 'unavailable' | 'error'>('checking');
++  const [busy, setBusy] = useState(false);
++  const [status, setStatus] = useState('');
++  const [error, setError] = useState('');
++  const [check, setCheck] = useState(0);
++  const translator = useRef<LocalTranslator | null>(null);
++  const mounted = useRef(false);
++  const running = useRef(false);
++
++  useEffect(() => {
++    mounted.current = true;
++    return () => {
++      mounted.current = false;
++      translator.current?.destroy();
++    };
++  }, []);
++
++  useEffect(() => {
++    let cancelled = false;
++    setAvailability('checking');
++    if (!window.Translator) {
++      setAvailability('unsupported');
++      return;
++    }
++    if (source === target) {
++      setAvailability('ready');
++      return;
++    }
++    window.Translator.availability({ sourceLanguage: source, targetLanguage: target })
++      .then(result => {
++        if (!cancelled) setAvailability(result === 'unavailable' ? 'unavailable' : 'ready');
++      })
++      .catch(() => { if (!cancelled) setAvailability('error'); });
++    return () => { cancelled = true; };
++  }, [source, target, check]);
++
++  function invalidate() {
++    setOutput('');
++    setError('');
++    setStatus('');
++  }
++
++  async function translate(event: FormEvent) {
++    event.preventDefault();
++    if (running.current || availability !== 'ready' || !text.trim()) return;
++    running.current = true;
++    setBusy(true);
++    setError('');
++    setOutput('');
++    setStatus('Preparing translation…');
++    let instance: LocalTranslator | null = null;
++    try {
++      if (source === target) {
++        setOutput(text);
++      } else {
++        // Availability is checked ahead of time so create() runs within this user gesture.
++        instance = await window.Translator!.create({
++          sourceLanguage: source,
++          targetLanguage: target,
++          monitor(monitor) {
++            monitor.addEventListener('downloadprogress', event => {
++              if (mounted.current) setStatus(`Downloading language model: ${Math.round(event.loaded * 100)}%`);
++            });
++          },
++        });
++        if (!mounted.current) return;
++        translator.current = instance;
++        setStatus('Translating…');
++        const translated = await instance.translate(text);
++        if (!mounted.current) return;
++        setOutput(translated);
++      }
++      if (mounted.current) setStatus('Translation ready.');
++    } catch {
++      if (mounted.current) {
++        setError('Translation could not be completed. Check your connection if a language model needs downloading, then try again.');
++        setStatus('');
++      }
++    } finally {
++      instance?.destroy();
++      translator.current = null;
++      running.current = false;
++      if (mounted.current) setBusy(false);
++    }
++  }
++
++  async function copy() {
++    try {
++      await navigator.clipboard.writeText(output);
++      if (mounted.current) setStatus('Translation copied.');
++    } catch {
++      if (mounted.current) setError('Could not copy automatically. Select the translated text and copy it manually.');
++    }
++  }
++
++  return (
++    <form onSubmit={translate} aria-busy={busy}>
++      <div className="flex flex-wrap items-end gap-3 mb-4">
++        <div className="flex-1 min-w-40">
++          <label htmlFor={`${id}-source`} className="block text-sm font-semibold mb-2">From</label>
++          <select id={`${id}-source`} value={source} disabled={busy} className={`${control} w-full`}
++            onChange={e => { setSource(e.target.value); setAvailability('checking'); invalidate(); }}>
++            {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
++          </select>
++        </div>
++        <button type="button" disabled={busy || source === target} className={control} aria-label="Swap languages" title="Swap languages"
++          onClick={() => { setSource(target); setTarget(source); setText(output || text); setAvailability('checking'); invalidate(); }}>
++          <span aria-hidden="true">⇄</span> Swap
++        </button>
++        <div className="flex-1 min-w-40">
++          <label htmlFor={`${id}-target`} className="block text-sm font-semibold mb-2">To</label>
++          <select id={`${id}-target`} value={target} disabled={busy} className={`${control} w-full`}
++            onChange={e => { setTarget(e.target.value); setAvailability('checking'); invalidate(); }}>
++            {languages.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
++          </select>
++        </div>
++      </div>
++
++      <div className="grid md:grid-cols-2 border border-gray-300 rounded overflow-hidden">
++        <div className="p-5">
++          <label htmlFor={`${id}-input`} className="block text-sm font-semibold mb-3">Original text</label>
++          <textarea id={`${id}-input`} value={text} lang={source} dir="auto" maxLength={limit} disabled={busy}
++            aria-describedby={`${id}-count`} required placeholder="Type or paste your text here…"
++            className="block w-full min-h-64 resize-y rounded p-2 text-base leading-relaxed focus-visible:outline-2 focus-visible:outline-amber-600"
++            onChange={e => { setText(e.target.value); invalidate(); }} />
++          <div className="flex justify-between items-center text-xs text-gray-500 mt-3">
++            <span id={`${id}-count`}>{text.length.toLocaleString()} / {limit.toLocaleString()} characters</span>
++            <button type="button" disabled={busy || !text} className={`${control} text-xs`} onClick={() => { setText(''); invalidate(); }}>Clear</button>
++          </div>
++        </div>
++        <div className="p-5 bg-gray-50 border-t md:border-t-0 md:border-l border-gray-300">
++          <label htmlFor={`${id}-output`} className="block text-sm font-semibold mb-3">Translation</label>
++          <textarea id={`${id}-output`} value={output} readOnly lang={target} dir="auto" placeholder="Your translation will appear here"
++            className="block w-full min-h-64 resize-y rounded p-2 text-base leading-relaxed focus-visible:outline-2 focus-visible:outline-amber-600" />
++          <div className="flex justify-end mt-3">
++            <button type="button" disabled={!output || busy} className={`${control} text-xs`} onClick={copy}>Copy translation</button>
++          </div>
++        </div>
++      </div>
++
++      <div className="flex flex-wrap items-center gap-4 mt-5">
++        <button type="submit" disabled={busy || availability !== 'ready' || !text.trim()}
++          className="rounded bg-gray-900 text-white font-semibold text-sm px-6 py-3 hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-50 disabled:cursor-not-allowed">
++          {busy ? 'Translating…' : 'Translate text'}
++        </button>
++        <p role="status" className="text-sm text-gray-600">
++          {availability === 'checking' ? 'Checking translation availability…' :
++            availability === 'unsupported' ? 'On-device translation is unavailable in this browser. Try a supported desktop version of Chrome or Edge.' :
++            availability === 'unavailable' ? 'This language pair is unavailable on your device. Choose another pair.' :
++            availability === 'error' ? 'Could not check translation availability.' : status}
++        </p>
++        {availability === 'error' && <button type="button" className={control} onClick={() => setCheck(value => value + 1)}>Retry</button>}
++      </div>
++      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
++      <p className="text-xs text-gray-500 mt-6 leading-relaxed">Text is translated on your device. The first translation may download a language model and requires an internet connection. Machine translations may contain errors.</p>
++    </form>
++  );
++}
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..1086d1c
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,14 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TextTranslator from '../components/TextTranslator';
++---
++
++<Layout title="Translate text | The DevTools Times">
++  <section class="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-14">
++    <p class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Reader tools</p>
++    <h1 class="font-brand text-4xl md:text-5xl text-gray-900 mb-3">Translate text</h1>
++    <p class="text-gray-600 max-w-2xl mb-8">A different language. A new perspective. Paste a passage and translate it into your preferred language.</p>
++    <TextTranslator client:load />
++    <noscript><p class="mt-4 text-gray-700">Enable JavaScript to use the translation tool.</p></noscript>
++  </section>
++</Layout>
+diff --git a/src/types/translator.ts b/src/types/translator.ts
+new file mode 100644
+index 0000000..1ea9538
+--- /dev/null
++++ b/src/types/translator.ts
+@@ -0,0 +1,24 @@
++export interface TranslationOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++}
++
++export interface LocalTranslator {
++  translate(text: string): Promise<string>;
++  destroy(): void;
++}
++
++export interface TranslatorAPI {
++  availability(options: TranslationOptions): Promise<'unavailable' | 'downloadable' | 'downloading' | 'available'>;
++  create(options: TranslationOptions & {
++    monitor(monitor: {
++      addEventListener(type: 'downloadprogress', listener: (event: { loaded: number }) => void): void;
++    }): void;
++  }): Promise<LocalTranslator>;
++}
++
++declare global {
++  interface Window {
++    Translator?: TranslatorAPI;
++  }
++}

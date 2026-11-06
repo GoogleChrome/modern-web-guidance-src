@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+index 1bacf96..396d127 100644
+--- a/index.html
++++ b/index.html
+@@ -31,6 +31,7 @@
+     nav {
+       background: var(--primary);
+       color: white;
++      color: lch(from var(--primary) calc((50 - l) * 1000) 0 0);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +57,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -123,6 +124,8 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
++      color: white;
++      color: lch(from var(--primary) calc((50 - l) * 1000) 0 0);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,10 +135,13 @@
+ 
+     .btn:hover {
+       background: #3e2723;
++      color: white;
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
++      color: lch(from var(--secondary) calc((50 - l) * 1000) 0 0);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +153,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+@@ -206,6 +212,89 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function parseColor(colorStr) {
++        if (!colorStr) return null;
++        const ctx = document.createElement('canvas').getContext('2d');
++        if (!ctx) return null;
++        ctx.fillStyle = colorStr.trim();
++        const computed = ctx.fillStyle;
++        if (computed.startsWith('#')) {
++          let hex = computed.slice(1);
++          if (hex.length === 3) {
++            hex = hex.split('').map(c => c + c).join('');
++          }
++          const num = parseInt(hex, 16);
++          return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
++        }
++        const match = computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
++        if (match) {
++          return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
++        }
++        return null;
++      }
++
++      function getLuminance([r, g, b]) {
++        const a = [r, g, b].map(v => {
++          v /= 255;
++          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
++        });
++        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
++      }
++
++      function getContrastTextColor(bgColorStr) {
++        const rgb = parseColor(bgColorStr);
++        if (!rgb) return null;
++        const lum = getLuminance(rgb);
++        return lum > 0.179 ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
++      }
++
++      function updateContrastColors() {
++        const nav = document.querySelector('nav');
++        const footer = document.querySelector('footer');
++        const buttons = document.querySelectorAll('.btn');
++
++        if (nav) {
++          const navStyle = getComputedStyle(nav);
++          const expected = getContrastTextColor(navStyle.backgroundColor);
++          if (expected && navStyle.color !== expected) {
++            nav.style.color = expected;
++          }
++        }
++
++        if (footer) {
++          const footerStyle = getComputedStyle(footer);
++          const expected = getContrastTextColor(footerStyle.backgroundColor);
++          if (expected && footerStyle.color !== expected) {
++            footer.style.color = expected;
++          }
++        }
++
++        buttons.forEach(btn => {
++          const btnStyle = getComputedStyle(btn);
++          const expected = getContrastTextColor(btnStyle.backgroundColor);
++          if (expected && btnStyle.color !== expected) {
++            btn.style.color = expected;
++          }
++        });
++      }
++
++      updateContrastColors();
++
++      const observer = new MutationObserver(() => {
++        updateContrastColors();
++      });
++
++      observer.observe(document.documentElement, {
++        attributes: true,
++        childList: true,
++        subtree: true,
++        characterData: true
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

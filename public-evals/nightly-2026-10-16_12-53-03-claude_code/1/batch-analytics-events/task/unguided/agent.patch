@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,41 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5/dist/web-vitals.js';
++
++    // Core Web Vitals finalize at different times (mostly when the page is
++    // hidden), so queue them and send one batched request per flush.
++    const queue = [];
++
++    function flush() {
++      if (!queue.length) return;
++      const body = JSON.stringify({
++        url: location.href,
++        metrics: queue.splice(0),
++      });
++      // sendBeacon survives page unload; fall back to keepalive fetch.
++      if (!(navigator.sendBeacon && navigator.sendBeacon('/collect', body))) {
++        fetch('/collect', { method: 'POST', body, keepalive: true });
++      }
++    }
++
++    function enqueue({ name, value, rating, delta, id, navigationType }) {
++      queue.push({ name, value, rating, delta, id, navigationType });
++    }
++
++    onCLS(enqueue);
++    onINP(enqueue);
++    onLCP(enqueue);
++
++    // visibilitychange is the reliable last event on mobile and desktop;
++    // pagehide covers Safari edge cases.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flush();
++    });
++    addEventListener('pagehide', flush);
++  </script>
+ </body>
+ 
+ </html>

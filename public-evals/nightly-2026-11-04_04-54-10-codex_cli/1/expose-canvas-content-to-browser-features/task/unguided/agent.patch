@@ -1,0 +1,414 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,148 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer {
++      margin-top: 56px;
++    }
++
++    .customizer-heading {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .customizer-heading h2 {
++      font-size: 1.8rem;
++      margin-bottom: 4px;
++    }
++
++    .customizer-heading p {
++      color: #79665d;
++    }
++
++    .coffee-studio {
++      position: relative;
++      min-height: 460px;
++      background: #f5eee4;
++      border: 1px solid #e5d9cb;
++      border-radius: 16px;
++      box-shadow: 0 8px 28px #4e342e08;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      height: 100%;
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++    }
++
++    .canvas-layer {
++      position: absolute;
++      top: 0;
++      left: 0;
++      margin: 0;
++    }
++
++    .coffee-controls {
++      padding: 24px;
++      background: #fffdf9;
++      border: 1px solid #e6dccf;
++      border-radius: 12px;
++      box-shadow: 0 4px 16px #4e342e06;
++    }
++
++    .coffee-eyebrow {
++      color: #826246;
++      font-size: 0.68rem;
++      font-weight: 700;
++      letter-spacing: 0.16em;
++      text-transform: uppercase;
++    }
++
++    .coffee-controls h3 {
++      font-size: 1.25rem;
++      margin: 4px 0 18px;
++    }
++
++    .coffee-field {
++      display: block;
++      margin-top: 12px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .coffee-field input,
++    .coffee-field select {
++      display: block;
++      width: 100%;
++      min-height: 44px;
++      margin-top: 5px;
++      padding: 9px 12px;
++      border: 1px solid #d8c9ba;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      font: 400 16px 'Segoe UI', sans-serif;
++    }
++
++    .coffee-field input:focus-visible,
++    .coffee-field select:focus-visible {
++      outline: 2px solid #976b3f;
++      outline-offset: 3px;
++    }
++
++    .coffee-summary {
++      margin-top: 20px;
++      padding-top: 14px;
++      border-top: 1px solid #e9dfd3;
++      font-size: 0.8rem;
++      color: #79665d;
++      overflow-wrap: anywhere;
++    }
++
++    .cup-lettering {
++      text-align: center;
++      color: #fff9ef;
++      pointer-events: none;
++    }
++
++    .cup-lettering small {
++      display: block;
++      font-size: calc(9px * var(--cup-scale, 1));
++      letter-spacing: 0.14em;
++    }
++
++    .cup-lettering strong {
++      display: block;
++      font: italic var(--name-size, 25px) Georgia, serif;
++      margin-top: 6px;
++      overflow-wrap: anywhere;
++      line-height: 1.2;
++    }
++
++    .coffee-caption {
++      text-align: center;
++      pointer-events: none;
++      color: #79665d;
++      font-size: 0.8rem;
++    }
++
++    .coffee-caption strong {
++      display: block;
++      color: var(--primary);
++      font-size: 0.95rem;
++      margin-bottom: 3px;
++    }
++
++    @media (max-width: 600px) {
++      .customizer { margin-top: 40px; }
++      .customizer-heading h2 { font-size: 1.5rem; }
++      .coffee-controls { padding: 20px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +334,53 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <div class="customizer-heading">
++        <h2 id="customizer-title">A little more you. A lot more coffee.</h2>
++        <p>Make your daily cup your own.</p>
++      </div>
++      <div class="coffee-studio" id="coffee-studio">
++        <canvas id="canvas" content="drawable" layoutsubtree aria-label="Your custom coffee cup and drink options">
++          <div class="canvas-layer cup-lettering" id="cup-lettering" drawable>
++            <small>THE DAILY GRIND</small>
++            <strong id="cup-display-name">Your cup</strong>
++          </div>
++          <div class="canvas-layer coffee-caption" id="coffee-caption" drawable>
++            <strong>Crafted to your taste.</strong>
++            <span>A fresh take on your everyday ritual.</span>
++          </div>
++          <form class="canvas-layer coffee-controls" id="coffee-controls" drawable aria-label="Customize your coffee">
++            <p class="coffee-eyebrow">Your cup, your way</p>
++            <h3>Meet your new usual.</h3>
++            <label class="coffee-field" for="cup-name">Name on your cup
++              <input id="cup-name" name="cupName" type="text" maxlength="20" placeholder="e.g. Alex" autocomplete="given-name">
++            </label>
++            <label class="coffee-field" for="coffee-milk">Milk
++              <select id="coffee-milk" name="milk">
++                <option value="whole">Whole milk</option>
++                <option value="oat" selected>Oat milk</option>
++                <option value="almond">Almond milk</option>
++                <option value="none">No milk</option>
++              </select>
++            </label>
++            <label class="coffee-field" for="coffee-syrup">Syrup
++              <select id="coffee-syrup" name="syrup">
++                <option value="none">No syrup</option>
++                <option value="maple" selected>Maple</option>
++                <option value="vanilla">Vanilla</option>
++                <option value="caramel">Caramel</option>
++                <option value="hazelnut">Hazelnut</option>
++              </select>
++            </label>
++            <p class="coffee-summary" id="coffee-summary" role="status" aria-live="polite" aria-atomic="true">Your cup · Oat milk · Maple syrup</p>
++          </form>
++        </canvas>
++      </div>
++      <noscript><p>Please enable JavaScript to preview and customize your coffee.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +391,207 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const studio = document.getElementById('coffee-studio');
++      const ctx = canvas.getContext('2d');
++      const controls = document.getElementById('coffee-controls');
++      const lettering = document.getElementById('cup-lettering');
++      const caption = document.getElementById('coffee-caption');
++      const name = document.getElementById('cup-name');
++      const milk = document.getElementById('coffee-milk');
++      const syrup = document.getElementById('coffee-syrup');
++      const layers = [lettering, caption, controls];
++      const positions = new Map();
++      let nativeHTML = Boolean(ctx && 'drawElementImage' in ctx &&
++        'requestPaint' in canvas && ('content' in canvas || 'layoutSubtree' in canvas));
++      let width = 0;
++      let height = 0;
++      let cupX = 0;
++      let cupY = 0;
++      let cupScale = 1;
++      let pendingFrame = 0;
++
++      function useOverlay() {
++        nativeHTML = false;
++        canvas.removeAttribute('content');
++        canvas.removeAttribute('layoutsubtree');
++        layers.forEach(element => studio.appendChild(element));
++        // Keep the actual controls exposed to assistive technology in the fallback.
++        canvas.setAttribute('aria-hidden', 'true');
++      }
++
++      if (!nativeHTML) useOverlay();
++
++      function place(element, x, y, layerWidth) {
++        element.style.width = `${layerWidth}px`;
++        positions.set(element, { x, y });
++        // Native drawElementImage supplies hit-test geometry; the fallback uses
++        // exactly the same CSS-pixel coordinates for the real DOM controls.
++        element.style.left = nativeHTML ? '0px' : `${x}px`;
++        element.style.top = nativeHTML ? '0px' : `${y}px`;
++      }
++
++      function layout() {
++        width = studio.clientWidth;
++        if (!width) return;
++        const stacked = width < 650;
++        const formWidth = stacked ? width - 40 : Math.min(420, width * 0.45);
++        const formX = stacked ? 20 : width - formWidth - 32;
++        const formY = stacked ? 370 : 28;
++        place(controls, formX, formY, formWidth);
++        height = Math.ceil(Math.max(stacked ? 0 : 460, formY + controls.offsetHeight + 28));
++        studio.style.height = `${height}px`;
++        cupX = stacked ? width / 2 : formX / 2;
++        cupY = stacked ? 0 : (height - 460) / 2 + 24;
++        cupScale = Math.min(1, (stacked ? width : formX) / 350);
++        lettering.style.setProperty('--cup-scale', cupScale);
++        lettering.style.setProperty('--name-size', `${(name.value.trim().length > 10 ? 17 : 25) * cupScale}px`);
++        place(lettering, cupX - 68 * cupScale, cupY + 218 * cupScale, 136 * cupScale);
++        place(caption, stacked ? 16 : 20, cupY + 337 * cupScale, stacked ? width - 32 : formX - 40);
++
++        // Drawing coordinates remain in CSS pixels, independently of backing
++        // resolution, so controls and artwork stay aligned at every pixel ratio.
++        const dpr = window.devicePixelRatio || 1;
++        const pixelWidth = Math.max(1, Math.round(width * dpr));
++        const pixelHeight = Math.max(1, Math.round(height * dpr));
++        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
++        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
++        requestDraw();
++      }
++
++      function ellipse(x, y, rx, ry, fill) {
++        ctx.beginPath();
++        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
++        ctx.fillStyle = fill;
++        ctx.fill();
++      }
++
++      function draw() {
++        if (!ctx || !width) return;
++        ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
++        ctx.clearRect(0, 0, width, height);
++        ctx.save();
++        ctx.translate(cupX, cupY);
++        ctx.scale(cupScale, cupScale);
++
++        ellipse(0, 205, 143, 143, '#ece1d1');
++        ellipse(0, 317, 106, 13, '#4e342e15');
++
++        // A few quiet steam curls above the open cup.
++        ctx.strokeStyle = '#b8a18a';
++        ctx.lineWidth = 2;
++        ctx.lineCap = 'round';
++        [-30, 0, 30].forEach((x, i) => {
++          ctx.beginPath();
++          ctx.moveTo(x, 89);
++          ctx.bezierCurveTo(x - 14, 76, x + 14, 64, x, 50 - i * 4);
++          ctx.stroke();
++        });
++
++        const paper = ctx.createLinearGradient(-90, 0, 90, 0);
++        paper.addColorStop(0, '#e5d6bf');
++        paper.addColorStop(0.35, '#fffaf0');
++        paper.addColorStop(1, '#ecdfcb');
++        ctx.beginPath();
++        ctx.moveTo(-88, 140);
++        ctx.lineTo(88, 140);
++        ctx.lineTo(65, 304);
++        ctx.quadraticCurveTo(0, 326, -65, 304);
++        ctx.closePath();
++        ctx.fillStyle = paper;
++        ctx.fill();
++
++        // The drink surface changes with the selected milk.
++        ellipse(0, 140, 89, 23, '#fffaf0');
++        const milkColors = { whole: '#c69a6d', oat: '#bb8c5f', almond: '#b07b50', none: '#482b20' };
++        ellipse(0, 140, 80, 17, milkColors[milk.value]);
++        if (milk.value !== 'none') {
++          ellipse(-16, 136, 37, 8, '#f4e5cc');
++          ellipse(13, 141, 25, 6, '#efdbb9');
++        }
++        const syrupColors = { maple: '#a9692e', vanilla: '#f3d9a4', caramel: '#c58235', hazelnut: '#855132' };
++        if (syrup.value !== 'none') {
++          ctx.strokeStyle = syrupColors[syrup.value];
++          ctx.lineWidth = 3;
++          ctx.beginPath();
++          ctx.moveTo(-37, 137);
++          ctx.bezierCurveTo(-8, 124, 36, 137, 11, 144);
++          ctx.bezierCurveTo(-9, 150, -25, 139, 6, 135);
++          ctx.stroke();
++        }
++
++        ctx.beginPath();
++        ctx.moveTo(-81, 199);
++        ctx.quadraticCurveTo(0, 212, 81, 199);
++        ctx.lineTo(71, 271);
++        ctx.quadraticCurveTo(0, 288, -71, 271);
++        ctx.closePath();
++        ctx.fillStyle = '#77513b';
++        ctx.fill();
++        ctx.restore();
++
++        if (nativeHTML) {
++          try {
++            layers.forEach(element => {
++              const { x, y } = positions.get(element);
++              // This also maps clicks, selection, and focus to the drawn bounds.
++              ctx.drawElementImage(element, x, y);
++            });
++          } catch (error) {
++            // Partial implementations still get fully usable, aligned controls.
++            useOverlay();
++            layout();
++          }
++        }
++      }
++
++      function requestDraw() {
++        if (nativeHTML) {
++          canvas.requestPaint();
++        } else if (!pendingFrame) {
++          pendingFrame = requestAnimationFrame(() => {
++            pendingFrame = 0;
++            draw();
++          });
++        }
++      }
++
++      function updateOrder() {
++        const cupName = name.value.trim() || 'Your cup';
++        document.getElementById('cup-display-name').textContent = cupName;
++        const milkLabel = milk.selectedOptions[0].text;
++        const syrupLabel = syrup.value === 'none' ? 'No syrup' : `${syrup.selectedOptions[0].text} syrup`;
++        document.getElementById('coffee-summary').textContent = `${cupName} · ${milkLabel} · ${syrupLabel}`;
++        layout();
++      }
++
++      canvas.addEventListener('paint', draw);
++      controls.addEventListener('input', updateOrder);
++      controls.addEventListener('change', updateOrder);
++      controls.addEventListener('submit', event => event.preventDefault());
++      const observer = new ResizeObserver(layout);
++      observer.observe(studio);
++      observer.observe(controls);
++      window.addEventListener('resize', layout);
++
++      // Zoom or moving between monitors can change DPR without a CSS resize.
++      function watchPixelRatio() {
++        const query = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
++        query.addEventListener('change', () => {
++          layout();
++          watchPixelRatio();
++        }, { once: true });
++      }
++      watchPixelRatio();
++      layout();
++      updateOrder();
++      document.fonts.ready.then(layout);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

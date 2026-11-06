@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shaped Features & Promotions */
++    .features-section {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 32px;
++      align-items: center;
++    }
++
++    .barista-spotlight {
++      background: white;
++      padding: 32px 24px;
++      border-radius: 16px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .shaped-avatar {
++      width: 200px;
++      height: 200px;
++      object-fit: cover;
++      -webkit-mask-image: url(#splat-mask);
++      mask-image: url(#splat-mask);
++    }
++
++    .promo-stack {
++      display: flex;
++      flex-direction: column;
++      gap: 24px;
++    }
++
++    .unified-card {
++      display: flex;
++      width: 100%;
++      max-width: 500px;
++      filter: drop-shadow(0 8px 16px rgba(62, 39, 35, 0.25));
++    }
++
++    .card-body {
++      flex: 1;
++      background-color: var(--primary);
++      color: var(--light);
++      padding: 24px;
++      border-top-left-radius: 16px;
++      border-bottom-left-radius: 16px;
++    }
++
++    .card-body h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    .card-accent {
++      width: 60px;
++      background-color: var(--primary);
++      border-top-right-radius: 16px;
++      border-bottom-right-radius: 16px;
++      -webkit-mask-image: url(#card-accent-mask);
++      mask-image: url(#card-accent-mask);
++    }
++
++    .gradient-masked-card {
++      background: linear-gradient(135deg, var(--primary), var(--text));
++      color: white;
++      padding: 40px 24px 24px 24px;
++      border-radius: 16px;
++      text-align: center;
++      max-width: 500px;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-avatar {
++        clip-path: inset(5% round 15px);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +243,21 @@
+ </head>
+ 
+ <body>
+ 
++  <!-- Hidden SVG Masks for Shaped Cutouts -->
++  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
++    <defs>
++      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
++        <path d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z" fill="white" />
++      </mask>
++      <mask id="card-accent-mask" maskContentUnits="objectBoundingBox">
++        <rect width="1" height="1" fill="white" />
++        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +294,31 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="features-section">
++      <div class="barista-spotlight">
++        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" alt="Featured Barista Mateo Rivera" class="shaped-avatar">
++        <h3>Meet Mateo, Head Roaster</h3>
++        <p>Crafting small-batch espresso blends and perfecting seasonal pour-overs for over a decade.</p>
++      </div>
++
++      <div class="promo-stack">
++        <div class="unified-card">
++          <div class="card-body">
++            <h3>Daily Grind Loyalty</h3>
++            <p>Earn beans with every cup and unlock complimentary single-origin tastings and pastry pairings.</p>
++          </div>
++          <div class="card-accent"></div>
++        </div>
++
++        <div class="gradient-masked-card">
++          <h3>Morning Rush Promo</h3>
++          <p>Present code <strong>EARLYBEAN</strong> before 9 AM for 20% off any handcrafted espresso drink.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

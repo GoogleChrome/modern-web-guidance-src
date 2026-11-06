@@ -1,0 +1,332 @@
+diff --git a/index.html b/index.html
+index 66c9173..6c8318a 100644
+--- a/index.html
++++ b/index.html
+@@ -121,7 +121,10 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +138,157 @@
+       background: #3e2723;
+     }
+ 
++    .btn[aria-disabled="true"] {
++      opacity: 0.85;
++      cursor: wait;
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Hide native bars */
++    progress.loading-spinner:indeterminate::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    @property --arc-start {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    @property --arc-end {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    /* Use a custom property to conditionally include the dash animation */
++    @property --progress-dash-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: , progress-dash 3s ease-in-out infinite;
++    }
++
++    progress.loading-spinner:indeterminate {
++      --_from: calc(90deg + var(--arc-start, 0deg));
++      --_to: calc(90deg + var(--arc-end, 158deg));
++      --size: 40px;
++      --thickness: 2px;
++      --spinner-color: #3b82f6;
++      --track-color: #e2e5e7;
++      --spinner-duration: 1.5s;
++      --_used-spinner-duration: var(--spinner-duration);
++      --spinner-timing: linear;
++
++      position: relative;
++      width: var(--size);
++      height: var(--size);
++      border-radius: 50%;
++      appearance: none;
++
++      /* Create the fading trail with dynamic angles */
++      background: conic-gradient(
++          from var(--_from),
++          var(--spinner-color) calc(var(--_to) - var(--_from)),
++          transparent 0
++        )
++        var(--track-color);
++
++      @supports (background-clip: border-area) {
++        background-clip: border-area;
++        border: var(--thickness) solid transparent;
++        background-origin: border-box;
++      }
++
++      /* Fallback: use mask-image to create the ring */
++      @supports not (background-clip: border-area) {
++        --clip-boundary: calc(100% - var(--thickness));
++        mask-image: radial-gradient(
++          farthest-side,
++          transparent var(--clip-boundary),
++          black var(--clip-boundary)
++        );
++        border: 0;
++      }
++
++      /* The dash animation is only included if @property is supported */
++      animation:
++        progress-spin var(--_used-spinner-duration) linear infinite
++        var(--progress-dash-animation, );
++    }
++
++    .btn progress.loading-spinner:indeterminate {
++      --size: 20px;
++      --thickness: 2px;
++      --spinner-color: var(--accent);
++      --track-color: rgba(255, 255, 255, 0.3);
++    }
++
++    .seasonal-loading {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .seasonal-loading[hidden],
++    .drink-details[hidden],
++    progress.loading-spinner[hidden] {
++      display: none;
++    }
++
++    .drink-details {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    @keyframes progress-spin {
++      to {
++        rotate: 1turn;
++      }
++    }
++
++    @keyframes progress-dash {
++      from {
++        --arc-start: 0deg;
++        --arc-end: 3deg;
++      }
++      50% {
++        --arc-start: 100deg;
++        --arc-end: 358deg;
++      }
++      to {
++        --arc-start: 360deg;
++        --arc-end: 363deg;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .loading-spinner,
++      progress.loading-spinner:indeterminate {
++        /* Slow down the animation significantly rather than stopping it entirely,
++           so the user still knows that the process is active. */
++        --_used-spinner-duration: 6s;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,7 +311,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -171,27 +325,51 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" id="order-now-btn">
++      <span class="btn-label">Order Now</span>
++      <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++    </a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="seasonal-loading" id="seasonal-loading" hidden>
++        <progress aria-label="Loading" class="loading-spinner"></progress>
++      </div>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card" data-drink="maple-oat-latte">
++          <h3 id="drink-maple-oat">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="drink-details" hidden>
++            <p>12 oz | 180 cal | Notes of toasted pecan and pure Grade A amber maple.</p>
++          </div>
++          <a href="/menu/seasonal" class="btn view-details-btn" aria-describedby="drink-maple-oat">
++            <span class="btn-label">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card" data-drink="dark-roast-espresso">
++          <h3 id="drink-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="drink-details" hidden>
++            <p>Double shot | 15 cal | Single-origin Sumatra beans with dark cocoa finish.</p>
++          </div>
++          <a href="/menu/espresso" class="btn view-details-btn" aria-describedby="drink-espresso">
++            <span class="btn-label">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card" data-drink="cold-brew">
++          <h3 id="drink-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="drink-details" hidden>
++            <p>16 oz | 5 cal | Small-batch coarse grind steeped cold for low acidity.</p>
++          </div>
++          <a href="/menu/cold-brew" class="btn view-details-btn" aria-describedby="drink-cold-brew">
++            <span class="btn-label">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +385,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const orderNowBtn = document.getElementById('order-now-btn');
++    if (orderNowBtn) {
++      orderNowBtn.addEventListener('click', (event) => {
++        event.preventDefault();
++        if (orderNowBtn.getAttribute('aria-disabled') === 'true') {
++          return;
++        }
++        orderNowBtn.setAttribute('aria-disabled', 'true');
++        orderNowBtn.setAttribute('aria-busy', 'true');
++        const label = orderNowBtn.querySelector('.btn-label');
++        const spinner = orderNowBtn.querySelector('.loading-spinner');
++        if (label) {
++          label.textContent = 'Starting Order...';
++        }
++        if (spinner) {
++          spinner.hidden = false;
++        }
++      });
++    }
++
++    const seasonalSection = document.getElementById('seasonal-favorites');
++    const seasonalLoading = document.getElementById('seasonal-loading');
++    const detailButtons = document.querySelectorAll('.view-details-btn');
++
++    detailButtons.forEach((btn) => {
++      btn.addEventListener('click', (event) => {
++        event.preventDefault();
++        if (btn.getAttribute('aria-disabled') === 'true') {
++          return;
++        }
++
++        const card = btn.closest('.card');
++        const spinner = btn.querySelector('.loading-spinner');
++        const label = btn.querySelector('.btn-label');
++        const details = card ? card.querySelector('.drink-details') : null;
++
++        btn.setAttribute('aria-disabled', 'true');
++        btn.setAttribute('aria-busy', 'true');
++        if (card) {
++          card.setAttribute('aria-busy', 'true');
++        }
++        if (seasonalSection) {
++          seasonalSection.setAttribute('aria-busy', 'true');
++        }
++        if (seasonalLoading) {
++          seasonalLoading.hidden = false;
++        }
++        if (label) {
++          label.textContent = 'Loading Details...';
++        }
++        if (spinner) {
++          spinner.hidden = false;
++        }
++
++        setTimeout(() => {
++          if (details) {
++            details.hidden = false;
++          }
++          if (spinner) {
++            spinner.hidden = true;
++          }
++          if (seasonalLoading) {
++            seasonalLoading.hidden = true;
++          }
++          if (label) {
++            label.textContent = 'Details Loaded';
++          }
++          btn.removeAttribute('aria-busy');
++          if (card) {
++            card.removeAttribute('aria-busy');
++          }
++          if (seasonalSection) {
++            seasonalSection.removeAttribute('aria-busy');
++          }
++        }, 2000);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

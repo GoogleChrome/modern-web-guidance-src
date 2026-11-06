@@ -1,0 +1,97 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,61 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Tooltip */
++    .tooltip-wrap {
++      position: relative;
++      display: inline-block;
++      margin-top: 15px;
++    }
++
++    .tooltip-wrap .btn {
++      margin-top: 0;
++    }
++
++    .tooltip {
++      position: absolute;
++      bottom: calc(100% + 10px);
++      left: 50%;
++      transform: translateX(-50%) translateY(4px);
++      width: 200px;
++      padding: 10px 12px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      line-height: 1.4;
++      text-align: left;
++      border-radius: 6px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
++      z-index: 10;
++    }
++
++    .tooltip::after {
++      content: '';
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      margin-left: -6px;
++      border: 6px solid transparent;
++      border-top-color: var(--primary);
++    }
++
++    .tooltip strong {
++      color: var(--accent);
++    }
++
++    .tooltip-wrap:hover .tooltip,
++    .tooltip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transform: translateX(-50%) translateY(0);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +233,28 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-maple">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-maple"><strong>190 cal</strong> (12 oz)<br>Oat milk, espresso, maple syrup. Vegan. 24g sugar.</span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-espresso">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-espresso"><strong>5 cal</strong> (double shot)<br>Dark roast, bold and smoky. 0g sugar.</span>
++          </span>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <span class="tooltip-wrap">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-coldbrew">View Details</a>
++            <span class="tooltip" role="tooltip" id="tip-coldbrew"><strong>15 cal</strong> (16 oz, black)<br>Steeped 18 hours. Add milk for +40 cal.</span>
++          </span>
+         </div>
+       </div>
+     </section>
+   </main>

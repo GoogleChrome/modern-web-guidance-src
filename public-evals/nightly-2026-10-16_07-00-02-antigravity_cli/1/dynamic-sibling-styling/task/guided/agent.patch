@@ -1,0 +1,295 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,164 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Spectrum Cards */
++    .spectrum-card {
++      --index: var(--sibling-index);
++      --count: var(--sibling-count);
++      background-color: hsl(
++        calc(360deg / var(--count) * var(--index)),
++        70%,
++        50%
++      );
++    }
++
++    .card.spectrum-card {
++      background-color: hsl(
++        calc(360deg / var(--count) * var(--index)),
++        70%,
++        50%
++      );
++    }
++
++    /* Fan Cards Container and Cards */
++    .fan-container {
++      position: relative;
++      display: grid;
++      place-items: center;
++      height: 320px;
++      margin: 40px auto;
++    }
++
++    .fan-card {
++      --index: var(--sibling-index);
++      --count: var(--sibling-count);
++      --center: calc((var(--count) + 1) / 2);
++
++      position: absolute;
++      place-self: center;
++      width: 200px;
++      height: 260px;
++      border-radius: 12px;
++      padding: 24px 20px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
++      background: linear-gradient(145deg, #4e342e, #2e1c18);
++      color: white;
++      transform-origin: bottom center;
++      transform: rotate(calc(10deg * (var(--index) - var(--center))));
++      z-index: var(--index);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      box-sizing: border-box;
++    }
++
++    .fan-card h3 {
++      font-size: 1.25rem;
++      margin-bottom: 8px;
++      color: var(--accent);
++    }
++
++    .fan-card .tier-perk {
++      font-size: 0.9rem;
++      color: var(--secondary);
++    }
++
++    .fan-card .tier-pts {
++      font-size: 1.1rem;
++      font-weight: bold;
++      color: white;
++      border-top: 1px solid rgba(255, 255, 255, 0.2);
++      padding-top: 10px;
++    }
++
++    /* Circle Container and Badges */
++    .circle-container {
++      position: relative;
++      display: grid;
++      place-items: center;
++      width: 420px;
++      height: 420px;
++      margin: 40px auto;
++    }
++
++    .circle-orb {
++      --index: var(--sibling-index);
++      --count: var(--sibling-count);
++      --angle: calc(360deg / var(--count) * var(--index));
++      --radius: 150px;
++
++      position: absolute;
++      place-self: center;
++      width: 90px;
++      height: 90px;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++      border: 2px solid var(--accent);
++      padding: 8px;
++      box-sizing: border-box;
++      transform: translate(
++        calc(cos(var(--angle)) * var(--radius)),
++        calc(sin(var(--angle)) * var(--radius))
++      );
++    }
++
++    .circle-orb strong {
++      font-size: 0.85rem;
++      color: #fff;
++    }
++
++    .circle-orb span {
++      font-size: 0.7rem;
++      color: var(--secondary);
++    }
++
++    @supports (top: calc(sibling-index() * 1px)) {
++      .spectrum-card {
++        --index: sibling-index();
++        --count: sibling-count();
++        background-color: hsl(
++          calc(360deg / sibling-count() * sibling-index()),
++          70%,
++          50%
++        );
++      }
++
++      .card.spectrum-card {
++        background-color: hsl(
++          calc(360deg / sibling-count() * sibling-index()),
++          70%,
++          50%
++        );
++      }
++
++      .fan-card {
++        --index: sibling-index();
++        --count: sibling-count();
++        --center: calc((sibling-count() + 1) / 2);
++        transform: rotate(calc(10deg * (sibling-index() - var(--center))));
++      }
++
++      .circle-orb {
++        --index: sibling-index();
++        --count: sibling-count();
++        --angle: calc(360deg / sibling-count() * sibling-index());
++        transform: translate(
++          calc(cos(var(--angle)) * var(--radius)),
++          calc(sin(var(--angle)) * var(--radius))
++        );
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,25 +333,86 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card spectrum-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Loyalty Rewards</h2>
++      <div class="fan-container">
++        <div class="fan-card">
++          <h3>Bronze</h3>
++          <p class="tier-perk">Free Espresso Shot</p>
++          <span class="tier-pts">100 Pts</span>
++        </div>
++        <div class="fan-card">
++          <h3>Silver</h3>
++          <p class="tier-perk">Free Pastry & Refill</p>
++          <span class="tier-pts">250 Pts</span>
++        </div>
++        <div class="fan-card">
++          <h3>Gold</h3>
++          <p class="tier-perk">10% Off All Orders</p>
++          <span class="tier-pts">500 Pts</span>
++        </div>
++        <div class="fan-card">
++          <h3>Platinum</h3>
++          <p class="tier-perk">Free Bag of Beans</p>
++          <span class="tier-pts">1000 Pts</span>
++        </div>
++        <div class="fan-card">
++          <h3>Diamond</h3>
++          <p class="tier-perk">VIP Tasting Flight</p>
++          <span class="tier-pts">2500 Pts</span>
++        </div>
++      </div>
++    </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Coffee Origins</h2>
++      <div class="circle-container">
++        <div class="circle-orb">
++          <strong>Ethiopia</strong>
++          <span>Yirgacheffe</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Colombia</strong>
++          <span>Huila</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Guatemala</strong>
++          <span>Antigua</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Costa Rica</strong>
++          <span>Tarrazú</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Kenya</strong>
++          <span>Nyeri</span>
++        </div>
++        <div class="circle-orb">
++          <strong>Sumatra</strong>
++          <span>Mandheling</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +423,36 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* MANDATORY: Check for native support before applying fallback */
++    if (typeof CSS === 'undefined' || !CSS.supports('top: calc(sibling-index() * 1px)')) {
++      const updateSiblings = () => {
++        const groups = ['.spectrum-card', '.fan-card', '.circle-orb'];
++        groups.forEach(selector => {
++          const items = document.querySelectorAll(selector);
++          const parents = new Set();
++          items.forEach(el => {
++            if (el.parentElement) parents.add(el.parentElement);
++          });
++          parents.forEach(parent => {
++            const siblings = Array.from(parent.children).filter(el => el.matches(selector));
++            siblings.forEach((item, index) => {
++              /* MANDATORY: Injected index must be 1-based to match native function */
++              item.style.setProperty('--sibling-index', index + 1);
++              item.style.setProperty('--sibling-count', siblings.length);
++            });
++          });
++        });
++      };
++
++      updateSiblings();
++
++      const observer = new MutationObserver(() => updateSiblings());
++      observer.observe(document.body, { childList: true, subtree: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

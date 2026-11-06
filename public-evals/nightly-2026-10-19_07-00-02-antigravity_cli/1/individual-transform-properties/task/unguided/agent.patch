@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,65 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Featured Promo Badge */
++    .promo-badge-container {
++      text-align: center;
++      margin: 15px 0 25px;
++    }
++
++    .target {
++      display: inline-block;
++      padding: 10px 24px;
++      background: linear-gradient(135deg, var(--accent), #ff9800);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.95rem;
++      border-radius: 50px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
++      cursor: pointer;
++      text-align: center;
++      user-select: none;
++
++      /* Stable stacking context without will-change */
++      isolation: isolate;
++      position: relative;
++      z-index: 1;
++
++      /* Two simultaneous animations */
++      animation: spin 6s linear infinite, slide 3s ease-in-out infinite;
++
++      /* Smooth scale transition on hover */
++      scale: 1;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.15;
++    }
++
++    @keyframes spin {
++      from {
++        rotate: 0deg;
++      }
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes slide {
++      0% {
++        translate: -20px 0;
++      }
++      50% {
++        translate: 20px 0;
++      }
++      100% {
++        translate: -20px 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -175,8 +232,11 @@
+   </header>
+ 
+   <main class="container">
+     <section>
++      <div class="promo-badge-container">
++        <div class="target">✨ Featured Promo: 20% Off All Seasonal Favorites! ✨</div>
++      </div>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

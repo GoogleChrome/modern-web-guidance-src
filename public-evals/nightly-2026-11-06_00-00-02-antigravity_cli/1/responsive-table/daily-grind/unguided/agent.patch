@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+index 66c9173..02d1ce4 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,127 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutritional & Pricing Table */
++    .table-section {
++      margin-top: 40px;
++    }
++
++    .table-container {
++      width: 100%;
++      overflow-x: auto;
++      -webkit-overflow-scrolling: touch;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--secondary);
++    }
++
++    .table-container:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .nutrition-table {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++      min-width: 540px;
++    }
++
++    .nutrition-table caption {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      padding: 16px 20px 12px;
++      text-align: left;
++      border-bottom: 2px solid var(--secondary);
++      background-color: white;
++    }
++
++    .nutrition-table caption span {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: var(--text);
++      margin-top: 4px;
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 14px 16px;
++      border-bottom: 1px solid var(--secondary);
++      vertical-align: middle;
++    }
++
++    .nutrition-table thead th {
++      background-color: var(--primary);
++      color: white;
++      font-weight: 600;
++      font-size: 0.9rem;
++      letter-spacing: 0.3px;
++      white-space: nowrap;
++    }
++
++    .nutrition-table tbody th[scope="row"] {
++      background-color: #f5f0ee;
++      color: var(--primary);
++      font-weight: 600;
++      position: sticky;
++      left: 0;
++      z-index: 1;
++      border-right: 1px solid var(--secondary);
++    }
++
++    .nutrition-table thead th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 2;
++      border-right: 1px solid rgba(255, 255, 255, 0.2);
++    }
++
++    .nutrition-table tbody tr:hover td {
++      background-color: #fdfbf9;
++    }
++
++    .nutrition-table tbody tr:hover th[scope="row"] {
++      background-color: #ebe3e0;
++    }
++
++    .nutrition-table tbody tr:last-child th,
++    .nutrition-table tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    .nutrition-table .num {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++      white-space: nowrap;
++    }
++
++    .badge {
++      display: inline-block;
++      background-color: var(--secondary);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 12px;
++      white-space: nowrap;
++    }
++
++    @media (max-width: 600px) {
++      .nutrition-table th,
++      .nutrition-table td {
++        padding: 10px 12px;
++        font-size: 0.9rem;
++      }
++
++      .nutrition-table caption {
++        font-size: 1.1rem;
++        padding: 12px 14px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +315,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="table-section">
++        <div class="table-container" role="region" aria-labelledby="seasonal-nutrition-caption" tabindex="0">
++          <table class="nutrition-table">
++            <caption id="seasonal-nutrition-caption">
++              Nutritional &amp; Pricing Breakdown
++              <span>Standard 12 oz (Medium) serving unless noted. Scroll horizontally on narrow screens to view all columns.</span>
++            </caption>
++            <thead>
++              <tr>
++                <th scope="col">Drink</th>
++                <th scope="col">Serving Size</th>
++                <th scope="col" class="num">Calories</th>
++                <th scope="col" class="num">Total Fat</th>
++                <th scope="col" class="num">Sugar</th>
++                <th scope="col" class="num">Caffeine</th>
++                <th scope="col">Dietary</th>
++                <th scope="col" class="num">Price (S / M / L)</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <th scope="row">Maple Oat Latte</th>
++                <td>12 fl oz</td>
++                <td class="num">210 kcal</td>
++                <td class="num">7 g</td>
++                <td class="num">18 g</td>
++                <td class="num">150 mg</td>
++                <td><span class="badge">Plant-Based</span></td>
++                <td class="num">$4.75 / $5.50 / $6.25</td>
++              </tr>
++              <tr>
++                <th scope="row">Dark Roast Espresso</th>
++                <td>2 fl oz (Double)</td>
++                <td class="num">5 kcal</td>
++                <td class="num">0 g</td>
++                <td class="num">0 g</td>
++                <td class="num">130 mg</td>
++                <td><span class="badge">Vegan &bull; Sugar-Free</span></td>
++                <td class="num">$3.00 / $3.50 / $4.25</td>
++              </tr>
++              <tr>
++                <th scope="row">Cold Brew</th>
++                <td>12 fl oz</td>
++                <td class="num">15 kcal</td>
++                <td class="num">0 g</td>
++                <td class="num">0 g</td>
++                <td class="num">200 mg</td>
++                <td><span class="badge">Vegan &bull; Dairy-Free</span></td>
++                <td class="num">$4.25 / $4.95 / $5.65</td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
+     </section>
+   </main>
+ 

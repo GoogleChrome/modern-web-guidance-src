@@ -1,0 +1,23 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -21,8 +21,9 @@
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -41,8 +42,9 @@
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
++      font-size-adjust: cap-height from-font;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 

@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    if (!CSS.supports('scroll-initial-target', 'nearest')) {
++      document.documentElement.classList.add('needs-scroll-init');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -99,15 +104,68 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    .media-feed {
++      position: relative;
++      height: 480px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: minmax(0, 1fr);
++      align-content: start;
+       gap: 20px;
+       margin-top: 20px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f1ebe8;
+     }
+ 
++    .needs-scroll-init .media-feed {
++      visibility: hidden;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      display: grid;
++      grid-template-columns: 240px minmax(0, 1fr);
++      align-items: center;
++      gap: 24px;
++      text-align: left;
++    }
++
++    .media-card img {
++      display: block;
++      width: 240px;
++      height: 200px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        grid-template-columns: minmax(0, 1fr);
++        gap: 16px;
++      }
++
++      .media-card img {
++        width: 100%;
++        height: 180px;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -174,27 +232,61 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="media-feed" role="region" aria-labelledby="favorites-heading" tabindex="0">
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=640&amp;h=480&amp;q=80" width="640" height="480" alt="Iced latte in a tall glass">
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=640&amp;h=480&amp;q=80" width="640" height="480" alt="A freshly poured cup of espresso">
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card media-card target">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=640&amp;h=480&amp;q=80" width="640" height="480" alt="Cold coffee served over ice">
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&amp;fit=crop&amp;w=640&amp;h=480&amp;q=80" width="640" height="480" alt="Cappuccino topped with milk foam art">
++          <div>
++            <h3>Classic Cappuccino</h3>
++            <p>Rich espresso, steamed milk, and a cloud of silky foam.</p>
++            <a href="/menu/cappuccino" class="btn">View Details</a>
++          </div>
++        </article>
++        <article class="card media-card">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;h=480&amp;q=80" width="640" height="480" alt="Freshly brewed coffee ready to enjoy">
++          <div>
++            <h3>House Blend</h3>
++            <p>A balanced, freshly roasted favorite for your everyday ritual.</p>
++            <a href="/menu/house-blend" class="btn">View Details</a>
++          </div>
++        </article>
+       </div>
++      <script>
++        if (document.documentElement.classList.contains('needs-scroll-init')) {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          // Set only the feed's position before revealing it; never scroll the page.
++          feed.scrollTop = target.offsetTop - (feed.clientHeight - target.offsetHeight) / 2;
++          document.documentElement.classList.remove('needs-scroll-init');
++        }
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

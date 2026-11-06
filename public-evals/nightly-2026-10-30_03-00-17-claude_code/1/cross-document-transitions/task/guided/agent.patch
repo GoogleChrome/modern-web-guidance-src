@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      margin-top: 30px;
++    }
++
++    .pagination .btn {
++      margin-top: 0;
++    }
++
++    .pagination .btn[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .page-status {
++      font-size: 0.9rem;
++    }
++
++    /* Page transitions */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-old(root),
++      ::view-transition-new(root) {
++        animation-duration: 0.4s;
++        animation-timing-function: ease-in-out;
++        animation-fill-mode: both;
++      }
++
++      html:active-view-transition-type(next) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-to-left;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-from-right;
++        }
++      }
++
++      html:active-view-transition-type(previous) {
++        &::view-transition-old(root) {
++          animation-name: slide-out-to-right;
++        }
++
++        &::view-transition-new(root) {
++          animation-name: slide-in-from-left;
++        }
++      }
++    }
++
++    @keyframes slide-out-to-left {
++      to { transform: translateX(-30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-right {
++      from { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-out-to-right {
++      to { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-left {
++      from { transform: translateX(-30%); opacity: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +224,36 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <link rel="expect" href="#main-content" blocking="render">
++  <script>
++    // Register before first render so the listener catches the pagereveal event.
++    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
++      const pageOf = (url) => Number(new URL(url).searchParams.get('page')) || 1;
++
++      // Fallback for browsers without the Navigation API: remember which link was clicked.
++      document.addEventListener('click', (e) => {
++        const link = e.target.closest('#next, #previous');
++        if (link) sessionStorage.setItem('transition-type', link.id);
++      });
++
++      window.addEventListener('pagereveal', (e) => {
++        const storedType = sessionStorage.getItem('transition-type');
++        sessionStorage.removeItem('transition-type');
++        if (!e.viewTransition) return;
++
++        let type = storedType;
++        const activation = window.navigation?.activation;
++        if (activation?.from && activation.entry) {
++          const from = pageOf(activation.from.url);
++          const to = pageOf(activation.entry.url);
++          type = to > from ? 'next' : to < from ? 'previous' : null;
++        }
++        if (type) e.viewTransition.types.add(type);
++      });
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -173,12 +273,12 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main class="container" id="main-content">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" id="seasonal-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -193,8 +293,60 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a href="?page=1" id="previous" class="btn" rel="prev">&larr; Previous</a>
++        <span class="page-status" id="page-status">Page 1 of 3</span>
++        <a href="?page=2" id="next" class="btn" rel="next">Next &rarr;</a>
++      </div>
++      <script>
++        (() => {
++          const items = [
++            { name: 'Maple Oat Latte', desc: 'Creamy oat milk with a hint of Vermont maple syrup.', href: '/menu/seasonal' },
++            { name: 'Dark Roast Espresso', desc: 'Bold, smokey, and perfect for a morning boost.', href: '/menu/espresso' },
++            { name: 'Cold Brew', desc: 'Steeped for 18 hours for maximum smoothness.', href: '/menu/cold-brew' },
++            { name: 'Pumpkin Spice Cappuccino', desc: 'Velvety foam dusted with cinnamon, nutmeg, and clove.', href: '/menu/pumpkin-spice' },
++            { name: 'Chai Tea Latte', desc: 'Black tea simmered with cardamom and ginger.', href: '/menu/chai' },
++            { name: 'Salted Caramel Mocha', desc: 'Rich chocolate and caramel with a pinch of sea salt.', href: '/menu/caramel-mocha' },
++            { name: 'Apple Cider Steamer', desc: 'Warm spiced cider topped with a cinnamon stick.', href: '/menu/cider' },
++            { name: 'Hazelnut Flat White', desc: 'Silky microfoam over a double shot with toasted hazelnut.', href: '/menu/hazelnut' },
++            { name: 'Gingerbread Cortado', desc: 'Equal parts espresso and steamed milk with gingerbread spice.', href: '/menu/gingerbread' },
++          ];
++          const perPage = 3;
++          const totalPages = Math.ceil(items.length / perPage);
++          const requested = Number(new URLSearchParams(location.search).get('page')) || 1;
++          const page = Math.min(Math.max(requested, 1), totalPages);
++
++          const grid = document.getElementById('seasonal-grid');
++          grid.replaceChildren(...items.slice((page - 1) * perPage, page * perPage).map((item) => {
++            const card = document.createElement('div');
++            card.className = 'card';
++            const title = document.createElement('h3');
++            title.textContent = item.name;
++            const desc = document.createElement('p');
++            desc.textContent = item.desc;
++            const link = document.createElement('a');
++            link.className = 'btn';
++            link.href = item.href;
++            link.textContent = 'View Details';
++            card.append(title, desc, link);
++            return card;
++          }));
++
++          const setLink = (link, target) => {
++            if (target < 1 || target > totalPages) {
++              link.removeAttribute('href');
++              link.setAttribute('aria-disabled', 'true');
++            } else {
++              link.href = `?page=${target}`;
++            }
++          };
++          setLink(document.getElementById('previous'), page - 1);
++          setLink(document.getElementById('next'), page + 1);
++          document.getElementById('page-status').textContent = `Page ${page} of ${totalPages}`;
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

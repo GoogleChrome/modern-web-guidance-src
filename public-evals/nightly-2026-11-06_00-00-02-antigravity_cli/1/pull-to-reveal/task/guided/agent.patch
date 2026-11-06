@@ -1,0 +1,142 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,81 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y mandatory;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-to-reveal Search Bar */
++    .search-bar {
++      background: #3e2723;
++      color: white;
++      padding: 0.75rem 5%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      scroll-snap-align: start;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
++    }
++
++    .search-form {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      width: 100%;
++      max-width: 600px;
++    }
++
++    .search-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--secondary);
++      white-space: nowrap;
++      cursor: pointer;
++    }
++
++    .search-input {
++      flex: 1;
++      font-size: 1rem;
++      padding: 0.5rem 0.85rem;
++      min-height: 48px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background-color: var(--light);
++      color: var(--text);
++    }
++
++    .search-input:focus-visible,
++    .search-submit:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .search-submit {
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 0.5rem 1.25rem;
++      min-height: 48px;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .search-submit:hover {
++      background: #ff9100;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +103,10 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +224,26 @@
+ </head>
+ 
+ <body>
+ 
++  <search class="search-bar">
++    <form class="search-form" action="/search" method="GET">
++      <label for="site-search" class="search-label">Search menu &amp; locations:</label>
++      <input
++        type="search"
++        id="site-search"
++        name="q"
++        class="search-input"
++        placeholder="Espresso, oat latte, cold brew..."
++        autocorrect="off"
++        autocapitalize="off"
++        spellcheck="false"
++        enterkeyhint="search"
++      >
++      <button type="submit" class="search-submit">Search</button>
++    </form>
++  </search>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +292,18 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener("DOMContentLoaded", () => {
++      if (!CSS.supports("scroll-initial-target", "nearest")) {
++        const initialTarget = document.querySelector("nav");
++        if (initialTarget) {
++          initialTarget.scrollIntoView({ behavior: "instant", block: "start" });
++        }
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

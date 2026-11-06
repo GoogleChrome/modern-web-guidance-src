@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -92,8 +93,133 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Store Picker in Hero */
++    .store-picker {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      margin-top: 1.25rem;
++      width: 100%;
++      max-width: 280px;
++    }
++
++    .store-picker label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      color: var(--secondary);
++    }
++
++    /* Opt-in to customizable select */
++    .animated-select,
++    .animated-select::picker(select) {
++      appearance: base-select;
++    }
++
++    /* Style the visible trigger and icon rotation */
++    .animated-select {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      padding: 0.75rem 1rem;
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      cursor: pointer;
++      transition: border-color 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .animated-select:hover,
++    .animated-select:focus-visible {
++      border-color: var(--accent);
++      outline: none;
++    }
++
++    .animated-select::picker-icon {
++      color: var(--primary);
++      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    }
++
++    .animated-select:open::picker-icon {
++      transform: rotate(180deg);
++    }
++
++    /*
++     * The Picker Container
++     * Uses top-layer animations with `allow-discrete` visibility hooks
++     */
++    .animated-select::picker(select) {
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.2);
++      padding: 0.5rem;
++      margin-top: 0.25rem;
++      width: anchor-size(width);
++      overflow: hidden;
++
++      /* The crucial transition setting for popover animations */
++      transition:
++        display 0.35s allow-discrete,
++        overlay 0.35s allow-discrete,
++        opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
++        height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
++      opacity: 0;
++      height: 0;
++    }
++
++    /* Open State */
++    .animated-select:open::picker(select) {
++      opacity: 1;
++      height: auto;
++    }
++
++    /* @starting-style to hook the transition on initial popover open */
++    @starting-style {
++      .animated-select:open::picker(select) {
++        opacity: 0;
++        height: 0;
++      }
++    }
++
++    .animated-select option {
++      padding: 0.625rem 0.75rem;
++      border-radius: 6px;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .animated-select option:hover {
++      background-color: #f5ebe6;
++    }
++
++    .animated-select option::checkmark {
++      color: var(--primary);
++    }
++
++    /* MANDATORY: Provide multiple indicators (e.g. bold font and distinct background) for the checked state to avoid color-only state communication */
++    .animated-select option:checked {
++      font-weight: 700;
++      background-color: var(--secondary);
++    }
++
++    /* Ensure copy-paste safety for users with motion sensitivities */
++    @media (prefers-reduced-motion: reduce) {
++      .animated-select::picker(select),
++      .animated-select::picker-icon {
++        transition: none !important;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,8 +296,21 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="store-picker">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" class="animated-select" name="store">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="" selected>Choose your store...</option>
++        <option value="downtown">Downtown Roastery — 124 Main St</option>
++        <option value="westside">Westside Café — 890 Oak Ave</option>
++        <option value="harbor">Harborfront Espresso Bar — Pier 4</option>
++        <option value="uptown">Uptown Lounge — 452 Elm Blvd</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">

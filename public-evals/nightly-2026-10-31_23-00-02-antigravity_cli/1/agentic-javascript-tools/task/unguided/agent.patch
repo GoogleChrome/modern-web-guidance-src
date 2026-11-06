@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,145 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const MENU_ITEMS = [
++        {
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          category: 'Seasonal Favorites',
++          url: '/menu/seasonal'
++        },
++        {
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          category: 'Seasonal Favorites',
++          url: '/menu/espresso'
++        },
++        {
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          category: 'Seasonal Favorites',
++          url: '/menu/cold-brew'
++        }
++      ];
++
++      function getMenuItemsFromDOM() {
++        const cards = document.querySelectorAll('.card');
++        if (!cards.length) return MENU_ITEMS;
++        return Array.from(cards).map((card) => {
++          const nameEl = card.querySelector('h3');
++          const descEl = card.querySelector('p');
++          const linkEl = card.querySelector('a');
++          return {
++            name: nameEl ? nameEl.textContent.trim() : '',
++            description: descEl ? descEl.textContent.trim() : '',
++            category: 'Seasonal Favorites',
++            url: linkEl ? linkEl.getAttribute('href') : ''
++          };
++        });
++      }
++
++      function lookupMenuItem(queryName) {
++        const items = getMenuItemsFromDOM();
++        const normalizedQuery = String(queryName || '').trim().toLowerCase();
++
++        if (!normalizedQuery) {
++          return {
++            found: false,
++            error: 'Please provide a menu item name to look up.',
++            availableItems: items.map((item) => item.name)
++          };
++        }
++
++        const matchedItem =
++          items.find((item) => item.name.toLowerCase() === normalizedQuery) ||
++          items.find(
++            (item) =>
++              item.name.toLowerCase().includes(normalizedQuery) ||
++              normalizedQuery.includes(item.name.toLowerCase())
++          );
++
++        if (!matchedItem) {
++          return {
++            found: false,
++            error: `Menu item "${queryName}" was not found.`,
++            availableItems: items.map((item) => item.name)
++          };
++        }
++
++        return {
++          found: true,
++          item: matchedItem,
++          ...matchedItem,
++          content: [
++            {
++              type: 'text',
++              text: `${matchedItem.name}: ${matchedItem.description} (More info: ${matchedItem.url})`
++            }
++          ]
++        };
++      }
++
++      const TOOL_NAME = 'getMenuItemDetails';
++      const controller = new AbortController();
++
++      const toolDefinition = {
++        name: TOOL_NAME,
++        description:
++          'Look up details for a menu item on The Daily Grind menu (such as the Maple Oat Latte, Dark Roast Espresso, or Cold Brew) by its name.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            name: {
++              type: 'string',
++              description:
++                'The name of the menu item to look up (e.g., "Maple Oat Latte", "Dark Roast Espresso", or "Cold Brew").'
++            }
++          },
++          required: ['name']
++        },
++        annotations: {
++          readOnlyHint: true
++        },
++        execute: async (input) => {
++          const itemName =
++            typeof input === 'string'
++              ? input
++              : input && (input.name || input.itemName || input.item || input.query);
++          return lookupMenuItem(itemName);
++        }
++      };
++
++      const modelContexts = [
++        typeof navigator !== 'undefined' ? navigator.modelContext : undefined,
++        typeof document !== 'undefined' ? document.modelContext : undefined
++      ].filter((ctx, idx, arr) => ctx && arr.indexOf(ctx) === idx);
++
++      modelContexts.forEach((ctx) => {
++        if (typeof ctx.registerTool === 'function') {
++          ctx.registerTool(toolDefinition, { signal: controller.signal });
++        }
++      });
++
++      let cleanedUp = false;
++      function cleanupToolRegistration() {
++        if (cleanedUp) return;
++        cleanedUp = true;
++        controller.abort();
++        modelContexts.forEach((ctx) => {
++          if (typeof ctx.unregisterTool === 'function') {
++            ctx.unregisterTool(TOOL_NAME);
++          }
++        });
++      }
++
++      window.addEventListener('pagehide', cleanupToolRegistration);
++      window.addEventListener('beforeunload', cleanupToolRegistration);
++      window.addEventListener('unload', cleanupToolRegistration);
++    })();
++  </script>
+ </body>
+ 
+ </html>

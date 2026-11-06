@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order-section {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++      max-width: 500px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .order-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--primary);
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 8px;
++      color: var(--text);
++    }
++
++    .form-group select {
++      padding: 10px 12px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 5px;
++      background-color: var(--light);
++      color: var(--text);
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-group select:focus {
++      border-color: var(--primary);
++    }
++
++    /* Error styling triggered only after user interaction or submit attempt */
++    .form-group select:user-invalid,
++    .form-group select.touched:invalid {
++      border-color: #d32f2f;
++      background-color: #ffebee;
++    }
++
++    .error-message {
++      color: #d32f2f;
++      font-size: 0.85rem;
++      margin-top: 6px;
++      display: none;
++    }
++
++    .form-group select:user-invalid ~ .error-message,
++    .form-group select.touched:invalid ~ .error-message {
++      display: block;
++    }
++
++    .order-section .btn {
++      width: 100%;
++      border: none;
++      font-size: 1rem;
++      cursor: pointer;
++      margin-top: 5px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +266,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="order" class="order-section">
++      <h2>Order Online</h2>
++      <form id="order-form" action="/order-online" method="GET">
++        <div class="form-group">
++          <label for="local-shop">Select Your Local Shop *</label>
++          <select id="local-shop" name="shop" required>
++            <option value="">-- Choose a location --</option>
++            <option value="downtown">Downtown Roastery (Main St)</option>
++            <option value="westside">Westside Cafe (Oak Ave)</option>
++            <option value="harbor">Harborfront Espresso Bar</option>
++            <option value="uptown">Uptown Corner Shop</option>
++          </select>
++          <span class="error-message">Please select a local shop to continue with your order.</span>
++        </div>
++        <button type="submit" class="btn">Start Order</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    const shopSelect = document.getElementById('local-shop');
++    const orderForm = document.getElementById('order-form');
++
++    shopSelect.addEventListener('blur', () => {
++      shopSelect.classList.add('touched');
++    });
++
++    shopSelect.addEventListener('change', () => {
++      shopSelect.classList.add('touched');
++    });
++
++    shopSelect.addEventListener('invalid', () => {
++      shopSelect.classList.add('touched');
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

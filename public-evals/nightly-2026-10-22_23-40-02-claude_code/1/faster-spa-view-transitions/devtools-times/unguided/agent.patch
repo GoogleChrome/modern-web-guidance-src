@@ -1,0 +1,34 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cf5bd65 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -53,3 +53,29 @@ const baseUrl = import.meta.env.BASE_URL;
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  // Keep a structural snapshot of each visited view so returning to it
++  // skips the network fetch and re-parse of the page.
++  const MAX_CACHED_VIEWS = 10;
++  const viewCache = new Map<string, Document>();
++
++  document.addEventListener("astro:before-preparation", (event) => {
++    // Form submissions must always hit the server.
++    if (event.formData) return;
++    const cached = viewCache.get(event.to.href);
++    if (!cached) return;
++    event.loader = async () => {
++      event.document = cached.cloneNode(true) as Document;
++    };
++  });
++
++  document.addEventListener("astro:before-swap", (event) => {
++    const key = event.from.href;
++    viewCache.delete(key);
++    viewCache.set(key, document.cloneNode(true) as Document);
++    if (viewCache.size > MAX_CACHED_VIEWS) {
++      viewCache.delete(viewCache.keys().next().value!);
++    }
++  });
++</script>

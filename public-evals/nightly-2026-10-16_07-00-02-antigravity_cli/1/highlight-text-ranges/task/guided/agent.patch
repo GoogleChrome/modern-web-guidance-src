@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,37 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    #search-input {
++      display: block;
++      width: 100%;
++      max-width: 400px;
++      margin: 20px auto 10px;
++      padding: 10px 16px;
++      font-size: 1rem;
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      outline: none;
++      font-family: inherit;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    #search-input:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.2);
++    }
++
++    ::highlight(search-results) {
++      background-color: gold;
++      color: black;
++    }
++
++    mark.search-highlight {
++      background-color: gold;
++      color: black;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +205,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <input type="search" id="search-input" placeholder="Search seasonal favorites..." aria-label="Search seasonal favorites">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +236,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const searchInput = document.getElementById('search-input');
++    const cards = document.querySelectorAll('.grid .card');
++
++    function clearHighlights() {
++      if (typeof CSS !== 'undefined' && CSS.highlights) {
++        CSS.highlights.clear();
++      } else {
++        cards.forEach(card => {
++          const marks = card.querySelectorAll('mark.search-highlight');
++          marks.forEach(mark => mark.replaceWith(...mark.childNodes));
++          card.normalize();
++        });
++      }
++    }
++
++    function handleSearch() {
++      clearHighlights();
++
++      const query = searchInput.value.trim();
++      if (!query) {
++        return;
++      }
++
++      const lowerQuery = query.toLowerCase();
++
++      if (typeof CSS !== 'undefined' && CSS.highlights) {
++        const ranges = [];
++        cards.forEach(card => {
++          const treeWalker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++          let currentNode = treeWalker.nextNode();
++          while (currentNode) {
++            const text = currentNode.textContent;
++            const lowerText = text.toLowerCase();
++            let startIndex = 0;
++            while ((startIndex = lowerText.indexOf(lowerQuery, startIndex)) !== -1) {
++              const range = new Range();
++              range.setStart(currentNode, startIndex);
++              range.setEnd(currentNode, startIndex + lowerQuery.length);
++              ranges.push(range);
++              startIndex += lowerQuery.length;
++            }
++            currentNode = treeWalker.nextNode();
++          }
++        });
++
++        if (ranges.length > 0) {
++          const searchHighlight = new Highlight(...ranges);
++          CSS.highlights.set('search-results', searchHighlight);
++        }
++      } else {
++        cards.forEach(card => {
++          const treeWalker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
++          const textNodes = [];
++          let node = treeWalker.nextNode();
++          while (node) {
++            textNodes.push(node);
++            node = treeWalker.nextNode();
++          }
++
++          for (const textNode of textNodes) {
++            const text = textNode.textContent;
++            let pos = text.toLowerCase().indexOf(lowerQuery);
++            if (pos === -1) continue;
++
++            const frag = document.createDocumentFragment();
++            let last = 0;
++            while (pos !== -1) {
++              frag.append(text.slice(last, pos));
++              const mark = document.createElement('mark');
++              mark.className = 'search-highlight';
++              mark.textContent = text.slice(pos, pos + lowerQuery.length);
++              frag.append(mark);
++              last = pos + lowerQuery.length;
++              pos = text.toLowerCase().indexOf(lowerQuery, last);
++            }
++            frag.append(text.slice(last));
++            textNode.replaceWith(frag);
++          }
++        });
++      }
++    }
++
++    searchInput.addEventListener('input', handleSearch);
++  </script>
+ </body>
+ 
+ </html>

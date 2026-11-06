@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+index 66c9173..264c9aa 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,96 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Accessible Switch & Preferences Section */
++    .preferences {
++      margin-top: 40px;
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .preferences fieldset {
++      border: none;
++    }
++
++    .preferences legend {
++      font-size: 1.5rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .switch-group {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      margin-top: 15px;
++    }
++
++    .switch-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .switch-label {
++      display: inline-flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      cursor: pointer;
++      font-weight: 500;
++    }
++
++    .switch-hint {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: #5d4037;
++    }
++
++    input[type="checkbox"][switch] {
++      --accent-color: var(--primary);
++      --focus-color: var(--accent);
++      accent-color: var(--accent-color, #1769e0);
++      inline-size: 1.25em;
++      aspect-ratio: 1;
++      margin: 0;
++      cursor: pointer;
++      flex-shrink: 0;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--focus-color, #ff8c00);
++      outline-offset: 4px;
++    }
++
++    input[type="checkbox"][switch]:disabled {
++      cursor: not-allowed;
++      opacity: 0.5;
++    }
++
++    .switch-status {
++      margin-top: 15px;
++      font-size: 0.9rem;
++      color: var(--primary);
++      min-height: 1.4em;
++    }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "input-switch-polyfill": "https://cdn.jsdelivr.net/npm/input-switch-polyfill/index.js"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+@@ -195,6 +284,36 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences">
++      <form action="/preferences" method="POST" id="preferences-form">
++        <fieldset>
++          <legend>Order &amp; Notification Preferences</legend>
++          <div class="switch-group">
++            <div class="switch-row">
++              <label for="notifications" class="switch-label">
++                <span>
++                  Enable order-ready notifications
++                  <span id="notifications-help" class="switch-hint">Receive real-time alerts when your coffee is brewed and ready for pickup.</span>
++                </span>
++                <input id="notifications" name="notifications" type="checkbox" switch aria-describedby="notifications-help" checked>
++              </label>
++            </div>
++            <div class="switch-row">
++              <label for="eco-cup" class="switch-label">
++                <span>
++                  Bring reusable cup by default
++                  <span id="eco-cup-help" class="switch-hint">Automatically apply your reusable cup discount to online orders.</span>
++                </span>
++                <input id="eco-cup" name="eco_cup" type="checkbox" switch aria-describedby="eco-cup-help">
++              </label>
++            </div>
++          </div>
++          <p id="switch-status" class="switch-status" aria-live="polite"></p>
++          <button type="submit" class="btn">Save changes</button>
++        </fieldset>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +326,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('input-switch-polyfill');
++    }
++
++    const statusEl = document.getElementById('switch-status');
++    const switches = document.querySelectorAll('input[type="checkbox"][switch]');
++
++    switches.forEach((input) => {
++      input.addEventListener('change', (event) => {
++        const isChecked = event.currentTarget.checked;
++        const label = event.currentTarget.id === 'notifications'
++          ? 'Order-ready notifications'
++          : 'Reusable cup default';
++        if (statusEl) {
++          statusEl.textContent = `${label}: ${isChecked ? 'Enabled' : 'Disabled'}`;
++        }
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

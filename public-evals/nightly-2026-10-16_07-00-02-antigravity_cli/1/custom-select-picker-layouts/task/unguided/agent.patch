@@ -1,0 +1,602 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,10 +73,10 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 65vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -84,16 +84,302 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
++      position: relative;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Roast Select Dropdown & 3-Column Grid Picker */
++    .roast-select-wrapper {
++      position: relative;
++      margin: 24px 0 16px 0;
++      width: 100%;
++      max-width: 420px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      z-index: 100;
++    }
++
++    .roast-label {
++      font-size: 0.85rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      color: var(--accent);
++      margin-bottom: 8px;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
++    }
++
++    .roast-native-select {
++      position: absolute;
++      opacity: 0;
++      pointer-events: none;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      border: 0;
++    }
++
++    .dropdown-trigger {
++      width: 100%;
++      background: rgba(255, 255, 255, 0.95);
++      backdrop-filter: blur(8px);
++      color: var(--text);
++      border: 2px solid var(--accent);
++      border-radius: 30px;
++      padding: 11px 20px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
++      transition: all 0.25s ease;
++      outline: none;
++    }
++
++    .dropdown-trigger:hover,
++    .dropdown-trigger:focus-visible {
++      background: #ffffff;
++      box-shadow: 0 6px 22px rgba(255, 171, 64, 0.45);
++      transform: translateY(-2px);
++    }
++
++    .dropdown-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .trigger-content {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .trigger-icon {
++      font-size: 1.1rem;
++    }
++
++    .trigger-tag {
++      background: #efebe9;
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 12px;
++      border: 1px solid #d7ccc8;
++    }
++
++    .dropdown-chevron {
++      transition: transform 0.3s ease;
++      stroke: var(--primary);
++      flex-shrink: 0;
++    }
++
++    .roast-select-wrapper.open .dropdown-chevron {
++      transform: rotate(180deg);
++    }
++
++    /* Dropdown Options Menu: Rich-Media 3-Column Grid Layout */
++    .dropdown-options-menu {
++      position: absolute;
++      top: calc(100% + 12px);
++      left: 50%;
++      transform: translateX(-50%) translateY(-10px);
++      width: 780px;
++      max-width: calc(100vw - 32px);
++      background: #ffffff;
++      border: 1px solid rgba(78, 52, 46, 0.15);
++      border-radius: 16px;
++      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.1);
++      padding: 16px;
++      z-index: 1050;
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 14px;
++      opacity: 0;
++      visibility: hidden;
++      pointer-events: none;
++      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
++                  transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
++                  visibility 0.25s;
++    }
++
++    .roast-select-wrapper.open .dropdown-options-menu,
++    .dropdown-options-menu.is-open {
++      opacity: 1;
++      visibility: visible;
++      pointer-events: auto;
++      transform: translateX(-50%) translateY(0);
++    }
++
++    /* Option Cards */
++    .roast-option-card {
++      background: #faf8f7;
++      border: 2px solid #e7deda;
++      border-radius: 12px;
++      padding: 12px;
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++      position: relative;
++      transition: all 0.2s ease;
++      user-select: none;
++      outline: none;
++    }
++
++    .roast-option-card:hover {
++      background: #ffffff;
++      border-color: var(--accent);
++      transform: translateY(-3px);
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
++    }
++
++    .roast-option-card:focus-visible {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.4);
++    }
++
++    .roast-option-card.selected,
++    .roast-option-card.is-selected {
++      background: #fffcf8;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(78, 52, 46, 0.15);
++    }
++
++    .card-media {
++      position: relative;
++      width: 100%;
++      height: 110px;
++      border-radius: 8px;
++      overflow: hidden;
++      margin-bottom: 10px;
++    }
++
++    .card-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    .roast-option-card:hover .card-img {
++      transform: scale(1.07);
++    }
++
++    .card-badge {
++      position: absolute;
++      top: 8px;
++      left: 8px;
++      font-size: 0.68rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 3px 8px;
++      border-radius: 12px;
++      backdrop-filter: blur(4px);
++    }
++
++    .badge-light {
++      background: rgba(255, 236, 179, 0.95);
++      color: #6d4c41;
++    }
++
++    .badge-medium {
++      background: rgba(215, 204, 200, 0.95);
++      color: #3e2723;
++    }
++
++    .badge-dark {
++      background: rgba(62, 39, 35, 0.95);
++      color: #ffffff;
++    }
++
++    .card-check {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      width: 22px;
++      height: 22px;
++      background: var(--accent);
++      color: #ffffff;
++      border-radius: 50%;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      opacity: 0;
++      transform: scale(0.5);
++      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
++    }
++
++    .roast-option-card.selected .card-check,
++    .roast-option-card.is-selected .card-check {
++      opacity: 1;
++      transform: scale(1);
++    }
++
++    .card-content {
++      display: flex;
++      flex-direction: column;
++      flex-grow: 1;
++    }
++
++    .card-title {
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .card-desc {
++      font-size: 0.78rem;
++      color: #5d4037;
++      line-height: 1.35;
++      margin-bottom: 10px;
++      flex-grow: 1;
++    }
++
++    .card-footer {
++      border-top: 1px solid #ede7e4;
++      padding-top: 8px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      font-size: 0.72rem;
++      color: #8d6e63;
++    }
++
++    .roast-meter-dots {
++      display: inline-flex;
++      gap: 4px;
++      align-items: center;
++    }
++
++    .roast-meter-dots .meter-dot {
++      width: 7px;
++      height: 7px;
++      border-radius: 50%;
++      background: #d7ccc8;
++    }
++
++    .roast-meter-dots .meter-dot.filled {
++      background: var(--primary);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -170,9 +456,117 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++
++    <!-- Roast Selection Dropdown -->
++    <div class="roast-select-wrapper" id="roastDropdown">
++      <label for="roast-select" class="roast-label">Choose Roast</label>
++
++      <!-- Native select (synced with rich picker) -->
++      <select id="roast-select" name="roast" class="roast-native-select" aria-label="Choose Roast">
++        <option value="light">Light Roast</option>
++        <option value="medium" selected>Medium Roast</option>
++        <option value="dark">Dark Roast</option>
++      </select>
++
++      <!-- Dropdown Trigger Button -->
++      <button type="button" 
++              class="dropdown-trigger" 
++              id="roastTrigger" 
++              aria-haspopup="listbox" 
++              aria-expanded="false" 
++              aria-controls="roastOptionsMenu">
++        <span class="trigger-content">
++          <span class="trigger-icon">☕</span>
++          <span class="trigger-text">Roast: <strong id="selectedRoastLabel">Medium Roast</strong></span>
++          <span class="trigger-tag" id="selectedRoastTag">Smooth & Balanced</span>
++        </span>
++        <svg class="dropdown-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++          <polyline points="6 9 12 15 18 9"></polyline>
++        </svg>
++      </button>
++
++      <!-- Dropdown Options Menu: Rich-Media 3-Column Grid Picker Layout -->
++      <div class="dropdown-options-menu roast-options-menu options-menu" id="roastOptionsMenu" role="listbox" aria-label="Choose Roast">
++        <!-- Light Roast Option -->
++        <div class="roast-option-card roast-option option-card" role="option" data-value="light" aria-selected="false" tabindex="0">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Light Roast Coffee Beans" class="card-img" loading="lazy">
++            <span class="card-badge badge-light">Light</span>
++            <div class="card-check">
++              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </div>
++          </div>
++          <div class="card-content">
++            <h4 class="card-title">Light Roast</h4>
++            <p class="card-desc">Citrus, crisp green apple, floral jasmine notes</p>
++            <div class="card-footer">
++              <span>Body: Mild</span>
++              <div class="roast-meter-dots" title="Roast Level 1 of 3">
++                <span class="meter-dot filled"></span>
++                <span class="meter-dot"></span>
++                <span class="meter-dot"></span>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Medium Roast Option -->
++        <div class="roast-option-card roast-option option-card selected is-selected" role="option" data-value="medium" aria-selected="true" tabindex="0">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Medium Roast Coffee Beans" class="card-img" loading="lazy">
++            <span class="card-badge badge-medium">Medium</span>
++            <div class="card-check">
++              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </div>
++          </div>
++          <div class="card-content">
++            <h4 class="card-title">Medium Roast</h4>
++            <p class="card-desc">Caramel sweetness, milk chocolate, toasted hazelnut</p>
++            <div class="card-footer">
++              <span>Body: Balanced</span>
++              <div class="roast-meter-dots" title="Roast Level 2 of 3">
++                <span class="meter-dot filled"></span>
++                <span class="meter-dot filled"></span>
++                <span class="meter-dot"></span>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Dark Roast Option -->
++        <div class="roast-option-card roast-option option-card" role="option" data-value="dark" aria-selected="false" tabindex="0">
++          <div class="card-media">
++            <img src="https://images.unsplash.com/photo-1580933073521-dc49ac0d4e6a?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Coffee Beans" class="card-img" loading="lazy">
++            <span class="card-badge badge-dark">Dark</span>
++            <div class="card-check">
++              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
++                <polyline points="20 6 9 17 4 12"></polyline>
++              </svg>
++            </div>
++          </div>
++          <div class="card-content">
++            <h4 class="card-title">Dark Roast</h4>
++            <p class="card-desc">Deep dark chocolate, smoky molasses, full body</p>
++            <div class="card-footer">
++              <span>Body: Robust</span>
++              <div class="roast-meter-dots" title="Roast Level 3 of 3">
++                <span class="meter-dot filled"></span>
++                <span class="meter-dot filled"></span>
++                <span class="meter-dot filled"></span>
++              </div>
++            </div>
++          </div>
++        </div>
++      </div>
++    </div>
++
++    <a href="/order-online" class="btn" id="orderNowBtn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +600,162 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const roastData = {
++        light: {
++          name: 'Light Roast',
++          tag: 'Mellow & Crisp'
++        },
++        medium: {
++          name: 'Medium Roast',
++          tag: 'Smooth & Balanced'
++        },
++        dark: {
++          name: 'Dark Roast',
++          tag: 'Bold & Smoky'
++        }
++      };
++
++      const dropdown = document.getElementById('roastDropdown');
++      const trigger = document.getElementById('roastTrigger');
++      const menu = document.getElementById('roastOptionsMenu');
++      const nativeSelect = document.getElementById('roast-select');
++      const labelText = document.getElementById('selectedRoastLabel');
++      const tagText = document.getElementById('selectedRoastTag');
++      const optionCards = Array.from(document.querySelectorAll('.roast-option-card'));
++      const orderBtn = document.getElementById('orderNowBtn');
++
++      function updateSelection(value, emitNative) {
++        if (!roastData[value]) return;
++
++        // Update cards
++        optionCards.forEach(card => {
++          const isSelected = card.getAttribute('data-value') === value;
++          card.classList.toggle('selected', isSelected);
++          card.classList.toggle('is-selected', isSelected);
++          card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
++        });
++
++        // Update trigger display
++        if (labelText) labelText.textContent = roastData[value].name;
++        if (tagText) tagText.textContent = roastData[value].tag;
++
++        // Update native select
++        if (nativeSelect && nativeSelect.value !== value) {
++          nativeSelect.value = value;
++          if (emitNative) {
++            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
++          }
++        }
++
++        // Update Order Now button link
++        if (orderBtn) {
++          orderBtn.href = '/order-online?roast=' + encodeURIComponent(value);
++        }
++      }
++
++      function openDropdown() {
++        dropdown.classList.add('open');
++        menu.classList.add('is-open');
++        trigger.setAttribute('aria-expanded', 'true');
++      }
++
++      function closeDropdown() {
++        dropdown.classList.remove('open');
++        menu.classList.remove('is-open');
++        trigger.setAttribute('aria-expanded', 'false');
++      }
++
++      function toggleDropdown() {
++        if (dropdown.classList.contains('open')) {
++          closeDropdown();
++        } else {
++          openDropdown();
++        }
++      }
++
++      // Trigger button click
++      trigger.addEventListener('click', function (e) {
++        e.stopPropagation();
++        toggleDropdown();
++      });
++
++      // Option cards click & keyboard navigation
++      optionCards.forEach((card, index) => {
++        card.addEventListener('click', function (e) {
++          e.stopPropagation();
++          const val = card.getAttribute('data-value');
++          updateSelection(val, true);
++          closeDropdown();
++          trigger.focus();
++        });
++
++        card.addEventListener('keydown', function (e) {
++          if (e.key === 'Enter' || e.key === ' ') {
++            e.preventDefault();
++            const val = card.getAttribute('data-value');
++            updateSelection(val, true);
++            closeDropdown();
++            trigger.focus();
++          } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
++            e.preventDefault();
++            const next = optionCards[(index + 1) % optionCards.length];
++            next.focus();
++          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
++            e.preventDefault();
++            const prev = optionCards[(index - 1 + optionCards.length) % optionCards.length];
++            prev.focus();
++          } else if (e.key === 'Escape') {
++            e.preventDefault();
++            closeDropdown();
++            trigger.focus();
++          }
++        });
++      });
++
++      // Trigger keydown
++      trigger.addEventListener('keydown', function (e) {
++        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
++          if (!dropdown.classList.contains('open')) {
++            e.preventDefault();
++            openDropdown();
++            const selected = optionCards.find(c => c.classList.contains('selected')) || optionCards[0];
++            if (selected) selected.focus();
++          }
++        } else if (e.key === 'Escape') {
++          closeDropdown();
++        }
++      });
++
++      // Close when clicking outside
++      document.addEventListener('click', function (e) {
++        if (!dropdown.contains(e.target)) {
++          closeDropdown();
++        }
++      });
++
++      // Escape key to close
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && dropdown.classList.contains('open')) {
++          closeDropdown();
++          trigger.focus();
++        }
++      });
++
++      // Sync if native select changes externally
++      if (nativeSelect) {
++        nativeSelect.addEventListener('change', function () {
++          updateSelection(nativeSelect.value, false);
++        });
++      }
++
++      // Initial synchronization
++      const initialVal = nativeSelect ? nativeSelect.value : 'medium';
++      updateSelection(initialVal, false);
++    })();
++  </script>
+ </body>
+ 
+ </html>

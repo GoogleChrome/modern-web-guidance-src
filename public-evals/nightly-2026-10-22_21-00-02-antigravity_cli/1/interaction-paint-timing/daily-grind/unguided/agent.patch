@@ -1,0 +1,1307 @@
+diff --git a/index.html b/index.html
+index 66c9173..fca8d2d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,13 +152,200 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Interactive & Dynamic Content Styles */
++    .logo {
++      cursor: pointer;
++    }
++
++    nav a.active {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      display: block;
++    }
++
++    .btn {
++      cursor: pointer;
++      border: none;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      margin-left: 8px;
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .interaction-toolbar {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      flex-wrap: wrap;
++      margin: 20px 0;
++    }
++
++    .filter-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 8px 16px;
++      border-radius: 20px;
++      cursor: pointer;
++      font-weight: 600;
++      transition: all 0.2s;
++    }
++
++    .filter-btn:hover,
++    .filter-btn.active {
++      background: var(--primary);
++      color: white;
++    }
++
++    .contentful-banner {
++      background: white;
++      border-left: 5px solid var(--accent);
++      border-radius: 8px;
++      padding: 20px;
++      margin-top: 24px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      display: flex;
++      gap: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    .contentful-banner img {
++      width: 120px;
++      height: 90px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    /* Performance Telemetry Panel */
++    .perf-panel {
++      background: #1e1b18;
++      color: #f5f5f5;
++      border-radius: 10px;
++      padding: 20px;
++      margin: 30px auto;
++      max-width: 1100px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.85rem;
++    }
++
++    .perf-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #3e3530;
++      padding-bottom: 12px;
++      margin-bottom: 16px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .perf-panel-header h2 {
++      font-size: 1.05rem;
++      color: var(--accent);
++      margin: 0;
++    }
++
++    .perf-stats-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .perf-stat-card {
++      background: #2b2623;
++      padding: 12px 14px;
++      border-radius: 6px;
++      border: 1px solid #3e3530;
++    }
++
++    .perf-stat-label {
++      color: #bdbdbd;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .perf-stat-value {
++      font-size: 1.35rem;
++      font-weight: bold;
++      color: #80cbc4;
++      margin-top: 4px;
++    }
++
++    .perf-stat-meta {
++      font-size: 0.75rem;
++      color: #9e9e9e;
++      margin-top: 4px;
++      word-break: break-all;
++    }
++
++    .perf-log-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.8rem;
++    }
++
++    .perf-log-table th,
++    .perf-log-table td {
++      text-align: left;
++      padding: 8px 10px;
++      border-bottom: 1px solid #332d29;
++    }
++
++    .perf-log-table th {
++      color: var(--secondary);
++      font-weight: 600;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.72rem;
++      font-weight: 600;
++    }
++
++    .badge-nav {
++      background: #2e7d32;
++      color: white;
++    }
++
++    .badge-icp {
++      background: #ef6c00;
++      color: white;
++    }
++
++    .badge-interaction {
++      background: #1565c0;
++      color: white;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo" data-route="/">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,35 +355,93 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++  <header class="hero" id="hero-section">
++    <h1 elementtiming="hero-heading">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main class="container" id="main-content" containertiming="main-content">
++    <section id="view-section">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="interaction-toolbar" role="toolbar" aria-label="Filter seasonal favorites">
++        <button type="button" class="filter-btn active" data-interaction="filter-all">All Favorites</button>
++        <button type="button" class="filter-btn" data-interaction="filter-hot">Hot Crafted</button>
++        <button type="button" class="filter-btn" data-interaction="filter-iced">Chilled &amp; Cold Brew</button>
++        <button type="button" class="filter-btn" data-interaction="barista-pick">Reveal Barista's Pick</button>
++      </div>
++      <div class="grid" id="cards-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn btn-secondary" data-order-item="Maple Oat Latte">Quick Add</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn btn-secondary" data-order-item="Dark Roast Espresso">Quick Add</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn btn-secondary" data-order-item="Cold Brew">Quick Add</button>
+         </div>
+       </div>
++      <div id="interaction-output"></div>
+     </section>
+   </main>
+ 
++  <section class="perf-panel" aria-label="Contentful Render Performance Telemetry">
++    <div class="perf-panel-header">
++      <h2>Contentful Paint &amp; Navigation Telemetry</h2>
++      <span id="perf-api-status">Observing: soft-navigation, interaction-contentful-paint, largest-contentful-paint, event</span>
++    </div>
++    <div class="perf-stats-grid">
++      <div class="perf-stat-card">
++        <div class="perf-stat-label">Latest Interaction Contentful Paint</div>
++        <div class="perf-stat-value" id="stat-icp-time">—</div>
++        <div class="perf-stat-meta" id="stat-icp-meta">Waiting for user interaction...</div>
++      </div>
++      <div class="perf-stat-card">
++        <div class="perf-stat-label">Latest Client-Side Navigation Render</div>
++        <div class="perf-stat-value" id="stat-softnav-time">—</div>
++        <div class="perf-stat-meta" id="stat-softnav-meta">Waiting for client-side navigation...</div>
++      </div>
++      <div class="perf-stat-card">
++        <div class="perf-stat-label">Initial / Current LCP</div>
++        <div class="perf-stat-value" id="stat-lcp-time">—</div>
++        <div class="perf-stat-meta" id="stat-lcp-meta">Measuring initial page load...</div>
++      </div>
++      <div class="perf-stat-card">
++        <div class="perf-stat-label">Measured Contentful Updates</div>
++        <div class="perf-stat-value" id="stat-total-count">0</div>
++        <div class="perf-stat-meta" id="stat-total-meta">Interactions &amp; soft navigations</div>
++      </div>
++    </div>
++    <div style="overflow-x: auto;">
++      <table class="perf-log-table">
++        <thead>
++          <tr>
++            <th>Type</th>
++            <th>Action / URL</th>
++            <th>Start (ms)</th>
++            <th>Render / Paint (ms)</th>
++            <th>Time to Contentful Update</th>
++            <th>Element / Details</th>
++          </tr>
++        </thead>
++        <tbody id="perf-log-body">
++          <tr id="perf-log-empty">
++            <td colspan="6" style="color: #9e9e9e; text-align: center;">Click any navigation link or interactive button to measure contentful render time.</td>
++          </tr>
++        </tbody>
++      </table>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +452,1001 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // =========================================================================
++      // 1. Performance Measurement State & Public Telemetry Store
++      // =========================================================================
++      const softNavigationsById = new Map();
++      const softNavigationsByInteractionId = new Map();
++      const interactionsById = new Map();
++      let latestSoftNavigation = null;
++      let pendingManualAction = null;
++
++      const metricsStore = {
++        softNavigations: [],
++        interactionContentfulPaints: [],
++        interactions: [],
++        lcpEntries: [],
++        elementTimings: [],
++        containerTimings: [],
++        records: [],
++        getLatestSoftNavigationLCP() {
++          if (latestSoftNavigation && typeof latestSoftNavigation.getLargestInteractionContentfulPaint === 'function') {
++            return latestSoftNavigation.getLargestInteractionContentfulPaint();
++          }
++          for (let i = this.interactionContentfulPaints.length - 1; i >= 0; i--) {
++            const item = this.interactionContentfulPaints[i];
++            if (!latestSoftNavigation || item.navigationId === latestSoftNavigation.navigationId) {
++              return item;
++            }
++          }
++          return null;
++        }
++      };
++
++      window.__perfMetrics = metricsStore;
++      window.performanceMetrics = metricsStore;
++
++      function formatMs(value) {
++        if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
++        return value.toFixed(1) + ' ms';
++      }
++
++      function describeElement(el) {
++        if (!el || !el.tagName) return 'contentful node';
++        const tag = el.tagName.toLowerCase();
++        const id = el.id ? '#' + el.id : '';
++        const cls = el.className && typeof el.className === 'string'
++          ? '.' + el.className.trim().split(/\s+/).join('.')
++          : '';
++        const text = (el.textContent || el.alt || '').trim().slice(0, 28);
++        return tag + id + cls + (text ? ' ("' + text + '")' : '');
++      }
++
++      function updateTelemetryUI(record) {
++        metricsStore.records.push(record);
++
++        const totalEl = document.getElementById('stat-total-count');
++        const totalMetaEl = document.getElementById('stat-total-meta');
++        if (totalEl) {
++          totalEl.textContent = String(metricsStore.records.length);
++        }
++        if (totalMetaEl) {
++          totalMetaEl.textContent =
++            metricsStore.softNavigations.length + ' soft navs, ' +
++            metricsStore.interactionContentfulPaints.length + ' ICP entries';
++        }
++
++        if (record.category === 'soft-navigation' || record.isSoftNavigation) {
++          const navTimeEl = document.getElementById('stat-softnav-time');
++          const navMetaEl = document.getElementById('stat-softnav-meta');
++          if (navTimeEl) navTimeEl.textContent = formatMs(record.duration);
++          if (navMetaEl) {
++            navMetaEl.textContent =
++              (record.url || record.label) +
++              (record.navigationId ? ' | navId: ' + String(record.navigationId).slice(0, 8) : '');
++          }
++        }
++
++        if (record.category === 'interaction-contentful-paint' || record.category === 'interaction') {
++          const icpTimeEl = document.getElementById('stat-icp-time');
++          const icpMetaEl = document.getElementById('stat-icp-meta');
++          if (icpTimeEl) icpTimeEl.textContent = formatMs(record.duration);
++          if (icpMetaEl) {
++            icpMetaEl.textContent =
++              (record.label || 'Interaction') +
++              (record.interactionId ? ' | interactionId: ' + record.interactionId : '') +
++              (record.size ? ' | size: ' + record.size + 'px²' : '');
++          }
++        }
++
++        const tbody = document.getElementById('perf-log-body');
++        if (!tbody) return;
++        const emptyRow = document.getElementById('perf-log-empty');
++        if (emptyRow) emptyRow.remove();
++
++        const tr = document.createElement('tr');
++        const badgeClass =
++          record.category === 'soft-navigation'
++            ? 'badge-nav'
++            : record.category === 'interaction-contentful-paint'
++            ? 'badge-icp'
++            : 'badge-interaction';
++
++        tr.innerHTML =
++          '<td><span class="badge ' + badgeClass + '">' + record.category + '</span></td>' +
++          '<td>' + (record.url || record.label || '—') + '</td>' +
++          '<td>' + formatMs(record.startTime) + '</td>' +
++          '<td>' + formatMs(record.paintTime) + '</td>' +
++          '<td><strong>' + formatMs(record.duration) + '</strong></td>' +
++          '<td>' + (record.elementDescription || '—') + (record.size ? ' (' + record.size + 'px²)' : '') + '</td>';
++
++        tbody.insertBefore(tr, tbody.firstChild);
++      }
++
++      // =========================================================================
++      // 2. Web Performance API Observers
++      //    - 'soft-navigation' (PerformanceSoftNavigation)
++      //    - 'interaction-contentful-paint' (InteractionContentfulPaint)
++      //    - 'largest-contentful-paint' (LargestContentfulPaint)
++      //    - 'event' (PerformanceEventTiming)
++      //    - 'container' & 'element'
++      // =========================================================================
++      function handleSoftNavigationEntry(entry) {
++        latestSoftNavigation = entry;
++        if (entry.navigationId) {
++          softNavigationsById.set(entry.navigationId, entry);
++        }
++        if (entry.interactionId) {
++          softNavigationsByInteractionId.set(entry.interactionId, entry);
++        }
++
++        const lcpFromNav =
++          typeof entry.getLargestInteractionContentfulPaint === 'function'
++            ? entry.getLargestInteractionContentfulPaint()
++            : null;
++
++        const paintTimestamp =
++          entry.presentationTime ||
++          entry.paintTime ||
++          (lcpFromNav && (lcpFromNav.presentationTime || lcpFromNav.renderTime || lcpFromNav.paintTime || lcpFromNav.startTime)) ||
++          (pendingManualAction && pendingManualAction.paintTime) ||
++          performance.now();
++
++        const duration =
++          entry.duration > 0
++            ? entry.duration
++            : Math.max(0, paintTimestamp - entry.startTime);
++
++        const navRecord = {
++          category: 'soft-navigation',
++          entryType: entry.entryType,
++          url: entry.name,
++          label: entry.name,
++          startTime: entry.startTime,
++          paintTime: paintTimestamp,
++          duration: duration,
++          navigationId: entry.navigationId,
++          interactionId: entry.interactionId,
++          elementDescription: lcpFromNav && lcpFromNav.element ? describeElement(lcpFromNav.element) : 'Soft Navigation View',
++          rawEntry: entry
++        };
++
++        metricsStore.softNavigations.push(navRecord);
++        console.log('[Soft Navigation]', {
++          url: entry.name,
++          navigationId: entry.navigationId,
++          interactionId: entry.interactionId,
++          startTime: entry.startTime,
++          paintTime: paintTimestamp,
++          timeToContentfulUpdateMs: duration,
++          entry: entry
++        });
++
++        updateTelemetryUI(navRecord);
++      }
++
++      function handleInteractionContentfulPaintEntry(entry) {
++        // Support both nested entry.largestContentfulPaint (WICG / Chrome 151+)
++        // and direct LCP properties on the InteractionContentfulPaint entry.
++        const lcpObj = entry.largestContentfulPaint || entry;
++
++        const matchingSoftNav =
++          (entry.navigationId && softNavigationsById.get(entry.navigationId)) ||
++          (entry.interactionId && softNavigationsByInteractionId.get(entry.interactionId)) ||
++          latestSoftNavigation;
++
++        const matchingEvent =
++          entry.interactionId ? interactionsById.get(entry.interactionId) : null;
++
++        const paintTimestamp =
++          entry.presentationTime ||
++          entry.paintTime ||
++          lcpObj.presentationTime ||
++          lcpObj.renderTime ||
++          lcpObj.paintTime ||
++          lcpObj.loadTime ||
++          entry.renderTime ||
++          entry.loadTime ||
++          entry.startTime;
++
++        let startTime = entry.startTime;
++        let duration = entry.duration;
++
++        // If duration is 0 (when startTime represents renderTime instead of interaction start),
++        // compute elapsed time relative to the triggering soft-navigation or interaction startTime.
++        if (!duration || duration <= 0) {
++          if (matchingSoftNav && matchingSoftNav.startTime <= paintTimestamp) {
++            startTime = matchingSoftNav.startTime;
++            duration = paintTimestamp - matchingSoftNav.startTime;
++          } else if (matchingEvent && matchingEvent.startTime <= paintTimestamp) {
++            startTime = matchingEvent.startTime;
++            duration = paintTimestamp - matchingEvent.startTime;
++          } else if (pendingManualAction && pendingManualAction.startTime <= paintTimestamp) {
++            startTime = pendingManualAction.startTime;
++            duration = paintTimestamp - pendingManualAction.startTime;
++          } else {
++            duration = Math.max(0, paintTimestamp - startTime);
++          }
++        }
++
++        const targetElement = lcpObj.element || entry.element || null;
++        const size = lcpObj.size || entry.size || 0;
++        const isSoftNav = Boolean(matchingSoftNav && entry.navigationId === matchingSoftNav.navigationId);
++
++        const icpRecord = {
++          category: 'interaction-contentful-paint',
++          entryType: entry.entryType,
++          label: (matchingSoftNav && matchingSoftNav.name) || (pendingManualAction && pendingManualAction.label) || 'User Interaction Paint',
++          url: matchingSoftNav ? matchingSoftNav.name : window.location.pathname,
++          startTime: startTime,
++          paintTime: paintTimestamp,
++          renderTime: lcpObj.renderTime || entry.renderTime || paintTimestamp,
++          loadTime: lcpObj.loadTime || entry.loadTime || 0,
++          duration: duration,
++          interactionId: entry.interactionId,
++          navigationId: entry.navigationId,
++          size: size,
++          element: targetElement,
++          elementDescription: describeElement(targetElement),
++          isSoftNavigation: isSoftNav,
++          rawEntry: entry
++        };
++
++        metricsStore.interactionContentfulPaints.push(icpRecord);
++        console.log('[Interaction Contentful Paint]', {
++          interactionId: entry.interactionId,
++          navigationId: entry.navigationId,
++          startTime: startTime,
++          paintTime: paintTimestamp,
++          renderTime: icpRecord.renderTime,
++          loadTime: icpRecord.loadTime,
++          timeToContentfulUpdateMs: duration,
++          size: size,
++          element: targetElement,
++          largestContentfulPaint: entry.largestContentfulPaint,
++          entry: entry
++        });
++
++        updateTelemetryUI(icpRecord);
++      }
++
++      function handleLCPEntry(entry) {
++        const paintTime = entry.renderTime || entry.loadTime || entry.startTime;
++        const matchingSoftNav =
++          entry.navigationId && softNavigationsById.get(entry.navigationId);
++        const baselineStart = matchingSoftNav ? matchingSoftNav.startTime : 0;
++        const duration = Math.max(0, paintTime - baselineStart);
++
++        metricsStore.lcpEntries.push({
++          startTime: baselineStart,
++          paintTime: paintTime,
++          renderTime: entry.renderTime,
++          loadTime: entry.loadTime,
++          duration: duration,
++          size: entry.size,
++          element: entry.element,
++          navigationId: entry.navigationId,
++          rawEntry: entry
++        });
++
++        const lcpTimeEl = document.getElementById('stat-lcp-time');
++        const lcpMetaEl = document.getElementById('stat-lcp-meta');
++        if (lcpTimeEl) lcpTimeEl.textContent = formatMs(duration);
++        if (lcpMetaEl) {
++          lcpMetaEl.textContent =
++            describeElement(entry.element) +
++            (entry.size ? ' | ' + entry.size + 'px²' : '');
++        }
++
++        console.log('[Largest Contentful Paint]', {
++          duration: duration,
++          renderTime: entry.renderTime,
++          loadTime: entry.loadTime,
++          size: entry.size,
++          element: entry.element,
++          navigationId: entry.navigationId
++        });
++      }
++
++      function handleEventTimingEntry(entry) {
++        if (entry.interactionId) {
++          const existing = interactionsById.get(entry.interactionId);
++          if (!existing || entry.duration > existing.duration) {
++            interactionsById.set(entry.interactionId, entry);
++          }
++          metricsStore.interactions.push({
++            name: entry.name,
++            interactionId: entry.interactionId,
++            startTime: entry.startTime,
++            processingStart: entry.processingStart,
++            processingEnd: entry.processingEnd,
++            duration: entry.duration,
++            navigationId: entry.navigationId,
++            target: entry.target
++          });
++        }
++      }
++
++      if (typeof PerformanceObserver !== 'undefined') {
++        // 1. Observe 'soft-navigation' entries for client-side route transitions
++        try {
++          const softNavObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              handleSoftNavigationEntry(entry);
++            }
++          });
++          softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++        } catch (err) {
++          // Soft navigation entryType not supported in this browser mode
++        }
++
++        // 2. Observe 'interaction-contentful-paint' entries for contentful updates after interactions & soft navigations
++        try {
++          const icpObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              handleInteractionContentfulPaintEntry(entry);
++            }
++          });
++          icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++        } catch (err) {
++          // interaction-contentful-paint entryType not supported in this browser mode
++        }
++
++        // 3. Observe 'largest-contentful-paint' (including soft navigation observations where supported)
++        try {
++          const lcpObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              handleLCPEntry(entry);
++            }
++          });
++          lcpObserver.observe({
++            type: 'largest-contentful-paint',
++            buffered: true,
++            includeSoftNavigationObservations: true
++          });
++        } catch (err) {
++          // largest-contentful-paint not supported
++        }
++
++        // 4. Observe 'event' (Event Timing / INP) to correlate interactionId and startTime
++        try {
++          const eventObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              handleEventTimingEntry(entry);
++            }
++          });
++          eventObserver.observe({
++            type: 'event',
++            buffered: true,
++            durationThreshold: 16,
++            includeSoftNavigationObservations: true
++          });
++        } catch (err) {
++          // Event Timing not supported
++        }
++
++        // 5. Observe 'element' and 'container' timing if supported
++        try {
++          const elementObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              metricsStore.elementTimings.push(entry);
++            }
++          });
++          elementObserver.observe({ type: 'element', buffered: true });
++        } catch (err) {}
++
++        try {
++          const containerObserver = new PerformanceObserver((list) => {
++            for (const entry of list.getEntries()) {
++              metricsStore.containerTimings.push(entry);
++            }
++          });
++          containerObserver.observe({ type: 'container', buffered: true });
++        } catch (err) {}
++      }
++
++      // =========================================================================
++      // 3. Frame-Accurate Paint Timing Tracker for Interactions & Client Navigations
++      //    Measures exact time from interaction startTime to next contentful paint
++      //    (including image decode/load when new images are rendered).
++      // =========================================================================
++      function measureContentfulRender(options) {
++        const startTime =
++          typeof options.eventTimeStamp === 'number' && options.eventTimeStamp > 0
++            ? options.eventTimeStamp
++            : performance.now();
++
++        const actionInfo = {
++          category: options.category || 'interaction',
++          label: options.label || 'Interaction',
++          url: options.url || window.location.pathname,
++          startTime: startTime,
++          paintTime: null,
++          isSoftNavigation: Boolean(options.isSoftNavigation)
++        };
++        pendingManualAction = actionInfo;
++
++        const container = options.container || document.getElementById('main-content');
++
++        // Wait for the browser to commit layout and paint the new DOM content in the next frame
++        requestAnimationFrame(() => {
++          requestAnimationFrame(() => {
++            const domPaintTime = performance.now();
++            actionInfo.paintTime = domPaintTime;
++
++            let largestElement = container ? container.querySelector('img, h2, h3, p') : null;
++            let largestArea = 0;
++
++            if (container) {
++              const candidates = container.querySelectorAll('img, h1, h2, h3, p, .card, .contentful-banner');
++              candidates.forEach((el) => {
++                const rect = el.getBoundingClientRect();
++                const area = Math.round(rect.width * rect.height);
++                if (area > largestArea) {
++                  largestArea = area;
++                  largestElement = el;
++                }
++              });
++            }
++
++            // Record the immediate DOM contentful paint measurement if native observers haven't already logged this exact action
++            const hasNativeICPSupported =
++              typeof PerformanceObserver !== 'undefined' &&
++              Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++              PerformanceObserver.supportedEntryTypes.includes('interaction-contentful-paint');
++
++            const duration = Math.max(0, domPaintTime - startTime);
++
++            if (!hasNativeICPSupported) {
++              const fallbackRecord = {
++                category: options.isSoftNavigation ? 'soft-navigation' : 'interaction-contentful-paint',
++                label: actionInfo.label,
++                url: actionInfo.url,
++                startTime: startTime,
++                paintTime: domPaintTime,
++                duration: duration,
++                size: largestArea,
++                element: largestElement,
++                elementDescription: describeElement(largestElement),
++                isSoftNavigation: Boolean(options.isSoftNavigation)
++              };
++
++              console.log(
++                options.isSoftNavigation
++                  ? '[Client-Side Navigation Contentful Paint]'
++                  : '[User Interaction Contentful Paint]',
++                {
++                  label: fallbackRecord.label,
++                  url: fallbackRecord.url,
++                  startTime: fallbackRecord.startTime,
++                  paintTime: fallbackRecord.paintTime,
++                  timeToContentfulUpdateMs: fallbackRecord.duration,
++                  size: fallbackRecord.size,
++                  element: largestElement
++                }
++              );
++
++              updateTelemetryUI(fallbackRecord);
++            }
++          });
++        });
++      }
++
++      // =========================================================================
++      // 4. Client-Side Routes & Interactive Contentful Views
++      // =========================================================================
++      const ROUTES = {
++        '/': {
++          heroTitle: 'Wake Up Your Senses',
++          heroSubtitle: 'Ethically sourced, locally roasted, delivered to your cup.',
++          heroCtaText: 'Order Now',
++          heroCtaHref: '/order-online',
++          sectionTitle: 'Seasonal Favorites',
++          showFilters: true,
++          cards: [
++            {
++              title: 'Maple Oat Latte',
++              description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++              href: '/menu/seasonal',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Dark Roast Espresso',
++              description: 'Bold, smokey, and perfect for a morning boost.',
++              href: '/menu/espresso',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Cold Brew',
++              description: 'Steeped for 18 hours for maximum smoothness.',
++              href: '/menu/cold-brew',
++              btnText: 'View Details',
++              category: 'iced',
++              image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/menu': {
++          heroTitle: 'Our Artisanal Menu',
++          heroSubtitle: 'Small-batch roasted beans crafted into signature espresso, pour-overs, and cold brews.',
++          heroCtaText: 'Order Online',
++          heroCtaHref: '/order-online',
++          sectionTitle: 'Full Coffeehouse Menu',
++          showFilters: true,
++          cards: [
++            {
++              title: 'Maple Oat Latte',
++              description: 'Velvety steamed oat milk infused with pure Vermont grade-A amber maple.',
++              href: '/menu/seasonal',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Dark Roast Espresso',
++              description: 'Double-pulled single-origin Sumatra with dark cocoa and toasted cedar notes.',
++              href: '/menu/espresso',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Cold Brew Reserve',
++              description: 'Slow-steeped 18 hours in filtered mountain water for a silky chocolate finish.',
++              href: '/menu/cold-brew',
++              btnText: 'View Details',
++              category: 'iced',
++              image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Honey Cardamom Cortado',
++              description: 'Equal parts rich espresso and textured milk finished with wildflower honey.',
++              href: '/menu/seasonal',
++              btnText: 'Customize',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/menu/seasonal': {
++          heroTitle: 'Maple Oat Latte',
++          heroSubtitle: 'Autumn Harvest Collection — 100% Arabica Espresso & Organic Oat Milk',
++          heroCtaText: 'Back to Full Menu',
++          heroCtaHref: '/menu',
++          sectionTitle: 'Seasonal Spotlight & Tasting Notes',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Maple Oat Latte (12oz / 16oz)',
++              description: 'Crafted with double-shot house espresso, barista-grade oat milk, Vermont maple syrup, and a dusting of nutmeg.',
++              href: '/order-online',
++              btnText: 'Order This Drink',
++              image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Spiced Pecan Flat White',
++              description: 'Micro-foamed whole milk poured over ristretto shots with roasted pecan infusion.',
++              href: '/order-online',
++              btnText: 'Order This Drink',
++              image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/menu/espresso': {
++          heroTitle: 'Dark Roast Espresso',
++          heroSubtitle: 'High-altitude beans roasted to perfection for an unmistakable crema.',
++          heroCtaText: 'Back to Full Menu',
++          heroCtaHref: '/menu',
++          sectionTitle: 'Espresso Bar Selections',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Signature Double Espresso',
++              description: 'Full-bodied intensity with notes of bittersweet bakers chocolate and caramelized sugar.',
++              href: '/order-online',
++              btnText: 'Order Now',
++              image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Traditional Macchiato',
++              description: 'Rich double espresso marked with a dollop of aerated steamed milk.',
++              href: '/order-online',
++              btnText: 'Order Now',
++              image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/menu/cold-brew': {
++          heroTitle: 'Artisanal Cold Brew',
++          heroSubtitle: 'Never heated, zero bitterness — steeped 18 hours for pure refreshment.',
++          heroCtaText: 'Back to Full Menu',
++          heroCtaHref: '/menu',
++          sectionTitle: 'Cold Brew & Nitro Bar',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Classic 18-Hour Cold Brew',
++              description: 'Coarse-ground Colombian beans steeped cold for a naturally sweet, smooth profile.',
++              href: '/order-online',
++              btnText: 'Order Now',
++              image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Vanilla Sweet Cream Nitro',
++              description: 'Cascading nitrogen-infused cold brew topped with house-made Madagascar vanilla cream.',
++              href: '/order-online',
++              btnText: 'Order Now',
++              image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/locations': {
++          heroTitle: 'Visit Our Coffeehouses',
++          heroSubtitle: 'Neighborhood gathering spaces with fresh pastries and live roasting.',
++          heroCtaText: 'Order Pickup',
++          heroCtaHref: '/order-online',
++          sectionTitle: 'Roastery & Cafe Locations',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Downtown Roastery & Tasting Room',
++              description: '412 Artisan Way — Open daily 6:00 AM to 8:00 PM. Features pour-over bar & patio seating.',
++              href: '/order-online',
++              btnText: 'Order Pickup Here',
++              image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Waterfront Espresso Bar',
++              description: '88 Harbor Pier — Open daily 6:30 AM to 7:00 PM. Express walk-up window available.',
++              href: '/order-online',
++              btnText: 'Order Pickup Here',
++              image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/rewards': {
++          heroTitle: 'Daily Grind Rewards',
++          heroSubtitle: 'Earn 2 Beans for every $1 spent toward free handcrafted drinks and whole-bean bags.',
++          heroCtaText: 'Redeem Now',
++          heroCtaHref: '/order-online',
++          sectionTitle: 'Your Member Perks (240 Beans Available)',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Free Any Size Handcrafted Drink',
++              description: 'Redeem 150 Beans for any seasonal latte, espresso, or cold brew with custom modifiers.',
++              href: '/order-online',
++              btnText: 'Apply Reward',
++              image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Take-Home 12oz Whole Bean Bag',
++              description: 'Redeem 300 Beans for a freshly roasted bag of our House Blend or Single Origin.',
++              href: '/menu',
++              btnText: 'Browse Roasts',
++              image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/account': {
++          heroTitle: 'My Coffee Profile',
++          heroSubtitle: 'Manage saved drink customizations, pickup locations, and bean subscriptions.',
++          heroCtaText: 'Start New Order',
++          heroCtaHref: '/order-online',
++          sectionTitle: 'Saved Favorites & Subscriptions',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Usual Morning Order',
++              description: '16oz Maple Oat Latte (Extra Shot, Warm) — Ready for 1-click pickup at Downtown Roastery.',
++              href: '/order-online',
++              btnText: 'Reorder in 1 Click',
++              image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Bi-Weekly Roaster Subscription',
++              description: 'Next shipment: Ethiopian Yirgacheffe Whole Bean (2 lbs) arriving Friday.',
++              href: '/menu',
++              btnText: 'Manage Subscription',
++              image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/order-online': {
++          heroTitle: 'Order Ahead for Express Pickup',
++          heroSubtitle: 'Freshly pulled and waiting at the bar when you walk in.',
++          heroCtaText: 'Explore Menu',
++          heroCtaHref: '/menu',
++          sectionTitle: 'Select Items for Pickup',
++          showFilters: true,
++          cards: [
++            {
++              title: 'Maple Oat Latte — $5.75',
++              description: 'Prepared fresh with organic oat milk and pure Vermont maple.',
++              href: '/menu/seasonal',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: 'Dark Roast Espresso — $3.75',
++              description: 'Rich double shot pulled to order.',
++              href: '/menu/espresso',
++              btnText: 'View Details',
++              category: 'hot',
++              image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++            },
++            {
++              title: '18-Hour Cold Brew — $4.95',
++              description: 'Served over artisan ice.',
++              href: '/menu/cold-brew',
++              btnText: 'View Details',
++              category: 'iced',
++              image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/logout': {
++          heroTitle: 'See You Tomorrow Morning',
++          heroSubtitle: 'You have been safely signed out of your Daily Grind account.',
++          heroCtaText: 'Return Home',
++          heroCtaHref: '/',
++          sectionTitle: 'Signed Out Successfully',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Continue as Guest',
++              description: 'Browse our seasonal menu or find a local coffeehouse near you.',
++              href: '/menu',
++              btnText: 'Browse Menu',
++              image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/about': {
++          heroTitle: 'Our Roasting Story',
++          heroSubtitle: 'Direct-trade partnerships with family farms since 2014.',
++          heroCtaText: 'Explore Menu',
++          heroCtaHref: '/menu',
++          sectionTitle: 'Crafted from Seed to Cup',
++          showFilters: false,
++          cards: [
++            {
++              title: '100% Direct Trade Beans',
++              description: 'We work directly with growers in Colombia, Ethiopia, and Guatemala to ensure fair wages and sustainable harvests.',
++              href: '/locations',
++              btnText: 'Visit Our Roastery',
++              image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/careers': {
++          heroTitle: 'Join The Daily Grind Team',
++          heroSubtitle: 'Passionate baristas, roasters, and cafe managers wanted.',
++          heroCtaText: 'View Locations',
++          heroCtaHref: '/locations',
++          sectionTitle: 'Open Positions',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Lead Barista & Coffee Educator',
++              description: 'Full-time role at our Downtown Roastery with competitive pay, health benefits, and Unlimited Coffee perks.',
++              href: '/contact',
++              btnText: 'Apply Now',
++              image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/contact': {
++          heroTitle: 'Get in Touch',
++          heroSubtitle: 'Questions about wholesale beans, catering, or your recent visit? We are here to help.',
++          heroCtaText: 'Find a Cafe',
++          heroCtaHref: '/locations',
++          sectionTitle: 'Contact Our Roastery Team',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Roastery Support & Wholesale',
++              description: 'Email hello@dailygrind.coffee or call (555) 019-2834 Monday through Friday, 7 AM – 6 PM.',
++              href: '/menu',
++              btnText: 'Back to Menu',
++              image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        },
++        '/privacy-policy': {
++          heroTitle: 'Privacy & Transparency',
++          heroSubtitle: 'How we protect your account and loyalty preferences.',
++          heroCtaText: 'Return Home',
++          heroCtaHref: '/',
++          sectionTitle: 'Privacy Commitment',
++          showFilters: false,
++          cards: [
++            {
++              title: 'Your Data Stays Yours',
++              description: 'We only use your order history to calculate Daily Grind Rewards and remember your favorite drink customizations.',
++              href: '/',
++              btnText: 'Back Home',
++              image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80'
++            }
++          ]
++        }
++      };
++
++      function renderRouteContent(path, eventTimeStamp, isPopState) {
++        const normalizedPath = ROUTES[path] ? path : '/menu';
++        const routeData = ROUTES[normalizedPath];
++
++        // Update active nav link
++        document.querySelectorAll('nav a').forEach((link) => {
++          link.classList.toggle('active', link.getAttribute('href') === path);
++        });
++
++        // Replace Hero content with new DOM nodes to trigger contentful paint
++        const hero = document.getElementById('hero-section');
++        if (hero) {
++          hero.innerHTML =
++            '<h1 elementtiming="hero-heading">' + routeData.heroTitle + '</h1>' +
++            '<p>' + routeData.heroSubtitle + '</p>' +
++            '<a href="' + routeData.heroCtaHref + '" class="btn">' + routeData.heroCtaText + '</a>';
++        }
++
++        // Replace Main container view with new contentful elements (headings, images, cards)
++        const main = document.getElementById('main-content');
++        if (main) {
++          const filterToolbarHtml = routeData.showFilters
++            ? '<div class="interaction-toolbar" role="toolbar" aria-label="Filter items">' +
++                '<button type="button" class="filter-btn active" data-interaction="filter-all">All Favorites</button>' +
++                '<button type="button" class="filter-btn" data-interaction="filter-hot">Hot Crafted</button>' +
++                '<button type="button" class="filter-btn" data-interaction="filter-iced">Chilled &amp; Cold Brew</button>' +
++                '<button type="button" class="filter-btn" data-interaction="barista-pick">Reveal Barista\'s Pick</button>' +
++              '</div>'
++            : '';
++
++          const cardsHtml = routeData.cards
++            .map(
++              (card) =>
++                '<div class="card" data-category="' + (card.category || 'all') + '">' +
++                  (card.image
++                    ? '<img src="' + card.image + '" alt="' + card.title + '" crossorigin="anonymous" elementtiming="card-image">'
++                    : '') +
++                  '<h3>' + card.title + '</h3>' +
++                  '<p>' + card.description + '</p>' +
++                  '<a href="' + card.href + '" class="btn">' + card.btnText + '</a>' +
++                  '<button type="button" class="btn btn-secondary" data-order-item="' + card.title + '">Quick Add</button>' +
++                '</div>'
++            )
++            .join('');
++
++          main.innerHTML =
++            '<section id="view-section">' +
++              '<h2 style="text-align: center;" elementtiming="section-heading">' + routeData.sectionTitle + '</h2>' +
++              filterToolbarHtml +
++              '<div class="grid" id="cards-grid">' + cardsHtml + '</div>' +
++              '<div id="interaction-output"></div>' +
++            '</section>';
++        }
++
++        measureContentfulRender({
++          category: 'soft-navigation',
++          label: 'Navigate to ' + path,
++          url: path,
++          eventTimeStamp: eventTimeStamp,
++          isSoftNavigation: !isPopState,
++          container: main
++        });
++      }
++
++      function handleUserInteractionUpdate(actionType, label, eventTimeStamp) {
++        const output = document.getElementById('interaction-output');
++        const grid = document.getElementById('cards-grid');
++
++        if (actionType && actionType.startsWith('filter-') && grid) {
++          const filterCategory = actionType.replace('filter-', '');
++          const currentPath = window.location.pathname;
++          const routeData = ROUTES[currentPath] || ROUTES['/'];
++          const filteredCards = routeData.cards.filter(
++            (c) => filterCategory === 'all' || !c.category || c.category === filterCategory
++          );
++
++          grid.innerHTML = filteredCards
++            .map(
++              (card) =>
++                '<div class="card">' +
++                  '<img src="' + card.image + '" alt="' + card.title + '" crossorigin="anonymous" elementtiming="filtered-card-image">' +
++                  '<h3>' + card.title + '</h3>' +
++                  '<p>' + card.description + '</p>' +
++                  '<a href="' + card.href + '" class="btn">' + card.btnText + '</a>' +
++                  '<button type="button" class="btn btn-secondary" data-order-item="' + card.title + '">Quick Add</button>' +
++                '</div>'
++            )
++            .join('');
++        }
++
++        if (output) {
++          output.innerHTML =
++            '<div class="contentful-banner" elementtiming="interaction-banner">' +
++              '<img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80" alt="Freshly crafted coffee" crossorigin="anonymous">' +
++              '<div>' +
++                '<h3>' + label + '</h3>' +
++                '<p>Freshly prepared by our baristas using ethically sourced beans. Ready for pickup in 4 minutes.</p>' +
++              '</div>' +
++            '</div>';
++        }
++
++        measureContentfulRender({
++          category: 'interaction-contentful-paint',
++          label: label,
++          url: window.location.pathname,
++          eventTimeStamp: eventTimeStamp,
++          isSoftNavigation: false,
++          container: output || grid
++        });
++      }
++
++      // =========================================================================
++      // 5. Event Delegation for Client-Side Navigations & User Interactions
++      // =========================================================================
++      document.addEventListener('click', (event) => {
++        const logoEl = event.target.closest('.logo[data-route]');
++        if (logoEl) {
++          event.preventDefault();
++          const targetPath = logoEl.getAttribute('data-route') || '/';
++          history.pushState({ path: targetPath }, '', targetPath);
++          renderRouteContent(targetPath, event.timeStamp, false);
++          return;
++        }
++
++        const linkEl = event.target.closest('a[href]');
++        if (linkEl) {
++          const href = linkEl.getAttribute('href');
++          if (href && href.startsWith('/')) {
++            event.preventDefault();
++            history.pushState({ path: href }, '', href);
++            renderRouteContent(href, event.timeStamp, false);
++            return;
++          }
++        }
++
++        const filterBtn = event.target.closest('[data-interaction]');
++        if (filterBtn) {
++          const action = filterBtn.getAttribute('data-interaction');
++          document.querySelectorAll('.filter-btn').forEach((btn) => {
++            btn.classList.toggle('active', btn === filterBtn);
++          });
++          const label =
++            action === 'barista-pick'
++              ? "Barista's Featured Selection: Single-Origin Ethiopian Pour-Over"
++              : 'Filtered Menu: ' + filterBtn.textContent.trim();
++          handleUserInteractionUpdate(action, label, event.timeStamp);
++          return;
++        }
++
++        const orderBtn = event.target.closest('[data-order-item]');
++        if (orderBtn) {
++          const itemName = orderBtn.getAttribute('data-order-item');
++          handleUserInteractionUpdate(
++            'quick-add',
++            'Added to Order: ' + itemName,
++            event.timeStamp
++          );
++        }
++      });
++
++      window.addEventListener('popstate', (event) => {
++        const path = (event.state && event.state.path) || window.location.pathname || '/';
++        renderRouteContent(path, event.timeStamp, true);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

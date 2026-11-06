@@ -1,0 +1,431 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,202 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback Dialog Modal Styles */
++    dialog.feedback-modal {
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      padding: 0;
++      max-width: 520px;
++      width: calc(100% - 40px);
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
++      background: #ffffff;
++      color: var(--text);
++      margin: auto;
++    }
++
++    dialog.feedback-modal::backdrop {
++      background: rgba(30, 20, 15, 0.65);
++      backdrop-filter: blur(3px);
++    }
++
++    .feedback-modal-content {
++      padding: 24px;
++    }
++
++    .feedback-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 18px;
++      padding-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-header h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .close-btn {
++      background: transparent;
++      border: none;
++      font-size: 1.6rem;
++      line-height: 1;
++      color: #795548;
++      cursor: pointer;
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .close-btn:hover,
++    .close-btn:focus-visible {
++      background-color: var(--secondary);
++      color: var(--primary);
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #c7b299;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      background: #fffdfa;
++      color: var(--text);
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.2);
++    }
++
++    .relocation-panel {
++      background-color: #f7f2ee;
++      border: 1px dashed #bcaaa4;
++      border-radius: 8px;
++      padding: 14px;
++      margin: 18px 0;
++      text-align: center;
++    }
++
++    .slot-info {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.9rem;
++      margin-bottom: 10px;
++    }
++
++    .slot-badge {
++      background-color: var(--primary);
++      color: white;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-family: monospace;
++      font-weight: bold;
++      font-size: 0.85rem;
++    }
++
++    .relocation-desc {
++      font-size: 0.82rem;
++      color: #5d4037;
++      margin-bottom: 10px;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 18px;
++    }
++
++    .btn-secondary {
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: bold;
++      border: none;
++      cursor: pointer;
++    }
++
++    .btn-secondary:hover {
++      background: #ff9800;
++      color: white;
++    }
++
++    .btn-outline {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .btn-outline:hover {
++      background: #ece4db;
++    }
++
++    .nav-feedback-btn {
++      background: transparent;
++      border: 1px solid var(--accent);
++      color: white;
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      cursor: pointer;
++      font-family: inherit;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .nav-feedback-btn:hover {
++      background: var(--accent);
++      color: var(--primary);
++    }
++
++    .feedback-fab {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 30px;
++      padding: 12px 20px;
++      font-weight: bold;
++      font-size: 0.95rem;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      z-index: 999;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      transition: transform 0.2s, background 0.2s;
++    }
++
++    .feedback-fab:hover {
++      background: #3e2723;
++      transform: translateY(-2px);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,19 +357,77 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button type="button" id="open-feedback-btn" class="nav-feedback-btn">Feedback</button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- Slot A: Initial DOM container for the persistent dialog -->
++  <div id="dialog-slot-a" class="dialog-slot" data-slot="Slot A">
++    <dialog id="feedback-dialog" class="feedback-modal" aria-labelledby="feedback-title">
++      <div class="feedback-modal-content">
++        <div class="feedback-header">
++          <h2 id="feedback-title">Share Your Coffee Feedback</h2>
++          <button type="button" id="close-dialog-btn" class="close-btn" aria-label="Close dialog">&times;</button>
++        </div>
++
++        <form id="feedback-form" method="dialog">
++          <div class="form-group">
++            <label for="feedback-name">Your Name</label>
++            <input type="text" id="feedback-name" name="name" placeholder="Alex" autocomplete="name" />
++          </div>
++
++          <div class="form-group">
++            <label for="feedback-rating">Rating</label>
++            <select id="feedback-rating" name="rating">
++              <option value="5">⭐⭐⭐⭐⭐ Outstanding (5/5)</option>
++              <option value="4">⭐⭐⭐⭐ Great (4/5)</option>
++              <option value="3">⭐⭐⭐ Good (3/5)</option>
++              <option value="2">⭐⭐ Fair (2/5)</option>
++              <option value="1">⭐ Needs improvement (1/5)</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="feedback-comments">Comments</label>
++            <textarea id="feedback-comments" name="comments" rows="3" placeholder="Tell us what you loved or how we can improve..."></textarea>
++          </div>
++
++          <!-- Relocation panel to demonstrate state-preserving reparenting -->
++          <div class="relocation-panel">
++            <div class="slot-info">
++              <span>Current DOM Parent:</span>
++              <span id="current-slot-badge" class="slot-badge">#dialog-slot-a</span>
++            </div>
++            <p class="relocation-desc">
++              Test state-preserving reparenting using native <code>moveBefore()</code> API:
++            </p>
++            <button type="button" id="move-btn" class="btn btn-secondary move-btn" data-action="move">
++              Move Modal in DOM
++            </button>
++          </div>
++
++          <div class="modal-actions">
++            <button type="button" id="cancel-dialog-btn" class="btn btn-outline">Cancel</button>
++            <button type="submit" id="submit-feedback-btn" class="btn">Send Feedback</button>
++          </div>
++        </form>
++      </div>
++    </dialog>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Slot B: Target DOM container for reparenting -->
++    <div id="dialog-slot-b" class="dialog-slot" data-slot="Slot B"></div>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -196,8 +448,13 @@
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Floating Feedback button for quick access -->
++  <button type="button" id="floating-feedback-btn" class="feedback-fab" aria-label="Open Feedback">
++    💬 Feedback
++  </button>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +463,132 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const dialog = document.getElementById('feedback-dialog');
++      const openBtn = document.getElementById('open-feedback-btn');
++      const floatingBtn = document.getElementById('floating-feedback-btn');
++      const closeBtn = document.getElementById('close-dialog-btn');
++      const cancelBtn = document.getElementById('cancel-dialog-btn');
++      const form = document.getElementById('feedback-form');
++      const slotA = document.getElementById('dialog-slot-a');
++      const slotB = document.getElementById('dialog-slot-b');
++      const slotBadge = document.getElementById('current-slot-badge');
++
++      function updateSlotDisplay() {
++        if (!slotBadge || !dialog) return;
++        const parent = dialog.parentElement;
++        slotBadge.textContent = parent && parent.id ? `#${parent.id}` : (parent ? parent.tagName.toLowerCase() : 'detached');
++      }
++
++      function openModal() {
++        if (dialog && typeof dialog.showModal === 'function') {
++          dialog.showModal();
++          updateSlotDisplay();
++        }
++      }
++
++      function closeModal() {
++        if (dialog && typeof dialog.close === 'function') {
++          dialog.close();
++        }
++      }
++
++      function relocateDialog() {
++        if (!dialog) return;
++
++        const currentParent = dialog.parentElement;
++        // Toggle target parent between slotA and slotB
++        const targetParent = currentParent === slotA ? slotB : slotA;
++        if (!targetParent) return;
++
++        // Capture active element and text selection to ensure modal remains focus-active
++        const activeElement = document.activeElement;
++        const hasFocusInside = dialog.contains(activeElement);
++        const selectionStart = (activeElement && 'selectionStart' in activeElement) ? activeElement.selectionStart : null;
++        const selectionEnd = (activeElement && 'selectionEnd' in activeElement) ? activeElement.selectionEnd : null;
++
++        // Native state-preserving moveBefore API
++        if ('moveBefore' in Element.prototype) {
++          // MANDATORY: Use moveBefore to ensure the <dialog> or popover stays open.
++          // Passing null appends it to the end of newParent.
++          targetParent.moveBefore(dialog, null);
++        } else {
++          // Fallback: traditional move for unsupported browsers.
++          // Note: This WILL close <dialog>, popover, and fullscreen elements.
++          const wasOpen = dialog.hasAttribute('open') || dialog.open || (typeof dialog.matches === 'function' && dialog.matches(':popover-open'));
++          targetParent.insertBefore(dialog, null);
++
++          // Manually restore modal state if it was open
++          if (wasOpen && typeof dialog.showModal === 'function') {
++            dialog.showModal();
++          } else if (wasOpen && typeof dialog.showPopover === 'function') {
++            dialog.showPopover();
++          }
++
++          // Restore focus and cursor selection to keep focus active
++          if (hasFocusInside && activeElement && typeof activeElement.focus === 'function') {
++            activeElement.focus();
++            if (selectionStart !== null && selectionEnd !== null && typeof activeElement.setSelectionRange === 'function') {
++              activeElement.setSelectionRange(selectionStart, selectionEnd);
++            }
++          }
++        }
++
++        updateSlotDisplay();
++      }
++
++      // Expose globally for testing/automation
++      window.relocateDialog = relocateDialog;
++      window.openFeedbackModal = openModal;
++      window.closeFeedbackModal = closeModal;
++
++      // Event listeners
++      if (openBtn) openBtn.addEventListener('click', openModal);
++      if (floatingBtn) floatingBtn.addEventListener('click', openModal);
++      if (closeBtn) closeBtn.addEventListener('click', closeModal);
++      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
++
++      // Light dismiss when clicking the backdrop
++      if (dialog) {
++        dialog.addEventListener('click', (event) => {
++          if (event.target === dialog) {
++            const rect = dialog.getBoundingClientRect();
++            const isInDialog = (
++              event.clientX >= rect.left &&
++              event.clientX <= rect.right &&
++              event.clientY >= rect.top &&
++              event.clientY <= rect.bottom
++            );
++            if (!isInDialog) {
++              closeModal();
++            }
++          }
++        });
++      }
++
++      // Handle any move button click via event delegation
++      document.addEventListener('click', (event) => {
++        const moveTrigger = event.target.closest('#move-btn, .move-btn, [data-action="move"]');
++        if (moveTrigger) {
++          relocateDialog();
++        }
++      });
++
++      // Handle form submission
++      if (form) {
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++          closeModal();
++          form.reset();
++        });
++      }
++
++      // Synchronize slot badge initially
++      updateSlotDisplay();
++    })();
++  </script>
+ </body>
+ 
+ </html>

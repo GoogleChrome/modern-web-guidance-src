@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .feedback {
++      margin-block-start: 40px;
++    }
++
++    .feedback h2 {
++      text-align: center;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++      max-height: 300px;
++      overflow-y: auto;
++      margin-block-start: 20px;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    .feedback-log:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .testimonial:not(:last-child) {
++      border-block-end: 1px solid var(--secondary);
++      padding-block-end: 16px;
++      margin-block-end: 16px;
++    }
++
++    .testimonial figcaption {
++      margin-block-start: 8px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 8px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,34 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <figure class="testimonial">
++          <blockquote><p>“The Maple Oat Latte is my new seasonal favorite. Just the right amount of sweetness!”</p></blockquote>
++          <figcaption>— Jamie R.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“Rich espresso, friendly baristas, and a cozy place to start the morning.”</p></blockquote>
++          <figcaption>— Alex M.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“The cold brew is wonderfully smooth. I look forward to picking one up every afternoon.”</p></blockquote>
++          <figcaption>— Taylor S.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“You can taste the care in every cup. The Daily Grind has become my neighborhood go-to.”</p></blockquote>
++          <figcaption>— Morgan L.</figcaption>
++        </figure>
++        <figure class="testimonial">
++          <blockquote><p>“A lovely spot for a coffee break, with a welcoming team and consistently delicious drinks.”</p></blockquote>
++          <figcaption>— Casey D.</figcaption>
++        </figure>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

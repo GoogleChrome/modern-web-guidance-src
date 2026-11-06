@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,49 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sign-in */
++    .signin {
++      max-width: 400px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      text-align: left;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    #auth-status {
++      margin-top: 15px;
++      font-size: 0.9rem;
++    }
++
++    #auth-status.error {
++      color: #b71c1c;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +215,17 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin">
++      <h2>Sign In</h2>
++      <label for="username">Username</label>
++      <input type="text" id="username" name="username" data-testid="username-field"
++        autocomplete="username webauthn" placeholder="Username">
++      <button type="button" class="btn" id="auth-button" data-testid="auth-button">Sign in with passkey</button>
++      <p id="auth-status" data-testid="auth-status" role="status" aria-live="polite"></p>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +256,107 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const usernameField = document.querySelector('[data-testid="username-field"]');
++      const authButton = document.querySelector('[data-testid="auth-button"]');
++      const authStatus = document.querySelector('[data-testid="auth-status"]');
++      let controller = null;
++
++      const b64urlToBuffer = (s) => {
++        const b64 = s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '=');
++        return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
++      };
++
++      const bufferToB64url = (buf) =>
++        btoa(String.fromCharCode(...new Uint8Array(buf)))
++          .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++
++      function setStatus(message, isError) {
++        authStatus.textContent = message;
++        authStatus.classList.toggle('error', !!isError);
++      }
++
++      // Fetch a challenge from the server and ask the browser for an assertion.
++      // mediation 'conditional' shows passkeys in the username field's autofill;
++      // otherwise the browser prompts for biometrics directly.
++      async function authenticate(mediation) {
++        if (controller) controller.abort();
++        controller = new AbortController();
++
++        const optionsRes = await fetch('/api/login/options', { method: 'POST' });
++        if (!optionsRes.ok) throw new Error('Could not start sign-in');
++        const options = await optionsRes.json();
++
++        const publicKey = {
++          ...options,
++          challenge: b64urlToBuffer(options.challenge),
++          allowCredentials: (options.allowCredentials || []).map((c) => ({
++            ...c,
++            id: b64urlToBuffer(c.id),
++          })),
++        };
++
++        const request = { publicKey, signal: controller.signal };
++        if (mediation) request.mediation = mediation;
++        const credential = await navigator.credentials.get(request);
++
++        const r = credential.response;
++        const verifyRes = await fetch('/api/login/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            id: credential.id,
++            rawId: bufferToB64url(credential.rawId),
++            type: credential.type,
++            response: {
++              clientDataJSON: bufferToB64url(r.clientDataJSON),
++              authenticatorData: bufferToB64url(r.authenticatorData),
++              signature: bufferToB64url(r.signature),
++              userHandle: r.userHandle ? bufferToB64url(r.userHandle) : null,
++            },
++            clientExtensionResults: credential.getClientExtensionResults(),
++          }),
++        });
++        if (!verifyRes.ok) throw new Error('Passkey verification failed');
++        return verifyRes.json().catch(() => ({}));
++      }
++
++      async function run(mediation) {
++        try {
++          const result = await authenticate(mediation);
++          setStatus('Signed in' + (result.username ? ' as ' + result.username : '') + ' with passkey.');
++        } catch (err) {
++          // Aborted requests (e.g. switching from autofill to the button) are expected.
++          if (err.name === 'AbortError') return;
++          if (err.name === 'NotAllowedError') {
++            setStatus('Passkey sign-in was cancelled.', true);
++          } else {
++            setStatus(err.message || 'Passkey sign-in failed.', true);
++          }
++        }
++      }
++
++      authButton.addEventListener('click', () => {
++        setStatus('');
++        run();
++      });
++
++      if (!window.PublicKeyCredential) {
++        setStatus('Passkeys are not supported in this browser.', true);
++        authButton.disabled = true;
++        return;
++      }
++
++      // Start the autofill (conditional UI) request so passkeys are offered on focus.
++      if (PublicKeyCredential.isConditionalMediationAvailable) {
++        PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
++          if (available) run('conditional');
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

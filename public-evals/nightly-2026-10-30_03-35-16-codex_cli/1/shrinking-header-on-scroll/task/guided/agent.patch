@@ -1,0 +1,147 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,8 +24,10 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      /* Keep the document height stable as the fixed navigation shrinks. */
++      padding-top: var(--nav-expanded-height, 4.4rem);
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -34,10 +36,12 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+@@ -71,8 +75,44 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @keyframes compact-navigation {
++      from { padding-block: 1rem; }
++      to { padding-block: 0.25rem; }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++        nav {
++          animation: compact-navigation auto linear both;
++          animation-timeline: scroll(block root);
++          animation-range: 0px 120px;
++        }
++      }
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 0.25rem;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 0.25rem 1rem;
++      }
++
++      nav ul li { margin-left: 0; }
++
++      nav a {
++        display: inline-flex;
++        align-items: center;
++        min-height: 2.75rem;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,9 +196,9 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -206,7 +246,62 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var navigation = document.querySelector('nav');
++      var root = document.documentElement;
++      var motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var nativeScrollAnimation = window.CSS && typeof window.CSS.supports === 'function' &&
++        window.CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)');
++      var framePending = false;
++
++      function reserveNavigationSpace() {
++        var style = window.getComputedStyle(navigation);
++        var rem = parseFloat(window.getComputedStyle(root).fontSize);
++        var expandedHeight = navigation.getBoundingClientRect().height -
++          parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) + 2 * rem;
++        root.style.setProperty('--nav-expanded-height', expandedHeight + 'px');
++      }
++
++      function updateNavigation() {
++        framePending = false;
++        if (motionPreference.matches) {
++          navigation.style.paddingTop = '';
++          navigation.style.paddingBottom = '';
++          return;
++        }
++        var progress = Math.max(0, Math.min(1, (window.pageYOffset || 0) / 120));
++        var padding = (1 - 0.75 * progress) + 'rem';
++        navigation.style.paddingTop = padding;
++        navigation.style.paddingBottom = padding;
++      }
++
++      function scheduleUpdate() {
++        if (!framePending) {
++          framePending = true;
++          window.requestAnimationFrame(updateNavigation);
++        }
++      }
++
++      reserveNavigationSpace();
++      window.addEventListener('resize', reserveNavigationSpace);
++      window.addEventListener('pageshow', reserveNavigationSpace);
++
++      // Partial timeline support also uses this fallback. Native browsers need no scroll listener.
++      if (!nativeScrollAnimation) {
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++        window.addEventListener('pageshow', scheduleUpdate);
++        if (motionPreference.addEventListener) {
++          motionPreference.addEventListener('change', scheduleUpdate);
++        } else {
++          motionPreference.addListener(scheduleUpdate);
++        }
++        updateNavigation();
++      }
++    }());
++  </script>
++
+ </body>
+ 
+ </html>

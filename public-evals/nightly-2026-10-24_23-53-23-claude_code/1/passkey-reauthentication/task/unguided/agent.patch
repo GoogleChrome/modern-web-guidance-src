@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -194,8 +194,14 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Account Security</h2>
++      <p>Confirm it's you with your passkey or security key before changing sensitive account settings.</p>
++      <button type="button" class="btn" data-testid="reauth-button" id="reauth-button" style="border: 0; cursor: pointer;">Verify your identity</button>
++      <p id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +212,89 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var button = document.querySelector('[data-testid="reauth-button"]');
++      var status = document.getElementById('reauth-status');
++
++      function b64urlToBuffer(value) {
++        var b64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        b64 += '='.repeat((4 - (b64.length % 4)) % 4);
++        var bin = atob(b64);
++        var bytes = new Uint8Array(bin.length);
++        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buffer) {
++        var bytes = new Uint8Array(buffer);
++        var bin = '';
++        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      async function postJson(url, body) {
++        var res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(body || {})
++        });
++        if (!res.ok) throw new Error(url + ' failed (' + res.status + ')');
++        return res.json();
++      }
++
++      async function reauthenticate() {
++        if (!window.PublicKeyCredential) {
++          throw new Error('This browser does not support passkeys or security keys.');
++        }
++
++        // The server scopes the challenge to the signed-in user's registered credentials.
++        var options = await postJson('/api/reauth/options');
++        options = options.publicKey || options;
++
++        var publicKey = Object.assign({}, options, {
++          challenge: b64urlToBuffer(options.challenge),
++          allowCredentials: (options.allowCredentials || []).map(function (c) {
++            return Object.assign({}, c, { id: b64urlToBuffer(c.id) });
++          })
++        });
++
++        var credential = await navigator.credentials.get({ publicKey: publicKey });
++        if (!credential) throw new Error('No credential was returned.');
++
++        var response = credential.response;
++        return postJson('/api/reauth/verify', {
++          id: credential.id,
++          rawId: bufferToB64url(credential.rawId),
++          type: credential.type,
++          response: {
++            clientDataJSON: bufferToB64url(response.clientDataJSON),
++            authenticatorData: bufferToB64url(response.authenticatorData),
++            signature: bufferToB64url(response.signature),
++            userHandle: response.userHandle ? bufferToB64url(response.userHandle) : null
++          },
++          clientExtensionResults: credential.getClientExtensionResults()
++        });
++      }
++
++      button.addEventListener('click', async function () {
++        button.disabled = true;
++        status.textContent = 'Waiting for your passkey or security key…';
++        try {
++          await reauthenticate();
++          status.textContent = 'Identity confirmed.';
++        } catch (err) {
++          status.textContent = err && err.name === 'NotAllowedError'
++            ? 'Verification was cancelled or timed out.'
++            : 'Verification failed. Please try again.';
++        } finally {
++          button.disabled = false;
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

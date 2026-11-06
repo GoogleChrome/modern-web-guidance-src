@@ -1,0 +1,3436 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..f45fe64
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,505 @@
++/**
++ * The Daily Grind - Client-side UI Application & Declarative Form Handlers
++ */
++(function () {
++  'use strict';
++
++  const store = window.DailyGrind?.store;
++  if (!store) {
++    console.error('Store not found');
++    return;
++  }
++
++  // Register Imperative WebMCP Tools
++  if (window.WebMCPTools?.registerDailyGrindTools) {
++    window.WebMCPTools.registerDailyGrindTools(store);
++  }
++
++  // DOM Elements
++  const menuGrid = document.getElementById('menu-grid');
++  const categoryFilters = document.getElementById('category-filters');
++  const cartBadge = document.getElementById('cart-badge');
++  const cartDrawer = document.getElementById('cart-drawer');
++  const cartDrawerOverlay = document.getElementById('cart-drawer-overlay');
++  const cartItemsContainer = document.getElementById('cart-items-container');
++  const cartSubtotalEl = document.getElementById('cart-subtotal');
++  const cartDiscountEl = document.getElementById('cart-discount');
++  const cartTaxEl = document.getElementById('cart-tax');
++  const cartTotalEl = document.getElementById('cart-total');
++  const cartItemCountEl = document.getElementById('cart-item-count');
++  const promoCodeInput = document.getElementById('promo-code-input');
++  const applyPromoBtn = document.getElementById('apply-promo-btn');
++  const promoStatusEl = document.getElementById('promo-status');
++  const clearCartBtn = document.getElementById('clear-cart-btn');
++  const agentActivityBanner = document.getElementById('agent-activity-banner');
++  const agentActivityText = document.getElementById('agent-activity-text');
++  const locationsList = document.getElementById('locations-list');
++  const rewardsPointsEl = document.getElementById('rewards-points');
++  const rewardsTierEl = document.getElementById('rewards-tier');
++  const rewardsPerksList = document.getElementById('rewards-perks-list');
++  const orderSuccessModal = document.getElementById('order-success-modal');
++  const orderSuccessDetails = document.getElementById('order-success-details');
++  const quickAddItemSelect = document.getElementById('quick-add-item-select');
++
++  // Forms
++  const menuSearchForm = document.getElementById('menu-search-form');
++  const quickOrderForm = document.getElementById('quick-order-form');
++  const rewardsSignupForm = document.getElementById('rewards-signup-form');
++  const checkoutForm = document.getElementById('checkout-form');
++
++  // Agent activity feedback
++  let activityTimer = null;
++  function notifyAgentActivity(message, status = 'active') {
++    if (!agentActivityBanner || !agentActivityText) return;
++    agentActivityText.textContent = message;
++    agentActivityBanner.className = `agent-banner show ${status}`;
++    clearTimeout(activityTimer);
++    activityTimer = setTimeout(() => {
++      agentActivityBanner.classList.remove('show');
++    }, 4500);
++  }
++
++  // Setup Lifecycle Event Listeners (WebMCP early preview standard)
++  const targetFor = (type, listener, options) =>
++    (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++      .addEventListener(type, listener, options);
++
++  targetFor('toolactivated', (ev) => {
++    const toolName = ev?.toolName || ev?.detail?.toolName || 'agent_action';
++    console.log(`[WebMCP] Tool activated: ${toolName}`);
++    notifyAgentActivity(`AI Agent activated: ${toolName}`, 'active');
++  });
++
++  targetFor('toolcancel', (ev) => {
++    const toolName = ev?.toolName || ev?.detail?.toolName || 'agent_action';
++    console.log(`[WebMCP] Tool cancelled: ${toolName}`);
++    notifyAgentActivity(`AI Agent cancelled: ${toolName}`, 'cancelled');
++  });
++
++  // Render Menu
++  function renderMenu() {
++    if (!menuGrid) return;
++    const items = store.getMenu(store.activeFilter);
++
++    if (items.length === 0) {
++      menuGrid.innerHTML = `
++        <div class="empty-menu-msg">
++          <p>No coffee or food items matched your search.</p>
++          <button class="btn btn-outline" id="reset-filter-btn">Reset Filters</button>
++        </div>
++      `;
++      const resetBtn = document.getElementById('reset-filter-btn');
++      if (resetBtn) {
++        resetBtn.addEventListener('click', () => {
++          store.setFilter({ query: '', category: 'all' });
++          if (menuSearchForm) {
++            menuSearchForm.reset();
++          }
++        });
++      }
++      return;
++    }
++
++    menuGrid.innerHTML = items.map(item => `
++      <div class="card menu-card" data-id="${item.id}">
++        <div class="card-img-container">
++          <img src="${item.image}" alt="${item.name}" class="card-img" loading="lazy">
++          <span class="category-badge ${item.category}">${item.category.toUpperCase()}</span>
++        </div>
++        <div class="card-body">
++          <div class="card-header-row">
++            <h3 class="card-title">${item.name}</h3>
++            <span class="card-price">$${item.price.toFixed(2)}</span>
++          </div>
++          <p class="card-desc">${item.description}</p>
++          <div class="card-meta">
++            <span>🔥 ${item.calories} cal</span>
++            <span>⭐ Artisanal</span>
++          </div>
++
++          <div class="card-actions">
++            <div class="card-options-row">
++              <label class="sr-only" for="size-${item.id}">Size</label>
++              <select id="size-${item.id}" class="card-select size-select" data-id="${item.id}">
++                ${item.sizes.map(s => `<option value="${s}" ${s === 'medium' ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}
++              </select>
++
++              ${item.milks.length > 1 ? `
++                <label class="sr-only" for="milk-${item.id}">Milk</label>
++                <select id="milk-${item.id}" class="card-select milk-select" data-id="${item.id}">
++                  ${item.milks.map(m => `<option value="${m}" ${m === 'oat' ? 'selected' : ''}>${m.charAt(0).toUpperCase() + m.slice(1)}</option>`).join('')}
++                </select>
++              ` : ''}
++            </div>
++
++            <button class="btn btn-primary add-to-cart-btn" data-id="${item.id}">
++              Add to Cart
++            </button>
++          </div>
++        </div>
++      </div>
++    `).join('');
++
++    // Attach card add-to-cart listeners
++    menuGrid.querySelectorAll('.add-to-cart-btn').forEach(btn => {
++      btn.addEventListener('click', (e) => {
++        const id = e.currentTarget.getAttribute('data-id');
++        const sizeSelect = menuGrid.querySelector(`.size-select[data-id="${id}"]`);
++        const milkSelect = menuGrid.querySelector(`.milk-select[data-id="${id}"]`);
++
++        const size = sizeSelect ? sizeSelect.value : 'medium';
++        const milk = milkSelect ? milkSelect.value : 'none';
++
++        store.addToCart({ itemId: id, size, milk, quantity: 1 });
++        notifyAgentActivity(`Added ${id} to cart`, 'active');
++      });
++    });
++  }
++
++  // Populate quick add select
++  function populateQuickAddSelect() {
++    if (!quickAddItemSelect) return;
++    quickAddItemSelect.innerHTML = store.menu.map(item => `
++      <option value="${item.id}">${item.name} ($${item.price.toFixed(2)})</option>
++    `).join('');
++  }
++
++  // Render Cart
++  function renderCart() {
++    const cart = store.getCart();
++
++    if (cartBadge) {
++      cartBadge.textContent = String(cart.itemCount);
++      cartBadge.style.display = cart.itemCount > 0 ? 'inline-block' : 'none';
++    }
++
++    if (cartItemCountEl) {
++      cartItemCountEl.textContent = `${cart.itemCount} item${cart.itemCount === 1 ? '' : 's'}`;
++    }
++
++    if (cartSubtotalEl) cartSubtotalEl.textContent = `$${cart.subtotal.toFixed(2)}`;
++    if (cartDiscountEl) cartDiscountEl.textContent = `-$${cart.discount.toFixed(2)}`;
++    if (cartTaxEl) cartTaxEl.textContent = `$${cart.tax.toFixed(2)}`;
++    if (cartTotalEl) cartTotalEl.textContent = `$${cart.total.toFixed(2)}`;
++
++    const checkoutTotalBtn = document.getElementById('checkout-total-btn');
++    if (checkoutTotalBtn) {
++      checkoutTotalBtn.textContent = `$${cart.total.toFixed(2)}`;
++    }
++
++    if (!cartItemsContainer) return;
++
++    if (cart.items.length === 0) {
++      cartItemsContainer.innerHTML = `
++        <div class="empty-cart-view">
++          <p>Your shopping cart is empty.</p>
++          <p class="empty-cart-sub">Select your favorite coffee or breakfast treat to get started!</p>
++        </div>
++      `;
++      return;
++    }
++
++    cartItemsContainer.innerHTML = cart.items.map(item => `
++      <div class="cart-item-row" data-cart-id="${item.cartItemId}">
++        <div class="cart-item-info">
++          <h4>${item.name}</h4>
++          <p class="cart-item-specs">
++            Size: ${item.size.toUpperCase()}${item.milk !== 'none' ? ` | Milk: ${item.milk}` : ''}
++          </p>
++          <span class="cart-item-price">$${item.price.toFixed(2)} ea</span>
++        </div>
++        <div class="cart-item-controls">
++          <span class="cart-qty-badge">x${item.quantity}</span>
++          <span class="cart-item-subtotal">$${item.itemTotal.toFixed(2)}</span>
++          <button class="cart-remove-btn" data-cart-id="${item.cartItemId}" title="Remove item">
++            &times;
++          </button>
++        </div>
++      </div>
++    `).join('');
++
++    // Attach remove buttons
++    cartItemsContainer.querySelectorAll('.cart-remove-btn').forEach(btn => {
++      btn.addEventListener('click', (e) => {
++        const cartId = e.currentTarget.getAttribute('data-cart-id');
++        store.removeFromCart(cartId);
++      });
++    });
++  }
++
++  // Render Locations
++  function renderLocations() {
++    if (!locationsList) return;
++    const locations = store.getLocations();
++    locationsList.innerHTML = locations.map(loc => `
++      <div class="location-card card">
++        <h3>${loc.name}</h3>
++        <p class="loc-address">📍 ${loc.address}, ${loc.city}</p>
++        <p class="loc-hours">⏰ ${loc.hours}</p>
++        <p class="loc-phone">📞 ${loc.phone}</p>
++        <div class="loc-amenities">
++          ${loc.amenities.map(a => `<span class="amenity-pill">${a}</span>`).join('')}
++        </div>
++      </div>
++    `).join('');
++  }
++
++  // Render Rewards
++  function renderRewards() {
++    const rewards = store.getRewards();
++    if (rewardsPointsEl) rewardsPointsEl.textContent = String(rewards.points);
++    if (rewardsTierEl) rewardsTierEl.textContent = rewards.tier;
++    if (rewardsPerksList) {
++      rewardsPerksList.innerHTML = rewards.activePerks.map(p => `<li>✨ ${p}</li>`).join('');
++    }
++  }
++
++  // Category Filter clicks
++  if (categoryFilters) {
++    categoryFilters.querySelectorAll('.filter-btn').forEach(btn => {
++      btn.addEventListener('click', (e) => {
++        categoryFilters.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
++        e.currentTarget.classList.add('active');
++        const category = e.currentTarget.getAttribute('data-category');
++        store.setFilter({ category });
++      });
++    });
++  }
++
++  // Store Event Listeners
++  store.addEventListener('cartchange', () => {
++    renderCart();
++  });
++
++  store.addEventListener('filterchange', (e) => {
++    const { category, query } = e.detail.filter;
++    if (categoryFilters) {
++      categoryFilters.querySelectorAll('.filter-btn').forEach(b => {
++        if (b.getAttribute('data-category') === category) {
++          b.classList.add('active');
++        } else {
++          b.classList.remove('active');
++        }
++      });
++    }
++    renderMenu();
++  });
++
++  store.addEventListener('orderplaced', (e) => {
++    const order = e.detail.order;
++    if (orderSuccessModal && orderSuccessDetails) {
++      orderSuccessDetails.innerHTML = `
++        <p><strong>Order ID:</strong> ${order.orderId}</p>
++        <p><strong>Customer:</strong> ${order.customerName}</p>
++        <p><strong>Pickup Timing:</strong> ${order.pickupTime}</p>
++        <p><strong>Total Paid:</strong> $${order.total.toFixed(2)}</p>
++        <p><strong>Items:</strong></p>
++        <ul>
++          ${order.items.map(i => `<li>${i.quantity}x ${i.name} (${i.size})</li>`).join('')}
++        </ul>
++      `;
++      orderSuccessModal.classList.add('show');
++    }
++  });
++
++  // Promo code button
++  if (applyPromoBtn && promoCodeInput) {
++    applyPromoBtn.addEventListener('click', () => {
++      const code = promoCodeInput.value.trim();
++      const res = store.applyPromoCode(code);
++      if (promoStatusEl) {
++        if (res.error) {
++          promoStatusEl.textContent = res.error;
++          promoStatusEl.className = 'promo-status error';
++        } else {
++          promoStatusEl.textContent = res.message;
++          promoStatusEl.className = 'promo-status success';
++        }
++      }
++    });
++  }
++
++  // Clear cart button
++  if (clearCartBtn) {
++    clearCartBtn.addEventListener('click', () => {
++      store.clearCart();
++    });
++  }
++
++  // Cart Drawer toggling
++  const openCartBtn = document.getElementById('open-cart-btn');
++  const closeCartBtn = document.getElementById('close-cart-btn');
++
++  function openCart() {
++    if (cartDrawer && cartDrawerOverlay) {
++      cartDrawer.classList.add('open');
++      cartDrawerOverlay.classList.add('open');
++    }
++  }
++
++  function closeCart() {
++    if (cartDrawer && cartDrawerOverlay) {
++      cartDrawer.classList.remove('open');
++      cartDrawerOverlay.classList.remove('open');
++    }
++  }
++
++  if (openCartBtn) openCartBtn.addEventListener('click', (e) => { e.preventDefault(); openCart(); });
++  if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
++  if (cartDrawerOverlay) cartDrawerOverlay.addEventListener('click', closeCart);
++
++  // Close order success modal
++  const closeOrderModalBtn = document.getElementById('close-order-modal-btn');
++  if (closeOrderModalBtn && orderSuccessModal) {
++    closeOrderModalBtn.addEventListener('click', () => {
++      orderSuccessModal.classList.remove('show');
++    });
++  }
++
++  // ==========================================
++  // Declarative WebMCP Form Handlers
++  // Compliant with agentic-forms specification
++  // ==========================================
++
++  // 1. Menu Search Form (Declarative Tool: search_menu)
++  if (menuSearchForm) {
++    menuSearchForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formData = new FormData(menuSearchForm);
++      const query = (formData.get('query') || '').toString().trim();
++      const category = (formData.get('category') || 'all').toString();
++
++      store.setFilter({ query, category });
++      const results = store.getMenu({ query, category });
++
++      notifyAgentActivity(`Executed search_menu: "${query || category}"`, 'active');
++
++      if (event.agentInvoked) {
++        const responseData = {
++          count: results.length,
++          matches: results.map(r => ({
++            id: r.id,
++            name: r.name,
++            price: r.price,
++            category: r.category
++          }))
++        };
++        event.respondWith(Promise.resolve(responseData));
++      }
++    });
++  }
++
++  // 2. Quick Add To Cart Form (Declarative Tool: quick_add_to_cart)
++  if (quickOrderForm) {
++    quickOrderForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formData = new FormData(quickOrderForm);
++      const itemId = formData.get('itemId')?.toString();
++      const size = formData.get('size')?.toString() || 'medium';
++      const milk = formData.get('milk')?.toString() || 'none';
++      const quantity = parseInt(formData.get('quantity')?.toString() || '1', 10);
++
++      const result = store.addToCart({ itemId, size, milk, quantity });
++
++      if (result.error) {
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(`Validation failed: ${result.error}`));
++        }
++        return;
++      }
++
++      notifyAgentActivity(`Added ${quantity}x ${itemId} to cart`, 'active');
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve(result));
++      }
++    });
++  }
++
++  // 3. Member Rewards Club Form (Declarative Tool: join_rewards_club)
++  if (rewardsSignupForm) {
++    rewardsSignupForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formData = new FormData(rewardsSignupForm);
++      const name = formData.get('name')?.toString().trim();
++      const email = formData.get('email')?.toString().trim();
++
++      if (!name || !email) {
++        const err = 'Validation failed: Name and email are required.';
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(err));
++        }
++        return;
++      }
++
++      store.rewards.accountName = name;
++      store.rewards.points += 50;
++      renderRewards();
++
++      const signupMsgEl = document.getElementById('rewards-signup-message');
++      if (signupMsgEl) {
++        signupMsgEl.textContent = `Welcome ${name}! You've joined The Daily Grind club with 50 bonus points.`;
++        signupMsgEl.className = 'success-message';
++      }
++
++      notifyAgentActivity(`Enrolled member: ${name}`, 'active');
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve({
++          success: true,
++          message: `Welcome ${name}! Successfully registered with 50 bonus points.`
++        }));
++      }
++    });
++  }
++
++  // 4. Checkout Order Form (Declarative Tool: place_order_form)
++  // Note: toolautosubmit is omitted as required for financial/transactional actions!
++  if (checkoutForm) {
++    checkoutForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formData = new FormData(checkoutForm);
++      const customerName = formData.get('customerName')?.toString().trim();
++      const pickupTime = formData.get('pickupTime')?.toString() || 'asap';
++      const paymentMethod = formData.get('paymentMethod')?.toString() || 'credit_card';
++
++      if (store.cart.items.length === 0) {
++        const err = 'Validation failed: Shopping cart is empty. Please add items before placing order.';
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(err));
++        }
++        alert(err);
++        return;
++      }
++
++      if (!customerName) {
++        const err = 'Validation failed: Customer name is required.';
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(err));
++        }
++        alert(err);
++        return;
++      }
++
++      const checkoutResult = store.checkout({ customerName, pickupTime, paymentMethod });
++      closeCart();
++
++      notifyAgentActivity(`Order placed by ${customerName}`, 'active');
++
++      if (event.agentInvoked) {
++        event.respondWith(Promise.resolve(checkoutResult));
++      }
++    });
++  }
++
++  // Initial renders
++  renderMenu();
++  populateQuickAddSelect();
++  renderCart();
++  renderLocations();
++  renderRewards();
++})();
+diff --git a/data.js b/data.js
+new file mode 100644
+index 0000000..a7fc160
+--- /dev/null
++++ b/data.js
+@@ -0,0 +1,437 @@
++/**
++ * The Daily Grind - Data and Application State
++ */
++(function (global) {
++  'use strict';
++
++  const MENU_ITEMS = [
++    {
++      id: 'maple-oat-latte',
++      name: 'Maple Oat Latte',
++      category: 'seasonal',
++      price: 6.25,
++      description: 'Creamy oat milk with a hint of pure Vermont maple syrup and artisanal espresso.',
++      sizes: ['small', 'medium', 'large'],
++      milks: ['oat', 'whole', 'almond', 'skim'],
++      calories: 220,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'dark-roast-espresso',
++      name: 'Dark Roast Espresso',
++      category: 'espresso',
++      price: 3.75,
++      description: 'Bold, smoky double-shot espresso with notes of dark chocolate and toasted caramel.',
++      sizes: ['small', 'medium'],
++      milks: ['none'],
++      calories: 10,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'cold-brew',
++      name: 'Cold Brew',
++      category: 'cold',
++      price: 4.95,
++      description: 'Slow-steeped for 18 hours for maximum smoothness and delicate cacao notes.',
++      sizes: ['small', 'medium', 'large'],
++      milks: ['none', 'oat', 'whole', 'almond', 'skim'],
++      calories: 15,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'caramel-cappuccino',
++      name: 'Caramel Cappuccino',
++      category: 'espresso',
++      price: 5.50,
++      description: 'Velvety micro-foam espresso topped with house-made salted caramel drizzle.',
++      sizes: ['small', 'medium', 'large'],
++      milks: ['whole', 'oat', 'almond', 'skim'],
++      calories: 190,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'artisanal-drip',
++      name: 'Artisanal Drip Coffee',
++      category: 'brewed',
++      price: 3.50,
++      description: 'Single-origin Ethiopian Yirgacheffe freshly brewed every thirty minutes.',
++      sizes: ['small', 'medium', 'large'],
++      milks: ['none', 'whole', 'oat', 'almond', 'skim'],
++      calories: 5,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'nitro-cold-brew',
++      name: 'Nitro Cold Brew',
++      category: 'cold',
++      price: 5.75,
++      description: 'Infused with nitrogen for a silky, stout-like cascading head and ultra-creamy mouthfeel.',
++      sizes: ['medium', 'large'],
++      milks: ['none', 'oat'],
++      calories: 20,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'matcha-latte',
++      name: 'Ceremonial Matcha Latte',
++      category: 'seasonal',
++      price: 5.95,
++      description: 'Japanese ceremonial grade green tea matcha whisked with velvety steamed oat milk.',
++      sizes: ['small', 'medium', 'large'],
++      milks: ['oat', 'almond', 'whole'],
++      calories: 160,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80'
++    },
++    {
++      id: 'almond-croissant',
++      name: 'Butter Almond Croissant',
++      category: 'food',
++      price: 4.50,
++      description: 'Flaky French butter pastry filled with rich almond cream and toasted sliced almonds.',
++      sizes: ['standard'],
++      milks: ['none'],
++      calories: 380,
++      inStock: true,
++      image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80'
++    }
++  ];
++
++  const STORE_LOCATIONS = [
++    {
++      id: 'downtown-flagship',
++      name: 'Downtown Flagship',
++      address: '452 Roaster Blvd, Downtown',
++      city: 'San Francisco',
++      hours: 'Mon-Sun: 6:00 AM - 8:00 PM',
++      phone: '(415) 555-0192',
++      amenities: ['Outdoor Seating', 'Free Wi-Fi', 'Pour-over Bar']
++    },
++    {
++      id: 'mission-roastery',
++      name: 'Mission Roastery',
++      address: '890 Valencia St',
++      city: 'San Francisco',
++      hours: 'Mon-Sun: 6:30 AM - 7:00 PM',
++      phone: '(415) 555-0144',
++      amenities: ['In-house Roaster', 'Dog Friendly', 'Bakery']
++    },
++    {
++      id: 'brooklyn-heights',
++      name: 'Brooklyn Heights Espresso Bar',
++      address: '112 Montague St',
++      city: 'New York',
++      hours: 'Mon-Sun: 6:00 AM - 7:30 PM',
++      phone: '(718) 555-0188',
++      amenities: ['Quiet Workspace', 'Cold Brew on Tap']
++    }
++  ];
++
++  const PROMO_CODES = {
++    'BEANS10': { discountPercent: 10, description: '10% off your entire order' },
++    'DAILYGRIND': { discountPercent: 15, description: '15% off welcome offer' },
++    'FREEDRINK': { fixedDiscount: 5.00, description: '$5.00 off loyalty drink perk' }
++  };
++
++  class Store extends EventTarget {
++    constructor() {
++      super();
++      this.menu = [...MENU_ITEMS];
++      this.locations = [...STORE_LOCATIONS];
++      this.cart = {
++        items: [],
++        appliedPromo: null,
++        subtotal: 0,
++        discount: 0,
++        tax: 0,
++        total: 0,
++        itemCount: 0
++      };
++      this.rewards = {
++        accountName: 'Valued Coffee Lover',
++        tier: 'Gold Bean',
++        points: 340,
++        pointsToNextFreeDrink: 60,
++        activePerks: ['Free size upgrade on espresso drinks', '10% off beans every Tuesday']
++      };
++      this.recentOrders = [];
++      this.activeFilter = {
++        query: '',
++        category: 'all'
++      };
++      this._cartCounter = 1;
++    }
++
++    _recalculateCart() {
++      let subtotal = 0;
++      let itemCount = 0;
++
++      for (const item of this.cart.items) {
++        subtotal += item.price * item.quantity;
++        itemCount += item.quantity;
++      }
++
++      let discount = 0;
++      if (this.cart.appliedPromo) {
++        const promo = PROMO_CODES[this.cart.appliedPromo];
++        if (promo) {
++          if (promo.discountPercent) {
++            discount = subtotal * (promo.discountPercent / 100);
++          } else if (promo.fixedDiscount) {
++            discount = Math.min(subtotal, promo.fixedDiscount);
++          }
++        }
++      }
++
++      const taxableAmount = Math.max(0, subtotal - discount);
++      const tax = Math.round(taxableAmount * 0.0875 * 100) / 100;
++      const total = Math.round((taxableAmount + tax) * 100) / 100;
++
++      this.cart.subtotal = Math.round(subtotal * 100) / 100;
++      this.cart.discount = Math.round(discount * 100) / 100;
++      this.cart.tax = tax;
++      this.cart.total = total;
++      this.cart.itemCount = itemCount;
++
++      this.dispatchEvent(new CustomEvent('cartchange', { detail: { cart: this.getCart() } }));
++    }
++
++    getMenu(filter = {}) {
++      let items = [...this.menu];
++      const category = filter.category;
++      const query = filter.query ? String(filter.query).toLowerCase().trim() : '';
++
++      if (category && category !== 'all') {
++        items = items.filter(item => item.category.toLowerCase() === category.toLowerCase());
++      }
++
++      if (query) {
++        items = items.filter(item =>
++          item.name.toLowerCase().includes(query) ||
++          item.description.toLowerCase().includes(query)
++        );
++      }
++
++      return items;
++    }
++
++    getMenuItem(itemId) {
++      if (!itemId) return null;
++      return this.menu.find(item => item.id.toLowerCase() === String(itemId).toLowerCase().trim()) || null;
++    }
++
++    getCart() {
++      return {
++        items: this.cart.items.map(item => ({ ...item })),
++        appliedPromo: this.cart.appliedPromo,
++        subtotal: this.cart.subtotal,
++        discount: this.cart.discount,
++        tax: this.cart.tax,
++        total: this.cart.total,
++        itemCount: this.cart.itemCount
++      };
++    }
++
++    addToCart({ itemId, quantity = 1, size = 'medium', milk = 'none' }) {
++      const item = this.getMenuItem(itemId);
++      if (!item) {
++        return {
++          error: `Item "${itemId}" not found in menu.`,
++          availableItemIds: this.menu.map(m => m.id)
++        };
++      }
++
++      const qty = Math.max(1, parseInt(quantity, 10) || 1);
++      const resolvedSize = item.sizes.includes(size) ? size : (item.sizes[0] || 'standard');
++      const resolvedMilk = item.milks.includes(milk) ? milk : (item.milks[0] || 'none');
++
++      // Price adjustment for size
++      let unitPrice = item.price;
++      if (resolvedSize === 'large') unitPrice += 0.75;
++      if (resolvedSize === 'small') unitPrice = Math.max(1.0, unitPrice - 0.50);
++      if (resolvedMilk === 'oat' || resolvedMilk === 'almond') unitPrice += 0.50;
++
++      unitPrice = Math.round(unitPrice * 100) / 100;
++
++      // Check if matching item configuration already exists in cart
++      const existing = this.cart.items.find(cartItem =>
++        cartItem.itemId === item.id &&
++        cartItem.size === resolvedSize &&
++        cartItem.milk === resolvedMilk
++      );
++
++      if (existing) {
++        existing.quantity += qty;
++        existing.itemTotal = Math.round(existing.quantity * unitPrice * 100) / 100;
++      } else {
++        const cartItemId = `cart-item-${this._cartCounter++}`;
++        this.cart.items.push({
++          cartItemId,
++          itemId: item.id,
++          name: item.name,
++          category: item.category,
++          size: resolvedSize,
++          milk: resolvedMilk,
++          price: unitPrice,
++          quantity: qty,
++          itemTotal: Math.round(unitPrice * qty * 100) / 100
++        });
++      }
++
++      this._recalculateCart();
++
++      return {
++        success: true,
++        message: `Added ${qty}x ${item.name} (${resolvedSize}) to cart.`,
++        cart: this.getCart()
++      };
++    }
++
++    removeFromCart(cartItemId) {
++      const index = this.cart.items.findIndex(item => item.cartItemId === cartItemId);
++      if (index === -1) {
++        return {
++          error: `Cart item "${cartItemId}" not found in shopping cart.`,
++          currentCartItemIds: this.cart.items.map(i => i.cartItemId)
++        };
++      }
++
++      const removed = this.cart.items.splice(index, 1)[0];
++      this._recalculateCart();
++
++      return {
++        success: true,
++        message: `Removed ${removed.name} from cart.`,
++        cart: this.getCart()
++      };
++    }
++
++    clearCart() {
++      this.cart.items = [];
++      this.cart.appliedPromo = null;
++      this._recalculateCart();
++      return {
++        success: true,
++        message: 'Shopping cart cleared.',
++        cart: this.getCart()
++      };
++    }
++
++    applyPromoCode(code) {
++      if (!code) {
++        return {
++          error: 'Please provide a promo code.',
++          validCodesHint: Object.keys(PROMO_CODES)
++        };
++      }
++
++      const normalized = String(code).toUpperCase().trim();
++      if (!PROMO_CODES[normalized]) {
++        return {
++          error: `Promo code "${code}" is invalid or expired.`,
++          validCodesHint: Object.keys(PROMO_CODES)
++        };
++      }
++
++      this.cart.appliedPromo = normalized;
++      this._recalculateCart();
++
++      return {
++        success: true,
++        message: `Promo code "${normalized}" applied successfully!`,
++        promo: PROMO_CODES[normalized],
++        cart: this.getCart()
++      };
++    }
++
++    checkout({ customerName, pickupTime = 'asap', paymentMethod = 'credit_card' }) {
++      if (!customerName || String(customerName).trim() === '') {
++        return {
++          error: 'Customer name is required for order pickup.'
++        };
++      }
++
++      if (this.cart.items.length === 0) {
++        return {
++          error: 'Cannot checkout: shopping cart is empty. Add items first.',
++          availableItemIds: this.menu.map(m => m.id)
++        };
++      }
++
++      const orderId = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`;
++      const order = {
++        orderId,
++        customerName: String(customerName).trim(),
++        pickupTime,
++        paymentMethod,
++        items: [...this.cart.items],
++        subtotal: this.cart.subtotal,
++        discount: this.cart.discount,
++        tax: this.cart.tax,
++        total: this.cart.total,
++        timestamp: new Date().toISOString(),
++        status: 'confirmed'
++      };
++
++      // Award loyalty points: 10 points per dollar spent
++      const earnedPoints = Math.round(order.total * 10);
++      this.rewards.points += earnedPoints;
++
++      this.recentOrders.unshift(order);
++      this.cart.items = [];
++      this.cart.appliedPromo = null;
++      this._recalculateCart();
++
++      this.dispatchEvent(new CustomEvent('orderplaced', { detail: { order } }));
++
++      return {
++        success: true,
++        message: `Order #${orderId} confirmed for ${order.customerName}!`,
++        order
++      };
++    }
++
++    getLocations(city) {
++      if (!city || city === 'all') {
++        return [...this.locations];
++      }
++      const normCity = String(city).toLowerCase().trim();
++      return this.locations.filter(loc => loc.city.toLowerCase().includes(normCity));
++    }
++
++    getRewards() {
++      return { ...this.rewards };
++    }
++
++    setFilter(filter) {
++      this.activeFilter = { ...this.activeFilter, ...filter };
++      this.dispatchEvent(new CustomEvent('filterchange', { detail: { filter: this.activeFilter } }));
++    }
++
++    getState() {
++      return {
++        menuCount: this.menu.length,
++        activeFilter: this.activeFilter,
++        cart: this.getCart(),
++        rewards: this.getRewards(),
++        locationsCount: this.locations.length,
++        recentOrdersCount: this.recentOrders.length,
++        timestamp: new Date().toISOString()
++      };
++    }
++  }
++
++  const appStore = new Store();
++  global.DailyGrind = {
++    MENU_ITEMS,
++    STORE_LOCATIONS,
++    PROMO_CODES,
++    store: appStore
++  };
++})(typeof window !== 'undefined' ? window : globalThis);
+diff --git a/index.html b/index.html
+index 66c9173..27cacd2 100644
+--- a/index.html
++++ b/index.html
+@@ -5,208 +5,370 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="styles.css">
++  <!-- WebMCP Polyfill for browsers without native document.modelContext support -->
++  <script src="webmcp-polyfill.js"></script>
+ </head>
+ 
+ <body>
+ 
++  <!-- AI Agent Live Execution Indicator -->
++  <div id="agent-activity-banner" class="agent-banner" role="status" aria-live="polite">
++    <div class="agent-indicator-dot"></div>
++    <span id="agent-activity-text">WebMCP Ready: Tools registered for AI assistants</span>
++  </div>
++
++  <!-- Navigation -->
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++    <a href="#" class="logo">
++      <span>☕</span> THE DAILY GRIND
++    </a>
++    <ul class="nav-links">
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li>
++        <a href="#cart" id="open-cart-btn" class="cart-nav-link">
++          <span>🛒 Cart</span>
++          <span id="cart-badge" class="cart-badge" style="display: none;">0</span>
++        </a>
++      </li>
++      <li><span class="webmcp-pill">WebMCP Enabled</span></li>
+     </ul>
+   </nav>
+ 
++  <!-- Hero Section -->
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn btn-accent">Order Now</a>
+   </header>
+ 
++  <!-- Main Content -->
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++    <!-- Declarative WebMCP Tools Section (agentic-forms) -->
++    <section class="agentic-tools-bar" aria-labelledby="agentic-heading">
++      <div class="agentic-bar-title">
++        <h3 id="agentic-heading">🤖 Agentic Assistant Tools & Express Actions</h3>
++        <span class="webmcp-pill">Declarative Forms</span>
++      </div>
++
++      <div class="forms-grid">
++        <!-- Declarative Tool 1: Menu Search -->
++        <form id="menu-search-form"
++              class="declarative-form"
++              toolname="search_menu"
++              tooldescription="Search coffee and beverage menu items by keyword or category"
++              toolautosubmit>
++          <div class="form-row">
++            <div class="form-group" style="flex: 2;">
++              <label for="search-query">Search Keyword</label>
++              <input type="text"
++                     id="search-query"
++                     name="query"
++                     class="form-control"
++                     placeholder="e.g. oat latte, cold brew, dark roast"
++                     toolparamdescription="Search keyword matching drink or pastry name and description">
++            </div>
++
++            <div class="form-group" style="flex: 1;">
++              <label for="search-category">Category</label>
++              <select id="search-category"
++                      name="category"
++                      class="form-control"
++                      toolparamdescription="Menu category filter">
++                <option value="all">All Items</option>
++                <option value="espresso">Espresso</option>
++                <option value="brewed">Brewed Coffee</option>
++                <option value="cold">Cold Brew & Iced</option>
++                <option value="seasonal">Seasonal</option>
++                <option value="food">Bakery & Food</option>
++              </select>
++            </div>
++          </div>
++          <button type="submit" class="btn btn-primary btn-sm">Search Menu</button>
++        </form>
++
++        <!-- Declarative Tool 2: Quick Add To Cart -->
++        <form id="quick-order-form"
++              class="declarative-form"
++              toolname="quick_add_to_cart"
++              tooldescription="Add a coffee or pastry to the cart with custom size and milk selection"
++              toolautosubmit>
++          <div class="form-row">
++            <div class="form-group" style="flex: 2;">
++              <label for="quick-add-item-select">Beverage / Food Item</label>
++              <select id="quick-add-item-select"
++                      name="itemId"
++                      class="form-control"
++                      toolparamdescription="Menu item identifier to order"
++                      required>
++                <!-- Populated dynamically -->
++              </select>
++            </div>
++
++            <div class="form-group" style="flex: 1;">
++              <label for="quick-add-size">Size</label>
++              <select id="quick-add-size"
++                      name="size"
++                      class="form-control"
++                      toolparamdescription="Beverage size: small, medium, large">
++                <option value="small">Small</option>
++                <option value="medium" selected>Medium</option>
++                <option value="large">Large</option>
++              </select>
++            </div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group" style="flex: 2;">
++              <label for="quick-add-milk">Milk Choice</label>
++              <select id="quick-add-milk"
++                      name="milk"
++                      class="form-control"
++                      toolparamdescription="Milk option: oat, whole, almond, skim, none">
++                <option value="none">None / Black</option>
++                <option value="oat" selected>Oat Milk (+$0.50)</option>
++                <option value="whole">Whole Milk</option>
++                <option value="almond">Almond Milk (+$0.50)</option>
++                <option value="skim">Skim Milk</option>
++              </select>
++            </div>
++
++            <div class="form-group" style="flex: 1;">
++              <label for="quick-add-qty">Quantity</label>
++              <input type="number"
++                     id="quick-add-qty"
++                     name="quantity"
++                     class="form-control"
++                     min="1"
++                     max="20"
++                     value="1"
++                     toolparamdescription="Number of drinks or food items">
++            </div>
++          </div>
++
++          <button type="submit" class="btn btn-accent btn-sm">Quick Add to Cart</button>
++        </form>
++      </div>
++    </section>
++
++    <!-- Menu Section -->
++    <section id="menu" aria-labelledby="menu-heading">
++      <div class="section-header">
++        <h2 id="menu-heading">Artisanal Menu</h2>
++        <p>Locally roasted single-origin coffees, organic teas, and freshly baked pastries.</p>
++      </div>
++
++      <!-- Category Filter Tabs -->
++      <div id="category-filters" class="category-filters" role="tablist">
++        <button class="filter-btn active" data-category="all" role="tab">All Items</button>
++        <button class="filter-btn" data-category="seasonal" role="tab">Seasonal</button>
++        <button class="filter-btn" data-category="espresso" role="tab">Espresso</button>
++        <button class="filter-btn" data-category="brewed" role="tab">Brewed</button>
++        <button class="filter-btn" data-category="cold" role="tab">Cold Brew</button>
++        <button class="filter-btn" data-category="food" role="tab">Bakery</button>
++      </div>
++
++      <!-- Menu Grid -->
++      <div id="menu-grid" class="menu-grid" aria-live="polite">
++        <!-- Menu cards rendered dynamically via app.js -->
++      </div>
++    </section>
++
++    <!-- Secondary Panels: Rewards & Locations -->
++    <section class="info-panels-grid">
++      <!-- Rewards Panel -->
++      <div id="rewards" class="panel-card">
++        <h3>✨ Daily Grind Rewards Club</h3>
++        <div class="rewards-display">
++          <div class="reward-stat">
++            <span id="rewards-points" class="stat-number">340</span>
++            <span class="stat-label">Loyalty Points</span>
++          </div>
++          <div class="reward-stat">
++            <span id="rewards-tier" class="stat-number">Gold Bean</span>
++            <span class="stat-label">Member Tier</span>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <h4 style="margin-bottom: 8px; font-size: 0.95rem; color: var(--primary);">Active Member Perks:</h4>
++        <ul id="rewards-perks-list" class="rewards-perks-list">
++          <!-- Populated dynamically -->
++        </ul>
++
++        <!-- Declarative Tool 3: Join Rewards Club -->
++        <form id="rewards-signup-form"
++              class="declarative-form"
++              toolname="join_rewards_club"
++              tooldescription="Sign up customer for The Daily Grind member rewards program"
++              toolautosubmit>
++          <div class="form-row">
++            <div class="form-group">
++              <label for="rewards-name">Full Name</label>
++              <input type="text"
++                     id="rewards-name"
++                     name="name"
++                     class="form-control"
++                     placeholder="Alex Roaster"
++                     toolparamdescription="Customer full name"
++                     required>
++            </div>
++            <div class="form-group">
++              <label for="rewards-email">Email Address</label>
++              <input type="email"
++                     id="rewards-email"
++                     name="email"
++                     class="form-control"
++                     placeholder="alex@example.com"
++                     toolparamdescription="Customer email address for rewards balance"
++                     required>
++            </div>
++          </div>
++          <button type="submit" class="btn btn-outline btn-sm">Join Rewards Club (+50 Points)</button>
++          <div id="rewards-signup-message"></div>
++        </form>
++      </div>
++
++      <!-- Locations Panel -->
++      <div id="locations" class="panel-card">
++        <h3>📍 Roastery Locations</h3>
++        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
++          Visit our cafes or order ahead for expedited curbside pickup.
++        </p>
++        <div id="locations-list" class="locations-grid">
++          <!-- Populated dynamically -->
+         </div>
+       </div>
+     </section>
++
+   </main>
+ 
++  <!-- Shopping Cart Drawer -->
++  <div id="cart-drawer-overlay" class="cart-drawer-overlay"></div>
++  <aside id="cart-drawer" class="cart-drawer" aria-label="Shopping Cart">
++    <div class="cart-drawer-header">
++      <h3>Your Coffee Order (<span id="cart-item-count">0 items</span>)</h3>
++      <button id="close-cart-btn" class="cart-close-btn" aria-label="Close Cart">&times;</button>
++    </div>
++
++    <div id="cart-items-container" class="cart-items-container">
++      <!-- Cart items rendered dynamically -->
++    </div>
++
++    <div class="cart-drawer-footer">
++      <!-- Promo Code -->
++      <div class="promo-row">
++        <input type="text"
++               id="promo-code-input"
++               class="form-control"
++               placeholder="Promo Code (BEANS10, DAILYGRIND)"
++               style="flex: 1;">
++        <button id="apply-promo-btn" class="btn btn-outline btn-sm">Apply</button>
++      </div>
++      <div id="promo-status" class="promo-status"></div>
++
++      <!-- Totals Breakdown -->
++      <div class="cart-totals-breakdown">
++        <div class="total-row">
++          <span>Subtotal:</span>
++          <span id="cart-subtotal">$0.00</span>
++        </div>
++        <div class="total-row" style="color: var(--success);">
++          <span>Discount:</span>
++          <span id="cart-discount">-$0.00</span>
++        </div>
++        <div class="total-row">
++          <span>Tax (8.75%):</span>
++          <span id="cart-tax">$0.00</span>
++        </div>
++        <div class="total-row final">
++          <span>Total:</span>
++          <span id="cart-total">$0.00</span>
++        </div>
++      </div>
++
++      <!-- Declarative Tool 4: Checkout Form (NO toolautosubmit as required for transactional actions!) -->
++      <form id="checkout-form"
++            class="cart-checkout-form"
++            toolname="place_order_form"
++            tooldescription="Submit order and process payment for items in cart">
++        <div class="form-group">
++          <label for="checkout-name">Pickup Name</label>
++          <input type="text"
++                 id="checkout-name"
++                 name="customerName"
++                 class="form-control"
++                 placeholder="Your Name"
++                 toolparamdescription="Customer name for cafe pickup"
++                 required>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="checkout-pickup-time">Pickup Timing</label>
++            <select id="checkout-pickup-time"
++                    name="pickupTime"
++                    class="form-control"
++                    toolparamdescription="Pickup timing preference">
++              <option value="asap">ASAP (10-15 mins)</option>
++              <option value="15_minutes">In 15 Minutes</option>
++              <option value="30_minutes">In 30 Minutes</option>
++              <option value="1_hour">In 1 Hour</option>
++            </select>
++          </div>
++
++          <div class="form-group">
++            <label for="checkout-payment">Payment</label>
++            <select id="checkout-payment"
++                    name="paymentMethod"
++                    class="form-control"
++                    toolparamdescription="Payment method">
++              <option value="credit_card">Credit Card</option>
++              <option value="apple_pay">Apple Pay</option>
++              <option value="rewards_points">Rewards Points</option>
++            </select>
++          </div>
++        </div>
++
++        <button type="submit" class="btn btn-accent btn-block" style="margin-top: 8px;">
++          Confirm & Place Order (<span id="checkout-total-btn">$0.00</span>)
++        </button>
++      </form>
++
++      <button id="clear-cart-btn" class="btn btn-outline btn-block btn-sm" style="margin-top: 8px;">
++        Clear Cart
++      </button>
++    </div>
++  </aside>
++
++  <!-- Order Success Modal -->
++  <div id="order-success-modal" class="modal-overlay">
++    <div class="modal-card">
++      <div class="modal-icon">☕✨</div>
++      <h3>Order Placed Successfully!</h3>
++      <p>Thank you! Your artisanal roast is being prepared by our baristas.</p>
++      <div id="order-success-details" class="order-details-box"></div>
++      <button id="close-order-modal-btn" class="btn btn-primary">Done</button>
++    </div>
++  </div>
++
++  <!-- Footer -->
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#menu">Our Menu</a> |
++      <a href="#locations">Roasteries</a> |
++      <a href="#rewards">Rewards</a> |
++      <a href="#privacy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved. WebMCP Ready.</p>
+   </footer>
+ 
++  <!-- Application Scripts -->
++  <script src="data.js"></script>
++  <script src="webmcp-tools.js"></script>
++  <script src="app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..765c0b6 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,16 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test test/webmcp.test.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^30.1.3",
++    "webmcp-types": "^0.1.10"
+   }
+ }
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..b45ae64
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,901 @@
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --secondary: #d7ccc8;
++  --secondary-light: #efebe9;
++  --accent: #ffab40;
++  --accent-hover: #ff9100;
++  --text: #2d1e18;
++  --text-muted: #6d4c41;
++  --light: #faf8f5;
++  --white: #ffffff;
++  --border: #e0d7d2;
++  --success: #2e7d32;
++  --error: #c62828;
++  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.08);
++  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
++  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.18);
++  --radius: 8px;
++  --radius-lg: 12px;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++}
++
++/* =========================================
++   WebMCP Pseudo-classes & Feedback
++   (agentic-forms guidance)
++   ========================================= */
++form:tool-form-active {
++  outline: 2px dashed var(--accent);
++  background-color: rgba(255, 171, 64, 0.08) !important;
++  transition: all 0.2s ease-in-out;
++}
++
++button:tool-submit-active {
++  outline: 2px dashed var(--primary);
++  animation: toolPulse 2s infinite;
++}
++
++@keyframes toolPulse {
++  0% { transform: scale(1); }
++  50% { transform: scale(1.04); }
++  100% { transform: scale(1); }
++}
++
++/* Agent Activity Banner */
++.agent-banner {
++  display: none;
++  background: #263238;
++  color: #eceff1;
++  padding: 8px 16px;
++  font-size: 0.85rem;
++  align-items: center;
++  justify-content: center;
++  gap: 10px;
++  position: sticky;
++  top: 0;
++  z-index: 2000;
++  border-bottom: 2px solid var(--accent);
++}
++
++.agent-banner.show {
++  display: flex;
++}
++
++.agent-banner.active {
++  border-bottom-color: var(--accent);
++}
++
++.agent-banner.cancelled {
++  border-bottom-color: var(--error);
++}
++
++.agent-indicator-dot {
++  width: 10px;
++  height: 10px;
++  background-color: #00e676;
++  border-radius: 50%;
++  animation: pulseDot 1.5s infinite;
++}
++
++@keyframes pulseDot {
++  0% { transform: scale(0.9); opacity: 0.8; }
++  50% { transform: scale(1.3); opacity: 1; }
++  100% { transform: scale(0.9); opacity: 0.8; }
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 0.8rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  box-shadow: var(--shadow-sm);
++}
++
++.logo {
++  font-size: 1.4rem;
++  font-weight: 800;
++  letter-spacing: 1.5px;
++  color: white;
++  text-decoration: none;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.nav-links {
++  display: flex;
++  list-style: none;
++  align-items: center;
++  gap: 20px;
++}
++
++.nav-links a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.95rem;
++  font-weight: 500;
++  transition: color 0.2s;
++  padding: 6px 10px;
++  border-radius: 4px;
++}
++
++.nav-links a:hover {
++  color: var(--accent);
++}
++
++.cart-nav-link {
++  background: rgba(255, 255, 255, 0.12);
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  border-radius: 20px !important;
++  padding: 6px 14px !important;
++}
++
++.cart-badge {
++  background: var(--accent);
++  color: var(--primary-dark);
++  font-size: 0.75rem;
++  font-weight: bold;
++  padding: 2px 7px;
++  border-radius: 12px;
++}
++
++.webmcp-pill {
++  background: rgba(255, 171, 64, 0.2);
++  color: var(--accent);
++  border: 1px solid var(--accent);
++  font-size: 0.75rem;
++  padding: 3px 8px;
++  border-radius: 12px;
++  font-weight: 600;
++  letter-spacing: 0.5px;
++}
++
++/* Hero Section */
++.hero {
++  height: 50vh;
++  min-height: 340px;
++  background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 2.8rem;
++  font-weight: 800;
++  margin-bottom: 0.8rem;
++  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
++}
++
++.hero p {
++  font-size: 1.2rem;
++  max-width: 600px;
++  margin-bottom: 1.5rem;
++  color: var(--secondary-light);
++}
++
++/* Buttons */
++.btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  padding: 10px 22px;
++  font-size: 0.95rem;
++  font-weight: 600;
++  text-decoration: none;
++  border-radius: var(--radius);
++  border: none;
++  cursor: pointer;
++  transition: all 0.2s;
++}
++
++.btn-primary {
++  background: var(--primary);
++  color: white;
++}
++
++.btn-primary:hover {
++  background: var(--primary-dark);
++}
++
++.btn-accent {
++  background: var(--accent);
++  color: var(--primary-dark);
++}
++
++.btn-accent:hover {
++  background: var(--accent-hover);
++}
++
++.btn-outline {
++  background: transparent;
++  border: 1px solid var(--primary);
++  color: var(--primary);
++}
++
++.btn-outline:hover {
++  background: var(--primary);
++  color: white;
++}
++
++.btn-sm {
++  padding: 6px 12px;
++  font-size: 0.85rem;
++}
++
++.btn-block {
++  width: 100%;
++}
++
++/* Container */
++.container {
++  max-width: 1160px;
++  margin: 30px auto;
++  padding: 0 20px;
++  width: 100%;
++  flex: 1;
++}
++
++/* Sections */
++.section-header {
++  text-align: center;
++  margin-bottom: 25px;
++}
++
++.section-header h2 {
++  font-size: 2rem;
++  color: var(--primary);
++  margin-bottom: 6px;
++}
++
++.section-header p {
++  color: var(--text-muted);
++}
++
++/* Declarative Forms Section */
++.agentic-tools-bar {
++  background: white;
++  border-radius: var(--radius-lg);
++  padding: 24px;
++  margin-bottom: 35px;
++  box-shadow: var(--shadow-sm);
++  border: 1px solid var(--border);
++}
++
++.agentic-bar-title {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-bottom: 16px;
++  flex-wrap: wrap;
++  gap: 10px;
++}
++
++.agentic-bar-title h3 {
++  color: var(--primary);
++  font-size: 1.15rem;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.forms-grid {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 20px;
++}
++
++@media (max-width: 850px) {
++  .forms-grid {
++    grid-template-columns: 1fr;
++  }
++}
++
++.declarative-form {
++  background: var(--light);
++  border: 1px solid var(--border);
++  border-radius: var(--radius);
++  padding: 16px;
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++}
++
++.form-row {
++  display: flex;
++  gap: 10px;
++  flex-wrap: wrap;
++}
++
++.form-group {
++  display: flex;
++  flex-direction: column;
++  gap: 4px;
++  flex: 1;
++  min-width: 140px;
++}
++
++.form-group label {
++  font-size: 0.85rem;
++  font-weight: 600;
++  color: var(--text-muted);
++}
++
++.form-control {
++  padding: 8px 12px;
++  border: 1px solid var(--border);
++  border-radius: 6px;
++  font-size: 0.9rem;
++  background: white;
++  color: var(--text);
++  font-family: inherit;
++}
++
++.form-control:focus {
++  outline: none;
++  border-color: var(--primary);
++  box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.15);
++}
++
++/* Category Filters */
++.category-filters {
++  display: flex;
++  justify-content: center;
++  gap: 10px;
++  flex-wrap: wrap;
++  margin-bottom: 25px;
++}
++
++.filter-btn {
++  background: white;
++  border: 1px solid var(--border);
++  color: var(--text);
++  padding: 7px 16px;
++  border-radius: 20px;
++  font-size: 0.9rem;
++  font-weight: 500;
++  cursor: pointer;
++  transition: all 0.2s;
++}
++
++.filter-btn:hover {
++  border-color: var(--primary);
++  color: var(--primary);
++}
++
++.filter-btn.active {
++  background: var(--primary);
++  color: white;
++  border-color: var(--primary);
++}
++
++/* Menu Grid */
++.menu-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
++  gap: 25px;
++  margin-bottom: 40px;
++}
++
++.card {
++  background: white;
++  border-radius: var(--radius-lg);
++  overflow: hidden;
++  box-shadow: var(--shadow-sm);
++  border: 1px solid var(--border);
++  transition: transform 0.2s, box-shadow 0.2s;
++  display: flex;
++  flex-direction: column;
++}
++
++.card:hover {
++  transform: translateY(-3px);
++  box-shadow: var(--shadow-md);
++}
++
++.card-img-container {
++  height: 180px;
++  position: relative;
++  overflow: hidden;
++}
++
++.card-img {
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++  transition: transform 0.3s;
++}
++
++.card:hover .card-img {
++  transform: scale(1.05);
++}
++
++.category-badge {
++  position: absolute;
++  top: 10px;
++  right: 10px;
++  background: rgba(0, 0, 0, 0.7);
++  color: white;
++  font-size: 0.7rem;
++  font-weight: 700;
++  padding: 3px 8px;
++  border-radius: 4px;
++  letter-spacing: 0.5px;
++}
++
++.category-badge.seasonal { background: #e65100; }
++.category-badge.espresso { background: #4e342e; }
++.category-badge.cold { background: #00838f; }
++.category-badge.brewed { background: #6d4c41; }
++.category-badge.food { background: #bf360c; }
++
++.card-body {
++  padding: 16px;
++  display: flex;
++  flex-direction: column;
++  flex: 1;
++}
++
++.card-header-row {
++  display: flex;
++  justify-content: space-between;
++  align-items: baseline;
++  margin-bottom: 6px;
++}
++
++.card-title {
++  font-size: 1.1rem;
++  color: var(--primary);
++  font-weight: 700;
++}
++
++.card-price {
++  font-size: 1.15rem;
++  font-weight: 800;
++  color: var(--primary-dark);
++}
++
++.card-desc {
++  font-size: 0.88rem;
++  color: var(--text-muted);
++  margin-bottom: 12px;
++  flex: 1;
++}
++
++.card-meta {
++  display: flex;
++  gap: 12px;
++  font-size: 0.8rem;
++  color: #795548;
++  margin-bottom: 12px;
++}
++
++.card-actions {
++  display: flex;
++  flex-direction: column;
++  gap: 10px;
++}
++
++.card-options-row {
++  display: flex;
++  gap: 8px;
++}
++
++.card-select {
++  flex: 1;
++  padding: 6px 8px;
++  font-size: 0.85rem;
++  border: 1px solid var(--border);
++  border-radius: 6px;
++  background: var(--light);
++}
++
++.sr-only {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0, 0, 0, 0);
++  border: 0;
++}
++
++/* Secondary Panels: Rewards & Locations */
++.info-panels-grid {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 25px;
++  margin-top: 40px;
++}
++
++@media (max-width: 800px) {
++  .info-panels-grid {
++    grid-template-columns: 1fr;
++  }
++}
++
++.panel-card {
++  background: white;
++  padding: 24px;
++  border-radius: var(--radius-lg);
++  border: 1px solid var(--border);
++  box-shadow: var(--shadow-sm);
++}
++
++.panel-card h3 {
++  color: var(--primary);
++  margin-bottom: 14px;
++  font-size: 1.3rem;
++}
++
++.rewards-display {
++  display: flex;
++  gap: 20px;
++  margin-bottom: 15px;
++}
++
++.reward-stat {
++  background: var(--secondary-light);
++  padding: 12px 18px;
++  border-radius: var(--radius);
++  text-align: center;
++  flex: 1;
++}
++
++.stat-number {
++  font-size: 1.8rem;
++  font-weight: 800;
++  color: var(--primary);
++  display: block;
++}
++
++.stat-label {
++  font-size: 0.8rem;
++  color: var(--text-muted);
++}
++
++.rewards-perks-list {
++  list-style: none;
++  font-size: 0.9rem;
++  margin-bottom: 15px;
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++}
++
++.locations-grid {
++  display: flex;
++  flex-direction: column;
++  gap: 15px;
++}
++
++.location-card {
++  padding: 14px;
++  border: 1px solid var(--border);
++  border-radius: var(--radius);
++  background: var(--light);
++}
++
++.location-card h3 {
++  font-size: 1rem;
++  margin-bottom: 4px;
++}
++
++.loc-address, .loc-hours, .loc-phone {
++  font-size: 0.85rem;
++  color: var(--text-muted);
++  margin-bottom: 2px;
++}
++
++.loc-amenities {
++  display: flex;
++  gap: 6px;
++  flex-wrap: wrap;
++  margin-top: 6px;
++}
++
++.amenity-pill {
++  background: white;
++  border: 1px solid var(--border);
++  font-size: 0.72rem;
++  padding: 2px 7px;
++  border-radius: 10px;
++}
++
++/* Cart Drawer */
++.cart-drawer-overlay {
++  position: fixed;
++  inset: 0;
++  background: rgba(0, 0, 0, 0.5);
++  z-index: 3000;
++  opacity: 0;
++  visibility: hidden;
++  transition: opacity 0.3s;
++}
++
++.cart-drawer-overlay.open {
++  opacity: 1;
++  visibility: visible;
++}
++
++.cart-drawer {
++  position: fixed;
++  top: 0;
++  right: 0;
++  width: 420px;
++  max-width: 90vw;
++  height: 100vh;
++  background: white;
++  z-index: 3001;
++  box-shadow: var(--shadow-lg);
++  display: flex;
++  flex-direction: column;
++  transform: translateX(100%);
++  transition: transform 0.3s ease-in-out;
++}
++
++.cart-drawer.open {
++  transform: translateX(0);
++}
++
++.cart-drawer-header {
++  padding: 18px 20px;
++  background: var(--primary);
++  color: white;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++}
++
++.cart-drawer-header h3 {
++  font-size: 1.2rem;
++}
++
++.cart-close-btn {
++  background: none;
++  border: none;
++  color: white;
++  font-size: 1.5rem;
++  cursor: pointer;
++  line-height: 1;
++}
++
++.cart-items-container {
++  flex: 1;
++  overflow-y: auto;
++  padding: 16px 20px;
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++}
++
++.empty-cart-view {
++  text-align: center;
++  padding: 40px 10px;
++  color: var(--text-muted);
++}
++
++.cart-item-row {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 10px;
++  background: var(--light);
++  border-radius: var(--radius);
++  border: 1px solid var(--border);
++}
++
++.cart-item-info h4 {
++  font-size: 0.95rem;
++  color: var(--primary);
++}
++
++.cart-item-specs {
++  font-size: 0.8rem;
++  color: var(--text-muted);
++}
++
++.cart-item-price {
++  font-size: 0.85rem;
++  font-weight: 600;
++}
++
++.cart-item-controls {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++
++.cart-qty-badge {
++  background: white;
++  border: 1px solid var(--border);
++  padding: 2px 6px;
++  border-radius: 4px;
++  font-size: 0.85rem;
++  font-weight: 600;
++}
++
++.cart-item-subtotal {
++  font-weight: 700;
++  font-size: 0.95rem;
++  color: var(--primary-dark);
++}
++
++.cart-remove-btn {
++  background: none;
++  border: none;
++  color: var(--error);
++  font-size: 1.2rem;
++  cursor: pointer;
++  padding: 0 4px;
++  line-height: 1;
++}
++
++.cart-drawer-footer {
++  border-top: 1px solid var(--border);
++  padding: 16px 20px;
++  background: var(--light);
++}
++
++.promo-row {
++  display: flex;
++  gap: 8px;
++  margin-bottom: 8px;
++}
++
++.promo-status {
++  font-size: 0.8rem;
++  margin-bottom: 10px;
++}
++
++.promo-status.success { color: var(--success); font-weight: 600; }
++.promo-status.error { color: var(--error); }
++
++.cart-totals-breakdown {
++  display: flex;
++  flex-direction: column;
++  gap: 4px;
++  margin-bottom: 14px;
++  font-size: 0.9rem;
++}
++
++.total-row {
++  display: flex;
++  justify-content: space-between;
++}
++
++.total-row.final {
++  font-size: 1.15rem;
++  font-weight: 800;
++  color: var(--primary);
++  border-top: 1px solid var(--border);
++  padding-top: 6px;
++  margin-top: 4px;
++}
++
++.cart-checkout-form {
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++}
++
++/* Modals */
++.modal-overlay {
++  position: fixed;
++  inset: 0;
++  background: rgba(0, 0, 0, 0.6);
++  z-index: 4000;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 20px;
++  opacity: 0;
++  visibility: hidden;
++  transition: opacity 0.2s;
++}
++
++.modal-overlay.show {
++  opacity: 1;
++  visibility: visible;
++}
++
++.modal-card {
++  background: white;
++  border-radius: var(--radius-lg);
++  padding: 28px;
++  max-width: 480px;
++  width: 100%;
++  box-shadow: var(--shadow-lg);
++  text-align: center;
++}
++
++.modal-icon {
++  font-size: 3rem;
++  margin-bottom: 10px;
++}
++
++.modal-card h3 {
++  font-size: 1.5rem;
++  color: var(--primary);
++  margin-bottom: 10px;
++}
++
++.order-details-box {
++  background: var(--light);
++  border: 1px solid var(--border);
++  border-radius: var(--radius);
++  padding: 14px;
++  text-align: left;
++  font-size: 0.9rem;
++  margin: 15px 0 20px 0;
++}
++
++.order-details-box p {
++  margin-bottom: 4px;
++}
++
++.order-details-box ul {
++  padding-left: 20px;
++  margin-top: 4px;
++}
++
++/* Footer */
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 35px 20px;
++  margin-top: auto;
++  border-top: 1px solid var(--border);
++}
++
++.footer-links {
++  margin-bottom: 15px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.88rem;
++}
++
++.footer-links a:hover {
++  text-decoration: underline;
++}
++
++.success-message {
++  color: var(--success);
++  font-size: 0.85rem;
++  font-weight: 600;
++}
+diff --git a/test/webmcp.test.js b/test/webmcp.test.js
+new file mode 100644
+index 0000000..68d37cc
+--- /dev/null
++++ b/test/webmcp.test.js
+@@ -0,0 +1,222 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { JSDOM } from 'jsdom';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf-8');
++const polyfillCode = fs.readFileSync(path.join(__dirname, '../webmcp-polyfill.js'), 'utf-8');
++const dataCode = fs.readFileSync(path.join(__dirname, '../data.js'), 'utf-8');
++const toolsCode = fs.readFileSync(path.join(__dirname, '../webmcp-tools.js'), 'utf-8');
++const appCode = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf-8');
++
++function setupEnvironment() {
++  const dom = new JSDOM(html, {
++    url: 'https://example.com/daily-grind',
++    runScripts: 'dangerously'
++  });
++
++  const { window } = dom;
++
++  // Execute scripts in proper order
++  window.eval(polyfillCode);
++  window.eval(dataCode);
++  window.eval(toolsCode);
++  window.eval(appCode);
++
++  return { dom, window, document: window.document };
++}
++
++test('WebMCP: document.modelContext exists and registers tools', async () => {
++  const { document } = setupEnvironment();
++  assert.ok(document.modelContext, 'document.modelContext should exist');
++  assert.equal(typeof document.modelContext.registerTool, 'function');
++  assert.equal(typeof document.modelContext.getTools, 'function');
++  assert.equal(typeof document.modelContext.executeTool, 'function');
++});
++
++test('WebMCP: getTools() returns registered tools and declarative forms', async () => {
++  const { document } = setupEnvironment();
++  const tools = await document.modelContext.getTools();
++  assert.ok(Array.isArray(tools));
++  assert.ok(tools.length > 0, 'Tools list should not be empty');
++
++  const toolNames = tools.map(t => t.name);
++
++  // Check imperative tools
++  assert.ok(toolNames.includes('get_menu'), 'Should include get_menu');
++  assert.ok(toolNames.includes('get_menu_item'), 'Should include get_menu_item');
++  assert.ok(toolNames.includes('get_cart'), 'Should include get_cart');
++  assert.ok(toolNames.includes('add_to_cart'), 'Should include add_to_cart');
++  assert.ok(toolNames.includes('remove_from_cart'), 'Should include remove_from_cart');
++  assert.ok(toolNames.includes('clear_cart'), 'Should include clear_cart');
++  assert.ok(toolNames.includes('apply_promo_code'), 'Should include apply_promo_code');
++  assert.ok(toolNames.includes('checkout_order'), 'Should include checkout_order');
++  assert.ok(toolNames.includes('get_store_locations'), 'Should include get_store_locations');
++  assert.ok(toolNames.includes('get_reward_status'), 'Should include get_reward_status');
++  assert.ok(toolNames.includes('dump_app_state'), 'Should include dump_app_state');
++
++  // Check declarative tools
++  assert.ok(toolNames.includes('search_menu'), 'Should include declarative search_menu');
++  assert.ok(toolNames.includes('quick_add_to_cart'), 'Should include declarative quick_add_to_cart');
++  assert.ok(toolNames.includes('join_rewards_club'), 'Should include declarative join_rewards_club');
++  assert.ok(toolNames.includes('place_order_form'), 'Should include declarative place_order_form');
++});
++
++test('WebMCP: annotations compliance (readOnlyHint, consequentialHint, debugging)', async () => {
++  const { document } = setupEnvironment();
++  const tools = await document.modelContext.getTools();
++
++  const getMenuTool = tools.find(t => t.name === 'get_menu');
++  assert.equal(getMenuTool.annotations.readOnlyHint, true, 'get_menu should have readOnlyHint: true');
++
++  const checkoutTool = tools.find(t => t.name === 'checkout_order');
++  assert.equal(checkoutTool.annotations.consequentialHint, true, 'checkout_order should have consequentialHint: true');
++  assert.equal(checkoutTool.annotations.readOnlyHint, false, 'checkout_order should have readOnlyHint: false');
++
++  const dumpTool = tools.find(t => t.name === 'dump_app_state');
++  assert.equal(dumpTool.annotations.debugging, true, 'dump_app_state should have debugging: true');
++});
++
++test('WebMCP: executeTool() invokes get_menu and returns filtered results', async () => {
++  const { document } = setupEnvironment();
++  const raw = await document.modelContext.executeTool('get_menu', { category: 'seasonal' });
++  const result = typeof raw === 'string' ? JSON.parse(raw) : raw;
++  assert.ok(result.items.length > 0);
++  assert.ok(result.items.every(i => i.category === 'seasonal'));
++});
++
++test('WebMCP: executeTool() handles shopping cart flow (add, view, remove)', async () => {
++  const { document } = setupEnvironment();
++
++  // Add item
++  const addRaw = await document.modelContext.executeTool('add_to_cart', {
++    itemId: 'maple-oat-latte',
++    quantity: 2,
++    size: 'large',
++    milk: 'oat'
++  });
++  const addRes = typeof addRaw === 'string' ? JSON.parse(addRaw) : addRaw;
++  assert.equal(addRes.success, true);
++  assert.equal(addRes.cart.itemCount, 2);
++
++  // View cart
++  const cartRaw = await document.modelContext.executeTool('get_cart');
++  const cart = typeof cartRaw === 'string' ? JSON.parse(cartRaw) : cartRaw;
++  assert.equal(cart.items.length, 1);
++  assert.equal(cart.items[0].name, 'Maple Oat Latte');
++  const cartItemId = cart.items[0].cartItemId;
++
++  // Remove item
++  const remRaw = await document.modelContext.executeTool('remove_from_cart', { cartItemId });
++  const remRes = typeof remRaw === 'string' ? JSON.parse(remRaw) : remRaw;
++  assert.equal(remRes.success, true);
++  assert.equal(remRes.cart.itemCount, 0);
++});
++
++test('WebMCP: structured errors returned instead of generic thrown exceptions', async () => {
++  const { document } = setupEnvironment();
++
++  // Invalid item
++  const raw = await document.modelContext.executeTool('add_to_cart', { itemId: 'non-existent-beverage' });
++  const res = typeof raw === 'string' ? JSON.parse(raw) : raw;
++  assert.ok(res.error, 'Should return structured error');
++  assert.ok(Array.isArray(res.availableItemIds), 'Should provide helpful recovery hints');
++
++  // Checkout with empty cart
++  const checkRaw = await document.modelContext.executeTool('checkout_order', { customerName: 'Sam' });
++  const checkRes = typeof checkRaw === 'string' ? JSON.parse(checkRaw) : checkRaw;
++  assert.ok(checkRes.error, 'Should return error when checking out empty cart');
++});
++
++test('WebMCP: checkout_order completes successfully with items in cart', async () => {
++  const { document } = setupEnvironment();
++
++  // Add item
++  await document.modelContext.executeTool('add_to_cart', {
++    itemId: 'dark-roast-espresso',
++    quantity: 1
++  });
++
++  // Apply promo
++  const promoRaw = await document.modelContext.executeTool('apply_promo_code', { code: 'BEANS10' });
++  const promoRes = typeof promoRaw === 'string' ? JSON.parse(promoRaw) : promoRaw;
++  assert.equal(promoRes.success, true);
++
++  // Checkout
++  const orderRaw = await document.modelContext.executeTool('checkout_order', {
++    customerName: 'Morgan Barista',
++    pickupTime: '15_minutes',
++    paymentMethod: 'apple_pay'
++  });
++  const orderRes = typeof orderRaw === 'string' ? JSON.parse(orderRaw) : orderRaw;
++  assert.equal(orderRes.success, true);
++  assert.ok(orderRes.order.orderId.startsWith('ORD-'));
++  assert.equal(orderRes.order.customerName, 'Morgan Barista');
++
++  // Verify cart emptied after checkout
++  const cartRaw = await document.modelContext.executeTool('get_cart');
++  const cart = typeof cartRaw === 'string' ? JSON.parse(cartRaw) : cartRaw;
++  assert.equal(cart.itemCount, 0);
++});
++
++test('WebMCP: tool unregistration via registration AbortSignal', async () => {
++  const { document } = setupEnvironment();
++  const controller = new AbortController();
++
++  let toolChangeDispatched = false;
++  document.modelContext.addEventListener('toolchange', () => {
++    toolChangeDispatched = true;
++  });
++
++  await document.modelContext.registerTool({
++    name: 'temp_tool',
++    description: 'Temporary tool for lifecycle test',
++    inputSchema: { type: 'object', properties: {} },
++    execute() { return 'ok'; }
++  }, { signal: controller.signal });
++
++  let tools = await document.modelContext.getTools();
++  assert.ok(tools.some(t => t.name === 'temp_tool'));
++
++  // Abort registration signal
++  controller.abort();
++
++  tools = await document.modelContext.getTools();
++  assert.ok(!tools.some(t => t.name === 'temp_tool'), 'temp_tool should be unregistered');
++  assert.equal(toolChangeDispatched, true, 'toolchange event should have been dispatched');
++});
++
++test('WebMCP: execution cancellation with AbortSignal', async () => {
++  const { document } = setupEnvironment();
++  const controller = new AbortController();
++
++  let cancelEventFired = false;
++  document.modelContext.addEventListener('toolcancel', (e) => {
++    cancelEventFired = true;
++  });
++
++  controller.abort();
++
++  await assert.rejects(
++    async () => {
++      await document.modelContext.executeTool('get_menu', {}, { signal: controller.signal });
++    },
++    { name: 'AbortError' }
++  );
++});
++
++test('WebMCP: declarative form submission with agentInvoked and respondWith', async () => {
++  const { document } = setupEnvironment();
++
++  // Execute declarative search_menu tool
++  const raw = await document.modelContext.executeTool('search_menu', {
++    query: 'latte',
++    category: 'all'
++  });
++  const res = typeof raw === 'string' ? JSON.parse(raw) : raw;
++  assert.ok(res.count > 0, 'Should find latte in menu search');
++  assert.ok(res.matches.some(m => m.name.toLowerCase().includes('latte')));
++});
+diff --git a/webmcp-polyfill.js b/webmcp-polyfill.js
+new file mode 100644
+index 0000000..a3d37b3
+--- /dev/null
++++ b/webmcp-polyfill.js
+@@ -0,0 +1,309 @@
++/**
++ * WebMCP Polyfill for browser environments that do not yet support
++ * document.modelContext natively.
++ * Conforms to Chromium WebMCP (Web Model Context Protocol) Specification.
++ */
++(function () {
++  'use strict';
++
++  if (typeof document !== 'undefined' && 'modelContext' in document && document.modelContext) {
++    return;
++  }
++
++  class ToolActivatedEvent extends Event {
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.toolName = eventInitDict.toolName || '';
++    }
++  }
++
++  class ToolCancelEvent extends Event {
++    constructor(type, eventInitDict = {}) {
++      super(type, eventInitDict);
++      this.toolName = eventInitDict.toolName || '';
++    }
++  }
++
++  if (typeof window !== 'undefined') {
++    window.ToolActivatedEvent = ToolActivatedEvent;
++    window.ToolCancelEvent = ToolCancelEvent;
++  } else if (typeof globalThis !== 'undefined') {
++    globalThis.ToolActivatedEvent = ToolActivatedEvent;
++    globalThis.ToolCancelEvent = ToolCancelEvent;
++  }
++
++  class ModelContext extends EventTarget {
++    constructor() {
++      super();
++      /** @type {Map<string, { tool: any, options: any }>} */
++      this._registeredTools = new Map();
++      this.ontoolchange = null;
++      this.ontoolactivated = null;
++      this.ontoolcancel = null;
++    }
++
++    async registerTool(tool, options = {}) {
++      if (!tool || typeof tool !== 'object') {
++        throw new TypeError('Tool definition must be an object');
++      }
++      if (typeof tool.name !== 'string' || !tool.name) {
++        throw new TypeError('Tool name must be a non-empty string');
++      }
++      if (typeof tool.description !== 'string') {
++        throw new TypeError('Tool description must be a string');
++      }
++      if (typeof tool.execute !== 'function') {
++        throw new TypeError('Tool execute must be a function');
++      }
++
++      if (options?.signal?.aborted) {
++        return;
++      }
++
++      const toolEntry = {
++        tool: {
++          name: tool.name,
++          title: tool.title || tool.name,
++          description: tool.description,
++          inputSchema: tool.inputSchema ? JSON.parse(JSON.stringify(tool.inputSchema)) : { type: 'object', properties: {} },
++          execute: tool.execute,
++          annotations: tool.annotations ? { ...tool.annotations } : {}
++        },
++        options: { ...options }
++      };
++
++      this._registeredTools.set(tool.name, toolEntry);
++
++      if (options?.signal) {
++        options.signal.addEventListener('abort', () => {
++          if (this._registeredTools.get(tool.name) === toolEntry) {
++            this._registeredTools.delete(tool.name);
++            this._dispatchToolChange();
++          }
++        }, { once: true });
++      }
++
++      this._dispatchToolChange();
++    }
++
++    _dispatchToolChange() {
++      const ev = new Event('toolchange');
++      this.dispatchEvent(ev);
++      if (typeof this.ontoolchange === 'function') {
++        this.ontoolchange.call(this, ev);
++      }
++    }
++
++    async getTools(options = {}) {
++      const tools = [];
++
++      // 1. Imperative tools
++      for (const entry of this._registeredTools.values()) {
++        const t = entry.tool;
++        tools.push({
++          name: t.name,
++          title: t.title,
++          description: t.description,
++          inputSchema: JSON.parse(JSON.stringify(t.inputSchema)),
++          window: typeof window !== 'undefined' ? window : null,
++          origin: typeof window !== 'undefined' ? window.location.origin : '',
++          annotations: { ...t.annotations }
++        });
++      }
++
++      // 2. Declarative forms with toolname
++      if (typeof document !== 'undefined') {
++        const declarativeForms = document.querySelectorAll('form[toolname]');
++        for (const form of declarativeForms) {
++          const formToolName = form.getAttribute('toolname');
++          if (!formToolName || this._registeredTools.has(formToolName)) {
++            continue;
++          }
++
++          const formDescription = form.getAttribute('tooldescription') || '';
++          const schema = this._synthesizeFormSchema(form);
++
++          tools.push({
++            name: formToolName,
++            title: formToolName,
++            description: formDescription,
++            inputSchema: schema,
++            window: typeof window !== 'undefined' ? window : null,
++            origin: typeof window !== 'undefined' ? window.location.origin : '',
++            annotations: {
++              readOnlyHint: form.getAttribute('toolautosubmit') !== null,
++              consequentialHint: !form.hasAttribute('toolautosubmit')
++            }
++          });
++        }
++      }
++
++      return tools;
++    }
++
++    _synthesizeFormSchema(form) {
++      const properties = {};
++      const required = [];
++
++      const elements = form.elements || [];
++      for (let i = 0; i < elements.length; i++) {
++        const el = elements[i];
++        if (!el.name || el.type === 'submit' || el.type === 'button') continue;
++
++        let description = el.getAttribute('toolparamdescription');
++        if (!description && el.id) {
++          const label = form.querySelector(`label[for="${el.id}"]`);
++          if (label) description = label.textContent?.trim();
++        }
++        if (!description) {
++          description = el.getAttribute('aria-description') || el.placeholder || el.name;
++        }
++
++        const propDef = {
++          type: el.type === 'number' ? 'number' : 'string',
++          description: description || ''
++        };
++
++        if (el.tagName === 'SELECT') {
++          const options = Array.from(el.options || []).map(o => o.value).filter(Boolean);
++          if (options.length > 0) propDef.enum = options;
++        }
++
++        if (el.required) {
++          required.push(el.name);
++        }
++
++        properties[el.name] = propDef;
++      }
++
++      return {
++        type: 'object',
++        properties,
++        ...(required.length > 0 ? { required } : {})
++      };
++    }
++
++    async executeTool(toolRef, inputObject = {}, options = {}) {
++      const toolName = typeof toolRef === 'string' ? toolRef : toolRef?.name;
++      if (!toolName) {
++        throw new TypeError('Invalid tool reference passed to executeTool');
++      }
++
++      if (options?.signal?.aborted) {
++        const abortErr = new Error('Tool execution aborted');
++        abortErr.name = 'AbortError';
++        throw abortErr;
++      }
++
++      // Check registered tools first
++      const registered = this._registeredTools.get(toolName);
++      let executeFn = registered?.tool.execute;
++
++      // Check declarative forms
++      if (!executeFn && typeof document !== 'undefined') {
++        const form = document.querySelector(`form[toolname="${toolName}"]`);
++        if (form) {
++          executeFn = async (input, execOpts) => {
++            return this._executeDeclarativeForm(form, input, execOpts);
++          };
++        }
++      }
++
++      if (!executeFn) {
++        throw new Error(`Tool "${toolName}" was not found or was unregistered`);
++      }
++
++      // Dispatch toolactivated
++      const actEv = new ToolActivatedEvent('toolactivated', { toolName });
++      this.dispatchEvent(actEv);
++      if (typeof this.ontoolactivated === 'function') {
++        this.ontoolactivated.call(this, actEv);
++      }
++      if (typeof window !== 'undefined') {
++        window.dispatchEvent(new CustomEvent('toolactivated', { detail: { toolName } }));
++      }
++
++      const abortHandler = () => {
++        const cancelEv = new ToolCancelEvent('toolcancel', { toolName });
++        this.dispatchEvent(cancelEv);
++        if (typeof this.ontoolcancel === 'function') {
++          this.ontoolcancel.call(this, cancelEv);
++        }
++        if (typeof window !== 'undefined') {
++          window.dispatchEvent(new CustomEvent('toolcancel', { detail: { toolName } }));
++        }
++      };
++
++      if (options?.signal) {
++        options.signal.addEventListener('abort', abortHandler, { once: true });
++      }
++
++      try {
++        const execSignal = options?.signal || (new AbortController()).signal;
++        const result = await executeFn(inputObject, { signal: execSignal });
++        return typeof result === 'string' ? result : JSON.stringify(result);
++      } catch (err) {
++        if (options?.signal?.aborted) {
++          abortHandler();
++        }
++        throw err;
++      } finally {
++        if (options?.signal) {
++          options.signal.removeEventListener('abort', abortHandler);
++        }
++      }
++    }
++
++    async _executeDeclarativeForm(form, inputObject, { signal }) {
++      if (signal?.aborted) {
++        const err = new Error('Execution aborted');
++        err.name = 'AbortError';
++        throw err;
++      }
++
++      // Populate form elements
++      if (inputObject && typeof inputObject === 'object') {
++        for (const [key, val] of Object.entries(inputObject)) {
++          const el = form.elements[key];
++          if (el) {
++            el.value = val;
++          }
++        }
++      }
++
++      let responsePromise = null;
++      const submitEv = new CustomEvent('submit', {
++        bubbles: true,
++        cancelable: true
++      });
++      submitEv.agentInvoked = true;
++      submitEv.respondWith = (promise) => {
++        responsePromise = promise;
++      };
++
++      form.dispatchEvent(submitEv);
++
++      if (responsePromise) {
++        return await responsePromise;
++      }
++
++      const formData = new FormData(form);
++      return { success: true, submitted: Object.fromEntries(formData.entries()) };
++    }
++  }
++
++  const modelContextInstance = new ModelContext();
++
++  if (typeof document !== 'undefined') {
++    Object.defineProperty(document, 'modelContext', {
++      value: modelContextInstance,
++      writable: false,
++      configurable: true,
++      enumerable: true
++    });
++  }
++
++  if (typeof globalThis !== 'undefined') {
++    globalThis.__webmcpPolyfill = modelContextInstance;
++  }
++})();
+diff --git a/webmcp-tools.js b/webmcp-tools.js
+new file mode 100644
+index 0000000..0088015
+--- /dev/null
++++ b/webmcp-tools.js
+@@ -0,0 +1,445 @@
++/**
++ * WebMCP Imperative Tool Registrations for The Daily Grind
++ * Follows WebMCP Specification (Chromium 146+ / 155+ / 156+)
++ */
++(function (global) {
++  'use strict';
++
++  const registrationController = new AbortController();
++
++  function registerDailyGrindTools(store) {
++    if (!('modelContext' in document) || !document.modelContext) {
++      console.warn('WebMCP is not supported in this browser. Skipping tool registration.');
++      return;
++    }
++
++    const registrationSignal = registrationController.signal;
++    const MENU_CATEGORIES = ['all', 'espresso', 'brewed', 'cold', 'seasonal', 'food'];
++    const SIZES = ['small', 'medium', 'large', 'standard'];
++    const MILKS = ['oat', 'whole', 'almond', 'skim', 'none'];
++    const PICKUP_TIMES = ['asap', '15_minutes', '30_minutes', '1_hour'];
++    const PAYMENT_METHODS = ['credit_card', 'rewards_points', 'apple_pay'];
++
++    // 1. get_menu
++    document.modelContext.registerTool({
++      name: 'get_menu',
++      description: 'Searches or browses the coffee and beverage menu. Use when the user wants to browse drinks and pastries.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          category: {
++            type: 'string',
++            enum: MENU_CATEGORIES,
++            default: 'all',
++            description: 'Beverage or food category filter.'
++          },
++          query: {
++            type: 'string',
++            description: 'Search keyword matching item name or description.'
++          }
++        }
++      },
++      execute({ category = 'all', query = '' } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++
++        if (category && !MENU_CATEGORIES.includes(category.toLowerCase())) {
++          return {
++            error: `Invalid category "${category}".`,
++            validCategories: MENU_CATEGORIES
++          };
++        }
++
++        const items = store.getMenu({ category, query });
++        return {
++          count: items.length,
++          items: items.map(item => ({
++            id: item.id,
++            name: item.name,
++            category: item.category,
++            price: item.price,
++            description: item.description,
++            sizes: item.sizes,
++            milks: item.milks,
++            calories: item.calories,
++            inStock: item.inStock
++          }))
++        };
++      },
++      annotations: {
++        readOnlyHint: true
++      }
++    }, { signal: registrationSignal });
++
++    // 2. get_menu_item
++    document.modelContext.registerTool({
++      name: 'get_menu_item',
++      description: 'Retrieves complete nutritional, pricing, and ingredient details for a specific menu item.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          itemId: {
++            type: 'string',
++            description: 'Unique identifier of the menu item.'
++          }
++        },
++        required: ['itemId']
++      },
++      execute({ itemId } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++
++        if (!itemId || typeof itemId !== 'string') {
++          return {
++            error: 'Missing required parameter "itemId".',
++            availableItemIds: store.menu.map(m => m.id)
++          };
++        }
++
++        const item = store.getMenuItem(itemId);
++        if (!item) {
++          return {
++            error: `Menu item "${itemId}" not found.`,
++            availableItemIds: store.menu.map(m => m.id)
++          };
++        }
++
++        return item;
++      },
++      annotations: {
++        readOnlyHint: true
++      }
++    }, { signal: registrationSignal });
++
++    // 3. get_cart
++    document.modelContext.registerTool({
++      name: 'get_cart',
++      description: 'Retrieves items currently in the customer\'s shopping cart, pricing subtotal, discounts, and total.',
++      inputSchema: {
++        type: 'object',
++        properties: {}
++      },
++      execute(input, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        return store.getCart();
++      },
++      annotations: {
++        readOnlyHint: true
++      }
++    }, { signal: registrationSignal });
++
++    // 4. add_to_cart
++    document.modelContext.registerTool({
++      name: 'add_to_cart',
++      description: 'Adds a beverage or food item to the shopping cart with specified size, milk choice, and quantity.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          itemId: {
++            type: 'string',
++            description: 'ID of the menu item to add.'
++          },
++          quantity: {
++            type: 'integer',
++            minimum: 1,
++            default: 1,
++            description: 'Number of units.'
++          },
++          size: {
++            type: 'string',
++            enum: SIZES,
++            default: 'medium',
++            description: 'Serving size.'
++          },
++          milk: {
++            type: 'string',
++            enum: MILKS,
++            default: 'none',
++            description: 'Milk choice for beverage.'
++          }
++        },
++        required: ['itemId']
++      },
++      execute({ itemId, quantity = 1, size = 'medium', milk = 'none' } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++
++        if (!itemId || typeof itemId !== 'string') {
++          return {
++            error: 'Parameter "itemId" is required.',
++            availableItemIds: store.menu.map(m => m.id)
++          };
++        }
++
++        const item = store.getMenuItem(itemId);
++        if (!item) {
++          return {
++            error: `Menu item "${itemId}" not found.`,
++            availableItemIds: store.menu.map(m => m.id)
++          };
++        }
++
++        if (size && !SIZES.includes(size)) {
++          return {
++            error: `Invalid size "${size}". Supported sizes: ${SIZES.join(', ')}.`,
++            supportedSizes: SIZES
++          };
++        }
++
++        if (milk && !MILKS.includes(milk)) {
++          return {
++            error: `Invalid milk option "${milk}". Supported options: ${MILKS.join(', ')}.`,
++            supportedMilks: MILKS
++          };
++        }
++
++        return store.addToCart({ itemId, quantity, size, milk });
++      },
++      annotations: {
++        readOnlyHint: false
++      }
++    }, { signal: registrationSignal });
++
++    // 5. remove_from_cart
++    document.modelContext.registerTool({
++      name: 'remove_from_cart',
++      description: 'Removes an item from the shopping cart by cart item ID.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          cartItemId: {
++            type: 'string',
++            description: 'Unique cart item ID to remove.'
++          }
++        },
++        required: ['cartItemId']
++      },
++      execute({ cartItemId } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++
++        if (!cartItemId) {
++          return {
++            error: 'Parameter "cartItemId" is required.',
++            currentCartItemIds: store.cart.items.map(i => i.cartItemId)
++          };
++        }
++
++        return store.removeFromCart(cartItemId);
++      },
++      annotations: {
++        readOnlyHint: false
++      }
++    }, { signal: registrationSignal });
++
++    // 6. clear_cart
++    document.modelContext.registerTool({
++      name: 'clear_cart',
++      description: 'Clears all items from the shopping cart.',
++      inputSchema: {
++        type: 'object',
++        properties: {}
++      },
++      execute(input, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        return store.clearCart();
++      },
++      annotations: {
++        readOnlyHint: false
++      }
++    }, { signal: registrationSignal });
++
++    // 7. apply_promo_code
++    document.modelContext.registerTool({
++      name: 'apply_promo_code',
++      description: 'Applies a promotional discount code or loyalty perk to the shopping cart.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          code: {
++            type: 'string',
++            description: 'Promotional discount code.'
++          }
++        },
++        required: ['code']
++      },
++      execute({ code } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        return store.applyPromoCode(code);
++      },
++      annotations: {
++        readOnlyHint: false
++      }
++    }, { signal: registrationSignal });
++
++    // 8. checkout_order
++    document.modelContext.registerTool({
++      name: 'checkout_order',
++      description: 'Places and confirms the order for all items currently in the shopping cart.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          customerName: {
++            type: 'string',
++            description: 'Name for order pickup.'
++          },
++          pickupTime: {
++            type: 'string',
++            enum: PICKUP_TIMES,
++            default: 'asap',
++            description: 'Desired pickup timing.'
++          },
++          paymentMethod: {
++            type: 'string',
++            enum: PAYMENT_METHODS,
++            default: 'credit_card',
++            description: 'Selected payment method.'
++          }
++        },
++        required: ['customerName']
++      },
++      execute({ customerName, pickupTime = 'asap', paymentMethod = 'credit_card' } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++
++        if (!customerName || String(customerName).trim() === '') {
++          return {
++            error: 'Missing required parameter "customerName".'
++          };
++        }
++
++        if (!PICKUP_TIMES.includes(pickupTime)) {
++          return {
++            error: `Invalid pickupTime "${pickupTime}". Must be one of: ${PICKUP_TIMES.join(', ')}`,
++            validOptions: PICKUP_TIMES
++          };
++        }
++
++        if (!PAYMENT_METHODS.includes(paymentMethod)) {
++          return {
++            error: `Invalid paymentMethod "${paymentMethod}". Must be one of: ${PAYMENT_METHODS.join(', ')}`,
++            validOptions: PAYMENT_METHODS
++          };
++        }
++
++        return store.checkout({ customerName, pickupTime, paymentMethod });
++      },
++      annotations: {
++        readOnlyHint: false,
++        consequentialHint: true // Financial & transactional action
++      }
++    }, { signal: registrationSignal });
++
++    // 9. get_store_locations
++    document.modelContext.registerTool({
++      name: 'get_store_locations',
++      description: 'Retrieves store locations, operating hours, and addresses for The Daily Grind.',
++      inputSchema: {
++        type: 'object',
++        properties: {
++          city: {
++            type: 'string',
++            description: 'City filter for locations.'
++          }
++        }
++      },
++      execute({ city } = {}, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        const locations = store.getLocations(city);
++        return {
++          count: locations.length,
++          locations
++        };
++      },
++      annotations: {
++        readOnlyHint: true
++      }
++    }, { signal: registrationSignal });
++
++    // 10. get_reward_status
++    document.modelContext.registerTool({
++      name: 'get_reward_status',
++      description: 'Retrieves the user\'s loyalty rewards balance, tier status, and available perks.',
++      inputSchema: {
++        type: 'object',
++        properties: {}
++      },
++      execute(input, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        return store.getRewards();
++      },
++      annotations: {
++        readOnlyHint: true
++      }
++    }, { signal: registrationSignal });
++
++    // 11. dump_app_state
++    document.modelContext.registerTool({
++      name: 'dump_app_state',
++      description: 'Returns a snapshot of the internal application store for debugging.',
++      inputSchema: {
++        type: 'object',
++        properties: {}
++      },
++      execute(input, { signal }) {
++        if (signal?.aborted) {
++          const err = new Error('Execution aborted');
++          err.name = 'AbortError';
++          throw err;
++        }
++        return store.getState();
++      },
++      annotations: {
++        readOnlyHint: true,
++        debugging: true // Developer tooling
++      }
++    }, { signal: registrationSignal });
++
++    // Listen for cleanup on window unload
++    if (typeof window !== 'undefined') {
++      window.addEventListener('beforeunload', () => {
++        registrationController.abort();
++      }, { once: true });
++    }
++  }
++
++  global.WebMCPTools = {
++    registrationController,
++    registerDailyGrindTools
++  };
++})(typeof window !== 'undefined' ? window : globalThis);

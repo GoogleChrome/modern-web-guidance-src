@@ -1,0 +1,1895 @@
+diff --git a/index.html b/index.html
+index 66c9173..507fac5 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,19 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-hover: #ff9100;
+       --text: #3e2723;
++      --text-muted: #795548;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #efebe9;
++      --shadow-sm: 0 2px 8px rgba(62, 39, 35, 0.08);
++      --shadow-md: 0 10px 25px rgba(62, 39, 35, 0.16), 0 4px 10px rgba(62, 39, 35, 0.08);
++      --radius: 8px;
+     }
+ 
+     * {
+@@ -31,51 +40,263 @@
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.85rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
+     }
+ 
+-    nav ul {
++    .nav-list {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      gap: 16px;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .nav-list > li {
++      position: relative;
+     }
+ 
+-    nav a {
++    nav a,
++    .nav-menu-trigger {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.92rem;
++      transition: color 0.2s, background-color 0.2s, border-color 0.2s;
++      font-family: inherit;
++      cursor: pointer;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    .nav-menu-trigger:hover,
++    .nav-menu-trigger[aria-expanded="true"] {
+       color: var(--accent);
+     }
+ 
++    .nav-menu-trigger {
++      background: rgba(255, 255, 255, 0.08);
++      border: 1px solid rgba(255, 255, 255, 0.18);
++      padding: 6px 13px;
++      border-radius: 6px;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: 500;
++    }
++
++    .nav-menu-trigger:focus-visible,
++    .card-menu-trigger:focus-visible,
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .trigger-chevron {
++      font-size: 0.7rem;
++      transition: transform 0.2s ease;
++      display: inline-block;
++    }
++
++    [aria-expanded="true"] .trigger-chevron {
++      transform: rotate(180deg);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Interactive Menu & Submenu Component */
++    .menu-wrapper {
++      position: relative;
++      display: inline-block;
++    }
++
++    .ui-menu {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      min-width: 240px;
++      background: var(--surface);
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: var(--radius);
++      box-shadow: var(--shadow-md);
++      padding: 6px;
++      list-style: none;
++      z-index: 1500;
++      display: none;
++      text-align: left;
++      animation: menuFadeIn 0.14s ease-out;
++    }
++
++    .ui-menu.align-right {
++      left: auto;
++      right: 0;
++    }
++
++    .ui-menu.is-open {
++      display: block;
++    }
++
++    /* Nested Submenus */
++    .ui-submenu {
++      top: -6px;
++      left: calc(100% + 4px);
++      min-width: 235px;
++    }
++
++    .ui-submenu.flip-left {
++      left: auto;
++      right: calc(100% + 4px);
++    }
++
++    @keyframes menuFadeIn {
++      from {
++        opacity: 0;
++        transform: translateY(-4px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    .ui-menu-header {
++      padding: 6px 12px 4px;
++      font-size: 0.72rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      color: var(--text-muted);
++      user-select: none;
++    }
++
++    .ui-menu-separator {
++      height: 1px;
++      background: var(--border);
++      margin: 5px 4px;
++    }
++
++    .ui-menu-item-group {
++      position: relative;
++    }
++
++    .ui-menu-item {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      padding: 8px 12px;
++      border: none;
++      background: transparent;
++      color: var(--text);
++      font-family: inherit;
++      font-size: 0.88rem;
++      border-radius: 5px;
++      cursor: pointer;
++      text-align: left;
++      text-decoration: none;
++      transition: background-color 0.12s, color 0.12s;
++    }
++
++    .ui-menu-item:hover,
++    .ui-menu-item:focus,
++    .ui-menu-item[aria-expanded="true"] {
++      background-color: #f5ebe6;
++      color: var(--primary-dark);
++      outline: none;
++    }
++
++    .ui-menu-item-main {
++      display: flex;
++      align-items: center;
++      gap: 9px;
++      flex: 1;
++      min-width: 0;
++    }
++
++    .ui-menu-check {
++      width: 16px;
++      height: 16px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 0.8rem;
++      color: var(--primary);
++      font-weight: bold;
++      flex-shrink: 0;
++    }
++
++    .ui-menu-item[role="menuitemradio"] .ui-menu-check::before {
++      content: "";
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      border: 1.5px solid var(--text-muted);
++      display: inline-block;
++    }
++
++    .ui-menu-item[role="menuitemradio"][aria-checked="true"] .ui-menu-check::before {
++      background: var(--primary);
++      border-color: var(--primary);
++      box-shadow: inset 0 0 0 1.5px white;
++    }
++
++    .ui-menu-item[role="menuitemcheckbox"] .ui-menu-check::before {
++      content: "";
++      width: 12px;
++      height: 12px;
++      border-radius: 3px;
++      border: 1.5px solid var(--text-muted);
++      display: inline-block;
++    }
++
++    .ui-menu-item[role="menuitemcheckbox"][aria-checked="true"] .ui-menu-check::before {
++      content: "✓";
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++      font-size: 0.65rem;
++      line-height: 11px;
++      text-align: center;
++    }
++
++    .ui-menu-badge {
++      font-size: 0.73rem;
++      color: var(--text-muted);
++      background: #f3ece9;
++      padding: 1px 6px;
++      border-radius: 10px;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .ui-submenu-caret {
++      font-size: 0.72rem;
++      color: var(--text-muted);
++      margin-left: 4px;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 55vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.52)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -90,56 +311,233 @@
+ 
+     .hero h1 {
+       font-size: 3rem;
+-      margin-bottom: 1rem;
++      margin-bottom: 0.75rem;
++    }
++
++    /* Active Category Filter / Selection Bar */
++    .selection-bar {
++      background: #efebe9;
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px 5%;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      font-size: 0.9rem;
++    }
++
++    .selection-status {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .status-pill {
++      background: var(--primary);
++      color: white;
++      padding: 3px 10px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1120px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      margin-top: 4px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      padding: 24px;
++      border-radius: 10px;
++      box-shadow: var(--shadow-sm);
++      border: 1px solid var(--border);
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      position: relative;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.12);
++    }
++
++    .card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 10px;
++      margin-bottom: 8px;
++    }
++
++    .card-category-tag {
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      font-weight: 700;
++      color: var(--text-muted);
++      background: #f5ebe6;
++      padding: 2px 8px;
++      border-radius: 4px;
++      display: inline-block;
++      margin-bottom: 6px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.25rem;
++    }
++
++    .card-price {
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--primary-dark);
++      background: #fdf8f5;
++      padding: 4px 10px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++      white-space: nowrap;
++    }
++
++    .card-description {
++      color: var(--text-muted);
++      font-size: 0.92rem;
++      margin-bottom: 14px;
++    }
++
++    /* Customization Summary Pills inside Card */
++    .customization-summary {
++      background: #faf6f4;
++      border: 1px dashed var(--secondary);
++      border-radius: 6px;
++      padding: 10px 12px;
++      margin-bottom: 16px;
++      font-size: 0.82rem;
++    }
++
++    .customization-summary-title {
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 6px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .custom-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .custom-tag {
++      background: white;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.76rem;
++      font-weight: 500;
++    }
++
++    .card-actions {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: auto;
++      position: relative;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 10px 16px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: #efebe9;
++      color: var(--primary-dark);
++      border: 1px solid var(--secondary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .card-menu-trigger {
++      flex: 1;
++      justify-content: space-between;
++    }
++
++    /* Toast feedback */
++    .toast-feedback {
++      position: fixed;
++      bottom: 24px;
++      right: 24px;
++      background: var(--primary-dark);
++      color: white;
++      padding: 12px 18px;
++      border-radius: 8px;
++      box-shadow: var(--shadow-md);
++      border-left: 4px solid var(--accent);
++      font-size: 0.9rem;
++      z-index: 2000;
++      opacity: 0;
++      transform: translateY(10px);
++      pointer-events: none;
++      transition: opacity 0.2s, transform 0.2s;
++    }
++
++    .toast-feedback.visible {
++      opacity: 1;
++      transform: translateY(0);
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+@@ -157,13 +555,306 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
++    <ul class="nav-list">
++      <!-- Interactive Multi-Level Drink Categories Menu in Navbar -->
++      <li class="menu-wrapper" data-menu-container>
++        <button
++          type="button"
++          class="nav-menu-trigger"
++          id="nav-drink-menu-btn"
++          aria-haspopup="menu"
++          aria-expanded="false"
++          aria-controls="nav-drink-menu"
++        >
++          <span>Menu &amp; Drink Categories</span>
++          <span class="trigger-chevron" aria-hidden="true">▼</span>
++        </button>
++
++        <ul
++          class="ui-menu"
++          id="nav-drink-menu"
++          role="menu"
++          aria-labelledby="nav-drink-menu-btn"
++        >
++          <li class="ui-menu-header" role="presentation">Browse Drink Categories</li>
++
++          <!-- Submenu 1: Espresso & Hot Classics -->
++          <li class="ui-menu-item-group" role="none">
++            <button
++              type="button"
++              class="ui-menu-item"
++              role="menuitem"
++              aria-haspopup="menu"
++              aria-expanded="false"
++            >
++              <span class="ui-menu-item-main">☕ Espresso &amp; Hot Coffee</span>
++              <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++            </button>
++            <ul class="ui-menu ui-submenu" role="menu" aria-label="Espresso & Hot Coffee">
++              <li class="ui-menu-header" role="presentation">Espresso Bar</li>
++              <!-- 3rd level nested submenu: Signature Espresso Shots -->
++              <li class="ui-menu-item-group" role="none">
++                <button
++                  type="button"
++                  class="ui-menu-item"
++                  role="menuitem"
++                  aria-haspopup="menu"
++                  aria-expanded="false"
++                >
++                  <span class="ui-menu-item-main">Signature Espresso</span>
++                  <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                </button>
++                <ul class="ui-menu ui-submenu" role="menu" aria-label="Signature Espresso">
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Dark Roast Espresso" data-filter-category="espresso">
++                      <span class="ui-menu-item-main">Dark Roast Espresso</span>
++                      <span class="ui-menu-badge">Popular</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Single-Origin Ristretto" data-filter-category="espresso">
++                      <span class="ui-menu-item-main">Single-Origin Ristretto</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Cortado & Macchiato" data-filter-category="espresso">
++                      <span class="ui-menu-item-main">Cortado &amp; Macchiato</span>
++                    </button>
++                  </li>
++                </ul>
++              </li>
++              <!-- 3rd level nested submenu: Milk & Steamed Lattes -->
++              <li class="ui-menu-item-group" role="none">
++                <button
++                  type="button"
++                  class="ui-menu-item"
++                  role="menuitem"
++                  aria-haspopup="menu"
++                  aria-expanded="false"
++                >
++                  <span class="ui-menu-item-main">Handcrafted Lattes</span>
++                  <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                </button>
++                <ul class="ui-menu ui-submenu" role="menu" aria-label="Handcrafted Lattes">
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Maple Oat Latte" data-filter-category="seasonal">
++                      <span class="ui-menu-item-main">Maple Oat Latte</span>
++                      <span class="ui-menu-badge">Seasonal</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Honey Lavender Flat White" data-filter-category="all">
++                      <span class="ui-menu-item-main">Honey Lavender Flat White</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Caffè Mocha" data-filter-category="all">
++                      <span class="ui-menu-item-main">Artisanal Caffè Mocha</span>
++                    </button>
++                  </li>
++                </ul>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Pour-Over & Drip" data-filter-category="all">
++                  <span class="ui-menu-item-main">Small-Batch Pour-Over</span>
++                </button>
++              </li>
++            </ul>
++          </li>
++
++          <!-- Submenu 2: Cold Brew & Iced Craft -->
++          <li class="ui-menu-item-group" role="none">
++            <button
++              type="button"
++              class="ui-menu-item"
++              role="menuitem"
++              aria-haspopup="menu"
++              aria-expanded="false"
++            >
++              <span class="ui-menu-item-main">🧊 Cold Brew &amp; Iced Craft</span>
++              <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++            </button>
++            <ul class="ui-menu ui-submenu" role="menu" aria-label="Cold Brew & Iced Craft">
++              <li class="ui-menu-header" role="presentation">18-Hour Slow Steeped</li>
++              <li class="ui-menu-item-group" role="none">
++                <button
++                  type="button"
++                  class="ui-menu-item"
++                  role="menuitem"
++                  aria-haspopup="menu"
++                  aria-expanded="false"
++                >
++                  <span class="ui-menu-item-main">Nitro &amp; Sweet Cream</span>
++                  <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                </button>
++                <ul class="ui-menu ui-submenu" role="menu" aria-label="Nitro & Sweet Cream">
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Classic 18h Cold Brew" data-filter-category="cold-brew">
++                      <span class="ui-menu-item-main">Classic 18h Cold Brew</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Velvet Nitro Draft" data-filter-category="cold-brew">
++                      <span class="ui-menu-item-main">Velvet Nitro Cold Brew</span>
++                      <span class="ui-menu-badge">Draft</span>
++                    </button>
++                  </li>
++                  <li role="none">
++                    <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Vanilla Sweet Cream Cold Brew" data-filter-category="cold-brew">
++                      <span class="ui-menu-item-main">Vanilla Sweet Cream Cold Brew</span>
++                    </button>
++                  </li>
++                </ul>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Shaken Iced Espresso" data-filter-category="espresso">
++                  <span class="ui-menu-item-main">Brown Sugar Shaken Espresso</span>
++                </button>
++              </li>
++            </ul>
++          </li>
++
++          <!-- Submenu 3: Seasonal & Botanical Teas -->
++          <li class="ui-menu-item-group" role="none">
++            <button
++              type="button"
++              class="ui-menu-item"
++              role="menuitem"
++              aria-haspopup="menu"
++              aria-expanded="false"
++            >
++              <span class="ui-menu-item-main">🍁 Seasonal &amp; Chai</span>
++              <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++            </button>
++            <ul class="ui-menu ui-submenu" role="menu" aria-label="Seasonal & Chai">
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Autumn Harvest Specials" data-filter-category="seasonal">
++                  <span class="ui-menu-item-main">Vermont Maple Oat Collection</span>
++                  <span class="ui-menu-badge">Limited</span>
++                </button>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Spiced Masala Chai" data-filter-category="all">
++                  <span class="ui-menu-item-main">House-Spiced Masala Chai</span>
++                </button>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Select Category: Ceremonial Matcha" data-filter-category="all">
++                  <span class="ui-menu-item-main">Uji Ceremonial Matcha Latte</span>
++                </button>
++              </li>
++            </ul>
++          </li>
++
++          <li class="ui-menu-separator" role="separator"></li>
++          <li class="ui-menu-header" role="presentation">Quick Menu Actions</li>
++          <li role="none">
++            <button type="button" class="ui-menu-item" role="menuitem" data-nav-action="Show All Seasonal Favorites" data-filter-category="all">
++              <span class="ui-menu-item-main">✨ View All Seasonal Favorites</span>
++            </button>
++          </li>
++          <li role="none">
++            <a href="/menu" class="ui-menu-item" role="menuitem" data-nav-action="Open Full Cafe Menu">
++              <span class="ui-menu-item-main">📖 Full Printable Cafe Menu</span>
++            </a>
++          </li>
++        </ul>
++      </li>
++
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++
++      <!-- Interactive Account & Order Preferences Menu in Navbar -->
++      <li class="menu-wrapper" data-menu-container>
++        <button
++          type="button"
++          class="nav-menu-trigger"
++          id="nav-account-menu-btn"
++          aria-haspopup="menu"
++          aria-expanded="false"
++          aria-controls="nav-account-menu"
++        >
++          <span>My Account &amp; Order</span>
++          <span class="trigger-chevron" aria-hidden="true">▼</span>
++        </button>
++
++        <ul
++          class="ui-menu align-right"
++          id="nav-account-menu"
++          role="menu"
++          aria-labelledby="nav-account-menu-btn"
++        >
++          <li class="ui-menu-header" role="presentation">Order Fulfillment Mode</li>
++          <li role="none">
++            <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-radio-group="pickup-mode" data-nav-action="Fulfillment: In-Store Pickup (Downtown)">
++              <span class="ui-menu-item-main">
++                <span class="ui-menu-check" aria-hidden="true"></span>
++                <span>In-Store Pickup</span>
++              </span>
++              <span class="ui-menu-badge">5–8 min</span>
++            </button>
++          </li>
++          <li role="none">
++            <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-radio-group="pickup-mode" data-nav-action="Fulfillment: Curbside Express">
++              <span class="ui-menu-item-main">
++                <span class="ui-menu-check" aria-hidden="true"></span>
++                <span>Curbside Express</span>
++              </span>
++            </button>
++          </li>
++          <li role="none">
++            <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-radio-group="pickup-mode" data-nav-action="Fulfillment: Local Bike Delivery">
++              <span class="ui-menu-item-main">
++                <span class="ui-menu-check" aria-hidden="true"></span>
++                <span>Local Bike Delivery</span>
++              </span>
++            </button>
++          </li>
++
++          <li class="ui-menu-separator" role="separator"></li>
++
++          <!-- Nested Submenu for Default Dietary & Customization Presets -->
++          <li class="ui-menu-item-group" role="none">
++            <button
++              type="button"
++              class="ui-menu-item"
++              role="menuitem"
++              aria-haspopup="menu"
++              aria-expanded="false"
++            >
++              <span class="ui-menu-item-main">⚙️ Saved Drink Presets</span>
++              <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++            </button>
++            <ul class="ui-menu ui-submenu flip-left" role="menu" aria-label="Saved Drink Presets">
++              <li class="ui-menu-header" role="presentation">Apply Preset to All Cards</li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-preset-action="oat-light-sweet">
++                  <span class="ui-menu-item-main">Plant-Based &amp; Half Sweet</span>
++                </button>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-preset-action="extra-shot-large">
++                  <span class="ui-menu-item-main">Morning Boost (16oz + Extra Shot)</span>
++                </button>
++              </li>
++              <li role="none">
++                <button type="button" class="ui-menu-item" role="menuitem" data-preset-action="reset-defaults">
++                  <span class="ui-menu-item-main">Reset to Barista Defaults</span>
++                </button>
++              </li>
++            </ul>
++          </li>
++
++          <li role="none">
++            <a href="/account" class="ui-menu-item" role="menuitem">
++              <span class="ui-menu-item-main">👤 Account Profile &amp; Rewards</span>
++            </a>
++          </li>
++        </ul>
++      </li>
++
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -171,32 +862,615 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" style="margin-top: 16px;">Order Now</a>
+   </header>
+ 
++  <div class="selection-bar" aria-live="polite">
++    <div class="selection-status">
++      <strong>Active View:</strong>
++      <span id="active-category-label" class="status-pill">All Seasonal Favorites</span>
++      <span id="last-action-status" style="color: var(--text-muted);">Use the navigation or card menus to customize your drink order.</span>
++    </div>
++    <div>
++      <strong>Cart (<span id="cart-count">0</span>):</strong>
++      <span id="cart-total">$0.00</span>
++    </div>
++  </div>
++
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Customize each handcrafted drink with multi-level options for size, milk, espresso shots, and toppings.</p>
++      </div>
++
++      <div class="grid" id="seasonal-cards-grid">
++        <!-- Card 1: Maple Oat Latte -->
++        <article class="card" data-drink-card data-drink-id="maple-oat-latte" data-category="seasonal" data-base-price="5.50">
++          <div>
++            <span class="card-category-tag">Seasonal Latte</span>
++            <div class="card-top">
++              <h3>Maple Oat Latte</h3>
++              <span class="card-price" data-price-display>$5.50</span>
++            </div>
++            <p class="card-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++
++            <div class="customization-summary" aria-live="polite">
++              <div class="customization-summary-title">
++                <span>Selected Customizations</span>
++              </div>
++              <div class="custom-tags" data-custom-tags>
++                <span class="custom-tag">12oz Medium</span>
++                <span class="custom-tag">Barista Oat Milk</span>
++                <span class="custom-tag">Double Shot (2x)</span>
++                <span class="custom-tag"> Vermont Maple (100%)</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions">
++            <div class="menu-wrapper" style="flex: 1;" data-menu-container>
++              <button
++                type="button"
++                class="btn btn-secondary card-menu-trigger"
++                id="customize-maple-btn"
++                aria-haspopup="menu"
++                aria-expanded="false"
++                aria-controls="customize-maple-menu"
++              >
++                <span>Customize &amp; Actions</span>
++                <span class="trigger-chevron" aria-hidden="true">▼</span>
++              </button>
++
++              <!-- Interactive Multi-level Customization & Action Menu -->
++              <ul
++                class="ui-menu"
++                id="customize-maple-menu"
++                role="menu"
++                aria-labelledby="customize-maple-btn"
++              >
++                <li class="ui-menu-header" role="presentation">Order Customizations</li>
++
++                <!-- Submenu: Size & Temp -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">📏 Size &amp; Temperature</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Size and Temperature">
++                    <li class="ui-menu-header" role="presentation">Cup Size</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="8oz Short" data-price-delta="-0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>8oz Short</span>
++                        <span class="ui-menu-badge">-$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="size" data-option-label="12oz Medium" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>12oz Medium</span>
++                        <span class="ui-menu-badge">Base</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="16oz Large" data-price-delta="0.75">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>16oz Large</span>
++                        <span class="ui-menu-badge">+$0.75</span>
++                      </button>
++                    </li>
++                    <li class="ui-menu-separator" role="separator"></li>
++                    <li class="ui-menu-header" role="presentation">Preparation</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="temp" data-option-label="Steamed Hot (155°F)" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Steamed Hot (155°F)</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="temp" data-option-label="Served Over Ice" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Served Over Ice</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Milk & Dairy Alternatives (with 3rd level nested plant-based vs dairy) -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🥛 Milk &amp; Texture</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Milk and Texture">
++                    <li class="ui-menu-item-group" role="none">
++                      <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                        <span class="ui-menu-item-main">Plant-Based Milks</span>
++                        <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                      </button>
++                      <ul class="ui-menu ui-submenu" role="menu" aria-label="Plant-Based Milks">
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="milk" data-option-label="Barista Oat Milk" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Barista Oat Milk</span>
++                            <span class="ui-menu-badge">Included</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Roasted Almond Milk" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Roasted Almond Milk</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Organic Coconut Milk" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Organic Coconut Milk</span>
++                          </button>
++                        </li>
++                      </ul>
++                    </li>
++                    <li class="ui-menu-item-group" role="none">
++                      <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                        <span class="ui-menu-item-main">Traditional Dairy</span>
++                        <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                      </button>
++                      <ul class="ui-menu ui-submenu" role="menu" aria-label="Traditional Dairy">
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Grass-Fed Whole Milk" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Grass-Fed Whole Milk</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="2% Reduced Fat" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>2% Reduced Fat</span>
++                          </button>
++                        </li>
++                      </ul>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Espresso & Syrup Customizations -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">⚡ Espresso &amp; Sweetness</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Espresso and Sweetness">
++                    <li class="ui-menu-header" role="presentation">Espresso Shots</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="shots" data-option-label="Double Shot (2x)" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Double Shot (2x)</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="shots" data-option-label="Triple Shot (3x)" data-price-delta="1.25">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Triple Shot (3x)</span>
++                        <span class="ui-menu-badge">+$1.25</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="shots" data-option-label="Swiss Water Decaf" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Swiss Water Decaf</span>
++                      </button>
++                    </li>
++                    <li class="ui-menu-separator" role="separator"></li>
++                    <li class="ui-menu-header" role="presentation">Sweetness &amp; Toppings</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="sweetness" data-option-label="Vermont Maple (100%)" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Vermont Maple (100%)</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="sweetness" data-option-label="Half Sweet Maple (50%)" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Half Sweet Maple (50%)</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Cinnamon Nutmeg Dust" data-price-delta="0.25">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Cinnamon Nutmeg Dust</span>
++                        <span class="ui-menu-badge">+$0.25</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Salted Maple Cold Foam" data-price-delta="1.00">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Salted Maple Cold Foam</span>
++                        <span class="ui-menu-badge">+$1.00</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <li class="ui-menu-separator" role="separator"></li>
++                <li class="ui-menu-header" role="presentation">Quick Actions</li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="add-to-order">
++                    <span class="ui-menu-item-main">🛒 Add Customized Drink to Order</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="save-favorite">
++                    <span class="ui-menu-item-main">❤️ Save to My Favorites</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <a href="/menu/seasonal" class="ui-menu-item" role="menuitem">
++                    <span class="ui-menu-item-main">📋 View Full Nutrition &amp; Details</span>
++                  </a>
++                </li>
++              </ul>
++            </div>
++
++            <button type="button" class="btn" data-quick-order-btn>Add to Order</button>
++          </div>
++        </article>
++
++        <!-- Card 2: Dark Roast Espresso -->
++        <article class="card" data-drink-card data-drink-id="dark-roast-espresso" data-category="espresso" data-base-price="3.75">
++          <div>
++            <span class="card-category-tag">Signature Espresso</span>
++            <div class="card-top">
++              <h3>Dark Roast Espresso</h3>
++              <span class="card-price" data-price-display>$3.75</span>
++            </div>
++            <p class="card-description">Bold, smokey, and perfect for a morning boost.</p>
++
++            <div class="customization-summary" aria-live="polite">
++              <div class="customization-summary-title">
++                <span>Selected Customizations</span>
++              </div>
++              <div class="custom-tags" data-custom-tags>
++                <span class="custom-tag">Double Pull (2oz)</span>
++                <span class="custom-tag">Sumatra Blend</span>
++                <span class="custom-tag">No Splash</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions">
++            <div class="menu-wrapper" style="flex: 1;" data-menu-container>
++              <button
++                type="button"
++                class="btn btn-secondary card-menu-trigger"
++                id="customize-espresso-btn"
++                aria-haspopup="menu"
++                aria-expanded="false"
++                aria-controls="customize-espresso-menu"
++              >
++                <span>Customize &amp; Actions</span>
++                <span class="trigger-chevron" aria-hidden="true">▼</span>
++              </button>
++
++              <ul
++                class="ui-menu"
++                id="customize-espresso-menu"
++                role="menu"
++                aria-labelledby="customize-espresso-btn"
++              >
++                <li class="ui-menu-header" role="presentation">Order Customizations</li>
++
++                <!-- Submenu: Pull Style & Shots -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">☕ Pull Style &amp; Volume</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Pull Style and Volume">
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="Single Ristretto (1oz)" data-price-delta="-0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Single Ristretto (1oz)</span>
++                        <span class="ui-menu-badge">-$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="size" data-option-label="Double Pull (2oz)" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Double Pull (2oz)</span>
++                        <span class="ui-menu-badge">Base</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="Quad Long Shot (4oz)" data-price-delta="1.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Quad Long Shot (4oz)</span>
++                        <span class="ui-menu-badge">+$1.50</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Bean Origin & Roast (with 3rd level nested origin options) -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🫘 Bean Origin &amp; Roast</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Bean Origin and Roast">
++                    <li class="ui-menu-item-group" role="none">
++                      <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                        <span class="ui-menu-item-main">House Dark Blends</span>
++                        <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                      </button>
++                      <ul class="ui-menu ui-submenu" role="menu" aria-label="House Dark Blends">
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="shots" data-option-label="Sumatra Blend" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Sumatra Smokey Blend</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="shots" data-option-label="Italian French Roast" data-price-delta="0">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Italian Charcoal Roast</span>
++                          </button>
++                        </li>
++                      </ul>
++                    </li>
++                    <li class="ui-menu-item-group" role="none">
++                      <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                        <span class="ui-menu-item-main">Single-Origin Reserve</span>
++                        <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                      </button>
++                      <ul class="ui-menu ui-submenu" role="menu" aria-label="Single-Origin Reserve">
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="shots" data-option-label="Ethiopian Yirgacheffe" data-price-delta="0.75">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Ethiopian Yirgacheffe</span>
++                            <span class="ui-menu-badge">+$0.75</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="shots" data-option-label="Colombian Supremo" data-price-delta="0.50">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Colombian Supremo</span>
++                            <span class="ui-menu-badge">+$0.50</span>
++                          </button>
++                        </li>
++                      </ul>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Milk Splash & Accompaniments -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🥛 Splash &amp; Finishes</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu" role="menu" aria-label="Splash and Finishes">
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="milk" data-option-label="No Splash" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Served Black (No Splash)</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Steamed Oat Macchiato Dollop" data-price-delta="0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Steamed Oat Foam Dollop</span>
++                        <span class="ui-menu-badge">+$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Sparkling Water Sidecar" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Sparkling Water Sidecar</span>
++                        <span class="ui-menu-badge">Free</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Demerara Raw Sugar Twist" data-price-delta="0.25">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Demerara Sugar &amp; Lemon Twist</span>
++                        <span class="ui-menu-badge">+$0.25</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <li class="ui-menu-separator" role="separator"></li>
++                <li class="ui-menu-header" role="presentation">Quick Actions</li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="add-to-order">
++                    <span class="ui-menu-item-main">🛒 Add Customized Drink to Order</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="save-favorite">
++                    <span class="ui-menu-item-main">❤️ Save to My Favorites</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <a href="/menu/espresso" class="ui-menu-item" role="menuitem">
++                    <span class="ui-menu-item-main">📋 View Full Nutrition &amp; Details</span>
++                  </a>
++                </li>
++              </ul>
++            </div>
++
++            <button type="button" class="btn" data-quick-order-btn>Add to Order</button>
++          </div>
++        </article>
++
++        <!-- Card 3: Cold Brew -->
++        <article class="card" data-drink-card data-drink-id="cold-brew" data-category="cold-brew" data-base-price="4.75">
++          <div>
++            <span class="card-category-tag">Cold Craft</span>
++            <div class="card-top">
++              <h3>Cold Brew</h3>
++              <span class="card-price" data-price-display>$4.75</span>
++            </div>
++            <p class="card-description">Steeped for 18 hours for maximum smoothness.</p>
++
++            <div class="customization-summary" aria-live="polite">
++              <div class="customization-summary-title">
++                <span>Selected Customizations</span>
++              </div>
++              <div class="custom-tags" data-custom-tags>
++                <span class="custom-tag">16oz Grande</span>
++                <span class="custom-tag">Regular Ice</span>
++                <span class="custom-tag">Black Unsweetened</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="card-actions">
++            <div class="menu-wrapper" style="flex: 1;" data-menu-container>
++              <button
++                type="button"
++                class="btn btn-secondary card-menu-trigger"
++                id="customize-coldbrew-btn"
++                aria-haspopup="menu"
++                aria-expanded="false"
++                aria-controls="customize-coldbrew-menu"
++              >
++                <span>Customize &amp; Actions</span>
++                <span class="trigger-chevron" aria-hidden="true">▼</span>
++              </button>
++
++              <ul
++                class="ui-menu align-right"
++                id="customize-coldbrew-menu"
++                role="menu"
++                aria-labelledby="customize-coldbrew-btn"
++              >
++                <li class="ui-menu-header" role="presentation">Order Customizations</li>
++
++                <!-- Submenu: Size & Ice Level -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🧊 Size &amp; Ice Level</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu flip-left" role="menu" aria-label="Size and Ice Level">
++                    <li class="ui-menu-header" role="presentation">Size</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="12oz Tall" data-price-delta="-0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>12oz Tall</span>
++                        <span class="ui-menu-badge">-$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="size" data-option-label="16oz Grande" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>16oz Grande</span>
++                        <span class="ui-menu-badge">Base</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="size" data-option-label="24oz Cold Cup" data-price-delta="1.00">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>24oz Cold Cup</span>
++                        <span class="ui-menu-badge">+$1.00</span>
++                      </button>
++                    </li>
++                    <li class="ui-menu-separator" role="separator"></li>
++                    <li class="ui-menu-header" role="presentation">Ice Preference</li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="temp" data-option-label="Regular Ice" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Regular Ice</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="temp" data-option-label="Light Ice" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Light Ice</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="temp" data-option-label="Nitro Draft (No Ice)" data-price-delta="0.75">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Nitro Draft (No Ice)</span>
++                        <span class="ui-menu-badge">+$0.75</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Cold Foams & Creamers (with 3rd level nested Cold Foams) -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🥛 Cold Foams &amp; Cream</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu flip-left" role="menu" aria-label="Cold Foams and Cream">
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="true" data-option-type="milk" data-option-label="Black Unsweetened" data-price-delta="0">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Black Unsweetened</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Splash of Oat Milk" data-price-delta="0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Splash of Oat Milk</span>
++                        <span class="ui-menu-badge">+$0.50</span>
++                      </button>
++                    </li>
++                    <li class="ui-menu-item-group" role="none">
++                      <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                        <span class="ui-menu-item-main">Whipped Cold Foams</span>
++                        <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                      </button>
++                      <ul class="ui-menu ui-submenu flip-left" role="menu" aria-label="Whipped Cold Foams">
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Vanilla Sweet Cream Foam" data-price-delta="1.00">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Vanilla Sweet Cream Foam</span>
++                            <span class="ui-menu-badge">+$1.00</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Salted Caramel Cream Foam" data-price-delta="1.00">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Salted Caramel Foam</span>
++                            <span class="ui-menu-badge">+$1.00</span>
++                          </button>
++                        </li>
++                        <li role="none">
++                          <button type="button" class="ui-menu-item" role="menuitemradio" aria-checked="false" data-option-type="milk" data-option-label="Dark Cocoa Oat Foam" data-price-delta="1.25">
++                            <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Dark Cocoa Oat Foam</span>
++                            <span class="ui-menu-badge">+$1.25</span>
++                          </button>
++                        </li>
++                      </ul>
++                    </li>
++                  </ul>
++                </li>
++
++                <!-- Submenu: Flavor Syrups & Espresso Boost -->
++                <li class="ui-menu-item-group" role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" aria-haspopup="menu" aria-expanded="false">
++                    <span class="ui-menu-item-main">🍯 Syrups &amp; Shot Boost</span>
++                    <span class="ui-submenu-caret" aria-hidden="true">▶</span>
++                  </button>
++                  <ul class="ui-menu ui-submenu flip-left" role="menu" aria-label="Syrups and Shot Boost">
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Madagascar Vanilla Syrup" data-price-delta="0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Madagascar Vanilla Syrup</span>
++                        <span class="ui-menu-badge">+$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Toasted Hazelnut Swirl" data-price-delta="0.50">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Toasted Hazelnut Swirl</span>
++                        <span class="ui-menu-badge">+$0.50</span>
++                      </button>
++                    </li>
++                    <li role="none">
++                      <button type="button" class="ui-menu-item" role="menuitemcheckbox" aria-checked="false" data-option-type="addon" data-option-label="Red-Eye Espresso Shot" data-price-delta="1.25">
++                        <span class="ui-menu-item-main"><span class="ui-menu-check"></span>Red-Eye Espresso Shot</span>
++                        <span class="ui-menu-badge">+$1.25</span>
++                      </button>
++                    </li>
++                  </ul>
++                </li>
++
++                <li class="ui-menu-separator" role="separator"></li>
++                <li class="ui-menu-header" role="presentation">Quick Actions</li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="add-to-order">
++                    <span class="ui-menu-item-main">🛒 Add Customized Drink to Order</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <button type="button" class="ui-menu-item" role="menuitem" data-card-action="save-favorite">
++                    <span class="ui-menu-item-main">❤️ Save to My Favorites</span>
++                  </button>
++                </li>
++                <li role="none">
++                  <a href="/menu/cold-brew" class="ui-menu-item" role="menuitem">
++                    <span class="ui-menu-item-main">📋 View Full Nutrition &amp; Details</span>
++                  </a>
++                </li>
++              </ul>
++            </div>
++
++            <button type="button" class="btn" data-quick-order-btn>Add to Order</button>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
++  <div id="toast-feedback" class="toast-feedback" role="status" aria-live="polite"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +1481,401 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const menuContainers = document.querySelectorAll('[data-menu-container]');
++      const activeCategoryLabel = document.getElementById('active-category-label');
++      const lastActionStatus = document.getElementById('last-action-status');
++      const cartCountEl = document.getElementById('cart-count');
++      const cartTotalEl = document.getElementById('cart-total');
++      const toastEl = document.getElementById('toast-feedback');
++
++      let cartCount = 0;
++      let cartTotal = 0;
++      let toastTimeout = null;
++
++      function showToast(message) {
++        if (lastActionStatus) {
++          lastActionStatus.textContent = message;
++        }
++        if (!toastEl) return;
++        toastEl.textContent = message;
++        toastEl.classList.add('visible');
++        clearTimeout(toastTimeout);
++        toastTimeout = setTimeout(() => {
++          toastEl.classList.remove('visible');
++        }, 2800);
++      }
++
++      function closeAllMenus(exceptContainer = null) {
++        menuContainers.forEach((container) => {
++          if (container === exceptContainer) return;
++          const rootTrigger = container.querySelector('[aria-haspopup="menu"]');
++          const allMenus = container.querySelectorAll('.ui-menu');
++          const allTriggers = container.querySelectorAll('[aria-expanded="true"]');
++
++          if (rootTrigger) rootTrigger.setAttribute('aria-expanded', 'false');
++          allTriggers.forEach((t) => t.setAttribute('aria-expanded', 'false'));
++          allMenus.forEach((m) => m.classList.remove('is-open'));
++        });
++      }
++
++      function closeSubmenusOf(parentMenu, exceptSubmenu = null) {
++        if (!parentMenu) return;
++        const groups = parentMenu.querySelectorAll(':scope > .ui-menu-item-group');
++        groups.forEach((group) => {
++          const trigger = group.querySelector(':scope > .ui-menu-item[aria-haspopup="menu"]');
++          const submenu = group.querySelector(':scope > .ui-submenu');
++          if (submenu && submenu !== exceptSubmenu) {
++            submenu.classList.remove('is-open');
++            if (trigger) trigger.setAttribute('aria-expanded', 'false');
++            closeSubmenusOf(submenu);
++          }
++        });
++      }
++
++      function openSubmenu(trigger, submenu) {
++        if (!trigger || !submenu) return;
++        const parentMenu = trigger.closest('.ui-menu');
++        closeSubmenusOf(parentMenu, submenu);
++        trigger.setAttribute('aria-expanded', 'true');
++        submenu.classList.add('is-open');
++      }
++
++      // Update a card's customization tags and computed price
++      function updateCardSummary(card) {
++        if (!card) return;
++        const basePrice = parseFloat(card.getAttribute('data-base-price') || '0');
++        let deltaSum = 0;
++        const selectedLabels = [];
++
++        const checkedItems = card.querySelectorAll(
++          '.ui-menu-item[role="menuitemradio"][aria-checked="true"], .ui-menu-item[role="menuitemcheckbox"][aria-checked="true"]'
++        );
++
++        checkedItems.forEach((item) => {
++          const label = item.getAttribute('data-option-label');
++          const delta = parseFloat(item.getAttribute('data-price-delta') || '0');
++          if (label) selectedLabels.push(label);
++          if (!Number.isNaN(delta)) deltaSum += delta;
++        });
++
++        const finalPrice = Math.max(0, basePrice + deltaSum);
++        card.setAttribute('data-current-price', finalPrice.toFixed(2));
++
++        const priceDisplay = card.querySelector('[data-price-display]');
++        if (priceDisplay) {
++          priceDisplay.textContent = '$' + finalPrice.toFixed(2);
++        }
++
++        const tagsContainer = card.querySelector('[data-custom-tags]');
++        if (tagsContainer) {
++          tagsContainer.innerHTML = '';
++          selectedLabels.forEach((label) => {
++            const span = document.createElement('span');
++            span.className = 'custom-tag';
++            span.textContent = label;
++            tagsContainer.appendChild(span);
++          });
++        }
++      }
++
++      // Initialize all cards
++      const drinkCards = document.querySelectorAll('[data-drink-card]');
++      drinkCards.forEach((card) => updateCardSummary(card));
++
++      function addCardToCart(card) {
++        if (!card) return;
++        const title = card.querySelector('h3')?.textContent || 'Drink';
++        const price = parseFloat(card.getAttribute('data-current-price') || card.getAttribute('data-base-price') || '0');
++        const tags = Array.from(card.querySelectorAll('[data-custom-tags] .custom-tag')).map((t) => t.textContent);
++
++        cartCount += 1;
++        cartTotal += price;
++        if (cartCountEl) cartCountEl.textContent = String(cartCount);
++        if (cartTotalEl) cartTotalEl.textContent = '$' + cartTotal.toFixed(2);
++
++        showToast(`Added ${title} (${tags.slice(0, 2).join(', ')}) — $${price.toFixed(2)}`);
++      }
++
++      // Filter cards by drink category when chosen from Navbar menu
++      function filterCardsByCategory(category, actionLabel) {
++        drinkCards.forEach((card) => {
++          const cardCat = card.getAttribute('data-category');
++          if (!category || category === 'all' || cardCat === category) {
++            card.style.display = '';
++          } else {
++            card.style.display = 'none';
++          }
++        });
++        if (activeCategoryLabel && actionLabel) {
++          activeCategoryLabel.textContent = actionLabel.replace('Select Category: ', '');
++        }
++      }
++
++      // Apply global presets from Account menu
++      function applyDrinkPreset(presetName) {
++        drinkCards.forEach((card) => {
++          const allOptions = card.querySelectorAll('.ui-menu-item[data-option-type]');
++          if (presetName === 'oat-light-sweet') {
++            allOptions.forEach((opt) => {
++              const label = opt.getAttribute('data-option-label') || '';
++              const type = opt.getAttribute('data-option-type');
++              if (type === 'milk') {
++                opt.setAttribute('aria-checked', label.includes('Oat') ? 'true' : 'false');
++              }
++              if (type === 'sweetness') {
++                opt.setAttribute('aria-checked', label.includes('Half') ? 'true' : 'false');
++              }
++            });
++          } else if (presetName === 'extra-shot-large') {
++            allOptions.forEach((opt) => {
++              const label = opt.getAttribute('data-option-label') || '';
++              const type = opt.getAttribute('data-option-type');
++              if (type === 'size') {
++                opt.setAttribute(
++                  'aria-checked',
++                  label.includes('16oz') || label.includes('Quad') || label.includes('24oz') ? 'true' : 'false'
++                );
++              }
++              if (type === 'shots' && label.includes('Triple')) {
++                card.querySelectorAll('.ui-menu-item[data-option-type="shots"]').forEach((s) =>
++                  s.setAttribute('aria-checked', 'false')
++                );
++                opt.setAttribute('aria-checked', 'true');
++              }
++            });
++          } else if (presetName === 'reset-defaults') {
++            // Reset checkboxes and select base radio options
++            card.querySelectorAll('.ui-menu-item[role="menuitemcheckbox"]').forEach((cb) =>
++              cb.setAttribute('aria-checked', 'false')
++            );
++            const types = ['size', 'temp', 'milk', 'shots', 'sweetness'];
++            types.forEach((type) => {
++              const group = card.querySelectorAll(`.ui-menu-item[data-option-type="${type}"]`);
++              group.forEach((item, idx) => {
++                const isBase = item.getAttribute('data-price-delta') === '0' && idx === 0;
++                item.setAttribute('aria-checked', isBase ? 'true' : 'false');
++              });
++              const anyChecked = Array.from(group).some((i) => i.getAttribute('aria-checked') === 'true');
++              if (!anyChecked && group[0]) group[0].setAttribute('aria-checked', 'true');
++            });
++          }
++          updateCardSummary(card);
++        });
++      }
++
++      // Setup interactive events for each menu container
++      menuContainers.forEach((container) => {
++        const rootTrigger = container.querySelector(':scope > [aria-haspopup="menu"]');
++        const rootMenu = container.querySelector(':scope > .ui-menu');
++
++        if (!rootTrigger || !rootMenu) return;
++
++        rootTrigger.addEventListener('click', (e) => {
++          e.stopPropagation();
++          const isOpen = rootMenu.classList.contains('is-open');
++          closeAllMenus(container);
++          if (isOpen) {
++            closeAllMenus();
++          } else {
++            rootTrigger.setAttribute('aria-expanded', 'true');
++            rootMenu.classList.add('is-open');
++          }
++        });
++
++        // Submenu hover & click interactions
++        const submenuGroups = container.querySelectorAll('.ui-menu-item-group');
++        submenuGroups.forEach((group) => {
++          const trigger = group.querySelector(':scope > .ui-menu-item[aria-haspopup="menu"]');
++          const submenu = group.querySelector(':scope > .ui-submenu');
++          if (!trigger || !submenu) return;
++
++          group.addEventListener('mouseenter', () => {
++            openSubmenu(trigger, submenu);
++          });
++
++          trigger.addEventListener('click', (e) => {
++            e.preventDefault();
++            e.stopPropagation();
++            const isOpen = submenu.classList.contains('is-open');
++            if (isOpen) {
++              submenu.classList.remove('is-open');
++              trigger.setAttribute('aria-expanded', 'false');
++              closeSubmenusOf(submenu);
++            } else {
++              openSubmenu(trigger, submenu);
++            }
++          });
++        });
++
++        // Menu item selection
++        container.addEventListener('click', (e) => {
++          const item = e.target.closest('.ui-menu-item');
++          if (!item) return;
++
++          // If it's a submenu parent trigger, handled above
++          if (item.getAttribute('aria-haspopup') === 'menu') {
++            return;
++          }
++
++          e.stopPropagation();
++          const role = item.getAttribute('role');
++          const card = item.closest('[data-drink-card]');
++
++          // Handle radio options (Size, Milk, Shots, Fulfillment Mode)
++          if (role === 'menuitemradio') {
++            const optionType = item.getAttribute('data-option-type');
++            const radioGroup = item.getAttribute('data-radio-group');
++
++            if (card && optionType) {
++              const peers = card.querySelectorAll(`.ui-menu-item[role="menuitemradio"][data-option-type="${optionType}"]`);
++              peers.forEach((peer) => peer.setAttribute('aria-checked', 'false'));
++              item.setAttribute('aria-checked', 'true');
++              updateCardSummary(card);
++              const drinkTitle = card.querySelector('h3')?.textContent || 'Drink';
++              showToast(`${drinkTitle}: ${item.getAttribute('data-option-label')} selected`);
++            } else if (radioGroup) {
++              const peers = container.querySelectorAll(`.ui-menu-item[role="menuitemradio"][data-radio-group="${radioGroup}"]`);
++              peers.forEach((peer) => peer.setAttribute('aria-checked', 'false'));
++              item.setAttribute('aria-checked', 'true');
++              showToast(item.getAttribute('data-nav-action') || 'Preference updated');
++            }
++            return;
++          }
++
++          // Handle checkbox options (Add-ons, Syrups, Toppings)
++          if (role === 'menuitemcheckbox') {
++            const isChecked = item.getAttribute('aria-checked') === 'true';
++            item.setAttribute('aria-checked', isChecked ? 'false' : 'true');
++            if (card) {
++              updateCardSummary(card);
++              const drinkTitle = card.querySelector('h3')?.textContent || 'Drink';
++              const actionVerb = isChecked ? 'Removed' : 'Added';
++              showToast(`${drinkTitle}: ${actionVerb} ${item.getAttribute('data-option-label')}`);
++            }
++            return;
++          }
++
++          // Handle Navigation Category Filter or Action
++          const filterCategory = item.getAttribute('data-filter-category');
++          const navAction = item.getAttribute('data-nav-action');
++          if (filterCategory || navAction) {
++            if (filterCategory) {
++              filterCardsByCategory(filterCategory, navAction);
++            }
++            if (navAction && item.tagName !== 'A') {
++              showToast(navAction);
++            }
++            closeAllMenus();
++            return;
++          }
++
++          // Handle Preset Actions
++          const presetAction = item.getAttribute('data-preset-action');
++          if (presetAction) {
++            applyDrinkPreset(presetAction);
++            showToast(`Applied preset: ${item.textContent.trim()}`);
++            closeAllMenus();
++            return;
++          }
++
++          // Handle Card Quick Actions
++          const cardAction = item.getAttribute('data-card-action');
++          if (cardAction && card) {
++            const drinkTitle = card.querySelector('h3')?.textContent || 'Drink';
++            if (cardAction === 'add-to-order') {
++              addCardToCart(card);
++            } else if (cardAction === 'save-favorite') {
++              showToast(`Saved customized ${drinkTitle} to Favorites`);
++            }
++            closeAllMenus();
++          }
++        });
++
++        // Keyboard navigation (ArrowUp, ArrowDown, ArrowRight, ArrowLeft, Escape)
++        container.addEventListener('keydown', (e) => {
++          const activeEl = document.activeElement;
++          const currentMenu = activeEl?.closest('.ui-menu') || rootMenu;
++          const visibleItems = Array.from(
++            currentMenu.querySelectorAll(':scope > li > .ui-menu-item, :scope > .ui-menu-item-group > .ui-menu-item')
++          );
++
++          const currentIndex = visibleItems.indexOf(activeEl);
++
++          if (e.key === 'Escape') {
++            e.preventDefault();
++            const parentGroup = currentMenu.closest('.ui-menu-item-group');
++            if (parentGroup) {
++              const parentTrigger = parentGroup.querySelector(':scope > .ui-menu-item[aria-haspopup="menu"]');
++              currentMenu.classList.remove('is-open');
++              if (parentTrigger) {
++                parentTrigger.setAttribute('aria-expanded', 'false');
++                parentTrigger.focus();
++              }
++            } else {
++              closeAllMenus();
++              rootTrigger.focus();
++            }
++          } else if (e.key === 'ArrowDown') {
++            e.preventDefault();
++            if (!rootMenu.classList.contains('is-open')) {
++              rootTrigger.click();
++              const firstItem = rootMenu.querySelector('.ui-menu-item');
++              if (firstItem) firstItem.focus();
++            } else if (visibleItems.length > 0) {
++              const nextIndex = (currentIndex + 1) % visibleItems.length;
++              visibleItems[nextIndex].focus();
++            }
++          } else if (e.key === 'ArrowUp') {
++            e.preventDefault();
++            if (visibleItems.length > 0) {
++              const prevIndex = (currentIndex - 1 + visibleItems.length) % visibleItems.length;
++              visibleItems[prevIndex].focus();
++            }
++          } else if (e.key === 'ArrowRight') {
++            if (activeEl && activeEl.getAttribute('aria-haspopup') === 'menu') {
++              e.preventDefault();
++              const group = activeEl.closest('.ui-menu-item-group');
++              const submenu = group?.querySelector(':scope > .ui-submenu');
++              if (submenu) {
++                openSubmenu(activeEl, submenu);
++                const firstSubItem = submenu.querySelector('.ui-menu-item');
++                if (firstSubItem) firstSubItem.focus();
++              }
++            }
++          } else if (e.key === 'ArrowLeft') {
++            const parentGroup = currentMenu.closest('.ui-menu-item-group');
++            if (parentGroup) {
++              e.preventDefault();
++              const parentTrigger = parentGroup.querySelector(':scope > .ui-menu-item[aria-haspopup="menu"]');
++              currentMenu.classList.remove('is-open');
++              if (parentTrigger) {
++                parentTrigger.setAttribute('aria-expanded', 'false');
++                parentTrigger.focus();
++              }
++            }
++          }
++        });
++      });
++
++      // Direct "Add to Order" buttons on each card
++      document.querySelectorAll('[data-quick-order-btn]').forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const card = btn.closest('[data-drink-card]');
++          addCardToCart(card);
++        });
++      });
++
++      // Close menus when clicking outside
++      document.addEventListener('click', (e) => {
++        if (!e.target.closest('[data-menu-container]')) {
++          closeAllMenus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

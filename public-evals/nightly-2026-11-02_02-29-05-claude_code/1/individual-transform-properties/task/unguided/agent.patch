@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,64 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Featured promo badge (Seasonal Favorites)
++       Spin, slide and hover-scale each drive a separate individual transform
++       property (rotate / translate / scale), so the hover transition never
++       overrides or restarts the running animations. */
++    .promo-badge-track {
++      display: flex;
++      justify-content: center;
++      margin: 15px 0 5px;
++    }
++
++    .target {
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 96px;
++      height: 96px;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      line-height: 1.2;
++      text-align: center;
++      cursor: pointer;
++      user-select: none;
++      rotate: 0deg;
++      translate: 0 0;
++      scale: 1;
++      animation:
++        badge-spin 6s linear infinite,
++        badge-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.3s ease;
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes badge-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -80px 0; }
++      to { translate: 80px 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -176,8 +232,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-badge-track">
++        <div class="target" aria-label="Featured seasonal promo">
++          <span>Featured</span>
++          <span>Promo</span>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

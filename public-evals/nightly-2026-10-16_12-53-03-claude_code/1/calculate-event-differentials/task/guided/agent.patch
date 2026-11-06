@@ -1,0 +1,89 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,22 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
++    .promo-timer small {
++      display: block;
++      opacity: 0.75;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -180,8 +194,12 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="promo-timer" id="maple-timer" aria-live="off" hidden>
++            <strong id="maple-remaining"></strong>
++            <small id="maple-elapsed"></small>
++          </p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +224,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Promotion window, interpreted in the visitor's local time zone.
++    // PROMO_START is a placeholder; set it to the real launch date.
++    const PROMO_START = '2025-12-01T00:00:00';
++    const PROMO_END = '2026-03-01T00:00:00';
++
++    async function getTemporal() {
++      if (typeof Temporal !== 'undefined') return Temporal;
++      // Safari lacks native Temporal; load the reference polyfill.
++      return (await import('https://esm.sh/@js-temporal/polyfill')).Temporal;
++    }
++
++    const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
++    const format = (d) => `${plural(d.days, 'day')}, ${plural(d.hours, 'hour')}`;
++
++    async function renderTimer() {
++      const timer = document.getElementById('maple-timer');
++      try {
++        const T = await getTemporal();
++        const now = T.Now.zonedDateTimeISO(); // system time zone
++        const tz = now.timeZoneId;
++        const start = T.PlainDateTime.from(PROMO_START).toZonedDateTime(tz);
++        const end = T.PlainDateTime.from(PROMO_END).toZonedDateTime(tz);
++        const opts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'floor' };
++
++        const remaining = T.ZonedDateTime.compare(now, end) < 0;
++        document.getElementById('maple-remaining').textContent = remaining
++          ? `Ends in ${format(now.until(end, opts))}`
++          : 'This offer has ended';
++        document.getElementById('maple-elapsed').textContent =
++          T.ZonedDateTime.compare(now, start) < 0
++            ? 'Starts soon'
++            : `Started ${format(now.since(start, opts))} ago`;
++        timer.hidden = false;
++      } catch {
++        // Leave the timer hidden if Temporal can't be loaded.
++      }
++    }
++
++    renderTimer();
++  </script>
++
+ </body>
+ 
+ </html>

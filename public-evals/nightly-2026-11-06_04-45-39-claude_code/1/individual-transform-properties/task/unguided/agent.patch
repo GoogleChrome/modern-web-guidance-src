@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Featured promo badge (Seasonal Favorites)
++       Spin, slide and hover-scale each drive a separate individual transform
++       property (rotate / translate / scale), so they compose instead of
++       overriding one another: the hover transition never interrupts or
++       restarts the running animations. */
++    .promo-stage {
++      display: flex;
++      justify-content: center;
++      padding: 30px 0 10px;
++      overflow: hidden;
++    }
++
++    .target {
++      /* Stable stacking context from first paint, unchanged on hover */
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      width: 110px;
++      height: 110px;
++      border-radius: 50%;
++      background: radial-gradient(circle at 30% 30%, #ffcc80, var(--accent) 60%, #f57c00);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++      font-weight: bold;
++      text-transform: uppercase;
++      text-align: center;
++      line-height: 1.1;
++      cursor: pointer;
++      user-select: none;
++
++      scale: 1;
++      animation:
++        promo-spin 6s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.35s ease;
++    }
++
++    .target small {
++      font-size: 0.65rem;
++      letter-spacing: 1px;
++    }
++
++    .target span {
++      font-size: 1rem;
++    }
++
++    .target:hover {
++      scale: 1.2;
++    }
++
++    @keyframes promo-spin {
++      from { rotate: 0deg; }
++      to { rotate: 360deg; }
++    }
++
++    @keyframes promo-slide {
++      from { translate: -120px 0; }
++      to { translate: 120px 0; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .target {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +247,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-stage">
++        <div class="target" role="img" aria-label="Featured promo: Seasonal Favorites">
++          <small>Featured</small>
++          <span>Fall<br>Promo</span>
++        </div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

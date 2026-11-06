@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,71 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Form */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: start;
++      gap: 16px;
++      max-width: 600px;
++      margin: 20px auto 0;
++    }
++
++    .order-form label {
++      display: flex;
++      flex-direction: column;
++      align-items: start;
++      gap: 4px;
++      width: 100%;
++      font-weight: 600;
++    }
++
++    .order-form input,
++    .order-form textarea,
++    .order-form select {
++      field-sizing: content;
++      font: inherit;
++      font-weight: normal;
++      color: var(--text);
++      padding: 8px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++    }
++
++    .order-form input {
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 100%;
++    }
++
++    .order-form textarea {
++      height: auto;
++      width: 100%;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
++
++    .order-form select {
++      max-inline-size: 100%;
++    }
++
++    .order-form button {
++      font: inherit;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      border: 0;
++      border-radius: 5px;
++      cursor: pointer;
++    }
++
++    .order-form button:hover {
++      background: #3e2723;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +257,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Place a Pre-Order</h2>
++      <form class="order-form" action="/order-online" method="post">
++        <label>
++          Name
++          <input type="text" name="name" placeholder="Your name" autocomplete="name" required>
++        </label>
++        <label>
++          Drink
++          <select name="drink">
++            <option>Maple Oat Latte</option>
++            <option>Dark Roast Espresso</option>
++            <option>Cold Brew</option>
++            <option>Drip Coffee</option>
++          </select>
++        </label>
++        <label>
++          Special instructions
++          <textarea name="notes" placeholder="Extra shot, no foam, etc."></textarea>
++        </label>
++        <button type="submit">Submit Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

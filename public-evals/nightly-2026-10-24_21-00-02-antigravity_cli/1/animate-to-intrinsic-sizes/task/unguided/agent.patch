@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,16 +11,73 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      interpolate-size: allow-keywords;
+     }
+ 
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
++    .sr-toggle {
++      position: absolute;
++      width: 0;
++      height: 0;
++      opacity: 0;
++      pointer-events: none;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      appearance: none;
++    }
++
++    /* Promo Alert */
++    #promo-alert {
++      background-color: var(--accent);
++      color: var(--text);
++      height: auto;
++      height: calc-size(auto, size);
++      overflow: hidden;
++      interpolate-size: allow-keywords;
++      transition: height 0.4s ease, opacity 0.4s ease;
++    }
++
++    #promo-alert:has(#alert-toggle:checked),
++    #alert-toggle:checked ~ #promo-alert {
++      height: 0;
++      opacity: 0;
++    }
++
++    .promo-alert-inner {
++      padding: 12px 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      font-size: 0.95rem;
++    }
++
++    #alert-dismiss {
++      background: rgba(62, 39, 35, 0.12);
++      color: var(--text);
++      border: 1px solid rgba(62, 39, 35, 0.25);
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      line-height: 1.2;
++      transition: background 0.2s ease;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(62, 39, 35, 0.22);
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+@@ -134,8 +191,81 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* FAQ Accordion */
++    .faq-section {
++      margin-top: 50px;
++      max-width: 800px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .faq-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-accordion {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      padding: 18px 24px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.05rem;
++      font-weight: 600;
++      cursor: pointer;
++      user-select: none;
++      border: none;
++      text-align: left;
++      transition: background 0.2s ease;
++    }
++
++    #faq-trigger:hover {
++      background: #f5f0ee;
++    }
++
++    .faq-icon {
++      font-size: 1.25rem;
++      line-height: 1;
++      transition: transform 0.4s ease;
++      pointer-events: none;
++    }
++
++    #faq-toggle:checked ~ #faq-trigger .faq-icon,
++    .faq-accordion:has(#faq-toggle:checked) #faq-trigger .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    #faq-content {
++      height: 0;
++      overflow: hidden;
++      interpolate-size: allow-keywords;
++      transition: height 0.4s ease;
++    }
++
++    #faq-toggle:checked ~ #faq-content,
++    .faq-accordion:has(#faq-toggle:checked) #faq-content {
++      height: auto;
++      height: calc-size(auto, size);
++    }
++
++    .faq-content-inner {
++      padding: 0 24px 20px;
++      color: var(--text);
++      border-top: 1px solid var(--secondary);
++      padding-top: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +286,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div id="promo-alert" role="region" aria-label="Promotional Alert">
++    <input type="checkbox" id="alert-toggle" class="sr-toggle" aria-hidden="true">
++    <div class="promo-alert-inner">
++      <span><strong>Limited Time Offer:</strong> Enjoy 20% off your first bag of single-origin beans with code <strong>FRESH20</strong>!</span>
++      <label for="alert-toggle" id="alert-dismiss" role="button" tabindex="0" aria-label="Dismiss alert">&times; Dismiss</label>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +332,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq-section">
++      <h2>Frequently Asked Questions</h2>
++      <div class="faq-accordion">
++        <input type="checkbox" id="faq-toggle" class="sr-toggle" aria-hidden="true">
++        <label for="faq-toggle" id="faq-trigger" role="button" tabindex="0">
++          <span>How are your coffee beans sourced and roasted?</span>
++          <span class="faq-icon" aria-hidden="true">+</span>
++        </label>
++        <div id="faq-content">
++          <div class="faq-content-inner">
++            <p>We partner directly with sustainable small-lot farms across Central America, East Africa, and South America. Every batch is roasted in-house daily in small quantities to highlight each origin's natural flavor profile and shipped within 24 hours of roasting for peak freshness.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

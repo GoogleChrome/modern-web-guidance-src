@@ -1,0 +1,226 @@
+diff --git a/README.md b/README.md
+index 4479b53..a73da98 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,22 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++## View caching
++
++The shared layout retains up to five page-content views in memory, including the
++active view. Returning to a cached URL reuses its DOM and mounted islands. Inactive
++views use `content-visibility: hidden`, `inert`, and `aria-hidden`; browsers without
++content visibility fall back to `display: none`. The least recently used view is
++removed when the cache fills.
++
++The cache integrates with [Astro's swap lifecycle](https://docs.astro.build/en/guides/view-transitions/#astrobefore-swap),
++retaining the styles needed by cached views while Astro manages history, scroll,
++metadata, and scripts. Navigation still fetches the destination document; this
++cache saves DOM reconstruction and rendering work, not network requests. Query
++strings identify separate views, while fragments share a view. Same-URL refreshes
++replace that view, and router-handled form submissions invalidate the cache.
++Reloading the document clears all cached views.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2a808bd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,9 +48,11 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
+-        </main>
++        <div class="spa-view-stack" data-spa-view-stack>
++          <main class="bg-white relative" data-spa-view tabindex="-1">
++            <slot />
++          </main>
++        </div>
+       </div>
+     </div>
+     <Footer />
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..d1bddf7
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,132 @@
++import type {
++  TransitionBeforePreparationEvent,
++  TransitionBeforeSwapEvent,
++} from "astro:transitions/client";
++
++// Article URLs are unbounded; retain at most five views, including the active one.
++const MAX_VIEWS = 5;
++const PERSIST_ATTRIBUTE = "data-astro-transition-persist";
++const STYLE_SELECTOR = 'style, link[rel="stylesheet"]';
++type CachedView = { element: HTMLElement; styles: Element[] };
++const views = new Map<string, CachedView>();
++const submittedDocuments = new WeakSet<Document>();
++let nextId = 0;
++
++// Fragments share a view, while query strings can represent different content.
++const viewKey = (url: URL) => url.origin + url.pathname + url.search;
++const captureStyles = (doc: Document) =>
++  Array.from(doc.head.querySelectorAll(STYLE_SELECTOR), (style) =>
++    style.cloneNode(true) as Element,
++  );
++
++function setActive(element: HTMLElement, active: boolean) {
++  element.inert = !active;
++  if (active) element.removeAttribute("aria-hidden");
++  else element.setAttribute("aria-hidden", "true");
++}
++
++function retainStyles(doc: Document) {
++  const styles = Array.from(doc.head.querySelectorAll(STYLE_SELECTOR));
++  for (const view of views.values()) {
++    for (const style of view.styles) {
++      if (styles.some((existing) => existing.isEqualNode(style))) continue;
++      const copy = style.cloneNode(true) as Element;
++      doc.head.append(copy);
++      styles.push(copy);
++    }
++  }
++}
++
++// A server-handled form must show its fresh response and invalidate older views.
++document.addEventListener("astro:before-preparation", (event) => {
++  const preparation = event as TransitionBeforePreparationEvent;
++  if (!preparation.formData) return;
++  const load = preparation.loader;
++  preparation.loader = async () => {
++    await load();
++    submittedDocuments.add(preparation.newDocument);
++  };
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  const navigation = event as TransitionBeforeSwapEvent;
++  const stack = document.querySelector<HTMLElement>("[data-spa-view-stack]");
++  const incomingStack = navigation.newDocument.querySelector<HTMLElement>(
++    "[data-spa-view-stack]",
++  );
++  const incoming = incomingStack?.querySelector<HTMLElement>("[data-spa-view]");
++  const swap = navigation.swap;
++  if (!stack || !incomingStack || !incoming) {
++    navigation.swap = () => {
++      views.clear();
++      swap();
++    };
++    return;
++  }
++
++  navigation.swap = () => {
++    const from = viewKey(navigation.from);
++    const to = viewKey(navigation.to);
++    if (!views.size) {
++      const current = stack.querySelector<HTMLElement>("[data-spa-view]");
++      if (current) {
++        current.setAttribute(PERSIST_ATTRIBUTE, `cached-view-${nextId++}`);
++        views.set(from, { element: current, styles: captureStyles(document) });
++      }
++    }
++
++    // Do not turn an explicit refresh or a form response into a stale cache hit.
++    const invalidate = submittedDocuments.has(navigation.newDocument);
++    for (const [key, view] of views) {
++      if (invalidate || (key === to && from === to)) {
++        view.element.remove();
++        views.delete(key);
++      }
++    }
++
++    const cached = views.get(to);
++    views.delete(to);
++    const target = cached ?? {
++      element: incoming,
++      styles: captureStyles(navigation.newDocument),
++    };
++    if (!cached) incoming.setAttribute(PERSIST_ATTRIBUTE, `cached-view-${nextId++}`);
++    // Reinsertion updates Map order, making eviction least-recently-used.
++    views.set(to, target);
++    while (views.size > MAX_VIEWS) {
++      const oldest = views.keys().next().value!;
++      views.get(oldest)!.element.remove();
++      views.delete(oldest);
++    }
++
++    // Astro transfers matching persistent nodes without replacing their contents.
++    // Keep the active view first so fragment lookup resolves inside it first.
++    if (cached) {
++      const placeholder = navigation.newDocument.createElement("main");
++      placeholder.setAttribute(
++        PERSIST_ATTRIBUTE,
++        cached.element.getAttribute(PERSIST_ATTRIBUTE)!,
++      );
++      incoming.replaceWith(placeholder);
++    }
++    for (const view of views.values()) {
++      setActive(view.element, view === target);
++      if (view.element === incoming) continue;
++      // These scripts belong to already mounted views and must not run again.
++      view.element.querySelectorAll("script").forEach((script) => {
++        script.dataset.astroExec = "";
++      });
++      if (view === target) continue;
++      const placeholder = navigation.newDocument.createElement("main");
++      placeholder.setAttribute(
++        PERSIST_ATTRIBUTE,
++        view.element.getAttribute(PERSIST_ATTRIBUTE)!,
++      );
++      incomingStack.append(placeholder);
++    }
++    retainStyles(navigation.newDocument);
++    swap();
++    // Leave history, scroll restoration, head metadata, and script loading to Astro.
++    target.element.focus({ preventScroll: true });
++  };
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..91d397d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,25 @@
+ @import "tailwindcss";
+ 
++.spa-view-stack {
++  position: relative;
++}
++
++[data-spa-view][inert] {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0;
++  block-size: 0;
++  overflow: hidden;
++}
++
++@supports not (content-visibility: hidden) {
++  [data-spa-view][inert] {
++    display: none;
++  }
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

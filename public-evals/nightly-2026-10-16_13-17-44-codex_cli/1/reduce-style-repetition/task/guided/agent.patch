@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,14 +5,23 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @function --gradient(--start <color>, --end <color>, --angle <angle>: 135deg) returns <image> {
++      result: linear-gradient(var(--angle), var(--start), var(--end));
++    }
++
++    @function --columns(--count <integer>: 1) {
++      result: repeat(var(--count), minmax(0, 1fr));
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --main-columns: 1;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -24,16 +33,33 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: 100vh;
+     }
+ 
++    body,
++    h2 {
++      --gradient-start: #f4f2ff;
++      --gradient-end: #e0f5f1;
++      background-image: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
++    }
++
++    h2 {
++      --gradient-start: #d9d0fc;
++      --gradient-end: #b8e8e0;
++      padding: 0.75rem 1rem;
++      border-radius: 8px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -47,15 +73,13 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -101,13 +125,31 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(var(--main-columns), minmax(0, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @media (min-width: 800px) {
++      :root {
++        --main-columns: 2;
++      }
++    }
++
++    /* Keep the gradients and responsive layout in browsers without @function. */
++    @supports at-rule(@function) {
++      body,
++      h2 {
++        background-image: --gradient(var(--gradient-start), var(--gradient-end));
++      }
++
++      .grid {
++        grid-template-columns: --columns(var(--main-columns));
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

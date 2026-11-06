@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Open the connection to the image CDN early: the hero (LCP) image lives there -->
++  <link rel="preconnect" href="https://images.unsplash.com">
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -73,13 +75,12 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: var(--primary); /* shown until the image paints */
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+@@ -87,8 +88,28 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    /* Hero image is a real <img> so the preload scanner finds it immediately */
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      z-index: -2;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    /* Darkening overlay (previously the linear-gradient layer of the background) */
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -163,13 +184,24 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link no-prefetch" rel="nofollow">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-img"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=75 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=960&q=75 960w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=75 1920w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=2560&q=70 2560w"
++      sizes="100vw"
++      width="1350" height="900"
++      alt=""
++      fetchpriority="high">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -206,7 +238,29 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Speculatively prefetch likely next pages on hover/pointerdown (progressive enhancement;
++       ignored by browsers without Speculation Rules support). State-changing and private
++       URLs are excluded so speculation never logs the user out or caches account data. -->
++  <script type="speculationrules">
++    {
++      "prefetch": [{
++        "tag": "daily-grind-prefetch",
++        "where": {
++          "and": [
++            { "href_matches": "/*" },
++            { "not": { "href_matches": "/logout" } },
++            { "not": { "href_matches": "/logout/*" } },
++            { "not": { "href_matches": "/account" } },
++            { "not": { "href_matches": "/account/*" } },
++            { "not": { "selector_matches": "[rel~=nofollow], .no-prefetch" } }
++          ]
++        },
++        "eagerness": "moderate"
++      }]
++    }
++  </script>
++
+ </body>
+ 
+ </html>

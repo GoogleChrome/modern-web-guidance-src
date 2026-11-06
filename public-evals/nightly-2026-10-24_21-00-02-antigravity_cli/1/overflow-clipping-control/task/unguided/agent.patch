@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,119 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Showcase Section */
++    .showcase-section {
++      margin-bottom: 50px;
++    }
++
++    .showcase-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++      margin-top: 25px;
++      align-items: start;
++    }
++
++    .nested-curve-parent {
++      background: white;
++      padding: 24px;
++      border-radius: 28px;
++      border: 2px solid var(--secondary);
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      overflow: clip;
++      overflow-clip-margin: content-box;
++    }
++
++    .nested-curve-inner {
++      background: var(--light);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .nested-curve-media {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .nested-curve-body {
++      padding: 18px;
++    }
++
++    .nested-curve-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .nested-curve-footer {
++      background: var(--primary);
++      color: white;
++      padding: 14px 18px;
++      margin: 0 -10px -10px -10px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .safety-zone-parent {
++      background: #2d1b15;
++      color: white;
++      padding: 28px;
++      border-radius: 20px;
++      position: relative;
++      overflow: clip;
++      overflow-clip-margin: 15px;
++    }
++
++    .safety-zone-parent h3 {
++      color: var(--accent);
++      font-size: 1.4rem;
++      margin-bottom: 10px;
++    }
++
++    .promo-overflow-banner {
++      white-space: nowrap;
++      font-size: 0.85rem;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--secondary);
++      opacity: 0.7;
++      margin: 16px -60px;
++      background: rgba(255, 255, 255, 0.06);
++      padding: 6px 12px;
++    }
++
++    .glow-btn-wrapper {
++      margin-top: 24px;
++      display: flex;
++      justify-content: flex-end;
++    }
++
++    .glow-btn {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      padding: 12px 26px;
++      border: none;
++      border-radius: 999px;
++      text-decoration: none;
++      cursor: pointer;
++      box-shadow: 0 0 25px 10px rgba(255, 171, 64, 0.75);
++      transition: transform 0.2s ease, box-shadow 0.2s ease;
++    }
++
++    .glow-btn:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 0 30px 12px rgba(255, 171, 64, 0.9);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +285,42 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="showcase-section">
++      <h2 style="text-align: center;">Roaster's Showcase &amp; Exclusive Promos</h2>
++      <div class="showcase-grid">
++        <div class="nested-curve-parent">
++          <div class="nested-curve-inner">
++            <img
++              src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80"
++              alt="Single Origin Ethiopian Pour Over"
++              class="nested-curve-media"
++            >
++            <div class="nested-curve-body">
++              <h3>Single-Origin Ethiopian Yirgacheffe</h3>
++              <p>Floral jasmine notes with bright bergamot acidity and a silky honey finish, roasted in small batches.</p>
++            </div>
++            <div class="nested-curve-footer">
++              <span>Limited Micro-Lot Reserve</span>
++              <span>$22 / 12oz</span>
++            </div>
++          </div>
++        </div>
++
++        <div class="safety-zone-parent">
++          <h3>Golden Hour Espresso Pass</h3>
++          <p>Unlock unlimited afternoon espresso shots and priority tasting access at all roastery locations this month.</p>
++          <div class="promo-overflow-banner">
++            LIMITED TIME ROASTERY OFFER • MEMBERS ONLY • ARTISANAL SINGLE ORIGIN • FRESHLY ROASTED DAILY • LIMITED TIME ROASTERY OFFER
++          </div>
++          <div class="glow-btn-wrapper">
++            <button type="button" class="glow-btn">Claim 50% Off Pass</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

@@ -1,0 +1,51 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,47 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Product</title>
++<style>
++  body { margin: 0; font-family: system-ui, sans-serif; }
++  img { display: block; max-width: 100%; height: auto; }
++  nav, section, footer { padding: 1rem; }
++  [popover] { margin: 0; inset: auto; top: 3.5rem; left: 1rem; }
++  .spacer { height: 150vh; }
++</style>
++</head>
++<body>
++<nav>
++  <button popovertarget="menu">Menu</button>
++  <div id="menu" popover>
++    <img src="mega-menu-promo.jpg" alt="Special offer" width="300" height="150" fetchpriority="low" loading="lazy">
++  </div>
++</nav>
++
++<header>
++  <img src="hero-lcp.jpg" alt="Product hero" width="1200" height="600" fetchpriority="high">
++  <h1>Product</h1>
++</header>
++
++<section>
++  <img id="g1" src="hero-lcp.jpg" alt="Product view 1" width="400" height="300">
++  <img id="g2" src="gallery-alt.jpg" alt="Product view 2" width="400" height="300" hidden fetchpriority="low" loading="lazy">
++  <button id="toggle" aria-controls="g1 g2">Next image</button>
++</section>
++
++<div class="spacer"></div>
++
++<footer>
++  <img src="footer-logo.png" alt="Footer logo" width="120" height="60" loading="lazy">
++</footer>
++
++<script>
++  document.getElementById('toggle').onclick = () => {
++    g1.hidden = !g1.hidden;
++    g2.hidden = !g2.hidden;
++  };
++</script>
++</body>
++</html>

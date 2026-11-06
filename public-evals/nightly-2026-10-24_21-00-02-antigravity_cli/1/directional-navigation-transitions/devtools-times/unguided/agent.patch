@@ -1,0 +1,218 @@
+diff --git a/src/components/TopStoriesSlider.tsx b/src/components/TopStoriesSlider.tsx
+new file mode 100644
+index 0000000..40f8578
+--- /dev/null
++++ b/src/components/TopStoriesSlider.tsx
+@@ -0,0 +1,129 @@
++import React, { useState, useEffect } from 'react';
++
++export interface TopStoryItem {
++  id: string;
++  title: string;
++  date: string;
++}
++
++interface TopStoriesSliderProps {
++  stories: TopStoryItem[];
++  baseUrl?: string;
++}
++
++export default function TopStoriesSlider({ stories, baseUrl = '/' }: TopStoriesSliderProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [step, setStep] = useState(0);
++  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
++
++  useEffect(() => {
++    if (typeof window === 'undefined' || !window.matchMedia) return;
++    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++    setPrefersReducedMotion(mediaQuery.matches);
++
++    const handleChange = (event: MediaQueryListEvent) => {
++      setPrefersReducedMotion(event.matches);
++    };
++
++    mediaQuery.addEventListener('change', handleChange);
++    return () => mediaQuery.removeEventListener('change', handleChange);
++  }, []);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const checkReducedMotion = () => {
++    if (typeof window !== 'undefined' && window.matchMedia) {
++      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++    }
++    return prefersReducedMotion;
++  };
++
++  const handlePrevious = () => {
++    const reduced = checkReducedMotion();
++    setPrefersReducedMotion(reduced);
++    setDirection('prev');
++    setCurrentIndex((prevIndex) => (prevIndex - 1 + stories.length) % stories.length);
++    setStep((prevStep) => prevStep + 1);
++  };
++
++  const handleNext = () => {
++    const reduced = checkReducedMotion();
++    setPrefersReducedMotion(reduced);
++    setDirection('next');
++    setCurrentIndex((prevIndex) => (prevIndex + 1) % stories.length);
++    setStep((prevStep) => prevStep + 1);
++  };
++
++  const currentStory = stories[currentIndex];
++  const animationClass = prefersReducedMotion
++    ? ''
++    : direction === 'next'
++    ? 'slide-in-right motion-reduce:animate-none motion-reduce:transition-none'
++    : direction === 'prev'
++    ? 'slide-in-left motion-reduce:animate-none motion-reduce:transition-none'
++    : '';
++
++  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++
++  return (
++    <div className="flex items-center justify-between gap-4" aria-label="Top Stories">
++      <button
++        type="button"
++        onClick={handlePrevious}
++        aria-label="Previous"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-amber-500 rounded transition-colors motion-reduce:transition-none shrink-0 cursor-pointer"
++      >
++        <svg
++          xmlns="http://www.w3.org/2000/svg"
++          fill="none"
++          viewBox="0 0 24 24"
++          strokeWidth={2}
++          stroke="currentColor"
++          className="w-4 h-4"
++          aria-hidden="true"
++        >
++          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
++        </svg>
++        <span>Previous</span>
++      </button>
++
++      <div className="flex-1 overflow-hidden">
++        <div
++          key={`${currentStory.id}-${step}`}
++          data-direction={direction ?? undefined}
++          className={`text-center ${animationClass}`}
++        >
++          <a href={`${normalizedBaseUrl}articles/${currentStory.id}`}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++              {currentStory.title}
++            </h3>
++          </a>
++          <span className="text-xs text-gray-500">{currentStory.date}</span>
++        </div>
++      </div>
++
++      <button
++        type="button"
++        onClick={handleNext}
++        aria-label="Next"
++        className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-amber-500 rounded transition-colors motion-reduce:transition-none shrink-0 cursor-pointer"
++      >
++        <span>Next</span>
++        <svg
++          xmlns="http://www.w3.org/2000/svg"
++          fill="none"
++          viewBox="0 0 24 24"
++          strokeWidth={2}
++          stroke="currentColor"
++          className="w-4 h-4"
++          aria-hidden="true"
++        >
++          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
++        </svg>
++      </button>
++    </div>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..aff48f7 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesSlider from '../components/TopStoriesSlider';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -41,16 +42,15 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesSlider
++                client:load
++                baseUrl={import.meta.env.BASE_URL}
++                stories={topStories.map(article => ({
++                    id: article.id,
++                    title: article.data.title,
++                    date: article.data.date.toLocaleDateString(),
++                }))}
++            />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..45418d6 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,38 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slide-in-from-right {
++  from {
++    transform: translateX(100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++@keyframes slide-in-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++  to {
++    transform: translateX(0);
++  }
++}
++
++.slide-in-right {
++  animation: slide-in-from-right 300ms ease-out;
++}
++
++.slide-in-left {
++  animation: slide-in-from-left 300ms ease-out;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .slide-in-right,
++  .slide-in-left {
++    animation: none !important;
++    transition: none !important;
++  }
++}

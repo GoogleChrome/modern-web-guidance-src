@@ -1,0 +1,309 @@
+diff --git a/index.html b/index.html
+index 66c9173..0b2c9fd 100644
+--- a/index.html
++++ b/index.html
+@@ -152,7 +152,105 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Skeleton placeholders: same footprint as real cards to avoid layout shift */
++    .card {
++      min-height: 210px;
++    }
++
++    .card.skeleton {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .skeleton .bar {
++      display: block;
++      width: 80%;
++      height: 1em;
++      border-radius: 4px;
++      background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
++      background-size: 200% 100%;
++      animation: shimmer 1.4s infinite linear;
++    }
++
++    .skeleton .bar.title {
++      width: 55%;
++      height: 1.4em;
++    }
++
++    .skeleton .bar.btn-bar {
++      width: 40%;
++      height: 2.4em;
++      margin-top: auto;
++    }
++
++    @keyframes shimmer {
++      to {
++        background-position: -200% 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .skeleton .bar {
++        animation: none;
++      }
++    }
++
++    section + section {
++      margin-top: 50px;
++    }
++
++    .reviews blockquote {
++      text-align: left;
++    }
++
++    .reviews cite {
++      display: block;
++      margin-top: 10px;
++      font-style: normal;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .promo {
++      background: var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      min-height: 160px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
++
++  <!--
++    Feature-detect native out-of-order streaming (template[for] + processing
++    instructions) and the HTML setter/streaming methods. Load polyfills only in
++    browsers that lack them. Unsupported parsers turn the marker/start/end
++    processing instructions into comments, which template-for-polyfill still recognises.
++  -->
++  <script type="module">
++    const probe = document.createElement('div');
++    probe.innerHTML = '<?marker name="probe">';
++    const hasProcessingInstructions =
++      probe.firstChild?.nodeType === Node.PROCESSING_INSTRUCTION_NODE;
++
++    const polyfills = [];
++    if (!hasProcessingInstructions) {
++      polyfills.push(import('https://esm.sh/template-for-polyfill'));
++    }
++    if (!('streamHTML' in Element.prototype) || !('setHTMLUnsafe' in Element.prototype)) {
++      polyfills.push(import('https://esm.sh/html-setters-polyfill'));
++    }
++    window.__streamingReady = Promise.all(polyfills);
++  </script>
+ </head>
+ 
+ <body>
+@@ -175,25 +273,63 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <!-- Placeholder cards: replaced by the "seasonal-cards" template later in this document -->
++      <div class="grid" id="seasonal-grid" aria-busy="true">
++        <?start name="seasonal-cards">
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++        <?end>
+       </div>
++      <p class="visually-hidden" id="seasonal-status" role="status" aria-live="polite"></p>
++    </section>
++
++    <section aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading" style="text-align: center;">What Our Customers Say</h2>
++      <!-- Customer-submitted (untrusted) HTML: always inserted through the sanitizer -->
++      <div class="grid reviews" id="reviews" aria-busy="true">
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <span class="bar title"></span>
++            <span class="bar"></span>
++            <span class="bar"></span>
++            <span class="bar btn-bar"></span>
++          </div>
++      </div>
++    </section>
++
++    <section aria-labelledby="promo-heading">
++      <h2 id="promo-heading" class="visually-hidden">This Week's Promotion</h2>
++      <!-- First-party CMS promo (trusted) that ships its own widget script -->
++      <div class="promo" id="cms-promo" aria-busy="true"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +343,116 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    Streamed later in the same response: the server flushes the real cards once
++    they're ready and the browser swaps out everything in the "seasonal-cards" range.
++  -->
++  <template for="seasonal-cards">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <script type="module">
++    await window.__streamingReady;
++
++    const grid = document.getElementById('seasonal-grid');
++    const status = document.getElementById('seasonal-status');
++    const reviews = document.getElementById('reviews');
++    const promo = document.getElementById('cms-promo');
++
++    // The declarative template above has been applied by the time this runs.
++    grid.removeAttribute('aria-busy');
++
++    const toTextStream = (response) => {
++      if (!response.ok) throw new Error(`${response.url} → ${response.status}`);
++      return response.body.pipeThrough(new TextDecoderStream());
++    };
++
++    // --- Seasonal Favorites: re-stream fresh card HTML whenever the menu changes ---
++    let refreshController;
++    async function refreshSeasonalCards() {
++      refreshController?.abort();
++      const { signal } = (refreshController = new AbortController());
++      grid.setAttribute('aria-busy', 'true');
++      try {
++        const response = await fetch('/partials/seasonal-favorites', { signal });
++        // Safe streaming setter: menu cards need no scripts, so keep the built-in sanitizer.
++        await toTextStream(response).pipeTo(grid.streamHTML(), { signal });
++        status.textContent = 'Seasonal favorites updated.';
++      } catch (err) {
++        if (err.name !== 'AbortError') console.error('Seasonal refresh failed', err);
++      } finally {
++        if (refreshController.signal === signal) grid.removeAttribute('aria-busy');
++      }
++    }
++
++    const menuEvents = new EventSource('/api/menu/events');
++    menuEvents.addEventListener('menu-updated', refreshSeasonalCards);
++
++    // --- Customer reviews: untrusted, so sanitize with a restrictive allowlist ---
++    const reviewSanitizer = {
++      elements: ['article', 'blockquote', 'p', 'cite', 'h3', 'b', 'i', 'strong', 'em', 'br'],
++      attributes: ['class'],
++    };
++
++    async function safeSetHTML(el, html) {
++      if ('setHTML' in Element.prototype && 'Sanitizer' in window) {
++        el.setHTML(html, { sanitizer: reviewSanitizer });
++      } else {
++        const { default: DOMPurify } = await import('https://esm.sh/dompurify@3');
++        el.innerHTML = DOMPurify.sanitize(html, {
++          ALLOWED_TAGS: [...reviewSanitizer.elements, '#text'],
++          ALLOWED_ATTR: reviewSanitizer.attributes,
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false,
++        });
++      }
++    }
++
++    async function loadReviews() {
++      try {
++        const response = await fetch('/partials/reviews');
++        if (!response.ok) throw new Error(`reviews → ${response.status}`);
++        await safeSetHTML(reviews, await response.text());
++      } catch (err) {
++        console.error('Reviews failed to load', err);
++        reviews.replaceChildren();
++      } finally {
++        reviews.removeAttribute('aria-busy');
++      }
++    }
++
++    // --- CMS promo: first-party & trusted, its embedded widget script must run ---
++    async function loadPromo() {
++      try {
++        const response = await fetch('/cms/promo-block');
++        await toTextStream(response).pipeTo(promo.streamHTMLUnsafe({ runScripts: true }));
++      } catch (err) {
++        console.error('Promo failed to load', err);
++        promo.hidden = true;
++      } finally {
++        promo.removeAttribute('aria-busy');
++      }
++    }
++
++    loadReviews();
++    loadPromo();
++  </script>
++
+ </body>
+ 
+ </html>

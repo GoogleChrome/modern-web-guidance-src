@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+index 66c9173..2da1685 100644
+--- a/index.html
++++ b/index.html
+@@ -102,24 +102,102 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    /* Seasonal drink cards: each card is a size container, so its layout
++       responds to the card's own width rather than the viewport. */
+     .card {
++      container: drink-card / inline-size;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .card-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      height: 100%;
+       text-align: center;
+     }
+ 
++    .card-media {
++      aspect-ratio: 16 / 10;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      display: block;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .card-body {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 20px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .card .btn {
++      margin-top: auto;
++    }
++
++    .card p {
++      margin-bottom: 15px;
++    }
++
++    /* Wide card: image and text side by side */
++    @container drink-card (min-width: 460px) {
++      .card-layout {
++        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
++        text-align: left;
++      }
++
++      .card-media {
++        aspect-ratio: auto;
++        min-height: 100%;
++      }
++
++      .card-body {
++        align-items: flex-start;
++        justify-content: center;
++        padding: 24px 28px;
++      }
++
++      .card .btn {
++        margin-top: 0;
++      }
++    }
++
++    /* Extra-wide card: roomier spacing and larger type */
++    @container drink-card (min-width: 700px) {
++      .card-layout {
++        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++      }
++
++      .card-body {
++        padding: 36px 44px;
++      }
++
++      .card h3 {
++        font-size: 1.6rem;
++      }
++
++      .card p {
++        font-size: 1.1rem;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +256,42 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card">
++          <div class="card-layout">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" alt="Latte with foam art in a ceramic cup" loading="lazy">
++            </div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card">
++          <div class="card-layout">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80" alt="Shot of espresso in a small cup" loading="lazy">
++            </div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card">
++          <div class="card-layout">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80" alt="Iced cold brew coffee in a glass" loading="lazy">
++            </div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>

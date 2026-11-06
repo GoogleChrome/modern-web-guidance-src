@@ -1,0 +1,48 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,27 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @keyframes card-enter {
++      from {
++        opacity: 0;
++        transform: translateY(16px);
++      }
++      to {
++        opacity: 1;
++        transform: translateY(0);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .grid > .card {
++        animation: card-enter 400ms ease-out both;
++        animation-delay: calc((var(--sibling-index, 1) - 1) * 100ms);
++        animation-delay: calc((sibling-index() - 1) * 100ms);
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -206,7 +225,16 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('animation-delay: calc(sibling-index() * 100ms)')) {
++      document.querySelectorAll('.grid').forEach((grid) => {
++        Array.from(grid.children).forEach((card, index) => {
++          card.style.setProperty('--sibling-index', index + 1);
++        });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

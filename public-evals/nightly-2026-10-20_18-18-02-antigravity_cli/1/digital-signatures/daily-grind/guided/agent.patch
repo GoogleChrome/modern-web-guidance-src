@@ -1,0 +1,418 @@
+diff --git a/index.html b/index.html
+index 66c9173..2a84b3a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,75 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
++    }
++
++    button.btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .signature-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .signature-section h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .form-group {
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-family: monospace;
++      font-size: 0.85rem;
++    }
++
++    .status-badge {
++      display: inline-block;
++      margin-top: 15px;
++      padding: 8px 14px;
++      border-radius: 4px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .status-badge.valid {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-badge.invalid {
++      background: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +264,53 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="signature-section" id="artifact-verification">
++      <h2>Roast Batch &amp; Token Authenticity</h2>
++      <p>Sign and verify coffee provenance manifests, reward tokens, or release artifacts using post-quantum (<code>ML-DSA-65</code>) or classical (<code>Ed25519</code>) asymmetric keys.</p>
++
++      <div class="form-group">
++        <label for="suite-select">Preferred Algorithm</label>
++        <select id="suite-select">
++          <option value="ML-DSA-65" selected>ML-DSA-65 (NIST Category 3 - Recommended Default)</option>
++          <option value="ML-DSA-44">ML-DSA-44 (NIST Category 2 - Compact Keys)</option>
++          <option value="ML-DSA-87">ML-DSA-87 (NIST Category 5 - CNSA 2.0)</option>
++          <option value="Ed25519">Ed25519 (Classical Fallback)</option>
++        </select>
++      </div>
++
++      <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
++        <button type="button" id="generate-key-btn" class="btn" style="margin-top: 0;">Generate Signing Key Pair</button>
++        <span id="active-suite-status" style="font-size: 0.9rem; font-family: monospace;"></span>
++      </div>
++
++      <div class="form-group">
++        <label for="context-input">Domain Separation Context (0-255 bytes)</label>
++        <input type="text" id="context-input" value="daily-grind-roast-manifest-v1" maxlength="255">
++      </div>
++
++      <div class="form-group">
++        <label for="payload-input">Message / Token / Artifact Payload</label>
++        <textarea id="payload-input" rows="3">{"batch":"ETH-YIRG-2026-10","roaster":"The Daily Grind","sha256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}</textarea>
++      </div>
++
++      <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
++        <button type="button" id="sign-btn" class="btn" style="margin-top: 0;" disabled>Sign Payload</button>
++        <button type="button" id="verify-btn" class="btn" style="margin-top: 0;" disabled>Verify Signature</button>
++      </div>
++
++      <div class="form-group">
++        <label for="public-key-output">Public Key Bytes (Hex — exported via <code>raw-public</code> or fallback <code>raw</code>)</label>
++        <textarea id="public-key-output" rows="2" placeholder="Generate a key pair or paste a public key in hex..."></textarea>
++      </div>
++
++      <div class="form-group">
++        <label for="signature-output">Digital Signature (Hex)</label>
++        <textarea id="signature-output" rows="3" placeholder="Sign a payload or paste a signature in hex..."></textarea>
++      </div>
++
++      <div id="verification-result" class="status-badge" hidden></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +323,93 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import {
++      supportsPostQuantumSignatures,
++      generateSigningKeyPair,
++      signPayload,
++      verifyPayload,
++      bytesToHex,
++      hexToBytes,
++    } from './signatures.js';
++
++    const suiteSelect = document.getElementById('suite-select');
++    const generateKeyBtn = document.getElementById('generate-key-btn');
++    const activeSuiteStatus = document.getElementById('active-suite-status');
++    const contextInput = document.getElementById('context-input');
++    const payloadInput = document.getElementById('payload-input');
++    const signBtn = document.getElementById('sign-btn');
++    const verifyBtn = document.getElementById('verify-btn');
++    const publicKeyOutput = document.getElementById('public-key-output');
++    const signatureOutput = document.getElementById('signature-output');
++    const verificationResult = document.getElementById('verification-result');
++
++    let currentSigningKey = null;
++
++    function showStatus(message, isValid) {
++      verificationResult.hidden = false;
++      verificationResult.textContent = message;
++      verificationResult.className = `status-badge ${isValid ? 'valid' : 'invalid'}`;
++    }
++
++    const pqSupported = supportsPostQuantumSignatures('ML-DSA-65');
++    activeSuiteStatus.textContent = pqSupported
++      ? 'Post-quantum ML-DSA supported natively via SubtleCrypto.supports()'
++      : 'ML-DSA unavailable in this runtime; using Ed25519 classical fallback';
++
++    generateKeyBtn.addEventListener('click', async () => {
++      try {
++        const preferred = suiteSelect.value;
++        const { suite, keyFormat, keyPair, publicKeyBytes } = await generateSigningKeyPair(preferred);
++        currentSigningKey = keyPair.privateKey;
++        publicKeyOutput.value = bytesToHex(publicKeyBytes);
++        signatureOutput.value = '';
++        verificationResult.hidden = true;
++        signBtn.disabled = false;
++        verifyBtn.disabled = false;
++        activeSuiteStatus.textContent = `Active suite: ${suite} (exported as '${keyFormat}', ${publicKeyBytes.byteLength} bytes)`;
++      } catch (err) {
++        showStatus(`Key generation failed: ${err.message}`, false);
++      }
++    });
++
++    signBtn.addEventListener('click', async () => {
++      try {
++        if (!currentSigningKey) {
++          throw new Error('Generate a signing key pair first.');
++        }
++        const sigBytes = await signPayload(
++          currentSigningKey,
++          payloadInput.value,
++          contextInput.value,
++        );
++        signatureOutput.value = bytesToHex(sigBytes);
++        showStatus(`Signed payload (${sigBytes.byteLength} byte signature).`, true);
++      } catch (err) {
++        showStatus(`Signing error: ${err.message}`, false);
++      }
++    });
++
++    verifyBtn.addEventListener('click', async () => {
++      try {
++        const pubKeyBytes = hexToBytes(publicKeyOutput.value);
++        const sigBytes = hexToBytes(signatureOutput.value);
++        const isValid = await verifyPayload(
++          pubKeyBytes,
++          sigBytes,
++          payloadInput.value,
++          contextInput.value,
++        );
++        if (isValid) {
++          showStatus('Signature Verified: Data integrity and signer authenticity confirmed.', true);
++        } else {
++          showStatus('Verification Failed: Payload, context, or signature does not match.', false);
++        }
++      } catch (err) {
++        showStatus(`Verification error: ${err.message}`, false);
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/signatures.js b/signatures.js
+new file mode 100644
+index 0000000..4484973
+--- /dev/null
++++ b/signatures.js
+@@ -0,0 +1,184 @@
++const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
++  1312: 'ML-DSA-44',
++  1952: 'ML-DSA-65',
++  2592: 'ML-DSA-87',
++};
++
++const ML_DSA_ALGORITHMS = new Set(['ML-DSA-44', 'ML-DSA-65', 'ML-DSA-87']);
++
++export function supportsPostQuantumSignatures(algorithm = 'ML-DSA-65') {
++  return (
++    typeof globalThis.SubtleCrypto?.supports === 'function' &&
++    SubtleCrypto.supports('sign', algorithm)
++  );
++}
++
++function toUint8Array(input) {
++  if (typeof input === 'string') {
++    return new TextEncoder().encode(input);
++  }
++  if (input instanceof Uint8Array) {
++    return input;
++  }
++  if (input instanceof ArrayBuffer) {
++    return new Uint8Array(input);
++  }
++  if (ArrayBuffer.isView(input)) {
++    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
++  }
++  return new Uint8Array(0);
++}
++
++export async function generateSigningKeyPair(preferredAlgorithm = 'ML-DSA-65') {
++  if (ML_DSA_ALGORITHMS.has(preferredAlgorithm) && supportsPostQuantumSignatures(preferredAlgorithm)) {
++    const keyPair = await crypto.subtle.generateKey(
++      preferredAlgorithm,
++      false,
++      ['sign', 'verify'],
++    );
++    const publicKeyBytes = new Uint8Array(
++      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++    );
++    return {
++      suite: preferredAlgorithm,
++      keyFormat: 'raw-public',
++      keyPair,
++      publicKeyBytes,
++    };
++  }
++
++  // Classical fallback: Ed25519
++  const keyPair = await crypto.subtle.generateKey(
++    'Ed25519',
++    false,
++    ['sign', 'verify'],
++  );
++  const publicKeyBytes = new Uint8Array(
++    await crypto.subtle.exportKey('raw', keyPair.publicKey),
++  );
++  return {
++    suite: 'Ed25519',
++    keyFormat: 'raw',
++    keyPair,
++    publicKeyBytes,
++  };
++}
++
++export async function exportPublicKeyBytes(publicKey) {
++  if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++    return new Uint8Array(await crypto.subtle.exportKey('raw-public', publicKey));
++  }
++  return new Uint8Array(await crypto.subtle.exportKey('raw', publicKey));
++}
++
++export async function importPublicKeyBytes(publicKeyBytes, algorithmHint = 'Ed25519') {
++  const bytes = toUint8Array(publicKeyBytes);
++  const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength] ||
++    (ML_DSA_ALGORITHMS.has(algorithmHint) ? algorithmHint : null);
++
++  if (mlDsaName && supportsPostQuantumSignatures(mlDsaName)) {
++    return crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify']);
++  }
++
++  return crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
++}
++
++export async function importPrivateKeySeed(seedBytes, algorithm = 'ML-DSA-65') {
++  const bytes = toUint8Array(seedBytes);
++  if (ML_DSA_ALGORITHMS.has(algorithm) && supportsPostQuantumSignatures(algorithm)) {
++    return crypto.subtle.importKey('raw-seed', bytes, algorithm, false, ['sign']);
++  }
++  return crypto.subtle.importKey('raw', bytes, 'Ed25519', false, ['sign']);
++}
++
++export async function derivePublicKeyFromPrivate(privateKey) {
++  if (typeof crypto.subtle.getPublicKey === 'function') {
++    return crypto.subtle.getPublicKey(privateKey, ['verify']);
++  }
++  throw new DOMException('crypto.subtle.getPublicKey is not supported', 'NotSupportedError');
++}
++
++function frameFallbackInput(payloadBytes, contextBytes) {
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++  const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++  framed[0] = contextBytes.byteLength;
++  framed.set(contextBytes, 1);
++  framed.set(payloadBytes, 1 + contextBytes.byteLength);
++  return framed;
++}
++
++export async function signPayload(
++  privateKey,
++  payload,
++  context = new Uint8Array(0),
++) {
++  const payloadBytes = toUint8Array(payload);
++  const contextBytes = toUint8Array(context);
++
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++
++  if (privateKey.algorithm.name.startsWith('ML-DSA')) {
++    const sig = await crypto.subtle.sign(
++      { name: privateKey.algorithm.name, context: contextBytes },
++      privateKey,
++      payloadBytes,
++    );
++    return new Uint8Array(sig);
++  }
++
++  const framed = frameFallbackInput(payloadBytes, contextBytes);
++  const sig = await crypto.subtle.sign('Ed25519', privateKey, framed);
++  return new Uint8Array(sig);
++}
++
++export async function verifyPayload(
++  publicKeyOrBytes,
++  signature,
++  payload,
++  context = new Uint8Array(0),
++) {
++  const signatureBytes = toUint8Array(signature);
++  const payloadBytes = toUint8Array(payload);
++  const contextBytes = toUint8Array(context);
++
++  if (contextBytes.byteLength > 255) {
++    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++  }
++
++  const publicKey =
++    publicKeyOrBytes instanceof CryptoKey
++      ? publicKeyOrBytes
++      : await importPublicKeyBytes(publicKeyOrBytes);
++
++  if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++    return crypto.subtle.verify(
++      { name: publicKey.algorithm.name, context: contextBytes },
++      publicKey,
++      signatureBytes,
++      payloadBytes,
++    );
++  }
++
++  const framed = frameFallbackInput(payloadBytes, contextBytes);
++  return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
++}
++
++export function bytesToHex(bytes) {
++  return Array.from(toUint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++export function hexToBytes(hex) {
++  const clean = hex.trim().replace(/^0x/i, '').replace(/\s+/g, '');
++  if (clean.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(clean)) {
++    throw new Error('Invalid hex string');
++  }
++  const out = new Uint8Array(clean.length / 2);
++  for (let i = 0; i < out.length; i++) {
++    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
++  }
++  return out;
++}

@@ -1,0 +1,347 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..661a547 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,9 +2,11 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+-import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
++// Imported as URLs instead of letting Astro inject them, so the <link> and
++// <script> tags in <head> can carry blocking="render" (see the comment there).
++import globalStylesUrl from "../styles/global.css?url";
++import viewTransitionsScriptUrl from "../scripts/view-transitions.js?url&no-inline";
+ 
+ export interface Props {
+   title: string;
+@@ -12,6 +14,12 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++
++// Pages can put their above-the-fold markup in the "lead" slot. The layout
++// wraps it in #lead-content, which the rel="expect" link below waits for. Pages
++// without a lead slot get all of their main content wrapped instead, so the id
++// always exists and rendering is never blocked until the end of the document.
++const hasLead = Astro.slots.has("lead");
+ ---
+ 
+ <!doctype html>
+@@ -21,20 +29,35 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
++    <!--
++      Cross-document view transitions (opted in via @view-transition in
++      global.css). The browser snapshots the incoming page as soon as rendering
++      is unblocked, so everything the first frame depends on is made explicitly
++      render-blocking here. These tags must stay in <head>: blocking="render" is
++      ignored once the parser has reached <body>.
++
++        1. Critical CSS: the brand font and the global/Tailwind stylesheet.
++        2. Critical JS: the pageswap/pagereveal hooks, which must be registered
++           before the first rendering opportunity.
++        3. Critical HTML: rel="expect" holds rendering until #lead-content (the
++           user's initial view of the page) has been fully parsed.
++    -->
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      blocking="render"
+     />
++    <link rel="stylesheet" href={globalStylesUrl} blocking="render" />
++    <script is:inline type="module" src={viewTransitionsScriptUrl} blocking="render"></script>
++    <link rel="expect" href="#lead-content" blocking="render" />
+ 
++    <!-- Non-critical: analytics stays deferred and never blocks rendering. -->
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -46,7 +69,18 @@ const baseUrl = import.meta.env.BASE_URL;
+           <Header />
+         </div>
+         <main class="bg-white relative">
+-          <slot />
++          {hasLead ? (
++            <Fragment>
++              <div id="lead-content">
++                <slot name="lead" />
++              </div>
++              <slot />
++            </Fragment>
++          ) : (
++            <div id="lead-content">
++              <slot />
++            </div>
++          )}
+         </main>
+       </div>
+     </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..1465e2f 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -36,7 +36,9 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <!-- The article itself is the initial view: the layout blocks rendering (and the
++         cross-document view transition) until this element has been parsed. -->
++    <article slot="lead" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..f945617 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -38,7 +38,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ ---
+ 
+ <Layout title={`Category: ${capitalizedCategory}`}>
+-    <div class="pb-8">
++    <!-- Above-the-fold content: the layout blocks rendering (and therefore the
++         cross-document view transition) until this slot has been parsed. -->
++    <Fragment slot="lead">
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+@@ -63,37 +65,37 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+             </div>
+         </header>
+ 
+-        <div class="px-4 md:px-6">
+-            <!-- Featured Article -->
+-            {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
+-                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+-                        <Image 
+-                            src={featuredArticleImage} 
+-                            alt={featuredArticle.data.title} 
+-                            width={1200}
+-                            height={675}
+-                            format="webp"
+-                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+-                        />
+-                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+-                            {featuredArticle.data.title}
+-                        </h2>
+-                        <p class="text-base md:text-lg text-gray-700">
+-                            {featuredArticle.data.summary}
+-                        </p>
+-                    </a>
+-                </section>
+-            )}
++        <!-- Featured Article -->
++        {featuredArticle && featuredArticleImage && (
++            <section class="mx-4 md:mx-6 mb-8 pb-8 border-b border-gray-200">
++                <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
++                    <Image 
++                        src={featuredArticleImage} 
++                        alt={featuredArticle.data.title} 
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        class="w-full h-auto object-cover mb-4 aspect-[16/9]"
++                    />
++                    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
++                        {featuredArticle.data.title}
++                    </h2>
++                    <p class="text-base md:text-lg text-gray-700">
++                        {featuredArticle.data.summary}
++                    </p>
++                </a>
++            </section>
++        )}
++    </Fragment>
+ 
+-            <!-- Other Articles -->
+-            {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
+-            ) : (
+-                <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+-            )}
+-        </div>
++    <!-- Other Articles -->
++    <div class="px-4 md:px-6 pb-8">
++        {otherArticles.length > 0 ? (
++            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                {otherArticles.map(article => <ArticleTeaser article={article} />)}
++            </div>
++        ) : (
++            <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
++        )}
+     </div>
+ </Layout>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..b4c6ac7 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -38,26 +38,30 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
++    <!-- Above-the-fold content: the layout blocks rendering (and therefore the
++         cross-document view transition) until this slot has been parsed. -->
++    <Fragment slot="lead">
++        <!-- Top Stories Bar -->
++        <div class="bg-white border-b border-gray-300">
++            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                    {topStories.map(article => (
++                        <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                                <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            </a>
++                            <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                        </div>
++                    ))}
++                </div>
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </main>
++    </Fragment>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -81,4 +85,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/scripts/view-transitions.js b/src/scripts/view-transitions.js
+new file mode 100644
+index 0000000..0385542
+--- /dev/null
++++ b/src/scripts/view-transitions.js
+@@ -0,0 +1,34 @@
++/**
++ * Cross-document view transition hooks.
++ *
++ * Layout.astro loads this file with `blocking="render"`. That guarantees it has
++ * run before the browser's first rendering opportunity for the incoming page,
++ * which is exactly when `pagereveal` fires. A listener registered any later
++ * (from a deferred script, a module script without `blocking="render"`, or a
++ * hydrated island) misses the event and can no longer customise the
++ * transition. Keep this file small: everything in it delays first paint.
++ *
++ * Both listeners tag the transition with a `back` or `forward` type so that
++ * global.css can pick the matching slide direction.
++ */
++
++/**
++ * @param {NavigationActivation | null | undefined} activation
++ * @returns {'back' | 'forward'}
++ */
++function directionFor(activation) {
++  if (activation?.navigationType === 'traverse' && activation.from) {
++    return activation.entry.index < activation.from.index ? 'back' : 'forward';
++  }
++  return 'forward';
++}
++
++// Outgoing page: fires right before the browser snapshots the old state.
++window.addEventListener('pageswap', (event) => {
++  event.viewTransition?.types?.add(directionFor(event.activation));
++});
++
++// Incoming page: fires right before the first frame of the new page renders.
++window.addEventListener('pagereveal', (event) => {
++  event.viewTransition?.types?.add(directionFor(window.navigation?.activation));
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7727306 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,52 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/*
++ * Cross-document (MPA) view transitions.
++ *
++ * Layout.astro links this stylesheet with blocking="render". That matters for
++ * the opt-in below: the browser checks for @view-transition when it unblocks
++ * rendering of the new page, so the rule has to be applied by then or the
++ * navigation falls back to a plain page load.
++ */
++@view-transition {
++  navigation: auto;
++}
++
++/* Direction-aware crossfade. The `back`/`forward` types are added by
++   src/scripts/view-transitions.js before the transition starts. */
++@keyframes vt-fade-in {
++  from { opacity: 0; }
++}
++@keyframes vt-fade-out {
++  to { opacity: 0; }
++}
++@keyframes vt-slide-from-right {
++  from { transform: translateX(1.5rem); }
++}
++@keyframes vt-slide-from-left {
++  from { transform: translateX(-1.5rem); }
++}
++
++::view-transition-old(root) {
++  animation: 150ms ease-in both vt-fade-out;
++}
++::view-transition-new(root) {
++  animation:
++    220ms ease-out both vt-fade-in,
++    220ms ease-out both vt-slide-from-right;
++}
++html:active-view-transition-type(back)::view-transition-new(root) {
++  animation:
++    220ms ease-out both vt-fade-in,
++    220ms ease-out both vt-slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

@@ -1,0 +1,439 @@
+diff --git a/index.html b/index.html
+index 66c9173..be7ad63 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,198 @@
+       background: #3e2723;
+     }
+ 
++    /* Drink Hovercards */
++    .hovercard {
++      position: fixed;
++      top: 0;
++      left: 0;
++      z-index: 1100;
++      width: 320px;
++      max-width: calc(100vw - 16px);
++      background: white;
++      color: var(--text);
++      text-align: left;
++      border-radius: 10px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08);
++      opacity: 0;
++      transform: translateY(4px);
++      transition: opacity 0.15s ease, transform 0.15s ease;
++    }
++
++    .hovercard[hidden] {
++      display: none;
++    }
++
++    .hovercard.is-open {
++      opacity: 1;
++      transform: none;
++    }
++
++    .hovercard[data-placement="top"] {
++      transform: translateY(-4px);
++    }
++
++    .hovercard[data-placement="top"].is-open {
++      transform: none;
++    }
++
++    .hovercard-arrow {
++      position: absolute;
++      width: 12px;
++      height: 12px;
++      background: white;
++      transform: rotate(45deg);
++      top: -6px;
++    }
++
++    .hovercard[data-placement="top"] .hovercard-arrow {
++      top: auto;
++      bottom: -6px;
++    }
++
++    .hovercard-media {
++      position: relative;
++      height: 140px;
++      border-radius: 10px 10px 0 0;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .hovercard-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .hovercard-badge {
++      position: absolute;
++      top: 10px;
++      left: 10px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.7rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .hovercard-body {
++      padding: 14px 16px 16px;
++    }
++
++    .hovercard-url {
++      font-size: 0.75rem;
++      color: #8d6e63;
++      font-family: Consolas, Menlo, monospace;
++    }
++
++    .hovercard-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin: 2px 0 6px;
++    }
++
++    .hovercard-header h4 {
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .hovercard-price {
++      font-weight: bold;
++      white-space: nowrap;
++    }
++
++    .hovercard-desc {
++      font-size: 0.85rem;
++      margin-bottom: 10px;
++    }
++
++    .hovercard-stats {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 6px;
++      margin-bottom: 10px;
++    }
++
++    .hovercard-stats div {
++      background: var(--light);
++      border: 1px solid #efebe9;
++      border-radius: 6px;
++      padding: 4px 6px;
++      text-align: center;
++    }
++
++    .hovercard-stats dt {
++      font-size: 0.65rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++    }
++
++    .hovercard-stats dd {
++      font-size: 0.8rem;
++      font-weight: bold;
++    }
++
++    .hovercard-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++      margin-bottom: 12px;
++    }
++
++    .hovercard-tags li {
++      font-size: 0.72rem;
++      background: var(--secondary);
++      padding: 1px 8px;
++      border-radius: 999px;
++    }
++
++    .hovercard-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .hovercard-actions a {
++      flex: 1;
++      text-align: center;
++      font-size: 0.85rem;
++      padding: 7px 10px;
++      border-radius: 5px;
++      text-decoration: none;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .hovercard-primary {
++      background: var(--primary);
++      color: white;
++    }
++
++    .hovercard-primary:hover {
++      background: #3e2723;
++    }
++
++    .hovercard-secondary {
++      border: 1px solid var(--primary);
++      color: var(--primary);
++    }
++
++    .hovercard-secondary:hover {
++      background: var(--secondary);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hovercard {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +373,110 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-hovercard="hc-maple">View Details</a>
++          <div class="hovercard" id="hc-maple" role="dialog" aria-label="Maple Oat Latte preview" hidden>
++            <span class="hovercard-arrow" aria-hidden="true"></span>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=70"
++                alt="Latte with foam art in a ceramic cup" loading="lazy">
++              <span class="hovercard-badge">Seasonal</span>
++            </div>
++            <div class="hovercard-body">
++              <span class="hovercard-url">/menu/seasonal</span>
++              <div class="hovercard-header">
++                <h4>Maple Oat Latte</h4>
++                <span class="hovercard-price">$5.75</span>
++              </div>
++              <p class="hovercard-desc">Double espresso and steamed oat milk, sweetened with pure Vermont maple syrup and
++                finished with a dusting of cinnamon.</p>
++              <dl class="hovercard-stats">
++                <div><dt>Size</dt><dd>12 oz</dd></div>
++                <div><dt>Caffeine</dt><dd>130 mg</dd></div>
++                <div><dt>Calories</dt><dd>210</dd></div>
++              </dl>
++              <ul class="hovercard-tags" aria-label="Tags">
++                <li>Dairy-free</li>
++                <li>Hot or iced</li>
++                <li>Limited time</li>
++              </ul>
++              <div class="hovercard-actions">
++                <a href="/menu/seasonal" class="hovercard-primary">View full page</a>
++                <a href="/order-online?item=maple-oat-latte" class="hovercard-secondary">Order</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-hovercard="hc-espresso">View Details</a>
++          <div class="hovercard" id="hc-espresso" role="dialog" aria-label="Dark Roast Espresso preview" hidden>
++            <span class="hovercard-arrow" aria-hidden="true"></span>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=640&q=70"
++                alt="Shot of espresso in a small cup" loading="lazy">
++              <span class="hovercard-badge">Signature</span>
++            </div>
++            <div class="hovercard-body">
++              <span class="hovercard-url">/menu/espresso</span>
++              <div class="hovercard-header">
++                <h4>Dark Roast Espresso</h4>
++                <span class="hovercard-price">$3.25</span>
++              </div>
++              <p class="hovercard-desc">Our house Sumatra and Brazil blend, roasted dark for notes of cocoa, molasses,
++                and a smokey finish.</p>
++              <dl class="hovercard-stats">
++                <div><dt>Size</dt><dd>2 oz</dd></div>
++                <div><dt>Caffeine</dt><dd>150 mg</dd></div>
++                <div><dt>Roast</dt><dd>Dark</dd></div>
++              </dl>
++              <ul class="hovercard-tags" aria-label="Tags">
++                <li>Double shot</li>
++                <li>Bold</li>
++                <li>Single-origin option</li>
++              </ul>
++              <div class="hovercard-actions">
++                <a href="/menu/espresso" class="hovercard-primary">View full page</a>
++                <a href="/order-online?item=dark-roast-espresso" class="hovercard-secondary">Order</a>
++              </div>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-hovercard="hc-cold-brew">View Details</a>
++          <div class="hovercard" id="hc-cold-brew" role="dialog" aria-label="Cold Brew preview" hidden>
++            <span class="hovercard-arrow" aria-hidden="true"></span>
++            <div class="hovercard-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=70"
++                alt="Iced coffee in a tall glass" loading="lazy">
++              <span class="hovercard-badge">Fan favorite</span>
++            </div>
++            <div class="hovercard-body">
++              <span class="hovercard-url">/menu/cold-brew</span>
++              <div class="hovercard-header">
++                <h4>Cold Brew</h4>
++                <span class="hovercard-price">$4.50</span>
++              </div>
++              <p class="hovercard-desc">Coarse-ground Colombian beans steeped in cold water for 18 hours for a smooth,
++                low-acid cup served over ice.</p>
++              <dl class="hovercard-stats">
++                <div><dt>Size</dt><dd>16 oz</dd></div>
++                <div><dt>Caffeine</dt><dd>200 mg</dd></div>
++                <div><dt>Calories</dt><dd>5</dd></div>
++              </dl>
++              <ul class="hovercard-tags" aria-label="Tags">
++                <li>Vegan</li>
++                <li>Low acid</li>
++                <li>Add sweet cream</li>
++              </ul>
++              <div class="hovercard-actions">
++                <a href="/menu/cold-brew" class="hovercard-primary">View full page</a>
++                <a href="/order-online?item=cold-brew" class="hovercard-secondary">Order</a>
++              </div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +492,121 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const OPEN_DELAY = 300;
++      const CLOSE_DELAY = 200;
++      const GAP = 10;
++      const MARGIN = 8;
++      let active = null;
++
++      function position(trigger, card) {
++        const t = trigger.getBoundingClientRect();
++        const w = card.offsetWidth;
++        const h = card.offsetHeight;
++        const placeTop = window.innerHeight - t.bottom < h + GAP + MARGIN && t.top > h + GAP + MARGIN;
++        const center = t.left + t.width / 2;
++        const left = Math.min(Math.max(center - w / 2, MARGIN), window.innerWidth - w - MARGIN);
++        const top = placeTop ? t.top - h - GAP : t.bottom + GAP;
++
++        card.dataset.placement = placeTop ? 'top' : 'bottom';
++        card.style.left = left + 'px';
++        card.style.top = top + 'px';
++        const arrow = card.querySelector('.hovercard-arrow');
++        arrow.style.left = Math.min(Math.max(center - left - 6, 14), w - 26) + 'px';
++      }
++
++      function reposition() {
++        if (active) position(active.trigger, active.card);
++      }
++
++      function setupHovercard(trigger) {
++        const card = document.getElementById(trigger.dataset.hovercard);
++        if (!card) return;
++        const hc = { trigger, card, timer: null, hovered: false, suppressFocus: false };
++
++        trigger.setAttribute('aria-haspopup', 'dialog');
++        trigger.setAttribute('aria-expanded', 'false');
++        trigger.setAttribute('aria-controls', card.id);
++
++        function open() {
++          clearTimeout(hc.timer);
++          if (active === hc) return;
++          if (active) active.close();
++          active = hc;
++          card.hidden = false;
++          position(trigger, card);
++          requestAnimationFrame(() => card.classList.add('is-open'));
++          trigger.setAttribute('aria-expanded', 'true');
++        }
++
++        function close() {
++          clearTimeout(hc.timer);
++          if (active !== hc) return;
++          active = null;
++          card.classList.remove('is-open');
++          card.hidden = true;
++          trigger.setAttribute('aria-expanded', 'false');
++        }
++        hc.close = close;
++
++        function schedule(fn, delay) {
++          clearTimeout(hc.timer);
++          hc.timer = setTimeout(fn, delay);
++        }
++
++        function contains(node) {
++          return node && (trigger.contains(node) || card.contains(node));
++        }
++
++        [trigger, card].forEach((el) => {
++          el.addEventListener('pointerenter', (e) => {
++            if (e.pointerType === 'touch') return;
++            hc.hovered = true;
++            if (active === hc) clearTimeout(hc.timer);
++            else schedule(open, OPEN_DELAY);
++          });
++          el.addEventListener('pointerleave', (e) => {
++            if (e.pointerType === 'touch') return;
++            hc.hovered = false;
++            if (!contains(document.activeElement) || document.activeElement === trigger) {
++              schedule(close, CLOSE_DELAY);
++            }
++          });
++          el.addEventListener('focusout', (e) => {
++            if (!contains(e.relatedTarget) && !hc.hovered) close();
++          });
++        });
++
++        trigger.addEventListener('focus', () => {
++          if (hc.suppressFocus) {
++            hc.suppressFocus = false;
++            return;
++          }
++          if (trigger.matches(':focus-visible')) open();
++        });
++
++        card.addEventListener('keydown', handleEscape);
++        trigger.addEventListener('keydown', handleEscape);
++
++        function handleEscape(e) {
++          if (e.key !== 'Escape' || active !== hc) return;
++          e.preventDefault();
++          const focusInCard = card.contains(document.activeElement);
++          close();
++          if (focusInCard) {
++            hc.suppressFocus = true;
++            trigger.focus({ preventScroll: true });
++          }
++        }
++      }
++
++      document.querySelectorAll('[data-hovercard]').forEach(setupHovercard);
++      window.addEventListener('scroll', reposition, { passive: true });
++      window.addEventListener('resize', reposition);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

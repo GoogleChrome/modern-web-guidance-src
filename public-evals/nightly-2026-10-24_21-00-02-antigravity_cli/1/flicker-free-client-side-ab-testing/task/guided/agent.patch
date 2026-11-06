@@ -1,0 +1,332 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,328 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>PulseFlow | Next-Generation Workflow Automation</title>
++
++  <!-- Establish early connection to the experimentation CDN -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++
++  <!--
++    Load the A/B testing SDK in <head> with both `async` and `blocking="render"`.
++    - `async`: Prevents parser-blocking so the browser continues building the DOM in parallel.
++    - `blocking="render"`: Blocks first paint until the script is fetched and executed,
++      ensuring the user never sees the original content flash before the variant is applied.
++  -->
++  <script
++    id="experiment-sdk"
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <script>
++    // Callback for the experiment SDK (or load/error fallback) to reveal the page
++    function onExperimentReady() {
++      document.documentElement.classList.remove('ab-loading');
++    }
++
++    // Apply the anti-flicker fallback only in browsers that do not support `blocking="render"`
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      document.documentElement.classList.add('ab-loading');
++
++      const sdkScript = document.getElementById('experiment-sdk');
++      if (sdkScript) {
++        sdkScript.addEventListener('load', onExperimentReady, { once: true });
++        sdkScript.addEventListener('error', onExperimentReady, { once: true });
++      }
++
++      // Timeout safeguard to prevent an indefinitely blank page on slow connections
++      setTimeout(onExperimentReady, 4000);
++    }
++  </script>
++
++  <style>
++    @layer base, theme, components, utilities;
++
++    @layer theme {
++      :root {
++        --color-bg: #0f172a;
++        --color-surface: #1e293b;
++        --color-surface-border: #334155;
++        --color-text: #f8fafc;
++        --color-text-muted: #94a3b8;
++        --color-primary: #3b82f6;
++        --color-primary-hover: #2563eb;
++        --color-primary-contrast: #ffffff;
++        --color-accent-badge: rgba(59, 130, 246, 0.15);
++        --color-accent-text: #60a5fa;
++        --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++        --radius-md: 0.5rem;
++        --radius-lg: 0.875rem;
++        --radius-pill: 9999px;
++      }
++
++      /* Variant B theme overrides when activated via data-variant attribute */
++      :root[data-variant="b"] {
++        --color-primary: #10b981;
++        --color-primary-hover: #059669;
++        --color-accent-badge: rgba(16, 185, 129, 0.15);
++        --color-accent-text: #34d399;
++      }
++    }
++
++    @layer base {
++      html, body, header, nav, main, section, footer, div, h1, h2, h3, p, ul, li, figure, img, button, a {
++        box-sizing: border-box;
++      }
++
++      body {
++        margin: 0;
++        font-family: var(--font-sans);
++        background-color: var(--color-bg);
++        color: var(--color-text);
++        line-height: 1.6;
++        min-block-size: 100dvh;
++        display: flex;
++        flex-direction: column;
++      }
++    }
++
++    @layer components {
++      .site-header {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        max-inline-size: 75rem;
++        inline-size: 100%;
++        margin-inline: auto;
++        padding-block: 1.25rem;
++        padding-inline: 1.5rem;
++        border-block-end: 1px solid var(--color-surface-border);
++      }
++
++      .brand {
++        font-size: 1.25rem;
++        font-weight: 700;
++        color: var(--color-text);
++        text-decoration: none;
++        letter-spacing: -0.02em;
++      }
++
++      .nav-list {
++        display: flex;
++        gap: 1.75rem;
++        list-style: none;
++        margin: 0;
++        padding: 0;
++      }
++
++      .nav-link {
++        color: var(--color-text-muted);
++        text-decoration: none;
++        font-size: 0.95rem;
++        transition: color 0.15s ease;
++      }
++
++      .nav-link:hover {
++        color: var(--color-text);
++      }
++
++      .hero {
++        display: grid;
++        grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
++        gap: 3rem;
++        align-items: center;
++        max-inline-size: 75rem;
++        inline-size: 100%;
++        margin-inline: auto;
++        padding-block: 4.5rem;
++        padding-inline: 1.5rem;
++        flex: 1;
++      }
++
++      .hero-content {
++        display: flex;
++        flex-direction: column;
++        align-items: flex-start;
++        gap: 1.25rem;
++      }
++
++      .hero-badge {
++        display: inline-block;
++        padding-block: 0.35rem;
++        padding-inline: 0.85rem;
++        border-radius: var(--radius-pill);
++        background-color: var(--color-accent-badge);
++        color: var(--color-accent-text);
++        font-size: 0.85rem;
++        font-weight: 600;
++      }
++
++      .hero-title {
++        margin: 0;
++        font-size: clamp(2.25rem, 4vw + 1rem, 3.5rem);
++        line-height: 1.12;
++        letter-spacing: -0.03em;
++      }
++
++      .hero-description {
++        margin: 0;
++        font-size: 1.125rem;
++        color: var(--color-text-muted);
++        max-inline-size: 38rem;
++      }
++
++      .hero-actions {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: center;
++        gap: 1rem;
++        margin-block-start: 0.5rem;
++      }
++
++      .cta-button {
++        appearance: none;
++        border: none;
++        border-radius: var(--radius-md);
++        background-color: var(--color-primary);
++        color: var(--color-primary-contrast);
++        font-family: inherit;
++        font-size: 1rem;
++        font-weight: 600;
++        padding-block: 0.875rem;
++        padding-inline: 1.75rem;
++        cursor: pointer;
++        transition: background-color 0.15s ease, transform 0.15s ease;
++      }
++
++      .cta-button:hover:not(:disabled) {
++        background-color: var(--color-primary-hover);
++        transform: translateY(-1px);
++      }
++
++      .cta-button:focus-visible {
++        outline: 2px solid var(--color-accent-text);
++        outline-offset: 3px;
++      }
++
++      .cta-button:disabled {
++        opacity: 0.6;
++        cursor: not-allowed;
++      }
++
++      .secondary-link {
++        color: var(--color-text);
++        text-decoration: none;
++        font-weight: 500;
++        padding-block: 0.875rem;
++        padding-inline: 1rem;
++      }
++
++      .secondary-link:hover {
++        text-decoration: underline;
++      }
++
++      .hero-visual {
++        margin: 0;
++        border-radius: var(--radius-lg);
++        overflow: hidden;
++        border: 1px solid var(--color-surface-border);
++        background-color: var(--color-surface);
++        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
++      }
++
++      .hero-image {
++        display: block;
++        inline-size: 100%;
++        block-size: auto;
++        object-fit: cover;
++      }
++
++      .site-footer {
++        max-inline-size: 75rem;
++        inline-size: 100%;
++        margin-inline: auto;
++        padding-block: 1.5rem;
++        padding-inline: 1.5rem;
++        border-block-start: 1px solid var(--color-surface-border);
++        color: var(--color-text-muted);
++        font-size: 0.875rem;
++      }
++    }
++
++    @layer utilities {
++      /*
++        Anti-flicker fallback class used only when `blocking="render"` is unsupported.
++      */
++      .ab-loading {
++        opacity: 0 !important;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header class="site-header">
++    <a href="/" class="brand">PulseFlow</a>
++    <nav aria-label="Primary">
++      <ul class="nav-list">
++        <li><a href="#features" class="nav-link">Features</a></li>
++        <li><a href="#solutions" class="nav-link">Solutions</a></li>
++        <li><a href="#pricing" class="nav-link">Pricing</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-heading" data-experiment="hero-section">
++      <div class="hero-content">
++        <span class="hero-badge" data-experiment-target="badge">Release 4.0 Now Live</span>
++        <h1 id="hero-heading" class="hero-title" data-experiment-target="headline">
++          Ship faster with automated release pipelines
++        </h1>
++        <p class="hero-description" data-experiment-target="subheadline">
++          Connect your repositories, automate preview deployments, and run real-time experiments without slowing down your engineering team.
++        </p>
++        <div class="hero-actions">
++          <button
++            type="button"
++            id="hero-cta"
++            class="cta-button"
++            data-experiment-target="cta"
++          >
++            Start Free Trial
++          </button>
++          <a href="#documentation" class="secondary-link">Read Documentation</a>
++        </div>
++      </div>
++
++      <figure class="hero-visual">
++        <img
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
++          alt="Analytics dashboard displaying deployment velocity and conversion metrics"
++          width="1200"
++          height="800"
++          fetchpriority="high"
++          class="hero-image"
++          data-experiment-target="hero-image"
++        >
++      </figure>
++    </section>
++  </main>
++
++  <footer class="site-footer">
++    <p>&copy; 2026 PulseFlow Inc. All rights reserved.</p>
++  </footer>
++
++  <script type="module">
++    const ctaButton = document.getElementById('hero-cta');
++    if (ctaButton) {
++      ctaButton.addEventListener('click', () => {
++        const variant = document.documentElement.dataset.variant || 'control';
++        ctaButton.dataset.clickedVariant = variant;
++      });
++    }
++  </script>
++</body>
++</html>

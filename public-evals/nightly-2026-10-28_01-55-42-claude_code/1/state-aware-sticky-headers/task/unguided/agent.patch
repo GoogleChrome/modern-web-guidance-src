@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,11 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --stuck-blue: #1e88e5;
++      /* Height of the fixed-position site navigation; sticky section headers pin just below it. */
++      --nav-height: 72px;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -31,8 +34,9 @@
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
++      min-height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -99,8 +103,23 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .intro {
++      max-width: 720px;
++      margin: 0 auto 48px;
++      text-align: center;
++      font-size: 1.1rem;
++    }
++
++    .intro p + p {
++      margin-top: 1rem;
++    }
++
++    main > section + section {
++      margin-top: 64px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -112,15 +131,36 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
+     }
+ 
++    .card img {
++      display: block;
++      width: calc(100% + 40px);
++      height: 180px;
++      object-fit: cover;
++      margin: -20px -20px 16px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .prose {
++      margin-top: 20px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .prose p + p {
++      margin-top: 1rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -134,8 +174,55 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers
++       ----------------------------------------------------------------
++       `.sticky-container` is the sticky element and a *named* scroll-state
++       container ("section-header"). The `.sticky-header` inside it is
++       restyled via `@container section-header scroll-state(stuck: top)`.
++       Naming the container means the query is never resolved against any
++       other scroll-state container (such as the site <nav>), and the
++       viewport/document is the scroll root the "stuck" state is measured
++       against. */
++    .sticky-container {
++      position: sticky;
++      /* Pin just below the site navigation so the two never overlap. */
++      top: var(--nav-height);
++      z-index: 10; /* Below nav (1000) so the nav always stays on top. */
++      container-type: scroll-state;
++      container-name: section-header;
++    }
++
++    .sticky-header {
++      margin: 0;
++      padding: 1rem 1.25rem;
++      background: var(--light);
++      color: var(--primary);
++      font-size: 1.75rem;
++      line-height: 1.3;
++      text-align: center;
++      border-radius: 8px;
++      box-shadow: none;
++      transition:
++        background-color 0.25s ease,
++        color 0.25s ease,
++        padding 0.25s ease,
++        box-shadow 0.25s ease,
++        font-size 0.25s ease;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--stuck-blue);
++        color: white;
++        padding: 0.4rem 1.25rem;
++        font-size: 1.25rem;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,28 +261,138 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <!-- Intro copy sits above the first sticky header so it is never stuck on initial load. -->
++    <div class="intro">
++      <p>Since 2009 we have roasted small batches in the heart of downtown, working directly with farming
++        cooperatives in Ethiopia, Colombia, and Guatemala. Every bag is roasted to order and every cup is
++        pulled by baristas who genuinely love what they do.</p>
++      <p>Scroll on to explore what is brewing this season, learn how we roast, and find out how to make
++        café-quality coffee at home.</p>
++    </div>
++
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Latte with oat milk and maple syrup">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark roast espresso shot">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Glass of cold brew coffee">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Our Roasts</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" alt="Light roast coffee beans">
++          <h3>Sunrise Light Roast</h3>
++          <p>Bright citrus notes with a floral finish. Single-origin Yirgacheffe.</p>
++          <a href="/menu/roasts/light" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Medium roast coffee beans">
++          <h3>Midday Medium Roast</h3>
++          <p>Balanced body with caramel sweetness and a hint of cocoa.</p>
++          <a href="/menu/roasts/medium" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80" alt="Dark roast coffee beans">
++          <h3>Midnight Dark Roast</h3>
++          <p>Deep, smoky, and rich. Our house favourite for French press.</p>
++          <a href="/menu/roasts/dark" class="btn">View Details</a>
++        </div>
++      </div>
++      <div class="prose">
++        <p>All of our beans are roasted on a vintage Probat drum roaster in batches of no more than twelve
++          kilograms. Small batches let us taste every roast and adjust the profile to the bean, the season,
++          and the humidity on the day.</p>
++        <p>We publish roast dates on every bag and recommend brewing within three weeks for the best flavour.
++          Subscribers receive beans within 48 hours of roasting.</p>
++      </div>
++    </section>
++
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Brewing Guides</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Pour over coffee being brewed">
++          <h3>Pour Over</h3>
++          <p>A clean, bright cup. 15:1 water to coffee, 3-minute total brew time.</p>
++          <a href="/guides/pour-over" class="btn">Read Guide</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1512568400610-62da28bc8a13?auto=format&fit=crop&w=600&q=80" alt="French press coffee">
++          <h3>French Press</h3>
++          <p>Full-bodied and forgiving. Coarse grind, four-minute steep.</p>
++          <a href="/guides/french-press" class="btn">Read Guide</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Espresso machine pulling a shot">
++          <h3>Espresso</h3>
++          <p>Dial in 18 grams in, 36 grams out, in about 28 seconds.</p>
++          <a href="/guides/espresso" class="btn">Read Guide</a>
++        </div>
++      </div>
++      <div class="prose">
++        <p>Great coffee starts with fresh beans, filtered water, and a consistent grind. If you only change one
++          thing about your routine, invest in a burr grinder. It will do more for your cup than any other piece
++          of equipment.</p>
++        <p>Water temperature matters too. Aim for 92 to 96 degrees Celsius for most methods, a little cooler
++          for lighter roasts and a little hotter for darker ones.</p>
++      </div>
++    </section>
++
++    <section>
++      <div class="sticky-container">
++        <h2 class="sticky-header">Upcoming Events</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80" alt="Barista pouring latte art">
++          <h3>Latte Art Workshop</h3>
++          <p>Saturday 7 November, 10am. Learn hearts, rosettas, and tulips with our head barista.</p>
++          <a href="/events/latte-art" class="btn">Reserve a Spot</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80" alt="Coffee cupping session with several cups">
++          <h3>Public Cupping</h3>
++          <p>Every Thursday at 4pm. Taste the week's roasts side by side, free of charge.</p>
++          <a href="/events/cupping" class="btn">Learn More</a>
++        </div>
++        <div class="card">
++          <img src="https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=600&q=80" alt="Cafe interior with people chatting">
++          <h3>Open Mic Night</h3>
++          <p>Last Friday of the month. Poetry, music, and bottomless decaf until 10pm.</p>
++          <a href="/events/open-mic" class="btn">See Lineup</a>
++        </div>
++      </div>
++      <div class="prose">
++        <p>All events take place at our Main Street roastery unless noted otherwise. Workshops are limited to
++          twelve participants, so book early. Rewards members receive a 20% discount on all ticketed events.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +403,25 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep --nav-height in sync with the rendered <nav> so sticky section
++    // headers always pin exactly beneath it, even if the nav wraps or resizes.
++    (function () {
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++      function syncNavHeight() {
++        document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
++      }
++      syncNavHeight();
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(syncNavHeight).observe(nav);
++      } else {
++        window.addEventListener('resize', syncNavHeight);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,164 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Horizontal Carousel Section */
++    .carousel-section {
++      margin-bottom: 60px;
++    }
++
++    .carousel-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .carousel-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .carousel-header p {
++      color: #6d4c41;
++      font-size: 1.05rem;
++    }
++
++    :root {
++      --carousel-card-width: clamp(260px, 75vw, 320px);
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      -webkit-overflow-scrolling: touch;
++      padding-block: 40px;
++      padding-inline: calc(50% - (var(--carousel-card-width) / 2));
++      scrollbar-width: thin;
++      scrollbar-color: var(--accent) var(--secondary);
++    }
++
++    .scroller::-webkit-scrollbar {
++      height: 8px;
++    }
++
++    .scroller::-webkit-scrollbar-track {
++      background: var(--secondary);
++      border-radius: 4px;
++    }
++
++    .scroller::-webkit-scrollbar-thumb {
++      background: var(--accent);
++      border-radius: 4px;
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
++    .scroller .product-card {
++      flex: 0 0 var(--carousel-card-width);
++      width: var(--carousel-card-width);
++      scroll-snap-align: center;
++      scroll-snap-stop: normal;
++      background: white;
++      padding: 24px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      box-sizing: border-box;
++      will-change: transform, opacity;
++      transform-origin: center center;
++    }
++
++    .scroller .product-card:focus-within {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .scroller .product-card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 14px;
++    }
++
++    .product-tag {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--accent);
++      margin-bottom: 6px;
++    }
++
++    .scroller .product-card h3 {
++      font-size: 1.3rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .product-desc {
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-bottom: 14px;
++      flex-grow: 1;
++    }
++
++    .product-price {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    /* Pure CSS Scroll-Driven Center Scaling */
++    @supports ((animation-timeline: view(inline)) or (animation-timeline: view())) {
++      .scroller .product-card {
++        animation: scale-center linear both;
++        animation-timeline: view(inline);
++        animation-range: cover 0% cover 100%;
++      }
++    }
++
++    @keyframes scale-center {
++      0% {
++        transform: scale(0.85);
++        opacity: 0.7;
++      }
++      50% {
++        transform: scale(1.1);
++        opacity: 1;
++      }
++      100% {
++        transform: scale(0.85);
++        opacity: 0.7;
++      }
++    }
++
++    /* Accessibility: Respect reduced motion preferences */
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++
++      .scroller .product-card {
++        animation: none !important;
++        transform: none !important;
++        opacity: 1 !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +330,71 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="carousel-section" aria-labelledby="featured-products-title">
++      <div class="carousel-header">
++        <h2 id="featured-products-title">Featured Artisan Roasts</h2>
++        <p>Explore our master roaster's small-batch single origins and blends</p>
++      </div>
++
++      <div class="scroller" tabindex="0" role="region" aria-label="Featured Artisan Roasts" aria-roledescription="carousel">
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80" alt="Freshly roasted whole bean Ethiopian Yirgacheffe coffee in a rustic bag">
++          <span class="product-tag">Single Origin &bull; Light Roast</span>
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p class="product-desc">Delicate floral jasmine aromas with crisp notes of bergamot citrus and candied honey sweetness.</p>
++          <div class="product-price">$19.50</div>
++          <a href="/order/ethiopian-yirgacheffe" class="btn" aria-label="Add Ethiopian Yirgacheffe to cart">Add to Cart</a>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Hot freshly brewed Colombian Supremo pour-over coffee">
++          <span class="product-tag">Single Origin &bull; Medium Roast</span>
++          <h3>Colombian Supremo</h3>
++          <p class="product-desc">Smooth, velvety body featuring rich brown sugar caramel, crisp red apple, and toasted walnut undertones.</p>
++          <div class="product-price">$18.00</div>
++          <a href="/order/colombian-supremo" class="btn" aria-label="Add Colombian Supremo to cart">Add to Cart</a>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Espresso extraction with golden-brown crema in ceramic cup">
++          <span class="product-tag">Signature Blend &bull; Dark Roast</span>
++          <h3>Midnight Velvet</h3>
++          <p class="product-desc">Full-bodied intensity with decadent bittersweet cocoa, smoky cedarwood, and lingering molasses finish.</p>
++          <div class="product-price">$17.50</div>
++          <a href="/order/midnight-velvet" class="btn" aria-label="Add Midnight Velvet to cart">Add to Cart</a>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Slow cold brew coffee dripping over clear ice">
++          <span class="product-tag">Single Origin &bull; Medium Roast</span>
++          <h3>Guatemala Antigua</h3>
++          <p class="product-desc">Elegant floral complexity layered with velvety dark milk chocolate and delicate warming spice notes.</p>
++          <div class="product-price">$19.00</div>
++          <a href="/order/guatemala-antigua" class="btn" aria-label="Add Guatemala Antigua to cart">Add to Cart</a>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80" alt="Artisan flat white coffee with milk art poured into mug">
++          <span class="product-tag">Micro-Lot &bull; Light Roast</span>
++          <h3>Cascara Sunrise</h3>
++          <p class="product-desc">Bright, sun-drenched fruity infusion brimming with vibrant wild raspberry, hibiscus flower, and tangerine.</p>
++          <div class="product-price">$21.00</div>
++          <a href="/order/cascara-sunrise" class="btn" aria-label="Add Cascara Sunrise to cart">Add to Cart</a>
++        </article>
++
++        <article class="card product-card">
++          <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Freshly filtered pour-over coffee carafe on wooden counter">
++          <span class="product-tag">Estate Reserve &bull; Medium-Dark</span>
++          <h3>Bourbon Santos</h3>
++          <p class="product-desc">Mellow toasted hazelnut, creamy butterscotch sweetness, and a buttery cocoa finish with low acidity.</p>
++          <div class="product-price">$20.00</div>
++          <a href="/order/bourbon-santos" class="btn" aria-label="Add Bourbon Santos to cart">Add to Cart</a>
++        </article>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

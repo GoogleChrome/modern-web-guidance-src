@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shaped elements */
++    .shaped-section {
++      display: grid;
++      gap: 40px;
++      margin-top: 60px;
++    }
++
++    .barista-feature {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 30px;
++    }
++
++    .barista-feature p {
++      max-width: 420px;
++    }
++
++    /* Paint splat mask; the SVG is stretched to the element box (preserveAspectRatio="none"),
++       so the shape scales with the image's dimensions. */
++    .shaped-avatar {
++      display: block;
++      width: 280px;
++      max-width: 100%;
++      aspect-ratio: 1;
++      object-fit: cover;
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M52 3C63 2 70 10 78 13C88 17 98 22 97 34C96 44 90 48 93 57C96 67 99 75 91 84C83 93 72 90 64 94C55 98 47 100 39 95C31 90 25 94 16 88C6 81 5 70 8 61C11 52 3 47 3 37C3 26 11 22 18 17C26 11 33 12 38 8C43 4 47 3 52 3Z'/%3E%3Ccircle cx='96' cy='8' r='3.5'/%3E%3Ccircle cx='6' cy='90' r='4'/%3E%3Ccircle cx='88' cy='95' r='2'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M52 3C63 2 70 10 78 13C88 17 98 22 97 34C96 44 90 48 93 57C96 67 99 75 91 84C83 93 72 90 64 94C55 98 47 100 39 95C31 90 25 94 16 88C6 81 5 70 8 61C11 52 3 47 3 37C3 26 11 22 18 17C26 11 33 12 38 8C43 4 47 3 52 3Z'/%3E%3Ccircle cx='96' cy='8' r='3.5'/%3E%3Ccircle cx='6' cy='90' r='4'/%3E%3Ccircle cx='88' cy='95' r='2'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    /* Single-card look: the shadow is a drop-shadow on the wrapper, since masks clip box-shadow. */
++    .unified-card {
++      display: flex;
++      background: white;
++      border-radius: 16px;
++      overflow: hidden;
++      filter: drop-shadow(0 8px 16px rgba(62, 39, 35, 0.25)) drop-shadow(0 2px 4px rgba(62, 39, 35, 0.15));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      padding: 30px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .unified-card .card-accent {
++      flex: 0 0 30%;
++      min-height: 140px;
++      background: linear-gradient(135deg, var(--accent), var(--primary));
++      /* Concave curve cut into the left edge, revealing the card's white behind it */
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M30 0H100V100H30C-8 80 -8 20 30 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M30 0H100V100H30C-8 80 -8 20 30 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    @media (max-width: 500px) {
++      .unified-card .card-accent {
++        flex-basis: 22%;
++      }
++    }
++
++    /* Circular notch on the top edge, drawn with a radial-gradient mask */
++    .gradient-masked-card {
++      --notch: 32px;
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: calc(var(--notch) + 24px) 30px 30px;
++      border-radius: 12px;
++      -webkit-mask: radial-gradient(circle var(--notch) at 50% 0, transparent 97%, #000 100%);
++      mask: radial-gradient(circle var(--notch) at 50% 0, transparent 97%, #000 100%);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
++    .gradient-masked-card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +281,35 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shaped-section">
++      <div class="barista-feature">
++        <img class="shaped-avatar"
++          src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80"
++          alt="Featured barista smiling at the camera">
++        <div>
++          <h2>Barista of the Month</h2>
++          <p>Meet our featured barista, pouring latte art and perfecting every shot at The Daily Grind.</p>
++        </div>
++      </div>
++
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Join Daily Grind Rewards</h3>
++          <p>Earn a star with every order and get a free drink after ten.</p>
++          <a href="/rewards" class="btn">Join Now</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++
++      <div class="gradient-masked-card">
++        <h3>Free Pastry Friday</h3>
++        <p>Order any large drink this Friday and take home a free pastry.</p>
++        <a href="/menu/promos" class="btn">Claim Offer</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

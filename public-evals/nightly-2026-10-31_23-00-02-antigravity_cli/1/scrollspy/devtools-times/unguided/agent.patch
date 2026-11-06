@@ -1,0 +1,759 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..7b895d0 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -6,9 +6,18 @@ interface BottomNavProps {
+     articles: any[];
+     reports: any[];
+     multimedia: any[];
++    currentPath?: string;
++    currentCategory?: string;
+ }
+ 
+-const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
++const BottomNav: React.FC<BottomNavProps> = ({
++    categories,
++    articles,
++    reports,
++    multimedia,
++    currentPath = '',
++    currentCategory,
++}) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+ 
+     const groupedCategories = {
+@@ -22,6 +31,17 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         setActiveCategory(null);
+     };
+ 
++    const isGroupActive = (subCategories: string[]) => {
++        if (currentCategory && subCategories.some(c => c.toLowerCase() === currentCategory.toLowerCase())) {
++            return true;
++        }
++        return subCategories.some(category => {
++            const encoded = category.toLowerCase().replace(' ', '%20');
++            const raw = category.toLowerCase();
++            return currentPath.includes(`/category/${encoded}`) || currentPath.includes(`/category/${raw}`);
++        });
++    };
++
+     const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+@@ -31,6 +51,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                        const isActive = isGroupActive(subCategories) || activeCategory === groupName;
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -39,10 +60,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    aria-current={isGroupActive(subCategories) ? 'page' : undefined}
++                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap h-full border-b-2 transition-colors ${
++                                        isActive
++                                            ? 'text-amber-500 border-amber-500'
++                                            : 'border-transparent'
++                                    }`}
+                                 >
+                                     <span>{groupName}</span>
+-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
++                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className={`w-3 h-3 ${isActive ? 'text-amber-500' : 'text-gray-500'}`}>
+                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                     </svg>
+                                 </a>
+@@ -57,6 +83,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                currentPath={currentPath}
++                currentCategory={currentCategory}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..088361b 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -6,9 +6,19 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  currentPath?: string;
++  currentCategory?: string;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
++  isOpen,
++  categories,
++  articles,
++  reports,
++  multimedia,
++  currentPath = '',
++  currentCategory,
++}) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -34,13 +44,26 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           <div>
+             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
+             <ul className="space-y-2 text-sm">
+-              {categories.map(category => (
+-                <li key={category}>
+-                  <a href={`${import.meta.env.BASE_URL}category/${category.toLowerCase().replace(' ', '%20')}`} className="hover:underline capitalize">
+-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+-                  </a>
+-                </li>
+-              ))}
++              {categories.map(category => {
++                const encoded = category.toLowerCase().replace(' ', '%20');
++                const isCategoryActive =
++                  (currentCategory && currentCategory.toLowerCase() === category.toLowerCase()) ||
++                  currentPath.includes(`/category/${encoded}`) ||
++                  currentPath.includes(`/category/${category.toLowerCase()}`);
++                return (
++                  <li key={category}>
++                    <a
++                      href={`${import.meta.env.BASE_URL}category/${encoded}`}
++                      aria-current={isCategoryActive ? 'page' : undefined}
++                      className={`hover:underline capitalize ${
++                        isCategoryActive ? 'text-amber-500 font-bold' : ''
++                      }`}
++                    >
++                      {category.charAt(0).toUpperCase() + category.slice(1)}
++                    </a>
++                  </li>
++                );
++              })}
+             </ul>
+           </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..d87ed58 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -4,6 +4,12 @@ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
++export interface Props {
++  currentPath?: string;
++  currentCategory?: string;
++}
++
++const { currentPath = Astro.url.pathname, currentCategory } = Astro.props;
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+ const multimedia = await getCollection("multimedia");
+@@ -65,5 +71,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+   </div>
+ 
+   <!-- Bottom Navigation Bar -->
+-  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
++  <BottomNav
++    client:load
++    categories={categories}
++    articles={articles}
++    reports={reports}
++    multimedia={multimedia}
++    currentPath={currentPath}
++    currentCategory={currentCategory}
++  />
+ </header>
+diff --git a/src/components/SectionNavigation.tsx b/src/components/SectionNavigation.tsx
+new file mode 100644
+index 0000000..f4cd0d3
+--- /dev/null
++++ b/src/components/SectionNavigation.tsx
+@@ -0,0 +1,338 @@
++import React, { useState, useEffect, useCallback } from 'react';
++
++export interface SectionItem {
++    id: string;
++    label: string;
++    level?: number;
++}
++
++interface SectionNavigationProps {
++    sections?: SectionItem[];
++    containerSelector?: string;
++    variant?: 'bar' | 'sidebar' | 'auto';
++    title?: string;
++}
++
++const slugify = (text: string): string => {
++    return text
++        .toLowerCase()
++        .trim()
++        .replace(/[^\w\s-]/g, '')
++        .replace(/[\s_-]+/g, '-')
++        .replace(/^-+|-+$/g, '');
++};
++
++const SectionNavigation: React.FC<SectionNavigationProps> = ({
++    sections: initialSections,
++    containerSelector,
++    variant = 'auto',
++    title = 'On this page',
++}) => {
++    const [sections, setSections] = useState<SectionItem[]>(initialSections || []);
++    const [activeSectionId, setActiveSectionId] = useState<string>('');
++
++    // Discover sections from DOM if not explicitly provided or merge with dynamic headings
++    const discoverSections = useCallback(() => {
++        const root = containerSelector
++            ? document.querySelector(containerSelector)
++            : document.querySelector('main') || document.body;
++
++        if (!root) {
++            setSections(initialSections || []);
++            return initialSections || [];
++        }
++
++        if (initialSections && initialSections.length > 0) {
++            // Check if there are additional headings inside #overview (e.g. article body headings)
++            const articleBody = root.querySelector('.prose');
++            if (articleBody) {
++                const subHeadings = articleBody.querySelectorAll<HTMLElement>('h2, h3');
++                if (subHeadings.length > 0) {
++                    const combined: SectionItem[] = [initialSections[0]];
++                    const usedIds = new Set<string>(initialSections.map((s) => s.id));
++                    subHeadings.forEach((heading) => {
++                        const text = heading.textContent?.trim();
++                        if (!text) return;
++                        let id = heading.id || slugify(text);
++                        if (!id) return;
++                        let uniqueId = id;
++                        let counter = 1;
++                        while (usedIds.has(uniqueId)) {
++                            uniqueId = `${id}-${counter++}`;
++                        }
++                        usedIds.add(uniqueId);
++                        if (!heading.id) {
++                            heading.id = uniqueId;
++                        }
++                        combined.push({
++                            id: uniqueId,
++                            label: text,
++                            level: heading.tagName.toLowerCase() === 'h3' ? 3 : 2,
++                        });
++                    });
++                    combined.push(...initialSections.slice(1));
++                    setSections(combined);
++                    return combined;
++                }
++            }
++            setSections(initialSections);
++            return initialSections;
++        }
++
++        // Check for explicit data-section-title elements first
++        const explicitElements = root.querySelectorAll<HTMLElement>('[data-section-title], section[id]');
++        if (explicitElements.length > 0) {
++            const discovered: SectionItem[] = [];
++            explicitElements.forEach((el) => {
++                const label =
++                    el.getAttribute('data-section-title') ||
++                    el.querySelector('h2, h3')?.textContent?.trim() ||
++                    el.id;
++                if (!label) return;
++                if (!el.id) {
++                    el.id = slugify(label);
++                }
++                discovered.push({
++                    id: el.id,
++                    label,
++                    level: 2,
++                });
++            });
++            if (discovered.length > 0) {
++                setSections(discovered);
++                return discovered;
++            }
++        }
++
++        // Otherwise discover headings (h2, h3) inside the container
++        const headings = root.querySelectorAll<HTMLElement>('h2, h3');
++        const discovered: SectionItem[] = [];
++        const usedIds = new Set<string>();
++
++        headings.forEach((heading) => {
++            const text = heading.textContent?.trim();
++            if (!text) return;
++
++            let id = heading.id || slugify(text);
++            if (!id) return;
++
++            // Ensure unique ID
++            let uniqueId = id;
++            let counter = 1;
++            while (usedIds.has(uniqueId)) {
++                uniqueId = `${id}-${counter++}`;
++            }
++            usedIds.add(uniqueId);
++
++            if (!heading.id) {
++                heading.id = uniqueId;
++            }
++
++            // If parent is a <section> without an id, or we want to observe the section/heading
++            discovered.push({
++                id: uniqueId,
++                label: text,
++                level: heading.tagName.toLowerCase() === 'h3' ? 3 : 2,
++            });
++        });
++
++        setSections(discovered);
++        return discovered;
++    }, [initialSections, containerSelector]);
++
++    useEffect(() => {
++        const currentSections = discoverSections();
++        if (currentSections.length === 0) return;
++
++        // Default to the first section if none is active yet
++        setActiveSectionId((prev) => prev || currentSections[0].id);
++
++        const visibleRatios = new Map<string, number>();
++
++        const computeActiveSection = () => {
++            const scrollY = window.scrollY;
++            const viewportHeight = window.innerHeight;
++            const docHeight = document.documentElement.scrollHeight;
++
++            // If scrolled to the very bottom of the page, highlight the last section
++            if (scrollY + viewportHeight >= docHeight - 20 && currentSections.length > 0) {
++                setActiveSectionId(currentSections[currentSections.length - 1].id);
++                return;
++            }
++
++            // Find the section whose top is closest to the upper reading zone (e.g. 25% from top of viewport)
++            const targetLine = viewportHeight * 0.25;
++            let bestId = currentSections[0].id;
++            let bestDistance = Infinity;
++            let foundAboveTarget = false;
++
++            for (const sec of currentSections) {
++                const el = document.getElementById(sec.id);
++                if (!el) continue;
++
++                const rect = el.getBoundingClientRect();
++
++                // Check if element or its section is in view
++                if (rect.top <= targetLine) {
++                    const distance = targetLine - rect.top;
++                    if (!foundAboveTarget || distance < bestDistance) {
++                        foundAboveTarget = true;
++                        bestDistance = distance;
++                        bestId = sec.id;
++                    }
++                } else if (!foundAboveTarget) {
++                    const distance = rect.top - targetLine;
++                    if (distance < bestDistance) {
++                        bestDistance = distance;
++                        bestId = sec.id;
++                    }
++                }
++            }
++
++            setActiveSectionId(bestId);
++        };
++
++        const observer = new IntersectionObserver(
++            (entries) => {
++                entries.forEach((entry) => {
++                    visibleRatios.set(entry.target.id, entry.intersectionRatio);
++                });
++                computeActiveSection();
++            },
++            {
++                rootMargin: '-10% 0px -65% 0px',
++                threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
++            }
++        );
++
++        currentSections.forEach((sec) => {
++            const el = document.getElementById(sec.id);
++            if (el) {
++                observer.observe(el);
++            }
++        });
++
++        window.addEventListener('scroll', computeActiveSection, { passive: true });
++        computeActiveSection();
++
++        return () => {
++            observer.disconnect();
++            window.removeEventListener('scroll', computeActiveSection);
++        };
++    }, [discoverSections]);
++
++    const handleScrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
++        e.preventDefault();
++        const el = document.getElementById(id);
++        if (el) {
++            setActiveSectionId(id);
++            const yOffset = -72; // Offset for sticky nav bar
++            const y = el.getBoundingClientRect().top + window.scrollY + yOffset;
++            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
++            window.history.replaceState(null, '', `#${id}`);
++        }
++    };
++
++    if (sections.length === 0) {
++        return null;
++    }
++
++    const resolvedVariant = variant === 'auto' ? 'bar' : variant;
++
++    if (resolvedVariant === 'sidebar') {
++        return (
++            <nav
++                aria-label="Page sections"
++                data-section-nav="sidebar"
++                className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-6"
++            >
++                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
++                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
++                        {title}
++                    </span>
++                    <span className="text-xs text-amber-700 font-semibold">
++                        {sections.find((s) => s.id === activeSectionId)?.label}
++                    </span>
++                </div>
++                <ul className="space-y-1.5 text-sm">
++                    {sections.map((section) => {
++                        const isActive = activeSectionId === section.id;
++                        return (
++                            <li
++                                key={section.id}
++                                className={section.level === 3 ? 'pl-4' : ''}
++                            >
++                                <a
++                                    href={`#${section.id}`}
++                                    onClick={(e) => handleScrollToSection(e, section.id)}
++                                    aria-current={isActive ? 'location' : undefined}
++                                    data-active={isActive ? 'true' : 'false'}
++                                    className={`flex items-center py-1 px-2.5 rounded transition-colors border-l-2 ${
++                                        isActive
++                                            ? 'border-amber-500 bg-amber-50 text-amber-900 font-semibold'
++                                            : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
++                                    }`}
++                                >
++                                    <span
++                                        className={`w-1.5 h-1.5 rounded-full mr-2 flex-shrink-0 transition-transform ${
++                                            isActive ? 'bg-amber-500 scale-125' : 'bg-gray-300'
++                                        }`}
++                                    />
++                                    <span className="truncate">{section.label}</span>
++                                </a>
++                            </li>
++                        );
++                    })}
++                </ul>
++            </nav>
++        );
++    }
++
++    return (
++        <div
++            data-section-nav="bar"
++            className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-xs transition-all"
++        >
++            <nav
++                aria-label="Page sections"
++                className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-11 overflow-x-auto"
++            >
++                <div className="flex items-center space-x-1 sm:space-x-2">
++                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mr-2 hidden sm:inline-block whitespace-nowrap">
++                        {title}:
++                    </span>
++                    <ul className="flex items-center space-x-1 sm:space-x-2">
++                        {sections.map((section) => {
++                            const isActive = activeSectionId === section.id;
++                            return (
++                                <li key={section.id}>
++                                    <a
++                                        href={`#${section.id}`}
++                                        onClick={(e) => handleScrollToSection(e, section.id)}
++                                        aria-current={isActive ? 'location' : undefined}
++                                        data-active={isActive ? 'true' : 'false'}
++                                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 ${
++                                            isActive
++                                                ? 'bg-amber-400 text-gray-900 font-semibold shadow-2xs'
++                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
++                                        }`}
++                                    >
++                                        {isActive && (
++                                            <span
++                                                className="w-1.5 h-1.5 rounded-full bg-gray-900 mr-1.5 animate-pulse"
++                                                aria-hidden="true"
++                                            />
++                                        )}
++                                        {section.label}
++                                    </a>
++                                </li>
++                            );
++                        })}
++                    </ul>
++                </div>
++            </nav>
++        </div>
++    );
++};
++
++export default SectionNavigation;
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..c13921c 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,13 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-title={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..a833d42 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,11 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    id?: string;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, id } = Astro.props;
++const sectionId = id || title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section id={sectionId} data-section-title={title} class="p-4 md:p-6 scroll-mt-14">
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..497b0ee 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,10 +8,12 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  currentCategory?: string;
+ }
+ 
+-const { title } = Astro.props;
++const { title, currentCategory } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const currentPath = Astro.url.pathname;
+ ---
+ 
+ <!doctype html>
+@@ -43,7 +45,7 @@ const baseUrl = import.meta.env.BASE_URL;
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+         <div>
+-          <Header />
++          <Header currentPath={currentPath} currentCategory={currentCategory} />
+         </div>
+         <main class="bg-white relative">
+           <slot />
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..de20871 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from './Layout.astro';
++import SectionNavigation from '../components/SectionNavigation.tsx';
+ 
+ export interface Props {
+ 	title: string;
+@@ -8,9 +9,10 @@ export interface Props {
+ const { title } = Astro.props;
+ ---
+ <Layout title={title}>
++    <SectionNavigation client:load containerSelector="#legal-content" variant="bar" title="Sections" />
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+-        <div class="prose max-w-none">
++        <div id="legal-content" class="prose max-w-none">
+             <slot />
+         </div>
+     </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..05d0eb0 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,12 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import SectionNavigation from '../../components/SectionNavigation.tsx';
++
++const articleSections = [
++    { id: 'overview', label: 'Article' },
++    { id: 'related-articles', label: 'Related Stories' },
++];
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -35,8 +41,10 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++<Layout title={article.data.title} currentCategory={article.data.category}>
++    <SectionNavigation client:load sections={articleSections} containerSelector="#article-page-root" variant="bar" title="On this page" />
++    <div id="article-page-root">
++    <article id="overview" data-section-title="Article" class="max-w-3xl mx-auto px-4 py-8 md:py-12 scroll-mt-14">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -116,11 +124,12 @@ const isBookmarked = readingList.includes(article.slug);
+     </article>
+ 
+     <!-- RELATED ARTICLES SECTION -->
+-    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
++    <section id="related-articles" data-section-title="Related Stories" class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8 scroll-mt-14">
++        <h2 class="text-2xl font-bold text-gray-900 mb-6">Related Stories</h2>
+         <div class="grid md:grid-cols-3 gap-6">
+             {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+         </div>
+     </section>
+-
++    </div>
+ 
+ </Layout>
+\ No newline at end of file
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..4bd7f5f 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -6,6 +6,7 @@ import { getCollection } from 'astro:content';
+ import type { GetStaticPaths } from 'astro';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
++import SectionNavigation from '../../components/SectionNavigation.tsx';
+ 
+ export const getStaticPaths = (async () => {
+     const articles = await getCollection('articles');
+@@ -35,9 +36,16 @@ const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForH
+ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+ 
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
++const categorySections = [
++    ...(featuredArticle ? [{ id: 'featured-story', label: 'Featured Story' }] : []),
++    ...(otherArticles.length > 0 ? [{ id: 'more-in-category', label: `More in ${capitalizedCategory}` }] : []),
++];
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout title={`Category: ${capitalizedCategory}`} currentCategory={category}>
++    {categorySections.length > 1 && (
++        <SectionNavigation client:load sections={categorySections} variant="bar" title="Sections" />
++    )}
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+@@ -66,7 +74,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section id="featured-story" data-section-title="Featured Story" class="mb-8 pb-8 border-b border-gray-200 scroll-mt-14">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+@@ -88,9 +96,11 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+ 
+             <!-- Other Articles -->
+             {otherArticles.length > 0 ? (
+-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+-                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+-                </div>
++                <section id="more-in-category" data-section-title={`More in ${capitalizedCategory}`} class="scroll-mt-14">
++                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
++                        {otherArticles.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
+             ) : (
+                 <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+             )}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..942b3c8 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,8 +5,16 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SectionNavigation from '../components/SectionNavigation.tsx';
+ import type { RenderResult } from 'astro:content';
+ 
++const homeSections = [
++    { id: 'featured', label: 'Featured' },
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++];
++
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
+@@ -38,8 +46,10 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
++    <SectionNavigation client:load sections={homeSections} variant="bar" title="Sections" />
++
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <div id="featured" data-section-title="Featured" class="bg-white border-b border-gray-300 scroll-mt-14">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+@@ -52,12 +62,12 @@ politicsArticles[2] = {
+                 ))}
+             </div>
+         </div>
+-    </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++        <!-- Main Content Area -->
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 pb-6">
++            <ArticleTeaser article={topArticle} large={true} />
++        </div>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">

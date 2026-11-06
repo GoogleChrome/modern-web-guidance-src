@@ -1,0 +1,590 @@
+diff --git a/index.html b/index.html
+index 66c9173..d3cc1df 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,14 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #efebe9;
+     }
+ 
+     * {
+@@ -27,39 +31,41 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Compact Sticky Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.45rem 5%;
++      min-height: 48px;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 100;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
++      font-size: 1.15rem;
++      font-weight: 700;
++      letter-spacing: 1.2px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 16px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 0.85rem;
++      transition: color 0.2s;
++      white-space: nowrap;
+     }
+ 
+     nav a:hover {
+@@ -68,14 +74,15 @@
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 3px 10px;
+       border-radius: 4px;
++      font-size: 0.8rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 46vh;
++      background: linear-gradient(rgba(30, 18, 14, 0.55), rgba(30, 18, 14, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,65 +92,294 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 2.5rem 20px;
++    }
++
++    .hero-badge {
++      background: rgba(255, 171, 64, 0.2);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 1.5px;
++      padding: 4px 12px;
++      border-radius: 999px;
++      margin-bottom: 0.75rem;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.6rem;
++      margin-bottom: 0.6rem;
++      line-height: 1.2;
++    }
++
++    .hero p {
++      font-size: 1.05rem;
++      max-width: 540px;
++      opacity: 0.92;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
++      max-width: 1120px;
++      margin: 36px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header h2 {
++      font-size: 1.85rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++    }
++
++    /* Coffee Showcase Grid */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++      align-items: start;
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      background: var(--surface);
++      border-radius: 10px;
++      overflow: hidden;
++      box-shadow: 0 3px 12px rgba(62, 39, 35, 0.08);
++      border: 1px solid var(--border);
++      display: flex;
++      flex-direction: column;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 6px 18px rgba(62, 39, 35, 0.13);
++    }
++
++    .card-image-wrap {
++      position: relative;
++      height: 200px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-image-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-tag {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      background: rgba(62, 39, 35, 0.85);
++      color: #fff;
++      font-size: 0.72rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.8px;
++      padding: 3px 10px;
++      border-radius: 4px;
++    }
++
++    .card-price {
++      position: absolute;
++      bottom: 12px;
++      right: 12px;
++      background: var(--surface);
++      color: var(--primary);
++      font-weight: 700;
++      font-size: 0.9rem;
++      padding: 3px 10px;
++      border-radius: 6px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++    }
++
++    .card-body {
++      padding: 18px 20px 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      font-size: 1.25rem;
++      color: var(--primary);
++    }
++
++    .card-summary {
++      font-size: 0.92rem;
++      color: var(--text-muted);
++    }
++
++    /* Expandable Secondary Details inside Cards */
++    .card-details {
++      border-top: 1px solid var(--border);
++      padding-top: 10px;
++      margin-top: 2px;
++      text-align: left;
++    }
++
++    .card-details summary {
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
+       color: var(--primary);
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      user-select: none;
++    }
++
++    .card-details summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .card-details summary::after {
++      content: '+';
++      font-size: 1rem;
++      font-weight: 700;
++      color: var(--accent);
++      transition: transform 0.2s;
++    }
++
++    .card-details[open] summary::after {
++      content: '−';
++    }
++
++    .details-content {
++      margin-top: 10px;
++      font-size: 0.84rem;
++      color: var(--text-muted);
++      background: var(--light);
++      padding: 10px 12px;
++      border-radius: 6px;
++    }
++
++    .details-list {
++      list-style: none;
++      display: grid;
++      gap: 5px;
++    }
++
++    .details-list strong {
++      color: var(--text);
++    }
++
++    .card-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: 4px;
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 8px 18px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      font-size: 0.88rem;
++      font-weight: 600;
++      transition: background 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .hero .btn {
++      margin-top: 14px;
++      padding: 10px 24px;
++      font-size: 0.95rem;
++    }
++
++    /* Expandable Extra Site Information Section */
++    .extra-info-section {
++      margin-top: 40px;
++    }
++
++    .extra-info-heading {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++      text-align: center;
++    }
++
++    .info-accordions {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 14px;
++      align-items: start;
++    }
++
++    .info-drawer {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 12px 16px;
++    }
++
++    .info-drawer summary {
++      cursor: pointer;
++      font-weight: 600;
++      font-size: 0.92rem;
++      color: var(--primary);
++      list-style: none;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .info-drawer summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .info-drawer summary::after {
++      content: '▾';
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      transition: transform 0.2s;
++    }
++
++    .info-drawer[open] summary::after {
++      transform: rotate(180deg);
+     }
+ 
++    .info-drawer-body {
++      margin-top: 10px;
++      padding-top: 10px;
++      border-top: 1px solid var(--border);
++      font-size: 0.86rem;
++      color: var(--text-muted);
++    }
++
++    /* Compact Footer */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding: 24px 20px;
++      margin-top: 44px;
++      font-size: 0.85rem;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 10px;
+     }
+ 
+     .footer-links a {
+@@ -151,13 +387,36 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      font-weight: 500;
++    }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        padding: 0.4rem 4%;
++      }
++      .logo {
++        font-size: 1rem;
++      }
++      nav ul {
++        gap: 10px;
++      }
++      nav a {
++        font-size: 0.78rem;
++      }
++      .hero h1 {
++        font-size: 2rem;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -169,30 +428,126 @@
+   </nav>
+ 
+   <header class="hero">
++    <span class="hero-badge">Small-Batch Roastery</span>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <p>Handcrafted micro-lot pours and signature cafe creations.</p>
++      </div>
++
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card">
++          <div class="card-image-wrap">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte with latte art">
++            <span class="card-tag">Seasonal</span>
++            <span class="card-price">$5.75</span>
++          </div>
++          <div class="card-body">
++            <h3>Maple Oat Latte</h3>
++            <p class="card-summary">Creamy oat milk with a hint of Vermont maple syrup.</p>
++
++            <details class="card-details">
++              <summary>Tasting Notes &amp; Details</summary>
++              <div class="details-content">
++                <ul class="details-list">
++                  <li><strong>Origin:</strong> Huehuetenango, Guatemala (Medium Roast)</li>
++                  <li><strong>Flavor Profile:</strong> Toasted pecan, amber maple, velvety finish</li>
++                  <li><strong>Dietary &amp; Nutrition:</strong> 100% plant-based, 190 kcal (12 oz)</li>
++                </ul>
++              </div>
++            </details>
++
++            <div class="card-actions">
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card">
++          <div class="card-image-wrap">
++            <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso shot in ceramic demitasse">
++            <span class="card-tag">Signature</span>
++            <span class="card-price">$3.75</span>
++          </div>
++          <div class="card-body">
++            <h3>Dark Roast Espresso</h3>
++            <p class="card-summary">Bold, smokey, and perfect for a morning boost.</p>
++
++            <details class="card-details">
++              <summary>Tasting Notes &amp; Details</summary>
++              <div class="details-content">
++                <ul class="details-list">
++                  <li><strong>Origin:</strong> Sumatra Mandheling &amp; Colombia Blend</li>
++                  <li><strong>Flavor Profile:</strong> Bittersweet cacao, cedar spice, rich crema</li>
++                  <li><strong>Extraction:</strong> Double ristretto pull (18g in, 32g out, 28s)</li>
++                </ul>
++              </div>
++            </details>
++
++            <div class="card-actions">
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++
++        <article class="card">
++          <div class="card-image-wrap">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=700&q=80" alt="Chilled Cold Brew poured over ice">
++            <span class="card-tag">Slow Steeped</span>
++            <span class="card-price">$4.95</span>
++          </div>
++          <div class="card-body">
++            <h3>Cold Brew</h3>
++            <p class="card-summary">Steeped for 18 hours for maximum smoothness.</p>
++
++            <details class="card-details">
++              <summary>Tasting Notes &amp; Details</summary>
++              <div class="details-content">
++                <ul class="details-list">
++                  <li><strong>Origin:</strong> Single-Origin Yirgacheffe, Ethiopia</li>
++                  <li><strong>Flavor Profile:</strong> Molasses, dark cherry, ultra-low acidity</li>
++                  <li><strong>Brew Method:</strong> 18-hour filtered cold immersion</li>
++                </ul>
++              </div>
++            </details>
++
++            <div class="card-actions">
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <section class="extra-info-section" aria-labelledby="more-info-heading">
++      <h3 id="more-info-heading" class="extra-info-heading">Roastery &amp; Cafe Information</h3>
++      <div class="info-accordions">
++        <details class="info-drawer">
++          <summary>Ethical Sourcing &amp; Roasting Standards</summary>
++          <div class="info-drawer-body">
++            <p>We partner directly with smallholder farms across Latin America and East Africa, paying 35% above Fair Trade minimums. Beans are roasted daily in small batches at our local roastery for peak freshness.</p>
++          </div>
++        </details>
++
++        <details class="info-drawer">
++          <summary>Cafe Hours &amp; Pickup Guidelines</summary>
++          <div class="info-drawer-body">
++            <p><strong>Mon – Fri:</strong> 6:30 AM – 6:00 PM &bull; <strong>Sat – Sun:</strong> 7:30 AM – 5:00 PM.<br>Online orders are prepared fresh and held at our express counter for rapid pickup.</p>
++          </div>
++        </details>
++
++        <details class="info-drawer">
++          <summary>Daily Grind Rewards &amp; Sustainability</summary>
++          <div class="info-drawer-body">
++            <p>Bring your own reusable tumbler for a $0.50 discount on any beverage, plus double points for Daily Grind Rewards members on every seasonal drink order.</p>
++          </div>
++        </details>
+       </div>
+     </section>
+   </main>

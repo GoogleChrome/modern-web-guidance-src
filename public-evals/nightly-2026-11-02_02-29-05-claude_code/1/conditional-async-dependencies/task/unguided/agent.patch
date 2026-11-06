@@ -1,0 +1,160 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="js/rewards.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -65,8 +66,111 @@
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    .nav-button {
++      background: none;
++      border: none;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .nav-button:hover,
++    .nav-button[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    /* Rewards Popover */
++    .rewards-popover {
++      position: fixed;
++      inset: auto;
++      top: 70px;
++      right: 5%;
++      margin: 0;
++      width: min(320px, 90vw);
++      border: none;
++      border-radius: 8px;
++      padding: 0;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .rewards-popover img {
++      display: block;
++      width: 100%;
++      height: 120px;
++      object-fit: cover;
++    }
++
++    .rewards-body {
++      padding: 20px;
++    }
++
++    .rewards-body h3 {
++      color: var(--primary);
++    }
++
++    .rewards-tier {
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--accent);
++    }
++
++    .rewards-points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .rewards-progress {
++      height: 8px;
++      background: var(--secondary);
++      border-radius: 4px;
++      overflow: hidden;
++      margin: 10px 0 6px;
++    }
++
++    .rewards-progress-bar {
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++      transition: width 0.6s;
++    }
++
++    .rewards-next {
++      font-size: 0.85rem;
++    }
++
++    .rewards-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .rewards-actions .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .rewards-close {
++      background: none;
++      border: none;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.85rem;
++      margin-top: 15px;
++      cursor: pointer;
++      text-decoration: underline;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -161,14 +265,33 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><button type="button" class="nav-button" popovertarget="rewards-popover" aria-expanded="false">Rewards</button></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="rewards-popover" class="rewards-popover" popover aria-labelledby="rewards-title">
++    <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=80"
++      alt="Latte art in a ceramic cup">
++    <div class="rewards-body">
++      <span class="rewards-tier" data-rewards="tier">Member</span>
++      <h3 id="rewards-title">Your Rewards</h3>
++      <div class="rewards-points"><span data-rewards="points">&ndash;</span> <small>stars</small></div>
++      <div class="rewards-progress" data-rewards="progress" role="progressbar" aria-label="Progress to next reward"
++        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
++        <div class="rewards-progress-bar" data-rewards="bar"></div>
++      </div>
++      <p class="rewards-next" data-rewards="next">Loading your rewards&hellip;</p>
++      <div class="rewards-actions">
++        <a href="/rewards" class="btn">View All Rewards</a>
++        <button type="button" class="rewards-close" popovertarget="rewards-popover" popovertargetaction="hide">Close</button>
++      </div>
++    </div>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

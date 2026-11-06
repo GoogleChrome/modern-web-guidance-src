@@ -1,0 +1,408 @@
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..38462ff 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -3,6 +3,7 @@ import React, { useState } from 'react';
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -19,6 +20,7 @@ export default function SignInForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -30,7 +32,8 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
++        setPassword('');
++        // Do not store sensitive tokens or PII in localStorage, as it is accessible by any embedded script.
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -41,21 +44,24 @@ export default function SignInForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign In</h2>
++      <p className="text-xs text-gray-600 text-center mb-6">
++        We only collect the minimum credentials needed to authenticate your session.
++      </p>
+       
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert" aria-live="polite">
+           {error}
+         </div>
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status" aria-live="polite">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} method="post" className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -63,36 +69,78 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="off"
++            spellCheck={false}
++            enterKeyHint="next"
++            aria-describedby="signin-username-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <aside id="signin-username-help" className="text-xs text-gray-500 mt-1">
++            Used strictly to identify your account during authentication.
++          </aside>
+         </div>
+         
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
++              Password
++            </label>
++            <button
++              type="button"
++              data-skip-tracking="true"
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="signin-toggle-warning"
++              onClick={() => setShowPassword((prev) => !prev)}
++              className="text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none underline"
++            >
++              {showPassword ? 'Hide' : 'Show'}
++            </button>
++          </div>
++          <span id="signin-toggle-warning" className="sr-only">
++            Warning: this will display your password on the screen.
++          </span>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            autoComplete="current-password"
++            enterKeyHint="done"
++            aria-describedby="signin-password-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <aside id="signin-password-help" className="text-xs text-gray-500 mt-1">
++            Transmitted securely over HTTPS solely to verify your identity.
++          </aside>
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
++
++        <p className="text-xs text-gray-500 text-center pt-2">
++          Learn how we handle and protect your data in our{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline hover:text-gray-800">
++            Privacy Policy
++          </a>
++          .
++        </p>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..8446470 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -3,6 +3,7 @@ import React, { useState } from 'react';
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -19,6 +20,7 @@ export default function SignUpForm() {
+         headers: {
+           'Content-Type': 'application/json',
+         },
++        referrerPolicy: 'no-referrer',
+         body: JSON.stringify({ username, password }),
+       });
+ 
+@@ -42,21 +44,24 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
++      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Sign Up</h2>
++      <p className="text-xs text-gray-600 text-center mb-6">
++        Following data minimization, we only request a username and password—no personal email, phone number, or profiling data is required.
++      </p>
+       
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert" aria-live="polite">
+           {error}
+         </div>
+       )}
+       
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="status" aria-live="polite">
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form onSubmit={handleSubmit} method="post" className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+             Username
+@@ -64,28 +69,62 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="off"
++            spellCheck={false}
++            enterKeyHint="next"
++            aria-describedby="signup-username-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <aside id="signup-username-help" className="text-xs text-gray-500 mt-1">
++            Why do we ask for this? We only use a pseudonymous username to identify your account without collecting your real name or email address.
++          </aside>
+         </div>
+         
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex items-center justify-between mb-1">
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
++              Password
++            </label>
++            <button
++              type="button"
++              data-skip-tracking="true"
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="signup-toggle-warning"
++              onClick={() => setShowPassword((prev) => !prev)}
++              className="text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none underline"
++            >
++              {showPassword ? 'Hide' : 'Show'}
++            </button>
++          </div>
++          <span id="signup-toggle-warning" className="sr-only">
++            Warning: this will display your password on the screen.
++          </span>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            minLength={8}
++            autoComplete="new-password"
++            enterKeyHint="done"
++            aria-describedby="password-constraints signup-password-help"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-constraints" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number.
+           </p>
++          <aside id="signup-password-help" className="text-xs text-gray-500 mt-1">
++            Used exclusively to secure your account and never shared with third parties.
++          </aside>
+         </div>
+ 
+         <button
+@@ -98,6 +137,14 @@ export default function SignUpForm() {
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
++
++        <p className="text-xs text-gray-500 text-center pt-2">
++          By creating an account, your credentials are processed strictly for authentication as detailed in our{' '}
++          <a href={`${import.meta.env.BASE_URL}legal/privacy`} className="underline hover:text-gray-800">
++            Privacy Policy
++          </a>
++          . You can request account deletion at any time.
++        </p>
+       </form>
+     </div>
+   );
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..8a55821 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,10 +8,15 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  disableThirdPartyScripts?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, disableThirdPartyScripts = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const isSensitivePage =
++  disableThirdPartyScripts ||
++  Astro.url.pathname.includes("/signin") ||
++  Astro.url.pathname.includes("/signup");
+ ---
+ 
+ <!doctype html>
+@@ -19,18 +24,26 @@ const baseUrl = import.meta.env.BASE_URL;
+   <head>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    {!isSensitivePage && (
++      <script
++        is:inline
++        defer
++        src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++        referrerpolicy="no-referrer"
++      ></script>
++    )}
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+@@ -38,7 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {!isSensitivePage && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..be62de2 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++
++  // Privacy-preserving and security headers
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  response.headers.set(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=(), payment=(), usb=(), interest-cohort=(), browsing-topics=(), focus-without-user-activation=()'
++  );
++  response.headers.set('X-Content-Type-Options', 'nosniff');
++  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
++  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++
++  return response;
+ });
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..0eaa8d4 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -7,11 +7,14 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
+     <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+     
+     <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
++    <p><strong>Data protection &amp; Privacy by Design</strong></p>
+     <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
++    <p>We follow the principles of <strong>data minimization</strong> and <strong>purpose limitation</strong>: we only collect the bare minimum data necessary for a requested feature (such as a pseudonymous username and password when you create an account) and never repurpose authentication data for marketing or third-party tracking. Third-party analytics and advertising scripts are strictly excluded from sensitive authentication pages (Sign In and Sign Up).</p>
+     
+     <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <p><strong>Cookies &amp; Session Data</strong></p>
++    <p>In some instances, our website and its pages use first-party session cookies (for example, to maintain your reading list). Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure.</p>
++
++    <h2>4. Your Data Rights</h2>
++    <p>You have the right to access, correct, or delete any personal data associated with your account at any time, without penalty or degraded access to public content.</p>
+ </LegalLayout>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..fe71c52 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" disableThirdPartyScripts={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..bb2eeef 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" disableThirdPartyScripts={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>

@@ -1,0 +1,193 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,114 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean selections */
++    .bean-controls {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      margin: 20px 0;
++    }
++
++    .bean-controls input {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      min-width: 220px;
++    }
++
++    .bean-controls .btn {
++      margin-top: 0;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .bean-list {
++      list-style: none;
++      max-width: 500px;
++      margin: 0 auto;
++    }
++
++    .item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: white;
++      padding: 14px 20px;
++      margin-bottom: 10px;
++      border-radius: 8px;
++      border-left: 4px solid var(--accent);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      /* shared transition class; each item also gets a unique view-transition-name via JS */
++      view-transition-class: bean-item;
++    }
++
++    .item button {
++      background: none;
++      border: 0;
++      color: var(--primary);
++      font-size: 1.2rem;
++      cursor: pointer;
++    }
++
++    /* View transitions: skip the full-page (root) transition so the page stays interactive */
++    :root {
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(*.bean-item) {
++      animation-duration: 0.5s;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-old(*.bean-item),
++    ::view-transition-new(*.bean-item) {
++      height: 100%;
++    }
++
++    ::view-transition-new(*.bean-item):only-child {
++      animation: bean-slide-in 1s ease-in-out both;
++    }
++
++    ::view-transition-old(*.bean-item):only-child {
++      animation: bean-slide-out 1s ease-in-out both;
++    }
++
++    @keyframes bean-slide-in {
++      from {
++        transform: translateX(-100vw);
++        opacity: 0;
++      }
++    }
++
++    @keyframes bean-slide-out {
++      to {
++        transform: translateX(-100vw);
++        opacity: 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++
++      .btn,
++      nav a {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +300,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">Coffee Bean Selections</h2>
++      <form class="bean-controls" id="bean-form">
++        <input type="text" id="bean-name" placeholder="Custom bean name" aria-label="Custom bean name">
++        <button type="submit" class="btn" id="add-item">Add Item</button>
++      </form>
++      <ul class="bean-list" id="bean-list">
++        <li class="item"><span>Ethiopian Yirgacheffe</span><button type="button" aria-label="Remove">&times;</button></li>
++        <li class="item"><span>Colombian Supremo</span><button type="button" aria-label="Remove">&times;</button></li>
++        <li class="item"><span>Sumatra Mandheling</span><button type="button" aria-label="Remove">&times;</button></li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +325,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const list = document.getElementById('bean-list');
++    const form = document.getElementById('bean-form');
++    const nameInput = document.getElementById('bean-name');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let nextId = 0;
++
++    // Give every item a unique transition identity so the browser can track it
++    function assignName(item) {
++      item.style.viewTransitionName = 'bean-' + nextId++;
++    }
++
++    function transition(update) {
++      if (!document.startViewTransition || reducedMotion.matches) {
++        update();
++        return;
++      }
++      document.startViewTransition(update);
++    }
++
++    list.querySelectorAll('.item').forEach(assignName);
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const name = nameInput.value.trim() || 'Custom Bean ' + (nextId + 1);
++      const item = document.createElement('li');
++      item.className = 'item';
++      const label = document.createElement('span');
++      label.textContent = name;
++      const remove = document.createElement('button');
++      remove.type = 'button';
++      remove.setAttribute('aria-label', 'Remove');
++      remove.innerHTML = '&times;';
++      item.append(label, remove);
++      assignName(item);
++      nameInput.value = '';
++      transition(() => list.append(item));
++    });
++
++    list.addEventListener('click', (e) => {
++      const btn = e.target.closest('button');
++      if (btn) transition(() => btn.closest('.item').remove());
++    });
++  </script>
++
+ </body>
+ 
+ </html>

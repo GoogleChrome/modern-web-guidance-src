@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,85 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Payment Form */
++    .payment {
++      margin-top: 60px;
++    }
++
++    .payment-form {
++      max-width: 480px;
++      margin: 20px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .form-group {
++      margin-bottom: 18px;
++    }
++
++    .form-row {
++      display: flex;
++      gap: 15px;
++    }
++
++    .form-row .form-group {
++      flex: 1;
++    }
++
++    .payment-form label {
++      display: block;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .payment-form input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      transition: border-color 0.3s;
++    }
++
++    .payment-form input:focus {
++      outline: none;
++      border-color: var(--accent);
++    }
++
++    .payment-form input.invalid {
++      border-color: #c62828;
++    }
++
++    .error-message {
++      display: block;
++      min-height: 1.2em;
++      margin-top: 4px;
++      font-size: 0.8rem;
++      color: #c62828;
++    }
++
++    .payment-form .btn {
++      width: 100%;
++      border: none;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .form-status {
++      margin-top: 15px;
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +271,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment" id="payment">
++      <h2 style="text-align: center;">Payment Details</h2>
++      <form class="payment-form" id="payment-form" novalidate>
++        <div class="form-group">
++          <label for="card-number">Card Number</label>
++          <input type="text" id="card-number" name="card-number" inputmode="numeric" autocomplete="cc-number"
++            placeholder="1234 5678 9012 3456" maxlength="23" required>
++          <span class="error-message" id="card-number-error" aria-live="polite"></span>
++        </div>
++        <div class="form-group">
++          <label for="card-name">Name on Card</label>
++          <input type="text" id="card-name" name="card-name" autocomplete="cc-name" placeholder="Jane Doe" required>
++          <span class="error-message" id="card-name-error" aria-live="polite"></span>
++        </div>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="card-expiry">Expiry Date</label>
++            <input type="text" id="card-expiry" name="card-expiry" inputmode="numeric" autocomplete="cc-exp"
++              placeholder="MM/YY" maxlength="5" required>
++            <span class="error-message" id="card-expiry-error" aria-live="polite"></span>
++          </div>
++          <div class="form-group">
++            <label for="card-cvc">Security Code</label>
++            <input type="password" id="card-cvc" name="card-cvc" inputmode="numeric" autocomplete="cc-csc"
++              placeholder="CVC" maxlength="4" required>
++            <span class="error-message" id="card-cvc-error" aria-live="polite"></span>
++          </div>
++        </div>
++        <button type="submit" class="btn">Pay Now</button>
++        <p class="form-status" id="form-status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +316,105 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('payment-form');
++      const number = document.getElementById('card-number');
++      const name = document.getElementById('card-name');
++      const expiry = document.getElementById('card-expiry');
++      const cvc = document.getElementById('card-cvc');
++      const status = document.getElementById('form-status');
++
++      // Group card digits in blocks of four as the user types
++      number.addEventListener('input', function () {
++        const digits = number.value.replace(/\D/g, '').slice(0, 19);
++        number.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
++      });
++
++      // Insert the slash in MM/YY automatically
++      expiry.addEventListener('input', function (e) {
++        let digits = expiry.value.replace(/\D/g, '').slice(0, 4);
++        if (digits.length >= 3 || (digits.length === 2 && e.inputType !== 'deleteContentBackward')) {
++          digits = digits.slice(0, 2) + '/' + digits.slice(2);
++        }
++        expiry.value = digits;
++      });
++
++      cvc.addEventListener('input', function () {
++        cvc.value = cvc.value.replace(/\D/g, '').slice(0, 4);
++      });
++
++      function luhn(digits) {
++        let sum = 0;
++        for (let i = 0; i < digits.length; i++) {
++          let d = parseInt(digits[digits.length - 1 - i], 10);
++          if (i % 2 === 1) {
++            d *= 2;
++            if (d > 9) d -= 9;
++          }
++          sum += d;
++        }
++        return sum % 10 === 0;
++      }
++
++      const validators = {
++        'card-number': function () {
++          const digits = number.value.replace(/\D/g, '');
++          if (!digits) return 'Card number is required.';
++          if (digits.length < 12 || digits.length > 19 || !luhn(digits)) return 'Enter a valid card number.';
++          return '';
++        },
++        'card-name': function () {
++          if (!name.value.trim()) return 'Name on card is required.';
++          return '';
++        },
++        'card-expiry': function () {
++          const match = expiry.value.match(/^(\d{2})\/(\d{2})$/);
++          if (!match) return 'Use the format MM/YY.';
++          const month = parseInt(match[1], 10);
++          const year = 2000 + parseInt(match[2], 10);
++          if (month < 1 || month > 12) return 'Enter a valid month.';
++          const now = new Date();
++          if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) {
++            return 'This card has expired.';
++          }
++          return '';
++        },
++        'card-cvc': function () {
++          if (!/^\d{3,4}$/.test(cvc.value)) return 'Enter a 3 or 4 digit code.';
++          return '';
++        }
++      };
++
++      function validate(input) {
++        const message = validators[input.id]();
++        document.getElementById(input.id + '-error').textContent = message;
++        input.classList.toggle('invalid', !!message);
++        input.setAttribute('aria-invalid', message ? 'true' : 'false');
++        return !message;
++      }
++
++      [number, name, expiry, cvc].forEach(function (input) {
++        input.addEventListener('blur', function () { validate(input); });
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        status.textContent = '';
++        const fields = [number, name, expiry, cvc];
++        const valid = fields.map(validate).every(Boolean);
++        if (!valid) {
++          fields.find(function (f) { return f.classList.contains('invalid'); }).focus();
++          return;
++        }
++        // TODO: hand card details to a PCI-compliant payment processor (e.g. Stripe Elements) here.
++        status.textContent = 'Thank you! Your payment details have been received.';
++        form.reset();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

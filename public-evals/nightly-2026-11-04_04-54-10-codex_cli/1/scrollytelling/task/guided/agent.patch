@@ -1,0 +1,218 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,153 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shared scope lets the text timelines drive a different DOM branch. */
++    .coffee-story {
++      timeline-scope: --coffee-source, --coffee-roast, --coffee-brew;
++      margin-top: 80px;
++    }
++
++    .story-heading {
++      max-width: 560px;
++      margin-bottom: 32px;
++    }
++
++    .story-heading h2 {
++      font-size: clamp(1.8rem, 4vw, 2.5rem);
++      line-height: 1.2;
++      margin-bottom: 12px;
++    }
++
++    .story-eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .story-columns {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++      gap: clamp(20px, 5vw, 64px);
++    }
++
++    #tracked > section,
++    #animated > section {
++      min-height: 380px;
++      margin-bottom: 24px;
++    }
++
++    #tracked > section {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      scroll-margin-top: 100px;
++    }
++
++    #tracked h3 {
++      font-size: clamp(1.3rem, 3vw, 1.9rem);
++      line-height: 1.25;
++      margin-bottom: 16px;
++    }
++
++    #tracked p:last-child {
++      max-width: 38ch;
++    }
++
++    #tracked > section:nth-child(1) { view-timeline: --coffee-source block; }
++    #tracked > section:nth-child(2) { view-timeline: --coffee-roast block; }
++    #tracked > section:nth-child(3) { view-timeline: --coffee-brew block; }
++
++    .story-visual {
++      position: relative;
++      overflow: hidden;
++      border-radius: 12px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .story-visual img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++    }
++
++    .story-visual::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(transparent 40%, rgba(30, 17, 12, 0.85));
++    }
++
++    .story-caption {
++      position: absolute;
++      z-index: 1;
++      bottom: 24px;
++      left: 24px;
++      right: 24px;
++    }
++
++    .story-caption span {
++      display: block;
++      font-size: 0.75rem;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++      margin-bottom: 4px;
++    }
++
++    .story-caption h3 {
++      font-size: clamp(1.2rem, 3vw, 1.7rem);
++      line-height: 1.25;
++    }
++
++    @keyframes coffee-reveal {
++      0% { opacity: 0; transform: translateY(24px) scale(0.98); }
++      25%, 75% { opacity: 1; transform: translateY(0) scale(1); }
++      100% { opacity: 0; transform: translateY(-24px) scale(0.98); }
++    }
++
++    /* Static cards are the default: no JS or polyfill is required. */
++    @supports (animation-timeline: view()) and (animation-range: 0% 100%) and (timeline-scope: --coffee-source) {
++      @media (prefers-reduced-motion: no-preference) {
++        #tracked > section {
++          min-height: 80vh;
++          margin-bottom: 0;
++        }
++
++        #animated {
++          position: sticky;
++          top: 100px;
++          height: 65vh;
++          align-self: start;
++        }
++
++        #animated > section {
++          position: absolute;
++          inset: 0;
++          min-height: 0;
++          margin: 0;
++          animation: coffee-reveal auto linear both;
++          animation-range: cover 0% cover 100%;
++        }
++
++        /* Keep these after the shorthand, which resets animation-timeline. */
++        #animated > section:nth-child(1) { animation-timeline: --coffee-source; }
++        #animated > section:nth-child(2) { animation-timeline: --coffee-roast; }
++        #animated > section:nth-child(3) { animation-timeline: --coffee-brew; }
++      }
++    }
++
++    @media (max-width: 600px) {
++      .story-columns { gap: 16px; }
++      .story-caption { bottom: 16px; left: 16px; right: 16px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +339,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-story" aria-labelledby="story-title">
++      <div class="story-heading">
++        <p class="story-eyebrow">A little care. In every cup.</p>
++        <h2 id="story-title">Good coffee has a story.</h2>
++        <p>From the first bean to your first sip, follow the small details that make your daily ritual something special.</p>
++      </div>
++
++      <div class="story-columns">
++        <div id="tracked">
++          <section aria-labelledby="source-title">
++            <p class="story-eyebrow">01 / The origin</p>
++            <h3 id="source-title">Great days start with good roots.</h3>
++            <p>Our story begins with thoughtfully sourced beans. We choose coffees with character, grown by people who care as much about their craft as we do.</p>
++          </section>
++          <section aria-labelledby="roast-title">
++            <p class="story-eyebrow">02 / The roast</p>
++            <h3 id="roast-title">A little heat. A lot of heart.</h3>
++            <p>Roasted locally in small batches, each coffee gets the time and attention it deserves. We bring out its natural sweetness, rich aroma, and unmistakable personality.</p>
++          </section>
++          <section aria-labelledby="brew-title">
++            <p class="story-eyebrow">03 / Your ritual</p>
++            <h3 id="brew-title">Made for your kind of morning.</h3>
++            <p>Freshly ground and carefully brewed, this is where it all comes together. Take a breath, find your favorite spot, and make a little room for a great cup.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section class="story-visual" aria-labelledby="source-visual-title">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Roasted coffee beans with rich brown textures" width="900" height="1100" loading="lazy" decoding="async">
++            <div class="story-caption">
++              <span>01 / Thoughtfully sourced</span>
++              <h3 id="source-visual-title">Character in every bean.</h3>
++            </div>
++          </section>
++          <section class="story-visual" aria-labelledby="roast-visual-title">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Fresh coffee with a deep, rich crema" width="900" height="1100" loading="lazy" decoding="async">
++            <div class="story-caption">
++              <span>02 / Locally roasted</span>
++              <h3 id="roast-visual-title">Small batches. Big flavor.</h3>
++            </div>
++          </section>
++          <section class="story-visual" aria-labelledby="brew-visual-title">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="A freshly prepared cup of coffee ready to enjoy" width="900" height="1100" loading="lazy" decoding="async">
++            <div class="story-caption">
++              <span>03 / Carefully brewed</span>
++              <h3 id="brew-visual-title">Your daily moment of joy.</h3>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

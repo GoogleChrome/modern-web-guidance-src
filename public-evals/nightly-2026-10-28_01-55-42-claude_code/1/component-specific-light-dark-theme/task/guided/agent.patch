@@ -1,0 +1,318 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,113 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Tell the browser up front that both schemes are supported (avoids a white flash in dark mode) -->
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* ------------------------------------------------------------------
++       Design tokens
++       Every color has an explicit light and dark value. The "live" token
++       (e.g. --surface) resolves via light-dark() against the color-scheme
++       of the element that USES it, so a subtree can switch scheme and all
++       tokens re-resolve automatically.
++       ------------------------------------------------------------------ */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      /* Page */
++      --page-light: #fafafa;
++      --page-dark: #141110;
++
++      /* Card / elevated surfaces */
++      --surface-light: #ffffff;
++      --surface-dark: #241e1c;
++      --surface-border-light: rgba(62, 39, 35, 0.08);
++      --surface-border-dark: rgba(255, 255, 255, 0.08);
++      --surface-shadow-light: rgba(0, 0, 0, 0.1);
++      --surface-shadow-dark: rgba(0, 0, 0, 0.5);
++
++      /* Text */
++      --text-light: #3e2723;
++      --text-dark: #efe6e1;
++      --heading-light: #4e342e;
++      --heading-dark: #e6c7b3;
++
++      /* Brand / chrome */
++      --primary-light: #4e342e;
++      --primary-dark: #1f1715;
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #1b1614;
++      --accent-light: #ffab40;
++      --accent-dark: #ffb74d;
++
++      /* Buttons */
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #d2b49c;
++      --btn-bg-hover-light: #3e2723;
++      --btn-bg-hover-dark: #e4ccb8;
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #2a1b16;
++
++      /* Focus ring */
++      --focus-light: #4e342e;
++      --focus-dark: #ffb74d;
++
++      /* --- Live tokens: default to light --- */
++      --page: var(--page-light);
++      --surface: var(--surface-light);
++      --surface-border: var(--surface-border-light);
++      --surface-shadow: var(--surface-shadow-light);
++      --text: var(--text-light);
++      --heading: var(--heading-light);
++      --primary: var(--primary-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text: var(--btn-text-light);
++      --focus: var(--focus-light);
++
++      /* Fallback for browsers without light-dark(): flip tokens via media query */
++      @media (prefers-color-scheme: dark) {
++        --page: var(--page-dark);
++        --surface: var(--surface-dark);
++        --surface-border: var(--surface-border-dark);
++        --surface-shadow: var(--surface-shadow-dark);
++        --text: var(--text-dark);
++        --heading: var(--heading-dark);
++        --primary: var(--primary-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --focus: var(--focus-dark);
++      }
++
++      /* Preferred: scheme-aware tokens that re-resolve per element */
++      @supports (color: light-dark(white, black)) {
++        --page: light-dark(var(--page-light), var(--page-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --surface-border: light-dark(var(--surface-border-light), var(--surface-border-dark));
++        --surface-shadow: light-dark(var(--surface-shadow-light), var(--surface-shadow-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --heading: light-dark(var(--heading-light), var(--heading-dark));
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-bg-hover: light-dark(var(--btn-bg-hover-light), var(--btn-bg-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --focus: light-dark(var(--focus-light), var(--focus-dark));
++      }
++
++      /* Follow the user's system preference for the whole page, including
++         native UI such as scrollbars and form controls. */
++      color-scheme: light dark;
++      accent-color: var(--accent);
++      color: var(--text);
++      background-color: var(--page);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -23,11 +120,16 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page);
+     }
+ 
++    :focus-visible {
++      outline: 2px solid var(--focus);
++      outline-offset: 2px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -92,52 +194,125 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* The hero is always a dark photo with white text, so its button should
++       always use the light-scheme button colors regardless of page theme. */
++    .hero .btn {
++      --btn-bg: var(--btn-bg-light);
++      --btn-bg-hover: var(--btn-bg-hover-light);
++      --btn-text: var(--btn-text-light);
++      --focus: #ffffff;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    h2 {
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* ------------------------------------------------------------------
++       Themed card
++       A self-contained surface. Background AND text color are set on the
++       card itself (not inherited from body) so that whatever color-scheme
++       the card ends up in, its text/background pair always matches.
++       ------------------------------------------------------------------ */
++    .themed-card {
++      background: var(--surface);
++      color: var(--text);
++      accent-color: var(--accent);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid var(--surface-border);
++      box-shadow: 0 2px 5px var(--surface-shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .themed-card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
++    /* Force a card to stay dark, even on a light page. `only` prevents the
++       browser from auto-adapting it back. Inherited color properties are
++       re-declared because light-dark() resolves at computed-value time:
++       an ancestor's already-resolved color would otherwise leak in. */
++    .themed-card.force-dark {
++      color-scheme: only dark;
++      color: var(--text);
++      accent-color: var(--accent);
++    }
++
++    /* Force a card back to light. Declared after .force-dark so that
++       force-light wins if both classes are present. */
++    .themed-card.force-light {
++      color-scheme: only light;
++      color: var(--text);
++      accent-color: var(--accent);
++    }
++
++    /* Fallback for browsers that support color-scheme but not light-dark():
++       pin the tokens directly on the forced subtree. */
++    @supports not (color: light-dark(white, black)) {
++      .themed-card.force-dark {
++        --surface: var(--surface-dark);
++        --surface-border: var(--surface-border-dark);
++        --surface-shadow: var(--surface-shadow-dark);
++        --text: var(--text-dark);
++        --heading: var(--heading-dark);
++        --accent: var(--accent-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-bg-hover: var(--btn-bg-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --focus: var(--focus-dark);
++      }
++
++      .themed-card.force-light {
++        --surface: var(--surface-light);
++        --surface-border: var(--surface-border-light);
++        --surface-shadow: var(--surface-shadow-light);
++        --text: var(--text-light);
++        --heading: var(--heading-light);
++        --accent: var(--accent-light);
++        --btn-bg: var(--btn-bg-light);
++        --btn-bg-hover: var(--btn-bg-hover-light);
++        --btn-text: var(--btn-text-light);
++        --focus: var(--focus-light);
++      }
++    }
++
++    /* Buttons resolve their own colors from tokens, so they pick up the
++       scheme of whatever container they sit in (page, dark card, light card). */
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -151,8 +326,12 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,20 +355,27 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <!--
++        Theme controls:
++          .themed-card              follows the page theme (system light/dark)
++          .themed-card.force-dark   always dark, even on a light page
++          .themed-card.force-light  always light, even on a dark page
++                                    (also wins over force-dark if both are present)
++      -->
+       <div class="grid">
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card force-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

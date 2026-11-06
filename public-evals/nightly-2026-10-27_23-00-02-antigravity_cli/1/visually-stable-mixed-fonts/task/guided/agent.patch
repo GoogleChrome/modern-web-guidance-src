@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,103 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme</title>
++  <style>
++    @layer base, components;
++
++    @layer base {
++      :root {
++        --font-primary: Verdana, system-ui, sans-serif;
++        --font-code: "Courier New", Courier, monospace;
++        --font-theme-alternate: "Times New Roman", Times, serif;
++        --surface-bg: #f8fafc;
++        --card-bg: #ffffff;
++        --code-bg: #f1f5f9;
++        --text-color: #1e293b;
++        --border-color: #e2e8f0;
++      }
++
++      body {
++        font-family: var(--font-primary);
++        line-height: 1.5;
++        text-align: start;
++        color: var(--text-color);
++        background-color: var(--surface-bg);
++        margin: 0;
++        padding: 2rem;
++      }
++
++      main {
++        max-inline-size: 80ch;
++        margin-inline: auto;
++        display: grid;
++        gap: 1.5rem;
++      }
++    }
++
++    @layer components {
++      #mixed-fonts-container {
++        font-family: var(--font-primary);
++        /* Automatically extract and apply x-height ratio from the primary font */
++        font-size-adjust: from-font;
++        text-wrap: pretty;
++        background-color: var(--card-bg);
++        border: 1px solid var(--border-color);
++        border-radius: 0.5rem;
++        padding: 1.25rem;
++        margin: 0;
++      }
++
++      #mixed-fonts-container code {
++        font-family: var(--font-code);
++        background-color: var(--code-bg);
++        padding-inline: 0.35em;
++        padding-block: 0.15em;
++        border-radius: 0.25rem;
++      }
++
++      #independent-theme-container {
++        font-family: var(--font-theme-alternate);
++        /* Specific numeric aspect-ratio override (x-height / font-size) to lock down visual proportions independently */
++        font-size-adjust: 0.52;
++        text-wrap: pretty;
++        background-color: var(--card-bg);
++        border: 1px solid var(--border-color);
++        border-radius: 0.5rem;
++        padding: 1.25rem;
++      }
++
++      /* Feature detection and fallback for browsers without font-size-adjust support */
++      @supports not (font-size-adjust: from-font) {
++        #mixed-fonts-container {
++          line-height: 1.6;
++          font-size: 1rem;
++        }
++
++        #mixed-fonts-container code {
++          font-size: 1.08em;
++          line-height: 1.5;
++        }
++
++        #independent-theme-container {
++          font-size: 1.12rem;
++          line-height: 1.6;
++        }
++      }
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <p id="mixed-fonts-container">
++      When combining standard body typography with inline code snippets like <code>font-size-adjust: from-font</code> or <code>const aspectRatio = 0.52;</code>, differences in lowercase x-height are normalized automatically so both font families appear visually balanced.
++    </p>
++
++    <div id="independent-theme-container">
++      This independent theme container uses an alternate serif typeface and locks down its visual proportions using an explicit numeric aspect-ratio override on <code>font-size-adjust</code>, keeping lowercase glyph heights consistent across themes.
++    </div>
++  </main>
++</body>
++</html>

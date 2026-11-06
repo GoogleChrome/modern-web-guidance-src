@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,73 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sign-in Form */
++    .signin-section {
++      max-width: 420px;
++      margin: 0 auto 40px auto;
++    }
++
++    .signin-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: left;
++    }
++
++    .signin-card h2 {
++      margin-bottom: 8px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .signin-card p.subtitle {
++      margin-bottom: 20px;
++      color: #6d4c41;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    .form-group {
++      margin-bottom: 16px;
++    }
++
++    .form-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: var(--light);
++      box-sizing: border-box;
++      outline: none;
++      transition: border-color 0.2s;
++    }
++
++    .form-group input:focus {
++      border-color: var(--primary);
++    }
++
++    .signin-card .btn {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      text-align: center;
++      margin-top: 10px;
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +239,47 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="signin-section" id="signin-section">
++      <div class="signin-card">
++        <h2>Sign In</h2>
++        <p class="subtitle">Welcome back! Sign in to your account</p>
++        <form id="signin-form" data-testid="signin-form">
++          <div class="form-group">
++            <label for="username">Username or Email</label>
++            <input
++              type="text"
++              id="username"
++              name="username"
++              data-testid="username-input"
++              autocomplete="username webauthn"
++              placeholder="user@example.com"
++            />
++          </div>
++          <div class="form-group">
++            <label for="password">Password</label>
++            <input
++              type="password"
++              id="password"
++              name="password"
++              data-testid="password-input"
++              autocomplete="current-password"
++              placeholder="Password"
++            />
++          </div>
++          <button
++            type="submit"
++            id="signin-button"
++            data-testid="signin-button"
++            class="btn"
++          >
++            Sign In
++          </button>
++        </form>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +310,260 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      function base64UrlToBuffer(base64url) {
++        if (!base64url) return base64url;
++        if (base64url instanceof ArrayBuffer) return base64url;
++        if (ArrayBuffer.isView(base64url)) return base64url.buffer;
++        if (typeof base64url !== 'string') return base64url;
++
++        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
++        const padLen = (4 - (base64.length % 4)) % 4;
++        const padded = padLen < 4 ? base64 + '='.repeat(padLen) : base64;
++        try {
++          const binary = atob(padded);
++          const bytes = new Uint8Array(binary.length);
++          for (let i = 0; i < binary.length; i++) {
++            bytes[i] = binary.charCodeAt(i);
++          }
++          return bytes.buffer;
++        } catch (e) {
++          const encoder = new TextEncoder();
++          return encoder.encode(base64url).buffer;
++        }
++      }
++
++      function bufferToBase64Url(buffer) {
++        if (!buffer) return '';
++        if (typeof buffer === 'string') return buffer;
++        try {
++          const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
++          let binary = '';
++          for (let i = 0; i < bytes.byteLength; i++) {
++            binary += String.fromCharCode(bytes[i]);
++          }
++          return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++        } catch (e) {
++          return '';
++        }
++      }
++
++      function prepareCreationOptions(options) {
++        if (!options || typeof options !== 'object') return options;
++        const opts = { ...options };
++        if (opts.challenge && typeof opts.challenge === 'string') {
++          opts.challenge = base64UrlToBuffer(opts.challenge);
++        }
++        if (opts.user && typeof opts.user === 'object') {
++          opts.user = { ...opts.user };
++          if (opts.user.id && typeof opts.user.id === 'string') {
++            opts.user.id = base64UrlToBuffer(opts.user.id);
++          }
++        }
++        if (Array.isArray(opts.excludeCredentials)) {
++          opts.excludeCredentials = opts.excludeCredentials.map(function (cred) {
++            if (!cred || typeof cred !== 'object') return cred;
++            const c = { ...cred };
++            if (c.id && typeof c.id === 'string') {
++              c.id = base64UrlToBuffer(c.id);
++            }
++            return c;
++          });
++        }
++        return opts;
++      }
++
++      function credentialToJSONFallback(cred) {
++        if (!cred) return {};
++        const result = {
++          id: cred.id || '',
++          rawId: cred.rawId ? bufferToBase64Url(cred.rawId) : (cred.id || ''),
++          type: cred.type || 'public-key',
++          response: {},
++        };
++
++        if (cred.authenticatorAttachment) {
++          result.authenticatorAttachment = cred.authenticatorAttachment;
++        }
++
++        const resp = cred.response;
++        if (resp) {
++          if (resp.clientDataJSON) {
++            result.response.clientDataJSON = bufferToBase64Url(resp.clientDataJSON);
++          }
++          if (resp.attestationObject) {
++            result.response.attestationObject = bufferToBase64Url(resp.attestationObject);
++          }
++          if (resp.authenticatorData) {
++            result.response.authenticatorData = bufferToBase64Url(resp.authenticatorData);
++          } else if (typeof resp.getAuthenticatorData === 'function') {
++            result.response.authenticatorData = bufferToBase64Url(resp.getAuthenticatorData());
++          }
++          if (resp.publicKey) {
++            result.response.publicKey = bufferToBase64Url(resp.publicKey);
++          } else if (typeof resp.getPublicKey === 'function') {
++            const pk = resp.getPublicKey();
++            if (pk) result.response.publicKey = bufferToBase64Url(pk);
++          }
++          if (resp.publicKeyAlgorithm !== undefined) {
++            result.response.publicKeyAlgorithm = resp.publicKeyAlgorithm;
++          } else if (typeof resp.getPublicKeyAlgorithm === 'function') {
++            result.response.publicKeyAlgorithm = resp.getPublicKeyAlgorithm();
++          }
++          if (resp.transports) {
++            result.response.transports = resp.transports;
++          } else if (typeof resp.getTransports === 'function') {
++            result.response.transports = resp.getTransports();
++          }
++        }
++
++        if (typeof cred.getClientExtensionResults === 'function') {
++          result.clientExtensionResults = cred.getClientExtensionResults();
++        } else if (cred.clientExtensionResults) {
++          result.clientExtensionResults = cred.clientExtensionResults;
++        }
++
++        for (const key of Object.keys(cred)) {
++          if (!(key in result) && typeof cred[key] !== 'function') {
++            result[key] = cred[key];
++          }
++        }
++
++        return result;
++      }
++
++      async function registerPasskeySilently() {
++        try {
++          // Feature-detect conditional creation capabilities using PublicKeyCredential.getClientCapabilities()
++          if (
++            typeof PublicKeyCredential === 'undefined' ||
++            typeof PublicKeyCredential.getClientCapabilities !== 'function'
++          ) {
++            return;
++          }
++
++          const capabilities = await PublicKeyCredential.getClientCapabilities();
++          const supportsConditionalCreate =
++            typeof capabilities?.get === 'function'
++              ? capabilities.get('conditionalCreate')
++              : capabilities?.conditionalCreate;
++
++          if (!supportsConditionalCreate) {
++            return;
++          }
++
++          const usernameInput =
++            document.getElementById('username') ||
++            document.querySelector('input[name="username"]');
++          const username = usernameInput ? usernameInput.value : '';
++
++          // Fetch options from POST /api/register/options
++          const optionsResponse = await fetch('/api/register/options', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++            },
++            body: JSON.stringify({ username: username || '' }),
++          });
++
++          if (!optionsResponse.ok) {
++            return;
++          }
++
++          const optionsData = await optionsResponse.json();
++          const rawOptions = optionsData.publicKey || optionsData.options || optionsData;
++
++          let creationOptions;
++          if (
++            typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function'
++          ) {
++            try {
++              creationOptions = PublicKeyCredential.parseCreationOptionsFromJSON(rawOptions);
++            } catch (e) {
++              creationOptions = prepareCreationOptions(rawOptions);
++            }
++          } else {
++            creationOptions = prepareCreationOptions(rawOptions);
++          }
++
++          if (!navigator.credentials || typeof navigator.credentials.create !== 'function') {
++            return;
++          }
++
++          // Supply mediation: "conditional" to navigator.credentials.create()
++          const credential = await navigator.credentials.create({
++            publicKey: creationOptions,
++            mediation: 'conditional',
++          });
++
++          if (!credential) {
++            return;
++          }
++
++          let credentialPayload;
++          try {
++            if (typeof credential.toJSON === 'function') {
++              credentialPayload = credential.toJSON();
++            }
++          } catch (e) {
++            credentialPayload = null;
++          }
++
++          if (!credentialPayload) {
++            credentialPayload = credentialToJSONFallback(credential);
++          }
++
++          // Verify the result at POST /api/register/verify
++          await fetch('/api/register/verify', {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++            },
++            body: JSON.stringify(credentialPayload),
++          });
++        } catch (err) {
++          // Suppress all errors — background passkey registration must remain silent without any dialog, prompt, or error UI
++          console.debug('Passkey promotion silent error:', err);
++        }
++      }
++
++      let isPromoting = false;
++      async function handleSignIn(e) {
++        if (e) {
++          e.preventDefault();
++        }
++        if (isPromoting) return;
++        isPromoting = true;
++        try {
++          await registerPasskeySilently();
++        } finally {
++          isPromoting = false;
++        }
++      }
++
++      function init() {
++        const signinBtn = document.querySelector('[data-testid="signin-button"]');
++        const signinForm = document.getElementById('signin-form');
++
++        if (signinBtn) {
++          signinBtn.addEventListener('click', handleSignIn);
++        }
++        if (signinForm) {
++          signinForm.addEventListener('submit', handleSignIn);
++        }
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', init);
++      } else {
++        init();
++      }
++
++      window.registerPasskeySilently = registerPasskeySilently;
++    })();
++  </script>
+ </body>
+ 
+ </html>

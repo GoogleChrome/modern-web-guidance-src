@@ -1,0 +1,76 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..191c7ed
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,23 @@
++# The Daily Grind
++
++Run `pnpm install` and `pnpm start`. The port defaults to 11222 and can be
++overridden with `PORT`.
++
++The server sends a `Permissions-Policy` header allowing this site's origin to
++request resources on the user's local network and loopback interface. It includes
++the legacy `local-network-access` directive for older browsers.
++
++Local network access still requires the user's browser permission. Serve the app
++over HTTPS in production (localhost is suitable for local development). Local
++services must allow the app's origin through CORS when JavaScript needs to read
++their responses. If the app is embedded across origins, its parent must also
++delegate these permissions through its policy and iframe `allow` attribute.
++
++When deploying through a different static host, configure it to send the same
++HTTP header; this policy cannot be configured with an HTML meta tag:
++
++```http
++Permissions-Policy: local-network=(self), loopback-network=(self), local-network-access=(self)
++```
++
++See the [Local Network Access specification](https://wicg.github.io/local-network-access/#permissions).
+diff --git a/package.json b/package.json
+index 2bd4d77..28d9b59 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "statikk": "^3.1.0"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..9ea3ee8
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,16 @@
++import statikk from 'statikk';
++import { fileURLToPath } from 'node:url';
++
++const { url } = await statikk({
++  root: fileURLToPath(new URL('.', import.meta.url)),
++  port: process.env.PORT || 11222,
++  setHeaders(response) {
++    // The legacy directive supports browsers predating the separate permissions.
++    response.setHeader(
++      'Permissions-Policy',
++      'local-network=(self), loopback-network=(self), local-network-access=(self)',
++    );
++  },
++});
++
++console.log(`The Daily Grind is available at ${url}`);

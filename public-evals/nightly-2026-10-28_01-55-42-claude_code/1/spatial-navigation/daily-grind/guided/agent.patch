@@ -1,0 +1,159 @@
+diff --git a/index.html b/index.html
+index 66c9173..3d3dc1a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,24 @@
+       background: #3e2723;
+     }
+ 
++    /* Focus ring for buttons inside cards (white card background) */
++    .card .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,8 +194,10 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="seasonal-nav-hint" class="visually-hidden">Use the arrow keys to move between items.</p>
++      <div class="grid" role="group" aria-labelledby="seasonal-heading" aria-describedby="seasonal-nav-hint"
++        data-spatial-nav>
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +227,116 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Spatial (arrow-key) navigation for composite widgets marked with
++     * [data-spatial-nav]. Candidates are chosen from live geometry, so the
++     * same code works whether the container renders as 1, 2 or 3 columns,
++     * or is switched to a flex/list layout.
++     */
++    (() => {
++      const DIRECTIONS = {
++        ArrowUp: 'up',
++        ArrowDown: 'down',
++        ArrowLeft: 'left',
++        ArrowRight: 'right',
++      };
++      const ITEM_SELECTOR = 'a[href], button:not([disabled])';
++      const SELF_HANDLING = ':read-write, select, input[type="range"], [role="slider"]';
++      const TOLERANCE = 1;          // px, absorbs sub-pixel rounding
++      const MISALIGN_WEIGHT = 2;    // penalty per px of perpendicular offset
++
++      const isVisible = (el) =>
++        typeof el.checkVisibility === 'function' ? el.checkVisibility() : true;
++
++      const getItems = (container) =>
++        Array.from(container.querySelectorAll(ITEM_SELECTOR)).filter(isVisible);
++
++      const setActive = (items, active) => {
++        for (const item of items) {
++          item.tabIndex = item === active ? 0 : -1;
++        }
++      };
++
++      /** Returns the best candidate in `dir` from `current`, or null. */
++      const findCandidate = (current, dir, items) => {
++        const cur = current.getBoundingClientRect();
++        const horizontal = dir === 'left' || dir === 'right';
++        let aligned = null;   // { el, gap, offset } among perpendicular-overlapping items
++        let fallback = null;  // { el, score } among the rest
++
++        for (const el of items) {
++          if (el === current) continue;
++          const r = el.getBoundingClientRect();
++
++          // Edge-based direction filter: near edge must be at/beyond the far edge.
++          let gap;
++          switch (dir) {
++            case 'right': if (r.left < cur.right - TOLERANCE) continue; gap = r.left - cur.right; break;
++            case 'left':  if (r.right > cur.left + TOLERANCE) continue; gap = cur.left - r.right; break;
++            case 'down':  if (r.top < cur.bottom - TOLERANCE) continue; gap = r.top - cur.bottom; break;
++            case 'up':    if (r.bottom > cur.top + TOLERANCE) continue; gap = cur.top - r.bottom; break;
++          }
++
++          const overlaps = horizontal
++            ? r.bottom > cur.top && r.top < cur.bottom
++            : r.right > cur.left && r.left < cur.right;
++          const offset = horizontal
++            ? Math.abs((r.top + r.bottom) / 2 - (cur.top + cur.bottom) / 2)
++            : Math.abs((r.left + r.right) / 2 - (cur.left + cur.right) / 2);
++
++          if (overlaps) {
++            if (!aligned || gap < aligned.gap || (gap === aligned.gap && offset < aligned.offset)) {
++              aligned = { el, gap, offset };
++            }
++          } else if (!aligned) {
++            const score = gap + MISALIGN_WEIGHT * offset;
++            if (!fallback || score < fallback.score) fallback = { el, score };
++          }
++        }
++
++        return aligned ? aligned.el : fallback ? fallback.el : null;
++      };
++
++      const init = (container) => {
++        const items = getItems(container);
++        if (items.length === 0) return;
++        setActive(items, items.find((el) => el.tabIndex === 0) || items[0]);
++
++        // Keep the single tab stop on whichever item was focused last
++        // (keyboard, pointer or programmatic focus).
++        container.addEventListener('focusin', (e) => {
++          const target = e.composedPath()[0];
++          const current = getItems(container);
++          if (target instanceof Element && current.includes(target)) {
++            setActive(current, target);
++          }
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const dir = DIRECTIONS[e.key];
++          if (!dir || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++          const target = e.composedPath()[0];
++          if (!(target instanceof Element) || target.matches(SELF_HANDLING)) return;
++
++          const current = getItems(container);
++          if (!current.includes(target)) return;
++
++          const next = findCandidate(target, dir, current);
++          if (!next) return; // Nothing in that direction: let the page scroll natively.
++
++          e.preventDefault();
++          setActive(current, next);
++          next.focus({ preventScroll: true });
++          next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++      };
++
++      document.querySelectorAll('[data-spatial-nav]').forEach(init);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,289 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,96 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Coffee Box (HTML-in-Canvas) */
++    .box-section {
++      background: var(--primary);
++      color: white;
++      text-align: center;
++      padding: 40px 20px;
++    }
++
++    .box-section p {
++      margin-bottom: 10px;
++    }
++
++    #box-canvas {
++      display: block;
++      width: min(100%, 720px);
++      height: 520px;
++      margin: 0 auto;
++    }
++
++    .box-form {
++      width: 360px;
++      height: 360px;
++      padding: 28px;
++      background: #fff8f0;
++      color: var(--text);
++      border: 6px solid var(--accent);
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      text-align: left;
++    }
++
++    .box-form h3 {
++      color: var(--primary);
++    }
++
++    .box-form label {
++      font-size: 0.85rem;
++      font-weight: bold;
++    }
++
++    .box-form input,
++    .box-form select {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .box-form .row {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .box-form button {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      border-radius: 4px;
++      padding: 8px 14px;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .box-form button:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .box-form .qty-btn {
++      width: 36px;
++      padding: 8px 0;
++    }
++
++    #box-status {
++      min-height: 1.4em;
++      font-size: 0.85rem;
++      color: var(--primary);
++    }
++
++    .box-fallback {
++      display: flex;
++      justify-content: center;
++      margin-top: 20px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +261,38 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="box-section">
++    <h2>Build Your Coffee Box</h2>
++    <p>The form is printed on the box, and it stays clickable while the box spins.</p>
++    <canvas id="box-canvas" layoutsubtree>
++      <form class="box-form" id="box-form">
++        <h3>Custom Coffee Box</h3>
++        <div>
++          <label for="box-name">Your name</label>
++          <input id="box-name" name="name" type="text" placeholder="Jane Doe">
++        </div>
++        <div>
++          <label for="box-roast">Roast</label>
++          <select id="box-roast" name="roast">
++            <option>Dark Roast</option>
++            <option>Medium Roast</option>
++            <option>Light Roast</option>
++          </select>
++        </div>
++        <div class="row">
++          <label for="box-qty">Bags</label>
++          <button type="button" class="qty-btn" id="box-minus">&minus;</button>
++          <input id="box-qty" name="qty" type="number" min="1" max="12" value="1" style="width: 70px">
++          <button type="button" class="qty-btn" id="box-plus">+</button>
++        </div>
++        <button type="submit">Add to Box</button>
++        <div id="box-status" role="status"></div>
++      </form>
++    </canvas>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +324,149 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('box-canvas');
++      const form = document.getElementById('box-form');
++      const status = document.getElementById('box-status');
++      const qty = document.getElementById('box-qty');
++
++      // Form behaviour (works the same whether or not it is drawn in 3D)
++      document.getElementById('box-minus').onclick = () => { qty.value = Math.max(1, +qty.value - 1); };
++      document.getElementById('box-plus').onclick = () => { qty.value = Math.min(12, +qty.value + 1); };
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const d = new FormData(form);
++        status.textContent = `Added ${d.get('qty')} x ${d.get('roast')} for ${d.get('name') || 'you'}!`;
++      });
++
++      const gl = canvas.getContext('webgl');
++      const supported = gl && 'onpaint' in canvas && typeof gl.texElementImage2D === 'function' &&
++        typeof canvas.getElementTransform === 'function';
++
++      if (!supported) {
++        // Browser lacks HTML-in-Canvas: show the form as a regular element.
++        const wrap = document.createElement('div');
++        wrap.className = 'box-fallback';
++        wrap.appendChild(form);
++        canvas.replaceWith(wrap);
++        return;
++      }
++
++      const VS = `attribute vec3 pos; attribute vec2 uv; attribute vec3 col;
++        uniform mat4 mvp; varying vec2 vUv; varying vec3 vCol;
++        void main() { vUv = uv; vCol = col; gl_Position = mvp * vec4(pos, 1.0); }`;
++      const FS = `precision mediump float; varying vec2 vUv; varying vec3 vCol;
++        uniform sampler2D tex; uniform float useTex;
++        void main() {
++          vec3 stripe = vCol * (0.85 + 0.15 * step(0.5, fract(vUv.y * 6.0)));
++          gl_FragColor = useTex > 0.5 ? texture2D(tex, vUv) : vec4(stripe, 1.0);
++        }`;
++      const shader = (type, src) => {
++        const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s;
++      };
++      const prog = gl.createProgram();
++      gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS));
++      gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
++      gl.linkProgram(prog);
++      gl.useProgram(prog);
++
++      // Cube: faces[0] (+Z) carries the form texture. Each face: 4 corners (TL, TR, BR, BL as seen from outside).
++      const faces = [
++        { c: [[-1, 1, 1], [1, 1, 1], [1, -1, 1], [-1, -1, 1]], color: [1, 1, 1] },
++        { c: [[1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]], color: [0.55, 0.36, 0.25] },
++        { c: [[1, 1, 1], [1, 1, -1], [1, -1, -1], [1, -1, 1]], color: [0.43, 0.27, 0.19] },
++        { c: [[-1, 1, -1], [-1, 1, 1], [-1, -1, 1], [-1, -1, -1]], color: [0.48, 0.31, 0.22] },
++        { c: [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]], color: [0.85, 0.65, 0.4] },
++        { c: [[-1, -1, 1], [1, -1, 1], [1, -1, -1], [-1, -1, -1]], color: [0.3, 0.19, 0.14] },
++      ];
++      const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
++      const verts = [], idx = [];
++      faces.forEach((f, i) => {
++        f.c.forEach((p, k) => verts.push(...p, ...uvs[k], ...f.color));
++        idx.push(i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3);
++      });
++      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
++      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
++      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
++      [['pos', 3, 0], ['uv', 2, 3], ['col', 3, 5]].forEach(([name, n, off]) => {
++        const loc = gl.getAttribLocation(prog, name);
++        gl.enableVertexAttribArray(loc);
++        gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 32, off * 4);
++      });
++      const uMvp = gl.getUniformLocation(prog, 'mvp');
++      const uUseTex = gl.getUniformLocation(prog, 'useTex');
++
++      const tex = gl.createTexture();
++      gl.bindTexture(gl.TEXTURE_2D, tex);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++      gl.enable(gl.DEPTH_TEST);
++      gl.enable(gl.CULL_FACE);
++
++      const FACE_W = form.offsetWidth, FACE_H = form.offsetHeight;
++      let angle = 0, last = performance.now(), hovering = false;
++      canvas.addEventListener('pointerenter', () => { hovering = true; });
++      canvas.addEventListener('pointerleave', () => { hovering = false; });
++      // Pause rotation while the user is interacting with the form.
++      form.addEventListener('focusin', () => { hovering = true; });
++      form.addEventListener('focusout', () => { hovering = false; });
++
++      function resize() {
++        const dpr = window.devicePixelRatio || 1;
++        const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
++        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
++        gl.viewport(0, 0, w, h);
++      }
++
++      function draw() {
++        resize();
++        const w = canvas.width, h = canvas.height;
++        // Gentle sway keeps the face readable; full spin is slow enough to click.
++        const model = new DOMMatrix().rotate(-15, angle, 0);
++        const view = new DOMMatrix().translate(0, 0, -6.5);
++        const f = 1 / Math.tan(Math.PI / 8), near = 0.1, far = 50, aspect = w / h;
++        const proj = new DOMMatrix([
++          f / aspect, 0, 0, 0,
++          0, f, 0, 0,
++          0, 0, (far + near) / (near - far), -1,
++          0, 0, 2 * far * near / (near - far), 0,
++        ]);
++        const clip = proj.multiply(view).multiply(model);
++
++        gl.clearColor(0.306, 0.204, 0.18, 1);
++        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++        gl.uniformMatrix4fv(uMvp, false, clip.toFloat32Array());
++
++        gl.bindTexture(gl.TEXTURE_2D, tex);
++        gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, form);
++        gl.uniform1f(uUseTex, 1);
++        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
++        gl.uniform1f(uUseTex, 0);
++        gl.drawElements(gl.TRIANGLES, 30, gl.UNSIGNED_SHORT, 12);
++
++        // Map form pixels -> face -> clip -> canvas pixels, so the real DOM element
++        // sits exactly over its projection and hit-testing/focus follow the box.
++        const toCanvas = new DOMMatrix().translate(w / 2, h / 2).scale(w / 2, -h / 2);
++        const toFace = new DOMMatrix().translate(-1, 1, 1).scale(2 / FACE_W, -2 / FACE_H, 1);
++        const m = toCanvas.multiply(clip).multiply(toFace);
++        form.style.transform = canvas.getElementTransform(form, m).toString();
++      }
++
++      canvas.onpaint = draw;
++      function frame(now) {
++        if (!hovering) angle += (now - last) * 0.02;
++        last = now;
++        canvas.requestPaint();
++        requestAnimationFrame(frame);
++      }
++      requestAnimationFrame(frame);
++    })();
++  </script>
+ </body>
+ 
+ </html>

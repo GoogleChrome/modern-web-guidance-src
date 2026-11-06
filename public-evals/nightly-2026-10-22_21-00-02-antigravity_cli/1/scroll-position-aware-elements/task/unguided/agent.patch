@@ -1,0 +1,282 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -24,10 +24,22 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow: hidden;
++      height: 100vh;
+     }
+ 
++    /* Scroll Container with Scroll-State Queries */
++    .scroller {
++      container-type: scroll-state;
++      container-name: scroller;
++      height: 100vh;
++      overflow-y: auto;
++      scroll-behavior: smooth;
++      position: relative;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -151,62 +163,213 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .section-block {
++      margin-top: 60px;
++    }
++
++    .section-block h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      max-width: 650px;
++      margin: 0 auto 20px;
++      color: #5d4037;
++    }
++
++    /* Floating Back to Top Button */
++    .back-to-top {
++      position: fixed;
++      bottom: 2rem;
++      right: 2rem;
++      z-index: 1000;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      padding: 0.75rem 1.25rem;
++      background-color: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 999px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      text-decoration: none;
++      cursor: pointer;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++
++      /* Start out hidden at the top of the container without breaking tab navigation */
++      opacity: 0;
++      visibility: hidden;
++      transform: translateY(20px);
++      translate: 0 20px;
++      pointer-events: none;
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        translate 0.3s ease,
++        visibility 0.3s allow-discrete,
++        background-color 0.3s ease;
++      transition-behavior: allow-discrete;
++    }
++
++    .back-to-top:hover,
++    .back-to-top:focus-visible {
++      background-color: #3e2723;
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @container scroll-state(scrollable: top) {
++      .back-to-top {
++        opacity: 1;
++        visibility: visible;
++        transform: translateY(0);
++        translate: 0 0;
++        pointer-events: auto;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroller" id="top">
++    <nav>
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </header>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++    <main class="container">
++      <section>
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </div>
++      </section>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <section class="section-block">
++        <h2>Single-Origin Reserve</h2>
++        <p class="section-subtitle">Small-lot harvests selected by our master roasters for extraordinary clarity and character.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral aromatics with notes of bergamot, jasmine, and ripe peach.</p>
++            <a href="/menu/ethiopia" class="btn">Explore Roast</a>
++          </div>
++          <div class="card">
++            <h3>Colombia Huila</h3>
++            <p>Balanced sweetness featuring caramel, toasted hazelnut, and red apple acidity.</p>
++            <a href="/menu/colombia" class="btn">Explore Roast</a>
++          </div>
++          <div class="card">
++            <h3>Guatemala Antigua</h3>
++            <p>Velvety body layered with dark chocolate, sweet spice, and orange zest.</p>
++            <a href="/menu/guatemala" class="btn">Explore Roast</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </section>
++
++      <section class="section-block">
++        <h2>Artisanal Brewing Guides</h2>
++        <p class="section-subtitle">Bring cafe-quality extraction to your kitchen counter with our step-by-step methods.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Pour Over V60</h3>
++            <p>Highlight delicate floral and fruit notes with a clean, paper-filtered drawdown.</p>
++            <a href="/guides/v60" class="btn">Read Guide</a>
++          </div>
++          <div class="card">
++            <h3>French Press</h3>
++            <p>Full immersion brewing for a rich, heavy-bodied cup with deep chocolate tones.</p>
++            <a href="/guides/french-press" class="btn">Read Guide</a>
++          </div>
++          <div class="card">
++            <h3>AeroPress</h3>
++            <p>Versatile pressure extraction ideal for both concentrated shots and smooth mugs.</p>
++            <a href="/guides/aeropress" class="btn">Read Guide</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </section>
++
++      <section class="section-block">
++        <h2>Fresh From the Bakery</h2>
++        <p class="section-subtitle">Baked from scratch every morning to pair with your favorite espresso or filter brew.</p>
++        <div class="grid">
++          <div class="card">
++            <h3>Cardamom Morning Bun</h3>
++            <p>Flaky laminated pastry tossed in freshly ground green cardamom and orange sugar.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
++          <div class="card">
++            <h3>Almond Croissant</h3>
++            <p>Twice-baked butter croissant filled with house-made toasted almond frangipane.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
++          <div class="card">
++            <h3>Rosemary Olive Oil Cake</h3>
++            <p>Moist citrus crumb infused with garden rosemary and extra-virgin olive oil.</p>
++            <a href="/menu/bakery" class="btn">Order Pastry</a>
++          </div>
+         </div>
++      </section>
++    </main>
++
++    <footer>
++      <div class="footer-links">
++        <a href="/about">Our Story</a> |
++        <a href="/careers">Join the Team</a> |
++        <a href="/contact">Contact Us</a> |
++        <a href="/privacy-policy">Privacy</a>
+       </div>
+-    </section>
+-  </main>
++      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    </footer>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++    <button type="button" class="back-to-top" aria-label="Back to top">
++      <span aria-hidden="true">&uarr;</span> Back to top
++    </button>
++  </div>
+ 
++  <script>
++    const scroller = document.querySelector('.scroller');
++    const backToTopBtn = document.querySelector('.back-to-top');
++
++    if (scroller && backToTopBtn) {
++      backToTopBtn.addEventListener('click', () => {
++        scroller.scrollTo({ top: 0, behavior: 'smooth' });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

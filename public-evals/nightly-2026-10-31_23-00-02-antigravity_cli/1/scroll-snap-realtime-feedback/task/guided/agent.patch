@@ -1,0 +1,342 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,123 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Cafe Vibe Gallery Carousel */
++    .gallery-section {
++      margin-bottom: 50px;
++    }
++
++    .section-heading {
++      text-align: center;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .gallery-subtitle {
++      text-align: center;
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 10px 7.5% 20px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #gallery {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .gallery-item {
++      flex: 0 0 85%;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++    }
++
++    .gallery-item img {
++      display: block;
++      width: 100%;
++      height: 380px;
++      object-fit: cover;
++    }
++
++    .gallery-caption {
++      padding: 14px 18px;
++      font-weight: 600;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    .thumbnail-row {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .thumbnail {
++      appearance: none;
++      border: 2px solid var(--secondary);
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      padding: 6px;
++      min-inline-size: 64px;
++      min-block-size: 48px;
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 4px;
++      font-family: inherit;
++      font-size: 0.8rem;
++      font-weight: 600;
++      transition: border-color 0.2s, background-color 0.2s, transform 0.2s, box-shadow 0.2s;
++    }
++
++    .thumbnail img {
++      display: block;
++      width: 56px;
++      height: 36px;
++      object-fit: cover;
++      border-radius: 4px;
++    }
++
++    .thumbnail:hover:not(:disabled) {
++      border-color: var(--primary);
++    }
++
++    .thumbnail:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .thumbnail.pending {
++      border-color: var(--accent);
++      background-color: #fff8e1;
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .thumbnail.active {
++      border-color: var(--primary);
++      background-color: var(--primary);
++      color: white;
++      box-shadow: 0 2px 8px rgba(78, 52, 46, 0.35);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,10 +289,94 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="gallery-section">
++      <h2 class="section-heading">Our Cafe Vibe</h2>
++      <p class="gallery-subtitle">Step inside and experience the warmth of freshly brewed craft coffee.</p>
++      <div id="gallery">
++        <div class="gallery-item">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80"
++            alt="Warm sunlit cafe interior with wooden tables and Edison bulb lighting"
++            width="1000"
++            height="667"
++          >
++          <p class="gallery-caption">Warm &amp; Welcoming Interior</p>
++        </div>
++        <div class="gallery-item">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1000&q=80"
++            alt="Barista pouring steamed milk into an espresso cup to create latte art"
++            width="1000"
++            height="667"
++            loading="lazy"
++          >
++          <p class="gallery-caption">Handcrafted Latte Art</p>
++        </div>
++        <div class="gallery-item">
++          <img
++            src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1000&q=80"
++            alt="Cozy window seating area with guests enjoying coffee and conversation"
++            width="1000"
++            height="667"
++            loading="lazy"
++          >
++          <p class="gallery-caption">Cozy Window Seating</p>
++        </div>
++        <div class="gallery-item">
++          <img
++            src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=1000&q=80"
++            alt="Freshly roasted coffee beans and pour-over brewing equipment on the counter"
++            width="1000"
++            height="667"
++            loading="lazy"
++          >
++          <p class="gallery-caption">Artisanal Brew Bar</p>
++        </div>
++      </div>
++      <div class="thumbnail-row">
++        <button type="button" class="thumbnail active" aria-current="true">
++          <img
++            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=200&q=60"
++            alt=""
++            width="56"
++            height="36"
++          >
++          <span>Interior</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img
++            src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=200&q=60"
++            alt=""
++            width="56"
++            height="36"
++          >
++          <span>Latte Art</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img
++            src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=200&q=60"
++            alt=""
++            width="56"
++            height="36"
++          >
++          <span>Seating</span>
++        </button>
++        <button type="button" class="thumbnail">
++          <img
++            src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=200&q=60"
++            alt=""
++            width="56"
++            height="36"
++          >
++          <span>Brew Bar</span>
++        </button>
++      </div>
++    </section>
++
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +405,118 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const container = document.querySelector('#gallery');
++    const thumbnails = document.querySelectorAll('.thumbnail');
++    const items = document.querySelectorAll('.gallery-item');
++
++    const findClosestItemIndex = () => {
++      const containerCenter = container.scrollLeft + container.clientWidth / 2;
++      let closestIndex = 0;
++      let minDistance = Infinity;
++
++      items.forEach((item, index) => {
++        const itemCenter = item.offsetLeft + item.offsetWidth / 2;
++        const distance = Math.abs(containerCenter - itemCenter);
++        if (distance < minDistance) {
++          minDistance = distance;
++          closestIndex = index;
++        }
++      });
++      return closestIndex;
++    };
++
++    const initActiveItem = () => {
++      const closestIndex = findClosestItemIndex();
++      if (!thumbnails[closestIndex]) return;
++
++      thumbnails.forEach((thumb) => {
++        thumb.classList.remove('pending', 'active');
++        thumb.removeAttribute('aria-current');
++      });
++      thumbnails[closestIndex].classList.add('active');
++      thumbnails[closestIndex].setAttribute('aria-current', 'true');
++    };
++
++    if (document.readyState === 'complete') {
++      initActiveItem();
++    } else {
++      window.addEventListener('load', initActiveItem, { once: true });
++    }
++
++    thumbnails.forEach((thumb, index) => {
++      thumb.addEventListener('click', () => {
++        if (items[index]) {
++          items[index].scrollIntoView({
++            behavior: 'smooth',
++            block: 'nearest',
++            inline: 'center'
++          });
++        }
++      });
++    });
++
++    if ('onscrollsnapchanging' in Element.prototype) {
++      container.addEventListener('scrollsnapchanging', (event) => {
++        const pendingTarget = event.snapTargetInline;
++        const index = [...items].indexOf(pendingTarget);
++
++        if (index === -1 || !thumbnails[index]) return;
++
++        thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
++        thumbnails[index].classList.add('pending');
++      });
++
++      container.addEventListener('scrollsnapchange', (event) => {
++        const snappedTarget = event.snapTargetInline;
++        const index = [...items].indexOf(snappedTarget);
++
++        if (index === -1 || !thumbnails[index]) return;
++
++        thumbnails.forEach((thumb) => {
++          thumb.classList.remove('pending', 'active');
++          thumb.removeAttribute('aria-current');
++        });
++        thumbnails[index].classList.add('active');
++        thumbnails[index].setAttribute('aria-current', 'true');
++      });
++    } else {
++      let scrollTimeout;
++      let rafId = null;
++
++      const promotePendingToActive = () => {
++        const closestIndex = findClosestItemIndex();
++        if (!thumbnails[closestIndex]) return;
++        thumbnails.forEach((thumb) => {
++          thumb.classList.remove('pending', 'active');
++          thumb.removeAttribute('aria-current');
++        });
++        thumbnails[closestIndex].classList.add('active');
++        thumbnails[closestIndex].setAttribute('aria-current', 'true');
++      };
++
++      container.addEventListener('scroll', () => {
++        if (rafId) return;
++        rafId = requestAnimationFrame(() => {
++          rafId = null;
++          const closestIndex = findClosestItemIndex();
++          if (!thumbnails[closestIndex]) return;
++
++          thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
++          thumbnails[closestIndex].classList.add('pending');
++        });
++
++        clearTimeout(scrollTimeout);
++        scrollTimeout = setTimeout(promotePendingToActive, 100);
++      }, { passive: true });
++
++      container.addEventListener('scrollend', () => {
++        clearTimeout(scrollTimeout);
++        promotePendingToActive();
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

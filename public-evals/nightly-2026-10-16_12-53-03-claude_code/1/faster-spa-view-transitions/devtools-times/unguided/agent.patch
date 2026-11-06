@@ -1,0 +1,119 @@
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..5dd7cf4 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -7,9 +7,21 @@ interface Props {
+   initialIsBookmarked: boolean;
+ }
+ 
++const READING_LIST_CHANGED = 'reading-list-changed';
++
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  // Pages restored from the view cache keep their old server-rendered state,
++  // so every instance listens for changes made elsewhere.
++  useEffect(() => {
++    const onChange = (e: Event) => {
++      setIsBookmarked((e as CustomEvent<string[]>).detail.includes(slug));
++    };
++    window.addEventListener(READING_LIST_CHANGED, onChange);
++    return () => window.removeEventListener(READING_LIST_CHANGED, onChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -19,7 +31,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+       body: JSON.stringify({ slug }),
+     });
+     const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    window.dispatchEvent(new CustomEvent(READING_LIST_CHANGED, { detail: data.readingList }));
+   };
+ 
+   return (
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..dffd5dd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script>
++      import "../scripts/view-cache";
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/scripts/view-cache.ts b/src/scripts/view-cache.ts
+new file mode 100644
+index 0000000..55e1490
+--- /dev/null
++++ b/src/scripts/view-cache.ts
+@@ -0,0 +1,64 @@
++import { swapFunctions } from "astro:transitions/client";
++
++// Keeps the <body> of recently visited pages alive (detached) so returning to
++// them re-attaches the existing DOM, including hydrated React islands, rather
++// than discarding it and building it again from the fetched HTML.
++
++const MAX_ENTRIES = 10;
++const MAX_AGE_MS = 5 * 60 * 1000;
++const UNCACHEABLE = /\/(signin|signup|api)(\/|$)/;
++
++interface Entry {
++  body: HTMLElement;
++  storedAt: number;
++}
++
++const cache = new Map<string, Entry>();
++
++const keyOf = (url: URL) => url.pathname + url.search;
++
++function store(url: URL, body: HTMLElement) {
++  const key = keyOf(url);
++  if (UNCACHEABLE.test(url.pathname)) return;
++  cache.delete(key); // re-insert so Map order stays least-recently-used first
++  cache.set(key, { body, storedAt: Date.now() });
++  while (cache.size > MAX_ENTRIES) {
++    cache.delete(cache.keys().next().value!);
++  }
++}
++
++function take(url: URL): HTMLElement | undefined {
++  const key = keyOf(url);
++  const entry = cache.get(key);
++  if (!entry) return;
++  // The node becomes live again; it is re-stored when the user leaves it.
++  cache.delete(key);
++  if (Date.now() - entry.storedAt > MAX_AGE_MS) return;
++  return entry.body;
++}
++
++document.addEventListener("astro:before-swap", (event) => {
++  const { to, newDocument } = event;
++  // `location` still points at the page being left while the swap runs.
++  const leaving = new URL(location.href);
++  const leavingBody = document.body;
++  const cachedBody = take(to);
++
++  if (!UNCACHEABLE.test(leaving.pathname)) {
++    store(leaving, leavingBody);
++  }
++
++  if (!cachedBody) {
++    // Fresh render: the default swap would drop the old body, we keep it.
++    return;
++  }
++
++  event.swap = () => {
++    swapFunctions.deselectScripts(newDocument);
++    swapFunctions.swapRootAttributes(newDocument);
++    swapFunctions.swapHeadElements(newDocument);
++    const restoreFocus = swapFunctions.saveFocus();
++    swapFunctions.swapBodyElement(cachedBody, document.body);
++    restoreFocus();
++  };
++});

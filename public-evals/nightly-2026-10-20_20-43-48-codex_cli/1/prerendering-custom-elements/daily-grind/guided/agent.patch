@@ -1,0 +1,630 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..78702a1
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,95 @@
++/** Upgrade the HTML delivered by the server; never replace a parsed shadow tree. */
++export class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++    let root = this.shadowRoot;
++    // Older engines leave the declarative template inert. Move the original
++    // nodes into a root only when the HTML parser has not already created one.
++    if (!root) {
++      const template = this.querySelector('template[shadowrootmode]');
++      if (!template) return;
++      root = this.attachShadow({ mode: 'open' });
++      root.append(template.content);
++      template.remove();
++    }
++    // Constructor runs once, so reconnecting this element cannot double-bind.
++    root.querySelector('button')?.addEventListener('click', () => {
++      this.dispatchEvent(new CustomEvent('coffee-add', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          id: this.dataset.id,
++          name: this.dataset.name,
++          price: Math.round(Number(this.dataset.price) * 100),
++        },
++      }));
++    });
++  }
++}
++
++const bag = new Map();
++const money = cents => new Intl.NumberFormat('en-US', {
++  style: 'currency', currency: 'USD',
++}).format(cents / 100);
++
++function updateBag() {
++  const container = document.querySelector('#bag-items');
++  container.replaceChildren();
++  let count = 0;
++  let total = 0;
++  for (const item of bag.values()) {
++    count += item.quantity;
++    total += item.price * item.quantity;
++    const row = document.createElement('div');
++    row.className = 'bag-row';
++    const label = document.createElement('span');
++    label.textContent = `${item.quantity} × ${item.name}`;
++    const price = document.createElement('span');
++    price.textContent = money(item.price * item.quantity);
++    row.append(label, price);
++    container.append(row);
++  }
++  if (!count) {
++    const empty = document.createElement('p');
++    empty.textContent = 'Your bag is waiting for something good.';
++    container.append(empty);
++  }
++  document.querySelector('#bag-count').textContent = String(count);
++  document.querySelector('#bag-total').textContent = money(total);
++  document.querySelector('.clear-bag').hidden = count === 0;
++}
++
++let toastTimer;
++document.addEventListener('coffee-add', event => {
++  const product = event.detail;
++  const current = bag.get(product.id);
++  bag.set(product.id, { ...product, quantity: (current?.quantity ?? 0) + 1 });
++  updateBag();
++  const toast = document.querySelector('#announcement');
++  toast.textContent = `${product.name} added to your bag`;
++  toast.classList.add('visible');
++  clearTimeout(toastTimer);
++  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);
++});
++
++document.querySelector('.clear-bag').addEventListener('click', () => {
++  bag.clear();
++  updateBag();
++});
++
++document.querySelectorAll('[data-filter]').forEach(button => {
++  button.addEventListener('click', () => {
++    document.querySelectorAll('[data-filter]').forEach(filter => {
++      const selected = filter === button;
++      filter.classList.toggle('selected', selected);
++      filter.setAttribute('aria-pressed', String(selected));
++    });
++    document.querySelectorAll('coffee-card').forEach(card => {
++      card.hidden = button.dataset.filter !== 'all'
++        && card.dataset.category !== button.dataset.filter;
++    });
++  });
++});
++
++// Module scripts are deferred: all server templates have been parsed first.
++if (!customElements.get('coffee-card')) customElements.define('coffee-card', CoffeeCard);
+diff --git a/index.html b/index.html
+index 66c9173..363ec68 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,178 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++ <meta charset="UTF-8">
++ <meta name="viewport" content="width=device-width, initial-scale=1.0">
++ <meta name="theme-color" content="#2d4936">
++ <meta name="description" content="Ethically sourced, locally roasted coffee. Find your daily ritual at The Daily Grind.">
++ <title>The Daily Grind — A little ritual. A better day.</title>
++ <link rel="preconnect" href="https://images.unsplash.com">
++ <link rel="stylesheet" href="/styles.css">
++ <script type="module" src="/app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++ <div class="announcement">GOOD COFFEE. GOOD PEOPLE. EVERY SINGLE DAY. <span>THAT’S THE DAILY GRIND.</span></div>
++ <header class="site-header">
++  <a class="brand" href="#" aria-label="The Daily Grind home"><span class="brand-mark" aria-hidden="true">✳</span><span>THE DAILY GRIND<small>YOUR NEIGHBORHOOD COFFEE CO.</small></span></a>
++  <nav aria-label="Main navigation"><a href="#menu" class="active">Our menu</a><a href="#story">Our story</a><a href="#visit">Come say hello <span aria-hidden="true">↗</span></a></nav>
++  <details class="bag"><summary><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2"/></svg> Your bag <span id="bag-count">0</span></summary><div class="bag-panel"><h2>Your daily pick-me-up</h2><div id="bag-items"><p>Your bag is waiting for something good.</p></div><div class="bag-total">Subtotal <strong id="bag-total">$0.00</strong></div><p class="bag-note">Made fresh for pickup at our neighborhood café.</p><button class="clear-bag" type="button" hidden>Clear bag</button></div></details>
++ </header>
++ <main>
++  <section class="hero" aria-labelledby="hero-title">
++   <div class="hero-copy"><p class="eyebrow"><span></span> ROOTED IN COMMUNITY. ROASTED WITH CARE.</p><h1 id="hero-title">A little ritual.<br>A <em>better</em> day.</h1><p class="hero-description">Life moves fast. Your coffee moment shouldn’t.<br>Thoughtfully sourced, lovingly roasted, and always<br class="desktop-break"> made just for you.</p><a class="primary-button" href="#menu">Find your daily favorite <span aria-hidden="true">↗</span></a><div class="hero-footnote"><span class="little-sun" aria-hidden="true">☀</span> A good day starts with a great cup.</div></div>
++   <div class="hero-photo"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1400&q=90" alt="Freshly poured latte on a warm wooden café table" width="1400" height="1400" fetchpriority="high"><div class="photo-caption"><span>FRESHLY ROASTED.<br>NEVER RUSHED.</span><span aria-hidden="true">↗</span></div><div class="round-stamp" aria-label="Made with love, served daily"><span>MADE WITH LOVE</span><b aria-hidden="true">✳</b><span>SERVED DAILY</span></div></div>
++  </section>
++  <div class="values-strip"><span><i aria-hidden="true">♧</i> Ethically sourced</span><span><i aria-hidden="true">◉</i> Locally roasted</span><span><i aria-hidden="true">♡</i> Crafted with care</span><span><i aria-hidden="true">☀</i> A little joy in every cup</span></div>
++  <section class="menu-section" id="menu" aria-labelledby="menu-title"><div class="section-heading"><div><p class="eyebrow">FAMILIAR FAVORITES. SOMETHING NEW.</p><h2 id="menu-title">Meet your next regular.</h2></div><p>Whatever your day holds,<br>we’ve got your cup.</p></div><div class="menu-toolbar"><div class="filters" role="group" aria-label="Filter drinks"><button type="button" class="selected" aria-pressed="true" data-filter="coffee">Coffee</button><button type="button" aria-pressed="false" data-filter="tea">Tea & matcha</button><button type="button" aria-pressed="false" data-filter="all">All the good stuff</button></div><span class="season-note"><span aria-hidden="true">✳</span> A taste of the season</span></div><div class="product-grid"><coffee-card data-id="maple" data-category="coffee" data-name="Maple Oat Latte" data-price="5.50" >
++  <template shadowrootmode="open">
++   <style>
++:host { display:block; min-width:0; color:#273b30; }
++:host([hidden]) { display:none; }
++* { box-sizing:border-box; }
++article { height:100%; }
++.photo { position:relative; aspect-ratio:1.51; overflow:hidden; background:#e7e5dc; border-radius:6px; }
++img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++article:hover img { transform:scale(1.035); }
++.tag { position:absolute; top:16px; left:16px; background:#fbf9ee; padding:7px 10px; border-radius:2px; font:600 9px Arial,sans-serif; letter-spacing:1.1px; }
++.heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:20px; }
++h3 { font:400 25px Georgia,serif; margin:0; letter-spacing:-.6px; }
++.price { font-size:14px; white-space:nowrap; }
++p { color:#6e756c; font-size:13px; margin:9px 0; line-height:1.6; }
++.bottom { margin-top:20px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #ddded3; padding-top:15px; }
++.notes { font-size:10px; color:#7b8176; letter-spacing:.3px; }
++button { width:34px; height:34px; border:1px solid #bac1b4; border-radius:50%; background:transparent; color:#2e4b36; font-size:22px; cursor:pointer; }
++button:hover { background:#2e4b36; color:white; }
++button:focus-visible { outline:2px solid #2e4b36; outline-offset:4px; }
++@media(prefers-reduced-motion:reduce) { img { transition:none; } }
++</style>
++   <article aria-labelledby="title">
++    <div class="photo"><img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=850&q=85" alt="Maple Oat Latte" width="850" height="563" loading="lazy"><span class="tag">SEASONAL FAVORITE</span></div>
++    <div class="heading"><h3 id="title">Maple Oat Latte</h3><span class="price">$5.50</span></div>
++    <p>A little sweetness. A lot to love.</p><div class="bottom"><span class="notes">Espresso · Oat milk · Maple</span><button type="button" aria-label="Add Maple Oat Latte to your bag">+</button></div>
++   </article>
++  </template>
++ </coffee-card>
++<coffee-card data-id="espresso" data-category="coffee" data-name="The Daily Espresso" data-price="3.50" >
++  <template shadowrootmode="open">
++   <style>
++:host { display:block; min-width:0; color:#273b30; }
++:host([hidden]) { display:none; }
++* { box-sizing:border-box; }
++article { height:100%; }
++.photo { position:relative; aspect-ratio:1.51; overflow:hidden; background:#e7e5dc; border-radius:6px; }
++img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++article:hover img { transform:scale(1.035); }
++.tag { position:absolute; top:16px; left:16px; background:#fbf9ee; padding:7px 10px; border-radius:2px; font:600 9px Arial,sans-serif; letter-spacing:1.1px; }
++.heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:20px; }
++h3 { font:400 25px Georgia,serif; margin:0; letter-spacing:-.6px; }
++.price { font-size:14px; white-space:nowrap; }
++p { color:#6e756c; font-size:13px; margin:9px 0; line-height:1.6; }
++.bottom { margin-top:20px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #ddded3; padding-top:15px; }
++.notes { font-size:10px; color:#7b8176; letter-spacing:.3px; }
++button { width:34px; height:34px; border:1px solid #bac1b4; border-radius:50%; background:transparent; color:#2e4b36; font-size:22px; cursor:pointer; }
++button:hover { background:#2e4b36; color:white; }
++button:focus-visible { outline:2px solid #2e4b36; outline-offset:4px; }
++@media(prefers-reduced-motion:reduce) { img { transition:none; } }
++</style>
++   <article aria-labelledby="title">
++    <div class="photo"><img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=850&q=85" alt="The Daily Espresso" width="850" height="563" loading="lazy"><span class="tag">THE HOUSE CLASSIC</span></div>
++    <div class="heading"><h3 id="title">The Daily Espresso</h3><span class="price">$3.50</span></div>
++    <p>Small cup. Beautifully bold.</p><div class="bottom"><span class="notes">Double shot · Dark roast</span><button type="button" aria-label="Add The Daily Espresso to your bag">+</button></div>
++   </article>
++  </template>
++ </coffee-card>
++<coffee-card data-id="cold-brew" data-category="coffee" data-name="Slow & Steady Cold Brew" data-price="4.75" >
++  <template shadowrootmode="open">
++   <style>
++:host { display:block; min-width:0; color:#273b30; }
++:host([hidden]) { display:none; }
++* { box-sizing:border-box; }
++article { height:100%; }
++.photo { position:relative; aspect-ratio:1.51; overflow:hidden; background:#e7e5dc; border-radius:6px; }
++img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++article:hover img { transform:scale(1.035); }
++.tag { position:absolute; top:16px; left:16px; background:#fbf9ee; padding:7px 10px; border-radius:2px; font:600 9px Arial,sans-serif; letter-spacing:1.1px; }
++.heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:20px; }
++h3 { font:400 25px Georgia,serif; margin:0; letter-spacing:-.6px; }
++.price { font-size:14px; white-space:nowrap; }
++p { color:#6e756c; font-size:13px; margin:9px 0; line-height:1.6; }
++.bottom { margin-top:20px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #ddded3; padding-top:15px; }
++.notes { font-size:10px; color:#7b8176; letter-spacing:.3px; }
++button { width:34px; height:34px; border:1px solid #bac1b4; border-radius:50%; background:transparent; color:#2e4b36; font-size:22px; cursor:pointer; }
++button:hover { background:#2e4b36; color:white; }
++button:focus-visible { outline:2px solid #2e4b36; outline-offset:4px; }
++@media(prefers-reduced-motion:reduce) { img { transition:none; } }
++</style>
++   <article aria-labelledby="title">
++    <div class="photo"><img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=850&q=85" alt="Slow & Steady Cold Brew" width="850" height="563" loading="lazy"><span class="tag">SLOW BREWED</span></div>
++    <div class="heading"><h3 id="title">Slow & Steady Cold Brew</h3><span class="price">$4.75</span></div>
++    <p>Good things take their time.</p><div class="bottom"><span class="notes">18-hour steep · Smooth finish</span><button type="button" aria-label="Add Slow & Steady Cold Brew to your bag">+</button></div>
++   </article>
++  </template>
++ </coffee-card>
++<coffee-card data-id="matcha" data-category="tea" data-name="Vanilla Matcha" data-price="5.75" hidden>
++  <template shadowrootmode="open">
++   <style>
++:host { display:block; min-width:0; color:#273b30; }
++:host([hidden]) { display:none; }
++* { box-sizing:border-box; }
++article { height:100%; }
++.photo { position:relative; aspect-ratio:1.51; overflow:hidden; background:#e7e5dc; border-radius:6px; }
++img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++article:hover img { transform:scale(1.035); }
++.tag { position:absolute; top:16px; left:16px; background:#fbf9ee; padding:7px 10px; border-radius:2px; font:600 9px Arial,sans-serif; letter-spacing:1.1px; }
++.heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:20px; }
++h3 { font:400 25px Georgia,serif; margin:0; letter-spacing:-.6px; }
++.price { font-size:14px; white-space:nowrap; }
++p { color:#6e756c; font-size:13px; margin:9px 0; line-height:1.6; }
++.bottom { margin-top:20px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #ddded3; padding-top:15px; }
++.notes { font-size:10px; color:#7b8176; letter-spacing:.3px; }
++button { width:34px; height:34px; border:1px solid #bac1b4; border-radius:50%; background:transparent; color:#2e4b36; font-size:22px; cursor:pointer; }
++button:hover { background:#2e4b36; color:white; }
++button:focus-visible { outline:2px solid #2e4b36; outline-offset:4px; }
++@media(prefers-reduced-motion:reduce) { img { transition:none; } }
++</style>
++   <article aria-labelledby="title">
++    <div class="photo"><img src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=850&q=85" alt="Vanilla Matcha" width="850" height="563" loading="lazy"><span class="tag">A FRESH PERSPECTIVE</span></div>
++    <div class="heading"><h3 id="title">Vanilla Matcha</h3><span class="price">$5.75</span></div>
++    <p>Your moment of green.</p><div class="bottom"><span class="notes">Ceremonial matcha · Oat milk</span><button type="button" aria-label="Add Vanilla Matcha to your bag">+</button></div>
++   </article>
++  </template>
++ </coffee-card>
++<coffee-card data-id="chai" data-category="tea" data-name="Spiced Chai Latte" data-price="5.25" hidden>
++  <template shadowrootmode="open">
++   <style>
++:host { display:block; min-width:0; color:#273b30; }
++:host([hidden]) { display:none; }
++* { box-sizing:border-box; }
++article { height:100%; }
++.photo { position:relative; aspect-ratio:1.51; overflow:hidden; background:#e7e5dc; border-radius:6px; }
++img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
++article:hover img { transform:scale(1.035); }
++.tag { position:absolute; top:16px; left:16px; background:#fbf9ee; padding:7px 10px; border-radius:2px; font:600 9px Arial,sans-serif; letter-spacing:1.1px; }
++.heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-top:20px; }
++h3 { font:400 25px Georgia,serif; margin:0; letter-spacing:-.6px; }
++.price { font-size:14px; white-space:nowrap; }
++p { color:#6e756c; font-size:13px; margin:9px 0; line-height:1.6; }
++.bottom { margin-top:20px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #ddded3; padding-top:15px; }
++.notes { font-size:10px; color:#7b8176; letter-spacing:.3px; }
++button { width:34px; height:34px; border:1px solid #bac1b4; border-radius:50%; background:transparent; color:#2e4b36; font-size:22px; cursor:pointer; }
++button:hover { background:#2e4b36; color:white; }
++button:focus-visible { outline:2px solid #2e4b36; outline-offset:4px; }
++@media(prefers-reduced-motion:reduce) { img { transition:none; } }
++</style>
++   <article aria-labelledby="title">
++    <div class="photo"><img src="https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=850&q=85" alt="Spiced Chai Latte" width="850" height="563" loading="lazy"><span class="tag">COMFORT IN A CUP</span></div>
++    <div class="heading"><h3 id="title">Spiced Chai Latte</h3><span class="price">$5.25</span></div>
++    <p>A little warmth from within.</p><div class="bottom"><span class="notes">Black tea · Warming spices</span><button type="button" aria-label="Add Spiced Chai Latte to your bag">+</button></div>
++   </article>
++  </template>
++ </coffee-card></div><p class="menu-footnote">Good ingredients. No shortcuts. <span>Alternative milks always welcome.</span></p></section>
++  <section class="story-section" id="story"><div class="story-icon" aria-hidden="true">✳</div><div><p class="eyebrow">MORE THAN WHAT’S IN YOUR CUP.</p><h2>Your neighborhood.<br>Your coffee people.</h2></div><div class="story-copy"><p>We believe the best things in life are the everyday things. A familiar face. A favorite corner. A really, really good cup of coffee.</p><p>That’s why we’re here. Sourcing thoughtfully, roasting locally, and making a little space for you to slow down.</p><a href="#visit">Make yourself at home <span aria-hidden="true">↗</span></a></div></section>
++  <section class="visit-section" id="visit"><div><p class="eyebrow">THERE’S A SPOT FOR YOU HERE.</p><h2>Come for the coffee.<br>Stay for a while.</h2></div><div><p>Find us at your neighborhood Daily Grind.</p><p>Monday–Friday <strong>7am–6pm</strong><br>Saturday–Sunday <strong>8am–5pm</strong></p><span class="open-note">Fresh coffee. Open doors. See you soon.</span></div></section>
++ </main>
++ <footer><a class="footer-brand" href="#">✳ THE DAILY GRIND</a><span>A little ritual. A better day.</span><small>© 2026 The Daily Grind Coffee Co.</small></footer>
++ <div id="announcement" class="toast" role="status" aria-live="polite"></div>
++ <noscript><p class="noscript-note">Our menu is ready to explore. Visit the café to place your order.</p></noscript>
+ </body>
+-
+-</html>
++</html>
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index 2bd4d77..e31b2c8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "happy-dom": "^21.0.4"
+   }
+ }
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..49f6f65
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,5 @@
++:root{--green:#2d4936;--ink:#293e30;--paper:#f8f7f0;--muted:#73786e;--line:#dedfd3;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--paper);font-synthesis:none}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0}a{color:inherit;text-decoration:none}button{font:inherit}a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--green);outline-offset:5px}.announcement{height:32px;background:var(--green);color:#f6f5e9;display:flex;align-items:center;justify-content:center;gap:8px;font-size:9px;letter-spacing:1.65px}.announcement span{opacity:.7}.site-header{max-width:1440px;margin:auto;padding:29px 5.5%;display:flex;align-items:center;justify-content:space-between;gap:30px}.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:750;letter-spacing:-.65px;white-space:nowrap}.brand-mark{font-family:Georgia,serif;font-size:49px;line-height:1}.brand small{display:block;font-size:7px;font-weight:500;letter-spacing:1.7px;margin-top:5px}.site-header nav{display:flex;gap:32px;font-size:12px}.site-header nav a{padding:8px 0}.site-header nav a:hover,.site-header nav a.active{border-bottom:1px solid var(--green)}.site-header nav a span{margin-left:5px}.bag{position:relative;font-size:12px}.bag summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none}.bag summary::-webkit-details-marker{display:none}.bag svg{width:19px;height:21px;fill:none;stroke:currentColor;stroke-width:1.4}.bag summary>span{border:1px solid #c8cbbd;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:10px}.bag-panel{position:absolute;z-index:5;right:0;top:40px;width:320px;background:var(--paper);border:1px solid var(--line);padding:24px;box-shadow:0 12px 35px #20302518}.bag-panel h2{font:24px Georgia,serif;margin:0 0 20px}.bag-panel p{color:var(--muted);line-height:1.6}.bag-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:12px}.bag-total{display:flex;justify-content:space-between;margin-top:20px}.bag-note{font-size:11px}.clear-bag{border:0;border-bottom:1px solid var(--green);padding:5px 0;background:transparent;color:var(--green);cursor:pointer;font-size:11px}.hero{max-width:1440px;margin:auto;display:grid;grid-template-columns:1fr 1fr;min-height:535px;padding:12px 5.5% 40px;gap:30px}.hero-copy{padding:45px 0 20px}.eyebrow{font-size:9px;font-weight:600;letter-spacing:1.6px;line-height:1.6}.hero .eyebrow{display:flex;align-items:center;gap:8px}.eyebrow>span{width:6px;height:6px;border-radius:50%;background:#7a8956}h1{font:400 clamp(54px,5.65vw,85px)/1.07 Georgia,'Times New Roman',serif;letter-spacing:-4px;margin:27px 0 23px}h1 em{font-weight:400;color:#76815e}.hero-description{font-size:13px;line-height:1.9;color:#6a7267}.primary-button{display:inline-flex;align-items:center;gap:32px;background:var(--green);color:#fffdf2;padding:17px 21px;border-radius:3px;font-size:11px;margin-top:17px;transition:background .2s}.primary-button:hover{background:#486346}.primary-button span{font-size:18px;line-height:1}.hero-footnote{display:flex;align-items:center;gap:9px;font-size:10px;color:#7e8173;margin-top:35px}.little-sun{font-size:23px;color:#9b956b}.hero-photo{position:relative;min-height:480px}.hero-photo>img{display:block;width:100%;height:100%;position:absolute;object-fit:cover;border-radius:6px;filter:brightness(.87)}.photo-caption{position:absolute;bottom:25px;left:25px;right:25px;display:flex;justify-content:space-between;align-items:end;color:white;font-size:10px;letter-spacing:1.8px;line-height:1.6}.photo-caption>span:last-child{font-size:28px}.round-stamp{position:absolute;right:-17px;top:24px;width:106px;height:106px;background:#ecedce;color:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;transform:rotate(13deg);outline:1px solid #a6ad80;outline-offset:-7px}.round-stamp span{font-size:7px;letter-spacing:1.25px}.round-stamp b{font-size:45px;line-height:1.2;font-weight:400}.values-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:space-evenly;gap:20px;max-width:1440px;margin:auto;padding:21px 5.5%;font-size:10px;letter-spacing:.6px}.values-strip>span{display:flex;align-items:center;gap:11px}.values-strip i{font-size:21px;font-style:normal;line-height:1;color:#7d886a}.menu-section{max-width:1440px;margin:auto;padding:63px 5.5% 42px}.section-heading{display:flex;justify-content:space-between;align-items:end}.section-heading .eyebrow{color:#788065}.section-heading h2,.story-section h2,.visit-section h2{font:400 43px/1.17 Georgia,serif;letter-spacing:-1.5px;margin:14px 0 0}.section-heading>p{font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:3px}.menu-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:29px 0 25px}.filters{display:flex;gap:7px;flex-wrap:wrap}.filters button{background:transparent;border:1px solid var(--line);border-radius:30px;padding:10px 19px;color:#697363;font-size:11px;cursor:pointer}.filters button.selected{color:#fbfbef;background:var(--green);border-color:var(--green)}.filters button:hover{border-color:var(--green)}.season-note{font-size:10px;color:#788065;display:flex;align-items:center;gap:7px}.season-note>span{font-size:19px}.product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}coffee-card{display:block;min-width:0}coffee-card[hidden]{display:none}.menu-footnote{text-align:center;margin:29px 0 0;font-size:10px;letter-spacing:.2px;color:#7b8174}.menu-footnote span{margin-left:8px}.story-section{display:grid;grid-template-columns:.35fr 1.05fr 1fr;align-items:center;gap:35px;padding:51px 5.5%;background:#e9ecdf}.story-icon{font:100px Georgia,serif;color:#7e8b61}.story-section .eyebrow{color:#6e7b5e}.story-section h2{font-size:36px}.story-copy{max-width:380px}.story-copy p{font-size:12px;line-height:1.9;color:#707a66}.story-copy a{display:inline-flex;gap:35px;border-bottom:1px solid #9ea78a;padding-bottom:7px;margin-top:12px;font-size:11px}.visit-section{display:flex;justify-content:space-between;gap:30px;max-width:1440px;margin:auto;padding:53px 5.5%}.visit-section h2{font-size:34px}.visit-section>div:last-child{font-size:12px;line-height:1.9;color:var(--muted);padding-right:80px}.visit-section strong{font-weight:400;color:var(--ink);margin-left:20px}.open-note{font-size:10px}footer{border-top:1px solid var(--line);padding:25px 5.5%;display:flex;align-items:center;justify-content:space-between;gap:20px;font-size:10px;color:#7b8174}.footer-brand{font-weight:700;font-size:12px;color:var(--green);letter-spacing:.5px}footer small{font-size:9px}.toast{position:fixed;bottom:25px;left:50%;transform:translate(-50%,12px);background:var(--green);color:#fffef5;padding:15px 25px;font-size:12px;border-radius:4px;box-shadow:0 5px 20px #293e3020;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10}.toast.visible{opacity:1;transform:translate(-50%,0)}.noscript-note{text-align:center;font-size:12px;padding:10px;background:#e9ecdf}
++@media(min-width:1441px){.story-section{padding-left:max(5.5%,calc((100vw - 1282px)/2));padding-right:max(5.5%,calc((100vw - 1282px)/2))}}
++@media(max-width:1000px){.brand{font-size:16px}.brand-mark{font-size:40px}.brand small{font-size:6px;letter-spacing:1px}.site-header nav{gap:20px}.hero{min-height:470px;gap:23px}.hero-copy{padding-top:25px}.hero .eyebrow{font-size:7px;letter-spacing:1px}h1{letter-spacing:-2.5px}.hero-photo{min-height:440px}.product-grid{gap:20px}.season-note{display:none}.story-section{grid-template-columns:.25fr 1fr 1fr;gap:23px}.story-icon{font-size:70px}.story-section h2{font-size:31px}.visit-section>div:last-child{padding-right:0}}
++@media(max-width:700px){.announcement{font-size:7px;letter-spacing:1px;height:28px}.announcement span{display:none}.site-header{padding:23px 6%;flex-wrap:wrap;gap:20px}.site-header nav{order:3;width:100%;justify-content:center;gap:30px;font-size:11px}.brand{font-size:17px}.bag summary{font-size:0;gap:5px}.bag-panel{right:0;width:min(320px,88vw)}.hero{grid-template-columns:1fr;padding:0 6% 28px;gap:28px}.hero-copy{padding-top:17px}.hero .eyebrow{font-size:8px}h1{font-size:65px;margin-top:22px}.hero-description{font-size:13px}.hero-footnote{margin-top:23px}.hero-photo{min-height:350px}.round-stamp{right:-10px;top:19px;width:92px;height:92px}.round-stamp b{font-size:36px}.values-strip{display:grid;grid-template-columns:1fr 1fr;gap:19px;padding:20px 6%;font-size:9px}.values-strip>span{gap:8px}.menu-section{padding:40px 6% 30px}.section-heading h2{font-size:35px}.section-heading>p{display:none}.eyebrow{font-size:8px;letter-spacing:1.3px}.menu-toolbar{margin-top:22px}.filters button{font-size:10px;padding:9px 14px}.product-grid{grid-template-columns:1fr;gap:32px}.menu-footnote{line-height:1.9}.menu-footnote span{display:block;margin:0}.story-section{grid-template-columns:1fr;padding:35px 6%;gap:15px}.story-icon{font-size:60px;line-height:1}.story-section h2{font-size:35px}.story-copy{max-width:100%}.visit-section{display:block;padding:35px 6%}.visit-section>div:last-child{margin-top:25px}footer{padding:25px 6%;flex-wrap:wrap}footer>span{display:none}footer small{font-size:8px}.toast{width:max-content;max-width:88vw;text-align:center}}
++@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+diff --git a/tests/hydration.test.mjs b/tests/hydration.test.mjs
+new file mode 100644
+index 0000000..a853962
+--- /dev/null
++++ b/tests/hydration.test.mjs
+@@ -0,0 +1,96 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { Window } from 'happy-dom';
++
++const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
++const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8').replace('export class', 'class');
++
++function page() {
++  const window = new Window({ settings: {
++    disableCSSFileLoading: true,
++    disableJavaScriptFileLoading: true,
++  } });
++  window.document.write(html);
++  return window;
++}
++
++function attachServerRoots(window) {
++  // Simulate the native HTML parser attaching DSD before module execution.
++  for (const card of window.document.querySelectorAll('coffee-card')) {
++    if (card.shadowRoot) continue;
++    const template = card.querySelector('template');
++    card.attachShadow({ mode: 'open' }).append(template.content);
++    template.remove();
++  }
++}
++
++test('server response contains complete styled product trees before JavaScript', () => {
++  const window = page();
++  const cards = [...window.document.querySelectorAll('coffee-card')];
++  assert.equal(cards.length, 5);
++  for (const card of cards) {
++    const root = card.shadowRoot ?? card.querySelector('template[shadowrootmode="open"]').content;
++    assert.ok(root.querySelector('style').textContent.includes(':host'));
++    assert.ok(root.querySelector('h3').textContent);
++    assert.ok(root.querySelector('button[aria-label]'));
++    assert.ok(root.querySelector('img[width][height]'));
++  }
++  window.happyDOM.abort();
++});
++
++test('hydration preserves every node and reconnecting does not duplicate listeners', () => {
++  const window = page();
++  attachServerRoots(window);
++  const card = window.document.querySelector('coffee-card');
++  const root = card.shadowRoot;
++  const nodes = [...root.querySelectorAll('*')];
++  const original = root.innerHTML;
++  // A second attachShadow call could clear the declarative root; forbid it.
++  card.attachShadow = () => { throw new Error('Must reuse server root'); };
++  window.eval(source);
++  assert.strictEqual(card.shadowRoot, root);
++  assert.equal(root.innerHTML, original);
++  assert.deepEqual([...root.querySelectorAll('*')], nodes);
++  card.remove();
++  window.document.querySelector('.product-grid').append(card);
++  root.querySelector('button').click();
++  assert.equal(window.document.querySelector('#bag-count').textContent, '1');
++  assert.equal(window.document.querySelector('#bag-total').textContent, '$5.50');
++  assert.equal(root.innerHTML, original);
++  window.happyDOM.abort();
++});
++
++test('fallback moves original template content into a shadow root', () => {
++  const window = page();
++  const card = window.document.querySelector('coffee-card');
++  const button = card.querySelector('template').content.querySelector('button');
++  window.eval(source);
++  assert.strictEqual(card.shadowRoot.querySelector('button'), button);
++  assert.equal(card.querySelector('template'), null);
++  button.click();
++  assert.equal(window.document.querySelector('#bag-count').textContent, '1');
++  window.happyDOM.abort();
++});
++
++test('filters and bag totals work across multiple server-rendered cards', () => {
++  const window = page();
++  attachServerRoots(window);
++  window.eval(source);
++  const document = window.document;
++  document.querySelector('[data-filter="tea"]').click();
++  const visible = [...document.querySelectorAll('coffee-card')].filter(card => !card.hidden);
++  assert.equal(visible.length, 2);
++  assert.ok(visible.every(card => card.dataset.category === 'tea'));
++  const button = visible[0].shadowRoot.querySelector('button');
++  button.click();
++  button.click();
++  assert.equal(document.querySelector('#bag-count').textContent, '2');
++  assert.equal(document.querySelector('#bag-total').textContent, '$11.50');
++  document.querySelector('.clear-bag').click();
++  assert.equal(document.querySelector('#bag-count').textContent, '0');
++  assert.equal(document.querySelector('#bag-total').textContent, '$0.00');
++  document.querySelector('[data-filter="all"]').click();
++  assert.equal([...document.querySelectorAll('coffee-card')].filter(card => !card.hidden).length, 5);
++  window.happyDOM.abort();
++});

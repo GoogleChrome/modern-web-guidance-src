@@ -1,0 +1,209 @@
+diff --git a/index.html b/index.html
+index 66c9173..775fa14 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,64 @@
+       background: #3e2723;
+     }
+ 
++    .nav-target {
++      margin-bottom: 60px;
++      padding: 20px;
++      border-radius: 12px;
++    }
++
++    .nav-target h2 {
++      text-align: center;
++    }
++
++    .nav-target h2:focus {
++      outline: none;
++    }
++
++    .nav-target h2:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Applied only once the smooth scroll to the section has finished */
++    .nav-target.arrived {
++      animation: arrive 1.2s ease-out;
++    }
++
++    .nav-target.arrived h2 {
++      animation: arrive-heading 0.6s ease-out;
++    }
++
++    @keyframes arrive {
++      0% {
++        background-color: rgba(255, 171, 64, 0.35);
++        box-shadow: 0 0 0 4px var(--accent);
++      }
++
++      100% {
++        background-color: transparent;
++        box-shadow: 0 0 0 4px transparent;
++      }
++    }
++
++    @keyframes arrive-heading {
++      0% {
++        transform: translateY(8px);
++        opacity: 0.4;
++      }
++
++      100% {
++        transform: none;
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .nav-target.arrived h2 {
++        animation: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,9 +218,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +233,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="nav-target">
++      <h2 tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +253,43 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="nav-target">
++      <h2 tabindex="-1">Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>128 Main Street<br>Mon&ndash;Fri 6am&ndash;7pm, Sat&ndash;Sun 7am&ndash;5pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>42 Harbor Walk<br>Daily 7am&ndash;6pm</p>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>900 College Ave<br>Daily 6am&ndash;10pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="nav-target">
++      <h2 tabindex="-1">Grind Rewards</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect 10 beans for every dollar you spend, in store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Drinks</h3>
++          <p>Redeem 1,000 beans for any handcrafted drink, any size.</p>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>Members get a free pastry and drink during their birthday week.</p>
++          <a href="/rewards" class="btn">Join Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +302,71 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const nav = document.querySelector('nav');
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    let currentScrollId = 0;
++
++    // Resolves once the scroll has finished. Uses the Promise returned by
++    // scroll methods where supported, otherwise falls back to scrollend
++    // (with an idle timeout for when no scrolling happens at all).
++    function scrollToAsync(options) {
++      const result = window.scrollTo(options);
++      if (result instanceof Promise) return result;
++
++      return new Promise((resolve) => {
++        let timeoutId;
++        const finish = () => {
++          clearTimeout(timeoutId);
++          window.removeEventListener('scrollend', finish);
++          window.removeEventListener('scroll', onScroll);
++          resolve();
++        };
++        const onScroll = () => {
++          clearTimeout(timeoutId);
++          timeoutId = setTimeout(finish, 100);
++        };
++        window.addEventListener('scrollend', finish, { once: true });
++        window.addEventListener('scroll', onScroll, { passive: true });
++        timeoutId = setTimeout(finish, 100);
++      });
++    }
++
++    async function navigateTo(target) {
++      const scrollId = ++currentScrollId;
++      document.querySelectorAll('.nav-target.arrived')
++        .forEach((el) => el.classList.remove('arrived'));
++
++      // window.scrollTo rather than scrollIntoView: Chrome resolves the
++      // scrollIntoView promise too early when the root scroller is scrolling.
++      const top = target.getBoundingClientRect().top + window.scrollY - nav.offsetHeight;
++      await scrollToAsync({ top, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
++
++      // A newer navigation superseded this one
++      if (scrollId !== currentScrollId) return;
++
++      target.querySelector('h2')?.focus({ preventScroll: true });
++      void target.offsetWidth; // restart the animation if re-targeting the same section
++      target.classList.add('arrived');
++    }
++
++    document.querySelectorAll('nav a[href^="#"]').forEach((link) => {
++      link.addEventListener('click', (event) => {
++        const target = document.querySelector(link.hash);
++        if (!target) return;
++        event.preventDefault();
++        history.pushState(null, '', link.hash);
++        navigateTo(target);
++      });
++    });
++
++    document.querySelectorAll('.nav-target').forEach((section) => {
++      section.addEventListener('animationend', (event) => {
++        if (event.target === section) section.classList.remove('arrived');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

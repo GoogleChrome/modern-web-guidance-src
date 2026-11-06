@@ -1,0 +1,106 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,17 +19,69 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* The root scroller snaps between the search bar and the nav.
++       "proximity" (not "mandatory") so the long page below the nav
++       can still be scrolled freely. */
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-to-reveal search bar (hidden above the nav on load) */
++    .search-bar {
++      scroll-snap-align: start;
++      background: var(--secondary);
++      padding: 0.75rem 5%;
++    }
++
++    .search-bar form {
++      display: flex;
++      gap: 0.5rem;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .search-bar input {
++      flex: 1;
++      min-width: 0;
++      padding: 0.5rem 0.75rem;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++    }
++
++    .search-bar button {
++      padding: 0.5rem 1rem;
++      border: 0;
++      border-radius: 4px;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+     nav {
++      scroll-snap-align: start;
++      /* Start the page scrolled to the nav, hiding the search bar above it */
++      scroll-initial-target: nearest;
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -156,8 +208,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form role="search" action="/search">
++      <label for="site-search" class="visually-hidden">Search the menu</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, food, locations…">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +266,15 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target (Firefox, Safari):
++    // scroll past the search bar so the page starts at the nav.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      document.querySelector('nav').scrollIntoView({ behavior: 'instant', block: 'start' });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

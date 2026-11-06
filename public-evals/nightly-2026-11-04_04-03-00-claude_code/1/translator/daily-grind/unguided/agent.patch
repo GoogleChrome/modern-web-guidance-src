@@ -1,0 +1,246 @@
+diff --git a/index.html b/index.html
+index 66c9173..0b23e83 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,78 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Language selector */
++    .lang-picker {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.85rem;
++    }
++
++    .lang-picker select {
++      background: transparent;
++      color: white;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 4px 6px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .lang-picker select option {
++      color: var(--text);
++    }
++
++    .lang-picker select:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .translate-status {
++      max-width: 1100px;
++      margin: 0 auto;
++      padding: 0 20px;
++      min-height: 1.6em;
++      font-size: 0.85rem;
++      color: var(--primary);
++      text-align: right;
++    }
++
++    [data-i18n].is-translating {
++      opacity: 0.5;
++      transition: opacity 0.2s;
++    }
++
++    /* Story */
++    .story {
++      margin-top: 60px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 30px;
++      align-items: center;
++    }
++
++    .story img {
++      width: 100%;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .story h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .story p + p {
++      margin-top: 10px;
++    }
++
++    @media (max-width: 760px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 10px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -166,8 +238,25 @@
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
++    <div class="lang-picker">
++      <label for="lang-select">🌐 Language</label>
++      <select id="lang-select" aria-describedby="translate-status">
++        <option value="en" selected>English</option>
++        <option value="es">Español</option>
++        <option value="fr">Français</option>
++        <option value="de">Deutsch</option>
++        <option value="it">Italiano</option>
++        <option value="pt">Português</option>
++        <option value="ja">日本語</option>
++        <option value="ko">한국어</option>
++        <option value="zh">中文</option>
++        <option value="hi">हिन्दी</option>
++      </select>
++    </div>
+   </nav>
+ 
++  <p id="translate-status" class="translate-status" role="status" aria-live="polite"></p>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -180,21 +269,32 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-i18n>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-i18n>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-i18n>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story" id="our-story">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80"
++        alt="Freshly roasted coffee beans" loading="lazy">
++      <div>
++        <h2 data-i18n>Our Story</h2>
++        <p data-i18n>The Daily Grind started in 2012 as a single cart outside the train station, run by two friends who believed great coffee should be part of everyone's morning.</p>
++        <p data-i18n>Today we roast every batch in small quantities at our neighborhood roastery, working directly with farmers who are paid fairly for their craft.</p>
++        <p data-i18n>Whether you stop by for a quick espresso or settle in for an afternoon, we hope every cup feels like home.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +307,100 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // On-device translation using the browser's built-in Translator API
++    // (https://developer.chrome.com/docs/ai/translator-api). Text never leaves the device.
++    (() => {
++      const SOURCE = 'en';
++      const select = document.getElementById('lang-select');
++      const status = document.getElementById('translate-status');
++      const nodes = [...document.querySelectorAll('[data-i18n]')];
++      const translators = new Map(); // target language -> Promise<Translator>
++      let requestId = 0;
++
++      nodes.forEach((el) => { el.dataset.i18nSource = el.textContent.trim(); });
++
++      const setStatus = (msg) => { status.textContent = msg; };
++
++      if (!('Translator' in self)) {
++        select.disabled = true;
++        select.title = 'On-device translation is not supported in this browser';
++        setStatus('On-device translation isn\u2019t supported in this browser. Try a recent version of Chrome on desktop.');
++        return;
++      }
++
++      function getTranslator(target) {
++        if (!translators.has(target)) {
++          const promise = Translator.create({
++            sourceLanguage: SOURCE,
++            targetLanguage: target,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                setStatus(`Downloading language pack\u2026 ${Math.round(e.loaded * 100)}%`);
++              });
++            },
++          });
++          // Don't cache failures so the user can retry.
++          promise.catch(() => translators.delete(target));
++          translators.set(target, promise);
++        }
++        return translators.get(target);
++      }
++
++      function restoreOriginal() {
++        nodes.forEach((el) => {
++          el.textContent = el.dataset.i18nSource;
++          el.removeAttribute('lang');
++          el.classList.remove('is-translating');
++        });
++        document.documentElement.lang = SOURCE;
++      }
++
++      select.addEventListener('change', async () => {
++        const target = select.value;
++        const id = ++requestId;
++
++        if (target === SOURCE) {
++          restoreOriginal();
++          setStatus('');
++          return;
++        }
++
++        const label = select.selectedOptions[0].textContent;
++        try {
++          const availability = await Translator.availability({ sourceLanguage: SOURCE, targetLanguage: target });
++          if (id !== requestId) return;
++          if (availability === 'unavailable') {
++            setStatus(`${label} isn\u2019t available for on-device translation on this device.`);
++            return;
++          }
++
++          setStatus(availability === 'available' ? `Translating to ${label}\u2026` : `Preparing ${label}\u2026`);
++          nodes.forEach((el) => el.classList.add('is-translating'));
++
++          const translator = await getTranslator(target);
++          if (id !== requestId) return;
++
++          const results = await Promise.all(nodes.map((el) => translator.translate(el.dataset.i18nSource)));
++          if (id !== requestId) return;
++
++          nodes.forEach((el, i) => {
++            el.textContent = results[i];
++            el.lang = target;
++            el.classList.remove('is-translating');
++          });
++          document.documentElement.lang = target;
++          setStatus(`Translated on your device to ${label}.`);
++        } catch (err) {
++          if (id !== requestId) return;
++          console.error('Translation failed:', err);
++          restoreOriginal();
++          setStatus(`Couldn\u2019t translate to ${label}. Please try again.`);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

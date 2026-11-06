@@ -1,0 +1,161 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cd1a96b 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,11 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  // Pages with per-visit state (e.g. auth forms) opt out of view caching.
++  cache?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, cache = true } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -45,11 +47,87 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-views" class="bg-white relative">
++          <div class="spa-view" tabindex="-1" data-cache={String(cache)}>
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
+   </body>
+ </html>
++
++<script>
++  import { swapFunctions } from "astro:transitions/client";
++
++  // Keep a small LRU of previously visited views. Their DOM (and hydrated
++  // islands) stays alive with `content-visibility: hidden`, so going back
++  // restores them without re-parsing, re-hydrating or re-rendering.
++  const MAX_CACHED_VIEWS = 5;
++  const views = new Map<string, HTMLElement>();
++
++  const host = () => document.getElementById("spa-views")!;
++  const activeView = () =>
++    host().querySelector<HTMLElement>(".spa-view:not(.inactive)")!;
++
++  const register = (view: HTMLElement, key: string) => {
++    view.dataset.viewKey = key;
++    if (view.dataset.cache !== "false") {
++      views.delete(key);
++      views.set(key, view);
++    }
++    while (views.size > MAX_CACHED_VIEWS) {
++      const [oldestKey, oldest] = views.entries().next().value!;
++      views.delete(oldestKey);
++      oldest.remove();
++    }
++  };
++
++  const deactivate = (view: HTMLElement) => {
++    if (view.dataset.cache === "false") {
++      view.remove();
++      return;
++    }
++    view.classList.add("inactive");
++    view.setAttribute("aria-hidden", "true");
++  };
++
++  register(activeView(), location.href);
++
++  document.addEventListener("astro:before-swap", (event) => {
++    event.swap = () => {
++      const doc = event.newDocument;
++      swapFunctions.deselectScripts(doc);
++      swapFunctions.swapRootAttributes(doc);
++      swapFunctions.swapHeadElements(doc);
++      const restoreFocus = swapFunctions.saveFocus();
++
++      const key = event.to.href;
++      const current = activeView();
++      const cached = views.get(key);
++      let next: HTMLElement;
++
++      if (cached && cached.isConnected) {
++        next = cached;
++        // Mark as most recently used.
++        views.delete(key);
++        views.set(key, cached);
++      } else {
++        next = doc.querySelector<HTMLElement>(".spa-view")!;
++        host().append(next);
++      }
++
++      if (next !== current) deactivate(current);
++      next.classList.remove("inactive");
++      next.removeAttribute("aria-hidden");
++      register(next, key);
++
++      document.title = doc.title;
++      restoreFocus();
++      if (!host().contains(document.activeElement)) {
++        next.focus({ preventScroll: true });
++      }
++    };
++  });
++</script>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..49b0fc9 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout cache={false} title="Sign In | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..8626c01 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout cache={false} title="Sign Up | The DevTools Times">
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..b72e8e2 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,21 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Inactive SPA views keep their DOM and rendering state cached in memory. */
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset-inline: 0;
++  top: 0;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}
++
++.spa-view:focus {
++  outline: none;
++}

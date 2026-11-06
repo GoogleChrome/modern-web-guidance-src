@@ -1,0 +1,75 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,71 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function checkInitialBackgroundLoad() {
++      const visibilityEntries =
++        typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
++          ? performance.getEntriesByType('visibility-state')
++          : [];
++
++      let backgrounded;
++      let timestamp;
++      let note =
++        'Older fallback checks (such as document.hidden or document.visibilityState) only inspect the current state at script execution time and are unreliable for async or deferred scripts if the user switches tabs before the script runs. Using performance.getEntriesByType("visibility-state") (or PerformanceObserver with buffered: true) reliably captures the initial page load visibility state at startTime 0.';
++
++      if (visibilityEntries.length > 0) {
++        const initialEntry = visibilityEntries[0];
++        backgrounded = initialEntry.name === 'hidden';
++        timestamp = initialEntry.startTime;
++      } else {
++        backgrounded =
++          typeof document.visibilityState === 'string'
++            ? document.visibilityState === 'hidden'
++            : Boolean(document.hidden);
++        timestamp =
++          typeof performance !== 'undefined' && typeof performance.now === 'function'
++            ? performance.now()
++            : Date.now();
++      }
++
++      const logPayload = {
++        backgrounded,
++        timestamp,
++        note,
++      };
++
++      // Also support PerformanceObserver with buffered: true if entries were not yet populated synchronously
++      if (
++        visibilityEntries.length === 0 &&
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.includes('visibility-state')
++      ) {
++        try {
++          const observer = new PerformanceObserver((list) => {
++            const entries = list.getEntries();
++            if (entries.length > 0) {
++              const first = entries[0];
++              console.log({
++                backgrounded: first.name === 'hidden',
++                timestamp: first.startTime,
++                note,
++              });
++              observer.disconnect();
++            }
++          });
++          observer.observe({ type: 'visibility-state', buffered: true });
++          return;
++        } catch (e) {
++          // Fall through to standard console.log
++        }
++      }
++
++      console.log(logPayload);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

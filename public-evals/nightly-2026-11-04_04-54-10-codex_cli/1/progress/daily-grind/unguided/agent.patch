@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+index 66c9173..f35c6f5 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,98 @@
+       margin-top: 20px;
+     }
+ 
++    /* Determinate rewards and indeterminate order progress */
++    .progress-panel {
++      margin-bottom: 40px;
++      padding: 28px;
++      background: #fff8ef;
++      border: 1px solid #e8d9ca;
++      border-radius: 12px;
++    }
++
++    .progress-panel > p {
++      margin-top: 4px;
++      color: #715b52;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .progress-card {
++      padding: 20px;
++      background: white;
++      border: 1px solid #ede3dc;
++      border-radius: 8px;
++    }
++
++    .progress-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      flex-wrap: wrap;
++      gap: 4px 12px;
++      margin-bottom: 12px;
++    }
++
++    .progress-heading h3 {
++      font-size: 1rem;
++    }
++
++    .progress-status {
++      color: #79502c;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .progress-track {
++      height: 10px;
++      overflow: hidden;
++      background: #eee5df;
++      border-radius: 999px;
++    }
++
++    .progress-fill {
++      height: 100%;
++      border-radius: inherit;
++      background: linear-gradient(90deg, #a9652c, var(--accent));
++    }
++
++    .progress-fill--rewards {
++      width: 60%;
++    }
++
++    .progress-track--indeterminate .progress-fill {
++      width: 40%;
++      animation: brewing-progress 1.8s ease-in-out infinite;
++    }
++
++    .progress-description {
++      margin-top: 10px;
++      color: #715b52;
++      font-size: 0.85rem;
++    }
++
++    @keyframes brewing-progress {
++      from { transform: translateX(-100%); }
++      to { transform: translateX(250%); }
++    }
++
++    @media (max-width: 640px) {
++      .progress-panel { padding: 20px; }
++      .progress-grid { grid-template-columns: 1fr; gap: 16px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-track--indeterminate .progress-fill {
++        animation: none;
++        transform: translateX(75%);
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +267,35 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="progress-title">
++      <h2 id="progress-title">Good things are brewing</h2>
++      <p>A little closer to your next cup.</p>
++      <div class="progress-grid">
++        <div class="progress-card">
++          <div class="progress-heading">
++            <h3 id="rewards-title">Your next free coffee</h3>
++            <span class="progress-status">60% complete</span>
++          </div>
++          <div class="progress-track" role="progressbar" aria-labelledby="rewards-title"
++            aria-describedby="rewards-description" aria-valuemin="0" aria-valuemax="10"
++            aria-valuenow="6" aria-valuetext="6 of 10 coffees toward a free coffee">
++            <div class="progress-fill progress-fill--rewards"></div>
++          </div>
++          <p class="progress-description" id="rewards-description">6 of 10 coffees collected. Just 4 more to your reward.</p>
++        </div>
++        <div class="progress-card">
++          <div class="progress-heading">
++            <h3 id="order-title">Your order</h3>
++            <span class="progress-status">Brewing…</span>
++          </div>
++          <div class="progress-track progress-track--indeterminate" role="progressbar"
++            aria-labelledby="order-title" aria-describedby="order-description">
++            <div class="progress-fill"></div>
++          </div>
++          <p class="progress-description" id="order-description">Your coffee is being prepared. Hang tight while we work our magic.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

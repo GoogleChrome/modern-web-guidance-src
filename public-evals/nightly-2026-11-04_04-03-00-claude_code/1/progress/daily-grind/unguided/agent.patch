@@ -1,0 +1,150 @@
+diff --git a/index.html b/index.html
+index 66c9173..b94340a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,108 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Bars */
++    .progress-section {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-bottom: 40px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 24px 40px;
++    }
++
++    .progress-section h2 {
++      grid-column: 1 / -1;
++      font-size: 1.25rem;
++      color: var(--primary);
++    }
++
++    .progress-item {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++    }
++
++    .progress-label {
++      font-weight: 600;
++    }
++
++    .progress-value {
++      font-size: 0.9rem;
++      font-variant-numeric: tabular-nums;
++      color: #5d4037;
++    }
++
++    .progress-track {
++      position: relative;
++      height: 14px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: var(--progress, 0%);
++      background: linear-gradient(90deg, #6d4c41, var(--primary));
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    /* Indeterminate: a segment that slides across the track */
++    .progress-track.is-indeterminate .progress-fill {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 40%;
++      animation: progress-slide 1.6s ease-in-out infinite;
++    }
++
++    @keyframes progress-slide {
++      0% {
++        transform: translateX(-100%);
++      }
++
++      100% {
++        transform: translateX(250%);
++      }
++    }
++
++    .progress-hint {
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .progress-hint a {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      /* Replace the sliding motion with a static striped bar */
++      .progress-track.is-indeterminate .progress-fill {
++        animation: none;
++        width: 100%;
++        transform: none;
++        background: repeating-linear-gradient(45deg,
++            var(--primary) 0 10px,
++            #8d6e63 10px 20px);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +277,36 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-heading">
++      <h2 id="progress-heading">Your Progress</h2>
++
++      <!-- Determinate: known completion (rewards stamps) -->
++      <div class="progress-item">
++        <div class="progress-header">
++          <span class="progress-label" id="rewards-label">Rewards: Free Drink</span>
++          <span class="progress-value" aria-hidden="true">7 / 10 stamps</span>
++        </div>
++        <div class="progress-track" role="progressbar" aria-labelledby="rewards-label"
++          aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps collected">
++          <div class="progress-fill" style="--progress: 70%;"></div>
++        </div>
++        <p class="progress-hint">3 more visits until your next free drink. <a href="/rewards">View rewards</a></p>
++      </div>
++
++      <!-- Indeterminate: in progress, completion time unknown (order) -->
++      <div class="progress-item">
++        <div class="progress-header">
++          <span class="progress-label" id="order-label">Order #1042</span>
++          <span class="progress-value" aria-hidden="true">Preparing&hellip;</span>
++        </div>
++        <div class="progress-track is-indeterminate" role="progressbar" aria-labelledby="order-label"
++          aria-valuetext="Your order is being prepared" aria-busy="true">
++          <div class="progress-fill"></div>
++        </div>
++        <p class="progress-hint">Our baristas are crafting your drink. We&rsquo;ll let you know when it&rsquo;s ready.</p>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

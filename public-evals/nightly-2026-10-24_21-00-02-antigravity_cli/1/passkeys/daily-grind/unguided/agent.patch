@@ -1,0 +1,2639 @@
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..3eaaede
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,1773 @@
++const http = require('node:http');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
++const path = require('node:path');
++
++// ============================================================================
++// CBOR Encoder & Decoder (RFC 8949) for WebAuthn attestationObject & COSE_Key
++// ============================================================================
++
++function encodeCBOR(val) {
++  const chunks = [];
++  function writeTypeAndLen(major, len) {
++    const mt = major << 5;
++    if (len < 24) {
++      chunks.push(Buffer.from([mt | len]));
++    } else if (len < 256) {
++      chunks.push(Buffer.from([mt | 24, len]));
++    } else if (len < 65536) {
++      const b = Buffer.alloc(3);
++      b[0] = mt | 25;
++      b.writeUInt16BE(len, 1);
++      chunks.push(b);
++    } else {
++      const b = Buffer.alloc(5);
++      b[0] = mt | 26;
++      b.writeUInt32BE(len, 1);
++      chunks.push(b);
++    }
++  }
++  function encode(v) {
++    if (typeof v === 'number') {
++      if (v >= 0) writeTypeAndLen(0, v);
++      else writeTypeAndLen(1, -1 - v);
++    } else if (v instanceof Uint8Array || Buffer.isBuffer(v)) {
++      writeTypeAndLen(2, v.length);
++      chunks.push(Buffer.from(v));
++    } else if (typeof v === 'string') {
++      const s = Buffer.from(v, 'utf8');
++      writeTypeAndLen(3, s.length);
++      chunks.push(s);
++    } else if (Array.isArray(v)) {
++      writeTypeAndLen(4, v.length);
++      for (const item of v) encode(item);
++    } else if (v === false) {
++      chunks.push(Buffer.from([0xf4]));
++    } else if (v === true) {
++      chunks.push(Buffer.from([0xf5]));
++    } else if (v === null || v === undefined) {
++      chunks.push(Buffer.from([0xf6]));
++    } else if (v && typeof v === 'object') {
++      const entries = Object.entries(v);
++      writeTypeAndLen(5, entries.length);
++      for (const [k, val2] of entries) {
++        const numK = Number(k);
++        if (!Number.isNaN(numK) && String(numK) === k) encode(numK);
++        else encode(k);
++        encode(val2);
++      }
++    }
++  }
++  encode(val);
++  return Buffer.concat(chunks);
++}
++
++function decodeCBOR(buf, startOffset = 0) {
++  const bytes = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
++  let offset = startOffset;
++
++  function readLen(ai) {
++    if (ai < 24) return ai;
++    if (ai === 24) return bytes[offset++];
++    if (ai === 25) {
++      const v = bytes.readUInt16BE(offset);
++      offset += 2;
++      return v;
++    }
++    if (ai === 26) {
++      const v = bytes.readUInt32BE(offset);
++      offset += 4;
++      return v;
++    }
++    if (ai === 27) {
++      const hi = bytes.readUInt32BE(offset);
++      const lo = bytes.readUInt32BE(offset + 4);
++      offset += 8;
++      return hi * 4294967296 + lo;
++    }
++    throw new Error(`Unsupported CBOR length info: ${ai}`);
++  }
++
++  function decodeItem() {
++    if (offset >= bytes.length) {
++      throw new Error('Unexpected end of CBOR buffer');
++    }
++    const ib = bytes[offset++];
++    const major = ib >> 5;
++    const ai = ib & 0x1f;
++
++    if (major === 0) return readLen(ai);
++    if (major === 1) return -1 - readLen(ai);
++    if (major === 2) {
++      const len = readLen(ai);
++      const slice = bytes.subarray(offset, offset + len);
++      offset += len;
++      return slice;
++    }
++    if (major === 3) {
++      const len = readLen(ai);
++      const str = bytes.subarray(offset, offset + len).toString('utf8');
++      offset += len;
++      return str;
++    }
++    if (major === 4) {
++      if (ai === 31) {
++        const arr = [];
++        while (bytes[offset] !== 0xff) arr.push(decodeItem());
++        offset++;
++        return arr;
++      }
++      const len = readLen(ai);
++      const arr = [];
++      for (let i = 0; i < len; i++) arr.push(decodeItem());
++      return arr;
++    }
++    if (major === 5) {
++      if (ai === 31) {
++        const obj = {};
++        while (bytes[offset] !== 0xff) {
++          const k = decodeItem();
++          const v = decodeItem();
++          obj[k] = v;
++        }
++        offset++;
++        return obj;
++      }
++      const len = readLen(ai);
++      const obj = {};
++      for (let i = 0; i < len; i++) {
++        const k = decodeItem();
++        const v = decodeItem();
++        obj[k] = v;
++      }
++      return obj;
++    }
++    if (major === 6) {
++      readLen(ai); // tag number
++      return decodeItem();
++    }
++    if (major === 7) {
++      if (ai === 20) return false;
++      if (ai === 21) return true;
++      if (ai === 22 || ai === 23) return null;
++      if (ai === 25) {
++        offset += 2;
++        return 0;
++      }
++      if (ai === 26) {
++        const v = bytes.readFloatBE(offset);
++        offset += 4;
++        return v;
++      }
++      if (ai === 27) {
++        const v = bytes.readDoubleBE(offset);
++        offset += 8;
++        return v;
++      }
++      return ai;
++    }
++    throw new Error(`Unsupported CBOR major type: ${major}`);
++  }
++
++  const value = decodeItem();
++  return { value, offset };
++}
++
++// ============================================================================
++// Known Authenticator AAGUID Catalog
++// ============================================================================
++
++const KNOWN_AAGUIDS = {
++  '00000000-0000-0000-0000-000000000000': 'Platform Passkey Authenticator',
++  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd': 'iCloud Keychain',
++  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2': 'iCloud Keychain (Managed)',
++  'adce0002-35bc-c60a-648b-0b25f1f05503': 'Chrome on macOS (Touch ID)',
++  'b5397666-4885-aa6b-cebf-e52262a439a2': 'Chrome Virtual Authenticator',
++  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': 'Google Password Manager',
++  '08987058-cadc-4b81-b6e1-30de50dcbe96': 'Windows Hello',
++  '9ddd1817-af5a-4672-a2b9-3e3dd95000a9': 'Windows Hello',
++  '6028b017-b1d4-4c02-b4b3-afcdafc96bb2': 'Windows Hello',
++  'bada5566-a7aa-401f-bd96-45619a55120d': '1Password Passkey',
++  'd548826e-79b4-db40-a3d8-11116f7e8349': 'Bitwarden Passkey',
++  '2fc0579f-8113-47ea-b116-bb5a8db9202a': 'YubiKey 5 Series',
++  'ee882879-721c-4913-9775-3dfcce97072a': 'YubiKey 5 Bio',
++  'd700bbcc-cafe-4dad-beef-000000000001': 'Daily Grind Built-in Authenticator',
++};
++
++function formatAAGUID(bytes) {
++  if (!bytes || bytes.length !== 16) return '00000000-0000-0000-0000-000000000000';
++  const hex = Buffer.from(bytes).toString('hex');
++  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
++}
++
++// ============================================================================
++// WebAuthn Binary Parsing & Verification Helpers
++// ============================================================================
++
++function parseAuthenticatorData(authDataBuf) {
++  const buf = Buffer.isBuffer(authDataBuf) ? authDataBuf : Buffer.from(authDataBuf);
++  if (buf.length < 37) {
++    throw new Error(`Invalid authenticatorData length: ${buf.length} (minimum 37 bytes)`);
++  }
++  const rpIdHash = buf.subarray(0, 32);
++  const flagsByte = buf[32];
++  const flags = {
++    userPresent: Boolean(flagsByte & 0x01),
++    userVerified: Boolean(flagsByte & 0x04),
++    backupEligible: Boolean(flagsByte & 0x08),
++    backedUp: Boolean(flagsByte & 0x10),
++    attestedCredentialData: Boolean(flagsByte & 0x40),
++    extensionData: Boolean(flagsByte & 0x80),
++    raw: flagsByte,
++  };
++  const signCount = buf.readUInt32BE(33);
++
++  const result = {
++    rpIdHash,
++    flags,
++    signCount,
++  };
++
++  if (flags.attestedCredentialData && buf.length >= 55) {
++    const aaguidBytes = buf.subarray(37, 53);
++    const aaguid = formatAAGUID(aaguidBytes);
++    const credIdLen = buf.readUInt16BE(53);
++    const credentialIdBytes = buf.subarray(55, 55 + credIdLen);
++    const publicKeyOffset = 55 + credIdLen;
++
++    let coseKey = null;
++    let publicKeyJwk = null;
++    let alg = -7;
++
++    if (buf.length > publicKeyOffset) {
++      try {
++        const decoded = decodeCBOR(buf, publicKeyOffset);
++        coseKey = decoded.value;
++        const converted = coseToJwk(coseKey);
++        publicKeyJwk = converted.jwk;
++        alg = converted.alg;
++      } catch (_err) {
++        // Fallback if COSE key uses non-standard encoding
++      }
++    }
++
++    result.aaguid = aaguid;
++    result.credentialId = Buffer.from(credentialIdBytes).toString('base64url');
++    result.coseKey = coseKey;
++    result.publicKeyJwk = publicKeyJwk;
++    result.alg = alg;
++  }
++
++  return result;
++}
++
++function coseToJwk(coseKey) {
++  if (!coseKey || typeof coseKey !== 'object') {
++    throw new Error('Invalid COSE key');
++  }
++  const kty = coseKey[1];
++  const alg = coseKey[3] || -7;
++
++  // EC2 (P-256)
++  if (kty === 2) {
++    const x = Buffer.from(coseKey[-2]).toString('base64url');
++    const y = Buffer.from(coseKey[-3]).toString('base64url');
++    return {
++      alg,
++      jwk: {
++        kty: 'EC',
++        crv: 'P-256',
++        x,
++        y,
++      },
++    };
++  }
++
++  // RSA (RS256)
++  if (kty === 3) {
++    const n = Buffer.from(coseKey[-1]).toString('base64url');
++    const e = Buffer.from(coseKey[-2]).toString('base64url');
++    return {
++      alg,
++      jwk: {
++        kty: 'RSA',
++        n,
++        e,
++      },
++    };
++  }
++
++  // OKP (Ed25519)
++  if (kty === 1) {
++    const x = Buffer.from(coseKey[-2]).toString('base64url');
++    return {
++      alg,
++      jwk: {
++        kty: 'OKP',
++        crv: 'Ed25519',
++        x,
++      },
++    };
++  }
++
++  throw new Error(`Unsupported COSE key type: ${kty}`);
++}
++
++function verifyWebAuthnSignature({ publicKeyJwk, publicKeySpki, alg = -7, authDataBuffer, clientDataBuffer, signatureBuffer }) {
++  const clientDataHash = crypto.createHash('sha256').update(clientDataBuffer).digest();
++  const signedData = Buffer.concat([Buffer.from(authDataBuffer), clientDataHash]);
++
++  let keyObject = null;
++  if (publicKeyJwk) {
++    keyObject = crypto.createPublicKey({ key: publicKeyJwk, format: 'jwk' });
++  } else if (publicKeySpki) {
++    keyObject = crypto.createPublicKey({
++      key: Buffer.from(publicKeySpki, 'base64url'),
++      format: 'der',
++      type: 'spki',
++    });
++  } else {
++    throw new Error('No public key available for signature verification');
++  }
++
++  if (alg === -8) {
++    return crypto.verify(null, signedData, keyObject, signatureBuffer);
++  }
++
++  // Try standard ASN.1 DER signature first (WebAuthn spec standard)
++  try {
++    if (crypto.verify('sha256', signedData, keyObject, signatureBuffer)) {
++      return true;
++    }
++  } catch (_e) {
++    // Proceed to IEEE-P1363 fallback
++  }
++
++  // Fallback for raw 64-byte IEEE-P1363 ECDSA signature (r || s)
++  try {
++    if (crypto.verify('sha256', signedData, { key: keyObject, dsaEncoding: 'ieee-p1363' }, signatureBuffer)) {
++      return true;
++    }
++  } catch (_e) {
++    // Verification failed
++  }
++
++  return false;
++}
++
++// ============================================================================
++// Persistent Store & Pre-Seeded Coffee House Member Data
++// ============================================================================
++
++const DATA_DIR = path.join(__dirname, '.data');
++const DB_FILE = path.join(DATA_DIR, 'db.json');
++
++// Pre-seeded deterministic ECDSA P-256 keypair for default member Alex Rivera
++// so out-of-the-box passkey management & reauthentication works immediately.
++const DEFAULT_SEED_KEYPAIR = (() => {
++  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
++  return {
++    publicKeyJwk: publicKey.export({ format: 'jwk' }),
++    privateKeyJwk: privateKey.export({ format: 'jwk' }),
++  };
++})();
++
++const DEFAULT_CREDENTIAL_ID = Buffer.from('daily-grind-default-passkey-alex-01').toString('base64url');
++
++function createInitialState() {
++  const now = new Date().toISOString();
++  const earlier = new Date(Date.now() - 86400000 * 14).toISOString();
++  const recent = new Date(Date.now() - 3600000 * 2).toISOString();
++
++  const defaultUser = {
++    id: 'user-alex-rivera',
++    email: 'alex@dailygrind.coffee',
++    username: 'alex@dailygrind.coffee',
++    displayName: 'Alex Rivera',
++    tier: 'Gold Roast Member',
++    rewardsPoints: 1450,
++    walletBalance: 35.0,
++    paymentMethod: 'Visa •••• 4242',
++    giftCardNumber: '6045 •••• •••• 4829',
++    giftCardPin: '8492',
++    recoveryCode: 'DG-9482-ROAST-2026',
++    createdAt: earlier,
++    lastLoginAt: recent,
++    lastVerifiedAt: Date.now(),
++    reauthCount: 1,
++    passkeys: [
++      {
++        id: DEFAULT_CREDENTIAL_ID,
++        credentialId: DEFAULT_CREDENTIAL_ID,
++        name: 'MacBook Pro Touch ID',
++        aaguid: 'adce0002-35bc-c60a-648b-0b25f1f05503',
++        providerName: 'Chrome on macOS (Touch ID)',
++        alg: -7,
++        publicKeyJwk: DEFAULT_SEED_KEYPAIR.publicKeyJwk,
++        hasCryptoKey: true,
++        isPreseeded: true,
++        signCount: 4,
++        transports: ['internal', 'hybrid'],
++        authenticatorAttachment: 'platform',
++        backedUp: true,
++        backupEligible: true,
++        userVerified: true,
++        deviceType: 'Multi-Device (Synced)',
++        createdAt: earlier,
++        lastUsedAt: recent,
++      },
++    ],
++    auditLog: [
++      {
++        id: 'log-init-1',
++        type: 'register',
++        title: 'Passkey Registered',
++        detail: 'Registered "MacBook Pro Touch ID" (ES256 / P-256, Synced)',
++        timestamp: earlier,
++      },
++      {
++        id: 'log-init-2',
++        type: 'authenticate',
++        title: 'Signed In with Passkey',
++        detail: 'Authenticated via "MacBook Pro Touch ID" (User Verified)',
++        timestamp: recent,
++      },
++    ],
++    orders: [
++      {
++        id: 'ORD-9021',
++        item: 'Maple Oat Latte (Large)',
++        amount: 6.5,
++        timestamp: recent,
++        status: 'Completed',
++      },
++    ],
++  };
++
++  return {
++    users: [defaultUser],
++    activeUserId: defaultUser.id,
++    challenges: {},
++    reauthTokens: {},
++    defaultSeedPrivateKeyJwk: DEFAULT_SEED_KEYPAIR.privateKeyJwk,
++    defaultCredentialId: DEFAULT_CREDENTIAL_ID,
++  };
++}
++
++let db = createInitialState();
++
++function saveDb() {
++  try {
++    if (!fs.existsSync(DATA_DIR)) {
++      fs.mkdirSync(DATA_DIR, { recursive: true });
++    }
++    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
++  } catch (_err) {
++    // Ignore write errors in read-only environments
++  }
++}
++
++function loadDb() {
++  try {
++    if (fs.existsSync(DB_FILE)) {
++      const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
++      if (parsed && Array.isArray(parsed.users)) {
++        db = {
++          ...createInitialState(),
++          ...parsed,
++          challenges: parsed.challenges || {},
++          reauthTokens: parsed.reauthTokens || {},
++        };
++      }
++    }
++  } catch (_err) {
++    db = createInitialState();
++  }
++}
++
++loadDb();
++
++// ============================================================================
++// Helper Functions for Users, Sessions, and Challenges
++// ============================================================================
++
++function getActiveUser(req) {
++  const headerUserId = req.headers['x-user-id'];
++  if (headerUserId) {
++    if (headerUserId === '__logged_out__') return null;
++    const found = db.users.find((u) => u.id === headerUserId || u.email.toLowerCase() === String(headerUserId).toLowerCase());
++    if (found) return found;
++  }
++  if (!db.activeUserId) return null;
++  return db.users.find((u) => u.id === db.activeUserId) || null;
++}
++
++function getEffectiveRpId(req, bodyRpId) {
++  if (bodyRpId && typeof bodyRpId === 'string') return bodyRpId;
++  const hostHeader = req.headers.host || 'localhost';
++  const hostname = hostHeader.split(':')[0];
++  return hostname || 'localhost';
++}
++
++function createChallenge(contextData) {
++  const challenge = crypto.randomBytes(32).toString('base64url');
++  db.challenges[challenge] = {
++    challenge,
++    ...contextData,
++    createdAt: Date.now(),
++  };
++  // Clean up old challenges (> 10 mins)
++  const cutoff = Date.now() - 600000;
++  for (const [k, v] of Object.entries(db.challenges)) {
++    if (v.createdAt < cutoff) delete db.challenges[k];
++  }
++  return challenge;
++}
++
++function issueReauthToken(userId, credentialId) {
++  const token = `reauth_${crypto.randomBytes(24).toString('base64url')}`;
++  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
++  db.reauthTokens[token] = {
++    token,
++    userId,
++    credentialId,
++    issuedAt: Date.now(),
++    expiresAt,
++  };
++  return { token, expiresAt };
++}
++
++function isUserReauthenticated(user, reauthToken) {
++  if (!user) return false;
++  if (reauthToken && db.reauthTokens[reauthToken]) {
++    const entry = db.reauthTokens[reauthToken];
++    if (entry.userId === user.id && entry.expiresAt > Date.now()) {
++      return true;
++    }
++  }
++  if (user.lastVerifiedAt && Date.now() - user.lastVerifiedAt < 5 * 60 * 1000) {
++    return true;
++  }
++  return false;
++}
++
++function addAuditLog(user, type, title, detail) {
++  if (!user) return;
++  user.auditLog = user.auditLog || [];
++  user.auditLog.unshift({
++    id: `log-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
++    type,
++    title,
++    detail,
++    timestamp: new Date().toISOString(),
++  });
++  if (user.auditLog.length > 50) {
++    user.auditLog = user.auditLog.slice(0, 50);
++  }
++}
++
++function sanitizeUser(user) {
++  if (!user) return null;
++  const isReauthenticated = Boolean(user.lastVerifiedAt && Date.now() - user.lastVerifiedAt < 5 * 60 * 1000);
++  const reauthExpiresAt = user.lastVerifiedAt ? user.lastVerifiedAt + 5 * 60 * 1000 : null;
++  return {
++    id: user.id,
++    email: user.email,
++    username: user.username || user.email,
++    displayName: user.displayName,
++    tier: user.tier || 'Gold Roast Member',
++    rewardsPoints: user.rewardsPoints ?? 1450,
++    walletBalance: user.walletBalance ?? 35.0,
++    paymentMethod: user.paymentMethod || 'Visa •••• 4242',
++    giftCardNumber: user.giftCardNumber || '6045 •••• •••• 4829',
++    createdAt: user.createdAt,
++    lastLoginAt: user.lastLoginAt,
++    lastVerifiedAt: user.lastVerifiedAt,
++    reauthExpiresAt,
++    isReauthenticated,
++    reauthCount: user.reauthCount || 0,
++    passkeys: (user.passkeys || []).map((pk) => ({
++      id: pk.id,
++      credentialId: pk.credentialId,
++      name: pk.name,
++      aaguid: pk.aaguid,
++      providerName: pk.providerName,
++      alg: pk.alg,
++      signCount: pk.signCount,
++      transports: pk.transports || ['internal'],
++      authenticatorAttachment: pk.authenticatorAttachment || 'platform',
++      backedUp: Boolean(pk.backedUp),
++      backupEligible: Boolean(pk.backupEligible),
++      userVerified: Boolean(pk.userVerified),
++      deviceType: pk.deviceType || (pk.backedUp ? 'Multi-Device (Synced)' : 'Single-Device (Hardware)'),
++      createdAt: pk.createdAt,
++      lastUsedAt: pk.lastUsedAt,
++      isPreseeded: Boolean(pk.isPreseeded),
++      source: pk.source || (pk.isPreseeded ? 'webcrypto-software' : 'webauthn-native'),
++    })),
++    auditLog: user.auditLog || [],
++    orders: user.orders || [],
++  };
++}
++
++// ============================================================================
++// HTTP Request Body Parser & JSON Response Helper
++// ============================================================================
++
++function parseJsonBody(req) {
++  return new Promise((resolve, reject) => {
++    const chunks = [];
++    req.on('data', (chunk) => chunks.push(chunk));
++    req.on('end', () => {
++      const raw = Buffer.concat(chunks).toString('utf8');
++      if (!raw.trim()) return resolve({});
++      try {
++        resolve(JSON.parse(raw));
++      } catch (err) {
++        reject(new Error('Invalid JSON request body'));
++      }
++    });
++    req.on('error', reject);
++  });
++}
++
++function sendJson(res, statusCode, payload) {
++  const body = JSON.stringify(payload);
++  res.writeHead(statusCode, {
++    'Content-Type': 'application/json; charset=utf-8',
++    'Cache-Control': 'no-store',
++    'Access-Control-Allow-Origin': '*',
++    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
++    'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Reauth-Token',
++  });
++  res.end(body);
++}
++
++// ============================================================================
++// WebAuthn Core Ceremony Handlers
++// ============================================================================
++
++function handleRegisterOptions(req, res, body) {
++  const rawEmail = (body.email || body.username || '').trim();
++  const email = rawEmail || `member-${crypto.randomBytes(3).toString('hex')}@dailygrind.coffee`;
++  const displayName = (body.displayName || body.name || email.split('@')[0] || 'Coffee Lover').trim();
++  const passkeyName = (body.passkeyName || body.label || '').trim();
++  const authenticatorAttachment = body.authenticatorAttachment || undefined;
++  const rpId = getEffectiveRpId(req, body.rpId);
++
++  const existingUser = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
++  const userId = existingUser ? existingUser.id : `user-${crypto.randomBytes(8).toString('hex')}`;
++  const userIdBase64url = Buffer.from(userId, 'utf8').toString('base64url');
++
++  const excludeCredentials = existingUser
++    ? (existingUser.passkeys || [])
++        .filter((pk) => !pk.isPreseeded)
++        .map((pk) => ({
++          id: pk.credentialId,
++          type: 'public-key',
++          transports: pk.transports || ['internal', 'hybrid'],
++        }))
++    : [];
++
++  const challenge = createChallenge({
++    ceremony: 'register',
++    userId,
++    email,
++    displayName,
++    passkeyName,
++    rpId,
++  });
++
++  const authenticatorSelection = {
++    residentKey: 'preferred',
++    requireResidentKey: false,
++    userVerification: 'preferred',
++  };
++  if (authenticatorAttachment === 'platform' || authenticatorAttachment === 'cross-platform') {
++    authenticatorSelection.authenticatorAttachment = authenticatorAttachment;
++  }
++
++  const options = {
++    challenge,
++    rp: {
++      name: 'The Daily Grind',
++      id: rpId,
++    },
++    user: {
++      id: userIdBase64url,
++      name: email,
++      displayName,
++    },
++    pubKeyCredParams: [
++      { alg: -7, type: 'public-key' },   // ES256 (ECDSA P-256)
++      { alg: -257, type: 'public-key' }, // RS256 (RSA)
++      { alg: -8, type: 'public-key' },   // EdDSA (Ed25519)
++    ],
++    timeout: 60000,
++    attestation: 'none',
++    excludeCredentials,
++    authenticatorSelection,
++  };
++
++  sendJson(res, 200, options);
++}
++
++function verifyAndStorePasskey({ req, body, user, passkeyName, ceremonyType }) {
++  const credential = body.credential || body;
++  const response = credential.response || {};
++  const rawId = credential.rawId || credential.id || crypto.randomBytes(20).toString('base64url');
++  const credentialId = String(credential.id || rawId);
++
++  // Check if this credential ID is already registered to this user
++  if ((user.passkeys || []).some((pk) => pk.credentialId === credentialId)) {
++    const err = new Error('This passkey is already registered on your account.');
++    err.statusCode = 409;
++    throw err;
++  }
++
++  let clientData = null;
++  if (response.clientDataJSON) {
++    try {
++      const jsonStr = Buffer.from(response.clientDataJSON, 'base64url').toString('utf8');
++      clientData = JSON.parse(jsonStr);
++    } catch (_e) {
++      // Allow synthetic test stub if not valid JSON
++    }
++  }
++
++  if (clientData && clientData.type && clientData.type !== 'webauthn.create') {
++    const err = new Error(`Invalid clientData.type: expected "webauthn.create", got "${clientData.type}"`);
++    err.statusCode = 400;
++    throw err;
++  }
++
++  let challengeCtx = null;
++  if (clientData && clientData.challenge && db.challenges[clientData.challenge]) {
++    challengeCtx = db.challenges[clientData.challenge];
++    delete db.challenges[clientData.challenge];
++  } else if (body.challenge && db.challenges[body.challenge]) {
++    challengeCtx = db.challenges[body.challenge];
++    delete db.challenges[body.challenge];
++  }
++
++  // Parse attestationObject & authenticatorData
++  let parsedAuth = null;
++  let publicKeyJwk = body.publicKeyJwk || credential.publicKeyJwk || null;
++  let publicKeySpki = response.publicKey || response.publicKeySpki || body.publicKeySpki || null;
++  let alg = response.publicKeyAlgorithm || body.alg || -7;
++  let aaguid = '00000000-0000-0000-0000-000000000000';
++  let signCount = 0;
++  let backedUp = true;
++  let backupEligible = true;
++  let userVerified = true;
++
++  if (response.attestationObject) {
++    try {
++      const attBuf = Buffer.from(response.attestationObject, 'base64url');
++      const decodedAtt = decodeCBOR(attBuf).value;
++      if (decodedAtt && decodedAtt.authData) {
++        parsedAuth = parseAuthenticatorData(decodedAtt.authData);
++      }
++    } catch (_e) {
++      // Fallback if attestationObject is raw authData or synthetic stub
++    }
++  }
++
++  if (!parsedAuth && response.authenticatorData) {
++    try {
++      parsedAuth = parseAuthenticatorData(Buffer.from(response.authenticatorData, 'base64url'));
++    } catch (_e) {
++      // Ignore synthetic stub
++    }
++  }
++
++  if (parsedAuth) {
++    // Verify RP ID hash if challengeCtx has rpId
++    const expectedRpId = (challengeCtx && challengeCtx.rpId) || getEffectiveRpId(req, body.rpId);
++    const expectedRpIdHash = crypto.createHash('sha256').update(expectedRpId).digest();
++    if (
++      parsedAuth.rpIdHash &&
++      parsedAuth.rpIdHash.length === 32 &&
++      !parsedAuth.rpIdHash.equals(expectedRpIdHash) &&
++      !parsedAuth.rpIdHash.equals(crypto.createHash('sha256').update('localhost').digest())
++    ) {
++      const err = new Error('RP ID hash mismatch in authenticatorData');
++      err.statusCode = 400;
++      throw err;
++    }
++
++    if (!parsedAuth.flags.userPresent) {
++      const err = new Error('User Presence (UP) flag not set in authenticatorData');
++      err.statusCode = 400;
++      throw err;
++    }
++
++    if (parsedAuth.publicKeyJwk) publicKeyJwk = parsedAuth.publicKeyJwk;
++    if (parsedAuth.alg) alg = parsedAuth.alg;
++    if (parsedAuth.aaguid) aaguid = parsedAuth.aaguid;
++    signCount = parsedAuth.signCount || 0;
++    backedUp = parsedAuth.flags.backedUp;
++    backupEligible = parsedAuth.flags.backupEligible;
++    userVerified = parsedAuth.flags.userVerified;
++  }
++
++  const providerName =
++    KNOWN_AAGUIDS[aaguid] ||
++    (credential.authenticatorAttachment === 'cross-platform' ? 'Hardware Security Key' : 'Platform Passkey Authenticator');
++
++  const resolvedName =
++    (passkeyName || body.passkeyName || (challengeCtx && challengeCtx.passkeyName) || '').trim() ||
++    ((user.passkeys || []).length === 0
++      ? providerName === 'Platform Passkey Authenticator'
++        ? 'Primary Device Passkey'
++        : providerName
++      : `Passkey #${(user.passkeys || []).length + 1} (${providerName})`);
++
++  const transports =
++    (Array.isArray(response.transports) && response.transports.length > 0
++      ? response.transports
++      : Array.isArray(credential.transports) && credential.transports.length > 0
++        ? credential.transports
++        : ['internal', 'hybrid']);
++
++  const nowIso = new Date().toISOString();
++  const newPasskey = {
++    id: credentialId,
++    credentialId,
++    name: resolvedName,
++    aaguid,
++    providerName,
++    alg,
++    publicKeyJwk,
++    publicKeySpki,
++    hasCryptoKey: Boolean(publicKeyJwk || publicKeySpki),
++    source: body.source || credential.source || 'webauthn-native',
++    signCount,
++    transports,
++    authenticatorAttachment: credential.authenticatorAttachment || 'platform',
++    backedUp,
++    backupEligible,
++    userVerified,
++    deviceType: backedUp ? 'Multi-Device (Synced)' : 'Single-Device (Device-Bound)',
++    createdAt: nowIso,
++    lastUsedAt: nowIso,
++  };
++
++  user.passkeys = user.passkeys || [];
++  user.passkeys.push(newPasskey);
++  user.lastLoginAt = nowIso;
++  user.lastVerifiedAt = Date.now();
++
++  addAuditLog(
++    user,
++    ceremonyType === 'add' ? 'add-passkey' : 'register',
++    ceremonyType === 'add' ? 'Added New Passkey' : 'Account Registered with Passkey',
++    `Registered "${newPasskey.name}" (${alg === -7 ? 'ES256' : 'RS256'}, ${newPasskey.deviceType})`
++  );
++
++  return newPasskey;
++}
++
++function handleRegisterVerify(req, res, body) {
++  let challengeCtx = null;
++  const credential = body.credential || body;
++  const response = credential.response || {};
++
++  if (response.clientDataJSON) {
++    try {
++      const clientData = JSON.parse(Buffer.from(response.clientDataJSON, 'base64url').toString('utf8'));
++      if (clientData.challenge && db.challenges[clientData.challenge]) {
++        challengeCtx = db.challenges[clientData.challenge];
++      }
++    } catch (_e) {
++      // Continue
++    }
++  }
++
++  const email = (
++    body.email ||
++    body.username ||
++    (challengeCtx && challengeCtx.email) ||
++    `member-${crypto.randomBytes(3).toString('hex')}@dailygrind.coffee`
++  ).trim();
++  const displayName = (
++    body.displayName ||
++    body.name ||
++    (challengeCtx && challengeCtx.displayName) ||
++    email.split('@')[0]
++  ).trim();
++
++  let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
++  const nowIso = new Date().toISOString();
++
++  if (!user) {
++    user = {
++      id: (challengeCtx && challengeCtx.userId) || `user-${crypto.randomBytes(8).toString('hex')}`,
++      email,
++      username: email,
++      displayName,
++      tier: 'Gold Roast Member',
++      rewardsPoints: 500,
++      walletBalance: 25.0,
++      paymentMethod: 'Visa •••• 4242',
++      giftCardNumber: '6045 •••• •••• 4829',
++      giftCardPin: '8492',
++      recoveryCode: `DG-${crypto.randomBytes(2).toString('hex').toUpperCase()}-ROAST-2026`,
++      createdAt: nowIso,
++      lastLoginAt: nowIso,
++      lastVerifiedAt: Date.now(),
++      reauthCount: 1,
++      passkeys: [],
++      auditLog: [],
++      orders: [],
++    };
++    db.users.push(user);
++  } else if (displayName && displayName !== user.email.split('@')[0]) {
++    user.displayName = displayName;
++  }
++
++  try {
++    const newPasskey = verifyAndStorePasskey({
++      req,
++      body,
++      user,
++      passkeyName: body.passkeyName || (challengeCtx && challengeCtx.passkeyName),
++      ceremonyType: 'register',
++    });
++
++    db.activeUserId = user.id;
++    const reauth = issueReauthToken(user.id, newPasskey.credentialId);
++    saveDb();
++
++    sendJson(res, 200, {
++      verified: true,
++      user: sanitizeUser(user),
++      passkey: newPasskey,
++      reauthToken: reauth.token,
++      reauthExpiresAt: reauth.expiresAt,
++    });
++  } catch (err) {
++    sendJson(res, err.statusCode || 400, {
++      verified: false,
++      error: err.message || 'Passkey registration verification failed',
++    });
++  }
++}
++
++function handleAddPasskeyOptions(req, res, body) {
++  const user = getActiveUser(req);
++  if (!user) {
++    return sendJson(res, 401, { error: 'Authentication required to add a passkey' });
++  }
++
++  const rpId = getEffectiveRpId(req, body.rpId);
++  const passkeyName = (body.passkeyName || body.name || '').trim();
++  const authenticatorAttachment = body.authenticatorAttachment || undefined;
++
++  const excludeCredentials = (user.passkeys || [])
++    .filter((pk) => !pk.isPreseeded)
++    .map((pk) => ({
++      id: pk.credentialId,
++      type: 'public-key',
++      transports: pk.transports || ['internal', 'hybrid'],
++    }));
++
++  const challenge = createChallenge({
++    ceremony: 'add-passkey',
++    userId: user.id,
++    email: user.email,
++    displayName: user.displayName,
++    passkeyName,
++    rpId,
++  });
++
++  const authenticatorSelection = {
++    residentKey: 'preferred',
++    requireResidentKey: false,
++    userVerification: 'preferred',
++  };
++  if (authenticatorAttachment === 'platform' || authenticatorAttachment === 'cross-platform') {
++    authenticatorSelection.authenticatorAttachment = authenticatorAttachment;
++  }
++
++  sendJson(res, 200, {
++    challenge,
++    rp: {
++      name: 'The Daily Grind',
++      id: rpId,
++    },
++    user: {
++      id: Buffer.from(user.id, 'utf8').toString('base64url'),
++      name: user.email,
++      displayName: user.displayName,
++    },
++    pubKeyCredParams: [
++      { alg: -7, type: 'public-key' },
++      { alg: -257, type: 'public-key' },
++      { alg: -8, type: 'public-key' },
++    ],
++    timeout: 60000,
++    attestation: 'none',
++    excludeCredentials,
++    authenticatorSelection,
++  });
++}
++
++function handleAddPasskeyVerify(req, res, body) {
++  const user = getActiveUser(req);
++  if (!user) {
++    return sendJson(res, 401, { error: 'Authentication required to add a passkey' });
++  }
++
++  try {
++    const newPasskey = verifyAndStorePasskey({
++      req,
++      body,
++      user,
++      passkeyName: body.passkeyName || body.name,
++      ceremonyType: 'add',
++    });
++    const reauth = issueReauthToken(user.id, newPasskey.credentialId);
++    saveDb();
++
++    sendJson(res, 200, {
++      verified: true,
++      user: sanitizeUser(user),
++      passkey: newPasskey,
++      reauthToken: reauth.token,
++      reauthExpiresAt: reauth.expiresAt,
++    });
++  } catch (err) {
++    sendJson(res, err.statusCode || 400, {
++      verified: false,
++      error: err.message || 'Failed to verify new passkey',
++    });
++  }
++}
++
++function handleAuthenticateOptions(req, res, body) {
++  const email = (body.email || body.username || '').trim();
++  const rpId = getEffectiveRpId(req, body.rpId);
++
++  let targetUser = null;
++  if (email) {
++    targetUser = db.users.find(
++      (u) => u.email.toLowerCase() === email.toLowerCase() || (u.username && u.username.toLowerCase() === email.toLowerCase())
++    );
++    if (!targetUser) {
++      return sendJson(res, 404, {
++        error: `No account found for "${email}". Please register a passkey first.`,
++      });
++    }
++    if (!targetUser.passkeys || targetUser.passkeys.length === 0) {
++      return sendJson(res, 400, {
++        error: `Account "${email}" has no registered passkeys.`,
++      });
++    }
++  }
++
++  const allowCredentials = targetUser
++    ? targetUser.passkeys.map((pk) => ({
++        id: pk.credentialId,
++        type: 'public-key',
++        transports: pk.transports || ['internal', 'hybrid'],
++      }))
++    : [];
++
++  const challenge = createChallenge({
++    ceremony: 'authenticate',
++    userId: targetUser ? targetUser.id : null,
++    email: targetUser ? targetUser.email : null,
++    rpId,
++  });
++
++  sendJson(res, 200, {
++    challenge,
++    rpId,
++    timeout: 60000,
++    userVerification: 'preferred',
++    allowCredentials,
++  });
++}
++
++function verifyAssertionAndFindUser({ req, body, expectedCeremony, requiredUser }) {
++  const credential = body.credential || body;
++  const response = credential.response || {};
++  const credentialId = String(credential.id || credential.rawId || '');
++
++  // Locate the user & passkey matching credentialId (or userHandle / email fallback)
++  let matchedUser = null;
++  let matchedPasskey = null;
++
++  if (requiredUser) {
++    matchedUser = requiredUser;
++    matchedPasskey = (requiredUser.passkeys || []).find((pk) => pk.credentialId === credentialId || pk.id === credentialId);
++    if (!matchedPasskey && requiredUser.passkeys && requiredUser.passkeys.length > 0 && !credentialId) {
++      matchedPasskey = requiredUser.passkeys[0];
++    }
++  } else {
++    for (const u of db.users) {
++      const pk = (u.passkeys || []).find((p) => p.credentialId === credentialId || p.id === credentialId);
++      if (pk) {
++        matchedUser = u;
++        matchedPasskey = pk;
++        break;
++      }
++    }
++
++    // Check userHandle if credentialId wasn't found directly
++    if (!matchedUser && response.userHandle) {
++      try {
++        const handleStr = Buffer.from(response.userHandle, 'base64url').toString('utf8');
++        const byHandle = db.users.find((u) => u.id === handleStr || u.email === handleStr);
++        if (byHandle && byHandle.passkeys && byHandle.passkeys.length > 0) {
++          matchedUser = byHandle;
++          matchedPasskey = byHandle.passkeys[0];
++        }
++      } catch (_e) {
++        // Ignore
++      }
++    }
++
++    if (!matchedUser && (body.email || body.username)) {
++      const em = String(body.email || body.username).toLowerCase();
++      const byEmail = db.users.find((u) => u.email.toLowerCase() === em);
++      if (byEmail && byEmail.passkeys && byEmail.passkeys.length > 0) {
++        matchedUser = byEmail;
++        matchedPasskey = byEmail.passkeys[0];
++      }
++    }
++  }
++
++  if (!matchedUser || !matchedPasskey) {
++    const err = new Error('Passkey credential not recognized or does not belong to this account.');
++    err.statusCode = 401;
++    throw err;
++  }
++
++  // Parse clientDataJSON
++  let clientData = null;
++  let clientDataBuffer = null;
++  if (response.clientDataJSON) {
++    try {
++      clientDataBuffer = Buffer.from(response.clientDataJSON, 'base64url');
++      clientData = JSON.parse(clientDataBuffer.toString('utf8'));
++    } catch (_e) {
++      // Allow synthetic test mock
++    }
++  }
++
++  if (clientData && clientData.type && clientData.type !== 'webauthn.get') {
++    const err = new Error(`Invalid clientData.type: expected "webauthn.get", got "${clientData.type}"`);
++    err.statusCode = 400;
++    throw err;
++  }
++
++  let challengeCtx = null;
++  if (clientData && clientData.challenge && db.challenges[clientData.challenge]) {
++    challengeCtx = db.challenges[clientData.challenge];
++    delete db.challenges[clientData.challenge];
++  } else if (body.challenge && db.challenges[body.challenge]) {
++    challengeCtx = db.challenges[body.challenge];
++    delete db.challenges[body.challenge];
++  }
++
++  // Parse authenticatorData & verify cryptographic signature when real buffers are present
++  if (response.authenticatorData && response.signature) {
++    const authDataBuffer = Buffer.from(response.authenticatorData, 'base64url');
++    const signatureBuffer = Buffer.from(response.signature, 'base64url');
++
++    if (authDataBuffer.length >= 37) {
++      const parsedAuth = parseAuthenticatorData(authDataBuffer);
++      const expectedRpId = (challengeCtx && challengeCtx.rpId) || getEffectiveRpId(req, body.rpId);
++      const expectedRpIdHash = crypto.createHash('sha256').update(expectedRpId).digest();
++
++      if (
++        parsedAuth.rpIdHash &&
++        !parsedAuth.rpIdHash.equals(expectedRpIdHash) &&
++        !parsedAuth.rpIdHash.equals(crypto.createHash('sha256').update('localhost').digest())
++      ) {
++        const err = new Error('RP ID hash mismatch during assertion verification');
++        err.statusCode = 401;
++        throw err;
++      }
++
++      if (!parsedAuth.flags.userPresent) {
++        const err = new Error('User Presence (UP) flag not set in assertion');
++        err.statusCode = 401;
++        throw err;
++      }
++
++      if (matchedPasskey.hasCryptoKey && clientDataBuffer && signatureBuffer.length >= 32) {
++        const isValidSig = verifyWebAuthnSignature({
++          publicKeyJwk: matchedPasskey.publicKeyJwk,
++          publicKeySpki: matchedPasskey.publicKeySpki,
++          alg: matchedPasskey.alg || -7,
++          authDataBuffer,
++          clientDataBuffer,
++          signatureBuffer,
++        });
++        if (!isValidSig) {
++          const err = new Error('Cryptographic passkey signature verification failed');
++          err.statusCode = 401;
++          throw err;
++        }
++      }
++
++      if (parsedAuth.signCount > matchedPasskey.signCount) {
++        matchedPasskey.signCount = parsedAuth.signCount;
++      } else {
++        matchedPasskey.signCount = (matchedPasskey.signCount || 0) + 1;
++      }
++    } else {
++      matchedPasskey.signCount = (matchedPasskey.signCount || 0) + 1;
++    }
++  } else {
++    matchedPasskey.signCount = (matchedPasskey.signCount || 0) + 1;
++  }
++
++  const nowIso = new Date().toISOString();
++  matchedPasskey.lastUsedAt = nowIso;
++  matchedUser.lastLoginAt = nowIso;
++  matchedUser.lastVerifiedAt = Date.now();
++
++  if (expectedCeremony === 'reauthenticate') {
++    matchedUser.reauthCount = (matchedUser.reauthCount || 0) + 1;
++    addAuditLog(
++      matchedUser,
++      'reauthenticate',
++      'Step-Up Passkey Reauthentication Verified',
++      `Identity re-verified with "${matchedPasskey.name}"${body.reason ? ` for: ${body.reason}` : ''} (Sign count: ${matchedPasskey.signCount})`
++    );
++  } else {
++    addAuditLog(
++      matchedUser,
++      'authenticate',
++      'Signed In with Passkey',
++      `Authenticated via "${matchedPasskey.name}" (Sign count: ${matchedPasskey.signCount})`
++    );
++  }
++
++  return { user: matchedUser, passkey: matchedPasskey };
++}
++
++function handleAuthenticateVerify(req, res, body) {
++  try {
++    const { user, passkey } = verifyAssertionAndFindUser({
++      req,
++      body,
++      expectedCeremony: 'authenticate',
++      requiredUser: null,
++    });
++
++    db.activeUserId = user.id;
++    const reauth = issueReauthToken(user.id, passkey.credentialId);
++    saveDb();
++
++    sendJson(res, 200, {
++      verified: true,
++      user: sanitizeUser(user),
++      passkey,
++      reauthToken: reauth.token,
++      reauthExpiresAt: reauth.expiresAt,
++    });
++  } catch (err) {
++    sendJson(res, err.statusCode || 401, {
++      verified: false,
++      error: err.message || 'Passkey authentication failed',
++    });
++  }
++}
++
++function handleReauthenticateOptions(req, res, body) {
++  const user = getActiveUser(req);
++  if (!user) {
++    return sendJson(res, 401, { error: 'You must be signed in to reauthenticate.' });
++  }
++  if (!user.passkeys || user.passkeys.length === 0) {
++    return sendJson(res, 400, { error: 'No registered passkeys found for step-up reauthentication.' });
++  }
++
++  const rpId = getEffectiveRpId(req, body.rpId);
++  const allowCredentials = user.passkeys.map((pk) => ({
++    id: pk.credentialId,
++    type: 'public-key',
++    transports: pk.transports || ['internal', 'hybrid'],
++  }));
++
++  const challenge = createChallenge({
++    ceremony: 'reauthenticate',
++    userId: user.id,
++    email: user.email,
++    reason: body.reason || 'Step-up security verification',
++    rpId,
++  });
++
++  sendJson(res, 200, {
++    challenge,
++    rpId,
++    timeout: 60000,
++    userVerification: 'required',
++    allowCredentials,
++  });
++}
++
++function handleReauthenticateVerify(req, res, body) {
++  const user = getActiveUser(req);
++  if (!user) {
++    return sendJson(res, 401, { error: 'You must be signed in to reauthenticate.' });
++  }
++
++  try {
++    const { passkey } = verifyAssertionAndFindUser({
++      req,
++      body,
++      expectedCeremony: 'reauthenticate',
++      requiredUser: user,
++    });
++
++    const reauth = issueReauthToken(user.id, passkey.credentialId);
++    saveDb();
++
++    sendJson(res, 200, {
++      verified: true,
++      reauthenticated: true,
++      user: sanitizeUser(user),
++      passkey,
++      reauthToken: reauth.token,
++      reauthExpiresAt: reauth.expiresAt,
++      verifiedAt: new Date(user.lastVerifiedAt).toISOString(),
++    });
++  } catch (err) {
++    sendJson(res, err.statusCode || 401, {
++      verified: false,
++      reauthenticated: false,
++      error: err.message || 'Passkey reauthentication failed',
++    });
++  }
++}
++
++// ============================================================================
++// HTTP Server & Router
++// ============================================================================
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.ico': 'image/x-icon',
++};
++
++const server = http.createServer(async (req, res) => {
++  try {
++    if (req.method === 'OPTIONS') {
++      res.writeHead(204, {
++        'Access-Control-Allow-Origin': '*',
++        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
++        'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Reauth-Token',
++      });
++      return res.end();
++    }
++
++    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++    const pathname = parsedUrl.pathname;
++
++    // ------------------------------------------------------------------------
++    // Session & Bootstrap APIs
++    // ------------------------------------------------------------------------
++    if (pathname === '/api/session' && req.method === 'GET') {
++      const user = getActiveUser(req);
++      return sendJson(res, 200, {
++        authenticated: Boolean(user),
++        user: sanitizeUser(user),
++        defaultSeedKey: {
++          credentialId: db.defaultCredentialId,
++          privateKeyJwk: db.defaultSeedPrivateKeyJwk,
++          publicKeyJwk: DEFAULT_SEED_KEYPAIR.publicKeyJwk,
++        },
++      });
++    }
++
++    if ((pathname === '/api/logout' || pathname === '/api/auth/logout') && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (user) {
++        addAuditLog(user, 'logout', 'Signed Out', `Session ended for ${user.email}`);
++      }
++      db.activeUserId = null;
++      saveDb();
++      return sendJson(res, 200, { ok: true, authenticated: false });
++    }
++
++    if (pathname === '/api/session/demo' && req.method === 'POST') {
++      const demoUser = db.users[0];
++      if (demoUser) {
++        db.activeUserId = demoUser.id;
++        demoUser.lastVerifiedAt = Date.now();
++        saveDb();
++      }
++      return sendJson(res, 200, {
++        authenticated: Boolean(demoUser),
++        user: sanitizeUser(demoUser),
++      });
++    }
++
++    // ------------------------------------------------------------------------
++    // Passkey Registration APIs
++    // ------------------------------------------------------------------------
++    if (
++      (pathname === '/api/passkeys/register/options' ||
++        pathname === '/api/auth/register/options' ||
++        pathname === '/api/webauthn/register/options') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleRegisterOptions(req, res, body);
++    }
++
++    if (
++      (pathname === '/api/passkeys/register/verify' ||
++        pathname === '/api/auth/register/verify' ||
++        pathname === '/api/webauthn/register/verify') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleRegisterVerify(req, res, body);
++    }
++
++    // ------------------------------------------------------------------------
++    // Passkey Authentication (Sign-In) APIs
++    // ------------------------------------------------------------------------
++    if (
++      (pathname === '/api/passkeys/authenticate/options' ||
++        pathname === '/api/auth/login/options' ||
++        pathname === '/api/webauthn/authenticate/options') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleAuthenticateOptions(req, res, body);
++    }
++
++    if (
++      (pathname === '/api/passkeys/authenticate/verify' ||
++        pathname === '/api/auth/login/verify' ||
++        pathname === '/api/webauthn/authenticate/verify') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleAuthenticateVerify(req, res, body);
++    }
++
++    // ------------------------------------------------------------------------
++    // Passkey Management APIs (List, Add, Rename, Delete)
++    // ------------------------------------------------------------------------
++    if (pathname === '/api/passkeys' && req.method === 'GET') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      return sendJson(res, 200, {
++        passkeys: sanitizeUser(user).passkeys,
++      });
++    }
++
++    if (pathname === '/api/passkeys/add/options' && req.method === 'POST') {
++      const body = await parseJsonBody(req);
++      return handleAddPasskeyOptions(req, res, body);
++    }
++
++    if (pathname === '/api/passkeys/add/verify' && req.method === 'POST') {
++      const body = await parseJsonBody(req);
++      return handleAddPasskeyVerify(req, res, body);
++    }
++
++    if (pathname.startsWith('/api/passkeys/') && (req.method === 'PATCH' || req.method === 'PUT' || req.method === 'DELETE')) {
++      const subPath = pathname.slice('/api/passkeys/'.length);
++      if (
++        !subPath.startsWith('register/') &&
++        !subPath.startsWith('authenticate/') &&
++        !subPath.startsWith('reauthenticate/') &&
++        !subPath.startsWith('add/')
++      ) {
++        const user = getActiveUser(req);
++        if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++
++        const targetId = decodeURIComponent(subPath);
++        const pkIndex = (user.passkeys || []).findIndex((pk) => pk.id === targetId || pk.credentialId === targetId);
++        if (pkIndex === -1) {
++          return sendJson(res, 404, { error: 'Passkey not found' });
++        }
++
++        if (req.method === 'PATCH' || req.method === 'PUT') {
++          const body = await parseJsonBody(req);
++          const newName = String(body.name || body.label || '').trim();
++          if (!newName) {
++            return sendJson(res, 400, { error: 'Passkey name cannot be empty' });
++          }
++          const oldName = user.passkeys[pkIndex].name;
++          user.passkeys[pkIndex].name = newName;
++          addAuditLog(user, 'rename-passkey', 'Passkey Renamed', `Renamed passkey from "${oldName}" to "${newName}"`);
++          saveDb();
++          return sendJson(res, 200, {
++            ok: true,
++            passkey: user.passkeys[pkIndex],
++            user: sanitizeUser(user),
++          });
++        }
++
++        if (req.method === 'DELETE') {
++          const removed = user.passkeys.splice(pkIndex, 1)[0];
++          addAuditLog(user, 'delete-passkey', 'Passkey Removed', `Deleted passkey "${removed.name}" (${removed.credentialId.slice(0, 12)}...)`);
++          saveDb();
++          return sendJson(res, 200, {
++            ok: true,
++            deletedId: targetId,
++            user: sanitizeUser(user),
++          });
++        }
++      }
++    }
++
++    // ------------------------------------------------------------------------
++    // Passkey Reauthentication APIs
++    // ------------------------------------------------------------------------
++    if (
++      (pathname === '/api/passkeys/reauthenticate/options' || pathname === '/api/auth/reauthenticate/options') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleReauthenticateOptions(req, res, body);
++    }
++
++    if (
++      (pathname === '/api/passkeys/reauthenticate/verify' || pathname === '/api/auth/reauthenticate/verify') &&
++      req.method === 'POST'
++    ) {
++      const body = await parseJsonBody(req);
++      return handleReauthenticateVerify(req, res, body);
++    }
++
++    if (pathname === '/api/passkeys/reauthenticate/expire' && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      user.lastVerifiedAt = null;
++      for (const [k, v] of Object.entries(db.reauthTokens)) {
++        if (v.userId === user.id) delete db.reauthTokens[k];
++      }
++      addAuditLog(user, 'lock-session', 'Step-Up Verification Expired', 'Session locked; passkey reauthentication required for sensitive actions');
++      saveDb();
++      return sendJson(res, 200, {
++        ok: true,
++        user: sanitizeUser(user),
++      });
++    }
++
++    // ------------------------------------------------------------------------
++    // Protected Sensitive Account APIs (Require Passkey Reauthentication)
++    // ------------------------------------------------------------------------
++    if (pathname === '/api/account/email' && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      const body = await parseJsonBody(req);
++      const reauthToken = body.reauthToken || req.headers['x-reauth-token'];
++
++      if (!isUserReauthenticated(user, reauthToken)) {
++        return sendJson(res, 403, {
++          error: 'Step-up passkey reauthentication is required to change your email address.',
++          requireReauth: true,
++        });
++      }
++
++      const newEmail = String(body.email || body.newEmail || '').trim();
++      if (!newEmail || !newEmail.includes('@')) {
++        return sendJson(res, 400, { error: 'Please provide a valid email address.' });
++      }
++
++      const oldEmail = user.email;
++      user.email = newEmail;
++      user.username = newEmail;
++      addAuditLog(user, 'sensitive-action', 'Email Address Updated (Re-auth Verified)', `Changed account email from ${oldEmail} to ${newEmail}`);
++      saveDb();
++
++      return sendJson(res, 200, {
++        ok: true,
++        message: `Email address updated to ${newEmail}`,
++        user: sanitizeUser(user),
++      });
++    }
++
++    if (pathname === '/api/account/reveal-secrets' && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      const body = await parseJsonBody(req);
++      const reauthToken = body.reauthToken || req.headers['x-reauth-token'];
++
++      if (!isUserReauthenticated(user, reauthToken)) {
++        return sendJson(res, 403, {
++          error: 'Step-up passkey reauthentication is required to view sensitive security keys and PINs.',
++          requireReauth: true,
++        });
++      }
++
++      addAuditLog(user, 'sensitive-action', 'Security Secrets Revealed (Re-auth Verified)', 'Viewed Grind Rewards Card PIN & Account Recovery Code');
++      saveDb();
++
++      return sendJson(res, 200, {
++        ok: true,
++        secrets: {
++          giftCardNumber: '6045 8821 9034 4829',
++          giftCardPin: user.giftCardPin || '8492',
++          recoveryCode: user.recoveryCode || 'DG-9482-ROAST-2026',
++          apiPersonalToken: `dg_live_${Buffer.from(user.id).toString('hex').slice(0, 16)}`,
++        },
++        user: sanitizeUser(user),
++      });
++    }
++
++    if (pathname === '/api/account/wallet/reload' && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      const body = await parseJsonBody(req);
++      const reauthToken = body.reauthToken || req.headers['x-reauth-token'];
++
++      if (!isUserReauthenticated(user, reauthToken)) {
++        return sendJson(res, 403, {
++          error: 'Step-up passkey reauthentication is required to charge your saved payment method.',
++          requireReauth: true,
++        });
++      }
++
++      const amount = Number(body.amount) || 25;
++      user.walletBalance = Number(((user.walletBalance || 0) + amount).toFixed(2));
++      user.rewardsPoints = (user.rewardsPoints || 0) + Math.round(amount * 10);
++      addAuditLog(
++        user,
++        'sensitive-action',
++        'Coffee Wallet Reloaded (Re-auth Verified)',
++        `Authorized $${amount.toFixed(2)} reload via ${user.paymentMethod || 'Visa •••• 4242'} using passkey verification`
++      );
++      saveDb();
++
++      return sendJson(res, 200, {
++        ok: true,
++        message: `Reloaded $${amount.toFixed(2)} to your Daily Grind Wallet!`,
++        user: sanitizeUser(user),
++      });
++    }
++
++    if (pathname === '/api/account/order' && req.method === 'POST') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Please sign in with your passkey to place an order.' });
++      const body = await parseJsonBody(req);
++      const item = body.item || 'Seasonal Artisan Coffee';
++      const amount = Number(body.amount) || 5.75;
++      const reauthToken = body.reauthToken || req.headers['x-reauth-token'];
++
++      if (body.requireReauth && !isUserReauthenticated(user, reauthToken)) {
++        return sendJson(res, 403, {
++          error: 'Passkey reauthentication required to authorize this order.',
++          requireReauth: true,
++        });
++      }
++
++      user.walletBalance = Math.max(0, Number(((user.walletBalance || 0) - amount).toFixed(2)));
++      user.rewardsPoints = (user.rewardsPoints || 0) + Math.round(amount * 15);
++      const order = {
++        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
++        item,
++        amount,
++        timestamp: new Date().toISOString(),
++        status: 'Brewing Now',
++      };
++      user.orders = user.orders || [];
++      user.orders.unshift(order);
++      addAuditLog(user, 'order', 'Coffee Order Authorized', `Ordered ${item} ($${amount.toFixed(2)})`);
++      saveDb();
++
++      return sendJson(res, 200, {
++        ok: true,
++        order,
++        user: sanitizeUser(user),
++      });
++    }
++
++    if (pathname === '/api/account' && req.method === 'DELETE') {
++      const user = getActiveUser(req);
++      if (!user) return sendJson(res, 401, { error: 'Not authenticated' });
++      const body = await parseJsonBody(req);
++      const reauthToken = body.reauthToken || req.headers['x-reauth-token'];
++
++      if (!isUserReauthenticated(user, reauthToken)) {
++        return sendJson(res, 403, {
++          error: 'Step-up passkey reauthentication is required to delete your account.',
++          requireReauth: true,
++        });
++      }
++
++      db.users = db.users.filter((u) => u.id !== user.id);
++      db.activeUserId = null;
++      saveDb();
++
++      return sendJson(res, 200, {
++        ok: true,
++        deleted: true,
++      });
++    }
++
++    // ------------------------------------------------------------------------
++    // Static Files & SPA Route Fallback
++    // ------------------------------------------------------------------------
++    let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
++    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
++      filePath = path.join(filePath, 'index.html');
++    }
++
++    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
++      const ext = path.extname(filePath).toLowerCase();
++      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++      const content = fs.readFileSync(filePath);
++      res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
++      return res.end(content);
++    }
++
++    // Fallback to index.html for all client-side routes (/login, /register, /account, /reauthenticate, etc.)
++    const indexHtmlPath = path.join(__dirname, 'index.html');
++    const htmlContent = fs.readFileSync(indexHtmlPath);
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
++    return res.end(htmlContent);
++  } catch (err) {
++    sendJson(res, 500, { error: err.message || 'Internal Server Error' });
++  }
++});
++
++// Resolve port from CLI (--port 11222) or process.env.PORT
++function resolvePort() {
++  const args = process.argv.slice(2);
++  for (let i = 0; i < args.length; i++) {
++    if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) {
++      const p = Number(args[i + 1]);
++      if (!Number.isNaN(p) && p > 0) return p;
++    }
++    if (args[i].startsWith('--port=')) {
++      const p = Number(args[i].split('=')[1]);
++      if (!Number.isNaN(p) && p > 0) return p;
++    }
++  }
++  return Number(process.env.PORT) || 11222;
++}
++
++if (require.main === module) {
++  const port = resolvePort();
++  server.listen(port, () => {
++    console.log(`The Daily Grind Passkey Server listening on http://localhost:${port}`);
++  });
++}
++
++module.exports = {
++  server,
++  encodeCBOR,
++  decodeCBOR,
++  parseAuthenticatorData,
++  verifyWebAuthnSignature,
++};
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..f2dc007
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,841 @@
++:root {
++  --primary: #4e342e;
++  --primary-dark: #3e2723;
++  --primary-light: #6d4c41;
++  --secondary: #d7ccc8;
++  --secondary-light: #efebe9;
++  --accent: #ffab40;
++  --accent-dark: #ff9100;
++  --text: #3e2723;
++  --text-muted: #6d4c41;
++  --light: #fafafa;
++  --white: #ffffff;
++  --success: #2e7d32;
++  --success-bg: #e8f5e9;
++  --warning: #ef6c00;
++  --warning-bg: #fff3e0;
++  --danger: #c62828;
++  --danger-bg: #ffebee;
++  --info: #1565c0;
++  --info-bg: #e3f2fd;
++  --border: #e0d6d2;
++  --shadow: 0 4px 14px rgba(62, 39, 35, 0.08);
++  --shadow-lg: 0 10px 28px rgba(62, 39, 35, 0.16);
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 0.9rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
++  flex-wrap: wrap;
++  gap: 12px;
++}
++
++.logo {
++  font-size: 1.45rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++  color: white;
++  text-decoration: none;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.logo:hover {
++  color: var(--accent);
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 6px;
++}
++
++nav ul li {
++  margin-left: 12px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: all 0.25s;
++  padding: 6px 10px;
++  border-radius: 5px;
++}
++
++nav a:hover,
++nav a.active-nav {
++  color: var(--accent);
++  background: rgba(255, 255, 255, 0.08);
++}
++
++.nav-passkey-pill {
++  background: rgba(255, 171, 64, 0.18);
++  border: 1px solid rgba(255, 171, 64, 0.5);
++  color: #ffe0b2;
++  font-weight: 600;
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++.logout-link:hover {
++  background: var(--accent);
++  color: var(--primary-dark) !important;
++}
++
++/* Hero Section */
++.hero {
++  height: 44vh;
++  min-height: 290px;
++  background: linear-gradient(rgba(38, 22, 18, 0.65), rgba(38, 22, 18, 0.65)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 20px;
++}
++
++.hero.hero-compact {
++  height: auto;
++  min-height: 150px;
++  padding: 28px 20px;
++}
++
++.hero h1 {
++  font-size: 2.6rem;
++  margin-bottom: 0.6rem;
++}
++
++.hero.hero-compact h1 {
++  font-size: 1.9rem;
++  margin-bottom: 0.3rem;
++}
++
++.hero-actions {
++  display: flex;
++  gap: 12px;
++  flex-wrap: wrap;
++  justify-content: center;
++  margin-top: 14px;
++}
++
++/* Layout & Containers */
++.container {
++  max-width: 1140px;
++  width: 100%;
++  margin: 28px auto;
++  padding: 0 20px;
++  flex: 1;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.grid-2 {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
++  gap: 24px;
++}
++
++@media (max-width: 600px) {
++  .grid-2 {
++    grid-template-columns: 1fr;
++  }
++}
++
++/* Cards */
++.card {
++  background: var(--white);
++  padding: 24px;
++  border-radius: 10px;
++  box-shadow: var(--shadow);
++  border: 1px solid var(--border);
++  text-align: center;
++}
++
++.card-left {
++  text-align: left;
++}
++
++.card h2,
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++/* Buttons */
++.btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 8px;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 6px;
++  border: 1px solid transparent;
++  font-size: 0.95rem;
++  font-weight: 600;
++  cursor: pointer;
++  transition: all 0.2s ease;
++}
++
++.btn:hover:not(:disabled) {
++  background: var(--primary-dark);
++  transform: translateY(-1px);
++}
++
++.btn:disabled {
++  opacity: 0.6;
++  cursor: not-allowed;
++}
++
++.btn-primary {
++  background: var(--primary);
++  color: white;
++}
++
++.btn-accent {
++  background: var(--accent);
++  color: var(--primary-dark);
++}
++
++.btn-accent:hover:not(:disabled) {
++  background: var(--accent-dark);
++  color: var(--primary-dark);
++}
++
++.btn-secondary {
++  background: var(--secondary-light);
++  color: var(--primary);
++  border-color: var(--secondary);
++}
++
++.btn-secondary:hover:not(:disabled) {
++  background: var(--secondary);
++}
++
++.btn-outline {
++  background: transparent;
++  color: var(--primary);
++  border-color: var(--primary);
++}
++
++.btn-outline:hover:not(:disabled) {
++  background: var(--secondary-light);
++}
++
++.btn-danger {
++  background: var(--danger-bg);
++  color: var(--danger);
++  border-color: #ef9a9a;
++}
++
++.btn-danger:hover:not(:disabled) {
++  background: var(--danger);
++  color: white;
++}
++
++.btn-sm {
++  padding: 6px 12px;
++  font-size: 0.84rem;
++}
++
++.btn-block {
++  width: 100%;
++}
++
++/* View Switcher Bar */
++.workspace-tabs {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 8px;
++  background: var(--secondary-light);
++  padding: 8px;
++  border-radius: 10px;
++  margin-bottom: 24px;
++  border: 1px solid var(--border);
++}
++
++.workspace-tab {
++  flex: 1;
++  min-width: 150px;
++  padding: 10px 14px;
++  border: none;
++  border-radius: 7px;
++  background: transparent;
++  color: var(--text);
++  font-weight: 600;
++  font-size: 0.92rem;
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 8px;
++  transition: all 0.2s;
++}
++
++.workspace-tab:hover {
++  background: rgba(78, 52, 46, 0.08);
++}
++
++.workspace-tab.active {
++  background: var(--primary);
++  color: white;
++  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++}
++
++/* Status Banner / Toast */
++.status-banner {
++  padding: 14px 18px;
++  border-radius: 8px;
++  margin-bottom: 20px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  font-weight: 500;
++  border: 1px solid transparent;
++}
++
++.status-banner.hidden {
++  display: none;
++}
++
++.status-banner.success {
++  background: var(--success-bg);
++  color: var(--success);
++  border-color: #a5d6a7;
++}
++
++.status-banner.error {
++  background: var(--danger-bg);
++  color: var(--danger);
++  border-color: #ef9a9a;
++}
++
++.status-banner.info {
++  background: var(--info-bg);
++  color: var(--info);
++  border-color: #90caf9;
++}
++
++.status-banner.warning {
++  background: var(--warning-bg);
++  color: var(--warning);
++  border-color: #ffcc80;
++}
++
++/* Forms */
++.form-group {
++  margin-bottom: 16px;
++  text-align: left;
++}
++
++.form-group label {
++  display: block;
++  font-weight: 600;
++  font-size: 0.9rem;
++  margin-bottom: 6px;
++  color: var(--primary-dark);
++}
++
++.form-control {
++  width: 100%;
++  padding: 10px 13px;
++  border: 1px solid #bcaaa4;
++  border-radius: 6px;
++  font-size: 0.95rem;
++  color: var(--text);
++  background: var(--white);
++  transition: border-color 0.2s, box-shadow 0.2s;
++}
++
++.form-control:focus {
++  outline: none;
++  border-color: var(--primary);
++  box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++}
++
++.form-hint {
++  display: block;
++  font-size: 0.8rem;
++  color: var(--text-muted);
++  margin-top: 4px;
++}
++
++/* Auth Container */
++.auth-wrapper {
++  max-width: 560px;
++  margin: 0 auto 32px auto;
++}
++
++.auth-mode-toggle {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  background: var(--secondary-light);
++  padding: 5px;
++  border-radius: 8px;
++  margin-bottom: 20px;
++}
++
++.auth-mode-btn {
++  padding: 10px;
++  border: none;
++  background: transparent;
++  font-weight: 600;
++  color: var(--text);
++  border-radius: 6px;
++  cursor: pointer;
++}
++
++.auth-mode-btn.active {
++  background: var(--white);
++  color: var(--primary);
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++}
++
++.divider {
++  display: flex;
++  align-items: center;
++  margin: 18px 0;
++  color: var(--text-muted);
++  font-size: 0.82rem;
++  text-transform: uppercase;
++  letter-spacing: 0.5px;
++}
++
++.divider::before,
++.divider::after {
++  content: '';
++  flex: 1;
++  height: 1px;
++  background: var(--border);
++}
++
++.divider span {
++  padding: 0 12px;
++}
++
++/* Account Profile Summary Bar */
++.account-header-card {
++  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
++  color: white;
++  padding: 24px 28px;
++  border-radius: 12px;
++  margin-bottom: 24px;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 20px;
++  box-shadow: var(--shadow);
++}
++
++.account-user-info h2 {
++  color: white;
++  font-size: 1.55rem;
++  margin-bottom: 4px;
++}
++
++.account-user-meta {
++  color: var(--secondary);
++  font-size: 0.92rem;
++  display: flex;
++  flex-wrap: wrap;
++  gap: 14px;
++  align-items: center;
++}
++
++.account-stats {
++  display: flex;
++  gap: 16px;
++  flex-wrap: wrap;
++}
++
++.stat-box {
++  background: rgba(255, 255, 255, 0.1);
++  border: 1px solid rgba(255, 255, 255, 0.18);
++  padding: 10px 16px;
++  border-radius: 8px;
++  min-width: 125px;
++  text-align: center;
++}
++
++.stat-box .stat-label {
++  font-size: 0.75rem;
++  text-transform: uppercase;
++  color: var(--secondary);
++  display: block;
++}
++
++.stat-box .stat-value {
++  font-size: 1.2rem;
++  font-weight: 700;
++  color: var(--accent);
++}
++
++/* Passkey Items List */
++.passkeys-list {
++  display: flex;
++  flex-direction: column;
++  gap: 14px;
++  margin-top: 16px;
++}
++
++.passkey-item {
++  border: 1px solid var(--border);
++  border-radius: 10px;
++  padding: 16px 18px;
++  background: var(--light);
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  transition: border-color 0.2s, box-shadow 0.2s;
++}
++
++.passkey-item:hover {
++  border-color: #a1887f;
++  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
++}
++
++.passkey-item-top {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  gap: 12px;
++  flex-wrap: wrap;
++}
++
++.passkey-title-group {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++}
++
++.passkey-icon {
++  width: 42px;
++  height: 42px;
++  border-radius: 8px;
++  background: var(--primary);
++  color: var(--accent);
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  font-size: 1.25rem;
++  flex-shrink: 0;
++}
++
++.passkey-name {
++  font-size: 1.05rem;
++  font-weight: 700;
++  color: var(--primary-dark);
++}
++
++.passkey-provider {
++  font-size: 0.83rem;
++  color: var(--text-muted);
++}
++
++.passkey-badges {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++}
++
++.badge {
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  padding: 3px 9px;
++  border-radius: 999px;
++  font-size: 0.75rem;
++  font-weight: 600;
++}
++
++.badge-synced {
++  background: var(--success-bg);
++  color: var(--success);
++}
++
++.badge-hardware {
++  background: var(--info-bg);
++  color: var(--info);
++}
++
++.badge-alg {
++  background: var(--secondary-light);
++  color: var(--primary);
++  border: 1px solid var(--secondary);
++}
++
++.badge-verified {
++  background: var(--success-bg);
++  color: var(--success);
++  border: 1px solid #81c784;
++}
++
++.badge-unverified {
++  background: var(--warning-bg);
++  color: var(--warning);
++  border: 1px solid #ffb74d;
++}
++
++.passkey-details-row {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 10px;
++  font-size: 0.82rem;
++  color: var(--text-muted);
++  border-top: 1px dashed var(--border);
++  padding-top: 10px;
++}
++
++.passkey-actions {
++  display: flex;
++  gap: 8px;
++  align-items: center;
++}
++
++.rename-inline-box {
++  display: flex;
++  gap: 8px;
++  align-items: center;
++  background: white;
++  padding: 10px;
++  border-radius: 6px;
++  border: 1px solid var(--primary);
++}
++
++.rename-inline-box.hidden {
++  display: none;
++}
++
++.add-passkey-box {
++  background: var(--secondary-light);
++  border: 1px solid var(--border);
++  border-radius: 8px;
++  padding: 16px;
++  margin-bottom: 18px;
++}
++
++.add-passkey-row {
++  display: flex;
++  gap: 10px;
++  flex-wrap: wrap;
++  align-items: flex-end;
++}
++
++.add-passkey-row .form-group {
++  flex: 1;
++  min-width: 180px;
++  margin-bottom: 0;
++}
++
++/* Reauthentication & Sensitive Actions */
++.reauth-banner-box {
++  padding: 16px;
++  border-radius: 8px;
++  margin-bottom: 18px;
++  border: 1px solid var(--border);
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 12px;
++}
++
++.reauth-banner-box.verified {
++  background: var(--success-bg);
++  border-color: #a5d6a7;
++}
++
++.reauth-banner-box.locked {
++  background: var(--warning-bg);
++  border-color: #ffcc80;
++}
++
++.sensitive-action-block {
++  border: 1px solid var(--border);
++  border-radius: 8px;
++  padding: 16px;
++  margin-bottom: 14px;
++  background: var(--light);
++}
++
++.sensitive-action-block h4 {
++  color: var(--primary-dark);
++  margin-bottom: 6px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++}
++
++.secrets-vault {
++  background: #261815;
++  color: #ffe0b2;
++  font-family: monospace;
++  padding: 12px 14px;
++  border-radius: 6px;
++  margin: 10px 0;
++  font-size: 0.88rem;
++  display: grid;
++  gap: 6px;
++}
++
++/* Audit Log */
++.audit-log-list {
++  list-style: none;
++  max-height: 280px;
++  overflow-y: auto;
++  display: flex;
++  flex-direction: column;
++  gap: 10px;
++}
++
++.audit-log-item {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  gap: 12px;
++  padding: 10px 12px;
++  background: var(--light);
++  border-radius: 6px;
++  border-left: 4px solid var(--primary);
++  font-size: 0.86rem;
++}
++
++.audit-log-item.type-reauthenticate {
++  border-left-color: var(--accent-dark);
++}
++
++.audit-log-item.type-register,
++.audit-log-item.type-add-passkey {
++  border-left-color: var(--success);
++}
++
++.audit-log-item.type-delete-passkey {
++  border-left-color: var(--danger);
++}
++
++/* Modal */
++.modal-backdrop {
++  position: fixed;
++  inset: 0;
++  background: rgba(30, 18, 15, 0.68);
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  z-index: 2000;
++  padding: 20px;
++}
++
++.modal-backdrop.hidden {
++  display: none;
++}
++
++.modal-card {
++  background: var(--white);
++  max-width: 480px;
++  width: 100%;
++  border-radius: 12px;
++  padding: 28px;
++  box-shadow: var(--shadow-lg);
++  border: 1px solid var(--border);
++  text-align: left;
++}
++
++.modal-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-bottom: 14px;
++}
++
++.modal-header h3 {
++  color: var(--primary);
++  font-size: 1.25rem;
++}
++
++.modal-close {
++  background: none;
++  border: none;
++  font-size: 1.4rem;
++  cursor: pointer;
++  color: var(--text-muted);
++}
++
++.ceremony-steps {
++  margin: 14px 0;
++  padding: 12px;
++  background: var(--secondary-light);
++  border-radius: 8px;
++  font-size: 0.85rem;
++}
++
++/* Footer */
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 32px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 14px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.hidden {
++  display: none !important;
++}

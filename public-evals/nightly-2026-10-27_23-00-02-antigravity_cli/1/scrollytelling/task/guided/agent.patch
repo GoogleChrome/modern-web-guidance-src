@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,187 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling Section */
++    html {
++      timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
++    }
++
++    .scrollytelling {
++      margin-top: 60px;
++    }
++
++    .scrollytelling-header {
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .scrollytelling-header h2 {
++      font-size: 2.2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .scrollytelling-layout {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 40px;
++      align-items: start;
++    }
++
++    #tracked section {
++      min-height: 75vh;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      padding: 32px;
++      margin-bottom: 24px;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
++      border-left: 5px solid var(--accent);
++    }
++
++    #tracked section h3 {
++      font-size: 1.5rem;
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    #tracked section .step-badge {
++      display: inline-block;
++      align-self: flex-start;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: bold;
++      font-size: 0.8rem;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    #tracked {
++      section:nth-child(1) { view-timeline: --tl-1 block; }
++      section:nth-child(2) { view-timeline: --tl-2 block; }
++      section:nth-child(3) { view-timeline: --tl-3 block; }
++      section:nth-child(4) { view-timeline: --tl-4 block; }
++      section:nth-child(5) { view-timeline: --tl-5 block; }
++    }
++
++    #animated {
++      position: sticky;
++      top: 15vh;
++      height: 70vh;
++      display: grid;
++      place-items: center;
++      perspective: 1000px;
++      overflow: hidden;
++      border-radius: 16px;
++      background: #efebe9;
++      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      width: 88%;
++      height: 85%;
++      background: white;
++      border-radius: 12px;
++      overflow: hidden;
++      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
++      display: flex;
++      flex-direction: column;
++      backface-visibility: hidden;
++    }
++
++    #animated section img {
++      width: 100%;
++      height: 70%;
++      object-fit: cover;
++    }
++
++    #animated section .visual-caption {
++      padding: 16px 20px;
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      flex: 1;
++    }
++
++    #animated section .visual-caption h4 {
++      color: var(--primary);
++      font-size: 1.2rem;
++      margin-bottom: 4px;
++    }
++
++    #animated section .visual-caption p {
++      font-size: 0.9rem;
++      color: var(--text);
++      opacity: 0.85;
++    }
++
++    @keyframes animate-in {
++      from {
++        scale: 0.5;
++        opacity: 0;
++        transform: rotateY(-180deg);
++      }
++      to {
++        scale: 1;
++        opacity: 1;
++        transform: rotateY(0deg);
++      }
++    }
++
++    @keyframes animate-out {
++      to {
++        translate: 100% 0;
++        opacity: 0;
++      }
++    }
++
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      #animated {
++        section {
++          animation: animate-in auto linear both, animate-out auto linear forwards;
++          animation-range: entry 25% cover 50%, exit 50% exit 75%;
++          backface-visibility: hidden;
++        }
++
++        section:nth-child(1) { animation-timeline: --tl-1; }
++        section:nth-child(2) { animation-timeline: --tl-2; }
++        section:nth-child(3) { animation-timeline: --tl-3; }
++        section:nth-child(4) { animation-timeline: --tl-4; }
++        section:nth-child(5) { animation-timeline: --tl-5; }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #animated section {
++        animation: none !important;
++        opacity: 1 !important;
++        transform: none !important;
++        translate: 0 0 !important;
++      }
++    }
++
++    @media (max-width: 768px) {
++      .scrollytelling-layout {
++        grid-template-columns: 1fr;
++      }
++      #animated {
++        position: sticky;
++        top: 70px;
++        height: 45vh;
++        z-index: 10;
++        order: -1;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +373,83 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="scrollytelling" aria-labelledby="scrollytelling-title">
++      <div class="scrollytelling-header">
++        <h2 id="scrollytelling-title">From Seed to Cup</h2>
++        <p>Follow the journey of our single-origin beans as you scroll.</p>
++      </div>
++
++      <div class="scrollytelling-layout">
++        <div id="tracked">
++          <section>
++            <span class="step-badge">Step 01</span>
++            <h3>High-Altitude Harvesting</h3>
++            <p>Our journey begins on volcanic slopes above 1,600 meters, where rich soil and cool mountain mist slow the ripening of coffee cherries, concentrating natural sugars and complex floral aromatics.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 02</span>
++            <h3>Washed &amp; Sun-Dried</h3>
++            <p>Ripe red cherries are hand-picked at peak maturity, depulped within hours of harvest, and spread across raised African drying beds where they are turned hourly under the warm sun.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 03</span>
++            <h3>Small-Batch Roasting</h3>
++            <p>At our local roastery, master roasters profile each lot in cast-iron drum roasters—carefully balancing heat and airflow through first crack to unlock notes of toasted hazelnut and dark cocoa.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 04</span>
++            <h3>Precision Grinding</h3>
++            <p>Moments before brewing, beans are ground to a uniform micron size using precision flat burrs, preserving volatile aromatic oils and ensuring an even, balanced extraction.</p>
++          </section>
++          <section>
++            <span class="step-badge">Step 05</span>
++            <h3>The Perfect Pour</h3>
++            <p>Filtered water at 93°C meets fresh grounds in a slow, deliberate spiral pour—delivering a vibrant, velvety cup crafted to awaken your senses every morning.</p>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section>
++            <img src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=900&q=80" alt="Coffee cherries ripening on a branch">
++            <div class="visual-caption">
++              <h4>1. High-Altitude Origin</h4>
++              <p>Shade-grown Arabica cherries hand-selected at peak ripeness.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=900&q=80" alt="Green and roasted coffee beans">
++            <div class="visual-caption">
++              <h4>2. Natural Sun Drying</h4>
++              <p>Carefully dried on raised beds for clean, sweet flavor clarity.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?auto=format&fit=crop&w=900&q=80" alt="Freshly roasted coffee beans cooling">
++            <div class="visual-caption">
++              <h4>3. Artisanal Drum Roasting</h4>
++              <p>Roasted daily in small batches to highlight origin character.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80" alt="Freshly ground coffee in portafilter">
++            <div class="visual-caption">
++              <h4>4. Dialed-In Extraction</h4>
++              <p>Precision burr grinding for optimal sweetness and body.</p>
++            </div>
++          </section>
++          <section>
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80" alt="Pouring latte art into a ceramic cup">
++            <div class="visual-caption">
++              <h4>5. Crafted in Your Cup</h4>
++              <p>Poured fresh by our baristas and ready to enjoy.</p>
++            </div>
++          </section>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

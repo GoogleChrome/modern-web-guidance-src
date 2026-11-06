@@ -1,0 +1,1389 @@
+diff --git a/components/README.md b/components/README.md
+new file mode 100644
+index 0000000..0dadbe9
+--- /dev/null
++++ b/components/README.md
+@@ -0,0 +1,52 @@
++# Daily Grind components
++
++Framework-free Web Components used by the homepage. Load them once per page:
++
++```html
++<script type="module" src="/components/index.js"></script>
++```
++
++All three keep their content in light DOM (so it is crawlable, searchable and
++readable before JavaScript runs) and keep their markup, styles and behavior in
++an open shadow root. Theme them with the CSS custom properties listed in each
++file's header comment, or restyle specific internals with `::part()`.
++
++| Element | Purpose | Key API |
++| --- | --- | --- |
++| `<coffee-card>` | Menu item card: media, title, price/badge, actions, favorite toggle | `price`, `currency`, `badge`, `favorited`, `favoritechange` event, `:state(favorited)` |
++| `<brew-tabs>` | Tabs generated from child sections; roving tabindex, arrow keys, find-in-page aware | `label`, `selected` / `selectedIndex`, `change` event |
++| `<grind-disclosure>` | Styled native `<details>`; `group` makes a set mutually exclusive across shadow roots | `open`, `group`, `show()/hide()/toggle()`, `toggle` event |
++
++## Examples
++
++```html
++<coffee-card id="cold-brew" price="4.50" badge="New">
++  <img slot="media" src="cold-brew.jpg" alt="A glass of cold brew">
++  <h3 slot="title">Cold Brew</h3>
++  <p>Steeped for 18 hours.</p>
++  <a slot="actions" href="/menu/cold-brew" class="btn">View details<span class="visually-hidden"> about the Cold Brew</span></a>
++</coffee-card>
++
++<brew-tabs label="Brewing methods" selected="1">
++  <section data-label="Pour Over">…</section>
++  <section data-label="French Press">…</section>
++</brew-tabs>
++
++<grind-disclosure group="faq" open>
++  <h3 slot="summary">Do you offer decaf?</h3>
++  <p>Yes.</p>
++</grind-disclosure>
++```
++
++## Accessibility notes
++
++- Headings stay in the page (`<h3 slot="title">`), so the document outline is
++  controlled by the author, not the component.
++- `<brew-tabs>` renders tabs *and* panel wrappers inside its shadow root so
++  `aria-controls` / `aria-labelledby` ids resolve in one tree. Inactive panels
++  use `hidden="until-found"` where supported, so browser search and `#fragment`
++  links can still reach their content.
++- `<grind-disclosure>` wraps a real `<details>`; opening one member of a
++  `group` closes the others (native `name` grouping does not cross shadow roots).
++- Undefined elements fade in after two seconds (`:not(:defined)` rule in the
++  page CSS), so content is never hidden if the script fails to load.
+diff --git a/components/brew-tabs.js b/components/brew-tabs.js
+new file mode 100644
+index 0000000..91f93c5
+--- /dev/null
++++ b/components/brew-tabs.js
+@@ -0,0 +1,302 @@
++/**
++ * <brew-tabs> - an accessible tab interface built from plain sections.
++ *
++ *   <brew-tabs label="Brewing methods" selected="0">
++ *     <section data-label="Pour Over">...</section>
++ *     <section data-label="French Press">...</section>
++ *   </brew-tabs>
++ *
++ * Every element child becomes a panel. Its tab label comes from `data-label`,
++ * falling back to the first heading inside it. Tabs, panels and the ARIA
++ * relationships between them are rendered inside the shadow tree (id references
++ * cannot cross the shadow boundary); the panel content itself stays in light DOM
++ * and is projected through a slot.
++ *
++ * Attributes / properties:
++ *   label      accessible name for the tablist (default "Tabs")
++ *   selected   zero-based index of the active tab, reflected  (property: selectedIndex)
++ *   panels     (read-only property) the light-DOM panel elements
++ *
++ * Keyboard: Left/Right move between tabs (direction-aware), Home/End jump.
++ * Hidden panels use hidden="until-found" where supported, so find-in-page and
++ * URL fragments inside a panel still reveal it.
++ *
++ * Events:  change { detail: { index, panel } } (bubbles) when the user picks a tab
++ *
++ * Styling hooks:
++ *   --brew-tabs-fg, --brew-tabs-accent, --brew-tabs-border, --brew-tabs-panel-bg, --brew-tabs-radius
++ *   ::part(tablist | tab | panel | panel-body)
++ */
++import { defineOnce, ensureShadow, fragmentTargetWithin } from './utils.js';
++
++const SUPPORTS_UNTIL_FOUND = 'onbeforematch' in HTMLElement.prototype;
++
++const TEMPLATE = /* html */ `
++  <div class="tablist" role="tablist" part="tablist" aria-label="Tabs"></div>
++  <div class="panels"></div>
++`;
++
++const STYLES = /* css */ `
++  :host {
++    display: block;
++    --_fg: var(--brew-tabs-fg, inherit);
++    --_accent: var(--brew-tabs-accent, #ffab40);
++    --_border: var(--brew-tabs-border, #d7ccc8);
++    --_panel-bg: var(--brew-tabs-panel-bg, #fff);
++    --_radius: var(--brew-tabs-radius, 8px);
++  }
++
++  :host([hidden]) { display: none; }
++
++  .tablist {
++    display: flex;
++    gap: 0.25rem;
++    overflow-x: auto;
++    scrollbar-width: thin;
++    border-block-end: 2px solid var(--_border);
++  }
++
++  [role="tab"] {
++    flex: none;
++    min-block-size: 44px;
++    margin-block-end: -2px;
++    padding: 0.75rem 1.25rem;
++    border: 0;
++    border-block-end: 3px solid transparent;
++    border-start-start-radius: var(--_radius);
++    border-start-end-radius: var(--_radius);
++    background: transparent;
++    color: var(--_fg);
++    font: inherit;
++    font-weight: 600;
++    white-space: nowrap;
++    cursor: pointer;
++    transition: background-color 0.2s, border-color 0.2s;
++  }
++
++  [role="tab"]:hover { background: color-mix(in srgb, var(--_accent) 15%, transparent); }
++
++  [role="tab"][aria-selected="true"] {
++    border-block-end-color: var(--_accent);
++    background: color-mix(in srgb, var(--_accent) 22%, transparent);
++  }
++
++  [role="tab"]:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: -2px;
++  }
++
++  /* No display rules on the panel itself: hidden="until-found" must keep
++     rendering (content-visibility: hidden) so the browser can search it.
++     Visual chrome lives on the inner wrapper instead. */
++  [role="tabpanel"]:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 2px;
++  }
++
++  .panel-body {
++    padding: 1.5rem;
++    background: var(--_panel-bg);
++    border: 1px solid var(--_border);
++    border-block-start: 0;
++    border-end-start-radius: var(--_radius);
++    border-end-end-radius: var(--_radius);
++  }
++
++  @media (prefers-reduced-motion: reduce) {
++    [role="tab"] { transition: none; }
++  }
++`;
++
++export class BrewTabs extends HTMLElement {
++  static observedAttributes = ['selected', 'label'];
++
++  #tablist;
++  #panelsHost;
++  #tabs = [];
++  #panels = [];
++  #current = 0;
++  #observer;
++  #onHashChange = () => this.#revealFragment();
++
++  constructor() {
++    super();
++    const root = ensureShadow(this, TEMPLATE, STYLES);
++    this.#tablist = root.querySelector('[role="tablist"]');
++    this.#panelsHost = root.querySelector('.panels');
++
++    this.#tablist.addEventListener('click', (event) => {
++      const tab = event.target.closest('[role="tab"]');
++      if (tab) this.#select(this.#tabs.indexOf(tab), { focus: true, user: true });
++    });
++    this.#tablist.addEventListener('keydown', (event) => this.#onKeydown(event));
++
++    // Find-in-page revealed a hidden panel: make the tab state agree with it.
++    this.#panelsHost.addEventListener('beforematch', (event) => {
++      const panel = event.target.closest('[role="tabpanel"]');
++      const index = this.#panels.indexOf(panel);
++      if (index > -1) this.#select(index, { user: true });
++    });
++
++    this.#observer = new MutationObserver(() => this.#build());
++  }
++
++  connectedCallback() {
++    this.#tablist.setAttribute('aria-label', this.label || 'Tabs');
++    this.#build();
++    this.#observer.observe(this, { childList: true });
++    window.addEventListener('hashchange', this.#onHashChange);
++    this.#revealFragment();
++  }
++
++  disconnectedCallback() {
++    this.#observer.disconnect();
++    window.removeEventListener('hashchange', this.#onHashChange);
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    if (name === 'label') {
++      this.#tablist.setAttribute('aria-label', newValue || 'Tabs');
++    } else if (name === 'selected' && this.#tabs.length) {
++      this.#select(this.selectedIndex);
++    }
++  }
++
++  /* ---- Public API ---- */
++
++  get selectedIndex() {
++    const n = Number.parseInt(this.getAttribute('selected') ?? '', 10);
++    if (!Number.isInteger(n) || n < 0) return 0;
++    return this.#tabs.length ? Math.min(n, this.#tabs.length - 1) : n;
++  }
++  set selectedIndex(index) { this.setAttribute('selected', String(index)); }
++
++  get label() { return this.getAttribute('label') ?? ''; }
++  set label(value) {
++    if (value) this.setAttribute('label', value);
++    else this.removeAttribute('label');
++  }
++
++  /** The light-DOM elements acting as panels, in tab order. */
++  get panels() { return [...this.children]; }
++
++  /* ---- Internals ---- */
++
++  #build() {
++    const children = this.panels;
++    this.#tabs = [];
++    this.#panels = [];
++    const tabFragment = document.createDocumentFragment();
++    const panelFragment = document.createDocumentFragment();
++
++    children.forEach((child, index) => {
++      // Assign each child to its own slot; attribute changes don't retrigger the childList observer.
++      if (child.slot !== `panel-${index}`) child.slot = `panel-${index}`;
++
++      const label =
++        child.dataset.label?.trim() ||
++        child.querySelector('h1, h2, h3, h4, h5, h6')?.textContent.trim() ||
++        `Tab ${index + 1}`;
++
++      const tab = document.createElement('button');
++      tab.type = 'button';
++      tab.id = `tab-${index}`;
++      tab.setAttribute('role', 'tab');
++      tab.setAttribute('part', 'tab');
++      tab.setAttribute('aria-controls', `panel-${index}`);
++      tab.textContent = label;
++
++      const panel = document.createElement('div');
++      panel.id = `panel-${index}`;
++      panel.setAttribute('role', 'tabpanel');
++      panel.setAttribute('part', 'panel');
++      panel.setAttribute('aria-labelledby', `tab-${index}`);
++      panel.tabIndex = 0;
++      const body = document.createElement('div');
++      body.className = 'panel-body';
++      body.setAttribute('part', 'panel-body');
++      const slot = document.createElement('slot');
++      slot.name = `panel-${index}`;
++      body.append(slot);
++      panel.append(body);
++
++      this.#tabs.push(tab);
++      this.#panels.push(panel);
++      tabFragment.append(tab);
++      panelFragment.append(panel);
++    });
++
++    this.#tablist.replaceChildren(tabFragment);
++    this.#panelsHost.replaceChildren(panelFragment);
++    this.#applySelection(this.selectedIndex);
++  }
++
++  #applySelection(index) {
++    this.#current = index;
++    this.#tabs.forEach((tab, i) => {
++      const active = i === index;
++      tab.setAttribute('aria-selected', String(active));
++      tab.tabIndex = active ? 0 : -1;
++      const panel = this.#panels[i];
++      if (active) panel.removeAttribute('hidden');
++      else panel.setAttribute('hidden', SUPPORTS_UNTIL_FOUND ? 'until-found' : '');
++    });
++  }
++
++  #select(index, { focus = false, user = false } = {}) {
++    if (!this.#tabs.length || index < 0 || index >= this.#tabs.length) return;
++    const changed = index !== this.#current;
++    this.#applySelection(index);
++    if (this.getAttribute('selected') !== String(index)) {
++      this.setAttribute('selected', String(index));
++    }
++    if (focus) this.#tabs[index].focus();
++    if (changed && user) {
++      this.dispatchEvent(
++        new CustomEvent('change', {
++          bubbles: true,
++          detail: { index, panel: this.panels[index] ?? null },
++        }),
++      );
++    }
++  }
++
++  #onKeydown(event) {
++    const count = this.#tabs.length;
++    if (!count) return;
++    let next;
++    switch (event.key) {
++      case 'ArrowRight':
++      case 'ArrowLeft': {
++        const rtl = getComputedStyle(this).direction === 'rtl';
++        const step = (event.key === 'ArrowRight' ? 1 : -1) * (rtl ? -1 : 1);
++        next = (this.#current + step + count) % count;
++        break;
++      }
++      case 'Home':
++        next = 0;
++        break;
++      case 'End':
++        next = count - 1;
++        break;
++      default:
++        return;
++    }
++    event.preventDefault();
++    this.#select(next, { focus: true, user: true });
++  }
++
++  /** If the URL fragment points inside a panel, show that panel and scroll to it. */
++  #revealFragment() {
++    const target = fragmentTargetWithin(this);
++    if (!target || target === this) return;
++    const index = this.panels.findIndex((panel) => panel === target || panel.contains(target));
++    if (index === -1) return;
++    const wasHidden = index !== this.#current;
++    this.#select(index);
++    if (wasHidden) target.scrollIntoView({ block: 'start' });
++  }
++}
++
++defineOnce('brew-tabs', BrewTabs);
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..479dde7
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,401 @@
++/**
++ * <coffee-card> - a menu item card with media, title, price and a favorite toggle.
++ *
++ * Light DOM (slots), in source order:
++ *   [slot="media"]    optional <img>/<picture> shown first
++ *   [slot="title"]    the heading; the page picks the level (<h3>, <h2>, ...)
++ *   (default)         supporting content such as a <p>
++ *   [slot="actions"]  native links/buttons for independent actions
++ *
++ * Attributes / properties:
++ *   name       accessible name used by the favorite toggle (defaults to the slotted title text)
++ *   price      numeric price, formatted with `currency` (default "USD") in the page language
++ *   currency   ISO 4217 code
++ *   badge      short label such as "Seasonal"
++ *   favorited  boolean, reflected; persisted in localStorage when the card has an `id`
++ *
++ * Events:
++ *   favoritechange  { detail: { favorited, id } }  bubbles + composed, fired on user toggles
++ *
++ * Styling hooks:
++ *   --coffee-card-bg, --coffee-card-fg, --coffee-card-heading, --coffee-card-accent,
++ *   --coffee-card-favorite, --coffee-card-radius, --coffee-card-shadow
++ *   ::part(card | header | badge | price | content | footer | favorite)
++ *   :state(favorited), :state(has-media)
++ */
++import {
++  attachInternalsSafe,
++  defineOnce,
++  ensureShadow,
++  setState,
++} from './utils.js';
++
++const STORAGE_KEY = 'daily-grind:favorites';
++
++function readFavorites() {
++  try {
++    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
++    return new Set(Array.isArray(parsed) ? parsed : []);
++  } catch {
++    return new Set();
++  }
++}
++
++function writeFavorites(set) {
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
++  } catch {
++    /* storage unavailable (private mode, quota) - favorites stay in-memory */
++  }
++}
++
++const TEMPLATE = /* html */ `
++  <article part="card">
++    <slot name="media"></slot>
++    <header part="header">
++      <slot name="title"></slot>
++      <p class="meta" hidden>
++        <span class="badge" part="badge" hidden></span>
++        <data class="price" part="price" hidden></data>
++      </p>
++    </header>
++    <div class="content" part="content"><slot></slot></div>
++    <footer part="footer">
++      <slot name="actions"></slot>
++      <button type="button" class="favorite" part="favorite" aria-pressed="false">
++        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++          <path d="M12 20.5s-7.4-4.6-9.4-9.1C1.2 8.1 3.1 4.5 6.7 4.5c2 0 3.3 1 4.3 2.6 1-1.6 2.3-2.6 4.3-2.6 3.6 0 5.5 3.6 4.1 6.9-2 4.5-9.4 9.1-9.4 9.1z"/>
++        </svg>
++      </button>
++    </footer>
++  </article>
++`;
++
++const STYLES = /* css */ `
++  :host {
++    display: block;
++    container-type: inline-size;
++    --_bg: var(--coffee-card-bg, #fff);
++    --_fg: var(--coffee-card-fg, inherit);
++    --_heading: var(--coffee-card-heading, #4e342e);
++    --_accent: var(--coffee-card-accent, #ffab40);
++    --_favorite: var(--coffee-card-favorite, #c62828);
++    --_radius: var(--coffee-card-radius, 8px);
++    --_shadow: var(--coffee-card-shadow, 0 2px 5px rgb(0 0 0 / 0.1));
++  }
++
++  :host([hidden]) { display: none; }
++  [hidden] { display: none !important; }
++
++  article {
++    box-sizing: border-box;
++    block-size: 100%;
++    display: grid;
++    grid-template-rows: auto 1fr auto;
++    row-gap: 0.75rem;
++    background: var(--_bg);
++    color: var(--_fg);
++    border-radius: var(--_radius);
++    box-shadow: var(--_shadow);
++    overflow: clip;
++    text-align: center;
++  }
++
++  article.has-media { grid-template-rows: auto auto 1fr auto; }
++
++  /* Media fills a fixed-ratio area; cropping is preferable to distortion. */
++  slot[name="media"]::slotted(*) {
++    display: block;
++    inline-size: 100%;
++    aspect-ratio: 4 / 3;
++    object-fit: cover;
++  }
++
++  header,
++  .content,
++  footer {
++    padding-inline: 1.25rem;
++  }
++
++  header {
++    display: grid;
++    gap: 0.25rem;
++    justify-items: center;
++    padding-block-start: 1.25rem;
++  }
++
++  slot[name="title"]::slotted(*) {
++    margin: 0;
++    color: var(--_heading);
++    font-size: 1.25rem;
++    line-height: 1.3;
++  }
++
++  .meta {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    justify-content: center;
++    gap: 0.5rem;
++    margin: 0;
++  }
++
++  .badge {
++    display: inline-block;
++    padding: 0.1rem 0.6rem;
++    border-radius: 999px;
++    background: var(--_accent);
++    color: #3e2723;
++    font-size: 0.75rem;
++    font-weight: 600;
++    letter-spacing: 0.04em;
++    text-transform: uppercase;
++  }
++
++  .price {
++    font-weight: 600;
++    font-variant-numeric: tabular-nums;
++  }
++
++  footer {
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    justify-content: center;
++    gap: 0.75rem;
++    padding-block-end: 1.25rem;
++  }
++
++  .favorite {
++    display: inline-grid;
++    place-items: center;
++    inline-size: 2.75rem;
++    block-size: 2.75rem;
++    padding: 0;
++    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
++    border-radius: 50%;
++    background: transparent;
++    color: inherit;
++    font: inherit;
++    cursor: pointer;
++    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
++  }
++
++  .favorite:hover { background: color-mix(in srgb, var(--_accent) 20%, transparent); }
++
++  .favorite:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: 2px;
++  }
++
++  .favorite svg {
++    inline-size: 1.25rem;
++    block-size: 1.25rem;
++    fill: none;
++    stroke: currentColor;
++    stroke-width: 2;
++    stroke-linejoin: round;
++    transition: fill 0.2s, transform 0.2s;
++  }
++
++  .favorite[aria-pressed="true"] {
++    color: var(--_favorite);
++    border-color: currentColor;
++  }
++
++  .favorite[aria-pressed="true"] svg { fill: currentColor; }
++
++  .favorite:active svg { transform: scale(0.85); }
++
++  /* Wide container: media moves beside the text, only for cards that have media. */
++  @container (min-width: 34rem) {
++    article.has-media {
++      grid-template-columns: minmax(10rem, 2fr) 3fr;
++      grid-template-rows: auto 1fr auto;
++      text-align: start;
++    }
++
++    article.has-media slot[name="media"]::slotted(*) {
++      grid-row: 1 / -1;
++      block-size: 100%;
++      aspect-ratio: auto;
++    }
++
++    article.has-media header { justify-items: start; }
++    article.has-media .meta,
++    article.has-media footer { justify-content: flex-start; }
++  }
++
++  @media (prefers-reduced-motion: reduce) {
++    .favorite,
++    .favorite svg { transition: none; }
++  }
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'price', 'currency', 'badge', 'favorited'];
++
++  #internals;
++  #article;
++  #meta;
++  #badge;
++  #price;
++  #favorite;
++  #mediaSlot;
++  #titleSlot;
++
++  constructor() {
++    super();
++    this.#internals = attachInternalsSafe(this);
++    const root = ensureShadow(this, TEMPLATE, STYLES);
++
++    this.#article = root.querySelector('article');
++    this.#meta = root.querySelector('.meta');
++    this.#badge = root.querySelector('.badge');
++    this.#price = root.querySelector('.price');
++    this.#favorite = root.querySelector('.favorite');
++    this.#mediaSlot = root.querySelector('slot[name="media"]');
++    this.#titleSlot = root.querySelector('slot[name="title"]');
++
++    // Listeners are attached once here (not in connectedCallback, which re-runs on moves).
++    this.#favorite.addEventListener('click', () => {
++      this.favorited = !this.favorited;
++      this.dispatchEvent(
++        new CustomEvent('favoritechange', {
++          bubbles: true,
++          composed: true,
++          detail: { favorited: this.favorited, id: this.id || null },
++        }),
++      );
++    });
++    this.#mediaSlot.addEventListener('slotchange', () => this.#syncMedia());
++    this.#titleSlot.addEventListener('slotchange', () => this.#syncFavoriteLabel());
++  }
++
++  connectedCallback() {
++    // Restore a persisted favorite unless markup already decided.
++    if (this.id && !this.hasAttribute('favorited') && readFavorites().has(this.id)) {
++      this.toggleAttribute('favorited', true);
++    }
++    this.#syncMedia();
++    this.#syncFavoriteLabel();
++    this.#syncFavorite();
++    this.#renderMeta();
++    // Children may not be parsed yet when this runs; slotchange covers that in
++    // browsers, and this microtask covers environments that don't fire it.
++    queueMicrotask(() => {
++      if (this.isConnected) {
++        this.#syncMedia();
++        this.#syncFavoriteLabel();
++      }
++    });
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    switch (name) {
++      case 'favorited':
++        this.#syncFavorite();
++        break;
++      case 'name':
++        this.#syncFavoriteLabel();
++        break;
++      default:
++        this.#renderMeta();
++    }
++  }
++
++  /* ---- Reflected properties ---- */
++
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(value) {
++    if (value) this.setAttribute('name', value);
++    else this.removeAttribute('name');
++  }
++
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const n = Number(raw);
++    return Number.isFinite(n) ? n : null;
++  }
++  set price(value) {
++    if (value === null || value === undefined || value === '') this.removeAttribute('price');
++    else this.setAttribute('price', String(value));
++  }
++
++  get currency() { return this.getAttribute('currency') || 'USD'; }
++  set currency(value) {
++    if (value) this.setAttribute('currency', value);
++    else this.removeAttribute('currency');
++  }
++
++  get badge() { return this.getAttribute('badge') ?? ''; }
++  set badge(value) {
++    if (value) this.setAttribute('badge', value);
++    else this.removeAttribute('badge');
++  }
++
++  get favorited() { return this.hasAttribute('favorited'); }
++  set favorited(on) { this.toggleAttribute('favorited', Boolean(on)); }
++
++  /* ---- Internals ---- */
++
++  /** Slotted children for a slot name, falling back to a light-DOM query if assignment hasn't run yet. */
++  #slotted(slot) {
++    const assigned = slot.assignedElements();
++    return assigned.length ? assigned : [...this.querySelectorAll(`:scope > [slot="${slot.name}"]`)];
++  }
++
++  #syncMedia() {
++    const hasMedia = this.#slotted(this.#mediaSlot).length > 0;
++    this.#article.classList.toggle('has-media', hasMedia);
++    setState(this.#internals, 'has-media', hasMedia);
++  }
++
++  #syncFavoriteLabel() {
++    const title = this.#slotted(this.#titleSlot)[0]?.textContent.trim();
++    const name = this.name || title || 'this item';
++    this.#favorite.setAttribute('aria-label', `Save ${name} to favorites`);
++  }
++
++  #syncFavorite() {
++    const on = this.favorited;
++    this.#favorite.setAttribute('aria-pressed', String(on));
++    setState(this.#internals, 'favorited', on);
++    if (this.id) {
++      const favorites = readFavorites();
++      if (favorites.has(this.id) !== on) {
++        if (on) favorites.add(this.id);
++        else favorites.delete(this.id);
++        writeFavorites(favorites);
++      }
++    }
++  }
++
++  #renderMeta() {
++    const price = this.price;
++    if (price === null) {
++      this.#price.hidden = true;
++    } else {
++      const lang = this.closest('[lang]')?.lang || document.documentElement.lang || undefined;
++      let text;
++      try {
++        text = new Intl.NumberFormat(lang, { style: 'currency', currency: this.currency }).format(price);
++      } catch {
++        text = `${this.currency} ${price.toFixed(2)}`;
++      }
++      this.#price.textContent = text;
++      this.#price.value = String(price);
++      this.#price.hidden = false;
++    }
++
++    const badge = this.badge;
++    this.#badge.textContent = badge;
++    this.#badge.hidden = !badge;
++
++    this.#meta.hidden = this.#price.hidden && this.#badge.hidden;
++  }
++}
++
++defineOnce('coffee-card', CoffeeCard);
+diff --git a/components/grind-disclosure.js b/components/grind-disclosure.js
+new file mode 100644
+index 0000000..ef1b224
+--- /dev/null
++++ b/components/grind-disclosure.js
+@@ -0,0 +1,212 @@
++/**
++ * <grind-disclosure> - a styled, groupable disclosure built on a native <details>.
++ *
++ *   <grind-disclosure group="faq" open>
++ *     <h3 slot="summary">Do you offer decaf?</h3>
++ *     <p>Yes, ...</p>
++ *   </grind-disclosure>
++ *
++ * The <details>/<summary> pair lives in the shadow tree, so the toggle is a
++ * real native control (keyboard, find-in-page auto-expand, screen reader
++ * "expanded/collapsed" announcements) while the question and answer stay in
++ * light DOM for search engines and heading structure.
++ *
++ * Attributes / properties:
++ *   open   boolean, reflected; mirrors the inner <details>
++ *   group  string; opening one disclosure closes the others with the same group.
++ *          (Unlike <details name>, this works across shadow roots.)
++ *
++ * Methods: show(), hide(), toggle(force?)
++ * Events:  toggle (bubbles; a ToggleEvent with oldState/newState where supported)
++ *
++ * Styling hooks:
++ *   --grind-disclosure-fg, --grind-disclosure-accent, --grind-disclosure-border,
++ *   --grind-disclosure-bg, --grind-disclosure-radius
++ *   ::part(details | summary | content), :state(open)
++ */
++import {
++  attachInternalsSafe,
++  defineOnce,
++  ensureShadow,
++  fragmentTargetWithin,
++  setState,
++} from './utils.js';
++
++const TEMPLATE = /* html */ `
++  <details part="details">
++    <summary part="summary">
++      <slot name="summary">Details</slot>
++      <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++        <path d="M6 9l6 6 6-6"/>
++      </svg>
++    </summary>
++    <div class="content" part="content"><slot></slot></div>
++  </details>
++`;
++
++const STYLES = /* css */ `
++  :host {
++    display: block;
++    --_fg: var(--grind-disclosure-fg, inherit);
++    --_accent: var(--grind-disclosure-accent, #ffab40);
++    --_border: var(--grind-disclosure-border, #d7ccc8);
++    --_bg: var(--grind-disclosure-bg, #fff);
++    --_radius: var(--grind-disclosure-radius, 8px);
++  }
++
++  :host([hidden]) { display: none; }
++
++  details {
++    background: var(--_bg);
++    border: 1px solid var(--_border);
++    border-radius: var(--_radius);
++    overflow: clip;
++    /* Lets block-size animate to "auto" in engines that support it. */
++    interpolate-size: allow-keywords;
++  }
++
++  summary {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 1rem;
++    min-block-size: 44px;
++    padding: 1rem 1.25rem;
++    color: var(--_fg);
++    font-weight: 600;
++    list-style: none;
++    cursor: pointer;
++    transition: background-color 0.2s;
++  }
++
++  summary::-webkit-details-marker { display: none; }
++  summary::marker { content: ""; }
++
++  summary:hover { background: color-mix(in srgb, var(--_accent) 12%, transparent); }
++
++  summary:focus-visible {
++    outline: 2px solid var(--_accent);
++    outline-offset: -2px;
++  }
++
++  slot[name="summary"]::slotted(*) {
++    margin: 0;
++    font: inherit;
++  }
++
++  .chevron {
++    flex: none;
++    inline-size: 1.25rem;
++    block-size: 1.25rem;
++    fill: none;
++    stroke: currentColor;
++    stroke-width: 2;
++    stroke-linecap: round;
++    stroke-linejoin: round;
++    transition: rotate 0.25s ease;
++  }
++
++  details[open] .chevron { rotate: 180deg; }
++
++  .content { padding: 0 1.25rem 1.25rem; }
++
++  /* Smooth open/close where ::details-content and interpolate-size exist;
++     other engines simply toggle instantly. */
++  details::details-content {
++    block-size: 0;
++    overflow: clip;
++    transition: block-size 0.3s ease, content-visibility 0.3s allow-discrete;
++  }
++
++  details[open]::details-content { block-size: auto; }
++
++  @media (prefers-reduced-motion: reduce) {
++    summary,
++    .chevron,
++    details::details-content { transition: none; }
++  }
++`;
++
++export class GrindDisclosure extends HTMLElement {
++  static observedAttributes = ['open'];
++
++  #internals;
++  #details;
++  #onHashChange = () => this.#revealFragment();
++
++  constructor() {
++    super();
++    this.#internals = attachInternalsSafe(this);
++    const root = ensureShadow(this, TEMPLATE, STYLES);
++    this.#details = root.querySelector('details');
++    this.#details.addEventListener('toggle', () => this.#onDetailsToggle());
++  }
++
++  connectedCallback() {
++    this.#details.open = this.open;
++    setState(this.#internals, 'open', this.open);
++    window.addEventListener('hashchange', this.#onHashChange);
++    this.#revealFragment();
++  }
++
++  disconnectedCallback() {
++    window.removeEventListener('hashchange', this.#onHashChange);
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (name === 'open' && oldValue !== newValue && this.#details.open !== this.open) {
++      this.#details.open = this.open;
++    }
++  }
++
++  /* ---- Public API ---- */
++
++  get open() { return this.hasAttribute('open'); }
++  set open(on) { this.toggleAttribute('open', Boolean(on)); }
++
++  get group() { return this.getAttribute('group') ?? ''; }
++  set group(value) {
++    if (value) this.setAttribute('group', value);
++    else this.removeAttribute('group');
++  }
++
++  show() { this.open = true; }
++  hide() { this.open = false; }
++  toggle(force) { this.open = force ?? !this.open; }
++
++  /* ---- Internals ---- */
++
++  #onDetailsToggle() {
++    const open = this.#details.open;
++    const oldState = open ? 'closed' : 'open';
++    if (this.open !== open) this.toggleAttribute('open', open);
++    setState(this.#internals, 'open', open);
++
++    if (open && this.group) this.#closeSiblings();
++
++    const event =
++      typeof ToggleEvent === 'function'
++        ? new ToggleEvent('toggle', { bubbles: true, oldState, newState: open ? 'open' : 'closed' })
++        : new Event('toggle', { bubbles: true });
++    this.dispatchEvent(event);
++  }
++
++  #closeSiblings() {
++    const root = this.getRootNode();
++    if (typeof root.querySelectorAll !== 'function') return;
++    for (const other of root.querySelectorAll('grind-disclosure[group]')) {
++      if (other !== this && other.group === this.group) other.open = false;
++    }
++  }
++
++  /** Open when the URL fragment points at this disclosure or something inside it. */
++  #revealFragment() {
++    const target = fragmentTargetWithin(this);
++    if (!target) return;
++    const wasClosed = !this.open;
++    this.open = true;
++    if (wasClosed) target.scrollIntoView({ block: 'start' });
++  }
++}
++
++defineOnce('grind-disclosure', GrindDisclosure);
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..31d0abe
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,7 @@
++/**
++ * Daily Grind design-system entry point.
++ * Import this once per page to register every custom element.
++ */
++export { CoffeeCard } from './coffee-card.js';
++export { BrewTabs } from './brew-tabs.js';
++export { GrindDisclosure } from './grind-disclosure.js';
+diff --git a/components/utils.js b/components/utils.js
+new file mode 100644
+index 0000000..e692747
+--- /dev/null
++++ b/components/utils.js
+@@ -0,0 +1,80 @@
++/**
++ * Small helpers shared by the Daily Grind components.
++ */
++
++/** cssText -> CSSStyleSheet, so every instance of a component shares one parsed sheet. */
++const sheetCache = new Map();
++
++/**
++ * Attach encapsulated CSS to a shadow root. Uses a shared constructable
++ * stylesheet when available and falls back to an inline <style> for engines
++ * without adoptedStyleSheets.
++ */
++export function adoptStyles(root, cssText) {
++  if ('adoptedStyleSheets' in root && typeof CSSStyleSheet === 'function') {
++    try {
++      let sheet = sheetCache.get(cssText);
++      if (!sheet) {
++        sheet = new CSSStyleSheet();
++        sheet.replaceSync(cssText);
++        sheetCache.set(cssText, sheet);
++      }
++      if (!root.adoptedStyleSheets.includes(sheet)) {
++        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
++      }
++      return;
++    } catch {
++      /* fall through to <style> */
++    }
++  }
++  const style = document.createElement('style');
++  style.textContent = cssText;
++  root.prepend(style);
++}
++
++/**
++ * Create a shadow root and populate it from a template string, or reuse a
++ * Declarative Shadow DOM root if the server already rendered one (hydrating in
++ * place avoids a flash of re-rendered content).
++ */
++export function ensureShadow(host, html, cssText, init = { mode: 'open' }) {
++  let root = host.shadowRoot;
++  if (!root) {
++    root = host.attachShadow(init);
++    const template = document.createElement('template');
++    template.innerHTML = html;
++    root.append(template.content.cloneNode(true));
++  }
++  adoptStyles(root, cssText);
++  return root;
++}
++
++/** Register a custom element unless the tag name is already taken. */
++export function defineOnce(tagName, ctor) {
++  if (!customElements.get(tagName)) customElements.define(tagName, ctor);
++}
++
++/** Attach ElementInternals, returning null where the API is unavailable. */
++export function attachInternalsSafe(host) {
++  try {
++    return host.attachInternals();
++  } catch {
++    return null;
++  }
++}
++
++/** Toggle a custom state (matched with :state(name)) when CustomStateSet exists. */
++export function setState(internals, name, on) {
++  const states = internals?.states;
++  if (!states) return;
++  if (on) states.add(name);
++  else states.delete(name);
++}
++
++/** Find the element a URL fragment points at, if it lives inside `scope`. */
++export function fragmentTargetWithin(scope) {
++  const id = decodeURIComponent(location.hash.slice(1));
++  if (!id) return null;
++  if (scope.id === id) return scope;
++  return scope.querySelector(`#${CSS.escape(id)}`);
++}
+diff --git a/index.html b/index.html
+index 66c9173..1ab2a54 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./components/index.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -27,6 +28,18 @@
+       background-color: var(--light);
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -100,24 +113,25 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++    .container > section + section {
++      margin-top: 56px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    .section-title {
+       text-align: center;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .section-intro {
++      text-align: center;
++      max-width: 60ch;
++      margin: 8px auto 0;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
+     }
+ 
+     .btn {
+@@ -135,6 +149,96 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    /* Component theming: the elements read these custom properties across the shadow boundary. */
++    coffee-card,
++    brew-tabs,
++    grind-disclosure {
++      --coffee-card-heading: var(--primary);
++      --coffee-card-accent: var(--accent);
++      --brew-tabs-accent: var(--accent);
++      --brew-tabs-border: var(--secondary);
++      --grind-disclosure-accent: var(--accent);
++      --grind-disclosure-border: var(--secondary);
++    }
++
++    /* Hide until upgraded to avoid a flash of unstyled content, but fail open
++       after 2s so content is never lost if the script doesn't load. */
++    coffee-card:not(:defined),
++    brew-tabs:not(:defined),
++    grind-disclosure:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to { opacity: 1; }
++    }
++
++    /* Card actions sit in the card's own footer, so drop the standalone button offset. */
++    coffee-card .btn {
++      margin-top: 0;
++    }
++
++    coffee-card:state(favorited) {
++      --coffee-card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1), 0 0 0 2px var(--accent);
++    }
++
++    /* Brew guide */
++    brew-tabs {
++      margin-top: 20px;
++    }
++
++    brew-tabs h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    brew-tabs ol {
++      padding-left: 1.25rem;
++      margin-top: 12px;
++    }
++
++    brew-tabs li + li {
++      margin-top: 6px;
++    }
++
++    brew-tabs dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 4px 16px;
++      margin-top: 12px;
++    }
++
++    brew-tabs dt {
++      font-weight: 600;
++    }
++
++    /* FAQ */
++    .faq {
++      display: grid;
++      gap: 12px;
++      max-width: 800px;
++      margin: 20px auto 0;
++    }
++
++    grind-disclosure h3 {
++      font-size: 1rem;
++    }
++
++    grind-disclosure p + p {
++      margin-top: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,24 +279,117 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card id="maple-oat-latte" price="5.75" badge="Seasonal">
++          <img slot="media"
++            src="https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?auto=format&fit=crop&w=800&q=80"
++            alt="A frothy latte in a white enamel mug on a marble board" width="800" height="1067" loading="lazy">
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <a slot="actions" href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about the Maple Oat Latte</span></a>
++        </coffee-card>
++
++        <coffee-card id="dark-roast-espresso" price="3.25">
++          <img slot="media"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++            alt="A double espresso with thick crema in a white cup, seen from above" width="800" height="533" loading="lazy">
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <a slot="actions" href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about the Dark Roast Espresso</span></a>
++        </coffee-card>
++
++        <coffee-card id="cold-brew" price="4.50" badge="18-hour steep">
++          <img slot="media"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++            alt="A tall glass of cold brew with cream swirling through it" width="800" height="533" loading="lazy">
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <a slot="actions" href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about the Cold Brew</span></a>
++          <a slot="actions" href="#brew-cold-brew" class="btn btn-secondary">Brew it at home</a>
++        </coffee-card>
++      </div>
++    </section>
++
++    <section aria-labelledby="brew-heading">
++      <h2 id="brew-heading" class="section-title">Brew at Home</h2>
++      <p class="section-intro">Pick your method and follow along. Every guide assumes freshly ground beans from our roastery.</p>
++
++      <brew-tabs label="Brewing methods">
++        <section id="brew-pour-over" data-label="Pour Over">
++          <h3>Pour Over</h3>
++          <p>Clean, bright, and aromatic. Best with our lighter single-origin roasts.</p>
++          <dl>
++            <dt>Grind</dt><dd>Medium-fine, like table salt</dd>
++            <dt>Ratio</dt><dd>1:16 (22 g coffee to 350 g water)</dd>
++            <dt>Time</dt><dd>3 to 3.5 minutes</dd>
++          </dl>
++          <ol>
++            <li>Rinse the paper filter with hot water and discard the rinse water.</li>
++            <li>Add the coffee and pour just enough water to wet the grounds. Wait 30 seconds for the bloom.</li>
++            <li>Pour the rest of the water in slow circles, keeping the bed level.</li>
++            <li>Let it drain fully, then swirl and serve.</li>
++          </ol>
++        </section>
++
++        <section id="brew-french-press" data-label="French Press">
++          <h3>French Press</h3>
++          <p>Full-bodied and forgiving. A great match for our Dark Roast.</p>
++          <dl>
++            <dt>Grind</dt><dd>Coarse, like breadcrumbs</dd>
++            <dt>Ratio</dt><dd>1:15 (30 g coffee to 450 g water)</dd>
++            <dt>Time</dt><dd>4 minutes</dd>
++          </dl>
++          <ol>
++            <li>Preheat the press with hot water, then empty it.</li>
++            <li>Add the coffee and all of the water. Stir once.</li>
++            <li>Rest the plunger on top without pressing and wait 4 minutes.</li>
++            <li>Press slowly and pour right away so it doesn't over-extract.</li>
++          </ol>
++        </section>
++
++        <section id="brew-cold-brew" data-label="Cold Brew">
++          <h3>Cold Brew</h3>
++          <p>Smooth, sweet, and low in acidity. Make a batch and keep it in the fridge for up to a week.</p>
++          <dl>
++            <dt>Grind</dt><dd>Extra coarse</dd>
++            <dt>Ratio</dt><dd>1:8 concentrate (100 g coffee to 800 g water)</dd>
++            <dt>Time</dt><dd>18 hours</dd>
++          </dl>
++          <ol>
++            <li>Combine the coffee and cold, filtered water in a jar and stir.</li>
++            <li>Cover and steep in the fridge for 18 hours.</li>
++            <li>Strain through a fine sieve lined with a paper filter.</li>
++            <li>Dilute 1:1 with water or milk over ice.</li>
++          </ol>
++        </section>
++      </brew-tabs>
++    </section>
++
++    <section aria-labelledby="faq-heading">
++      <h2 id="faq-heading" class="section-title">Good to Know</h2>
++      <div class="faq">
++        <grind-disclosure group="faq" open>
++          <h3 slot="summary">Where do you source your beans?</h3>
++          <p>We buy directly from small farms in Colombia, Ethiopia, and Guatemala and pay well above fair-trade minimums. Every bag lists the farm and harvest date.</p>
++        </grind-disclosure>
++
++        <grind-disclosure group="faq" id="faq-decaf">
++          <h3 slot="summary">Do you offer decaf?</h3>
++          <p>Yes. Our decaf is processed with the Swiss Water method, which removes caffeine without chemical solvents. Any drink on the menu can be made decaf at no extra charge.</p>
++        </grind-disclosure>
++
++        <grind-disclosure group="faq">
++          <h3 slot="summary">What milk alternatives do you have?</h3>
++          <p>Oat, almond, and soy are always available. Our baristas steam oat milk by default for the Maple Oat Latte.</p>
++        </grind-disclosure>
++
++        <grind-disclosure group="faq">
++          <h3 slot="summary">How do rewards work?</h3>
++          <p>Earn one star for every dollar spent. Fifty stars gets you any drink on the house.</p>
++          <p><a href="/rewards">Join the rewards program</a> to start earning today.</p>
++        </grind-disclosure>
+       </div>
+     </section>
+   </main>

@@ -1,0 +1,243 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,115 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .feedback-launcher {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 1001;
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      border: 1px solid #ffffff40;
++      border-radius: 999px;
++      background: var(--primary);
++      color: white;
++      padding: 13px 21px;
++      box-shadow: 0 4px 20px #3e272330;
++      font: 600 0.95rem 'Segoe UI', sans-serif;
++      cursor: pointer;
++    }
++
++    .feedback-launcher:hover { background: #3e2723; }
++
++    .feedback-dialog {
++      margin: auto;
++      width: min(500px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow: auto;
++      border: 1px solid #e8ded7;
++      border-radius: 18px;
++      padding: 0;
++      background: #fffdf9;
++      color: var(--text);
++      text-align: left;
++      box-shadow: 0 24px 90px #23161140;
++    }
++
++    .feedback-dialog:modal { overscroll-behavior: contain; }
++    .feedback-dialog::backdrop {
++      background: #24191499;
++      backdrop-filter: blur(3px);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .feedback-heading {
++      display: flex;
++      align-items: start;
++      justify-content: space-between;
++      gap: 16px;
++      padding: 26px 28px 0;
++    }
++
++    .feedback-eyebrow {
++      color: #795548;
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .feedback-heading h2 { font-size: 1.65rem; margin-top: 5px; }
++    .feedback-close-form { flex-shrink: 0; }
++    .feedback-close {
++      width: 36px;
++      height: 36px;
++      border: 1px solid #e8ded7;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--text);
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    .feedback-form { padding: 12px 28px 24px; }
++    .feedback-intro { color: #75665f; font-size: 0.9rem; margin-bottom: 22px; }
++    .feedback-form label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; }
++    .feedback-form textarea {
++      display: block;
++      width: 100%;
++      min-height: 145px;
++      resize: vertical;
++      padding: 13px;
++      border: 1px solid #d7ccc8;
++      border-radius: 9px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.95rem;
++    }
++
++    .feedback-note { font-size: 0.75rem; color: #75665f; margin-top: 10px; }
++    .feedback-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
++    .feedback-actions button { padding: 11px 19px; border-radius: 7px; font: 600 0.9rem 'Segoe UI', sans-serif; cursor: pointer; }
++    .feedback-move { border: 1px solid #d7ccc8; background: transparent; color: var(--text); }
++    .feedback-move:hover, .feedback-close:hover { background: #f0e9e2; }
++    .feedback-save { border: 1px solid var(--primary); background: var(--primary); color: white; }
++    .feedback-save:hover { background: #3e2723; }
++    .feedback-status { min-height: 1.6em; margin-top: 14px; font-size: 0.8rem; color: #75665f; }
++    .feedback-launcher:focus-visible, .feedback-dialog :focus-visible {
++      outline: 3px solid #b66a1c;
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 480px) {
++      .feedback-launcher { right: 16px; bottom: 16px; }
++      .feedback-heading { padding: 22px 20px 0; }
++      .feedback-form { padding: 12px 20px 20px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +301,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <div id="feedback-main-container">
++      <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-intro">
++        <div class="feedback-heading">
++          <div>
++            <p class="feedback-eyebrow">A little feedback, a better brew</p>
++            <h2 id="feedback-title">How was your experience?</h2>
++          </div>
++          <form method="dialog" class="feedback-close-form">
++            <button class="feedback-close" aria-label="Close feedback" value="dismiss">&times;</button>
++          </form>
++        </div>
++        <form id="feedback-form" class="feedback-form">
++          <p id="feedback-intro" class="feedback-intro">Good coffee starts a conversation. We’d love to hear what’s on your mind.</p>
++          <label for="feedback-message">Your feedback</label>
++          <textarea id="feedback-message" name="feedback" placeholder="What made your day? What could be better?" maxlength="4000" required autofocus></textarea>
++          <p class="feedback-note">Saved on this device only. Your feedback won’t be sent.</p>
++          <div class="feedback-actions">
++            <button type="button" id="feedback-move" class="feedback-move"><span aria-hidden="true">↔&nbsp;</span> Move</button>
++            <button type="submit" class="feedback-save">Save feedback</button>
++          </div>
++          <p id="feedback-status" class="feedback-status" role="status">Make yourself at home. Your draft stays here.</p>
++        </form>
++      </dialog>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -204,9 +335,90 @@
+       <a href="/contact">Contact Us</a> |
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <div id="feedback-footer-container"></div>
+   </footer>
+ 
++  <button type="button" id="feedback-launcher" class="feedback-launcher" aria-haspopup="dialog" aria-controls="feedback-dialog">
++    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-3 3V11.5A8.5 8.5 0 0 1 9.5 3h3a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M7 10h8M7 14h5"/></svg>
++    Feedback
++  </button>
++
++  <script>
++    const feedbackDialog = document.getElementById('feedback-dialog');
++    const feedbackLauncher = document.getElementById('feedback-launcher');
++    const feedbackMessage = document.getElementById('feedback-message');
++    const feedbackStatus = document.getElementById('feedback-status');
++    const feedbackContainers = [
++      document.getElementById('feedback-main-container'),
++      document.getElementById('feedback-footer-container')
++    ];
++    let usedMoveFallback = false;
++    let moveCount = 0;
++
++    feedbackLauncher.addEventListener('click', () => feedbackDialog.showModal());
++
++    document.getElementById('feedback-move').addEventListener('click', () => {
++      const destination = feedbackContainers.find(container => container !== feedbackDialog.parentElement);
++      const focusedElement = document.activeElement;
++      const selection = focusedElement === feedbackMessage
++        ? [feedbackMessage.selectionStart, feedbackMessage.selectionEnd, feedbackMessage.selectionDirection]
++        : null;
++      const scrollTop = feedbackDialog.scrollTop;
++
++      if (typeof destination.moveBefore === 'function') {
++        // An atomic move retains the top layer, modal state, and focused control.
++        destination.moveBefore(feedbackDialog, null);
++      } else {
++        // Explicitly close first: some browsers retain `open` after detachment
++        // but lose top-layer membership. Reopen synchronously to restore modality.
++        const wasOpen = feedbackDialog.open;
++        if (wasOpen) feedbackDialog.close();
++        destination.appendChild(feedbackDialog);
++        if (wasOpen) feedbackDialog.showModal();
++        usedMoveFallback = true;
++      }
++
++      if (feedbackDialog.contains(focusedElement) && document.activeElement !== focusedElement) {
++        focusedElement.focus();
++      }
++      if (selection) feedbackMessage.setSelectionRange(...selection);
++      feedbackDialog.scrollTop = scrollTop;
++      moveCount += 1;
++      feedbackStatus.textContent = `Moved ${moveCount === 1 ? 'once' : `${moveCount} times`}. Your draft is still here.`;
++    });
++
++    feedbackDialog.addEventListener('close', () => {
++      // Ignore a queued close event from a fallback move that already reopened.
++      if (feedbackDialog.open) return;
++      feedbackDialog.returnValue = '';
++      // Reopening during a fallback changes the browser's remembered invoker.
++      if (usedMoveFallback) {
++        feedbackLauncher.focus();
++        usedMoveFallback = false;
++      }
++    });
++
++    try {
++      feedbackMessage.value = localStorage.getItem('daily-grind-feedback') || '';
++    } catch { /* The form remains usable if storage is unavailable. */ }
++
++    document.getElementById('feedback-form').addEventListener('submit', event => {
++      event.preventDefault();
++      if (!feedbackMessage.value.trim()) {
++        feedbackStatus.textContent = 'Please write a little feedback before saving.';
++        feedbackMessage.focus();
++        return;
++      }
++      try {
++        localStorage.setItem('daily-grind-feedback', feedbackMessage.value);
++        feedbackStatus.textContent = 'Thank you! Your feedback is saved on this device.';
++      } catch {
++        feedbackStatus.textContent = 'Your browser couldn’t save this feedback. Please copy it before closing.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

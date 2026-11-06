@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -13,8 +13,41 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    /* Scrollbar: clearly visible thumb against its track */
++    html {
++      --scrollbar-thumb: #4e342e;
++      --scrollbar-track: #d7ccc8;
++
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++      scrollbar-width: auto;
++      scrollbar-gutter: stable;
++    }
++
++    @media (prefers-contrast: more) {
++      html {
++        --scrollbar-thumb: #000000;
++        --scrollbar-track: #ffffff;
++      }
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers */
++    @supports not (scrollbar-color: auto) {
++      html::-webkit-scrollbar {
++        width: 14px;
++        height: 14px;
++      }
++
++      html::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++      }
++
++      html::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;

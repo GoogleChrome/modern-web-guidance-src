@@ -1,0 +1,81 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,77 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Accurately determines initial visibility state history using the Performance API.
++     */
++    function getVisibilityInfo() {
++      const entries = performance.getEntriesByType('visibility-state');
++
++      if (entries.length > 0) {
++        const firstEntry = entries[0];
++        const initiallyBackgrounded = firstEntry.name === 'hidden';
++
++        let timeBackgrounded = null;
++        for (const entry of entries) {
++          if (entry.name === 'hidden') {
++            timeBackgrounded = entry.startTime;
++            break;
++          }
++        }
++
++        return {
++          initiallyBackgrounded,
++          timeBackgrounded,
++          note: 'Measured via VisibilityStateEntry on the performance timeline; older document.visibilityState fallback checks are unreliable for async scripts due to race conditions if the tab is foregrounded before script execution.'
++        };
++      }
++
++      return getFallbackVisibilityInfo();
++    }
++
++    /**
++     * Fallback implementation using document.visibilityState.
++     * Note: This fallback approach is unreliable for async scripts because a page opened
++     * in a background tab could be foregrounded by the user before the script downloads
++     * and executes, causing document.visibilityState to synchronously read as 'visible'
++     * and miss the initial background state. Additionally, performance.now() lacks the
++     * internal precision of the Performance API's entry.startTime.
++     */
++    function getFallbackVisibilityInfo() {
++      let initiallyBackgrounded = document.visibilityState === 'hidden';
++      let timeBackgrounded = initiallyBackgrounded ? 0 : null;
++      const note =
++        'Fallback via document.visibilityState is unreliable for async scripts: if the tab opened in the background and was foregrounded before script execution, the initial hidden state is missed, and performance.now() only captures when the visibilitychange listener fired.';
++
++      document.addEventListener('visibilitychange', () => {
++        if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
++          timeBackgrounded = performance.now();
++        }
++      });
++
++      return {
++        get initiallyBackgrounded() {
++          return initiallyBackgrounded;
++        },
++        get timeBackgrounded() {
++          return timeBackgrounded;
++        },
++        note
++      };
++    }
++
++    let visibilityInfo;
++    if ('VisibilityStateEntry' in window) {
++      visibilityInfo = getVisibilityInfo();
++    } else {
++      visibilityInfo = getFallbackVisibilityInfo();
++    }
++
++    console.log(visibilityInfo);
++  </script>
++
+ </body>
+ 
+ </html>

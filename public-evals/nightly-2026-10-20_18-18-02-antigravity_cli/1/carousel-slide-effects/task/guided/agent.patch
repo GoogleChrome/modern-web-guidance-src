@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,117 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    :where(a:any-link, button, .scroller):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Product Carousel */
++    .carousel-section {
++      margin-top: 60px;
++    }
++
++    .carousel-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .carousel-subtitle {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    @keyframes card-scale {
++      0% {
++        scale: 0.8;
++      }
++      50% {
++        scale: 1;
++      }
++      100% {
++        scale: 0.8;
++      }
++    }
++
++    .scroller {
++      display: flex;
++      gap: 24px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      touch-action: pan-y;
++      list-style: none;
++      padding-block: 32px;
++      padding-inline: calc(50% - 140px);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller > li {
++      flex: 0 0 280px;
++      scroll-snap-align: center;
++      display: flex;
++      flex-direction: column;
++
++      @media (prefers-reduced-motion: no-preference) {
++        @supports ((animation-timeline: view()) and (animation-range: entry)) {
++          animation: card-scale auto linear both;
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
++    .product-card {
++      background: white;
++      padding: 20px;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .product-card img {
++      inline-size: 100%;
++      block-size: 180px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-block-end: 15px;
++    }
++
++    .product-card h3 {
++      margin-block-end: 8px;
++      color: var(--primary);
++    }
++
++    .product-card p {
++      font-size: 0.95rem;
++      margin-block-end: 12px;
++      flex: 1;
++    }
++
++    .product-price {
++      font-weight: bold;
++      font-size: 1.15rem;
++      color: var(--primary);
++      display: block;
++    }
++
++    .product-card .btn {
++      min-block-size: 44px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .scroller {
++        scroll-behavior: auto;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +303,69 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="carousel-section">
++      <h2 id="carousel-heading">Featured Coffee &amp; Gear</h2>
++      <p class="carousel-subtitle">Scroll horizontally to explore our curated coffee beans and brewing equipment.</p>
++      <ul class="scroller" role="list" tabindex="0" aria-labelledby="carousel-heading">
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80" alt="Bag of Ethiopian Yirgacheffe whole bean coffee">
++            <h3>Ethiopian Yirgacheffe</h3>
++            <p>Bright floral notes with hints of bergamot and citrus.</p>
++            <span class="product-price">$18.00</span>
++            <a href="/shop/ethiopian-yirgacheffe" class="btn">Shop Ethiopian Yirgacheffe</a>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Freshly brewed cup of Colombian Supremo coffee">
++            <h3>Colombian Supremo</h3>
++            <p>Rich caramel sweetness balanced with a nutty finish.</p>
++            <span class="product-price">$16.50</span>
++            <a href="/shop/colombian-supremo" class="btn">Shop Colombian Supremo</a>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80" alt="Glass pour-over coffee maker on a wooden counter">
++            <h3>Artisan Pour-Over Kit</h3>
++            <p>Borosilicate glass carafe with a reusable stainless filter.</p>
++            <span class="product-price">$42.00</span>
++            <a href="/shop/pour-over-kit" class="btn">Shop Pour-Over Kit</a>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Dark roasted Sumatra Mandheling coffee beans">
++            <h3>Sumatra Mandheling</h3>
++            <p>Full-bodied earthy dark roast with low acidity and cocoa notes.</p>
++            <span class="product-price">$19.00</span>
++            <a href="/shop/sumatra-mandheling" class="btn">Shop Sumatra Mandheling</a>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Matte black gooseneck kettle for precision pouring">
++            <h3>Precision Gooseneck Kettle</h3>
++            <p>Temperature-controlled electric kettle for the perfect bloom.</p>
++            <span class="product-price">$75.00</span>
++            <a href="/shop/gooseneck-kettle" class="btn">Shop Gooseneck Kettle</a>
++          </article>
++        </li>
++        <li>
++          <article class="product-card">
++            <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=80" alt="Ceramic espresso cups stacked next to a coffee machine">
++            <h3>Handcrafted Ceramic Mug</h3>
++            <p>12oz stoneware mug glazed in warm espresso tones.</p>
++            <span class="product-price">$24.00</span>
++            <a href="/shop/ceramic-mug" class="btn">Shop Ceramic Mug</a>
++          </article>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

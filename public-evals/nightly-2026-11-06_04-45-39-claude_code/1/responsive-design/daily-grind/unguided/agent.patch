@@ -1,0 +1,403 @@
+diff --git a/index.html b/index.html
+index 66c9173..cec53f7 100644
+--- a/index.html
++++ b/index.html
+@@ -27,34 +27,47 @@
+       background-color: var(--light);
+     }
+ 
++    /* Fluid type scale (viewport-based fallback for non-container contexts) */
++    html {
++      font-size: clamp(0.9375rem, 0.875rem + 0.25vw, 1.0625rem);
++      -webkit-text-size-adjust: 100%;
++    }
++
++    img {
++      display: block;
++      max-width: 100%;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.75rem clamp(1rem, 5vw, 4rem);
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.5rem 1.5rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: clamp(1.1rem, 0.9rem + 1vw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem clamp(0.75rem, 2vw, 1.25rem);
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -62,7 +75,8 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -72,52 +86,198 @@
+       border-radius: 4px;
+     }
+ 
++    @media (max-width: 40em) {
++      nav {
++        justify-content: center;
++        text-align: center;
++      }
++
++      nav ul {
++        justify-content: center;
++        width: 100%;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      container: hero / inline-size;
++      min-height: clamp(22rem, 60vh, 40rem);
++      min-height: clamp(22rem, 60svh, 40rem);
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        image-set(
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=2400&q=75') 2x);
+       background-size: cover;
+       background-position: center;
++      display: grid;
++      place-items: center;
++      color: white;
++      text-align: center;
++      padding: clamp(2.5rem, 8vh, 5rem) clamp(1rem, 5vw, 3rem);
++    }
++
++    .hero-content {
++      width: 100%;
++      max-width: 48rem;
+       display: flex;
+       flex-direction: column;
+-      justify-content: center;
+       align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      /* Scales with the hero's own width, not just the viewport */
++      font-size: clamp(2rem, 1.25rem + 6cqi, 4.25rem);
++      line-height: 1.1;
++      margin-bottom: clamp(0.5rem, 2cqi, 1.25rem);
++      text-wrap: balance;
++    }
++
++    .hero p {
++      font-size: clamp(1rem, 0.85rem + 1cqi, 1.35rem);
++      max-width: 36ch;
++      text-wrap: balance;
++    }
++
++    .hero .btn {
++      margin-top: clamp(1rem, 3cqi, 1.75rem);
++      padding: 0.75em 1.75em;
++      font-size: clamp(0.95rem, 0.85rem + 0.5cqi, 1.1rem);
++    }
++
++    @container hero (max-width: 30rem) {
++      .hero .btn {
++        width: 100%;
++        max-width: 20rem;
++      }
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: clamp(2rem, 5vw, 3.5rem) auto;
++      padding: 0 clamp(1rem, 4vw, 1.5rem);
++    }
++
++    .section-title {
++      text-align: center;
++      font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
++      line-height: 1.2;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
++      gap: clamp(1rem, 2.5vw, 1.5rem);
++      margin-top: clamp(1rem, 3vw, 1.75rem);
++    }
++
++    /* Each card is its own size container, so its layout responds to the
++       space it actually gets — whatever the grid or a parent decides. */
++    .card-wrap {
++      container: card / inline-size;
++      display: flex;
+     }
+ 
+     .card {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow: hidden;
++    }
++
++    .card-media {
++      aspect-ratio: 4 / 3;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      transition: transform 0.4s ease;
++    }
++
++    .card:hover .card-media img {
++      transform: scale(1.04);
++    }
++
++    .card-body {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: clamp(1rem, 6cqi, 1.5rem);
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 0.5rem;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 0.95rem + 2.5cqi, 1.5rem);
++      line-height: 1.25;
++    }
++
++    .card p {
++      font-size: clamp(0.9rem, 0.85rem + 1cqi, 1.05rem);
++    }
++
++    .card-body > .btn {
++      margin-top: auto;
++    }
++
++    .card-body > p {
++      margin-bottom: 1rem;
++    }
++
++    /* Narrow cards: tighter, taller media */
++    @container card (max-width: 18rem) {
++      .card-media {
++        aspect-ratio: 1 / 1;
++      }
++
++      .card .btn {
++        width: 100%;
++      }
++    }
++
++    /* Medium cards: cinematic media */
++    @container card (min-width: 24rem) {
++      .card-media {
++        aspect-ratio: 16 / 9;
++      }
++    }
++
++    /* Wide cards (e.g. single-column tablets): switch to a side-by-side layout */
++    @container card (min-width: 34rem) {
++      .card {
++        flex-direction: row;
++        text-align: left;
++      }
++
++      .card-media {
++        flex: 0 0 42%;
++        aspect-ratio: 4 / 3;
++      }
++
++      .card-body {
++        align-items: flex-start;
++        justify-content: center;
++        padding: clamp(1.25rem, 4cqi, 2rem);
++      }
++
++      .card h3 {
++        font-size: clamp(1.25rem, 0.9rem + 2cqi, 1.75rem);
++      }
++
++      .card-body > .btn {
++        margin-top: 0;
++      }
+     }
+ 
+     .btn {
+@@ -131,18 +291,23 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:focus-visible {
+       background: #3e2723;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: clamp(1.75rem, 5vw, 2.5rem) clamp(1rem, 4vw, 1.25rem);
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.25rem 0;
+       margin-bottom: 20px;
+     }
+ 
+@@ -152,6 +317,12 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (prefers-reduced-motion: reduce) {
++      *, *::before, *::after {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -169,30 +340,62 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <article class="card-wrap">
++          <div class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=600&amp;q=75"
++                srcset="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=400&amp;q=75 400w, https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=600&amp;q=75 600w, https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=900&amp;q=75 900w, https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=1200&amp;q=75 1200w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 50vw, 100vw"
++                alt="Latte with foam art in a ceramic cup" width="600" height="450" loading="lazy" decoding="async">
++            </div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card-wrap">
++          <div class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;q=75"
++                srcset="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=400&amp;q=75 400w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;q=75 600w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=900&amp;q=75 900w, https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1200&amp;q=75 1200w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 50vw, 100vw"
++                alt="Freshly pulled shot of dark roast espresso" width="600" height="450" loading="lazy" decoding="async">
++            </div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
++        <article class="card-wrap">
++          <div class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=600&amp;q=75"
++                srcset="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=400&amp;q=75 400w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=600&amp;q=75 600w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=900&amp;q=75 900w, https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=1200&amp;q=75 1200w"
++                sizes="(min-width: 1100px) 340px, (min-width: 600px) 50vw, 100vw"
++                alt="Iced cold brew coffee in a glass" width="600" height="450" loading="lazy" decoding="async">
++            </div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </article>
+       </div>
+     </section>
+   </main>

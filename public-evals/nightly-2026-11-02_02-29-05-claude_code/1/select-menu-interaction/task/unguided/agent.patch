@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,75 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Order Section */
++    .order {
++      max-width: 520px;
++      margin: 60px auto 0;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .form-field {
++      margin-bottom: 20px;
++    }
++
++    .form-field label {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .required-mark {
++      color: #c62828;
++    }
++
++    .form-field select {
++      width: 100%;
++      padding: 10px 12px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    .form-field select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .form-field.show-errors select:invalid {
++      border-color: #c62828;
++    }
++
++    .field-error {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      margin-top: 6px;
++    }
++
++    .form-field.show-errors select:invalid ~ .field-error {
++      display: block;
++    }
++
++    .order .btn {
++      width: 100%;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +261,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order" id="order">
++      <h2>Start Your Order</h2>
++      <form id="order-form" action="/order-online" method="get" novalidate>
++        <div class="form-field" id="shop-field">
++          <label for="shop">Local Shop <span class="required-mark" aria-hidden="true">*</span></label>
++          <select id="shop" name="shop" required aria-describedby="shop-error">
++            <option value="" selected disabled>Choose a shop&hellip;</option>
++            <option value="downtown">Downtown &ndash; 120 Main St</option>
++            <option value="riverside">Riverside &ndash; 45 Water Ave</option>
++            <option value="uptown">Uptown &ndash; 892 Oak Blvd</option>
++            <option value="university">University District &ndash; 310 College Rd</option>
++          </select>
++          <p class="field-error" id="shop-error" role="alert">Please select a local shop for your order.</p>
++        </div>
++        <button type="submit" class="btn">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +291,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var form = document.getElementById('order-form');
++      var shop = document.getElementById('shop');
++      var field = document.getElementById('shop-field');
++
++      // Only reveal validation state once the user has interacted or tried to submit
++      function showErrors() {
++        field.classList.add('show-errors');
++        shop.setAttribute('aria-invalid', String(!shop.checkValidity()));
++      }
++
++      shop.addEventListener('change', showErrors);
++      shop.addEventListener('blur', showErrors);
++
++      form.addEventListener('submit', function (event) {
++        if (!form.checkValidity()) {
++          event.preventDefault();
++          showErrors();
++          shop.focus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

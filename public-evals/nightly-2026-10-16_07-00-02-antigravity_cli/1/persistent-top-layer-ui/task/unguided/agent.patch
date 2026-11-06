@@ -1,0 +1,432 @@
+diff --git a/feedback-modal.css b/feedback-modal.css
+new file mode 100644
+--- a/feedback-modal.css
++++ b/feedback-modal.css
+@@ -0,0 +1,427 @@
++/* Feedback Modal & DOM Relocation Styles */
++
++/* Host Slot Visual Guides */
++.feedback-host-slot {
++  margin: 1.5rem 0;
++  padding: 0.75rem 1rem;
++  border: 2px dashed var(--secondary);
++  border-radius: 8px;
++  background: rgba(215, 204, 200, 0.15);
++  transition: border-color 0.3s, background-color 0.3s;
++}
++
++.feedback-host-slot.has-dialog {
++  border-color: var(--accent);
++  background: rgba(255, 171, 64, 0.08);
++}
++
++.host-slot-indicator {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  font-size: 0.85rem;
++  color: var(--primary);
++  font-weight: 600;
++  margin-bottom: 0.5rem;
++}
++
++.host-slot-status {
++  font-size: 0.75rem;
++  padding: 2px 8px;
++  border-radius: 12px;
++  background: var(--secondary);
++  color: var(--text);
++  font-weight: normal;
++}
++
++.feedback-host-slot.has-dialog .host-slot-status {
++  background: var(--accent);
++  color: #000;
++  font-weight: 600;
++}
++
++/* Floating Trigger Button */
++.floating-feedback-trigger {
++  position: fixed;
++  bottom: 24px;
++  right: 24px;
++  z-index: 999;
++  background: var(--accent);
++  color: #21130d;
++  font-weight: bold;
++  border: none;
++  border-radius: 50px;
++  padding: 12px 22px;
++  font-size: 0.95rem;
++  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
++}
++
++.floating-feedback-trigger:hover {
++  transform: translateY(-2px);
++  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
++  background-color: #ffb74d;
++}
++
++.floating-feedback-trigger:focus-visible {
++  outline: 3px solid var(--primary);
++  outline-offset: 2px;
++}
++
++/* Native Dialog Element Styling */
++dialog#feedback-dialog {
++  border: none;
++  border-radius: 12px;
++  padding: 0;
++  max-width: 560px;
++  width: 90vw;
++  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
++  background: #ffffff;
++  color: var(--text);
++  position: fixed;
++  inset: 0;
++  margin: auto;
++  overflow: hidden;
++  max-height: 90vh;
++}
++
++/* Native Dialog Backdrop */
++dialog#feedback-dialog::backdrop {
++  background: rgba(30, 20, 15, 0.65);
++  backdrop-filter: blur(4px);
++  -webkit-backdrop-filter: blur(4px);
++}
++
++/* Modal Inner Container */
++.feedback-modal-content {
++  display: flex;
++  flex-direction: column;
++  max-height: 90vh;
++}
++
++.feedback-modal-header {
++  background: var(--primary);
++  color: white;
++  padding: 1.25rem 1.5rem;
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++}
++
++.feedback-header-text h2 {
++  font-size: 1.35rem;
++  margin: 0;
++  color: white;
++}
++
++.feedback-header-text p {
++  font-size: 0.85rem;
++  color: var(--secondary);
++  margin-top: 4px;
++}
++
++.close-btn {
++  background: transparent;
++  border: none;
++  color: white;
++  font-size: 1.6rem;
++  line-height: 1;
++  cursor: pointer;
++  padding: 4px 8px;
++  border-radius: 4px;
++  transition: background 0.2s, color 0.2s;
++}
++
++.close-btn:hover {
++  background: rgba(255, 255, 255, 0.2);
++  color: var(--accent);
++}
++
++.feedback-modal-body {
++  padding: 1.5rem;
++  overflow-y: auto;
++}
++
++/* Relocation Control Panel */
++.relocation-panel {
++  background: #f5f2ee;
++  border: 1px solid var(--secondary);
++  border-radius: 8px;
++  padding: 1rem;
++  margin-bottom: 1.25rem;
++}
++
++.relocation-panel-title {
++  font-weight: 700;
++  font-size: 0.9rem;
++  color: var(--primary);
++  margin-bottom: 0.5rem;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++}
++
++.relocation-meta {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 0.5rem;
++  font-size: 0.82rem;
++  margin-bottom: 0.75rem;
++}
++
++.meta-item {
++  display: flex;
++  flex-direction: column;
++}
++
++.meta-label {
++  font-size: 0.72rem;
++  text-transform: uppercase;
++  color: #795548;
++  font-weight: 600;
++}
++
++.meta-value {
++  font-family: monospace;
++  font-size: 0.85rem;
++  color: var(--text);
++  word-break: break-all;
++}
++
++.badge {
++  display: inline-block;
++  padding: 2px 8px;
++  border-radius: 10px;
++  font-size: 0.75rem;
++  font-weight: 600;
++}
++
++.badge-native {
++  background: #e8f5e9;
++  color: #2e7d32;
++  border: 1px solid #a5d6a7;
++}
++
++.badge-fallback {
++  background: #fff3e0;
++  color: #e65100;
++  border: 1px solid #ffcc80;
++}
++
++.badge-focus {
++  background: #e1f5fe;
++  color: #0277bd;
++  border: 1px solid #81d4fa;
++}
++
++.relocation-actions {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 0.5rem;
++  align-items: center;
++}
++
++.btn-move {
++  background: #3e2723;
++  color: white;
++  border: 1px solid #21130d;
++  padding: 8px 14px;
++  font-size: 0.85rem;
++  font-weight: 600;
++  border-radius: 6px;
++  cursor: pointer;
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  transition: background 0.2s, transform 0.1s;
++}
++
++.btn-move:hover {
++  background: #27140e;
++  transform: translateY(-1px);
++}
++
++.btn-move:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.force-fallback-label {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  font-size: 0.8rem;
++  color: #5d4037;
++  cursor: pointer;
++  user-select: none;
++}
++
++.relocation-log {
++  margin-top: 0.5rem;
++  padding: 6px 10px;
++  font-size: 0.78rem;
++  background: white;
++  border-radius: 4px;
++  border: 1px solid #e0d7d2;
++  color: #4e342e;
++  font-family: monospace;
++}
++
++/* Feedback Form Styles */
++.feedback-form-group {
++  margin-bottom: 1.1rem;
++}
++
++.feedback-form-group label {
++  display: block;
++  font-size: 0.88rem;
++  font-weight: 600;
++  color: var(--text);
++  margin-bottom: 0.4rem;
++}
++
++.rating-options {
++  display: flex;
++  gap: 8px;
++  flex-wrap: wrap;
++}
++
++.rating-pill {
++  flex: 1;
++  min-width: 50px;
++  text-align: center;
++}
++
++.rating-pill input {
++  position: absolute;
++  opacity: 0;
++  pointer-events: none;
++}
++
++.rating-pill label {
++  display: block;
++  padding: 8px 6px;
++  background: #f7f5f3;
++  border: 1px solid var(--secondary);
++  border-radius: 6px;
++  cursor: pointer;
++  font-size: 0.85rem;
++  font-weight: 600;
++  color: var(--primary);
++  transition: all 0.2s;
++}
++
++.rating-pill input:checked + label {
++  background: var(--accent);
++  border-color: #ff9800;
++  color: #000;
++  box-shadow: 0 2px 5px rgba(255, 171, 64, 0.4);
++}
++
++.rating-pill input:focus-visible + label {
++  outline: 2px solid var(--primary);
++  outline-offset: 2px;
++}
++
++.form-control {
++  width: 100%;
++  padding: 9px 12px;
++  border: 1px solid var(--secondary);
++  border-radius: 6px;
++  font-family: inherit;
++  font-size: 0.9rem;
++  color: var(--text);
++  background: #fafafa;
++  transition: border-color 0.2s, box-shadow 0.2s;
++}
++
++.form-control:focus {
++  outline: none;
++  border-color: var(--accent);
++  box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.25);
++  background: #ffffff;
++}
++
++textarea.form-control {
++  resize: vertical;
++  min-height: 80px;
++}
++
++.char-counter {
++  text-align: right;
++  font-size: 0.75rem;
++  color: #8d6e63;
++  margin-top: 4px;
++}
++
++.feedback-modal-footer {
++  padding: 1rem 1.5rem;
++  background: #fdfbf9;
++  border-top: 1px solid #ede7e3;
++  display: flex;
++  justify-content: flex-end;
++  gap: 10px;
++}
++
++.btn-secondary {
++  background: #ede7e3;
++  color: var(--text);
++  border: 1px solid var(--secondary);
++  padding: 8px 16px;
++  border-radius: 5px;
++  font-size: 0.9rem;
++  cursor: pointer;
++  font-weight: 500;
++  transition: background 0.2s;
++}
++
++.btn-secondary:hover {
++  background: #d7ccc8;
++}
++
++.btn-submit {
++  background: var(--primary);
++  color: white;
++  border: none;
++  padding: 8px 20px;
++  border-radius: 5px;
++  font-size: 0.9rem;
++  font-weight: 600;
++  cursor: pointer;
++  transition: background 0.2s;
++}
++
++.btn-submit:hover {
++  background: #3e2723;
++}
++
++/* Success Confirmation Banner */
++.feedback-success-banner {
++  display: none;
++  padding: 2rem 1.5rem;
++  text-align: center;
++}
++
++.feedback-success-banner.active {
++  display: block;
++}
++
++.success-icon {
++  font-size: 3rem;
++  margin-bottom: 0.75rem;
++}
++
++.feedback-success-banner h3 {
++  color: var(--primary);
++  margin-bottom: 0.5rem;
++}
++
++.feedback-success-banner p {
++  color: #5d4037;
++  font-size: 0.95rem;
++  margin-bottom: 1.5rem;
++}

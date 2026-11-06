@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,26 +19,80 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      min-height: calc(100vh + 120px);
+     }
+ 
++    /* Pull-down Search Bar */
++    .search-bar {
++      background: var(--text);
++      padding: 0.85rem 5%;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      scroll-snap-align: start;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
++    .search-form {
++      display: flex;
++      width: 100%;
++      max-width: 600px;
++      gap: 0.5rem;
++    }
++
++    .search-input {
++      flex: 1;
++      padding: 0.55rem 1rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.95rem;
++      background: var(--light);
++      color: var(--text);
++      outline: none;
++    }
++
++    .search-input:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.3);
++    }
++
++    .search-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 0.55rem 1.25rem;
++      border-radius: 4px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: opacity 0.2s;
++    }
++
++    .search-btn:hover {
++      opacity: 0.9;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +210,21 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar" role="search">
++    <form class="search-form" action="/search" method="get" onsubmit="event.preventDefault()">
++      <input
++        type="search"
++        name="q"
++        class="search-input"
++        placeholder="Search artisanal coffees, blends, or locations..."
++        aria-label="Search"
++      >
++      <button type="submit" class="search-btn">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>

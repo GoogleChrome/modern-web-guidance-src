@@ -1,0 +1,1901 @@
+diff --git a/index.html b/index.html
+index 66c9173..8ddaa66 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,20 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-dark: #ff9100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --success: #2e7d32;
++      --border: #e0d6d2;
++      --vt-duration: 450ms;
++      --vt-easing: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
+     * {
+@@ -27,39 +37,94 @@
+       background-color: var(--light);
+     }
+ 
++    /* ==========================================================================
++       Scoped View Transitions Configuration (CSS View Transitions Level 2)
++       ========================================================================== */
++    .transition-scope,
++    .card,
++    .scoped-list-panel,
++    .scoped-status-panel {
++      contain: layout;
++      position: relative;
++      view-transition-scope: all;
++      view-transition-group: contain;
++    }
++
++    /* Keep the rest of the page and sibling subtrees interactive during transitions */
++    ::view-transition,
++    .card::view-transition,
++    .scoped-list-panel::view-transition,
++    .scoped-status-panel::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(*),
++    .card::view-transition-group(*),
++    .scoped-list-panel::view-transition-group(*),
++    .scoped-status-panel::view-transition-group(*) {
++      animation-duration: var(--vt-duration);
++      animation-timing-function: var(--vt-easing);
++    }
++
++    ::view-transition-old(*),
++    ::view-transition-new(*),
++    .card::view-transition-old(*),
++    .card::view-transition-new(*),
++    .scoped-list-panel::view-transition-old(*),
++    .scoped-list-panel::view-transition-new(*),
++    .scoped-status-panel::view-transition-old(*),
++    .scoped-status-panel::view-transition-new(*) {
++      animation-duration: var(--vt-duration);
++      animation-timing-function: var(--vt-easing);
++    }
++
++    /* Active transition visual ring so concurrent component transitions are unmistakable */
++    .is-transitioning {
++      box-shadow: 0 0 0 2px var(--accent), 0 12px 28px rgba(78, 52, 46, 0.18) !important;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.9rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
++      flex-wrap: wrap;
++      gap: 12px;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 6px;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 14px;
+     }
+ 
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.25s;
+     }
+ 
+     nav a:hover {
+@@ -72,10 +137,42 @@
+       border-radius: 4px;
+     }
+ 
++    .nav-bag-btn {
++      background: rgba(255, 171, 64, 0.18);
++      border: 1px solid var(--accent);
++      color: #fff;
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      transition: background 0.2s, transform 0.15s;
++    }
++
++    .nav-bag-btn:hover {
++      background: rgba(255, 171, 64, 0.32);
++    }
++
++    .nav-bag-btn:active {
++      transform: scale(0.96);
++    }
++
++    .bag-badge {
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 1px 7px;
++      border-radius: 999px;
++      font-weight: 700;
++      font-size: 0.78rem;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 44vh;
++      background: linear-gradient(rgba(35, 20, 15, 0.62), rgba(35, 20, 15, 0.62)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,61 +182,570 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 600px;
++      opacity: 0.95;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
++      max-width: 1140px;
++      margin: 32px auto;
+       padding: 0 20px;
+     }
+ 
++    /* Interactive Control & Concurrent Transition Bar */
++    .concurrency-toolbar {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-left: 4px solid var(--accent);
++      border-radius: 10px;
++      padding: 16px 20px;
++      margin-bottom: 32px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
++    }
++
++    .toolbar-info h2 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-bottom: 3px;
++    }
++
++    .toolbar-info p {
++      font-size: 0.86rem;
++      color: var(--text-muted);
++    }
++
++    .toolbar-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 7px;
++      background: var(--secondary-light);
++      color: var(--primary);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      border: 1px solid var(--border);
++    }
++
++    .status-dot {
++      width: 9px;
++      height: 9px;
++      border-radius: 50%;
++      background: #9e9e9e;
++      transition: background 0.2s, box-shadow 0.2s;
++    }
++
++    .status-dot.active {
++      background: #2e7d32;
++      box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.2);
++    }
++
++    .speed-select {
++      padding: 7px 11px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++      background: var(--light);
++      color: var(--text);
++      font-size: 0.85rem;
++      font-weight: 500;
++      cursor: pointer;
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 22px;
++    }
++
++    .section-header h2 {
++      font-size: 1.8rem;
++      color: var(--primary);
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      margin-top: 4px;
++    }
++
++    /* Seasonal Favorites Cards Grid */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      align-items: start;
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      border-radius: 12px;
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
++      border: 1px solid var(--border);
++      overflow: hidden;
++      text-align: left;
++      transition: box-shadow 0.25s ease;
++    }
++
++    .card-inner {
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      background: var(--surface);
++    }
++
++    .card-media {
++      position: relative;
++      height: 170px;
++      margin: -20px -20px 6px -20px;
++      overflow: hidden;
++      background: var(--secondary);
++    }
++
++    .card.is-expanded .card-media {
++      height: 195px;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-badges {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      right: 12px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      pointer-events: none;
++    }
++
++    .badge {
++      background: rgba(62, 39, 35, 0.88);
++      color: #fff;
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      backdrop-filter: blur(4px);
++    }
++
++    .price-tag {
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 4px 11px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 700;
++    }
++
++    .card-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 2px;
+       color: var(--primary);
++      font-size: 1.25rem;
++    }
++
++    .card-cal {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      font-weight: 600;
++    }
++
++    .card-summary {
++      color: var(--text-muted);
++      font-size: 0.93rem;
++    }
++
++    /* Card Internal Navigation Tabs (shown when expanded) */
++    .card-tabs {
++      display: flex;
++      gap: 6px;
++      border-bottom: 1px solid var(--border);
++      padding-bottom: 8px;
++      margin-top: 4px;
++    }
++
++    .card-tab {
++      flex: 1;
++      background: var(--secondary-light);
++      border: 1px solid transparent;
++      color: var(--text-muted);
++      padding: 6px 8px;
++      border-radius: 6px;
++      font-size: 0.78rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .card-tab.active {
++      background: var(--primary);
++      color: #fff;
++    }
++
++    /* Expanded Details Subtree */
++    .card-details-pane {
++      background: var(--secondary-light);
++      border-radius: 8px;
++      padding: 12px;
++      font-size: 0.86rem;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .tasting-grid {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 8px;
++    }
++
++    .tasting-stat {
++      background: var(--surface);
++      padding: 7px 10px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++    }
++
++    .tasting-stat span {
++      display: block;
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      color: var(--text-muted);
++      letter-spacing: 0.4px;
++    }
++
++    .tasting-stat strong {
++      color: var(--primary);
++      font-size: 0.86rem;
++    }
++
++    .option-group {
++      display: flex;
++      flex-direction: column;
++      gap: 5px;
++    }
++
++    .option-group-label {
++      font-size: 0.76rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      color: var(--text-muted);
++    }
++
++    .pill-row {
++      display: flex;
++      gap: 6px;
++      flex-wrap: wrap;
++    }
++
++    .option-pill {
++      flex: 1;
++      min-width: 68px;
++      padding: 6px 8px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      border: 1px solid var(--border);
++      background: var(--surface);
++      color: var(--text);
++      border-radius: 6px;
++      cursor: pointer;
++      text-align: center;
++    }
++
++    .option-pill.selected {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++    }
++
++    .card-actions {
++      display: flex;
++      gap: 8px;
++      align-items: center;
++      margin-top: 4px;
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      justify-content: center;
++      align-items: center;
++      gap: 6px;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 9px 16px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      border: none;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.1s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .btn-secondary {
++      background: var(--secondary-light);
++      color: var(--primary);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++    }
++
++    .btn-full {
++      flex: 1;
++    }
++
++    /* ==========================================================================
++       Secondary Split Section: Scoped Menu List + Scoped Live Brew & Rewards Panel
++       ========================================================================== */
++    .split-workspace {
++      display: grid;
++      grid-template-columns: 1.35fr 1fr;
++      gap: 24px;
++      margin-top: 44px;
++      align-items: start;
++    }
++
++    @media (max-width: 860px) {
++      .split-workspace {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .scoped-list-panel,
++    .scoped-status-panel {
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 22px;
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
++    }
++
++    .panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 16px;
++      flex-wrap: wrap;
++    }
++
++    .panel-header h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++    }
++
++    .panel-subtitle {
++      font-size: 0.84rem;
++      color: var(--text-muted);
++    }
++
++    .filter-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-bottom: 14px;
++    }
++
++    .filter-chip {
++      padding: 5px 11px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      border: 1px solid var(--border);
++      background: var(--light);
++      color: var(--text-muted);
++      cursor: pointer;
++    }
++
++    .filter-chip.active {
++      background: var(--primary);
++      color: #fff;
++      border-color: var(--primary);
++    }
++
++    .brew-list {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      list-style: none;
++    }
++
++    .brew-item {
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 12px 14px;
++      background: var(--light);
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .brew-item-main {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .brew-item-title {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.96rem;
++    }
++
++    .brew-item-meta {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++    }
++
++    .brew-item-right {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .brew-item-drawer {
++      background: var(--surface);
++      border-top: 1px dashed var(--border);
++      padding-top: 8px;
++      font-size: 0.83rem;
++      color: var(--text-muted);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    /* Live Brew Queue & Rewards Panel */
++    .stage-progress {
++      display: flex;
++      justify-content: space-between;
++      gap: 6px;
++      margin: 14px 0;
++    }
++
++    .stage-step {
++      flex: 1;
++      height: 8px;
++      border-radius: 999px;
++      background: var(--secondary);
++      overflow: hidden;
++    }
++
++    .stage-step.completed {
++      background: var(--primary);
++    }
++
++    .stage-step.current {
++      background: var(--accent);
++    }
++
++    .stage-card {
++      background: var(--secondary-light);
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 16px;
++      margin-bottom: 14px;
++    }
++
++    .stage-card h4 {
++      color: var(--primary);
++      font-size: 1.05rem;
++      margin-bottom: 4px;
++    }
++
++    .stage-card p {
++      font-size: 0.86rem;
++      color: var(--text-muted);
++    }
++
++    /* Always-Interactive Side Widget to verify non-blocking UI */
++    .interactive-playground {
++      margin-top: 16px;
++      padding-top: 14px;
++      border-top: 1px solid var(--border);
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .interactive-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .quick-note-input {
++      flex: 1;
++      min-width: 160px;
++      padding: 7px 10px;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      font-size: 0.85rem;
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 50px;
+     }
+ 
+     .footer-links {
+@@ -160,40 +766,200 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#seasonal-section">Menu</a></li>
++      <li><a href="#roastery-section">Locations</a></li>
++      <li><a href="#rewards-panel">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li>
++        <button type="button" class="nav-bag-btn" id="nav-bag-btn" title="Click anytime, even during animations">
++          <span>Order Bag</span>
++          <span class="bag-badge" id="bag-count">0</span>
++          <span id="bag-total">$0.00</span>
++        </button>
++      </li>
++      <li><a href="#logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
++      <a href="#seasonal-section" class="btn">Order Now</a>
++      <button type="button" class="btn btn-accent" id="hero-concurrent-btn">
++        Animate All Components Concurrently
++      </button>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <!-- Concurrency & Scoped Transition Live Status Bar -->
++    <section class="concurrency-toolbar" aria-label="Scoped Transition Controls">
++      <div class="toolbar-info">
++        <h2>Scoped Component Transitions</h2>
++        <p>Each card, list, and panel animates its own subtree via <code>element.startViewTransition()</code> without blocking the page or interrupting other active transitions.</p>
++      </div>
++      <div class="toolbar-controls">
++        <div class="status-pill" title="Number of component transitions currently running in parallel">
++          <span class="status-dot" id="active-vt-dot"></span>
++          <span>Active Transitions: <strong id="active-vt-count">0</strong></span>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="status-pill" title="Proves the rest of the page stays responsive during transitions">
++          <span>Page Interactions: <strong id="interaction-count">0</strong></span>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <label for="vt-speed-select" style="font-size: 0.82rem; font-weight: 600;">Speed:</label>
++        <select id="vt-speed-select" class="speed-select">
++          <option value="450ms">Normal (450ms)</option>
++          <option value="1400ms">Slow Motion (1.4s)</option>
++          <option value="2200ms">Ultra Slow (2.2s)</option>
++        </select>
++        <button type="button" class="btn btn-accent" id="trigger-all-btn">
++          Run Concurrent Wave
++        </button>
++      </div>
++    </section>
++
++    <!-- Component Group 1: Seasonal Favorites Cards (each card is an independent transition scope) -->
++    <section id="seasonal-section">
++      <div class="section-header">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <p>Click "View Details", switch tabs, or customize sizes on multiple cards at the same time.</p>
++      </div>
++      <div class="grid" id="seasonal-grid">
++        <!-- Card 1: Maple Oat Latte -->
++        <article class="card transition-scope" id="card-maple" data-card-id="maple">
++          <div class="card-inner" data-vt-name="card-maple-inner" style="view-transition-name: card-maple-inner;">
++            <div class="card-media" data-vt-name="card-maple-media" style="view-transition-name: card-maple-media;">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=700&q=80" alt="Maple Oat Latte">
++              <div class="card-badges">
++                <span class="badge" data-vt-name="card-maple-badge" style="view-transition-name: card-maple-badge;">Autumn Reserve</span>
++                <span class="price-tag" data-vt-name="card-maple-price" style="view-transition-name: card-maple-price;">$5.75</span>
++              </div>
++            </div>
++            <div class="card-header-row" data-vt-name="card-maple-header" style="view-transition-name: card-maple-header;">
++              <h3>Maple Oat Latte</h3>
++              <span class="card-cal">190 cal</span>
++            </div>
++            <p class="card-summary" data-vt-name="card-maple-desc" style="view-transition-name: card-maple-desc;">
++              Creamy oat milk with a hint of Vermont maple syrup.
++            </p>
++            <div class="card-dynamic-slot" data-vt-name="card-maple-slot" style="view-transition-name: card-maple-slot;"></div>
++            <div class="card-actions" data-vt-name="card-maple-actions" style="view-transition-name: card-maple-actions;">
++              <a href="/menu/seasonal" class="btn btn-full" data-action="toggle-card">View Details</a>
++              <button type="button" class="btn btn-secondary" data-action="quick-add">+ Bag</button>
++            </div>
++          </div>
++        </article>
++
++        <!-- Card 2: Dark Roast Espresso -->
++        <article class="card transition-scope" id="card-espresso" data-card-id="espresso">
++          <div class="card-inner" data-vt-name="card-espresso-inner" style="view-transition-name: card-espresso-inner;">
++            <div class="card-media" data-vt-name="card-espresso-media" style="view-transition-name: card-espresso-media;">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Dark Roast Espresso">
++              <div class="card-badges">
++                <span class="badge" data-vt-name="card-espresso-badge" style="view-transition-name: card-espresso-badge;">Single Origin</span>
++                <span class="price-tag" data-vt-name="card-espresso-price" style="view-transition-name: card-espresso-price;">$3.95</span>
++              </div>
++            </div>
++            <div class="card-header-row" data-vt-name="card-espresso-header" style="view-transition-name: card-espresso-header;">
++              <h3>Dark Roast Espresso</h3>
++              <span class="card-cal">15 cal</span>
++            </div>
++            <p class="card-summary" data-vt-name="card-espresso-desc" style="view-transition-name: card-espresso-desc;">
++              Bold, smokey, and perfect for a morning boost.
++            </p>
++            <div class="card-dynamic-slot" data-vt-name="card-espresso-slot" style="view-transition-name: card-espresso-slot;"></div>
++            <div class="card-actions" data-vt-name="card-espresso-actions" style="view-transition-name: card-espresso-actions;">
++              <a href="/menu/espresso" class="btn btn-full" data-action="toggle-card">View Details</a>
++              <button type="button" class="btn btn-secondary" data-action="quick-add">+ Bag</button>
++            </div>
++          </div>
++        </article>
++
++        <!-- Card 3: Cold Brew -->
++        <article class="card transition-scope" id="card-cold-brew" data-card-id="cold-brew">
++          <div class="card-inner" data-vt-name="card-coldbrew-inner" style="view-transition-name: card-coldbrew-inner;">
++            <div class="card-media" data-vt-name="card-coldbrew-media" style="view-transition-name: card-coldbrew-media;">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=700&q=80" alt="Cold Brew">
++              <div class="card-badges">
++                <span class="badge" data-vt-name="card-coldbrew-badge" style="view-transition-name: card-coldbrew-badge;">18-Hr Steep</span>
++                <span class="price-tag" data-vt-name="card-coldbrew-price" style="view-transition-name: card-coldbrew-price;">$4.85</span>
++              </div>
++            </div>
++            <div class="card-header-row" data-vt-name="card-coldbrew-header" style="view-transition-name: card-coldbrew-header;">
++              <h3>Cold Brew</h3>
++              <span class="card-cal">10 cal</span>
++            </div>
++            <p class="card-summary" data-vt-name="card-coldbrew-desc" style="view-transition-name: card-coldbrew-desc;">
++              Steeped for 18 hours for maximum smoothness.
++            </p>
++            <div class="card-dynamic-slot" data-vt-name="card-coldbrew-slot" style="view-transition-name: card-coldbrew-slot;"></div>
++            <div class="card-actions" data-vt-name="card-coldbrew-actions" style="view-transition-name: card-coldbrew-actions;">
++              <a href="/menu/cold-brew" class="btn btn-full" data-action="toggle-card">View Details</a>
++              <button type="button" class="btn btn-secondary" data-action="quick-add">+ Bag</button>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
++
++    <!-- Component Group 2 & 3: Scoped Filterable Menu List + Scoped Live Order & Rewards Panel -->
++    <section class="split-workspace" id="roastery-section">
++      <!-- Scoped List Component -->
++      <div class="scoped-list-panel transition-scope" id="brew-list-panel">
++        <div class="panel-header" data-vt-name="list-panel-header" style="view-transition-name: list-panel-header;">
++          <div>
++            <h3>Fresh Roastery Lineup</h3>
++            <p class="panel-subtitle">Scoped list transition: filter, sort, or expand items independently.</p>
++          </div>
++          <button type="button" class="btn btn-secondary" id="sort-list-btn" style="padding: 6px 12px; font-size: 0.8rem;">
++            Sort: <span id="sort-mode-label">Featured</span>
++          </button>
++        </div>
++
++        <div class="filter-bar" data-vt-name="list-filter-bar" style="view-transition-name: list-filter-bar;">
++          <button type="button" class="filter-chip active" data-filter="all">All Roasts</button>
++          <button type="button" class="filter-chip" data-filter="espresso">Espresso Bar</button>
++          <button type="button" class="filter-chip" data-filter="cold">Cold &amp; Nitro</button>
++          <button type="button" class="filter-chip" data-filter="pour-over">Pour Over</button>
+         </div>
++
++        <ul class="brew-list" id="brew-list"></ul>
+       </div>
++
++      <!-- Scoped Panel Component -->
++      <aside class="scoped-status-panel transition-scope" id="rewards-panel">
++        <div class="panel-header" data-vt-name="status-panel-header" style="view-transition-name: status-panel-header;">
++          <div>
++            <h3>Live Barista &amp; Rewards</h3>
++            <p class="panel-subtitle">Scoped panel transition: advance brew stages while browsing.</p>
++          </div>
++          <span class="badge" id="rewards-points-badge" data-vt-name="rewards-points-badge" style="view-transition-name: rewards-points-badge;">140 Beans</span>
++        </div>
++
++        <div id="status-panel-body" data-vt-name="status-panel-body" style="view-transition-name: status-panel-body;">
++          <!-- Populated and animated via rewardsPanel.startViewTransition() -->
++        </div>
++
++        <div style="display: flex; gap: 8px; flex-wrap: wrap;" data-vt-name="status-panel-controls" style="view-transition-name: status-panel-controls;">
++          <button type="button" class="btn btn-full" id="advance-brew-btn">Next Brew Stage</button>
++          <button type="button" class="btn btn-secondary" id="redeem-reward-btn">+25 Bonus Beans</button>
++        </div>
++
++        <!-- Always-interactive controls to verify zero main-page blocking during transitions -->
++        <div class="interactive-playground">
++          <div class="interactive-row">
++            <span style="font-size: 0.82rem; font-weight: 600; color: var(--primary);">Always-Interactive Barista Note:</span>
++            <button type="button" class="btn btn-secondary" id="ping-interactive-btn" style="padding: 5px 10px; font-size: 0.78rem;">
++              Test Click (+1)
++            </button>
++          </div>
++          <div class="interactive-row">
++            <input type="text" id="barista-note-input" class="quick-note-input" placeholder="Type here while cards animate..." aria-label="Barista note">
++            <span id="live-note-mirror" style="font-size: 0.78rem; color: var(--text-muted);">Ready</span>
++          </div>
++        </div>
++      </aside>
+     </section>
+   </main>
+ 
+@@ -207,6 +973,920 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      /* ========================================================================
++         1. Scoped View Transition Engine (Element.prototype.startViewTransition)
++            - Uses native Element.prototype.startViewTransition when supported.
++            - Provides a spec-compliant, non-blocking, subtree-scoped WAAPI FLIP +
++              crossfade implementation on HTMLElement.prototype.startViewTransition
++              when native support is unavailable or disabled.
++         ======================================================================== */
++      const activeTransitions = new Set();
++      let interactionCounter = 0;
++
++      const activeCountEl = document.getElementById('active-vt-count');
++      const activeDotEl = document.getElementById('active-vt-dot');
++      const interactionCountEl = document.getElementById('interaction-count');
++
++      function updateConcurrencyIndicator() {
++        const count = activeTransitions.size;
++        if (activeCountEl) activeCountEl.textContent = String(count);
++        if (activeDotEl) activeDotEl.classList.toggle('active', count > 0);
++      }
++
++      function recordInteraction() {
++        interactionCounter += 1;
++        if (interactionCountEl) interactionCountEl.textContent = String(interactionCounter);
++      }
++
++      function getDurationMs(scopeEl) {
++        const raw = getComputedStyle(scopeEl || document.documentElement)
++          .getPropertyValue('--vt-duration')
++          .trim();
++        if (raw.endsWith('ms')) return parseFloat(raw) || 450;
++        if (raw.endsWith('s')) return (parseFloat(raw) || 0.45) * 1000;
++        return 450;
++      }
++
++      function captureNamedRects(scopeEl) {
++        const map = new Map();
++        const namedEls = scopeEl.querySelectorAll('[data-vt-name]');
++        namedEls.forEach((el) => {
++          const name = el.getAttribute('data-vt-name');
++          if (name) {
++            map.set(name, el.getBoundingClientRect());
++          }
++        });
++        return map;
++      }
++
++      function runScopedWAAPITransition(scopeEl, callbackOrOptions) {
++        const updateCallback =
++          typeof callbackOrOptions === 'function'
++            ? callbackOrOptions
++            : callbackOrOptions && typeof callbackOrOptions.update === 'function'
++            ? callbackOrOptions.update
++            : null;
++
++        // If this same component already has an in-flight transition, skip only this component's previous animation
++        if (scopeEl._activeScopedVT && typeof scopeEl._activeScopedVT.skipTransition === 'function') {
++          scopeEl._activeScopedVT.skipTransition();
++        }
++
++        const duration = getDurationMs(scopeEl);
++        const easing = 'cubic-bezier(0.22, 1, 0.36, 1)';
++        const oldRootRect = scopeEl.getBoundingClientRect();
++        const oldNamedRects = captureNamedRects(scopeEl);
++
++        // Create a non-interactive ghost snapshot of the old subtree for smooth cross-fade
++        let ghostLayer = null;
++        try {
++          ghostLayer = document.createElement('div');
++          ghostLayer.setAttribute('aria-hidden', 'true');
++          ghostLayer.style.cssText = [
++            'position:absolute',
++            'top:0',
++            'left:0',
++            'width:' + oldRootRect.width + 'px',
++            'height:' + oldRootRect.height + 'px',
++            'pointer-events:none',
++            'overflow:hidden',
++            'z-index:5',
++            'border-radius:inherit'
++          ].join(';');
++          Array.from(scopeEl.children).forEach((child) => {
++            if (!child.hasAttribute('data-vt-ghost')) {
++              ghostLayer.appendChild(child.cloneNode(true));
++            }
++          });
++          ghostLayer.setAttribute('data-vt-ghost', 'true');
++        } catch (_) {
++          ghostLayer = null;
++        }
++
++        let resolveUpdateDone, rejectUpdateDone;
++        let resolveReady, rejectReady;
++        let resolveFinished, rejectFinished;
++
++        const updateCallbackDone = new Promise((res, rej) => {
++          resolveUpdateDone = res;
++          rejectUpdateDone = rej;
++        });
++        const ready = new Promise((res, rej) => {
++          resolveReady = res;
++          rejectReady = rej;
++        });
++        const finished = new Promise((res, rej) => {
++          resolveFinished = res;
++          rejectFinished = rej;
++        });
++
++        // Prevent unhandled rejection noise if callers don't await ready/finished
++        ready.catch(() => {});
++        finished.catch(() => {});
++        updateCallbackDone.catch(() => {});
++
++        const runningAnimations = [];
++        let isSkipped = false;
++        let isCleanedUp = false;
++
++        const token = Symbol('scoped-vt');
++        activeTransitions.add(token);
++        scopeEl.classList.add('is-transitioning');
++        updateConcurrencyIndicator();
++
++        function cleanup() {
++          if (isCleanedUp) return;
++          isCleanedUp = true;
++          runningAnimations.forEach((anim) => {
++            try {
++              anim.cancel();
++            } catch (_) {}
++          });
++          if (ghostLayer && ghostLayer.parentNode === scopeEl) {
++            ghostLayer.remove();
++          }
++          scopeEl.style.height = '';
++          scopeEl.style.overflow = '';
++          scopeEl.classList.remove('is-transitioning');
++          activeTransitions.delete(token);
++          if (scopeEl._activeScopedVT === vtObject) {
++            scopeEl._activeScopedVT = null;
++          }
++          updateConcurrencyIndicator();
++        }
++
++        const vtObject = {
++          ready,
++          updateCallbackDone,
++          finished,
++          types: new Set(
++            callbackOrOptions && Array.isArray(callbackOrOptions.types)
++              ? callbackOrOptions.types
++              : []
++          ),
++          skipTransition() {
++            if (isSkipped) return;
++            isSkipped = true;
++            cleanup();
++            resolveFinished();
++          }
++        };
++
++        scopeEl._activeScopedVT = vtObject;
++
++        Promise.resolve()
++          .then(() => (updateCallback ? updateCallback() : undefined))
++          .then(() => {
++            resolveUpdateDone();
++            if (isSkipped) return;
++
++            const newRootRect = scopeEl.getBoundingClientRect();
++            const newNamedRects = captureNamedRects(scopeEl);
++
++            resolveReady();
++
++            // 1. Animate container height smoothly if changed
++            if (
++              Math.abs(oldRootRect.height - newRootRect.height) > 2 &&
++              typeof scopeEl.animate === 'function'
++            ) {
++              scopeEl.style.overflow = 'hidden';
++              const heightAnim = scopeEl.animate(
++                [
++                  { height: oldRootRect.height + 'px' },
++                  { height: newRootRect.height + 'px' }
++                ],
++                { duration, easing }
++              );
++              runningAnimations.push(heightAnim);
++            }
++
++            // 2. Cross-fade out old snapshot overlay while new content fades/morphs in
++            if (ghostLayer && typeof ghostLayer.animate === 'function') {
++              scopeEl.appendChild(ghostLayer);
++              const ghostAnim = ghostLayer.animate(
++                [
++                  { opacity: 0.92, transform: 'scale(1)' },
++                  { opacity: 0, transform: 'scale(0.985)' }
++                ],
++                { duration: Math.round(duration * 0.65), easing: 'ease-out', fill: 'forwards' }
++              );
++              runningAnimations.push(ghostAnim);
++            }
++
++            // 3. FLIP shared named elements & enter new elements inside this scope
++            const namedEls = scopeEl.querySelectorAll('[data-vt-name]');
++            namedEls.forEach((el) => {
++              if (typeof el.animate !== 'function') return;
++              const name = el.getAttribute('data-vt-name');
++              const oldRect = oldNamedRects.get(name);
++              const newRect = newNamedRects.get(name);
++              if (oldRect && newRect) {
++                const dx = oldRect.left - newRect.left;
++                const dy = oldRect.top - newRect.top;
++                if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
++                  const flipAnim = el.animate(
++                    [
++                      { transform: `translate(${dx}px, ${dy}px)` },
++                      { transform: 'translate(0, 0)' }
++                    ],
++                    { duration, easing }
++                  );
++                  runningAnimations.push(flipAnim);
++                }
++              } else if (newRect) {
++                const enterAnim = el.animate(
++                  [
++                    { opacity: 0, transform: 'translateY(8px)' },
++                    { opacity: 1, transform: 'translateY(0)' }
++                  ],
++                  { duration, easing }
++                );
++                runningAnimations.push(enterAnim);
++              }
++            });
++
++            // 4. Also animate any newly revealed details panes or list items
++            const dynamicPanes = scopeEl.querySelectorAll('.card-details-pane, .brew-item-drawer, .stage-card');
++            dynamicPanes.forEach((pane) => {
++              if (typeof pane.animate === 'function') {
++                const paneAnim = pane.animate(
++                  [
++                    { opacity: 0, transform: 'translateY(6px)' },
++                    { opacity: 1, transform: 'translateY(0)' }
++                  ],
++                  { duration: Math.round(duration * 0.85), easing }
++                );
++                runningAnimations.push(paneAnim);
++              }
++            });
++
++            if (runningAnimations.length === 0) {
++              cleanup();
++              resolveFinished();
++              return;
++            }
++
++            Promise.allSettled(runningAnimations.map((a) => a.finished)).then(() => {
++              if (!isSkipped) {
++                cleanup();
++                resolveFinished();
++              }
++            });
++          })
++          .catch((err) => {
++            cleanup();
++            rejectUpdateDone(err);
++            rejectReady(err);
++            rejectFinished(err);
++          });
++
++        return vtObject;
++      }
++
++      // Install or wrap HTMLElement.prototype.startViewTransition so calling
++      // component.startViewTransition(...) always runs scoped to that component
++      // and tracks concurrent transitions.
++      const nativeElementStartVT =
++        typeof HTMLElement !== 'undefined' &&
++        typeof HTMLElement.prototype.startViewTransition === 'function'
++          ? HTMLElement.prototype.startViewTransition
++          : null;
++
++      if (typeof HTMLElement !== 'undefined') {
++        HTMLElement.prototype.startViewTransition = function (callbackOrOptions) {
++          const scopeEl = this;
++          if (nativeElementStartVT) {
++            try {
++              const token = Symbol('native-scoped-vt');
++              activeTransitions.add(token);
++              scopeEl.classList.add('is-transitioning');
++              updateConcurrencyIndicator();
++
++              const updateFn =
++                typeof callbackOrOptions === 'function'
++                  ? callbackOrOptions
++                  : callbackOrOptions && typeof callbackOrOptions.update === 'function'
++                  ? callbackOrOptions.update
++                  : () => {};
++
++              const vt = nativeElementStartVT.call(scopeEl, updateFn);
++              if (vt && vt.finished && typeof vt.finished.finally === 'function') {
++                vt.finished
++                  .catch(() => {})
++                  .finally(() => {
++                    activeTransitions.delete(token);
++                    scopeEl.classList.remove('is-transitioning');
++                    updateConcurrencyIndicator();
++                  });
++              } else {
++                activeTransitions.delete(token);
++                scopeEl.classList.remove('is-transitioning');
++                updateConcurrencyIndicator();
++              }
++              return vt;
++            } catch (_) {
++              // Fall back to scoped WAAPI transition if native throws
++              return runScopedWAAPITransition(scopeEl, callbackOrOptions);
++            }
++          }
++          return runScopedWAAPITransition(scopeEl, callbackOrOptions);
++        };
++      }
++
++      /* ========================================================================
++         2. Component Group 1: Seasonal Favorites Cards State & Scoped Transitions
++         ======================================================================== */
++      const CARD_DATA = {
++        maple: {
++          id: 'maple',
++          title: 'Maple Oat Latte',
++          basePrice: 5.75,
++          baseCal: 190,
++          origin: 'Vermont Grade-A Amber & Colombian Espresso',
++          roast: 'Medium Velvet',
++          notes: 'Toasted Pecan, Warm Maple, Creamy Oat',
++          sizes: {
++            Small: { priceDelta: -0.5, cal: 150 },
++            Medium: { priceDelta: 0, cal: 190 },
++            Large: { priceDelta: 0.75, cal: 240 }
++          },
++          milks: ['Barista Oat', 'Almond', 'Whole Dairy'],
++          nutrition: { caffeine: '150mg', sugar: '14g', protein: '4g', fiber: '2g' }
++        },
++        espresso: {
++          id: 'espresso',
++          title: 'Dark Roast Espresso',
++          basePrice: 3.95,
++          baseCal: 15,
++          origin: 'Sumatra Mandheling & Antigua Guatemala',
++          roast: 'Full City Dark',
++          notes: 'Dark Cocoa, Cedar Smoke, Molasses Finish',
++          sizes: {
++            Single: { priceDelta: -0.6, cal: 10 },
++            Double: { priceDelta: 0, cal: 15 },
++            Quad: { priceDelta: 0.9, cal: 25 }
++          },
++          milks: ['Neat (No Milk)', 'Macchiato Foam', 'Cortado Splash'],
++          nutrition: { caffeine: '185mg', sugar: '0g', protein: '1g', fiber: '0g' }
++        },
++        'cold-brew': {
++          id: 'cold-brew',
++          title: 'Cold Brew',
++          basePrice: 4.85,
++          baseCal: 10,
++          origin: 'Ethiopian Yirgacheffe Washed',
++          roast: 'Slow Cold Extraction (18 Hours)',
++          notes: 'Sweet Citrus, Milk Chocolate, Silky Finish',
++          sizes: {
++            Small: { priceDelta: -0.5, cal: 5 },
++            Medium: { priceDelta: 0, cal: 10 },
++            Large: { priceDelta: 0.65, cal: 15 }
++          },
++          milks: ['Black Over Ice', 'Sweet Cream Cold Foam', 'Oat Splash'],
++          nutrition: { caffeine: '210mg', sugar: '0g', protein: '0g', fiber: '0g' }
++        }
++      };
++
++      const cardStates = {
++        maple: { expanded: false, tab: 'customize', size: 'Medium', milk: 'Barista Oat', addedCount: 0 },
++        espresso: { expanded: false, tab: 'customize', size: 'Double', milk: 'Neat (No Milk)', addedCount: 0 },
++        'cold-brew': { expanded: false, tab: 'customize', size: 'Medium', milk: 'Black Over Ice', addedCount: 0 }
++      };
++
++      let bagCount = 0;
++      let bagTotal = 0;
++
++      function updateBagUI(priceDelta) {
++        bagCount += 1;
++        bagTotal += priceDelta;
++        const countEl = document.getElementById('bag-count');
++        const totalEl = document.getElementById('bag-total');
++        if (countEl) countEl.textContent = String(bagCount);
++        if (totalEl) totalEl.textContent = '$' + bagTotal.toFixed(2);
++      }
++
++      function computeCardMetrics(cardId) {
++        const meta = CARD_DATA[cardId];
++        const st = cardStates[cardId];
++        const sizeInfo = meta.sizes[st.size] || { priceDelta: 0, cal: meta.baseCal };
++        return {
++          price: (meta.basePrice + sizeInfo.priceDelta).toFixed(2),
++          cal: sizeInfo.cal
++        };
++      }
++
++      function renderCardDOM(cardEl, cardId) {
++        const meta = CARD_DATA[cardId];
++        const st = cardStates[cardId];
++        const metrics = computeCardMetrics(cardId);
++
++        cardEl.classList.toggle('is-expanded', st.expanded);
++
++        const priceEl = cardEl.querySelector('.price-tag');
++        if (priceEl) priceEl.textContent = '$' + metrics.price;
++
++        const calEl = cardEl.querySelector('.card-cal');
++        if (calEl) calEl.textContent = metrics.cal + ' cal';
++
++        const toggleBtn = cardEl.querySelector('[data-action="toggle-card"]');
++        if (toggleBtn) {
++          toggleBtn.textContent = st.expanded ? 'Hide Details' : 'View Details';
++        }
++
++        const slotEl = cardEl.querySelector('.card-dynamic-slot');
++        if (!slotEl) return;
++
++        if (!st.expanded) {
++          slotEl.innerHTML = '';
++          return;
++        }
++
++        let tabBodyHTML = '';
++        if (st.tab === 'customize') {
++          const sizeButtons = Object.keys(meta.sizes)
++            .map(
++              (sz) =>
++                `<button type="button" class="option-pill ${st.size === sz ? 'selected' : ''}" data-action="select-size" data-size="${sz}">${sz}</button>`
++            )
++            .join('');
++          const milkButtons = meta.milks
++            .map(
++              (mk) =>
++                `<button type="button" class="option-pill ${st.milk === mk ? 'selected' : ''}" data-action="select-milk" data-milk="${mk}">${mk}</button>`
++            )
++            .join('');
++          tabBodyHTML = `
++            <div class="card-details-pane">
++              <div class="option-group">
++                <span class="option-group-label">Select Size</span>
++                <div class="pill-row">${sizeButtons}</div>
++              </div>
++              <div class="option-group">
++                <span class="option-group-label">Preparation / Milk</span>
++                <div class="pill-row">${milkButtons}</div>
++              </div>
++            </div>
++          `;
++        } else if (st.tab === 'tasting') {
++          tabBodyHTML = `
++            <div class="card-details-pane">
++              <div class="tasting-grid">
++                <div class="tasting-stat">
++                  <span>Roast Profile</span>
++                  <strong>${meta.roast}</strong>
++                </div>
++                <div class="tasting-stat">
++                  <span>Origin</span>
++                  <strong>${meta.origin}</strong>
++                </div>
++              </div>
++              <div class="tasting-stat">
++                <span>Flavor Notes</span>
++                <strong>${meta.notes}</strong>
++              </div>
++            </div>
++          `;
++        } else {
++          tabBodyHTML = `
++            <div class="card-details-pane">
++              <div class="tasting-grid">
++                <div class="tasting-stat">
++                  <span>Caffeine</span>
++                  <strong>${meta.nutrition.caffeine}</strong>
++                </div>
++                <div class="tasting-stat">
++                  <span>Calories (${st.size})</span>
++                  <strong>${metrics.cal} kcal</strong>
++                </div>
++                <div class="tasting-stat">
++                  <span>Total Sugar</span>
++                  <strong>${meta.nutrition.sugar}</strong>
++                </div>
++                <div class="tasting-stat">
++                  <span>Protein</span>
++                  <strong>${meta.nutrition.protein}</strong>
++                </div>
++              </div>
++            </div>
++          `;
++        }
++
++        slotEl.innerHTML = `
++          <div class="card-tabs" role="tablist">
++            <button type="button" class="card-tab ${st.tab === 'customize' ? 'active' : ''}" data-action="switch-tab" data-tab="customize">Customize</button>
++            <button type="button" class="card-tab ${st.tab === 'tasting' ? 'active' : ''}" data-action="switch-tab" data-tab="tasting">Tasting Notes</button>
++            <button type="button" class="card-tab ${st.tab === 'nutrition' ? 'active' : ''}" data-action="switch-tab" data-tab="nutrition">Nutrition</button>
++          </div>
++          ${tabBodyHTML}
++        `;
++      }
++
++      // Attach scoped transition handlers to each card independently
++      document.querySelectorAll('.card[data-card-id]').forEach((cardEl) => {
++        const cardId = cardEl.getAttribute('data-card-id');
++
++        cardEl.addEventListener('click', (event) => {
++          const actionEl = event.target.closest('[data-action]');
++          if (!actionEl) return;
++
++          event.preventDefault();
++          recordInteraction();
++
++          const action = actionEl.getAttribute('data-action');
++          const st = cardStates[cardId];
++
++          if (action === 'toggle-card') {
++            // Animate ONLY this card subtree via cardEl.startViewTransition()
++            cardEl.startViewTransition(() => {
++              st.expanded = !st.expanded;
++              renderCardDOM(cardEl, cardId);
++            });
++          } else if (action === 'switch-tab') {
++            const nextTab = actionEl.getAttribute('data-tab');
++            if (nextTab && st.tab !== nextTab) {
++              cardEl.startViewTransition(() => {
++                st.tab = nextTab;
++                renderCardDOM(cardEl, cardId);
++              });
++            }
++          } else if (action === 'select-size') {
++            const nextSize = actionEl.getAttribute('data-size');
++            if (nextSize && st.size !== nextSize) {
++              cardEl.startViewTransition(() => {
++                st.size = nextSize;
++                renderCardDOM(cardEl, cardId);
++              });
++            }
++          } else if (action === 'select-milk') {
++            const nextMilk = actionEl.getAttribute('data-milk');
++            if (nextMilk && st.milk !== nextMilk) {
++              cardEl.startViewTransition(() => {
++                st.milk = nextMilk;
++                renderCardDOM(cardEl, cardId);
++              });
++            }
++          } else if (action === 'quick-add') {
++            const metrics = computeCardMetrics(cardId);
++            updateBagUI(parseFloat(metrics.price));
++            cardEl.startViewTransition(() => {
++              st.addedCount += 1;
++              actionEl.textContent = `Added (${st.addedCount})`;
++            });
++          }
++        });
++      });
++
++      /* ========================================================================
++         3. Component Group 2: Scoped Roastery Menu List (#brew-list-panel)
++         ======================================================================== */
++      const ROASTERY_ITEMS = [
++        {
++          id: 'honey-cortado',
++          name: 'Wildflower Honey Cortado',
++          category: 'espresso',
++          price: 4.65,
++          caffeine: 150,
++          summary: 'Equal parts ristretto espresso and velvety steamed milk with raw local honey.',
++          origin: 'Costa Rica Tarrazú'
++        },
++        {
++          id: 'nitro-vanilla',
++          name: 'Nitro Sweet Cream Draft',
++          category: 'cold',
++          price: 5.45,
++          caffeine: 225,
++          summary: 'Nitrogen-infused cold brew cascading under house-made Madagascar vanilla cream.',
++          origin: 'Ethiopia Sidamo'
++        },
++        {
++          id: 'gesha-pourover',
++          name: 'Panama Boquete Gesha V60',
++          category: 'pour-over',
++          price: 6.50,
++          caffeine: 135,
++          summary: 'Hand-poured to order with jasmine aromatics, bergamot, and white peach clarity.',
++          origin: 'Boquete Highlands'
++        },
++        {
++          id: 'cardamom-latte',
++          name: 'Spiced Cardamom Rose Latte',
++          category: 'espresso',
++          price: 5.60,
++          caffeine: 150,
++          summary: 'Freshly ground green cardamom pods infused with double espresso and micro-foam.',
++          origin: 'Guatemala Huehuetenango'
++        },
++        {
++          id: 'kyoto-drip',
++          name: 'Kyoto Slow-Tower Ice Drip',
++          category: 'cold',
++          price: 5.95,
++          caffeine: 195,
++          summary: 'Single-drop ice extraction over 12 hours yielding wine-like floral complexity.',
++          origin: 'Kenya Nyeri AA'
++        }
++      ];
++
++      const listState = {
++        filter: 'all',
++        sortIndex: 0, // 0: Featured, 1: Price Low-High, 2: Caffeine High-Low
++        expandedItemId: 'honey-cortado'
++      };
++      const SORT_MODES = ['Featured', 'Price ↑', 'Caffeine ↓'];
++
++      const brewListPanel = document.getElementById('brew-list-panel');
++      const brewListEl = document.getElementById('brew-list');
++      const sortListBtn = document.getElementById('sort-list-btn');
++      const sortModeLabel = document.getElementById('sort-mode-label');
++
++      function renderBrewListDOM() {
++        if (!brewListEl) return;
++        let items = ROASTERY_ITEMS.filter(
++          (item) => listState.filter === 'all' || item.category === listState.filter
++        );
++
++        if (listState.sortIndex === 1) {
++          items = items.slice().sort((a, b) => a.price - b.price);
++        } else if (listState.sortIndex === 2) {
++          items = items.slice().sort((a, b) => b.caffeine - a.caffeine);
++        }
++
++        if (sortModeLabel) {
++          sortModeLabel.textContent = SORT_MODES[listState.sortIndex];
++        }
++
++        document.querySelectorAll('#brew-list-panel .filter-chip').forEach((chip) => {
++          chip.classList.toggle('active', chip.getAttribute('data-filter') === listState.filter);
++        });
++
++        brewListEl.innerHTML = items
++          .map((item) => {
++            const isExpanded = listState.expandedItemId === item.id;
++            const vtName = 'brew-item-' + item.id;
++            return `
++              <li class="brew-item" data-item-id="${item.id}" data-vt-name="${vtName}" style="view-transition-name: ${vtName};">
++                <div class="brew-item-main">
++                  <div>
++                    <div class="brew-item-title">${item.name}</div>
++                    <div class="brew-item-meta">${item.origin} • ${item.caffeine}mg caffeine</div>
++                  </div>
++                  <div class="brew-item-right">
++                    <span class="price-tag">$${item.price.toFixed(2)}</span>
++                    <button type="button" class="btn btn-secondary" data-list-action="toggle-item" data-item-id="${item.id}" style="padding: 5px 10px; font-size: 0.78rem;">
++                      ${isExpanded ? 'Less' : 'Notes'}
++                    </button>
++                  </div>
++                </div>
++                ${
++                  isExpanded
++                    ? `<div class="brew-item-drawer">
++                        <span>${item.summary}</span>
++                        <button type="button" class="btn" data-list-action="order-item" data-price="${item.price}" style="padding: 5px 12px; font-size: 0.78rem;">Add to Order</button>
++                      </div>`
++                    : ''
++                }
++              </li>
++            `;
++          })
++          .join('');
++      }
++
++      renderBrewListDOM();
++
++      if (brewListPanel) {
++        brewListPanel.addEventListener('click', (event) => {
++          const filterBtn = event.target.closest('.filter-chip[data-filter]');
++          if (filterBtn) {
++            recordInteraction();
++            const nextFilter = filterBtn.getAttribute('data-filter');
++            if (nextFilter && nextFilter !== listState.filter) {
++              brewListPanel.startViewTransition(() => {
++                listState.filter = nextFilter;
++                renderBrewListDOM();
++              });
++            }
++            return;
++          }
++
++          const actionBtn = event.target.closest('[data-list-action]');
++          if (actionBtn) {
++            recordInteraction();
++            const listAction = actionBtn.getAttribute('data-list-action');
++            if (listAction === 'toggle-item') {
++              const itemId = actionBtn.getAttribute('data-item-id');
++              brewListPanel.startViewTransition(() => {
++                listState.expandedItemId = listState.expandedItemId === itemId ? null : itemId;
++                renderBrewListDOM();
++              });
++            } else if (listAction === 'order-item') {
++              const price = parseFloat(actionBtn.getAttribute('data-price') || '5.00');
++              updateBagUI(price);
++              brewListPanel.startViewTransition(() => {
++                actionBtn.textContent = 'Added ✓';
++              });
++            }
++          }
++        });
++      }
++
++      if (sortListBtn && brewListPanel) {
++        sortListBtn.addEventListener('click', () => {
++          recordInteraction();
++          brewListPanel.startViewTransition(() => {
++            listState.sortIndex = (listState.sortIndex + 1) % SORT_MODES.length;
++            renderBrewListDOM();
++          });
++        });
++      }
++
++      /* ========================================================================
++         4. Component Group 3: Scoped Live Brew & Rewards Panel (#rewards-panel)
++         ======================================================================== */
++      const BREW_STAGES = [
++        {
++          step: 1,
++          title: 'Stage 1: Weighing Single-Origin Beans',
++          detail: 'Barista Maya is dosing 18.5g of freshly roasted Ethiopian & Vermont Reserve beans.',
++          eta: 'Est. 3 mins remaining'
++        },
++        {
++          step: 2,
++          title: 'Stage 2: Precision Burr Grinding',
++          detail: 'Dialed in for a silky 28-second extraction with rich caramel crema.',
++          eta: 'Est. 2 mins remaining'
++        },
++        {
++          step: 3,
++          title: 'Stage 3: Pulling Espresso & Steaming Oat Milk',
++          detail: 'Velvety micro-foam steamed to 145°F and poured over double ristretto.',
++          eta: 'Est. 1 min remaining'
++        },
++        {
++          step: 4,
++          title: 'Stage 4: Ready at Pickup Counter!',
++          detail: 'Your handcrafted beverage is waiting at the Artisanal Pickup Bar.',
++          eta: 'Complete • Enjoy warm!'
++        }
++      ];
++
++      const panelState = {
++        stageIndex: 0,
++        beansPoints: 140
++      };
++
++      const rewardsPanel = document.getElementById('rewards-panel');
++      const statusPanelBody = document.getElementById('status-panel-body');
++      const rewardsBadgeEl = document.getElementById('rewards-points-badge');
++
++      function renderStatusPanelDOM() {
++        if (!statusPanelBody) return;
++        const currentStage = BREW_STAGES[panelState.stageIndex];
++        if (rewardsBadgeEl) {
++          rewardsBadgeEl.textContent = panelState.beansPoints + ' Beans';
++        }
++
++        const progressBars = BREW_STAGES.map((st, idx) => {
++          let cls = 'stage-step';
++          if (idx < panelState.stageIndex) cls += ' completed';
++          else if (idx === panelState.stageIndex) cls += ' current';
++          return `<div class="${cls}" data-vt-name="stage-bar-${idx}" style="view-transition-name: stage-bar-${idx};"></div>`;
++        }).join('');
++
++        const nextRewardPct = Math.min(100, Math.round(((panelState.beansPoints % 200) / 200) * 100));
++
++        statusPanelBody.innerHTML = `
++          <div class="stage-progress">${progressBars}</div>
++          <div class="stage-card" data-vt-name="stage-active-card" style="view-transition-name: stage-active-card;">
++            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
++              <h4>${currentStage.title}</h4>
++              <span style="font-size:0.76rem; font-weight:700; color:var(--primary-light);">${currentStage.eta}</span>
++            </div>
++            <p>${currentStage.detail}</p>
++          </div>
++          <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:12px;">
++            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
++              <span>Free Artisan Drink Progress</span>
++              <strong>${nextRewardPct}% (${panelState.beansPoints} total beans)</strong>
++            </div>
++            <div style="height:7px; background:var(--secondary); border-radius:999px; overflow:hidden;">
++              <div data-vt-name="reward-meter-fill" style="view-transition-name: reward-meter-fill; width:${nextRewardPct}%; height:100%; background:var(--success);"></div>
++            </div>
++          </div>
++        `;
++      }
++
++      renderStatusPanelDOM();
++
++      const advanceBrewBtn = document.getElementById('advance-brew-btn');
++      const redeemRewardBtn = document.getElementById('redeem-reward-btn');
++
++      if (advanceBrewBtn && rewardsPanel) {
++        advanceBrewBtn.addEventListener('click', () => {
++          recordInteraction();
++          rewardsPanel.startViewTransition(() => {
++            panelState.stageIndex = (panelState.stageIndex + 1) % BREW_STAGES.length;
++            renderStatusPanelDOM();
++          });
++        });
++      }
++
++      if (redeemRewardBtn && rewardsPanel) {
++        redeemRewardBtn.addEventListener('click', () => {
++          recordInteraction();
++          rewardsPanel.startViewTransition(() => {
++            panelState.beansPoints += 25;
++            renderStatusPanelDOM();
++          });
++        });
++      }
++
++      /* ========================================================================
++         5. Concurrent Multi-Component Wave & Always-Interactive Controls
++         ======================================================================== */
++      const speedSelect = document.getElementById('vt-speed-select');
++      if (speedSelect) {
++        speedSelect.addEventListener('change', () => {
++          recordInteraction();
++          document.documentElement.style.setProperty('--vt-duration', speedSelect.value);
++        });
++      }
++
++      function triggerConcurrentTransitionsWave() {
++        recordInteraction();
++        const cards = Array.from(document.querySelectorAll('.card[data-card-id]'));
++
++        // Fire staggered overlapping transitions on each independent card, list, and panel
++        cards.forEach((cardEl, idx) => {
++          const cardId = cardEl.getAttribute('data-card-id');
++          setTimeout(() => {
++            cardEl.startViewTransition(() => {
++              const st = cardStates[cardId];
++              st.expanded = !st.expanded;
++              renderCardDOM(cardEl, cardId);
++            });
++          }, idx * 90);
++        });
++
++        if (brewListPanel) {
++          setTimeout(() => {
++            brewListPanel.startViewTransition(() => {
++              listState.sortIndex = (listState.sortIndex + 1) % SORT_MODES.length;
++              renderBrewListDOM();
++            });
++          }, 120);
++        }
++
++        if (rewardsPanel) {
++          setTimeout(() => {
++            rewardsPanel.startViewTransition(() => {
++              panelState.stageIndex = (panelState.stageIndex + 1) % BREW_STAGES.length;
++              panelState.beansPoints += 25;
++              renderStatusPanelDOM();
++            });
++          }, 180);
++        }
++      }
++
++      const triggerAllBtn = document.getElementById('trigger-all-btn');
++      const heroConcurrentBtn = document.getElementById('hero-concurrent-btn');
++      if (triggerAllBtn) triggerAllBtn.addEventListener('click', triggerConcurrentTransitionsWave);
++      if (heroConcurrentBtn) heroConcurrentBtn.addEventListener('click', triggerConcurrentTransitionsWave);
++
++      const navBagBtn = document.getElementById('nav-bag-btn');
++      if (navBagBtn) {
++        navBagBtn.addEventListener('click', () => {
++          recordInteraction();
++          updateBagUI(4.75);
++        });
++      }
++
++      const pingInteractiveBtn = document.getElementById('ping-interactive-btn');
++      const liveNoteMirror = document.getElementById('live-note-mirror');
++      if (pingInteractiveBtn) {
++        pingInteractiveBtn.addEventListener('click', () => {
++          recordInteraction();
++          if (liveNoteMirror) {
++            liveNoteMirror.textContent = 'Clicked #' + interactionCounter;
++          }
++        });
++      }
++
++      const noteInput = document.getElementById('barista-note-input');
++      if (noteInput) {
++        noteInput.addEventListener('input', () => {
++          recordInteraction();
++          if (liveNoteMirror) {
++            liveNoteMirror.textContent = noteInput.value ? 'Note: ' + noteInput.value : 'Ready';
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

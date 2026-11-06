@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,85 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Feedback Log */
++    .feedback-section {
++      margin-top: 60px;
++    }
++
++    .feedback-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .feedback-log {
++      --scrollbar-thumb: var(--accent);
++      --scrollbar-track: var(--primary);
++
++      max-height: 320px;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      padding: 20px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      scrollbar-width: thin;
++      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
++    }
++
++    /* Legacy fallback for WebKit/Blink browsers without scrollbar-color */
++    @supports not (scrollbar-color: auto) {
++      .feedback-log::-webkit-scrollbar {
++        width: 8px;
++      }
++
++      .feedback-log::-webkit-scrollbar-thumb {
++        background: var(--scrollbar-thumb);
++        border-radius: 4px;
++      }
++
++      .feedback-log::-webkit-scrollbar-track {
++        background: var(--scrollbar-track);
++      }
++    }
++
++    .feedback-log ul {
++      list-style: none;
++    }
++
++    .feedback-entry {
++      padding: 15px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .feedback-entry:last-child {
++      border-bottom: none;
++      padding-bottom: 0;
++    }
++
++    .feedback-entry:first-child {
++      padding-top: 0;
++    }
++
++    .feedback-entry blockquote {
++      font-style: italic;
++      margin-bottom: 6px;
++    }
++
++    .feedback-entry figcaption {
++      font-size: 0.85rem;
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .feedback-entry figcaption .rating {
++      color: var(--accent);
++      letter-spacing: 2px;
++      margin-left: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +271,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback</h2>
++      <div class="feedback-log" role="region" aria-labelledby="feedback-heading" tabindex="0">
++        <ul>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;The Maple Oat Latte is the best seasonal drink I have had anywhere. I come back every week for it.&rdquo;</p>
++              </blockquote>
++              <figcaption>Priya R., Portland, OR<span class="rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Fast, friendly service and the dark roast has a smoky depth that actually tastes like coffee.&rdquo;</p>
++              </blockquote>
++              <figcaption>Marcus T., Seattle, WA<span class="rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Cold brew is incredibly smooth. Only wish the shop opened a little earlier on weekends.&rdquo;</p>
++              </blockquote>
++              <figcaption>Elena G., Austin, TX<span class="rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;I ordered online for pickup and my drink was ready and still hot when I walked in. Perfect.&rdquo;</p>
++              </blockquote>
++              <figcaption>Jordan K., Denver, CO<span class="rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Cozy atmosphere and great Wi-Fi. My go-to spot for working remotely on a rainy afternoon.&rdquo;</p>
++              </blockquote>
++              <figcaption>Sam W., Chicago, IL<span class="rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;The rewards program is generous and the baristas remember my order. That kind of care is rare.&rdquo;</p>
++              </blockquote>
++              <figcaption>Aisha B., Brooklyn, NY<span class="rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;You can taste the difference with locally roasted beans. The espresso crema is unreal.&rdquo;</p>
++              </blockquote>
++              <figcaption>Diego M., San Diego, CA<span class="rating" aria-label="5 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></figcaption>
++            </figure>
++          </li>
++          <li class="feedback-entry">
++            <figure>
++              <blockquote>
++                <p>&ldquo;Loved the seasonal menu. The maple syrup is subtle and not overly sweet, exactly how I like it.&rdquo;</p>
++              </blockquote>
++              <figcaption>Hannah L., Boston, MA<span class="rating" aria-label="4 out of 5 stars">&#9733;&#9733;&#9733;&#9733;&#9734;</span></figcaption>
++            </figure>
++          </li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

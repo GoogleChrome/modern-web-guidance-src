@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,8 +87,52 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    /* Weathered / rustic grunge treatment.
++       The background moves to a pseudo-element masked by a repeating grunge
++       texture, so the distress pattern removes background pixels (real
++       transparency) while the hero text and button stay crisp. */
++    .weathered-bg {
++      position: relative;
++      isolation: isolate;
++      background: var(--secondary); /* aged-paper tone shows through the worn areas */
++      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85); /* legibility over worn patches */
++    }
++
++    .weathered-bg::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background:
++        linear-gradient(rgba(40, 22, 10, 0.55), rgba(20, 10, 5, 0.6)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++          center / cover;
++      filter: sepia(0.35) contrast(1.1);
++
++      -webkit-mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      -webkit-mask-size: 400px;
++      mask-image: url('grunge-texture.svg');
++      mask-repeat: repeat;
++      mask-size: 400px;
++      mask-mode: alpha;
++    }
++
++    /* No mask support: keep the original solid hero background */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .weathered-bg {
++        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80')
++            center / cover;
++      }
++
++      .weathered-bg::before {
++        content: none;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +211,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

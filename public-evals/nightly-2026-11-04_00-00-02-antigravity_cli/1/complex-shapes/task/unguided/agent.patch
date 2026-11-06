@@ -1,0 +1,112 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,27 +73,70 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      position: relative;
++      min-height: 60vh;
++      background: linear-gradient(rgba(30, 18, 15, 0.65), rgba(30, 18, 15, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+-      flex-direction: column;
++      flex-wrap: wrap;
+       justify-content: center;
+       align-items: center;
++      gap: 2.5rem;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 5%;
++      overflow: hidden;
+     }
+ 
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      max-width: 520px;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Decorative Organic Shaped Block */
++    .shaped-element {
++      position: relative;
++      z-index: 1;
++      width: 280px;
++      height: 280px;
++      flex-shrink: 0;
++      background: linear-gradient(135deg, var(--accent), var(--primary)),
++        url('https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
++      background-blend-mode: overlay;
++      /* Fallback organic border-radius if clip-path or mask fails to load */
++      border-radius: 62% 38% 46% 54% / 60% 44% 56% 40%;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++      /* Fluid vector clip-path & SVG mask for coffee splash / brush stroke aesthetic */
++      clip-path: url(#coffee-splash-clip);
++      -webkit-clip-path: url(#coffee-splash-clip);
++      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath fill='%23000' d='M47.7,-67.2C61.4,-58.5,71.8,-44.1,76.9,-27.9C82,-11.7,81.8,6.3,76.1,22.1C70.4,37.9,59.2,51.5,45.1,61.4C31,71.3,14,77.5,-2.9,81.5C-19.8,85.5,-36.6,87.3,-50.2,79.5C-63.8,71.7,-74.2,54.3,-79.1,36.1C-84,17.9,-83.4,-1.1,-77.8,-17.8C-72.2,-34.5,-61.6,-48.9,-47.8,-57.5C-34,-66.1,-17,-68.9,0.1,-69.1C17.2,-69.2,34,-75.9,47.7,-67.2Z' transform='translate(100 100)'/%3E%3C/svg%3E");
++      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath fill='%23000' d='M47.7,-67.2C61.4,-58.5,71.8,-44.1,76.9,-27.9C82,-11.7,81.8,6.3,76.1,22.1C70.4,37.9,59.2,51.5,45.1,61.4C31,71.3,14,77.5,-2.9,81.5C-19.8,85.5,-36.6,87.3,-50.2,79.5C-63.8,71.7,-74.2,54.3,-79.1,36.1C-84,17.9,-83.4,-1.1,-77.8,-17.8C-72.2,-34.5,-61.6,-48.9,-47.8,-57.5C-34,-66.1,-17,-68.9,0.1,-69.1C17.2,-69.2,34,-75.9,47.7,-67.2Z' transform='translate(100 100)'/%3E%3C/svg%3E");
++      -webkit-mask-size: contain;
++      mask-size: contain;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-position: center;
++      overflow: hidden;
++    }
++
++    .shaped-element img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,11 +211,30 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <!-- Hidden SVG definition for fluid organic coffee-splash clip-path -->
++    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; width: 0; height: 0; overflow: hidden;">
++      <defs>
++        <clipPath id="coffee-splash-clip" clipPathUnits="objectBoundingBox">
++          <path d="M0.739,0.164 C0.807,0.208,0.859,0.28,0.885,0.361 C0.91,0.442,0.909,0.532,0.881,0.611 C0.852,0.69,0.796,0.758,0.726,0.807 C0.655,0.857,0.57,0.888,0.486,0.908 C0.401,0.928,0.317,0.937,0.249,0.898 C0.181,0.859,0.129,0.772,0.105,0.681 C0.08,0.59,0.083,0.495,0.111,0.411 C0.139,0.328,0.192,0.256,0.261,0.213 C0.33,0.17,0.415,0.156,0.501,0.155 C0.586,0.154,0.67,0.121,0.739,0.164 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
++
++    <div class="shaped-element" role="img" aria-label="Artisanal espresso pour">
++      <img
++        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80"
++        alt="Artisanal latte art and roasted coffee"
++        loading="eager"
++      />
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>

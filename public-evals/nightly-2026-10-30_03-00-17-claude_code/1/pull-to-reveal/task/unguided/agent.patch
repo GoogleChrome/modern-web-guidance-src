@@ -1,0 +1,120 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,72 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html {
++      /* Proximity (not mandatory) so the page scrolls freely past the nav */
++      scroll-snap-type: y proximity;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    /* Pull-down Search */
++    .search-bar {
++      background: var(--secondary);
++      padding: 1rem 5%;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      display: flex;
++      max-width: 600px;
++      margin: 0 auto;
++      gap: 10px;
++    }
++
++    .search-bar input {
++      flex: 1;
++      padding: 10px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .search-bar input:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .search-bar button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 20px;
++      border-radius: 5px;
++      font-size: 1rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .search-bar button:hover {
++      background: #3e2723;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -37,8 +94,11 @@
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      /* Start the page scrolled to the nav, hiding the search bar above it */
++      scroll-initial-target: nearest;
++      scroll-snap-align: start;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+@@ -156,8 +216,16 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="search-bar">
++    <form action="/search" method="get" role="search">
++      <label for="site-search" class="visually-hidden">Search</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, locations...">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +274,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-initial-target support
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      window.scrollTo(0, document.querySelector('nav').offsetTop);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

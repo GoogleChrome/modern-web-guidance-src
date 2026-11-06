@@ -1,0 +1,1256 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..c1028dd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Local authentication database
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..5497f80 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,40 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Account security and passkeys
++
++The sign-in and sign-up pages retain password authentication through the existing
++Times authentication service. After account creation, readers can add a passkey;
++`/devtools-times/account/settings` supports creating, listing, renaming, and
++removing passkeys, plus updating the account display name. Sensitive changes
++require identity verification with an existing passkey or the account password.
++The username remains managed by the existing authentication service.
++
++Passkeys use native WebAuthn APIs with JSON/capability polyfills, conditional
++sign-in autofill, and server-side verification through `@simplewebauthn/server`.
++Challenges expire after five minutes and are consumed atomically. Reauthentication
++requires user verification and a credential belonging to the signed-in account.
++Sessions use opaque, rotating, HttpOnly cookies; passwords are never stored locally.
++All authentication mutations enforce the same origin.
++
++Runtime configuration:
++
++- Use Node.js 22.13 or newer for the built-in SQLite driver (Node.js 24 recommended).
++- Set `AUTH_ORIGIN` to the public HTTPS origin in production, for example
++  `https://example.com` (no path or trailing slash). Without this override, the
++  request's origin defines both the expected origin and relying party hostname.
++  Passkeys are tied to this hostname; changing it requires enrolling new passkeys.
++- Set `AUTH_DATABASE_PATH` to a writable SQLite file on a persistent volume.
++  The default is `.data/auth.sqlite`, ignored by Git. Back up this database; it
++  contains credential public keys, account mappings, challenges, and sessions.
++  This SQLite implementation is intended for a single application instance;
++  deployments with multiple instances need a shared transactional datastore.
++- Serve over HTTPS (or localhost for local development). Unsupported browsers
++  retain password sign-in. Existing passwords continue to provide recovery after
++  removing the last passkey.
++
++Provider names and icons are a local subset of the
++[Passkey Developer AAGUID registry](https://github.com/passkeydeveloper/passkey-authenticator-aaguids).
++They are display hints only; unknown or zero AAGUIDs use a neutral fallback.
++Password-manager synchronization uses feature-detected WebAuthn Signal APIs.
+diff --git a/package.json b/package.json
+index 2e1f2e8..d607c14 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,9 @@
+   "name": "devtools-times",
+   "type": "module",
+   "version": "0.0.1",
++  "engines": {
++    "node": ">=22.13.0"
++  },
+   "scripts": {
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+@@ -13,6 +16,7 @@
+     "@astrojs/node": "^11.1.7",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.0.3",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,10 +24,12 @@
+     "react": "^19.3.0",
+     "react-dom": "^19.3.0",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^24.19.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..3fc1336
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,119 @@
++import { useEffect, useRef, useState } from 'react';
++import { api, authenticate, authMessage, capabilities, registerPasskey, syncPasskeys, syncProfile, type AccountData, type SavedPasskey } from '../lib/auth';
++import { AuthIcon } from './AuthIcons';
++import providers from '../lib/passkey-providers.json';
++import '../styles/auth.css';
++
++type Change = { kind: 'add' | 'rename' | 'delete' | 'profile'; key?: SavedPasskey };
++function provider(aaguid: string): { name: string; icon?: string } {
++  if (aaguid === '00000000-0000-0000-0000-000000000000') return { name: 'Passkey provider' };
++  return (providers as Record<string, { name: string; icon?: string }>)[aaguid] || { name: 'Passkey provider' };
++}
++function date(value: number | null) { return value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not used yet'; }
++
++export default function AccountSettings() {
++  const [data, setData] = useState<AccountData | null>(null);
++  const [loaded, setLoaded] = useState(false);
++  const [supported, setSupported] = useState(false);
++  const [canCreate, setCanCreate] = useState(false);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [change, setChange] = useState<Change | null>(null);
++  const [name, setName] = useState('');
++  const [password, setPassword] = useState('');
++  const [method, setMethod] = useState<'passkey' | 'password'>('password');
++  const [dialogError, setDialogError] = useState('');
++  const dialog = useRef<HTMLDialogElement>(null);
++  const controller = useRef<AbortController | null>(null);
++  const base = import.meta.env.BASE_URL;
++  async function load() {
++    setError('');
++    try {
++      const result = await api<AccountData | { user: null }>('me');
++      if (result.user) { setData(result as AccountData); await syncPasskeys(result as AccountData); }
++    } catch (err) { setError(authMessage(err)); }
++    finally { setLoaded(true); }
++  }
++  useEffect(() => {
++    let active = true;
++    void load();
++    void capabilities().then(caps => { if (active) { setSupported(!!caps); setCanCreate(!!(caps?.passkeyPlatformAuthenticator ?? caps?.userVerifyingPlatformAuthenticator)); } }).catch(() => {});
++    return () => { active = false; controller.current?.abort(); };
++  }, []);
++  useEffect(() => {
++    if (change) dialog.current?.showModal();
++    else dialog.current?.close();
++  }, [change]);
++  function open(next: Change) {
++    setChange(next); setPassword(''); setDialogError(''); setNotice('');
++    setName(next.kind === 'profile' ? data!.user.displayName : next.key?.name || 'My passkey');
++    setMethod(supported && data!.passkeys.length ? 'passkey' : 'password');
++  }
++  function close() {
++    controller.current?.abort(); setBusy(false); setChange(null); setPassword('');
++  }
++  async function save(e: React.FormEvent) {
++    e.preventDefault();
++    if (!change || !data) return;
++    const abort = new AbortController(); controller.current = abort;
++    setBusy(true); setDialogError('');
++    try {
++      if (method === 'passkey') await authenticate('reauth', abort.signal);
++      else await api('password/reauth', { password }, abort.signal);
++      setPassword('');
++      let result: AccountData;
++      if (change.kind === 'add') result = await registerPasskey(name, abort.signal);
++      else if (change.kind === 'profile') result = await api('profile', { displayName: name }, abort.signal);
++      else result = await api(`passkeys/${change.kind}`, { id: change.key!.id, name }, abort.signal);
++      setData(result);
++      await syncPasskeys(result);
++      if (change.kind === 'profile') await syncProfile(result);
++      setNotice(change.kind === 'delete' ? 'Passkey removed. Your other sign-in methods are still available.' : change.kind === 'add' ? 'Passkey created. You’re ready for a simpler sign-in.' : 'Your changes have been saved.');
++      setChange(null);
++    } catch (err) { if (!abort.signal.aborted) setDialogError(authMessage(err)); }
++    finally { if (!abort.signal.aborted) setBusy(false); }
++  }
++  async function signout() {
++    setBusy(true); setError('');
++    try { await api('logout', {}); window.location.assign(`${base}signin`); }
++    catch (err) { setError(authMessage(err)); setBusy(false); }
++  }
++
++  return <div className="settings-page">
++    <a className="auth-back" href={base}>← Back to the news</a>
++    <div className="settings-heading"><div><div className="auth-eyebrow">YOUR TIMES ACCOUNT</div><h1>Account settings</h1><p>A few details. A more personal Times.</p></div>{data && <button className="settings-signout" onClick={signout} disabled={busy}>Sign out <span>↗</span></button>}</div>
++    <div className="settings-tabs"><span aria-current="page">Account & security</span><span className="settings-tabs-note"><AuthIcon name="lock" size={14} /> Your account, protected</span></div>
++    {error && <div className="auth-message error" role="alert">{error} <button className="settings-text-button" onClick={load}>Try again</button></div>}
++    {notice && <div className="auth-message success" role="status"><AuthIcon name="check" size={18} />{notice}</div>}
++    {!loaded ? <div className="settings-loading" role="status">Loading your account…</div> : !data ? <section className="settings-gate"><span className="auth-setup-icon"><AuthIcon name="lock" size={30} /></span><h2>Your account starts here.</h2><p>Sign in to manage your profile, passkeys, and account security.</p><a className="auth-button primary" href={`${base}signin`}>Sign in to your account <AuthIcon name="arrow" size={18} /></a><p>New here? <a className="settings-text-button" href={`${base}signup`}>Create an account</a></p></section> : <>
++      <section className="settings-section" aria-labelledby="profile-heading"><div className="settings-section-heading"><div><h2 id="profile-heading">Your profile</h2><p>A familiar name. Your own perspective.</p></div><span className="settings-section-number">01</span></div><div className="settings-profile"><div className="settings-avatar">{data.user.displayName.slice(0, 1).toUpperCase()}</div><div className="settings-profile-details"><h3>{data.user.displayName}</h3><p>@{data.user.username}</p></div><button className="settings-outline-button" disabled={busy} onClick={() => open({ kind: 'profile' })}>Edit profile</button></div></section>
++      <section className="settings-section" aria-labelledby="passkeys-heading"><div className="settings-section-heading"><div><h2 id="passkeys-heading">Passkeys <span className="settings-count">{data.passkeys.length}</span></h2><p>A simpler, safer way to get back to your reading.</p></div><span className="settings-section-number">02</span></div>
++        <div className="settings-passkey-banner"><span className="settings-banner-icon"><AuthIcon name="fingerprint" size={35} /></span><div><h3>Your account. One touch away.</h3><p>Use your face, fingerprint, or device PIN to sign in. No password to remember, and nothing for phishers to steal.</p><span><AuthIcon name="shield" size={13} /> Secure by design</span></div>{canCreate && <button className="auth-button primary" onClick={() => open({ kind: 'add' })} disabled={busy}><AuthIcon name="plus" size={18} />Add a passkey</button>}</div>
++        {!data.passkeys.length ? <div className="settings-empty"><span className="settings-empty-icon"><AuthIcon name="key" size={27} /></span><h3>No passkeys yet</h3><p>Add your first passkey and make your next sign-in a little easier.</p></div> : <ul className="settings-key-list">{data.passkeys.map(key => <li key={key.id}><span className="settings-key-icon">{provider(key.aaguid).icon ? <img src={provider(key.aaguid).icon} width="23" height="23" alt="" /> : <AuthIcon name="key" size={23} />}</span><div className="settings-key-details"><h3>{key.name}</h3><p>{provider(key.aaguid).name} · {key.backedUp ? 'Synced passkey' : 'Device passkey'}</p><p className="settings-key-dates">Added {date(key.registeredAt)} <span>·</span> Last used: {date(key.lastUsedAt)}</p></div><div className="settings-key-actions"><button disabled={busy} onClick={() => open({ kind: 'rename', key })} aria-label={`Rename ${key.name}`}>Rename</button><button className="danger" disabled={busy} onClick={() => open({ kind: 'delete', key })} aria-label={`Remove ${key.name}`}>Remove</button></div></li>)}</ul>}
++        {!canCreate && <p className="settings-support-note">Creating passkeys isn’t available in this browser. Use a compatible browser over HTTPS, or continue using your password.</p>}
++        <div className="settings-info"><AuthIcon name="device" size={18} /><p>Passkeys can sync across your devices through your password manager. You can also add a security key.</p></div>
++      </section>
++      <section className="settings-section" aria-labelledby="security-heading"><div className="settings-section-heading"><div><h2 id="security-heading">Account security</h2><p>An extra check, when it matters.</p></div><span className="settings-section-number">03</span></div><div className="settings-security"><AuthIcon name="shield" size={25} /><div><h3>It’s good to know it’s you.</h3><p>We’ll ask you to verify your identity with a passkey or password before changing your profile or managing passkeys.</p></div><span className="settings-active"><span />Always on</span></div></section>
++    </>}
++    <p className="auth-bottom-note"><AuthIcon name="lock" size={13} /> Your biometrics stay on your device. We never see or store them.</p>
++    <dialog ref={dialog} className="auth-dialog" onCancel={e => { e.preventDefault(); close(); }} onClick={e => { if (e.target === e.currentTarget) close(); }} aria-labelledby="change-title">
++      {change && <form onSubmit={save}>
++        <div className={`auth-dialog-symbol ${change.kind === 'delete' ? 'danger' : ''}`}><AuthIcon name={change.kind === 'delete' ? 'shield' : 'key'} size={25} /></div>
++        <h2 id="change-title">{change.kind === 'add' ? 'Add a passkey' : change.kind === 'rename' ? 'Rename your passkey' : change.kind === 'delete' ? 'Remove this passkey?' : 'Make yourself at home.'}</h2>
++        <p className="auth-dialog-description">{change.kind === 'delete' ? `“${change.key!.name}” will no longer work to sign in to The DevTools Times. This won’t remove it from your password manager.` : change.kind === 'add' ? 'Give your passkey a name so you can recognize it later.' : change.kind === 'rename' ? 'This name helps you recognize your passkey. It only changes here.' : 'Choose the name you’d like to see on your account.'}</p>
++        {change.kind === 'delete' && data?.passkeys.length === 1 && <div className="auth-message warning">This is your last passkey. You’ll still be able to sign in with your username and password.</div>}
++        {dialogError && <div className="auth-message error" role="alert">{dialogError}</div>}
++        <fieldset disabled={busy} className="auth-fieldset">
++          {change.kind !== 'delete' && <><label className="auth-label" htmlFor="change-name">{change.kind === 'profile' ? 'Display name' : 'Passkey name'}</label><input id="change-name" className="auth-input" value={name} onChange={e => setName(e.target.value)} maxLength={64} required autoFocus /></>}
++          <div className="auth-verify-heading"><AuthIcon name="lock" size={15} /><h3>First, verify it’s you</h3></div>
++          <p className="auth-small">Confirm your identity to keep your account safe.</p>
++          {supported && !!data?.passkeys.length && <div className="auth-verify-options"><button type="button" aria-pressed={method === 'passkey'} onClick={() => setMethod('passkey')}><AuthIcon name="key" size={17} />Use a passkey</button><button type="button" aria-pressed={method === 'password'} onClick={() => setMethod('password')}>Use password</button></div>}
++          {method === 'password' && <><label className="auth-label" htmlFor="verify-password">Current password</label><input id="verify-password" className="auth-input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></>}
++          <button className={`auth-button ${change.kind === 'delete' ? 'destructive' : 'primary'}`} disabled={busy || (change.kind !== 'delete' && !name.trim())}>{busy ? 'Verifying and saving…' : change.kind === 'delete' ? 'Verify & remove passkey' : change.kind === 'add' ? 'Verify & create passkey' : 'Verify & save changes'}<AuthIcon name="arrow" size={18} /></button>
++        </fieldset>
++        <button type="button" className="auth-skip" onClick={close}>Cancel</button>
++      </form>}
++    </dialog>
++  </div>;
++}
+diff --git a/src/components/AuthForm.tsx b/src/components/AuthForm.tsx
+new file mode 100644
+index 0000000..c1cf14c
+--- /dev/null
++++ b/src/components/AuthForm.tsx
+@@ -0,0 +1,122 @@
++import { useEffect, useRef, useState } from 'react';
++import { api, authenticate, authMessage, capabilities, registerPasskey } from '../lib/auth';
++import { AuthIcon } from './AuthIcons';
++import '../styles/auth.css';
++
++export default function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
++  const signup = mode === 'signup';
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
++  const [supported, setSupported] = useState(false);
++  const [canCreate, setCanCreate] = useState(false);
++  const [busy, setBusy] = useState('');
++  const [error, setError] = useState('');
++  const [created, setCreated] = useState(false);
++  const [passkeyName, setPasskeyName] = useState('My passkey');
++  const [autofillRun, setAutofillRun] = useState(0);
++  const controller = useRef<AbortController | null>(null);
++  const base = import.meta.env.BASE_URL;
++  const done = () => window.location.assign(`${base}account/settings`);
++
++  useEffect(() => {
++    const abort = new AbortController();
++    controller.current = abort;
++    let active = true;
++    void (async () => {
++      try {
++        const caps = await capabilities();
++        if (!active) return;
++        setSupported(!!caps);
++        setCanCreate(!!(caps?.passkeyPlatformAuthenticator ?? caps?.userVerifyingPlatformAuthenticator) && !!caps?.conditionalGet);
++        if (!signup && caps?.conditionalGet) {
++          await authenticate('authenticate', abort.signal, true);
++          if (active) done();
++        }
++      } catch (err) {
++        // Conditional autofill is an enhancement; explicit sign-in remains available.
++      }
++    })();
++    return () => { active = false; abort.abort(); };
++  }, [signup, autofillRun]);
++
++  function start(label: string) {
++    controller.current?.abort();
++    controller.current = new AbortController();
++    setBusy(label); setError('');
++    return controller.current.signal;
++  }
++  async function passwordSubmit(e: React.FormEvent) {
++    e.preventDefault();
++    const signal = start('password');
++    try {
++      await api(`password/${signup ? 'register' : 'login'}`, { username, password }, signal);
++      setPassword('');
++      if (signup) setCreated(true); else done();
++    } catch (err) { setError(authMessage(err)); }
++    finally { setBusy(''); if (!signup) setAutofillRun(n => n + 1); }
++  }
++  async function passkeySubmit() {
++    const signal = start('passkey');
++    try { await authenticate('authenticate', signal); done(); }
++    catch (err) { setError(authMessage(err)); }
++    finally { setBusy(''); setAutofillRun(n => n + 1); }
++  }
++  async function create() {
++    const signal = start('create');
++    try { await registerPasskey(passkeyName, signal, true); done(); }
++    catch (err) { setError(authMessage(err)); }
++    finally { setBusy(''); }
++  }
++
++  return <div className="auth-page">
++    <a href={base} className="auth-back">← Back to the news</a>
++    <div className="auth-layout">
++      <section className="auth-form-panel" aria-labelledby="auth-title">
++        <div className="auth-eyebrow"><span className="auth-eyebrow-line" /> YOUR TIMES ACCOUNT</div>
++        <h1 id="auth-title">{created ? 'You’re in good company.' : signup ? 'Stay curious.\nJoin The Times.' : 'Welcome back.'}</h1>
++        <p className="auth-intro">{created ? 'Your account is ready. Add a passkey for a simpler, more secure way to sign in next time.' : signup ? 'Independent perspectives. Stories that matter.\nMake room for a little more discovery.' : 'The world keeps moving. Pick up where you left off.'}</p>
++        {error && <div className="auth-message error" role="alert">{error}</div>}
++        {created ? <>
++          <div className="auth-success"><AuthIcon name="check" size={18} /> Account created successfully</div>
++          <div className="auth-setup-icon"><AuthIcon name="fingerprint" size={38} /></div>
++          <h2 className="auth-setup-heading">A better way to sign in</h2>
++          <p className="auth-small">Use your fingerprint, face, or device PIN. Your biometric information stays on your device.</p>
++          {canCreate ? <><label className="auth-label" htmlFor="passkey-name">Passkey name</label><input id="passkey-name" className="auth-input" value={passkeyName} onChange={e => setPasskeyName(e.target.value)} maxLength={64} disabled={!!busy} /><button className="auth-button primary" disabled={!!busy || !passkeyName.trim()} onClick={create}><AuthIcon name="key" size={19} />{busy ? 'Creating your passkey…' : 'Create a passkey'}</button></> : <p className="auth-small">You can add a passkey later in account settings on a compatible device.</p>}
++          <a className="auth-skip" href={`${base}account/settings`}>I’ll do this later <span>→</span></a>
++        </> : <>
++          {!signup && <>
++            <button className="auth-button primary passkey-button" onClick={passkeySubmit} disabled={!supported || !!busy}><AuthIcon name="key" size={20} />{busy === 'passkey' ? 'Waiting for your passkey…' : 'Sign in with a passkey'}<AuthIcon name="arrow" size={18} /></button>
++            <p className="auth-button-caption">{supported ? 'Your face, fingerprint, or device PIN. That’s it.' : 'Passkeys are available on compatible browsers over HTTPS.'}</p>
++            <div className="auth-divider"><span>or continue with your password</span></div>
++          </>}
++          <form onSubmit={passwordSubmit}>
++            <fieldset disabled={!!busy} className="auth-fieldset">
++              <label className="auth-label" htmlFor="username">Username</label>
++              <input id="username" name="username" className="auth-input" placeholder="Enter your username" autoComplete={signup ? 'username' : 'username webauthn'} autoCapitalize="none" spellCheck={false} value={username} onChange={e => setUsername(e.target.value)} required maxLength={64} />
++              <label className="auth-label" htmlFor="password">Password</label>
++              <div className="auth-password"><input id="password" name="password" className="auth-input" placeholder={signup ? 'Create a password' : 'Enter your password'} type={showPassword ? 'text' : 'password'} autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={signup ? 8 : undefined} pattern={signup ? '(?=.*[0-9]).{8,}' : undefined} /><button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button></div>
++              {signup && <p className="auth-field-hint">At least 8 characters, including a number.</p>}
++              <button type="submit" className={`auth-button ${signup ? 'primary' : 'secondary'}`} data-skip-tracking="true">{busy === 'password' ? signup ? 'Creating your account…' : 'Signing in…' : signup ? 'Create your account' : 'Sign in with password'}<AuthIcon name="arrow" size={18} /></button>
++            </fieldset>
++          </form>
++          {signup && <p className="auth-terms">By creating an account, you agree to our <a href={`${base}legal/terms`}>Terms of Service</a> and <a href={`${base}legal/privacy`}>Privacy Policy</a>.</p>}
++          <p className="auth-switch">{signup ? 'Already have an account?' : 'New to The DevTools Times?'} <a href={`${base}${signup ? 'signin' : 'signup'}`}>{signup ? 'Sign in' : 'Create an account'} <span>↗</span></a></p>
++        </>}
++        <div className="auth-secure"><AuthIcon name="lock" size={13} /> Your privacy matters. <a href={`${base}legal/privacy`}>Read our privacy policy.</a></div>
++      </section>
++      <aside className="auth-story-panel">
++        <div className="auth-story-top"><span className="auth-new-label">LESS FRICTION. MORE READING.</span><span className="auth-story-dot" /></div>
++        <div className="auth-fingerprint-art" aria-hidden="true"><div className="auth-orbit orbit-one" /><div className="auth-orbit orbit-two" /><div className="auth-orbit orbit-three" /><div className="auth-fingerprint-tile"><AuthIcon name="fingerprint" size={72} /><span className="auth-verified"><AuthIcon name="check" size={16} /></span></div></div>
++        <div className="auth-story-copy"><span className="auth-eyebrow">MEET PASSKEYS</span><h2>Your next great read.<br />One touch away.</h2><p>A small change to how you sign in.<br />A big step forward for your security.</p></div>
++        <div className="auth-benefits">
++          <div><span className="auth-benefit-icon"><AuthIcon name="fingerprint" size={20} /></span><div><h3>Uniquely yours</h3><p>Sign in with your face, fingerprint, or PIN.</p></div></div>
++          <div><span className="auth-benefit-icon"><AuthIcon name="shield" size={20} /></span><div><h3>Built to keep you safe</h3><p>Resistant to phishing. No password to steal.</p></div></div>
++          <div><span className="auth-benefit-icon"><AuthIcon name="device" size={20} /></span><div><h3>At home on your devices</h3><p>Saved securely in your password manager.</p></div></div>
++        </div>
++        <p className="auth-story-footnote"><AuthIcon name="lock" size={12} /> Your biometrics stay yours. Always.</p>
++      </aside>
++    </div>
++    <p className="auth-bottom-note">Independent journalism. A world of perspective.</p>
++  </div>;
++}
+diff --git a/src/components/AuthIcons.tsx b/src/components/AuthIcons.tsx
+new file mode 100644
+index 0000000..3b3e2c0
+--- /dev/null
++++ b/src/components/AuthIcons.tsx
+@@ -0,0 +1,14 @@
++import type { CSSProperties } from 'react';
++export function AuthIcon({ name = 'key', size = 24, style }: { name?: 'key' | 'shield' | 'fingerprint' | 'arrow' | 'check' | 'device' | 'plus' | 'lock'; size?: number; style?: CSSProperties }) {
++  const paths = {
++    key: <><circle cx="8" cy="9" r="4" /><path d="m11 12 9 9m-4-4 3-3m-6 0 3-3" /></>,
++    shield: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" /><path d="m8 12 3 3 5-6" /></>,
++    fingerprint: <><path d="M5 10a7 7 0 0 1 14 0v3m-11 8c2-3 2-6 2-10a2 2 0 0 1 4 0c0 5-.5 8-2 11m-6-9c0 3-.5 5-2 7m14-5c0 2-.5 4-1.5 6M2 11a10 10 0 0 1 20 0M6 11v-1a6 6 0 0 1 12 0" /></>,
++    arrow: <><path d="M4 12h16m-6-6 6 6-6 6" /></>,
++    check: <path d="m5 12 4 4L19 6" />,
++    device: <><rect x="5" y="2" width="14" height="20" rx="3" /><path d="M10 18h4" /></>,
++    plus: <path d="M12 5v14M5 12h14" />,
++    lock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2" /></>,
++  };
++  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>{paths[name]}</svg>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..7f2552c 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account/settings`} class="text-xs font-semibold text-gray-600 hover:text-gray-900 hover:underline">Account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..c8f8d4a 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignInForm() { return <AuthForm mode="signin" />; }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..99df94e 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignUpForm() { return <AuthForm mode="signup" />; }
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+new file mode 100644
+index 0000000..82bf480
+--- /dev/null
++++ b/src/lib/auth.ts
+@@ -0,0 +1,77 @@
++export interface SavedPasskey { id: string; name: string; aaguid: string; registeredAt: number; lastUsedAt: number | null; backedUp: boolean }
++export interface AccountData { user: { id: string; username: string; displayName: string }; rpId: string; passkeys: SavedPasskey[] }
++export class APIError extends Error {
++  constructor(message: string, public status: number) { super(message); }
++}
++export async function api<T = AccountData>(action: string, body?: unknown, signal?: AbortSignal): Promise<T> {
++  const response = await fetch(`${import.meta.env.BASE_URL}api/auth/${action}`, {
++    method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
++    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body), signal,
++  });
++  const data = await response.json().catch(() => ({}));
++  if (!response.ok) throw new APIError(data.error || 'Something went wrong. Please try again.', response.status);
++  return data as T;
++}
++export async function capabilities() {
++  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return null;
++  await import('webauthn-polyfills');
++  return PublicKeyCredential.getClientCapabilities();
++}
++export function authMessage(error: unknown) {
++  if (error instanceof DOMException) {
++    if (error.name === 'NotAllowedError') return 'The passkey request was canceled or timed out. You can try again or use your password.';
++    if (error.name === 'InvalidStateError') return 'A passkey already exists in this password manager. Try another device or provider.';
++    if (error.name === 'SecurityError') return 'Passkeys require a secure connection and the correct site address. You can still use your password.';
++    if (error.name === 'AbortError') return '';
++  }
++  return error instanceof APIError ? error.message : 'We couldn’t connect. Please try again.';
++}
++async function signalUnknown(rpId: string, credentialId: string) {
++  if (PublicKeyCredential.signalUnknownCredential) {
++    await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId }).catch(() => {});
++  }
++}
++export async function authenticate(purpose: 'authenticate' | 'reauth', signal: AbortSignal, conditional = false) {
++  const { options, requestId } = await api<{ options: PublicKeyCredentialRequestOptionsJSON; requestId: string }>(`${purpose}/options`, {}, signal);
++  const credential = await navigator.credentials.get({
++    publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options), signal,
++    ...(conditional ? { mediation: 'conditional' as const } : {}),
++  }) as PublicKeyCredential | null;
++  if (!credential) throw new DOMException('No credential returned', 'NotAllowedError');
++  try {
++    return await api(`${purpose}/verify`, { credential: credential.toJSON(), requestId }, signal);
++  } catch (error) {
++    if (purpose === 'authenticate' && error instanceof APIError && error.status === 404) {
++      const state = await api<{ user: unknown }>('me').catch(() => null);
++      if (state?.user === null) await signalUnknown(options.rpId!, credential.id);
++    }
++    throw error;
++  }
++}
++export async function registerPasskey(name: string, signal: AbortSignal, promotion = false) {
++  const { options, requestId } = await api<{ options: PublicKeyCredentialCreationOptionsJSON; requestId: string }>('register/options', { promotion }, signal);
++  const credential = await navigator.credentials.create({ publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options), signal }) as PublicKeyCredential | null;
++  if (!credential) throw new DOMException('No credential returned', 'NotAllowedError');
++  try {
++    return await api('register/verify', { credential: credential.toJSON(), requestId, name }, signal);
++  } catch (error) {
++    // A lost verification response can follow a successful write. Check the
++    // authoritative list before telling a password manager to discard anything.
++    const state = await api<AccountData | { user: null }>('me').catch(() => null);
++    if (state?.user && !(state as AccountData).passkeys.some(key => key.id === credential.id)) {
++      await signalUnknown(options.rp.id!, credential.id);
++    }
++    throw error;
++  }
++}
++export async function syncPasskeys(data: AccountData) {
++  if (window.PublicKeyCredential?.signalAllAcceptedCredentials) {
++    await PublicKeyCredential.signalAllAcceptedCredentials({ rpId: data.rpId, userId: data.user.id, allAcceptedCredentialIds: data.passkeys.map(k => k.id) }).catch(() => {});
++  }
++}
++export async function syncProfile(data: AccountData) {
++  if (window.PublicKeyCredential?.signalCurrentUserDetails) {
++    await PublicKeyCredential.signalCurrentUserDetails({ rpId: data.rpId, userId: data.user.id, name: data.user.username, displayName: data.user.displayName }).catch(() => {});
++  }
++}
+diff --git a/src/lib/passkey-providers.json b/src/lib/passkey-providers.json
+new file mode 100644
+index 0000000..3a04f8a
+--- /dev/null
++++ b/src/lib/passkey-providers.json
+@@ -0,0 +1,70 @@
++{
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": {
++    "name": "Windows Hello",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDc4ZDQ7c3Ryb2tlLXdpZHRoOjBweDt9PC9zdHlsZT48L2RlZnM+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIyNC4yNSIgeT0iMjQuMjUiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMTMzLjQiIHk9IjI0LjI1IiB3aWR0aD0iOTguMzUiIGhlaWdodD0iOTguMzUiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjI0LjI1IiB5PSIxMzMuNCIgd2lkdGg9Ijk4LjM1IiBoZWlnaHQ9Ijk4LjM1Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxMzMuNCIgeT0iMTMzLjQiIHdpZHRoPSI5OC4zNSIgaGVpZ2h0PSI5OC4zNSIvPjwvc3ZnPg=="
++  },
++  "531126d6-e717-415c-9320-3d9aa6981239": {
++    "name": "Dashlane",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTcuNDc0IDM1OS4yMDlDMjU3LjQ3NCAzNTYuMTg5IDI1NC40NTQgMzUzLjE2OSAyNTAuMjE1IDM1MS45NTlMMTk5LjQxMSAzMzMuMjMxQzE5MC44OTUgMzI5LjYwMSAxODEuMjY0IDMzMy44MzEgMTgxLjI2NCAzMzkuODlWNDc1Ljc3OUMxODEuMjY0IDQ3OC44MDkgMTg0LjI4MyA0ODIuNDM4IDE4Ny4zMDMgNDgzLjY0OEwyMzkuMzI2IDUwMi4zNzZDMjQ3LjE5NSA1MDUuMzk2IDI1Ny40NzQgNTAxLjE2NiAyNTcuNDc0IDQ5NC41MDhWMzU5LjIwOVoiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTM1Mi43MzYgMzIxLjEwM0MzNTIuNzM2IDMxOC4wODQgMzQ5LjcxNyAzMTUuMDY0IDM0NS40NzcgMzEzLjg1NEwyOTQuNjc0IDI5NS4xMjZDMjg2LjE1NyAyOTEuNDk2IDI3Ni41MjYgMjk1LjcyNiAyNzYuNTI2IDMwMS43ODVWNDM3LjY3NEMyNzYuNTI2IDQ0MC43MDQgMjc5LjU0NiA0NDQuMzMzIDI4Mi41NjYgNDQ1LjU0M0wzMzQuNTg5IDQ2NC4yNzFDMzQyLjQ1OCA0NjcuMjkxIDM1Mi43MzYgNDYzLjA2MSAzNTIuNzM2IDQ1Ni40MDNWMzIxLjEwM1oiIGZpbGw9IiMwOTM2M0YiLz4KPHBhdGggZD0iTTI1Ny40NzQgMzUuMzIxMUMyNTcuNDc0IDMyLjMwMTMgMjU0LjQ1NCAyOS4yODE1IDI1MC4yMTUgMjguMDcxN0wxOTkuNDExIDkuMzQzNDNDMTkwLjg5NSA1LjcxMzk5IDE4MS4yNjQgOS45NDM1OCAxODEuMjY0IDE2LjAwMjJWMTUxLjg5MkMxODEuMjY0IDE1NC45MjEgMTg0LjI4MyAxNTguNTUxIDE4Ny4zMDMgMTU5Ljc2TDIzOS4zMjYgMTc4LjQ4OUMyNDcuMTk1IDE4MS41MDggMjU3LjQ3NCAxNzcuMjc5IDI1Ny40NzQgMTcwLjYyVjM1LjMyMTFaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0zNTIuNzM2IDkyLjQ3NzdDMzUyLjczNiA4OS40NTc5IDM0OS43MTcgODYuNDM4MiAzNDUuNDc3IDg1LjIyODNMMjk0LjY3NCA2Ni41QzI4Ni4xNTcgNjIuODcwNiAyNzYuNTI2IDY3LjEwMDIgMjc2LjUyNiA3My4xNTg4VjIwOS4wNDhDMjc2LjUyNiAyMTIuMDc4IDI3OS41NDYgMjE1LjcwNyAyODIuNTY2IDIxNi45MTdMMzM0LjU4OSAyMzUuNjQ1QzM0Mi40NTggMjM4LjY2NSAzNTIuNzM2IDIzNC40MzYgMzUyLjczNiAyMjcuNzc3VjkyLjQ3NzdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik00NDggMTY4LjY4N0M0NDggMTY1LjY2NyA0NDQuOTggMTYyLjY0NyA0NDAuNzQxIDE2MS40MzdMMzg5LjkzNyAxNDIuNzA5QzM4MS40MjEgMTM5LjA3OSAzNzEuNzkgMTQzLjMwOSAzNzEuNzkgMTQ5LjM2OFYzNjEuNDY2QzM3MS43OSAzNjQuNDk1IDM3NC44MSAzNjguMTI1IDM3Ny44MjkgMzY5LjMzNUw0MjkuODUyIDM4OC4wNjNDNDM3LjcyMSAzOTEuMDgzIDQ0OCAzODYuODUzIDQ0OCAzODAuMTk0VjE2OC42ODdaIiBmaWxsPSIjMDkzNjNGIi8+CjxwYXRoIGQ9Ik0xNjIuMjEgMzUuMzMwNkMxNjIuMjEgMzIuMzEwOCAxNTkuMTkgMjkuMjgxNSAxNTQuOTUxIDI4LjA3MTdMMTA0LjE0OCA5LjM0MzQzQzk1LjY3ODcgNS43MTM5OSA4NiA5Ljk0MzU4IDg2IDE2LjAwMjJWNDc1Ljc4OUM4NiA0NzguODA4IDg5LjAxOTggNDgyLjQzOCA5Mi4wNDkyIDQ4My42NDhMMTQ0LjA2MyA1MDIuMzc2QzE1MS45MzEgNTA1LjM5NiAxNjIuMjEgNTAxLjE2NiAxNjIuMjEgNDk0LjUwN1YzNS4zMzA2WiIgZmlsbD0iIzA5MzYzRiIvPgo8L3N2Zz4K"
++  },
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE5MiAxOTIiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDE5MiAxOTIiIHdpZHRoPSIyNHB4Ij48cmVjdCBmaWxsPSJub25lIiBoZWlnaHQ9IjE5MiIgd2lkdGg9IjE5MiIgeT0iMCIvPjxnPjxwYXRoIGQ9Ik02OS4yOSwxMDZjLTMuNDYsNS45Ny05LjkxLDEwLTE3LjI5LDEwYy0xMS4wMywwLTIwLTguOTctMjAtMjBzOC45Ny0yMCwyMC0yMCBjNy4zOCwwLDEzLjgzLDQuMDMsMTcuMjksMTBoMjUuNTVDOTAuMyw2Ni41NCw3Mi44Miw1Miw1Miw1MkMyNy43NCw1Miw4LDcxLjc0LDgsOTZzMTkuNzQsNDQsNDQsNDRjMjAuODIsMCwzOC4zLTE0LjU0LDQyLjg0LTM0IEg2OS4yOXoiIGZpbGw9IiM0Mjg1RjQiLz48cmVjdCBmaWxsPSIjRkJCQzA0IiBoZWlnaHQ9IjI0IiB3aWR0aD0iNDQiIHg9Ijk0IiB5PSI4NCIvPjxwYXRoIGQ9Ik05NC4zMiw4NEg2OHYwLjA1YzIuNSwzLjM0LDQsNy40Nyw0LDExLjk1cy0xLjUsOC42MS00LDExLjk1VjEwOGgyNi4zMiBjMS4wOC0zLjgyLDEuNjgtNy44NCwxLjY4LTEyUzk1LjQxLDg3LjgyLDk0LjMyLDg0eiIgZmlsbD0iI0VBNDMzNSIvPjxwYXRoIGQ9Ik0xODQsMTA2djI2aC0xNnYtOGMwLTQuNDItMy41OC04LTgtOHMtOCwzLjU4LTgsOHY4aC0xNnYtMjZIMTg0eiIgZmlsbD0iIzM0QTg1MyIvPjxyZWN0IGZpbGw9IiMxODgwMzgiIGhlaWdodD0iMjQiIHdpZHRoPSI0OCIgeD0iMTM2IiB5PSI4NCIvPjwvZz48L3N2Zz4="
++  },
++  "adce0002-35bc-c60a-648b-0b25f1f05503": {
++    "name": "Chrome on Mac",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMy4yMTczIiB5MT0iMTUiIHgyPSI0NC43ODEyIiB5Mj0iMTUiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZDkzMDI1Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2VhNDMzNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjIwLjcyMTkiIHkxPSI0Ny42NzkxIiB4Mj0iNDEuNTAzOSIgeTI9IjExLjY4MzciIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmNjOTM0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZiYmMwNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjI2LjU5ODEiIHkxPSI0Ni41MDE1IiB4Mj0iNS44MTYxIiB5Mj0iMTAuNTA2IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzFlOGUzZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzNGE4NTMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAKICAgIDxwYXRoIGlkPSJwIiBkPSJNMTMuNjA4NiAzMC4wMDMxIDMuMjE4IDEyLjAwNkEyMy45OTQgMjMuOTk0IDAgMCAwIDI0LjAwMjUgNDhsMTAuMzkwNi0xNy45OTcxLS4wMDY3LS4wMDY4YTExLjk4NTIgMTEuOTg1MiAwIDAgMS0yMC43Nzc4LjAwN1oiLz4KICA8L2RlZnM+CiAgCiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNhKSIgdHJhbnNmb3JtPSJyb3RhdGUoMTIwIDI0IDI0KSIvPgogIDx1c2UgeGxpbms6aHJlZj0iI3AiIGZpbGw9InVybCgjYikiIHRyYW5zZm9ybT0icm90YXRlKC0xMjAgMjQgMjQpIi8+CiAgPHVzZSB4bGluazpocmVmPSIjcCIgZmlsbD0idXJsKCNjKSIvPgogIAogIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjEyIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iOS41IiBzdHlsZT0iZmlsbDojMWE3M2U4Ii8+Cjwvc3ZnPg=="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIj48cGF0aCBkPSJtMjE3LjM2LDkwLjY5Yy0xNS41OCw5LjU0LTI1LjE3LDI2LjQxLTI1LjM4LDQ0LjY4LjA2LDIwLjY3LDEyLjQzLDM5LjMyLDMxLjQ2LDQ3LjQxLTMuNjcsMTEuODQtOS4xLDIzLjA2LTE2LjExLDMzLjI4LTEwLjAzLDE0LjQ0LTIwLjUyLDI4Ljg3LTM2LjQ3LDI4Ljg3cy0yMC4wNi05LjI3LTM4LjQ1LTkuMjctMjQuMzIsOS41Ny0zOC45LDkuNTctMjQuNzctMTMuMzctMzYuNDctMjkuNzljLTE1LjQ2LTIyLjk5LTIzLjk1LTQ5Ljk2LTI0LjQ3LTc3LjY2LDAtNDUuNTksMjkuNjMtNjkuNzUsNTguODEtNjkuNzUsMTUuNSwwLDI4LjQyLDEwLjE4LDM4LjE1LDEwLjE4czIzLjcxLTEwLjc5LDQxLjM0LTEwLjc5YzE4LjQxLS40NywzNS44NCw4LjI0LDQ2LjUsMjMuMjVabS01NC44Ni00Mi41NWM3Ljc3LTkuMTQsMTIuMTctMjAuNjcsMTIuNDYtMzIuNjcuMDEtMS41OC0uMTQtMy4xNi0uNDYtNC43MS0xMy4zNSwxLjMtMjUuNjksNy42Ny0zNC41LDE3Ljc4LTcuODUsOC43OC0xMi40MSwyMC0xMi45MiwzMS43NiwwLDEuNDMuMTYsMi44Ni40Niw0LjI2LDEuMDUuMiwyLjEyLjMsMy4xOS4zLDEyLjQzLS45OSwyMy45MS03LjA0LDMxLjc2LTE2LjczWiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDI0MCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjM5LjExNiAxMjAuNDE3QzIzOS4xMTYgNTQuNDE5MyAxODUuNjEzIDAuOTE2NTA0IDExOS42MTYgMC45MTY1MDRDNTMuNjE5IDAuOTE2NTA0IDAuMTE2MjExIDU0LjQxOTMgMC4xMTYyMTEgMTIwLjQxN0MwLjExNjIxMSAxODYuNDE3IDUzLjYxOSAyMzkuOTE3IDExOS42MTYgMjM5LjkxN0MxODUuNjEzIDIzOS45MTcgMjM5LjExNiAxODYuNDE3IDIzOS4xMTYgMTIwLjQxN1pNOTcuODY1OCA1NC4wMjc2Qzk2LjkyNjMgNTUuODcxNCA5Ni45MjYzIDU4LjI4NTEgOTYuOTI2MyA2My4xMTI2VjkwLjQ3MjlDOTYuOTI2MyA5MS42Nzg4IDk2LjkyNjMgOTIuMjgxNyA5Ny4wNzg1IDkyLjgzOTJDOTcuMjEzNCA5My4zMzMxIDk3LjQzNTIgOTMuNzk5IDk3LjczMzUgOTQuMjE1Qzk4LjA3MDIgOTQuNjg0NyA5OC41MzgxIDk1LjA2NDggOTkuNDc0MSA5NS44MjUxTDEwNi4zOTUgMTAxLjQ0N0MxMDcuNTIzIDEwMi4zNjQgMTA4LjA4NyAxMDIuODIyIDEwOC4yOTIgMTAzLjM3NEMxMDguNDcxIDEwMy44NTcgMTA4LjQ3MSAxMDQuMzkgMTA4LjI5MiAxMDQuODczQzEwOC4wODcgMTA1LjQyNSAxMDcuNTIzIDEwNS44ODMgMTA2LjM5NSAxMDYuOEw5OS40NzQxIDExMi40MjJDOTguNTM4MiAxMTMuMTgyIDk4LjA3MDIgMTEzLjU2MiA5Ny43MzM1IDExNC4wMzJDOTcuNDM1MiAxMTQuNDQ4IDk3LjIxMzQgMTE0LjkxNCA5Ny4wNzg1IDExNS40MDhDOTYuOTI2MyAxMTUuOTY1IDk2LjkyNjMgMTE2LjU2OCA5Ni45MjYzIDExNy43NzRWMTc3LjcxOUM5Ni45MjYzIDE4Mi41NDcgOTYuOTI2MyAxODQuOTYxIDk3Ljg2NTggMTg2LjgwNUM5OC42OTIyIDE4OC40MjYgMTAwLjAxMSAxODkuNzQ1IDEwMS42MzMgMTkwLjU3MUMxMDMuNDc3IDE5MS41MTEgMTA1Ljg5IDE5MS41MTEgMTEwLjcxOCAxOTEuNTExSDEyOC41MTVDMTMzLjM0MiAxOTEuNTExIDEzNS43NTYgMTkxLjUxMSAxMzcuNiAxOTAuNTcxQzEzOS4yMjEgMTg5Ljc0NSAxNDAuNTQgMTg4LjQyNiAxNDEuMzY3IDE4Ni44MDVDMTQyLjMwNiAxODQuOTYxIDE0Mi4zMDYgMTgyLjU0NyAxNDIuMzA2IDE3Ny43MTlWMTUwLjM1OUMxNDIuMzA2IDE0OS4xNTMgMTQyLjMwNiAxNDguNTUgMTQyLjE1NCAxNDcuOTkzQzE0Mi4wMTkgMTQ3LjQ5OSAxNDEuNzk3IDE0Ny4wMzMgMTQxLjQ5OSAxNDYuNjE3QzE0MS4xNjIgMTQ2LjE0NyAxNDAuNjk0IDE0NS43NjcgMTM5Ljc1OCAxNDUuMDA3TDEzMi44MzcgMTM5LjM4NUMxMzEuNzA5IDEzOC40NjggMTMxLjE0NSAxMzguMDEgMTMwLjk0IDEzNy40NTlDMTMwLjc2MSAxMzYuOTc1IDEzMC43NjEgMTM2LjQ0MyAxMzAuOTQgMTM1Ljk1OUMxMzEuMTQ1IDEzNS40MDcgMTMxLjcwOSAxMzQuOTQ5IDEzMi44MzcgMTM0LjAzM0wxMzkuNzU4IDEyOC40MUMxNDAuNjk0IDEyNy42NSAxNDEuMTYyIDEyNy4yNyAxNDEuNDk5IDEyNi44QzE0MS43OTcgMTI2LjM4NCAxNDIuMDE5IDEyNS45MTggMTQyLjE1NCAxMjUuNDI0QzE0Mi4zMDYgMTI0Ljg2NyAxNDIuMzA2IDEyNC4yNjQgMTQyLjMwNiAxMjMuMDU4VjYzLjExMjZDMTQyLjMwNiA1OC4yODUxIDE0Mi4zMDYgNTUuODcxNCAxNDEuMzY3IDU0LjAyNzZDMTQwLjU0IDUyLjQwNTcgMTM5LjIyMSA1MS4wODcgMTM3LjYgNTAuMjYwNkMxMzUuNzU2IDQ5LjMyMTEgMTMzLjM0MiA0OS4zMjExIDEyOC41MTUgNDkuMzIxMUgxMTAuNzE4QzEwNS44OSA0OS4zMjExIDEwMy40NzcgNDkuMzIxMSAxMDEuNjMzIDUwLjI2MDZDMTAwLjAxMSA1MS4wODcgOTguNjkyMiA1Mi40MDU3IDk3Ljg2NTggNTQuMDI3NloiIGZpbGw9IiMxQTI4NUYiLz4KPC9zdmc+Cg=="
++  },
++  "b84e4048-15dc-4dd0-8640-f4f60813c8af": {
++    "name": "NordPass",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgODAgODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjYxMzQgNzBDMi44MjQzNSA2My4zNTIgMCA1NS4xNzIyIDAgNDYuMzI3M0MwIDI0LjA1NTIgMTcuOTA4NiA2IDQwIDZDNjIuMDkxNCA2IDgwIDI0LjA1NTIgODAgNDYuMzI3M0M4MCA1NS4xNzIxIDc3LjE3NTcgNjMuMzUxOCA3Mi4zODY3IDY5Ljk5OTlMNTMuMTc0NyAzOC41NDY2TDUxLjMxOTUgNDEuNzA0Nkw1My4yMDE4IDUwLjQ4NzdMNDAgMjcuNzE0N0wzMS44MzM0IDQxLjYxNjFMMzMuNzM0NiA1MC40ODc3TDI2LjgxNDcgMzguNTY0Nkw3LjYxMzQgNzBaIiBmaWxsPSIjMENBQUFCIi8+Cjwvc3ZnPgo="
++  },
++  "0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6": {
++    "name": "Keeper",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzYwMzRfMzM2MjcpIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yMiAxMkMyMiAxNy41MjI4IDE3LjUyMjggMjIgMTIgMjJDNi40NzcxNSAyMiAyIDE3LjUyMjggMiAxMkMyIDYuNDc3MTUgNi40NzcxNSAyIDEyIDJDMTcuNTIyOCAyIDIyIDYuNDc3MTUgMjIgMTJaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMTAuMTIxOCAzLjI3MzI1SDExLjY2NjZWOS41MTUyN0gxNC44NTc1TDE4LjY5NiA2LjQ2MzE3TDE5LjY2MDcgNy42NjgyMUwxNS4zOTg5IDExLjA1NjRIMTAuMTIxOFYzLjI3MzI1WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTMuMTQzOCAzLjQ4MzY2TDE0LjY4ODcgMy44NzY5NFY2LjAzNDkyTDE2LjQxNzMgNC42MTgxMUwxNy43MDA4IDUuNTYwOTdMMTQuNDA3IDguMjYwMTNMMTMuMTQzOCA4LjI1MzQxVjMuNDgzNjZaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik00LjAzODcgMTUuMDg0OUw1LjU4MzU0IDE2LjM5NThWNy44MTQyN0w0LjAzODcgOS4yMjc3MlYxNS4wODQ5WiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNOC42MTI1NyAxOC4yNDExTDcuMDY2MDQgMTkuNTgwNlY0LjQ5NDg1TDguNjEyNTcgNS44MzQzNFYxOC4yNDExWiIgZmlsbD0iI0ZGQzcwMCIvPgo8cGF0aCBkPSJNMTQuNjg4NyAxOC4xMTc0TDE2LjQxNzMgMTkuNTM0MkwxNy43MDA4IDE4LjU4OTdMMTQuNDA3IDE1Ljg5MjJMMTMuMTQzOCAxNS44OTg5VjIwLjY2ODdMMTQuNjg4NyAyMC4yNzU0VjE4LjExNzRaIiBmaWxsPSIjRkZDNzAwIi8+CjxwYXRoIGQ9Ik0xOC42OTYgMTcuNDc4NkwxNC44NTc1IDE0LjQyNDhIMTEuNjY2NlYyMC42NjY4SDEwLjEyMThWMTIuODg1M0gxNS4zOTg5TDE5LjY2MDcgMTYuMjczNUwxOC42OTYgMTcuNDc4NloiIGZpbGw9IiNGRkM3MDAiLz4KPHBhdGggZD0iTTE2LjczNzYgMTEuOTcwNkwxOS44OTgxIDE0LjU3MDZMMjAuODgzIDEzLjM4MjNMMTkuMTY2MSAxMS45NzA2TDIwLjg4MyAxMC41NTg4TDE5Ljg5ODEgOS4zNzA1NkwxNi43Mzc2IDExLjk3MDZaIiBmaWxsPSIjRkZDNzAwIi8+CjwvZz4KPGRlZnM+CjxjbGlwUGF0aCBpZD0iY2xpcDBfNjAzNF8zMzYyNyI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K"
++  },
++  "771b48fd-d3d4-4f74-9232-fc157ab0507a": {
++    "name": "Edge on Mac",
++    "icon": "data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOnVybCgjbGluZWFyLWdyYWRpZW50KTt9LmNscy0ye29wYWNpdHk6MC4zNTtmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50KTt9LmNscy0yLC5jbHMtNHtpc29sYXRpb246aXNvbGF0ZTt9LmNscy0ze2ZpbGw6dXJsKCNsaW5lYXItZ3JhZGllbnQtMik7fS5jbHMtNHtvcGFjaXR5OjAuNDE7ZmlsbDp1cmwoI3JhZGlhbC1ncmFkaWVudC0yKTt9LmNscy01e2ZpbGw6dXJsKCNyYWRpYWwtZ3JhZGllbnQtMyk7fS5jbHMtNntmaWxsOnVybCgjcmFkaWFsLWdyYWRpZW50LTQpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50IiB4MT0iNjMuMzMiIHkxPSI4NC4wMyIgeDI9IjI0MS42NyIgeTI9Ijg0LjAzIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGM1OWE0Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTE0YThiIi8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudCIgY3g9IjE2MS44MyIgY3k9IjY4LjkxIiByPSI5NS4zOCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgxLCAwLCAwLCAtMC45NSwgMCwgMjQ4Ljg0KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMC43MiIgc3RvcC1vcGFjaXR5PSIwIi8+PHN0b3Agb2Zmc2V0PSIwLjk1IiBzdG9wLW9wYWNpdHk9IjAuNTMiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50LTIiIHgxPSIxNTcuMzUiIHkxPSIxNjEuMzkiIHgyPSI0NS45NiIgeTI9IjQwLjA2IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDEsIDAsIDAsIC0xLCAwLCAyNjYpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWI5ZGUyIi8+PHN0b3Agb2Zmc2V0PSIwLjE2IiBzdG9wLWNvbG9yPSIjMTU5NWRmIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMDY4MGQ3Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDA3OGQ0Ii8+PC9saW5lYXJHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC0yIiBjeD0iLTM0MC4yOSIgY3k9IjYyLjk5IiByPSIxNDMuMjQiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMC4xNSwgLTAuOTksIC0wLjgsIC0wLjEyLCAxNzYuNjQsIC0xMjUuNCkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAuNzYiIHN0b3Atb3BhY2l0eT0iMCIvPjxzdG9wIG9mZnNldD0iMC45NSIgc3RvcC1vcGFjaXR5PSIwLjUiLz48c3RvcCBvZmZzZXQ9IjEiLz48L3JhZGlhbEdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0icmFkaWFsLWdyYWRpZW50LTMiIGN4PSIxMTMuMzciIGN5PSI1NzAuMjEiIHI9IjIwMi40MyIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgtMC4wNCwgMSwgMi4xMywgMC4wOCwgLTExNzkuNTQsIC0xMDYuNjkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMzVjMWYxIi8+PHN0b3Agb2Zmc2V0PSIwLjExIiBzdG9wLWNvbG9yPSIjMzRjMWVkIi8+PHN0b3Agb2Zmc2V0PSIwLjIzIiBzdG9wLWNvbG9yPSIjMmZjMmRmIi8+PHN0b3Agb2Zmc2V0PSIwLjMxIiBzdG9wLWNvbG9yPSIjMmJjM2QyIi8+PHN0b3Agb2Zmc2V0PSIwLjY3IiBzdG9wLWNvbG9yPSIjMzZjNzUyIi8+PC9yYWRpYWxHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InJhZGlhbC1ncmFkaWVudC00IiBjeD0iMzc2LjUyIiBjeT0iNTY3Ljk3IiByPSI5Ny4zNCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgwLjI4LCAwLjk2LCAwLjc4LCAtMC4yMywgLTMwMy43NiwgLTE0OC41KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzY2ZWI2ZSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48L2RlZnM+PHRpdGxlPkVkZ2VfTG9nb18yNjV4MjY1PC90aXRsZT48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0yMzUuNjgsMTk1LjQ2YTkzLjczLDkzLjczLDAsMCwxLTEwLjU0LDQuNzEsMTAxLjg3LDEwMS44NywwLDAsMS0zNS45LDYuNDZjLTQ3LjMyLDAtODguNTQtMzIuNTUtODguNTQtNzQuMzJBMzEuNDgsMzEuNDgsMCwwLDEsMTE3LjEzLDEwNWMtNDIuOCwxLjgtNTMuOCw0Ni40LTUzLjgsNzIuNTMsMCw3My44OCw2OC4wOSw4MS4zNyw4Mi43Niw4MS4zNyw3LjkxLDAsMTkuODQtMi4zLDI3LTQuNTZsMS4zMS0uNDRBMTI4LjM0LDEyOC4zNCwwLDAsMCwyNDEsMjAxLjEsNCw0LDAsMCwwLDIzNS42OCwxOTUuNDZaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik0xMTAuMzQsMjQ2LjM0QTc5LjIsNzkuMiwwLDAsMSw4Ny42LDIyNSw4MC43Miw4MC43MiwwLDAsMSwxMTcuMTMsMTA1YzMuMTItMS40Nyw4LjQ1LTQuMTMsMTUuNTQtNGEzMi4zNSwzMi4zNSwwLDAsMSwyNS42OSwxMywzMS44OCwzMS44OCwwLDAsMSw2LjM2LDE4LjY2YzAtLjIxLDI0LjQ2LTc5LjYtODAtNzkuNi00My45LDAtODAsNDEuNjYtODAsNzguMjFhMTMwLjE1LDEzMC4xNSwwLDAsMCwxMi4xMSw1NiwxMjgsMTI4LDAsMCwwLDE1Ni4zOCw2Ny4xMSw3NS41NSw3NS41NSwwLDAsMS02Mi43OC04WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJNMTEwLjM0LDI0Ni4zNEE3OS4yLDc5LjIsMCwwLDEsODcuNiwyMjUsODAuNzIsODAuNzIsMCwwLDEsMTE3LjEzLDEwNWMzLjEyLTEuNDcsOC40NS00LjEzLDE1LjU0LTRhMzIuMzUsMzIuMzUsMCwwLDEsMjUuNjksMTMsMzEuODgsMzEuODgsMCwwLDEsNi4zNiwxOC42NmMwLS4yMSwyNC40Ni03OS42LTgwLTc5LjYtNDMuOSwwLTgwLDQxLjY2LTgwLDc4LjIxYTEzMC4xNSwxMzAuMTUsMCwwLDAsMTIuMTEsNTYsMTI4LDEyOCwwLDAsMCwxNTYuMzgsNjcuMTEsNzUuNTUsNzUuNTUsMCwwLDEtNjIuNzgtOFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC00LjYzIC00LjkyKSIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0iTTE1Ni45NCwxNTMuNzhjLS44MSwxLjA1LTMuMywyLjUtMy4zLDUuNjYsMCwyLjYxLDEuNyw1LjEyLDQuNzIsNy4yMywxNC4zOCwxMCw0MS40OSw4LjY4LDQxLjU2LDguNjhBNTkuNTYsNTkuNTYsMCwwLDAsMjMwLjE5LDE2N2E2MS4zOCw2MS4zOCwwLDAsMCwzMC40My01Mi44OGMuMjYtMjIuNDEtOC0zNy4zMS0xMS4zNC00My45MUMyMjguMDksMjguNzYsMTgyLjM1LDQuOTIsMTMyLjYxLDQuOTJhMTI4LDEyOCwwLDAsMC0xMjgsMTI2LjJjLjQ4LTM2LjU0LDM2LjgtNjYuMDUsODAtNjYuMDUsMy41LDAsMjMuNDYuMzQsNDIsMTAuMDcsMTYuMzQsOC41OCwyNC45LDE4Ljk0LDMwLjg1LDI5LjIxLDYuMTgsMTAuNjcsNy4yOCwyNC4xNSw3LjI4LDI5LjUyUzE2MiwxNDcuMiwxNTYuOTQsMTUzLjc4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQuNjMgLTQuOTIpIi8+PHBhdGggY2xhc3M9ImNscy02IiBkPSJNMTU2Ljk0LDE1My43OGMtLjgxLDEuMDUtMy4zLDIuNS0zLjMsNS42NiwwLDIuNjEsMS43LDUuMTIsNC43Miw3LjIzLDE0LjM4LDEwLDQxLjQ5LDguNjgsNDEuNTYsOC42OEE1OS41Niw1OS41NiwwLDAsMCwyMzAuMTksMTY3YTYxLjM4LDYxLjM4LDAsMCwwLDMwLjQzLTUyLjg4Yy4yNi0yMi40MS04LTM3LjMxLTExLjM0LTQzLjkxQzIyOC4wOSwyOC43NiwxODIuMzUsNC45MiwxMzIuNjEsNC45MmExMjgsMTI4LDAsMCwwLTEyOCwxMjYuMmMuNDgtMzYuNTQsMzYuOC02Ni4wNSw4MC02Ni4wNSwzLjUsMCwyMy40Ni4zNCw0MiwxMC4wNywxNi4zNCw4LjU4LDI0LjksMTguOTQsMzAuODUsMjkuMjEsNi4xOCwxMC42Nyw3LjI4LDI0LjE1LDcuMjgsMjkuNTJTMTYyLDE0Ny4yLDE1Ni45NCwxNTMuNzhaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNC42MyAtNC45MikiLz48L3N2Zz4="
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF82OF82MSkiPgo8cGF0aCBkPSJNMzAwIDI1My4xMjVDMzAwIDI3OS4wMjMgMjc5LjAyMyAzMDAgMjUzLjEyNSAzMDBINDYuODc1QzIwLjk3NjYgMzAwIDAgMjc5LjAyMyAwIDI1My4xMjVWNDYuODc1QzAgMjAuOTc2NiAyMC45NzY2IDAgNDYuODc1IDBIMjUzLjEyNUMyNzkuMDIzIDAgMzAwIDIwLjk3NjYgMzAwIDQ2Ljg3NVYyNTMuMTI1WiIgZmlsbD0iIzE3NUREQyIvPgo8cGF0aCBkPSJNMjQzLjEwNSAzNy42NzU4QzI0MS4yMDEgMzUuNzcxNSAyMzguOTQ1IDM0LjgzNCAyMzYuMzY3IDM0LjgzNEg2My42MzI4QzYxLjAyNTQgMzQuODM0IDU4Ljc5ODggMzUuNzcxNSA1Ni44OTQ1IDM3LjY3NThDNTQuOTkwMiAzOS41ODAxIDU0LjA1MjcgNDEuODM1OSA1NC4wNTI3IDQ0LjQxNDFWMTU5LjU4QzU0LjA1MjcgMTY4LjE2NCA1NS43MjI3IDE3Ni42ODkgNTkuMDYyNSAxODUuMTU2QzYyLjQwMjMgMTkzLjU5NCA2Ni41NjI1IDIwMS4wOTQgNzEuNTEzNyAyMDcuNjU2Qzc2LjQ2NDggMjE0LjE4OSA4Mi4zNTM1IDIyMC41NzYgODkuMjA5IDIyNi43ODdDOTYuMDY0NSAyMzIuOTk4IDEwMi4zOTMgMjM4LjEyNSAxMDguMTY0IDI0Mi4yMjdDMTEzLjk2NSAyNDYuMzI4IDEyMCAyNTAuMTk1IDEyNi4yOTkgMjUzLjg1N0MxMzIuNTk4IDI1Ny41MiAxMzcuMDggMjU5Ljk4IDEzOS43MTcgMjYxLjI3QzE0Mi4zNTQgMjYyLjU1OSAxNDQuNDkyIDI2My41ODQgMTQ2LjA3NCAyNjQuMjU4QzE0Ny4yNzUgMjY0Ljg0NCAxNDguNTY0IDI2NS4xNjYgMTQ5Ljk3MSAyNjUuMTY2QzE1MS4zNzcgMjY1LjE2NiAxNTIuNjY2IDI2NC44NzMgMTUzLjg2NyAyNjQuMjU4QzE1NS40NzkgMjYzLjU1NSAxNTcuNTg4IDI2Mi41NTkgMTYwLjI1NCAyNjEuMjdDMTYyLjg5MSAyNTkuOTggMTY3LjM3MyAyNTcuNDkgMTczLjY3MiAyNTMuODU3QzE3OS45NzEgMjUwLjE5NSAxODYuMDA2IDI0Ni4zMjggMTkxLjgwNyAyNDIuMjI3QzE5Ny42MDcgMjM4LjEyNSAyMDMuOTM2IDIzMi45NjkgMjEwLjc5MSAyMjYuNzg3QzIxNy42NDYgMjIwLjU3NiAyMjMuNTM1IDIxNC4yMTkgMjI4LjQ4NiAyMDcuNjU2QzIzMy40MzggMjAxLjA5NCAyMzcuNTY4IDE5My42MjMgMjQwLjkzOCAxODUuMTU2QzI0NC4yNzcgMTc2LjcxOSAyNDUuOTQ3IDE2OC4xOTMgMjQ1Ljk0NyAxNTkuNThWNDQuNDQzNEMyNDUuOTc3IDQxLjgzNTkgMjQ1LjAxIDM5LjU4MDEgMjQzLjEwNSAzNy42NzU4Wk0yMjAuODQgMTYwLjY2NEMyMjAuODQgMjAyLjM1NCAxNTAgMjM4LjI3MSAxNTAgMjM4LjI3MVY1OS41MDJIMjIwLjg0QzIyMC44NCA1OS41MDIgMjIwLjg0IDExOC45NzUgMjIwLjg0IDE2MC42NjRaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c+CjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzY4XzYxIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="
++  },
++  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": {
++    "name": "Apple Passwords",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIyIDMyMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWw6c3BhY2U9InByZXNlcnZlIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjIiPgogICAgPHBhdGggZD0iTTMyMS4zNDcgNzIuMTA2QzMyMS4zNDcgMzIuMzEgMjg5LjAzNyAwIDI0OS4yNDEgMEg3Mi4xMDZDMzIuMzEgMCAwIDMyLjMxIDAgNzIuMTA2djE3Ny4xMzVjMCAzOS43OTYgMzIuMzEgNzIuMTA2IDcyLjEwNiA3Mi4xMDZoMTc3LjEzNWMzOS43OTYgMCA3Mi4xMDYtMzIuMzEgNzIuMTA2LTcyLjEwNlY3Mi4xMDZaIiBzdHlsZT0iZmlsbDojZmZmIi8+CiAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIgc3R5bGU9ImZpbGw6I2ViZWJlYiIvPgogICAgPGNsaXBQYXRoIGlkPSJhIj4KICAgICAgICA8cGF0aCBkPSJNMTI2LjEwNiAyNjYuNTc0Yy43NzUuOTY1LjMwOSAyLjUxNy4wMTcgMi40M2wtNy43NzMgNy43NDFjLTEuNjg2IDEuMjA2LTMuMzY1IDEuMTMyLTUuMDA5LjEzNWwtMTguNDI0LTE5LjI2OGMtLjQ1Mi0uNjQ5LS43NjItMS4zMjgtLjgzMy0yLjA1OHYtOTQuNzM1Yy0yMi44MjEtOC42Ny0zOS4wNTctMzAuNzU0LTM5LjA1Ny01Ni42IDAtMzMuMDA2IDI2LjQ3OC01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTEgMTMuNTYzLTMwLjYxIDM1LjQ4OC0zMC42MSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA2Yy0uMDA0LjEzNy0uMDA2LjI3NS0uMDA2LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNhKSI+CiAgICAgICAgPHBhdGggZD0iTTEyNi41MzEgMjc3LjU0NVY0My42MDNINTUuMDI3djIzMy45NDJoNzEuNTA0WiIgc3R5bGU9ImZpbGw6dXJsKCNiKSIvPgogICAgPC9nPgogICAgPHBhdGggZD0iTTE2Ny42MTggMjY2LjU3NGMuNzc1Ljk2NS4zMDkgMi41MTcuMDE3IDIuNDNsLTcuNzczIDcuNzQxYy0xLjY4NiAxLjIwNi0zLjM2NSAxLjEzMi01LjAwOS4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTItLjY0OS0uNzYyLTEuMzI4LS44MzMtMi4wNTh2LTk0LjczNWMtMjIuODItOC42Ny0zOS4wNTYtMzAuNzU0LTM5LjA1Ni01Ni42IDAtMzMuMDA2IDI2LjQ3Ny01OS44NzYgNTkuMzMzLTYwLjUxMS0xOC41NTIgMTMuNTYzLTMwLjYxMSAzNS40ODgtMzAuNjExIDYwLjIwOCAwIDI4LjEwOSAxNS41OTMgNTIuNjA0IDM4LjU5MyA2NS4zMDF2ODcuODQxaC4wMDdjLS4wMDUuMTM3LS4wMDcuMjc1LS4wMDcuNDEzIDAgMy41NTEgMS42OTkgNi41MzUgMy43NjMgOS4xMDNaIiBzdHlsZT0iZmlsbDojZWJlYmViIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImMiPgogICAgICAgIDxwYXRoIGQ9Ik0xNjcuNjE4IDI2Ni41NzRjLjc3NS45NjUuMzA5IDIuNTE3LjAxNyAyLjQzbC03Ljc3MyA3Ljc0MWMtMS42ODYgMS4yMDYtMy4zNjUgMS4xMzItNS4wMDkuMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUyLS42NDktLjc2Mi0xLjMyOC0uODMzLTIuMDU4di05NC43MzVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1NC0zOS4wNTYtNTYuNiAwLTMzLjAwNiAyNi40NzctNTkuODc2IDU5LjMzMy02MC41MTEtMTguNTUyIDEzLjU2My0zMC42MTEgMzUuNDg4LTMwLjYxMSA2MC4yMDggMCAyOC4xMDkgMTUuNTkzIDUyLjYwNCAzOC41OTMgNjUuMzAxdjg3Ljg0MWguMDA3Yy0uMDA1LjEzNy0uMDA3LjI3NS0uMDA3LjQxMyAwIDMuNTUxIDEuNjk5IDYuNTM1IDMuNzYzIDkuMTAzWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICAgICAgPHBhdGggZD0iTTE2OC4wNDMgMjc3LjU0NVY0My42MDNIOTYuNTR2MjMzLjk0Mmg3MS41MDNaIiBzdHlsZT0iZmlsbDp1cmwoI2QpIi8+CiAgICA8L2c+CiAgICA8cGF0aCBkPSJNMTc3LjAxNCAxNjAuNzI1Yy0yMi44Mi04LjY3LTM5LjA1Ni0zMC43NTMtMzkuMDU2LTU2LjU5OSAwLTMzLjQwNCAyNy4xMTktNjAuNTIzIDYwLjUyMy02MC41MjMgMzMuNDAzIDAgNjAuNTIzIDI3LjExOSA2MC41MjMgNjAuNTIzIDAgMjguMjItMTkuMzU3IDUxLjk1Ni00NS41MDYgNTguNjQybDI2LjM1OCAyNi44NjJjLjk5NCAxLjU4MS45NDMgMy4wMzctLjA1OSA0LjM3N2wtMjUuODgxIDI2LjQ2NCAxOC43NzcgMTguOTc5YzEuNTcxIDIuMTMyIDEuMzIzIDQuMTgyLS4yNTYgNi4xNzFsLTMxLjE1NyAzMS4wM2MtMS42ODYgMS4yMDctMy4zNjQgMS4xMzMtNS4wMDguMTM1bC0xOC40MjQtMTkuMjY4Yy0uNDUzLS42NDgtLjc2My0xLjMyNy0uODM0LTIuMDU3di05NC43MzZabTIxLjY2Mi05My40ODFjOC45MjQgMCAxNi4xNjkgNy4yNDUgMTYuMTY5IDE2LjE2OXMtNy4yNDUgMTYuMTY5LTE2LjE2OSAxNi4xNjktMTYuMTY5LTcuMjQ1LTE2LjE2OS0xNi4xNjkgNy4yNDUtMTYuMTY5IDE2LjE2OS0xNi4xNjlaIiBzdHlsZT0iZmlsbDpub25lIi8+CiAgICA8Y2xpcFBhdGggaWQ9ImUiPgogICAgICAgIDxwYXRoIGQ9Ik0xNzcuMDE0IDE2MC43MjVjLTIyLjgyLTguNjctMzkuMDU2LTMwLjc1My0zOS4wNTYtNTYuNTk5IDAtMzMuNDA0IDI3LjExOS02MC41MjMgNjAuNTIzLTYwLjUyMyAzMy40MDMgMCA2MC41MjMgMjcuMTE5IDYwLjUyMyA2MC41MjMgMCAyOC4yMi0xOS4zNTcgNTEuOTU2LTQ1LjUwNiA1OC42NDJsMjYuMzU4IDI2Ljg2MmMuOTk0IDEuNTgxLjk0MyAzLjAzNy0uMDU5IDQuMzc3bC0yNS44ODEgMjYuNDY0IDE4Ljc3NyAxOC45NzljMS41NzEgMi4xMzIgMS4zMjMgNC4xODItLjI1NiA2LjE3MWwtMzEuMTU3IDMxLjAzYy0xLjY4NiAxLjIwNy0zLjM2NCAxLjEzMy01LjAwOC4xMzVsLTE4LjQyNC0xOS4yNjhjLS40NTMtLjY0OC0uNzYzLTEuMzI3LS44MzQtMi4wNTd2LTk0LjczNlptMjEuNjYyLTkzLjQ4MWM4LjkyNCAwIDE2LjE2OSA3LjI0NSAxNi4xNjkgMTYuMTY5cy03LjI0NSAxNi4xNjktMTYuMTY5IDE2LjE2OS0xNi4xNjktNy4yNDUtMTYuMTY5LTE2LjE2OSA3LjI0NS0xNi4xNjkgMTYuMTY5LTE2LjE2OVoiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8ZyBjbGlwLXBhdGg9InVybCgjZSkiPgogICAgICAgIDxwYXRoIGQ9Ik0yNTkuMDA0IDI3Ny41NDVWNDMuNjAzSDEzNy45NTh2MjMzLjk0MmgxMjEuMDQ2WiIgc3R5bGU9ImZpbGw6dXJsKCNmKSIvPgogICAgPC9nPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMCAyMzMuOTQzIC03MS41MDMzIDAgOTAuNzggNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6I2ZmZGQ1MztzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZmJmMDE7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtNzEuNTAzMyAwIDEzMi4yOTEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzUxZTM3NjtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMzNGM3NTk7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZiIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDAgMjMzLjk0MyAtMTIxLjA0NiAwIDE5OC40ODEgNDMuNjAzKSI+CiAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6IzYyY2NmODtzdG9wLW9wYWNpdHk6MSIvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMDc5ZmY7c3RvcC1vcGFjaXR5OjEiLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgo8L3N2Zz4K"
++  },
++  "50726f74-6f6e-5061-7373-50726f746f6e": {
++    "name": "Proton Pass",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAyNCIgaGVpZ2h0PSIxMDI0IiB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMzUzLjI3NCAyMTQuMzkxQzQwOC44MzUgMTU4LjgzMiA0MzYuNjE0IDEzMS4wNTIgNDY4LjY0OCAxMjAuNjQ0QzQ5Ni44MjUgMTExLjQ4OSA1MjcuMTc1IDExMS40ODkgNTU1LjM1MiAxMjAuNjQ0QzU4Ny4zODYgMTMxLjA1MiA2MTUuMTY1IDE1OC44MzIgNjcwLjcyNiAyMTQuMzkxTDgwOS42MDggMzUzLjI3NEM4NjUuMTY5IDQwOC44MzUgODkyLjk0OCA0MzYuNjE0IDkwMy4zNTYgNDY4LjY0OEM5MTIuNTEyIDQ5Ni44MjUgOTEyLjUxMiA1MjcuMTc1IDkwMy4zNTYgNTU1LjM1MkM4OTIuOTQ4IDU4Ny4zODYgODY1LjE2OSA2MTUuMTY1IDgwOS42MDggNjcwLjcyNkw2NzAuNzI2IDgwOS42MDhDNjE1LjE2NSA4NjUuMTY5IDU4Ny4zODYgODkyLjk0OCA1NTUuMzUyIDkwMy4zNTZDNTI3LjE3NSA5MTIuNTEyIDQ5Ni44MjUgOTEyLjUxMiA0NjguNjQ4IDkwMy4zNTZDNDM2LjYxNCA4OTIuOTQ4IDQwOC44MzUgODY1LjE2OSAzNTMuMjc0IDgwOS42MDhMMzI3LjE2MiA3ODAuMzM2QzMxMS4zNjEgNzYyLjYyMSAzMDMuNDYyIDc1My43NjMgMjk3LjgyNyA3NDMuNjg4QzI5Mi44MzMgNzM0Ljc1NCAyODkuMTY2IDcyNS4xMzcgMjg2Ljk0NyA3MTUuMTQ0QzI4NC40NDQgNzAzLjg3OCAyODQuNDQ0IDY5Mi4wMDggMjg0LjQ0NCA2NjguMjcxVjM1NS43MjlDMjg0LjQ0NCAzMzEuOTkyIDI4NC40NDQgMzIwLjEyMiAyODYuOTQ3IDMwOC44NTVDMjg5LjE2NiAyOTguODYzIDI5Mi44MzMgMjg5LjI0NiAyOTcuODI3IDI4MC4zMTFDMzAzLjQ2MiAyNzAuMjM3IDMxMS4zNjEgMjYxLjM4IDMyNy4xNjIgMjQzLjY2NUwzNTMuMjc0IDIxNC4zOTFaIiBmaWxsPSJ1cmwoI3BhaW50MF9yYWRpYWxfMTIxNTVfNDE4NzMpIi8+CjxwYXRoIGQ9Ik0zNTMuMjc0IDIxNC4zOTFDNDA4LjgzNSAxNTguODMyIDQzNi42MTQgMTMxLjA1MiA0NjguNjQ4IDEyMC42NDRDNDk2LjgyNSAxMTEuNDg5IDUyNy4xNzUgMTExLjQ4OSA1NTUuMzUyIDEyMC42NDRDNTg3LjM4NiAxMzEuMDUyIDYxNS4xNjUgMTU4LjgzMiA2NzAuNzI2IDIxNC4zOTFMODA5LjYwOCAzNTMuMjc0Qzg2NS4xNjkgNDA4LjgzNSA4OTIuOTQ4IDQzNi42MTQgOTAzLjM1NiA0NjguNjQ4QzkxMi41MTIgNDk2LjgyNSA5MTIuNTEyIDUyNy4xNzUgOTAzLjM1NiA1NTUuMzUyQzg5Mi45NDggNTg3LjM4NiA4NjUuMTY5IDYxNS4xNjUgODA5LjYwOCA2NzAuNzI2TDY3MC43MjYgODA5LjYwOEM2MTUuMTY1IDg2NS4xNjkgNTg3LjM4NiA4OTIuOTQ4IDU1NS4zNTIgOTAzLjM1NkM1MjcuMTc1IDkxMi41MTIgNDk2LjgyNSA5MTIuNTEyIDQ2OC42NDggOTAzLjM1NkM0MzYuNjE0IDg5Mi45NDggNDA4LjgzNSA4NjUuMTY5IDM1My4yNzQgODA5LjYwOEwzMjcuMTYyIDc4MC4zMzZDMzExLjM2MSA3NjIuNjIxIDMwMy40NjIgNzUzLjc2MyAyOTcuODI3IDc0My42ODhDMjkyLjgzMyA3MzQuNzU0IDI4OS4xNjYgNzI1LjEzNyAyODYuOTQ3IDcxNS4xNDRDMjg0LjQ0NCA3MDMuODc4IDI4NC40NDQgNjkyLjAwOCAyODQuNDQ0IDY2OC4yNzFWMzU1LjcyOUMyODQuNDQ0IDMzMS45OTIgMjg0LjQ0NCAzMjAuMTIyIDI4Ni45NDcgMzA4Ljg1NUMyODkuMTY2IDI5OC44NjMgMjkyLjgzMyAyODkuMjQ2IDI5Ny44MjcgMjgwLjMxMUMzMDMuNDYyIDI3MC4yMzcgMzExLjM2MSAyNjEuMzggMzI3LjE2MiAyNDMuNjY1TDM1My4yNzQgMjE0LjM5MVoiIGZpbGw9InVybCgjcGFpbnQxX2xpbmVhcl8xMjE1NV80MTg3MykiLz4KPHBhdGggZD0iTTM0My4zNTYgMjI0LjMwM0MzNzEuMTM1IDE5Ni41MjQgMzg1LjAyNCAxODIuNjM0IDQwMS4wNDEgMTc3LjQzQzQxNS4xMyAxNzIuODUyIDQzMC4zMDUgMTcyLjg1MiA0NDQuMzkzIDE3Ny40M0M0NjAuNDEgMTgyLjYzNCA0NzQuMyAxOTYuNTI0IDUwMi4wNzkgMjI0LjMwM0w3MTAuNDA2IDQzMi42MjlDNzM4LjE4NSA0NjAuNDA4IDc1Mi4wNzQgNDc0LjMgNzU3LjI3OSA0OTAuMzE0Qzc2MS44NTYgNTA0LjQwMyA3NjEuODU2IDUxOS41ODEgNzU3LjI3OSA1MzMuNjY5Qzc1Mi4wNzQgNTQ5LjY4NiA3MzguMTg1IDU2My41NzYgNzEwLjQwNiA1OTEuMzU0TDUwMi4wNzkgNzk5LjY4MUM0NzQuMyA4MjcuNDYgNDYwLjQxIDg0MS4zNSA0NDQuMzkzIDg0Ni41NTVDNDMwLjMwNSA4NTEuMTMyIDQxNS4xMyA4NTEuMTMyIDQwMS4wNDEgODQ2LjU1NUMzODUuMDI0IDg0MS4zNSAzNzEuMTM1IDgyNy40NiAzNDMuMzU2IDc5OS42ODFMMjE0LjM5MSA2NzAuNzE3QzE1OC44MzIgNjE1LjE1NyAxMzEuMDUyIDU4Ny4zNzggMTIwLjY0NCA1NTUuMzQ2QzExMS40ODkgNTI3LjE2NyAxMTEuNDg5IDQ5Ni44MTYgMTIwLjY0NCA0NjguNjM5QzEzMS4wNTIgNDM2LjYwNSAxNTguODMyIDQwOC44MjYgMjE0LjM5MSAzNTMuMjY2TDM0My4zNTYgMjI0LjMwM1oiIGZpbGw9InVybCgjcGFpbnQyX3JhZGlhbF8xMjE1NV80MTg3MykiLz4KPGRlZnM+CjxyYWRpYWxHcmFkaWVudCBpZD0icGFpbnQwX3JhZGlhbF8xMjE1NV80MTg3MyIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgzNTQuMTQ1IDkyNS43NDQpIHJvdGF0ZSgtNTguMTQyKSBzY2FsZSg2NjQuODM1IDEwMzkuNjcpIj4KPHN0b3Agc3RvcC1jb2xvcj0iI0ZGRDU4MCIvPgo8c3RvcCBvZmZzZXQ9IjAuMDkzNzUiIHN0b3AtY29sb3I9IiNGNkM1OTIiLz4KPHN0b3Agb2Zmc2V0PSIwLjIwNSIgc3RvcC1jb2xvcj0iI0VCQjZBMiIvPgo8c3RvcCBvZmZzZXQ9IjAuMzI0NDY2IiBzdG9wLWNvbG9yPSIjREZBNUFGIi8+CjxzdG9wIG9mZnNldD0iMC40Mjg3NSIgc3RvcC1jb2xvcj0iI0QzOTdCRSIvPgo8c3RvcCBvZmZzZXQ9IjAuNTMzNzUiIHN0b3AtY29sb3I9IiNDNDg2Q0IiLz4KPHN0b3Agb2Zmc2V0PSIwLjY0ODc1IiBzdG9wLWNvbG9yPSIjQjU3OEQ5Ii8+CjxzdG9wIG9mZnNldD0iMC43NzEyNSIgc3RvcC1jb2xvcj0iI0ExNjZFNSIvPgo8c3RvcCBvZmZzZXQ9IjAuODkxMjUiIHN0b3AtY29sb3I9IiM4QjU3RjIiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNzA0Q0ZGIi8+CjwvcmFkaWFsR3JhZGllbnQ+CjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQxX2xpbmVhcl8xMjE1NV80MTg3MyIgeDE9IjMyNi43MTMiIHkxPSItNDQuMzY0OSIgeDI9IjQ4MS41OTgiIHkyPSI5MDEuMDc3IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiM2RDRBRkYiLz4KPHN0b3Agb2Zmc2V0PSIwLjM5MjAwOSIgc3RvcC1jb2xvcj0iI0IzOUZGQiIgc3RvcC1vcGFjaXR5PSIwLjk3ODAyMiIvPgo8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNGRkU4REIiIHN0b3Atb3BhY2l0eT0iMC44Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjxyYWRpYWxHcmFkaWVudCBpZD0icGFpbnQyX3JhZGlhbF8xMjE1NV80MTg3MyIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgyOTUuNzQ2IDg0NC43ODYpIHJvdGF0ZSgtNTguMTQyKSBzY2FsZSg1MzQuNzU4IDgzNi4yNTUpIj4KPHN0b3Agc3RvcC1jb2xvcj0iI0ZGRDU4MCIvPgo8c3RvcCBvZmZzZXQ9IjAuMDkzNzUiIHN0b3AtY29sb3I9IiNGNkM1OTIiLz4KPHN0b3Agb2Zmc2V0PSIwLjIwNSIgc3RvcC1jb2xvcj0iI0VCQjZBMiIvPgo8c3RvcCBvZmZzZXQ9IjAuMzI0NDY2IiBzdG9wLWNvbG9yPSIjREZBNUFGIi8+CjxzdG9wIG9mZnNldD0iMC40Mjg3NSIgc3RvcC1jb2xvcj0iI0QzOTdCRSIvPgo8c3RvcCBvZmZzZXQ9IjAuNTMzNzUiIHN0b3AtY29sb3I9IiNDNDg2Q0IiLz4KPHN0b3Agb2Zmc2V0PSIwLjY0ODc1IiBzdG9wLWNvbG9yPSIjQjU3OEQ5Ii8+CjxzdG9wIG9mZnNldD0iMC43NzEyNSIgc3RvcC1jb2xvcj0iI0ExNjZFNSIvPgo8c3RvcCBvZmZzZXQ9IjAuODkxMjUiIHN0b3AtY29sb3I9IiM4QjU3RjIiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNzA0Q0ZGIi8+CjwvcmFkaWFsR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+Cg=="
++  },
++  "fdb141b2-5d84-443e-8a35-4698c205a502": {
++    "name": "KeePassXC",
++    "icon": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImUiIHgxPSI2My45OTk4IiB5MT0iLTMuMzE0IiB4Mj0iNjMuOTk5OCIgeTI9IjExOC40ODYiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM0MTQxNDEiLz48c3RvcCBvZmZzZXQ9Ii4xOTYiIHN0b3AtY29sb3I9IiMzZTNlM2UiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzYTNhM2EiLz48L2xpbmVhckdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0iZyIgY3g9IjMwMi44MDE0IiBjeT0iLTM3NS41MzAxIiBmeD0iMzAyLjgwMTQiIGZ5PSItMzc1LjUzMDEiIHI9IjIwNy4yMzM5IiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKC00Ni45OTkgMTg1LjUyNzUpIHNjYWxlKC4zNTM5KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iLjY3MzMiIHN0b3AtY29sb3I9IiNmY2ZjZmMiIHN0b3Atb3BhY2l0eT0iMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZjZmNmYyIvPjwvcmFkaWFsR3JhZGllbnQ+PHJhZGlhbEdyYWRpZW50IGlkPSJpIiBjeD0iMzExLjE0NzIiIGN5PSItMzQ4LjIzMjUiIGZ4PSIzMTEuMTQ3MiIgZnk9Ii0zNDguMjMyNSIgcj0iMTcyLjM4OTMiIGdyYWRpZW50VHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ2Ljk5OSAxODUuNTI3NSkgc2NhbGUoLjM1MzkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIuMTA4OCIgc3RvcC1jb2xvcj0iIzBmMGYwZCIgc3RvcC1vcGFjaXR5PSIwIi8+PHN0b3Agb2Zmc2V0PSIuODg1NiIgc3RvcC1jb2xvcj0iIzQxNDE0MSIgc3RvcC1vcGFjaXR5PSIwIi8+PHN0b3Agb2Zmc2V0PSIuOTMzOSIgc3RvcC1jb2xvcj0iIzFlMWUxZCIgc3RvcC1vcGFjaXR5PSIuNjg0MSIvPjxzdG9wIG9mZnNldD0iLjk4NzQiIHN0b3AtY29sb3I9IiMwZjBmMGQiLz48L3JhZGlhbEdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0ibiIgY3g9IjMxNi44OTI3IiBjeT0iLTQ1MS41OTczIiBmeD0iMzE2Ljg5MjciIGZ5PSItNDUxLjU5NzMiIHI9IjMzNC44MzY0IiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKC00Ni45OTkgMTE3LjkyNTYpIHNjYWxlKC4zNTM5IC4yMDI2KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJlNmIyNiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzZhYjUzNiIvPjwvcmFkaWFsR3JhZGllbnQ+PHJhZGlhbEdyYWRpZW50IGlkPSJwIiBjeD0iMzE0LjM4NzUiIGN5PSItNDUzLjM2MyIgZng9IjMxNC4zODc1IiBmeT0iLTQ1My4zNjMiIHI9IjY1LjM5MjUiIGdyYWRpZW50VHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ2Ljk5OSAxODUuNTI3NSkgc2NhbGUoLjM1MzkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNmFiNTM2Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMmU2YjI2Ii8+PC9yYWRpYWxHcmFkaWVudD48cmFkaWFsR3JhZGllbnQgaWQ9InIiIGN4PSIzMjIuMjEyOCIgY3k9Ii0zOTAuMjU0NyIgZng9IjMyMi4yMTI4IiBmeT0iLTM5MC4yNTQ3IiByPSI5Ni41ODUxIiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKC00NC4yMTk5IDI1Ni41NzUxKSBzY2FsZSguMzM1NiAuNTU3MikiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwMDAiLz48c3RvcCBvZmZzZXQ9Ii43ODQyIiBzdG9wLWNvbG9yPSIjNGY0ZjRmIiBzdG9wLW9wYWNpdHk9IjAiLz48L3JhZGlhbEdyYWRpZW50PjxyYWRpYWxHcmFkaWVudCBpZD0idSIgY3g9IjMxMi45OTQ2IiBjeT0iLTQ3My4wMTc4IiBmeD0iMzEyLjk5NDYiIGZ5PSItNDczLjAxNzgiIHI9IjIyMy41MTAxIiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKC00Ni45OTkgMTg1LjUyNzUpIHNjYWxlKC4zNTM5KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2Y1ZjVmNSIvPjxzdG9wIG9mZnNldD0iLjU0ODEiIHN0b3AtY29sb3I9IiNmMmYyZjIiLz48L3JhZGlhbEdyYWRpZW50PjwvZGVmcz48ZyBzdHlsZT0iaXNvbGF0aW9uOmlzb2xhdGU7Ij48ZyBpZD0iYiI+PGcgaWQ9ImMiPjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBzdHlsZT0iZmlsbDpub25lOyBzdHJva2Utd2lkdGg6MHB4OyIvPjxnIGlkPSJkIj48cGF0aCBpZD0iZiIgZD0ibTYzLjk5OTksMTI0LjljLTMzLjU4MDUsMC02MC45MDAxLTI3LjMxOTgtNjAuOTAwMS02MC45UzMwLjQxOTQsMy4xLDYzLjk5OTksMy4xczYwLjg5OTksMjcuMzE5NSw2MC44OTk5LDYwLjktMjcuMzE5Myw2MC45LTYwLjg5OTksNjAuOVptMC0xMTYuNjc1OWMtMzAuNzQxNSwwLTU1Ljc1MTUsMjUuMDIxLTU1Ljc1MTUsNTUuNzc1OXMyNS4wMSw1NS43NzU5LDU1Ljc1MTUsNTUuNzc1OSw1NS43NTEyLTI1LjAyMTIsNTUuNzUxMi01NS43NzU5Uzk0Ljc0MTQsOC4yMjQxLDYzLjk5OTksOC4yMjQxWiIgc3R5bGU9ImZpbGw6dXJsKCNlKTsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0iaCIgZD0ibTYzLjk5OTksMy4xMjM4QzMwLjQzMjUsMy4xMjM4LDMuMTIzNiwzMC40MzI3LDMuMTIzNiw2NHMyNy4zMDg5LDYwLjg3NjIsNjAuODc2Myw2MC44NzYyLDYwLjg3NjEtMjcuMzA5MSw2MC44NzYxLTYwLjg3NjJTOTcuNTY3NCwzLjEyMzgsNjMuOTk5OSwzLjEyMzhaIiBzdHlsZT0iZmlsbDp1cmwoI2cpOyBtaXgtYmxlbmQtbW9kZTpsaWdodGVuOyBvcGFjaXR5Oi4zMjsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0iaiIgZD0ibTYzLjk5OTksMTI0LjljLTMzLjU4MDUsMC02MC45MDAxLTI3LjMxOTgtNjAuOTAwMS02MC45UzMwLjQxOTQsMy4xLDYzLjk5OTksMy4xczYwLjg5OTksMjcuMzE5NSw2MC44OTk5LDYwLjktMjcuMzE5Myw2MC45LTYwLjg5OTksNjAuOVptMC0xMTYuNjc1OWMtMzAuNzQxNSwwLTU1Ljc1MTUsMjUuMDIxLTU1Ljc1MTUsNTUuNzc1OXMyNS4wMSw1NS43NzU5LDU1Ljc1MTUsNTUuNzc1OSw1NS43NTEyLTI1LjAyMTIsNTUuNzUxMi01NS43NzU5Uzk0Ljc0MTQsOC4yMjQxLDYzLjk5OTksOC4yMjQxWiIgc3R5bGU9ImZpbGw6dXJsKCNpKTsgb3BhY2l0eTouNDQ7IHN0cm9rZS13aWR0aDowcHg7Ii8+PHBhdGggaWQ9ImsiIGQ9Im02My45OTk5LDguNTUwNGMtMzAuOTc4MywwLTU2LjE4MDksMjUuMjAyNS01Ni4xODA5LDU2LjE4MDhzMjUuMjAyNSw1Ni4xODA4LDU2LjE4MDksNTYuMTgwOCw1Ni4xODA3LTI1LjIwMjgsNTYuMTgwNy01Ni4xODA4Uzk0Ljk3ODMsOC41NTA0LDYzLjk5OTksOC41NTA0WiIgc3R5bGU9ImZpbGw6cmdiYSgxNSwxNSwxMywuMzUpOyBzdHJva2Utd2lkdGg6MHB4OyIvPjxwYXRoIGlkPSJsIiBkPSJtNjMuOTk5OSwxMjQuOWMtMzMuNTgwNSwwLTYwLjkwMDEtMjcuMzE5OC02MC45MDAxLTYwLjlTMzAuNDE5NCwzLjEsNjMuOTk5OSwzLjFzNjAuODk5OSwyNy4zMTk1LDYwLjg5OTksNjAuOS0yNy4zMTkzLDYwLjktNjAuODk5OSw2MC45Wm0wLTEyMC40OTY2QzMwLjQxOTUsNC40MDM0LDMuMDk5OCwzMS4zNTk2LDMuMDk5OCw2NC40OTMyczI3LjMxOTcsNjAuMDg5OCw2MC45MDAxLDYwLjA4OTgsNjAuODk5OS0yNi45NTY1LDYwLjg5OTktNjAuMDg5OFM5Ny41ODA0LDQuNDAzNCw2NCw0LjQwMzRaIiBzdHlsZT0iZmlsbDojMGYwZjBkOyBvcGFjaXR5Oi4zNTsgc3Ryb2tlLXdpZHRoOjBweDsiLz48L2c+PGcgaWQ9Im0iPjxwYXRoIGlkPSJvIiBkPSJtNjMuOTk5OSw4LjIyNDFjLTMwLjc1NTEsMC01NS43NzYsMjUuMDIwOS01NS43NzYsNTUuNzc1OXMyNS4wMjA5LDU1Ljc3NTksNTUuNzc2LDU1Ljc3NTksNTUuNzc1OC0yNS4wMjExLDU1Ljc3NTgtNTUuNzc1OVM5NC43NTUsOC4yMjQxLDYzLjk5OTksOC4yMjQxWiIgc3R5bGU9ImZpbGw6dXJsKCNuKTsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0icSIgZD0ibTYzLjk5OTgsMTIuODYxM2MtOS4xNjA4LDAtMTYuNjEzNiw3LjQ1MjgtMTYuNjEzNiwxNi42MTM1czcuNDUyOCwxNi42MTM1LDE2LjYxMzYsMTYuNjEzNSwxNi42MTM1LTcuNDUyOCwxNi42MTM1LTE2LjYxMzUtNy40NTI3LTE2LjYxMzUtMTYuNjEzNS0xNi42MTM1WiIgc3R5bGU9ImZpbGw6dXJsKCNwKTsgbWl4LWJsZW5kLW1vZGU6bGlnaHRlbjsgb3BhY2l0eTouNzsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0icyIgZD0ibTM0LjY4NzEsMTYuMzY0NWMtLjAwMjcuMDE5MS0uMDA1NC4wMzc4LS4wMDgxLjA1NjktLjA3MjUuMDEzNi0uMDczNi0uMDAzNy4wMDgxLS4wNTY5Wm00Mi4xMTc3LDM1LjgwMDFsLS43NzE0LDEzLjc4MjIsOS4xMDIzLDkuOTE2NS05LjEwMjMsOS45MTY1LDYuMDE2OCw2LjU1NDktNi4wMTY4LDYuNTU0OS43NzE0LDEzLjY2OTZoLTI1LjYxdi02MC4zOTQ2Yy0xMC4xODIzLTUuMjEwNC0xNy4xMjQ4LTE2LjQ3MTQtMTcuMTI0OC0yOS40MTMyLDAtMi4xNjU5LjMwMzItNC4xNjcxLjYwOS02LjMzLDEuMTA0Ni0uMjA4MiwxOC45NjczLTcuNjk0NywxOC45NjczLTcuNjk0Ny0uMTQ4My44MDkyLDIwLjg1NTEuODA5MiwyMC43MDY4LDAsMCwwLDE3LjI1NzcsNy40MjU3LDE4Ljk4OTEsNy43ODk5LjQzOCwyLjEyNjQuNTg3Myw0LjEwMS41ODczLDYuMjM0OCwwLDEyLjk0MTgtNy4wOTY4LDI0LjIwMjktMTcuMTI0OCwyOS40MTMzWm0xNi41MDc3LTM1LjgwMDFjLjAxMDguMDUxMS4wMTk0LjEwMTEuMDI5OS4xNTIxLjE4OTYuMDM5OS4xOTYtLjAwMzUtLjAyOTktLjE1MjFaIiBzdHlsZT0iZmlsbDp1cmwoI3IpOyBtaXgtYmxlbmQtbW9kZTptdWx0aXBseTsgb3BhY2l0eTouMzsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0idCIgZD0ibTM0LjExNjEsMTAwLjQzMTljLTkuODk3Ny04LjYwODEtMTYuMTY0LTIxLjI5NjktMTYuMTY0LTM1LjQ5NjgsMC0xNi41MjI3LDguNjQwOS0zMS43NzQ0LDIyLjg3MjgtNDAuMjktLjI1NDEsMS42NTIzLS41MDgzLDMuMTc3NC0uNTA4Myw0LjgyOTcsMCw5Ljc4NjUsNS43MTgyLDE4LjMwMiwxNC4xMDQ5LDIyLjI0MjF2NDQuNjExM2wxMC41NDY5LDEwLjU0OTEsMTAuNTQ2OS0xMC41NDkxLS42MzU0LTkuMjc4MSw0Ljk1NTgtNC45NTY4LTQuOTU1OC00Ljk1NjgsNy40OTcyLTcuNDk4OC03LjQ5NzItNy40OTg4LjYzNTQtMTAuNDIyYzguMjU5Ni0zLjk0LDE0LjEwNDktMTIuNDU1NiwxNC4xMDQ5LTIyLjI0MjEsMC0xLjY1MjMtLjEyNzEtMy4xNzc0LS41MDgzLTQuODI5Nyw1LjE2NDMsMy4xMTc4LDkuNTkyMiw3LjE0MTYsMTMuMTQxOSwxMS43OTcyLTguNTg0MS0xMS43ODg5LTIyLjUyOTMtMTkuNDU4Ny0zOC4yNzY2LTE5LjQ1ODctMjYuMDkxMSwwLTQ3LjI0MjEsMjEuMDUtNDcuMjQyMSw0Ny4wMTY1LDAsMTQuNjkzLDYuNzczNiwyNy44MTAxLDE3LjM4MDksMzYuNDMxOFptMjcuNDIxNC03LjY2MjRoLTMuNTU4di0zNS4yMDYxaDMuNTU4djM1LjIwNjFabS01LjA4MjgtNzMuOTcwOGMyLjc5NTYtLjUwODQsNS43MTgyLS43NjI2LDguNTEzOC0uNzYyNiwyLjkyMjYtLjEyNzEsNS43MTgyLjI1NDIsOC41MTM4Ljc2MjYuMTI3MS42MzU1LjI1NDIsMS4yNzEuMjU0MiwxLjkwNjQsMCw0LjgyOTctMy45MzkyLDguNzY5OC04Ljc2NzksOC43Njk4cy04Ljc2NzktMy45NC04Ljc2NzktOC43Njk4YzAtLjYzNTUuMTI3MS0xLjI3MDkuMjU0Mi0xLjkwNjRaIiBzdHlsZT0iZmlsbDojMGYwZjBkOyBtaXgtYmxlbmQtbW9kZTptdWx0aXBseTsgb3BhY2l0eTouMjsgc3Ryb2tlLXdpZHRoOjBweDsiLz48cGF0aCBpZD0idiIgZD0ibTYzLjk5OTksOC4yMjQxYy0zMC43NDE1LDAtNTUuNzUxNCwyNS4wMjA5LTU1Ljc1MTQsNTUuNzc1OXMyNS4wMSw1NS43NzU5LDU1Ljc1MTQsNTUuNzc1OSw1NS43NTEyLTI1LjAyMTIsNTUuNzUxMi01NS43NzU5Uzk0Ljc0MTQsOC4yMjQxLDYzLjk5OTksOC4yMjQxWm0tOC41MTM4LDkuNTg4MmMyLjc5NTYtLjUwODQsNS43MTgyLS43NjI2LDguNTEzOC0uNzYyNiwyLjkyMjYtLjEyNzEsNS43MTgyLjI1NDIsOC41MTM4Ljc2MjYuMTI3MS42MzU1LjI1NDIsMS4yNzEuMjU0MiwxLjkwNjQsMCw0LjgyOTctMy45MzkyLDguNzY5OC04Ljc2NzksOC43Njk4cy04Ljc2NzktMy45NC04Ljc2NzktOC43Njk4YzAtLjYzNTUuMTI3MS0xLjI3MDkuMjU0Mi0xLjkwNjRabTUuMDgyOCwzOC43NjQ4djM1LjIwNjFoLTMuNTU4di0zNS4yMDYxaDMuNTU4Wm0zLjQzMDksNTQuMzk3OGMtMjUuOTIyNSwwLTQ3LjAxNjMtMjAuOTcxMS00Ny4wMTYzLTQ3LjAyNjEsMC0xNi41MjI3LDguNjQwOS0zMS43NzQ0LDIyLjg3MjgtNDAuMjktLjI1NDEsMS42NTIzLS41MDgzLDMuMTc3NC0uNTA4Myw0LjgyOTcsMCw5Ljc4NjUsNS43MTgyLDE4LjMwMiwxNC4xMDQ5LDIyLjI0MjF2NDQuNjExM2wxMC41NDY5LDEwLjU0OTEsMTAuNTQ2OS0xMC41NDkxLS42MzU0LTkuMjc4MSw0Ljk1NTgtNC45NTY4LTQuOTU1OC00Ljk1NjgsNy40OTcyLTcuNDk4OC03LjQ5NzItNy40OTg4LjYzNTQtMTAuNDIyYzguMjU5Ni0zLjk0LDE0LjEwNDktMTIuNDU1NiwxNC4xMDQ5LTIyLjI0MjEsMC0xLjY1MjMtLjEyNzEtMy4xNzc0LS41MDgzLTQuODI5NywxNC4xMDQ5LDguNTE1NiwyMi43NDU3LDIzLjc2NzMsMjIuODcyOCw0MC4yOSwwLDI1LjkyNzktMjAuOTY2OCw0Ny4wMjYxLTQ3LjAxNjMsNDcuMDI2MVoiIHN0eWxlPSJmaWxsOnVybCgjdSk7IHN0cm9rZS13aWR0aDowcHg7Ii8+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg=="
++  },
++  "b78a0a55-6ef8-d246-a042-ba0f6d55050c": {
++    "name": "LastPass",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiByeD0iNy44NDc4MiIgZmlsbD0idXJsKCNwYWludDBfbGluZWFyXzI4NF81Nzc0KSIvPgo8cGF0aCBkPSJNMzkuMzUxNyAxNy42Mzg0QzM4LjkwNDkgMTcuNjM4NCAzOC41NjY3IDE3Ljk3NDkgMzguNTY2NyAxOC40Mjg5VjMxLjU2MDVDMzguNTY2NyAzMi4wMTA4IDM4LjkwMTMgMzIuMzUwOSAzOS4zNTE3IDMyLjM1MDlDMzkuODAyMSAzMi4zNTA5IDQwLjEzNjcgMzIuMDE0NSA0MC4xMzY3IDMxLjU2MDVWMTguNDI4OUM0MC4xMzY3IDE3Ljk3ODUgMzkuODAyMSAxNy42Mzg0IDM5LjM1MTcgMTcuNjM4NFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yMS44OTE4IDIyLjU0NUMyMC4zODE0IDIyLjU0NSAxOS4wOTU0IDIzLjc4NTkgMTkuMDk1NCAyNS4zMDdDMTkuMDk1NCAyNi44MjgyIDIwLjMyNzIgMjguMTIzMyAyMS44Mzc1IDI4LjEyMzNDMjMuMzQ3OCAyOC4xMjMzIDI0LjYzMzggMjYuODgyNSAyNC42MzM4IDI1LjM2MTNDMjQuNjMzOCAyMy44NDAxIDIzLjQwMjEgMjIuNTQ1IDIxLjg5MTggMjIuNTQ1WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTMxLjA2OTQgMjIuNTQ1QzI5LjU1OTEgMjIuNTQ1IDI4LjI3MyAyMy43ODU5IDI4LjI3MyAyNS4zMDdDMjguMjczIDI2LjgyODIgMjkuNTA0OCAyOC4xMjMzIDMxLjAxNTEgMjguMTIzM0MzMi41MjU0IDI4LjEyMzMgMzMuODExNSAyNi44ODI1IDMzLjgxMTUgMjUuMzYxM0MzMy44NjU3IDIzLjg0MDEgMzIuNjM0IDIyLjU0NSAzMS4wNjk0IDIyLjU0NVoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xMi42NTk3IDIyLjU0NUMxMS4xNDk0IDIyLjU0NSA5Ljg2MzM5IDIzLjc4NTkgOS44NjMzOSAyNS4zMDdDOS44NjMzOSAyNi44MjgyIDExLjA5NTIgMjguMTIzMyAxMi42MDU1IDI4LjEyMzNDMTQuMTE1OCAyOC4xMjMzIDE1LjQwMTggMjYuODgyNSAxNS40MDE4IDI1LjM2MTNDMTUuNDAxOCAyMy44NDAxIDE0LjE3IDIyLjU0NSAxMi42NTk3IDIyLjU0NVoiIGZpbGw9IndoaXRlIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9InBhaW50MF9saW5lYXJfMjg0XzU3NzQiIHgxPSIyNSIgeTE9IjAiIHgyPSIyNSIgeTI9IjUwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiNFRDE5NEEiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjQzMwODMzIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+Cg=="
++  },
++  "d3452668-01fd-4c12-926c-83a4204853aa": {
++    "name": "Microsoft Password Manager",
++    "icon": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE1IDIzVjI0QzE1IDI0LjU1MjMgMTQuNTUyMyAyNSAxNCAyNUgxMlYyNkMxMiAyNy4xMDQ2IDExLjEwNDYgMjggMTAgMjhINkM0Ljg5NTQzIDI4IDQgMjcuMTA0NiA0IDI2VjIzLjQxNDJDNCAyMi44ODM4IDQuMjEwNzEgMjIuMzc1MSA0LjU4NTc5IDIyTDEyLjMyNDQgMTQuMjYxNEMxMi4xMTMxIDEzLjU0MzQgMTIgMTIuNzg0MiAxMiAxMkMxMiA3LjU4MTcyIDE1LjU4MTcgNCAyMCA0QzI0LjQxODMgNCAyOCA3LjU4MTcyIDI4IDEyQzI4IDE2LjQxODMgMjQuNDE4MyAyMCAyMCAyMEgxOFYyMkMxOCAyMi41NTIzIDE3LjU1MjMgMjMgMTcgMjNIMTVaTTIyIDEyQzIzLjEwNDYgMTIgMjQgMTEuMTA0NiAyNCAxMEMyNCA4Ljg5NTQzIDIzLjEwNDYgOCAyMiA4QzIwLjg5NTQgOCAyMCA4Ljg5NTQzIDIwIDEwQzIwIDExLjEwNDYgMjAuODk1NCAxMiAyMiAxMloiIGZpbGw9InVybCgjcGFpbnQwX2xpbmVhcl8zMl8xMzcpIi8+CjxwYXRoIGQ9Ik0yNS40MDA0IDYuMDk4NjNDMjYuOTk3OCA3LjU2MTI2IDI4IDkuNjYzNDEgMjggMTJDMjggMTYuNDE4MyAyNC40MTgzIDIwIDIwIDIwSDE4VjIyQzE4IDIyLjU1MjMgMTcuNTUyMyAyMyAxNyAyM0gxNVYyNEMxNSAyNC41NTIzIDE0LjU1MjMgMjUgMTQgMjVIMTJWMjZDMTIgMjcuMTA0NiAxMS4xMDQ2IDI4IDEwIDI4SDZDNS4zMTk2IDI4IDQuNzIwNjYgMjcuNjU4OCA0LjM1OTM4IDI3LjEzOTZMMjAuMzU4NCAxMS4xMzk2QzIwLjcxOTYgMTEuNjU5IDIxLjMxOTQgMTIgMjIgMTJDMjMuMTA0NiAxMiAyNCAxMS4xMDQ2IDI0IDEwQzI0IDkuMzE5NCAyMy42NTkgOC43MTk2NSAyMy4xMzk2IDguMzU4NEwyNS40MDA0IDYuMDk4NjNaIiBmaWxsPSJ1cmwoI3BhaW50MV9yYWRpYWxfMzJfMTM3KSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJwYWludDBfbGluZWFyXzMyXzEzNyIgeDE9IjkuMzMzMzMiIHkxPSI4IiB4Mj0iMjYuNjY2NyIgeTI9IjI0IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiMyOUMzRkYiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMjA1MkNCIi8+CjwvbGluZWFyR3JhZGllbnQ+CjxyYWRpYWxHcmFkaWVudCBpZD0icGFpbnQxX3JhZGlhbF8zMl8xMzciIGN4PSIwIiBjeT0iMCIgcj0iMSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJ0cmFuc2xhdGUoNC44Njc3OCAyMC44ODI2KSByb3RhdGUoNTEuNzkwMSkgc2NhbGUoMTcuMjE1NyAxOC41MDAxKSI+CjxzdG9wIHN0b3AtY29sb3I9IiMyMzZGRDkiLz4KPHN0b3Agb2Zmc2V0PSIwLjc2Nzc4MiIgc3RvcC1jb2xvcj0iIzIzNkZEOSIgc3RvcC1vcGFjaXR5PSIwIi8+CjwvcmFkaWFsR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+Cg=="
++  }
++}
+\ No newline at end of file
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..2b1ff90
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,3 @@
++---
++return Astro.redirect(`${import.meta.env.BASE_URL}account/settings`);
++---
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..e845143
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,7 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import AccountSettings from '../../components/AccountSettings';
++---
++<Layout title="Account Settings | The DevTools Times">
++  <AccountSettings client:load />
++</Layout>
+diff --git a/src/pages/api/auth/[...action].ts b/src/pages/api/auth/[...action].ts
+new file mode 100644
+index 0000000..b2be676
+--- /dev/null
++++ b/src/pages/api/auth/[...action].ts
+@@ -0,0 +1,184 @@
++import type { APIContext, APIRoute } from 'astro';
++import { createHash, randomBytes } from 'node:crypto';
++import {
++  generateRegistrationOptions, verifyRegistrationResponse,
++  generateAuthenticationOptions, verifyAuthenticationResponse,
++} from '@simplewebauthn/server';
++import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
++import { db, type Account, type AuthSession, type Passkey, type Challenge } from '../../../server/auth-store';
++
++const cookieName = 'times_auth';
++const passwordAPI = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api';
++const opaque = () => randomBytes(32).toString('base64url');
++const hash = (s: string) => createHash('sha256').update(s).digest('hex');
++class AuthError extends Error {
++  constructor(message: string, public status = 400) { super(message); }
++}
++function reply(data: unknown, status = 200) {
++  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
++}
++function getSession(ctx: APIContext): AuthSession | undefined {
++  const token = ctx.cookies.get(cookieName)?.value;
++  if (!token) return;
++  return db().prepare('SELECT * FROM auth_sessions WHERE token = ? AND expires > ?').get(hash(token), Date.now()) as unknown as AuthSession | undefined;
++}
++function newSession(ctx: APIContext, accountId: string | null, verified = false): AuthSession {
++  const token = opaque();
++  const value = { token: hash(token), account_id: accountId, expires: Date.now() + 7 * 86400000, verified_at: verified ? Date.now() : 0 };
++  db().prepare('INSERT INTO auth_sessions (token, account_id, expires, verified_at) VALUES (?, ?, ?, ?)').run(value.token, value.account_id, value.expires, value.verified_at);
++  ctx.cookies.set(cookieName, token, { path: import.meta.env.BASE_URL, httpOnly: true, sameSite: 'lax', secure: ctx.url.protocol === 'https:', maxAge: 7 * 86400 });
++  return value;
++}
++function requireAccount(session?: AuthSession): Account {
++  if (!session?.account_id) throw new AuthError('Please sign in to continue.', 401);
++  const account = db().prepare('SELECT * FROM accounts WHERE id = ?').get(session.account_id) as unknown as Account | undefined;
++  if (!account) throw new AuthError('Please sign in again.', 401);
++  return account;
++}
++function requireRecent(session: AuthSession) {
++  if (Date.now() - session.verified_at > 5 * 60000) throw new AuthError('Please verify your identity to make this change.', 403);
++}
++function keys(accountId: string, rpId: string) {
++  return db().prepare('SELECT * FROM passkeys WHERE account_id = ? AND rp_id = ? ORDER BY registered_at DESC').all(accountId, rpId) as unknown as Passkey[];
++}
++function accountData(account: Account, rpId: string) {
++  return { user: { id: account.id, username: account.username, displayName: account.display_name }, rpId,
++    passkeys: keys(account.id, rpId).map(k => ({ id: k.id, name: k.name, aaguid: k.aaguid, registeredAt: k.registered_at, lastUsedAt: k.last_used_at, backedUp: !!k.backed_up })) };
++}
++function label(value: unknown) {
++  if (typeof value !== 'string' || !value.trim() || value.trim().length > 64) throw new AuthError('Enter a name between 1 and 64 characters.');
++  return value.trim();
++}
++const handler: APIRoute = async ctx => {
++  try {
++    const origin = process.env.AUTH_ORIGIN || ctx.url.origin;
++    const rpId = new URL(origin).hostname;
++    const action = ctx.params.action || '';
++    const method = ctx.request.method;
++    // Other application APIs intentionally allow cross-origin traffic; authentication does not.
++    if (method !== 'GET' && ctx.request.headers.get('origin') !== origin) throw new AuthError('This request must come from this site.', 403);
++    if (ctx.url.origin !== origin) throw new AuthError('Authentication is not configured for this address.', 403);
++    let session = getSession(ctx);
++    if (method === 'GET' && action === 'me') {
++      return reply(session?.account_id ? accountData(requireAccount(session), rpId) : { user: null });
++    }
++    if (method !== 'POST') return reply({ error: 'Not found.' }, 404);
++    if (!ctx.request.headers.get('content-type')?.includes('application/json')) throw new AuthError('Expected JSON.', 415);
++    const raw = await ctx.request.text();
++    if (raw.length > 65536) throw new AuthError('Request too large.', 413);
++    const body = JSON.parse(raw);
++    if (!body || typeof body !== 'object') throw new AuthError('Invalid request.');
++
++    if (action === 'password/login' || action === 'password/register' || action === 'password/reauth') {
++      const reauth = action === 'password/reauth';
++      const current = reauth ? requireAccount(session) : undefined;
++      const username = current?.username || label(body.username);
++      if (typeof body.password !== 'string' || !body.password || body.password.length > 1024) throw new AuthError('Enter your password.');
++      const register = action === 'password/register';
++      if (register && (body.password.length < 8 || !/\d/.test(body.password))) throw new AuthError('Use at least 8 characters, including a number.');
++      const upstream = await fetch(`${passwordAPI}/${register ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: body.password }), signal: AbortSignal.timeout(15000) });
++      if (!upstream.ok) throw new AuthError(register ? 'We couldn’t create your account. Try another username.' : 'The username or password is incorrect.', upstream.status >= 500 ? 502 : 400);
++      // A successful registration must also pass the upstream login before granting a session.
++      if (register) {
++        const login = await fetch(`${passwordAPI}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: body.password }), signal: AbortSignal.timeout(15000) });
++        if (!login.ok) throw new AuthError('Your account was created. Please sign in to finish setting it up.');
++      }
++      if (reauth) {
++        db().prepare('UPDATE auth_sessions SET verified_at = ? WHERE token = ?').run(Date.now(), session!.token);
++        return reply({ verified: true });
++      }
++      let account = db().prepare('SELECT * FROM accounts WHERE username = ?').get(username) as unknown as Account | undefined;
++      if (!account) {
++        account = { id: opaque(), username, display_name: username };
++        db().prepare('INSERT INTO accounts (id, username, display_name) VALUES (?, ?, ?)').run(account.id, username, username);
++      }
++      if (session) db().prepare('DELETE FROM auth_sessions WHERE token = ?').run(session.token);
++      newSession(ctx, account.id, true);
++      return reply(accountData(account, rpId));
++    }
++    if (action === 'logout') {
++      if (session) db().prepare('DELETE FROM auth_sessions WHERE token = ?').run(session.token);
++      ctx.cookies.delete(cookieName, { path: import.meta.env.BASE_URL });
++      return reply({ success: true });
++    }
++    if (action.endsWith('/options')) {
++      const purpose = action.split('/')[0];
++      if (!['register', 'authenticate', 'reauth'].includes(purpose)) throw new AuthError('Not found.', 404);
++      const account = purpose !== 'authenticate' ? requireAccount(session) : undefined;
++      if (purpose === 'register') requireRecent(session!);
++      session ||= newSession(ctx, null);
++      const saved = account ? keys(account.id, rpId) : [];
++      if (purpose === 'reauth' && !saved.length) throw new AuthError('Use your password to verify your identity.');
++      const descriptors = saved.map(k => ({ id: k.id, transports: JSON.parse(k.transports) as AuthenticatorTransportFuture[] }));
++      const requireUV = purpose === 'reauth';
++      const options = purpose === 'register' ? await generateRegistrationOptions({
++        rpName: 'The DevTools Times', rpID: rpId, userID: Buffer.from(account!.id, 'base64url'),
++        userName: account!.username, userDisplayName: account!.display_name, attestationType: 'none',
++        excludeCredentials: descriptors, authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'preferred', ...(body.promotion ? { authenticatorAttachment: 'platform' as const } : {}) },
++      }) : await generateAuthenticationOptions({ rpID: rpId, allowCredentials: purpose === 'reauth' ? descriptors : [], userVerification: requireUV ? 'required' : 'preferred' });
++      const requestId = opaque();
++      db().prepare('DELETE FROM auth_challenges WHERE expires < ?').run(Date.now());
++      db().prepare('DELETE FROM auth_sessions WHERE expires < ?').run(Date.now());
++      db().prepare('INSERT INTO auth_challenges (id, session_token, challenge, purpose, expires, origin, rp_id, account_id, require_uv) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(requestId, session.token, options.challenge, purpose, Date.now() + 5 * 60000, origin, rpId, account?.id || null, Number(requireUV));
++      return reply({ options, requestId });
++    }
++    if (action.endsWith('/verify')) {
++      const purpose = action.split('/')[0];
++      if (!session || typeof body.requestId !== 'string') throw new AuthError('This request expired. Please try again.');
++      // DELETE RETURNING makes challenges single use, including concurrent verification attempts.
++      const challenge = db().prepare('DELETE FROM auth_challenges WHERE id = ? AND session_token = ? RETURNING *').get(body.requestId, session.token) as unknown as Challenge | undefined;
++      if (!challenge || challenge.expires < Date.now() || challenge.purpose !== purpose || challenge.origin !== origin || challenge.rp_id !== rpId) throw new AuthError('This request expired. Please try again.');
++      if (purpose !== 'authenticate' && (!session.account_id || session.account_id !== challenge.account_id)) throw new AuthError('Please sign in again.', 401);
++      if (!body.credential || typeof body.credential.id !== 'string') throw new AuthError('Invalid passkey response.');
++      if (purpose === 'register') {
++        requireRecent(session);
++        const result = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: origin, expectedRPID: rpId, requireUserPresence: true, requireUserVerification: !!challenge.require_uv });
++        if (!result.verified) throw new AuthError('We couldn’t verify this passkey. Please try again.');
++        const info = result.registrationInfo;
++        const key = info.credential;
++        if (db().prepare('SELECT id FROM passkeys WHERE id = ?').get(key.id)) throw new AuthError('This passkey is already registered.');
++        db().prepare('INSERT INTO passkeys (id, account_id, rp_id, public_key, counter, transports, name, aaguid, device_type, backed_up, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(key.id, session.account_id, rpId, Buffer.from(key.publicKey).toString('base64url'), key.counter, JSON.stringify(key.transports || []), label(body.name || 'My passkey'), info.aaguid, info.credentialDeviceType, Number(info.credentialBackedUp), Date.now());
++        return reply(accountData(requireAccount(session), rpId));
++      }
++      if (!['authenticate', 'reauth'].includes(purpose)) throw new AuthError('Not found.', 404);
++      const key = db().prepare('SELECT * FROM passkeys WHERE id = ? AND rp_id = ?').get(body.credential.id, rpId) as unknown as Passkey | undefined;
++      if (!key) throw new AuthError('This passkey is no longer registered. Try another passkey or your password.', 404);
++      if (purpose === 'reauth' && key.account_id !== session.account_id) throw new AuthError('Use a passkey belonging to your signed-in account.', 403);
++      if (body.credential.response?.userHandle && body.credential.response.userHandle !== key.account_id) throw new AuthError('This passkey does not match the account.', 403);
++      const result = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: origin, expectedRPID: rpId, requireUserVerification: !!challenge.require_uv, credential: { id: key.id, publicKey: Buffer.from(key.public_key, 'base64url'), counter: key.counter, transports: JSON.parse(key.transports) } });
++      if (!result.verified) throw new AuthError('We couldn’t verify your passkey. Please try again.');
++      const updated = db().prepare('UPDATE passkeys SET counter = ?, last_used_at = ?, backed_up = ? WHERE id = ? AND counter = ?').run(result.authenticationInfo.newCounter, Date.now(), Number(result.authenticationInfo.credentialBackedUp), key.id, key.counter);
++      if (!updated.changes) throw new AuthError('Your passkey changed. Please try again.');
++      if (purpose === 'reauth') {
++        db().prepare('UPDATE auth_sessions SET verified_at = ? WHERE token = ?').run(Date.now(), session.token);
++        return reply({ verified: true });
++      }
++      db().prepare('DELETE FROM auth_sessions WHERE token = ?').run(session.token);
++      session = newSession(ctx, key.account_id, false);
++      return reply(accountData(requireAccount(session), rpId));
++    }
++    const account = requireAccount(session);
++    requireRecent(session!);
++    if (action === 'passkeys/rename' || action === 'passkeys/delete') {
++      if (typeof body.id !== 'string') throw new AuthError('Choose a passkey.');
++      const key = keys(account.id, rpId).find(k => k.id === body.id);
++      if (!key) throw new AuthError('This passkey could not be found.', 404);
++      if (action === 'passkeys/rename') db().prepare('UPDATE passkeys SET name = ? WHERE id = ?').run(label(body.name), key.id);
++      else db().prepare('DELETE FROM passkeys WHERE id = ?').run(key.id);
++      return reply(accountData(account, rpId));
++    }
++    if (action === 'profile') {
++      account.display_name = label(body.displayName);
++      db().prepare('UPDATE accounts SET display_name = ? WHERE id = ?').run(account.display_name, account.id);
++      return reply(accountData(account, rpId));
++    }
++    return reply({ error: 'Not found.' }, 404);
++  } catch (error) {
++    if (error instanceof AuthError) return reply({ error: error.message }, error.status);
++    if (error instanceof SyntaxError) return reply({ error: 'Invalid request.' }, 400);
++    // Do not expose verifier internals, upstream credentials, or database details.
++    return reply({ error: 'We couldn’t complete this request. Please try again.' }, 400);
++  }
++};
++export const GET = handler;
++export const POST = handler;
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..a647434 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
+ ---
+ 
+ <Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div class="auth-route">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..80a501c 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+ <Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++  <div class="auth-route">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/server/auth-store.ts b/src/server/auth-store.ts
+new file mode 100644
+index 0000000..f252036
+--- /dev/null
++++ b/src/server/auth-store.ts
+@@ -0,0 +1,46 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname, resolve } from 'node:path';
++
++let database: DatabaseSync;
++export function db() {
++  if (!database) {
++    const path = resolve(process.env.AUTH_DATABASE_PATH || '.data/auth.sqlite');
++    mkdirSync(dirname(path), { recursive: true });
++    database = new DatabaseSync(path);
++    database.exec(`
++      PRAGMA journal_mode = WAL;
++      PRAGMA foreign_keys = ON;
++      CREATE TABLE IF NOT EXISTS accounts (
++        id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL
++      );
++      CREATE TABLE IF NOT EXISTS passkeys (
++        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id), rp_id TEXT NOT NULL,
++        public_key TEXT NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL,
++        name TEXT NOT NULL, aaguid TEXT NOT NULL, device_type TEXT NOT NULL,
++        backed_up INTEGER NOT NULL, registered_at INTEGER NOT NULL, last_used_at INTEGER
++      );
++      CREATE TABLE IF NOT EXISTS auth_sessions (
++        token TEXT PRIMARY KEY, account_id TEXT REFERENCES accounts(id), expires INTEGER NOT NULL,
++        verified_at INTEGER NOT NULL DEFAULT 0
++      );
++      CREATE TABLE IF NOT EXISTS auth_challenges (
++        id TEXT PRIMARY KEY, session_token TEXT NOT NULL, challenge TEXT NOT NULL,
++        purpose TEXT NOT NULL, expires INTEGER NOT NULL, origin TEXT NOT NULL, rp_id TEXT NOT NULL,
++        account_id TEXT, require_uv INTEGER NOT NULL
++      );
++    `);
++  }
++  return database;
++}
++export interface Account { id: string; username: string; display_name: string }
++export interface AuthSession { token: string; account_id: string | null; expires: number; verified_at: number }
++export interface Passkey {
++  id: string; account_id: string; rp_id: string; public_key: string; counter: number;
++  transports: string; name: string; aaguid: string; device_type: string; backed_up: number;
++  registered_at: number; last_used_at: number | null;
++}
++export interface Challenge {
++  id: string; session_token: string; challenge: string; purpose: string; expires: number;
++  origin: string; rp_id: string; account_id: string | null; require_uv: number;
++}
+diff --git a/src/styles/auth.css b/src/styles/auth.css
+new file mode 100644
+index 0000000..400b176
+--- /dev/null
++++ b/src/styles/auth.css
+@@ -0,0 +1,203 @@
++.auth-page, .settings-page { --ink: #202c32; --muted: #697276; --accent: #234b43; --border: #e4e7e4; color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
++.auth-page *, .settings-page * { box-sizing: border-box; }
++.auth-page a, .settings-page a, .auth-page button, .settings-page button { -webkit-tap-highlight-color: transparent; }
++.auth-page button, .settings-page button { cursor: pointer; }
++.auth-page button:disabled, .settings-page button:disabled { cursor: wait; opacity: .55; }
++.auth-page :focus-visible, .settings-page :focus-visible { outline: 3px solid #7eaaa0; outline-offset: 4px; }
++.auth-page { max-width: 1024px; margin: 0 auto; padding: 34px 40px 26px; }
++.auth-back { display: inline-block; font-size: 12px; color: var(--muted); text-decoration: none; margin-bottom: 28px; }
++.auth-back:hover { color: var(--ink); text-decoration: underline; }
++.auth-layout { display: grid; grid-template-columns: 1.08fr 1fr; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: #fff; }
++.auth-form-panel { padding: 43px 44px 28px; }
++.auth-eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; display: flex; align-items: center; gap: 9px; }
++.auth-eyebrow-line { display: inline-block; width: 21px; height: 2px; background: #b67b4b; }
++.auth-page h1 { font: 40px/1.13 Georgia, 'Times New Roman', serif; letter-spacing: -1.3px; margin: 20px 0 13px; white-space: pre-line; }
++.auth-intro { font-size: 13px; line-height: 1.8; color: var(--muted); margin: 0 0 27px; white-space: pre-line; }
++.auth-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 45px; padding: 12px 16px; border: 1px solid transparent; border-radius: 4px; font: 600 12px/1.4 Arial, Helvetica, sans-serif; transition: background .15s; text-decoration: none; }
++.auth-button.primary { color: #fff; background: #243d37; }
++.auth-button.primary:hover { background: #172e27; }
++.auth-button.secondary { background: white; border-color: #bfc7c3; color: var(--ink); }
++.auth-button.secondary:hover { background: #f5f7f5; }
++.auth-button.destructive { background: #a33432; color: white; }
++.auth-button.destructive:hover { background: #842725; }
++.auth-button > svg:last-child:not(:first-child) { margin-left: auto; }
++.passkey-button > svg:first-child { margin-right: 2px; }
++.auth-button-caption { font-size: 10px; color: var(--muted); text-align: center; margin: 9px 0 0; line-height: 1.6; }
++.auth-divider { display: flex; align-items: center; gap: 13px; margin: 25px 0; color: #858b88; font-size: 10px; }
++.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
++.auth-fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
++.auth-label { display: block; font-size: 11px; font-weight: 600; margin: 0 0 8px; }
++.auth-input { display: block; width: 100%; min-height: 44px; padding: 12px 13px; border: 1px solid #d7ddda; border-radius: 4px; background: white; font-size: 12px; color: var(--ink); margin-bottom: 20px; transition: border-color .15s; }
++.auth-input:focus { border-color: #578679; outline: 2px solid #e2ede8; }
++.auth-input::placeholder { color: #969c99; }
++.auth-password { position: relative; }
++.auth-password .auth-input { padding-right: 58px; }
++.auth-password > button { position: absolute; top: 1px; right: 1px; min-height: 42px; padding: 0 14px; color: #66716c; font-size: 10px; background: transparent; border: 0; }
++.auth-field-hint { color: var(--muted); font-size: 10px; margin: -12px 0 23px; }
++.auth-terms { color: var(--muted); font-size: 10px; line-height: 1.8; margin: 17px 0 0; }
++.auth-terms a { text-decoration: underline; text-underline-offset: 2px; color: #465b51; }
++.auth-switch { font-size: 11px; color: var(--muted); text-align: center; margin: 24px 0; line-height: 1.8; }
++.auth-switch a { color: #294d41; font-weight: 600; white-space: nowrap; }
++.auth-switch a:hover { text-decoration: underline; }
++.auth-switch span { margin-left: 3px; }
++.auth-secure { display: flex; justify-content: center; gap: 6px; align-items: center; font-size: 9px; color: #8c9590; border-top: 1px solid #edf0ec; padding-top: 18px; margin-top: 25px; line-height: 1.5; }
++.auth-story-panel { position: relative; background: #f2f4ee; border-left: 1px solid #e5e9df; padding: 29px 35px 24px; display: flex; flex-direction: column; overflow: hidden; }
++.auth-story-top { display: flex; justify-content: space-between; align-items: center; }
++.auth-new-label { font-size: 8px; letter-spacing: 1.3px; font-weight: 600; color: #758273; }
++.auth-story-dot { height: 6px; width: 6px; border-radius: 50%; background: #80977c; box-shadow: 0 0 0 4px #e7ecdf; }
++.auth-fingerprint-art { position: relative; height: 211px; display: grid; place-items: center; margin: 4px -35px 0; isolation: isolate; }
++.auth-orbit { position: absolute; border: 1px solid #dce3d7; border-radius: 50%; width: 160px; height: 160px; z-index: -1; }
++.orbit-two { width: 230px; height: 230px; border-style: dashed; opacity: .7; }
++.orbit-three { width: 300px; height: 300px; opacity: .5; }
++.auth-fingerprint-tile { position: relative; width: 118px; height: 125px; background: linear-gradient(145deg, #fdfefa, #e6edde); box-shadow: 0 12px 30px #3d533c0d, inset 0 0 0 1px #fff; border: 1px solid #d6decd; border-radius: 27px; display: grid; place-items: center; color: #577d65; transform: rotate(-7deg); }
++.auth-fingerprint-tile > svg { transform: rotate(7deg); stroke-width: 1.1; }
++.auth-verified { position: absolute; bottom: -7px; right: -7px; height: 30px; width: 30px; display: grid; place-items: center; border-radius: 50%; color: white; background: #446b50; border: 4px solid #f2f4ee; transform: rotate(7deg); }
++.auth-story-copy { position: relative; z-index: 1; padding-top: 1px; }
++.auth-story-copy .auth-eyebrow { color: #7a8d72; font-size: 8px; letter-spacing: 1.7px; margin-bottom: 10px; }
++.auth-story-copy h2 { font: 31px/1.17 Georgia, 'Times New Roman', serif; letter-spacing: -.7px; margin: 0 0 12px; }
++.auth-story-copy > p { font-size: 11px; color: #7b8277; line-height: 1.8; margin: 0; }
++.auth-benefits { margin: 25px 0 22px; display: grid; gap: 20px; }
++.auth-benefits > div { display: flex; gap: 12px; align-items: center; }
++.auth-benefit-icon { width: 34px; height: 34px; border-radius: 7px; background: #e8eddf; color: #71866b; display: grid; place-items: center; flex-shrink: 0; }
++.auth-benefits h3 { font-size: 11px; margin: 0 0 5px; font-weight: 600; }
++.auth-benefits p { font-size: 10px; line-height: 1.5; color: #7b8277; margin: 0; }
++.auth-story-footnote { margin: auto 0 0; padding-top: 17px; border-top: 1px solid #dfe5d9; display: flex; gap: 6px; align-items: center; color: #8b9683; font-size: 9px; }
++.auth-bottom-note { font-size: 10px; letter-spacing: .2px; color: #8e9690; text-align: center; margin: 23px 0 0; display: flex; align-items: center; justify-content: center; gap: 7px; line-height: 1.6; }
++.auth-message { padding: 12px 14px; border: 1px solid; border-radius: 4px; font-size: 12px; line-height: 1.65; margin: 0 0 20px; }
++.auth-message.error { color: #963c36; background: #fdf3f1; border-color: #f0d5d0; }
++.auth-message.success { color: #2b6148; background: #eef6ef; border-color: #d9e8d9; display: flex; align-items: center; gap: 10px; }
++.auth-message.warning { color: #805a24; background: #fcf7eb; border-color: #efe0bc; }
++.auth-success { display: flex; gap: 7px; align-items: center; font-size: 11px; color: #52764e; background: #f0f5eb; padding: 11px; border-radius: 4px; margin-bottom: 24px; }
++.auth-setup-icon { color: #52745b; display: inline-grid; place-items: center; width: 64px; height: 64px; background: #f1f4ed; border-radius: 15px; margin-bottom: 17px; }
++.auth-setup-heading { font: 25px/1.25 Georgia, serif; margin: 0 0 10px; }
++.auth-small { font-size: 12px; line-height: 1.7; color: var(--muted); margin: 0 0 20px; }
++.auth-skip { background: transparent; border: 0; display: block; padding: 14px; text-align: center; width: 100%; font-size: 11px; color: #637468; text-decoration: none; }
++.auth-skip:hover { text-decoration: underline; }
++.auth-skip span { margin-left: 6px; }
++/* Account settings */
++.settings-page { padding: 34px 54px 32px; max-width: 1000px; margin: 0 auto; }
++.settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 29px; }
++.settings-heading h1 { font: 38px/1.2 Georgia, serif; letter-spacing: -.9px; margin: 13px 0 10px; }
++.settings-heading p { color: var(--muted); font-size: 12px; margin: 0; }
++.settings-signout { background: white; border: 1px solid #d7ddd6; border-radius: 4px; padding: 10px 15px; font-size: 11px; color: #58665b; }
++.settings-signout span { margin-left: 15px; }
++.settings-tabs { border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 31px; }
++.settings-tabs > span:first-child { padding: 15px 0; border-bottom: 2px solid #375b47; font-size: 12px; font-weight: 600; }
++.settings-tabs-note { color: #939b93; display: flex; align-items: center; gap: 6px; font-size: 10px; }
++.settings-section { margin: 0 0 29px; }
++.settings-section-heading { display: flex; justify-content: space-between; align-items: start; margin: 0 0 18px; }
++.settings-section-heading h2 { font: 23px/1.3 Georgia, serif; letter-spacing: -.3px; margin: 0 0 7px; display: flex; align-items: center; gap: 9px; }
++.settings-section-heading p { font-size: 11px; color: var(--muted); margin: 0; }
++.settings-section-number { color: #b4bbb3; font: 12px Georgia, serif; padding-top: 5px; }
++.settings-count { font: 10px Arial, sans-serif; background: #eff2eb; padding: 3px 6px; border-radius: 4px; color: #6d7e65; }
++.settings-profile { display: flex; align-items: center; gap: 14px; padding: 21px 23px; border: 1px solid var(--border); border-radius: 5px; }
++.settings-avatar { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 50%; background: #f1eee7; color: #867d66; font: 23px Georgia, serif; flex-shrink: 0; }
++.settings-profile-details { flex: 1; min-width: 0; overflow-wrap: anywhere; }
++.settings-profile h3 { font-size: 13px; margin: 0 0 5px; font-weight: 600; }
++.settings-profile p { color: var(--muted); font-size: 11px; margin: 0; }
++.settings-outline-button { padding: 9px 13px; border: 1px solid #d4dbd2; border-radius: 4px; background: white; color: #4a5c49; font-size: 10px; }
++.settings-outline-button:hover, .settings-signout:hover { background: #f4f6f2; }
++.settings-passkey-banner { display: flex; gap: 17px; align-items: center; background: #f0f4eb; border: 1px solid #e0e7d7; border-radius: 5px 5px 0 0; padding: 24px; }
++.settings-banner-icon { flex-shrink: 0; display: grid; place-items: center; width: 56px; height: 60px; background: #e5eddb; border: 1px solid #d8e2cf; border-radius: 14px; color: #739063; }
++.settings-passkey-banner h3 { font: 19px/1.2 Georgia, serif; margin: 0 0 8px; }
++.settings-passkey-banner p { font-size: 11px; line-height: 1.8; margin: 0 0 9px; color: #75816f; max-width: 360px; }
++.settings-passkey-banner > div > span { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #6e855c; }
++.settings-passkey-banner .auth-button { margin-left: auto; flex-shrink: 0; width: auto; min-height: 38px; font-size: 10px; padding: 10px 13px; }
++.settings-empty { text-align: center; padding: 34px 20px; border: 1px solid var(--border); border-top: 0; }
++.settings-empty-icon { color: #b1bbae; display: inline-block; margin-bottom: 10px; }
++.settings-empty h3 { font-size: 12px; margin: 0 0 9px; font-weight: 600; }
++.settings-empty p { font-size: 11px; color: #90998a; margin: 0; }
++.settings-support-note { font-size: 11px; color: #6d7865; padding: 15px; background: #f8f9f6; border: 1px solid var(--border); border-top: 0; margin: 0; }
++.settings-info { display: flex; gap: 8px; align-items: center; font-size: 10px; color: #8d9688; padding: 14px 17px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 5px 5px; line-height: 1.6; }
++.settings-info svg { flex-shrink: 0; }
++.settings-info p { margin: 0; }
++.settings-key-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-top: 0; }
++.settings-key-list li { display: flex; align-items: center; gap: 14px; padding: 22px; }
++.settings-key-list li + li { border-top: 1px solid var(--border); }
++.settings-key-icon { padding: 12px; background: #f2f5ed; border-radius: 8px; color: #70826a; }
++.settings-key-details { min-width: 0; flex: 1; }
++.settings-key-details h3 { font-size: 12px; font-weight: 600; margin: 0 0 7px; overflow-wrap: anywhere; }
++.settings-key-details p { font-size: 10px; color: #7d8978; margin: 0; line-height: 1.7; }
++.settings-key-details .settings-key-dates { font-size: 9px; color: #9ba393; margin-top: 4px; }
++.settings-key-dates span { padding: 0 4px; }
++.settings-key-actions { display: flex; gap: 14px; }
++.settings-key-actions button { background: none; border: 0; font-size: 10px; color: #5e7552; padding: 8px 0; }
++.settings-key-actions button:hover { text-decoration: underline; }
++.settings-key-actions .danger { color: #a4665b; }
++.settings-security { display: flex; gap: 15px; align-items: center; border: 1px solid var(--border); border-radius: 5px; padding: 22px; }
++.settings-security > svg { flex-shrink: 0; color: #8b9b7f; }
++.settings-security h3 { font-size: 12px; font-weight: 600; margin: 0 0 7px; }
++.settings-security p { font-size: 10px; color: #87917f; line-height: 1.8; margin: 0; max-width: 490px; }
++.settings-active { font-size: 9px; color: #69825a; background: #f0f5ea; border: 1px solid #e3ebda; border-radius: 20px; padding: 6px 9px; display: flex; align-items: center; gap: 5px; white-space: nowrap; margin-left: auto; }
++.settings-active > span { width: 4px; height: 4px; background: #83a969; border-radius: 50%; }
++.settings-loading { padding: 60px; text-align: center; color: var(--muted); font-size: 13px; }
++.settings-gate { text-align: center; padding: 45px 20px; border: 1px solid var(--border); border-radius: 5px; background: #fafbf8; }
++.settings-gate h2 { font: 29px Georgia, serif; margin: 0 0 14px; }
++.settings-gate p { font-size: 12px; color: var(--muted); margin: 0 0 20px; line-height: 1.7; }
++.settings-gate .auth-button { width: min(100%, 270px); margin: 23px auto; }
++.settings-text-button { background: none; border: none; text-decoration: underline; color: #4b7056; font-size: inherit; }
++.auth-dialog { position: fixed; inset: 0; margin: auto; padding: 31px; width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow: auto; background: white; color: var(--ink); border: 1px solid #e1e6dc; border-radius: 9px; box-shadow: 0 15px 70px #1d30252b; }
++.auth-dialog::backdrop { background: #1a2c2266; backdrop-filter: blur(3px); }
++.auth-dialog-symbol { width: 48px; height: 48px; border-radius: 11px; background: #eff4e9; color: #6c875a; display: grid; place-items: center; margin-bottom: 20px; }
++.auth-dialog-symbol.danger { color: #a75c4c; background: #faf0ed; }
++.auth-dialog h2 { font: 27px/1.2 Georgia, serif; margin: 0 0 12px; }
++.auth-dialog-description { font-size: 12px; line-height: 1.8; color: var(--muted); margin: 0 0 22px; }
++.auth-verify-heading { border-top: 1px solid var(--border); display: flex; align-items: center; gap: 7px; color: #577149; padding-top: 19px; margin-top: 5px; margin-bottom: 8px; }
++.auth-verify-heading h3 { font-size: 11px; margin: 0; font-weight: 600; }
++.auth-dialog .auth-small { font-size: 11px; margin-bottom: 15px; }
++.auth-verify-options { display: flex; gap: 8px; margin-bottom: 17px; }
++.auth-verify-options button { display: flex; gap: 6px; align-items: center; justify-content: center; flex: 1; padding: 10px 7px; border: 1px solid #dfe4da; color: #7a8572; border-radius: 4px; background: white; font-size: 11px; }
++.auth-verify-options button[aria-pressed="true"] { border-color: #839a74; background: #f1f5eb; color: #466333; }
++@media (min-width: 1200px) { .auth-page { padding-top: 43px; padding-bottom: 35px; } }
++@media (max-width: 800px) {
++  .auth-page { padding: 26px 24px; }
++  .auth-form-panel { padding: 35px 28px 25px; }
++  .auth-story-panel { padding: 27px 25px 24px; }
++  .auth-page h1 { font-size: 35px; }
++  .auth-story-copy h2 { font-size: 27px; }
++  .auth-story-copy p br { display: none; }
++  .settings-page { padding: 27px; }
++  .settings-passkey-banner { flex-wrap: wrap; }
++  .settings-passkey-banner > div { flex: 1; }
++  .settings-passkey-banner .auth-button { margin-left: 73px; }
++}
++@media (max-width: 580px) {
++  .auth-page { padding: 23px 18px; }
++  .auth-back { margin-bottom: 22px; }
++  .auth-layout { grid-template-columns: 1fr; }
++  .auth-form-panel { padding: 31px 26px 25px; }
++  .auth-page h1 { font-size: 37px; }
++  .auth-story-panel { border-left: 0; border-top: 1px solid #e5e9df; padding: 25px 27px; }
++  .auth-fingerprint-art { height: 160px; }
++  .auth-orbit { width: 130px; height: 130px; }
++  .orbit-two { width: 195px; height: 195px; }
++  .orbit-three { width: 260px; height: 260px; }
++  .auth-fingerprint-tile { width: 95px; height: 101px; border-radius: 22px; }
++  .auth-fingerprint-tile > svg { width: 58px; }
++  .auth-story-copy { padding-top: 17px; }
++  .auth-benefits { gap: 18px; }
++  .auth-story-copy h2 { font-size: 31px; }
++  .settings-page { padding: 24px 20px; }
++  .settings-heading h1 { font-size: 31px; }
++  .settings-heading { align-items: start; gap: 10px; }
++  .settings-signout { margin-top: 28px; padding: 9px; white-space: nowrap; }
++  .settings-signout span { margin-left: 5px; }
++  .settings-tabs-note { display: none; }
++  .settings-profile, .settings-security { padding: 17px; }
++  .settings-passkey-banner { padding: 20px; gap: 12px; }
++  .settings-passkey-banner .auth-button { width: 100%; margin: 5px 0 0; }
++  .settings-banner-icon { height: 50px; width: 46px; border-radius: 11px; }
++  .settings-passkey-banner h3 { font-size: 18px; }
++  .settings-passkey-banner p { font-size: 10px; }
++  .settings-key-list li { gap: 10px; padding: 18px 15px; flex-wrap: wrap; }
++  .settings-key-icon { padding: 9px; }
++  .settings-key-details { flex-basis: calc(100% - 60px); }
++  .settings-key-actions { margin-left: 51px; }
++  .settings-security { flex-wrap: wrap; }
++  .settings-security > div { flex: 1; }
++  .settings-active { margin-left: 40px; }
++  .settings-info { align-items: start; }
++  .auth-bottom-note { font-size: 9px; }
++  .auth-dialog { padding: 25px; }
++}
++@media (prefers-reduced-motion: reduce) { .auth-page *, .settings-page * { transition: none; } }

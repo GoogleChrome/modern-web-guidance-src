@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,171 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo Alert (CSS-only dismiss: a checkbox inside the close control
++       drives the collapse via :has(); grid rows 1fr -> 0fr animates height) */
++    #promo-alert {
++      display: grid;
++      grid-template-rows: 1fr;
++      background: var(--accent);
++      color: var(--text);
++      transition: grid-template-rows 0.4s ease, visibility 0s linear 0s;
++    }
++
++    #promo-alert:has(#alert-dismiss input:checked) {
++      grid-template-rows: 0fr;
++      visibility: hidden;
++      /* delay hiding until the collapse finishes so it's removed from tab order / AT */
++      transition: grid-template-rows 0.4s ease, visibility 0s linear 0.4s;
++    }
++
++    .promo-alert__inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .promo-alert__body {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 0.6rem 3rem;
++      position: relative;
++      font-size: 0.95rem;
++      text-align: center;
++    }
++
++    .promo-alert__body a {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    #alert-dismiss {
++      position: absolute;
++      right: 1rem;
++      top: 50%;
++      transform: translateY(-50%);
++      width: 2rem;
++      height: 2rem;
++      display: grid;
++      place-items: center;
++      border-radius: 50%;
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    #alert-dismiss:hover {
++      background: rgba(0, 0, 0, 0.1);
++    }
++
++    #alert-dismiss:has(input:focus-visible) {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    #alert-dismiss input {
++      position: absolute;
++      opacity: 0;
++      width: 1px;
++      height: 1px;
++      pointer-events: none;
++    }
++
++    /* FAQ Accordion (native <details>; height animated via ::details-content) */
++    :root {
++      interpolate-size: allow-keywords;
++    }
++
++    .faq {
++      max-width: 750px;
++      margin: 60px auto 0;
++    }
++
++    .faq h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      cursor: pointer;
++      list-style: none;
++    }
++
++    #faq-trigger::-webkit-details-marker {
++      display: none;
++    }
++
++    #faq-trigger::after {
++      content: '+';
++      font-size: 1.4rem;
++      line-height: 1;
++      transition: transform 0.3s ease;
++    }
++
++    .faq-item[open] #faq-trigger::after {
++      transform: rotate(45deg);
++    }
++
++    #faq-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    .faq-item::details-content {
++      block-size: 0;
++      overflow: hidden;
++      transition: block-size 0.35s ease, content-visibility 0.35s allow-discrete;
++    }
++
++    .faq-item[open]::details-content {
++      block-size: auto;
++    }
++
++    #faq-content {
++      padding: 0 1.25rem 1.25rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #promo-alert,
++      #promo-alert:has(#alert-dismiss input:checked),
++      .faq-item::details-content,
++      #faq-trigger::after {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <aside id="promo-alert" aria-label="Promotion">
++    <div class="promo-alert__inner">
++      <div class="promo-alert__body">
++        <p>☕ Buy one, get one free on all seasonal lattes this week! <a href="/menu/seasonal">See the menu</a></p>
++        <label id="alert-dismiss" title="Dismiss">
++          <input type="checkbox" aria-label="Dismiss promotion">
++          <span aria-hidden="true">&times;</span>
++        </label>
++      </div>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +352,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq">
++      <h2>Frequently Asked Questions</h2>
++      <details class="faq-item">
++        <summary id="faq-trigger">Do you offer dairy-free milk alternatives?</summary>
++        <div id="faq-content">
++          <p>Yes! We offer oat, almond, soy, and coconut milk at no extra charge. Just ask your barista or
++            pick your favorite when ordering online.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

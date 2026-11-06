@@ -1,0 +1,63 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,59 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Identify the scripts most responsible for long animation frames (>50ms).
++    // Kept as the first script in <head> so every later script is attributed.
++    // Unsupported browsers (Firefox, Safari) simply ignore this.
++    (() => {
++      if (!PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return;
++
++      // Running totals per script source, kept for the whole page lifecycle.
++      const scriptsBySource = new Map();
++
++      const observer = new PerformanceObserver(list => {
++        for (const frame of list.getEntries()) {
++          for (const script of frame.scripts) {
++            // Inline scripts have no sourceURL; fall back to the invoker.
++            const source = script.sourceURL || `(inline) ${script.invoker}`;
++            const stats = scriptsBySource.get(source) ?? {
++              sourceURL: source,
++              count: 0,
++              totalDuration: 0,
++              maxDuration: 0,
++              functions: new Set()
++            };
++            stats.count++;
++            stats.totalDuration += script.duration;
++            stats.maxDuration = Math.max(stats.maxDuration, script.duration);
++            if (script.sourceFunctionName) stats.functions.add(script.sourceFunctionName);
++            scriptsBySource.set(source, stats);
++          }
++        }
++
++        // Only report scripts above a threshold to reduce noise, worst first.
++        const heavyScripts = [...scriptsBySource.values()]
++          .filter(stats => stats.totalDuration > 100)
++          .sort((a, b) => b.totalDuration - a.totalDuration)
++          .map(stats => ({
++            sourceURL: stats.sourceURL,
++            count: stats.count,
++            totalDuration: Math.round(stats.totalDuration),
++            maxDuration: Math.round(stats.maxDuration),
++            functions: [...stats.functions].join(', ')
++          }));
++
++        // Log for local debugging. In production, send this to your
++        // analytics service instead (e.g. navigator.sendBeacon on pagehide).
++        if (heavyScripts.length) console.table(heavyScripts);
++      });
++
++      // buffered: true captures long frames that occurred before registration.
++      observer.observe({ type: 'long-animation-frame', buffered: true });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

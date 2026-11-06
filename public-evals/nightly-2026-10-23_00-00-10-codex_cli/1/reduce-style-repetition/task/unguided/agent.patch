@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,21 +19,46 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Shared gradient helper: each element supplies its own color stops. */
++    body,
++    h2 {
++      --gradient-angle: 135deg;
++      background-image: linear-gradient(
++        var(--gradient-angle),
++        var(--gradient-start),
++        var(--gradient-end)
++      );
++    }
++
+     body {
++      --gradient-start: #eef2ff;
++      --gradient-end: #ecfeff;
++      min-height: 100vh;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h2 {
++      --gradient-start: #4338ca;
++      --gradient-end: #0f766e;
++      color: white;
++      padding: 1rem;
++      border-radius: 8px;
++      text-align: center;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+@@ -47,15 +72,13 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 12px 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -100,14 +123,23 @@
+       padding: 0 20px;
+     }
+ 
+     .grid {
++      /* Shared column helper: change the count, keeping equal-width tracks. */
++      --column-count: 1;
++      --columns: repeat(var(--column-count), minmax(0, 1fr));
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: var(--columns);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
++    @media (min-width: 700px) {
++      .grid {
++        --column-count: 2;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -175,9 +207,9 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

@@ -1,0 +1,58 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -163,9 +163,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" data-no-prefetch>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +206,43 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Prefetch internal pages when the user shows intent (hover, focus, touch).
++    // Opt a link out with data-no-prefetch; /logout is also blocked by path.
++    (function () {
++      var NEVER_PREFETCH = [/^\/logout(\/|$)/i];
++      var conn = navigator.connection;
++      if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
++
++      var seen = {};
++
++      function prefetchable(a) {
++        if (!a || !a.href || a.hasAttribute('data-no-prefetch') || a.hasAttribute('download')) return false;
++        if (a.target && a.target !== '_self') return false;
++        var url = new URL(a.href, location.href);
++        if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return false;
++        if (url.pathname === location.pathname && url.search === location.search) return false;
++        return !NEVER_PREFETCH.some(function (re) { return re.test(url.pathname); });
++      }
++
++      function prefetch(e) {
++        var a = e.target.closest && e.target.closest('a');
++        if (!prefetchable(a) || seen[a.href]) return;
++        seen[a.href] = true;
++        var link = document.createElement('link');
++        link.rel = 'prefetch';
++        link.href = a.href;
++        link.as = 'document';
++        document.head.appendChild(link);
++      }
++
++      ['mouseover', 'focusin', 'touchstart'].forEach(function (type) {
++        document.addEventListener(type, prefetch, { passive: true });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

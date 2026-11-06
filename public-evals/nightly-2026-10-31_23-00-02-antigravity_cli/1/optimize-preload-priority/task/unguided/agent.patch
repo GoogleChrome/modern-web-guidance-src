@@ -1,0 +1,99 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,95 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Video Landing Page</title>
++
++  <!-- Preload the LCP video poster image with high priority -->
++  <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
++
++  <!-- Preload ONLY the critical header font (crossorigin is required for fonts) -->
++  <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
++
++  <style>
++    @font-face {
++      font-family: 'BrandFont';
++      src: url('brand-font.woff2') format('woff2');
++      font-weight: 700;
++      font-style: normal;
++      font-display: swap;
++    }
++
++    @font-face {
++      font-family: 'SecondaryFont';
++      src: url('secondary-font.woff2') format('woff2');
++      font-weight: 400;
++      font-style: normal;
++      font-display: optional;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'SecondaryFont', system-ui, -apple-system, sans-serif;
++      background-color: #0f172a;
++      color: #f8fafc;
++      line-height: 1.5;
++    }
++
++    header, h1 {
++      font-family: 'BrandFont', system-ui, -apple-system, sans-serif;
++    }
++
++    main {
++      max-width: 960px;
++      margin: 0 auto;
++      padding: 2rem 1rem;
++      text-align: center;
++    }
++
++    h1 {
++      font-size: 2.5rem;
++      margin-bottom: 1rem;
++    }
++
++    p {
++      color: #94a3b8;
++      margin-bottom: 2rem;
++    }
++
++    video {
++      width: 100%;
++      max-width: 800px;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      border-radius: 8px;
++      background-color: #1e293b;
++      display: block;
++      margin: 0 auto;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Next-Gen Video Experience</h1>
++    </header>
++    <p>Stream high-definition content with instant page loads.</p>
++    <video
++      poster="poster.jpg"
++      preload="none"
++      controls
++      width="800"
++      height="450"
++    >
++      <source src="video.mp4" type="video/mp4">
++      Your browser does not support HTML5 video.
++    </video>
++  </main>
++</body>
++</html>

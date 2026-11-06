@@ -1,0 +1,761 @@
+diff --git a/index.html b/index.html
+index 66c9173..10a7d5d 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,415 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ============================================================
++       Native Range Slider Component Styles
++       - Custom track (WebKit runnable track & Firefox track)
++       - Custom thumb (WebKit thumb & Firefox thumb)
++       - Custom fill (CSS custom property gradient & Firefox progress)
++       - Custom focus states (:focus-visible with accessible rings)
++       - Accessibility & Touch preservation
++       ============================================================ */
++    :root {
++      --slider-track-height: 8px;
++      --slider-track-bg: #e2d9d4;
++      --slider-fill-color: #795548;
++      --slider-fill-active: #4e342e;
++      --slider-thumb-size: 26px;
++      --slider-thumb-bg: #4e342e;
++      --slider-thumb-border: #ffffff;
++      --slider-thumb-hover: #ffab40;
++      --slider-thumb-active: #e65100;
++      --slider-focus-ring: #ffab40;
++      --slider-focus-outline: #b45309;
++    }
++
++    .customizer-card {
++      background: white;
++      padding: 35px 30px;
++      border-radius: 12px;
++      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
++      margin-bottom: 50px;
++    }
++
++    .customizer-header {
++      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .customizer-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .customizer-header p {
++      color: #6d4c41;
++      font-size: 1.05rem;
++    }
++
++    .customizer-layout {
++      display: grid;
++      grid-template-columns: 1fr;
++      gap: 30px;
++    }
++
++    @media (min-width: 860px) {
++      .customizer-layout {
++        grid-template-columns: 3fr 2fr;
++        align-items: start;
++      }
++    }
++
++    /* Slider Field Container */
++    .slider-field {
++      margin-bottom: 28px;
++      position: relative;
++    }
++
++    .slider-field:last-child {
++      margin-bottom: 0;
++    }
++
++    .slider-header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 10px;
++    }
++
++    .slider-label {
++      font-weight: 700;
++      font-size: 1rem;
++      color: var(--text);
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      cursor: pointer;
++    }
++
++    .slider-badge {
++      display: inline-block;
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      font-weight: 700;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .slider-output {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--primary);
++      background: #fff3e0;
++      border: 1px solid #ffe0b2;
++      padding: 3px 12px;
++      border-radius: 20px;
++      min-width: 80px;
++      text-align: center;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
++    }
++
++    /* Range Input Wrapper to ensure touch targets >= 44px */
++    .range-wrapper {
++      position: relative;
++      padding: 8px 0;
++      display: flex;
++      flex-direction: column;
++    }
++
++    /* Base native range input reset */
++    input[type="range"].range-slider {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: 28px; /* provides comfortable tap/drag zone */
++      background: transparent;
++      margin: 0;
++      cursor: pointer;
++      vertical-align: middle;
++      border-radius: 6px;
++    }
++
++    /* ----------------------------------------------------
++       CUSTOM TRACK STYLING
++       Separate rules for WebKit and Firefox (crucial for cross-browser parsing)
++       ---------------------------------------------------- */
++    /* WebKit / Chromium / Safari Track */
++    input[type="range"].range-slider::-webkit-slider-runnable-track {
++      width: 100%;
++      height: var(--slider-track-height);
++      cursor: pointer;
++      background: linear-gradient(
++        to right,
++        var(--slider-fill-color) 0%,
++        var(--slider-fill-color) var(--progress, 50%),
++        var(--slider-track-bg) var(--progress, 50%),
++        var(--slider-track-bg) 100%
++      );
++      border-radius: 999px;
++      border: none;
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
++      transition: background 0.1s ease;
++    }
++
++    /* Firefox Track */
++    input[type="range"].range-slider::-moz-range-track {
++      width: 100%;
++      height: var(--slider-track-height);
++      cursor: pointer;
++      background: var(--slider-track-bg);
++      border-radius: 999px;
++      border: none;
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
++    }
++
++    /* ----------------------------------------------------
++       CUSTOM FILL STYLING (Firefox Native Pseudo-element)
++       ---------------------------------------------------- */
++    input[type="range"].range-slider::-moz-range-progress {
++      height: var(--slider-track-height);
++      background: var(--slider-fill-color);
++      border-radius: 999px 0 0 999px;
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
++    }
++
++    /* ----------------------------------------------------
++       CUSTOM THUMB STYLING
++       ---------------------------------------------------- */
++    /* WebKit / Chromium / Safari Thumb */
++    input[type="range"].range-slider::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--slider-thumb-size);
++      height: var(--slider-thumb-size);
++      border-radius: 50%;
++      background: var(--slider-thumb-bg);
++      border: 3.5px solid var(--slider-thumb-border);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.35);
++      cursor: grab;
++      /* Vertically center thumb relative to track: (8px - 26px) / 2 = -9px */
++      margin-top: calc((var(--slider-track-height) - var(--slider-thumb-size)) / 2);
++      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
++                  background-color 0.15s ease,
++                  box-shadow 0.15s ease;
++    }
++
++    /* Firefox Thumb */
++    input[type="range"].range-slider::-moz-range-thumb {
++      width: var(--slider-thumb-size);
++      height: var(--slider-thumb-size);
++      border-radius: 50%;
++      background: var(--slider-thumb-bg);
++      border: 3.5px solid var(--slider-thumb-border);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.35);
++      cursor: grab;
++      box-sizing: border-box;
++      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
++                  background-color 0.15s ease,
++                  box-shadow 0.15s ease;
++    }
++
++    /* ----------------------------------------------------
++       HOVER & ACTIVE / DRAGGING STATES
++       ---------------------------------------------------- */
++    /* Hover */
++    input[type="range"].range-slider:not(:disabled):hover::-webkit-slider-thumb {
++      background: var(--slider-thumb-hover);
++      transform: scale(1.12);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
++    }
++    input[type="range"].range-slider:not(:disabled):hover::-moz-range-thumb {
++      background: var(--slider-thumb-hover);
++      transform: scale(1.12);
++      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
++    }
++
++    /* Active / Dragging */
++    input[type="range"].range-slider:not(:disabled):active::-webkit-slider-thumb {
++      cursor: grabbing;
++      background: var(--slider-thumb-active);
++      transform: scale(1.22);
++      box-shadow: 0 0 0 7px rgba(255, 171, 64, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
++    }
++    input[type="range"].range-slider:not(:disabled):active::-moz-range-thumb {
++      cursor: grabbing;
++      background: var(--slider-thumb-active);
++      transform: scale(1.22);
++      box-shadow: 0 0 0 7px rgba(255, 171, 64, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
++    }
++
++    /* ----------------------------------------------------
++       CUSTOM ACCESSIBLE FOCUS STATES
++       Meets WCAG 2.1 focus appearance requirements with high-contrast dual ring
++       ---------------------------------------------------- */
++    /* Remove default low-contrast browser outline */
++    input[type="range"].range-slider:focus {
++      outline: none;
++    }
++
++    /* Keyboard navigation focus-visible on the slider container */
++    input[type="range"].range-slider:focus-visible {
++      outline: 2px solid var(--slider-focus-outline);
++      outline-offset: 4px;
++    }
++
++    /* Prominent focus indicator on the thumb itself */
++    input[type="range"].range-slider:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 0 0 3px #ffffff,
++                  0 0 0 6px var(--slider-focus-ring),
++                  0 3px 8px rgba(0, 0, 0, 0.35);
++      background: var(--slider-thumb-hover);
++    }
++    input[type="range"].range-slider:focus-visible::-moz-range-thumb {
++      box-shadow: 0 0 0 3px #ffffff,
++                  0 0 0 6px var(--slider-focus-ring),
++                  0 3px 8px rgba(0, 0, 0, 0.35);
++      background: var(--slider-thumb-hover);
++    }
++
++    /* ----------------------------------------------------
++       DISABLED STATE STYLING
++       ---------------------------------------------------- */
++    input[type="range"].range-slider:disabled {
++      cursor: not-allowed;
++      opacity: 0.6;
++    }
++
++    input[type="range"].range-slider:disabled::-webkit-slider-runnable-track {
++      cursor: not-allowed;
++      background: #cfc6c3;
++    }
++    input[type="range"].range-slider:disabled::-moz-range-track {
++      cursor: not-allowed;
++      background: #cfc6c3;
++    }
++    input[type="range"].range-slider:disabled::-moz-range-progress {
++      background: #9e938e;
++    }
++
++    input[type="range"].range-slider:disabled::-webkit-slider-thumb {
++      cursor: not-allowed;
++      background: #8d7e79;
++      transform: none;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
++    }
++    input[type="range"].range-slider:disabled::-moz-range-thumb {
++      cursor: not-allowed;
++      background: #8d7e79;
++      transform: none;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
++    }
++
++    /* ----------------------------------------------------
++       TICK MARKS & ACCESSIBLE LABELS
++       ---------------------------------------------------- */
++    .slider-ticks {
++      display: flex;
++      justify-content: space-between;
++      margin-top: 6px;
++      padding: 0 2px;
++      font-size: 0.78rem;
++      color: #6d4c41;
++      user-select: none;
++    }
++
++    .slider-ticks span {
++      position: relative;
++      cursor: pointer;
++      text-align: center;
++      transition: color 0.15s;
++    }
++
++    .slider-ticks span:hover {
++      color: var(--accent-dark, #e65100);
++      font-weight: 600;
++    }
++
++    .slider-ticks span::before {
++      content: '';
++      position: absolute;
++      top: -10px;
++      left: 50%;
++      transform: translateX(-50%);
++      width: 2px;
++      height: 4px;
++      background: #bcaaa4;
++    }
++
++    .slider-help-text {
++      font-size: 0.8rem;
++      color: #795548;
++      margin-top: 4px;
++    }
++
++    /* Recipe Preview Card */
++    .recipe-card {
++      background: #fbf9f8;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      padding: 24px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .recipe-card h3 {
++      color: var(--primary);
++      font-size: 1.25rem;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 8px;
++    }
++
++    .recipe-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.95rem;
++    }
++
++    .recipe-label {
++      color: #5d4037;
++      font-weight: 500;
++    }
++
++    .recipe-value {
++      font-weight: 700;
++      color: var(--primary);
++      text-align: right;
++    }
++
++    .a11y-badge-box {
++      background: #efebe9;
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++      font-size: 0.82rem;
++      color: #4e342e;
++      line-height: 1.5;
++    }
++
++    .a11y-badge-box kbd {
++      background: white;
++      border: 1px solid #d7ccc8;
++      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
++      border-radius: 3px;
++      padding: 2px 5px;
++      font-family: monospace;
++      font-size: 0.8rem;
++    }
++
++    .toggle-row {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: 14px;
++      font-size: 0.88rem;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +584,214 @@
+   </header>
+ 
+   <main class="container">
++    <!-- Interactive Customizer Section Showcasing Native Range Sliders -->
++    <section class="customizer-card" aria-labelledby="customizer-heading">
++      <div class="customizer-header">
++        <h2 id="customizer-heading">Craft Your Custom Brew</h2>
++        <p>Dial in your taste with our precision-calibrated grind, roast, and batch sliders.</p>
++      </div>
++
++      <div class="customizer-layout">
++        <!-- Interactive Sliders Form -->
++        <form class="customizer-form" id="brew-customizer-form" onsubmit="event.preventDefault();">
++          
++          <!-- Slider 1: Grind Size (Stepped with datalist & tick labels) -->
++          <div class="slider-field">
++            <div class="slider-header-row">
++              <label for="grind-slider" class="slider-label" id="grind-label">
++                <span>Grind Size</span>
++                <span class="slider-badge">Stepped</span>
++              </label>
++              <output for="grind-slider" id="grind-output" class="slider-output" aria-live="polite">
++                Chemex / Drip (Medium-Coarse)
++              </output>
++            </div>
++            
++            <div class="range-wrapper">
++              <input
++                type="range"
++                class="range-slider"
++                id="grind-slider"
++                name="grind"
++                min="1"
++                max="5"
++                step="1"
++                value="3"
++                list="grind-steps"
++                aria-labelledby="grind-label"
++                aria-describedby="grind-output"
++                aria-valuemin="1"
++                aria-valuemax="5"
++                aria-valuenow="3"
++                aria-valuetext="Chemex / Drip (Medium-Coarse)"
++                style="--progress: 50%;"
++              />
++              <datalist id="grind-steps">
++                <option value="1" label="Cold Brew"></option>
++                <option value="2" label="French Press"></option>
++                <option value="3" label="Drip"></option>
++                <option value="4" label="Pour Over"></option>
++                <option value="5" label="Espresso"></option>
++              </datalist>
++              <div class="slider-ticks" aria-hidden="true">
++                <span data-for="grind-slider" data-value="1">Cold Brew</span>
++                <span data-for="grind-slider" data-value="2">French Press</span>
++                <span data-for="grind-slider" data-value="3">Drip</span>
++                <span data-for="grind-slider" data-value="4">Pour Over</span>
++                <span data-for="grind-slider" data-value="5">Espresso</span>
++              </div>
++            </div>
++            <div class="slider-help-text">Click any step marker or use arrow keys to fine-tune grind size.</div>
++          </div>
++
++          <!-- Slider 2: Roast Level (Continuous 1-10) -->
++          <div class="slider-field">
++            <div class="slider-header-row">
++              <label for="roast-slider" class="slider-label" id="roast-label">
++                <span>Roast Profile</span>
++                <span class="slider-badge">Continuous</span>
++              </label>
++              <output for="roast-slider" id="roast-output" class="slider-output" aria-live="polite">
++                Medium Roast (6/10) · Balanced &amp; Caramel
++              </output>
++            </div>
++            
++            <div class="range-wrapper">
++              <input
++                type="range"
++                class="range-slider"
++                id="roast-slider"
++                name="roast"
++                min="1"
++                max="10"
++                step="0.5"
++                value="6"
++                aria-labelledby="roast-label"
++                aria-describedby="roast-output"
++                aria-valuemin="1"
++                aria-valuemax="10"
++                aria-valuenow="6"
++                aria-valuetext="Medium Roast (6/10) · Balanced &amp; Caramel"
++                style="--progress: 55.55%;"
++              />
++              <div class="slider-ticks" aria-hidden="true">
++                <span data-for="roast-slider" data-value="1">Light (Bright)</span>
++                <span data-for="roast-slider" data-value="5.5">Medium</span>
++                <span data-for="roast-slider" data-value="10">Dark (Smoky)</span>
++              </div>
++            </div>
++            <div class="slider-help-text">Continuous scale with fractional steps (0.5 increments).</div>
++          </div>
++
++          <!-- Slider 3: Batch Quantity (Cups) -->
++          <div class="slider-field">
++            <div class="slider-header-row">
++              <label for="cups-slider" class="slider-label" id="cups-label">
++                <span>Batch Size</span>
++                <span class="slider-badge">Cups</span>
++              </label>
++              <output for="cups-slider" id="cups-output" class="slider-output" aria-live="polite">
++                4 Cups (600ml)
++              </output>
++            </div>
++            
++            <div class="range-wrapper">
++              <input
++                type="range"
++                class="range-slider"
++                id="cups-slider"
++                name="cups"
++                min="1"
++                max="12"
++                step="1"
++                value="4"
++                aria-labelledby="cups-label"
++                aria-describedby="cups-output"
++                aria-valuemin="1"
++                aria-valuemax="12"
++                aria-valuenow="4"
++                aria-valuetext="4 Cups (600ml)"
++                style="--progress: 27.27%;"
++              />
++              <div class="slider-ticks" aria-hidden="true">
++                <span data-for="cups-slider" data-value="1">1 Cup</span>
++                <span data-for="cups-slider" data-value="4">4 Cups</span>
++                <span data-for="cups-slider" data-value="8">8 Cups</span>
++                <span data-for="cups-slider" data-value="12">12 Cups</span>
++              </div>
++            </div>
++          </div>
++
++          <!-- Slider 4: Showcase of Disabled State (Interactive Toggle) -->
++          <div class="slider-field">
++            <div class="slider-header-row">
++              <label for="sample-disabled-slider" class="slider-label" id="disabled-label">
++                <span>Sample Disabled Slider</span>
++                <span class="slider-badge">State Showcase</span>
++              </label>
++              <output for="sample-disabled-slider" id="disabled-output" class="slider-output" aria-live="polite">
++                Locked (50%)
++              </output>
++            </div>
++            
++            <div class="range-wrapper">
++              <input
++                type="range"
++                class="range-slider"
++                id="sample-disabled-slider"
++                min="0"
++                max="100"
++                value="50"
++                disabled
++                aria-labelledby="disabled-label"
++                aria-describedby="disabled-output"
++                aria-disabled="true"
++                style="--progress: 50%;"
++              />
++            </div>
++            
++            <div class="toggle-row">
++              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
++                <input type="checkbox" id="toggle-disabled-checkbox" checked />
++                <span>Keep slider disabled to inspect <code>:disabled</code> styling</span>
++              </label>
++            </div>
++          </div>
++
++        </form>
++
++        <!-- Live Calculated Recipe Card & Accessibility Guide -->
++        <aside class="recipe-card" aria-label="Brew Summary &amp; Guidance">
++          <h3>Your Recipe Summary</h3>
++          <div class="recipe-item">
++            <span class="recipe-label">Brew Method:</span>
++            <span class="recipe-value" id="recipe-method">Chemex / Drip</span>
++          </div>
++          <div class="recipe-item">
++            <span class="recipe-label">Grind Profile:</span>
++            <span class="recipe-value" id="recipe-grind">Medium-Coarse</span>
++          </div>
++          <div class="recipe-item">
++            <span class="recipe-label">Ratio &amp; Water:</span>
++            <span class="recipe-value" id="recipe-ratio">40g coffee / 600ml water</span>
++          </div>
++          <div class="recipe-item">
++            <span class="recipe-label">Water Temp:</span>
++            <span class="recipe-value" id="recipe-temp">200°F (93°C)</span>
++          </div>
++
++          <div class="a11y-badge-box">
++            <strong>Accessibility Features:</strong><br/>
++            • <strong>Keyboard:</strong> <kbd>Tab</kbd> to focus, <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>&uarr;</kbd> <kbd>&darr;</kbd> for steps, <kbd>PageUp</kbd>/<kbd>PageDown</kbd> for jump steps, <kbd>Home</kbd>/<kbd>End</kbd> for limits.<br/>
++            • <strong>High-Contrast:</strong> Dual-ring focus indicator on both track &amp; thumb.<br/>
++            • <strong>Screen Reader:</strong> Live connected <kbd>&lt;output&gt;</kbd> and dynamic <code>aria-valuetext</code> announcements.<br/>
++            • <strong>Touch Target:</strong> Generous padded zone exceeding 44px WCAG requirements.
++          </div>
++        </aside>
++      </div>
++    </section>
++
++    <!-- Seasonal Favorites Grid -->
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +824,125 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      const sliders = document.querySelectorAll('.range-slider');
++      const toggleDisabledCheckbox = document.getElementById('toggle-disabled-checkbox');
++      const sampleDisabledSlider = document.getElementById('sample-disabled-slider');
++      const disabledOutput = document.getElementById('disabled-output');
++
++      function updateSlider(slider) {
++        const min = parseFloat(slider.min) || 0;
++        const max = parseFloat(slider.max) || 100;
++        const val = parseFloat(slider.value) || 0;
++        const percent = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
++        
++        // Dynamically update the WebKit track fill gradient
++        slider.style.setProperty('--progress', `${percent.toFixed(2)}%`);
++        
++        const output = document.querySelector(`output[for="${slider.id}"]`) || document.getElementById(slider.id + '-output');
++        
++        if (slider.id === 'grind-slider') {
++          const grindLabels = {
++            '1': 'Cold Brew (Extra Coarse)',
++            '2': 'French Press (Coarse)',
++            '3': 'Chemex / Drip (Medium-Coarse)',
++            '4': 'Pour Over / Aeropress (Medium-Fine)',
++            '5': 'Espresso (Fine)'
++          };
++          const text = grindLabels[slider.value] || `Step ${slider.value}`;
++          if (output) output.textContent = text;
++          slider.setAttribute('aria-valuenow', slider.value);
++          slider.setAttribute('aria-valuetext', text);
++          updateRecipe();
++        } else if (slider.id === 'roast-slider') {
++          let roastText = '';
++          if (val <= 3) roastText = `Light Roast (${val}/10) · Bright & Floral`;
++          else if (val <= 6) roastText = `Medium Roast (${val}/10) · Balanced & Caramel`;
++          else if (val <= 8) roastText = `Medium-Dark (${val}/10) · Rich Cocoa & Nutty`;
++          else roastText = `Dark Roast (${val}/10) · Bold, Smokey & Intense`;
++          
++          if (output) output.textContent = roastText;
++          slider.setAttribute('aria-valuenow', slider.value);
++          slider.setAttribute('aria-valuetext', roastText);
++          updateRecipe();
++        } else if (slider.id === 'cups-slider') {
++          const ml = val * 150;
++          const text = `${val} ${val === 1 ? 'Cup' : 'Cups'} (${ml}ml)`;
++          if (output) output.textContent = text;
++          slider.setAttribute('aria-valuenow', slider.value);
++          slider.setAttribute('aria-valuetext', text);
++          updateRecipe();
++        } else if (slider.id === 'sample-disabled-slider') {
++          const text = slider.disabled ? `Locked (${slider.value}%)` : `Active (${slider.value}%)`;
++          if (output) output.textContent = text;
++          slider.setAttribute('aria-valuenow', slider.value);
++          slider.setAttribute('aria-valuetext', text);
++        } else if (output) {
++          output.textContent = slider.value;
++          slider.setAttribute('aria-valuenow', slider.value);
++        }
++      }
++
++      function updateRecipe() {
++        const grind = document.getElementById('grind-slider')?.value || '3';
++        const roast = parseFloat(document.getElementById('roast-slider')?.value || '6');
++        const cups = parseInt(document.getElementById('cups-slider')?.value || '4', 10);
++        
++        const grindNames = ['Extra Coarse', 'Coarse', 'Medium-Coarse', 'Medium-Fine', 'Fine'];
++        const grindMethods = ['Cold Brew Maker', 'French Press', 'Chemex / Drip', 'Pour Over (V60)', 'Espresso Machine'];
++        const grindIndex = Math.max(0, Math.min(4, parseInt(grind, 10) - 1));
++        
++        const waterGrams = cups * 150;
++        const coffeeGrams = Math.round(waterGrams / 15);
++        
++        let temp = '200°F (93°C)';
++        if (grindIndex === 0) temp = 'Chilled / Room Temp (Cold Brew)';
++        else if (roast <= 3) temp = '205°F (96°C) for light roast';
++        else if (roast >= 8) temp = '195°F (90°C) for dark roast';
++        
++        const summaryGrind = document.getElementById('recipe-grind');
++        const summaryMethod = document.getElementById('recipe-method');
++        const summaryRatio = document.getElementById('recipe-ratio');
++        const summaryTemp = document.getElementById('recipe-temp');
++        
++        if (summaryGrind) summaryGrind.textContent = grindNames[grindIndex];
++        if (summaryMethod) summaryMethod.textContent = grindMethods[grindIndex];
++        if (summaryRatio) summaryRatio.textContent = `${coffeeGrams}g coffee / ${waterGrams}ml water`;
++        if (summaryTemp) summaryTemp.textContent = temp;
++      }
++
++      // Initialize all sliders
++      sliders.forEach(slider => {
++        updateSlider(slider);
++        slider.addEventListener('input', () => updateSlider(slider));
++        slider.addEventListener('change', () => updateSlider(slider));
++      });
++
++      // Interactive tick markers support
++      document.querySelectorAll('.slider-ticks span').forEach(tick => {
++        tick.addEventListener('click', () => {
++          const targetId = tick.getAttribute('data-for');
++          const val = tick.getAttribute('data-value');
++          const target = document.getElementById(targetId);
++          if (target && !target.disabled) {
++            target.value = val;
++            updateSlider(target);
++            target.focus();
++          }
++        });
++      });
++
++      // Interactive disabled showcase toggle
++      if (toggleDisabledCheckbox && sampleDisabledSlider) {
++        toggleDisabledCheckbox.addEventListener('change', (e) => {
++          sampleDisabledSlider.disabled = e.target.checked;
++          sampleDisabledSlider.setAttribute('aria-disabled', String(e.target.checked));
++          updateSlider(sampleDisabledSlider);
++        });
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

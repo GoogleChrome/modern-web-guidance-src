@@ -1,0 +1,576 @@
+diff --git a/index.html b/index.html
+index 66c9173..6386c80 100644
+--- a/index.html
++++ b/index.html
+@@ -10,8 +10,10 @@
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-glow: rgba(255, 171, 64, 0.45);
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 72px;
+     }
+ 
+     * {
+@@ -20,6 +22,17 @@
+       padding: 0;
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++      scroll-padding-top: calc(var(--nav-height) + 20px);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -32,23 +45,28 @@
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
++      min-height: var(--nav-height);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,13 +77,20 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
++      padding: 4px 8px;
++      border-radius: 4px;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    nav a.active {
++      background: rgba(255, 171, 64, 0.14);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -100,6 +125,85 @@
+       padding: 0 20px;
+     }
+ 
++    .content-section {
++      margin-bottom: 64px;
++      padding: 36px 28px;
++      border-radius: 12px;
++      background: #ffffff;
++      border: 2px solid transparent;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
++      scroll-margin-top: calc(var(--nav-height) + 20px);
++      transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease, background-color 0.4s ease;
++      position: relative;
++    }
++
++    .content-section:focus {
++      outline: none;
++    }
++
++    .content-section h2 {
++      text-align: center;
++      margin-bottom: 12px;
++      color: var(--primary);
++      font-size: 2rem;
++      transition: color 0.35s ease, transform 0.35s ease;
++    }
++
++    .section-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      max-width: 650px;
++      margin: 0 auto 24px;
++    }
++
++    /* Post-scroll arrival visual effects, animations, and focus styles */
++    @keyframes targetArrivalPulse {
++      0% {
++        transform: translateY(0) scale(1);
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
++      }
++      35% {
++        transform: translateY(-4px) scale(1.01);
++        box-shadow: 0 12px 30px rgba(78, 52, 46, 0.18), 0 0 0 6px var(--accent-glow);
++      }
++      100% {
++        transform: translateY(0) scale(1);
++        box-shadow: 0 6px 20px rgba(78, 52, 46, 0.12), 0 0 0 3px var(--accent-glow);
++      }
++    }
++
++    @keyframes headingHighlight {
++      0% {
++        transform: scale(1);
++      }
++      40% {
++        transform: scale(1.04);
++        color: #d87a00;
++      }
++      100% {
++        transform: scale(1);
++      }
++    }
++
++    .scroll-target-active,
++    .content-section:focus-visible {
++      border-color: var(--accent);
++      background-color: #fffdf9;
++      box-shadow: 0 6px 20px rgba(78, 52, 46, 0.12), 0 0 0 3px var(--accent-glow);
++      animation: targetArrivalPulse 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
++    .scroll-target-active h2,
++    .scroll-target-active h3 {
++      animation: headingHighlight 0.75s ease forwards;
++    }
++
++    .card.scroll-target-active {
++      border: 2px solid var(--accent);
++      background-color: #fff8ee;
++      animation: targetArrivalPulse 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -109,10 +213,17 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 2px solid #f0eae6;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      scroll-margin-top: calc(var(--nav-height) + 28px);
++      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
++    }
++
++    .card:focus {
++      outline: none;
+     }
+ 
+     .card h3 {
+@@ -120,6 +231,17 @@
+       color: var(--primary);
+     }
+ 
++    .price-tag {
++      display: inline-block;
++      margin-top: 8px;
++      font-weight: bold;
++      color: #6d4c41;
++      background: #efebe9;
++      padding: 3px 10px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,11 +250,25 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.2s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .account-panel {
++      max-width: 600px;
++      margin: 0 auto;
++      background: #fdfbf9;
++      padding: 24px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      text-align: center;
+     }
+ 
+     footer {
+@@ -152,61 +288,315 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    .footer-sections {
++      max-width: 900px;
++      margin: 0 auto 24px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      text-align: left;
++    }
++
++    .footer-card {
++      background: rgba(255, 255, 255, 0.7);
++      padding: 16px;
++      border-radius: 8px;
++      border: 2px solid transparent;
++      scroll-margin-top: calc(var(--nav-height) + 20px);
++    }
++
++    .footer-card:focus {
++      outline: none;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary Navigation">
++    <a href="#top" class="logo">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li><a href="#logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header id="top" class="hero" tabindex="-1">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#menu" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="content-section" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Seasonal Favorites &amp; Menu</h2>
++      <p class="section-subtitle">Handcrafted beverages roasted fresh daily using single-origin beans and organic ingredients.</p>
+       <div class="grid">
+-        <div class="card">
++        <div id="menu-seasonal" class="card" tabindex="-1">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p>Creamy oat milk with a hint of Vermont maple syrup and double-shot espresso.</p>
++          <span class="price-tag">$5.75</span><br>
++          <a href="#rewards" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div id="menu-espresso" class="card" tabindex="-1">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p>Bold, smokey, and full-bodied crema perfect for a morning boost.</p>
++          <span class="price-tag">$3.95</span><br>
++          <a href="#rewards" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div id="menu-cold-brew" class="card" tabindex="-1">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p>Steeped for 18 hours in filtered cold water for maximum smoothness.</p>
++          <span class="price-tag">$4.95</span><br>
++          <a href="#rewards" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="content-section" tabindex="-1" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Our Locations</h2>
++      <p class="section-subtitle">Drop by your neighborhood café for pour-overs, pastries, and a warm workspace.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Roastery</h3>
++          <p>214 Roast Ave, Suite 100<br>Open Daily: 6:00 AM – 8:00 PM</p>
++        </div>
++        <div class="card">
++          <h3>Riverside Café</h3>
++          <p>88 Harbor Walk<br>Open Daily: 6:30 AM – 7:00 PM</p>
++        </div>
++        <div class="card">
++          <h3>University Commons</h3>
++          <p>502 College Way<br>Open Daily: 7:00 AM – 10:00 PM</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="content-section" tabindex="-1" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Daily Grind Rewards</h2>
++      <p class="section-subtitle">Earn 2 Beans for every $1 spent and redeem them for free handcrafted drinks and whole-bean bags.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>50 Beans</h3>
++          <p>Complimentary espresso shot, dairy-free milk upgrade, or artisanal syrup.</p>
++        </div>
++        <div class="card">
++          <h3>150 Beans</h3>
++          <p>Any handcrafted hot or iced beverage or fresh-baked morning pastry.</p>
++        </div>
++        <div class="card">
++          <h3>300 Beans</h3>
++          <p>Take home a 12oz bag of our signature single-origin whole bean coffee.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="content-section" tabindex="-1" aria-labelledby="account-heading">
++      <h2 id="account-heading">My Account</h2>
++      <p class="section-subtitle">Manage your saved drink orders, subscriptions, and reward balance.</p>
++      <div class="account-panel">
++        <h3>Welcome Back, Coffee Lover</h3>
++        <p>Current Balance: <strong>185 Beans</strong> (1 free handcrafted drink available!)</p>
++        <a href="#menu" class="btn">Redeem on Menu</a>
++      </div>
++    </section>
++
++    <section id="logout" class="content-section" tabindex="-1" aria-labelledby="logout-heading">
++      <h2 id="logout-heading">Session &amp; Sign Out</h2>
++      <p class="section-subtitle">Ready to wrap up your coffee run? You can safely sign out of your Daily Grind account below.</p>
++      <div class="account-panel">
++        <p>Your cart and reward beans are saved for your next visit.</p>
++        <a href="#top" class="btn">Back to Top</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
++    <div class="footer-sections">
++      <div id="about" class="footer-card" tabindex="-1">
++        <h3>Our Story</h3>
++        <p>Founded in 2016, we partner directly with small-lot farmers to roast sustainable specialty coffee.</p>
++      </div>
++      <div id="careers" class="footer-card" tabindex="-1">
++        <h3>Join the Team</h3>
++        <p>We are hiring passionate baristas and roasters across all three neighborhood locations.</p>
++      </div>
++      <div id="contact" class="footer-card" tabindex="-1">
++        <h3>Contact Us</h3>
++        <p>Questions or catering inquiries? Reach us at hello@thedailygrind.coffee.</p>
++      </div>
++      <div id="privacy-policy" class="footer-card" tabindex="-1">
++        <h3>Privacy</h3>
++        <p>We respect your privacy and never share your member details with third parties.</p>
++      </div>
++    </div>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#about">Our Story</a> |
++      <a href="#careers">Join the Team</a> |
++      <a href="#contact">Contact Us</a> |
++      <a href="#privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      let activeCleanup = null;
++      let clearEffectTimer = null;
++
++      function clearPreviousEffects() {
++        if (clearEffectTimer) {
++          clearTimeout(clearEffectTimer);
++          clearEffectTimer = null;
++        }
++        document.querySelectorAll('.scroll-target-active').forEach((el) => {
++          el.classList.remove('scroll-target-active');
++          el.removeAttribute('data-scroll-arrived');
++        });
++      }
++
++      function applyPostScrollEffects(target, triggerLink) {
++        clearPreviousEffects();
++
++        // Update active state on navigation links
++        document.querySelectorAll('nav a').forEach((link) => {
++          const isMatch = link === triggerLink || link.getAttribute('href') === '#' + target.id;
++          link.classList.toggle('active', isMatch);
++          if (isMatch) {
++            link.setAttribute('aria-current', 'true');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++
++        // Ensure target can receive focus without causing an extra scroll jump
++        if (!target.hasAttribute('tabindex')) {
++          target.setAttribute('tabindex', '-1');
++        }
++        target.focus({ preventScroll: true });
++
++        // Trigger visual highlight and CSS animation only after scroll has finished
++        void target.offsetWidth; // Force reflow so repeated clicks re-trigger animation
++        target.classList.add('scroll-target-active');
++        target.setAttribute('data-scroll-arrived', 'true');
++
++        // Update URL hash cleanly after arrival
++        if (target.id && history.replaceState) {
++          history.replaceState(null, '', '#' + target.id);
++        }
++
++        clearEffectTimer = setTimeout(() => {
++          target.classList.remove('scroll-target-active');
++        }, 2500);
++      }
++
++      function scrollToTarget(target, triggerLink) {
++        if (activeCleanup) {
++          activeCleanup();
++          activeCleanup = null;
++        }
++
++        // Remove any existing visual effects before starting the smooth scroll
++        clearPreviousEffects();
++        document.body.setAttribute('data-scrolling', 'true');
++
++        const nav = document.querySelector('nav');
++        const navOffset = (nav ? nav.offsetHeight : 72) + 20;
++        const targetRect = target.getBoundingClientRect();
++        const desiredTop = Math.max(
++          0,
++          Math.min(
++            window.scrollY + targetRect.top - navOffset,
++            document.documentElement.scrollHeight - window.innerHeight
++          )
++        );
++
++        const distance = Math.abs(window.scrollY - desiredTop);
++        const prefersReducedMotion =
++          window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++        // If already at the target scroll position (or reduced motion is enabled), finish immediately
++        if (distance < 2 || prefersReducedMotion) {
++          if (distance >= 2) {
++            window.scrollTo({ top: desiredTop, behavior: 'auto' });
++          }
++          document.body.removeAttribute('data-scrolling');
++          applyPostScrollEffects(target, triggerLink);
++          return;
++        }
++
++        let finished = false;
++        let idleTimer = null;
++        let maxSafetyTimer = null;
++
++        function finishScroll() {
++          if (finished) return;
++          finished = true;
++          cleanupListeners();
++          document.body.removeAttribute('data-scrolling');
++          applyPostScrollEffects(target, triggerLink);
++        }
++
++        function onScroll() {
++          if (idleTimer) clearTimeout(idleTimer);
++          const remaining = Math.abs(window.scrollY - desiredTop);
++          // When close to the destination or when scroll events settle, complete
++          const debounceMs = remaining <= 4 ? 50 : 140;
++          idleTimer = setTimeout(finishScroll, debounceMs);
++        }
++
++        function onScrollEnd() {
++          finishScroll();
++        }
++
++        function cleanupListeners() {
++          window.removeEventListener('scroll', onScroll, { passive: true });
++          window.removeEventListener('scrollend', onScrollEnd);
++          document.removeEventListener('scrollend', onScrollEnd);
++          if (idleTimer) clearTimeout(idleTimer);
++          if (maxSafetyTimer) clearTimeout(maxSafetyTimer);
++          activeCleanup = null;
++        }
++
++        activeCleanup = cleanupListeners;
++
++        window.addEventListener('scroll', onScroll, { passive: true });
++        window.addEventListener('scrollend', onScrollEnd, { once: true });
++        document.addEventListener('scrollend', onScrollEnd, { once: true });
++
++        // Safety fallback in case scroll events don't fire in a restricted environment
++        maxSafetyTimer = setTimeout(finishScroll, 1200);
++
++        window.scrollTo({
++          top: desiredTop,
++          behavior: 'smooth'
++        });
++      }
++
++      document.addEventListener('click', (event) => {
++        const link = event.target.closest('a[href^="#"]');
++        if (!link) return;
++
++        const hash = link.getAttribute('href');
++        if (!hash || hash === '#') return;
++
++        const targetId = decodeURIComponent(hash.slice(1));
++        const target = document.getElementById(targetId);
++        if (!target) return;
++
++        event.preventDefault();
++        scrollToTarget(target, link);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,94 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Shaped elements */
++    .shaped-section {
++      display: grid;
++      gap: 40px;
++      margin-top: 60px;
++    }
++
++    /* 1) Barista profile: organic paint-splat mask. The SVG uses a 0-100 viewBox
++       stretched to the element (preserveAspectRatio="none") and mask-size: 100% 100%,
++       so the shape always scales with the image's dimensions. */
++    .shaped-avatar {
++      display: block;
++      width: 100%;
++      max-width: 320px;
++      aspect-ratio: 1;
++      object-fit: cover;
++      margin: 0 auto;
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 2 66 9 74 8C84 7 90 16 89 26C88 33 96 36 97 46C98 57 91 62 92 70C93 81 84 89 74 88C67 87 63 96 52 97C42 98 38 91 30 92C19 93 9 85 10 74C11 66 3 62 3 52C3 42 11 38 11 29C11 17 21 9 31 11C38 12 42 4 50 3Z'/%3E%3Ccircle cx='94' cy='12' r='4'/%3E%3Ccircle cx='6' cy='90' r='3'/%3E%3Ccircle cx='99' cy='85' r='1.8'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 3C60 2 66 9 74 8C84 7 90 16 89 26C88 33 96 36 97 46C98 57 91 62 92 70C93 81 84 89 74 88C67 87 63 96 52 97C42 98 38 91 30 92C19 93 9 85 10 74C11 66 3 62 3 52C3 42 11 38 11 29C11 17 21 9 31 11C38 12 42 4 50 3Z'/%3E%3Ccircle cx='94' cy='12' r='4'/%3E%3Ccircle cx='6' cy='90' r='3'/%3E%3Ccircle cx='99' cy='85' r='1.8'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    .barista-profile {
++      text-align: center;
++    }
++
++    .barista-profile h3 {
++      margin-top: 15px;
++      color: var(--primary);
++    }
++
++    /* 2) Loyalty banner: the shadow is a drop-shadow filter on the parent so it
++       follows the masked cutout of .card-accent and reads as one card. */
++    .unified-card {
++      display: flex;
++      align-items: stretch;
++      max-width: 700px;
++      margin: 0 auto;
++      filter: drop-shadow(0 8px 14px rgba(62, 39, 35, 0.25));
++    }
++
++    .unified-card .card-body {
++      flex: 1;
++      background: white;
++      padding: 28px 56px 28px 28px;
++      border-radius: 14px 0 0 14px;
++    }
++
++    .unified-card .card-body h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    /* Overlaps the body so the concave cutout reveals the white body behind it */
++    .unified-card .card-accent {
++      flex: 0 0 130px;
++      margin-left: -36px;
++      background: linear-gradient(160deg, var(--accent), #ff7043);
++      border-radius: 0 14px 14px 0;
++      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C30 75 30 25 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V100H0C30 75 30 25 0 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
++    }
++
++    /* 3) Promo card: circular notch on the top edge, cut with a radial gradient mask */
++    .gradient-masked-card {
++      max-width: 420px;
++      margin: 0 auto;
++      padding: 56px 28px 28px;
++      text-align: center;
++      color: white;
++      background: linear-gradient(135deg, var(--primary), #8d6e63);
++      border-radius: 14px;
++      -webkit-mask: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
++      mask: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
++    }
++
++    .gradient-masked-card h3 {
++      color: var(--accent);
++      margin-bottom: 8px;
++    }
++
++    @media (max-width: 520px) {
++      .unified-card .card-accent {
++        flex-basis: 80px;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +280,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="shaped-section">
++      <div class="barista-profile">
++        <img class="shaped-avatar"
++          src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&h=640&q=80"
++          alt="A barista's hand holding a latte with heart-shaped latte art while milk is poured in">
++        <h3>Featured Barista: Mia</h3>
++        <p>Pouring award-winning latte art at our Main Street shop.</p>
++      </div>
++
++      <div class="unified-card">
++        <div class="card-body">
++          <h3>Join Grind Rewards</h3>
++          <p>Earn a star with every cup and get a free drink after ten. Sign up today and start sipping for free.</p>
++          <a href="/rewards" class="btn">Join Now</a>
++        </div>
++        <div class="card-accent" aria-hidden="true"></div>
++      </div>
++
++      <div class="gradient-masked-card">
++        <h3>Free Pastry Friday</h3>
++        <p>Buy any large drink on Fridays and take a fresh-baked pastry on us.</p>
++        <a href="/promos" class="btn">Claim Offer</a>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

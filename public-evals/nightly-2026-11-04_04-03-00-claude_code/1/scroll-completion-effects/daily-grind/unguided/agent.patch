@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+index 66c9173..fd276e8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,80 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* In-page navigation targets */
++    .nav-target {
++      scroll-margin-top: 80px; /* clear the sticky nav */
++      border-radius: 12px;
++      padding: 20px;
++      margin-bottom: 40px;
++      outline: none;
++      transition: box-shadow 0.4s ease;
++    }
++
++    .nav-target h2 {
++      text-align: center;
++      display: inline-block;
++      position: relative;
++    }
++
++    .nav-target .section-head {
++      text-align: center;
++    }
++
++    .nav-target h2::after {
++      content: "";
++      position: absolute;
++      left: 0;
++      bottom: -4px;
++      height: 3px;
++      width: 100%;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 0.5s ease;
++    }
++
++    /* Applied only after the smooth scroll has finished */
++    .nav-target.is-arrived {
++      animation: target-glow 1.6s ease-out;
++    }
++
++    .nav-target.is-arrived h2::after {
++      transform: scaleX(1);
++    }
++
++    .nav-target.is-arrived .card {
++      animation: card-pop 0.6s ease-out both;
++    }
++
++    .nav-target.is-arrived .card:nth-child(2) { animation-delay: 0.1s; }
++    .nav-target.is-arrived .card:nth-child(3) { animation-delay: 0.2s; }
++
++    .nav-target:focus-visible {
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
++    nav a.is-active {
++      color: var(--accent);
++    }
++
++    @keyframes target-glow {
++      0% { box-shadow: 0 0 0 0 rgba(255, 171, 64, 0.7); background: rgba(255, 171, 64, 0.15); }
++      100% { box-shadow: 0 0 0 18px rgba(255, 171, 64, 0); background: transparent; }
++    }
++
++    @keyframes card-pop {
++      0% { transform: translateY(12px) scale(0.97); opacity: 0.4; }
++      100% { transform: none; opacity: 1; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html { scroll-behavior: auto; }
++      .nav-target.is-arrived,
++      .nav-target.is-arrived .card { animation: none; }
++      .nav-target.is-arrived { box-shadow: 0 0 0 3px var(--accent); }
++    }
+   </style>
+ </head>
+ 
+@@ -160,9 +234,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +249,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="nav-target" tabindex="-1" aria-labelledby="menu-title">
++      <div class="section-head"><h2 id="menu-title">Seasonal Favorites</h2></div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +269,43 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="nav-target" tabindex="-1" aria-labelledby="locations-title">
++      <div class="section-head"><h2 id="locations-title">Our Locations</h2></div>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>142 Main Street<br>Mon&ndash;Fri 6am&ndash;7pm, Sat&ndash;Sun 7am&ndash;5pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>8 Harbor Walk<br>Daily 6:30am&ndash;6pm</p>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>301 College Ave<br>Daily 7am&ndash;10pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="nav-target" tabindex="-1" aria-labelledby="rewards-title">
++      <div class="section-head"><h2 id="rewards-title">Grind Rewards</h2></div>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect 10 beans for every dollar you spend, in store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Drinks</h3>
++          <p>Redeem 150 beans for any handcrafted drink, any size.</p>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>Enjoy a free pastry and drink on us during your birthday week.</p>
++          <a href="/account" class="btn">View My Beans</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +318,124 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var supportsScrollEnd = 'onscrollend' in window;
++      var pending = null; // cleanup for the in-flight navigation
++
++      // Calls onDone once the smooth scroll has stopped. Uses the native
++      // `scrollend` event where supported; otherwise waits for the scroll
++      // position to stay unchanged for several frames. Polling also catches the
++      // case where no scroll happens at all (already at the target), and a
++      // timeout acts as a safety net. Returns a cancel function.
++      function waitForScrollEnd(onDone) {
++        var done = false;
++        var moved = false;
++        var lastY = window.scrollY;
++        var stillFrames = 0;
++        var rafId, timeoutId;
++
++        function stop() {
++          done = true;
++          cancelAnimationFrame(rafId);
++          clearTimeout(timeoutId);
++          window.removeEventListener('scrollend', finish);
++        }
++
++        function finish() {
++          if (done) return;
++          stop();
++          onDone();
++        }
++
++        function tick() {
++          var y = window.scrollY;
++          if (y !== lastY) {
++            moved = true;
++            stillFrames = 0;
++            lastY = y;
++          } else {
++            stillFrames++;
++          }
++          var ended = supportsScrollEnd
++            ? (!moved && stillFrames >= 10)            // never started scrolling
++            : stillFrames >= (moved ? 5 : 10);         // settled, or never moved
++          if (ended) return finish();
++          rafId = requestAnimationFrame(tick);
++        }
++
++        if (supportsScrollEnd) window.addEventListener('scrollend', finish);
++        rafId = requestAnimationFrame(tick);
++        timeoutId = setTimeout(finish, 3000);
++        return stop;
++      }
++
++      function activate(target, link) {
++        // Restart the animation even if this section was the previous target.
++        target.classList.remove('is-arrived');
++        void target.offsetWidth;
++        target.classList.add('is-arrived');
++
++        // Move focus for keyboard / screen-reader users without re-scrolling.
++        target.focus({ preventScroll: true });
++
++        document.querySelectorAll('nav a.is-active').forEach(function (a) {
++          a.classList.remove('is-active');
++        });
++        if (link && link.closest('nav')) link.classList.add('is-active');
++      }
++
++      function navigateTo(target, link, pushHistory) {
++        if (pending) pending();
++        pending = null;
++
++        document.querySelectorAll('.nav-target.is-arrived').forEach(function (el) {
++          if (el !== target) el.classList.remove('is-arrived');
++        });
++
++        if (pushHistory && location.hash !== '#' + target.id) {
++          history.pushState(null, '', '#' + target.id);
++        }
++
++        var smooth = !reduceMotion.matches;
++        if (!smooth) {
++          target.scrollIntoView({ behavior: 'auto', block: 'start' });
++          activate(target, link);
++          return;
++        }
++
++        // Start listening before scrolling so we never miss the end event.
++        pending = waitForScrollEnd(function () {
++          pending = null;
++          activate(target, link);
++        });
++        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++      }
++
++      document.addEventListener('click', function (e) {
++        if (e.defaultPrevented || e.button !== 0 ||
++            e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        var link = e.target.closest('a[href^="#"]');
++        if (!link) return;
++        var id = decodeURIComponent(link.getAttribute('href').slice(1));
++        var target = id && document.getElementById(id);
++        if (!target) return;
++        e.preventDefault();
++        navigateTo(target, link, true);
++      });
++
++      // Back/forward between hashes: smooth scroll, then highlight.
++      window.addEventListener('popstate', function () {
++        var id = decodeURIComponent(location.hash.slice(1));
++        var target = id && document.getElementById(id);
++        if (target) {
++          navigateTo(target, document.querySelector('nav a[href="#' + id + '"]'), false);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

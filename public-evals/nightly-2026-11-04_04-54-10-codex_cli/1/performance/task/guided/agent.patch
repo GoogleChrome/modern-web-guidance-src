@@ -1,0 +1,92 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,87 @@
++# Daily Grind performance audit
++
++Audited November 4, 2026. Scope: all application files in this repository.
++Verification uses source inspection, downloaded asset sizes, and an offline
++performance budget check. No browser, development server, preview server, or
++server entrypoint was run. This static project has no build script.
++
++## Findings and changes
++
++| Area | Finding | Change / result |
++| --- | --- | --- |
++| LCP discovery | The likely LCP photo was only referenced in CSS, with no priority hint. | A standard HTML image exposes the resource to the preload scanner, with `fetchpriority="high"`. It is not lazy loaded. No redundant preload is needed. |
++| Image transfer | Every viewport requested a remote 1350px image. | Three same-origin WebP candidates let the browser choose a size using viewport width and pixel density. The largest candidate retains the original resolution. |
++| Connections | The image required another origin's DNS, TLS, and availability. | Checked-in assets remove the Unsplash connection from visitors' loading path. |
++| CLS | The background already had a reserved hero height. | Preserve that reservation, add a minimum height for short viewports, and declare image dimensions. The absolutely positioned photo cannot displace text as it loads. |
++| Narrow screens | The navigation could exceed the viewport; the grid had a fixed 250px minimum. | Navigation wraps in normal flow, and cards can shrink below 250px when needed. All navigation remains available without a script-driven menu. |
++| INP | No JavaScript, event handlers, loops, timers, hydration, or layout-reading code exists. | Keep native links and zero runtime JavaScript. There is no identified application long task to split or debounce. |
++| Rendering | Tiny DOM, small inline stylesheet, system fonts, no third-party scripts. | Retain this inexpensive rendering path. Avoid introducing bundles, font downloads, workers, service workers, or containment overhead. |
++| Interaction motion | Color transitions are the only animations. | Honor reduced-motion preferences without introducing runtime work. |
++
++The hero retains the same stock photograph, centered cover crop, dark overlay,
++and text. It has an empty alt attribute because it is decorative.
++`sizes="max(100vw, 90vh, 30rem)"` accounts for the photo's 3:2 aspect ratio
++covering a full-width, 60vh hero with a 20rem minimum height. A portrait viewport
++can need a source wider than the viewport to avoid an undersized cover crop.
++WebP is supported by current major browsers; priority hints degrade to normal
++browser heuristics without requiring JavaScript.
++
++## Measured transfer sizes
++
++The baseline image was fetched from the exact original URL with a client that
++received JPEG. Unsplash's `auto=format` may return another format for browser
++clients, so these percentages are a comparison against that fetched JPEG,
++not a claim about every visitor's prior transfer size.
++
++| Asset | Bytes | Reduction from fetched original |
++| --- | ---: | ---: |
++| Original 1350px JPEG | 157,969 | — |
++| New 640px WebP | 37,728 | 76.1% |
++| New 960px WebP | 72,922 | 53.8% |
++| New 1350px WebP | 123,438 | 21.9% |
++
++The browser selects one candidate, rather than downloading all three. Actual
++selection depends on viewport dimensions, device pixel ratio, and browser
++heuristics; mobile does not always select the smallest candidate.
++
++The HTML remains below 6 KB uncompressed and 2 KB in a local gzip estimate.
++There are no external CSS files, font requests, or client scripts. This is still
++a two-resource page (document plus photo). Compression estimates are not proof
++of deployed compression.
++
++## Reproducible verification
++
++Run `npm run audit:performance` (requires Python 3; no package installation).
++The offline check verifies:
++
++- HTML stays within 10 KiB and the page ships no JavaScript or external stylesheet.
++- The hero is responsive, discoverable in HTML, dimensioned, and high priority.
++- A high-priority image is never lazy loaded.
++- Every referenced candidate exists locally and has a WebP signature.
++- The 640px candidate stays within 40 KiB and all others within 128,000 bytes.
++- CSS does not introduce external resource origins.
++
++`git diff --check` also passes. These checks catch loading regressions; they do
++not measure rendering, image appearance, field responsiveness, or Core Web Vitals.
++
++## Deployment and remaining verification
++
++Hosting configuration is not present, so response headers, compression, TTFB,
++CDN behavior, and real-user performance could not be verified or changed here.
++
++- Enable Brotli or gzip for HTML at the host. WebP is already compressed.
++- Revalidate HTML with `Cache-Control: no-cache`. Cache images with an appropriate
++  lifetime; use content-hashed/versioned filenames before applying a year-long
++  `immutable` policy. These current filenames must be revalidated when changed.
++- Serve the document and assets over HTTPS with HTTP/2 or HTTP/3 where supported.
++- Ensure deployment includes `assets/*.webp` and serves them as `image/webp`.
++- Confirm the linked menu, account, order, and other routes exist in the deployed
++  application. This repository contains only the landing page, so destination
++  response times and interactions are outside the available source.
++- After deployment, assess real-user data at the 75th percentile, separately for
++  mobile and desktop. Targets: LCP ≤2.5s, INP ≤200ms, CLS ≤0.1. No before/after
++  timings or Lighthouse score are asserted by this audit.
++
++Platform guidance used: the `performance` and `optimize-image-priority` guides
++from the project's modern-web-guidance skill. The `break-up-long-tasks` guide
++was reviewed but required no changes because the page has no JavaScript.

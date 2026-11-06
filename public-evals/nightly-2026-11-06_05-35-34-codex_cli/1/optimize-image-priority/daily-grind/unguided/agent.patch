@@ -1,0 +1,123 @@
+diff --git a/index.html b/index.html
+index 66c9173..70a227a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,11 +75,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +88,26 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-image,
++    .hero::before {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      z-index: -1;
++    }
++
++    .hero-image {
++      z-index: -2;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    .hero::before {
++      content: "";
++      background: rgba(0, 0, 0, 0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -120,6 +140,16 @@
+       color: var(--primary);
+     }
+ 
++    .card-image {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 5px;
++      margin-bottom: 15px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -169,6 +199,13 @@
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-image"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;q=80 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;q=80 960w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1920&amp;q=80 1920w"
++      sizes="100vw" width="1920" height="1280" alt="" loading="eager" fetchpriority="high">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +216,37 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75"
++            srcset="https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&amp;fit=crop&amp;w=300&amp;h=225&amp;q=75 300w,
++                    https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75 600w,
++                    https://images.unsplash.com/photo-1511081692775-05d0f180a065?auto=format&amp;fit=crop&amp;w=900&amp;h=675&amp;q=75 900w"
++            sizes="(min-width: 1100px) 300px, (min-width: 830px) calc(33.333vw - 66.667px), (min-width: 560px) calc(50vw - 70px), calc(100vw - 80px)"
++            width="600" height="450" alt="Latte with milk foam in a ceramic cup" loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75"
++            srcset="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=300&amp;h=225&amp;q=75 300w,
++                    https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75 600w,
++                    https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=900&amp;h=675&amp;q=75 900w"
++            sizes="(min-width: 1100px) 300px, (min-width: 830px) calc(33.333vw - 66.667px), (min-width: 560px) calc(50vw - 70px), calc(100vw - 80px)"
++            width="600" height="450" alt="Freshly poured espresso in a small cup" loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75"
++            srcset="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=300&amp;h=225&amp;q=75 300w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=600&amp;h=450&amp;q=75 600w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=900&amp;h=675&amp;q=75 900w"
++            sizes="(min-width: 1100px) 300px, (min-width: 830px) calc(33.333vw - 66.667px), (min-width: 560px) calc(50vw - 70px), calc(100vw - 80px)"
++            width="600" height="450" alt="Cold coffee served over ice in a glass" loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

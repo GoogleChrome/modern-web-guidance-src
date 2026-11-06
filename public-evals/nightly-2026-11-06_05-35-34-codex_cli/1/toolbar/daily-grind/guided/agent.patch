@@ -1,0 +1,255 @@
+diff --git a/index.html b/index.html
+index 66c9173..16cc742 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,119 @@
+       color: var(--primary);
+     }
+ 
++    #favorites-actions,
++    #favorites-actions [role="group"] {
++      display: flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    #favorites-actions {
++      width: fit-content;
++      max-width: 100%;
++      margin: 20px auto 0;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      background: white;
++    }
++
++    #favorites-actions button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-inline-size: 40px;
++      min-block-size: 40px;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    #favorites-actions button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    #favorites-actions button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    #favorites-actions svg {
++      width: 20px;
++      height: 20px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 1.8;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++      pointer-events: none;
++    }
++
++    #favorites-actions [role="separator"] {
++      height: 24px;
++      margin: 0 2px;
++      border-inline-start: 1px solid var(--secondary);
++    }
++
++    #favorites-status {
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    #favorites-cards[data-view="list"] {
++      grid-template-columns: minmax(0, 1fr);
++    }
++
++    #favorites-cards[data-view="list"] .card {
++      text-align: start;
++    }
++
++    #favorites-cards [hidden] {
++      display: none;
++    }
++
++    .favorites-tooltip {
++      inset: auto;
++      position-area: block-end;
++      position-try-fallbacks: flip-block;
++      margin: 8px;
++      padding: 4px 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.85rem;
++    }
++
++    @media (hover: hover) {
++      #favorites-actions button:hover {
++        background: var(--secondary);
++        color: var(--text);
++      }
++    }
++
++    @media (pointer: coarse) {
++      #favorites-actions button {
++        min-inline-size: 48px;
++        min-block-size: 48px;
++      }
++    }
++
++    @media (forced-colors: active) {
++      #favorites-actions button[aria-pressed="true"] {
++        background: Highlight;
++        color: HighlightText;
++        forced-color-adjust: none;
++      }
++
++      #favorites-actions [role="separator"] {
++        border-color: ButtonText;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,7 +290,31 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div id="favorites-actions" role="toolbar" aria-label="Seasonal favorites actions"
++        aria-controls="favorites-cards" focusgroup="toolbar wrap">
++        <div role="group" aria-label="Drink view">
++          <button type="button" data-view="grid" aria-label="Grid view" title="Grid view" aria-pressed="true">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
++          </button>
++          <button type="button" data-view="list" aria-label="List view" title="List view" aria-pressed="false">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></svg>
++          </button>
++        </div>
++        <span role="separator" aria-orientation="vertical"></span>
++        <div role="group" aria-label="Drink display">
++          <button id="favorites-details" type="button" aria-label="Drink details" title="Drink details" aria-pressed="true" aria-controls="favorites-cards">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
++          </button>
++        </div>
++        <span role="separator" aria-orientation="vertical"></span>
++        <div role="group" aria-label="Share drinks">
++          <button type="button" command="--copy" commandfor="favorites-cards" aria-label="Copy featured drinks list" title="Copy featured drinks list">
++            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
++          </button>
++        </div>
++      </div>
++      <p id="favorites-status" role="status"></p>
++      <div id="favorites-cards" class="grid" data-view="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +344,97 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const toolbar = document.getElementById('favorites-actions');
++    const cards = document.getElementById('favorites-cards');
++    const buttons = [...toolbar.querySelectorAll('button')];
++    const viewButtons = [...toolbar.querySelectorAll('[data-view]')];
++
++    viewButtons.forEach(button => {
++      button.addEventListener('click', () => {
++        cards.dataset.view = button.dataset.view;
++        viewButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
++      });
++    });
++
++    document.getElementById('favorites-details').addEventListener('click', event => {
++      const button = event.currentTarget;
++      const showDetails = button.getAttribute('aria-pressed') !== 'true';
++      button.setAttribute('aria-pressed', String(showDetails));
++      cards.querySelectorAll('.card p, .card .btn').forEach(detail => {
++        detail.hidden = !showDetails;
++      });
++    });
++
++    // Keep a single tab stop on browsers without native focusgroup support.
++    if (!('focusGroup' in HTMLElement.prototype)) {
++      buttons.forEach((button, index) => button.tabIndex = index === 0 ? 0 : -1);
++      toolbar.addEventListener('focusin', event => {
++        if (buttons.includes(event.target)) {
++          buttons.forEach(button => button.tabIndex = button === event.target ? 0 : -1);
++        }
++      });
++      toolbar.addEventListener('keydown', event => {
++        const index = buttons.indexOf(event.target);
++        if (index < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
++        const rtl = getComputedStyle(toolbar).direction === 'rtl';
++        const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[event.key];
++        let next;
++        if (event.key === 'Home') next = 0;
++        else if (event.key === 'End') next = buttons.length - 1;
++        else if (step) next = (index + step + buttons.length) % buttons.length;
++        else return;
++        event.preventDefault();
++        buttons[next].focus();
++      });
++    }
++
++    // Enhance native title tooltips only when both required APIs are supported.
++    if ('interestForElement' in HTMLButtonElement.prototype && CSS.supports('position-area', 'block-end')) {
++      buttons.forEach((button, index) => {
++        const tip = document.createElement('div');
++        tip.id = `favorites-tip-${index}`;
++        tip.className = 'favorites-tooltip';
++        tip.textContent = button.title;
++        tip.setAttribute('popover', 'hint');
++        document.body.append(tip);
++        button.setAttribute('interestfor', tip.id);
++        button.removeAttribute('title');
++      });
++    }
++
++    const status = document.getElementById('favorites-status');
++    let feedbackTimer;
++    let lastMessage = '';
++
++    async function copyFavorites(target) {
++      // Copy every featured drink, even when its details are collapsed.
++      const drinks = [...target.querySelectorAll('.card')].map(card =>
++        `${card.querySelector('h3').textContent.trim()} — ${card.querySelector('p').textContent.trim()}`
++      );
++      let message;
++      try {
++        await navigator.clipboard.writeText(`Seasonal Favorites\n${drinks.join('\n')}`);
++        message = 'Featured drinks copied.';
++      } catch {
++        message = 'Could not copy the drinks. Please select and copy them manually.';
++      }
++      clearTimeout(feedbackTimer);
++      if (message === lastMessage) message += '\u00A0';
++      lastMessage = message;
++      status.textContent = message;
++      feedbackTimer = setTimeout(() => status.textContent = '', 5000);
++    }
++
++    if ('CommandEvent' in window) {
++      cards.addEventListener('command', event => {
++        if (event.command === '--copy' && toolbar.contains(event.source)) copyFavorites(cards);
++      });
++    } else {
++      toolbar.querySelector('[command="--copy"]').addEventListener('click', () => copyFavorites(cards));
++    }
++  </script>
++
+ </body>
+ 
+ </html>

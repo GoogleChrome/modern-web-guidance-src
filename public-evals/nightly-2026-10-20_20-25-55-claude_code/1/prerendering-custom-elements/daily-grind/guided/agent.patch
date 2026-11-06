@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+index 66c9173..dce9e6b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,11 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Only matters where declarative shadow DOM is unsupported */
++    drink-card:not(:defined) {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+@@ -178,21 +183,117 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <drink-card>
++          <template shadowrootmode="open">
++          <style>
++            :host { display: block; }
++            .card {
++              position: relative;
++              height: 100%;
++              background: white;
++              padding: 20px;
++              border-radius: 8px;
++              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++              text-align: center;
++            }
++            ::slotted(h3) { margin-bottom: 10px; color: #4e342e; }
++            .fav {
++              position: absolute;
++              top: 8px;
++              right: 8px;
++              border: 0;
++              background: none;
++              font-size: 1.5rem;
++              line-height: 1;
++              color: #bcaaa4;
++              cursor: pointer;
++            }
++            .fav[aria-pressed="true"] { color: #e53935; }
++            .fav:focus-visible { outline: 2px solid #ffab40; border-radius: 4px; }
++          </style>
++            <div class="card">
++              <button type="button" class="fav" aria-pressed="false" aria-label="Favorite Maple Oat Latte">&#9829;</button>
++              <slot></slot>
++            </div>
++          </template>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </drink-card>
++        <drink-card>
++          <template shadowrootmode="open">
++          <style>
++            :host { display: block; }
++            .card {
++              position: relative;
++              height: 100%;
++              background: white;
++              padding: 20px;
++              border-radius: 8px;
++              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++              text-align: center;
++            }
++            ::slotted(h3) { margin-bottom: 10px; color: #4e342e; }
++            .fav {
++              position: absolute;
++              top: 8px;
++              right: 8px;
++              border: 0;
++              background: none;
++              font-size: 1.5rem;
++              line-height: 1;
++              color: #bcaaa4;
++              cursor: pointer;
++            }
++            .fav[aria-pressed="true"] { color: #e53935; }
++            .fav:focus-visible { outline: 2px solid #ffab40; border-radius: 4px; }
++          </style>
++            <div class="card">
++              <button type="button" class="fav" aria-pressed="false" aria-label="Favorite Dark Roast Espresso">&#9829;</button>
++              <slot></slot>
++            </div>
++          </template>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </drink-card>
++        <drink-card>
++          <template shadowrootmode="open">
++          <style>
++            :host { display: block; }
++            .card {
++              position: relative;
++              height: 100%;
++              background: white;
++              padding: 20px;
++              border-radius: 8px;
++              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++              text-align: center;
++            }
++            ::slotted(h3) { margin-bottom: 10px; color: #4e342e; }
++            .fav {
++              position: absolute;
++              top: 8px;
++              right: 8px;
++              border: 0;
++              background: none;
++              font-size: 1.5rem;
++              line-height: 1;
++              color: #bcaaa4;
++              cursor: pointer;
++            }
++            .fav[aria-pressed="true"] { color: #e53935; }
++            .fav:focus-visible { outline: 2px solid #ffab40; border-radius: 4px; }
++          </style>
++            <div class="card">
++              <button type="button" class="fav" aria-pressed="false" aria-label="Favorite Cold Brew">&#9829;</button>
++              <slot></slot>
++            </div>
++          </template>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +308,36 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    class DrinkCard extends HTMLElement {
++      static observedAttributes = ['favorited'];
++
++      constructor() {
++        super();
++        if (!this.shadowRoot) {
++          // Fallback: build the root from the same server markup.
++          const tpl = this.querySelector(':scope > template[shadowrootmode]');
++          this.attachShadow({ mode: 'open' });
++          if (tpl) {
++            this.shadowRoot.append(tpl.content);
++            tpl.remove();
++          }
++        }
++        // Hydrate in place: wire behavior to the existing markup, no re-render.
++        this.shadowRoot.querySelector('.fav')?.addEventListener('click', () => {
++          this.toggleAttribute('favorited');
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        });
++      }
++
++      attributeChangedCallback(name, _old, value) {
++        this.shadowRoot?.querySelector('.fav')
++          ?.setAttribute('aria-pressed', String(value !== null));
++      }
++    }
++
++    customElements.define('drink-card', DrinkCard);
++  </script>
+ </body>
+ 
+ </html>

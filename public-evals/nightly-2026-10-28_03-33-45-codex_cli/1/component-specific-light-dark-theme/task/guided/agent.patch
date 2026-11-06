@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,18 +3,94 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      /* Keep tokens unregistered so light-dark() resolves in each container. */
++      --primary: light-dark(#4e342e, #ffbf69);
++      --primary-hover: light-dark(#3e2723, #ffd39a);
++      --on-primary: light-dark(#ffffff, #241713);
++      --secondary: light-dark(#d7ccc8, #302622);
++      --accent: light-dark(#795020, #ffbf69);
++      --text: light-dark(#3e2723, #f5ece6);
++      --light: light-dark(#fafafa, #1b1614);
++      --surface: light-dark(#ffffff, #2b211e);
++      --nav-background: light-dark(#4e342e, #241b18);
++      --nav-text: light-dark(#ffffff, #f5ece6);
++      --nav-accent: light-dark(#ffab40, #ffbf69);
++      --shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.35));
+     }
+ 
++    /* Older browsers still follow system preferences and local overrides. */
++    @supports not (color: light-dark(white, black)) {
++      :root, .force-light {
++        --primary: #4e342e;
++        --primary-hover: #3e2723;
++        --on-primary: #ffffff;
++        --secondary: #d7ccc8;
++        --accent: #795020;
++        --text: #3e2723;
++        --light: #fafafa;
++        --surface: #ffffff;
++        --nav-background: #4e342e;
++        --nav-text: #ffffff;
++        --nav-accent: #ffab40;
++        --shadow: rgba(0, 0, 0, 0.1);
++      }
++
++      @media (prefers-color-scheme: dark) {
++        :root {
++          --primary: #ffbf69;
++          --primary-hover: #ffd39a;
++          --on-primary: #241713;
++          --secondary: #302622;
++          --accent: #ffbf69;
++          --text: #f5ece6;
++          --light: #1b1614;
++          --surface: #2b211e;
++          --nav-background: #241b18;
++          --nav-text: #f5ece6;
++          --nav-accent: #ffbf69;
++          --shadow: rgba(0, 0, 0, 0.35);
++        }
++      }
++
++      .force-dark:not(.force-light) {
++        --primary: #ffbf69;
++        --primary-hover: #ffd39a;
++        --on-primary: #241713;
++        --secondary: #302622;
++        --accent: #ffbf69;
++        --text: #f5ece6;
++        --light: #1b1614;
++        --surface: #2b211e;
++        --nav-background: #241b18;
++        --nav-text: #f5ece6;
++        --nav-accent: #ffbf69;
++        --shadow: rgba(0, 0, 0, 0.35);
++      }
++    }
++
++    .force-dark {
++      color-scheme: only dark;
++    }
++
++    /* Adding force-light also overrides a card that already has force-dark. */
++    .force-light {
++      color-scheme: only light;
++    }
++
++    :root, .themed-card, .force-dark, .force-light {
++      /* Inherited colors are already resolved: reapply at theme boundaries. */
++      color: var(--text);
++      accent-color: var(--accent);
++      background-color: var(--surface);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -28,14 +104,16 @@
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-background);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -47,50 +125,49 @@
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.75rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-accent);
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1px solid var(--nav-accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background-color: var(--surface);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--text);
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 6vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+@@ -101,43 +178,53 @@
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    .themed-card {
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .themed-card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: var(--on-primary);
++      border: 1px solid transparent;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    nav a:focus-visible {
++      outline-color: var(--nav-accent);
++    }
++
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -151,8 +238,28 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (forced-colors: active) {
++      :root, .force-dark:not(.force-light), .force-light {
++        --primary: ButtonFace;
++        --primary-hover: Highlight;
++        --on-primary: ButtonText;
++        --secondary: Canvas;
++        --accent: Highlight;
++        --text: CanvasText;
++        --light: Canvas;
++        --surface: Canvas;
++        --nav-background: Canvas;
++        --nav-text: LinkText;
++        --nav-accent: LinkText;
++      }
++
++      .themed-card, .btn {
++        border: 1px solid ButtonText;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,9 +274,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero force-dark">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -177,19 +284,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card force-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

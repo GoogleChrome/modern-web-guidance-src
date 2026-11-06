@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+index 66c9173..b16710f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,32 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SPA views: inactive views keep their rendered state cached */
++    #views {
++      position: relative;
++    }
++
++    .spa-view {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0 0 auto 0;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .page-title {
++      text-align: center;
++      margin-bottom: 10px;
++    }
+   </style>
+ </head>
+ 
+@@ -168,6 +194,8 @@
+     </ul>
+   </nav>
+ 
++  <div id="views">
++  <div class="spa-view" id="view-/" data-route="/" tabindex="-1">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+@@ -196,6 +224,8 @@
+       </div>
+     </section>
+   </main>
++  </div>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +237,87 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    const PAGES = {
++      '/menu': ['Menu', 'Espresso, pour-overs, cold brew and fresh pastries.'],
++      '/locations': ['Locations', 'Find a Daily Grind near you.'],
++      '/rewards': ['Rewards', 'Earn a star with every cup.'],
++      '/account': ['My Account', 'Manage your profile and orders.'],
++      '/order-online': ['Order Online', 'Skip the line and pick up in minutes.'],
++      '/about': ['Our Story', 'Ethically sourced, locally roasted.'],
++      '/careers': ['Join the Team', 'We are always hiring baristas.'],
++      '/contact': ['Contact Us', 'Say hello at hello@dailygrind.example.'],
++      '/privacy-policy': ['Privacy', 'How we handle your data.']
++    };
++    const MAX_CACHED_VIEWS = 6; // each cached view keeps its DOM in memory
++    const container = document.getElementById('views');
++    const views = new Map(); // route -> element, in least-recently-used order
++
++    function pathKey(path) {
++      return path.length > 1 ? path.replace(/\/+$/, '') : path;
++    }
++
++    function createView(path) {
++      const el = document.createElement('div');
++      el.className = 'spa-view inactive';
++      el.id = 'view-' + path;
++      el.dataset.route = path;
++      el.tabIndex = -1;
++      const [title, text] = PAGES[path] ||
++        (path.startsWith('/menu/') ? [path.split('/').pop().replace(/-/g, ' '), 'Item details.'] : ['Not found', 'This page does not exist.']);
++      const main = document.createElement('main');
++      main.className = 'container';
++      const h = document.createElement('h2');
++      h.className = 'page-title';
++      h.textContent = title;
++      const p = document.createElement('p');
++      p.className = 'page-title';
++      p.textContent = text;
++      main.append(h, p);
++      el.append(main);
++      container.append(el);
++      return el;
++    }
++
++    function evictOldViews(activePath) {
++      for (const [path, el] of views) {
++        if (views.size <= MAX_CACHED_VIEWS) break;
++        if (path === activePath || path === '/') continue;
++        el.remove();
++        views.delete(path);
++      }
++    }
++
++    function showView(path) {
++      path = pathKey(path);
++      let view = views.get(path);
++      if (view) views.delete(path); // re-insert as most recently used
++      else view = createView(path);
++      views.set(path, view);
++      for (const v of views.values()) {
++        const active = v === view;
++        v.classList.toggle('inactive', !active);
++        v.setAttribute('aria-hidden', String(!active));
++      }
++      evictOldViews(path);
++      view.focus({ preventScroll: true });
++      window.scrollTo(0, 0);
++    }
++
++    views.set('/', document.getElementById('view-/'));
++
++    document.addEventListener('click', (e) => {
++      const a = e.target.closest('a[href^="/"]');
++      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++      if (a.pathname === '/logout') return;
++      e.preventDefault();
++      if (pathKey(a.pathname) !== pathKey(location.pathname)) history.pushState({}, '', a.pathname);
++      showView(a.pathname);
++    });
++
++    window.addEventListener('popstate', () => showView(location.pathname));
++    if (location.pathname !== '/') showView(location.pathname);
++  </script>
+ </body>
+ 
+ </html>

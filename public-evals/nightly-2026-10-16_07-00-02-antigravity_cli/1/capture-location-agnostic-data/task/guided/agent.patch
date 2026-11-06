@@ -1,0 +1,344 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,68 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .form-group {
++      margin-bottom: 15px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.85rem;
++      margin-bottom: 5px;
++      color: var(--primary);
++    }
++
++    .form-input {
++      width: 100%;
++      padding: 8px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      outline: none;
++      transition: border-color 0.2s;
++    }
++
++    .form-input:focus {
++      border-color: var(--accent);
++    }
++
++    .status-box {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 12px;
++      margin-top: 15px;
++      text-align: center;
++    }
++
++    .status-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      color: #795548;
++      letter-spacing: 0.5px;
++      display: block;
++    }
++
++    .status-value {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      display: block;
++      margin: 4px 0;
++    }
++
++    .status-note {
++      font-size: 0.75rem;
++      color: #8d6e63;
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +254,59 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Reminders & Milestones Section -->
++    <section id="reminders" style="margin-top: 50px;">
++      <h2 style="text-align: center; margin-bottom: 8px;">My Coffee Ritual & Reminders</h2>
++      <p style="text-align: center; color: var(--text); max-width: 650px; margin: 0 auto 24px auto; font-size: 0.95rem;">
++        Keep your daily brew and member milestones constant anywhere you travel. Your reminder time and anniversary date are preserved as location-agnostic calendar and wall-clock values without timezone drift.
++      </p>
++
++      <div class="grid">
++        <!-- Daily Pickup Reminder Card -->
++        <div class="card">
++          <div style="font-size: 2rem; margin-bottom: 8px;">⏰</div>
++          <h3>Daily Pickup Reminder</h3>
++          <p style="margin-bottom: 15px; font-size: 0.9rem;">
++            Never miss fresh morning coffee. Stored as a wall-clock time that triggers at the exact same hour wherever you travel.
++          </p>
++          <div class="form-group">
++            <label for="pickup-time">Reminder Time</label>
++            <input type="time" id="pickup-time" name="pickup-time" value="08:30" class="form-input">
++          </div>
++          <div class="status-box">
++            <span class="status-label">Scheduled Pickup Reminder</span>
++            <strong id="pickup-time-display" class="status-value">--:--</strong>
++            <span id="pickup-time-note" class="status-note">Wall-clock time: stays identical across all time zones</span>
++          </div>
++        </div>
++
++        <!-- Coffee Anniversary Date Card -->
++        <div class="card">
++          <div style="font-size: 2rem; margin-bottom: 8px;">☕</div>
++          <h3>Coffee Anniversary</h3>
++          <p style="margin-bottom: 15px; font-size: 0.9rem;">
++            Your member anniversary with The Daily Grind. Stored as a calendar date so your anniversary never shifts a day backward or forward.
++          </p>
++          <div class="form-group">
++            <label for="anniversary-date">Anniversary Date</label>
++            <input type="date" id="anniversary-date" name="anniversary-date" value="2024-10-16" class="form-input">
++          </div>
++          <div class="status-box">
++            <span class="status-label">Member Milestone</span>
++            <strong id="anniversary-date-display" class="status-value">--</strong>
++            <span id="anniversary-date-note" class="status-note">Calendar date: never shifts due to UTC offset</span>
++          </div>
++        </div>
++      </div>
++
++      <div style="text-align: center; margin-top: 24px;">
++        <button type="button" id="save-reminders-btn" class="btn" style="border: none; cursor: pointer; font-size: 0.95rem;">Save Preferences</button>
++        <p id="save-status" style="margin-top: 10px; font-size: 0.85rem; color: #2e7d32; display: none; font-weight: 600;">Preferences saved successfully!</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +317,211 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Location-agnostic chronological data using Temporal API (PlainDate and PlainTime)
++    async function initTemporal() {
++      if (typeof globalThis.Temporal === 'undefined') {
++        try {
++          const module = await import("https://esm.sh/@js-temporal/polyfill");
++          globalThis.Temporal = module.Temporal;
++          Date.prototype.toTemporalInstant = module.toTemporalInstant;
++        } catch (e) {
++          console.warn("Could not load @js-temporal/polyfill from CDN, using embedded fallback:", e);
++        }
++      }
++
++      if (typeof globalThis.Temporal === 'undefined' || !globalThis.Temporal.PlainDate || !globalThis.Temporal.PlainTime) {
++        class FallbackPlainDate {
++          constructor(year, month, day) {
++            this.year = Number(year);
++            this.month = Number(month);
++            this.day = Number(day);
++          }
++          static from(val) {
++            if (val instanceof FallbackPlainDate) return val;
++            if (typeof val === 'string') {
++              const parts = val.split('T')[0].split('-');
++              if (parts.length >= 3) {
++                return new FallbackPlainDate(parts[0], parts[1], parts[2]);
++              }
++            } else if (val && typeof val === 'object') {
++              return new FallbackPlainDate(val.year, val.month, val.day);
++            }
++            throw new TypeError('Invalid PlainDate: ' + val);
++          }
++          toString() {
++            const y = String(this.year).padStart(4, '0');
++            const m = String(this.month).padStart(2, '0');
++            const d = String(this.day).padStart(2, '0');
++            return `${y}-${m}-${d}`;
++          }
++          toLocaleString(locale, options) {
++            const dt = new Date(Date.UTC(this.year, this.month - 1, this.day, 12, 0, 0));
++            return dt.toLocaleDateString(locale || undefined, { ...options, timeZone: 'UTC' });
++          }
++          equals(other) {
++            return this.year === other.year && this.month === other.month && this.day === other.day;
++          }
++        }
++
++        class FallbackPlainTime {
++          constructor(hour = 0, minute = 0, second = 0) {
++            this.hour = Number(hour);
++            this.minute = Number(minute);
++            this.second = Number(second);
++          }
++          static from(val) {
++            if (val instanceof FallbackPlainTime) return val;
++            if (typeof val === 'string') {
++              const match = val.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
++              if (match) {
++                return new FallbackPlainTime(match[1], match[2], match[3] || 0);
++              }
++            } else if (val && typeof val === 'object') {
++              return new FallbackPlainTime(val.hour || 0, val.minute || 0, val.second || 0);
++            }
++            throw new TypeError('Invalid PlainTime: ' + val);
++          }
++          toString() {
++            const h = String(this.hour).padStart(2, '0');
++            const m = String(this.minute).padStart(2, '0');
++            const s = String(this.second).padStart(2, '0');
++            return `${h}:${m}:${s}`;
++          }
++          toLocaleString(locale, options) {
++            const dt = new Date(Date.UTC(2000, 0, 1, this.hour, this.minute, this.second));
++            return dt.toLocaleTimeString(locale || undefined, { ...options, timeZone: 'UTC' });
++          }
++          equals(other) {
++            return this.hour === other.hour && this.minute === other.minute && this.second === other.second;
++          }
++        }
++
++        globalThis.Temporal = globalThis.Temporal || {};
++        globalThis.Temporal.PlainDate = FallbackPlainDate;
++        globalThis.Temporal.PlainTime = FallbackPlainTime;
++      }
++
++      if (typeof window !== 'undefined') {
++        window.Temporal = globalThis.Temporal;
++      }
++      return globalThis.Temporal;
++    }
++
++    async function initializeApp() {
++      const Temporal = await initTemporal();
++
++      const pickupInput = document.getElementById('pickup-time');
++      const pickupDisplay = document.getElementById('pickup-time-display');
++      const pickupNote = document.getElementById('pickup-time-note');
++
++      const anniversaryInput = document.getElementById('anniversary-date');
++      const anniversaryDisplay = document.getElementById('anniversary-date-display');
++      const anniversaryNote = document.getElementById('anniversary-date-note');
++
++      const saveBtn = document.getElementById('save-reminders-btn');
++      const saveStatus = document.getElementById('save-status');
++
++      function updatePickupTime(value, persist = false) {
++        if (!value) return;
++        try {
++          // Use Temporal.PlainTime for location-agnostic wall-clock time
++          const plainTime = Temporal.PlainTime.from(value);
++          window.pickupPlainTime = plainTime;
++
++          const formatted = plainTime.toLocaleString('en-US', {
++            hour: 'numeric',
++            minute: '2-digit',
++            hour12: true
++          });
++
++          if (pickupDisplay) pickupDisplay.textContent = formatted;
++          if (pickupNote) pickupNote.textContent = `Wall-clock time: ${formatted} everywhere you travel`;
++
++          if (persist) {
++            localStorage.setItem('dailyPickupReminderTime', plainTime.toString());
++          }
++          return plainTime;
++        } catch (err) {
++          console.error("Invalid pickup time:", err);
++        }
++      }
++
++      function updateAnniversaryDate(value, persist = false) {
++        if (!value) return;
++        try {
++          // Use Temporal.PlainDate for location-agnostic calendar date
++          const plainDate = Temporal.PlainDate.from(value);
++          window.anniversaryPlainDate = plainDate;
++
++          const formatted = plainDate.toLocaleString('en-US', {
++            month: 'long',
++            day: 'numeric',
++            year: 'numeric'
++          });
++
++          if (anniversaryDisplay) anniversaryDisplay.textContent = formatted;
++          if (anniversaryNote) anniversaryNote.textContent = `Calendar date: ${formatted} (never drifts across time zones)`;
++
++          if (persist) {
++            localStorage.setItem('coffeeAnniversaryDate', plainDate.toString());
++          }
++          return plainDate;
++        } catch (err) {
++          console.error("Invalid anniversary date:", err);
++        }
++      }
++
++      function savePreferences() {
++        if (pickupInput) updatePickupTime(pickupInput.value, true);
++        if (anniversaryInput) updateAnniversaryDate(anniversaryInput.value, true);
++        if (saveStatus) {
++          saveStatus.style.display = 'block';
++          setTimeout(() => {
++            saveStatus.style.display = 'none';
++          }, 3000);
++        }
++      }
++
++      // Restore from localStorage or use defaults
++      const storedTime = localStorage.getItem('dailyPickupReminderTime');
++      const initialTime = storedTime ? storedTime.slice(0, 5) : (pickupInput ? pickupInput.value : '08:30');
++      if (pickupInput) pickupInput.value = initialTime;
++      updatePickupTime(initialTime, false);
++
++      const storedDate = localStorage.getItem('coffeeAnniversaryDate');
++      const initialDate = storedDate || (anniversaryInput ? anniversaryInput.value : '2024-10-16');
++      if (anniversaryInput) anniversaryInput.value = initialDate;
++      updateAnniversaryDate(initialDate, false);
++
++      // Event listeners for automatic update and persistence
++      if (pickupInput) {
++        pickupInput.addEventListener('input', () => updatePickupTime(pickupInput.value, true));
++        pickupInput.addEventListener('change', () => updatePickupTime(pickupInput.value, true));
++      }
++      if (anniversaryInput) {
++        anniversaryInput.addEventListener('input', () => updateAnniversaryDate(anniversaryInput.value, true));
++        anniversaryInput.addEventListener('change', () => updateAnniversaryDate(anniversaryInput.value, true));
++      }
++      if (saveBtn) {
++        saveBtn.addEventListener('click', savePreferences);
++      }
++
++      // Expose globally for convenience and testing
++      window.getPickupPlainTime = () => window.pickupPlainTime;
++      window.getAnniversaryPlainDate = () => window.anniversaryPlainDate;
++      window.updatePickupTime = updatePickupTime;
++      window.updateAnniversaryDate = updateAnniversaryDate;
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initializeApp);
++    } else {
++      initializeApp();
++    }
++  </script>
+ </body>
+ 
+ </html>
++

@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+index 66c9173..34a68d9 100644
+--- a/index.html
++++ b/index.html
+@@ -107,23 +107,116 @@
+       margin-top: 20px;
+     }
+ 
++    /* Themed sections: a section declares its context via data-theme and
++       exposes design tokens; cards inside only consume the tokens, so they
++       restyle automatically when placed in a differently themed section. */
++    .themed-section {
++      --section-bg: transparent;
++      --section-heading: var(--primary);
++      --card-bg: white;
++      --card-text: var(--text);
++      --card-heading: var(--primary);
++      --card-border: transparent;
++      --card-accent: var(--accent);
++      --card-shadow: rgba(0, 0, 0, 0.1);
++      --btn-bg: var(--primary);
++      --btn-bg-hover: #3e2723;
++      --btn-text: white;
++
++      background: var(--section-bg);
++      padding: 40px 20px;
++      border-radius: 12px;
++    }
++
++    .themed-section > h2 {
++      text-align: center;
++      color: var(--section-heading);
++    }
++
++    .themed-section > h2::after {
++      content: "";
++      display: block;
++      width: 60px;
++      height: 3px;
++      margin: 8px auto 0;
++      border-radius: 2px;
++      background: var(--card-accent);
++    }
++
++    .themed-section[data-theme="autumn"] {
++      --section-bg: linear-gradient(180deg, #fff3e0 0%, #fbe9e7 100%);
++      --section-heading: #8d3b12;
++      --card-bg: #fffaf3;
++      --card-heading: #8d3b12;
++      --card-border: #f0c49a;
++      --card-accent: #d9622b;
++      --card-shadow: rgba(141, 59, 18, 0.18);
++      --btn-bg: #b4501f;
++      --btn-bg-hover: #8d3b12;
++    }
++
++    .themed-section[data-theme="winter"] {
++      --section-bg: linear-gradient(180deg, #eef4f8 0%, #e3edf5 100%);
++      --section-heading: #1f3b57;
++      --card-bg: #fbfdff;
++      --card-heading: #1f3b57;
++      --card-border: #c5d8e8;
++      --card-accent: #5b8db8;
++      --card-shadow: rgba(31, 59, 87, 0.16);
++      --btn-bg: #2f5a80;
++      --btn-bg-hover: #1f3b57;
++    }
++
++    .themed-section[data-theme="spring"] {
++      --section-bg: linear-gradient(180deg, #f3f9ef 0%, #fdf0f4 100%);
++      --section-heading: #3f6b2e;
++      --card-bg: #ffffff;
++      --card-heading: #3f6b2e;
++      --card-border: #cfe3c2;
++      --card-accent: #e07a9b;
++      --card-shadow: rgba(63, 107, 46, 0.15);
++      --btn-bg: #437a30;
++      --btn-bg-hover: #345e25;
++    }
++
++    .themed-section[data-theme="summer"] {
++      --section-bg: linear-gradient(180deg, #fffbe6 0%, #e6f7f5 100%);
++      --section-heading: #00695c;
++      --card-bg: #ffffff;
++      --card-heading: #00695c;
++      --card-border: #b2dfdb;
++      --card-accent: #ffb300;
++      --card-shadow: rgba(0, 105, 92, 0.15);
++      --btn-bg: #00796b;
++      --btn-bg-hover: #00574b;
++    }
++
+     .card {
+-      background: white;
++      background: var(--card-bg, white);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border: 1px solid var(--card-border, transparent);
++      border-top: 4px solid var(--card-accent, transparent);
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow, rgba(0, 0, 0, 0.1));
+       text-align: center;
++      transition: transform 0.3s, box-shadow 0.3s;
++    }
++
++    .themed-section .card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 8px 18px var(--card-shadow);
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading, var(--primary));
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg, var(--primary));
++      color: var(--btn-text, white);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,7 +225,23 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover, #3e2723);
++    }
++
++    .themed-section .btn:focus-visible {
++      outline: 3px solid var(--card-accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card,
++      .btn {
++        transition: none;
++      }
++
++      .themed-section .card:hover {
++        transform: none;
++      }
+     }
+ 
+     footer {
+@@ -175,8 +284,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="themed-section" data-theme="autumn" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

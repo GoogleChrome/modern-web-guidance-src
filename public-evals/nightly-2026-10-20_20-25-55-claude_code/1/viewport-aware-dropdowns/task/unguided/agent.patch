@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,70 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    /* Options dropdown */
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      border: 1px solid var(--secondary);
++      padding: 5px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn:focus-visible {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    /* Popover renders in the top layer, so no z-index or overflow clipping */
++    #action-panel {
++      position: fixed;
++      position-anchor: --options-trigger;
++      inset: auto;
++      margin: 0;
++      top: anchor(bottom);
++      left: anchor(left);
++      /* Flip vertically, horizontally, or both when the panel would overflow the viewport */
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      min-width: 180px;
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
++    }
++
++    #action-panel:popover-open {
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    #action-panel button {
++      font: inherit;
++      font-size: 0.9rem;
++      color: inherit;
++      background: transparent;
++      border: 0;
++      border-radius: 4px;
++      padding: 8px 12px;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover,
++    #action-panel button:focus-visible {
++      background: var(--secondary);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -164,11 +226,20 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" id="trigger-btn" popovertarget="action-panel">Options</button>
++      </li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" popover>
++    <button type="button">Seasonal Offers</button>
++    <button type="button">Account Settings</button>
++    <button type="button">Support</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>

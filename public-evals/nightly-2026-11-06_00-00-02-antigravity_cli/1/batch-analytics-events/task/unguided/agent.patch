@@ -1,0 +1,211 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,206 @@
++(function () {
++  'use strict';
++
++  const DEFAULT_CONFIG = {
++    endpoint: '/api/analytics',
++    debounceMs: 500,
++    maxBatchSize: 50
++  };
++
++  class AnalyticsTracker {
++    constructor(config = {}) {
++      this.config = Object.assign({}, DEFAULT_CONFIG, config);
++      this.queue = [];
++      this.debounceTimer = null;
++      this.sessionId = this._initSessionId();
++      this.sentBatches = [];
++
++      this._handleClick = this._handleClick.bind(this);
++      this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
++      this._handlePageHide = this._handlePageHide.bind(this);
++    }
++
++    _initSessionId() {
++      try {
++        const key = 'dg_analytics_session_id';
++        let id = sessionStorage.getItem(key);
++        if (!id) {
++          id = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now().toString(36);
++          sessionStorage.setItem(key, id);
++        }
++        return id;
++      } catch (e) {
++        return 'sess_' + Math.random().toString(36).substring(2, 11);
++      }
++    }
++
++    init() {
++      // Record initial page view
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', () => this.trackPageView(), { once: true });
++      } else {
++        this.trackPageView();
++      }
++
++      // Listen for user click interactions across the document
++      document.addEventListener('click', this._handleClick, { capture: true, passive: true });
++
++      // Flush any remaining queued events when the page is hidden or unloaded
++      document.addEventListener('visibilitychange', this._handleVisibilityChange);
++      window.addEventListener('pagehide', this._handlePageHide);
++    }
++
++    trackPageView(customData = {}) {
++      return this.track('pageview', Object.assign({
++        url: window.location.href,
++        path: window.location.pathname,
++        title: document.title,
++        referrer: document.referrer || null,
++        viewport: `${window.innerWidth}x${window.innerHeight}`
++      }, customData));
++    }
++
++    trackClick(element, event) {
++      const tag = element.tagName ? element.tagName.toLowerCase() : 'unknown';
++      const text = (element.innerText || element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100);
++      const href = element.getAttribute ? (element.getAttribute('href') || element.closest('a')?.getAttribute('href') || null) : null;
++      const id = element.id || null;
++      const className = typeof element.className === 'string' && element.className.trim() ? element.className.trim() : null;
++      const section = element.closest('nav, header, main, section, footer')?.tagName.toLowerCase() || null;
++
++      return this.track('click', {
++        tag,
++        id,
++        className,
++        text: text || null,
++        href,
++        section,
++        x: event ? event.clientX : null,
++        y: event ? event.clientY : null
++      });
++    }
++
++    track(type, payload = {}) {
++      const eventRecord = {
++        id: 'evt_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36),
++        type,
++        timestamp: new Date().toISOString(),
++        sessionId: this.sessionId,
++        path: window.location.pathname,
++        data: payload
++      };
++
++      this.queue.push(eventRecord);
++
++      if (this.queue.length >= this.config.maxBatchSize) {
++        this.flush();
++      } else {
++        this._scheduleFlush();
++      }
++
++      return eventRecord;
++    }
++
++    _scheduleFlush() {
++      if (this.debounceTimer !== null) {
++        clearTimeout(this.debounceTimer);
++      }
++      this.debounceTimer = setTimeout(() => {
++        this.debounceTimer = null;
++        this._deferFlush();
++      }, this.config.debounceMs);
++    }
++
++    _deferFlush() {
++      if (typeof window.requestIdleCallback === 'function') {
++        window.requestIdleCallback(() => this.flush(), { timeout: 1000 });
++      } else {
++        this.flush();
++      }
++    }
++
++    flush(options = {}) {
++      if (this.debounceTimer !== null) {
++        clearTimeout(this.debounceTimer);
++        this.debounceTimer = null;
++      }
++
++      if (this.queue.length === 0) {
++        return null;
++      }
++
++      const eventsToSend = this.queue.splice(0, this.queue.length);
++      const batchPayload = {
++        batchId: 'batch_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36),
++        sessionId: this.sessionId,
++        sentAt: new Date().toISOString(),
++        count: eventsToSend.length,
++        events: eventsToSend
++      };
++
++      this.sentBatches.push(batchPayload);
++      this._dispatchBatch(batchPayload, options.useBeacon === true);
++
++      return batchPayload;
++    }
++
++    _dispatchBatch(batchPayload, preferBeacon = false) {
++      const body = JSON.stringify(batchPayload);
++      const endpoint = this.config.endpoint;
++
++      if (preferBeacon && typeof navigator.sendBeacon === 'function') {
++        try {
++          const blob = new Blob([body], { type: 'application/json' });
++          const queued = navigator.sendBeacon(endpoint, blob);
++          if (queued) return;
++        } catch (e) {
++          // Fall back to fetch below
++        }
++      }
++
++      if (typeof window.fetch === 'function') {
++        window.fetch(endpoint, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json'
++          },
++          body,
++          keepalive: true,
++          credentials: 'same-origin'
++        }).catch(() => {
++          // Silently ignore network errors on static/offline servers so user experience is uninterrupted
++        });
++      } else if (typeof navigator.sendBeacon === 'function') {
++        try {
++          const blob = new Blob([body], { type: 'application/json' });
++          navigator.sendBeacon(endpoint, blob);
++        } catch (e) {
++          // Ignore errors
++        }
++      }
++    }
++
++    _handleClick(event) {
++      const target = event.target instanceof Element ? event.target : null;
++      if (!target) return;
++
++      // Identify interactive element (link, button, card, or element with data-track) if clicked inside one, otherwise record target
++      const interactiveTarget = target.closest('a, button, [role="button"], .btn, .card, [data-track]') || target;
++      this.trackClick(interactiveTarget, event);
++    }
++
++    _handleVisibilityChange() {
++      if (document.visibilityState === 'hidden') {
++        this.flush({ useBeacon: true });
++      }
++    }
++
++    _handlePageHide() {
++      this.flush({ useBeacon: true });
++    }
++  }
++
++  const tracker = new AnalyticsTracker();
++  window.DailyGrindAnalytics = tracker;
++  tracker.init();
++})();

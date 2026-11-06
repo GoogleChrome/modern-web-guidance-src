@@ -1,0 +1,631 @@
+diff --git a/PRIVACY.md b/PRIVACY.md
+new file mode 100644
+index 0000000..6a907cc
+--- /dev/null
++++ b/PRIVACY.md
+@@ -0,0 +1,50 @@
++# Privacy engineering and vendor review
++
++## Current data inventory
++
++| Surface | Data / purpose | Retention / recipient |
++| --- | --- | --- |
++| HTTP delivery | IP address, request URL and browser headers reach the server to deliver public content | Transient in application memory; no application request logging or database |
++| Browser | Local HTML, CSS and coffee photo | No cookies, storage, identifiers, or analytics; responses use `no-store` |
++| Hosting / proxy | May see connection metadata and URLs | Deployment owner must establish provider, region, access controls, logging, and retention before release |
++| Unsplash | Source of the checked-in coffee image | Build-time download only; no visitor connection |
++
++No accounts, rewards, checkout, forms, or payment processing exist in this codebase. Navigation links to those routes predate this change and return 404. Do not send personal data in URLs. No user data is written to disk or exposed through errors. Only explicitly listed public files are served. The application has no runtime npm dependencies and no install-time remote server download.
++
++## Deployment requirements
++
++Run `npm start` with Node 22 or later (`PORT` defaults to 11222). Use this server rather than a generic static server to retain the response protections. Run `npm test` for regression coverage.
++
++Terminate TLS at a trusted ingress, redirect HTTP to HTTPS there, and prevent public access to the backend port. Set `HTTPS_ONLY=true` only after that configuration is active; this adds one-year HSTS. Do not enable includeSubDomains or preload without reviewing every subdomain. The server does not infer TLS from untrusted forwarding headers. If deploying the files on another host, configure the same headers at that host and recheck all routes and errors.
++
++Before production, the deployment owner must:
++
++- Identify the host and all subprocessors; document region, data access and retention. Disable access logging when unnecessary. If operational logs are needed, exclude query strings, cookies, authorization headers and full IP addresses; define a short, justified retention and enforce deletion.
++- Require MFA, least-privilege access and encryption for infrastructure records and backups. Test provider deletion and expiry. Keep secrets out of public assets and URLs.
++- Verify HTTPS redirects, certificates, HSTS, and header preservation at the public ingress. The local automated tests cannot verify hosting infrastructure.
++- Add a real operator contact channel to the privacy notice once one is supplied. Confirm the notice accurately reflects the actual hosting arrangements.
++
++## Third-party audit register
++
++This is a code-level inventory and review workflow, **not an independent audit or certification**. No third-party auditor has reviewed this deployment.
++
++| Component | Review finding | Follow-up |
++| --- | --- | --- |
++| Unsplash photo | Previously loaded remotely, revealing visitor connection metadata. Now served from `/assets/coffee.jpg`. Source: https://images.unsplash.com/photo-1495474472287-4d71bcdd2085 | Confirm image usage terms before publishing; retain source attribution here |
++| `pnpm dlx statikk` | Previously downloaded a server dynamically at startup | Removed; native Node HTTP server used instead |
++| Node runtime | Sole runtime dependency | Deployment owner keeps supported Node release patched |
++| Hosting / CDN / proxy | Not specified in repository | Vendor approval and infrastructure review pending before production |
++| Analytics, ads, fonts, payment SDKs | None present | Re-review before any introduction |
++
++For each new provider, record an owner, review date, purpose, exact fields disclosed, necessity, region, subprocessors, retention/deletion behavior, security evidence, incident notification terms, and approval. Prefer an integration that shares no visitor data. Obtain an independent assessment of actual production infrastructure before describing the application as externally audited. Review providers before release, after changes, and at least annually.
++
++## Future data features
++
++Before implementing account or order services, define required fields and retention for each purpose. Separate optional marketing consent, keep it disabled initially, and honor withdrawal. Validate requests server-side, restrict access by role, encrypt transport and stored sensitive data, use secure HttpOnly SameSite session cookies, and provide verified access/export/deletion flows. Never store payment card details in this application. Update both this inventory and the public notice before collecting anything new.
++
++## Header references
++
++The restrictive CSP is delivered as an HTTP header, including `frame-ancestors` (which is not supported in a meta policy). External styles and images are limited to the same origin; scripts and connections are disabled.
++
++- https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors
++- https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security
+diff --git a/assets/coffee.jpg b/assets/coffee.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/coffee.jpg differ
+diff --git a/assets/styles.css b/assets/styles.css
+new file mode 100644
+index 0000000..1b4744e
+--- /dev/null
++++ b/assets/styles.css
+@@ -0,0 +1,163 @@
++:root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    /* Navigation */
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++      transition: color 0.3s;
++    }
++
++    nav a:hover {
++      color: var(--accent);
++    }
++
++    .logout-link {
++      border: 1px solid var(--accent);
++      padding: 5px 12px;
++      border-radius: 4px;
++    }
++
++    /* Hero Section */
++    .hero {
++      height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('/assets/coffee.jpg');
++      background-size: cover;
++      background-position: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      color: white;
++      text-align: center;
++      padding: 0 20px;
++    }
++
++    .hero h1 {
++      font-size: 3rem;
++      margin-bottom: 1rem;
++    }
++
++    /* Content Sections */
++    .container {
++      max-width: 1100px;
++      margin: 40px auto;
++      padding: 0 20px;
++    }
++
++    .grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++      margin-top: 20px;
++    }
++
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .card h3 {
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover {
++      background: #3e2723;
++    }
++
++    footer {
++      background: var(--secondary);
++      text-align: center;
++      padding: 40px 20px;
++      margin-top: 40px;
++    }
++
++    .footer-links {
++      margin-bottom: 20px;
++    }
++
++    .footer-links a {
++      margin: 0 10px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.85rem;
++    }
++
++.section-title { text-align: center; }
++a:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
++.privacy-note { padding: 24px; background: #eee8e3; border-radius: 8px; margin-top: 40px; }
++.privacy-note a { color: var(--primary); }
++.policy { max-width: 760px; }
++.policy h1 { font-size: 2.5rem; line-height: 1.2; margin-bottom: 16px; }
++.policy h2 { margin: 32px 0 8px; }
++.policy p { margin-bottom: 12px; }
++.policy ul { padding-left: 24px; }
++.eyebrow { text-transform: uppercase; letter-spacing: 2px; font-size: .8rem; }
++@media (max-width: 640px) {
++  nav { flex-wrap: wrap; gap: 12px; }
++  nav ul { flex-wrap: wrap; gap: 12px; }
++  nav ul li { margin-left: 0; }
++  .hero h1 { font-size: 2.2rem; }
++}
+diff --git a/index.html b/index.html
+index 66c9173..c18ac01 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="referrer" content="no-referrer">
++  <link rel="stylesheet" href="/assets/styles.css">
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +49,11 @@
+         </div>
+       </div>
+     </section>
++    <aside class="privacy-note" aria-labelledby="privacy-heading">
++      <h2 id="privacy-heading">Good coffee. A little less data.</h2>
++      <p>Browse freely. This site uses no cookies, analytics, or advertising trackers.</p>
++      <a href="/privacy-policy">Read our privacy commitments &rarr;</a>
++    </aside>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..b41b0e8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "engines": {
++    "node": ">=22"
+   }
+ }
+diff --git a/privacy-policy.html b/privacy-policy.html
+new file mode 100644
+index 0000000..4e2ddde
+--- /dev/null
++++ b/privacy-policy.html
+@@ -0,0 +1,59 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
++  <title>Privacy | The Daily Grind</title>
++  <link rel="stylesheet" href="/assets/styles.css">
++</head>
++<body>
++  <nav aria-label="Main navigation">
++    <a href="/" class="logo">THE DAILY GRIND</a>
++    <a href="/">Back to the coffee</a>
++  </nav>
++  <main class="container policy">
++    <p class="eyebrow">Our privacy commitments</p>
++    <h1>Good coffee.<br>A little less data.</h1>
++    <p>We keep this website simple so you can explore without creating an account or handing over personal details.</p>
++    <p>Updated October 16, 2026 · Applies to this informational website.</p>
++    <aside class="privacy-note" aria-label="Privacy at a glance">
++      <strong>Your visit, at a glance</strong>
++      <ul>
++        <li>No analytics or advertising trackers</li>
++        <li>No cookies or browser storage</li>
++        <li>No personal information forms</li>
++        <li>Images and styles served directly by this site</li>
++      </ul>
++    </aside>
++    <section>
++      <h2>We collect less from the start</h2>
++      <p>This site does not request your name, email, location, or payment details. Account, rewards, and ordering services are not currently implemented. We do not build visitor profiles, sell personal data, or use fingerprinting.</p>
++    </section>
++    <section>
++      <h2>What happens when you visit</h2>
++      <p>Your browser sends ordinary connection information, including your IP address and requested page, to deliver the site. The application does not write access logs, retain request details, or store visitor data in a database.</p>
++      <p>The hosting provider or network infrastructure may process connection information independently. Its logging and retention settings must be reviewed for each deployment; application settings alone cannot control those records.</p>
++    </section>
++    <section>
++      <h2>Fewer third parties</h2>
++      <p>Your browser loads no third-party scripts, fonts, or images. Our coffee photograph is sourced from Unsplash and hosted locally, so viewing it does not connect your browser to Unsplash.</p>
++      <p>Our review process requires checking a provider’s purpose, data access, retention, security practices, and subprocessors before adding a service. No independent third-party privacy audit has been completed for this site.</p>
++    </section>
++    <section>
++      <h2>Secure handling by default</h2>
++      <p>The site restricts external connections, scripts, forms, framing, and access to device features. It sends no referrer information and asks browsers not to cache responses. Production hosting must use HTTPS to protect data in transit.</p>
++    </section>
++    <section>
++      <h2>Your choices</h2>
++      <p>You can browse without accepting optional tracking because none is installed. This application keeps no visitor profile or saved preferences to access, export, or delete. For questions about hosting records, contact the site operator through your existing contact channel; this site has no online request form.</p>
++    </section>
++    <section>
++      <h2>If the site changes</h2>
++      <p>Any new account, order, payment, or analytics feature needs its own data review and an updated notice before it launches. Optional data collection must be off by default and have a clear purpose, retention limit, and deletion process.</p>
++    </section>
++    <a href="/" class="btn">Back to The Daily Grind</a>
++  </main>
++  <footer><p>&copy; 2026 The Daily Grind Coffee Co.</p></footer>
++</body>
++</html>
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..5fad7e2
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,60 @@
++import http from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++
++export const securityHeaders = {
++  'Content-Security-Policy': "default-src 'none'; style-src 'self'; img-src 'self'; script-src 'none'; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
++  'Referrer-Policy': 'no-referrer',
++  'X-Content-Type-Options': 'nosniff',
++  'X-Frame-Options': 'DENY',
++  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()',
++  'Cross-Origin-Opener-Policy': 'same-origin',
++  'Cross-Origin-Resource-Policy': 'same-origin',
++  'Cache-Control': 'no-store',
++};
++
++// Explicit public routes prevent accidental exposure of source, logs, or secrets.
++const routes = new Map([
++  ['/', ['index.html', 'text/html; charset=utf-8']],
++  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
++  ['/privacy-policy', ['privacy-policy.html', 'text/html; charset=utf-8']],
++  ['/privacy-policy/', ['privacy-policy.html', 'text/html; charset=utf-8']],
++  ['/assets/styles.css', ['assets/styles.css', 'text/css; charset=utf-8']],
++  ['/assets/coffee.jpg', ['assets/coffee.jpg', 'image/jpeg']],
++]);
++
++export function createServer({ httpsOnly = process.env.HTTPS_ONLY === 'true' } = {}) {
++  return http.createServer(async (req, res) => {
++    for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
++    // Enable only behind a TLS-terminating proxy that enforces HTTPS redirects.
++    // Never trust a client-supplied X-Forwarded-Proto header.
++    if (httpsOnly) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
++    if (req.method !== 'GET' && req.method !== 'HEAD') {
++      res.writeHead(405, { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end('Method not allowed');
++      return;
++    }
++    const route = routes.get((req.url ?? '').split('?')[0]);
++    if (!route) {
++      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end(req.method === 'HEAD' ? undefined : 'Page not found');
++      return;
++    }
++    try {
++      const body = await readFile(new URL(route[0], import.meta.url));
++      res.writeHead(200, { 'Content-Type': route[1], 'Content-Length': body.length });
++      res.end(req.method === 'HEAD' ? undefined : body);
++    } catch {
++      // Do not expose filesystem paths, request data, or stack traces.
++      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end(req.method === 'HEAD' ? undefined : 'Unable to load page');
++    }
++  });
++}
++
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  const server = createServer();
++  server.requestTimeout = 15_000;
++  server.headersTimeout = 10_000;
++  server.listen(Number(process.env.PORT ?? 11222), '0.0.0.0');
++}
+diff --git a/tests/privacy.test.mjs b/tests/privacy.test.mjs
+new file mode 100644
+index 0000000..db93ef1
+--- /dev/null
++++ b/tests/privacy.test.mjs
+@@ -0,0 +1,64 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { createServer, securityHeaders } from '../server.mjs';
++
++async function withServer(options, run) {
++  const server = createServer(options);
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  try { await run(`http://127.0.0.1:${server.address().port}`); }
++  finally { await new Promise(resolve => server.close(resolve)); }
++}
++
++test('all public assets and errors carry enforced privacy headers', async () => {
++  await withServer({ httpsOnly: false }, async base => {
++    for (const path of ['/', '/privacy-policy', '/assets/styles.css', '/assets/coffee.jpg', '/missing']) {
++      const response = await fetch(base + path);
++      assert.equal(response.status, path === '/missing' ? 404 : 200);
++      for (const [name, value] of Object.entries(securityHeaders)) assert.equal(response.headers.get(name), value);
++      assert.equal(response.headers.get('set-cookie'), null);
++      assert.equal(response.headers.get('strict-transport-security'), null);
++      await response.arrayBuffer();
++    }
++    const policy = await (await fetch(base + '/privacy-policy')).text();
++    assert.match(policy, /No cookies or browser storage/);
++  });
++});
++
++test('only public files and read methods are available', async () => {
++  await withServer({}, async base => {
++    for (const path of ['/server.mjs', '/package.json', '/.git/config', '/assets/../package.json', '/%2e%2e/package.json', '/privacy-policy.html']) {
++      const response = await fetch(base + path);
++      assert.equal(response.status, 404, path);
++    }
++    for (const method of ['POST', 'PUT', 'DELETE', 'OPTIONS']) {
++      const response = await fetch(base + '/', { method });
++      assert.equal(response.status, 405);
++      assert.equal(response.headers.get('allow'), 'GET, HEAD');
++    }
++    const head = await fetch(base + '/', { method: 'HEAD' });
++    assert.equal(head.status, 200);
++    assert.equal(await head.text(), '');
++    assert.equal((await fetch(base + '/?email=not-retained')).status, 200);
++  });
++});
++
++test('HSTS is an explicit deployment setting, never derived from untrusted headers', async () => {
++  await withServer({ httpsOnly: false }, async base => {
++    const response = await fetch(base, { headers: { 'X-Forwarded-Proto': 'https' } });
++    assert.equal(response.headers.get('strict-transport-security'), null);
++  });
++  await withServer({ httpsOnly: true }, async base => {
++    for (const path of ['/', '/missing']) {
++      assert.equal((await fetch(base + path)).headers.get('strict-transport-security'), 'max-age=31536000');
++    }
++  });
++});
++
++test('pages use local assets, no inline code, forms, storage, or third-party resources', async () => {
++  for (const path of ['index.html', 'privacy-policy.html', 'assets/styles.css']) {
++    const source = await readFile(new URL('../' + path, import.meta.url), 'utf8');
++    assert.doesNotMatch(source, /https?:\/\/|<script\b|<style\b|\sstyle=|\son\w+=|<form\b|localStorage|sessionStorage|document\.cookie/i);
++    for (const match of source.matchAll(/(?:href|src)="([^"]+)"/g)) assert.ok(match[1].startsWith('/'));
++  }
++});

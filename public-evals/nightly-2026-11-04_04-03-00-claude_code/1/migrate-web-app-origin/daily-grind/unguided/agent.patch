@@ -1,0 +1,255 @@
+diff --git a/config-migration.js b/config-migration.js
+new file mode 100644
+index 0000000..1bdbe8f
+--- /dev/null
++++ b/config-migration.js
+@@ -0,0 +1,50 @@
++// Imports user configuration from the legacy origin after the PWA origin
++// migration. Browsers move the installed app (and its OS shortcuts) to the new
++// origin, but NOT localStorage/permissions, so we pull it over once.
++(function () {
++  var LEGACY_ORIGIN = 'https://www.dailygrind.example';
++  var PREFIX = 'dg:';
++  var DONE_KEY = 'dg:configMigrated';
++  var TIMEOUT_MS = 5000;
++
++  try {
++    if (location.origin === LEGACY_ORIGIN || localStorage.getItem(DONE_KEY)) return;
++  } catch (e) { return; }
++
++  var iframe = document.createElement('iframe');
++  iframe.src = LEGACY_ORIGIN + '/config-export.html';
++  iframe.hidden = true;
++  iframe.setAttribute('aria-hidden', 'true');
++  iframe.tabIndex = -1;
++
++  var timer;
++  function cleanup() {
++    clearTimeout(timer);
++    window.removeEventListener('message', onMessage);
++    iframe.remove();
++  }
++
++  function onMessage(event) {
++    if (event.origin !== LEGACY_ORIGIN || event.source !== iframe.contentWindow) return;
++    if (!event.data || event.data.type !== 'dg-config-export') return;
++    var config = event.data.config || {};
++    try {
++      Object.keys(config).forEach(function (key) {
++        // Only accept namespaced keys; never clobber values already set here.
++        if (key.indexOf(PREFIX) !== 0 || typeof config[key] !== 'string') return;
++        if (localStorage.getItem(key) === null) localStorage.setItem(key, config[key]);
++      });
++      localStorage.setItem(DONE_KEY, new Date().toISOString());
++      iframe.contentWindow.postMessage({ type: 'dg-config-imported' }, LEGACY_ORIGIN);
++      document.dispatchEvent(new CustomEvent('dg:config-migrated', { detail: { keys: Object.keys(config) } }));
++    } catch (e) { /* storage unavailable; retry next launch */ }
++    cleanup();
++  }
++
++  window.addEventListener('message', onMessage);
++  iframe.addEventListener('load', function () {
++    iframe.contentWindow.postMessage({ type: 'dg-config-request' }, LEGACY_ORIGIN);
++  });
++  timer = setTimeout(cleanup, TIMEOUT_MS); // legacy origin unreachable: retry next launch
++  (document.body || document.documentElement).appendChild(iframe);
++})();
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..6b8716c
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#4e342e"/><path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#d7ccc8"/><path d="M344 224h24a40 40 0 0 1 0 80h-30" fill="none" stroke="#d7ccc8" stroke-width="24"/><path d="M200 120c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64" stroke="#ffab40" stroke-width="16" fill="none" stroke-linecap="round"/></svg>
+diff --git a/index.html b/index.html
+index 66c9173..97976a2 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <meta name="theme-color" content="#4e342e">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/icon.svg">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -207,6 +211,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/config-migration.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/legacy-origin/.well-known/web-app-origin-association b/legacy-origin/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..50f457e
+--- /dev/null
++++ b/legacy-origin/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example/": {
++    "allow_migration": true
++  }
++}
+diff --git a/legacy-origin/README.md b/legacy-origin/README.md
+new file mode 100644
+index 0000000..529cdbf
+--- /dev/null
++++ b/legacy-origin/README.md
+@@ -0,0 +1,22 @@
++# Legacy origin files (https://www.dailygrind.example)
++
++Deploy these to the **old** origin so installed apps move to
++`https://app.dailygrind.example/` (the root of this repo):
++
++| File | Purpose |
++| --- | --- |
++| `.well-known/web-app-origin-association` | Old origin allows the new app id to take over its install (required). Serve as `application/json`. |
++| `manifest.webmanifest` | Legacy manifest with `migrate_to`, so the browser can offer the move without the user visiting the new site first. Its `shortcuts` match the new manifest. |
++| `install.html` | `install_url` named in the new manifest's `migrate_from`. **Must not redirect.** |
++| `config-export.html` | Same-site bridge that hands `dg:*` localStorage settings to the new origin. **Must not redirect.** |
++
++Everything else on the old origin can 301 to the new origin.
++
++Both origins must be same-site (same eTLD+1). The browser moves the install
++itself: OS launcher, dock, and taskbar shortcuts plus the app window. It does
++**not** move storage or permissions, so `/config-migration.js` on the new
++origin imports `dg:*` settings once. It never overwrites values already set on
++the new origin.
++
++To switch to a "force" migration later, set `"behavior": "force"` in
++`migrate_from` in `/manifest.webmanifest`.
+diff --git a/legacy-origin/config-export.html b/legacy-origin/config-export.html
+new file mode 100644
+index 0000000..1502363
+--- /dev/null
++++ b/legacy-origin/config-export.html
+@@ -0,0 +1,32 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <!-- Must NOT redirect. Loaded in a hidden iframe by the new origin to hand
++       over user configuration, since browsers do not migrate storage. -->
++  <title>Daily Grind config export</title>
++</head>
++<body>
++<script>
++  (function () {
++    var NEW_ORIGIN = 'https://app.dailygrind.example';
++    var PREFIX = 'dg:';
++    window.addEventListener('message', function (event) {
++      if (event.origin !== NEW_ORIGIN || !event.data) return;
++      if (event.data.type === 'dg-config-request') {
++        var config = {};
++        try {
++          for (var i = 0; i < localStorage.length; i++) {
++            var key = localStorage.key(i);
++            if (key && key.indexOf(PREFIX) === 0) config[key] = localStorage.getItem(key);
++          }
++        } catch (e) { /* storage unavailable */ }
++        event.source.postMessage({ type: 'dg-config-export', config: config }, NEW_ORIGIN);
++      } else if (event.data.type === 'dg-config-imported') {
++        try { localStorage.setItem('dg:migratedTo', NEW_ORIGIN); } catch (e) {}
++      }
++    });
++  })();
++</script>
++</body>
++</html>
+diff --git a/legacy-origin/icons/icon.svg b/legacy-origin/icons/icon.svg
+new file mode 100644
+index 0000000..6b8716c
+--- /dev/null
++++ b/legacy-origin/icons/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#4e342e"/><path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#d7ccc8"/><path d="M344 224h24a40 40 0 0 1 0 80h-30" fill="none" stroke="#d7ccc8" stroke-width="24"/><path d="M200 120c-16 24 16 40 0 64M256 112c-16 24 16 40 0 64" stroke="#ffab40" stroke-width="16" fill="none" stroke-linecap="round"/></svg>
+diff --git a/legacy-origin/install.html b/legacy-origin/install.html
+new file mode 100644
+index 0000000..dd835b4
+--- /dev/null
++++ b/legacy-origin/install.html
+@@ -0,0 +1,16 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Must NOT redirect: the browser fetches this page to read the legacy
++       manifest (and its migrate_to) even after the rest of the old origin
++       redirects to https://app.dailygrind.example/. -->
++  <title>The Daily Grind</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <meta name="theme-color" content="#4e342e">
++</head>
++<body>
++  <p>The Daily Grind has moved to <a href="https://app.dailygrind.example/">app.dailygrind.example</a>.</p>
++</body>
++</html>
+diff --git a/legacy-origin/manifest.webmanifest b/legacy-origin/manifest.webmanifest
+new file mode 100644
+index 0000000..20cab03
+--- /dev/null
++++ b/legacy-origin/manifest.webmanifest
+@@ -0,0 +1,23 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "shortcuts": [
++    { "name": "Order Now", "short_name": "Order", "url": "/order-online", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "Menu", "url": "/menu", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "Rewards", "url": "/rewards", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "My Account", "url": "/account", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.example/",
++    "install_url": "https://app.dailygrind.example/?utm_source=pwa-migration"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..fec5579
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,28 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee — order ahead and earn rewards.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
++  ],
++  "shortcuts": [
++    { "name": "Order Now", "short_name": "Order", "url": "/order-online", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "Menu", "url": "/menu", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "Rewards", "url": "/rewards", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
++    { "name": "My Account", "url": "/account", "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.dailygrind.example/",
++      "install_url": "https://www.dailygrind.example/install.html",
++      "behavior": "suggest"
++    }
++  ]
++}

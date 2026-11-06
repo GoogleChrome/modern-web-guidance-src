@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..d31fbcf 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -14,6 +15,74 @@
+       --light: #fafafa;
+     }
+ 
++    /* ------------------------------------------------------------------
++       Theme selection — the ONLY place light/dark is decided.
++       Sources (later wins): OS preference, then an explicit root override:
++         <html data-theme="dark|light">  or  <html class="dark|light">
++         (also .theme-dark / .theme-light)
++       Each source flips `color-scheme` (native UI: scrollbars, controls,
++       canvas) and two "space toggles". A toggle set to `initial` is
++       guaranteed-invalid, so `var(--_when-dark, X)` resolves to X only in
++       dark mode and to nothing otherwise. Every themed token below is
++       written once as  var(--_when-light, LIGHT) var(--_when-dark, DARK),
++       so no component rule is ever repeated per theme or per source, and it
++       works in browsers without light-dark() or style queries.
++       ------------------------------------------------------------------ */
++    :root {
++      color-scheme: light;
++      --_when-light: initial;
++      --_when-dark: ;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        color-scheme: dark;
++        --_when-light: ;
++        --_when-dark: initial;
++      }
++    }
++
++    :root:is([data-theme="dark"], .dark, .theme-dark) {
++      color-scheme: dark;
++      --_when-light: ;
++      --_when-dark: initial;
++    }
++
++    :root:is([data-theme="light"], .light, .theme-light) {
++      color-scheme: light;
++      --_when-light: initial;
++      --_when-dark: ;
++    }
++
++    /* Themed tokens (each defined once, both values side by side) */
++    :root {
++      --page-bg: var(--_when-light, var(--light)) var(--_when-dark, #17110f);
++      --page-text: var(--_when-light, var(--text)) var(--_when-dark, #efe6e2);
++
++      --nav-bg: var(--_when-light, var(--primary)) var(--_when-dark, #120c0a);
++      --nav-text: var(--_when-light, #ffffff) var(--_when-dark, #efe6e2);
++      --nav-border: var(--_when-light, transparent) var(--_when-dark, #3a2b26);
++      --nav-shadow: var(--_when-light, 0 2px 6px rgb(0 0 0 / 0.15)) var(--_when-dark, 0 2px 10px rgb(0 0 0 / 0.6));
++      --nav-link-hover: var(--accent);
++
++      --hero-overlay: var(--_when-light, rgb(30 15 10 / 0.45)) var(--_when-dark, rgb(10 6 5 / 0.72));
++      --hero-text: #ffffff;
++      --hero-subtext: var(--_when-light, rgb(255 255 255 / 0.92)) var(--_when-dark, #d9cbc5);
++
++      --card-bg: var(--_when-light, #ffffff) var(--_when-dark, #241a17);
++      --card-text: var(--_when-light, var(--text)) var(--_when-dark, #d9cbc5);
++      --card-heading: var(--_when-light, var(--primary)) var(--_when-dark, #ffcc80);
++      --card-border: var(--_when-light, transparent) var(--_when-dark, #3a2b26);
++      --card-shadow: var(--_when-light, 0 2px 5px rgb(0 0 0 / 0.1)) var(--_when-dark, 0 2px 10px rgb(0 0 0 / 0.5));
++
++      --btn-bg: var(--_when-light, var(--primary)) var(--_when-dark, var(--accent));
++      --btn-text: var(--_when-light, #ffffff) var(--_when-dark, #1b1210);
++      --btn-hover-bg: var(--_when-light, #3e2723) var(--_when-dark, #ffc570);
++
++      --footer-bg: var(--_when-light, var(--secondary)) var(--_when-dark, #120c0a);
++      --footer-text: var(--page-text);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -23,14 +92,16 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
++      color: var(--page-text);
++      background-color: var(--page-bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
++      box-shadow: var(--nav-shadow);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +127,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      color: var(--nav-link-hover);
+     }
+ 
+     .logout-link {
+@@ -75,7 +146,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +154,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -93,6 +164,10 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero p {
++      color: var(--hero-subtext);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,22 +183,24 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +209,12 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover-bg);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
++      color: var(--footer-text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,7 +226,7 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: var(--footer-text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

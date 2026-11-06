@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,15 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "./node_modules/webauthn-polyfills/esm/json_serialization.js"
++      }
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +141,25 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .reauth-section {
++      margin-top: 40px;
++    }
++
++    .reauth-status {
++      margin-top: 12px;
++      font-weight: 600;
++      min-height: 1.5em;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +218,17 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reauth-section">
++      <div class="card">
++        <h3>Sensitive Account Settings</h3>
++        <p>Before changing your payout method, email address, or security settings, please confirm your identity with your registered passkey.</p>
++        <button type="button" id="reauth-btn" data-testid="reauth-button" class="btn">Confirm Identity</button>
++        <p id="reauth-status" class="reauth-status" aria-live="polite"></p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +239,69 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import 'webauthn-polyfills';
++
++    let reauthAbortController = new AbortController();
++    const statusEl = document.getElementById("reauth-status");
++
++    function showTransactionSuccessUI() {
++      if (statusEl) {
++        statusEl.textContent = "Identity confirmed. Sensitive account changes unlocked.";
++      }
++    }
++
++    async function triggerButtonReauth() {
++      // Abort any background suggestion flows to avoid passkey prompt collisions
++      reauthAbortController.abort();
++      reauthAbortController = new AbortController();
++
++      const optionsResponse = await fetch("/api/reauth/options", {
++        method: "POST",
++      });
++      const optionsJSON = await optionsResponse.json();
++      const publicKey =
++        PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
++
++      try {
++        const credential = await navigator.credentials.get({
++          publicKey,
++          signal: reauthAbortController.signal,
++        });
++
++        if (credential) {
++          const encodedCredential = credential.toJSON();
++          const verifyResponse = await fetch("/api/reauth/verify", {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify(encodedCredential),
++          });
++
++          if (verifyResponse.ok) {
++            showTransactionSuccessUI();
++          } else if (
++            verifyResponse.status === 404 &&
++            PublicKeyCredential.signalUnknownCredential
++          ) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
++              credentialId: encodedCredential.id,
++            });
++          }
++        }
++      } catch (err) {
++        if (err.name === "NotAllowedError") {
++          console.log("User cancelled reauthentication.");
++        }
++      }
++    }
++
++    document
++      .getElementById("reauth-btn")
++      .addEventListener("click", triggerButtonReauth);
++  </script>
++
+ </body>
+ 
+ </html>

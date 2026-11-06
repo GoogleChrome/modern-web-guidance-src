@@ -1,0 +1,1565 @@
+diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
+new file mode 100644
+index 0000000..c2365eb
+--- /dev/null
++++ b/src/components/ArticleTranslator.tsx
+@@ -0,0 +1,145 @@
++import React, { useState } from 'react';
++import { LanguageIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
++import { SUPPORTED_LANGUAGES } from '../utils/translator';
++
++interface Props {
++  initialTitle: string;
++  initialSummary: string;
++}
++
++export default function ArticleTranslator({ initialTitle, initialSummary }: Props) {
++  const [selectedLang, setSelectedLang] = useState('en');
++  const [isTranslating, setIsTranslating] = useState(false);
++  const [translatedToLangName, setTranslatedToLangName] = useState<string | null>(null);
++  const [originalCache, setOriginalCache] = useState<{
++    title: string;
++    summary: string;
++    paragraphs: string[];
++  } | null>(null);
++
++  const handleLanguageChange = async (targetLang: string) => {
++    setSelectedLang(targetLang);
++
++    // If switching back to English (original)
++    if (targetLang === 'en') {
++      if (originalCache) {
++        const titleEl = document.getElementById('article-title');
++        const summaryEl = document.getElementById('article-summary');
++        const bodyEl = document.getElementById('article-body');
++
++        if (titleEl) titleEl.innerText = originalCache.title;
++        if (summaryEl) summaryEl.innerText = originalCache.summary;
++        if (bodyEl) {
++          const pEls = bodyEl.querySelectorAll('p');
++          pEls.forEach((p, idx) => {
++            if (originalCache.paragraphs[idx] !== undefined) {
++              p.innerText = originalCache.paragraphs[idx];
++            }
++          });
++        }
++      }
++      setTranslatedToLangName(null);
++      return;
++    }
++
++    setIsTranslating(true);
++
++    try {
++      const titleEl = document.getElementById('article-title');
++      const summaryEl = document.getElementById('article-summary');
++      const bodyEl = document.getElementById('article-body');
++
++      // Cache original content if not already cached
++      let cache = originalCache;
++      if (!cache) {
++        const pEls = bodyEl ? Array.from(bodyEl.querySelectorAll('p')) : [];
++        cache = {
++          title: titleEl ? titleEl.innerText : initialTitle,
++          summary: summaryEl ? summaryEl.innerText : initialSummary,
++          paragraphs: pEls.map(p => p.innerText),
++        };
++        setOriginalCache(cache);
++      }
++
++      // Collect texts to translate: title, summary, and paragraphs
++      const textsToTranslate = [cache.title, cache.summary, ...cache.paragraphs];
++      const joinedText = textsToTranslate.join('\n\n---DELIMITER---\n\n');
++
++      const response = await fetch(`${import.meta.env.BASE_URL}api/translate`, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({
++          text: joinedText,
++          sourceLang: 'en',
++          targetLang: targetLang,
++        }),
++      });
++
++      if (!response.ok) {
++        throw new Error('Translation failed');
++      }
++
++      const data = await response.json();
++      const translatedParts = (data.translatedText || '').split(/\n\n---DELIMITER---\n\n|\n*---DELIMITER---\n*/);
++
++      if (translatedParts.length > 0 && titleEl) {
++        titleEl.innerText = translatedParts[0].trim();
++      }
++      if (translatedParts.length > 1 && summaryEl) {
++        summaryEl.innerText = translatedParts[1].trim();
++      }
++      if (bodyEl && translatedParts.length > 2) {
++        const pEls = bodyEl.querySelectorAll('p');
++        pEls.forEach((p, idx) => {
++          const part = translatedParts[idx + 2];
++          if (part) {
++            p.innerText = part.trim();
++          }
++        });
++      }
++
++      const langObj = SUPPORTED_LANGUAGES.find(l => l.code === targetLang);
++      setTranslatedToLangName(langObj ? langObj.name : targetLang);
++    } catch (err) {
++      console.error('Failed to translate article:', err);
++    } finally {
++      setIsTranslating(false);
++    }
++  };
++
++  return (
++    <div className="flex items-center space-x-2 text-xs">
++      <div className="flex items-center space-x-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded px-2 py-1 text-gray-700 transition">
++        <LanguageIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
++        <span className="font-semibold hidden sm:inline">Translate:</span>
++        <select
++          value={selectedLang}
++          onChange={e => handleLanguageChange(e.target.value)}
++          disabled={isTranslating}
++          className="bg-transparent border-none text-xs font-medium text-gray-800 cursor-pointer focus:outline-none pr-1"
++        >
++          <option value="en">Original (English)</option>
++          {SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(lang => (
++            <option key={lang.code} value={lang.code}>
++              {lang.name}
++            </option>
++          ))}
++        </select>
++        {isTranslating && (
++          <ArrowPathIcon className="w-3.5 h-3.5 text-amber-500 animate-spin flex-shrink-0" />
++        )}
++      </div>
++
++      {translatedToLangName && (
++        <button
++          onClick={() => handleLanguageChange('en')}
++          className="text-xs text-amber-700 hover:text-amber-800 underline font-medium"
++        >
++          Reset to English
++        </button>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..6bd9163 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -79,6 +79,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <!-- Secondary Account Links -->
+             <ul class="space-y-2 text-xs text-gray-600">
+                 <li><a href="#" class="hover:underline">Email Newsletters</a></li>
++                <li><a href={`${baseUrl}translate`} class="hover:underline">Translate Tool</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..686a59c 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,6 +1,7 @@
+ ---
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
++import TranslateButton from "./TranslateButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
+ 
+@@ -21,10 +22,17 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <div class="flex items-center space-x-3">
+         <SearchButton client:load />
+         <ReadingListButton client:load />
++        <TranslateButton client:load />
+       </div>
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a
++          href={`${baseUrl}translate`}
++          class="text-gray-700 hover:text-amber-500 text-xs font-semibold py-2 px-2 rounded whitespace-nowrap hidden sm:inline-block"
++        >
++          Translate
++        </a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/TranslateButton.tsx b/src/components/TranslateButton.tsx
+new file mode 100644
+index 0000000..531693d
+--- /dev/null
++++ b/src/components/TranslateButton.tsx
+@@ -0,0 +1,21 @@
++import React, { useState } from 'react';
++import { LanguageIcon } from '@heroicons/react/24/outline';
++import TranslateFlyout from './TranslateFlyout';
++
++export default function TranslateButton() {
++  const [isOpen, setIsOpen] = useState(false);
++
++  return (
++    <>
++      <button
++        onClick={() => setIsOpen(true)}
++        className="p-1 text-gray-700 hover:text-amber-500 transition-colors flex items-center justify-center"
++        title="Translate text"
++        aria-label="Translate text"
++      >
++        <LanguageIcon className="h-6 w-6" />
++      </button>
++      {isOpen && <TranslateFlyout onClose={() => setIsOpen(false)} />}
++    </>
++  );
++}
+diff --git a/src/components/TranslateFlyout.tsx b/src/components/TranslateFlyout.tsx
+new file mode 100644
+index 0000000..a012695
+--- /dev/null
++++ b/src/components/TranslateFlyout.tsx
+@@ -0,0 +1,409 @@
++import React, { useState, useEffect, useRef } from 'react';
++import {
++  ArrowsRightLeftIcon,
++  ClipboardDocumentIcon,
++  CheckIcon,
++  SpeakerWaveIcon,
++  XMarkIcon,
++  LanguageIcon,
++  ArrowTopRightOnSquareIcon,
++} from '@heroicons/react/24/outline';
++import { SUPPORTED_LANGUAGES } from '../utils/translator';
++
++interface Props {
++  onClose: () => void;
++  initialText?: string;
++  initialSourceLang?: string;
++  initialTargetLang?: string;
++}
++
++const SAMPLE_TEXTS = [
++  { label: 'Breaking News', text: 'Breaking news: Scientists discover unexpected signs of water on Mars.' },
++  { label: 'Economy', text: 'Global tech stocks rallied today following optimistic economic forecasts.' },
++  { label: 'Culture', text: 'The annual international film festival kicked off with record attendance.' },
++];
++
++export default function TranslateFlyout({
++  onClose,
++  initialText = '',
++  initialSourceLang = 'auto',
++  initialTargetLang = 'es',
++}: Props) {
++  const [sourceText, setSourceText] = useState(initialText);
++  const [translatedText, setTranslatedText] = useState('');
++  const [sourceLang, setSourceLang] = useState(initialSourceLang);
++  const [targetLang, setTargetLang] = useState(initialTargetLang);
++  const [detectedLang, setDetectedLang] = useState<string | null>(null);
++  const [isLoading, setIsLoading] = useState(false);
++  const [isCopied, setIsCopied] = useState(false);
++  const [errorMessage, setErrorMessage] = useState<string | null>(null);
++
++  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
++
++  // Close on Escape key
++  useEffect(() => {
++    const handleKeyDown = (event: KeyboardEvent) => {
++      if (event.key === 'Escape') {
++        onClose();
++      }
++    };
++    window.addEventListener('keydown', handleKeyDown);
++    return () => window.removeEventListener('keydown', handleKeyDown);
++  }, [onClose]);
++
++  const handleTranslate = async (textToTranslate = sourceText, sLang = sourceLang, tLang = targetLang) => {
++    const trimmed = textToTranslate.trim();
++    if (!trimmed) {
++      setTranslatedText('');
++      setDetectedLang(null);
++      setErrorMessage(null);
++      return;
++    }
++
++    setIsLoading(true);
++    setErrorMessage(null);
++
++    try {
++      // 1. Check if Chrome Built-in AI Translation is available
++      const win = typeof window !== 'undefined' ? (window as any) : {};
++      if (sLang !== 'auto' && win.ai?.translator) {
++        try {
++          const translator = await win.ai.translator.create({
++            sourceLanguage: sLang,
++            targetLanguage: tLang,
++          });
++          const result = await translator.translate(trimmed);
++          if (result) {
++            setTranslatedText(result);
++            setIsLoading(false);
++            return;
++          }
++        } catch {
++          // Fall back to server translation
++        }
++      }
++
++      // 2. Fetch from backend API
++      const response = await fetch(`${import.meta.env.BASE_URL}api/translate`, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({
++          text: trimmed,
++          sourceLang: sLang,
++          targetLang: tLang,
++        }),
++      });
++
++      if (!response.ok) {
++        throw new Error(`Translation request failed: ${response.statusText}`);
++      }
++
++      const data = await response.json();
++      setTranslatedText(data.translatedText || '');
++      if (data.detectedSourceLang && sLang === 'auto') {
++        const found = SUPPORTED_LANGUAGES.find(l => l.code === data.detectedSourceLang);
++        setDetectedLang(found ? found.name : data.detectedSourceLang);
++      } else {
++        setDetectedLang(null);
++      }
++    } catch (err: any) {
++      console.error('Translation error:', err);
++      setErrorMessage(err?.message || 'Could not translate text. Please try again.');
++    } finally {
++      setIsLoading(false);
++    }
++  };
++
++  // Debounced translation as user types
++  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
++    const val = e.target.value;
++    setSourceText(val);
++
++    if (debounceTimerRef.current) {
++      clearTimeout(debounceTimerRef.current);
++    }
++
++    if (!val.trim()) {
++      setTranslatedText('');
++      setDetectedLang(null);
++      return;
++    }
++
++    debounceTimerRef.current = setTimeout(() => {
++      handleTranslate(val, sourceLang, targetLang);
++    }, 700);
++  };
++
++  const handleSwap = () => {
++    if (sourceLang === 'auto') {
++      // If auto, swap target into source and default new target to English
++      setSourceLang(targetLang);
++      setTargetLang('en');
++      setSourceText(translatedText);
++      setTranslatedText(sourceText);
++      handleTranslate(translatedText, targetLang, 'en');
++    } else {
++      const prevSource = sourceLang;
++      const prevTarget = targetLang;
++      setSourceLang(prevTarget);
++      setTargetLang(prevSource);
++      setSourceText(translatedText);
++      setTranslatedText(sourceText);
++      handleTranslate(translatedText, prevTarget, prevSource);
++    }
++  };
++
++  const handleCopy = async () => {
++    if (!translatedText) return;
++    try {
++      await navigator.clipboard.writeText(translatedText);
++      setIsCopied(true);
++      setTimeout(() => setIsCopied(false), 2000);
++    } catch {
++      // Fallback copy
++      const ta = document.createElement('textarea');
++      ta.value = translatedText;
++      document.body.appendChild(ta);
++      ta.select();
++      document.execCommand('copy');
++      document.body.removeChild(ta);
++      setIsCopied(true);
++      setTimeout(() => setIsCopied(false), 2000);
++    }
++  };
++
++  const handleSpeak = (text: string, lang: string) => {
++    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
++    window.speechSynthesis.cancel();
++    const utterance = new SpeechSynthesisUtterance(text);
++    utterance.lang = lang;
++    window.speechSynthesis.speak(utterance);
++  };
++
++  const handleClear = () => {
++    setSourceText('');
++    setTranslatedText('');
++    setDetectedLang(null);
++    setErrorMessage(null);
++  };
++
++  const handleSelectSample = (sample: string) => {
++    setSourceText(sample);
++    handleTranslate(sample, sourceLang, targetLang);
++  };
++
++  return (
++    <div
++      className="fixed inset-0 bg-white/40 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[6vh] md:pt-[10vh] overflow-y-auto"
++      onClick={onClose}
++    >
++      <div
++        className="bg-white shadow-2xl rounded-lg w-full max-w-3xl border border-gray-200 relative mb-10 overflow-hidden"
++        onClick={e => e.stopPropagation()}
++      >
++        {/* Header Bar */}
++        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
++          <div className="flex items-center space-x-2">
++            <LanguageIcon className="w-5 h-5 text-amber-500" />
++            <h2 className="font-brand text-lg text-gray-900 font-bold">Translate Text</h2>
++          </div>
++          <div className="flex items-center space-x-3">
++            <a
++              href={`${import.meta.env.BASE_URL}translate`}
++              className="text-xs text-gray-600 hover:text-amber-500 flex items-center space-x-1"
++              title="Open full translation page"
++            >
++              <span>Full Page</span>
++              <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
++            </a>
++            <button
++              onClick={onClose}
++              className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition"
++              aria-label="Close"
++            >
++              <XMarkIcon className="w-5 h-5" />
++            </button>
++          </div>
++        </div>
++
++        {/* Language Selection Row */}
++        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-white gap-2">
++          {/* Source Language */}
++          <div className="flex-1">
++            <select
++              value={sourceLang}
++              onChange={e => {
++                setSourceLang(e.target.value);
++                if (sourceText.trim()) handleTranslate(sourceText, e.target.value, targetLang);
++              }}
++              className="w-full text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border-none rounded-md px-3 py-2 cursor-pointer focus:ring-2 focus:ring-amber-400"
++            >
++              <option value="auto">Detect language {detectedLang ? `(${detectedLang})` : ''}</option>
++              {SUPPORTED_LANGUAGES.map(lang => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
++                </option>
++              ))}
++            </select>
++          </div>
++
++          {/* Swap Button */}
++          <button
++            onClick={handleSwap}
++            className="p-2 text-gray-500 hover:text-amber-500 hover:bg-gray-100 rounded-full transition"
++            title="Swap languages"
++            aria-label="Swap languages"
++          >
++            <ArrowsRightLeftIcon className="w-5 h-5" />
++          </button>
++
++          {/* Target Language */}
++          <div className="flex-1">
++            <select
++              value={targetLang}
++              onChange={e => {
++                setTargetLang(e.target.value);
++                if (sourceText.trim()) handleTranslate(sourceText, sourceLang, e.target.value);
++              }}
++              className="w-full text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border-none rounded-md px-3 py-2 cursor-pointer focus:ring-2 focus:ring-amber-400"
++            >
++              {SUPPORTED_LANGUAGES.map(lang => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
++                </option>
++              ))}
++            </select>
++          </div>
++        </div>
++
++        {/* Translation Panels Grid */}
++        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
++          {/* Left Panel: Source Text */}
++          <div className="p-4 flex flex-col justify-between min-h-[220px]">
++            <div className="relative flex-grow">
++              <textarea
++                value={sourceText}
++                onChange={handleTextChange}
++                placeholder="Type or paste text to translate..."
++                rows={6}
++                maxLength={2000}
++                className="w-full h-full p-2 text-gray-900 placeholder-gray-400 resize-none border-none focus:outline-none text-base"
++                autoFocus
++              />
++              {sourceText && (
++                <button
++                  onClick={handleClear}
++                  className="absolute top-1 right-1 text-gray-400 hover:text-gray-600 p-1"
++                  title="Clear text"
++                >
++                  <XMarkIcon className="w-4 h-4" />
++                </button>
++              )}
++            </div>
++
++            <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-400">
++              <div className="flex items-center space-x-2">
++                {sourceText.trim() && (
++                  <button
++                    onClick={() => handleSpeak(sourceText, sourceLang === 'auto' ? 'en' : sourceLang)}
++                    className="text-gray-500 hover:text-gray-700 p-1"
++                    title="Listen"
++                  >
++                    <SpeakerWaveIcon className="w-4 h-4" />
++                  </button>
++                )}
++              </div>
++              <span>{sourceText.length} / 2000</span>
++            </div>
++          </div>
++
++          {/* Right Panel: Translated Output */}
++          <div className="p-4 flex flex-col justify-between min-h-[220px] bg-gray-50/50">
++            <div className="flex-grow">
++              {isLoading ? (
++                <div className="flex flex-col items-center justify-center h-full py-12 text-gray-400">
++                  <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-2" />
++                  <span className="text-xs">Translating...</span>
++                </div>
++              ) : translatedText ? (
++                <div className="p-2 text-gray-900 text-base whitespace-pre-wrap select-text">
++                  {translatedText}
++                </div>
++              ) : (
++                <div className="p-2 text-gray-400 text-base italic select-none">
++                  Translation will appear here...
++                </div>
++              )}
++
++              {errorMessage && (
++                <div className="p-2 text-xs text-red-600 bg-red-50 rounded mt-2">
++                  {errorMessage}
++                </div>
++              )}
++            </div>
++
++            <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs text-gray-500">
++              <div className="flex items-center space-x-2">
++                {translatedText && (
++                  <>
++                    <button
++                      onClick={handleCopy}
++                      className="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded text-gray-700 transition"
++                      title="Copy translation"
++                    >
++                      {isCopied ? (
++                        <>
++                          <CheckIcon className="w-3.5 h-3.5 text-green-600" />
++                          <span className="text-green-600 font-semibold">Copied</span>
++                        </>
++                      ) : (
++                        <>
++                          <ClipboardDocumentIcon className="w-3.5 h-3.5 text-gray-500" />
++                          <span>Copy</span>
++                        </>
++                      )}
++                    </button>
++
++                    <button
++                      onClick={() => handleSpeak(translatedText, targetLang)}
++                      className="p-1 hover:text-gray-700 text-gray-500"
++                      title="Listen"
++                    >
++                      <SpeakerWaveIcon className="w-4 h-4" />
++                    </button>
++                  </>
++                )}
++              </div>
++
++              <button
++                onClick={() => handleTranslate()}
++                disabled={isLoading || !sourceText.trim()}
++                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded text-xs transition shadow-sm"
++              >
++                Translate
++              </button>
++            </div>
++          </div>
++        </div>
++
++        {/* Quick Sample Text Suggestions */}
++        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200">
++          <div className="flex items-center space-x-2 text-xs text-gray-500 flex-wrap gap-y-2">
++            <span className="font-semibold text-gray-600">Sample phrases:</span>
++            {SAMPLE_TEXTS.map(item => (
++              <button
++                key={item.label}
++                onClick={() => handleSelectSample(item.text)}
++                className="px-2.5 py-1 bg-white hover:bg-amber-50 hover:text-amber-800 border border-gray-200 hover:border-amber-300 rounded-full text-xs text-gray-600 transition"
++              >
++                {item.label}
++              </button>
++            ))}
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/TranslateWidget.tsx b/src/components/TranslateWidget.tsx
+new file mode 100644
+index 0000000..9fdc7f4
+--- /dev/null
++++ b/src/components/TranslateWidget.tsx
+@@ -0,0 +1,520 @@
++import React, { useState, useEffect, useRef } from 'react';
++import {
++  ArrowsRightLeftIcon,
++  ClipboardDocumentIcon,
++  CheckIcon,
++  SpeakerWaveIcon,
++  XMarkIcon,
++  LanguageIcon,
++  TrashIcon,
++  ClockIcon,
++} from '@heroicons/react/24/outline';
++import { SUPPORTED_LANGUAGES } from '../utils/translator';
++
++interface HistoryItem {
++  id: string;
++  sourceText: string;
++  translatedText: string;
++  sourceLang: string;
++  targetLang: string;
++  timestamp: number;
++}
++
++const POPULAR_LANGS = ['en', 'es', 'fr', 'de', 'ja', 'zh'];
++
++export default function TranslateWidget({
++  sampleArticles = [],
++}: {
++  sampleArticles?: Array<{ title: string; summary: string }>;
++}) {
++  const [sourceText, setSourceText] = useState('');
++  const [translatedText, setTranslatedText] = useState('');
++  const [sourceLang, setSourceLang] = useState('auto');
++  const [targetLang, setTargetLang] = useState('es');
++  const [detectedLang, setDetectedLang] = useState<string | null>(null);
++  const [isLoading, setIsLoading] = useState(false);
++  const [isCopied, setIsCopied] = useState(false);
++  const [errorMessage, setErrorMessage] = useState<string | null>(null);
++  const [history, setHistory] = useState<HistoryItem[]>([]);
++
++  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
++
++  // Load history from localStorage
++  useEffect(() => {
++    try {
++      const saved = localStorage.getItem('devtools_times_trans_history');
++      if (saved) {
++        setHistory(JSON.parse(saved));
++      }
++    } catch {
++      // ignore localStorage errors
++    }
++  }, []);
++
++  const saveToHistory = (sText: string, tText: string, sLang: string, tLang: string) => {
++    try {
++      const newItem: HistoryItem = {
++        id: Date.now().toString(),
++        sourceText: sText,
++        translatedText: tText,
++        sourceLang: sLang,
++        targetLang: tLang,
++        timestamp: Date.now(),
++      };
++      setHistory(prev => {
++        const filtered = prev.filter(h => h.sourceText !== sText || h.targetLang !== tLang);
++        const updated = [newItem, ...filtered].slice(0, 10);
++        localStorage.setItem('devtools_times_trans_history', JSON.stringify(updated));
++        return updated;
++      });
++    } catch {
++      // ignore
++    }
++  };
++
++  const clearHistory = () => {
++    setHistory([]);
++    try {
++      localStorage.removeItem('devtools_times_trans_history');
++    } catch {
++      // ignore
++    }
++  };
++
++  const handleTranslate = async (textToTranslate = sourceText, sLang = sourceLang, tLang = targetLang) => {
++    const trimmed = textToTranslate.trim();
++    if (!trimmed) {
++      setTranslatedText('');
++      setDetectedLang(null);
++      setErrorMessage(null);
++      return;
++    }
++
++    setIsLoading(true);
++    setErrorMessage(null);
++
++    try {
++      // 1. Check Chrome AI Translator if available
++      const win = typeof window !== 'undefined' ? (window as any) : {};
++      if (sLang !== 'auto' && win.ai?.translator) {
++        try {
++          const translator = await win.ai.translator.create({
++            sourceLanguage: sLang,
++            targetLanguage: tLang,
++          });
++          const result = await translator.translate(trimmed);
++          if (result) {
++            setTranslatedText(result);
++            saveToHistory(trimmed, result, sLang, tLang);
++            setIsLoading(false);
++            return;
++          }
++        } catch {
++          // Fall back to server
++        }
++      }
++
++      // 2. Server API translation
++      const response = await fetch(`${import.meta.env.BASE_URL}api/translate`, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++        },
++        body: JSON.stringify({
++          text: trimmed,
++          sourceLang: sLang,
++          targetLang: tLang,
++        }),
++      });
++
++      if (!response.ok) {
++        throw new Error(`Translation request failed: ${response.statusText}`);
++      }
++
++      const data = await response.json();
++      const res = data.translatedText || '';
++      setTranslatedText(res);
++
++      if (data.detectedSourceLang && sLang === 'auto') {
++        const found = SUPPORTED_LANGUAGES.find(l => l.code === data.detectedSourceLang);
++        setDetectedLang(found ? found.name : data.detectedSourceLang);
++      } else {
++        setDetectedLang(null);
++      }
++
++      if (res) {
++        saveToHistory(trimmed, res, sLang, tLang);
++      }
++    } catch (err: any) {
++      console.error('Translation error:', err);
++      setErrorMessage(err?.message || 'Failed to translate text. Please try again.');
++    } finally {
++      setIsLoading(false);
++    }
++  };
++
++  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
++    const val = e.target.value;
++    setSourceText(val);
++
++    if (debounceTimerRef.current) {
++      clearTimeout(debounceTimerRef.current);
++    }
++
++    if (!val.trim()) {
++      setTranslatedText('');
++      setDetectedLang(null);
++      return;
++    }
++
++    debounceTimerRef.current = setTimeout(() => {
++      handleTranslate(val, sourceLang, targetLang);
++    }, 700);
++  };
++
++  const handleSwap = () => {
++    if (sourceLang === 'auto') {
++      setSourceLang(targetLang);
++      setTargetLang('en');
++      setSourceText(translatedText);
++      setTranslatedText(sourceText);
++      handleTranslate(translatedText, targetLang, 'en');
++    } else {
++      const prevSource = sourceLang;
++      const prevTarget = targetLang;
++      setSourceLang(prevTarget);
++      setTargetLang(prevSource);
++      setSourceText(translatedText);
++      setTranslatedText(sourceText);
++      handleTranslate(translatedText, prevTarget, prevSource);
++    }
++  };
++
++  const handleCopy = async () => {
++    if (!translatedText) return;
++    try {
++      await navigator.clipboard.writeText(translatedText);
++      setIsCopied(true);
++      setTimeout(() => setIsCopied(false), 2000);
++    } catch {
++      const ta = document.createElement('textarea');
++      ta.value = translatedText;
++      document.body.appendChild(ta);
++      ta.select();
++      document.execCommand('copy');
++      document.body.removeChild(ta);
++      setIsCopied(true);
++      setTimeout(() => setIsCopied(false), 2000);
++    }
++  };
++
++  const handleSpeak = (text: string, lang: string) => {
++    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
++    window.speechSynthesis.cancel();
++    const utterance = new SpeechSynthesisUtterance(text);
++    utterance.lang = lang;
++    window.speechSynthesis.speak(utterance);
++  };
++
++  const handleClear = () => {
++    setSourceText('');
++    setTranslatedText('');
++    setDetectedLang(null);
++    setErrorMessage(null);
++  };
++
++  return (
++    <div className="w-full">
++      {/* Main Translation Box */}
++      <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden mb-8">
++        {/* Languages Selection Bar */}
++        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-gray-200 bg-gray-50/70 p-3 sm:px-6 gap-3">
++          {/* Source Language Selector */}
++          <div className="flex items-center space-x-2 flex-1">
++            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">From:</span>
++            <select
++              value={sourceLang}
++              onChange={e => {
++                setSourceLang(e.target.value);
++                if (sourceText.trim()) handleTranslate(sourceText, e.target.value, targetLang);
++              }}
++              className="text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none cursor-pointer flex-1"
++            >
++              <option value="auto">Auto-detect {detectedLang ? `(${detectedLang})` : ''}</option>
++              {SUPPORTED_LANGUAGES.map(lang => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
++                </option>
++              ))}
++            </select>
++          </div>
++
++          {/* Swap Button */}
++          <div className="flex justify-center">
++            <button
++              onClick={handleSwap}
++              className="p-2 text-gray-600 hover:text-amber-500 hover:bg-gray-200 rounded-full transition"
++              title="Swap languages"
++              aria-label="Swap languages"
++            >
++              <ArrowsRightLeftIcon className="w-5 h-5" />
++            </button>
++          </div>
++
++          {/* Target Language Selector */}
++          <div className="flex items-center space-x-2 flex-1">
++            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">To:</span>
++            <select
++              value={targetLang}
++              onChange={e => {
++                setTargetLang(e.target.value);
++                if (sourceText.trim()) handleTranslate(sourceText, sourceLang, e.target.value);
++              }}
++              className="text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none cursor-pointer flex-1"
++            >
++              {SUPPORTED_LANGUAGES.map(lang => (
++                <option key={lang.code} value={lang.code}>
++                  {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
++                </option>
++              ))}
++            </select>
++          </div>
++        </div>
++
++        {/* Quick Language Pills */}
++        <div className="hidden sm:flex items-center justify-between px-6 py-2 bg-gray-100/50 border-b border-gray-200 text-xs">
++          <div className="flex items-center space-x-2">
++            <span className="text-gray-500">Quick source:</span>
++            <button
++              onClick={() => {
++                setSourceLang('auto');
++                if (sourceText.trim()) handleTranslate(sourceText, 'auto', targetLang);
++              }}
++              className={`px-2 py-0.5 rounded ${sourceLang === 'auto' ? 'bg-amber-100 text-amber-800 font-semibold' : 'text-gray-600 hover:bg-gray-200'}`}
++            >
++              Auto
++            </button>
++            {POPULAR_LANGS.map(code => {
++              const lang = SUPPORTED_LANGUAGES.find(l => l.code === code);
++              return (
++                <button
++                  key={code}
++                  onClick={() => {
++                    setSourceLang(code);
++                    if (sourceText.trim()) handleTranslate(sourceText, code, targetLang);
++                  }}
++                  className={`px-2 py-0.5 rounded ${sourceLang === code ? 'bg-amber-100 text-amber-800 font-semibold' : 'text-gray-600 hover:bg-gray-200'}`}
++                >
++                  {lang?.name}
++                </button>
++              );
++            })}
++          </div>
++
++          <div className="flex items-center space-x-2">
++            <span className="text-gray-500">Quick target:</span>
++            {POPULAR_LANGS.map(code => {
++              const lang = SUPPORTED_LANGUAGES.find(l => l.code === code);
++              return (
++                <button
++                  key={code}
++                  onClick={() => {
++                    setTargetLang(code);
++                    if (sourceText.trim()) handleTranslate(sourceText, sourceLang, code);
++                  }}
++                  className={`px-2 py-0.5 rounded ${targetLang === code ? 'bg-amber-100 text-amber-800 font-semibold' : 'text-gray-600 hover:bg-gray-200'}`}
++                >
++                  {lang?.name}
++                </button>
++              );
++            })}
++          </div>
++        </div>
++
++        {/* Text Areas Grid */}
++        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
++          {/* Source Text Box */}
++          <div className="p-5 flex flex-col justify-between min-h-[280px]">
++            <div className="relative flex-grow">
++              <textarea
++                value={sourceText}
++                onChange={handleTextChange}
++                placeholder="Type or paste text here to translate between languages..."
++                rows={9}
++                maxLength={4000}
++                className="w-full h-full p-2 text-gray-900 placeholder-gray-400 resize-none border-none focus:outline-none text-base font-normal leading-relaxed"
++                autoFocus
++              />
++              {sourceText && (
++                <button
++                  onClick={handleClear}
++                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
++                  title="Clear text"
++                >
++                  <XMarkIcon className="w-5 h-5" />
++                </button>
++              )}
++            </div>
++
++            <div className="flex items-center justify-between pt-3 border-t border-gray-100 text-xs text-gray-500">
++              <div className="flex items-center space-x-3">
++                {sourceText.trim() && (
++                  <button
++                    onClick={() => handleSpeak(sourceText, sourceLang === 'auto' ? 'en' : sourceLang)}
++                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 p-1"
++                    title="Listen to source"
++                  >
++                    <SpeakerWaveIcon className="w-4 h-4" />
++                    <span>Listen</span>
++                  </button>
++                )}
++              </div>
++              <span>{sourceText.length} / 4000 characters</span>
++            </div>
++          </div>
++
++          {/* Target Text Box */}
++          <div className="p-5 flex flex-col justify-between min-h-[280px] bg-gray-50/40">
++            <div className="flex-grow">
++              {isLoading ? (
++                <div className="flex flex-col items-center justify-center h-full py-16 text-gray-400">
++                  <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
++                  <span className="text-sm font-medium">Translating text...</span>
++                </div>
++              ) : translatedText ? (
++                <div className="p-2 text-gray-900 text-base leading-relaxed whitespace-pre-wrap select-text">
++                  {translatedText}
++                </div>
++              ) : (
++                <div className="p-2 text-gray-400 text-base italic select-none">
++                  Translation will appear here in real time...
++                </div>
++              )}
++
++              {errorMessage && (
++                <div className="p-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded mt-3">
++                  {errorMessage}
++                </div>
++              )}
++            </div>
++
++            <div className="flex items-center justify-between pt-3 border-t border-gray-200 text-xs text-gray-500">
++              <div className="flex items-center space-x-2">
++                {translatedText && (
++                  <>
++                    <button
++                      onClick={handleCopy}
++                      className="flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 rounded text-gray-700 font-medium transition shadow-xs"
++                      title="Copy to clipboard"
++                    >
++                      {isCopied ? (
++                        <>
++                          <CheckIcon className="w-4 h-4 text-green-600" />
++                          <span className="text-green-600">Copied!</span>
++                        </>
++                      ) : (
++                        <>
++                          <ClipboardDocumentIcon className="w-4 h-4 text-gray-600" />
++                          <span>Copy</span>
++                        </>
++                      )}
++                    </button>
++
++                    <button
++                      onClick={() => handleSpeak(translatedText, targetLang)}
++                      className="flex items-center space-x-1 px-2.5 py-1.5 hover:bg-gray-200 rounded text-gray-600 transition"
++                      title="Listen to translation"
++                    >
++                      <SpeakerWaveIcon className="w-4 h-4" />
++                      <span>Listen</span>
++                    </button>
++                  </>
++                )}
++              </div>
++
++              <button
++                onClick={() => handleTranslate()}
++                disabled={isLoading || !sourceText.trim()}
++                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold px-5 py-2 rounded text-sm transition shadow-sm cursor-pointer"
++              >
++                {isLoading ? 'Translating...' : 'Translate'}
++              </button>
++            </div>
++          </div>
++        </div>
++      </div>
++
++      {/* Sample Articles Section */}
++      {sampleArticles.length > 0 && (
++        <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-8">
++          <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
++            Try Translating Recent News Stories
++          </h3>
++          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
++            {sampleArticles.map((art, idx) => (
++              <button
++                key={idx}
++                onClick={() => {
++                  const text = `${art.title}\n\n${art.summary}`;
++                  setSourceText(text);
++                  handleTranslate(text, sourceLang, targetLang);
++                }}
++                className="text-left p-3 bg-white hover:bg-amber-50/50 border border-gray-200 hover:border-amber-400 rounded-md transition group"
++              >
++                <h4 className="font-semibold text-sm text-gray-900 group-hover:text-amber-600 line-clamp-1 mb-1">
++                  {art.title}
++                </h4>
++                <p className="text-xs text-gray-600 line-clamp-2">
++                  {art.summary}
++                </p>
++              </button>
++            ))}
++          </div>
++        </div>
++      )}
++
++      {/* Translation History Section */}
++      {history.length > 0 && (
++        <div className="bg-white border border-gray-200 rounded-lg p-5">
++          <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
++            <div className="flex items-center space-x-2 text-gray-800 font-bold text-sm">
++              <ClockIcon className="w-4 h-4 text-amber-500" />
++              <span>Recent Translations</span>
++            </div>
++            <button
++              onClick={clearHistory}
++              className="text-xs text-gray-400 hover:text-red-500 flex items-center space-x-1"
++            >
++              <TrashIcon className="w-3.5 h-3.5" />
++              <span>Clear History</span>
++            </button>
++          </div>
++
++          <div className="space-y-3">
++            {history.map(item => (
++              <div
++                key={item.id}
++                onClick={() => {
++                  setSourceText(item.sourceText);
++                  setTranslatedText(item.translatedText);
++                  setSourceLang(item.sourceLang);
++                  setTargetLang(item.targetLang);
++                }}
++                className="p-3 bg-gray-50 hover:bg-amber-50/40 rounded border border-gray-100 hover:border-amber-300 cursor-pointer transition text-xs"
++              >
++                <div className="flex items-center justify-between text-gray-400 mb-1">
++                  <span className="font-semibold uppercase tracking-wider text-amber-600">
++                    {item.sourceLang} → {item.targetLang}
++                  </span>
++                  <span>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
++                </div>
++                <p className="text-gray-800 font-medium line-clamp-1 mb-0.5">{item.sourceText}</p>
++                <p className="text-gray-600 line-clamp-1 italic">{item.translatedText}</p>
++              </div>
++            ))}
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/api/translate.json.ts b/src/pages/api/translate.json.ts
+new file mode 100644
+index 0000000..7702af1
+--- /dev/null
++++ b/src/pages/api/translate.json.ts
+@@ -0,0 +1 @@
++export { GET, POST, OPTIONS } from './translate';
+diff --git a/src/pages/api/translate.ts b/src/pages/api/translate.ts
+new file mode 100644
+index 0000000..9764f8a
+--- /dev/null
++++ b/src/pages/api/translate.ts
+@@ -0,0 +1,108 @@
++import type { APIRoute } from 'astro';
++import { translateText } from '../../utils/translator';
++
++const corsHeaders = {
++  'Content-Type': 'application/json',
++  'Access-Control-Allow-Origin': '*',
++  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
++  'Access-Control-Allow-Headers': 'Content-Type',
++};
++
++export const OPTIONS: APIRoute = async () => {
++  return new Response(null, {
++    status: 204,
++    headers: corsHeaders,
++  });
++};
++
++export const GET: APIRoute = async ({ url }) => {
++  const text = url.searchParams.get('text') || url.searchParams.get('q');
++  const sourceLang = url.searchParams.get('source') || url.searchParams.get('sourceLang') || url.searchParams.get('from') || 'auto';
++  const targetLang = url.searchParams.get('target') || url.searchParams.get('targetLang') || url.searchParams.get('to') || 'es';
++
++  if (!text) {
++    return new Response(
++      JSON.stringify({
++        error: 'Invalid Request',
++        message: 'Missing required parameter: text or q',
++      }),
++      {
++        status: 400,
++        headers: corsHeaders,
++      }
++    );
++  }
++
++  try {
++    const result = await translateText({ text, sourceLang, targetLang });
++    return new Response(JSON.stringify(result), {
++      status: 200,
++      headers: corsHeaders,
++    });
++  } catch (error: any) {
++    return new Response(
++      JSON.stringify({
++        error: 'Translation Error',
++        message: error?.message || 'Failed to translate text',
++      }),
++      {
++        status: 500,
++        headers: corsHeaders,
++      }
++    );
++  }
++};
++
++export const POST: APIRoute = async ({ request }) => {
++  let body: any = {};
++  try {
++    body = await request.json();
++  } catch {
++    return new Response(
++      JSON.stringify({
++        error: 'Invalid JSON',
++        message: 'Request body must be valid JSON',
++      }),
++      {
++        status: 400,
++        headers: corsHeaders,
++      }
++    );
++  }
++
++  const text = body.text ?? body.q ?? body.query;
++  const sourceLang = body.sourceLang ?? body.source ?? body.from ?? 'auto';
++  const targetLang = body.targetLang ?? body.target ?? body.to ?? 'es';
++
++  if (typeof text !== 'string') {
++    return new Response(
++      JSON.stringify({
++        error: 'Invalid Request',
++        message: 'Missing or invalid required parameter: text',
++      }),
++      {
++        status: 400,
++        headers: corsHeaders,
++      }
++    );
++  }
++
++  try {
++    const result = await translateText({ text, sourceLang, targetLang });
++    return new Response(JSON.stringify(result), {
++      status: 200,
++      headers: corsHeaders,
++    });
++  } catch (error: any) {
++    return new Response(
++      JSON.stringify({
++        error: 'Translation Error',
++        message: error?.message || 'Failed to translate text',
++      }),
++      {
++        status: 500,
++        headers: corsHeaders,
++      }
++    );
++  }
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..12a5bf7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ArticleTranslator from '../../components/ArticleTranslator.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -43,12 +44,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight" id="article-title">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p class="text-lg md:text-xl text-gray-700 font-light mb-5" id="article-summary">
+             {article.data.summary}
+         </p>
+ 
+@@ -102,10 +103,12 @@ const isBookmarked = readingList.includes(article.slug);
+                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+             </div>
+ 
++            <!-- Article Language Translator -->
++            <ArticleTranslator client:load initialTitle={article.data.title} initialSummary={article.data.summary} />
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div class="prose max-w-none" id="article-body">
+             <Content />
+         </div>
+ 
+diff --git a/src/pages/translate.astro b/src/pages/translate.astro
+new file mode 100644
+index 0000000..44fc5be
+--- /dev/null
++++ b/src/pages/translate.astro
+@@ -0,0 +1,30 @@
++---
++import Layout from '../layouts/Layout.astro';
++import TranslateWidget from '../components/TranslateWidget';
++import { getCollection } from 'astro:content';
++
++const articles = await getCollection('articles');
++const sampleArticles = articles.slice(0, 3).map(a => ({
++  title: a.data.title,
++  summary: a.data.summary,
++}));
++---
++
++<Layout title="Translate Text | The DevTools Times">
++  <div class="max-w-4xl mx-auto px-4 py-8 md:py-12">
++    <!-- Breadcrumb / Header -->
++    <div class="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-2">
++      Tools & Utilities
++    </div>
++    
++    <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-3 leading-tight">
++      Translate Text
++    </h1>
++    
++    <p class="text-base md:text-lg text-gray-600 font-light mb-8 max-w-2xl">
++      Translate news stories, headlines, excerpts, or any custom text between languages with auto-detection.
++    </p>
++
++    <TranslateWidget client:load sampleArticles={sampleArticles} />
++  </div>
++</Layout>
+diff --git a/src/utils/translator.ts b/src/utils/translator.ts
+new file mode 100644
+index 0000000..f2fbb69
+--- /dev/null
++++ b/src/utils/translator.ts
+@@ -0,0 +1,200 @@
++export interface Language {
++  code: string;
++  name: string;
++  nativeName?: string;
++}
++
++export const SUPPORTED_LANGUAGES: Language[] = [
++  { code: 'en', name: 'English', nativeName: 'English' },
++  { code: 'es', name: 'Spanish', nativeName: 'Español' },
++  { code: 'fr', name: 'French', nativeName: 'Français' },
++  { code: 'de', name: 'German', nativeName: 'Deutsch' },
++  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
++  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
++  { code: 'zh', name: 'Chinese', nativeName: '中文' },
++  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
++  { code: 'ko', name: 'Korean', nativeName: '한국어' },
++  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
++  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
++  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
++  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
++  { code: 'pl', name: 'Polish', nativeName: 'Polski' },
++  { code: 'sv', name: 'Swedish', nativeName: 'Svenska' },
++  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
++  { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
++  { code: 'el', name: 'Greek', nativeName: 'Ελληνικά' },
++  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
++  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
++  { code: 'cs', name: 'Czech', nativeName: 'Čeština' },
++  { code: 'da', name: 'Danish', nativeName: 'Dansk' },
++  { code: 'fi', name: 'Finnish', nativeName: 'Suomi' },
++  { code: 'no', name: 'Norwegian', nativeName: 'Norsk' },
++];
++
++function decodeHtmlEntities(str: string): string {
++  return str
++    .replace(/&amp;/g, '&')
++    .replace(/&lt;/g, '<')
++    .replace(/&gt;/g, '>')
++    .replace(/&quot;/g, '"')
++    .replace(/&#39;/g, "'")
++    .replace(/&#x27;/g, "'")
++    .replace(/&#x2F;/g, '/')
++    .replace(/&apos;/g, "'");
++}
++
++function chunkText(text: string, maxLength = 400): string[] {
++  if (text.length <= maxLength) return [text];
++  const paragraphs = text.split('\n');
++  const chunks: string[] = [];
++  let current = '';
++
++  for (const para of paragraphs) {
++    if ((current + (current ? '\n' : '') + para).length <= maxLength) {
++      current = current ? current + '\n' + para : para;
++    } else {
++      if (current) {
++        chunks.push(current);
++        current = '';
++      }
++      if (para.length <= maxLength) {
++        current = para;
++      } else {
++        const sentences = para.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [para];
++        for (const s of sentences) {
++          if ((current + (current ? ' ' : '') + s).length <= maxLength) {
++            current = current ? current + ' ' + s : s;
++          } else {
++            if (current) chunks.push(current);
++            current = s;
++          }
++        }
++      }
++    }
++  }
++  if (current) chunks.push(current);
++  return chunks;
++}
++
++// Basic offline dictionary for common phrases in case external network fails
++const BASIC_DICTIONARY: Record<string, Record<string, string>> = {
++  'hello': { es: 'hola', fr: 'bonjour', de: 'hallo', it: 'ciao', pt: 'olá', ja: 'こんにちは', zh: '你好' },
++  'world': { es: 'mundo', fr: 'monde', de: 'Welt', it: 'mondo', pt: 'mundo', ja: '世界', zh: '世界' },
++  'hello world': { es: 'hola mundo', fr: 'bonjour le monde', de: 'hallo Welt', it: 'ciao mondo', pt: 'olá mundo', ja: 'こんにちは世界', zh: '你好世界' },
++  'news': { es: 'noticias', fr: 'actualités', de: 'Nachrichten', it: 'notizie', pt: 'notícias', ja: 'ニュース', zh: '新闻' },
++  'breaking news': { es: 'últimas noticias', fr: 'dernière minute', de: 'Eilmeldung', it: 'ultime notizie', pt: 'últimas notícias', ja: '速報', zh: '突发新闻' },
++  'read more': { es: 'leer más', fr: 'en savoir plus', de: 'weiterlesen', it: 'leggi di più', pt: 'leia mais', ja: '続きを読む', zh: '阅读更多' },
++};
++
++export async function translateSingleChunk(
++  chunk: string,
++  sourceLang: string,
++  targetLang: string
++): Promise<{ text: string; detectedLang?: string }> {
++  const trimmed = chunk.trim();
++  if (!trimmed) return { text: chunk };
++
++  const sl = sourceLang === 'auto' ? 'autodetect' : sourceLang.toLowerCase();
++  const tl = targetLang.toLowerCase();
++
++  if (sl === tl) {
++    return { text: chunk, detectedLang: sourceLang };
++  }
++
++  // Primary service: MyMemory API
++  try {
++    const langpair = `${sl}|${tl}`;
++    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=${encodeURIComponent(langpair)}`;
++    
++    const response = await fetch(url, {
++      headers: {
++        'Accept': 'application/json',
++      },
++      signal: AbortSignal.timeout(6000),
++    });
++
++    if (response.ok) {
++      const data = await response.json();
++      if (data && data.responseData && typeof data.responseData.translatedText === 'string') {
++        const translated = decodeHtmlEntities(data.responseData.translatedText);
++        // Only accept if not an explicit error message in translatedText
++        if (!translated.toUpperCase().startsWith('MYMEMORY WARNING:')) {
++          const detected = data.responseData.detectedLanguage || undefined;
++          return { text: translated, detectedLang: detected };
++        }
++      }
++    }
++  } catch (err) {
++    // network failure or timeout, proceed to fallbacks
++  }
++
++  // Secondary service: Lingva public API fallback
++  try {
++    const lingvaSl = sl === 'autodetect' ? 'auto' : sl;
++    const url = `https://lingva.ml/api/v1/${lingvaSl}/${tl}/${encodeURIComponent(trimmed)}`;
++    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
++    if (response.ok) {
++      const data = await response.json();
++      if (data && data.translation) {
++        return { text: data.translation, detectedLang: data.info?.detectedSource };
++      }
++    }
++  } catch {
++    // proceed to offline dictionary
++  }
++
++  // Offline dictionary fallback
++  const lower = trimmed.toLowerCase();
++  if (BASIC_DICTIONARY[lower] && BASIC_DICTIONARY[lower][tl]) {
++    return { text: BASIC_DICTIONARY[lower][tl], detectedLang: 'en' };
++  }
++
++  // Default fallback if all services unreachable: return original text
++  return { text: chunk, detectedLang: sourceLang === 'auto' ? 'en' : sourceLang };
++}
++
++export async function translateText({
++  text,
++  sourceLang = 'auto',
++  targetLang = 'es',
++}: {
++  text: string;
++  sourceLang?: string;
++  targetLang: string;
++}): Promise<{
++  translatedText: string;
++  detectedSourceLang: string;
++  sourceLang: string;
++  targetLang: string;
++  success: boolean;
++}> {
++  if (!text || !text.trim()) {
++    return {
++      translatedText: '',
++      detectedSourceLang: sourceLang === 'auto' ? 'en' : sourceLang,
++      sourceLang,
++      targetLang,
++      success: true,
++    };
++  }
++
++  const chunks = chunkText(text, 450);
++  const results: string[] = [];
++  let detectedLang = sourceLang === 'auto' ? 'en' : sourceLang;
++
++  for (const chunk of chunks) {
++    const res = await translateSingleChunk(chunk, sourceLang, targetLang);
++    results.push(res.text);
++    if (res.detectedLang) {
++      detectedLang = res.detectedLang;
++    }
++  }
++
++  return {
++    translatedText: results.join('\n'),
++    detectedSourceLang: detectedLang,
++    sourceLang,
++    targetLang,
++    success: true,
++  };
++}

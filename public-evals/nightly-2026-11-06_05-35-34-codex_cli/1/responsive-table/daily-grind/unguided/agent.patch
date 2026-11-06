@@ -1,0 +1,140 @@
+diff --git a/index.html b/index.html
+index 66c9173..53ec1e4 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,78 @@
+       color: var(--primary);
+     }
+ 
++    .drink-breakdown {
++      margin-top: 32px;
++    }
++
++    .table-help,
++    .table-note {
++      margin: 8px 0;
++      font-size: 0.9rem;
++    }
++
++    .table-scroll {
++      max-width: 100%;
++      overflow-x: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .table-scroll:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .drink-table {
++      width: 100%;
++      min-width: 720px;
++      border-collapse: separate;
++      border-spacing: 0;
++      background: white;
++    }
++
++    .drink-table caption {
++      padding: 12px 16px;
++      text-align: left;
++      font-weight: bold;
++      background: var(--secondary);
++    }
++
++    .drink-table th,
++    .drink-table td {
++      padding: 12px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .drink-table thead th {
++      background: var(--primary);
++      color: white;
++    }
++
++    .drink-table th:first-child {
++      position: sticky;
++      left: 0;
++      z-index: 1;
++      width: 150px;
++      min-width: 150px;
++      text-align: left;
++      border-right: 1px solid var(--secondary);
++    }
++
++    .drink-table tbody th {
++      background: white;
++    }
++
++    .drink-table tbody tr:nth-child(even) > * {
++      background: #f4efed;
++    }
++
++    .drink-table tbody tr:last-child > * {
++      border-bottom: 0;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +266,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="drink-breakdown">
++        <h3 id="drink-breakdown-heading">Nutrition &amp; pricing</h3>
++        <p class="table-note" id="drink-breakdown-note">Illustrative estimates and sample prices in USD per serving, before tax. Latte includes oat milk and maple syrup; espresso and cold brew are served black. Actual nutrition and prices may vary.</p>
++        <p class="table-help" id="drink-table-help">On narrow screens, swipe or scroll sideways to see every column. Keyboard users can focus the table area and use the left and right arrow keys.</p>
++        <div class="table-scroll" role="region" aria-labelledby="drink-breakdown-heading" aria-describedby="drink-table-help" tabindex="0">
++          <table class="drink-table" aria-describedby="drink-breakdown-note">
++            <caption>Seasonal Favorites — per-serving breakdown</caption>
++            <thead>
++              <tr>
++                <th scope="col">Drink</th>
++                <th scope="col">Serving (fl oz)</th>
++                <th scope="col">Calories (kcal)</th>
++                <th scope="col">Total fat (g)</th>
++                <th scope="col">Total sugars (g)</th>
++                <th scope="col">Protein (g)</th>
++                <th scope="col">Price (USD)</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <th scope="row">Maple Oat Latte</th>
++                <td>12</td>
++                <td>220</td>
++                <td>7</td>
++                <td>24</td>
++                <td>3</td>
++                <td>$5.50</td>
++              </tr>
++              <tr>
++                <th scope="row">Dark Roast Espresso</th>
++                <td>2</td>
++                <td>5</td>
++                <td>0</td>
++                <td>0</td>
++                <td>0</td>
++                <td>$3.00</td>
++              </tr>
++              <tr>
++                <th scope="row">Cold Brew</th>
++                <td>12</td>
++                <td>5</td>
++                <td>0</td>
++                <td>0</td>
++                <td>0</td>
++                <td>$4.25</td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++      </div>
+     </section>
+   </main>
+ 

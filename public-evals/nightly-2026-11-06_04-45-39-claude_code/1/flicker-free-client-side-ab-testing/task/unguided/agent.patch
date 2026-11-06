@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,181 @@
++<!doctype html>
++<html lang="en" class="exp-pending">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Nimbus — Ship faster with less friction</title>
++  <meta name="description" content="Nimbus helps teams plan, build and ship products faster." />
++
++  <!-- Open the connection to the experiment CDN as early as possible. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="dns-prefetch" href="https://cdn.example.com" />
++  <link rel="preload" as="script" href="https://cdn.example.com/experiment-sdk.js" crossorigin />
++
++  <!--
++    ANTI-FLICKER
++    1. This inline <style> sits before anything visible, so the browser never paints
++       the original content while <html> has the .exp-pending class.
++    2. The inline script below loads the SDK and removes .exp-pending once the variant
++       has been applied (or the SDK fails, or a safety timeout fires), so a slow or
++       unreachable CDN can never leave the page blank.
++    3. <noscript> reveals the page for users without JavaScript.
++  -->
++  <style id="exp-antiflicker">
++    html.exp-pending body { opacity: 0 !important; }
++  </style>
++  <noscript><style>html.exp-pending body { opacity: 1 !important; }</style></noscript>
++
++  <script>
++    (function (w, d) {
++      var SDK_URL = 'https://cdn.example.com/experiment-sdk.js';
++      var TIMEOUT_MS = 2000; // Longest we will hide the page waiting for the experiment.
++      var root = d.documentElement;
++      var revealed = false;
++      var sdkLoaded = false;
++      var domReady = false;
++
++      function reveal(reason) {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        root.classList.remove('exp-pending');
++        root.setAttribute('data-exp-reveal', reason);
++      }
++
++      // The SDK (or any experiment code) can signal "variant applied" with either:
++      //   window.__experimentReady()              or
++      //   document.dispatchEvent(new Event('experiment:applied'))
++      w.__experimentReady = function () { reveal('applied'); };
++      d.addEventListener('experiment:applied', function () { reveal('applied'); });
++
++      // Safety net: never hide content longer than TIMEOUT_MS.
++      var timer = setTimeout(function () { reveal('timeout'); }, TIMEOUT_MS);
++
++      // Fallback for SDKs that apply changes synchronously when they execute but
++      // send no explicit signal: once the SDK has run AND the DOM it modifies exists,
++      // wait one frame for its mutations to flush, then reveal.
++      function maybeRevealAfterSdk() {
++        if (!sdkLoaded || !domReady) return;
++        var sdk = w.ExperimentSDK || w.experimentSDK;
++        // If the SDK exposes a ready promise / callback, prefer it.
++        if (sdk && typeof sdk.ready === 'function') {
++          try {
++            var r = sdk.ready(function () { reveal('applied'); });
++            if (r && typeof r.then === 'function') {
++              r.then(function () { reveal('applied'); }, function () { reveal('sdk-error'); });
++            }
++            return;
++          } catch (e) { reveal('sdk-error'); return; }
++        }
++        requestAnimationFrame(function () { reveal('sdk-loaded'); });
++      }
++
++      d.addEventListener('DOMContentLoaded', function () {
++        domReady = true;
++        maybeRevealAfterSdk();
++      });
++
++      var s = d.createElement('script');
++      s.src = SDK_URL;
++      s.async = true;
++      s.crossOrigin = 'anonymous';
++      s.onload = function () { sdkLoaded = true; maybeRevealAfterSdk(); };
++      s.onerror = function () { reveal('sdk-error'); };
++      (d.head || root).appendChild(s);
++    })(window, document);
++  </script>
++
++  <style>
++    :root {
++      --bg: #0b1020;
++      --fg: #f5f7ff;
++      --muted: #aab3d1;
++      --accent: #6c5cff;
++      --accent-hover: #5a49f5;
++    }
++    * { box-sizing: border-box; }
++    html, body { margin: 0; }
++    body {
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++      background: var(--bg);
++      color: var(--fg);
++      line-height: 1.5;
++      transition: opacity .15s ease-out;
++    }
++    .nav {
++      display: flex; align-items: center; justify-content: space-between;
++      max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.5rem;
++    }
++    .logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -.02em; color: var(--fg); text-decoration: none; }
++    .nav a.link { color: var(--muted); text-decoration: none; margin-left: 1.5rem; }
++    .nav a.link:hover { color: var(--fg); }
++
++    .hero {
++      position: relative;
++      min-height: calc(100vh - 72px);
++      display: grid; place-items: center;
++      padding: 4rem 1.5rem;
++      overflow: hidden;
++      isolation: isolate;
++    }
++    .hero__bg {
++      position: absolute; inset: 0; z-index: -2;
++      width: 100%; height: 100%; object-fit: cover;
++    }
++    .hero::after {
++      content: ""; position: absolute; inset: 0; z-index: -1;
++      background: linear-gradient(180deg, rgba(11,16,32,.55) 0%, rgba(11,16,32,.85) 70%, var(--bg) 100%);
++    }
++    .hero__content { max-width: 760px; text-align: center; }
++    .eyebrow {
++      display: inline-block; padding: .35rem .8rem; border-radius: 999px;
++      background: rgba(108,92,255,.18); color: #cfc9ff; font-size: .85rem; font-weight: 600;
++      margin-bottom: 1.25rem;
++    }
++    .hero h1 {
++      font-size: clamp(2.25rem, 6vw, 4rem); line-height: 1.08; letter-spacing: -.03em;
++      margin: 0 0 1.25rem;
++    }
++    .hero p { font-size: clamp(1.05rem, 2vw, 1.25rem); color: var(--muted); margin: 0 0 2.25rem; }
++    .cta {
++      display: inline-block; padding: 1rem 2rem; border-radius: 12px;
++      background: var(--accent); color: #fff; font-weight: 700; font-size: 1.1rem;
++      text-decoration: none; box-shadow: 0 10px 30px rgba(108,92,255,.35);
++      transition: background .15s, transform .15s;
++    }
++    .cta:hover { background: var(--accent-hover); transform: translateY(-2px); }
++    .cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .subtext { display: block; margin-top: 1rem; font-size: .9rem; color: var(--muted); }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <a class="logo" href="/">Nimbus</a>
++    <nav>
++      <a class="link" href="#features">Features</a>
++      <a class="link" href="#pricing">Pricing</a>
++    </nav>
++  </header>
++
++  <main>
++    <!-- data-experiment-* hooks give the SDK stable selectors for variant changes. -->
++    <section class="hero" data-experiment="hero">
++      <img
++        class="hero__bg"
++        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=75"
++        alt=""
++        fetchpriority="high"
++      />
++      <div class="hero__content">
++        <span class="eyebrow" data-experiment-slot="eyebrow">New: AI-powered planning</span>
++        <h1 data-experiment-slot="headline">Ship your best work, faster.</h1>
++        <p data-experiment-slot="subheadline">
++          Nimbus brings planning, building and shipping into one calm workspace so your team can focus on what matters.
++        </p>
++        <a class="cta" href="#signup" id="primary-cta" data-experiment-slot="cta">Start free trial</a>
++        <span class="subtext" data-experiment-slot="cta-subtext">No credit card required · Cancel anytime</span>
++      </div>
++    </section>
++  </main>
++</body>
++</html>

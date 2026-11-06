@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,158 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Modern CSS Typography &amp; Optical Font Normalization</title>
++  <style>
++    :root {
++      --bg-page: #f8fafc;
++      --surface-light: #ffffff;
++      --text-primary: #0f172a;
++      --text-secondary: #475569;
++      --border-light: #e2e8f0;
++      --code-bg: #f1f5f9;
++      --code-text: #0f172a;
++      --accent: #2563eb;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
++      background-color: var(--bg-page);
++      color: var(--text-primary);
++      line-height: 1.65;
++      padding: 3rem 1.5rem;
++    }
++
++    main {
++      max-width: 48rem;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      gap: 2rem;
++    }
++
++    header h1 {
++      font-size: 1.875rem;
++      font-weight: 700;
++      letter-spacing: -0.025em;
++      margin-bottom: 0.5rem;
++    }
++
++    header p {
++      color: var(--text-secondary);
++      font-size: 1rem;
++    }
++
++    .card {
++      background: var(--surface-light);
++      border: 1px solid var(--border-light);
++      border-radius: 0.75rem;
++      padding: 1.75rem;
++      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
++    }
++
++    .section-label {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      color: var(--accent);
++      margin-bottom: 0.75rem;
++    }
++
++    /* Mixed fonts container using automatic visual height normalization */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", Times, serif;
++      font-size: 1.125rem;
++      line-height: 1.75;
++      font-size-adjust: from-font;
++      color: var(--text-primary);
++    }
++
++    #mixed-fonts-container code {
++      font-family: "Courier New", Courier, monospace;
++      background-color: var(--code-bg);
++      color: var(--code-text);
++      padding: 0.15em 0.4em;
++      border-radius: 0.25rem;
++      border: 1px solid var(--border-light);
++    }
++
++    #mixed-fonts-container .sans-highlight {
++      font-family: Verdana, Geneva, Tahoma, sans-serif;
++      font-weight: 500;
++    }
++
++    /* Independent theme container with a specific numeric aspect-ratio override */
++    #independent-theme-container {
++      background: #0f172a;
++      color: #f8fafc;
++      border: 1px solid #1e293b;
++      border-radius: 0.75rem;
++      padding: 1.75rem;
++      font-family: Verdana, Arial, Helvetica, sans-serif;
++      font-size: 1.0625rem;
++      line-height: 1.7;
++      font-size-adjust: 0.52;
++      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
++    }
++
++    #independent-theme-container h2 {
++      font-size: 1.25rem;
++      font-weight: 600;
++      color: #38bdf8;
++      margin-bottom: 0.75rem;
++    }
++
++    #independent-theme-container p {
++      color: #cbd5e1;
++      margin-bottom: 0.75rem;
++    }
++
++    #independent-theme-container p:last-child {
++      margin-bottom: 0;
++    }
++
++    #independent-theme-container code {
++      font-family: "Lucida Console", Monaco, monospace;
++      background: #1e293b;
++      color: #7dd3fc;
++      padding: 0.15em 0.4em;
++      border-radius: 0.25rem;
++    }
++  </style>
++</head>
++<body>
++  <main>
++    <header>
++      <h1>Optical Font Size Normalization</h1>
++      <p>Harmonizing x-height proportions across mixed typefaces using modern CSS.</p>
++    </header>
++
++    <section class="card" aria-labelledby="mixed-heading">
++      <span id="mixed-heading" class="section-label">Automatic Metric Normalization</span>
++      <p id="mixed-fonts-container">
++        When prose combines serif body copy with <span class="sans-highlight">sans-serif callouts</span> and inline code snippets like <code>font-size-adjust: from-font</code> or <code>const scale = computeOpticalHeight()</code>, browser rendering automatically normalizes the lowercase visual height across every fallback and inline typeface.
++      </p>
++    </section>
++
++    <div id="independent-theme-container">
++      <h2>Independent Theme Typography Lock</h2>
++      <p>
++        This self-contained dark theme container applies an explicit numeric aspect-ratio override (<code>font-size-adjust: 0.52</code>) to lock down the lowercase x-height to font-size ratio regardless of which system or web font is active.
++      </p>
++      <p>
++        Inline tokens such as <code>themeConfig.opticalRatio = 0.52</code> maintain consistent visual density alongside body text.
++      </p>
++    </div>
++  </main>
++</body>
++</html>

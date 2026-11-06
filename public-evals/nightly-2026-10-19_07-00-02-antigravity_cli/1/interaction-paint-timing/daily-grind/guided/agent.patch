@@ -1,0 +1,303 @@
+diff --git a/interaction-paint-timing.js b/interaction-paint-timing.js
+new file mode 100644
+index 0000000..fa3b468
+--- /dev/null
++++ b/interaction-paint-timing.js
+@@ -0,0 +1,185 @@
++/**
++ * Interaction and Soft Navigation Paint Timing Measurement
++ * Based on the modern-web-guidance 'interaction-paint-timing' specification.
++ */
++
++/**
++ * Observes contentful paints caused by user interactions and invokes a callback
++ * whenever an interaction produces a larger contentful paint.
++ *
++ * @param {(entry: PerformanceEntry) => void} onInteractionPaint
++ * @returns {PerformanceObserver | null}
++ */
++export function observeInteractionPaints(onInteractionPaint) {
++  // Feature-detect support before calling observe() so unsupported browsers
++  // do not throw or log console warnings.
++  if (
++    typeof PerformanceObserver === 'undefined' ||
++    !PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint')
++  ) {
++    return null;
++  }
++
++  const observer = new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      // entry.duration is already calculated as (entry.presentationTime - entry.startTime),
++      // giving the total time from the user interaction to this contentful paint.
++      onInteractionPaint(entry);
++    }
++  });
++
++  // MANDATORY: Pass buffered: true to capture interaction paints that occurred
++  // before this observer was registered.
++  observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++  return observer;
++}
++
++/**
++ * Tracks FCP and LCP for each client-side soft navigation and reports finalized
++ * route metrics when the user navigates to a new route or hides the page.
++ *
++ * @param {(report: {
++ *   url: string,
++ *   navigationId: number,
++ *   interactionId: number,
++ *   fcpDuration: number,
++ *   lcpDuration: number | null,
++ *   lcpElement: Element | null,
++ *   lcpSize: number | null
++ * }) => void} onSoftNavReport
++ * @returns {{
++ *   softNavObserver: PerformanceObserver,
++ *   icpObserver: PerformanceObserver,
++ *   finalizeCurrentSoftNav: () => void,
++ *   getCurrentReport: () => Object | null
++ * } | null}
++ */
++export function trackSoftNavigationLCP(onSoftNavReport) {
++  const supported =
++    typeof PerformanceObserver !== 'undefined' &&
++    PerformanceObserver.supportedEntryTypes?.includes('soft-navigation') &&
++    PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint');
++
++  if (!supported) {
++    return null;
++  }
++
++  let activeSoftNav = null;
++  let activeLcpEntry = null;
++
++  function finalizeCurrentSoftNav() {
++    if (!activeSoftNav) return;
++
++    onSoftNavReport({
++      // activeSoftNav.name holds the destination URL of the soft navigation.
++      url: activeSoftNav.name,
++      navigationId: activeSoftNav.navigationId,
++      interactionId: activeSoftNav.interactionId,
++      // activeSoftNav.duration is (activeSoftNav.presentationTime - activeSoftNav.startTime),
++      // which represents First Contentful Paint (FCP) relative to interaction start.
++      fcpDuration: activeSoftNav.duration,
++      // activeLcpEntry.duration is (activeLcpEntry.presentationTime - activeSoftNav.startTime),
++      // representing the soft navigation's LCP duration relative to interaction start.
++      lcpDuration: activeLcpEntry ? activeLcpEntry.duration : null,
++      lcpElement: activeLcpEntry?.largestContentfulPaint?.element ?? null,
++      lcpSize: activeLcpEntry?.largestContentfulPaint?.size ?? null,
++    });
++
++    activeSoftNav = null;
++    activeLcpEntry = null;
++  }
++
++  function getCurrentReport() {
++    if (!activeSoftNav) return null;
++    return {
++      url: activeSoftNav.name,
++      navigationId: activeSoftNav.navigationId,
++      interactionId: activeSoftNav.interactionId,
++      fcpDuration: activeSoftNav.duration,
++      lcpDuration: activeLcpEntry ? activeLcpEntry.duration : null,
++      lcpElement: activeLcpEntry?.largestContentfulPaint?.element ?? null,
++      lcpSize: activeLcpEntry?.largestContentfulPaint?.size ?? null,
++    };
++  }
++
++  const softNavObserver = new PerformanceObserver((list) => {
++    for (const softNavEntry of list.getEntries()) {
++      // Finalize the previous route's metrics before resetting state for the new route.
++      finalizeCurrentSoftNav();
++
++      activeSoftNav = softNavEntry;
++      // MANDATORY: Seed the LCP candidate with getLargestInteractionContentfulPaint()
++      // to capture any attributed contentful paints that occurred before the URL updated.
++      activeLcpEntry = softNavEntry.getLargestInteractionContentfulPaint();
++    }
++  });
++
++  const icpObserver = new PerformanceObserver((list) => {
++    for (const icpEntry of list.getEntries()) {
++      // MANDATORY: Match by interactionId (not navigationId) so only paints caused
++      // by the soft navigation's initiating interaction update the route's LCP.
++      if (activeSoftNav && icpEntry.interactionId === activeSoftNav.interactionId) {
++        activeLcpEntry = icpEntry;
++      }
++    }
++  });
++
++  softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++  icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++
++  // Finalize the active route's LCP when the page is backgrounded or unloaded.
++  document.addEventListener('visibilitychange', () => {
++    if (document.visibilityState === 'hidden') {
++      finalizeCurrentSoftNav();
++    }
++  });
++
++  return { softNavObserver, icpObserver, finalizeCurrentSoftNav, getCurrentReport };
++}
++
++/**
++ * Initializes hard-navigation standard observers as fallback for baseline targets.
++ */
++export function initHardNavObservers(onHardNavReport) {
++  if (typeof PerformanceObserver === 'undefined') return null;
++
++  const observers = [];
++
++  if (PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint')) {
++    const lcpObserver = new PerformanceObserver((list) => {
++      const entries = list.getEntries();
++      const lastEntry = entries[entries.length - 1];
++      if (lastEntry) {
++        onHardNavReport?.('LCP', lastEntry);
++      }
++    });
++    lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
++    observers.push(lcpObserver);
++  }
++
++  if (PerformanceObserver.supportedEntryTypes?.includes('layout-shift')) {
++    const clsObserver = new PerformanceObserver((list) => {
++      for (const entry of list.getEntries()) {
++        if (!entry.hadRecentInput) {
++          onHardNavReport?.('CLS', entry);
++        }
++      }
++    });
++    clsObserver.observe({ type: 'layout-shift', buffered: true });
++    observers.push(clsObserver);
++  }
++
++  if (PerformanceObserver.supportedEntryTypes?.includes('event')) {
++    const eventObserver = new PerformanceObserver((list) => {
++      for (const entry of list.getEntries()) {
++        if (entry.interactionId) {
++          onHardNavReport?.('INP', entry);
++        }
++      }
++    });
++    eventObserver.observe({ type: 'event', buffered: true, durationThreshold: 40 });
++    observers.push(eventObserver);
++  }
++
++  return observers;
++}
+diff --git a/metrics.js b/metrics.js
+new file mode 100644
+index 0000000..0492eb7
+--- /dev/null
++++ b/metrics.js
+@@ -0,0 +1,93 @@
++/**
++ * Metrics hub for interaction and soft navigation paint timing
++ */
++import {
++  observeInteractionPaints,
++  trackSoftNavigationLCP,
++  initHardNavObservers
++} from './interaction-paint-timing.js';
++
++export {
++  observeInteractionPaints,
++  trackSoftNavigationLCP,
++  initHardNavObservers
++};
++
++// Initialize global state for analytics and programmatic inspection
++if (typeof window !== 'undefined') {
++  window.__metrics = window.__metrics || {
++    interactionPaints: [],
++    softNavReports: [],
++    hardNavMetrics: {},
++    webVitals: []
++  };
++
++  window.observeInteractionPaints = observeInteractionPaints;
++  window.trackSoftNavigationLCP = trackSoftNavigationLCP;
++
++  // Start observing interaction paints
++  observeInteractionPaints((entry) => {
++    const report = {
++      entryType: entry.entryType,
++      name: entry.name,
++      interactionId: entry.interactionId,
++      startTime: entry.startTime,
++      duration: entry.duration,
++      presentationTime: entry.presentationTime,
++      paintTime: entry.paintTime,
++      largestContentfulPaint: entry.largestContentfulPaint ? {
++        id: entry.largestContentfulPaint.id,
++        url: entry.largestContentfulPaint.url,
++        size: entry.largestContentfulPaint.size,
++        renderTime: entry.largestContentfulPaint.renderTime,
++        elementTagName: entry.largestContentfulPaint.element?.tagName || null
++      } : null
++    };
++
++    window.__metrics.interactionPaints.push(report);
++    console.log(
++      `%c[Interaction Paint]%c ID: ${entry.interactionId} | Duration: ${entry.duration.toFixed(1)}ms | Element: ${report.largestContentfulPaint?.elementTagName || 'N/A'}`,
++      'color: #00897b; font-weight: bold;',
++      'color: inherit;'
++    );
++
++    window.dispatchEvent(new CustomEvent('metric-interaction-paint', { detail: report }));
++  });
++
++  // Start tracking soft navigation LCP
++  window.__softNavTracker = trackSoftNavigationLCP((report) => {
++    window.__metrics.softNavReports.push(report);
++    console.log(
++      `%c[Soft Navigation LCP]%c Route: ${report.url} | FCP: ${report.fcpDuration?.toFixed(1)}ms | LCP: ${report.lcpDuration ? report.lcpDuration.toFixed(1) + 'ms' : 'N/A'}`,
++      'color: #1e88e5; font-weight: bold;',
++      'color: inherit;',
++      report
++    );
++
++    window.dispatchEvent(new CustomEvent('metric-soft-navigation', { detail: report }));
++  });
++
++  // Track hard navigation metrics as fallback / baseline
++  initHardNavObservers((name, entry) => {
++    window.__metrics.hardNavMetrics[name] = entry;
++    window.dispatchEvent(new CustomEvent('metric-hard-nav', { detail: { name, entry } }));
++  });
++
++  // Optional: connect web-vitals if present
++  try {
++    import('./node_modules/web-vitals/dist/web-vitals.js').then(({ onLCP, onFCP, onCLS, onINP }) => {
++      const handleVital = (name, metric) => {
++        window.__metrics.webVitals.push({ name, metric });
++        window.dispatchEvent(new CustomEvent('metric-web-vital', { detail: { name, metric } }));
++      };
++      onLCP((m) => handleVital('LCP', m), { reportSoftNavs: true });
++      onFCP((m) => handleVital('FCP', m), { reportSoftNavs: true });
++      onCLS((m) => handleVital('CLS', m), { reportSoftNavs: true });
++      onINP((m) => handleVital('INP', m), { reportSoftNavs: true });
++    }).catch(() => {
++      // web-vitals optional
++    });
++  } catch (e) {
++    // optional
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..d8970c0 100644
+--- a/package.json
++++ b/package.json
+@@ -6,5 +6,8 @@
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "web-vitals": "^6.2.3"
+   }
+ }

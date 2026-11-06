@@ -1,0 +1,281 @@
+diff --git a/index.html b/index.html
+index 66c9173..9e5aa1c 100644
+--- a/index.html
++++ b/index.html
+@@ -31,7 +31,9 @@
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 1rem clamp(1rem, 5%, 4rem);
++      flex-wrap: wrap;
++      gap: 1rem 2rem;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+@@ -48,14 +50,14 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.75rem 1.25rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+@@ -72,11 +74,17 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    /* Named containers keep components responsive wherever they are placed. */
++    .hero-shell {
++      container: hero / inline-size;
++    }
++
+     .hero {
+-      height: 60vh;
++      min-inline-size: 0;
++      min-block-size: clamp(20rem, 60dvh, 38rem);
++      aspect-ratio: 16 / 7;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=80');
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -85,43 +93,138 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: clamp(2rem, 6cqi, 5rem) clamp(1rem, 5cqi, 4rem);
++      overflow-wrap: anywhere;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      max-inline-size: 20ch;
++      font-size: clamp(2rem, 1.25rem + 3cqi, 4rem);
++      line-height: 1.15;
++      margin-block-end: 1rem;
++      text-wrap: balance;
++    }
++
++    .hero p {
++      max-inline-size: 50ch;
++      font-size: clamp(1rem, 0.875rem + 0.5cqi, 1.25rem);
++      text-wrap: pretty;
++    }
++
++    @container hero (max-width: 40rem) {
++      .hero {
++        aspect-ratio: 4 / 3;
++      }
+     }
+ 
+-    /* Content Sections */
++    /* The grid responds to its available width, including narrow embeds. */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      inline-size: 100%;
++      max-inline-size: 1100px;
++      margin: clamp(1.5rem, 4vw, 3rem) auto;
++      padding-inline: clamp(1rem, 3vw, 2rem);
++    }
++
++    .seasonal {
++      container: seasonal / inline-size;
++    }
++
++    .seasonal h2 {
++      text-align: center;
++      font-size: clamp(1.5rem, 1.125rem + 1.5cqi, 2.25rem);
++      line-height: 1.25;
++      overflow-wrap: anywhere;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
++      gap: clamp(1rem, 2cqi, 1.5rem);
++      margin-block-start: clamp(1.25rem, 3cqi, 2rem);
++    }
++
++    .card-slot {
++      container: drink / inline-size;
++      min-inline-size: 0;
++      display: grid;
+     }
+ 
+     .card {
++      min-inline-size: 0;
++      display: grid;
++      grid-template-rows: auto 1fr;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      overflow-wrap: anywhere;
++    }
++
++    .card-media {
++      position: relative;
++      aspect-ratio: 4 / 3;
++    }
++
++    .card-media img {
++      position: absolute;
++      inset: 0;
++      display: block;
++      inline-size: 100%;
++      block-size: 100%;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++    }
++
++    .card-content {
++      min-inline-size: 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: clamp(1rem, 5cqi, 1.5rem);
++      font-size: clamp(1rem, 0.9rem + 0.5cqi, 1.125rem);
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block-end: 0.625rem;
+       color: var(--primary);
++      font-size: clamp(1.25rem, 1rem + 1.5cqi, 1.75rem);
++      line-height: 1.25;
++      text-wrap: balance;
++    }
++
++    .card p {
++      flex: 1;
++      max-inline-size: 40ch;
++    }
++
++    @container drink (min-width: 30rem) {
++      .card {
++        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
++        grid-template-rows: auto;
++        text-align: start;
++      }
++
++      .card-media {
++        aspect-ratio: 1;
++      }
++
++      .card-media img {
++        border-radius: 8px 0 0 8px;
++      }
++
++      .card-content {
++        align-items: flex-start;
++        justify-content: center;
++      }
++
++      .card p {
++        flex: none;
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
++      max-inline-size: 100%;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -168,30 +271,56 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero-shell">
++    <div class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="seasonal" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card-slot">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++                alt="A creamy latte in a glass" width="800" height="600" loading="lazy" decoding="async">
++            </div>
++            <div class="card-content">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card-slot">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++                alt="A freshly poured espresso in a white cup" width="800" height="600" loading="lazy" decoding="async">
++            </div>
++            <div class="card-content">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-slot">
++          <article class="card">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++                alt="Cold coffee served over ice in a glass" width="800" height="600" loading="lazy" decoding="async">
++            </div>
++            <div class="card-content">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </article>
+         </div>
+       </div>
+     </section>

@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+index 66c9173..c129e9f 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,127 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Quick Order / Coffee Finder Form Section */
++    .order-section {
++      background: white;
++      padding: 35px;
++      border-radius: 10px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++      margin-top: 40px;
++    }
++
++    .order-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .order-section > p {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 25px;
++    }
++
++    .order-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++      padding: 20px;
++      border-radius: 8px;
++      border: 2px solid transparent;
++      transition: border-color 0.3s, background-color 0.3s;
++    }
++
++    .order-form:tool-form-active {
++      border-color: var(--accent);
++      background-color: #fff8e1;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .form-group.full-width {
++      grid-column: 1 / -1;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-group input,
++    .form-group select,
++    .form-group textarea {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .form-group input:focus,
++    .form-group select:focus,
++    .form-group textarea:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.25);
++    }
++
++    .form-actions {
++      grid-column: 1 / -1;
++      text-align: center;
++      margin-top: 10px;
++    }
++
++    .order-form button[type="submit"]:tool-submit-active {
++      background-color: var(--accent);
++      color: var(--text);
++      font-weight: bold;
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.4);
++    }
++
++    .agent-banner {
++      display: none;
++      grid-column: 1 / -1;
++      background-color: #fff3e0;
++      border-left: 4px solid var(--accent);
++      padding: 10px 15px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .order-result {
++      display: none;
++      margin-top: 25px;
++      padding: 20px;
++      border-radius: 8px;
++      background-color: #efebe9;
++      border-left: 5px solid var(--primary);
++    }
++
++    .order-result h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +286,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="#quick-order" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +310,133 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="quick-order" class="order-section">
++      <h2>Quick Order &amp; Coffee Finder</h2>
++      <p>Customize and place your coffee order for in-store pickup.</p>
++
++      <form
++        id="quick-order-form"
++        class="order-form"
++        action="/order-online"
++        method="post"
++        toolname="quick_order_coffee"
++        tooldescription="Find and place a customized coffee order at The Daily Grind by selecting a drink, size, temperature, milk option, and customer name."
++        toolautosubmit="true"
++      >
++        <div id="agent-banner" class="agent-banner" role="status" aria-live="polite">
++          An AI assistant is preparing your coffee order...
++        </div>
++
++        <div class="form-group">
++          <label for="drink">Coffee Selection</label>
++          <select
++            id="drink"
++            name="drink"
++            required
++            toolparamtitle="Drink"
++            toolparamdescription="The coffee beverage to order (e.g., Maple Oat Latte, Dark Roast Espresso, Cold Brew, Cappuccino, Vanilla Bean Matcha)"
++          >
++            <option value="" disabled selected>Select a drink...</option>
++            <option value="Maple Oat Latte">Maple Oat Latte ($5.50)</option>
++            <option value="Dark Roast Espresso">Dark Roast Espresso ($3.75)</option>
++            <option value="Cold Brew">Cold Brew ($4.50)</option>
++            <option value="Cappuccino">Cappuccino ($4.75)</option>
++            <option value="Vanilla Bean Matcha">Vanilla Bean Matcha ($5.25)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="size">Cup Size</label>
++          <select
++            id="size"
++            name="size"
++            required
++            toolparamtitle="Size"
++            toolparamdescription="The cup size for the drink: Small (8oz), Medium (12oz), or Large (16oz)"
++          >
++            <option value="Small">Small (8oz)</option>
++            <option value="Medium" selected>Medium (12oz)</option>
++            <option value="Large">Large (16oz)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="temperature">Temperature</label>
++          <select
++            id="temperature"
++            name="temperature"
++            required
++            toolparamtitle="Temperature"
++            toolparamdescription="Whether the beverage should be served Hot or Iced"
++          >
++            <option value="Hot" selected>Hot</option>
++            <option value="Iced">Iced</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="milk">Milk Preference</label>
++          <select
++            id="milk"
++            name="milk"
++            toolparamtitle="Milk Option"
++            toolparamdescription="Type of milk or dairy alternative: None, Whole Milk, Oat Milk, Almond Milk, or Soy Milk"
++          >
++            <option value="Oat Milk" selected>Oat Milk</option>
++            <option value="Whole Milk">Whole Milk</option>
++            <option value="Almond Milk">Almond Milk</option>
++            <option value="Soy Milk">Soy Milk</option>
++            <option value="None">None (Black)</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="customer_name">Name for Pickup</label>
++          <input
++            type="text"
++            id="customer_name"
++            name="customer_name"
++            placeholder="e.g. Alex"
++            required
++            toolparamtitle="Customer Name"
++            toolparamdescription="The customer's name for the pickup order cup"
++          />
++        </div>
++
++        <div class="form-group">
++          <label for="extra_shots">Extra Espresso Shots</label>
++          <input
++            type="number"
++            id="extra_shots"
++            name="extra_shots"
++            min="0"
++            max="4"
++            value="0"
++            toolparamtitle="Extra Espresso Shots"
++            toolparamdescription="Number of additional espresso shots to add (0 to 4)"
++          />
++        </div>
++
++        <div class="form-group full-width">
++          <label for="notes">Special Instructions (Optional)</label>
++          <input
++            type="text"
++            id="notes"
++            name="notes"
++            placeholder="e.g. Light ice, extra foam, half sweet"
++            toolparamtitle="Special Instructions"
++            toolparamdescription="Any special preparation notes or dietary requests for the barista"
++          />
++        </div>
++
++        <div class="form-actions">
++          <button type="submit" class="btn">Place Quick Order</button>
++        </div>
++      </form>
++
++      <div id="order-result" class="order-result" role="region" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +449,110 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('quick-order-form');
++      const resultContainer = document.getElementById('order-result');
++      const agentBanner = document.getElementById('agent-banner');
++
++      const basePrices = {
++        'Maple Oat Latte': 5.50,
++        'Dark Roast Espresso': 3.75,
++        'Cold Brew': 4.50,
++        'Cappuccino': 4.75,
++        'Vanilla Bean Matcha': 5.25
++      };
++
++      const sizeModifiers = {
++        'Small': -0.50,
++        'Medium': 0.00,
++        'Large': 0.75
++      };
++
++      window.addEventListener('toolactivated', (event) => {
++        if (event.toolName === 'quick_order_coffee' && agentBanner) {
++          agentBanner.style.display = 'block';
++        }
++      });
++
++      window.addEventListener('toolcancel', (event) => {
++        if (event.toolName === 'quick_order_coffee' && agentBanner) {
++          agentBanner.style.display = 'none';
++        }
++      });
++
++      if (form) {
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++
++          if (agentBanner) {
++            agentBanner.style.display = 'none';
++          }
++
++          const formData = new FormData(form);
++          const drink = formData.get('drink') || 'Maple Oat Latte';
++          const size = formData.get('size') || 'Medium';
++          const temperature = formData.get('temperature') || 'Hot';
++          const milk = formData.get('milk') || 'Oat Milk';
++          const customerName = formData.get('customer_name') || 'Guest';
++          const extraShots = parseInt(formData.get('extra_shots') || '0', 10) || 0;
++          const notes = (formData.get('notes') || '').trim();
++
++          const basePrice = basePrices[drink] || 4.75;
++          const sizeAddon = sizeModifiers[size] || 0;
++          const shotsAddon = extraShots * 1.00;
++          const total = (basePrice + sizeAddon + shotsAddon).toFixed(2);
++          const orderId = 'DG-' + Math.floor(1000 + Math.random() * 9000);
++
++          const orderSummary = {
++            status: 'confirmed',
++            orderId: orderId,
++            customerName: customerName,
++            item: {
++              drink: drink,
++              size: size,
++              temperature: temperature,
++              milk: milk,
++              extraShots: extraShots,
++              notes: notes || null
++            },
++            totalPrice: '$' + total,
++            estimatedPickupMinutes: 5,
++            message: `Order ${orderId} confirmed for ${customerName}: ${size} ${temperature} ${drink} (${milk}${extraShots > 0 ? ', +' + extraShots + ' shot(s)' : ''}) - $${total}. Ready in ~5 mins.`
++          };
++
++          if (resultContainer) {
++            resultContainer.innerHTML = '';
++            const heading = document.createElement('h3');
++            heading.textContent = `Order Confirmed (${orderId})`;
++
++            const details = document.createElement('p');
++            details.textContent = `Thanks, ${customerName}! Your ${size} ${temperature} ${drink} with ${milk}${extraShots > 0 ? ` (+${extraShots} extra espresso shot${extraShots > 1 ? 's' : ''})` : ''} is being prepared.`;
++
++            const meta = document.createElement('p');
++            meta.style.marginTop = '6px';
++            meta.innerHTML = `<strong>Total:</strong> $${total} &bull; <strong>Estimated Pickup:</strong> 5 minutes`;
++
++            resultContainer.appendChild(heading);
++            resultContainer.appendChild(details);
++            if (notes) {
++              const noteEl = document.createElement('p');
++              noteEl.style.fontSize = '0.9rem';
++              noteEl.style.marginTop = '4px';
++              noteEl.textContent = `Notes: "${notes}"`;
++              resultContainer.appendChild(noteEl);
++            }
++            resultContainer.appendChild(meta);
++            resultContainer.style.display = 'block';
++          }
++
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            event.respondWith(Promise.resolve(orderSummary));
++          }
++        });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

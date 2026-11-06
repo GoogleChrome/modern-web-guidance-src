@@ -1,0 +1,501 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,133 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Order Customizer (HTML-in-Canvas) */
++    .customizer-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .customizer-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .customizer-subtitle {
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    .canvas-wrapper {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      width: 100%;
++    }
++
++    #canvas {
++      width: 860px;
++      max-width: 100%;
++      height: 460px;
++      border-radius: 12px;
++      box-shadow: 0 6px 20px rgba(62, 39, 35, 0.15);
++      background: #fff8f2;
++      display: block;
++      position: relative;
++      overflow: hidden;
++    }
++
++    #customizer-controls {
++      width: 340px;
++      background: #ffffff;
++      border: 2px solid var(--secondary);
++      border-radius: 10px;
++      padding: 20px;
++      text-align: left;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.08);
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      color: var(--text);
++      transform-origin: 0 0;
++    }
++
++    #customizer-controls h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++      margin-bottom: 14px;
++      border-bottom: 2px solid var(--accent);
++      padding-bottom: 6px;
++    }
++
++    .control-group {
++      margin-bottom: 14px;
++    }
++
++    .control-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .control-group input,
++    .control-group select {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++      outline: none;
++    }
++
++    .control-group input:focus,
++    .control-group select:focus {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.25);
++    }
++
++    .live-order-readout {
++      margin-top: 12px;
++      padding: 10px 12px;
++      background: #fbe9e7;
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      font-size: 0.85rem;
++      color: var(--text);
++    }
++
++    #cup-label {
++      width: 170px;
++      padding: 10px 12px;
++      background: rgba(215, 204, 200, 0.92);
++      border: 2px dashed #5d4037;
++      border-radius: 6px;
++      text-align: center;
++      color: #3e2723;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      transform-origin: 0 0;
++    }
++
++    #cup-label .cup-label-name {
++      font-size: 1.1rem;
++      font-weight: 700;
++      color: #3e2723;
++      letter-spacing: 0.5px;
++      margin-bottom: 4px;
++      word-break: break-word;
++    }
++
++    #cup-label .cup-label-detail {
++      font-size: 0.78rem;
++      font-weight: 600;
++      color: #4e342e;
++      line-height: 1.35;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +319,54 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer-section" aria-labelledby="customizer-heading">
++      <h2 id="customizer-heading">Interactive Coffee Order Customizer</h2>
++      <p class="customizer-subtitle">Personalize your cup below—live controls and cup label rendered directly inside the canvas.</p>
++      <div class="canvas-wrapper">
++        <canvas id="canvas" width="860" height="460" layoutsubtree>
++          <form id="customizer-controls" onsubmit="event.preventDefault();">
++            <h3>Customize Your Cup</h3>
++            <div class="control-group">
++              <label for="cup-name">Cup Name</label>
++              <input type="text" id="cup-name" name="cupName" value="Alex" maxlength="18" placeholder="Enter your name" autocomplete="off" />
++            </div>
++            <div class="control-group">
++              <label for="milk-select">Milk Selection</label>
++              <select id="milk-select" name="milk">
++                <option value="Oat Milk" selected>Oat Milk</option>
++                <option value="Whole Milk">Whole Milk</option>
++                <option value="Almond Milk">Almond Milk</option>
++                <option value="Coconut Milk">Coconut Milk</option>
++                <option value="Soy Milk">Soy Milk</option>
++              </select>
++            </div>
++            <div class="control-group">
++              <label for="syrup-select">Syrup Flavor</label>
++              <select id="syrup-select" name="syrup">
++                <option value="Vermont Maple" selected>Vermont Maple</option>
++                <option value="Vanilla Bean">Vanilla Bean</option>
++                <option value="Salted Caramel">Salted Caramel</option>
++                <option value="Toasted Hazelnut">Toasted Hazelnut</option>
++                <option value="No Syrup">No Syrup</option>
++              </select>
++            </div>
++            <div class="live-order-readout" id="order-summary-text">
++              <strong>Order for <span id="summary-name">Alex</span>:</strong>
++              <span id="summary-milk">Oat Milk</span> &bull; <span id="summary-syrup">Vermont Maple</span>
++            </div>
++          </form>
++
++          <div id="cup-label" aria-live="polite">
++            <div class="cup-label-name" id="label-name">Alex</div>
++            <div class="cup-label-detail" id="label-milk">Milk: Oat Milk</div>
++            <div class="cup-label-detail" id="label-syrup">Syrup: Vermont Maple</div>
++          </div>
++        </canvas>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +377,308 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const canvas = document.getElementById('canvas');
++      const ctx = canvas.getContext('2d');
++      const controlsEl = document.getElementById('customizer-controls');
++      const cupLabelEl = document.getElementById('cup-label');
++
++      const nameInput = document.getElementById('cup-name');
++      const milkSelect = document.getElementById('milk-select');
++      const syrupSelect = document.getElementById('syrup-select');
++
++      const labelName = document.getElementById('label-name');
++      const labelMilk = document.getElementById('label-milk');
++      const labelSyrup = document.getElementById('label-syrup');
++
++      const summaryName = document.getElementById('summary-name');
++      const summaryMilk = document.getElementById('summary-milk');
++      const summarySyrup = document.getElementById('summary-syrup');
++
++      const milkColors = {
++        'Oat Milk': '#f3e5d0',
++        'Whole Milk': '#fffdf9',
++        'Almond Milk': '#efe0c9',
++        'Coconut Milk': '#faf6f0',
++        'Soy Milk': '#f5ead6'
++      };
++
++      const syrupColors = {
++        'Vermont Maple': '#c66919',
++        'Vanilla Bean': '#e6c27a',
++        'Salted Caramel': '#d4822a',
++        'Toasted Hazelnut': '#8d5524',
++        'No Syrup': '#6d4c41'
++      };
++
++      function syncOrderText() {
++        const currentName = (nameInput.value || '').trim() || 'Guest';
++        const currentMilk = milkSelect.value;
++        const currentSyrup = syrupSelect.value;
++
++        labelName.textContent = currentName;
++        labelMilk.textContent = 'Milk: ' + currentMilk;
++        labelSyrup.textContent = 'Syrup: ' + currentSyrup;
++
++        summaryName.textContent = currentName;
++        summaryMilk.textContent = currentMilk;
++        summarySyrup.textContent = currentSyrup;
++      }
++
++      function drawCoffeeScene(width, height) {
++        const currentName = (nameInput.value || '').trim() || 'Guest';
++        const currentMilk = milkSelect.value;
++        const currentSyrup = syrupSelect.value;
++        const milkTint = milkColors[currentMilk] || '#f3e5d0';
++        const syrupTint = syrupColors[currentSyrup] || '#c66919';
++
++        // Warm cafe backdrop
++        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
++        bgGrad.addColorStop(0, '#fff8f2');
++        bgGrad.addColorStop(1, '#efe5dc');
++        ctx.fillStyle = bgGrad;
++        ctx.fillRect(0, 0, width, height);
++
++        // Wooden cafe tabletop counter at the bottom
++        ctx.fillStyle = '#d7ccc8';
++        ctx.fillRect(0, height - 64, width, 64);
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.moveTo(0, height - 64);
++        ctx.lineTo(width, height - 64);
++        ctx.stroke();
++
++        // Center of the coffee cup on the right side of the canvas
++        const cupCenterX = Math.min(width - 210, Math.max(540, width * 0.72));
++        const cupTopY = 125;
++        const cupBottomY = 395;
++        const topHalfW = 104;
++        const bottomHalfW = 72;
++
++        // Drop shadow on counter
++        ctx.save();
++        ctx.fillStyle = 'rgba(62, 39, 35, 0.16)';
++        ctx.beginPath();
++        ctx.ellipse(cupCenterX, cupBottomY + 8, bottomHalfW + 18, 14, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.restore();
++
++        // Rising steam wisps
++        ctx.save();
++        ctx.strokeStyle = 'rgba(141, 110, 99, 0.35)';
++        ctx.lineWidth = 3;
++        ctx.lineCap = 'round';
++        [-30, 0, 30].forEach((offsetX, idx) => {
++          ctx.beginPath();
++          const startX = cupCenterX + offsetX;
++          const startY = cupTopY - 28;
++          ctx.moveTo(startX, startY);
++          ctx.bezierCurveTo(
++            startX - 12 + idx * 4, startY - 22,
++            startX + 14 - idx * 3, startY - 44,
++            startX - 4, startY - 66
++          );
++          ctx.stroke();
++        });
++        ctx.restore();
++
++        // Cup body (tapered artisanal cup)
++        ctx.save();
++        const cupGrad = ctx.createLinearGradient(cupCenterX - topHalfW, cupTopY, cupCenterX + topHalfW, cupTopY);
++        cupGrad.addColorStop(0, '#fdfbf7');
++        cupGrad.addColorStop(0.6, '#f5efe6');
++        cupGrad.addColorStop(1, '#e0d4c8');
++        ctx.fillStyle = cupGrad;
++        ctx.strokeStyle = '#4e342e';
++        ctx.lineWidth = 3;
++
++        ctx.beginPath();
++        ctx.moveTo(cupCenterX - topHalfW, cupTopY);
++        ctx.lineTo(cupCenterX - bottomHalfW, cupBottomY);
++        ctx.quadraticCurveTo(cupCenterX, cupBottomY + 18, cupCenterX + bottomHalfW, cupBottomY);
++        ctx.lineTo(cupCenterX + topHalfW, cupTopY);
++        ctx.closePath();
++        ctx.fill();
++        ctx.stroke();
++        ctx.restore();
++
++        // Kraft cardboard sleeve background area on the cup
++        const sleeveTopY = 205;
++        const sleeveBottomY = 320;
++        const t1 = (sleeveTopY - cupTopY) / (cupBottomY - cupTopY);
++        const t2 = (sleeveBottomY - cupTopY) / (cupBottomY - cupTopY);
++        const sleeveTopHalfW = topHalfW - (topHalfW - bottomHalfW) * t1;
++        const sleeveBottomHalfW = topHalfW - (topHalfW - bottomHalfW) * t2;
++
++        ctx.save();
++        const sleeveGrad = ctx.createLinearGradient(cupCenterX - sleeveTopHalfW, sleeveTopY, cupCenterX + sleeveTopHalfW, sleeveTopY);
++        sleeveGrad.addColorStop(0, '#c8b29b');
++        sleeveGrad.addColorStop(0.5, '#d7ccc8');
++        sleeveGrad.addColorStop(1, '#b09982');
++        ctx.fillStyle = sleeveGrad;
++        ctx.strokeStyle = '#5d4037';
++        ctx.lineWidth = 2.5;
++
++        ctx.beginPath();
++        ctx.moveTo(cupCenterX - sleeveTopHalfW, sleeveTopY);
++        ctx.lineTo(cupCenterX - sleeveBottomHalfW, sleeveBottomY);
++        ctx.quadraticCurveTo(cupCenterX, sleeveBottomY + 10, cupCenterX + sleeveBottomHalfW, sleeveBottomY);
++        ctx.lineTo(cupCenterX + sleeveTopHalfW, sleeveTopY);
++        ctx.quadraticCurveTo(cupCenterX, sleeveTopY + 8, cupCenterX - sleeveTopHalfW, sleeveTopY);
++        ctx.closePath();
++        ctx.fill();
++        ctx.stroke();
++        ctx.restore();
++
++        // Coffee rim and milk foam / syrup swirl at top of cup
++        ctx.save();
++        ctx.fillStyle = '#4e342e';
++        ctx.beginPath();
++        ctx.ellipse(cupCenterX, cupTopY, topHalfW + 6, 22, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Milk foam surface inside the rim
++        ctx.fillStyle = milkTint;
++        ctx.beginPath();
++        ctx.ellipse(cupCenterX, cupTopY, topHalfW - 4, 16, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Syrup swirl ring inside the foam
++        if (currentSyrup !== 'No Syrup') {
++          ctx.strokeStyle = syrupTint;
++          ctx.lineWidth = 3;
++          ctx.beginPath();
++          ctx.ellipse(cupCenterX, cupTopY, (topHalfW - 28) * 0.7, 9, 0, 0.2, Math.PI * 1.85);
++          ctx.stroke();
++
++          ctx.beginPath();
++          ctx.ellipse(cupCenterX, cupTopY, (topHalfW - 55) * 0.5, 5, 0, Math.PI * 0.4, Math.PI * 2.1);
++          ctx.stroke();
++        }
++        ctx.restore();
++
++        // Syrup flavor badge below cup
++        ctx.save();
++        ctx.fillStyle = syrupTint;
++        ctx.beginPath();
++        ctx.arc(cupCenterX - 68, cupBottomY + 34, 6, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.fillStyle = '#3e2723';
++        ctx.font = '600 13px "Segoe UI", Tahoma, sans-serif';
++        ctx.textAlign = 'center';
++        ctx.fillText(currentName + "'s " + currentMilk + ' (' + currentSyrup + ')', cupCenterX + 6, cupBottomY + 38);
++        ctx.restore();
++
++        return {
++          formX: 44,
++          formY: 42,
++          labelX: Math.round(cupCenterX - cupLabelEl.offsetWidth / 2),
++          labelY: Math.round(sleeveTopY + 12)
++        };
++      }
++
++      function syncElementTransform(element, x, y, drawResult) {
++        if (drawResult && typeof drawResult.toString === 'function') {
++          element.style.transform = drawResult.toString();
++        } else if (typeof canvas.getElementTransform === 'function') {
++          const matrix = canvas.getElementTransform(element, new DOMMatrix().translate(x, y));
++          if (matrix) {
++            element.style.transform = matrix.toString();
++          }
++        } else {
++          element.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
++        }
++      }
++
++      function paintCanvas() {
++        syncOrderText();
++
++        const dpr = window.devicePixelRatio || 1;
++        const cssWidth = canvas.clientWidth || 860;
++        const cssHeight = canvas.clientHeight || 460;
++
++        if (typeof ctx.reset === 'function') {
++          ctx.reset();
++        } else {
++          ctx.setTransform(1, 0, 0, 1, 0, 0);
++          ctx.clearRect(0, 0, canvas.width, canvas.height);
++        }
++
++        // Scale context by devicePixelRatio for crisp high-DPI rendering
++        ctx.scale(dpr, dpr);
++
++        const positions = drawCoffeeScene(cssWidth, cssHeight);
++
++        // Render live HTML controls and cup label inside the canvas via HTML-in-Canvas API
++        if (typeof ctx.drawElementImage === 'function') {
++          const controlsTransform = ctx.drawElementImage(controlsEl, positions.formX, positions.formY);
++          syncElementTransform(controlsEl, positions.formX, positions.formY, controlsTransform);
++
++          const labelTransform = ctx.drawElementImage(cupLabelEl, positions.labelX, positions.labelY);
++          syncElementTransform(cupLabelEl, positions.labelX, positions.labelY, labelTransform);
++        } else {
++          // Fallback text rendering on cup sleeve when HTML-in-Canvas flag is not enabled
++          syncElementTransform(controlsEl, positions.formX, positions.formY, null);
++          syncElementTransform(cupLabelEl, positions.labelX, positions.labelY, null);
++
++          ctx.save();
++          ctx.fillStyle = '#3e2723';
++          ctx.textAlign = 'center';
++          ctx.font = 'bold 17px "Segoe UI", Tahoma, sans-serif';
++          ctx.fillText(labelName.textContent, positions.labelX + cupLabelEl.offsetWidth / 2, positions.labelY + 28);
++          ctx.font = '600 12px "Segoe UI", Tahoma, sans-serif';
++          ctx.fillStyle = '#4e342e';
++          ctx.fillText(labelMilk.textContent, positions.labelX + cupLabelEl.offsetWidth / 2, positions.labelY + 48);
++          ctx.fillText(labelSyrup.textContent, positions.labelX + cupLabelEl.offsetWidth / 2, positions.labelY + 66);
++          ctx.restore();
++        }
++      }
++
++      // Hook into HTML-in-Canvas native paint lifecycle
++      canvas.onpaint = paintCanvas;
++
++      function triggerRepaint() {
++        syncOrderText();
++        if (typeof canvas.requestPaint === 'function') {
++          canvas.requestPaint();
++        } else {
++          paintCanvas();
++        }
++      }
++
++      nameInput.addEventListener('input', triggerRepaint);
++      milkSelect.addEventListener('change', triggerRepaint);
++      syrupSelect.addEventListener('change', triggerRepaint);
++
++      // ResizeObserver for crisp high-DPI canvas scaling
++      const resizeObserver = new ResizeObserver((entries) => {
++        for (const entry of entries) {
++          const dpr = window.devicePixelRatio || 1;
++          if (entry.devicePixelContentBoxSize && entry.devicePixelContentBoxSize.length > 0) {
++            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
++            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
++          } else {
++            canvas.width = Math.round(entry.contentRect.width * dpr);
++            canvas.height = Math.round(entry.contentRect.height * dpr);
++          }
++          triggerRepaint();
++        }
++      });
++
++      try {
++        resizeObserver.observe(canvas, { box: 'device-pixel-content-box' });
++      } catch (e) {
++        resizeObserver.observe(canvas);
++      }
++
++      // Initial render
++      triggerRepaint();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

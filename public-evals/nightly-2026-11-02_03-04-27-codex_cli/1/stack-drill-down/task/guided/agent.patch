@@ -1,0 +1,287 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,82 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#f6f3ec">
++  <meta name="description" content="Good coffee. A little slower. Discover locally roasted coffee and seasonal favorites at The Daily Grind.">
++  <title>The Daily Grind | Good coffee. A little slower.</title>
++  <link rel="preconnect" href="https://images.unsplash.com">
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+   <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
++    :root{--paper:#f6f3ec;--ink:#302c25;--muted:#77746a;--line:#dedbd1;--rust:#a94b30;--green:#424f3d;--serif:'Playfair Display',Georgia,serif}
++    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.6 'DM Sans',sans-serif}button,a{-webkit-tap-highlight-color:transparent}button,input{font:inherit}a{color:inherit;text-decoration:none}button{cursor:pointer}button:disabled{cursor:default}button,a{touch-action:manipulation}:focus-visible{outline:2px solid var(--rust);outline-offset:5px}button{color:inherit}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
++    .stack{height:100vh;height:100dvh;display:grid;grid-auto-flow:column;grid-auto-columns:100%;grid-template-rows:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:none;scrollbar-width:none;position:relative}.stack::-webkit-scrollbar{display:none}.view{min-width:0;min-height:0;scroll-snap-align:start;scroll-snap-stop:always}.content{height:100%;overflow-y:auto;overscroll-behavior-y:contain;background:var(--paper)}
++    .wrap{width:min(1280px,89%);margin-inline:auto}.site-header{height:100px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:25px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:48px;color:var(--rust)}.brand-name{font-size:18px;line-height:1.13;font-weight:700;letter-spacing:1.5px}.brand-name small{display:block;font-size:9px;letter-spacing:2.3px;font-weight:500;margin-top:6px}.nav-links{display:flex;align-items:center;gap:34px;font-size:12px;font-weight:500}.nav-links .active{color:var(--rust)}.nav-links .active:after{content:'';display:block;height:4px;width:4px;background:var(--rust);border-radius:50%;margin:6px auto -10px}.header-action{display:flex;align-items:center;gap:24px}.text-link{font-size:12px;border-bottom:1px solid var(--ink);padding-bottom:3px}.order-link{display:flex;gap:8px;align-items:center;font-size:12px}.count{border:1px solid var(--line);border-radius:50%;width:22px;height:22px;text-align:center;font-size:10px;line-height:20px}
++    .hero{display:grid;grid-template-columns:1fr 1.06fr;gap:7%;padding-top:44px;padding-bottom:44px;align-items:center}.eyebrow{font-size:10px;letter-spacing:2.2px;font-weight:650;text-transform:uppercase;display:flex;align-items:center;gap:9px}.eyebrow:before{content:'';width:6px;height:6px;background:var(--rust);border-radius:50%}h1,h2,h3,p{margin:0}h1{font:500 clamp(46px,4.65vw,70px)/1.12 var(--serif);letter-spacing:-2px;margin:22px 0}h1 em{font-weight:400;color:var(--rust)}.hero-copy>p{max-width:355px;color:var(--muted);font-size:13px;line-height:1.9}.primary{display:inline-flex;align-items:center;justify-content:space-between;gap:36px;padding:14px 22px;background:var(--rust);border:1px solid var(--rust);color:white;font-size:12px}.primary:hover{background:#8e3d26}.hero .primary{margin-top:27px}.hero-note{display:flex;gap:9px;align-items:center;color:var(--muted);font-size:10px;margin-top:28px}.hero-note svg{width:16px;height:16px;color:var(--green)}.hero-image{height:392px;position:relative}.hero-image>img{width:100%;height:100%;object-fit:cover;border-radius:3px 3px 88px 3px;object-position:center 57%}.photo-note{position:absolute;bottom:22px;left:22px;display:flex;align-items:center;gap:12px;color:white;font-size:10px;letter-spacing:1px}.photo-note:before{content:'';height:1px;width:27px;background:#fff9}.stamp{position:absolute;right:-20px;top:24px;width:88px;height:88px;background:var(--paper);border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;transform:rotate(12deg);outline:5px solid var(--paper);font-size:8px;letter-spacing:1.7px;gap:3px}.stamp svg{width:27px;height:27px;color:var(--rust)}
++    .values{display:flex;justify-content:center;gap:56px;border-block:1px solid var(--line);padding:16px 0;color:var(--green);font-size:10px;letter-spacing:1px}.values span{display:flex;align-items:center;gap:10px}.values svg{width:16px;height:16px}.seasonal{padding:34px 0 40px}.section-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:23px}.section-kicker{font-size:9px;letter-spacing:1.8px;color:var(--rust);text-transform:uppercase;margin-bottom:5px}h2{font:400 31px/1.3 var(--serif);letter-spacing:-.5px}.section-top p{font-size:11px;color:var(--muted);margin-top:7px}.section-top .text-link{display:flex;gap:18px;align-items:center}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:25px}.card{display:block}.card-photo{height:190px;overflow:hidden;position:relative;background:#e5dfd2;border-radius:3px}.card-photo img{width:100%;height:100%;object-fit:cover;transition:transform .4s}.card:hover img{transform:scale(1.035)}.tag{position:absolute;top:12px;left:12px;background:var(--paper);padding:4px 9px;font-size:8px;letter-spacing:1.1px;text-transform:uppercase}.card-heading{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px}.card h3{font:400 20px/1.4 var(--serif)}.card-heading svg{width:17px;height:17px}.card p{font-size:11px;color:var(--muted);margin:4px 0 10px}.card-bottom{font-size:10px;display:flex;align-items:center;gap:10px}.card-bottom span{color:var(--muted);border-left:1px solid var(--line);padding-left:10px;font-size:9px}.footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;padding:23px 0;color:var(--muted);font-size:9px}.footer-links{display:flex;gap:23px}.footer-message{font-family:var(--serif);font-size:13px;font-style:italic;color:var(--green)}
++    .backbar{display:flex;justify-content:space-between;align-items:center;padding:26px 0;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}.back{border:0;background:none;padding:4px 0;display:flex;gap:10px;align-items:center;color:var(--ink)}.back svg{transform:rotate(180deg);width:17px}.detail{display:grid;grid-template-columns:1.05fr 1fr;gap:8%;padding:45px 0 55px;align-items:center}.detail-photo{height:560px;width:100%;object-fit:cover;border-radius:3px 3px 90px 3px}.detail h1{font-size:52px;margin:17px 0 21px}.detail-copy>p{color:var(--muted);font-size:13px;line-height:1.9}.price{font-size:20px;margin:22px 0}.price small{font-size:11px;color:var(--muted);margin-left:8px}.tasting{display:flex;gap:8px;margin:20px 0 28px;flex-wrap:wrap}.tasting span{font-size:10px;padding:5px 10px;background:#eae9df;color:var(--green)}fieldset{border:0;padding:0;margin:20px 0}legend{font-size:11px;margin-bottom:10px}.choices{display:flex;gap:9px}.choice{position:relative;cursor:pointer}.choice input{position:absolute;opacity:0}.choice span{display:block;padding:9px 20px;border:1px solid var(--line);font-size:11px}.choice input:checked+span{border-color:var(--rust);background:#a94b300b;color:var(--rust)}.choice input:focus-visible+span{outline:2px solid var(--rust);outline-offset:3px}.detail .primary{width:100%;margin-top:10px}.detail-footnote{font-size:10px!important;margin-top:14px;display:flex;gap:7px;align-items:center}.detail-spec{margin-top:28px;border-top:1px solid var(--line);padding-top:18px;display:grid;grid-template-columns:repeat(3,1fr);font-size:10px;gap:12px}.detail-spec span{display:block;color:var(--muted);font-size:9px;margin-bottom:4px}.simple{max-width:780px;margin:55px auto 90px}.simple h1{font-size:52px}.simple>p{font-size:15px;line-height:1.9;color:var(--muted);margin:20px 0}.simple img{width:100%;height:320px;object-fit:cover;margin:25px 0}.simple .primary{margin-top:20px}.order-row{display:flex;gap:18px;align-items:center;padding:20px 0;border-bottom:1px solid var(--line)}.order-row img{width:75px;height:80px;object-fit:cover}.order-row h3{font-family:var(--serif);font-weight:400;font-size:21px}.order-row p{font-size:11px;color:var(--muted)}.order-row .remove{margin-left:auto;border:0;background:none;text-decoration:underline;font-size:11px}.total{display:flex;justify-content:space-between;margin-top:25px;font-size:18px}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:13px 22px;box-shadow:0 5px 20px #0002;font-size:12px;z-index:5;max-width:90vw;width:max-content}.toast a{text-decoration:underline;margin-left:14px}.toast:empty{display:none}
++    @media(prefers-reduced-motion:no-preference){.stack{scroll-behavior:smooth}}@supports(animation-timeline:view()){ @media(prefers-reduced-motion:no-preference){.content{animation:recede linear both;animation-timeline:view(inline);animation-range:exit 0% exit 100%}@keyframes recede{to{transform:translateX(35%);filter:brightness(.86)}}}}
++    @media(min-width:1500px){.hero{padding-block:55px}.hero-image{height:455px}.card-photo{height:230px}}
++    @media(max-width:850px){.nav-links{gap:19px}.header-action .text-link{display:none}.hero{gap:6%}.hero-image{height:355px}h1{font-size:48px}.values{gap:25px}.card-photo{height:170px}.card h3{font-size:18px}.detail{gap:5%}.detail-photo{height:500px}.detail h1{font-size:42px}.choice span{padding:9px 14px}.footer-message{display:none}}
++    @media(max-width:600px){.wrap{width:88%}.site-header{height:80px;gap:10px}.brand-mark{width:31px}.brand-name{font-size:14px}.brand-name small{font-size:7px}.nav-links{gap:15px;font-size:11px}.nav-links a:nth-child(n+2){display:none}.header-action{gap:0}.order-link{font-size:0;gap:5px}.order-link .count{font-size:10px}.hero{grid-template-columns:1fr;padding-top:33px;gap:28px;padding-bottom:30px}h1{font-size:52px;max-width:350px;margin:18px 0}.hero-copy>p{font-size:12px;max-width:310px}.hero-note{margin-top:18px}.hero-image{height:290px}.stamp{right:-10px;width:75px;height:75px;top:16px}.hero .primary{margin-top:22px}.values{gap:20px;justify-content:space-between;font-size:8px}.values span{gap:6px}.values span:last-child{display:none}.section-top{align-items:center}h2{font-size:28px}.section-top .text-link{font-size:10px;gap:6px}.section-top p{font-size:10px}.cards{grid-template-columns:1fr;gap:26px}.card-photo{height:240px}.card h3{font-size:23px}.card p{font-size:12px}.card-bottom{font-size:11px}.footer{align-items:flex-start;flex-direction:column;gap:12px}.detail{grid-template-columns:1fr;gap:28px;padding-top:25px}.detail-photo{height:340px}.detail h1{font-size:43px}.backbar{font-size:9px;padding:18px 0}.detail-copy .eyebrow{font-size:9px}.simple{margin-top:32px}.simple h1{font-size:42px}.simple img{height:240px}.order-row{gap:12px}.order-row h3{font-size:18px}.toast{font-size:11px;padding:12px 15px}}
+   </style>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  <div class="stack" id="stack" aria-label="Daily Grind pages"></div>
++  <div class="toast" role="status" aria-live="polite"></div>
++  <noscript><p style="padding:40px">The Daily Grind — Good coffee. A little slower. Please enable JavaScript to explore our seasonal menu.</p></noscript>
++  <script type="module">
++    const arrow='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>';
++    const leaf='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4C7 3 3 9 7 16c7 4 13-1 12-12ZM5 20 15 9"/></svg>';
++    const cup='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v7a6 6 0 0 1-12 0V8Zm13 1h2a3 3 0 0 1 0 6h-2M3 22h16M8 2v3m5-3v3"/></svg>';
++    const bag='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2"/></svg>';
++    const logo='<svg class="brand-mark" viewBox="0 0 42 48" aria-hidden="true"><path d="M7 19h24v12a10 10 0 0 1-20 0V19Zm24 2h3a5 5 0 0 1 0 10h-3M6 43h29M16 5c-5 5 5 5 0 10m8-13c-5 5 5 5 0 10"/></svg>';
++    const photo=(id,w=900)=>`https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=85`;
++    const drinks=[
++      {id:'maple-oat-latte',name:'Maple Oat Latte',description:'Creamy oat milk with a hint of Vermont maple syrup.',story:'A little comfort, a little autumn. Our signature espresso meets silky oat milk and pure Vermont maple syrup, finished with a delicate dusting of cinnamon. Made for crisp mornings and taking your time.',price:5.50,tag:'Seasonal favorite',image:'photo-1461023058943-07fcbe16d735',position:'center 53%',notes:['Maple sweetness','Silky oat milk','Warm cinnamon'],roast:'Medium roast',milk:'Oat milk',brew:'Double espresso'},
++      {id:'dark-roast-espresso',name:'Dark Roast Espresso',description:'Bold, smoky, and beautifully balanced.',story:'Small but full of character. Our carefully roasted espresso brings together rich dark chocolate, toasted nuts, and a beautifully lingering finish. A familiar ritual, made a little more extraordinary.',price:3.50,tag:'The daily essential',image:'photo-1510707577719-ae7c14805e3a',position:'center 55%',notes:['Dark chocolate','Toasted hazelnut','Rich crema'],roast:'Dark roast',milk:'No milk',brew:'Double espresso'},
++      {id:'cold-brew',name:'Cold Brew',description:'Slow-steeped for 18 hours. Worth the wait.',story:'Good things take their time. Steeped in cool water for a full 18 hours, our cold brew is naturally sweet, wonderfully smooth, and low in acidity. Served over ice for a refreshingly easy kind of day.',price:4.75,tag:'Slow brewed',image:'photo-1517701604599-bb29b565090c',position:'center 55%',notes:['Cocoa nibs','Brown sugar','Smooth finish'],roast:'Medium roast',milk:'Optional oat milk',brew:'18-hour steep'}
++    ];
++    const money=value=>`$${value.toFixed(2)}`;
++    let order=[];
++    try{order=JSON.parse(sessionStorage.getItem('daily-grind-order')||'[]').filter(x=>drinks.some(d=>d.id===x.id)&&['Small','Regular','Large'].includes(x.size));}catch{}
++    function header(route){return `<header class="site-header wrap"><a class="brand" href="#/" aria-label="The Daily Grind home">${logo}<span class="brand-name">THE DAILY GRIND<small>YOUR DAILY MOMENT.</small></span></a><nav class="nav-links" aria-label="Main navigation"><a href="#/menu" class="${route==='/menu'?'active':''}">The Menu</a><a href="#/story">Our Story</a><a href="#/visit">Visit Us</a></nav><div class="header-action"><a class="text-link" href="#/menu">Find your favorite ${arrow}</a><a class="order-link" href="#/order" aria-label="Your order, ${order.length} items">${bag} <span>My order</span><span class="count">${order.length}</span></a></div></header>`;}
++    function footer(){return `<footer class="footer wrap"><span>© 2026 The Daily Grind Coffee Co.</span><span class="footer-message">A good day starts with a good cup.</span><div class="footer-links"><a href="#/story">Our Story</a><a href="#/visit">Find Us</a><a href="#/visit">Say Hello ${arrow}</a></div></footer>`;}
++    function cards(){return `<div class="cards">${drinks.map(d=>`<a class="card" href="#/menu/${d.id}"><div class="card-photo"><img src="${photo(d.image,700)}" alt="${d.name} served fresh" style="object-position:${d.position}" loading="lazy" width="700" height="450"><span class="tag">${d.tag}</span></div><div class="card-heading"><h3>${d.name}</h3>${arrow}</div><p>${d.description}</p><div class="card-bottom">${money(d.price)}<span>Made with a little extra care</span></div></a>`).join('')}</div>`;}
++    function home(){return `<main class="wrap"><section class="hero"><div class="hero-copy"><div class="eyebrow">Locally roasted. Thoughtfully brewed.</div><h1>Good coffee.<br>A little <em>slower.</em></h1><p>A moment to pause. A cup made with care.<br>Find your everyday ritual at The Daily Grind.</p><a class="primary" href="#/menu">Explore the menu ${arrow}</a><div class="hero-note">${leaf} Ethically sourced. Always made with care.</div></div><div class="hero-image"><img src="${photo('photo-1442512595331-e89e73853f31',1100)}" alt="Freshly poured latte on a warm wooden coffeehouse table" fetchpriority="high" width="1100" height="800"><div class="photo-note">YOUR MOMENT, FRESHLY BREWED.</div><div class="stamp"><span>SMALL BATCH</span>${cup}<span>BIG HEART</span></div></div></section><div class="values"><span>${leaf} ETHICALLY SOURCED</span><span>${cup} LOCALLY ROASTED</span><span>♡ &nbsp; CRAFTED WITH CARE</span></div><section class="seasonal" aria-labelledby="seasonal-title"><div class="section-top"><div><div class="section-kicker">A taste of the season</div><h2 id="seasonal-title">Seasonal Favorites</h2><p>Familiar comforts. A fresh little twist.</p></div><a class="text-link" href="#/menu">View full menu ${arrow}</a></div>${cards()}</section></main>`;}
++    function backbar(label){return `<div class="backbar wrap"><button class="back" type="button">${arrow} Back</button><span>Home &nbsp; / &nbsp; ${label}</span><span>Take your time. Explore a little.</span></div>`;}
++    function detail(d){return `${backbar('Seasonal Favorites &nbsp; / &nbsp; '+d.name)}<main class="detail wrap"><img class="detail-photo" src="${photo(d.image,1100)}" alt="${d.name}" style="object-position:${d.position}" width="900" height="1100"><div class="detail-copy"><div class="eyebrow">${d.tag}</div><h1>${d.name}</h1><p>${d.story}</p><div class="tasting">${d.notes.map(n=>`<span>${n}</span>`).join('')}</div><div class="price">${money(d.price)}<small>for a regular · made fresh for you</small></div><form data-drink="${d.id}"><fieldset><legend>Make it your size</legend><div class="choices">${['Small','Regular','Large'].map(s=>`<label class="choice"><input type="radio" name="size" value="${s}" ${s==='Regular'?'checked':''}><span>${s}</span></label>`).join('')}</div></fieldset><button class="primary" type="submit"><span>Add to your order</span><span class="button-price">${money(d.price)}</span> ${arrow}</button></form><p class="detail-footnote">${leaf} Ethically sourced coffee. Thoughtfully made, every time.</p><div class="detail-spec"><div><span>THE ROAST</span>${d.roast}</div><div><span>THE MILK</span>${d.milk}</div><div><span>THE METHOD</span>${d.brew}</div></div></div></main>`;}
++    function orderView(){return `${backbar('My order')}<main class="simple wrap"><div class="eyebrow">Your daily moment</div><h1>Your order</h1>${order.length?order.map((item,i)=>{const d=drinks.find(d=>d.id===item.id);return `<div class="order-row"><img src="${photo(d.image,200)}" alt=""><div><h3>${d.name}</h3><p>${item.size} · ${money(itemPrice(item))}</p></div><button type="button" class="remove" data-remove="${i}" aria-label="Remove ${d.name}">Remove</button></div>`;}).join('')+`<div class="total"><span>Total</span><span>${money(order.reduce((sum,item)=>sum+itemPrice(item),0))}</span></div><p>Your selections are saved for this visit. Ask your barista to place your order in store.</p>`:'<p>A good cup is waiting. Explore our seasonal favorites and find something you’ll love.</p>'}<a class="primary" href="#/menu">Explore the menu ${arrow}</a></main>`;}
++    function simple(route){const story=route==='/story';return `${backbar(story?'Our Story':'Visit Us')}<main class="simple wrap"><div class="eyebrow">${story?'Small batch. Big heart.':'Make yourself at home'}</div><h1>${story?'A little care in every cup.':'Your everyday coffee stop.'}</h1><p>${story?'The Daily Grind is built around a simple idea: a good cup of coffee deserves a moment of your day. We source thoughtfully, roast locally, and brew with care. From your first morning espresso to a slow afternoon latte, we’re here for the small rituals that make a day feel good.':'Come for your favorite cup. Stay for a slower moment. Our baristas are happy to help you discover a new roast, choose a seasonal favorite, or make your usual just the way you like it.'}</p><img src="${photo('photo-1442512595331-e89e73853f31')}" alt="A welcoming coffeehouse table with fresh coffee"><a class="primary" href="#/menu">Find your next favorite ${arrow}</a></main>`;}
++    function itemPrice(item){return drinks.find(d=>d.id===item.id).price+(item.size==='Large'?1:item.size==='Small'?-.5:0);}
++    const stack=document.querySelector('#stack');
++    const known=route=>['/','/menu','/story','/visit','/order'].includes(route)||drinks.some(d=>route==='/menu/'+d.id);
++    const decodeRoute=value=>{try{return decodeURI(value);}catch{return '/';}};
++    const currentRoute=()=>decodeRoute(location.hash.slice(1)||'/');
++    let routes=[],currentDepth=0,activeView=null,pending=null,historyBusy=false;
++    const returnFocus=new Map();
++    function makeView(route){const view=document.createElement('div');view.className='view';view.dataset.route=route;view.inert=true;const d=drinks.find(d=>route==='/menu/'+d.id);let body=route==='/'?home():d?detail(d):route==='/menu'?`${backbar('The Menu')}<main class="wrap seasonal"><div class="section-top"><div><div class="section-kicker">Thoughtfully brewed, just for you</div><h1>The Menu</h1><p>Our seasonal favorites. Your next daily ritual.</p></div></div>${cards()}</main>`:route==='/order'?orderView():simple(route);view.innerHTML=`<div class="content">${header(route)}${body}${footer()}</div>`;return view;}
++    function ensureViews(){for(let i=0;i<=currentDepth;i++){if(stack.children[i]?.dataset.route!==routes[i]){while(stack.children.length>i)stack.lastElementChild.remove();stack.append(makeView(routes[i]));}}}
++    function activate(view){if(!view||!stack.contains(view)||pending&&pending!==view)return;if(activeView===view&&!pending)return;pending=null;const index=[...stack.children].indexOf(view);for(const child of [...stack.children]){child.inert=child!==view;if([...stack.children].indexOf(child)>index)child.remove();}activeView=view;const route=view.dataset.route;document.title=`${route==='/'?'Good coffee. A little slower.':drinks.find(d=>route==='/menu/'+d.id)?.name||({'/menu':'The Menu','/story':'Our Story','/visit':'Visit Us','/order':'Your Order'})[route]} | The Daily Grind`;if(index!==currentDepth&&!historyBusy){historyBusy=true;history.go(index-currentDepth);}const stored=returnFocus.get(route);if(stored?.isConnected){stored.focus({preventScroll:true});returnFocus.delete(route);}else if(index>0){view.querySelector('.back')?.focus({preventScroll:true});}}
++    function scrollToDepth(instant=false){ensureViews();const target=stack.children[currentDepth];pending=target;stack.scrollTo({left:currentDepth*stack.clientWidth,behavior:instant?'instant':'auto'});if(Math.abs(stack.scrollLeft-currentDepth*stack.clientWidth)<1)activate(target);}
++    function saveState(replace=false){history[replace?'replaceState':'pushState']({dailyGrind:true,routes:routes.slice(0,currentDepth+1)},'',`#${routes[currentDepth]}`);}
++    function navigate(route,source){if(historyBusy||pending||route===routes[currentDepth])return;if(source)returnFocus.set(routes[currentDepth],source);if(route==='/'){if(currentDepth){historyBusy=true;history.go(-currentDepth);}return;}routes=routes.slice(0,currentDepth+1);routes.push(route);currentDepth++;saveState();scrollToDepth();}
++    function back(){if(currentDepth>0&&!historyBusy&&!pending){historyBusy=true;history.back();}}
++    stack.addEventListener('click',event=>{const backButton=event.target.closest('.back');if(backButton){back();return;}const remove=event.target.closest('[data-remove]');if(remove){order.splice(Number(remove.dataset.remove),1);persistOrder();refreshOrder();return;}const link=event.target.closest('a');if(!link||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.target||link.download)return;const url=new URL(link.href);if(url.origin!==location.origin||url.pathname!==location.pathname||!url.hash.startsWith('#/'))return;const route=decodeRoute(url.hash.slice(1));if(!known(route))return;event.preventDefault();navigate(route,link);});
++    stack.addEventListener('scrollsnapchange',event=>activate(event.snapTargetInline));
++    if(!('onscrollsnapchange' in HTMLElement.prototype)){const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.intersectionRatio>=.999)activate(entry.target);},{root:stack,threshold:[.999,1]});new MutationObserver(records=>{for(const record of records){for(const node of record.addedNodes)if(node.classList?.contains('view'))observer.observe(node);for(const node of record.removedNodes)if(node.classList?.contains('view'))observer.unobserve(node);}}).observe(stack,{childList:true});}
++    function restore(){historyBusy=false;const route=known(currentRoute())?currentRoute():'/';const state=history.state;if(state?.dailyGrind&&Array.isArray(state.routes)&&state.routes.every(known)&&state.routes.at(-1)===route){routes=state.routes;currentDepth=routes.length-1;}else{routes=['/'];currentDepth=0;saveState(true);if(route!=='/'){routes.push(route);currentDepth=1;saveState();}}scrollToDepth(true);}
++    window.addEventListener('popstate',()=>{historyBusy=false;const state=history.state;if(!state?.dailyGrind){restore();return;}routes=state.routes;currentDepth=routes.length-1;scrollToDepth(currentDepth>[...stack.children].indexOf(activeView));});
++    window.addEventListener('hashchange',()=>{if(!history.state?.dailyGrind||history.state.routes.at(-1)!==currentRoute())restore();});
++    let resizeFrame;new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>scrollToDepth(true));}).observe(stack);
++    function persistOrder(){try{sessionStorage.setItem('daily-grind-order',JSON.stringify(order));}catch{}for(const link of stack.querySelectorAll('.order-link')){link.querySelector('.count').textContent=order.length;link.setAttribute('aria-label',`Your order, ${order.length} items`);}}
++    function refreshOrder(){const view=activeView;if(view?.dataset.route==='/order'){view.querySelector('.simple').outerHTML=orderView().match(/<main[\s\S]*<\/main>/)[0];view.querySelector('h1').tabIndex=-1;view.querySelector('h1').focus({preventScroll:true});}}
++    stack.addEventListener('change',event=>{const form=event.target.closest('form[data-drink]');if(form){form.querySelector('.button-price').textContent=money(itemPrice({id:form.dataset.drink,size:new FormData(form).get('size')}));}});
++    let toastTimer;stack.addEventListener('submit',event=>{const form=event.target.closest('form[data-drink]');if(!form)return;event.preventDefault();order.push({id:form.dataset.drink,size:new FormData(form).get('size')});persistOrder();const toast=document.querySelector('.toast');toast.replaceChildren(document.createTextNode('A little goodness added to your order. '));const link=document.createElement('a');link.href='#/order';link.textContent='View order →';link.onclick=e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();navigate('/order');toast.replaceChildren();};toast.append(link);clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.replaceChildren(),6000);});
++    restore();
++  </script>
+ </body>
+-
+ </html>

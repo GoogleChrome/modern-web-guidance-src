@@ -1,0 +1,30 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -87,8 +87,15 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    .weathered-bg {
++      -webkit-mask-image: url('grunge-texture.svg');
++      mask-image: url('grunge-texture.svg');
++      -webkit-mask-repeat: repeat;
++      mask-repeat: repeat;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -167,9 +174,9 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero weathered-bg">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,59 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++
++    /* Spotlight reveal for product cards */
++    @property --inner-size { syntax: '<length>'; inherits: true; initial-value: 0px; }
++    @property --outer-size { syntax: '<length>'; inherits: true; initial-value: 0px; }
++    @property --mouse-x { syntax: '<length>'; inherits: true; initial-value: 50%; }
++    @property --mouse-y { syntax: '<length>'; inherits: true; initial-value: 50%; }
++
++    .product-card {
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      position: relative;
++      overflow: hidden;
++      transition: --inner-size 0.4s ease, --outer-size 0.4s ease;
++    }
++
++    .product-card:hover {
++      --inner-size: 70px;
++      --outer-size: 130px;
++    }
++
++    .product-card .spotlight {
++      position: absolute;
++      inset: 0;
++      z-index: 1;
++      pointer-events: none;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      gap: 8px;
++      padding: 20px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.9rem;
++      -webkit-mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y), #000 var(--inner-size), transparent var(--outer-size));
++      mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y), #000 var(--inner-size), transparent var(--outer-size));
++    }
++
++    .product-card .spotlight strong {
++      text-transform: uppercase;
++      letter-spacing: 0.08em;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition-duration: 0s;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,22 +228,25 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true"><strong>Tasting Notes</strong><span>Notes: maple, toasted oat, vanilla. 12 oz &middot; 140 cal.</span></div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true"><strong>Tasting Notes</strong><span>Notes: cocoa, smoke, caramelized sugar. Double shot &middot; 5 cal.</span></div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="spotlight" aria-hidden="true"><strong>Tasting Notes</strong><span>Notes: dark chocolate, citrus zest. 16 oz &middot; 18-hour steep.</span></div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +260,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      card.addEventListener('pointermove', (e) => {
++        const r = card.getBoundingClientRect();
++        card.style.setProperty('--mouse-x', (e.clientX - r.left) + 'px');
++        card.style.setProperty('--mouse-y', (e.clientY - r.top) + 'px');
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,23 @@
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..c706b14 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,4 +1,3 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
+@@ -9,5 +8,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++  const response = await next();
++  // Allow this app to request resources on the user's local network and
++  // loopback interface (Chrome Local Network Access; prompts the user).
++  response.headers.set(
++    'Permissions-Policy',
++    'local-network-access=(self), local-network=(self), loopback-network=(self)'
++  );
++  return response;
+ });

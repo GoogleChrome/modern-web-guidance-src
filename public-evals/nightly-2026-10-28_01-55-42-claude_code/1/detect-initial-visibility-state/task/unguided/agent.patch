@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,91 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!--
++    Background-tab load detection.
++    Kept inline and synchronous in <head> so it runs as early as possible;
++    the fallback path below is only trustworthy when executed early.
++  -->
++  <script>
++    (function detectBackgroundLoad() {
++      var result = {
++        wasBackgrounded: false,   // true if the page was hidden at any point during initial load
++        backgroundTime: null,     // ms since the page's time origin when it first became hidden
++        backgroundTimestamp: null,// absolute epoch ms (performance.timeOrigin + backgroundTime)
++        detectionMethod: null,    // 'visibility-state-entries' | 'fallback-visibilityState' | 'unavailable'
++        fallbackActive: false,    // true => reading is potentially UNRELIABLE (see note below)
++        note: null
++      };
++
++      var timeOrigin = (window.performance && performance.timeOrigin) || Date.now();
++
++      // --- Accurate path: Performance Timeline "visibility-state" entries ------------
++      // Browsers that support VisibilityStateEntry (Chromium 115+) record every
++      // hidden/visible transition since navigation start with a precise startTime,
++      // regardless of when this script happens to execute.
++      var entries = [];
++      try {
++        if (window.performance && typeof performance.getEntriesByType === 'function') {
++          entries = performance.getEntriesByType('visibility-state');
++        }
++      } catch (e) { entries = []; }
++
++      if (entries.length > 0) {
++        result.detectionMethod = 'visibility-state-entries';
++        var firstHidden = null;
++        for (var i = 0; i < entries.length; i++) {
++          if (entries[i].name === 'hidden') { firstHidden = entries[i]; break; }
++        }
++        if (firstHidden) {
++          result.wasBackgrounded = true;
++          result.backgroundTime = firstHidden.startTime;
++          result.backgroundTimestamp = Math.round(timeOrigin + firstHidden.startTime);
++        }
++        // A 'hidden' entry at startTime 0 means the tab was opened in the background.
++        result.note = result.wasBackgrounded
++          ? (result.backgroundTime === 0
++              ? 'Page was opened directly in a background tab.'
++              : 'Page became hidden during load at the recorded time.')
++          : 'Page remained visible throughout initial load.';
++      }
++      // --- Legacy fallback: document.visibilityState snapshot -------------------------
++      // !! FALLBACK ACTIVE – POTENTIALLY UNRELIABLE !!
++      // This only captures the visibility state at the instant this script runs.
++      // If the script is deferred/async or executes late, the tab may already have
++      // been foregrounded (false negative) or backgrounded after load (false positive),
++      // and the "background time" is merely the script execution time, NOT the real
++      // moment the tab was hidden.
++      else if (typeof document.visibilityState === 'string') {
++        result.detectionMethod = 'fallback-visibilityState';
++        result.fallbackActive = true;
++        if (document.visibilityState === 'hidden') {
++          result.wasBackgrounded = true;
++          result.backgroundTime = (window.performance && typeof performance.now === 'function')
++            ? performance.now()
++            : 0;
++          result.backgroundTimestamp = Math.round(timeOrigin + result.backgroundTime);
++        }
++        result.note = 'UNRELIABLE: legacy document.visibilityState fallback in use. ' +
++          'backgroundTime reflects script execution time, not the true hide time.';
++      }
++      // --- Nothing available ----------------------------------------------------------
++      else {
++        result.detectionMethod = 'unavailable';
++        result.fallbackActive = true;
++        result.note = 'UNRELIABLE: no visibility API available; defaulting to not backgrounded.';
++      }
++
++      if (result.fallbackActive) {
++        console.warn('[DailyGrind] Background-tab detection is using a legacy fallback and may be inaccurate.');
++      }
++      console.log('[DailyGrind] Background load detection:', result);
++
++      // Expose for other scripts / analytics if needed.
++      window.__dailyGrindBackgroundLoad = result;
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

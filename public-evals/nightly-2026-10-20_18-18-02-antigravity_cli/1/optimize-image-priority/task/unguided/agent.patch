@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,186 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Product Landing Page</title>
++  <!-- Preload the LCP hero image with high fetchpriority -->
++  <link rel="preload" as="image" href="hero-lcp.jpg" fetchpriority="high">
++  <style>
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++    body {
++      font-family: system-ui, -apple-system, sans-serif;
++      line-height: 1.5;
++      color: #111;
++    }
++    header {
++      padding: 1rem 2rem;
++      border-bottom: 1px solid #e5e5e5;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      position: relative;
++    }
++    .mega-menu {
++      display: none;
++      position: absolute;
++      top: 100%;
++      left: 0;
++      width: 100%;
++      background: #fff;
++      border-bottom: 1px solid #e5e5e5;
++      padding: 1.5rem 2rem;
++      z-index: 10;
++    }
++    .mega-menu.open {
++      display: block;
++    }
++    main {
++      max-width: 1000px;
++      margin: 0 auto;
++      padding: 2rem;
++    }
++    .hero {
++      margin-bottom: 3rem;
++    }
++    .hero img {
++      width: 100%;
++      height: auto;
++      display: block;
++      aspect-ratio: 16 / 9;
++      background: #f5f5f5;
++    }
++    .gallery {
++      margin-bottom: 120vh; /* Ensure footer is well below the fold */
++    }
++    .gallery-item[hidden] {
++      display: none;
++    }
++    button {
++      padding: 0.5rem 1rem;
++      cursor: pointer;
++    }
++    footer {
++      padding: 3rem 2rem;
++      border-top: 1px solid #e5e5e5;
++      text-align: center;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <strong>Brand</strong>
++    <nav>
++      <button type="button" id="menu-btn" aria-expanded="false" aria-controls="mega-menu">
++        Products Menu
++      </button>
++      <div id="mega-menu" class="mega-menu" hidden>
++        <p>Featured Promotion</p>
++        <img
++          src="mega-menu-promo.jpg"
++          alt="Mega menu promotional item"
++          width="300"
++          height="200"
++          loading="lazy"
++          decoding="async"
++          fetchpriority="low"
++        >
++      </div>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero">
++      <h1>Flagship Product</h1>
++      <!-- Main LCP Hero Image: Eager loading, high priority, explicit dimensions -->
++      <img
++        src="hero-lcp.jpg"
++        alt="Flagship product hero showcase"
++        width="1200"
++        height="675"
++        fetchpriority="high"
++        loading="eager"
++        decoding="async"
++      >
++    </section>
++
++    <section class="gallery">
++      <h2>Product Gallery</h2>
++      <div class="gallery-controls">
++        <button type="button" id="gallery-toggle" aria-expanded="false" aria-controls="gallery-alt-container">
++          Toggle Alternate View
++        </button>
++      </div>
++
++      <div id="gallery-primary-container" class="gallery-item">
++        <img
++          src="gallery-main.jpg"
++          alt="Product primary view"
++          width="600"
++          height="400"
++          decoding="async"
++        >
++      </div>
++
++      <div id="gallery-alt-container" class="gallery-item" hidden>
++        <img
++          src="gallery-alt.jpg"
++          alt="Product alternate view"
++          width="600"
++          height="400"
++          loading="lazy"
++          decoding="async"
++          fetchpriority="low"
++        >
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    <img
++      src="footer-logo.png"
++      alt="Company Footer Logo"
++      width="120"
++      height="40"
++      loading="lazy"
++      decoding="async"
++      fetchpriority="low"
++    >
++    <p>&copy; 2026 Brand. All rights reserved.</p>
++  </footer>
++
++  <script>
++    const menuBtn = document.getElementById('menu-btn');
++    const megaMenu = document.getElementById('mega-menu');
++    menuBtn.addEventListener('click', () => {
++      const isHidden = megaMenu.hasAttribute('hidden');
++      if (isHidden) {
++        megaMenu.removeAttribute('hidden');
++        megaMenu.classList.add('open');
++        menuBtn.setAttribute('aria-expanded', 'true');
++      } else {
++        megaMenu.setAttribute('hidden', '');
++        megaMenu.classList.remove('open');
++        menuBtn.setAttribute('aria-expanded', 'false');
++      }
++    });
++
++    const galleryToggle = document.getElementById('gallery-toggle');
++    const galleryAlt = document.getElementById('gallery-alt-container');
++    galleryToggle.addEventListener('click', () => {
++      const isHidden = galleryAlt.hasAttribute('hidden');
++      if (isHidden) {
++        galleryAlt.removeAttribute('hidden');
++        galleryToggle.setAttribute('aria-expanded', 'true');
++      } else {
++        galleryAlt.setAttribute('hidden', '');
++        galleryToggle.setAttribute('aria-expanded', 'false');
++      }
++    });
++  </script>
++</body>
++</html>

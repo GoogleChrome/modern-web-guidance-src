@@ -1,0 +1,51 @@
+diff --git a/AUDIT.md b/AUDIT.md
+new file mode 100644
+--- a/AUDIT.md
++++ b/AUDIT.md
+@@ -0,0 +1,46 @@
++# Site audit and optimization
++
++Audited October 16, 2026. Scope: the supplied static site, its startup command, assets, accessibility, navigation, metadata, and HTTP delivery. No manual browser verification was performed. Headless Lighthouse was used for automated mobile and desktop audits.
++
++## Findings and changes
++
++| Area | Finding | Resolution |
++| --- | --- | --- |
++| Navigation | All 13 destination links pointed to absent pages, including order, account, and logout routes. | Replaced them with valid page anchors and native, expandable product details. Removed unsupported service links. |
++| Mobile layout | The navigation could overflow narrow screens; fixed hero height could crowd text. | Added wrapping navigation, fluid typography, responsive cards, and content-safe hero sizing. |
++| Accessibility | No skip link or explicit focus treatment; repeated generic product links. | Added a skip link, named landmarks, visible keyboard focus, semantic articles, native disclosures, and reduced-motion support. Fixed the logo's accessible name after an automated audit. |
++| Images | Hero was a remote CSS background with one image size. | Added locally hosted 800px and 1600px WebP sources, explicit dimensions, and high fetch priority. Mobile image is 44,040 bytes; desktop image is 208,702 bytes. No runtime third-party image request. |
++| Presentation | Limited section hierarchy and sparse product information. | Refined the coffee brand styling, spacing, typography, product cards, story section, and footer. Retained the existing coffee names, descriptions, and source photo. |
++| Search metadata | No description or favicon. | Added a page description, theme color, and SVG favicon; retained one descriptive H1 and a logical heading hierarchy. |
++| Startup | Starting the site downloaded an unpinned server package. | Replaced it with a dependency-free Node.js server. No application packages need to be installed to run the site. |
++| HTTP delivery | Server behavior and public file exposure were not controlled in the repository. | Added a public-file allowlist, MIME types, Brotli/gzip for text, ETag validation, HEAD support, proper errors, and security headers. |
++| Maintenance | No verification scripts or operational documentation. | Added six automated tests, run instructions, and stock-image provenance. |
++
++## Automated validation
++
++`pnpm test`: **6 tests passed**. Covers internal anchors and assets, unique IDs, page metadata, GET/HEAD consistency, conditional requests, compression, private-file protection, malformed URLs, unsupported methods, response security headers, MIME types, query strings, WebP signatures, and image size budgets.
++
++`pnpm dlx html-validate index.html`: passed without errors or warnings.
++
++`node --check server.mjs` and `git diff --check`: passed.
++
++Lighthouse 13.5.0 against the local Node server, using headless Chrome and default mobile/desktop presets:
++
++| Metric | Mobile | Desktop |
++| --- | --- | --- |
++| Performance | 100 | 100 |
++| Accessibility | 100 | 100 |
++| Best practices | 100 | 100 |
++| SEO | 100 | 100 |
++| First contentful paint | 0.8 s | 0.2 s |
++| Largest contentful paint | 1.2 s | 0.4 s |
++| Cumulative layout shift | 0 | 0 |
++| Total blocking time | 0 ms | 0 ms |
++
++These are local lab results, not production field measurements or a full accessibility certification. Lighthouse retains small image-compression opportunities (about 7 KiB mobile / 18 KiB desktop) and identifies the small external stylesheet as render blocking. The stylesheet remains shared and cacheable, and image quality is retained rather than pursuing these marginal savings.
++
++## Remaining scope
++
++Ordering, authentication, rewards, location listings, careers, and contact forms had no implementation or supplied business data. They remain unavailable; the updated page does not advertise them as working services. Supply the corresponding business information and integrations to implement them.
++
++No production URL or hosting configuration was supplied. Production HTTPS behavior, domain-specific canonical/social URLs, search indexing, and real-user performance therefore remain unverified. Static hosts must replicate the headers/compression in `server.mjs` if that server is not used.

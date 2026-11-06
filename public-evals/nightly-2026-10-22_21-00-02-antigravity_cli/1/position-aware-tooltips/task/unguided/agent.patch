@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,92 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .card-actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
++    #anchor {
++      anchor-name: --info-anchor;
++      background: var(--secondary);
++      color: var(--primary);
++      border: 2px solid var(--primary);
++      border-radius: 50%;
++      width: 36px;
++      height: 36px;
++      font-weight: bold;
++      font-size: 1rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    #anchor:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    #maple-tooltip {
++      position: fixed;
++      position-anchor: --info-anchor;
++      position-area: top;
++      position-try-fallbacks: flip-block;
++      container-type: anchored;
++      inset: auto;
++      overflow: visible;
++      background: var(--primary);
++      color: var(--light);
++      border: 1px solid var(--accent);
++      padding: 10px 14px;
++      max-width: 240px;
++      font-size: 0.85rem;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      margin-bottom: 10px;
++      border-radius: 8px 8px 2px 2px;
++    }
++
++    .tooltip-content {
++      margin-bottom: 4px;
++      border-radius: 8px 8px 2px 2px;
++    }
++
++    #maple-tooltip::after {
++      content: "";
++      position: absolute;
++      top: 100%;
++      left: 50%;
++      transform: translateX(-50%);
++      border-width: 6px;
++      border-style: solid;
++      border-color: var(--primary) transparent transparent transparent;
++    }
++
++    @container anchored(fallback: flip-block) {
++      #maple-tooltip,
++      .tooltip-content {
++        margin-bottom: 0;
++        margin-top: 10px;
++        border-radius: 2px 2px 8px 8px;
++      }
++
++      #maple-tooltip::after {
++        top: auto;
++        bottom: 100%;
++        border-color: transparent transparent var(--primary) transparent;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,9 +264,17 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button id="anchor" type="button" popovertarget="maple-tooltip" aria-describedby="maple-tooltip" aria-label="More information about Maple Oat Latte">i</button>
++          </div>
++          <div id="maple-tooltip" popover role="tooltip">
++            <div class="tooltip-content">
++              Made with organic Grade A dark Vermont maple syrup and barista-blend oat milk. 180 calories per 12oz serving.
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>

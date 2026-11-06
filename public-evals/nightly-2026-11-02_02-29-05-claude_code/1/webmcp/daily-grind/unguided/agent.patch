@@ -1,0 +1,828 @@
+diff --git a/index.html b/index.html
+index 66c9173..679ae5a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,193 @@
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      margin-right: 6px;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .link-btn {
++      background: none;
++      border: none;
++      color: var(--primary);
++      font: inherit;
++      text-decoration: underline;
++      cursor: pointer;
++    }
++
++    .card {
++      transition: box-shadow 0.3s, transform 0.3s;
++    }
++
++    .card.highlight {
++      box-shadow: 0 0 0 3px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.2);
++      transform: translateY(-4px);
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++    }
++
++    .filter-bar {
++      text-align: center;
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .order-toggle {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1001;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: bold;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .order-panel {
++      position: fixed;
++      top: 0;
++      right: 0;
++      bottom: 0;
++      width: min(380px, 100%);
++      background: white;
++      z-index: 1002;
++      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      overflow-y: auto;
++    }
++
++    .order-panel[hidden] {
++      display: none;
++    }
++
++    .order-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .order-panel-header .link-btn {
++      font-size: 1.6rem;
++      text-decoration: none;
++    }
++
++    .order-lines {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    .order-lines li {
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 8px;
++      font-size: 0.9rem;
++    }
++
++    .order-line-top {
++      display: flex;
++      justify-content: space-between;
++      font-weight: bold;
++    }
++
++    .order-line-meta {
++      color: #6d4c41;
++    }
++
++    .order-empty {
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .order-footer {
++      margin-top: auto;
++    }
++
++    .order-confirmation {
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      padding: 10px;
++      font-size: 0.9rem;
++    }
++
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 24px;
++      width: min(420px, 92vw);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
++    }
++
++    dialog::backdrop {
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2 {
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    dialog label {
++      display: block;
++      margin-top: 12px;
++      font-weight: bold;
++    }
++
++    dialog input {
++      width: 100%;
++      padding: 8px;
++      font: inherit;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++    }
++
++    .toast {
++      position: fixed;
++      left: 50%;
++      bottom: 80px;
++      transform: translateX(-50%);
++      background: var(--primary);
++      color: white;
++      padding: 10px 18px;
++      border-radius: 6px;
++      z-index: 1003;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,28 +362,81 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="filter-bar" id="filter-bar" hidden>
++        <span id="filter-summary"></span>
++        <button type="button" class="link-btn" id="filter-reset">Show all</button>
++      </div>
++      <div class="grid" id="seasonal-grid">
++        <article class="card" id="drink-maple-oat-latte" data-drink-id="maple-oat-latte" data-price="5.75"
++          data-temperature="hot,iced" data-caffeine="medium" data-tags="dairy-free,vegan,sweet"
++          data-sizes="small,medium,large" data-default-size="medium" data-milks="oat,whole,almond"
++          data-default-milk="oat" data-details-url="/menu/seasonal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">From $5.75</p>
++          <a href="/menu/seasonal" class="btn btn-outline">View Details</a>
++          <button type="button" class="btn" data-add-to-order>Add to Order</button>
++        </article>
++        <article class="card" id="drink-dark-roast-espresso" data-drink-id="dark-roast-espresso" data-price="3.50"
++          data-temperature="hot" data-caffeine="high" data-tags="dairy-free,vegan,bold,unsweetened"
++          data-sizes="single,double" data-default-size="double" data-milks="none" data-default-milk="none"
++          data-details-url="/menu/espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++          <p class="price">From $3.50</p>
++          <a href="/menu/espresso" class="btn btn-outline">View Details</a>
++          <button type="button" class="btn" data-add-to-order>Add to Order</button>
++        </article>
++        <article class="card" id="drink-cold-brew" data-drink-id="cold-brew" data-price="4.75"
++          data-temperature="iced" data-caffeine="high" data-tags="dairy-free,vegan,smooth,unsweetened"
++          data-sizes="small,medium,large" data-default-size="medium" data-milks="none,whole,oat,almond"
++          data-default-milk="none" data-details-url="/menu/cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p class="price">From $4.75</p>
++          <a href="/menu/cold-brew" class="btn btn-outline">View Details</a>
++          <button type="button" class="btn" data-add-to-order>Add to Order</button>
++        </article>
+       </div>
+     </section>
+   </main>
+ 
++  <button type="button" class="order-toggle" id="order-toggle" aria-controls="order-panel" aria-expanded="false">
++    Your Order (<span id="order-count">0</span>)
++  </button>
++
++  <aside class="order-panel" id="order-panel" aria-labelledby="order-panel-title" hidden>
++    <div class="order-panel-header">
++      <h2 id="order-panel-title">Your Order</h2>
++      <button type="button" class="link-btn" id="order-close" aria-label="Close order panel">&times;</button>
++    </div>
++    <div id="order-confirmation" class="order-confirmation" hidden></div>
++    <p id="order-empty" class="order-empty">Your order is empty. Add a seasonal favorite to get started.</p>
++    <ul id="order-lines" class="order-lines"></ul>
++    <div class="order-footer">
++      <p class="order-subtotal">Subtotal: <strong id="order-subtotal">$0.00</strong></p>
++      <button type="button" class="btn" id="order-place" disabled>Place Order</button>
++    </div>
++  </aside>
++
++  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
++    <form method="dialog" id="confirm-form">
++      <h2 id="confirm-title">Confirm your pickup order</h2>
++      <ul id="confirm-lines" class="order-lines"></ul>
++      <p class="order-subtotal">Subtotal: <strong id="confirm-subtotal"></strong></p>
++      <label for="confirm-name">Name for pickup</label>
++      <input id="confirm-name" name="pickupName" required pattern=".*\S.*" maxlength="40" autocomplete="given-name">
++      <div class="dialog-actions">
++        <button type="submit" class="btn btn-outline" value="cancel" formnovalidate>Cancel</button>
++        <button type="submit" class="btn" value="confirm">Confirm Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +447,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="js/menu.js"></script>
++  <script type="module" src="js/webmcp.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/js/menu.js b/js/menu.js
+new file mode 100644
+index 0000000..e667f8e
+--- /dev/null
++++ b/js/menu.js
+@@ -0,0 +1,346 @@
++// Seasonal Favorites menu + client-side order state for The Daily Grind homepage.
++// The menu cards in index.html (data-* attributes) are the single source of truth;
++// both the page UI and the WebMCP tools (webmcp.js) go through the functions exported here.
++
++const SIZE_UPCHARGE = { small: 0, medium: 0.5, large: 1, single: 0, double: 1.25 };
++const PLANT_MILK_UPCHARGE = 0.7;
++const PLANT_MILKS = ['oat', 'almond'];
++const EXTRA_SHOT_PRICE = 1;
++const MAX_EXTRA_SHOTS = 4;
++const MAX_QUANTITY = 10;
++const STORAGE_KEY = 'daily-grind-order';
++
++const $ = (id) => document.getElementById(id);
++const list = (value) => (value ? value.split(',').map((v) => v.trim()).filter(Boolean) : []);
++const money = (n) => `$${n.toFixed(2)}`;
++const round = (n) => Math.round(n * 100) / 100;
++
++// ---------------------------------------------------------------------------
++// Menu
++// ---------------------------------------------------------------------------
++
++function cardToDrink(card) {
++  const d = card.dataset;
++  return {
++    id: d.drinkId,
++    name: card.querySelector('h3').textContent.trim(),
++    description: card.querySelector('p').textContent.trim(),
++    basePrice: Number(d.price),
++    temperatures: list(d.temperature),
++    caffeine: d.caffeine,
++    tags: list(d.tags),
++    sizes: list(d.sizes),
++    defaultSize: d.defaultSize,
++    milks: list(d.milks),
++    defaultMilk: d.defaultMilk,
++    detailsUrl: d.detailsUrl,
++  };
++}
++
++function cards() {
++  return [...document.querySelectorAll('#seasonal-grid [data-drink-id]')];
++}
++
++export function getMenu() {
++  return cards().map(cardToDrink);
++}
++
++export function getDrink(id) {
++  const drink = getMenu().find((d) => d.id === id);
++  if (!drink) {
++    const ids = getMenu().map((d) => d.id).join(', ');
++    throw new Error(`Unknown drink "${id}". Available drinks: ${ids}.`);
++  }
++  return drink;
++}
++
++function milkUpcharge(drink, milk) {
++  return PLANT_MILKS.includes(milk) && milk !== drink.defaultMilk ? PLANT_MILK_UPCHARGE : 0;
++}
++
++export function priceFor(drink, { size, milk, extraShots = 0 }) {
++  return round(drink.basePrice + (SIZE_UPCHARGE[size] ?? 0) + milkUpcharge(drink, milk) + extraShots * EXTRA_SHOT_PRICE);
++}
++
++/** Full pricing breakdown for a drink, used by the details tool. */
++export function describeOptions(drink) {
++  return {
++    sizes: drink.sizes.map((size) => ({ size, price: priceFor(drink, { size, milk: drink.defaultMilk }) })),
++    milks: drink.milks.map((milk) => ({ milk, upcharge: milkUpcharge(drink, milk) })),
++    extraShotPrice: EXTRA_SHOT_PRICE,
++    maxExtraShots: MAX_EXTRA_SHOTS,
++  };
++}
++
++export function matchesFilter(drink, { temperature, tag, maxPrice, query } = {}) {
++  if (temperature && !drink.temperatures.includes(temperature)) return false;
++  if (tag && !drink.tags.includes(tag)) return false;
++  if (maxPrice != null && drink.basePrice > maxPrice) return false;
++  if (query) {
++    const q = query.toLowerCase();
++    const haystack = [drink.name, drink.description, ...drink.tags].join(' ').toLowerCase();
++    if (!haystack.includes(q)) return false;
++  }
++  return true;
++}
++
++// ---------------------------------------------------------------------------
++// Menu UI: filtering + highlighting
++// ---------------------------------------------------------------------------
++
++/** Show only cards matching the filter. Returns the ids of the visible drinks. */
++export function filterMenuDisplay(filter = {}) {
++  const all = cards();
++  const visible = [];
++  for (const card of all) {
++    const show = matchesFilter(cardToDrink(card), filter);
++    card.hidden = !show;
++    if (show) visible.push(card.dataset.drinkId);
++  }
++  const active = Object.values(filter).some((v) => v != null && v !== '');
++  $('filter-bar').hidden = !active;
++  $('filter-summary').textContent = `Showing ${visible.length} of ${all.length} seasonal favorites.`;
++  return visible;
++}
++
++export function resetMenuDisplay() {
++  return filterMenuDisplay({});
++}
++
++let highlightTimer;
++export function highlightDrink(id) {
++  const drink = getDrink(id);
++  const card = cards().find((c) => c.dataset.drinkId === id);
++  card.hidden = false;
++  for (const c of cards()) c.classList.toggle('highlight', c === card);
++  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
++  clearTimeout(highlightTimer);
++  highlightTimer = setTimeout(() => card.classList.remove('highlight'), 4000);
++  return drink;
++}
++
++// ---------------------------------------------------------------------------
++// Order state
++// ---------------------------------------------------------------------------
++
++let order = loadOrder();
++let nextLineId = order.reduce((max, l) => Math.max(max, l.lineId), 0) + 1;
++
++function loadOrder() {
++  try {
++    const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
++    return Array.isArray(saved) ? saved : [];
++  } catch {
++    return [];
++  }
++}
++
++function saveOrder() {
++  try {
++    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(order));
++  } catch {
++    // Storage unavailable (private mode, quota); order still works in memory.
++  }
++  renderOrder();
++}
++
++export function getOrder() {
++  const lines = order.map((l) => ({ ...l, lineTotal: round(l.unitPrice * l.quantity) }));
++  return {
++    lines,
++    itemCount: lines.reduce((n, l) => n + l.quantity, 0),
++    subtotal: round(lines.reduce((sum, l) => sum + l.lineTotal, 0)),
++  };
++}
++
++export function addToOrder({ drinkId, size, milk, extraShots = 0, quantity = 1, notes = '' }) {
++  const drink = getDrink(drinkId);
++  size ??= drink.defaultSize;
++  milk ??= drink.defaultMilk;
++
++  if (!drink.sizes.includes(size)) {
++    throw new Error(`${drink.name} is not available in size "${size}". Choose one of: ${drink.sizes.join(', ')}.`);
++  }
++  if (!drink.milks.includes(milk)) {
++    throw new Error(`${drink.name} cannot be made with milk "${milk}". Choose one of: ${drink.milks.join(', ')}.`);
++  }
++  if (!Number.isInteger(extraShots) || extraShots < 0 || extraShots > MAX_EXTRA_SHOTS) {
++    throw new Error(`extraShots must be a whole number between 0 and ${MAX_EXTRA_SHOTS}.`);
++  }
++  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
++    throw new Error(`quantity must be a whole number between 1 and ${MAX_QUANTITY}.`);
++  }
++
++  const line = {
++    lineId: nextLineId++,
++    drinkId,
++    name: drink.name,
++    size,
++    milk,
++    extraShots,
++    quantity,
++    notes: String(notes).slice(0, 140),
++    unitPrice: priceFor(drink, { size, milk, extraShots }),
++  };
++  order.push(line);
++  $('order-confirmation').hidden = true;
++  saveOrder();
++  showToast(`Added ${quantity} × ${drink.name} to your order.`);
++  return { ...line, lineTotal: round(line.unitPrice * quantity) };
++}
++
++export function removeFromOrder(lineId) {
++  const index = order.findIndex((l) => l.lineId === lineId);
++  if (index === -1) throw new Error(`No order line with id ${lineId}.`);
++  const [removed] = order.splice(index, 1);
++  saveOrder();
++  showToast(`Removed ${removed.name} from your order.`);
++  return removed;
++}
++
++export function clearOrder() {
++  order = [];
++  saveOrder();
++}
++
++/**
++ * Asks the customer to confirm the order in an in-page dialog. Resolves with the
++ * confirmation details, or with { confirmed: false } if the customer cancels.
++ */
++export async function placeOrder({ pickupName = '' } = {}) {
++  const summary = getOrder();
++  if (summary.itemCount === 0) throw new Error('The order is empty. Add drinks before placing an order.');
++
++  const name = await confirmWithCustomer(summary, pickupName);
++  if (name == null) return { confirmed: false, message: 'The customer cancelled the order.' };
++
++  const orderNumber = `DG-${Math.floor(1000 + Math.random() * 9000)}`;
++  const readyAt = new Date(Date.now() + 10 * 60 * 1000);
++  const confirmation = {
++    confirmed: true,
++    orderNumber,
++    pickupName: name,
++    estimatedReady: readyAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
++    ...summary,
++  };
++
++  clearOrder();
++  const box = $('order-confirmation');
++  box.textContent = `Thanks, ${name}! Order ${orderNumber} (${money(summary.subtotal)}) will be ready around ${confirmation.estimatedReady}.`;
++  box.hidden = false;
++  openOrderPanel();
++  showToast(`Order ${orderNumber} placed!`);
++  return confirmation;
++}
++
++// ---------------------------------------------------------------------------
++// Order UI
++// ---------------------------------------------------------------------------
++
++function describeLine(l) {
++  const parts = [l.size];
++  if (l.milk !== 'none') parts.push(`${l.milk} milk`);
++  if (l.extraShots) parts.push(`+${l.extraShots} shot${l.extraShots > 1 ? 's' : ''}`);
++  return parts.join(' · ');
++}
++
++function renderLines(ul, lines, { removable }) {
++  ul.replaceChildren(
++    ...lines.map((l) => {
++      const li = document.createElement('li');
++      const top = document.createElement('div');
++      top.className = 'order-line-top';
++      const title = document.createElement('span');
++      title.textContent = `${l.quantity} × ${l.name}`;
++      const total = document.createElement('span');
++      total.textContent = money(l.lineTotal);
++      top.append(title, total);
++
++      const meta = document.createElement('div');
++      meta.className = 'order-line-meta';
++      meta.textContent = describeLine(l) + (l.notes ? ` — "${l.notes}"` : '');
++      li.append(top, meta);
++
++      if (removable) {
++        const remove = document.createElement('button');
++        remove.type = 'button';
++        remove.className = 'link-btn';
++        remove.textContent = 'Remove';
++        remove.addEventListener('click', () => removeFromOrder(l.lineId));
++        li.append(remove);
++      }
++      return li;
++    }),
++  );
++}
++
++function renderOrder() {
++  const summary = getOrder();
++  $('order-count').textContent = summary.itemCount;
++  $('order-subtotal').textContent = money(summary.subtotal);
++  $('order-empty').hidden = summary.itemCount > 0;
++  $('order-place').disabled = summary.itemCount === 0;
++  renderLines($('order-lines'), summary.lines, { removable: true });
++}
++
++export function openOrderPanel() {
++  $('order-panel').hidden = false;
++  $('order-toggle').setAttribute('aria-expanded', 'true');
++}
++
++export function closeOrderPanel() {
++  $('order-panel').hidden = true;
++  $('order-toggle').setAttribute('aria-expanded', 'false');
++}
++
++let pendingConfirmation = null;
++function confirmWithCustomer(summary, pickupName) {
++  if (pendingConfirmation) throw new Error('An order confirmation is already waiting for the customer.');
++  const dialog = $('confirm-dialog');
++  const input = $('confirm-name');
++  renderLines($('confirm-lines'), summary.lines, { removable: false });
++  $('confirm-subtotal').textContent = money(summary.subtotal);
++  input.value = String(pickupName).slice(0, 40);
++
++  pendingConfirmation = new Promise((resolve) => {
++    dialog.addEventListener(
++      'close',
++      () => {
++        pendingConfirmation = null;
++        resolve(dialog.returnValue === 'confirm' ? input.value.trim() : null);
++      },
++      { once: true },
++    );
++  });
++  dialog.returnValue = '';
++  dialog.showModal();
++  if (!input.value) input.focus();
++  return pendingConfirmation;
++}
++
++let toastTimer;
++function showToast(message) {
++  const toast = $('toast');
++  toast.textContent = message;
++  toast.hidden = false;
++  clearTimeout(toastTimer);
++  toastTimer = setTimeout(() => (toast.hidden = true), 3000);
++}
++
++// ---------------------------------------------------------------------------
++// Wire up page controls
++// ---------------------------------------------------------------------------
++
++for (const card of cards()) {
++  card.querySelector('[data-add-to-order]').addEventListener('click', () => {
++    addToOrder({ drinkId: card.dataset.drinkId });
++    openOrderPanel();
++  });
++}
++
++$('order-toggle').addEventListener('click', () => ($('order-panel').hidden ? openOrderPanel() : closeOrderPanel()));
++$('order-close').addEventListener('click', closeOrderPanel);
++$('order-place').addEventListener('click', () => placeOrder().catch((err) => showToast(err.message)));
++$('filter-reset').addEventListener('click', resetMenuDisplay);
++
++renderOrder();
+diff --git a/js/webmcp.js b/js/webmcp.js
+new file mode 100644
+index 0000000..2712916
+--- /dev/null
++++ b/js/webmcp.js
+@@ -0,0 +1,169 @@
++// WebMCP integration: exposes the Seasonal Favorites menu and ordering UI as
++// client-side tools via navigator.modelContext, so in-browser AI agents can
++// query the menu and act on the page on the customer's behalf.
++// https://github.com/webmachinelearning/webmcp
++
++import * as shop from './menu.js';
++
++const menu = shop.getMenu();
++const drinkIds = menu.map((d) => d.id);
++const unique = (values) => [...new Set(values)];
++const allSizes = unique(menu.flatMap((d) => d.sizes));
++const allMilks = unique(menu.flatMap((d) => d.milks));
++const allTemperatures = unique(menu.flatMap((d) => d.temperatures));
++const allTags = unique(menu.flatMap((d) => d.tags));
++
++const result = (data) => ({
++  content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }],
++});
++
++// Turn thrown validation errors into tool errors the agent can read and recover from.
++const handler = (fn) => async (input, client) => {
++  try {
++    return result(await fn(input ?? {}, client));
++  } catch (err) {
++    return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
++  }
++};
++
++const filterProperties = {
++  temperature: { type: 'string', enum: allTemperatures, description: 'Only drinks served this way.' },
++  tag: { type: 'string', enum: allTags, description: 'Only drinks with this dietary/flavor tag.' },
++  maxPrice: { type: 'number', minimum: 0, description: 'Only drinks whose starting price (USD) is at or below this.' },
++  query: { type: 'string', description: 'Free-text search over drink name, description and tags.' },
++};
++
++const tools = [
++  {
++    name: 'get_seasonal_menu',
++    description:
++      'List the Seasonal Favorites drinks on The Daily Grind homepage with ids, descriptions, starting prices, ' +
++      'temperatures, caffeine level, tags, and available sizes/milks. Optionally filter the results.',
++    inputSchema: { type: 'object', properties: filterProperties },
++    annotations: { readOnlyHint: true },
++    execute: handler((filter) => {
++      const drinks = shop.getMenu().filter((d) => shop.matchesFilter(d, filter));
++      return { currency: 'USD', count: drinks.length, drinks };
++    }),
++  },
++  {
++    name: 'get_drink_details',
++    description: 'Get full details and per-option pricing (sizes, milk upcharges, extra shots) for one seasonal drink.',
++    inputSchema: {
++      type: 'object',
++      properties: { drinkId: { type: 'string', enum: drinkIds, description: 'Drink id from get_seasonal_menu.' } },
++      required: ['drinkId'],
++    },
++    annotations: { readOnlyHint: true },
++    execute: handler(({ drinkId }) => {
++      const drink = shop.getDrink(drinkId);
++      return { ...drink, currency: 'USD', options: shop.describeOptions(drink) };
++    }),
++  },
++  {
++    name: 'show_seasonal_drinks',
++    description:
++      'Update the page so the customer only sees Seasonal Favorites matching the given filter. ' +
++      'Call with no arguments to show all drinks again.',
++    inputSchema: { type: 'object', properties: filterProperties },
++    execute: handler((filter) => {
++      const visible = shop.filterMenuDisplay(filter);
++      document.getElementById('seasonal-favorites').scrollIntoView({ behavior: 'smooth' });
++      return { visibleDrinkIds: visible, message: `Showing ${visible.length} of ${drinkIds.length} drinks on the page.` };
++    }),
++  },
++  {
++    name: 'highlight_drink',
++    description: 'Scroll to and visually highlight a seasonal drink card so the customer can see it.',
++    inputSchema: {
++      type: 'object',
++      properties: { drinkId: { type: 'string', enum: drinkIds } },
++      required: ['drinkId'],
++    },
++    execute: handler(({ drinkId }) => `Highlighted ${shop.highlightDrink(drinkId).name} on the page.`),
++  },
++  {
++    name: 'add_drink_to_order',
++    description:
++      "Add a seasonal drink to the customer's order (shown in the on-page order panel). " +
++      'Omitted options use the drink defaults. Use get_drink_details to see which sizes and milks each drink supports.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        drinkId: { type: 'string', enum: drinkIds },
++        size: { type: 'string', enum: allSizes, description: 'Must be one of the sizes the drink supports.' },
++        milk: { type: 'string', enum: allMilks, description: 'Must be one of the milks the drink supports.' },
++        extraShots: { type: 'integer', minimum: 0, maximum: 4, default: 0 },
++        quantity: { type: 'integer', minimum: 1, maximum: 10, default: 1 },
++        notes: { type: 'string', maxLength: 140, description: 'Special instructions, e.g. "extra hot".' },
++      },
++      required: ['drinkId'],
++    },
++    execute: handler((input) => {
++      const line = shop.addToOrder(input);
++      shop.openOrderPanel();
++      return { added: line, order: shop.getOrder() };
++    }),
++  },
++  {
++    name: 'get_current_order',
++    description: "Get the customer's current (not yet placed) order: line items, item count and subtotal in USD.",
++    inputSchema: { type: 'object', properties: {} },
++    annotations: { readOnlyHint: true },
++    execute: handler(() => shop.getOrder()),
++  },
++  {
++    name: 'remove_order_item',
++    description: 'Remove one line item from the current order by its lineId (from get_current_order).',
++    inputSchema: {
++      type: 'object',
++      properties: { lineId: { type: 'integer' } },
++      required: ['lineId'],
++    },
++    execute: handler(({ lineId }) => ({ removed: shop.removeFromOrder(lineId), order: shop.getOrder() })),
++  },
++  {
++    name: 'clear_order',
++    description: 'Remove every item from the current order.',
++    inputSchema: { type: 'object', properties: {} },
++    execute: handler(() => {
++      shop.clearOrder();
++      return 'The order is now empty.';
++    }),
++  },
++  {
++    name: 'place_order',
++    description:
++      'Submit the current order for pickup. Opens a confirmation dialog on the page; the order is only placed ' +
++      'if the customer confirms. Returns the order number and estimated ready time, or confirmed=false if cancelled.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        pickupName: { type: 'string', maxLength: 40, description: 'Name to pre-fill for pickup; the customer can edit it.' },
++      },
++    },
++    execute: handler(({ pickupName }, client) => {
++      const confirm = () => shop.placeOrder({ pickupName });
++      // Let the agent host know we're waiting on the user, where supported.
++      return typeof client?.requestUserInteraction === 'function' ? client.requestUserInteraction(confirm) : confirm();
++    }),
++  },
++];
++
++function registerTools(modelContext) {
++  if (typeof modelContext.registerTool === 'function') {
++    for (const tool of tools) {
++      try {
++        modelContext.registerTool(tool);
++      } catch (err) {
++        console.warn(`[WebMCP] Could not register tool "${tool.name}":`, err);
++      }
++    }
++  } else if (typeof modelContext.provideContext === 'function') {
++    modelContext.provideContext({ tools });
++  }
++}
++
++if ('modelContext' in navigator && navigator.modelContext) {
++  registerTools(navigator.modelContext);
++}

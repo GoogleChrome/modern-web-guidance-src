@@ -1,0 +1,1517 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,562 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Rewards Registration Section */
++    .rewards-section {
++      background: #ffffff;
++      border-radius: 12px;
++      box-shadow: 0 4px 20px rgba(62, 39, 35, 0.12);
++      margin-top: 60px;
++      padding: 40px;
++      border-top: 6px solid var(--primary);
++    }
++
++    .rewards-header {
++      text-align: center;
++      max-width: 650px;
++      margin: 0 auto 30px;
++    }
++
++    .rewards-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
++    .rewards-header p {
++      color: #5d4037;
++      font-size: 1rem;
++    }
++
++    .required-legend {
++      font-size: 0.875rem;
++      color: #5d4037;
++      margin-top: 8px;
++    }
++
++    .required-indicator {
++      color: #b71c1c;
++      font-weight: bold;
++      margin-left: 2px;
++    }
++
++    /* Multi-step Progress Stepper */
++    .progress-nav {
++      margin-bottom: 32px;
++    }
++
++    .stepper-list {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      position: relative;
++      max-width: 680px;
++      margin: 0 auto;
++      padding: 0;
++      gap: 12px;
++    }
++
++    .stepper-item {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      position: relative;
++      color: #6d4c41;
++      font-size: 0.9rem;
++    }
++
++    .step-number {
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      background: var(--light);
++      border: 2px solid var(--secondary);
++      color: var(--text);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-weight: 700;
++      margin-bottom: 6px;
++      transition: background-color 0.25s, border-color 0.25s, color 0.25s;
++    }
++
++    .stepper-item[aria-current="step"] .step-number {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: #ffffff;
++      box-shadow: 0 0 0 4px rgba(78, 52, 46, 0.2);
++    }
++
++    .stepper-item[aria-current="step"] .step-label {
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .stepper-item.is-complete .step-number {
++      background: #2e7d32;
++      border-color: #2e7d32;
++      color: #ffffff;
++    }
++
++    .stepper-item.is-complete .step-label {
++      color: #1b5e20;
++      font-weight: 600;
++    }
++
++    /* Form Steps & Fieldsets */
++    .rewards-form {
++      max-width: 680px;
++      margin: 0 auto;
++    }
++
++    .form-step {
++      border: none;
++      padding: 0;
++      margin: 0;
++    }
++
++    .form-step[hidden] {
++      display: none !important;
++    }
++
++    .step-legend {
++      font-size: 1.35rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-bottom: 6px;
++      padding: 0;
++      width: 100%;
++    }
++
++    .step-description {
++      color: #5d4037;
++      font-size: 0.95rem;
++      margin-bottom: 24px;
++    }
++
++    /* Error Summary Banner */
++    .error-summary {
++      background-color: #ffebee;
++      border-left: 5px solid #c62828;
++      color: #b71c1c;
++      padding: 16px 20px;
++      border-radius: 6px;
++      margin-bottom: 24px;
++    }
++
++    .error-summary[hidden] {
++      display: none !important;
++    }
++
++    .error-summary h3 {
++      font-size: 1rem;
++      margin-bottom: 8px;
++    }
++
++    .error-summary ul {
++      margin-left: 20px;
++      font-size: 0.9rem;
++    }
++
++    .error-summary a {
++      color: #b71c1c;
++      font-weight: 600;
++      text-decoration: underline;
++    }
++
++    /* Form Grid & Controls */
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 20px;
++    }
++
++    .form-group {
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .form-label {
++      font-weight: 600;
++      margin-bottom: 6px;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .optional-tag {
++      font-weight: 400;
++      color: #6d4c41;
++      font-size: 0.85rem;
++    }
++
++    .form-hint {
++      font-size: 0.825rem;
++      color: #5d4037;
++      margin-bottom: 6px;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 11px 14px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #ffffff;
++      border: 1.5px solid #8d6e63;
++      border-radius: 6px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .form-control:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.45);
++    }
++
++    .form-control[aria-invalid="true"] {
++      border-color: #c62828;
++      background-color: #fff8f8;
++    }
++
++    .form-control[aria-invalid="true"]:focus {
++      box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.25);
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-top: 6px;
++      min-height: 1.2em;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    /* Password Input Wrapper & Toggle */
++    .password-wrapper {
++      position: relative;
++      display: flex;
++      align-items: center;
++    }
++
++    .password-wrapper .form-control {
++      padding-right: 76px;
++    }
++
++    .password-toggle {
++      position: absolute;
++      right: 8px;
++      background: transparent;
++      border: 1px solid #8d6e63;
++      color: var(--primary);
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 5px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background-color 0.2s;
++    }
++
++    .password-toggle:hover,
++    .password-toggle:focus-visible {
++      background-color: var(--secondary);
++      outline: 2px solid var(--primary);
++      outline-offset: 1px;
++    }
++
++    /* Password Strength Meter & Checklist */
++    .password-strength-container {
++      margin-top: 10px;
++    }
++
++    .strength-meter-bar {
++      width: 100%;
++      height: 8px;
++      background-color: #e0e0e0;
++      border-radius: 4px;
++      overflow: hidden;
++      margin-bottom: 6px;
++    }
++
++    .strength-meter-fill {
++      height: 100%;
++      width: 0%;
++      background-color: #c62828;
++      transition: width 0.3s ease, background-color 0.3s ease;
++    }
++
++    .strength-text {
++      font-size: 0.825rem;
++      font-weight: 600;
++      color: #5d4037;
++    }
++
++    .password-checklist {
++      list-style: none;
++      margin-top: 8px;
++      padding: 10px 14px;
++      background-color: var(--light);
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++      font-size: 0.85rem;
++    }
++
++    .password-checklist li {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-bottom: 4px;
++      color: #5d4037;
++    }
++
++    .password-checklist li:last-child {
++      margin-bottom: 0;
++    }
++
++    .password-checklist li.is-met {
++      color: #1b5e20;
++      font-weight: 600;
++    }
++
++    .check-icon {
++      display: inline-block;
++      width: 16px;
++      text-align: center;
++      font-weight: bold;
++    }
++
++    /* Sub-fieldsets for Radio & Checkbox Groups */
++    .choice-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px;
++      margin-bottom: 20px;
++    }
++
++    .choice-legend {
++      font-weight: 600;
++      padding: 0 8px;
++      color: var(--text);
++      font-size: 0.95rem;
++    }
++
++    .choice-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 12px;
++      margin-top: 8px;
++    }
++
++    .choice-label {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      padding: 10px 12px;
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      cursor: pointer;
++      font-size: 0.92rem;
++      background: #ffffff;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .choice-label:hover {
++      border-color: var(--primary);
++      background-color: var(--light);
++    }
++
++    .choice-label input[type="radio"],
++    .choice-label input[type="checkbox"] {
++      margin-top: 3px;
++      width: 18px;
++      height: 18px;
++      accent-color: var(--primary);
++      flex-shrink: 0;
++    }
++
++    /* Review Box */
++    .review-card {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px 20px;
++      margin-bottom: 20px;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 8px;
++      margin-bottom: 12px;
++    }
++
++    .review-header h3 {
++      font-size: 1rem;
++      color: var(--primary);
++    }
++
++    .link-btn {
++      background: none;
++      border: none;
++      color: var(--primary);
++      text-decoration: underline;
++      font-weight: 600;
++      font-size: 0.875rem;
++      cursor: pointer;
++      padding: 4px 8px;
++      border-radius: 4px;
++    }
++
++    .link-btn:hover,
++    .link-btn:focus-visible {
++      background-color: var(--secondary);
++      outline: 2px solid var(--primary);
++    }
++
++    .review-list {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 10px 20px;
++      font-size: 0.9rem;
++    }
++
++    .review-list dt {
++      font-weight: 600;
++      color: #5d4037;
++    }
++
++    .review-list dd {
++      margin: 0 0 6px 0;
++      color: var(--text);
++      word-break: break-word;
++    }
++
++    /* Form Actions / Navigation Buttons */
++    .form-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-top: 28px;
++      padding-top: 20px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .btn-primary,
++    .btn-secondary {
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      padding: 12px 24px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background-color 0.2s, transform 0.1s;
++    }
++
++    .btn-primary {
++      background-color: var(--primary);
++      color: #ffffff;
++      border: 2px solid var(--primary);
++      margin-left: auto;
++    }
++
++    .btn-primary:hover:not(:disabled) {
++      background-color: #3e2723;
++      border-color: #3e2723;
++    }
++
++    .btn-primary:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background-color: #ffffff;
++      color: var(--primary);
++      border: 2px solid var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background-color: var(--light);
++    }
++
++    .btn-primary:focus-visible,
++    .btn-secondary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Honeypot & Screen Reader Utilities */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .hp-field {
++      position: absolute;
++      left: -10000px;
++      top: auto;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++    }
++
++    /* Success State */
++    .registration-success {
++      text-align: center;
++      padding: 32px 20px;
++      background-color: #f1f8e9;
++      border: 2px solid #2e7d32;
++      border-radius: 10px;
++      max-width: 600px;
++      margin: 0 auto;
++    }
++
++    .registration-success[hidden] {
++      display: none !important;
++    }
++
++    .registration-success h3 {
++      color: #1b5e20;
++      font-size: 1.6rem;
++      margin-bottom: 12px;
++    }
++
++    .registration-success p {
++      margin-bottom: 12px;
++      color: var(--text);
++    }
++
++    @media (max-width: 600px) {
++      .rewards-section {
++        padding: 24px 16px;
++      }
++
++      .stepper-list {
++        gap: 6px;
++      }
++
++      .step-label {
++        font-size: 0.78rem;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +748,419 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="rewards-signup" class="rewards-section" aria-labelledby="rewards-heading">
++      <div class="rewards-header">
++        <h2 id="rewards-heading">Join The Daily Grind Rewards</h2>
++        <p>Earn 2 Beans for every $1 spent, unlock free handcrafted drinks, and enjoy a complimentary treat on your birthday.</p>
++        <p class="required-legend">Fields marked with <span class="required-indicator" aria-hidden="true">*</span> are required.</p>
++      </div>
++
++      <!-- Accessible Progress Indicator -->
++      <nav class="progress-nav" aria-label="Rewards registration progress">
++        <ol class="stepper-list">
++          <li class="stepper-item" id="stepper-1" aria-current="step">
++            <span class="step-number" aria-hidden="true">1</span>
++            <span class="step-label">Personal Details</span>
++          </li>
++          <li class="stepper-item" id="stepper-2">
++            <span class="step-number" aria-hidden="true">2</span>
++            <span class="step-label">Account Security</span>
++          </li>
++          <li class="stepper-item" id="stepper-3">
++            <span class="step-number" aria-hidden="true">3</span>
++            <span class="step-label">Preferences &amp; Review</span>
++          </li>
++        </ol>
++      </nav>
++
++      <!-- Live region for screen reader step announcements -->
++      <div id="step-live-announcer" class="sr-only" aria-live="polite" aria-atomic="true">
++        Step 1 of 3: Personal Details
++      </div>
++
++      <!-- Step-level Error Summary Banner -->
++      <div id="form-error-summary" class="error-summary" role="alert" aria-labelledby="error-summary-title" tabindex="-1" hidden>
++        <h3 id="error-summary-title">Please fix the following issues to continue:</h3>
++        <ul id="error-summary-list"></ul>
++      </div>
++
++      <form id="rewards-registration-form" class="rewards-form" action="/rewards/register" method="POST" novalidate>
++        <!-- Security Tokens & Bot Honeypot -->
++        <input type="hidden" name="csrf_token" id="csrf-token" value="dg_csrf_9f8e7d6c5b4a3210_secure">
++        <input type="hidden" name="form_rendered_at" id="form-rendered-at" value="">
++        <div class="hp-field" aria-hidden="true">
++          <label for="company-website">Leave this field empty</label>
++          <input type="text" id="company-website" name="company_website" tabindex="-1" autocomplete="off">
++        </div>
++
++        <!-- STEP 1: Personal Details -->
++        <fieldset id="step-1" class="form-step" data-step="1">
++          <legend class="step-legend" tabindex="-1">Step 1: Personal Details</legend>
++          <p class="step-description">Tell us about yourself so we can set up your member card and send your annual birthday reward.</p>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="first-name" class="form-label">
++                First Name <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <input
++                type="text"
++                id="first-name"
++                name="firstName"
++                class="form-control"
++                autocomplete="given-name"
++                required
++                aria-required="true"
++                minlength="2"
++                maxlength="60"
++                aria-describedby="first-name-error"
++              >
++              <div id="first-name-error" class="field-error" aria-live="polite"></div>
++            </div>
++
++            <div class="form-group">
++              <label for="last-name" class="form-label">
++                Last Name <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <input
++                type="text"
++                id="last-name"
++                name="lastName"
++                class="form-control"
++                autocomplete="family-name"
++                required
++                aria-required="true"
++                minlength="2"
++                maxlength="60"
++                aria-describedby="last-name-error"
++              >
++              <div id="last-name-error" class="field-error" aria-live="polite"></div>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="email" class="form-label">
++              Email Address <span class="required-indicator" aria-hidden="true">*</span>
++            </label>
++            <span id="email-hint" class="form-hint">Used for signing in and receiving digital reward receipts.</span>
++            <input
++              type="email"
++              id="email"
++              name="email"
++              class="form-control"
++              autocomplete="email"
++              inputmode="email"
++              autocapitalize="none"
++              spellcheck="false"
++              required
++              aria-required="true"
++              maxlength="120"
++              aria-describedby="email-hint email-error"
++            >
++            <div id="email-error" class="field-error" aria-live="polite"></div>
++          </div>
++
++          <div class="form-row">
++            <div class="form-group">
++              <label for="phone" class="form-label">
++                Mobile Phone Number <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <span id="phone-hint" class="form-hint">For quick phone lookup at the register (e.g., 555-234-5678).</span>
++              <input
++                type="tel"
++                id="phone"
++                name="phone"
++                class="form-control"
++                autocomplete="tel"
++                inputmode="tel"
++                pattern="^\+?[0-9\s\-\(\)]{10,20}$"
++                required
++                aria-required="true"
++                aria-describedby="phone-hint phone-error"
++              >
++              <div id="phone-error" class="field-error" aria-live="polite"></div>
++            </div>
++
++            <div class="form-group">
++              <label for="postal-code" class="form-label">
++                ZIP / Postal Code <span class="required-indicator" aria-hidden="true">*</span>
++              </label>
++              <span id="postal-code-hint" class="form-hint">5-digit ZIP code for local cafe offers (e.g., 98101).</span>
++              <input
++                type="text"
++                id="postal-code"
++                name="postalCode"
++                class="form-control"
++                autocomplete="postal-code"
++                inputmode="numeric"
++                pattern="^[0-9]{5}(-[0-9]{4})?$"
++                maxlength="10"
++                required
++                aria-required="true"
++                aria-describedby="postal-code-hint postal-code-error"
++              >
++              <div id="postal-code-error" class="field-error" aria-live="polite"></div>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="birthday" class="form-label">
++              Birth Date <span class="optional-tag">(Optional)</span>
++            </label>
++            <span id="birthday-hint" class="form-hint">Add your birth date to receive a free handcrafted drink every birthday. Must be 13 or older.</span>
++            <input
++              type="date"
++              id="birthday"
++              name="birthday"
++              class="form-control"
++              autocomplete="bday"
++              min="1905-01-01"
++              max="2013-10-22"
++              aria-describedby="birthday-hint birthday-error"
++            >
++            <div id="birthday-error" class="field-error" aria-live="polite"></div>
++          </div>
++
++          <div class="form-actions">
++            <button type="button" class="btn-primary" data-next-step="2">
++              Continue to Account Security
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- STEP 2: Account Security -->
++        <fieldset id="step-2" class="form-step" data-step="2" hidden>
++          <legend class="step-legend" tabindex="-1">Step 2: Account Security</legend>
++          <p class="step-description">Protect your rewards balance with a strong password. Password managers and pasting are supported.</p>
++
++          <div class="form-group">
++            <label for="password" class="form-label">
++              Create Password <span class="required-indicator" aria-hidden="true">*</span>
++            </label>
++            <span id="password-hint" class="form-hint">Use 8 or more characters with a mix of uppercase, lowercase, numbers, and symbols.</span>
++            <div class="password-wrapper">
++              <input
++                type="password"
++                id="password"
++                name="password"
++                class="form-control"
++                autocomplete="new-password"
++                minlength="8"
++                maxlength="128"
++                required
++                aria-required="true"
++                aria-describedby="password-hint password-strength-status password-requirements password-error"
++              >
++              <button
++                type="button"
++                class="password-toggle"
++                id="toggle-password"
++                aria-label="Show password"
++                aria-pressed="false"
++                aria-controls="password"
++              >
++                Show
++              </button>
++            </div>
++            <div id="password-error" class="field-error" aria-live="polite"></div>
++
++            <div class="password-strength-container">
++              <div
++                class="strength-meter-bar"
++                role="progressbar"
++                id="password-strength-bar"
++                aria-label="Password strength"
++                aria-valuemin="0"
++                aria-valuemax="4"
++                aria-valuenow="0"
++              >
++                <div class="strength-meter-fill" id="password-strength-fill"></div>
++              </div>
++              <div id="password-strength-status" class="strength-text" aria-live="polite">
++                Password strength: Enter a password
++              </div>
++              <ul id="password-requirements" class="password-checklist" aria-label="Password requirements">
++                <li id="req-length"><span class="check-icon" aria-hidden="true">○</span> At least 8 characters</li>
++                <li id="req-case"><span class="check-icon" aria-hidden="true">○</span> Uppercase &amp; lowercase letters</li>
++                <li id="req-number"><span class="check-icon" aria-hidden="true">○</span> At least one number (0–9)</li>
++                <li id="req-symbol"><span class="check-icon" aria-hidden="true">○</span> At least one symbol (e.g., !@#$%^&amp;*)</li>
++              </ul>
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="confirm-password" class="form-label">
++              Confirm Password <span class="required-indicator" aria-hidden="true">*</span>
++            </label>
++            <span id="confirm-password-hint" class="form-hint">Re-enter your password to confirm it matches.</span>
++            <div class="password-wrapper">
++              <input
++                type="password"
++                id="confirm-password"
++                name="confirmPassword"
++                class="form-control"
++                autocomplete="new-password"
++                minlength="8"
++                maxlength="128"
++                required
++                aria-required="true"
++                aria-describedby="confirm-password-hint confirm-password-error"
++              >
++              <button
++                type="button"
++                class="password-toggle"
++                id="toggle-confirm-password"
++                aria-label="Show confirm password"
++                aria-pressed="false"
++                aria-controls="confirm-password"
++              >
++                Show
++              </button>
++            </div>
++            <div id="confirm-password-error" class="field-error" aria-live="polite"></div>
++          </div>
++
++          <div class="form-actions">
++            <button type="button" class="btn-secondary" data-prev-step="1">
++              Back to Personal Details
++            </button>
++            <button type="button" class="btn-primary" data-next-step="3">
++              Continue to Preferences
++            </button>
++          </div>
++        </fieldset>
++
++        <!-- STEP 3: Coffee Preferences & Review -->
++        <fieldset id="step-3" class="form-step" data-step="3" hidden>
++          <legend class="step-legend" tabindex="-1">Step 3: Coffee Preferences &amp; Review</legend>
++          <p class="step-description">Tell us what you love to sip and review your registration details before submitting.</p>
++
++          <fieldset class="choice-fieldset" aria-describedby="brew-error">
++            <legend class="choice-legend">
++              Favorite Brew Style <span class="required-indicator" aria-hidden="true">*</span>
++            </legend>
++            <div class="choice-grid">
++              <label class="choice-label" for="brew-espresso">
++                <input type="radio" id="brew-espresso" name="favoriteBrew" value="Espresso & Lattes" required aria-required="true" aria-describedby="brew-error">
++                <span>Espresso &amp; Lattes</span>
++              </label>
++              <label class="choice-label" for="brew-cold">
++                <input type="radio" id="brew-cold" name="favoriteBrew" value="Cold Brew & Iced" required aria-required="true" aria-describedby="brew-error">
++                <span>Cold Brew &amp; Iced Coffee</span>
++              </label>
++              <label class="choice-label" for="brew-drip">
++                <input type="radio" id="brew-drip" name="favoriteBrew" value="Pour Over & Drip" required aria-required="true" aria-describedby="brew-error">
++                <span>Pour Over &amp; Drip Roast</span>
++              </label>
++              <label class="choice-label" for="brew-tea">
++                <input type="radio" id="brew-tea" name="favoriteBrew" value="Tea & Botanicals" required aria-required="true" aria-describedby="brew-error">
++                <span>Artisanal Tea &amp; Matcha</span>
++              </label>
++            </div>
++            <div id="brew-error" class="field-error" aria-live="polite"></div>
++          </fieldset>
++
++          <div class="form-group">
++            <label for="milk-preference" class="form-label">
++              Preferred Milk or Creamer <span class="optional-tag">(Optional)</span>
++            </label>
++            <span id="milk-hint" class="form-hint">Saved as your default customization for mobile orders.</span>
++            <select id="milk-preference" name="milkPreference" class="form-control" aria-describedby="milk-hint">
++              <option value="No preference / Black">No preference / Black</option>
++              <option value="Oat Milk">Oat Milk</option>
++              <option value="Whole Milk">Whole Milk</option>
++              <option value="Almond Milk">Almond Milk</option>
++              <option value="Soy Milk">Soy Milk</option>
++              <option value="Coconut Milk">Coconut Milk</option>
++            </select>
++          </div>
++
++          <fieldset class="choice-fieldset">
++            <legend class="choice-legend">
++              Communication Preferences <span class="optional-tag">(Optional)</span>
++            </legend>
++            <div class="choice-grid">
++              <label class="choice-label" for="notify-email">
++                <input type="checkbox" id="notify-email" name="notifications" value="email" checked>
++                <span>Double-Bean days &amp; seasonal offers by Email</span>
++              </label>
++              <label class="choice-label" for="notify-sms">
++                <input type="checkbox" id="notify-sms" name="notifications" value="sms">
++                <span>Mobile order status &amp; flash perks via SMS</span>
++              </label>
++            </div>
++          </fieldset>
++
++          <!-- Registration Summary Review -->
++          <div class="review-card" aria-labelledby="review-card-heading">
++            <div class="review-header">
++              <h3 id="review-card-heading">Review Your Information</h3>
++              <button type="button" class="link-btn" data-prev-step="1" aria-label="Edit personal details in Step 1">
++                Edit Personal Info
++              </button>
++            </div>
++            <dl class="review-list">
++              <div>
++                <dt>Full Name</dt>
++                <dd id="review-name">—</dd>
++              </div>
++              <div>
++                <dt>Email Address</dt>
++                <dd id="review-email">—</dd>
++              </div>
++              <div>
++                <dt>Mobile Phone</dt>
++                <dd id="review-phone">—</dd>
++              </div>
++              <div>
++                <dt>ZIP / Postal Code</dt>
++                <dd id="review-postal">—</dd>
++              </div>
++            </dl>
++          </div>
++
++          <div class="form-group">
++            <label class="choice-label" for="terms-consent">
++              <input
++                type="checkbox"
++                id="terms-consent"
++                name="termsConsent"
++                value="accepted"
++                required
++                aria-required="true"
++                aria-describedby="terms-hint terms-error"
++              >
++              <span>
++                I agree to the <a href="/rewards-terms">Daily Grind Rewards Terms of Use</a> and acknowledge the <a href="/privacy-policy">Privacy Policy</a>. <span class="required-indicator" aria-hidden="true">*</span>
++              </span>
++            </label>
++            <span id="terms-hint" class="form-hint" style="margin-top: 6px;">
++              We never sell your personal information. You may opt out or delete your account at any time.
++            </span>
++            <div id="terms-error" class="field-error" aria-live="polite"></div>
++          </div>
++
++          <div class="form-actions">
++            <button type="button" class="btn-secondary" data-prev-step="2">
++              Back to Account Security
++            </button>
++            <button type="submit" class="btn-primary" id="submit-registration-btn">
++              Complete Registration
++            </button>
++          </div>
++        </fieldset>
++      </form>
++
++      <!-- Accessible Post-Submission Confirmation -->
++      <div id="registration-success" class="registration-success" role="status" aria-live="polite" tabindex="-1" hidden>
++        <h3 id="success-heading">Welcome to The Daily Grind Rewards!</h3>
++        <p>Your account for <strong id="confirmed-member-email"></strong> has been securely created, and <strong>50 Bonus Beans</strong> have been added to your balance.</p>
++        <p>Check your inbox for a verification link to activate in-store redemptions.</p>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +1171,530 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      const form = document.getElementById('rewards-registration-form');
++      if (!form) return;
++
++      const steps = Array.from(form.querySelectorAll('.form-step'));
++      const stepperItems = [
++        document.getElementById('stepper-1'),
++        document.getElementById('stepper-2'),
++        document.getElementById('stepper-3')
++      ];
++      const liveAnnouncer = document.getElementById('step-live-announcer');
++      const errorSummary = document.getElementById('form-error-summary');
++      const errorSummaryList = document.getElementById('error-summary-list');
++      const successBanner = document.getElementById('registration-success');
++      const confirmedEmailEl = document.getElementById('confirmed-member-email');
++      const submitBtn = document.getElementById('submit-registration-btn');
++
++      // Initialize anti-CSRF token & render timestamp
++      const csrfInput = document.getElementById('csrf-token');
++      const renderedAtInput = document.getElementById('form-rendered-at');
++      if (renderedAtInput) {
++        renderedAtInput.value = String(Date.now());
++      }
++      if (csrfInput && window.crypto && window.crypto.getRandomValues) {
++        const bytes = new Uint8Array(16);
++        window.crypto.getRandomValues(bytes);
++        csrfInput.value = 'dg_csrf_' + Array.from(bytes, function (b) {
++          return b.toString(16).padStart(2, '0');
++        }).join('');
++      }
++
++      let currentStep = 1;
++      let isSubmitting = false;
++
++      const stepTitles = {
++        1: 'Step 1 of 3: Personal Details',
++        2: 'Step 2 of 3: Account Security',
++        3: 'Step 3 of 3: Coffee Preferences and Review'
++      };
++
++      // Password requirements & strength evaluation
++      const passwordInput = document.getElementById('password');
++      const confirmPasswordInput = document.getElementById('confirm-password');
++      const strengthBar = document.getElementById('password-strength-bar');
++      const strengthFill = document.getElementById('password-strength-fill');
++      const strengthStatus = document.getElementById('password-strength-status');
++
++      const reqItems = {
++        length: document.getElementById('req-length'),
++        mixedCase: document.getElementById('req-case'),
++        number: document.getElementById('req-number'),
++        symbol: document.getElementById('req-symbol')
++      };
++
++      function evaluatePassword(val) {
++        return {
++          length: val.length >= 8,
++          mixedCase: /[a-z]/.test(val) && /[A-Z]/.test(val),
++          number: /[0-9]/.test(val),
++          symbol: /[^A-Za-z0-9\s]/.test(val)
++        };
++      }
++
++      function updateRequirementItem(el, isMet) {
++        if (!el) return;
++        const icon = el.querySelector('.check-icon');
++        if (isMet) {
++          el.classList.add('is-met');
++          if (icon) icon.textContent = '✓';
++        } else {
++          el.classList.remove('is-met');
++          if (icon) icon.textContent = '○';
++        }
++      }
++
++      function updatePasswordStrengthUI() {
++        const val = passwordInput.value || '';
++        const checks = evaluatePassword(val);
++        updateRequirementItem(reqItems.length, checks.length);
++        updateRequirementItem(reqItems.mixedCase, checks.mixedCase);
++        updateRequirementItem(reqItems.number, checks.number);
++        updateRequirementItem(reqItems.symbol, checks.symbol);
++
++        const score = Object.values(checks).filter(Boolean).length;
++        const levels = [
++          { width: '0%', color: '#c62828', label: 'Enter a password' },
++          { width: '25%', color: '#c62828', label: 'Weak' },
++          { width: '50%', color: '#ef6c00', label: 'Fair' },
++          { width: '75%', color: '#fbc02d', label: 'Good' },
++          { width: '100%', color: '#2e7d32', label: 'Strong' }
++        ];
++
++        const currentLevel = val.length === 0 ? levels[0] : levels[score];
++        if (strengthBar) strengthBar.setAttribute('aria-valuenow', String(val.length === 0 ? 0 : score));
++        if (strengthFill) {
++          strengthFill.style.width = currentLevel.width;
++          strengthFill.style.backgroundColor = currentLevel.color;
++        }
++        if (strengthStatus) {
++          strengthStatus.textContent = 'Password strength: ' + currentLevel.label;
++        }
++      }
++
++      // Show/Hide Password Toggles
++      function setupPasswordToggle(buttonId, inputId, showLabel, hideLabel) {
++        const btn = document.getElementById(buttonId);
++        const input = document.getElementById(inputId);
++        if (!btn || !input) return;
++
++        btn.addEventListener('click', function () {
++          const isHidden = input.type === 'password';
++          input.type = isHidden ? 'text' : 'password';
++          btn.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
++          btn.setAttribute('aria-label', isHidden ? hideLabel : showLabel);
++          btn.textContent = isHidden ? 'Hide' : 'Show';
++        });
++      }
++
++      setupPasswordToggle('toggle-password', 'password', 'Show password', 'Hide password');
++      setupPasswordToggle('toggle-confirm-password', 'confirm-password', 'Show confirm password', 'Hide confirm password');
++
++      // Field validation messages & custom constraints
++      const fieldMeta = {
++        'first-name': {
++          label: 'First Name',
++          errorId: 'first-name-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please enter your first name.';
++            if (el.validity.tooShort) return 'First name must be at least 2 characters.';
++            return 'Please enter a valid first name.';
++          }
++        },
++        'last-name': {
++          label: 'Last Name',
++          errorId: 'last-name-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please enter your last name.';
++            if (el.validity.tooShort) return 'Last name must be at least 2 characters.';
++            return 'Please enter a valid last name.';
++          }
++        },
++        'email': {
++          label: 'Email Address',
++          errorId: 'email-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please enter your email address.';
++            if (el.validity.typeMismatch) return 'Please enter a valid email address (for example, name@example.com).';
++            return 'Please enter a valid email address.';
++          }
++        },
++        'phone': {
++          label: 'Mobile Phone Number',
++          errorId: 'phone-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please enter your mobile phone number.';
++            if (el.validity.patternMismatch) return 'Please enter a valid 10-digit phone number (for example, 555-234-5678).';
++            return 'Please enter a valid phone number.';
++          }
++        },
++        'postal-code': {
++          label: 'ZIP / Postal Code',
++          errorId: 'postal-code-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please enter your ZIP or postal code.';
++            if (el.validity.patternMismatch) return 'Please enter a valid 5-digit ZIP code (e.g., 98101 or 98101-1234).';
++            return 'Please enter a valid ZIP code.';
++          }
++        },
++        'birthday': {
++          label: 'Birth Date',
++          errorId: 'birthday-error',
++          getMessage: function (el) {
++            if (el.validity.rangeOverflow) return 'You must be at least 13 years old to join the rewards program.';
++            if (el.validity.rangeUnderflow) return 'Please enter a valid birth year (1905 or later).';
++            return 'Please enter a valid birth date.';
++          }
++        },
++        'password': {
++          label: 'Password',
++          errorId: 'password-error',
++          customValidate: function (el) {
++            const val = el.value || '';
++            if (!val) {
++              el.setCustomValidity('');
++              return;
++            }
++            const checks = evaluatePassword(val);
++            if (!checks.length || !checks.mixedCase || !checks.number || !checks.symbol) {
++              el.setCustomValidity('Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol.');
++            } else {
++              el.setCustomValidity('');
++            }
++          },
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please create a password for your account.';
++            if (el.validity.customError) return el.validationMessage;
++            if (el.validity.tooShort) return 'Password must be at least 8 characters long.';
++            return 'Please enter a strong password.';
++          }
++        },
++        'confirm-password': {
++          label: 'Confirm Password',
++          errorId: 'confirm-password-error',
++          customValidate: function (el) {
++            const val = el.value || '';
++            if (!val) {
++              el.setCustomValidity('');
++              return;
++            }
++            if (val !== passwordInput.value) {
++              el.setCustomValidity('Passwords do not match. Please re-enter your password.');
++            } else {
++              el.setCustomValidity('');
++            }
++          },
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'Please confirm your password.';
++            if (el.validity.customError) return el.validationMessage;
++            return 'Passwords must match.';
++          }
++        },
++        'terms-consent': {
++          label: 'Rewards Terms & Privacy Policy',
++          errorId: 'terms-error',
++          getMessage: function (el) {
++            if (el.validity.valueMissing) return 'You must agree to the Rewards Terms of Use and Privacy Policy to register.';
++            return 'Please accept the terms to continue.';
++          }
++        }
++      };
++
++      function validateSingleField(input) {
++        if (!input) return true;
++
++        // Handle radio group for favoriteBrew
++        if (input.name === 'favoriteBrew') {
++          const radios = Array.from(form.querySelectorAll('input[name="favoriteBrew"]'));
++          const isChecked = radios.some(function (r) { return r.checked; });
++          const errorEl = document.getElementById('brew-error');
++          radios.forEach(function (r) {
++            r.setAttribute('aria-invalid', isChecked ? 'false' : 'true');
++          });
++          if (errorEl) {
++            errorEl.textContent = isChecked ? '' : 'Please select your favorite brew style.';
++          }
++          return isChecked;
++        }
++
++        const meta = fieldMeta[input.id];
++        if (!meta) return input.checkValidity();
++
++        if (typeof meta.customValidate === 'function') {
++          meta.customValidate(input);
++        }
++
++        const isValid = input.checkValidity();
++        const errorEl = document.getElementById(meta.errorId);
++
++        input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
++        if (errorEl) {
++          errorEl.textContent = isValid ? '' : meta.getMessage(input);
++        }
++
++        return isValid;
++      }
++
++      function validateStep(stepNumber) {
++        const stepFieldset = document.getElementById('step-' + stepNumber);
++        if (!stepFieldset) return true;
++
++        const invalidEntries = [];
++        const inputs = Array.from(stepFieldset.querySelectorAll('input, select, textarea'));
++        const seenRadioGroups = new Set();
++
++        inputs.forEach(function (input) {
++          if (input.type === 'hidden') return;
++          if (input.type === 'radio') {
++            if (seenRadioGroups.has(input.name)) return;
++            seenRadioGroups.add(input.name);
++          }
++
++          const valid = validateSingleField(input);
++          if (!valid) {
++            let label = 'Field';
++            let message = input.validationMessage || 'Invalid value.';
++            if (input.name === 'favoriteBrew') {
++              label = 'Favorite Brew Style';
++              message = 'Please select your favorite brew style.';
++            } else if (fieldMeta[input.id]) {
++              label = fieldMeta[input.id].label;
++              message = fieldMeta[input.id].getMessage(input);
++            }
++            invalidEntries.push({
++              id: input.id,
++              label: label,
++              message: message
++            });
++          }
++        });
++
++        if (invalidEntries.length > 0) {
++          renderErrorSummary(invalidEntries);
++          return false;
++        }
++
++        hideErrorSummary();
++        return true;
++      }
++
++      function renderErrorSummary(invalidEntries) {
++        if (!errorSummary || !errorSummaryList) return;
++        errorSummaryList.textContent = '';
++
++        invalidEntries.forEach(function (entry) {
++          const li = document.createElement('li');
++          const link = document.createElement('a');
++          link.href = '#' + entry.id;
++          link.textContent = entry.label + ': ' + entry.message;
++          link.addEventListener('click', function (e) {
++            e.preventDefault();
++            const target = document.getElementById(entry.id);
++            if (target) target.focus();
++          });
++          li.appendChild(link);
++          errorSummaryList.appendChild(li);
++        });
++
++        errorSummary.hidden = false;
++        errorSummary.focus();
++      }
++
++      function hideErrorSummary() {
++        if (!errorSummary || !errorSummaryList) return;
++        errorSummary.hidden = true;
++        errorSummaryList.textContent = '';
++      }
++
++      function populateReviewSummary() {
++        const firstName = (document.getElementById('first-name').value || '').trim();
++        const lastName = (document.getElementById('last-name').value || '').trim();
++        const email = (document.getElementById('email').value || '').trim();
++        const phone = (document.getElementById('phone').value || '').trim();
++        const postal = (document.getElementById('postal-code').value || '').trim();
++
++        // Use textContent exclusively to prevent XSS injection
++        document.getElementById('review-name').textContent = (firstName + ' ' + lastName).trim() || '—';
++        document.getElementById('review-email').textContent = email || '—';
++        document.getElementById('review-phone').textContent = phone || '—';
++        document.getElementById('review-postal').textContent = postal || '—';
++      }
++
++      function goToStep(targetStep) {
++        currentStep = targetStep;
++        hideErrorSummary();
++
++        steps.forEach(function (fieldset, index) {
++          const stepNum = index + 1;
++          fieldset.hidden = stepNum !== currentStep;
++        });
++
++        stepperItems.forEach(function (item, index) {
++          if (!item) return;
++          const stepNum = index + 1;
++          const numBadge = item.querySelector('.step-number');
++          if (stepNum === currentStep) {
++            item.setAttribute('aria-current', 'step');
++            item.classList.remove('is-complete');
++            if (numBadge) numBadge.textContent = String(stepNum);
++          } else if (stepNum < currentStep) {
++            item.removeAttribute('aria-current');
++            item.classList.add('is-complete');
++            if (numBadge) numBadge.textContent = '✓';
++          } else {
++            item.removeAttribute('aria-current');
++            item.classList.remove('is-complete');
++            if (numBadge) numBadge.textContent = String(stepNum);
++          }
++        });
++
++        if (currentStep === 3) {
++          populateReviewSummary();
++        }
++
++        if (liveAnnouncer && stepTitles[currentStep]) {
++          liveAnnouncer.textContent = stepTitles[currentStep];
++        }
++
++        const activeStepEl = document.getElementById('step-' + currentStep);
++        if (activeStepEl) {
++          const legend = activeStepEl.querySelector('.step-legend');
++          if (legend) legend.focus();
++        }
++      }
++
++      // Attach blur & live input validation listeners
++      Object.keys(fieldMeta).forEach(function (id) {
++        const el = document.getElementById(id);
++        if (!el) return;
++
++        el.addEventListener('blur', function () {
++          if (el.value || el.getAttribute('aria-invalid') === 'true') {
++            validateSingleField(el);
++          }
++        });
++
++        el.addEventListener('input', function () {
++          if (id === 'password') {
++            updatePasswordStrengthUI();
++            if (confirmPasswordInput && confirmPasswordInput.value) {
++              validateSingleField(confirmPasswordInput);
++            }
++          }
++          if (el.getAttribute('aria-invalid') === 'true') {
++            validateSingleField(el);
++          }
++        });
++
++        el.addEventListener('change', function () {
++          if (el.type === 'checkbox' || el.type === 'date') {
++            validateSingleField(el);
++          }
++        });
++      });
++
++      const brewRadios = Array.from(form.querySelectorAll('input[name="favoriteBrew"]'));
++      brewRadios.forEach(function (radio) {
++        radio.addEventListener('change', function () {
++          validateSingleField(radio);
++        });
++      });
++
++      // Step Navigation Button Listeners
++      form.querySelectorAll('[data-next-step]').forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          const nextStep = Number(btn.getAttribute('data-next-step'));
++          if (validateStep(currentStep)) {
++            goToStep(nextStep);
++          }
++        });
++      });
++
++      form.querySelectorAll('[data-prev-step]').forEach(function (btn) {
++        btn.addEventListener('click', function () {
++          const prevStep = Number(btn.getAttribute('data-prev-step'));
++          goToStep(prevStep);
++        });
++      });
++
++      // Final Form Submission with Security Safeguards
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        if (isSubmitting) return;
++
++        // 1. Check Honeypot field for automated bot submissions
++        const honeypot = document.getElementById('company-website');
++        if (honeypot && honeypot.value.trim() !== '') {
++          return;
++        }
++
++        // 2. Verify CSRF token integrity
++        if (!csrfInput || !csrfInput.value || !csrfInput.value.startsWith('dg_csrf_')) {
++          renderErrorSummary([{
++            id: 'submit-registration-btn',
++            label: 'Security Verification',
++            message: 'Invalid form security token. Please refresh the page and try again.'
++          }]);
++          return;
++        }
++
++        // 3. Validate all steps sequentially
++        for (let step = 1; step <= 3; step++) {
++          if (!validateStep(step)) {
++            if (currentStep !== step) {
++              goToStep(step);
++              validateStep(step);
++            }
++            return;
++          }
++        }
++
++        // 4. Prevent double submission & lock sensitive fields
++        isSubmitting = true;
++        if (submitBtn) {
++          submitBtn.disabled = true;
++          submitBtn.setAttribute('aria-busy', 'true');
++          submitBtn.textContent = 'Creating Account...';
++        }
++
++        // Ensure password fields are masked before completion
++        if (passwordInput) passwordInput.type = 'password';
++        if (confirmPasswordInput) confirmPasswordInput.type = 'password';
++
++        const memberEmail = (document.getElementById('email').value || '').trim();
++
++        // Clear sensitive password fields from DOM after capture
++        if (passwordInput) passwordInput.value = '';
++        if (confirmPasswordInput) confirmPasswordInput.value = '';
++
++        // 5. Display accessible confirmation state
++        if (confirmedEmailEl) {
++          confirmedEmailEl.textContent = memberEmail;
++        }
++
++        stepperItems.forEach(function (item) {
++          if (!item) return;
++          item.removeAttribute('aria-current');
++          item.classList.add('is-complete');
++          const numBadge = item.querySelector('.step-number');
++          if (numBadge) numBadge.textContent = '✓';
++        });
++
++        hideErrorSummary();
++        form.hidden = true;
++        if (successBanner) {
++          successBanner.hidden = false;
++          successBanner.focus();
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>
